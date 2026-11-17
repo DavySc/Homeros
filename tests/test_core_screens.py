@@ -115,7 +115,12 @@ for i, ks in ipairs(c.keys) do
   if (k1 == 'x' and vim.fn.getline('.') == '') or (k1 == 'dd' and vim.fn.line('$') == 1 and vim.fn.getline(1) == '') then
     ks = {}; nop[#nop + 1] = i
   end
+  vim.v.errmsg = ''
   pcall(vim.api.nvim_feedkeys, vim.api.nvim_replace_termcodes(table.concat(ks), true, false, true), 'xt', false)
+  -- :set lines below what the windows need fails (E593) and changes
+  -- nothing; a terminal resize (screen_resize()) cannot fail, so the C
+  -- side, which resizes, skips it
+  if vim.v.errmsg:match('^E593') then nop[#nop + 1] = i end
   out[#out + 1] = screen()
 end
 io.open(OUT, 'w'):write(vim.json.encode({screens = out, nop = nop}))

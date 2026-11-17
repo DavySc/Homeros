@@ -18,7 +18,7 @@ typedef struct {
 	   so a scroll command's view lasts; wrap as last seen, whose change
 	   invalidates as changed_window_setting() does */
 	int topvalid, wrap;
-	size_t vline;
+	size_t vline, vskip;          /* w_valid_cursor.lnum, w_valid_skipcol */
 	/* w_botline, w_empty_rows and w_valid's VALID_BOTLINE (bv 1: exact)
 	   and VALID_BOTLINE_AP (bv 2: approximate but used): Neovim's
 	   update_topline() reads an approximate w_botline, and win_update()
@@ -72,6 +72,7 @@ void win_new_height(Editor *e, Win *w, int h);
 void win_new_width(Editor *e, Win *w, int wd);
 void win_cursor_pos(Editor *e, Win *w, int *wrow, int *wcol);
 void scroll_halfway(Editor *e, Win *w, int atend, int prefer_above);
+void core_set_wrap(Editor *e, int on);   /* until core.h has it */
 void win_invalidate(Win *w);          /* changed_line_abv_curs_win(): update_topline() looks again */
 
 /* layout (win.c) */

@@ -79,15 +79,7 @@ static void token(Editor *e, Grid *g, const char *t)
 		}
 		goto upd;
 	}
-	if (!strcmp(t, "wrap") || !strcmp(t, "nowrap")) {
-		/* did_set_wrap(): one of leftcol and skipcol goes */
-		w->wrap = t[0] == 'w';
-		if (w->wrap) w->left = 0; else w->skipcol = 0;
-		/* setting a window option sets w_set_curswant unless after $
-		   (option.c; measured: :set wrap and :set number do, :echo not) */
-		if (w->want != WANT_EOL) core_set_want(e);
-		goto upd;
-	}
+	if (!strcmp(t, "wrap") || !strcmp(t, "nowrap")) { core_set_wrap(e, t[0] == 'w'); goto upd; }
 	if (!strcmp(t, "sp") || !strcmp(t, "vs")) { core_split(e, t[0] == 'v', 0); goto upd; }
 	if (!strcmp(t, "new") || !strcmp(t, "vnew")) {
 		core_new(e, t[0] == 'v');

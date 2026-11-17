@@ -381,13 +381,17 @@ static void win_init(Win *n, Win *o)
 	n->frame->s.fraction = o->frame->s.fraction;
 	n->frame->s.prev_fraction_row = o->frame->s.prev_fraction_row;
 	n->frame->s.vline = (size_t)-1;   /* w_valid = 0, w_valid_cursor not set */
-	n->frame->s.bot = o->frame->s.bot;
+	n->frame->s.bot = 1;              /* win_alloc(): w_botline 2; splitkeep=cursor copies none */
 	n->frame->s.wrap = n->wrap;
 }
 
+static void flatten(Editor *e, Frame *f);
+
 /* win_split_ins(): new_wp is a window being moved (CTRL-W HJKL), else a new
-   one is made; dir is the direction the moved window's frame was removed in */
-static Win *split_ins(Editor *e, int size, int flags, Win *new_wp, int dir)
+   one is made; dir is the direction the moved window's frame was removed in,
+   and to_flatten the frame left alone there, flattened only once the split
+   cannot fail on room, so that a failed move can be undone */
+static Win *split_ins(Editor *e, int size, int flags, Win *new_wp, int dir, Frame *to_flatten)
 {
 	Win *old = flags & WSP_TOP ? e->wins : flags & WSP_BOT ? NULL : e->win, *w = new_wp;
 	if (flags & WSP_BOT) { old = e->wins; while (old->next) old = old->next; }
@@ -450,6 +454,10 @@ static Win *split_ins(Editor *e, int size, int flags, Win *new_wp, int dir)
 		win_init(w, e->win);
 	}
 	win_append(e, after ? old : win_prev(e, old), w);
+	if (to_flatten) {
+		flatten(e, to_flatten);
+		of = old->frame;
+	}
 	Frame *cur;
 	int before;
 	Frame *top = e->layout;
@@ -540,7 +548,7 @@ static Win *split_ins(Editor *e, int size, int flags, Win *new_wp, int dir)
 
 int core_split(Editor *e, int vertical, int size)
 {
-	return split_ins(e, size, vertical ? WSP_VERT : 0, NULL, 0) ? 0 : -1;
+	return split_ins(e, size, vertical ? WSP_VERT : 0, NULL, 0, NULL) ? 0 : -1;
 }
 
 /* ---- closing ---- */
@@ -818,21 +826,26 @@ static int rotate(Editor *e, int up, long count)
 /* win_splitmove(): CTRL-W H J K L; a count is the new size */
 static int splitmove(Editor *e, int flags, int size)
 {
-	Win *w = e->win;
+	Win *w = e->win, *prev = win_prev(e, w);
 	int h = w->h, dir;
-	Frame *alt;
+	Frame *alt, *f = w->frame;
 	frame_take_out(e, w, &dir, &alt);
 	win_unlink(e, w);
 	win_comp_pos(e);
-	/* win_split_ins() with the window itself; the alternate frame is
-	   flattened right after, as Neovim does with to_flatten */
-	e->win = frame2win(alt);
-	flatten(e, alt);
-	/* curwin is still w in Neovim, so win_enter() does nothing and
-	   'winheight' / 'winwidth' do not apply (measured: 7 CTRL-W K gives
-	   the equalized 6 lines, in 15 rows) */
-	e->win = w;
-	if (!split_ins(e, size, flags, w, dir)) return -1;
+	/* curwin stays w, so win_enter() does nothing and 'winheight' /
+	   'winwidth' do not apply (measured: 7 CTRL-W K gives the equalized
+	   6 lines, in 15 rows) */
+	if (!split_ins(e, size, flags, w, dir, alt)) {
+		/* winframe_restore(): the frame back where it was, the room back */
+		if (f->prev) frame_append(f->prev, f);
+		else frame_insert(f->next, f);
+		if (!f->vsep && f->parent->layout == FR_ROW && f->prev) set_vsep(e, f->prev, 1);
+		if (dir == 'v') new_height(e, alt, alt->height - f->height, alt == f->next);
+		else new_width(e, alt, alt->width - f->width, alt == f->next);
+		win_comp_pos(e);
+		win_append(e, prev, w);
+		return -1;
+	}
 	if (!size && !(flags & WSP_VERT)) {
 		win_setheight(e, w, h);
 		win_equal(e, e->win, e->win == w, 'v');

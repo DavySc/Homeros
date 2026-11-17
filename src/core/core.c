@@ -296,13 +296,15 @@ static WinInfo *wininfo_find(Buf *b, Win *w, int opts)
 	return NULL;
 }
 
-/* readfile() leaves the cursor on line 1's first non-blank; do_ecmd()
-   keeps that only off skipwhite()'s column, on a line of blanks */
+/* readfile() leaves the cursor on line 1's first non-blank (BL_FIX);
+   do_ecmd() keeps that only when it moved from the emptied buffer's (1,0)
+   and is off skipwhite()'s column: a line of two or more blanks
+   (measured: "   " goes to 1,2; " ", "\t", "" and "  x" keep the line) */
 static int line1_blank(Editor *e)
 {
 	size_t n, c = core_first_nonblank(e, 0);
 	const unsigned char *s = core_line(e, 0, &n);
-	return c < n && (s[c] == ' ' || s[c] == '\t');
+	return c > 0 && c < n && (s[c] == ' ' || s[c] == '\t');
 }
 
 /* How a buffer is entered: :b (set_curbuf()), :e (do_ecmd()), :new
@@ -334,7 +336,9 @@ static int enter_buffer(Editor *e, Buf *b, int how)
 	else if (i && i->wrap >= 0) w->wrap = i->wrap;
 	i = wininfo_find(b, w, 0);
 	w->line = w->col = 0;
-	w->skipcol = w->left = 0;
+	/* didset_window_options(): one of leftcol and skipcol goes, as for :set wrap */
+	if (w->wrap) w->left = 0;
+	else w->skipcol = 0;
 	if (i && i->line != UNSET) {
 		w->line = i->line;
 		w->col = i->col;       /* nostartofline */
@@ -788,6 +792,20 @@ void core_set_want(Editor *e)
 	w->want = core_vcol(e, w->line, w->col);
 	if (e->mode == MODE_NORMAL && w->col < n && s[w->col] == '\t')
 		w->want = core_vcol(e, w->line, w->col + 1) - 1;
+}
+
+/* :set wrap / nowrap: did_set_wrap() drops one of leftcol and skipcol;
+   check_redraw_for() calls changed_window_setting() even when the value
+   stays (measured: nowrap on a nowrap window recentres); setting a window
+   option sets w_set_curswant unless after $ (option.c; measured) */
+void core_set_wrap(Editor *e, int on)
+{
+	Win *w = e->win;
+	w->wrap = on;
+	if (on) w->left = 0;
+	else w->skipcol = 0;
+	win_invalidate(w);
+	if (w->want != WANT_EOL) core_set_want(e);
 }
 
 size_t win_vcol(Editor *e, Win *w, size_t *start, size_t *end)

@@ -128,7 +128,9 @@ void win_check_cursor(Win *w)
 	if (w->line >= n) w->line = n - 1;
 	if (w->top >= n) w->top = n - 1;
 	size_t len = text_line_start(w->buf->text, w->line + 1) - text_line_start(w->buf->text, w->line) - 1;
-	if (w->col > len) w->col = len;
+	/* check_cursor_col(): on the last character outside Insert mode; no
+	   window is entered in Insert mode */
+	if (len && w->col >= len) w->col = len - 1;
 }
 
 /* the cursor's line without folds, in the top line's coordinates */
@@ -160,15 +162,18 @@ static void set_topline(Win *w, lnr l)
 void win_invalidate(Win *w) { w->frame->s.topvalid = 0; w->frame->s.bv = 0; }
 
 /* check_cursor_moved(): the view is looked at again once the cursor
-   leaves its line or 'wrap' changes */
+   leaves its line or 'wrap' changes; w_botline once skipcol changes */
 static void check_moved(Win *w)
 {
 	WinState *s = &w->frame->s;
 	if (w->line != s->vline || w->wrap != s->wrap) {
 		s->topvalid = 0;
-		s->bv = 0;
 		s->vline = w->line;
+		s->vskip = w->skipcol;
 		s->wrap = w->wrap;
+	} else if (w->skipcol != s->vskip) {
+		s->bv = 0;
+		s->vskip = w->skipcol;
 	}
 }
 
@@ -518,13 +523,18 @@ void win_ecmd_topline(Editor *e, Win *w)
 }
 void core_update(Editor *e) { curs_columns(e, e->win, 1); }
 
-/* the end of win_update(): w_botline as drawn.  update_topline() may have
+/* win_update() for each window: skipcol made valid, then w_botline as drawn.  update_topline() may have
    used an approximate one, so for the current window a drawn value that
    differs looks at the view again, once (drawscreen.c, "There is a trick
    with w_botline") */
 void win_drawn(Editor *e)
 {
 	for (Win *w = e->wins; w; w = w->next) {
+		/* win_update()'s start: skipcol, set for another width, rounded
+		   down to a row start */
+		long w1 = width1(w);
+		if (w->skipcol > 0 && w1 > 0)
+			w->skipcol = (long)w->skipcol < w1 ? 0 : (size_t)(w1 + ((long)w->skipcol - w1) / w1 * w1);
 		WinState *s = &w->frame->s;
 		size_t old = s->bot, top = w->top, skip = w->skipcol;
 		for (int again = w == e->win; ; again = 0) {
@@ -704,8 +714,10 @@ static int scrolldown(Editor *e, Win *w, long count)
 	/* the cursor's last screen row, from w_wrow kept up to date; moved up
 	   into the window */
 	int wrow = w->frame->s.wrow + done;
-	if (w->wrap && w->w)
+	if (w->wrap && w->w) {
+		check_moved(w);        /* validate_cheight(): a skipcol change drops w_botline */
 		wrow += plines_lim(w, (lnr)w->line, 1) - 1 - (int)(win_vcol(e, w, NULL, NULL) / (size_t)w->w);
+	}
 	int moved = 0;
 	while (wrow >= w->h && w->line > 0) {
 		wrow -= plines_lim(w, (lnr)w->line, 1);
