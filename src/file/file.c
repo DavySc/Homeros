@@ -100,7 +100,10 @@ static int copy_fd(int from, int to)
    Used where a swap would break the file: hard links (the swap would split
    them), a directory we cannot create the temp in, an owner we cannot give
    the temp.  The identity is checked again by descriptor after the copy, so
-   an outside write during the copy is refused rather than lost. */
+   an outside write during the copy is refused rather than lost.  An outside
+   rename during it leaves the outsider's file at the path and ours at the
+   old inode (the other links): SAVE_OK, nothing lost, and the identity kept
+   is the old inode's, so the next :w is refused. */
 static int save_in_place(const char *real, const Text *t, size_t n, FileId *id,
                          int force, char *kept, size_t keptsz)
 {
