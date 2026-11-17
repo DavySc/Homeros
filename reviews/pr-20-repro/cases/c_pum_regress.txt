@@ -1,0 +1,57 @@
+C 6 20
+F 202020202d2d2061616161616161616161616161616161616161616161616161616161616120e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a79220292e2061616161616161616161616161616161616161616161616161616161616120666f6f20616161616161616161616161616161616161616161616161616161616161200120e1839020292e207f20f09f9880
+F 
+T k:5G
+T k:Onew line<Esc>
+T w2:s
+T wrap
+T pum:5:20:4
+P
+S 1       -- aaaaaaaaa
+S ~
+S ~
+S ~
+S < 1,1            All
+S 
+M - - -
+P
+R
+R
+R
+R
+R
+R
+M - - -
+P
+S 1       new line
+S   1     -- aaaaaaaaa
+R
+R
+S < 1,12           All
+R
+M - - -
+P
+R
+S < 1,12           Top
+S 1       new line
+S   1     -- aaaaaaaaa
+R
+R
+M - - -
+P
+R
+R
+R
+S   1     -- aaaaaa@@@
+S < 1,12           Top
+S :set wrap
+M - - -
+P
+S 1       new linez
+R
+S 1       new linez
+S    z
+S <  foo2
+S -- INSERT --
+M - - -
+E
