@@ -14,7 +14,7 @@ file: watch never reports~test TESTS=file_save~~src/file/file.c~	return !same(id
 journal: record sum not checked~test TESTS=file_journal~~src/file/journal.c~		if (!r.ok || s != sum(SUM0, at, (size_t)(r.p - 4 - at))) return 0;~		if (!r.ok || (s != sum(SUM0, at, (size_t)(r.p - 4 - at)) && 0)) return 0;
 journal: torn tail left before appending~test TESTS=file_journal~~src/file/journal.c~	if (ftruncate(j->fd, (off_t)end)) {}~
 journal: no lock~test TESTS=file_journal~~src/file/journal.c~		if (flock(j->fd, LOCK_EX | LOCK_NB)) goto fail_fd;~
-journal: no new base after a save~test TESTS=file_journal~~src/file/journal.c~	j->end = 0;¶	j->based = 0;~	j->end = 0;
+journal: no new base after a save~test TESTS=file_journal~~src/file/journal.c~	if (ftruncate(j->fd, 0)) {}¶	j->based = 0;¶}~	if (ftruncate(j->fd, 0)) {}¶}
 journal: due counted from the last record~test TESTS=file_journal~~src/file/journal.c~	if (!j->dirty) { j->dirty = 1; j->first_ms = now_ms(); }~	j->dirty = 1; j->first_ms = now_ms();
 journal: sync without fdatasync~test TESTS=file_journal~~src/file/journal.c~	fdatasync(j->fd);~
 journal: directory never fsynced~test TESTS=file_journal~~src/file/journal.c~	if (!j->dir_synced) j->dir_synced = !state_sync_dir(j->name);~	if (0) j->dir_synced = !state_sync_dir(j->name);
