@@ -23,14 +23,33 @@ struct Text {
 /* Counts in blocks of 32 so that gcc and clang -O2 compile the inner loop to
    vector compares (the plain loop stays one byte a step); a block's count fits
    in a byte. */
+/*@ axiomatic Nl {
+      logic integer nl{L}(char *s, integer n) reads s[0 .. n - 1];
+      axiom nl0{L}: \forall char *s; nl(s, 0) == 0;
+      axiom nl1{L}: \forall char *s, integer n; n >= 0 ==>
+        nl(s, n + 1) == nl(s, n) + (s[n] == '\n' ? 1 : 0);
+    } */
+/*@ requires \valid_read(s + (0 .. n - 1));
+    assigns \nothing;
+    ensures \result == nl(s, n); */
 static size_t nls(const char *s, size_t n)
 {
 	size_t c = 0, i = 0;
-	for (; i + 32 <= n; i += 32) {
+	/* n - i, not i + 32: i + 32 could wrap, and the provers stop there */
+	/*@ loop invariant i % 32 == 0 && i <= n && c == nl(s, i) && c <= i;
+	    loop assigns i, c;
+	    loop variant n - i; */
+	for (; n - i >= 32; i += 32) {
 		unsigned char k = 0;
+		/*@ loop invariant 0 <= j <= 32 && k == nl(s, i + j) - nl(s, i) && k <= j;
+		    loop assigns j, k;
+		    loop variant 32 - j; */
 		for (int j = 0; j < 32; j++) k += s[i + j] == '\n';
 		c += k;
 	}
+	/*@ loop invariant i <= n && c == nl(s, i) && c <= i;
+	    loop assigns i, c;
+	    loop variant n - i; */
 	for (; i < n; i++) c += s[i] == '\n';
 	return c;
 }

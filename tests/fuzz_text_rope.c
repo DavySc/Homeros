@@ -51,6 +51,10 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 		size_t l = r_line_of(t, pos), ls = r_line_start(t, l), nl = 0;
 		for (size_t j = 0; j < pos; j++) nl += m[j] == '\n';
 		if (l != nl || ls > pos || (l && m[ls - 1] != '\n') || memchr(m + ls, '\n', pos - ls)) abort();
+		for (size_t j = pos; j < mn; j++) nl += m[j] == '\n';
+		if (r_lines(t) != nl || r_line_start(t, nl + 1) != mn) abort();
+		size_t want = mn - pos < 3 * k + 1 ? mn - pos : 3 * k + 1;   /* a read ending inside a leaf */
+		if (r_read(t, pos, b, 3 * k + 1) != want || memcmp(b, m + pos, want)) abort();
 	}
 	r_free(t);
 	return 0;

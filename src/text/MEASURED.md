@@ -8,7 +8,7 @@
 |---|---|---|---|
 | `tests/test_text.c` (thread 0) | 200,000 random small edits against an array, all line lookups | pass | measured, 1 run per `make test` |
 | `tests/test_text_rope.c` | 20,000 edits on 1 to 6 MB texts (1% of them up to 256 KB), tree height up to 3; after each edit the bytes around it, every 200 edits the whole tree's shape (fill, counts), all bytes and 40 line lookups; malloc failing at each of the 311 allocations of a 300 KB insert, and at each allocation of `text_new` | pass, text unchanged after every failed allocation; 9 s under ASan+UBSan | measured |
-| `tests/fuzz_text_rope.c` | libFuzzer, edits up to 8 KB, shape and all bytes checked after each | 36,805 runs in 60 s, nothing found; source coverage over 30 s: every line and branch of the tree code, missed only the out-of-range and out-of-memory returns (those the unit tests cover) | measured, 1 run of each |
+| `tests/fuzz_text_rope.c` | libFuzzer, edits up to 8 KB; after each, the shape, all bytes, a short read from the edit, the line count and line lookups (one past the last line too) | 32,414 runs in 60 s, nothing found; llvm-cov over 30 s (42,820 runs): 176 of 179 lines and 91 of 100 branches, all missed ones out-of-range or out-of-memory returns and `text_free(NULL)`, which the unit tests cover (corrected after review: the first version never read short of the end, never asked past the last line and never called `text_lines`) | measured, 1 run of each |
 | `tests/plants/text.txt` | 7 planted bugs: join at a quarter, uneven split, no rollback on failed allocation, line start off by one, newline count missing a byte, shared node's count wrong, leaf insert dropping a byte | 7 of 7 caught | measured, `tools/planted.sh` |
 | `make conform` and the recorded traces | the thin editor's Vim keys against Neovim, now on the rope | 0 differ | measured |
 
@@ -46,6 +46,12 @@ Two changes came from callgrind, both measured on the 10 MB run: counting `'\n'`
 Not measured: Davy's own files (the design asks the rope to match ropey "on your files"; these are generated). Whether the difference to ropey comes from bytes against chars (ropey also counts chars and UTF-16 units) or from the tree is not separated: hypothesis that most of it is the char counting.
 
 ## Proof spike
+
+`nls`, the newline count every count in the tree comes from, has a result contract (`\result == nl(s, n)`, with `nl` defined by recursion) and loop invariants, from the review: 26 of 26 goals prove in about 4 s (measured, 1 run); a planted miscount in the tail loop leaves 4 unproved (measured by the reviewer, 1 run). Its block loop is bounded by `n - i >= 32`, because with `i + 32 <= n` the sum can wrap and 3 goals time out (measured by the reviewer).
+
+    frama-c -wp -wp-rte -wp-prover z3,cvc5 -wp-timeout 20 -wp-fct nls -cpp-extra-args="-Iinclude -D_DEFAULT_SOURCE" src/text/text.c
+
+The rest of the file:
 
 Frama-C WP with `-wp-rte` (z3, cvc5, 10 s per goal) on `text.c` as it is, with no contracts: 113 of 297 runtime-error goals prove, 184 time out (measured, 1 run, about 15 minutes). The unproved ones are almost all memory accesses through a child pointer (`ins` 12, `text_insert` 11, `del` 11, `join` 10, `sum` 9, ...): nothing says a node is valid, so nothing can be proved about reading it. Going further needs a recursive ACSL predicate for a well-formed tree (each kid valid, separated from the others, of height h - 1, its counts right, filled at least half) that every function requires and keeps, which also has to survive `malloc`, `free` and the spare pool. That is the work the design calls much harder than a byte scan, and it was not started: the gate for this package is the differential fuzzing above (hypothesis that a full proof is weeks of work, judged from the earlier CBMC and Kani failures on a smaller structure, not measured).
 
