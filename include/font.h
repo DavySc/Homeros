@@ -21,7 +21,8 @@ typedef struct {
 } Placed;
 
 /* Opens family (a fontconfig name, "JetBrains Mono") at px pixels per em.
-   0 ok, -1 not found or out of memory.  Called again (a new size or output
+   0 ok; -1 if fontconfig has no font at all, or out of memory; a family it
+   lacks gets its best match, as in foot.  Called again (a new size or output
    scale) it replaces the font and empties the cache. */
 int  font_open(const char *family, int px);
 void font_close(void);

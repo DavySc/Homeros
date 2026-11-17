@@ -22,12 +22,14 @@ static void on_input(void *ctx, int fd)
 {
 	(void)ctx; (void)fd;
 	int k[256];
-	if (qn + 256 > QMAX) return;      /* run what is queued first */
+	/* Reads even when the queue is full, so a Ctrl-C behind a long paste
+	   still stops a command (Break.tla "ok"); keys that do not fit are lost. */
 	int n = b->input(k, 256);
 	for (int i = 0; i < n; i++) {
 		if (k[i] == KEY_RESIZE) { resized = 1; continue; }
-		if (k[i] == KEY_CTRL_C) loop_int = 1;   /* Neovim's got_int */
-		q[(qh + qn++) % QMAX] = k[i];
+		/* Neovim's got_int; the keys typed before it go (flush_buffers) */
+		if (k[i] == KEY_CTRL_C) { loop_int = 1; qn = 0; }
+		if (qn < QMAX) q[(qh + qn++) % QMAX] = k[i];
 	}
 }
 
@@ -52,7 +54,7 @@ int main(int argc, char **argv)
 	}
 	b->size(&rows, &cols);
 	if (grid_resize(&g, rows, cols)) goto out;
-	int dirty = 1, syn = e.syn != NULL;   /* syn: a reparse is pending */
+	int dirty = 1, syn = e.buf->syn != NULL;   /* syn: a reparse is pending */
 	while (!e.quit) {
 		if (resized) {
 			resized = 0;
@@ -71,7 +73,7 @@ int main(int argc, char **argv)
 			loop_int = 0;
 		}
 		if (e.quit) break;
-		if (dirty) syn = e.syn != NULL;
+		if (dirty) syn = e.buf->syn != NULL;
 		if (dirty && b->ready()) {
 			core_draw(&e, &g);
 			b->present(&g, &shown);
@@ -79,7 +81,7 @@ int main(int argc, char **argv)
 		}
 		/* deferred work only once the frame is out and no key waits */
 		if (syn && !dirty && !qn) {
-			int r = syntax_update(e.syn, e.text, input_waiting);
+			int r = syntax_update(e.buf->syn, e.buf->text, input_waiting);
 			syn = r == 2;
 			dirty = r == 1;
 		}
