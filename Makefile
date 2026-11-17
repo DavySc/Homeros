@@ -25,10 +25,10 @@ OBJS =
 .DEFAULT_GOAL := homeros
 -include $(wildcard src/*/build.mk)
 
-# what the tests, fuzzers and drivers link: everything but the terminal,
-# the window and the loop
-TEST_SRCS := $(filter-out $(call pick,wl),$(SRCS))
-LIB_SRCS := $(filter-out $(call pick,tty) $(call pick,loop),$(TEST_SRCS))
+# the unit tests link everything (a test may include src/main.c, which
+# names the window backend); the fuzzers and drivers everything but the
+# terminal, the window and the loop
+LIB_SRCS := $(filter-out $(call pick,tty) $(call pick,loop) $(call pick,wl),$(SRCS))
 
 CC ?= cc
 CFLAGS ?= -O2
@@ -55,7 +55,7 @@ compilers: $(OBJS) | build/gcc build/clang
 TESTS = $(patsubst tests/test_%.c,%,$(wildcard tests/test_*.c))
 test: $(OBJS) | build/san
 	@for t in $(TESTS); do \
-	  gcc $(WARN) $(CPPFLAGS) $(SAN) -o build/san/test_$$t tests/test_$$t.c $(TEST_SRCS) $(OBJS) $(LIBS) || exit 1; \
+	  gcc $(WARN) $(CPPFLAGS) $(SAN) -o build/san/test_$$t tests/test_$$t.c $(SRCS) $(OBJS) $(LIBS) || exit 1; \
 	  ./build/san/test_$$t || { echo "FAIL test_$$t"; exit 1; }; done
 	gcc $(WARN) $(CPPFLAGS) $(SAN) -o build/san/conform_drv tests/conform_drv.c $(LIB_SRCS) $(OBJS) $(LIBS)
 	python3 tools/conform.py build/san/conform_drv --replay tests/conform-recorded.json
