@@ -53,6 +53,10 @@ typedef struct Buf {
 	Undo *undo;
 	char *path;                /* NULL for a buffer without a name */
 	FileId id;
+	Journal *journal;          /* crash journal; NULL if it could not be opened (msg said why) */
+	int watch;                 /* file_watch fd for the loop, -1 if none */
+	int changed;               /* changed on disk since read or written: 1, then 2 once warned */
+	int jerr;                  /* a journal write failed during this command */
 	int noeol;                 /* file had no final newline (or was empty) */
 	unsigned flags;            /* CORE_EMPTY */
 	unsigned long saved_seq;   /* undo_seq at the last load or save */
@@ -148,6 +152,9 @@ int  core_undo(Editor *e, int redo);
 int  core_modified(const Buf *b);
 /* Writes buffer b (:w on e->buf, or each of :wa).  0 written, -1 not (msg set). */
 int  core_write(Editor *e, Buf *b, int force);
+/* A buffer's watch fd is readable: an outside change is noted, and warned
+   at the buffer's next edit (W11). */
+void core_watch(Editor *e, int fd);
 void core_msg(Editor *e, const char *fmt, ...);
 /* Screen column where byte col of line l starts. */
 size_t core_vcol(Editor *e, size_t l, size_t col);
