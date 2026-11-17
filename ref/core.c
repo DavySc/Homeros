@@ -1,5 +1,6 @@
 /* Reference core: one buffer in one window, no wrapping, no popup; the
    calls for more buffers and windows refuse. */
+#include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,26 +13,79 @@
 int core_changed;
 
 enum { SCROLLOFF = 6, TABSTOP = 8 };   /* FEATURES.md 1; Vim's tabstop */
+enum { J_NOEOL = 1 << 8 };              /* the journal keeps noeol with the flags */
 
-/* every change reaches the syntax tree and the language server before it
-   is made (UndoHook) */
+static unsigned jstate(const Buf *b) { return b->flags | (b->noeol ? J_NOEOL : 0); }
+
+/* every change reaches the syntax tree, the language server and the
+   journal before it is made (UndoHook).  An edit's record carries the state after it (jnext), so a
+   kill between two writes cannot keep the change with a stale state (review
+   of PR 16, 7); an undo step's state is known only once it is done, so
+   jdone records it then */
+static unsigned jnext = (unsigned)-1;   /* -1: the state now */
 static void undo_seen(void *ctx, const Text *t, size_t pos, size_t ndel, const char *ins, size_t nins)
 {
 	Buf *b = ctx;
 	if (b->syn) syntax_edit(b->syn, t, pos, ndel, ins, nins);
 	lsp_edit(b->lsp, t, pos, ndel, ins, nins);
+	if (b->journal && (journal_base(b->journal, t, jstate(b), &b->id)
+	                   || journal_edit(b->journal, pos, ndel, ins, nins, jnext != (unsigned)-1 ? jnext : jstate(b)))) b->jerr = 1;
+}
+
+static int same_id(const FileId *a, const FileId *b)
+{
+	return a->exists == b->exists && a->dev == b->dev && a->ino == b->ino
+	       && a->size == b->size && a->mtime_ns == b->mtime_ns;
+}
+
+/* After a command's change: its new state for the journal, and the
+   warnings (W11 for an outside change, once; E297 if the journal failed). */
+static void jdone(Editor *e, Buf *b, unsigned before)
+{
+	if (b->journal && jstate(b) != before && journal_edit(b->journal, 0, 0, "", 0, jstate(b))) b->jerr = 1;
+	if (b->jerr) { b->jerr = 0; core_msg(e, "E297: Write error in journal"); }
+	else if (b->changed == 1) {
+		b->changed = 2;
+		core_msg(e, "W11: Warning: File \"%s\" has changed since editing started", b->path);
+	}
+}
+
+/* A crashed session's journal: its text replaces the file's, unless it
+   would save to exactly the file's bytes (a crash right after a save).  Its
+   FileId is kept, so a file changed since is refused at a plain :w. */
+static void recover(Buf *b, Text *t, unsigned st, const FileId *id, const char *data, size_t n)
+{
+	size_t tn = st & CORE_EMPTY ? 0 : text_len(t) - (st & J_NOEOL ? 1 : 0);
+	char *s = malloc(tn ? tn : 1);
+	/* equal bytes are nothing to recover, whoever wrote them (a power loss
+	   right after :w brings back the journal from before it, whose FileId is
+	   the old one: review of PR 16, 3) */
+	int same = s && tn == n && text_read(t, 0, s, tn) == tn && !memcmp(s, data, n);
+	free(s);
+	if (same) { text_free(t); journal_saved(b->journal); return; }
+	text_free(b->text);
+	b->text = t;
+	b->flags = st & CORE_EMPTY;
+	b->noeol = !!(st & J_NOEOL);
+	b->saved_seq = (unsigned long)-1;
+	b->changed = !same_id(id, &b->id);
+	b->id = *id;
 }
 
 int core_open(Editor *e, const char *path)
 {
 	char *data = NULL;
 	size_t n = 0;
+	Text *rt;
+	unsigned rs;
+	FileId rid;
 	memset(e, 0, sizeof *e);
 	e->rows = 24; e->cols = 80;
 	e->buf = e->bufs = calloc(1, sizeof *e->buf);
 	e->win = e->wins = calloc(1, sizeof *e->win);
 	if (!e->buf || !e->win || !(e->buf->path = strdup(path))) return -1;
 	e->buf->nr = 1;
+	e->buf->watch = -1;
 	e->win->buf = e->buf;
 	e->win->h = e->rows - 2;
 	if (file_load(path, &data, &n, &e->buf->id)) {
@@ -41,17 +95,28 @@ int core_open(Editor *e, const char *path)
 	e->buf->noeol = n == 0 || data[n - 1] != '\n';
 	e->buf->flags = n ? 0 : CORE_EMPTY;
 	e->buf->text = text_new(data, n);
-	free(data);
 	e->buf->undo = undo_new();
 	if (!e->buf->text || !e->buf->undo || (e->buf->noeol && text_insert(e->buf->text, n, "\n", 1))) {
+		free(data);
 		core_msg(e, "out of memory");
 		return -1;
 	}
+	int j = journal_open(path, &e->buf->journal, &rt, &rs, &rid), busy = j < 0 && errno == EWOULDBLOCK;
+	if (j == 1) recover(e->buf, rt, rs, &rid, data, n);
+	free(data);
+	e->buf->watch = file_watch(path);
+	/* a change between the load and the watch has no event: look once */
+	if (e->buf->watch >= 0) core_watch(e, e->buf->watch);
 	e->buf->syn = syntax_open(path, e->buf->text);
 	e->buf->lsp = lsp_open(path, e->buf->text);
 	undo_hook(e->buf->undo, undo_seen, e->buf);
 	core_set_want(e);
-	core_msg(e, "\"%s\"%s %zuL, %zuB", path, e->buf->id.exists ? "" : " [New]", core_lines(e), n);
+	if (j < 0) core_msg(e, "E303: Unable to open journal for \"%s\", recovery impossible%s", path,
+	                    busy ? " (another editor has it open)" : "");
+	else if (core_modified(e->buf))
+		core_msg(e, "\"%s\" recovered from the crash journal%s", path,
+		         e->buf->changed ? "; the file changed since (:w! overwrites it)" : "");
+	else core_msg(e, "\"%s\"%s %zuL, %zuB", path, e->buf->id.exists ? "" : " [New]", core_lines(e), n);
 	return 0;
 }
 
@@ -60,6 +125,7 @@ void core_free(Editor *e)
 	if (!e->buf || !e->win) { free(e->buf); free(e->win); return; }
 	syntax_free(e->buf->syn);
 	lsp_close(e->buf->lsp);
+	journal_close(e->buf->journal);   /* a clean exit: nothing to recover */
 	text_free(e->buf->text);
 	undo_free(e->buf->undo);
 	free(e->buf->path);
@@ -92,11 +158,15 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 {
 	char *del = malloc(ndel ? ndel : 1);
 	UndoCursor c = { e->win->line, e->win->col, e->buf->flags };
+	/* the state after: an empty file saves empty until it gets a line of text (Vim) */
+	unsigned js = after | (e->buf->noeol && e->buf->id.size ? J_NOEOL : 0);
 	int r = -1;
 	/* the syntax tree hears of the change first; the thin editor does not
 	   tell it of the rollback below (out of memory), package 4 must */
+	jnext = js;
 	if (del && text_read(e->buf->text, pos, del, ndel) == ndel) undo_seen(e->buf, e->buf->text, pos, ndel, ins, nins);
 	else { free(del); del = NULL; }
+	jnext = (unsigned)-1;
 	if (del && !text_delete(e->buf->text, pos, ndel)) {
 		if (!text_insert(e->buf->text, pos, ins, nins)) {
 			if (!undo_record(e->buf->undo, pos, del, ndel, ins, nins, c, after)) r = 0;
@@ -106,10 +176,10 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 	free(del);
 	e->win->vc.ok = 0;
 	if (r) core_msg(e, "out of memory");
-	/* an empty file saves empty until it gets a line of text (Vim) */
 	else {
 		e->buf->flags = after;
-		if (e->buf->noeol && !e->buf->id.size) e->buf->noeol = 0;
+		e->buf->noeol = !!(js & J_NOEOL);
+		jdone(e, e->buf, js);   /* the state is in the record already */
 	}
 	return r;
 }
@@ -152,6 +222,7 @@ int core_undo(Editor *e, int redo)
 {
 	UndoWhere w;
 	size_t before = core_lines(e), c = e->win->line;
+	unsigned js = jstate(e->buf);
 	int r = redo ? undo_redo(e->buf->undo, e->buf->text, &w) : undo_undo(e->buf->undo, e->buf->text, &w);
 	if (r <= 0) {
 		core_msg(e, r ? "out of memory" : redo ? "Already at newest change" : "Already at oldest change");
@@ -175,6 +246,7 @@ int core_undo(Editor *e, int redo)
 	e->win->col = w.cur.line == l ? w.cur.col : core_col_at(e, l, e->win->want, 0);
 	core_clamp(e);
 	core_msg(e, "");
+	jdone(e, e->buf, js);
 	/* u_undoredo() deletes the old lines, check_cursor_lnum(), inserts the
 	   new ones, then changed_lines(): that invalidates the cached cursor
 	   column only if the clamped cursor is at or below the first changed
@@ -195,6 +267,8 @@ int core_write(Editor *e, Buf *b, int force)
 	switch (file_save(b->path, b->text, n, &b->id, force, kept, sizeof kept)) {
 	case SAVE_OK:
 		b->saved_seq = undo_seq(b->undo);
+		b->changed = 0;
+		if (b->journal) journal_saved(b->journal);
 		core_msg(e, "\"%s\" %zuL, %zuB written", b->path, text_lines(b->text), n);
 		return 0;
 	case SAVE_CHANGED:
@@ -202,12 +276,20 @@ int core_write(Editor *e, Buf *b, int force)
 		return -1;
 	case SAVE_KEPT:
 		b->saved_seq = undo_seq(b->undo);
+		b->changed = 0;
+		if (b->journal) journal_saved(b->journal);
 		core_msg(e, "written, but another program replaced the file first; its version is in %s", kept);
 		return 0;
 	default:
 		core_msg(e, "E212: Can't open file for writing: %s", b->path);
 		return -1;
 	}
+}
+
+void core_watch(Editor *e, int fd)
+{
+	for (Buf *b = e->bufs; b; b = b->next)
+		if (b->watch == fd && file_watch_read(fd, b->path, &b->id) == 1 && !b->changed) b->changed = 1;
 }
 
 void core_msg(Editor *e, const char *fmt, ...)
