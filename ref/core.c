@@ -86,6 +86,8 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 	char *del = malloc(ndel ? ndel : 1);
 	UndoCursor c = { e->win->line, e->win->col, e->buf->flags };
 	int r = -1;
+	/* the syntax tree hears of the change first; the thin editor does not
+	   tell it of the rollback below (out of memory), package 4 must */
 	if (del && text_read(e->buf->text, pos, del, ndel) == ndel) undo_seen(e->buf, e->buf->text, pos, ndel, ins, nins);
 	else { free(del); del = NULL; }
 	if (del && !text_delete(e->buf->text, pos, ndel)) {
@@ -95,6 +97,7 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 		} else text_insert(e->buf->text, pos, del, ndel);
 	}
 	free(del);
+	e->win->vc.ok = 0;
 	if (r) core_msg(e, "out of memory");
 	/* an empty file saves empty until it gets a line of text (Vim) */
 	else {
@@ -150,6 +153,7 @@ int core_undo(Editor *e, int redo)
 	   line, which fails when the old lines ran to the end of the buffer */
 	size_t kept = before - (n - (last + 1 - first));   /* lines the step replaced */
 	if (c >= before - kept) c = before - kept ? before - kept - 1 : 0;
+	if (c >= first) e->win->vc.ok = 0;
 	return c >= first;
 }
 
@@ -243,11 +247,18 @@ void core_clamp(Editor *e)
 
 void core_set_want(Editor *e)
 {
+	Win *w = e->win;
+	if (w->vc.ok && w->vc.line == w->line && w->vc.col == w->col && w->vc.mode == e->mode) {
+		w->want = w->vc.v;
+		return;
+	}
 	size_t n;
-	const unsigned char *s = core_line(e, e->win->line, &n);
-	e->win->want = core_vcol(e, e->win->line, e->win->col);
-	if (e->mode == MODE_NORMAL && e->win->col < n && s[e->win->col] == '\t')
-		e->win->want = core_vcol(e, e->win->line, e->win->col + 1) - 1;
+	const unsigned char *s = core_line(e, w->line, &n);
+	w->want = core_vcol(e, w->line, w->col);
+	if (e->mode == MODE_NORMAL && w->col < n && s[w->col] == '\t')
+		w->want = core_vcol(e, w->line, w->col + 1) - 1;
+	w->vc.line = w->line; w->vc.col = w->col; w->vc.v = w->want;
+	w->vc.mode = e->mode; w->vc.ok = 1;
 }
 
 static size_t digits(size_t n) { size_t d = 1; while (n >= 10) { n /= 10; d++; } return d; }
@@ -293,6 +304,8 @@ static int refuse(Editor *e) { core_msg(e, "E36: Not enough room"); return -1; }
 int  core_edit_file(Editor *e, const char *path, int force) { (void)path; (void)force; return refuse(e); }
 int  core_buf_goto(Editor *e, int nr) { return nr == 1 ? 0 : refuse(e); }
 int  core_buf_next(Editor *e, long n) { (void)e; (void)n; return 0; }
+int  core_buf_alt(Editor *e) { core_msg(e, "E23: No alternate file"); return -1; }
+int  core_new(Editor *e, int vertical) { (void)vertical; return refuse(e); }
 int  core_buf_delete(Editor *e, int nr, int force) { (void)nr; (void)force; return refuse(e); }
 int  core_split(Editor *e, int vertical, int size) { (void)vertical; (void)size; return refuse(e); }
 int  core_close(Editor *e, int force)
@@ -337,7 +350,10 @@ void core_draw(Editor *e, Grid *g)
 		else put_num(g, r, l > e->win->line ? l - e->win->line : e->win->line - l, nw, 0);
 		size_t n, v = 0, ls = core_line_start(e, l), f0 = (size_t)-1;
 		const unsigned char *s = core_line(e, l, &n);
-		unsigned char fc[1024];   /* faces of bytes [f0, f0 + 1024) of the line */
+		/* faces of bytes [f0, f0 + 1024) of the line; the thin editor also
+		   asks for the bytes left of the view, where syntax.h promises only
+		   the visible ones: package 4's core asks for those alone */
+		unsigned char fc[1024];
 		for (size_t i = 0; i < n && v < e->win->left + (size_t)tc; i += uni_len(s, n, i)) {
 			if (syn && (f0 == (size_t)-1 || i >= f0 + sizeof fc || i < f0)) {
 				f0 = i;

@@ -24,6 +24,8 @@ void loop_unwatch(int fd)
 		if (pf[i].fd == fd) { pf[i] = pf[--nw]; w[i] = w[nw]; return; }
 }
 
+int loop_waiting(void) { return poll(pf, (nfds_t)nw, 0) > 0; }
+
 int loop_once(int timeout_ms)
 {
 	int r = poll(pf, (nfds_t)nw, timeout_ms);

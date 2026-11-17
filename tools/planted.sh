@@ -26,7 +26,11 @@ PY
 	else
 		# a check that fails for another reason (a missing tool, a make error)
 		# has not caught the plant: require the failure the check reports
-		why=$(grep -E 'CHECK\(|[1-9][0-9]* differ|WRONG|error|ERROR|Proved goals|sorry|deadly signal|FAIL' "$tmp.log" | grep -v -E '^(gcc|clang|cc) |^make|No rule' | head -1)
+		# (a C compile or link error catches only for the compilers check:
+		# elsewhere it means the plant broke the build)
+		cc='^$'
+		case $target in compilers*) ;; *) cc='\.[ch]:[0-9]+(:[0-9]+)?: (error|warning):|^cc1|undefined reference|ld returned';; esac
+		why=$(grep -E 'CHECK\(|[1-9][0-9]* differ|WRONG|error|ERROR|Proved goals|sorry|deadly signal|FAIL' "$tmp.log" | grep -v -E '^(gcc|clang|cc) |^make|No rule' | grep -v -E "$cc" | head -1)
 		if [ -n "$why" ]; then echo "caught        $name   (make $target): $why"
 		else echo "FAILED OTHERWISE  $name   (make $target): $(tail -1 "$tmp.log")"; rc=1; fi
 	fi
