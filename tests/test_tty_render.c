@@ -16,6 +16,7 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
+#include <sys/prctl.h>
 #include <sys/wait.h>
 #include <termios.h>
 #include <unistd.h>
@@ -156,9 +157,13 @@ int main(void)
 	CHECK(!ioctl(m, TIOCSWINSZ, &ws));
 	char *slave = ptsname(m);
 	fflush(stdout);
-	pid_t sh = fork();
+	pid_t test = getpid(), sh = fork();
 	CHECK(sh >= 0);
 	if (!sh) {
+		/* a failed CHECK in the test kills the shell, and the shell's
+		   death the editor: no process outlives a failing run */
+		prctl(PR_SET_PDEATHSIG, SIGKILL);
+		if (getppid() != test) _exit(14);
 		/* a job-control shell: a session on the terminal, the editor its
 		   foreground job, continued (fg) whenever it stops; while it is
 		   stopped the second time, the shell has the terminal and the
@@ -167,8 +172,10 @@ int main(void)
 		signal(SIGTTOU, SIG_IGN);
 		int s = open(slave, O_RDWR);
 		if (s < 0) _exit(10);
-		pid_t ed = fork();
+		pid_t shell = getpid(), ed = fork();
 		if (!ed) {
+			prctl(PR_SET_PDEATHSIG, SIGKILL);
+			if (getppid() != shell) _exit(14);
 			setpgid(0, 0);
 			tcsetpgrp(s, getpid());
 			signal(SIGTTOU, SIG_DFL);

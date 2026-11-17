@@ -14,3 +14,5 @@ grid: equal clusters get new numbers~test TESTS=grid_diff~~src/grid/grid.c~		if 
 grid: a long cluster compared by length only~test TESTS=grid_diff~~src/grid/grid.c~a->len < 4 ? a->len : 4~a->len < 4 ? a->len : 0
 grid: the store never emptied~test TESTS=grid_diff~~src/grid/grid.c~	if (used <= SLOTS / 2) return 0;~	return 0;
 grid: a full store reuses a slot~test TESTS=grid_diff~~src/grid/grid.c~	if (h < 0) { s = (const unsigned char *)"\xef\xbf\xbd"; n = 3; }~	if (h < 0) h = 0;
+grid: a 31-byte cluster cut~test TESTS=grid_diff~~src/grid/grid.c~	if (n > GRID_CLUSTER_MAX)¶~	if (n >= GRID_CLUSTER_MAX)¶
+grid: a stored cluster found by its prefix~test TESTS=grid_diff~~src/grid/grid.c~store[h].len == n && !memcmp~!memcmp

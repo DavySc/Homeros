@@ -8,6 +8,7 @@
    four-byte characters narrow: the screen must still be right cell for cell.
    Also grid_put's own rules: a two-cell character stays whole (Neovim's
    grid_put_linebuf()). */
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include "check.h"
@@ -267,6 +268,15 @@ int main(void)
 	CHECK(g.c[2].len == 31 && !memcmp(grid_text(&g.c[2]), chars[13], 31) && !grid_cell_eq(&g.c[1], &g.c[2]));
 	CHECK(g.c[3].len == 28 && !memcmp(grid_text(&g.c[3]), chain, 28) && !g.c[4].len);
 	CHECK(grid_text(&g.c[0]) == g.c[0].ch);
+	{   /* exactly 31 bytes (e and 15 accents): kept whole, nothing read past it */
+		unsigned char *e15 = malloc(31);
+		CHECK(e15 != NULL);
+		memcpy(e15, "e" M5 M5 M5, 31);
+		CHECK(grid_put(&g, 1, 3, e15, 31, 1, ATTR_NONE) == 1 && g.c[9].len == 31 && !memcmp(grid_text(&g.c[9]), e15, 31));
+		/* a stored cluster's prefix is a cluster of its own */
+		CHECK(grid_put(&g, 1, 4, e15, 29, 1, ATTR_NONE) == 1 && g.c[10].len == 29 && !grid_cell_eq(&g.c[9], &g.c[10]));
+		free(e15);
+	}
 	CHECK(grid_put(&g, 1, 2, (const unsigned char *)"a" M5, 11, 1, ATTR_NONE) == 1);   /* same length, other bytes */
 	CHECK(!grid_cell_eq(&g.c[1], &g.c[8]) && !memcmp(grid_text(&g.c[8]), "a" M5, 11));
 
@@ -274,7 +284,7 @@ int main(void)
 	   are taken; full in a frame, a cluster shows as U+FFFD */
 	CHECK(!grid_frame());
 	char k[16];
-	for (int i = 0; i < (1 << 16) - 4; i++) {           /* with the 4 above: half */
+	for (int i = 0; i < (1 << 16) - 5; i++) {           /* with the 5 above (e15 is the cut one): half */
 		snprintf(k, sizeof k, "z%07d", i);
 		grid_put(&g, 1, 0, (const unsigned char *)k, 8, 1, ATTR_NONE);
 	}
@@ -287,6 +297,10 @@ int main(void)
 		CHECK(g.c[6].len == 8 && !memcmp(grid_text(&g.c[6]), k, 8));
 	}
 	CHECK(grid_put(&g, 1, 0, (const unsigned char *)"y-too-many", 10, 1, ATTR_NONE) == 1);
+	CHECK(g.c[6].len == 3 && !memcmp(g.c[6].ch, "\xef\xbf\xbd", 3));
+	/* nor is a prefix of a stored one (its probe walks most of the full
+	   table, past y0000000 to y0000009) */
+	CHECK(grid_put(&g, 1, 0, (const unsigned char *)"y000000", 7, 1, ATTR_NONE) == 1);
 	CHECK(g.c[6].len == 3 && !memcmp(g.c[6].ch, "\xef\xbf\xbd", 3));
 	snprintf(k, sizeof k, "y%07d", 5);                  /* a stored one is still found */
 	grid_put(&g, 1, 0, (const unsigned char *)k, 8, 1, ATTR_NONE);
