@@ -200,15 +200,16 @@ static void tty_present(const Grid *g, Grid *shown)
 			   Neovim's print_cell_at_pos() clears both cells of a wide one
 			   first and moves the cursor again after it.  Its test is
 			   "ambiguous width"; uni.h has none, so this takes every
-			   non-ASCII character, which costs bytes, never cells. */
-			if (wide && x->ch[0] >= 0x80) {
+			   cluster that is not one ASCII byte, which costs bytes, never
+			   cells. */
+			if (wide && x->len > 1) {
 				if (r != pr || c != pc) { snprintf(b, sizeof b, "\x1b[%d;%dH", r + 1, c + 1); outs(b); }
 				outs("  ");
 				pr = -1;
 			}
 			if (r != pr || c != pc) { snprintf(b, sizeof b, "\x1b[%d;%dH", r + 1, c + 1); outs(b); }
-			out(x->ch, x->len);
-			pr = x->ch[0] < 0x80 ? r : -1;
+			out(grid_text(x), x->len);
+			pr = x->len == 1 ? r : -1;
 			pc = c + 1 + wide;
 		}
 	snprintf(b, sizeof b, "\x1b[%d;%dH\x1b[?25h\x1b[?2026l", g->crow + 1, g->ccol + 1);

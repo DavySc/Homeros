@@ -2,13 +2,13 @@
 # (format in tools/planted.sh).
 tty: every cell sent every frame~test TESTS=grid_diff~~src/tty/tty.c~			if (grid_cell_eq(x, y)) continue;~
 tty: a frame outside a synchronized update~test TESTS=grid_diff~~src/tty/tty.c~	outs("\x1b[?2026h\x1b[?25l");~	outs("\x1b[?25l");
-tty: no blanks before a non-ASCII wide character~test TESTS=grid_diff~~src/tty/tty.c~			if (wide && x->ch[0] >= 0x80) {~			if (0) {
-tty: no cursor move after a non-ASCII character~test TESTS=grid_diff~~src/tty/tty.c~			pr = x->ch[0] < 0x80 ? r : -1;~			pr = r;
+tty: no blanks before a non-ASCII wide character~test TESTS=grid_diff~~src/tty/tty.c~			if (wide && x->len > 1) {~			if (0) {
+tty: no cursor move after a non-ASCII character~test TESTS=grid_diff~~src/tty/tty.c~			pr = x->len == 1 ? r : -1;~			pr = r;
 tty: a new size is not drawn whole~test TESTS=tty_render~~src/tty/tty.c~		outs("\x1b[0m\x1b[H\x1b[2J");¶	}~	}
 tty: an Esc alone is sent at once~test TESTS=tty_input~~src/tty/tty.c~TTIMEOUTLEN = 50 ~TTIMEOUTLEN = 0 
 tty: a key cut by a read is not kept~test TESTS=tty_input~~src/tty/tty.c~	int i = 0, force = 0, x, len;~	int i = 0, force = 1, x, len;
 Render drain: all input runs before a frame~test TESTS=tty_render~~src/main.c~for (int i = 0; i < BATCH && qn~for (int i = 0; qn
-Render midcmd: a frame inside a command~test TESTS=tty_render~~src/main.c~				running = 1;¶				if (!tools_key(&e, k)~				running = 1;¶				if (k == 0xE9) { keys_feed(&e, 'X', 1); core_draw(&e, &g); b->present(&g, &shown); keys_feed(&e, KEY_BS, 1); }¶				if (!tools_key(&e, k)
+Render midcmd: a frame inside a command~test TESTS=tty_render~~src/main.c~				running = 1;¶				if (e.ks.pending || (!tools_key(&e, k)~				running = 1;¶				if (k == 0xE9) { keys_feed(&e, 'X', 1); core_draw(&e, &g); b->present(&g, &shown); keys_feed(&e, KEY_BS, 1); }¶				if (e.ks.pending || (!tools_key(&e, k)
 Ctrl-Z: the screen is not redrawn whole after fg~test TESTS=tty_render~~src/main.c~				grid_free(&shown);~
 tty: a resize while suspended is not seen~test TESTS=tty_render~~src/tty/tty.c~	if (write(sigpipe[1], "w", 1) < 0) {}¶}~}
 tty: bytes past U+10FFFF, surrogates and overlongs decoded~test TESTS=tty_input~~src/tty/tty.c~		return 1;¶	*k = (int)v;~		*k = (int)v;¶	*k = (int)v;
@@ -24,3 +24,5 @@ tty: a wrong colour in the shared face table~test TESTS=grid_diff~~ref/theme.c~{
 tty: foreground channels in the wrong order~test TESTS=grid_diff~~src/tty/tty.c~f->fg[0], f->fg[1], f->fg[2]~f->fg[2], f->fg[1], f->fg[0]
 tty: a face's background not sent~test TESTS=grid_diff~~src/tty/tty.c~	if (f->style & FACE_BG) n +=~	if (0) n +=
 tty: a face's style bits not sent~test TESTS=grid_diff~~src/tty/tty.c~f->style & FACE_ITALIC ? ";3"~0 ? ";3"
+tty: a long cluster printed from the cell's number~test TESTS=grid_diff~~src/tty/tty.c~out(grid_text(x), x->len);~out(x->ch, x->len < 4 ? x->len : 4);
+tty: a cluster's ambiguity read from the cell's number~test TESTS=grid_diff~~src/tty/tty.c~if (wide && x->len > 1) {~if (wide && x->ch[0] >= 0x80) {
