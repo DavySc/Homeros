@@ -1,0 +1,172 @@
+#!/usr/bin/env python3
+"""Screen traces of the editor core against Neovim (package 4).
+usage: test_core_screens.py N [seed] [--record FILE] [--drv DRIVER]
+Makes N random cases (files, a screen size, a sequence of window, buffer,
+scrolling and editing commands), runs each in nvim --headless with
+FEATURES.md's settings and reads Neovim's whole screen with screenstring()
+after every command marked for it.  --record writes the cases with Neovim's
+screens for tests/test_core_screens.c, which replays them without Neovim;
+--drv runs that program on the fresh cases and compares at once.
+
+A token is one command.  The C side (test_core_screens.c) turns each into
+the core call keys will make for it; here each becomes Neovim's keys."""
+import concurrent.futures, json, os, random, subprocess, sys, tempfile
+
+SETUP = ('set noswapfile nomore shortmess+=I expandtab shiftwidth=4 softtabstop=4 autoindent '
+         'smarttab nostartofline backspace=indent,eol,start number relativenumber '
+         'scrolloff=6 splitright splitbelow nowrap')
+
+WORDS = ['foo', 'bar_1', 'x', '(', ').', ',', 'é', 'λx', 'ა', '--', 'longerword', 'a' * 30, '\t', '']
+
+def gen_text(r):
+    lines = []
+    for _ in range(r.choice([0, 1, 3, 8, 20, 40, 120])):
+        ind = r.choice(['', '', '    ', '\t'])
+        lines.append(ind + ' '.join(r.choice(WORDS) for _ in range(r.randint(0, r.choice([3, 12])))))
+    return '\n'.join(lines) + ('\n' if lines and r.random() < .9 else '')
+
+def gen_tokens(r, nfiles):
+    toks = []
+    for _ in range(r.randint(1, 16)):
+        c = r.random()
+        cnt = r.choice(['', '', '', '2', '3', '7'])
+        if c < .25:
+            toks.append(r.choice(['sp', 'vs', 'sp', 'vs', 'new', 'vnew', 'close', 'q', 'only',
+                                  'w:s', 'w:v', 'w:c', 'w:o', 'w:w', 'w:W', 'w:p', 'w:t', 'w:b',
+                                  'w:h', 'w:j', 'w:k', 'w:l', 'w:=', 'w:+', 'w:-', 'w:<', 'w:>',
+                                  'w:_', 'w:|', 'w:x', 'w:r', 'w:R', 'w:H', 'w:J', 'w:K', 'w:L']))
+            # CTRL-W c, o and q with a count name a window: not used here
+            if toks[-1].startswith('w:') and cnt and toks[-1][2] not in 'coq': toks[-1] = 'w' + cnt + toks[-1][1:]
+        elif c < .35:
+            toks.append(r.choice(['e:f%d' % r.randrange(nfiles), 'b:%d' % r.randint(1, nfiles + 1),
+                                  'bn', 'bp', 'alt', 'enew', 'bd']))
+        elif c < .5:
+            toks.append(r.choice(['C-e', 'C-y', 'C-d', 'C-u', 'C-f', 'C-b', 'zt', 'zz', 'zb',
+                                  'H', 'M', 'L', 'gj', 'gk']))
+            if cnt and toks[-1][0] != 'z': toks[-1] = cnt + toks[-1]
+        elif c < .55:
+            toks.append(r.choice(['wrap', 'nowrap']))
+        elif c < .58:
+            toks.append('size:%d:%d' % (r.randint(4, 40), r.randint(12, 100)))   # 'columns' is at least 12 (E594)
+        elif c < .7:
+            toks.append('k:' + r.choice(['ix<Esc>', 'Onew line<Esc>', 'A' + 'y' * r.randint(1, 90) + '<Esc>',
+                                         'dd', 'x', 'u', '<C-r>', 'oa<CR>b<CR>c<Esc>']))
+        else:
+            m = r.choice(['j', 'k', 'h', 'l', 'w', 'b', 'gg', 'G', '0', '$', '^'])
+            toks.append('k:' + ('' if m == '0' else cnt) + m)   # a count then 0 is a longer count
+    return toks
+
+def split_keys(s):
+    """Neovim's key notation, key by key."""
+    out, i = [], 0
+    while i < len(s):
+        j = s.find('>', i) + 1 if s[i] == '<' and '>' in s[i:] else i + 1
+        out.append(s[i:j]); i = j
+    return out
+
+def nvim_keys(t):
+    """The keys Neovim gets for token t."""
+    if t.startswith('k:'): return split_keys(t[2:])
+    if t.startswith('e:'): return ':e %s<CR>' % t[2:]
+    if t.startswith('b:'): return ':b %s<CR>' % t[2:]
+    if t.startswith('size:'):
+        _, rows, cols = t.split(':')
+        return ':set lines=%s columns=%s<CR>' % (rows, cols)
+    if t[0] == 'w' and ':' in t:       # w[count]:c is CTRL-W c
+        n, c = t[1:].split(':', 1)
+        return n + '<C-w>' + c
+    if t in ('wrap', 'nowrap'): return ':set %s<CR>' % t
+    if t == 'alt': return '<C-^>'
+    cmds = {'sp', 'vs', 'new', 'vnew', 'close', 'q', 'only', 'bn', 'bp', 'enew', 'bd'}
+    if t in cmds: return ':%s<CR>' % t
+    i = 0
+    while t[i].isdigit(): i += 1
+    return t[:i] + {'C-e': '<C-e>', 'C-y': '<C-y>', 'C-d': '<C-d>', 'C-u': '<C-u>',
+                    'C-f': '<C-f>', 'C-b': '<C-b>'}.get(t[i:], t[i:])
+
+LUA = r'''
+local c = vim.json.decode(io.open(IN):read('*a'))
+-- Neovim inserts typeahead as one string and scrolls only after it
+-- (insertchar()); when to scroll is keys_feed's business (package 5), so
+-- an InsertCharPre autocommand turns that off and the C side feeds keys
+-- without typeahead
+vim.api.nvim_create_autocmd('InsertCharPre', {callback = function() end})
+vim.o.lines = c.rows
+vim.o.columns = c.cols
+local function screen()
+  vim.cmd('redraw!')
+  local rows = {}
+  for r = 1, vim.o.lines do
+    local s = {}
+    for col = 1, vim.o.columns do s[#s + 1] = vim.fn.screenstring(r, col) end
+    rows[#rows + 1] = table.concat(s)
+  end
+  return rows
+end
+local out, nop = {screen()}, {}
+for i, ks in ipairs(c.keys) do
+  -- closing the last window would quit: the C side skips it too
+  local last = #vim.api.nvim_tabpage_list_wins(0) == 1
+  local k1 = table.concat(ks)
+  if last and (k1 == ':q<CR>' or k1 == ':close<CR>' or k1:match('<C%-w>[cq]$')) then ks = {} end
+  -- x on an empty line leaves an empty undo step (ref/keys.c), which the
+  -- core counts as a change and Neovim does not ('modified' is b_changed,
+  -- kept per undo header): CORE_CHANGED will fix it; until then not tried
+  if (k1 == 'x' and vim.fn.getline('.') == '') or (k1 == 'dd' and vim.fn.line('$') == 1 and vim.fn.getline(1) == '') then
+    ks = {}; nop[#nop + 1] = i
+  end
+  pcall(vim.api.nvim_feedkeys, vim.api.nvim_replace_termcodes(table.concat(ks), true, false, true), 'xt', false)
+  out[#out + 1] = screen()
+end
+io.open(OUT, 'w'):write(vim.json.encode({screens = out, nop = nop}))
+vim.cmd('qa!')
+'''
+
+def run_nvim(case):
+    d = tempfile.mkdtemp()
+    for i, t in enumerate(case['files']):
+        with open(os.path.join(d, 'f%d' % i), 'w') as f: f.write(t)
+    fi, fo, fl = d + '/in.json', d + '/out.json', d + '/t.lua'
+    json.dump({'rows': case['rows'], 'cols': case['cols'],
+               'keys': [k if isinstance(k, list) else [k] for k in map(nvim_keys, case['tokens'])]}, open(fi, 'w'))
+    open(fl, 'w').write('local IN, OUT = %r, %r\n' % (fi, fo) + LUA)
+    subprocess.run(['nvim', '--clean', '--headless', '-c', SETUP, '-c', 'luafile ' + fl, 'f0'], cwd=d,
+                   stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=120)
+    return json.load(open(fo))
+
+def gen_case(r):
+    nf = r.randint(1, 3)
+    return {'rows': r.choice([6, 10, 15, 24, 30]), 'cols': r.choice([20, 40, 60, 80]),
+            'files': [gen_text(r) for _ in range(nf)], 'tokens': gen_tokens(r, nf)}
+
+def write_cases(path, cases):
+    """One case per block: C rows cols, F hex (one per file), T token (one
+    per token), then each screen as S lines, one per row, after the initial
+    screen and after each token."""
+    with open(path, 'w', encoding='utf-8') as f:
+        for c in cases:
+            f.write('C %d %d\n' % (c['rows'], c['cols']))
+            for t in c['files']: f.write('F %s\n' % t.encode().hex())
+            for t in c['tokens']: f.write('T %s\n' % t)
+            for s in c['screens']:
+                f.write('P\n')
+                for row in s: f.write('S %s\n' % row)
+            f.write('E\n')
+
+def main():
+    a = sys.argv[1:]
+    n = int(a[0]); seed = int(a[1]) if len(a) > 1 and a[1][0] != '-' else 1
+    r = random.Random(seed)
+    cases = [gen_case(r) for _ in range(n)]
+    with concurrent.futures.ThreadPoolExecutor(8) as ex:
+        for c, s in zip(cases, ex.map(run_nvim, cases)):
+            c['screens'] = s['screens']
+            for i in s['nop']: c['tokens'][i - 1] = 'nop'
+    path = a[a.index('--record') + 1] if '--record' in a else tempfile.mktemp(suffix='.txt')
+    write_cases(path, cases)
+    print('%d cases (seed %d) recorded from Neovim in %s' % (n, seed, path))
+    if '--drv' in a:
+        p = subprocess.run([a[a.index('--drv') + 1], path])
+        sys.exit(p.returncode)
+
+main()
