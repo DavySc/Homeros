@@ -14,8 +14,8 @@ static COLORREF px(int x, int y)
 }
 static void present(const Grid *g, Grid *shown)
 {
-	while (!backend_ready()) Sleep(1);
-	backend_present(g, shown);
+	while (!backend_win.ready()) Sleep(1);
+	backend_win.present(g, shown);
 }
 static const char *name(COLORREF p)
 {
@@ -26,9 +26,9 @@ int main(void)
 {
 	Grid g = { 0 }, shown = { 0 };
 	int rows, cols, bad = 0;
-	if (backend_open()) return 2;
+	if (backend_win.open()) return 2;
 	win = FindWindowW(L"homeros", NULL);
-	backend_size(&rows, &cols);
+	backend_win.size(&rows, &cols);
 	if (grid_resize(&g, rows, cols)) return 2;   /* all spaces, cursor at (0, 0) */
 
 	present(&g, &shown);
@@ -51,6 +51,6 @@ int main(void)
 	grid_free(&shown);
 	present(&g, &shown);
 	printf("control: whole redraw with cursor at (1,1):  %s at (1,1)\n", name(px(12, 24)));
-	backend_close();
+	backend_win.close();
 	return bad ? 1 : 0;
 }

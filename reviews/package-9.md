@@ -101,3 +101,25 @@ The Windows loop is package 10's and not built, so nothing fails today. Record i
 ## Re-review
 
 Fixed in the next push, I will rerun: `make check`, `make planted`, `reviews/r9/extra-plants.sh` (expect 15 caught, or a stated reason), the three repros, and the sweep.
+
+## Re-review, head 1c48a8d (2026-11-17)
+
+**Verdict: package 9's findings are answered, with one left; it still cannot merge, for a reason outside it.**
+
+`main` (814623d, which this head contains) does not build: `src/grid/grid.c:25,35,41: missing initializer for field 'face' of 'Cell'` and then `undefined reference to 'backend_tty'`. Package 6's `src/grid/` and `src/tty/` were merged against the old headers and PR 7 changed them. **measured** (1 run here, and CI runs 44109810373 and 44110480167). So `make check` cannot pass on any head that contains `main`, and I could not rerun it whole. What follows was run in a scratch copy of 1c48a8d with only the four `Cell` initialisers in `src/grid/grid.c` given a fourth field, which is what `make win` needs.
+
+- **measured** (5 of 5 runs): `make win` passes; next frame allowed after 18.78 to 18.90 ms.
+- **measured** (1 run, 4 min 46 s): the package's 37 plants (`tests/plants/win.txt`) are all caught, each by a `CHECK` line of `test_win.c` or TLC's `WRONG`. 13 of my 15 extra plants are now among them; the two left out (an astral character's surrogates, the period on `WM_DISPLAYCHANGE`) carry a reason and are on the pending list, which I accept.
+- **proved within bounds, rerun** (1 run each): the 8 Pace configs come out as their first lines say, `Pace_notimer` failing `Fresh`; `design/specs/pace-sweep.sh`: 78 runs, 0 mismatches.
+- **measured** (1 run each): `cursor00` shows the cursor in all four lines (finding 2 fixed). `stuck` is unchanged, as expected: the fix is `MWMO_INPUTAVAILABLE` in `loop.h`, which PR 7 now states (finding 4 answered on the contract).
+- Finding 1: the branch now sits on `main` with PR 7, `backend_win` is a table with clipboard and mouse, the close button sends `KEY_CLOSE`. Finding 6: DESIGN.md's counts and the Windows row are corrected.
+
+### Still to fix: the text checks count pixels of exactly one colour
+
+`tests/test_win.c:191` to 193 ask for pixels that are exactly the text, dim or green colour. With ClearType most of a glyph is blended. **measured** (`reviews/r9/glyph.c`, 1 run here): of the `M`'s 68 inked pixels, 5 are exactly the text colour, and 5 exactly dim. On CI the count was 0: run 44106606719 on 391b6cc failed with `tests/test_win.c:192: CHECK(count(4, 1, REV) > 0 && count(4, 1, BG) > 0)`, the same line before the renumbering. It will fail there again once `main` builds. Count what does not depend on the rasteriser: inked pixels (not background) for "a letter is drawn", and for the colour, the inked pixel furthest from the background or the channel order (dim darker than normal; green's G above its R and B). The plants for those three lines must still be caught afterwards.
+
+### To merge
+
+1. Package 6 (or thread 0) makes `main` build again.
+2. This branch merges that `main` and fixes the three pixel checks.
+3. CI green on that head; I rerun `make check` and `make planted` whole and merge.

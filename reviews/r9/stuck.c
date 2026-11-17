@@ -18,19 +18,19 @@ int main(void)
 {
 	static int k[256];
 	int bad = 0;
-	if (backend_open()) return 2;
+	if (backend_win.open()) return 2;
 	HWND win = FindWindowW(L"homeros", NULL);
-	while (backend_input(k, 256) > 0) {}
+	while (backend_win.input(k, 256) > 0) {}
 
 	/* a 300-character paste, sent by a tool as WM_CHAR */
 	for (int i = 0; i < 300; i++) PostMessageW(win, WM_CHAR, 'x', 0);
-	int n = backend_input(k, 256);                /* one wake, one call */
+	int n = backend_win.input(k, 256);                /* one wake, one call */
 	const char *w = waitq(0);
-	printf("300 keys posted, one backend_input(256) gives %d; the next wait %s\n", n, w);
+	printf("300 keys posted, one backend_win.input(256) gives %d; the next wait %s\n", n, w);
 	bad += w[0] == 't';
 	printf("with MWMO_INPUTAVAILABLE the wait %s\n", waitq(MWMO_INPUTAVAILABLE));
-	while (backend_input(k, 256) > 0) {}
+	while (backend_win.input(k, 256) > 0) {}
 
-	backend_close();
+	backend_win.close();
 	return bad ? 1 : 0;
 }

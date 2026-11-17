@@ -12,23 +12,23 @@ static int drain(void)
 {
 	static int k[64];
 	int got = 0, r;
-	while ((r = backend_input(k, 64)) > 0) got += r;
+	while ((r = backend_win.input(k, 64)) > 0) got += r;
 	return got;
 }
 
 int main(void)
 {
-	if (backend_open()) return 2;
+	if (backend_win.open()) return 2;
 	HWND win = FindWindowW(L"homeros", NULL);
 	drain();
 	for (int i = 0; i < 300; i++) SendMessageW(win, WM_CHAR, 'x', 0);
 	int a = drain();
 	printf("300 WM_CHAR sent:                          %d keys arrive\n", a);
 	for (int i = 0; i < 250; i++) PostMessageW(win, WM_CHAR, 'x', 0);
-	int k, got = backend_input(&k, 1);
+	int k, got = backend_win.input(&k, 1);
 	for (int i = 0; i < 20; i++) SendMessageW(win, WM_IME_CHAR, 0x3042, 0);
 	got += drain();
 	printf("250 typed, then a 20-character IME commit: %d of 270 keys arrive\n", got);
-	backend_close();
+	backend_win.close();
 	return a != 300;
 }
