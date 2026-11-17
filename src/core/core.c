@@ -329,6 +329,7 @@ static int enter_buffer(Editor *e, Buf *b, int how)
 		w->alt = w->buf;
 	}
 	w->buf = e->buf = b;
+	w->vc.ok = 0;                      /* w_valid = 0 */
 	/* get_winopts(): from the window that shows b now, else as b was
 	   left; with neither, the window keeps its own (the global value) */
 	WinInfo *i = wininfo_find(b, w, 1);
@@ -567,26 +568,27 @@ int core_buf_delete(Editor *e, int nr, int force)
 /* ---- editing ---- */
 
 /* mark_adjust() for the other windows on b and every remembered cursor:
-   lines [l1, l2] move by amount (DEL: deleted), lines after l2 by after. */
+   lines [l1, l2) move by amount (DEL: deleted), lines from l2 on by after
+   (an end past the range, so that an empty range at line 0 has one) */
 static void adjust(Editor *e, Buf *b, size_t l1, size_t l2, long amount, long after)
 {
 	for (Win *w = e->wins; w; w = w->next) {
 		if (w->buf != b || w == e->win) continue;
-		if (w->top >= l1 && w->top <= l2) {
+		if (w->top >= l1 && w->top < l2) {
 			if (amount == DEL) w->top = l1 ? l1 - 1 : 0;
 			else if (w->top > l1) w->top += (size_t)amount;
-		} else if (after && w->top > l2) w->top += (size_t)after;
-		if (w->line >= l1 && w->line <= l2) {
+		} else if (after && w->top >= l2) w->top += (size_t)after;
+		if (w->line >= l1 && w->line < l2) {
 			if (amount == DEL) { w->line = l1 ? l1 - 1 : 0; w->col = 0; }
 			else w->line += (size_t)amount;
-		} else if (after && w->line > l2) w->line += (size_t)after;
+		} else if (after && w->line >= l2) w->line += (size_t)after;
 	}
 	for (WinInfo *i = b->wi; i; i = i->next) {
 		if (i->line == UNSET) continue;
-		if (i->line >= l1 && i->line <= l2) {
+		if (i->line >= l1 && i->line < l2) {
 			if (amount == DEL) { i->line = l1 ? l1 - 1 : 0; i->col = 0; }
 			else i->line += (size_t)amount;
-		} else if (after && i->line > l2) i->line += (size_t)after;
+		} else if (after && i->line >= l2) i->line += (size_t)after;
 	}
 }
 
@@ -604,8 +606,8 @@ static void adjust_edit(Editor *e, size_t L, int at_start, int whole_del, int wh
 {
 	if (reloading) return;
 	if (d) {
-		if (at_start && whole_del) adjust(e, e->buf, L, L + d - 1, DEL, -(long)d);
-		else adjust(e, e->buf, L + 1, L + d, DEL, -(long)d);
+		if (at_start && whole_del) adjust(e, e->buf, L, L + d, DEL, -(long)d);
+		else adjust(e, e->buf, L + 1, L + d + 1, DEL, -(long)d);
 	}
 	if (i) adjust(e, e->buf, at_start && whole_ins ? L : L + 1, (size_t)-1, (long)i, 0);
 }
@@ -629,6 +631,13 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 			else { text_delete(b->text, pos, nins); text_insert(b->text, pos, del, ndel); }
 		} else text_insert(b->text, pos, del, ndel);
 	}
+	/* out of memory after the syntax tree heard of the change: it is
+	   built again for the text as it was */
+	if (r && del && b->syn) {
+		syntax_free(b->syn);
+		b->syn = syntax_open(b->path, b->text);
+	}
+	e->win->vc.ok = 0;
 	/* changed_common(): a change at or before a window's cursor makes its
 	   view be looked at again */
 	if (!r)
@@ -681,7 +690,7 @@ int core_undo(Editor *e, int redo)
 	else last = text_line_of(e->buf->text, w.hi > w.lo ? w.hi - 1 : w.lo);
 	/* the other windows: the step replaced lines first.. by last - first + 1 */
 	size_t kept = before - (n - (last + 1 - first));   /* lines the step replaced */
-	if (n != before) adjust(e, e->buf, first, first + kept - 1, DEL, (long)n - (long)before);
+	if (n != before) adjust(e, e->buf, first, first + kept, DEL, (long)n - (long)before);
 	size_t l = w.cur.line + 1 >= first && w.cur.line <= last + 1 ? w.cur.line : first;
 	if (l >= n) l = n - 1;                          /* check_cursor_lnum() */
 	if (w.cur.line + 1 == l && l > 0) l--;          /* "o": back where it started */
@@ -697,6 +706,7 @@ int core_undo(Editor *e, int redo)
 	   column only if the clamped cursor is at or below the first changed
 	   line, which fails when the old lines ran to the end of the buffer */
 	if (c >= before - kept) c = before - kept ? before - kept - 1 : 0;
+	if (c >= first) win->vc.ok = 0;
 	return c >= first;
 }
 
@@ -786,12 +796,19 @@ void core_clamp(Editor *e)
 
 void core_set_want(Editor *e)
 {
-	size_t n;
 	Win *w = e->win;
+	/* w_virtcol kept while VALID_VIRTCOL holds (see core.h) */
+	if (w->vc.ok && w->vc.line == w->line && w->vc.col == w->col && w->vc.mode == e->mode) {
+		w->want = w->vc.v;
+		return;
+	}
+	size_t n;
 	const unsigned char *s = core_line(e, w->line, &n);
 	w->want = core_vcol(e, w->line, w->col);
 	if (e->mode == MODE_NORMAL && w->col < n && s[w->col] == '\t')
 		w->want = core_vcol(e, w->line, w->col + 1) - 1;
+	w->vc.line = w->line; w->vc.col = w->col; w->vc.v = w->want;
+	w->vc.mode = e->mode; w->vc.ok = 1;
 }
 
 /* :set wrap / nowrap: did_set_wrap() drops one of leftcol and skipcol;

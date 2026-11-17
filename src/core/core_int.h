@@ -82,8 +82,6 @@ void layout_free(struct Frame *f);
 /* make w current (win_enter()) */
 void win_enter(Editor *e, Win *w);
 void win_close(Editor *e, Win *w);    /* w is not the last window */
-int core_new(Editor *e, int vertical);   /* until core.h has them */
-int core_buf_alt(Editor *e);
 Buf *buf_unlisted(void);                 /* the buffers :bd left, by number */
 void core_wininfo_set(Buf *b, Win *w, int close);   /* buflist_setfpos() */
 #endif

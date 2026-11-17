@@ -145,6 +145,9 @@ static void draw_status(Editor *e, Grid *g, Win *w)
 	char out[600], *right;
 	int r = w->y + w->h, maxw = w->w;
 	size_t len = text_line_start(w->buf->text, w->line + 1) - text_line_start(w->buf->text, w->line) - 1;
+	/* another window's cursor may be past a line that changed: it is
+	   moved to the line's end, as build_stl_str_hl() does */
+	if (w->col > len) w->col = len;
 	/* %c is 0 on an empty line outside insert mode; %V shows the screen
 	   column when it differs */
 	size_t col = e->mode != MODE_INSERT && !len ? 0 : w->col + 1, vcol = win_vcol(e, w, NULL, NULL) + 1;
