@@ -1,7 +1,8 @@
 /* file.h and the core's save path: bytes survive a load and save unchanged
    (no final newline, CRLF, a BOM, invalid UTF-8, an empty file); an outside
    change since load is never overwritten unasked (Save.tla Check); :w!
-   overwrites; the temp file never stays behind; mode and symlinks kept. */
+   overwrites; the temp file never stays behind; mode and symlinks kept; a new
+   file follows the umask; the empty buffer writes nothing. */
 #include <dirent.h>
 #include <fcntl.h>
 #include <string.h>
@@ -68,10 +69,17 @@ int main(void)
 	CHECK(is(path, "xab", 3));
 	core_free(&e);
 
-	/* a new file gets lines ending in newlines, as Vim writes them */
+	/* a new file gets lines ending in newlines, as Vim writes them, and the
+	   mode open(O_CREAT, 0666) would give */
 	unlink(path);
+	mode_t mask = umask(022);
 	CHECK(!core_open(&e, path) && !e.id.exists);
 	CHECK(!core_edit(&e, 0, 0, "hi", 2) && !core_write(&e, 0) && is(path, "hi\n", 3));
+	struct stat st;
+	CHECK(!stat(path, &st) && (st.st_mode & 0777) == 0644);
+	umask(mask);
+	/* deleting every line leaves the empty buffer, which writes 0 bytes */
+	CHECK(!core_delete_lines(&e, 0, 1) && !core_write(&e, 0) && is(path, "", 0));
 	core_free(&e);
 
 	/* outside change after load: refused, file untouched; then :w! wins */
@@ -95,7 +103,6 @@ int main(void)
 	/* mode kept; a symlink keeps pointing at the file it names */
 	chmod(path, 0600);
 	CHECK(!core_open(&e, path) && !core_edit(&e, 0, 0, "m", 1) && !core_write(&e, 0));
-	struct stat st;
 	CHECK(!stat(path, &st) && (st.st_mode & 0777) == 0600);
 	core_free(&e);
 	char link[300];

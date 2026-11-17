@@ -40,6 +40,9 @@ int file_load(const char *path, char **data, size_t *n, FileId *id)
 		errno = e;
 		return -1;
 	}
+	/* the identity before the first read: a write during the read then shows
+	   as a change at save time instead of being folded into "ours" */
+	ident(&st, id);
 	size_t cap = (size_t)st.st_size + 1, len = 0;
 	char *b = malloc(cap);
 	for (ssize_t r = 1; b && r > 0;) {   /* read to EOF: the size may have changed */
@@ -49,12 +52,8 @@ int file_load(const char *path, char **data, size_t *n, FileId *id)
 		else if (r < 0) { free(b); b = NULL; }
 		else len += (size_t)r;
 	}
-	/* the identity is taken after reading, so a write during the read is
-	   seen at save as a change, never lost */
-	if (b) fstat(fd, &st);
 	close(fd);
-	if (!b) return -1;
-	ident(&st, id);
+	if (!b) { memset(id, 0, sizeof *id); return -1; }
 	*data = b; *n = len;
 	return 0;
 }
@@ -77,9 +76,9 @@ static int write_all(int fd, const Text *t, size_t n)
 int file_save(const char *path, const Text *t, size_t n, FileId *id, int force,
               char *kept, size_t keptsz)
 {
-	char real[PATH_MAX], dir[PATH_MAX], tmp[PATH_MAX + 32];
+	char real[PATH_MAX], dir[PATH_MAX], base[PATH_MAX], tmp[PATH_MAX + 32];
 	struct stat st;
-	FileId now = { 0 };
+	FileId now = { 0 }, mine;
 	/* write through a symlink to its target, as Neovim does */
 	if (!realpath(path, real)) {
 		if (errno != ENOENT || strlen(path) >= sizeof real) return SAVE_ERR;
@@ -92,16 +91,23 @@ int file_save(const char *path, const Text *t, size_t n, FileId *id, int force,
 	if (!force && !id->exists && now.exists) return SAVE_CHANGED;
 	if (now.exists && st.st_nlink > 1) { errno = EMLINK; return SAVE_ERR; }   /* package 11: in place with a backup */
 
+	/* dirname() and basename() may return static storage or change their
+	   argument, so each works on its own copy and its result is used */
 	strcpy(dir, real);
-	snprintf(tmp, sizeof tmp, "%s/.%s.homeros-XXXXXX", dirname(dir), basename(real));
-	strcpy(dir, real);
-	dirname(dir);
+	strcpy(base, real);
+	const char *d = dirname(dir);
+	snprintf(tmp, sizeof tmp, "%s/.%s.homeros-XXXXXX", d, basename(base));
 	int fd = mkstemp(tmp);
 	if (fd < 0) return SAVE_ERR;
 	if (now.exists) { fchmod(fd, st.st_mode & 07777); if (fchown(fd, st.st_uid, st.st_gid)) {} }
+	else { mode_t m = umask(0); umask(m); fchmod(fd, 0666 & ~m); }   /* as open(O_CREAT, 0666) */
 	/* temp written and fsynced before the swap: WholeAfterCrash needs the
-	   data durable before the name points at it (Save2_nofsync fails) */
-	if (write_all(fd, t, n) || fsync(fd)) { int e = errno; close(fd); unlink(tmp); errno = e; return SAVE_ERR; }
+	   data durable before the name points at it (Save2_nofsync fails).  Its
+	   identity is taken here, by descriptor: the swap changes none of inode,
+	   size or mtime, and a stat by path after the swap could see an outside
+	   write as ours (Save2's Rename sets seen in the same step). */
+	if (write_all(fd, t, n) || fsync(fd) || fstat(fd, &st)) { int e = errno; close(fd); unlink(tmp); errno = e; return SAVE_ERR; }
+	ident(&st, &mine);
 	close(fd);
 
 	int r = SAVE_OK;
@@ -123,8 +129,8 @@ int file_save(const char *path, const Text *t, size_t n, FileId *id, int force,
 		errno = e;
 		return e == EEXIST ? SAVE_CHANGED : SAVE_ERR;
 	}
-	int dfd = open(dir, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+	int dfd = open(d, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
 	if (dfd >= 0) { fsync(dfd); close(dfd); }
-	if (!stat(real, &st)) ident(&st, id);
+	*id = mine;
 	return r;
 }

@@ -22,7 +22,7 @@ Prefer copying the behaviour of a reference editor (Neovim 0.12 first; Helix, Em
 - Run things; do not conclude from reading code. Record what you ran and how many times.
 - Timing questions (event loop, frame callbacks, LSP, saving, processes) get a TLA+ model checked by TLC, with the property stated before the mechanism and at least one broken variant that must fail. Each `.cfg` starts with `\* expect: pass` or `\* expect: fail`; `design/specs/check.sh` runs them all.
 - Measurements: at least 5 alternating runs per side; report median and range; a gap inside the run-to-run spread is "no measurable difference".
-- A check you have never seen fail proves nothing: plant a bug and watch it fail. Every check has a plant in `tools/planted.sh`; a new check adds one.
+- A check you have never seen fail proves nothing: plant a bug and watch it fail. Every check has a plant in `tests/plants/` (run by `tools/planted.sh`); a new check adds one.
 
 ## Code
 
@@ -40,9 +40,11 @@ Prefer copying the behaviour of a reference editor (Neovim 0.12 first; Helix, Em
 | `ref/` | reference implementations: the thin editor (text in an array, undo as a list, code-point Unicode, terminal grid, a dozen Vim keys, safe save) | thread 0 |
 | `src/main.c` | the editor's main loop (Render.tla "ok") | thread 0 |
 | `src/<module>/` | a package's real implementation; once it has `.c` files the Makefile builds it instead of `ref/<module>.c` | that package |
-| `tests/` | unit tests, fuzzers, the Neovim conformance driver and its recorded traces | thread 0; a package adds its own tests |
+| `tests/` | unit tests, fuzzers, the Neovim conformance driver and its recorded traces | thread 0; a package adds its own `tests/test_<module>*.c`, `tests/fuzz_<module>*.c` and `tests/plants/<module>.txt`, which the Makefile and `planted.sh` find by name |
 | `tools/` | `conform.py` (differential test against nvim), `planted.sh` (every check fails on a planted bug) | thread 0 |
 | `design/` | the design package, copied unchanged | changes go through DESIGN.md's rules |
+| `Makefile`, `README.md`, `.github/` | the build and the check, the overview, CI | thread 0 |
+| `reviews/` | one report per package review (`reviews/package-<n>.md`) and its repro files | that review's thread |
 
 Modules and their packages: text 1, undo 2, uni 3, core 4, keys 5, grid and tty 6, loop 10, file 11. The headers say what each package adds.
 

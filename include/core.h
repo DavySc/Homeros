@@ -52,7 +52,11 @@ const unsigned char *core_line(Editor *e, size_t l, size_t *len);
 int  core_edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins);
 /* Delete lines [a, z); deleting all leaves the empty buffer.  0 ok, -1 out of memory. */
 int  core_delete_lines(Editor *e, size_t a, size_t z);
-void core_undo(Editor *e, int redo);
+/* One undo or redo step, placing the cursor as u_undoredo() does; the caller
+   recomputes the wanted column once its count is done, even on failure.
+   1 if the step invalidated Neovim's cached cursor column, 0 if not, -1 if
+   there was nothing to undo or redo. */
+int  core_undo(Editor *e, int redo);
 int  core_modified(const Editor *e);
 int  core_write(Editor *e, int force);        /* 0 written, -1 not (msg set) */
 void core_msg(Editor *e, const char *fmt, ...);

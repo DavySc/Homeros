@@ -381,9 +381,23 @@ static void normal_key(Editor *e, int k)
 	case 'I': e->mode = MODE_INSERT; insert_at(e, core_first_nonblank(e, e->line)); return;
 	case 'A': insert_at(e, len); return;
 	case 'o': case 'O': ks->space = 0; open_line(e, k == 'o'); return;
-	case 'u': case KEY_CTRL_R:
-		while (n--) core_undo(e, k == KEY_CTRL_R);
+	case 'u': case KEY_CTRL_R: {
+		/* nv_kundo() asks for curswant to be recomputed from the cached
+		   virtual column, which stays valid if no step invalidated it and
+		   the cursor ends where it started (check_cursor_moved()): curswant
+		   is then the column in the text before the undo (measured, nvim
+		   0.12, "jxu" on "b  a\nc\tfoo" gives 7) */
+		size_t l0 = e->line, c0 = e->col, w0 = e->want, v0;
+		int inval = 0;
+		set_want(e);
+		v0 = e->want;
+		e->want = w0;
+		/* u_doit() stops at the first step that finds nothing */
+		for (int r; n-- && (r = core_undo(e, k == KEY_CTRL_R)) >= 0;) inval |= r;
+		if (!inval && e->line == l0 && e->col == c0) e->want = v0;
+		else set_want(e);
 		return;
+	}
 	case ':': e->mode = MODE_CMDLINE; e->cmdlen = 0; return;
 	}
 }

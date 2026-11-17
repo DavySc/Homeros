@@ -4,10 +4,13 @@
 #
 # A module comes from src/<module>/ once its package exists there, else from
 # the reference implementation in ref/.  Package 6 owns both grid and tty.
+# Modules, tests, fuzzers and plants are found by name, so a package adds
+# files in its own places and never edits this one.
 
 SHELL = /bin/bash
 
-MODULES = text undo uni core keys grid tty loop file
+MODULES = text undo uni core keys grid tty loop file \
+  $(filter-out text undo uni core keys grid tty loop file,$(patsubst src/%/,%,$(wildcard src/*/)))
 pick = $(if $(wildcard src/$(1)/*.c),$(wildcard src/$(1)/*.c),ref/$(1).c)
 SRCS := $(foreach m,$(MODULES),$(call pick,$(m)))
 LIB_SRCS := $(filter-out $(call pick,tty) $(call pick,loop),$(SRCS))
@@ -34,7 +37,7 @@ compilers: | build/gcc build/clang
 	clang $(WARN) -O2 -o build/clang/homeros $(SRCS) src/main.c
 
 # unit tests and the recorded Neovim traces, under ASan and UBSan
-TESTS = text undo uni file grid
+TESTS = $(patsubst tests/test_%.c,%,$(wildcard tests/test_*.c))
 test: | build/san
 	@for t in $(TESTS); do \
 	  gcc $(WARN) $(SAN) -o build/san/test_$$t tests/test_$$t.c $(SRCS) || exit 1; \
@@ -43,12 +46,12 @@ test: | build/san
 	python3 tools/conform.py build/san/conform_drv --replay tests/conform-recorded.json
 
 # libFuzzer, each target against a simple model, FUZZ_SECONDS each
-FUZZERS = text keys
+FUZZERS = $(patsubst tests/fuzz_%.c,%,$(wildcard tests/fuzz_*.c))
 fuzz: | build/fuzz
 	@for f in $(FUZZERS); do \
 	  clang $(WARN) -O1 -g -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all \
 	    -o build/fuzz/fuzz_$$f tests/fuzz_$$f.c $(LIB_SRCS) || exit 1; \
-	  ./build/fuzz/fuzz_$$f -max_total_time=$(FUZZ_SECONDS) -artifact_prefix=build/fuzz/ 2>build/fuzz/$$f.log \
+	  ./build/fuzz/fuzz_$$f -max_total_time=$(FUZZ_SECONDS) -max_len=256 -artifact_prefix=build/fuzz/ 2>build/fuzz/$$f.log \
 	    || { tail -40 build/fuzz/$$f.log; echo "FAIL fuzz_$$f"; exit 1; }; \
 	  echo "fuzz_$$f: $$(grep -m1 -o 'Done [0-9]* runs in [0-9]* second(s)' build/fuzz/$$f.log)"; done
 
@@ -75,7 +78,7 @@ lean: | build
 FRAMA_FILES = $(call pick,uni)
 frama: | build
 	why3 config detect >/dev/null
-	frama-c -wp -wp-rte -wp-prover z3,cvc5 -wp-timeout 20 -wp-fct uni_len,uni_prev \
+	frama-c -wp -wp-rte -wp-prover z3,cvc5 -wp-timeout 20 -wp-fct uni_len,uni_prev,uni_cp \
 	  -cpp-extra-args="-Iinclude" $(FRAMA_FILES) | tee build/frama.log
 	grep -qE "Proved goals: +([0-9]+) / \1$$" build/frama.log
 

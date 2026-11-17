@@ -73,16 +73,18 @@ def ours(drv, c):
     with tempfile.NamedTemporaryFile('w', suffix='.txt', delete=False) as f:
         f.write(c['text'])
     keys = ' '.join(str(CODES[k]) if k in CODES else ' '.join(str(ord(ch)) for ch in k) for k in c['keys'])
-    p = subprocess.run([drv, f.name], input=keys, capture_output=True, text=True, timeout=20)
+    p = subprocess.run([drv, f.name], input=keys.encode(), capture_output=True, timeout=20)
     os.unlink(f.name)
-    if p.returncode: return {'error': p.returncode, 'stderr': p.stderr[-2000:]}
-    return json.loads(p.stdout)
+    # a split character must show as a difference, not stop the run
+    if p.returncode: return {'error': p.returncode, 'stderr': p.stderr[-2000:].decode(errors='backslashreplace')}
+    return json.loads(p.stdout.decode(errors='replace'))
 
 def main():
     a = sys.argv[1:]
     drv, mode, path = a[0], None, None
     if '--record' in a: mode, path = 'record', a[a.index('--record') + 1]
     if '--replay' in a: mode, path = 'replay', a[a.index('--replay') + 1]
+    seed = None
     if mode == 'replay':
         cases = json.load(open(path))
         want = [c.pop('nvim') for c in cases]
@@ -99,7 +101,7 @@ def main():
             if bad <= 5:
                 print('DIFF text=%s keys=%s\n  nvim  %r %r\n  ours  %r %r' % (
                     json.dumps(c['text'], ensure_ascii=False), json.dumps(c['keys'], ensure_ascii=False), w['lines'], w['cursor'], g.get('lines'), g.get('cursor') or g))
-    print('%d sequences: %d differ from Neovim' % (len(cases), bad))
+    print('%d sequences%s: %d differ from Neovim' % (len(cases), '' if seed is None else ' (seed %d)' % seed, bad))
     if mode == 'record':
         for c, w in zip(cases, want): c['nvim'] = w
         json.dump(cases, open(path, 'w'), ensure_ascii=False, indent=0)

@@ -98,11 +98,20 @@ int backend_ready(void) { return 1; }   /* a terminal has no frame callback */
    gap the terminal package closes. */
 int backend_input(int *k, int max)
 {
-	unsigned char b[256], c;
+	/* a character split by the end of a read waits here for its other bytes */
+	static unsigned char b[256 + 3];
+	static int held;
+	unsigned char c;
 	int n = 0;
-	while (read(sigpipe[0], &c, 1) == 1) if (!n) k[n++] = KEY_RESIZE;
-	ssize_t r = read(0, b, sizeof b);
-	for (ssize_t i = 0; i < r && n < max;) {
+	while (read(sigpipe[0], &c, 1) == 1) if (!n && max > 0) k[n++] = KEY_RESIZE;
+	/* each byte gives at most one key, so never read more than there are
+	   slots: what is not read stays in the terminal for the next call */
+	int room = max - n - held;
+	if (room > 256) room = 256;
+	ssize_t r = room > 0 ? read(0, b + held, (size_t)room) : 0;
+	r = (r > 0 ? r : 0) + held;
+	held = 0;
+	for (ssize_t i = 0; i < r;) {
 		if (b[i] == 27 && i + 1 < r && b[i + 1] == '[') {
 			ssize_t j = i + 2;
 			while (j < r && (b[j] < 0x40 || b[j] > 0x7e)) j++;
@@ -113,6 +122,11 @@ int backend_input(int *k, int max)
 		}
 		unsigned v = b[i];
 		int len = v < 0x80 ? 1 : v >= 0xF0 ? 4 : v >= 0xE0 ? 3 : v >= 0xC0 ? 2 : 1;
+		if (len > 1 && i + len > r) {
+			ssize_t j = i + 1;
+			while (j < r && (b[j] & 0xC0) == 0x80) j++;
+			if (j == r) { held = (int)(r - i); memmove(b, b + i, (size_t)held); break; }
+		}
 		if (len > 1 && i + len <= r) {
 			v &= len == 2 ? 0x1F : len == 3 ? 0x0F : 0x07;
 			for (int j = 1; j < len; j++) v = v * 64 + (b[i + j] & 0x3Fu);

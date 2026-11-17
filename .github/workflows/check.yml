@@ -1,6 +1,10 @@
 # Every merge runs the whole check (CLAUDE.md, "Working in parallel").
 name: check
-on: [push, pull_request]
+# once per change: pull requests, and main after a merge
+on:
+  pull_request:
+  push:
+    branches: [main]
 jobs:
   check:
     runs-on: ubuntu-24.04

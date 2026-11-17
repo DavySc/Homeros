@@ -98,14 +98,14 @@ int core_delete_lines(Editor *e, size_t a, size_t z)
 /* Neovim's cursor after undo and redo (undo.c, u_undoredo): back where the
    change started if that is inside or next to the changed lines, else the
    first changed line at its first non-blank. */
-void core_undo(Editor *e, int redo)
+int core_undo(Editor *e, int redo)
 {
 	UndoWhere w;
+	size_t before = core_lines(e), c = e->line;
 	int r = redo ? undo_redo(e->undo, e->text, &w) : undo_undo(e->undo, e->text, &w);
 	if (r <= 0) {
 		core_msg(e, r ? "out of memory" : redo ? "Already at newest change" : "Already at oldest change");
-		core_set_want(e);   /* Neovim recomputes curswant even then */
-		return;
+		return -1;
 	}
 	size_t n = core_lines(e);
 	size_t first = text_line_of(e->text, w.lo), last;
@@ -117,10 +117,19 @@ void core_undo(Editor *e, int redo)
 	if (l >= n) l = n - 1;                          /* check_cursor_lnum() */
 	if (w.cur.line + 1 == l && l > 0) l--;          /* "o": back where it started */
 	e->line = l;
-	e->col = w.cur.line == l ? w.cur.col : core_first_nonblank(e, l);
+	/* else beginline(BL_SOL | BL_FIX), which with 'nostartofline' is
+	   coladvance(curswant): the column wanted before the command, since
+	   curswant is recomputed only once the whole count is done */
+	e->col = w.cur.line == l ? w.cur.col : core_col_at(e, l, e->want, 0);
 	core_clamp(e);
-	core_set_want(e);
 	core_msg(e, "");
+	/* u_undoredo() deletes the old lines, check_cursor_lnum(), inserts the
+	   new ones, then changed_lines(): that invalidates the cached cursor
+	   column only if the clamped cursor is at or below the first changed
+	   line, which fails when the old lines ran to the end of the buffer */
+	size_t kept = before - (n - (last + 1 - first));   /* lines the step replaced */
+	if (c >= before - kept) c = before - kept ? before - kept - 1 : 0;
+	return c >= first;
 }
 
 int core_modified(const Editor *e) { return undo_seq(e->undo) != e->saved_seq; }
@@ -128,7 +137,8 @@ int core_modified(const Editor *e) { return undo_seq(e->undo) != e->saved_seq; }
 int core_write(Editor *e, int force)
 {
 	char kept[4096];
-	size_t n = text_len(e->text) - (e->noeol ? 1 : 0);
+	/* an empty buffer (ML_EMPTY) writes no bytes, not one empty line */
+	size_t n = e->flags & CORE_EMPTY ? 0 : text_len(e->text) - (e->noeol ? 1 : 0);
 	switch (file_save(e->path, e->text, n, &e->id, force, kept, sizeof kept)) {
 	case SAVE_OK:
 		e->saved_seq = undo_seq(e->undo);
@@ -201,6 +211,9 @@ void core_clamp(Editor *e)
 	const unsigned char *s = core_line(e, e->line, &len);
 	if (e->mode == MODE_INSERT) { if (e->col > len) e->col = len; return; }
 	if (e->col >= len) e->col = len ? uni_prev(s, len, len) : 0;
+	/* a column restored by undo may fall inside a character: back to its
+	   first byte, as check_cursor_col() does with mb_adjust_cursor() */
+	else e->col = uni_prev(s, len, e->col + 1);
 }
 
 void core_set_want(Editor *e)
