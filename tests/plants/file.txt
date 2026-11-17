@@ -34,13 +34,13 @@ core wiring: an edit journalled with the state before it (review of PR 16, 7)~te
 core wiring: no look after adding the watch (review of PR 16, 9)~test TESTS=file_core~~ref/core.c~	if (e->buf->watch >= 0) core_watch(e, e->buf->watch);¶~
 journal: an edit appended without a base (review of PR 16, 2)~test TESTS=file_journal~~src/file/journal.c~	if (!j->based) { errno = EINVAL; return -1; }~
 # Windows (src/file/win.c, run under Wine by make win)
-win: ReplaceFileW instead of the rename (caught under Wine, whose ReplaceFileW is three renames; on Windows maybe not)~win~~src/file/win.c~	if (!MoveFileExW(tmp, w, MOVEFILE_WRITE_THROUGH | (now.exists || force ? MOVEFILE_REPLACE_EXISTING : 0))) {~	if (now.exists ? !ReplaceFileW(w, tmp, NULL, 0, NULL, NULL) : !MoveFileExW(tmp, w, MOVEFILE_WRITE_THROUGH)) {
-win: no check before saving~win~~src/file/win.c~	if (!force && !same(id, &now)) { DeleteFileW(tmp); return SAVE_CHANGED; }~
-win: one watch handle per file, not per directory~win~~src/file/win.c~	for (int i = 0; i < nd; i++) if (!wcscmp(d[i].dir, full)) return (int)(intptr_t)d[i].h;~
-win: watch never reports~win~~src/file/win.c~	return !same(id, &now);~	return 0 && !same(id, &now);
-win: journal without the lock~win~~src/file/win.c~	if (!LockFileEx(h, LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY, 0, 1, 0, &o)) return fail();~	if (!LockFileEx(h, LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY, 0, 1, 0, &o) && 0) return fail();
-win: journal locked by its share mode, so a reader blocks recovery (review of PR 25, 2)~win~~src/file/win.c~GENERIC_READ | GENERIC_WRITE, SHARE_ALL, NULL, OPEN_ALWAYS~GENERIC_READ | GENERIC_WRITE, FILE_SHARE_DELETE, NULL, OPEN_ALWAYS
-win: journal in text mode~win~~src/file/win.c~_open_osfhandle((intptr_t)h, _O_APPEND);~_open_osfhandle((intptr_t)h, _O_APPEND | _O_TEXT);
-win: journal name by the path's case~win~~src/file/win.c~	CharLowerBuffW(full, n);~
-win: journal left after a clean close~win~~src/file/win.c~	if (!wide(name, w)) DeleteFileW(w);~	if (!wide(name, w) && 0) DeleteFileW(w);
+win: ReplaceFileW instead of the rename (caught under Wine, whose ReplaceFileW is three renames; on Windows maybe not)~win WIN=file~~src/file/win.c~	if (!MoveFileExW(tmp, w, MOVEFILE_WRITE_THROUGH | (now.exists || force ? MOVEFILE_REPLACE_EXISTING : 0))) {~	if (now.exists ? !ReplaceFileW(w, tmp, NULL, 0, NULL, NULL) : !MoveFileExW(tmp, w, MOVEFILE_WRITE_THROUGH)) {
+win: no check before saving~win WIN=file~~src/file/win.c~	if (!force && !same(id, &now)) { DeleteFileW(tmp); return SAVE_CHANGED; }~
+win: one watch handle per file, not per directory~win WIN=file~~src/file/win.c~	for (int i = 0; i < nd; i++) if (!wcscmp(d[i].dir, full)) return (int)(intptr_t)d[i].h;~
+win: watch never reports~win WIN=file~~src/file/win.c~	return !same(id, &now);~	return 0 && !same(id, &now);
+win: journal without the lock~win WIN=file~~src/file/win.c~	if (!LockFileEx(h, LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY, 0, 1, 0, &o)) return fail();~	if (!LockFileEx(h, LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY, 0, 1, 0, &o) && 0) return fail();
+win: journal locked by its share mode, so a reader blocks recovery (review of PR 25, 2)~win WIN=file~~src/file/win.c~GENERIC_READ | GENERIC_WRITE, SHARE_ALL, NULL, OPEN_ALWAYS~GENERIC_READ | GENERIC_WRITE, FILE_SHARE_DELETE, NULL, OPEN_ALWAYS
+win: journal in text mode~win WIN=file~~src/file/win.c~_open_osfhandle((intptr_t)h, _O_APPEND);~_open_osfhandle((intptr_t)h, _O_APPEND | _O_TEXT);
+win: journal name by the path's case~win WIN=file~~src/file/win.c~	CharLowerBuffW(full, n);~
+win: journal left after a clean close~win WIN=file~~src/file/win.c~	if (!wide(name, w)) DeleteFileW(w);~	if (!wide(name, w) && 0) DeleteFileW(w);
 core wiring: recovery ignores noeol in the bytes a buffer saves~test TESTS=file_core~~ref/core.c~	size_t tn = st & CORE_EMPTY ? 0 : text_len(t) - (st & J_NOEOL ? 1 : 0);~	size_t tn = st & CORE_EMPTY ? 0 : text_len(t);

@@ -118,9 +118,11 @@ frama: | build
 
 # the Windows builds (packages 9 and 11): each package's src/<module>/check.sh
 # cross-builds its tests with zig cc and runs them under Wine (package 9's on
-# a virtual X display)
+# a virtual X display); a plant names the one module whose check can catch it
+# (make win WIN=file), so it does not run the others' slow tests too
+WIN = $(patsubst src/%/check.sh,%,$(wildcard src/*/check.sh))
 win:
-	@for s in src/*/check.sh; do [ -f "$$s" ] || continue; echo "win: $$s"; bash "$$s" || exit 1; done
+	@for m in $(WIN); do echo "win: src/$$m/check.sh"; bash src/$$m/check.sh || exit 1; done
 
 check: compilers test fuzz conform undo-diff lean frama specs win
 	@echo "check: all passed"
