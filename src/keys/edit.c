@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "k.h"
+#include "uni.h"
 
 enum { SW = 4 };
 enum { BACKSPACE_CHAR = 1, BACKSPACE_WORD, BACKSPACE_WORD_NOT_SPACE, BACKSPACE_LINE };
@@ -76,11 +77,14 @@ static void ins_bytes(const char *s, long n)
 	W->col += (size_t)n;
 }
 
-/* mb_replace_pop_ins(): insert the character on top */
+/* mb_replace_pop_ins(): insert the character on top; its utf_head_off()
+   stops at the entry's NUL and steps by cluster, so a ZWJ emoji comes back
+   whole, not one code point before the cursor at a time */
 static void mb_replace_pop_ins(void)
 {
-	long i = rs_n - 1;
-	while (i > 0 && ((unsigned char)rs[i] & 0xC0) == 0x80 && rs[i - 1]) i--;
+	long e = rs_n - 1;
+	while (e > 0 && rs[e - 1]) e--;
+	long i = e + (long)uni_gprev((const unsigned char *)rs + e, (size_t)(rs_n - e), (size_t)(rs_n - e));
 	long n = rs_n - i;
 	rs_n = i;
 	ins_bytes(rs + i, n);
@@ -820,11 +824,20 @@ int stuff_inserted(int c, long count, int no_esc)
 	long n = last_ins_n - last_ins_skip;
 	for (long i = n; i-- > 0;)
 		if (k[i] == KEY_ESC) { n = i; break; }
-	int *b = malloc(sizeof(int) * (size_t)(n * (count > 0 ? count : 1) + 2));
+	/* a trailing 0 or ^ would make a later CTRL-D special: Neovim quotes it,
+	   as <C-V>048 and <C-V>^, when no Esc follows or CTRL-D starts it */
+	int last = 0;
+	if (n > 0 && (k[n - 1] == '0' || k[n - 1] == '^') && (no_esc || (k[0] == 4 && count > 1))) last = k[--n];
+	int *b = malloc(sizeof(int) * (size_t)((n + 4) * (count > 0 ? count : 1) + 2));
 	if (!b) return 0;
 	long m = 0;
 	if (c) b[m++] = c;
-	do { memcpy(b + m, k, sizeof(int) * (size_t)n); m += n; } while (--count > 0);
+	do {
+		memcpy(b + m, k, sizeof(int) * (size_t)n); m += n;
+		if (last) b[m++] = 22;
+		if (last == '0') { b[m++] = '0'; b[m++] = '4'; b[m++] = '8'; }
+		else if (last) b[m++] = '^';
+	} while (--count > 0);
 	if (!no_esc) b[m++] = KEY_ESC;
 	stuff(b, m);
 	free(b);

@@ -36,7 +36,9 @@ MOTIONS = ['h', 'j', 'k', 'l', '0', '^', '$', 'w', 'b', 'e', 'W', 'B', 'E', 'ge'
 FIND = ['f', 'F', 't', 'T']
 OBJECTS = [a + o for a in 'ia' for o in 'wWsp([{<b)B"\'`']
 OPS = ['d', 'c', 'y', '<', '>', 'g~', 'gu', 'gU']
-SIMPLE = ['x', 'X', 'D', 'C', 's', 'S', 'Y', 'J', 'gJ', '~', 'p', 'P', 'gp', 'gP', 'u', '<C-r>', '.', '.',
+# Normal-mode Y is Neovim's default map to y$; after a beep Neovim drops the
+# next mapped key (as for go), so it is sent as y$ (recorded traces keep Y)
+SIMPLE = ['x', 'X', 'D', 'C', 's', 'S', 'y$', 'J', 'gJ', '~', 'p', 'P', 'gp', 'gP', 'u', '<C-r>', '.', '.',
           '<C-a>', '<C-x>', 'dd', 'cc', 'yy', '>>', '<<', 'g~~', 'guu', 'gUU', 'gv', '<Del>']
 VOPS = ['d', 'c', 'y', '<', '>', '~', 'u', 'U', 'J', 'gJ', 'I', 'A', 'p', 'P', 'x', 'X', 'D', 'C', 'S', 'Y',
         'R', 's', '<C-a>', '<C-x>', 'g<C-a>', 'o', 'O', '$', 'gv', '<Esc>', 'r']
@@ -244,7 +246,7 @@ def main():
     for c, w, g in zip(cases, want, got):
         if same(g, w):
             keep.append(dict(c, nvim=w))
-        elif known_rule(known, c):
+        elif 'error' not in g and known_rule(known, c):   # a crash is never known
             nknown += 1
         else:
             bad += 1

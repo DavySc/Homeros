@@ -1079,9 +1079,12 @@ static void nv_g_cmd(Cmdarg *cap)
 		set_want(MAXCOL);
 		if (!cursor_down(cap->count1 - 1)) { clearopbeep(oap); break; }
 		const char *s = ml_get((long)W->line);
-		long i = ml_len((long)W->line);
-		while (i > 0 && (s[i - 1] == ' ' || s[i - 1] == '\t')) i--;
-		W->col = (size_t)(i > 0 ? head(s, i - 1) : 0);
+		/* nv_g_underscore_cmd: from the last character step back by bytes
+		   while on a blank, then mb_adjust_cursor; a blank under a
+		   combining mark is skipped, the mark's bytes are not blanks */
+		long n = ml_len((long)W->line), i = n ? head(s, n - 1) : 0;
+		while (i > 0 && (s[i] == ' ' || s[i] == '\t')) i--;
+		W->col = (size_t)head(s, i);
 		set_curswant = 1;
 		break;
 	}

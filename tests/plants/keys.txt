@@ -9,3 +9,6 @@ keys: lines that join to nothing are deleted, so redo puts the cursor as after d
 keys: tilde steps one byte, into a character (recorded traces)~test TESTS=~~src/keys/normal.c~		inc_cursor();¶		if (gchar_cursor() == 0) break;~		W->col++;¶		if (gchar_cursor() == 0) break;
 keys: a long count is not folded, so its keys overflow the pending command (recorded traces)~test TESTS=~~src/keys/normal.c~else if (cnt_from >= 0 && npend - cnt_from > 9) {~else if (0) {
 keys: commands step by code point, not by grapheme cluster (recorded traces)~test TESTS=~~src/keys/buf.c~	return i < n ? (int)uni_glen((const unsigned char *)s, (size_t)n, (size_t)i) : 1;~	return i < n ? (int)uni_len((const unsigned char *)s, (size_t)n, (size_t)i) : 1;
+keys: BS in Replace mode puts back one byte, not the whole cluster (recorded traces)~test TESTS=~~src/keys/edit.c~	long i = e + (long)uni_gprev(~	long i = rs_n - 1 + 0 * (long)uni_gprev(
+keys: CTRL-R . does not quote a trailing ^, so CTRL-D after it deletes the indent (recorded traces)~test TESTS=~~src/keys/edit.c~(no_esc || (k[0] == 4 && count > 1))) last = k[--n];~(0)) last = k[--n];
+keys: g_ skips blanks from the line end by byte, past a combining mark (recorded traces)~test TESTS=~~src/keys/normal.c~	while (i > 0 && (s[i] == ' ' || s[i] == '\t')) i--;~	while (i > 0 && (s[n - 1] == ' ' || s[n - 1] == '\t')) i--, n--;

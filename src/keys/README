@@ -38,7 +38,7 @@ Waits for package 4, still differing with PR 20's core:
 - core_vcol at a byte inside a cluster (x + U+0301 with the cursor after x)
   gives the cluster's end; Neovim's getvcol gives its start.
 - the cursor after undoing a linewise change of several lines (4cc Esc u,
-  2cc, 2S, 3S Esc u, 3S C-o u, V j c Esc u): Neovim takes it from
+  2cc, 2S, 3S Esc u, 3S C-o u, V j c Esc u, V } c Esc u): Neovim takes it from
   u_undoredo's last entry, the core from the whole step.
 - I Down from a blank a combining mark is on, after the cursor came there
   with k ("    \u0301 -3\n).\n    'c' 7", j dd k I Down): Neovim's column
@@ -54,9 +54,6 @@ Not traced to a fix yet (owner package 5):
   for an edit after the cursor).
 
 Neovim's own oddities, not copied:
-- Replace mode, Enter before blanks that end in a combining mark, then
-  backspacing over the Enter ("  \t \u0301x", l R Enter t BS BS): Neovim
-  loses the Tab and does not join the lines.
 - Visual A over a 3-byte character ("∀" vAx), V A over a 2-byte one ("λ"
   V A 𐐀) or a cluster ("x" with U+0300 U+0301, V A .) and C-v $ ~ over a
   4-byte one ("-3 𐐀x"): Neovim writes a split character.
