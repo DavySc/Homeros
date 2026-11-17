@@ -12,17 +12,31 @@
 
 enum { VT_BADERASE = 99 };
 
+/* The colours and styles after SGR's attribute, as strings, numbered in the
+   order first seen (0 is none); a cell's face holds that number.  vt_face
+   maps a grid face to the number its SGR got, learned by vt_learn. */
+static char vt_style[256][64];
+static int vt_nstyle = 1, vt_face[FACE_COUNT];
+
+static int vt_style_id(const char *s)
+{
+	for (int i = 0; i < vt_nstyle; i++) if (!strcmp(vt_style[i], s)) return i;
+	CHECK(vt_nstyle < 256 && strlen(s) < 64);
+	strcpy(vt_style[vt_nstyle], s);
+	return vt_nstyle++;
+}
+
 typedef struct {
 	int rows, cols;
 	Cell c[64 * 256];
-	int r, col, pending, attr, sync, hidden;
+	int r, col, pending, attr, style, sync, hidden;
 	int prints, frames, bad;     /* characters printed, frames ended, first error */
 	char why[128];
 	/* the terminal's own idea of a character's width */
 	int (*width)(const unsigned char *s, int n);
 	unsigned char u[4];          /* a UTF-8 character being collected */
 	int un, uw;
-	unsigned char esc[32];       /* an escape sequence being collected */
+	unsigned char esc[64];       /* an escape sequence being collected */
 	int en;
 } Vt;
 
@@ -35,7 +49,7 @@ static void vt_init(Vt *t, int rows, int cols, int (*width)(const unsigned char 
 {
 	memset(t, 0, sizeof *t);
 	t->rows = rows; t->cols = cols; t->width = width;
-	for (int i = 0; i < rows * cols; i++) t->c[i] = (Cell){ " ", 1, ATTR_NONE };
+	for (int i = 0; i < rows * cols; i++) t->c[i] = (Cell){ " ", 1, ATTR_NONE, 0 };
 }
 
 /* A new size: a real terminal keeps or reflows its cells, so they are
@@ -44,7 +58,7 @@ static void vt_resize(Vt *t, int rows, int cols)
 {
 	t->rows = rows; t->cols = cols;
 	t->r = t->col = t->pending = 0;
-	for (int i = 0; i < rows * cols; i++) t->c[i] = (Cell){ "?", 1, VT_BADERASE };
+	for (int i = 0; i < rows * cols; i++) t->c[i] = (Cell){ "?", 1, VT_BADERASE, 0 };
 }
 
 static Cell *vt_at(Vt *t, int r, int c) { return &t->c[r * t->cols + c]; }
@@ -58,19 +72,20 @@ static void vt_print(Vt *t, const unsigned char *s, int n)
 	if (t->bad) return;
 	t->prints++;
 	Cell *x = vt_at(t, t->r, t->col);
-	if (t->col > 0 && !x->len) x[-1] = (Cell){ " ", 1, x[-1].attr };
-	if (t->col + w < t->cols && !x[w].len) x[w] = (Cell){ " ", 1, x[w].attr };
+	if (t->col > 0 && !x->len) x[-1] = (Cell){ " ", 1, x[-1].attr, x[-1].face };
+	if (t->col + w < t->cols && !x[w].len) x[w] = (Cell){ " ", 1, x[w].attr, x[w].face };
 	memcpy(x->ch, s, (size_t)n);
 	x->len = (unsigned char)n;
 	x->attr = (unsigned char)t->attr;
-	if (w == 2) x[1] = (Cell){ "", 0, (unsigned char)t->attr };
+	x->face = (unsigned char)t->style;
+	if (w == 2) x[1] = (Cell){ "", 0, (unsigned char)t->attr, (unsigned char)t->style };
 	t->col += w;
 	if (t->col == t->cols) { t->col--; t->pending = 1; }
 }
 
 static void vt_csi(Vt *t)
 {
-	char s[33];
+	char s[65];
 	memcpy(s, t->esc + 2, (size_t)t->en - 2);
 	s[t->en - 2] = 0;
 	int r, c;
@@ -84,17 +99,25 @@ static void vt_csi(Vt *t)
 		/* the alternate screen starts blank; what the main screen holds
 		   is not known, so it is marked */
 		for (int i = 0; i < t->rows * t->cols; i++)
-			t->c[i] = (Cell){ " ", 1, (unsigned char)(s[5] == 'h' ? ATTR_NONE : VT_BADERASE) };
+			t->c[i] = (Cell){ " ", 1, (unsigned char)(s[5] == 'h' ? ATTR_NONE : VT_BADERASE), 0 };
 	}
 	else if (!strcmp(s, "?25l")) t->hidden = 1;
 	else if (!strcmp(s, "?25h")) t->hidden = 0;
-	else if (!strcmp(s, "0m")) t->attr = ATTR_NONE;
-	else if (!strcmp(s, "0;7m")) t->attr = ATTR_REV;
-	else if (!strcmp(s, "0;2m")) t->attr = ATTR_DIM;
+	else if (s[0] == '0' && s[strlen(s) - 1] == 'm') {    /* 0, then 7 or 2, then the face's */
+		const char *f = s + 1;
+		t->attr = ATTR_NONE;
+		if ((f[0] == ';' && (f[1] == '7' || f[1] == '2')) && (f[2] == ';' || f[2] == 'm')) {
+			t->attr = f[1] == '7' ? ATTR_REV : ATTR_DIM;
+			f += 2;
+		}
+		char st[64];
+		snprintf(st, sizeof st, "%.*s", (int)strlen(f) - 1, f);
+		t->style = vt_style_id(st);
+	}
 	else if (!strcmp(s, "H")) { t->r = t->col = t->pending = 0; }
 	else if (!strcmp(s, "2J")) {
 		for (int i = 0; i < t->rows * t->cols; i++)
-			t->c[i] = (Cell){ " ", 1, (unsigned char)(t->attr == ATTR_REV ? VT_BADERASE : ATTR_NONE) };
+			t->c[i] = (Cell){ " ", 1, (unsigned char)(t->attr == ATTR_REV || t->style ? VT_BADERASE : ATTR_NONE), 0 };
 	}
 	else if (sscanf(s, "%d;%dH", &r, &c) == 2 && strchr(s, 'H')[1] == 0 && r >= 1 && r <= t->rows && c >= 1 && c <= t->cols) {
 		t->r = r - 1; t->col = c - 1; t->pending = 0;
@@ -134,8 +157,9 @@ static inline const char *vt_differs(Vt *t, const Grid *g)
 	for (int r = 0; r < g->rows; r++)
 		for (int c = 0; c < g->cols; c++) {
 			const Cell *x = &g->c[r * g->cols + c], *y = vt_at(t, r, c);
-			int ok = x->len ? grid_cell_eq(x, y)
+			int ok = x->len ? x->len == y->len && x->attr == y->attr && !memcmp(x->ch, y->ch, x->len)
 			       : (!y->len || (y->len == 1 && y->ch[0] == ' ')) && y->attr == x->attr;
+			ok = ok && y->face == vt_face[x->face];
 			if (!ok) { snprintf(why, sizeof why, "cell %d,%d", r, c); return why; }
 		}
 	if (t->r != g->crow || t->col != g->ccol || t->hidden || t->sync) {
