@@ -853,10 +853,8 @@ static const Grid *overlay(const Grid *cur)
 	vis.ccol = cur->ccol;
 	size_t n = strlen(pre);
 	const unsigned char *s = (const unsigned char *)pre;
-	for (size_t i = 0, c = (size_t)cur->ccol; i < n; i += uni_len(s, n, i)) {
-		unsigned cp = uni_cp(s, n, i);
-		c += (size_t)grid_put(&vis, cur->crow, (int)c, s + i, uni_len(s, n, i), uni_width(cp), ATTR_PRE);
-	}
+	for (size_t i = 0, c = (size_t)cur->ccol; i < n; i += uni_len(s, n, i))   /* an input method sends valid UTF-8 */
+		c += (size_t)grid_put(&vis, cur->crow, (int)c, s + i, uni_len(s, n, i), uni_width(s, n, i) == 2 ? 2 : 1, ATTR_PRE);
 	return &vis;
 }
 
