@@ -1,0 +1,11 @@
+# Plants for src/org/org.c, the org parser (format in tools/planted.sh).
+org: a tab counts to the next stop, not 8 (list indentation)~test TESTS=org~~src/org/org.c~c += S[x] == '\t' ? 8 : 1;~c += S[x] == '\t' ? 8 - c % 8 : 1;
+org: planning timestamps parsed case-folded~test TESTS=org~~src/org/org.c~if (stamp(x, &out[k], 0)) found~if (stamp(x, &out[k], 1)) found
+org: tags without their outer colons~test TESTS=org~~src/org/org.c~out->tags = B + CAP[2]; out->tags_end = B + CAP[3];~out->tags = B + CAP[4]; out->tags_end = B + CAP[5];
+org: regexp literals not case-folded~test TESTS=org~~src/org/org.c~	if (fold && c >= 'A' && c <= 'Z') add(i, c + 32, 0);~	if (0 && c >= 'A' && c <= 'Z') add(i, c + 32, 0);
+org: $ never matches at the text's end~test TESTS=org~~src/org/org.c~		case O_EOL: if (sp < LIM ? S[sp] != '\n' : !DOLLAR) return 0;~		case O_EOL: if (sp < LIM ? S[sp] != '\n' : 1) return 0;
+org: item contents start after an ordered bullet's "tag ::"~test TESTS=org~~src/org/org.c~	size_t c = skipf(g4 != NONE && ordered ? g4 : m0, end);~	size_t c = skipf(g4 != NONE && (ordered || 1) ? g4 : m0, end);
+org: a chunk that lost its headline is reparsed alone (fuzz)~fuzz FUZZERS=org FUZZ_SECONDS=60~~src/org/org.c~	if (a && !starts_headline(t, a)) { a = pa; i0 = pi; }~	if (0 && a && !starts_headline(t, a)) { a = pa; i0 = pi; }
+org: contents not shifted after an edit (fuzz)~fuzz FUZZERS=org FUZZ_SECONDS=60~~src/org/org.c~		if (n->cend) { n->cbeg += nins - ndel; n->cend += nins - ndel; }~		if (n->cend) n->cend += nins - ndel;
+org: the chunk after the edit's end not reparsed (fuzz)~fuzz FUZZERS=org FUZZ_SECONDS=60~~src/org/org.c~		else if (n->begin > pos + ndel) { i1 = i;~		else if (n->begin >= pos + ndel) { i1 = i;
+org: a #+RESULTS[h]: line does not end a paragraph (oracle)~org-oracle SEED=1~~src/org/org.c~			    || (k == 7 && !strncasecmp((const char *)S + CAP[2], "RESULTS", 7));~			    || 0;
