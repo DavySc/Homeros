@@ -7,3 +7,5 @@ grid: '>' takes the new attribute~test TESTS=grid_diff~~src/grid/grid.c~(Cell){ 
 grid: a blanked right half takes the new attribute~test TESTS=grid_diff~~src/grid/grid.c~(Cell){ " ", 1, x[width].attr,~(Cell){ " ", 1, (unsigned char)attr,
 grid: resize keeps the cursor~test TESTS=grid_diff~~src/grid/grid.c~ g->crow = g->ccol = 0;~
 grid: a changed face is an equal cell~test TESTS=grid_diff~~src/grid/grid.c~ && a->face == b->face~
+grid: the '>' loses the face of the half it replaces~test TESTS=grid_diff~~src/grid/grid.c~(Cell){ ">", 1, x[-1].attr, x[-1].face }~(Cell){ ">", 1, x[-1].attr, FACE_NONE }
+grid: the blank loses the face of the half it replaces~test TESTS=grid_diff~~src/grid/grid.c~(Cell){ " ", 1, x[width].attr, x[width].face }~(Cell){ " ", 1, x[width].attr, FACE_NONE }
