@@ -112,7 +112,7 @@ lean: | build
 FRAMA_FILES = $(call pick,uni)
 frama: | build
 	why3 config detect >/dev/null
-	frama-c -wp -wp-rte -wp-prover z3,cvc5 -wp-timeout 20 -wp-fct uni_len,uni_prev,uni_cp \
+	frama-c -wp -wp-rte -wp-prover z3,cvc5 -wp-timeout 20 \
 	  -cpp-extra-args="-Iinclude" $(FRAMA_FILES) | tee build/frama.log
 	grep -qE "Proved goals: +([0-9]+) / \1$$" build/frama.log
 
