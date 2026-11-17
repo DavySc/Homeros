@@ -141,6 +141,8 @@ static void after_save(void)
 	keys_feed(&e, 'x', 0);
 	size_t n = slurp(jname, j, sizeof j);
 	CHECK(n > 0 && !core_write(&e, e.buf, 0));
+	struct stat sb;   /* a save empties the journal, which would otherwise only grow */
+	CHECK(!stat(jname, &sb) && sb.st_size == 0);
 	core_free(&e);
 	put_journal(j, n);
 	CHECK(!core_open(&e, path) && !core_modified(e.buf) && !strstr(e.msg, "recovered"));

@@ -32,7 +32,6 @@ struct Journal {
 	int dirty;          /* appended since the last sync, from first_ms on */
 	int dir_synced;     /* the journal's own directory entry is durable */
 	long long first_ms;
-	off_t end;          /* bytes of whole records */
 	char name[PATH_MAX], file[PATH_MAX];
 };
 
@@ -60,25 +59,18 @@ static uint32_t sums(uint32_t h, const Piece *v, int k)
 	return h;
 }
 
-/* Appends one record with one writev; on a failed write cuts back to the
-   last whole record, so a later record is never hidden behind a torn one. */
+/* Appends one record with one writev.  A failed write may leave part of it:
+   nothing follows it, since the next change writes a new base from offset 0
+   (journal_edit), and replay drops it should we crash first. */
 static int append(Journal *j, Piece *v, int k)
 {
-	off_t len = 0;
-	for (int i = 0; i < k; i++) len += (off_t)v[i].iov_len;
 	for (int i = 0; i < k;) {
 		ssize_t w = writev(j->fd, v + i, k - i);
 		if (w < 0 && errno == EINTR) continue;
-		if (w < 0) {
-			int e = errno;
-			if (ftruncate(j->fd, j->end)) {}
-			errno = e;
-			return -1;
-		}
+		if (w < 0) return -1;
 		for (; i < k && (size_t)w >= v[i].iov_len; i++) w -= (ssize_t)v[i].iov_len;
 		if (i < k) { v[i].iov_base = (char *)v[i].iov_base + w; v[i].iov_len -= (size_t)w; }
 	}
-	j->end += len;
 	if (!j->dirty) { j->dirty = 1; j->first_ms = now_ms(); }
 	return 0;
 }
@@ -187,7 +179,6 @@ int journal_open(const char *path, Journal **jp, Text **t, unsigned *state, File
 	/* two paths can share a name ('%' in a path); leave the other's alone */
 	if (r) { errno = r > 0 ? EEXIST : ENOMEM; goto fail_fd; }
 	if (ftruncate(j->fd, (off_t)end)) {}   /* drop a torn tail before appending */
-	j->end = (off_t)end;
 	j->based = *t != NULL;
 	*jp = j;
 	return *t != NULL;
@@ -210,7 +201,6 @@ int journal_base(Journal *j, const Text *t, unsigned state, const FileId *id)
 	uint32_t h = sums(SUM0, head, 7);
 	char b[1 << 16];
 	if (ftruncate(j->fd, 0)) return -1;
-	j->end = 0;
 	if (append(j, head, 7)) goto fail;
 	for (size_t pos = 0; pos < n;) {
 		size_t k = text_read(t, pos, b, n - pos < sizeof b ? n - pos : sizeof b);
@@ -227,7 +217,6 @@ fail:
 	/* a torn base is no base; the core has said E297 (the text is the
 	   file's, unless this base follows a failed append) */
 	if (ftruncate(j->fd, 0)) {}
-	j->end = 0;
 	return -1;
 }
 
@@ -252,7 +241,6 @@ void journal_saved(Journal *j)
 	/* not synced: should a crash bring the old journal back, it recovers
 	   exactly the text just saved, which the core sees equals the file */
 	if (ftruncate(j->fd, 0)) {}
-	j->end = 0;
 	j->based = 0;
 }
 

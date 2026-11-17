@@ -386,8 +386,8 @@ static void durable(void)
 	CHECK(datasyncs == 2 && fsyncs == 1);   /* the directory once */
 	journal_sync(j);
 	CHECK(datasyncs == 2);                  /* nothing pending, nothing done */
-	/* a failed append (a full disk; here a size limit) is cut back, and the
-	   next change writes a new base, as the core calls it (a change journalled
+	/* after a failed append (a full disk; here a size limit) the next change
+	   writes a new base, as the core calls it (a change journalled
 	   after the hole would replay onto the wrong text: review of PR 16) */
 	CHECK(!text_insert(t, 0, "gfe", 3));
 	struct rlimit rl, low;
@@ -428,7 +428,7 @@ static void durable(void)
 	text_free(x);
 	journal_close(j);
 	text_free(t);
-	puts("  durable within a second: due counts down from the first unsynced record; sync is fdatasync, the directory once; owner only; a failed append cut back and followed by a new base; a record that does not apply ends the journal");
+	puts("  durable within a second: due counts down from the first unsynced record; sync is fdatasync, the directory once; owner only; a failed append followed by a new base; a record that does not apply ends the journal");
 }
 
 int main(void)
