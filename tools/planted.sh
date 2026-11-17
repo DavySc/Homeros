@@ -6,8 +6,10 @@
 # The plants are the lines of tests/plants/*.txt, one file per package
 # (# starts a comment).  A plant is: name ~ make target (with arguments) ~
 # shell command run first in the copy ~ file ~ text ~ replacement (¶ for a
-# newline).
+# newline).  SHARD=k/n runs only every n-th plant from the k-th (k from 0),
+# so CI can spread them over n runners.
 cd "$(dirname "$0")/.."
+shard=${SHARD:-0/1}
 rc=0
 while IFS='~' read -r name target prep file old new; do
 	[ -z "$name" ] && continue
@@ -35,5 +37,5 @@ PY
 		else echo "FAILED OTHERWISE  $name   (make $target): $(tail -1 "$tmp.log")"; rc=1; fi
 	fi
 	rm -rf "$tmp" "$tmp.log"
-done < <(cat tests/plants/*.txt | grep -v -e "^#" -e "^$")
+done < <(cat tests/plants/*.txt | grep -v -e "^#" -e "^$" | awk -v k="${shard%/*}" -v n="${shard#*/}" '(NR - 1) % n == k')
 exit $rc

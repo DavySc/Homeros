@@ -150,7 +150,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 		case 25:
 			if (a & 1) core_screen_move(&e, (long)(a % 7) - 3);
 			else {
-				e.win->line = core_screen_line(&e, "HML"[a % 3], 1 + cnt);
+				e.win->line = core_screen_line(&e, "HML"[a % 3], 1 + cnt, a / 3 % 2);
 				e.win->col = core_col_at(&e, e.win->line, e.win->want, 0);
 			}
 			break;

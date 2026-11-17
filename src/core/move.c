@@ -975,9 +975,9 @@ void core_scroll_cursor(Editor *e, int how)
 	win_set_fraction(w);
 }
 
-/* nv_scroll(): H M L, then cursor_correct() for scrolloff (Neovim leaves
-   that out under an operator; the keys ask for the plain line then) */
-size_t core_screen_line(Editor *e, int how, long count)
+/* nv_scroll(): H M L, then cursor_correct() for scrolloff, which Neovim
+   leaves out under an operator (so 0) */
+size_t core_screen_line(Editor *e, int how, long count, int so)
 {
 	Win *w = e->win;
 	core_update(e);
@@ -1000,7 +1000,7 @@ size_t core_screen_line(Editor *e, int how, long count)
 	}
 	size_t keep = w->line;
 	w->line = (size_t)l;
-	cursor_correct(e, w);
+	if (so) cursor_correct(e, w);
 	l = (lnr)w->line;
 	w->line = keep;
 	return (size_t)l;

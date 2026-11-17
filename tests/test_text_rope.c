@@ -3,6 +3,7 @@
    made to fail.  Checks every B-tree invariant and the bytes against an
    array model, on texts of megabytes (test_text's 64 KB is one level). */
 #include <string.h>
+#include <time.h>
 #include "check.h"
 #define text_new r_new
 #define text_free r_free
@@ -83,6 +84,23 @@ static void fill(char *s, size_t n)
 	for (size_t j = 0; j < n; j++) s[j] = rnd(40) ? "abcdefgh"[rnd(8)] : '\n';
 }
 
+/* CPU seconds to look up every line start of n bytes with a '\n' every
+   `every` bytes */
+static double lookups(size_t n, size_t every)
+{
+	for (size_t i = 0; i < n; i++) model[i] = i % every == every - 1 ? '\n' : 'a';
+	Text *t = r_new(model, n);
+	CHECK(t);
+	size_t lines = r_lines(t), sink = 0;
+	clock_t c = clock();
+	for (int rep = 0; rep < 5; rep++)
+		for (size_t l = 0; l <= lines; l++) sink += r_line_start(t, l);
+	c = clock() - c;
+	CHECK(sink);
+	r_free(t);
+	return (double)c / CLOCKS_PER_SEC / (5 * ((double)lines + 1));
+}
+
 int main(void)
 {
 	model = malloc(MAX); buf = malloc(MAX);
@@ -133,6 +151,11 @@ int main(void)
 	same(t);
 	CHECK(t->h == 0);
 	r_free(t);
+	/* A line lookup costs about the same in a leaf of empty lines as in one of
+	   50-byte lines; one memchr per '\n' made it 37 times dearer (measured). */
+	double dense = lookups(200000, 1), sparse = lookups(5000000, 50);
+	CHECK(dense < 4 * sparse);
+	printf("test_text_rope: line lookup %.0f ns among empty lines, %.0f ns among 50-byte lines\n", dense * 1e9, sparse * 1e9);
 	printf("test_text_rope: 20000 edits on 1 to 6 MB, height up to %d, invariants hold; %d failed allocations leave the text unchanged\n", deepest, fails);
 	return 0;
 }

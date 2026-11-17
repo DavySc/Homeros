@@ -146,7 +146,7 @@ static void token(Editor *e, Grid *g, const char *t)
 	else if (p[0] == 'z') core_scroll_cursor(e, p[1] == 't' ? 't' : p[1] == 'z' ? 'z' : 'b');
 	else if (!strcmp(p, "H") || !strcmp(p, "M") || !strcmp(p, "L")) {
 		/* nv_scroll(), then beginline(BL_SOL | BL_FIX): nostartofline keeps curswant */
-		w->line = core_screen_line(e, p[0], n ? n : 1);
+		w->line = core_screen_line(e, p[0], n ? n : 1, 1);
 		w->col = core_col_at(e, w->line, w->want, 0);
 	} else if (!strcmp(p, "gj") || !strcmp(p, "gk")) core_screen_move(e, p[1] == 'j' ? (n ? n : 1) : -(n ? n : 1));
 	else { fprintf(stderr, "unknown token %s\n", t); exit(2); }
