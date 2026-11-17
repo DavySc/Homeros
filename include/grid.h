@@ -7,10 +7,14 @@
 #include <stddef.h>
 
 enum { ATTR_NONE, ATTR_DIM, ATTR_REV };   /* line numbers, status line */
+/* Syntax faces (package 12): Neovim's standard tree-sitter captures; a
+   backend maps each to a colour of the theme. */
+enum { FACE_NONE, FACE_COMMENT, FACE_STRING, FACE_KEYWORD, FACE_TYPE, FACE_FUNCTION,
+       FACE_CONSTANT, FACE_NUMBER, FACE_OPERATOR, FACE_PUNCT, FACE_VARIABLE, FACE_COUNT };
 
 typedef struct {
 	unsigned char ch[4], len;  /* one character, UTF-8; len 0 = right half of a wide one */
-	unsigned char attr;
+	unsigned char attr, face;  /* face: FACE_*, set by the core after grid_put */
 } Cell;
 
 typedef struct {

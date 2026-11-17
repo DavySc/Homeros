@@ -69,7 +69,7 @@ static void cooked(void)
 	raw_on = 0;
 }
 
-int backend_open(void)
+static int tty_open(void)
 {
 	if (!isatty(0) || !isatty(1) || tcgetattr(0, &saved) || pipe(sigpipe)) return -1;
 	fcntl(sigpipe[0], F_SETFL, O_NONBLOCK);
@@ -79,11 +79,11 @@ int backend_open(void)
 	return raw();
 }
 
-void backend_close(void) { cooked(); }
+static void tty_close(void) { cooked(); }
 
-int backend_fds(int fds[2]) { fds[0] = 0; fds[1] = sigpipe[0]; return 2; }
+static int tty_fds(int fds[2]) { fds[0] = 0; fds[1] = sigpipe[0]; return 2; }
 
-void backend_size(int *rows, int *cols)
+static void tty_size(int *rows, int *cols)
 {
 	struct winsize ws;
 	if (ioctl(1, TIOCGWINSZ, &ws) || !ws.ws_row || !ws.ws_col) { *rows = 24; *cols = 80; return; }
@@ -91,12 +91,12 @@ void backend_size(int *rows, int *cols)
 	*cols = ws.ws_col;
 }
 
-int backend_ready(void) { return 1; }   /* a terminal has no frame callback */
+static int tty_ready(void) { return 1; }   /* a terminal has no frame callback */
 
 /* Bytes to keys: UTF-8 to code points, CSI arrows to KEY_*, other escape
    sequences dropped.  A sequence split across reads is a hypothesis-level
    gap the terminal package closes. */
-int backend_input(int *k, int max)
+static int tty_input(int *k, int max)
 {
 	/* a character split by the end of a read waits here for its other bytes */
 	static unsigned char b[256 + 3];
@@ -137,12 +137,22 @@ int backend_input(int *k, int max)
 	return n;
 }
 
-static void attr(int a)
+/* Catppuccin Mocha (FEATURES.md: Catppuccin, flavour toggle later), the
+   colours catppuccin/nvim gives these captures */
+static const char *const face_fg[FACE_COUNT] = {
+	"", ";38;2;147;153;178", ";38;2;166;227;161", ";38;2;203;166;247", ";38;2;249;226;175",
+	";38;2;137;180;250", ";38;2;250;179;135", ";38;2;250;179;135", ";38;2;137;220;235",
+	";38;2;147;153;178", ";38;2;205;214;244"
+};
+
+static void style(const Cell *x)
 {
-	outs(a == ATTR_REV ? "\x1b[0;7m" : a == ATTR_DIM ? "\x1b[0;2m" : "\x1b[0m");
+	outs(x->attr == ATTR_REV ? "\x1b[0;7" : x->attr == ATTR_DIM ? "\x1b[0;2" : "\x1b[0");
+	if (x->face < FACE_COUNT) outs(face_fg[x->face]);
+	outs("m");
 }
 
-void backend_present(const Grid *g, Grid *shown)
+static void tty_present(const Grid *g, Grid *shown)
 {
 	char b[64];
 	outs("\x1b[?2026h\x1b[?25l");
@@ -150,7 +160,7 @@ void backend_present(const Grid *g, Grid *shown)
 		if (grid_resize(shown, g->rows, g->cols)) return;
 		outs("\x1b[0m\x1b[H\x1b[2J");
 	}
-	int a = -1, pr = -1, pc = -1;
+	int a = -1, pr = -1, pc = -1;   /* a: the style sent last, attr and face */
 	for (int r = 0; r < g->rows; r++)
 		for (int c = 0; c < g->cols; c++) {
 			const Cell *x = &g->c[r * g->cols + c];
@@ -159,7 +169,7 @@ void backend_present(const Grid *g, Grid *shown)
 			*y = *x;
 			if (!x->len) continue;
 			if (r != pr || c != pc) { snprintf(b, sizeof b, "\x1b[%d;%dH", r + 1, c + 1); outs(b); }
-			if (x->attr != a) attr(a = x->attr);
+			if ((x->face << 8 | x->attr) != a) { a = x->face << 8 | x->attr; style(x); }
 			out(x->ch, x->len);
 			pr = r;
 			pc = c + (c + 1 < g->cols && !g->c[r * g->cols + c + 1].len ? 2 : 1);
@@ -169,9 +179,20 @@ void backend_present(const Grid *g, Grid *shown)
 	flush();
 }
 
-void backend_suspend(void)
+static void tty_suspend(void)
 {
 	cooked();
 	kill(0, SIGTSTP);
 	raw();
 }
+
+/* the terminal has no clipboard or mouse here; package 6 may add OSC 52 and
+   SGR mouse reports */
+static int  tty_clip_set(const char *s, size_t n) { (void)s; (void)n; return -1; }
+static long tty_clip_get(char *buf, size_t max) { (void)buf; (void)max; return -1; }
+static void tty_mouse(int *row, int *col) { *row = *col = 0; }
+
+const Backend backend_tty = {
+	tty_open, tty_close, tty_fds, tty_input, tty_size, tty_ready,
+	tty_present, tty_suspend, tty_clip_set, tty_clip_get, tty_mouse
+};

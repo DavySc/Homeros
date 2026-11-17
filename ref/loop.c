@@ -7,6 +7,7 @@ enum { MAXW = 16 };
 static struct pollfd pf[MAXW];
 static struct { LoopFn fn; void *ctx; } w[MAXW];
 static int nw;
+int loop_int;
 
 int loop_watch(int fd, LoopFn fn, void *ctx)
 {

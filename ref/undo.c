@@ -5,7 +5,7 @@
 
 typedef struct { size_t pos, ndel, nins; char *del, *ins; } Edit;
 typedef struct { Edit *e; size_t n, cap; UndoCursor cur; unsigned long seq; unsigned after; } Group;
-struct Undo { Group *g; size_t n, cap, done; int open; unsigned long last; };
+struct Undo { Group *g; size_t n, cap, done; int open; unsigned long last; UndoHook *hook; void *ctx; };
 
 Undo *undo_new(void) { return calloc(1, sizeof(Undo)); }
 
@@ -59,6 +59,8 @@ int undo_record(Undo *u, size_t pos, const char *del, size_t ndel,
 
 void undo_close(Undo *u) { u->open = 0; }
 
+void undo_hook(Undo *u, UndoHook *fn, void *ctx) { u->hook = fn; u->ctx = ctx; }
+
 /* The changed span of the result: bytes before the lowest edit and after the
    shortest untouched tail are the same before and after the group. */
 static void span(const Group *g, size_t len, int undo, UndoWhere *w)
@@ -91,6 +93,7 @@ int undo_undo(Undo *u, Text *t, UndoWhere *w)
 	Group *g = &u->g[u->done - 1];
 	for (size_t i = g->n; i-- > 0;) {
 		Edit *e = &g->e[i];
+		if (u->hook) u->hook(u->ctx, t, e->pos, e->nins, e->del, e->ndel);
 		if (text_delete(t, e->pos, e->nins) || text_insert(t, e->pos, e->del, e->ndel))
 			return -1;
 	}
@@ -106,6 +109,7 @@ int undo_redo(Undo *u, Text *t, UndoWhere *w)
 	Group *g = &u->g[u->done];
 	for (size_t i = 0; i < g->n; i++) {
 		Edit *e = &g->e[i];
+		if (u->hook) u->hook(u->ctx, t, e->pos, e->ndel, e->ins, e->nins);
 		if (text_delete(t, e->pos, e->ndel) || text_insert(t, e->pos, e->ins, e->nins))
 			return -1;
 	}

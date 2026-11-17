@@ -38,6 +38,7 @@ typedef struct Editor {
 	char msg[256];
 	int quit;
 	unsigned char *lb;         /* scratch copy of one line */
+	struct Syntax *syn;        /* syntax.h; NULL: no grammar for this file */
 	size_t lbcap;
 } Editor;
 

@@ -4,9 +4,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include "core.h"
+#include "syntax.h"
 #include "uni.h"
 
 enum { SCROLLOFF = 6, TABSTOP = 8 };   /* FEATURES.md 1; Vim's tabstop */
+
+/* every change reaches the syntax tree before it is made (UndoHook) */
+static void undo_seen(void *ctx, const Text *t, size_t pos, size_t ndel, const char *ins, size_t nins)
+{
+	Editor *e = ctx;
+	if (e->syn) syntax_edit(e->syn, t, pos, ndel, ins, nins);
+}
 
 int core_open(Editor *e, const char *path)
 {
@@ -28,6 +36,8 @@ int core_open(Editor *e, const char *path)
 		core_msg(e, "out of memory");
 		return -1;
 	}
+	e->syn = syntax_open(path, e->text);
+	undo_hook(e->undo, undo_seen, e);
 	core_set_want(e);
 	core_msg(e, "\"%s\"%s %zuL, %zuB", path, e->id.exists ? "" : " [New]", core_lines(e), n);
 	return 0;
@@ -35,6 +45,7 @@ int core_open(Editor *e, const char *path)
 
 void core_free(Editor *e)
 {
+	syntax_free(e->syn);
 	text_free(e->text);
 	undo_free(e->undo);
 	free(e->path);
@@ -66,8 +77,9 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 	char *del = malloc(ndel ? ndel : 1);
 	UndoCursor c = { e->line, e->col, e->flags };
 	int r = -1;
-	if (del && text_read(e->text, pos, del, ndel) == ndel
-	    && !text_delete(e->text, pos, ndel)) {
+	if (del && text_read(e->text, pos, del, ndel) == ndel) undo_seen(e, e->text, pos, ndel, ins, nins);
+	else { free(del); del = NULL; }
+	if (del && !text_delete(e->text, pos, ndel)) {
 		if (!text_insert(e->text, pos, ins, nins)) {
 			if (!undo_record(e->undo, pos, del, ndel, ins, nins, c, after)) r = 0;
 			else { text_delete(e->text, pos, nins); text_insert(e->text, pos, del, ndel); }
@@ -265,9 +277,14 @@ void core_draw(Editor *e, Grid *g)
 		if (l >= nl) { grid_puts(g, r, 0, "~", ATTR_DIM); continue; }
 		if (l == e->line) put_num(g, r, l + 1, nw, 1);
 		else put_num(g, r, l > e->line ? l - e->line : e->line - l, nw, 0);
-		size_t n, v = 0;
+		size_t n, v = 0, ls = core_line_start(e, l), f0 = (size_t)-1;
 		const unsigned char *s = core_line(e, l, &n);
+		unsigned char fc[1024];   /* faces of bytes [f0, f0 + 1024) of the line */
 		for (size_t i = 0; i < n && v < e->left + (size_t)tc; i += uni_len(s, n, i)) {
+			if (e->syn && (f0 == (size_t)-1 || i >= f0 + sizeof fc || i < f0)) {
+				f0 = i;
+				syntax_faces(e->syn, ls + f0, ls + (n - f0 < sizeof fc ? n : f0 + sizeof fc), fc);
+			}
 			int w = cellw(s, n, i, v);
 			size_t k = uni_len(s, n, i);
 			unsigned cp = uni_cp(s, n, i);
@@ -280,6 +297,7 @@ void core_draw(Editor *e, Grid *g)
 				else if (j) continue;
 				else if (cp == 0xFFFD && k == 1) grid_put(g, r, c, (const unsigned char *)"\xEF\xBF\xBD", 3, 1, ATTR_NONE);
 				else grid_put(g, r, c, s + i, k, w, ATTR_NONE);
+				if (e->syn) g->c[r * g->cols + c].face = fc[i - f0];
 			}
 		}
 	}

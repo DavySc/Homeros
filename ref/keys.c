@@ -307,18 +307,21 @@ static void insert_at(Editor *e, size_t col)
 	e->ks.space = 0;
 }
 
+/* the pending count and operator ('d' or 'g'): global, as in Neovim */
+static unsigned long count;
+static int pending_op;
+
 static void normal_key(Editor *e, int k)
 {
-	KeyState *ks = &e->ks;
-	if (k >= '0' && k <= '9' && (k != '0' || ks->count) && ks->op != 'g') {
-		ks->count = ks->count * 10 + (unsigned long)(k - '0');
-		if (ks->count > 99999999) ks->count = 99999999;
+	if (k >= '0' && k <= '9' && (k != '0' || count) && pending_op != 'g') {
+		count = count * 10 + (unsigned long)(k - '0');
+		if (count > 99999999) count = 99999999;
 		return;
 	}
-	unsigned long n = ks->count ? ks->count : 1, given = ks->count;
-	int op = ks->op;
-	ks->count = 0;
-	ks->op = 0;
+	unsigned long n = count ? count : 1, given = count;
+	int op = pending_op;
+	count = 0;
+	pending_op = 0;
 	size_t nl = core_lines(e), len;
 	const unsigned char *s = core_line(e, e->line, &len);
 	if (op == 'g') {
@@ -336,7 +339,7 @@ static void normal_key(Editor *e, int k)
 		return;
 	}
 	switch (k) {
-	case 'd': case 'g': ks->op = k; ks->count = given; return;
+	case 'd': case 'g': pending_op = k; count = given; return;
 	case 'h': case KEY_LEFT:    /* curswant changes only if the cursor moves (oneleft()) */
 		if (!e->col) return;
 		while (n-- && e->col > 0) e->col = uni_prev(s, len, e->col);
@@ -380,7 +383,7 @@ static void normal_key(Editor *e, int k)
 	case 'a': insert_at(e, len ? e->col + uni_len(s, len, e->col) : 0); return;
 	case 'I': e->mode = MODE_INSERT; insert_at(e, core_first_nonblank(e, e->line)); return;
 	case 'A': insert_at(e, len); return;
-	case 'o': case 'O': ks->space = 0; open_line(e, k == 'o'); return;
+	case 'o': case 'O': e->ks.space = 0; open_line(e, k == 'o'); return;
 	case 'u': case KEY_CTRL_R: {
 		/* nv_kundo() asks for curswant to be recomputed from the cached
 		   virtual column, which stays valid if no step invalidated it and
