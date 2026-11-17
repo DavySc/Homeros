@@ -7,7 +7,9 @@
 enum { SLOT_STATUS, SLOT_LOG, SLOT_DIFF, SLOT_CACHED, SLOT_DESCRIBE, SLOT_WRITE, NSLOT };
 enum { BUSY_REFRESH = 1, BUSY_WRITE };
 enum { LOG_NONE, LOG_RECENT, LOG_LR, LOG_BEHIND };
-enum { CMD_MAX = 64, QMAX = 8, WSTEPS = 8 };
+/* QMAX: Git.tla's queue; a third write could only be dropped, since the
+   first one's end moves the version the second was chosen from */
+enum { CMD_MAX = 64, QMAX = 2, WSTEPS = 8 };
 
 /* One git command line: arguments as NUL-ended strings, stdin text */
 typedef struct {
@@ -35,7 +37,7 @@ typedef struct { struct Repo *r; int slot; } Run;
 /* A log or diff buffer (magit-log-mode, magit-diff-mode) */
 typedef struct Aux {
 	View v;
-	Buf *buf;
+	int bufnr;                 /* its buffer's number (numbers never repeat), 0 none */
 	size_t cur;                /* the cursor while no window shows it */
 	int type;                  /* T_LOG or T_DIFF */
 	int dtype;                 /* a diff's type: T_UNSTAGED, T_STAGED, else committed */
@@ -43,6 +45,7 @@ typedef struct Aux {
 	Cmd cmd;                   /* how to fill it again (g r) */
 	Str out;
 	int pid, busy;
+	int again;                  /* filled again once the running read ends */
 	unsigned long ver;          /* Repo.ver when it was read: a write from it acts on that */
 	struct Repo *r;
 	Run run;
@@ -51,19 +54,21 @@ typedef struct Aux {
 
 typedef struct Repo {
 	char *top, *gitdir;
+	char *common;              /* refs, packed-refs, the stash's log, config: a linked work tree's $GIT_COMMON_DIR */
 	unsigned long gen;         /* builds of st, for git_sign's cache */
 	View st, old;              /* the status buffer's sections; old: the previous ones, for the cursor */
 	Cache cache;
 	Branch br;
-	Buf *buf;                  /* the status buffer, or NULL */
+	int bufnr;                 /* the status buffer's number, 0 none */
 	size_t cur;                /* its cursor (visible line) when no window shows it */
 	/* Git.tla: busy is running > 0; ver is repo, shown is shown */
 	int busy, phase, left, nproc, logmode;
 	char merging[48];          /* MERGE_HEAD's commit while a merge runs, else "" */
 	unsigned long ver, shown, pend;
 	int dirty;
+	int failed;                /* a read of this refresh could not be started */
 	Str out[NSLOT], err;
-	int rc[NSLOT], pid[NSLOT];
+	int rc[NSLOT], pid[NSLOT];   /* pid: the loop's id while the slot's git runs, else -1 */
 	Run run[NSLOT];
 	Write q[QMAX], w;          /* w: the write running */
 	int qh, qn, wstep;
@@ -74,7 +79,7 @@ typedef struct Repo {
 	/* the commit message buffer (with-editor) */
 	int editing;               /* 1 waiting for git's editor line, 2 the buffer is open */
 	char *editmsg;
-	Buf *msgbuf;
+	int msgnr;                 /* the message buffer's number, 0 none */
 	Aux *aux;
 	struct Repo *next;
 } Repo;
@@ -97,18 +102,21 @@ void  cmd_git(Cmd *c, int read);
 void  cmd_editor(Cmd *c);
 void  cmd_free(Cmd *c);
 int   git_spawn(Repo *r, int slot, Cmd *c);
+int   git_live(const void *ctx);  /* ctx is a Run or Aux not freed (git_free leaves children's ends behind) */
 void  git_editor_done(Repo *r, int ok);
 /* keys.c */
 int   git_status(Editor *e, const char *dir);
 void  git_aux_free(Aux *a);
 void  git_aux_fill(Aux *a);
+int   git_aux_shown(const Aux *a);  /* in a window (headless: the focused view) */
 void  git_keys_free(void);
 int   git_visit_target(const View *v, size_t vis, int dtype, char *rel, size_t nrel, size_t *line);
 /* status.c */
 int   git_build_status(Repo *r);
 void  git_show(Repo *r, View *v);
-int   git_buf_alive(const Buf *b);
-void  git_fill(Buf *b, View *v, size_t cur);
+Buf  *git_buf(int nr);            /* the live buffer numbered nr, or NULL */
+int   git_on(int nr);             /* the current buffer is numbered nr */
+void  git_fill(int nr, View *v, size_t cur);
 /* write.c */
 void  git_start_write(Repo *r);
 void  git_write_step_done(Repo *r);

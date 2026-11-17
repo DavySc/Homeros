@@ -367,7 +367,7 @@
   ]
  },
  "spaces": {
-  "setup": "printf 'x\\n' > 'my file.txt'; git add 'my file.txt'; printf 'y\\n' > 'é.txt'",
+  "setup": "printf 'x\\n' > 'my file.txt'; git add 'my file.txt'; printf 'y\\n' > '\u00e9.txt'",
   "keys": [
    "<Tab>",
    "<C-j><C-j><C-j><C-j><C-j>",
@@ -385,6 +385,127 @@
   "keys": [
    "<Tab>",
    "G"
+  ]
+ },
+ "amend": {
+  "keys": [
+   "c",
+   "a",
+   "ZZ"
+  ]
+ },
+ "reword": {
+  "keys": [
+   "c",
+   "w",
+   "ZZ"
+  ]
+ },
+ "show-commit": {
+  "keys": [
+   "l",
+   "l",
+   "<CR>"
+  ]
+ },
+ "stash-show": {
+  "setup": "git stash -q",
+  "keys": [
+   "gz",
+   "<Tab>",
+   "j",
+   "<CR>"
+  ]
+ },
+ "stash-apply": {
+  "setup": "git stash -q",
+  "keys": [
+   "z",
+   "a",
+   "<CR>"
+  ]
+ },
+ "stash-pop": {
+  "setup": "git stash -q",
+  "keys": [
+   "z",
+   "p",
+   "<CR>"
+  ]
+ },
+ "pull": {
+  "setup": "git push -q; d=$(mktemp -d); git clone -q \"$PWD.remote.git\" $d/c; (cd $d/c && git config user.name Tester && git config user.email t@example.com && echo r > r.txt && git add r.txt && git commit -q -m Remote && git push -q); rm -rf $d",
+  "keys": [
+   "F",
+   "u"
+  ]
+ },
+ "fetch-all": {
+  "setup": "d=$(mktemp -d); git clone -q \"$PWD.remote.git\" $d/c; (cd $d/c && git config user.name Tester && git config user.email t@example.com && echo r > r.txt && git add r.txt && git commit -q -m Remote && git push -q); rm -rf $d",
+  "keys": [
+   "f",
+   "a"
+  ]
+ },
+ "log-branches": {
+  "keys": [
+   "l",
+   "b"
+  ]
+ },
+ "log-local": {
+  "keys": [
+   "l",
+   "L"
+  ]
+ },
+ "diff-dwim": {
+  "keys": [
+   "<C-j>",
+   "<C-j>",
+   "d",
+   "d"
+  ]
+ },
+ "diff-worktree": {
+  "keys": [
+   "d",
+   "w"
+  ]
+ },
+ "discard-section": {
+  "keys": [
+   "gu",
+   "x",
+   "y"
+  ]
+ },
+ "stage-prompt": {
+  "keys": [
+   "gg",
+   "s",
+   "a.txt<CR>"
+  ]
+ },
+ "unstage-prompt": {
+  "keys": [
+   "gg",
+   "u",
+   "b.txt<CR>"
+  ]
+ },
+ "unstage-all": {
+  "keys": [
+   "U",
+   "y"
+  ]
+ },
+ "discard-files": {
+  "setup": "echo x >> b.txt",
+  "keys": [
+   "gu",
+   "x",
+   "y"
   ]
  }
 }

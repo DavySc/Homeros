@@ -93,8 +93,6 @@ int  parse_diff(View *v, const char *s, size_t n, int file_hidden, int cached, c
    sections whose mark is m (0 any); refs as magit-log-format-refs-labels
    shows them given the branch. */
 int  parse_log(View *v, const char *s, size_t n, int m, const Branch *b);
-/* Count of lines in s with mark m */
-int  log_count(const char *s, size_t n, int m);
 /* the subject of the commit decorated with ref (e.g. "refs/remotes/origin/main"),
    or of the first commit when ref is NULL; into out */
 int  log_subject(const char *s, size_t n, const char *ref, Str *out);
@@ -105,4 +103,6 @@ int  parse_logbuf(View *v, const char *s, size_t n, const Branch *b, int width, 
 /* git diff -p --stat (or show): the stat as one section headed by its
    summary, then the files, shown (magit-diff-mode) */
 int  parse_diffbuf(View *v, const char *s, size_t n, const Branch *b);
+int  parse_revbuf(View *v, const char *s, size_t n, const Branch *b);
+int  parse_stashbuf(View *v, const char *s, size_t n, const Branch *b);
 #endif

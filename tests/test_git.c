@@ -249,7 +249,7 @@ static void check_step(const char *sc, Step *st, const Step *next, char *state[7
 	} else if (w && !strncmp(w->buf, "magit-log:", 10)) {
 		if (!a || a->type != T_LOG) fail(sc, st->keys, "not in a log buffer");
 		else compare_view(sc, st, w, &a->v, a->cur, 1, 1);
-	} else if (w && (!strncmp(w->buf, "magit-diff:", 11) || !strncmp(w->buf, "magit-revision:", 15))) {
+	} else if (w && (!strncmp(w->buf, "magit-diff:", 11) || !strncmp(w->buf, "magit-revision:", 15) || !strncmp(w->buf, "magit-stash:", 12))) {
 		if (!a || a->type != T_DIFF) fail(sc, st->keys, "not in a diff buffer");
 		else compare_view(sc, st, w, &a->v, a->cur, 0, 1);
 	} else if (w && !strncmp(st->keys, "$ ", 2)) {
@@ -368,7 +368,8 @@ static void scenario(const char *name, const char *setup, Step *steps, int n, ch
 	}
 	if (!strcmp(name, "discard-untracked")) {
 		/* magit-delete-by-moving-to-trash: the freedesktop.org trash */
-		o = run("cat '%s/data/Trash/files/c.txt' '%s/data/Trash/info/c.txt.trashinfo' 2>&1", tmp, tmp);
+		const char *d = getenv("XDG_DATA_HOME");
+		o = run("cat '%s/Trash/files/c.txt' '%s/Trash/info/c.txt.trashinfo' 2>&1", d, d);
 		if (strncmp(o, "new\n[Trash Info]\nPath=/", 23)) fail(name, "x y", "c.txt is not in the trash: %s", o);
 		free(o);
 	}
@@ -377,6 +378,177 @@ static void scenario(const char *name, const char *setup, Step *steps, int n, ch
 
 /* Git.tla ActsOnSeen: a key pressed on a status the work tree has left
    behind does nothing and says so; the status is read again */
+/* A question answered after the view was read again acts on nothing
+   (Git.tla: the write is tagged when the user chooses).  hunk: the first
+   hunk is reverted outside, the refresh moves the cursor onto the second;
+   file: a line is appended outside after "Discard ... a.txt?" */
+static void prompt_check(int hunk)
+{
+	const char *name = hunk ? "prompt-hunk" : "prompt-file";
+	char *o = run("rm -rf '%s' && sh src/git/mkrepo.sh '%s' 2>&1", repo, repo);
+	free(o);
+	git_free();
+	CHECK(git_status(&e, repo) == 0);
+	settle();
+	git_key(&e, 10); git_key(&e, 10);          /* on "modified   a.txt" */
+	if (hunk) { git_key(&e, KEY_TAB); git_key(&e, 10); }
+	git_key(&e, 'x');
+	if (git_prompt() != P_YN) fail(name, "x", "no question");
+	o = run("cd '%s' && %s", repo, hunk ? "sed -i s/TWO/two/ a.txt" : "echo more >> a.txt");
+	free(o);
+	settle();                                  /* the view is read again, the question still open */
+	git_key(&e, 'y');
+	settle();
+	if (strcmp(e.msg, "git: the repository changed since it was shown; nothing done"))
+		fail(name, "y", "echo \"%s\"", e.msg);
+	o = run("cd '%s' && grep -c '%s' a.txt", repo, hunk ? "ELEVEN" : "more");
+	if (strcmp(o, "1\n")) fail(name, "y", "a.txt lost the change nobody was asked about");
+	free(o);
+	git_free();
+}
+
+/* with-editor: the message buffer deleted otherwise than by ZZ or ZQ (its
+   number no longer names a buffer) cancels the commit at the next key */
+static void gone_check(void)
+{
+	char *o = run("rm -rf '%s' && sh src/git/mkrepo.sh '%s' 2>&1", repo, repo);
+	free(o);
+	git_free();
+	CHECK(git_status(&e, repo) == 0);
+	settle();
+	char *head = run("cd '%s' && '%s' rev-parse HEAD", repo, realgit);
+	git_key(&e, 'c'); git_key(&e, 'c');
+	for (int i = 0; i < 400 && R()->editing != 2; i++) CHECK(loop_once(20) == 0);
+	CHECK(R()->editing == 2);
+	R()->msgnr = 1 << 30;
+	git_key(&e, 'j');
+	settle();
+	if (R()->busy || strcmp(e.msg, "Commit canceled.")) fail("message-buffer-gone", "j", "busy %d, echo \"%s\"", R()->busy, e.msg);
+	o = run("cd '%s' && '%s' rev-parse HEAD", repo, realgit);
+	if (strcmp(o, head)) fail("message-buffer-gone", "j", "committed");
+	free(o); free(head);
+	git_free();
+}
+
+/* git_free with git commit waiting: only git's children are killed (a
+   child of another package's in loop slot 0 lives on), and their ends,
+   arriving after, touch nothing freed (ASan) */
+static int other_ended;
+static void on_other(void *ctx, int stream, const char *b, size_t n) { (void)ctx; (void)b; (void)n; other_ended |= stream == 0; }
+static void free_check(void)
+{
+	char *o = run("rm -rf '%s' && sh src/git/mkrepo.sh '%s' 2>&1", repo, repo);
+	free(o);
+	git_free();
+	char *argv[] = { "sleep", "3", NULL };
+	int other = proc_spawn(argv, "/", on_other, NULL);
+	CHECK(other >= 0);
+	CHECK(git_status(&e, repo) == 0);
+	settle();
+	git_key(&e, 'c'); git_key(&e, 'c');
+	for (int i = 0; i < 400 && R()->editing != 2; i++) CHECK(loop_once(20) == 0);
+	CHECK(R()->editing == 2);
+	git_free();
+	for (int i = 0; i < 25; i++) CHECK(loop_once(20) == 0);
+	if (other_ended) fail("git-free", "", "a child that is not git's was killed");
+	proc_kill(other);
+	while (!other_ended) CHECK(loop_once(50) == 0);
+	CHECK(git_status(&e, repo) == 0);         /* the rest runs on a fresh repository */
+	git_free();
+}
+
+/* a linked work tree reads refs, tags and the stash from the common
+   directory (gitrepository-layout's commondir) */
+static void worktree_check(void)
+{
+	char wt[PATH_MAX + 16];
+	snprintf(wt, sizeof wt, "%s/wt", tmp);
+	char *o = run("rm -rf '%s' '%s' && sh src/git/mkrepo.sh '%s' >/dev/null 2>&1 && cd '%s' && git stash -q && git tag v1 && git worktree add -q '%s' -b side 2>&1",
+	              repo, wt, repo, repo, wt);
+	free(o);
+	git_free();
+	CHECK(git_status(&e, wt) == 0);
+	settle();
+	const View *v = &R()->st;
+	int tag = 0, stashes = 0;
+	for (size_t k = 0; k < v->nvis; k++) {
+		const char *l = v->pool.s + v->ln[v->vis[k]].off;
+		tag |= !strncmp(l, "Tag:      v1", 12);
+		stashes |= !strncmp(l, "Stashes (1)", 11);
+	}
+	if (!tag || !stashes) fail("linked-work-tree", "", "Tag header %d, Stashes %d", tag, stashes);
+	git_free();
+	free(run("rm -rf '%s'", wt));
+}
+
+static void fresh(void)
+{
+	free(run("rm -rf '%s' && sh src/git/mkrepo.sh '%s' 2>&1", repo, repo));
+	git_free();
+	CHECK(git_status(&e, repo) == 0);
+	settle();
+}
+
+/* a diff opened again (unstaged, then staged) before the first read's
+   output is in: only the second read's files are shown (the first is
+   waited for, not mixed in or shown) */
+static void again_check(void)
+{
+	fresh();
+	git_key(&e, 'd'); git_key(&e, 'u');
+	git_key(&e, 'd'); git_key(&e, 's');
+	settle();
+	while (git_ha && git_ha->busy) CHECK(loop_once(20) == 0);
+	Str files = { 0 };
+	for (int i = 0; git_ha && i < git_ha->v.nsec; i++)
+		if (git_ha->v.sec[i].type == T_FILE && git_ha->v.sec[git_ha->v.sec[i].parent].type != T_INFO)
+			str_addz(&files, sec_value(&git_ha->v, i)), str_add(&files, " ", 1);
+	str_add(&files, "", 1);
+	if (strcmp(files.s, "b.txt ")) fail("diff-twice", "d u d s", "files shown: %s, git diff --cached has b.txt", files.s);
+	str_free(&files);
+	git_free();
+}
+
+/* a buried log is not read again after a write: the write's refresh runs
+   the status's reads only */
+static void bury_check(void)
+{
+	fresh();
+	git_key(&e, 'l'); git_key(&e, 'l');
+	settle();
+	git_key(&e, 'q');
+	git_key(&e, 10); git_key(&e, 10);          /* on "modified   a.txt" */
+	free(run(": > '%s'", gitlog));
+	git_key(&e, 's');
+	settle();
+	char *o = run("grep -c . '%s'", gitlog);
+	if (atoi(o) > 5) fail("buried-log", "s", "%d git processes for git add and its refresh", atoi(o));
+	free(o);
+	git_free();
+}
+
+/* reads that cannot start (a full process table) say so, never show a
+   clean tree */
+static int sleeper_ended;
+static void on_sleeper(void *ctx, int stream, const char *b, size_t n) { (void)ctx; (void)b; (void)n; sleeper_ended += stream == 0; }
+static void full_check(void)
+{
+	fresh();
+	int id[40], k = 0;
+	char *argv[] = { "sleep", "5", NULL };
+	while (k < 40 && (id[k] = proc_spawn(argv, "/", on_sleeper, NULL)) >= 0) k++;
+	CHECK(k > 2);
+	proc_kill(id[--k]);                        /* room for status, not for the reads after it */
+	while (sleeper_ended < 1) CHECK(loop_once(50) == 0);
+	R()->dirty = 1;
+	git_schedule(R());
+	for (int i = 0; i < 200 && (R()->busy || R()->dirty); i++) CHECK(loop_once(20) == 0);
+	if (R()->busy || strcmp(e.msg, "git: cannot run git")) fail("full-process-table", "", "busy %d, echo \"%s\"", R()->busy, e.msg);
+	for (int i = 0; i < k; i++) proc_kill(id[i]);
+	while (sleeper_ended < k + 1) CHECK(loop_once(50) == 0);
+	git_free();
+}
+
 static void stale_check(void)
 {
 	char *o = run("rm -rf '%s' && sh src/git/mkrepo.sh '%s' 2>&1", repo, repo);
@@ -451,6 +623,17 @@ int main(void)
 		if (l) l[strcspn(l, "\n")] = 0;
 		if (!l || l[0] == '@') {
 			if (name && (!only || !strcmp(only, name))) { scenario(name, setup, steps, n, states); done++; }
+			struct stat a, b;
+			if (name && !only && !strcmp(name, "discard-untracked") && !stat("/dev/shm", &a) && !stat(tmp, &b) && a.st_dev != b.st_dev) {
+				/* the trash on another file system: copied, then deleted (rename-file) */
+				char shm[] = "/dev/shm/hgtrashXXXXXX", *old = strdup(getenv("XDG_DATA_HOME"));
+				CHECK(mkdtemp(shm) && old);
+				setenv("XDG_DATA_HOME", shm, 1);
+				scenario(name, setup, steps, n, states);
+				setenv("XDG_DATA_HOME", old, 1);
+				free(old);
+				free(run("rm -rf '%s'", shm));
+			}
 			if (name && !only && !strcmp(name, "stage-file")) {
 				/* Git.tla Truthful without the watches (the "nowatch" variant) */
 				nowatch = 1;
@@ -508,6 +691,14 @@ int main(void)
 		CHECK(maxproc == 5);
 		lock_check();
 		stale_check();
+		prompt_check(1);
+		prompt_check(0);
+		gone_check();
+		free_check();
+		worktree_check();
+		again_check();
+		bury_check();
+		full_check();
 	}
 	core_free(&e);
 	char *o = run("rm -rf '%s'", tmp);

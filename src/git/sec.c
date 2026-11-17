@@ -474,16 +474,6 @@ static int field(Seg l, int k, Seg *out)
 	return 0;
 }
 
-int log_count(const char *s, size_t n, int m)
-{
-	int c = 0;
-	for (size_t i = 0; i < n; ) {
-		Seg l = next_line(s, n, &i);
-		if (l.n && (!m || l.p[0] == m)) c++;
-	}
-	return c;
-}
-
 int log_subject(const char *s, size_t n, const char *ref, Str *out)
 {
 	out->n = 0;
@@ -677,4 +667,84 @@ int parse_diffbuf(View *v, const char *s, size_t n, const Branch *b)
 		if (sec_line(v, "", 0)) return -1;
 	}
 	return parse_diff(v, s + i, n - i, 0, 0, b) < 0 ? -1 : 0;
+}
+
+/* --- magit-revision-mode and magit-stash-mode ------------------------------------- */
+
+/* the next NUL-ended part of s, or what is left */
+static Seg part(const char *s, size_t n, size_t *i)
+{
+	Seg l = { s + *i, 0 };
+	const char *e = memchr(s + *i, 0, n - *i);
+	l.n = e ? (size_t)(e - l.p) : n - *i;
+	*i += l.n + (e != NULL);
+	return l;
+}
+
+static int lines_of(View *v, Seg t)
+{
+	for (size_t i = 0; i < t.n; ) {
+		Seg l = next_line(t.p, t.n, &i);
+		if (sec_line(v, l.p, l.n)) return -1;
+	}
+	return 0;
+}
+
+/* magit--insert-related-refs: "Merged:" and git branch's names after it */
+static int related(View *v, Seg t, const char *title)
+{
+	Str o = { 0 };
+	int r = str_addz(&o, title);
+	while (!r && o.n < 11) r = str_add(&o, " ", 1);
+	size_t n0 = o.n;
+	for (size_t i = 0; !r && i < t.n; ) {
+		Seg l = next_line(t.p, t.n, &i);
+		if (l.n < 2 || prefix(l.p + 2, l.n - 2, "(HEAD") || prefix(l.p + 2, l.n - 2, "HEAD -> ")) continue;
+		r = str_add(&o, " ", 1) || str_add(&o, l.p + 2, l.n - 2);
+	}
+	if (!r && o.n > n0) r = sec_line(v, o.s, o.n);
+	str_free(&o);
+	return r;
+}
+
+/* git show -s (%D, %H, the headers, %B), the parents' "%h %s", git branch
+   --merged and --contains, each NUL-ended, then the diff with its stat
+   (magit-revision-sections-hook without tags and notes) */
+int parse_revbuf(View *v, const char *s, size_t n, const Branch *b)
+{
+	size_t i = 0;
+	Seg d = part(s, n, &i), h = part(s, n, &i), hd = part(s, n, &i), msg = part(s, n, &i);
+	Seg par = part(s, n, &i), mer = part(s, n, &i), con = part(s, n, &i);
+	Str o = { 0 };
+	int r = ref_labels(d, b, &o);
+	if (!r && o.n) r = str_add(&o, " ", 1);
+	r = r || str_add(&o, h.p, h.n) || sec_line(v, o.s, o.n) || lines_of(v, hd);
+	str_free(&o);
+	for (size_t k = 0; !r && k < par.n; ) {
+		Seg l = next_line(par.p, par.n, &k);
+		r = str_addz(&o, "Parent:     ") || str_add(&o, l.p, l.n) || sec_line(v, o.s, o.n);
+		o.n = 0;
+	}
+	str_free(&o);
+	if (r || related(v, mer, "Merged:") || related(v, con, "Contained:") || sec_line(v, "", 0)) return -1;
+	while (msg.n && msg.p[msg.n - 1] == '\n') msg.n--;
+	if (msg.n ? lines_of(v, msg) : sec_linez(v, "(no message)")) return -1;
+	if (sec_line(v, "", 0)) return -1;
+	return parse_diffbuf(v, s + i, n - i, b);
+}
+
+/* magit-stash-sections-hook: the work tree's, the index's and the untracked
+   files' diffs, each NUL-ended, under "Unstaged", "Staged", "Untracked files" */
+int parse_stashbuf(View *v, const char *s, size_t n, const Branch *b)
+{
+	static const char *const head[] = { "Unstaged", "Staged", "Untracked files" };
+	size_t i = 0;
+	for (int k = 0; k < 3 && i < n; k++) {
+		Seg t = part(s, n, &i);
+		if (k == 2 && !t.n) break;
+		if ((k && sec_line(v, "", 0)) || sec_open(v, T_INFO, head[k], strlen(head[k]), 0) < 0
+		    || sec_linez(v, head[k]) || parse_diff(v, t.p, t.n, 0, 0, b) < 0) return -1;
+		sec_close(v);
+	}
+	return 0;
 }

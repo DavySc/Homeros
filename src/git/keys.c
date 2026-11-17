@@ -21,16 +21,17 @@ static Repo *hr;                   /* headless: the view keys go to */
 Aux *git_ha;
 #define ha git_ha
 
-typedef struct { Repo *r; Aux *a; View *v; Buf *b; } Foc;
+typedef struct { Repo *r; Aux *a; View *v; int b; } Foc;     /* b: the buffer's number, 0 headless */
 
 static int focus(Editor *e, Foc *f)
 {
+	(void)e;                           /* git_on reads the editor's current buffer */
 	for (Repo *r = git_repos; r; r = r->next) {
-		if (r->buf && r->buf == e->buf) { *f = (Foc){ r, NULL, &r->st, r->buf }; return 1; }
+		if (git_on(r->bufnr)) { *f = (Foc){ r, NULL, &r->st, r->bufnr }; return 1; }
 		for (Aux *a = r->aux; a; a = a->next)
-			if (a->buf && a->buf == e->buf) { *f = (Foc){ r, a, &a->v, a->buf }; return 1; }
+			if (git_on(a->bufnr)) { *f = (Foc){ r, a, &a->v, a->bufnr }; return 1; }
 	}
-	if (git_headless && hr) { *f = (Foc){ hr, ha, ha ? &ha->v : &hr->st, NULL }; return 1; }
+	if (git_headless && hr) { *f = (Foc){ hr, ha, ha ? &ha->v : &hr->st, 0 }; return 1; }
 	return 0;
 }
 
@@ -174,13 +175,23 @@ static struct {
 	const Pop *pop;
 	Foc f;
 	char arg[256];             /* carried from an earlier prompt */
+	unsigned long ver;         /* the version shown when the question was put (Git.tla Ask) */
+	int answering;             /* an answer runs: its writes and questions keep ver */
 } P;
 static int pend;                   /* a key prefix: 'g', or 'Z' in the message buffer */
 
 int git_prompt(void) { return P.kind; }
 
+/* the version of what the focused view shows */
+static unsigned long seen(Editor *e, Repo *r)
+{
+	Foc f;
+	return focus(e, &f) && f.r == r && f.a ? f.a->ver : r->shown;
+}
+
 static void ask(Editor *e, Repo *r, int kind, Answer *fn, const char *fmt, ...)
 {
+	if (!P.answering) P.ver = seen(e, r);
 	va_list ap;
 	va_start(ap, fmt);
 	vsnprintf(P.q, sizeof P.q, fmt, ap);
@@ -193,6 +204,18 @@ static void ask(Editor *e, Repo *r, int kind, Answer *fn, const char *fmt, ...)
 /* magit-confirm: "...? (y or n) " */
 #define confirm(e, r, fn, ...) ask(e, r, P_YN, fn, __VA_ARGS__)
 
+/* The answer acts on what the question was put about (Git.tla ActsOnSeen):
+   if the view was read again since, the sections under the cursor may be
+   others, so nothing is done; if only the repository moved, the write
+   carries the old version and is dropped when it starts */
+static void answer(Editor *e, const char *a)
+{
+	if (seen(e, P.r) != P.ver) { core_msg(e, "git: the repository changed since it was shown; nothing done"); return; }
+	P.answering = 1;
+	P.fn(e, P.r, a);
+	P.answering = 0;
+}
+
 static void prompt_key(Editor *e, int k)
 {
 	core_changed = 1;
@@ -204,7 +227,7 @@ static void prompt_key(Editor *e, int k)
 	}
 	if (k == KEY_ESC || k == 7 || k == KEY_CTRL_C) { P.kind = 0; core_msg(e, "Quit"); return; }
 	if (P.kind == P_YN) {
-		if (k == 'y') { P.kind = 0; core_msg(e, "%sy", P.q); P.fn(e, P.r, "y"); }
+		if (k == 'y') { P.kind = 0; core_msg(e, "%sy", P.q); answer(e, "y"); }
 		else if (k == 'n' || k == KEY_ENTER || k == 10) { P.kind = 0; core_msg(e, "Abort"); }
 		else core_msg(e, "%s [Please answer y or n]", P.q);
 		return;
@@ -213,7 +236,7 @@ static void prompt_key(Editor *e, int k)
 		P.kind = 0;
 		e->msg[0] = 0;
 		P.in[P.n] = 0;
-		P.fn(e, P.r, P.in);
+		answer(e, P.in);
 		return;
 	}
 	if (k == KEY_BS || k == 8) {
@@ -689,46 +712,50 @@ static void aux_done(Aux *a)
 	size_t n = a->out.n;
 	int rc = sec_open(v, T_STATUS, NULL, 0, 0) < 0;
 	if (!rc && a->type == T_LOG) {
-		int w = e && a->buf && e->buf == a->buf ? e->win->w : e ? e->cols : 80;
+		int w = git_on(a->bufnr) ? e->win->w : e ? e->cols : 80;
 		rc = parse_logbuf(v, s, n, &a->r->br, w, (long)time(NULL));
 	} else if (!rc) {
-		/* git show's header ends at a NUL (magit-revision-mode's headers) */
-		const char *z = memchr(s, 0, n);
-		if (z) {
-			for (const char *p = s; !rc && p < z; ) {
-				const char *nl = memchr(p, '\n', (size_t)(z - p));
-				size_t len = nl ? (size_t)(nl - p) : (size_t)(z - p);
-				rc = sec_line(v, p, len);
-				p += len + 1;
-			}
-			n -= (size_t)(z + 1 - s);
-			s = z + 1;
-		}
-		if (!rc) rc = parse_diffbuf(v, s, n, &a->r->br);
+		rc = a->dtype == T_COMMIT ? parse_revbuf(v, s, n, &a->r->br)
+			: a->dtype == T_STASH ? parse_stashbuf(v, s, n, &a->r->br) : parse_diffbuf(v, s, n, &a->r->br);
 	}
 	if (!rc) rc = sec_line(v, "", 0);
 	if (rc) { view_clear(v); return; }
 	sec_close(v);
 	if (sec_render(v)) return;
-	size_t cur = e && a->buf && e->buf == a->buf ? e->win->line : a->cur;
+	size_t cur = git_on(a->bufnr) ? e->win->line : a->cur;
 	if (cur >= v->nvis) cur = v->nvis ? v->nvis - 1 : 0;
 	a->cur = cur;
-	if (a->buf) git_fill(a->buf, v, cur);
+	git_fill(a->bufnr, v, cur);
 	core_changed = 1;
 }
 
 static void on_aux(void *ctx, int stream, const char *b, size_t n)
 {
+	if (!git_live(ctx)) return;
 	Aux *a = ctx;
 	if (stream == 1 && n) str_add(&a->out, b, n);
-	else if (stream == 0) { a->busy = 0; aux_done(a); }
+	else if (stream == 0) {
+		a->busy = 0;
+		/* a read started before this one ended: its output is not this view's */
+		if (a->again) { a->again = 0; git_aux_fill(a); }
+		else aux_done(a);
+	}
+}
+
+int git_aux_shown(const Aux *a)
+{
+	Editor *e = git_ed();
+	if (git_headless) return a == ha;
+	for (Win *w = e ? e->wins : NULL; w; w = w->next) if (w->buf && w->buf->nr == a->bufnr) return 1;
+	return 0;
 }
 
 /* a read, never during a write: the write's end fills it again (write.c finish) */
 void git_aux_fill(Aux *a)
 {
 	char *argv[CMD_MAX];
-	if (a->busy || a->r->busy == BUSY_WRITE) return;
+	if (a->busy) { a->again = 1; return; }
+	if (a->r->busy == BUSY_WRITE) return;
 	char *p = a->cmd.args.s;
 	for (int i = 0; i < a->cmd.argc; i++, p += strlen(p) + 1) argv[i] = p;
 	argv[a->cmd.argc] = NULL;
@@ -737,6 +764,7 @@ void git_aux_fill(Aux *a)
 	a->out.n = 0;
 	a->pid = proc_spawn(argv, a->r->top, on_aux, a);
 	a->busy = a->pid >= 0;
+	git_schedule(a->r);                /* the drain may have found changes */
 }
 
 /* magit-log-setup-buffer, magit-diff-setup-buffer: one buffer of each kind
@@ -749,19 +777,19 @@ static void aux_open(Editor *e, Repo *r, int type, int dt, Cmd *c)
 		if (!(a = calloc(1, sizeof *a))) { cmd_free(c); return; }
 		a->r = r; a->type = type; a->pid = -1;
 		a->next = r->aux; r->aux = a;
-	} else if (a->busy) { proc_kill(a->pid); a->busy = 0; }
+	}
 	cmd_free(&a->cmd);
 	a->cmd = *c;
 	a->dtype = dt;
 	a->cur = 0;
 	if (git_headless) { hr = r; ha = a; }
-	else if (git_buf_alive(a->buf)) {
-		if (e->buf != a->buf && core_buf_goto(e, a->buf->nr)) return;
+	else if (git_buf(a->bufnr)) {
+		if (!git_on(a->bufnr) && core_buf_goto(e, a->bufnr)) return;
 	} else {
 		int split = type == T_DIFF && !core_split(e, 0, 0);
 		if (split) core_win_goto(e, 'k', 1);
 		if (core_edit_file(e, "", 0)) { if (split) core_close(e, 1); return; }
-		a->buf = e->buf;
+		a->bufnr = e->buf->nr;
 		a->split = split;
 	}
 	git_aux_fill(a);
@@ -794,19 +822,24 @@ static void diff_open(Editor *e, Repo *r, int dt, const char *file)
 	aux_open(e, r, T_DIFF, dt, &c);
 }
 
-/* magit-show-commit, magit-stash-show */
+/* magit-show-commit (magit-revision-sections-hook) and magit-stash-show
+   (magit-stash-sections-hook): one shell runs their git commands, the parts
+   NUL-ended (sec.c parse_revbuf, parse_stashbuf) */
+#define G "g() { git --no-pager --no-optional-locks -c color.ui=false -c diff.noPrefix=false \"$@\"; }; "
 static void show_open(Editor *e, Repo *r, const char *rev, int stash)
 {
-	Cmd c;
-	cmd_git(&c, 1);
-	if (stash) { cmd_add(&c, "stash"); cmd_add(&c, "show"); }
-	else {
-		cmd_add(&c, "show");
-		cmd_add(&c, "--format=commit %H%nAuthor:     %aN <%aE>%nAuthorDate: %ad%nCommit:     %cN <%cE>%nCommitDate: %cd%n%n%B%x00");
-	}
-	cmd_add(&c, "-p"); cmd_add(&c, "--stat"); cmd_add(&c, "--no-prefix"); cmd_add(&c, "--no-ext-diff");
-	cmd_add(&c, rev);
-	aux_open(e, r, T_DIFF, 0, &c);
+	Cmd c = { 0 };
+	cmd_add(&c, "sh"); cmd_add(&c, "-c");
+	cmd_add(&c, stash ? G "g diff -p --no-prefix \"$1^2..$1\" --; printf '\\0'; "
+	                    "g diff -p --no-prefix \"$1^..$1^2\" --; printf '\\0'; "
+	                    "! g rev-parse -q --verify \"$1^3\" >/dev/null || g show --format= -p --no-prefix \"$1^3\""
+	                  : G "g show -s --decorate=full --format=format:'%D%x00%H%x00Author:     %aN <%aE>%nAuthorDate: %ad%n"
+	                    "Commit:     %cN <%cE>%nCommitDate: %cd%n%n%x00%B%x00' \"$1\" && "
+	                    "p=$(g rev-parse \"$1^@\") && { [ -z \"$p\" ] || g show -s --format='%h %s' $p; } && printf '\\0' && "
+	                    "g branch --merged \"$1\" && printf '\\0' && g branch --contains \"$1\" && printf '\\0' && "
+	                    "g show --format= -p --stat --no-prefix --no-ext-diff \"$1\" --");
+	cmd_add(&c, "sh"); cmd_add(&c, rev);
+	aux_open(e, r, T_DIFF, stash ? T_STASH : T_COMMIT, &c);
 }
 
 /* magit-mode-bury-buffer */
@@ -818,7 +851,7 @@ static void bury(Editor *e, const Foc *f)
 		return;
 	}
 	if (f->a && f->a->split) { f->a->split = 0; core_close(e, 0); }
-	else if (f->a && git_buf_alive(f->r->buf)) core_buf_goto(e, f->r->buf->nr);
+	else if (f->a && git_buf(f->r->bufnr)) core_buf_goto(e, f->r->bufnr);
 	else core_buf_alt(e);
 }
 
@@ -979,7 +1012,7 @@ static void branch_x(Editor *e, const Foc *f) { ask(e, f->r, P_TEXT, delete_go, 
 static int stash_entry(Repo *r, int k, char *msg, size_t nmsg, char *oid)
 {
 	char p[PATH_MAX];
-	snprintf(p, sizeof p, "%s/logs/refs/stash", r->gitdir);
+	snprintf(p, sizeof p, "%s/logs/refs/stash", r->common);
 	FILE *fp = fopen(p, "r");
 	if (!fp) return -1;
 	char line[4096];
@@ -1178,8 +1211,10 @@ int git_key(Editor *e, int k)
 {
 	git_editor(e);
 	if (P.kind) { prompt_key(e, k); return 1; }
-	for (Repo *r = git_repos; r; r = r->next)
-		if (r->msgbuf && r->msgbuf == e->buf && r->editing == 2) {
+	for (Repo *r = git_repos; r; r = r->next) {
+		/* with-editor: a message buffer killed otherwise than by ZZ or ZQ cancels */
+		if (r->editing == 2 && r->msgnr && !git_buf(r->msgnr)) git_editor_done(r, 0);
+		if (git_on(r->msgnr) && r->editing == 2) {
 			/* with-editor-finish (ZZ) and -cancel (ZQ) */
 			if (pend == 'Z') {
 				pend = 0;
@@ -1190,6 +1225,7 @@ int git_key(Editor *e, int k)
 			pend = 'Z';
 			return 1;
 		}
+	}
 	Foc f;
 	if (!focus(e, &f) || e->mode != MODE_NORMAL) return 0;
 	if (pend) { pend = 0; return g_key(e, &f, k); }
@@ -1220,18 +1256,21 @@ int git_key(Editor *e, int k)
 /* --- SPC g and SPC h, gutter signs ------------------------------------------------ */
 
 /* the repository of a file buffer and the file's path in it, remembered per buffer */
-typedef struct { const Buf *b; Repo *r; char *rel; } Of;
+typedef struct { int nr; Repo *r; char *rel; } Of;
 static Of *ofs;
 static size_t nofs;
 
 static Of *of(const Buf *b)
 {
-	for (size_t i = 0; i < nofs; i++) if (ofs[i].b == b) return &ofs[i];
+	for (size_t i = 0; i < nofs; i++) {
+		if (ofs[i].nr == b->nr) return &ofs[i];
+		if (!git_buf(ofs[i].nr)) { free(ofs[i].rel); ofs[i--] = ofs[--nofs]; }   /* deleted */
+	}
 	Of *n = realloc(ofs, (nofs + 1) * sizeof *n);
 	if (!n) return NULL;
 	ofs = n;
 	Of *o = &ofs[nofs++];
-	*o = (Of){ b, NULL, NULL };
+	*o = (Of){ b->nr, NULL, NULL };
 	char abs[PATH_MAX];
 	if (!b->path || !realpath(b->path, abs)) return o;
 	char dir[PATH_MAX];
@@ -1245,21 +1284,61 @@ static Of *of(const Buf *b)
 	return o;
 }
 
-/* the hunk of the file's diff (unstaged or staged) holding line l */
-static int hunk_of(Repo *r, int t, const char *rel, size_t l)
+/* gitsigns' hunks are the diff's blocks of changed lines, without context:
+   walk the file's hunks for the block that marks line t (from 1).  A block
+   of k removed and m added lines marks min(k, m) lines changed and the rest
+   added; removed lines with nothing added in their place mark the line
+   above them (line 1 when at the top).  Fills where the block is: its
+   lines [k0, k1) in v, and the old and new lines before it. */
+typedef struct { size_t k0, k1; long o, n; } Blk;
+static int block_at(const View *v, int fs, long t, Blk *bk)
 {
-	const View *v = &r->st;
-	int fs = file_in(v, top(v, t), rel);
-	if (fs < 0) return -1;
 	for (int h = fs + 1; h < v->sec[fs].after; h = v->sec[h].after) {
 		if (!line_is(v, v->sec[h].start, '@')) continue;
-		long a, c;
-		hunk_starts(v, h, &a, &c);
-		long n = 0;
-		for (size_t k = v->sec[h].start + 1; k < v->sec[h].end; k++) n += !line_is(v, k, '-');
-		if ((long)l + 1 >= c - (n == 0) && (long)l + 1 < c + (n ? n : 1)) return h;
+		/* "-a,b +c,d": a count of 0 means the lines go after line a (or c) */
+		const char *hd = v->pool.s + v->ln[v->sec[h].start].off;
+		char *q;
+		long o = strtol(strchr(hd, '-') + 1, &q, 10);
+		if (*q == ',' && !strtol(q + 1, NULL, 10)) o++;
+		long n = strtol(strchr(q, '+') + 1, &q, 10), del = 0;
+		if (*q == ',' && !strtol(q + 1, NULL, 10)) n++;
+		int in = 0, hit = 0;
+		for (size_t k = v->sec[h].start + 1; k <= v->sec[h].end; k++) {
+			char c = k < v->sec[h].end && v->ln[k].len ? v->pool.s[v->ln[k].off] : ' ';
+			if (c == '\\' && !in) continue;
+			if (c == '-' || c == '+' || c == '\\') {
+				if (!in) { in = 1; bk->k0 = k; bk->o = o - 1; bk->n = n - 1; del = 0; }
+				if (c == '-') { del++; o++; }
+				else if (c == '+') { if (n == t) hit = del ? '~' : '+'; if (del) del--; n++; }
+				continue;
+			}
+			/* context, or the hunk's end */
+			if (in && !hit && del && (n - 1 == t || (n == 1 && t == 1))) hit = '_';
+			if (in && hit) { bk->k1 = k; return hit; }
+			in = 0;
+			o++; n++;
+		}
 	}
-	return -1;
+	return 0;
+}
+
+/* the patch of one block: the file's header, "@@ -o,k +n,m @@" and its
+   lines, both starts counted on the side it applies to (the index's for
+   staging, the work tree's for a reset): with no context git apply places
+   an empty side by the other side's start (measured: a reset of a deletion
+   below another landed as many lines lower as the other removed) */
+static int block_patch(const View *v, int fs, const Blk *bk, int index, Str *p)
+{
+	long k = 0, m = 0;
+	for (size_t l = bk->k0; l < bk->k1; l++) { k += line_is(v, l, '-'); m += line_is(v, l, '+'); }
+	long b = index ? bk->o : bk->n;
+	char h[96];
+	if (str_addz(p, v->pool.s + v->sec[fs].aux)
+	    || str_add(p, h, (size_t)snprintf(h, sizeof h, "@@ -%ld,%ld +%ld,%ld @@\n", b + (k > 0), k, b + (m > 0), m)))
+		return -1;
+	for (size_t l = bk->k0; l < bk->k1; l++)
+		if (str_add(p, v->pool.s + v->ln[l].off, v->ln[l].len) || str_add(p, "\n", 1)) return -1;
+	return 0;
 }
 
 static Str staged_last;            /* gitsigns' undo_stage_hunk: the last hunk staged */
@@ -1269,27 +1348,33 @@ static int hunk_leader(Editor *e, int k)
 	Of *o = e->buf ? of(e->buf) : NULL;
 	if (!o || !o->r) { core_msg(e, "Not in a Git repository"); return -1; }
 	Repo *r = o->r;
-	Foc f = { r, NULL, &r->st, NULL };
+	Foc f = { r, NULL, &r->st, 0 };
 	if (k == 'S') { wgit("add", "--", o->rel, NULL); wsend(r, NULL, NULL); return 0; }
 	if (k == 'p') { diff_open(e, r, T_UNSTAGED, o->rel); return 0; }
 	if (k == 'u') {
 		if (!staged_last.n) { core_msg(e, "No hunk to undo"); return -1; }
-		Cmd *c = wgit("apply", "--reverse", "--cached", "-p0", "-C3", "--ignore-space-change", "-", NULL);
+		Cmd *c = wgit("apply", "--reverse", "--cached", "-p0", "--unidiff-zero", "-", NULL);
 		str_add(&c->in, staged_last.s, staged_last.n);
 		staged_last.n = 0;
 		wsend(r, NULL, NULL);
 		return 0;
 	}
-	int h = hunk_of(r, T_UNSTAGED, o->rel, e->win->line);
-	if (h < 0 || (k != 's' && k != 'r')) { core_msg(e, "No hunk under the cursor"); return -1; }
-	if (apply(&r->st, h, r->st.sec[h].after, k == 's' ? "--cached" : "--reverse", NULL)) {
-		git_write_free(&W);
+	/* gitsigns' stage_hunk and reset_hunk: the block of signs under the cursor */
+	int fs = file_in(&r->st, top(&r->st, T_UNSTAGED), o->rel);
+	Blk bk;
+	if (fs < 0 || (k != 's' && k != 'r') || !block_at(&r->st, fs, (long)e->win->line + 1, &bk)) {
+		core_msg(e, "No hunk under the cursor");
 		return -1;
 	}
-	if (k == 's') { staged_last.n = 0; str_add(&staged_last, W.step[W.n - 1].in.s, W.step[W.n - 1].in.n); }
+	if (!strncmp(r->st.pool.s + r->st.sec[fs].aux, "diff --cc", 9)) { core_msg(e, "No hunk under the cursor"); return -1; }
+	Cmd *c = wgit("apply", k == 's' ? "--cached" : "--reverse", "-p0", "--unidiff-zero", "-", NULL);
+	if (!c || block_patch(&r->st, fs, &bk, k == 's', &c->in)) { git_write_free(&W); return -1; }
+	if (k == 's') { staged_last.n = 0; str_add(&staged_last, c->in.s, c->in.n); }
 	wsend(r, &f, NULL);
 	return 0;
 }
+
+static void opened(void *ctx, int stream, const char *b, size_t n) { (void)ctx; (void)stream; (void)b; (void)n; }
 
 /* SPC g B: the file on GitHub at the cursor's line, in the browser */
 static int browse(Editor *e)
@@ -1297,7 +1382,7 @@ static int browse(Editor *e)
 	Of *o = e->buf ? of(e->buf) : NULL;
 	if (!o || !o->r) { core_msg(e, "Not in a Git repository"); return -1; }
 	char p[PATH_MAX], line[1024], url[2048] = "";
-	snprintf(p, sizeof p, "%s/config", o->r->gitdir);
+	snprintf(p, sizeof p, "%s/config", o->r->common);
 	FILE *fp = fopen(p, "r");
 	int in = 0;
 	while (fp && fgets(line, sizeof line, fp)) {
@@ -1316,7 +1401,7 @@ static int browse(Editor *e)
 	snprintf(full, sizeof full, "https://github.com/%s/blob/%s/%s#L%zu", h,
 	         o->r->br.head ? o->r->br.head : o->r->br.oid ? o->r->br.oid : "HEAD", o->rel, e->win->line + 1);
 	char *argv[] = { "xdg-open", full, NULL };
-	if (proc_spawn(argv, o->r->top, NULL, NULL) < 0) { core_msg(e, "Cannot run xdg-open"); return -1; }
+	if (proc_spawn(argv, o->r->top, opened, NULL) < 0) { core_msg(e, "Cannot run xdg-open"); return -1; }
 	return 0;
 }
 
@@ -1337,7 +1422,7 @@ int git_leader(Editor *e, int prefix, int key)
 	case 'B': return browse(e);
 	}
 	if (!r) { core_msg(e, "Not in a Git repository"); return -1; }
-	Foc f = { r, NULL, &r->st, NULL };
+	Foc f = { r, NULL, &r->st, 0 };
 	switch (key) {
 	case 'l': log_open(e, r, "HEAD", NULL, NULL); return 0;
 	case 'L':
@@ -1351,49 +1436,22 @@ int git_leader(Editor *e, int prefix, int key)
 	return -1;
 }
 
-/* gitsigns' signs from the unstaged diff: a block of k removed and m added
-   lines marks min(k, m) lines changed, the rest added; removed lines with
-   nothing added in their place mark the line above them */
+/* gitsigns' signs from the unstaged diff (block_at) */
+static int scnr;                   /* git_sign's cache: buffer, repository, build, file section */
+static Repo *scr;
+static unsigned long scgen;
+static int scfs = -1;
 int git_sign(const Buf *b, size_t l)
 {
-	static const Buf *cb;
-	static unsigned long cgen;
-	static int cfs = -1;
-	static Repo *cr;
-	Of *o = NULL;
-	if (b != cb || !cr || cr->gen != cgen) {
-		o = of(b);
-		cb = b; cr = o ? o->r : NULL; cfs = -1;
-		if (!cr || !o->rel) return 0;
-		cgen = cr->gen;
-		cfs = file_in(&cr->st, top(&cr->st, T_UNSTAGED), o->rel);
+	if (b->nr != scnr || !scr || scr->gen != scgen) {
+		Of *o = of(b);
+		scnr = b->nr; scr = o ? o->r : NULL; scfs = -1;
+		if (!scr || !o->rel) return 0;
+		scgen = scr->gen;
+		scfs = file_in(&scr->st, top(&scr->st, T_UNSTAGED), o->rel);
 	}
-	if (cfs < 0) return 0;
-	const View *v = &cr->st;
-	long t = (long)l + 1;
-	for (int h = cfs + 1; h < v->sec[cfs].after; h = v->sec[h].after) {
-		if (!line_is(v, v->sec[h].start, '@')) continue;
-		const char *p = strchr(v->pool.s + v->ln[v->sec[h].start].off, '+');
-		char *q;
-		long n = strtol(p + 1, &q, 10), d = *q == ',' ? strtol(q + 1, NULL, 10) : 1, del = 0;
-		if (!d) n++;                   /* "+c,0": the lines went after line c */
-		for (size_t k = v->sec[h].start + 1; k <= v->sec[h].end; k++) {
-			char c = k < v->sec[h].end && v->ln[k].len ? v->pool.s[v->ln[k].off] : ' ';
-			if (c == '-') { del++; continue; }
-			if (c == '\\') continue;
-			if (c == '+') {
-				if (n == t) return del ? '~' : '+';
-				if (del) del--;
-				n++;
-				continue;
-			}
-			/* context, or the hunk's end */
-			if (del && (n - 1 == t || (n == 1 && t == 1))) return '_';
-			del = 0;
-			n++;
-		}
-	}
-	return 0;
+	Blk bk;
+	return scfs < 0 ? 0 : block_at(&scr->st, scfs, (long)l + 1, &bk);
 }
 
 /* git_free's part: no prompt, focus or remembered buffer survives */
@@ -1405,6 +1463,7 @@ void git_keys_free(void)
 	for (size_t i = 0; i < nofs; i++) free(ofs[i].rel);
 	free(ofs); ofs = NULL; nofs = 0;
 	str_free(&staged_last);
+	scnr = 0; scr = NULL; scfs = -1;
 	for (int i = 0; i < NK; i++) str_free(&D.files[i]);
 	git_write_free(&W);
 }
@@ -1415,11 +1474,11 @@ int git_status(Editor *e, const char *dir)
 	Repo *r = git_repo(dir);
 	if (!r) { core_msg(e, "Not in a Git repository"); return -1; }
 	if (git_headless) { hr = r; ha = NULL; }
-	else if (git_buf_alive(r->buf)) { if (e->buf != r->buf && core_buf_goto(e, r->buf->nr)) return -1; }
+	else if (git_buf(r->bufnr)) { if (!git_on(r->bufnr) && core_buf_goto(e, r->bufnr)) return -1; }
 	else {
 		if (core_edit_file(e, "", 0)) return -1;
-		r->buf = e->buf;
-		if (r->st.nvis) git_fill(r->buf, &r->st, r->cur);
+		r->bufnr = e->buf->nr;
+		if (r->st.nvis) git_fill(r->bufnr, &r->st, r->cur);
 	}
 	r->dirty = 1;                      /* magit-status refreshes the buffer */
 	git_schedule(r);

@@ -76,15 +76,27 @@ void cmd_free(Cmd *c) { str_free(&c->args); str_free(&c->in); c->argc = 0; }
 
 static void done(Repo *r, int slot);
 
+/* by address among the live ones: after git_free a killed child's end
+   still arrives, with its context freed */
+int git_live(const void *ctx)
+{
+	for (Repo *r = git_repos; r; r = r->next) {
+		if ((const char *)ctx >= (const char *)r->run && (const char *)ctx < (const char *)(r->run + NSLOT)) return 1;
+		for (Aux *a = r->aux; a; a = a->next) if (ctx == a) return 1;
+	}
+	return 0;
+}
+
 static void on_proc(void *ctx, int stream, const char *b, size_t n)
 {
+	if (!git_live(ctx)) return;
 	Run *u = ctx;
 	Repo *r = u->r;
 	if (stream == 1 && n) {
 		str_add(&r->out[u->slot], b, n);
 		if (u->slot == SLOT_WRITE && r->editing == 1) git_editor_seen(r);
 	} else if (stream == 2 && n) str_add(&r->err, b, n);
-	else if (stream == 0) { r->rc[u->slot] = (int)n; done(r, u->slot); }
+	else if (stream == 0) { r->rc[u->slot] = (int)n; r->pid[u->slot] = -1; done(r, u->slot); }
 }
 
 int git_spawn(Repo *r, int slot, Cmd *c)
@@ -96,7 +108,7 @@ int git_spawn(Repo *r, int slot, Cmd *c)
 	r->out[slot].n = 0;
 	r->run[slot] = (Run){ r, slot };
 	int id = proc_spawn(argv, r->top, on_proc, &r->run[slot]);
-	if (id < 0) return -1;
+	if (id < 0) { r->failed = 1; return -1; }
 	r->pid[slot] = id;
 	r->nproc++;
 	r->left++;
@@ -150,7 +162,7 @@ static void watch_dir(Repo *r, const char *path, int depth)
 			char rel[PATH_MAX];
 			snprintf(rel, sizeof rel, "%s/", sub + tl + 1);
 			if (ignored(r, rel)) continue;
-		} else if (strncmp(sub, r->gitdir, strlen(r->gitdir))) continue;
+		} else if (strncmp(sub, r->common, strlen(r->common))) continue;
 		watch_dir(r, sub, depth + 1);
 	}
 	closedir(d);
@@ -172,7 +184,7 @@ void git_drain(Repo *r)
 			char path[PATH_MAX];
 			snprintf(path, sizeof path, "%s/%s", dir, ev->len ? ev->name : "");
 			size_t tl = strlen(r->top);
-			int ingit = !strncmp(path, r->gitdir, strlen(r->gitdir));
+			int ingit = !strncmp(path, r->common, strlen(r->common));
 			if (!ingit) {
 				if (ev->len && !strcmp(ev->name, ".git")) continue;
 				const char *rel = path + tl + 1;
@@ -201,7 +213,7 @@ static void on_inotify(void *ctx, int fd)
 static int has_tags(Repo *r)
 {
 	char p[PATH_MAX];
-	snprintf(p, sizeof p, "%s/refs/tags", r->gitdir);
+	snprintf(p, sizeof p, "%s/refs/tags", r->common);
 	DIR *d = opendir(p);
 	if (d) {
 		struct dirent *de;
@@ -210,7 +222,7 @@ static int has_tags(Repo *r)
 		closedir(d);
 		if (any) return 1;
 	}
-	snprintf(p, sizeof p, "%s/packed-refs", r->gitdir);
+	snprintf(p, sizeof p, "%s/packed-refs", r->common);
 	FILE *f = fopen(p, "r");
 	if (!f) return 0;
 	char line[1024];
@@ -230,6 +242,7 @@ static void start_refresh(Repo *r)
 	r->phase = 1;
 	r->left = 0;
 	r->nproc = 0;
+	r->failed = 0;
 	cmd_git(&c, 1);
 	cmd_add(&c, "status");
 	cmd_add(&c, "--porcelain=v2");
@@ -334,9 +347,15 @@ static void done(Repo *r, int slot)
 				str_add(&r->ignp, p + 2, len - 2 + 1);
 			}
 		}
-		if (!r->watched) { r->watched = 1; watch_dir(r, r->top, 0); watch_dir(r, r->gitdir, 0); }
+		if (!r->watched) { r->watched = 1; watch_dir(r, r->top, 0); watch_dir(r, r->common, 0); }
 		start_reads(r);
-		if (!r->left) done(r, -1), r->left = 0;
+		if (!r->left) { r->left = 1; done(r, -1); }
+		return;
+	}
+	if (r->failed) {
+		/* a missing read would show a clean tree */
+		r->busy = 0;
+		msg("git: cannot run git", NULL);
 		return;
 	}
 	git_build_status(r);
@@ -398,10 +417,22 @@ Repo *git_repo(const char *dir)
 	if (!r) { free(top); free(gitdir); return NULL; }
 	r->top = top;
 	r->gitdir = gitdir;
+	/* gitrepository-layout: "commondir" names the shared directory */
+	char p[PATH_MAX + 16], line[PATH_MAX], g[2 * PATH_MAX + 2], rp[PATH_MAX];
+	snprintf(p, sizeof p, "%s/commondir", gitdir);
+	FILE *f = fopen(p, "r");
+	line[0] = 0;
+	if (f) { if (!fgets(line, sizeof line, f)) line[0] = 0; fclose(f); }
+	line[strcspn(line, "\n")] = 0;
+	if (line[0] == '/') snprintf(g, sizeof g, "%s", line);
+	else snprintf(g, sizeof g, "%s/%s", gitdir, line);
+	r->common = strdup(line[0] && realpath(g, rp) ? rp : gitdir);
+	if (!r->common) { free(r); free(top); free(gitdir); return NULL; }
 	r->st.cache = &r->cache;
 	r->ifd = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
 	if (r->ifd >= 0) loop_watch(r->ifd, on_inotify, r);
 	r->dirty = 1;
+	for (int s = 0; s < NSLOT; s++) r->pid[s] = -1;
 	r->next = git_repos;
 	git_repos = r;
 	return r;
@@ -424,7 +455,7 @@ static void repo_free(Repo *r)
 	branch_free(&r->br);
 	for (Aux *a = r->aux, *n; a; a = n) { n = a->next; git_aux_free(a); }
 	free(r->editmsg);
-	free(r->top); free(r->gitdir);
+	free(r->top); free(r->gitdir); free(r->common);
 	free(r);
 }
 
@@ -432,7 +463,7 @@ void git_free(void)
 {
 	for (Repo *r = git_repos, *n; r; r = n) {
 		n = r->next;
-		for (int s = 0; s < NSLOT; s++) if (r->busy && r->pid[s] >= 0) proc_kill(r->pid[s]);
+		for (int s = 0; s < NSLOT; s++) if (r->pid[s] >= 0) proc_kill(r->pid[s]);
 		repo_free(r);
 	}
 	git_repos = NULL;

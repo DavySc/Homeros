@@ -88,7 +88,7 @@ out:
 static int stashes(Repo *r, View *v)
 {
 	char p[4096];
-	snprintf(p, sizeof p, "%s/logs/refs/stash", r->gitdir);
+	snprintf(p, sizeof p, "%s/logs/refs/stash", r->common);
 	FILE *f = fopen(p, "r");
 	if (!f) return 0;
 	Str all = { 0 };
@@ -149,7 +149,7 @@ static int diffs(View *v, int type, const char *head, const Str *out, int cached
 static size_t cursor(Repo *r)
 {
 	Editor *e = git_ed();
-	if (e && r->buf && e->buf == r->buf) return e->win->line;
+	if (git_on(r->bufnr)) return e->win->line;
 	return r->cur;
 }
 
@@ -228,7 +228,7 @@ static void branch_of(Repo *r, const char *oid, Str *t)
 	char p[PATH_MAX + 32], line[1024], name[1024] = "";
 	t->n = 0;
 	str_addz(t, "Merging ");
-	snprintf(p, sizeof p, "%s/packed-refs", r->gitdir);
+	snprintf(p, sizeof p, "%s/packed-refs", r->common);
 	FILE *f = fopen(p, "r");
 	while (f && fgets(line, sizeof line, f))
 		if (!strncmp(line, oid, 40) && !strncmp(line + 41, "refs/heads/", 11)) {
@@ -236,12 +236,12 @@ static void branch_of(Repo *r, const char *oid, Str *t)
 			snprintf(name, sizeof name, "%s", line + 52);
 		}
 	if (f) fclose(f);
-	snprintf(p, sizeof p, "%s/refs/heads", r->gitdir);
+	snprintf(p, sizeof p, "%s/refs/heads", r->common);
 	DIR *d = opendir(p);
 	struct dirent *de;
 	while (d && (de = readdir(d))) {
 		if (de->d_name[0] == '.') continue;
-		snprintf(p, sizeof p, "%s/refs/heads/%s", r->gitdir, de->d_name);
+		snprintf(p, sizeof p, "%s/refs/heads/%s", r->common, de->d_name);
 		FILE *h = fopen(p, "r");
 		if (h && fgets(line, sizeof line, h) && !strncmp(line, oid, 40)) snprintf(name, sizeof name, "%s", de->d_name);
 		if (h) fclose(h);
@@ -355,20 +355,29 @@ out:
 
 /* --- into the core buffer ---------------------------------------------------- */
 
-int git_buf_alive(const Buf *b)
+/* by number, not address: a buffer deleted and another allocated in its
+   place is not the one remembered */
+Buf *git_buf(int nr)
 {
 	Editor *e = git_ed();
-	if (!e || !b) return 0;
-	for (Buf *x = e->bufs; x; x = x->next) if (x == b) return 1;
-	return 0;
+	if (!e || !nr) return NULL;
+	for (Buf *x = e->bufs; x; x = x->next) if (x->nr == nr) return x;
+	return NULL;
+}
+
+int git_on(int nr)
+{
+	Editor *e = git_ed();
+	return e && nr && e->buf && e->buf->nr == nr;
 }
 
 /* The view's text replaces the buffer's (no undo: nobody edits it), and
    every window on it gets the cursor line cur. */
-void git_fill(Buf *b, View *v, size_t cur)
+void git_fill(int nr, View *v, size_t cur)
 {
 	Editor *e = git_ed();
-	if (!git_buf_alive(b)) return;
+	Buf *b = git_buf(nr);
+	if (!b) return;
 	text_delete(b->text, 0, text_len(b->text));
 	text_insert(b->text, 0, v->text.s, v->text.n);
 	b->flags &= ~(unsigned)CORE_EMPTY;
@@ -379,5 +388,5 @@ void git_fill(Buf *b, View *v, size_t cur)
 
 void git_show(Repo *r, View *v)
 {
-	git_fill(r->buf, v, r->cur);
+	git_fill(r->bufnr, v, r->cur);
 }
