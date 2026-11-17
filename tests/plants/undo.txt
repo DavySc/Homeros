@@ -1,4 +1,11 @@
-# Plants for ref/undo.c (format in tools/planted.sh).  The package that builds
-# src/undo/ replaces this file with plants for its own code.
-undo: a new edit keeps redo (Undo_keepredo)~test TESTS=undo~~ref/undo.c~		while (u->n > u->done) group_free(&u->g[--u->n]);~
-undo: undo leaves the group open (Undo_noclose)~test TESTS=undo~~ref/undo.c~	u->open = 0;¶	if (!u->done) return 0;~	if (!u->done) return 0;
+# Plants for src/undo/ (format in tools/planted.sh).
+undo: undo leaves the group open (Undo_noclose)~test TESTS=undo~~src/undo/undo.c~int undo_undo(Undo *u, Text *t, UndoWhere *w)¶{¶	u->open = 0;~int undo_undo(Undo *u, Text *t, UndoWhere *w)¶{
+undo: a group undone first edit first~test TESTS=undo~~src/undo/undo.c~Edit *e = &h->e[undo ? h->n - 1 - k : k];~Edit *e = &h->e[k];
+undo tree: a jump does not make its branch first, so Ctrl-R takes another~undo-diff UNDO_N=1000~~src/undo/undo.c~	if (last != h) {~	if (0) {
+undo tree: :earlier Ns stops on the closest change, not above it~undo-diff UNDO_N=1000~~src/undo/undo.c~if (step < 0) above = 1;~
+undo tree: :earlier Nf does not count changes since the last write~undo-diff UNDO_N=1000~~src/undo/undo.c~(h && h->save ? 0 : 1)~1
+undo cap: the redo branch it cannot reconnect is kept~undo-diff UNDO_N=1000~~src/undo/undo.c~if (f == old) freebranch(u, f, &old);~if (0) ;
+undo cap: 1,000 changes kept instead of 1,001~test TESTS=undo_file~~src/undo/undo.c~while (u->numhead > UNDO_LEVELS && u->oldhead) {~while (u->numhead >= UNDO_LEVELS && u->oldhead) {
+undo file: a change that does not apply is accepted~test TESTS=undo_file~~src/undo/undo.c~if (!bad) bad = check_text(c, u->oldhead);~if (!bad) bad = 0 && check_text(c, u->oldhead);
+undo file: SHA-256 with a wrong round constant~test TESTS=undo_file~~src/undo/undo.c~0x428a2f98~0x428a2f99
+undo hook: told after the change instead of before~fuzz FUZZERS=undo FUZZ_SECONDS=30~~src/undo/undo.c~		if (u->hook) u->hook(u->ctx, t, e->pos, nd, ins, ni);¶		if (text_delete(t, e->pos, nd) || text_insert(t, e->pos, ins, ni)) return -1;~		if (text_delete(t, e->pos, nd) || text_insert(t, e->pos, ins, ni)) return -1;¶		if (u->hook) u->hook(u->ctx, t, e->pos, nd, ins, ni);
