@@ -44,6 +44,7 @@ static int cursor_lineempty(void) { return W->col == 0 && lineempty((long)W->lin
 int fwd_word(long count, int bigword, int eol)
 {
 	cls_bigword = bigword;
+	setcur((Pos){ (long)W->line, (long)W->col, 0 });
 	while (--count >= 0) {
 		int sclass = cls(), last_line = (long)W->line + 1 == nlines();
 		int i = inc_cursor();
@@ -73,6 +74,7 @@ static int skip_chars(int cclass, int dir)
 int bck_word(long count, int bigword, int stop)
 {
 	cls_bigword = bigword;
+	setcur((Pos){ (long)W->line, (long)W->col, 0 });
 	while (--count >= 0) {
 		int sclass = cls();
 		if (dec_cursor() == -1) return 0;
@@ -93,6 +95,7 @@ finished:
 int end_word(long count, int bigword, int stop, int empty)
 {
 	cls_bigword = bigword;
+	setcur((Pos){ (long)W->line, (long)W->col, 0 });
 	while (--count >= 0) {
 		int sclass = cls();
 		if (inc_cursor() == -1) return 0;
@@ -115,6 +118,7 @@ finished:
 int bckend_word(long count, int bigword, int eol)
 {
 	cls_bigword = bigword;
+	setcur((Pos){ (long)W->line, (long)W->col, 0 });
 	while (--count >= 0) {
 		int i, sclass = cls();
 		if ((i = dec_cursor()) == -1) return 0;
@@ -320,6 +324,7 @@ int findmatch(Pos *out, int initc) { return findmatchlimit(out, initc, 0); }
 int findmatchlimit(Pos *out, int initc, int flags)
 {
 	Pos pos = cur(), match_pos = { 0, 0, 0 };
+	pos.coladd = 0;
 	int findc = 0, count = 0, backwards = 0, inquote = 0, hash_dir = 0, comment_dir = 0;
 	int ignore_cend = 0, match_escaped = 0, dir;
 	long comment_col = MAXCOL;

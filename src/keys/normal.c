@@ -63,18 +63,29 @@ static int checkclearopq(Oparg *oap)
 
 /* ---- the redo buffer ('.') ---- */
 
-static int redobuf[4096], redo_n;
-static int redo_cancelled;
+/* ResetRedobuff() keeps the previous command (old_redobuff): "." after
+   CTRL-O repeats that one, not the insert CTRL-O interrupted */
+enum { REDO_MAX = 4096 };
+static int redo_a[REDO_MAX], redo_b[REDO_MAX], *redobuf = redo_a, *old_redobuf = redo_b;
+static long redo_n, old_redo_n;
 int redo_busy;
 
-void redo_reset(void) { if (!redo_busy) { redo_n = 0; redo_cancelled = 0; } }
+void redo_reset(void)
+{
+	if (redo_busy) return;
+	int *t = old_redobuf;
+	old_redobuf = redobuf;
+	old_redo_n = redo_n;
+	redobuf = t;
+	redo_n = 0;
+}
+
 long redo_get(const int **k) { *k = redobuf; return redo_n; }
-void redo_cancel(void) { redo_cancelled = 1; }
 
 int redo_append(int k)
 {
-	if (redo_busy || redo_cancelled) return 0;
-	if (redo_n < (int)(sizeof redobuf / sizeof *redobuf)) redobuf[redo_n++] = k;
+	if (redo_busy) return 0;
+	if (redo_n < REDO_MAX) redobuf[redo_n++] = k;
 	return 0;
 }
 
@@ -107,27 +118,30 @@ static void prep_redo_cmd(Cmdarg *cap)
 
 /* start_redo(): stuff the redo buffer, with the new count and the next
    numbered register */
-static int start_redo(long count)
+static int start_redo(long count, int old_redo)
 {
-	if (!redo_n) return 0;
-	int b[4096], n = 0, i = 0;
-	int c = redobuf[i++];
+	const int *rb = old_redo ? old_redobuf : redobuf;
+	long rn = old_redo ? old_redo_n : redo_n;
+	if (!rn) return 0;
+	int b[REDO_MAX + 24];
+	long n = 0, i = 0;
+	int c = rb[i++];
 	if (c == '"') {
 		b[n++] = '"';
-		c = redobuf[i++];
+		c = rb[i++];
 		if (c >= '1' && c < '9') c++;
 		b[n++] = c;
-		c = i < redo_n ? redobuf[i++] : 0;
+		c = i < rn ? rb[i++] : 0;
 	}
 	if (c == 'v') {
 		VIsual = cur();
 		VIsual_active = 1;
 		VIsual_reselect = 1;
 		redo_VIsual_busy = 1;
-		c = i < redo_n ? redobuf[i++] : 0;
+		c = i < rn ? rb[i++] : 0;
 	}
 	if (count) {
-		while (c >= '0' && c <= '9') c = i < redo_n ? redobuf[i++] : 0;
+		while (c >= '0' && c <= '9') c = i < rn ? rb[i++] : 0;
 		char d[24];
 		int k = 0;
 		do d[k++] = (char)('0' + count % 10); while (count /= 10);
@@ -135,7 +149,7 @@ static int start_redo(long count)
 	}
 	b[n++] = c;
 	stuff_redo(b, n);
-	stuff_redo(redobuf + i, redo_n - i);
+	stuff_redo(rb + i, rn - i);
 	return 1;
 }
 
@@ -875,7 +889,7 @@ static void nv_undo(Cmdarg *cap)
 static void nv_dot(Cmdarg *cap)
 {
 	if (checkclearopq(cap->oap)) return;
-	if (!start_redo(cap->count0)) clearopbeep(cap->oap);
+	if (!start_redo(cap->count0, restart_edit && !arrow_used)) clearopbeep(cap->oap);
 }
 
 static void nv_regname(Cmdarg *cap)
