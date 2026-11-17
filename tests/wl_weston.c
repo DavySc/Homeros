@@ -254,14 +254,16 @@ static uint32_t *capture(int kick)
    grid does. */
 static void pixels(void)
 {
-	start("kiosk", 640, 480, 1);
+	start("kiosk", 645, 480, 1);   /* 645: a margin right of the cells */
 	open_editor();
-	static const char *ch[] = { "a", "{", "-", ">", "\xc3\xa9", "\xe2\x88\x80", " " };
+	/* U+27F9 is twice a cell wide in JetBrains Mono: its ink must stay in
+	   the cells */
+	static const char *ch[] = { "a", "{", "-", ">", "\xc3\xa9", "\xe2\x88\x80", " ", "\xe2\x9f\xb9" };
 	int k[1];
 	for (int f = 0; f < 300; f++) {
 		for (int i = rnd(6); i >= 0; i--) {
 			int r = (int)rnd((unsigned)g.rows), c = (int)rnd((unsigned)g.cols);
-			const char *s = ch[rnd(7)];
+			const char *s = ch[rnd(8)];
 			grid_put(&g, r, c, (const unsigned char *)s, strlen(s), 1, (int)rnd(3));
 			g.c[r * g.cols + c].face = (unsigned char)rnd(FACE_COUNT);
 		}
@@ -536,7 +538,7 @@ static int other(int write_it, const char *want, size_t n, int ctl)
 	struct xdg_toplevel *tl = xdg_surface_get_toplevel(xs);
 	wl_surface_commit(s);
 	wl_display_roundtrip(d);
-	int w = write_it == 2 ? 640 : 100, h = write_it == 2 ? 480 : 100;   /* the cover: pixels()'s whole screen */
+	int w = write_it == 2 ? 645 : 100, h = write_it == 2 ? 480 : 100;   /* the cover: pixels()'s whole screen */
 	int fd = memfd_create("o", 0);
 	if (ftruncate(fd, w * h * 4)) return 4;
 	struct wl_shm_pool *pool = wl_shm_create_pool(os, fd, w * h * 4);

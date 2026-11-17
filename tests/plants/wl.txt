@@ -18,3 +18,4 @@ wl: paste loses its last byte~wl-test~~src/wl/wl.c~if (r == 0) { close(p[0]); re
 wl: own clipboard not answered locally~wl-test~~src/wl/wl.c~		return (long)clipn;~		return -1;
 wl: every row taken as unchanged~wl-test~~src/wl/wl.c~return !memcmp(&a->c[r * a->cols], x, (size_t)a->cols * sizeof *x);~return a && x && r >= 0;
 wl: compositor gone, editor keeps running~wl-test~~src/wl/wl.c~			gone = 1;¶			push_utf8("\x1b:qa!\r");~			gone = 1;
+wl: glyph ink drawn past the last cell~wl-test~~src/wl/wl.c~if (x < 0 || x >= right || x >= W) continue;~if (x < 0 || x >= W + 0 * right) continue;

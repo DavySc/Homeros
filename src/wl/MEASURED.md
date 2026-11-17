@@ -33,7 +33,7 @@ plugin (`src/wl/weston-test.nix`), on both of weston's renderers.
 | frame callbacks | ready false until the callback; ≤ 62 frames in 1 s |
 | configure size | kiosk shell's configured size at scale 1 and 2 gives rows = 768·scale / cell height, cols likewise |
 | scale | output scale 2 opens the font at twice the size and sets buffer scale 2 |
-| pixels | 300 random frames drawn piece by piece; the screen equals a full redraw, both as damaged (0 pixels differ) and after a full-screen window covers it and leaves (0 differ) |
+| pixels | 300 random frames drawn piece by piece, with a glyph twice a cell wide (U+27F9) and a margin right of the cells; the screen equals a full redraw, both as damaged (0 pixels differ) and after a full-screen window covers it and leaves (0 differ) |
 | keys | a, A, Ctrl-R, Backspace (127, not xkb's 8), Enter, Esc, Up, b; Delete dropped; leftover keys wake the loop |
 | key repeat | j held 600 ms with delay 200 ms, rate 50/s gives 19 to 23 keys; stops on release; no timer while idle (poll 2 s returns 0) |
 | pointer | click at cell (3,5); wheel 15 units per key, also accumulated over small events |
@@ -42,9 +42,10 @@ plugin (`src/wl/weston-test.nix`), on both of weston's renderers.
 | editor | the real `homeros` in a window types, saves and quits |
 | compositor gone | weston killed: the editor gets `:qa!` once, then no busy loop |
 
-Plants: `tests/plants/wl.txt`, 19 bugs, each must fail `make wl-test`.
+Plants: `tests/plants/wl.txt`, 20 bugs, each must fail `make wl-test`.
 **measured** (`planted.sh` on `wl.txt`, 1 full run on the final code): 19 of
-19 caught.  The stale-buffer plant was missed at first: the window that
+19 caught; the 20th (glyph ink past the last cell, added with package 7's
+fonts) is caught too (1 run).  The stale-buffer plant was missed at first: the window that
 covers the editor was 100x100, so most rows were never recomposited, and the
 capture's kick frames redrew the stale rows; the cover is now the whole
 screen and pixman captures without a kick.
@@ -100,6 +101,16 @@ values):
 - The font size: 16 px at scale 1 (**hypothesis**, Davy's preference unknown).
 - Window close (Hyprland's killactive sends xdg_toplevel.close → KEY_CLOSE;
   weston cannot send it, so untested).
+
+## Glyphs larger than their cell
+
+Ink is clipped to the glyph's row and to the cells (package 7's review: 73 of
+295 Lean symbols reach outside their cell).  A frame redraws whole rows and
+never the margins, so ink let past those bounds would outlive what drew it;
+clipping keeps a partial frame equal to a full redraw (the pixel test, with
+U+27F9).  Ink overflowing into the next cell of the same row is kept.  Tall
+symbols lose what is above or below their row (**hypothesis** that this is rare in
+Davy's Lean; not yet compared with foot or kitty).
 
 ## Not tested anywhere
 

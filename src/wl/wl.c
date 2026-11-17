@@ -703,7 +703,10 @@ static uint32_t mix(uint32_t d, uint32_t s, uint32_t a)
 
 /* A glyph clipped to its row's band, so a frame never paints a row it did
    not redraw. */
-static void blit(Buf *b, const Glyph *g, int x0, int y0, int top, int bot, uint32_t fg)
+/* A glyph is clipped to its row and to the cells: a frame redraws whole rows
+   and never the margins, so ink drawn outside them (73 of 295 Lean symbols
+   reach outside their cell, package 7's review) would outlive its cell. */
+static void blit(Buf *b, const Glyph *g, int x0, int y0, int top, int bot, int right, uint32_t fg)
 {
 	uint32_t *px = b->px;
 	int W = b->w, H = b->h;
@@ -712,7 +715,7 @@ static void blit(Buf *b, const Glyph *g, int x0, int y0, int top, int bot, uint3
 		if (y < top || y >= bot || y >= H) continue;
 		for (int i = 0; i < g->w; i++) {
 			int x = x0 + i;
-			if (x < 0 || x >= W) continue;
+			if (x < 0 || x >= right || x >= W) continue;
 			uint32_t *p = &px[y * W + x];
 			if (g->color) {   /* premultiplied BGRA: over */
 				const unsigned char *s = g->px + (j * g->w + i) * 4;
@@ -775,7 +778,7 @@ static void draw_row(Buf *b, const Cell *x, int cols, int r)
 		for (int i = 0; i < np; i++) {
 			const Placed *p = &placed[i];
 			blit(b, p->g, col_of[p->cluster] * cw + p->x + p->g->left, y0 + base - p->y - p->g->top,
-			     y0, y0 + chh, fg_of(&x[c]));
+			     y0, y0 + chh, cols * cw, fg_of(&x[c]));
 		}
 		c = e;
 	}
