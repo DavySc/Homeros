@@ -322,6 +322,18 @@ static void locks(void)
 	CHECK(journal_open(path, &j, &t, &st, &id) == -1 && errno == EWOULDBLOCK);
 	kill_child(p);
 	CloseHandle(out);
+	/* a reader of the leftover journal (a scanner, a backup) is not an
+	   editor: recovery goes on (review of PR 25, 2) */
+	HANDLE rd = CreateFileA(jname, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, 0, NULL);
+	CHECK(rd != INVALID_HANDLE_VALUE);
+	CHECK(journal_open(path, &j, &t, &st, &id) == 1 && text_len(t) == 5);
+	text_free(t);
+	journal_close(j);
+	CloseHandle(rd);
+	p = child("holder", &out);
+	CHECK(ReadFile(out, b, sizeof b, &r, NULL) && r >= 5 && !memcmp(b, "ready", 5));
+	kill_child(p);
+	CloseHandle(out);
 	/* NTFS names ignore case: the same file spelt in capitals finds it */
 	char up[sizeof path];
 	snprintf(up, sizeof up, "%s", path);
@@ -329,7 +341,7 @@ static void locks(void)
 	CHECK(journal_open(up, &j, &t, &st, &id) == 1 && text_len(t) == 5);
 	text_free(t);
 	journal_close(j);
-	puts("  locks: a second editor is kept out while the first lives, and recovers once it is killed, by any case of the name");
+	puts("  locks: a second editor is kept out while the first lives, and recovers once it is killed, with a reader holding the journal, by any case of the name");
 }
 
 /* base "abc\n" and k edits inserting "xy", then waits to be killed: the

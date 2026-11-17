@@ -1,12 +1,15 @@
 /* Files on Windows: the twin of file.c and state.c.  Save follows Save.tla's
    rename mechanism, since Windows has no exchange call (DESIGN.md "Save,
    Windows"): temp file in the same directory, FlushFileBuffers, the identity
-   check, then MoveFileExW over the file, as Git for Windows does.  Not
-   ReplaceFileW, which DESIGN.md named for keeping the original's attributes
-   and ACLs: it removes the file and then moves the temp in, and a save killed
-   between the two left no file (measured under Wine; the temp gets the
-   directory's inherited ACL, as a new file does).  Paths are UTF-8 in the
-   editor and UTF-16 here. */
+   check, then MoveFileExW over the file, as Git for Windows, libuv, Go and
+   Rust replace files.  Not ReplaceFileW, which DESIGN.md named for keeping
+   the original's attributes and ACLs: without a backup name Microsoft
+   documents a failure (1176, ERROR_UNABLE_TO_MOVE_REPLACEMENT) that leaves no
+   file at the path, and Wine runs it as three renames, so a save killed there
+   left no file (measured under Wine, of Wine).  The rename gives up what
+   ReplaceFileW keeps: creation time, DACL (the directory's inherited one
+   instead), hidden and system attributes, EFS encryption, compression, named
+   streams.  Paths are UTF-8 in the editor and UTF-16 here. */
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -122,13 +125,18 @@ int file_save(const char *path, const Text *t, size_t n, FileId *id, int force,
 	}
 	if (h == INVALID_HANDLE_VALUE) { fail(); return SAVE_ERR; }
 	/* WriteTmp: durable before the name points at it (Save2_nofsync's lesson
-	   holds for a rename too); its identity by handle, as file.c */
-	if (write_text(h, t, n) || (!FlushFileBuffers(h) && fail()) || ident(h, &mine)) {
+	   holds for a rename too) */
+	if (write_text(h, t, n) || (!FlushFileBuffers(h) && fail())) {
 		CloseHandle(h);
 		DeleteFileW(tmp);
 		return SAVE_ERR;
 	}
 	CloseHandle(h);
+	/* its identity after the close, by its own name: the last write time is
+	   final only once the writing handle is closed (Microsoft, "File
+	   Times"), and the name is ours until the rename, which changes none of
+	   volume, index, size or time */
+	if (stat_id(tmp, &mine)) { DeleteFileW(tmp); return SAVE_ERR; }
 	/* Check, as late as it can be: just before Rename */
 	if (stat_id(w, &now)) { DeleteFileW(tmp); return SAVE_ERR; }
 	if (!force && !same(id, &now)) { DeleteFileW(tmp); return SAVE_CHANGED; }
@@ -184,12 +192,12 @@ int state_open(const char *kind, const char *abs, char *out, size_t outsz, int f
 	out[k + strlen(abs)] = 0;
 	wchar_t w[PATH_MAX];
 	if (wide(out, w)) return -1;
-	/* the lock is the share mode: a second editor's open fails with a
-	   sharing violation (EWOULDBLOCK), and it goes with a crashed process;
-	   FILE_SHARE_DELETE so state_close can remove the name while open */
+	/* full sharing: a scanner or a backup reading a journal left by a crash
+	   must not look like a second editor (state_lock is the lock);
+	   FILE_SHARE_DELETE also lets state_close remove the name while open */
 	HANDLE h;
 	for (int again = 1;; again = 0) {
-		h = CreateFileW(w, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_DELETE, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+		h = CreateFileW(w, GENERIC_READ | GENERIC_WRITE, SHARE_ALL, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 		if (h != INVALID_HANDLE_VALUE || GetLastError() != ERROR_PATH_NOT_FOUND || !again) break;
 		/* only the first time: the directories (a failing one shows at the open) */
 		for (wchar_t *p = wcschr(w, L'\\'); p; p = wcschr(p + 1, L'\\')) {
@@ -221,7 +229,11 @@ int state_lock(int fd, const char *name, long long *size)
 {
 	HANDLE h = (HANDLE)_get_osfhandle(fd);
 	FILE_STANDARD_INFO i;
+	/* one byte far past any data, so the lock never blocks our own reads
+	   and writes; it goes with a crashed process, as flock */
+	OVERLAPPED o = { .Offset = 0, .OffsetHigh = 0x40000000 };
 	(void)name;
+	if (!LockFileEx(h, LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY, 0, 1, 0, &o)) return fail();
 	if (!GetFileInformationByHandleEx(h, FileStandardInfo, &i, sizeof i)) return fail();
 	/* the holder before us removed it and has not closed it yet */
 	if (i.DeletePending) return 1;
