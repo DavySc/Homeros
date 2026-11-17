@@ -65,7 +65,13 @@ for k, v in pairs(upv(vim.filetype.add, "pattern")) do
   end
 end
 local dirs = tbl("dir_icons", keys(MiniIcons.list("directory")), "directory")
-local files = tbl("file_icons", keys(MiniIcons.list("file"), upv(vim.filetype.match, "filename"), names), "file")
+-- mini.icons' own names match the basename, also of "name/"; the names
+-- only Neovim's filetype match knows match the whole name, so not "name/"
+local mini = keys(MiniIcons.list("file"))
+local isMini, only = {}, {}
+for _, k in ipairs(mini) do isMini[k] = true end
+for _, k in ipairs(keys(upv(vim.filetype.match, "filename"), names)) do if not isMini[k] then only[#only + 1] = k end end
+local files = tbl("file_icons", mini, "file") + tbl("ft_icons", only, "file")
 local ext = {}
 for _, k in ipairs(keys(MiniIcons.list("extension"), upv(vim.filetype.match, "extension"))) do ext[#ext + 1] = k:lower() end
 ext = keys(ext)

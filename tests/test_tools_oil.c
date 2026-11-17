@@ -2,7 +2,8 @@
    src/tools/conform/oil.lua (seed 42, 400 cases, then three its plants
    need: 1206 of seed 1, a broken link; 2278 of seed 2, a failed copy;
    43064 of seed 43, an empty path part; seeds 1 and 2 from the generator
-   before it made "/" names and brace groups): the
+   before it made "/" names and brace groups; 44020 and 44035 of seed 44
+   with "slash", link targets ending in "/"): the
    rendered lines; the actions (or errors) for the edited lines; and once
    oil has run them, the tree, and both buffers listed again.  With "-" it
    is the live driver: oil's output on stdin, our differences on stderr.

@@ -12,7 +12,7 @@ oil: a link line without " -> " kept as its entry~test TESTS=tools_oil~~src/tool
 oil: link targets compared with their trailing /~test TESTS=tools_oil~~src/tools/oil.c~	return n == trimsep(b) && !memcmp(a, b, n);~	return n == strlen(b) && !memcmp(a, b, n);
 oil: a directory's children waited on in list order, not name order~test TESTS=tools_oil~~src/tools/oil.c~		for (; j > from && strcmp(~		for (; j > from && 0 && strcmp(
 oil: a move cycle's temporary name made from the destination~test TESTS=tools_oil~~src/tools/oil.c~"%s__oil_tmp_%05d", a->src~"%s__oil_tmp_%05d", a->dst
-oil: no icon by exact file name~test TESTS=tools_oil~~src/tools/icons.c~	if ((r = GET(file_icons, base))) return r;~	if (0 && (r = GET(file_icons, base))) return r;
+oil: no icon by exact file name~test TESTS=tools_oil~~src/tools/icons.c~	if ((r = GET(file_icons, base, n))) return r;~	if (0 && (r = GET(file_icons, base, n))) return r;
 oil: a failed copy leaves the new file~test TESTS=tools_oil~~src/tools/oil.c~	if (rc && out >= 0) unlink(dst);~	(void)0;
 oil: a broken link forgets its target was a directory~test TESTS=tools_oil~~src/tools/oil.c~	if (linkdir >= 0) E[i].linkdir = linkdir;~	E[i].linkdir = linkdir > 0;
 oil: a move keeps the entry's link target~test TESTS=tools_oil~~src/tools/oil.c~	E[i].dir = dir; E[i].name = name; E[i].link = NULL; E[i].linkdir = 0;~	E[i].dir = dir; E[i].name = name; E[i].link = NULL;
@@ -28,4 +28,5 @@ oil: only the first brace group takes the alternative~test TESTS=tools_oil~~src/
 oil: a parent copied into itself is allowed~test TESTS=tools_oil~~src/tools/oil.c~				*msg = m;¶				goto out;~				(void)m;
 oil: natural order kept above 5,000 entries~test TESTS=tools_oil~~src/tools/oil.c~	sort_nat = k <= 5000;~	sort_nat = 1;
 picker: the frecency store read as all zeros~test TESTS=tools_pick~~src/tools/pick.c~		if (d) *d = strtod(ln, NULL);~		if (d) *d = 0;
-picker: grep drops the rg arguments after --~test TESTS=tools_pick~~src/tools/pick.c~	for (int i = 0; i < na; i++) argv[k++] = pa[i];~	(void)pa;
+picker: grep drops the rg arguments after --~test TESTS=tools_pick~~src/tools/pick.c~	for (int i = 0; i < na; i++) argv[k++] = pa[i];~	for (int i = 0; i < na - na; i++) argv[k++] = pa[i];
+oil: a link target's icon ignores the trailing /~test TESTS=tools_oil~~src/tools/icons.c~if (!slash && (r = GET(ft_icons~if ((r = GET(ft_icons

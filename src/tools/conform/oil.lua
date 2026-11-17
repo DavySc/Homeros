@@ -1,5 +1,6 @@
 -- Oracle for src/tools/oil.c: oil.nvim lists, renders and turns edited
--- lines into actions.  nvim --clean --headless -l oil.lua OIL MINI SEED N
+-- lines into actions.  nvim --clean --headless -l oil.lua OIL MINI SEED N [slash]
+-- (slash: every link target ends in "/"; without it older seeds replay)
 -- Each case: a random tree under /tmp/oc, two oil buffers (the root and a
 -- subdirectory), random edits; prints per case
 --   C seed / R buf line (rendered) / E buf line (edited) /
@@ -29,6 +30,7 @@ local function tree(p)
   end
 end
 local seed, n = tonumber(arg[3]), tonumber(arg[4])
+local tail = arg[5] == "slash" and "/" or ""
 local NAMES = { "a.c", "b.lua", "README.md", "Makefile", "file9.txt", "file10.txt", "x", "sub", ".hidden",
   "deep", "z.tar.gz", "Ä.md", "notes.org", "img.png", "a b", "UPPER", "007", "v2.0.1" }
 local function rnd(t) return t[math.random(#t)] end
@@ -47,7 +49,7 @@ for c = 1, n do
     local p = (math.random() < 0.3 and "/tmp/oc/sub/" or "/tmp/oc/") .. nm
     if not vim.uv.fs_lstat(p) then
       if math.random() < 0.25 then vim.fn.mkdir(p, "p")
-      elseif math.random() < 0.3 then vim.uv.fs_symlink(rnd(NAMES), p)
+      elseif math.random() < 0.3 then vim.uv.fs_symlink(rnd(NAMES) .. tail, p)
       else vim.fn.writefile({ nm }, p) end
     end
   end

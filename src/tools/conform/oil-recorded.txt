@@ -12195,4 +12195,88 @@ E 1 /000 󰉋  ../
 E 1 /002 󰈔  deep
 E 2 /003 󰉋  sub/
 X 0 -1 Detected cycle in desired paths
+C 44020
+R 1 /000 󰉋  ../
+R 1 /001 󰉋  file9.txt/ -> sub/
+R 1 /007 󰉋  file10.txt/
+R 1 /005 󰉋  sub/
+R 1 /003 󱁤  Makefile
+R 1 /008   notes.org
+R 1 /002 󰗄  v2.0.1 -> z.tar.gz/
+R 1 /004   x -> notes.org/
+R 1 /006 󰗄  z.tar.gz
+R 2 /000 󰉋  ../
+R 2 /009 󰸭  sub -> img.png/
+K 1 /tmp/oc/ link 1 file9.txt -> sub/
+K 2 /tmp/oc/ link 0 v2.0.1 -> z.tar.gz/
+K 3 /tmp/oc/ file 0 Makefile
+K 4 /tmp/oc/ link 0 x -> notes.org/
+K 5 /tmp/oc/ directory 0 sub
+K 6 /tmp/oc/ file 0 z.tar.gz
+K 7 /tmp/oc/ directory 0 file10.txt
+K 8 /tmp/oc/ file 0 notes.org
+K 9 /tmp/oc/sub/ link 0 sub -> img.png/
+E 1 /000 󰉋  ../
+E 1 /001 󰉋  file9.txt/ -> sub/
+E 1 /007 󰉋  file10.txt/
+E 1 /005 󰉋  sub/
+E 1 /003 󱁤  Makefile
+E 1 /008   notes.org
+E 1 /002 󰗄  v2.0.1 -> z.tar.gz/
+E 1 /004   x -> notes.org/
+E 1 /0001 x  deep
+E 1 /006 󰗄  z.tar.gz
+X 1 8 Could not find existing entry (was the ID changed?)
+E 2 /000 󰉋  ../
+E 2 u.{v,}
+E 2 /009 󰸭  sub -> img.png//
+C 44035
+R 1 /000 󰉋  ../
+R 1 /003 󰉋  a b/
+R 1 /001 󰉋  file9.txt/
+R 1 /005 󰉋  sub/
+R 1 /002 󰗄  .hidden -> z.tar.gz/
+R 1 /007 󰦪  file10.txt
+R 1 /004 󰈔  x -> v2.0.1/
+R 1 /006 󰗄  z.tar.gz
+R 2 /000 󰉋  ../
+R 2 /008   README.md -> notes.org/
+R 2 /010 󰈔  z.tar.gz -> Makefile/
+R 2 /009 󰦪  Ä.md -> file9.txt/
+K 1 /tmp/oc/ directory 0 file9.txt
+K 2 /tmp/oc/ link 0 .hidden -> z.tar.gz/
+K 3 /tmp/oc/ directory 0 a b
+K 4 /tmp/oc/ link 0 x -> v2.0.1/
+K 5 /tmp/oc/ directory 0 sub
+K 6 /tmp/oc/ file 0 z.tar.gz
+K 7 /tmp/oc/ file 0 file10.txt
+K 8 /tmp/oc/sub/ link 0 README.md -> notes.org/
+K 9 /tmp/oc/sub/ link 0 Ä.md -> file9.txt/
+K 10 /tmp/oc/sub/ link 0 z.tar.gz -> Makefile/
+E 1 /000 󰉋  ../
+E 1 /003 󰉋  a b/
+E 1 /002 󰗄  .hidden -> z.tar.gz/
+E 1 /007 󰦪  file10.txt
+E 1 /004 󰈔  x -> v2.0.1/
+E 2 /001 󰉋  file9.txt/
+E 2 /000 󰉋  README.md
+A move directory /tmp/oc/file9.txt /tmp/oc/sub/file9.txt
+A delete link /tmp/oc/sub/README.md -
+A delete link /tmp/oc/sub/z.tar.gz -
+A delete link /tmp/oc/sub/Ä.md -
+A delete directory /tmp/oc/sub -
+A delete file /tmp/oc/z.tar.gz -
+D ok
+T /tmp/oc/.hidden link -> z.tar.gz/
+T /tmp/oc/a b directory
+T /tmp/oc/file10.txt file file10.txt
+T /tmp/oc/x link -> v2.0.1/
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  a b/
+S 1 /002 󰗄  .hidden -> z.tar.gz/
+S 1 /007 󰦪  file10.txt
+S 1 /004 󰈔  x -> v2.0.1/
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 .
