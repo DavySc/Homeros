@@ -301,6 +301,17 @@ static void test_sway(void)
 	g.crow = 5;
 	show();
 	CHECK(ink(cellw(), 0, cellw(), cellh()));
+	/* but not into a cell that has a character: there it is cut, so the
+	   next cell looks the same with or without ⟹ before it */
+	char b[512];
+	grid_put(&g, 0, 1, (const unsigned char *)"a", 1, 1, ATTR_NONE);
+	show();
+	snprintf(b, sizeof b, "grim -g '%d,0 %dx%d' -t ppm %s/x.ppm", cellw(), cellw(), cellh(), dir);
+	run(b);
+	grid_put(&g, 0, 0, (const unsigned char *)" ", 1, 1, ATTR_NONE);
+	show();
+	snprintf(b, sizeof b, "grim -g '%d,0 %dx%d' -t ppm %s/y.ppm && cmp -s %s/x.ppm %s/y.ppm", cellw(), cellw(), cellh(), dir, dir, dir);
+	run(b);
 
 	/* keys, with the Control transformation and the keys keys.h names */
 	k0 = nkeys;

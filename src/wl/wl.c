@@ -601,20 +601,22 @@ static const Face *colours(const Grid *g, int r, int c, uint32_t *fg, uint32_t *
 	return f;
 }
 
-/* Draws row r of g into px: the cells' backgrounds, then the row shaped as
-   one run, since colour does not change the font (kitty splits runs by font
-   only).  A glyph is clipped to the row, not to its cell, so a symbol wider
-   than its cell (73 of Mathlib's 295) spills into the next, which in Lean
-   is mostly a space; foot's overflowing glyphs do the same. */
-static void draw_row(uint32_t *px, const Grid *g, int r)
+static int blank(const Cell *x) { return x->len == 1 && x->ch[0] == ' '; }
+
+/* Draws cells lo to hi of row r of g into px: their backgrounds, then the
+   cells shaped as one run, since colour does not change the font (kitty
+   splits runs by font only).  A glyph wider than its cell (73 of Mathlib's
+   295 symbols, reviews/package-7.md) spills into the blank cells after it,
+   as foot's overflowing glyphs do; span keeps spills inside lo..hi. */
+static void draw_span(uint32_t *px, const Grid *g, int r, int lo, int hi)
 {
 	static unsigned char s[ROW];
 	static unsigned short col[ROW];     /* the cell of each byte of s */
 	static Placed pl[ROW];
 	const Cell *x = &g->c[r * g->cols];
-	int y0 = r * cell_h, n = 0;
+	int y0 = r * cell_h, ye = y0 + cell_h, n = 0;
 	uint32_t fg, bg;
-	for (int c = 0; c < g->cols; c++) {
+	for (int c = lo; c < hi; c++) {
 		if (!x[c].len) continue;   /* right half: drawn with its left half */
 		int w = c + 1 < g->cols && !x[c + 1].len ? 2 : 1;
 		const Face *f = colours(g, r, c, &fg, &bg);
@@ -623,13 +625,13 @@ static void draw_row(uint32_t *px, const Grid *g, int r)
 		if (f->style & FACE_STRIKE) fill(px, c * cell_w, y0 + cell_h / 2, w * cell_w, 1, fg);
 		for (int i = 0; i < x[c].len && n < ROW; i++) { s[n] = x[c].ch[i]; col[n++] = (unsigned short)c; }
 	}
-	int xe = g->cols * cell_w, ye = y0 + cell_h;
 	for (int i = 0, m = font_shape(s, (size_t)n, pl, ROW); i < m; i++) {
 		const Glyph *gl = pl[i].g;
-		int c = col[pl[i].cluster];
+		int c = col[pl[i].cluster], e = c + 1;
+		while (e < hi && (!x[e].len || blank(&x[e]))) e++;
 		colours(g, r, c, &fg, &bg);
-		int gx = c * cell_w + pl[i].x + gl->left, gy = y0 + cell_b - pl[i].y - gl->top;
-		int ax = gx < 0 ? -gx : 0, zx = gx + gl->w > xe ? xe - gx : gl->w;
+		int gx = c * cell_w + pl[i].x + gl->left, gy = y0 + cell_b - pl[i].y - gl->top, xe = e * cell_w;
+		int ax = gx < c * cell_w ? c * cell_w - gx : 0, zx = gx + gl->w > xe ? xe - gx : gl->w;
 		int ay = gy < y0 ? y0 - gy : 0, zy = gy + gl->h > ye ? ye - gy : gl->h;
 		for (int y = ay; y < zy; y++) {
 			uint32_t *p = px + (gy + y) * bw + gx;
@@ -650,20 +652,41 @@ static void draw_row(uint32_t *px, const Grid *g, int r)
 	}
 }
 
-/* Whether row r of a shows what row q of b shows: the cells and the cursor */
-static int row_eq(const Grid *a, int r, const Grid *b, int q)
+/* Whether cell c of row r of a shows what cell c of row q of b shows */
+static int cell_eq(const Grid *a, int r, const Grid *b, int q, int c)
 {
-	if ((a->crow == r ? a->ccol : -1) != (b->crow == q ? b->ccol : -1)) return 0;
-	for (int c = 0; c < a->cols; c++)
-		if (!grid_cell_eq(&a->c[r * a->cols + c], &b->c[q * b->cols + c])) return 0;
-	return 1;
+	return (a->crow == r && a->ccol == c) == (b->crow == q && b->ccol == c)
+		&& grid_cell_eq(&a->c[r * a->cols + c], &b->c[q * b->cols + c]);
 }
 
-/* A hash of row r as row_eq sees it (FNV-1a over what grid_cell_eq compares) */
+/* The cells of row r of g that differ from row q of b, as *lo to *hi (only
+   these are drawn, as Neovim's grid_put_linebuf sends only them), widened
+   on each side to the start of a word after a blank in both rows: no spill
+   comes in from the left, and the span's own stop at its right edge.  How
+   many cells, 0 if none differ. */
+static int span(const Grid *g, int r, const Grid *b, int q, int *lo, int *hi)
+{
+	int n = g->cols, l = 0, h = n;
+	const Cell *x = &g->c[r * n], *y = &b->c[q * n];
+	while (l < n && cell_eq(g, r, b, q, l)) l++;
+	if (l == n) return *lo = *hi = 0;
+	while (h > l && cell_eq(g, r, b, q, h - 1)) h--;
+#define EDGE(c) (blank(&x[(c) - 1]) && blank(&y[(c) - 1]) && !blank(&x[c]) && !blank(&y[c]))
+	while (l > 0 && !EDGE(l)) l--;
+	while (h < n && !EDGE(h)) h++;
+#undef EDGE
+	*lo = l;
+	*hi = h;
+	return h - l;
+}
+
+/* A hash of row r's text (FNV-1a over what grid_cell_eq compares), without
+   the number column (ATTR_DIM), which relative numbers change on a scroll */
 static unsigned long row_hash(const Grid *g, int r)
 {
-	unsigned long h = 2166136261u ^ (unsigned long)(g->crow == r ? g->ccol + 1 : 0);
+	unsigned long h = 2166136261u;
 	for (const Cell *x = &g->c[r * g->cols], *e = x + g->cols; x < e; x++) {
+		if (x->attr == ATTR_DIM) continue;
 		h = (h ^ x->len) * 16777619u;
 		h = (h ^ x->attr) * 16777619u;
 		h = (h ^ x->face) * 16777619u;
@@ -675,8 +698,8 @@ static unsigned long row_hash(const Grid *g, int r)
 /* How far the rows moved since b was drawn: the move that most changed rows
    of g have, among b's rows, as Emacs's redisplay finds a scroll by row
    hashes (dispnew.c, scrolling_window); 0 if none.  The core sends whole
-   grids, not scroll events.  A hash only picks the move: a row is copied
-   only if row_eq holds. */
+   grids, not scroll events.  A hash only picks the move: what is drawn
+   comes from span. */
 static int shift(const Grid *g, const Grid *b)
 {
 	int n = g->rows, best = 0, most = 0;
@@ -856,18 +879,24 @@ static void wl_present(const Grid *cur, Grid *shown)
 		fill(b->px, 0, 0, bw, bh, BG);
 		all = 1;
 	}
-	/* rows a scroll moved are copied, not shaped again: shaping all 60 rows
-	   takes p99 1.91 ms of the 2 ms frame (reviews/package-7.md).  Copying
-	   in the direction of the move reads each source before it is drawn over. */
+	/* rows a scroll moved are copied, not shaped again (shaping all 60 rows
+	   takes p99 1.91 ms of the 2 ms frame, reviews/package-7.md), and of a
+	   row only the cells that changed are drawn.  Copying in the direction
+	   of the move reads each source before it is drawn over. */
 	int k = all ? 0 : shift(g, &b->g);
+	size_t row = (size_t)cell_h * (size_t)bw;
 	for (int i = 0; i < g->rows; i++) {
-		int r = k < 0 ? g->rows - 1 - i : i;
-		if (!all && row_eq(g, r, &b->g, r)) continue;
-		size_t row = (size_t)cell_h * (size_t)bw;
-		if (k && r + k >= 0 && r + k < g->rows && row_eq(g, r, &b->g, r + k))
-			memcpy(b->px + (size_t)r * row, b->px + (size_t)(r + k) * row, row * sizeof *b->px);
-		else
-			draw_row(b->px, g, r);
+		int r = k < 0 ? g->rows - 1 - i : i, lo = 0, hi = g->cols, l, h;
+		if (!all) {
+			int n = span(g, r, &b->g, r, &lo, &hi);
+			if (!n) continue;
+			if (k && r + k >= 0 && r + k < g->rows && span(g, r, &b->g, r + k, &l, &h) < n) {
+				memcpy(b->px + (size_t)r * row, b->px + (size_t)(r + k) * row, row * sizeof *b->px);
+				lo = l;
+				hi = h;
+			}
+		}
+		if (lo < hi) draw_span(b->px, g, r, lo, hi);
 		memcpy(&b->g.c[r * g->cols], &g->c[r * g->cols], sizeof *g->c * (size_t)g->cols);
 		wl_surface_damage_buffer(surf, 0, r * cell_h, g->cols * cell_w, cell_h);
 	}
