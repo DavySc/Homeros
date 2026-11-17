@@ -1,11 +1,15 @@
 /* Language servers (package 13, src/lsp/).  Sync as Helix: incremental,
    one didChange per command, versions +1.  What the server says is shown
-   by LspSync.tla's "simple" rules: diagnostics for an older version are
-   ignored, shown ones move with every edit, and a reply is shown only if
-   the text has not changed since the request (else dropped; the caller
-   asks again).  One server per project root, shared by its files; Lean's
-   is `lake serve` with Lean's extensions (file progress, plain goals,
-   widgets, incremental diagnostics). */
+   by LspSync.tla's "ok" rules, as VS Code shows it: what it says about a
+   version the text has since left is mapped through the edits made since,
+   shown ranges move with every edit, and a reply is shown only if the text
+   has not changed since the request (else dropped; the caller asks
+   again).  A file holding bytes that are not UTF-8 is sent with U+FFFD for
+   them, one per UTF-16 unit lsp_u16 counts, as the whole text on every
+   change; nothing older is mapped across its edits.  One server per
+   project root, shared by its files; Lean's is `lake serve` with Lean's
+   extensions (file progress, plain goals, widgets, incremental
+   diagnostics). */
 #ifndef LSP_H
 #define LSP_H
 #include <stddef.h>
