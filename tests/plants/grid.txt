@@ -2,3 +2,7 @@
 grid: a character on a right half leaves its left half~test TESTS=grid_diff~~src/grid/grid.c~	if (c > 0 && !x->len) x[-1] = (Cell){ ">", 1, x[-1].attr };¶~
 grid: covering a left half leaves its right half~test TESTS=grid_diff~~src/grid/grid.c~	if (c + width < g->cols && !x[width].len) x[width] = (Cell){ " ", 1, x[width].attr };¶~
 grid: a size that overflows is accepted~test TESTS=grid_diff~~src/grid/grid.c~ || (cols && rows > INT_MAX / cols)~
+grid: widths other than 1 and 2 accepted~test TESTS=grid_diff~~src/grid/grid.c~(width != 1 && width != 2) || ~
+grid: '>' takes the new attribute~test TESTS=grid_diff~~src/grid/grid.c~(Cell){ ">", 1, x[-1].attr }~(Cell){ ">", 1, (unsigned char)attr }
+grid: a blanked right half takes the new attribute~test TESTS=grid_diff~~src/grid/grid.c~(Cell){ " ", 1, x[width].attr }~(Cell){ " ", 1, (unsigned char)attr }
+grid: resize keeps the cursor~test TESTS=grid_diff~~src/grid/grid.c~ g->crow = g->ccol = 0;~

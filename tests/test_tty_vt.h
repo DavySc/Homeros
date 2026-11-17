@@ -38,12 +38,22 @@ static void vt_init(Vt *t, int rows, int cols, int (*width)(const unsigned char 
 	for (int i = 0; i < rows * cols; i++) t->c[i] = (Cell){ " ", 1, ATTR_NONE };
 }
 
+/* A new size: a real terminal keeps or reflows its cells, so they are
+   marked unknown; the SGR and modes stay. */
+static void vt_resize(Vt *t, int rows, int cols)
+{
+	t->rows = rows; t->cols = cols;
+	t->r = t->col = t->pending = 0;
+	for (int i = 0; i < rows * cols; i++) t->c[i] = (Cell){ "?", 1, VT_BADERASE };
+}
+
 static Cell *vt_at(Vt *t, int r, int c) { return &t->c[r * t->cols + c]; }
 
 static void vt_print(Vt *t, const unsigned char *s, int n)
 {
 	int w = t->width(s, n);
 	if (!t->sync) vt_fail(t, "a character printed outside a synchronized update");
+	if (!t->hidden) vt_fail(t, "a character printed with the cursor shown");
 	if (t->pending || t->col + w > t->cols) vt_fail(t, "a character printed past the right margin");
 	if (t->bad) return;
 	t->prints++;

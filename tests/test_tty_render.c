@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <sys/ioctl.h>
 #include <sys/wait.h>
+#include <termios.h>
 #include <unistd.h>
 #include "check.h"
 #define main homeros_main
@@ -129,6 +130,9 @@ int main(void)
 	CHECK(!grid_resize(&g, 30, 100));
 	core_draw(&e2, &g);
 	unsigned long long resized_want = grid_hash(&g);
+	CHECK(!grid_resize(&g, 20, 90));
+	core_draw(&e2, &g);
+	unsigned long long stopped_want = grid_hash(&g);
 
 	int m = posix_openpt(O_RDWR | O_NOCTTY);
 	CHECK(m >= 0 && !grantpt(m) && !unlockpt(m));
@@ -140,14 +144,16 @@ int main(void)
 	CHECK(sh >= 0);
 	if (!sh) {
 		/* a job-control shell: a session on the terminal, the editor its
-		   foreground job, continued (fg) whenever it stops */
+		   foreground job, continued (fg) whenever it stops; while it is
+		   stopped the second time, the shell has the terminal and the
+		   window is resized to 20x90 (the shell gets that SIGWINCH) */
 		setsid();
+		signal(SIGTTOU, SIG_IGN);
 		int s = open(slave, O_RDWR);
 		if (s < 0) _exit(10);
 		pid_t ed = fork();
 		if (!ed) {
 			setpgid(0, 0);
-			signal(SIGTTOU, SIG_IGN);
 			tcsetpgrp(s, getpid());
 			signal(SIGTTOU, SIG_DFL);
 			dup2(s, 0); dup2(s, 1); dup2(s, 2);
@@ -158,8 +164,15 @@ int main(void)
 		setpgid(ed, ed);
 		int st, stops = 0;
 		while (waitpid(ed, &st, WUNTRACED) == ed)
-			if (WIFSTOPPED(st)) { stops++; kill(ed, SIGCONT); }
-			else _exit(!WIFEXITED(st) ? 11 : WEXITSTATUS(st) ? WEXITSTATUS(st) : stops == 1 ? 0 : 13);
+			if (WIFSTOPPED(st)) {
+				if (++stops == 2) {
+					struct winsize w2 = { .ws_row = 20, .ws_col = 90 };
+					tcsetpgrp(s, getpgrp());
+					ioctl(s, TIOCSWINSZ, &w2);
+					tcsetpgrp(s, ed);
+				}
+				kill(ed, SIGCONT);
+			} else _exit(!WIFEXITED(st) ? 11 : WEXITSTATUS(st) ? WEXITSTATUS(st) : stops == 2 ? 0 : 13);
 		_exit(12);
 	}
 	fcntl(m, F_SETFL, O_NONBLOCK);
@@ -181,24 +194,40 @@ int main(void)
 	ws = (struct winsize){ .ws_row = 30, .ws_col = 100 };
 	CHECK(!ioctl(m, TIOCSWINSZ, &ws));
 	CHECK(!pump(m, NULL, 0, 300));
-	vt_init(&t, 30, 100, width);
-	for (int i = 0; i < 30 * 100; i++) t.c[i].attr = VT_BADERASE;
+	vt_resize(&t, 30, 100);
 	CHECK(frames(&t, from, outn, 0, &nf) == resized_want);
 
 	/* Ctrl-Z, then fg (the shell's exit status says the editor stopped
-	   once): the main screen comes back meanwhile */
+	   twice): the main screen comes back meanwhile */
 	from = outn;
 	CHECK(!pump(m, (const unsigned char *)"\x1a", 1, 300));
 	CHECK(frames(&t, from, outn, 0, &nf) == resized_want);
 	CHECK(has(from, outn, "\x1b[?1049l"));   /* it did leave the screen */
 
+	/* Ctrl-Z, resized while stopped, fg: the last frame is the new size,
+	   drawn whole (frames before it may still be the old size, which this
+	   model cannot show) */
+	from = outn;
+	CHECK(!pump(m, (const unsigned char *)"\x1a", 1, 300));
+	size_t at = outn;
+	while (at > from && !has(at, outn, "\x1b[?2026h")) at--;
+	vt_init(&t, 20, 90, width);
+	vt_resize(&t, 20, 90);
+	CHECK(frames(&t, at, outn, 0, &nf) == stopped_want);
+
+	/* :q! leaves the terminal as it found it: cooked, main screen */
 	CHECK(pump(m, (const unsigned char *)":q!\r", 4, 5000) == -1);
 	int st;
 	CHECK(waitpid(sh, &st, 0) == sh && WIFEXITED(st) && WEXITSTATUS(st) == 0);
+	struct termios tio;
+	CHECK(!tcgetattr(m, &tio) && (tio.c_lflag & ICANON) && (tio.c_lflag & ECHO));
+	at = outn;
+	while (at > 0 && !has(at, outn, "\x1b[?1049")) at--;
+	CHECK(has(at, outn, "\x1b[?1049l"));
 	core_free(&e2);
 	grid_free(&g);
 	unlink(path);
-	printf("test_tty_render: %d keys in %d frames, each a whole-key screen at most %d keys apart; resize and Ctrl-Z redraw whole\n",
+	printf("test_tty_render: %d keys in %d frames, each a whole-key screen at most %d keys apart; resize, Ctrl-Z and a resize while stopped redraw whole; the terminal is cooked again after :q!\n",
 	       NKEYS + 1, nf, BATCH_RULE);
 	return 0;
 }

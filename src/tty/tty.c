@@ -98,26 +98,30 @@ int backend_ready(void) { return 1; }   /* a terminal has no frame callback */
 
 /* The key at s[0..n): its length in bytes, 0 if s may be the start of a
    longer key (Neovim's TERMKEY_RES_AGAIN), or with force the first byte
-   alone.  *k is the key, or -1 for a sequence that gives none. */
+   alone.  *k is the key, or -1 for a sequence that gives none.  A byte that
+   is not part of well-formed UTF-8 is U+FFFD: keys.h has no raw bytes, and
+   text must never decode to a KEY_* code. */
 static int key(const unsigned char *s, int n, int force, int *k)
 {
-	*k = s[0];
+	*k = s[0] < 0x80 ? s[0] : 0xFFFD;
 	if (s[0] == 27) {
 		if (n == 1) return force;                    /* Esc, or the start of a sequence */
 		if (s[1] != '[') return 1;
 		int j = 2;                                   /* CSI: parameters, then a final byte */
 		while (j < n && (s[j] < 0x40 || s[j] > 0x7e)) j++;
 		if (j == n) return force;
-		*k = j > 2 ? -1 : s[2] == 'A' ? KEY_UP : s[2] == 'B' ? KEY_DOWN
-		   : s[2] == 'C' ? KEY_RIGHT : s[2] == 'D' ? KEY_LEFT : -1;
+		*k = s[2] == 'A' ? KEY_UP : s[2] == 'B' ? KEY_DOWN : s[2] == 'C' ? KEY_RIGHT : s[2] == 'D' ? KEY_LEFT : -1;
 		return j + 1;
 	}
-	int len = s[0] < 0xC0 || s[0] >= 0xF8 ? 1 : s[0] >= 0xF0 ? 4 : s[0] >= 0xE0 ? 3 : 2;
-	int j = 1;
+	if (s[0] < 0xC2 || s[0] > 0xF4) return 1;      /* ASCII, or no UTF-8 lead */
+	int len = s[0] >= 0xF0 ? 4 : s[0] >= 0xE0 ? 3 : 2, j = 1;
 	while (j < len && j < n && (s[j] & 0xC0) == 0x80) j++;
 	if (j < len) return j == n ? force : 1;          /* cut short, or broken: the byte alone */
-	unsigned v = len == 1 ? s[0] : s[0] & (len == 2 ? 0x1Fu : len == 3 ? 0x0Fu : 0x07u);
+	unsigned v = s[0] & (len == 2 ? 0x1Fu : 0x0Fu);  /* a 4-byte lead's bit 3 is 0 */
 	for (j = 1; j < len; j++) v = v * 64 + (s[j] & 0x3Fu);
+	/* overlong (2-byte ones are refused by the lead), surrogate, past U+10FFFF */
+	if ((len == 3 && (v < 0x800 || (v >= 0xD800 && v <= 0xDFFF))) || (len == 4 && (v < 0x10000 || v > 0x10FFFF)))
+		return 1;
 	*k = (int)v;
 	return len;
 }
@@ -197,7 +201,7 @@ void backend_present(const Grid *g, Grid *shown)
 			pr = x->ch[0] < 0x80 ? r : -1;
 			pc = c + 1 + wide;
 		}
-	snprintf(b, sizeof b, "\x1b[0m\x1b[%d;%dH\x1b[?25h\x1b[?2026l", g->crow + 1, g->ccol + 1);
+	snprintf(b, sizeof b, "\x1b[%d;%dH\x1b[?25h\x1b[?2026l", g->crow + 1, g->ccol + 1);
 	outs(b);
 	flush();
 }
@@ -207,4 +211,6 @@ void backend_suspend(void)
 	cooked();
 	kill(0, SIGTSTP);
 	raw();
+	/* a resize while stopped went to the shell, the foreground job then */
+	if (write(sigpipe[1], "w", 1) < 0) {}
 }
