@@ -1,0 +1,20 @@
+# Plants for src/wl/ (format in tools/planted.sh), each caught by make wl-test under weston.
+wl: draws without waiting for the frame callback~wl-test~~src/wl/wl.c~return configured && !framecb && (~return configured && (
+wl: a buffer gets only the rows changed since the last frame~wl-test~~src/wl/wl.c~if (!b->valid || !same(&b->g, x, r)) {~if (!b->valid || !same(&on->g, x, r)) {
+wl: no damage for changed rows~wl-test~~src/wl/wl.c~if (show && !whole) wl_surface_damage_buffer~if (0 && show && !whole) wl_surface_damage_buffer
+wl: output scale ignored~wl-test~~src/wl/wl.c~if (out[i].on && out[i].scale > s) s = out[i].scale;~if (0) s = out[i].scale;
+wl: configured size ignored~wl-test~~src/wl/wl.c~int w = pw > 0 ? pw :~int w = 0 ? pw :
+wl: no key repeat~wl-test~~src/wl/wl.c~for (long long i = 0; i < c; i++) push(rep_key);~(void)c;
+wl: repeat not stopped on release~wl-test~~src/wl/wl.c~if (code == rep_code) rep_key = 0;~(void)rep_code;
+wl: timer left running when idle~wl-test~~src/wl/wl.c~long long at = kn ? 1 : rep_key ? rep_next : 0;~long long at = kn ? 1 : rep_key ? rep_next : now() + 500000000;
+wl: keys left in the queue wait for the next event~wl-test~~src/wl/wl.c~long long at = kn ? 1 :~long long at = 0 ? 1 :
+wl: Backspace as xkb's 8~wl-test~~src/wl/wl.c~case XKB_KEY_BackSpace: return KEY_BS;~case XKB_KEY_BackSpace: return 8;
+wl: click at the wrong cell~wl-test~~src/wl/wl.c~mrow = (int)(my * scale) / chh;~mrow = (int)(my * scale) / chh + 1;
+wl: a key per wheel event~wl-test~~src/wl/wl.c~for (wheel += wl_fixed_to_double(v); wheel >= WHEEL; wheel -= WHEEL)~for (wheel += wl_fixed_to_double(v) > 0 ? WHEEL : 0; wheel >= WHEEL; wheel -= WHEEL)
+wl: IME commit dropped~wl-test~~src/wl/wl.c~	pre_dirty = 1;¶	push_utf8(text);~	pre_dirty = 1;¶	(void)text;
+wl: preedit drawn only with the next key~wl-test~~src/wl/wl.c~if (pre_dirty && cur.rows && wl_ready()) paint(&cur);~(void)0;
+wl: clipboard served empty~wl-test~~src/wl/wl.c~ssize_t w = write(fd, clip + i, clipn - i);~ssize_t w = write(fd, clip + i, 0);
+wl: paste loses its last byte~wl-test~~src/wl/wl.c~if (r == 0) { close(p[0]); return (long)n; }~if (r == 0) { close(p[0]); return (long)n - 1; }
+wl: own clipboard not answered locally~wl-test~~src/wl/wl.c~		return (long)clipn;~		return -1;
+wl: every row taken as unchanged~wl-test~~src/wl/wl.c~return !memcmp(&a->c[r * a->cols], x, (size_t)a->cols * sizeof *x);~return a && x && r >= 0;
+wl: compositor gone, editor keeps running~wl-test~~src/wl/wl.c~			gone = 1;¶			push_utf8("\x1b:qa!\r");~			gone = 1;
