@@ -1,0 +1,391 @@
+global	n	<Space>pv	File manager (oil)
+global	n	<Space>uk	Toggle kitten on save
+global	n	<Space>R	Reload config
+global	n	<Space>ad	Reject diff
+global	n	<Space>aa	Accept diff
+global	n	<Space>ab	Add buffer to context
+global	n	<Space>aC	Continue last session
+global	n	<Space>af	Focus Claude
+global	n	<Space>ac	Toggle Claude
+global	n	<Space>gB	Open on GitHub
+global	n	<Space>gb	Git branches
+global	n	<Space>gd	Git diff (hunks)
+global	n	<Space>gL	Git log (file)
+global	n	<Space>gl	Git log
+global	n	<Space>gs	Git status
+global	n	<Space>gH	Repository history (diffview)
+global	n	<Space>gh	File history (diffview)
+global	n	<Space>gg	Neogit (magit)
+global	n	<Space>de	DAP: Eval
+global	n	<Space>dq	DAP: Terminate
+global	n	<Space>dl	DAP: Run last
+global	n	<Space>du	DAP: UI toggle
+global	n	<Space>do	DAP: Step out
+global	n	<Space>di	DAP: Step into
+global	n	<Space>ds	DAP: Step over
+global	n	<Space>dc	DAP: Continue
+global	n	<Space>dB	DAP: Conditional breakpoint
+global	n	<Space>db	DAP: Breakpoint
+global	n	<Space>xQ	Quickfix List
+global	n	<Space>xL	Location List
+global	n	<Space>cl	LSP refs
+global	n	<Space>cs	Symbols
+global	n	<Space>xX	Buffer Diagnostics
+global	n	<Space>xx	Diagnostics (Trouble)
+global	n	<Space>ft	Floating terminal
+global	n	<Space>uu	Undo tree
+global	n	<Space>uz	Zen (writing room)
+global	n	<Space>fr	Registers
+global	n	<Space>e	File Explorer
+global	n	<Space>ff	Find Files
+global	n	<Space>,	Buffers
+global	n	<Space>fg	Grep
+global	n	<Space>oc	Org capture
+global	n	<Space>oa	Org agenda
+global	n	<Space>X	Run line as Lua
+global	n	<Space><Space>x	Source this file
+global	n	%	<Plug>(MatchitNormalForward)
+global	n	&	:help &-default
+global	n	,	lua
+global	n	-	Open parent directory (oil)
+global	n	;	lua
+global	n	F	lua
+global	n	S	Flash Treesitter
+global	n	T	lua
+global	n	Y	:help Y-default
+global	n	[%	<Plug>(MatchitNormalMultiBackward)
+global	n	[<Space>	Add empty line above cursor
+global	n	[B	:brewind
+global	n	[b	:bprevious
+global	n	[<C-T>	:ptprevious
+global	n	[T	:trewind
+global	n	[t	:tprevious
+global	n	[A	:rewind
+global	n	[a	:previous
+global	n	[<C-L>	:lpfile
+global	n	[L	:lrewind
+global	n	[l	:lprevious
+global	n	[<C-Q>	:cpfile
+global	n	[Q	:crewind
+global	n	[q	:cprevious
+global	n	[D	Jump to the first diagnostic in the current buffer
+global	n	[d	Jump to the previous diagnostic in the current buffer
+global	n	]%	<Plug>(MatchitNormalMultiForward)
+global	n	]<Space>	Add empty line below cursor
+global	n	]B	:blast
+global	n	]b	:bnext
+global	n	]<C-T>	:ptnext
+global	n	]T	:tlast
+global	n	]t	:tnext
+global	n	]A	:last
+global	n	]a	:next
+global	n	]<C-L>	:lnfile
+global	n	]L	:llast
+global	n	]l	:lnext
+global	n	]<C-Q>	:cnfile
+global	n	]Q	:clast
+global	n	]q	:cnext
+global	n	]D	Jump to the last diagnostic in the current buffer
+global	n	]d	Jump to the next diagnostic in the current buffer
+global	n	cs	Replace surrounding
+global	n	ds	Delete surrounding
+global	n	f	lua
+global	n	g%	<Plug>(MatchitNormalBackward)
+global	n	g]	Move to right "around"
+global	n	g[	Move to left "around"
+global	n	gA	Align with preview
+global	n	ga	Align
+global	n	gO	vim.lsp.buf.document_symbol()
+global	n	grt	vim.lsp.buf.type_definition()
+global	n	gri	vim.lsp.buf.implementation()
+global	n	grr	vim.lsp.buf.references()
+global	n	grx	vim.lsp.codelens.run()
+global	n	gra	vim.lsp.buf.code_action()
+global	n	grn	vim.lsp.buf.rename()
+global	n	gcc	Toggle comment line
+global	n	gc	Toggle comment
+global	n	gx	Opens filepath or URI under cursor with the system handler (file explorer, web browser, …)
+global	n	s	Flash
+global	n	t	lua
+global	n	ys	Add surrounding
+global	n	<Plug>(MatchitNormalMultiForward)	:<C-U>call matchit#MultiMatch("W",  "n")<CR>
+global	n	<Plug>(MatchitNormalMultiBackward)	:<C-U>call matchit#MultiMatch("bW", "n")<CR>
+global	n	<Plug>(MatchitNormalBackward)	:<C-U>call matchit#Match_wrapper('',0,'n')<CR>
+global	n	<Plug>(MatchitNormalForward)	:<C-U>call matchit#Match_wrapper('',1,'n')<CR>
+global	n	<C-_>	which_key_ignore
+global	n	<C-/>	Floating terminal
+global	n	<C-W><C-D>	Show diagnostics under the cursor
+global	n	<C-W>d	Show diagnostics under the cursor
+global	n	<C-L>	:help CTRL-L-default
+global	v	<Space>at	Learning tips for selection
+global	v	<Space>ar	Refactor selection
+global	v	<Space>ae	Explain selection
+global	v	<Space>as	Send selection (ask your own)
+global	v	<Space>de	DAP: Eval
+global	v	<Space>X	Run selection as Lua
+global	x	#	:help v_#-default
+global	x	%	<Plug>(MatchitVisualForward)
+global	x	*	:help v_star-default
+global	x	,	lua
+global	x	;	lua
+global	x	@	:help v_@-default
+global	x	F	lua
+global	x	Q	:help v_Q-default
+global	x	R	Treesitter Search
+global	x	S	Flash Treesitter
+global	x	T	lua
+global	x	[%	<Plug>(MatchitVisualMultiBackward)
+global	x	[N	Select previous sibling node
+global	x	[n	Select previous node
+global	x	]%	<Plug>(MatchitVisualMultiForward)
+global	x	]N	Select next sibling node
+global	x	]n	Select next node
+global	x	a%	<Plug>(MatchitVisualTextObject)
+global	x	aL	Around last textobject
+global	x	aN	Around next textobject
+global	x	a	Around textobject
+global	x	an	Select parent (outer) node
+global	x	f	lua
+global	x	g%	<Plug>(MatchitVisualBackward)
+global	x	gs	Surround selection
+global	x	g]	Move to right "around"
+global	x	g[	Move to left "around"
+global	x	gA	Align with preview
+global	x	ga	Align
+global	x	gra	vim.lsp.buf.code_action()
+global	x	gc	Toggle comment
+global	x	gx	Opens filepath or URI under cursor with the system handler (file explorer, web browser, …)
+global	x	iL	Inside last textobject
+global	x	iN	Inside next textobject
+global	x	i	Inside textobject
+global	x	in	Select child (inner) node
+global	x	s	Flash
+global	x	t	lua
+global	x	<Plug>(MatchitVisualTextObject)	<Plug>(MatchitVisualMultiBackward)o<Plug>(MatchitVisualMultiForward)
+global	x	<Plug>(MatchitVisualMultiForward)	:<C-U>call matchit#MultiMatch("W",  "n")<CR>m'gv``
+global	x	<Plug>(MatchitVisualMultiBackward)	:<C-U>call matchit#MultiMatch("bW", "n")<CR>m'gv``
+global	x	<Plug>(MatchitVisualBackward)	:<C-U>call matchit#Match_wrapper('',0,'v')<CR>m'gv``
+global	x	<Plug>(MatchitVisualForward)	:<C-U>call matchit#Match_wrapper('',1,'v')<CR>:if col("''") != col("$") | exe ":normal! m'" | endif<CR>gv``
+global	o	%	<Plug>(MatchitOperationForward)
+global	o	,	lua
+global	o	;	lua
+global	o	F	lua
+global	o	R	Treesitter Search
+global	o	S	Flash Treesitter
+global	o	T	lua
+global	o	[%	<Plug>(MatchitOperationMultiBackward)
+global	o	]%	<Plug>(MatchitOperationMultiForward)
+global	o	aL	Around last textobject
+global	o	aN	Around next textobject
+global	o	a	Around textobject
+global	o	an	Select parent (outer) node
+global	o	f	lua
+global	o	g%	<Plug>(MatchitOperationBackward)
+global	o	g]	Move to right "around"
+global	o	g[	Move to left "around"
+global	o	gc	Comment textobject
+global	o	iL	Inside last textobject
+global	o	iN	Inside next textobject
+global	o	i	Inside textobject
+global	o	in	Select child (inner) node
+global	o	r	Remote Flash
+global	o	s	Flash
+global	o	t	lua
+global	o	<Plug>(MatchitOperationMultiForward)	:<C-U>call matchit#MultiMatch("W",  "o")<CR>
+global	o	<Plug>(MatchitOperationMultiBackward)	:<C-U>call matchit#MultiMatch("bW", "o")<CR>
+global	o	<Plug>(MatchitOperationBackward)	:<C-U>call matchit#Match_wrapper('',0,'o')<CR>
+global	o	<Plug>(MatchitOperationForward)	:<C-U>call matchit#Match_wrapper('',1,'o')<CR>
+global	i	<S-Tab>	vim.snippet.jump if active, otherwise <S-Tab>
+global	i	<C-S>	vim.lsp.buf.signature_help()
+global	i	<C-W>	:help i_CTRL-W-default
+global	i	<C-U>	:help i_CTRL-U-default
+global	i	<Tab>	vim.snippet.jump if active, otherwise <Tab>
+global	c	<C-S>	Toggle Flash Search
+global	t	<C-_>	which_key_ignore
+global	t	<C-/>	Floating terminal
+ft:lean	n	<Space>mc	Lean: get prebuilt Mathlib (cache get)
+ft:lean	n	<Space>mr	Lean: run this file's main
+ft:lean	n	<Space>mm	Lean: lake build (quickfix)
+ft:lean	n	K	Show interactive hover information.
+ft:lean	n	\r	Restart the Lean server for the current file.
+ft:lean	n	\\	Show how to type the unicode character under the cursor.
+ft:lean	n	\s	Accept the first infoview suggestion.
+ft:lean	n	\<Tab>	Jump to the current infoview.
+ft:lean	n	\v	Change the infoview view options.
+ft:lean	n	\W	Disable infoview widgets.
+ft:lean	n	\w	Enable infoview widgets.
+ft:lean	n	\dt	Toggle "auto-diff" mode and clear any existing pins.
+ft:lean	n	\dd	Toggle "auto-diff" mode in the infoview.
+ft:lean	n	\dc	Clear all infoview diff pins.
+ft:lean	n	\dx	Set an infoview diff pin.
+ft:lean	n	\c	Clear all infoview pins.
+ft:lean	n	\x	Add an infoview pin.
+ft:lean	n	\p	Toggle pausing infoview pins.
+ft:lean	n	\i	Toggle showing the infoview.
+ft:lean	n	\S	Lean: a sorry per open goal
+ft:lean	n	\f	Lean: files in core Lean and dependencies
+ft:lean	n	\/	Lean: grep core Lean and dependencies
+ft:lean	n	\l	Lean: Loogle search
+ft:lean	n	\u	Lean: unicode symbol picker
+ft:lean	n	<Plug>(LeanHover)	Show interactive hover information.
+ft:lean	n	<Plug>(LeanRestartFile)	Restart the Lean server for the current file.
+ft:lean	n	<Plug>(LeanAbbreviationsReverseLookup)	Show how to type the unicode character under the cursor.
+ft:lean	n	<Plug>(LeanInfoviewAcceptSuggestion)	Accept the first infoview suggestion.
+ft:lean	n	<Plug>(LeanGotoInfoview)	Jump to the current infoview.
+ft:lean	n	<Plug>(LeanInfoviewViewOptions)	Change the infoview view options.
+ft:lean	n	<Plug>(LeanInfoviewDisableWidgets)	Disable infoview widgets.
+ft:lean	n	<Plug>(LeanInfoviewEnableWidgets)	Enable infoview widgets.
+ft:lean	n	<Plug>(LeanInfoviewToggleNoClearAutoDiffPin)	Toggle "auto-diff" mode and clear any existing pins.
+ft:lean	n	<Plug>(LeanInfoviewToggleAutoDiffPin)	Toggle "auto-diff" mode in the infoview.
+ft:lean	n	<Plug>(LeanInfoviewClearDiffPin)	Clear all infoview diff pins.
+ft:lean	n	<Plug>(LeanInfoviewSetDiffPin)	Set an infoview diff pin.
+ft:lean	n	<Plug>(LeanInfoviewClearPins)	Clear all infoview pins.
+ft:lean	n	<Plug>(LeanInfoviewAddPin)	Add an infoview pin.
+ft:lean	n	<Plug>(LeanInfoviewPinTogglePause)	Toggle pausing infoview pins.
+ft:lean	n	<Plug>(LeanInfoviewToggle)	Toggle showing the infoview.
+ft:org	n	<Tab>	org toggle fold
+ft:org	n	<Space>oA	org toggle archive tag
+ft:org	n	<Space>ot	org set tags
+ft:org	n	<Space>o$	org archive subtree
+ft:org	n	<Space>oxo	org clock out
+ft:org	n	<Space>ona	org add note
+ft:org	n	<Space>oi.	org timestamp
+ft:org	n	<Space>o'	org edit special
+ft:org	n	<Space>oo	org open
+ft:org	n	<Space>oxq	org clock cancel
+ft:org	n	<Space>o*	org toggle headline
+ft:org	n	<Space>obt	org tangle
+ft:org	n	<Space>oxe	org set effort
+ft:org	n	<Space>oxj	org clock goto
+ft:org	n	<Space>o,	org cycle priority
+ft:org	n	<Space>oxi	org clock in
+ft:org	n	<Space>ols	org store link
+ft:org	n	<Space>oli	org insert link
+ft:org	n	<Space>od!	org toggle timestamp type
+ft:org	n	<Space>oi!	org timestamp (inactive)
+ft:org	n	<Space>or	org refile
+ft:org	n	<Space>ois	org schedule
+ft:org	n	<Space>oid	org deadline
+ft:org	n	<Space>oe	org export
+ft:org	n	<Space>oJ	org move subtree down
+ft:org	n	<Space>oK	org move subtree up
+ft:org	n	<Space>oit	org insert todo (respect content)
+ft:org	n	<Space>oiT	org insert todo
+ft:org	n	<Space>oih	org insert headline (respect content)
+ft:org	n	<Space><CR>	org meta return
+ft:org	n	<Space>uh	Toggle inlay hints
+ft:org	n	<Space>rn	Rename
+ft:org	n	<Space>ca	Code action
+ft:org	n	<lt>s	org promote subtree
+ft:org	n	<lt><lt>	org promote headline
+ft:org	n	>s	org demote subtree
+ft:org	n	>>	org demote headline
+ft:org	n	K	Hover
+ft:org	n	[[	org prev headline (same level)
+ft:org	n	]]	org next headline (same level)
+ft:org	n	ciT	org prev todo state
+ft:org	n	cir	org decrease priority
+ft:org	n	cit	org next todo state
+ft:org	n	ciR	org increase priority
+ft:org	n	cid	org change date
+ft:org	n	g?	org show help
+ft:org	n	g{	org goto parent headline
+ft:org	n	gri	Goto Implementation
+ft:org	n	grr	References
+ft:org	n	gD	Goto Declaration
+ft:org	n	gd	Goto Definition
+ft:org	n	{	org prev visible headline
+ft:org	n	}	org next visible headline
+ft:org	n	<S-Tab>	org toggle fold (whole file)
+ft:org	n	<C-Space>	org toggle checkbox
+ft:org	n	<C-X>	org decrease timestamp
+ft:org	n	<C-A>	org increase timestamp
+ft:org	n	<S-Down>	org decrease timestamp (day)
+ft:org	n	<S-Up>	org increase timestamp (day)
+ft:org	x	<Space>oli	org insert link
+ft:org	x	Or	:<C-U>lua require("orgmode.org.text_objects").inner_subtree_from_root()<CR>
+ft:org	x	OR	:<C-U>lua require("orgmode.org.text_objects").around_subtree_from_root()<CR>
+ft:org	x	Oh	:<C-U>lua require("orgmode.org.text_objects").inner_heading_from_root()<CR>
+ft:org	x	OH	:<C-U>lua require("orgmode.org.text_objects").around_heading_from_root()<CR>
+ft:org	x	a_	:<C-U>normal! F_vf_<CR>
+ft:org	x	a~	:<C-U>normal! F~vf~<CR>
+ft:org	x	a+	:<C-U>normal! F+vf+<CR>
+ft:org	x	a/	:<C-U>normal! F/vf/<CR>
+ft:org	x	a=	:<C-U>normal! F=vf=<CR>
+ft:org	x	a*	:<C-U>normal! F*vf*<CR>
+ft:org	x	ah	:<C-U>lua require("orgmode.org.text_objects").around_heading()<CR>
+ft:org	x	ar	:<C-U>lua require("orgmode.org.text_objects").around_subtree()<CR>
+ft:org	x	i_	:<C-U>normal! T_vt_<CR>
+ft:org	x	i~	:<C-U>normal! T~vt~<CR>
+ft:org	x	i+	:<C-U>normal! T+vt+<CR>
+ft:org	x	i/	:<C-U>normal! T/vt/<CR>
+ft:org	x	i=	:<C-U>normal! T=vt=<CR>
+ft:org	x	i*	:<C-U>normal! T*vt*<CR>
+ft:org	x	ir	:<C-U>lua require("orgmode.org.text_objects").inner_subtree()<CR>
+ft:org	x	ih	:<C-U>lua require("orgmode.org.text_objects").inner_heading()<CR>
+ft:org	x	{	org prev visible headline
+ft:org	x	}	org next visible headline
+ft:org	o	Or	:normal vOr<CR>
+ft:org	o	OR	:normal vOR<CR>
+ft:org	o	Oh	:normal vOh<CR>
+ft:org	o	OH	:normal vOH<CR>
+ft:org	o	a_	:normal va_<CR>
+ft:org	o	a~	:normal va~<CR>
+ft:org	o	a+	:normal va+<CR>
+ft:org	o	a/	:normal va/<CR>
+ft:org	o	a=	:normal va=<CR>
+ft:org	o	a*	:normal va*<CR>
+ft:org	o	ah	:normal vah<CR>
+ft:org	o	ar	:normal var<CR>
+ft:org	o	i_	:normal vi_<CR>
+ft:org	o	i~	:normal vi~<CR>
+ft:org	o	i+	:normal vi+<CR>
+ft:org	o	i/	:normal vi/<CR>
+ft:org	o	i=	:normal vi=<CR>
+ft:org	o	i*	:normal vi*<CR>
+ft:org	o	ir	:normal vir<CR>
+ft:org	o	ih	:normal vih<CR>
+ft:org	i	<CR>	org return
+ft:sql	n	K	Object info (dbbliss) / hover
+ft:sql	n	["	:call search('\(^\s*\(--\|\/\/\|\*\|\/\*\|\*\/\).*\n\)\(^\s*\(--\|\/\/\|\*\|\/\*\|\*\/\)\)\@!', "W" )<CR>
+ft:sql	n	[{	:call search('\c^\s*\(\(create\)\s\+\(or\s\+replace\s\+\)\{,1}\)\{,1}\<lt>\(function\|procedure\|event\|\(existing\|global\s\+temporary\s\+\)\{,1}table\|trigger\|schema\|service\|publication\|database\|datatype\|domain\|index\|subscription\|synchronization\|view\|variable\)\>', 'bW')<CR>
+ft:sql	n	[]	:call search('\c^\s*end\W*$', 'bW' )<CR>
+ft:sql	n	[[	Previous SQL statement
+ft:sql	n	]"	:call search('^\(\s*\(--\|\/\/\|\*\|\/\*\|\*\/\).*\n\)\@<lt>!\(\s*\(--\|\/\/\|\*\|\/\*\|\*\/\)\)', "W" )<CR>
+ft:sql	n	]}	:call search('\c^\s*\(\(create\)\s\+\(or\s\+replace\s\+\)\{,1}\)\{,1}\<lt>\(function\|procedure\|event\|\(existing\|global\s\+temporary\s\+\)\{,1}table\|trigger\|schema\|service\|publication\|database\|datatype\|domain\|index\|subscription\|synchronization\|view\|variable\)\>', 'W')<CR>
+ft:sql	n	][	:call search('\c^\s*end\W*$', 'W' )<CR>
+ft:sql	n	]]	Next SQL statement
+ft:sql	x	["	:<C-U>exec "normal! gv"|call search('\(^\s*\(--\|\/\/\|\*\|\/\*\|\*\/\).*\n\)\(^\s*\(--\|\/\/\|\*\|\/\*\|\*\/\)\)\@!', "W" )<CR>
+ft:sql	x	[{	?\c^\s*\(\(create\)\s\+\(or\s\+replace\s\+\)\{,1}\)\{,1}\<lt>\(function\|procedure\|event\|\(existing\|global\s\+temporary\s\+\)\{,1}table\|trigger\|schema\|service\|publication\|database\|datatype\|domain\|index\|subscription\|synchronization\|view\|variable\)\><CR>
+ft:sql	x	[]	:<C-U>exec "normal! gv"|call search('\c^\s*end\W*$', 'bW' )<CR>
+ft:sql	x	[[	Previous SQL statement
+ft:sql	x	]"	:<C-U>exec "normal! gv"|call search('^\(\s*\(--\|\/\/\|\*\|\/\*\|\*\/\).*\n\)\@<lt>!\(\s*\(--\|\/\/\|\*\|\/\*\|\*\/\)\)', "W" )<CR>
+ft:sql	x	]}	/\c^\s*\(\(create\)\s\+\(or\s\+replace\s\+\)\{,1}\)\{,1}\<lt>\(function\|procedure\|event\|\(existing\|global\s\+temporary\s\+\)\{,1}table\|trigger\|schema\|service\|publication\|database\|datatype\|domain\|index\|subscription\|synchronization\|view\|variable\)\><CR>
+ft:sql	x	][	:<C-U>exec "normal! gv"|call search('\c^\s*end\W*$', 'W' )<CR>
+ft:sql	x	]]	Next SQL statement
+ft:sql	x	aq	Around SQL statement
+ft:sql	x	iq	Inside SQL statement
+ft:sql	o	[[	Previous SQL statement
+ft:sql	o	]]	Next SQL statement
+ft:sql	o	aq	Around SQL statement
+ft:sql	o	iq	Inside SQL statement
+ft:c	n	<Space>ms	C++: symbol info
+ft:c	n	<Space>ma	C++: alternate source/header
+ft:c	n	<Space>mb	C++: select build type
+ft:c	n	<Space>mt	C++: select target
+ft:c	n	<Space>mg	C++: configure
+ft:c	n	<Space>md	C++: debug
+ft:c	n	<Space>mr	C++: run
+ft:c	n	<Space>mm	C++: build
+ft:markdown	n	<Space>ce	Edit code block in its own buffer
+ft:markdown	n	[[	Jump to previous section
+ft:markdown	n	]]	Jump to next section
+ft:markdown	n	gO	Show an Outline of the current buffer
+ft:markdown	n	j	v:count ? 'j' : 'gj'
+ft:markdown	n	k	v:count ? 'k' : 'gk'
+ft:markdown	n	o	Open line, continuing a list
+ft:markdown	x	[[	:<C-U>exe "normal! gv"|call search('\%(^#\{1,5\}\s\+\S\|^\S.*\n^[=-]\+$\)', "bsW")<CR>
+ft:markdown	x	]]	:<C-U>exe "normal! gv"|call search('\%(^#\{1,5\}\s\+\S\|^\S.*\n^[=-]\+$\)', "sW")<CR>
+ft:markdown	x	j	v:count ? 'j' : 'gj'
+ft:markdown	x	k	v:count ? 'k' : 'gk'
+ft:markdown	i	<CR>	New line, continuing a list

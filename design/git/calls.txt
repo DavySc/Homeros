@@ -1,0 +1,52 @@
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false rev-parse --show-toplevel
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false rev-parse --show-toplevel
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false rev-parse --show-cdup
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false rev-parse --show-cdup
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false rev-parse --show-cdup
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false rev-parse --show-cdup
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false rev-parse --show-toplevel
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false rev-parse --show-toplevel
+--no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false update-index --refresh
+--no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false update-index --refresh
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false rev-parse --verify HEAD
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false rev-parse --verify HEAD
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false rev-parse --show-toplevel
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false rev-parse --show-toplevel
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false rev-parse --show-cdup
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false rev-parse --show-cdup
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false config --list -z
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false config --list -z
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false log --no-walk --format=%h %s HEAD^{commit} --
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false log --no-walk --format=%h %s HEAD^{commit} --
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false symbolic-ref --short HEAD
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false symbolic-ref --short HEAD
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false describe --long --tags
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false describe --long --tags
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false describe --contains HEAD
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false describe --contains HEAD
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false rev-parse --git-dir
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false rev-parse --git-dir
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false config --local -z --get-all --include status.showUntrackedFiles
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false config --local -z --get-all --include status.showUntrackedFiles
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false status -z --porcelain --untracked-files=normal --
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false status -z --porcelain --untracked-files=normal --
+t /tmp/magit-stderrM0OWRU --no-pager -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false diff --ita-visible-in-index --no-ext-diff --ignore-submodules=none --no-prefix --
+t /tmp/emacs2bfgxN --no-pager -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false diff --ita-visible-in-index --no-ext-diff --ignore-submodules=none --no-prefix --
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false rev-parse --is-bare-repository
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false rev-parse --is-bare-repository
+t /tmp/magit-stderrFAZylV --no-pager -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false diff --ita-visible-in-index --cached --no-ext-diff --ignore-submodules=none --no-prefix --
+t /tmp/emacsCJjFsl --no-pager -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false diff --ita-visible-in-index --cached --no-ext-diff --ignore-submodules=none --no-prefix --
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false rev-parse --verify refs/stash
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false rev-parse --verify refs/stash
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false rev-parse --verify HEAD~10
+t --no-pager --literal-pathspecs -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false rev-parse --verify HEAD~10
+t --no-pager -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false log --format=%h%x0c%D%x0c%x0c%aN%x0c%at%x0c%x0c%s --decorate=full -n10 --use-mailmap --no-prefix --
+t --no-pager -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false log --format=%h%x0c%D%x0c%x0c%aN%x0c%at%x0c%x0c%s --decorate=full -n10 --use-mailmap --no-prefix --
+t --no-pager -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false rev-parse --short HEAD
+t --no-pager -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false rev-parse --short HEAD
+t --no-pager -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false rev-parse --short HEAD~
+t --no-pager -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false rev-parse --short HEAD~
+t --no-pager -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false rev-parse --verify refs/tags/origin/claude/project-thread-ywhmdd
+t --no-pager -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false rev-parse --verify refs/tags/origin/claude/project-thread-ywhmdd
+t --no-pager -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false symbolic-ref refs/remotes/origin/HEAD
+t --no-pager -c core.preloadIndex=true -c log.showSignature=false -c color.ui=false -c color.diff=false -c diff.noPrefix=false symbolic-ref refs/remotes/origin/HEAD

@@ -1,0 +1,9 @@
+[language-server.fake]
+command = "python3"
+args = ["/opt/ne/ref/fakelsp.py"]
+[[language]]
+name = "fake"
+scope = "source.fake"
+file-types = ["fake"]
+roots = []
+language-servers = ["fake"]

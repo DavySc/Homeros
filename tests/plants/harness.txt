@@ -1,0 +1,6 @@
+# Thread 0's plants for the checks no package replaces (format in tools/planted.sh).
+warning (gcc and clang -Werror)~compilers~~src/main.c~int main(int argc, char **argv)¶{~int main(int argc, char **argv)¶{ int unused;
+undo tree oracle: Ctrl-R to the first child~undo-diff UNDO_N=2000~~Makefile~python3 design~MUT=firstchild python3 design
+lean: inv_inv states something false~lean~~design/proofs/Undo.lean~theorem Edit.inv_inv (e : Edit α) : e.inv.inv = e~theorem Edit.inv_inv (e : Edit α) : e.inv = e
+lean: a proof left as sorry~lean~~design/proofs/Undo.lean~theorem Edit.inv_inv (e : Edit α) : e.inv.inv = e := by cases e <;> rfl~theorem Edit.inv_inv (e : Edit α) : e.inv.inv = e := by sorry
+specs: save renames without fsync (Save2)~specs~find design/specs -name '*.cfg' ! -name Save2_fsync.cfg -delete~design/specs/Save2_fsync.cfg~Variant = "fsync"~Variant = "nofsync"

@@ -1,0 +1,3141 @@
+#+title: Synthetic agenda file
+
+** NEXT Item 0
+SCHEDULED: <2026-11-18 Mon .+1d> DEADLINE: <2026-12-19 Tue>
+:PROPERTIES:
+:EFFORT: 0:12
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-14 Mon 09:00]--[2026-11-03 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 0][item]] and https://example.com/0 and <2026-11-19 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+* Item 1
+:LOGBOOK:
+CLOCK: [2026-11-28 Mon 09:00]--[2026-11-05 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 1][item]] and https://example.com/1 and <2026-11-10 Wed 10:00>.
+**** NEXT Item 2
+#+begin_src C
+x = 1
+#+end_src
+** DONE Item 3
+SCHEDULED: <2026-11-06 Mon> DEADLINE: <2026-12-08 Tue>
+:PROPERTIES:
+:EFFORT: 0:41
+:END:
+- one
+- [ ] two
+  1. nested
+** NEXT [#B] Item 4 :home:lean:
+SCHEDULED: <2026-11-22 Mon .+1d> DEADLINE: <2026-12-18 Tue>
+** TODO Item 5
+SCHEDULED: <2026-11-22 Mon .+1d> DEADLINE: <2026-12-24 Tue>
+See [[file:notes.org::*Item 5][item]] and https://example.com/5 and <2026-11-13 Wed 10:00>.
+** TODO Item 6
+:LOGBOOK:
+CLOCK: [2026-11-10 Mon 09:00]--[2026-11-05 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+* DONE Item 7
+* NEXT [#A] Item 8
+:PROPERTIES:
+:EFFORT: 0:21
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-01 Mon 09:00]--[2026-11-05 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+**** Item 9
+** TODO [#A] Item 10 :work:
+SCHEDULED: <2026-11-04 Mon> DEADLINE: <2026-12-02 Tue>
+:PROPERTIES:
+:EFFORT: 0:44
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-12 Mon 09:00]--[2026-11-20 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+#+begin_src csharp
+x = 1
+#+end_src
+See [[file:notes.org::*Item 10][item]] and https://example.com/10 and <2026-11-09 Wed 10:00>.
+*** WAIT [#B] Item 11
+#+begin_src C
+x = 1
+#+end_src
+**** NEXT Item 12
+See [[file:notes.org::*Item 12][item]] and https://example.com/12 and <2026-11-21 Wed 10:00>.
+**** Item 13 :home:lean:
+:LOGBOOK:
+CLOCK: [2026-11-18 Mon 09:00]--[2026-11-25 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+* Item 14 :work:
+:PROPERTIES:
+:EFFORT: 0:32
+:END:
+- one
+- [ ] two
+  1. nested
+*** WAIT Item 15
+#+begin_src C
+x = 1
+#+end_src
+See [[file:notes.org::*Item 15][item]] and https://example.com/15 and <2026-11-07 Wed 10:00>.
+*** Item 16
+:LOGBOOK:
+CLOCK: [2026-11-22 Mon 09:00]--[2026-11-04 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+* DONE [#C] Item 17 :home:lean:
+SCHEDULED: <2026-11-13 Mon> DEADLINE: <2026-12-03 Tue>
+:LOGBOOK:
+CLOCK: [2026-11-05 Mon 09:00]--[2026-11-01 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+- one
+- [ ] two
+  1. nested
+*** DONE [#C] Item 18 :home:lean:
+SCHEDULED: <2026-11-01 Mon> DEADLINE: <2026-12-24 Tue>
+* TODO Item 19 :home:lean:
+See [[file:notes.org::*Item 19][item]] and https://example.com/19 and <2026-11-24 Wed 10:00>.
+** Item 20
+:PROPERTIES:
+:STYLE: habit
+:END:
+* NEXT Item 21 :work:
+- one
+- [ ] two
+  1. nested
+*** TODO [#A] Item 22 :work:
+*** CANCELLED Item 23 :work:
+SCHEDULED: <2026-11-18 Mon> DEADLINE: <2026-12-17 Tue>
+See [[file:notes.org::*Item 23][item]] and https://example.com/23 and <2026-11-18 Wed 10:00>.
+* [#A] Item 24
+- one
+- [ ] two
+  1. nested
+* [#A] Item 25 :home:lean:
+:PROPERTIES:
+:EFFORT: 0:35
+:END:
+See [[file:notes.org::*Item 25][item]] and https://example.com/25 and <2026-11-23 Wed 10:00>.
+*** DONE Item 26 :home:lean:
+SCHEDULED: <2026-11-03 Mon> DEADLINE: <2026-12-01 Tue>
+* TODO Item 27 :work:
+SCHEDULED: <2026-11-09 Mon> DEADLINE: <2026-12-25 Tue>
+:PROPERTIES:
+:EFFORT: 0:37
+:END:
+*** CANCELLED Item 28
+SCHEDULED: <2026-11-02 Mon> DEADLINE: <2026-12-06 Tue>
+:LOGBOOK:
+CLOCK: [2026-11-01 Mon 09:00]--[2026-11-21 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+#+begin_src sql :dbbliss work
+x = 1
+#+end_src
+| a | b |
+|---+---|
+| 1 | 2 |
+- one
+- [ ] two
+  1. nested
+* DONE Item 29
+:LOGBOOK:
+CLOCK: [2026-11-05 Mon 09:00]--[2026-11-02 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 29][item]] and https://example.com/29 and <2026-11-06 Wed 10:00>.
+* NEXT Item 30 :home:lean:
+:PROPERTIES:
+:EFFORT: 0:53
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-12 Mon 09:00]--[2026-11-26 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+#+begin_src sql :dbbliss work
+x = 1
+#+end_src
+| a | b |
+|---+---|
+| 1 | 2 |
+See [[file:notes.org::*Item 30][item]] and https://example.com/30 and <2026-11-17 Wed 10:00>.
+* CANCELLED Item 31
+SCHEDULED: <2026-11-22 Mon> DEADLINE: <2026-12-14 Tue>
+* WAIT Item 32 :work:
+| a | b |
+|---+---|
+| 1 | 2 |
+See [[file:notes.org::*Item 32][item]] and https://example.com/32 and <2026-11-03 Wed 10:00>.
+** DONE [#C] Item 33 :work:
+See [[file:notes.org::*Item 33][item]] and https://example.com/33 and <2026-11-15 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+** DONE Item 34
+* WAIT [#B] Item 35
+:PROPERTIES:
+:EFFORT: 0:10
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-27 Mon 09:00]--[2026-11-03 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+#+begin_src shell
+x = 1
+#+end_src
+| a | b |
+|---+---|
+| 1 | 2 |
+See [[file:notes.org::*Item 35][item]] and https://example.com/35 and <2026-11-10 Wed 10:00>.
+* CANCELLED Item 36 :work:
+See [[file:notes.org::*Item 36][item]] and https://example.com/36 and <2026-11-24 Wed 10:00>.
+* TODO Item 37
+:PROPERTIES:
+:EFFORT: 0:42
+:END:
+| a | b |
+|---+---|
+| 1 | 2 |
+**** [#A] Item 38 :work:
+:LOGBOOK:
+CLOCK: [2026-11-27 Mon 09:00]--[2026-11-15 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+** WAIT Item 39
+SCHEDULED: <2026-11-17 Mon> DEADLINE: <2026-12-03 Tue>
+:LOGBOOK:
+CLOCK: [2026-11-24 Mon 09:00]--[2026-11-16 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+| a | b |
+|---+---|
+| 1 | 2 |
+See [[file:notes.org::*Item 39][item]] and https://example.com/39 and <2026-11-24 Wed 10:00>.
+* Item 40
+- one
+- [ ] two
+  1. nested
+* WAIT Item 41 :home:lean:
+:LOGBOOK:
+CLOCK: [2026-11-16 Mon 09:00]--[2026-11-02 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 41][item]] and https://example.com/41 and <2026-11-07 Wed 10:00>.
+** Item 42 :home:lean:
+:PROPERTIES:
+:EFFORT: 0:22
+:END:
+#+begin_src python
+x = 1
+#+end_src
+| a | b |
+|---+---|
+| 1 | 2 |
+** WAIT Item 43
+:PROPERTIES:
+:EFFORT: 0:19
+:END:
+** TODO Item 44 :home:lean:
+:LOGBOOK:
+CLOCK: [2026-11-01 Mon 09:00]--[2026-11-16 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+** WAIT Item 45
+SCHEDULED: <2026-11-25 Mon> DEADLINE: <2026-12-13 Tue>
+:PROPERTIES:
+:EFFORT: 0:55
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-24 Mon 09:00]--[2026-11-10 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+| a | b |
+|---+---|
+| 1 | 2 |
+* WAIT Item 46
+:PROPERTIES:
+:STYLE: habit
+:END:
+** NEXT Item 47 :home:lean:
+SCHEDULED: <2026-11-01 Mon> DEADLINE: <2026-12-21 Tue>
+See [[file:notes.org::*Item 47][item]] and https://example.com/47 and <2026-11-24 Wed 10:00>.
+*** Item 48 :work:
+:PROPERTIES:
+:EFFORT: 0:18
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-14 Mon 09:00]--[2026-11-11 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+** Item 49 :work:
+:LOGBOOK:
+CLOCK: [2026-11-06 Mon 09:00]--[2026-11-03 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+** Item 50
+:PROPERTIES:
+:STYLE: habit
+:END:
+* Item 51
+:PROPERTIES:
+:STYLE: habit
+:END:
+*** [#A] Item 52 :work:
+- one
+- [ ] two
+  1. nested
+** Item 53
+:PROPERTIES:
+:EFFORT: 0:43
+:END:
+See [[file:notes.org::*Item 53][item]] and https://example.com/53 and <2026-11-05 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+**** TODO [#A] Item 54
+SCHEDULED: <2026-11-05 Mon> DEADLINE: <2026-12-02 Tue>
+#+begin_src sql :dbbliss work
+x = 1
+#+end_src
+* TODO Item 55 :home:lean:
+:LOGBOOK:
+CLOCK: [2026-11-20 Mon 09:00]--[2026-11-01 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+#+begin_src sql :dbbliss work
+x = 1
+#+end_src
+See [[file:notes.org::*Item 55][item]] and https://example.com/55 and <2026-11-11 Wed 10:00>.
+* DONE Item 56 :work:
+SCHEDULED: <2026-11-14 Mon> DEADLINE: <2026-12-10 Tue>
+:PROPERTIES:
+:STYLE: habit
+:END:
+| a | b |
+|---+---|
+| 1 | 2 |
+See [[file:notes.org::*Item 56][item]] and https://example.com/56 and <2026-11-14 Wed 10:00>.
+* DONE Item 57
+#+begin_src sql :dbbliss work
+x = 1
+#+end_src
+* WAIT Item 58 :work:
+SCHEDULED: <2026-11-25 Mon> DEADLINE: <2026-12-04 Tue>
+*** NEXT [#A] Item 59
+:PROPERTIES:
+:STYLE: habit
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-13 Mon 09:00]--[2026-11-15 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+* WAIT [#C] Item 60 :work:
+:PROPERTIES:
+:EFFORT: 0:34
+:END:
+See [[file:notes.org::*Item 60][item]] and https://example.com/60 and <2026-11-03 Wed 10:00>.
+** DONE Item 61
+See [[file:notes.org::*Item 61][item]] and https://example.com/61 and <2026-11-23 Wed 10:00>.
+** CANCELLED [#B] Item 62
+** TODO Item 63
+**** Item 64 :home:lean:
+See [[file:notes.org::*Item 64][item]] and https://example.com/64 and <2026-11-27 Wed 10:00>.
+** Item 65
+:PROPERTIES:
+:EFFORT: 0:41
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-16 Mon 09:00]--[2026-11-06 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+#+begin_src sql :dbbliss work
+x = 1
+#+end_src
+** Item 66 :home:lean:
+** CANCELLED [#B] Item 67 :home:lean:
+:LOGBOOK:
+CLOCK: [2026-11-03 Mon 09:00]--[2026-11-07 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+#+begin_src python
+x = 1
+#+end_src
+- one
+- [ ] two
+  1. nested
+* DONE Item 68
+*** WAIT Item 69 :home:lean:
+SCHEDULED: <2026-11-15 Mon> DEADLINE: <2026-12-08 Tue>
+:PROPERTIES:
+:STYLE: habit
+:END:
+| a | b |
+|---+---|
+| 1 | 2 |
+See [[file:notes.org::*Item 69][item]] and https://example.com/69 and <2026-11-08 Wed 10:00>.
+* Item 70
+:PROPERTIES:
+:EFFORT: 0:24
+:END:
+| a | b |
+|---+---|
+| 1 | 2 |
+See [[file:notes.org::*Item 70][item]] and https://example.com/70 and <2026-11-04 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+*** Item 71 :work:
+- one
+- [ ] two
+  1. nested
+*** Item 72 :home:lean:
+:PROPERTIES:
+:STYLE: habit
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-20 Mon 09:00]--[2026-11-24 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 72][item]] and https://example.com/72 and <2026-11-11 Wed 10:00>.
+** NEXT [#A] Item 73 :home:lean:
+:LOGBOOK:
+CLOCK: [2026-11-04 Mon 09:00]--[2026-11-26 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+- one
+- [ ] two
+  1. nested
+* DONE Item 74 :home:lean:
+SCHEDULED: <2026-11-10 Mon> DEADLINE: <2026-12-02 Tue>
+** Item 75 :work:
+See [[file:notes.org::*Item 75][item]] and https://example.com/75 and <2026-11-19 Wed 10:00>.
+** [#A] Item 76 :work:
+#+begin_src shell
+x = 1
+#+end_src
+- one
+- [ ] two
+  1. nested
+** WAIT Item 77 :work:
+:PROPERTIES:
+:EFFORT: 0:22
+:END:
+| a | b |
+|---+---|
+| 1 | 2 |
+*** [#C] Item 78
+:LOGBOOK:
+CLOCK: [2026-11-26 Mon 09:00]--[2026-11-28 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+* CANCELLED [#C] Item 79 :work:
+SCHEDULED: <2026-11-12 Mon .+1d> DEADLINE: <2026-12-08 Tue>
+**** [#C] Item 80 :home:lean:
+See [[file:notes.org::*Item 80][item]] and https://example.com/80 and <2026-11-13 Wed 10:00>.
+** CANCELLED [#A] Item 81
+:LOGBOOK:
+CLOCK: [2026-11-25 Mon 09:00]--[2026-11-20 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 81][item]] and https://example.com/81 and <2026-11-16 Wed 10:00>.
+* NEXT Item 82 :home:lean:
+SCHEDULED: <2026-11-15 Mon> DEADLINE: <2026-12-22 Tue>
+:PROPERTIES:
+:EFFORT: 0:15
+:END:
+See [[file:notes.org::*Item 82][item]] and https://example.com/82 and <2026-11-25 Wed 10:00>.
+** [#A] Item 83 :work:
+* [#B] Item 84 :work:
+:PROPERTIES:
+:EFFORT: 0:49
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-27 Mon 09:00]--[2026-11-15 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+#+begin_src shell
+x = 1
+#+end_src
+*** CANCELLED Item 85 :work:
+SCHEDULED: <2026-11-06 Mon> DEADLINE: <2026-12-21 Tue>
+- one
+- [ ] two
+  1. nested
+*** TODO Item 86 :home:lean:
+SCHEDULED: <2026-11-17 Mon> DEADLINE: <2026-12-04 Tue>
+:PROPERTIES:
+:EFFORT: 0:35
+:END:
+- one
+- [ ] two
+  1. nested
+** Item 87
+:LOGBOOK:
+CLOCK: [2026-11-27 Mon 09:00]--[2026-11-17 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+**** WAIT Item 88
+SCHEDULED: <2026-11-10 Mon> DEADLINE: <2026-12-14 Tue>
+#+begin_src python
+x = 1
+#+end_src
+- one
+- [ ] two
+  1. nested
+* CANCELLED Item 89 :home:lean:
+* NEXT Item 90
+SCHEDULED: <2026-11-05 Mon> DEADLINE: <2026-12-03 Tue>
+See [[file:notes.org::*Item 90][item]] and https://example.com/90 and <2026-11-01 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+*** WAIT Item 91
+:LOGBOOK:
+CLOCK: [2026-11-01 Mon 09:00]--[2026-11-02 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+#+begin_src C
+x = 1
+#+end_src
+See [[file:notes.org::*Item 91][item]] and https://example.com/91 and <2026-11-02 Wed 10:00>.
+* TODO [#A] Item 92 :work:
+- one
+- [ ] two
+  1. nested
+**** TODO Item 93
+SCHEDULED: <2026-11-28 Mon> DEADLINE: <2026-12-15 Tue>
+:PROPERTIES:
+:EFFORT: 0:21
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-04 Mon 09:00]--[2026-11-09 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+| a | b |
+|---+---|
+| 1 | 2 |
+**** Item 94 :home:lean:
+See [[file:notes.org::*Item 94][item]] and https://example.com/94 and <2026-11-21 Wed 10:00>.
+* TODO [#A] Item 95
+:PROPERTIES:
+:STYLE: habit
+:END:
+**** Item 96
+:PROPERTIES:
+:STYLE: habit
+:END:
+*** TODO [#A] Item 97 :work:
+SCHEDULED: <2026-11-20 Mon> DEADLINE: <2026-12-12 Tue>
+#+begin_src csharp
+x = 1
+#+end_src
+**** TODO Item 98
+:PROPERTIES:
+:EFFORT: 0:44
+:END:
+#+begin_src python
+x = 1
+#+end_src
+See [[file:notes.org::*Item 98][item]] and https://example.com/98 and <2026-11-04 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+**** TODO Item 99 :home:lean:
+SCHEDULED: <2026-11-26 Mon> DEADLINE: <2026-12-07 Tue>
+:PROPERTIES:
+:EFFORT: 0:26
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-09 Mon 09:00]--[2026-11-10 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+#+begin_src sql :dbbliss work
+x = 1
+#+end_src
+** Item 100 :home:lean:
+* Item 101
+See [[file:notes.org::*Item 101][item]] and https://example.com/101 and <2026-11-12 Wed 10:00>.
+** Item 102 :work:
+* DONE [#C] Item 103 :work:
+- one
+- [ ] two
+  1. nested
+** Item 104
+See [[file:notes.org::*Item 104][item]] and https://example.com/104 and <2026-11-21 Wed 10:00>.
+** NEXT Item 105
+SCHEDULED: <2026-11-05 Mon> DEADLINE: <2026-12-15 Tue>
+* WAIT Item 106
+:LOGBOOK:
+CLOCK: [2026-11-25 Mon 09:00]--[2026-11-23 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+**** WAIT [#B] Item 107 :home:lean:
+:PROPERTIES:
+:EFFORT: 0:16
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-22 Mon 09:00]--[2026-11-04 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 107][item]] and https://example.com/107 and <2026-11-10 Wed 10:00>.
+** WAIT [#A] Item 108 :work:
+SCHEDULED: <2026-11-13 Mon> DEADLINE: <2026-12-01 Tue>
+* WAIT [#A] Item 109
+See [[file:notes.org::*Item 109][item]] and https://example.com/109 and <2026-11-24 Wed 10:00>.
+**** Item 110 :work:
+| a | b |
+|---+---|
+| 1 | 2 |
+**** Item 111 :work:
+- one
+- [ ] two
+  1. nested
+**** WAIT Item 112
+SCHEDULED: <2026-11-04 Mon .+1d> DEADLINE: <2026-12-18 Tue>
+:PROPERTIES:
+:EFFORT: 0:22
+:END:
+#+begin_src shell
+x = 1
+#+end_src
+See [[file:notes.org::*Item 112][item]] and https://example.com/112 and <2026-11-16 Wed 10:00>.
+**** Item 113 :home:lean:
+:LOGBOOK:
+CLOCK: [2026-11-22 Mon 09:00]--[2026-11-06 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 113][item]] and https://example.com/113 and <2026-11-20 Wed 10:00>.
+* WAIT Item 114 :home:lean:
+SCHEDULED: <2026-11-03 Mon> DEADLINE: <2026-12-14 Tue>
+*** NEXT Item 115
+SCHEDULED: <2026-11-25 Mon .+1d> DEADLINE: <2026-12-26 Tue>
+**** Item 116
+:LOGBOOK:
+CLOCK: [2026-11-27 Mon 09:00]--[2026-11-16 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 116][item]] and https://example.com/116 and <2026-11-13 Wed 10:00>.
+** Item 117 :work:
+* [#B] Item 118 :home:lean:
+:PROPERTIES:
+:EFFORT: 0:30
+:END:
+#+begin_src sql :dbbliss work
+x = 1
+#+end_src
+See [[file:notes.org::*Item 118][item]] and https://example.com/118 and <2026-11-01 Wed 10:00>.
+* Item 119 :home:lean:
+:PROPERTIES:
+:STYLE: habit
+:END:
+* CANCELLED Item 120
+** Item 121
+:PROPERTIES:
+:STYLE: habit
+:END:
+#+begin_src python
+x = 1
+#+end_src
+* CANCELLED [#B] Item 122
+SCHEDULED: <2026-11-19 Mon> DEADLINE: <2026-12-10 Tue>
+See [[file:notes.org::*Item 122][item]] and https://example.com/122 and <2026-11-21 Wed 10:00>.
+**** TODO Item 123
+* NEXT Item 124
+SCHEDULED: <2026-11-28 Mon> DEADLINE: <2026-12-11 Tue>
+*** TODO Item 125 :home:lean:
+* WAIT Item 126 :work:
+SCHEDULED: <2026-11-19 Mon> DEADLINE: <2026-12-03 Tue>
+:LOGBOOK:
+CLOCK: [2026-11-24 Mon 09:00]--[2026-11-18 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 126][item]] and https://example.com/126 and <2026-11-10 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+* NEXT Item 127
+*** Item 128
+#+begin_src csharp
+x = 1
+#+end_src
+- one
+- [ ] two
+  1. nested
+**** TODO Item 129 :home:lean:
+SCHEDULED: <2026-11-10 Mon> DEADLINE: <2026-12-09 Tue>
+:LOGBOOK:
+CLOCK: [2026-11-02 Mon 09:00]--[2026-11-11 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+#+begin_src shell
+x = 1
+#+end_src
+- one
+- [ ] two
+  1. nested
+*** CANCELLED Item 130
+| a | b |
+|---+---|
+| 1 | 2 |
+**** NEXT Item 131
+:PROPERTIES:
+:EFFORT: 0:19
+:END:
+| a | b |
+|---+---|
+| 1 | 2 |
+* NEXT [#A] Item 132
+SCHEDULED: <2026-11-19 Mon> DEADLINE: <2026-12-24 Tue>
+- one
+- [ ] two
+  1. nested
+* WAIT Item 133
+:PROPERTIES:
+:EFFORT: 0:55
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-02 Mon 09:00]--[2026-11-01 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+** Item 134 :work:
+- one
+- [ ] two
+  1. nested
+* WAIT Item 135 :work:
+SCHEDULED: <2026-11-13 Mon> DEADLINE: <2026-12-15 Tue>
+See [[file:notes.org::*Item 135][item]] and https://example.com/135 and <2026-11-21 Wed 10:00>.
+*** WAIT Item 136
+* Item 137
+:PROPERTIES:
+:EFFORT: 0:47
+:END:
+See [[file:notes.org::*Item 137][item]] and https://example.com/137 and <2026-11-05 Wed 10:00>.
+*** NEXT Item 138 :home:lean:
+** NEXT Item 139 :work:
+SCHEDULED: <2026-11-13 Mon> DEADLINE: <2026-12-07 Tue>
+#+begin_src python
+x = 1
+#+end_src
+See [[file:notes.org::*Item 139][item]] and https://example.com/139 and <2026-11-26 Wed 10:00>.
+* NEXT Item 140
+See [[file:notes.org::*Item 140][item]] and https://example.com/140 and <2026-11-07 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+**** WAIT Item 141 :home:lean:
+SCHEDULED: <2026-11-25 Mon> DEADLINE: <2026-12-05 Tue>
+:PROPERTIES:
+:EFFORT: 0:41
+:END:
+#+begin_src python
+x = 1
+#+end_src
+See [[file:notes.org::*Item 141][item]] and https://example.com/141 and <2026-11-20 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+** CANCELLED [#A] Item 142
+** Item 143 :work:
+:PROPERTIES:
+:STYLE: habit
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-02 Mon 09:00]--[2026-11-02 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+* Item 144
+:PROPERTIES:
+:EFFORT: 0:24
+:END:
+* WAIT Item 145 :work:
+SCHEDULED: <2026-11-02 Mon> DEADLINE: <2026-12-12 Tue>
+:PROPERTIES:
+:EFFORT: 0:11
+:END:
+#+begin_src shell
+x = 1
+#+end_src
+* TODO Item 146 :work:
+SCHEDULED: <2026-11-07 Mon> DEADLINE: <2026-12-10 Tue>
+** DONE [#A] Item 147
+- one
+- [ ] two
+  1. nested
+* TODO Item 148 :home:lean:
+SCHEDULED: <2026-11-15 Mon> DEADLINE: <2026-12-13 Tue>
+**** WAIT Item 149 :work:
+:PROPERTIES:
+:EFFORT: 0:19
+:END:
+#+begin_src python
+x = 1
+#+end_src
+See [[file:notes.org::*Item 149][item]] and https://example.com/149 and <2026-11-09 Wed 10:00>.
+** WAIT Item 150 :work:
+SCHEDULED: <2026-11-15 Mon> DEADLINE: <2026-12-04 Tue>
+:PROPERTIES:
+:EFFORT: 0:50
+:END:
+** Item 151 :work:
+:PROPERTIES:
+:STYLE: habit
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-13 Mon 09:00]--[2026-11-10 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+* Item 152
+See [[file:notes.org::*Item 152][item]] and https://example.com/152 and <2026-11-12 Wed 10:00>.
+** NEXT Item 153 :home:lean:
+SCHEDULED: <2026-11-06 Mon> DEADLINE: <2026-12-08 Tue>
+:LOGBOOK:
+CLOCK: [2026-11-03 Mon 09:00]--[2026-11-27 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+#+begin_src shell
+x = 1
+#+end_src
+- one
+- [ ] two
+  1. nested
+* CANCELLED Item 154 :work:
+SCHEDULED: <2026-11-03 Mon> DEADLINE: <2026-12-17 Tue>
+#+begin_src sql :dbbliss work
+x = 1
+#+end_src
+** TODO Item 155
+:PROPERTIES:
+:EFFORT: 0:25
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-27 Mon 09:00]--[2026-11-12 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+#+begin_src sql :dbbliss work
+x = 1
+#+end_src
+** CANCELLED [#C] Item 156
+SCHEDULED: <2026-11-27 Mon> DEADLINE: <2026-12-11 Tue>
+See [[file:notes.org::*Item 156][item]] and https://example.com/156 and <2026-11-04 Wed 10:00>.
+** DONE Item 157
+:PROPERTIES:
+:EFFORT: 0:24
+:END:
+* TODO Item 158 :work:
+- one
+- [ ] two
+  1. nested
+* TODO [#B] Item 159 :home:lean:
+:LOGBOOK:
+CLOCK: [2026-11-04 Mon 09:00]--[2026-11-13 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 159][item]] and https://example.com/159 and <2026-11-08 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+*** DONE [#A] Item 160
+** WAIT Item 161
+SCHEDULED: <2026-11-14 Mon> DEADLINE: <2026-12-19 Tue>
+See [[file:notes.org::*Item 161][item]] and https://example.com/161 and <2026-11-17 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+**** WAIT Item 162 :work:
+:PROPERTIES:
+:STYLE: habit
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-11 Mon 09:00]--[2026-11-14 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 162][item]] and https://example.com/162 and <2026-11-14 Wed 10:00>.
+** Item 163
+:LOGBOOK:
+CLOCK: [2026-11-21 Mon 09:00]--[2026-11-20 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 163][item]] and https://example.com/163 and <2026-11-18 Wed 10:00>.
+* CANCELLED Item 164
+- one
+- [ ] two
+  1. nested
+*** CANCELLED [#C] Item 165 :home:lean:
+:PROPERTIES:
+:STYLE: habit
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-10 Mon 09:00]--[2026-11-14 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+** Item 166
+:LOGBOOK:
+CLOCK: [2026-11-23 Mon 09:00]--[2026-11-12 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+** TODO Item 167 :work:
+SCHEDULED: <2026-11-18 Mon> DEADLINE: <2026-12-19 Tue>
+** WAIT Item 168 :work:
+:PROPERTIES:
+:STYLE: habit
+:END:
+| a | b |
+|---+---|
+| 1 | 2 |
+**** Item 169
+See [[file:notes.org::*Item 169][item]] and https://example.com/169 and <2026-11-07 Wed 10:00>.
+** Item 170
+- one
+- [ ] two
+  1. nested
+* TODO Item 171
+*** TODO Item 172
+:PROPERTIES:
+:EFFORT: 0:32
+:END:
+** DONE Item 173
+*** Item 174 :work:
+#+begin_src C
+x = 1
+#+end_src
+*** Item 175 :home:lean:
+** DONE Item 176
+:PROPERTIES:
+:EFFORT: 0:35
+:END:
+See [[file:notes.org::*Item 176][item]] and https://example.com/176 and <2026-11-14 Wed 10:00>.
+** Item 177 :home:lean:
+:PROPERTIES:
+:EFFORT: 0:33
+:END:
+See [[file:notes.org::*Item 177][item]] and https://example.com/177 and <2026-11-10 Wed 10:00>.
+*** DONE Item 178 :work:
+:PROPERTIES:
+:EFFORT: 0:36
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-21 Mon 09:00]--[2026-11-19 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+* [#A] Item 179
+:LOGBOOK:
+CLOCK: [2026-11-10 Mon 09:00]--[2026-11-13 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+- one
+- [ ] two
+  1. nested
+** Item 180 :home:lean:
+:LOGBOOK:
+CLOCK: [2026-11-07 Mon 09:00]--[2026-11-14 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+* TODO [#C] Item 181
+SCHEDULED: <2026-11-15 Mon> DEADLINE: <2026-12-26 Tue>
+See [[file:notes.org::*Item 181][item]] and https://example.com/181 and <2026-11-08 Wed 10:00>.
+* TODO Item 182 :home:lean:
+:LOGBOOK:
+CLOCK: [2026-11-07 Mon 09:00]--[2026-11-15 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+| a | b |
+|---+---|
+| 1 | 2 |
+See [[file:notes.org::*Item 182][item]] and https://example.com/182 and <2026-11-13 Wed 10:00>.
+* DONE Item 183
+SCHEDULED: <2026-11-02 Mon .+1d> DEADLINE: <2026-12-19 Tue>
+** TODO Item 184 :work:
+See [[file:notes.org::*Item 184][item]] and https://example.com/184 and <2026-11-28 Wed 10:00>.
+* NEXT Item 185 :home:lean:
+SCHEDULED: <2026-11-10 Mon> DEADLINE: <2026-12-12 Tue>
+:PROPERTIES:
+:EFFORT: 0:34
+:END:
+*** NEXT [#B] Item 186
+SCHEDULED: <2026-11-14 Mon .+1d> DEADLINE: <2026-12-22 Tue>
+:PROPERTIES:
+:EFFORT: 0:25
+:END:
+#+begin_src sql :dbbliss work
+x = 1
+#+end_src
+** [#B] Item 187 :work:
+** Item 188 :work:
+* Item 189
+| a | b |
+|---+---|
+| 1 | 2 |
+- one
+- [ ] two
+  1. nested
+* DONE Item 190
+:PROPERTIES:
+:STYLE: habit
+:END:
+#+begin_src sql :dbbliss work
+x = 1
+#+end_src
+- one
+- [ ] two
+  1. nested
+**** WAIT Item 191
+SCHEDULED: <2026-11-23 Mon> DEADLINE: <2026-12-12 Tue>
+- one
+- [ ] two
+  1. nested
+** NEXT Item 192
+#+begin_src python
+x = 1
+#+end_src
+**** TODO Item 193 :work:
+SCHEDULED: <2026-11-20 Mon> DEADLINE: <2026-12-23 Tue>
+- one
+- [ ] two
+  1. nested
+**** TODO Item 194 :home:lean:
+:LOGBOOK:
+CLOCK: [2026-11-16 Mon 09:00]--[2026-11-23 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+* TODO Item 195 :home:lean:
+See [[file:notes.org::*Item 195][item]] and https://example.com/195 and <2026-11-11 Wed 10:00>.
+** Item 196
+** WAIT Item 197
+:PROPERTIES:
+:EFFORT: 0:59
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-25 Mon 09:00]--[2026-11-07 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+#+begin_src shell
+x = 1
+#+end_src
+**** NEXT Item 198 :home:lean:
+SCHEDULED: <2026-11-12 Mon> DEADLINE: <2026-12-03 Tue>
+:PROPERTIES:
+:EFFORT: 0:18
+:END:
+- one
+- [ ] two
+  1. nested
+**** DONE Item 199 :work:
+SCHEDULED: <2026-11-10 Mon .+1d> DEADLINE: <2026-12-23 Tue>
+:PROPERTIES:
+:EFFORT: 0:31
+:END:
+#+begin_src python
+x = 1
+#+end_src
+See [[file:notes.org::*Item 199][item]] and https://example.com/199 and <2026-11-22 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+** Item 200
+:PROPERTIES:
+:EFFORT: 0:23
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-09 Mon 09:00]--[2026-11-10 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+- one
+- [ ] two
+  1. nested
+** DONE Item 201
+SCHEDULED: <2026-11-18 Mon .+1d> DEADLINE: <2026-12-01 Tue>
+** TODO Item 202
+SCHEDULED: <2026-11-26 Mon> DEADLINE: <2026-12-01 Tue>
+:LOGBOOK:
+CLOCK: [2026-11-10 Mon 09:00]--[2026-11-21 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+* NEXT [#B] Item 203
+:PROPERTIES:
+:STYLE: habit
+:END:
+See [[file:notes.org::*Item 203][item]] and https://example.com/203 and <2026-11-26 Wed 10:00>.
+** Item 204 :home:lean:
+:LOGBOOK:
+CLOCK: [2026-11-05 Mon 09:00]--[2026-11-18 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 204][item]] and https://example.com/204 and <2026-11-02 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+*** Item 205
+- one
+- [ ] two
+  1. nested
+**** NEXT [#C] Item 206 :work:
+:PROPERTIES:
+:STYLE: habit
+:END:
+See [[file:notes.org::*Item 206][item]] and https://example.com/206 and <2026-11-27 Wed 10:00>.
+*** DONE Item 207 :work:
+**** NEXT Item 208
+SCHEDULED: <2026-11-19 Mon> DEADLINE: <2026-12-19 Tue>
+:PROPERTIES:
+:STYLE: habit
+:END:
+** CANCELLED Item 209
+SCHEDULED: <2026-11-22 Mon> DEADLINE: <2026-12-22 Tue>
+:PROPERTIES:
+:EFFORT: 0:33
+:END:
+* Item 210 :work:
+:LOGBOOK:
+CLOCK: [2026-11-19 Mon 09:00]--[2026-11-12 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+** DONE [#A] Item 211 :home:lean:
+:PROPERTIES:
+:EFFORT: 0:24
+:END:
+| a | b |
+|---+---|
+| 1 | 2 |
+** NEXT Item 212
+:PROPERTIES:
+:EFFORT: 0:47
+:END:
+- one
+- [ ] two
+  1. nested
+*** CANCELLED Item 213
+- one
+- [ ] two
+  1. nested
+** [#C] Item 214
+:PROPERTIES:
+:EFFORT: 0:10
+:END:
+See [[file:notes.org::*Item 214][item]] and https://example.com/214 and <2026-11-05 Wed 10:00>.
+* CANCELLED Item 215 :work:
+:LOGBOOK:
+CLOCK: [2026-11-24 Mon 09:00]--[2026-11-27 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+* NEXT Item 216 :home:lean:
+*** TODO Item 217
+:PROPERTIES:
+:STYLE: habit
+:END:
+See [[file:notes.org::*Item 217][item]] and https://example.com/217 and <2026-11-01 Wed 10:00>.
+* [#C] Item 218 :home:lean:
+See [[file:notes.org::*Item 218][item]] and https://example.com/218 and <2026-11-23 Wed 10:00>.
+** DONE [#A] Item 219
+SCHEDULED: <2026-11-16 Mon> DEADLINE: <2026-12-26 Tue>
+:LOGBOOK:
+CLOCK: [2026-11-20 Mon 09:00]--[2026-11-27 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+**** Item 220
+:LOGBOOK:
+CLOCK: [2026-11-11 Mon 09:00]--[2026-11-17 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+- one
+- [ ] two
+  1. nested
+* Item 221 :home:lean:
+* DONE Item 222
+:PROPERTIES:
+:EFFORT: 0:14
+:END:
+**** TODO Item 223
+* Item 224
+* Item 225 :home:lean:
+- one
+- [ ] two
+  1. nested
+* TODO Item 226
+SCHEDULED: <2026-11-25 Mon> DEADLINE: <2026-12-06 Tue>
+:LOGBOOK:
+CLOCK: [2026-11-24 Mon 09:00]--[2026-11-10 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+* NEXT Item 227
+SCHEDULED: <2026-11-12 Mon> DEADLINE: <2026-12-12 Tue>
+* WAIT Item 228 :home:lean:
+:LOGBOOK:
+CLOCK: [2026-11-01 Mon 09:00]--[2026-11-07 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+#+begin_src python
+x = 1
+#+end_src
+**** TODO Item 229 :work:
+SCHEDULED: <2026-11-05 Mon> DEADLINE: <2026-12-03 Tue>
+:PROPERTIES:
+:EFFORT: 0:46
+:END:
+#+begin_src csharp
+x = 1
+#+end_src
+- one
+- [ ] two
+  1. nested
+** TODO Item 230 :work:
+:PROPERTIES:
+:EFFORT: 0:49
+:END:
+| a | b |
+|---+---|
+| 1 | 2 |
+- one
+- [ ] two
+  1. nested
+**** CANCELLED Item 231 :home:lean:
+| a | b |
+|---+---|
+| 1 | 2 |
+** TODO Item 232
+:LOGBOOK:
+CLOCK: [2026-11-05 Mon 09:00]--[2026-11-07 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+#+begin_src C
+x = 1
+#+end_src
+**** CANCELLED Item 233 :work:
+** Item 234
+:LOGBOOK:
+CLOCK: [2026-11-09 Mon 09:00]--[2026-11-01 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+| a | b |
+|---+---|
+| 1 | 2 |
+* Item 235 :work:
+#+begin_src shell
+x = 1
+#+end_src
+- one
+- [ ] two
+  1. nested
+*** WAIT Item 236 :work:
+** NEXT Item 237 :home:lean:
+SCHEDULED: <2026-11-07 Mon> DEADLINE: <2026-12-01 Tue>
+:PROPERTIES:
+:EFFORT: 0:14
+:END:
+** DONE Item 238
+:PROPERTIES:
+:STYLE: habit
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-14 Mon 09:00]--[2026-11-08 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+** DONE Item 239 :work:
+See [[file:notes.org::*Item 239][item]] and https://example.com/239 and <2026-11-10 Wed 10:00>.
+** TODO Item 240
+SCHEDULED: <2026-11-11 Mon> DEADLINE: <2026-12-20 Tue>
+:LOGBOOK:
+CLOCK: [2026-11-02 Mon 09:00]--[2026-11-26 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+** NEXT Item 241
+:PROPERTIES:
+:STYLE: habit
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-01 Mon 09:00]--[2026-11-05 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+- one
+- [ ] two
+  1. nested
+* DONE [#B] Item 242
+**** [#C] Item 243
+| a | b |
+|---+---|
+| 1 | 2 |
+- one
+- [ ] two
+  1. nested
+* TODO Item 244
+:PROPERTIES:
+:STYLE: habit
+:END:
+** TODO Item 245 :home:lean:
+:LOGBOOK:
+CLOCK: [2026-11-03 Mon 09:00]--[2026-11-09 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+| a | b |
+|---+---|
+| 1 | 2 |
+See [[file:notes.org::*Item 245][item]] and https://example.com/245 and <2026-11-02 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+* DONE Item 246 :home:lean:
+SCHEDULED: <2026-11-02 Mon> DEADLINE: <2026-12-18 Tue>
+:PROPERTIES:
+:EFFORT: 0:36
+:END:
+** DONE Item 247 :work:
+SCHEDULED: <2026-11-14 Mon> DEADLINE: <2026-12-21 Tue>
+:PROPERTIES:
+:EFFORT: 0:26
+:END:
+* Item 248
+* DONE Item 249
+:LOGBOOK:
+CLOCK: [2026-11-21 Mon 09:00]--[2026-11-26 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+*** WAIT [#C] Item 250 :home:lean:
+*** DONE Item 251 :work:
+SCHEDULED: <2026-11-25 Mon> DEADLINE: <2026-12-17 Tue>
+:PROPERTIES:
+:STYLE: habit
+:END:
+- one
+- [ ] two
+  1. nested
+**** Item 252
+**** Item 253 :home:lean:
+*** NEXT Item 254
+SCHEDULED: <2026-11-17 Mon> DEADLINE: <2026-12-20 Tue>
+| a | b |
+|---+---|
+| 1 | 2 |
+See [[file:notes.org::*Item 254][item]] and https://example.com/254 and <2026-11-19 Wed 10:00>.
+*** NEXT Item 255 :home:lean:
+SCHEDULED: <2026-11-11 Mon> DEADLINE: <2026-12-09 Tue>
+:LOGBOOK:
+CLOCK: [2026-11-21 Mon 09:00]--[2026-11-16 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+*** Item 256 :home:lean:
+:LOGBOOK:
+CLOCK: [2026-11-25 Mon 09:00]--[2026-11-10 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+* DONE Item 257 :work:
+SCHEDULED: <2026-11-28 Mon> DEADLINE: <2026-12-12 Tue>
+:PROPERTIES:
+:STYLE: habit
+:END:
+#+begin_src python
+x = 1
+#+end_src
+**** [#C] Item 258
+** NEXT Item 259
+:LOGBOOK:
+CLOCK: [2026-11-22 Mon 09:00]--[2026-11-10 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+- one
+- [ ] two
+  1. nested
+* Item 260
+- one
+- [ ] two
+  1. nested
+** DONE Item 261
+:LOGBOOK:
+CLOCK: [2026-11-14 Mon 09:00]--[2026-11-27 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+#+begin_src csharp
+x = 1
+#+end_src
+See [[file:notes.org::*Item 261][item]] and https://example.com/261 and <2026-11-01 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+*** WAIT [#B] Item 262 :home:lean:
+SCHEDULED: <2026-11-28 Mon> DEADLINE: <2026-12-13 Tue>
+#+begin_src sql :dbbliss work
+x = 1
+#+end_src
+*** WAIT Item 263 :home:lean:
+SCHEDULED: <2026-11-18 Mon> DEADLINE: <2026-12-15 Tue>
+#+begin_src sql :dbbliss work
+x = 1
+#+end_src
+* [#A] Item 264 :home:lean:
+See [[file:notes.org::*Item 264][item]] and https://example.com/264 and <2026-11-23 Wed 10:00>.
+*** CANCELLED Item 265
+:PROPERTIES:
+:STYLE: habit
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-28 Mon 09:00]--[2026-11-21 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+#+begin_src csharp
+x = 1
+#+end_src
+See [[file:notes.org::*Item 265][item]] and https://example.com/265 and <2026-11-20 Wed 10:00>.
+* Item 266 :work:
+:LOGBOOK:
+CLOCK: [2026-11-07 Mon 09:00]--[2026-11-18 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+* DONE Item 267
+SCHEDULED: <2026-11-02 Mon> DEADLINE: <2026-12-22 Tue>
+* TODO Item 268 :work:
+SCHEDULED: <2026-11-08 Mon> DEADLINE: <2026-12-26 Tue>
+* Item 269 :work:
+See [[file:notes.org::*Item 269][item]] and https://example.com/269 and <2026-11-15 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+* DONE Item 270 :home:lean:
+SCHEDULED: <2026-11-27 Mon> DEADLINE: <2026-12-22 Tue>
+See [[file:notes.org::*Item 270][item]] and https://example.com/270 and <2026-11-12 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+** TODO Item 271 :work:
+#+begin_src csharp
+x = 1
+#+end_src
+* CANCELLED [#C] Item 272 :home:lean:
+SCHEDULED: <2026-11-01 Mon> DEADLINE: <2026-12-05 Tue>
+:LOGBOOK:
+CLOCK: [2026-11-11 Mon 09:00]--[2026-11-12 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+- one
+- [ ] two
+  1. nested
+** Item 273
+:LOGBOOK:
+CLOCK: [2026-11-06 Mon 09:00]--[2026-11-20 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+| a | b |
+|---+---|
+| 1 | 2 |
+See [[file:notes.org::*Item 273][item]] and https://example.com/273 and <2026-11-19 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+**** Item 274 :work:
+:PROPERTIES:
+:EFFORT: 0:56
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-06 Mon 09:00]--[2026-11-22 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+** WAIT Item 275 :work:
+SCHEDULED: <2026-11-08 Mon .+1d> DEADLINE: <2026-12-16 Tue>
+:PROPERTIES:
+:EFFORT: 0:30
+:END:
+* WAIT Item 276
+See [[file:notes.org::*Item 276][item]] and https://example.com/276 and <2026-11-04 Wed 10:00>.
+** Item 277 :work:
+:LOGBOOK:
+CLOCK: [2026-11-09 Mon 09:00]--[2026-11-01 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 277][item]] and https://example.com/277 and <2026-11-19 Wed 10:00>.
+* Item 278 :work:
+#+begin_src csharp
+x = 1
+#+end_src
+| a | b |
+|---+---|
+| 1 | 2 |
+- one
+- [ ] two
+  1. nested
+* CANCELLED Item 279 :work:
+SCHEDULED: <2026-11-26 Mon> DEADLINE: <2026-12-19 Tue>
+:LOGBOOK:
+CLOCK: [2026-11-14 Mon 09:00]--[2026-11-26 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+| a | b |
+|---+---|
+| 1 | 2 |
+See [[file:notes.org::*Item 279][item]] and https://example.com/279 and <2026-11-24 Wed 10:00>.
+* NEXT Item 280 :home:lean:
+SCHEDULED: <2026-11-08 Mon> DEADLINE: <2026-12-23 Tue>
+* [#C] Item 281
+** [#C] Item 282
+**** Item 283 :home:lean:
+#+begin_src sql :dbbliss work
+x = 1
+#+end_src
+*** DONE Item 284 :work:
+#+begin_src python
+x = 1
+#+end_src
+** DONE Item 285
+*** TODO Item 286
+SCHEDULED: <2026-11-14 Mon> DEADLINE: <2026-12-15 Tue>
+:PROPERTIES:
+:EFFORT: 0:15
+:END:
+See [[file:notes.org::*Item 286][item]] and https://example.com/286 and <2026-11-03 Wed 10:00>.
+* Item 287
+:PROPERTIES:
+:STYLE: habit
+:END:
+* WAIT Item 288 :work:
+*** NEXT Item 289 :work:
+SCHEDULED: <2026-11-28 Mon .+1d> DEADLINE: <2026-12-08 Tue>
+See [[file:notes.org::*Item 289][item]] and https://example.com/289 and <2026-11-18 Wed 10:00>.
+*** [#B] Item 290
+:PROPERTIES:
+:EFFORT: 0:38
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-10 Mon 09:00]--[2026-11-12 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+**** TODO Item 291
+:PROPERTIES:
+:EFFORT: 0:53
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-13 Mon 09:00]--[2026-11-15 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 291][item]] and https://example.com/291 and <2026-11-20 Wed 10:00>.
+* WAIT [#B] Item 292
+SCHEDULED: <2026-11-19 Mon> DEADLINE: <2026-12-17 Tue>
+:PROPERTIES:
+:EFFORT: 0:57
+:END:
+See [[file:notes.org::*Item 292][item]] and https://example.com/292 and <2026-11-25 Wed 10:00>.
+** CANCELLED Item 293
+* Item 294
+:LOGBOOK:
+CLOCK: [2026-11-17 Mon 09:00]--[2026-11-26 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+- one
+- [ ] two
+  1. nested
+** TODO Item 295 :home:lean:
+** DONE Item 296
+SCHEDULED: <2026-11-11 Mon> DEADLINE: <2026-12-16 Tue>
+:PROPERTIES:
+:STYLE: habit
+:END:
+** TODO Item 297 :work:
+| a | b |
+|---+---|
+| 1 | 2 |
+** CANCELLED Item 298 :home:lean:
+SCHEDULED: <2026-11-15 Mon> DEADLINE: <2026-12-02 Tue>
+* CANCELLED Item 299
+#+begin_src sql :dbbliss work
+x = 1
+#+end_src
+See [[file:notes.org::*Item 299][item]] and https://example.com/299 and <2026-11-24 Wed 10:00>.
+**** TODO Item 300
+- one
+- [ ] two
+  1. nested
+* CANCELLED Item 301
+:PROPERTIES:
+:EFFORT: 0:14
+:END:
+#+begin_src C
+x = 1
+#+end_src
+** NEXT Item 302 :home:lean:
+:LOGBOOK:
+CLOCK: [2026-11-08 Mon 09:00]--[2026-11-22 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 302][item]] and https://example.com/302 and <2026-11-10 Wed 10:00>.
+**** Item 303
+See [[file:notes.org::*Item 303][item]] and https://example.com/303 and <2026-11-20 Wed 10:00>.
+*** WAIT Item 304 :work:
+SCHEDULED: <2026-11-12 Mon> DEADLINE: <2026-12-26 Tue>
+:PROPERTIES:
+:STYLE: habit
+:END:
+#+begin_src sql :dbbliss work
+x = 1
+#+end_src
+** WAIT Item 305
+:LOGBOOK:
+CLOCK: [2026-11-18 Mon 09:00]--[2026-11-27 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 305][item]] and https://example.com/305 and <2026-11-11 Wed 10:00>.
+*** CANCELLED Item 306 :work:
+:PROPERTIES:
+:EFFORT: 0:46
+:END:
+#+begin_src csharp
+x = 1
+#+end_src
+| a | b |
+|---+---|
+| 1 | 2 |
+* Item 307 :home:lean:
+** CANCELLED Item 308 :home:lean:
+SCHEDULED: <2026-11-21 Mon> DEADLINE: <2026-12-05 Tue>
+See [[file:notes.org::*Item 308][item]] and https://example.com/308 and <2026-11-20 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+** NEXT Item 309 :home:lean:
+SCHEDULED: <2026-11-17 Mon .+1d> DEADLINE: <2026-12-25 Tue>
+:PROPERTIES:
+:EFFORT: 0:22
+:END:
+* [#A] Item 310
+*** Item 311 :home:lean:
+:PROPERTIES:
+:STYLE: habit
+:END:
+- one
+- [ ] two
+  1. nested
+* Item 312 :work:
+:LOGBOOK:
+CLOCK: [2026-11-11 Mon 09:00]--[2026-11-26 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+*** CANCELLED Item 313 :home:lean:
+SCHEDULED: <2026-11-09 Mon> DEADLINE: <2026-12-07 Tue>
+** NEXT [#A] Item 314 :work:
+:LOGBOOK:
+CLOCK: [2026-11-27 Mon 09:00]--[2026-11-27 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+| a | b |
+|---+---|
+| 1 | 2 |
+*** CANCELLED Item 315
+SCHEDULED: <2026-11-18 Mon> DEADLINE: <2026-12-16 Tue>
+#+begin_src csharp
+x = 1
+#+end_src
+- one
+- [ ] two
+  1. nested
+*** NEXT Item 316 :work:
+** NEXT Item 317
+- one
+- [ ] two
+  1. nested
+** CANCELLED [#A] Item 318
+:LOGBOOK:
+CLOCK: [2026-11-19 Mon 09:00]--[2026-11-26 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+* TODO Item 319 :work:
+SCHEDULED: <2026-11-02 Mon> DEADLINE: <2026-12-08 Tue>
+:LOGBOOK:
+CLOCK: [2026-11-18 Mon 09:00]--[2026-11-21 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 319][item]] and https://example.com/319 and <2026-11-15 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+* [#C] Item 320
+:LOGBOOK:
+CLOCK: [2026-11-26 Mon 09:00]--[2026-11-13 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+| a | b |
+|---+---|
+| 1 | 2 |
+* CANCELLED Item 321
+See [[file:notes.org::*Item 321][item]] and https://example.com/321 and <2026-11-06 Wed 10:00>.
+** NEXT Item 322
+| a | b |
+|---+---|
+| 1 | 2 |
+* Item 323 :work:
+:PROPERTIES:
+:EFFORT: 0:29
+:END:
+* TODO [#A] Item 324
+:LOGBOOK:
+CLOCK: [2026-11-13 Mon 09:00]--[2026-11-15 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+**** Item 325
+:LOGBOOK:
+CLOCK: [2026-11-22 Mon 09:00]--[2026-11-05 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+- one
+- [ ] two
+  1. nested
+** DONE Item 326 :home:lean:
+SCHEDULED: <2026-11-10 Mon> DEADLINE: <2026-12-01 Tue>
+:LOGBOOK:
+CLOCK: [2026-11-15 Mon 09:00]--[2026-11-06 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+** WAIT [#C] Item 327 :work:
+SCHEDULED: <2026-11-08 Mon> DEADLINE: <2026-12-12 Tue>
+*** NEXT [#B] Item 328
+SCHEDULED: <2026-11-11 Mon> DEADLINE: <2026-12-18 Tue>
+:PROPERTIES:
+:EFFORT: 0:23
+:END:
+*** Item 329
+See [[file:notes.org::*Item 329][item]] and https://example.com/329 and <2026-11-06 Wed 10:00>.
+*** Item 330 :work:
+:LOGBOOK:
+CLOCK: [2026-11-09 Mon 09:00]--[2026-11-01 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+#+begin_src csharp
+x = 1
+#+end_src
+**** CANCELLED Item 331 :work:
+#+begin_src C
+x = 1
+#+end_src
+See [[file:notes.org::*Item 331][item]] and https://example.com/331 and <2026-11-03 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+* Item 332
+See [[file:notes.org::*Item 332][item]] and https://example.com/332 and <2026-11-13 Wed 10:00>.
+**** NEXT Item 333
+* Item 334 :work:
+:PROPERTIES:
+:STYLE: habit
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-03 Mon 09:00]--[2026-11-06 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+* NEXT [#A] Item 335
+SCHEDULED: <2026-11-21 Mon .+1d> DEADLINE: <2026-12-19 Tue>
+:PROPERTIES:
+:STYLE: habit
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-28 Mon 09:00]--[2026-11-05 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+- one
+- [ ] two
+  1. nested
+** Item 336 :home:lean:
+* NEXT Item 337 :work:
+:LOGBOOK:
+CLOCK: [2026-11-16 Mon 09:00]--[2026-11-09 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+| a | b |
+|---+---|
+| 1 | 2 |
+* WAIT Item 338
+SCHEDULED: <2026-11-04 Mon> DEADLINE: <2026-12-23 Tue>
+* TODO [#B] Item 339 :work:
+SCHEDULED: <2026-11-08 Mon> DEADLINE: <2026-12-18 Tue>
+:PROPERTIES:
+:EFFORT: 0:40
+:END:
+* TODO Item 340
+SCHEDULED: <2026-11-06 Mon> DEADLINE: <2026-12-11 Tue>
+:PROPERTIES:
+:STYLE: habit
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-15 Mon 09:00]--[2026-11-26 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+| a | b |
+|---+---|
+| 1 | 2 |
+* WAIT [#C] Item 341 :home:lean:
+:LOGBOOK:
+CLOCK: [2026-11-01 Mon 09:00]--[2026-11-21 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 341][item]] and https://example.com/341 and <2026-11-16 Wed 10:00>.
+* CANCELLED Item 342 :work:
+:PROPERTIES:
+:EFFORT: 0:34
+:END:
+**** NEXT [#B] Item 343 :work:
+:PROPERTIES:
+:STYLE: habit
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-15 Mon 09:00]--[2026-11-05 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+- one
+- [ ] two
+  1. nested
+* DONE Item 344
+SCHEDULED: <2026-11-16 Mon> DEADLINE: <2026-12-16 Tue>
+See [[file:notes.org::*Item 344][item]] and https://example.com/344 and <2026-11-07 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+** NEXT Item 345 :home:lean:
+SCHEDULED: <2026-11-08 Mon> DEADLINE: <2026-12-25 Tue>
+See [[file:notes.org::*Item 345][item]] and https://example.com/345 and <2026-11-12 Wed 10:00>.
+* [#B] Item 346
+** NEXT Item 347 :work:
+SCHEDULED: <2026-11-11 Mon> DEADLINE: <2026-12-02 Tue>
+:PROPERTIES:
+:EFFORT: 0:15
+:END:
+* Item 348 :home:lean:
+:PROPERTIES:
+:EFFORT: 0:16
+:END:
+| a | b |
+|---+---|
+| 1 | 2 |
+- one
+- [ ] two
+  1. nested
+* DONE Item 349
+See [[file:notes.org::*Item 349][item]] and https://example.com/349 and <2026-11-22 Wed 10:00>.
+**** Item 350 :home:lean:
+:PROPERTIES:
+:STYLE: habit
+:END:
+* DONE Item 351 :home:lean:
+SCHEDULED: <2026-11-27 Mon .+1d> DEADLINE: <2026-12-24 Tue>
+:PROPERTIES:
+:EFFORT: 0:23
+:END:
+| a | b |
+|---+---|
+| 1 | 2 |
+**** Item 352 :work:
+#+begin_src csharp
+x = 1
+#+end_src
+- one
+- [ ] two
+  1. nested
+**** NEXT Item 353 :home:lean:
+SCHEDULED: <2026-11-22 Mon> DEADLINE: <2026-12-12 Tue>
+:PROPERTIES:
+:STYLE: habit
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-09 Mon 09:00]--[2026-11-04 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+#+begin_src csharp
+x = 1
+#+end_src
+** CANCELLED Item 354
+- one
+- [ ] two
+  1. nested
+**** Item 355 :work:
+:LOGBOOK:
+CLOCK: [2026-11-18 Mon 09:00]--[2026-11-21 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+** Item 356 :home:lean:
+:PROPERTIES:
+:EFFORT: 0:52
+:END:
+See [[file:notes.org::*Item 356][item]] and https://example.com/356 and <2026-11-18 Wed 10:00>.
+*** WAIT [#A] Item 357
+:PROPERTIES:
+:STYLE: habit
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-06 Mon 09:00]--[2026-11-09 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 357][item]] and https://example.com/357 and <2026-11-01 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+* NEXT Item 358 :work:
+SCHEDULED: <2026-11-12 Mon> DEADLINE: <2026-12-14 Tue>
+See [[file:notes.org::*Item 358][item]] and https://example.com/358 and <2026-11-09 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+*** TODO [#C] Item 359 :home:lean:
+SCHEDULED: <2026-11-17 Mon> DEADLINE: <2026-12-07 Tue>
+** Item 360
+:LOGBOOK:
+CLOCK: [2026-11-19 Mon 09:00]--[2026-11-05 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+* CANCELLED Item 361
+SCHEDULED: <2026-11-14 Mon .+1d> DEADLINE: <2026-12-07 Tue>
+:LOGBOOK:
+CLOCK: [2026-11-27 Mon 09:00]--[2026-11-21 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+** [#C] Item 362
+:LOGBOOK:
+CLOCK: [2026-11-23 Mon 09:00]--[2026-11-23 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 362][item]] and https://example.com/362 and <2026-11-10 Wed 10:00>.
+** NEXT [#B] Item 363 :work:
+**** WAIT Item 364
+SCHEDULED: <2026-11-10 Mon .+1d> DEADLINE: <2026-12-17 Tue>
+:PROPERTIES:
+:STYLE: habit
+:END:
+| a | b |
+|---+---|
+| 1 | 2 |
+**** CANCELLED Item 365 :home:lean:
+SCHEDULED: <2026-11-10 Mon> DEADLINE: <2026-12-04 Tue>
+| a | b |
+|---+---|
+| 1 | 2 |
+** WAIT Item 366
+SCHEDULED: <2026-11-23 Mon> DEADLINE: <2026-12-15 Tue>
+| a | b |
+|---+---|
+| 1 | 2 |
+- one
+- [ ] two
+  1. nested
+** NEXT Item 367
+:LOGBOOK:
+CLOCK: [2026-11-22 Mon 09:00]--[2026-11-20 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+#+begin_src C
+x = 1
+#+end_src
+*** TODO Item 368 :work:
+SCHEDULED: <2026-11-24 Mon .+1d> DEADLINE: <2026-12-10 Tue>
+*** [#A] Item 369
+* WAIT Item 370
+:LOGBOOK:
+CLOCK: [2026-11-15 Mon 09:00]--[2026-11-13 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 370][item]] and https://example.com/370 and <2026-11-07 Wed 10:00>.
+** TODO Item 371 :home:lean:
+SCHEDULED: <2026-11-17 Mon> DEADLINE: <2026-12-23 Tue>
+:PROPERTIES:
+:EFFORT: 0:30
+:END:
+* Item 372
+:PROPERTIES:
+:EFFORT: 0:48
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-02 Mon 09:00]--[2026-11-11 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+** WAIT Item 373 :home:lean:
+SCHEDULED: <2026-11-08 Mon .+1d> DEADLINE: <2026-12-22 Tue>
+See [[file:notes.org::*Item 373][item]] and https://example.com/373 and <2026-11-21 Wed 10:00>.
+**** NEXT Item 374 :work:
+SCHEDULED: <2026-11-21 Mon> DEADLINE: <2026-12-14 Tue>
+:LOGBOOK:
+CLOCK: [2026-11-18 Mon 09:00]--[2026-11-23 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+** Item 375 :work:
+** DONE Item 376
+:PROPERTIES:
+:EFFORT: 0:25
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-04 Mon 09:00]--[2026-11-11 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 376][item]] and https://example.com/376 and <2026-11-12 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+* DONE [#B] Item 377
+** WAIT Item 378 :home:lean:
+SCHEDULED: <2026-11-04 Mon> DEADLINE: <2026-12-27 Tue>
+:LOGBOOK:
+CLOCK: [2026-11-15 Mon 09:00]--[2026-11-14 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+#+begin_src csharp
+x = 1
+#+end_src
+**** Item 379
+#+begin_src csharp
+x = 1
+#+end_src
+See [[file:notes.org::*Item 379][item]] and https://example.com/379 and <2026-11-17 Wed 10:00>.
+*** [#C] Item 380 :home:lean:
+:PROPERTIES:
+:EFFORT: 0:57
+:END:
+** WAIT Item 381 :work:
+:PROPERTIES:
+:EFFORT: 0:48
+:END:
+- one
+- [ ] two
+  1. nested
+**** CANCELLED Item 382
+SCHEDULED: <2026-11-02 Mon> DEADLINE: <2026-12-01 Tue>
+See [[file:notes.org::*Item 382][item]] and https://example.com/382 and <2026-11-15 Wed 10:00>.
+*** NEXT [#B] Item 383 :work:
+** TODO Item 384
+:LOGBOOK:
+CLOCK: [2026-11-26 Mon 09:00]--[2026-11-08 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+* Item 385 :work:
+:PROPERTIES:
+:EFFORT: 0:48
+:END:
+- one
+- [ ] two
+  1. nested
+* DONE Item 386
+See [[file:notes.org::*Item 386][item]] and https://example.com/386 and <2026-11-18 Wed 10:00>.
+**** NEXT Item 387 :work:
+- one
+- [ ] two
+  1. nested
+*** WAIT Item 388
+SCHEDULED: <2026-11-16 Mon> DEADLINE: <2026-12-25 Tue>
+See [[file:notes.org::*Item 388][item]] and https://example.com/388 and <2026-11-19 Wed 10:00>.
+*** NEXT [#C] Item 389 :work:
+SCHEDULED: <2026-11-03 Mon> DEADLINE: <2026-12-12 Tue>
+*** CANCELLED [#C] Item 390
+SCHEDULED: <2026-11-17 Mon> DEADLINE: <2026-12-22 Tue>
+**** NEXT Item 391 :home:lean:
+SCHEDULED: <2026-11-11 Mon> DEADLINE: <2026-12-22 Tue>
+:PROPERTIES:
+:EFFORT: 0:20
+:END:
+See [[file:notes.org::*Item 391][item]] and https://example.com/391 and <2026-11-26 Wed 10:00>.
+*** WAIT Item 392
+SCHEDULED: <2026-11-17 Mon> DEADLINE: <2026-12-12 Tue>
+See [[file:notes.org::*Item 392][item]] and https://example.com/392 and <2026-11-09 Wed 10:00>.
+*** CANCELLED [#B] Item 393 :home:lean:
+SCHEDULED: <2026-11-26 Mon> DEADLINE: <2026-12-18 Tue>
+:PROPERTIES:
+:EFFORT: 0:28
+:END:
+See [[file:notes.org::*Item 393][item]] and https://example.com/393 and <2026-11-07 Wed 10:00>.
+**** [#A] Item 394 :work:
+:LOGBOOK:
+CLOCK: [2026-11-24 Mon 09:00]--[2026-11-04 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+- one
+- [ ] two
+  1. nested
+* DONE [#B] Item 395 :work:
+:LOGBOOK:
+CLOCK: [2026-11-28 Mon 09:00]--[2026-11-23 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+- one
+- [ ] two
+  1. nested
+* NEXT [#B] Item 396
+:LOGBOOK:
+CLOCK: [2026-11-06 Mon 09:00]--[2026-11-04 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+** TODO Item 397
+SCHEDULED: <2026-11-15 Mon> DEADLINE: <2026-12-01 Tue>
+See [[file:notes.org::*Item 397][item]] and https://example.com/397 and <2026-11-12 Wed 10:00>.
+**** TODO Item 398
+:PROPERTIES:
+:EFFORT: 0:46
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-15 Mon 09:00]--[2026-11-01 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+* Item 399 :work:
+:PROPERTIES:
+:EFFORT: 0:42
+:END:
+See [[file:notes.org::*Item 399][item]] and https://example.com/399 and <2026-11-26 Wed 10:00>.
+**** Item 400 :work:
+** NEXT Item 401 :home:lean:
+SCHEDULED: <2026-11-22 Mon> DEADLINE: <2026-12-27 Tue>
+:PROPERTIES:
+:EFFORT: 0:30
+:END:
+- one
+- [ ] two
+  1. nested
+*** DONE Item 402 :home:lean:
+#+begin_src python
+x = 1
+#+end_src
+*** CANCELLED Item 403
+SCHEDULED: <2026-11-19 Mon> DEADLINE: <2026-12-04 Tue>
+* Item 404
+See [[file:notes.org::*Item 404][item]] and https://example.com/404 and <2026-11-12 Wed 10:00>.
+*** CANCELLED Item 405
+:LOGBOOK:
+CLOCK: [2026-11-21 Mon 09:00]--[2026-11-28 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+* Item 406 :work:
+* WAIT Item 407
+SCHEDULED: <2026-11-03 Mon> DEADLINE: <2026-12-02 Tue>
+:PROPERTIES:
+:EFFORT: 0:55
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-10 Mon 09:00]--[2026-11-11 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+* Item 408 :work:
+:PROPERTIES:
+:EFFORT: 0:24
+:END:
+*** WAIT Item 409
+#+begin_src python
+x = 1
+#+end_src
+* Item 410
+:PROPERTIES:
+:STYLE: habit
+:END:
+#+begin_src sql :dbbliss work
+x = 1
+#+end_src
+See [[file:notes.org::*Item 410][item]] and https://example.com/410 and <2026-11-05 Wed 10:00>.
+** DONE Item 411 :home:lean:
+SCHEDULED: <2026-11-16 Mon> DEADLINE: <2026-12-19 Tue>
+#+begin_src python
+x = 1
+#+end_src
+- one
+- [ ] two
+  1. nested
+*** WAIT Item 412 :home:lean:
+:LOGBOOK:
+CLOCK: [2026-11-07 Mon 09:00]--[2026-11-15 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+#+begin_src sql :dbbliss work
+x = 1
+#+end_src
+**** Item 413 :home:lean:
+:PROPERTIES:
+:EFFORT: 0:52
+:END:
+* Item 414
+:PROPERTIES:
+:EFFORT: 0:52
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-27 Mon 09:00]--[2026-11-08 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+**** CANCELLED Item 415
+:PROPERTIES:
+:STYLE: habit
+:END:
+*** [#A] Item 416 :work:
+:LOGBOOK:
+CLOCK: [2026-11-07 Mon 09:00]--[2026-11-04 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+** DONE [#C] Item 417
+:PROPERTIES:
+:EFFORT: 0:27
+:END:
+See [[file:notes.org::*Item 417][item]] and https://example.com/417 and <2026-11-01 Wed 10:00>.
+** CANCELLED [#C] Item 418
+SCHEDULED: <2026-11-05 Mon> DEADLINE: <2026-12-12 Tue>
+:PROPERTIES:
+:STYLE: habit
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-05 Mon 09:00]--[2026-11-04 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 418][item]] and https://example.com/418 and <2026-11-17 Wed 10:00>.
+* CANCELLED Item 419
+:PROPERTIES:
+:STYLE: habit
+:END:
+See [[file:notes.org::*Item 419][item]] and https://example.com/419 and <2026-11-27 Wed 10:00>.
+* Item 420
+:LOGBOOK:
+CLOCK: [2026-11-22 Mon 09:00]--[2026-11-27 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+#+begin_src shell
+x = 1
+#+end_src
+See [[file:notes.org::*Item 420][item]] and https://example.com/420 and <2026-11-06 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+** TODO Item 421 :home:lean:
+SCHEDULED: <2026-11-03 Mon> DEADLINE: <2026-12-10 Tue>
+:PROPERTIES:
+:EFFORT: 0:38
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-05 Mon 09:00]--[2026-11-06 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+** NEXT Item 422
+See [[file:notes.org::*Item 422][item]] and https://example.com/422 and <2026-11-02 Wed 10:00>.
+* CANCELLED Item 423 :work:
+SCHEDULED: <2026-11-22 Mon> DEADLINE: <2026-12-09 Tue>
+:LOGBOOK:
+CLOCK: [2026-11-15 Mon 09:00]--[2026-11-01 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 423][item]] and https://example.com/423 and <2026-11-14 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+**** WAIT Item 424 :home:lean:
+SCHEDULED: <2026-11-22 Mon> DEADLINE: <2026-12-02 Tue>
+See [[file:notes.org::*Item 424][item]] and https://example.com/424 and <2026-11-18 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+** Item 425
+:PROPERTIES:
+:STYLE: habit
+:END:
+See [[file:notes.org::*Item 425][item]] and https://example.com/425 and <2026-11-19 Wed 10:00>.
+** NEXT [#B] Item 426 :work:
+SCHEDULED: <2026-11-22 Mon .+1d> DEADLINE: <2026-12-06 Tue>
+#+begin_src C
+x = 1
+#+end_src
+- one
+- [ ] two
+  1. nested
+*** Item 427 :home:lean:
+- one
+- [ ] two
+  1. nested
+* CANCELLED Item 428
+:PROPERTIES:
+:EFFORT: 0:55
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-26 Mon 09:00]--[2026-11-13 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+#+begin_src csharp
+x = 1
+#+end_src
+| a | b |
+|---+---|
+| 1 | 2 |
+See [[file:notes.org::*Item 428][item]] and https://example.com/428 and <2026-11-12 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+** CANCELLED Item 429 :home:lean:
+*** NEXT Item 430 :home:lean:
+SCHEDULED: <2026-11-11 Mon .+1d> DEADLINE: <2026-12-12 Tue>
+** DONE [#B] Item 431 :work:
+SCHEDULED: <2026-11-25 Mon> DEADLINE: <2026-12-15 Tue>
+** WAIT Item 432
+SCHEDULED: <2026-11-09 Mon> DEADLINE: <2026-12-24 Tue>
+- one
+- [ ] two
+  1. nested
+** Item 433 :work:
+See [[file:notes.org::*Item 433][item]] and https://example.com/433 and <2026-11-18 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+** DONE Item 434
+**** Item 435 :work:
+:PROPERTIES:
+:EFFORT: 0:55
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-11 Mon 09:00]--[2026-11-28 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 435][item]] and https://example.com/435 and <2026-11-05 Wed 10:00>.
+**** NEXT Item 436 :work:
+SCHEDULED: <2026-11-22 Mon> DEADLINE: <2026-12-11 Tue>
+:PROPERTIES:
+:STYLE: habit
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-14 Mon 09:00]--[2026-11-07 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+- one
+- [ ] two
+  1. nested
+** DONE Item 437
+- one
+- [ ] two
+  1. nested
+** WAIT Item 438 :work:
+:PROPERTIES:
+:STYLE: habit
+:END:
+See [[file:notes.org::*Item 438][item]] and https://example.com/438 and <2026-11-28 Wed 10:00>.
+* NEXT Item 439
+:LOGBOOK:
+CLOCK: [2026-11-11 Mon 09:00]--[2026-11-17 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+- one
+- [ ] two
+  1. nested
+* DONE Item 440 :home:lean:
+:PROPERTIES:
+:STYLE: habit
+:END:
+* DONE Item 441
+See [[file:notes.org::*Item 441][item]] and https://example.com/441 and <2026-11-22 Wed 10:00>.
+* CANCELLED Item 442 :work:
+See [[file:notes.org::*Item 442][item]] and https://example.com/442 and <2026-11-25 Wed 10:00>.
+* WAIT Item 443
+:PROPERTIES:
+:EFFORT: 0:21
+:END:
+See [[file:notes.org::*Item 443][item]] and https://example.com/443 and <2026-11-23 Wed 10:00>.
+** [#C] Item 444 :work:
+*** CANCELLED Item 445 :home:lean:
+SCHEDULED: <2026-11-23 Mon> DEADLINE: <2026-12-04 Tue>
+- one
+- [ ] two
+  1. nested
+* DONE Item 446
+SCHEDULED: <2026-11-13 Mon .+1d> DEADLINE: <2026-12-22 Tue>
+:PROPERTIES:
+:EFFORT: 0:33
+:END:
+** [#A] Item 447
+#+begin_src shell
+x = 1
+#+end_src
+See [[file:notes.org::*Item 447][item]] and https://example.com/447 and <2026-11-06 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+* Item 448 :work:
+:PROPERTIES:
+:EFFORT: 0:20
+:END:
+**** CANCELLED [#B] Item 449
+SCHEDULED: <2026-11-07 Mon> DEADLINE: <2026-12-20 Tue>
+* Item 450 :home:lean:
+:PROPERTIES:
+:STYLE: habit
+:END:
+#+begin_src shell
+x = 1
+#+end_src
+| a | b |
+|---+---|
+| 1 | 2 |
+**** NEXT Item 451 :home:lean:
+SCHEDULED: <2026-11-27 Mon> DEADLINE: <2026-12-01 Tue>
+:PROPERTIES:
+:EFFORT: 0:38
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-27 Mon 09:00]--[2026-11-23 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 451][item]] and https://example.com/451 and <2026-11-11 Wed 10:00>.
+** CANCELLED [#B] Item 452
+SCHEDULED: <2026-11-03 Mon .+1d> DEADLINE: <2026-12-24 Tue>
+:PROPERTIES:
+:STYLE: habit
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-09 Mon 09:00]--[2026-11-10 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+** CANCELLED Item 453 :home:lean:
+SCHEDULED: <2026-11-02 Mon> DEADLINE: <2026-12-08 Tue>
+** Item 454
+* Item 455 :home:lean:
+:PROPERTIES:
+:EFFORT: 0:33
+:END:
+**** WAIT Item 456
+SCHEDULED: <2026-11-24 Mon> DEADLINE: <2026-12-13 Tue>
+:PROPERTIES:
+:EFFORT: 0:37
+:END:
+- one
+- [ ] two
+  1. nested
+**** NEXT Item 457 :home:lean:
+:PROPERTIES:
+:EFFORT: 0:17
+:END:
+See [[file:notes.org::*Item 457][item]] and https://example.com/457 and <2026-11-14 Wed 10:00>.
+** WAIT Item 458 :work:
+:LOGBOOK:
+CLOCK: [2026-11-25 Mon 09:00]--[2026-11-06 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+** DONE [#A] Item 459
+SCHEDULED: <2026-11-06 Mon> DEADLINE: <2026-12-05 Tue>
+See [[file:notes.org::*Item 459][item]] and https://example.com/459 and <2026-11-24 Wed 10:00>.
+* NEXT Item 460
+SCHEDULED: <2026-11-21 Mon> DEADLINE: <2026-12-27 Tue>
+:PROPERTIES:
+:EFFORT: 0:22
+:END:
+See [[file:notes.org::*Item 460][item]] and https://example.com/460 and <2026-11-14 Wed 10:00>.
+** Item 461 :work:
+:LOGBOOK:
+CLOCK: [2026-11-26 Mon 09:00]--[2026-11-03 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+**** [#C] Item 462
+:PROPERTIES:
+:STYLE: habit
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-09 Mon 09:00]--[2026-11-27 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+#+begin_src python
+x = 1
+#+end_src
+See [[file:notes.org::*Item 462][item]] and https://example.com/462 and <2026-11-15 Wed 10:00>.
+* [#A] Item 463
+:PROPERTIES:
+:EFFORT: 0:38
+:END:
+See [[file:notes.org::*Item 463][item]] and https://example.com/463 and <2026-11-02 Wed 10:00>.
+** DONE Item 464
+SCHEDULED: <2026-11-20 Mon> DEADLINE: <2026-12-17 Tue>
+** Item 465
+:PROPERTIES:
+:EFFORT: 0:25
+:END:
+** TODO Item 466
+SCHEDULED: <2026-11-06 Mon> DEADLINE: <2026-12-16 Tue>
+- one
+- [ ] two
+  1. nested
+** Item 467
+See [[file:notes.org::*Item 467][item]] and https://example.com/467 and <2026-11-22 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+* Item 468 :home:lean:
+:LOGBOOK:
+CLOCK: [2026-11-24 Mon 09:00]--[2026-11-21 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+#+begin_src sql :dbbliss work
+x = 1
+#+end_src
+| a | b |
+|---+---|
+| 1 | 2 |
+* CANCELLED Item 469
+:LOGBOOK:
+CLOCK: [2026-11-15 Mon 09:00]--[2026-11-10 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 469][item]] and https://example.com/469 and <2026-11-08 Wed 10:00>.
+* WAIT Item 470
+See [[file:notes.org::*Item 470][item]] and https://example.com/470 and <2026-11-15 Wed 10:00>.
+* NEXT Item 471
+See [[file:notes.org::*Item 471][item]] and https://example.com/471 and <2026-11-27 Wed 10:00>.
+*** TODO [#C] Item 472
+SCHEDULED: <2026-11-26 Mon> DEADLINE: <2026-12-19 Tue>
+#+begin_src C
+x = 1
+#+end_src
+** WAIT Item 473 :work:
+SCHEDULED: <2026-11-01 Mon .+1d> DEADLINE: <2026-12-08 Tue>
+See [[file:notes.org::*Item 473][item]] and https://example.com/473 and <2026-11-10 Wed 10:00>.
+** DONE Item 474 :home:lean:
+SCHEDULED: <2026-11-02 Mon> DEADLINE: <2026-12-04 Tue>
+| a | b |
+|---+---|
+| 1 | 2 |
+See [[file:notes.org::*Item 474][item]] and https://example.com/474 and <2026-11-14 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+**** NEXT Item 475 :home:lean:
+SCHEDULED: <2026-11-19 Mon> DEADLINE: <2026-12-10 Tue>
+- one
+- [ ] two
+  1. nested
+*** DONE Item 476 :home:lean:
+SCHEDULED: <2026-11-17 Mon> DEADLINE: <2026-12-10 Tue>
+See [[file:notes.org::*Item 476][item]] and https://example.com/476 and <2026-11-20 Wed 10:00>.
+** DONE Item 477 :home:lean:
+:LOGBOOK:
+CLOCK: [2026-11-18 Mon 09:00]--[2026-11-21 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+#+begin_src shell
+x = 1
+#+end_src
+| a | b |
+|---+---|
+| 1 | 2 |
+See [[file:notes.org::*Item 477][item]] and https://example.com/477 and <2026-11-23 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+** Item 478 :work:
+** TODO Item 479 :work:
+SCHEDULED: <2026-11-22 Mon> DEADLINE: <2026-12-12 Tue>
+** NEXT Item 480
+See [[file:notes.org::*Item 480][item]] and https://example.com/480 and <2026-11-24 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+*** NEXT Item 481 :home:lean:
+SCHEDULED: <2026-11-26 Mon> DEADLINE: <2026-12-11 Tue>
+* TODO Item 482 :work:
+** Item 483 :home:lean:
+:LOGBOOK:
+CLOCK: [2026-11-14 Mon 09:00]--[2026-11-08 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+| a | b |
+|---+---|
+| 1 | 2 |
+* TODO Item 484 :work:
+SCHEDULED: <2026-11-19 Mon .+1d> DEADLINE: <2026-12-23 Tue>
+#+begin_src python
+x = 1
+#+end_src
+* Item 485
+See [[file:notes.org::*Item 485][item]] and https://example.com/485 and <2026-11-13 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+*** DONE Item 486 :home:lean:
+SCHEDULED: <2026-11-03 Mon> DEADLINE: <2026-12-19 Tue>
+See [[file:notes.org::*Item 486][item]] and https://example.com/486 and <2026-11-10 Wed 10:00>.
+** TODO Item 487 :home:lean:
+SCHEDULED: <2026-11-09 Mon> DEADLINE: <2026-12-21 Tue>
+:PROPERTIES:
+:STYLE: habit
+:END:
+* Item 488 :work:
+#+begin_src csharp
+x = 1
+#+end_src
+- one
+- [ ] two
+  1. nested
+** Item 489
+#+begin_src python
+x = 1
+#+end_src
+| a | b |
+|---+---|
+| 1 | 2 |
+- one
+- [ ] two
+  1. nested
+** Item 490
+:PROPERTIES:
+:STYLE: habit
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-14 Mon 09:00]--[2026-11-08 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+- one
+- [ ] two
+  1. nested
+*** TODO [#B] Item 491 :home:lean:
+SCHEDULED: <2026-11-11 Mon> DEADLINE: <2026-12-01 Tue>
+:PROPERTIES:
+:STYLE: habit
+:END:
+*** DONE [#B] Item 492 :home:lean:
+See [[file:notes.org::*Item 492][item]] and https://example.com/492 and <2026-11-04 Wed 10:00>.
+* DONE Item 493
+:PROPERTIES:
+:EFFORT: 0:59
+:END:
+| a | b |
+|---+---|
+| 1 | 2 |
+** Item 494
+:PROPERTIES:
+:EFFORT: 0:34
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-21 Mon 09:00]--[2026-11-25 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+| a | b |
+|---+---|
+| 1 | 2 |
+*** DONE Item 495
+#+begin_src python
+x = 1
+#+end_src
+- one
+- [ ] two
+  1. nested
+** [#C] Item 496
+:PROPERTIES:
+:EFFORT: 0:11
+:END:
+**** Item 497 :home:lean:
+#+begin_src python
+x = 1
+#+end_src
+** NEXT Item 498 :home:lean:
+SCHEDULED: <2026-11-09 Mon> DEADLINE: <2026-12-02 Tue>
+:LOGBOOK:
+CLOCK: [2026-11-27 Mon 09:00]--[2026-11-01 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+- one
+- [ ] two
+  1. nested
+** TODO Item 499 :work:
+:LOGBOOK:
+CLOCK: [2026-11-04 Mon 09:00]--[2026-11-28 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 499][item]] and https://example.com/499 and <2026-11-27 Wed 10:00>.
+* NEXT Item 500 :work:
+SCHEDULED: <2026-11-01 Mon .+1d> DEADLINE: <2026-12-27 Tue>
+:PROPERTIES:
+:EFFORT: 0:21
+:END:
+* NEXT Item 501 :home:lean:
+SCHEDULED: <2026-11-05 Mon> DEADLINE: <2026-12-19 Tue>
+* NEXT Item 502
+SCHEDULED: <2026-11-25 Mon> DEADLINE: <2026-12-01 Tue>
+:LOGBOOK:
+CLOCK: [2026-11-10 Mon 09:00]--[2026-11-25 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+* WAIT Item 503
+SCHEDULED: <2026-11-03 Mon> DEADLINE: <2026-12-01 Tue>
+:PROPERTIES:
+:EFFORT: 0:15
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-15 Mon 09:00]--[2026-11-22 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+#+begin_src python
+x = 1
+#+end_src
+See [[file:notes.org::*Item 503][item]] and https://example.com/503 and <2026-11-13 Wed 10:00>.
+* CANCELLED Item 504
+#+begin_src python
+x = 1
+#+end_src
+| a | b |
+|---+---|
+| 1 | 2 |
+* NEXT Item 505
+SCHEDULED: <2026-11-28 Mon> DEADLINE: <2026-12-26 Tue>
+** WAIT Item 506
+SCHEDULED: <2026-11-17 Mon> DEADLINE: <2026-12-21 Tue>
+:PROPERTIES:
+:EFFORT: 0:10
+:END:
+* CANCELLED Item 507
+*** DONE [#B] Item 508 :work:
+| a | b |
+|---+---|
+| 1 | 2 |
+** Item 509 :work:
+See [[file:notes.org::*Item 509][item]] and https://example.com/509 and <2026-11-21 Wed 10:00>.
+* WAIT Item 510
+SCHEDULED: <2026-11-22 Mon> DEADLINE: <2026-12-15 Tue>
+#+begin_src C
+x = 1
+#+end_src
+See [[file:notes.org::*Item 510][item]] and https://example.com/510 and <2026-11-24 Wed 10:00>.
+** Item 511 :home:lean:
+:PROPERTIES:
+:EFFORT: 0:42
+:END:
+** TODO Item 512
+SCHEDULED: <2026-11-02 Mon> DEADLINE: <2026-12-02 Tue>
+*** DONE [#A] Item 513
+SCHEDULED: <2026-11-07 Mon> DEADLINE: <2026-12-13 Tue>
+:PROPERTIES:
+:EFFORT: 0:57
+:END:
+#+begin_src shell
+x = 1
+#+end_src
+- one
+- [ ] two
+  1. nested
+* DONE [#C] Item 514 :home:lean:
+SCHEDULED: <2026-11-24 Mon> DEADLINE: <2026-12-15 Tue>
+:LOGBOOK:
+CLOCK: [2026-11-15 Mon 09:00]--[2026-11-06 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+* CANCELLED Item 515
+SCHEDULED: <2026-11-10 Mon> DEADLINE: <2026-12-22 Tue>
+:PROPERTIES:
+:STYLE: habit
+:END:
+* DONE Item 516
+:LOGBOOK:
+CLOCK: [2026-11-23 Mon 09:00]--[2026-11-08 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+*** WAIT [#A] Item 517
+** Item 518 :work:
+:LOGBOOK:
+CLOCK: [2026-11-16 Mon 09:00]--[2026-11-25 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+#+begin_src sql :dbbliss work
+x = 1
+#+end_src
+- one
+- [ ] two
+  1. nested
+** Item 519 :work:
+:PROPERTIES:
+:EFFORT: 0:29
+:END:
+#+begin_src sql :dbbliss work
+x = 1
+#+end_src
+* DONE [#C] Item 520 :home:lean:
+SCHEDULED: <2026-11-04 Mon> DEADLINE: <2026-12-25 Tue>
+:LOGBOOK:
+CLOCK: [2026-11-15 Mon 09:00]--[2026-11-10 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+**** Item 521
+** TODO [#B] Item 522 :home:lean:
+SCHEDULED: <2026-11-12 Mon> DEADLINE: <2026-12-17 Tue>
+:PROPERTIES:
+:STYLE: habit
+:END:
+**** TODO Item 523 :home:lean:
+:PROPERTIES:
+:STYLE: habit
+:END:
+See [[file:notes.org::*Item 523][item]] and https://example.com/523 and <2026-11-23 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+* NEXT [#C] Item 524
+SCHEDULED: <2026-11-18 Mon> DEADLINE: <2026-12-16 Tue>
+** NEXT Item 525
+SCHEDULED: <2026-11-09 Mon> DEADLINE: <2026-12-16 Tue>
+:PROPERTIES:
+:EFFORT: 0:21
+:END:
+See [[file:notes.org::*Item 525][item]] and https://example.com/525 and <2026-11-13 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+* CANCELLED Item 526 :home:lean:
+* NEXT Item 527
+SCHEDULED: <2026-11-24 Mon> DEADLINE: <2026-12-25 Tue>
+:PROPERTIES:
+:EFFORT: 0:16
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-18 Mon 09:00]--[2026-11-24 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 527][item]] and https://example.com/527 and <2026-11-04 Wed 10:00>.
+* WAIT Item 528
+SCHEDULED: <2026-11-09 Mon> DEADLINE: <2026-12-10 Tue>
+See [[file:notes.org::*Item 528][item]] and https://example.com/528 and <2026-11-12 Wed 10:00>.
+** NEXT Item 529
+SCHEDULED: <2026-11-23 Mon> DEADLINE: <2026-12-02 Tue>
+:LOGBOOK:
+CLOCK: [2026-11-16 Mon 09:00]--[2026-11-15 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 529][item]] and https://example.com/529 and <2026-11-01 Wed 10:00>.
+*** WAIT Item 530
+SCHEDULED: <2026-11-07 Mon> DEADLINE: <2026-12-07 Tue>
+:PROPERTIES:
+:STYLE: habit
+:END:
+* DONE Item 531
+* DONE [#C] Item 532
+SCHEDULED: <2026-11-05 Mon> DEADLINE: <2026-12-14 Tue>
+:PROPERTIES:
+:STYLE: habit
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-21 Mon 09:00]--[2026-11-12 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+*** NEXT [#B] Item 533 :work:
+SCHEDULED: <2026-11-08 Mon .+1d> DEADLINE: <2026-12-14 Tue>
+:PROPERTIES:
+:STYLE: habit
+:END:
+** WAIT [#C] Item 534 :work:
+:LOGBOOK:
+CLOCK: [2026-11-12 Mon 09:00]--[2026-11-18 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+- one
+- [ ] two
+  1. nested
+* DONE [#C] Item 535
+**** WAIT Item 536
+:LOGBOOK:
+CLOCK: [2026-11-14 Mon 09:00]--[2026-11-21 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+** NEXT Item 537
+SCHEDULED: <2026-11-20 Mon .+1d> DEADLINE: <2026-12-01 Tue>
+:LOGBOOK:
+CLOCK: [2026-11-16 Mon 09:00]--[2026-11-15 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 537][item]] and https://example.com/537 and <2026-11-19 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+* Item 538 :home:lean:
+** DONE [#A] Item 539
+#+begin_src shell
+x = 1
+#+end_src
+* TODO Item 540
+SCHEDULED: <2026-11-26 Mon> DEADLINE: <2026-12-19 Tue>
+See [[file:notes.org::*Item 540][item]] and https://example.com/540 and <2026-11-19 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+** NEXT Item 541
+SCHEDULED: <2026-11-07 Mon> DEADLINE: <2026-12-11 Tue>
+:PROPERTIES:
+:EFFORT: 0:21
+:END:
+- one
+- [ ] two
+  1. nested
+*** TODO Item 542
+:PROPERTIES:
+:EFFORT: 0:12
+:END:
+* CANCELLED Item 543 :home:lean:
+:PROPERTIES:
+:EFFORT: 0:19
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-23 Mon 09:00]--[2026-11-15 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+* [#B] Item 544 :home:lean:
+** NEXT Item 545 :home:lean:
+SCHEDULED: <2026-11-09 Mon> DEADLINE: <2026-12-05 Tue>
+* Item 546 :home:lean:
+:PROPERTIES:
+:EFFORT: 0:57
+:END:
+#+begin_src sql :dbbliss work
+x = 1
+#+end_src
+| a | b |
+|---+---|
+| 1 | 2 |
+See [[file:notes.org::*Item 546][item]] and https://example.com/546 and <2026-11-10 Wed 10:00>.
+** CANCELLED Item 547 :work:
+| a | b |
+|---+---|
+| 1 | 2 |
+**** TODO [#C] Item 548
+SCHEDULED: <2026-11-17 Mon .+1d> DEADLINE: <2026-12-21 Tue>
+* Item 549 :home:lean:
+:PROPERTIES:
+:EFFORT: 0:32
+:END:
+*** Item 550 :home:lean:
+:PROPERTIES:
+:EFFORT: 0:12
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-13 Mon 09:00]--[2026-11-12 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+**** NEXT [#A] Item 551 :home:lean:
+:PROPERTIES:
+:EFFORT: 0:42
+:END:
+* WAIT [#B] Item 552
+:PROPERTIES:
+:STYLE: habit
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-10 Mon 09:00]--[2026-11-10 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+* Item 553
+:PROPERTIES:
+:STYLE: habit
+:END:
+- one
+- [ ] two
+  1. nested
+** CANCELLED Item 554 :work:
+:PROPERTIES:
+:EFFORT: 0:39
+:END:
+*** Item 555
+:PROPERTIES:
+:EFFORT: 0:36
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-04 Mon 09:00]--[2026-11-04 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+** WAIT [#B] Item 556
+** WAIT Item 557 :home:lean:
+SCHEDULED: <2026-11-11 Mon> DEADLINE: <2026-12-12 Tue>
+** WAIT Item 558 :work:
+:LOGBOOK:
+CLOCK: [2026-11-07 Mon 09:00]--[2026-11-22 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+| a | b |
+|---+---|
+| 1 | 2 |
+*** CANCELLED Item 559 :work:
+:PROPERTIES:
+:EFFORT: 0:16
+:END:
+* NEXT Item 560
+See [[file:notes.org::*Item 560][item]] and https://example.com/560 and <2026-11-28 Wed 10:00>.
+**** CANCELLED Item 561
+:PROPERTIES:
+:EFFORT: 0:24
+:END:
+** DONE Item 562 :work:
+SCHEDULED: <2026-11-19 Mon> DEADLINE: <2026-12-22 Tue>
+#+begin_src python
+x = 1
+#+end_src
+- one
+- [ ] two
+  1. nested
+** Item 563
+:LOGBOOK:
+CLOCK: [2026-11-04 Mon 09:00]--[2026-11-16 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+#+begin_src shell
+x = 1
+#+end_src
+See [[file:notes.org::*Item 563][item]] and https://example.com/563 and <2026-11-21 Wed 10:00>.
+* DONE Item 564
+See [[file:notes.org::*Item 564][item]] and https://example.com/564 and <2026-11-14 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+* CANCELLED Item 565 :home:lean:
+See [[file:notes.org::*Item 565][item]] and https://example.com/565 and <2026-11-11 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+** WAIT [#B] Item 566
+SCHEDULED: <2026-11-22 Mon> DEADLINE: <2026-12-13 Tue>
+:LOGBOOK:
+CLOCK: [2026-11-24 Mon 09:00]--[2026-11-19 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+** DONE [#C] Item 567
+SCHEDULED: <2026-11-21 Mon> DEADLINE: <2026-12-01 Tue>
+See [[file:notes.org::*Item 567][item]] and https://example.com/567 and <2026-11-24 Wed 10:00>.
+*** TODO [#B] Item 568 :home:lean:
+** NEXT Item 569 :work:
+SCHEDULED: <2026-11-28 Mon> DEADLINE: <2026-12-03 Tue>
+- one
+- [ ] two
+  1. nested
+* DONE Item 570 :home:lean:
+SCHEDULED: <2026-11-01 Mon .+1d> DEADLINE: <2026-12-18 Tue>
+:PROPERTIES:
+:EFFORT: 0:33
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-18 Mon 09:00]--[2026-11-23 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 570][item]] and https://example.com/570 and <2026-11-27 Wed 10:00>.
+** DONE Item 571
+SCHEDULED: <2026-11-12 Mon .+1d> DEADLINE: <2026-12-02 Tue>
+:PROPERTIES:
+:EFFORT: 0:51
+:END:
+* NEXT Item 572
+*** WAIT Item 573
+- one
+- [ ] two
+  1. nested
+*** [#B] Item 574
+*** NEXT Item 575 :work:
+| a | b |
+|---+---|
+| 1 | 2 |
+** WAIT [#B] Item 576
+SCHEDULED: <2026-11-19 Mon .+1d> DEADLINE: <2026-12-15 Tue>
+:PROPERTIES:
+:STYLE: habit
+:END:
+#+begin_src csharp
+x = 1
+#+end_src
+| a | b |
+|---+---|
+| 1 | 2 |
+- one
+- [ ] two
+  1. nested
+** WAIT Item 577
+:LOGBOOK:
+CLOCK: [2026-11-13 Mon 09:00]--[2026-11-26 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+- one
+- [ ] two
+  1. nested
+*** DONE [#A] Item 578
+:LOGBOOK:
+CLOCK: [2026-11-20 Mon 09:00]--[2026-11-22 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+*** Item 579
+:PROPERTIES:
+:STYLE: habit
+:END:
+**** NEXT Item 580 :work:
+- one
+- [ ] two
+  1. nested
+* WAIT [#B] Item 581 :home:lean:
+SCHEDULED: <2026-11-06 Mon> DEADLINE: <2026-12-21 Tue>
+* TODO Item 582 :work:
+* NEXT Item 583 :home:lean:
+:PROPERTIES:
+:EFFORT: 0:10
+:END:
+*** Item 584
+:LOGBOOK:
+CLOCK: [2026-11-21 Mon 09:00]--[2026-11-24 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+- one
+- [ ] two
+  1. nested
+**** Item 585
+#+begin_src sql :dbbliss work
+x = 1
+#+end_src
+See [[file:notes.org::*Item 585][item]] and https://example.com/585 and <2026-11-25 Wed 10:00>.
+** Item 586
+| a | b |
+|---+---|
+| 1 | 2 |
+** TODO Item 587 :work:
+SCHEDULED: <2026-11-22 Mon> DEADLINE: <2026-12-01 Tue>
+- one
+- [ ] two
+  1. nested
+*** [#A] Item 588
+| a | b |
+|---+---|
+| 1 | 2 |
+- one
+- [ ] two
+  1. nested
+** NEXT Item 589 :home:lean:
+** Item 590
+:LOGBOOK:
+CLOCK: [2026-11-04 Mon 09:00]--[2026-11-04 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 590][item]] and https://example.com/590 and <2026-11-23 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+**** CANCELLED Item 591
+* Item 592 :home:lean:
+:PROPERTIES:
+:STYLE: habit
+:END:
+#+begin_src sql :dbbliss work
+x = 1
+#+end_src
+See [[file:notes.org::*Item 592][item]] and https://example.com/592 and <2026-11-10 Wed 10:00>.
+*** Item 593 :home:lean:
+#+begin_src csharp
+x = 1
+#+end_src
+* DONE [#B] Item 594 :work:
+SCHEDULED: <2026-11-27 Mon> DEADLINE: <2026-12-01 Tue>
+See [[file:notes.org::*Item 594][item]] and https://example.com/594 and <2026-11-11 Wed 10:00>.
+* CANCELLED Item 595 :home:lean:
+SCHEDULED: <2026-11-01 Mon> DEADLINE: <2026-12-03 Tue>
+- one
+- [ ] two
+  1. nested
+*** DONE [#A] Item 596
+See [[file:notes.org::*Item 596][item]] and https://example.com/596 and <2026-11-01 Wed 10:00>.
+- one
+- [ ] two
+  1. nested
+*** [#A] Item 597 :home:lean:
+:LOGBOOK:
+CLOCK: [2026-11-28 Mon 09:00]--[2026-11-27 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+See [[file:notes.org::*Item 597][item]] and https://example.com/597 and <2026-11-07 Wed 10:00>.
+*** TODO Item 598
+SCHEDULED: <2026-11-04 Mon> DEADLINE: <2026-12-17 Tue>
+:PROPERTIES:
+:STYLE: habit
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-21 Mon 09:00]--[2026-11-22 Mon 10:30] =>  1:30
+- State "DONE"       from "TODO"       [2026-11-02 Mon 10:31]
+:END:
+* DONE Item 599 :work:
+SCHEDULED: <2026-11-13 Mon .+1d> DEADLINE: <2026-12-12 Tue>
+See [[file:notes.org::*Item 599][item]] and https://example.com/599 and <2026-11-17 Wed 10:00>.
+- one
+- [ ] two
+  1. nested

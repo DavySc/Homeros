@@ -1,0 +1,509 @@
+{
+ "after_one_undo": "line1abcx\n",
+ "inode_changed_on_save": true,
+ "screen_after_save_over_external": [
+  "    ~",
+  " NOR   w/t.fake [+]                                                                     1 sel  1:11",
+  "file modified by an external process, use :w! to overwrite"
+ ],
+ "file_after": "line1abcx\nEXTERNAL\n",
+ "lsp": [
+  {
+   "ms": 0,
+   "method": "initialize",
+   "id": 0
+  },
+  {
+   "ms": 1,
+   "method": "initialized",
+   "id": null
+  },
+  {
+   "ms": 1,
+   "method": "textDocument/didOpen",
+   "id": null,
+   "textDocument": {
+    "languageId": "fake",
+    "text": "line1\n",
+    "uri": "file:///opt/ne/ref/w/t.fake",
+    "version": 0
+   }
+  },
+  {
+   "mark": "E1 type abc",
+   "t": 1794869728.906157
+  },
+  {
+   "ms": 2951,
+   "method": "textDocument/didChange",
+   "id": null,
+   "contentChanges": [
+    {
+     "range": {
+      "end": {
+       "character": 5,
+       "line": 0
+      },
+      "start": {
+       "character": 5,
+       "line": 0
+      }
+     },
+     "text": "a"
+    }
+   ],
+   "textDocument": {
+    "uri": "file:///opt/ne/ref/w/t.fake",
+    "version": 1
+   }
+  },
+  {
+   "ms": 3007,
+   "method": "textDocument/didChange",
+   "id": null,
+   "contentChanges": [
+    {
+     "range": {
+      "end": {
+       "character": 6,
+       "line": 0
+      },
+      "start": {
+       "character": 6,
+       "line": 0
+      }
+     },
+     "text": "b"
+    }
+   ],
+   "textDocument": {
+    "uri": "file:///opt/ne/ref/w/t.fake",
+    "version": 2
+   }
+  },
+  {
+   "ms": 3064,
+   "method": "textDocument/didChange",
+   "id": null,
+   "contentChanges": [
+    {
+     "range": {
+      "end": {
+       "character": 7,
+       "line": 0
+      },
+      "start": {
+       "character": 7,
+       "line": 0
+      }
+     },
+     "text": "c"
+    }
+   ],
+   "textDocument": {
+    "uri": "file:///opt/ne/ref/w/t.fake",
+    "version": 3
+   }
+  },
+  {
+   "mark": "E2 hover then edit",
+   "t": 1794869731.0827022
+  },
+  {
+   "ms": 5128,
+   "method": "textDocument/hover",
+   "id": 1,
+   "textDocument": {
+    "uri": "file:///opt/ne/ref/w/t.fake"
+   },
+   "position": {
+    "character": 8,
+    "line": 0
+   }
+  },
+  {
+   "ms": 5337,
+   "method": "textDocument/didChange",
+   "id": null,
+   "contentChanges": [
+    {
+     "range": {
+      "end": {
+       "character": 8,
+       "line": 0
+      },
+      "start": {
+       "character": 8,
+       "line": 0
+      }
+     },
+     "text": "x"
+    }
+   ],
+   "textDocument": {
+    "uri": "file:///opt/ne/ref/w/t.fake",
+    "version": 4
+   }
+  },
+  {
+   "mark": "E3 undo",
+   "t": 1794869734.3557358
+  },
+  {
+   "ms": 8407,
+   "method": "textDocument/didSave",
+   "id": null,
+   "textDocument": {
+    "uri": "file:///opt/ne/ref/w/t.fake"
+   }
+  },
+  {
+   "ms": 9209,
+   "method": "textDocument/didChange",
+   "id": null,
+   "contentChanges": [
+    {
+     "range": {
+      "end": {
+       "character": 9,
+       "line": 0
+      },
+      "start": {
+       "character": 9,
+       "line": 0
+      }
+     },
+     "text": "\n"
+    }
+   ],
+   "textDocument": {
+    "uri": "file:///opt/ne/ref/w/t.fake",
+    "version": 5
+   }
+  },
+  {
+   "ms": 9213,
+   "method": "textDocument/didChange",
+   "id": null,
+   "contentChanges": [
+    {
+     "range": {
+      "end": {
+       "character": 0,
+       "line": 1
+      },
+      "start": {
+       "character": 0,
+       "line": 1
+      }
+     },
+     "text": "h"
+    }
+   ],
+   "textDocument": {
+    "uri": "file:///opt/ne/ref/w/t.fake",
+    "version": 6
+   }
+  },
+  {
+   "ms": 9269,
+   "method": "textDocument/didChange",
+   "id": null,
+   "contentChanges": [
+    {
+     "range": {
+      "end": {
+       "character": 1,
+       "line": 1
+      },
+      "start": {
+       "character": 1,
+       "line": 1
+      }
+     },
+     "text": "e"
+    }
+   ],
+   "textDocument": {
+    "uri": "file:///opt/ne/ref/w/t.fake",
+    "version": 7
+   }
+  },
+  {
+   "ms": 9326,
+   "method": "textDocument/didChange",
+   "id": null,
+   "contentChanges": [
+    {
+     "range": {
+      "end": {
+       "character": 2,
+       "line": 1
+      },
+      "start": {
+       "character": 2,
+       "line": 1
+      }
+     },
+     "text": "l"
+    }
+   ],
+   "textDocument": {
+    "uri": "file:///opt/ne/ref/w/t.fake",
+    "version": 8
+   }
+  },
+  {
+   "ms": 9381,
+   "method": "textDocument/didChange",
+   "id": null,
+   "contentChanges": [
+    {
+     "range": {
+      "end": {
+       "character": 3,
+       "line": 1
+      },
+      "start": {
+       "character": 3,
+       "line": 1
+      }
+     },
+     "text": "l"
+    }
+   ],
+   "textDocument": {
+    "uri": "file:///opt/ne/ref/w/t.fake",
+    "version": 9
+   }
+  },
+  {
+   "ms": 9436,
+   "method": "textDocument/didChange",
+   "id": null,
+   "contentChanges": [
+    {
+     "range": {
+      "end": {
+       "character": 4,
+       "line": 1
+      },
+      "start": {
+       "character": 4,
+       "line": 1
+      }
+     },
+     "text": "o"
+    }
+   ],
+   "textDocument": {
+    "uri": "file:///opt/ne/ref/w/t.fake",
+    "version": 10
+   }
+  },
+  {
+   "ms": 9491,
+   "method": "textDocument/didChange",
+   "id": null,
+   "contentChanges": [
+    {
+     "range": {
+      "end": {
+       "character": 5,
+       "line": 1
+      },
+      "start": {
+       "character": 5,
+       "line": 1
+      }
+     },
+     "text": " "
+    }
+   ],
+   "textDocument": {
+    "uri": "file:///opt/ne/ref/w/t.fake",
+    "version": 11
+   }
+  },
+  {
+   "ms": 9546,
+   "method": "textDocument/didChange",
+   "id": null,
+   "contentChanges": [
+    {
+     "range": {
+      "end": {
+       "character": 6,
+       "line": 1
+      },
+      "start": {
+       "character": 6,
+       "line": 1
+      }
+     },
+     "text": "w"
+    }
+   ],
+   "textDocument": {
+    "uri": "file:///opt/ne/ref/w/t.fake",
+    "version": 12
+   }
+  },
+  {
+   "ms": 9600,
+   "method": "textDocument/didChange",
+   "id": null,
+   "contentChanges": [
+    {
+     "range": {
+      "end": {
+       "character": 7,
+       "line": 1
+      },
+      "start": {
+       "character": 7,
+       "line": 1
+      }
+     },
+     "text": "o"
+    }
+   ],
+   "textDocument": {
+    "uri": "file:///opt/ne/ref/w/t.fake",
+    "version": 13
+   }
+  },
+  {
+   "ms": 9655,
+   "method": "textDocument/didChange",
+   "id": null,
+   "contentChanges": [
+    {
+     "range": {
+      "end": {
+       "character": 8,
+       "line": 1
+      },
+      "start": {
+       "character": 8,
+       "line": 1
+      }
+     },
+     "text": "r"
+    }
+   ],
+   "textDocument": {
+    "uri": "file:///opt/ne/ref/w/t.fake",
+    "version": 14
+   }
+  },
+  {
+   "ms": 9710,
+   "method": "textDocument/didChange",
+   "id": null,
+   "contentChanges": [
+    {
+     "range": {
+      "end": {
+       "character": 9,
+       "line": 1
+      },
+      "start": {
+       "character": 9,
+       "line": 1
+      }
+     },
+     "text": "l"
+    }
+   ],
+   "textDocument": {
+    "uri": "file:///opt/ne/ref/w/t.fake",
+    "version": 15
+   }
+  },
+  {
+   "ms": 9765,
+   "method": "textDocument/didChange",
+   "id": null,
+   "contentChanges": [
+    {
+     "range": {
+      "end": {
+       "character": 10,
+       "line": 1
+      },
+      "start": {
+       "character": 10,
+       "line": 1
+      }
+     },
+     "text": "d"
+    }
+   ],
+   "textDocument": {
+    "uri": "file:///opt/ne/ref/w/t.fake",
+    "version": 16
+   }
+  },
+  {
+   "ms": 10127,
+   "method": "textDocument/didChange",
+   "id": null,
+   "contentChanges": [
+    {
+     "range": {
+      "end": {
+       "character": 11,
+       "line": 1
+      },
+      "start": {
+       "character": 9,
+       "line": 0
+      }
+     },
+     "text": ""
+    }
+   ],
+   "textDocument": {
+    "uri": "file:///opt/ne/ref/w/t.fake",
+    "version": 17
+   }
+  },
+  {
+   "ms": 10639,
+   "method": "textDocument/didSave",
+   "id": null,
+   "textDocument": {
+    "uri": "file:///opt/ne/ref/w/t.fake"
+   }
+  },
+  {
+   "mark": "E5 external change",
+   "t": 1794869737.400755
+  },
+  {
+   "ms": 13047,
+   "method": "textDocument/didChange",
+   "id": null,
+   "contentChanges": [
+    {
+     "range": {
+      "end": {
+       "character": 9,
+       "line": 0
+      },
+      "start": {
+       "character": 9,
+       "line": 0
+      }
+     },
+     "text": "y"
+    }
+   ],
+   "textDocument": {
+    "uri": "file:///opt/ne/ref/w/t.fake",
+    "version": 18
+   }
+  }
+ ]
+}

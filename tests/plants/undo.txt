@@ -1,0 +1,4 @@
+# Plants for ref/undo.c (format in tools/planted.sh).  The package that builds
+# src/undo/ replaces this file with plants for its own code.
+undo: a new edit keeps redo (Undo_keepredo)~test TESTS=undo~~ref/undo.c~		while (u->n > u->done) group_free(&u->g[--u->n]);~
+undo: undo leaves the group open (Undo_noclose)~test TESTS=undo~~ref/undo.c~	u->open = 0;¶	if (!u->done) return 0;~	if (!u->done) return 0;

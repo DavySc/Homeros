@@ -1,0 +1,5 @@
+# Plants for ref/keys.c (format in tools/planted.sh).  The package that builds
+# src/keys/ replaces this file with plants for its own code.
+keys: j and k forget the wanted column (recorded traces)~test TESTS=~~ref/keys.c~	e->col = core_col_at(e, l, e->want, e->mode == MODE_INSERT);~	e->col = core_col_at(e, l, 0, e->mode == MODE_INSERT);
+keys: w does not stop on an empty line (live nvim)~conform CONFORM_N=2000 SEED=1~~ref/keys.c~		while (cls(e, p) == 0 && !empty_line(e, p))~		while (cls(e, p) == 0)
+keys: l steps one byte, into a character (fuzz_keys)~fuzz FUZZERS=keys FUZZ_SECONDS=60~~ref/keys.c~e->col + uni_len(s, len, e->col) < len) e->col += uni_len(s, len, e->col);~e->col + uni_len(s, len, e->col) < len) e->col += 1;
