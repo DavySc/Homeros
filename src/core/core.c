@@ -211,8 +211,9 @@ static Buf *buf_new(Editor *e, const char *path)
 /* u_savecommon() keeps a-z, < and > as they were when a group opened, and
    u_undoredo() swaps them back in.  A group's marks by its number (m[26]
    and m[27] are < and >), kept only while one of them is set: marks are
-   rare, so the list stays short. */
-typedef struct UndoMarks { Buf *b; unsigned long seq; Mark m[28]; struct UndoMarks *next; } UndoMarks;
+   rare, so the list stays short.  join: the group joined lines (see
+   core_mark_join), which u_save() saved as the lines around the joint */
+typedef struct UndoMarks { Buf *b; unsigned long seq; Mark m[28]; int join; struct UndoMarks *next; } UndoMarks;
 static UndoMarks *umarks;
 
 static void marks_snap(const Buf *b, Mark *m)
@@ -229,19 +230,22 @@ static UndoMarks **umarks_find(const Buf *b, unsigned long seq)
 	return p;
 }
 
-/* the group's marks become m: dropped when none is set; out of memory
-   loses them, as an undo that cannot save them would */
-static void umarks_put(Buf *b, unsigned long seq, const Mark *m)
+/* the group's marks become m (NULL: kept), and join is or-ed in: the entry
+   is dropped when neither holds anything; out of memory loses it, as an
+   undo that cannot save them would */
+static void umarks_put(Buf *b, unsigned long seq, const Mark *m, int join)
 {
 	UndoMarks **p = umarks_find(b, seq), *u = *p;
-	int any = 0;
-	for (int i = 0; i < 28; i++) any |= m[i].set;
+	int any = join || (u && u->join);
+	for (int i = 0; i < 28; i++) any |= m ? m[i].set : u && u->m[i].set;
 	if (!any) {
 		if (u) { *p = u->next; free(u); }
 		return;
 	}
-	if (!u && (u = malloc(sizeof *u))) { u->b = b; u->seq = seq; u->next = umarks; umarks = u; }
-	if (u) memcpy(u->m, m, sizeof u->m);
+	if (!u && (u = calloc(1, sizeof *u))) { u->b = b; u->seq = seq; u->next = umarks; umarks = u; }
+	if (!u) return;
+	if (m) memcpy(u->m, m, sizeof u->m);
+	u->join |= join;
 }
 
 static void umarks_drop(const Buf *b)
@@ -740,6 +744,7 @@ void core_mark_join(Editor *e, size_t line, size_t mincol, long line_amount, lon
 {
 	if (!col_amount && !line_amount) return;
 	Buf *b = e->buf;
+	if (line_amount) umarks_put(b, undo_seq(b->undo), NULL, 1);
 	/* a-z, ^, ., the change list, < >; not [ ] or " */
 	for (int k = 0; k < MARK_N; k++)
 		if (k < 26 || k == MARK_CARET || k == MARK_DOT || k == MARK_LT || k == MARK_GT)
@@ -798,7 +803,7 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 		if (!text_insert(b->text, pos, ins, nins)) {
 			if (!undo_record(b->undo, pos, del, ndel, ins, nins, c, after)) {
 				r = 0;
-				if (undo_seq(b->undo) != seq) umarks_put(b, undo_seq(b->undo), snap);   /* a new group */
+				if (undo_seq(b->undo) != seq) umarks_put(b, undo_seq(b->undo), snap, 0);   /* a new group */
 			}
 			else { text_delete(b->text, pos, nins); text_insert(b->text, pos, del, ndel); }
 		} else text_insert(b->text, pos, del, ndel);
@@ -869,13 +874,16 @@ int core_undo(Editor *e, int redo)
 	for (Win *v = e->wins; v; v = v->next) if (v->buf == e->buf) win_invalidate(v);
 	e->buf->flags = w.flags;
 	int at_start = w.lo == core_line_start(e, first);
-	if (w.hi == w.lo && at_start) last = first - 1;   /* whole lines removed: none left */
+	UndoMarks *u = *umarks_find(b, seq);
+	/* whole lines removed: none left, unless the group joined lines, which
+	   u_save() saved with the line they became (an empty line joined to an
+	   empty line removes the same "\n" as dd) */
+	if (w.hi == w.lo && at_start && !(u && u->join)) last = first - 1;
 	else last = text_line_of(e->buf->text, w.hi > w.lo ? w.hi - 1 : w.lo);
 	/* the other windows: the step replaced lines first.. by last - first + 1 */
 	size_t kept = before - (n - (last + 1 - first));   /* lines the step replaced */
 	if (n != before) adjust(e, e->buf, first, first + kept, DEL, (long)n - (long)before);
 	/* the marks the group saved come back, and it saves the ones before */
-	UndoMarks *u = *umarks_find(b, seq);
 	Mark saved[28] = { 0 };
 	if (u) memcpy(saved, u->m, sizeof saved);
 	for (int i = 0; i < 26; i++) {
@@ -888,7 +896,7 @@ int core_undo(Editor *e, int redo)
 		saved[26] = namedm[26];
 		saved[27] = namedm[27];
 	}
-	umarks_put(b, seq, saved);
+	umarks_put(b, seq, saved, 0);
 	/* '[ and '] around the changed lines (u_undoredo()) */
 	size_t newsize = last + 1 - first, top = first < n ? first : n - 1;
 	size_t end = newsize ? first + newsize - 1 : first;
