@@ -84,10 +84,12 @@ typedef struct Win {
 	int wrap;                  /* 'wrap': off (FEATURES.md); set through core_set_wrap */
 	int y, x, h, w;
 	struct Frame *frame;       /* its leaf in the layout */
-	/* CTRL-O CTRL-I, oldest first; :bd drops the buffer's entries
-	   (Neovim's jumpoptions=clean), so buf is never a deleted buffer */
+	/* CTRL-O CTRL-I, oldest first.  :bd forgets the buffer's entries in the
+	   current window only (do_buffer_ext); other windows may keep a buffer
+	   :bd deleted, which stays allocated (unlisted) */
 	struct { Buf *buf; Mark m; } jump[JUMPLIST_SIZE];
 	int njump, jumpidx;
+	Mark pcmark;                /* the '' and `` mark (w_pcmark) */
 	int changeidx;             /* where g; and g, are in buf's change list (w_changelistidx) */
 	struct Win *next;          /* window order: top left to bottom right (CTRL-W w) */
 } Win;
@@ -140,6 +142,10 @@ int  core_delete_lines(Editor *e, size_t a, size_t z);
    line_amount lines and col_amount columns, as Neovim's mark_col_adjust(),
    with spaces_removed as do_join() passes it.  Keys call it. */
 void core_mark_join(Editor *e, size_t line, size_t mincol, long line_amount, long col_amount, int spaces_removed);
+/* Neovim's setpcmark(): the cursor becomes the '' mark and the newest jump,
+   the oldest falling off a full list; keys call it before a jump (G, gg,
+   searches), the core before its buffer commands. */
+void core_setpcmark(Editor *e);
 /* One undo or redo step, placing the cursor as u_undoredo() does; the caller
    recomputes the wanted column once its count is done, even on failure.
    1 if the step invalidated Neovim's cached cursor column, 0 if not, -1 if

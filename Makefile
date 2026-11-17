@@ -107,6 +107,9 @@ frama: | build
 	frama-c -wp -wp-rte -wp-prover z3,cvc5 -wp-timeout 20 -wp-fct uni_len,uni_prev,uni_cp \
 	  -cpp-extra-args="-Iinclude" $(FRAMA_FILES) | tee build/frama.log
 	grep -qE "Proved goals: +([0-9]+) / \1$$" build/frama.log
+	frama-c -wp -wp-rte -wp-prover z3,cvc5 -wp-timeout 20 -wp-fct nls \
+	  -cpp-extra-args="-Iinclude -D_DEFAULT_SOURCE" src/text/text.c | tee build/frama-text.log
+	grep -qE "Proved goals: +([0-9]+) / \1$$" build/frama-text.log
 
 # the Windows build (package 9): cross-built with zig cc, run under Wine on
 # a virtual X display; src/win/check.sh says how

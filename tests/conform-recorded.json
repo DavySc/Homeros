@@ -33755,5 +33755,274 @@
 "        cა  "
 ]
 }
+},
+{
+"text": "\t𐐀x 𐐀x λx\n",
+"keys": [
+"w",
+"o",
+"y",
+" ",
+"<Esc>",
+"O",
+"<CR>",
+"<Esc>",
+"3",
+"x",
+"A",
+"<BS>",
+"<Esc>",
+"u",
+"h",
+"<C-r>",
+"dd"
+],
+"nvim": {
+"lines": [
+"\t𐐀x 𐐀x λx",
+""
+],
+"cursor": [
+2,
+0
+]
+}
+},
+{
+"text": "a\n\n\nb\n",
+"keys": [
+"j",
+"j",
+"i",
+"<BS>",
+"<Esc>",
+"u",
+"<C-r>",
+"dd"
+],
+"nvim": {
+"lines": [
+"a",
+""
+],
+"cursor": [
+2,
+0
+]
+}
+},
+{
+"text": "a\n\nfoo\nb\n",
+"keys": [
+"j",
+"j",
+"i",
+"<BS>",
+"<Esc>",
+"u",
+"j",
+"<C-r>",
+"dd"
+],
+"nvim": {
+"lines": [
+"a",
+"foo"
+],
+"cursor": [
+2,
+0
+]
+}
+},
+{
+"text": "a\n\nfoo\nb\n",
+"keys": [
+"j",
+"j",
+"i",
+"<BS>",
+"<Esc>",
+"G",
+"u",
+"dd"
+],
+"nvim": {
+"lines": [
+"a",
+"",
+"b"
+],
+"cursor": [
+3,
+0
+]
+}
+},
+{
+"text": "",
+"keys": [
+"I",
+"<Esc>",
+"3",
+"h",
+"a",
+"  ",
+"(",
+"é",
+",",
+"<BS>",
+"<Esc>",
+"h",
+"u",
+"a",
+"<Del>",
+"<Esc>",
+"b",
+"$",
+"h",
+"<C-r>",
+"2",
+"G",
+"A",
+"a",
+"<CR>",
+"<Tab>",
+"<Esc>"
+],
+"nvim": {
+"lines": [
+"a",
+"    "
+],
+"cursor": [
+2,
+3
+]
+}
+},
+{
+"text": "y\nw\n",
+"keys": [
+"x",
+"j",
+"A",
+"<Del>",
+"<Esc>",
+"u"
+],
+"nvim": {
+"lines": [
+"",
+"w"
+],
+"cursor": [
+2,
+0
+]
+}
+},
+{
+"text": "y\nw\n",
+"keys": [
+"x",
+"j",
+"A",
+"b",
+"<Del>",
+"<Esc>",
+"u"
+],
+"nvim": {
+"lines": [
+"",
+"w"
+],
+"cursor": [
+2,
+0
+]
+}
+},
+{
+"text": "a\n\nfoo\nb\n",
+"keys": [
+"j",
+"A",
+"<Del>",
+"<Esc>",
+"u",
+"j",
+"<C-r>",
+"dd"
+],
+"nvim": {
+"lines": [
+"a",
+"b"
+],
+"cursor": [
+2,
+0
+]
+}
+},
+{
+"text": "ab\ncd\n",
+"keys": [
+"A",
+"<Del>",
+"x",
+"<Esc>",
+"u"
+],
+"nvim": {
+"lines": [
+"ab",
+"cd"
+],
+"cursor": [
+1,
+1
+]
+}
+},
+{
+"text": "ab\n",
+"keys": [
+"1",
+"2",
+"<Del>",
+"<Del>",
+"x"
+],
+"nvim": {
+"lines": [
+"b"
+],
+"cursor": [
+1,
+0
+]
+}
+},
+{
+"text": "abc\n",
+"keys": [
+"<Del>",
+"<Del>",
+"$",
+"<Del>",
+"u"
+],
+"nvim": {
+"lines": [
+"c"
+],
+"cursor": [
+1,
+0
+]
+}
 }
 ]
