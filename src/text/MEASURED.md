@@ -1,0 +1,52 @@
+# Text rope (package 1, build A): what was run
+
+`src/text/text.c` is a B-tree of 1 KB byte chunks, ropey's shape (DESIGN.md, Text): all leaves at one depth, every node but the root at least half full, each parent holding its children's byte and `'\n'` counts. An edit or a lookup walks one root-to-leaf path. 244 lines, 227 non-blank.
+
+## Correctness
+
+| Check | What | Result | Tag |
+|---|---|---|---|
+| `tests/test_text.c` (thread 0) | 200,000 random small edits against an array, all line lookups | pass | measured, 1 run per `make test` |
+| `tests/test_text_rope.c` | 20,000 edits on 1 to 6 MB texts (1% of them up to 256 KB), tree height up to 3; after each edit the bytes around it, every 200 edits the whole tree's shape (fill, counts), all bytes and 40 line lookups; malloc failing at each of the 311 allocations of a 300 KB insert, and at each allocation of `text_new` | pass, text unchanged after every failed allocation; 9 s under ASan+UBSan | measured |
+| `tests/fuzz_text_rope.c` | libFuzzer, edits up to 8 KB, shape and all bytes checked after each | 36,805 runs in 60 s, nothing found; source coverage over 30 s: every line and branch of the tree code, missed only the out-of-range and out-of-memory returns (those the unit tests cover) | measured, 1 run of each |
+| `tests/plants/text.txt` | 7 planted bugs: join at a quarter, uneven split, no rollback on failed allocation, line start off by one, newline count missing a byte, shared node's count wrong, leaf insert dropping a byte | 7 of 7 caught | measured, `tools/planted.sh` |
+| `make conform` and the recorded traces | the thin editor's Vim keys against Neovim, now on the rope | 0 differ | measured |
+
+The test and the fuzzer compile `text.c` a second time under other names (`#define text_new r_new` and so on) so that they can see the nodes; `text.h` stays the only interface the editor uses.
+
+Out of memory: an insert takes the nodes its splits can need (one per level plus a new root) before it changes anything, so a split cannot fail halfway; a multi-chunk insert that cannot get them deletes what it already put in. Deletion never allocates. So `text_insert`'s -1 leaves the bytes unchanged (measured above; the tree may be shaped differently).
+
+## Against ropey 1.6.1
+
+`src/text/bench/run.sh` runs `bench.c` (the rope through `text.h`) and `rope/` (the same steps on ropey 1.6.1, release, LTO): open a file, random 1 to 10 byte inserts and deletes logged for undo, undo them all and check the text is back, read it all out, then random line lookups both ways (`text_line_start`/`line_to_char`, `text_line_of`/`char_to_line`). The input is `design/proto/gen_input.py`'s Lean-like ASCII text, so ropey's char indices are bytes. gcc 13 -O2.
+
+Instructions (callgrind, exact, so one run each), 10 MB; each step is the difference to the run without it:
+
+| Step | C rope | ropey | Tag |
+|---|---|---|---|
+| open + read out + compare | 37.0 M | 65.2 M | measured |
+| 5,000 edits + undo | 11.5 M | 38.3 M | measured |
+| 100,000 lookups each way | 137.0 M | 503.2 M | measured |
+
+Wall time on 100 MB, 50,000 edits and 1,000,000 lookups each way, 5 alternating runs per side, median (range), seconds:
+
+| Step | C rope | ropey | Verdict |
+|---|---|---|---|
+| open (`text_new`, `Rope::from_str`) | 0.077 (0.061 to 0.110) | 0.119 (0.093 to 0.125) | ranges overlap: no measurable difference |
+| 50,000 edits | 0.048 (0.041 to 0.055) | 0.093 (0.081 to 0.114) | C faster |
+| undo them | 0.028 (0.028 to 0.029) | 0.046 (0.039 to 0.078) | C faster |
+| read 100 MB out | 0.075 (0.068 to 0.098) | 0.104 (0.083 to 0.112) | ranges overlap: no measurable difference |
+| 2,000,000 lookups | 1.340 (1.257 to 1.393) | 1.614 (1.498 to 1.658) | C faster |
+| peak RSS (with the 100 MB file and the 100 MB read-back buffer both hold) | 316 MB, all 5 runs | 325 MB, all 5 runs | C smaller |
+
+Open is at 0.08 s against DESIGN.md's 0.3 s target for a 100 MB file (measured, rope build only; reading the file is not counted).
+
+Two changes came from callgrind, both measured on the 10 MB run: counting `'\n'` in blocks of 32 bytes, which gcc and clang -O2 turn into vector compares, and `memchr` to find the l-th `'\n'` in a leaf, took the whole run from 854.8 M to 182.3 M instructions (gcc; clang 180.0 M).
+
+Not measured: Davy's own files (the design asks the rope to match ropey "on your files"; these are generated). Whether the difference to ropey comes from bytes against chars (ropey also counts chars and UTF-16 units) or from the tree is not separated: hypothesis that most of it is the char counting.
+
+## Proof spike
+
+Frama-C WP with `-wp-rte` (z3, cvc5, 10 s per goal) on `text.c` as it is, with no contracts: 113 of 297 runtime-error goals prove, 184 time out (measured, 1 run, about 15 minutes). The unproved ones are almost all memory accesses through a child pointer (`ins` 12, `text_insert` 11, `del` 11, `join` 10, `sum` 9, ...): nothing says a node is valid, so nothing can be proved about reading it. Going further needs a recursive ACSL predicate for a well-formed tree (each kid valid, separated from the others, of height h - 1, its counts right, filled at least half) that every function requires and keeps, which also has to survive `malloc`, `free` and the spare pool. That is the work the design calls much harder than a byte scan, and it was not started: the gate for this package is the differential fuzzing above (hypothesis that a full proof is weeks of work, judged from the earlier CBMC and Kani failures on a smaller structure, not measured).
+
+Reproduce: `frama-c -wp -wp-rte -wp-prover z3,cvc5 -wp-timeout 10 -cpp-extra-args="-Iinclude -D_DEFAULT_SOURCE" src/text/text.c`.
