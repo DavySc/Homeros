@@ -66,5 +66,5 @@ bad = []
 for c, w, g in zip(cases, want, got):
     if g.get('lines') != w['lines'] or g.get('cursor') != w['cursor']:
         bad.append({'text': c['text'], 'keys': c['keys'], 'nvim': w, 'ours': g})
-json.dump(bad, open('%s-%d.json' % (mode, seed), 'w'), ensure_ascii=False, indent=0, default=str)
+json.dump(bad, open('%s-%d.json' % (mode, seed), 'w', errors='surrogateescape'), ensure_ascii=False, indent=0, default=str)
 print('%s seed %d: %d sequences, %d differ' % (mode, seed, n, len(bad)))

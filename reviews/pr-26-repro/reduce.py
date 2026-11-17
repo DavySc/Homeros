@@ -23,7 +23,7 @@ def differs(text, keys):
     return (g.get('lines') != w['lines'] or g.get('cursor') != w['cursor']), w, g
 out = []
 only = [int(x) for x in os.environ['ONLY'].split(',')] if os.environ.get('ONLY') else None
-for i, c in enumerate(json.load(open(sys.argv[2]))):
+for i, c in enumerate(json.load(open(sys.argv[2], errors='surrogateescape'))):
     if only and i not in only: continue
     text, keys = c['text'], c['keys']
     d, w, g = differs(text, keys)

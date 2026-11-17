@@ -13,7 +13,7 @@ def differs(text, keys):
         w = G['nvim1']([c])[0]; g = G['ours'](sys.argv[1], c)
     except Exception: return None, None, None
     return (g.get('lines') != w['lines'] or g.get('cursor') != w['cursor']), w, g
-for c in json.load(open(sys.argv[2])):
+for c in json.load(open(sys.argv[2], errors='surrogateescape')):
     if 'error' in c['ours']: continue
     lo, hi = 1, len(c['keys'])          # invariant: prefix hi differs
     while lo < hi:
