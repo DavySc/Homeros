@@ -1,17 +1,19 @@
 /* Win32 backend (package 9): a window that shows the cell grid from a DIB
    section, the Wayland backend's twin (DESIGN.md, "Window, Windows").
-   Until font.h (package 7) exists, glyphs come from GDI's ExtTextOutW into
-   the DIB; package 7's FreeType and HarfBuzz code replaces draw_cell.
+   Glyphs come from GDI's ExtTextOutW into the DIB until package 7's
+   FreeType and HarfBuzz code (font.h) builds on Windows; it replaces
+   draw_cell.
 
    When to draw: a GDI window gets no frame callback.  DWM composes about
    every refresh period P; if one composition comes at most D after P from
    the one before, two frames drawn more than P + D apart always have a
-   composition between them, so neither is drawn for nothing (Pace.tla:
-   proved for P 2 to 4, D 0 to 1, every gap; drawing whenever there is
-   something new, or exactly P apart, wastes frames).  So a frame may be
-   drawn once P + P/8 has passed since the last (D under P/8 is a
-   hypothesis to measure on Windows), and a waitable timer wakes the loop
-   then.  Like a hidden Wayland window, a minimised one draws nothing.
+   composition between them, so neither is drawn for nothing (Pace.tla,
+   and design/specs/pace-sweep.sh for P 2 to 4, D 0 to 1, every gap;
+   drawing whenever there is something new, or exactly P apart, wastes
+   frames; without the timer the last key can wait for the next input).
+   So a frame may be drawn once P + P/8 has passed since the last (D under
+   P/8 is a hypothesis to measure on Windows), and a waitable timer wakes
+   the loop then.  Like a hidden Wayland window, a minimised one draws nothing.
 
    Without _WIN32 this file is empty, so the Linux build never sees it. */
 #ifdef _WIN32
@@ -19,7 +21,9 @@
 #include <dwmapi.h>
 #include "backend.h"
 #include "keys.h"
+#include "loop.h"
 #include "uni.h"
+#include <windowsx.h>
 
 enum { RING = 256, PT = 12 };   /* font size in points: a guess until package 7 */
 
@@ -33,11 +37,17 @@ static int dw, dh, stale;       /* the DIB's size; stale: redraw it whole */
 static int ring[RING], rh, rn;  /* keys the window procedure turned out */
 static int resized;
 static LONGLONG period, next;   /* QueryPerformanceCounter ticks */
-static WCHAR surr;               /* a high surrogate waiting for its low one */
+static WCHAR surr;              /* a high surrogate waiting for its low one */
+static int mrow, mcol, wheel;   /* the last mouse key's cell; wheel delta not yet a key */
 
-/* Catppuccin Mocha (FEATURES.md); attr -> foreground, background */
-static const COLORREF fg[] = { RGB(205, 214, 244), RGB(108, 112, 134), RGB(30, 30, 46) };
-static const COLORREF bg[] = { RGB(30, 30, 46), RGB(30, 30, 46), RGB(205, 214, 244) };
+/* Catppuccin Mocha (FEATURES.md), as ref/tty.c: text, dim (overlay0), base,
+   and the colours catppuccin/nvim gives the syntax faces */
+static const COLORREF TEXT = RGB(205, 214, 244), DIMC = RGB(108, 112, 134), BASE = RGB(30, 30, 46);
+static const COLORREF face_fg[FACE_COUNT] = {
+	RGB(205, 214, 244), RGB(147, 153, 178), RGB(166, 227, 161), RGB(203, 166, 247), RGB(249, 226, 175),
+	RGB(137, 180, 250), RGB(250, 179, 135), RGB(250, 179, 135), RGB(137, 220, 235),
+	RGB(147, 153, 178), RGB(205, 214, 244)
+};
 
 static void put(int k)
 {
@@ -81,7 +91,7 @@ static int make_dib(void)
 	SelectObject(mem, b);
 	if (dib) DeleteObject(dib);
 	dib = b;
-	SetBkColor(mem, bg[ATTR_NONE]);
+	SetBkColor(mem, BASE);
 	ExtTextOutW(mem, 0, 0, ETO_OPAQUE, &r, NULL, 0, NULL);
 	dw = r.right;
 	dh = r.bottom;
@@ -110,6 +120,21 @@ static LRESULT CALLBACK proc(HWND h, UINT m, WPARAM w, LPARAM l)
 		case VK_DOWN: put(KEY_DOWN); return 0;
 		}
 		break;
+	case WM_LBUTTONDOWN:
+		mrow = GET_Y_LPARAM(l) / ch;
+		mcol = GET_X_LPARAM(l) / cw;
+		put(KEY_MOUSE_LEFT);
+		return 0;
+	case WM_MOUSEWHEEL: {   /* one key per notch (WHEEL_DELTA), as Neovim's GUIs */
+		POINT pt = { GET_X_LPARAM(l), GET_Y_LPARAM(l) };   /* screen coordinates */
+		ScreenToClient(h, &pt);
+		mrow = pt.y / ch;
+		mcol = pt.x / cw;
+		for (wheel += GET_WHEEL_DELTA_WPARAM(w); wheel >= WHEEL_DELTA && rn < RING; wheel -= WHEEL_DELTA)
+			put(KEY_WHEEL_UP);
+		for (; wheel <= -WHEEL_DELTA && rn < RING; wheel += WHEEL_DELTA) put(KEY_WHEEL_DOWN);
+		return 0;
+	}
 	case WM_SIZE:
 		if (w != SIZE_MINIMIZED && (LOWORD(l) != dw || HIWORD(l) != dh)) resized = stale = 1;
 		return 0;
@@ -135,35 +160,13 @@ static LRESULT CALLBACK proc(HWND h, UINT m, WPARAM w, LPARAM l)
 	}
 	case WM_ERASEBKGND:
 		return 1;
-	case WM_CLOSE:   /* keys.h has no key for it: quit with :q */
+	case WM_CLOSE:   /* keys.h has no key for it yet (asked of thread 0): quit with :q */
 		return 0;
 	}
 	return DefWindowProcW(h, m, w, l);
 }
 
-int backend_open(void)
-{
-	WNDCLASSW wc = { .lpfnWndProc = proc, .hInstance = GetModuleHandleW(NULL),
-	                 .hCursor = LoadCursorW(NULL, (LPCWSTR)IDC_IBEAM), .lpszClassName = L"homeros" };
-	SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
-	if (!RegisterClassW(&wc)) return -1;
-	win = CreateWindowExW(0, L"homeros", L"homeros", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
-	                      CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, wc.hInstance, NULL);
-	if (!win) return -1;
-	dpi = (int)GetDpiForWindow(win);
-	mem = CreateCompatibleDC(NULL);
-	timer = CreateWaitableTimerExW(NULL, NULL, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
-	if (!mem || !timer) { backend_close(); return -1; }
-	nofont = SelectObject(mem, GetStockObject(SYSTEM_FONT));
-	nodib = GetCurrentObject(mem, OBJ_BITMAP);
-	if (make_font() || make_dib()) { backend_close(); return -1; }
-	measure_period();
-	ShowWindow(win, SW_SHOWDEFAULT);
-	resized = stale = 0;   /* the size backend_size gives now is the first one */
-	return 0;
-}
-
-void backend_close(void)
+static void win_close(void)
 {
 	if (mem) { SelectObject(mem, nofont); SelectObject(mem, nodib); DeleteDC(mem); }
 	if (font) DeleteObject(font);
@@ -175,19 +178,43 @@ void backend_close(void)
 	dw = dh = 0;
 }
 
-/* -1 is the thread's message queue (loop.h, pending thread 0); a handle's
-   low 32 bits are all of it (Microsoft, 32/64-bit interprocess handles). */
-int backend_fds(int fds[2])
+static int win_open(void)
 {
-	fds[0] = -1;
+	WNDCLASSW wc = { .lpfnWndProc = proc, .hInstance = GetModuleHandleW(NULL),
+	                 .hCursor = LoadCursorW(NULL, (LPCWSTR)IDC_IBEAM), .lpszClassName = L"homeros" };
+	SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+	if (!RegisterClassW(&wc)) return -1;
+	win = CreateWindowExW(0, L"homeros", L"homeros", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
+	                      CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, wc.hInstance, NULL);
+	if (!win) return -1;
+	dpi = (int)GetDpiForWindow(win);
+	mem = CreateCompatibleDC(NULL);
+	timer = CreateWaitableTimerExW(NULL, NULL, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
+	if (!mem || !timer) { win_close(); return -1; }
+	nofont = SelectObject(mem, GetStockObject(SYSTEM_FONT));
+	nodib = GetCurrentObject(mem, OBJ_BITMAP);
+	if (make_font() || make_dib()) { win_close(); return -1; }
+	measure_period();
+	ShowWindow(win, SW_SHOWDEFAULT);
+	resized = stale = 0;   /* the size backend_size gives now is the first one */
+	return 0;
+}
+
+/* loop.h: a handle cut to int (its low 32 bits are all of it) */
+static int win_fds(int fds[2])
+{
+	fds[0] = LOOP_MSGQ;
 	fds[1] = (int)(INT_PTR)timer;
 	return 2;
 }
 
-int backend_input(int *out, int n)
+static int win_input(int *out, int n)
 {
 	MSG m;
-	/* each message gives at most one key, so stop while the ring has room */
+	/* each message gives at most one key (the wheel stops at a full ring),
+	   so stop while the ring has room; what stays queued still wakes the
+	   loop, which waits with MWMO_INPUTAVAILABLE (asked of thread 0 for
+	   loop.h) */
 	while (rn < RING && PeekMessageW(&m, NULL, 0, 0, PM_REMOVE)) {
 		TranslateMessage(&m);
 		DispatchMessageW(&m);
@@ -198,7 +225,7 @@ int backend_input(int *out, int n)
 	return k;
 }
 
-void backend_size(int *rows, int *cols)
+static void win_size(int *rows, int *cols)
 {
 	RECT r;
 	GetClientRect(win, &r);
@@ -206,7 +233,7 @@ void backend_size(int *rows, int *cols)
 	*cols = r.right / cw > 0 ? r.right / cw : 1;
 }
 
-int backend_ready(void)
+static int win_ready(void)
 {
 	LARGE_INTEGER now, f, due;
 	if (IsIconic(win)) return 0;
@@ -227,25 +254,29 @@ static void draw_cell(const Grid *g, int r, int c, int cursor)
 	unsigned cp = uni_cp(x->ch, x->len, 0);
 	WCHAR u[2] = { (WCHAR)cp };
 	UINT n = 1;
-	int a = cursor ? ATTR_REV : x->attr, wide = c + 1 < g->cols && !x[1].len;
+	int wide = c + 1 < g->cols && !x[1].len;
+	COLORREF f = x->attr == ATTR_DIM ? DIMC : x->face < FACE_COUNT ? face_fg[x->face] : TEXT;
 	RECT rc = { c * cw, r * ch, (c + 1 + wide) * cw, (r + 1) * ch };
 	if (cp >= 0x10000) {   /* UTF-16 surrogates */
 		u[0] = (WCHAR)(0xD800 + (cp - 0x10000) / 0x400);
 		u[1] = (WCHAR)(0xDC00 + (cp - 0x10000) % 0x400);
 		n = 2;
 	}
-	SetTextColor(mem, fg[a]);
-	SetBkColor(mem, bg[a]);
+	/* reversed (status line, cursor): the text colour becomes the background */
+	int rev = cursor || x->attr == ATTR_REV;
+	SetTextColor(mem, rev ? BASE : f);
+	SetBkColor(mem, rev ? f : BASE);
 	ExtTextOutW(mem, rc.left, rc.top, ETO_OPAQUE | ETO_CLIPPED, &rc, u, n, NULL);
 }
 
-void backend_present(const Grid *g, Grid *shown)
+static void win_present(const Grid *g, Grid *shown)
 {
 	int all = stale || shown->rows != g->rows || shown->cols != g->cols;
 	if (all && (grid_resize(shown, g->rows, g->cols) || make_dib())) return;
 	stale = 0;
 	HDC dc = GetDC(win);
-	int pr = shown->crow, pc = shown->ccol;
+	/* after a whole redraw the DIB shows no cursor anywhere */
+	int pr = all ? -1 : shown->crow, pc = shown->ccol;
 	for (int r = 0; r < g->rows; r++) {
 		int lo = g->cols, hi = 0;
 		for (int c = 0; c < g->cols; c++) {
@@ -271,5 +302,59 @@ void backend_present(const Grid *g, Grid *shown)
 }
 
 /* gvim: "In the GUI, suspending is implemented as iconising gvim" */
-void backend_suspend(void) { ShowWindow(win, SW_MINIMIZE); }
+static void win_suspend(void) { ShowWindow(win, SW_MINIMIZE); }
+
+/* The clipboard holds UTF-16 with CRLF; the registers hold UTF-8 with LF.
+   Neovim on Windows converts the same way (win32yank -i --crlf, -o --lf). */
+static int win_clip_set(const char *s, size_t n)
+{
+	int lf = 0, w = n ? MultiByteToWideChar(CP_UTF8, 0, s, (int)n, NULL, 0) : 0;
+	for (size_t i = 0; i < n; i++) lf += s[i] == '\n';
+	if (n && !w) return -1;
+	HGLOBAL h = GlobalAlloc(GMEM_MOVEABLE, ((size_t)w + (size_t)lf + 1) * sizeof(WCHAR));
+	WCHAR *u = h ? GlobalLock(h) : NULL;
+	if (!u) { if (h) GlobalFree(h); return -1; }
+	MultiByteToWideChar(CP_UTF8, 0, s, (int)n, u + lf, w);   /* then spread out in place */
+	int j = 0;
+	for (int i = lf; i < w + lf; i++) {
+		if (u[i] == '\n') u[j++] = '\r';
+		u[j++] = u[i];
+	}
+	u[j] = 0;
+	GlobalUnlock(h);
+	if (!OpenClipboard(win)) { GlobalFree(h); return -1; }
+	EmptyClipboard();
+	int ok = SetClipboardData(CF_UNICODETEXT, h) != NULL;
+	CloseClipboard();
+	if (!ok) GlobalFree(h);   /* on success the clipboard owns it */
+	return ok ? 0 : -1;
+}
+
+static long win_clip_get(char *buf, size_t max)
+{
+	if (!OpenClipboard(win)) return -1;
+	HANDLE h = GetClipboardData(CF_UNICODETEXT);
+	const WCHAR *u = h ? GlobalLock(h) : NULL;
+	long n = -1;
+	if (u) {
+		n = 0;
+		for (int i = 0; u[i]; i++) {
+			if (u[i] == '\r' && u[i + 1] == '\n') continue;
+			char b[4];
+			int k = WideCharToMultiByte(CP_UTF8, 0, u + i, IS_HIGH_SURROGATE(u[i]) && u[i + 1] ? 2 : 1, b, 4, NULL, NULL);
+			for (int j = 0; j < k; j++, n++) if ((size_t)n < max) buf[n] = b[j];
+			i += IS_HIGH_SURROGATE(u[i]) && u[i + 1];
+		}
+		GlobalUnlock(h);
+	}
+	CloseClipboard();
+	return n;
+}
+
+static void win_mouse(int *row, int *col) { *row = mrow; *col = mcol; }
+
+const Backend backend_win = {
+	win_open, win_close, win_fds, win_input, win_size, win_ready,
+	win_present, win_suspend, win_clip_set, win_clip_get, win_mouse
+};
 #endif
