@@ -1,15 +1,18 @@
-# Plants for src/lsp/ (format in tools/planted.sh).  The first three are
-# LspSync.tla's broken variants, as code.
+# Plants for src/lsp/ (format in tools/planted.sh).  LspSync.tla's broken
+# variants (nomap, prunesend, mapreply) are here as code.
 lsp: diagnostics shown at their raw positions (LspSync nomap)~test TESTS=lsp~~src/lsp/lsp.c~	shift_set(&d->diag, pos, ndel, nins);~
-lsp: diagnostics for an older version shown~test TESTS=lsp~~src/lsp/lsp.c~current(d, v < 0 ? d->ver : v)~current(d, d->ver)
+lsp: older diagnostics not mapped through the edits since~test TESTS=lsp~~src/lsp/lsp.c~	for (int k = 0; k < d->nlog; k++) if (d->log[k].v >= v) p = after(p, &d->log[k], end);~
+lsp: the edit log dropped once didChange is sent (LspSync prunesend)~test TESTS=lsp~~src/lsp/lsp.c~	d->chg.n = 0;¶	end(d->s);~	d->chg.n = 0;¶	d->nlog = 0;¶	end(d->s);
+lsp: an older publication replaces a newer one~test TESTS=lsp~~src/lsp/lsp.c~	if (ver < d->floor) return;~
+lsp: a mapped end inside the deletion goes after the insertion~test TESTS=lsp~~src/lsp/lsp.c~	if (end ? !before(e->e, p) : before(p, e->e)) return end ? e->s : e->i;~	if (end ? !before(e->e, p) : before(p, e->e)) return e->i;
 lsp: a reply shown after the text changed (LspSync mapreply)~test TESTS=lsp~~src/lsp/lsp.c~	return d && current(d, d->ask[kind].ver) ? d->ask[kind].ans : NULL;~	return d ? d->ask[kind].ans : NULL;
 lsp: the end of a range does not follow a deleted last character~test TESTS=lsp~~src/lsp/lsp.c~g->z <= pos + ndel ? pos~g->z <= pos + ndel ? g->z
 lsp: the start of a range does not follow a deleted first character~test TESTS=lsp~~src/lsp/lsp.c~(g->a > pos + ndel ? g->a : pos + ndel)~g->a
-lsp: incremental diagnostics replace the earlier ones~test TESTS=lsp~~src/lsp/lsp.c~				       json_true(m, tk, json_get(m, tk, p, "isIncremental")));~				       0);
+lsp: incremental diagnostics replace the earlier ones~test TESTS=lsp~~src/lsp/lsp.c~json_true(m, tk, json_get(m, tk, p, "isIncremental"))~0
 lsp: versions jump by 2~test TESTS=lsp~~src/lsp/lsp.c~	if (!d || !d->chg.n) return;¶	d->ver++;~	if (!d || !d->chg.n) return;¶	d->ver += 2;
 lsp: messages sent before the initialize reply~test TESTS=lsp~~src/lsp/lsp.c~	if (!s->ready && !now) {~	if (0) {
 lsp: a new request does not cancel the last~test TESTS=lsp~~src/lsp/lsp.c~	cancel(d, kind);¶~¶
-lsp: a restarted server never gets didOpen~test TESTS=lsp~~src/lsp/lsp.c~{ forget(e); e->ver++; open_doc(e); }~{ forget(e); e->ver++; }
+lsp: a reopened file never gets didOpen~test TESTS=lsp~~src/lsp/lsp.c~	d->nlog = 0;¶	open_doc(d);~	d->nlog = 0;
 lsp: a request from the server left unanswered~test TESTS=lsp~~src/lsp/lsp.c~		send(s);¶		return;¶	}¶	if (meth >= 0) {~		return;¶	}¶	if (meth >= 0) {
 lsp: columns sent as bytes, not UTF-16~test TESTS=lsp~~src/lsp/lsp.c~	*c = lsp_u16(b, n);~	*c = n;
 lsp: a column inside a surrogate pair goes to the next character~test TESTS=lsp~~src/lsp/u16.c~		if (c < u + w) return i;~		if (c <= u) return i;

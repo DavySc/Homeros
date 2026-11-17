@@ -128,10 +128,54 @@ static void run_for(long long ms) { for (long long end = now() + ms; now() < end
 
 static int cmpl(const void *a, const void *b) { long long x = *(const long long *)a, y = *(const long long *)b; return (x > y) - (x < y); }
 
+/* The proxy's log replayed under both of LspSync's rules: "simple" shows
+   a publication only for the version the client is at, "ok" (the edit
+   log) any not older than the last one shown.  Typing runs from the first
+   didChange to the last. */
+static void report(const char *log)
+{
+	static long long at[1 << 20], hid[1 << 20];
+	static long ver[1 << 20], cur[1 << 20];
+	int n = 0;
+	long c = -1, v, cnt;
+	int inc;
+	long long t, start = -1, stop = 0;
+	char kind;
+	FILE *f = fopen(log, "r");
+	while (f && n < (1 << 20) && fscanf(f, "%lld %c %ld", &t, &kind, &v) == 3) {
+		if (kind == 'C') { c = v; if (v > 0 && start < 0) start = t; stop = t; continue; }
+		if (fscanf(f, "%ld %d", &cnt, &inc) != 2) break;
+		at[n] = t; ver[n] = v; cur[n] = c; n++;
+	}
+	if (f) fclose(f);
+	static char ok[1 << 20];
+	for (int rule = 0; rule < 2; rule++) {
+		int nh = 0, shown = 0;
+		long floor = -1;
+		long long first = -1, next = -1;
+		for (int i = 0; i < n; i++) {
+			ok[i] = rule ? ver[i] >= floor : ver[i] == cur[i];
+			if (rule && ok[i]) floor = ver[i];
+			if (ok[i] && at[i] >= start) { shown++; if (at[i] > stop && first < 0) first = at[i]; }
+		}
+		/* hidden: from each publication after typing began to the next one shown */
+		for (int i = n - 1; i >= 0; i--) {
+			if (ok[i]) next = at[i];
+			if (at[i] >= start) hid[nh++] = (next < 0 ? at[n - 1] : next) - at[i];
+		}
+		qsort(hid, (size_t)nh, sizeof *hid, cmpl);
+		printf("%-6s %d publications, %d shown; hidden per publication: median %lld ms, max %lld ms; first shown after the last key %lld ms\n",
+		       rule ? "ok" : "simple", nh, shown, nh ? hid[nh / 2] : 0, nh ? hid[nh - 1] : 0, first < 0 ? -1 : first - stop);
+		printf("GATE %s %s (max hidden %lld ms, limit 2000 ms)\n", rule ? "ok" : "simple",
+		       nh && hid[nh - 1] > 2000 ? "FAIL" : "pass", nh ? hid[nh - 1] : 0);
+	}
+}
+
 int main(int argc, char **argv)
 {
 	if (argc > 3 && !strcmp(argv[1], "--proxy")) return proxy(argv[2], argv + 3);
-	if (argc < 2) { fprintf(stderr, "usage: stale FILE.lean [ms per key] [seconds] [line]\n"); return 2; }
+	if (argc == 3 && !strcmp(argv[1], "--replay")) { report(argv[2]); return 0; }
+	if (argc < 2) { fprintf(stderr, "usage: stale FILE.lean [ms per key] [seconds] [line] | stale --replay LOG\n"); return 2; }
 	int per = argc > 2 ? atoi(argv[2]) : 150, secs = argc > 3 ? atoi(argv[3]) : 30;
 	char dir[] = "/tmp/homeros-stale-XXXXXX", path[4200], log[4200], self[4096];
 	if (!mkdtemp(dir)) return 1;
@@ -210,38 +254,8 @@ int main(int argc, char **argv)
 	lsp_close(d);
 	run_for(500);
 
-	/* the log, replayed */
-	FILE *f = fopen(log, "r");
-	static long long pub[1 << 20], acc[1 << 20], hid[1 << 20];
-	int npub = 0, nacc = 0;
-	long cur = -1, v, cnt;
-	int inc;
-	long long at;
-	char kind;
-	long long first_after_stop = -1;
-	while (f && fscanf(f, "%lld %c", &at, &kind) == 2) {
-		if (kind == 'C') { if (fscanf(f, "%ld", &v) == 1) cur = v; continue; }
-		if (fscanf(f, "%ld %ld %d", &v, &cnt, &inc) != 3) break;
-		if (at < start) continue;
-		pub[npub++] = at;
-		if (v == cur) { acc[nacc++] = at; if (at >= stop && first_after_stop < 0) first_after_stop = at; }
-	}
-	if (f) fclose(f);
-	/* hidden: from each publication to the next shown one */
-	int nh = 0, j = 0;
-	for (int i = 0; i < npub; i++) {
-		while (j < nacc && acc[j] < pub[i]) j++;
-		hid[nh++] = (j < nacc ? acc[j] : stop) - pub[i];
-	}
-	qsort(hid, (size_t)nh, sizeof *hid, cmpl);
-	long long gap = 0;
-	for (int i = 1; i < nacc; i++) if (acc[i] <= stop && acc[i] - acc[i - 1] > gap) gap = acc[i] - acc[i - 1];
-	printf("%d keys; %d publications, %d shown (%d ignored as stale)\n", keys, npub, nacc, npub - nacc);
-	printf("hidden time per publication: median %lld ms, p99 %lld ms, max %lld ms\n",
-	       nh ? hid[nh / 2] : 0, nh ? hid[nh * 99 / 100] : 0, nh ? hid[nh - 1] : 0);
-	printf("longest gap between shown publications while typing: %lld ms\n", gap);
-	printf("after the last key, first shown publication: %lld ms\n", first_after_stop < 0 ? -1 : first_after_stop - stop);
-	printf("GATE %s (max hidden %lld ms, limit 2000 ms)\n", nh && hid[nh - 1] <= 2000 ? "pass" : "FAIL", nh ? hid[nh - 1] : 0);
+	printf("%d keys\n", keys);
+	report(log);
 	text_free(t);
 	return 0;
 }

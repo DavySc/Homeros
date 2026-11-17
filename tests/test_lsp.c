@@ -1,18 +1,20 @@
 /* Package 13: the LSP client against a fake server that delays, reorders
-   and drops (Lean cancels stale elaboration), publishes for old versions,
-   sends ranges and incremental batches, asks the editor things, and dies.
-   The checks are LspSync.tla's properties as tests:
+   and drops (Lean cancels stale elaboration), publishes for versions the
+   client has left, sends ranges and incremental batches, asks the editor
+   things, and dies.  The checks are LspSync.tla's properties as tests:
    - Correct: whatever is shown points at the characters the server meant.
      Every server message names what it meant (its "ghost": the bytes of its
-     range, the character at a reply's position), so a newly shown
-     diagnostic must cover exactly those bytes, and one shown earlier must
-     still start and end on the first and last of its characters that
-     survive the edits since (each byte carries an id here);
+     range in the version it is for, the character at a reply's position).
+     Each byte carries an id here, every version's text and ids are kept,
+     and every edit is recorded, so the test follows a range's ends from
+     the version it was meant for through each edit since, as extmarks,
+     and the shown range must sit exactly there;
    - CatchUp: once editing stops, the diagnostics for the current version
      are shown within 2 s;
    and the server checks the protocol: versions +1, nothing before the
-   initialize reply, every change applies, a reply for each of its requests.
-   The test binary is also the fake server (run with --fake). */
+   initialize reply, every change applies, a new request cancels the last,
+   a reply for each of its requests.  The test binary is also the fake
+   server (run with --fake). */
 #include <fcntl.h>
 #include <poll.h>
 #include <signal.h>
@@ -98,8 +100,9 @@ static void fpos(Str *m, size_t b)
 
 static size_t fchar(size_t i) { while (i > 0 && (sdoc[i] & 0xC0) == 0x80) i--; return i; }   /* a character start */
 
-/* A diagnostic: a random range, its message "#pid.serial v n ghost": n is
-   how many diagnostics version v has once this message is in. */
+/* A diagnostic: a random range, its message "#pid.serial v n a z ghost":
+   n is how many diagnostics version v has once this message is in, a and z
+   the bytes of the range in version v. */
 static void fdiag(Str *m, int point, long n)
 {
 	size_t a = fchar(rnd((unsigned)sn + 1)), z = point ? a : fchar(a + rnd((unsigned)(sn - a) + 1));
@@ -109,7 +112,7 @@ static void fdiag(Str *m, int point, long n)
 	fpos(m, a);
 	str_lit(m, ",\"end\":");
 	fpos(m, z);
-	str_putf(m, "},\"severity\":%u,\"message\":\"#%d.%ld %ld %ld ", 1 + rnd(4), (int)getpid(), ++serial, sver, n);
+	str_putf(m, "},\"severity\":%u,\"message\":\"#%d.%ld %ld %ld %zu %zu ", 1 + rnd(4), (int)getpid(), ++serial, sver, n, a, z);
 	str_putq(m, sdoc + a, z - a);
 	str_lit(m, "\"}");
 }
@@ -171,7 +174,7 @@ static void fanswer(int k)
 			{ "{\"contents\":[{\"language\":\"lean\",\"value\":\"", "\"}]}}" } };
 		int f = park[k].goal ? 0 : 1 + (int)rnd(2);
 		str_putf(&m, "%s", form[f][0]);
-		str_putf(&m, "#%d.%ld %ld 0 ", (int)getpid(), ++serial, sver);
+		str_putf(&m, "#%d.%ld %ld 0 0 0 ", (int)getpid(), ++serial, sver);
 		str_putq(&m, sdoc + b, z - b);
 		str_putf(&m, "%s", form[f][1]);
 	}
@@ -323,24 +326,57 @@ static size_t len;
 static int nextid = 1;
 static char buf[1 << 16];
 
-/* What the test knows of each diagnostic it has seen: by serial. */
-/* Its ends as extmarks: s the id of its first character (0: the end of
-   the text), e of its last (-1: before the start); a point has only s. */
+/* What the test knows of each diagnostic it has seen, by serial: its ends
+   as extmarks, s the id of its first character (0: the end of the text),
+   e of its last (-1: before the start); a point has only s. */
 typedef struct { char key[32]; int s, e, point; } Seen;
 static Seen seen[4096];
 static int nseen;
-static long stat_new, stat_moved, stat_answers;   /* what the checks saw */
+static long stat_new, stat_old, stat_moved, stat_answers;   /* what the checks saw */
+
+/* Every version's text and ids, and every edit with the ids it removed
+   and its neighbours, so a diagnostic for an older version can be
+   followed to now. */
+typedef struct { char *text; int *id; size_t n; } Snap;
+typedef struct { long ver; int *gone; size_t n; int after, before; } Hist;
+static Snap snap[2048];
+static Hist hist[8192];
+static long cur;                      /* the version the client is at */
+static int nhist;
+
+static void snapshot(void)
+{
+	CHECK(cur < 2048);
+	snap[cur].text = malloc(len + 1);
+	snap[cur].id = malloc((len + 1) * sizeof (int));
+	CHECK(snap[cur].text && snap[cur].id);
+	text_read(t, 0, snap[cur].text, len);
+	memcpy(snap[cur].id, ids, len * sizeof (int));
+	snap[cur].n = len;
+}
+
+/* a deleted first character hands the start to the one after the
+   deletion, a deleted last character the end to the one before it */
+static void follow(const Hist *h, int *s, int *e, int point)
+{
+	for (size_t i = 0; i < h->n; i++) {
+		if (*s == h->gone[i]) *s = h->after;
+		if (!point && *e == h->gone[i]) *e = h->before;
+	}
+}
 
 static void edit(LspDoc *d, size_t pos, size_t ndel, const char *ins, size_t nins)
 {
-	/* a deleted first character hands the start to the one after the
-	   deletion, a deleted last character the end to the one before it */
-	for (int k = 0; k < nseen; k++) {
-		for (size_t i = pos; i < pos + ndel; i++) {
-			if (seen[k].s == ids[i]) seen[k].s = pos + ndel < len ? ids[pos + ndel] : 0;
-			if (!seen[k].point && seen[k].e == ids[i]) seen[k].e = pos ? ids[pos - 1] : -1;
-		}
-	}
+	CHECK(nhist < 8192);
+	Hist *h = &hist[nhist++];
+	h->ver = cur;
+	h->n = ndel;
+	h->gone = malloc((ndel + 1) * sizeof (int));
+	CHECK(h->gone);
+	memcpy(h->gone, ids + pos, ndel * sizeof (int));
+	h->after = pos + ndel < len ? ids[pos + ndel] : 0;
+	h->before = pos ? ids[pos - 1] : -1;
+	for (int k = 0; k < nseen; k++) follow(h, &seen[k].s, &seen[k].e, seen[k].point);
 	lsp_edit(d, t, pos, ndel, ins, nins);
 	CHECK(!text_delete(t, pos, ndel));
 	CHECK(!text_insert(t, pos, ins, nins));
@@ -355,7 +391,7 @@ static size_t charstart(size_t i) { text_read(t, 0, buf, len); while (i > 0 && i
 static long where(int id) { for (size_t i = 0; i < len; i++) if (ids[i] == id) return (long)i; return -1; }
 
 /* Correct: each shown diagnostic points at what the server meant. */
-static void check_shown(LspDoc *d, long ver, long *latest)
+static void check_shown(LspDoc *d, long *latest)
 {
 	int n, np;
 	const LspDiag *g = lsp_diags(d, &n), *p = lsp_progress(d, &np);
@@ -368,43 +404,34 @@ static void check_shown(LspDoc *d, long ver, long *latest)
 		CHECK(i == 0 || g[i - 1].a <= g[i].a);
 		CHECK(g[i].msg && g[i].msg[0] == '#' && g[i].sev >= 1 && g[i].sev <= 4);
 		char key[32];
-		long v;
+		long v, cnt;
+		size_t a, z;
 		int k = 0, off;
-		long cnt;
-		CHECK(sscanf(g[i].msg, "%31s %ld %ld%n", key, &v, &cnt, &off) == 3);
-		off++;
-		const char *ghost = g[i].msg + off;
+		CHECK(sscanf(g[i].msg, "%31s %ld %ld %zu %zu%n", key, &v, &cnt, &a, &z, &off) == 5);
+		const char *ghost = g[i].msg + off + 1;
 		if (v > *latest) *latest = v;
-		if (v == ver) { now++; if (cnt > most) most = cnt; }
+		if (v == cur) { now++; if (cnt > most) most = cnt; }
 		while (k < nseen && strcmp(seen[k].key, key)) k++;
 		if (k == nseen) {
-			/* newly shown: for the version the text is, so exactly its bytes */
-			CHECK(v == ver);
-			if (getenv("LSP_DEBUG")) {
-				fprintf(stderr, "new %zu %zu msg=", g[i].a, g[i].z);
-				for (const char *c = g[i].msg; *c; c++) fprintf(stderr, *c == '\n' ? "\\n" : "%c", *c);
-				fprintf(stderr, " text=");
-				for (size_t c = 0; c < len; c++) fprintf(stderr, buf[c] == '\n' ? "\\n" : "%c", buf[c]);
-				fprintf(stderr, "\n");
-			}
-			CHECK(g[i].z - g[i].a == strlen(ghost) && !memcmp(buf + g[i].a, ghost, g[i].z - g[i].a));
+			/* newly shown: the server meant bytes [a, z) of version v; the
+			   test follows them through the edits made since */
+			CHECK(v >= 0 && v <= cur && snap[v].text);
+			CHECK(a <= z && z <= snap[v].n && z - a == strlen(ghost) && !memcmp(snap[v].text + a, ghost, z - a));
 			CHECK(nseen < 4096);
-			strcpy(seen[nseen].key, key);
-			seen[nseen].point = g[i].a == g[i].z;
-			seen[nseen].s = g[i].a < len ? ids[g[i].a] : 0;
-			seen[nseen].e = g[i].z > g[i].a ? ids[g[i].z - 1] : -1;
-			nseen++;
-			stat_new++;
-			fresh = 1;
-			continue;
-		}
-		/* shown before: where its marks are now */
+			Seen *e = &seen[nseen++];
+			strcpy(e->key, key);
+			e->point = a == z;
+			e->s = a < snap[v].n ? snap[v].id[a] : 0;
+			e->e = z > a ? snap[v].id[z - 1] : -1;
+			for (int h = 0; h < nhist; h++) if (hist[h].ver >= v) follow(&hist[h], &e->s, &e->e, e->point);
+			if (v == cur) { stat_new++; fresh = 1; } else stat_old++;
+		} else stat_moved++;
+		/* where its marks are now */
 		long fa = seen[k].s ? where(seen[k].s) : (long)len, fz = seen[k].e > 0 ? where(seen[k].e) : -1;
 		CHECK(fa >= 0);
 		if (seen[k].point) { CHECK((size_t)fa == g[i].a && g[i].z == g[i].a); continue; }
 		CHECK(fz >= fa);       /* else nothing is left of it, and it must be gone */
 		CHECK((size_t)fa == g[i].a && (size_t)fz + 1 == g[i].z);
-		stat_moved++;
 	}
 	/* all of the current version's diagnostics, incremental ones added to
 	   the full set (none can have been dropped by an edit: an edit makes
@@ -431,10 +458,14 @@ static void scenario(int seed, const char *log)
 	t = text_new(init, len);
 	CHECK(t);
 	for (size_t i = 0; i < len; i++) ids[i] = nextid++;
-	nseen = 0;
+	for (int i = 0; i < nhist; i++) free(hist[i].gone);
+	for (long i = 0; i < 2048; i++) { free(snap[i].text); free(snap[i].id); snap[i].text = NULL; snap[i].id = NULL; }
+	nseen = nhist = 0;
+	cur = 0;
+	snapshot();
 	LspDoc *d = lsp_open("/tmp/homeros-test.fake", t);
 	CHECK(d);
-	long ver = 0, latest = -1;
+	long latest = -1;
 	size_t asked[LSP_NASK] = { 0 };
 	for (int step = 0; step < 250; step++) {
 		unsigned a = rnd(100);
@@ -450,18 +481,20 @@ static void scenario(int seed, const char *log)
 				edit(d, pos, del, s, strlen(s));
 			}
 			lsp_flush(d);
-			ver++;
+			cur++;
+			snapshot();
 		} else if (a < 45) {
 			int k = (int)rnd(LSP_NASK);
 			asked[k] = charstart(rnd((unsigned)len + 1));
 			lsp_ask(d, k, asked[k]);
 		} else if (a < 46) {
 			lsp_restart(d);
-			ver++;
+			cur++;
+			snapshot();
 		} else if (a < 47) {
 			lsp_saved(d);
 		} else loop_once((int)rnd(a < 60 ? 30 : 4));
-		check_shown(d, ver, &latest);
+		check_shown(d, &latest);
 		for (int k = 0; k < LSP_NASK; k++) {
 			const char *s = lsp_answer(d, k);
 			if (!s) continue;
@@ -469,8 +502,9 @@ static void scenario(int seed, const char *log)
 			long v;
 			int off;
 			long cnt;
-			CHECK(sscanf(s, "%31s %ld %ld%n", key, &v, &cnt, &off) == 3);
-		off++;
+			size_t a0, z0;
+			CHECK(sscanf(s, "%31s %ld %ld %zu %zu%n", key, &v, &cnt, &a0, &z0, &off) == 5);
+			off++;
 			text_read(t, 0, buf, len);
 			size_t z = asked[k] < len ? asked[k] + cplen((unsigned char)buf[asked[k]]) : asked[k];
 			if (getenv("LSP_DEBUG")) fprintf(stderr, "answer %d at %zu [%s] text [%.*s]\n", k, asked[k], s, (int)len, buf);
@@ -482,23 +516,24 @@ static void scenario(int seed, const char *log)
 	   seen it go, restart it) */
 	for (long long t1 = ms(); ms() - t1 < 100; ) loop_once(10);
 	lsp_restart(d);
-	ver++;
+	cur++;
+	snapshot();
 	long long t0 = ms();
 	latest = -1;
 	while (ms() - t0 < 2000) {
 		loop_once(10);
 		long l = -1;
-		check_shown(d, ver, &l);
+		check_shown(d, &l);
 		int n;
 		lsp_diags(d, &n);
-		if (n && l == ver) { latest = l; break; }
+		if (n && l == cur) { latest = l; break; }
 	}
 	FILE *f = fopen(log, "r");
 	char why[512];
 	if (f && fgets(why, sizeof why, f)) { fputs(why, stderr); CHECK(!"the fake server saw a protocol violation"); }
 	if (f) fclose(f);
-	if (latest != ver) { int n; lsp_diags(d, &n); fprintf(stderr, "ver %ld latest %ld shown %d seen %d\n", ver, latest, n, nseen); }
-	CHECK(latest == ver);
+	if (latest != cur) { int n; lsp_diags(d, &n); fprintf(stderr, "ver %ld latest %ld shown %d seen %d\n", cur, latest, n, nseen); }
+	CHECK(latest == cur);
 	lsp_close(d);
 	for (long long t1 = ms(); ms() - t1 < 300; ) loop_once(20);
 	text_free(t);
@@ -562,6 +597,6 @@ int main(int argc, char **argv)
 		if (f) fclose(f);
 	}
 	unlink(log);
-	printf("test_lsp: ok: %ld diagnostics shown new, %ld checks after edits, %ld answers\n", stat_new, stat_moved, stat_answers);
+	printf("test_lsp: ok: %ld diagnostics shown for the current version, %ld for an older one, %ld checks after edits, %ld answers\n", stat_new, stat_old, stat_moved, stat_answers);
 	return 0;
 }

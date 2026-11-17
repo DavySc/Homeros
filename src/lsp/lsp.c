@@ -1,9 +1,14 @@
 /* The LSP client (lsp.h).  Servers are child processes of the loop
    (loop.h proc_spawn); messages are JSON-RPC with Content-Length frames
    on their stdin and stdout.  The rules for what is shown are
-   LspSync.tla's "simple" variant: a document's version counts the
-   didChanges sent, and what the server says about a version is used only
-   while the text is still that version (no edits since, sent or not). */
+   LspSync.tla's "ok" variant, which is VS Code's: a document's version
+   counts the didChanges sent; every edit is logged in LSP's coordinates,
+   and what the server says about an older version is mapped through the
+   edits made since, the log pruned up to it.  The "simple" variant
+   (ignore older versions) hid Lean's diagnostics for as long as typing
+   went on, at a key every 250 ms (src/lsp/bench/stale.c), against the
+   design's 2 s limit.  Replies are not mapped (LspSync "mapreply" fails):
+   one is shown only while the text is as it was when asked. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,7 +36,13 @@ static const LspServer table[] = {
 const LspServer *lsp_servers = table;
 int lsp_dirty;
 
-typedef struct { LspDiag *v; int n, cap; } Set;
+typedef struct { LspDiag *v; int n, cap; long ver; } Set;   /* ver: the version it came for */
+
+/* An edit in LSP's coordinates: [s, e) became text ending at i, made
+   while the document was version v. */
+typedef struct { size_t l, c; } Pos;
+typedef struct { long v; Pos s, e, i; } Ed;
+enum { LOG = 4096 };
 
 typedef struct Srv {
 	const LspServer *def;
@@ -52,6 +63,9 @@ struct LspDoc {
 	long ver;               /* didChanges sent */
 	Str chg;                /* this command's contentChanges, not yet sent */
 	Set diag, prog;
+	Ed *log;                /* the edits since floor, oldest first */
+	int nlog;
+	long floor;             /* the oldest version the log can map from */
 	struct { long id, ver; char *ans; } ask[LSP_NASK];   /* id 0: no reply pending */
 	LspDoc *link;
 };
@@ -186,6 +200,17 @@ static void forget(LspDoc *d)
 	lsp_dirty = 1;
 }
 
+/* Opens d again as a new version, showing nothing, so what the server
+   said about the old one, still on its way, is ignored. */
+static void reopen(LspDoc *d)
+{
+	forget(d);
+	d->ver++;
+	d->floor = d->ver;
+	d->nlog = 0;
+	open_doc(d);
+}
+
 /* Bytes [a, z) of t keep pointing at the same characters while at pos
    ndel bytes become nins (as a delete, then an insert at pos). */
 static int shift(LspDiag *g, size_t pos, size_t ndel, size_t nins)
@@ -276,7 +301,7 @@ void lsp_close(LspDoc *d)
 	while (*p != d) p = &(*p)->link;
 	*p = d->link;
 	forget(d);
-	free(d->diag.v); free(d->prog.v); free(d->chg.b); free(d->uri); free(d);
+	free(d->diag.v); free(d->prog.v); free(d->chg.b); free(d->log); free(d->uri); free(d);
 	if (s->docs) return;
 	/* the last file of the project: the server goes (it is freed once it
 	   has exited, since the loop still calls lsp_out until then) */
@@ -303,15 +328,27 @@ void lsp_edit(LspDoc *d, const Text *t, size_t pos, size_t ndel, const char *ins
 	d->t = t;
 	shift_set(&d->diag, pos, ndel, nins);
 	shift_set(&d->prog, pos, ndel, nins);
+	Ed e = { d->ver, { 0, 0 }, { 0, 0 }, { 0, 0 } };
+	where(t, pos, &e.s.l, &e.s.c);
+	where(t, pos + ndel, &e.e.l, &e.e.c);
+	size_t k = nins;
+	while (k > 0 && ins[k - 1] != '\n') k--;
+	e.i.l = e.s.l;
+	for (size_t j = 0; j < k; j++) e.i.l += ins[j] == '\n';
+	e.i.c = (k ? 0 : e.s.c) + lsp_u16((const unsigned char *)ins + k, nins - k);
+	if (!d->log && !(d->log = malloc(LOG * sizeof *d->log))) d->nlog = LOG;   /* no log: nothing older maps */
+	if (d->nlog == LOG) {                   /* full: the older half goes */
+		if (d->log) memmove(d->log, d->log + LOG / 2, LOG / 2 * sizeof *d->log);
+		d->nlog = d->log ? LOG / 2 : 0;
+		d->floor = d->nlog ? d->log[0].v + 1 : d->ver + 1;
+	}
+	if (d->log) d->log[d->nlog++] = e;
 	Str *c = &d->chg;
-	Str keep = o;                   /* putpos writes to o */
+	Str keep = o;                   /* writes go to o */
 	o = *c;
 	if (o.n) str_lit(&o, ",");
-	str_lit(&o, "{\"range\":{\"start\":");
-	putpos(t, pos);
-	str_lit(&o, ",\"end\":");
-	putpos(t, pos + ndel);
-	str_lit(&o, "},\"text\":\"");
+	str_putf(&o, "{\"range\":{\"start\":{\"line\":%zu,\"character\":%zu},\"end\":{\"line\":%zu,\"character\":%zu}},\"text\":\"",
+	         e.s.l, e.s.c, e.e.l, e.e.c);
 	str_putq(&o, ins, nins);
 	str_lit(&o, "\"}");
 	*c = o;
@@ -344,26 +381,22 @@ void lsp_restart(LspDoc *d)
 	if (!d) return;
 	Srv *s = d->s;
 	lsp_flush(d);
-	/* the file opens again as a new version, so what the server said about
-	   the old one, still on its way, is ignored */
 	if (s->proc < 0) {
 		start(s);
-		for (LspDoc *e = s->docs; e; e = e->link) { forget(e); e->ver++; open_doc(e); }
+		for (LspDoc *e = s->docs; e; e = e->link) reopen(e);
 		return;
 	}
 	for (int k = 0; k < LSP_NASK; k++) cancel(d, k);
 	begin("textDocument/didClose");
 	str_putf(&o, "{\"textDocument\":{\"uri\":\"%s\"}}", d->uri);
 	end(s);
-	forget(d);
-	d->ver++;
-	open_doc(d);
+	reopen(d);
 }
 
 const LspDiag *lsp_diags(const LspDoc *d, int *n) { *n = d ? d->diag.n : 0; return d ? d->diag.v : NULL; }
 const LspDiag *lsp_progress(const LspDoc *d, int *n) { *n = d ? d->prog.n : 0; return d ? d->prog.v : NULL; }
 
-static int current(const LspDoc *d, long ver) { return ver == d->ver && !d->chg.n; }
+static int current(const LspDoc *d, long ver) { return ver == d->ver && !d->chg.n; }   /* no edit since ver */
 
 void lsp_ask(LspDoc *d, int kind, size_t pos)
 {
@@ -401,16 +434,34 @@ static char *str(const char *m, int i)
 	return b;
 }
 
-/* Byte of an LSP position in d's text (the version it is for). */
-static size_t byte(const LspDoc *d, const char *m, int p)
+static Pos pos(const char *m, int p)
 {
 	long l = json_int(m, tk, json_get(m, tk, p, "line")), c = json_int(m, tk, json_get(m, tk, p, "character"));
+	return (Pos){ l < 0 ? (size_t)-1 : (size_t)l, c < 0 ? 0 : (size_t)c };
+}
+
+static int before(Pos a, Pos b) { return a.l < b.l || (a.l == b.l && a.c < b.c); }
+
+/* Position p of an older version, after edit e (Neovim's extmarks, as
+   lsp.h says): a start in the deleted text goes after the inserted text,
+   an end to the start of the edit. */
+static Pos after(Pos p, const Ed *e, int end)
+{
+	if (end ? !before(e->s, p) : before(p, e->s)) return p;
+	if (end ? !before(e->e, p) : before(p, e->e)) return end ? e->s : e->i;
+	return p.l == e->e.l ? (Pos){ e->i.l, e->i.c + (p.c - e->e.c) } : (Pos){ p.l - e->e.l + e->i.l, p.c };
+}
+
+/* Byte in d's text of position p of version v. */
+static size_t byte(const LspDoc *d, Pos p, long v, int end)
+{
+	for (int k = 0; k < d->nlog; k++) if (d->log[k].v >= v) p = after(p, &d->log[k], end);
 	const Text *t = d->t;
-	if (l < 0 || c < 0 || (size_t)l > text_lines(t)) return text_len(t);
-	size_t a = text_line_start(t, (size_t)l);
-	size_t n = ((size_t)l < text_lines(t) ? text_line_start(t, (size_t)l + 1) - 1 : text_len(t)) - a;
+	if (p.l > text_lines(t)) return text_len(t);
+	size_t a = text_line_start(t, p.l);
+	size_t n = (p.l < text_lines(t) ? text_line_start(t, p.l + 1) - 1 : text_len(t)) - a;
 	const unsigned char *b = bytes(t, a, &n);
-	return a + lsp_u16_byte(b, n, (size_t)c);
+	return a + lsp_u16_byte(b, n, p.c);
 }
 
 static int cmp(const void *x, const void *y)
@@ -419,23 +470,35 @@ static int cmp(const void *x, const void *y)
 	return (a->a > b->a) - (a->a < b->a);
 }
 
-/* A set of ranges for d: replace (or with add, extend) v from array arr,
-   each element's range under rkey. */
-static void ranges(LspDoc *d, Set *v, const char *m, int arr, const char *rkey, int add)
+/* A set of ranges for version ver of d from array arr: replaces v, or
+   with add (Lean's incremental diagnostics) extends it.  The server goes
+   through the versions in order, so nothing older than ver comes again:
+   the log is pruned up to it. */
+static void ranges(LspDoc *d, Set *v, long ver, const char *m, int arr, int add)
 {
-	if (!add) clear(v);
+	if (ver < d->floor) return;
+	if (!add || ver != v->ver) clear(v);
+	v->ver = ver;
+	int k = 0;
+	while (k < d->nlog && d->log[k].v < ver) k++;
+	if (k) memmove(d->log, d->log + k, (size_t)(d->nlog - k) * sizeof *d->log);
+	d->nlog -= k;
+	d->floor = ver;
 	for (int k = 0, e; (e = json_at(tk, arr, k)) >= 0; k++) {
-		int r = json_get(m, tk, e, rkey);
+		int r = json_get(m, tk, e, "range");
 		if (v->n == v->cap) {
 			int c = v->cap ? 2 * v->cap : 16;
 			LspDiag *n = realloc(v->v, (size_t)c * sizeof *n);
 			if (!n) break;
 			v->v = n; v->cap = c;
 		}
-		LspDiag g = { byte(d, m, json_get(m, tk, r, "start")), byte(d, m, json_get(m, tk, r, "end")),
-		              (int)json_int(m, tk, json_get(m, tk, e, "severity")), str(m, json_get(m, tk, e, "message")) };
-		if (g.z < g.a) g.z = g.a;
+		Pos a = pos(m, json_get(m, tk, r, "start")), z = pos(m, json_get(m, tk, r, "end"));
+		int point = !before(a, z);
+		LspDiag g = { byte(d, a, ver, 0), byte(d, point ? a : z, ver, !point),
+		              (int)json_int(m, tk, json_get(m, tk, e, "severity")), NULL };
+		if (!point && g.a >= g.z) continue;     /* all of it deleted since */
 		if (g.sev < 1) g.sev = 1;
+		g.msg = str(m, json_get(m, tk, e, "message"));
 		v->v[v->n++] = g;
 	}
 	if (v->n > 1) qsort(v->v, (size_t)v->n, sizeof *v->v, cmp);
@@ -470,18 +533,15 @@ static void handle(Srv *s, const char *m, size_t n)
 		if (!strcmp(name, "textDocument/publishDiagnostics")) {
 			LspDoc *d = doc(s, m, json_get(m, tk, p, "uri"));
 			long v = json_int(m, tk, json_get(m, tk, p, "version"));
-			/* LspSync "simple": diagnostics for another version are
-			   ignored; ones without a version are taken as for the
-			   current text, as Neovim does (Lean, clangd and
-			   rust-analyzer all send it) */
-			if (d && current(d, v < 0 ? d->ver : v))
-				ranges(d, &d->diag, m, json_get(m, tk, p, "diagnostics"), "range",
-				       json_true(m, tk, json_get(m, tk, p, "isIncremental")));
+			/* without a version: taken as for the text sent last, as
+			   Neovim does (Lean, clangd and rust-analyzer all send it) */
+			if (d) ranges(d, &d->diag, v < 0 ? d->ver : v, m, json_get(m, tk, p, "diagnostics"),
+			              json_true(m, tk, json_get(m, tk, p, "isIncremental")));
 		} else if (!strcmp(name, "$/lean/fileProgress")) {
 			int td = json_get(m, tk, p, "textDocument");
 			LspDoc *d = doc(s, m, json_get(m, tk, td, "uri"));
-			if (d && current(d, json_int(m, tk, json_get(m, tk, td, "version"))))
-				ranges(d, &d->prog, m, json_get(m, tk, p, "processing"), "range", 0);
+			long v = json_int(m, tk, json_get(m, tk, td, "version"));
+			if (d && v >= 0) ranges(d, &d->prog, v, m, json_get(m, tk, p, "processing"), 0);
 		}
 		return;
 	}
