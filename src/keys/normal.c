@@ -70,18 +70,23 @@ static int checkclearopq(Oparg *oap)
 
 /* ResetRedobuff() keeps the previous command (old_redobuff): "." after
    CTRL-O repeats that one, not the insert CTRL-O interrupted */
-enum { REDO_MAX = 4096 };
-static int redo_a[REDO_MAX], redo_b[REDO_MAX], *redobuf = redo_a, *old_redobuf = redo_b;
-static long redo_n, old_redo_n;
+/* Neovim's redo buffer has no limit: "." after typing 10,000 characters
+   types them all again; each buffer grows to the longest command, then
+   stays */
+static int *redobuf, *old_redobuf;
+static long redo_n, old_redo_n, redo_cap, old_redo_cap;
 int redo_busy;
 
 void redo_reset(void)
 {
 	if (redo_busy) return;
 	int *t = old_redobuf;
+	long tc = old_redo_cap;
 	old_redobuf = redobuf;
+	old_redo_cap = redo_cap;
 	old_redo_n = redo_n;
 	redobuf = t;
+	redo_cap = tc;
 	redo_n = 0;
 }
 
@@ -90,7 +95,14 @@ long redo_get(const int **k) { *k = redobuf; return redo_n; }
 int redo_append(int k)
 {
 	if (redo_busy) return 0;
-	if (redo_n < REDO_MAX) redobuf[redo_n++] = k;
+	if (redo_n == redo_cap) {
+		long c = redo_cap ? 2 * redo_cap : 256;
+		int *b = realloc(redobuf, sizeof(int) * (size_t)c);
+		if (!b) return 0;   /* the command repeats cut short, as on any failed allocation */
+		redobuf = b;
+		redo_cap = c;
+	}
+	redobuf[redo_n++] = k;
 	return 0;
 }
 
@@ -128,7 +140,7 @@ static int start_redo(long count, int old_redo)
 	const int *rb = old_redo ? old_redobuf : redobuf;
 	long rn = old_redo ? old_redo_n : redo_n;
 	if (!rn) return 0;
-	int b[REDO_MAX + 24];
+	int b[32];   /* register, v, count and command; the rest goes as it is */
 	long n = 0, i = 0;
 	int c = rb[i++];
 	if (c == '"') {

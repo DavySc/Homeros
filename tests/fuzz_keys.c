@@ -7,7 +7,8 @@
    22222222O only measures the rope (test_text, fuzz_text) and passes the
    64 KiB read buffer.  Multi-digit counts are checked by conform.py's
    random sequences (10 to 19, typed digit by digit) and by the recorded
-   traces' long counts (count folding, 999999999). */
+   traces' long counts: 22202o, 12000a, 3000yyp, 22222222x, a count folded
+   at 999999999 (src/keys/README, "Counts"). */
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>

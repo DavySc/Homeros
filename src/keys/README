@@ -66,6 +66,17 @@ Neovim's own oddities, not copied:
 - C-v on a Tab then ~ u U over a 2-byte character ("\té ab cd", C-v w ~):
   Neovim moves the character to the end of the line (" ab cd É").
 
+Counts (measured, 2026-11-17): a count folds at 999999999 as Neovim's
+does, and the work grows with it.  Large counts are checked by recorded
+traces (22202o λ, 12000a, 3000yyp, 22222222x, 9999999999j), not by
+fuzz_keys, which keeps counts to one digit to bound its work.  22202o λ
+takes 0.30 s here and 0.07 s in Neovim (median of 5 runs each, -O2 driver;
+222222o 2.95 s and 0.44 s): 61% of it is the rope's line lookup
+(text_line_start, memchr; package 1).  Typing into one long line is
+quadratic in both, since each key validates the cursor's column
+(insert_check()); 22a CTRL-R over 1,000 recorded "x y BS" takes 4.0 s here
+and 1.0 s in Neovim (one run each), most of it in core_vcol (package 4).
+
 Choices:
 - go is gg everywhere: Normal, after an operator, Visual (Davy, FEATURES.md).
 - % is Neovim's built-in one for now; Davy wants matchit's word pairs too

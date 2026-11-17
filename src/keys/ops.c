@@ -1412,7 +1412,11 @@ static void stuff_bytes(const char *s, long n, int typeahead, int literally)
 	if (!k) return;
 	long m = 0;
 	for (long i = 0; i < n;) {
-		if ((unsigned char)s[i] == 0x80 && i + 2 < n) {
+		/* stuffescaped(): literally, a recorded key's K_SPECIAL bytes go in
+		   as text (0x80 escaped by stuffcharReadbuff()), not as the key, so
+		   "qj i x BS Esc q" then "a C-r j" inserts x<80>kb<1b> as Neovim
+		   does; an executed register (@) types them as keys */
+		if ((unsigned char)s[i] == 0x80 && i + 2 < n && !literally) {
 			int found = 0;
 			for (unsigned j = 0; j < sizeof special / sizeof *special; j++)
 				if (special[j].a == s[i + 1] && special[j].b == s[i + 2]) { k[m++] = special[j].key; found = 1; }
