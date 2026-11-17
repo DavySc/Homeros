@@ -62,9 +62,10 @@ typedef struct Win {
 	size_t line, col;          /* cursor: line, byte in line */
 	size_t want;               /* wanted screen column for j and k */
 	/* the cursor's cached screen column (w_virtcol with VALID_VIRTCOL):
-	   kept while the cursor stays at line, col and no change invalidates
-	   it, even if the text under it changed (an undo, see core_undo) */
-	struct { size_t line, col, v; int ok; } vc;
+	   kept while the cursor stays at line, col in the same mode and no
+	   change invalidates it, even if the text under it changed (an undo,
+	   see core_undo) */
+	struct { size_t line, col, v; int mode, ok; } vc;
 	size_t top, left, skipcol;
 	size_t scroll;             /* lines for CTRL-D and CTRL-U ('scroll'); 0 = half the height */
 	int wrap;                  /* 'wrap': off (FEATURES.md); keys set it directly */

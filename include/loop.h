@@ -19,6 +19,8 @@ void loop_unwatch(int fd);
 /* Waits up to timeout_ms (-1 forever) and calls the functions of ready fds.
    0 ok (also on a signal), -1 error. */
 int  loop_once(int timeout_ms);
+/* Is a watched fd readable now?  Runs nothing (syntax_update's stop). */
+int  loop_waiting(void);
 
 /* Calls fn once, ms from now; the same fn and ctx replace the earlier timer,
    ms < 0 cancels it.  loop_once never sleeps past the next timer.  0 ok,

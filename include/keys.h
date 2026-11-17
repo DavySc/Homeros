@@ -18,7 +18,7 @@ enum {
 	KEY_CTRL_Z = 26, KEY_ESC = 27, KEY_BS = 127
 };
 
-/* The key state the core draws or keeps per window.  Visual mode is
+/* The key state the core draws (one per editor: Neovim has one typeahead).  Visual mode is
    MODE_NORMAL with a selection and replace mode is MODE_INSERT that
    overtypes, so the core's modes and clamping stay as they are.  The pending
    command, count, registers, dot repeat and macros are global in Neovim (one

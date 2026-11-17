@@ -4,3 +4,4 @@ undo tree oracle: Ctrl-R to the first child~undo-diff UNDO_N=2000~~Makefile~pyth
 lean: inv_inv states something false~lean~~design/proofs/Undo.lean~theorem Edit.inv_inv (e : Edit α) : e.inv.inv = e~theorem Edit.inv_inv (e : Edit α) : e.inv = e
 lean: a proof left as sorry~lean~~design/proofs/Undo.lean~theorem Edit.inv_inv (e : Edit α) : e.inv.inv = e := by cases e <;> rfl~theorem Edit.inv_inv (e : Edit α) : e.inv.inv = e := by sorry
 specs: save renames without fsync (Save2)~specs~find design/specs -name '*.cfg' ! -name Save2_fsync.cfg -delete~design/specs/Save2_fsync.cfg~Variant = "fsync"~Variant = "nofsync"
+main loop: input read past a full queue between commands~test TESTS=~~src/main.c~	if (!room && !running) return;¶	int n = b->input(k, room && room < 256 ? room : 256);~	(void)room; (void)running;¶	int n = b->input(k, 256);

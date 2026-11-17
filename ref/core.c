@@ -86,6 +86,8 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 	char *del = malloc(ndel ? ndel : 1);
 	UndoCursor c = { e->win->line, e->win->col, e->buf->flags };
 	int r = -1;
+	/* the syntax tree hears of the change first; the thin editor does not
+	   tell it of the rollback below (out of memory), package 4 must */
 	if (del && text_read(e->buf->text, pos, del, ndel) == ndel) undo_seen(e->buf, e->buf->text, pos, ndel, ins, nins);
 	else { free(del); del = NULL; }
 	if (del && !text_delete(e->buf->text, pos, ndel)) {
@@ -246,13 +248,17 @@ void core_clamp(Editor *e)
 void core_set_want(Editor *e)
 {
 	Win *w = e->win;
-	if (w->vc.ok && w->vc.line == w->line && w->vc.col == w->col) { w->want = w->vc.v; return; }
+	if (w->vc.ok && w->vc.line == w->line && w->vc.col == w->col && w->vc.mode == e->mode) {
+		w->want = w->vc.v;
+		return;
+	}
 	size_t n;
 	const unsigned char *s = core_line(e, w->line, &n);
 	w->want = core_vcol(e, w->line, w->col);
 	if (e->mode == MODE_NORMAL && w->col < n && s[w->col] == '\t')
 		w->want = core_vcol(e, w->line, w->col + 1) - 1;
-	w->vc.line = w->line; w->vc.col = w->col; w->vc.v = w->want; w->vc.ok = 1;
+	w->vc.line = w->line; w->vc.col = w->col; w->vc.v = w->want;
+	w->vc.mode = e->mode; w->vc.ok = 1;
 }
 
 static size_t digits(size_t n) { size_t d = 1; while (n >= 10) { n /= 10; d++; } return d; }
@@ -344,7 +350,10 @@ void core_draw(Editor *e, Grid *g)
 		else put_num(g, r, l > e->win->line ? l - e->win->line : e->win->line - l, nw, 0);
 		size_t n, v = 0, ls = core_line_start(e, l), f0 = (size_t)-1;
 		const unsigned char *s = core_line(e, l, &n);
-		unsigned char fc[1024];   /* faces of bytes [f0, f0 + 1024) of the line */
+		/* faces of bytes [f0, f0 + 1024) of the line; the thin editor also
+		   asks for the bytes left of the view, where syntax.h promises only
+		   the visible ones: package 4's core asks for those alone */
+		unsigned char fc[1024];
 		for (size_t i = 0; i < n && v < e->win->left + (size_t)tc; i += uni_len(s, n, i)) {
 			if (syn && (f0 == (size_t)-1 || i >= f0 + sizeof fc || i < f0)) {
 				f0 = i;
