@@ -38,6 +38,12 @@ enum {
 	FACE_DIFF_MINUS, FACE_DIFF_DELTA, FACE_TAG, FACE_TAG_BUILTIN, FACE_TAG_ATTRIBUTE,
 	FACE_TAG_DELIMITER, FACE_COUNT
 };
+/* The theme, once for every backend: a face's colours (FACE_FG, FACE_BG
+   say which are set; otherwise the terminal's or window's default) and
+   style.  ref/theme.c holds Catppuccin Mocha; no package replaces it. */
+enum { FACE_BOLD = 1, FACE_ITALIC = 2, FACE_UNDERLINE = 4, FACE_STRIKE = 8, FACE_FG = 16, FACE_BG = 32 };
+typedef struct { unsigned char fg[3], bg[3], style; } Face;
+extern const Face faces[FACE_COUNT];
 
 typedef struct {
 	unsigned char ch[4], len;  /* one character, UTF-8; len 0 = right half of a wide one */
