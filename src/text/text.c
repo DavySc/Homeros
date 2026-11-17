@@ -249,9 +249,13 @@ size_t text_line_start(const Text *t, size_t l)
 		while (l > k->nl) { l -= k->nl; pos += k->len; k++; }
 		x = k->p;
 	}
-	const char *p = x->b;
-	while (l--) p = (const char *)memchr(p, '\n', (size_t)(x->b + x->n - p)) + 1;   /* the leaf holds it */
-	return pos + (size_t)(p - x->b);
+	/* The leaf holds the l-th '\n'.  Skip whole 32-byte blocks by count, then
+	   step bytes: one memchr per '\n' cost a thousand calls in a leaf of
+	   empty lines. */
+	size_t i = 0, k;
+	while (x->n - i > 32 && l > (k = nls(x->b + i, 32))) { l -= k; i += 32; }
+	while (l) l -= x->b[i++] == '\n';
+	return pos + i;
 }
 
 size_t text_line_of(const Text *t, size_t pos)

@@ -245,6 +245,52 @@ static void edit_while_stopped(const char *dir)
 	CHECK(stopped > 10);
 }
 
+/* The trees a reparse replaces are freed in steps that ask stop: an edit
+   that deletes 2,000 lines frees about 10,000 nodes, so the update
+   after it must stop more than once before it is done. */
+static int always(void) { return 1; }
+static void release_in_steps(const char *dir)
+{
+	static char b[MAXT];
+	size_t n = 0;
+	for (int l = 0; l < 2000 && n + 32 < sizeof b; l++)
+		n += (size_t)snprintf(b + n, sizeof b - n, "int v%d = %d;\n", l, l);
+	char path[2048];
+	snprintf(path, sizeof path, "%s/release.c", dir);
+	Text *t = text_new(b, n);
+	CHECK(t);
+	Syntax *s = syntax_open(path, t);
+	CHECK(s);
+	static unsigned char f[MAXT];
+	syntax_faces(s, 0, 100, f);
+	CHECK(syntax_update(s, t, NULL) == 1);
+	syntax_edit(s, t, 0, n - 1, "", 0);
+	CHECK(!text_delete(t, 0, n - 1));
+	CHECK(syntax_update(s, t, NULL) == 1);
+	int steps = 0;
+	while (syntax_update(s, t, always) == 2) steps++;
+	CHECK(steps > 1);
+	syntax_free(s);
+	text_free(t);
+	/* a leaf whose scanner state is over 24 bytes keeps it on the heap
+	   (ts_external_scanner_state_delete): Markdown with 40 nested block
+	   quotes; LeakSanitizer sees it if release.c skips it */
+	n = 0;
+	for (int l = 0; l < 3; l++) {
+		for (int i = 0; i < 40; i++) b[n++] = '>', b[n++] = ' ';
+		memcpy(b + n, "text\n", 5), n += 5;
+	}
+	snprintf(path, sizeof path, "%s/quotes.md", dir);
+	CHECK((t = text_new(b, n)) && (s = syntax_open(path, t)));
+	syntax_faces(s, 0, n, f);
+	while (syntax_update(s, t, NULL)) ;
+	syntax_edit(s, t, 0, n - 1, "", 0);
+	CHECK(!text_delete(t, 0, n - 1));
+	while (syntax_update(s, t, NULL)) ;
+	syntax_free(s);
+	text_free(t);
+}
+
 int main(void)
 {
 	if (getenv("SEED")) rng = 2 * strtoull(getenv("SEED"), NULL, 10) + 1;   /* distinct seeds stay distinct */
@@ -253,6 +299,7 @@ int main(void)
 	CHECK(mkdtemp(dir));
 	scroll_while_stopped(dir);
 	edit_while_stopped(dir);
+	release_in_steps(dir);
 	char path[2048], vrt[1024] = "";
 	FILE *p = popen("nvim --headless --clean -l /dev/stdin <<'E'\nio.write(vim.env.VIMRUNTIME)\nE", "r");
 	CHECK(p && fgets(vrt, sizeof vrt, p));
