@@ -61,6 +61,7 @@ struct LspDoc {
 	char *uri;
 	const Text *t;
 	long ver;               /* didChanges sent */
+	int bad;                /* holds what is not UTF-8: changes go as the whole text */
 	Str chg;                /* this command's contentChanges, not yet sent */
 	Set diag, prog;
 	Ed *log;                /* the edits since floor, oldest first */
@@ -141,13 +142,21 @@ static void putpos(const Text *t, size_t pos)
 	str_putf(&o, "{\"line\":%zu,\"character\":%zu}", l, c);
 }
 
+/* The whole text as a JSON string; whether it holds what is not UTF-8.
+   Read in one piece: U+FFFD for a byte depends on the bytes after it. */
+static int put_text(const Text *t)
+{
+	size_t n = text_len(t);
+	const unsigned char *b = bytes(t, 0, &n);
+	return str_putq(&o, (const char *)b, n) != 0;
+}
+
 static void open_doc(LspDoc *d)
 {
-	char b[1 << 14];
 	begin("textDocument/didOpen");
 	str_putf(&o, "{\"textDocument\":{\"uri\":\"%s\",\"languageId\":\"%s\",\"version\":%ld,\"text\":\"",
 	         d->uri, d->s->def->lang, d->ver);
-	for (size_t p = 0, n; (n = text_read(d->t, p, b, sizeof b)); p += n) str_putq(&o, b, n);
+	d->bad = put_text(d->t);
 	str_lit(&o, "\"}}");
 	end(d->s);
 }
@@ -349,7 +358,10 @@ void lsp_edit(LspDoc *d, const Text *t, size_t pos, size_t ndel, const char *ins
 	if (o.n) str_lit(&o, ",");
 	str_putf(&o, "{\"range\":{\"start\":{\"line\":%zu,\"character\":%zu},\"end\":{\"line\":%zu,\"character\":%zu}},\"text\":\"",
 	         e.s.l, e.s.c, e.e.l, e.e.c);
-	str_putq(&o, ins, nins);
+	/* U+FFFD for a byte that is not UTF-8 depends on its neighbours, so
+	   once the text holds one a change cannot be sent alone: from then on
+	   the whole text goes (lsp_flush) */
+	if (str_putq(&o, ins, nins)) d->bad = 1;
 	str_lit(&o, "\"}");
 	*c = o;
 	o = keep;
@@ -361,7 +373,11 @@ void lsp_flush(LspDoc *d)
 	d->ver++;
 	begin("textDocument/didChange");
 	str_putf(&o, "{\"textDocument\":{\"uri\":\"%s\",\"version\":%ld},\"contentChanges\":[", d->uri, d->ver);
-	str_put(&o, d->chg.b, d->chg.n);
+	if (d->bad) {
+		str_lit(&o, "{\"text\":\"");
+		put_text(d->t);
+		str_lit(&o, "\"}");
+	} else str_put(&o, d->chg.b, d->chg.n);
 	str_lit(&o, "]}");
 	d->chg.n = 0;
 	end(d->s);

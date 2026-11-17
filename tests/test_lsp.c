@@ -39,6 +39,48 @@ static long long ms(void)
 
 static size_t cplen(unsigned char c) { return c < 0x80 ? 1 : c < 0xE0 ? 2 : c < 0xF0 ? 3 : 4; }
 
+/* A model of lsp.h's u16len, apart from the kernel: the bytes of the
+   character at i, a lead byte and the continuations its value asks for,
+   else 1. */
+static size_t mstep(const unsigned char *s, size_t n, size_t i)
+{
+	unsigned c = s[i];
+	size_t want = c < 0x80 ? 1 : c >= 0xC0 && c < 0xE0 ? 2 : c >= 0xE0 && c < 0xF0 ? 3 : c >= 0xF0 && c < 0xF8 ? 4 : 0;
+	if (want < 2 || i + want > n) return 1;
+	for (size_t j = 1; j < want; j++) if ((s[i + j] & 0xC0) != 0x80) return 1;
+	return want;
+}
+
+/* Whether those k bytes are UTF-8, by the code point they encode. */
+static int mutf8(const unsigned char *s, size_t k)
+{
+	if (k == 1) return s[0] < 0x80;
+	unsigned long cp = s[0] & (0x7F >> k);
+	for (size_t j = 1; j < k; j++) cp = cp * 64 + (s[j] & 0x3F);
+	unsigned long least = k == 2 ? 0x80 : k == 3 ? 0x800 : 0x10000;
+	return cp >= least && cp <= 0x10FFFF && !(cp >= 0xD800 && cp < 0xE000);
+}
+
+/* s as the server must get it: what is not UTF-8 as U+FFFD, one per
+   UTF-16 unit, and for each byte sent the id of the byte it stands for
+   (U+FFFD's first byte the character's first, its others the last). */
+static const char FFFD[] = "\xEF\xBF\xBD";
+static size_t msent(const unsigned char *s, size_t n, const int *sid, char *out, int *oid)
+{
+	size_t o = 0;
+	for (size_t i = 0, k; i < n; i += k) {
+		k = mstep(s, n, i);
+		if (mutf8(s + i, k)) {
+			for (size_t j = 0; j < k; j++) { out[o] = (char)s[i + j]; oid[o++] = sid[i + j]; }
+			continue;
+		}
+		for (int u = 0; u < (k == 4 ? 2 : 1); u++)
+			for (int j = 0; j < 3; j++) { out[o] = FFFD[j]; oid[o++] = sid[j ? i + k - 1 : i]; }
+	}
+	out[o] = 0;
+	return o;
+}
+
 /* ======================================================================== */
 /* The fake server.                                                          */
 
@@ -214,6 +256,11 @@ static void fapply(const char *m, int ch)
 {
 	for (int k = 0, e; (e = json_at(ft, ch, k)) >= 0; k++) {
 		int r = json_get(m, ft, e, "range"), s = json_get(m, ft, r, "start"), z = json_get(m, ft, r, "end"), t = json_get(m, ft, e, "text");
+		if (r < 0) {                                  /* the whole text */
+			if (t < 0 || ft[t].z - ft[t].a >= sizeof sdoc) wrong("bad whole text");
+			sn = json_str(m, ft, t, sdoc);
+			continue;
+		}
 		size_t a = fbyte(json_int(m, ft, json_get(m, ft, s, "line")), json_int(m, ft, json_get(m, ft, s, "character")));
 		size_t b = fbyte(json_int(m, ft, json_get(m, ft, z, "line")), json_int(m, ft, json_get(m, ft, z, "character")));
 		if (b < a || t < 0) wrong("bad range");
@@ -241,6 +288,8 @@ static size_t fbehind;   /* bytes read behind the message being handled */
 
 static void fhandle(const char *m, size_t n)
 {
+	for (size_t i = 0, k; i < n; i += k)                  /* clangd and Lean refuse it */
+		if (!mutf8((const unsigned char *)m + i, k = mstep((const unsigned char *)m, n, i))) wrong("a message that is not UTF-8");
 	if (json_parse(m, n, &ft, &fcap) < 0) wrong("not JSON: %.*s", (int)n, m);
 	int id = json_get(m, ft, 0, "id"), me = json_get(m, ft, 0, "method"), p = json_get(m, ft, 0, "params");
 	char meth[64] = "";
@@ -322,7 +371,7 @@ static void fhandle(const char *m, size_t n)
 
 static int fake(const char *seed, const char *log)
 {
-	static char in[1 << 18];
+	static char in[1 << 21];
 	size_t n = 0;
 	rng ^= strtoull(seed, NULL, 10) * 0x9E3779B97F4A7C15ULL;
 	viol = fopen(log, "a");
@@ -385,19 +434,18 @@ static long stat_new, stat_old, stat_moved, stat_answers;   /* what the checks s
 typedef struct { char *text; int *id; size_t n; } Snap;
 typedef struct { long ver; int *gone; size_t n; int after, before; } Hist;
 static Snap snap[2048];
-static Hist hist[8192];
+static Hist hist[1 << 14];
 static long cur;                      /* the version the client is at */
 static int nhist;
 
 static void snapshot(void)
 {
 	CHECK(cur < 2048);
-	snap[cur].text = malloc(len + 1);
-	snap[cur].id = malloc((len + 1) * sizeof (int));
+	snap[cur].text = malloc(3 * len + 1);
+	snap[cur].id = malloc((3 * len + 1) * sizeof (int));
 	CHECK(snap[cur].text && snap[cur].id);
-	text_read(t, 0, snap[cur].text, len);
-	memcpy(snap[cur].id, ids, len * sizeof (int));
-	snap[cur].n = len;
+	text_read(t, 0, buf, len);
+	snap[cur].n = msent((const unsigned char *)buf, len, ids, snap[cur].text, snap[cur].id);
 }
 
 /* a deleted first character hands the start to the one after the
@@ -412,7 +460,7 @@ static void follow(const Hist *h, int *s, int *e, int point)
 
 static void edit(LspDoc *d, size_t pos, size_t ndel, const char *ins, size_t nins)
 {
-	CHECK(nhist < 8192);
+	CHECK(nhist < 1 << 14);
 	Hist *h = &hist[nhist++];
 	h->ver = cur;
 	h->n = ndel;
@@ -431,7 +479,14 @@ static void edit(LspDoc *d, size_t pos, size_t ndel, const char *ins, size_t nin
 	CHECK(text_len(t) == len);
 }
 
-static size_t charstart(size_t i) { text_read(t, 0, buf, len); while (i > 0 && i < len && (buf[i] & 0xC0) == 0x80) i--; return i; }
+/* the start of the character holding byte i, as the model counts them */
+static size_t charstart(size_t i)
+{
+	text_read(t, 0, buf, len);
+	size_t j = 0;
+	while (j < len && j + mstep((const unsigned char *)buf, len, j) <= i) j += mstep((const unsigned char *)buf, len, j);
+	return j;
+}
 
 static long where(int id) { for (size_t i = 0; i < len; i++) if (ids[i] == id) return (long)i; return -1; }
 
@@ -485,6 +540,9 @@ static void check_shown(LspDoc *d, long *latest)
 }
 
 static const char *const alpha[] = { "a", "b", " ", "\n", "é", "€", "𝓝", "∀", "\n\n", "xy" };
+/* what is not UTF-8: a Latin-1 byte, a lone continuation, an overlong
+   form, a surrogate, a cut-off character (in every third scenario) */
+static const char *const junk[] = { "\xE9", "\x80", "\xC0\x80", "\xED\xA0\x80", "\xE2\x82" };
 
 static void scenario(int seed, const char *log)
 {
@@ -498,7 +556,10 @@ static void scenario(int seed, const char *log)
 	exe[el] = 0;
 	fake_table[0] = (LspServer){ ".fake", "fake", argv, (const char *const *)roots, 1 };
 	lsp_servers = fake_table;
-	const char *init = "one\nλ two 𝓝\n\nthree ∀x\n";
+	/* every sixth file holds what is not UTF-8 (and gets no more), every
+	   sixth other one gets some typed */
+	int bad = seed % 6 == 3;
+	const char *init = seed % 6 == 0 ? "one\nλ tw\xE9x\x80\x80 𝓝\n\nthree ∀x\n" : "one\nλ two 𝓝\n\nthree ∀x\n";
 	len = strlen(init);
 	t = text_new(init, len);
 	CHECK(t);
@@ -514,14 +575,49 @@ static void scenario(int seed, const char *log)
 	size_t asked[LSP_NASK] = { 0 };
 	for (int step = 0; step < 250; step++) {
 		unsigned a = rnd(100);
-		if (a < 35) {                                     /* a command: a few edits */
+		if (step == 0 && seed % 3 == 0) {
+			/* a change that joins bytes into one character: in a file
+			   that held what is not UTF-8, deleting what stood between;
+			   else typing a character's last byte after its first two */
+			text_read(t, 0, buf, len);
+			char *x = memmem(buf, len, "\xE9x", 2);
+			size_t pos = charstart(rnd((unsigned)len + 1));
+			if (seed % 6 == 0) { if (x) edit(d, (size_t)(x - buf) + 1, 1, "", 0); }
+			else {
+				edit(d, pos, 0, "\xE2\x82", 2);
+				lsp_flush(d);
+				cur++;
+				snapshot();
+				edit(d, pos + 2, 0, "\xAC", 1);
+			}
+			lsp_flush(d);
+			cur++;
+			snapshot();
+		} else if (step == 125) {
+			usleep(50000);                    /* what the server says meanwhile waits */
+			/* one command of more edits than the log holds, the server
+			   unheard meanwhile: what it said before must go, not be
+			   mapped through half the edits */
+			for (int k = 0; k < 4200; k++) {
+				size_t pos = charstart(rnd((unsigned)len + 1));
+				if (k % 2 || !len) edit(d, pos, 0, "a", 1);
+				else {
+					text_read(t, 0, buf, len);
+					if (pos == len) pos = charstart(len - 1);
+					edit(d, pos, mstep((const unsigned char *)buf, len, pos), "", 0);
+				}
+			}
+			lsp_flush(d);
+			cur++;
+			snapshot();
+		} else if (a < 35) {                              /* a command: a few edits */
 			for (unsigned k = 0, n = 1 + rnd(3); k < n; k++) {
 				size_t pos = charstart(rnd((unsigned)len + 1)), del = 0;
 				for (unsigned c = rnd(3); c > 0 && pos + del < len; c--) {
 					text_read(t, 0, buf, len);
-					del += cplen((unsigned char)buf[pos + del]);
+					del += mstep((const unsigned char *)buf, len, pos + del);
 				}
-				const char *s = alpha[rnd(10)];
+				const char *s = bad && !rnd(6) ? junk[rnd(5)] : alpha[rnd(10)];
 				if (len > 2000) s = "";
 				edit(d, pos, del, s, strlen(s));
 			}
@@ -551,10 +647,13 @@ static void scenario(int seed, const char *log)
 			CHECK(sscanf(s, "%31s %ld %ld %zu %zu%n", key, &v, &cnt, &a0, &z0, &off) == 5);
 			off++;
 			text_read(t, 0, buf, len);
-			size_t z = asked[k] < len ? asked[k] + cplen((unsigned char)buf[asked[k]]) : asked[k];
+			size_t z = asked[k] < len ? asked[k] + mstep((const unsigned char *)buf, len, asked[k]) : asked[k];
 			if (getenv("LSP_DEBUG")) fprintf(stderr, "answer %d at %zu [%s] text [%.*s]\n", k, asked[k], s, (int)len, buf);
 			stat_answers++;
-			CHECK(strlen(s + off) == z - asked[k] && !memcmp(s + off, buf + asked[k], z - asked[k]));
+			char want[16];
+			int wid[16];
+			msent((const unsigned char *)buf + asked[k], z - asked[k], ids + asked[k], want, wid);
+			CHECK(!strcmp(s + off, want));
 		}
 	}
 	/* CatchUp: editing stops (the server may have died: once the loop has
@@ -607,6 +706,26 @@ static void units(void)
 		CHECK(lsp_u16(s, n) == u);
 		CHECK(lsp_u16_byte(s, n, u) == n && lsp_u16_byte(s, n, u + 5) == n);
 	}
+	/* what goes to the server: the model's U+FFFD for what is not UTF-8,
+	   so its UTF-16 count is the kernel's (with 4-byte forms past U+10FFFF) */
+	Jtok *qt = NULL;
+	int qcap = 0;
+	for (int r = 0; r < 200000; r++) {
+		size_t n = rnd(12);
+		for (size_t i = 0; i < n; i++) s[i] = rnd(3) ? (unsigned char)"a\xC3\xA9\xED\xA0\x80\xF4\x90\xC0\xFF\""[rnd(12)] : (unsigned char)rnd(256);
+		Str q = { 0 };
+		str_lit(&q, "\"");
+		CHECK(str_putq(&q, (const char *)s, n) >= 0);
+		str_lit(&q, "\"");
+		char got[256], want[256];
+		int wid[256], sid[64] = { 0 };
+		CHECK(json_parse(q.b, q.n, &qt, &qcap) == 1);
+		size_t gn = json_str(q.b, qt, 0, got);
+		size_t wn = msent(s, n, sid, want, wid);
+		CHECK(gn == wn && !memcmp(got, want, gn));
+		free(q.b);
+	}
+	free(qt);
 	/* JSON: what the client reads */
 	Jtok *tk = NULL;
 	int cap = 0;

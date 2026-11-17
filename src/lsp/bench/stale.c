@@ -1,6 +1,7 @@
 /* The phase 2 gate (DESIGN.md, Plan): on a long Lean file, typing
-   continuously must never hide diagnostics for more than 2 s, or the edit
-   log of LspSync's "ok" variant comes back.
+   continuously must never hide diagnostics for more than 2 s.  LspSync's
+   "simple" rules failed it, so the client has "ok"'s edit log; this shows
+   both on the same logs.  The file measured: gen_lean.py > LongSorry.lean.
 
    stale FILE.lean [ms per key] [seconds] [line]
    copies FILE into a scratch Lake project, opens it in the LSP client with
@@ -137,7 +138,7 @@ static void check_sorry(void)
 	int n;
 	const LspDiag *g = lsp_diags(doc, &n);
 	for (int i = 0; i < n; i++) {
-		if (!g[i].msg || !strstr(g[i].msg, "sorry")) continue;
+		if (!g[i].msg || !strstr(g[i].msg, "declaration uses")) continue;
 		char b[16] = "";
 		size_t k = g[i].z - g[i].a < sizeof b - 1 ? g[i].z - g[i].a : sizeof b - 1;
 		b[text_read(t, g[i].a, b, k)] = 0;

@@ -34,6 +34,8 @@ int  str_put(Str *s, const void *p, size_t n);
 int  str_putf(Str *s, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 /* a string literal, its length known at compile time */
 #define str_lit(s, lit) str_put(s, lit, sizeof lit - 1)
-/* p as the inside of a JSON string */
+/* p as the inside of a JSON string; what is not UTF-8 goes as one U+FFFD
+   per UTF-16 unit lsp_u16 counts for it, so columns agree.  The number of
+   such sequences, or -1 when out of memory. */
 int  str_putq(Str *s, const char *p, size_t n);
 #endif

@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "json.h"
+#include "lsp.h"
 
 enum { DEPTH = 512 };
 
@@ -212,21 +213,45 @@ int str_putf(Str *s, const char *fmt, ...)
 	return n < 0 || (size_t)n >= sizeof b ? -1 : str_put(s, b, (size_t)n);
 }
 
+/* A byte sequence the UTF-16 kernel counts as one character (lsp.h's
+   u16len), and whether it is UTF-8 a JSON reader takes: the kernel only
+   checks the shape, so overlong forms, surrogates and code points past
+   U+10FFFF still need refusing here. */
+static int valid(const unsigned char *b, size_t k)
+{
+	return k == 1 ? b[0] < 0x80
+	     : k == 2 ? b[0] >= 0xC2
+	     : k == 3 ? !(b[0] == 0xE0 && b[1] < 0xA0) && !(b[0] == 0xED && b[1] >= 0xA0)
+	     : b[0] <= 0xF4 && !(b[0] == 0xF0 && b[1] < 0x90) && !(b[0] == 0xF4 && b[1] >= 0x90);
+}
+
 int str_putq(Str *s, const char *p, size_t n)
 {
+	const unsigned char *b = (const unsigned char *)p;
 	size_t i = 0;
+	int bad = 0;
 	while (i < n) {
 		size_t j = i;
-		while (j < n && (unsigned char)p[j] >= 0x20 && p[j] != '"' && p[j] != '\\') j++;
+		while (j < n && b[j] >= 0x20 && b[j] < 0x80 && b[j] != '"' && b[j] != '\\') j++;
 		if (str_put(s, p + i, j - i)) return -1;
 		if (j == n) break;
+		if (b[j] >= 0x80) {
+			/* the kernel's own step, so the server counts the columns the
+			   kernel counts: a character it reads as 2 UTF-16 units (a 4-byte
+			   form) has unit 1 inside it, so lsp_u16_byte answers 0 */
+			size_t k = lsp_u16_byte(b + j, n - j, 1);
+			if (!k) k = 4;
+			if (valid(b + j, k) ? str_put(s, p + j, k) : (bad++, k == 4 ? str_lit(s, "\\ufffd\\ufffd") : str_lit(s, "\\ufffd"))) return -1;
+			i = j + k;
+			continue;
+		}
 		char e[8];
-		unsigned char c = (unsigned char)p[j];
+		unsigned char c = b[j];
 		int l = c == '"' || c == '\\' ? snprintf(e, sizeof e, "\\%c", c)
 		      : c == '\n' ? snprintf(e, sizeof e, "\\n") : c == '\t' ? snprintf(e, sizeof e, "\\t")
 		      : snprintf(e, sizeof e, "\\u%04x", c);
 		if (str_put(s, e, (size_t)l)) return -1;
 		i = j + 1;
 	}
-	return 0;
+	return bad;
 }
