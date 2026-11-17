@@ -1,0 +1,17 @@
+# Plants for src/win/ (format in tools/planted.sh).  The target runs src/win/check.sh
+# (Wine under xvfb) until the Makefile has a rule for it.
+win: every cell drawn every frame~--eval='w: ; @bash src/win/check.sh' w~~src/win/backend.c~			if (grid_cell_eq(x, y) && cur == was) continue;~			if (cur && was && 0) continue;
+win: the cell the cursor left is not restored~--eval='w: ; @bash src/win/check.sh' w~~src/win/backend.c~int pr = shown->crow, pc = shown->ccol;~int pr = g->crow, pc = g->ccol;
+win: Backspace sent as 8~--eval='w: ; @bash src/win/check.sh' w~~src/win/backend.c~put(w == 8 && GetKeyState(VK_CONTROL) >= 0 ? KEY_BS : (int)w);~put((int)w);
+win: surrogate pair joined wrong~--eval='w: ; @bash src/win/check.sh' w~~src/win/backend.c~((surr - 0xD800) << 10)~((surr - 0xD801) << 10)
+win: keys dropped when the ring is full~--eval='w: ; @bash src/win/check.sh' w~~src/win/backend.c~while (rn < RING && PeekMessageW~while (PeekMessageW
+win: arrow keys swapped~--eval='w: ; @bash src/win/check.sh' w~~src/win/backend.c~case VK_LEFT: put(KEY_LEFT);~case VK_LEFT: put(KEY_RIGHT);
+win: no pacing~--eval='w: ; @bash src/win/check.sh' w~~src/win/backend.c~	if (now.QuadPart >= next) return 1;~	return 1;
+win: pacing timer fires at once (busy wake-ups)~--eval='w: ; @bash src/win/check.sh' w~~src/win/backend.c~due.QuadPart = -(~due.QuadPart = (
+win: pacing timer far too late~--eval='w: ; @bash src/win/check.sh' w~~src/win/backend.c~* 10000000 +~* 1000000000 +
+win: draws while minimised~--eval='w: ; @bash src/win/check.sh' w~~src/win/backend.c~	if (IsIconic(win)) return 0;¶~
+win: resize sends no KEY_RESIZE~--eval='w: ; @bash src/win/check.sh' w~~src/win/backend.c~HIWORD(l) != dh)) resized = stale = 1;~HIWORD(l) != dh)) stale = 1;
+win: the DIB keeps its old size~--eval='w: ; @bash src/win/check.sh' w~~src/win/backend.c~if (all && (grid_resize(shown, g->rows, g->cols) || make_dib())) return;~if (all && grid_resize(shown, g->rows, g->cols)) return;
+win: pacing without the margin over the period~--eval='w: ; @bash src/win/check.sh' w~~src/win/backend.c~next = now.QuadPart + period + period / 8;~next = now.QuadPart + period;
+win: pacing timer keeps firing when idle~--eval='w: ; @bash src/win/check.sh' w~~src/win/backend.c~SetWaitableTimer(timer, &due, 0,~SetWaitableTimer(timer, &due, 16,
+specs: Pace with frames only P + D apart~specs~find design/specs -name '*.cfg' ! -name Pace_ok.cfg -delete~design/specs/Pace_ok.cfg~ Gap = 5~ Gap = 4
