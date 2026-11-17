@@ -46,6 +46,10 @@ int main(void)
 		at(&e, want[i].from); CHECK(core_scroll_page(&e, -1, 1) == want[i].r[3]);
 		at(&e, want[i].from); CHECK(core_screen_move(&e, 1) == want[i].r[4]);
 		at(&e, want[i].from); CHECK(core_screen_move(&e, -1) == want[i].r[5]);
+		core_set_wrap(&e, 1);                      /* gj and gk by screen line */
+		at(&e, want[i].from); CHECK(core_screen_move(&e, 1) == want[i].r[4]);
+		at(&e, want[i].from); CHECK(core_screen_move(&e, -1) == want[i].r[5]);
+		core_set_wrap(&e, 0);
 	}
 
 	/* the command line: its type at column 0 of the row under the
@@ -86,6 +90,25 @@ int main(void)
 	CHECK(!core_close(&e, 1) && e.quit);
 
 	core_free(&e);
+
+	/* buffers: a split keeps the alternate (win_init()); :bd of the last
+	   one edited goes to the newest other buffer in the jump list
+	   (measured in nvim, 1 run: f0, :e f1, :e f2, :e f3, :sp has f2 as
+	   alternate; :close, :bd shows f2) */
+	char fn[4][96];
+	for (int i = 0; i < 4; i++) {
+		snprintf(fn[i], sizeof fn[i], "%s.%d", path, i);
+		FILE *h = fopen(fn[i], "w");
+		CHECK(h && fputs("x\n", h) >= 0 && !fclose(h));
+	}
+	CHECK(!core_open(&e, fn[0]));
+	for (int i = 1; i < 4; i++) CHECK(!core_edit_file(&e, fn[i], 0));
+	Buf *alt = e.win->alt;
+	CHECK(alt && !strcmp(alt->path, fn[2]) && !core_split(&e, 0, 0) && e.win->alt == alt);
+	CHECK(!core_close(&e, 0));
+	CHECK(!core_buf_delete(&e, 0, 0) && !strcmp(e.buf->path, fn[2]));
+	core_free(&e);
+	for (int i = 0; i < 4; i++) unlink(fn[i]);
 	grid_free(&g);
 	unlink(path);
 	printf("test_core_contract: ok\n");
