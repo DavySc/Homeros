@@ -291,15 +291,7 @@ static long line_end_of(Oparg *oap) { return oap->end.col + (oap->inclusive && o
 int op_delete(Oparg *oap)
 {
 	extern int did_ai_flag;
-	if (is_empty_buf()) {
-		/* op_delete() returns early, yet Neovim's undo history changes:
-		   measured in nvim --headless (15 sequences, package 0): at the
-		   oldest state it leaves an empty step, which also drops the redo
-		   branch; after a change it leaves nothing.  Mechanism not
-		   understood (hypothesis: undo sync inside typeahead). */
-		if (!undo_seq(B->undo)) u_save_cursor();
-		return 1;
-	}
+	if (is_empty_buf()) return 1;   /* op_delete() returns early on ML_EMPTY */
 	if (oap->empty) { u_save_cursor(); return 1; }
 	/* mb_adjust_opend() */
 	if (oap->motion_type == MCHAR && !oap->is_visual && oap->line_count > 1 && oap->motion_force == 0

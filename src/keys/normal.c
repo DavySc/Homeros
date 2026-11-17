@@ -857,24 +857,17 @@ static void nv_undo(Cmdarg *cap)
 		return;
 	}
 	if (checkclearopq(cap->oap)) return;
-	/* nv_kundo() asks for curswant to be recomputed from the cached
-	   virtual column, which stays valid if no step invalidated it and the
-	   cursor ends where it started (check_cursor_moved()): curswant is
-	   then the column in the text before the undo (measured, nvim 0.12,
-	   "jxu" on "b  a\nc\tfoo" gives 7) */
-	int redo = cap->cmdchar == KEY_CTRL_R;
-	size_t l0 = W->line, c0 = W->col, w0 = W->want, v0;
-	int inval = 0;
+	/* nv_kundo() recomputes curswant from the cached screen column, which
+	   the core keeps across the undo unless a step invalidated it
+	   (core_set_want, Win.vc) */
+	size_t w0 = W->want;
 	core_set_want(E);
-	v0 = W->want;
 	W->want = w0;
 	/* u_doit() stops at the first step that finds nothing */
-	long n = cap->count1;
-	for (int r; n-- && (r = core_undo(E, redo)) >= 0;) inval |= r;
+	for (long n = cap->count1; n-- && core_undo(E, cap->cmdchar == KEY_CTRL_R) >= 0;) {}
 	extern void buf_changed(void);
 	buf_changed();
-	if (!inval && W->line == l0 && W->col == c0) W->want = v0;
-	else core_set_want(E);
+	core_set_want(E);
 	set_curswant = 0;
 }
 
