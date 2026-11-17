@@ -6,8 +6,8 @@
    window; a letter in the text, dim and face colours; a wide character over
    two cells; the cursor reversed, restored when it leaves, and drawn at
    (0, 0) after a whole redraw; WM_PAINT repaints from the DIB; a new size or
-   DPI comes as KEY_RESIZE and is redrawn whole; the close button leaves the
-   window.  Pacing: no frame sooner than P + P/8 after the last (Pace.tla),
+   DPI comes as KEY_RESIZE and is redrawn whole; the close button gives KEY_CLOSE
+   and leaves the window.  Pacing: no frame sooner than P + P/8 after the last (Pace.tla),
    the timer wakes the loop when the next may be drawn and stays quiet when
    idle; nothing is drawn while minimised.
    Not tested here, with the reason: an astral character's glyph (Wine has
@@ -23,7 +23,6 @@
 #include "keys.h"
 #include "loop.h"
 
-extern const Backend backend_win;   /* until backend.h declares it (asked of thread 0) */
 static const Backend *b = &backend_win;
 static HWND win;
 static int cw, ch;
@@ -200,10 +199,9 @@ int main(void)
 	UpdateWindow(win);
 	CHECK(at(5, 5) == BG && at(3, 5) == REV && count(4, 1, RED) == 0);
 
-	/* the close button leaves the window (quit with :q) */
+	/* the close button is a key; the window stays until the editor quits */
 	PostMessageW(win, WM_CLOSE, 0, 0);
-	input(k, 1024);
-	CHECK(IsWindow(win));
+	CHECK(input(k, 4) == 1 && k[0] == KEY_CLOSE && IsWindow(win));
 
 	/* pacing (Pace.tla): the next frame no sooner than P + P/8 after the
 	   last, found by asking until it is allowed; then the timer wakes the
@@ -283,7 +281,7 @@ int main(void)
 	grid_free(&shown);
 	puts("test_win: keys, mouse and clipboard; identical frame draws nothing; one change draws one cell; "
 	     "text, dim, face and wide cells; cursor drawn, restored and at (0,0) after a whole redraw; WM_PAINT; "
-	     "resize and DPI redraw whole; close leaves the window; paced; idle quiet; minimised draws nothing");
+	     "resize and DPI redraw whole; close is a key; paced; idle quiet; minimised draws nothing");
 	return 0;
 }
 #else

@@ -26,7 +26,8 @@ win: syntax faces ignored~win~~src/win/backend.c~x->face < FACE_COUNT ? face_fg[
 win: a wide character drawn one cell wide~win~~src/win/backend.c~(c + 1 + wide) * cw~(c + 1 + wide * 0) * cw
 win: the right half of a wide character not sent to the window~win~~src/win/backend.c~hi = c + 1 + (c + 1 < g->cols && !x[1].len);~hi = c + 1;
 win: an uncovered window not repainted (WM_PAINT)~win~~src/win/backend.c~BitBlt(dc, r->left, r->top, r->right - r->left, r->bottom - r->top, mem, r->left, r->top, SRCCOPY);~(void)dc; (void)r;
-win: the close button destroys the window~win~~src/win/backend.c~	case WM_CLOSE:   /* keys.h has no key for it yet (asked of thread 0): quit with :q */¶		return 0;¶~
+win: the close button destroys the window~win~~src/win/backend.c~	case WM_CLOSE:   /* the editor decides (:qa), not DefWindowProc */¶		put(KEY_CLOSE);¶		return 0;¶~
+win: the close button gives no key~win~~src/win/backend.c~		put(KEY_CLOSE);¶~
 win: one column too many reported~win~~src/win/backend.c~*cols = r.right / cw > 0 ? r.right / cw : 1;~*cols = r.right / cw + 1;
 win: the new DPI ignored~win~~src/win/backend.c~		dpi = HIWORD(w);¶~
 win: no pacing~win~~src/win/backend.c~	if (now.QuadPart >= next) return 1;~	return 1;

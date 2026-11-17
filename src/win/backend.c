@@ -40,13 +40,103 @@ static LONGLONG period, next;   /* QueryPerformanceCounter ticks */
 static WCHAR surr;              /* a high surrogate waiting for its low one */
 static int mrow, mcol, wheel;   /* the last mouse key's cell; wheel delta not yet a key */
 
-/* Catppuccin Mocha (FEATURES.md), as ref/tty.c: text, dim (overlay0), base,
-   and the colours catppuccin/nvim gives the syntax faces */
+/* Catppuccin Mocha (FEATURES.md): text, dim (overlay0), base, and the
+   colours catppuccin/nvim gives the syntax faces, copied from ref/tty.c's
+   table until grid.h holds one table for every backend (asked of thread 0);
+   italic and bold wait for package 7's fonts */
 static const COLORREF TEXT = RGB(205, 214, 244), DIMC = RGB(108, 112, 134), BASE = RGB(30, 30, 46);
 static const COLORREF face_fg[FACE_COUNT] = {
-	RGB(205, 214, 244), RGB(147, 153, 178), RGB(166, 227, 161), RGB(203, 166, 247), RGB(249, 226, 175),
-	RGB(137, 180, 250), RGB(250, 179, 135), RGB(250, 179, 135), RGB(137, 220, 235),
-	RGB(147, 153, 178), RGB(205, 214, 244)
+	RGB(205, 214, 244),  /* none: text */
+	RGB(205, 214, 244),  /* variable: text */
+	RGB(243, 139, 168),  /* variable.builtin: red */
+	RGB(235, 160, 172),  /* variable.parameter: maroon */
+	RGB(235, 160, 172),  /* variable.parameter.builtin: maroon */
+	RGB(180, 190, 254),  /* variable.member: lavender */
+	RGB(250, 179, 135),  /* constant: peach */
+	RGB(250, 179, 135),  /* constant.builtin: peach */
+	RGB(203, 166, 247),  /* constant.macro: mauve */
+	RGB(249, 226, 175),  /* module: yellow, italic */
+	RGB(249, 226, 175),  /* module.builtin: yellow, italic */
+	RGB(116, 199, 236),  /* label: sapphire */
+	RGB(166, 227, 161),  /* string: green */
+	RGB(148, 226, 213),  /* string.documentation: teal */
+	RGB(245, 194, 231),  /* string.regexp: pink */
+	RGB(245, 194, 231),  /* string.escape: pink */
+	RGB(245, 194, 231),  /* string.special: pink */
+	RGB(242, 205, 205),  /* string.special.symbol: flamingo */
+	RGB(245, 194, 231),  /* string.special.path: pink */
+	RGB(137, 180, 250),  /* string.special.url: blue, italic underline */
+	RGB(148, 226, 213),  /* character: teal */
+	RGB(245, 194, 231),  /* character.special: pink */
+	RGB(250, 179, 135),  /* boolean: peach */
+	RGB(250, 179, 135),  /* number: peach */
+	RGB(250, 179, 135),  /* number.float: peach */
+	RGB(249, 226, 175),  /* type: yellow */
+	RGB(203, 166, 247),  /* type.builtin: mauve */
+	RGB(249, 226, 175),  /* type.definition: yellow */
+	RGB(250, 179, 135),  /* attribute: peach */
+	RGB(250, 179, 135),  /* attribute.builtin: peach */
+	RGB(180, 190, 254),  /* property: lavender */
+	RGB(137, 180, 250),  /* function: blue */
+	RGB(250, 179, 135),  /* function.builtin: peach */
+	RGB(137, 180, 250),  /* function.call: blue */
+	RGB(245, 194, 231),  /* function.macro: pink */
+	RGB(137, 180, 250),  /* function.method: blue */
+	RGB(137, 180, 250),  /* function.method.call: blue */
+	RGB(249, 226, 175),  /* constructor: yellow */
+	RGB(137, 220, 235),  /* operator: sky */
+	RGB(203, 166, 247),  /* keyword: mauve */
+	RGB(203, 166, 247),  /* keyword.coroutine: mauve */
+	RGB(203, 166, 247),  /* keyword.function: mauve */
+	RGB(203, 166, 247),  /* keyword.operator: mauve */
+	RGB(203, 166, 247),  /* keyword.import: mauve */
+	RGB(203, 166, 247),  /* keyword.type: mauve */
+	RGB(203, 166, 247),  /* keyword.modifier: mauve */
+	RGB(203, 166, 247),  /* keyword.repeat: mauve */
+	RGB(203, 166, 247),  /* keyword.return: mauve */
+	RGB(203, 166, 247),  /* keyword.debug: mauve */
+	RGB(203, 166, 247),  /* keyword.exception: mauve */
+	RGB(203, 166, 247),  /* keyword.conditional: mauve, italic */
+	RGB(137, 220, 235),  /* keyword.conditional.ternary: sky */
+	RGB(245, 194, 231),  /* keyword.directive: pink */
+	RGB(245, 194, 231),  /* keyword.directive.define: pink */
+	RGB(147, 153, 178),  /* punctuation.delimiter: overlay2 */
+	RGB(147, 153, 178),  /* punctuation.bracket: overlay2 */
+	RGB(245, 194, 231),  /* punctuation.special: pink */
+	RGB(147, 153, 178),  /* comment: overlay2, italic */
+	RGB(147, 153, 178),  /* comment.documentation: overlay2, italic */
+	RGB(30, 30, 46),     /* comment.error: base on red */
+	RGB(30, 30, 46),     /* comment.warning: base on yellow */
+	RGB(30, 30, 46),     /* comment.todo: base on flamingo */
+	RGB(30, 30, 46),     /* comment.note: base on rosewater */
+	RGB(243, 139, 168),  /* markup.strong: red, bold */
+	RGB(243, 139, 168),  /* markup.italic: red, italic */
+	RGB(205, 214, 244),  /* markup.strikethrough: text, strikethrough */
+	RGB(205, 214, 244),  /* markup.underline: underline */
+	RGB(137, 180, 250),  /* markup.heading: blue */
+	RGB(137, 180, 250),  /* markup.heading.1: blue */
+	RGB(137, 180, 250),  /* markup.heading.2: blue */
+	RGB(137, 180, 250),  /* markup.heading.3: blue */
+	RGB(137, 180, 250),  /* markup.heading.4: blue */
+	RGB(137, 180, 250),  /* markup.heading.5: blue */
+	RGB(137, 180, 250),  /* markup.heading.6: blue */
+	RGB(245, 194, 231),  /* markup.quote: pink */
+	RGB(137, 180, 250),  /* markup.math: blue */
+	RGB(180, 190, 254),  /* markup.link: lavender */
+	RGB(180, 190, 254),  /* markup.link.label: lavender */
+	RGB(137, 180, 250),  /* markup.link.url: blue, italic underline */
+	RGB(166, 227, 161),  /* markup.raw: green */
+	RGB(166, 227, 161),  /* markup.raw.block: green */
+	RGB(148, 226, 213),  /* markup.list: teal */
+	RGB(166, 227, 161),  /* markup.list.checked: green */
+	RGB(127, 132, 156),  /* markup.list.unchecked: overlay1 */
+	RGB(166, 227, 161),  /* diff.plus: green */
+	RGB(243, 139, 168),  /* diff.minus: red */
+	RGB(137, 180, 250),  /* diff.delta: blue */
+	RGB(137, 180, 250),  /* tag: blue */
+	RGB(137, 180, 250),  /* tag.builtin: blue */
+	RGB(249, 226, 175),  /* tag.attribute: yellow, italic */
+	RGB(148, 226, 213),  /* tag.delimiter: teal */
 };
 
 static void put(int k)
@@ -160,7 +250,8 @@ static LRESULT CALLBACK proc(HWND h, UINT m, WPARAM w, LPARAM l)
 	}
 	case WM_ERASEBKGND:
 		return 1;
-	case WM_CLOSE:   /* keys.h has no key for it yet (asked of thread 0): quit with :q */
+	case WM_CLOSE:   /* the editor decides (:qa), not DefWindowProc */
+		put(KEY_CLOSE);
 		return 0;
 	}
 	return DefWindowProcW(h, m, w, l);
