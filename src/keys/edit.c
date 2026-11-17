@@ -707,7 +707,7 @@ void insert_key(int k, int pending)
 		return;
 	case 15:                  /* CTRL-O: one Normal mode command */
 		restart_edit = replacing() ? 'R' : 'I';
-		ins_at_eol = gchar_cursor() == 0;
+		ins_at_eol = !virtual_active() && gchar_cursor() == 0;   /* ins_ctrl_o(): with virtualedit the column stays */
 		count_s = 0;
 		ins_esc(0);
 		if (ins_at_eol) o_lnum = (long)W->line;
