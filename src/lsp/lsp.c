@@ -360,11 +360,14 @@ void lsp_edit(LspDoc *d, const Text *t, size_t pos, size_t ndel, const char *ins
 	         e.s.l, e.s.c, e.e.l, e.e.c);
 	/* U+FFFD for a byte that is not UTF-8 depends on its neighbours, so
 	   once the text holds one a change cannot be sent alone: from then on
-	   the whole text goes (lsp_flush) */
+	   the whole text goes (lsp_flush) ... */
 	if (str_putq(&o, ins, nins)) d->bad = 1;
 	str_lit(&o, "\"}");
 	*c = o;
 	o = keep;
+	/* nor do its columns move by the edit alone (two bytes may become one
+	   character), so nothing older maps across it: it is shown no more */
+	if (d->bad) { d->nlog = 0; d->floor = d->ver + 1; }
 }
 
 void lsp_flush(LspDoc *d)

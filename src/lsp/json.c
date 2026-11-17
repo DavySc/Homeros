@@ -241,7 +241,7 @@ int str_putq(Str *s, const char *p, size_t n)
 			   form) has unit 1 inside it, so lsp_u16_byte answers 0 */
 			size_t k = lsp_u16_byte(b + j, n - j, 1);
 			if (!k) k = 4;
-			if (valid(b + j, k) ? str_put(s, p + j, k) : (bad++, k == 4 ? str_lit(s, "\\ufffd\\ufffd") : str_lit(s, "\\ufffd"))) return -1;
+			if (valid(b + j, k) ? str_put(s, p + j, k) : (bad++, k == 4 ? str_lit(s, "\xEF\xBF\xBD\xEF\xBF\xBD") : str_lit(s, "\xEF\xBF\xBD"))) return -1;
 			i = j + k;
 			continue;
 		}

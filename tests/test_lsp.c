@@ -579,20 +579,35 @@ static void scenario(int seed, const char *log)
 			/* a change that joins bytes into one character: in a file
 			   that held what is not UTF-8, deleting what stood between;
 			   else typing a character's last byte after its first two */
+			for (long long t0 = ms(); ms() - t0 < 2000; ) {   /* the server answering first */
+				int n;
+				loop_once(10);
+				check_shown(d, &latest);
+				if (lsp_diags(d, &n), n) break;
+			}
 			text_read(t, 0, buf, len);
 			char *x = memmem(buf, len, "\xE9x", 2);
-			size_t pos = charstart(rnd((unsigned)len + 1));
-			if (seed % 6 == 0) { if (x) edit(d, (size_t)(x - buf) + 1, 1, "", 0); }
+			size_t pos = x ? (size_t)(x - buf) : 0;
+			if (seed % 6 == 0) edit(d, pos + 1, 1, "", 0);
 			else {
-				edit(d, pos, 0, "\xE2\x82", 2);
+				edit(d, pos, 0, "\xE2\x82" "abcdefghijklmnopqrstuvwxyz", 28);   /* a long line after it */
 				lsp_flush(d);
 				cur++;
 				snapshot();
+				usleep(50000);            /* what it says about this version waits */
 				edit(d, pos + 2, 0, "\xAC", 1);
 			}
 			lsp_flush(d);
 			cur++;
 			snapshot();
+			/* the server must count the joined character as one: ask what
+			   stands after it, and wait for the answer */
+			asked[0] = pos + 3;
+			for (int k = 0; k < 20 && !lsp_answer(d, 0); k++) {   /* the server may refuse it */
+				lsp_ask(d, 0, asked[0]);
+				for (long long t0 = ms(); !lsp_answer(d, 0) && ms() - t0 < 300; ) { loop_once(10); check_shown(d, &latest); }
+			}
+			CHECK(lsp_answer(d, 0));
 		} else if (step == 125) {
 			usleep(50000);                    /* what the server says meanwhile waits */
 			/* one command of more edits than the log holds, the server
@@ -754,7 +769,7 @@ int main(int argc, char **argv)
 	printf("test_lsp: %d scenarios, SEED=%llu\n", n, seed);
 	rng ^= seed * 0x9E3779B97F4A7C15ULL;
 	for (int i = 0; i < n; i++) {
-		scenario((int)rnd(1u << 30), log);
+		scenario((int)rnd(1u << 27) * 6 + i % 6, log);   /* each kind of file in turn (seed % 6) */
 		FILE *f = fopen(log, "r");
 		char line[512];
 		if (f && fgets(line, sizeof line, f)) { fputs(line, stderr); CHECK(!"the fake server saw a protocol violation"); }

@@ -19,9 +19,10 @@ lsp: a column inside a surrogate pair goes to the next character~test TESTS=lsp~
 lsp: astral characters counted as one UTF-16 unit (Frama-C)~frama~~src/lsp/u16.c~		u += k == 4 ? 2 : 1;~		u += 1;
 lsp: JSON reader accepts a trailing comma~fuzz FUZZERS=lsp_json FUZZ_SECONDS=30~~src/lsp/json.c~			if (s[p->i++] != ',') return -1;~			if (s[p->i++] != ',') return -1;¶			ws(p);¶			if (p->i < p->n && s[p->i] == close) { p->i++; break; }
 lsp: bytes that are not UTF-8 sent as they are~test TESTS=lsp~~src/lsp/json.c~			if (valid(b + j, k) ? ~			if (valid(b + j, k) || 1 ? 
-lsp: a character past U+10FFFF sent as one U+FFFD, not two~test TESTS=lsp~~src/lsp/json.c~k == 4 ? str_lit(s, "\\ufffd\\ufffd")~k == 5 ? str_lit(s, "\\ufffd\\ufffd")
+lsp: a character past U+10FFFF sent as one U+FFFD, not two~test TESTS=lsp~~src/lsp/json.c~k == 4 ? str_lit(s, "\xEF\xBF\xBD\xEF\xBF\xBD")~k == 5 ? str_lit(s, "\xEF\xBF\xBD\xEF\xBF\xBD")
 lsp: an overlong 2-byte form sent as it is~test TESTS=lsp~~src/lsp/json.c~	     : k == 2 ? b[0] >= 0xC2~	     : k == 2 ? b[0] >= 0xC0
 lsp: a change holding what is not UTF-8 sent alone~test TESTS=lsp~~src/lsp/lsp.c~	if (str_putq(&o, ins, nins)) d->bad = 1;~	str_putq(&o, ins, nins);
 lsp: a file holding what is not UTF-8 gets changes alone~test TESTS=lsp~~src/lsp/lsp.c~	d->bad = put_text(d->t);~	put_text(d->t);
 lsp: a full edit log is not cut~test TESTS=lsp~~src/lsp/lsp.c~	if (d->nlog == LOG) {~	if (0) {
 lsp: a cut edit log still maps what is older than it~test TESTS=lsp~~src/lsp/lsp.c~		d->floor = d->nlog ? d->log[0].v + 1 : d->ver + 1;¶~
+lsp: diagnostics mapped across an edit next to what is not UTF-8~test TESTS=lsp~~src/lsp/lsp.c~	if (d->bad) { d->nlog = 0; d->floor = d->ver + 1; }~
