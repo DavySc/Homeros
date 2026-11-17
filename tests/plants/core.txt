@@ -39,3 +39,4 @@ core: the popup placed before update_screen() (test_core_screens)~test TESTS=cor
 core: entering a buffer keeps the sideways scroll valid (test_core_screens)~test TESTS=core_screens~~src/core/core.c~	w->vc.ok = w->frame->s.sideok = 0;   /* w_valid = 0 */~	w->vc.ok = 0;   /* w_valid = 0 */
 core: a composing character at a cluster start is drawn without its space (test_core_screens)~test TESTS=core_screens~~src/core/draw.c~		if (uni_glen(b, k + 1, 0) > 1) {~		if (uni_glen(b, k + 1, 0) > 9) {
 core: H and L apply scrolloff under an operator (test_core_contract)~test TESTS=core_contract~~src/core/move.c~	if (so) cursor_correct(e, w);~	if (so || 1) cursor_correct(e, w);
+core: a join leaves the next line's marks behind (recorded key traces)~test TESTS=~~src/core/core.c~	if (line_amount) join_next = b;~	(void)0;
