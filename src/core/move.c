@@ -28,7 +28,7 @@ static int width1(const Win *w) { return w->w - win_numw(w); }
 static lnr nlines(const Win *w) { return (lnr)buf_lines(w->buf); }
 
 /* the line's width, linetabsize() */
-static long linesize(const Win *w, lnr l) { return (long)buf_vcol_end(w->buf, (size_t)l); }
+static long linesize(const Win *w, lnr l) { return (long)win_vcol_end(w, (size_t)l); }
 
 /* plines_win_nofill(): screen lines of line l */
 static int plines_lim(const Win *w, lnr l, int limit)
@@ -46,8 +46,10 @@ static int plines_lim(const Win *w, lnr l, int limit)
 
 int win_plines(const Win *w, size_t l) { return plines_lim(w, (lnr)l, 1); }
 
-/* plines_win_col(): screen lines up to byte col of line l, a tab under the
-   cursor in normal mode counted to its end */
+/* plines_win_col(): screen lines up to col of line l, a tab under the
+   cursor in normal mode counted to its end.  Its callers pass a byte
+   column but it counts that many characters, which reaches further on a
+   line with multi-byte characters: copied (measured, review of PR 20, 5) */
 static int plines_col(Editor *e, Win *w, lnr l, size_t col)
 {
 	if (!w->wrap || w->w == 0) return 1;
@@ -57,10 +59,10 @@ static int plines_col(Editor *e, Win *w, lnr l, size_t col)
 	lit_init(&it, w->buf, (size_t)l);
 	while ((k = lit_next(&it, &s))) {
 		if (i >= col) break;
-		v += (size_t)core_cellw(s, k, 0, v);
-		i += k;
+		v += (size_t)core_cellw(w, s, k, 0, v);
+		i++;
 	}
-	if (k && *s == '\t' && e->mode != MODE_INSERT) v += (size_t)core_cellw(s, k, 0, v) - 1;
+	if (k && *s == '\t' && e->mode != MODE_INSERT) v += (size_t)core_cellw(w, s, k, 0, v) - 1;
 	long width = width1(w);
 	if (width <= 0) return 9999;
 	int lines = 1;
@@ -1045,7 +1047,7 @@ static int screengo(Editor *e, Win *w, int dir, long dist)
 		if ((long)v > want && (want < w1 ? want > w1 / 2 : (want - w1) % w2 > w2 / 2)) {
 			size_t len;
 			const unsigned char *s = core_line(e, w->line, &len);
-			w->col = uni_prev(s, len, w->col);
+			w->col = uni_gprev(s, len, w->col);
 		}
 	}
 	if (atend) w->want = WANT_EOL;

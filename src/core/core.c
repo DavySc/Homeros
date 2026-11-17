@@ -1,4 +1,5 @@
 /* Buffers: their text, undo, saving, and moving between them. */
+#include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -64,7 +65,9 @@ void lit_init(LineIt *it, const Buf *b, size_t l)
 
 size_t lit_next(LineIt *it, const unsigned char **s)
 {
-	if (it->n - it->i < 4 && it->pos < it->end) {
+	/* half a buffer ahead, so a cluster is read whole (a longer one is cut
+	   where the buffer ends) */
+	if (it->n - it->i < sizeof it->b / 2 && it->pos < it->end) {
 		size_t k = it->n - it->i, want = sizeof it->b - k;
 		memmove(it->b, it->b + it->i, k);
 		if (want > it->end - it->pos) want = it->end - it->pos;
@@ -73,37 +76,92 @@ size_t lit_next(LineIt *it, const unsigned char **s)
 		it->i = 0;
 	}
 	if (it->i >= it->n) return 0;
-	size_t k = uni_len(it->b, it->n, it->i);
+	size_t k = uni_glen(it->b, it->n, it->i);
 	*s = it->b + it->i;
 	it->i += k;
 	return k;
 }
 
-int core_cellw(const unsigned char *s, size_t n, size_t i, size_t v)
+int core_cellw(const Win *w, const unsigned char *s, size_t n, size_t i, size_t v)
 {
 	if (s[i] == '\t') return TABSTOP - (int)(v % TABSTOP);
 	if (s[i] < 0x20 || s[i] == 0x7f) return 2;                      /* ^X */
-	if (s[i] >= 0x80 && uni_len(s, n, i) == 1) return 4;            /* <xx> */
-	return uni_width(uni_cp(s, n, i));
+	int c = uni_width(s, n, i);
+	if (c != 2 || s[i] < 0x80 || !w->wrap) return c;
+	/* charsize_regular(): a double-width character that would start in a
+	   wrapping window's last column (in_win_border()) takes that cell too,
+	   drawn as '>' */
+	int tw = w->w - win_numw(w);
+	return tw > 0 && v % (size_t)tw == (size_t)tw - 1 ? 3 : 2;
 }
 
-size_t buf_vcol_end(const Buf *b, size_t l)
+size_t win_vcol_end(const Win *w, size_t l)
 {
 	LineIt it;
 	const unsigned char *s;
 	size_t v = 0, k;
-	lit_init(&it, b, l);
-	while ((k = lit_next(&it, &s))) v += (size_t)core_cellw(s, k, 0, v);
+	lit_init(&it, w->buf, l);
+	while ((k = lit_next(&it, &s))) v += (size_t)core_cellw(w, s, k, 0, v);
 	return v;
 }
 
 /* ---- opening and closing buffers ---- */
 
-/* every change reaches the syntax tree before it is made (UndoHook) */
+enum { J_NOEOL = 1 << 8 };              /* the journal keeps noeol with the flags */
+
+static unsigned jstate(const Buf *b) { return b->flags | (b->noeol ? J_NOEOL : 0); }
+
+/* every change reaches the syntax tree and the journal before it is made
+   (UndoHook), as in ref/core.c.  An edit's record carries the state after
+   it (jnext), so a kill between two writes cannot keep the change with a
+   stale state (review of PR 16, 7); an undo step's state is known only once
+   it is done, so jdone records it then */
+static unsigned jnext = (unsigned)-1;   /* -1: the state now */
 static void undo_seen(void *ctx, const Text *t, size_t pos, size_t ndel, const char *ins, size_t nins)
 {
 	Buf *b = ctx;
 	if (b->syn) syntax_edit(b->syn, t, pos, ndel, ins, nins);
+	if (b->journal && (journal_base(b->journal, t, jstate(b), &b->id)
+	                   || journal_edit(b->journal, pos, ndel, ins, nins, jnext != (unsigned)-1 ? jnext : jstate(b)))) b->jerr = 1;
+}
+
+static int same_id(const FileId *a, const FileId *b)
+{
+	return a->exists == b->exists && a->dev == b->dev && a->ino == b->ino
+	       && a->size == b->size && a->mtime_ns == b->mtime_ns;
+}
+
+/* After a command's change: its new state for the journal, and the
+   warnings (W11 for an outside change, once; E297 if the journal failed). */
+static void jdone(Editor *e, Buf *b, unsigned before)
+{
+	if (b->journal && jstate(b) != before && journal_edit(b->journal, 0, 0, "", 0, jstate(b))) b->jerr = 1;
+	if (b->jerr) { b->jerr = 0; core_msg(e, "E297: Write error in journal"); }
+	else if (b->changed == 1) {
+		b->changed = 2;
+		core_msg(e, "W11: Warning: File \"%s\" has changed since editing started", b->path);
+	}
+}
+
+/* A crashed session's journal: its text replaces the file's, unless it
+   would save to exactly the file's bytes (a crash right after a save, also
+   a power loss that brings back the journal from before it: review of PR
+   16, 3).  Its FileId is kept, so a file changed since is refused at a
+   plain :w. */
+static void recover(Buf *b, Text *t, unsigned st, const FileId *id, const char *data, size_t n)
+{
+	size_t tn = st & CORE_EMPTY ? 0 : text_len(t) - (st & J_NOEOL ? 1 : 0);
+	char *s = malloc(tn ? tn : 1);
+	int same = s && tn == n && text_read(t, 0, s, tn) == tn && !memcmp(s, data, n);
+	free(s);
+	if (same) { text_free(t); journal_saved(b->journal); return; }
+	text_free(b->text);
+	b->text = t;
+	b->flags = st & CORE_EMPTY;
+	b->noeol = !!(st & J_NOEOL);
+	b->saved_seq = (unsigned long)-1;
+	b->changed = !same_id(id, &b->id);
+	b->id = *id;
 }
 
 /* :bd leaves a buffer unlisted (b_p_bl off) and unloaded, its number and
@@ -166,9 +224,9 @@ static int buf_load(Editor *e, Buf *b, const char *path)
 	}
 	int noeol = n == 0 || data[n - 1] != '\n';
 	t = text_new(data, n);
-	free(data);
 	u = undo_new();
 	if (!t || !u || (noeol && text_insert(t, n, "\n", 1))) {
+		free(data);
 		text_free(t);
 		undo_free(u);
 		free(name);
@@ -181,13 +239,36 @@ static int buf_load(Editor *e, Buf *b, const char *path)
 	b->noeol = noeol;
 	b->flags = n ? 0 : CORE_EMPTY;
 	b->saved_seq = 0;
-	b->syn = path ? syntax_open(path, t) : NULL;
-	undo_hook(u, undo_seen, b);
+	b->changed = b->jerr = 0;
+	b->journal = NULL;
+	b->watch = -1;
+	int j = 0, busy = 0;
 	if (path) {
-		/* readfile()'s message */
-		if (!id.exists) core_msg(e, "\"%s\" [New]", path);
-		else core_msg(e, "\"%s\"%s %zuL, %zuB", path, noeol && n ? " [noeol]" : "", n ? buf_lines(b) : 0, n);
+		Text *rt;
+		unsigned rs;
+		FileId rid;
+		j = journal_open(path, &b->journal, &rt, &rs, &rid);
+		busy = j < 0 && errno == EWOULDBLOCK;
+		if (j == 1) recover(b, rt, rs, &rid, data, n);
+		/* a change between the load and the watch has no event: look once
+		   (the fd is every file's, so the others are looked at too) */
+		if ((b->watch = file_watch(path)) >= 0) {
+			if (file_watch_read(b->watch, path, &b->id) == 1 && !b->changed) b->changed = 1;
+			core_watch(e, b->watch);
+		}
 	}
+	free(data);
+	b->syn = path ? syntax_open(path, b->text) : NULL;
+	undo_hook(u, undo_seen, b);
+	if (!path) return 0;
+	if (j < 0) core_msg(e, "E303: Unable to open journal for \"%s\", recovery impossible%s", path,
+	                    busy ? " (another editor has it open)" : "");
+	else if (core_modified(b))
+		core_msg(e, "\"%s\" recovered from the crash journal%s", path,
+		         b->changed ? "; the file changed since (:w! overwrites it)" : "");
+	/* readfile()'s message */
+	else if (!id.exists) core_msg(e, "\"%s\" [New]", path);
+	else core_msg(e, "\"%s\"%s %zuL, %zuB", path, noeol && n ? " [noeol]" : "", n ? buf_lines(b) : 0, n);
 	return 0;
 oom:
 	core_msg(e, "out of memory");
@@ -210,11 +291,17 @@ static Buf *buf_new(Editor *e, const char *path)
 
 /* u_savecommon() keeps a-z, < and > as they were when a group opened, and
    u_undoredo() swaps them back in.  A group's marks by its number (m[26]
-   and m[27] are < and >), kept only while one of them is set: marks are
-   rare, so the list stays short.  join: the group joined lines (see
-   core_mark_join), which u_save() saved as the lines around the joint */
+   and m[27] are < and >), kept only while one of them is set.  join: the
+   group joined lines (see core_mark_join), which u_save() saved as the
+   lines around the joint.  A buffer's entries are newest first: a new
+   group (the highest number) goes before the buffer's first entry, and an
+   undo or redo near the current state stops early (review of PR 20, 8). */
 typedef struct UndoMarks { Buf *b; unsigned long seq; Mark m[28]; int join; struct UndoMarks *next; } UndoMarks;
 static UndoMarks *umarks;
+/* 'undolevels' keeps 1,000 groups, so no more entries are kept per buffer:
+   past that the oldest go (groups the tree has freed, as long as it frees
+   the oldest numbers first: hypothesis) */
+enum { UMARKS_MAX = 1000 };
 
 static void marks_snap(const Buf *b, Mark *m)
 {
@@ -223,11 +310,18 @@ static void marks_snap(const Buf *b, Mark *m)
 	m[27] = b->mark[MARK_GT];
 }
 
+/* where group seq's entry is or goes */
 static UndoMarks **umarks_find(const Buf *b, unsigned long seq)
 {
 	UndoMarks **p = &umarks;
-	while (*p && ((*p)->b != b || (*p)->seq != seq)) p = &(*p)->next;
+	while (*p && ((*p)->b != b || (*p)->seq > seq)) p = &(*p)->next;
 	return p;
+}
+
+static UndoMarks *umarks_get(const Buf *b, unsigned long seq)
+{
+	UndoMarks *u = *umarks_find(b, seq);
+	return u && u->b == b && u->seq == seq ? u : NULL;
 }
 
 /* the group's marks become m (NULL: kept), and join is or-ed in: the entry
@@ -236,14 +330,21 @@ static UndoMarks **umarks_find(const Buf *b, unsigned long seq)
 static void umarks_put(Buf *b, unsigned long seq, const Mark *m, int join)
 {
 	UndoMarks **p = umarks_find(b, seq), *u = *p;
+	if (u && (u->b != b || u->seq != seq)) u = NULL;
 	int any = join || (u && u->join);
 	for (int i = 0; i < 28; i++) any |= m ? m[i].set : u && u->m[i].set;
 	if (!any) {
 		if (u) { *p = u->next; free(u); }
 		return;
 	}
-	if (!u && (u = calloc(1, sizeof *u))) { u->b = b; u->seq = seq; u->next = umarks; umarks = u; }
-	if (!u) return;
+	if (!u) {
+		if (!(u = calloc(1, sizeof *u))) return;
+		u->b = b; u->seq = seq; u->next = *p; *p = u;
+		int k = 0;
+		for (UndoMarks **q = &umarks; *q;)
+			if ((*q)->b == b && ++k > UMARKS_MAX) { UndoMarks *x = *q; *q = x->next; free(x); }
+			else q = &(*q)->next;
+	}
 	if (m) memcpy(u->m, m, sizeof u->m);
 	u->join |= join;
 }
@@ -271,6 +372,7 @@ static void clrallmarks(Buf *b)
 static void buf_unload(Buf *b)
 {
 	umarks_drop(b);
+	journal_close(b->journal);   /* nothing to recover: :bd! and :q! drop the changes */
 	syntax_free(b->syn);
 	text_free(b->text);
 	undo_free(b->undo);
@@ -394,10 +496,12 @@ static int enter_buffer(Editor *e, Buf *b, int how)
 	w->buf = e->buf = b;
 	w->vc.ok = 0;                      /* w_valid = 0 */
 	/* get_winopts(): from the window that shows b now, else as b was
-	   left; with neither, the window keeps its own (the global value) */
+	   left; with neither, w_allbuf_opt: the window's own :set value (a
+	   :bp in between does not change it: review of PR 20, 4) */
 	WinInfo *i = wininfo_find(b, w, 1);
 	if (i && i->win && i->win != w && i->win->buf == b) w->wrap = i->win->wrap;
 	else if (i && i->wrap >= 0) w->wrap = i->wrap;
+	else w->wrap = w->frame->s.allwrap;
 	i = wininfo_find(b, w, 0);
 	w->line = w->col = 0;
 	/* didset_window_options(): one of leftcol and skipcol goes, as for :set wrap */
@@ -524,6 +628,8 @@ static int edit_file(Editor *e, const char *path, int force, int split)
 		b->id = id;
 		b->noeol = noeol;
 		b->saved_seq = undo_seq(b->undo);
+		b->changed = 0;                    /* the file as it is now */
+		if (b->journal) journal_saved(b->journal);
 		for (Win *v = e->wins; v; v = v->next) if (v->buf == b) win_check_cursor(v);
 		if (line1_blank(e)) { w->line = 0; w->col = core_first_nonblank(e, 0); }
 		core_set_want(e);
@@ -541,12 +647,14 @@ static int edit_file(Editor *e, const char *path, int force, int split)
 	if (!to && !b->path && shown <= 1 && buf_empty(b) && !core_modified(b)) {
 		clrallmarks(b);
 		if (*path) {
+			umarks_drop(b);            /* by address: the copy below would keep them */
 			Buf old = *b;
 			if (buf_load(e, b, path)) return -1;
 			b->wi = old.wi;
 			wininfo_reset(b, w);
 			buf_unload(&old);
 			w->line = w->col = w->top = w->skipcol = w->left = 0;
+			w->vc.ok = 0;              /* w_valid = 0: the cached column was the empty buffer's */
 		}
 		w->alt = prev_alt ? prev_alt : b;
 		beginline_white(e);
@@ -605,6 +713,8 @@ static void buf_unlist(Editor *e, Buf *b)
 	text_free(b->text);
 	undo_free(b->undo);
 	umarks_drop(b);
+	journal_close(b->journal);
+	b->journal = NULL;
 	b->syn = NULL;
 	b->text = NULL;
 	b->undo = NULL;
@@ -797,14 +907,19 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 	if (!ndel && !nins && after == b->flags) return 0;
 	char *del = malloc(ndel ? ndel : 1);
 	UndoCursor c = { e->win->line, e->win->col, b->flags };
+	/* the state after: an empty file saves empty until it gets a line of
+	   text (Vim) */
+	unsigned js = after | (b->noeol && b->id.size ? J_NOEOL : 0);
 	unsigned long seq = undo_seq(b->undo);
 	Mark snap[28];
 	marks_snap(b, snap);
 	int r = -1;
 	size_t L = text_line_of(b->text, pos);
 	int at_start = pos == text_line_start(b->text, L);
+	jnext = js;
 	if (del && text_read(b->text, pos, del, ndel) == ndel) undo_seen(b, b->text, pos, ndel, ins, nins);
 	else { free(del); del = NULL; }
+	jnext = (unsigned)-1;
 	if (del && !text_delete(b->text, pos, ndel)) {
 		if (!text_insert(b->text, pos, ins, nins)) {
 			if (!undo_record(b->undo, pos, del, ndel, ins, nins, c, after)) {
@@ -832,10 +947,10 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 	                    newlines(del, ndel), newlines(ins, nins));
 	free(del);
 	if (r) core_msg(e, "out of memory");
-	/* an empty file saves empty until it gets a line of text (Vim) */
 	else {
 		b->flags = after;
-		if (b->noeol && !b->id.size) b->noeol = 0;
+		b->noeol = !!(js & J_NOEOL);
+		jdone(e, b, js);   /* the state is in the record already */
 	}
 	join_next = NULL;
 	return r;
@@ -870,6 +985,7 @@ int core_undo(Editor *e, int redo)
 	size_t before = core_lines(e), c = win->line;
 	Mark namedm[28];
 	marks_snap(b, namedm);
+	unsigned js = jstate(b);
 	unsigned long seq = undo_seq(b->undo);             /* the group undone */
 	int r = redo ? undo_redo(b->undo, b->text, &w) : undo_undo(b->undo, b->text, &w);
 	if (redo) seq = undo_seq(b->undo);                 /* the group redone */
@@ -882,7 +998,7 @@ int core_undo(Editor *e, int redo)
 	for (Win *v = e->wins; v; v = v->next) if (v->buf == e->buf) win_invalidate(v);
 	e->buf->flags = w.flags;
 	int at_start = w.lo == core_line_start(e, first);
-	UndoMarks *u = *umarks_find(b, seq);
+	UndoMarks *u = umarks_get(b, seq);
 	/* whole lines removed: none left.  Only if the line count dropped (an
 	   insert at a line start undone leaves lo == hi there too, but u_save()
 	   saved the line), and not for a join, which u_save() saved with the
@@ -922,6 +1038,7 @@ int core_undo(Editor *e, int redo)
 	win->col = w.cur.line == l ? w.cur.col : core_col_at(e, l, win->want, 0);
 	core_clamp(e);
 	core_msg(e, "");
+	jdone(e, b, js);
 	/* u_undoredo() deletes the old lines, check_cursor_lnum(), inserts the
 	   new ones, then changed_lines(): that invalidates the cached cursor
 	   column only if the clamped cursor is at or below the first changed
@@ -942,6 +1059,8 @@ int core_write(Editor *e, Buf *b, int force)
 	switch (file_save(b->path, b->text, n, &b->id, force, kept, sizeof kept)) {
 	case SAVE_OK:
 		b->saved_seq = undo_seq(b->undo);
+		b->changed = 0;
+		if (b->journal) journal_saved(b->journal);
 		core_msg(e, "\"%s\" %zuL, %zuB written", b->path, n ? buf_lines(b) : 0, n);
 		return 0;
 	case SAVE_CHANGED:
@@ -949,12 +1068,20 @@ int core_write(Editor *e, Buf *b, int force)
 		return -1;
 	case SAVE_KEPT:
 		b->saved_seq = undo_seq(b->undo);
+		b->changed = 0;
+		if (b->journal) journal_saved(b->journal);
 		core_msg(e, "written, but another program replaced the file first; its version is in %s", kept);
 		return 0;
 	default:
 		core_msg(e, "E212: Can't open file for writing: %s", b->path);
 		return -1;
 	}
+}
+
+void core_watch(Editor *e, int fd)
+{
+	for (Buf *b = e->bufs; b; b = b->next)
+		if (b->text && b->path && b->watch == fd && file_watch_read(fd, b->path, &b->id) == 1 && !b->changed) b->changed = 1;
 }
 
 void core_msg(Editor *e, const char *fmt, ...)
@@ -971,7 +1098,7 @@ size_t core_vcol(Editor *e, size_t l, size_t col)
 {
 	size_t n, v = 0;
 	const unsigned char *s = core_line(e, l, &n);
-	for (size_t i = 0; i < col && i < n; i += uni_len(s, n, i)) v += (size_t)core_cellw(s, n, i, v);
+	for (size_t i = 0; i < col && i < n; i += uni_glen(s, n, i)) v += (size_t)core_cellw(e->win, s, n, i, v);
 	return v;
 }
 
@@ -980,11 +1107,11 @@ size_t core_col_at(Editor *e, size_t l, size_t want, int past_end)
 	size_t n, v = 0, i = 0, last = 0;
 	const unsigned char *s = core_line(e, l, &n);
 	while (i < n) {
-		size_t w = (size_t)core_cellw(s, n, i, v);
+		size_t w = (size_t)core_cellw(e->win, s, n, i, v);
 		if (want != WANT_EOL && v + w > want) return i;
 		v += w;
 		last = i;
-		i += uni_len(s, n, i);
+		i += uni_glen(s, n, i);
 	}
 	return past_end ? n : last;
 }
@@ -994,7 +1121,7 @@ size_t core_first_nonblank(Editor *e, size_t l)
 	size_t n, i = 0;
 	const unsigned char *s = core_line(e, l, &n);
 	while (i < n && (s[i] == ' ' || s[i] == '\t')) i++;
-	if (i == n && i > 0 && e->mode != MODE_INSERT) i = uni_prev(s, n, n);
+	if (i == n && i > 0 && e->mode != MODE_INSERT) i = uni_gprev(s, n, n);
 	return i;
 }
 
@@ -1005,12 +1132,12 @@ void core_clamp(Editor *e)
 	if (w->line >= n) w->line = n - 1;
 	const unsigned char *s = core_line(e, w->line, &len);
 	if (e->mode == MODE_INSERT) { if (w->col > len) w->col = len; return; }
-	if (w->col >= len) w->col = len ? uni_prev(s, len, len) : 0;
+	if (w->col >= len) w->col = len ? uni_gprev(s, len, len) : 0;
 	else {
 		/* a column restored by undo may fall inside a character: back to
 		   its first byte, as check_cursor_col() does with mb_adjust_cursor() */
 		size_t p = 0;
-		for (size_t k; p + (k = uni_len(s, len, p)) <= w->col; p += k) {}
+		for (size_t k; p + (k = uni_glen(s, len, p)) <= w->col; p += k) {}
 		w->col = p;
 	}
 }
@@ -1023,11 +1150,7 @@ void core_set_want(Editor *e)
 		w->want = w->vc.v;
 		return;
 	}
-	size_t n;
-	const unsigned char *s = core_line(e, w->line, &n);
-	w->want = core_vcol(e, w->line, w->col);
-	if (e->mode == MODE_NORMAL && w->col < n && s[w->col] == '\t')
-		w->want = core_vcol(e, w->line, w->col + 1) - 1;
+	w->want = win_vcol(e, w, NULL, NULL);   /* update_curswant(): w_virtcol */
 	w->vc.line = w->line; w->vc.col = w->col; w->vc.v = w->want;
 	w->vc.mode = e->mode; w->vc.ok = 1;
 }
@@ -1039,7 +1162,7 @@ void core_set_want(Editor *e)
 void core_set_wrap(Editor *e, int on)
 {
 	Win *w = e->win;
-	w->wrap = on;
+	w->wrap = w->frame->s.allwrap = on;
 	if (on) w->left = 0;
 	else w->skipcol = 0;
 	win_invalidate(w);
@@ -1053,14 +1176,17 @@ size_t win_vcol(Editor *e, Win *w, size_t *start, size_t *end)
 	size_t v = 0, i = 0, k, cw = 1;
 	lit_init(&it, w->buf, w->line);
 	while ((k = lit_next(&it, &s))) {
-		cw = (size_t)core_cellw(s, k, 0, v);
+		cw = (size_t)core_cellw(w, s, k, 0, v);
 		if (i >= w->col) break;
 		v += cw;
 		i += k;
 	}
 	if (!k) cw = 1;                /* past the end: one cell */
-	if (start) *start = v;
+	/* getvcol(): a double-width character after its '>' cell starts one
+	   later (head) */
+	size_t head = k && cw == 3 && *s != '\t';
+	if (start) *start = v + head;
 	if (end) *end = v + cw - 1;
 	/* in normal mode the cursor shows on the last cell of a tab */
-	return k && *s == '\t' && e->mode != MODE_INSERT ? v + cw - 1 : v;
+	return k && *s == '\t' && e->mode != MODE_INSERT ? v + cw - 1 : v + head;
 }

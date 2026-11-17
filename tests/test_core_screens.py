@@ -24,7 +24,9 @@ PUM = [('foo', 'v', ''), ('foobar', 'f', 'module.c'), ('é', '', 'λx menu'), ('
        ('λx', 'f', ''), ('y' * 40, '', ''), ('z', 'v', 'zz')]
 PUM = [(w + ('', '2', '3')[i], k, m) for i in range(3) for w, k, m in PUM]
 
-WORDS = ['foo', 'bar_1', 'x', '(', ').', ',', 'é', 'λx', 'ა', '--', 'longerword', 'a' * 30, '\t', '']
+# double-width and control characters, a line past LineIt's 512 bytes
+WORDS = ['foo', 'bar_1', 'x', '(', ').', ',', 'é', 'λx', 'ა', '--', 'longerword', 'a' * 30, '\t', '',
+         '漢', 'ab漢', '😀', '全角' * 20, '\x01', '\x7f', 'z' * 300]
 
 def gen_text(r):
     lines = []
@@ -62,7 +64,12 @@ def gen_tokens(r, nfiles):
         elif c < .76:
             toks.append('m:' + r.choice('abc'))
         else:
-            m = r.choice(['j', 'k', 'h', 'l', 'w', 'b', 'gg', 'G', '0', '$', '^'])
+            m = r.choice(['j', 'k', 'h', 'l', 'gg', 'G', '0', '$', '^', 'NG', 'NG'])
+            # NG: a jump to any line, so a cursor sits anywhere in a window
+            # when it is split or entered (review of PR 20, 6).  No w or b:
+            # which character starts a word is package 5's (word classes of
+            # wide and control characters), checked by its conformance test
+            if m == 'NG': m, cnt = 'G', str(r.choice([1, 5, 9, 12, 15, 18, 23, 30, 45, 60, 100]))
             toks.append('k:' + ('' if m == '0' else cnt) + m)   # a count then 0 is a longer count
     # the completion popup: items [a, a + n) shown in Insert mode after the
     # line's end, CTRL-N pressed s times; last, as Insert mode stays

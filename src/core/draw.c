@@ -21,7 +21,8 @@ static void wputs(Grid *g, const Win *w, int r, int c, const char *s, int attr)
 }
 
 /* Cell j of the character s (k bytes) that takes width cells: a tab is
-   spaces, a control character ^X, an invalid byte <xx> (transchar_hex()). */
+   spaces, a control character ^X, an invalid byte or what cannot be
+   printed in hex (transchar_hex()). */
 static void put_cell(Grid *g, const Win *w, int r, int c, const unsigned char *s, size_t k, int j,
                      int width, unsigned char face)
 {
@@ -29,7 +30,12 @@ static void put_cell(Grid *g, const Win *w, int r, int c, const unsigned char *s
 	unsigned char b;
 	if (*s == '\t') b = ' ';
 	else if (*s < 0x20 || *s == 0x7f) b = j ? (unsigned char)(*s == 0x7f ? '?' : *s + 0x40) : '^';
-	else if (*s >= 0x80 && k == 1) b = j == 0 ? '<' : j == 3 ? '>' : (unsigned char)hex[j == 1 ? *s / 16 : *s % 16];
+	else if (width >= 4) {
+		/* <xx> or <xxxx>: width - 2 hex digits of the byte or code point */
+		unsigned c = k == 1 ? *s : uni_cp(s, k, 0);
+		for (int d = width - 2 - j; d > 0; d--) c /= 16;
+		b = j == 0 ? '<' : j == width - 1 ? '>' : (unsigned char)hex[c % 16];
+	}
 	else if (j) return;
 	else { b = 0; wput(g, w, r, c, s, k, width, ATTR_NONE); }
 	if (b) wput(g, w, r, c, &b, 1, 1, ATTR_NONE);
@@ -39,22 +45,24 @@ static void put_cell(Grid *g, const Win *w, int r, int c, const unsigned char *s
 }
 
 /* The number column of line l (get_line_number_str()): relative to the
-   cursor line, which shows its own number left-aligned. */
-static void put_number(Grid *g, const Win *w, int r, size_t l, int top_skipped)
+   cursor line, which shows its own number left-aligned.  Returns the
+   column the "<<<" marker reaches (0: none), which the text leaves. */
+static int put_number(Grid *g, const Win *w, int r, size_t l, int top_skipped)
 {
-	char b[32];
+	char b[40];
 	int nw = win_numw(w) - 1;
 	size_t rel = l > w->line ? l - w->line : w->line - l;
 	snprintf(b, sizeof b, rel ? "%*zu " : "%-*zu ", nw, rel ? rel : l + 1);
-	if (top_skipped) {
-		/* skipcol hides the line's start: "  5" becomes "--5" and "<<<"
-		   follows the digits (win_line(), draw_lnum_col()) */
-		char *p = b, *d;
-		for (; *p == ' '; p++) *p = '-';
-		for (d = b; *d >= '0' && *d <= '9'; d++) {}
-		for (int i = 0; i < 3 && d[i]; i++) d[i] = '<';
-	}
 	wputs(g, w, r, 0, b, ATTR_DIM);
+	if (!top_skipped) return 0;
+	/* skipcol hides the line's start: "  5" becomes "--5" and three '<'
+	   follow the digits, over the text's first cells when the digits fill
+	   the column (win_line(), draw_lnum_col(); measured on lines 9, 10, 100) */
+	int d = 0;
+	for (; b[d] == ' '; d++) wputs(g, w, r, d, "-", ATTR_DIM);
+	while (b[d] >= '0' && b[d] <= '9') d++;
+	wputs(g, w, r, d, "<<<", ATTR_DIM);
+	return d + 3;
 }
 
 /* Line l from window row r: in rows of the text width with wrap (the top
@@ -64,7 +72,7 @@ static int draw_line(Grid *g, Win *w, size_t l, int r)
 {
 	int nw = win_numw(w), tw = w->w - nw;
 	size_t skip = w->wrap ? (l == w->top ? w->skipcol : 0) : w->left;
-	put_number(g, w, r, l, w->wrap && skip && l == w->top);
+	int cover = put_number(g, w, r, l, w->wrap && skip && l == w->top);
 	/* no room for text: with wrap, win_line() wraps the number column itself
 	   and the line takes the rest of the window */
 	if (tw <= 0) return !w->wrap;
@@ -75,19 +83,32 @@ static int draw_line(Grid *g, Win *w, size_t l, int r)
 	struct Syntax *syn = w->buf->syn;
 	lit_init(&it, w->buf, l);
 	while ((k = lit_next(&it, &s))) {
-		int cw = core_cellw(s, k, 0, v);
+		int cw = core_cellw(w, s, k, 0, v);
 		if (syn && (f0 == (size_t)-1 || i + k > f0 + sizeof fc)) {
 			size_t z = text_line_start(w->buf->text, l + 1) - 1;
 			f0 = i;
 			syntax_faces(syn, ls + f0, ls + f0 + sizeof fc < z ? ls + f0 + sizeof fc : z, fc);
 		}
+		/* a double-width character: after the '>' of a wrapping row's
+		   last cell (core_cellw's 3), the two cells of the character */
+		int lead = cw == 3 && *s != '\t', wide = *s >= 0x80 && cw - lead == 2;
 		for (int j = 0; j < cw; j++, v++) {
 			if (v < skip) continue;
 			size_t d = v - skip;
 			int row = w->wrap ? r + (int)(d / (size_t)tw) : r;
 			if (!w->wrap && d >= (size_t)tw) return 1;
 			if (row >= w->h) return 0;
-			put_cell(g, w, row, nw + (int)(d % (size_t)tw), s, k, j, cw, syn ? fc[i - f0] : 0);
+			int c = nw + (int)(d % (size_t)tw);
+			if (row == r && c < cover) continue;
+			unsigned char face = syn ? fc[i - f0] : 0;
+			/* win_line(): '>' where a double-width character does not fit
+			   (the line's end without wrap), '<' where the view starts in
+			   its second half (MB_FILLER_CHAR) */
+			if (j < lead || (wide && j == 0 && !w->wrap && d == (size_t)tw - 1))
+				put_cell(g, w, row, c, (const unsigned char *)">", 1, 0, 1, face);
+			else if (wide && j - lead == 1 && v == skip)
+				put_cell(g, w, row, c, (const unsigned char *)"<", 1, 0, 1, face);
+			else put_cell(g, w, row, c, s, k, j - lead, cw - lead, face);
 		}
 		i += k;
 	}
@@ -98,7 +119,7 @@ static int line_rows(const Win *w, size_t l)
 {
 	int tw = w->w - win_numw(w);
 	if (!w->wrap || tw <= 0) return 1;
-	size_t v = buf_vcol_end(w->buf, l), skip = l == w->top ? w->skipcol : 0;
+	size_t v = win_vcol_end(w, l), skip = l == w->top ? w->skipcol : 0;
 	return v <= skip ? 1 : (int)((v - skip + (size_t)tw - 1) / (size_t)tw);
 }
 
@@ -111,8 +132,12 @@ static void draw_win(Grid *g, Win *w)
 	for (; r < w->h && l < n; l++) {
 		int rows = line_rows(w, l);
 		if (!draw_line(g, w, l, r)) {
+			/* a double-width character the "@@@" starts in becomes '@' too
+			   (measured: four '@' after one) */
+			int c0 = w->w - 3 < 0 ? 0 : w->w - 3, y = w->y + w->h - 1, x = w->x + c0;
+			if (c0 > 0 && y < g->rows && x < g->cols && !g->c[y * g->cols + x].len) c0--;
 			if (l != w->top)
-				for (int c = w->w - 3 < 0 ? 0 : w->w - 3; c < w->w; c++)
+				for (int c = c0; c < w->w; c++)
 					wput(g, w, w->h - 1, c, (const unsigned char *)"@", 1, 1, ATTR_DIM);
 			return;
 		}
@@ -135,8 +160,8 @@ static int cells(const char *s)
 {
 	int c = 0;
 	size_t n = strlen(s);
-	for (size_t i = 0; i < n; i += uni_len((const unsigned char *)s, n, i))
-		c += uni_width(uni_cp((const unsigned char *)s, n, i));
+	for (size_t i = 0; i < n; i += uni_glen((const unsigned char *)s, n, i))
+		c += uni_width((const unsigned char *)s, n, i);
 	return c;
 }
 
@@ -177,17 +202,17 @@ static void draw_status(Editor *e, Grid *g, Win *w)
 	if (width > maxw) {
 		/* too long: drop characters from the start (the %< item) and put '<' */
 		while (width >= maxw && i < n) {
-			width -= uni_width(uni_cp(s, n, i));
-			i += uni_len(s, n, i);
+			width -= uni_width(s, n, i);
+			i += uni_glen(s, n, i);
 		}
 		if (maxw > 0) grid_put(g, r, w->x, (const unsigned char *)"<", 1, 1, ATTR_REV);
 		c = 1;
 	}
-	for (; i < n && c < maxw; i += uni_len(s, n, i)) {
+	for (; i < n && c < maxw; i += uni_glen(s, n, i)) {
 		/* %=: the fill goes where the right part starts */
 		if (s + i == (const unsigned char *)right && fill) c += maxw - width;
-		int cw = uni_width(uni_cp(s, n, i));
-		if (c + cw <= maxw) grid_put(g, r, w->x + c, s + i, uni_len(s, n, i), cw, ATTR_REV);
+		int cw = uni_width(s, n, i);
+		if (c + cw <= maxw) grid_put(g, r, w->x + c, s + i, uni_glen(s, n, i), cw, ATTR_REV);
 		c += cw;
 	}
 }
@@ -309,6 +334,16 @@ static void draw_pum(Editor *e, Grid *g)
 		int idx = i + pum.first, r = pum.row + i, gc = col_off, tot = 0, trunc = 0;
 		int attr = idx == e->pumsel ? ATTR_NONE : ATTR_REV;
 		const PumItem *it = &e->pum[idx];
+		/* the popup is a float: Neovim's compositor leaves the halves of a
+		   double-width character it covers at its edges as they were,
+		   where a write in the same grid would make them '>' and ' '
+		   (measured: "ab漢 漢" under the popup's first cell, "全角" under
+		   its last) */
+		int end = left + col_off + width + pum.scrollbar;
+		Cell *under = left > 0 && r < g->rows && left < g->cols && !g->c[r * g->cols + left].len
+		              ? &g->c[r * g->cols + left - 1] : NULL, keep = under ? *under : (Cell){ 0 };
+		Cell *after = r < g->rows && end < g->cols && !g->c[r * g->cols + end].len
+		              ? &g->c[r * g->cols + end] : NULL, keep2 = after ? *after : (Cell){ 0 };
 		for (int c = 0; c < col_off + width + pum.scrollbar; c++)
 			grid_put(g, r, left + c, (const unsigned char *)" ", 1, 1, attr);
 		for (int j = 0; j < 3; j++) {
@@ -320,13 +355,13 @@ static void draw_pum(Editor *e, Grid *g)
 					size_t n = strcspn(p, "\t");
 					const unsigned char *s = (const unsigned char *)p;
 					int cw = 0;
-					for (size_t q = 0; q < n; q += uni_len(s, n, q)) cw += uni_width(uni_cp(s, n, q));
+					for (size_t q = 0; q < n; q += uni_glen(s, n, q)) cw += uni_width(s, n, q);
 					if (width - tot < cw + (next_empty ? 0 : 2)) trunc = 1;
 					int avail = width - tot, shown = 0;
-					for (size_t q = 0; q < n; q += uni_len(s, n, q)) {
-						int w1 = uni_width(uni_cp(s, n, q));
+					for (size_t q = 0; q < n; q += uni_glen(s, n, q)) {
+						int w1 = uni_width(s, n, q);
 						if (trunc && shown + w1 > avail) break;
-						grid_put(g, r, left + gc + shown, s + q, uni_len(s, n, q), w1, attr);
+						grid_put(g, r, left + gc + shown, s + q, uni_glen(s, n, q), w1, attr);
 						shown += w1;
 					}
 					gc += trunc ? shown : cw;
@@ -347,6 +382,8 @@ static void draw_pum(Editor *e, Grid *g)
 			int thumb = i >= thumb_pos && i < thumb_pos + thumb_h;
 			grid_put(g, r, left + col_off + width, (const unsigned char *)" ", 1, 1, thumb ? ATTR_NONE : ATTR_DIM);
 		}
+		if (under) *under = keep;
+		if (after) *after = keep2;
 	}
 }
 
@@ -369,16 +406,19 @@ void core_draw(Editor *e, Grid *g)
 		char t[2] = { (char)e->cmdtype, 0 };
 		int c = grid_puts(g, r, 0, t, ATTR_NONE), cc = c;
 		const unsigned char *s = (const unsigned char *)e->cmd;
-		for (size_t i = 0; i < e->cmdlen; i += uni_len(s, e->cmdlen, i)) {
+		for (size_t i = 0; i < e->cmdlen; i += uni_glen(s, e->cmdlen, i)) {
 			if (i == e->cmdpos) cc = c;
-			c += grid_put(g, r, c, s + i, uni_len(s, e->cmdlen, i), 1, ATTR_NONE);
+			c += grid_put(g, r, c, s + i, uni_glen(s, e->cmdlen, i), uni_width(s, e->cmdlen, i), ATTR_NONE);
 		}
 		if (e->cmdpos >= e->cmdlen) cc = c;
 		g->crow = r;
 		g->ccol = cc < g->cols ? cc : g->cols - 1;
 		return;
 	}
-	grid_puts(g, r, 0, e->mode == MODE_INSERT ? "-- INSERT --" : e->msg, ATTR_NONE);
+	/* the mode goes on the screen's last row (msg_pos_mode()), below a
+	   taller command line; a message at the command line's first */
+	if (e->mode == MODE_INSERT) grid_puts(g, e->rows - 1, 0, "-- INSERT --", ATTR_NONE);
+	else grid_puts(g, r, 0, e->msg, ATTR_NONE);
 	draw_pum(e, g);
 	Win *w = e->win;
 	g->crow = w->y + w->frame->s.wrow;

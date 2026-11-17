@@ -365,6 +365,9 @@ void win_enter(Editor *e, Win *w)
 	e->win = w;
 	e->buf = w->buf;
 	win_check_cursor(w);
+	/* win_enter_ext()'s changed_line_abv_curs(): the view is looked at
+	   again with the window's real botline (review of PR 20, 6) */
+	w->frame->s.topvalid = 0;
 	if (w->h < p_wh) win_setheight(e, w, p_wh);
 	else if (w->h == 0) win_setheight(e, w, 1);
 	if (w->w < p_wiw) win_setwidth(e, w, p_wiw);
@@ -390,6 +393,7 @@ static void win_init(Win *n, Win *o)
 	n->frame->s.vline = (size_t)-1;   /* w_valid = 0, w_valid_cursor not set */
 	n->frame->s.bot = 1;              /* win_alloc(): w_botline 2; splitkeep=cursor copies none */
 	n->frame->s.wrap = n->wrap;
+	n->frame->s.allwrap = o->frame->s.allwrap;   /* win_copy_options() */
 }
 
 static void flatten(Editor *e, Frame *f);
@@ -903,6 +907,9 @@ static void top_new_height(Editor *e, int height)
 			for (Frame *p = f->parent; p; p = p->parent) p->height += old - nch;
 		}
 		ch = nch < old ? nch : old;   /* E36 keeps what could be taken */
+		/* setting 'cmdheight' sets w_set_curswant, as for 'wrap' (measured:
+		   5l j CTRL-W - k, review of PR 20, 2) */
+		if (e->win->want != WANT_EOL) core_set_want(e);
 	}
 	if (height > e->rows - ch) height = e->rows - ch;   /* ROWS_AVAIL */
 	new_height(e, t, height, 0);

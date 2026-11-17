@@ -14,3 +14,8 @@ core: the cursor clamp counts bytes, not characters (fuzz_core)~fuzz FUZZERS=cor
 core: the face of a cell past a shrunk screen is written (fuzz_core)~fuzz FUZZERS=core FUZZ_SECONDS=120~~src/core/draw.c~y >= 0 && y < g->rows && x >= 0 && x < g->cols~y >= 0 && x >= 0 && x < g->cols
 
 core: an undone insert at a line start counts as lines removed (test_core_undo)~test TESTS=core_undo~~src/core/core.c~at_start && n < before &&~at_start &&
+core: CTRL-D and CTRL-F never report that they could not move (no beep) (test_core_contract)~test TESTS=core_contract~~src/core/move.c~	return moved ? 0 : -1;~	return 0;
+core: gj and gk never fail at the first or last screen line (test_core_contract)~test TESTS=core_contract~~src/core/move.c~	} else r = screengo(e, w, n < 0 ? -1 : 1, n < 0 ? -n : n) ? 0 : -1;~	} else r = (screengo(e, w, n < 0 ? -1 : 1, n < 0 ? -n : n), 0);
+core: closing the last window quits with unsaved changes (test_core_contract)~test TESTS=core_contract~~src/core/win.c~		if (quit_check(e, force)) return -1;~		if (0 && quit_check(e, force)) return -1;
+core: the command line is drawn one cell to the right (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~		int c = grid_puts(g, r, 0, t, ATTR_NONE), cc = c;~		int c = grid_puts(g, r, 1, t, ATTR_NONE), cc = c;
+core: the selected popup item is not highlighted (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~		int attr = idx == e->pumsel ? ATTR_NONE : ATTR_REV;~		int attr = ATTR_REV;

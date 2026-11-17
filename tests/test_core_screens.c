@@ -11,7 +11,7 @@
 #include "core.h"
 #include "../src/core/core_int.h"
 
-static char line[1 << 16];
+static char line[1 << 20];   /* a file is one line of hex: up to 512 KiB */
 
 /* the popup's items: PUM in the .py */
 static const PumItem PUM1[] = {
@@ -170,6 +170,7 @@ int main(int argc, char **argv)
 	int ntok = 0, nscr = 0, nfile = 0, rows = 0, cols = 0, ncase = 0, bad = 0, total = 0, badcases = 0;
 	while (fgets(line, sizeof line, f)) {
 		size_t ll = strcspn(line, "\n");
+		CHECK(line[ll] == '\n');                  /* a longer line would be read as two */
 		while (ll > 2 && line[ll - 1] == ' ') ll--;
 		line[ll] = 0;
 		if (line[0] == 'C') { CHECK(sscanf(line, "C %d %d", &rows, &cols) == 2); ntok = nscr = nfile = 0; }
