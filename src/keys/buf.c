@@ -9,9 +9,11 @@ int set_curswant;
 int beeped;
 
 /* A few lines kept as NUL-terminated copies: Neovim's code holds two or
-   three line pointers at once.  gen changes with every edit. */
+   three line pointers at once.  gen changes with every edit keys makes and
+   with every key fed (the text may have changed in between: a reload, the
+   core's undo); a copy is also only good for its buffer (CTRL-W w). */
 static unsigned long gen = 1;
-static struct { long l; unsigned long gen; char *s; size_t cap; long n; } ring[4];
+static struct { const Buf *b; long l; unsigned long gen; char *s; size_t cap; long n; } ring[4];
 static int ring_next;
 
 long nlines(void) { return (long)core_lines(E); }
@@ -19,7 +21,7 @@ long nlines(void) { return (long)core_lines(E); }
 static int slot(long l)
 {
 	for (int i = 0; i < 4; i++)
-		if (ring[i].gen == gen && ring[i].l == l) return i;
+		if (ring[i].gen == gen && ring[i].l == l && ring[i].b == B) return i;
 	int i = ring_next;
 	ring_next = (ring_next + 1) % 4;
 	size_t n;
@@ -33,6 +35,7 @@ static int slot(long l)
 	memcpy(ring[i].s, s, n);
 	ring[i].s[n] = 0;
 	ring[i].n = (long)n;
+	ring[i].b = B;
 	ring[i].l = l;
 	ring[i].gen = gen;
 	return i;

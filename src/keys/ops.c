@@ -1058,7 +1058,10 @@ void do_put(int regname, int dir, long count, int flags)
 			   at the same screen column */
 			long totlen = count * yl0, end_lnum = 0, start_lnum = lnum, vcol = 0, fbo = 0;
 			if (VIsual_active) {
-				end_lnum = visual_last_line();
+				/* curbuf->b_visual's end, as mark_adjust() left it: deleting a
+				   charwise selection joins its lines, which moves the end onto
+				   the first; a block deletes no line */
+				end_lnum = VIsual_mode == 22 ? visual_last_line() : lnum;
 				if (end_lnum > start_lnum) vcol = vcol_of(lnum, col);
 			}
 			if (totlen == 0) {

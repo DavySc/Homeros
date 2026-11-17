@@ -175,7 +175,7 @@ def ours(drv, c):
     os.unlink(f.name)
     # a split character must show as a difference, not stop the run
     if p.returncode: return {'error': p.returncode, 'stderr': p.stderr[-2000:].decode(errors='backslashreplace')}
-    return json.loads(p.stdout.decode(errors='replace'))
+    return json.loads(p.stdout.decode(errors='surrogateescape'))
 
 def main():
     a = sys.argv[1:]

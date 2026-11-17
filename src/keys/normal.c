@@ -867,7 +867,6 @@ static void nv_undo(Cmdarg *cap)
 	W->want = w0;
 	/* u_doit() stops at the first step that finds nothing */
 	for (long n = cap->count1; n-- && core_undo(E, cap->cmdchar == KEY_CTRL_R) >= 0;) {}
-	extern void buf_changed(void);
 	buf_changed();
 	core_set_want(E);
 	set_curswant = 0;
@@ -1226,6 +1225,12 @@ static int run(void)
 	ca.opcount = opcount;
 	finish_op = oa.op_type != OP_NOP;
 	if (!finish_op && !oa.regname) ca.opcount = 0;
+	/* a Visual block operator can leave the cursor on the NUL ('virtualedit'
+	   block was on for it); Neovim has it back on the last character before
+	   the next command (measured: "j<C-v>D" on "ab\n\tef {", then any
+	   command, even <Ignore>, finds column 6; nvim_win_get_cursor() right
+	   after the D says 7) */
+	check_cursor_col();
 	update_curswant();
 	long old_col = curswant();
 	GET(c);

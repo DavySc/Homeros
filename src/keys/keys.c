@@ -104,6 +104,7 @@ static void key(int k, int pending)
 void keys_feed(Editor *e, int k, int pending)
 {
 	E = e;
+	buf_changed();
 	if ((E->mode != MODE_INSERT && E->mode != MODE_CMDLINE) || arrow_used) undo_close(B->undo);
 	if (reg_recording) record_key(k);
 	key_stuffed = 0;
