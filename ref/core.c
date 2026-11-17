@@ -73,9 +73,14 @@ const unsigned char *core_line(Editor *e, size_t l, size_t *len)
 {
 	size_t n = core_line_len(e, l);
 	if (n + 1 > e->lbcap) {
-		unsigned char *b = realloc(e->lb, n + 1);
+		/* doubling: growing to exactly n + 1 reallocated a line that grows
+		   a few bytes per key every key; fuzz_keys' " 22022a222" (a 66 KB
+		   line) then filled ASan's quarantine past 2 GB (measured: passes
+		   with quarantine_size_mb=0, 2.9 s with doubling) */
+		size_t cap = e->lbcap * 2 > n + 1 ? e->lbcap * 2 : n + 1;
+		unsigned char *b = realloc(e->lb, cap);
 		if (!b) { *len = 0; return (const unsigned char *)""; }
-		e->lb = b; e->lbcap = n + 1;
+		e->lb = b; e->lbcap = cap;
 	}
 	*len = text_read(e->buf->text, core_line_start(e, l), (char *)e->lb, n);
 	return e->lb;
