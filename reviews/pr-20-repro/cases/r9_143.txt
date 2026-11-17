@@ -1,0 +1,139 @@
+C 24 20
+F 090a20202020292e206261725f3120616161616161616161616161616161616161616161616161616161616161202d2d20c3a9
+F 
+F 
+T k:7w
+T k:gg
+T w:-
+T L
+P
+S 1
+S   1     ). bar_1 aaa
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S < 1,1-8          All
+S 
+M - - -
+P
+S   1
+S 2   aaaa -- é
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S < 2,48           All
+R
+M - - -
+P
+S 1
+S   1     ). bar_1 aaa
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S < 1,1-8          All
+R
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S < 1,1-8          All
+S 
+R
+M - - -
+P
+S   1
+S 2       ). bar_1 aaa
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S < 2,8            All
+R
+R
+M - - -
+E
