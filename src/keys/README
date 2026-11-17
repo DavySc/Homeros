@@ -3,7 +3,10 @@ Package 5, the Vim keys: what is not built yet, and what waits for whom.
 The rest of FEATURES.md section 2 is ported from Neovim 0.12.6 and checked
 against nvim --headless (tools/conform.py, tests/conform-recorded.json).
 Every line below is a known difference; conform.py's random sequences still
-reach some of them.
+reach some of them (measured, 2026-11-17, seed 1794946549, 2,000 sequences:
+56 differ with ref/core.c, 22 with package 4's core from PR 20; one of those
+22 is not traced yet: a block put after gE in a Visual block, "  ( ,\n\t\n,\n
+  -3" with gI ა C-o $ b ^ Esc C-v 4 gE j p J P).
 
 Not built (FEATURES.md section 2), part two of package 5:
 - search: / ? n N * # and search as a motion (d/x). / and ? read their line

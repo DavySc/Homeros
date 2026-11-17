@@ -34914,5 +34914,158 @@
 "  ⟨a, b⟩ := h₁"
 ]
 }
+},
+{
+"text": "    ́\nab\n",
+"keys": [
+"s",
+"<CR>",
+"y",
+"<Esc>"
+],
+"nvim": {
+"lines": [
+"",
+"y ́",
+"ab"
+],
+"cursor": [
+2,
+0
+]
+}
+},
+{
+"text": "\tx\n  a b , e\n",
+"keys": [
+"<C-v>",
+"{",
+"j"
+],
+"nvim": {
+"lines": [
+"\tx",
+"  a b , e"
+],
+"cursor": [
+2,
+0
+]
+}
+},
+{
+"text": "\tx\n  a b , e\n",
+"keys": [
+"<C-v>",
+"}",
+"k"
+],
+"nvim": {
+"lines": [
+"\tx",
+"  a b , e"
+],
+"cursor": [
+1,
+1
+]
+}
+},
+{
+"text": "\tx\n  a b , e\n",
+"keys": [
+"<C-v>",
+"[",
+"(",
+"j"
+],
+"nvim": {
+"cursor": [
+2,
+7
+],
+"lines": [
+"\tx",
+"  a b , e"
+]
+}
+},
+{
+"text": "ab\ncd ef\ngh\nij\n",
+"keys": [
+"G",
+"d",
+"go"
+],
+"nvim": {
+"lines": [
+""
+],
+"cursor": [
+1,
+0
+]
+}
+},
+{
+"text": "ab\ncd ef\ngh\nij\n",
+"keys": [
+"j",
+"l",
+"v",
+"go",
+"d"
+],
+"nvim": {
+"lines": [
+"a ef",
+"gh",
+"ij"
+],
+"cursor": [
+1,
+1
+]
+}
+},
+{
+"text": "ab\ncd ef\ngh\nij\n",
+"keys": [
+"G",
+"<C-v>",
+"go",
+"d"
+],
+"nvim": {
+"cursor": [
+1,
+0
+],
+"lines": [
+"b",
+"d ef",
+"h",
+"j"
+]
+}
+},
+{
+"text": "a\nb\n",
+"keys": [
+"/",
+"x",
+"<CR>",
+"x"
+],
+"nvim": {
+"cursor": [
+1,
+0
+],
+"lines": [
+"",
+"b"
+]
+}
 }
 ]

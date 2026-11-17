@@ -261,7 +261,8 @@ static int open_line(int dir)
 	if (insert) {
 		extra = c;
 		if (replacing()) replace_push_nul();
-		while (extra < len && (line[extra] == ' ' || line[extra] == '\t')) {
+		/* not a blank a combining mark is on (utf_iscomposing_first()) */
+		while (extra < len && (line[extra] == ' ' || line[extra] == '\t') && clen(line, len, extra) == 1) {
 			if (replacing()) replace_push(line + extra, 1);
 			extra++;
 		}

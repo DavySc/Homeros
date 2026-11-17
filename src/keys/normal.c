@@ -520,13 +520,16 @@ static void nv_percent(Cmdarg *cap)
 	else { setcur(p); set_curswant = 1; }
 }
 
+static void coladd_reset(void) { Pos p = cur(); p.coladd = 0; setcur(p); }
+
 static void nv_findpar(Cmdarg *cap)
 {
 	cap->oap->motion_type = MCHAR;
 	cap->oap->inclusive = 0;
 	cap->oap->use_reg_one = 1;
 	set_curswant = 1;
-	if (!findpar(&cap->oap->inclusive, cap->arg, cap->count1, 0, 0)) clearopbeep(cap->oap);
+	if (!findpar(&cap->oap->inclusive, cap->arg, cap->count1, 0, 0)) { clearopbeep(cap->oap); return; }
+	coladd_reset();
 }
 
 static void nv_brace(Cmdarg *cap)
@@ -536,6 +539,7 @@ static void nv_brace(Cmdarg *cap)
 	cap->oap->inclusive = 0;
 	set_curswant = 1;
 	if (!findsent(cap->arg, cap->count1)) { clearopbeep(cap->oap); return; }
+	coladd_reset();
 	adjust_cursor(cap->oap);
 }
 
@@ -569,6 +573,7 @@ static void nv_brackets(Cmdarg *cap)
 	oap->motion_type = MCHAR;
 	oap->inclusive = 0;
 	Pos old = cur();
+	coladd_reset();   /* nv_brackets() does it even for an error */
 	if ((cap->cmdchar == '[' && (cap->nchar == '{' || cap->nchar == '('))
 	    || (cap->cmdchar == ']' && (cap->nchar == '}' || cap->nchar == ')'))) {
 		/* "[{", "[(", "]}" or "])": go to the unmatched brace */
