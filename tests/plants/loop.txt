@@ -13,3 +13,4 @@ loop: processes and timers run inside a command~test TESTS=loop~~src/loop/loop.c
 loop: an idle loop wakes every second~test TESTS=loop~~src/loop/loop.c~	int r = poll(pf, (nfds_t)n, timeout_ms), sig = 0;~	int r = poll(pf, (nfds_t)n, timeout_ms < 0 || timeout_ms > 1000 ? 1000 : timeout_ms), sig = 0;
 loop: a full timer table not reported~test TESTS=loop~~src/loop/loop.c~	if (f < 0) return -1;~	if (f < 0) f = 0;
 loop: queued bytes lost when the queue grows~test TESTS=loop~~src/loop/loop.c~	memcpy(c->q + c->qlen, b, n);~	memcpy(c->q + c->qoff, b, n);
+loop: loop_waiting runs the read functions~test TESTS=loop~~src/loop/loop.c~	return ready(pf, slot) > 0;~	int n = ready(pf, slot);¶	for (int k = 0; k < n; k++) if (pf[k].revents) w[slot[k]].fn(w[slot[k]].ctx, pf[k].fd);¶	return n > 0;

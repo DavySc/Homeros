@@ -195,6 +195,7 @@ static void ctrl_c(void)
 	Got g;
 	CHECK(pipe(input) == 0);
 	CHECK(loop_watch(input[0], on_input, NULL) == 0);
+	CHECK(!loop_waiting());
 	CHECK(spawn(&g, "echo hi") >= 0);
 	CHECK(loop_timer(tick, &fired[3], 0) == 0);
 	pid_t w = fork();
@@ -204,6 +205,8 @@ static void ctrl_c(void)
 	while (!loop_breakcheck() && ms() - t0 < 2000) { for (int i = 0; i < 1000; i++) work += (unsigned)i; calls++; }
 	long long took = ms() - t0;
 	waitpid(w, NULL, 0);
+	CHECK(!loop_waiting());                        /* the read function took it all */
+	CHECK(write(input[1], "x", 1) == 1 && loop_waiting() && loop_waiting());   /* and reads nothing */
 	CHECK(took >= 290 && took < 400);
 	CHECK(!fired[3] && !g.nout && !g.ended[1]);   /* nothing ran inside the command */
 	fprintf(stderr, "test_loop: Ctrl-C stopped the command %lld ms after the start (key sent at 300 ms), %lld breakchecks\n", took, calls);

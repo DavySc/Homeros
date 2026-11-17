@@ -67,20 +67,33 @@ int loop_timer(void (*fn)(void *), void *ctx, int ms)
 	return 0;
 }
 
+/* Polls the watched fds without waiting; their slots go to slot. */
+static int ready(struct pollfd *pf, int *slot)
+{
+	int n = 0;
+	for (int i = 0; i < MAXW; i++)
+		if (w[i].fd) { pf[n] = (struct pollfd){ .fd = w[i].fd - 1, .events = POLLIN }; slot[n++] = i; }
+	return poll(pf, (nfds_t)n, 0) > 0 ? n : 0;
+}
+
+int loop_waiting(void)
+{
+	struct pollfd pf[MAXW];
+	int slot[MAXW];
+	return ready(pf, slot) > 0;
+}
+
 /* Neovim's line_breakcheck counts to 32 before it looks at input, so a
    caller in a tight loop pays one poll per 32 calls. */
 int loop_breakcheck(void)
 {
 	static int count;
 	struct pollfd pf[MAXW];
-	int slot[MAXW], n = 0;
+	int slot[MAXW];
 	if (loop_int || ++count < 32) return loop_int;
 	count = 0;
-	for (int i = 0; i < MAXW; i++)
-		if (w[i].fd) { pf[n] = (struct pollfd){ .fd = w[i].fd - 1, .events = POLLIN }; slot[n++] = i; }
-	if (poll(pf, (nfds_t)n, 0) > 0)
-		for (int k = 0; k < n; k++)
-			if (pf[k].revents && w[slot[k]].fd == pf[k].fd + 1) w[slot[k]].fn(w[slot[k]].ctx, pf[k].fd);
+	for (int k = 0, n = ready(pf, slot); k < n; k++)
+		if (pf[k].revents && w[slot[k]].fd == pf[k].fd + 1) w[slot[k]].fn(w[slot[k]].ctx, pf[k].fd);
 	return loop_int;
 }
 
