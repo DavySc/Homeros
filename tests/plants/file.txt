@@ -3,7 +3,7 @@ file: no check before saving (Save_nocheck)~test TESTS=file_save~~src/file/file.
 file: rename without fsync (Save2_nofsync)~test TESTS=file_save~~src/file/file.c~if (write_text(fd, t, n) || fsync(fd) || fstat(fd, &st))~if (write_text(fd, t, n) || fstat(fd, &st))
 file: identity by path after the swap (review 0, finding 3)~test TESTS=file_save~~src/file/file.c~	*id = mine;~	if (stat(real, &st) == 0) ident(&st, id); else *id = mine;
 file: load identity taken after reading (review 0, finding 3)~test TESTS=file_save~sed -i 's/^\tident(&st, id);$//' src/file/file.c~src/file/file.c~	close(fd);¶	if (!b) { memset~	fstat(fd, &st); ident(&st, id);¶	close(fd);¶	if (!b) { memset
-file: in place without a durable backup~test TESTS=file_save~~src/file/file.c~if (copy_fd(fd, b) || fsync(b) || fstat(fd, &st))~if (copy_fd(fd, b) || fstat(fd, &st))
+file: in place without a durable backup~test TESTS=file_save~~src/file/file.c~if (copy_fd(fd, b) || fsync(b)) {~if (copy_fd(fd, b)) {
 file: in place without the recheck after the copy~test TESTS=file_save~~src/file/file.c~	if (!force && !same(&after, &before)) { unlink(bak); close(fd); return SAVE_CHANGED; }~
 file: in place, torn file not put back~test TESTS=file_save~~src/file/file.c~	if (b >= 0 && lseek(fd, 0, SEEK_SET) == 0~	if (b >= 0 && 0 && lseek(fd, 0, SEEK_SET) == 0
 file: foreign owner lost (temp kept though fchown failed)~test TESTS=file_save~~src/file/file.c~		    && fchown(fd, st.st_uid, st.st_gid))) {~		    && fchown(fd, st.st_uid, st.st_gid) && 0)) {
@@ -29,7 +29,7 @@ journal: no new base after a failed append (review of PR 16, 2)~test TESTS=file_
 journal: a record that does not apply blocks the journal (review of PR 16, 2)~test TESTS=file_journal~~src/file/journal.c~		if (e[0] > text_len(*t) || e[1] > text_len(*t) - e[0]) return 0;¶~
 file: dangling symlink saved over the link (review of PR 16, 4)~test TESTS=file_save~~src/file/file.c~	if (target(path, real)) return SAVE_ERR;~	if (!realpath(path, real)) strcpy(real, path);
 file: no :w! without a backup (review of PR 16, 5)~test TESTS=file_save~~src/file/file.c~	if (!backed && !force) goto err;~	if (!backed) goto err;
-file: backup's directory not fsynced (review of PR 16, 6)~test TESTS=file_save~~src/file/file.c~		state_sync_dir(bak);   /* the backup's name durable too */¶~
+file: backup's directory not fsynced (review of PR 16, 6)~test TESTS=file_save~~src/file/file.c~		state_sync_dir(bak);   /* the backup's name durable too, before the recheck: the window after it stays short */¶~
 core wiring: recovery requires the old identity (review of PR 16, 3)~test TESTS=file_core~~ref/core.c~!memcmp(s, data, n);~!memcmp(s, data, n) && same_id(id, &b->id);
 core wiring: an edit journalled with the state before it (review of PR 16, 7)~test TESTS=file_core~~ref/core.c~	jnext = js;¶~
 core wiring: no look after adding the watch (review of PR 16, 9)~test TESTS=file_core~~ref/core.c~	if (e->buf->watch >= 0) core_watch(e, e->buf->watch);¶~

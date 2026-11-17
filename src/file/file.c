@@ -118,9 +118,10 @@ static int save_in_place(const char *real, const Text *t, size_t n, FileId *id,
 	int backed = b >= 0;
 	if (!backed && !force) goto err;
 	if (backed) {
-		if (copy_fd(fd, b) || fsync(b) || fstat(fd, &st)) { int e = errno; close(b); unlink(bak); close(fd); errno = e; return SAVE_ERR; }
+		if (copy_fd(fd, b) || fsync(b)) { int e = errno; close(b); unlink(bak); close(fd); errno = e; return SAVE_ERR; }
 		close(b);
-		state_sync_dir(bak);   /* the backup's name durable too */
+		state_sync_dir(bak);   /* the backup's name durable too, before the recheck: the window after it stays short */
+		if (fstat(fd, &st)) { int e = errno; unlink(bak); close(fd); errno = e; return SAVE_ERR; }
 		ident(&st, &after);
 		if (!force && !same(&after, &before)) { unlink(bak); close(fd); return SAVE_CHANGED; }
 	}
