@@ -104,3 +104,14 @@ gcc -std=c17 -D_DEFAULT_SOURCE -Iinclude -O1 -g -fsanitize=address,undefined -fn
 ```
 
 Fix: clamp `step` at the top of `undo_time` for the relative units (to the reader's bounds, which every stored number is below), which changes no result since the target is clamped to the ends anyway; add the extreme counts to `fuzz_undo` or a unit test, with a plant. I missed this in the first pass; it is not from the fixes.
+
+## Third pass, head 4d80454: approved, merge waits on main's build
+
+**Verdict: approved.** All five findings are fixed. The head has main merged in (PR 7 and packages 1 and 6), so these runs are against the real rope (`src/text/text.c`).
+
+- **measured** (1 run each): gcc and clang `-Werror` on `undo.c`; `test_undo`, `test_undo_file` and `test_undo_span` pass under ASan and UBSan; `test_undo_file` 48 of 48 with 6 at once; `reviews/r2/step.c` runs all 16 extreme counts with no overflow.
+- **measured**: `fuzz_undo` 125,546 runs in 91 s and `fuzz_undo_read` 192,391 runs in 121 s (from the earlier corpora), nothing found.
+- **measured** (seed 20261119): `make undo-diff`: oracle 0 of 5,000; `undo_conform` 0 of 5,000 at undolevels 1000, 0 of 5,000 at 3, 0 of 10 x 4,000. With my mix: 0 of 2,000 x 80 at 1000 (seed 201) and at 4 (seed 202).
+- Finding 5's clamp (`step` within +-2^40) changes no move: a count that large is past every change, and `:undo N` with it still gives -1.
+
+Not run on this head: the whole `make check` and `make planted`. **measured** (1 run): `make compilers` fails in `src/grid/grid.c` (`missing initializer for field 'face' of 'Cell'`), which is main's state after packages 1 and 6 merged beside PR 7, not this package's. The merge waits for that fix on main, this branch updated with it, a full `make check` and `make planted` here, and green CI.
