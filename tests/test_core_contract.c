@@ -53,6 +53,11 @@ int main(void)
 		core_set_wrap(&e, 0);
 	}
 
+	/* H and L: scrolloff only when asked (nv_scroll() skips cursor_correct()
+	   under an operator) */
+	at(&e, 49);
+	CHECK(core_screen_line(&e, 'H', 1, 0) == e.win->top && core_screen_line(&e, 'H', 1, 1) == e.win->top + 6);
+
 	/* the command line: its type at column 0 of the row under the
 	   windows, the text after it, the cursor on byte cmdpos */
 	e.mode = MODE_CMDLINE;
