@@ -6,8 +6,11 @@
 #include <string.h>
 #include "backend.h"
 #include "core.h"
+#include "git.h"
 #include "loop.h"
+#include "lsp.h"
 #include "syntax.h"
+#include "tools.h"
 
 enum { BATCH = 64, QMAX = 4096 };
 
@@ -66,13 +69,19 @@ int main(int argc, char **argv)
 			if (k == KEY_CTRL_Z && e.mode == MODE_NORMAL) {
 				b->suspend();
 				grid_free(&shown);     /* the terminal was used meanwhile: redraw all */
-			} else { running = 1; keys_feed(&e, k, qn > 0); running = 0; }
+			} else {
+				running = 1;
+				if (e.ks.pending || (!tools_key(&e, k) && !git_key(&e, k))) keys_feed(&e, k, qn > 0);
+				running = 0;
+				lsp_flush(e.buf->lsp);   /* one didChange per command (Helix) */
+			}
 			loop_int = 0;
 		}
 		if (e.quit) break;
 		if (dirty) syn = e.buf->syn != NULL;
 		if (dirty && b->ready()) {
 			core_draw(&e, &g);
+			tools_draw(&e, &g);
 			b->present(&g, &shown);
 			dirty = 0;
 		}
@@ -83,8 +92,10 @@ int main(int argc, char **argv)
 			dirty = r == 1;
 		}
 		if (loop_once(qn || syn || (dirty && b->ready()) ? 0 : -1)) break;
+		if (core_changed) { core_changed = 0; dirty = 1; }
 	}
 out:
+	git_free();
 	b->close();
 	grid_free(&g);
 	grid_free(&shown);

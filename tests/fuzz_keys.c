@@ -23,7 +23,7 @@ static void valid(const char *b, size_t n)
 int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 {
 	static const int keys[] = { 'h', 'j', 'k', 'l', '0', '^', '$', 'w', 'b', 'g', 'G', 'x', 'd', 'i', 'a',
-		'I', 'A', 'o', 'O', 'u', KEY_CTRL_R, KEY_ESC, KEY_ENTER, KEY_BS, KEY_TAB, ' ', 'q', 0xE9, '2', KEY_LEFT, 0x3BB, 0x10D0, 0x10400 };
+		'I', 'A', 'o', 'O', 'u', KEY_CTRL_R, KEY_ESC, KEY_ENTER, KEY_BS, KEY_TAB, ' ', 'q', 0xE9, '2', KEY_LEFT, 0x3BB, 0x10D0, 0x10400, KEY_DEL };
 	static char before[1 << 16], after[1 << 16], now[1 << 16];
 	static Editor e;
 	size_t nb, na, nn;
