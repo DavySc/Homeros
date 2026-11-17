@@ -11,7 +11,9 @@ pick() { if ls src/$1/*.c >/dev/null 2>&1; then echo src/$1/*.c; else echo ref/$
 mkdir -p build/win
 # Wine wants a runtime directory; CI has one, a bare shell may not
 [ -n "${XDG_RUNTIME_DIR:-}" ] || { export XDG_RUNTIME_DIR=$PWD/build/win/run; mkdir -p -m 700 "$XDG_RUNTIME_DIR"; }
-export WINEDEBUG=-all WINEDLLOVERRIDES="mscoree,mshtml=" WINEPREFIX=${WINEPREFIX:-$PWD/build/win/prefix}
+# a prefix of its own: a Wine server left running here without a display
+# would be reused by package 9's window test, whose window then fails
+export WINEDEBUG=-all WINEDLLOVERRIDES="mscoree,mshtml=" WINEPREFIX=$PWD/build/win/prefix-file
 exe=build/win/test_file_win.exe
 zig cc -target x86_64-windows-gnu -std=c17 -Wall -Wextra -Werror -D_FILE_OFFSET_BITS=64 -Iinclude -O1 -g \
   -fsanitize=undefined -fsanitize-trap=undefined -o "$exe" tests/test_file_win.c src/file/*.c $(pick text)
