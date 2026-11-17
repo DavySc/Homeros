@@ -13,7 +13,8 @@ enum { SW = 4 };
 enum { BACKSPACE_CHAR = 1, BACKSPACE_WORD, BACKSPACE_WORD_NOT_SPACE, BACKSPACE_LINE };
 
 int restart_edit, arrow_used, did_ai_flag;
-static int cmdchar_s, ins_at_eol, did_restart_edit, update_Insstart_orig, ins_need_undo;
+int ins_at_eol;
+static int cmdchar_s, did_restart_edit, update_Insstart_orig, ins_need_undo;
 static int inserted_space, lastc, wait_for, batch_len;
 static long count_s, ai_col, new_insert_skip, o_lnum;
 static Pos Insstart, Insstart_orig;

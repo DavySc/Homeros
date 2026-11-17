@@ -27,6 +27,7 @@ static long resel_VIsual_vcol, resel_VIsual_line_count;
 static struct { int mode; long vcol, line_count, count; int arg; } redo_VIsual;
 static int redo_VIsual_busy;
 
+Pos visual_end(void) { return b_visual.end; }
 long visual_last_line(void) { return b_visual.start.lnum > b_visual.end.lnum ? b_visual.start.lnum : b_visual.end.lnum; }
 
 static void do_pending_operator(Cmdarg *cap, long old_col);
@@ -386,6 +387,7 @@ static void nv_beginline(Cmdarg *cap)
 	cap->oap->motion_type = MCHAR;
 	cap->oap->inclusive = 0;
 	beginline(cap->arg);
+	ins_at_eol = 0;   /* "0" after CTRL-O stays on a one-character line's character */
 }
 
 static void nv_pipe(Cmdarg *cap)
@@ -1052,11 +1054,79 @@ static void nv_g_cmd(Cmdarg *cap)
 
 enum { NCH = 1, NCH_NOP = 2 | NCH, NCH_ALW = 4 | NCH, KEEPREG = 8 };
 
+/* ---- scrolling and windows: the core moves the view (core.h) ---- */
+
+static void nv_halfpage(Cmdarg *cap)
+{
+	if (!checkclearop(cap->oap)) core_scroll_half(E, cap->cmdchar == 4 ? 1 : -1, cap->count0);
+}
+
+static void nv_scroll_line(Cmdarg *cap)
+{
+	if (!checkclearop(cap->oap)) core_scroll(E, cap->cmdchar == 5 ? cap->count1 : -cap->count1);
+}
+
+static void nv_scroll(Cmdarg *cap)
+{
+	cap->oap->motion_type = MLINE;
+	W->line = core_screen_line(E, cap->cmdchar, cap->count1);
+	beginline(BL_SOL | BL_FIX);
+}
+
+/* zt zz zb only (FEATURES.md); nv_zet() beeps for what it does not know */
+static void nv_zet(Cmdarg *cap)
+{
+	if (checkclearop(cap->oap)) return;
+	if (cap->nchar == 't' || cap->nchar == 'z' || cap->nchar == 'b') core_scroll_cursor(E, cap->nchar);
+	else clearopbeep(cap->oap);
+}
+
+/* do_window(): the CTRL-W keys FEATURES.md lists */
+static void nv_window(Cmdarg *cap)
+{
+	int c = cap->nchar;
+	long n = cap->count0, n1 = n ? n : 1;
+	if (c == ':') { cap->cmdchar = ':'; cap->nchar = 0; nv_colon(cap); return; }
+	if (checkclearop(cap->oap)) return;
+	int one = E->wins->next == NULL, r = 0;
+	switch (c) {
+	case 's': case 'S': case 19: r = core_split(E, 0, (int)n); break;
+	case 'v': case 22: r = core_split(E, 1, (int)n); break;
+	case 'n': case 14: r = core_new(E, 0); break;
+	case 'q': case 17: r = core_close(E, 0); break;
+	/* :close never closes the last window (E444) */
+	case 'c': case 3: r = one ? -1 : core_close(E, 0); break;
+	case 'o': case 15: r = core_only(E); break;
+	case 'w': case 23: case 'W': r = one && n != 1 ? -1 : core_win_goto(E, c == 'W' ? 'W' : 'w', n); break;
+	/* win_goto_ver() and win_goto_hor() stay put without a beep */
+	case 'j': case KEY_DOWN: case 10: core_win_goto(E, 'j', n1); break;
+	case 'k': case KEY_UP: case 11: core_win_goto(E, 'k', n1); break;
+	case 'h': case KEY_LEFT: case 8: case KEY_BS: core_win_goto(E, 'h', n1); break;
+	case 'l': case KEY_RIGHT: case 12: core_win_goto(E, 'l', n1); break;
+	case 't': case 20: core_win_goto(E, 't', n1); break;
+	case 'b': case 2: core_win_goto(E, 'b', n1); break;
+	case 'p': case 16: r = core_win_goto(E, 'p', n1); break;
+	case 'x': case 24: r = core_win_move(E, 'x', n); break;
+	case 'r': case 18: r = core_win_move(E, 'r', n1); break;
+	case 'R': r = core_win_move(E, 'R', n1); break;
+	case 'H': case 'J': case 'K': case 'L': r = one ? -1 : core_win_move(E, c, n); break;
+	case '=': core_equal(E); break;
+	case '+': core_resize(E, 0, n1, 0); break;
+	case '-': core_resize(E, 0, -n1, 0); break;
+	case '_': case 31: core_resize(E, 0, n, 1); break;
+	case '>': core_resize(E, 1, n1, 0); break;
+	case '<': core_resize(E, 1, -n1, 0); break;
+	case '|': core_resize(E, 1, n, 1); break;
+	default: r = -1;
+	}
+	if (r < 0) beep();
+}
+
 static int cmd_flags(int c)
 {
 	switch (c) {
 	case '"': return NCH_NOP | KEEPREG;
-	case '\'': case '`': case 'F': case 'T': case '[': case ']': case 'f': case 'g': case 't': return NCH_ALW;
+	case '\'': case '`': case 'F': case 'T': case '[': case ']': case 'f': case 'g': case 't': case 'z': return NCH_ALW;
 	case '@': case 'm': case 'r': return NCH_NOP;
 	case 'a': case 'i': case 'q': return NCH;
 	case 'C': case 'D': case 'S': case 'X': case 'Y': case 's': case 'x': case '.': return KEEPREG;
@@ -1066,8 +1136,9 @@ static int cmd_flags(int c)
 
 static int known(int c)
 {
-	return has(" \"$%()+,-.0:;<>@ABCDEFGIJOPQRSTUWXYV[]^_abcdefghijklopqrstuvwxy{|}~", c) || c == 1 || c == 3
+	return has(" \"$%'()+,-.0:;<>@ABCDEFGHIJLMOPQRSTUWXYV[]^_`abcdefghijklmopqrstuvwxyz{|}~", c) || c == 1 || c == 3
 	       || c == 8 || c == 10 || c == 13 || c == 14 || c == 16 || c == 22 || c == 24 || c == KEY_CTRL_R
+	       || c == 4 || c == 21 || c == 5 || c == 25 || c == 23
 	       || c == KEY_ESC || c == KEY_BS || c == KEY_UP || c == KEY_DOWN || c == KEY_LEFT || c == KEY_RIGHT;
 }
 
@@ -1124,6 +1195,18 @@ static void execute(Cmdarg *cap)
 	case '}': cap->arg = FORWARD; nv_findpar(cap); break;
 	case '|': nv_pipe(cap); break;
 	case '~': nv_tilde(cap); break;
+	case 4: case 21: nv_halfpage(cap); break;
+	case 5: case 25: nv_scroll_line(cap); break;
+	case 'H': case 'L': case 'M': nv_scroll(cap); break;
+	case 'z': nv_zet(cap); break;
+	case 23: nv_window(cap); break;
+	/* marks come with the core's mark table (include/core.h, after
+	   package 4): until then m sets nothing and every mark is unset (E20) */
+	case 'm':   /* nv_mark(): setmark_pos() knows these names */
+		if (!checkclearop(cap->oap) && !has("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'`\"[]<>", cap->nchar))
+			clearopbeep(cap->oap);
+		break;
+	case '\'': case '`': clearopbeep(cap->oap); break;
 	}
 }
 
@@ -1146,9 +1229,18 @@ static int run(void)
 	update_curswant();
 	long old_col = curswant();
 	GET(c);
-	while ((c >= '1' && c <= '9') || (ca.count0 != 0 && c == '0')) {
-		if (ca.count0 > 99999999) ca.count0 = 999999999;
-		else ca.count0 = ca.count0 * 10 + (c - '0');
+	/* normal_get_command_count(): CTRL-W takes a second count after it */
+	int ctrl_w = 0;
+	for (;;) {
+		while ((c >= '1' && c <= '9') || (ca.count0 != 0 && c == '0')) {
+			if (ca.count0 > 99999999) ca.count0 = 999999999;
+			else ca.count0 = ca.count0 * 10 + (c - '0');
+			GET(c);
+		}
+		if (c != 23 || ctrl_w || oa.op_type != OP_NOP) break;
+		ctrl_w = 1;
+		ca.opcount = ca.count0;
+		ca.count0 = 0;
 		GET(c);
 	}
 	if (ca.opcount != 0) {
@@ -1157,6 +1249,7 @@ static int run(void)
 	}
 	ca.opcount = ca.count0;
 	ca.count1 = ca.count0 ? ca.count0 : 1;
+	if (ctrl_w) ca.nchar = c, c = 23;
 	ca.cmdchar = c;
 	idx_valid = known(c);
 	int done = 0;
@@ -1189,11 +1282,17 @@ static int run(void)
 	/* normal_check() before the next command; an insert the command
 	   started keeps curswant as it is (edit() runs inside the command) */
 	if (E->mode != MODE_INSERT) update_curswant();
-	/* back to Insert mode after its CTRL-O command (normal_execute()) */
-	if (oa.op_type == OP_NOP && restart_edit && !VIsual_active && !(ca.retval & CA_COMMAND_BUSY)
-	    && stuff_empty() && oa.regname == 0 && E->mode == MODE_NORMAL)
-		edit_start(restart_edit, 1);
+	if (!(ca.retval & CA_COMMAND_BUSY)) restart_insert();
 	return 1;
+}
+
+/* back to Insert mode after its CTRL-O command (normal_execute()); a
+   command line ends that command when it is done */
+void restart_insert(void)
+{
+	if (oa.op_type == OP_NOP && restart_edit && !VIsual_active && stuff_empty() && oa.regname == 0
+	    && E->mode == MODE_NORMAL)
+		edit_start(restart_edit, 1);
 }
 
 void normal_key(int k)

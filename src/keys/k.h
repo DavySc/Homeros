@@ -89,7 +89,7 @@ int  findmatchlimit(Pos *out, int initc, int flags);
 enum { FM_BACKWARD = 1, FM_FORWARD = 2, FM_BLOCKSTOP = 4, FM_SKIPCOMM = 8 };
 int  searchc(int c, int dir, int t_cmd, long count, int repeat);
 extern const char *p_mps;
-extern int virtual_op;
+extern int virtual_op, ins_at_eol;
 
 /* operator and command state (normal.c) */
 typedef struct {
@@ -165,6 +165,8 @@ long redo_get(const int **k);
 void start_redo_ins(void);
 void end_visual_mode(void);
 long visual_last_line(void);
+Pos visual_end(void);
+void restart_insert(void);
 extern int finish_op;
 extern int redo_busy;
 extern int searchc_inclusive;

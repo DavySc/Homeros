@@ -132,10 +132,10 @@ static void ex(void)
 
 static void cmdline_key(int k)
 {
-	if (k == KEY_ESC || k == KEY_CTRL_C) { E->mode = MODE_NORMAL; return; }
-	if (k == KEY_ENTER || k == '\n') { E->mode = MODE_NORMAL; core_msg(E, ""); ex(); return; }
+	if (k == KEY_ESC || k == KEY_CTRL_C) { E->mode = MODE_NORMAL; restart_insert(); return; }
+	if (k == KEY_ENTER || k == '\n') { E->mode = MODE_NORMAL; core_msg(E, ""); ex(); restart_insert(); return; }
 	if (k == KEY_BS || k == 8) {
-		if (!E->cmdlen) { E->mode = MODE_NORMAL; return; }
+		if (!E->cmdlen) { E->mode = MODE_NORMAL; restart_insert(); return; }
 		E->cmdlen = E->cmdpos = uni_prev((unsigned char *)E->cmd, E->cmdlen, E->cmdlen);
 		return;
 	}

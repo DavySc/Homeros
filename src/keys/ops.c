@@ -338,7 +338,7 @@ int op_delete(Oparg *oap)
 			Block bd = { 0 };
 			bprep(oap, &bd, l, 1);
 			if (bd.textlen == 0) continue;
-			if (l == (long)W->line) W->col = (size_t)(bd.textcol + bd.startspaces);
+			if (l == (long)W->line) setcur((Pos){ l, bd.textcol + bd.startspaces, 0 });
 			char sp[64];
 			long ns = bd.startspaces + bd.endspaces;
 			memset(sp, ' ', sizeof sp);
@@ -707,15 +707,11 @@ void op_insert(Oparg *oap, long count1)
 	W->line = (size_t)oap->start.lnum;
 	ins_block.active = 0;
 	if (oap->motion_type == MBLOCK) {
-		/* the cursor past the end of a short line ('virtualedit' block) */
-		if ((long)W->col >= ml_len((long)W->line) && oap->op_type == OP_INSERT && oap->start_vcol > vcol_of((long)W->line, ml_len((long)W->line))) {
+		/* 'virtualedit': the spaces go in before block_prep() looks */
+		if (cur().coladd > 0) {
 			u_save_cursor();
-			long l = (long)W->line, v = vcol_of(l, ml_len(l));
-			char sp[256];
-			long k = oap->start_vcol - v;
-			memset(sp, ' ', sizeof sp);
-			replace_bytes(l, ml_len(l), 0, sp, k < 256 ? k : 256);
-			W->col = (size_t)ml_len(l);
+			coladvance_force(oap->op_type == OP_APPEND ? oap->end_vcol + 1 : getviscol());
+			if (oap->op_type == OP_APPEND) W->col--;
 		}
 		bprep(oap, &bd, oap->start.lnum, 1);
 		const char *s = ml_get((long)W->line);
@@ -727,7 +723,7 @@ void op_insert(Oparg *oap, long count1)
 		if (oap->op_type == OP_APPEND) ins_block.pre_textlen -= bd.textlen;
 	}
 	if (oap->op_type == OP_APPEND) {
-		if (oap->motion_type == MBLOCK) {
+		if (oap->motion_type == MBLOCK && cur().coladd == 0) {
 			set_curswant = 1;
 			while (gchar_cursor() != 0 && (long)W->col < bd.textcol + bd.textlen) W->col++;
 			if (bd.is_short && !bd.is_MAX) {
@@ -968,6 +964,11 @@ void do_put(int regname, int dir, long count, int flags)
 			long l = (long)W->line, c = (long)W->col, n = ml_len(l);
 			if (dir == FORWARD && c < n) c += clen(ml_get(l), n, c);
 			replace_bytes(l, c, 0, "\n", 1);
+			dir = FORWARD;
+		}
+		if (flags & PUT_LINE_FORWARD) {
+			/* "p" in Visual block: the lines go below the block */
+			setcur(visual_end());
 			dir = FORWARD;
 		}
 		b_op_start = cur();
