@@ -441,7 +441,7 @@ void core_scroll(Editor *e, long n) { (void)e; (void)n; }
 int  core_scroll_half(Editor *e, int dir, long count) { (void)e; (void)dir; (void)count; return -1; }
 int  core_scroll_page(Editor *e, int dir, long count) { (void)e; (void)dir; (void)count; return -1; }
 void core_scroll_cursor(Editor *e, int how) { (void)e; (void)how; }
-size_t core_screen_line(Editor *e, int how, long count) { (void)how; (void)count; return e->win->line; }
+size_t core_screen_line(Editor *e, int how, long count, int so) { (void)how; (void)count; (void)so; return e->win->line; }
 int  core_screen_move(Editor *e, long n) { (void)e; (void)n; return -1; }
 void core_pum(Editor *e, const PumItem *items, int n, int sel, size_t col) { (void)e; (void)items; (void)n; (void)sel; (void)col; }
 

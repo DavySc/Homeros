@@ -1125,7 +1125,9 @@ static void nv_scroll_line(Cmdarg *cap)
 static void nv_scroll(Cmdarg *cap)
 {
 	cap->oap->motion_type = MLINE;
-	W->line = core_screen_line(E, cap->cmdchar, cap->count1);
+	/* nv_scroll(): no cursor_correct() while an operator is pending, so
+	   d L deletes to the last line shown */
+	W->line = core_screen_line(E, cap->cmdchar, cap->count1, cap->oap->op_type == OP_NOP);
 	beginline(BL_SOL | BL_FIX);
 }
 

@@ -5,7 +5,15 @@ Generates N random key sequences from the supported set on random text, runs
 each in nvim --headless (FEATURES.md settings, swapfile off) and in DRIVER
 (tests/conform_drv), and compares the lines and the cursor.  --record also
 saves the cases with Neovim's results, so `make test` can replay them without
-Neovim (--replay).  Exit 1 on any difference."""
+Neovim (--replay).  Exit 1 on any difference.
+
+tests/conform-known.json lists known differences: each entry has a "why",
+a "keys" regex (and optionally a "text" regex) matched against a case's
+keys as typed (''.join) and its text, and an "example" case.  A live case
+that differs and matches an entry counts as known, not as a failure; every
+example must still differ from Neovim and match its own entry, so a fixed
+difference fails the run until its entry is removed.  --record keeps only
+the cases that match Neovim; --replay takes no known differences."""
 import json, os, random, re, subprocess, sys, tempfile
 from concurrent.futures import ThreadPoolExecutor
 
@@ -197,35 +205,58 @@ def ours(drv, c):
     if p.returncode: return {'error': p.returncode, 'stderr': p.stderr[-2000:].decode(errors='backslashreplace')}
     return json.loads(p.stdout.decode(errors='surrogateescape'))
 
+def known_rule(known, c):
+    ks = ''.join(c['keys'])
+    for k in known:
+        if re.search(k['keys'], ks) and re.search(k.get('text', ''), c['text']):
+            return k
+    return None
+
+def same(g, w):
+    return g.get('lines') == w['lines'] and g.get('cursor') == w['cursor']
+
 def main():
     a = sys.argv[1:]
     drv, mode, path = a[0], None, None
     if '--record' in a: mode, path = 'record', a[a.index('--record') + 1]
     if '--replay' in a: mode, path = 'replay', a[a.index('--replay') + 1]
     seed = None
+    kp = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tests', 'conform-known.json')
+    known = json.load(open(kp)) if mode != 'replay' and os.path.exists(kp) else []
     if mode == 'replay':
         cases = json.load(open(path))
-        want = [c.pop('nvim') for c in cases]
+        want, kwant = [c.pop('nvim') for c in cases], []
     else:
         n, seed = int(a[1]), int(a[2]) if len(a) > 2 and a[2][0] != '-' else 1
         r = random.Random(seed)
         cases = [{'text': gen_text(r), 'keys': gen_keys(r)} for _ in range(n)]
-        want = nvim(cases)
-    bad = 0
+        want = nvim(cases + [k['example'] for k in known])
+        want, kwant = want[:n], want[n:]
+    bad = nknown = 0
     with ThreadPoolExecutor(os.cpu_count()) as x:
-        got = list(x.map(lambda c: ours(drv, c), cases))
+        got = list(x.map(lambda c: ours(drv, c), cases + [k['example'] for k in known]))
+    got, kgot = got[:len(cases)], got[len(cases):]
+    for k, w, g in zip(known, kwant, kgot):
+        if known_rule([k], k['example']) is not k or same(g, w):
+            bad += 1
+            print('KNOWN ENTRY STALE (its example now matches Neovim or not its rule): %s' % k['why'])
+    keep = []
     for c, w, g in zip(cases, want, got):
-        if g.get('lines') != w['lines'] or g.get('cursor') != w['cursor']:
+        if same(g, w):
+            keep.append(dict(c, nvim=w))
+        elif known_rule(known, c):
+            nknown += 1
+        else:
             bad += 1
             if bad <= 5:
                 print('DIFF text=%s keys=%s\n  nvim  %r %r\n  ours  %r %r' % (
                     json.dumps(c['text'], ensure_ascii=False), json.dumps(c['keys'], ensure_ascii=False), w['lines'], w['cursor'], g.get('lines'), g.get('cursor') or g))
     split = sum(1 for w in want if any('\udc80' <= ch <= '\udcff' for l in w['lines'] for ch in l))
-    print('%d sequences%s: %d differ from Neovim%s' % (len(cases), '' if seed is None else ' (seed %d)' % seed, bad,
-          ' (%d where Neovim wrote a split character)' % split if split else ''))
+    print('%d sequences%s: %d differ from Neovim%s%s' % (len(cases), '' if seed is None else ' (seed %d)' % seed, bad,
+          ' (%d where Neovim wrote a split character)' % split if split else '',
+          ', %d more are known differences (tests/conform-known.json)' % nknown if nknown else ''))
     if mode == 'record':
-        for c, w in zip(cases, want): c['nvim'] = w
-        json.dump(cases, open(path, 'w'), ensure_ascii=False, indent=0)
+        json.dump(keep, open(path, 'w'), ensure_ascii=False, indent=0)
     sys.exit(1 if bad else 0)
 
 main()

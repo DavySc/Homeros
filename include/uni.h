@@ -1,6 +1,5 @@
-/* Unicode kernels.  ref/uni.c steps by code point and calls every character
-   one cell wide; package 3 (src/uni/) steps by extended grapheme cluster as
-   Neovim 0.12 does and takes widths as Neovim does, with tables generated from
+/* Unicode kernels (package 3, src/uni/): steps by extended grapheme cluster
+   as Neovim 0.12 does and takes widths as Neovim does, with tables generated from
    Unicode 18 data (the version of the utf8proc that the tools' Neovim links).
    The contracts below state each result and are what Frama-C WP proves
    (make frama) for whichever implementation is built; no bit tricks in
