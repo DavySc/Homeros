@@ -242,7 +242,10 @@ static void finder_stop(void)
 static void line(const char *s, size_t n)
 {
 	if (P.what != PICK_GREP) { add(s, n, s, n, 0, 0, 0); return; }
-	/* rg -0: file NUL line:col:text */
+	/* rg -0: file NUL line:col:text.  The search names "." because rg
+	   searches a piped stdin (ours is a pipe; snacks' is /dev/null), so
+	   every file starts "./". */
+	if (n > 2 && s[0] == '.' && s[1] == '/') s += 2, n -= 2;
 	const char *z = memchr(s, 0, n);
 	if (!z) return;
 	size_t fn = (size_t)(z - s);
@@ -310,7 +313,7 @@ static void grep(void)
 	if (!P.plen) { P.done = 1; return; }     /* need_search */
 	char *argv[] = { "rg", "--color=never", "--no-heading", "--with-filename", "--line-number",
 		"--column", "--smart-case", "--max-columns=500", "--max-columns-preview",
-		"--glob=!.bare", "--glob=!.git", "-0", "--no-hidden", "--", pat, NULL };
+		"--glob=!.bare", "--glob=!.git", "-0", "--no-hidden", "--", pat, ".", NULL };
 	spawn(argv);
 }
 

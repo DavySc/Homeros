@@ -15,8 +15,10 @@ for i = 3, #arg do
   for _, it in ipairs(p:items()) do
     local f = it.file or ""
     if f:sub(1, #cwd) == cwd then f = f:sub(#cwd + 1) end
-    out[#out + 1] = f .. "|"
+    -- grep: file:line, sorted, as rg lists files in parallel
+    out[#out + 1] = (source == "grep" and ("%s:%d"):format(f, it.pos[1]) or f) .. "|"
   end
+  if source == "grep" then table.sort(out) end
   io.stdout:write(table.concat(out), "\n")
   p:close()
 end

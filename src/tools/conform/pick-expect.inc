@@ -1,15 +1,21 @@
 /* snacks.picker's smart order on the test tree, by src/tools/conform/pick.sh */
-expect("", "src/core/core.c|Makefile|README.md|picker.lua|docs/READ.md|src/core/cored.h|src/tools/pick.c|tests/test_pick.c|src/tools/match.hh|src/tools/matchx.ccc|");
+expect("", "src/core/core.c|Makefile|README.md|picker.lua|docs/READ.md|src/tools/pick.c|tests/test_pick.c|src/tools/match.hh|src/core/coredd.hpp|src/tools/matchx.ccc|");
 expect("pick", "picker.lua|src/tools/pick.c|tests/test_pick.c|");
-expect("core", "src/core/core.c|src/core/cored.h|");
-expect("c", "src/core/core.c|src/core/cored.h|src/tools/pick.c|tests/test_pick.c|src/tools/matchx.ccc|picker.lua|src/tools/match.hh|docs/READ.md|");
+expect("core", "src/core/core.c|src/core/coredd.hpp|");
+expect("c", "src/core/core.c|src/core/coredd.hpp|src/tools/pick.c|tests/test_pick.c|src/tools/matchx.ccc|picker.lua|src/tools/match.hh|docs/READ.md|");
 expect("PICK", "");
 expect("s/t", "src/tools/pick.c|src/tools/match.hh|src/tools/matchx.ccc|tests/test_pick.c|");
-expect("'core", "src/core/core.c|src/core/cored.h|");
-expect("^src", "src/core/cored.h|src/tools/pick.c|src/tools/match.hh|src/tools/matchx.ccc|");
+expect("'core", "src/core/core.c|src/core/coredd.hpp|");
+expect("^src", "src/tools/pick.c|src/tools/match.hh|src/core/coredd.hpp|src/tools/matchx.ccc|");
 expect("md$", "README.md|docs/READ.md|");
 expect("!src", "Makefile|README.md|picker.lua|docs/READ.md|tests/test_pick.c|");
 expect("tools | docs", "src/tools/pick.c|src/tools/match.hh|src/tools/matchx.ccc|docs/READ.md|");
 expect("src pick", "src/tools/pick.c|");
 expect("core.c:2", "src/core/core.c|");
 expect("zzz", "");
+expect_grep("pick", "Makefile:2|README.md:2|docs/READ.md:2|picker.lua:2|src/core/core.c:2|src/core/coredd.hpp:2|src/tools/match.hh:2|src/tools/matchx.ccc:2|src/tools/pick.c:2|tests/test_pick.c:2|");
+expect_grep("line", "Makefile:1|Makefile:3|README.md:1|README.md:3|docs/READ.md:1|docs/READ.md:3|picker.lua:1|picker.lua:3|src/core/core.c:1|src/core/core.c:3|src/core/coredd.hpp:1|src/core/coredd.hpp:3|src/tools/match.hh:1|src/tools/match.hh:3|src/tools/matchx.ccc:1|src/tools/matchx.ccc:3|src/tools/pick.c:1|src/tools/pick.c:3|tests/test_pick.c:1|tests/test_pick.c:3|");
+expect_grep("PICK", "");
+expect_grep("return 1", "Makefile:2|README.md:2|docs/READ.md:2|picker.lua:2|src/core/core.c:2|src/core/coredd.hpp:2|src/tools/match.hh:2|src/tools/matchx.ccc:2|src/tools/pick.c:2|tests/test_pick.c:2|");
+expect_grep("l.ne o", "Makefile:1|README.md:1|docs/READ.md:1|picker.lua:1|src/core/core.c:1|src/core/coredd.hpp:1|src/tools/match.hh:1|src/tools/matchx.ccc:1|src/tools/pick.c:1|tests/test_pick.c:1|");
+expect_grep("", "");

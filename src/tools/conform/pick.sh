@@ -7,7 +7,7 @@ tree=/tmp/hp   # where the test makes it (tests/test_tools_pick.c)
 rm -rf "$tree"; mkdir "$tree"
 cd "$tree"
 # the test's tree (tests/test_tools_pick.c, tree[])
-for f in Makefile README.md picker.lua docs/READ.md src/core/core.c src/core/cored.h \
+for f in Makefile README.md picker.lua docs/READ.md src/core/core.c src/core/coredd.hpp \
          src/tools/pick.c tests/test_pick.c src/tools/match.hh src/tools/matchx.ccc .hidden/x.c; do
 	mkdir -p "$(dirname "$f")"; printf 'line one\nint pick(void) { return 1; }\nlast line\n' > "$f"
 done
@@ -21,5 +21,12 @@ nvim --clean --headless -l "$here/pick.lua" "$1" smart "${pats[@]}" 2>/dev/null 
 		i=$((i + 1))
 	done < "$tree.out"
 } > "$here/pick-expect.inc"
+gpats=("pick" "line" "PICK" "return 1" "l.ne o" "")
+nvim --clean --headless -l "$here/pick.lua" "$1" grep "${gpats[@]}" 2>/dev/null > "$tree.out"
+i=0
+while IFS= read -r line; do
+	printf 'expect_grep("%s", "%s");\n' "${gpats[$i]}" "$line"
+	i=$((i + 1))
+done < "$tree.out" >> "$here/pick-expect.inc"
 rm -rf "$tree" "$tree.out"
 cat "$here/pick-expect.inc"

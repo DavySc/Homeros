@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>
 #include "check.h"
 #include "core.h"
@@ -17,14 +18,27 @@ static Grid g;
 /* every path has its own length, so rg's order (it lists in parallel) never
    decides a tie */
 static const char *tree[] = {
-	"Makefile", "README.md", "picker.lua", "docs/READ.md", "src/core/core.c", "src/core/cored.h",
+	"Makefile", "README.md", "picker.lua", "docs/READ.md", "src/core/core.c", "src/core/coredd.hpp",
 	"src/tools/pick.c", "tests/test_pick.c", "src/tools/match.hh", "src/tools/matchx.ccc", ".hidden/x.c", NULL
 };
 
+static long long ms(void)
+{
+	struct timespec t;
+	clock_gettime(CLOCK_MONOTONIC, &t);
+	return t.tv_sec * 1000LL + t.tv_nsec / 1000000;
+}
+
+/* until 300 ms pass with nothing for the picker: the finder is done (a
+   killed finder's end wakes the loop too, so the wait is timed) */
 static void settle(void)
 {
-	/* until nothing has arrived for 200 ms: the finder is done */
-	do { tools_dirty = 0; CHECK(!loop_once(200)); } while (tools_dirty);
+	long long t0 = ms();
+	while (ms() - t0 < 300) {
+		tools_dirty = 0;
+		CHECK(!loop_once(300));
+		if (tools_dirty) t0 = ms();
+	}
 }
 
 static void type(const char *s)
@@ -64,11 +78,37 @@ static void expect(const char *prompt, const char *want)
 {
 	char got[4096];
 	CHECK(!tools_pick(&e, PICK_SMART));
-	settle();
 	type(prompt);
 	rows(got, sizeof got);
 	if (getenv("SHOW")) for (int r = 0; r < g.rows; r++) { for (int c = 0; c < g.cols; c++) { Cell *x = &g.c[r * g.cols + c]; fwrite(x->ch, 1, x->len, stderr); } fputc('\n', stderr); }
 	if (strcmp(got, want)) { fprintf(stderr, "prompt \"%s\"\n  snacks %s\n  ours   %s\n", prompt, want, got); exit(1); }
+	tools_key(&e, KEY_ESC); tools_key(&e, KEY_ESC);
+}
+
+static int by_str(const void *a, const void *b) { return strcmp(*(char *const *)a, *(char *const *)b); }
+
+/* Live grep: rows "path:line:col:text" cut to "path:line", sorted (rg
+   lists files in parallel, and so in no fixed order). */
+static void expect_grep(const char *prompt, const char *want)
+{
+	char got[4096], out[4096], *row[64];
+	int n = 0;
+	CHECK(!tools_pick(&e, PICK_GREP));
+	type(prompt);
+	rows(got, sizeof got);
+	for (char *s = got, *z; (z = strchr(s, '|')); s = z + 1) {
+		*z = 0;
+		char *c = strchr(s, ':');
+		if (c && (c = strchr(c + 1, ':'))) *c = 0;
+		CHECK(n < 64);
+		row[n++] = s;
+	}
+	qsort(row, (size_t)n, sizeof *row, by_str);
+	size_t k = 0;
+	out[0] = 0;
+	for (int i = 0; i < n; i++) k += (size_t)snprintf(out + k, sizeof out - k, "%s|", row[i]);
+	if (strcmp(out, want) && getenv("SHOW")) for (int r = 0; r < g.rows; r++) { for (int c = 0; c < g.cols; c++) { Cell *x = &g.c[r * g.cols + c]; fwrite(x->ch, 1, x->len, stderr); } fputc(10, stderr); }
+	if (strcmp(out, want)) { fprintf(stderr, "grep \"%s\"\n  snacks %s\n  ours   %s\n", prompt, want, out); exit(1); }
 	tools_key(&e, KEY_ESC); tools_key(&e, KEY_ESC);
 }
 

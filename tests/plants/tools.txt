@@ -1,0 +1,15 @@
+# Plants for src/tools/ (package 15; format in tools/planted.sh).
+matcher: a consecutive byte scores 5, not fzf's 4~test TESTS=tools_match~~src/tools/match.c~BONUS_CONSECUTIVE = 4,~BONUS_CONSECUTIVE = 5,
+matcher: OR terms of equal entropy tried in their typed order (not LuaJIT's sort)~test TESTS=tools_match~~src/tools/match.c~		if (LT(u, l)) swap(t, l, u);¶		if (u - l == 1) break;~		if (u - l == 1) break;
+matcher: no filename bonus~test TESTS=tools_match~~src/tools/match.c~	if (file_bonus && !memchr~	if (0 && file_bonus && !memchr
+picker: longer texts first on a tie~test TESTS=tools_pick~~src/tools/pick.c~	if (a->tlen != b->tlen) return a->tlen < b->tlen ? -1 : 1;~	if (a->tlen != b->tlen) return a->tlen > b->tlen ? -1 : 1;
+picker: no frecency bonus~test TESTS=tools_pick~~src/tools/pick.c~		r += (1 - 1 / (1 + i->frecency)) * 8;~		r += 0;
+picker: grep keeps rg's ./ prefix~test TESTS=tools_pick~~src/tools/pick.c~	if (n > 2 && s[0] == '.' && s[1] == '/') s += 2, n -= 2;~	(void)0;
+picker: a buffer's file listed again by fd/rg~test TESTS=tools_pick~~src/tools/pick.c~			if (same(P.a + P.it[k].file, P.it[k].flen, file, fn)) { P.an = i->text; return 0; }~			if (0 && same(P.a + P.it[k].file, P.it[k].flen, file, fn)) { P.an = i->text; return 0; }
+oil: a link to a directory shown without the trailing /~test TESTS=tools_oil~~src/tools/oil.c~!e || e->type == OIL_DIR || (e->type == OIL_LINK && e->linkdir) ? "/" : ""~!e || e->type == OIL_DIR ? "/" : ""
+oil: names sorted byte by byte, not in natural order~test TESTS=tools_oil~~src/tools/oil.c~		if (nat && s[i] >= '0' && s[i] <= '9') {~		if (0 && nat && s[i] >= '0' && s[i] <= '9') {
+oil: a link line without " -> " kept as its entry~test TESTS=tools_oil~~src/tools/oil.c~				if (!a || strstr(a + 4, " -> ")) id = -1;~				if (!a || strstr(a + 4, " -> ")) name[0] = 0;
+oil: link targets compared with their trailing /~test TESTS=tools_oil~~src/tools/oil.c~	return n == trimsep(b) && !memcmp(a, b, n);~	return !strcmp(a, b);
+oil: a directory's children waited on in list order, not name order~test TESTS=tools_oil~~src/tools/oil.c~		for (; j > from && strcmp(~		for (; j > from && 0 && strcmp(
+oil: a move cycle's temporary name made from the destination~test TESTS=tools_oil~~src/tools/oil.c~"%s__oil_tmp_%05d", a->src~"%s__oil_tmp_%05d", a->dst
+oil: no icon by exact file name~test TESTS=tools_oil~~src/tools/icons.c~	if ((r = GET(file_icons, base))) return r;~	if (0 && (r = GET(file_icons, base))) return r;
