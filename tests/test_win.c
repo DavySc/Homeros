@@ -26,8 +26,7 @@
 static const Backend *b = &backend_win;
 static HWND win;
 static int cw, ch;
-static const COLORREF BG = RGB(30, 30, 46), REV = RGB(205, 214, 244), RED = RGB(255, 0, 0),
-                      DIM = RGB(108, 112, 134), GREEN = RGB(166, 227, 161);
+static const COLORREF BG = RGB(30, 30, 46), REV = RGB(205, 214, 244), RED = RGB(255, 0, 0);
 
 static int input(int *k, int max)
 {
@@ -55,6 +54,27 @@ static int count(int r, int c, COLORREF p)
 		for (int x = c * cw; x < (c + 1) * cw; x++) n += GetPixel(dc, x, y) == p;
 	ReleaseDC(win, dc);
 	return n;
+}
+
+/* how many pixels of cell (r, c) are not the background */
+static int inked(int r, int c) { return cw * ch - count(r, c, BG); }
+
+static int lum(COLORREF p) { return GetRValue(p) + GetGValue(p) + GetBValue(p); }
+
+/* the pixel of cell (r, c) furthest from the background */
+static COLORREF ink(int r, int c)
+{
+	HDC dc = GetDC(win);
+	COLORREF best = BG;
+	int most = -1;
+	for (int y = r * ch; y < (r + 1) * ch; y++)
+		for (int x = c * cw; x < (c + 1) * cw; x++) {
+			COLORREF p = GetPixel(dc, x, y);
+			int d = abs(GetRValue(p) - GetRValue(BG)) + abs(GetGValue(p) - GetGValue(BG)) + abs(GetBValue(p) - GetBValue(BG));
+			if (d > most) { most = d; best = p; }
+		}
+	ReleaseDC(win, dc);
+	return best;
 }
 
 static void paint(COLORREF p)
@@ -188,9 +208,14 @@ int main(void)
 	g.c[6 * g.cols + 1].face = FACE_STRING;
 	put(&g, 7, 1, "\xe4\xb8\xad", 2, ATTR_REV);   /* U+4E2D, two cells */
 	present(&g, &shown);
-	CHECK(count(4, 1, REV) > 0 && count(4, 1, BG) > 0);
-	CHECK(count(5, 1, DIM) > 0 && count(5, 1, REV) == 0);
-	CHECK(count(6, 1, GREEN) > 0 && count(6, 1, REV) == 0);
+	/* glyph edges are blended (ClearType), so few pixels are exactly the
+	   text colour: look at the inked pixels and the one furthest from the
+	   background instead */
+	COLORREF m = ink(4, 1), d = ink(5, 1), s = ink(6, 1);
+	CHECK(inked(4, 1) > 0 && inked(4, 1) < cw * ch);   /* a letter, not a filled cell */
+	CHECK(inked(5, 1) > 0 && lum(d) < lum(m));         /* dim is darker */
+	CHECK(inked(6, 1) > 0 && GetGValue(s) > GetRValue(s) && GetGValue(s) > GetBValue(s));   /* green */
+	CHECK(GetBValue(m) > GetGValue(m));                /* the text colour is blue-white, not green */
 	CHECK(count(7, 2, REV) > cw * ch / 2 && count(7, 3, REV) == 0);
 
 	/* covered and uncovered: WM_PAINT draws from the DIB */
