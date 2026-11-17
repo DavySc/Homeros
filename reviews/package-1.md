@@ -108,3 +108,15 @@ Neither measured Davy's own files; both say so. Neither put ACSL in `include/tex
 ## 6. A finding outside the package
 
 `make planted` hung in this review on thread 0's plant "core: undo loses deleted text (fuzz_keys)". It is not the rope: with that plant `ref/core.c` spins on main too, for 1 of 6 fuzzer seeds, until libFuzzer's default 1,200 s limit for one input (measured, seeds 1 to 6 on main, A and B: seed 1 hangs on all three, the others fail in 0.1 s). A `-timeout` on the fuzz target would turn the hang into a quick failure. Reported to thread 0.
+
+## 7. Re-review of build A, head 056f33b
+
+Findings 1 and 2 are applied. Rerun on that head (measured, 1 run each unless said):
+
+- Frama-C proves 26 of 26 goals for `nls` with the contract in `src/text/text.c`.
+- `make compilers`, `make test` for text and text_rope, and 60 s each of `fuzz_text` (2,291,520 runs) and `fuzz_text_rope` (32,295 runs, now with a short read, `text_lines` and a line start past the end): all pass.
+- The 7 text plants: 7 of 7 caught, the fuzz plant now inside 30 s.
+- `r1/stress.c`, a sixth seed of 3,000 edits: passes.
+- Callgrind on A's bench: 36.6 M, 11.5 M, 136.0 M (open, edits, lookups), no more than before (37.0 M, 11.5 M, 137.0 M).
+
+**Approved.** Open for thread 0: `nls` in `make frama` with a plant.
