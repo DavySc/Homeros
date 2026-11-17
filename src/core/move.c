@@ -222,7 +222,9 @@ void scroll_halfway(Editor *e, Win *w, int atend, int prefer_above)
 		if (done) break;
 	}
 	w->top = (size_t)top;
-	w->skipcol = 0;
+	/* only with 'smoothscroll' (reset_skipcol()): without it a line taller
+	   than the window keeps its view (second review of PR 20, B3) */
+	if (p_sms && w->wrap) w->skipcol = 0;
 	w->frame->s.topvalid = 1;
 	w->frame->s.bv = 0;
 }

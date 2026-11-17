@@ -298,10 +298,12 @@ static Buf *buf_new(Editor *e, const char *path)
    undo or redo near the current state stops early (review of PR 20, 8). */
 typedef struct UndoMarks { Buf *b; unsigned long seq; Mark m[28]; int join; struct UndoMarks *next; } UndoMarks;
 static UndoMarks *umarks;
-/* 'undolevels' keeps 1,000 groups, so no more entries are kept per buffer:
-   past that the oldest go (groups the tree has freed, as long as it frees
-   the oldest numbers first: hypothesis) */
-enum { UMARKS_MAX = 1000 };
+/* 'undolevels' keeps 1,000 groups (1,001 can be undone, measured in the
+   second review of PR 20), so twice that many entries per buffer are kept:
+   past that a new group drops the oldest (groups the tree has freed, as
+   long as it frees the oldest numbers first: hypothesis).  The count is
+   taken every 64th group, so a new group costs no walk of the list. */
+enum { UMARKS_MAX = 2000, UMARKS_TRIM = 64 };
 
 static void marks_snap(const Buf *b, Mark *m)
 {
@@ -340,13 +342,19 @@ static void umarks_put(Buf *b, unsigned long seq, const Mark *m, int join)
 	if (!u) {
 		if (!(u = calloc(1, sizeof *u))) return;
 		u->b = b; u->seq = seq; u->next = *p; *p = u;
-		int k = 0;
-		for (UndoMarks **q = &umarks; *q;)
-			if ((*q)->b == b && ++k > UMARKS_MAX) { UndoMarks *x = *q; *q = x->next; free(x); }
-			else q = &(*q)->next;
 	}
 	if (m) memcpy(u->m, m, sizeof u->m);
 	u->join |= join;
+}
+
+/* past UMARKS_MAX entries of b, the oldest go (entries of b are newest
+   first) */
+static void umarks_trim(const Buf *b)
+{
+	int k = 0;
+	for (UndoMarks **q = &umarks; *q;)
+		if ((*q)->b == b && ++k > UMARKS_MAX) { UndoMarks *x = *q; *q = x->next; free(x); }
+		else q = &(*q)->next;
 }
 
 /* core_mark_join() was called: the next edit of this buffer joins */
@@ -487,7 +495,8 @@ enum { ENTER_B, ENTER_E, ENTER_NEW, ENTER_ALT };
 static int enter_buffer(Editor *e, Buf *b, int how)
 {
 	Win *w = e->win;
-	if (!b->text && buf_reload(e, b)) return -1;
+	int loaded = !!b->text;
+	if (!loaded && buf_reload(e, b)) return -1;
 	if (how == ENTER_E || how == ENTER_ALT) buf_list(e, b);   /* BLN_LISTED */
 	if (w->buf != b) {
 		if (how != ENTER_NEW) core_wininfo_set(w->buf, w, 0);   /* buflist_altfpos() */
@@ -516,7 +525,9 @@ static int enter_buffer(Editor *e, Buf *b, int how)
 	/* buflist_getfile() sets w_set_curswant only for a column other than 0;
 	   do_ecmd()'s beginline() keeps curwin_init()'s curswant 0 (measured:
 	   CTRL-^ back to column 0 of a tab, then 2gg, lands on column 0) */
-	if (how == ENTER_ALT && !w->col) w->want = 0;
+	/* (an unloaded buffer goes through do_ecmd() whole, which sets it:
+	   measured, :bd then CTRL-^ onto a tab and j lands on its end) */
+	if (how == ENTER_ALT && !w->col && loaded) w->want = 0;
 	else core_set_want(e);
 	if (how != ENTER_B) { win_ecmd_topline(e, w); return 0; }
 	w->top = 0;
@@ -924,7 +935,10 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 		if (!text_insert(b->text, pos, ins, nins)) {
 			if (!undo_record(b->undo, pos, del, ndel, ins, nins, c, after)) {
 				r = 0;
-				if (undo_seq(b->undo) != seq) umarks_put(b, undo_seq(b->undo), snap, 0);   /* a new group */
+				if (undo_seq(b->undo) != seq) {   /* a new group */
+					umarks_put(b, undo_seq(b->undo), snap, 0);
+					if (undo_seq(b->undo) % UMARKS_TRIM == 0) umarks_trim(b);
+				}
 				if (join_next == b) umarks_put(b, undo_seq(b->undo), NULL, 1);
 			}
 			else { text_delete(b->text, pos, nins); text_insert(b->text, pos, del, ndel); }

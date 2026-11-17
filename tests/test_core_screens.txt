@@ -58959,3 +58959,1123 @@ R
 R
 M - 7:12 -
 E
+C 10 20
+F 090a6161616161616161616161616161616161616161616161616161616161610a666f6f206c6f6e676572776f7264206261725f310a6261725f31
+F 
+F 
+T L
+T k:3j
+T gj
+T 2C-f
+T w2:_
+T k:2k
+P
+S 1
+S   1 aaaaaaaaaaaaaaaa
+S   2 foo longerword b
+S   3 bar_1
+S ~
+S ~
+S ~
+S ~
+S < 1,1-8          All
+S 
+M - - -
+P
+S   3
+S   2 aaaaaaaaaaaaaaaa
+S   1 foo longerword b
+S 4   bar_1
+R
+R
+R
+R
+S < 4,5            All
+R
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+M - - -
+P
+S 4   bar_1
+S ~
+S ~
+S ~
+R
+R
+R
+R
+S < 4,5            Bot
+R
+M - - -
+P
+S   1 foo longerword b
+S 4   bar_1
+S < 4,5            Bot
+S 
+S 
+S 
+S 
+S 
+S 
+R
+M - - -
+P
+S 2   aaaaaaaaaaaaaaaa
+S   1 foo longerword b
+S < 2,5            50%
+R
+R
+R
+R
+R
+R
+R
+M - - -
+E
+C 15 60
+F 09292e2061616161616161616161616161616161616161616161616161616161616120280a20202020292e206c6f6e676572776f726420cebb7820cebb78202820206261725f31202c202d2d0a092c206c6f6e676572776f72640a202020202d2d20280a0a096261725f31202d2d202820292e202d2d2009202820200a20202020cebb78
+F 
+F 
+T L
+T k:oa<CR>b<CR>c<Esc>
+T wrap
+T w:s
+T size:5:83
+T k:Ayyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy<Esc>
+P
+S 1           ). aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (
+S   1     ). longerword λx λx (  bar_1 , --
+S   2         , longerword
+S   3     -- (
+S   4
+S   5         bar_1 -- ( ). --         (
+S   6     λx
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S f0                                        1,1-8          All
+S 
+M - - -
+P
+S   6         ). aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (
+S   5     ). longerword λx λx (  bar_1 , --
+S   4         , longerword
+R
+S   2
+S   1         bar_1 -- ( ). --         (
+S 7       λx
+R
+R
+R
+R
+R
+R
+S f0                                        7,7-6          All
+R
+M - - -
+P
+S   9         ). aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (
+S   8     ). longerword λx λx (  bar_1 , --
+S   7         , longerword
+S   6     -- (
+S   5
+S   4         bar_1 -- ( ). --         (
+S   3     λx
+S   2     a
+S   1     b
+S 10      c
+R
+R
+R
+S f0 [+]                                    10,5           All
+R
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S :set wrap
+M - - -
+P
+S   5
+S   4         bar_1 -- ( ). --         (
+S   3     λx
+S   2     a
+S   1     b
+S 10      c
+S f0 [+]                                    10,5           Bot
+S   5
+S   4         bar_1 -- ( ). --         (
+S   3     λx
+S   2     a
+S   1     b
+S 10      c
+S f0 [+]                                    10,5           Bot
+R
+M - - -
+P
+S 10      c
+S f0 [+]                                                           10,5           Bot
+S 10      c
+S f0 [+]                                                           10,5           Bot
+S 
+M - - -
+P
+S 10      cyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+R
+S 10<<<yy
+S f0 [+]                                                           10,82          Bot
+R
+M - - -
+E
+C 10 20
+F 
+F 202020206c6f6e676572776f726420666f6f20292e20666f6f207820666f6f20c3a92020202820666f6f0a2c206161616161616161616161616161616161616161616161616161616161612009202c20280a0a0a09cebb78206161616161616161616161616161616161616161616161616161616161610a666f6f206261725f3120666f6f0a202020206261725f3120280ae1839020202c0a096261725f31207820200920782061616161616161616161616161616161616161616161616161616161616120666f6f2061616161616161616161616161616161616161616161616161616161616120c3a90a61616161616161616161616161616161616161616161616161616161616120666f6f206161616161616161616161616161616161616161616161616161616161610ac3a920616161616161616161616161616161616161616161616161616161616161206c6f6e676572776f726420c3a920666f6f2078202061616161616161616161616161616161616161616161616161616161616120092061616161616161616161616161616161616161616161616161616161616120780a292e207820c3a920292e20282020c3a920666f6f20e183900a2d2d206261725f31206c6f6e676572776f72640a09206161616161616161616161616161616161616161616161616161616161612061616161616161616161616161616161616161616161616161616161616120e183902078202c202c206c6f6e676572776f726420090a09202820666f6f20292e20780a0acebb780a6c6f6e676572776f7264202d2d0ac3a9206261725f310a666f6f0a6261725f31200a2c202c202c206c6f6e676572776f72642020cebb782020e183900acebb78206c6f6e676572776f726420292e0a2c20666f6f0a292e20cebb78202d2d20780a0a20202020090a20202020206c6f6e676572776f7264206c6f6e676572776f726420780ac3a90a6c6f6e676572776f726420e183900a09616161616161616161616161616161616161616161616161616161616161202d2d2061616161616161616161616161616161616161616161616161616161616120666f6f202c20292e0a202020200a09cebb78200920292e20c3a920cebb78202d2d20cebb782078206261725f312020cebb78202d2d0a20202020666f6f20e18390206261725f3120e1839020cebb78202d2d202c20c3a9200a09e18390206c6f6e676572776f726420e1839020c3a920292e200ac3a920206261725f3120202d2d207820c3a90a20202020292e20c3a90a0920292e20292e202d2d207820666f6f206c6f6e676572776f726420cebb78206c6f6e676572776f72642020616161616161616161616161616161616161616161616161616161616161200a202020200a09c3a9206261725f31200a
+F 
+T nowrap
+T bp
+T w7:t
+T new
+T wrap
+T 3C-f
+T bp
+T nop
+T e:f1
+T k:Ayyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy<Esc>
+T k:oa<CR>b<CR>c<Esc>
+T k:0
+T k:7$
+T 2M
+T pum:18:11:1
+P
+S 1
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S < 0,0-1          All
+S 
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S :set nowrap
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S :bp
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+M - - -
+P
+R
+R
+R
+S < 0,0-1          All
+S 1
+R
+R
+R
+R
+S :new
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S :set wrap
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S :bp
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+M - - -
+P
+R
+R
+R
+R
+S 1       longerword f
+S     oo ). foo x foo
+S     é   ( foo
+S   1 , aaaaaaaaaaa@@@
+S < 1,5            Top
+S :e f1
+M - - -
+P
+R
+R
+R
+R
+S 1<<<yyyyyyyyyyyyyyyy
+S     yyyyyyyyyyyyyyyy
+S     yyyyyyyyyyyyyyyy
+S     yyyyyyyyyyyyyyy
+S < 1,112-111      Top
+S 
+M - - -
+P
+R
+R
+R
+R
+S 4       c
+S   1 , aaaaaaaaaaaaaa
+S     aaaaaaaaaaaaaaaa
+S              , (
+S < 4,5             7%
+R
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+S < 4,1             7%
+R
+M - - -
+P
+R
+R
+R
+R
+S   1 foo bar_1 foo
+S 10      bar_1 (
+S   1 ა  ,
+S   2         bar_1@@@
+S < 10,11          20%
+R
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+M - - -
+P
+S 1  yyyyyyyyyyyyyyy>
+S ~  z2
+S ~  foo3
+S <  foobar3
+S    é3
+S 10      bar_1 (z2
+R
+R
+R
+S -- INSERT --
+M - - -
+E
+C 24 60
+F 09e1839020780a202020206c6f6e676572776f7264206c6f6e676572776f726420666f6f
+F 
+F 
+T w:s
+T wrap
+T k:$
+T sp
+T size:10:14
+T new
+T w:K
+P
+S 1           ა x
+S   1     longerword longerword foo
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S f0                                        1,1-8          All
+S 
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S f0                                        1,1-8          All
+S 1           ა x
+S   1     longerword longerword foo
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S :set wrap
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S f0                                        1,6-11         All
+R
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+S f0                                        1,1-8          All
+S 1           ა x
+S   1     longerword longerword foo
+S ~
+S ~
+S ~
+R
+S f0                                        1,6-11         All
+S 1           ა x
+S   1     longerword longerword foo
+R
+R
+R
+R
+R
+R
+S :sp
+M - - -
+P
+S 1           ა
+S   1     longer
+S ~
+S ~
+S <          All
+S 1           ა
+S <1         Top
+S 1<<<x
+S <1         Top
+S 
+M - - -
+P
+R
+S <          Top
+S 1           ა
+S     x
+S <1         Top
+S 1<<<x
+R
+S 1
+S <          All
+S :new
+M - - -
+P
+S 1
+S <          All
+R
+S <          Top
+S 1           ა
+S     x
+R
+S 1<<<x
+S <1         Top
+R
+M - - -
+E
+C 8 40
+F 096162630a7a7a7a7a7a7a7a7a7a7a7a7a0a
+F 
+T bd
+T alt
+T k:j
+P
+S 1           abc
+S   1 zzzzzzzzzzzz
+S ~
+S ~
+S ~
+S ~
+S f0                    1,1-8          All
+S 
+M - - -
+P
+S 1
+S ~
+R
+R
+R
+R
+S [No Name]             0,0-1          All
+S :bd
+M - - -
+P
+S 1           abc
+S   1 zzzzzzzzzzzz
+R
+R
+R
+R
+S f0                    1,1-8          All
+R
+M - - -
+P
+S   1         abc
+S 2   zzzzzzzzzzzz
+R
+R
+R
+R
+S f0                    2,8            All
+R
+M - - -
+E
+C 24 40
+F 6c696e6520310a6c696e6520320a6c696e6520330a6c696e6520340a6c696e6520350a6c696e6520360a6c696e6520370a6c696e6520380a6c696e6520390a6c696e652031300a6c696e652031310a6c696e652031320a6c696e652031330a6c696e652031340a6c696e652031350a6c696e652031360a6c696e652031370a6c696e652031380a6c696e652031390a6c696e652032300a6c696e652032310a6c696e652032320a6c696e652032330a6c696e652032340a6c696e652032350a6c696e652032360a6c696e652032370a6c696e652032380a6c696e652032390a6c696e652033300a
+T k:15G
+T w:s
+T w:p
+P
+S 1   line 1
+S   1 line 2
+S   2 line 3
+S   3 line 4
+S   4 line 5
+S   5 line 6
+S   6 line 7
+S   7 line 8
+S   8 line 9
+S   9 line 10
+S  10 line 11
+S  11 line 12
+S  12 line 13
+S  13 line 14
+S  14 line 15
+S  15 line 16
+S  16 line 17
+S  17 line 18
+S  18 line 19
+S  19 line 20
+S  20 line 21
+S  21 line 22
+S f0                    1,1            Top
+S 
+M - - -
+P
+S  14 line 1
+S  13 line 2
+S  12 line 3
+S  11 line 4
+S  10 line 5
+S   9 line 6
+S   8 line 7
+R
+S   6 line 9
+S   5 line 10
+S   4 line 11
+S   3 line 12
+S   2 line 13
+S   1 line 14
+S 15  line 15
+S   1 line 16
+S   2 line 17
+S   3 line 18
+S   4 line 19
+S   5 line 20
+S   6 line 21
+S   7 line 22
+S f0                    15,1           Top
+R
+M - - -
+P
+S   6 line 9
+S   5 line 10
+S   4 line 11
+S   3 line 12
+S   2 line 13
+S   1 line 14
+S 15  line 15
+S   1 line 16
+S   2 line 17
+S   3 line 18
+S f0                    15,1           40%
+S   5 line 10
+S   4 line 11
+S   3 line 12
+S   2 line 13
+S   1 line 14
+S 15  line 15
+S   1 line 16
+S   2 line 17
+S   3 line 18
+S   4 line 19
+S   5 line 20
+S f0                    15,1           47%
+R
+M - - -
+P
+S   4 line 11
+S   3 line 12
+S   2 line 13
+S   1 line 14
+S 15  line 15
+S   1 line 16
+S   2 line 17
+S   3 line 18
+S   4 line 19
+S   5 line 20
+S f0                    15,1           50%
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+M - - -
+E
+C 30 20
+F 780a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a0a
+T k:2G
+T wrap
+T k:Ayyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy<Esc>
+T k:39h
+T k:30x
+P
+S 1   x
+S   1 zzzzzzzzzzzzzzzz
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S < 1,1            All
+S 
+M - - -
+P
+S   1 x
+S 2   zzzzzzzzzzzzzzzz
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S < 2,1            All
+R
+M - - -
+P
+S 2   zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S < 2,1            Bot
+S :set wrap
+M - - -
+P
+S 2<<<zzzzzzzzzzzzzzzz
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S     zzzzzzzzyyyyyyyy
+S     yyyyyyyyyyyyyyyy
+S     yyyyyyyyyyyyyyyy
+S ~
+S < 2,640          Bot
+S 
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S < 2,601          Bot
+R
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S     yy
+S ~
+R
+R
+R
+M - - -
+E
+C 30 40
+F 09206c6f6e676572776f7264207a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a202c20666f6f200920e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792207a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a
+F 
+T sp
+T wrap
+T 7C-d
+T k:ix<Esc>
+P
+S 1            longerword zzzzzzzzzzzzzzzz
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S f0                    1,1-8          All
+S 
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S f0                    1,1-8          All
+S 1            longerword zzzzzzzzzzzzzzzz
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S :sp
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz , f
+S     oo   全角全角全角全角全角全角全角全>
+S     角全角全角全角全角全角全角全角全角全
+S     角全角全角全角 zzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+R
+S :set wrap
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S 1<<<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+R
+R
+R
+R
+R
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzz
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S f0                    1,724-692      All
+R
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S f0 [+]                1,1-8          All
+R
+R
+R
+R
+R
+R
+S     zzzzzzzxzzzzzzzzzzzzzzzzzzzz
+R
+R
+R
+R
+R
+R
+R
+S f0 [+]                1,724-692      All
+S 
+M - - -
+E

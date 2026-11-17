@@ -85,9 +85,11 @@ static void token(Editor *e, Grid *g, const char *t)
 			CHECK(!core_edit(e, at, len, word, strlen(word)));
 			len = strlen(word);
 			w->col = col + len;
-			/* 'completeopt' "menu,popup", without menuone: no popup for one match */
+			/* 'completeopt' "menu,popup", without menuone: no popup for one
+			   match, and Neovim redraws after each CTRL-N (second review
+			   of PR 20, seed 7 case 368) */
 			core_pum(e, pum_items + a, n > 1 ? n : 0, sel, col);
-			if (n == 1 && !k) core_update(e);
+			if (n == 1) core_update(e);
 		}
 		in_pum = 1;
 		return;

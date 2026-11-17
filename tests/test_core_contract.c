@@ -5,6 +5,7 @@
    buffer, 24 x 80, the cursor line centred first (1 run each): CTRL-D on
    the last line, CTRL-U and CTRL-B on the first, gj on the last and gk on
    the first beep; from line 50 none does. */
+#include <poll.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -107,6 +108,22 @@ int main(void)
 	CHECK(alt && !strcmp(alt->path, fn[2]) && !core_split(&e, 0, 0) && e.win->alt == alt);
 	CHECK(!core_close(&e, 0));
 	CHECK(!core_buf_delete(&e, 0, 0) && !strcmp(e.buf->path, fn[2]));
+	core_free(&e);
+	/* an outside change not yet warned is forgotten by a save over it:
+	   the next edit gives no W11 */
+	CHECK(!core_open(&e, fn[0]));
+	{
+		char other[128];
+		snprintf(other, sizeof other, "%s.new", path);
+		FILE *h = fopen(other, "w");
+		CHECK(h && fputs("y\n", h) >= 0 && !fclose(h) && !rename(other, fn[0]));
+		struct pollfd pf = { e.buf->watch, POLLIN, 0 };
+		CHECK(e.buf->watch >= 0 && poll(&pf, 1, 1000) == 1);
+	}
+	core_watch(&e, e.buf->watch);
+	CHECK(!core_write(&e, e.buf, 1));
+	CHECK(!core_edit(&e, 0, 0, "z", 1) && !strstr(e.msg, "W11"));
+	CHECK(!core_close(&e, 1));
 	core_free(&e);
 	for (int i = 0; i < 4; i++) unlink(fn[i]);
 	grid_free(&g);

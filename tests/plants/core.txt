@@ -19,3 +19,15 @@ core: gj and gk never fail at the first or last screen line (test_core_contract)
 core: closing the last window quits with unsaved changes (test_core_contract)~test TESTS=core_contract~~src/core/win.c~		if (quit_check(e, force)) return -1;~		if (0 && quit_check(e, force)) return -1;
 core: the command line is drawn one cell to the right (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~		int c = grid_puts(g, r, 0, t, ATTR_NONE), cc = c;~		int c = grid_puts(g, r, 1, t, ATTR_NONE), cc = c;
 core: the selected popup item is not highlighted (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~		int attr = idx == e->pumsel ? ATTR_NONE : ATTR_REV;~		int attr = ATTR_REV;
+core: entering a window does not look at its view again (finding 6) (test_core_screens)~test TESTS=core_screens~~src/core/win.c~	w->frame->s.topvalid = 0;¶	if (w->h < p_wh)~	if (w->h < p_wh)
+core: a taller command line keeps the wanted column (finding 2) (test_core_screens)~test TESTS=core_screens~~src/core/win.c~		if (e->win->want != WANT_EOL) core_set_want(e);~		(void)0;
+core: a new buffer does not get the window's :set wrap (finding 4) (test_core_screens)~test TESTS=core_screens~~src/core/core.c~	else w->wrap = w->frame->s.allwrap;~	else (void)0;
+core: a double-width character never takes the border cell (finding 1) (test_core_screens)~test TESTS=core_screens~~src/core/core.c~== (size_t)tw - 1 ? 3 : 2;~== (size_t)tw - 1 ? 2 : 2;
+core: no '<' where the view starts inside a double-width character (test_core_screens)~test TESTS=core_screens~~src/core/draw.c~(const unsigned char *)"<", 1, 0, 1, face);~(const unsigned char *)" ", 1, 0, 1, face);
+core: plines_col counts bytes again (finding 5) (test_core_screens)~test TESTS=core_screens~~src/core/move.c~		i++;~		i += k;
+core: a reused buffer keeps the old undo marks (finding 7) (test_core_undo)~test TESTS=core_undo~~src/core/core.c~			umarks_drop(b);            /* by address~			(void)0;                  /* by address
+core: an undo group takes its neighbour's marks (test_core_undo)~test TESTS=core_undo~~src/core/core.c~	if (u && (u->b != b || u->seq != seq)) u = NULL;~	(void)0;
+core: marks kept for 3 undo groups only (test_core_undo)~test TESTS=core_undo~~src/core/core.c~enum { UMARKS_MAX = 2000, UMARKS_TRIM = 64 };~enum { UMARKS_MAX = 3, UMARKS_TRIM = 64 };
+core: a save leaves the outside-change flag set (test_core_contract)~test TESTS=core_contract~~src/core/core.c~		b->saved_seq = undo_seq(b->undo);¶		b->changed = 0;¶		if (b->journal) journal_saved(b->journal);¶		core_msg(e, "\"%s\" %zuL~		b->saved_seq = undo_seq(b->undo);¶		if (b->journal) journal_saved(b->journal);¶		core_msg(e, "\"%s\" %zuL
+core: an unloaded buffer entered by CTRL-^ wants column 0 (test_core_screens)~test TESTS=core_screens~~src/core/core.c~	if (how == ENTER_ALT && !w->col && loaded) w->want = 0;~	if (how == ENTER_ALT && !w->col) w->want = 0;
+core: scroll_cursor_halfway() drops skipcol without smoothscroll (test_core_screens)~test TESTS=core_screens~~src/core/move.c~	if (p_sms && w->wrap) w->skipcol = 0;¶	w->frame->s.topvalid = 1;~	w->skipcol = 0;¶	w->frame->s.topvalid = 1;
