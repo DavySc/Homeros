@@ -1,0 +1,14 @@
+# Plants for src/git/ (format in tools/planted.sh).  GIT_SCENARIO is unset:
+# every recorded magit trace runs, and the no-watch pass of stage-file.
+git: unmerged files under Unstaged, not Staged (magit traces)~test TESTS=git~~src/git/sec.c~			if (!cached) continue;~			if (cached) continue;
+git: j skips a section's first child (magit traces)~test TESTS=git~~src/git/keys.c~	if (!v->sec[i].hidden && i + 1 < v->sec[i].after && v->sec[i + 1].start > l) next = i + 1;¶~
+git: hidden sections forgotten by a refresh (magit traces)~test TESTS=git~~src/git/sec.c~		if (len == id->n + 2 && !memcmp(c->s.s + o, id->s, id->n)) return c->s.s + o + id->n + 1;~		if (len == id->n + 2 && !memcmp(c->s.s + o, id->s, id->n)) return NULL;
+git: a refresh runs a 6th git (process count)~test TESTS=git~~src/git/git.c~	} else if (has_tags(r) && b->oid && strcmp(b->oid, "(initial)")) {~	} else if (has_tags(r) && !system("git rev-parse -q HEAD >/dev/null 2>&1") && b->oid && strcmp(b->oid, "(initial)")) {
+git: reads take index.lock (lock check)~test TESTS=git~~src/git/git.c~		if (i == 0 && read) cmd_add(c, "--no-optional-locks");~		if (i == 0 && read) cmd_add(c, "--no-pager");
+git: a write acts on a repository it did not show (Git.tla ActsOnSeen)~test TESTS=git~~src/git/write.c~	if (r->w.ver != r->ver) {~	if (0) {
+git: an outside change does not move the version (Git.tla ActsOnSeen)~test TESTS=git~~src/git/git.c~			r->ver++;¶			r->dirty = 1;~			r->dirty = 1;
+git: a write's end does not refresh (Git.tla Truthful, no-watch pass)~test TESTS=git~~src/git/write.c~	r->dirty = 1;¶	git_schedule(r);¶	for (Aux~	git_schedule(r);¶	for (Aux
+git: an outside change does not refresh (magit traces)~test TESTS=git~~src/git/git.c~			r->ver++;¶			r->dirty = 1;~			r->ver++;
+git: discard deletes instead of trashing (trash check)~test TESTS=git~~src/git/write.c~		if (rename(src, dst)) { remove(info); return -1; }~		if (remove(src)) { remove(info); return -1; }
+git: rename from read without rename to (fuzz_git)~fuzz FUZZERS=git FUZZ_SECONDS=60~~src/git/sec.c~			else if (prefix(h.p, h.n, "rename from ") && prefix(h2.p, h2.n, "rename to ")) {~			else if (prefix(h.p, h.n, "rename from ")) {
+git: a section's subtree ends before its children (fuzz_git)~fuzz FUZZERS=git FUZZ_SECONDS=60~~src/git/sec.c~	v->sec[i].after = v->nsec;~	v->sec[i].after = i + 1;

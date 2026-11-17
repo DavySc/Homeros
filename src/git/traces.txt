@@ -1,0 +1,4395 @@
+@ nav
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> <Tab>
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)
+| c.txt
+| 
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> j
+w magit: repo|1|4
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)
+| c.txt
+| 
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> j
+w magit: repo|1|5
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)
+| c.txt
+| 
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> <Tab>
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> jjj
+w magit: repo|1|6
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> k
+w magit: repo|1|5
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> <C-j>
+w magit: repo|1|7
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> <C-j>
+w magit: repo|1|8
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> <C-k>
+w magit: repo|1|7
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> gj
+w magit: repo|1|10
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> gk
+w magit: repo|1|7
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> gh
+w magit: repo|1|0
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> G
+w magit: repo|1|13
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> <Tab>
+w magit: repo|1|13
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e Cannot hide root section
+> gg
+w magit: repo|1|0
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> <Tab>
+w magit: repo|1|0
+| Head:     main Second commit…
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> <Tab>
+w magit: repo|1|0
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+@ stage-file
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> <C-j>
+w magit: repo|1|4
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> <C-j>
+w magit: repo|1|5
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> s
+w magit: repo|1|4
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Staged changes (2)
+| modified   a.txt…
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+s cached diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\ndiff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 M. N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d 73b32b45d6a5fb5c753f4f5e83397b3640142ab9 a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree 
+> u
+w magit: repo|0|-
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Staged changes (2)
+| modified   a.txt…
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e Unstage all changes? (y or n)
+> <C-j>
+w magit: repo|1|4
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Staged changes (2)
+| modified   a.txt…
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e Abort
+> s
+w magit: repo|0|-
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Staged changes (2)
+| modified   a.txt…
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e [comma-separated list] Stage file,s:
+@ stage-hunk
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> <C-j><C-j>
+w magit: repo|1|5
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> <Tab>
+w magit: repo|1|5
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt
+| @@ -1,5 +1,5 @@
+|  one
+| -two
+| +TWO
+|  three
+|  four
+|  five
+| @@ -8,5 +8,5 @@ seven
+|  eight
+|  nine
+|  ten
+| -eleven
+| +ELEVEN
+|  twelve
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> j
+w magit: repo|1|6
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt
+| @@ -1,5 +1,5 @@
+|  one
+| -two
+| +TWO
+|  three
+|  four
+|  five
+| @@ -8,5 +8,5 @@ seven
+|  eight
+|  nine
+|  ten
+| -eleven
+| +ELEVEN
+|  twelve
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> s
+w magit: repo|1|6
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt
+| @@ -8,5 +8,5 @@ seven
+|  eight
+|  nine
+|  ten
+| -eleven
+| +ELEVEN
+|  twelve
+| 
+| Staged changes (2)
+| modified   a.txt…
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+s cached diff --git a/a.txt b/a.txt\nindex e031777..e68fa66 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\ndiff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 MM N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e68fa66657cf7a75aba1ff9350a182a7d2e52e49 a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e68fa66..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> <C-j>
+w magit: repo|1|14
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt
+| @@ -8,5 +8,5 @@ seven
+|  eight
+|  nine
+|  ten
+| -eleven
+| +ELEVEN
+|  twelve
+| 
+| Staged changes (2)
+| modified   a.txt…
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> s
+w magit: repo|0|-
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt
+| @@ -8,5 +8,5 @@ seven
+|  eight
+|  nine
+|  ten
+| -eleven
+| +ELEVEN
+|  twelve
+| 
+| Staged changes (2)
+| modified   a.txt…
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e [comma-separated list] Stage file,s:
+@ hunk-line
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> <C-j><C-j>
+w magit: repo|1|5
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> <Tab>
+w magit: repo|1|5
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt
+| @@ -1,5 +1,5 @@
+|  one
+| -two
+| +TWO
+|  three
+|  four
+|  five
+| @@ -8,5 +8,5 @@ seven
+|  eight
+|  nine
+|  ten
+| -eleven
+| +ELEVEN
+|  twelve
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> jjj
+w magit: repo|1|8
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt
+| @@ -1,5 +1,5 @@
+|  one
+| -two
+| +TWO
+|  three
+|  four
+|  five
+| @@ -8,5 +8,5 @@ seven
+|  eight
+|  nine
+|  ten
+| -eleven
+| +ELEVEN
+|  twelve
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> s
+w magit: repo|1|6
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt
+| @@ -8,5 +8,5 @@ seven
+|  eight
+|  nine
+|  ten
+| -eleven
+| +ELEVEN
+|  twelve
+| 
+| Staged changes (2)
+| modified   a.txt…
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+s cached diff --git a/a.txt b/a.txt\nindex e031777..e68fa66 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\ndiff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 MM N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e68fa66657cf7a75aba1ff9350a182a7d2e52e49 a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e68fa66..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+@ unstage-hunk
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> <C-j><C-j><C-j><C-j>
+w magit: repo|1|8
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> <Tab>
+w magit: repo|1|8
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt
+| @@ -1,3 +1,4 @@
+|  alpha
+|  beta
+|  gamma
+| +delta
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> j
+w magit: repo|1|9
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt
+| @@ -1,3 +1,4 @@
+|  alpha
+|  beta
+|  gamma
+| +delta
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> u
+w magit: repo|1|4
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (2)
+| modified   a.txt…
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+s cached 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 .M N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 85c30401ce288f253613cb07ee32e62128089caa b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\ndiff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+@ untracked
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> <Tab>
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)
+| c.txt
+| 
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> j
+w magit: repo|1|4
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)
+| c.txt
+| 
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> s
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (2)
+| modified   b.txt…
+| new file   c.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\ndiff --git a/c.txt b/c.txt\nnew file mode 100644\nindex 0000000..3e75765\n--- /dev/null\n+++ b/c.txt\n@@ -0,0 +1 @@\n+new\n
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n1 A. N... 000000 100644 100644 0000000000000000000000000000000000000000 3e757656cf36eca53338e520d134963a44f793f8 c.txt\n
+> k
+w magit: repo|1|2
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (2)
+| modified   b.txt…
+| new file   c.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> s
+w magit: repo|0|-
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (2)
+| modified   b.txt…
+| new file   c.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e [comma-separated list] Stage file,s:
+@ untracked-heading
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> s
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (2)
+| modified   b.txt…
+| new file   c.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\ndiff --git a/c.txt b/c.txt\nnew file mode 100644\nindex 0000000..3e75765\n--- /dev/null\n+++ b/c.txt\n@@ -0,0 +1 @@\n+new\n
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n1 A. N... 000000 100644 100644 0000000000000000000000000000000000000000 3e757656cf36eca53338e520d134963a44f793f8 c.txt\n
+@ stage-all
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> S
+w magit: repo|0|-
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e Stage all changes? (y or n)
+> U
+w magit: repo|0|-
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e Stage all changes? (y or n)  [Please answer y or n]
+> y
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Staged changes (2)
+| modified   a.txt…
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e Stage all changes? (y or n) y
+s cached diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\ndiff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 M. N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d 73b32b45d6a5fb5c753f4f5e83397b3640142ab9 a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree 
+@ discard
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> <C-j><C-j>
+w magit: repo|1|5
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> x
+w magit: repo|0|-
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e Discard unstaged changes in "a.txt"? (y or n)
+> y
+w magit: repo|1|4
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e Discard unstaged changes in "a.txt"? (y or n) y
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree 
+> <C-j><C-j>
+w magit: repo|1|7
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> x
+w magit: repo|1|7
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e There is no thing at point that could be deleted
+> y
+w magit: repo|1|7
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+@ discard-hunk
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> <C-j><C-j>
+w magit: repo|1|5
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> <Tab>
+w magit: repo|1|5
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt
+| @@ -1,5 +1,5 @@
+|  one
+| -two
+| +TWO
+|  three
+|  four
+|  five
+| @@ -8,5 +8,5 @@ seven
+|  eight
+|  nine
+|  ten
+| -eleven
+| +ELEVEN
+|  twelve
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> <C-j>
+w magit: repo|1|6
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt
+| @@ -1,5 +1,5 @@
+|  one
+| -two
+| +TWO
+|  three
+|  four
+|  five
+| @@ -8,5 +8,5 @@ seven
+|  eight
+|  nine
+|  ten
+| -eleven
+| +ELEVEN
+|  twelve
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> x
+w magit: repo|0|-
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt
+| @@ -1,5 +1,5 @@
+|  one
+| -two
+| +TWO
+|  three
+|  four
+|  five
+| @@ -8,5 +8,5 @@ seven
+|  eight
+|  nine
+|  ten
+| -eleven
+| +ELEVEN
+|  twelve
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e Discard hunk? (y or n)
+> y
+w magit: repo|1|6
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt
+| @@ -8,5 +8,5 @@ seven
+|  eight
+|  nine
+|  ten
+| -eleven
+| +ELEVEN
+|  twelve
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e Discard hunk? (y or n) y
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..d318e8a 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+@ discard-staged-hunk
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> <C-j><C-j><C-j><C-j>
+w magit: repo|1|8
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> <Tab>
+w magit: repo|1|8
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt
+| @@ -1,3 +1,4 @@
+|  alpha
+|  beta
+|  gamma
+| +delta
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> <C-j>
+w magit: repo|1|9
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt
+| @@ -1,3 +1,4 @@
+|  alpha
+|  beta
+|  gamma
+| +delta
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> x
+w magit: repo|0|-
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt
+| @@ -1,3 +1,4 @@
+|  alpha
+|  beta
+|  gamma
+| +delta
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e Discard hunk? (y or n)
+> y
+w magit: repo|1|4
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e Discard hunk? (y or n) y
+s cached 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n? c.txt\n
+@ discard-untracked
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> <Tab>
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)
+| c.txt
+| 
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> j
+w magit: repo|1|4
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)
+| c.txt
+| 
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> x
+w magit: repo|0|-
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)
+| c.txt
+| 
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e Trash "c.txt"? (y or n)
+> y
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e Trash "c.txt"? (y or n) y
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n
+@ commit
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> c
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+w  *transient*|0|-
+| Arguments
+|  -a Stage all modified and deleted files (--all)
+|  -e Allow empty commit (--allow-empty)
+|  -v Show diff of changes to be committed (--verbose)
+|  -n Disable hooks (--no-verify)
+|  -R Claim authorship and reset author date (--reset-author)
+|  -A Override the author (--author)
+|  -C Reuse commit message (--reuse-message)
+|  -c Reedit commit message (--reedit-message)
+| 
+| Create     Edit HEAD  Edit        Edit and rebase    Spread across commits
+|  c Commit   e Extend   f Fixup     F Instant fixup
+|                        s Squash    S Instant squash
+|             a Amend    A Alter
+|                        n Augment
+|             w Reword   W Revise
+e 
+> c
+w COMMIT_EDITMSG|1|0
+| 
+| 
+| # Please enter the commit message for your changes. Lines starting
+| # with '#' will be ignored, and an empty message aborts the commit.
+| #
+| # On branch main
+| # Your branch is ahead of 'origin/main' by 1 commit.
+| #   (use "git push" to publish your local commits)
+| #
+| # Changes to be committed:
+| #       modified:   b.txt
+| #
+| # Changes not staged for commit:
+| #       modified:   a.txt
+| #
+| # Untracked files:
+| #       c.txt
+| #
+| # ------------------------ >8 ------------------------...
+w magit-diff: repo|0|-
+| 1 file changed, 1 insertion(+)
+| b.txt | 1 +
+| 
+| modified   b.txt
+| @@ -1,3 +1,4 @@
+|  alpha
+|  beta
+|  gamma
+| +delta
+e Type Z Z to finish, Z Q to cancel, and g k and g j to recover older messages
+> iThird commit<Esc>
+w COMMIT_EDITMSG|1|0
+| Third commit
+| 
+| # Please enter the commit message for your changes. Lines starting
+| # with '#' will be ignored, and an empty message aborts the commit.
+| #
+| # On branch main
+| # Your branch is ahead of 'origin/main' by 1 commit.
+| #   (use "git push" to publish your local commits)
+| #
+| # Changes to be committed:
+| #       modified:   b.txt
+| #
+| # Changes not staged for commit:
+| #       modified:   a.txt
+| #
+| # Untracked files:
+| #       c.txt
+| #
+| # ------------------------ >8 ------------------------...
+w magit-diff: repo|0|-
+| 1 file changed, 1 insertion(+)
+| b.txt | 1 +
+| 
+| modified   b.txt
+| @@ -1,3 +1,4 @@
+|  alpha
+|  beta
+|  gamma
+| +delta
+e 
+> ZZ
+w magit: repo|1|3
+| Head:     main Third commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Unmerged into origin/main (2)
+| 8c79b73 main Third commit
+| 65b2dec Second commit
+e Git finished
+s cached 
+s log 8c79b73 65b2dec Third commit\n87c805b  First commit\n65b2dec 87c805b Second commit\n
+s refs refs/heads/main 8c79b73 origin/main\nrefs/remotes/origin/main 87c805b \n
+s status # branch.oid 8c79b734c81d6f7c4225c79c56ee0e504c9f7f2f\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +2 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n? c.txt\n
+@ commit-abort
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> c
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+w  *transient*|0|-
+| Arguments
+|  -a Stage all modified and deleted files (--all)
+|  -e Allow empty commit (--allow-empty)
+|  -v Show diff of changes to be committed (--verbose)
+|  -n Disable hooks (--no-verify)
+|  -R Claim authorship and reset author date (--reset-author)
+|  -A Override the author (--author)
+|  -C Reuse commit message (--reuse-message)
+|  -c Reedit commit message (--reedit-message)
+| 
+| Create     Edit HEAD  Edit        Edit and rebase    Spread across commits
+|  c Commit   e Extend   f Fixup     F Instant fixup
+|                        s Squash    S Instant squash
+|             a Amend    A Alter
+|                        n Augment
+|             w Reword   W Revise
+e 
+> c
+w COMMIT_EDITMSG|1|0
+| 
+| 
+| # Please enter the commit message for your changes. Lines starting
+| # with '#' will be ignored, and an empty message aborts the commit.
+| #
+| # On branch main
+| # Your branch is ahead of 'origin/main' by 1 commit.
+| #   (use "git push" to publish your local commits)
+| #
+| # Changes to be committed:
+| #       modified:   b.txt
+| #
+| # Changes not staged for commit:
+| #       modified:   a.txt
+| #
+| # Untracked files:
+| #       c.txt
+| #
+| # ------------------------ >8 ------------------------...
+w magit-diff: repo|0|-
+| 1 file changed, 1 insertion(+)
+| b.txt | 1 +
+| 
+| modified   b.txt
+| @@ -1,3 +1,4 @@
+|  alpha
+|  beta
+|  gamma
+| +delta
+e Type Z Z to finish, Z Q to cancel, and g k and g j to recover older messages
+> ZQ
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e Commit canceled.  Message saved to ‘log-edit-comment-ring’
+@ extend
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> c
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+w  *transient*|0|-
+| Arguments
+|  -a Stage all modified and deleted files (--all)
+|  -e Allow empty commit (--allow-empty)
+|  -v Show diff of changes to be committed (--verbose)
+|  -n Disable hooks (--no-verify)
+|  -R Claim authorship and reset author date (--reset-author)
+|  -A Override the author (--author)
+|  -C Reuse commit message (--reuse-message)
+|  -c Reedit commit message (--reedit-message)
+| 
+| Create     Edit HEAD  Edit        Edit and rebase    Spread across commits
+|  c Commit   e Extend   f Fixup     F Instant fixup
+|                        s Squash    S Instant squash
+|             a Amend    A Alter
+|                        n Augment
+|             w Reword   W Revise
+e 
+> e
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Unmerged into origin/main (1)
+| e83cdb6 main Second commit
+e Git finished
+s cached 
+s log e83cdb6 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main e83cdb6 origin/main\nrefs/remotes/origin/main 87c805b \n
+s status # branch.oid e83cdb61945aa7c062d5c20e34e3f276b04ecd73\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n? c.txt\n
+@ branch
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> b
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+w  *transient*|0|-
+| Configure main
+|  d branch.main.description unset
+|  u branch.main.merge refs/heads/main
+|    branch.main.remote origin
+|  r branch.main.rebase [true|merges|interactive|false|default:false]
+|  p branch.main.pushRemote [origin]
+| 
+| Configure repository defaults
+|  R pull.rebase [true|merges|interactive|false|default:false]
+|  P remote.pushDefault [origin]
+|  B Update default branch
+| 
+| Checkout                             Create           Do
+|  b branch/revision   c new branch     n new branch     C configure...
+|  l local branch      s new spin-off   S new spin-out   m rename
+|                                                        X reset
+|                                                        x delete
+e 
+> c
+w magit: repo|0|-
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e Create and checkout branch starting at (default main):
+> <CR>
+w magit: repo|0|-
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e Name for new branch:
+> topic<CR>
+w magit: repo|1|2
+| Head:     topic Second commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Recent commits…
+e Git finished
+s head refs/heads/topic\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/heads/topic 65b2dec \nrefs/remotes/origin/main 87c805b \n
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head topic\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+> b
+w magit: repo|1|2
+| Head:     topic Second commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Recent commits…
+w  *transient*|0|-
+| Configure topic
+|  d branch.topic.description unset
+|  u branch.topic.merge unset
+|    branch.topic.remote unset
+|  r branch.topic.rebase [true|merges|interactive|false|default:false]
+|  p branch.topic.pushRemote [origin]
+| 
+| Configure repository defaults
+|  R pull.rebase [true|merges|interactive|false|default:false]
+|  P remote.pushDefault [origin]
+|  B Update default branch
+| 
+| Checkout                             Create           Do
+|  b branch/revision   c new branch     n new branch     C configure...
+|  l local branch      s new spin-off   S new spin-out   m rename
+|                                                        X reset
+|                                                        x delete
+e 
+> b
+w magit: repo|0|-
+| Head:     topic Second commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Recent commits…
+e Checkout (default main):
+> <CR>
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main topic Second commit
+e Git finished
+s head refs/heads/main\n
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+@ branch-new
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> b
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+w  *transient*|0|-
+| Configure main
+|  d branch.main.description unset
+|  u branch.main.merge refs/heads/main
+|    branch.main.remote origin
+|  r branch.main.rebase [true|merges|interactive|false|default:false]
+|  p branch.main.pushRemote [origin]
+| 
+| Configure repository defaults
+|  R pull.rebase [true|merges|interactive|false|default:false]
+|  P remote.pushDefault [origin]
+|  B Update default branch
+| 
+| Checkout                             Create           Do
+|  b branch/revision   c new branch     n new branch     C configure...
+|  l local branch      s new spin-off   S new spin-out   m rename
+|                                                        X reset
+|                                                        x delete
+e 
+> n
+w magit: repo|0|-
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e Create branch starting at (default main):
+> <CR>
+w magit: repo|0|-
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e Name for new branch:
+> other<CR>
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main other Second commit
+e Git finished
+s refs refs/heads/main 65b2dec origin/main\nrefs/heads/other 65b2dec \nrefs/remotes/origin/main 87c805b \n
+@ branch-delete
+$ git branch topic
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main topic Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/heads/topic 65b2dec \nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> b
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main topic Second commit
+w  *transient*|0|-
+| Configure main
+|  d branch.main.description unset
+|  u branch.main.merge refs/heads/main
+|    branch.main.remote origin
+|  r branch.main.rebase [true|merges|interactive|false|default:false]
+|  p branch.main.pushRemote [origin]
+| 
+| Configure repository defaults
+|  R pull.rebase [true|merges|interactive|false|default:false]
+|  P remote.pushDefault [origin]
+|  B Update default branch
+| 
+| Checkout                             Create           Do
+|  b branch/revision   c new branch     n new branch     C configure...
+|  l local branch      s new spin-off   S new spin-out   m rename
+|                                                        X reset
+|                                                        x delete
+e 
+> x
+w magit: repo|0|-
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main topic Second commit
+e Delete branch:
+> topic<CR>
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+@ stash
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> z
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+w  *transient*|0|-
+| Arguments
+|  -u Also save untracked files (--include-untracked)
+|  -a Also save untracked and ignored files (--all)
+| 
+| Stash             Snapshot       Use       Inspect  Transform
+|  z both            Z both         a Apply   l List   b Branch
+|  i index           I index        p Pop     v Show   B Branch here
+|  w worktree        W worktree     k Drop             f Format patch
+|  x keeping index   r to wip ref
+e 
+> z
+w magit: repo|0|-
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e Stash message (default: On…:…):
+> <CR>
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Stashes (1)…
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+s cached 
+s log 1729f85 65b2dec 7386af3 On main: 65b2dec Second commit\n7386af3 65b2dec index on main: 65b2dec Second commit\n65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \nrefs/stash 1729f85 \n
+s stash stash@{0}: On main: 65b2dec Second commit\n
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n? c.txt\n
+s worktree 
+> gz
+w magit: repo|1|4
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Stashes (1)…
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> <Tab>
+w magit: repo|1|4
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Stashes (1)
+| stash@{0} On main: 65b2dec Second commit
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> z
+w magit: repo|1|4
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Stashes (1)
+| stash@{0} On main: 65b2dec Second commit
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+w  *transient*|0|-
+| Arguments
+|  -u Also save untracked files (--include-untracked)
+|  -a Also save untracked and ignored files (--all)
+| 
+| Stash             Snapshot       Use       Inspect  Transform
+|  z both            Z both         a Apply   l List   b Branch
+|  i index           I index        p Pop     v Show   B Branch here
+|  w worktree        W worktree     k Drop             f Format patch
+|  x keeping index   r to wip ref
+e 
+> p
+w magit: repo|0|-
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Stashes (1)
+| stash@{0} On main: 65b2dec Second commit
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e Pop stash (default stash@{0} On main: 65b2dec Second commit):
+> <CR>
+w magit: repo|1|10
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+@ stash-msg
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> z
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+w  *transient*|0|-
+| Arguments
+|  -u Also save untracked files (--include-untracked)
+|  -a Also save untracked and ignored files (--all)
+| 
+| Stash             Snapshot       Use       Inspect  Transform
+|  z both            Z both         a Apply   l List   b Branch
+|  i index           I index        p Pop     v Show   B Branch here
+|  w worktree        W worktree     k Drop             f Format patch
+|  x keeping index   r to wip ref
+e 
+> z
+w magit: repo|0|-
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e Stash message (default: On…:…):
+> my work<CR>
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Stashes (1)…
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+s cached 
+s log bac257a 65b2dec 7386af3 my work\n7386af3 65b2dec index on main: 65b2dec Second commit\n65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \nrefs/stash bac257a \n
+s stash stash@{0}: my work\n
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n? c.txt\n
+s worktree 
+> gz
+w magit: repo|1|4
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Stashes (1)…
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> <Tab>
+w magit: repo|1|4
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Stashes (1)
+| stash@{0} my work
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+@ stash-drop
+$ git stash -q
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Stashes (1)…
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached 
+s head refs/heads/main\n
+s log bc54184 65b2dec 7386af3 WIP on main: 65b2dec Second commit\n7386af3 65b2dec index on main: 65b2dec Second commit\n65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \nrefs/stash bc54184 \n
+s stash stash@{0}: WIP on main: 65b2dec Second commit\n
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n? c.txt\n
+s worktree 
+> z
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Stashes (1)…
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+w  *transient*|0|-
+| Arguments
+|  -u Also save untracked files (--include-untracked)
+|  -a Also save untracked and ignored files (--all)
+| 
+| Stash             Snapshot       Use       Inspect  Transform
+|  z both            Z both         a Apply   l List   b Branch
+|  i index           I index        p Pop     v Show   B Branch here
+|  w worktree        W worktree     k Drop             f Format patch
+|  x keeping index   r to wip ref
+e 
+> k
+w magit: repo|0|-
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Stashes (1)…
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e Drop stash (default stash@{0} WIP on main: 65b2dec Second commit):
+> <CR>
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e Deleted refs/stash@{0} (was bc54184)
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+> y
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+@ log
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> l
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+w  *transient*|0|-
+| Commit limiting
+|  -n Limit number of commits (-n256)
+|  -A Limit to author (--author)
+|  -F Search messages (--grep)
+|  -G Search changes (-G)
+|  -S Search occurrences (-S)
+|  -L Trace line evolution (-L)
+| 
+| History simplification
+|  -D Simplify by decoration (--simplify-by-decoration)
+|  -- Limit to files (--)
+|  -f Follow renames when showing single-file log (--follow)
+| 
+| Commit ordering
+|  -o Order commits by (--[topo|author-date|date]-order)
+|  -r Reverse order (--reverse)
+| 
+| Formatting
+|  -g Show graph (--graph)
+|  -c Show graph in color (--color)
+|  -d Show refnames (--decorate)
+|  =S Show signatures (--show-signature)
+|  -h Show header (++header)
+|  -p Show diffs (--patch)
+|  -s Show diffstats (--stat)
+| 
+| Log                            Reflog      Other
+|  l current   L local branches   r current   s shortlog
+|  o other     b all branches     O other
+|  u related   a all references   H HEAD
+e 
+> l
+w magit-log: repo|1|0
+| 65b2dec * main Second commit                                          Tester             11 months
+| 87c805b * origin/main First commit                                    Tester             11 months
+e 
+> j
+w magit-log: repo|1|1
+| 65b2dec * main Second commit                                          Tester             11 months
+| 87c805b * origin/main First commit                                    Tester             11 months
+e 
+> q
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+@ log-all
+$ git branch topic HEAD~1; git tag v1 HEAD~1
+> 
+w magit: repo|1|4
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| Tag:      v1 (1)
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/heads/topic 87c805b \nrefs/remotes/origin/main 87c805b \nrefs/tags/v1 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> l
+w magit: repo|1|4
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| Tag:      v1 (1)
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+w  *transient*|0|-
+| Commit limiting
+|  -n Limit number of commits (-n256)
+|  -A Limit to author (--author)
+|  -F Search messages (--grep)
+|  -G Search changes (-G)
+|  -S Search occurrences (-S)
+|  -L Trace line evolution (-L)
+| 
+| History simplification
+|  -D Simplify by decoration (--simplify-by-decoration)
+|  -- Limit to files (--)
+|  -f Follow renames when showing single-file log (--follow)
+| 
+| Commit ordering
+|  -o Order commits by (--[topo|author-date|date]-order)
+|  -r Reverse order (--reverse)
+| 
+| Formatting
+|  -g Show graph (--graph)
+|  -c Show graph in color (--color)
+|  -d Show refnames (--decorate)
+|  =S Show signatures (--show-signature)
+|  -h Show header (++header)
+|  -p Show diffs (--patch)
+|  -s Show diffstats (--stat)
+| 
+| Log                            Reflog      Other
+|  l current   L local branches   r current   s shortlog
+|  o other     b all branches     O other
+|  u related   a all references   H HEAD
+e 
+> a
+w magit-log: repo|1|0
+| 65b2dec * main Second commit                                          Tester             11 months
+| 87c805b * origin/main v1 topic First commit                           Tester             11 months
+e 
+> q
+w magit: repo|1|4
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| Tag:      v1 (1)
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+@ diff-unstaged
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> d
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+w  *transient*|0|-
+| Limit arguments
+|  -- Limit to files (--)
+|  -i Ignore submodules (--ignore-submodules)
+|  -b Ignore whitespace changes (--ignore-space-change)
+|  -w Ignore all whitespace (--ignore-all-space)
+| 
+| Context arguments
+|  -U Context lines (-U)
+|  -W Show surrounding functions (--function-context)
+| 
+| Tune arguments
+|  -A Diff algorithm (--diff-algorithm)
+|  -X Diff merges (--diff-merges)
+|  -M Detect renames (-M)
+|  -x Disallow external diff drivers (--no-ext-diff)
+|  -s Show stats (--stat)
+|  =g Show signature (--show-signature)
+| 
+| Actions
+|  d Dwim         u Diff unstaged   c Show commit
+|  r Diff range   s Diff staged     t Show stash
+|  p Diff paths   w Diff worktree
+e 
+> u
+w magit-diff: repo|1|0
+| 1 file changed, 2 insertions(+), 2 deletions(-)
+| a.txt | 4 ++--
+| 
+| modified   a.txt
+| @@ -1,5 +1,5 @@
+|  one
+| -two
+| +TWO
+|  three
+|  four
+|  five
+| @@ -8,5 +8,5 @@ seven
+|  eight
+|  nine
+|  ten
+| -eleven
+| +ELEVEN
+|  twelve
+w magit: repo|0|-
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> j
+w magit-diff: repo|1|1
+| 1 file changed, 2 insertions(+), 2 deletions(-)
+| a.txt | 4 ++--
+| 
+| modified   a.txt
+| @@ -1,5 +1,5 @@
+|  one
+| -two
+| +TWO
+|  three
+|  four
+|  five
+| @@ -8,5 +8,5 @@ seven
+|  eight
+|  nine
+|  ten
+| -eleven
+| +ELEVEN
+|  twelve
+w magit: repo|0|-
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> <Tab>
+w magit-diff: repo|1|1
+| 1 file changed, 2 insertions(+), 2 deletions(-)
+| a.txt | 4 ++--
+| 
+| modified   a.txt
+| @@ -1,5 +1,5 @@
+|  one
+| -two
+| +TWO
+|  three
+|  four
+|  five
+| @@ -8,5 +8,5 @@ seven
+|  eight
+|  nine
+|  ten
+| -eleven
+| +ELEVEN
+|  twelve
+w magit: repo|0|-
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> q
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+@ diff-staged
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> d
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+w  *transient*|0|-
+| Limit arguments
+|  -- Limit to files (--)
+|  -i Ignore submodules (--ignore-submodules)
+|  -b Ignore whitespace changes (--ignore-space-change)
+|  -w Ignore all whitespace (--ignore-all-space)
+| 
+| Context arguments
+|  -U Context lines (-U)
+|  -W Show surrounding functions (--function-context)
+| 
+| Tune arguments
+|  -A Diff algorithm (--diff-algorithm)
+|  -X Diff merges (--diff-merges)
+|  -M Detect renames (-M)
+|  -x Disallow external diff drivers (--no-ext-diff)
+|  -s Show stats (--stat)
+|  =g Show signature (--show-signature)
+| 
+| Actions
+|  d Dwim         u Diff unstaged   c Show commit
+|  r Diff range   s Diff staged     t Show stash
+|  p Diff paths   w Diff worktree
+e 
+> s
+w magit-diff: repo|1|0
+| 1 file changed, 1 insertion(+)
+| b.txt | 1 +
+| 
+| modified   b.txt
+| @@ -1,3 +1,4 @@
+|  alpha
+|  beta
+|  gamma
+| +delta
+w magit: repo|0|-
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> q
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+@ push
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> p
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+w  *transient*|0|-
+| Arguments
+|  -f Force with lease (--force-with-lease)
+|  -F Force (--force)
+|  -h Disable hooks (--no-verify)
+|  -n Dry run (--dry-run)
+|  -T Include all tags (--tags)
+|  -t Include related annotated tags (--follow-tags)
+| 
+| Push main to
+|  p pushRemote, setting that
+|  u origin/main
+|  e elsewhere
+| 
+| Push
+|  o another branch      T a tag
+|  r explicit refspecs   t all tags
+|  m matching branches
+| 
+| Configure
+|  C Set variables...
+e 
+> u
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main Second commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Recent commits…
+e Git finished
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 65b2dec \n
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +0 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+@ fetch
+$ d=$(mktemp -d); git clone -q "$PWD.remote.git" $d/c; (cd $d/c && git config user.name Tester && git config user.email t@example.com && echo r > r.txt && git add r.txt && git commit -q -m Remote && git push -q); rm -rf $d; git fetch -q
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main Remote
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+| 
+| Unpulled from origin/main (1)…
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 79e9c00 87c805b Remote\n65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 79e9c00 \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -1\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> f
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main Remote
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+| 
+| Unpulled from origin/main (1)…
+w  *transient*|0|-
+| Arguments
+|  -p Prune deleted branches (--prune)
+|  -t Fetch all tags (--tags)
+|  -F Force (--force)
+| 
+| Fetch from
+|  p pushRemote, setting that
+|  u origin
+|  e elsewhere
+|  a all remotes
+| 
+| Fetch
+|  o another branch
+|  r explicit refspec
+|  m submodules
+| 
+| Configure
+|  C variables...
+e 
+> u
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main Remote
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+| 
+| Unpulled from origin/main (1)…
+e Git finished
+@ fetch-new
+$ git push -q origin main; d=$(mktemp -d); git clone -q "$PWD.remote.git" $d/c; (cd $d/c && git config user.name Tester && git config user.email t@example.com && echo r > r.txt && git add r.txt && git commit -q -m Remote && git push -q); rm -rf $d
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main Second commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Recent commits…
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 65b2dec \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +0 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> f
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main Second commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Recent commits…
+w  *transient*|0|-
+| Arguments
+|  -p Prune deleted branches (--prune)
+|  -t Fetch all tags (--tags)
+|  -F Force (--force)
+| 
+| Fetch from
+|  p pushRemote, setting that
+|  u origin
+|  e elsewhere
+|  a all remotes
+| 
+| Fetch
+|  o another branch
+|  r explicit refspec
+|  m submodules
+| 
+| Configure
+|  C variables...
+e 
+> u
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main Remote
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Recent commits…
+| Unpulled from origin/main (1)…
+e Git finished
+s log e061a74 65b2dec Remote\n65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main e061a74 \n
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +0 -1\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+> F
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main Remote
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Recent commits…
+| Unpulled from origin/main (1)…
+w  *transient*|0|-
+| Arguments
+|  -f Fast-forward only (--ff-only)
+|  -r Rebase local commits (--rebase)
+|  -F Force (--force)
+| 
+| Pull into main from
+|  p pushRemote, setting that
+|  u origin/main
+|  e elsewhere
+| 
+| Configure
+|  r branch.main.rebase [true|merges|interactive|false|default:false]
+|  C variables...
+e 
+> u
+w magit: repo|1|3
+| Head:     main Remote
+| Merge:    origin/main Remote
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Recent commits…
+e Git finished
+s refs refs/heads/main e061a74 origin/main\nrefs/remotes/origin/main e061a74 \n
+s status # branch.oid e061a74e4f9867d44da0ef2af196d4a0cdfd6a62\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +0 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+@ visit
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> <C-j><C-j>
+w magit: repo|1|5
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> <CR>
+w a.txt|1|1
+| one
+| TWO
+| three
+| four
+| five
+| six
+| seven
+| eight
+| nine
+| ten
+| ELEVEN
+| twelve
+e 
+@ visit-hunk
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> <C-j><C-j>
+w magit: repo|1|5
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> <Tab>
+w magit: repo|1|5
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt
+| @@ -1,5 +1,5 @@
+|  one
+| -two
+| +TWO
+|  three
+|  four
+|  five
+| @@ -8,5 +8,5 @@ seven
+|  eight
+|  nine
+|  ten
+| -eleven
+| +ELEVEN
+|  twelve
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> <C-j><C-j>
+w magit: repo|1|13
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt
+| @@ -1,5 +1,5 @@
+|  one
+| -two
+| +TWO
+|  three
+|  four
+|  five
+| @@ -8,5 +8,5 @@ seven
+|  eight
+|  nine
+|  ten
+| -eleven
+| +ELEVEN
+|  twelve
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> jj
+w magit: repo|1|15
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt
+| @@ -1,5 +1,5 @@
+|  one
+| -two
+| +TWO
+|  three
+|  four
+|  five
+| @@ -8,5 +8,5 @@ seven
+|  eight
+|  nine
+|  ten
+| -eleven
+| +ELEVEN
+|  twelve
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> <CR>
+w a.txt|1|8
+| one
+| TWO
+| three
+| four
+| five
+| six
+| seven
+| eight
+| nine
+| ten
+| ELEVEN
+| twelve
+e 
+@ refresh-outside
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> $ echo x >> b.txt
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 MM N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\ndiff --git a/b.txt b/b.txt\nindex 7a28df3..47427fc 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -2,3 +2,4 @@ alpha\n beta\n gamma\n delta\n+x\n
+> gr
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (2)
+| modified   a.txt…
+| modified   b.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> $ echo y > e.txt
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (2)
+| modified   a.txt…
+| modified   b.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 MM N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n? e.txt\n
+> gr
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (2)…
+| Unstaged changes (2)
+| modified   a.txt…
+| modified   b.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+@ insync
+$ git push -q origin main
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main Second commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Recent commits…
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 65b2dec \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +0 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> G
+w magit: repo|1|11
+| Head:     main Second commit
+| Merge:    origin/main Second commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Recent commits…
+e 
+> k
+w magit: repo|1|10
+| Head:     main Second commit
+| Merge:    origin/main Second commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Recent commits…
+e 
+> <Tab>
+w magit: repo|1|10
+| Head:     main Second commit
+| Merge:    origin/main Second commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Recent commits
+| 65b2dec main origin/main Second commit
+| 87c805b First commit
+e 
+> gg
+w magit: repo|1|0
+| Head:     main Second commit
+| Merge:    origin/main Second commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Recent commits
+| 65b2dec main origin/main Second commit
+| 87c805b First commit
+e 
+@ behind
+$ git push -q origin main; d=$(mktemp -d); git clone -q "$PWD.remote.git" $d/c; (cd $d/c && git config user.name Tester && git config user.email t@example.com && echo r > r.txt && git add r.txt && git commit -q -m Remote && git push -q); rm -rf $d; git fetch -q
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main Remote
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Recent commits…
+| Unpulled from origin/main (1)…
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log e061a74 65b2dec Remote\n65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main e061a74 \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +0 -1\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> G
+w magit: repo|1|12
+| Head:     main Second commit
+| Merge:    origin/main Remote
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Recent commits…
+| Unpulled from origin/main (1)…
+e 
+> k
+w magit: repo|1|11
+| Head:     main Second commit
+| Merge:    origin/main Remote
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Recent commits…
+| Unpulled from origin/main (1)…
+e 
+> <Tab>
+w magit: repo|1|11
+| Head:     main Second commit
+| Merge:    origin/main Remote
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Recent commits…
+| Unpulled from origin/main (1)
+| e061a74 origin/main Remote
+e 
+@ diverged
+$ d=$(mktemp -d); git clone -q "$PWD.remote.git" $d/c; (cd $d/c && git config user.name Tester && git config user.email t@example.com && echo r > r.txt && git add r.txt && git commit -q -m Remote && git push -q); rm -rf $d; git fetch -q
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main Remote
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+| 
+| Unpulled from origin/main (1)…
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 79e9c00 87c805b Remote\n65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 79e9c00 \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -1\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> G
+w magit: repo|1|14
+| Head:     main Second commit
+| Merge:    origin/main Remote
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+| 
+| Unpulled from origin/main (1)…
+e 
+@ noupstream
+$ git branch -q --unset-upstream
+> 
+w magit: repo|1|2
+| Head:     main Second commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Recent commits…
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec \nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> G
+w magit: repo|1|10
+| Head:     main Second commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Recent commits…
+e 
+> k
+w magit: repo|1|9
+| Head:     main Second commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Recent commits…
+e 
+> <Tab>
+w magit: repo|1|9
+| Head:     main Second commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Recent commits
+| 65b2dec main Second commit
+| 87c805b origin/main First commit
+e 
+@ tags
+$ git tag v1 HEAD~1; git tag -a -m 'Release two' v2 HEAD
+> 
+w magit: repo|1|4
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| Tag:      v2
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main v2 Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \nrefs/tags/v1 87c805b \nrefs/tags/v2 276090a \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+@ tag-ahead
+$ git tag v1 HEAD~1
+> 
+w magit: repo|1|4
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| Tag:      v1 (1)
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \nrefs/tags/v1 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+@ stashes
+$ git stash -q; echo s > b.txt; git stash push -q -m 'Second stash'
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Stashes (2)…
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached 
+s head refs/heads/main\n
+s log dc99e3c 65b2dec e732c18 On main: Second stash\ne732c18 65b2dec index on main: 65b2dec Second commit\n65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \nrefs/stash dc99e3c \n
+s stash stash@{0}: On main: Second stash\nstash@{1}: WIP on main: 65b2dec Second commit\n
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n? c.txt\n
+s worktree 
+> gz
+w magit: repo|1|4
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Stashes (2)…
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> <Tab>
+w magit: repo|1|4
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Stashes (2)
+| stash@{0} On main: Second stash
+| stash@{1} WIP on main: 65b2dec Second commit
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> j
+w magit: repo|1|5
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Stashes (2)
+| stash@{0} On main: Second stash
+| stash@{1} WIP on main: 65b2dec Second commit
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> <Tab>
+w magit: repo|1|5
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Stashes (2)
+| stash@{0} On main: Second stash
+| stash@{1} WIP on main: 65b2dec Second commit
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+@ clean
+$ git reset -q --hard; rm c.txt
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached 
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n
+s worktree 
+@ detached
+$ git reset -q --hard; git checkout -q --detach HEAD~1
+> 
+w magit: repo|1|2
+| Head:     87c805b First commit
+| 
+| Untracked files (1)…
+| Recent commits…
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached 
+s head 
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 87c805b25b0782836f7fa22a30f6cd58ce5929dd\n# branch.head (detached)\n? c.txt\n
+s worktree 
+@ conflict
+$ git reset -q --hard; rm c.txt; git checkout -q -b side HEAD~1; echo side >> b.txt; git commit -q -am Side; git checkout -q main; git merge side || true
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Merging side (1)
+| f5ea967 side Side
+| 
+| Unstaged changes (1)
+| unmerged   b.txt…
+| 
+| Staged changes (1)
+| unmerged   b.txt
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached * Unmerged path b.txt\n
+s head refs/heads/main\n
+s log f5ea967 87c805b Side\n65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/heads/side f5ea967 \nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\nu UU N... 100644 100644 100644 100644 fbbee861521bd5355538b096fa3998541cd33909 85c30401ce288f253613cb07ee32e62128089caa 61fdbe2e12db9665423a4025375993712b4ae320 b.txt\n
+s worktree diff --cc b.txt\nindex 85c3040,61fdbe2..0000000\n--- a/b.txt\n+++ b/b.txt\n@@@ -1,3 -1,3 +1,7 @@@\n  alpha\n  beta\n++<<<<<<< HEAD\n +gamma\n++=======\n+ side\n++>>>>>>> side\n
+> <C-j><C-j><C-j>
+w magit: repo|1|7
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Merging side (1)
+| f5ea967 side Side
+| 
+| Unstaged changes (1)
+| unmerged   b.txt…
+| 
+| Staged changes (1)
+| unmerged   b.txt
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> <Tab>
+w magit: repo|1|7
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Merging side (1)
+| f5ea967 side Side
+| 
+| Unstaged changes (1)
+| unmerged   b.txt
+| @@@ -1,3 -1,3 +1,7 @@@
+|   alpha
+|   beta
+| ++<<<<<<< HEAD
+|  +gamma
+| ++=======
+| + side
+| ++>>>>>>> side
+| 
+| Staged changes (1)
+| unmerged   b.txt
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+@ empty
+$ rm -rf .git; git init -q -b main --template=; git add a.txt
+> 
+w magit: repo|1|0
+| In the beginning there was darkness
+| 
+| Untracked files (2)…
+| Staged changes (1)
+| new file   a.txt…
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/a.txt b/a.txt\nnew file mode 100644\nindex 0000000..73b32b4\n--- /dev/null\n+++ b/a.txt\n@@ -0,0 +1,12 @@\n+one\n+TWO\n+three\n+four\n+five\n+six\n+seven\n+eight\n+nine\n+ten\n+ELEVEN\n+twelve\n
+s head refs/heads/main\n
+s log 
+s refs 
+s stash 
+s status # branch.oid (initial)\n# branch.head main\n1 A. N... 000000 100644 100644 0000000000000000000000000000000000000000 73b32b45d6a5fb5c753f4f5e83397b3640142ab9 a.txt\n? b.txt\n? c.txt\n
+s worktree 
+> <C-j><C-j>
+w magit: repo|1|2
+| In the beginning there was darkness
+| 
+| Untracked files (2)…
+| Staged changes (1)
+| new file   a.txt…
+e 
+> <Tab>
+w magit: repo|1|2
+| In the beginning there was darkness
+| 
+| Untracked files (2)
+| b.txt
+| c.txt
+| 
+| Staged changes (1)
+| new file   a.txt…
+e 
+@ rename
+$ git reset -q --hard; git mv a.txt d.txt
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Staged changes (1)
+| renamed    a.txt -> d.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/a.txt b/d.txt\nsimilarity index 100%\nrename from a.txt\nrename to d.txt\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n2 R. N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d R100 d.txt\ta.txt\n? c.txt\n
+s worktree 
+> <C-j><C-j><C-j>
+w magit: repo|1|7
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Staged changes (1)
+| renamed    a.txt -> d.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> <Tab>
+w magit: repo|1|7
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Staged changes (1)
+| renamed    a.txt -> d.txt…
+| 
+| Unmerged into origin/main (1)…
+e 
+@ delete
+$ git reset -q --hard; git rm -q a.txt; rm b.txt
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| deleted    b.txt…
+| 
+| Staged changes (1)
+| deleted    a.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/a.txt b/a.txt\ndeleted file mode 100644\nindex e031777..0000000\n--- a/a.txt\n+++ /dev/null\n@@ -1,12 +0,0 @@\n-one\n-two\n-three\n-four\n-five\n-six\n-seven\n-eight\n-nine\n-ten\n-eleven\n-twelve\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 D. N... 100644 000000 000000 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d 0000000000000000000000000000000000000000 a.txt\n1 .D N... 100644 100644 000000 85c30401ce288f253613cb07ee32e62128089caa 85c30401ce288f253613cb07ee32e62128089caa b.txt\n? c.txt\n
+s worktree diff --git a/b.txt b/b.txt\ndeleted file mode 100644\nindex 85c3040..0000000\n--- a/b.txt\n+++ /dev/null\n@@ -1,3 +0,0 @@\n-alpha\n-beta\n-gamma\n
+> <C-j><C-j>
+w magit: repo|1|5
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| deleted    b.txt…
+| 
+| Staged changes (1)
+| deleted    a.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> <Tab>
+w magit: repo|1|5
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| deleted    b.txt
+| @@ -1,3 +0,0 @@
+| -alpha
+| -beta
+| -gamma
+| 
+| Staged changes (1)
+| deleted    a.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+@ modechange
+$ git reset -q --hard; chmod +x a.txt
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached 
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100755 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nold mode 100644\nnew mode 100755\n
+> <C-j><C-j>
+w magit: repo|1|5
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> <Tab>
+w magit: repo|1|5
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt
+| old mode 100644
+| new mode 100755
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+@ binary
+$ git reset -q --hard; printf '\\000\\001' > bin.dat; git add bin.dat
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Staged changes (1)
+| new file   bin.dat (binary)
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/bin.dat b/bin.dat\nnew file mode 100644\nindex 0000000..bdc955b\nBinary files /dev/null and b/bin.dat differ\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 A. N... 000000 100644 100644 0000000000000000000000000000000000000000 bdc955b7b2e610ad5a72302b139a2e6cb325519a bin.dat\n? c.txt\n
+s worktree 
+> <C-j><C-j>
+w magit: repo|1|5
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Staged changes (1)
+| new file   bin.dat (binary)
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> <Tab>
+w magit: repo|1|5
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Staged changes (1)
+| new file   bin.dat (binary)
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+@ spaces
+$ printf 'x\\n' > 'my file.txt'; git add 'my file.txt'; printf 'y\\n' > 'é.txt'
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (2)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (2)
+| modified   b.txt…
+| new file   my file.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\ndiff --git a/my file.txt b/my file.txt\nnew file mode 100644\nindex 0000000..587be6b\n--- /dev/null\n+++ b/my file.txt\t\n@@ -0,0 +1 @@\n+x\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n1 A. N... 000000 100644 100644 0000000000000000000000000000000000000000 587be6b4c3f93f93c489c0111bba5596147a26cb my file.txt\n? c.txt\n? "\\303\\251.txt"\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> <Tab>
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (2)
+| c.txt
+| é.txt
+| 
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (2)
+| modified   b.txt…
+| new file   my file.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> <C-j><C-j><C-j><C-j><C-j>
+w magit: repo|1|10
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (2)
+| c.txt
+| é.txt
+| 
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (2)
+| modified   b.txt…
+| new file   my file.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+> <Tab>
+w magit: repo|1|10
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (2)
+| c.txt
+| é.txt
+| 
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (2)…
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+@ untracked-dir
+$ mkdir -p dir/sub; touch dir/sub/f dir/g
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (2)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n? dir/g\n? dir/sub/f\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> <Tab>
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (2)
+| c.txt
+| dir/
+| 
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
+@ many-untracked
+$ for i in $(seq 1 105); do touch u$i; done
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (106)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/b.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n? u1\n? u10\n? u100\n? u101\n? u102\n? u103\n? u104\n? u105\n? u11\n? u12\n? u13\n? u14\n? u15\n? u16\n? u17\n? u18\n? u19\n? u2\n? u20\n? u21\n? u22\n? u23\n? u24\n? u25\n? u26\n? u27\n? u28\n? u29\n? u3\n? u30\n? u31\n? u32\n? u33\n? u34\n? u35\n? u36\n? u37\n? u38\n? u39\n? u4\n? u40\n? u41\n? u42\n? u43\n? u44\n? u45\n? u46\n? u47\n? u48\n? u49\n? u5\n? u50\n? u51\n? u52\n? u53\n? u54\n? u55\n? u56\n? u57\n? u58\n? u59\n? u6\n? u60\n? u61\n? u62\n? u63\n? u64\n? u65\n? u66\n? u67\n? u68\n? u69\n? u7\n? u70\n? u71\n? u72\n? u73\n? u74\n? u75\n? u76\n? u77\n? u78\n? u79\n? u8\n? u80\n? u81\n? u82\n? u83\n? u84\n? u85\n? u86\n? u87\n? u88\n? u89\n? u9\n? u90\n? u91\n? u92\n? u93\n? u94\n? u95\n? u96\n? u97\n? u98\n? u99\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> <Tab>
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (106)
+| c.txt
+| u1
+| u10
+| u100
+| u101
+| u102
+| u103
+| u104
+| u105
+| u11
+| u12
+| u13
+| u14
+| u15
+| u16
+| u17
+| u18
+| u19
+| u2
+| u20
+| u21
+| u22
+| u23
+| u24
+| u25
+| u26
+| u27
+| u28
+| u29
+| u3
+| u30
+| u31
+| u32
+| u33
+| u34
+| u35
+| u36
+| u37
+| u38
+| u39
+| u4
+| u40
+| u41
+| u42
+| u43
+| u44
+| u45
+| u46
+| u47
+| u48
+| u49
+| u5
+| u50
+| u51
+e 
+> G
+w magit: repo|1|29
+| u78
+| u79
+| u8
+| u80
+| u81
+| u82
+| u83
+| u84
+| u85
+| u86
+| u87
+| u88
+| u89
+| u9
+| u90
+| u91
+| u92
+| u93
+| 6 files not listed
+| 
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| modified   b.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 

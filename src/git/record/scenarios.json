@@ -1,0 +1,390 @@
+{
+ "nav": {
+  "keys": [
+   "<Tab>",
+   "j",
+   "j",
+   "<Tab>",
+   "jjj",
+   "k",
+   "<C-j>",
+   "<C-j>",
+   "<C-k>",
+   "gj",
+   "gk",
+   "gh",
+   "G",
+   "<Tab>",
+   "gg",
+   "<Tab>",
+   "<Tab>"
+  ]
+ },
+ "stage-file": {
+  "keys": [
+   "<C-j>",
+   "<C-j>",
+   "s",
+   "u",
+   "<C-j>",
+   "s"
+  ]
+ },
+ "stage-hunk": {
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "s",
+   "<C-j>",
+   "s"
+  ]
+ },
+ "hunk-line": {
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "jjj",
+   "s"
+  ]
+ },
+ "unstage-hunk": {
+  "keys": [
+   "<C-j><C-j><C-j><C-j>",
+   "<Tab>",
+   "j",
+   "u"
+  ]
+ },
+ "untracked": {
+  "keys": [
+   "<Tab>",
+   "j",
+   "s",
+   "k",
+   "s"
+  ]
+ },
+ "untracked-heading": {
+  "keys": [
+   "s"
+  ]
+ },
+ "stage-all": {
+  "keys": [
+   "S",
+   "U",
+   "y"
+  ]
+ },
+ "discard": {
+  "keys": [
+   "<C-j><C-j>",
+   "x",
+   "y",
+   "<C-j><C-j>",
+   "x",
+   "y"
+  ]
+ },
+ "discard-hunk": {
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "<C-j>",
+   "x",
+   "y"
+  ]
+ },
+ "discard-staged-hunk": {
+  "keys": [
+   "<C-j><C-j><C-j><C-j>",
+   "<Tab>",
+   "<C-j>",
+   "x",
+   "y"
+  ]
+ },
+ "discard-untracked": {
+  "keys": [
+   "<Tab>",
+   "j",
+   "x",
+   "y"
+  ]
+ },
+ "commit": {
+  "keys": [
+   "c",
+   "c",
+   "iThird commit<Esc>",
+   "ZZ"
+  ]
+ },
+ "commit-abort": {
+  "keys": [
+   "c",
+   "c",
+   "ZQ"
+  ]
+ },
+ "extend": {
+  "keys": [
+   "c",
+   "e"
+  ]
+ },
+ "branch": {
+  "keys": [
+   "b",
+   "c",
+   "<CR>",
+   "topic<CR>",
+   "b",
+   "b",
+   "<CR>"
+  ]
+ },
+ "branch-new": {
+  "keys": [
+   "b",
+   "n",
+   "<CR>",
+   "other<CR>"
+  ]
+ },
+ "branch-delete": {
+  "setup": "git branch topic",
+  "keys": [
+   "b",
+   "x",
+   "topic<CR>"
+  ]
+ },
+ "stash": {
+  "keys": [
+   "z",
+   "z",
+   "<CR>",
+   "gz",
+   "<Tab>",
+   "z",
+   "p",
+   "<CR>"
+  ]
+ },
+ "stash-msg": {
+  "keys": [
+   "z",
+   "z",
+   "my work<CR>",
+   "gz",
+   "<Tab>"
+  ]
+ },
+ "stash-drop": {
+  "setup": "git stash -q",
+  "keys": [
+   "z",
+   "k",
+   "<CR>",
+   "y"
+  ]
+ },
+ "log": {
+  "keys": [
+   "l",
+   "l",
+   "j",
+   "q"
+  ]
+ },
+ "log-all": {
+  "setup": "git branch topic HEAD~1; git tag v1 HEAD~1",
+  "keys": [
+   "l",
+   "a",
+   "q"
+  ]
+ },
+ "diff-unstaged": {
+  "keys": [
+   "d",
+   "u",
+   "j",
+   "<Tab>",
+   "q"
+  ]
+ },
+ "diff-staged": {
+  "keys": [
+   "d",
+   "s",
+   "q"
+  ]
+ },
+ "push": {
+  "keys": [
+   "p",
+   "u"
+  ]
+ },
+ "fetch": {
+  "setup": "d=$(mktemp -d); git clone -q \"$PWD.remote.git\" $d/c; (cd $d/c && git config user.name Tester && git config user.email t@example.com && echo r > r.txt && git add r.txt && git commit -q -m Remote && git push -q); rm -rf $d; git fetch -q",
+  "keys": [
+   "f",
+   "u"
+  ]
+ },
+ "fetch-new": {
+  "setup": "git push -q origin main; d=$(mktemp -d); git clone -q \"$PWD.remote.git\" $d/c; (cd $d/c && git config user.name Tester && git config user.email t@example.com && echo r > r.txt && git add r.txt && git commit -q -m Remote && git push -q); rm -rf $d",
+  "keys": [
+   "f",
+   "u",
+   "F",
+   "u"
+  ]
+ },
+ "visit": {
+  "keys": [
+   "<C-j><C-j>",
+   "<CR>"
+  ]
+ },
+ "visit-hunk": {
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "<C-j><C-j>",
+   "jj",
+   "<CR>"
+  ]
+ },
+ "refresh-outside": {
+  "keys": [
+   "$ echo x >> b.txt",
+   "gr",
+   "$ echo y > e.txt",
+   "gr"
+  ]
+ },
+ "insync": {
+  "setup": "git push -q origin main",
+  "keys": [
+   "G",
+   "k",
+   "<Tab>",
+   "gg"
+  ]
+ },
+ "behind": {
+  "setup": "git push -q origin main; d=$(mktemp -d); git clone -q \"$PWD.remote.git\" $d/c; (cd $d/c && git config user.name Tester && git config user.email t@example.com && echo r > r.txt && git add r.txt && git commit -q -m Remote && git push -q); rm -rf $d; git fetch -q",
+  "keys": [
+   "G",
+   "k",
+   "<Tab>"
+  ]
+ },
+ "diverged": {
+  "setup": "d=$(mktemp -d); git clone -q \"$PWD.remote.git\" $d/c; (cd $d/c && git config user.name Tester && git config user.email t@example.com && echo r > r.txt && git add r.txt && git commit -q -m Remote && git push -q); rm -rf $d; git fetch -q",
+  "keys": [
+   "G"
+  ]
+ },
+ "noupstream": {
+  "setup": "git branch -q --unset-upstream",
+  "keys": [
+   "G",
+   "k",
+   "<Tab>"
+  ]
+ },
+ "tags": {
+  "setup": "git tag v1 HEAD~1; git tag -a -m 'Release two' v2 HEAD",
+  "keys": []
+ },
+ "tag-ahead": {
+  "setup": "git tag v1 HEAD~1",
+  "keys": []
+ },
+ "stashes": {
+  "setup": "git stash -q; echo s > b.txt; git stash push -q -m 'Second stash'",
+  "keys": [
+   "gz",
+   "<Tab>",
+   "j",
+   "<Tab>"
+  ]
+ },
+ "clean": {
+  "setup": "git reset -q --hard; rm c.txt",
+  "keys": []
+ },
+ "detached": {
+  "setup": "git reset -q --hard; git checkout -q --detach HEAD~1",
+  "keys": []
+ },
+ "conflict": {
+  "setup": "git reset -q --hard; rm c.txt; git checkout -q -b side HEAD~1; echo side >> b.txt; git commit -q -am Side; git checkout -q main; git merge side || true",
+  "keys": [
+   "<C-j><C-j><C-j>",
+   "<Tab>"
+  ]
+ },
+ "empty": {
+  "setup": "rm -rf .git; git init -q -b main --template=; git add a.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>"
+  ]
+ },
+ "rename": {
+  "setup": "git reset -q --hard; git mv a.txt d.txt",
+  "keys": [
+   "<C-j><C-j><C-j>",
+   "<Tab>"
+  ]
+ },
+ "delete": {
+  "setup": "git reset -q --hard; git rm -q a.txt; rm b.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>"
+  ]
+ },
+ "modechange": {
+  "setup": "git reset -q --hard; chmod +x a.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>"
+  ]
+ },
+ "binary": {
+  "setup": "git reset -q --hard; printf '\\000\\001' > bin.dat; git add bin.dat",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>"
+  ]
+ },
+ "spaces": {
+  "setup": "printf 'x\\n' > 'my file.txt'; git add 'my file.txt'; printf 'y\\n' > 'é.txt'",
+  "keys": [
+   "<Tab>",
+   "<C-j><C-j><C-j><C-j><C-j>",
+   "<Tab>"
+  ]
+ },
+ "untracked-dir": {
+  "setup": "mkdir -p dir/sub; touch dir/sub/f dir/g",
+  "keys": [
+   "<Tab>"
+  ]
+ },
+ "many-untracked": {
+  "setup": "for i in $(seq 1 105); do touch u$i; done",
+  "keys": [
+   "<Tab>",
+   "G"
+  ]
+ }
+}
