@@ -3,6 +3,7 @@
    command waits in pend[] until it is complete, and then runs as Neovim's
    normal_cmd() would have with all its keys read. */
 #include <string.h>
+#include <stdio.h>
 #include "k.h"
 
 typedef struct {
@@ -19,16 +20,20 @@ int finish_op;
 static Oparg oa;
 static long opcount;
 static int VIsual_reselect, VIsual_mode_orig;
-/* what gv selects again (curbuf->b_visual) */
-static struct { Pos start, end; int mode; long curswant; int set; } b_visual;
+/* what gv selects again (curbuf->b_visual): its ends are the buffer's '<
+   and '> marks, so the core moves them as mark_adjust() and
+   mark_col_adjust() move vi_start and vi_end */
+static struct { long coladd[2]; int mode; long curswant; } b_visual;
+static Pos vis(int i) { Mark m = B->mark[MARK_LT + i]; return (Pos){ (long)m.line, (long)m.col, b_visual.coladd[i] }; }
+static void vis_set(int i, Pos p) { B->mark[MARK_LT + i] = (Mark){ (size_t)p.lnum, (size_t)p.col, 1 }; b_visual.coladd[i] = p.coladd; }
 /* what 1v and a repeated Visual operator select (resel_VIsual_*, redo_VIsual) */
 static int resel_VIsual_mode;
 static long resel_VIsual_vcol, resel_VIsual_line_count;
 static struct { int mode; long vcol, line_count, count; int arg; } redo_VIsual;
 static int redo_VIsual_busy;
 
-Pos visual_end(void) { return b_visual.end; }
-long visual_last_line(void) { return b_visual.start.lnum > b_visual.end.lnum ? b_visual.start.lnum : b_visual.end.lnum; }
+Pos visual_end(void) { return vis(1); }
+long visual_last_line(void) { return vis(0).lnum > vis(1).lnum ? vis(0).lnum : vis(1).lnum; }
 
 static void do_pending_operator(Cmdarg *cap, long old_col);
 static void nv_operator(Cmdarg *cap);
@@ -171,12 +176,11 @@ void start_redo_ins(void)
 void end_visual_mode(void)
 {
 	VIsual_active = 0;
-	b_visual.start = VIsual;
-	b_visual.end = cur();
+	vis_set(0, VIsual);
+	vis_set(1, cur());
 	b_visual.mode = VIsual_mode;
 	update_curswant();
 	b_visual.curswant = curswant();
-	b_visual.set = 1;
 	Pos p = cur();
 	p.coladd = 0;
 	setcur(p);
@@ -249,7 +253,7 @@ static void nv_visual(Cmdarg *cap)
 static void nv_gv_cmd(Cmdarg *cap)
 {
 	(void)cap;
-	if (!b_visual.set || b_visual.start.lnum >= nlines()) { beep(); return; }
+	if (!B->mark[MARK_LT].set || vis(0).lnum >= nlines()) { beep(); return; }
 	Pos tpos;
 	if (VIsual_active) {
 		int i = VIsual_mode;
@@ -259,15 +263,16 @@ static void nv_gv_cmd(Cmdarg *cap)
 		long w = curswant();
 		set_want(b_visual.curswant);
 		b_visual.curswant = w;
-		tpos = b_visual.end;
-		b_visual.end = cur();
-		setcur(b_visual.start);
-		b_visual.start = VIsual;
+		tpos = vis(1);
+		Pos s = vis(0);
+		vis_set(1, cur());
+		vis_set(0, VIsual);
+		setcur(s);
 	} else {
 		VIsual_mode = b_visual.mode;
 		set_want(b_visual.curswant);
-		tpos = b_visual.end;
-		setcur(b_visual.start);
+		tpos = vis(1);
+		setcur(vis(0));
 	}
 	VIsual_active = 1;
 	VIsual_reselect = 1;
@@ -436,23 +441,6 @@ static void nv_goto(Cmdarg *cap)
 	if (l > nlines()) l = nlines();
 	W->line = (size_t)(l - 1);
 	beginline(BL_SOL | BL_FIX);
-}
-
-/* goto_byte() in memline.c: byte N of the buffer, counting from 1 */
-static void goto_byte(long n)
-{
-	size_t b = n ? (size_t)n - 1 : 0, nl = (size_t)nlines(), l = 0;
-	if (b >= core_line_start(E, nl)) {
-		W->line = nl - 1;
-		set_want(MAXCOL);
-		coladvance(MAXCOL);
-	} else {
-		while (core_line_start(E, l + 1) <= b) l++;
-		setcur((Pos){ (long)l, (long)(b - core_line_start(E, l)), 0 });
-		set_curswant = 1;
-	}
-	check_cursor();
-	if ((long)W->col < ml_len((long)W->line)) W->col = (size_t)head(ml_get((long)W->line), (long)W->col);
 }
 
 static void nv_wordcmd(Cmdarg *cap)
@@ -822,8 +810,8 @@ static void nv_put(Cmdarg *cap, int fix_indent)
 		free(save.s);
 	}
 	if (was_visual) {
-		b_visual.start = b_op_start;
-		b_visual.end = b_op_end;
+		vis_set(0, b_op_start);
+		vis_set(1, b_op_end);
 	}
 	/* all lines were selected and deleted: do_put() left an empty line */
 	if (empty && lineempty(nlines() - 1)) {
@@ -898,8 +886,13 @@ static void nv_undo(Cmdarg *cap)
 	size_t w0 = W->want;
 	core_set_want(E);
 	W->want = w0;
-	/* u_doit() stops at the first step that finds nothing */
+	/* u_doit() stops at the first step that finds nothing; in a CTRL-O
+	   command check_cursor_col() lets the cursor stay past the end
+	   (restart_edit), which core_clamp() allows in Insert mode */
+	int mode = E->mode;
+	if (restart_edit) E->mode = MODE_INSERT;
 	for (long n = cap->count1; n-- && core_undo(E, cap->cmdchar == KEY_CTRL_R) >= 0;) {}
+	E->mode = mode;
 	buf_changed();
 	core_set_want(E);
 	set_curswant = 0;
@@ -969,6 +962,17 @@ static void nv_colon(Cmdarg *cap)
 	}
 	E->mode = MODE_CMDLINE;
 	E->cmdtype = ':';
+	E->cmdlen = E->cmdpos = 0;
+}
+
+/* search is not built yet (src/keys/README): its command line is read and
+   dropped, so the pattern's letters do not run as commands */
+static void nv_search(Cmdarg *cap)
+{
+	if (VIsual_active) end_visual_mode();
+	clearopbeep(cap->oap);
+	E->mode = MODE_CMDLINE;
+	E->cmdtype = cap->cmdchar;
 	E->cmdlen = E->cmdpos = 0;
 }
 
@@ -1075,14 +1079,9 @@ static void nv_g_cmd(Cmdarg *cap)
 			invoke_edit('g', cap->count1, 0);
 		}
 		break;
-	case 'g': cap->arg = 0; nv_goto(cap); break;
-	case 'o':
-		/* Davy's map (2026-11-17): go is gg in Normal mode, as nnoremap
-		   go gg; a Normal-mode map leaves Neovim's go (byte N) after an
-		   operator and in Visual mode */
-		if (oap->op_type == OP_NOP && !VIsual_active) { cap->arg = 0; nv_goto(cap); }
-		else { oap->inclusive = 0; goto_byte(cap->count0); }
-		break;
+	/* Davy (2026-11-17): go is gg everywhere, as noremap go gg; Neovim's
+	   go (byte N) is not kept */
+	case 'g': case 'o': cap->arg = 0; nv_goto(cap); break;
 	case '~': case 'u': case 'U': nv_operator(cap); break;
 	case 'p': case 'P': nv_put(cap, 0); break;
 	default: clearopbeep(oap);
@@ -1175,7 +1174,7 @@ static int cmd_flags(int c)
 
 static int known(int c)
 {
-	return has(" \"$%'()+,-.0:;<>@ABCDEFGHIJLMOPQRSTUWXYV[]^_`abcdefghijklmopqrstuvwxyz{|}~", c) || c == 1 || c == 3
+	return has(" \"$%'()+,-./0:;<>?@ABCDEFGHIJLMOPQRSTUWXYV[]^_`abcdefghijklmopqrstuvwxyz{|}~", c) || c == 1 || c == 3
 	       || c == 8 || c == 10 || c == 13 || c == 14 || c == 16 || c == 22 || c == 24 || c == KEY_CTRL_R
 	       || c == 4 || c == 21 || c == 5 || c == 25 || c == 23
 	       || c == KEY_ESC || c == KEY_BS || c == KEY_UP || c == KEY_DOWN || c == KEY_LEFT || c == KEY_RIGHT || c == KEY_DEL;
@@ -1206,6 +1205,7 @@ static void execute(Cmdarg *cap)
 	case '0': cap->arg = 0; nv_beginline(cap); break;
 	case '^': cap->arg = BL_WHITE | BL_FIX; nv_beginline(cap); break;
 	case ':': nv_colon(cap); break;
+	case '/': case '?': nv_search(cap); break;
 	case '<': case '>': case 'c': case 'd': case 'y': nv_operator(cap); break;
 	case '@': nv_at(cap); break;
 	case 'A': case 'I': case 'a': case 'i': nv_edit(cap); break;
@@ -1252,6 +1252,9 @@ static void execute(Cmdarg *cap)
 /* ---- one normal command ---- */
 
 static int pend[64], npend;
+/* Neovim keeps a count as a number: while one is being typed, its keys
+   start at pend[cnt_from] and add up to cnt */
+static long cnt_from = -1, cnt;
 static Cmdarg ca;
 static int idx_valid;
 
@@ -1277,11 +1280,13 @@ static int run(void)
 	/* normal_get_command_count(): CTRL-W takes a second count after it */
 	int ctrl_w = 0;
 	for (;;) {
+		long from = rd - 1;
 		while ((c >= '1' && c <= '9') || (ca.count0 != 0 && (c == '0' || c == KEY_DEL))) {
 			if (c == KEY_DEL) ca.count0 /= 10;   /* <Del> drops the last digit */
 			else if (ca.count0 > 99999999) ca.count0 = 999999999;
 			else ca.count0 = ca.count0 * 10 + (c - '0');
-			GET(c);
+			if (rd >= npend) { cnt_from = from; cnt = ca.count0; return 0; }
+			c = pend[rd++];
 		}
 		if (c != 23 || ctrl_w || oa.op_type != OP_NOP) break;
 		ctrl_w = 1;
@@ -1327,7 +1332,7 @@ static int run(void)
 	opcount = ca.opcount;
 	/* normal_check() before the next command; an insert the command
 	   started keeps curswant as it is (edit() runs inside the command) */
-	if (E->mode != MODE_INSERT) update_curswant();
+	// X
 	if (!(ca.retval & CA_COMMAND_BUSY)) restart_insert();
 	return 1;
 }
@@ -1343,11 +1348,21 @@ void restart_insert(void)
 
 /* a command half typed: vgetorpeek() would be waiting for its next key */
 int normal_pending(void) { return npend > 0; }
+void normal_reset(void) { redo_n = old_redo_n = 0; npend = 0; memset(&b_visual, 0, sizeof b_visual); }
 
 void normal_key(int k)
 {
 	if (npend < (int)(sizeof pend / sizeof *pend)) pend[npend++] = k;
+	cnt_from = -1;
 	if (run()) npend = 0;
+	else if (cnt_from >= 0 && npend - cnt_from > 9) {
+		/* the count's digits replay to the same number (it is at most
+		   999999999), so a held digit key never fills pend[] */
+		char d[16];
+		int n = cnt ? snprintf(d, sizeof d, "%ld", cnt) : 0;   /* 0 after <Del>: no digit */
+		for (int i = 0; i < n; i++) pend[cnt_from + i] = d[i];
+		npend = (int)cnt_from + n;
+	}
 }
 
 /* ---- do_pending_operator() ---- */
@@ -1418,13 +1433,12 @@ static void do_pending_operator(Cmdarg *cap, long old_col)
 		cap->count0 = redo_VIsual.count;
 		cap->count1 = cap->count0 ? cap->count0 : 1;
 	} else if (VIsual_active) {
-		b_visual.start = VIsual;
-		b_visual.end = cur();
+		vis_set(0, VIsual);
+		vis_set(1, cur());
 		b_visual.mode = VIsual_mode;
 		if (VIsual_mode_orig) { b_visual.mode = VIsual_mode_orig; VIsual_mode_orig = 0; }
 		update_curswant();
 		b_visual.curswant = curswant();
-		b_visual.set = 1;
 		/* unadjust_for_sel() does nothing for 'selection' inclusive */
 		oap->start = VIsual;
 		if (VIsual_mode == 'V') oap->start.col = 0;

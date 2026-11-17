@@ -81,12 +81,14 @@ void beep(void)
 
 static int next(int *k)
 {
+	/* check_end_reg_executing(): a read with none of the register's keys
+	   left in the typeahead ends its execution */
+	if (!tb.n) reg_executing = 0;
 	Queue *q = rb1.n ? &rb1 : rb2.n ? &rb2 : tb.n ? &tb : NULL;
 	if (!q) return 0;
 	*k = q->k[q->head++];
 	q->n--;
 	key_stuffed = q != &tb;
-	if (q == &tb && !tb.n) reg_executing = 0;
 	return 1;
 }
 
@@ -104,13 +106,14 @@ static void key(int k, int pending)
 void keys_feed(Editor *e, int k, int pending)
 {
 	/* the window's close button: :qa, as Neovim's GUIs do (E37 if
-	   modified), as ref/keys.c */
+	   modified) */
 	if (k == KEY_CLOSE) { core_close(e, 0); return; }
 	E = e;
 	buf_changed();
 	if ((E->mode != MODE_INSERT && E->mode != MODE_CMDLINE) || arrow_used) undo_close(B->undo);
 	if (reg_recording) record_key(k);
 	key_stuffed = 0;
+	reg_executing = 0;   /* typed: the typeahead holds no register keys */
 	key(k, pending || rb1.n || rb2.n || tb.n);
 	while (next(&k)) key(k, pending || rb1.n || rb2.n || tb.n);
 	E->ks.visual = VIsual_active ? VIsual_mode : 0;
@@ -120,7 +123,7 @@ void keys_feed(Editor *e, int k, int pending)
 	core_update(e);
 }
 
-/* ---- the command line: :w :q :wq :x, as ref/keys.c ---- */
+/* ---- the command line: :w :q :wq :x ---- */
 
 static void ex(void)
 {
@@ -138,10 +141,10 @@ static void ex(void)
 static void cmdline_key(int k)
 {
 	if (k == KEY_ESC || k == KEY_CTRL_C) { E->mode = MODE_NORMAL; restart_insert(); return; }
-	if (k == KEY_ENTER || k == '\n') { E->mode = MODE_NORMAL; core_msg(E, ""); ex(); restart_insert(); return; }
+	if (k == KEY_ENTER || k == '\n') { E->mode = MODE_NORMAL; core_msg(E, ""); if (E->cmdtype == ':') ex(); restart_insert(); return; }
 	if (k == KEY_BS || k == 8) {
 		if (!E->cmdlen) { E->mode = MODE_NORMAL; restart_insert(); return; }
-		E->cmdlen = E->cmdpos = uni_prev((unsigned char *)E->cmd, E->cmdlen, E->cmdlen);
+		E->cmdlen = E->cmdpos = uni_gprev((unsigned char *)E->cmd, E->cmdlen, E->cmdlen);
 		return;
 	}
 	if (k < 0x20 || k >= KEY_UP || E->cmdlen + 4 >= sizeof E->cmd) return;

@@ -13,7 +13,10 @@ from concurrent.futures import ThreadPoolExecutor
 # word characters and ∀ and 𝓝 (Lean) punctuation.  No comment leaders at
 # the start of a line ('comments' changes J with 'formatoptions' j).
 WORDS = ['foo', 'bar_1', 'x', '(', ').', ',', 'é', 'λx', 'ა', '𐐀x', '--', '', '∀', 'x𝓝', '0x1f', '-3', '7',
-         '"a b"', "'c'", '{', '}', '[y]', '<z>', 'Foo.', 'ẞß']
+         '"a b"', "'c'", '{', '}', '[y]', '<z>', 'Foo.', 'ẞß',
+         'x\u0300\u0301', 'e\u0301a', '\U0001F1F3\U0001F1F1', '\U0001F469\u200D\U0001F4BB', '\u0301']
+# the last five are grapheme clusters: combining marks, a flag, a ZWJ
+# sequence, and a mark with nothing to combine with
 # the characters f, t, r and the text objects look for
 CHARS = list('ox(). ,"\'{}[]-é') + ['λ', '∀', '𝓝']
 INS = list('abc xy,.(0^') + ['é', 'ა', '𐐀', '∀', '<CR>', '<CR>', '<BS>', '<BS>', '<Tab>', '  ',
@@ -21,8 +24,7 @@ INS = list('abc xy,.(0^') + ['é', 'ა', '𐐀', '∀', '<CR>', '<CR>', '<BS>',
 REGS = ['a', 'b', 'A', '"', '0', '1', '2', '-', '_']
 MOTIONS = ['h', 'j', 'k', 'l', '0', '^', '$', 'w', 'b', 'e', 'W', 'B', 'E', 'ge', 'gE', 'gg', 'go', 'G', '|',
            '_', '+', '-', '<CR>', '<BS>', ' ', 'gj', 'gk', 'g_', '(', ')', '{', '}', '[[', ']]', '[]', '][',
-           '[(', '[{', '])', ']}', ';', ',']
-# not %: Neovim's default matchit plugin maps it (a gap, see src/keys/README)
+           '[(', '[{', '])', ']}', ';', ',', '%']
 FIND = ['f', 'F', 't', 'T']
 OBJECTS = [a + o for a in 'ia' for o in 'wWsp([{<b)B"\'`']
 OPS = ['d', 'c', 'y', '<', '>', 'g~', 'gu', 'gU']
@@ -148,14 +150,15 @@ vim.cmd('qa!')
 '''
 SETUP = ('set noswapfile nomore expandtab shiftwidth=4 softtabstop=4 autoindent smarttab '
          'nostartofline backspace=indent,eol,start tabstop=8 virtualedit=block nowrap shortmess+=I'
-         ' | nnoremap go gg')   # Davy's map, 2026-11-17
+         ' | noremap go gg')   # Davy's map, 2026-11-17
 
 def nvim1(cases):
     d = tempfile.mkdtemp()
     fi, fo, fl = d + '/in.json', d + '/out.json', d + '/t.lua'
     json.dump(cases, open(fi, 'w'))
     open(fl, 'w').write('local IN, OUT = %r, %r\n' % (fi, fo) + LUA)
-    subprocess.run(['nvim', '--clean', '--headless', '-c', SETUP, '-c', 'luafile ' + fl],
+    # % is Neovim's built-in one: the matchit plugin is not copied (FEATURES.md)
+    subprocess.run(['nvim', '--clean', '--headless', '--cmd', 'let g:loaded_matchit=1', '-c', SETUP, '-c', 'luafile ' + fl],
                    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=600)
     # Neovim can split a character (Visual A on a one-character multibyte
     # selection writes inside it); keep its bytes so the case shows as a
@@ -172,8 +175,9 @@ def ours(drv, c):
     with tempfile.NamedTemporaryFile('w', suffix='.txt', delete=False) as f:
         f.write(c['text'])
     keys = ' '.join(str(CODES[t]) if t in CODES else str(ord(t)) for k in c['keys'] for t in re.findall('<[^<>]+>|.', k))
-    p = subprocess.run([drv, f.name], input=keys.encode(), capture_output=True, timeout=20)
-    os.unlink(f.name)
+    try: p = subprocess.run([drv, f.name], input=keys.encode(), capture_output=True, timeout=20)
+    except subprocess.TimeoutExpired: return {'error': 'timeout after 20 s'}   # a hang differs too
+    finally: os.unlink(f.name)
     # a split character must show as a difference, not stop the run
     if p.returncode: return {'error': p.returncode, 'stderr': p.stderr[-2000:].decode(errors='backslashreplace')}
     return json.loads(p.stdout.decode(errors='surrogateescape'))

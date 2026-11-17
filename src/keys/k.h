@@ -168,6 +168,8 @@ long visual_last_line(void);
 Pos visual_end(void);
 void restart_insert(void);
 int normal_pending(void);
+/* a fresh session's registers, redo, last insert and last f/t (tests) */
+void normal_reset(void), ops_reset(void), edit_reset(void), motion_reset(void);
 extern int finish_op;
 extern int redo_busy;
 extern int searchc_inclusive;

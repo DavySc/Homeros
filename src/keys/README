@@ -1,0 +1,45 @@
+Package 5, the Vim keys: what is not built yet, and what waits for whom.
+
+The rest of FEATURES.md section 2 is ported from Neovim 0.12.6 and checked
+against nvim --headless (tools/conform.py, tests/conform-recorded.json).
+Every line below is a known difference; conform.py's random sequences still
+reach some of them.
+
+Not built (FEATURES.md section 2), part two of package 5:
+- search: / ? n N * # and search as a motion (d/x). / and ? read their line
+  and drop it with a beep, so the pattern does not run as commands; n N * #
+  beep.
+- operators = gq ! and gc (comment); the surround, align and other section 3
+  extras.
+- tag objects it at.
+- registers "+ "* (clipboard, needs the window backend) and "/ (search).
+- ex commands beyond :w :w! :q :q! :wq :x: ranges, :5, :s, :g, :norm, :d,
+  :y, :e, :sp, :vs, :b. Visual @ and Q need :norm.
+- Insert CTRL-K digraphs, gi.
+- marks m ' `, the jump list (CTRL-O, CTRL-I in Normal mode) and the change
+  list (g; g,): the core keeps and moves them (core.h Mark); keys set and
+  read them next. Until then a CTRL-O that reaches Normal mode (an insert
+  that never started, after a failed motion) differs.
+- folds, spell, snippet jumps, CTRL-S: with their packages.
+
+Waits for package 4's core (src/core, PR 20), passing with it (measured):
+- CTRL-D, CTRL-U, CTRL-E, CTRL-Y, zz zt zb H M L: ref/core.c stubs them.
+- gv after edits: its ends are the buffer's '< and '> marks, which only
+  package 4's core moves.
+- columns of grapheme clusters: ref/core.c's core_vcol and core_col_at step
+  by code point.
+Waits for package 4, still differing with PR 20's core:
+- core_vcol at a byte inside a cluster (x + U+0301 with the cursor after x)
+  gives the cluster's end; Neovim's getvcol gives its start.
+- the cursor after undoing a linewise change of several lines (4cc Esc u,
+  2cc, 2S, V j c Esc u): Neovim takes it from u_undoredo's last entry, the
+  core from the whole step.
+
+Neovim's own oddities, not copied:
+- Visual A over a 3-byte character ("∀" vAx) and C-v $ ~ over a 4-byte one
+  ("-3 𐐀x"): Neovim writes a split character.
+
+Choices:
+- go is gg in Normal mode (Davy, FEATURES.md).
+- % is Neovim's built-in one, not the matchit plugin (FEATURES.md).
+- U (undo line) is not in FEATURES.md and not built.

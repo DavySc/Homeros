@@ -48,9 +48,11 @@ const char *ml_get(long l) { return ring[slot(l)].s; }
 long ml_len(long l) { return ring[slot(l)].n; }
 int lineempty(long l) { return ml_len(l) == 0; }
 
+/* Neovim 0.12 steps by extended grapheme cluster (utfc_ptr2len(),
+   utf_head_off()): an accent, a flag or a ZWJ emoji is one character */
 int clen(const char *s, long n, long i)
 {
-	return i < n ? (int)uni_len((const unsigned char *)s, (size_t)n, (size_t)i) : 1;
+	return i < n ? (int)uni_glen((const unsigned char *)s, (size_t)n, (size_t)i) : 1;
 }
 
 long head(const char *s, long i)
@@ -58,12 +60,7 @@ long head(const char *s, long i)
 	if (i <= 0) return 0;
 	long n = (long)strlen(s);
 	if (i >= n) return i;
-	/* utf_head_off(): a well-formed sequence that starts before i and
-	   covers it; not uni_prev(i + 1), which is right only when i is a
-	   character's last byte (fuzz_keys_all: 2V landing inside a ∀) */
-	for (long j = i - 1; j >= 0 && j >= i - 3; j--)
-		if ((long)uni_len((const unsigned char *)s, (size_t)n, (size_t)j) > i - j) return j;
-	return i;
+	return (long)uni_gprev((const unsigned char *)s, (size_t)n, (size_t)i + 1);   /* the cluster holding byte i */
 }
 
 /* utf_ptr2char(): an invalid byte stands for itself */
@@ -112,7 +109,7 @@ int dec(Pos *p)
 	if (p->col > 0) {
 		const char *s = ml_get(p->lnum);
 		long n = ml_len(p->lnum);
-		p->col = p->col > n ? n : (long)uni_prev((const unsigned char *)s, (size_t)n, (size_t)p->col);
+		p->col = p->col > n ? n : (long)uni_gprev((const unsigned char *)s, (size_t)n, (size_t)p->col);
 		return 0;
 	}
 	if (p->lnum > 0) { p->lnum--; p->col = ml_len(p->lnum); return 1; }

@@ -1,8 +1,11 @@
 # Plants for src/keys/ (format in tools/planted.sh).
 keys: j and k forget the wanted column (recorded traces)~test TESTS=~~src/keys/buf.c~	W->line = (size_t)(l + n >= nl ? nl - 1 : l + n);¶	coladvance(curswant());~	W->line = (size_t)(l + n >= nl ? nl - 1 : l + n);¶	coladvance(0);
-keys: Lean symbols are word characters again (live nvim)~conform CONFORM_N=2000 SEED=1~~src/keys/motion.c~		else return (int)classes[mid].cls;~		else return 2;
+keys: Lean symbols are word characters again (recorded traces)~test TESTS=~~src/keys/motion.c~		else return (int)classes[mid].cls;~		else return 2;
 keys: the cursor steps one byte, into a character (fuzz_keys)~fuzz FUZZERS=keys FUZZ_SECONDS=60~~src/keys/buf.c~		p->col += clen(ring[i].s, ring[i].n, p->col);~		p->col += 1;
-keys: tilde steps one byte, into a character (fuzz_keys_all)~fuzz FUZZERS=keys_all FUZZ_SECONDS=60~~src/keys/normal.c~		inc_cursor();¶		if (gchar_cursor() == 0) break;~		W->col++;¶		if (gchar_cursor() == 0) break;
+keys: the cursor steps one byte, into a character (fuzz_keys_all)~fuzz FUZZERS=keys_all FUZZ_SECONDS=60~~src/keys/buf.c~		p->col += clen(ring[i].s, ring[i].n, p->col);~		p->col += 1;
 keys: Delete while typing a count is x (recorded traces)~test TESTS=~~src/keys/normal.c~if (c == KEY_DEL) ca.count0 /= 10;~if (c == KEY_DEL) ca.count0 *= 1;
 keys: Delete at the end of the last line keeps redo (recorded traces)~test TESTS=~~src/keys/edit.c~	} else if (ins_need_undo) {¶		u_save_cursor();~	} else if (ins_need_undo) {¶		(void)0;
 keys: lines that join to nothing are deleted, so redo puts the cursor as after dd (recorded traces)~test TESTS=~~src/keys/ops.c~	if (!len) { z++;~	if (!len && 0) { z++;
+keys: tilde steps one byte, into a character (recorded traces)~test TESTS=~~src/keys/normal.c~		inc_cursor();¶		if (gchar_cursor() == 0) break;~		W->col++;¶		if (gchar_cursor() == 0) break;
+keys: a long count is not folded, so its keys overflow the pending command (recorded traces)~test TESTS=~~src/keys/normal.c~else if (cnt_from >= 0 && npend - cnt_from > 9) {~else if (0) {
+keys: commands step by code point, not by grapheme cluster (recorded traces)~test TESTS=~~src/keys/buf.c~	return i < n ? (int)uni_glen((const unsigned char *)s, (size_t)n, (size_t)i) : 1;~	return i < n ? (int)uni_len((const unsigned char *)s, (size_t)n, (size_t)i) : 1;

@@ -304,10 +304,11 @@ int op_delete(Oparg *oap)
 		while (s[i] == ' ' || s[i] == '\t') i++;
 		if (*p == 0 && i >= (long)W->col) oap->motion_type = MLINE;
 	}
-	if (oap->motion_type == MCHAR && oap->line_count == 1 && oap->op_type == OP_DELETE && ml_len(oap->start.lnum) == 0) {
-		/* deleting within an empty line changes nothing, but the motion
-		   already passed u_save_cursor() in Neovim's x: see nv_optrans */
-		u_save_cursor();
+	if (oap->motion_type != MLINE && oap->line_count == 1 && oap->op_type == OP_DELETE && ml_len(oap->start.lnum) == 0) {
+		/* "D" in an empty line (diw, a block there) deletes and yanks
+		   nothing and, unlike the empty region above, saves no undo;
+		   with virtual_op only the '[ '] marks are set */
+		if (virtual_active()) goto setmarks;
 		return 1;
 	}
 	if (oap->regname != '_') {
@@ -364,10 +365,11 @@ int op_delete(Oparg *oap)
 		if (oap->line_count == 1) {
 			u_save_cursor();
 			long l = oap->start.lnum, c = oap->start.col, n = line_end_of(oap) - c;
-			/* del_bytes() with fixpos backs up off the last character before
-			   the edit, so the core sees the cursor where it ends (the view
-			   keeps its top line: PR 20's review, rg1_84) */
-			if (oap->op_type == OP_DELETE && !oap->is_visual && c > 0 && c + n >= ml_len(l))
+			/* del_bytes() with fixpos backs up off the last character
+			   (not in a CTRL-O command: restart_edit) before the edit, so
+			   the core sees the cursor where it ends (the view keeps its
+			   top line: PR 20's review, rg1_84) */
+			if (oap->op_type == OP_DELETE && !oap->is_visual && c > 0 && c + n >= ml_len(l) && !restart_edit)
 				W->col = (size_t)head(ml_get(l), c - 1);
 			replace_bytes(l, c, n, "", 0);
 			if (oap->op_type == OP_DELETE) check_cursor_col();
@@ -384,6 +386,7 @@ int op_delete(Oparg *oap)
 			if (oap->op_type == OP_DELETE) check_cursor_col();
 		}
 	}
+setmarks:
 	if (oap->motion_type == MBLOCK) { b_op_end.lnum = oap->end.lnum; b_op_end.col = oap->start.col; }
 	else b_op_end = oap->start;
 	b_op_start = oap->start;
@@ -589,8 +592,10 @@ int swapchar(int op_type, Pos *pos)
 	if (nc == c) return 0;
 	char b[4];
 	long n = utf8_put(nc, b);
-	const char *s = ml_get(pos->lnum);
-	replace_bytes(pos->lnum, pos->col, clen(s, ml_len(pos->lnum), pos->col), b, n);
+	/* the first code point only: its combining marks stay (swapchar()
+	   puts utf_char2bytes() over utf_ptr2len() bytes) */
+	const unsigned char *s = (const unsigned char *)ml_get(pos->lnum);
+	replace_bytes(pos->lnum, pos->col, (long)uni_len(s, (size_t)ml_len(pos->lnum), (size_t)pos->col), b, n);
 	return 1;
 }
 
@@ -758,7 +763,9 @@ void op_insert(Oparg *oap, long count1)
 
 static void block_insert(Oparg *oap, const char *s, long slen, int b_insert, Block *bdp)
 {
-	for (long l = oap->start.lnum + 1; l <= oap->end.lnum; l++) {
+	/* a Del in the insert can join the block's lines away; Neovim's
+	   ml_get() past the last line changes nothing */
+	for (long l = oap->start.lnum + 1; l <= oap->end.lnum && l < nlines(); l++) {
 		bprep(oap, bdp, l, 1);
 		if (bdp->is_short && b_insert) continue;
 		const char *oldp = ml_get(l);
@@ -910,8 +917,7 @@ int do_join(long count, int insert_space)
 	}
 	/* one edit over the joined lines; when they join to nothing it keeps a
 	   line break, so the edit is a changed line, not lines deleted, and
-	   redo puts the cursor as Neovim's (thread 0's ref/keys.c join(),
-	   measured against nvim: "a\n\n\nb" j j i <BS> Esc u <C-r>) */
+	   redo puts the cursor as Neovim's (measured against nvim: "a\n\n\nb" j j i <BS> Esc u <C-r>) */
 	size_t a = core_line_start(E, (size_t)l0);
 	size_t z = core_line_start(E, (size_t)(l0 + count)) - 1;
 	long len = b.n;
@@ -1287,7 +1293,9 @@ static int do_addsub(int op_type, Pos *pos, long length, long Prenum1, int visua
 		}
 		if (ptr[col] == '-') length--;
 	}
-	char buf1[200], buf2[100];
+	/* buf1 as Neovim's: length + NUMBUFLEN, so every leading zero is kept */
+	char *buf1 = malloc((size_t)length + 100), buf2[100];
+	if (!buf1) return 0;
 	long b1 = 0;
 	if (negative && (!visual || was_positive)) buf1[b1++] = '-';
 	if (pre) { buf1[b1++] = '0'; length--; }
@@ -1302,23 +1310,17 @@ static int do_addsub(int op_type, Pos *pos, long length, long Prenum1, int visua
 	else if (hexupper) b2 = snprintf(buf2, sizeof buf2, "%llX", n);
 	else b2 = snprintf(buf2, sizeof buf2, "%llx", n);
 	length -= b2;
-	if (firstdigit == '0' && pre != 0) while (length-- > 0 && b1 < 100) buf1[b1++] = '0';
-	else if (firstdigit == '0') while (length-- > 0 && b1 < 100) buf1[b1++] = '0';
+	if (firstdigit == '0') while (length-- > 0) buf1[b1++] = '0';
 	memcpy(buf1 + b1, buf2, (size_t)b2);
 	b1 += b2;
 	{
-		long del = (long)strlen(ptr + col);
 		/* the deleted span: the sign if any, then the parsed digits */
-		long todel = 0;
-		int ov;
-		long l2;
+		int ov, p2;
+		long todel;
 		unsigned long long dummy;
-		int p2;
-		str2nr(ptr + col, &p2, &l2, &dummy, maxlen, &ov);
-		todel = l2;
-		if (visual && !was_positive && !negative && ptr[col] == '-' && col == startpos.col) todel = l2;
-		(void)del;
+		str2nr(ptr + col, &p2, &todel, &dummy, maxlen, &ov);
 		replace_bytes(pos->lnum, col, todel, buf1, b1);
+		free(buf1);
 	}
 	W->col = (size_t)(col + b1);
 	Pos endpos = cur();
@@ -1405,7 +1407,9 @@ static void stuff_bytes(const char *s, long n, int typeahead, int literally)
 				if (special[j].a == s[i + 1] && special[j].b == s[i + 2]) { k[m++] = special[j].key; found = 1; }
 			if (found) { i += 3; continue; }
 		}
-		int l = clen(s, n, i);
+		/* vgetorpeek() reads typeahead a character at a time (utf_ptr2len),
+		   so a combining mark is a key of its own */
+		int l = (int)uni_len((const unsigned char *)s, (size_t)n, (size_t)i);
 		if (literally && l == 1 && (((unsigned char)s[i] < ' ' && s[i] != '\t') || s[i] == 0x7f)) k[m++] = 22;
 		if (l == 1) k[m++] = (unsigned char)s[i];
 		else k[m++] = (int)uni_cp((const unsigned char *)s, (size_t)n, (size_t)i);
@@ -1418,6 +1422,18 @@ static void stuff_bytes(const char *s, long n, int typeahead, int literally)
 
 static Sbuf recordbuff;
 static long recordbuff_last;
+
+/* a fresh session's registers, for tests that must not depend on the
+   inputs before them */
+void ops_reset(void)
+{
+	for (int i = 0; i < 38; i++) { free(y_regs[i].s); y_regs[i] = (Reg){ 0 }; }
+	y_previous = NULL;
+	free(last_cmdline);
+	last_cmdline = NULL;
+	recordbuff.n = recordbuff_last = 0;
+	reg_recording = reg_executing = reg_recorded = execreg_lastc = 0;
+}
 
 void record_key(int k)
 {

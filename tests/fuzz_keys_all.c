@@ -5,9 +5,11 @@
    a recorded <Down> is Neovim's K_SPECIAL bytes 80 6B 64, which a put
    inserts as they are (measured: "qa<Down>q" then "ap gives x<80>kd).  Not @ and Q: a
    macro that runs itself loops in Neovim too, until CTRL-C, which this
-   loop cannot send.  Registers, the redo buffer and the last insert carry
-   over from one input to the next, as from one command to the next, so a
-   failure may need the inputs before it (run with a log of them to replay). */
+   loop cannot send.  Each input starts a fresh session (registers, redo, last
+   insert, last f/t), so a failing input replays alone.  A count is one
+   digit (two with an operator's): typed counts reach 999999999, and
+   333333o or 222222222p only measure the rope's speed or memory, which
+   test_text and fuzz_text check. */
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -40,10 +42,18 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 		if (fd < 0 || write(fd, t, sizeof t - 1) != (ssize_t)(sizeof t - 1)) abort();
 		close(fd);
 	}
+	normal_reset();
+	ops_reset();
+	edit_reset();
+	motion_reset();
 	if (core_open(&e, path)) abort();
 	read_all(&e, before, &nb);
+	int prev = 0;
 	for (size_t i = 0; i < n && text_len(e.buf->text) < 30000; i++) {
-		keys_feed(&e, keys[d[i] % (sizeof keys / sizeof *keys)], i + 1 < n);
+		int k = keys[d[i] % (sizeof keys / sizeof *keys)];
+		if (k >= '0' && k <= '9' && prev >= '0' && prev <= '9') continue;
+		prev = k;
+		keys_feed(&e, k, i + 1 < n);
 		size_t len, nl = core_lines(&e);
 		const unsigned char *s = core_line(&e, e.win->line, &len);
 		if (!nl || e.win->line >= nl || e.win->col > len) abort();
@@ -57,7 +67,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 	/* end whatever is open: an insert, Visual mode, an operator, a recording */
 	for (int i = 0; i < 4; i++) keys_feed(&e, KEY_ESC, 0);
 	if (reg_recording) keys_feed(&e, 'q', 0);
-	if (e.mode != MODE_NORMAL || VIsual_active || reg_recording) abort();
+	if (e.mode != MODE_NORMAL || VIsual_active || reg_recording || e.ks.pending) abort();
 	read_all(&e, after, &na);
 	unsigned long seq = undo_seq(e.buf->undo);
 	while (undo_seq(e.buf->undo)) keys_feed(&e, 'u', 0);

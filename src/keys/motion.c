@@ -534,6 +534,7 @@ found:
 /* ---- f t F T ; , ---- */
 
 static int lastc, lastcdir = FORWARD, last_t_cmd;
+void motion_reset(void) { lastc = last_t_cmd = 0; lastcdir = FORWARD; }
 extern int key_stuffed;
 extern int searchc_inclusive;
 

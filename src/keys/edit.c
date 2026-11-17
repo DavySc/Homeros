@@ -24,6 +24,8 @@ static Pos Insstart, Insstart_orig;
 static int *last_ins;
 static long last_ins_n, last_ins_skip;
 
+void edit_reset(void) { free(last_ins); last_ins = NULL; last_ins_n = last_ins_skip = 0; }
+
 static int replacing(void) { return E->ks.replace; }
 
 /* ---- the replace stack: what Replace mode overtyped, for BS ---- */
