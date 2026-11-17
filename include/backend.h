@@ -1,5 +1,5 @@
 /* A backend shows the grid and turns input into keys (keys.h codes).
-   ref/tty.c is the terminal mode (changed cells only, synchronized update);
+   src/tty is the terminal mode (changed cells only, synchronized update);
    packages 8 and 9 add the Wayland and Win32 windows, which may draw only
    after the compositor's frame callback (Present.tla): ready says so.
    Both kinds link into one binary, so each backend is a table and main.c
@@ -34,7 +34,7 @@ typedef struct {
 	void (*mouse)(int *row, int *col);
 } Backend;
 
-extern const Backend backend_tty;    /* ref/tty.c, package 6 */
+extern const Backend backend_tty;    /* src/tty, package 6 */
 extern const Backend backend_wl;     /* src/wl/, package 8; built when src/wl/ exists (HOMEROS_WL) */
 extern const Backend backend_win;    /* src/win/, package 9; the Windows build */
 #endif

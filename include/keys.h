@@ -1,8 +1,6 @@
-/* Vim keys: the grammar from keys to core calls.  ref/keys.c knows the thin
-   editor's set (h j k l 0 ^ $ w b gg G x dd i a I A o O u CTRL-R, counts,
-   insert-mode text, Enter, Backspace, Delete, Tab, :w :w! :q :q! :wq :x).
-   Package 5 (src/keys/) grows it to FEATURES.md, checked against
-   nvim --headless (tools/conform.py). */
+/* Vim keys: the grammar from keys to core calls, ported from Neovim 0.12 in
+   src/keys/ (package 5) and checked against nvim --headless
+   (tools/conform.py); src/keys/README lists what is not built yet. */
 #ifndef KEYS_H
 #define KEYS_H
 #include <stddef.h>
