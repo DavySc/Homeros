@@ -1,0 +1,14 @@
+17c17
+< static int resized;
+---
+> static int resized, running;   /* running: inside a command */
+27c27,29
+< 	int n = b->input(k, 256);
+---
+> 	int room = QMAX - qn;
+> 	if (!room && !running) return;    /* between commands the loop drains the queue: let the input wait */
+> 	int n = b->input(k, room && room < 256 ? room : 256);
+72c74
+< 			} else keys_feed(&e, k, qn > 0);
+---
+> 			} else { running = 1; keys_feed(&e, k, qn > 0); running = 0; }

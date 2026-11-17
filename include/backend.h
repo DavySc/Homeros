@@ -36,4 +36,5 @@ typedef struct {
 
 extern const Backend backend_tty;    /* ref/tty.c, package 6 */
 extern const Backend backend_wl;     /* src/wl/, package 8; built when src/wl/ exists (HOMEROS_WL) */
+extern const Backend backend_win;    /* src/win/, package 9; the Windows build */
 #endif
