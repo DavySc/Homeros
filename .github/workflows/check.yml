@@ -17,9 +17,8 @@ jobs:
       - run: >
           sudo apt-get update && sudo apt-get install -y clang libclang-rt-18-dev pkg-config
           libfreetype-dev libharfbuzz-dev libfontconfig-dev
-          libwayland-dev wayland-protocols libxkbcommon-dev weston sway
-          fonts-jetbrains-mono fonts-noto-core fonts-noto-color-emoji fonts-dejavu-core
-      - run: nix build -f design/env.nix tools -o tools-env
+          libwayland-dev wayland-protocols libxkbcommon-dev weston sway xvfb
+      - run: nix build -f tools.nix tools -o tools-env
       - run: echo "$PWD/tools-env/bin" >> "$GITHUB_PATH"
       - run: why3 config detect
       - run: make check

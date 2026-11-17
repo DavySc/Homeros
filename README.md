@@ -10,7 +10,7 @@ The thin editor runs in a terminal: `make && ./homeros FILE`. It has the text in
 
 ## The check
 
-Tools: `nix build -f design/env.nix tools -o tools-env`, put `tools-env/bin` on PATH, run `why3 config detect` once; clang needs its compiler-rt (on Debian/Ubuntu `libclang-rt-18-dev`).
+Tools: `nix build -f tools.nix tools -o tools-env` (design/env.nix's tools plus pinned fonts), put `tools-env/bin` on PATH, run `why3 config detect` once; clang needs its compiler-rt (on Debian/Ubuntu `libclang-rt-18-dev`).
 
 | Target | What it runs |
 |---|---|

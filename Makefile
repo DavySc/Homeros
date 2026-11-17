@@ -10,7 +10,8 @@
 SHELL = /bin/bash
 
 BASE = text undo uni core keys grid tty loop file syntax
-MODULES = $(BASE) $(filter-out $(BASE),$(patsubst src/%/,%,$(wildcard src/*/)))
+# src/win/ (package 9) is the Windows build's, cross-compiled on its own
+MODULES = $(BASE) $(filter-out $(BASE) win,$(patsubst src/%/,%,$(wildcard src/*/)))
 pick = $(if $(wildcard src/$(1)/*.c),$(wildcard src/$(1)/*.c),ref/$(1).c)
 SRCS := $(foreach m,$(MODULES),$(call pick,$(m)))
 
@@ -96,7 +97,12 @@ frama: | build
 	  -cpp-extra-args="-Iinclude" $(FRAMA_FILES) | tee build/frama.log
 	grep -qE "Proved goals: +([0-9]+) / \1$$" build/frama.log
 
-check: compilers test fuzz conform undo-diff lean frama specs
+# the Windows build (package 9): cross-built with zig cc, run under Wine on
+# a virtual X display; src/win/check.sh says how
+win:
+	@if [ -f src/win/check.sh ]; then bash src/win/check.sh; else echo "win: no src/win yet"; fi
+
+check: compilers test fuzz conform undo-diff lean frama specs win
 	@echo "check: all passed"
 
 planted:
@@ -105,4 +111,4 @@ planted:
 clean:
 	rm -rf build homeros
 
-.PHONY: compilers test fuzz conform undo-diff specs lean frama check planted clean
+.PHONY: compilers test fuzz conform undo-diff specs lean frama win check planted clean
