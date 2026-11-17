@@ -53,7 +53,7 @@ static int has(size_t from, size_t to, const char *s)
 }
 
 /* the terminal agrees with the core's widths */
-static int width(const unsigned char *s, int n) { return uni_width(uni_cp(s, (size_t)n, 0)); }
+static int width(const unsigned char *s, int n) { return uni_width(s, (size_t)n, 0); }
 
 /* Reads the editor's output until it has been quiet for ms (or exits). */
 static int pump(int m, const unsigned char *in, size_t n, int ms)
@@ -158,6 +158,12 @@ int main(void)
 			signal(SIGTTOU, SIG_DFL);
 			dup2(s, 0); dup2(s, 1); dup2(s, 2);
 			close(s); close(m);
+			/* the model above still has the file open, and with it its crash
+			   journal's lock (file.h): a second editor would rightly say E303,
+			   so the editor journals in a place of its own */
+			char st[64];
+			snprintf(st, sizeof st, "%s.state", path);
+			setenv("XDG_STATE_HOME", st, 1);
 			char *argv[] = { "homeros", path, NULL };
 			_exit(homeros_main(2, argv));   /* _exit: the parent's allocations are not leaks */
 		}
