@@ -1,7 +1,7 @@
 # Package 8, the Wayland window: libraries from pkg-config, and the protocol
 # glue wayland-scanner writes from the distribution's XML (outside our
 # warnings), for the editor and, from src/wl/test/, for its test.
-WL_PKGS = wayland-client xkbcommon freetype2 fontconfig
+WL_PKGS = wayland-client xkbcommon
 WL_XML := $(shell pkg-config --variable=pkgdatadir wayland-protocols)
 WL_PROTOS = stable/xdg-shell/xdg-shell unstable/text-input/text-input-unstable-v3 \
   staging/cursor-shape/cursor-shape-v1 unstable/tablet/tablet-unstable-v2 \

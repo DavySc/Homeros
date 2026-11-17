@@ -2,13 +2,14 @@
 
 `backend_wl` (include/backend.h) as foot does it: an xdg-shell window with no
 decorations, drawn on the CPU into two wl_shm buffers, one poll loop, no
-threads. `wl.c` is the backend, `glyph.c` a stand-in for package 7's font.h
-(one fontconfig font, FreeType bitmaps cached by code point in a fixed arena,
-no shaping or fallback) until package 7 lands.
+threads, its text shaped by package 7's font.h.
 
 | Part | How | Copies |
 |---|---|---|
-| Frames | draw only when the last frame's callback came and a buffer is free (Present.tla "framecb"); each buffer keeps the grid it shows, so only cells that differ from it are drawn and damaged | foot |
+| Frames | draw only when the last frame's callback came and a buffer is free (Present.tla "framecb"); each buffer keeps the grid it shows, so only rows that differ from it are drawn and damaged | foot |
+| Text | a changed row is shaped as one run (font.h), coloured per cell: colour does not change the font, so runs are not split by it | kitty |
+| Scroll | rows that moved are copied within the buffer, not shaped again: the core sends whole grids, not scroll events, so the move is the one that most changed rows have, counted by row hashes against the rows the buffer shows; a row is copied only if its cells equal the source's, and in the move's direction so no source is drawn over first | Emacs (dispnew.c, scrolling_window: the move found by comparing the rows shown with the rows wanted), foot (the copy) |
+| Wide symbols | a glyph is clipped to its row, not its cell, so a symbol wider than its cell (73 of Mathlib's 295 notation symbols at 20 px, reviews/package-7.md) spills into the next cell, in Lean mostly a space | foot's overflowing glyphs |
 | Size | the size xdg_toplevel configures; 800x600 when it leaves the choice to us | foot |
 | Scale | fractional-scale-v1 with a viewport: the buffer is the logical size times scale/120, the font is re-opened at 16 px times the scale | foot |
 | Keys | xkbcommon keysyms and UTF-32 (with the Control transformation, so Ctrl-R is 18); Backspace is 127, as a terminal sends; client-side repeat on a timerfd at the compositor's rate and delay | foot |
@@ -16,7 +17,7 @@ no shaping or fallback) until package 7 lands.
 | Clipboard | wl_data_device, text/plain;charset=utf-8; our own selection is answered without the compositor; another's is read through a pipe with a 1 s timeout per read, as Neovim's clipboard provider times out | Neovim, foot |
 | Pointer | cursor-shape-v1's text cursor; a left press is KEY_MOUSE_LEFT, a wheel notch (value120) one KEY_WHEEL_UP/DOWN, a touchpad one per 3 rows scrolled, at the pointer's cell | Neovim GUIs |
 | Close | xdg_toplevel.close is KEY_CLOSE | |
-| Colours | Catppuccin Mocha, the same faces as ref/tty.c | |
+| Colours | grid.h's `faces` (ref/theme.c, Catppuccin Mocha): their colours, underline and strikethrough; colour glyphs (emoji) blended as premultiplied BGRA; no bold or italic, which font.h does not open | ref/tty.c |
 
 The font size, 16 px at scale 1, is a hypothesis: Davy's size is not recorded.
 

@@ -19,10 +19,14 @@
 #include <unistd.h>
 #include <wayland-client.h>
 #include "check.h"
-/* The Makefile leaves the window out of the tests' link, so this test
-   compiles it in, with the glue of the two protocols only it uses. */
-#include "../src/wl/wl.c"
-#include "../src/wl/glyph.c"
+#include "backend.h"
+#include "keys.h"
+#include "font.h"
+enum { BTN_LEFT = 0x110 };   /* linux/input-event-codes.h clashes with keys.h */
+/* the backend's cell, from its font */
+static int cellw(void) { int w, h, b; font_cell(&w, &h, &b); return w; }
+static int cellh(void) { int w, h, b; font_cell(&w, &h, &b); return h; }
+/* the glue of the two protocols only this test uses */
 #include "input-method-unstable-v2.c"
 #include "wlr-virtual-pointer-unstable-v1.c"
 #include "input-method-unstable-v2-client-protocol.h"
@@ -184,9 +188,9 @@ static void size_is(int lw, int lh, int scale120)
 {
 	int r, c, bw = (lw * scale120 + 60) / 120, bh = (lh * scale120 + 60) / 120;
 	backend_wl.size(&r, &c);
-	if (r != bh / glyph_ch || c != bw / glyph_cw)
-		fprintf(stderr, "size %dx%d cells, want %dx%d (%dx%d px at %d/120)\n", r, c, bh / glyph_ch, bw / glyph_cw, lw, lh, scale120);
-	CHECK(r == bh / glyph_ch && c == bw / glyph_cw);
+	if (r != bh / cellh() || c != bw / cellw())
+		fprintf(stderr, "size %dx%d cells, want %dx%d (%dx%d px at %d/120)\n", r, c, bh / cellh(), bw / cellw(), lw, lh, scale120);
+	CHECK(r == bh / cellh() && c == bw / cellw());
 }
 
 #define SWAYMSG "SWAYSOCK=$(echo $XDG_RUNTIME_DIR/sway-ipc.*) swaymsg -q "
@@ -204,6 +208,27 @@ static int above(int rows)
 	fclose(f);
 	fclose(h);
 	return memcmp(x, y, (size_t)rows * 40 * 3) != 0;
+}
+
+/* Whether the screen at (x, y), w by h pixels, has any pixel other than
+   the window's background */
+static int ink(int x, int y, int w, int h)
+{
+	char b[512];
+	snprintf(b, sizeof b, "grim -g '%d,%d %dx%d' -t ppm %s/i.ppm", x, y, w, h, dir);
+	run(b);
+	snprintf(b, sizeof b, "%s/i.ppm", dir);
+	FILE *f = fopen(b, "rb");
+	int pw, ph, n = 0;
+	CHECK(f && fscanf(f, "P6 %d %d 255%*c", &pw, &ph) == 2);
+	for (int i = 0, c; i < pw * ph; i++) {
+		unsigned char p[3];
+		CHECK(fread(p, 1, 3, f) == 3);
+		c = p[0] << 16 | p[1] << 8 | p[2];
+		n += c != 0x1e1e2e;
+	}
+	fclose(f);
+	return n;
 }
 
 static const char SWAY[] =
@@ -239,25 +264,43 @@ static void test_sway(void)
 	size_is(1280, 800, 120);        /* the whole output */
 	draw();
 
-	/* only changed cells are drawn: after random edits (characters, attrs,
-	   faces, the cursor) over many frames into both buffers, the screen is
-	   what a whole redraw gives, and not what it was before */
+	/* only changed rows are drawn, and moved rows copied: after random
+	   edits (characters, ligatures, wide and overflowing symbols, attrs,
+	   faces, the cursor) and scrolls over many frames into both buffers, the
+	   screen is what a whole redraw gives, and not what it was before */
 	cmd("grim -t ppm %s/0.ppm # %s", dir);
-	static const char *const ch[] = { "a", "Z", "~", "λ", "é", " ", "#" };
-	for (int f = 0; f < 40; f++) {
-		for (int i = 0; i < 30; i++) {
-			const char *s = ch[rnd(7)];
-			grid_put(&g, (int)rnd(8), (int)rnd(20), (const unsigned char *)s, strlen(s), 1, (int)rnd(3));
-			g.c[rnd(8) * g.cols + rnd(20)].face = (unsigned char)rnd(FACE_COUNT);
+	static const char *const ch[] = { "a", "Z", "~", "λ", "é", " ", "#", "-", ">", "⟹", "😀" };
+	for (int f = 0; f < 75; f++) {   /* ends after cursor-only frames */
+		/* edits in 10 frames of each 20 (the first over every row, so
+		   rows differ), then 5 frames that move only the cursor and 5 that
+		   only scroll, so a buffer's rows, two frames old, are found moved */
+		int phase = f % 20;
+		for (int i = 0; i < (phase ? 30 : 20 * g.rows) && phase < 10; i++) {
+			int n = (int)rnd(11), r = phase ? (int)rnd(16) : i / 20;
+			grid_put(&g, r, phase ? (int)rnd(20) : i % 20, (const unsigned char *)ch[n], strlen(ch[n]), n == 10 ? 2 : 1, (int)rnd(3));
+			g.c[r * g.cols + rnd(20)].face = (unsigned char)rnd(FACE_COUNT);
 		}
-		g.crow = (int)rnd(8);
-		g.ccol = (int)rnd(20);
+		if (phase >= 15) {         /* a scroll by k rows, either way */
+			int k = (int)rnd(7) - 3, a = k > 0 ? k : -k;
+			memmove(&g.c[(k < 0 ? a : 0) * g.cols], &g.c[(k > 0 ? a : 0) * g.cols], sizeof *g.c * (size_t)((g.rows - a) * g.cols));
+		} else {
+			g.crow = (int)rnd((unsigned)g.rows);
+			g.ccol = (int)rnd(20);
+		}
 		show();
 	}
 	cmd("grim -t ppm %s/1.ppm # %s", dir);
 	grid_free(&shown);              /* as after a suspend: redrawn whole */
 	show();
 	cmd("grim -t ppm %s/2.ppm && cmp -s %s/1.ppm %s/2.ppm && ! cmp -s %s/0.ppm %s/1.ppm", dir);
+
+	/* a symbol wider than its cell (⟹; 73 of Mathlib's 295 are) spills into
+	   the space after it rather than being cut at its cell */
+	grid_clear(&g);
+	grid_put(&g, 0, 0, (const unsigned char *)"⟹", 3, 1, ATTR_NONE);
+	g.crow = 5;
+	show();
+	CHECK(ink(cellw(), 0, cellw(), cellh()));
 
 	/* keys, with the Control transformation and the keys keys.h names */
 	k0 = nkeys;
@@ -337,7 +380,7 @@ static void test_sway(void)
 	zwlr_virtual_pointer_v1_frame(vp);
 	for (int i = 0; i < 2; i++) {   /* half of 3 rows twice */
 		zwlr_virtual_pointer_v1_axis_source(vp, WL_POINTER_AXIS_SOURCE_FINGER);
-		zwlr_virtual_pointer_v1_axis(vp, 0, WL_POINTER_AXIS_VERTICAL_SCROLL, wl_fixed_from_double(1.5 * glyph_ch));
+		zwlr_virtual_pointer_v1_axis(vp, 0, WL_POINTER_AXIS_VERTICAL_SCROLL, wl_fixed_from_double(1.5 * cellh()));
 		zwlr_virtual_pointer_v1_frame(vp);
 	}
 	pump(100);
@@ -346,7 +389,7 @@ static void test_sway(void)
 	CHECK(nkeys - k0 == 4 && keys[k0] == KEY_MOUSE_LEFT && keys[k0 + 1] == KEY_WHEEL_DOWN
 	      && keys[k0 + 2] == KEY_WHEEL_UP && keys[k0 + 3] == KEY_WHEEL_DOWN);
 	backend_wl.mouse(&mr, &mc);
-	CHECK(mr == 300 / glyph_ch && mc == 500 / glyph_cw);
+	CHECK(mr == 300 / cellh() && mc == 500 / cellw());
 	zwlr_virtual_pointer_v1_destroy(vp);
 
 	/* configure size: floating, resized by the compositor */
@@ -358,17 +401,17 @@ static void test_sway(void)
 	draw();
 
 	/* scale: 1.5 gives a 960x720 buffer and a 24 px font */
-	int ch1 = glyph_ch;
+	int ch1 = cellh();
 	k0 = nkeys;
 	run(SWAYMSG "output HEADLESS-1 scale 1.5");
 	pump(200);
-	CHECK(count(KEY_RESIZE, k0) >= 1 && glyph_ch > ch1);
+	CHECK(count(KEY_RESIZE, k0) >= 1 && cellh() > ch1);
 	size_is(640, 480, 180);
 	draw();
 	run(SWAYMSG "output HEADLESS-1 scale 1");
 	pump(200);
 	size_is(640, 480, 120);
-	CHECK(glyph_ch == ch1);
+	CHECK(cellh() == ch1);
 	draw();
 
 	/* hidden: no frame callback, so nothing is drawn until shown again */

@@ -27,11 +27,13 @@
 #include "backend.h"
 #include "keys.h"
 #include "uni.h"
-#include "glyph.h"
+#include "font.h"
 
 /* FONT_PX: pixels per em at scale 1 (hypothesis: Davy's size is not recorded);
-   ATTR_PRE: the preedit, underlined (backend-private, after grid.h's attrs) */
-enum { FONT_PX = 16, NBUF = 2, KQ = 1024, PRE = 256, ATTR_PRE = ATTR_REV + 1 };
+   ATTR_PRE: the preedit, underlined (backend-private, after grid.h's attrs);
+   ROW: the most bytes and glyphs one row shapes (4 bytes a cell) */
+enum { FONT_PX = 16, NBUF = 2, KQ = 1024, PRE = 256, ATTR_PRE = ATTR_REV + 1, ROW = 4096 };
+static const char FAMILY[] = "JetBrains Mono";
 /* linux/input-event-codes.h's, whose KEY_* names clash with keys.h's */
 enum { BTN_LEFT = 0x110 };
 static const char MIME[] = "text/plain;charset=utf-8";
@@ -57,7 +59,14 @@ static struct wp_cursor_shape_device_v1 *shape;
 static struct zwp_text_input_v3 *ti;
 static struct wl_data_device *dd;
 
-static int lw = 800, lh = 600;      /* logical size, from configure */
+static int cell_w, cell_h, cell_b;  /* the font's cell and baseline, in pixels */
+static int lw = 800, lh = 600;
+static int font(int px)
+{
+	if (font_open(FAMILY, px)) return -1;
+	font_cell(&cell_w, &cell_h, &cell_b);
+	return 0;
+}      /* logical size, from configure */
 static int scale = 120;             /* in 120ths, fractional-scale-v1's unit */
 static int bw, bh;                  /* buffer size in pixels */
 static int configured, waiting;     /* waiting: a frame callback is due */
@@ -186,8 +195,8 @@ static int finger, wheel;           /* this frame's scroll has no notches (touch
 
 static void mouse_key(int k)
 {
-	mrow = my / glyph_ch;
-	mcol = mx / glyph_cw;
+	mrow = my / cell_h;
+	mcol = mx / cell_w;
 	push(k);
 }
 static void pt_enter(void *d, struct wl_pointer *p, uint32_t s, struct wl_surface *f, wl_fixed_t x, wl_fixed_t y)
@@ -219,7 +228,7 @@ static void scroll(int v, int step)
 static void pt_axis(void *d, struct wl_pointer *p, uint32_t t, uint32_t a, wl_fixed_t v)
 {
 	(void)d; (void)p; (void)t;
-	if (finger && a == WL_POINTER_AXIS_VERTICAL_SCROLL) scroll(v, 3 * glyph_ch * 256 * 120 / scale);   /* in wl_fixed's 1/256 */
+	if (finger && a == WL_POINTER_AXIS_VERTICAL_SCROLL) scroll(v, 3 * cell_h * 256 * 120 / scale);   /* in wl_fixed's 1/256 */
 }
 static void pt_frame(void *d, struct wl_pointer *p) { (void)d; (void)p; finger = 0; }
 static void pt_source(void *d, struct wl_pointer *p, uint32_t s)
@@ -249,8 +258,8 @@ static int ti_on, ti_r, ti_c;       /* enabled; the cursor cell it was told */
 static void ti_cursor(void)
 {
 	if (!ti_on) return;
-	zwp_text_input_v3_set_cursor_rectangle(ti, ti_c * glyph_cw * 120 / scale, ti_r * glyph_ch * 120 / scale,
-		glyph_cw * 120 / scale, glyph_ch * 120 / scale);
+	zwp_text_input_v3_set_cursor_rectangle(ti, ti_c * cell_w * 120 / scale, ti_r * cell_h * 120 / scale,
+		cell_w * 120 / scale, cell_h * 120 / scale);
 	zwp_text_input_v3_commit(ti);
 }
 static void ti_enter(void *d, struct zwp_text_input_v3 *t, struct wl_surface *f)
@@ -481,7 +490,7 @@ static const struct xdg_surface_listener xs_l = { xs_configure };
 static void fs_scale(void *d, struct wp_fractional_scale_v1 *f, uint32_t s)
 {
 	(void)d; (void)f;
-	if ((int)s == scale || glyph_open((FONT_PX * (int)s + 60) / 120)) return;
+	if ((int)s == scale || font((FONT_PX * (int)s + 60) / 120)) return;
 	scale = (int)s;
 	resize();
 }
@@ -549,18 +558,24 @@ static int bufs_make(void)
 	return 0;
 }
 
-/* Catppuccin Mocha, as ref/tty.c: base, text, surface1 (catppuccin/nvim's
-   LineNr), and the colours catppuccin/nvim gives the syntax captures */
+/* The window's defaults, Catppuccin Mocha like ref/theme.c's faces: base,
+   text, and surface1 (catppuccin/nvim's LineNr) for ATTR_DIM */
 enum { BG = 0x1e1e2e, FG = 0xcdd6f4, DIM = 0x45475a };
-static const uint32_t face_fg[FACE_COUNT] = {
-	FG, 0x9399b2, 0xa6e3a1, 0xcba6f7, 0xf9e2af, 0x89b4fa, 0xfab387, 0xfab387, 0x89dceb, 0x9399b2, 0xcdd6f4
-};
+static uint32_t rgb(const unsigned char c[3]) { return (uint32_t)c[0] << 16 | (uint32_t)c[1] << 8 | c[2]; }
 
 /* Callers keep rectangles inside the buffer: cells are, by wl_size. */
 static void fill(uint32_t *px, int x0, int y0, int w, int h, uint32_t c)
 {
 	for (int y = y0; y < y0 + h; y++)
 		for (uint32_t *p = px + y * bw + x0, *e = p + w; p < e; p++) *p = c;
+}
+
+/* src premultiplied, of alpha a, over dst */
+static uint32_t over(uint32_t dst, uint32_t src, unsigned a)
+{
+	uint32_t r = 0;
+	for (int s = 0; s < 24; s += 8) r |= ((src >> s & 0xff) + ((dst >> s & 0xff) * (255 - a) + 127) / 255) << s;
+	return r;
 }
 
 static uint32_t mix(uint32_t bg, uint32_t fg, unsigned a)
@@ -573,28 +588,107 @@ static uint32_t mix(uint32_t bg, uint32_t fg, unsigned a)
 	return r;
 }
 
-/* Draws cell (r, c) of g, w cells wide, into px; the glyph is clipped to
-   the cells so no neighbour is touched. */
-static void draw_cell(uint32_t *px, const Grid *g, int r, int c, int w)
+/* The colours of cell c of row r, as ref/tty.c: the attr, then the face's
+   colours, reversed last (the cursor too); bold and italic need fonts
+   font.h does not open */
+static const Face *colours(const Grid *g, int r, int c, uint32_t *fg, uint32_t *bg)
 {
 	const Cell *x = &g->c[r * g->cols + c];
-	uint32_t fg = x->face && x->face < FACE_COUNT ? face_fg[x->face] : x->attr == ATTR_DIM ? DIM : FG, bg = BG;
-	if (x->attr == ATTR_REV || (r == g->crow && c == g->ccol)) { fg = BG; bg = FG; }
-	int x0 = c * glyph_cw, y0 = r * glyph_ch, cw = w * glyph_cw;
-	fill(px, x0, y0, cw, glyph_ch, bg);
-	if (x->attr == ATTR_PRE) fill(px, x0, y0 + glyph_ch - 1, cw, 1, fg);
-	if (!x->len || (x->len == 1 && x->ch[0] == ' ')) return;
-	const Glyph *gl = glyph_get(uni_cp(x->ch, x->len, 0));
-	/* the part of the glyph inside the cells */
-	int gx = x0 + gl->left, gy = y0 + glyph_asc - gl->top;
-	int ax = gx < x0 ? x0 - gx : 0, zx = gx + gl->w > x0 + cw ? x0 + cw - gx : gl->w;
-	int ay = gy < y0 ? y0 - gy : 0, zy = gy + gl->h > y0 + glyph_ch ? y0 + glyph_ch - gy : gl->h;
-	for (int y = ay; y < zy; y++) {
-		uint32_t *p = px + (gy + y) * bw + gx;
-		const unsigned char *a = gl->a + y * gl->w;
-		for (int i = ax; i < zx; i++)
-			if (a[i]) p[i] = a[i] == 255 ? fg : mix(bg, fg, a[i]);
+	const Face *f = &faces[x->face < FACE_COUNT ? x->face : 0];
+	uint32_t t = *fg = f->style & FACE_FG ? rgb(f->fg) : x->attr == ATTR_DIM ? DIM : FG;
+	*bg = f->style & FACE_BG ? rgb(f->bg) : BG;
+	if (x->attr == ATTR_REV || (r == g->crow && c == g->ccol)) { *fg = *bg; *bg = t; }
+	return f;
+}
+
+/* Draws row r of g into px: the cells' backgrounds, then the row shaped as
+   one run, since colour does not change the font (kitty splits runs by font
+   only).  A glyph is clipped to the row, not to its cell, so a symbol wider
+   than its cell (73 of Mathlib's 295) spills into the next, which in Lean
+   is mostly a space; foot's overflowing glyphs do the same. */
+static void draw_row(uint32_t *px, const Grid *g, int r)
+{
+	static unsigned char s[ROW];
+	static unsigned short col[ROW];     /* the cell of each byte of s */
+	static Placed pl[ROW];
+	const Cell *x = &g->c[r * g->cols];
+	int y0 = r * cell_h, n = 0;
+	uint32_t fg, bg;
+	for (int c = 0; c < g->cols; c++) {
+		if (!x[c].len) continue;   /* right half: drawn with its left half */
+		int w = c + 1 < g->cols && !x[c + 1].len ? 2 : 1;
+		const Face *f = colours(g, r, c, &fg, &bg);
+		fill(px, c * cell_w, y0, w * cell_w, cell_h, bg);
+		if (x[c].attr == ATTR_PRE || f->style & FACE_UNDERLINE) fill(px, c * cell_w, y0 + cell_h - 1, w * cell_w, 1, fg);
+		if (f->style & FACE_STRIKE) fill(px, c * cell_w, y0 + cell_h / 2, w * cell_w, 1, fg);
+		for (int i = 0; i < x[c].len && n < ROW; i++) { s[n] = x[c].ch[i]; col[n++] = (unsigned short)c; }
 	}
+	int xe = g->cols * cell_w, ye = y0 + cell_h;
+	for (int i = 0, m = font_shape(s, (size_t)n, pl, ROW); i < m; i++) {
+		const Glyph *gl = pl[i].g;
+		int c = col[pl[i].cluster];
+		colours(g, r, c, &fg, &bg);
+		int gx = c * cell_w + pl[i].x + gl->left, gy = y0 + cell_b - pl[i].y - gl->top;
+		int ax = gx < 0 ? -gx : 0, zx = gx + gl->w > xe ? xe - gx : gl->w;
+		int ay = gy < y0 ? y0 - gy : 0, zy = gy + gl->h > ye ? ye - gy : gl->h;
+		for (int y = ay; y < zy; y++) {
+			uint32_t *p = px + (gy + y) * bw + gx;
+			if (gl->color) {   /* premultiplied BGRA, the buffer's own byte order */
+				const unsigned char *q = gl->px + (size_t)(y * gl->w) * 4;
+				for (int j = ax; j < zx; j++) {
+					uint32_t v;
+					memcpy(&v, q + 4 * j, 4);   /* the cache does not align it */
+					unsigned a = v >> 24;
+					if (a) p[j] = a == 255 ? v : over(p[j], v, a);
+				}
+				continue;
+			}
+			const unsigned char *a = gl->px + y * gl->w;
+			for (int j = ax; j < zx; j++)
+				if (a[j]) p[j] = a[j] == 255 ? fg : mix(p[j], fg, a[j]);
+		}
+	}
+}
+
+/* Whether row r of a shows what row q of b shows: the cells and the cursor */
+static int row_eq(const Grid *a, int r, const Grid *b, int q)
+{
+	if ((a->crow == r ? a->ccol : -1) != (b->crow == q ? b->ccol : -1)) return 0;
+	for (int c = 0; c < a->cols; c++)
+		if (!grid_cell_eq(&a->c[r * a->cols + c], &b->c[q * b->cols + c])) return 0;
+	return 1;
+}
+
+/* A hash of row r as row_eq sees it (FNV-1a over what grid_cell_eq compares) */
+static unsigned long row_hash(const Grid *g, int r)
+{
+	unsigned long h = 2166136261u ^ (unsigned long)(g->crow == r ? g->ccol + 1 : 0);
+	for (const Cell *x = &g->c[r * g->cols], *e = x + g->cols; x < e; x++) {
+		h = (h ^ x->len) * 16777619u;
+		h = (h ^ x->attr) * 16777619u;
+		h = (h ^ x->face) * 16777619u;
+		for (int i = 0; i < x->len; i++) h = (h ^ x->ch[i]) * 16777619u;
+	}
+	return h;
+}
+
+/* How far the rows moved since b was drawn: the move that most changed rows
+   of g have, among b's rows, as Emacs's redisplay finds a scroll by row
+   hashes (dispnew.c, scrolling_window); 0 if none.  The core sends whole
+   grids, not scroll events.  A hash only picks the move: a row is copied
+   only if row_eq holds. */
+static int shift(const Grid *g, const Grid *b)
+{
+	int n = g->rows, best = 0, most = 0;
+	unsigned long hg[n], hb[n];
+	for (int r = 0; r < n; r++) { hg[r] = row_hash(g, r); hb[r] = row_hash(b, r); }
+	for (int d = 1; d < n; d++)
+		for (int k = d; k >= -d; k -= 2 * d) {
+			int m = 0;
+			for (int r = k < 0 ? -k : 0; r < n && r + k < n; r++) m += hg[r] != hb[r] && hg[r] == hb[r + k];
+			if (m > most) { most = m; best = k; }
+		}
+	return best;
 }
 
 /* ---- backend.h ---- */
@@ -640,7 +734,7 @@ static void wl_close(void)
 	xkb_keymap_unref(keymap);
 	xkb_context_unref(xctx);
 	if (rfd >= 0) close(rfd);
-	glyph_close();
+	font_close();
 	free(clip);
 	free(got);
 	grid_free(&vis);
@@ -662,7 +756,7 @@ static int wl_open(void)
 	reg = wl_display_get_registry(dpy);
 	wl_registry_add_listener(reg, &reg_l, NULL);
 	wl_display_flush(dpy);        /* the compositor answers while the font loads */
-	if (glyph_open(FONT_PX) || !(xctx = xkb_context_new(XKB_CONTEXT_NO_FLAGS))
+	if (font(FONT_PX) || !(xctx = xkb_context_new(XKB_CONTEXT_NO_FLAGS))
 	    || (rfd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC)) < 0
 	    || wl_display_roundtrip(dpy) < 0 || !comp || !shm || !wm) {
 		wl_close();
@@ -714,8 +808,8 @@ static int wl_input(int *out, int n)
 
 static void wl_size(int *rows, int *cols)
 {
-	*rows = bh / glyph_ch > 0 ? bh / glyph_ch : 1;
-	*cols = bw / glyph_cw > 0 ? bw / glyph_cw : 1;
+	*rows = bh / cell_h > 0 ? bh / cell_h : 1;
+	*cols = bw / cell_w > 0 ? bw / cell_w : 1;
 }
 
 static int wl_ready(void)
@@ -746,7 +840,7 @@ static const Grid *overlay(const Grid *cur)
 static void wl_present(const Grid *cur, Grid *shown)
 {
 	/* a grid from before the last configure waits for its KEY_RESIZE */
-	if (!wl_ready() || cur->rows * glyph_ch > bh || cur->cols * glyph_cw > bw) return;
+	if (!wl_ready() || cur->rows * cell_h > bh || cur->cols * cell_w > bw) return;
 	int all = shown->rows != cur->rows || shown->cols != cur->cols;
 	if (all) {                    /* also after a suspend: redraw both buffers whole */
 		if (grid_resize(shown, cur->rows, cur->cols)) return;
@@ -762,21 +856,20 @@ static void wl_present(const Grid *cur, Grid *shown)
 		fill(b->px, 0, 0, bw, bh, BG);
 		all = 1;
 	}
-	for (int r = 0; r < g->rows; r++) {
-		int lo = -1, hi = 0;
-		for (int c = 0; c < g->cols; c++) {
-			const Cell *x = &g->c[r * g->cols + c];
-			Cell *y = &b->g.c[r * g->cols + c];
-			if (!x->len) continue;   /* right half: drawn with its left half */
-			int w = c + 1 < g->cols && !x[1].len ? 2 : 1;
-			int moved = (r == g->crow && c == g->ccol) != (r == b->g.crow && c == b->g.ccol);
-			if (!all && !moved && grid_cell_eq(x, y) && (w == 1 || grid_cell_eq(x + 1, y + 1))) continue;
-			draw_cell(b->px, g, r, c, w);
-			memcpy(y, x, sizeof *x * (size_t)w);
-			if (lo < 0) lo = c;
-			hi = c + w;
-		}
-		if (lo >= 0) wl_surface_damage_buffer(surf, lo * glyph_cw, r * glyph_ch, (hi - lo) * glyph_cw, glyph_ch);
+	/* rows a scroll moved are copied, not shaped again: shaping all 60 rows
+	   takes p99 1.91 ms of the 2 ms frame (reviews/package-7.md).  Copying
+	   in the direction of the move reads each source before it is drawn over. */
+	int k = all ? 0 : shift(g, &b->g);
+	for (int i = 0; i < g->rows; i++) {
+		int r = k < 0 ? g->rows - 1 - i : i;
+		if (!all && row_eq(g, r, &b->g, r)) continue;
+		size_t row = (size_t)cell_h * (size_t)bw;
+		if (k && r + k >= 0 && r + k < g->rows && row_eq(g, r, &b->g, r + k))
+			memcpy(b->px + (size_t)r * row, b->px + (size_t)(r + k) * row, row * sizeof *b->px);
+		else
+			draw_row(b->px, g, r);
+		memcpy(&b->g.c[r * g->cols], &g->c[r * g->cols], sizeof *g->c * (size_t)g->cols);
+		wl_surface_damage_buffer(surf, 0, r * cell_h, g->cols * cell_w, cell_h);
 	}
 	b->g.crow = g->crow;
 	b->g.ccol = g->ccol;

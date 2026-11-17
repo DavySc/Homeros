@@ -1,7 +1,8 @@
 /* The performance gates of DESIGN.md's Goals for the window, measured on the
    editor's own loop (src/main.c's, with clocks added): first frame committed
    after start, and frame ready after a key (or after the frame callback, if
-   the key came while a frame was on its way), p50/p99/max.  Keys come from
+   the key came while a frame was on its way), p50/p99/max, and present()'s
+   own share (the backend's; the rest is the core's drawing).  Keys come from
    outside (wtype under sway, real typing on Hyprland).  Stops after QUIET ms
    without keys once N keys have come.  Prints one line.
    Usage: bench FILE N */
@@ -15,7 +16,7 @@
 
 enum { BATCH = 64, QMAX = 4096, MAXF = 100000, QUIET = 1000 };
 static int q[QMAX], qh, qn, resized, nkeys;
-static double tkey, frames[MAXF];   /* tkey: the oldest key not yet drawn */
+static double tkey, frames[MAXF], pres[MAXF];   /* pres: present() alone */   /* tkey: the oldest key not yet drawn */
 static int nf;
 
 static double now(void)
@@ -68,11 +69,12 @@ int main(int argc, char **argv)
 		if (dirty && backend_wl.ready()) {
 			double a = tkey > tready ? tkey : tready;
 			core_draw(&e, &g);
+			double p = now();
 			backend_wl.present(&g, &shown);
 			dirty = 0;
 			double z = now();
 			if (!first) first = z - t0;
-			else if (tkey && nf < MAXF) frames[nf++] = z - a;
+			else if (tkey && nf < MAXF) { pres[nf] = z - p; frames[nf++] = z - a; }
 			if (tkey) last = z;
 			tkey = 0;
 		}
@@ -81,8 +83,10 @@ int main(int argc, char **argv)
 		if (!ready && backend_wl.ready()) tready = now();
 	}
 	qsort(frames, (size_t)nf, sizeof *frames, cmp);
-	printf("first frame %.2f ms; %d keys, %d frames; frame ready p50 %.3f p99 %.3f max %.3f ms\n", first, nkeys, nf,
-	       nf ? frames[nf / 2] : 0, nf ? frames[nf * 99 / 100] : 0, nf ? frames[nf - 1] : 0);
+	qsort(pres, (size_t)nf, sizeof *pres, cmp);
+	printf("first frame %.2f ms; %d keys, %d frames; frame ready p50 %.3f p99 %.3f max %.3f ms; present p50 %.3f p99 %.3f ms\n",
+	       first, nkeys, nf, nf ? frames[nf / 2] : 0, nf ? frames[nf * 99 / 100] : 0, nf ? frames[nf - 1] : 0,
+	       nf ? pres[nf / 2] : 0, nf ? pres[nf * 99 / 100] : 0);
 	backend_wl.close();
 	grid_free(&g);
 	grid_free(&shown);
