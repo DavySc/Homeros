@@ -14,7 +14,7 @@ enum { VT_BADERASE = 99 };
 
 /* The colours and styles after SGR's attribute, as strings, numbered in the
    order first seen (0 is none); a cell's face holds that number.  vt_face
-   maps a grid face to the number its SGR got, learned by vt_learn. */
+   maps a grid face to the number of the SGR it must get. */
 static char vt_style[256][64];
 static int vt_nstyle = 1, vt_face[FACE_COUNT];
 
