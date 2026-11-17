@@ -5,7 +5,7 @@ keys: the cursor steps one byte, into a character (fuzz_keys)~fuzz FUZZERS=keys 
 keys: the cursor steps one byte, into a character (fuzz_keys_all)~fuzz FUZZERS=keys_all FUZZ_SECONDS=60~~src/keys/buf.c~		p->col += clen(ring[i].s, ring[i].n, p->col);~		p->col += 1;
 keys: Delete while typing a count is x (recorded traces)~test TESTS=~~src/keys/normal.c~if (c == KEY_DEL) ca.count0 /= 10;~if (c == KEY_DEL) ca.count0 *= 1;
 keys: Delete at the end of the last line keeps redo (recorded traces)~test TESTS=~~src/keys/edit.c~	} else if (ins_need_undo) {¶		u_save_cursor();~	} else if (ins_need_undo) {¶		(void)0;
-keys: lines that join to nothing are deleted, so redo puts the cursor as after dd (recorded traces)~test TESTS=~~src/keys/ops.c~	if (!len) { z++;~	if (!len && 0) { z++;
+keys: lines that join to nothing are deleted, so redo puts the cursor as after dd (recorded traces)~test TESTS=~~src/keys/ops.c~	if (!len) { a++; z++; }~	if (!len && 0) { a++; z++; }
 keys: tilde steps one byte, into a character (recorded traces)~test TESTS=~~src/keys/normal.c~		inc_cursor();¶		if (gchar_cursor() == 0) break;~		W->col++;¶		if (gchar_cursor() == 0) break;
 keys: a long count is not folded, so its keys overflow the pending command (recorded traces)~test TESTS=~~src/keys/normal.c~else if (cnt_from >= 0 && npend - cnt_from > 9) {~else if (0) {
 keys: commands step by code point, not by grapheme cluster (recorded traces)~test TESTS=~~src/keys/buf.c~	return i < n ? (int)uni_glen((const unsigned char *)s, (size_t)n, (size_t)i) : 1;~	return i < n ? (int)uni_len((const unsigned char *)s, (size_t)n, (size_t)i) : 1;

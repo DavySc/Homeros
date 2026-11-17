@@ -1,0 +1,8 @@
+[
+{"why": "undo after a linewise change of several lines: Neovim puts the cursor from u_undoredo()'s last entry, the core from the whole step (src/keys/README; package 4 and thread 0)", "keys": "[2-9](cc|S)(<Esc>|<C-o>)u", "example": {"text": "́ ( λx\n  ). ა x𝓝 ẞß\n ́ x 𐐀x\nẞß ,\n", "keys": ["3", "S", "<Esc>", "u"]}},
+{"why": "Visual A over a multibyte character: Neovim writes a split character (src/keys/README, Neovim's own)", "keys": "[vV][^<]{0,40}A", "text": "[^\\x00-\\x7f]", "example": {"text": "λ). -3 7\n", "keys": ["V", "A", "x"]}},
+{"why": "CTRL-V on a Tab then ~ u U over a 2-byte character: Neovim moves the character to the end of the line (src/keys/README, Neovim's own)", "keys": "<C-v>[^~uU]{0,40}[~uU]", "text": "\t[\\u0080-\\u07ff]", "example": {"text": "\té ab cd\n", "keys": ["<C-v>", "w", "~"]}},
+{"why": "s on a Tab that ends its line, then Tab: Neovim's w_virtcol stays the Tab's last cell (src/keys/README, package 5)", "keys": "s<Tab>", "text": "\t(\n|$)", "example": {"text": "(\t\n", "keys": ["l", "s", "<Tab>"]}},
+{"why": "I Down from a blank a combining mark is on, after k (src/keys/README, package 5)", "keys": "kI<Down>", "text": "[ \t]́", "example": {"text": "    ́ -3\n).\n    'c' 7\n", "keys": ["j", "d", "d", "k", "I", "<Down>"]}},
+{"why": "Replace mode Enter before blanks ending in a combining mark, then backspacing over it: Neovim loses the Tab (src/keys/README, Neovim's own)", "keys": "R<CR>.{0,20}<BS><BS>", "text": "[ \t]́", "example": {"text": "  \t ́x\n", "keys": ["l", "R", "<CR>", "t", "<BS>", "<BS>", "<Esc>"]}}
+]
