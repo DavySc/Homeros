@@ -1,0 +1,258 @@
+diff --git a/tests/plants/uni.txt b/tests/plants/uni.txt
+index c50612e..6bfd186 100644
+--- a/tests/plants/uni.txt
++++ b/tests/plants/uni.txt
+@@ -1,7 +1,9 @@
+ # Plants for src/uni/uni.c (format in tools/planted.sh).  Frama-C catches the
+ # contract ones; test_uni_nvim the data and Neovim-rule ones (the tables' link
+ # to Unicode is admitted in Frama-C, so only that test can see it); fuzz_uni
+-# the tiling ones.
++# the tiling ones.  The test_uni_nvim plants that change a rule change it in
++# uni.h's contract too (prep), so that Frama-C still proves and only Neovim
++# can tell.
+ uni: 0xF8 read as a 4-byte lead~test TESTS=uni~~src/uni/uni.c~c < 0xF8 ? 4 : 0;~c < 0xFC ? 4 : 0;
+ frama-c: the UTF-8 kernel returns 1 (weak contract trap)~frama~~src/uni/uni.c~		if (s[i + j] < 0x80 || s[i + j] >= 0xC0) return 1;¶	return k;~		if (s[i + j] < 0x80 || s[i + j] >= 0xC0) return 1;¶	return 1;
+ frama-c: uni_prev always steps one byte back (weak contract trap)~frama~~src/uni/uni.c~	if (i >= 2 && uni_len(s, n, i - 2) == 2) return i - 2;~	return i - 1;
+@@ -11,3 +13,9 @@ frama-c: uni_gprev stops one cluster early~frama~~src/uni/uni.c~if (j + k >= i)
+ frama-c: VS16 does not widen an emoji~frama~~src/uni/uni.c~		return 2;¶	return w == 0~		return 1;¶	return w == 0
+ uni: an invalid lead byte joins what follows (fuzz_uni)~fuzz FUZZERS=uni FUZZ_SECONDS=60~~src/uni/uni.c~	if (k == 1 && s[i] >= 0x80) return 1;¶	unsigned p~	unsigned p
+ uni: uni_gprev starts on a continuation byte (fuzz_uni)~fuzz FUZZERS=uni FUZZ_SECONDS=60~~src/uni/uni.c~while (j > 0 && s[j] >= 0x80) j--;~while (j > 0 && s[j] >= 0xC0) j--;
++uni_nvim: the table read one code point off~test TESTS=uni_nvim~~src/uni/uni.c~c < 0x110000 ? uni_t2[uni_t1[c / UNI_B]][c % UNI_B] : 0;~c + 1 < 0x110000 ? uni_t2[uni_t1[(c + 1) / UNI_B]][(c + 1) % UNI_B] : 0;
++uni_nvim: the table ends at U+FFFF~test TESTS=uni_nvim~~src/uni/uni.c~c < 0x110000 ?~c < 0x10000 ?
++uni_nvim: GB9c dropped (linker then consonant breaks), contract too~test TESTS=uni_nvim~sed -i 's/ || (i == 1 \&\& incb(c) == 2)//' include/uni.h~src/uni/uni.c~!glue && !(ic == 1 && it == 2) &&~!glue &&
++uni_nvim: arabic_combine() forgets lam with alef hamza below, contract too~test TESTS=uni_nvim~sed -i 's/ || c == 0x625//' include/uni.h~src/uni/uni.c~ || c == 0x625~
++uni_nvim: a third flag joins a pair (GB12), contract too~test TESTS=uni_nvim~sed -i 's/l == 8 \&\& t == 8 ? 0 :/l == 8 \&\& t == 8 ? 8 :/' include/uni.h~src/uni/uni.c~l == 8 && t == 8 ? 0 :~l == 8 && t == 8 ? 8 :
++uni_nvim: VS16 widens only flag letters, not emoji, contract too~test TESTS=uni_nvim~sed -i 's/(gcb(cpx(s, n, i)) == 12 || gcb(cpx(s, n, i)) == 8)/gcb(cpx(s, n, i)) == 8/' include/uni.h~src/uni/uni.c~(g == 12 || g == 8)~g == 8
+diff --git a/tests/test_uni_nvim.c b/tests/test_uni_nvim.c
+new file mode 100644
+index 0000000..213ad95
+--- /dev/null
++++ b/tests/test_uni_nvim.c
+@@ -0,0 +1,201 @@
++/* uni.h against Neovim 0.12 itself: uni_glen and uni_width copy Neovim's
++   utfc_ptr2len() and utf_ptr2cells(), and src/uni/tab.h is admitted to hold
++   Neovim's (utf8proc's) properties for every code point below 2^21 (the
++   UniData axiomatic, uni.c's prop()).  tests/uni_nvim.lua calls those two
++   Neovim functions over lines this test writes; every cluster's length and
++   cells must match ours.
++
++   1. Every code point c below 2^21 (below 0x80 as an overlong pair, which is
++      how the table is reached there), alone and in probes: after or before
++      a code point of each class, between a linker and a consonant, after a
++      lam.  Our outcomes depend on c only through its property byte, and
++      differ for every two distinct property bytes (both checked), so a
++      table entry that differs from Neovim's changes some probe's clusters.
++   2. Random lines of ASCII, invalid bytes, overlong forms, any code point
++      and code points of every class, for the rules in sequence.
++   3. The one departure, Neovim's 5- and 6-byte characters, pinned. */
++#include <string.h>
++#include <unistd.h>
++#include "check.h"
++#include "uni.h"
++#include "../src/uni/tab.h"
++
++static unsigned char *in;
++static size_t len, cap;
++
++static void byte(unsigned b)
++{
++	if (len == cap) CHECK((in = realloc(in, cap = cap ? 2 * cap : 1 << 20)));
++	in[len++] = (unsigned char)b;
++}
++
++/* c in k bytes; more than c needs makes an overlong form */
++static void enc(unsigned c, int k)
++{
++	if (k == 1) { byte(c); return; }
++	byte((k == 2 ? 0xC0 : k == 3 ? 0xE0 : 0xF0) + (c >> 6 * (k - 1)));
++	for (int j = k - 2; j >= 0; j--) byte(0x80 + (c >> 6 * j) % 64);
++}
++static void put(unsigned c) { enc(c, c < 0x80 ? 1 : c < 0x800 ? 2 : c < 0x10000 ? 3 : 4); }
++
++/* Neovim's clusters of the lines in in[0 .. len): two bytes each, the
++   length and the cells; *m bytes in all */
++static unsigned char *nvim(size_t *m)
++{
++	char path[] = "build/uni_nvim_XXXXXX", cmd[128];
++	int fd = mkstemp(path);
++	FILE *f = fd < 0 ? NULL : fdopen(fd, "wb");
++	CHECK(f && fwrite(in, 1, len, f) == len && fclose(f) == 0);
++	snprintf(cmd, sizeof cmd, "nvim --headless --clean -n -l tests/uni_nvim.lua %s", path);
++	unsigned char *out = malloc(2 * len + 1);
++	CHECK(out && (f = popen(cmd, "r")));
++	*m = fread(out, 1, 2 * len + 1, f);
++	CHECK(pclose(f) == 0);
++	unlink(path);
++	return out;
++}
++
++/* Neovim's clusters of in[0 .. len), and ours, must be the same */
++static void compare(void)
++{
++	size_t m, k = 0;
++	unsigned char *out = nvim(&m);
++	for (size_t a = 0, b; a < len; a = b + 1) {
++		b = a + strlen((char *)in + a);
++		for (size_t i = a; i < b; k += 2) {
++			size_t g = uni_glen(in + a, b - a, i - a);
++			int w = uni_width(in + a, b - a, i - a);
++			if (k + 1 >= m || out[k] != g || out[k + 1] != w) {
++				fprintf(stderr, "line");
++				for (size_t j = a; j < b; j++) fprintf(stderr, " %02x", in[j]);
++				fprintf(stderr, "\nat byte %zu: ours %zu bytes %d cells, Neovim's %d bytes %d cells\n",
++				        i - a, g, w, k + 1 < m ? out[k] : -1, k + 1 < m ? out[k + 1] : -1);
++			}
++			CHECK(k + 1 < m && out[k] == g && out[k + 1] == w);
++			i += g;
++		}
++	}
++	CHECK(k == m);
++	free(out);
++}
++
++/* Around c (X); U+0085 separates the probes, as nothing joins a control.
++   The lam probe, the last, sees a rule for four code points, not a class. */
++#define X 0x200000u
++#define P 21
++static const unsigned probe[P][4] = {
++	{X}, {X, 0xFE0F},                                      /* cells; VS16 widens an emoji */
++	{0x1100, X}, {0x1161, X}, {0x11A8, X}, {0xAC00, X},  /* after Hangul L, V, T, LV */
++	{0x1F1E6, X}, {0x1F600, 0x200D, X}, {0x600, X},       /* after RI, emoji ZWJ, Prepend */
++	{0x915, 0x94D, X},                                     /* after an InCB consonant and linker */
++	{X, 0x1100}, {X, 0x1161}, {X, 0x11A8}, {X, 0x1F1E6}, /* before L, V, T, RI */
++	{X, 0xC0}, {X, 0x915}, {X, 0x903},                    /* before Other, InCB consonant, SpacingMark */
++	{0x915, 0x94D, X, 0x915},                              /* InCB Extend keeps the linker */
++	{0x1F600, X, 0x1F600}, {0x1F600, X, 0x200D, 0x1F600}, /* Extend keeps the emoji, ZWJ ends it */
++	{0x644, X},                                            /* arabic_combine() */
++};
++
++static unsigned class(unsigned c) { return c < 0x110000 ? uni_t2[uni_t1[c / UNI_B]][c % UNI_B] : 0; }
++
++static void sweep(void)
++{
++	enum { CH = 1 << 17 };
++	static size_t at[CH][P + 1];
++	static unsigned sig[256], rep[256];
++	static char have[256];
++	for (unsigned c0 = 0; c0 < X; c0 += CH) {
++		for (unsigned c = c0; c < c0 + CH; c++) {
++			for (int p = 0; p < P; p++) {
++				if (p) put(0x85);
++				at[c - c0][p] = len;
++				for (int j = 0; j < 4 && probe[p][j]; j++)
++					if (probe[p][j] == X) enc(c, c < 0x800 ? 2 : c < 0x10000 ? 3 : 4);
++					else put(probe[p][j]);
++			}
++			at[c - c0][P] = len + 2;
++			byte(0);
++		}
++		compare();
++		for (unsigned c = c0; c < c0 + CH; c++) {
++			const unsigned char *s = in + at[c - c0][0];
++			size_t n = at[c - c0][P] - 2 - at[c - c0][0], o = at[c - c0][0];
++			/* the probes' outcomes: which are one cluster, and the cells */
++			unsigned v = 0;
++			for (int p = 0; p < P - 1; p++)
++				v = 2 * v + (uni_glen(s, n, at[c - c0][p] - o) == at[c - c0][p + 1] - 2 - at[c - c0][p]);
++			v = 8 * v + (unsigned)uni_width(s, n, 0);
++			v = 8 * v + (unsigned)uni_width(s, n, at[c - c0][1] - o);
++			unsigned k = class(c);
++			if (!have[k]) have[k] = 1, sig[k] = v, rep[k] = c;
++			CHECK(sig[k] == v);
++		}
++		len = 0;
++	}
++	int d = 0;
++	for (int a = 0; a < 256; a++)
++		for (int b = a + 1; b < 256; b++)
++			if (have[a] && have[b] && sig[a] == sig[b]) {
++				fprintf(stderr, "U+%04X and U+%04X: property bytes %d and %d, same probes\n", rep[a], rep[b], a, b);
++				CHECK(sig[a] != sig[b]);
++			}
++	for (int a = 0; a < 256; a++) d += have[a];
++	printf("test_uni_nvim: every code point below 2^21 in %d probes, %d property bytes told apart\n", P, d);
++}
++
++/* code points of every class and rule, picked often */
++static const unsigned pool[] = {
++	0x300, 0x301, 0x200D, 0xFE0F, 0xFE0E, 0x1F3FB, 0xE0020,              /* Extend, ZWJ, VS, tag */
++	0x1F600, 0x1F46A, 0x1F468, 0x2764, 0x263A, 0xA9, 0x231A, 0x1F004, 0x2640,  /* emoji, wide and narrow */
++	0x1F1E6, 0x1F1FA, 0x1F1F8,                                          /* RI */
++	0x1100, 0x1161, 0x11A8, 0xAC00, 0xAC01,                             /* Hangul */
++	0x903, 0xE33, 0x600, 0x110BD, 0xD4E,                                /* SpacingMark, Prepend */
++	0x915, 0x924, 0x94D, 0x93C, 0x9CD, 0x995,                           /* InCB */
++	0x644, 0x622, 0x623, 0x625, 0x627,                                  /* lam, alef */
++	0x85, 0x80, 0x9F, 0xAD, 0x200B, 0x200E, 0x2028, 0xFEFF, 0xFFFF, 0xD800, /* controls, unprintable */
++	0x4E00, 0x3000, 0xFF01, 0xE9, 0xA0, 0xE000, 0x10FFFF, 0x110000,     /* wide, narrow, ambiguous */
++};
++
++/* A random line without NUL.  The one departure from Neovim is left out
++   here and pinned in main(): Neovim reads F8..FB with four continuation bytes
++   and FC, FD with five as one character (utf8len_tab), uni.h's want() as
++   invalid bytes. */
++static void randline(void)
++{
++	size_t a = len, n = 1 + rnd(120);
++	while (len - a < n) {
++		unsigned c = rnd(X), r = rnd(16);
++		if (r < 3) byte(1 + rnd(0x7F));                                          /* ASCII */
++		else if (r < 5) byte(0x80 + rnd(0x80));                                  /* any high byte */
++		else if (r < 6) { byte(0xC0 + rnd(0x40)); for (unsigned j = rnd(6); j; j--) byte(0x80 + rnd(0x40)); }  /* a lead, some continuation bytes */
++		else if (r < 7) { c %= 0x10000; enc(c, c < 0x80 ? 2 + rnd(3) : c < 0x800 ? 3 + rnd(2) : 4); }  /* overlong */
++		else if (r < 9) put(c);
++		else put(pool[rnd(sizeof pool / sizeof *pool)]);
++	}
++	for (size_t i = a; i < len; i++) {
++		size_t k = in[i] >= 0xF8 && in[i] < 0xFC ? 5 : in[i] >= 0xFC && in[i] < 0xFE ? 6 : 0, j = 1;
++		while (j < k && i + j < len && in[i + j] >= 0x80 && in[i + j] < 0xC0) j++;
++		if (k && j == k) in[i] = 0xFF;
++	}
++	byte(0);
++}
++
++int main(void)
++{
++	sweep();
++	enum { R = 1000000 };
++	for (int r = 0; r < R; r++) randline();
++	compare();
++	printf("test_uni_nvim: %d random lines, %zu bytes, same clusters and cells\n", R, len);
++	/* the departure: Neovim's 5- and 6-byte characters, one cell; ours are
++	   invalid bytes, 4 cells each.  When either side changes, so must this. */
++	len = 0;
++	static const unsigned char five[] = "\xF8\x88\x80\x80\x80\0\xFC\x84\x80\x80\x80\x80";
++	for (size_t i = 0; i < sizeof five; i++) byte(five[i]);
++	size_t m;
++	unsigned char *out = nvim(&m);
++	CHECK(m == 4 && out[0] == 5 && out[1] == 1 && out[2] == 6 && out[3] == 1);
++	CHECK(uni_glen(five, 5, 0) == 1 && uni_width(five, 5, 0) == 4 && uni_glen(five + 6, 6, 0) == 1);
++	free(out);
++	puts("test_uni_nvim: departs as recorded on 5- and 6-byte forms (Neovim: one character)");
++	return 0;
++}
+diff --git a/tests/uni_nvim.lua b/tests/uni_nvim.lua
+new file mode 100644
+index 0000000..526528c
+--- /dev/null
++++ b/tests/uni_nvim.lua
+@@ -0,0 +1,20 @@
++-- tests/test_uni_nvim.c's oracle: Neovim's own utfc_ptr2len() and
++-- utf_ptr2cells(), called through LuaJIT's FFI, step over each NUL-ended line
++-- of the file arg[1]; each cluster gives two bytes, its length and its cells.
++local ffi = require('ffi')
++ffi.cdef('int utfc_ptr2len(const char *p); int utf_ptr2cells(const char *p);')
++local f = assert(io.open(arg[1], 'rb'))
++local s = f:read('a')
++f:close()
++local p, n = ffi.cast('const char *', s), #s
++local out, k, i = ffi.new('unsigned char[?]', 2 * n), 0, 0
++while i < n do
++  if p[i] == 0 then
++    i = i + 1
++  else
++    local l = ffi.C.utfc_ptr2len(p + i)
++    out[k], out[k + 1] = l, ffi.C.utf_ptr2cells(p + i)
++    k, i = k + 2, i + l
++  end
++end
++io.stdout:write(ffi.string(out, k))

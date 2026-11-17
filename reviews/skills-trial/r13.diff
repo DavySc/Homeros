@@ -1,0 +1,123 @@
+diff --git a/src/uni/uni.c b/src/uni/uni.c
+index 7c087c5..ff9bef8 100644
+--- a/src/uni/uni.c
++++ b/src/uni/uni.c
+@@ -95,6 +95,8 @@ size_t uni_glen(const unsigned char *s, size_t n, size_t i)
+ 		if (!glue && !(ic == 1 && it == 2) &&
+ 		    !(p == 0x644 && (c == 0x622 || c == 0x623 || c == 0x625 || c == 0x627)))
+ 			break;
++		/* one unfolding of more, so the invariant's step is a rewrite */
++		//@ assert more(s, n, j, l, ic, p) == k + more(s, n, j + k, nbc(l, t), nic(ic, it), c);
+ 		l = l == 8 && t == 8 ? 0 : l == 12 && t == 2 ? 12 : l == 12 && t == 11 ? 13 : t;
+ 		ic = ic == 1 && it == 3 ? 1 : it;
+ 		p = c;
+@@ -103,6 +105,28 @@ size_t uni_glen(const unsigned char *s, size_t n, size_t i)
+ 	return j - i;
+ }
+ 
++/* Clusters are what uni_glen's steps make, so a step back replays them
++   (Helix's rule, uni.h) from the last start known without them: an ASCII
++   byte, which no cluster holds after its first, or 0.  Cost: the bytes back
++   to that start, which in a line without ASCII is the whole line before i. */
++size_t uni_gprev(const unsigned char *s, size_t n, size_t i)
++{
++	size_t j = i - 1;
++	/*@ loop invariant 0 <= j <= i - 1;
++	    loop assigns j;
++	    loop variant j; */
++	while (j > 0 && s[j] >= 0x80) j--;
++	//@ assert bound(s, n, j);
++	/*@ loop invariant 0 <= j < i && bound(s, n, j);
++	    loop assigns j;
++	    loop variant i - j; */
++	for (;;) {
++		size_t g = uni_glen(s, n, j);
++		if (g >= i - j) return j;
++		j += g;
++	}
++}
++
+ int uni_width(const unsigned char *s, size_t n, size_t i)
+ {
+ 	if (s[i] < 0x80) return 1;
+diff --git a/tests/fuzz_uni.c b/tests/fuzz_uni.c
+index 254b564..a17b8bb 100644
+--- a/tests/fuzz_uni.c
++++ b/tests/fuzz_uni.c
+@@ -1,7 +1,8 @@
+ /* libFuzzer: uni.h's cluster kernels on any bytes, against the code point
+    model (uni_len): clusters tile the line, are whole code points, hold no
+    ASCII byte after their first and split an invalid byte from what follows;
+-   widths are 1, 2, 4 or 6, 1 for ASCII and 4 for an invalid byte.  Neovim
++   widths are 1, 2, 4 or 6, 1 for ASCII and 4 for an invalid byte; uni_gprev
++   from every byte of a cluster lands on its start.  Neovim
+    agreement is tests/test_uni_nvim.c's job. */
+ #include <stdint.h>
+ #include <stdlib.h>
+@@ -23,6 +24,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *s, size_t n)
+ 			j += uni_len(s, n, j);
+ 		}
+ 		if (j != i + g) abort();
++		for (j = i + 1; j <= i + g; j++) if (uni_gprev(s, n, j) != i) abort();
+ 		i += g;
+ 	}
+ 	return 0;
+diff --git a/tests/plants/uni.txt b/tests/plants/uni.txt
+index 3b2c762..e95d5f6 100644
+--- a/tests/plants/uni.txt
++++ b/tests/plants/uni.txt
+@@ -12,3 +12,7 @@ uni: table read one code point off~test TESTS=uni_nvim~~src/uni/uni.c~uni_t2[uni
+ uni: lam and alef do not join~test TESTS=uni_nvim~~src/uni/uni.c~!(p == 0x644 &&~!(p == 0x645 &&
+ uni: GB9c Linker Extend state dropped~test TESTS=uni_nvim~~src/uni/uni.c~ic = ic == 1 && it == 3 ? 1 : it;~ic = it;
+ uni: an invalid lead byte joins what follows (fuzz_uni)~fuzz FUZZERS=uni FUZZ_SECONDS=60~~src/uni/uni.c~	if (k == 1 && s[i] >= 0x80) return 1;¶	unsigned p~	unsigned p
++frama-c: uni_gprev steps back to a code point start, as utf_head_off~frama~~src/uni/uni.c~	while (j > 0 && s[j] >= 0x80) j--;~	while (j > 0 && s[j] >= 0x80 && s[j] < 0xC0) j--;
++uni: uni_gprev steps back to a code point start, as utf_head_off~test TESTS=uni_nvim~~src/uni/uni.c~	while (j > 0 && s[j] >= 0x80) j--;~	while (j > 0 && s[j] >= 0x80 && s[j] < 0xC0) j--;
++uni: uni_gprev returns the cluster before when i - 1 starts one~test TESTS=uni_nvim~~src/uni/uni.c~		if (g >= i - j) return j;~		if (g >= i - j - 1) return j;
++uni: uni_gprev replays from byte 1 when byte 0 is not ASCII (fuzz_uni)~fuzz FUZZERS=uni FUZZ_SECONDS=60~~src/uni/uni.c~	while (j > 0 && s[j] >= 0x80) j--;~	while (j > 1 && s[j] >= 0x80) j--;
+diff --git a/tests/test_uni_nvim.c b/tests/test_uni_nvim.c
+index e6a7766..498d8ac 100644
+--- a/tests/test_uni_nvim.c
++++ b/tests/test_uni_nvim.c
+@@ -6,9 +6,10 @@
+       utf8proc (the facts uni.c admits), and uni_width alone and before
+       U+FE0F against utf_ptr2cells (exhaustive);
+    2. 20,000 random lines: cluster starts and widths against utfc_ptr2len
+-      and utf_ptr2cells;
++      and utf_ptr2cells, and uni_gprev from every byte against those starts;
+    3. GraphemeBreakTest.txt (Unicode 18): every case, with Neovim's one
+-      exception (ASCII never joins) applied to the expected breaks. */
++      exception (ASCII never joins) applied to the expected breaks, forward
++      and (uni_gprev) back from every byte. */
+ #include <string.h>
+ #include "check.h"
+ #include "uni.h"
+@@ -125,6 +126,11 @@ static void graphemetest(void)
+ 			j++;
+ 		}
+ 		while (j < k) CHECK(!brk[j++]);
++		/* back: from each byte to the last break before it */
++		for (size_t i = 1, b = 0; i <= n; i++) {
++			for (j = 0; j < k; j++) if (brk[j] && at[j] < i) b = at[j];
++			CHECK(uni_gprev(s, n, i) == b);
++		}
+ 		cases++;
+ 	}
+ 	fclose(f);
+@@ -189,6 +195,8 @@ int main(void)
+ 			CHECK(fscanf(f, "%lu %lu", &at, &w) == 2);
+ 			if (at != i) fprintf(stderr, "line %d: cluster at %zu, nvim %lu\n", r + 1, i, at);
+ 			CHECK(at == i && w == (unsigned long)uni_width(s, n, i));
++			/* back from every byte of Neovim's cluster lands on its start */
++			for (size_t b = i + 1; b <= i + uni_glen(s, n, i); b++) CHECK(uni_gprev(s, n, b) == i);
+ 		}
+ 		CHECK(i == n);
+ 	}
+@@ -196,7 +204,7 @@ int main(void)
+ 	while ((c = fgetc(f)) == '\n' || c == ' ') {}
+ 	CHECK(c == EOF);
+ 	fclose(f);
+-	printf("test_uni_nvim: %u code points exhaustive (class, InCB, width alone and before VS16), %d lines against Neovim\n", TOP, LINES);
++	printf("test_uni_nvim: %u code points exhaustive (class, InCB, width alone and before VS16), %d lines against Neovim (starts, widths, uni_gprev from every byte)\n", TOP, LINES);
+ 
+ 	/* 3 */
+ 	graphemetest();

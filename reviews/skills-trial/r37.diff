@@ -1,0 +1,384 @@
+diff --git a/include/uni.h b/include/uni.h
+index 94f1e41..813df65 100644
+--- a/include/uni.h
++++ b/include/uni.h
+@@ -77,6 +77,37 @@
+         0 <= j < n && bound(s, n, j) ==> bound(s, n, j + glen(s, n, j));
+     }
+     logic integer cells(integer k) = k == 0 ? 1 : k == 1 ? 2 : k == 2 ? 4 : 6;
++
++    // UTF-16 columns as Neovim's mb_utflen() and mb_utf_index_to_bytes()
++    // count them.  They step by utf8len_tab, which unlike want() still reads
++    // 5- and 6-byte forms as one character.
++    logic integer nlen(integer c) = c < 0xC0 ? 1 : c < 0xE0 ? 2 : c < 0xF0 ? 3 :
++                                    c < 0xF8 ? 4 : c < 0xFC ? 5 : c < 0xFE ? 6 : 1;
++    // the bytes of the nlen(s[j])-byte form at j that lie before lim are continuation bytes
++    predicate tail{L}(unsigned char *s, integer j, integer lim) =
++      (nlen(s[j]) > 1 && j + 1 < lim ==> cont(s[j + 1])) && (nlen(s[j]) > 2 && j + 2 < lim ==> cont(s[j + 2])) &&
++      (nlen(s[j]) > 3 && j + 3 < lim ==> cont(s[j + 3])) && (nlen(s[j]) > 4 && j + 4 < lim ==> cont(s[j + 4])) &&
++      (nlen(s[j]) > 5 && j + 5 < lim ==> cont(s[j + 5]));
++    // utf_ptr2len_len(s + j, lim - j): a form that lim cuts counts whole
++    logic integer nstep{L}(unsigned char *s, integer j, integer lim) = tail(s, j, lim) ? nlen(s[j]) : 1;
++    // utf_ptr2char() reads the form at j, whole before n, as above U+FFFF:
++    // two UTF-16 units (an invalid or cut form reads as its first byte)
++    predicate astral{L}(unsigned char *s, integer n, integer j) =
++      nlen(s[j]) >= 4 && j + nlen(s[j]) <= n && tail(s, j, n) &&
++      (nlen(s[j]) == 4 ? (((s[j] - 0xF0) * 64 + pay(s[j + 1])) * 64 + pay(s[j + 2])) * 64 + pay(s[j + 3]) :
++       nlen(s[j]) == 5 ? ((((s[j] - 0xF8) * 64 + pay(s[j + 1])) * 64 + pay(s[j + 2])) * 64 + pay(s[j + 3])) * 64
++                         + pay(s[j + 4]) :
++       (((((s[j] - 0xFC) * 64 + pay(s[j + 1])) * 64 + pay(s[j + 2])) * 64 + pay(s[j + 3])) * 64
++        + pay(s[j + 4])) * 64 + pay(s[j + 5])) > 0xFFFF;
++    logic integer units{L}(unsigned char *s, integer n, integer j) = astral(s, n, j) ? 2 : 1;
++    // mb_utflen() over s[j..i), the line going on to n: units from j to i
++    logic integer u16{L}(unsigned char *s, integer n, integer j, integer i) =
++      j >= i ? 0 : units(s, n, j) + u16(s, n, j + nstep(s, j, i), i);
++    // mb_utf_index_to_bytes() from j with u units counted: the end of the
++    // character whose units reach c, or n if the line ends first
++    logic integer b16{L}(unsigned char *s, integer n, integer j, integer u, integer c) =
++      j >= n ? n : u + units(s, n, j) >= c ? j + nstep(s, j, n) :
++      b16(s, n, j + nstep(s, j, n), u + units(s, n, j), c);
+ */
+ 
+ /* Length of the well-formed sequence at s[i], or 1 for an invalid byte. */
+@@ -145,4 +176,25 @@ size_t uni_gprev(const unsigned char *s, size_t n, size_t i);
+        i + ulen(s, n, i) < n && cpx(s, n, i + ulen(s, n, i)) == 0xFE0F ? 2 : cells(cellc(cpx(s, n, i))));
+ */
+ int uni_width(const unsigned char *s, size_t n, size_t i);
++/* UTF-16 code units in s[0..i) (LSP columns), as Neovim 0.12's
++   vim.str_utfindex(s, 'utf-16', i, false): an i inside a character counts
++   that character whole, an invalid byte is one unit, and an i past the end
++   counts the whole line.  (The bound on n keeps every count and offset of
++   both functions inside size_t.) */
++/*@ requires n < 0x80000000 && \valid_read(s + (0 .. n - 1));
++    assigns \nothing;
++    ensures \result == u16(s, n, 0, i < n ? i : n);
++*/
++size_t uni_u16(const unsigned char *s, size_t n, size_t i);
++
++/* Byte offset of UTF-16 column c, as vim.str_byteindex(s, 'utf-16', c,
++   false): the end of the character whose units reach c (so a c inside a
++   surrogate pair rounds up), n for a c past the end.  Like Neovim it can
++   pass n, by up to 5, when the line ends inside a cut multibyte form. */
++/*@ requires n < 0x80000000 && \valid_read(s + (0 .. n - 1));
++    assigns \nothing;
++    ensures \result == (c == 0 ? 0 : b16(s, n, 0, 0, c));
++    ensures \result <= n + 5;
++*/
++size_t uni_u16byte(const unsigned char *s, size_t n, size_t c);
+ #endif
+diff --git a/src/uni/uni.c b/src/uni/uni.c
+index 2b6877a..ea15e43 100644
+--- a/src/uni/uni.c
++++ b/src/uni/uni.c
+@@ -133,3 +133,76 @@ int uni_width(const unsigned char *s, size_t n, size_t i)
+ 		return 2;
+ 	return w == 0 ? 1 : w == 1 ? 2 : w == 2 ? 4 : 6;
+ }
++
++/* UTF-16 columns copy Neovim's mb_utflen() and mb_utf_index_to_bytes(),
++   which the LSP client reaches through vim.str_utfindex and
++   vim.str_byteindex. */
++
++/* utf_ptr2len_len(s + j, lim - j) over utf8len_tab (5- and 6-byte forms
++   included): a form cut by lim counts whole. */
++/*@ requires j < lim && \valid_read(s + (0 .. lim - 1));
++    assigns \nothing;
++    ensures \result == nstep(s, j, lim);
++    ensures 1 <= \result <= 6;
++*/
++static size_t seq(const unsigned char *s, size_t j, size_t lim)
++{
++	unsigned char c = s[j];
++	size_t k = c < 0xC0 ? 1 : c < 0xE0 ? 2 : c < 0xF0 ? 3 : c < 0xF8 ? 4 : c < 0xFC ? 5 : c < 0xFE ? 6 : 1;
++	//@ assert k == nlen(c);
++	/*@ loop invariant 1 <= m <= k;
++	    loop invariant \forall integer t; 1 <= t < m ==> cont(s[j + t]);
++	    loop assigns m;
++	    loop variant k - m; */
++	for (size_t m = 1; m < k && m < lim - j; m++)
++		if (s[j + m] < 0x80 || s[j + m] >= 0xC0) return 1;
++	return k;
++}
++
++/* utf_ptr2char() reads the form at j as above U+FFFF, so it takes two
++   UTF-16 units.  Only the first k - 2 bytes can decide that, as the last
++   two add at most 0xFFF; an invalid or cut form reads as its first byte. */
++/*@ requires j < n && \valid_read(s + (0 .. n - 1));
++    assigns \nothing;
++    ensures \result == units(s, n, j);
++*/
++static size_t pair(const unsigned char *s, size_t n, size_t j)
++{
++	size_t k = seq(s, j, n);
++	if (k < 4 || k > n - j) return 1;
++	if (k == 4) return s[j] > 0xF0 || s[j + 1] >= 0x90 ? 2 : 1;
++	if (k == 5) return s[j] > 0xF8 || s[j + 1] > 0x80 || s[j + 2] >= 0x90 ? 2 : 1;
++	return s[j] > 0xFC || s[j + 1] > 0x80 || s[j + 2] > 0x80 || s[j + 3] >= 0x90 ? 2 : 1;
++}
++
++size_t uni_u16(const unsigned char *s, size_t n, size_t i)
++{
++	size_t u = 0, j = 0;
++	if (i > n) i = n;
++	/*@ loop invariant 0 <= j <= i + 5 && u <= 2 * j;
++	    loop invariant u16(s, n, 0, i) == u + u16(s, n, j, i);
++	    loop assigns j, u;
++	    loop variant i - j; */
++	while (j < i) {
++		u += pair(s, n, j);
++		j += seq(s, j, i);
++	}
++	return u;
++}
++
++size_t uni_u16byte(const unsigned char *s, size_t n, size_t c)
++{
++	size_t u = 0, j = 0;
++	if (c == 0) return 0;
++	/*@ loop invariant 0 <= j <= n + 5 && u <= 2 * j;
++	    loop invariant b16(s, n, 0, 0, c) == b16(s, n, j, u, c);
++	    loop assigns j, u;
++	    loop variant n - j; */
++	while (j < n) {
++		size_t k = seq(s, j, n);
++		u += pair(s, n, j);
++		if (u >= c) return j + k;
++		j += k;
++	}
++	return n;
++}
+diff --git a/tests/fuzz_uni.c b/tests/fuzz_uni.c
+index f8affd1..56b4ee6 100644
+--- a/tests/fuzz_uni.c
++++ b/tests/fuzz_uni.c
+@@ -2,16 +2,63 @@
+    model (uni_len): clusters tile the line, are whole code points, hold no
+    ASCII byte after their first and split an invalid byte from what follows;
+    uni_gprev from every byte finds the cluster that holds the byte before;
+-   widths are 1, 2, 4 or 6, 1 for ASCII and 4 for an invalid byte.  Neovim
+-   agreement is tests/test_uni_nvim.c's job. */
++   widths are 1, 2, 4 or 6, 1 for ASCII and 4 for an invalid byte.
++   uni_u16 at every offset and uni_u16byte at every column against Neovim's
++   mb_utflen() and mb_utf_index_to_bytes() as written, on a NUL-terminated
++   copy as Lua hands them over.  Agreement with Neovim itself is
++   tests/test_uni_nvim.c's and tests/test_uni_u16.c's job. */
+ #include <stdint.h>
+ #include <stdlib.h>
+ #include "uni.h"
+ 
++/* Neovim's utf8len_tab, utf_ptr2len_len() and utf_ptr2char() (src/nvim/mbyte.c) */
++static int nlen(uint8_t c) { return c < 0xC0 ? 1 : c < 0xE0 ? 2 : c < 0xF0 ? 3 : c < 0xF8 ? 4 : c < 0xFC ? 5 : c < 0xFE ? 6 : 1; }
++static int len_len(const uint8_t *p, int size)
++{
++	int len = nlen(*p), m = len > size ? size : len;
++	for (int i = 1; i < m; i++) if ((p[i] & 0xc0) != 0x80) return 1;
++	return len;
++}
++static long ptr2char(const uint8_t *p)
++{
++	int len = nlen(*p);
++	long c = len == 1 ? *p : *p & (0x7f >> len);
++	for (int i = 1; i < len; i++) { if ((p[i] & 0xc0) != 0x80) return *p; c = c << 6 | (p[i] & 0x3f); }
++	return c;
++}
++/* mb_utflen() over p[0..len): UTF-16 units */
++static size_t utflen(const uint8_t *p, size_t len)
++{
++	size_t u = 0, clen;
++	for (size_t i = 0; i < len; i += clen) {
++		clen = (size_t)len_len(p + i, (int)(len - i));
++		u += clen > 1 && ptr2char(p + i) > 0xFFFF ? 2 : 1;
++	}
++	return u;
++}
++/* mb_utf_index_to_bytes(), with str_byteindex's answer for -1 */
++static size_t index2bytes(const uint8_t *p, size_t len, size_t index)
++{
++	size_t count = 0, clen;
++	if (index == 0) return 0;
++	for (size_t i = 0; i < len; i += clen) {
++		clen = (size_t)len_len(p + i, (int)(len - i));
++		count += clen > 1 && ptr2char(p + i) > 0xFFFF ? 2 : 1;
++		if (count >= index) return i + clen;
++	}
++	return len;
++}
++
+ int LLVMFuzzerTestOneInput(const uint8_t *s, size_t n)
+ {
+ 	static unsigned char start[257];
++	static uint8_t z[263];
+ 	if (n == 0 || n > 256) return 0;
++	for (size_t i = 0; i < sizeof z; i++) z[i] = i < n ? s[i] : 0;
++	for (size_t i = 0; i <= n + 1; i++)
++		if (uni_u16(s, n, i) != utflen(z, i <= n ? i : n)) abort();
++	for (size_t c = 0; c <= 2 * n + 1; c++)
++		if (uni_u16byte(s, n, c) != index2bytes(z, n, c)) abort();
+ 	for (size_t i = 0; i <= n; i++) start[i] = 0;
+ 	size_t i = 0;
+ 	while (i < n) {
+diff --git a/tests/plants/uni.txt b/tests/plants/uni.txt
+index be45350..6cb5765 100644
+--- a/tests/plants/uni.txt
++++ b/tests/plants/uni.txt
+@@ -1,7 +1,8 @@
+ # Plants for src/uni/uni.c (format in tools/planted.sh).  Frama-C catches the
+ # contract ones; test_uni_nvim the data and Neovim-rule ones (the tables' link
+ # to Unicode is admitted in Frama-C, so only that test can see it); fuzz_uni
+-# the tiling ones.
++# the tiling ones.  For the UTF-16 columns: Frama-C the contract ones,
++# test_uni_u16 (live Neovim) and fuzz_uni (Neovim's C as written) the rest.
+ uni: 0xF8 read as a 4-byte lead~test TESTS=uni~~src/uni/uni.c~c < 0xF8 ? 4 : 0;~c < 0xFC ? 4 : 0;
+ frama-c: the UTF-8 kernel returns 1 (weak contract trap)~frama~~src/uni/uni.c~		if (s[i + j] < 0x80 || s[i + j] >= 0xC0) return 1;¶	return k;~		if (s[i + j] < 0x80 || s[i + j] >= 0xC0) return 1;¶	return 1;
+ frama-c: uni_prev always steps one byte back (weak contract trap)~frama~~src/uni/uni.c~	if (i >= 2 && uni_len(s, n, i - 2) == 2) return i - 2;~	return i - 1;
+@@ -14,3 +15,9 @@ uni: lam and alef do not join~test TESTS=uni_nvim~~src/uni/uni.c~!(p == 0x644 &&
+ uni: GB9c Linker Extend state dropped~test TESTS=uni_nvim~~src/uni/uni.c~ic = ic == 1 && it == 3 ? 1 : it;~ic = it;
+ uni: an invalid lead byte joins what follows (fuzz_uni)~fuzz FUZZERS=uni FUZZ_SECONDS=60~~src/uni/uni.c~	if (k == 1 && s[i] >= 0x80) return 1;¶	unsigned p~	unsigned p
+ uni: uni_gprev starts on a continuation byte (fuzz_uni)~fuzz FUZZERS=uni FUZZ_SECONDS=60~~src/uni/uni.c~while (j > 0 && s[j] >= 0x80) j--;~while (j > 0 && s[j] >= 0xC0) j--;
++frama-c: a 5-byte form at U+10000 read as one UTF-16 unit~frama~~src/uni/uni.c~s[j + 1] > 0x80 || s[j + 2] >= 0x90 ? 2 : 1;~s[j + 1] > 0x80 || s[j + 2] >= 0xA0 ? 2 : 1;
++frama-c: a column inside a surrogate pair rounds down~frama~~src/uni/uni.c~if (u >= c) return j + k;~if (u > c) return j + k;
++uni: str_byteindex's offset past a cut form clamped to n~test TESTS=uni_u16~~src/uni/uni.c~if (u >= c) return j + k;~if (u >= c) return j + k < n ? j + k : n;
++uni: UTF-16 steps forget 5- and 6-byte forms~test TESTS=uni_u16~~src/uni/uni.c~c < 0xF8 ? 4 : c < 0xFC ? 5 : c < 0xFE ? 6 : 1;~c < 0xF8 ? 4 : 1;
++uni: str_utfindex checks a form cut by i to the line's end~test TESTS=uni_u16~~src/uni/uni.c~		j += seq(s, j, i);~		j += seq(s, j, n);
++uni: an overlong 4-byte form read as a surrogate pair (fuzz_uni)~fuzz FUZZERS=uni FUZZ_SECONDS=60~~src/uni/uni.c~s[j] > 0xF0 || s[j + 1] >= 0x90 ? 2 : 1;~s[j] >= 0xF0 ? 2 : 1;
+diff --git a/tests/test_uni_u16.c b/tests/test_uni_u16.c
+new file mode 100644
+index 0000000..d062553
+--- /dev/null
++++ b/tests/test_uni_u16.c
+@@ -0,0 +1,135 @@
++/* uni_u16 and uni_u16byte against Neovim itself: nvim --headless runs
++   vim.str_utfindex and vim.str_byteindex with 'utf-16' and strict indexing
++   off, as its LSP client calls them, on
++   1. every line of 1 to 4 bytes over 18 bytes that stand for every class
++      utf8len_tab and utf_ptr2char() tell apart (NUL, ASCII, continuation
++      bytes either side of 0x90, leads of 2 to 6 bytes, 0xFE, 0xFF);
++   2. 20,000 random lines of real characters (BMP, astral, U+FFFF and
++      U+10000), overlong and surrogate forms, 5- and 6-byte forms either side
++      of U+FFFF, cut forms, stray continuation bytes, 0xFE and 0xFF.
++   Each line is asked at every byte offset 0..n+1 and every column 0..2n+1
++   (past the end and inside surrogate pairs included). */
++#include <string.h>
++#include "check.h"
++#include "uni.h"
++
++#define LINES 20000
++#define MAXN 48
++
++static const char lua[] =
++	"local f, o = io.open(arg[1] .. '.lines'), io.open(arg[1] .. '.out', 'w')\n"
++	"for h in f:lines() do\n"
++	"  local s = h:gsub('..', function(x) return string.char(tonumber(x, 16)) end)\n"
++	"  local t = {}\n"
++	"  for i = 0, #s + 1 do t[#t + 1] = vim.str_utfindex(s, 'utf-16', i, false) end\n"
++	"  for c = 0, 2 * #s + 1 do t[#t + 1] = vim.str_byteindex(s, 'utf-16', c, false) end\n"
++	"  o:write(table.concat(t, ' '), '\\n')\n"
++	"end\n"
++	"o:close()\n";
++
++static const unsigned char cls[18] = { 0x00, 0x41, 0x80, 0x8F, 0x90, 0xBF, 0xC2, 0xE4, 0xED,
++	0xF0, 0xF4, 0xF7, 0xF8, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF };
++
++static size_t enc(unsigned c, unsigned char *s)
++{
++	if (c < 0x80) { s[0] = (unsigned char)c; return 1; }
++	if (c < 0x800) { s[0] = (unsigned char)(0xC0 + c / 64); s[1] = (unsigned char)(0x80 + c % 64); return 2; }
++	if (c < 0x10000) {
++		s[0] = (unsigned char)(0xE0 + c / 4096); s[1] = (unsigned char)(0x80 + c / 64 % 64);
++		s[2] = (unsigned char)(0x80 + c % 64); return 3;
++	}
++	s[0] = (unsigned char)(0xF0 + c / 262144); s[1] = (unsigned char)(0x80 + c / 4096 % 64);
++	s[2] = (unsigned char)(0x80 + c / 64 % 64); s[3] = (unsigned char)(0x80 + c % 64); return 4;
++}
++
++/* a continuation byte, often one at the edges that decide U+FFFF */
++static unsigned char cont(void)
++{
++	static const unsigned char e[] = { 0x80, 0x8F, 0x90, 0xBF };
++	return (unsigned char)(rnd(2) ? e[rnd(4)] : 0x80 + rnd(0x40));
++}
++
++static size_t line(unsigned char *s)
++{
++	size_t n = 0;
++	while (n < MAXN - 6) {
++		unsigned x = rnd(100);
++		if (x < 8) break;
++		if (x < 25) s[n++] = (unsigned char)"a ~\t1"[rnd(5)];
++		else if (x < 55) {
++			static const unsigned c[] = { 0xE9, 0x7FF, 0x800, 0x4E2D, 0xD7FF, 0xE000, 0xFFFF, 0x10000,
++				0x1F600, 0x10FFFF, 0x110000, 0x1FFFFF };
++			n += enc(rnd(3) ? c[rnd(12)] : 0x80 + rnd(0x200000 - 0x80), s + n);
++		} else if (x < 75) {   /* a 2- to 6-byte form, any lead of its length, often overlong */
++			static const unsigned char lo[] = { 0xC0, 0xE0, 0xF0, 0xF8, 0xFC }, hi[] = { 0x20, 0x10, 0x8, 0x4, 0x2 };
++			unsigned k = rnd(5);
++			s[n] = (unsigned char)(lo[k] + (rnd(2) ? 0 : rnd(hi[k])));
++			for (unsigned j = 1; j <= k + 1; j++) s[n + j] = rnd(4) ? 0x80 : cont();
++			n += k + 2;
++		} else if (x < 88) {   /* a form cut short, or broken by a non-continuation byte */
++			unsigned char t[4];
++			size_t k = enc(0x80 + rnd(0x200000 - 0x80), t), m = 1 + rnd((unsigned)k - 1);
++			memcpy(s + n, t, m);
++			n += m;
++			if (rnd(2)) s[n++] = (unsigned char)(rnd(2) ? 'x' : 0xC3);
++		} else if (x < 96) s[n++] = cont();
++		else s[n++] = (unsigned char)"\xfe\xff\x00"[rnd(3)];
++	}
++	return n;
++}
++
++static unsigned char lines[111150 + LINES][MAXN];
++static size_t len[111150 + LINES];
++
++int main(void)
++{
++	int m = 0;
++	for (int k = 1; k <= 4; k++) {
++		int total = 1;
++		for (int j = 0; j < k; j++) total *= 18;
++		for (int v = 0; v < total; v++, m++) {
++			for (int j = 0, w = v; j < k; j++, w /= 18) lines[m][j] = cls[w % 18];
++			len[m] = (size_t)k;
++		}
++	}
++	int exhaustive = m;
++	for (int r = 0; r < LINES; r++, m++) len[m] = line(lines[m]);
++
++	FILE *f = fopen("build/uni_u16.lines", "w");
++	CHECK(f);
++	for (int r = 0; r < m; r++) {
++		for (size_t j = 0; j < len[r]; j++) fprintf(f, "%02x", lines[r][j]);
++		fputc('\n', f);
++	}
++	fclose(f);
++	f = fopen("build/uni_u16.lua", "w");
++	CHECK(f && fputs(lua, f) >= 0);
++	fclose(f);
++	CHECK(system("nvim --clean --headless -l build/uni_u16.lua build/uni_u16") == 0);
++
++	f = fopen("build/uni_u16.out", "r");
++	CHECK(f);
++	unsigned long asks = 0;
++	for (int r = 0; r < m; r++) {
++		const unsigned char *s = lines[r];
++		size_t n = len[r];
++		unsigned long want;
++		for (size_t i = 0; i <= n + 1; i++, asks++) {
++			CHECK(fscanf(f, "%lu", &want) == 1);
++			if (want != uni_u16(s, n, i)) fprintf(stderr, "line %d: uni_u16 at %zu: %zu, nvim %lu\n", r + 1, i, uni_u16(s, n, i), want);
++			CHECK(want == uni_u16(s, n, i));
++		}
++		for (size_t c = 0; c <= 2 * n + 1; c++, asks++) {
++			CHECK(fscanf(f, "%lu", &want) == 1);
++			if (want != uni_u16byte(s, n, c)) fprintf(stderr, "line %d: uni_u16byte at %zu: %zu, nvim %lu\n", r + 1, c, uni_u16byte(s, n, c), want);
++			CHECK(want == uni_u16byte(s, n, c));
++		}
++	}
++	int c;
++	while ((c = fgetc(f)) == '\n' || c == ' ') {}
++	CHECK(c == EOF);
++	fclose(f);
++	printf("test_uni_u16: %d lines of 1-4 bytes exhaustive over 18 byte classes, %d random lines, %lu answers equal Neovim's\n",
++	       exhaustive, LINES, asks);
++	return 0;
++}
