@@ -502,7 +502,7 @@ static int enter_buffer(Editor *e, Buf *b, int how)
 		w->alt = w->buf;
 	}
 	w->buf = e->buf = b;
-	w->vc.ok = 0;                      /* w_valid = 0 */
+	w->vc.ok = w->frame->s.sideok = 0;   /* w_valid = 0 */
 	/* get_winopts(): from the window that shows b now, else as b was
 	   left; with neither, w_allbuf_opt: the window's own :set value (a
 	   :bp in between does not change it: review of PR 20, 4) */
@@ -668,7 +668,7 @@ static int edit_file(Editor *e, const char *path, int force, int split)
 			wininfo_reset(b, w);
 			buf_unload(&old);
 			w->line = w->col = w->top = w->skipcol = w->left = 0;
-			w->vc.ok = 0;              /* w_valid = 0: the cached column was the empty buffer's */
+			w->vc.ok = w->frame->s.sideok = 0;   /* w_valid = 0: the cached column was the empty buffer's */
 		}
 		w->alt = prev_alt ? prev_alt : b;
 		beginline_white(e);

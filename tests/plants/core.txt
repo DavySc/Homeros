@@ -36,3 +36,4 @@ core: the cursor line's height less skipcol (test_core_screens)~test TESTS=core_
 core: the sideways scroll redone for an unmoved cursor (test_core_screens)~test TESTS=core_screens~~src/core/move.c~		int valid = s->sideok && s->sline~		int valid = 0 * s->sideok && s->sline
 core: an insertion drops w_botline (test_core_screens)~test TESTS=core_screens~~src/core/core.c~? 0 : bv & ~BOT_EXACT;~? 0 : 0;
 core: the popup placed before update_screen() (test_core_screens)~test TESTS=core_screens~~src/core/draw.c~	win_drawn(e);                      /* pum_call_update_screen() */~	(void)0;
+core: entering a buffer keeps the sideways scroll valid (test_core_screens)~test TESTS=core_screens~~src/core/core.c~	w->vc.ok = w->frame->s.sideok = 0;   /* w_valid = 0 */~	w->vc.ok = 0;   /* w_valid = 0 */

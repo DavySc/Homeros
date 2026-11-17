@@ -1,0 +1,48 @@
+C 6 80
+F 
+F 
+T vnew
+T w7:R
+T w3:v
+T pum:7:9:9
+P
+S 1
+S ~
+S ~
+S ~
+S f0                                                            0,0-1          All
+S 
+M - - -
+P
+S 1                                      │1
+S ~                                      │~
+S ~                                      │~
+S ~                                      │~
+S f0                   0,0-1          All [No Name]             0,0-1          All
+S :vnew
+M - - -
+P
+S 1                                       │1
+S ~                                       │~
+S ~                                       │~
+S ~                                       │~
+S [No Name]             0,0-1          All f0                   0,0-1          All
+R
+M - - -
+P
+S 1                                   │1  │1
+S ~                                   │~  │~
+S ~                                   │~  │~
+S ~                                   │~  │~
+S [No Name]         0,0-1          All <ll f0                   0,0-1          All
+R
+M - - -
+P
+R
+S ~                                   │~ é2
+S ~                                   │~ longerword_completion2
+S ~                                   │~ x2
+S [No Name] [+]     1,1            All < ა_b2
+S -- INSERT --
+M - - -
+E
