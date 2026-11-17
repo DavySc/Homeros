@@ -1,7 +1,6 @@
-/* Undo: groups of edits.  ref/undo.c is a list (redo cleared by a new edit,
-   Undo.tla "ok"); package 2 (src/undo/) makes it Neovim's tree (UndoTree.tla,
-   proofs/Undo.lean, ref/undo/undo_diff.py) with the 1,000-change cap and the
-   saved file, adding g-, g+, :undo N, :earlier and :later through thread 0.
+/* Undo: groups of edits in Neovim's tree (package 2, src/undo/; UndoTree.tla,
+   proofs/Undo.lean, design/ref/undo/undo_diff.py), with the 1,000-change cap
+   and the saved file, g-, g+, :undo N, :earlier and :later.
    A position is a byte offset; a line/col pair is the cursor the core saved. */
 #ifndef UNDO_H
 #define UNDO_H

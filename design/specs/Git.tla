@@ -53,7 +53,7 @@ Outside == /\ ops < MaxOps
            /\ dirty' = (Variant /= "nowatch" \/ dirty)
            /\ UNCHANGED <<shown, running, queue, lockClash, staleApply>>
 
-\* git status --porcelain=v2 -z --branch, log, diff, diff --cached, stash list; redraw.
+\* git status --porcelain=v2 -z --branch, log, diff, diff --cached, describe or the merge log; redraw.
 Refresh == /\ dirty /\ running = 0
            /\ shown' = repo /\ dirty' = FALSE
            /\ UNCHANGED <<repo, running, queue, ops, lockClash, staleApply>>

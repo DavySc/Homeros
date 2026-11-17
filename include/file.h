@@ -3,7 +3,7 @@
    same directory, fsync, swap atomically with renameat2(RENAME_EXCHANGE),
    then check what came out, fsync the directory.  Package 11 (src/file/)
    adds the in-place fallback for hard links and read-only directories and
-   the Windows path (ReplaceFileW). */
+   the Windows path (MoveFileExW, DESIGN.md "Save, Windows"). */
 #ifndef FILE_H
 #define FILE_H
 #include <stddef.h>
@@ -31,8 +31,8 @@ enum {
 int file_save(const char *path, const Text *t, size_t n, FileId *id, int force,
               char *kept, size_t keptsz);
 
-/* Outside changes: inotify on the file's directory (ReadDirectoryChangesW on
-   Windows), so a file replaced by rename is still seen.  Returns an fd for
+/* Outside changes: inotify on the file's directory (FindFirstChangeNotificationW
+   on Windows), so a file replaced by rename is still seen.  Returns an fd for
    loop_watch, -1 on error: the same fd for every file, never closed (closing
    one costs milliseconds), so a directory stays watched for the session. */
 int  file_watch(const char *path);

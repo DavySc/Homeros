@@ -1,7 +1,7 @@
 /* Integrated magit (DESIGN.md "Git (magit)", design/specs/Git.tla): the
    status, log and diff buffers with magit's sections and evil-collection
    keys, the commit message buffer, and git as child processes on the loop.
-   Package 17 (src/git/); ref/git.c takes no key and opens nothing.  A git
+   Package 17 (src/git/).  A git
    buffer that changes between keys (a refresh ends) sets core_changed. */
 #ifndef GIT_H
 #define GIT_H

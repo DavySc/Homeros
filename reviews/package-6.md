@@ -75,3 +75,35 @@ Each new check needs its plant in `tests/plants/`.
 ## Re-review
 
 I will re-run `make check`, `make planted`, the scripts in `reviews/r6/` and the mutations on the new head, and merge when CI is green.
+
+# Review of PR 24 (cells hold grapheme clusters), head 1eb8e1c
+
+Reviewed against thread 0's proposal (`thread-0/grid-clusters.md` in project files), `include/grid.h` and CLAUDE.md, from the diff and the contract. Repro files are in `reviews/r24/`. Thread 0 confirmed to me that `9c53e88` (grid.h, `GRID_CLUSTER_MAX` 31) is its header, that it asked for the `src/main.c` line to land here, and that deleting `ref/grid.c` and `ref/tty.c` follows the rule agreed with the coordinator.
+
+**Verdict: one small change requested (finding 1); CI must also finish green.** I found no fault in the store, the cut or the terminal output.
+
+## What I ran and what held
+
+- **measured** (1 run, head 1eb8e1c, which contains main at 8d08829): `make check` passed every target except `win`, which stopped at "wine is not on PATH" on my machine (my tools come from `design/env.nix`, without Wine): both compilers, unit tests under ASan and UBSan, 1,014 recorded traces, fuzzers, 2,000 live sequences (seed 1794938244, 0 differ), undo oracles 0 differ, Lean, Frama-C, all TLA+ configs as expected.
+- **measured** (1 run): `make planted` caught 143; the other 37 are the `win:` plants, not run for the same reason. All 15 grid plants and 26 tty, Render and Ctrl-Z plants are caught, the 7 new ones each by its own line.
+- **measured** (3 runs each, `nvim --headless -u NONE -l reviews/r24/cut.lua`, Neovim 0.12.6): e plus 20 U+0301 (41 bytes) leaves 31 bytes in the cell; e plus 15 U+0301 (31 bytes) leaves all 31; a 39-byte ZWJ chain leaves 28; e plus 12 U+20DD (37 bytes) leaves 31; the next character is in the next cell each time. `GRID_CLUSTER_MAX` 31 and the cut rule are Neovim's.
+- **measured** (`reviews/r24/store.c`, the store against a plain array of bytes, 40x120 grid, ASan and UBSan): 1.2 M puts from 3,000 distinct clusters (store never emptied), 1.2 M from 200,000 (emptied 12 times), 240,000 from 200,000 (emptied twice): every cell's `grid_text` and every sampled `grid_cell_eq` match the model, and U+FFFD was given 0 times.
+- **measured** (1 run): `ref/grid.c` and `ref/tty.c` did not change on main between ab4bcd4 and 8d08829, so the deletion loses nothing.
+- **measured** (1 run each, `bash reviews/r24/mut.sh`): of 15 hand-made mutations, 9 are caught and 6 survive. Three survivors are equivalent or speed only (below), two are the `src/main.c` line, one is finding 1.
+- Read: `core_draw` clears and redraws the whole grid each frame, so after `grid_frame()` empties the store no cell of `g` keeps an old number, and freeing `shown` makes the backend send everything. The line is right by reading; the PR tags it **hypothesis**, which is accurate.
+
+## To fix before merge
+
+### 1. No test holds a cluster of exactly 31 bytes
+
+The mutation `n > GRID_CLUSTER_MAX` to `n >= GRID_CLUSTER_MAX` (a 31-byte cluster is cut to 29) survives `test_grid_diff` and `test_tty_render` (**measured**, 1 run). Neovim keeps all 31 (measured above). Add e plus 15 U+0301 to the cut cases, with its plant.
+
+## Not blocking
+
+- `src/main.c`: with the `grid_frame()` call removed, or with `shown` not freed, every test passes (**measured**, 1 run each). The PR says so. A test needs 65,536 distinct long clusters through the pty, or a smaller store in a test build; that is thread 0's file and call.
+- `intern`: `store[h].len == n &&` can be removed without changing any result (**measured**: the mutation survives the tests and the three `store.c` runs above give the same lines). A shorter stored cluster is zero-padded, so `memcmp` over n bytes differs; a longer one that starts with the same n bytes gives the right text for a cell of length n, and always the same slot for the same cluster because slots are never freed one at a time. It does save a `memcmp` call on most probes, so I leave it to the author.
+- Interning at `n > 3` and hashing every cluster to slot 0 also survive: the first only wastes a slot, the second is speed only. No test bounds the probe length; when the store is nearly full a miss walks most of the 131,072 slots (**hypothesis**: unreachable in practice, since `grid_frame` empties it at half).
+- `tty.c` treats a cell of one byte as ASCII (`pr = x->len == 1 ? r : -1`). Nothing puts a lone byte of 0x80 or more in a cell today (**hypothesis**, from reading core's text loop).
+- `include/backend.h` lines 2 and 37 still name `ref/tty.c` (thread 0's file).
+- After the failing `tty_render` plants, 10 `test_tty_render` processes were still alive 35 minutes later on my machine, and CI's cleanup lists the same 10 (**measured**, 1 run each). They use almost no CPU. Not from this PR as far as I can tell (**hypothesis**: I did not run main's plants to compare).
+- CI on this head was cancelled by the workflow's 60-minute limit while `make planted` ran (`make check` had passed). Main's last run took 54 minutes, so the limit is thread 0's to raise.
