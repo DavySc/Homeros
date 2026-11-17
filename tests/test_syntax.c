@@ -204,6 +204,47 @@ static void scroll_while_stopped(const char *dir)
 	text_free(t);
 }
 
+/* An edit while a parse is stopped: the stopped parse read the old text, so
+   it must not resume on the new one.  C without syntax errors before and
+   after, where a reparse equals a fresh parse; each stop point in turn, then
+   "x" put into the first line, which the parse has read. */
+static void edit_while_stopped(const char *dir)
+{
+	static char b[MAXT];
+	static unsigned char f[MAXT], g[MAXT];
+	size_t n = 0;
+	for (int l = 0; l < 60; l++)
+		n += (size_t)snprintf(b + n, sizeof b - n, "int v%d = %d; /* c */ char *s%d = \"q\";\n", l, l, l);
+	char path[2048];
+	snprintf(path, sizeof path, "%s/edit.c", dir);
+	int stopped = 0;
+	for (int k = 1; k < 400; k++) {
+		Text *t = text_new(b, n);
+		CHECK(t);
+		Syntax *s = syntax_open(path, t);
+		CHECK(s);
+		syntax_faces(s, 0, n, f);
+		stops_left = k;
+		if (syntax_update(s, t, stop_after) == 2) {
+			stopped++;
+			syntax_edit(s, t, 4, 0, "x", 1);         /* v0 becomes xv0 */
+			CHECK(!text_insert(t, 4, "x", 1));
+			while (syntax_update(s, t, NULL) == 2) ;
+			syntax_faces(s, 0, n + 1, f);
+			Syntax *F = syntax_open(path, t);
+			CHECK(F);
+			syntax_faces(F, 0, n + 1, g);
+			while (syntax_update(F, t, NULL) == 2) ;
+			syntax_faces(F, 0, n + 1, g);
+			CHECK(!memcmp(f, g, n + 1));
+			syntax_free(F);
+		}
+		syntax_free(s);
+		text_free(t);
+	}
+	CHECK(stopped > 10);
+}
+
 int main(void)
 {
 	if (getenv("SEED")) rng = 2 * strtoull(getenv("SEED"), NULL, 10) + 1;   /* distinct seeds stay distinct */
@@ -211,6 +252,7 @@ int main(void)
 	CHECK(CASES > 0 && CASES <= MAXCASES);
 	CHECK(mkdtemp(dir));
 	scroll_while_stopped(dir);
+	edit_while_stopped(dir);
 	char path[2048], vrt[1024] = "";
 	FILE *p = popen("nvim --headless --clean -l /dev/stdin <<'E'\nio.write(vim.env.VIMRUNTIME)\nE", "r");
 	CHECK(p && fgets(vrt, sizeof vrt, p));
@@ -233,9 +275,13 @@ int main(void)
 	int n = CASES * NL;
 	for (int c = 0; c < n; c++) {
 		int lang = c % NL;
-		const char *src = corpus[lang][rnd((unsigned)ncorpus[lang])];
-		/* a window of up to 80 lines from a random line */
-		size_t sn = strlen(src), a = rnd((unsigned)sn), z;
+		/* case 2: inline captures across block quote markers, which the
+		   highlighter colours only inside the inline tree's ranges, so the
+		   second "> " stays plain (unedited, so the final check sees it); the
+		   others: up to 80 lines of the corpus
+		   from a random line */
+		const char *src = c == 2 ? "> *a\n> b* `c\n> d` [e\n> f](g)\n" : corpus[lang][rnd((unsigned)ncorpus[lang])];
+		size_t sn = strlen(src), a = c == 2 ? 0 : rnd((unsigned)sn), z;
 		while (a && src[a - 1] != '\n') a--;
 		z = a;
 		for (int l = 0; l < 80 && z < sn; z++) l += src[z] == '\n';
@@ -252,7 +298,7 @@ int main(void)
 		CHECK(ops);
 		update(A, t, SLICE_NONE);
 		update(B, t, SLICE_MAY_STOP);
-		for (int e = rnd(EDITS + 1); e--; ) {
+		for (int e = c == 2 ? 0 : rnd(EDITS + 1); e--; ) {
 			size_t tn = text_len(t), pos = rnd((unsigned)tn), del = rnd(8);
 			if (del > tn - 1 - pos) del = tn - 1 - pos;   /* keep the final '\n' */
 			const char *ins = snip[lang][rnd(16)];

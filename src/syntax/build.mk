@@ -6,8 +6,8 @@ SYN = build/syntax
 SYN_GRAMMARS = c/src/parser lua/src/parser lua/src/scanner \
   markdown/tree-sitter-markdown/src/parser markdown/tree-sitter-markdown/src/scanner \
   markdown/tree-sitter-markdown-inline/src/parser markdown/tree-sitter-markdown-inline/src/scanner
-CPPFLAGS += -I$(SYN)/src/tree-sitter/lib/include -DSYNTAX_QUERIES='"$(CURDIR)/$(SYN)/src/queries"'
-OBJS += $(SYN)/tree-sitter.o $(SYN_GRAMMARS:%=$(SYN)/g/%.o)
+CPPFLAGS += -I$(SYN)/src/tree-sitter/lib/include
+OBJS += $(SYN)/tree-sitter.o $(SYN_GRAMMARS:%=$(SYN)/g/%.o) $(SYN)/queries.o
 
 $(SYN)/src:
 	@mkdir -p $(SYN)
@@ -20,3 +20,15 @@ $(SYN)/tree-sitter.o: | $(SYN)/src
 $(SYN)/g/%.o: | $(SYN)/src
 	@mkdir -p $(@D)
 	$(CC) -O2 -c -I$(dir $(SYN)/src/$*) $(SYN)/src/$*.c -o $@
+
+# Neovim's highlights and injections queries, compiled in, so the editor needs
+# no files at run time: syntax_queries[lang][0 highlights, 1 injections], the
+# languages in syntax.c's order, each file as one string of octal escapes.
+$(SYN)/queries.c: src/syntax/build.mk | $(SYN)/src
+	{ echo 'const char *const syntax_queries[][2] = {'; \
+	  for l in c lua markdown markdown_inline; do for f in highlights injections; do \
+	    printf '"'; od -An -v -to1 $(SYN)/src/queries/$$l/$$f.scm | tr -d '\n' | sed 's/ /\\/g'; echo '",'; \
+	  done; done; echo '};'; } > $@
+
+$(SYN)/queries.o: $(SYN)/queries.c
+	$(CC) -O2 -c $< -o $@

@@ -9,7 +9,6 @@
    resumes on the next call, as Neovim's async parsing does. */
 #include <ctype.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <tree_sitter/api.h>
@@ -74,9 +73,9 @@ static const struct Lang {
 };
 enum { NLANGS = sizeof langs / sizeof *langs };
 
-#ifndef SYNTAX_QUERIES
-#define SYNTAX_QUERIES "src/syntax/queries"
-#endif
+/* Neovim's highlights and injections queries per language, in langs' order
+   (build.mk compiles them in) */
+extern const char *const syntax_queries[][2];
 
 static int lang_of_path(const char *path, size_t pl)
 {
@@ -88,10 +87,10 @@ static int lang_of_path(const char *path, size_t pl)
 	return -1;
 }
 
-enum { P_EQ, P_MATCH, P_CONTAINS, P_ANYOF, P_ANCESTOR, P_PARENT };
+enum { P_EQ, P_MATCH, P_ANYOF, P_ANCESTOR, P_PARENT };
 typedef struct {
-	unsigned char kind, neg, any;
-	uint32_t cap, cap2;        /* cap2 != NONE: #eq? @a @b */
+	unsigned char kind, neg;
+	uint32_t cap;
 	uint32_t nstr;
 	const char **str;          /* the query owns the strings */
 	uint32_t *len;
@@ -100,19 +99,17 @@ typedef struct {
 typedef struct {
 	Pred *p;
 	uint32_t n;
-	int prio, cprio;           /* #set! priority N; #set! @pcap priority N */
-	uint32_t pcap;
+	int prio;                  /* #set! priority N */
 	const char *ilang;         /* #set! injection.language "x" */
 	uint32_t ilen;
-	unsigned char iself, iparent, icombined, ichildren;
+	unsigned char iself;
 } Pattern;
 
 typedef struct {
 	TSQuery *q;
 	Pattern *pat;
 	unsigned char *face;       /* highlights: per capture id */
-	uint32_t content, langcap, filecap;   /* injections: capture ids, or NONE */
-	int full;                  /* a combined injection of a language we have */
+	uint32_t content, langcap; /* injections: capture ids, or NONE */
 } Q;
 
 /* Both queries of each language, compiled on first use and kept for the
@@ -130,7 +127,7 @@ typedef struct {
    child per language injected into them, in the order first seen. */
 typedef struct LTree {
 	int lang;
-	struct LTree *parent, **kid;
+	struct LTree **kid;
 	Region *reg;
 	uint32_t nreg, nkid;
 	int scan;                  /* parsed since its injections were found */
@@ -160,19 +157,6 @@ struct Syntax {
 	unsigned char cache[CHUNK];
 };
 
-static char *slurp(const char *path, size_t *n)
-{
-	FILE *f = fopen(path, "rb");
-	char *b = NULL;
-	long len;
-	if (f && !fseek(f, 0, SEEK_END) && (len = ftell(f)) >= 0 && !fseek(f, 0, SEEK_SET)
-	    && (b = malloc((size_t)len + 1)) && fread(b, 1, (size_t)len, f) == (size_t)len)
-		*n = (size_t)len;
-	else { free(b); b = NULL; }
-	if (f) fclose(f);
-	return b;
-}
-
 static int prio_rank(int p) { return p < 0 ? 0 : p > 254 ? 254 : p; }
 
 #define STR(k, l) ts_query_string_value_for_id(Q->q, st[k].value_id, &(l))
@@ -180,48 +164,46 @@ static int prio_rank(int p) { return p < 0 ? 0 : p > 254 ? 254 : p; }
 #define ISCAP(k) (st[k].type == TSQueryPredicateStepTypeCapture)
 #define EQ(s, l, lit) ((l) == sizeof lit - 1 && !memcmp(s, lit, l))
 
-/* #set! key [value] or #set! @cap key value, as query.lua's set! */
-static void set(Q *Q, Pattern *P, const TSQueryPredicateStep *st, uint32_t a, uint32_t n)
+/* #set! key [value], as query.lua's set!.  Of its keys, these languages'
+   queries use only these (grep); injection.combined and include-children
+   appear only in injections of languages we lack (HTML, LaTeX, YAML, TOML),
+   which inject nothing, so those patterns are disabled.  #set! @capture
+   key value sets nothing that colours or injects here. */
+static void set(Q *Q, uint32_t i, Pattern *P, const TSQueryPredicateStep *st, uint32_t a, uint32_t n)
 {
-	uint32_t l, vl = 0, c = n >= 3 && ISCAP(a + 1), k = a + 1 + c;
-	if (n < 2 + c || !ISSTR(k)) return;
-	const char *key = STR(k, l), *v = n > 2 + c && ISSTR(k + 1) ? STR(k + 1, vl) : NULL;
-	if (EQ(key, l, "priority") && v) {
-		if (c) P->pcap = st[a + 1].value_id, P->cprio = atoi(v);
-		else P->prio = atoi(v);
-	} else if (c) return;
+	uint32_t l, vl = 0;
+	if (n < 2 || !ISSTR(a + 1)) return;
+	const char *key = STR(a + 1, l), *v = n > 2 && ISSTR(a + 2) ? STR(a + 2, vl) : NULL;
+	if (EQ(key, l, "priority") && v) P->prio = atoi(v);
 	else if (EQ(key, l, "injection.language") && v) P->ilang = v, P->ilen = vl;
 	else if (EQ(key, l, "injection.self")) P->iself = 1;
-	else if (EQ(key, l, "injection.parent")) P->iparent = 1;
-	else if (EQ(key, l, "injection.combined")) P->icombined = 1;
-	else if (EQ(key, l, "injection.include-children")) P->ichildren = 1;
+	else if (EQ(key, l, "injection.combined") || EQ(key, l, "injection.include-children"))
+		ts_query_disable_pattern(Q->q, i);
 }
 
 /* Turns each pattern's predicate steps into Preds and metadata, as
-   query.lua's process_patterns: "not-" negates, "any-" makes a quantified
-   capture pass when one node passes.  An unknown predicate fails the query,
-   as Neovim errors on it. */
+   query.lua's process_patterns: "not-" negates.  A predicate these
+   languages' queries do not use (contains?, match?, the any- forms, #eq?
+   of two captures) fails the query, as Neovim errors on an unknown one. */
 static int compile(Q *Q, int hl)
 {
 	uint32_t np = ts_query_pattern_count(Q->q), nc = ts_query_capture_count(Q->q);
 	Q->pat = calloc(np ? np : 1, sizeof *Q->pat);
 	Q->face = calloc(nc ? nc : 1, 1);
 	if (!Q->pat || !Q->face) return -1;
-	Q->content = Q->langcap = Q->filecap = NONE;
+	Q->content = Q->langcap = NONE;
 	for (uint32_t c = 0; c < nc; c++) {
 		uint32_t l;
 		const char *s = ts_query_capture_name_for_id(Q->q, c, &l);
 		if (hl) Q->face[c] = s[0] == '_' ? 0 : face_of(s, l);
 		else if (EQ(s, l, "injection.content")) Q->content = c;
 		else if (EQ(s, l, "injection.language")) Q->langcap = c;
-		else if (EQ(s, l, "injection.filename")) Q->filecap = c;
 	}
 	for (uint32_t i = 0; i < np; i++) {
 		uint32_t ns;
 		const TSQueryPredicateStep *st = ts_query_predicates_for_pattern(Q->q, i, &ns);
 		Pattern *P = &Q->pat[i];
-		P->prio = P->cprio = PRIO;
-		P->pcap = NONE;
+		P->prio = PRIO;
 		P->p = calloc(ns ? ns : 1, sizeof *P->p);
 		if (!P->p) return -1;
 		for (uint32_t a = 0; a < ns; ) {
@@ -229,7 +211,7 @@ static int compile(Q *Q, int hl)
 			while (st[b].type != TSQueryPredicateStepTypeDone) b++;
 			uint32_t l, n = b - a;
 			const char *name = STR(a, l);
-			if (EQ(name, l, "set!")) set(Q, P, st, a, n);
+			if (EQ(name, l, "set!")) set(Q, i, P, st, a, n);
 			else if (EQ(name, l, "offset!"))
 				/* In these languages' queries only injections of languages
 				   we lack (YAML, TOML) and a capture with no colour (@_url)
@@ -240,27 +222,21 @@ static int compile(Q *Q, int hl)
 				/* other directives (gsub!, trim!) do not colour or inject */
 				Pred *p = &P->p[P->n];
 				if (l > 4 && !memcmp(name, "not-", 4)) p->neg = 1, name += 4, l -= 4;
-				if (l > 4 && !memcmp(name, "any-", 4)) p->any = 1, name += 4, l -= 4;
 				if (EQ(name, l, "eq?")) p->kind = P_EQ;
 				else if (EQ(name, l, "lua-match?")) p->kind = P_MATCH;
-				else if (EQ(name, l, "contains?")) p->kind = P_CONTAINS;
-				else if (EQ(name, l, "any-of?") || EQ(name, l, "of?")) p->kind = P_ANYOF;
+				else if (EQ(name, l, "any-of?")) p->kind = P_ANYOF;
 				else if (EQ(name, l, "has-ancestor?")) p->kind = P_ANCESTOR;
 				else if (EQ(name, l, "has-parent?")) p->kind = P_PARENT;
-				else return -1;   /* match? and vim-match? need Vim's regex engine */
+				else return -1;
 				if (n < 2 || !ISCAP(a + 1)) return -1;
 				p->cap = st[a + 1].value_id;
-				p->cap2 = NONE;
-				if (p->kind == P_EQ && n == 3 && ISCAP(a + 2)) p->cap2 = st[a + 2].value_id;
-				else {
-					p->nstr = n - 2;
-					p->str = calloc(p->nstr ? p->nstr : 1, sizeof *p->str);
-					p->len = calloc(p->nstr ? p->nstr : 1, sizeof *p->len);
-					if (!p->str || !p->len) return -1;
-					for (uint32_t k = 0; k < p->nstr; k++) {
-						if (!ISSTR(a + 2 + k)) return -1;
-						p->str[k] = STR(a + 2 + k, p->len[k]);
-					}
+				p->nstr = n - 2;
+				p->str = calloc(p->nstr ? p->nstr : 1, sizeof *p->str);
+				p->len = calloc(p->nstr ? p->nstr : 1, sizeof *p->len);
+				if (!p->str || !p->len) return -1;
+				for (uint32_t k = 0; k < p->nstr; k++) {
+					if (!ISSTR(a + 2 + k)) return -1;
+					p->str[k] = STR(a + 2 + k, p->len[k]);
 				}
 				P->n++;
 			}
@@ -270,28 +246,15 @@ static int compile(Q *Q, int hl)
 	return 0;
 }
 
-typedef struct Src Src;
-static int resolve(Src *src, const char *s, uint32_t a, uint32_t z);
-
-static void load1(Q *Q, int li, const char *file, int hl)
+static void load1(Q *Q, int li, int hl)
 {
-	char path[512];
-	size_t n;
 	uint32_t off;
 	TSQueryError err;
-	snprintf(path, sizeof path, "%s/%s/%s.scm", SYNTAX_QUERIES, langs[li].name, file);
-	char *src = slurp(path, &n);
-	if (src) Q->q = ts_query_new(langs[li].fn(), src, (uint32_t)n, &off, &err);
-	free(src);
+	const char *src = syntax_queries[li][!hl];
+	Q->q = ts_query_new(langs[li].fn(), src, (uint32_t)strlen(src), &off, &err);
 	if (Q->q && compile(Q, hl)) {
 		ts_query_delete(Q->q);   /* the Preds stay: a few bytes, once */
 		Q->q = NULL;
-	}
-	/* Neovim scans the whole tree when the query has combined injections;
-	   one into a language we lack injects nothing, so it needs no scan */
-	for (uint32_t i = 0; Q->q && !hl && i < ts_query_pattern_count(Q->q); i++) {
-		const Pattern *P = &Q->pat[i];
-		Q->full |= P->icombined && (!P->ilang || resolve(NULL, P->ilang, 0, P->ilen) >= 0);
 	}
 }
 
@@ -299,16 +262,15 @@ static void load(int li)
 {
 	if (queries[li].loaded) return;
 	queries[li].loaded = 1;
-	load1(&queries[li].hl, li, "highlights", 1);
-	load1(&queries[li].inj, li, "injections", 0);
+	load1(&queries[li].hl, li, 1);
+	load1(&queries[li].inj, li, 0);
 }
 
-static LTree *ltree(int lang, LTree *parent)
+static LTree *ltree(int lang)
 {
 	LTree *L = calloc(1, sizeof *L);
 	if (!L) return NULL;
 	L->lang = lang;
-	L->parent = parent;
 	load(lang);
 	return L;
 }
@@ -365,32 +327,6 @@ static TSPoint point(const Text *t, size_t pos)
 	return (TSPoint){ (uint32_t)r, (uint32_t)(pos - text_line_start(t, r)) };
 }
 
-/* tree-sitter's ts_range_edit, on our copy of a region's ranges */
-static TSPoint padd(TSPoint a, TSPoint b) { return b.row ? (TSPoint){ a.row + b.row, b.column } : (TSPoint){ a.row, a.column + b.column }; }
-static TSPoint psub(TSPoint a, TSPoint b) { return a.row > b.row ? (TSPoint){ a.row - b.row, a.column } : (TSPoint){ 0, a.column - b.column }; }
-
-static void range_edit(TSRange *r, const TSInputEdit *e)
-{
-	if (r->end_byte >= e->old_end_byte) {
-		if (r->end_byte != UINT32_MAX) {
-			r->end_byte = e->new_end_byte + (r->end_byte - e->old_end_byte);
-			r->end_point = padd(e->new_end_point, psub(r->end_point, e->old_end_point));
-			if (r->end_byte < e->new_end_byte) r->end_byte = UINT32_MAX, r->end_point = (TSPoint){ UINT32_MAX, UINT32_MAX };
-		}
-	} else if (r->end_byte > e->start_byte) {
-		r->end_byte = e->start_byte;
-		r->end_point = e->start_point;
-	}
-	if (r->start_byte >= e->old_end_byte) {
-		r->start_byte = e->new_end_byte + (r->start_byte - e->old_end_byte);
-		r->start_point = padd(e->new_end_point, psub(r->start_point, e->old_end_point));
-		if (r->start_byte < e->new_end_byte) r->start_byte = UINT32_MAX, r->start_point = (TSPoint){ UINT32_MAX, UINT32_MAX };
-	} else if (r->start_byte > e->start_byte) {
-		r->start_byte = e->start_byte;
-		r->start_point = e->start_point;
-	}
-}
-
 /* LanguageTree:_edit: edit every tree and region; a region meeting the edit
    (or the whole text) must be parsed again */
 static void edit_ltree(LTree *L, const TSInputEdit *e)
@@ -400,7 +336,7 @@ static void edit_ltree(LTree *L, const TSInputEdit *e)
 		if (g->tree) ts_tree_edit(g->tree, e);
 		int hit = !g->n;
 		for (uint32_t k = 0; k < g->n; k++) {
-			range_edit(&g->r[k], e);
+			ts_range_edit(&g->r[k], e);
 			hit |= g->r[k].end_byte > e->start_byte && g->r[k].start_byte < e->old_end_byte;
 		}
 		if (hit) g->valid = 0;
@@ -408,17 +344,18 @@ static void edit_ltree(LTree *L, const TSInputEdit *e)
 	for (uint32_t i = 0; i < L->nkid; i++) edit_ltree(L->kid[i], e);
 }
 
+static Region edited;      /* s->susp of a parse whose text changed */
+
 void syntax_edit(Syntax *s, const Text *t, size_t pos, size_t ndel, const char *ins, size_t nins)
 {
 	if (!s) return;
 	s->dirty = 1;
 	s->t = t;
 	s->cz = 0;
-	if (s->susp) {
-		/* the text a suspended parse was reading has changed: start it again */
-		ts_parser_reset(s->p);
-		s->susp = NULL;
-	}
+	/* the text a suspended parse was reading has changed, so no region may
+	   resume it; parse() drops it after asking stop, because freeing it
+	   (ts_parser_reset) can take a millisecond the frame may not have */
+	if (s->susp) s->susp = &edited;
 	if (!started(s)) return;
 	TSInputEdit e;
 	e.start_byte = (uint32_t)pos;
@@ -435,7 +372,7 @@ void syntax_edit(Syntax *s, const Text *t, size_t pos, size_t ndel, const char *
 
 /* Bytes of the text through a small window, so a predicate can read a node
    of any size without allocating in the redraw path. */
-struct Src { const Text *t; size_t base, n; char w[256]; };
+typedef struct { const Text *t; size_t base, n; char w[256]; } Src;
 
 static int at(void *v, size_t i)
 {
@@ -466,40 +403,14 @@ static int has_type(TSNode n, const Pred *p)
 }
 
 /* One predicate on one node, as query.lua's handlers. */
-static int test1(Src *src, const TSQueryMatch *m, const Pred *p, TSNode n)
+static int test1(Src *src, const Pred *p, TSNode n)
 {
 	uint32_t a = ts_node_start_byte(n), z = ts_node_end_byte(n);
 	switch (p->kind) {
 	case P_EQ:
-		if (p->cap2 != NONE) {
-			for (uint16_t i = 0; i < m->capture_count; i++)
-				if (m->captures[i].index == p->cap2) {
-					TSNode o = m->captures[i].node;
-					uint32_t oa = ts_node_start_byte(o), oz = ts_node_end_byte(o);
-					if (oz - oa != z - a) return 0;
-					for (uint32_t k = 0; k < z - a; k++) {
-						int c = at(src, oa + k);
-						if (at(src, a + k) != c) return 0;
-					}
-					return 1;
-				}
-			return 0;
-		}
 		return p->nstr && text_eq(src, a, z, p->str[0], p->len[0]);
 	case P_MATCH:
 		return p->nstr && lmatch_find(at, src, a, z, p->str[0], p->len[0]);
-	case P_CONTAINS:
-		/* each string, with the predicate's any or all (query.lua's contains) */
-		for (uint32_t k = 0; k < p->nstr; k++) {
-			int found = 0;
-			for (uint32_t i = a; !found && i + p->len[k] <= z; i++) {
-				uint32_t j = 0;
-				while (j < p->len[k] && at(src, i + j) == (unsigned char)p->str[k][j]) j++;
-				found = j == p->len[k];
-			}
-			if (found == p->any) return found;
-		}
-		return !p->any;
 	case P_ANYOF:
 		for (uint32_t k = 0; k < p->nstr; k++)
 			if (text_eq(src, a, z, p->str[k], p->len[k])) return 1;
@@ -518,19 +429,16 @@ static int test1(Src *src, const TSQueryMatch *m, const Pred *p, TSNode n)
 	}
 }
 
-/* A predicate over every node of its capture: none passes vacuously; "all"
-   unless any-; any-of?, has-ancestor? and has-parent? are "any" always. */
+/* A predicate over every node of its capture, none passing vacuously
+   (query.lua's handlers).  Neovim's any-of?, has-ancestor? and has-parent?
+   need one node, not all, but in these languages' queries every predicate
+   tests a capture of exactly one node (ts_query_capture_quantifier_for_id:
+   39 of 39), where the two agree. */
 static int test(Src *src, const TSQueryMatch *m, const Pred *p)
 {
-	int any = p->any || p->kind >= P_ANYOF, seen = 0;
-	for (uint16_t i = 0; i < m->capture_count; i++) {
-		if (m->captures[i].index != p->cap) continue;
-		seen = 1;
-		int r = test1(src, m, p, m->captures[i].node);
-		if (any && r) return 1;
-		if (!any && !r) return 0;
-	}
-	return !seen || !any;
+	for (uint16_t i = 0; i < m->capture_count; i++)
+		if (m->captures[i].index == p->cap && !test1(src, p, m->captures[i].node)) return 0;
+	return 1;
 }
 
 static int passes(Src *src, const TSQueryMatch *m, const Pattern *P)
@@ -594,14 +502,14 @@ static TSRange mkrange(uint32_t a, TSPoint pa, uint32_t z, TSPoint pz)
 	return (TSRange){ pa, pz, a, z };
 }
 
-/* get_node_ranges: the node's range without its named children, unless
-   injection.include-children */
-static int node_ranges(TSNode n, const Pattern *P, Ranges *out)
+/* get_node_ranges: the node's range without its named children (patterns
+   with injection.include-children are disabled) */
+static int node_ranges(TSNode n, Ranges *out)
 {
 	TSPoint sp = ts_node_start_point(n), ep = ts_node_end_point(n);
 	uint32_t sb = ts_node_start_byte(n), eb = ts_node_end_byte(n);
 	uint32_t nc = ts_node_named_child_count(n);
-	if (P->ichildren || !nc) return push(out, mkrange(sb, sp, eb, ep));
+	if (!nc) return push(out, mkrange(sb, sp, eb, ep));
 	for (uint32_t i = 0; i < nc; i++) {
 		TSNode c = ts_node_named_child(n, i);
 		TSPoint cs = ts_node_start_point(c);
@@ -638,10 +546,10 @@ static int clip(const Ranges *a, const Region *p, Ranges *out)
 }
 
 /* One injected region found by the scan of a tree. */
-typedef struct { int lang; uint32_t pattern; Ranges r; } Inj;
+typedef struct { int lang; Ranges r; } Inj;
 typedef struct { Inj *v; uint32_t n, cap; } Injs;
 
-static Inj *inj_new(Injs *I, int lang, uint32_t pattern)
+static Inj *inj_new(Injs *I, int lang)
 {
 	if (I->n == I->cap) {
 		uint32_t c = I->cap ? 2 * I->cap : 8;
@@ -651,7 +559,7 @@ static Inj *inj_new(Injs *I, int lang, uint32_t pattern)
 		I->cap = c;
 	}
 	Inj *j = &I->v[I->n++];
-	*j = (Inj){ lang, pattern, { NULL, 0, 0 } };
+	*j = (Inj){ lang, { NULL, 0, 0 } };
 	return j;
 }
 
@@ -715,34 +623,23 @@ static int inject(Syntax *s, LTree *L, const Text *t)
 	int rc = 0;
 	for (uint32_t ti = 0; Q->q && ti < L->nreg && !rc; ti++) {
 		if (!L->reg[ti].tree) continue;
-		uint32_t first = I.n;   /* combined injections are per tree */
-		ts_query_cursor_set_byte_range(s->qc, Q->full ? 0 : a, Q->full ? UINT32_MAX : z);
+		ts_query_cursor_set_byte_range(s->qc, a, z);
 		ts_query_cursor_exec(s->qc, Q->q, ts_tree_root_node(L->reg[ti].tree));
 		TSQueryMatch m;
 		while (!rc && ts_query_cursor_next_match(s->qc, &m)) {
 			const Pattern *P = &Q->pat[m.pattern_index];
 			if (!passes(&src, &m, P)) continue;
-			int lang = P->iself ? L->lang : P->iparent ? (L->parent ? L->parent->lang : -1)
-			         : P->ilang ? resolve(&src, P->ilang, 0, P->ilen) : -1;
+			int lang = P->iself ? L->lang : P->ilang ? resolve(&src, P->ilang, 0, P->ilen) : -1;
 			cr.n = 0;
 			for (uint16_t i = 0; i < m.capture_count && !rc; i++) {
 				const TSQueryCapture *c = &m.captures[i];
 				uint32_t a = ts_node_start_byte(c->node), z = ts_node_end_byte(c->node);
 				if (c->index == Q->langcap) lang = resolve(&src, NULL, a, z);
-				else if (c->index == Q->filecap) {
-					/* vim.filetype.match by name: here, by the ending */
-					char b[256];
-					uint32_t k = 0;
-					for (uint32_t j = a; j < z && k < sizeof b; j++) b[k++] = (char)at(&src, j);
-					lang = lang_of_path(b, k);
-				} else if (c->index == Q->content) rc = node_ranges(c->node, P, &cr);
+				else if (c->index == Q->content) rc = node_ranges(c->node, &cr);
 			}
 			if (rc || lang < 0 || !cr.n) continue;
-			Inj *j = NULL;
-			if (P->icombined)
-				for (uint32_t k = first; k < I.n && !j; k++)
-					if (I.v[k].lang == lang && I.v[k].pattern == m.pattern_index) j = &I.v[k];
-			if (!j && !(j = inj_new(&I, lang, P->icombined ? m.pattern_index : NONE))) rc = -1;
+			Inj *j = inj_new(&I, lang);
+			if (!j) rc = -1;
 			else rc = clip(&cr, &L->reg[ti], &j->r);
 		}
 	}
@@ -758,7 +655,7 @@ static int inject(Syntax *s, LTree *L, const Text *t)
 			LTree **b = realloc(L->kid, (L->nkid + 1) * sizeof *b), *K;
 			if (!b) { rc = -1; break; }
 			L->kid = b;
-			if (!(K = ltree(lang, L))) { rc = -1; break; }
+			if (!(K = ltree(lang))) { rc = -1; break; }
 			L->kid[L->nkid++] = K;
 		}
 		LTree *K = L->kid[k];
@@ -769,8 +666,8 @@ static int inject(Syntax *s, LTree *L, const Text *t)
 	if (!rc) {
 		for (uint32_t k = keep; k < L->nkid; k++) free_ltree(s, L->kid[k]);
 		L->nkid = keep;
-		L->pa = Q->full ? 0 : a;
-		L->pz = Q->full ? UINT32_MAX : z;
+		L->pa = a;
+		L->pz = z;
 	}
 	for (uint32_t i = 0; i < I.n; i++) free(I.v[i].r.r);
 	free(I.v);
@@ -792,7 +689,7 @@ static int parse(Syntax *s, LTree *L, const Text *t)
 		   progress checks, so ask between regions too */
 		if (s->susp != g && s->stop && s->stop()) return 2;
 		if (s->susp && s->susp != g) {
-			/* the suspended region left the window: drop its parse */
+			/* the suspended region left the window or its text changed */
 			ts_parser_reset(s->p);
 			s->susp = NULL;
 		}
@@ -832,7 +729,7 @@ int syntax_update(Syntax *s, const Text *t, int (*stop)(void))
 	if (!s || !s->dirty) return 0;
 	if (!started(s)) {
 		int li = (int)(intptr_t)s->root - 1;
-		LTree *R = ltree(li, NULL);
+		LTree *R = ltree(li);
 		s->p = ts_parser_new();
 		s->qc = ts_query_cursor_new();
 		if (!R || !s->p || !s->qc || !(R->reg = calloc(1, sizeof *R->reg))) {
@@ -883,7 +780,7 @@ static void faces_tree(Syntax *s, const Text *t, LTree *L, uint32_t a, uint32_t 
 			const TSQueryCapture *c = &m.captures[ci];
 			unsigned char f = Q->face[c->index];
 			if (!f) continue;
-			int pr = prio_rank(c->index == P->pcap ? P->cprio : P->prio) + 1;
+			int pr = prio_rank(P->prio) + 1;
 			uint32_t b = ts_node_start_byte(c->node), e = ts_node_end_byte(c->node);
 			/* the highlighter colours only inside the tree's included ranges */
 			for (uint32_t k = 0; k < (g->n ? g->n : 1); k++) {
