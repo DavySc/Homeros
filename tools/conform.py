@@ -19,7 +19,7 @@ CHARS = list('ox(). ,"\'{}[]-é') + ['λ', '∀', '𝓝']
 INS = list('abc xy,.(0^') + ['é', 'ა', '𐐀', '∀', '<CR>', '<CR>', '<BS>', '<BS>', '<Tab>', '  ',
       '<C-w>', '<C-u>', '<C-t>', '<C-d>', '<Left>', '<Right>', '<Up>', '<Down>']
 REGS = ['a', 'b', 'A', '"', '0', '1', '2', '-', '_']
-MOTIONS = ['h', 'j', 'k', 'l', '0', '^', '$', 'w', 'b', 'e', 'W', 'B', 'E', 'ge', 'gE', 'gg', 'G', '|',
+MOTIONS = ['h', 'j', 'k', 'l', '0', '^', '$', 'w', 'b', 'e', 'W', 'B', 'E', 'ge', 'gE', 'gg', 'go', 'G', '|',
            '_', '+', '-', '<CR>', '<BS>', ' ', 'gj', 'gk', 'g_', '(', ')', '{', '}', '[[', ']]', '[]', '][',
            '[(', '[{', '])', ']}', ';', ',']
 # not %: Neovim's default matchit plugin maps it (a gap, see src/keys/README)
@@ -147,7 +147,8 @@ io.open(OUT, 'w'):write(vim.json.encode(out))
 vim.cmd('qa!')
 '''
 SETUP = ('set noswapfile nomore expandtab shiftwidth=4 softtabstop=4 autoindent smarttab '
-         'nostartofline backspace=indent,eol,start tabstop=8 virtualedit=block nowrap shortmess+=I')
+         'nostartofline backspace=indent,eol,start tabstop=8 virtualedit=block nowrap shortmess+=I'
+         ' | nnoremap go gg')   # Davy's map, 2026-11-17
 
 def nvim1(cases):
     d = tempfile.mkdtemp()

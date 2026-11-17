@@ -33755,5 +33755,75 @@
 "        cა  "
 ]
 }
+},
+{
+"text": "abc\n",
+"keys": [
+"A"
+],
+"nvim": {
+"cursor": [
+1,
+2
+],
+"lines": [
+"abc"
+]
+}
+},
+{
+"text": "a\nb\nc\n",
+"keys": [
+"G",
+"5",
+"go"
+],
+"nvim": {
+"lines": [
+"a",
+"b",
+"c"
+],
+"cursor": [
+3,
+0
+]
+}
+},
+{
+"text": "a\nb\nc\n",
+"keys": [
+"G",
+"d",
+"go"
+],
+"nvim": {
+"lines": [
+""
+],
+"cursor": [
+1,
+0
+]
+}
+},
+{
+"text": "aλb\nxy\n",
+"keys": [
+"v",
+"3",
+"go",
+"d"
+],
+"nvim": {
+"lines": [
+"b",
+"xy"
+],
+"cursor": [
+1,
+0
+]
+}
 }
 ]

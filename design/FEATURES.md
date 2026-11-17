@@ -32,6 +32,8 @@ Normal, insert, visual (char, line, block), operator-pending, replace and comman
 
 Neovim 0.12 defaults that my-nvim keeps: `[b ]b [B ]B` buffers, `[q ]q [Q ]Q [C-q ]C-q` quickfix, `[l ]l` location list, `[a ]a` args, `[t ]t` tags, `[<Space> ]<Space>` blank lines, `[d ]d [D ]D` diagnostics, `C-w d` diagnostic float, `gx` open URL, `gO` outline, `grn gra grr gri grt grx` LSP, `gd gD K`, visual `* #`, `&`, `Q`, `@` in visual, `C-l` clears highlight.
 
+Davy, 2026-11-17: `go` in Normal mode is `gg` (counts too: `5go` is line 5), as `nnoremap go gg`; Neovim's `go` (byte N) is not kept. The Neovim side of `tools/conform.py` has the same map.
+
 ## 3. Editing extras (both; mini.nvim in my-nvim, evil packages in kittymax)
 
 - Surround: `ys{motion}{char}`, `cs{old}{new}`, `ds{char}`, visual `gs`; `*` makes `**bold**` in markdown.

@@ -437,6 +437,23 @@ static void nv_goto(Cmdarg *cap)
 	beginline(BL_SOL | BL_FIX);
 }
 
+/* goto_byte() in memline.c: byte N of the buffer, counting from 1 */
+static void goto_byte(long n)
+{
+	size_t b = n ? (size_t)n - 1 : 0, nl = (size_t)nlines(), l = 0;
+	if (b >= core_line_start(E, nl)) {
+		W->line = nl - 1;
+		set_want(MAXCOL);
+		coladvance(MAXCOL);
+	} else {
+		while (core_line_start(E, l + 1) <= b) l++;
+		setcur((Pos){ (long)l, (long)(b - core_line_start(E, l)), 0 });
+		set_curswant = 1;
+	}
+	check_cursor();
+	if ((long)W->col < ml_len((long)W->line)) W->col = (size_t)head(ml_get((long)W->line), (long)W->col);
+}
+
 static void nv_wordcmd(Cmdarg *cap)
 {
 	Oparg *oap = cap->oap;
@@ -1057,6 +1074,13 @@ static void nv_g_cmd(Cmdarg *cap)
 		}
 		break;
 	case 'g': cap->arg = 0; nv_goto(cap); break;
+	case 'o':
+		/* Davy's map (2026-11-17): go is gg in Normal mode, as nnoremap
+		   go gg; a Normal-mode map leaves Neovim's go (byte N) after an
+		   operator and in Visual mode */
+		if (oap->op_type == OP_NOP && !VIsual_active) { cap->arg = 0; nv_goto(cap); }
+		else { oap->inclusive = 0; goto_byte(cap->count0); }
+		break;
 	case '~': case 'u': case 'U': nv_operator(cap); break;
 	case 'p': case 'P': nv_put(cap, 0); break;
 	default: clearopbeep(oap);
