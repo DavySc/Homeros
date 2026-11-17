@@ -3,9 +3,11 @@
    a truncated file or a damaged one is refused or, if a damaged byte leaves
    it consistent, every move still works; the hash is SHA-256 (FIPS 180-4
    vectors); a newhead that is not the newest change of its line is refused;
-   'undolevels' 1000 keeps 1,001 changes, as Neovim.  The clock is
+   'undolevels' 1000 keeps 1,001 changes, as Neovim; counts at the ends of
+   long's range do not overflow.  The clock is
    this file's time(), stepped between ops, so both copies of a tree see the
    same times and time moves are exercised. */
+#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -198,6 +200,26 @@ int main(void)
 		CHECK(undo_time(u, 1499, UNDO_ABS) == -1 && undo_time(u, 1500, UNDO_ABS) == 1);
 		while (undo_step(u, t, &w) == 1) {}
 		CHECK(undo_seq(u) == 1500 && text_len(t) == 1500);
+		undo_free(u);
+		text_free(t);
+	}
+	/* counts at the ends of long's range (":later 9223372036854775807"):
+	   no overflow (UBSan), and they go to the newest or oldest state */
+	{
+		Text *t = text_new("", 0);
+		Undo *u = undo_new();
+		UndoWhere w;
+		CHECK(!text_insert(t, 0, "x", 1) && !undo_record(u, 0, "", 0, "x", 1, (UndoCursor){ 0, 0, 0 }, 0));
+		undo_close(u);
+		undo_saved(u);
+		for (int unit = UNDO_SEQ; unit <= UNDO_FILE; unit++)
+			for (int i = 0; i < 4; i++) {
+				long step = i & 1 ? LONG_MIN + (i >> 1) : LONG_MAX - (i >> 1);
+				CHECK(undo_time(u, step, unit) >= 0);
+				while (undo_step(u, t, &w) > 0) {}
+				CHECK(undo_seq(u) == (step > 0) && text_len(t) == (step > 0));
+			}
+		CHECK(undo_time(u, LONG_MAX, UNDO_ABS) == -1 && undo_time(u, LONG_MIN, UNDO_ABS) == -1);
 		undo_free(u);
 		text_free(t);
 	}

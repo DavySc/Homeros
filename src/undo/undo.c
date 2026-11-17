@@ -250,6 +250,14 @@ int undo_redo(Undo *u, Text *t, UndoWhere *w)
 
 unsigned long undo_seq(const Undo *u) { return (unsigned long)u->seq_cur; }
 
+/* Numbers from a file are refused at or above these, and undo_time() takes
+   a count within +-MAX_TIME, so the arithmetic on them (++seq_last,
+   time_cur + step, dist()) cannot overflow: 2^30 changes or writes fit a
+   32-bit long (Windows); 2^40 seconds is year 36,812.  A count that large
+   already goes past every change, so the clamp moves as Neovim does. */
+#define MAX_NR (1UL << 30)
+#define MAX_TIME (1LL << 40)
+
 static long long dist(long long a, long long b) { return a > b ? a - b : b - a; }
 
 /* undo_time(): the search.  "target" is the state below which we want to be;
@@ -257,6 +265,8 @@ static long long dist(long long a, long long b) { return a > b ? a - b : b - a; 
 int undo_time(Undo *u, long step, int unit)
 {
 	int sec = unit == UNDO_SEC, file = unit == UNDO_FILE, absolute = unit == UNDO_ABS, above = 0;
+	if (step > MAX_TIME) step = MAX_TIME;
+	if (step < -MAX_TIME) step = -MAX_TIME;
 	long long target, closest;
 	Head *h;
 	u->open = 0;
@@ -512,11 +522,7 @@ int undo_write(const Undo *u, const Text *t, const char *path)
 
 typedef struct { const unsigned char *p, *end; } In;
 
-/* Numbers from a file are refused at or above these, so the arithmetic on
-   them (++seq_last, time_cur + step, dist()) cannot overflow: 2^30 changes
-   or writes fit a 32-bit long (Windows); 2^40 seconds is year 36,812. */
-#define MAX_NR (1UL << 30)
-#define MAX_TIME (1ULL << 40)
+
 
 static int get(In *in, unsigned long long *v)
 {
