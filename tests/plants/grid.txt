@@ -1,3 +1,4 @@
-# Plants for ref/grid.c and ref/tty.c (format in tools/planted.sh).  The package that builds
-# src/grid/ replaces this file with plants for its own code.
-tty: every cell sent every frame~test TESTS=grid~~ref/tty.c~			if (grid_cell_eq(x, y)) continue;~
+# Plants for src/grid/ (format in tools/planted.sh).
+grid: a character on a right half leaves its left half~test TESTS=grid_diff~~src/grid/grid.c~	if (c > 0 && !x->len) x[-1] = (Cell){ ">", 1, x[-1].attr };¶~
+grid: covering a left half leaves its right half~test TESTS=grid_diff~~src/grid/grid.c~	if (c + width < g->cols && !x[width].len) x[width] = (Cell){ " ", 1, x[width].attr };¶~
+grid: a size that overflows is accepted~test TESTS=grid_diff~~src/grid/grid.c~ || (cols && rows > INT_MAX / cols)~
