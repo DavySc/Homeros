@@ -13,3 +13,4 @@ core: a split forgets the alternate buffer (recorded traces)~test TESTS=core_scr
 core: the cursor clamp counts bytes, not characters (fuzz_core)~fuzz FUZZERS=core FUZZ_SECONDS=120~~src/core/move.c~	while ((k = lit_next(&it, &c)) && p + k <= w->col) { last = p; p += k; }~	while ((k = lit_next(&it, &c)) && p + k <= w->col) { last = p + k - 1; p += k; }
 core: the face of a cell past a shrunk screen is written (fuzz_core)~fuzz FUZZERS=core FUZZ_SECONDS=120~~src/core/draw.c~y >= 0 && y < g->rows && x >= 0 && x < g->cols~y >= 0 && x >= 0 && x < g->cols
 
+core: an undone insert at a line start counts as lines removed (test_core_undo)~test TESTS=core_undo~~src/core/core.c~at_start && n < before &&~at_start &&

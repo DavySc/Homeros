@@ -883,10 +883,12 @@ int core_undo(Editor *e, int redo)
 	e->buf->flags = w.flags;
 	int at_start = w.lo == core_line_start(e, first);
 	UndoMarks *u = *umarks_find(b, seq);
-	/* whole lines removed: none left, unless the group joined lines, which
-	   u_save() saved with the line they became (an empty line joined to an
-	   empty line removes the same "\n" as dd) */
-	if (w.hi == w.lo && at_start && !(u && u->join)) last = first - 1;
+	/* whole lines removed: none left.  Only if the line count dropped (an
+	   insert at a line start undone leaves lo == hi there too, but u_save()
+	   saved the line), and not for a join, which u_save() saved with the
+	   line it became (an empty line joined to an empty line removes the
+	   same "\n" as dd) */
+	if (w.hi == w.lo && at_start && n < before && !(u && u->join)) last = first - 1;
 	else last = text_line_of(e->buf->text, w.hi > w.lo ? w.hi - 1 : w.lo);
 	/* the other windows: the step replaced lines first.. by last - first + 1 */
 	size_t kept = before - (n - (last + 1 - first));   /* lines the step replaced */

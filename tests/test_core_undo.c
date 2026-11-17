@@ -49,6 +49,17 @@ int main(void)
 	remove_nl(&e, 2, 0);
 	CHECK(core_undo(&e, 0) >= 0 && core_undo(&e, 1) >= 0 && e.win->line == 1);
 	core_free(&e);
+	/* an insert at a line start undone leaves lo == hi there too, but the
+	   line stays: lines removed only when the count drops (thread 0's
+	   rule, from "𐐀x\n\t(\n" j i é Esc u dd against nvim) */
+	load(&e, "x\n\t(\n");
+	undo_close(e.buf->undo);
+	e.win->line = 1;
+	e.win->col = 0;
+	CHECK(!core_edit(&e, core_line_start(&e, 1), 0, "\xc3\xa9", 2));
+	undo_close(e.buf->undo);
+	CHECK(core_undo(&e, 0) == 0 && e.win->line == 1);
+	core_free(&e);
 	/* a join moves the marks of the joined line onto the line before */
 	load(&e, "ab\ncd\nef\n");
 	e.buf->mark[0] = (Mark){ 1, 1, 1 };
