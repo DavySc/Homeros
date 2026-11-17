@@ -42,3 +42,4 @@ win: journal shared, no lock~win~~src/file/win.c~GENERIC_READ | GENERIC_WRITE, F
 win: journal in text mode~win~~src/file/win.c~_open_osfhandle((intptr_t)h, _O_APPEND);~_open_osfhandle((intptr_t)h, _O_APPEND | _O_TEXT);
 win: journal name by the path's case~win~~src/file/win.c~	CharLowerBuffW(full, n);~
 win: journal left after a clean close~win~~src/file/win.c~	if (!wide(name, w)) DeleteFileW(w);~	if (!wide(name, w) && 0) DeleteFileW(w);
+core wiring: recovery ignores noeol in the bytes a buffer saves~test TESTS=file_core~~ref/core.c~	size_t tn = st & CORE_EMPTY ? 0 : text_len(t) - (st & J_NOEOL ? 1 : 0);~	size_t tn = st & CORE_EMPTY ? 0 : text_len(t);
