@@ -204,10 +204,11 @@ void core_set_wrap(Editor *e, int on);
 /* Scrolling the current window, as Neovim's move.c; the cursor stays in
    view.  CTRL-E (n > 0) and CTRL-Y (n < 0): n lines; CTRL-D (dir 1) and
    CTRL-U (-1): a count sets win->scroll; CTRL-F (1) and CTRL-B (-1): count
-   pages; zt zz zb: how 't' 'z' 'b'. */
-void core_scroll(Editor *e, long n);
-void core_scroll_half(Editor *e, int dir, long count);
-void core_scroll_page(Editor *e, int dir, long count);
+   pages; zt zz zb: how 't' 'z' 'b'.  The first three return 0, or -1 when
+   they could not move (Neovim beeps, which ends a macro or mapping). */
+int  core_scroll(Editor *e, long n);
+int  core_scroll_half(Editor *e, int dir, long count);
+int  core_scroll_page(Editor *e, int dir, long count);
 void core_scroll_cursor(Editor *e, int how);
 /* The line H, M or L goes to (how 'H' 'M' 'L'; count lines from the top or bottom). */
 size_t core_screen_line(Editor *e, int how, long count);
