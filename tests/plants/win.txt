@@ -22,7 +22,8 @@ win: clipboard got with CRLF~win~~src/win/backend.c~			if (u[i] == '\r' && u[i +
 win: clipboard get writes past max~win~~src/win/backend.c~if ((size_t)n < max) buf[n] = b[j];~if ((size_t)n < max + 1) buf[n] = b[j];
 win: no glyph drawn, only cell backgrounds~win~~src/win/backend.c~&rc, u, n, NULL);~&rc, u, n * 0, NULL);
 win: dim text in the normal colour~win~~src/win/backend.c~RGB(108, 112, 134)~RGB(205, 214, 245)
-win: syntax faces ignored~win~~src/win/backend.c~x->face < FACE_COUNT ? face_fg[x->face] : TEXT~x->face < FACE_COUNT ? face_fg[0] : TEXT
+win: syntax faces ignored~win~~src/win/backend.c~fa->style & FACE_FG ? RGB~fa->style & 0 ? RGB
+win: face backgrounds ignored~win~~src/win/backend.c~fa->style & FACE_BG ? RGB~fa->style & 0 ? RGB
 win: a wide character drawn one cell wide~win~~src/win/backend.c~(c + 1 + wide) * cw~(c + 1 + wide * 0) * cw
 win: the right half of a wide character not sent to the window~win~~src/win/backend.c~hi = c + 1 + (c + 1 < g->cols && !x[1].len);~hi = c + 1;
 win: an uncovered window not repainted (WM_PAINT)~win~~src/win/backend.c~BitBlt(dc, r->left, r->top, r->right - r->left, r->bottom - r->top, mem, r->left, r->top, SRCCOPY);~(void)dc; (void)r;

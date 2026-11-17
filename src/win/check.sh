@@ -17,6 +17,6 @@ for t in tests/test_win*.c; do
 	exe=build/win/$(basename "$t" .c).exe
 	zig cc -target x86_64-windows-gnu -std=c17 -Wall -Wextra -Werror -Iinclude -O1 -g \
 	  -fsanitize=undefined -fsanitize-trap=undefined \
-	  -o "$exe" "$t" src/win/*.c $(pick grid) $(pick uni) -luser32 -lgdi32 -ldwmapi
+	  -o "$exe" "$t" src/win/*.c $(pick grid) $(pick uni) $(pick theme) -luser32 -lgdi32 -ldwmapi
 	timeout 300 xvfb-run -a wine "$exe" || { echo "FAIL $(basename "$t" .c)"; exit 1; }
 done

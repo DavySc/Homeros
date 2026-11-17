@@ -40,104 +40,11 @@ static LONGLONG period, next;   /* QueryPerformanceCounter ticks */
 static WCHAR surr;              /* a high surrogate waiting for its low one */
 static int mrow, mcol, wheel;   /* the last mouse key's cell; wheel delta not yet a key */
 
-/* Catppuccin Mocha (FEATURES.md): text, dim (overlay0), base, and the
-   colours catppuccin/nvim gives the syntax faces, copied from ref/tty.c's
-   table until grid.h holds one table for every backend (asked of thread 0);
-   italic and bold wait for package 7's fonts */
+/* Catppuccin Mocha (FEATURES.md): the window's own text, dim (overlay0)
+   and base, which a terminal takes from its settings; the faces' colours
+   come from grid.h's faces[].  Their styles (bold, italic, underline,
+   strike) wait for package 7's fonts. */
 static const COLORREF TEXT = RGB(205, 214, 244), DIMC = RGB(108, 112, 134), BASE = RGB(30, 30, 46);
-static const COLORREF face_fg[FACE_COUNT] = {
-	RGB(205, 214, 244),  /* none: text */
-	RGB(205, 214, 244),  /* variable: text */
-	RGB(243, 139, 168),  /* variable.builtin: red */
-	RGB(235, 160, 172),  /* variable.parameter: maroon */
-	RGB(235, 160, 172),  /* variable.parameter.builtin: maroon */
-	RGB(180, 190, 254),  /* variable.member: lavender */
-	RGB(250, 179, 135),  /* constant: peach */
-	RGB(250, 179, 135),  /* constant.builtin: peach */
-	RGB(203, 166, 247),  /* constant.macro: mauve */
-	RGB(249, 226, 175),  /* module: yellow, italic */
-	RGB(249, 226, 175),  /* module.builtin: yellow, italic */
-	RGB(116, 199, 236),  /* label: sapphire */
-	RGB(166, 227, 161),  /* string: green */
-	RGB(148, 226, 213),  /* string.documentation: teal */
-	RGB(245, 194, 231),  /* string.regexp: pink */
-	RGB(245, 194, 231),  /* string.escape: pink */
-	RGB(245, 194, 231),  /* string.special: pink */
-	RGB(242, 205, 205),  /* string.special.symbol: flamingo */
-	RGB(245, 194, 231),  /* string.special.path: pink */
-	RGB(137, 180, 250),  /* string.special.url: blue, italic underline */
-	RGB(148, 226, 213),  /* character: teal */
-	RGB(245, 194, 231),  /* character.special: pink */
-	RGB(250, 179, 135),  /* boolean: peach */
-	RGB(250, 179, 135),  /* number: peach */
-	RGB(250, 179, 135),  /* number.float: peach */
-	RGB(249, 226, 175),  /* type: yellow */
-	RGB(203, 166, 247),  /* type.builtin: mauve */
-	RGB(249, 226, 175),  /* type.definition: yellow */
-	RGB(250, 179, 135),  /* attribute: peach */
-	RGB(250, 179, 135),  /* attribute.builtin: peach */
-	RGB(180, 190, 254),  /* property: lavender */
-	RGB(137, 180, 250),  /* function: blue */
-	RGB(250, 179, 135),  /* function.builtin: peach */
-	RGB(137, 180, 250),  /* function.call: blue */
-	RGB(245, 194, 231),  /* function.macro: pink */
-	RGB(137, 180, 250),  /* function.method: blue */
-	RGB(137, 180, 250),  /* function.method.call: blue */
-	RGB(249, 226, 175),  /* constructor: yellow */
-	RGB(137, 220, 235),  /* operator: sky */
-	RGB(203, 166, 247),  /* keyword: mauve */
-	RGB(203, 166, 247),  /* keyword.coroutine: mauve */
-	RGB(203, 166, 247),  /* keyword.function: mauve */
-	RGB(203, 166, 247),  /* keyword.operator: mauve */
-	RGB(203, 166, 247),  /* keyword.import: mauve */
-	RGB(203, 166, 247),  /* keyword.type: mauve */
-	RGB(203, 166, 247),  /* keyword.modifier: mauve */
-	RGB(203, 166, 247),  /* keyword.repeat: mauve */
-	RGB(203, 166, 247),  /* keyword.return: mauve */
-	RGB(203, 166, 247),  /* keyword.debug: mauve */
-	RGB(203, 166, 247),  /* keyword.exception: mauve */
-	RGB(203, 166, 247),  /* keyword.conditional: mauve, italic */
-	RGB(137, 220, 235),  /* keyword.conditional.ternary: sky */
-	RGB(245, 194, 231),  /* keyword.directive: pink */
-	RGB(245, 194, 231),  /* keyword.directive.define: pink */
-	RGB(147, 153, 178),  /* punctuation.delimiter: overlay2 */
-	RGB(147, 153, 178),  /* punctuation.bracket: overlay2 */
-	RGB(245, 194, 231),  /* punctuation.special: pink */
-	RGB(147, 153, 178),  /* comment: overlay2, italic */
-	RGB(147, 153, 178),  /* comment.documentation: overlay2, italic */
-	RGB(30, 30, 46),     /* comment.error: base on red */
-	RGB(30, 30, 46),     /* comment.warning: base on yellow */
-	RGB(30, 30, 46),     /* comment.todo: base on flamingo */
-	RGB(30, 30, 46),     /* comment.note: base on rosewater */
-	RGB(243, 139, 168),  /* markup.strong: red, bold */
-	RGB(243, 139, 168),  /* markup.italic: red, italic */
-	RGB(205, 214, 244),  /* markup.strikethrough: text, strikethrough */
-	RGB(205, 214, 244),  /* markup.underline: underline */
-	RGB(137, 180, 250),  /* markup.heading: blue */
-	RGB(137, 180, 250),  /* markup.heading.1: blue */
-	RGB(137, 180, 250),  /* markup.heading.2: blue */
-	RGB(137, 180, 250),  /* markup.heading.3: blue */
-	RGB(137, 180, 250),  /* markup.heading.4: blue */
-	RGB(137, 180, 250),  /* markup.heading.5: blue */
-	RGB(137, 180, 250),  /* markup.heading.6: blue */
-	RGB(245, 194, 231),  /* markup.quote: pink */
-	RGB(137, 180, 250),  /* markup.math: blue */
-	RGB(180, 190, 254),  /* markup.link: lavender */
-	RGB(180, 190, 254),  /* markup.link.label: lavender */
-	RGB(137, 180, 250),  /* markup.link.url: blue, italic underline */
-	RGB(166, 227, 161),  /* markup.raw: green */
-	RGB(166, 227, 161),  /* markup.raw.block: green */
-	RGB(148, 226, 213),  /* markup.list: teal */
-	RGB(166, 227, 161),  /* markup.list.checked: green */
-	RGB(127, 132, 156),  /* markup.list.unchecked: overlay1 */
-	RGB(166, 227, 161),  /* diff.plus: green */
-	RGB(243, 139, 168),  /* diff.minus: red */
-	RGB(137, 180, 250),  /* diff.delta: blue */
-	RGB(137, 180, 250),  /* tag: blue */
-	RGB(137, 180, 250),  /* tag.builtin: blue */
-	RGB(249, 226, 175),  /* tag.attribute: yellow, italic */
-	RGB(148, 226, 213),  /* tag.delimiter: teal */
-};
 
 static void put(int k)
 {
@@ -346,17 +253,19 @@ static void draw_cell(const Grid *g, int r, int c, int cursor)
 	WCHAR u[2] = { (WCHAR)cp };
 	UINT n = 1;
 	int wide = c + 1 < g->cols && !x[1].len;
-	COLORREF f = x->attr == ATTR_DIM ? DIMC : x->face < FACE_COUNT ? face_fg[x->face] : TEXT;
+	const Face *fa = &faces[x->face < FACE_COUNT ? x->face : FACE_NONE];
+	COLORREF f = x->attr == ATTR_DIM ? DIMC : fa->style & FACE_FG ? RGB(fa->fg[0], fa->fg[1], fa->fg[2]) : TEXT;
+	COLORREF b = fa->style & FACE_BG ? RGB(fa->bg[0], fa->bg[1], fa->bg[2]) : BASE;
 	RECT rc = { c * cw, r * ch, (c + 1 + wide) * cw, (r + 1) * ch };
 	if (cp >= 0x10000) {   /* UTF-16 surrogates */
 		u[0] = (WCHAR)(0xD800 + (cp - 0x10000) / 0x400);
 		u[1] = (WCHAR)(0xDC00 + (cp - 0x10000) % 0x400);
 		n = 2;
 	}
-	/* reversed (status line, cursor): the text colour becomes the background */
+	/* reversed (status line, cursor): the colours swap, as a terminal's SGR 7 */
 	int rev = cursor || x->attr == ATTR_REV;
-	SetTextColor(mem, rev ? BASE : f);
-	SetBkColor(mem, rev ? f : BASE);
+	SetTextColor(mem, rev ? b : f);
+	SetBkColor(mem, rev ? f : b);
 	ExtTextOutW(mem, rc.left, rc.top, ETO_OPAQUE | ETO_CLIPPED, &rc, u, n, NULL);
 }
 
