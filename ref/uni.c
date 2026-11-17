@@ -39,4 +39,7 @@ unsigned uni_cp(const unsigned char *s, size_t n, size_t i)
 	return (((c - 0xF0) * 64 + (s[i + 1] - 0x80u)) * 64 + (s[i + 2] - 0x80u)) * 64 + (s[i + 3] - 0x80u);
 }
 
-int uni_width(unsigned cp) { (void)cp; return 1; }
+/* The reference steps by code point: a cluster is one code point, one cell. */
+size_t uni_glen(const unsigned char *s, size_t n, size_t i) { return uni_len(s, n, i); }
+size_t uni_gprev(const unsigned char *s, size_t n, size_t i) { return uni_prev(s, n, i); }
+int uni_width(const unsigned char *s, size_t n, size_t i) { (void)s; (void)n; (void)i; return 1; }
