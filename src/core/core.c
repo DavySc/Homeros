@@ -346,7 +346,11 @@ static int enter_buffer(Editor *e, Buf *b, int how)
 	} else if (i ? how != ENTER_B : how == ENTER_E || (how == ENTER_ALT && line1_blank(e)))
 		w->col = core_first_nonblank(e, 0);
 	win_check_cursor(w);
-	core_set_want(e);
+	/* buflist_getfile() sets w_set_curswant only for a column other than 0;
+	   do_ecmd()'s beginline() keeps curwin_init()'s curswant 0 (measured:
+	   CTRL-^ back to column 0 of a tab, then 2gg, lands on column 0) */
+	if (how == ENTER_ALT && !w->col) w->want = 0;
+	else core_set_want(e);
 	if (how != ENTER_B) { win_ecmd_topline(e, w); return 0; }
 	w->top = 0;
 	w->frame->s.topvalid = 0;          /* w_valid = 0, w_valid_cursor kept */

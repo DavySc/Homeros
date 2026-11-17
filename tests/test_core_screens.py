@@ -16,6 +16,14 @@ SETUP = ('set noswapfile nomore shortmess+=I expandtab shiftwidth=4 softtabstop=
          'smarttab nostartofline backspace=indent,eol,start number relativenumber '
          'scrolloff=6 splitright splitbelow nowrap')
 
+# completion items for the popup token, the same table as the C side's:
+# ten, then the ten again with 2 and with 3 after the word (complete()
+# drops a word it already has)
+PUM = [('foo', 'v', ''), ('foobar', 'f', 'module.c'), ('é', '', 'λx menu'), ('longerword_completion', 'm', ''),
+       ('x', 'k', 'a menu that is longer than the rest'), ('ა_b', '', ''), ('bar_1', 'v', 'm'),
+       ('λx', 'f', ''), ('y' * 40, '', ''), ('z', 'v', 'zz')]
+PUM = [(w + ('', '2', '3')[i], k, m) for i in range(3) for w, k, m in PUM]
+
 WORDS = ['foo', 'bar_1', 'x', '(', ').', ',', 'é', 'λx', 'ა', '--', 'longerword', 'a' * 30, '\t', '']
 
 def gen_text(r):
@@ -54,6 +62,11 @@ def gen_tokens(r, nfiles):
         else:
             m = r.choice(['j', 'k', 'h', 'l', 'w', 'b', 'gg', 'G', '0', '$', '^'])
             toks.append('k:' + ('' if m == '0' else cnt) + m)   # a count then 0 is a longer count
+    # the completion popup: items [a, a + n) shown in Insert mode after the
+    # line's end, CTRL-N pressed s times; last, as Insert mode stays
+    if r.random() < .3:
+        n = r.choice([1, 2, 3, 5, 9, 10, 11, 20])
+        toks.append('pum:%d:%d:%d' % (r.randrange(len(PUM) - n + 1), n, r.choice([0, 0, 1, 2, 4, 9, 12, 25])))
     return toks
 
 def split_keys(s):
@@ -76,6 +89,10 @@ def nvim_keys(t):
         n, c = t[1:].split(':', 1)
         return n + '<C-w>' + c
     if t in ('wrap', 'nowrap'): return ':set %s<CR>' % t
+    if t.startswith('pum:'):
+        a, n, s = map(int, t[4:].split(':'))
+        items = ','.join("{'word':'%s','kind':'%s','menu':'%s'}" % it for it in PUM[a:a + n])
+        return ['A', '<Cmd>call complete(col("."), [%s])<CR>' % items] + ['<C-n>'] * s + ['<Cmd>lua CAPTURE()<CR>']
     if t == 'alt': return '<C-^>'
     cmds = {'sp', 'vs', 'new', 'vnew', 'close', 'q', 'only', 'bn', 'bp', 'enew', 'bd'}
     if t in cmds: return ':%s<CR>' % t
@@ -93,8 +110,8 @@ local c = vim.json.decode(io.open(IN):read('*a'))
 vim.api.nvim_create_autocmd('InsertCharPre', {callback = function() end})
 vim.o.lines = c.rows
 vim.o.columns = c.cols
-local function screen()
-  vim.cmd('redraw!')
+local function screen(bang)
+  vim.cmd(bang == false and 'redraw' or 'redraw!')
   local rows = {}
   for r = 1, vim.o.lines do
     local s = {}
@@ -103,6 +120,9 @@ local function screen()
   end
   return rows
 end
+-- the popup token reads the screen in Insert mode, with the popup up
+-- ('redraw!' would close it)
+function CAPTURE() captured = screen(false) end
 local out, nop = {screen()}, {}
 for i, ks in ipairs(c.keys) do
   -- closing the last window would quit: the C side skips it too
@@ -116,12 +136,13 @@ for i, ks in ipairs(c.keys) do
     ks = {}; nop[#nop + 1] = i
   end
   vim.v.errmsg = ''
+  captured = nil
   pcall(vim.api.nvim_feedkeys, vim.api.nvim_replace_termcodes(table.concat(ks), true, false, true), 'xt', false)
   -- :set lines below what the windows need fails (E593) and changes
   -- nothing; a terminal resize (screen_resize()) cannot fail, so the C
   -- side, which resizes, skips it
   if vim.v.errmsg:match('^E593') then nop[#nop + 1] = i end
-  out[#out + 1] = screen()
+  out[#out + 1] = captured or screen()
 end
 io.open(OUT, 'w'):write(vim.json.encode({screens = out, nop = nop}))
 vim.cmd('qa!')
@@ -146,16 +167,20 @@ def gen_case(r):
 
 def write_cases(path, cases):
     """One case per block: C rows cols, F hex (one per file), T token (one
-    per token), then each screen as S lines, one per row, after the initial
-    screen and after each token."""
+    per token), then each screen (the initial one, then one after each
+    token) as P and a line per row: S and the row without trailing spaces,
+    or R when the row is as on the screen before."""
     with open(path, 'w', encoding='utf-8') as f:
         for c in cases:
             f.write('C %d %d\n' % (c['rows'], c['cols']))
             for t in c['files']: f.write('F %s\n' % t.encode().hex())
             for t in c['tokens']: f.write('T %s\n' % t)
+            prev = []
             for s in c['screens']:
                 f.write('P\n')
-                for row in s: f.write('S %s\n' % row)
+                for i, row in enumerate(s):
+                    f.write('R\n' if i < len(prev) and prev[i] == row else 'S %s\n' % row.rstrip(' '))
+                prev = s
             f.write('E\n')
 
 def main():

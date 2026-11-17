@@ -12,7 +12,20 @@
 #include "../src/core/core_int.h"
 
 static char line[1 << 16];
+
+/* the popup's items: PUM in the .py */
+static const PumItem PUM1[] = {
+	{ "foo", "v", "" }, { "foobar", "f", "module.c" }, { "é", "", "λx menu" },
+	{ "longerword_completion", "m", "" }, { "x", "k", "a menu that is longer than the rest" },
+	{ "ა_b", "", "" }, { "bar_1", "v", "m" }, { "λx", "f", "" },
+	{ "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy", "", "" }, { "z", "v", "zz" },
+};
+static PumItem pum_items[3 * 10];
+static char pum_words[3 * 10][48];
 static int verbose;
+/* Neovim redraws no status line while the popup is up, so the status lines
+   of a screen read then show the state before the completion: left out */
+static int in_pum;
 
 /* Neovim's key notation in a "k:" token: <Esc> <CR> <C-r>, the rest literal */
 static void feed(Editor *e, const char *s)
@@ -27,6 +40,12 @@ static void feed(Editor *e, const char *s)
 	for (int i = 0; i < n; i++) keys_feed(e, keys[i], 0);   /* no typeahead: see the .py */
 }
 
+static int status_row(const Editor *e, int r)
+{
+	for (const Win *w = e->wins; w; w = w->next) if (r == w->y + w->h) return 1;
+	return 0;
+}
+
 static const char *row_text(const Grid *g, int r)
 {
 	static char got[1 << 12];
@@ -36,6 +55,7 @@ static const char *row_text(const Grid *g, int r)
 		memcpy(got + k, x->ch, x->len);
 		k += x->len;
 	}
+	while (k && got[k - 1] == ' ') k--;   /* the file keeps no trailing spaces */
 	got[k] = 0;
 	return got;
 }
@@ -52,6 +72,26 @@ static void token(Editor *e, Grid *g, const char *t)
 	Win *w = e->win;
 	int one = !e->wins->next;
 	if (!strcmp(t, "nop")) return;         /* a token the recorder left out: see the .py */
+	if (!strncmp(t, "pum:", 4)) {
+		/* A, then what complete() and CTRL-N do: the selected word (none
+		   after the last) typed after the line's end, the popup shown */
+		int a, n, s;
+		CHECK(sscanf(t + 4, "%d:%d:%d", &a, &n, &s) == 3);
+		keys_feed(e, 'A', 0);
+		size_t col = w->col, at = core_line_start(e, w->line) + col, len = 0;
+		for (int k = 0; k <= s; k++) {          /* complete(), then each CTRL-N */
+			int sel = k % (n + 1) == n ? -1 : k % (n + 1);
+			const char *word = sel < 0 ? "" : pum_items[a + sel].word;
+			CHECK(!core_edit(e, at, len, word, strlen(word)));
+			len = strlen(word);
+			w->col = col + len;
+			/* 'completeopt' "menu,popup", without menuone: no popup for one match */
+			core_pum(e, pum_items + a, n > 1 ? n : 0, sel, col);
+			if (n == 1 && !k) core_update(e);
+		}
+		in_pum = 1;
+		return;
+	}
 	if (!strncmp(t, "k:", 2)) { feed(e, t + 2); return; }
 	if (!strncmp(t, "e:", 2)) { core_edit_file(e, t + 2, 0); goto upd; }
 	if (!strncmp(t, "b:", 2)) { core_buf_goto(e, atoi(t + 2)); goto upd; }
@@ -115,6 +155,11 @@ int main(int argc, char **argv)
 {
 	const char *path = "tests/test_core_screens.txt";
 	for (int i = 1; i < argc; i++) if (!strcmp(argv[i], "-v")) verbose = 1; else path = argv[i];
+	for (int i = 0; i < 30; i++) {
+		pum_items[i] = PUM1[i % 10];
+		snprintf(pum_words[i], sizeof pum_words[i], "%s%s", PUM1[i % 10].word, (const char *[]){ "", "2", "3" }[i / 10]);
+		pum_items[i].word = pum_words[i];
+	}
 	FILE *f = fopen(path, "r");
 	CHECK(f);
 	char cwd[4096], dir[] = "/tmp/core_screensXXXXXX";
@@ -123,7 +168,9 @@ int main(int argc, char **argv)
 	int srow = 0;
 	int ntok = 0, nscr = 0, nfile = 0, rows = 0, cols = 0, ncase = 0, bad = 0, total = 0, badcases = 0;
 	while (fgets(line, sizeof line, f)) {
-		line[strcspn(line, "\n")] = 0;
+		size_t ll = strcspn(line, "\n");
+		while (ll > 2 && line[ll - 1] == ' ') ll--;
+		line[ll] = 0;
 		if (line[0] == 'C') { CHECK(sscanf(line, "C %d %d", &rows, &cols) == 2); ntok = nscr = nfile = 0; }
 		else if (line[0] == 'F') {
 			char name[64];
@@ -139,11 +186,17 @@ int main(int argc, char **argv)
 		} else if (line[0] == 'T') { CHECK(ntok < 64); tokens[ntok++] = strdup(line + 2); }
 		else if (line[0] == 'P') { CHECK(nscr < 65); nscr++; srow = 0; }
 		else if (line[0] == 'S') { CHECK(srow < 120); screens[nscr - 1][srow++] = strdup(line + 2); }
+		else if (line[0] == 'R') {                 /* the row as on the screen before */
+			CHECK(srow < 120 && nscr > 1 && screens[nscr - 2][srow]);
+			screens[nscr - 1][srow] = strdup(screens[nscr - 2][srow]);
+			srow++;
+		}
 		else if (line[0] == 'E') {
 			static Editor e;
 			Grid g = { 0 };
 			int differ = 0;
 			CHECK(!chdir(dir) && !core_open(&e, "f0") && !grid_resize(&g, rows, cols));
+			in_pum = 0;
 			for (int s = 0; s < nscr; s++) {
 				if (s) token(&e, &g, tokens[s - 1]);
 				core_draw(&e, &g);
@@ -153,7 +206,7 @@ int main(int argc, char **argv)
 				int below = 0, r;
 				for (Win *w = e.wins; w; w = w->next) if (w->y + w->h + 1 > below) below = w->y + w->h + 1;
 				for (r = 0; r < below && screens[s][r]; r++)
-					if (strcmp(row_text(&g, r), screens[s][r])) break;
+					if (strcmp(row_text(&g, r), screens[s][r]) && !(in_pum && status_row(&e, r))) break;
 				if (r < below && screens[s][r]) {
 					bad++;
 					if (!differ++ || verbose)
