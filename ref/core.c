@@ -17,8 +17,8 @@ enum { J_NOEOL = 1 << 8 };              /* the journal keeps noeol with the flag
 
 static unsigned jstate(const Buf *b) { return b->flags | (b->noeol ? J_NOEOL : 0); }
 
-/* every change reaches the syntax tree, the language server and the
-   journal before it is made (UndoHook).  An edit's record carries the state after it (jnext), so a
+/* every change reaches the syntax tree, the language server and the journal
+   before it is made (UndoHook).  An edit's record carries the state after it (jnext), so a
    kill between two writes cannot keep the change with a stale state (review
    of PR 16, 7); an undo step's state is known only once it is done, so
    jdone records it then */
@@ -305,7 +305,7 @@ static int cellw(const unsigned char *s, size_t n, size_t i, size_t v)
 	unsigned c = uni_cp(s, n, i);
 	if (c == '\t') return TABSTOP - (int)(v % TABSTOP);
 	if (c < 0x20 || c == 0x7f) return 2;                      /* ^X */
-	return uni_width(c);
+	return uni_width(s, n, i);
 }
 
 size_t core_vcol(Editor *e, size_t l, size_t col)
