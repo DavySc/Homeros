@@ -11,6 +11,7 @@
 #include <spawn.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
@@ -25,10 +26,10 @@ static struct { void (*fn)(void *); void *ctx; long long at; } t[MAXT];
 static struct Proc {
 	pid_t pid;              /* 0: free slot */
 	int fd[3];              /* stdin, stdout, stderr; -1 once closed */
-	int code;               /* exit code once reaped, else -1 */
 	int closing;            /* close stdin when the queue is empty */
 	ProcFn fn;
 	void *ctx;
+	long long killat;       /* when proc_kill's SIGKILL is due, else 0 */
 	char *q;                /* bytes for stdin not yet taken by the pipe */
 	size_t qoff, qlen, qcap;
 } p[MAXP];
@@ -134,25 +135,24 @@ int proc_spawn(char *const argv[], const char *dir, ProcFn fn, void *ctx)
 	fcntl(fd[4], F_SETFL, O_NONBLOCK);
 	posix_spawn_file_actions_t fa;
 	posix_spawnattr_t at;
-	sigset_t def, none;
+	sigset_t def;
 	posix_spawn_file_actions_init(&fa);
 	posix_spawnattr_init(&at);
 	posix_spawn_file_actions_adddup2(&fa, fd[0], 0);
 	posix_spawn_file_actions_adddup2(&fa, fd[3], 1);
 	posix_spawn_file_actions_adddup2(&fa, fd[5], 2);
 	if (dir) posix_spawn_file_actions_addchdir_np(&fa, dir);
-	/* the editor ignores SIGPIPE; git and friends expect the default */
-	sigemptyset(&def); sigaddset(&def, SIGPIPE); sigaddset(&def, SIGCHLD);
-	sigemptyset(&none);
+	/* the editor ignores SIGPIPE, and exec keeps an ignored signal; git and
+	   friends expect the default (a caught SIGCHLD is reset by exec) */
+	sigemptyset(&def); sigaddset(&def, SIGPIPE);
 	posix_spawnattr_setsigdefault(&at, &def);
-	posix_spawnattr_setsigmask(&at, &none);
 	posix_spawnattr_setpgroup(&at, 0);
-	posix_spawnattr_setflags(&at, POSIX_SPAWN_SETSIGDEF | POSIX_SPAWN_SETSIGMASK | POSIX_SPAWN_SETPGROUP);
+	posix_spawnattr_setflags(&at, POSIX_SPAWN_SETSIGDEF | POSIX_SPAWN_SETPGROUP);
 	pid_t pid;
 	ok = !posix_spawnp(&pid, argv[0], &fa, &at, argv, environ);
 	posix_spawn_file_actions_destroy(&fa);
 	posix_spawnattr_destroy(&at);
-	if (ok) p[id] = (struct Proc){ .pid = pid, .fd = { fd[1], fd[2], fd[4] }, .code = -1, .fn = fn, .ctx = ctx };
+	if (ok) p[id] = (struct Proc){ .pid = pid, .fd = { fd[1], fd[2], fd[4] }, .fn = fn, .ctx = ctx };
 out:
 	for (int i = 0; i < 6; i++)
 		if (fd[i] >= 0 && (!ok || !(i == 1 || i == 2 || i == 4))) close(fd[i]);
@@ -193,6 +193,7 @@ int proc_write(int id, const void *b, size_t n)
 {
 	struct Proc *c = proc(id);
 	if (!c || c->fd[0] < 0 || c->closing) return -1;
+	if (!n) return 0;
 	if (c->qlen + n > c->qcap) {
 		if (c->qoff) { memmove(c->q, c->q + c->qoff, c->qlen - c->qoff); c->qlen -= c->qoff; c->qoff = 0; }
 		size_t cap = c->qcap ? c->qcap : 4096;
@@ -217,46 +218,37 @@ void proc_close(int id)
 	if (c->qoff == c->qlen) close_in(c);
 }
 
-/* Signals the child's process group, so what it started dies with it and
-   cannot hold its pipes open (Neovim's os_proc_tree_kill sends to -pid).
-   The group id stays taken while the group has members, so -pid cannot
-   reach a stranger before the slot is free. */
-static void hard_kill(void *ctx)
-{
-	struct Proc *c = ctx;
-	if (c->pid) kill(-c->pid, SIGKILL);
-}
-
+/* Signals the child's process group, so what it started dies with it
+   (Neovim's os_proc_tree_kill sends to -pid).  The slot is free from the
+   reap on, so -pid always names a group whose leader is ours. */
 void proc_kill(int id)
 {
 	struct Proc *c = proc(id);
 	if (!c) return;
 	kill(-c->pid, SIGTERM);
-	loop_timer(hard_kill, c, KILL_MS);
+	c->killat = now() + KILL_MS * 1000000LL;
 }
 
-/* After a SIGCHLD reaps exited children; then reports those whose output
-   has also ended. */
-static void reap(int sig)
+/* Reports a reaped child at once, as Neovim's on_exit: what its output
+   pipes hold now is read and the pipes are closed, so a process it left
+   behind holding them cannot delay the report (Exit.tla "ok").  FIONREAD
+   bounds the read: such a process may keep writing. */
+static void report(struct Proc *c, int code)
 {
-	char drain[64];
-	if (sig) while (read(chld[0], drain, sizeof drain) > 0) {}
-	for (int i = 0; i < MAXP; i++) {
-		struct Proc *c = &p[i];
-		int st;
-		if (!c->pid) continue;
-		if (sig && c->code < 0 && waitpid(c->pid, &st, WNOHANG) == c->pid)
-			c->code = WIFSIGNALED(st) ? 128 + WTERMSIG(st) : WEXITSTATUS(st);
-		if (c->code >= 0 && c->fd[1] < 0 && c->fd[2] < 0) {
-			if (c->fd[0] >= 0) close_in(c);
-			loop_timer(hard_kill, c, -1);
-			ProcFn fn = c->fn;
-			void *ctx = c->ctx;
-			int code = c->code;
-			c->pid = 0;
-			fn(ctx, 0, NULL, (size_t)code);
-		}
+	for (int s = 1; s < 3; s++) {
+		if (c->fd[s] < 0) continue;
+		int left = 0;
+		ioctl(c->fd[s], FIONREAD, &left);
+		for (ssize_t got; left > 0 && (got = read(c->fd[s], buf, (size_t)left < sizeof buf ? (size_t)left : sizeof buf)) > 0; left -= (int)got)
+			c->fn(c->ctx, s, buf, (size_t)got);
+		close(c->fd[s]);
+		c->fd[s] = -1;
+		c->fn(c->ctx, s, NULL, 0);
 	}
+	if (c->fd[0] >= 0) close_in(c);
+	c->killat = 0;
+	c->pid = 0;
+	c->fn(c->ctx, 0, NULL, (size_t)code);
 }
 
 int loop_once(int timeout_ms)
@@ -275,6 +267,7 @@ int loop_once(int timeout_ms)
 			}
 	long long first = -1;
 	for (int i = 0; i < MAXT; i++) if (t[i].fn && (first < 0 || t[i].at < first)) first = t[i].at;
+	for (int i = 0; i < MAXP; i++) if (p[i].killat && (first < 0 || p[i].killat < first)) first = p[i].killat;
 	if (first >= 0) {
 		long long d = first - now();
 		int ms = d <= 0 ? 0 : (int)((d + 999999) / 1000000);   /* round up: never wake before it is due */
@@ -292,7 +285,6 @@ int loop_once(int timeout_ms)
 		}
 		if (s < 0) { sig = 1; continue; }          /* SIGCHLD: reaped below */
 		struct Proc *c = &p[i];
-		if (!c->pid || c->fd[s] != pf[k].fd) continue;   /* closed by a callback meanwhile */
 		if (!s) { flush(c); continue; }
 		ssize_t got = read(c->fd[s], buf, sizeof buf);
 		if (got < 0 && (errno == EAGAIN || errno == EINTR)) continue;
@@ -308,6 +300,16 @@ int loop_once(int timeout_ms)
 			t[i].fn = NULL;
 			fn(t[i].ctx);
 		}
-	if (chld[0] >= 0) reap(sig);
+	for (int i = 0; i < MAXP; i++)
+		if (p[i].killat && p[i].killat <= tn) { p[i].killat = 0; kill(-p[i].pid, SIGKILL); }
+	if (sig) {
+		char drain[64];
+		while (read(chld[0], drain, sizeof drain) > 0) {}
+		for (int i = 0; i < MAXP; i++) {
+			int st;
+			if (p[i].pid && waitpid(p[i].pid, &st, WNOHANG) == p[i].pid)
+				report(&p[i], WIFSIGNALED(st) ? 128 + WTERMSIG(st) : WEXITSTATUS(st));
+		}
+	}
 	return 0;
 }
