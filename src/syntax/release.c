@@ -37,6 +37,5 @@ int syntax_release(TSTree *t, unsigned n)
 			ts_free(x.ptr);
 		}
 	}
-	if (!stack.size) array_delete(&stack);
 	return stack.size != 0;
 }

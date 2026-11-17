@@ -272,6 +272,23 @@ static void release_in_steps(const char *dir)
 	CHECK(steps > 1);
 	syntax_free(s);
 	text_free(t);
+	/* a leaf whose scanner state is over 24 bytes keeps it on the heap
+	   (ts_external_scanner_state_delete): Markdown with 40 nested block
+	   quotes; LeakSanitizer sees it if release.c skips it */
+	n = 0;
+	for (int l = 0; l < 3; l++) {
+		for (int i = 0; i < 40; i++) b[n++] = '>', b[n++] = ' ';
+		memcpy(b + n, "text\n", 5), n += 5;
+	}
+	snprintf(path, sizeof path, "%s/quotes.md", dir);
+	CHECK((t = text_new(b, n)) && (s = syntax_open(path, t)));
+	syntax_faces(s, 0, n, f);
+	while (syntax_update(s, t, NULL)) ;
+	syntax_edit(s, t, 0, n - 1, "", 0);
+	CHECK(!text_delete(t, 0, n - 1));
+	while (syntax_update(s, t, NULL)) ;
+	syntax_free(s);
+	text_free(t);
 }
 
 int main(void)
