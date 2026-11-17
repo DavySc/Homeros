@@ -24,6 +24,19 @@ static char rend[2][1 << 16], edit[2][1 << 16], want[1 << 16];
 static size_t nrend[2], nedit[2], nwant;
 static long cases, bad;
 static char seed[64];
+static int kmax;  /* the highest id before oil runs the actions */
+
+/* A relisted directory gives its new entries ids in the order the file
+   system lists them (oil and oil_list alike), which differs between file
+   systems: such an id becomes n's, in place, on both sides. */
+static void unnew(char *s)
+{
+	for (char *l = s; *l; l = strchr(l, '\n') + 1) {
+		if (l[0] == 'S' && l[4] == '/' && strtol(l + 5, NULL, 10) > kmax)
+			for (char *d = l + 5; *d >= '0' && *d <= '9'; d++) *d = 'n';
+		if (!strchr(l, '\n')) break;
+	}
+}
 
 /* A move cycle goes through "<src>__oil_tmp_<random number>": drops the
    number, in place. */
@@ -130,6 +143,8 @@ static void check_case(void)
 	want[nwant] = 0;
 	untmp(want);
 	untmp(got);
+	unnew(want);
+	unnew(got);
 	if (strcmp(want, got) && bad++ < 5) fprintf(stderr, "case %s: oil\n%sours\n%s", seed, want, got);
 }
 
@@ -145,7 +160,7 @@ static void run(FILE *in)
 			snprintf(seed, sizeof seed, "%.*s", (int)strcspn(ln + 2, "\n"), ln + 2);
 			oil_reset();
 			CHECK(!system("rm -rf /tmp/oc && mkdir -p /tmp/oc/sub"));
-			nrend[0] = nrend[1] = nedit[0] = nedit[1] = nwant = 0;
+			nrend[0] = nrend[1] = nedit[0] = nedit[1] = nwant = kmax = 0;
 		} else if (ln[0] == 'R' || ln[0] == 'E') {
 			int b = ln[2] - '1';
 			char *d = ln[0] == 'R' ? rend[b] : edit[b];
@@ -160,6 +175,7 @@ static void run(FILE *in)
 			char *name = ln + off, *link = strstr(name, " -> ");
 			if (link && type[0] == 'l') { *link = 0; link += 4; } else link = NULL;
 			CHECK(oil_entry(dir, name, type[0] == 'd' ? OIL_DIR : type[0] == 'l' ? OIL_LINK : OIL_FILE, link, ld) == id);
+			if (id > kmax) kmax = id;
 			/* the oracle's tree again: a file holds its name */
 			char p[1024];
 			snprintf(p, sizeof p, "%s%s", dir, name);
