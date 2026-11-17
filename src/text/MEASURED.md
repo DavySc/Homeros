@@ -66,6 +66,8 @@ The keys package found `text_line_start` slow on a file of empty lines: it calle
 | all empty lines | 3,633.8 (3,576.2 to 3,712.0) | 73.7 (64.8 to 88.5) | 49 times faster |
 | 50-byte lines | 97.1 (93.7 to 176.8) | 110.2 (87.5 to 115.9) | ranges overlap: no measurable difference |
 
+The PR's review measured more line lengths (`reviews/pr-28.md`, every line start of 2.2 MB, -O2, 5 alternating runs, median ns per lookup): up to 16-byte lines the fix is 2.5 to 60 times faster; 31 to 200-byte lines are inside the run-to-run spread; from about 500 bytes it costs 30 to 50 ns more per lookup than before (1,000-byte lines with gcc: 58.9 before, 107.4 after), because one `memchr` over the leaf did what now takes up to 31 block counts (measured by the reviewer). That is small next to the gain on short lines; whether a scan exists that is no slower on any line length is a hypothesis nobody has tested.
+
 Callgrind, 1 run each (exact): all line starts of 220,000 empty lines, whole program 3,165.3 M to 118.4 M instructions; `bench.c`'s 100,000 lookups each way on 10 MB, 136.0 M to 126.1 M.
 
 `test_text_rope` now times every line lookup among 200,000 empty lines against 100,000 lines of 50 bytes and requires the first under 4 times the second. Under ASan: before, the check failed 5 of 5 runs; after, it passed 5 of 5 with the two within 4% of each other (measured). Its plant puts the per-line `memchr` back and is caught.
