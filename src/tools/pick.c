@@ -11,7 +11,7 @@
 #include <time.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include "api.h"
+#include "tools.h"
 #include "core.h"
 #include "loop.h"
 #include "match.h"
@@ -50,8 +50,6 @@ static struct {
 	Editor *e;
 	double now;                /* the frecency's clock, read once per picker */
 } P = { .proc = -1, .pvfor = -1 };
-
-int tools_dirty;
 
 static void layout(Editor *e, Box *outer, Box *list, Box *pv, int *wide);
 static void preview(void);
@@ -265,7 +263,7 @@ static void line(const char *s, size_t n)
 static void on_out(void *ctx, int stream, const char *b, size_t n)
 {
 	if ((int)(long)ctx != P.gen || !P.open) return;
-	if (stream == 0) { P.proc = -1; P.done = 1; tools_dirty = 1; return; }
+	if (stream == 0) { P.proc = -1; P.done = 1; P.e->changed = 1; return; }
 	if (stream != 1) return;
 	size_t before = P.nshown;
 	for (size_t i = 0; i < n; i++) {
@@ -280,7 +278,7 @@ static void on_out(void *ctx, int stream, const char *b, size_t n)
 	if (P.nshown != before) {
 		if (sorting()) qsort(P.shown, P.nshown, sizeof *P.shown, cmp);
 		preview();
-		tools_dirty = 1;
+		P.e->changed = 1;
 	}
 }
 
@@ -372,7 +370,6 @@ int tools_pick(Editor *e, int what)
 	buffers(e);
 	if (what == PICK_SMART) files();
 	preview();
-	tools_dirty = 1;
 	return 0;
 }
 
@@ -380,7 +377,6 @@ static void close_picker(void)
 {
 	finder_stop();
 	P.open = 0;
-	tools_dirty = 1;
 }
 
 /* The prompt changed: match again, or for grep run rg again. */
@@ -481,7 +477,6 @@ int tools_key(Editor *e, int k)
 static int key(Editor *e, int k)
 {
 	static int g;                      /* a g typed in normal mode: gg */
-	tools_dirty = 1;
 	int h = list_height(e);
 	switch (k) {
 	case KEY_ENTER: confirm(e); return 1;
@@ -687,3 +682,9 @@ void tools_draw(Editor *e, Grid *g)
 	g->ccol = px;
 }
 
+
+/* The file manager's buffer comes with the core's oil:// hooks; until
+   then it refuses, as ref/tools.c does. */
+int tools_oil(Editor *e, const char *dir) { (void)dir; core_msg(e, "tools: file manager not built yet"); return -1; }
+int tools_oil_key(Editor *e, int key) { (void)e; (void)key; return 0; }
+int tools_write(Editor *e, Buf *b) { (void)b; core_msg(e, "tools: file manager not built yet"); return -1; }

@@ -9,9 +9,7 @@
 #include "check.h"
 #include "core.h"
 #include "loop.h"
-#include "../src/tools/api.h"
-
-extern int tools_dirty;
+#include "tools.h"
 static Editor e;
 static Grid g;
 
@@ -35,9 +33,9 @@ static void settle(void)
 {
 	long long t0 = ms();
 	while (ms() - t0 < 300) {
-		tools_dirty = 0;
+		e.changed = 0;
 		CHECK(!loop_once(300));
-		if (tools_dirty) t0 = ms();
+		if (e.changed) t0 = ms();
 	}
 }
 

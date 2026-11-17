@@ -30,7 +30,7 @@ for c = 1, n do
     local p = (math.random() < 0.3 and "/tmp/oc/sub/" or "/tmp/oc/") .. nm
     if not vim.uv.fs_lstat(p) then
       if math.random() < 0.25 then vim.fn.mkdir(p, "p")
-      elseif math.random() < 0.1 then vim.uv.fs_symlink(rnd(NAMES), p)
+      elseif math.random() < 0.3 then vim.uv.fs_symlink(rnd(NAMES), p)
       else vim.fn.writefile({}, p) end
     end
   end
@@ -58,7 +58,7 @@ for c = 1, n do
   for _ = 1, math.random(1, 4) do
     local b = math.random(2)
     local L = lines[b]
-    local k = math.random(9)
+    local k = math.random(10)
     local i = math.random(math.max(#L, 1))
     if k == 1 and #L > 0 then table.remove(L, i)                                       -- delete
     elseif k == 2 and L[i] then L[i] = L[i]:gsub("[^ ]+$", rnd(NAMES))                -- rename
@@ -71,6 +71,9 @@ for c = 1, n do
       local j = math.random(2, #L)
       local a, b = L[i]:match("[^ ]+$"), L[j]:match("[^ ]+$")
       if a and b then L[i], L[j] = L[i]:gsub("[^ ]+$", (b:gsub("%%", "%%%%"))), L[j]:gsub("[^ ]+$", (a:gsub("%%", "%%%%"))) end
+    elseif k == 10 then                                                                 -- the subdirectory and all in it
+      for j = #lines[1], 1, -1 do if lines[1][j]:match(" sub/$") then table.remove(lines[1], j) end end
+      lines[2] = { lines[2][1] }
     elseif k == 8 then table.insert(L, i, rnd({ "/12x y", "/999 x  y", "/001 ", "/001 x", "/0001 x  " .. rnd(NAMES) }))
     end
   end

@@ -137,7 +137,8 @@ int oil_render(const char *dir, char **out, size_t *n)
 	size_t cap = 256, len = 0;
 	char *b = malloc(cap);
 	int w = idw();
-	for (int j = -1; b && j < k; j++) {
+	if (!b) { free(ids); return -1; }
+	for (int j = -1; j < k; j++) {
 		const Ent *e = j < 0 ? NULL : &E[ids[j]];
 		int type = e ? (e->type == OIL_LINK && e->linkdir ? OIL_DIR : e->type) : OIL_DIR;
 		const char *name = e ? e->name : "..";
@@ -146,17 +147,16 @@ int oil_render(const char *dir, char **out, size_t *n)
 		if (len + need > cap) {
 			while (len + need > cap) cap *= 2;
 			char *t = realloc(b, cap);
-			if (!t) { free(b); b = NULL; break; }
+			if (!t) { free(b); free(ids); return -1; }
 			b = t;
 		}
-		len += (size_t)sprintf(b + len, "/%0*d %s  %s%s", w, e ? ids[j] : 0,
+		len += (size_t)snprintf(b + len, cap - len, "/%0*d %s  %s%s", w, e ? ids[j] : 0,
 		                       oil_icon(type, e && e->type == OIL_LINK ? e->link : name), name,
 		                       !e || e->type == OIL_DIR || (e->type == OIL_LINK && e->linkdir) ? "/" : "");
-		if (e && e->type == OIL_LINK) len += (size_t)sprintf(b + len, " -> %s%s", e->link, e->linkdir ? "/" : "");
+		if (e && e->type == OIL_LINK) len += (size_t)snprintf(b + len, cap - len, " -> %s%s", e->link, e->linkdir ? "/" : "");
 		b[len++] = '\n';
 	}
 	free(ids);
-	if (!b) return -1;
 	*out = b; *n = len;
 	return 0;
 }

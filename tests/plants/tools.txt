@@ -9,7 +9,7 @@ picker: a buffer's file listed again by fd/rg~test TESTS=tools_pick~~src/tools/p
 oil: a link to a directory shown without the trailing /~test TESTS=tools_oil~~src/tools/oil.c~!e || e->type == OIL_DIR || (e->type == OIL_LINK && e->linkdir) ? "/" : ""~!e || e->type == OIL_DIR ? "/" : ""
 oil: names sorted byte by byte, not in natural order~test TESTS=tools_oil~~src/tools/oil.c~		if (nat && s[i] >= '0' && s[i] <= '9') {~		if (0 && nat && s[i] >= '0' && s[i] <= '9') {
 oil: a link line without " -> " kept as its entry~test TESTS=tools_oil~~src/tools/oil.c~				if (!a || strstr(a + 4, " -> ")) id = -1;~				if (!a || strstr(a + 4, " -> ")) name[0] = 0;
-oil: link targets compared with their trailing /~test TESTS=tools_oil~~src/tools/oil.c~	return n == trimsep(b) && !memcmp(a, b, n);~	return !strcmp(a, b);
+oil: link targets compared with their trailing /~test TESTS=tools_oil~~src/tools/oil.c~	return n == trimsep(b) && !memcmp(a, b, n);~	return n == strlen(b) && !memcmp(a, b, n);
 oil: a directory's children waited on in list order, not name order~test TESTS=tools_oil~~src/tools/oil.c~		for (; j > from && strcmp(~		for (; j > from && 0 && strcmp(
 oil: a move cycle's temporary name made from the destination~test TESTS=tools_oil~~src/tools/oil.c~"%s__oil_tmp_%05d", a->src~"%s__oil_tmp_%05d", a->dst
 oil: no icon by exact file name~test TESTS=tools_oil~~src/tools/icons.c~	if ((r = GET(file_icons, base))) return r;~	if (0 && (r = GET(file_icons, base))) return r;
