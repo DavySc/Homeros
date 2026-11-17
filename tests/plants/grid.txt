@@ -9,3 +9,8 @@ grid: resize keeps the cursor~test TESTS=grid_diff~~src/grid/grid.c~ g->crow = g
 grid: a changed face is an equal cell~test TESTS=grid_diff~~src/grid/grid.c~ && a->face == b->face~
 grid: the '>' loses the face of the half it replaces~test TESTS=grid_diff~~src/grid/grid.c~(Cell){ ">", 1, x[-1].attr, x[-1].face }~(Cell){ ">", 1, x[-1].attr, FACE_NONE }
 grid: the blank loses the face of the half it replaces~test TESTS=grid_diff~~src/grid/grid.c~(Cell){ " ", 1, x[width].attr, x[width].face }~(Cell){ " ", 1, x[width].attr, FACE_NONE }
+grid: a long cluster cut inside a code point~test TESTS=grid_diff~~src/grid/grid.c~n > 1 && is_cont(s[n]); n--~n > 1 && is_cont(s[n]) && 0; n--
+grid: equal clusters get new numbers~test TESTS=grid_diff~~src/grid/grid.c~		if (store[h].len == n && !memcmp(store[h].b, s, n)) return h;¶~
+grid: a long cluster compared by length only~test TESTS=grid_diff~~src/grid/grid.c~a->len < 4 ? a->len : 4~a->len < 4 ? a->len : 0
+grid: the store never emptied~test TESTS=grid_diff~~src/grid/grid.c~	if (used <= SLOTS / 2) return 0;~	return 0;
+grid: a full store reuses a slot~test TESTS=grid_diff~~src/grid/grid.c~	if (h < 0) { s = (const unsigned char *)"\xef\xbf\xbd"; n = 3; }~	if (h < 0) h = 0;

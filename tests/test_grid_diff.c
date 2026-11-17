@@ -134,13 +134,24 @@ static size_t present(const Grid *g, Grid *shown)
 	return n;
 }
 
-static const char *const chars[] = { "a", "b", "~", " ", "\xc3\xa9", "\xce\xbb", "\xe6\xbc\xa2", "\xe2\x88\x80", "\xf0\x9f\x98\x80", "\xf0\x9d\x93\x9d" };
-static const int widths[] =         { 1,   1,   1,   1,   1,          1,          2,              1,              2,                  1 };
+/* characters and clusters: ASCII, two-byte, wide, four-byte wide, e with a
+   combining accent (in the cell), e with five (in the store), a ZWJ family
+   (wide, in the store), e with twenty (41 bytes: cut to 31) */
+#define M5 "\xcc\x81\xcc\x81\xcc\x81\xcc\x81\xcc\x81"
+static const char *const chars[] = { "a", "b", "~", " ", "\xc3\xa9", "\xce\xbb", "\xe6\xbc\xa2", "\xe2\x88\x80", "\xf0\x9f\x98\x80", "\xf0\x9d\x93\x9d",
+                                     "e\xcc\x81", "e" M5, "\xf0\x9f\x91\xa8\xe2\x80\x8d\xf0\x9f\x91\xa9\xe2\x80\x8d\xf0\x9f\x91\xa7",
+                                     "e" M5 M5 M5 M5 };
+static const int widths[] =         { 1,   1,   1,   1,   1,          1,          2,              1,              2,                  1,
+                                     1, 1, 2, 1 };
 
+/* the terminal's width of one code point: combining accent and ZWJ 0,
+   CJK and emoji 2 */
 static int same_width(const unsigned char *s, int n)
 {
-	for (size_t i = 0; i < sizeof chars / sizeof *chars; i++)
-		if ((int)strlen(chars[i]) == n && !memcmp(chars[i], s, (size_t)n)) return widths[i];
+	static const char *const zero[] = { "\xcc\x81", "\xe2\x80\x8d" };
+	static const char *const two[] = { "\xe6\xbc\xa2", "\xf0\x9f\x98\x80", "\xf0\x9f\x91\xa8", "\xf0\x9f\x91\xa9", "\xf0\x9f\x91\xa7" };
+	for (size_t i = 0; i < sizeof zero / sizeof *zero; i++) if ((int)strlen(zero[i]) == n && !memcmp(zero[i], s, (size_t)n)) return 0;
+	for (size_t i = 0; i < sizeof two / sizeof *two; i++) if ((int)strlen(two[i]) == n && !memcmp(two[i], s, (size_t)n)) return 2;
 	return 1;
 }
 
@@ -192,7 +203,7 @@ static void run(int (*width)(const unsigned char *, int), int frames)
 		int want = 0;
 		for (int i = 0; i < rows * cols; i++)
 			if (g.c[i].len && !grid_cell_eq(&g.c[i], &prev.c[i]))
-				want += 1 + 2 * (g.c[i].ch[0] >= 0x80 && i % cols + 1 < cols && !g.c[i + 1].len);
+				want += 1 + 2 * (g.c[i].len > 1 && i % cols + 1 < cols && !g.c[i + 1].len);
 		int before = t.prints, fr = t.frames;
 		size_t n = present(&g, &shown);
 		vt_feed(&t, out, n);
@@ -239,6 +250,48 @@ int main(void)
 	CHECK(grid_resize(&g, 1 << 16, 1 << 16) == -1 && g.rows == 1);                  /* overflow refused */
 	g.crow = g.ccol = 3;
 	CHECK(!grid_resize(&g, 2, 2) && !g.crow && !g.ccol);
+
+	/* clusters: up to 4 bytes in the cell; a longer one by number, equal
+	   clusters equal numbers; one past GRID_CLUSTER_MAX (31) cut to whole
+	   code points, as nvim 0.12.6 shows them (measured, 3 runs each: e and
+	   20 accents 31 bytes, a 39-byte ZWJ chain of men 28) */
+	CHECK(!grid_resize(&g, 2, 6));
+	const char *chain = "\xf0\x9f\x91\xa8\xe2\x80\x8d\xf0\x9f\x91\xa8\xe2\x80\x8d\xf0\x9f\x91\xa8\xe2\x80\x8d"
+	                    "\xf0\x9f\x91\xa8\xe2\x80\x8d\xf0\x9f\x91\xa8\xe2\x80\x8d\xf0\x9f\x91\xa8";
+	CHECK(grid_put(&g, 0, 0, (const unsigned char *)"e\xcc\x81", 3, 1, ATTR_NONE) == 1 && !memcmp(g.c[0].ch, "e\xcc\x81", 3));
+	CHECK(grid_put(&g, 0, 1, (const unsigned char *)chars[11], 11, 1, ATTR_NONE) == 1);
+	CHECK(grid_put(&g, 1, 1, (const unsigned char *)chars[11], 11, 1, ATTR_NONE) == 1);
+	CHECK(grid_put(&g, 0, 2, (const unsigned char *)chars[13], 41, 1, ATTR_NONE) == 1);
+	CHECK(grid_put(&g, 0, 3, (const unsigned char *)chain, 39, 2, ATTR_NONE) == 2);
+	CHECK(g.c[1].len == 11 && !memcmp(grid_text(&g.c[1]), chars[11], 11) && grid_cell_eq(&g.c[1], &g.c[7]));
+	CHECK(g.c[2].len == 31 && !memcmp(grid_text(&g.c[2]), chars[13], 31) && !grid_cell_eq(&g.c[1], &g.c[2]));
+	CHECK(g.c[3].len == 28 && !memcmp(grid_text(&g.c[3]), chain, 28) && !g.c[4].len);
+	CHECK(grid_text(&g.c[0]) == g.c[0].ch);
+	CHECK(grid_put(&g, 1, 2, (const unsigned char *)"a" M5, 11, 1, ATTR_NONE) == 1);   /* same length, other bytes */
+	CHECK(!grid_cell_eq(&g.c[1], &g.c[8]) && !memcmp(grid_text(&g.c[8]), "a" M5, 11));
+
+	/* the store: emptied by grid_frame once over half of its 1 << 17 slots
+	   are taken; full in a frame, a cluster shows as U+FFFD */
+	CHECK(!grid_frame());
+	char k[16];
+	for (int i = 0; i < (1 << 16) - 4; i++) {           /* with the 4 above: half */
+		snprintf(k, sizeof k, "z%07d", i);
+		grid_put(&g, 1, 0, (const unsigned char *)k, 8, 1, ATTR_NONE);
+	}
+	CHECK(!grid_frame());
+	CHECK(grid_put(&g, 1, 0, (const unsigned char *)"zlast-one", 9, 1, ATTR_NONE) == 1);
+	CHECK(grid_frame() && !grid_frame());
+	for (int i = 0; i < (1 << 17) - 1; i++) {
+		snprintf(k, sizeof k, "y%07d", i);
+		grid_put(&g, 1, 0, (const unsigned char *)k, 8, 1, ATTR_NONE);
+		CHECK(g.c[6].len == 8 && !memcmp(grid_text(&g.c[6]), k, 8));
+	}
+	CHECK(grid_put(&g, 1, 0, (const unsigned char *)"y-too-many", 10, 1, ATTR_NONE) == 1);
+	CHECK(g.c[6].len == 3 && !memcmp(g.c[6].ch, "\xef\xbf\xbd", 3));
+	snprintf(k, sizeof k, "y%07d", 5);                  /* a stored one is still found */
+	grid_put(&g, 1, 0, (const unsigned char *)k, 8, 1, ATTR_NONE);
+	CHECK(g.c[6].len == 8 && !memcmp(grid_text(&g.c[6]), k, 8));
+	CHECK(grid_frame() && !grid_frame());
 	grid_free(&g);
 
 	for (int i = 0; i < 300; i++) run(same_width, 60);
@@ -273,6 +326,6 @@ int main(void)
 	grid_free(&g);
 	grid_free(&shown);
 
-	puts("test_grid_diff: 24000 random frames with random faces and 3 of over 64 KiB shown exactly by a model terminal, only changed cells sent; wide pairs kept whole");
+	puts("test_grid_diff: 24000 random frames with random faces and clusters, and 3 of over 64 KiB, shown exactly by a model terminal, only changed cells sent; wide pairs kept whole; long clusters cut as nvim cuts them, stored once, the store emptied past half");
 	return 0;
 }
