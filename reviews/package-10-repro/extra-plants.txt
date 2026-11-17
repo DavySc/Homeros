@@ -1,0 +1,13 @@
+# The reviewer's own plants for src/loop/loop.c (format in tools/planted.sh),
+# run by extra-plants.sh.  IDLE_SECONDS=2 keeps each one short.
+review: exit lost when the output ends after the SIGCHLD~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	if (chld[0] >= 0) reap(sig);~	if (sig) reap(sig);
+review: the SIGKILL timer outlives its child~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~			loop_timer(hard_kill, c, -1);~
+review: a signal during poll is an error~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	if (r < 0 && errno != EINTR) return -1;~	if (r < 0) return -1;
+review: the SIGCHLD pipe is never emptied~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	if (sig) while (read(chld[0], drain, sizeof drain) > 0) {}~
+review: a pipe closed by a callback is still read~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~		if (!c->pid || c->fd[s] != pf[k].fd) continue;   /* closed by a callback meanwhile */~
+review: a watch removed by a callback still runs (loop_once)~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~			if (w[i].fd == pf[k].fd + 1) w[i].fn(w[i].ctx, pf[k].fd);~			w[i].fn(w[i].ctx, pf[k].fd);
+review: stdin stays open after a failed write~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~		if (r < 0) { close_in(c); return -1; }~		if (r < 0) return -1;
+review: the child shares the editor's process group~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~ | POSIX_SPAWN_SETPGROUP~
+review: SIGCHLD not reset in the child~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~ sigaddset(&def, SIGCHLD);~
+review: the child's signal mask not cleared~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~ | POSIX_SPAWN_SETSIGMASK~
+review: the queue is never compacted~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~		if (c->qoff) { memmove(c->q, c->q + c->qoff, c->qlen - c->qoff); c->qlen -= c->qoff; c->qoff = 0; }~
