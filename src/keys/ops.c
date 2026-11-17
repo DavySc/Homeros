@@ -662,6 +662,11 @@ int op_replace(Oparg *oap, int c)
 			}
 			long numc = oap->end_vcol - oap->start_vcol + 1;
 			if (bd.is_short && (!virtual_op || is_MAX)) numc -= (oap->end_vcol - bd.end_vcol) + 1;
+			/* a double-wide character fills two columns of the block */
+			if (uni_width((const unsigned char *)cb, (size_t)cn, 0) > 1) {
+				if (numc % 2 && !bd.is_short) bd.endspaces++;
+				numc /= 2;
+			}
 			Sbuf b = { 0 };
 			bspaces(&b, bd.startspaces);
 			if (c != '\r' && c != '\n') {
@@ -1035,7 +1040,11 @@ void do_put(int regname, int dir, long count, int flags)
 			long yl;
 			const char *ys = reg_line(reg, i, &yl);
 			long spaces = y_width + 1;
-			for (long q = 0; q < yl; q += clen(ys, yl, q)) spaces--;   /* cells, one each */
+			/* win_charsize() at column 0: a Tab is 'tabstop' (8), ^X two */
+			for (long q = 0; q < yl; q += clen(ys, yl, q)) {
+				unsigned char c = (unsigned char)ys[q];
+				spaces -= c == '\t' ? 8 : c < 0x20 || c == 0x7f ? 2 : uni_width((const unsigned char *)ys, (size_t)yl, (size_t)q);
+			}
 			if (spaces < 0) spaces = 0;
 			Sbuf b = { 0 };
 			bspaces(&b, startspaces);
@@ -1044,7 +1053,7 @@ void do_put(int regname, int dir, long count, int flags)
 				if ((r < count - 1 || !shortline) && spaces > 0) bspaces(&b, spaces);
 			}
 			bspaces(&b, endspaces);
-			totlen = b.n - startspaces - endspaces;
+			totlen = b.n;   /* with the start and end spaces, as do_put() counts it */
 			replace_bytes(l, textcol, delcount, b.s ? b.s : "", b.n);
 			free(b.s);
 			W->line++;

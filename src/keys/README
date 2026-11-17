@@ -26,7 +26,8 @@ Not built (FEATURES.md section 2), part two of package 5:
 - folds, spell, snippet jumps, CTRL-S: with their packages.
 
 Waits for package 4's core (src/core, PR 20), passing with it (measured):
-- CTRL-D, CTRL-U, CTRL-E, CTRL-Y, zz zt zb H M L: ref/core.c stubs them.
+- CTRL-D, CTRL-U, CTRL-E, CTRL-Y, zz zt zb H M L: ref/core.c stubs them
+  (they match with package 4's core and Neovim at scrolloff=6).
 - gv after edits: its ends are the buffer's '< and '> marks, which only
   package 4's core moves.
 - columns of grapheme clusters: ref/core.c's core_vcol and core_col_at step
@@ -38,11 +39,20 @@ Waits for package 4, still differing with PR 20's core:
   2cc, 2S, V j c Esc u): Neovim takes it from u_undoredo's last entry, the
   core from the whole step.
 
+Waits for thread 0's core.h (PR 32: core_screen_line takes so):
+- d L, d H with scrolloff: Neovim's nv_scroll() skips cursor_correct() while
+  an operator is pending, so on 60 lines d L deletes 22 lines in Neovim and
+  16 here (measured, PR 26 review N4). keys passes so = 0 once PR 32 merges.
+
 Neovim's own oddities, not copied:
+- Replace mode, Enter before blanks that end in a combining mark, then
+  backspacing over the Enter ("  \t \u0301x", l R Enter t BS BS): Neovim
+  loses the Tab and does not join the lines.
 - Visual A over a 3-byte character ("∀" vAx) and C-v $ ~ over a 4-byte one
   ("-3 𐐀x"): Neovim writes a split character.
 
 Choices:
-- go is gg in Normal mode (Davy, FEATURES.md).
-- % is Neovim's built-in one, not the matchit plugin (FEATURES.md).
-- U (undo line) is not in FEATURES.md and not built.
+- go is gg everywhere: Normal, after an operator, Visual (Davy, FEATURES.md).
+- % is Neovim's built-in one for now; Davy wants matchit's word pairs too
+  (2026-11-17), a follow-up PR.
+- U (undo line), CTRL-F and CTRL-B are not in FEATURES.md and not built.

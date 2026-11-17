@@ -244,15 +244,20 @@ static void insertchar(int c, int pending, int ctrlv)
 
 /* open_line(dir) with 'autoindent', from Insert mode (Enter) or Normal mode
    (o and O, dir BACKWARD for O) */
+/* the indent before "^ CTRL-D", which the next line gets back (Neovim's
+   old_indent, open_line()'s second_line_indent) */
+static long old_indent;
+
 static int open_line(int dir)
 {
 	long l = (long)W->line, c = (long)W->col, len = ml_len(l);
 	const char *s = ml_get(l);
 	int insert = E->mode == MODE_INSERT, trunc = dir == FORWARD && did_ai_flag;
-	/* the indent of the text before the cursor (p_extra cut it off) */
-	long i = 0;
-	while ((!insert || i < c) && (s[i] == ' ' || s[i] == '\t')) i++;
-	long ind = vcol_of(l, i), rest = len;
+	/* the indent of the text before the cursor (p_extra cut it off), byte
+	   by byte as get_indent_str() counts it */
+	long ind = 0, rest = len;
+	for (long i = 0; (!insert || i < c) && (s[i] == ' ' || s[i] == '\t'); i++) ind += s[i] == '\t' ? 8 - ind % 8 : 1;
+	if (!ind && insert) ind = old_indent;
 	ai_col = 0;
 	char *line = malloc((size_t)len + 1);
 	if (!line) return 0;
@@ -261,8 +266,14 @@ static int open_line(int dir)
 	if (insert) {
 		extra = c;
 		if (replacing()) replace_push_nul();
-		/* not a blank a combining mark is on (utf_iscomposing_first()) */
-		while (extra < len && (line[extra] == ' ' || line[extra] == '\t') && clen(line, len, extra) == 1) {
+		/* not a blank a combining mark is on: utf_iscomposing_first() asks
+		   whether the next character joins a space, also after a Tab */
+		while (extra < len && (line[extra] == ' ' || line[extra] == '\t')) {
+			char b = line[extra];
+			line[extra] = ' ';
+			long k = clen(line, len, extra);
+			line[extra] = b;
+			if (k > 1) break;
 			if (replacing()) replace_push(line + extra, 1);
 			extra++;
 		}
@@ -314,6 +325,7 @@ static void ins_eol(void)
 	if (virtual_active() && cur().coladd > 0) coladvance(getviscol());
 	redo_append('\n');
 	open_line(FORWARD);
+	old_indent = 0;
 }
 
 static int ins_tab(void)
@@ -477,6 +489,7 @@ static void ins_shift(int c)
 	if (new_cursor_col < 0) vcol = get_indent(l) - vcol;
 	if (new_cursor_col > 0) start_col = -1;
 	long ind = get_indent(l), n;
+	if (c == 4 && lastc == '^') old_indent = ind;
 	if (c == 4 && (lastc == '0' || lastc == '^')) n = 0;
 	else if (c == 4) n = ind % SW ? ind - ind % SW : (ind >= SW ? ind - SW : 0);
 	else n = ind - ind % SW + SW;
@@ -541,6 +554,7 @@ void invoke_edit(int cmdchar, long count, int repl)
 void edit_start(int cmdchar, long count)
 {
 	restore_restart = 0;
+	old_indent = 0;
 	int startln = cmdchar == 'o' || cmdchar == 'O';
 	did_restart_edit = restart_edit;
 	update_Insstart_orig = 1;

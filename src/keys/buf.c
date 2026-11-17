@@ -220,7 +220,15 @@ void update_curswant(void)
 	/* w_virtcol: getvvcol() of the cursor; on a Tab Neovim's virtcol is
 	   its last cell in Normal mode, which core_set_want() gives */
 	if (virtual_active()) W->want = (size_t)getviscol();
-	else core_set_want(E);
+	/* getvcol(): in Visual mode with the cursor at or before its start the
+	   cursor is on a Tab's first cell ('selection' inclusive) */
+	else if (VIsual_active && !lt(VIsual, cur())) {
+		/* and w_virtcol keeps it until the cursor moves, also after Visual
+		   mode ends (VALID_VIRTCOL; measured: "w v h Esc j" on a Tab line) */
+		W->want = (size_t)vcol_of((long)W->line, (long)W->col);
+		W->vc.line = W->line; W->vc.col = W->col; W->vc.v = W->want;
+		W->vc.mode = E->mode; W->vc.ok = 1;
+	} else core_set_want(E);
 	set_curswant = 0;
 }
 
@@ -243,7 +251,14 @@ void beginline(int flags)
 	set_curswant = 1;
 }
 
-long get_indent(long l) { const char *s = ml_get(l); long i = 0; while (s[i] == ' ' || s[i] == '\t') i++; return vcol_of(l, i); }
+/* get_indent_str(): counts the blanks byte by byte, so a combining mark on
+   the last blank ends the indent ('tabstop' 8) */
+long get_indent(long l)
+{
+	long v = 0;
+	for (const char *s = ml_get(l); *s == ' ' || *s == '\t'; s++) v += *s == '\t' ? 8 - v % 8 : 1;
+	return v;
+}
 
 int linewhite(long l)
 {

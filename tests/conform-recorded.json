@@ -35067,5 +35067,354 @@
 "b"
 ]
 }
+},
+{
+"text": "\tab cd\n    ef gh\n\tx",
+"keys": [
+"w",
+"v",
+"h",
+"<Esc>",
+"j"
+],
+"nvim": {
+"lines": [
+"\tab cd",
+"    ef gh",
+"\tx"
+],
+"cursor": [
+2,
+0
+]
+}
+},
+{
+"text": "\tab cd\n    ef gh\n\tx",
+"keys": [
+"w",
+"v",
+"h",
+"y",
+"j"
+],
+"nvim": {
+"lines": [
+"\tab cd",
+"    ef gh",
+"\tx"
+],
+"cursor": [
+2,
+0
+]
+}
+},
+{
+"text": "\tab cd\n    ef gh\n\tx",
+"keys": [
+"w",
+"v",
+"h",
+"X"
+],
+"nvim": {
+"cursor": [
+1,
+0
+],
+"lines": [
+"    ef gh",
+"\tx"
+]
+}
+},
+{
+"text": "\tab cd\n    ef gh\n\tx",
+"keys": [
+"j",
+"j",
+"l",
+"v",
+"h",
+"<Esc>",
+"k"
+],
+"nvim": {
+"cursor": [
+2,
+0
+],
+"lines": [
+"\tab cd",
+"    ef gh",
+"\tx"
+]
+}
+},
+{
+"text": "xxxx\nxxxx",
+"keys": [
+"<C-v>",
+"j",
+"l",
+"r",
+"漢"
+],
+"nvim": {
+"lines": [
+"漢xx",
+"漢xx"
+],
+"cursor": [
+1,
+0
+]
+}
+},
+{
+"text": "xxxxx\nxxx",
+"keys": [
+"<C-v>",
+"j",
+"l",
+"l",
+"r",
+"漢"
+],
+"nvim": {
+"cursor": [
+1,
+0
+],
+"lines": [
+"漢 xx",
+"漢 "
+]
+}
+},
+{
+"text": "xxxxxx\nxx\nxxxxxx",
+"keys": [
+"<C-v>",
+"j",
+"j",
+"l",
+"l",
+"r",
+"漢"
+],
+"nvim": {
+"cursor": [
+1,
+0
+],
+"lines": [
+"漢 xxx",
+"漢",
+"漢 xxx"
+]
+}
+},
+{
+"text": "\tab cd\nef",
+"keys": [
+"<C-v>",
+"]",
+"[",
+"d",
+"g",
+"p"
+],
+"nvim": {
+"lines": [
+"a\tb cd",
+" ef      "
+],
+"cursor": [
+2,
+8
+]
+}
+},
+{
+"text": "\tab cd\nef",
+"keys": [
+"<C-v>",
+"]",
+"[",
+"y",
+"g",
+"p"
+],
+"nvim": {
+"cursor": [
+2,
+15
+],
+"lines": [
+"\t\tab cd",
+"ef      ef      "
+]
+}
+},
+{
+"text": "\tab cd\nef",
+"keys": [
+"<C-v>",
+"]",
+"[",
+"y",
+"P"
+],
+"nvim": {
+"lines": [
+"\t\tab cd",
+"ef      ef"
+],
+"cursor": [
+1,
+0
+]
+}
+},
+{
+"text": "漢字ab\nxyz\n\tq",
+"keys": [
+"<C-v>",
+"j",
+"j",
+"e",
+"y",
+"3",
+"P"
+],
+"nvim": {
+"cursor": [
+1,
+0
+],
+"lines": [
+"漢字ab   漢字ab   漢字ab   漢字ab",
+"xyz      xyz      xyz      xyz",
+"\tq\tq\tq\tq"
+]
+}
+},
+{
+"text": "ab\nxyz\n\tq",
+"keys": [
+"x",
+"<C-v>",
+"j",
+"y",
+"$",
+"g",
+"p"
+],
+"nvim": {
+"lines": [
+"bb",
+"xxyz",
+"\tq"
+],
+"cursor": [
+2,
+2
+]
+}
+},
+{
+"text": " ́ab",
+"keys": [
+">",
+">"
+],
+"nvim": {
+"lines": [
+"     ́ab"
+],
+"cursor": [
+1,
+0
+]
+}
+},
+{
+"text": " ́ab",
+"keys": [
+"o",
+"x",
+"<Esc>"
+],
+"nvim": {
+"cursor": [
+2,
+1
+],
+"lines": [
+" ́ab",
+" x"
+]
+}
+},
+{
+"text": "  \t ́x",
+"keys": [
+"A",
+"<CR>",
+"y",
+"<Esc>"
+],
+"nvim": {
+"lines": [
+"  \t ́x",
+"         y"
+],
+"cursor": [
+2,
+9
+]
+}
+},
+{
+"text": "\t́ab",
+"keys": [
+"g",
+"I",
+"<CR>",
+"t",
+"<Esc>"
+],
+"nvim": {
+"lines": [
+"",
+"t\t́ab"
+],
+"cursor": [
+2,
+0
+]
+}
+},
+{
+"text": "x\t ́ab",
+"keys": [
+"l",
+"i",
+"<CR>",
+"t",
+"<Esc>"
+],
+"nvim": {
+"cursor": [
+2,
+0
+],
+"lines": [
+"x",
+"t ́ab"
+]
+}
 }
 ]
