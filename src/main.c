@@ -75,6 +75,9 @@ int main(int argc, char **argv)
 		if (e.quit) break;
 		if (dirty) syn = e.buf->syn != NULL;
 		if (dirty && b->ready()) {
+			/* the cluster store was emptied: shown's numbers mean nothing
+			   now, so draw all (Neovim's update_screen, UPD_CLEAR) */
+			if (grid_frame()) grid_free(&shown);
 			core_draw(&e, &g);
 			b->present(&g, &shown);
 			dirty = 0;
