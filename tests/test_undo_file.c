@@ -184,6 +184,25 @@ int main(void)
 		text_free(t);
 	}
 
+	/* numbers in the header past their bounds (review of package 2,
+	   finding 2): a last change number of 2^62, a current one above the
+	   last, a time of 2^62; each refused */
+	{
+		Text *t = text_new("", 0);
+		Undo *u = undo_new();
+		CHECK(!text_insert(t, 0, "x", 1) && !undo_record(u, 0, "", 0, "x", 1, (UndoCursor){ 0, 0, 0 }, 0));
+		undo_close(u);
+		static const struct { long at; int byte; } bad[] = { { 47, 0x40 }, { 48, 2 }, { 79, 0x40 } };
+		for (int i = 0; i < 3; i++) {
+			CHECK(!undo_write(u, t, path));
+			FILE *f = fopen(path, "r+b");
+			CHECK(f && !fseek(f, bad[i].at, SEEK_SET) && fputc(bad[i].byte, f) == bad[i].byte && !fclose(f));
+			CHECK(!undo_read(t, path));
+		}
+		undo_free(u);
+		text_free(t);
+	}
+
 	/* the cap: 2,500 changes in a line keep the newest 1,001 (u_savecommon
 	   frees down to 'undolevels' before adding), numbered as before */
 	{
