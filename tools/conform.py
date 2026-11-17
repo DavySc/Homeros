@@ -56,12 +56,15 @@ def motion(r, keys, objects=True):
     elif objects and x < .27: keys.append(r.choice(OBJECTS))
     else: keys.append(r.choice(MOTIONS))
 
-def insert(r, keys, cmd=True):
+def insert(r, keys, cmd=True, sure=True):
     if cmd: keys.append(r.choice(['i', 'a', 'I', 'A', 'o', 'O', 'gI', 'R', 's', 'S', 'C']))
     for _ in range(r.randint(0, 5)):
         x = r.random()
         if x < .06: keys += ['<C-r>', r.choice(['a', '"', '0', '-', '.'])]
-        elif x < .1: keys += ['<C-o>', r.choice(['l', 'h', '$', '0', 'w', 'x', 'dd', 'p', 'u'])]
+        # CTRL-O only where the insert surely started: after a failed
+        # motion its keys reach Normal mode, where CTRL-O is the jump list,
+        # not built yet (src/keys/README)
+        elif x < .1 and sure: keys += ['<C-o>', r.choice(['l', 'h', '$', '0', 'w', 'x', 'dd', 'p', 'u'])]
         else: keys.append(r.choice(INS))
     keys.append('<Esc>')
 
@@ -81,7 +84,7 @@ def command(r, keys, depth=0):
         count(r, keys)
         if r.random() < .1: keys.append(r.choice(['v', 'V']))
         motion(r, keys)
-        if op == 'c': insert(r, keys, False)
+        if op == 'c': insert(r, keys, False, False)
     elif x < .8:
         if r.random() < .15: keys += ['"', r.choice(REGS)]
         count(r, keys)
@@ -99,6 +102,8 @@ def command(r, keys, depth=0):
         keys.append(op)
         if op == 'r': keys.append(r.choice(CHARS + ['<CR>']))
         if op in ('c', 'I', 'A', 's', 'S', 'C', 'R'): insert(r, keys, False)
+        # these keep Visual mode, where @ and Q need :normal (not built)
+        if op in ('o', 'O', '$', 'gv'): keys.append('<Esc>')
     elif x < .94:
         count(r, keys)
         keys += ['r', r.choice(CHARS + ['<CR>', '<Tab>'])]
@@ -140,7 +145,9 @@ for i, c in ipairs(cases) do
   -- an empty unnamed buffer is reused by :edit
   if old ~= b then vim.api.nvim_buf_delete(old, {force = true}) end
   vim.api.nvim_win_set_cursor(0, {1, 0})   -- :edit puts it on the first non-blank
-  local ks = table.concat(vim.tbl_map(function(k) return k == '<' and '<lt>' or k end, c.keys))
+  -- go is gg (Davy, FEATURES.md): sent as gg, since after a beep Neovim
+  -- drops the next mapped key, which a map would make go
+  local ks = table.concat(vim.tbl_map(function(k) return k == '<' and '<lt>' or k == 'go' and 'gg' or k end, c.keys))
   vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(ks, true, true, true), 'xt', false)
   local cur = vim.api.nvim_win_get_cursor(0)
   out[#out + 1] = {lines = vim.api.nvim_buf_get_lines(b, 0, -1, false), cursor = cur}
@@ -150,7 +157,7 @@ vim.cmd('qa!')
 '''
 SETUP = ('set noswapfile nomore expandtab shiftwidth=4 softtabstop=4 autoindent smarttab '
          'nostartofline backspace=indent,eol,start tabstop=8 virtualedit=block nowrap shortmess+=I'
-         ' | noremap go gg')   # Davy's map, 2026-11-17
+         ' scrolloff=6')   # FEATURES.md's scrolloff, which the core keeps
 
 def nvim1(cases):
     d = tempfile.mkdtemp()
