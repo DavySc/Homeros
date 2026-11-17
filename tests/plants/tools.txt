@@ -31,3 +31,4 @@ picker: the frecency store read as all zeros~test TESTS=tools_pick~~src/tools/pi
 picker: grep drops the rg arguments after --~test TESTS=tools_pick~~src/tools/pick.c~	for (int i = 0; i < na; i++) argv[k++] = pa[i];~	for (int i = 0; i < na - na; i++) argv[k++] = pa[i];
 oil: a link target's icon ignores the trailing /~test TESTS=tools_oil~~src/tools/icons.c~if (!slash && (r = GET(ft_icons~if ((r = GET(ft_icons
 oil: a relisted name gets a new id~test TESTS=tools_oil~~src/tools/oil.c~	int i = find(dir, name, strlen(name));¶	if (i < 0) {~	int i = find(dir, name, strlen(name));¶	if (1) {
+matcher: at most 16 terms~test TESTS=tools_match~~src/tools/match.h~MATCH_TERMS = MATCH_MAX / 2,~MATCH_TERMS = 16,

@@ -5,7 +5,8 @@
 #define TOOLS_MATCH_H
 #include <stddef.h>
 
-enum { MATCH_MAX = 256, MATCH_TERMS = 16, MATCH_DEFAULT = 1000 };
+/* terms are split by spaces, so MATCH_MAX bytes hold at most half as many */
+enum { MATCH_MAX = 256, MATCH_TERMS = MATCH_MAX / 2, MATCH_DEFAULT = 1000 };
 
 typedef struct {
 	const char *s;             /* the term, into Match.buf; lowered if icase */

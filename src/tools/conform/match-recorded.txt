@@ -18008,3 +18008,41 @@ S	0
 S	0
 S	0
 S	0
+P	a a a a a a a a a a a a a a a a
+I		abc
+I		xbc
+I		a
+F	0	0
+S	576
+S	0
+S	576
+P	a a a a a a a a a a a a a a a a a
+I		abc
+I		xbc
+I		a
+F	0	0
+S	612
+S	0
+S	612
+P	a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a
+I		abc
+I		xbc
+I		a
+F	0	0
+S	1440
+S	0
+S	1440
+P	a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a
+I		abc
+I		xbc
+I		a
+F	0	0
+S	4608
+S	0
+S	4608
+P	zz | zz | zz | zz | zz | zz | zz | zz | zz | zz | zz | zz | zz | zz | zz | zz | zz | zz | zz | zz a
+I		abc
+I		zz a
+F	0	0
+S	0
+S	98
