@@ -1,0 +1,9 @@
+# Review of PR 20: bugs planted by the reviewer that no check of the package
+# notices: each runs the whole "make test" (format in tools/planted.sh).  Run
+# with extra-plants.sh.  A sixth, ":bd of a modified buffer goes ahead without
+# E89", was caught by the recorded traces and is left out.
+review: CTRL-D and CTRL-F never report that they could not move (no beep)~test~~src/core/move.c~	return moved ? 0 : -1;~	return 0;
+review: gj and gk never fail at the first or last screen line~test~~src/core/move.c~	} else r = screengo(e, w, n < 0 ? -1 : 1, n < 0 ? -n : n) ? 0 : -1;~	} else r = (screengo(e, w, n < 0 ? -1 : 1, n < 0 ? -n : n), 0);
+review: closing the last window quits with unsaved changes~test~~src/core/win.c~		if (quit_check(e, force)) return -1;~		if (0 && quit_check(e, force)) return -1;
+review: the command line is drawn one cell to the right~test~~src/core/draw.c~		int c = grid_puts(g, r, 0, t, ATTR_NONE), cc = c;~		int c = grid_puts(g, r, 1, t, ATTR_NONE), cc = c;
+review: the selected popup item is not highlighted~test~~src/core/draw.c~		int attr = idx == e->pumsel ? ATTR_NONE : ATTR_REV;~		int attr = ATTR_REV;
