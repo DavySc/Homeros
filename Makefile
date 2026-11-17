@@ -75,10 +75,18 @@ conform: $(OBJS) | build/san
 	gcc $(WARN) $(CPPFLAGS) $(SAN) -o build/san/conform_drv tests/conform_drv.c $(LIB_SRCS) $(OBJS) $(LIBS)
 	python3 tools/conform.py build/san/conform_drv $(CONFORM_N) $${SEED:-$$(date +%s)}
 
-# Neovim's undo tree against UndoTree.tla's rules (package 2's oracle)
+# Neovim's undo tree against UndoTree.tla's rules (package 2's oracle);
+# then the undo package against live nvim on one fake clock: short sequences
+# with the real cap and with a cap of 3 that they reach, and long ones that
+# reach the real cap (tools/undo_conform.py comes with package 2)
+UNDO_CONFORM = python3 tools/undo_conform.py "gcc $(WARN) $(SAN)" $(call pick,text) $(call pick,undo) --
 undo-diff: | build
 	python3 design/ref/undo/undo_diff.py $(UNDO_N) 30 $${SEED:-2} | tee build/undo-diff.log
 	grep -q ": 0 differ" build/undo-diff.log
+ifneq ($(wildcard tools/undo_conform.py),)
+	@seed=$${SEED:-$$(date +%s)}; $(UNDO_CONFORM) $(UNDO_N) 60 1000 $$seed && \
+	  $(UNDO_CONFORM) $(UNDO_N) 60 3 $$seed && $(UNDO_CONFORM) 10 4000 1000 $$seed
+endif
 
 # every TLA+ configuration; each .cfg's first line says pass or fail
 specs:
