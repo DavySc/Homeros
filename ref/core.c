@@ -119,6 +119,12 @@ int core_delete_lines(Editor *e, size_t a, size_t z)
 	return edit(e, core_line_start(e, a), core_line_start(e, z) - core_line_start(e, a), "", 0, 0);
 }
 
+/* The thin editor keeps marks but does not move them (package 4 does). */
+void core_mark_join(Editor *e, size_t line, size_t mincol, long line_amount, long col_amount, int spaces_removed)
+{
+	(void)e; (void)line; (void)mincol; (void)line_amount; (void)col_amount; (void)spaces_removed;
+}
+
 /* Neovim's cursor after undo and redo (undo.c, u_undoredo): back where the
    change started if that is inside or next to the changed lines, else the
    first changed line at its first non-blank. */

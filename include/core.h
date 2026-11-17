@@ -38,6 +38,16 @@ typedef struct WinInfo {
 	struct WinInfo *next;      /* most recent first */
 } WinInfo;
 
+/* A position that follows the text: core_edit, core_delete_lines and
+   core_undo move it as Neovim's mark_adjust() does, and core_mark_join as
+   do_join()'s mark_col_adjust().  On deleted lines a-z . ^ " are unset; the
+   change list, jump list, < and > go to the first deleted line.  [ ] never
+   move.  Keys set and read them. */
+typedef struct { size_t line, col; int set; } Mark;
+/* a-z are mark[0..25], then the special marks */
+enum { MARK_LBRACKET = 26, MARK_RBRACKET, MARK_LT, MARK_GT, MARK_DOT, MARK_CARET, MARK_QUOTE, MARK_N };
+enum { JUMPLIST_SIZE = 100 };      /* Neovim's, for the jump and change lists */
+
 typedef struct Buf {
 	Text *text;
 	Undo *undo;
@@ -49,6 +59,9 @@ typedef struct Buf {
 	int nr;                    /* buffer number, from 1 (:b N) */
 	WinInfo *wi;
 	struct Syntax *syn;        /* syntax.h; NULL: no grammar for this file */
+	Mark mark[MARK_N];
+	Mark change[JUMPLIST_SIZE];   /* the change list (g; g,), oldest first */
+	int nchange;
 	struct Buf *next;          /* by number */
 } Buf;
 
@@ -71,6 +84,9 @@ typedef struct Win {
 	int wrap;                  /* 'wrap': off (FEATURES.md); keys set it directly */
 	int y, x, h, w;
 	struct Frame *frame;       /* its leaf in the layout */
+	struct { Buf *buf; Mark m; } jump[JUMPLIST_SIZE];   /* CTRL-O CTRL-I, oldest first */
+	int njump, jumpidx;
+	int changeidx;             /* where g; and g, are in buf's change list (w_changelistidx) */
 	struct Win *next;          /* window order: top left to bottom right (CTRL-W w) */
 } Win;
 
@@ -117,6 +133,11 @@ const unsigned char *core_line(Editor *e, size_t l, size_t *len);
 int  core_edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins);
 /* Delete lines [a, z); deleting all leaves the empty buffer.  0 ok, -1 out of memory. */
 int  core_delete_lines(Editor *e, size_t a, size_t z);
+/* A join (J, gJ, Backspace over a line break, a charwise delete across
+   lines) just made: marks at or after column mincol of line move by
+   line_amount lines and col_amount columns, as Neovim's mark_col_adjust(),
+   with spaces_removed as do_join() passes it.  Keys call it. */
+void core_mark_join(Editor *e, size_t line, size_t mincol, long line_amount, long col_amount, int spaces_removed);
 /* One undo or redo step, placing the cursor as u_undoredo() does; the caller
    recomputes the wanted column once its count is done, even on failure.
    1 if the step invalidated Neovim's cached cursor column, 0 if not, -1 if
