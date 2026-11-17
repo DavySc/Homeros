@@ -2,8 +2,10 @@
    recorded with tools/org_dump.el (Org 9.8.7, Emacs 31.1): the reduced cases
    that disqualified orgize and tree-sitter-org (design/reviews/r2/org/
    reductions), the start of design/org/synthetic-agenda.org, and the cases
-   tools/org_conform.py once found differing.  Each text also passes the
-   fuzzer's checks (outline model, invariants, subtree reparse). */
+   tools/org_conform.py once found differing, and Emacs's [[:word:]] and
+   [[:alnum:]] above ASCII in drawer names, footnote labels and tags.  Each
+   text also passes the fuzzer's checks (outline model, invariants, subtree
+   reparse). */
 #define _GNU_SOURCE
 #define ORG_DRV_LIB
 #include "check.h"
@@ -534,6 +536,35 @@ static const struct { const char *name, *text, *want; } cases[] = {
 	  "planning 36 36 - - 67\n"
 	  "property-drawer 67 67 80 86 92\n"
 	  "node-property 80 80 - - 86\n" },
+	{ "uni-drawer.org",
+	  ":x·:\n"
+	  "a\n"
+	  ":END:\n"
+	  ":x→:\n"
+	  "b\n"
+	  ":END:\n",
+	  "section 0 0 0 29 29\n"
+	  "drawer 0 0 6 8 14\n"
+	  "paragraph 6 6 6 8 8\n"
+	  "paragraph 14 14 14 29 29\n" },
+	{ "uni-fn.org",
+	  "[fn:x·] a\n"
+	  "\n"
+	  "[fn:xº] b\n",
+	  "section 0 0 0 23 23\n"
+	  "footnote-definition 0 0 9 23 23\n"
+	  "paragraph 9 9 9 11 12\n"
+	  "paragraph 12 12 12 23 23\n" },
+	{ "uni-tags.org",
+	  "* a :x²:\n"
+	  "* b :xº:\n"
+	  "* c :é·:\n",
+	  "headline 0 0 - - 10\n"
+	  "+ 1 - - - \"a :x²:\" \n"
+	  "headline 10 10 - - 20\n"
+	  "+ 1 - - - \"b\" xº\n"
+	  "headline 20 20 - - 31\n"
+	  "+ 1 - - - \"c :é·:\" \n" },
 	{ "ws.org",
 	  "  \n"
 	  "\n"

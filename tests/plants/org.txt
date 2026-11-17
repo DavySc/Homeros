@@ -2,3 +2,5 @@
 org: table row contents start at the bar~test TESTS=org~~src/org/org.c~			while (cb < N && S[cb++] != '|') ;~			while (cb < N && S[cb] != '|') cb++;
 org: a headline ends only at a shallower one (fuzz)~fuzz FUZZERS=org FUZZ_SECONDS=30~~src/org/org.c~			if (j && j <= k && p + j < N && S[p + j] == ' ') { end = p; break; }~			if (j && j < k && p + j < N && S[p + j] == ' ') { end = p; break; }
 org: checkbox [x] not folded to [X] (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~(S[u + 1] == ' ' || up(S[u + 1]) == 'X' || S[u + 1] == '-')~(S[u + 1] == ' ' || S[u + 1] == 'X' || S[u + 1] == '-')
+org: tags take [[:word:]] for [[:alnum:]] above ASCII~test TESTS=org~~src/org/org.c~IN(ALNUM, uni_cp(S, N, x))~IN(WORD, uni_cp(S, N, x))
+org: drawer and footnote names take any non-ASCII byte (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	return c == '-' || c == '_' || IN(WORD, c) ? uni_len(S, N, p) : 0;~	return c == '-' || c == '_' || c >= 0x80 || IN(WORD, c) ? uni_len(S, N, p) : 0;

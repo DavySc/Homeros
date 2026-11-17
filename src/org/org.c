@@ -6,10 +6,11 @@
    Org parses recursively; this keeps the open containers in a stack of
    frames instead, so nesting depth costs heap, not C stack.  Known
    differences, all outside ASCII or outside Davy's files (hypothesis):
-   case folding and [:word:]/[:alnum:] are ASCII-exact only (other
-   non-space characters count as word and alnum), and a block name inside a
-   list is compared literally where Org uses it unquoted as a regexp. */
+   case folding is ASCII-only, and a block name inside a list is compared
+   literally where Org uses it unquoted as a regexp. */
 #include "org.h"
+#include "uni.h"
+#include "class.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -66,15 +67,22 @@ static int sp(size_t p)
 	return c == 0xE3 && d == 0x80 && e == 0x80;
 }
 static size_t run(size_t p) { while (p < N && !sp(p)) p++; return p; }   /* \S-* */
-/* [-_[:word:]]: Org's syntax table makes $ % ' word characters */
-static int namec(size_t p)
+/* is c in a class.h table (sorted, disjoint ranges)? */
+static int in(const unsigned (*t)[2], size_t k, unsigned c)
+{
+	size_t lo = 0, hi = k;
+	while (lo < hi) { size_t m = lo + (hi - lo) / 2; if (c > t[m][1]) lo = m + 1; else hi = m; }
+	return lo < k && c >= t[lo][0];
+}
+#define IN(t, c) in(t, sizeof t / sizeof *t, c)
+/* bytes of the [-_[:word:]] character at p, else 0 */
+static size_t namec(size_t p)
 {
 	if (p >= N) return 0;
-	unsigned c = S[p];
-	return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
-	       c == '-' || c == '_' || c == '$' || c == '%' || c == '\'' || (c >= 0x80 && !sp(p));
+	unsigned c = uni_cp(S, N, p);
+	return c == '-' || c == '_' || IN(WORD, c) ? uni_len(S, N, p) : 0;
 }
-static size_t names(size_t p) { while (namec(p)) p++; return p; }
+static size_t names(size_t p) { size_t k; while ((k = namec(p))) p += k; return p; }
 static int digit(size_t p) { return p < N && S[p] >= '0' && S[p] <= '9'; }
 
 /* ---- line recognisers ---- */
@@ -297,7 +305,12 @@ static int tablerule(size_t p)
 	return g && ateol(blanks(p));
 }
 /* \[fn:[-_[:word:]]+\] */
-static int fnl(size_t p) { size_t q = names(p + 4); return lit(p, "[fn:") && q > p + 4 && q < N && S[q] == ']'; }
+static int fnl(size_t p)
+{
+	if (!lit(p, "[fn:")) return 0;
+	size_t q = names(p + 4);
+	return q > p + 4 && q < N && S[q] == ']';
+}
 
 /* org-element-paragraph-separate at line p */
 static int separator(size_t p)
@@ -754,7 +767,7 @@ void org_head(const char *s, size_t n, size_t q, OrgHead *h)
 	if (from < a && a + 3 <= z && S[a] == ':' && S[z - 1] == ':') {
 		size_t x = a, w = a;
 		while (x < z && (S[x] == ':' || S[x] == '_' || S[x] == '@' || S[x] == '#' || S[x] == '%' ||
-		                 (S[x] >= '0' && S[x] <= '9') || (up(S[x]) >= 'A' && up(S[x]) <= 'Z') || S[x] >= 0x80)) x++;
+		                 IN(ALNUM, uni_cp(S, N, x)))) x += uni_len(S, N, x);
 		while (w > from && blank(w - 1)) w--;
 		if (x == z) { te = w; h->ga = a + 1; h->gz = z - 1; }
 	}

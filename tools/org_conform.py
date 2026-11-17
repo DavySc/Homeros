@@ -13,6 +13,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WORDS = ['a', 'b', 'x', 'TODO', 'DONE', 'NEXT', 'WAIT', 'CANCELLED', 'todo', 'COMMENT', '[#A]', '[#a]',
          '[#1]', '[#12]', '[#65]', ':a:', ':b:c:', '::', ':@x_1:', '[fn:1]', '*', '-', '+', '1.', 'a)',
          '|', '#', '#+', ':', '[', ']', '<2026-11-22 Sun>', '[2026-11-22 Sun 09:00]', 'é', 'λ', '→', '\u00a0', '\u3000', '\f', '\r']
+# above ASCII, Emacs's [[:word:]] and [[:alnum:]] differ: é both, ² and · word only, º alnum only, → € neither
+U = ['é', '²', '·', 'º', '→', '€']
+
+
+def uni(r):
+    return ''.join(r.choice(U + ['a', '_', '-', '@']) for _ in range(r.randint(1, 3)))
 
 
 def word(r):
@@ -40,11 +46,11 @@ def line(r):
     k = r.randint(0, 31)
     i = indent(r)
     if k == 0:
-        return '*' * r.choice([1, 1, 2, 3]) + r.choice([' ', ' ', ' ', '', '\t']) + text(r, 5)
+        return '*' * r.choice([1, 1, 2, 3]) + r.choice([' ', ' ', ' ', '', '\t']) + text(r, 5) + r.choice(['', ' :' + uni(r) + ':'])
     if k == 1:
         return i + r.choice(['SCHEDULED:', 'DEADLINE:', 'CLOSED:', 'scheduled:']) + ' ' + ts(r, r.choice('<[')) + r.choice(['', ' DEADLINE: ' + ts(r, '<')])
     if k == 2:
-        return i + r.choice([':PROPERTIES:', ':properties:', ':END:', ':end:', ':LOGBOOK:', ':a-b_c:', ':é:', ':x:y:'])
+        return i + r.choice([':PROPERTIES:', ':properties:', ':END:', ':end:', ':LOGBOOK:', ':a-b_c:', ':é:', ':x:y:', ':' + uni(r) + ':'])
     if k == 3:
         return i + r.choice([':EFFORT: 0:12', ':STYLE: habit', ':ID:', ':a:b', ':x+: 1', ': x', ':', ':A:\tb'])
     if k == 4:
@@ -73,7 +79,7 @@ def line(r):
     if k == 17:
         return r.choice(['%%(diary-anniversary 1 1 2000)', '%%x', ' %%(x)'])
     if k == 18:
-        return r.choice(['[fn:1] ', '[fn:a-b] ', '[FN:x]', '[fn:] ', '[fn:1]']) + text(r)
+        return r.choice(['[fn:1] ', '[fn:a-b] ', '[FN:x]', '[fn:] ', '[fn:1]', '[fn:' + uni(r) + '] ']) + text(r)
     if k == 19:
         return i + r.choice(['\\begin{equation}', '\\end{equation}', '\\begin{align*} x', '\\end{align*}', '\\begin{x}\\end{x}', '\\BEGIN{x}'])
     if k in (20, 21, 22, 23):

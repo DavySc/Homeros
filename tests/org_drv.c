@@ -50,7 +50,9 @@ int main(int argc, char **argv)
 		FILE *f = fopen(argv[i], "rb");
 		if (!f) return 2;
 		size_t n = fread(b, 1, sizeof b, f);
+		int more = fgetc(f) != EOF;
 		fclose(f);
+		if (more) { fprintf(stderr, "%s: over %zu bytes\n", argv[i], sizeof b); return 4; }
 		const char *base = strrchr(argv[i], '/');
 		printf("== %s\n", base ? base + 1 : argv[i]);
 		if (dump(stdout, b, n)) return 3;
