@@ -1,0 +1,17 @@
+# Review of package 9: plants the author's tests/plants/win.txt does not have,
+# in tools/planted.sh's format.  reviews/r9/extra-plants.sh runs them.
+win: no glyph is drawn, only cell backgrounds~--eval='w: ; @bash src/win/check.sh' w~~src/win/backend.c~&rc, u, n, NULL);~&rc, u, n * 0, NULL);
+win: astral character split into the wrong surrogates~--eval='w: ; @bash src/win/check.sh' w~~src/win/backend.c~(cp - 0x10000) % 0x400~(cp - 0x10000) % 0x200
+win: a wide character drawn one cell wide~--eval='w: ; @bash src/win/check.sh' w~~src/win/backend.c~(c + 1 + wide) * cw~(c + 1 + wide * 0) * cw
+win: the right half of a wide character is not sent to the window~--eval='w: ; @bash src/win/check.sh' w~~src/win/backend.c~hi = c + 1 + (c + 1 < g->cols && !x[1].len);~hi = c + 1;
+win: dim text in the normal colour~--eval='w: ; @bash src/win/check.sh' w~~src/win/backend.c~RGB(108, 112, 134)~RGB(205, 214, 245)
+win: an uncovered window is not repainted (WM_PAINT)~--eval='w: ; @bash src/win/check.sh' w~~src/win/backend.c~BitBlt(dc, r->left, r->top, r->right - r->left, r->bottom - r->top, mem, r->left, r->top, SRCCOPY);~(void)dc; (void)r;
+win: Ctrl-H sent as Backspace~--eval='w: ; @bash src/win/check.sh' w~~src/win/backend.c~w == 8 && GetKeyState(VK_CONTROL) >= 0 ? KEY_BS~w == 8 ? KEY_BS
+win: a lone low surrogate makes a key~--eval='w: ; @bash src/win/check.sh' w~~src/win/backend.c~if (surr) put(0x10000~put(0x10000
+win: the new DPI is ignored~--eval='w: ; @bash src/win/check.sh' w~~src/win/backend.c~dpi = HIWORD(w);~
+win: the refresh period is not read again on WM_DISPLAYCHANGE~--eval='w: ; @bash src/win/check.sh' w~~src/win/backend.c~measure_period();¶		break;~break;
+win: Right arrow sent as Left~--eval='w: ; @bash src/win/check.sh' w~~src/win/backend.c~case VK_RIGHT: put(KEY_RIGHT);~case VK_RIGHT: put(KEY_LEFT);
+win: Down arrow sent as Up~--eval='w: ; @bash src/win/check.sh' w~~src/win/backend.c~case VK_DOWN: put(KEY_DOWN);~case VK_DOWN: put(KEY_UP);
+win: the close button destroys the window~--eval='w: ; @bash src/win/check.sh' w~~src/win/backend.c~case WM_CLOSE:   /* keys.h has no key for it: quit with :q */¶		return 0;~
+win: one column too many reported~--eval='w: ; @bash src/win/check.sh' w~~src/win/backend.c~*cols = r.right / cw > 0 ? r.right / cw : 1;~*cols = r.right / cw + 1;
+win: the cursor is not drawn reversed~--eval='w: ; @bash src/win/check.sh' w~~src/win/backend.c~int a = cursor ? ATTR_REV : x->attr,~int a = cursor && 0 ? ATTR_REV : x->attr,
