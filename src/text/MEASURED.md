@@ -56,3 +56,16 @@ The rest of the file:
 Frama-C WP with `-wp-rte` (z3, cvc5, 10 s per goal) on `text.c` as it is, with no contracts: 113 of 297 runtime-error goals prove, 184 time out (measured, 1 run, about 15 minutes). The unproved ones are almost all memory accesses through a child pointer (`ins` 12, `text_insert` 11, `del` 11, `join` 10, `sum` 9, ...): nothing says a node is valid, so nothing can be proved about reading it. Going further needs a recursive ACSL predicate for a well-formed tree (each kid valid, separated from the others, of height h - 1, its counts right, filled at least half) that every function requires and keeps, which also has to survive `malloc`, `free` and the spare pool. That is the work the design calls much harder than a byte scan, and it was not started: the gate for this package is the differential fuzzing above (hypothesis that a full proof is weeks of work, judged from the earlier CBMC and Kani failures on a smaller structure, not measured).
 
 Reproduce: `frama-c -wp -wp-rte -wp-prover z3,cvc5 -wp-timeout 10 -cpp-extra-args="-Iinclude -D_DEFAULT_SOURCE" src/text/text.c`.
+
+## Fix: line lookups among empty lines (2026-11-17)
+
+The keys package found `text_line_start` slow on a file of empty lines: it called `memchr` once per `'\n'` in the leaf, so a leaf of 1,016 empty lines cost up to 1,016 calls per lookup, and `fuzz_keys` timed out on `2222222o` (2.2 M lines). It now skips whole 32-byte blocks by their count (`nls`) and steps bytes only inside the last block.
+
+| Every line start of 2.2 MB, gcc -O2, 5 alternating runs, ns per lookup, median (range) | before | after | Verdict |
+|---|---|---|---|
+| all empty lines | 3,633.8 (3,576.2 to 3,712.0) | 73.7 (64.8 to 88.5) | 49 times faster |
+| 50-byte lines | 97.1 (93.7 to 176.8) | 110.2 (87.5 to 115.9) | ranges overlap: no measurable difference |
+
+Callgrind, 1 run each (exact): all line starts of 220,000 empty lines, whole program 3,165.3 M to 118.4 M instructions; `bench.c`'s 100,000 lookups each way on 10 MB, 136.0 M to 126.1 M.
+
+`test_text_rope` now times every line lookup among 200,000 empty lines against 100,000 lines of 50 bytes and requires the first under 4 times the second. Under ASan: before, the check failed 5 of 5 runs; after, it passed 5 of 5 with the two within 4% of each other (measured). Its plant puts the per-line `memchr` back and is caught.
