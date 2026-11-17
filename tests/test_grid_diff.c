@@ -23,7 +23,7 @@ static size_t present(const Grid *g, Grid *shown)
 	int saved = dup(1);
 	CHECK(f && saved >= 0);
 	dup2(fileno(f), 1);
-	backend_present(g, shown);
+	backend_tty.present(g, shown);
 	dup2(saved, 1);
 	close(saved);
 	rewind(f);
@@ -77,6 +77,11 @@ static void run(int (*width)(const unsigned char *, int), int frames)
 			int r = (int)rnd((unsigned)rows + 1) - (rnd(9) == 0), c = (int)rnd((unsigned)cols + 1) - (rnd(9) == 0);
 			int w = grid_put(&g, r, c, (const unsigned char *)chars[i], strlen(chars[i]), widths[i], (int)rnd(3));
 			CHECK(w == (r >= 0 && r < rows && c >= 0 && c + widths[i] <= cols ? widths[i] : 0));
+			if (w && rnd(2)) {        /* the core sets a face after grid_put */
+				unsigned char f = (unsigned char)rnd(FACE_COUNT);
+				g.c[r * cols + c].face = f;
+				if (w == 2) g.c[r * cols + c + 1].face = f;
+			}
 			invariant(&g);
 		}
 		g.crow = (int)rnd((unsigned)rows);
@@ -107,6 +112,21 @@ static void run(int (*width)(const unsigned char *, int), int frames)
 
 int main(void)
 {
+	/* each face's SGR, as the model numbers it: one cell drawn alone */
+	for (int f = 0; f < FACE_COUNT; f++) {
+		static Vt t;
+		Grid one = { 0 }, shown = { 0 };
+		CHECK(!grid_resize(&one, 1, 1));
+		grid_put(&one, 0, 0, (const unsigned char *)"x", 1, 1, ATTR_NONE);
+		one.c[0].face = (unsigned char)f;
+		vt_init(&t, 1, 1, same_width);
+		vt_feed(&t, out, present(&one, &shown));
+		CHECK(!t.bad);
+		vt_face[f] = t.c[0].face;
+		grid_free(&one);
+		grid_free(&shown);
+	}
+
 	/* grid_put's rules, one case each */
 	Grid g = { 0 };
 	CHECK(!grid_resize(&g, 1, 6));
@@ -161,6 +181,6 @@ int main(void)
 	grid_free(&g);
 	grid_free(&shown);
 
-	puts("test_grid_diff: 24000 random frames and 3 of over 64 KiB shown exactly by a model terminal, only changed cells sent; wide pairs kept whole");
+	puts("test_grid_diff: 24000 random frames with random faces and 3 of over 64 KiB shown exactly by a model terminal, only changed cells sent; wide pairs kept whole");
 	return 0;
 }
