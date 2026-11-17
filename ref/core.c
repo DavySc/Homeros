@@ -9,6 +9,8 @@
 #include "syntax.h"
 #include "uni.h"
 
+int core_changed;
+
 enum { SCROLLOFF = 6, TABSTOP = 8 };   /* FEATURES.md 1; Vim's tabstop */
 
 /* every change reaches the syntax tree and the language server before it

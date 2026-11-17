@@ -115,14 +115,17 @@ typedef struct Editor {
 	size_t cmdlen, cmdpos;     /* command line bytes, the cursor in them */
 	char msg[256];
 	int quit;
-	int changed;               /* a package changed what is shown between keys (a
-	                              picker's list, a git refresh): main.c redraws, clears it */
 	const PumItem *pum;        /* completion popup items (the caller's), or NULL */
 	int npum, pumsel;          /* how many, which is selected (-1 none) */
 	size_t pumcol;             /* byte in the cursor line where the completed word starts */
 	unsigned char *lb;         /* scratch copy of one line */
 	size_t lbcap;
 } Editor;
+
+/* Set by any package when what is shown changed between keys (a picker's
+   list, a git refresh, a language server's reply): main.c redraws after the
+   loop and clears it.  One flag for every package, defined in the core. */
+extern int core_changed;
 
 /* The first buffer, on path, in the first window.  0 ok, -1 error (msg set). */
 int  core_open(Editor *e, const char *path);

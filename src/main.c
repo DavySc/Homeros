@@ -71,7 +71,7 @@ int main(int argc, char **argv)
 				grid_free(&shown);     /* the terminal was used meanwhile: redraw all */
 			} else {
 				running = 1;
-				if (!tools_key(&e, k) && !git_key(&e, k)) keys_feed(&e, k, qn > 0);
+				if (e.ks.pending || (!tools_key(&e, k) && !git_key(&e, k))) keys_feed(&e, k, qn > 0);
 				running = 0;
 				lsp_flush(e.buf->lsp);   /* one didChange per command (Helix) */
 			}
@@ -92,7 +92,7 @@ int main(int argc, char **argv)
 			dirty = r == 1;
 		}
 		if (loop_once(qn || syn || (dirty && b->ready()) ? 0 : -1)) break;
-		if (e.changed || lsp_dirty) { e.changed = lsp_dirty = 0; dirty = 1; }
+		if (core_changed) { core_changed = 0; dirty = 1; }
 	}
 out:
 	git_free();
