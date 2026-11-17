@@ -1,4 +1,7 @@
-# Plants for ref/text.c (format in tools/planted.sh).  The package that builds
-# src/text/ replaces this file with plants for its own code.
-text: line lookup off by one~test TESTS=text~~ref/text.c~for (size_t i = 0; i < pos && i < t->n; i++) k += t->b[i] == '\n';~for (size_t i = 0; i <= pos && i < t->n; i++) k += t->b[i] == '\n';
-text: insert drops a byte (fuzz_text)~fuzz FUZZERS=text FUZZ_SECONDS=60~~ref/text.c~	memcpy(t->b + pos, s, n);¶	t->n += n;~	memcpy(t->b + pos, s, n);¶	t->n += n - (n > 3);
+# Plants for src/text/text.c, the rope (format in tools/planted.sh).
+text: line start finds the first newline again~test TESTS=text~~src/text/text.c~(size_t)(a->b + a->n - p)) + 1;~(size_t)(a->b + a->n - p)) + 0;
+text: insert drops a byte (fuzz_text)~fuzz FUZZERS=text FUZZ_SECONDS=60~~src/text/text.c~		a->n += m;~		a->n += m - (m > 3);
+text: a merge loses the newline count (fuzz_text_rope)~fuzz FUZZERS=text_rope FUZZ_SECONDS=60~~src/text/text.c~a->e[i].nl += a->e[i + 1].nl;~
+text: a delete mends only the left side of the cut~test TESTS=text_rope~~src/text/text.c~p <= pos && p < t->len~p < pos && p < t->len
+text: nodes may thin to a quarter~test TESTS=text_rope~~src/text/text.c~return a->n < cap(a) / 2;~return a->n < cap(a) / 4;
+text: out of memory leaves half an insert~test TESTS=text_rope~~src/text/text.c~if (stock(t)) { text_delete(t, pos, done); return -1; }~if (stock(t)) return -1;
