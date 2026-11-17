@@ -4,7 +4,7 @@
 core: undo loses deleted text (fuzz_keys)~fuzz FUZZERS=keys FUZZ_SECONDS=60~~src/core/core.c~if (!undo_record(b->undo, pos, del, ndel, ins, nins, c, after)) {~if (!undo_record(b->undo, pos, del, ndel ? ndel - 1 : 0, ins, nins, c, after)) {
 core: a deleted line keeps its mark (recorded traces)~test TESTS=core_screens~~src/core/core.c~		else m->set = 0;~		else m->line = l1;
 core: undo does not bring back the group's marks (test_core_undo)~test TESTS=core_undo~~src/core/core.c~		if (saved[i].set) b->mark[i] = saved[i];~		(void)0;
-core: redo of a join forgets the joined line (test_core_undo)~test TESTS=core_undo~~src/core/core.c~	if (w.hi == w.lo && at_start && !(u && u->join)) last = first - 1;~	if (w.hi == w.lo && at_start) last = first - 1;
+core: redo of a join forgets the joined line (test_core_undo)~test TESTS=core_undo~~src/core/core.c~n < before && !(u && u->join)) last~n < before) last
 core: :bd searches the jump list from its oldest entry (recorded traces)~test TESTS=core_screens~~src/core/core.c~		if (w->jumpidx == w->njump) w->jumpidx = w->njump - 1;~		if (w->jumpidx == w->njump) w->jumpidx = 0;
 core: set_topline() keeps w_botline valid (recorded traces)~test TESTS=core_screens~~src/core/move.c~	s->topvalid = 0;      /* scrolloff is still to be checked */¶	s->bv~	s->topvalid = 0;      /* scrolloff is still to be checked */¶	if (0) s->bv
 core: the popup leaves no space before kind and menu (recorded traces)~test TESTS=core_screens~~src/core/draw.c~			int cw = s ? cells(s) + (j > 0) : 0;~			int cw = s ? cells(s) : 0;
