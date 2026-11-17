@@ -1,0 +1,42 @@
+diff --git a/src/wl/wl.c b/src/wl/wl.c
+index b1c793c..29d198c 100644
+--- a/src/wl/wl.c
++++ b/src/wl/wl.c
+@@ -738,7 +738,7 @@ static const Cell *compose(const Grid *g, int r)
+ 	size_t n = strlen(pre);
+ 	for (size_t i = 0; i < n; i += uni_len((const unsigned char *)pre, n, i)) {
+ 		size_t l = uni_len((const unsigned char *)pre, n, i);
+-		int w = uni_width(uni_cp((const unsigned char *)pre, n, i));
++		int w = uni_width((const unsigned char *)pre, n, i);
+ 		if (c + w > g->cols) break;
+ 		row[c] = (Cell){ { 0 }, (unsigned char)l, A_PRE, FACE_NONE };
+ 		memcpy(row[c].ch, pre + i, l);
+@@ -770,11 +770,11 @@ static void draw_row(Buf *b, const Cell *x, int cols, int r)
+ 		int e = c;
+ 		size_t n = 0;
+ 		for (; e < cols && (e == c || (x[e].attr == x[c].attr && x[e].face == x[c].face) || !x[e].len); e++) {
+-			memcpy(run + n, x[e].ch, x[e].len);
++			memcpy(run + n, grid_text(&x[e]), x[e].len);
+ 			for (int k = 0; k < x[e].len; k++) col_of[n + (size_t)k] = e;
+ 			n += x[e].len;
+ 		}
+-		int np = n ? font_shape(run, n, placed, cap * 4) : 0;
++		int np = n ? font_shape(run, n, placed, cap * GRID_CLUSTER_MAX) : 0;
+ 		for (int i = 0; i < np; i++) {
+ 			const Placed *p = &placed[i];
+ 			blit(b, p->g, col_of[p->cluster] * cw + p->x + p->g->left, y0 + base - p->y - p->g->top,
+@@ -813,11 +813,11 @@ static int scratch(int cols)
+ 	if (cols <= cap) return 0;
+ 	Cell *r = realloc(row, (size_t)cols * sizeof *r);
+ 	if (r) row = r;
+-	unsigned char *u = realloc(run, (size_t)cols * 4);
++	unsigned char *u = realloc(run, (size_t)cols * GRID_CLUSTER_MAX);
+ 	if (u) run = u;
+-	int *m = realloc(col_of, (size_t)cols * 4 * sizeof *m);
++	int *m = realloc(col_of, (size_t)cols * GRID_CLUSTER_MAX * sizeof *m);
+ 	if (m) col_of = m;
+-	Placed *p = realloc(placed, (size_t)cols * 4 * sizeof *p);
++	Placed *p = realloc(placed, (size_t)cols * GRID_CLUSTER_MAX * sizeof *p);
+ 	if (p) placed = p;
+ 	if (!r || !u || !m || !p) return -1;
+ 	cap = cols;
