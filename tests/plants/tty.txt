@@ -26,3 +26,4 @@ tty: a face's background not sent~test TESTS=grid_diff~~src/tty/tty.c~	if (f->st
 tty: a face's style bits not sent~test TESTS=grid_diff~~src/tty/tty.c~f->style & FACE_ITALIC ? ";3"~0 ? ";3"
 tty: a long cluster printed from the cell's number~test TESTS=grid_diff~~src/tty/tty.c~out(grid_text(x), x->len);~out(x->ch, x->len < 4 ? x->len : 4);
 tty: a cluster's ambiguity read from the cell's number~test TESTS=grid_diff~~src/tty/tty.c~if (wide && x->len > 1) {~if (wide && x->ch[0] >= 0x80) {
+tty: Delete dropped as an unknown sequence~test TESTS=tty_input~~src/tty/tty.c~j == 3 && s[2] == '3' && s[3] ==~j == 3 && s[2] == '9' && s[3] ==
