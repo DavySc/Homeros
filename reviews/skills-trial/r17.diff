@@ -1,0 +1,246 @@
+diff --git a/tests/plants/uni.txt b/tests/plants/uni.txt
+index c50612e..31d89bb 100644
+--- a/tests/plants/uni.txt
++++ b/tests/plants/uni.txt
+@@ -11,3 +11,12 @@ frama-c: uni_gprev stops one cluster early~frama~~src/uni/uni.c~if (j + k >= i)
+ frama-c: VS16 does not widen an emoji~frama~~src/uni/uni.c~		return 2;¶	return w == 0~		return 1;¶	return w == 0
+ uni: an invalid lead byte joins what follows (fuzz_uni)~fuzz FUZZERS=uni FUZZ_SECONDS=60~~src/uni/uni.c~	if (k == 1 && s[i] >= 0x80) return 1;¶	unsigned p~	unsigned p
+ uni: uni_gprev starts on a continuation byte (fuzz_uni)~fuzz FUZZERS=uni FUZZ_SECONDS=60~~src/uni/uni.c~while (j > 0 && s[j] >= 0x80) j--;~while (j > 0 && s[j] >= 0xC0) j--;
++uni: the table read one code point off (test_uni_nvim)~test TESTS=uni_nvim~~src/uni/uni.c~uni_t2[uni_t1[c / UNI_B]][c % UNI_B]~uni_t2[uni_t1[(c + 1) / UNI_B]][(c + 1) % UNI_B]
++uni: one code point's entry wrong, U+1F9FF narrow (test_uni_nvim)~test TESTS=uni_nvim~~src/uni/uni.c~	return c < 0x110000 ?~	return c == 0x1F9FF ? 0 : c < 0x110000 ?
++uni: code points above U+10FFFF two cells wide (test_uni_nvim)~test TESTS=uni_nvim~~src/uni/uni.c~[c % UNI_B] : 0;~[c % UNI_B] : 64;
++uni: arabic_combine() dropped from uni_glen (test_uni_nvim)~test TESTS=uni_nvim~~src/uni/uni.c~ &&¶		    !(p == 0x644 && (c == 0x622 || c == 0x623 || c == 0x625 || c == 0x627))~
++uni: GB9c (Linker x Consonant) dropped from uni_glen (test_uni_nvim)~test TESTS=uni_nvim~~src/uni/uni.c~if (!glue && !(ic == 1 && it == 2) &&~if (!glue &&
++uni: GB12/13 regional indicators pair without limit (test_uni_nvim)~test TESTS=uni_nvim~~src/uni/uni.c~l = l == 8 && t == 8 ? 0 :~l = l == 8 && t == 8 ? 8 :
++uni: VS16 widens a narrow Other character too, not only emoji (test_uni_nvim)~test TESTS=uni_nvim~~src/uni/uni.c~(g == 12 || g == 8) && i~(g == 12 || g == 8 || g == 0) && i
++uni: a stray continuation byte A0..BF one cell wide (test_uni_nvim)~test TESTS=uni_nvim~~src/uni/uni.c~	if (k == 1) return 4;~	if (k == 1 && s[i] >= 0xC0) return 4;
++uni: the probes miss the Linker x Consonant probe (test_uni_nvim's own check)~test TESTS=uni_nvim~~tests/test_uni_nvim.c~{ KA VIR, KA, 0 },~
+diff --git a/tests/test_uni_nvim.c b/tests/test_uni_nvim.c
+new file mode 100644
+index 0000000..5cd989c
+--- /dev/null
++++ b/tests/test_uni_nvim.c
+@@ -0,0 +1,223 @@
++/* uni_glen and uni_width against Neovim 0.12 itself: nvim --headless calls
++   its own utfc_ptr2len() and utf_ptr2cells() through LuaJIT's FFI (both are
++   exported), on the same bytes as we do.
++   1. Every code point c below 2^21 (the range where uni.h admits that the
++      tables equal Neovim's values; c < 0x80 as its overlong 2-byte form, the
++      only way the table entry is reached): c between probes that tell each
++      Grapheme_Cluster_Break class, InCB value and the Arabic lam-alef rule
++      apart, as a follower and as a lead, and c's width alone and before VS16.
++   2. Random lines of valid, overlong, truncated and invalid bytes, code
++      points drawn class by class from the table: glen and width at every
++      byte offset, cluster starts or not.
++   One difference is known and pinned, not hidden: Neovim's utf8len_tab reads
++   F8..FB and FC..FD as leads of 5- and 6-byte sequences (one cluster, one
++   cell), where uni.h follows RFC 3629 (an invalid byte: 1 byte, 4 cells).
++   The random lines leave those leads out; the first lines hold them, alone
++   and with their full run of continuation bytes, the latter checked as that
++   difference, so a change on either side fails here.
++   The probes and lines are written here once; build/uni_nvim.lua only
++   replays them in nvim and streams the results back. */
++#include <string.h>
++#include "check.h"
++#include "uni.h"
++#include "../src/uni/tab.h"  /* to draw code points class by class; not the claim */
++
++#define EA "\xc3\xa9"            /* é, Other */
++#define CTL "\xc2\x85"           /* U+0085, Control */
++#define HL "\xe1\x84\x80"        /* U+1100, L */
++#define HV "\xe1\x85\xa1"        /* U+1161, V */
++#define HT "\xe1\x86\xa8"        /* U+11A8, T */
++#define LV "\xea\xb0\x80"        /* U+AC00, LV */
++#define LVT "\xea\xb0\x81"       /* U+AC01, LVT */
++#define RI "\xf0\x9f\x87\xa6"    /* U+1F1E6, Regional_Indicator */
++#define PRE "\xd8\x80"           /* U+0600, Prepend */
++#define EP "\xc2\xa9"            /* U+00A9, Extended_Pictographic */
++#define ZWJ "\xe2\x80\x8d"       /* U+200D */
++#define KA "\xe0\xa4\x95"        /* U+0915, InCB Consonant */
++#define VIR "\xe0\xa5\x8d"       /* U+094D, InCB Linker */
++#define GRAVE "\xcc\x80"         /* U+0300, Extend */
++#define SPM "\xe0\xa4\x83"       /* U+0903, SpacingMark */
++#define LAM "\xd9\x84"           /* U+0644 */
++#define ALEF "\xd8\xa7"          /* U+0627 */
++#define VS16 "\xef\xb8\x8f"      /* U+FE0F */
++
++/* c goes between pre and suf; w: width at c, else cluster length at 0 */
++static const struct { const char *pre, *suf; int w; } P[] = {
++	{ EA, "", 0 }, { CTL, "", 0 }, { HL, "", 0 }, { HV, "", 0 }, { HT, "", 0 },
++	{ LV, "", 0 }, { LVT, "", 0 }, { RI, "", 0 }, { RI RI, "", 0 }, { PRE, "", 0 },
++	{ EP ZWJ, "", 0 }, { EP, ZWJ EP, 0 }, { EP, EP, 0 }, { KA VIR, KA, 0 },
++	{ KA, KA, 0 }, { LAM, "", 0 },
++	{ "", EA, 0 }, { "", CTL, 0 }, { "", HL, 0 }, { "", HV, 0 }, { "", HT, 0 },
++	{ "", LV, 0 }, { "", RI RI, 0 }, { "", GRAVE, 0 }, { "", SPM, 0 }, { "", KA, 0 },
++	{ "", ZWJ EP, 0 }, { "", GRAVE ZWJ EP, 0 }, { "", ALEF, 0 },
++	{ "", "", 1 }, { "", VS16, 1 }, { EA, VS16, 1 },
++};
++#define NP (sizeof P / sizeof P[0])
++#define TOP 0x200000u
++#define LINES 100000
++
++static size_t enc(unsigned c, unsigned char *e)  /* shortest form, c < 0x80 as 2 bytes */
++{
++	if (c < 0x800) { e[0] = (unsigned char)(0xC0 + c / 64); e[1] = (unsigned char)(0x80 + c % 64); return 2; }
++	if (c < 0x10000) {
++		e[0] = (unsigned char)(0xE0 + c / 4096); e[1] = (unsigned char)(0x80 + c / 64 % 64);
++		e[2] = (unsigned char)(0x80 + c % 64); return 3;
++	}
++	e[0] = (unsigned char)(0xF0 + c / 262144); e[1] = (unsigned char)(0x80 + c / 4096 % 64);
++	e[2] = (unsigned char)(0x80 + c / 64 % 64); e[3] = (unsigned char)(0x80 + c % 64); return 4;
++}
++
++static void luastr(FILE *f, const char *s)
++{
++	fputc('"', f);
++	for (; *s; s++) fprintf(f, "\\%03u", (unsigned char)*s);
++	fputc('"', f);
++}
++
++static const char LUA[] =
++	"local ffi = require('ffi')\n"
++	"ffi.cdef('int utfc_ptr2len(const char *p); int utf_ptr2cells(const char *p);')\n"
++	"local C = ffi.C\n"
++	"assert(vim.o.arabicshape and vim.o.emoji and vim.o.ambiwidth == 'single')\n"
++	"local b, e = ffi.new('char[64]'), ffi.new('char[4]')\n"
++	"local o, m, out = ffi.new('unsigned char[65536]'), 0, io.stdout\n"
++	"local function put(v) o[m] = v; m = m + 1; if m == 65536 then out:write(ffi.string(o, m)); m = 0 end end\n"
++	"for c = 0, TOP - 1 do\n"
++	"  local k\n"
++	"  if c < 0x800 then e[0] = 0xC0 + bit.rshift(c, 6); e[1] = 0x80 + c % 64; k = 2\n"
++	"  elseif c < 0x10000 then e[0] = 0xE0 + bit.rshift(c, 12); e[1] = 0x80 + bit.rshift(c, 6) % 64; e[2] = 0x80 + c % 64; k = 3\n"
++	"  else e[0] = 0xF0 + bit.rshift(c, 18); e[1] = 0x80 + bit.rshift(c, 12) % 64; e[2] = 0x80 + bit.rshift(c, 6) % 64; e[3] = 0x80 + c % 64; k = 4 end\n"
++	"  for i = 1, #P do\n"
++	"    local p = P[i]\n"
++	"    local pre, suf = p[1], p[2]\n"
++	"    ffi.copy(b, pre, #pre); ffi.copy(b + #pre, e, k); ffi.copy(b + #pre + k, suf, #suf + 1)\n"
++	"    put(p[3] == 1 and C.utf_ptr2cells(b + #pre) or C.utfc_ptr2len(b))\n"
++	"  end\n"
++	"end\n"
++	"local f = assert(io.open('build/uni_nvim.lines', 'rb'))\n"
++	"local all = f:read('*a'); f:close()\n"
++	"for line in all:gmatch('([^\\n]*)\\n') do\n"
++	"  local s = ffi.cast('const char *', line)\n"
++	"  for i = 0, #line - 1 do put(C.utfc_ptr2len(s + i)); put(C.utf_ptr2cells(s + i)) end\n"
++	"end\n"
++	"out:write(ffi.string(o, m)); out:flush()\n";
++
++static FILE *nv;
++static unsigned long bad, seen;
++
++static int nvim(void)
++{
++	int t = fgetc(nv);
++	CHECK(t != EOF);
++	seen++;
++	return t;
++}
++
++static void cmp(int ours, const char *what, const unsigned char *s, size_t n, size_t at)
++{
++	int theirs = nvim();
++	if (theirs == ours || ++bad > 20) return;
++	fprintf(stderr, "WRONG %s at byte %zu of", what, at);
++	for (size_t i = 0; i < n; i++) fprintf(stderr, " %02x", s[i]);
++	fprintf(stderr, ": nvim %d, ours %d\n", theirs, ours);
++}
++
++static unsigned prop(unsigned c) { return c < 0x110000 ? uni_t2[uni_t1[c / UNI_B]][c % UNI_B] : 0; }
++
++/* code points by property byte, to draw each class equally often */
++static unsigned bycls[0x110000], start[257], ncls, cls[256];
++
++static size_t piece(unsigned char *s)
++{
++	static const unsigned sp[] = { 0x200D, 0xFE0F, 0x094D, 0x0915, 0x0644, 0x0622, 0x0623, 0x0625,
++		0x0627, 0x1F1E6, 0x0300, 0x1100, 0x1161, 0x11A8, 0xAC00, 0x1F600, 0x0600 };
++	unsigned char e[4];
++	unsigned r = rnd(100), c;
++	if (r < 15) { do s[0] = (unsigned char)(1 + rnd(127)); while (s[0] == '\n'); return 1; }
++	if (r < 30) { do s[0] = (unsigned char)(0x80 + rnd(0x80)); while (s[0] >= 0xF8 && s[0] <= 0xFD); return 1; }
++	if (r < 40) c = sp[rnd(sizeof sp / sizeof sp[0])];
++	else if (r < 80) { unsigned k = cls[rnd(ncls)]; c = bycls[start[k] + rnd(start[k + 1] - start[k])]; }
++	else c = rnd(TOP);
++	if (c < 0x80 && r < 80) { if (c == 0 || c == '\n') c = 'a'; s[0] = (unsigned char)c; return 1; }
++	size_t k = enc(c, e), m = k;
++	if (r >= 90) m = 1 + rnd((unsigned)k);  /* truncated, or 2 to 4 bytes from rnd(TOP) */
++	memcpy(s, e, m);
++	return m;
++}
++
++int main(void)
++{
++	for (unsigned c = 0; c < 0x110000; c++) start[prop(c) + 1]++;
++	for (unsigned k = 0; k < 256; k++) { if (start[k + 1]) cls[ncls++] = k; start[k + 1] += start[k]; }
++	unsigned fill[256];
++	memcpy(fill, start, sizeof fill);
++	for (unsigned c = 0; c < 0x110000; c++) bycls[fill[prop(c)]++] = c;
++
++	FILE *f = fopen("build/uni_nvim.lua", "w");
++	CHECK(f);
++	fprintf(f, "local TOP = %u\nlocal P = {\n", TOP);
++	for (size_t i = 0; i < NP; i++) {
++		fputc('{', f); luastr(f, P[i].pre); fputc(',', f); luastr(f, P[i].suf); fprintf(f, ",%d},\n", P[i].w);
++	}
++	fprintf(f, "}\n%s", LUA);
++	CHECK(fclose(f) == 0);
++
++	static unsigned char line[LINES][256];
++	static size_t len[LINES];
++	f = fopen("build/uni_nvim.lines", "wb");
++	CHECK(f);
++	static const char *const fixed[] = { "\xf8\x88\x80\x80\x80", "\xfc\x84\x80\x80\x80\x80",
++		"\xf8 \xf9\x80 \xfa\x80\x80 \xfb\x80\x80\x80 \xfc\x80\x80\x80\x80 \xfd\x80\x80\x80\x80" EA " \xfe\x80 \xff" };
++	for (int l = 0; l < LINES; l++) {
++		size_t n = 0, pieces = rnd(40);
++		if (l < 3) memcpy(line[l], fixed[l], n = strlen(fixed[l]));
++		else for (size_t p = 0; p < pieces; p++) n += piece(line[l] + n);
++		len[l] = n;
++		CHECK(fwrite(line[l], 1, n, f) == n && fputc('\n', f) == '\n');
++	}
++	CHECK(fclose(f) == 0);
++
++	nv = popen("nvim --clean --headless -n -l build/uni_nvim.lua", "r");
++	CHECK(nv);
++	/* what the probes see of each property byte, c's own length taken out;
++	   lam and the alefs are told apart by identity, not by class */
++	static unsigned char has[256], obs[256][NP];
++	unsigned char b[64];
++	for (unsigned c = 0; c < TOP; c++) {
++		unsigned char e[4], v[NP];
++		size_t k = enc(c, e);
++		for (size_t i = 0; i < NP; i++) {
++			size_t a = strlen(P[i].pre), z = strlen(P[i].suf), n = a + k + z, g;
++			memcpy(b, P[i].pre, a); memcpy(b + a, e, k); memcpy(b + a + k, P[i].suf, z);
++			if (P[i].w) cmp(v[i] = (unsigned char)uni_width(b, n, a), "width", b, n, a);
++			else cmp((int)(g = uni_glen(b, n, 0)), "cluster", b, n, 0), v[i] = (unsigned char)(g <= a ? g : g - k + 100);
++		}
++		unsigned q = prop(c);
++		if (c >= 0x80 && c < 0x110000 && !(c >= 0x622 && c <= 0x627) && c != 0x644 && !has[q])
++			has[q] = 1, memcpy(obs[q], v, NP);
++	}
++	/* so equal results on every c mean equal classes: the probes tell every
++	   property byte in the table apart */
++	for (unsigned q = 0; q < 256; q++)
++		for (unsigned r = q + 1; r < 256; r++)
++			if (has[q] && has[r] && !memcmp(obs[q], obs[r], NP))
++				fprintf(stderr, "WRONG probes: property bytes %u and %u look alike\n", q, r), bad++;
++	unsigned long probes = seen;
++	for (int l = 0; l < LINES; l++)
++		for (size_t i = 0; i < len[l]; i++) {
++			if (l < 2 && i == 0) {  /* the pinned difference */
++				CHECK(nvim() == 5 + l && uni_glen(line[l], len[l], 0) == 1);
++				CHECK(nvim() == 1 && uni_width(line[l], len[l], 0) == 4);
++				continue;
++			}
++			cmp((int)uni_glen(line[l], len[l], i), "cluster", line[l], len[l], i);
++			cmp(uni_width(line[l], len[l], i), "width", line[l], len[l], i);
++		}
++	CHECK(fgetc(nv) == EOF);
++	CHECK(pclose(nv) == 0);
++	if (bad) fprintf(stderr, "%lu of %lu differ from nvim\n", bad, seen);
++	CHECK(bad == 0);
++	printf("test_uni_nvim: %u code points x %zu probes (%lu), %d random lines (%lu offsets x 2) agree with nvim; 5- and 6-byte leads differ as pinned\n",
++	       TOP, NP, probes, LINES, (seen - probes) / 2);
++	return 0;
++}

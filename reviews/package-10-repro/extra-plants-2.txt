@@ -1,0 +1,6 @@
+# The reviewer's plants for the re-review (head 2204e10), run by extra-plants.sh 2.
+review2: a SIGKILL deadline outlives its child (kill(0, SIGKILL) hits the editor's own group)~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	c->killat = 0;¶~
+review2: only one read of the output pending at the exit~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~left -= (int)got)~left = 0)
+review2: stdin and its queue kept after the exit~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	if (c->fd[0] >= 0) close_in(c);¶	c->killat~	c->killat
+review2: the output pipes kept open after the exit~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~		close(c->fd[s]);¶		c->fd[s] = -1;¶		c->fn(c->ctx, s, NULL, 0);¶	}¶	if~		c->fd[s] = -1;¶		c->fn(c->ctx, s, NULL, 0);¶	}¶	if
+review2: the SIGKILL goes to the child, not its group~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~kill(-p[i].pid, SIGKILL)~kill(p[i].pid, SIGKILL)
