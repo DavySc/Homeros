@@ -30,7 +30,7 @@ static void on_input(void *ctx, int fd)
 	(void)ctx; (void)fd;
 	int k[256];
 	if (qn + 256 > QMAX) return;
-	int n = backend_input(k, 256);
+	int n = backend_wl.input(k, 256);
 	for (int i = 0; i < n; i++) {
 		if (k[i] == KEY_RESIZE) { resized = 1; continue; }
 		if (!tkey) tkey = now();
@@ -47,15 +47,15 @@ int main(int argc, char **argv)
 	static Editor e;
 	Grid g = { 0 }, shown = { 0 };
 	int fds[2], rows, cols, want = argc > 2 ? atoi(argv[2]) : 0;
-	if (argc < 2 || core_open(&e, argv[1]) || backend_open()) return 1;
-	for (int i = 0, n = backend_fds(fds); i < n; i++) loop_watch(fds[i], on_input, NULL);
-	backend_size(&rows, &cols);
+	if (argc < 2 || core_open(&e, argv[1]) || backend_wl.open()) return 1;
+	for (int i = 0, n = backend_wl.fds(fds); i < n; i++) loop_watch(fds[i], on_input, NULL);
+	backend_wl.size(&rows, &cols);
 	if (grid_resize(&g, rows, cols)) return 1;
 	int dirty = 1;
 	while (!e.quit && !(nkeys >= want && last && now() - last > QUIET)) {
 		if (resized) {
 			resized = 0;
-			backend_size(&rows, &cols);
+			backend_wl.size(&rows, &cols);
 			if (grid_resize(&g, rows, cols)) break;
 			dirty = 1;
 		}
@@ -65,10 +65,10 @@ int main(int argc, char **argv)
 			qn--;
 			keys_feed(&e, k, qn > 0);
 		}
-		if (dirty && backend_ready()) {
+		if (dirty && backend_wl.ready()) {
 			double a = tkey > tready ? tkey : tready;
 			core_draw(&e, &g);
-			backend_present(&g, &shown);
+			backend_wl.present(&g, &shown);
 			dirty = 0;
 			double z = now();
 			if (!first) first = z - t0;
@@ -76,14 +76,14 @@ int main(int argc, char **argv)
 			if (tkey) last = z;
 			tkey = 0;
 		}
-		int ready = backend_ready();
+		int ready = backend_wl.ready();
 		if (loop_once(qn ? 0 : nkeys >= want && last ? QUIET : -1)) break;
-		if (!ready && backend_ready()) tready = now();
+		if (!ready && backend_wl.ready()) tready = now();
 	}
 	qsort(frames, (size_t)nf, sizeof *frames, cmp);
 	printf("first frame %.2f ms; %d keys, %d frames; frame ready p50 %.3f p99 %.3f max %.3f ms\n", first, nkeys, nf,
 	       nf ? frames[nf / 2] : 0, nf ? frames[nf * 99 / 100] : 0, nf ? frames[nf - 1] : 0);
-	backend_close();
+	backend_wl.close();
 	grid_free(&g);
 	grid_free(&shown);
 	core_free(&e);
