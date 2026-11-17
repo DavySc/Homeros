@@ -81,12 +81,21 @@ static void sessions(void)
 		crash(&e);
 		CHECK(!core_open(&g, path));
 		size_t nb = text_read(g.buf->text, 0, b, sizeof b), nf = slurp(path, f, sizeof f);
-		CHECK(nb == na && !memcmp(a, b, na) && g.buf->flags == flags);
-		CHECK((flags & CORE_EMPTY) || g.buf->noeol == noeol);
-		/* modified exactly when it would save something else */
-		size_t ns = flags & CORE_EMPTY ? 0 : nb - (g.buf->noeol ? 1 : 0);
-		CHECK(core_modified(g.buf) == !(ns == nf && !memcmp(b, f, nf)));
-		recovered += core_modified(g.buf);
+		/* what each would save: states that save the same bytes are one state
+		   (one empty line with noeol saves 0 bytes, as the empty buffer does,
+		   and a 0-byte file reads back empty: Neovim's ML_EMPTY) */
+		size_t sa = flags & CORE_EMPTY ? 0 : na - (noeol ? 1 : 0);
+		size_t sb = g.buf->flags & CORE_EMPTY ? 0 : nb - (g.buf->noeol ? 1 : 0);
+		CHECK(sb == sa && !memcmp(a, b, sa));
+		/* recovered exactly when the crashed buffer would save something else
+		   than the file has; then the buffer itself comes back */
+		int differs = !(sa == nf && !memcmp(a, f, nf));
+		CHECK(core_modified(g.buf) == differs);
+		if (differs) {
+			CHECK(nb == na && !memcmp(a, b, na) && g.buf->flags == flags);
+			CHECK((flags & CORE_EMPTY) || g.buf->noeol == noeol);
+		}
+		recovered += differs;
 		core_free(&g);
 	}
 	printf("  500 crashed sessions reopened exactly (%d with unsaved text recovered)\n", recovered);
@@ -128,6 +137,23 @@ static void put_journal(const char *j, size_t n)
 	int fd = open(jname, O_WRONLY | O_CREAT | O_TRUNC, 0600);
 	CHECK(fd >= 0 && write(fd, j, n) == (ssize_t)n);
 	close(fd);
+}
+
+/* One empty line with noeol saves 0 bytes, as the empty buffer does: after
+   a crash the file's empty buffer comes back, unmodified (review by thread 0
+   of package 5's keys: d$ ... dw reaches it, as in Neovim). */
+static void empty_pair(void)
+{
+	Editor e;
+	put(path, "a");
+	CHECK(!core_open(&e, path) && e.buf->noeol);
+	keys_feed(&e, 'x', 0);
+	CHECK(text_len(e.buf->text) == 1 && !(e.buf->flags & CORE_EMPTY) && e.buf->noeol);
+	crash(&e);
+	put(path, "");
+	CHECK(!core_open(&e, path) && (e.buf->flags & CORE_EMPTY) && !core_modified(e.buf));
+	core_free(&e);
+	puts("  one empty line with noeol and the empty buffer: the same saved state across a crash");
 }
 
 /* A power loss right after :w can bring back the journal from before it:
@@ -211,6 +237,7 @@ int main(void)
 	snprintf(jname, sizeof jname, "%s/homeros/journal/%s", st, path);
 	for (char *c = jname + strlen(st) + 17; *c; c++) if (*c == '/') *c = '%';
 	sessions();
+	empty_pair();
 	outside();
 	after_save();
 	firstchar();
