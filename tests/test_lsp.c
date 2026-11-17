@@ -237,6 +237,8 @@ static void fkeep(void)
 	old[k].v = sver;
 }
 
+static size_t fbehind;   /* bytes read behind the message being handled */
+
 static void fhandle(const char *m, size_t n)
 {
 	if (json_parse(m, n, &ft, &fcap) < 0) wrong("not JSON: %.*s", (int)n, m);
@@ -253,6 +255,8 @@ static void fhandle(const char *m, size_t n)
 		if (json_get(m, ft, json_get(m, ft, json_get(m, ft, p, "capabilities"), "lean"), "incrementalDiagnosticSupport") < 0)
 			wrong("no incremental diagnostics capability");
 		if (rnd(2)) usleep(rnd(30000));               /* messages pile up behind it */
+		struct pollfd pf = { 0, POLLIN, 0 };
+		if (fbehind || poll(&pf, 1, 0) > 0) wrong("a message sent before the initialize reply");
 		Str r = { 0 };
 		str_putf(&r, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"result\":{\"capabilities\":{\"textDocumentSync\":2}}}", json_int(m, ft, id));
 		fsend(&r);
@@ -335,6 +339,7 @@ static int fake(const char *seed, const char *log)
 				size_t h = (size_t)(e - in) + 4, len = strtoul(in + 15, NULL, 10);
 				if (strncmp(in, "Content-Length: ", 16)) wrong("bad header");
 				if (n - h < len) break;
+				fbehind = n - h - len;
 				fhandle(in + h, len);
 				memmove(in, in + h + len, n - h - len);
 				n -= h + len;
