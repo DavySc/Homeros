@@ -14,7 +14,7 @@ SHELL = /bin/bash
 # value from the command line or make -e never points it at a real one)
 override export XDG_STATE_HOME := $(CURDIR)/build/state
 
-BASE = text undo uni core keys grid tty loop file syntax theme
+BASE = text undo uni core keys grid tty loop file syntax theme tools git lsp
 # src/win/ (package 9) is the Windows build's, cross-compiled on its own
 MODULES = $(BASE) $(filter-out $(BASE) win,$(patsubst src/%/,%,$(wildcard src/*/)))
 pick = $(if $(wildcard src/$(1)/*.c),$(wildcard src/$(1)/*.c),ref/$(1).c)
@@ -32,8 +32,8 @@ OBJS =
 
 # the unit tests link everything (a test may include src/main.c, which
 # names the window backend); the fuzzers and drivers everything but the
-# terminal, the window and the loop
-LIB_SRCS := $(filter-out $(call pick,tty) $(call pick,loop) $(call pick,wl),$(SRCS))
+# terminal and the window (the tools and git spawn through the loop)
+LIB_SRCS := $(filter-out $(call pick,tty) $(call pick,wl),$(SRCS))
 
 CC ?= cc
 CFLAGS ?= -O2
@@ -115,6 +115,14 @@ frama: | build
 	frama-c -wp -wp-rte -wp-prover z3,cvc5 -wp-timeout 20 \
 	  -cpp-extra-args="-Iinclude" $(FRAMA_FILES) | tee build/frama.log
 	grep -qE "Proved goals: +([0-9]+) / \1$$" build/frama.log
+	frama-c -wp -wp-rte -wp-prover z3,cvc5 -wp-timeout 20 -wp-fct nls \
+	  -cpp-extra-args="-Iinclude -D_DEFAULT_SOURCE" src/text/text.c | tee build/frama-text.log
+	grep -qE "Proved goals: +([0-9]+) / \1$$" build/frama-text.log
+ifneq ($(wildcard src/lsp/u16.c),)
+	frama-c -wp -wp-rte -wp-prover z3,cvc5 -wp-timeout 20 -wp-fct lsp_u16,lsp_u16_byte,step \
+	  -cpp-extra-args="-Iinclude" src/lsp/u16.c | tee build/frama-lsp.log
+	grep -qE "Proved goals: +([0-9]+) / \1$$" build/frama-lsp.log
+endif
 
 # the Windows builds (packages 9 and 11): each package's src/<module>/check.sh
 # cross-builds its tests with zig cc and runs them under Wine (package 9's on

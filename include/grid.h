@@ -45,8 +45,17 @@ enum { FACE_BOLD = 1, FACE_ITALIC = 2, FACE_UNDERLINE = 4, FACE_STRIKE = 8, FACE
 typedef struct { unsigned char fg[3], bg[3], style; } Face;
 extern const Face faces[FACE_COUNT];
 
+/* A cell holds one grapheme cluster of at most GRID_CLUSTER_MAX bytes:
+   Neovim's MAX_SCHAR_SIZE (32) less its NUL.  A longer cluster is cut to
+   its longest prefix of whole code points that fits, and the rest is
+   dropped, as Neovim's utfc_ptrlen2schar() does. */
+enum { GRID_CLUSTER_MAX = 31 };
+
 typedef struct {
-	unsigned char ch[4], len;  /* one character, UTF-8; len 0 = right half of a wide one */
+	unsigned char ch[4], len;  /* the cluster's UTF-8, len bytes: up to 4 in
+	                              ch, a longer one in the grid's cluster store
+	                              and ch then holds its number (Neovim's
+	                              schar_T); len 0 = right half of a wide one */
 	unsigned char attr, face;  /* face: FACE_*, set by the core after grid_put */
 } Cell;
 
@@ -59,8 +68,15 @@ typedef struct {
 int  grid_resize(Grid *g, int rows, int cols);    /* 0 ok, -1 out of memory; cells cleared */
 void grid_free(Grid *g);
 void grid_clear(Grid *g);
-/* Puts one character at (r, c) if it fits; returns the cells it took. */
+/* Puts one cluster at (r, c) if it fits; returns the cells it took. */
 int  grid_put(Grid *g, int r, int c, const unsigned char *s, size_t n, int width, int attr);
+/* The bytes of a cell, len of them. */
+const unsigned char *grid_text(const Cell *c);
+/* Before each frame: when the cluster store is over half full it is
+   emptied, the numbers in every grid go stale, and this returns 1, so the
+   caller draws everything again (Neovim's schar_cache_clear_if_full()).
+   The store is static: nothing is allocated. */
+int  grid_frame(void);
 /* Puts an ASCII string; returns the next column. */
 int  grid_puts(Grid *g, int r, int c, const char *s, int attr);
 int  grid_cell_eq(const Cell *a, const Cell *b);
