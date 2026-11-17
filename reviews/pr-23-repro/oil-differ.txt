@@ -1,0 +1,125 @@
+C 7018407
+R 1 /000 󰉋  ../
+R 1 /001 󰉋  .hidden/
+R 1 /009 󰉋  deep/
+R 1 /008 󰉋  sub/
+R 1 /006 󰉋  Ä.md/
+R 1 /003 󱁤  Makefile
+R 1 /004 󰈔  a b
+R 1 /007 󰢱  b.lua
+R 1 /005 󰸭  img.png
+R 1 /002 󰈔  v2.0.1
+R 2 /000 󰉋  ../
+R 2 /011 󰈔  UPPER -> 007
+R 2 /010 󰢱  b.lua
+K 1 /tmp/oc/ directory 0 .hidden
+K 2 /tmp/oc/ file 0 v2.0.1
+K 3 /tmp/oc/ file 0 Makefile
+K 4 /tmp/oc/ file 0 a b
+K 5 /tmp/oc/ file 0 img.png
+K 6 /tmp/oc/ directory 0 Ä.md
+K 7 /tmp/oc/ file 0 b.lua
+K 8 /tmp/oc/ directory 0 sub
+K 9 /tmp/oc/ directory 0 deep
+K 10 /tmp/oc/sub/ file 0 b.lua
+K 11 /tmp/oc/sub/ link 0 UPPER -> 007
+E 1 /000 󰉋  ../
+E 1 /001 󰉋  .hidden/
+E 1 /009 󰉋  deep/
+E 1 /008 󰉋  sub/
+E 1 /006 󰉋  Ä.md/
+E 1 /003 󱁤  Makefile
+E 1 /004 󰈔  a b
+E 1 /007 󰢱  b.lua
+E 1 /005 󰸭  img.png
+E 1 /002 󰈔  v2.0.1
+E 2 /001 b.lua
+E 2 /000 󰉋  ../
+E 2 /011 󰈔  UPPER -> 007
+E 2 /010 󰢱  /
+X 2 0 Parsing icon failed
+X 2 3 No filename found
+C 1069
+R 1 /000 󰉋  ../
+R 1 /005 󰉋  notes.org/ -> sub/
+R 1 /002 󰉋  sub/
+R 1 /003 󰈔  UPPER
+R 1 /001 󰙱  a.c
+R 1 /004 󰦪  new.txt
+R 2 /000 󰉋  ../
+R 2 /006 󰈔  a{b
+R 2 /007 󰈔  sub
+K 1 /tmp/oc/ file 0 a.c
+K 2 /tmp/oc/ directory 0 sub
+K 3 /tmp/oc/ file 0 UPPER
+K 4 /tmp/oc/ file 0 new.txt
+K 5 /tmp/oc/ link 1 notes.org -> sub
+K 6 /tmp/oc/sub/ file 0 a{b
+K 7 /tmp/oc/sub/ file 0 sub
+E 1 /000 󰉋  ../
+E 1 /005 󰉋  notes.org/ -> sub/
+E 1 /002 󰉋  sub/
+E 1 /003 󰈔  UPPER
+E 1 /001 x  /
+E 1 /001 󰙱  a.c
+E 1 /004 󰦪  new.txt
+X 1 4 No filename found
+E 2 /000 󰉋  ..//
+E 2 /006 󰈔  a{b
+E 2 /001 x  /
+E 2 /007 󰈔  sub
+X 2 2 No filename found
+C 7002259
+R 1 /000 󰉋  ../
+R 1 /001 󰉋  sub/
+R 2 /000 󰉋  ../
+K 1 /tmp/oc/ directory 0 sub
+E 1 sub//
+E 1 /000 󰉋  ../
+E 1 /001 󰉋  new.txt
+E 2 /000 󰉋  ../
+X 0 -1 Detected cycle in desired paths
+C 1002
+R 1 /000 󰉋  ../
+R 1 /002 󰉋  file9.txt/ -> sub/
+R 1 /005 󰉋  sub/
+R 1 /001 󰙱  a.c
+R 1 /004 󰦪  file02.txt
+R 1 /003 󰈔  ln
+R 1 /006 󰦪  new.txt
+R 2 /000 󰉋  ../
+R 2 /007 󰉋  Ä.md/
+K 1 /tmp/oc/ file 0 a.c
+K 2 /tmp/oc/ link 1 file9.txt -> sub/
+K 3 /tmp/oc/ file 0 ln
+K 4 /tmp/oc/ file 0 file02.txt
+K 5 /tmp/oc/ directory 0 sub
+K 6 /tmp/oc/ file 0 new.txt
+K 7 /tmp/oc/sub/ directory 0 Ä.md
+E 1 /000 󰉋  ../
+E 1 /002 󰉋  file9.txt/ -> sub/
+E 1 /005 󰉋  sub/
+E 1 /001 󰙱  a.c
+E 1 /004 󰦪  file02.txt
+E 1 /000 󰉋  ../
+E 1 /003 󰈔  ln
+E 1 /006 󰦪  new.txt
+E 2 /007 󰉋  Ä.md/
+C 1076
+R 1 /000 󰉋  ../
+R 1 /003 󰉋  sub/
+R 1 /002 󰈔  ln
+R 1 /001 󰈔  sub2
+R 2 /000 󰉋  ../
+K 1 /tmp/oc/ file 0 sub2
+K 2 /tmp/oc/ file 0 ln
+K 3 /tmp/oc/ directory 0 sub
+E 1 /000 󰉋  ../
+E 1 /003 󰉋  sub/
+E 1 p{1,2}{3,4}
+E 1 /002 󰈔  ln
+E 1 /001 󰈔  sub2
+E 2 /000 󰉋  ../
+A create file /tmp/oc/p11 -
+A create file /tmp/oc/p22 -
+.
