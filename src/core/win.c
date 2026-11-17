@@ -377,6 +377,10 @@ static void win_init(Win *n, Win *o)
 	n->line = o->line; n->col = o->col; n->want = o->want;
 	n->top = o->top; n->left = o->left;
 	n->wrap = o->wrap;
+	memcpy(n->jump, o->jump, (size_t)o->njump * sizeof o->jump[0]);   /* copy_jumplist() */
+	n->njump = o->njump;
+	n->jumpidx = o->jumpidx;
+	n->changeidx = o->changeidx;
 	n->frame->s.wrow = o->frame->s.wrow;
 	n->frame->s.fraction = o->frame->s.fraction;
 	n->frame->s.prev_fraction_row = o->frame->s.prev_fraction_row;

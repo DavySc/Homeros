@@ -826,14 +826,11 @@ static void scroll_redraw(Editor *e, Win *w, int up, long count)
 	if (w->line != pline) coladvance(e, w);
 }
 
-/* scroll_redraw() never beeps (measured: a mapping goes on after CTRL-E
-   at the end and CTRL-Y at the top) */
-int core_scroll(Editor *e, long n)
+void core_scroll(Editor *e, long n)
 {
 	if (n > 0) scroll_redraw(e, e->win, 1, n);
 	else if (n < 0) scroll_redraw(e, e->win, 0, -n);
 	core_update(e);
-	return 0;
 }
 
 /* scroll_with_sms(): scroll with 'smoothscroll' on, then finish a line left

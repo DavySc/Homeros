@@ -412,10 +412,36 @@ static int enter_buffer(Editor *e, Buf *b, int how)
 	return 0;
 }
 
-/* hidden is on: a buffer stays loaded when no window shows it. */
+/* setpcmark(): the cursor joins the window's jump list, as the buffer
+   commands do before they leave a buffer (jumpoptions "clean", not
+   "stack": nothing after the current entry is cut) */
+static void setpcmark(Editor *e)
+{
+	Win *w = e->win;
+	if (w->njump == JUMPLIST_SIZE) memmove(w->jump, w->jump + 1, (JUMPLIST_SIZE - 1) * sizeof w->jump[0]);
+	else w->njump++;
+	w->jump[w->njump - 1].buf = e->buf;
+	w->jump[w->njump - 1].m = (Mark){ w->line, w->col, 1 };
+	w->jumpidx = w->njump;
+}
+
+/* mark_jumplist_forget_file() */
+static void jump_forget(Win *w, const Buf *b)
+{
+	for (int i = w->njump - 1; i >= 0; i--)
+		if (w->jump[i].buf == b) {
+			if (w->jumpidx > i) w->jumpidx--;
+			memmove(w->jump + i, w->jump + i + 1, (size_t)(--w->njump - i) * sizeof w->jump[0]);
+		}
+}
+
+/* set_curbuf() (:b, :bn, :bp) and buflist_getfile() (CTRL-^) mark the
+   jump; hidden is on: a buffer stays loaded when no window shows it */
 static int buf_switch(Editor *e, Buf *b, int how)
 {
-	return b == e->buf ? 0 : enter_buffer(e, b, how);
+	if (b == e->buf) return 0;
+	setpcmark(e);
+	return enter_buffer(e, b, how);
 }
 
 static Buf *buf_by_path(Editor *e, const char *path)
@@ -459,6 +485,7 @@ static int edit_file(Editor *e, const char *path, int force, int split)
 {
 	Buf *b = e->buf;
 	Win *w = e->win;
+	setpcmark(e);                      /* do_exedit(), empty_curbuf(), even when it fails */
 	if (!path || (*path && b->path && !strcmp(b->path, path))) {   /* :e, :e!, :e on its own name */
 		if (!b->path) { core_msg(e, "E32: No file name"); return -1; }
 		if (!force && core_modified(b)) {
@@ -602,6 +629,7 @@ int core_buf_delete(Editor *e, int nr, int force)
 	/* the windows on b close while they are not the last */
 	while (e->win->buf == b && e->wins->next) win_close(e, e->win);
 	if (e->win->buf != b) {
+		jump_forget(e->win, b);
 		for (Win *w = e->wins, *nx; w; w = nx) {
 			nx = w->next;
 			if (w->buf == b && e->wins->next) win_close(e, w);
@@ -609,15 +637,34 @@ int core_buf_delete(Editor *e, int nr, int force)
 		buf_unlist(e, b);
 		return 0;
 	}
-	/* the last window shows b: another listed buffer there.  Neovim takes
-	   the newest file in the jump list (the keys', package 5), then the
-	   next buffer, then the previous; here the alternate stands in for the
-	   jump list (hypothesis: the same while the jump list's last file is
-	   the alternate) */
-	Buf *to = e->win->alt;
-	if (!to || to == b || !buf_listed(e, to)) {
-		to = *buf_slot(&e->bufs, b->nr + 1);
-		if (!to) for (Buf *x = e->bufs; x && x->nr < b->nr; x = x->next) to = x;
+	/* the last window shows b: do_buffer_ext() goes to the newest listed,
+	   loaded buffer in the jump list, b's entries gone first, from the
+	   current entry back (and round); else the next loaded buffer, then
+	   the one before; else the first unloaded one seen */
+	Win *w = e->win;
+	Buf *to = NULL, *bp = NULL;
+	jump_forget(w, b);
+	if (w->njump) {
+		if (w->jumpidx == w->njump) w->jumpidx = w->njump - 1;
+		int i = w->jumpidx;
+		do {
+			Buf *x = w->jump[i].buf;
+			if (x != b && buf_listed(e, x)) {
+				if (x->text) { to = x; w->jumpidx = i; break; }
+				if (!bp) bp = x;
+			}
+			if (--i < 0) i = w->njump - 1;
+		} while (i != w->jumpidx);
+	}
+	if (!to) {
+		/* below: the nearest under b, as b_prev walks */
+		Buf *below = NULL, *below_bp = NULL;
+		for (Buf *x = e->bufs; x; x = x->next)
+			if (x->nr < b->nr) { if (x->text) below = x; else below_bp = x; }
+			else if (x->nr > b->nr && !to) { if (x->text) to = x; else if (!bp) bp = x; }
+		if (!to) to = below;
+		if (!to) to = bp ? bp : below_bp;
+		setpcmark(e);                  /* set_curbuf(), not found in the jump list */
 	}
 	if (enter_buffer(e, to, ENTER_B)) return -1;
 	buf_unlist(e, b);
