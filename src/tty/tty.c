@@ -111,7 +111,7 @@ static int key(const unsigned char *s, int n, int force, int *k)
 		while (j < n && (s[j] < 0x40 || s[j] > 0x7e)) j++;
 		if (j == n) return force;
 		*k = s[2] == 'A' ? KEY_UP : s[2] == 'B' ? KEY_DOWN : s[2] == 'C' ? KEY_RIGHT : s[2] == 'D' ? KEY_LEFT
-		   : j == 3 && s[2] == '3' && s[3] == '~' ? KEY_DEL : -1;   /* Delete: termkey's CSI 3 ~ */
+		   : s[2] == '3' && s[3] == '~' ? KEY_DEL : -1;   /* Delete: termkey's CSI 3 ~ */
 		return j + 1;
 	}
 	if (s[0] < 0xC2 || s[0] > 0xF4) return 1;      /* ASCII, or no UTF-8 lead */

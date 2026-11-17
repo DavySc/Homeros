@@ -35,7 +35,7 @@ static void put(size_t *n, const char *s) { memcpy(in + *n, s, strlen(s)); *n +=
 /* appends one random key's bytes to in and its keys (or none) to want */
 static void token(size_t *n, int *nw, int last)
 {
-	static const char *const csi[] = { "\x1b[1;5A", "\x1b[3;5~", "\x1b[200~", "\x1b[?1u", "\x1b[H" };
+	static const char *const csi[] = { "\x1b[1;5A", "\x1b[3;5~", "\x1b[2~", "\x1b[200~", "\x1b[?1u", "\x1b[H" };
 	/* not UTF-8: overlong, surrogate, past U+10FFFF (0x110000 would be
 	   KEY_UP), a lead cut by another lead; each byte is U+FFFD */
 	static const char *const bad[] = { "\xf4\x90\x80\x80", "\xf4\x90\x80\x84", "\xed\xa0\x80", "\xc0\x80",
@@ -54,7 +54,7 @@ static void token(size_t *n, int *nw, int last)
 		put(n, (const char *[]){ "\x1b[A", "\x1b[B", "\x1b[C", "\x1b[D", "\x1b[3~" }[i]);
 		want[(*nw)++] = (int[]){ KEY_UP, KEY_DOWN, KEY_RIGHT, KEY_LEFT, KEY_DEL }[i];
 	} else if (t < 9) {                /* a sequence that is no key: dropped */
-		put(n, csi[rnd(5)]);
+		put(n, csi[rnd(6)]);
 	} else if (t < 10) {
 		const char *s = bad[rnd(9)];
 		put(n, s);
