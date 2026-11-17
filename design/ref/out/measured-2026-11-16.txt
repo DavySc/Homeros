@@ -1,0 +1,16 @@
+Outputs of graph.py, big.py and idle.py, one run each, 2026-11-16 (Neovim 0.12.6, Helix 25.07.1, Emacs 31.1 -nw -Q).
+
+graph.py: press right N times over  a | e+U+0301 | family ZWJ emoji | NL flag | 中 | b , then delete
+nvim  {"1": deleted é, "2": deleted family emoji, "3": deleted flag, "4": deleted 中}
+helix {same as nvim}
+emacs {"1": broke é (1 byte gone), "2".."4": one code point of the family emoji gone}
+
+big.py: 100 MB text file (proto/gen_input.py)
+nvim   open_100MB=0.45s rss=135MB jump_to_end=10ms
+helix  open_100MB=0.34s rss=130MB jump_to_end=10ms
+emacs  open_100MB=0.62s rss=141MB jump_to_end=9ms   (includes answering the "really open?" prompt)
+
+idle.py: 20 s idle, no language server
+nvim   context switches=1  cpu_ticks=0
+helix  context switches=0  cpu_ticks=0
+emacs  context switches=1  cpu_ticks=0

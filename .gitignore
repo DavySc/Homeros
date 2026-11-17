@@ -1,0 +1,6 @@
+build/
+/homeros
+/tools-env
+design/specs/states/
+crash-*
+.frama-c/

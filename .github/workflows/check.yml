@@ -1,0 +1,16 @@
+# Every merge runs the whole check (CLAUDE.md, "Working in parallel").
+name: check
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+      - run: sudo apt-get update && sudo apt-get install -y clang libclang-rt-18-dev
+      - run: nix build -f design/env.nix tools -o tools-env
+      - run: echo "$PWD/tools-env/bin" >> "$GITHUB_PATH"
+      - run: why3 config detect
+      - run: make check
+      - run: make planted

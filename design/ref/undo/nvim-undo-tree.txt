@@ -1,0 +1,35 @@
+start                        text=                       seq_cur=0 seq_last=0 changenr=0
+insert one                   text= one                   seq_cur=1 seq_last=1 changenr=1
+o two                        text= one|  two             seq_cur=2 seq_last=2 changenr=2
+1 line less; before #2  0 seconds agou                            text= one                   seq_cur=1 seq_last=2 changenr=1
+o three (branch)             text= one|  three           seq_cur=3 seq_last=3 changenr=3
+1 line less; before #3  0 seconds agou                            text= one                   seq_cur=1 seq_last=3 changenr=1
+1 more line; after #3  0 seconds agoC-r (newest branch?)         text= one|  three           seq_cur=3 seq_last=3 changenr=3
+3 changes; after #2  0 seconds agog-                           text= one|  two             seq_cur=2 seq_last=3 changenr=2
+1 line less; before #2  0 seconds agog-                           text= one                   seq_cur=1 seq_last=3 changenr=1
+1 line less; before #1  0 seconds agog-                           text=                       seq_cur=0 seq_last=3 changenr=0
+1 changes; before #1  0 seconds agog- at root                   text=                       seq_cur=0 seq_last=3 changenr=0
+1 more line; after #1  0 seconds agog+                           text= one                   seq_cur=1 seq_last=3 changenr=1
+1 more line; after #2  0 seconds agog+                           text= one|  two             seq_cur=2 seq_last=3 changenr=2
+3 changes; after #3  0 seconds agog+                           text= one|  three           seq_cur=3 seq_last=3 changenr=3
+:undo 23 changes; after #2  0 seconds ago:undo 2                      text= one|  two             seq_cur=2 seq_last=3 changenr=2
+1 line less; before #2  0 seconds agou                            text= one                   seq_cur=1 seq_last=3 changenr=1
+1 more line; after #2  0 seconds agoC-r after :undo 2            text= one|  two             seq_cur=2 seq_last=3 changenr=2
+:undo 02 fewer lines; before #1  0 seconds ago:undo 0                      text=                       seq_cur=0 seq_last=3 changenr=0
+:earlier 101 changes; before #1  0 seconds ago:earlier 10 (past root)      text=                       seq_cur=0 seq_last=3 changenr=0
+:later 992 more lines; after #3  0 seconds ago:later 99                    text= one|  three           seq_cur=3 seq_last=3 changenr=3
+:undo 11 line less; after #1  0 seconds ago:undo 1                      text= one                   seq_cur=1 seq_last=3 changenr=1
+o two2 (3rd branch at 1)     text= one| two2             seq_cur=4 seq_last=4 changenr=4
+1 line less; before #4  0 seconds agou                            text= one                   seq_cur=1 seq_last=4 changenr=1
+1 more line; after #4  0 seconds agoC-r                          text= one| two2             seq_cur=4 seq_last=4 changenr=4
+tree:
+  seq 1
+  seq 4 newhead
+   alt:
+      seq 3
+       alt:
+          seq 2
+insert ab<Left>c             text=acb                    seq_cur=2 seq_last=2 changenr=2
+1 change; before #2  0 seconds agou (Left splits group?)       text=ab                     seq_cur=1 seq_last=2 changenr=1
+insert ab C-g u c            text=abc                    seq_cur=2 seq_last=2 changenr=2
+1 change; before #2  0 seconds agou (C-g u breaks)             text=ab                     seq_cur=1 seq_last=2 changenr=1

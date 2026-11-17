@@ -1,0 +1,6 @@
+(require 'eglot)
+(define-derived-mode fake-mode prog-mode "Fake")
+(add-to-list 'auto-mode-alist '("\\.fake\\'" . fake-mode))
+(add-to-list 'eglot-server-programs '(fake-mode . ("python3" "/opt/ne/ref/fakelsp.py")))
+(add-hook 'fake-mode-hook #'eglot-ensure)
+(setq eglot-events-buffer-config '(:size 0))
