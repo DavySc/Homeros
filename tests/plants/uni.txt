@@ -1,5 +1,17 @@
-# Plants for ref/uni.c (format in tools/planted.sh).  The package that builds
-# src/uni/ replaces this file with plants for its own code.
-uni: 0xF8 read as a 4-byte lead~test TESTS=uni~~ref/uni.c~c < 0xF8 ? 4 : 0;~c < 0xFC ? 4 : 0;
-frama-c: the UTF-8 kernel returns 1 (weak contract trap)~frama~~ref/uni.c~		if (s[i + j] < 0x80 || s[i + j] >= 0xC0) return 1;¶	return k;~		if (s[i + j] < 0x80 || s[i + j] >= 0xC0) return 1;¶	return 1;
-frama-c: uni_prev always steps one byte back (weak contract trap)~frama~~ref/uni.c~	if (i >= 2 && uni_len(s, n, i - 2) == 2) return i - 2;~	return i - 1;
+# Plants for src/uni/uni.c (format in tools/planted.sh).  Frama-C catches the
+# contract ones; test_uni_nvim the data and Neovim-rule ones (the tables' link
+# to Unicode is admitted in Frama-C, so only that test can see it); fuzz_uni
+# the tiling ones.
+uni: 0xF8 read as a 4-byte lead~test TESTS=uni~~src/uni/uni.c~c < 0xF8 ? 4 : 0;~c < 0xFC ? 4 : 0;
+frama-c: the UTF-8 kernel returns 1 (weak contract trap)~frama~~src/uni/uni.c~		if (s[i + j] < 0x80 || s[i + j] >= 0xC0) return 1;¶	return k;~		if (s[i + j] < 0x80 || s[i + j] >= 0xC0) return 1;¶	return 1;
+frama-c: uni_prev always steps one byte back (weak contract trap)~frama~~src/uni/uni.c~	if (i >= 2 && uni_len(s, n, i - 2) == 2) return i - 2;~	return i - 1;
+frama-c: GB9a forgotten (SpacingMark breaks)~frama~~src/uni/uni.c~t == 2 || t == 11 || t == 9 || l == 10~t == 2 || t == 11 || l == 10
+frama-c: GB11 state lost after Extend~frama~~src/uni/uni.c~l == 12 && t == 2 ? 12 :~l == 12 && t == 2 ? 2 :
+frama-c: uni_gprev stops one cluster early~frama~~src/uni/uni.c~if (j + k >= i) return j;~if (j + k > i) return j;
+frama-c: VS16 does not widen an emoji~frama~~src/uni/uni.c~		return 2;¶	return w == 0~		return 1;¶	return w == 0
+uni: table read one code point off~test TESTS=uni_nvim~~src/uni/uni.c~uni_t2[uni_t1[c / UNI_B]][c % UNI_B] : 0;~uni_t2[uni_t1[c / UNI_B]][(c + 1) % UNI_B] : 0;
+uni: lam and alef do not join~test TESTS=uni_nvim~~src/uni/uni.c~!(p == 0x644 &&~!(p == 0x645 &&
+uni: GB9c Linker Extend state dropped~test TESTS=uni_nvim~~src/uni/uni.c~ic = ic == 1 && it == 3 ? 1 : it;~ic = it;
+uni: an invalid lead byte joins what follows (fuzz_uni)~fuzz FUZZERS=uni FUZZ_SECONDS=60~~src/uni/uni.c~	if (k == 1 && s[i] >= 0x80) return 1;¶	unsigned p~	unsigned p
+uni: uni_gprev starts on a continuation byte (fuzz_uni)~fuzz FUZZERS=uni FUZZ_SECONDS=60~~src/uni/uni.c~while (j > 0 && s[j] >= 0x80) j--;~while (j > 0 && s[j] >= 0xC0) j--;
+uni: lam and alef with hamza above do not join~test TESTS=uni_nvim~~src/uni/uni.c~c == 0x623 || ~
