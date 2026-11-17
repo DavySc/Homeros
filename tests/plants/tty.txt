@@ -2,8 +2,8 @@
 # (format in tools/planted.sh).
 tty: every cell sent every frame~test TESTS=grid_diff~~src/tty/tty.c~			if (grid_cell_eq(x, y)) continue;~
 tty: a frame outside a synchronized update~test TESTS=grid_diff~~src/tty/tty.c~	outs("\x1b[?2026h\x1b[?25l");~	outs("\x1b[?25l");
-tty: no blanks before a non-ASCII wide character~test TESTS=grid_diff~~src/tty/tty.c~			if (wide && x->ch[0] >= 0x80) {~			if (0) {
-tty: no cursor move after a non-ASCII character~test TESTS=grid_diff~~src/tty/tty.c~			pr = x->ch[0] < 0x80 ? r : -1;~			pr = r;
+tty: no blanks before a non-ASCII wide character~test TESTS=grid_diff~~src/tty/tty.c~			if (wide && x->len > 1) {~			if (0) {
+tty: no cursor move after a non-ASCII character~test TESTS=grid_diff~~src/tty/tty.c~			pr = x->len == 1 ? r : -1;~			pr = r;
 tty: a new size is not drawn whole~test TESTS=tty_render~~src/tty/tty.c~		outs("\x1b[0m\x1b[H\x1b[2J");¶	}~	}
 tty: an Esc alone is sent at once~test TESTS=tty_input~~src/tty/tty.c~TTIMEOUTLEN = 50 ~TTIMEOUTLEN = 0 
 tty: a key cut by a read is not kept~test TESTS=tty_input~~src/tty/tty.c~	int i = 0, force = 0, x, len;~	int i = 0, force = 1, x, len;
@@ -24,3 +24,5 @@ tty: a wrong colour in the shared face table~test TESTS=grid_diff~~ref/theme.c~{
 tty: foreground channels in the wrong order~test TESTS=grid_diff~~src/tty/tty.c~f->fg[0], f->fg[1], f->fg[2]~f->fg[2], f->fg[1], f->fg[0]
 tty: a face's background not sent~test TESTS=grid_diff~~src/tty/tty.c~	if (f->style & FACE_BG) n +=~	if (0) n +=
 tty: a face's style bits not sent~test TESTS=grid_diff~~src/tty/tty.c~f->style & FACE_ITALIC ? ";3"~0 ? ";3"
+tty: a long cluster printed from the cell's number~test TESTS=grid_diff~~src/tty/tty.c~out(grid_text(x), x->len);~out(x->ch, x->len < 4 ? x->len : 4);
+tty: a cluster's ambiguity read from the cell's number~test TESTS=grid_diff~~src/tty/tty.c~if (wide && x->len > 1) {~if (wide && x->ch[0] >= 0x80) {

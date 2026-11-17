@@ -7,7 +7,10 @@
    follow xterm: printing on either half of one blanks the other half, and
    printing in the last column leaves the cursor there with the wrap pending.
    Erasing uses the current SGR's background, so an erase under reverse
-   video marks the cells (VT_BADERASE) instead of blanking them. */
+   video marks the cells (VT_BADERASE) instead of blanking them.  Like a
+   terminal that clusters graphemes (foot, kitty, WezTerm), a code point of
+   width 0, and the one after a zero width joiner, joins the cell printed
+   just before it. */
 #include <string.h>
 
 enum { VT_BADERASE = 99 };
@@ -26,10 +29,14 @@ static int vt_style_id(const char *s)
 	return vt_nstyle++;
 }
 
+typedef struct { unsigned char ch[GRID_CLUSTER_MAX], len, attr, face; } VtCell;
+
 typedef struct {
 	int rows, cols;
-	Cell c[64 * 256];
+	VtCell c[64 * 256];
 	int r, col, pending, attr, style, sync, hidden;
+	VtCell *last;                /* the cell printed last, while the cursor stays after it */
+	int zwj;                     /* the last code point was U+200D */
 	int prints, frames, bad;     /* characters printed, frames ended, first error */
 	char why[128];
 	/* the terminal's own idea of a character's width */
@@ -49,7 +56,7 @@ static void vt_init(Vt *t, int rows, int cols, int (*width)(const unsigned char 
 {
 	memset(t, 0, sizeof *t);
 	t->rows = rows; t->cols = cols; t->width = width;
-	for (int i = 0; i < rows * cols; i++) t->c[i] = (Cell){ " ", 1, ATTR_NONE, 0 };
+	for (int i = 0; i < rows * cols; i++) t->c[i] = (VtCell){ " ", 1, ATTR_NONE, 0 };
 }
 
 /* A new size: a real terminal keeps or reflows its cells, so they are
@@ -58,27 +65,35 @@ static void vt_resize(Vt *t, int rows, int cols)
 {
 	t->rows = rows; t->cols = cols;
 	t->r = t->col = t->pending = 0;
-	for (int i = 0; i < rows * cols; i++) t->c[i] = (Cell){ "?", 1, VT_BADERASE, 0 };
+	t->last = NULL;
+	for (int i = 0; i < rows * cols; i++) t->c[i] = (VtCell){ "?", 1, VT_BADERASE, 0 };
 }
 
-static Cell *vt_at(Vt *t, int r, int c) { return &t->c[r * t->cols + c]; }
+static VtCell *vt_at(Vt *t, int r, int c) { return &t->c[r * t->cols + c]; }
 
 static void vt_print(Vt *t, const unsigned char *s, int n)
 {
-	int w = t->width(s, n);
+	int w = t->width(s, n), zwj = t->zwj;
 	if (!t->sync) vt_fail(t, "a character printed outside a synchronized update");
 	if (!t->hidden) vt_fail(t, "a character printed with the cursor shown");
+	t->zwj = n == 3 && !memcmp(s, "\xe2\x80\x8d", 3);
+	if ((!w || zwj) && t->last) {
+		if (t->last->len + n > GRID_CLUSTER_MAX) vt_fail(t, "a cluster longer than a cell holds");
+		else { memcpy(t->last->ch + t->last->len, s, (size_t)n); t->last->len = (unsigned char)(t->last->len + n); }
+		return;
+	}
+	if (!w) vt_fail(t, "a code point of width 0 with nothing to join");
 	if (t->pending || t->col + w > t->cols) vt_fail(t, "a character printed past the right margin");
 	if (t->bad) return;
 	t->prints++;
-	Cell *x = vt_at(t, t->r, t->col);
-	if (t->col > 0 && !x->len) x[-1] = (Cell){ " ", 1, x[-1].attr, x[-1].face };
-	if (t->col + w < t->cols && !x[w].len) x[w] = (Cell){ " ", 1, x[w].attr, x[w].face };
+	VtCell *x = t->last = vt_at(t, t->r, t->col);
+	if (t->col > 0 && !x->len) x[-1] = (VtCell){ " ", 1, x[-1].attr, x[-1].face };
+	if (t->col + w < t->cols && !x[w].len) x[w] = (VtCell){ " ", 1, x[w].attr, x[w].face };
 	memcpy(x->ch, s, (size_t)n);
 	x->len = (unsigned char)n;
 	x->attr = (unsigned char)t->attr;
 	x->face = (unsigned char)t->style;
-	if (w == 2) x[1] = (Cell){ "", 0, (unsigned char)t->attr, (unsigned char)t->style };
+	if (w == 2) x[1] = (VtCell){ "", 0, (unsigned char)t->attr, (unsigned char)t->style };
 	t->col += w;
 	if (t->col == t->cols) { t->col--; t->pending = 1; }
 }
@@ -89,6 +104,7 @@ static void vt_csi(Vt *t)
 	memcpy(s, t->esc + 2, (size_t)t->en - 2);
 	s[t->en - 2] = 0;
 	int r, c;
+	if (s[strlen(s) - 1] != 'm') t->last = NULL;   /* a move or erase: nothing to join */
 	if (!strcmp(s, "?2026h")) { if (t->sync++) vt_fail(t, "nested synchronized update"); }
 	else if (!strcmp(s, "?2026l")) {
 		if (!t->sync--) vt_fail(t, "synchronized update ended twice");
@@ -99,7 +115,7 @@ static void vt_csi(Vt *t)
 		/* the alternate screen starts blank; what the main screen holds
 		   is not known, so it is marked */
 		for (int i = 0; i < t->rows * t->cols; i++)
-			t->c[i] = (Cell){ " ", 1, (unsigned char)(s[5] == 'h' ? ATTR_NONE : VT_BADERASE), 0 };
+			t->c[i] = (VtCell){ " ", 1, (unsigned char)(s[5] == 'h' ? ATTR_NONE : VT_BADERASE), 0 };
 	}
 	else if (!strcmp(s, "?25l")) t->hidden = 1;
 	else if (!strcmp(s, "?25h")) t->hidden = 0;
@@ -117,7 +133,7 @@ static void vt_csi(Vt *t)
 	else if (!strcmp(s, "H")) { t->r = t->col = t->pending = 0; }
 	else if (!strcmp(s, "2J")) {
 		for (int i = 0; i < t->rows * t->cols; i++)
-			t->c[i] = (Cell){ " ", 1, (unsigned char)(t->attr == ATTR_REV || t->style ? VT_BADERASE : ATTR_NONE), 0 };
+			t->c[i] = (VtCell){ " ", 1, (unsigned char)(t->attr == ATTR_REV || t->style ? VT_BADERASE : ATTR_NONE), 0 };
 	}
 	else if (sscanf(s, "%d;%dH", &r, &c) == 2 && strchr(s, 'H')[1] == 0 && r >= 1 && r <= t->rows && c >= 1 && c <= t->cols) {
 		t->r = r - 1; t->col = c - 1; t->pending = 0;
@@ -156,8 +172,9 @@ static inline const char *vt_differs(Vt *t, const Grid *g)
 	if (t->rows != g->rows || t->cols != g->cols) return "size";
 	for (int r = 0; r < g->rows; r++)
 		for (int c = 0; c < g->cols; c++) {
-			const Cell *x = &g->c[r * g->cols + c], *y = vt_at(t, r, c);
-			int ok = x->len ? x->len == y->len && x->attr == y->attr && !memcmp(x->ch, y->ch, x->len)
+			const Cell *x = &g->c[r * g->cols + c];
+			const VtCell *y = vt_at(t, r, c);
+			int ok = x->len ? x->len == y->len && x->attr == y->attr && !memcmp(grid_text(x), y->ch, x->len)
 			       : (!y->len || (y->len == 1 && y->ch[0] == ' ')) && y->attr == x->attr;
 			ok = ok && y->face == vt_face[x->face];
 			if (!ok) { snprintf(why, sizeof why, "cell %d,%d", r, c); return why; }
