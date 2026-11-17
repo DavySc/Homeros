@@ -119,6 +119,9 @@ int core_delete_lines(Editor *e, size_t a, size_t z)
 	return edit(e, core_line_start(e, a), core_line_start(e, z) - core_line_start(e, a), "", 0, 0);
 }
 
+/* The thin editor does not wrap. */
+void core_set_wrap(Editor *e, int on) { (void)e; (void)on; }
+
 /* The thin editor keeps marks but does not move them (package 4 does). */
 void core_mark_join(Editor *e, size_t line, size_t mincol, long line_amount, long col_amount, int spaces_removed)
 {

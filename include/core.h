@@ -81,7 +81,7 @@ typedef struct Win {
 	struct { size_t line, col, v; int mode, ok; } vc;
 	size_t top, left, skipcol;
 	size_t scroll;             /* lines for CTRL-D and CTRL-U ('scroll'); 0 = half the height */
-	int wrap;                  /* 'wrap': off (FEATURES.md); keys set it directly */
+	int wrap;                  /* 'wrap': off (FEATURES.md); set through core_set_wrap */
 	int y, x, h, w;
 	struct Frame *frame;       /* its leaf in the layout */
 	struct { Buf *buf; Mark m; } jump[JUMPLIST_SIZE];   /* CTRL-O CTRL-I, oldest first */
@@ -197,6 +197,9 @@ int  core_win_move(Editor *e, int how, long count);
    size n (0 = as large as possible). */
 void core_resize(Editor *e, int vertical, long n, int set);
 void core_equal(Editor *e);                   /* CTRL-W = */
+/* :set wrap (1), :set nowrap (0): even an unchanged value redoes the view
+   (changed_window_setting()) and curswant, unless the cursor is after $. */
+void core_set_wrap(Editor *e, int on);
 
 /* Scrolling the current window, as Neovim's move.c; the cursor stays in
    view.  CTRL-E (n > 0) and CTRL-Y (n < 0): n lines; CTRL-D (dir 1) and
