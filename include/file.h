@@ -33,7 +33,8 @@ int file_save(const char *path, const Text *t, size_t n, FileId *id, int force,
 
 /* Outside changes: inotify on the file's directory (ReadDirectoryChangesW on
    Windows), so a file replaced by rename is still seen.  Returns an fd for
-   loop_watch, -1 on error; close it to stop. */
+   loop_watch, -1 on error: the same fd for every file, never closed (closing
+   one costs milliseconds), so a directory stays watched for the session. */
 int  file_watch(const char *path);
 /* Reads the fd's pending events.  1 if path no longer matches id, 0 if it
    does, -1 on error.  A stat decides, not the events, so our own saves never

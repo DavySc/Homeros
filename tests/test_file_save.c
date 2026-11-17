@@ -377,7 +377,7 @@ static void watch(void)
 	unlink(path);
 	CHECK(poll(&pf, 1, 1000) == 1 && file_watch_read(fd, path, &id) == 1);
 	CHECK(poll(&pf, 1, 0) == 0);                                      /* drained */
-	close(fd);
+	CHECK(file_watch(dir) == fd);                                     /* one instance */
 	text_free(t);
 	puts("  watch: outside rename, in-place, same-size writes and deletion seen; our save and other files not");
 }

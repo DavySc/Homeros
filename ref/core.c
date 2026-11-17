@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include "core.h"
 #include "syntax.h"
 #include "uni.h"
@@ -113,7 +112,6 @@ void core_free(Editor *e)
 	if (!e->buf || !e->win) { free(e->buf); free(e->win); return; }
 	syntax_free(e->buf->syn);
 	journal_close(e->buf->journal);   /* a clean exit: nothing to recover */
-	if (e->buf->watch >= 0) close(e->buf->watch);
 	text_free(e->buf->text);
 	undo_free(e->buf->undo);
 	free(e->buf->path);
