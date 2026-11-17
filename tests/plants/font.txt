@@ -1,0 +1,12 @@
+# Plants for src/font/ (format in tools/planted.sh).
+font: fallback takes a font without the character (Mathlib symbols)~test TESTS=font~~src/font/font.c~FcCharSetHasChar(cs, cp[j])~1
+font: a font must have joiners and selectors (rainbow flag)~test TESTS=font~~src/font/font.c~	return c == 0x200C || c == 0x200D || (c >= 0xFE00 && c <= 0xFE0F) || (c >= 0xE0000 && c <= 0xE0FFF);~	return c == 0x110000;
+font: emoji stay in the first font that has them (colour)~test TESTS=font~~src/font/font.c~		int want = !face[run[i].font].color && emoji(~		int want = 0 && emoji(
+font: emoji strike not scaled to the em~test TESTS=font~~src/font/font.c~			int dw = nearest(w * f->scale), dh = nearest(hh * f->scale);~			int dw = w, dh = hh;
+font: cache key ignores the font~test TESTS=font~~src/font/font.c~((size_t)fi * 2654435761u + gid * 40503u) & (SLOTS - 1);¶	while (slot[h].font >= 0) {¶		if (slot[h].font == fi && slot[h].gid == gid)~(gid * 40503u) & (SLOTS - 1);¶	while (slot[h].font >= 0) {¶		if (slot[h].gid == gid)
+font: emptied cache keeps its count (refill)~test TESTS=font~~src/font/font.c~	used = nslot = 0;~	used = 0;
+font: clusters as code point indexes~test TESTS=font~~src/font/font.c~at[run[k].cluster], pixels~run[k].cluster, pixels
+font: clusters split inside characters~test TESTS=font~~src/font/font.c~	for (size_t i = 0; i < n && ncp < RUN; i += uni_len(s, n, i)) {~	for (size_t i = 0; i < n && ncp < RUN; i++) {
+font: right-to-left runs reversed~test TESTS=font~~src/font/font.c~	hb_buffer_set_direction(buf, HB_DIRECTION_LTR);¶~
+font: pen not reset per cluster (fuzz_font)~fuzz FUZZERS=font FUZZ_SECONDS=60~~src/font/font.c~		if (i > 0 && gi[i].cluster != gi[i - 1].cluster) pen = 0;¶~
+font: HarfBuzz buffer grown while drawing (0 allocations on a longer run)~test TESTS=font~~src/font/font.c~!hb_buffer_pre_allocate(buf, RUN)~!hb_buffer_allocation_successful(buf)
