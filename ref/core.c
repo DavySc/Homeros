@@ -122,6 +122,16 @@ int core_delete_lines(Editor *e, size_t a, size_t z)
 /* The thin editor does not wrap. */
 void core_set_wrap(Editor *e, int on) { (void)e; (void)on; }
 
+void core_setpcmark(Editor *e)
+{
+	Win *w = e->win;
+	w->pcmark = (Mark){ w->line, w->col, 1 };
+	if (w->njump == JUMPLIST_SIZE) memmove(w->jump, w->jump + 1, --w->njump * sizeof *w->jump);
+	w->jump[w->njump].buf = e->buf;
+	w->jump[w->njump++].m = w->pcmark;
+	w->jumpidx = w->njump;
+}
+
 /* The thin editor keeps marks but does not move them (package 4 does). */
 void core_mark_join(Editor *e, size_t line, size_t mincol, long line_amount, long col_amount, int spaces_removed)
 {
