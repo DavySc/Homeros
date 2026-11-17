@@ -110,6 +110,11 @@ frama: | build
 	frama-c -wp -wp-rte -wp-prover z3,cvc5 -wp-timeout 20 -wp-fct nls \
 	  -cpp-extra-args="-Iinclude -D_DEFAULT_SOURCE" src/text/text.c | tee build/frama-text.log
 	grep -qE "Proved goals: +([0-9]+) / \1$$" build/frama-text.log
+ifneq ($(wildcard src/lsp/u16.c),)
+	frama-c -wp -wp-rte -wp-prover z3,cvc5 -wp-timeout 20 -wp-fct lsp_u16,lsp_u16_byte,step \
+	  -cpp-extra-args="-Iinclude" src/lsp/u16.c | tee build/frama-lsp.log
+	grep -qE "Proved goals: +([0-9]+) / \1$$" build/frama-lsp.log
+endif
 
 # the Windows build (package 9): cross-built with zig cc, run under Wine on
 # a virtual X display; src/win/check.sh says how
