@@ -16,7 +16,7 @@ void grid_free(Grid *g) { free(g->c); g->c = NULL; g->rows = g->cols = 0; }
 
 void grid_clear(Grid *g)
 {
-	for (int i = 0; i < g->rows * g->cols; i++) g->c[i] = (Cell){ " ", 1, ATTR_NONE };
+	for (int i = 0; i < g->rows * g->cols; i++) g->c[i] = (Cell){ " ", 1, ATTR_NONE, FACE_NONE };
 }
 
 int grid_put(Grid *g, int r, int c, const unsigned char *s, size_t n, int width, int attr)
@@ -26,7 +26,8 @@ int grid_put(Grid *g, int r, int c, const unsigned char *s, size_t n, int width,
 	memcpy(x->ch, s, n);
 	x->len = (unsigned char)n;
 	x->attr = (unsigned char)attr;
-	if (width == 2) x[1] = (Cell){ "", 0, (unsigned char)attr };
+	x->face = FACE_NONE;
+	if (width == 2) x[1] = (Cell){ "", 0, (unsigned char)attr, FACE_NONE };
 	return width;
 }
 
@@ -38,5 +39,5 @@ int grid_puts(Grid *g, int r, int c, const char *s, int attr)
 
 int grid_cell_eq(const Cell *a, const Cell *b)
 {
-	return a->len == b->len && a->attr == b->attr && !memcmp(a->ch, b->ch, a->len);
+	return a->len == b->len && a->attr == b->attr && a->face == b->face && !memcmp(a->ch, b->ch, a->len);
 }

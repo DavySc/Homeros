@@ -11,7 +11,7 @@
 
 static char path[64];
 
-static void read_all(Editor *e, char *b, size_t *n) { *n = text_read(e->text, 0, b, 1 << 16); }
+static void read_all(Editor *e, char *b, size_t *n) { *n = text_read(e->buf->text, 0, b, 1 << 16); }
 
 /* every key inserts valid UTF-8, so no edit may split a character */
 static void valid(const char *b, size_t n)
@@ -35,29 +35,29 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 	}
 	if (core_open(&e, path)) abort();
 	read_all(&e, before, &nb);
-	for (size_t i = 0; i < n && text_len(e.text) < 30000; i++) {
+	for (size_t i = 0; i < n && text_len(e.buf->text) < 30000; i++) {
 		keys_feed(&e, keys[d[i] % (sizeof keys / sizeof *keys)], i + 1 < n);
 		size_t len, nl = core_lines(&e);
-		const unsigned char *s = core_line(&e, e.line, &len);
-		if (!nl || e.line >= nl || e.col > len) abort();
+		const unsigned char *s = core_line(&e, e.win->line, &len);
+		if (!nl || e.win->line >= nl || e.win->col > len) abort();
 		size_t p = 0;   /* the cursor is where a scan from the line start lands */
-		while (p < e.col) p += uni_len(s, len, p);
-		if (p != e.col) abort();
-		if (e.mode == MODE_NORMAL && len && e.col >= len) abort();
-		if (text_len(e.text) == 0 || core_line_start(&e, nl) != text_len(e.text)) abort();
+		while (p < e.win->col) p += uni_len(s, len, p);
+		if (p != e.win->col) abort();
+		if (e.mode == MODE_NORMAL && len && e.win->col >= len) abort();
+		if (text_len(e.buf->text) == 0 || core_line_start(&e, nl) != text_len(e.buf->text)) abort();
 	}
 	keys_feed(&e, KEY_ESC, 0);
 	if (e.mode != MODE_NORMAL) keys_feed(&e, KEY_ESC, 0);
 	read_all(&e, after, &na);
 	valid(after, na);
-	unsigned long seq = undo_seq(e.undo);
-	while (undo_seq(e.undo)) keys_feed(&e, 'u', 0);
+	unsigned long seq = undo_seq(e.buf->undo);
+	while (undo_seq(e.buf->undo)) keys_feed(&e, 'u', 0);
 	read_all(&e, now, &nn);
 	if (nn != nb || memcmp(now, before, nb)) abort();
-	while (undo_seq(e.undo) != seq) {
-		unsigned long s = undo_seq(e.undo);
+	while (undo_seq(e.buf->undo) != seq) {
+		unsigned long s = undo_seq(e.buf->undo);
 		keys_feed(&e, KEY_CTRL_R, 0);
-		if (undo_seq(e.undo) == s) abort();
+		if (undo_seq(e.buf->undo) == s) abort();
 	}
 	read_all(&e, now, &nn);
 	if (nn != na || memcmp(now, after, na)) abort();
