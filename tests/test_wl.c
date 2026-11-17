@@ -101,11 +101,11 @@ static void run(const char *cmd)
 	CHECK(WIFEXITED(st) && !WEXITSTATUS(st));
 }
 
-/* fmt has arg in it twice */
+/* fmt has arg in it up to five times */
 static void cmd(const char *fmt, const char *arg)
 {
 	char b[512];
-	snprintf(b, sizeof b, fmt, arg, arg);
+	snprintf(b, sizeof b, fmt, arg, arg, arg, arg, arg);
 	run(b);
 }
 
@@ -117,6 +117,7 @@ static int count(int k, int from)
 }
 
 /* Draws a frame of the backend's size and waits for its frame callback. */
+static void show(void);
 static void draw(void)
 {
 	int r, c;
@@ -125,6 +126,12 @@ static void draw(void)
 	grid_puts(&g, 0, 0, "homeros", ATTR_NONE);
 	g.crow = 0;
 	g.ccol = 7;
+	show();
+}
+
+/* Presents g as it is, once a frame may be drawn, and waits for the callback. */
+static void show(void)
+{
 	for (double end = now() + 2000; !backend_wl.ready() && now() < end;) pump(5);
 	CHECK(backend_wl.ready());
 	backend_wl.present(&g, &shown);
@@ -232,6 +239,26 @@ static void test_sway(void)
 	size_is(1280, 800, 120);        /* the whole output */
 	draw();
 
+	/* only changed cells are drawn: after random edits (characters, attrs,
+	   faces, the cursor) over many frames into both buffers, the screen is
+	   what a whole redraw gives, and not what it was before */
+	cmd("grim -t ppm %s/0.ppm # %s", dir);
+	static const char *const ch[] = { "a", "Z", "~", "λ", "é", " ", "#" };
+	for (int f = 0; f < 40; f++) {
+		for (int i = 0; i < 30; i++) {
+			const char *s = ch[rnd(7)];
+			grid_put(&g, (int)rnd(8), (int)rnd(20), (const unsigned char *)s, strlen(s), 1, (int)rnd(3));
+			g.c[rnd(8) * g.cols + rnd(20)].face = (unsigned char)rnd(FACE_COUNT);
+		}
+		g.crow = (int)rnd(8);
+		g.ccol = (int)rnd(20);
+		show();
+	}
+	cmd("grim -t ppm %s/1.ppm # %s", dir);
+	grid_free(&shown);              /* as after a suspend: redrawn whole */
+	show();
+	cmd("grim -t ppm %s/2.ppm && cmp -s %s/1.ppm %s/2.ppm && ! cmp -s %s/0.ppm %s/1.ppm", dir);
+
 	/* keys, with the Control transformation and the keys keys.h names */
 	k0 = nkeys;
 	run("LC_ALL=C.UTF-8 wtype aé -k Escape -k BackSpace -M ctrl r -m ctrl -k Up -k Return -k Tab");
@@ -254,12 +281,13 @@ static void test_sway(void)
 	/* clipboard: ours read by another client, then another client's read by us */
 	CHECK(!backend_wl.clip_set("from homeros\n", 13));
 	cmd("wl-paste -n > %s/p && printf 'from homeros\\n' | cmp - %s/p", dir);
-	char s[16];
-	CHECK(backend_wl.clip_get(s, 4) == 13 && !memcmp(s, "from", 4));   /* ours, read back */
+	char s[16], *s4 = malloc(4);   /* exactly 4, so ASan sees a byte past max */
+	CHECK(backend_wl.clip_get(s4, 4) == 13 && !memcmp(s4, "from", 4));   /* ours, read back */
 	run("printf 'from outside' | wl-copy");
 	pump(100);
-	CHECK(backend_wl.clip_get(s, 4) == 12 && !memcmp(s, "from", 4));   /* too little room */
+	CHECK(backend_wl.clip_get(s4, 4) == 12 && !memcmp(s4, "from", 4));   /* too little room */
 	CHECK(backend_wl.clip_get(s, sizeof s) == 12 && !memcmp(s, "from outside", 12));
+	free(s4);
 
 	/* input method: enabled on focus; preedit asks for a redraw, commit gives keys */
 	pump(100);
@@ -296,6 +324,7 @@ static void test_sway(void)
 	/* a left click, a wheel notch each way and a touchpad's 3 rows are keys
 	   at the pointer's cell */
 	int mr, mc;
+	zwlr_virtual_pointer_v1_motion_absolute(vp, 0, 500, 300, 1280, 800);
 	k0 = nkeys;
 	zwlr_virtual_pointer_v1_button(vp, 0, BTN_LEFT, WL_POINTER_BUTTON_STATE_PRESSED);
 	zwlr_virtual_pointer_v1_button(vp, 0, BTN_LEFT, WL_POINTER_BUTTON_STATE_RELEASED);
@@ -317,7 +346,7 @@ static void test_sway(void)
 	CHECK(nkeys - k0 == 4 && keys[k0] == KEY_MOUSE_LEFT && keys[k0 + 1] == KEY_WHEEL_DOWN
 	      && keys[k0 + 2] == KEY_WHEEL_UP && keys[k0 + 3] == KEY_WHEEL_DOWN);
 	backend_wl.mouse(&mr, &mc);
-	CHECK(mr == 310 / glyph_ch && mc == 310 / glyph_cw);
+	CHECK(mr == 300 / glyph_ch && mc == 500 / glyph_cw);
 	zwlr_virtual_pointer_v1_destroy(vp);
 
 	/* configure size: floating, resized by the compositor */

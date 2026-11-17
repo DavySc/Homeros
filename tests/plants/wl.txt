@@ -1,0 +1,19 @@
+# Plants for src/wl/ (format in tools/planted.sh); all caught by tests/test_wl.c.
+wl: draws before the frame callback~test TESTS=wl~~src/wl/wl.c~	if (!configured || waiting) return 0;~	if (!configured) return 0;
+wl: no key repeat~test TESTS=wl~~src/wl/wl.c~	if (c && xkb_keymap_key_repeats(keymap, key + 8)) repeat_arm(key);~	if (0) repeat_arm(key);
+wl: Backspace as XKB's 8~test TESTS=wl~~src/wl/wl.c~	case XKB_KEY_BackSpace: return KEY_BS;~
+wl: seat listened to after its capabilities came~test TESTS=wl~~src/wl/wl.c~		wl_seat_add_listener(seat, &seat_l, NULL);~
+wl: clipboard sends one byte short~test TESTS=wl~~src/wl/wl.c~	xfer(fd, clip, clipn, 1);~	xfer(fd, clip, clipn ? clipn - 1 : 0, 1);
+wl: clipboard copies past max~test TESTS=wl~~src/wl/wl.c~	memcpy(buf, s, n < max ? n : max);~	memcpy(buf, s, n < max ? n : max + 1);
+wl: input method's text dropped~test TESTS=wl~~src/wl/wl.c~	push_utf8(commit_next);~	push_utf8("");
+wl: preedit not redrawn~test TESTS=wl~~src/wl/wl.c~memcpy(pre, pre_next, sizeof pre); push(KEY_RESIZE); }~memcpy(pre, pre_next, sizeof pre); }
+wl: fractional scale ignored~test TESTS=wl~~src/wl/wl.c~	if ((int)s == scale || glyph_open~	if (1 || glyph_open
+wl: configured size ignored~test TESTS=wl~~src/wl/wl.c~	if (w > 0) nlw = w;~	if (0) nlw = w;
+wl: no text cursor~test TESTS=wl~~src/wl/wl.c~	if (shape) wp_cursor_shape_device_v1_set_shape~	if (0) wp_cursor_shape_device_v1_set_shape
+wl: mouse row from x~test TESTS=wl~~src/wl/wl.c~	mrow = my / glyph_ch;~	mrow = mx / glyph_ch;
+wl: a key per two notches~test TESTS=wl~~src/wl/wl.c~scroll(v, 120);~scroll(v, 240);
+wl: touchpad scrolls 6 rows a key~test TESTS=wl~~src/wl/wl.c~scroll(v, 3 * glyph_ch * 256~scroll(v, 6 * glyph_ch * 256
+wl: close ignored~test TESTS=wl~~src/wl/wl.c~(void)t; push(KEY_CLOSE); }~(void)t; }
+wl: changed cells not drawn~test TESTS=wl~~src/wl/wl.c~			if (!all && !moved && grid_cell_eq(x, y)~			if (!all && !moved && grid_cell_eq(x, x)
+wl: cursor move not drawn~test TESTS=wl~~src/wl/wl.c~			int moved = (r == g->crow && c == g->ccol) != (r == b->g.crow && c == b->g.ccol);~			int moved = 0;
+wl: damage one cell short~test TESTS=wl~~src/wl/wl.c~(hi - lo) * glyph_cw, glyph_ch);~(hi - lo - 1) * glyph_cw, glyph_ch);
