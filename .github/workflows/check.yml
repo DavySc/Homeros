@@ -6,9 +6,16 @@ on:
   push:
     branches: [main]
 jobs:
+  # the check and the plant run in parallel, each on its own runner: one
+  # after the other took 54 minutes on main at 8d08829 and passed the limit
+  # once a PR added plants (PR 24's review)
   check:
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [check, planted]
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v31
@@ -22,5 +29,4 @@ jobs:
       - run: nix build -f tools.nix tools -o tools-env
       - run: echo "$PWD/tools-env/bin" >> "$GITHUB_PATH"
       - run: why3 config detect
-      - run: make check
-      - run: make planted
+      - run: make ${{ matrix.target }}
