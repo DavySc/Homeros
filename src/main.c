@@ -8,6 +8,7 @@
 #include "core.h"
 #include "git.h"
 #include "loop.h"
+#include "lsp.h"
 #include "syntax.h"
 #include "tools.h"
 
@@ -72,6 +73,7 @@ int main(int argc, char **argv)
 				running = 1;
 				if (!tools_key(&e, k) && !git_key(&e, k)) keys_feed(&e, k, qn > 0);
 				running = 0;
+				lsp_flush(e.buf->lsp);   /* one didChange per command (Helix) */
 			}
 			loop_int = 0;
 		}
@@ -90,7 +92,7 @@ int main(int argc, char **argv)
 			dirty = r == 1;
 		}
 		if (loop_once(qn || syn || (dirty && b->ready()) ? 0 : -1)) break;
-		if (e.changed) { e.changed = 0; dirty = 1; }
+		if (e.changed || lsp_dirty) { e.changed = lsp_dirty = 0; dirty = 1; }
 	}
 out:
 	git_free();

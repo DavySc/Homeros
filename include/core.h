@@ -59,6 +59,7 @@ typedef struct Buf {
 	int nr;                    /* buffer number, from 1 (:b N) */
 	WinInfo *wi;
 	struct Syntax *syn;        /* syntax.h; NULL: no grammar for this file */
+	struct LspDoc *lsp;        /* lsp.h; NULL: no language server for this file */
 	Mark mark[MARK_N];
 	Mark change[JUMPLIST_SIZE];   /* the change list (g; g,), oldest first */
 	int nchange;

@@ -5,16 +5,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include "core.h"
+#include "lsp.h"
 #include "syntax.h"
 #include "uni.h"
 
 enum { SCROLLOFF = 6, TABSTOP = 8 };   /* FEATURES.md 1; Vim's tabstop */
 
-/* every change reaches the syntax tree before it is made (UndoHook) */
+/* every change reaches the syntax tree and the language server before it
+   is made (UndoHook) */
 static void undo_seen(void *ctx, const Text *t, size_t pos, size_t ndel, const char *ins, size_t nins)
 {
 	Buf *b = ctx;
 	if (b->syn) syntax_edit(b->syn, t, pos, ndel, ins, nins);
+	lsp_edit(b->lsp, t, pos, ndel, ins, nins);
 }
 
 int core_open(Editor *e, const char *path)
@@ -43,6 +46,7 @@ int core_open(Editor *e, const char *path)
 		return -1;
 	}
 	e->buf->syn = syntax_open(path, e->buf->text);
+	e->buf->lsp = lsp_open(path, e->buf->text);
 	undo_hook(e->buf->undo, undo_seen, e->buf);
 	core_set_want(e);
 	core_msg(e, "\"%s\"%s %zuL, %zuB", path, e->buf->id.exists ? "" : " [New]", core_lines(e), n);
@@ -53,6 +57,7 @@ void core_free(Editor *e)
 {
 	if (!e->buf || !e->win) { free(e->buf); free(e->win); return; }
 	syntax_free(e->buf->syn);
+	lsp_close(e->buf->lsp);
 	text_free(e->buf->text);
 	undo_free(e->buf->undo);
 	free(e->buf->path);
