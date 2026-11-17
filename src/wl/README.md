@@ -6,18 +6,18 @@ threads, its text shaped by package 7's font.h.
 
 | Part | How | Copies |
 |---|---|---|
-| Frames | draw only when the last frame's callback came and a buffer is free (Present.tla "framecb"); each buffer keeps the grid it shows, and only the cells that differ from it are drawn | foot |
+| Frames | draw only when the last frame's callback came and a buffer is free (Present.tla "framecb"); each buffer keeps the grid it shows, and only the cells that differ from it are drawn; the damage is the rows that differ from the frame on screen, which is the other buffer's when the buffers alternate | foot (build B's damage rule) |
 | Changed cells | of a changed row only the span from the first to the last changed cell is drawn, widened on each side to the start of a word after a blank, so the span shapes as the whole row would and no spill crosses its edges | Neovim's grid_put_linebuf (sends only the changed columns) |
 | Text | the span is shaped as one run (font.h) and coloured per cell: colour does not change the font, so runs are not split by it | kitty |
 | Scroll | the core sends whole grids, not scroll events, so the move is found as the one most changed rows share, by row hashes without the number column (relative numbers change it on every scroll); a row is copied from where it was and then only its changed span drawn (the number), when that span is smaller than in place; copied in the move's direction so no source is drawn over first | Emacs (dispnew.c, scrolling_window, finds the move by row hashes), foot (the copy) |
 | Wide symbols | a glyph wider than its cell (73 of Mathlib's 295 notation symbols at 20 px, reviews/package-7.md) spills into the blank cells after it, up to the next non-blank cell, instead of being cut; in Lean it is mostly followed by a space | foot's overflowing glyphs |
 | Size | the size xdg_toplevel configures; 800x600 when it leaves the choice to us | foot |
 | Scale | fractional-scale-v1 with a viewport: the buffer is the logical size times scale/120, the font is re-opened at 16 px times the scale | foot |
-| Keys | xkbcommon keysyms and UTF-32 (with the Control transformation, so Ctrl-R is 18); Backspace is 127, as a terminal sends; client-side repeat on a timerfd at the compositor's rate and delay | foot |
+| Keys | xkbcommon keysyms and UTF-32 (with the Control transformation, so Ctrl-R is 18); Backspace is 127, as a terminal sends; client-side repeat at the compositor's rate and delay, on a one-shot timerfd that also fires at once while keys wait in the queue (main.c reads only when an fd is readable) | foot, build B |
 | Input method | text-input-v3: committed text becomes keys, the preedit is drawn underlined at the cursor, the cursor rectangle is sent on each move | foot |
-| Clipboard | wl_data_device, text/plain;charset=utf-8; our own selection is answered without the compositor; another's is read through a pipe with a 1 s timeout per read, as Neovim's clipboard provider times out | Neovim, foot |
+| Clipboard | wl_data_device, text/plain;charset=utf-8; our own selection is answered without the compositor; another's is read through a pipe with a 1 s timeout per read, as Neovim's clipboard provider times out; ours is written to a reader by a forked grandchild, so a reader that stalls never stops the editor | Neovim, foot, wl-copy |
 | Pointer | cursor-shape-v1's text cursor; a left press is KEY_MOUSE_LEFT, a wheel notch (value120) one KEY_WHEEL_UP/DOWN, a touchpad one per 3 rows scrolled, at the pointer's cell | Neovim GUIs |
-| Close | xdg_toplevel.close is KEY_CLOSE | |
+| Close | xdg_toplevel.close is KEY_CLOSE; a broken connection to the compositor is noticed and sent once as KEY_CLOSE (thread 0's backend.h change, input() returning -1 to quit without writing as Neovim's preserve_exit() does, replaces this when it merges) | build B notices it too |
 | Colours | grid.h's `faces` (ref/theme.c, Catppuccin Mocha): their colours, underline and strikethrough; colour glyphs (emoji) blended as premultiplied BGRA; no bold or italic, which font.h does not open | ref/tty.c |
 
 The font size, 16 px at scale 1, is a hypothesis: Davy's size is not recorded.
@@ -33,16 +33,25 @@ wtype, wl-clipboard, grim, adwaita-icon-theme):
   mapping and after a floating resize; scale 1.5 and back; keys through a
   virtual keyboard, including Esc, Backspace, Ctrl-R, Up, Enter, Tab and
   é; key repeat (300 ms delay, 25/s, 1 s hold: 19 keys); the clipboard
-  both ways and with too little room; an input method (the test is one,
+  both ways and with too little room, and a reader of 1 MB that stalls 2 s while the editor runs on; an input method (the test is one,
   input-method-v2): preedit redraw and committed text; the text cursor (seen in
   screenshots: the I-beam reaches above the pointer, the default arrow does
   not); left click, wheel and touchpad keys and their cell; no drawing while
-  hidden in the scratchpad, drawing again once shown; close; a wide symbol
+  hidden in the scratchpad, drawing again once shown; keys taken 4 at a time all
+  arrive; close; the compositor killed, noticed once; a wide symbol
   (⟹) spills into the blank cell after it and is cut at a character; a
   cluster longer than a cell's 4 bytes (👍🏽) drawn from grid.c's store; and a
   screenshot check that after 75 frames of random edits (characters, `->`,
   ⟹, emoji, long clusters, attrs, faces), cursor moves and scrolls either way, into both
-  buffers, the screen equals a whole redraw.
+  buffers, the screen equals a whole redraw, and so does a row put back as it
+  was two frames ago (in the buffer drawn into already, not on screen).
+
+**measured** (the review's probes, `reviews/package-8-repro/`, rerun on the
+fixes, 1 run each): `probe-pix` 0 of 120 checks differ (seeds 1 to 12, 200
+frames each; 7 of 12 seeds differed before); `probe-keys` 8 of 8 keys; `probe-clip`
+longest `input()` 1 ms with a reader stalled 5 s (5,003 ms before), the reader
+gets all 1 MB; `gone.sh` under the real editor: it exits, 2 of 2 runs (an
+unmodified file; a modified one waits for thread 0's change).
 
 **measured**: 10 of 10 runs pass (system sway 1.9, weston 13) before
 font.h, and 15 of 15 earlier runs under nix's sway 1.12 and weston 16; with
@@ -51,12 +60,14 @@ fixed here: the seat's capabilities arrive in the bind's roundtrip, so a
 listener added after it lost the keyboard (3 of 10 runs failed); and a
 keyboard or pointer that goes away must be released and fetched again.
 
-**measured**: `tests/plants/wl.txt` has 24 plants (frame callback, repeat,
+**measured**: `tests/plants/wl.txt` has 28 plants (frame callback, repeat,
 Backspace, seat listener, clipboard short send, clipboard past max, input
 method text, preedit redraw, scale, size, text cursor, mouse cell, wheel,
 touchpad step, close, changed cells, cursor move, damage, scroll source,
 glyph cut at its cell, span widened left, span widened right, spill past a
-character, long cluster read from the cell); each was run and each fails the test. Copying a scroll against
+character, long cluster read from the cell, damage only rows drawn, keys
+left waiting, clipboard written by the editor itself, lost compositor
+ignored); each was run and each fails the test. Copying a scroll against
 its direction has no plant: a row is copied only where the cells it shows
 equal the source's, so the screen stays right and only the copy is lost.
 
@@ -104,6 +115,12 @@ What the numbers come from:
 - First frame: package 7's `font_open` takes 3 to 4 ms (reviews/package-7.md),
   more than the stand-in font it replaced, which had 8.4 ms (7.4 to 14.3,
   10 runs) here.
+- Filling rows with memcpy and blending red and blue in one multiply
+  (build B's `fill` and `mix`): whole-window frames (`G` and `gg` on 4,154
+  lines) present p50 1.76 ms (1.71 to 1.96) against 1.90 ms (1.82 to 2.16),
+  **measured**, 10 alternating runs each, faster in 9 of 10 pairs; the ranges
+  overlap. `mix` equals dividing each channel by 255 for every input
+  (**proved**, exhaustive: 33,554,432 cases, all three channels).
 - Starting a new buffer from the other buffer's picture instead of drawing
   it whole: **measured**, no measurable difference (typing p99 2.4 ms
   against 2.4 ms, max 3.3 against 4.0 with overlapping ranges, 5 runs

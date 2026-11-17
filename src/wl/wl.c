@@ -16,6 +16,8 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/timerfd.h>
+#include <sys/wait.h>
+#include <time.h>
 #include <unistd.h>
 #include <wayland-client.h>
 #include <xkbcommon/xkbcommon.h>
@@ -79,13 +81,14 @@ static struct buf {
 	uint32_t *px;
 	int busy;
 	Grid g;                         /* what this buffer shows */
-} bufs[NBUF];
+} bufs[NBUF], *on;                  /* on: the buffer last committed, on screen */
 static void *pool_mem;
 static int pw, ph;                  /* size of the buffers in the pool */
 static Grid vis;                    /* cur with the preedit, when there is one */
 static size_t pool_size;
 
 static int kq[KQ], kh, kn;          /* keys for wl_input */
+static int gone;                    /* the connection to the compositor broke */
 static void push(int k) { if (kn < KQ) kq[(kh + kn++) % KQ] = k; }
 static void push_utf8(const char *s)
 {
@@ -101,19 +104,30 @@ static struct xkb_keymap *keymap;
 static struct xkb_state *xst;
 static int rfd = -1, rate, delay;   /* key repeat: timerfd, keys/s, ms */
 static uint32_t rkey;               /* the key repeating, 0 none */
+static long long rnext;             /* when it repeats next, CLOCK_MONOTONIC ns */
 static uint32_t serial;             /* last input serial, for the clipboard */
+
+static long long now(void)
+{
+	struct timespec t;
+	clock_gettime(CLOCK_MONOTONIC, &t);
+	return t.tv_sec * 1000000000LL + t.tv_nsec;
+}
 
 static void repeat_arm(uint32_t key)
 {
-	rkey = key;
-	struct itimerspec t = { 0 };
-	if (key && rate > 0) {
-		t.it_value.tv_sec = delay / 1000;
-		t.it_value.tv_nsec = (long)(delay % 1000) * 1000000;
-		t.it_interval.tv_nsec = 1000000000L / rate;
-		if (rate == 1) t.it_interval = (struct timespec){ 1, 0 };
-	}
-	timerfd_settime(rfd, 0, &t, NULL);
+	rkey = rate > 0 ? key : 0;
+	rnext = now() + delay * 1000000LL;
+}
+
+/* The timer fires at the next repeat, or at once while keys wait in kq
+   (an absolute 1 ns is long past): main.c calls wl_input only when an fd
+   is readable, and the socket may not be (as build B does) */
+static void arm(void)
+{
+	long long at = kn ? 1 : rkey ? rnext : 0;
+	struct itimerspec t = { .it_value = { (time_t)(at / 1000000000), (long)(at % 1000000000) } };
+	timerfd_settime(rfd, TFD_TIMER_ABSTIME, &t, NULL);
 }
 
 static int key_of(uint32_t key)
@@ -336,14 +350,14 @@ static struct wl_data_source *src;        /* our selection, while we own it */
 static char *clip, *got;            /* our selection's text; the last one read */
 static size_t clipn, gotn;
 
-/* Moves up to n bytes through a pipe end; stops at end of file, or after a
+/* Reads up to n bytes from a pipe; stops at end of file, or after a
    second without progress, as Neovim's clipboard provider times out. */
-static size_t xfer(int fd, char *b, size_t n, int out)
+static size_t xfer(int fd, char *b, size_t n)
 {
 	size_t i = 0;
-	struct pollfd p = { fd, out ? POLLOUT : POLLIN, 0 };
+	struct pollfd p = { fd, POLLIN, 0 };
 	while (i < n && poll(&p, 1, 1000) > 0) {
-		ssize_t r = out ? write(fd, b + i, n - i) : read(fd, b + i, n - i);
+		ssize_t r = read(fd, b + i, n - i);
 		if (r < 0 && errno == EINTR) continue;
 		if (r <= 0) break;
 		i += (size_t)r;
@@ -352,10 +366,27 @@ static size_t xfer(int fd, char *b, size_t n, int out)
 }
 
 static void src_target(void *d, struct wl_data_source *s, const char *m) { (void)d; (void)s; (void)m; }
+static void send_all(int fd)
+{
+	for (size_t i = 0; i < clipn;) {
+		ssize_t r = write(fd, clip + i, clipn - i);
+		if (r < 0 && errno == EINTR) continue;
+		if (r <= 0) break;
+		i += (size_t)r;
+	}
+}
 static void src_send(void *d, struct wl_data_source *s, const char *m, int fd)
 {
 	(void)d; (void)s; (void)m;
-	xfer(fd, clip, clipn, 1);
+	/* written by a grandchild, as wl-copy forks one for each paste, so a
+	   reader that stalls never stops the editor (the review of package 8,
+	   finding 3); the child exits at once and is reaped here */
+	pid_t p = fork();
+	if (!p) {
+		if (!fork()) send_all(fd);
+		_exit(0);
+	}
+	if (p > 0) waitpid(p, NULL, 0);
 	close(fd);
 }
 static void src_cancelled(void *d, struct wl_data_source *s)
@@ -438,7 +469,7 @@ static long wl_clip_get(char *buf, size_t max)
 				char *c = realloc(got, cap);
 				if (!c) { free(got); got = NULL; break; }
 				got = c;
-				gotn += xfer(p[0], got + gotn, cap - gotn, 0);
+				gotn += xfer(p[0], got + gotn, cap - gotn);
 				if (gotn < cap) break;
 			}
 			close(p[0]);
@@ -566,8 +597,10 @@ static uint32_t rgb(const unsigned char c[3]) { return (uint32_t)c[0] << 16 | (u
 /* Callers keep rectangles inside the buffer: cells are, by wl_size. */
 static void fill(uint32_t *px, int x0, int y0, int w, int h, uint32_t c)
 {
-	for (int y = y0; y < y0 + h; y++)
-		for (uint32_t *p = px + y * bw + x0, *e = p + w; p < e; p++) *p = c;
+	if (w <= 0 || h <= 0) return;
+	uint32_t *p = px + y0 * bw + x0;
+	for (int i = 0; i < w; i++) p[i] = c;
+	for (int y = 1; y < h; y++) memcpy(p + y * bw, p, (size_t)w * sizeof *p);   /* libc's copy is vectorized (build B) */
 }
 
 /* src premultiplied, of alpha a, over dst */
@@ -578,14 +611,18 @@ static uint32_t over(uint32_t dst, uint32_t src, unsigned a)
 	return r;
 }
 
+/* bg + (fg - bg) * a / 255 per channel, rounded, red and blue in one
+   multiply (build B): each product fits its 16 bits, and
+   (x + 128 + ((x + 128) >> 8)) >> 8 is x / 255 rounded for x up to
+   255 * 255 (Blinn, "Three wrongs make a right"); equal to dividing each
+   channel by 255 for every bg, fg and a (proved: exhaustive, 33,554,432 cases) */
 static uint32_t mix(uint32_t bg, uint32_t fg, unsigned a)
 {
-	uint32_t r = 0;
-	for (int s = 0; s < 24; s += 8) {
-		unsigned b = bg >> s & 0xff, f = fg >> s & 0xff;
-		r |= (b * (255 - a) + f * a + 127) / 255 << s;
-	}
-	return r;
+	uint32_t rb = (bg & 0xff00ff) * (255 - a) + (fg & 0xff00ff) * a + 0x800080;
+	uint32_t g = (bg >> 8 & 0xff) * (255 - a) + (fg >> 8 & 0xff) * a + 0x80;
+	rb = (rb + (rb >> 8 & 0xff00ff)) >> 8 & 0xff00ff;
+	g = (g + (g >> 8)) >> 8;
+	return rb | g << 8;
 }
 
 /* The colours of cell c of row r, as ref/tty.c: the attr, then the face's
@@ -767,7 +804,7 @@ static void wl_close(void)
 	tim = NULL; ddm = NULL; seat = NULL; wm = NULL; shm = NULL; comp = NULL; reg = NULL; dpy = NULL;
 	xst = NULL; keymap = NULL; xctx = NULL; rfd = -1; clip = got = NULL;
 	gotn = 0;
-	configured = waiting = ti_on = kn = 0;
+	configured = waiting = ti_on = kn = gone = 0;
 	rkey = 0;
 	scale = 120;
 	lw = 800;
@@ -818,15 +855,27 @@ static int wl_fds(int fds[2])
 
 static int wl_input(int *out, int n)
 {
-	uint64_t t;
-	if (rkey && read(rfd, &t, sizeof t) == sizeof t)
-		for (int c = key_of(rkey); t-- && kn < KQ;) push(c);
-	while (wl_display_prepare_read(dpy)) wl_display_dispatch_pending(dpy);
-	wl_display_read_events(dpy);  /* reads what is there, never blocks */
-	wl_display_dispatch_pending(dpy);
-	wl_display_flush(dpy);
+	uint64_t x;
+	if (read(rfd, &x, sizeof x) < 0) {}   /* only clears the timer */
+	if (!gone) {
+		int e = 0;
+		while (!e && wl_display_prepare_read(dpy)) e = wl_display_dispatch_pending(dpy) < 0;
+		if (!e) e = wl_display_read_events(dpy) < 0;   /* reads what is there, never blocks */
+		/* the compositor is gone: once a close, the window's X; quitting
+		   without asking, as Neovim's preserve_exit() does on SIGHUP, is
+		   input() returning -1 once thread 0's backend.h change is in */
+		if (e || wl_display_dispatch_pending(dpy) < 0) { gone = 1; push(KEY_CLOSE); }
+		else wl_display_flush(dpy);
+	}
+	long long t = now();
+	if (rkey && rate > 0 && t >= rnext) {
+		long long per = 1000000000LL / rate, c = 1 + (t - rnext) / per;
+		for (long long j = 0, k = key_of(rkey); j < c && kn < KQ; j++) push((int)k);
+		rnext += c * per;
+	}
 	int i = 0;
 	for (; i < n && kn; i++, kn--, kh = (kh + 1) % KQ) out[i] = kq[kh];
+	arm();
 	return i;
 }
 
@@ -884,10 +933,16 @@ static void wl_present(const Grid *cur, Grid *shown)
 	   of the move reads each source before it is drawn over. */
 	int k = all ? 0 : shift(g, &b->g);
 	size_t row = (size_t)cell_h * (size_t)bw;
+	/* the damage is the rows that differ from the screen, which shows the
+	   other buffer when b is not the one last committed: a row b holds
+	   already may still need its damage */
+	const struct buf *o = !all && on && on->g.rows == g->rows && on->g.cols == g->cols ? on : NULL;
 	for (int i = 0; i < g->rows; i++) {
-		int r = k < 0 ? g->rows - 1 - i : i, lo = 0, hi = g->cols, l, h;
+		int r = k < 0 ? g->rows - 1 - i : i, lo = 0, hi = g->cols, l, h, d = 1;
 		if (!all) {
 			int n = span(g, r, &b->g, r, &lo, &hi);
+			if (o) d = o == b ? n : span(g, r, &o->g, r, &l, &h);
+			if (d) wl_surface_damage_buffer(surf, 0, r * cell_h, g->cols * cell_w, cell_h);
 			if (!n) continue;
 			if (k && r + k >= 0 && r + k < g->rows && span(g, r, &b->g, r + k, &l, &h) < n) {
 				memcpy(b->px + (size_t)r * row, b->px + (size_t)(r + k) * row, row * sizeof *b->px);
@@ -897,7 +952,6 @@ static void wl_present(const Grid *cur, Grid *shown)
 		}
 		if (lo < hi) draw_span(b->px, g, r, lo, hi);
 		memcpy(&b->g.c[r * g->cols], &g->c[r * g->cols], sizeof *g->c * (size_t)g->cols);
-		wl_surface_damage_buffer(surf, 0, r * cell_h, g->cols * cell_w, cell_h);
 	}
 	b->g.crow = g->crow;
 	b->g.ccol = g->ccol;
@@ -907,6 +961,7 @@ static void wl_present(const Grid *cur, Grid *shown)
 	wl_surface_attach(surf, b->b, 0, 0);
 	wl_surface_commit(surf);
 	b->busy = 1;
+	on = b;
 	if (ti_r != g->crow || ti_c != g->ccol) {
 		ti_r = g->crow;
 		ti_c = g->ccol;

@@ -296,6 +296,22 @@ static void test_sway(void)
 	show();
 	cmd("grim -t ppm %s/2.ppm && cmp -s %s/1.ppm %s/2.ppm && ! cmp -s %s/0.ppm %s/1.ppm", dir);
 
+	/* a row back as it was two frames ago is drawn already in the buffer
+	   drawn into, but the screen shows the other buffer's row: it still
+	   needs its damage (the review of package 8, finding 1) */
+	for (int i = 0; i < 4; i++) {
+		grid_puts(&g, 3, 0, "two frames ago", ATTR_NONE);
+		show();
+		grid_puts(&g, 3, 0, "the last frame", ATTR_NONE);
+		show();
+		grid_puts(&g, 3, 0, "two frames ago", ATTR_NONE);
+		show();
+		cmd("grim -t ppm %s/1.ppm # %s", dir);
+		grid_free(&shown);
+		show();
+		cmd("grim -t ppm %s/2.ppm && cmp -s %s/1.ppm %s/2.ppm", dir);
+	}
+
 	/* a symbol wider than its cell (⟹; 73 of Mathlib's 295 are) spills into
 	   the space after it rather than being cut at its cell */
 	grid_clear(&g);
@@ -331,6 +347,18 @@ static void test_sway(void)
 	CHECK(nkeys - k0 == 8);
 	for (int i = 0; i < 8; i++) CHECK(keys[k0 + i] == want[i]);
 
+	/* keys that arrive together but are taken 4 at a time: those left in the
+	   backend's queue make an fd readable, as main.c reads only then */
+	CHECK(!system("wtype -d 1 abcdefgh"));   /* not pumped: all wait in the socket */
+	usleep(300000);
+	k0 = nkeys;
+	for (int i = 0, fds[2]; i < 6; i++) {
+		backend_wl.fds(fds);
+		struct pollfd p[2] = { { fds[0], POLLIN, 0 }, { fds[1], POLLIN, 0 } };
+		if (poll(p, 2, 500) > 0) nkeys += backend_wl.input(keys + nkeys, 4);
+	}
+	CHECK(count('a', k0) == 1 && count('h', k0) == 1 && nkeys - k0 == 8);
+
 	/* repeat: delay 300 ms, 25/s, key held 1000 ms: 1 + 18 by the clock */
 	k0 = nkeys;
 	run("wtype -P x -s 1000 -p x");
@@ -345,6 +373,23 @@ static void test_sway(void)
 	cmd("wl-paste -n > %s/p && printf 'from homeros\\n' | cmp - %s/p", dir);
 	char s[16], *s4 = malloc(4);   /* exactly 4, so ASan sees a byte past max */
 	CHECK(backend_wl.clip_get(s4, 4) == 13 && !memcmp(s4, "from", 4));   /* ours, read back */
+	/* a reader of ours that stalls 2 s does not stop the editor, and gets
+	   all of 1 MB (the review of package 8, finding 3) */
+	char *big = malloc(1 << 20);
+	memset(big, 'x', 1 << 20);
+	CHECK(!backend_wl.clip_set(big, 1 << 20));
+	free(big);
+	char rd[128];                   /* started unpumped, so the wait is timed below */
+	snprintf(rd, sizeof rd, "(wl-paste -n | (sleep 2; wc -c > %s/n)) &", dir);
+	CHECK(!system(rd));
+	double worst = 0;
+	for (double end = now() + 3000; now() < end;) {
+		double a = now();
+		pump(10);
+		if (now() - a > worst) worst = now() - a;
+	}
+	CHECK(worst < 200);
+	cmd("test $(cat %s/n) = 1048576 # %s", dir);
 	run("printf 'from outside' | wl-copy");
 	pump(100);
 	CHECK(backend_wl.clip_get(s4, 4) == 12 && !memcmp(s4, "from", 4));   /* too little room */
@@ -450,6 +495,19 @@ static void test_sway(void)
 	run(SWAYMSG "kill");
 	pump(100);
 	CHECK(count(KEY_CLOSE, k0) == 1);
+
+	/* the compositor gone: noticed once, as a close (the review of package
+	   8, finding 4); the input method's connection dies too, so not pump */
+	k0 = nkeys;
+	kill(-cpid, SIGKILL);
+	waitpid(cpid, NULL, 0);
+	for (int i = 0, fds[2]; i < 5; i++) {
+		backend_wl.fds(fds);
+		struct pollfd p = { fds[0], POLLIN, 0 };
+		CHECK(poll(&p, 1, 1000) > 0);
+		nkeys += backend_wl.input(keys + nkeys, 64);
+	}
+	CHECK(count(KEY_CLOSE, k0) == 1 && nkeys - k0 == 1);
 
 	backend_wl.close();
 	zwp_input_method_v2_destroy(im);

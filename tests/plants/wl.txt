@@ -23,3 +23,7 @@ wl: changed span not widened left~test TESTS=wl~~src/wl/wl.c~	while (l > 0 && !E
 wl: changed span not widened right~test TESTS=wl~~src/wl/wl.c~	while (h < n && !EDGE(h)) h++;¶~¶
 wl: spill past a non-blank cell~test TESTS=wl~~src/wl/wl.c~		while (e < hi && (!x[e].len || blank(&x[e]))) e++;~		while (e < hi) e++;
 wl: long cluster read from the cell~test TESTS=wl~~src/wl/wl.c~		const unsigned char *t = grid_text(&x[c]);~		const unsigned char *t = x[c].ch;
+wl: damage only rows drawn~test TESTS=wl~~src/wl/wl.c~			if (o) d = o == b ? n : span(g, r, &o->g, r, &l, &h);~			if (o) d = n;
+wl: keys left waiting~test TESTS=wl~~src/wl/wl.c~	long long at = kn ? 1 : rkey ? rnext : 0;~	long long at = rkey ? rnext : 0;
+wl: clipboard written by the editor itself~test TESTS=wl~~src/wl/wl.c~	pid_t p = fork();~	send_all(fd);¶	pid_t p = -1;
+wl: lost compositor ignored~test TESTS=wl~~src/wl/wl.c~{ gone = 1; push(KEY_CLOSE); }~{ gone = 1; }
