@@ -206,8 +206,61 @@ static Buf *buf_new(Editor *e, const char *path)
 	return b;
 }
 
+/* u_savecommon() keeps a-z, < and > as they were when a group opened, and
+   u_undoredo() swaps them back in.  A group's marks by its number (m[26]
+   and m[27] are < and >), kept only while one of them is set: marks are
+   rare, so the list stays short. */
+typedef struct UndoMarks { Buf *b; unsigned long seq; Mark m[28]; struct UndoMarks *next; } UndoMarks;
+static UndoMarks *umarks;
+
+static void marks_snap(const Buf *b, Mark *m)
+{
+	memcpy(m, b->mark, 26 * sizeof *m);
+	m[26] = b->mark[MARK_LT];
+	m[27] = b->mark[MARK_GT];
+}
+
+static UndoMarks **umarks_find(const Buf *b, unsigned long seq)
+{
+	UndoMarks **p = &umarks;
+	while (*p && ((*p)->b != b || (*p)->seq != seq)) p = &(*p)->next;
+	return p;
+}
+
+/* the group's marks become m: dropped when none is set; out of memory
+   loses them, as an undo that cannot save them would */
+static void umarks_put(Buf *b, unsigned long seq, const Mark *m)
+{
+	UndoMarks **p = umarks_find(b, seq), *u = *p;
+	int any = 0;
+	for (int i = 0; i < 28; i++) any |= m[i].set;
+	if (!any) {
+		if (u) { *p = u->next; free(u); }
+		return;
+	}
+	if (!u && (u = malloc(sizeof *u))) { u->b = b; u->seq = seq; u->next = umarks; umarks = u; }
+	if (u) memcpy(u->m, m, sizeof u->m);
+}
+
+static void umarks_drop(const Buf *b)
+{
+	for (UndoMarks **p = &umarks; *p;)
+		if ((*p)->b == b) { UndoMarks *u = *p; *p = u->next; free(u); }
+		else p = &(*p)->next;
+}
+
+/* clrallmarks(): a buffer reused for another file has no marks; '< and '>
+   stay, as there */
+static void clrallmarks(Buf *b)
+{
+	for (int k = 0; k < MARK_N; k++)
+		if (k != MARK_LT && k != MARK_GT) b->mark[k] = (Mark){ 0 };
+	b->nchange = 0;
+}
+
 static void buf_unload(Buf *b)
 {
+	umarks_drop(b);
 	syntax_free(b->syn);
 	text_free(b->text);
 	undo_free(b->undo);
@@ -449,6 +502,7 @@ static int edit_file(Editor *e, const char *path, int force, int split)
 	int shown = 0;
 	for (Win *v = e->wins; v; v = v->next) shown += v->buf == b;
 	if (!to && !b->path && shown <= 1 && buf_empty(b) && !core_modified(b)) {
+		clrallmarks(b);
 		if (*path) {
 			Buf old = *b;
 			if (buf_load(e, b, path)) return -1;
@@ -513,6 +567,7 @@ static void buf_unlist(Editor *e, Buf *b)
 	syntax_free(b->syn);
 	text_free(b->text);
 	undo_free(b->undo);
+	umarks_drop(b);
 	b->syn = NULL;
 	b->text = NULL;
 	b->undo = NULL;
@@ -571,7 +626,19 @@ int core_buf_delete(Editor *e, int nr, int force)
 
 /* ---- editing ---- */
 
-/* mark_adjust() for the other windows on b and every remembered cursor:
+/* ONE_ADJUST (nodel 0: a deleted line unsets the mark) and
+   ONE_ADJUST_NODEL (1: it goes to the first deleted line) */
+static void mark_adjust1(Mark *m, int nodel, size_t l1, size_t l2, long amount, long after)
+{
+	if (!m->set) return;
+	if (m->line >= l1 && m->line < l2) {
+		if (amount != DEL) m->line += (size_t)amount;
+		else if (nodel) m->line = l1;
+		else m->set = 0;
+	} else if (after && m->line >= l2) m->line += (size_t)after;
+}
+
+/* mark_adjust() for the other windows on b, every remembered cursor and the marks:
    lines [l1, l2) move by amount (DEL: deleted), lines from l2 on by after
    (an end past the range, so that an empty range at line 0 has one) */
 static void adjust(Editor *e, Buf *b, size_t l1, size_t l2, long amount, long after)
@@ -593,6 +660,50 @@ static void adjust(Editor *e, Buf *b, size_t l1, size_t l2, long amount, long af
 			if (amount == DEL) { i->line = l1 ? l1 - 1 : 0; i->col = 0; }
 			else i->line += (size_t)amount;
 		} else if (after && i->line >= l2) i->line += (size_t)after;
+	}
+	/* a-z . ^ " ONE_ADJUST (" not at its initial 1,0); < > ONE_ADJUST_NODEL;
+	   [ ] not at all */
+	for (int k = 0; k < MARK_N; k++)
+		if (k != MARK_LBRACKET && k != MARK_RBRACKET
+		    && (k != MARK_QUOTE || b->mark[k].line || b->mark[k].col))
+			mark_adjust1(&b->mark[k], k == MARK_LT || k == MARK_GT, l1, l2, amount, after);
+	for (int k = 0; k < b->nchange; k++) mark_adjust1(&b->change[k], 1, l1, l2, amount, after);
+	/* every window's jump list entries in b, whatever it shows */
+	for (Win *w = e->wins; w; w = w->next)
+		for (int k = 0; k < w->njump; k++)
+			if (w->jump[k].buf == b) mark_adjust1(&w->jump[k].m, 1, l1, l2, amount, after);
+}
+
+/* mark_col_adjust() with COL_ADJUST: marks at or after column mincol of
+   line move by line_amount lines and col_amount columns */
+static void col_adjust(Mark *m, size_t line, size_t mincol, long line_amount, long col_amount, int spaces_removed)
+{
+	if (!m->set || m->line != line || m->col < mincol) return;
+	m->line = (size_t)((long)m->line + line_amount);
+	if (col_amount < 0 && (long)m->col <= -col_amount) m->col = 0;
+	else if ((long)m->col < spaces_removed) m->col = (size_t)(col_amount + spaces_removed);
+	else m->col = (size_t)((long)m->col + col_amount);
+}
+
+void core_mark_join(Editor *e, size_t line, size_t mincol, long line_amount, long col_amount, int spaces_removed)
+{
+	if (!col_amount && !line_amount) return;
+	Buf *b = e->buf;
+	/* a-z, ^, ., the change list, < >; not [ ] or " */
+	for (int k = 0; k < MARK_N; k++)
+		if (k < 26 || k == MARK_CARET || k == MARK_DOT || k == MARK_LT || k == MARK_GT)
+			col_adjust(&b->mark[k], line, mincol, line_amount, col_amount, spaces_removed);
+	for (int k = 0; k < b->nchange; k++) col_adjust(&b->change[k], line, mincol, line_amount, col_amount, spaces_removed);
+	for (Win *w = e->wins; w; w = w->next) {
+		for (int k = 0; k < w->njump; k++)
+			if (w->jump[k].buf == b) col_adjust(&w->jump[k].m, line, mincol, line_amount, col_amount, spaces_removed);
+		/* the cursor of the other windows on b */
+		if (w->buf == b && w != e->win) {
+			Mark c = { w->line, w->col, 1 };
+			col_adjust(&c, line, mincol, line_amount, col_amount, spaces_removed);
+			w->line = c.line;
+			w->col = c.col;
+		}
 	}
 }
 
@@ -624,6 +735,9 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 	if (!ndel && !nins && after == b->flags) return 0;
 	char *del = malloc(ndel ? ndel : 1);
 	UndoCursor c = { e->win->line, e->win->col, b->flags };
+	unsigned long seq = undo_seq(b->undo);
+	Mark snap[28];
+	marks_snap(b, snap);
 	int r = -1;
 	size_t L = text_line_of(b->text, pos);
 	int at_start = pos == text_line_start(b->text, L);
@@ -631,7 +745,10 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 	else { free(del); del = NULL; }
 	if (del && !text_delete(b->text, pos, ndel)) {
 		if (!text_insert(b->text, pos, ins, nins)) {
-			if (!undo_record(b->undo, pos, del, ndel, ins, nins, c, after)) r = 0;
+			if (!undo_record(b->undo, pos, del, ndel, ins, nins, c, after)) {
+				r = 0;
+				if (undo_seq(b->undo) != seq) umarks_put(b, undo_seq(b->undo), snap);   /* a new group */
+			}
 			else { text_delete(b->text, pos, nins); text_insert(b->text, pos, del, ndel); }
 		} else text_insert(b->text, pos, del, ndel);
 	}
@@ -668,7 +785,13 @@ int core_edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins)
 int core_delete_lines(Editor *e, size_t a, size_t z)
 {
 	size_t n = core_lines(e);
-	if (a == 0 && z >= n) return edit(e, 0, core_line_start(e, n) - 1, "", 0, CORE_EMPTY);
+	if (a == 0 && z >= n) {
+		/* the text goes but the empty line stays: as for Neovim's
+		   ml_delete() of every line, the marks see all n deleted */
+		if (edit(e, 0, core_line_start(e, n) - 1, "", 0, CORE_EMPTY)) return -1;
+		adjust(e, e->buf, 0, n, DEL, -(long)n);
+		return 0;
+	}
 	return edit(e, core_line_start(e, a), core_line_start(e, z) - core_line_start(e, a), "", 0, 0);
 }
 
@@ -679,8 +802,13 @@ int core_undo(Editor *e, int redo)
 {
 	UndoWhere w;
 	Win *win = e->win;
+	Buf *b = e->buf;
 	size_t before = core_lines(e), c = win->line;
-	int r = redo ? undo_redo(e->buf->undo, e->buf->text, &w) : undo_undo(e->buf->undo, e->buf->text, &w);
+	Mark namedm[28];
+	marks_snap(b, namedm);
+	unsigned long seq = undo_seq(b->undo);             /* the group undone */
+	int r = redo ? undo_redo(b->undo, b->text, &w) : undo_undo(b->undo, b->text, &w);
+	if (redo) seq = undo_seq(b->undo);                 /* the group redone */
 	if (r <= 0) {
 		core_msg(e, r ? "out of memory" : redo ? "Already at newest change" : "Already at oldest change");
 		return -1;
@@ -695,6 +823,26 @@ int core_undo(Editor *e, int redo)
 	/* the other windows: the step replaced lines first.. by last - first + 1 */
 	size_t kept = before - (n - (last + 1 - first));   /* lines the step replaced */
 	if (n != before) adjust(e, e->buf, first, first + kept, DEL, (long)n - (long)before);
+	/* the marks the group saved come back, and it saves the ones before */
+	UndoMarks *u = *umarks_find(b, seq);
+	Mark saved[28] = { 0 };
+	if (u) memcpy(saved, u->m, sizeof saved);
+	for (int i = 0; i < 26; i++) {
+		if (saved[i].set) b->mark[i] = saved[i];
+		saved[i] = namedm[i];
+	}
+	if (saved[26].set) {
+		b->mark[MARK_LT] = saved[26];
+		b->mark[MARK_GT] = saved[27];
+		saved[26] = namedm[26];
+		saved[27] = namedm[27];
+	}
+	umarks_put(b, seq, saved);
+	/* '[ and '] around the changed lines (u_undoredo()) */
+	size_t newsize = last + 1 - first, top = first < n ? first : n - 1;
+	size_t end = newsize ? first + newsize - 1 : first;
+	b->mark[MARK_LBRACKET] = (Mark){ top, 0, 1 };
+	b->mark[MARK_RBRACKET] = (Mark){ end < n ? end : n - 1, 0, 1 };
 	size_t l = w.cur.line + 1 >= first && w.cur.line <= last + 1 ? w.cur.line : first;
 	if (l >= n) l = n - 1;                          /* check_cursor_lnum() */
 	if (w.cur.line + 1 == l && l > 0) l--;          /* "o": back where it started */

@@ -93,6 +93,7 @@ static void token(Editor *e, Grid *g, const char *t)
 		return;
 	}
 	if (!strncmp(t, "k:", 2)) { feed(e, t + 2); return; }
+	if (!strncmp(t, "m:", 2)) { e->buf->mark[t[2] - 'a'] = (Mark){ w->line, w->col, 1 }; return; }
 	if (!strncmp(t, "e:", 2)) { core_edit_file(e, t + 2, 0); goto upd; }
 	if (!strncmp(t, "b:", 2)) { core_buf_goto(e, atoi(t + 2)); goto upd; }
 	if (!strncmp(t, "size:", 5)) {
@@ -164,7 +165,7 @@ int main(int argc, char **argv)
 	CHECK(f);
 	char cwd[4096], dir[] = "/tmp/core_screensXXXXXX";
 	CHECK(getcwd(cwd, sizeof cwd) && mkdtemp(dir));
-	static char *tokens[64], *screens[65][121];
+	static char *tokens[64], *screens[65][121], *marks[65];
 	int srow = 0;
 	int ntok = 0, nscr = 0, nfile = 0, rows = 0, cols = 0, ncase = 0, bad = 0, total = 0, badcases = 0;
 	while (fgets(line, sizeof line, f)) {
@@ -186,6 +187,7 @@ int main(int argc, char **argv)
 		} else if (line[0] == 'T') { CHECK(ntok < 64); tokens[ntok++] = strdup(line + 2); }
 		else if (line[0] == 'P') { CHECK(nscr < 65); nscr++; srow = 0; }
 		else if (line[0] == 'S') { CHECK(srow < 120); screens[nscr - 1][srow++] = strdup(line + 2); }
+		else if (line[0] == 'M') marks[nscr - 1] = strdup(line + 2);
 		else if (line[0] == 'R') {                 /* the row as on the screen before */
 			CHECK(srow < 120 && nscr > 1 && screens[nscr - 2][srow]);
 			screens[nscr - 1][srow] = strdup(screens[nscr - 2][srow]);
@@ -207,7 +209,19 @@ int main(int argc, char **argv)
 				for (Win *w = e.wins; w; w = w->next) if (w->y + w->h + 1 > below) below = w->y + w->h + 1;
 				for (r = 0; r < below && screens[s][r]; r++)
 					if (strcmp(row_text(&g, r), screens[s][r]) && !(in_pum && status_row(&e, r))) break;
-				if (r < below && screens[s][r]) {
+				char mk[3][48], got[160];
+				for (int i = 0; i < 3; i++) {
+					Mark m = e.buf->mark[i];
+					if (m.set) snprintf(mk[i], sizeof mk[i], "%zu:%zu", m.line, m.col);
+					else strcpy(mk[i], "-");
+				}
+				snprintf(got, sizeof got, "%s %s %s", mk[0], mk[1], mk[2]);
+				if (marks[s] && strcmp(got, marks[s])) {
+					bad++;
+					if (!differ++ || verbose)
+						fprintf(stderr, "case %d after %s: marks\n  nvim [%s]\n  core [%s]\n", ncase,
+						        s ? tokens[s - 1] : "start", marks[s], got);
+				} else if (r < below && screens[s][r]) {
 					bad++;
 					if (!differ++ || verbose)
 						fprintf(stderr, "case %d (%dx%d) after %s, row %d:\n  nvim [%s]\n  core [%s]\n", ncase,
@@ -227,7 +241,11 @@ int main(int argc, char **argv)
 				unlink(name);
 			}
 			for (int i = 0; i < ntok; i++) free(tokens[i]);
-			for (int s = 0; s < nscr; s++) for (int r = 0; screens[s][r]; r++) free(screens[s][r]);
+			for (int s = 0; s < nscr; s++) {
+				for (int r = 0; screens[s][r]; r++) free(screens[s][r]);
+				free(marks[s]);
+				marks[s] = NULL;
+			}
 			memset(screens, 0, sizeof screens);
 			ncase++;
 		}

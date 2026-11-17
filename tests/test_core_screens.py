@@ -4,7 +4,7 @@ usage: test_core_screens.py N [seed] [--record FILE] [--drv DRIVER]
 Makes N random cases (files, a screen size, a sequence of window, buffer,
 scrolling and editing commands), runs each in nvim --headless with
 FEATURES.md's settings and reads Neovim's whole screen with screenstring()
-after every command marked for it.  --record writes the cases with Neovim's
+and marks a, b and c after every command.  --record writes the cases with Neovim's
 screens for tests/test_core_screens.c, which replays them without Neovim;
 --drv runs that program on the fresh cases and compares at once.
 
@@ -59,6 +59,8 @@ def gen_tokens(r, nfiles):
         elif c < .7:
             toks.append('k:' + r.choice(['ix<Esc>', 'Onew line<Esc>', 'A' + 'y' * r.randint(1, 90) + '<Esc>',
                                          'dd', 'x', 'u', '<C-r>', 'oa<CR>b<CR>c<Esc>']))
+        elif c < .76:
+            toks.append('m:' + r.choice('abc'))
         else:
             m = r.choice(['j', 'k', 'h', 'l', 'w', 'b', 'gg', 'G', '0', '$', '^'])
             toks.append('k:' + ('' if m == '0' else cnt) + m)   # a count then 0 is a longer count
@@ -94,6 +96,7 @@ def nvim_keys(t):
         items = ','.join("{'word':'%s','kind':'%s','menu':'%s'}" % it for it in PUM[a:a + n])
         return ['A', '<Cmd>call complete(col("."), [%s])<CR>' % items] + ['<C-n>'] * s + ['<Cmd>lua CAPTURE()<CR>']
     if t == 'alt': return '<C-^>'
+    if t.startswith('m:'): return 'm' + t[2]
     cmds = {'sp', 'vs', 'new', 'vnew', 'close', 'q', 'only', 'bn', 'bp', 'enew', 'bd'}
     if t in cmds: return ':%s<CR>' % t
     i = 0
@@ -120,10 +123,19 @@ local function screen(bang)
   end
   return rows
 end
+-- marks a, b and c of the current buffer, as line:col from 0, or -
+local function marks()
+  local s = {}
+  for _, m in ipairs({'a', 'b', 'c'}) do
+    local p = vim.fn.getpos("'" .. m)
+    s[#s + 1] = p[2] == 0 and '-' or (p[2] - 1) .. ':' .. (p[3] - 1)
+  end
+  return table.concat(s, ' ')
+end
 -- the popup token reads the screen in Insert mode, with the popup up
 -- ('redraw!' would close it)
-function CAPTURE() captured = screen(false) end
-local out, nop = {screen()}, {}
+function CAPTURE() captured = screen(false); cmarks = marks() end
+local out, mk, nop = {screen()}, {marks()}, {}
 for i, ks in ipairs(c.keys) do
   -- closing the last window would quit: the C side skips it too
   local last = #vim.api.nvim_tabpage_list_wins(0) == 1
@@ -136,15 +148,16 @@ for i, ks in ipairs(c.keys) do
     ks = {}; nop[#nop + 1] = i
   end
   vim.v.errmsg = ''
-  captured = nil
+  captured, cmarks = nil, nil
   pcall(vim.api.nvim_feedkeys, vim.api.nvim_replace_termcodes(table.concat(ks), true, false, true), 'xt', false)
   -- :set lines below what the windows need fails (E593) and changes
   -- nothing; a terminal resize (screen_resize()) cannot fail, so the C
   -- side, which resizes, skips it
   if vim.v.errmsg:match('^E593') then nop[#nop + 1] = i end
   out[#out + 1] = captured or screen()
+  mk[#mk + 1] = cmarks or marks()
 end
-io.open(OUT, 'w'):write(vim.json.encode({screens = out, nop = nop}))
+io.open(OUT, 'w'):write(vim.json.encode({screens = out, marks = mk, nop = nop}))
 vim.cmd('qa!')
 '''
 
@@ -169,17 +182,19 @@ def write_cases(path, cases):
     """One case per block: C rows cols, F hex (one per file), T token (one
     per token), then each screen (the initial one, then one after each
     token) as P and a line per row: S and the row without trailing spaces,
-    or R when the row is as on the screen before."""
+    or R when the row is as on the screen before; then M and marks a, b and
+    c (line:col from 0, or -)."""
     with open(path, 'w', encoding='utf-8') as f:
         for c in cases:
             f.write('C %d %d\n' % (c['rows'], c['cols']))
             for t in c['files']: f.write('F %s\n' % t.encode().hex())
             for t in c['tokens']: f.write('T %s\n' % t)
             prev = []
-            for s in c['screens']:
+            for s, m in zip(c['screens'], c['marks']):
                 f.write('P\n')
                 for i, row in enumerate(s):
                     f.write('R\n' if i < len(prev) and prev[i] == row else 'S %s\n' % row.rstrip(' '))
+                f.write('M %s\n' % m)
                 prev = s
             f.write('E\n')
 
@@ -190,7 +205,7 @@ def main():
     cases = [gen_case(r) for _ in range(n)]
     with concurrent.futures.ThreadPoolExecutor(8) as ex:
         for c, s in zip(cases, ex.map(run_nvim, cases)):
-            c['screens'] = s['screens']
+            c['screens'], c['marks'] = s['screens'], s['marks']
             for i in s['nop']: c['tokens'][i - 1] = 'nop'
     path = a[a.index('--record') + 1] if '--record' in a else tempfile.mktemp(suffix='.txt')
     write_cases(path, cases)

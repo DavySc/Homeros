@@ -72,7 +72,6 @@ void win_new_height(Editor *e, Win *w, int h);
 void win_new_width(Editor *e, Win *w, int wd);
 void win_cursor_pos(Editor *e, Win *w, int *wrow, int *wcol);
 void scroll_halfway(Editor *e, Win *w, int atend, int prefer_above);
-void core_set_wrap(Editor *e, int on);   /* until core.h has it */
 void win_invalidate(Win *w);          /* changed_line_abv_curs_win(): update_topline() looks again */
 
 /* layout (win.c) */

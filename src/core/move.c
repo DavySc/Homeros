@@ -826,11 +826,14 @@ static void scroll_redraw(Editor *e, Win *w, int up, long count)
 	if (w->line != pline) coladvance(e, w);
 }
 
-void core_scroll(Editor *e, long n)
+/* scroll_redraw() never beeps (measured: a mapping goes on after CTRL-E
+   at the end and CTRL-Y at the top) */
+int core_scroll(Editor *e, long n)
 {
 	if (n > 0) scroll_redraw(e, e->win, 1, n);
 	else if (n < 0) scroll_redraw(e, e->win, 0, -n);
 	core_update(e);
+	return 0;
 }
 
 /* scroll_with_sms(): scroll with 'smoothscroll' on, then finish a line left
@@ -866,7 +869,10 @@ static void cursor_move_lines(Win *w, long n)
 }
 
 /* pagescroll() */
-static void pagescroll(Editor *e, int dir, long count, int half)
+/* -1 when neither the view nor the cursor moved: Neovim beeps (measured:
+   a mapping stops after CTRL-D or CTRL-F at the end, CTRL-U or CTRL-B at
+   the top) */
+static int pagescroll(Editor *e, int dir, long count, int half)
 {
 	Win *w = e->win;
 	lnr n = nlines(w);
@@ -936,10 +942,11 @@ static void pagescroll(Editor *e, int dir, long count, int half)
 	/* beginline(BL_SOL | BL_FIX) with nostartofline: back to curswant */
 	if (moved) coladvance(e, w);
 	core_update(e);
+	return moved ? 0 : -1;
 }
 
-void core_scroll_half(Editor *e, int dir, long count) { pagescroll(e, dir, count, 1); }
-void core_scroll_page(Editor *e, int dir, long count) { pagescroll(e, dir, count ? count : 1, 0); }
+int core_scroll_half(Editor *e, int dir, long count) { return pagescroll(e, dir, count, 1); }
+int core_scroll_page(Editor *e, int dir, long count) { return pagescroll(e, dir, count ? count : 1, 0); }
 
 /* nv_zet(): zt zz zb, then set_fraction() */
 void core_scroll_cursor(Editor *e, int how)
