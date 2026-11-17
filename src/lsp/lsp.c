@@ -1,0 +1,543 @@
+/* The LSP client (lsp.h).  Servers are child processes of the loop
+   (loop.h proc_spawn); messages are JSON-RPC with Content-Length frames
+   on their stdin and stdout.  The rules for what is shown are
+   LspSync.tla's "simple" variant: a document's version counts the
+   didChanges sent, and what the server says about a version is used only
+   while the text is still that version (no edits since, sent or not). */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
+#include <unistd.h>
+#include "json.h"
+#include "loop.h"
+#include "lsp.h"
+
+static const char *const lean_argv[] = { "lake", "serve", NULL };
+static const char *const lean_roots[] = { "lakefile.lean", "lakefile.toml", "lean-toolchain", NULL };
+static const char *const clangd_argv[] = { "clangd", NULL };
+static const char *const clangd_roots[] = { "compile_commands.json", "compile_flags.txt", ".git", NULL };
+static const char *const ra_argv[] = { "rust-analyzer", NULL };
+static const char *const ra_roots[] = { "Cargo.toml", NULL };
+static const LspServer table[] = {
+	{ ".lean", "lean4", lean_argv, lean_roots, 1 },
+	{ ".c", "c", clangd_argv, clangd_roots, 0 },
+	{ ".h", "c", clangd_argv, clangd_roots, 0 },
+	{ ".cpp", "cpp", clangd_argv, clangd_roots, 0 },
+	{ ".hpp", "cpp", clangd_argv, clangd_roots, 0 },
+	{ ".rs", "rust", ra_argv, ra_roots, 0 },
+	{ NULL, NULL, NULL, NULL, 0 },
+};
+const LspServer *lsp_servers = table;
+int lsp_dirty;
+
+typedef struct { LspDiag *v; int n, cap; } Set;
+
+typedef struct Srv {
+	const LspServer *def;
+	char *root;
+	int proc;               /* -1: not running */
+	int ready;              /* initialize answered: messages may go */
+	int closing;            /* its last file closed: freed once it exits */
+	Str in, held;           /* bytes read and not yet handled; messages waiting for ready */
+	long next;              /* request ids; 0 is initialize */
+	LspDoc *docs;
+	struct Srv *link;
+} Srv;
+
+struct LspDoc {
+	Srv *s;
+	char *uri;
+	const Text *t;
+	long ver;               /* didChanges sent */
+	Str chg;                /* this command's contentChanges, not yet sent */
+	Set diag, prog;
+	struct { long id, ver; char *ans; } ask[LSP_NASK];   /* id 0: no reply pending */
+	LspDoc *link;
+};
+
+static Srv *srvs;
+static void out(void *ctx, int stream, const char *b, size_t n);
+static Str o, line;             /* the message being built; one line of text */
+static Jtok *tk;
+static int ntk;
+
+/* file:// and the absolute path, percent-encoded but for / and RFC 3986's
+   unreserved characters (VS Code's). */
+static char *uri(const char *abs)
+{
+	Str u = { 0 };
+	str_lit(&u, "file://");
+	for (const unsigned char *p = (const unsigned char *)abs; *p; p++)
+		if ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') || (*p >= '0' && *p <= '9') || strchr("/-._~", *p))
+			str_put(&u, p, 1);
+		else str_putf(&u, "%%%02X", *p);
+	return u.b;
+}
+
+/* --- sending ------------------------------------------------------------ */
+
+/* o, framed, to the server; held until it has answered initialize (the
+   spec allows nothing else before), unless now. */
+static void frame(Srv *s, int now)
+{
+	char h[40];
+	int n = snprintf(h, sizeof h, "Content-Length: %zu\r\n\r\n", o.n);
+	if (s->proc < 0) return;
+	if (!s->ready && !now) { str_put(&s->held, h, (size_t)n); str_put(&s->held, o.b, o.n); return; }
+	proc_write(s->proc, h, (size_t)n);
+	proc_write(s->proc, o.b, o.n);
+}
+
+static void send(Srv *s) { frame(s, 0); }
+
+static void begin(const char *method)
+{
+	o.n = 0;
+	str_putf(&o, "{\"jsonrpc\":\"2.0\",\"method\":\"%s\",\"params\":", method);
+}
+
+static void end(Srv *s) { str_lit(&o, "}"); send(s); }
+
+/* Bytes [a, a + n) of t, in line's buffer; n 0 when out of memory. */
+static const unsigned char *bytes(const Text *t, size_t a, size_t *n)
+{
+	if (line.cap < *n + 1) {
+		char *b = realloc(line.b, *n + 1);
+		if (!b) { *n = 0; return (const unsigned char *)""; }
+		line.b = b; line.cap = *n + 1;
+	}
+	*n = text_read(t, a, line.b, *n);
+	return (const unsigned char *)line.b;
+}
+
+/* Line and UTF-16 column of byte pos in t. */
+static void where(const Text *t, size_t pos, size_t *l, size_t *c)
+{
+	*l = text_line_of(t, pos);
+	size_t a = text_line_start(t, *l), n = pos - a;
+	const unsigned char *b = bytes(t, a, &n);
+	*c = lsp_u16(b, n);
+}
+
+static void putpos(const Text *t, size_t pos)
+{
+	size_t l, c;
+	where(t, pos, &l, &c);
+	str_putf(&o, "{\"line\":%zu,\"character\":%zu}", l, c);
+}
+
+static void open_doc(LspDoc *d)
+{
+	char b[1 << 14];
+	begin("textDocument/didOpen");
+	str_putf(&o, "{\"textDocument\":{\"uri\":\"%s\",\"languageId\":\"%s\",\"version\":%ld,\"text\":\"",
+	         d->uri, d->s->def->lang, d->ver);
+	for (size_t p = 0, n; (n = text_read(d->t, p, b, sizeof b)); p += n) str_putq(&o, b, n);
+	str_lit(&o, "\"}}");
+	end(d->s);
+}
+
+static void start(Srv *s)
+{
+	s->ready = 0;
+	s->in.n = s->held.n = 0;
+	s->next = 1;
+	s->proc = proc_spawn((char *const *)s->def->argv, s->root, out, s);
+	if (s->proc < 0) return;
+	char *u = uri(s->root);
+	o.n = 0;
+	str_putf(&o, "{\"jsonrpc\":\"2.0\",\"id\":0,\"method\":\"initialize\",\"params\":{\"processId\":%ld,\"rootUri\":\"", (long)getpid());
+	if (u) str_put(&o, u, strlen(u));
+	free(u);
+	/* Lean: incremental diagnostics (else 420 MB of JSON, measured in
+	   kittymax) and widgets (the infoview, package 14) */
+	str_lit(&o, "\",\"capabilities\":{\"textDocument\":{\"publishDiagnostics\":{\"versionSupport\":true},"
+	        "\"hover\":{\"contentFormat\":[\"markdown\",\"plaintext\"]},\"synchronization\":{\"didSave\":true}},"
+	        "\"general\":{\"positionEncodings\":[\"utf-16\"]},\"lean\":{\"incrementalDiagnosticSupport\":true}}");
+	if (s->def->lean) str_lit(&o, ",\"initializationOptions\":{\"hasWidgets\":true}");
+	str_lit(&o, "}}");
+	frame(s, 1);
+}
+
+/* --- what is shown ---------------------------------------------------------- */
+
+static void clear(Set *v)
+{
+	for (int i = 0; i < v->n; i++) free(v->v[i].msg);
+	v->n = 0;
+}
+
+/* Cancels d's pending request of kind k. */
+static void cancel(LspDoc *d, int k)
+{
+	if (!d->ask[k].id) return;
+	begin("$/cancelRequest");
+	str_putf(&o, "{\"id\":%ld}", d->ask[k].id);
+	end(d->s);
+	d->ask[k].id = 0;
+}
+
+static void forget(LspDoc *d)
+{
+	clear(&d->diag);
+	clear(&d->prog);
+	for (int k = 0; k < LSP_NASK; k++) { free(d->ask[k].ans); d->ask[k].ans = NULL; d->ask[k].id = 0; }
+	lsp_dirty = 1;
+}
+
+/* Bytes [a, z) of t keep pointing at the same characters while at pos
+   ndel bytes become nins (as a delete, then an insert at pos). */
+static int shift(LspDiag *g, size_t pos, size_t ndel, size_t nins)
+{
+	size_t a = g->a < pos ? g->a : (g->a > pos + ndel ? g->a : pos + ndel) - ndel + nins;
+	size_t z = g->z <= pos ? g->z : g->z <= pos + ndel ? pos : g->z - ndel + nins;
+	if (g->a == g->z) z = a;
+	else if (a >= z) return 0;
+	g->a = a; g->z = z;
+	return 1;
+}
+
+static void shift_set(Set *v, size_t pos, size_t ndel, size_t nins)
+{
+	int k = 0;
+	for (int i = 0; i < v->n; i++)
+		if (shift(&v->v[i], pos, ndel, nins)) v->v[k++] = v->v[i];
+		else free(v->v[i].msg);
+	if (k != v->n) lsp_dirty = 1;
+	v->n = k;
+}
+
+/* --- the public calls ------------------------------------------------------- */
+
+static char *absolute(const char *path)
+{
+	char *abs = realpath(path, NULL), cwd[4096];
+	if (abs) return abs;
+	if (path[0] == '/') return strdup(path);
+	Str a = { 0 };
+	if (getcwd(cwd, sizeof cwd)) str_putf(&a, "%s/%s", cwd, path);
+	return a.b;
+}
+
+/* The nearest directory above file abs holding one of roots, else the
+   file's own. */
+static char *project(const char *abs, const char *const *roots)
+{
+	char *dir = strdup(abs), *own = strdup(abs);
+	if (!dir || !own) { free(dir); free(own); return NULL; }
+	*strrchr(own, '/') = 0;
+	for (char *slash; (slash = strrchr(dir, '/')) && slash != dir; ) {
+		*slash = 0;
+		for (const char *const *m = roots; *m; m++) {
+			Str p = { 0 };
+			int found = !str_putf(&p, "%s/%s", dir, *m) && !access(p.b, F_OK);
+			free(p.b);
+			if (found) { free(own); return dir; }
+		}
+	}
+	free(dir);
+	return own;
+}
+
+LspDoc *lsp_open(const char *path, const Text *t)
+{
+	const char *dot = strrchr(path, '.');
+	const LspServer *def = lsp_servers;
+	while (def->ext && (!dot || strcmp(def->ext, dot))) def++;
+	if (!def->ext) return NULL;
+	char *abs = absolute(path), *root = abs ? project(abs, def->roots) : NULL, *u = abs ? uri(abs) : NULL;
+	LspDoc *d = calloc(1, sizeof *d);
+	free(abs);
+	if (!d || !root || !u) { free(d); free(root); free(u); return NULL; }
+	Srv *s = srvs;
+	while (s && (s->def->argv != def->argv || s->closing || strcmp(s->root, root))) s = s->link;
+	if (!s) {
+		if (!(s = calloc(1, sizeof *s))) { free(root); free(d); free(u); return NULL; }
+		s->def = def; s->root = root;
+		start(s);
+		if (s->proc < 0) { free(root); free(s); free(d); free(u); return NULL; }
+		s->link = srvs; srvs = s;
+	} else free(root);
+	d->s = s; d->uri = u; d->t = t;
+	d->link = s->docs; s->docs = d;
+	open_doc(d);
+	return d;
+}
+
+void lsp_close(LspDoc *d)
+{
+	if (!d) return;
+	Srv *s = d->s;
+	begin("textDocument/didClose");
+	str_putf(&o, "{\"textDocument\":{\"uri\":\"%s\"}}", d->uri);
+	end(s);
+	LspDoc **p = &s->docs;
+	while (*p != d) p = &(*p)->link;
+	*p = d->link;
+	forget(d);
+	free(d->diag.v); free(d->prog.v); free(d->chg.b); free(d->uri); free(d);
+	if (s->docs) return;
+	/* the last file of the project: the server goes (it is freed once it
+	   has exited, since the loop still calls lsp_out until then) */
+	s->closing = 1;
+	if (s->proc < 0) {
+		Srv **q = &srvs;
+		while (*q != s) q = &(*q)->link;
+		*q = s->link;
+		free(s->root); free(s->in.b); free(s->held.b); free(s);
+		return;
+	}
+	o.n = 0;
+	str_putf(&o, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"method\":\"shutdown\"}", s->next++);
+	send(s);
+	o.n = 0;
+	str_lit(&o, "{\"jsonrpc\":\"2.0\",\"method\":\"exit\"}");
+	send(s);
+	proc_close(s->proc);
+}
+
+void lsp_edit(LspDoc *d, const Text *t, size_t pos, size_t ndel, const char *ins, size_t nins)
+{
+	if (!d) return;
+	d->t = t;
+	shift_set(&d->diag, pos, ndel, nins);
+	shift_set(&d->prog, pos, ndel, nins);
+	Str *c = &d->chg;
+	Str keep = o;                   /* putpos writes to o */
+	o = *c;
+	if (o.n) str_lit(&o, ",");
+	str_lit(&o, "{\"range\":{\"start\":");
+	putpos(t, pos);
+	str_lit(&o, ",\"end\":");
+	putpos(t, pos + ndel);
+	str_lit(&o, "},\"text\":\"");
+	str_putq(&o, ins, nins);
+	str_lit(&o, "\"}");
+	*c = o;
+	o = keep;
+}
+
+void lsp_flush(LspDoc *d)
+{
+	if (!d || !d->chg.n) return;
+	d->ver++;
+	begin("textDocument/didChange");
+	str_putf(&o, "{\"textDocument\":{\"uri\":\"%s\",\"version\":%ld},\"contentChanges\":[", d->uri, d->ver);
+	str_put(&o, d->chg.b, d->chg.n);
+	str_lit(&o, "]}");
+	d->chg.n = 0;
+	end(d->s);
+}
+
+void lsp_saved(LspDoc *d)
+{
+	if (!d) return;
+	lsp_flush(d);
+	begin("textDocument/didSave");
+	str_putf(&o, "{\"textDocument\":{\"uri\":\"%s\"}}", d->uri);
+	end(d->s);
+}
+
+void lsp_restart(LspDoc *d)
+{
+	if (!d) return;
+	Srv *s = d->s;
+	lsp_flush(d);
+	/* the file opens again as a new version, so what the server said about
+	   the old one, still on its way, is ignored */
+	if (s->proc < 0) {
+		start(s);
+		for (LspDoc *e = s->docs; e; e = e->link) { forget(e); e->ver++; open_doc(e); }
+		return;
+	}
+	for (int k = 0; k < LSP_NASK; k++) cancel(d, k);
+	begin("textDocument/didClose");
+	str_putf(&o, "{\"textDocument\":{\"uri\":\"%s\"}}", d->uri);
+	end(s);
+	forget(d);
+	d->ver++;
+	open_doc(d);
+}
+
+const LspDiag *lsp_diags(const LspDoc *d, int *n) { *n = d ? d->diag.n : 0; return d ? d->diag.v : NULL; }
+const LspDiag *lsp_progress(const LspDoc *d, int *n) { *n = d ? d->prog.n : 0; return d ? d->prog.v : NULL; }
+
+static int current(const LspDoc *d, long ver) { return ver == d->ver && !d->chg.n; }
+
+void lsp_ask(LspDoc *d, int kind, size_t pos)
+{
+	static const char *const method[] = { "textDocument/hover", "$/lean/plainGoal" };
+	if (!d || d->s->proc < 0) return;
+	lsp_flush(d);
+	cancel(d, kind);
+	free(d->ask[kind].ans);
+	d->ask[kind].ans = NULL;
+	d->ask[kind].id = d->s->next++;
+	d->ask[kind].ver = d->ver;
+	o.n = 0;
+	str_putf(&o, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"method\":\"%s\",\"params\":{\"textDocument\":{\"uri\":\"%s\"},\"position\":",
+	         d->ask[kind].id, method[kind], d->uri);
+	putpos(d->t, pos);
+	str_lit(&o, "}}");
+	send(d->s);
+}
+
+/* A reply is shown only if the text has not changed since the request
+   (LspSync: mapping it from the request's version is wrong, the server may
+   have answered on a newer one). */
+const char *lsp_answer(const LspDoc *d, int kind)
+{
+	return d && current(d, d->ask[kind].ver) ? d->ask[kind].ans : NULL;
+}
+
+/* --- receiving ------------------------------------------------------------- */
+
+static char *str(const char *m, int i)
+{
+	if (i < 0 || tk[i].type != 's') return NULL;
+	char *b = malloc(tk[i].z - tk[i].a + 1);
+	if (b) json_str(m, tk, i, b);
+	return b;
+}
+
+/* Byte of an LSP position in d's text (the version it is for). */
+static size_t byte(const LspDoc *d, const char *m, int p)
+{
+	long l = json_int(m, tk, json_get(m, tk, p, "line")), c = json_int(m, tk, json_get(m, tk, p, "character"));
+	const Text *t = d->t;
+	if (l < 0 || c < 0 || (size_t)l > text_lines(t)) return text_len(t);
+	size_t a = text_line_start(t, (size_t)l);
+	size_t n = ((size_t)l < text_lines(t) ? text_line_start(t, (size_t)l + 1) - 1 : text_len(t)) - a;
+	const unsigned char *b = bytes(t, a, &n);
+	return a + lsp_u16_byte(b, n, (size_t)c);
+}
+
+static int cmp(const void *x, const void *y)
+{
+	const LspDiag *a = x, *b = y;
+	return (a->a > b->a) - (a->a < b->a);
+}
+
+/* A set of ranges for d: replace (or with add, extend) v from array arr,
+   each element's range under rkey. */
+static void ranges(LspDoc *d, Set *v, const char *m, int arr, const char *rkey, int add)
+{
+	if (!add) clear(v);
+	for (int k = 0, e; (e = json_at(tk, arr, k)) >= 0; k++) {
+		int r = json_get(m, tk, e, rkey);
+		if (v->n == v->cap) {
+			int c = v->cap ? 2 * v->cap : 16;
+			LspDiag *n = realloc(v->v, (size_t)c * sizeof *n);
+			if (!n) break;
+			v->v = n; v->cap = c;
+		}
+		LspDiag g = { byte(d, m, json_get(m, tk, r, "start")), byte(d, m, json_get(m, tk, r, "end")),
+		              (int)json_int(m, tk, json_get(m, tk, e, "severity")), str(m, json_get(m, tk, e, "message")) };
+		if (g.z < g.a) g.z = g.a;
+		if (g.sev < 1) g.sev = 1;
+		v->v[v->n++] = g;
+	}
+	if (v->n > 1) qsort(v->v, (size_t)v->n, sizeof *v->v, cmp);
+	lsp_dirty = 1;
+}
+
+static LspDoc *doc(Srv *s, const char *m, int uri)
+{
+	for (LspDoc *d = s->docs; d; d = d->link) {
+		size_t l = strlen(d->uri);
+		if (uri >= 0 && tk[uri].type == 's' && tk[uri].z - tk[uri].a == l && !memcmp(m + tk[uri].a, d->uri, l)) return d;
+	}
+	return NULL;
+}
+
+static void handle(Srv *s, const char *m, size_t n)
+{
+	if (json_parse(m, n, &tk, &ntk) < 0) return;
+	int id = json_get(m, tk, 0, "id"), meth = json_get(m, tk, 0, "method"), p = json_get(m, tk, 0, "params");
+	if (meth >= 0 && id >= 0) {                 /* a request from the server */
+		o.n = 0;
+		str_lit(&o, "{\"jsonrpc\":\"2.0\",\"id\":");
+		str_put(&o, m + tk[id].a - (tk[id].type == 's'), tk[id].z - tk[id].a + 2 * (tk[id].type == 's'));
+		str_lit(&o, ",\"result\":null}");
+		send(s);
+		return;
+	}
+	if (meth >= 0) {
+		char name[64];
+		if (tk[meth].type != 's' || tk[meth].z - tk[meth].a >= sizeof name) return;
+		json_str(m, tk, meth, name);
+		if (!strcmp(name, "textDocument/publishDiagnostics")) {
+			LspDoc *d = doc(s, m, json_get(m, tk, p, "uri"));
+			long v = json_int(m, tk, json_get(m, tk, p, "version"));
+			/* LspSync "simple": diagnostics for another version are
+			   ignored; ones without a version are taken as for the
+			   current text, as Neovim does (Lean, clangd and
+			   rust-analyzer all send it) */
+			if (d && current(d, v < 0 ? d->ver : v))
+				ranges(d, &d->diag, m, json_get(m, tk, p, "diagnostics"), "range",
+				       json_true(m, tk, json_get(m, tk, p, "isIncremental")));
+		} else if (!strcmp(name, "$/lean/fileProgress")) {
+			int td = json_get(m, tk, p, "textDocument");
+			LspDoc *d = doc(s, m, json_get(m, tk, td, "uri"));
+			if (d && current(d, json_int(m, tk, json_get(m, tk, td, "version"))))
+				ranges(d, &d->prog, m, json_get(m, tk, p, "processing"), "range", 0);
+		}
+		return;
+	}
+	long rid = json_int(m, tk, id);
+	if (rid == 0) {                              /* initialize answered */
+		s->ready = 1;
+		begin("initialized");
+		str_lit(&o, "{}");
+		end(s);
+		if (s->held.n) { proc_write(s->proc, s->held.b, s->held.n); s->held.n = 0; }
+		return;
+	}
+	for (LspDoc *d = s->docs; d; d = d->link)
+		for (int k = 0; k < LSP_NASK; k++) {
+			if (d->ask[k].id != rid) continue;
+			d->ask[k].id = 0;
+			int r = json_get(m, tk, 0, "result");
+			if (r < 0) return;                  /* an error: cancelled */
+			int c = k == LSP_GOAL ? json_get(m, tk, r, "rendered") : json_get(m, tk, r, "contents");
+			if (c >= 0 && tk[c].type == 'o') c = json_get(m, tk, c, "value");      /* MarkupContent */
+			if (c >= 0 && tk[c].type == 'a') c = json_at(tk, c, 0);                 /* MarkedString[] */
+			if (c >= 0 && tk[c].type == 'o') c = json_get(m, tk, c, "value");      /* {language, value} */
+			d->ask[k].ans = c >= 0 && tk[c].type == 's' ? str(m, c) : strdup("");
+			lsp_dirty = 1;
+			return;
+		}
+}
+
+static void dead(Srv *s)
+{
+	s->proc = -1;
+	for (LspDoc *d = s->docs; d; d = d->link) forget(d);
+	if (!s->closing) return;
+	Srv **q = &srvs;
+	while (*q != s) q = &(*q)->link;
+	*q = s->link;
+	free(s->root); free(s->in.b); free(s->held.b); free(s);
+}
+
+static void out(void *ctx, int stream, const char *b, size_t n)
+{
+	Srv *s = ctx;
+	if (stream == 0) { dead(s); return; }
+	if (stream != 1 || !n || str_put(&s->in, b, n)) return;
+	for (;;) {
+		char *e = strstr(s->in.b, "\r\n\r\n");   /* headers are text: no NUL before it */
+		if (!e) return;
+		size_t h = (size_t)(e - s->in.b) + 4, len = 0;
+		int ok = 0;
+		for (char *l = s->in.b; l < e; l = strstr(l, "\r\n") + 2)
+			if (!strncasecmp(l, "Content-Length:", 15)) { len = strtoul(l + 15, NULL, 10); ok = 1; }
+		if (!ok) { s->in.n = 0; return; }        /* not LSP: drop what came */
+		if (s->in.n - h < len) return;
+		handle(s, s->in.b + h, len);
+		memmove(s->in.b, s->in.b + h + len, s->in.n - h - len);
+		s->in.n -= h + len;
+		s->in.b[s->in.n] = 0;
+	}
+}
