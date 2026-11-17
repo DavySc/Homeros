@@ -113,6 +113,7 @@ void keys_feed(Editor *e, int k, int pending)
 	E->ks.visual = VIsual_active ? VIsual_mode : 0;
 	E->ks.vline = (size_t)VIsual.lnum;
 	E->ks.vcol = (size_t)VIsual.col;
+	E->ks.pending = E->mode == MODE_CMDLINE || (E->mode != MODE_INSERT && normal_pending());
 	core_update(e);
 }
 

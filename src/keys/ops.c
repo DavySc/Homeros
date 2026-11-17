@@ -363,11 +363,14 @@ int op_delete(Oparg *oap)
 	} else {
 		if (oap->line_count == 1) {
 			u_save_cursor();
-			long n = line_end_of(oap) - oap->start.col;
-			replace_bytes(oap->start.lnum, oap->start.col, n, "", 0);
-			/* del_bytes() with fixpos: not past the end in Normal mode */
-			if (oap->op_type == OP_DELETE && !oap->is_visual) check_cursor_col();
-			else if (oap->op_type == OP_DELETE) check_cursor_col();
+			long l = oap->start.lnum, c = oap->start.col, n = line_end_of(oap) - c;
+			/* del_bytes() with fixpos backs up off the last character before
+			   the edit, so the core sees the cursor where it ends (the view
+			   keeps its top line: PR 20's review, rg1_84) */
+			if (oap->op_type == OP_DELETE && !oap->is_visual && c > 0 && c + n >= ml_len(l))
+				W->col = (size_t)head(ml_get(l), c - 1);
+			replace_bytes(l, c, n, "", 0);
+			if (oap->op_type == OP_DELETE) check_cursor_col();
 		} else {
 			u_save_cursor();
 			long sl = oap->start.lnum;
@@ -905,14 +908,19 @@ int do_join(long count, int insert_space)
 			}
 		}
 	}
-	/* one edit from the end of the first line to the end of the last */
+	/* one edit over the joined lines; when they join to nothing it keeps a
+	   line break, so the edit is a changed line, not lines deleted, and
+	   redo puts the cursor as Neovim's (thread 0's ref/keys.c join(),
+	   measured against nvim: "a\n\n\nb" j j i <BS> Esc u <C-r>) */
 	size_t a = core_line_start(E, (size_t)l0);
 	size_t z = core_line_start(E, (size_t)(l0 + count)) - 1;
+	long len = b.n;
+	if (!len) { z++; bput(&b, "\n", 1); }
 	core_edit(E, a, z - a, b.s, (size_t)b.n);
 	replace_bytes(l0, 0, 0, "", 0);
 	free(b.s);
 	b_op_end.lnum = l0;
-	b_op_end.col = b.n;
+	b_op_end.col = len;
 	W->line = (size_t)l0;
 	W->col = (size_t)col;
 	check_cursor_col();
@@ -1369,7 +1377,7 @@ static int execreg_lastc;
 
 /* keys as register bytes: specials as Neovim's K_SPECIAL triples */
 static const struct { int key; char a, b; } special[] = {
-	{ KEY_UP, 'k', 'u' }, { KEY_DOWN, 'k', 'd' }, { KEY_LEFT, 'k', 'l' }, { KEY_RIGHT, 'k', 'r' }, { KEY_BS, 'k', 'b' },
+	{ KEY_UP, 'k', 'u' }, { KEY_DOWN, 'k', 'd' }, { KEY_LEFT, 'k', 'l' }, { KEY_RIGHT, 'k', 'r' }, { KEY_BS, 'k', 'b' }, { KEY_DEL, 'k', 'D' },
 };
 
 long key_to_bytes(int k, char *b)

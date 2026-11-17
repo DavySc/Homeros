@@ -17,7 +17,7 @@ WORDS = ['foo', 'bar_1', 'x', '(', ').', ',', 'é', 'λx', 'ა', '𐐀x', '--',
 # the characters f, t, r and the text objects look for
 CHARS = list('ox(). ,"\'{}[]-é') + ['λ', '∀', '𝓝']
 INS = list('abc xy,.(0^') + ['é', 'ა', '𐐀', '∀', '<CR>', '<CR>', '<BS>', '<BS>', '<Tab>', '  ',
-      '<C-w>', '<C-u>', '<C-t>', '<C-d>', '<Left>', '<Right>', '<Up>', '<Down>']
+      '<Del>', '<C-w>', '<C-u>', '<C-t>', '<C-d>', '<Left>', '<Right>', '<Up>', '<Down>']
 REGS = ['a', 'b', 'A', '"', '0', '1', '2', '-', '_']
 MOTIONS = ['h', 'j', 'k', 'l', '0', '^', '$', 'w', 'b', 'e', 'W', 'B', 'E', 'ge', 'gE', 'gg', 'go', 'G', '|',
            '_', '+', '-', '<CR>', '<BS>', ' ', 'gj', 'gk', 'g_', '(', ')', '{', '}', '[[', ']]', '[]', '][',
@@ -27,13 +27,13 @@ FIND = ['f', 'F', 't', 'T']
 OBJECTS = [a + o for a in 'ia' for o in 'wWsp([{<b)B"\'`']
 OPS = ['d', 'c', 'y', '<', '>', 'g~', 'gu', 'gU']
 SIMPLE = ['x', 'X', 'D', 'C', 's', 'S', 'Y', 'J', 'gJ', '~', 'p', 'P', 'gp', 'gP', 'u', '<C-r>', '.', '.',
-          '<C-a>', '<C-x>', 'dd', 'cc', 'yy', '>>', '<<', 'g~~', 'guu', 'gUU', 'gv']
+          '<C-a>', '<C-x>', 'dd', 'cc', 'yy', '>>', '<<', 'g~~', 'guu', 'gUU', 'gv', '<Del>']
 VOPS = ['d', 'c', 'y', '<', '>', '~', 'u', 'U', 'J', 'gJ', 'I', 'A', 'p', 'P', 'x', 'X', 'D', 'C', 'S', 'Y',
         'R', 's', '<C-a>', '<C-x>', 'g<C-a>', 'o', 'O', '$', 'gv', '<Esc>', 'r']
 NORM = MOTIONS + SIMPLE   # the keys whose count is generated
 CODES = {'<Esc>': 27, '<CR>': 13, '<BS>': 127, '<Tab>': 9, '<C-r>': 18, '<C-w>': 23, '<C-u>': 21,
          '<C-t>': 20, '<C-d>': 4, '<C-o>': 15, '<C-a>': 1, '<C-x>': 24, '<C-v>': 22, '<C-p>': 16,
-         '<Up>': 0x110000, '<Down>': 0x110001, '<Left>': 0x110002, '<Right>': 0x110003}
+         '<Up>': 0x110000, '<Down>': 0x110001, '<Left>': 0x110002, '<Right>': 0x110003, '<Del>': 0x110009}
 
 def gen_text(r):
     lines = []

@@ -96,9 +96,10 @@ static int del_char(int fixpos)
 {
 	long l = (long)W->line, n = ml_len(l), c = (long)W->col;
 	if (c >= n) return 0;
-	replace_bytes(l, c, clen(ml_get(l), n, c), "", 0);
-	/* del_bytes(): taking off the last character backs up */
-	if (fixpos && c > 0 && c >= ml_len(l) && !restart_edit) W->col = (size_t)head(ml_get(l), c - 1);
+	long k = clen(ml_get(l), n, c);
+	/* del_bytes(): taking off the last character backs up, before the edit */
+	if (fixpos && c > 0 && c + k >= n && !restart_edit) W->col = (size_t)head(ml_get(l), c - 1);
+	replace_bytes(l, c, k, "", 0);
 	return 1;
 }
 
@@ -439,6 +440,21 @@ static int ins_bs(int c, int mode)
 	return did;
 }
 
+/* ins_del(): the character under the cursor, or the line break after it
+   ('backspace' eol) joining without a space */
+static void ins_del(void)
+{
+	stop_arrow();
+	if (gchar_cursor() == 0) {
+		size_t col = W->col;
+		/* on the last line the join fails; stop_arrow() has made the undo
+		   step already, so redo is lost as in Neovim */
+		if ((long)W->line + 1 < nlines()) { do_join(2, 0); W->col = col; }
+	} else del_char(0);
+	did_ai_flag = 0;
+	redo_append(KEY_DEL);
+}
+
 /* CTRL-T and CTRL-D: change_indent() by one 'shiftwidth', rounded */
 static void ins_shift(int c)
 {
@@ -724,6 +740,7 @@ void insert_key(int k, int pending)
 		return;
 	case 4: case 20: ins_shift(c); inserted_space = 0; break;
 	case KEY_BS: case 8: ins_bs(c, BACKSPACE_CHAR); break;
+	case KEY_DEL: ins_del(); break;
 	/* 0.12's default mappings put CTRL-G u before CTRL-W and CTRL-U; keys
 	   read from the stuff buffers (redo, a repeated insert) are not mapped
 	   (vgetorpeek() returns read_readbuffers() before mapping) */

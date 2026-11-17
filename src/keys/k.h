@@ -167,6 +167,7 @@ void end_visual_mode(void);
 long visual_last_line(void);
 Pos visual_end(void);
 void restart_insert(void);
+int normal_pending(void);
 extern int finish_op;
 extern int redo_busy;
 extern int searchc_inclusive;

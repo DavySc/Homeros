@@ -655,6 +655,7 @@ static void v_visop(Cmdarg *cap)
 
 static void nv_abbrev(Cmdarg *cap)
 {
+	if (cap->cmdchar == KEY_DEL) cap->cmdchar = 'x';   /* without x's NV_KEEPREG */
 	if (VIsual_active) v_visop(cap);
 	else nv_optrans(cap);
 }
@@ -1177,7 +1178,7 @@ static int known(int c)
 	return has(" \"$%'()+,-.0:;<>@ABCDEFGHIJLMOPQRSTUWXYV[]^_`abcdefghijklmopqrstuvwxyz{|}~", c) || c == 1 || c == 3
 	       || c == 8 || c == 10 || c == 13 || c == 14 || c == 16 || c == 22 || c == 24 || c == KEY_CTRL_R
 	       || c == 4 || c == 21 || c == 5 || c == 25 || c == 23
-	       || c == KEY_ESC || c == KEY_BS || c == KEY_UP || c == KEY_DOWN || c == KEY_LEFT || c == KEY_RIGHT;
+	       || c == KEY_ESC || c == KEY_BS || c == KEY_UP || c == KEY_DOWN || c == KEY_LEFT || c == KEY_RIGHT || c == KEY_DEL;
 }
 
 static void execute(Cmdarg *cap)
@@ -1210,7 +1211,7 @@ static void execute(Cmdarg *cap)
 	case 'A': case 'I': case 'a': case 'i': nv_edit(cap); break;
 	case 'B': cap->arg = 1; nv_bck_word(cap); break;
 	case 'b': cap->arg = 0; nv_bck_word(cap); break;
-	case 'C': case 'D': case 'X': case 'Y': case 'x': nv_abbrev(cap); break;
+	case 'C': case 'D': case 'X': case 'Y': case 'x': case KEY_DEL: nv_abbrev(cap); break;
 	case 'E': case 'W': cap->arg = 1; nv_wordcmd(cap); break;
 	case 'e': case 'w': cap->arg = 0; nv_wordcmd(cap); break;
 	case 'F': case 'T': cap->arg = BACKWARD; nv_csearch(cap); break;
@@ -1276,8 +1277,9 @@ static int run(void)
 	/* normal_get_command_count(): CTRL-W takes a second count after it */
 	int ctrl_w = 0;
 	for (;;) {
-		while ((c >= '1' && c <= '9') || (ca.count0 != 0 && c == '0')) {
-			if (ca.count0 > 99999999) ca.count0 = 999999999;
+		while ((c >= '1' && c <= '9') || (ca.count0 != 0 && (c == '0' || c == KEY_DEL))) {
+			if (c == KEY_DEL) ca.count0 /= 10;   /* <Del> drops the last digit */
+			else if (ca.count0 > 99999999) ca.count0 = 999999999;
 			else ca.count0 = ca.count0 * 10 + (c - '0');
 			GET(c);
 		}
@@ -1318,7 +1320,7 @@ static int run(void)
 	if (!done) execute(&ca);
 	/* normal_finish_command() */
 	if (!done) {
-		if (!finish_op && !oa.op_type && !(cmd_flags(ca.cmdchar) & KEEPREG)) clearop(&oa);
+		if (!finish_op && !oa.op_type && !(cmd_flags(c) & KEEPREG)) clearop(&oa);
 		do_pending_operator(&ca, old_col);
 	}
 	if (oa.op_type == OP_NOP) finish_op = 0;
@@ -1338,6 +1340,9 @@ void restart_insert(void)
 	    && E->mode == MODE_NORMAL)
 		edit_start(restart_edit, 1);
 }
+
+/* a command half typed: vgetorpeek() would be waiting for its next key */
+int normal_pending(void) { return npend > 0; }
 
 void normal_key(int k)
 {

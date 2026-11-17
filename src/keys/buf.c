@@ -58,7 +58,12 @@ long head(const char *s, long i)
 	if (i <= 0) return 0;
 	long n = (long)strlen(s);
 	if (i >= n) return i;
-	return (long)uni_prev((const unsigned char *)s, (size_t)n, (size_t)i + 1);
+	/* utf_head_off(): a well-formed sequence that starts before i and
+	   covers it; not uni_prev(i + 1), which is right only when i is a
+	   character's last byte (fuzz_keys_all: 2V landing inside a ∀) */
+	for (long j = i - 1; j >= 0 && j >= i - 3; j--)
+		if ((long)uni_len((const unsigned char *)s, (size_t)n, (size_t)j) > i - j) return j;
+	return i;
 }
 
 /* utf_ptr2char(): an invalid byte stands for itself */

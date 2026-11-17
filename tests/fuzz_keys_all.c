@@ -28,7 +28,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 		'p', 'P', 'J', 'u', 'U', '~', 'r', 'R', 'i', 'I', 'a', 'A', 'o', 'O', 'v', 'V', '.', '<', '>', '"',
 		'\'', '`', 'm', 'q', 'z', 'H', 'M', 'L', 'n', 'p', '1', '2', '3', '_', '-', ' ', '(', '"', '\'', '<',
 		KEY_ESC, KEY_ESC, KEY_ENTER, KEY_BS, KEY_TAB, KEY_CTRL_R, 22, 1, 24, 15, 23, 20, 4, 21, 5, 25,
-		KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, 0xE9, 0x3BB, 0x10D0, 0x10400, 0x2200, 0x1D4DD, 0x1E9E,
+		KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_DEL, 0xE9, 0x3BB, 0x10D0, 0x10400, 0x2200, 0x1D4DD, 0x1E9E,
 	};
 	static char before[1 << 16], after[1 << 16], now[1 << 16];
 	static Editor e;
