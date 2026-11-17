@@ -28,7 +28,8 @@ typedef struct Head Head;
    same state, last visited first.  Neovim keeps three facts that its code
    does not rely on and ours does, so its branches for the other case are
    left out: a parent's prev, curhead and oldhead each have no alt_prev, and
-   oldhead has no next.  Measured, not proved: under gcov, 4,000 differential
+   oldhead has no next.  (A fourth both rely on: with no curhead, newhead has
+   no prev.)  Measured, not proved: under gcov, 4,000 differential
    sequences (undolevels 1000 and 3) and both unit tests never took Neovim's
    branches for the other case; undo_read() refuses a tree without these
    facts, and the fuzzer reads back every tree it builds. */
@@ -511,6 +512,12 @@ int undo_write(const Undo *u, const Text *t, const char *path)
 
 typedef struct { const unsigned char *p, *end; } In;
 
+/* Numbers from a file are refused at or above these, so the arithmetic on
+   them (++seq_last, time_cur + step, dist()) cannot overflow: 2^30 changes
+   or writes fit a 32-bit long (Windows); 2^40 seconds is year 36,812. */
+#define MAX_NR (1UL << 30)
+#define MAX_TIME (1ULL << 40)
+
 static int get(In *in, unsigned long long *v)
 {
 	if (in->end - in->p < 8) return -1;
@@ -594,20 +601,22 @@ static void free_heads(Head **hs, unsigned long long n)
 
 /* the headers, in file order, with their links (next, prev, alt_next,
    alt_prev) still as numbers in ln; 0 ok */
-static int get_heads(In *in, Head **hs, unsigned long long (*ln)[4], unsigned long long nh, long seq_last)
+static int get_heads(In *in, Head **hs, unsigned long long (*ln)[4], unsigned long long nh,
+                     long seq_last, long save_last)
 {
 	for (unsigned long long i = 0; i < nh; i++) {
 		unsigned long long w[12];
 		Head *h = hs[i] = calloc(1, sizeof *h);
 		if (!h) return -1;
 		for (int j = 0; j < 12; j++) if (get(in, &w[j])) return -1;
-		if (!w[0] || w[0] > (unsigned long long)seq_last || w[11] > (size_t)(in->end - in->p) / 24
+		if (!w[0] || w[0] > (unsigned long long)seq_last || w[5] >= MAX_TIME
+		    || w[6] > (unsigned long long)save_last || w[11] > (size_t)(in->end - in->p) / 24
 		    || !(h->e = malloc((w[11] ? w[11] : 1) * sizeof *h->e)))
 			return -1;
 		h->seq = (long)w[0];
 		memcpy(ln[i], w + 1, sizeof ln[i]);
 		h->time = (long long)w[5];
-		h->save = (long)(w[6] & LONG_MAX);
+		h->save = (long)w[6];
 		h->cur = (UndoCursor){ (size_t)w[7], (size_t)w[8], (unsigned)w[9] };
 		h->after = (unsigned)w[10];
 		for (h->cap = w[11]; h->n < h->cap; h->n++) {
@@ -654,16 +663,17 @@ Undo *undo_read(const Text *t, const char *path)
 	    || get(&in, &tl) || tl != text_len(t) || get(&in, &nh) || nh > UNDO_LEVELS + 1)
 		goto out;
 	for (int i = 0; i < 8; i++) if (get(&in, &v[i])) goto out;
+	if (v[0] >= MAX_NR || v[1] > v[0] || v[2] >= MAX_NR || v[3] > v[2] || v[4] >= MAX_TIME) goto out;
 	if (!(u = undo_new()) || !(hs = calloc(nh + 1, sizeof *hs)) || !(ss = calloc(nh + 1, sizeof *ss))
 	    || !(ln = calloc(nh + 1, sizeof *ln)))
 		goto out;
-	u->seq_last = (long)(v[0] & LONG_MAX);
-	u->seq_cur = (long)(v[1] & LONG_MAX);
-	u->save_last = (long)(v[2] & LONG_MAX);
-	u->save_cur = (long)(v[3] & LONG_MAX);
+	u->seq_last = (long)v[0];
+	u->seq_cur = (long)v[1];
+	u->save_last = (long)v[2];
+	u->save_cur = (long)v[3];
 	u->time_cur = (long long)v[4];
 	u->numhead = (long)nh;
-	if (get_heads(&in, hs, ln, nh, u->seq_last) || in.p != in.end) goto out;
+	if (get_heads(&in, hs, ln, nh, u->seq_last, u->save_last) || in.p != in.end) goto out;
 	memcpy(ss, hs, nh * sizeof *hs);
 	qsort(ss, nh, sizeof *ss, byseq);
 	int miss = 0;
@@ -678,7 +688,9 @@ Undo *undo_read(const Text *t, const char *path)
 	u->curhead = find(ss, (long)nh, v[6], &miss);
 	u->oldhead = find(ss, (long)nh, v[7], &miss);
 	if (miss || (u->oldhead && (u->oldhead->next || u->oldhead->alt_prev)) || (u->curhead && u->curhead->alt_prev)
-	    || check_links(u->oldhead) != (long)nh || (nh && !u->newhead && !u->curhead))
+	    || check_links(u->oldhead) != (long)nh || (nh && !u->newhead && !u->curhead)
+	    /* open_group() takes newhead, with no curhead, as the newest change */
+	    || (!u->curhead && u->newhead && (u->newhead->prev || u->newhead->alt_prev)))
 		goto out;
 	for (unsigned long long i = 0; i < nh; i++) hs[i]->walk = 0;
 	/* from the current state up to the root, then the whole tree down */

@@ -2,15 +2,21 @@
    behaves as the original under any further moves; a file for another text,
    a truncated file or a damaged one is refused or, if a damaged byte leaves
    it consistent, every move still works; the hash is SHA-256 (FIPS 180-4
-   vectors); 'undolevels' 1000 keeps 1,001 changes, as Neovim. */
+   vectors); a newhead that is not the newest change of its line is refused;
+   'undolevels' 1000 keeps 1,001 changes, as Neovim.  The clock is
+   this file's time(), stepped between ops, so both copies of a tree see the
+   same times and time moves are exercised. */
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 #include "check.h"
 #include "undo.h"
 
 enum { CAP = 1 << 15 };
 static char path[] = "/tmp/homeros-undo-XXXXXX";
+static time_t now = 1700000000;
+time_t time(time_t *t) { if (t) *t = now; return now; }
 
 static size_t all(const Text *t, char *b) { return text_read(t, 0, b, CAP); }
 
@@ -93,7 +99,10 @@ int main(void)
 		Text *t = text_new("hello\nworld\n", 12);
 		Undo *u = undo_new();
 		CHECK(t && u);
-		for (int i = (int)rnd(120); i > 0; i--) op(t, u, rnd(9));
+		for (int i = (int)rnd(120); i > 0; i--) {
+			op(t, u, rnd(9));
+			now += rnd(3);
+		}
 		undo_close(u);   /* a write comes from normal mode */
 		CHECK(!undo_write(u, t, path));
 		Text *t2 = text_new(buf, all(t, buf));
@@ -101,6 +110,7 @@ int main(void)
 		CHECK(t2 && u2);
 		for (int i = 0; i < 200; i++) {
 			unsigned k = rnd(9);
+			now += rnd(3);
 			unsigned long long s = rng;
 			int r = op(t, u, k);
 			rng = s;
@@ -150,6 +160,25 @@ int main(void)
 	{
 		Text *t = text_new("", 0);
 		CHECK(t && !undo_read(t, "/nonexistent/homeros-undo"));
+		text_free(t);
+	}
+
+	/* newhead changed to an older change of its line (review of package 2,
+	   finding 3): the edits still apply, as all three type "x" at 0, but
+	   open_group() would cut the newer changes off, so it is refused */
+	{
+		Text *t = text_new("", 0);
+		Undo *u = undo_new();
+		for (int i = 0; i < 3; i++) {
+			CHECK(!text_insert(t, 0, "x", 1) && !undo_record(u, 0, "", 0, "x", 1, (UndoCursor){ 0, 0, 0 }, 0));
+			undo_close(u);
+		}
+		CHECK(!undo_write(u, t, path));
+		FILE *f = fopen(path, "r+b");
+		CHECK(f && !fseek(f, 96, SEEK_SET) && fgetc(f) == 3);   /* newhead: change 3 */
+		CHECK(!fseek(f, 96, SEEK_SET) && fputc(1, f) == 1 && !fclose(f));
+		CHECK(!undo_read(t, path));
+		undo_free(u);
 		text_free(t);
 	}
 

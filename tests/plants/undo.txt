@@ -9,3 +9,9 @@ undo cap: 1,000 changes kept instead of 1,001~test TESTS=undo_file~~src/undo/und
 undo file: a change that does not apply is accepted~test TESTS=undo_file~~src/undo/undo.c~if (!bad) bad = check_text(c, u->oldhead);~if (!bad) bad = 0 && check_text(c, u->oldhead);
 undo file: SHA-256 with a wrong round constant~test TESTS=undo_file~~src/undo/undo.c~0x428a2f98~0x428a2f99
 undo hook: told after the change instead of before~fuzz FUZZERS=undo FUZZ_SECONDS=30~~src/undo/undo.c~		if (u->hook) u->hook(u->ctx, t, e->pos, nd, ins, ni);¶		if (text_delete(t, e->pos, nd) || text_insert(t, e->pos, ins, ni)) return -1;~		if (text_delete(t, e->pos, nd) || text_insert(t, e->pos, ins, ni)) return -1;¶		if (u->hook) u->hook(u->ctx, t, e->pos, nd, ins, ni);
+undo file test: the clock ticks between the two copies' ops~test TESTS=undo_file~~tests/test_undo_file.c~			rng = s;~			rng = s;¶			now++;
+undo file: numbers from the file taken as they are~fuzz FUZZERS=undo_read FUZZ_SECONDS=30~~src/undo/undo.c~	if (v[0] >= MAX_NR || v[1] > v[0] || v[2] >= MAX_NR || v[3] > v[2] || v[4] >= MAX_TIME) goto out;¶~
+undo file: a newhead that is not the newest change accepted~test TESTS=undo_file~~src/undo/undo.c~	    || (!u->curhead && u->newhead && (u->newhead->prev || u->newhead->alt_prev)))~	    || 0)
+undo: flags after an undo are the group's after~test TESTS=undo_span~~src/undo/undo.c~w->flags = undo ? g->cur.flags : g->after;~w->flags = g->after;
+undo file: the saved cursor is lost~test TESTS=undo_span~~src/undo/undo.c~h->cur = (UndoCursor){ (size_t)w[7], (size_t)w[8], (unsigned)w[9] };~h->cur = (UndoCursor){ 0, 0, 0 };
+undo: the span ends too early after a redo~test TESTS=undo_span~~src/undo/undo.c~tail = l - e->pos - e->nins;¶			l = l - e->nins + e->ndel;~tail = l - e->pos;¶			l = l - e->nins + e->ndel;
