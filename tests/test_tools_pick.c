@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <math.h>
 #include <time.h>
 #include <unistd.h>
 #include "check.h"
@@ -116,10 +117,18 @@ int main(void)
 	   was when it was recorded */
 	const char *dir = "/tmp/hp";
 	CHECK(!system("rm -rf /tmp/hp /tmp/hp-data") && !mkdir(dir, 0700) && !chdir(dir));
-	/* no frecency history: the picker's store goes in the scratch tree */
-	char data[64];
+	/* the oracle's history (pick.lua): match.hh visited three times, then
+	   READ.md once, so a deadline is now + ln(visits) / LAMBDA */
+	char data[64], store[96];
 	snprintf(data, sizeof data, "%s-data", dir);
 	setenv("XDG_DATA_HOME", data, 1);
+	snprintf(store, sizeof store, "%s/homeros", data);
+	CHECK(!mkdir(data, 0700) && !mkdir(store, 0700));
+	strcat(store, "/picker-frecency");
+	FILE *fs = fopen(store, "w");
+	double now = (double)time(NULL);
+	CHECK(fs && fprintf(fs, "%.17g /tmp/hp/src/tools/match.hh\n%.17g /tmp/hp/docs/READ.md\n",
+	                    now + log(3.0) / (log(2.0) / (30.0 * 24 * 3600)), now) > 0 && !fclose(fs));
 	for (const char **p = tree; *p; p++) {
 		char d[256];
 		strcpy(d, *p);

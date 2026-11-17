@@ -26,14 +26,20 @@ K 2 /tmp/oc/ file 0 file10.txt
 K 3 /tmp/oc/ file 0 notes.org
 K 4 /tmp/oc/sub/ file 0 Ä.md
 E 1 /000 󰉋  ../
-E 1 /004 󰍔  x
-E 1 /001 󰉋  sub/
 E 1 /002 󰦪  file10.txt
 E 1 /003   notes.org
-E 2 /000 󰉋  sub
-E 2 /004 󰍔  x
-A copy file /tmp/oc/sub/Ä.md /tmp/oc/x
-A move file /tmp/oc/sub/Ä.md /tmp/oc/sub/x
+E 2 /000 󰉋  a.c
+A delete file /tmp/oc/sub/Ä.md -
+A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/file10.txt file file10.txt
+T /tmp/oc/notes.org file notes.org
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰦪  file10.txt
+S 1 /003   notes.org
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42003
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  a b/
@@ -107,17 +113,38 @@ K 6 /tmp/oc/ directory 0 sub
 K 7 /tmp/oc/ directory 0 file10.txt
 K 8 /tmp/oc/sub/ file 0 notes.org
 E 1 /000 󰉋  ../
+E 1 /000 󰉋  ../
 E 1 /001 󰉋  .hidden/ -> sub/
 E 1 /007 󰉋  file10.txt/
 E 1 /006 󰉋  sub/
-E 1 /006 󰉋  sub/
 E 1 /002 󰦪  007 -> file9.txt
-E 1 /003   v2.0.1
+E 1 /003   file9.txt
 E 1 /004 󱁤  img.png -> Makefile
 E 1 /005 󰍔  Ä.md
-X 1 4 Duplicate filename
 E 2 /000 󰉋  ../
 E 2 /008   notes.org
+A move file /tmp/oc/README.md /tmp/oc/file9.txt
+D ok
+T /tmp/oc/.hidden link -> sub
+T /tmp/oc/007 link -> file9.txt
+T /tmp/oc/file10.txt directory
+T /tmp/oc/file9.txt file README.md
+T /tmp/oc/img.png link -> Makefile
+T /tmp/oc/sub directory
+T /tmp/oc/sub/notes.org file notes.org
+T /tmp/oc/Ä.md file Ä.md
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰉋  .hidden/ -> sub/
+S 1 /007 󰉋  file10.txt/
+S 1 /006 󰉋  sub/
+S 1 /002 󰦪  007 -> file9.txt
+S 1 /003 󰦪  file9.txt
+S 1 /004 󱁤  img.png -> Makefile
+S 1 /005 󰍔  Ä.md
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /008   notes.org
 C 42006
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  sub/
@@ -138,15 +165,13 @@ E 1 /003 󰉋  sub/
 E 1 /001 󰈔  .hidden
 E 1 /002 󰈔  Makefile -> 007
 E 1 /004 󰈔  UPPER
-E 1 /abs
+E 1 p{1,2}{3,4}
 E 1 /005   z.tar.gz -> README.md
-X 1 5 Paths cannot start with '/'
 E 2 /000 󰉋  ../
-E 2 /abs
+E 2 p{1,2}{3,4}
 E 2 /001 
 E 2 /001 
 E 2 /006 󰉋  sub/
-X 2 1 Paths cannot start with '/'
 X 2 2 Malformed ID at start of line
 X 2 3 Malformed ID at start of line
 C 42007
@@ -277,6 +302,33 @@ E 2 /009 󰈔  a b
 E 2 /008 󰙱  a.c
 E 2 /010 󰈔  b.lua -> x
 A copy file /tmp/oc/deep /tmp/oc/sub/deep
+D ok
+T /tmp/oc/README.md directory
+T /tmp/oc/deep file deep
+T /tmp/oc/notes.org file notes.org
+T /tmp/oc/sub directory
+T /tmp/oc/sub/a b file a b
+T /tmp/oc/sub/a.c file a.c
+T /tmp/oc/sub/b.lua link -> x
+T /tmp/oc/sub/deep file deep
+T /tmp/oc/v2.0.1 file v2.0.1
+T /tmp/oc/x directory
+T /tmp/oc/z.tar.gz file z.tar.gz
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  README.md/
+S 1 /004 󰉋  sub/
+S 1 /002 󰉋  x/
+S 1 /005 󰈔  deep
+S 1 /007   notes.org
+S 1 /001 󰈔  v2.0.1
+S 1 /006 󰗄  z.tar.gz
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /009 󰈔  a b
+S 2 /008 󰙱  a.c
+S 2 /010 󰈔  b.lua -> x
+S 2 /011 󰈔  deep
 C 42012
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  .hidden/
@@ -340,17 +392,52 @@ E 1 /000 󰉋  ../
 E 1 /006 󰉋  img.png/
 E 1 /007 󰉋  sub/
 E 1 /004 󰉋  x/
-E 1 /002 󰈔  README.md
+E 1 /002 󰈔  .hidden
 E 1 /005   README.md
 E 1 /003 󰈔  a b -> .hidden
 E 1 /001 󰈔  file9.txt -> a b
-X 1 5 Duplicate filename
 E 2 /000 󰉋  ../
-E 2 /abs
+E 2 q//r
 E 2 /008 󰈔  deep
-E 2 nd/
+E 2 a/b/c.txt
 E 2 /009   notes.org
-X 2 1 Paths cannot start with '/'
+A create directory /tmp/oc/sub/q -
+A create directory /tmp/oc/sub/q/ -
+A create file /tmp/oc/sub/q//r -
+A create directory /tmp/oc/sub/a -
+A create directory /tmp/oc/sub/a/b -
+A create file /tmp/oc/sub/a/b/c.txt -
+A move file /tmp/oc/007 /tmp/oc/.hidden
+D ok
+T /tmp/oc/.hidden file 007
+T /tmp/oc/README.md file README.md
+T /tmp/oc/a b link -> .hidden
+T /tmp/oc/file9.txt link -> a b
+T /tmp/oc/img.png directory
+T /tmp/oc/sub directory
+T /tmp/oc/sub/a directory
+T /tmp/oc/sub/a/b directory
+T /tmp/oc/sub/a/b/c.txt file 
+T /tmp/oc/sub/deep file deep
+T /tmp/oc/sub/notes.org file notes.org
+T /tmp/oc/sub/q directory
+T /tmp/oc/sub/q/r file 
+T /tmp/oc/x directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /006 󰉋  img.png/
+S 1 /007 󰉋  sub/
+S 1 /004 󰉋  x/
+S 1 /002 󰈔  .hidden
+S 1 /005   README.md
+S 1 /003 󰈔  a b -> .hidden
+S 1 /001 󰈔  file9.txt -> a b
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /013 󰉋  a/
+S 2 /010 󰉋  q/
+S 2 /008 󰈔  deep
+S 2 /009   notes.org
 C 42014
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  007/
@@ -402,6 +489,23 @@ E 2 /006 󰙱  v2.0.1 -> a.c
 A delete link /tmp/oc/notes.org -
 A create link /tmp/oc/notes.org -
 A move directory /tmp/oc/UPPER /tmp/oc/file10.txt
+D ok
+T /tmp/oc/a b link -> .hidden
+T /tmp/oc/file10.txt directory
+T /tmp/oc/img.png directory
+T /tmp/oc/notes.org link -> UPPER
+T /tmp/oc/sub directory
+T /tmp/oc/sub/v2.0.1 link -> a.c
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /004 󰉋  file10.txt/
+S 1 /002 󰉋  img.png/
+S 1 /003 󰉋  sub/
+S 1 /001 󰈔  a b -> .hidden
+S 1 /007 󰈔  notes.org -> UPPER
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /006 󰙱  v2.0.1 -> a.c
 C 42017
 R 1 /000 󰉋  ../
 R 1 /004 󰉋  sub/
@@ -507,7 +611,7 @@ E 1 /001 󰈔  a.c -> deep
 E 1 /003 󰈔  x
 E 2 /000 󰉋  ../
 E 2 /005 󰉋  v2.0.1/
-E 2 /999 x  007
+E 2 /999 x  x
 E 2 /006   README.md
 X 2 2 Could not find existing entry (was the ID changed?)
 C 42021
@@ -533,7 +637,7 @@ E 1 /003 󰉋  sub/
 E 1 /001 󰙱  a.c
 E 1 /001 x
 E 1 /007 󰉋  b.lua/
-E 1 /004   deep -> Ä.md
+E 1 /004   deep -> sub
 E 1 /002 󰈔  v2.0.1
 X 1 1 Malformed ID at start of line
 X 1 4 Parsing icon failed
@@ -548,10 +652,11 @@ R 2 /000 󰉋  ../
 K 1 /tmp/oc/ file 0 x
 K 2 /tmp/oc/ directory 0 sub
 E 1 /000 󰉋  ../
-E 1 /002 󰉋  file9.txt
+E 1 /002 󰉋  file10.txt
 E 1 /001 󰈔  x
+E 2 /12x y
 E 2 /000 󰉋  ../
-A move directory /tmp/oc/sub /tmp/oc/file9.txt
+X 2 0 Malformed ID at start of line
 C 42023
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -567,6 +672,19 @@ E 1 /002   README.md
 E 2 /002   README.md
 E 2 /003 󰗄  Ä.md -> z.tar.gz
 A copy file /tmp/oc/sub/README.md /tmp/oc/README.md
+D ok
+T /tmp/oc/README.md file README.md
+T /tmp/oc/sub directory
+T /tmp/oc/sub/README.md file README.md
+T /tmp/oc/sub/Ä.md link -> z.tar.gz
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰉋  sub/
+S 1 /004   README.md
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /002   README.md
+S 2 /003 󰗄  Ä.md -> z.tar.gz
 C 42024
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  deep/
@@ -604,18 +722,18 @@ K 7 /tmp/oc/ directory 0 notes.org
 K 8 /tmp/oc/sub/ file 0 x
 E 1 /000 󰉋  ../
 E 1 /002 󰉋  007/
-E 1 /007 󰉋  a.c
+E 1 /007 󰉋  /
 E 1 /006 󰉋  sub/
 E 1 /001 󰈔  .hidden
 E 1 /005 󰢱  b.lua
 E 1 /003 󰸭  img.png
 E 1 /004 󰍔  Ä.md
+X 1 2 No filename found
 E 2 /000 󰉋  ../
 E 2 /008 󰈔  x
-E 2 /abs
+E 2 q//r
 E 2 /000 󰉋  ../
 E 2 /001 󰈔  .hidden
-X 2 2 Paths cannot start with '/'
 C 42026
 R 1 /000 󰉋  ../
 R 1 /004 󰉋  sub/
@@ -635,12 +753,33 @@ E 1 /000 󰉋  ../
 E 1 /004 󰉋  sub/
 E 1 /002 󰗄  .hidden -> z.tar.gz
 E 1 /001 󰙱  a.c
-E 1 z.tar.gz
+E 1 a/b/
 E 1 /005 󰈔  deep -> a b
 E 1 /006   notes.org
 E 1 /003 󰈔  v2.0.1
 E 2 /000 󰉋  ../
-A create file /tmp/oc/z.tar.gz -
+A create directory /tmp/oc/a -
+A create directory /tmp/oc/a/b -
+D ok
+T /tmp/oc/.hidden link -> z.tar.gz
+T /tmp/oc/a directory
+T /tmp/oc/a/b directory
+T /tmp/oc/a.c file a.c
+T /tmp/oc/deep link -> a b
+T /tmp/oc/notes.org file notes.org
+T /tmp/oc/sub directory
+T /tmp/oc/v2.0.1 file v2.0.1
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /007 󰉋  a/
+S 1 /004 󰉋  sub/
+S 1 /002 󰗄  .hidden -> z.tar.gz
+S 1 /001 󰙱  a.c
+S 1 /005 󰈔  deep -> a b
+S 1 /006   notes.org
+S 1 /003 󰈔  v2.0.1
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42027
 R 1 /000 󰉋  ../
 R 1 /005 󰉋  deep/
@@ -670,7 +809,7 @@ E 1 /001 󰦪  file9.txt
 E 1 /002 󰈔  v2.0.1
 E 1 /003 󰈔  x
 E 1 /006 󰈔  z.tar.gz -> v2.0.1
-E 2 /000 󰉋  v2.0.1
+E 2 /000 󰉋  README.md
 E 2 /009 󰈔  deep
 E 2 /009 󰈔  deep
 E 2 /008 󰢱  x -> b.lua
@@ -698,6 +837,19 @@ E 1 /002 󰸭  img.png
 E 2 /000 󰉋  ../
 A delete link /tmp/oc/sub/file9.txt -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/UPPER file UPPER
+T /tmp/oc/a b file a b
+T /tmp/oc/file10.txt directory
+T /tmp/oc/img.png file img.png
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /005 󰉋  file10.txt/
+S 1 /004 󰈔  UPPER
+S 1 /001 󰈔  a b
+S 1 /002 󰸭  img.png
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42029
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  sub/
@@ -709,6 +861,13 @@ E 1 /000 󰉋  ../
 E 1 /001 󰢱  .hidden -> b.lua
 E 2 /000 󰉋  ../
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/.hidden link -> b.lua
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰢱  .hidden -> b.lua
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42030
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  007/
@@ -748,6 +907,29 @@ A create link /tmp/oc/sub/img.png -
 A delete link /tmp/oc/sub/z.tar.gz -
 A create link /tmp/oc/sub/z.tar.gz -
 A delete link /tmp/oc/sub/file9.txt -
+D ok
+T /tmp/oc/007 directory
+T /tmp/oc/README.md directory
+T /tmp/oc/a b file a b
+T /tmp/oc/file10.txt directory
+T /tmp/oc/img.png directory
+T /tmp/oc/sub directory
+T /tmp/oc/sub/img.png link -> b.lua
+T /tmp/oc/sub/z.tar.gz link -> 007
+T /tmp/oc/Ä.md file Ä.md
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰉋  007/
+S 1 /003 󰉋  README.md/
+S 1 /007 󰉋  file10.txt/
+S 1 /004 󰉋  img.png/
+S 1 /006 󰉋  sub/
+S 1 /002 󰈔  a b
+S 1 /005 󰍔  Ä.md
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /011 󰢱  img.png -> b.lua
+S 2 /012 󰈔  z.tar.gz -> 007
 C 42031
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  sub/
@@ -784,6 +966,33 @@ E 2 /008 󰸭  deep -> img.png
 E 2 /009   notes.org
 A copy directory /tmp/oc/z.tar.gz /tmp/oc/sub/z.tar.gz
 A copy file /tmp/oc/sub/Makefile /tmp/oc/Makefile
+D ok
+T /tmp/oc/Makefile file Makefile
+T /tmp/oc/img.png file img.png
+T /tmp/oc/sub directory
+T /tmp/oc/sub/007 directory
+T /tmp/oc/sub/Makefile file Makefile
+T /tmp/oc/sub/deep link -> img.png
+T /tmp/oc/sub/notes.org file notes.org
+T /tmp/oc/sub/v2.0.1 directory
+T /tmp/oc/sub/z.tar.gz directory
+T /tmp/oc/z.tar.gz directory
+T /tmp/oc/Ä.md directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  sub/
+S 1 /004 󰉋  z.tar.gz/
+S 1 /002 󰉋  Ä.md/
+S 1 /011 󱁤  Makefile
+S 1 /001 󰸭  img.png
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /005 󰉋  007/
+S 2 /006 󰉋  v2.0.1/
+S 2 /010 󰉋  z.tar.gz/
+S 2 /007 󱁤  Makefile
+S 2 /008 󰸭  deep -> img.png
+S 2 /009   notes.org
 C 42032
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  a b/
@@ -824,14 +1033,12 @@ R 2 /002 󰙱  a.c
 K 1 /tmp/oc/ directory 0 sub
 K 2 /tmp/oc/sub/ file 0 a.c
 K 3 /tmp/oc/sub/ file 0 a b
-E 1 /000 󰉋  UPPER
+E 1 /001 x
 E 1 /001 󰉋  sub/
-E 2 /000 󰉋  ..//
+X 1 0 Parsing icon failed
+E 2 /000 󰉋  ../
 E 2 /003 󰈔  a b
-E 2 a/b/
 E 2 /002 󰙱  a.c
-A create directory /tmp/oc/sub/a -
-A create directory /tmp/oc/sub/a/b -
 C 42034
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -867,12 +1074,13 @@ R 2 /002 󰉋  notes.org/
 K 1 /tmp/oc/ directory 0 sub
 K 2 /tmp/oc/sub/ directory 0 notes.org
 E 1 /000 󰉋  ../
-E 1 /001 󰉋  007
-E 1 /001 󰉋  007
+E 1 /001 󰉋  README.md
+E 1 /001 󰉋  README.md
 X 1 2 Duplicate filename
 E 2 /000 󰉋  ../
-E 2 /002 󰉋  notes.org//
-X 2 1 Filename cannot contain path separator
+E 2 /002 󰉋  notes.org/
+E 2 /002 󰉋  notes.org/
+X 2 2 Duplicate filename
 C 42037
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  file9.txt/
@@ -894,7 +1102,7 @@ E 1 /001 󰈔  a.c -> x
 E 1 /005   notes.org
 E 1 /000 󰉋  ../
 E 1 /003   v2.0.1 -> notes.org
-E 2 deep
+E 2 a/b/
 E 2 /004 󰉋  sub/
 X 0 -1 Detected cycle in desired paths
 C 42038
@@ -949,6 +1157,17 @@ E 1 /003 󰉋  sub/
 E 1 /001 󰦪  007 -> file9.txt
 E 2 /000 󰉋  ../
 A delete link /tmp/oc/README.md -
+D ok
+T /tmp/oc/007 link -> file9.txt
+T /tmp/oc/UPPER directory
+T /tmp/oc/sub directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /004 󰉋  UPPER/
+S 1 /003 󰉋  sub/
+S 1 /001 󰦪  007 -> file9.txt
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42040
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -972,9 +1191,22 @@ E 1 /000 󰉋  ../
 E 1 /001 󰉋  sub/
 E 1 /002   notes.org
 E 2 /000 󰉋  ../
-E 2 /004 󰉋  deep
+E 2 /004 󰉋  007
 E 2 /003   README.md
-A move directory /tmp/oc/sub/z.tar.gz /tmp/oc/sub/deep
+A move directory /tmp/oc/sub/z.tar.gz /tmp/oc/sub/007
+D ok
+T /tmp/oc/notes.org file notes.org
+T /tmp/oc/sub directory
+T /tmp/oc/sub/007 directory
+T /tmp/oc/sub/README.md file README.md
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰉋  sub/
+S 1 /002   notes.org
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /004 󰉋  007/
+S 2 /003   README.md
 C 42042
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  sub/
@@ -1002,6 +1234,25 @@ E 2 /005   README.md
 E 2 /004 󰈔  a b -> 007
 E 2 /006 󰢱  b.lua
 A move link /tmp/oc/sub/UPPER /tmp/oc/UPPER
+D ok
+T /tmp/oc/UPPER link -> v2.0.1
+T /tmp/oc/deep file deep
+T /tmp/oc/img.png file img.png
+T /tmp/oc/sub directory
+T /tmp/oc/sub/README.md file README.md
+T /tmp/oc/sub/a b link -> 007
+T /tmp/oc/sub/b.lua file b.lua
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  sub/
+S 1 /007 󰈔  UPPER -> v2.0.1
+S 1 /003 󰈔  deep
+S 1 /001 󰸭  img.png
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /005   README.md
+S 2 /004 󰈔  a b -> 007
+S 2 /006 󰢱  b.lua
 C 42043
 R 1 /000 󰉋  ../
 R 1 /004 󰉋  sub/
@@ -1049,16 +1300,18 @@ K 8 /tmp/oc/ file 0 z.tar.gz
 K 9 /tmp/oc/sub/ file 0 img.png
 E 1 /000 󰉋  ../
 E 1 /005 󰉋  sub/
+E 1 /0001 x  sub
 E 1 /001 󰈔  .hidden
 E 1 /007 󰈔  UPPER
 E 1 /002 󰈔  a b
 E 1 /004 󰢱  b.lua
 E 1 /006 󰈔  deep
 E 1 /003 󰸭  img.png
-E 1 /008 󰗄  Makefile
+E 1 /008 󰗄  img.png
+X 1 2 Duplicate filename
+X 1 9 Duplicate filename
 E 2 /000 󰉋  ../
-A move file /tmp/oc/z.tar.gz /tmp/oc/Makefile
-A delete file /tmp/oc/sub/img.png -
+E 2 /009 󰸭  img.png
 C 42045
 R 1 /000 󰉋  ../
 R 1 /004 󰉋  notes.org/
@@ -1078,7 +1331,7 @@ E 1 /003 󰉋  sub/
 E 1 /002 󰢱  b.lua//
 E 1 /001 󰈔  v2.0.1 -> UPPER
 X 1 3 Filename cannot contain path separator
-E 2 /000 󰉋  notes.org
+E 2 /000 󰉋  file10.txt
 E 2 /005 󰗄  img.png -> z.tar.gz
 C 42046
 R 1 /000 󰉋  ../
@@ -1096,10 +1349,24 @@ E 1 /000 󰉋  ../
 E 1 /002 󰉋  sub/
 E 1 /003 󰗄  z.tar.gz
 E 1 /001 󰍔  Ä.md
-E 2 x.{c,h}
+E 2 file9.txt
 E 2 /004 󰉋  a.c/
-A create file /tmp/oc/sub/x.c -
-A create file /tmp/oc/sub/x.h -
+A create file /tmp/oc/sub/file9.txt -
+D ok
+T /tmp/oc/sub directory
+T /tmp/oc/sub/a.c directory
+T /tmp/oc/sub/file9.txt file 
+T /tmp/oc/z.tar.gz file z.tar.gz
+T /tmp/oc/Ä.md file Ä.md
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  sub/
+S 1 /003 󰗄  z.tar.gz
+S 1 /001 󰍔  Ä.md
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /004 󰉋  a.c/
+S 2 /005 󰦪  file9.txt
 C 42047
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  sub/
@@ -1138,6 +1405,19 @@ E 2 /000 󰉋  ..//
 E 2 /000 󰉋  ../
 A delete file /tmp/oc/.hidden -
 A move file /tmp/oc/sub/x /tmp/oc/x
+D ok
+T /tmp/oc/deep file deep
+T /tmp/oc/sub directory
+T /tmp/oc/x file x
+T /tmp/oc/Ä.md link -> v2.0.1
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  sub/
+S 1 /004 󰈔  deep
+S 1 /005 󰈔  x
+S 1 /002 󰈔  Ä.md -> v2.0.1
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42049
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  sub/
@@ -1185,17 +1465,41 @@ K 4 /tmp/oc/ file 0 UPPER
 K 5 /tmp/oc/ file 0 file10.txt
 K 6 /tmp/oc/ file 0 notes.org
 K 7 /tmp/oc/sub/ file 0 file9.txt
-E 1 /000 󰉋  deep
+E 1 /000 󰉋  a.c
 E 1 /003 󰉋  sub/
-E 1 /004 󰈔  UPPER
 E 1 /004 󰈔  UPPER
 E 1 /001 󰦪  file9.txt
 E 1 /005 󰦪  file10.txt
 E 1 /006   notes.org
 E 1 /002 󰍔  Ä.md
-X 1 3 Duplicate filename
+E 2 x.{c,h}
 E 2 /000 󰉋  ../
 E 2 /007 󰦪  file9.txt
+A create file /tmp/oc/sub/x.c -
+A create file /tmp/oc/sub/x.h -
+D ok
+T /tmp/oc/UPPER file UPPER
+T /tmp/oc/file10.txt file file10.txt
+T /tmp/oc/file9.txt file file9.txt
+T /tmp/oc/notes.org file notes.org
+T /tmp/oc/sub directory
+T /tmp/oc/sub/file9.txt file file9.txt
+T /tmp/oc/sub/x.c file 
+T /tmp/oc/sub/x.h file 
+T /tmp/oc/Ä.md file Ä.md
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  sub/
+S 1 /004 󰈔  UPPER
+S 1 /001 󰦪  file9.txt
+S 1 /005 󰦪  file10.txt
+S 1 /006   notes.org
+S 1 /002 󰍔  Ä.md
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /007 󰦪  file9.txt
+S 2 /008 󰙱  x.c
+S 2 /009 󰫵  x.h
 C 42051
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  sub/
@@ -1220,16 +1524,21 @@ K 8 /tmp/oc/sub/ directory 0 sub
 K 9 /tmp/oc/sub/ directory 0 UPPER
 K 10 /tmp/oc/sub/ link 0 notes.org -> b.lua
 E 1 /000 󰉋  ../
+E 1 /003 󰉋  sub/
 E 1 /005 󰉋  z.tar.gz/
 E 1 /001 󰢱  .hidden -> b.lua
 E 1 /002 󱁤  Makefile
-E 1 /004 󰈔  Ä.md
+E 1 /004 󰈔  README.md
+E 1 /999 x  y
 E 1 /006   notes.org
-E 2 /abs
-E 2 /abs
+X 1 6 Could not find existing entry (was the ID changed?)
+E 2 /006   notes.org
 E 2 /000 󰉋  ../
-X 2 0 Paths cannot start with '/'
-X 2 1 Paths cannot start with '/'
+E 2 /009 󰉋  UPPER/
+E 2 /008 󰉋  sub/
+E 2 /007 󰈔  007 -> v2.0.1
+E 2 /010 󰢱  notes.org -> img.png
+X 2 5 Duplicate filename
 C 42052
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  README.md/
@@ -1254,16 +1563,29 @@ E 1 /002 󰉋  README.md/
 E 1 /001 󱁤  Makefile/
 E 1 /003 󰈔  img.png -> .hidden
 E 1 /005 󰗄  z.tar.gz
-E 2 a/b/
+E 2 u.{v,}
 E 2 /000 󰉋  ../
 E 2 /006 󰉋  file9.txt/
 E 2 /008 󰉋  file10.txt/
 E 2 /007 󰈔  x
 A delete file /tmp/oc/Makefile -
 A create directory /tmp/oc/Makefile -
-A create directory /tmp/oc/sub/a -
-A create directory /tmp/oc/sub/a/b -
+A create file /tmp/oc/sub/u.v -
+A create file /tmp/oc/sub/u. -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/Makefile directory
+T /tmp/oc/README.md directory
+T /tmp/oc/img.png link -> .hidden
+T /tmp/oc/z.tar.gz file z.tar.gz
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /009 󰉋  Makefile/
+S 1 /002 󰉋  README.md/
+S 1 /003 󰈔  img.png -> .hidden
+S 1 /005 󰗄  z.tar.gz
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42053
 R 1 /000 󰉋  ../
 R 1 /004 󰉋  img.png/
@@ -1298,6 +1620,29 @@ E 2 /000 󰉋  ../
 E 2 /008 󰉋  v2.0.1/
 E 2 /007 󰈔  .hidden
 A move link /tmp/oc/sub/notes.org /tmp/oc/notes.org
+D ok
+T /tmp/oc/.hidden file .hidden
+T /tmp/oc/a b file a b
+T /tmp/oc/deep file deep
+T /tmp/oc/img.png directory
+T /tmp/oc/notes.org link -> .hidden
+T /tmp/oc/sub directory
+T /tmp/oc/sub/.hidden file .hidden
+T /tmp/oc/sub/v2.0.1 directory
+T /tmp/oc/v2.0.1 link -> a.c
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /004 󰉋  img.png/
+S 1 /005 󰉋  sub/
+S 1 /001 󰈔  .hidden
+S 1 /003 󰈔  a b
+S 1 /006 󰈔  deep
+S 1 /009 󰈔  notes.org -> .hidden
+S 1 /002 󰙱  v2.0.1 -> a.c
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /008 󰉋  v2.0.1/
+S 2 /007 󰈔  .hidden
 C 42054
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  img.png/ -> sub/
@@ -1312,13 +1657,26 @@ K 3 /tmp/oc/ directory 0 sub
 K 4 /tmp/oc/sub/ file 0 file9.txt
 K 5 /tmp/oc/sub/ link 0 z.tar.gz -> sub
 E 1 /000 󰉋  ../
-E 1   
+E 1 {}{s,t}
 E 1 /001 󰈔  .hidden
 E 2 /000 󰉋  ../
+A create file /tmp/oc/{}s -
+A create file /tmp/oc/{}t -
 A delete link /tmp/oc/img.png -
 A delete file /tmp/oc/sub/file9.txt -
 A delete link /tmp/oc/sub/z.tar.gz -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/.hidden file .hidden
+T /tmp/oc/{}s file 
+T /tmp/oc/{}t file 
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰈔  .hidden
+S 1 /006 󰈔  {}s
+S 1 /007 󰈔  {}t
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42055
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -1327,7 +1685,7 @@ K 1 /tmp/oc/ directory 0 sub
 E 1 /000 󰉋  ../
 E 1 /001 󰉋  sub//
 X 1 1 Filename cannot contain path separator
-E 2 UPPER
+E 2 z.tar.gz
 E 2 /000 󰉋  ..//
 C 42056
 R 1 /000 󰉋  ../
@@ -1353,7 +1711,7 @@ E 1 /005 󰈔  notes.org -> v2.0.1
 E 1 /002 󰈔  x
 X 1 2 Parsing icon failed
 E 2 /000 󰉋  ../
-E 2 a/b/
+E 2 sub//
 E 2 /006 󰉋  file9.txt/
 C 42057
 R 1 /000 󰉋  ../
@@ -1382,6 +1740,21 @@ E 2 nd/
 A create directory /tmp/oc/sub/nd -
 A delete file /tmp/oc/sub/deep -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/a.c directory
+T /tmp/oc/b.lua file b.lua
+T /tmp/oc/img.png file img.png
+T /tmp/oc/notes.org directory
+T /tmp/oc/x file x
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰉋  a.c/
+S 1 /006 󰉋  notes.org/
+S 1 /004 󰢱  b.lua
+S 1 /003 󰸭  img.png
+S 1 /002 󰈔  x
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42058
 R 1 /000 󰉋  ../
 R 1 /005 󰉋  UPPER/
@@ -1399,19 +1772,35 @@ K 4 /tmp/oc/ file 0 deep
 K 5 /tmp/oc/ directory 0 UPPER
 K 6 /tmp/oc/ file 0 z.tar.gz
 K 7 /tmp/oc/sub/ file 0 b.lua
-E 1 /000 󰉋  z.tar.gz
-E 1 /000 󰉋  z.tar.gz
-E 1 /007 󰢱  b.lua
+E 1 /000 󰉋  Makefile
 E 1 /005 󰉋  UPPER/
 E 1 /003 󰉋  sub/
-E 1 /002 󰈔  a b
-E 1 /004 󰈔  deep
+E 1 /002 󰈔  a deep
+E 1 /004 󰈔  b
 E 1 /001 󰈔  v2.0.1
-E 1 /006 󰗄  z.tar.gz/
-E 2 /000 󰉋  ../
-A delete file /tmp/oc/z.tar.gz -
-A create directory /tmp/oc/z.tar.gz -
-A move file /tmp/oc/sub/b.lua /tmp/oc/b.lua
+E 1 /006 󰗄  z.tar.gz
+E 2 /007 󰢱  b.lua
+A move file /tmp/oc/a b /tmp/oc/a deep
+A move file /tmp/oc/deep /tmp/oc/b
+D ok
+T /tmp/oc/UPPER directory
+T /tmp/oc/a deep file a b
+T /tmp/oc/b file deep
+T /tmp/oc/sub directory
+T /tmp/oc/sub/b.lua file b.lua
+T /tmp/oc/v2.0.1 file v2.0.1
+T /tmp/oc/z.tar.gz file z.tar.gz
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /005 󰉋  UPPER/
+S 1 /003 󰉋  sub/
+S 1 /002 󰈔  a deep
+S 1 /004 󰈔  b
+S 1 /001 󰈔  v2.0.1
+S 1 /006 󰗄  z.tar.gz
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /007 󰢱  b.lua
 C 42059
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  sub/
@@ -1431,6 +1820,21 @@ E 2 /000 󰉋  ../
 E 2 /004 󰉋  z.tar.gz/
 E 2 /001 󰈔  .hidden
 A copy file /tmp/oc/.hidden /tmp/oc/sub/.hidden
+D ok
+T /tmp/oc/.hidden file .hidden
+T /tmp/oc/a b file a b
+T /tmp/oc/sub directory
+T /tmp/oc/sub/.hidden file .hidden
+T /tmp/oc/sub/z.tar.gz directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  sub/
+S 1 /001 󰈔  .hidden
+S 1 /002 󰈔  a b
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /004 󰉋  z.tar.gz/
+S 2 /005 󰈔  .hidden
 C 42060
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -1440,7 +1844,7 @@ R 2 /003 󰈔  img.png -> UPPER
 K 1 /tmp/oc/ directory 0 sub
 K 2 /tmp/oc/sub/ file 0 .hidden
 K 3 /tmp/oc/sub/ link 0 img.png -> UPPER
-E 1 /000 󰉋  v2.0.1
+E 1 /000 󰉋  Makefile
 E 1 /001 󰉋  sub/
 E 2 /000 󰉋  ../
 E 2 /002 󰈔  .hidden
@@ -1454,16 +1858,29 @@ R 2 /003 󰈔  UPPER -> sub
 K 1 /tmp/oc/ directory 0 sub
 K 2 /tmp/oc/sub/ directory 0 img.png
 K 3 /tmp/oc/sub/ link 0 UPPER -> sub
-E 1 /000 󰉋  007
+E 1 /000 󰉋  img.png
 E 1 /001 󰉋  sub/
-E 2 a/b//
-E 2 a/b/
+E 2 sub///
+E 2 sub//
 E 2 /000 󰉋  ../
 E 2 /002 󰉋  img.png/
 E 2 /003 󰈔  UPPER -> sub
-A create directory /tmp/oc/sub/a -
-A create directory /tmp/oc/sub/a/b -
-A create directory /tmp/oc/sub/a/b/ -
+A create directory /tmp/oc/sub/sub -
+A create directory /tmp/oc/sub/sub/ -
+A create directory /tmp/oc/sub/sub// -
+D ok
+T /tmp/oc/sub directory
+T /tmp/oc/sub/UPPER link -> sub
+T /tmp/oc/sub/img.png directory
+T /tmp/oc/sub/sub directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰉋  sub/
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /003 󰉋  UPPER/ -> sub/
+S 2 /002 󰉋  img.png/
+S 2 /004 󰉋  sub/
 C 42062
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  Makefile/
@@ -1502,6 +1919,23 @@ A delete link /tmp/oc/sub/notes.org -
 A delete file /tmp/oc/sub/x -
 A delete file /tmp/oc/sub/Ä.md -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/007 file 007
+T /tmp/oc/Makefile directory
+T /tmp/oc/UPPER file UPPER
+T /tmp/oc/b.lua directory
+T /tmp/oc/file9.txt directory
+T /tmp/oc/x file x
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  Makefile/
+S 1 /005 󰉋  b.lua/
+S 1 /001 󰉋  file9.txt/
+S 1 /002 󰈔  007
+S 1 /007 󰈔  UPPER
+S 1 /004 󰈔  x
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42063
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  a.c/
@@ -1539,12 +1973,41 @@ E 2 /000 󰉋  ../
 E 2 /009 󰈔  .hidden
 E 2 /008 󰦪  file9.txt
 E 2 /011   notes.org
-E 2 a/b/
+E 2 sub//
 E 2 /010 󰈔  x/
-A create directory /tmp/oc/sub/a -
-A create directory /tmp/oc/sub/a/b -
+A create directory /tmp/oc/sub/sub -
+A create directory /tmp/oc/sub/sub/ -
 A delete file /tmp/oc/sub/x -
 A create directory /tmp/oc/sub/x -
+D ok
+T /tmp/oc/a b file a b
+T /tmp/oc/a.c directory
+T /tmp/oc/b.lua directory
+T /tmp/oc/deep file deep
+T /tmp/oc/file10.txt file file10.txt
+T /tmp/oc/sub directory
+T /tmp/oc/sub/.hidden file .hidden
+T /tmp/oc/sub/file9.txt file file9.txt
+T /tmp/oc/sub/notes.org file notes.org
+T /tmp/oc/sub/sub directory
+T /tmp/oc/sub/x directory
+T /tmp/oc/Ä.md link -> sub
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰉋  a.c/
+S 1 /004 󰉋  b.lua/
+S 1 /005 󰉋  sub/
+S 1 /003 󰉋  Ä.md/ -> sub/
+S 1 /002 󰈔  a b
+S 1 /006 󰈔  deep
+S 1 /007 󰦪  file10.txt
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /012 󰉋  sub/
+S 2 /014 󰉋  x/
+S 2 /009 󰈔  .hidden
+S 2 /008 󰦪  file9.txt
+S 2 /011   notes.org
 C 42064
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -1578,11 +2041,20 @@ R 2 /000 󰉋  ../
 K 1 /tmp/oc/ file 0 README.md
 K 2 /tmp/oc/ directory 0 sub
 E 1 /000 󰉋  ../
-E 1 /000 󰉋  ../
 E 1 /002 󰉋  sub/
-E 1 /001   deep
+E 1 /001   v2.0.1
 E 2 /000 󰉋  ../
-A move file /tmp/oc/README.md /tmp/oc/deep
+E 2 /000 󰉋  ../
+A move file /tmp/oc/README.md /tmp/oc/v2.0.1
+D ok
+T /tmp/oc/sub directory
+T /tmp/oc/v2.0.1 file README.md
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  sub/
+S 1 /001 󰈔  v2.0.1
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42067
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  a.c/
@@ -1617,6 +2089,15 @@ E 1 /003 󰉋  sub/
 E 1 /002 󰉋  Ä.md/
 E 2 /000 󰉋  ../
 A delete directory /tmp/oc/x -
+D ok
+T /tmp/oc/sub directory
+T /tmp/oc/Ä.md directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  sub/
+S 1 /002 󰉋  Ä.md/
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42069
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -1627,6 +2108,11 @@ E 1 /000 󰉋  ../
 E 1 /000 󰉋  ../
 E 2 /000 󰉋  ../
 A delete directory /tmp/oc/sub -
+D ok
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42070
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  .hidden/
@@ -1650,16 +2136,18 @@ K 7 /tmp/oc/sub/ file 0 Makefile
 K 8 /tmp/oc/sub/ directory 0 x
 K 9 /tmp/oc/sub/ link 0 README.md -> README.md
 K 10 /tmp/oc/sub/ file 0 notes.org
-E 1 /000 󰉋  007
+E 1 /000 󰉋  .hidden
 E 1 /002 󰉋  .hidden/
 E 1 /010   notes.org
 E 1 /006 󰉋  sub/
+E 1 /001 x
 E 1 /999 x  y
 E 1 /005 󰢱  b.lua
-E 1 /001 󰦪  deep
+E 1 /001 󰦪  file9.txt
 E 1 /003 󰸭  img.png
 E 1 /004 󰍔  Ä.md
-X 1 4 Could not find existing entry (was the ID changed?)
+X 1 4 Parsing icon failed
+X 1 5 Could not find existing entry (was the ID changed?)
 E 2 /000 󰉋  ../
 E 2 /008 󰉋  x/
 E 2 /007 󱁤  Makefile
@@ -1675,6 +2163,13 @@ K 2 /tmp/oc/ directory 0 sub
 E 1 /001 󰉋  a b/
 E 2 /000 󰉋  ../
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/a b directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰉋  a b/
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42072
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -1714,6 +2209,17 @@ E 2 /000 󰉋  ../
 A delete link /tmp/oc/sub/UPPER -
 A delete directory /tmp/oc/sub/file9.txt -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/file10.txt directory
+T /tmp/oc/v2.0.1 directory
+T /tmp/oc/z.tar.gz file z.tar.gz
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /004 󰉋  file10.txt/
+S 1 /001 󰉋  v2.0.1/
+S 1 /003 󰗄  z.tar.gz
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42074
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -1737,12 +2243,25 @@ K 1 /tmp/oc/ directory 0 sub
 K 2 /tmp/oc/ link 0 notes.org -> a.c
 K 3 /tmp/oc/sub/ link 0 a b -> 007
 E 1 /000 󰉋  ../
-E 1 nd/
+E 1 a/b/c.txt
 E 1 /000 󰉋  ../
 E 1 /002 󰙱  notes.org -> a.c
-A create directory /tmp/oc/nd -
+A create directory /tmp/oc/a -
+A create directory /tmp/oc/a/b -
+A create file /tmp/oc/a/b/c.txt -
 A delete link /tmp/oc/sub/a b -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/a directory
+T /tmp/oc/a/b directory
+T /tmp/oc/a/b/c.txt file 
+T /tmp/oc/notes.org link -> a.c
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /004 󰉋  a/
+S 1 /002 󰙱  notes.org -> a.c
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42076
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -1754,7 +2273,7 @@ E 1 /000 󰉋  ../
 E 1 /001 󰉋  sub//
 E 1 /002   notes.org
 X 1 1 Filename cannot contain path separator
-E 2 a/b/
+E 2 sub//
 C 42077
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  sub/
@@ -1781,6 +2300,19 @@ E 2 /000 󰉋  ../
 A delete file /tmp/oc/sub/deep -
 A delete directory /tmp/oc/sub/Ä.md -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/UPPER file UPPER
+T /tmp/oc/a b link -> deep
+T /tmp/oc/file10.txt link -> UPPER
+T /tmp/oc/z.tar.gz link -> README.md
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰈔  UPPER
+S 1 /001 󰈔  a b -> deep
+S 1 /005 󰈔  file10.txt -> UPPER
+S 1 /004   z.tar.gz -> README.md
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42078
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  img.png/
@@ -1806,6 +2338,17 @@ A delete file /tmp/oc/sub/Makefile -
 A delete link /tmp/oc/sub/notes.org -
 A delete file /tmp/oc/sub/z.tar.gz -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/img.png directory
+T /tmp/oc/notes.org file notes.org
+T /tmp/oc/Ä.md directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰉋  img.png/
+S 1 /002 󰉋  Ä.md/
+S 1 /004   notes.org
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42079
 R 1 /000 󰉋  ../
 R 1 /005 󰉋  sub/
@@ -1828,15 +2371,14 @@ K 8 /tmp/oc/sub/ directory 0 v2.0.1
 E 1 /000 󰉋  ../
 E 1 /005 󰉋  sub/
 E 1 /004 󰉋  Ä.md/
-E 1 /002 󱁤  deep
+E 1 /002 󱁤  Makefile
 E 1 /006 󰈔  UPPER
-E 1 /003 󰈔  Makefile
+E 1 /003 󰈔  README.md
 E 2 /000 󰉋  ../
 E 2 /007 󰉋  file9.txt/
 E 2 /008 󰉋  v2.0.1/
-A delete link /tmp/oc/.hidden -
-A move file /tmp/oc/Makefile /tmp/oc/deep
-A move file /tmp/oc/x /tmp/oc/Makefile
+E 2 /008 󰉋  v2.0.1/
+X 2 3 Duplicate filename
 C 42080
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  README.md/
@@ -1886,18 +2428,28 @@ K 8 /tmp/oc/sub/ directory 0 README.md
 K 9 /tmp/oc/sub/ file 0 z.tar.gz
 E 1 /000 󰉋  ../
 E 1 /003 󰉋  b.lua/ -> v2.0.1/
-E 1 /004 󰉋  sub/
 E 1 /001 󰉋  v2.0.1/
-E 1 /002 󱁤  README.md
-E 1 /005 󰈔  sub
-X 1 5 Duplicate filename
+E 1 /002 󱁤  Makefile
+E 1 /005 󰈔  UPPER
 E 2 /000 󰉋  ../
-E 2 /006 󰉋  Makefile/
-E 2 /008 󰉋  README.md/
-E 2 /007 󰢱  a b -> b.lua
-E 2 /12x y
-E 2 /009 󰗄  z.tar.gz
-X 2 4 Malformed ID at start of line
+A delete directory /tmp/oc/sub/Makefile -
+A delete directory /tmp/oc/sub/README.md -
+A delete link /tmp/oc/sub/a b -
+A delete file /tmp/oc/sub/z.tar.gz -
+A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/Makefile file Makefile
+T /tmp/oc/UPPER file UPPER
+T /tmp/oc/b.lua link -> v2.0.1
+T /tmp/oc/v2.0.1 directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  b.lua/ -> v2.0.1/
+S 1 /001 󰉋  v2.0.1/
+S 1 /002 󱁤  Makefile
+S 1 /005 󰈔  UPPER
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42082
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  sub/
@@ -1929,6 +2481,25 @@ E 2 /008 󰢱  b.lua
 A delete file /tmp/oc/v2.0.1 -
 A move directory /tmp/oc/sub/a b /tmp/oc/a b
 A move link /tmp/oc/sub/README.md /tmp/oc/README.md
+D ok
+T /tmp/oc/007 file 007
+T /tmp/oc/README.md link -> Makefile
+T /tmp/oc/a b directory
+T /tmp/oc/file10.txt file file10.txt
+T /tmp/oc/sub directory
+T /tmp/oc/sub/007 directory
+T /tmp/oc/sub/b.lua file b.lua
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /006 󰉋  a b/
+S 1 /003 󰉋  sub/
+S 1 /001 󰈔  007
+S 1 /007 󱁤  README.md -> Makefile
+S 1 /004 󰦪  file10.txt
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /005 󰉋  007/
+S 2 /008 󰢱  b.lua
 C 42083
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -1950,23 +2521,38 @@ K 2 /tmp/oc/ directory 0 sub
 K 3 /tmp/oc/ file 0 notes.org
 K 4 /tmp/oc/sub/ file 0 007
 E 1 /000 󰉋  ../
-E 1 /000 󰉋  ../
 E 1 /002 󰉋  sub/
 E 1 /003   notes.org
+E 1 /004 󰈔  img.png
 E 1 /001 󰦪  v2.0.1 -> file9.txt
 E 2 /000 󰉋  ../
-E 2 /0001 x  sub
-E 2 /004 󰈔  notes.org
-X 2 1 Could not find existing entry (was the ID changed?)
+E 2   
+E 2 /004 󰈔  UPPER
+A copy file /tmp/oc/sub/007 /tmp/oc/img.png
+A move file /tmp/oc/sub/007 /tmp/oc/sub/UPPER
+D ok
+T /tmp/oc/img.png file 007
+T /tmp/oc/notes.org file notes.org
+T /tmp/oc/sub directory
+T /tmp/oc/sub/UPPER file 007
+T /tmp/oc/v2.0.1 link -> file9.txt
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  sub/
+S 1 /005 󰸭  img.png
+S 1 /003   notes.org
+S 1 /001 󰦪  v2.0.1 -> file9.txt
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /004 󰈔  UPPER
 C 42085
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
 R 2 /000 󰉋  ../
 K 1 /tmp/oc/ directory 0 sub
 E 1 /000 󰉋  ../
-E 1 /000 󰉋  ../
 E 1 /001 󰉋  sub/
-E 2 /000 󰉋  .hidden
+E 2 /000 󰉋  Makefile/
 C 42086
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -2022,6 +2608,15 @@ E 1 /001 󰈔  .hidden -> a b
 E 2 /000 󰉋  ../
 A delete file /tmp/oc/sub/z.tar.gz -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/.hidden link -> a b
+T /tmp/oc/b.lua directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  b.lua/
+S 1 /001 󰈔  .hidden -> a b
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42089
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  sub/
@@ -2045,6 +2640,21 @@ E 1 /002 󰈔  v2.0.1
 E 2 /000 󰉋  ../
 E 2 /005 󰦪  file9.txt
 A delete directory /tmp/oc/sub/b.lua -
+D ok
+T /tmp/oc/file9.txt link -> b.lua
+T /tmp/oc/notes.org link -> .hidden
+T /tmp/oc/sub directory
+T /tmp/oc/sub/file9.txt file file9.txt
+T /tmp/oc/v2.0.1 file v2.0.1
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  sub/
+S 1 /001 󰢱  file9.txt -> b.lua
+S 1 /004 󰈔  notes.org -> .hidden
+S 1 /002 󰈔  v2.0.1
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /005 󰦪  file9.txt
 C 42090
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  sub/
@@ -2060,9 +2670,25 @@ K 4 /tmp/oc/sub/ file 0 v2.0.1
 K 5 /tmp/oc/sub/ file 0 sub
 E 1 /000 󰉋  ../
 E 1 /000 󰉋  ../
-E 1 /abs
+E 1 p{1,2}{3,4}
 E 1 /001 󰈔  a.c -> .hidden
-X 1 2 Paths cannot start with '/'
+A create file /tmp/oc/p11 -
+A create file /tmp/oc/p22 -
+A delete directory /tmp/oc/sub/007 -
+A delete file /tmp/oc/sub/sub -
+A delete file /tmp/oc/sub/v2.0.1 -
+A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/a.c link -> .hidden
+T /tmp/oc/p11 file 
+T /tmp/oc/p22 file 
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰈔  a.c -> .hidden
+S 1 /006 󰈔  p11
+S 1 /007 󰈔  p22
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42091
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  file9.txt/
@@ -2094,16 +2720,36 @@ E 2 /008 󰉋  file10.txt/
 E 2 /007 󰢱  Ä.md -> ../
 A delete link /tmp/oc/sub/Ä.md -
 A create link /tmp/oc/sub/Ä.md -
+D ok
+T /tmp/oc/UPPER link -> img.png
+T /tmp/oc/file9.txt directory
+T /tmp/oc/sub directory
+T /tmp/oc/sub/file10.txt directory
+T /tmp/oc/sub/Ä.md link -> ..
+T /tmp/oc/x directory
+T /tmp/oc/z.tar.gz directory
+T /tmp/oc/Ä.md file Ä.md
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰉋  file9.txt/
+S 1 /004 󰉋  sub/
+S 1 /002 󰉋  x/
+S 1 /006 󰉋  z.tar.gz/
+S 1 /005 󰸭  UPPER -> img.png
+S 1 /003 󰍔  Ä.md
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /008 󰉋  file10.txt/
+S 2 /009 󰉋  Ä.md/ -> ../
 C 42092
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
 R 2 /000 󰉋  ../
 K 1 /tmp/oc/ directory 0 sub
 E 1 /000 󰉋  ../
-E 1 new.txt
-E 1 /001 󰉋  sub/
-E 2 /000 󰉋  img.png
-A create file /tmp/oc/new.txt -
+E 2 /001 󰉋  sub/
+E 2 /000 󰉋  Makefile
+X 0 -1 Detected cycle in desired paths
 C 42093
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -2148,7 +2794,7 @@ K 5 /tmp/oc/ directory 0 notes.org
 K 6 /tmp/oc/sub/ link 0 Makefile -> deep
 K 7 /tmp/oc/sub/ directory 0 img.png
 E 1 /000 󰉋  ../
-E 1 file9.txt
+E 1 a/b/
 E 1 /004 󰉋  UPPER/
 E 1 /005 󰉋  notes.org/
 E 1 /003 󰉋  sub/
@@ -2157,7 +2803,30 @@ E 1 /001 󰈔  x
 E 2 /000 󰉋  ../
 E 2 /007 󰉋  img.png/
 E 2 /006 󰈔  Makefile -> deep
-A create file /tmp/oc/file9.txt -
+A create directory /tmp/oc/a -
+A create directory /tmp/oc/a/b -
+D ok
+T /tmp/oc/README.md file README.md
+T /tmp/oc/UPPER directory
+T /tmp/oc/a directory
+T /tmp/oc/a/b directory
+T /tmp/oc/notes.org directory
+T /tmp/oc/sub directory
+T /tmp/oc/sub/Makefile link -> deep
+T /tmp/oc/sub/img.png directory
+T /tmp/oc/x file x
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /004 󰉋  UPPER/
+S 1 /008 󰉋  a/
+S 1 /005 󰉋  notes.org/
+S 1 /003 󰉋  sub/
+S 1 /002   README.md
+S 1 /001 󰈔  x
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /007 󰉋  img.png/
+S 2 /006 󰈔  Makefile -> deep
 C 42096
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -2171,11 +2840,22 @@ R 1 /001 󰉋  sub/
 R 2 /000 󰉋  ../
 K 1 /tmp/oc/ directory 0 sub
 E 1 /000 󰉋  ../
-E 1 UPPER
+E 1 a/b/
 E 1 /001 󰉋  sub/
 E 2 /000 󰉋  ..//
 E 2 /000 󰉋  ../
-A create file /tmp/oc/UPPER -
+A create directory /tmp/oc/a -
+A create directory /tmp/oc/a/b -
+D ok
+T /tmp/oc/a directory
+T /tmp/oc/a/b directory
+T /tmp/oc/sub directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  a/
+S 1 /001 󰉋  sub/
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42098
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  sub/
@@ -2197,6 +2877,19 @@ E 2 /000 󰉋  ../
 E 2 /004 󰦪  file9.txt
 E 2 /005 󰗄  z.tar.gz
 A delete file /tmp/oc/a.c -
+D ok
+T /tmp/oc/file10.txt file file10.txt
+T /tmp/oc/sub directory
+T /tmp/oc/sub/file9.txt file file9.txt
+T /tmp/oc/sub/z.tar.gz file z.tar.gz
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  sub/
+S 1 /003 󰦪  file10.txt
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /004 󰦪  file9.txt
+S 2 /005 󰗄  z.tar.gz
 C 42099
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  file10.txt/
@@ -2209,9 +2902,26 @@ K 3 /tmp/oc/ directory 0 file10.txt
 E 1 /000 󰉋  ../
 E 1 /003 󰉋  file10.txt/
 E 1 /002 󰉋  sub/
-E 1   
+E 1 u.{v,}
 E 1 /001 󰈔  v2.0.1
 E 2 /000 󰉋  ../
+A create file /tmp/oc/u.v -
+A create file /tmp/oc/u. -
+D ok
+T /tmp/oc/file10.txt directory
+T /tmp/oc/sub directory
+T /tmp/oc/u. file 
+T /tmp/oc/u.v file 
+T /tmp/oc/v2.0.1 file v2.0.1
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  file10.txt/
+S 1 /002 󰉋  sub/
+S 1 /005 󰈔  u.
+S 1 /004   u.v
+S 1 /001 󰈔  v2.0.1
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42100
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -2253,6 +2963,27 @@ E 2 /000 󰉋  ../
 E 2 /008 󰗄  z.tar.gz/
 A delete file /tmp/oc/sub/z.tar.gz -
 A create directory /tmp/oc/sub/z.tar.gz -
+D ok
+T /tmp/oc/007 directory
+T /tmp/oc/Makefile link -> notes.org
+T /tmp/oc/README.md link -> x
+T /tmp/oc/a b file a b
+T /tmp/oc/file9.txt directory
+T /tmp/oc/sub directory
+T /tmp/oc/sub/z.tar.gz directory
+T /tmp/oc/Ä.md directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  007/
+S 1 /001 󰉋  file9.txt/
+S 1 /007 󰉋  sub/
+S 1 /006 󰉋  Ä.md/
+S 1 /003   Makefile -> notes.org
+S 1 /005 󰈔  README.md -> x
+S 1 /004 󰈔  a b
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /009 󰉋  z.tar.gz/
 C 42102
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -2260,10 +2991,12 @@ R 2 /000 󰉋  ../
 R 2 /002 󰈔  UPPER
 K 1 /tmp/oc/ directory 0 sub
 K 2 /tmp/oc/sub/ file 0 UPPER
+E 1 /12x y
 E 1 /000 󰉋  ../
-E 1 /000 󰉋  z.tar.gz
 E 1 /001 󰉋  sub/
-A delete file /tmp/oc/sub/UPPER -
+X 1 0 Malformed ID at start of line
+E 2 /000 󰉋  z.tar.gz
+E 2 /002 󰈔  a.c
 C 42103
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  Makefile/ -> sub/
@@ -2304,7 +3037,7 @@ E 1 /003 󰉋  sub/
 E 1 /001   Makefile -> README.md
 E 1 /002 󰢱  b.lua
 E 1 /004   notes.org
-E 2 /000 󰉋  README.md
+E 2 /000 󰉋  b.lua
 E 2 /005 󰉋  z.tar.gz/
 C 42105
 R 1 /000 󰉋  ../
@@ -2325,9 +3058,8 @@ E 1 /003 󰉋  z.tar.gz/
 E 1 /002 󰈔  deep
 X 1 4 Duplicate filename
 X 1 5 Duplicate filename
-E 2 /abs
+E 2 p{1,2}{3,4}
 E 2 /000 󰉋  ..//
-X 2 0 Paths cannot start with '/'
 C 42106
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -2335,6 +3067,11 @@ R 2 /000 󰉋  ../
 K 1 /tmp/oc/ directory 0 sub
 E 2 /000 󰉋  ../
 A delete directory /tmp/oc/sub -
+D ok
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42107
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  README.md/
@@ -2355,7 +3092,7 @@ E 1 /001 󰉋  README.md/
 E 1 /003 󰉋  sub/
 E 1 /004 󰉋  z.tar.gz/
 E 1 /002 󱁤  img.png -> Makefile
-E 2 /000 󰉋  Makefile
+E 2 /000 󰉋  007
 E 2 /005 󱁤  Makefile
 E 2 /006 󰗄  z.tar.gz
 C 42108
@@ -2378,10 +3115,26 @@ E 1 /002 󰢱  b.lua
 E 1 /004 󰈔  deep
 E 1 /001 󱁤  v2.0.1 -> Makefile
 E 2 /000 󰉋  ..//
-E 2 x.{c,h}
+E 2 sub
 E 2 /000 󰉋  ..//
-A create file /tmp/oc/sub/x.c -
-A create file /tmp/oc/sub/x.h -
+A create file /tmp/oc/sub/sub -
+D ok
+T /tmp/oc/UPPER directory
+T /tmp/oc/b.lua file b.lua
+T /tmp/oc/deep file deep
+T /tmp/oc/sub directory
+T /tmp/oc/sub/sub file 
+T /tmp/oc/v2.0.1 link -> Makefile
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /005 󰉋  UPPER/
+S 1 /003 󰉋  sub/
+S 1 /002 󰢱  b.lua
+S 1 /004 󰈔  deep
+S 1 /001 󱁤  v2.0.1 -> Makefile
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /006 󰈔  sub
 C 42109
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  deep/ -> sub/
@@ -2398,14 +3151,24 @@ K 4 /tmp/oc/sub/ link 0 a b -> img.png
 K 5 /tmp/oc/sub/ file 0 b.lua
 K 6 /tmp/oc/sub/ file 0 sub
 E 1 /000 󰉋  ../
-E 1 /003 󰗄  v2.0.1
+E 1 /003 󰗄  file9.txt
+E 1 /004 󰸭  a b -> img.png
 E 2 /000 󰉋  ../
-A delete link /tmp/oc/sub/a b -
+A move link /tmp/oc/sub/a b /tmp/oc/a b
 A delete file /tmp/oc/sub/b.lua -
 A delete file /tmp/oc/sub/sub -
 A delete directory /tmp/oc/sub -
 A delete link /tmp/oc/deep -
-A move file /tmp/oc/z.tar.gz /tmp/oc/v2.0.1
+A move file /tmp/oc/z.tar.gz /tmp/oc/file9.txt
+D ok
+T /tmp/oc/a b link -> img.png
+T /tmp/oc/file9.txt file z.tar.gz
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /004 󰸭  a b -> img.png
+S 1 /003 󰦪  file9.txt
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42110
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  sub/
@@ -2416,12 +3179,23 @@ K 1 /tmp/oc/ file 0 Makefile
 K 2 /tmp/oc/ directory 0 sub
 K 3 /tmp/oc/ file 0 notes.org
 E 1 /000 󰉋  img.png
-E 1 /002 󰉋  sub/
 E 1 /001 󱁤  Makefile
 E 1 /003   notes.org
-E 2 007
+E 2 q//r
 E 2 /000 󰉋  ..//
-A create file /tmp/oc/sub/007 -
+A create directory /tmp/oc/sub/q -
+A create directory /tmp/oc/sub/q/ -
+A create file /tmp/oc/sub/q//r -
+A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/Makefile file Makefile
+T /tmp/oc/notes.org file notes.org
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󱁤  Makefile
+S 1 /003   notes.org
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42111
 R 1 /000 󰉋  ../
 R 1 /005 󰉋  sub/
@@ -2462,11 +3236,9 @@ R 2 /000 󰉋  ../
 K 1 /tmp/oc/ directory 0 sub
 E 1 /000 󰉋  ../
 E 1 new.txt
-E 2 ln -> a.c
+E 2 /abs
 E 2 /000 󰉋  ../
-A create file /tmp/oc/new.txt -
-A create link /tmp/oc/sub/ln -
-A delete directory /tmp/oc/sub -
+X 2 0 Paths cannot start with '/'
 C 42113
 R 1 /000 󰉋  ../
 R 1 /005 󰉋  sub/
@@ -2487,8 +3259,8 @@ K 6 /tmp/oc/ file 0 deep
 K 7 /tmp/oc/sub/ file 0 UPPER
 K 8 /tmp/oc/sub/ file 0 notes.org
 E 1 /000 󰉋  ../
-E 1 sub/
-E 1 /005 󰉋  z.tar.gz
+E 1   
+E 1 /005 󰉋  sub/
 E 1 /002 󰉋  v2.0.1/
 E 1 /004   README.md
 E 1 /003 󰈔  a b
@@ -2497,8 +3269,6 @@ E 1 /001   file9.txt -> notes.org
 E 2 /000 󰉋  ../
 E 2 /007 󰈔  UPPER
 E 2 /008   notes.org
-A move directory /tmp/oc/sub /tmp/oc/z.tar.gz
-A create directory /tmp/oc/sub -
 C 42114
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  b.lua/
@@ -2548,6 +3318,15 @@ E 1 /002 󰉋  sub/
 E 2 /000 󰉋  ../
 E 2 /003 󱁤  Makefile
 A delete file /tmp/oc/Ä.md -
+D ok
+T /tmp/oc/sub directory
+T /tmp/oc/sub/Makefile file Makefile
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  sub/
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /003 󱁤  Makefile
 C 42117
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  sub/
@@ -2561,15 +3340,32 @@ K 2 /tmp/oc/ directory 0 Ä.md
 K 3 /tmp/oc/ directory 0 sub
 K 4 /tmp/oc/sub/ directory 0 x
 K 5 /tmp/oc/sub/ directory 0 b.lua
-E 1 /000 󰉋  img.png
 E 1 /000 󰉋  ../
+E 1 /003 󰉋  sub/
 E 1 /002 󰉋  Ä.md/
-E 1 /001 󰸭  ../
+E 1 /001 󰸭  img.png
 E 2 /000 󰉋  ../
-A move file /tmp/oc/img.png /tmp/oc/..
-A delete directory /tmp/oc/sub/b.lua -
-A delete directory /tmp/oc/sub/x -
-A delete directory /tmp/oc/sub -
+E 2 /005 󰉋  b.lua/
+E 2 /005 󰉋  notes.org
+E 2 /004 󰉋  x/
+A copy directory /tmp/oc/sub/b.lua /tmp/oc/sub/notes.org
+D ok
+T /tmp/oc/img.png file img.png
+T /tmp/oc/sub directory
+T /tmp/oc/sub/b.lua directory
+T /tmp/oc/sub/notes.org directory
+T /tmp/oc/sub/x directory
+T /tmp/oc/Ä.md directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  sub/
+S 1 /002 󰉋  Ä.md/
+S 1 /001 󰸭  img.png
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /005 󰉋  b.lua/
+S 2 /006 󰉋  notes.org/
+S 2 /004 󰉋  x/
 C 42118
 R 1 /000 󰉋  ../
 R 1 /005 󰉋  sub/
@@ -2653,6 +3449,29 @@ E 2 /006 󰈔  deep/
 E 2 /000 󰉋  ../
 E 2 /008 󰍔  Ä.md
 A copy file /tmp/oc/deep /tmp/oc/sub/deep
+D ok
+T /tmp/oc/007 directory
+T /tmp/oc/a b file a b
+T /tmp/oc/deep file deep
+T /tmp/oc/file9.txt link -> a b
+T /tmp/oc/sub directory
+T /tmp/oc/sub/deep file deep
+T /tmp/oc/sub/Ä.md file Ä.md
+T /tmp/oc/x file x
+T /tmp/oc/z.tar.gz link -> x
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  007/
+S 1 /005 󰉋  sub/
+S 1 /003 󰈔  a b
+S 1 /006 󰈔  deep
+S 1 /001 󰈔  file9.txt -> a b
+S 1 /004 󰈔  x
+S 1 /007 󰈔  z.tar.gz -> x
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /009 󰈔  deep
+S 2 /008 󰍔  Ä.md
 C 42121
 R 1 /000 󰉋  ../
 R 1 /007 󰉋  UPPER/
@@ -2682,17 +3501,34 @@ E 1 /008 󰈔  007
 E 1 /004   README.md
 E 1 /006 󰈔  deep
 E 1 /001 󰈔  v2.0.1
-E 2 a/b/c.txt
 E 2 x.{c,h}
+E 2 ln -> a.c
 E 2 /000 󰉋  ../
-A create directory /tmp/oc/sub/a -
-A create directory /tmp/oc/sub/a/b -
-A create file /tmp/oc/sub/a/b/c.txt -
 A create file /tmp/oc/sub/x.c -
 A create file /tmp/oc/sub/x.h -
+A create link /tmp/oc/sub/ln -
 A move file /tmp/oc/sub/007 /tmp/oc/007
 A delete directory /tmp/oc/sub/x -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/007 file 007
+T /tmp/oc/Makefile file Makefile
+T /tmp/oc/README.md file README.md
+T /tmp/oc/UPPER directory
+T /tmp/oc/a b directory
+T /tmp/oc/deep file deep
+T /tmp/oc/v2.0.1 file v2.0.1
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /007 󰉋  UPPER/
+S 1 /003 󰉋  a b/
+S 1 /008 󰈔  007
+S 1 /002 󱁤  Makefile
+S 1 /004   README.md
+S 1 /006 󰈔  deep
+S 1 /001 󰈔  v2.0.1
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42122
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  sub/
@@ -2711,6 +3547,15 @@ E 2 /0001 x  README.md
 A copy file /tmp/oc/file9.txt /tmp/oc/sub/README.md
 A delete directory /tmp/oc/sub/x -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/b.lua file b.lua
+T /tmp/oc/file9.txt file file9.txt
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰢱  b.lua
+S 1 /001 󰦪  file9.txt
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42123
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  img.png/
@@ -2733,8 +3578,25 @@ E 1 /002 󰈔  a b
 E 1 /001 󰈔  v2.0.1
 E 1 /004 󰍔  Ä.md
 E 2 /000 󰉋  ../
-E 2 /006 󰉋  file10.txt
-A move directory /tmp/oc/sub/deep /tmp/oc/sub/file10.txt
+E 2 /006 󰉋  .hidden
+A move directory /tmp/oc/sub/deep /tmp/oc/sub/.hidden
+D ok
+T /tmp/oc/a b file a b
+T /tmp/oc/img.png directory
+T /tmp/oc/sub directory
+T /tmp/oc/sub/.hidden directory
+T /tmp/oc/v2.0.1 file v2.0.1
+T /tmp/oc/Ä.md file Ä.md
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  img.png/
+S 1 /005 󰉋  sub/
+S 1 /002 󰈔  a b
+S 1 /001 󰈔  v2.0.1
+S 1 /004 󰍔  Ä.md
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /006 󰉋  .hidden/
 C 42124
 R 1 /000 󰉋  ../
 R 1 /005 󰉋  sub/
@@ -2767,6 +3629,27 @@ A copy file /tmp/oc/.hidden /tmp/oc/sub/.hidden
 A move directory /tmp/oc/sub/v2.0.1 /tmp/oc/sub/v2.0.1__oil_tmp_634483
 A move file /tmp/oc/sub/z.tar.gz /tmp/oc/sub/v2.0.1
 A move directory /tmp/oc/sub/v2.0.1__oil_tmp_634483 /tmp/oc/sub/z.tar.gz
+D ok
+T /tmp/oc/.hidden file .hidden
+T /tmp/oc/b.lua file b.lua
+T /tmp/oc/img.png file img.png
+T /tmp/oc/sub directory
+T /tmp/oc/sub/.hidden file .hidden
+T /tmp/oc/sub/v2.0.1 file z.tar.gz
+T /tmp/oc/sub/z.tar.gz directory
+T /tmp/oc/x file x
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /005 󰉋  sub/
+S 1 /001 󰈔  .hidden
+S 1 /004 󰢱  b.lua
+S 1 /003 󰸭  img.png
+S 1 /002 󰈔  x
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /006 󰉋  z.tar.gz/
+S 2 /008 󰈔  .hidden
+S 2 /007 󰈔  v2.0.1
 C 42125
 R 1 /000 󰉋  ../
 R 1 /005 󰉋  sub/
@@ -2794,10 +3677,29 @@ E 1 /006   UPPER -> README.md
 E 1 /002 󰈔  v2.0.1
 E 1 /004 󰈔  x -> x
 E 2 /000 󰉋  ../
-E 2 .hidden
-E 2 .hidden
+E 2   
+E 2   
 E 2 /007 󰙱  a.c
-X 2 2 Duplicate filename
+A delete link /tmp/oc/sub/file10.txt -
+D ok
+T /tmp/oc/.hidden file .hidden
+T /tmp/oc/Makefile file Makefile
+T /tmp/oc/UPPER link -> README.md
+T /tmp/oc/sub directory
+T /tmp/oc/sub/a.c file a.c
+T /tmp/oc/v2.0.1 file v2.0.1
+T /tmp/oc/x link -> x
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /005 󰉋  sub/
+S 1 /001 󰈔  .hidden
+S 1 /003 󱁤  Makefile
+S 1 /006   UPPER -> README.md
+S 1 /002 󰈔  v2.0.1
+S 1 /004 󰈔  x -> x
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /007 󰙱  a.c
 C 42126
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  .hidden/
@@ -2821,6 +3723,17 @@ E 2 /000 󰉋  ../
 E 2 /006   README.md -> README.md
 E 2 /005 󰗄  x -> z.tar.gz
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/.hidden directory
+T /tmp/oc/file9.txt file file9.txt
+T /tmp/oc/x file x
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  .hidden/
+S 1 /001 󰦪  file9.txt
+S 1 /003 󰈔  x
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42127
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  sub/
@@ -2844,6 +3757,21 @@ E 2 /005 󰢱  sub -> b.lua
 A delete file /tmp/oc/Ä.md -
 A create directory /tmp/oc/Ä.md -
 A move file /tmp/oc/sub/a b /tmp/oc/a b
+D ok
+T /tmp/oc/a b file a b
+T /tmp/oc/sub directory
+T /tmp/oc/sub/sub link -> b.lua
+T /tmp/oc/v2.0.1 file v2.0.1
+T /tmp/oc/Ä.md directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  sub/
+S 1 /006 󰉋  Ä.md/
+S 1 /004 󰈔  a b
+S 1 /001 󰈔  v2.0.1
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /005 󰢱  sub -> b.lua
 C 42128
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  sub/
@@ -2865,7 +3793,7 @@ E 1 /002 󰈔  v2.0.1
 X 1 0 Malformed ID at start of line
 E 2 /000 󰉋  ../
 E 2 /004 󰦪  file10.txt
-E 2 .hidden
+E 2 p{1,2}{3,4}
 E 2 /000 󰉋  ../
 E 2 /005 󰍔  Ä.md
 C 42129
@@ -2906,6 +3834,27 @@ A create directory /tmp/oc/z.tar.gz -
 A copy directory /tmp/oc/file9.txt /tmp/oc/sub/file9.txt
 A copy file /tmp/oc/img.png /tmp/oc/sub/img.png
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/007 directory
+T /tmp/oc/Makefile link -> .hidden
+T /tmp/oc/a b link -> Makefile
+T /tmp/oc/a.c link -> UPPER
+T /tmp/oc/file9.txt directory
+T /tmp/oc/img.png file img.png
+T /tmp/oc/x directory
+T /tmp/oc/z.tar.gz directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  007/
+S 1 /002 󰉋  file9.txt/
+S 1 /006 󰉋  x/
+S 1 /010 󰉋  z.tar.gz/
+S 1 /004 󰈔  Makefile -> .hidden
+S 1 /005 󱁤  a b -> Makefile
+S 1 /001 󰈔  a.c -> UPPER
+S 1 /007 󰸭  img.png
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42130
 R 1 /000 󰉋  ../
 R 1 /004 󰉋  sub/
@@ -2957,12 +3906,33 @@ E 1 /005 󰉋  deep/
 E 1 /004 󰉋  sub/
 E 1 /002 󰉋  x/
 E 1 /003 󰸭  img.png
-E 2   
+E 2 {}{s,t}
 E 2 /000 󰉋  ../
 E 2 /006   README.md/
+A create file /tmp/oc/sub/{}s -
+A create file /tmp/oc/sub/{}t -
 A delete file /tmp/oc/sub/README.md -
 A create directory /tmp/oc/sub/README.md -
 A delete file /tmp/oc/file9.txt -
+D ok
+T /tmp/oc/deep directory
+T /tmp/oc/img.png file img.png
+T /tmp/oc/sub directory
+T /tmp/oc/sub/README.md directory
+T /tmp/oc/sub/{}s file 
+T /tmp/oc/sub/{}t file 
+T /tmp/oc/x directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /005 󰉋  deep/
+S 1 /004 󰉋  sub/
+S 1 /002 󰉋  x/
+S 1 /003 󰸭  img.png
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /009 󰉋  README.md/
+S 2 /007 󰈔  {}s
+S 2 /008 󰈔  {}t
 C 42132
 R 1 /000 󰉋  ../
 R 1 /005 󰉋  sub/
@@ -2994,6 +3964,29 @@ E 1 /003 󰸭  Ä.md -> img.png
 E 2 /000 󰉋  ../
 E 2 /008 󰉋  img.png/
 A copy directory /tmp/oc/sub/img.png /tmp/oc/img.png
+D ok
+T /tmp/oc/Makefile link -> img.png
+T /tmp/oc/UPPER file UPPER
+T /tmp/oc/a b link -> README.md
+T /tmp/oc/b.lua file b.lua
+T /tmp/oc/deep link -> img.png
+T /tmp/oc/img.png directory
+T /tmp/oc/sub directory
+T /tmp/oc/sub/img.png directory
+T /tmp/oc/Ä.md link -> img.png
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰉋  Makefile/ -> img.png/
+S 1 /006 󰉋  deep/ -> img.png/
+S 1 /009 󰉋  img.png/
+S 1 /005 󰉋  sub/
+S 1 /003 󰉋  Ä.md/ -> img.png/
+S 1 /007 󰈔  UPPER
+S 1 /002   a b -> README.md
+S 1 /004 󰢱  b.lua
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /008 󰉋  img.png/
 C 42133
 R 1 /000 󰉋  ../
 R 1 /005 󰉋  sub/
@@ -3020,6 +4013,23 @@ E 1 /004 󰍔  Ä.md
 E 2 /000 󰉋  ../
 E 2 /007 󰉋  b.lua/
 A delete file /tmp/oc/img.png -
+D ok
+T /tmp/oc/007 link -> 007
+T /tmp/oc/README.md link -> deep
+T /tmp/oc/notes.org file notes.org
+T /tmp/oc/sub directory
+T /tmp/oc/sub/b.lua directory
+T /tmp/oc/Ä.md file Ä.md
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /005 󰉋  sub/
+S 1 /001 󰈔  007 -> 007
+S 1 /002 󰈔  README.md -> deep
+S 1 /006   notes.org
+S 1 /004 󰍔  Ä.md
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /007 󰉋  b.lua/
 C 42134
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  a.c/
@@ -3049,6 +4059,19 @@ A delete link /tmp/oc/sub/README.md -
 A delete file /tmp/oc/sub/UPPER -
 A delete directory /tmp/oc/sub/file10.txt -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/007 file 007
+T /tmp/oc/UPPER file UPPER
+T /tmp/oc/a.c directory
+T /tmp/oc/notes.org link -> a.c
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰉋  a.c/
+S 1 /005 󰉋  notes.org/ -> a.c/
+S 1 /002 󰈔  007
+S 1 /004 󰈔  UPPER
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42135
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  a b/
@@ -3084,6 +4107,29 @@ E 2 /008 󰈔  sub -> a b
 A move directory /tmp/oc/v2.0.1 /tmp/oc/sub/v2.0.1
 A move directory /tmp/oc/a b /tmp/oc/a Ä.md
 A move file /tmp/oc/Ä.md /tmp/oc/b
+D ok
+T /tmp/oc/007 link -> file9.txt
+T /tmp/oc/a Ä.md directory
+T /tmp/oc/b file Ä.md
+T /tmp/oc/sub directory
+T /tmp/oc/sub/file10.txt file file10.txt
+T /tmp/oc/sub/sub link -> a b
+T /tmp/oc/sub/v2.0.1 directory
+T /tmp/oc/x file x
+T /tmp/oc/z.tar.gz directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  a Ä.md/
+S 1 /006 󰉋  sub/
+S 1 /007 󰉋  z.tar.gz/
+S 1 /001 󰦪  007 -> file9.txt
+S 1 /005 󰈔  b
+S 1 /004 󰈔  x
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /002 󰉋  v2.0.1/
+S 2 /009 󰦪  file10.txt
+S 2 /008 󰈔  sub -> a b
 C 42136
 R 1 /000 󰉋  ../
 R 1 /006 󰉋  file10.txt/
@@ -3119,6 +4165,31 @@ E 2 /000 󰉋  ../
 E 2 /009 󰈔  deep
 E 2 /008 󰸭  img.png
 A copy file /tmp/oc/sub/deep /tmp/oc/deep
+D ok
+T /tmp/oc/.hidden link -> file9.txt
+T /tmp/oc/b.lua file b.lua
+T /tmp/oc/deep file deep
+T /tmp/oc/file10.txt directory
+T /tmp/oc/img.png link -> z.tar.gz
+T /tmp/oc/notes.org directory
+T /tmp/oc/sub directory
+T /tmp/oc/sub/deep file deep
+T /tmp/oc/sub/img.png file img.png
+T /tmp/oc/v2.0.1 file v2.0.1
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /006 󰉋  file10.txt/
+S 1 /007 󰉋  notes.org/
+S 1 /005 󰉋  sub/
+S 1 /001 󰦪  .hidden -> file9.txt
+S 1 /004 󰢱  b.lua
+S 1 /010 󰈔  deep
+S 1 /003 󰗄  img.png -> z.tar.gz
+S 1 /002 󰈔  v2.0.1
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /009 󰈔  deep
+S 2 /008 󰸭  img.png
 C 42137
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  img.png/
@@ -3155,10 +4226,32 @@ E 1 /002 󰉋  sub/
 E 1 /001 󰗄  README.md -> z.tar.gz
 E 1 /003 󰦪  file10.txt/
 E 2 /000 󰉋  ../
-E 2 /abs
+E 2 p{1,2}{3,4}
 E 2 /004 󰙱  007 -> a.c
 E 2 /005 󰈔  UPPER
-X 2 1 Paths cannot start with '/'
+A delete file /tmp/oc/file10.txt -
+A create directory /tmp/oc/file10.txt -
+A create file /tmp/oc/sub/p11 -
+A create file /tmp/oc/sub/p22 -
+D ok
+T /tmp/oc/README.md link -> z.tar.gz
+T /tmp/oc/file10.txt directory
+T /tmp/oc/sub directory
+T /tmp/oc/sub/007 link -> a.c
+T /tmp/oc/sub/UPPER file UPPER
+T /tmp/oc/sub/p11 file 
+T /tmp/oc/sub/p22 file 
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /006 󰉋  file10.txt/
+S 1 /002 󰉋  sub/
+S 1 /001 󰗄  README.md -> z.tar.gz
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /004 󰙱  007 -> a.c
+S 2 /005 󰈔  UPPER
+S 2 /007 󰈔  p11
+S 2 /008 󰈔  p22
 C 42139
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  sub/
@@ -3177,16 +4270,16 @@ K 5 /tmp/oc/sub/ link 0 sub -> deep
 K 6 /tmp/oc/sub/ file 0 deep
 K 7 /tmp/oc/sub/ file 0 UPPER
 E 1 /000 󰉋  ../
-E 1 /003 󰉋  img.png
+E 1 /003 󰉋  UPPER
 E 1 /001 󰈔  007
 E 1 /002   README.md
 E 2 /000 󰉋  ../
 E 2 /007 󰈔  UPPER
-E 2 /006 󰈔  .hidden
+E 2 /006 󰈔  deep
 E 2 /004   img.png -> notes.org
+E 2 /003 󰉋  UPPER
 E 2 /005 󰈔  sub -> deep
-A move file /tmp/oc/sub/deep /tmp/oc/sub/.hidden
-A move directory /tmp/oc/sub /tmp/oc/img.png
+X 2 4 Duplicate filename
 C 42140
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -3194,10 +4287,19 @@ R 2 /000 󰉋  ../
 K 1 /tmp/oc/ directory 0 sub
 E 1 /0001 x  z.tar.gz
 E 1 /000 󰉋  ../
-E 2 new.txt
+E 2 nd/
 E 2 /000 󰉋  ../
-A create file /tmp/oc/sub/new.txt -
+A create directory /tmp/oc/sub/nd -
 A move directory /tmp/oc/sub /tmp/oc/z.tar.gz
+D ok
+T /tmp/oc/z.tar.gz directory
+T /tmp/oc/z.tar.gz/nd directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰉋  z.tar.gz/
+B 2 /tmp/oc/z.tar.gz/
+S 2 /000 󰉋  ../
+S 2 /003 󰉋  nd/
 C 42141
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  sub/
@@ -3221,6 +4323,21 @@ E 2 /005   notes.org
 A move directory /tmp/oc/v2.0.1 /tmp/oc/v2.0.1__oil_tmp_909925
 A move directory /tmp/oc/sub /tmp/oc/v2.0.1
 A move directory /tmp/oc/v2.0.1__oil_tmp_909925 /tmp/oc/sub
+D ok
+T /tmp/oc/.hidden file .hidden
+T /tmp/oc/sub directory
+T /tmp/oc/v2.0.1 directory
+T /tmp/oc/v2.0.1/notes.org file notes.org
+T /tmp/oc/v2.0.1/v2.0.1 directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  sub/
+S 1 /003 󰉋  v2.0.1/
+S 1 /001 󰈔  .hidden
+B 2 /tmp/oc/v2.0.1/
+S 2 /000 󰉋  ../
+S 2 /006 󰉋  v2.0.1/
+S 2 /007   notes.org
 C 42142
 R 1 /000 󰉋  ../
 R 1 /006 󰉋  sub/
@@ -3246,7 +4363,7 @@ E 1 /001 󰗄  .hidden -> z.tar.gz
 E 1 /0001 x  a b
 E 1 /002 󰈔  007
 E 1 /004   Makefile -> notes.org
-E 1   
+E 1 {}{s,t}
 E 1 /005   README.md
 E 1 /003 󰈔  v2.0.1
 X 1 3 Could not find existing entry (was the ID changed?)
@@ -3281,12 +4398,11 @@ E 1 /003 󰈔  Makefile -> v2.0.1
 E 1 /007 󰈔  deep
 E 1 /002 󰦪  file9.txt
 E 1 /004 󰈔  x -> x
-E 2 x.{c,h}
+E 2 /abs
 E 2 /000 󰉋  ../
 E 2 /008 󰉋  x/
 E 2 /009 󰈔  UPPER
-A create file /tmp/oc/sub/x.c -
-A create file /tmp/oc/sub/x.h -
+X 2 0 Paths cannot start with '/'
 C 42144
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  007/
@@ -3303,11 +4419,32 @@ E 1 /001 󰉋  007/
 E 1 /003 󰉋  sub/
 E 1 /002 󱁤  Makefile
 E 2 /000 󰉋  ../
-E 2 nd/
+E 2 a/b/c.txt
 E 2 /0001 x  Makefile
 E 2 /004 󰈔  a b
-A create directory /tmp/oc/sub/nd -
+A create directory /tmp/oc/sub/a -
+A create directory /tmp/oc/sub/a/b -
+A create file /tmp/oc/sub/a/b/c.txt -
 A copy directory /tmp/oc/007 /tmp/oc/sub/Makefile
+D ok
+T /tmp/oc/007 directory
+T /tmp/oc/Makefile file Makefile
+T /tmp/oc/sub directory
+T /tmp/oc/sub/Makefile directory
+T /tmp/oc/sub/a directory
+T /tmp/oc/sub/a/b directory
+T /tmp/oc/sub/a/b/c.txt file 
+T /tmp/oc/sub/a b file a b
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰉋  007/
+S 1 /003 󰉋  sub/
+S 1 /002 󱁤  Makefile
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /008 󰉋  Makefile/
+S 2 /005 󰉋  a/
+S 2 /004 󰈔  a b
 C 42145
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  deep/
@@ -3335,6 +4472,27 @@ E 2 /005 󰈔  Makefile -> a b
 E 2 /006 󰈔  z.tar.gz -> 007
 A copy file /tmp/oc/Ä.md /tmp/oc/x
 A copy file /tmp/oc/Ä.md /tmp/oc/sub/Ä.md
+D ok
+T /tmp/oc/deep directory
+T /tmp/oc/sub directory
+T /tmp/oc/sub/Makefile link -> a b
+T /tmp/oc/sub/z.tar.gz link -> 007
+T /tmp/oc/sub/Ä.md file Ä.md
+T /tmp/oc/x file Ä.md
+T /tmp/oc/z.tar.gz file z.tar.gz
+T /tmp/oc/Ä.md file Ä.md
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  deep/
+S 1 /002 󰉋  sub/
+S 1 /007 󰈔  x
+S 1 /004 󰗄  z.tar.gz
+S 1 /001 󰍔  Ä.md
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /005 󰈔  Makefile -> a b
+S 2 /006 󰈔  z.tar.gz -> 007
+S 2 /008 󰍔  Ä.md
 C 42146
 R 1 /000 󰉋  ../
 R 1 /007 󰉋  sub/
@@ -3395,11 +4553,36 @@ E 1 /005 󰈔  deep
 E 1 /003 󰍔  Ä.md
 E 1 /007 󰉋  x/ -> img.png/
 E 2 /000 󰉋  ..//
-E 2 /008 󰉋  file9.txt
+E 2 /008 󰉋  Makefile
 E 2 /009 󰉋  img.png/
 E 2 /010 󰉋  notes.org/
 A move link /tmp/oc/sub/x /tmp/oc/x
-A move directory /tmp/oc/sub/README.md /tmp/oc/sub/file9.txt
+A move directory /tmp/oc/sub/README.md /tmp/oc/sub/Makefile
+D ok
+T /tmp/oc/.hidden link -> z.tar.gz
+T /tmp/oc/UPPER link -> sub
+T /tmp/oc/a b directory
+T /tmp/oc/deep file deep
+T /tmp/oc/sub directory
+T /tmp/oc/sub/Makefile directory
+T /tmp/oc/sub/img.png directory
+T /tmp/oc/sub/notes.org directory
+T /tmp/oc/x link -> img.png
+T /tmp/oc/Ä.md file Ä.md
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /006 󰉋  UPPER/ -> sub/
+S 1 /002 󰉋  a b/
+S 1 /004 󰉋  sub/
+S 1 /001 󰗄  .hidden -> z.tar.gz
+S 1 /005 󰈔  deep
+S 1 /007 󰸭  x -> img.png
+S 1 /003 󰍔  Ä.md
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /008 󰉋  Makefile/
+S 2 /009 󰉋  img.png/
+S 2 /010 󰉋  notes.org/
 C 42148
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  sub/
@@ -3411,6 +4594,13 @@ E 1 /000 󰉋  ../
 E 1 /001 󰈔  007 -> a b
 E 2 /000 󰉋  ..//
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/007 link -> a b
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰈔  007 -> a b
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42149
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  a b/
@@ -3449,7 +4639,7 @@ E 1 /001 󰉋  sub/
 X 1 1 Malformed ID at start of line
 E 2 /000 󰉋  ../
 E 2 /002 󰉋  x/
-E 2 deep
+E 2 a/b/
 C 42151
 R 1 /000 󰉋  ../
 R 1 /006 󰉋  UPPER/ -> sub/
@@ -3488,6 +4678,31 @@ E 2 /009 󰙱  007 -> .hidden/
 A delete link /tmp/oc/sub/007 -
 A create link /tmp/oc/sub/007 -
 A move directory /tmp/oc/sub/.hidden /tmp/oc/sub/a.c
+D ok
+T /tmp/oc/007 file 007
+T /tmp/oc/UPPER link -> sub
+T /tmp/oc/a.c file a.c
+T /tmp/oc/b.lua file b.lua
+T /tmp/oc/notes.org directory
+T /tmp/oc/sub directory
+T /tmp/oc/sub/007 link -> .hidden
+T /tmp/oc/sub/a.c directory
+T /tmp/oc/sub/z.tar.gz directory
+T /tmp/oc/Ä.md file Ä.md
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /006 󰉋  UPPER/ -> sub/
+S 1 /007 󰉋  notes.org/
+S 1 /005 󰉋  sub/
+S 1 /002 󰈔  007
+S 1 /001 󰙱  a.c
+S 1 /004 󰢱  b.lua
+S 1 /003 󰍔  Ä.md
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /008 󰉋  a.c/
+S 2 /010 󰉋  z.tar.gz/
+S 2 /011 󰈔  007 -> .hidden
 C 42152
 R 1 /000 󰉋  ../
 R 1 /007 󰉋  UPPER/
@@ -3515,13 +4730,36 @@ E 1 /004 󰉋  b.lua/
 E 1 /008 󰉋  notes.org/ -> b.lua/
 E 1 /005 󰉋  sub/
 E 1 /002 󰈔  .hidden
-E 1 /000 󰉋  ../
 E 1 /003 󱁤  Makefile
 E 1 /001 󰙱  a.c
 E 1 /006 󰙱  deep -> a.c
-E 2 /009 󰙱  v2.0.1 -> Makefile
+E 2 /000 󰉋  ../
+E 2 /009 󰙱  v2.0.1 -> file9.txt
 A delete link /tmp/oc/sub/v2.0.1 -
 A create link /tmp/oc/sub/v2.0.1 -
+D ok
+T /tmp/oc/.hidden file .hidden
+T /tmp/oc/Makefile file Makefile
+T /tmp/oc/UPPER directory
+T /tmp/oc/a.c file a.c
+T /tmp/oc/b.lua directory
+T /tmp/oc/deep link -> a.c
+T /tmp/oc/notes.org link -> b.lua
+T /tmp/oc/sub directory
+T /tmp/oc/sub/v2.0.1 link -> file9.txt
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /007 󰉋  UPPER/
+S 1 /004 󰉋  b.lua/
+S 1 /008 󰉋  notes.org/ -> b.lua/
+S 1 /005 󰉋  sub/
+S 1 /002 󰈔  .hidden
+S 1 /003 󱁤  Makefile
+S 1 /001 󰙱  a.c
+S 1 /006 󰙱  deep -> a.c
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /010 󰦪  v2.0.1 -> file9.txt
 C 42153
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  sub/
@@ -3531,7 +4769,7 @@ K 1 /tmp/oc/ link 0 a.c -> UPPER
 K 2 /tmp/oc/ directory 0 sub
 E 1 /000 󰉋  ../
 E 1 /002 󰉋  sub/
-E 1   
+E 1 q//r
 E 1 /001 
 E 1 /001 󰈔  a.c -> UPPER
 X 1 3 Malformed ID at start of line
@@ -3549,10 +4787,14 @@ R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
 R 2 /000 󰉋  ../
 K 1 /tmp/oc/ directory 0 sub
-E 1   
 E 1 /000 󰉋  ../
-E 1 /001 󰉋  sub/
-E 2 /000 󰉋  file9.txt
+E 2 /000 󰉋  .hidden
+A delete directory /tmp/oc/sub -
+D ok
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42156
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  a b/
@@ -3574,11 +4816,34 @@ E 1 /001 󰉋  a.c/
 E 1 /005 󰉋  sub/
 E 1 /002 󰈔  v2.0.1 -> x
 E 1 /004 󰍔  Ä.md/
-E 2   
+E 2 {}{s,t}
 E 2 /000 󰉋  ../
 A create file /tmp/oc/new.txt -
 A delete file /tmp/oc/Ä.md -
 A create directory /tmp/oc/Ä.md -
+A create file /tmp/oc/sub/{}s -
+A create file /tmp/oc/sub/{}t -
+D ok
+T /tmp/oc/a b directory
+T /tmp/oc/a.c directory
+T /tmp/oc/new.txt file 
+T /tmp/oc/sub directory
+T /tmp/oc/sub/{}s file 
+T /tmp/oc/sub/{}t file 
+T /tmp/oc/v2.0.1 link -> x
+T /tmp/oc/Ä.md directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  a b/
+S 1 /001 󰉋  a.c/
+S 1 /005 󰉋  sub/
+S 1 /007 󰉋  Ä.md/
+S 1 /006 󰦪  new.txt
+S 1 /002 󰈔  v2.0.1 -> x
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /008 󰈔  {}s
+S 2 /009 󰈔  {}t
 C 42157
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  UPPER/
@@ -3596,11 +4861,23 @@ R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
 R 2 /000 󰉋  ../
 K 1 /tmp/oc/ directory 0 sub
-E 1 /abs
+E 1 q//r
 E 1 /001 󰉋  sub/
-X 1 0 Paths cannot start with '/'
 E 2 /000 󰉋  ../
 E 2 /000 󰉋  ../
+A create directory /tmp/oc/q -
+A create directory /tmp/oc/q/ -
+A create file /tmp/oc/q//r -
+D ok
+T /tmp/oc/q directory
+T /tmp/oc/q/r file 
+T /tmp/oc/sub directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  q/
+S 1 /001 󰉋  sub/
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42159
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  sub/
@@ -3644,6 +4921,21 @@ E 1 /001 󰦪  file9.txt
 A delete link /tmp/oc/sub/a.c -
 A delete file /tmp/oc/sub/Ä.md -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/007 file 007
+T /tmp/oc/Makefile file Makefile
+T /tmp/oc/UPPER directory
+T /tmp/oc/a b directory
+T /tmp/oc/file9.txt file file9.txt
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /006 󰉋  UPPER/
+S 1 /004 󰉋  a b/
+S 1 /002 󰈔  007
+S 1 /003 󱁤  Makefile
+S 1 /001 󰦪  file9.txt
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42161
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -3652,6 +4944,11 @@ K 1 /tmp/oc/ directory 0 sub
 E 1 /000 󰉋  ../
 E 2 /000 󰉋  ../
 A delete directory /tmp/oc/sub -
+D ok
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42162
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -3690,14 +4987,34 @@ K 2 /tmp/oc/ file 0 v2.0.1
 K 3 /tmp/oc/ directory 0 sub
 K 4 /tmp/oc/ link 0 deep -> .hidden
 K 5 /tmp/oc/sub/ file 0 img.png
-E 1 /abs
+E 1 q//r
 E 1 /000 󰉋  ../
 E 1 /004 󰈔  deep -> .hidden/
 E 1 /001 󰦪  file9.txt
 E 1 /002 󰈔  v2.0.1
-X 1 0 Paths cannot start with '/'
-E 2 a/b/
+E 2 sub//
 E 2 /000 󰉋  ../
+A create directory /tmp/oc/q -
+A create directory /tmp/oc/q/ -
+A create file /tmp/oc/q//r -
+A create directory /tmp/oc/sub/sub -
+A create directory /tmp/oc/sub/sub/ -
+A delete file /tmp/oc/sub/img.png -
+A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/deep link -> .hidden
+T /tmp/oc/file9.txt file file9.txt
+T /tmp/oc/q directory
+T /tmp/oc/q/r file 
+T /tmp/oc/v2.0.1 file v2.0.1
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /006 󰉋  q/
+S 1 /004 󰈔  deep -> .hidden
+S 1 /001 󰦪  file9.txt
+S 1 /002 󰈔  v2.0.1
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42165
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  .hidden/
@@ -3737,7 +5054,7 @@ K 5 /tmp/oc/ file 0 notes.org
 K 6 /tmp/oc/sub/ directory 0 007
 K 7 /tmp/oc/sub/ file 0 sub
 E 1 /000 󰉋  ../
-E 1 /001 󰉋  a sub
+E 1 /001 󰉋  a deep
 E 1 /004 󰉋  deep/
 E 1 /003 󰉋  sub/
 E 1 /002   README.md
@@ -3745,7 +5062,26 @@ E 1 /005   notes.org
 E 2 /000 󰉋  ../
 E 2 /006 󰉋  007/
 E 2 /007 󰈔  sub
-A move directory /tmp/oc/a b /tmp/oc/a sub
+A move directory /tmp/oc/a b /tmp/oc/a deep
+D ok
+T /tmp/oc/README.md file README.md
+T /tmp/oc/a deep directory
+T /tmp/oc/deep directory
+T /tmp/oc/notes.org file notes.org
+T /tmp/oc/sub directory
+T /tmp/oc/sub/007 directory
+T /tmp/oc/sub/sub file sub
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰉋  a deep/
+S 1 /004 󰉋  deep/
+S 1 /003 󰉋  sub/
+S 1 /002   README.md
+S 1 /005   notes.org
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /006 󰉋  007/
+S 2 /007 󰈔  sub
 C 42167
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  007/
@@ -3785,13 +5121,26 @@ K 1 /tmp/oc/ file 0 file9.txt
 K 2 /tmp/oc/ directory 0 sub
 K 3 /tmp/oc/ file 0 notes.org
 K 4 /tmp/oc/sub/ directory 0 z.tar.gz
-E 1 nd/
-E 1 /000 󰉋  README.md
+E 1 /000 󰉋  a Makefile
+E 1 /002 󰉋  sub/
 E 1 /001 󰦪  file9.txt
-E 1 /003   notes.org
-E 2 /abs
+E 1 /003   UPPER
 E 2 /000 󰉋  ../
-X 2 0 Paths cannot start with '/'
+E 2 /004 󰉋  z.tar.gz/
+A move file /tmp/oc/notes.org /tmp/oc/UPPER
+D ok
+T /tmp/oc/UPPER file notes.org
+T /tmp/oc/file9.txt file file9.txt
+T /tmp/oc/sub directory
+T /tmp/oc/sub/z.tar.gz directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  sub/
+S 1 /003 󰈔  UPPER
+S 1 /001 󰦪  file9.txt
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /004 󰉋  z.tar.gz/
 C 42169
 R 1 /000 󰉋  ../
 R 1 /008 󰉋  notes.org/
@@ -3817,7 +5166,7 @@ E 1 /000 󰉋  ../
 E 1 /008 󰉋  notes.org/
 E 1 /005 󰉋  sub/
 E 1 /007 󰉋  z.tar.gz/
-E 1 .hidden
+E 1 a/b/
 E 1 /001 󰈔  007
 E 1 /002 󰈔  a b
 E 1 /006 󰈔  deep
@@ -3825,7 +5174,34 @@ E 1 /003 󰈔  x -> 007
 E 1 /004 󰍔  Ä.md -> Ä.md
 E 2 /000 󰉋  ../
 E 2 /009 󱁤  z.tar.gz -> Makefile
-A create file /tmp/oc/.hidden -
+A create directory /tmp/oc/a -
+A create directory /tmp/oc/a/b -
+D ok
+T /tmp/oc/007 file 007
+T /tmp/oc/a directory
+T /tmp/oc/a/b directory
+T /tmp/oc/a b file a b
+T /tmp/oc/deep file deep
+T /tmp/oc/notes.org directory
+T /tmp/oc/sub directory
+T /tmp/oc/sub/z.tar.gz link -> Makefile
+T /tmp/oc/x link -> 007
+T /tmp/oc/z.tar.gz directory
+T /tmp/oc/Ä.md link -> Ä.md
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /010 󰉋  a/
+S 1 /008 󰉋  notes.org/
+S 1 /005 󰉋  sub/
+S 1 /007 󰉋  z.tar.gz/
+S 1 /001 󰈔  007
+S 1 /002 󰈔  a b
+S 1 /006 󰈔  deep
+S 1 /003 󰈔  x -> 007
+S 1 /004 󰍔  Ä.md -> Ä.md
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /009 󱁤  z.tar.gz -> Makefile
 C 42170
 R 1 /000 󰉋  ../
 R 1 /004 󰉋  sub/
@@ -3858,6 +5234,25 @@ A delete file /tmp/oc/sub/z.tar.gz -
 A move file /tmp/oc/a.c /tmp/oc/a.c__oil_tmp_161955
 A move directory /tmp/oc/sub /tmp/oc/a.c
 A move file /tmp/oc/a.c__oil_tmp_161955 /tmp/oc/sub
+D ok
+T /tmp/oc/README.md file README.md
+T /tmp/oc/a.c directory
+T /tmp/oc/a.c/Ä.md file Ä.md
+T /tmp/oc/deep file deep
+T /tmp/oc/notes.org file notes.org
+T /tmp/oc/sub file a.c
+T /tmp/oc/v2.0.1 link -> file9.txt
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /004 󰉋  a.c/
+S 1 /003   README.md
+S 1 /005 󰈔  deep
+S 1 /006   notes.org
+S 1 /001 󰈔  sub
+S 1 /002 󰦪  v2.0.1 -> file9.txt
+B 2 /tmp/oc/a.c/
+S 2 /000 󰉋  ../
+S 2 /009 󰍔  Ä.md
 C 42171
 R 1 /000 󰉋  ../
 R 1 /004 󰉋  b.lua/ -> file9.txt/
@@ -3890,6 +5285,21 @@ A delete link /tmp/oc/sub/b.lua -
 A delete directory /tmp/oc/sub/file9.txt -
 A delete file /tmp/oc/sub/Ä.md -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/.hidden link -> img.png
+T /tmp/oc/b.lua link -> file9.txt
+T /tmp/oc/file10.txt link -> a b
+T /tmp/oc/file9.txt directory
+T /tmp/oc/Ä.md file Ä.md
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /004 󰉋  b.lua/ -> file9.txt/
+S 1 /001 󰉋  file9.txt/
+S 1 /002 󰸭  .hidden -> img.png
+S 1 /006 󰈔  file10.txt -> a b
+S 1 /003 󰍔  Ä.md
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42172
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  sub/
@@ -3936,6 +5346,19 @@ E 1 /001 󰦪  file9.txt
 A delete file /tmp/oc/sub/.hidden -
 A delete file /tmp/oc/sub/v2.0.1 -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/UPPER link -> .hidden
+T /tmp/oc/file10.txt directory
+T /tmp/oc/file9.txt file file9.txt
+T /tmp/oc/x directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /005 󰉋  file10.txt/
+S 1 /002 󰉋  x/
+S 1 /004 󰈔  UPPER -> .hidden
+S 1 /001 󰦪  file9.txt
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42174
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  sub/
@@ -3948,8 +5371,8 @@ K 3 /tmp/oc/sub/ link 0 a b -> Makefile
 E 1 /000 󰉋  ../
 E 1 /002 󰉋  sub/
 E 1 /001 󰈔  Ä.md -> x
-E 2 nd/
-E 2 nd/
+E 2 a/b/c.txt
+E 2 a/b/c.txt
 E 2 /000 󰉋  ../
 E 2 /999 x  y
 E 2 /001 
@@ -3987,7 +5410,7 @@ E 1 /000 󰉋  ../
 E 1 /002 󰉋  sub/
 E 1 /001   README.md
 E 1 /003 󰈔  deep
-E 2 /000 󰉋  007
+E 2 /000 󰉋  deep
 C 42177
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  sub/
@@ -4003,14 +5426,22 @@ E 1 /000 󰉋  ../
 E 1 /000 󰉋  ../
 E 1 /001 󰈔  .hidden -> b
 E 1 /002 󰈔  Makefile -> a .hidden
-E 2 ln -> a.c
+E 2   
 A delete link /tmp/oc/.hidden -
 A create link /tmp/oc/.hidden -
 A delete link /tmp/oc/Makefile -
 A create link /tmp/oc/Makefile -
-A create link /tmp/oc/sub/ln -
 A delete file /tmp/oc/sub/UPPER -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/.hidden link -> b
+T /tmp/oc/Makefile link -> a .hidden
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /005 󰈔  .hidden -> b
+S 1 /006 󰈔  Makefile -> a .hidden
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42178
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  .hidden/
@@ -4057,6 +5488,25 @@ E 2 /000 󰉋  sub
 E 2 /006 󰈔  ../
 A move file /tmp/oc/sub/007 /tmp/oc/sub/..
 A delete file /tmp/oc/sub/sub -
+D EEXIST: file already exists: /tmp/oc/sub/007 -> /tmp/oc/sub/..
+T /tmp/oc/007 link -> x
+T /tmp/oc/b.lua file b.lua
+T /tmp/oc/sub directory
+T /tmp/oc/sub/007 file 007
+T /tmp/oc/sub/sub file sub
+T /tmp/oc/v2.0.1 file v2.0.1
+T /tmp/oc/x directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰉋  007/ -> x/
+S 1 /005 󰉋  sub/
+S 1 /003 󰉋  x/
+S 1 /004 󰢱  b.lua
+S 1 /002 󰈔  v2.0.1
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /006 󰈔  007
+S 2 /007 󰈔  sub
 C 42180
 R 1 /000 󰉋  ../
 R 1 /004 󰉋  notes.org/
@@ -4076,8 +5526,23 @@ E 1 /003 󰉋  sub/
 E 1 /001 󰈔  007
 E 1 /002 󰈔  README.md -> a b
 E 2 /000 󰉋  ../
-E 2 /005 󰉋  a a.c
-A move directory /tmp/oc/sub/a b /tmp/oc/sub/a a.c
+E 2 /005 󰉋  a /
+A move directory /tmp/oc/sub/a b /tmp/oc/sub/a 
+D ok
+T /tmp/oc/007 file 007
+T /tmp/oc/README.md link -> a b
+T /tmp/oc/notes.org directory
+T /tmp/oc/sub directory
+T /tmp/oc/sub/a  directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /004 󰉋  notes.org/
+S 1 /003 󰉋  sub/
+S 1 /001 󰈔  007
+S 1 /002 󰈔  README.md -> a b
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /005 󰉋  a /
 C 42181
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  sub/
@@ -4133,11 +5598,44 @@ E 1 /006 󰈔  b
 E 1 /001 󰈔  v2.0.1
 E 2 /000 󰉋  ../
 E 2 /009 󰈔  UPPER
-E 2 /abs
+E 2 p{1,2}{3,4}
 E 2 /008 󰈔  deep
 E 2 /007 󰈔  v2.0.1/
 E 2 /010 󰢱  z.tar.gz -> b.lua
-X 2 2 Paths cannot start with '/'
+A create file /tmp/oc/sub/p11 -
+A create file /tmp/oc/sub/p22 -
+A delete file /tmp/oc/sub/v2.0.1 -
+A create directory /tmp/oc/sub/v2.0.1 -
+A move file /tmp/oc/a b /tmp/oc/a deep
+A delete link /tmp/oc/b.lua -
+A move file /tmp/oc/deep /tmp/oc/b
+D ok
+T /tmp/oc/README.md file README.md
+T /tmp/oc/a deep file a b
+T /tmp/oc/b file deep
+T /tmp/oc/sub directory
+T /tmp/oc/sub/UPPER file UPPER
+T /tmp/oc/sub/deep file deep
+T /tmp/oc/sub/p11 file 
+T /tmp/oc/sub/p22 file 
+T /tmp/oc/sub/v2.0.1 directory
+T /tmp/oc/sub/z.tar.gz link -> b.lua
+T /tmp/oc/v2.0.1 file v2.0.1
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /005 󰉋  sub/
+S 1 /003   README.md
+S 1 /002 󰈔  a deep
+S 1 /006 󰈔  b
+S 1 /001 󰈔  v2.0.1
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /013 󰉋  v2.0.1/
+S 2 /009 󰈔  UPPER
+S 2 /008 󰈔  deep
+S 2 /011 󰈔  p11
+S 2 /012 󰈔  p22
+S 2 /010 󰢱  z.tar.gz -> b.lua
 C 42183
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  sub/
@@ -4268,6 +5766,17 @@ A delete directory /tmp/oc/sub/a b -
 A delete file /tmp/oc/sub/img.png -
 A delete file /tmp/oc/sub/sub -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/.hidden file .hidden
+T /tmp/oc/UPPER link -> a.c
+T /tmp/oc/Ä.md directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  Ä.md/
+S 1 /001 󰈔  .hidden
+S 1 /004 󰙱  UPPER -> a.c
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42188
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  b.lua/
@@ -4290,6 +5799,21 @@ E 2 /003 󰈔  img.png -> v2.0.1
 E 2 /004 󰙱  Ä.md -> a.c
 A delete directory /tmp/oc/b.lua -
 A copy link /tmp/oc/sub/img.png /tmp/oc/img.png
+D ok
+T /tmp/oc/img.png link -> v2.0.1
+T /tmp/oc/sub directory
+T /tmp/oc/sub/b.lua link -> z.tar.gz
+T /tmp/oc/sub/img.png link -> v2.0.1
+T /tmp/oc/sub/Ä.md link -> a.c
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  sub/
+S 1 /006 󰈔  img.png -> v2.0.1
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /005 󰗄  b.lua -> z.tar.gz
+S 2 /003 󰈔  img.png -> v2.0.1
+S 2 /004 󰙱  Ä.md -> a.c
 C 42189
 R 1 /000 󰉋  ../
 R 1 /006 󰉋  UPPER/
@@ -4328,6 +5852,23 @@ E 2 /011 󰈔  UPPER
 E 2 /008 󰈔  a.c -> .hidden
 E 2 /009 󰸭  img.png
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/007 link -> deep
+T /tmp/oc/UPPER directory
+T /tmp/oc/a b link -> x
+T /tmp/oc/b.lua link -> img.png
+T /tmp/oc/file10.txt file file10.txt
+T /tmp/oc/v2.0.1 link -> z.tar.gz
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /006 󰉋  UPPER/
+S 1 /001 󰈔  007 -> deep
+S 1 /003 󰈔  a b -> x
+S 1 /004 󰸭  b.lua -> img.png
+S 1 /007 󰦪  file10.txt
+S 1 /002 󰗄  v2.0.1 -> z.tar.gz
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42190
 R 1 /000 󰉋  ../
 R 1 /004 󰉋  sub/
@@ -4361,6 +5902,29 @@ E 2 /008 󰍔  UPPER -> Ä.md
 E 2 /009   notes.org
 E 2 /007 󰈔  sub
 A move link /tmp/oc/img.png /tmp/oc/sub/img.png
+D ok
+T /tmp/oc/b.lua file b.lua
+T /tmp/oc/notes.org link -> Makefile
+T /tmp/oc/sub directory
+T /tmp/oc/sub/Makefile file Makefile
+T /tmp/oc/sub/UPPER link -> Ä.md
+T /tmp/oc/sub/img.png link -> z.tar.gz
+T /tmp/oc/sub/notes.org file notes.org
+T /tmp/oc/sub/sub file sub
+T /tmp/oc/v2.0.1 file v2.0.1
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /004 󰉋  sub/
+S 1 /003 󰢱  b.lua
+S 1 /005 󱁤  notes.org -> Makefile
+S 1 /001 󰈔  v2.0.1
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /006 󱁤  Makefile
+S 2 /008 󰍔  UPPER -> Ä.md
+S 2 /002 󰗄  img.png -> z.tar.gz
+S 2 /009   notes.org
+S 2 /007 󰈔  sub
 C 42191
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  a.c/
@@ -4410,9 +5974,24 @@ E 1 /003 󰉋  Ä.md/
 E 1 /004 󱁤  b.lua -> Makefile
 E 1 /001 󰦪  file9.txt
 E 1 /002 󰸭  img.png
-E 1 /002 󰸭  img.png
-X 1 5 Duplicate filename
-E 2 /000 󰉋  img.png
+E 2 /000 󰉋  sub
+A delete file /tmp/oc/sub/.hidden -
+A delete link /tmp/oc/sub/README.md -
+A delete file /tmp/oc/sub/z.tar.gz -
+A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/b.lua link -> Makefile
+T /tmp/oc/file9.txt file file9.txt
+T /tmp/oc/img.png file img.png
+T /tmp/oc/Ä.md directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  Ä.md/
+S 1 /004 󱁤  b.lua -> Makefile
+S 1 /001 󰦪  file9.txt
+S 1 /002 󰸭  img.png
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42193
 R 1 /000 󰉋  ../
 R 1 /004 󰉋  sub/
@@ -4427,12 +6006,11 @@ K 3 /tmp/oc/ file 0 Makefile
 K 4 /tmp/oc/ directory 0 sub
 K 5 /tmp/oc/sub/ file 0 file10.txt
 E 1 /000 󰉋  ../
+E 1 /000 󰉋  ../
 E 1 /004 󰉋  sub/
-E 1 /12x y
 E 1 /002 󰉋  v2.0.1/
 E 1 /001 󰈔  b.lua
 E 1 /003 󱁤  007
-X 1 2 Malformed ID at start of line
 E 2 /000 󰉋  ../
 E 2 /001 
 E 2 /005 󰦪  file10.txt
@@ -4458,6 +6036,21 @@ E 1 /003 󰈔  img.png -> deep
 E 2 /000 󰉋  ../
 E 2 /005 󰈔  sub
 A move directory /tmp/oc/.hidden /tmp/oc/..
+D EEXIST: file already exists: /tmp/oc/..
+T /tmp/oc/.hidden directory
+T /tmp/oc/a.c file a.c
+T /tmp/oc/img.png link -> deep
+T /tmp/oc/sub directory
+T /tmp/oc/sub/sub file sub
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  .hidden/
+S 1 /004 󰉋  sub/
+S 1 /001 󰙱  a.c
+S 1 /003 󰈔  img.png -> deep
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /005 󰈔  sub
 C 42195
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  b.lua/
@@ -4481,6 +6074,17 @@ E 2 /000 󰉋  ../
 A delete file /tmp/oc/sub/007 -
 A delete file /tmp/oc/sub/deep -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/007 file 007
+T /tmp/oc/b.lua directory
+T /tmp/oc/file10.txt link -> Ä.md
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  b.lua/
+S 1 /001 󰈔  007
+S 1 /004 󰍔  file10.txt -> Ä.md
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42196
 R 1 /000 󰉋  ../
 R 1 /007 󰉋  notes.org/
@@ -4518,6 +6122,23 @@ E 2 /009 󰈔  deep
 A delete file /tmp/oc/Ä.md -
 A create directory /tmp/oc/Ä.md -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/.hidden file .hidden
+T /tmp/oc/file10.txt link -> img.png
+T /tmp/oc/img.png link -> b.lua
+T /tmp/oc/notes.org directory
+T /tmp/oc/z.tar.gz link -> 007
+T /tmp/oc/Ä.md directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /007 󰉋  notes.org/
+S 1 /011 󰉋  Ä.md/
+S 1 /001 󰈔  .hidden
+S 1 /006 󰸭  file10.txt -> img.png
+S 1 /002 󰢱  img.png -> b.lua
+S 1 /005 󰈔  z.tar.gz -> 007
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42197
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  b.lua/
@@ -4580,12 +6201,27 @@ E 1 /003   README.md
 E 1 /002 󰈔  a b
 E 1 /005 󰢱  b.lua
 E 1 /004 󰸭  img.png
-E 2 /0001 x  a b
-E 2 /000 󰉋  notes.org
-A copy file /tmp/oc/007 /tmp/oc/sub/a b
+E 2 /000 󰉋  v2.0.1/
 A delete file /tmp/oc/sub/.hidden -
 A delete file /tmp/oc/sub/img.png -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/007 file 007
+T /tmp/oc/README.md file README.md
+T /tmp/oc/a b file a b
+T /tmp/oc/b.lua file b.lua
+T /tmp/oc/img.png file img.png
+T /tmp/oc/z.tar.gz directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /007 󰉋  z.tar.gz/
+S 1 /001 󰈔  007
+S 1 /003   README.md
+S 1 /002 󰈔  a b
+S 1 /005 󰢱  b.lua
+S 1 /004 󰸭  img.png
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42199
 R 1 /000 󰉋  ../
 R 1 /004 󰉋  sub/
@@ -4604,7 +6240,7 @@ K 5 /tmp/oc/ link 0 notes.org -> notes.org
 K 6 /tmp/oc/sub/ file 0 README.md
 K 7 /tmp/oc/sub/ directory 0 z.tar.gz
 E 1 /000 󰉋  ../
-E 1 /004 󰉋  x
+E 1 /004 󰉋  .hidden
 E 1 /002 󱁤  Makefile
 E 1 /003 󰸭  img.png
 E 1 /005   notes.org -> notes.org
@@ -4614,7 +6250,24 @@ E 2 /006   README.md
 A delete file /tmp/oc/v2.0.1 -
 A create directory /tmp/oc/v2.0.1 -
 A delete directory /tmp/oc/sub/z.tar.gz -
-A move directory /tmp/oc/sub /tmp/oc/x
+A move directory /tmp/oc/sub /tmp/oc/.hidden
+D ok
+T /tmp/oc/.hidden directory
+T /tmp/oc/.hidden/README.md file README.md
+T /tmp/oc/Makefile file Makefile
+T /tmp/oc/img.png file img.png
+T /tmp/oc/notes.org link -> notes.org
+T /tmp/oc/v2.0.1 directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /004 󰉋  .hidden/
+S 1 /008 󰉋  v2.0.1/
+S 1 /002 󱁤  Makefile
+S 1 /003 󰸭  img.png
+S 1 /005   notes.org -> notes.org
+B 2 /tmp/oc/.hidden/
+S 2 /000 󰉋  ../
+S 2 /009   README.md
 C 42200
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  007/
@@ -4637,6 +6290,23 @@ E 2 /000 󰉋  ../
 E 2 /005 󰈔  Makefile -> UPPER
 E 2 /001 󰉋  007/
 A copy directory /tmp/oc/007 /tmp/oc/sub/007
+D ok
+T /tmp/oc/007 directory
+T /tmp/oc/README.md file README.md
+T /tmp/oc/sub directory
+T /tmp/oc/sub/007 directory
+T /tmp/oc/sub/Makefile link -> UPPER
+T /tmp/oc/x file x
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰉋  007/
+S 1 /004 󰉋  sub/
+S 1 /003   README.md
+S 1 /002 󰈔  x
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /006 󰉋  007/
+S 2 /005 󰈔  Makefile -> UPPER
 C 42201
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  sub/
@@ -4649,7 +6319,7 @@ K 2 /tmp/oc/ directory 0 sub
 K 3 /tmp/oc/sub/ file 0 file9.txt
 K 4 /tmp/oc/sub/ directory 0 007
 E 1 /000 󰉋  ../
-E 1 UPPER
+E 1 p{1,2}{3,4}
 E 1 /002 󰉋  sub/
 E 1 /001 󰈔  a b
 E 2 /000 󰉋  ../
@@ -4685,6 +6355,17 @@ E 2 /003 󰉋  z.tar.gz/
 E 2 /001 󰉋  v2.0.1/
 E 2 /000 󰉋  ../
 A move directory /tmp/oc/v2.0.1 /tmp/oc/sub/v2.0.1
+D ok
+T /tmp/oc/sub directory
+T /tmp/oc/sub/v2.0.1 directory
+T /tmp/oc/sub/z.tar.gz directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  sub/
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /001 󰉋  v2.0.1/
+S 2 /003 󰉋  z.tar.gz/
 C 42204
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  sub/
@@ -4716,6 +6397,27 @@ E 2 /008 󰉋  x/
 E 2 /007 󰈔  .hidden
 A move directory /tmp/oc/z.tar.gz /tmp/oc/..
 A move file /tmp/oc/file10.txt /tmp/oc/sub/file10.txt
+D EEXIST: file already exists: /tmp/oc/..
+T /tmp/oc/Makefile file Makefile
+T /tmp/oc/UPPER link -> Ä.md
+T /tmp/oc/file10.txt file file10.txt
+T /tmp/oc/sub directory
+T /tmp/oc/sub/.hidden file .hidden
+T /tmp/oc/sub/x directory
+T /tmp/oc/x link -> v2.0.1
+T /tmp/oc/z.tar.gz directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  sub/
+S 1 /005 󰉋  z.tar.gz/
+S 1 /001 󱁤  Makefile
+S 1 /004 󰍔  UPPER -> Ä.md
+S 1 /006 󰦪  file10.txt
+S 1 /002 󰈔  x -> v2.0.1
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /008 󰉋  x/
+S 2 /007 󰈔  .hidden
 C 42205
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  sub/
@@ -4760,15 +6462,15 @@ K 2 /tmp/oc/ directory 0 sub
 K 3 /tmp/oc/sub/ file 0 007
 K 4 /tmp/oc/sub/ file 0 README.md
 K 5 /tmp/oc/sub/ directory 0 b.lua
-E 1 ln -> a.c
-E 1 /000 󰉋  .hidden
 E 1 /002 󰉋  sub/
+E 1 /12x y
 E 1 /001 󰉋  v2.0.1/
+X 1 1 Malformed ID at start of line
 E 2 /000 󰉋  ../
+E 2 /000 󰉋  UPPER
 E 2 /005 󰉋  b.lua/
+E 2 /003 󰈔  007
 E 2 /004   README.md
-A create link /tmp/oc/ln -
-A delete file /tmp/oc/sub/007 -
 C 42207
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -4822,12 +6524,29 @@ E 1 /000 󰉋  ../
 E 1 /003 󰉋  sub/
 E 1 /002 󰦪  README.md -> file10.txt
 E 1 /004 󰙱  notes.org -> a.c
-E 1 /001   v2.0.1 -> .hidden
+E 1 /001   v2.0.1 -> UPPER
 E 2 /000 󰉋  ../
 E 2 /006 󰉋  Makefile/
 E 2 /005 󰈔  v2.0.1
 A delete link /tmp/oc/v2.0.1 -
 A create link /tmp/oc/v2.0.1 -
+D ok
+T /tmp/oc/README.md link -> file10.txt
+T /tmp/oc/notes.org link -> a.c
+T /tmp/oc/sub directory
+T /tmp/oc/sub/Makefile directory
+T /tmp/oc/sub/v2.0.1 file v2.0.1
+T /tmp/oc/v2.0.1 link -> UPPER
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  sub/
+S 1 /002 󰦪  README.md -> file10.txt
+S 1 /004 󰙱  notes.org -> a.c
+S 1 /007 󰈔  v2.0.1 -> UPPER
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /006 󰉋  Makefile/
+S 2 /005 󰈔  v2.0.1
 C 42210
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  007/
@@ -4854,18 +6573,33 @@ K 10 /tmp/oc/sub/ file 0 file10.txt
 E 1 /000 󰉋  ../
 E 1 /003 󰉋  007/
 E 1 /006 󰉋  UPPER/
-E 1 /005 󰉋  sub/
-E 1 /001 󰙱  v2.0.1
+E 1 /001 󰙱  a b
 E 1 /002 󰦪  file9.txt
 E 1 /007 󰦪  file10.txt
-E 1 /010 󰦪  file10.txt
 E 1 /004 󰍔  Ä.md
-X 1 7 Duplicate filename
 E 2 /000 󰉋  ../
-E 2 /008 󱁤  Makefile
-E 2 /009 󰢱  b.lua
-E 2 /001 󰙱  a.c
-E 2 /010 󰦪  file10.txt
+A move file /tmp/oc/a.c /tmp/oc/a b
+A delete file /tmp/oc/sub/Makefile -
+A delete file /tmp/oc/sub/b.lua -
+A delete file /tmp/oc/sub/file10.txt -
+A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/007 directory
+T /tmp/oc/UPPER directory
+T /tmp/oc/a b file a.c
+T /tmp/oc/file10.txt file file10.txt
+T /tmp/oc/file9.txt file file9.txt
+T /tmp/oc/Ä.md file Ä.md
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  007/
+S 1 /006 󰉋  UPPER/
+S 1 /001 󰈔  a b
+S 1 /002 󰦪  file9.txt
+S 1 /007 󰦪  file10.txt
+S 1 /004 󰍔  Ä.md
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42211
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  a b/
@@ -4895,8 +6629,10 @@ K 3 /tmp/oc/ file 0 deep
 E 1 /000 󰉋  ../
 E 1 /001 󰈔  007
 E 1 /003 󰈔  deep
-E 2 /000 󰉋  deep
-A delete directory /tmp/oc/sub -
+E 2 sub//
+E 2 /000 󰉋  sub
+E 2 /002 󰉋  sub/
+X 0 -1 Detected cycle in desired paths
 C 42213
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  README.md/
@@ -4966,17 +6702,31 @@ K 3 /tmp/oc/ link 0 UPPER -> z.tar.gz
 K 4 /tmp/oc/ file 0 z.tar.gz
 K 5 /tmp/oc/sub/ file 0 sub
 K 6 /tmp/oc/sub/ file 0 deep
-E 1   
 E 1 /000 󰉋  ../
-E 1 /002 󰉋  sub/
-E 1 /003 󰗄  UPPER -> z.tar.gz
+E 1 /003 󰗄  UPPER -> /
 E 1 /001 󰗄  b.lua -> z.tar.gz
-E 1 nd/
 E 1 /004 󰗄  z.tar.gz
-E 2 /000 󰉋  Ä.md
-E 2 /006 󰈔  deep
-E 2 /005 󰈔  sub
-A create directory /tmp/oc/nd -
+E 2 /000 󰉋  file10.txt
+A delete link /tmp/oc/UPPER -
+A create link /tmp/oc/UPPER -
+A delete file /tmp/oc/sub/deep -
+A delete file /tmp/oc/sub/sub -
+A delete directory /tmp/oc/sub -
+D ENOENT: no such file or directory:  -> /tmp/oc/UPPER
+T /tmp/oc/b.lua link -> z.tar.gz
+T /tmp/oc/sub directory
+T /tmp/oc/sub/deep file deep
+T /tmp/oc/sub/sub file sub
+T /tmp/oc/z.tar.gz file z.tar.gz
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  sub/
+S 1 /001 󰗄  b.lua -> z.tar.gz
+S 1 /004 󰗄  z.tar.gz
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /006 󰈔  deep
+S 2 /005 󰈔  sub
 C 42216
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -4990,6 +6740,13 @@ E 1 /000 󰉋  ../
 E 2 /000 󰉋  ../
 E 2 /000 󰉋  ../
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/z.tar.gz file z.tar.gz
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰗄  z.tar.gz
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42217
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  sub/
@@ -5037,7 +6794,7 @@ K 3 /tmp/oc/ directory 0 sub
 K 4 /tmp/oc/sub/ file 0 deep
 E 1 /000 󰉋  ../
 E 1 /001 󰉋  Makefile/
-E 1 a/b/
+E 1 sub//
 E 1 /002 󰸭  img.png
 E 2 /000 󰉋  ../
 E 2 /003 󰉋  sub/
@@ -5052,11 +6809,18 @@ R 1 /001 󰉋  sub/
 R 2 /000 󰉋  ../
 K 1 /tmp/oc/ directory 0 sub
 E 1 /000 󰉋  ../
-E 1 a/b/
+E 1 sub//
 E 1 /001 󰉋  sub/
 E 2 /000 󰉋  ..//
-A create directory /tmp/oc/a -
-A create directory /tmp/oc/a/b -
+A create directory /tmp/oc/sub -
+A create directory /tmp/oc/sub/ -
+D ok
+T /tmp/oc/sub directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰉋  sub/
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42220
 R 1 /000 󰉋  ../
 R 1 /006 󰉋  UPPER/
@@ -5089,6 +6853,21 @@ A delete file /tmp/oc/sub/UPPER -
 A delete file /tmp/oc/sub/a.c -
 A delete link /tmp/oc/sub/b.lua -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/Makefile link -> 007
+T /tmp/oc/README.md file README.md
+T /tmp/oc/UPPER directory
+T /tmp/oc/a b file a b
+T /tmp/oc/deep directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /006 󰉋  UPPER/
+S 1 /005 󰉋  deep/
+S 1 /001 󰈔  Makefile -> 007
+S 1 /003   README.md
+S 1 /002 󰈔  a b
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42221
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  UPPER/
@@ -5114,7 +6893,7 @@ K 9 /tmp/oc/sub/ directory 0 deep
 K 10 /tmp/oc/sub/ file 0 file10.txt
 E 1 /000 󰉋  ../
 E 1 /003 󰉋  UPPER/
-E 1 x.{c,h}
+E 1 x
 E 1 /002 󰉋  sub/
 E 1 /001 󰙱  a.c
 E 2 /000 󰉋  ../
@@ -5153,16 +6932,36 @@ E 1 /006 󰉋  sub/
 E 1 /007 󰉋  z.tar.gz/ -> sub/
 E 1 /002 󰈔  Makefile -> a b
 E 1 /004   README.md
-E 1 ln -> a.c
+E 1   
 E 1 /003 󰈔  a b
 E 1 /001 󰈔  file9.txt -> x
 E 1 /005 󰸭  img.png
 E 1 /008 󰙱  notes.org -> a.c
 E 2 /000 󰉋  ../
-E 2 /009 󰦪  Makefile -> a.c
-A create link /tmp/oc/ln -
+E 2 /009 󰦪  Makefile -> /
 A delete link /tmp/oc/sub/Makefile -
 A create link /tmp/oc/sub/Makefile -
+D ENOENT: no such file or directory:  -> /tmp/oc/sub/Makefile
+T /tmp/oc/Makefile link -> a b
+T /tmp/oc/README.md file README.md
+T /tmp/oc/a b file a b
+T /tmp/oc/file9.txt link -> x
+T /tmp/oc/img.png file img.png
+T /tmp/oc/notes.org link -> a.c
+T /tmp/oc/sub directory
+T /tmp/oc/z.tar.gz link -> sub
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /006 󰉋  sub/
+S 1 /007 󰉋  z.tar.gz/ -> sub/
+S 1 /002 󰈔  Makefile -> a b
+S 1 /004   README.md
+S 1 /003 󰈔  a b
+S 1 /001 󰈔  file9.txt -> x
+S 1 /005 󰸭  img.png
+S 1 /008 󰙱  notes.org -> a.c
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42223
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -5182,7 +6981,9 @@ K 1 /tmp/oc/ directory 0 007
 K 2 /tmp/oc/ directory 0 sub
 E 1 /000 󰉋  ../
 E 1 /001 󰉋  007/
-E 1 /002 󰉋  sub/
+E 2 /002 󰉋  sub/
+E 2 /000 󰉋  deep
+X 0 -1 Detected cycle in desired paths
 C 42225
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  sub/
@@ -5197,12 +6998,27 @@ K 3 /tmp/oc/sub/ file 0 007
 K 4 /tmp/oc/sub/ file 0 img.png
 K 5 /tmp/oc/sub/ link 0 deep -> deep
 E 1 /000 󰉋  ../
-E 1 /002 󰉋  notes.org
+E 1 /002 󰉋  a.c
 E 1 /001   README.md
 E 2 /003 󰈔  007
 E 2 /005 󰈔  deep -> deep
 E 2 /004 󰸭  img.png
-A move directory /tmp/oc/sub /tmp/oc/notes.org
+A move directory /tmp/oc/sub /tmp/oc/a.c
+D ok
+T /tmp/oc/README.md file README.md
+T /tmp/oc/a.c directory
+T /tmp/oc/a.c/007 file 007
+T /tmp/oc/a.c/deep link -> deep
+T /tmp/oc/a.c/img.png file img.png
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  a.c/
+S 1 /001   README.md
+B 2 /tmp/oc/a.c/
+S 2 /000 󰉋  ../
+S 2 /006 󰈔  007
+S 2 /008 󰈔  deep -> deep
+S 2 /007 󰸭  img.png
 C 42226
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  .hidden/
@@ -5226,7 +7042,7 @@ E 1 /999 x  y
 E 1 /003 󱁤  Makefile
 E 1 /006 󰈔  deep
 X 1 4 Could not find existing entry (was the ID changed?)
-E 2 /000 󰉋  a.c
+E 2 /000 󰉋  /
 C 42227
 R 1 /000 󰉋  ../
 R 1 /006 󰉋  UPPER/ -> sub/
@@ -5252,7 +7068,7 @@ E 1 /005 󰈔  deep
 E 1 /001 󰦪  file9.txt
 E 1 /007   notes.org
 E 1 /002 󰗄  x -> z.tar.gz
-E 2 /000 󰉋  z.tar.gz
+E 2 /000 󰉋  a b
 C 42228
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  a.c/
@@ -5273,15 +7089,15 @@ K 6 /tmp/oc/ link 0 notes.org -> a b
 K 7 /tmp/oc/sub/ link 0 deep -> Ä.md
 K 8 /tmp/oc/sub/ file 0 UPPER
 E 1 /000 󰉋  ../
-E 1 ln -> z.tar.gz
+E 1 z.tar.gz
 E 1 /000 󰉋  ../
 E 1 /001 󰉋  a.c/
 E 1 /003 󰉋  img.png/
 E 1 /004 󰉋  sub/
 E 1 /006 󰈔  notes.org -> a b
 E 1 /002 󰈔  x -> 007
-E 1 /005 󰗄  a.c
-X 1 8 Duplicate filename
+E 1 /005 󰗄  /abs
+X 1 8 Filename cannot contain path separator
 E 2 /008 󰈔  UPPER
 E 2 /007 󰍔  deep -> Ä.md
 C 42229
@@ -5313,11 +7129,11 @@ E 1 /001 󰉋  file9.txt/
 E 1 /005 󰉋  sub/
 E 1 /002 󰈔  a b
 E 1 /003 󰸭  x -> img.png
-E 1 ln -> a.c
+E 1 /abs
 E 1 /004 󰍔  Ä.md
+X 1 5 Paths cannot start with '/'
 E 2 /000 󰉋  ../
 E 2 /006 󰙱  deep -> a.c/
-A create link /tmp/oc/ln -
 C 42231
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -5333,6 +7149,17 @@ E 1 /002   UPPER -> README.md
 E 1 /003   007 -> README.md
 E 2 /000 󰉋  ../
 A move link /tmp/oc/sub/007 /tmp/oc/007
+D ok
+T /tmp/oc/007 link -> README.md
+T /tmp/oc/UPPER link -> README.md
+T /tmp/oc/sub directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰉋  sub/
+S 1 /003   007 -> README.md
+S 1 /002   UPPER -> README.md
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42232
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  sub/
@@ -5356,7 +7183,7 @@ K 1 /tmp/oc/ link 0 Ä.md -> notes.org
 K 2 /tmp/oc/ directory 0 sub
 E 1 /000 󰉋  ../
 E 1 /002 󰉋  sub/
-E 2 a/b/c.txt
+E 2 x.{c,h}
 E 2 /001   Ä.md -> notes.org
 E 2 /002 󰉋  sub/
 E 2 /000 󰉋  ../
@@ -5366,13 +7193,10 @@ R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
 R 2 /000 󰉋  ../
 K 1 /tmp/oc/ directory 0 sub
-E 1 /000 󰉋  v2.0.1
-E 1 /001 x
-E 1 /001 x
+E 1 /000 󰉋  file10.txt
 E 1 /001 󰉋  sub/
-X 1 1 Parsing icon failed
-X 1 2 Parsing icon failed
 E 2 /000 󰉋  ../
+E 2 /000 󰉋  ..//
 C 42235
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  README.md/
@@ -5410,6 +7234,19 @@ E 1 /001 󰈔  v2.0.1
 E 2 /000 󰉋  ../
 E 2 /004 󰈔  x
 A move file /tmp/oc/a b /tmp/oc/a notes.org
+D ok
+T /tmp/oc/a notes.org file a b
+T /tmp/oc/sub directory
+T /tmp/oc/sub/x file x
+T /tmp/oc/v2.0.1 file v2.0.1
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  sub/
+S 1 /002   a notes.org
+S 1 /001 󰈔  v2.0.1
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /004 󰈔  x
 C 42237
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  file9.txt/
@@ -5436,6 +7273,23 @@ E 1 /007   notes.org
 E 1 /006 󰗄  z.tar.gz
 E 2 /000 󰉋  ../
 A delete file /tmp/oc/007 -
+D ok
+T /tmp/oc/a b file a b
+T /tmp/oc/b.lua link -> Makefile
+T /tmp/oc/file9.txt directory
+T /tmp/oc/notes.org file notes.org
+T /tmp/oc/sub directory
+T /tmp/oc/z.tar.gz file z.tar.gz
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰉋  file9.txt/
+S 1 /005 󰉋  sub/
+S 1 /003 󰈔  a b
+S 1 /004 󱁤  b.lua -> Makefile
+S 1 /007   notes.org
+S 1 /006 󰗄  z.tar.gz
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42238
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  Makefile/
@@ -5445,12 +7299,13 @@ R 2 /000 󰉋  ../
 K 1 /tmp/oc/ file 0 v2.0.1
 K 2 /tmp/oc/ directory 0 Makefile
 K 3 /tmp/oc/ directory 0 sub
-E 1 /000 󰉋  a b
-E 1 /002 󰉋  a b
-E 1 /000 󰉋  ../
+E 1 /000 󰉋  README.md
+E 1 /002 󰉋  Makefile/
 E 1 /003 󰉋  sub/
+E 1   
 E 1 /001 󰈔  v2.0.1
-A move directory /tmp/oc/Makefile /tmp/oc/a b
+E 1 /000 󰉋  ../
+E 2 /000 󰉋  ../
 C 42239
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  sub/
@@ -5458,11 +7313,12 @@ R 1 /001 󰢱  README.md -> b.lua
 R 2 /000 󰉋  ../
 K 1 /tmp/oc/ link 0 README.md -> b.lua
 K 2 /tmp/oc/ directory 0 sub
+E 1 /001 
 E 1 /000 󰉋  ../
 E 1 /002 󰉋  sub/
 E 1 /001 󰢱  README.md -> b.lua
-E 2 /002 󰉋  sub/
-X 0 -1 Detected cycle in desired paths
+X 1 0 Malformed ID at start of line
+E 2 /000 󰉋  z.tar.gz
 C 42240
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  sub/
@@ -5475,16 +7331,13 @@ K 2 /tmp/oc/ file 0 README.md
 K 3 /tmp/oc/ directory 0 sub
 K 4 /tmp/oc/sub/ directory 0 a b
 E 1 /000 󰉋  ../
-E 1 /003 󰉋  sub/
-E 1 /002   README.md
 E 1 /001 󰈔  a b
-E 2 /000 󰉋  Makefile
+E 2 /000 󰉋  b.lua
+E 2 /002   README.md
 E 2 /000 󰉋  ../
 E 2 /004 󰉋  a b/
-E 2 a/b/c.txt
-A create directory /tmp/oc/sub/a -
-A create directory /tmp/oc/sub/a/b -
-A create file /tmp/oc/sub/a/b/c.txt -
+E 2 /003 󰉋  sub/
+X 0 -1 Detected cycle in desired paths
 C 42241
 R 1 /000 󰉋  ../
 R 1 /004 󰉋  sub/
@@ -5516,6 +7369,27 @@ E 2 /008 󰉋  z.tar.gz/
 E 2 /007 󰙱  a.c
 A delete file /tmp/oc/Makefile -
 A create directory /tmp/oc/Makefile -
+D ok
+T /tmp/oc/.hidden file .hidden
+T /tmp/oc/007 file 007
+T /tmp/oc/Makefile directory
+T /tmp/oc/deep file deep
+T /tmp/oc/sub directory
+T /tmp/oc/sub/a.c file a.c
+T /tmp/oc/sub/z.tar.gz directory
+T /tmp/oc/z.tar.gz directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /009 󰉋  Makefile/
+S 1 /004 󰉋  sub/
+S 1 /006 󰉋  z.tar.gz/
+S 1 /001 󰈔  .hidden
+S 1 /002 󰈔  007
+S 1 /005 󰈔  deep
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /008 󰉋  z.tar.gz/
+S 2 /007 󰙱  a.c
 C 42242
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  file9.txt/
@@ -5524,13 +7398,14 @@ R 2 /000 󰉋  ../
 K 1 /tmp/oc/ directory 0 file9.txt
 K 2 /tmp/oc/ directory 0 sub
 E 1 /000 󰉋  ../
-E 1 /001 󰉋  a b
+E 1 /001 󰉋  007
 E 1 /001 x
 E 1 /002 󰉋  sub/
-E 1 /000 󰉋  ../
 E 1 /002 󰉋  sub/
+E 1 /000 󰉋  ../
 X 1 2 Parsing icon failed
-X 1 5 Duplicate filename
+X 1 4 Duplicate filename
+E 2 /000 󰉋  ../
 C 42243
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  sub/
@@ -5551,8 +7426,14 @@ R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
 R 2 /000 󰉋  ../
 K 1 /tmp/oc/ directory 0 sub
-E 1 /000 󰉋  ../
+E 2 /000 󰉋  007
+E 2 /000 󰉋  ../
 A delete directory /tmp/oc/sub -
+D ok
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42245
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  file10.txt/
@@ -5586,7 +7467,7 @@ K 5 /tmp/oc/ directory 0 sub
 K 6 /tmp/oc/ file 0 z.tar.gz
 K 7 /tmp/oc/sub/ directory 0 007
 K 8 /tmp/oc/sub/ directory 0 README.md
-E 1 /000 󰉋  .hidden
+E 1 /000 󰉋  sub
 E 1 /000 󰉋  ../
 E 1 /001 󰉋  a b/
 E 1 /004 󰉋  b.lua/ -> sub/
@@ -5596,6 +7477,25 @@ E 1 /006 󰗄  z.tar.gz
 E 1 /003 󰍔  Ä.md
 E 2 /008 󰉋  README.md/
 A delete directory /tmp/oc/sub/007 -
+D ok
+T /tmp/oc/a b directory
+T /tmp/oc/b.lua link -> sub
+T /tmp/oc/img.png directory
+T /tmp/oc/sub directory
+T /tmp/oc/sub/README.md directory
+T /tmp/oc/z.tar.gz file z.tar.gz
+T /tmp/oc/Ä.md file Ä.md
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰉋  a b/
+S 1 /004 󰉋  b.lua/ -> sub/
+S 1 /002 󰉋  img.png/
+S 1 /005 󰉋  sub/
+S 1 /006 󰗄  z.tar.gz
+S 1 /003 󰍔  Ä.md
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /008 󰉋  README.md/
 C 42247
 R 1 /000 󰉋  ../
 R 1 /008 󰉋  UPPER/
@@ -5634,6 +7534,27 @@ E 2 /000 󰉋  ../
 A delete file /tmp/oc/sub/Makefile -
 A delete file /tmp/oc/sub/file9.txt -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/README.md file README.md
+T /tmp/oc/UPPER directory
+T /tmp/oc/a b link -> UPPER
+T /tmp/oc/b.lua file b.lua
+T /tmp/oc/file10.txt file file10.txt
+T /tmp/oc/file9.txt file file9.txt
+T /tmp/oc/img.png file img.png
+T /tmp/oc/x link -> Ä.md
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /008 󰉋  UPPER/
+S 1 /002 󰉋  a b/ -> UPPER/
+S 1 /004   README.md
+S 1 /006 󰢱  b.lua
+S 1 /001 󰦪  file9.txt
+S 1 /009 󰦪  file10.txt
+S 1 /005 󰸭  img.png
+S 1 /003 󰍔  x -> Ä.md
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42248
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  sub/
@@ -5668,6 +7589,21 @@ E 2 /004 󰈔  007
 E 2 /005 󰈔  a b
 E 2 /006 󰈔  Ä.md -> sub
 A delete file /tmp/oc/Ä.md -
+D ok
+T /tmp/oc/007 link -> deep
+T /tmp/oc/sub directory
+T /tmp/oc/sub/007 file 007
+T /tmp/oc/sub/a b file a b
+T /tmp/oc/sub/Ä.md link -> sub
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  sub/
+S 1 /001 󰈔  007 -> deep
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /004 󰈔  007
+S 2 /005 󰈔  a b
+S 2 /006 󰈔  Ä.md -> sub
 C 42250
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  file9.txt/
@@ -5686,7 +7622,7 @@ K 5 /tmp/oc/ directory 0 Ä.md
 K 6 /tmp/oc/ directory 0 sub
 K 7 /tmp/oc/sub/ file 0 README.md
 E 1 /000 󰉋  ../
-E 1 a/b/c.txt
+E 1 x.{c,h}
 E 1 /002 󰉋  file9.txt/
 E 1 /006 󰉋  sub/
 E 1 /004 󰉋  x/
@@ -5753,37 +7689,26 @@ K 8 /tmp/oc/sub/ directory 0 UPPER
 K 9 /tmp/oc/sub/ link 0 notes.org -> x
 E 1 /000 󰉋  ../
 E 1 /002 󰉋  README.md/
-E 1 a/b/c.txt
 E 1 /003 󰉋  sub/
-E 1 /001 󰙱  a.c
 E 1 /004 󰈔  file10.txt -> 007
 E 2 /000 󰉋  ../
 E 2 /006 󰉋  007/
+E 2 /003 󰉋  sub/
 E 2 /001 󰙱  a.c
 E 2 /008 󰉋  UPPER/
-E 2 /005 󰦪  z.tar.gz
+E 2 /005 󰦪  b.lua
 E 2 /009 󰈔  notes.org -> x
 E 2 /007 󰈔  sub/
-A create directory /tmp/oc/a -
-A create directory /tmp/oc/a/b -
-A create file /tmp/oc/a/b/c.txt -
-A delete file /tmp/oc/sub/sub -
-A create directory /tmp/oc/sub/sub -
-A copy file /tmp/oc/a.c /tmp/oc/sub/a.c
-A move file /tmp/oc/sub/file9.txt /tmp/oc/sub/z.tar.gz
+X 2 7 Duplicate filename
 C 42254
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
 R 2 /000 󰉋  ../
 K 1 /tmp/oc/ directory 0 sub
-E 1 /001 x
-E 1 /000 󰉋  ../
 E 1 /001 󰉋  sub/
-X 1 0 Parsing icon failed
-E 2 a/b/c.txt
-E 2 /001 
-E 2 /000 󰉋  file10.txt
-X 2 1 Malformed ID at start of line
+E 1 /001 󰉋  sub/
+X 1 1 Duplicate filename
+E 2 /000 󰉋  007/
 C 42255
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  sub/
@@ -5865,14 +7790,40 @@ K 5 /tmp/oc/ file 0 z.tar.gz
 K 6 /tmp/oc/sub/ link 0 Makefile -> b.lua
 K 7 /tmp/oc/sub/ file 0 b.lua
 E 1 /000 󰉋  ../
+E 1 /004 󰉋  sub/
 E 1 /003 󰉋  Ä.md/
 E 1 /001 󰗄  v2.0.1 -> z.tar.gz
 E 1 /002 󰦪  x -> file10.txt
 E 1 /005 󰗄  z.tar.gz
 E 2 /000 󰉋  ../
-A delete link /tmp/oc/sub/Makefile -
-A delete file /tmp/oc/sub/b.lua -
-A delete directory /tmp/oc/sub -
+E 2 p{1,2}{3,4}
+E 2 /006 󰢱  Makefile -> b.lua
+E 2 /007 󰢱  b.lua
+A create file /tmp/oc/sub/p11 -
+A create file /tmp/oc/sub/p22 -
+D ok
+T /tmp/oc/sub directory
+T /tmp/oc/sub/Makefile link -> b.lua
+T /tmp/oc/sub/b.lua file b.lua
+T /tmp/oc/sub/p11 file 
+T /tmp/oc/sub/p22 file 
+T /tmp/oc/v2.0.1 link -> z.tar.gz
+T /tmp/oc/x link -> file10.txt
+T /tmp/oc/z.tar.gz file z.tar.gz
+T /tmp/oc/Ä.md directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /004 󰉋  sub/
+S 1 /003 󰉋  Ä.md/
+S 1 /001 󰗄  v2.0.1 -> z.tar.gz
+S 1 /002 󰦪  x -> file10.txt
+S 1 /005 󰗄  z.tar.gz
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /006 󰢱  Makefile -> b.lua
+S 2 /007 󰢱  b.lua
+S 2 /008 󰈔  p11
+S 2 /009 󰈔  p22
 C 42260
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  sub/
@@ -5891,10 +7842,10 @@ E 1 /002 󰉋  sub/
 E 1 /003 󰈔  deep
 E 1 /001 󰈔  file9.txt -> UPPER
 E 2 /000 󰉋  ../
-E 2 /999 x  a.c
+E 2 /999 x  /
 E 2 /005 󰦪  file10.txt
 E 2 /004 󰦪  v2.0.1 -> file9.txt
-X 2 1 Could not find existing entry (was the ID changed?)
+X 2 1 No filename found
 C 42261
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  .hidden/
@@ -5966,7 +7917,7 @@ R 2 /000 󰉋  ../
 K 1 /tmp/oc/ file 0 a b
 K 2 /tmp/oc/ file 0 Ä.md
 K 3 /tmp/oc/ directory 0 sub
-E 1 /000 󰉋  .hidden
+E 1 /000 󰉋  UPPER
 E 1 /003 󰉋  sub/
 E 1 /001 󰈔  a b
 E 1 /002 󰍔  Ä.md
@@ -5997,6 +7948,11 @@ K 1 /tmp/oc/ directory 0 sub
 E 1 /000 󰉋  ../
 E 2 /000 󰉋  ../
 A delete directory /tmp/oc/sub -
+D ok
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42267
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  img.png/
@@ -6006,13 +7962,14 @@ R 2 /000 󰉋  ../
 K 1 /tmp/oc/ directory 0 img.png
 K 2 /tmp/oc/ directory 0 sub
 K 3 /tmp/oc/ file 0 file10.txt
-E 1 /000 󰉋  ..//
-E 1 /001 󰉋  img.png/
-E 1 /002 󰉋  sub
+E 1 /000 󰉋  ../
+E 1 /001 󰉋  img.png//
+E 1 /002 󰉋  Ä.md
 E 1 /003 󰦪  sub/
-X 1 3 Duplicate filename
-E 2 a/b/c.txt
+X 1 1 Filename cannot contain path separator
+E 2 /001 󰉋  img.png//
 E 2 /000 󰉋  ../
+X 2 0 Filename cannot contain path separator
 C 42268
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  sub/
@@ -6047,12 +8004,27 @@ K 2 /tmp/oc/ directory 0 sub
 K 3 /tmp/oc/ directory 0 UPPER
 K 4 /tmp/oc/sub/ file 0 img.png
 E 1 /000 󰉋  ../
-E 1 /003 󰉋  UPPER//
+E 1 /003 󰉋  file10.txt
 E 1 /002 󰉋  .hidden
 E 1 /001 󰈔  sub/
-X 1 1 Filename cannot contain path separator
-E 2 /000 󰉋  notes.org/
 E 2 /004 󰸭  img.png
+A move file /tmp/oc/.hidden /tmp/oc/.hidden__oil_tmp_825788
+A move directory /tmp/oc/sub /tmp/oc/.hidden
+A move directory /tmp/oc/UPPER /tmp/oc/file10.txt
+A move file /tmp/oc/.hidden__oil_tmp_825788 /tmp/oc/sub
+D ok
+T /tmp/oc/.hidden directory
+T /tmp/oc/.hidden/img.png file img.png
+T /tmp/oc/file10.txt directory
+T /tmp/oc/sub file .hidden
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  .hidden/
+S 1 /003 󰉋  file10.txt/
+S 1 /001 󰈔  sub
+B 2 /tmp/oc/.hidden/
+S 2 /000 󰉋  ../
+S 2 /005 󰸭  img.png
 C 42270
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  README.md/
@@ -6100,15 +8072,26 @@ K 5 /tmp/oc/sub/ directory 0 Makefile
 K 6 /tmp/oc/sub/ link 0 Ä.md -> a b
 K 7 /tmp/oc/sub/ file 0 UPPER
 E 1 /000 󰉋  ../
-E 1 /002 󰉋  img.png
+E 1 /002 󰉋  notes.org
 E 1 /001 󰈔  Makefile -> UPPER
 E 1 /004 󰦪  file10.txt
-E 2 /003 󰗄  z.tar.gz
-A move file /tmp/oc/z.tar.gz /tmp/oc/sub/z.tar.gz
+E 2 /000 󰉋  ../
 A delete directory /tmp/oc/sub/Makefile -
 A delete file /tmp/oc/sub/UPPER -
 A delete link /tmp/oc/sub/Ä.md -
-A move directory /tmp/oc/sub /tmp/oc/img.png
+A move directory /tmp/oc/sub /tmp/oc/notes.org
+A delete file /tmp/oc/z.tar.gz -
+D ok
+T /tmp/oc/Makefile link -> UPPER
+T /tmp/oc/file10.txt file file10.txt
+T /tmp/oc/notes.org directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  notes.org/
+S 1 /001 󰈔  Makefile -> UPPER
+S 1 /004 󰦪  file10.txt
+B 2 /tmp/oc/notes.org/
+S 2 /000 󰉋  ../
 C 42272
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  sub/
@@ -6130,10 +8113,9 @@ K 7 /tmp/oc/sub/ file 0 UPPER
 K 8 /tmp/oc/sub/ file 0 file10.txt
 E 1 /000 󰉋  ../
 E 1 /003 󰉋  sub/
-E 1 /abs
+E 1 q//r
 E 1 /001   README.md
 E 1 /002 󰈔  b.lua -> UPPER
-X 1 2 Paths cannot start with '/'
 E 2 /000 󰉋  ../
 E 2 /001 x
 E 2 /004 󰉋  007/
@@ -6169,6 +8151,13 @@ A delete file /tmp/oc/sub/a b -
 A delete file /tmp/oc/sub/deep -
 A delete file /tmp/oc/sub/z.tar.gz -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/x file x
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰈔  x
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42274
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  b.lua/
@@ -6191,10 +8180,23 @@ E 1 /002 󰉋  b.lua/
 E 1 /004 󰉋  z.tar.gz/
 E 1 /005 󰦪  file10.txt
 E 1 /001 󰈔  v2.0.1
-E 2 /000 󰉋  README.md
+E 2 /000 󰉋  img.png
 A delete file /tmp/oc/sub/file10.txt -
 A delete file /tmp/oc/sub/img.png -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/b.lua directory
+T /tmp/oc/file10.txt file file10.txt
+T /tmp/oc/v2.0.1 file v2.0.1
+T /tmp/oc/z.tar.gz directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  b.lua/
+S 1 /004 󰉋  z.tar.gz/
+S 1 /005 󰦪  file10.txt
+S 1 /001 󰈔  v2.0.1
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42275
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  sub/
@@ -6257,6 +8259,29 @@ E 1 /007 󰦪  file10.txt
 E 2 /008 󰉋  a b/
 E 2 /010 󰙱  b.lua -> a.c
 A delete file /tmp/oc/sub/x -
+D ok
+T /tmp/oc/.hidden directory
+T /tmp/oc/Makefile file Makefile
+T /tmp/oc/a b file a b
+T /tmp/oc/a.c file a.c
+T /tmp/oc/b.lua file b.lua
+T /tmp/oc/file10.txt file file10.txt
+T /tmp/oc/sub directory
+T /tmp/oc/sub/a b directory
+T /tmp/oc/sub/b.lua link -> a.c
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  .hidden/
+S 1 /006 󰉋  sub/
+S 1 /003 󱁤  Makefile
+S 1 /004 󰈔  a b
+S 1 /001 󰙱  a.c
+S 1 /005 󰢱  b.lua
+S 1 /007 󰦪  file10.txt
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /008 󰉋  a b/
+S 2 /010 󰙱  b.lua -> a.c
 C 42277
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  sub/
@@ -6269,16 +8294,14 @@ K 2 /tmp/oc/ directory 0 sub
 K 3 /tmp/oc/sub/ link 0 .hidden -> .hidden
 K 4 /tmp/oc/sub/ link 0 a b -> img.png
 E 1 /000 󰉋  sub/
-E 1 ln -> a.c
+E 1 /abs
 E 1 /002 󰉋  ../
 E 1 /001 󰙱  a.c
-E 2 /000 󰉋  a.c
-E 2 ln -> ../
+X 1 1 Paths cannot start with '/'
+E 2 /000 󰉋  /abs
+E 2 ../
 E 2 /003 󰈔  .hidden -> .hidden
 E 2 /004 󰸭  a b -> img.png
-A create link /tmp/oc/ln -
-A create link /tmp/oc/sub/ln -
-A move directory /tmp/oc/sub /tmp/oc/..
 C 42278
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  sub/
@@ -6330,6 +8353,21 @@ A copy file /tmp/oc/a.c /tmp/oc/Makefile
 A delete link /tmp/oc/sub/007 -
 A delete file /tmp/oc/sub/Makefile -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/.hidden link -> Makefile
+T /tmp/oc/Makefile file a.c
+T /tmp/oc/a.c file a.c
+T /tmp/oc/file9.txt link -> b.lua
+T /tmp/oc/v2.0.1 directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /004 󰉋  v2.0.1/
+S 1 /003 󱁤  .hidden -> Makefile
+S 1 /008 󱁤  Makefile
+S 1 /001 󰙱  a.c
+S 1 /002 󰢱  file9.txt -> b.lua
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42280
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  a b/
@@ -6343,12 +8381,27 @@ E 1 /000 󰉋  ../
 E 1 /001 󰉋  a b/
 E 1 /003 󰉋  sub/
 E 1 /002 󰦪  img.png -> file10.txt
-E 2 a/b/
+E 2 sub//
 E 2 /0001 x  notes.org
 E 2 /000 󰉋  ../
-A create directory /tmp/oc/sub/a -
-A create directory /tmp/oc/sub/a/b -
+A create directory /tmp/oc/sub/sub -
+A create directory /tmp/oc/sub/sub/ -
 A copy directory /tmp/oc/a b /tmp/oc/sub/notes.org
+D ok
+T /tmp/oc/a b directory
+T /tmp/oc/img.png link -> file10.txt
+T /tmp/oc/sub directory
+T /tmp/oc/sub/notes.org directory
+T /tmp/oc/sub/sub directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰉋  a b/
+S 1 /003 󰉋  sub/
+S 1 /002 󰦪  img.png -> file10.txt
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /006 󰉋  notes.org/
+S 2 /004 󰉋  sub/
 C 42281
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -6368,13 +8421,13 @@ K 1 /tmp/oc/ file 0 README.md
 K 2 /tmp/oc/ file 0 Ä.md
 K 3 /tmp/oc/ directory 0 sub
 K 4 /tmp/oc/sub/ link 0 README.md -> z.tar.gz
-E 1 /000 󰉋  file10.txt
+E 1 /000 󰉋  x
 E 1 /003 󰉋  sub/
 E 1 /001   README.md
+E 1 /002 󰍔  Ä.md
 E 2 /000 󰉋  ../
-E 2 /003 󰉋  sub/
-E 2 /002 󰍔  Ä.md
-E 2 /000 󰉋  ../
+E 2 /003 󰉋  ../
+E 2 /000 󰉋  sub/
 E 2 /004 󰗄  README.md -> z.tar.gz
 X 0 -1 Detected cycle in desired paths
 C 42283
@@ -6393,13 +8446,22 @@ K 4 /tmp/oc/ directory 0 sub
 K 5 /tmp/oc/sub/ directory 0 v2.0.1
 K 6 /tmp/oc/sub/ directory 0 Makefile
 E 1 /000 󰉋  ../
+E 1 /002 󰉋  007/ -> sub//
 E 1 /003 󰈔  v2.0.1
-E 2 /000 󰉋  .hidden
+E 2 /000 󰉋  ../
 A delete file /tmp/oc/a.c -
-A delete link /tmp/oc/007 -
 A delete directory /tmp/oc/sub/Makefile -
 A delete directory /tmp/oc/sub/v2.0.1 -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/007 link -> sub
+T /tmp/oc/v2.0.1 file v2.0.1
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  007/ -> sub/
+S 1 /003 󰈔  v2.0.1
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42284
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  b.lua/
@@ -6445,6 +8507,15 @@ E 1 /002 󰗄  z.tar.gz
 E 2 /000 󰉋  ../
 A delete file /tmp/oc/sub/UPPER -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/file10.txt file file10.txt
+T /tmp/oc/z.tar.gz file z.tar.gz
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰦪  file10.txt
+S 1 /002 󰗄  z.tar.gz
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42286
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  img.png/
@@ -6493,7 +8564,7 @@ E 1 /000 󰉋  ../
 E 1 /002 󰉋  file10.txt/
 E 1 /001 󰉋  sub/
 E 1 /003   notes.org
-E 2 /000 󰉋  .hidden
+E 2 /000 󰉋  x
 C 42288
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  README.md/
@@ -6510,16 +8581,14 @@ K 4 /tmp/oc/ link 0 b.lua -> notes.org
 K 5 /tmp/oc/ directory 0 sub
 K 6 /tmp/oc/sub/ file 0 notes.org
 E 1 /000 󰉋  ../
-E 1 /003 󰉋  deep
+E 1 /003 󰉋  007
 E 1 /005 󰉋  sub/
 E 1 /002   007 -> notes.org/
 E 1 /001 󰙱  a.c
 E 1 /004   b.lua -> notes.org
+X 1 3 Duplicate filename
 E 2 /000 󰉋  ../
 E 2 /006   notes.org/
-A delete file /tmp/oc/sub/notes.org -
-A create directory /tmp/oc/sub/notes.org -
-A move directory /tmp/oc/README.md /tmp/oc/deep
 C 42289
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -6528,6 +8597,11 @@ K 1 /tmp/oc/ directory 0 sub
 E 1 /000 󰉋  ../
 E 1 /000 󰉋  ../
 A delete directory /tmp/oc/sub -
+D ok
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42290
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -6591,7 +8665,7 @@ E 1 /002 󰉋  sub/
 E 1 /002 󰉋  sub/
 E 1 /003 󰗄  z.tar.gz
 X 1 3 Duplicate filename
-E 2 /000 󰉋  v2.0.1
+E 2 /000 󰉋  a.c
 E 2 /004 󰈔  a.c -> deep
 C 42293
 R 1 /000 󰉋  ../
@@ -6682,6 +8756,19 @@ A delete file /tmp/oc/sub/x -
 A delete file /tmp/oc/sub/Ä.md -
 A delete directory /tmp/oc/sub -
 A move directory /tmp/oc/UPPER /tmp/oc/sub/UPPER
+D ENOENT: no such file or directory: /tmp/oc/sub/UPPER
+T /tmp/oc/.hidden directory
+T /tmp/oc/UPPER directory
+T /tmp/oc/a b file a b
+T /tmp/oc/notes.org file notes.org
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰉋  .hidden/
+S 1 /005 󰉋  UPPER/
+S 1 /002 󰈔  a b
+S 1 /006   notes.org
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42297
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  deep/
@@ -6697,7 +8784,7 @@ K 3 /tmp/oc/ directory 0 deep
 K 4 /tmp/oc/ file 0 z.tar.gz
 K 5 /tmp/oc/sub/ file 0 a.c
 K 6 /tmp/oc/sub/ file 0 UPPER
-E 1 /000 󰉋  README.md
+E 1 /000 󰉋  deep
 E 1 /003 󰉋  deep/
 E 1 /002 󰉋  sub/
 E 1 /001 󰈔  img.png -> .hidden
@@ -6789,6 +8876,19 @@ E 1 /003 󰈔  UPPER
 E 2 /0001 x  file9.txt
 E 2 /000 󰉋  ../
 A copy directory /tmp/oc/b.lua /tmp/oc/sub/file9.txt
+D ok
+T /tmp/oc/UPPER file UPPER
+T /tmp/oc/b.lua directory
+T /tmp/oc/sub directory
+T /tmp/oc/sub/file9.txt directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰉋  b.lua/
+S 1 /002 󰉋  sub/
+S 1 /003 󰈔  UPPER
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /004 󰉋  file9.txt/
 C 42301
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -6856,7 +8956,7 @@ E 1 /001 󰙱  a.c
 E 1 /002 󰈔  x
 E 1 /004 󰗄  z.tar.gz
 X 1 2 Duplicate filename
-E 2 x.{c,h}
+E 2 .hidden
 E 2 /000 󰉋  ../
 E 2 /007 󰈔  sub
 E 2 /006 󰍔  Ä.md
@@ -6884,21 +8984,49 @@ K 8 /tmp/oc/sub/ link 0 Makefile -> a b
 K 9 /tmp/oc/sub/ file 0 Ä.md
 K 10 /tmp/oc/sub/ link 0 sub -> a b
 E 1 /000 󰉋  ../
+E 1 /000 󰉋  ../
 E 1 /003 󰉋  a b/
 E 1 /005 󰉋  sub/
 E 1 /002 󰈔  007
-E 1 Makefile
+E 1 notes.org
 E 1 /001 󰢱  file9.txt -> b.lua
 E 1 /004 󰈔  x
 E 1 /006 󰗄  z.tar.gz
 E 2 /000 󰉋  ../
 E 2 /008 󰈔  Makefile -> a b
 E 2 /007 󰙱  a.c/
-E 2 /010 󰈔  sub -> a b/
+E 2 /010 󰈔  sub -> a b
 E 2 /009 󰍔  Ä.md
-A create file /tmp/oc/Makefile -
+A create file /tmp/oc/notes.org -
 A delete file /tmp/oc/sub/a.c -
 A create directory /tmp/oc/sub/a.c -
+D ok
+T /tmp/oc/007 file 007
+T /tmp/oc/a b directory
+T /tmp/oc/file9.txt link -> b.lua
+T /tmp/oc/notes.org file 
+T /tmp/oc/sub directory
+T /tmp/oc/sub/Makefile link -> a b
+T /tmp/oc/sub/a.c directory
+T /tmp/oc/sub/sub link -> a b
+T /tmp/oc/sub/Ä.md file Ä.md
+T /tmp/oc/x file x
+T /tmp/oc/z.tar.gz file z.tar.gz
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  a b/
+S 1 /005 󰉋  sub/
+S 1 /002 󰈔  007
+S 1 /001 󰢱  file9.txt -> b.lua
+S 1 /011   notes.org
+S 1 /004 󰈔  x
+S 1 /006 󰗄  z.tar.gz
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /012 󰉋  a.c/
+S 2 /008 󰈔  Makefile -> a b
+S 2 /010 󰈔  sub -> a b
+S 2 /009 󰍔  Ä.md
 C 42305
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -6917,6 +9045,19 @@ E 2 /000 󰉋  ../
 E 2 /003 󰈔  a b
 E 2 /004   notes.org
 A move file /tmp/oc/sub/007 /tmp/oc/007
+D ok
+T /tmp/oc/007 file 007
+T /tmp/oc/sub directory
+T /tmp/oc/sub/a b file a b
+T /tmp/oc/sub/notes.org file notes.org
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰉋  sub/
+S 1 /002 󰈔  007
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /003 󰈔  a b
+S 2 /004   notes.org
 C 42306
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  img.png/
@@ -6931,10 +9072,22 @@ E 1 /000 󰉋  ../
 E 1 /002 󰉋  img.png/
 E 1 /003 󰉋  sub/
 E 1 /001 󰈔  007
-E 2 x.{c,h}
+E 2 a b
 E 2 /000 󰉋  ../
-A create file /tmp/oc/sub/x.c -
-A create file /tmp/oc/sub/x.h -
+A create file /tmp/oc/sub/a b -
+D ok
+T /tmp/oc/007 file 007
+T /tmp/oc/img.png directory
+T /tmp/oc/sub directory
+T /tmp/oc/sub/a b file 
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  img.png/
+S 1 /003 󰉋  sub/
+S 1 /001 󰈔  007
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /004 󰈔  a b
 C 42307
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  sub/
@@ -6973,21 +9126,20 @@ K 7 /tmp/oc/ directory 0 sub
 K 8 /tmp/oc/ file 0 z.tar.gz
 K 9 /tmp/oc/sub/ file 0 b.lua
 K 10 /tmp/oc/sub/ link 0 z.tar.gz -> UPPER
-E 1 /abs
-E 1 /000 󰉋  img.png
+E 1 p{1,2}{3,4}
+E 1 /000 󰉋  a.c
+E 1 /005 󰉋  img.png/
 E 1 /007 󰉋  sub/
-E 1 /001 󰈔  007
 E 1 /12x y
+E 1 /001 󰈔  007
 E 1 /004   README.md
 E 1 /003 󰈔  a b
 E 1 /006 󰢱  b.lua
 E 1 /002 󰈔  v2.0.1
 E 1 /008 󰗄  z.tar.gz
-X 1 0 Paths cannot start with '/'
 X 1 4 Malformed ID at start of line
 E 2 /000 󰉋  ../
-E 2 /005 󰉋  img.png/
-E 2 /009 󰢱  b.lua
+E 2 /009 󰢱  b.lua/
 E 2 /010 󰈔  z.tar.gz -> UPPER
 C 42309
 R 1 /000 󰉋  ../
@@ -7015,7 +9167,7 @@ E 1 /002 󱁤  Makefile
 E 1 /005 󱁤  UPPER -> Makefile
 E 2 /000 󰉋  ../
 E 2 /007 󰉋  UPPER//
-E 2 a/b/c.txt
+E 2 x.{c,h}
 E 2 /003 󰈔  x
 E 2 /006 󰢱  README.md -> b.lua
 E 2 /008 󰈔  z.tar.gz -> 007
@@ -7054,10 +9206,22 @@ E 1 /000 󰉋  ../
 E 1 /002 󰉋  sub/
 E 1 /003 󰈔  UPPER/
 E 1 /001 󰈔  img.png -> .hidden
-E 2 ln -> a.c
-E 2 ln -> a.c
+E 2   
+E 2   
 E 2 /000 󰉋  ..//
-X 2 1 Duplicate filename
+A delete file /tmp/oc/UPPER -
+A create directory /tmp/oc/UPPER -
+D ok
+T /tmp/oc/UPPER directory
+T /tmp/oc/img.png link -> .hidden
+T /tmp/oc/sub directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /004 󰉋  UPPER/
+S 1 /002 󰉋  sub/
+S 1 /001 󰈔  img.png -> .hidden
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42312
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  sub/
@@ -7100,10 +9264,33 @@ E 2 /000 󰉋  ../
 E 2 /008 󰉋  img.png/
 E 2 /005 󰈔  deep
 E 2 /000 󰉋  ../
-E 2 /007 󰙱  Ä.md
+E 2 /007 󰙱  .hidden
 E 2 /009 󰈔  b.lua -> sub
 A move file /tmp/oc/deep /tmp/oc/sub/deep
-A move file /tmp/oc/sub/a.c /tmp/oc/sub/Ä.md
+A move file /tmp/oc/sub/a.c /tmp/oc/sub/.hidden
+D ok
+T /tmp/oc/007 link -> v2.0.1
+T /tmp/oc/file10.txt link -> UPPER
+T /tmp/oc/sub directory
+T /tmp/oc/sub/.hidden file a.c
+T /tmp/oc/sub/b.lua link -> sub
+T /tmp/oc/sub/deep file deep
+T /tmp/oc/sub/img.png directory
+T /tmp/oc/x link -> 007
+T /tmp/oc/Ä.md file Ä.md
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /004 󰉋  sub/
+S 1 /001 󰈔  007 -> v2.0.1
+S 1 /006 󰈔  file10.txt -> UPPER
+S 1 /002 󰈔  x -> 007
+S 1 /003 󰍔  Ä.md
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /008 󰉋  img.png/
+S 2 /007 󰈔  .hidden
+S 2 /009 󰈔  b.lua -> sub
+S 2 /005 󰈔  deep
 C 42314
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  a b/
@@ -7116,7 +9303,7 @@ K 2 /tmp/oc/ directory 0 x
 K 3 /tmp/oc/ directory 0 sub
 K 4 /tmp/oc/sub/ directory 0 Makefile
 E 1 /000 󰉋  ../
-E 1 /001 󰉋  a b.lua
+E 1 /001 󰉋  a /
 E 1 /003 󰉋  sub//
 E 1 /002 󰉋  x/
 X 1 2 Filename cannot contain path separator
@@ -7209,19 +9396,41 @@ K 6 /tmp/oc/ file 0 z.tar.gz
 K 7 /tmp/oc/sub/ directory 0 007
 E 1 /000 󰉋  ../
 E 1 /005 󰉋  sub/
-E 1 /002 󰉋  b.lua
+E 1 /002 󰉋  file9.txt
 E 1 /001 󰢱  Makefile -> b.lua
-E 1 a/b/c.txt
-E 1 /004 󰢱  file10.txt
+E 1 x.{c,h}
+E 1 /004 󰢱  b.lua
 E 1 /003 󰸭  img.png
 E 1 /006 󰗄  z.tar.gz
 E 2 /000 󰉋  ../
+E 2 /000 󰉋  ../
 E 2 /007 󰉋  007/
-A create directory /tmp/oc/a -
-A create directory /tmp/oc/a/b -
-A create file /tmp/oc/a/b/c.txt -
-A move file /tmp/oc/b.lua /tmp/oc/file10.txt
-A move directory /tmp/oc/x /tmp/oc/b.lua
+A create file /tmp/oc/x.c -
+A create file /tmp/oc/x.h -
+A move directory /tmp/oc/x /tmp/oc/file9.txt
+D ok
+T /tmp/oc/Makefile link -> b.lua
+T /tmp/oc/b.lua file b.lua
+T /tmp/oc/file9.txt directory
+T /tmp/oc/img.png file img.png
+T /tmp/oc/sub directory
+T /tmp/oc/sub/007 directory
+T /tmp/oc/x.c file 
+T /tmp/oc/x.h file 
+T /tmp/oc/z.tar.gz file z.tar.gz
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  file9.txt/
+S 1 /005 󰉋  sub/
+S 1 /001 󰢱  Makefile -> b.lua
+S 1 /004 󰢱  b.lua
+S 1 /003 󰸭  img.png
+S 1 /008 󰙱  x.c
+S 1 /009 󰫵  x.h
+S 1 /006 󰗄  z.tar.gz
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /007 󰉋  007/
 C 42319
 R 1 /000 󰉋  ../
 R 1 /007 󰉋  file10.txt/
@@ -7243,20 +9452,42 @@ K 6 /tmp/oc/ file 0 z.tar.gz
 K 7 /tmp/oc/ directory 0 file10.txt
 K 8 /tmp/oc/sub/ file 0 007
 K 9 /tmp/oc/sub/ link 0 Makefile -> z.tar.gz
+E 1 /000 󰉋  ../
 E 1 /007 󰉋  file10.txt/
 E 1 /005 󰉋  sub/
 E 1 /003 󰉋  Ä.md/
 E 1 /001 󰙱  README.md -> a.c
 E 1 /004 󰢱  b.lua
 E 1 /002 󰈔  img.png -> a b
-E 2 /000 󰉋  ../
-E 2 /000 󰉋  ../
 E 2 /008 󰈔  007
-E 2 /009 󰗄  Makefile -> img.png
+E 2 /009 󰗄  Makefile -> Makefile
 E 2 /006 󰗄  z.tar.gz
 A delete link /tmp/oc/sub/Makefile -
 A create link /tmp/oc/sub/Makefile -
 A move file /tmp/oc/z.tar.gz /tmp/oc/sub/z.tar.gz
+D ok
+T /tmp/oc/README.md link -> a.c
+T /tmp/oc/b.lua file b.lua
+T /tmp/oc/file10.txt directory
+T /tmp/oc/img.png link -> a b
+T /tmp/oc/sub directory
+T /tmp/oc/sub/007 file 007
+T /tmp/oc/sub/Makefile link -> Makefile
+T /tmp/oc/sub/z.tar.gz file z.tar.gz
+T /tmp/oc/Ä.md directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /007 󰉋  file10.txt/
+S 1 /005 󰉋  sub/
+S 1 /003 󰉋  Ä.md/
+S 1 /001 󰙱  README.md -> a.c
+S 1 /004 󰢱  b.lua
+S 1 /002 󰈔  img.png -> a b
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /008 󰈔  007
+S 2 /010 󱁤  Makefile -> Makefile
+S 2 /006 󰗄  z.tar.gz
 C 42320
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -7264,11 +9495,17 @@ R 1 /002 󰦪  file10.txt
 R 2 /000 󰉋  ../
 K 1 /tmp/oc/ directory 0 sub
 K 2 /tmp/oc/ file 0 file10.txt
-E 1 /000 󰉋  007
+E 1 /000 󰉋  v2.0.1
 E 1 /000 󰉋  ../
 E 1 /002 󰦪  file10.txt
-E 2 /12x y
-X 2 0 Malformed ID at start of line
+A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/file10.txt file file10.txt
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰦪  file10.txt
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42321
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  007/ -> sub/
@@ -7278,15 +9515,27 @@ R 2 /000 󰉋  ../
 K 1 /tmp/oc/ link 1 007 -> sub
 K 2 /tmp/oc/ link 0 b.lua -> x
 K 3 /tmp/oc/ directory 0 sub
-E 1 x.{c,h}
+E 1 .hidden
 E 1 /000 󰉋  ../
 E 1 /003 󰉋  sub/
 E 1 /002 󰈔  b.lua -> x
 E 2 /000 󰉋  ../
 E 2 /001 󰉋  007/ -> sub/
-A create file /tmp/oc/x.c -
-A create file /tmp/oc/x.h -
+A create file /tmp/oc/.hidden -
 A move link /tmp/oc/007 /tmp/oc/sub/007
+D ok
+T /tmp/oc/.hidden file 
+T /tmp/oc/b.lua link -> x
+T /tmp/oc/sub directory
+T /tmp/oc/sub/007 link -> sub
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  sub/
+S 1 /004 󰈔  .hidden
+S 1 /002 󰈔  b.lua -> x
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /001 󰈔  007 -> sub
 C 42322
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  README.md/
@@ -7308,17 +9557,19 @@ K 6 /tmp/oc/ file 0 file10.txt
 K 7 /tmp/oc/ link 0 notes.org -> v2.0.1
 K 8 /tmp/oc/sub/ directory 0 x
 K 9 /tmp/oc/sub/ file 0 deep
+E 1 /001 
 E 1 /000 󰉋  ../
 E 1 /002 󰉋  README.md/
+E 1 /004 󰉋  sub/
 E 1 /005 󰈔  deep
 E 1 /006 󰦪  file10.txt
 E 1 /003 󰸭  img.png
 E 1 /007 󰈔  notes.org -> v2.0.1
-E 1 /001 󰈔  x
-E 2 /000 󰉋  ../
-A delete file /tmp/oc/sub/deep -
-A delete directory /tmp/oc/sub/x -
-A delete directory /tmp/oc/sub -
+E 1 /001 󰈔  v2.0.1
+X 1 0 Malformed ID at start of line
+E 2 /000 󰉋  ..//
+E 2 /008 󰉋  x/
+E 2 /009 󰈔  a.c
 C 42323
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -7351,18 +9602,17 @@ K 6 /tmp/oc/sub/ directory 0 a b
 K 7 /tmp/oc/sub/ file 0 README.md
 K 8 /tmp/oc/sub/ file 0 notes.org
 E 1 /000 󰉋  ../
-E 1 /000 󰉋  ../
-E 1   
+E 1 {}{s,t}
 E 1 /003 󰉋  sub/
 E 1 /002   README.md
 E 1 /001 󰦪  file9.txt
 E 1 /004 󰈔  notes.org -> 007
-E 2 /000 󰉋  deep
+E 2 /000 󰉋  file9.txt
 E 2 /006 󰉋  a b/
 E 2 /007   README.md
 E 2 /005 󰦪  file9.txt -> file10.txt
 E 2 /001 󰦪  file9.txt
-E 2 /008   notes.org
+E 2 /008   z.tar.gz
 X 2 4 Duplicate filename
 C 42325
 R 1 /000 󰉋  ../
@@ -7375,10 +9625,11 @@ K 1 /tmp/oc/ directory 0 007
 K 2 /tmp/oc/ file 0 img.png
 K 3 /tmp/oc/ directory 0 sub
 K 4 /tmp/oc/sub/ file 0 README.md
-E 1 /000 󰉋  x
-E 1 /001 󰉋  007/
+E 1 /000 󰉋  b.lua
+E 1 /001 󰉋  007//
 E 1 /003 󰉋  sub/
 E 1 /002 󰸭  img.png
+X 1 1 Filename cannot contain path separator
 E 2 /000 󰉋  ../
 E 2 /004   README.md
 C 42326
@@ -7417,6 +9668,31 @@ E 2 /008 󰦪  file9.txt
 E 2 /010 󰈔  file10.txt -> deep
 E 2 /009 󰈔  v2.0.1
 A move file /tmp/oc/a.c /tmp/oc/sub/a.c
+D ok
+T /tmp/oc/Makefile file Makefile
+T /tmp/oc/deep directory
+T /tmp/oc/file10.txt file file10.txt
+T /tmp/oc/file9.txt directory
+T /tmp/oc/sub directory
+T /tmp/oc/sub/a.c file a.c
+T /tmp/oc/sub/file10.txt link -> deep
+T /tmp/oc/sub/file9.txt file file9.txt
+T /tmp/oc/sub/v2.0.1 file v2.0.1
+T /tmp/oc/Ä.md file Ä.md
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /006 󰉋  deep/
+S 1 /002 󰉋  file9.txt/
+S 1 /005 󰉋  sub/
+S 1 /003 󱁤  Makefile
+S 1 /007 󰦪  file10.txt
+S 1 /004 󰍔  Ä.md
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /001 󰙱  a.c
+S 2 /008 󰦪  file9.txt
+S 2 /010 󰈔  file10.txt -> deep
+S 2 /009 󰈔  v2.0.1
 C 42327
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  Makefile/
@@ -7446,9 +9722,10 @@ E 1 /006 󰉋  img.png/
 E 1 /007 󰉋  sub/
 E 1 /004 󰉋  x/ -> img.png/
 E 1 /002 󰈔  .hidden
-E 1 ln -> a.c
+E 1 /abs
 E 1 /005   README.md
 E 1 /008 󰈔  UPPER
+X 1 6 Paths cannot start with '/'
 E 2 /000 󰉋  ../
 E 2 /009 󰸭  a.c -> img.png
 E 2 /010 󰦪  file9.txt
@@ -7480,6 +9757,21 @@ E 1 /004 󰗄  z.tar.gz
 E 2 /000 󰉋  ../
 A delete link /tmp/oc/sub/a.c -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/Makefile file Makefile
+T /tmp/oc/file10.txt link -> file10.txt
+T /tmp/oc/img.png link -> UPPER
+T /tmp/oc/notes.org file notes.org
+T /tmp/oc/z.tar.gz file z.tar.gz
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󱁤  Makefile
+S 1 /005 󰦪  file10.txt -> file10.txt
+S 1 /002 󰈔  img.png -> UPPER
+S 1 /006   notes.org
+S 1 /004 󰗄  z.tar.gz
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42329
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  007/
@@ -7552,11 +9844,12 @@ E 1 /002 󱁤  Makefile
 E 1 /003   img.png -> README.md
 X 1 3 Duplicate filename
 E 2 /000 󰉋  ../
-E 2 x.{c,h}
+E 2 .hidden
 E 2 /000 󰉋  ../
 E 2 /005   .hidden -> notes.org
 E 2 /007 󰈔  deep -> v2.0.1
 E 2 /006 󰍔  Ä.md
+X 2 3 Duplicate filename
 C 42332
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  UPPER/
@@ -7570,12 +9863,11 @@ K 3 /tmp/oc/ directory 0 UPPER
 K 4 /tmp/oc/sub/ file 0 img.png
 E 1 /000 󰉋  ../
 E 1 /003 󰉋  UPPER/
-E 1 /abs
+E 1 p{1,2}{3,4}
 E 1 /004 󰸭  img.png
 E 1 /000 󰉋  ../
 E 1 /002 󰉋  sub/
 E 1 /001 󰸭  img.png
-X 1 2 Paths cannot start with '/'
 X 1 6 Duplicate filename
 E 2 /000 󰉋  ../
 C 42333
@@ -7615,15 +9907,45 @@ E 1 /000 󰉋  ../
 E 1 /001 󰉋  .hidden/
 E 1 /005 󰉋  README.md/
 E 1 /007 󰉋  UPPER/ -> .hidden/
-E 1 /006 󰉋  v2.0.1
+E 1 /006 󰉋  b.lua
 E 1 /002 󰈔  007
 E 1 /003 󰈔  v2.0.1
 E 1 /004   x -> notes.org
 E 1 /008 󰗄  z.tar.gz
-X 1 6 Duplicate filename
 E 2 /000 󰉋  ../
-E 2 nd/
+E 2 a/b/c.txt
 E 2 /009 󰈔  v2.0.1
+A create directory /tmp/oc/sub/a -
+A create directory /tmp/oc/sub/a/b -
+A create file /tmp/oc/sub/a/b/c.txt -
+A move directory /tmp/oc/sub /tmp/oc/b.lua
+D ok
+T /tmp/oc/.hidden directory
+T /tmp/oc/007 file 007
+T /tmp/oc/README.md directory
+T /tmp/oc/UPPER link -> .hidden
+T /tmp/oc/b.lua directory
+T /tmp/oc/b.lua/a directory
+T /tmp/oc/b.lua/a/b directory
+T /tmp/oc/b.lua/a/b/c.txt file 
+T /tmp/oc/b.lua/v2.0.1 file v2.0.1
+T /tmp/oc/v2.0.1 file v2.0.1
+T /tmp/oc/x link -> notes.org
+T /tmp/oc/z.tar.gz file z.tar.gz
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰉋  .hidden/
+S 1 /005 󰉋  README.md/
+S 1 /007 󰉋  UPPER/ -> .hidden/
+S 1 /006 󰉋  b.lua/
+S 1 /002 󰈔  007
+S 1 /003 󰈔  v2.0.1
+S 1 /004   x -> notes.org
+S 1 /008 󰗄  z.tar.gz
+B 2 /tmp/oc/b.lua/
+S 2 /000 󰉋  ../
+S 2 /014 󰉋  a/
+S 2 /013 󰈔  v2.0.1
 C 42335
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  a.c/
@@ -7642,11 +9964,24 @@ E 1 /003 󰉋  z.tar.gz
 E 1 /004 󰗄  UPPER -> sub/
 E 2 /000 󰉋  ../
 E 2 /005 󰍔  Ä.md
-E 2 /000 󰉋  Makefile
+E 2 /000 󰉋  z.tar.gz
 A delete link /tmp/oc/UPPER -
 A create link /tmp/oc/UPPER -
 A delete file /tmp/oc/v2.0.1 -
 A move directory /tmp/oc/sub /tmp/oc/z.tar.gz
+D ok
+T /tmp/oc/UPPER link -> sub
+T /tmp/oc/a.c directory
+T /tmp/oc/z.tar.gz directory
+T /tmp/oc/z.tar.gz/Ä.md file Ä.md
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰉋  a.c/
+S 1 /003 󰉋  z.tar.gz/
+S 1 /006 󰈔  UPPER -> sub
+B 2 /tmp/oc/z.tar.gz/
+S 2 /000 󰉋  ../
+S 2 /007 󰍔  Ä.md
 C 42336
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  sub/
@@ -7662,11 +9997,11 @@ K 4 /tmp/oc/sub/ link 0 007 -> notes.org
 K 5 /tmp/oc/sub/ directory 0 file10.txt
 E 1 /000 󰉋  ../
 E 1 /001 󰈔  .hidden
-E 2 /000 󰉋  file10.txt
-A delete link /tmp/oc/sub/007 -
-A delete directory /tmp/oc/sub/file10.txt -
-A delete directory /tmp/oc/sub -
-A delete link /tmp/oc/notes.org -
+E 1 /001 󰈔  .hidden
+E 1 /003 󰈔  notes.org -> UPPER
+X 1 2 Duplicate filename
+E 2 /000 󰉋  UPPER
+E 2 /000 󰉋  UPPER
 C 42337
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -7675,6 +10010,11 @@ K 1 /tmp/oc/ directory 0 sub
 E 1 /000 󰉋  ../
 E 1 /000 󰉋  ../
 A delete directory /tmp/oc/sub -
+D ok
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42338
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -7682,7 +10022,7 @@ R 2 /000 󰉋  ../
 K 1 /tmp/oc/ directory 0 sub
 E 1 /000 󰉋  ../
 E 1 /001 󰉋  sub/
-E 2 /000 󰉋  deep
+E 2 /000 󰉋  notes.org
 C 42339
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -7732,6 +10072,17 @@ A delete link /tmp/oc/sub/deep -
 A delete link /tmp/oc/sub/file10.txt -
 A delete directory /tmp/oc/sub/sub -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/deep file deep
+T /tmp/oc/file10.txt file file10.txt
+T /tmp/oc/z.tar.gz directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  z.tar.gz/
+S 1 /002 󰈔  deep
+S 1 /004 󰦪  file10.txt
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42341
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  sub/
@@ -7750,6 +10101,21 @@ E 2 /004 󰉋  Makefile/
 E 2 /0001 x  sub
 E 2 /003 󰈔  .hidden -> deep
 A copy file /tmp/oc/.hidden /tmp/oc/sub/sub
+D ok
+T /tmp/oc/.hidden file .hidden
+T /tmp/oc/sub directory
+T /tmp/oc/sub/.hidden link -> deep
+T /tmp/oc/sub/Makefile directory
+T /tmp/oc/sub/sub file .hidden
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  sub/
+S 1 /001 󰈔  .hidden
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /004 󰉋  Makefile/
+S 2 /003 󰈔  .hidden -> deep
+S 2 /005 󰈔  sub
 C 42342
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  sub/
@@ -7793,7 +10159,7 @@ K 2 /tmp/oc/sub/ file 0 007
 K 3 /tmp/oc/sub/ file 0 Makefile
 K 4 /tmp/oc/sub/ directory 0 Ä.md
 K 5 /tmp/oc/sub/ directory 0 notes.org
-E 1 /000 󰉋  a.c
+E 1 /000 󰉋  /
 E 1 /001 󰉋  sub/
 E 2 /000 󰉋  ../
 E 2 /000 󰉋  ../
@@ -7870,6 +10236,23 @@ A move file /tmp/oc/b.lua /tmp/oc/007
 A delete file /tmp/oc/sub/file10.txt -
 A delete file /tmp/oc/sub/v2.0.1 -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/007 file b.lua
+T /tmp/oc/UPPER file UPPER
+T /tmp/oc/a.c directory
+T /tmp/oc/v2.0.1 directory
+T /tmp/oc/x file x
+T /tmp/oc/z.tar.gz link -> b.lua
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰉋  a.c/
+S 1 /002 󰉋  v2.0.1/
+S 1 /004 󰈔  007
+S 1 /006 󰈔  UPPER
+S 1 /003 󰈔  x
+S 1 /010 󰢱  z.tar.gz -> b.lua
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42346
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  img.png/ -> sub/
@@ -7924,6 +10307,25 @@ A move file /tmp/oc/img.png /tmp/oc/img.png__oil_tmp_445903
 A move directory /tmp/oc/b.lua /tmp/oc/img.png
 A copy link /tmp/oc/z.tar.gz /tmp/oc/sub/z.tar.gz
 A move file /tmp/oc/img.png__oil_tmp_445903 /tmp/oc/b.lua
+D ok
+T /tmp/oc/b.lua file img.png
+T /tmp/oc/file10.txt file file10.txt
+T /tmp/oc/img.png directory
+T /tmp/oc/sub directory
+T /tmp/oc/sub/z.tar.gz link -> notes.org
+T /tmp/oc/sub/Ä.md file Ä.md
+T /tmp/oc/z.tar.gz link -> notes.org
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  img.png/
+S 1 /003 󰉋  sub/
+S 1 /001 󰢱  b.lua
+S 1 /005 󰦪  file10.txt
+S 1 /004   z.tar.gz -> notes.org
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /007   z.tar.gz -> notes.org
+S 2 /006 󰍔  Ä.md
 C 42348
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  sub/
@@ -7986,7 +10388,7 @@ K 8 /tmp/oc/sub/ file 0 README.md
 E 1 /000 󰉋  ../
 E 1 /003 󰉋  a b/
 E 1 /004 󰉋  img.png/
-E 1   
+E 1 u.{v,}
 E 1 /001 󰗄  007 -> z.tar.gz
 E 1 /005 󰢱  b.lua
 E 1 /001 x
@@ -8016,20 +10418,19 @@ K 7 /tmp/oc/ file 0 z.tar.gz
 K 8 /tmp/oc/sub/ directory 0 file9.txt
 K 9 /tmp/oc/sub/ file 0 b.lua
 K 10 /tmp/oc/sub/ file 0 deep
-E 1 /000 󰉋  ../
+E 1 /000 󰉋  UPPER
 E 1 /002 󰉋  Makefile/
 E 1 /004 󰉋  README.md/
-E 1 /006 󰉋  sub/
 E 1 /005 󰉋  Ä.md/
 E 1 /001 󰸭  .hidden -> img.png
 E 1 /003 󰈔  a b -> a b
 E 1 /007 󰗄  z.tar.gz
-E 2 /001 
-E 2 b.lua
-E 2 /000 󰉋  ../
-E 2 /009 󰢱  v2.0.1
+E 2 /000 󰉋  img.png
+E 2 /008 󰉋  file9.txt/
+E 2 /009 󰢱  notes.org
 E 2 /010 󰈔  deep
-X 2 0 Malformed ID at start of line
+E 2 /006 󰉋  sub/
+X 0 -1 Detected cycle in desired paths
 C 42353
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  Makefile/
@@ -8128,16 +10529,41 @@ K 5 /tmp/oc/ directory 0 b.lua
 K 6 /tmp/oc/ directory 0 sub
 E 1 /000 󰉋  ../
 E 1 /005 󰉋  b.lua/
-E 1 /000 󰉋  file10.txt
+E 1 /000 󰉋  a b
 E 1 /004 󰉋  img.png/
 E 1 /006 󰉋  sub/
 E 1 /001 󰈔  .hidden
 E 1 /002 󰈔  a b
 E 1 /003 󰈔  x
 E 2 /0001 x  Makefile
-E 2 /abs
+E 2 p{1,2}{3,4}
 E 2 /000 󰉋  ../
-X 2 1 Paths cannot start with '/'
+A create file /tmp/oc/sub/p11 -
+A create file /tmp/oc/sub/p22 -
+A copy file /tmp/oc/.hidden /tmp/oc/sub/Makefile
+D ok
+T /tmp/oc/.hidden file .hidden
+T /tmp/oc/a b file a b
+T /tmp/oc/b.lua directory
+T /tmp/oc/img.png directory
+T /tmp/oc/sub directory
+T /tmp/oc/sub/Makefile file .hidden
+T /tmp/oc/sub/p11 file 
+T /tmp/oc/sub/p22 file 
+T /tmp/oc/x file x
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /005 󰉋  b.lua/
+S 1 /004 󰉋  img.png/
+S 1 /006 󰉋  sub/
+S 1 /001 󰈔  .hidden
+S 1 /002 󰈔  a b
+S 1 /003 󰈔  x
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /009 󱁤  Makefile
+S 2 /007 󰈔  p11
+S 2 /008 󰈔  p22
 C 42357
 R 1 /000 󰉋  ../
 R 1 /004 󰉋  UPPER/
@@ -8210,6 +10636,27 @@ E 2 /008 󰉋  deep/
 E 2 /004 󱁤  Makefile
 E 2 /009 󰗄  z.tar.gz
 A delete directory /tmp/oc/sub/README.md -
+D ok
+T /tmp/oc/file9.txt directory
+T /tmp/oc/notes.org directory
+T /tmp/oc/sub directory
+T /tmp/oc/sub/Makefile file Makefile
+T /tmp/oc/sub/a b directory
+T /tmp/oc/sub/b.lua directory
+T /tmp/oc/sub/deep directory
+T /tmp/oc/sub/z.tar.gz file z.tar.gz
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰉋  file9.txt/
+S 1 /003 󰉋  notes.org/
+S 1 /002 󰉋  sub/
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /005 󰉋  a b/
+S 2 /007 󰉋  b.lua/
+S 2 /008 󰉋  deep/
+S 2 /004 󱁤  Makefile
+S 2 /009 󰗄  z.tar.gz
 C 42360
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -8243,9 +10690,27 @@ E 1 /003 󰉋  sub/
 E 1 /002 󰢱  b.lua
 E 1 /001 󰈔  v2.0.1
 E 2 /000 󰉋  ../
-E 2 /abs
+E 2 q//r
 E 2 /004 󱁤  Makefile
-X 2 1 Paths cannot start with '/'
+A create directory /tmp/oc/sub/q -
+A create directory /tmp/oc/sub/q/ -
+A create file /tmp/oc/sub/q//r -
+D ok
+T /tmp/oc/b.lua file b.lua
+T /tmp/oc/sub directory
+T /tmp/oc/sub/Makefile file Makefile
+T /tmp/oc/sub/q directory
+T /tmp/oc/sub/q/r file 
+T /tmp/oc/v2.0.1 file v2.0.1
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  sub/
+S 1 /002 󰢱  b.lua
+S 1 /001 󰈔  v2.0.1
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /005 󰉋  q/
+S 2 /004 󱁤  Makefile
 C 42362
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  Makefile/
@@ -8261,15 +10726,31 @@ K 3 /tmp/oc/ file 0 b.lua
 K 4 /tmp/oc/ directory 0 sub
 K 5 /tmp/oc/ file 0 z.tar.gz
 K 6 /tmp/oc/sub/ file 0 x
-E 1 /006 󰈔  x
+E 1 /000 󰉋  ../
 E 1 /000 󰉋  ../
 E 1 /002 󰉋  Makefile/
-E 1 /004 󰉋  z.tar.gz
+E 1 /004 󰉋  Ä.md
 E 1 /003 󰢱  b.lua
 E 1 /005 󰗄  z.tar.gz
-X 1 5 Duplicate filename
 E 2 /000 󰉋  ../
 E 2 /006 󰈔  x
+A delete file /tmp/oc/file9.txt -
+A move directory /tmp/oc/sub /tmp/oc/Ä.md
+D ok
+T /tmp/oc/Makefile directory
+T /tmp/oc/b.lua file b.lua
+T /tmp/oc/z.tar.gz file z.tar.gz
+T /tmp/oc/Ä.md directory
+T /tmp/oc/Ä.md/x file x
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  Makefile/
+S 1 /004 󰉋  Ä.md/
+S 1 /003 󰢱  b.lua
+S 1 /005 󰗄  z.tar.gz
+B 2 /tmp/oc/Ä.md/
+S 2 /000 󰉋  ../
+S 2 /007 󰈔  x
 C 42363
 R 1 /000 󰉋  ../
 R 1 /004 󰉋  file10.txt/
@@ -8309,7 +10790,7 @@ E 1 /003 󰈔  deep
 E 1 /001 󰈔  x -> x
 X 1 2 Duplicate filename
 E 2 /000 󰉋  ../
-E 2 ln -> a.c
+E 2   
 E 2 /005 󰈔  deep
 E 2 /004 󰈔  sub
 C 42365
@@ -8369,6 +10850,25 @@ E 2 /006 󰙱  a.c
 A delete directory /tmp/oc/deep -
 A delete link /tmp/oc/sub/a b -
 A move link /tmp/oc/sub/Ä.md /tmp/oc/Ä.md
+D ok
+T /tmp/oc/b.lua file b.lua
+T /tmp/oc/notes.org file notes.org
+T /tmp/oc/sub directory
+T /tmp/oc/sub/a.c file a.c
+T /tmp/oc/sub/deep directory
+T /tmp/oc/v2.0.1 file v2.0.1
+T /tmp/oc/Ä.md link -> Makefile
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  sub/
+S 1 /002 󰢱  b.lua
+S 1 /005   notes.org
+S 1 /001 󰈔  v2.0.1
+S 1 /008 󱁤  Ä.md -> Makefile
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /009 󰉋  deep/
+S 2 /006 󰙱  a.c
 C 42367
 R 1 /000 󰉋  ../
 R 1 /006 󰉋  sub/
@@ -8403,6 +10903,31 @@ E 2 /000 󰉋  ../
 E 2 /008 󱁤  Makefile
 E 2 /009 󰈔  x
 A copy file /tmp/oc/sub/Makefile /tmp/oc/Makefile
+D ok
+T /tmp/oc/007 file 007
+T /tmp/oc/Makefile file Makefile
+T /tmp/oc/a b link -> 007
+T /tmp/oc/b.lua link -> notes.org
+T /tmp/oc/file10.txt file file10.txt
+T /tmp/oc/file9.txt file file9.txt
+T /tmp/oc/sub directory
+T /tmp/oc/sub/Makefile file Makefile
+T /tmp/oc/sub/x file x
+T /tmp/oc/Ä.md link -> sub
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /006 󰉋  sub/
+S 1 /004 󰉋  Ä.md/ -> sub/
+S 1 /002 󰈔  007
+S 1 /010 󱁤  Makefile
+S 1 /003 󰈔  a b -> 007
+S 1 /005   b.lua -> notes.org
+S 1 /001 󰦪  file9.txt
+S 1 /007 󰦪  file10.txt
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /008 󱁤  Makefile
+S 2 /009 󰈔  x
 C 42368
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  sub/
@@ -8443,10 +10968,32 @@ E 1 /001   README.md
 E 1 /004 󰗄  z.tar.gz
 E 1 /002 󰍔  Ä.md
 E 2 /000 󰉋  ../
-E 2 /abs
+E 2 q//r
 E 2 /005 󰦪  file9.txt
 E 2 /006 󰈔  x
-X 2 1 Paths cannot start with '/'
+A create directory /tmp/oc/sub/q -
+A create directory /tmp/oc/sub/q/ -
+A create file /tmp/oc/sub/q//r -
+D ok
+T /tmp/oc/README.md file README.md
+T /tmp/oc/sub directory
+T /tmp/oc/sub/file9.txt file file9.txt
+T /tmp/oc/sub/q directory
+T /tmp/oc/sub/q/r file 
+T /tmp/oc/sub/x file x
+T /tmp/oc/z.tar.gz file z.tar.gz
+T /tmp/oc/Ä.md file Ä.md
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  sub/
+S 1 /001   README.md
+S 1 /004 󰗄  z.tar.gz
+S 1 /002 󰍔  Ä.md
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /007 󰉋  q/
+S 2 /005 󰦪  file9.txt
+S 2 /006 󰈔  x
 C 42370
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  a b/ -> sub/
@@ -8482,6 +11029,29 @@ E 2 /009 󰍔  Ä.md
 A move link /tmp/oc/a b /tmp/oc/a b__oil_tmp_711269
 A move file /tmp/oc/sub/a b /tmp/oc/a b
 A move link /tmp/oc/a b__oil_tmp_711269 /tmp/oc/sub/a b
+D ok
+T /tmp/oc/UPPER link -> notes.org
+T /tmp/oc/a b file a b
+T /tmp/oc/b.lua file b.lua
+T /tmp/oc/file9.txt file file9.txt
+T /tmp/oc/sub directory
+T /tmp/oc/sub/README.md file README.md
+T /tmp/oc/sub/a b link -> sub
+T /tmp/oc/sub/Ä.md file Ä.md
+T /tmp/oc/Ä.md directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /005 󰉋  sub/
+S 1 /003 󰉋  Ä.md/
+S 1 /006   UPPER -> notes.org
+S 1 /007 󰈔  a b
+S 1 /004 󰢱  b.lua
+S 1 /001 󰦪  file9.txt
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /008   README.md
+S 2 /002 󰈔  a b -> sub
+S 2 /009 󰍔  Ä.md
 C 42371
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -8490,11 +11060,24 @@ R 2 /002 󰢱  b.lua
 K 1 /tmp/oc/ directory 0 sub
 K 2 /tmp/oc/sub/ file 0 b.lua
 E 1 /000 󰉋  ../
-E 1   
+E 1 /0001 x  UPPER
 E 1 /001 󰉋  README.md
 E 2 /000 󰉋  ../
 E 2 /002 󰢱  b.lua
+A copy directory /tmp/oc/sub /tmp/oc/UPPER
 A move directory /tmp/oc/sub /tmp/oc/README.md
+D ok
+T /tmp/oc/README.md directory
+T /tmp/oc/README.md/b.lua file b.lua
+T /tmp/oc/UPPER directory
+T /tmp/oc/UPPER/b.lua file b.lua
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰉋  README.md/
+S 1 /003 󰉋  UPPER/
+B 2 /tmp/oc/README.md/
+S 2 /000 󰉋  ../
+S 2 /004 󰢱  b.lua
 C 42372
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  sub/
@@ -8509,6 +11092,15 @@ E 1 /001 󰈔  .hidden
 E 1 /002 󰗄  007 -> z.tar.gz
 E 2 /000 󰉋  ../
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/.hidden file .hidden
+T /tmp/oc/007 link -> z.tar.gz
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰈔  .hidden
+S 1 /002 󰗄  007 -> z.tar.gz
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42373
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -8555,6 +11147,29 @@ E 2 /007 󰦪  a.c -> file9.txt
 E 2 /010 󰙱  notes.org -> a.c
 E 2 /008 󰈔  sub
 A delete link /tmp/oc/007 -
+D ok
+T /tmp/oc/UPPER directory
+T /tmp/oc/img.png file img.png
+T /tmp/oc/sub directory
+T /tmp/oc/sub/UPPER file UPPER
+T /tmp/oc/sub/a.c link -> file9.txt
+T /tmp/oc/sub/notes.org link -> a.c
+T /tmp/oc/sub/sub file sub
+T /tmp/oc/z.tar.gz file z.tar.gz
+T /tmp/oc/Ä.md directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /005 󰉋  UPPER/
+S 1 /004 󰉋  sub/
+S 1 /003 󰉋  Ä.md/
+S 1 /002 󰸭  img.png
+S 1 /006 󰗄  z.tar.gz
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /009 󰈔  UPPER
+S 2 /007 󰦪  a.c -> file9.txt
+S 2 /010 󰙱  notes.org -> a.c
+S 2 /008 󰈔  sub
 C 42375
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -8596,11 +11211,34 @@ E 1 /004 󰈔  a b
 E 1 /006 󰈔  deep
 E 1 /009 󰦪  file10.txt
 E 1 /008 󰗄  z.tar.gz
-E 2 a/b/c.txt
+E 2 ln -> a.c
 E 2 /000 󰉋  ../
-A create directory /tmp/oc/sub/a -
-A create directory /tmp/oc/sub/a/b -
-A create file /tmp/oc/sub/a/b/c.txt -
+A create link /tmp/oc/sub/ln -
+D ok
+T /tmp/oc/.hidden link -> Makefile
+T /tmp/oc/007 file 007
+T /tmp/oc/Makefile file Makefile
+T /tmp/oc/UPPER link -> .hidden
+T /tmp/oc/a b file a b
+T /tmp/oc/deep file deep
+T /tmp/oc/file10.txt file file10.txt
+T /tmp/oc/sub directory
+T /tmp/oc/sub/ln link -> a.c
+T /tmp/oc/z.tar.gz file z.tar.gz
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /005 󰉋  sub/
+S 1 /001 󱁤  .hidden -> Makefile
+S 1 /002 󰈔  007
+S 1 /003 󱁤  Makefile
+S 1 /007 󰈔  UPPER -> .hidden
+S 1 /004 󰈔  a b
+S 1 /006 󰈔  deep
+S 1 /009 󰦪  file10.txt
+S 1 /008 󰗄  z.tar.gz
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /010 󰙱  ln -> a.c
 C 42377
 R 1 /000 󰉋  ../
 R 1 /005 󰉋  sub/
@@ -8669,6 +11307,25 @@ E 1 /004 󰸭  img.png
 E 2 /000 󰉋  ../
 A delete file /tmp/oc/sub/007 -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/a b directory
+T /tmp/oc/b.lua file b.lua
+T /tmp/oc/deep link -> Makefile
+T /tmp/oc/file10.txt file file10.txt
+T /tmp/oc/file9.txt link -> x
+T /tmp/oc/img.png file img.png
+T /tmp/oc/v2.0.1 directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  a b/
+S 1 /002 󰉋  v2.0.1/
+S 1 /005 󰢱  b.lua
+S 1 /007 󱁤  deep -> Makefile
+S 1 /001 󰈔  file9.txt -> x
+S 1 /008 󰦪  file10.txt
+S 1 /004 󰸭  img.png
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42380
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -8676,7 +11333,7 @@ R 2 /000 󰉋  ../
 K 1 /tmp/oc/ directory 0 sub
 E 1 /000 󰉋  ..//
 E 2 /001 󰉋  sub/
-E 2 x.{c,h}
+E 2 v2.0.1
 E 2 /001 󰉋  sub/
 E 2 /000 󰉋  ../
 X 2 2 Duplicate filename
@@ -8739,6 +11396,21 @@ E 2 /005 󰉋  notes.org/
 A move directory /tmp/oc/UPPER /tmp/oc/UPPER__oil_tmp_903164
 A move file /tmp/oc/file10.txt /tmp/oc/UPPER
 A move directory /tmp/oc/UPPER__oil_tmp_903164 /tmp/oc/file10.txt
+D ok
+T /tmp/oc/UPPER file file10.txt
+T /tmp/oc/file10.txt directory
+T /tmp/oc/sub directory
+T /tmp/oc/sub/notes.org directory
+T /tmp/oc/x directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  file10.txt/
+S 1 /002 󰉋  sub/
+S 1 /001 󰉋  x/
+S 1 /004 󰈔  UPPER
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /005 󰉋  notes.org/
 C 42383
 R 1 /000 󰉋  ../
 R 1 /005 󰉋  sub/
@@ -8761,7 +11433,7 @@ K 7 /tmp/oc/sub/ directory 0 a.c
 K 8 /tmp/oc/sub/ file 0 v2.0.1
 K 9 /tmp/oc/sub/ directory 0 deep
 E 1 /000 󰉋  ../
-E 1 ln -> a.c/
+E 1   /
 E 1 /005 󰉋  sub/
 E 1 /004 󰉋  Ä.md/
 E 1 /002 󰈔  007
@@ -8772,7 +11444,6 @@ E 2 /000 󰉋  ../
 E 2 /007 󰉋  a.c/
 E 2 /009 󰉋  deep/
 E 2 /008 󰈔  v2.0.1
-A create link /tmp/oc/ln -
 C 42384
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  sub/
@@ -8853,6 +11524,23 @@ A delete directory /tmp/oc/sub/007 -
 A delete link /tmp/oc/sub/notes.org -
 A delete link /tmp/oc/sub/sub -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/Makefile file Makefile
+T /tmp/oc/UPPER directory
+T /tmp/oc/a b file a b
+T /tmp/oc/file10.txt directory
+T /tmp/oc/notes.org file notes.org
+T /tmp/oc/v2.0.1 directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /005 󰉋  UPPER/
+S 1 /006 󰉋  file10.txt/
+S 1 /001 󰉋  v2.0.1/
+S 1 /002 󱁤  Makefile
+S 1 /003 󰈔  a b
+S 1 /007   notes.org
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42387
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  Makefile/
@@ -8873,6 +11561,17 @@ E 1 /004 󰈔  deep
 E 2 /000 󰉋  ../
 A delete directory /tmp/oc/sub/img.png -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/007 file 007
+T /tmp/oc/Makefile directory
+T /tmp/oc/deep file deep
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  Makefile/
+S 1 /001 󰈔  007
+S 1 /004 󰈔  deep
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42388
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  sub/
@@ -8887,15 +11586,37 @@ K 3 /tmp/oc/ file 0 deep
 K 4 /tmp/oc/ file 0 file10.txt
 K 5 /tmp/oc/sub/ directory 0 img.png
 E 1 /000 󰉋  ../
-E 1 file10.txt
 E 1 a/b/
+E 1 sub//
 E 1 /002 󰉋  sub/
 E 1 /005 󰉋  img.png/
 E 1 /003 󰈔  deep
 E 1 /001 󰦪  file9.txt -> file10.txt
 E 1 /004 󰦪  file10.txt
-X 1 7 Duplicate filename
 E 2 /000 󰉋  ../
+A create directory /tmp/oc/a -
+A create directory /tmp/oc/a/b -
+A create directory /tmp/oc/sub -
+A create directory /tmp/oc/sub/ -
+A move directory /tmp/oc/sub/img.png /tmp/oc/img.png
+D ok
+T /tmp/oc/a directory
+T /tmp/oc/a/b directory
+T /tmp/oc/deep file deep
+T /tmp/oc/file10.txt file file10.txt
+T /tmp/oc/file9.txt link -> file10.txt
+T /tmp/oc/img.png directory
+T /tmp/oc/sub directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /006 󰉋  a/
+S 1 /005 󰉋  img.png/
+S 1 /002 󰉋  sub/
+S 1 /003 󰈔  deep
+S 1 /001 󰦪  file9.txt -> file10.txt
+S 1 /004 󰦪  file10.txt
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42389
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  a b/
@@ -8908,13 +11629,12 @@ K 2 /tmp/oc/ directory 0 a b
 K 3 /tmp/oc/ link 0 x -> Ä.md
 K 4 /tmp/oc/ directory 0 sub
 E 1 /000 󰉋  ../
-E 1 Ä.md
+E 1   
 E 1 /002 󰉋  a b/
 E 1 /004 󰉋  sub/
 E 1 /001 󰙱  a.c
 E 1 /003 󰍔  x -> Ä.md
 E 2 /000 󰉋  ../
-A create file /tmp/oc/Ä.md -
 C 42390
 R 1 /000 󰉋  ../
 R 1 /004 󰉋  b.lua/
@@ -8948,7 +11668,7 @@ E 1 /007 󰦪  file10.txt
 X 1 6 Duplicate filename
 E 2 /000 󰉋  ../
 E 2 /008 󰈔  a b
-E 2 /009 󰈔  v2.0.1
+E 2 /009 󰈔  a.c
 C 42391
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  sub/
@@ -8966,6 +11686,19 @@ E 2 /000 󰉋  ../
 E 2 /004   README.md
 E 2 /003 󰈔  a b -> deep
 A move directory /tmp/oc/sub /tmp/oc/..
+D EEXIST: file already exists: /tmp/oc/..
+T /tmp/oc/b.lua file b.lua
+T /tmp/oc/sub directory
+T /tmp/oc/sub/README.md file README.md
+T /tmp/oc/sub/a b link -> deep
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  sub/
+S 1 /001 󰢱  b.lua
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /004   README.md
+S 2 /003 󰈔  a b -> deep
 C 42392
 R 1 /000 󰉋  ../
 R 1 /001 󰉋  file9.txt/
@@ -8999,6 +11732,27 @@ A delete file /tmp/oc/v2.0.1 -
 A create directory /tmp/oc/v2.0.1 -
 A copy file /tmp/oc/sub/x /tmp/oc/x
 A delete directory /tmp/oc/sub/deep -
+D ok
+T /tmp/oc/b.lua file b.lua
+T /tmp/oc/deep file deep
+T /tmp/oc/file9.txt directory
+T /tmp/oc/sub directory
+T /tmp/oc/sub/x file x
+T /tmp/oc/v2.0.1 directory
+T /tmp/oc/x file x
+T /tmp/oc/Ä.md link -> 007
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /001 󰉋  file9.txt/
+S 1 /005 󰉋  sub/
+S 1 /009 󰉋  v2.0.1/
+S 1 /004 󰢱  b.lua
+S 1 /006 󰈔  deep
+S 1 /010 󰈔  x
+S 1 /003 󰈔  Ä.md -> 007
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /007 󰈔  x
 C 42393
 R 1 /000 󰉋  ../
 R 1 /004 󰉋  sub/
@@ -9018,7 +11772,7 @@ K 6 /tmp/oc/sub/ file 0 Ä.md
 K 7 /tmp/oc/sub/ directory 0 notes.org
 E 1 /000 󰉋  ../
 E 1 /004 󰉋  sub/
-E 1 nd/
+E 1 a/b/c.txt
 E 1 /002 󰈔  .hidden -> .hidden
 E 1 /003 󰈔  007
 E 1 /001 󰦪  file9.txt
@@ -9026,7 +11780,32 @@ E 2 /000 󰉋  ../
 E 2 /005 󰉋  Makefile/
 E 2 /007 󰉋  notes.org/
 E 2 /006 󰍔  Ä.md
-A create directory /tmp/oc/nd -
+A create directory /tmp/oc/a -
+A create directory /tmp/oc/a/b -
+A create file /tmp/oc/a/b/c.txt -
+D ok
+T /tmp/oc/.hidden link -> .hidden
+T /tmp/oc/007 file 007
+T /tmp/oc/a directory
+T /tmp/oc/a/b directory
+T /tmp/oc/a/b/c.txt file 
+T /tmp/oc/file9.txt file file9.txt
+T /tmp/oc/sub directory
+T /tmp/oc/sub/Makefile directory
+T /tmp/oc/sub/notes.org directory
+T /tmp/oc/sub/Ä.md file Ä.md
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /008 󰉋  a/
+S 1 /004 󰉋  sub/
+S 1 /002 󰈔  .hidden -> .hidden
+S 1 /003 󰈔  007
+S 1 /001 󰦪  file9.txt
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /005 󰉋  Makefile/
+S 2 /007 󰉋  notes.org/
+S 2 /006 󰍔  Ä.md
 C 42394
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  notes.org/
@@ -9041,14 +11820,30 @@ K 3 /tmp/oc/ directory 0 notes.org
 K 4 /tmp/oc/sub/ link 0 file9.txt -> a b
 K 5 /tmp/oc/sub/ directory 0 007
 E 1 /000 󰉋  ../
-E 1 /003 󰉋  deep
-E 1 /999 x  y
+E 1 /000 󰉋  ../
+E 1 /003 󰉋  file10.txt
 E 1 /004 󰈔  file9.txt -> a b
 E 1 /002 󰉋  sub/
 E 1 /001   README.md -> README.md
-X 1 2 Could not find existing entry (was the ID changed?)
 E 2 /000 󰉋  ../
 E 2 /005 󰉋  007/
+A move directory /tmp/oc/notes.org /tmp/oc/file10.txt
+A move link /tmp/oc/sub/file9.txt /tmp/oc/file9.txt
+D ok
+T /tmp/oc/README.md link -> README.md
+T /tmp/oc/file10.txt directory
+T /tmp/oc/file9.txt link -> a b
+T /tmp/oc/sub directory
+T /tmp/oc/sub/007 directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  file10.txt/
+S 1 /002 󰉋  sub/
+S 1 /001   README.md -> README.md
+S 1 /004 󰈔  file9.txt -> a b
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /005 󰉋  007/
 C 42395
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  file9.txt/
@@ -9072,20 +11867,43 @@ K 7 /tmp/oc/ directory 0 sub
 K 8 /tmp/oc/sub/ file 0 file9.txt
 K 9 /tmp/oc/sub/ directory 0 .hidden
 K 10 /tmp/oc/sub/ file 0 deep
-E 1 /000 󰉋  deep
+E 1 /000 󰉋  ../
 E 1 /002 󰉋  file9.txt/
 E 1 /007 󰉋  sub/
 E 1 /006 󰉋  Ä.md/
-E 1 /003 󰈔  .hidden
 E 1 /001 󰙱  a.c
 E 1 /005 󰸭  img.png
-E 1 /004 󰈔  UPPER
+E 1 /004 󰈔  README.md
 E 2 /000 󰉋  ../
 E 2 /009 󰉋  .hidden/
 E 2 /010 󰈔  deep
-E 2 /008 󰦪  UPPER
-A move file /tmp/oc/x /tmp/oc/UPPER
-A move file /tmp/oc/sub/file9.txt /tmp/oc/sub/UPPER
+E 2 /008 󰦪  x
+A delete file /tmp/oc/.hidden -
+A move file /tmp/oc/x /tmp/oc/README.md
+A move file /tmp/oc/sub/file9.txt /tmp/oc/sub/x
+D ok
+T /tmp/oc/README.md file x
+T /tmp/oc/a.c file a.c
+T /tmp/oc/file9.txt directory
+T /tmp/oc/img.png file img.png
+T /tmp/oc/sub directory
+T /tmp/oc/sub/.hidden directory
+T /tmp/oc/sub/deep file deep
+T /tmp/oc/sub/x file file9.txt
+T /tmp/oc/Ä.md directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /002 󰉋  file9.txt/
+S 1 /007 󰉋  sub/
+S 1 /006 󰉋  Ä.md/
+S 1 /004   README.md
+S 1 /001 󰙱  a.c
+S 1 /005 󰸭  img.png
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /009 󰉋  .hidden/
+S 2 /010 󰈔  deep
+S 2 /008 󰈔  x
 C 42396
 R 1 /000 󰉋  ../
 R 1 /002 󰉋  sub/
@@ -9126,6 +11944,21 @@ E 2 /000 󰉋  ../
 A delete directory /tmp/oc/sub/a b -
 A delete file /tmp/oc/sub/img.png -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/README.md directory
+T /tmp/oc/a.c directory
+T /tmp/oc/deep file deep
+T /tmp/oc/img.png directory
+T /tmp/oc/x directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  README.md/
+S 1 /001 󰉋  a.c/
+S 1 /004 󰉋  img.png/
+S 1 /002 󰉋  x/
+S 1 /006 󰈔  deep
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
 C 42398
 R 1 /000 󰉋  ../
 R 1 /004 󰉋  UPPER/
@@ -9143,12 +11976,39 @@ E 1 /000 󰉋  ../
 E 1 /004 󰉋  v2.0.1
 E 1 /003 󰉋  sub/
 E 1 /002 󱁤  Makefile
-E 1 a/b/
+E 1 sub//
 E 1 /001 󰈔  UPPER/
 E 2 /000 󰉋  ../
-E 2 /abs
+E 2 q//r
 E 2 /005   notes.org/
-X 2 1 Paths cannot start with '/'
+A create directory /tmp/oc/sub -
+A create directory /tmp/oc/sub/ -
+A create directory /tmp/oc/sub/q -
+A create directory /tmp/oc/sub/q/ -
+A create file /tmp/oc/sub/q//r -
+A delete file /tmp/oc/sub/notes.org -
+A create directory /tmp/oc/sub/notes.org -
+A move file /tmp/oc/v2.0.1 /tmp/oc/v2.0.1__oil_tmp_985044
+A move directory /tmp/oc/UPPER /tmp/oc/v2.0.1
+A move file /tmp/oc/v2.0.1__oil_tmp_985044 /tmp/oc/UPPER
+D ok
+T /tmp/oc/Makefile file Makefile
+T /tmp/oc/UPPER file v2.0.1
+T /tmp/oc/sub directory
+T /tmp/oc/sub/notes.org directory
+T /tmp/oc/sub/q directory
+T /tmp/oc/sub/q/r file 
+T /tmp/oc/v2.0.1 directory
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  sub/
+S 1 /004 󰉋  v2.0.1/
+S 1 /002 󱁤  Makefile
+S 1 /001 󰈔  UPPER
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /010 󰉋  notes.org/
+S 2 /007 󰉋  q/
 C 42399
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  sub/
@@ -9165,9 +12025,30 @@ E 1 /003 󰉋  sub/
 E 1 /004 󰈔  deep
 E 1 /001 󰙱  file9.txt -> README.md
 E 2 /002   a.c
-E 2 /abs
+E 2 p{1,2}{3,4}
 E 2 /000 󰉋  ../
-X 2 1 Paths cannot start with '/'
+A delete link /tmp/oc/file9.txt -
+A create link /tmp/oc/file9.txt -
+A create file /tmp/oc/sub/p11 -
+A create file /tmp/oc/sub/p22 -
+A move file /tmp/oc/README.md /tmp/oc/sub/a.c
+D ok
+T /tmp/oc/deep file deep
+T /tmp/oc/file9.txt link -> README.md
+T /tmp/oc/sub directory
+T /tmp/oc/sub/a.c file README.md
+T /tmp/oc/sub/p11 file 
+T /tmp/oc/sub/p22 file 
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  sub/
+S 1 /004 󰈔  deep
+S 1 /005   file9.txt -> README.md
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /002 󰙱  a.c
+S 2 /006 󰈔  p11
+S 2 /007 󰈔  p22
 C 42400
 R 1 /000 󰉋  ../
 R 1 /003 󰉋  sub/
@@ -9184,11 +12065,134 @@ K 5 /tmp/oc/sub/ file 0 a b
 E 1 /000 󰉋  ../
 E 1 /004 󰈔  UPPER -> a b
 E 1 /001 󰈔  v2.0.1
-E 1 x.{c,h}
+E 1 ln -> a.c
 E 1 /002 󰈔  x
 E 2 /000 󰉋  ../
-A create file /tmp/oc/x.c -
-A create file /tmp/oc/x.h -
+A create link /tmp/oc/ln -
 A delete file /tmp/oc/sub/a b -
 A delete directory /tmp/oc/sub -
+D ok
+T /tmp/oc/UPPER link -> a b
+T /tmp/oc/ln link -> a.c
+T /tmp/oc/v2.0.1 file v2.0.1
+T /tmp/oc/x file x
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /004 󰈔  UPPER -> a b
+S 1 /006 󰙱  ln -> a.c
+S 1 /001 󰈔  v2.0.1
+S 1 /002 󰈔  x
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+C 1206
+R 1 /000 󰉋  ../
+R 1 /003 󰉋  sub/
+R 1 /002 󰉋  v2.0.1/ -> sub/
+R 1 /001 󰙱  a.c
+R 1 /004 󰦪  file10.txt
+R 2 /000 󰉋  ../
+R 2 /005 󰈔  .hidden
+R 2 /007 󱁤  Makefile
+R 2 /008 󰈔  UPPER -> UPPER
+R 2 /006 󰈔  v2.0.1
+K 1 /tmp/oc/ file 0 a.c
+K 2 /tmp/oc/ link 1 v2.0.1 -> sub
+K 3 /tmp/oc/ directory 0 sub
+K 4 /tmp/oc/ file 0 file10.txt
+K 5 /tmp/oc/sub/ file 0 .hidden
+K 6 /tmp/oc/sub/ file 0 v2.0.1
+K 7 /tmp/oc/sub/ file 0 Makefile
+K 8 /tmp/oc/sub/ link 0 UPPER -> UPPER
+E 1 /000 󰉋  ../
+E 1 /003 󰉋  a.c
+E 1 /002 󰉋  v2.0.1/ -> sub/
+E 2 /000 󰉋  ../
+E 2 /004 󰦪  file10.txt
+E 2 /005 󰈔  .hidden
+E 2 /007 󱁤  Makefile
+E 2 /008 󰈔  UPPER -> UPPER
+E 2 /006 󰈔  v2.0.1
+A delete file /tmp/oc/a.c -
+A move file /tmp/oc/file10.txt /tmp/oc/sub/file10.txt
+A move directory /tmp/oc/sub /tmp/oc/a.c
+D ok
+T /tmp/oc/a.c directory
+T /tmp/oc/a.c/.hidden file .hidden
+T /tmp/oc/a.c/Makefile file Makefile
+T /tmp/oc/a.c/UPPER link -> UPPER
+T /tmp/oc/a.c/file10.txt file file10.txt
+T /tmp/oc/a.c/v2.0.1 file v2.0.1
+T /tmp/oc/v2.0.1 link -> sub
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /003 󰉋  a.c/
+S 1 /002 󰉋  v2.0.1/ -> sub/
+B 2 /tmp/oc/a.c/
+S 2 /000 󰉋  ../
+S 2 /009 󰈔  .hidden
+S 2 /011 󱁤  Makefile
+S 2 /012 󰈔  UPPER -> UPPER
+S 2 /013 󰦪  file10.txt
+S 2 /010 󰈔  v2.0.1
+C 2278
+R 1 /000 󰉋  ../
+R 1 /003 󰉋  README.md/
+R 1 /004 󰉋  sub/
+R 1 /001 󰈔  v2.0.1
+R 1 /002 󰈔  x
+R 2 /000 󰉋  ../
+R 2 /006 󰉋  README.md/
+R 2 /005 󰦪  file9.txt
+K 1 /tmp/oc/ file 0 v2.0.1
+K 2 /tmp/oc/ file 0 x
+K 3 /tmp/oc/ directory 0 README.md
+K 4 /tmp/oc/ directory 0 sub
+K 5 /tmp/oc/sub/ file 0 file9.txt
+K 6 /tmp/oc/sub/ directory 0 README.md
+E 1 /000 󰉋  ../
+E 1 /003 󰉋  v2.0.1
+E 1 /004 󰉋  sub/
+E 1 /001 󰈔  README.md/
+E 1 /002 󰈔  x
+E 2 /0001 x  deep
+E 2 /006 󰉋  README.md/
+E 2 /005 󰦪  file9.txt/
+A delete file /tmp/oc/sub/file9.txt -
+A create directory /tmp/oc/sub/file9.txt -
+A move file /tmp/oc/v2.0.1 /tmp/oc/sub/deep
+A move directory /tmp/oc/README.md /tmp/oc/v2.0.1
+A copy file /tmp/oc/v2.0.1 /tmp/oc/README.md
+D EISDIR: illegal operation on a directory: /tmp/oc/v2.0.1 -> /tmp/oc/README.md
+T /tmp/oc/sub directory
+T /tmp/oc/sub/README.md directory
+T /tmp/oc/sub/deep file v2.0.1
+T /tmp/oc/sub/file9.txt directory
+T /tmp/oc/v2.0.1 directory
+T /tmp/oc/x file x
+B 1 /tmp/oc/
+S 1 /000 󰉋  ../
+S 1 /004 󰉋  sub/
+S 1 /003 󰉋  v2.0.1/
+S 1 /002 󰈔  x
+B 2 /tmp/oc/sub/
+S 2 /000 󰉋  ../
+S 2 /006 󰉋  README.md/
+S 2 /007 󰉋  file9.txt/
+S 2 /001 󰈔  deep
+C 43064
+R 1 /000 󰉋  ../
+R 1 /001 󰉋  sub/
+R 1 /002 󰈔  deep
+R 2 /000 󰉋  ../
+R 2 /003 󰉋  sub/
+K 1 /tmp/oc/ directory 0 sub
+K 2 /tmp/oc/ file 0 deep
+K 3 /tmp/oc/sub/ directory 0 sub
+E 1 /000 󰉋  ../
+E 1 /001 󰉋  a b
+E 1 sub//
+E 1 /000 󰉋  ../
+E 1 /002 󰈔  deep
+E 2 /003 󰉋  sub/
+X 0 -1 Detected cycle in desired paths
 .

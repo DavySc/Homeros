@@ -198,7 +198,8 @@ static long num(const char *s, size_t n, long none)
 {
 	long v = 0;
 	if (!n) return none;
-	for (size_t i = 0; i < n; i++) v = v * 10 + (s[i] - '0');
+	/* tonumber gives a float past long's range; the line is clamped later */
+	for (size_t i = 0; i < n; i++) v = v > (LONG_MAX - 9) / 10 ? LONG_MAX : v * 10 + (s[i] - '0');
 	return v;
 }
 

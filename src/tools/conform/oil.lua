@@ -3,7 +3,9 @@
 -- Each case: a random tree under /tmp/oc, two oil buffers (the root and a
 -- subdirectory), random edits; prints per case
 --   C seed / R buf line (rendered) / E buf line (edited) /
---   A type etype src dst / X buf line message, then "." at the end.
+--   A type etype src dst / X buf line message; when there are actions, oil
+--   runs them: D ok|err / T path type [-> link | contents] (the tree after) /
+--   B buf dir / S buf line (each buffer's directory, as moves renamed it, rendered again); then "." at the end.
 vim.opt.rtp:prepend(arg[1])
 vim.opt.rtp:prepend(arg[2])
 require("mini.icons").setup()
@@ -11,6 +13,21 @@ require("oil").setup({ cleanup_delay_ms = false, columns = { "icon" }, view_opti
 local cache = require("oil.cache")
 local parser = require("oil.mutator.parser")
 local mutator = require("oil.mutator")
+local view = require("oil.view")
+local uv = vim.uv
+-- the tree under p, sorted: "T path type [-> link | contents]"
+local function tree(p)
+  local names = {}
+  for nm in vim.fs.dir(p) do names[#names + 1] = nm end
+  table.sort(names)
+  for _, nm in ipairs(names) do
+    local q = p .. "/" .. nm
+    local st = uv.fs_lstat(q)
+    if st.type == "link" then io.write("T ", q, " link -> ", uv.fs_readlink(q), "\n")
+    elseif st.type == "directory" then io.write("T ", q, " directory\n"); tree(q)
+    else io.write("T ", q, " file ", (table.concat(vim.fn.readfile(q), "|")), "\n") end
+  end
+end
 local seed, n = tonumber(arg[3]), tonumber(arg[4])
 local NAMES = { "a.c", "b.lua", "README.md", "Makefile", "file9.txt", "file10.txt", "x", "sub", ".hidden",
   "deep", "z.tar.gz", "Ä.md", "notes.org", "img.png", "a b", "UPPER", "007", "v2.0.1" }
@@ -31,7 +48,7 @@ for c = 1, n do
     if not vim.uv.fs_lstat(p) then
       if math.random() < 0.25 then vim.fn.mkdir(p, "p")
       elseif math.random() < 0.3 then vim.uv.fs_symlink(rnd(NAMES), p)
-      else vim.fn.writefile({}, p) end
+      else vim.fn.writefile({ nm }, p) end
     end
   end
   cache.clear_everything()
@@ -61,9 +78,9 @@ for c = 1, n do
     local k = math.random(10)
     local i = math.random(math.max(#L, 1))
     if k == 1 and #L > 0 then table.remove(L, i)                                       -- delete
-    elseif k == 2 and L[i] then L[i] = L[i]:gsub("[^ ]+$", rnd(NAMES))                -- rename
+    elseif k == 2 and L[i] then L[i] = L[i]:gsub("[^ ]+$", math.random() < 0.1 and "/" or rnd(NAMES))                -- rename
     elseif k == 3 and L[i] then L[i] = L[i] .. "/"                                     -- to a directory
-    elseif k == 4 then table.insert(L, i, rnd({ "new.txt", "nd/", "a/b/c.txt", "x.{c,h}", "ln -> a.c", rnd(NAMES), "/abs", "  ", "a/b/" }))
+    elseif k == 4 then table.insert(L, i, rnd({ "new.txt", "nd/", "a/b/c.txt", "x.{c,h}", "ln -> a.c", rnd(NAMES), "/abs", "  ", "a/b/", "p{1,2}{3,4}", "q//r", "{}{s,t}", "u.{v,}", "sub//" }))
     elseif k == 5 and L[i] then table.insert(lines[3 - b], math.random(#lines[3 - b] + 1), L[i])  -- copy to the other
     elseif k == 6 and L[i] then table.insert(lines[3 - b], math.random(#lines[3 - b] + 1), table.remove(L, i))  -- move
     elseif k == 7 and L[i] then table.insert(L, i, L[i])                               -- duplicate
@@ -106,12 +123,40 @@ for c = 1, n do
     end
     local ok, acts = pcall(mutator.create_actions_from_diffs, all)
     pairs = raw
-    if not ok then out:write("X 0 -1 ", tostring(acts):match("[^:]*$"):gsub("^%s+", ""), "\n")
+    if not ok then out:write("X 0 -1 ", (tostring(acts):gsub("^.-:%d+: ", "")), "\n")
     else
       for _, a in ipairs(acts) do
         local src = (a.url or a.src_url):gsub("^oil://", "")
         local dst = (a.dest_url or "-"):gsub("^oil://", "")
         out:write("A ", a.type, " ", a.entry_type, " ", src, " ", dst, "\n")
+      end
+      if #acts > 0 then
+        local done, err = false, nil
+        -- util.update_moved_buffers matches a moved directory as a bare
+        -- prefix, so moving "sub" renames the buffer of "sub__oil_tmp_1/"
+        -- too (every directory cycle does it): oil.c takes whole names;
+        -- here vim.startswith does too, while oil runs the actions
+        local sw = vim.startswith
+        vim.startswith = function(str, pre)
+          return sw(str, pre) and (#str == #pre or pre:sub(-1) == "/" or str:sub(#pre + 1, #pre + 1) == "/")
+        end
+        mutator.process_actions(acts, function(e) done, err = true, e end)
+        vim.wait(5000, function() return done end, 5)
+        vim.startswith = sw
+        out:write("D ", err or "ok", "\n")
+        tree("/tmp/oc")
+        for b = 1, 2 do
+          local fin = false
+          if vim.api.nvim_buf_is_valid(bufs[b]) then
+            out:write("B ", b, " ", vim.api.nvim_buf_get_name(bufs[b]):gsub("^oil://", ""), "\n")
+            view.render_buffer_async(bufs[b], { refetch = true }, function() fin = true end)
+            vim.wait(3000, function() return fin end, 5)
+            for _, l in ipairs(vim.api.nvim_buf_get_lines(bufs[b], 0, -1, false)) do
+              -- an error is drawn centred in the window: only its text
+              if l ~= "" then out:write("S ", b, " ", (l:gsub("^%s+Error:", "Error:")), "\n") end
+            end
+          end
+        end
       end
     end
   end

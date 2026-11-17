@@ -33,6 +33,7 @@ typedef struct { int y, x, h, w; } Box;
 
 static struct {
 	int open, what, insert;    /* insert: the prompt is in insert mode */
+	int g;                     /* a g typed in normal mode: gg */
 	char prompt[PROMPT];
 	size_t plen, pcur;
 	char cwd[PATH_MAX];
@@ -249,9 +250,9 @@ static void line(const char *s, size_t n)
 	size_t fn = (size_t)(z - s);
 	const char *r = z + 1, *e = s + n;
 	long ln = 0, col = 0;
-	while (r < e && *r >= '0' && *r <= '9') ln = ln * 10 + (*r++ - '0');
+	for (; r < e && *r >= '0' && *r <= '9'; r++) ln = ln > (LONG_MAX - 9) / 10 ? LONG_MAX : ln * 10 + (*r - '0');
 	if (r == e || *r++ != ':') return;
-	while (r < e && *r >= '0' && *r <= '9') col = col * 10 + (*r++ - '0');
+	for (; r < e && *r >= '0' && *r <= '9'; r++) col = col > (LONG_MAX - 9) / 10 ? LONG_MAX : col * 10 + (*r - '0');
 	if (r == e || *r != ':') return;
 	/* the text is "file:line:col:text" */
 	char t[4096];
@@ -289,30 +290,76 @@ static int spawn(char *const argv[])
 	return P.proc;
 }
 
-/* source/files.lua: fd, else rg */
+/* source/files.lua: the first of fd, fdfind, rg and find there is */
 static void files(void)
 {
-	static char *fd[] = { "fd", "--type", "f", "--type", "l", "--color", "never", "-E", ".git", NULL };
-	static char *rg[] = { "rg", "--files", "--no-messages", "--color", "never", "-g", "!.git", NULL };
-	if (spawn(fd) < 0) spawn(rg);
+	static char *cmd[][12] = {
+		{ "fd", "--type", "f", "--type", "l", "--color", "never", "-E", ".git", NULL },
+		{ "fdfind", "--type", "f", "--type", "l", "--color", "never", "-E", ".git", NULL },
+		{ "rg", "--files", "--no-messages", "--color", "never", "-g", "!.git", NULL },
+		{ "find", ".", "-type", "f", "-not", "-path", "*/.git/*", "-not", "-path", "*/.*", NULL },
+	};
+	for (size_t i = 0; i < sizeof cmd / sizeof *cmd; i++) if (spawn(cmd[i]) >= 0) return;
+	P.done = 1;
+	core_msg(P.e, "No supported finder found: `fd` `fdfind` `rg` `find`");
 }
 
-/* source/grep.lua, live: the prompt is rg's pattern ("pattern -- args"
-   splits off rg arguments: not kept) */
+/* util.parse: "pattern -- rg args" (^(.-)%s+%-%-%s*(.*)$); the args,
+   blanks squeezed, split at spaces outside quotes (the quotes stay, and a
+   quote of the other kind inside one ends it, as in snacks).  s is
+   rewritten in place. */
+enum { GREP_ARGS = 32 };
+static int blank(char c) { return c == ' ' || (c >= '\t' && c <= '\r'); }
+static int parse(char *s, char **pat, char **args)
+{
+	char *d = NULL;
+	for (char *q = s; (q = strstr(q, "--")); q++)
+		if (q > s && blank(q[-1])) { d = q; break; }
+	*pat = s;
+	if (!d) return 0;
+	char *e = d;
+	while (e > s && blank(e[-1])) e--;
+	*e = 0;
+	while (blank(**pat)) ++*pat;                     /* vim.trim */
+	/* squeeze and trim the args into d */
+	char *w = d;
+	for (const char *r = d + 2; *r; r++)
+		if (!blank(*r)) *w++ = *r;
+		else if (w > d && !blank(r[1]) && r[1]) *w++ = ' ';
+	*w = 0;
+	int n = 0;
+	char quote = 0, *a = d;
+	for (char *c = d;; c++) {
+		if (*c == '\'' || *c == '"') quote = quote == *c ? 0 : *c;
+		else if (!*c || (*c == ' ' && !quote)) {
+			int end = !*c;
+			*c = 0;
+			if (n < GREP_ARGS && (*a || !end)) args[n++] = a;
+			if (end) return n;
+			a = c + 1;
+		}
+	}
+}
+
+/* source/grep.lua, live: the prompt is rg's pattern, then its arguments */
 static void grep(void)
 {
-	char pat[PROMPT + 1];
-	memcpy(pat, P.prompt, P.plen);
-	pat[P.plen] = 0;
+	char buf[PROMPT + 1], *pat, *pa[GREP_ARGS];
+	memcpy(buf, P.prompt, P.plen);
+	buf[P.plen] = 0;
+	int na = parse(buf, &pat, pa);
 	finder_stop();
 	P.nit = P.nshown = 0;
 	P.an = 0;
 	P.sel = P.top = 0;
 	if (!P.plen) { P.done = 1; return; }     /* need_search */
-	char *argv[] = { "rg", "--color=never", "--no-heading", "--with-filename", "--line-number",
+	char *argv[16 + GREP_ARGS + 4] = { "rg", "--color=never", "--no-heading", "--with-filename", "--line-number",
 		"--column", "--smart-case", "--max-columns=500", "--max-columns-preview",
-		"--glob=!.bare", "--glob=!.git", "-0", "--no-hidden", "--", pat, ".", NULL };
-	spawn(argv);
+		"--glob=!.bare", "--glob=!.git", "-0", "--no-hidden" };
+	int k = 13;
+	for (int i = 0; i < na; i++) argv[k++] = pa[i];
+	argv[k++] = "--"; argv[k++] = pat; argv[k++] = "."; argv[k] = NULL;
+	if (spawn(argv) < 0) { P.done = 1; core_msg(P.e, "No supported finder found: `rg`"); }
 }
 
 static const char *path_rel(const char *f, size_t *n)
@@ -344,7 +391,7 @@ int tools_pick(Editor *e, int what)
 	}
 	finder_stop();
 	P.e = e;
-	P.open = 1; P.what = what; P.insert = 1;
+	P.open = 1; P.what = what; P.insert = 1; P.g = 0;
 	P.plen = P.pcur = 0;
 	P.nit = P.nshown = P.an = 0;
 	P.sel = P.top = 0;
@@ -476,8 +523,9 @@ int tools_key(Editor *e, int k)
 
 static int key(Editor *e, int k)
 {
-	static int g;                      /* a g typed in normal mode: gg */
 	int h = list_height(e);
+	/* the key after g ends it, whatever it is (g<CR> is no command) */
+	if (P.g) { P.g = 0; if (k == 'g') P.sel = 0; return 1; }
 	switch (k) {
 	case KEY_ENTER: confirm(e); return 1;
 	case KEY_DOWN: case 14: case 10: move(1); return 1;    /* Down CTRL-N CTRL-J */
@@ -492,13 +540,12 @@ static int key(Editor *e, int k)
 		return 1;
 	}
 	/* normal mode in the prompt */
-	if (g) { g = 0; if (k == 'g') P.sel = 0; return 1; }
 	switch (k) {
 	case KEY_ESC: case 'q': close_picker(); break;
 	case 'j': move(1); break;
 	case 'k': move(-1); break;
 	case 'G': if (P.nshown) P.sel = P.nshown - 1; break;
-	case 'g': g = 1; break;
+	case 'g': P.g = 1; break;
 	case 'i': P.insert = 1; break;
 	case 'a': P.insert = 1; if (P.pcur < P.plen) P.pcur += uni_len((const unsigned char *)P.prompt, P.plen, P.pcur); break;
 	case 'I': P.insert = 1; P.pcur = 0; break;
@@ -574,14 +621,17 @@ static void border(Grid *g, Box b, const char *title)
    next column */
 static int text(Grid *g, int r, int x, int end, const char *s, size_t n, int attr)
 {
+	const unsigned char *u = (const unsigned char *)s;
 	for (size_t i = 0; i < n && x < end;) {
-		size_t k = uni_len((const unsigned char *)s, n, i);
-		unsigned cp = uni_cp((const unsigned char *)s, n, i);
-		int w = cp < 0x20 || cp == 0x7f ? 1 : uni_width(cp);
-		if (x + w > end) break;
-		if (cp < 0x20 || cp == 0x7f) grid_put(g, r, x, (const unsigned char *)" ", 1, 1, attr);
-		else grid_put(g, r, x, (const unsigned char *)s + i, k, w, attr);
-		x += w; i += k;
+		size_t k = uni_glen(u, n, i);
+		/* a control character, an invalid byte or what Neovim cannot
+		   print (uni_width 4 or 6) is one blank: a name is not edited here */
+		int w = u[i] < 0x20 || u[i] == 0x7f ? 0 : uni_width(u, n, i);
+		if (w > 2) w = 0;
+		if (x + (w ? w : 1) > end) break;
+		if (!w) grid_put(g, r, x, (const unsigned char *)" ", 1, 1, attr);
+		else grid_put(g, r, x, u + i, k, w, attr);
+		x += w ? w : 1; i += k;
 	}
 	return x;
 }

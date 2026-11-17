@@ -1,6 +1,9 @@
 /* oil.nvim's model, from its Lua (the comments name the file): the cache
    of entries by id, a directory's lines, and the lines back to actions. */
 #include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,7 +31,9 @@ static int find(const char *dir, const char *name, size_t n)
 	return -1;
 }
 
-/* create_and_store_entry: a name already in the directory keeps its id */
+/* create_and_store_entry: a name already in the directory keeps its id.
+   oil keeps its type too, so a file replaced by a directory outside the
+   editor stays a file; that is not copied: the type is what is there now. */
 int oil_entry(const char *dir, const char *name, int type, const char *link, int linkdir)
 {
 	int i = find(dir, name, strlen(name));
@@ -47,18 +52,20 @@ int oil_entry(const char *dir, const char *name, int type, const char *link, int
 	E[i].type = type;
 	free(E[i].link);
 	E[i].link = link ? strdup(link) : NULL;
-	E[i].linkdir = linkdir;
+	/* a broken link keeps the target's type it had (read_link_data) */
+	if (linkdir >= 0) E[i].linkdir = linkdir;
 	return i;
 }
 
 int oil_list(const char *dir)
 {
 	DIR *d = opendir(dir);
-	if (!d) return -1;
+	if (!d && errno != ENOENT) return -1;
 	/* begin_update_url */
 	for (int i = 1; i < nE; i++) if (E[i].dir && !strcmp(E[i].dir, dir)) E[i].old = 1;
 	char p[4096], t[4096];
-	for (struct dirent *de; (de = readdir(d));) {
+	/* a directory that does not exist lists as empty (files.lua's list) */
+	for (struct dirent *de; d && (de = readdir(d));) {
 		if (!strcmp(de->d_name, ".") || !strcmp(de->d_name, "..")) continue;
 		struct stat st;
 		snprintf(p, sizeof p, "%s%s", dir, de->d_name);
@@ -70,12 +77,12 @@ int oil_list(const char *dir)
 			t[k > 0 ? k : 0] = 0;
 			link = t;
 		}
-		if (oil_entry(dir, de->d_name, type, link, type == OIL_LINK && !stat(p, &st) && S_ISDIR(st.st_mode)) < 0) {
+		if (oil_entry(dir, de->d_name, type, link, type != OIL_LINK ? 0 : stat(p, &st) ? -1 : S_ISDIR(st.st_mode)) < 0) {
 			closedir(d);
 			return -1;
 		}
 	}
-	closedir(d);
+	if (d) closedir(d);
 	/* end_update_url */
 	for (int i = 1; i < nE; i++)
 		if (E[i].dir && E[i].old) { free(E[i].dir); E[i].dir = NULL; E[i].old = 0; }
@@ -151,9 +158,13 @@ int oil_render(const char *dir, char **out, size_t *n)
 			b = t;
 		}
 		len += (size_t)snprintf(b + len, cap - len, "/%0*d %s  %s%s", w, e ? ids[j] : 0,
-		                       oil_icon(type, e && e->type == OIL_LINK ? e->link : name), name,
+		                       oil_icon(type, e && e->type == OIL_LINK && e->link ? e->link : name), name,
 		                       !e || e->type == OIL_DIR || (e->type == OIL_LINK && e->linkdir) ? "/" : "");
-		if (e && e->type == OIL_LINK) len += (size_t)snprintf(b + len, cap - len, " -> %s%s", e->link, e->linkdir ? "/" : "");
+		if (e && e->type == OIL_LINK && e->link) {
+			/* get_link_text: util.addslash, so "sub/" keeps one slash */
+			size_t k = strlen(e->link);
+			len += (size_t)snprintf(b + len, cap - len, " -> %s%s", e->link, e->linkdir && k && e->link[k - 1] != '/' ? "/" : "");
+		}
 		b[len++] = '\n';
 	}
 	free(ids);
@@ -241,7 +252,8 @@ static int parse(Out *o, int buf, const char *dir, const char *text, size_t len)
 			/* parse_line: ^/(%d+) (.+)$, then the icon column ^(%S+)%s+(.*)$ */
 			size_t i = 1;
 			long v = 0;
-			while (i < n && l[i] >= '0' && l[i] <= '9') v = v * 10 + (l[i++] - '0');
+			/* Lua's tonumber of a long id is a float no entry has: saturate */
+			for (; i < n && l[i] >= '0' && l[i] <= '9'; i++) v = v > (LONG_MAX - 9) / 10 ? LONG_MAX : v * 10 + (l[i] - '0');
 			if (i + 1 >= n || l[i] != ' ') { push_err(o, "Malformed ID at start of line", buf, ln); continue; }
 			i++;
 			size_t r = i;
@@ -257,8 +269,8 @@ static int parse(Out *o, int buf, const char *dir, const char *text, size_t len)
 				while (q < n && lspace((unsigned char)l[q])) q++;
 			}
 			if (!(name = trim(l + q, n - q))) goto out;
-			int noname = !name[0];
 			isdir = parsedir(name);
+			int noname = !name[0];       /* "/" alone too: parsedir first */
 			etype = isdir ? OIL_DIR : OIL_FILE;
 			id = v < nE && v > 0 && E[v].dir ? (int)v : -1;
 			if (v == 0) { free(name); continue; }      /* the ../ entry */
@@ -336,12 +348,48 @@ static char *join(const char *dir, const char *name)
 	return s;
 }
 
-static int add_action(Acts *v, OilAction a)
+/* The first {[^}]+} in p[from..k) as Lua finds it: from each '{' the
+   bytes up to the next '}', at least one. */
+static int brace(const char *p, size_t k, size_t from, size_t *o, size_t *c)
+{
+	for (size_t i = from; i < k; i++) {
+		if (p[i] != '{') continue;
+		size_t j = i + 1;
+		while (j < k && p[j] != '}') j++;
+		if (j < k && j > i + 1) { *o = i; *c = j; return 1; }
+	}
+	return 0;
+}
+
+/* base's first u bytes, '/', then p[0..k) with every {...} group put as
+   a[0..an) when a is not NULL (malloc'd, or NULL) */
+static char *alt(const char *base, size_t u, const char *p, size_t k, const char *a, size_t an)
+{
+	size_t n = u + 1 + k, o, c;
+	if (a) for (size_t i = 0; brace(p, k, i, &o, &c); i = c + 1) n = n - (c - o + 1) + an;
+	char *s = malloc(n + 1), *w = s;
+	if (!s) return NULL;
+	memcpy(w, base, u); w += u;
+	*w++ = '/';
+	size_t i = 0;
+	if (a) for (; brace(p, k, i, &o, &c); i = c + 1) { memcpy(w, p + i, o - i); w += o - i; memcpy(w, a, an); w += an; }
+	memcpy(w, p + i, k - i); w += k - i;
+	*w = 0;
+	return s;
+}
+
+/* *at (if not NULL): the stored path, which outlives the call */
+static int add_action(Acts *v, OilAction a, const char **at)
 {
 	/* seen_creates: one create per path */
 	if (a.type == OIL_CREATE)
 		for (int i = 0; i < v->n; i++)
-			if (v->a[i].type == OIL_CREATE && !strcmp(v->a[i].src, a.src)) { free(a.src); free(a.link); return 0; }
+			if (v->a[i].type == OIL_CREATE && !strcmp(v->a[i].src, a.src)) {
+				if (at) *at = v->a[i].src;
+				free(a.src); free(a.link);
+				return 0;
+			}
+	if (at) *at = a.src;
 	if (v->n == v->cap) {
 		int c = v->cap ? v->cap * 2 : 16;
 		OilAction *t = realloc(v->a, (size_t)c * sizeof *t);
@@ -371,7 +419,7 @@ static int child(const char *c, const char *p)
 {
 	size_t n = strlen(p);
 	if (strncmp(c, p, n) || c[n] != '/') return 0;
-	return c[n + 1] && !strchr(c + n + 1, '/');
+	return !strchr(c + n + 1, '/');          /* "a/" is a's child "": vim.split keeps it */
 }
 
 enum { F_ANY, F_MOVEDEL, F_COPY };
@@ -384,11 +432,12 @@ typedef struct { int *d; int n; } Deps;
 static void dep(Deps *d, int i) { d->d[d->n++] = i; }
 
 /* trie:accum_actions_at, trie:accum_children_of, trie:accum_first_parents_of */
-static void at(const Acts *v, const char *alive, int dst, const char *url, Deps *d, int f)
+/* the actions at url's first n bytes */
+static void at(const Acts *v, const char *alive, int dst, const char *url, size_t n, Deps *d, int f)
 {
 	for (int i = 0; i < v->n; i++) {
 		const char *k = dst ? key_dst(&v->a[i]) : key_src(&v->a[i]);
-		if (alive[i] && k && !strcmp(k, url) && pass(&v->a[i], f)) dep(d, i);
+		if (alive[i] && k && !strncmp(k, url, n) && !k[n] && pass(&v->a[i], f)) dep(d, i);
 	}
 }
 /* in the order of the children's names (oil walks them with pairs, in
@@ -407,12 +456,10 @@ static void children(const Acts *v, const char *alive, int dst, const char *url,
 }
 static void first_parents(const Acts *v, const char *alive, const char *url, Deps *d)
 {
-	char p[4096];
-	snprintf(p, sizeof p, "%s", url);
-	for (char *s = strrchr(p, '/'); s && s > p; s = strrchr(p, '/')) {
-		*s = 0;
+	for (size_t n = strlen(url); n-- > 1;) {
+		if (url[n] != '/') continue;
 		int before = d->n;
-		at(v, alive, 1, p, d, F_ANY);
+		at(v, alive, 1, url, n, d, F_ANY);
 		if (d->n > before) return;
 	}
 }
@@ -426,18 +473,18 @@ static void deps(const Acts *v, const char *alive, int i, Deps *d)
 	case OIL_DELETE: children(v, alive, 0, a->src, d); break;
 	case OIL_CREATE:
 		first_parents(v, alive, a->src, d);
-		at(v, alive, 0, a->src, d, F_MOVEDEL);
+		at(v, alive, 0, a->src, strlen(a->src), d, F_MOVEDEL);
 		break;
 	case OIL_MOVE:
 		first_parents(v, alive, a->dst, d);
 		children(v, alive, 1, a->src, d);
 		children(v, alive, 0, a->src, d);
-		at(v, alive, 0, a->dst, d, F_MOVEDEL);
+		at(v, alive, 0, a->dst, strlen(a->dst), d, F_MOVEDEL);
 		break;
 	case OIL_COPY:
 		first_parents(v, alive, a->dst, d);
 		children(v, alive, 1, a->src, d);
-		at(v, alive, 0, a->dst, d, F_MOVEDEL);
+		at(v, alive, 0, a->dst, strlen(a->dst), d, F_MOVEDEL);
 		break;
 	}
 }
@@ -487,10 +534,12 @@ static int order(Acts *v, Acts *out, const char **msg)
 		if (sel >= 0) {
 			OilAction *a = &v->a[sel];
 			if ((a->type == OIL_MOVE || a->type == OIL_COPY) && is_under(a->dst, a->src)) {
-				*msg = "Cannot move or copy parent into itself";
+				static char m[8256];
+				snprintf(m, sizeof m, "Cannot move or copy parent into itself: oil://%s -> oil://%s", a->src, a->dst);
+				*msg = m;
 				goto out;
 			}
-			if (add_action(out, *a)) goto out;
+			if (add_action(out, *a, NULL)) goto out;
 			*a = (OilAction){ 0 };
 			alive[sel] = 0;
 			left--;
@@ -502,13 +551,15 @@ static int order(Acts *v, Acts *out, const char **msg)
 		}
 		/* a move cycle (a -> b, b -> a): one move goes through a temporary name */
 		OilAction *a = &v->a[loop];
-		char tmp[4096];
-		snprintf(tmp, sizeof tmp, "%s__oil_tmp_%05d", a->src, rand() % 999999);
-		OilAction m1 = { OIL_MOVE, a->etype, a->src, strdup(tmp), NULL };
+		size_t tn = strlen(a->src) + 20;
+		char *tmp = malloc(tn);
+		if (!tmp) goto out;
+		snprintf(tmp, tn, "%s__oil_tmp_%05d", a->src, rand() % 999999);
+		OilAction m1 = { OIL_MOVE, a->etype, a->src, tmp, NULL };
 		OilAction m2 = { OIL_MOVE, a->etype, strdup(tmp), a->dst, NULL };
 		*a = (OilAction){ 0 };
 		alive[loop] = 0;
-		if (add_action(&after, m2) || add_action(v, m1)) goto out;
+		if (add_action(&after, m2, NULL) || add_action(v, m1, NULL)) goto out;
 		char *na = realloc(alive, (size_t)v->n + 1), *ns = realloc(seen, (size_t)v->n + 1);
 		if (na) alive = na;
 		if (ns) seen = ns;
@@ -516,7 +567,7 @@ static int order(Acts *v, Acts *out, const char **msg)
 		alive[v->n - 1] = 1;
 	}
 	for (int i = 0; i < after.n; i++) {
-		if (add_action(out, after.a[i])) goto out;
+		if (add_action(out, after.a[i], NULL)) goto out;
 		after.a[i] = (OilAction){ 0 };
 	}
 	rc = 0;
@@ -540,27 +591,26 @@ int oil_actions(int nbuf, const char *const *dirs, const char *const *text, cons
 		Diff *d = &o.d[i];
 		if (d->kind != D_NEW || d->id > 0) continue;
 		/* nested names: foo/bar/baz makes the directories on the way */
-		char url[4096];
+		const char *base = d->dir;               /* the url so far */
 		size_t u = strlen(d->dir) - 1;           /* without the trailing '/' */
-		memcpy(url, d->dir, u);
-		for (char *s = d->name, *z; s; s = z ? z + 1 : NULL) {
-			z = strchr(s, '/');
-			size_t k = z ? (size_t)(z - s) : strlen(s);
-			int last = !z;
-			char *ob = last ? memchr(s, '{', k) : NULL, *cb = ob ? memchr(ob, '}', k - (size_t)(ob - s)) : NULL;
-			if (ob && cb && cb > ob + 1) {
-				/* foo.{js,test.js}: one create per alternative */
-				for (char *a = ob + 1, *e; a < cb; a = e + 1) {
-					e = memchr(a, ',', (size_t)(cb - a));
-					if (!e) e = cb;
-					int m = snprintf(url + u, sizeof url - u, "/%.*s%.*s%.*s", (int)(ob - s), s, (int)(e - a), a, (int)(s + k - cb - 1), cb + 1);
-					(void)m;
-					if (add_action(&v, (OilAction){ OIL_CREATE, d->etype, strdup(url), NULL, d->link ? strdup(d->link) : NULL })) goto done;
+		for (char *p = d->name, *z; p; p = z ? z + 1 : NULL) {
+			z = strchr(p, '/');
+			size_t k = z ? (size_t)(z - p) : strlen(p), o, c;
+			if (!z && brace(p, k, 0, &o, &c)) {
+				/* foo.{js,test.js}: one create per alternative, put in
+				   every group (v:gsub("{[^}]+}", alt)) */
+				for (const char *a = p + o + 1, *e;; a = e + 1) {
+					e = memchr(a, ',', (size_t)(p + c - a));
+					if (!e) e = p + c;
+					char *url = alt(base, u, p, k, a, (size_t)(e - a));
+					if (!url || add_action(&v, (OilAction){ OIL_CREATE, d->etype, url, NULL, d->link ? strdup(d->link) : NULL }, NULL)) { free(url); goto done; }
+					if (e == p + c) break;
 				}
 				break;
 			}
-			u += (size_t)snprintf(url + u, sizeof url - u, "/%.*s", (int)k, s);
-			if (add_action(&v, (OilAction){ OIL_CREATE, last ? d->etype : OIL_DIR, strdup(url), NULL, last && d->link ? strdup(d->link) : NULL })) goto done;
+			char *url = alt(base, u, p, k, NULL, 0);
+			if (!url || add_action(&v, (OilAction){ OIL_CREATE, z ? OIL_DIR : d->etype, url, NULL, !z && d->link ? strdup(d->link) : NULL }, &base)) { free(url); goto done; }
+			u += 1 + k;
 		}
 	}
 	/* then by id: moves (and copies) where the entry also went, deletes,
@@ -572,7 +622,7 @@ int oil_actions(int nbuf, const char *const *dirs, const char *const *text, cons
 		char *src = join(E[id].dir, E[id].name);
 		if (!src) goto done;
 		if (del && !creates) {
-			if (add_action(&v, (OilAction){ OIL_DELETE, E[id].type, src, NULL, NULL })) goto done;
+			if (add_action(&v, (OilAction){ OIL_DELETE, E[id].type, src, NULL, NULL }, NULL)) goto done;
 			continue;
 		}
 		int k = 0;
@@ -580,7 +630,7 @@ int oil_actions(int nbuf, const char *const *dirs, const char *const *text, cons
 			if (o.d[i].id != id || o.d[i].kind != D_NEW) continue;
 			k++;
 			int type = del && k == creates ? OIL_MOVE : OIL_COPY;
-			if (add_action(&v, (OilAction){ type, E[id].type, strdup(src), join(o.d[i].dir, o.d[i].name), NULL })) goto done;
+			if (add_action(&v, (OilAction){ type, E[id].type, strdup(src), join(o.d[i].dir, o.d[i].name), NULL }, NULL)) goto done;
 		}
 		free(src);
 	}
@@ -599,4 +649,163 @@ done:
 	oil_free(v.a, v.n);
 	oil_free(out.a, out.n);
 	return rc;
+}
+
+/* --- running the actions: adapters/files.lua's perform_action and fs.lua,
+   one after another, stopping at the first error (process_actions); each
+   one done is also made in the cache (cache.perform_action) --- */
+
+/* libuv's name and message for an error (uv_err_name, uv_strerror), as
+   oil shows them */
+const char *oil_errname(int e)
+{
+	static const struct { int e; const char *s; } t[] = {
+		{ EACCES, "EACCES: permission denied" }, { EBUSY, "EBUSY: resource busy or locked" },
+		{ EEXIST, "EEXIST: file already exists" }, { EINVAL, "EINVAL: invalid argument" },
+		{ EIO, "EIO: i/o error" }, { EISDIR, "EISDIR: illegal operation on a directory" },
+		{ ELOOP, "ELOOP: too many symbolic links encountered" }, { EMLINK, "EMLINK: too many links" },
+		{ ENAMETOOLONG, "ENAMETOOLONG: name too long" }, { ENOENT, "ENOENT: no such file or directory" },
+		{ ENOSPC, "ENOSPC: no space left on device" }, { ENOTDIR, "ENOTDIR: not a directory" },
+		{ ENOTEMPTY, "ENOTEMPTY: directory not empty" }, { EPERM, "EPERM: operation not permitted" },
+		{ EROFS, "EROFS: read-only file system" }, { EXDEV, "EXDEV: cross-device link not permitted" },
+	};
+	for (size_t i = 0; i < sizeof t / sizeof *t; i++) if (t[i].e == e) return t[i].s;
+	return strerror(e);
+}
+
+/* the failed call's error as luv words it: "NAME: message: path", or
+   "...: path -> new path" for a call with two */
+static char msg[8192];
+static int fail(const char *p, const char *q)
+{
+	snprintf(msg, sizeof msg, "%s: %s%s%s", oil_errname(errno), p, q ? " -> " : "", q ? q : "");
+	return -1;
+}
+
+static int rm_r(int type, const char *p)
+{
+	if (type != OIL_DIR) return unlink(p) ? fail(p, NULL) : 0;
+	DIR *d = opendir(p);
+	if (!d) return fail(p, NULL);
+	int rc = 0;
+	char q[4096];
+	for (struct dirent *de; !rc && (de = readdir(d));) {
+		if (!strcmp(de->d_name, ".") || !strcmp(de->d_name, "..")) continue;
+		struct stat st;
+		snprintf(q, sizeof q, "%s/%s", p, de->d_name);
+		rc = lstat(q, &st) ? fail(q, NULL) : rm_r(S_ISDIR(st.st_mode) ? OIL_DIR : OIL_FILE, q);
+	}
+	closedir(d);
+	return rc ? rc : rmdir(p) ? fail(p, NULL) : 0;
+}
+
+/* uv_fs_copyfile with excl: a new file with the source's bytes and mode */
+static int copyfile(const char *src, const char *dst)
+{
+	struct stat st;
+	int in = open(src, O_RDONLY), out = -1, rc = -1;
+	if (in < 0 || fstat(in, &st) || (out = open(dst, O_WRONLY | O_CREAT | O_EXCL, st.st_mode & 07777)) < 0) goto out;
+	char b[65536];
+	ssize_t n;
+	while ((n = read(in, b, sizeof b)) > 0)
+		for (ssize_t w = 0, k; w < n; w += k)
+			if ((k = write(out, b + w, (size_t)(n - w))) < 0) goto out;
+	rc = n < 0 || fchmod(out, st.st_mode & 07777) ? -1 : 0;
+out:
+	if (rc) fail(src, dst);
+	if (in >= 0) close(in);
+	if (out >= 0 && close(out) && !rc) rc = fail(src, dst);
+	/* uv__fs_copyfile removes what it made when the copy fails (a
+	   directory's read fails only after the new file is there) */
+	if (rc && out >= 0) unlink(dst);
+	return rc;
+}
+
+static int cp_r(int type, const char *src, const char *dst)
+{
+	char q[4096], r[4096];
+	if (type == OIL_LINK) {
+		ssize_t k = readlink(src, q, sizeof q - 1);
+		if (k < 0) return fail(src, NULL);
+		q[k] = 0;
+		return symlink(q, dst) ? fail(q, dst) : 0;
+	}
+	if (type != OIL_DIR) return copyfile(src, dst);
+	struct stat st;
+	if (stat(src, &st)) return fail(src, NULL);
+	if (mkdir(dst, st.st_mode & 07777)) return fail(dst, NULL);
+	DIR *d = opendir(src);
+	if (!d) return fail(src, NULL);
+	int rc = 0;
+	for (struct dirent *de; !rc && (de = readdir(d));) {
+		if (!strcmp(de->d_name, ".") || !strcmp(de->d_name, "..")) continue;
+		snprintf(q, sizeof q, "%s/%s", src, de->d_name);
+		snprintf(r, sizeof r, "%s/%s", dst, de->d_name);
+		rc = lstat(q, &st) ? fail(q, NULL) : cp_r(S_ISDIR(st.st_mode) ? OIL_DIR : S_ISLNK(st.st_mode) ? OIL_LINK : OIL_FILE, q, r);
+	}
+	closedir(d);
+	return rc;
+}
+
+static int run(const OilAction *a)
+{
+	switch (a->type) {
+	case OIL_CREATE:
+		if (a->etype == OIL_DIR) return mkdir(a->src, 0755) && errno != EEXIST ? fail(a->src, NULL) : 0;
+		if (a->etype == OIL_LINK && a->link) return symlink(a->link, a->src) ? fail(a->link, a->src) : 0;
+		int fd = open(a->src, O_WRONLY | O_CREAT | O_APPEND, 0644);
+		return fd < 0 || close(fd) ? fail(a->src, NULL) : 0;
+	case OIL_DELETE: return rm_r(a->etype, a->src);
+	/* recursive_move: a rename, or else (another device, but any error
+	   does it) a copy and a delete */
+	case OIL_MOVE: return rename(a->src, a->dst) && (cp_r(a->etype, a->src, a->dst) || rm_r(a->etype, a->src)) ? -1 : 0;
+	default: return cp_r(a->etype, a->src, a->dst);
+	}
+}
+
+/* "/a/b/c" as "/a/b/" and "c" in p */
+static const char *split(const char *path, char *p, size_t cap)
+{
+	const char *s = strrchr(path, '/');
+	snprintf(p, cap, "%.*s", (int)(s - path + 1), path);
+	return s + 1;
+}
+
+static int cache_do(const OilAction *a)
+{
+	char d[4096], s[4096];
+	const char *n = split(a->type == OIL_COPY ? a->dst : a->src, d, sizeof d);
+	int i = find(d, n, strlen(n));
+	if (a->type == OIL_CREATE || a->type == OIL_COPY) return i > 0 || oil_entry(d, n, a->etype, NULL, 0) > 0 ? 0 : -1;
+	if (i < 0) return 0;
+	if (a->type == OIL_DELETE) { free(E[i].dir); E[i].dir = NULL; return 0; }
+	/* a move: the entry goes, metadata cleared */
+	n = split(a->dst, s, sizeof s);
+	char *dir = strdup(s), *name = strdup(n);
+	if (!dir || !name) { free(dir); free(name); return -1; }
+	free(E[i].dir); free(E[i].name); free(E[i].link);
+	E[i].dir = dir; E[i].name = name; E[i].link = NULL; E[i].linkdir = 0;
+	return 0;
+}
+
+const char *oil_apply(const OilAction *a, int n, int *done)
+{
+	for (*done = 0; *done < n; ++*done) {
+		if (run(&a[*done])) return msg;
+		if (cache_do(&a[*done])) return "out of memory";
+	}
+	return NULL;
+}
+
+/* util.update_moved_buffers: a buffer's path after move a, in place; 1 if
+   it moved.  oil compares a directory's path as a bare prefix, so moving
+   "a" would rename the buffer of "ab/" too; this takes "a/" only. */
+int oil_follow(const OilAction *a, char *path, size_t cap)
+{
+	size_t n = strlen(a->src);
+	if (a->type != OIL_MOVE || strncmp(path, a->src, n) || (path[n] && (a->etype != OIL_DIR || path[n] != '/'))) return 0;
+	char t[4096];
+	snprintf(t, sizeof t, "%s%s", a->dst, path + n);
+	snprintf(path, cap, "%s", t);
+	return 1;
 }

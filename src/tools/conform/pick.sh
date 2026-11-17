@@ -21,7 +21,7 @@ nvim --clean --headless -l "$here/pick.lua" "$1" smart "${pats[@]}" 2>/dev/null 
 		i=$((i + 1))
 	done < "$tree.out"
 } > "$here/pick-expect.inc"
-gpats=("pick" "line" "PICK" "return 1" "l.ne o" "")
+gpats=("pick" "line" "PICK" "return 1" "l.ne o" "" "pick -- -g*.md" "line   --   -g  *.c" "return -- -g*.lua -g!tests")
 nvim --clean --headless -l "$here/pick.lua" "$1" grep "${gpats[@]}" 2>/dev/null > "$tree.out"
 i=0
 while IFS= read -r line; do
