@@ -20,16 +20,16 @@ journal: sync without fdatasync~test TESTS=file_journal~~src/file/journal.c~	fda
 journal: directory never fsynced~test TESTS=file_journal~~src/file/journal.c~	if (!j->dir_synced) j->dir_synced = !state_sync_dir(j->name);~	if (0) j->dir_synced = !state_sync_dir(j->name);
 journal: readable by others~test TESTS=file_journal~~src/file/state.c~mkdir(out, 0700)~mkdir(out, 0755)
 journal: record length not bounded (fuzzer)~fuzz FUZZERS=file_journal FUZZ_SECONDS=60~~src/file/journal.c~		if (!r.ok || e[2] > r.n) return 0;~		if (!r.ok) return 0;
-core wiring: journal kept after a save~test TESTS=file_core~~ref/core.c~	case SAVE_OK:¶		b->saved_seq = undo_seq(b->undo);¶		b->changed = 0;¶		if (b->journal) journal_saved(b->journal);~	case SAVE_OK:¶		b->saved_seq = undo_seq(b->undo);¶		b->changed = 0;
-core wiring: flags not journalled~test TESTS=file_core~~ref/core.c~	if (b->journal && jstate(b) != before && journal_edit~	if (0 && b->journal && jstate(b) != before && journal_edit
-core wiring: outside change never noted~test TESTS=file_core~~ref/core.c~ && !b->changed) b->changed = 1;~ && !b->changed) b->changed = 0;
-core wiring: recovered identity replaced by the file's~test TESTS=file_core~~ref/core.c~	b->changed = !same_id(id, &b->id);¶	b->id = *id;~	b->changed = !same_id(id, &b->id);
+core wiring: journal kept after a save~test TESTS=file_core~~src/core/core.c~	case SAVE_OK:¶		b->saved_seq = undo_seq(b->undo);¶		b->changed = 0;¶		if (b->journal) journal_saved(b->journal);~	case SAVE_OK:¶		b->saved_seq = undo_seq(b->undo);¶		b->changed = 0;
+core wiring: flags not journalled~test TESTS=file_core~~src/core/core.c~	if (b->journal && jstate(b) != before && journal_edit~	if (0 && b->journal && jstate(b) != before && journal_edit
+core wiring: outside change never noted~test TESTS=file_core~~src/core/core.c~file_watch_read(fd, b->path, &b->id) == 1 && !b->changed) b->changed = 1;~file_watch_read(fd, b->path, &b->id) == 1 && !b->changed) b->changed = 0;
+core wiring: recovered identity replaced by the file's~test TESTS=file_core~~src/core/core.c~	b->changed = !same_id(id, &b->id);¶	b->id = *id;~	b->changed = !same_id(id, &b->id);
 journal: no new base after a failed append (review of PR 16, 2)~test TESTS=file_journal~~src/file/journal.c~	j->based = 0;¶	return -1;~	return -1;
 journal: a record that does not apply blocks the journal (review of PR 16, 2)~test TESTS=file_journal~~src/file/journal.c~		if (e[0] > text_len(*t) || e[1] > text_len(*t) - e[0]) return 0;¶~
 file: dangling symlink saved over the link (review of PR 16, 4)~test TESTS=file_save~~src/file/file.c~		ssize_t k = readlink(real, l, sizeof l);~		ssize_t k = (errno = EINVAL, -1);
 file: no :w! without a backup (review of PR 16, 5)~test TESTS=file_save~~src/file/file.c~	if (!backed && !force) goto err;~	if (!backed) goto err;
 file: backup's directory not fsynced (review of PR 16, 6)~test TESTS=file_save~~src/file/file.c~		state_sync_dir(bak);   /* the backup's name durable too, before the recheck: the window after it stays short */¶~
-core wiring: recovery requires the old identity (review of PR 16, 3)~test TESTS=file_core~~ref/core.c~!memcmp(s, data, n);~!memcmp(s, data, n) && same_id(id, &b->id);
-core wiring: an edit journalled with the state before it (review of PR 16, 7)~test TESTS=file_core~~ref/core.c~	jnext = js;¶~
-core wiring: no look after adding the watch (review of PR 16, 9)~test TESTS=file_core~~ref/core.c~	if (e->buf->watch >= 0) core_watch(e, e->buf->watch);¶~
+core wiring: recovery requires the old identity (review of PR 16, 3)~test TESTS=file_core~~src/core/core.c~!memcmp(s, data, n);~!memcmp(s, data, n) && same_id(id, &b->id);
+core wiring: an edit journalled with the state before it (review of PR 16, 7)~test TESTS=file_core~~src/core/core.c~	jnext = js;¶~
+core wiring: no look after adding the watch (review of PR 16, 9)~test TESTS=file_core~~src/core/core.c~			if (file_watch_read(b->watch, path, &b->id) == 1 && !b->changed) b->changed = 1;¶~
 journal: an edit appended without a base (review of PR 16, 2)~test TESTS=file_journal~~src/file/journal.c~	if (!j->based) { errno = EINVAL; return -1; }~
