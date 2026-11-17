@@ -6,16 +6,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include "core.h"
+#include "lsp.h"
 #include "syntax.h"
 #include "uni.h"
+
+int core_changed;
 
 enum { SCROLLOFF = 6, TABSTOP = 8 };   /* FEATURES.md 1; Vim's tabstop */
 enum { J_NOEOL = 1 << 8 };              /* the journal keeps noeol with the flags */
 
 static unsigned jstate(const Buf *b) { return b->flags | (b->noeol ? J_NOEOL : 0); }
 
-/* every change reaches the syntax tree and the journal before it is made
-   (UndoHook).  An edit's record carries the state after it (jnext), so a
+/* every change reaches the syntax tree, the language server and the journal
+   before it is made (UndoHook).  An edit's record carries the state after it (jnext), so a
    kill between two writes cannot keep the change with a stale state (review
    of PR 16, 7); an undo step's state is known only once it is done, so
    jdone records it then */
@@ -24,6 +27,7 @@ static void undo_seen(void *ctx, const Text *t, size_t pos, size_t ndel, const c
 {
 	Buf *b = ctx;
 	if (b->syn) syntax_edit(b->syn, t, pos, ndel, ins, nins);
+	lsp_edit(b->lsp, t, pos, ndel, ins, nins);
 	if (b->journal && (journal_base(b->journal, t, jstate(b), &b->id)
 	                   || journal_edit(b->journal, pos, ndel, ins, nins, jnext != (unsigned)-1 ? jnext : jstate(b)))) b->jerr = 1;
 }
@@ -104,6 +108,7 @@ int core_open(Editor *e, const char *path)
 	/* a change between the load and the watch has no event: look once */
 	if (e->buf->watch >= 0) core_watch(e, e->buf->watch);
 	e->buf->syn = syntax_open(path, e->buf->text);
+	e->buf->lsp = lsp_open(path, e->buf->text);
 	undo_hook(e->buf->undo, undo_seen, e->buf);
 	core_set_want(e);
 	if (j < 0) core_msg(e, "E303: Unable to open journal for \"%s\", recovery impossible%s", path,
@@ -119,6 +124,7 @@ void core_free(Editor *e)
 {
 	if (!e->buf || !e->win) { free(e->buf); free(e->win); return; }
 	syntax_free(e->buf->syn);
+	lsp_close(e->buf->lsp);
 	journal_close(e->buf->journal);   /* a clean exit: nothing to recover */
 	text_free(e->buf->text);
 	undo_free(e->buf->undo);

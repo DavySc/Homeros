@@ -3,7 +3,7 @@
    e explorer) and the file manager (oil.nvim: -, SPC pv, :e of a
    directory); later the terminal, SQL, debugger and Claude.  ref/tools.c
    has none: tools_pick and tools_oil refuse with a message.  A picker's
-   list that changes between keys (rg output arriving) sets e->changed. */
+   list that changes between keys (rg output arriving) sets core_changed. */
 #ifndef TOOLS_H
 #define TOOLS_H
 #include "grid.h"
@@ -12,8 +12,8 @@ struct Buf;
 
 enum { PICK_SMART, PICK_GREP, PICK_BUFFERS, PICK_REGISTERS, PICK_EXPLORER };
 int  tools_pick(struct Editor *e, int what);        /* 0 ok, -1 msg set */
-/* Every key goes here first (main.c): 1 if an open picker took it, 0 at
-   once when none is open. */
+/* Every key goes here first (main.c), except while a command is half typed
+   (e->ks.pending): 1 if an open picker took it, 0 at once when none is open. */
 int  tools_key(struct Editor *e, int key);
 /* The open picker over the windows, right after core_draw.  No allocation. */
 void tools_draw(struct Editor *e, Grid *g);

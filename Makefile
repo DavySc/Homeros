@@ -14,7 +14,7 @@ SHELL = /bin/bash
 # value from the command line or make -e never points it at a real one)
 override export XDG_STATE_HOME := $(CURDIR)/build/state
 
-BASE = text undo uni core keys grid tty loop file syntax theme tools git
+BASE = text undo uni core keys grid tty loop file syntax theme tools git lsp
 # src/win/ (package 9) is the Windows build's, cross-compiled on its own
 MODULES = $(BASE) $(filter-out $(BASE) win,$(patsubst src/%/,%,$(wildcard src/*/)))
 pick = $(if $(wildcard src/$(1)/*.c),$(wildcard src/$(1)/*.c),ref/$(1).c)

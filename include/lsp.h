@@ -55,9 +55,8 @@ enum { LSP_HOVER, LSP_GOAL, LSP_NASK };
 void        lsp_ask(LspDoc *d, int kind, size_t pos);
 const char *lsp_answer(const LspDoc *d, int kind);
 
-/* Set when something shown changed (a reply came in, the server died);
-   the main loop draws again and clears it. */
-extern int lsp_dirty;
+/* When something shown changes (a reply comes in, the server dies) it
+   sets core_changed (core.h). */
 
 /* The UTF-16 boundary (Lean 4.35 takes no UTF-8 positions): code units in
    the n bytes of s, and the byte where unit c starts (a unit inside a
