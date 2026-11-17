@@ -179,6 +179,9 @@ static void comp_pos(Frame *f, int *row, int *col)
 		else *col = c0;
 		comp_pos(c, row, col);
 	}
+	/* the frame is a rectangle: what follows starts past all of it */
+	if (f->layout == FR_ROW) *row = r0 + f->height;
+	else *col = c0 + f->width;
 }
 
 static void win_comp_pos(Editor *e) { int r = 0, c = 0; comp_pos(e->layout, &r, &c); }

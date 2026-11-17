@@ -33,7 +33,9 @@ static void put_cell(Grid *g, const Win *w, int r, int c, const unsigned char *s
 	else if (j) return;
 	else { b = 0; wput(g, w, r, c, s, k, width, ATTR_NONE); }
 	if (b) wput(g, w, r, c, &b, 1, 1, ATTR_NONE);
-	if (c >= 0 && c < w->w) g->c[(w->y + r) * g->cols + w->x + c].face = face;
+	/* a window can reach past a terminal that shrank (see grid_put) */
+	int y = w->y + r, x = w->x + c;
+	if (c >= 0 && c < w->w && y >= 0 && y < g->rows && x >= 0 && x < g->cols) g->c[y * g->cols + x].face = face;
 }
 
 /* The number column of line l (get_line_number_str()): relative to the

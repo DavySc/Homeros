@@ -127,10 +127,15 @@ void win_check_cursor(Win *w)
 	size_t n = buf_lines(w->buf);
 	if (w->line >= n) w->line = n - 1;
 	if (w->top >= n) w->top = n - 1;
-	size_t len = text_line_start(w->buf->text, w->line + 1) - text_line_start(w->buf->text, w->line) - 1;
-	/* check_cursor_col(): on the last character outside Insert mode; no
-	   window is entered in Insert mode */
-	if (len && w->col >= len) w->col = len - 1;
+	/* check_cursor_col(): outside Insert mode (no window is entered in
+	   it) on the first byte of a character (mb_adjust_cursor()), at most
+	   the last; a reload or an undo can leave the column anywhere */
+	LineIt it;
+	const unsigned char *c;
+	size_t p = 0, last = 0, k;
+	lit_init(&it, w->buf, w->line);
+	while ((k = lit_next(&it, &c)) && p + k <= w->col) { last = p; p += k; }
+	w->col = k ? p : last;
 }
 
 /* the cursor's line without folds, in the top line's coordinates */
@@ -840,7 +845,10 @@ static int scroll_sms(Editor *e, Win *w, int dir, long count, long *curscount)
 	size_t pskip = w->skipcol, ptop = w->top;
 	p_sms = 1;
 	scroll_redraw(e, w, dir > 0, count);
-	if (w->skipcol > 0) {
+	/* a window narrower than its number column has no text width, where
+	   Neovim's arithmetic overflows (measured: skipcol -2147483630 after
+	   CTRL-D in a 3-column window with 'number'): nothing to finish */
+	if (w->skipcol > 0 && width1(w) > 0) {
 		int fix = dir;
 		lnr d = (lnr)w->top - (lnr)ptop;
 		if ((d < 0 ? -d : d) > (dir < 0)) fix = -dir;

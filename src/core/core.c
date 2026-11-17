@@ -44,9 +44,11 @@ const unsigned char *core_line(Editor *e, size_t l, size_t *len)
 {
 	size_t n = core_line_len(e, l);
 	if (n + 1 > e->lbcap) {
-		unsigned char *b = realloc(e->lb, n + 1);
+		/* doubling: a line growing a byte at a time reallocates log n times */
+		size_t cap = 2 * e->lbcap > n + 1 ? 2 * e->lbcap : n + 1;
+		unsigned char *b = realloc(e->lb, cap);
 		if (!b) { *len = 0; return (const unsigned char *)""; }
-		e->lb = b; e->lbcap = n + 1;
+		e->lb = b; e->lbcap = cap;
 	}
 	*len = text_read(e->buf->text, core_line_start(e, l), (char *)e->lb, n);
 	return e->lb;
@@ -615,7 +617,9 @@ int core_buf_delete(Editor *e, int nr, int force)
 		core_msg(e, "E89: No write since last change for buffer %d (add ! to override)", b->nr);
 		return -1;
 	}
-	if (b == e->buf && (e->bufs == b && !b->next)) {
+	/* no other listed buffer (b itself may be unlisted: :b goes to one
+	   without listing it, measured) */
+	if (b == e->buf && !(e->bufs == b ? b->next : e->bufs)) {
 		/* empty_curbuf(): the other windows on b close, the current one gets
 		   an empty buffer (unless b is one already) */
 		for (Win *w = e->wins, *nx; w; w = nx) {
