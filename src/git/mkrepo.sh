@@ -13,6 +13,8 @@ printf 'alpha\nbeta\n' > b.txt
 git add a.txt b.txt; git commit -q -m 'First commit'
 git init -q --bare -b main --template= "$d.remote.git"
 git remote add origin "$d.remote.git"
+# git 2.48+ fetch adds refs/remotes/origin/HEAD; the traces were recorded with 2.43, which does not
+git config remote.origin.followRemoteHEAD never
 git push -q -u origin main
 printf 'gamma\n' >> b.txt; git commit -q -am 'Second commit'
 sed -i 's/^two$/TWO/; s/^eleven$/ELEVEN/' a.txt
