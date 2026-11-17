@@ -27,10 +27,13 @@ static int slot(long l)
 	size_t n;
 	const unsigned char *s = core_line(E, (size_t)l, &n);
 	if (n + 1 > ring[i].cap) {
-		char *b = realloc(ring[i].s, n + 1);
+		/* doubling: a line growing by a few bytes per key (a count on an
+		   insert) would otherwise reallocate its whole copy every key */
+		size_t cap = ring[i].cap * 2 > n + 1 ? ring[i].cap * 2 : n + 1;
+		char *b = realloc(ring[i].s, cap);
 		if (!b) { ring[i].n = 0; ring[i].gen = 0; static char z; return (ring[i].s = &z, i); }
 		ring[i].s = b;
-		ring[i].cap = n + 1;
+		ring[i].cap = cap;
 	}
 	memcpy(ring[i].s, s, n);
 	ring[i].s[n] = 0;
