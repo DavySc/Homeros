@@ -433,6 +433,7 @@ void keys_feed(Editor *e, int k, int pending)
 	case MODE_CMDLINE: cmdline_key(e, k); break;
 	default:
 		normal_key(e, k);
+		e->ks.pending = count || pending_op;
 		if (e->mode == MODE_NORMAL) undo_close(e->buf->undo);
 	}
 	core_update(e);

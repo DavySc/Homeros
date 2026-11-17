@@ -2,14 +2,15 @@
    status, log and diff buffers with magit's sections and evil-collection
    keys, the commit message buffer, and git as child processes on the loop.
    Package 17 (src/git/); ref/git.c takes no key and opens nothing.  A git
-   buffer that changes between keys (a refresh ends) sets e->changed. */
+   buffer that changes between keys (a refresh ends) sets core_changed. */
 #ifndef GIT_H
 #define GIT_H
 #include <stddef.h>
 struct Editor;
 struct Buf;
 
-/* Every key goes here after tools_key, before keys_feed (main.c): 1 if git
+/* Every key goes here after tools_key, before keys_feed (main.c), except
+   while a command is half typed (e->ks.pending, so "3x" stays x): 1 if git
    took it (a magit key that is not a Vim motion, ZZ or ZQ in the commit
    message buffer, a git prompt's input), 0 to pass it on. */
 int  git_key(struct Editor *e, int key);

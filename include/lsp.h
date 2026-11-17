@@ -1,10 +1,11 @@
 /* Language servers (package 13, src/lsp/).  Sync as Helix: incremental,
    one didChange per command, versions +1.  What the server says is shown
-   by LspSync.tla's "simple" rules: diagnostics for an older version are
-   ignored, shown ones move with every edit, and a reply is shown only if
-   the text has not changed since the request (else dropped; the caller
-   asks again).  One server per project root, shared by its files; Lean's
-   is `lake serve` with Lean's extensions (file progress, plain goals,
+   by LspSync.tla's "ok" rules, as VS Code shows it: what it says about a
+   version the text has since left is mapped through the edits made since,
+   shown ranges move with every edit, and a reply is shown only if the text
+   has not changed since the request (else dropped; the caller asks
+   again).  One server per project root, shared by its files; Lean's is
+   `lake serve` with Lean's extensions (file progress, plain goals,
    widgets, incremental diagnostics). */
 #ifndef LSP_H
 #define LSP_H
@@ -55,9 +56,8 @@ enum { LSP_HOVER, LSP_GOAL, LSP_NASK };
 void        lsp_ask(LspDoc *d, int kind, size_t pos);
 const char *lsp_answer(const LspDoc *d, int kind);
 
-/* Set when something shown changed (a reply came in, the server died);
-   the main loop draws again and clears it. */
-extern int lsp_dirty;
+/* When something shown changes (a reply comes in, the server dies) it
+   sets core_changed (core.h). */
 
 /* The UTF-16 boundary (Lean 4.35 takes no UTF-8 positions): code units in
    the n bytes of s, and the byte where unit c starts (a unit inside a

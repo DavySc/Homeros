@@ -30,6 +30,9 @@ typedef struct {
 	int replace;         /* insert mode overtypes (R) */
 	int space;           /* Neovim's inserted_space: a space typed on its own */
 	int batch;           /* inserting typeahead as one string (Neovim's insertchar()) */
+	int pending;         /* a command is half typed: a count, register, operator or its
+	                        character (what showcmd shows); the conform driver ends it
+	                        with Esc, as feedkeys(..., 'x') does */
 } KeyState;
 
 struct Editor;
