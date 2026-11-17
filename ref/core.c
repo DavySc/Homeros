@@ -331,7 +331,7 @@ int  core_win_goto(Editor *e, int how, long count) { (void)e; (void)how; (void)c
 int  core_win_move(Editor *e, int how, long count) { (void)how; (void)count; return refuse(e); }
 void core_resize(Editor *e, int vertical, long n, int set) { (void)e; (void)vertical; (void)n; (void)set; }
 void core_equal(Editor *e) { (void)e; }
-int  core_scroll(Editor *e, long n) { (void)e; (void)n; return -1; }
+void core_scroll(Editor *e, long n) { (void)e; (void)n; }
 int  core_scroll_half(Editor *e, int dir, long count) { (void)e; (void)dir; (void)count; return -1; }
 int  core_scroll_page(Editor *e, int dir, long count) { (void)e; (void)dir; (void)count; return -1; }
 void core_scroll_cursor(Editor *e, int how) { (void)e; (void)how; }
