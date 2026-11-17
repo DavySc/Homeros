@@ -42,7 +42,9 @@ int main(int argc, char **argv)
 	Grid g = { 0 }, shown = { 0 };
 	int fds[2], rows, cols, tty = argc == 3 && !strcmp(argv[1], "-t");
 	if (argc != 2 + tty) { fprintf(stderr, "usage: homeros [-t] FILE\n"); return 2; }
-#ifdef HOMEROS_WL
+#if defined _WIN32
+	if (!tty) b = &backend_win;
+#elif defined HOMEROS_WL
 	if (!tty && getenv("WAYLAND_DISPLAY")) b = &backend_wl;
 #endif
 	if (core_open(&e, argv[1 + tty])) { fprintf(stderr, "homeros: %s\n", e.msg); return 1; }

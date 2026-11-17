@@ -95,6 +95,7 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 		} else text_insert(e->buf->text, pos, del, ndel);
 	}
 	free(del);
+	e->win->vc.ok = 0;
 	if (r) core_msg(e, "out of memory");
 	/* an empty file saves empty until it gets a line of text (Vim) */
 	else {
@@ -150,6 +151,7 @@ int core_undo(Editor *e, int redo)
 	   line, which fails when the old lines ran to the end of the buffer */
 	size_t kept = before - (n - (last + 1 - first));   /* lines the step replaced */
 	if (c >= before - kept) c = before - kept ? before - kept - 1 : 0;
+	if (c >= first) e->win->vc.ok = 0;
 	return c >= first;
 }
 
@@ -243,11 +245,14 @@ void core_clamp(Editor *e)
 
 void core_set_want(Editor *e)
 {
+	Win *w = e->win;
+	if (w->vc.ok && w->vc.line == w->line && w->vc.col == w->col) { w->want = w->vc.v; return; }
 	size_t n;
-	const unsigned char *s = core_line(e, e->win->line, &n);
-	e->win->want = core_vcol(e, e->win->line, e->win->col);
-	if (e->mode == MODE_NORMAL && e->win->col < n && s[e->win->col] == '\t')
-		e->win->want = core_vcol(e, e->win->line, e->win->col + 1) - 1;
+	const unsigned char *s = core_line(e, w->line, &n);
+	w->want = core_vcol(e, w->line, w->col);
+	if (e->mode == MODE_NORMAL && w->col < n && s[w->col] == '\t')
+		w->want = core_vcol(e, w->line, w->col + 1) - 1;
+	w->vc.line = w->line; w->vc.col = w->col; w->vc.v = w->want; w->vc.ok = 1;
 }
 
 static size_t digits(size_t n) { size_t d = 1; while (n >= 10) { n /= 10; d++; } return d; }
@@ -293,6 +298,8 @@ static int refuse(Editor *e) { core_msg(e, "E36: Not enough room"); return -1; }
 int  core_edit_file(Editor *e, const char *path, int force) { (void)path; (void)force; return refuse(e); }
 int  core_buf_goto(Editor *e, int nr) { return nr == 1 ? 0 : refuse(e); }
 int  core_buf_next(Editor *e, long n) { (void)e; (void)n; return 0; }
+int  core_buf_alt(Editor *e) { core_msg(e, "E23: No alternate file"); return -1; }
+int  core_new(Editor *e, int vertical) { (void)vertical; return refuse(e); }
 int  core_buf_delete(Editor *e, int nr, int force) { (void)nr; (void)force; return refuse(e); }
 int  core_split(Editor *e, int vertical, int size) { (void)vertical; (void)size; return refuse(e); }
 int  core_close(Editor *e, int force)

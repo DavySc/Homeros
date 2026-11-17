@@ -31,7 +31,7 @@ CI (`.github/workflows/check.yml`) runs `make check` and `make planted`.
 
 Tags as CLAUDE.md asks.
 
-- **measured**: 0 of 16,000 fresh random key sequences, with 2-, 3- and 4-byte characters, differ from `nvim --headless` 0.12.6 (10,000 for seed 16, 3,000 for seed 77, 2,000 in `make check`, earlier 44,000 with 2-byte characters only); the 1,013 recorded cases (1,000 from seed 101 plus the 13 that once differed) replay with 0 differences.
+- **measured**: 0 of 16,000 fresh random key sequences, with 2-, 3- and 4-byte characters, differ from `nvim --headless` 0.12.6 (10,000 for seed 16, 3,000 for seed 77, 2,000 in `make check`, earlier 44,000 with 2-byte characters only); the 1,014 recorded cases (1,000 from seed 101 plus the 14 that once differed) replay with 0 differences.
 - **measured**: the undo oracle reports 0 of 5,000 sequences differing from Neovim's tree.
 - **proved**: Frama-C WP, 77 of 77 goals, for `uni_len`, `uni_prev` and `uni_cp`, with contracts in `include/uni.h` that state each result (a body that returns 1, or steps one byte back, fails).
 - **proved**: TLC passes or fails every design spec config as expected; Lean checks `Undo.lean` with no `sorry`.
@@ -40,7 +40,8 @@ Tags as CLAUDE.md asks.
 
 ## Choices made in package 0 (open in the design, picked here)
 
-- **hypothesis**: an operator on an empty buffer (Neovim's `ML_EMPTY`) leaves an empty undo step only at the oldest undo state. This was measured on 15 sequences, but the mechanism inside Neovim is not understood; package 5 revisits it.
+- **measured**: an operator on an empty buffer (Neovim's `ML_EMPTY`) changes nothing, not even the undo history (`op_delete()` returns first); on an empty line of a non-empty buffer, `x` leaves an empty undo step. The Neovim side of `tools/conform.py` opens each text as a file, as the editor does; it once set the lines through the API, which never leaves a buffer `ML_EMPTY` and made this look like an undo rule (0 of 4,000 fresh sequences differ, seeds 5 and 1794923547).
+
 - **hypothesis**: `inserted_space` follows Neovim's typeahead batching (queued one-byte characters are inserted as one string). The driver passes "more keys queued" the same way the main loop does.
 - `uni_width` is 1 for every code point and not proved; package 3 adds East Asian Width and graphemes.
 - `text.h` has no ACSL yet: package 1 asks thread 0 for the contract it is judged by.

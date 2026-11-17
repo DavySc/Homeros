@@ -286,16 +286,6 @@ static void empty_step(Editor *e)
 	undo_record(e->buf->undo, core_line_start(e, e->win->line), "", 0, "", 0, c, e->buf->flags);
 }
 
-/* An operator on an empty buffer (CORE_EMPTY): op_delete() returns early, yet
-   the undo history changes.  Measured in nvim --headless (15 sequences): at
-   the oldest state it leaves an empty step, which also drops the redo
-   branch; after a change it leaves nothing.  The mechanism is not
-   understood (hypothesis: undo sync inside typeahead); package 5 revisits. */
-static void empty_op(Editor *e)
-{
-	if (!undo_seq(e->buf->undo)) empty_step(e);
-}
-
 static void insert_at(Editor *e, size_t col)
 {
 	e->win->col = col;
@@ -327,7 +317,7 @@ static void normal_key(Editor *e, int k)
 	}
 	if (op == 'd') {
 		if (k != 'd' || (n > 1 && e->win->line + 1 == nl)) return;   /* cursor_down() fails */
-		if (e->buf->flags & CORE_EMPTY) { empty_op(e); return; }
+		if (e->buf->flags & CORE_EMPTY) return;   /* op_delete() returns early on ML_EMPTY */
 		size_t a = e->win->line;
 		core_delete_lines(e, a, a + n < nl ? a + n : nl);
 		/* nostartofline: back to curswant, which then follows the cursor */
@@ -363,10 +353,10 @@ static void normal_key(Editor *e, int k)
 	case 'G': go_line(e, given && given <= nl ? given - 1 : nl - 1); return;
 	case 'x':
 		/* on an empty line x deletes nothing but still makes an undo step
-		   (op_delete() calls u_save_cursor()), so u then undoes nothing */
+		   (op_delete() calls u_save_cursor()), so u then undoes nothing;
+		   on an empty buffer (ML_EMPTY) op_delete() returns first */
 		if (!len) {
-			if (e->buf->flags & CORE_EMPTY) empty_op(e);
-			else empty_step(e);
+			if (!(e->buf->flags & CORE_EMPTY)) empty_step(e);
 			set_want(e);
 			return;
 		}
@@ -387,15 +377,12 @@ static void normal_key(Editor *e, int k)
 		   the cursor ends where it started (check_cursor_moved()): curswant
 		   is then the column in the text before the undo (measured, nvim
 		   0.12, "jxu" on "b  a\nc\tfoo" gives 7) */
-		size_t l0 = e->win->line, c0 = e->win->col, w0 = e->win->want, v0;
-		int inval = 0;
-		set_want(e);
-		v0 = e->win->want;
+		size_t w0 = e->win->want;
+		set_want(e);       /* the column is cached before the command */
 		e->win->want = w0;
 		/* u_doit() stops at the first step that finds nothing */
-		for (int r; n-- && (r = core_undo(e, k == KEY_CTRL_R)) >= 0;) inval |= r;
-		if (!inval && e->win->line == l0 && e->win->col == c0) e->win->want = v0;
-		else set_want(e);
+		while (n-- && core_undo(e, k == KEY_CTRL_R) >= 0) {}
+		set_want(e);
 		return;
 	}
 	case ':': e->mode = MODE_CMDLINE; e->cmdtype = ':'; e->cmdlen = e->cmdpos = 0; return;
@@ -404,6 +391,8 @@ static void normal_key(Editor *e, int k)
 
 void keys_feed(Editor *e, int k, int pending)
 {
+	/* the window's close button: :qa, as Neovim's GUIs do (E37 if modified) */
+	if (k == KEY_CLOSE) { core_close(e, 0); return; }
 	switch (e->mode) {
 	case MODE_INSERT:
 		if (k < 0x20 || k >= 0x7f) e->ks.batch = 0;

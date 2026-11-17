@@ -61,6 +61,10 @@ typedef struct Win {
 	Buf *alt;                  /* the alternate buffer (#, CTRL-^), or NULL */
 	size_t line, col;          /* cursor: line, byte in line */
 	size_t want;               /* wanted screen column for j and k */
+	/* the cursor's cached screen column (w_virtcol with VALID_VIRTCOL):
+	   kept while the cursor stays at line, col and no change invalidates
+	   it, even if the text under it changed (an undo, see core_undo) */
+	struct { size_t line, col, v; int ok; } vc;
 	size_t top, left, skipcol;
 	size_t scroll;             /* lines for CTRL-D and CTRL-U ('scroll'); 0 = half the height */
 	int wrap;                  /* 'wrap': off (FEATURES.md); keys set it directly */
@@ -140,14 +144,22 @@ void core_update(Editor *e);
    (load the file again) and "" is :enew.  The window's cursor goes back
    where it last was in that buffer.  0 ok, -1 not (msg set). */
 int  core_edit_file(Editor *e, const char *path, int force);
-int  core_buf_goto(Editor *e, int nr);        /* :b N; CTRL-^ is win->alt->nr */
+int  core_buf_goto(Editor *e, int nr);        /* :b N */
 int  core_buf_next(Editor *e, long n);        /* :bn ]b (n > 0), :bp [b (n < 0) */
+/* CTRL-^: the alternate buffer, E23 if none.  Not core_buf_goto: a buffer
+   never shown in this window opens on the first non-blank (buflist_getfile,
+   then do_ecmd's beginline(BL_WHITE)), where :b puts the cursor at 1,0. */
+int  core_buf_alt(Editor *e);
 int  core_buf_delete(Editor *e, int nr, int force);   /* :bd */
 
 /* Windows.  :sp and CTRL-W s (vertical 0), :vs and CTRL-W v (1); size 0
    leaves it to equalalways.  The new window shows the same buffer and
    becomes current.  0 ok, -1 not (E36, msg set). */
 int  core_split(Editor *e, int vertical, int size);
+/* :new (vertical 0) and :vnew (1): a split on a new empty buffer, in one
+   step, so the new window records no position in the buffer it split from
+   (do_ecmd runs with oldwin NULL). */
+int  core_new(Editor *e, int vertical);
 /* :q, :close, CTRL-W c and q: close the current window.  Closing the last
    one quits (quit set), unless a buffer is modified and !force (E37 or
    E162).  0 ok, -1 not (msg set). */

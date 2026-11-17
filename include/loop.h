@@ -9,7 +9,9 @@ typedef void (*LoopFn)(void *ctx, int fd);
 
 /* On Windows a watched fd is a waitable HANDLE cut to int (only its low 32
    bits are significant, as Microsoft documents), and LOOP_MSGQ watches the
-   thread's message queue (MsgWaitForMultipleObjectsEx, QS_ALLINPUT). */
+   thread's message queue (MsgWaitForMultipleObjectsEx with QS_ALLINPUT and
+   MWMO_INPUTAVAILABLE, so messages already seen but left queued still wake
+   it: measured under Wine by package 9's review, 3 of 3 runs). */
 enum { LOOP_MSGQ = -1 };
 
 int  loop_watch(int fd, LoopFn fn, void *ctx);   /* call fn when fd is readable; 0 ok, -1 full */

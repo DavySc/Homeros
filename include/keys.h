@@ -13,6 +13,7 @@ enum {
 	KEY_UP = 0x110000, KEY_DOWN, KEY_LEFT, KEY_RIGHT,
 	KEY_RESIZE,
 	KEY_MOUSE_LEFT, KEY_WHEEL_UP, KEY_WHEEL_DOWN,   /* at the cell Backend.mouse gives */
+	KEY_CLOSE,           /* the window was asked to close (its X button, Alt-F4): :qa */
 	KEY_CTRL_C = 3, KEY_TAB = 9, KEY_ENTER = 13, KEY_CTRL_R = 18,
 	KEY_CTRL_Z = 26, KEY_ESC = 27, KEY_BS = 127
 };
