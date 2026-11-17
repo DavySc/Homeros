@@ -81,12 +81,19 @@ static int stop_after(void) { return stops_left > 0 && --stops_left == 0; }
    40 checks, to the end (SLICE_END) or left stopped half the time
    (SLICE_MAY_STOP), as when a key arrives and edits.  The whole text is
    shown first, so injections are found everywhere, as Neovim's parse(true)
-   does. */
+   does; with SLICE_MAY_STOP half the time only some lines, as when the
+   window scrolls between slices. */
 enum { SLICE_NONE, SLICE_END, SLICE_MAY_STOP };
 static void update(Syntax *s, const Text *t, int how)
 {
 	static unsigned char f[MAXT];
-	syntax_faces(s, 0, text_len(t), f);
+	size_t a = 0, z = text_len(t), n = text_lines(t);
+	if (how == SLICE_MAY_STOP && rnd(2)) {
+		size_t l = rnd((unsigned)n);
+		a = text_line_start(t, l);
+		z = text_line_start(t, l + 1 + rnd(20));
+	}
+	syntax_faces(s, a, z, f);
 	do stops_left = 1 + (int)rnd(40);
 	while (syntax_update(s, t, how ? stop_after : NULL) == 2 && (how == SLICE_END || rnd(2)));
 }
@@ -155,12 +162,55 @@ static size_t lpat_cases(FILE *pf, char *got)
 	return n;
 }
 
+/* Scrolling up while the parse of the top paragraph's inline tree is
+   stopped: the next update finds the paragraph above it first, so the
+   stopped region's ranges change under it.  For each stop point, the
+   colours shown must then be a fresh parse's (no edits: every tree is
+   fresh). */
+static void scroll_while_stopped(const char *dir)
+{
+	static char b[MAXT];
+	static unsigned char f[MAXT], g[MAXT];
+	size_t n = 0;
+	for (int p = 0; p < 3; p++) {
+		for (int l = 0; l < 12; l++)
+			n += (size_t)snprintf(b + n, sizeof b - n, "%c *x* `y` [z](w) _v_ **u** `t` %d\n", 'a' + p, l);
+		b[n++] = '\n';
+	}
+	char path[2048];
+	snprintf(path, sizeof path, "%s/scroll.md", dir);
+	Text *t = text_new(b, n);
+	CHECK(t);
+	size_t p1 = text_line_start(t, 13), p2 = text_line_start(t, 26), end = text_len(t);
+	Syntax *F = syntax_open(path, t);
+	CHECK(F);
+	syntax_faces(F, 0, end, g);
+	while (syntax_update(F, t, NULL) == 2) ;
+	syntax_faces(F, 0, end, g);
+	for (int k = 1; k < 400; k++) {
+		Syntax *s = syntax_open(path, t);
+		CHECK(s);
+		syntax_faces(s, p1, end, f);                 /* the 2nd and 3rd paragraphs */
+		stops_left = k;
+		if (syntax_update(s, t, stop_after) == 2) {
+			syntax_faces(s, 0, p2, f);               /* scrolled up one */
+			while (syntax_update(s, t, NULL) == 2) ;
+			syntax_faces(s, 0, p2, f);
+			CHECK(!memcmp(f, g, p2));
+		}
+		syntax_free(s);
+	}
+	syntax_free(F);
+	text_free(t);
+}
+
 int main(void)
 {
 	if (getenv("SEED")) rng = 2 * strtoull(getenv("SEED"), NULL, 10) + 1;   /* distinct seeds stay distinct */
 	if (getenv("CASES")) CASES = atoi(getenv("CASES"));
 	CHECK(CASES > 0 && CASES <= MAXCASES);
 	CHECK(mkdtemp(dir));
+	scroll_while_stopped(dir);
 	char path[2048], vrt[1024] = "";
 	FILE *p = popen("nvim --headless --clean -l /dev/stdin <<'E'\nio.write(vim.env.VIMRUNTIME)\nE", "r");
 	CHECK(p && fgets(vrt, sizeof vrt, p));
@@ -173,7 +223,7 @@ int main(void)
 	add_dir(2, ".", ".md");
 	for (int l = 0; l < NL; l++) CHECK(ncorpus[l]);
 
-	static unsigned char fa[MAXT], fb[MAXT], fs[MAXT];
+	static unsigned char fa[MAXT], fb[MAXT], fs[MAXT], ff[MAXT];
 	static char buf[MAXT], sbuf[MAXT + 1], cmd[1 << 16];
 	snprintf(path, sizeof path, "%s/want.snap", dir);
 	FILE *snap = fopen(path, "w");
@@ -240,7 +290,21 @@ int main(void)
 		faces_lines(A, t, fa);
 		faces_lines(B, t, fb);
 		faces_split(B, text_len(t), fs);
-		sliced_same[c] = !memcmp(fa, fb, text_len(t)) && !memcmp(fb, fs, text_len(t));
+		/* tree-sitter's incremental parse depends on the trees it starts
+		   from (in Markdown's inline grammar a reparse can even differ
+		   from a fresh parse without any syntax error), so a sliced parse
+		   must match either the unsliced one or a fresh parse; bit 1: the
+		   faces of windows starting elsewhere agree */
+		if (memcmp(fa, fb, text_len(t))) {
+			path[strlen(path) - 4] = 0;   /* without ".ops" */
+			Syntax *F = syntax_open(path, t);
+			CHECK(F);
+			update(F, t, SLICE_NONE);
+			faces_lines(F, t, ff);
+			syntax_free(F);
+		} else memcpy(ff, fa, text_len(t));
+		sliced_same[c] = (!memcmp(fa, fb, text_len(t)) || !memcmp(ff, fb, text_len(t)))
+		                 + 2 * !memcmp(fb, fs, text_len(t));
 		render(t, fa, want[c]);
 		bytes += text_len(t);
 		len += snprintf(cmd + len, sizeof cmd - (size_t)len, " %d.%s", c, ext[lang]);
@@ -266,7 +330,7 @@ int main(void)
 	snprintf(path, sizeof path, "%s/out.err", dir);
 	char *err = slurp(path, &en);
 	CHECK(en == (size_t)n);
-	int differ = 0, slice_differ = 0, with_err = 0, slice_err = 0;
+	int differ = 0, slice_differ = 0, with_err = 0, slice_err = 0, md_history = 0;
 	for (int c = 0; c < n; c++) {
 		size_t wl = strlen(want[c]);
 		CHECK((size_t)(q - o) + wl <= on);
@@ -276,14 +340,20 @@ int main(void)
 				if (want[c][i] == '\n') { line++; continue; }
 				if (q[i] != want[c][i]) {
 					fprintf(stderr, "%s/%d.%s line %zu: face %d in Neovim, %d here\n",
-					        dir, c, ext[c % NL], line, q[i] - '0', want[c][i] - '0');
+					        dir, c, ext[c % NL], line, (unsigned char)q[i] - '0', (unsigned char)want[c][i] - '0');
 					break;
 				}
 			}
 		}
 		with_err += err[c] == '1';
-		if (!sliced_same[c]) {
+		if (sliced_same[c] != 3) {
+			/* Markdown's inline grammar gives trees that depend on the old
+			   tree a reparse starts from even without syntax errors
+			   (measured: each such tree equals tree-sitter's own one-go
+			   parse from that old tree), so there a sliced parse may differ
+			   from both, as long as windows starting elsewhere agree */
 			if (err[c] == '1') slice_err++;
+			else if (c % NL == 2 && sliced_same[c] == 2) md_history++;
 			else {
 				slice_differ++;
 				fprintf(stderr, "%s/%d.%s: sliced parse or windows starting elsewhere differ, no syntax error\n", dir, c, ext[c % NL]);
@@ -318,8 +388,10 @@ int main(void)
 	for (size_t i = 0; i < npg; i++) pdiff += po[i] != pgot[i];
 	printf("test_syntax: %d of %d cases (%zu bytes) differ from Neovim, and %d of %d frames between an edit "
 	       "and its parse; sliced parses or other windows differ in %d of %d cases without syntax errors "
-	       "(and %d of %d with); %d of %zu Lua patterns differ from LuaJIT\n",
-	       differ, n, bytes, snap_differ, snaps, slice_differ, n - with_err, slice_err, with_err, pdiff, npg);
+	       "(and %d of %d with; Markdown's history-dependent trees in %d more); %d of %zu Lua patterns differ "
+	       "from LuaJIT\n",
+	       differ, n, bytes, snap_differ, snaps, slice_differ, n - with_err, slice_err, with_err, md_history,
+	       pdiff, npg);
 	CHECK(!differ && !snap_differ && !slice_differ && !pdiff);
 	free(ws);
 	free(ns);

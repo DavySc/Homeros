@@ -17,42 +17,31 @@
 #include "syntax.h"
 #include "lmatch.h"
 
-/* Neovim's standard capture names (:h treesitter-highlight-groups) and the
-   face each shows as.  A capture takes the longest of these that prefixes
-   it, as a highlight group name falls back to its parent ("@keyword.return.c"
-   to "@keyword.return"); one with none, or whose name starts with _, colours
-   nothing and so hides nothing below it.  The faces are grid.h's coarse ten
-   for now (thread 0 takes the full list next); markup, diff and tag wait. */
-static const struct { const char *name; unsigned char face; } names[] = {
-	{ "variable", FACE_VARIABLE }, { "variable.builtin", FACE_VARIABLE },
-	{ "variable.parameter", FACE_VARIABLE }, { "variable.parameter.builtin", FACE_VARIABLE },
-	{ "variable.member", FACE_VARIABLE }, { "constant", FACE_CONSTANT },
-	{ "constant.builtin", FACE_CONSTANT }, { "constant.macro", FACE_CONSTANT },
-	{ "module", FACE_VARIABLE }, { "module.builtin", FACE_VARIABLE }, { "label", FACE_VARIABLE },
-	{ "string", FACE_STRING }, { "string.documentation", FACE_STRING },
-	{ "string.regexp", FACE_STRING }, { "string.escape", FACE_STRING },
-	{ "string.special", FACE_STRING }, { "string.special.symbol", FACE_STRING },
-	{ "string.special.path", FACE_STRING }, { "string.special.url", FACE_STRING },
-	{ "character", FACE_STRING }, { "character.special", FACE_STRING },
-	{ "boolean", FACE_CONSTANT }, { "number", FACE_NUMBER }, { "number.float", FACE_NUMBER },
-	{ "type", FACE_TYPE }, { "type.builtin", FACE_TYPE }, { "type.definition", FACE_TYPE },
-	{ "attribute", FACE_TYPE }, { "attribute.builtin", FACE_TYPE }, { "property", FACE_VARIABLE },
-	{ "function", FACE_FUNCTION }, { "function.builtin", FACE_FUNCTION },
-	{ "function.call", FACE_FUNCTION }, { "function.macro", FACE_FUNCTION },
-	{ "function.method", FACE_FUNCTION }, { "function.method.call", FACE_FUNCTION },
-	{ "constructor", FACE_TYPE }, { "operator", FACE_OPERATOR }, { "keyword", FACE_KEYWORD },
-	{ "keyword.coroutine", FACE_KEYWORD }, { "keyword.function", FACE_KEYWORD },
-	{ "keyword.operator", FACE_KEYWORD }, { "keyword.import", FACE_KEYWORD },
-	{ "keyword.type", FACE_KEYWORD }, { "keyword.modifier", FACE_KEYWORD },
-	{ "keyword.repeat", FACE_KEYWORD }, { "keyword.return", FACE_KEYWORD },
-	{ "keyword.debug", FACE_KEYWORD }, { "keyword.exception", FACE_KEYWORD },
-	{ "keyword.conditional", FACE_KEYWORD }, { "keyword.conditional.ternary", FACE_KEYWORD },
-	{ "keyword.directive", FACE_KEYWORD }, { "keyword.directive.define", FACE_KEYWORD },
-	{ "punctuation.delimiter", FACE_PUNCT }, { "punctuation.bracket", FACE_PUNCT },
-	{ "punctuation.special", FACE_PUNCT }, { "comment", FACE_COMMENT },
-	{ "comment.documentation", FACE_COMMENT }, { "comment.error", FACE_COMMENT },
-	{ "comment.warning", FACE_COMMENT }, { "comment.todo", FACE_COMMENT },
-	{ "comment.note", FACE_COMMENT },
+/* Neovim's standard capture names (:h treesitter-highlight-groups), in
+   grid.h's order: name i is face i + 1.  A capture takes the longest of these
+   that prefixes it, as a highlight group name falls back to its parent
+   ("@keyword.return.c" to "@keyword.return"); one with none, or whose name
+   starts with _, colours nothing and so hides nothing below it. */
+static const char *const names[] = {
+	"variable", "variable.builtin", "variable.parameter", "variable.parameter.builtin",
+	"variable.member", "constant", "constant.builtin", "constant.macro", "module",
+	"module.builtin", "label", "string", "string.documentation", "string.regexp", "string.escape",
+	"string.special", "string.special.symbol", "string.special.path", "string.special.url",
+	"character", "character.special", "boolean", "number", "number.float", "type", "type.builtin",
+	"type.definition", "attribute", "attribute.builtin", "property", "function",
+	"function.builtin", "function.call", "function.macro", "function.method",
+	"function.method.call", "constructor", "operator", "keyword", "keyword.coroutine",
+	"keyword.function", "keyword.operator", "keyword.import", "keyword.type", "keyword.modifier",
+	"keyword.repeat", "keyword.return", "keyword.debug", "keyword.exception",
+	"keyword.conditional", "keyword.conditional.ternary", "keyword.directive",
+	"keyword.directive.define", "punctuation.delimiter", "punctuation.bracket",
+	"punctuation.special", "comment", "comment.documentation", "comment.error", "comment.warning",
+	"comment.todo", "comment.note", "markup.strong", "markup.italic", "markup.strikethrough",
+	"markup.underline", "markup.heading", "markup.heading.1", "markup.heading.2",
+	"markup.heading.3", "markup.heading.4", "markup.heading.5", "markup.heading.6", "markup.quote",
+	"markup.math", "markup.link", "markup.link.label", "markup.link.url", "markup.raw",
+	"markup.raw.block", "markup.list", "markup.list.checked", "markup.list.unchecked", "diff.plus",
+	"diff.minus", "diff.delta", "tag", "tag.builtin", "tag.attribute", "tag.delimiter",
 };
 enum { NNAMES = sizeof names / sizeof *names, PRIO = 100, CHUNK = 8192, LIMIT = 256 };
 #define NONE UINT32_MAX
@@ -62,11 +51,11 @@ static unsigned char face_of(const char *cap, uint32_t n)
 	int best = -1;
 	size_t bl = 0;
 	for (int i = 0; i < NNAMES; i++) {
-		size_t l = strlen(names[i].name);
-		if (l > bl && l <= n && !memcmp(cap, names[i].name, l) && (l == n || cap[l] == '.'))
+		size_t l = strlen(names[i]);
+		if (l > bl && l <= n && !memcmp(cap, names[i], l) && (l == n || cap[l] == '.'))
 			best = i, bl = l;
 	}
-	return best < 0 ? FACE_NONE : names[best].face;
+	return (unsigned char)(best + 1);   /* FACE_NONE when none */
 }
 
 /* Grammars linked in, by file name ending (Neovim's filetype for each). */
@@ -700,6 +689,11 @@ static int set_regions(Syntax *s, LTree *K, Injs *I, int lang)
 		if (I->v[i].lang != lang) continue;
 		Region *g = &K->reg[k++];
 		if (!same(g->r, g->n, I->v[i].r.r, I->v[i].r.n)) {
+			if (s->susp == g) {
+				/* its stopped parse reads the old ranges: start it again */
+				ts_parser_reset(s->p);
+				s->susp = NULL;
+			}
 			g->valid = 0;
 			free(g->r);
 			g->r = I->v[i].r.r;

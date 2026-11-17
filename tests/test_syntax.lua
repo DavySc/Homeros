@@ -6,30 +6,31 @@
 -- usage: nvim --headless --clean -l test_syntax.lua OUT DIR CASE...
 local ours = { c = true, lua = true, markdown = true, markdown_inline = true }
 
--- grid.h's faces: NONE 0, COMMENT 1, STRING 2, KEYWORD 3, TYPE 4, FUNCTION 5,
--- CONSTANT 6, NUMBER 7, OPERATOR 8, PUNCT 9, VARIABLE 10, for each of
--- Neovim's standard groups (markup, diff and tag have none yet)
-local groups = {
-  variable = 10, ['variable.builtin'] = 10, ['variable.parameter'] = 10,
-  ['variable.parameter.builtin'] = 10, ['variable.member'] = 10, constant = 6,
-  ['constant.builtin'] = 6, ['constant.macro'] = 6, module = 10, ['module.builtin'] = 10,
-  label = 10, string = 2, ['string.documentation'] = 2, ['string.regexp'] = 2,
-  ['string.escape'] = 2, ['string.special'] = 2, ['string.special.symbol'] = 2,
-  ['string.special.path'] = 2, ['string.special.url'] = 2, character = 2,
-  ['character.special'] = 2, boolean = 6, number = 7, ['number.float'] = 7, type = 4,
-  ['type.builtin'] = 4, ['type.definition'] = 4, attribute = 4, ['attribute.builtin'] = 4,
-  property = 10, ['function'] = 5, ['function.builtin'] = 5, ['function.call'] = 5,
-  ['function.macro'] = 5, ['function.method'] = 5, ['function.method.call'] = 5,
-  constructor = 4, operator = 8, keyword = 3, ['keyword.coroutine'] = 3,
-  ['keyword.function'] = 3, ['keyword.operator'] = 3, ['keyword.import'] = 3,
-  ['keyword.type'] = 3, ['keyword.modifier'] = 3, ['keyword.repeat'] = 3,
-  ['keyword.return'] = 3, ['keyword.debug'] = 3, ['keyword.exception'] = 3,
-  ['keyword.conditional'] = 3, ['keyword.conditional.ternary'] = 3,
-  ['keyword.directive'] = 3, ['keyword.directive.define'] = 3,
-  ['punctuation.delimiter'] = 9, ['punctuation.bracket'] = 9, ['punctuation.special'] = 9,
-  comment = 1, ['comment.documentation'] = 1, ['comment.error'] = 1,
-  ['comment.warning'] = 1, ['comment.todo'] = 1, ['comment.note'] = 1,
-}
+-- grid.h's faces: FACE_NONE 0, then Neovim's standard captures in order
+local groups = {}
+for i, g in ipairs({
+  'variable', 'variable.builtin', 'variable.parameter', 'variable.parameter.builtin',
+  'variable.member', 'constant', 'constant.builtin', 'constant.macro', 'module',
+  'module.builtin', 'label', 'string', 'string.documentation', 'string.regexp',
+  'string.escape', 'string.special', 'string.special.symbol', 'string.special.path',
+  'string.special.url', 'character', 'character.special', 'boolean', 'number',
+  'number.float', 'type', 'type.builtin', 'type.definition', 'attribute',
+  'attribute.builtin', 'property', 'function', 'function.builtin', 'function.call',
+  'function.macro', 'function.method', 'function.method.call', 'constructor',
+  'operator', 'keyword', 'keyword.coroutine', 'keyword.function', 'keyword.operator',
+  'keyword.import', 'keyword.type', 'keyword.modifier', 'keyword.repeat',
+  'keyword.return', 'keyword.debug', 'keyword.exception', 'keyword.conditional',
+  'keyword.conditional.ternary', 'keyword.directive', 'keyword.directive.define',
+  'punctuation.delimiter', 'punctuation.bracket', 'punctuation.special', 'comment',
+  'comment.documentation', 'comment.error', 'comment.warning', 'comment.todo',
+  'comment.note', 'markup.strong', 'markup.italic', 'markup.strikethrough',
+  'markup.underline', 'markup.heading', 'markup.heading.1', 'markup.heading.2',
+  'markup.heading.3', 'markup.heading.4', 'markup.heading.5', 'markup.heading.6',
+  'markup.quote', 'markup.math', 'markup.link', 'markup.link.label', 'markup.link.url',
+  'markup.raw', 'markup.raw.block', 'markup.list', 'markup.list.checked',
+  'markup.list.unchecked', 'diff.plus', 'diff.minus', 'diff.delta', 'tag',
+  'tag.builtin', 'tag.attribute', 'tag.delimiter',
+}) do groups[g] = i end
 
 -- a capture falls back to its parent group, as "@keyword.return.c" does
 local function face(cap)
