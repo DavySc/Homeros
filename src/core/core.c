@@ -248,8 +248,12 @@ static void umarks_put(Buf *b, unsigned long seq, const Mark *m, int join)
 	u->join |= join;
 }
 
+/* core_mark_join() was called: the next edit of this buffer joins */
+static Buf *join_next;
+
 static void umarks_drop(const Buf *b)
 {
+	if (join_next == b) join_next = NULL;
 	for (UndoMarks **p = &umarks; *p;)
 		if ((*p)->b == b) { UndoMarks *u = *p; *p = u->next; free(u); }
 		else p = &(*p)->next;
@@ -744,7 +748,9 @@ void core_mark_join(Editor *e, size_t line, size_t mincol, long line_amount, lon
 {
 	if (!col_amount && !line_amount) return;
 	Buf *b = e->buf;
-	if (line_amount) umarks_put(b, undo_seq(b->undo), NULL, 1);
+	/* do_join() adjusts the marks before it deletes: the edit that joins
+	   comes next, and its undo step is a join */
+	if (line_amount) join_next = b;
 	/* a-z, ^, ., the change list, < >; not [ ] or " */
 	for (int k = 0; k < MARK_N; k++)
 		if (k < 26 || k == MARK_CARET || k == MARK_DOT || k == MARK_LT || k == MARK_GT)
@@ -804,6 +810,7 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 			if (!undo_record(b->undo, pos, del, ndel, ins, nins, c, after)) {
 				r = 0;
 				if (undo_seq(b->undo) != seq) umarks_put(b, undo_seq(b->undo), snap, 0);   /* a new group */
+				if (join_next == b) umarks_put(b, undo_seq(b->undo), NULL, 1);
 			}
 			else { text_delete(b->text, pos, nins); text_insert(b->text, pos, del, ndel); }
 		} else text_insert(b->text, pos, del, ndel);
@@ -830,6 +837,7 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 		b->flags = after;
 		if (b->noeol && !b->id.size) b->noeol = 0;
 	}
+	join_next = NULL;
 	return r;
 }
 

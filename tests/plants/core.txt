@@ -1,4 +1,15 @@
-# Plants for ref/core.c (format in tools/planted.sh).  The package that builds
-# src/core/ replaces this file with plants for its own code.
-core: undo loses deleted text (fuzz_keys)~fuzz FUZZERS=keys FUZZ_SECONDS=60~~ref/core.c~undo_record(e->buf->undo, pos, del, ndel, ins, nins, c, after)~undo_record(e->buf->undo, pos, del, ndel ? ndel - 1 : 0, ins, nins, c, after)
-core: undo leaves the cursor inside a 3- or 4-byte character (recorded traces)~test TESTS=~~ref/core.c~		size_t p = 0;¶		for (size_t k; p + (k = uni_len(s, len, p)) <= e->win->col; p += k) {}¶		e->win->col = p;~		e->win->col = uni_prev(s, len, e->win->col + 1);
+# Plants for src/core (format in tools/planted.sh), one per check that
+# guards the package: the recorded Neovim traces (test_core_screens), the
+# undo test, the fuzzers.
+core: undo loses deleted text (fuzz_keys)~fuzz FUZZERS=keys FUZZ_SECONDS=60~~src/core/core.c~if (!undo_record(b->undo, pos, del, ndel, ins, nins, c, after)) {~if (!undo_record(b->undo, pos, del, ndel ? ndel - 1 : 0, ins, nins, c, after)) {
+core: a deleted line keeps its mark (recorded traces)~test TESTS=core_screens~~src/core/core.c~		else m->set = 0;~		else m->line = l1;
+core: undo does not bring back the group's marks (test_core_undo)~test TESTS=core_undo~~src/core/core.c~		if (saved[i].set) b->mark[i] = saved[i];~		(void)0;
+core: redo of a join forgets the joined line (test_core_undo)~test TESTS=core_undo~~src/core/core.c~	if (w.hi == w.lo && at_start && !(u && u->join)) last = first - 1;~	if (w.hi == w.lo && at_start) last = first - 1;
+core: :bd searches the jump list from its oldest entry (recorded traces)~test TESTS=core_screens~~src/core/core.c~		if (w->jumpidx == w->njump) w->jumpidx = w->njump - 1;~		if (w->jumpidx == w->njump) w->jumpidx = 0;
+core: set_topline() keeps w_botline valid (recorded traces)~test TESTS=core_screens~~src/core/move.c~	s->topvalid = 0;      /* scrolloff is still to be checked */¶	s->bv~	s->topvalid = 0;      /* scrolloff is still to be checked */¶	if (0) s->bv
+core: the popup leaves no space before kind and menu (recorded traces)~test TESTS=core_screens~~src/core/draw.c~			int cw = s ? cells(s) + (j > 0) : 0;~			int cw = s ? cells(s) : 0;
+core: CTRL-F overlaps one line too many (recorded traces)~test TESTS=core_screens~~src/core/move.c~		int minh = w->h - 2, ov;~		int minh = w->h - 1, ov;
+core: a split forgets the alternate buffer (recorded traces)~test TESTS=core_screens~~src/core/win.c~	n->alt = o->alt;~	n->alt = NULL;
+core: the cursor clamp counts bytes, not characters (fuzz_core)~fuzz FUZZERS=core FUZZ_SECONDS=120~~src/core/move.c~	while ((k = lit_next(&it, &c)) && p + k <= w->col) { last = p; p += k; }~	while ((k = lit_next(&it, &c)) && p + k <= w->col) { last = p + k - 1; p += k; }
+core: the face of a cell past a shrunk screen is written (fuzz_core)~fuzz FUZZERS=core FUZZ_SECONDS=120~~src/core/draw.c~y >= 0 && y < g->rows && x >= 0 && x < g->cols~y >= 0 && x >= 0 && x < g->cols
+

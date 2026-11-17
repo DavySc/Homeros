@@ -26,8 +26,8 @@ static void remove_nl(Editor *e, size_t l, int join)
 	e->win->line = l;
 	e->win->col = 0;
 	size_t pl = core_line_len(e, l - 1);
+	if (join) core_mark_join(e, l, 0, -1, (long)pl, 0);   /* before, as do_join() */
 	CHECK(!core_edit(e, core_line_start(e, l) - 1, 1, "", 0));
-	if (join) core_mark_join(e, l, 0, -1, (long)pl, 0);
 	e->win->line = l - 1;
 	e->win->col = pl;
 	undo_close(e->buf->undo);
@@ -48,6 +48,14 @@ int main(void)
 	load(&e, "x\n\n\ny\n");
 	remove_nl(&e, 2, 0);
 	CHECK(core_undo(&e, 0) >= 0 && core_undo(&e, 1) >= 0 && e.win->line == 1);
+	core_free(&e);
+	/* a join moves the marks of the joined line onto the line before */
+	load(&e, "ab\ncd\nef\n");
+	e.buf->mark[0] = (Mark){ 1, 1, 1 };
+	e.buf->mark[1] = (Mark){ 2, 1, 1 };
+	remove_nl(&e, 1, 1);
+	CHECK(e.buf->mark[0].set && e.buf->mark[0].line == 0 && e.buf->mark[0].col == 3);
+	CHECK(e.buf->mark[1].set && e.buf->mark[1].line == 1 && e.buf->mark[1].col == 1);
 	core_free(&e);
 	/* a mark set after a group opened is back where it was on undo, and
 	   the one undo replaced returns on redo (u_undoredo()'s swap) */
