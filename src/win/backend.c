@@ -115,6 +115,7 @@ static LRESULT CALLBACK proc(HWND h, UINT m, WPARAM w, LPARAM l)
 		case VK_RIGHT: put(KEY_RIGHT); return 0;
 		case VK_UP: put(KEY_UP); return 0;
 		case VK_DOWN: put(KEY_DOWN); return 0;
+		case VK_DELETE: put(KEY_DEL); return 0;
 		}
 		break;
 	case WM_LBUTTONDOWN:

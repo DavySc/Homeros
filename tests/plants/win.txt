@@ -13,6 +13,7 @@ win: a lone low surrogate makes a key~win~~src/win/backend.c~if (surr) put(0x100
 win: keys dropped when the ring is full~win~~src/win/backend.c~while (rn < RING && PeekMessageW~while (PeekMessageW
 win: Left sent as Right~win~~src/win/backend.c~case VK_LEFT: put(KEY_LEFT);~case VK_LEFT: put(KEY_RIGHT);
 win: Right sent as Left~win~~src/win/backend.c~case VK_RIGHT: put(KEY_RIGHT);~case VK_RIGHT: put(KEY_LEFT);
+win: Delete sends nothing~win~~src/win/backend.c~case VK_DELETE: put(KEY_DEL); return 0;~case VK_DELETE: break;
 win: Down sent as Up~win~~src/win/backend.c~case VK_DOWN: put(KEY_DOWN);~case VK_DOWN: put(KEY_UP);
 win: mouse row taken from x~win~~src/win/backend.c~mrow = GET_Y_LPARAM(l) / ch;~mrow = GET_X_LPARAM(l) / ch;
 win: wheel up sent as down~win~~src/win/backend.c~put(KEY_WHEEL_UP);~put(KEY_WHEEL_DOWN);

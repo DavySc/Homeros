@@ -134,11 +134,11 @@ int main(void)
 	/* keys */
 	static const WPARAM chars[] = { 'a', 0xD835, 0xDCDD, 8, 27, 0xDCDD, 0xE9, 13 };
 	for (unsigned i = 0; i < sizeof chars / sizeof *chars; i++) PostMessageW(win, WM_CHAR, chars[i], 0);
-	static const WPARAM vks[] = { VK_LEFT, VK_RIGHT, VK_UP, VK_DOWN };
-	for (unsigned i = 0; i < 4; i++) PostMessageW(win, WM_KEYDOWN, vks[i], 0);
-	CHECK(input(k, 1) == 10);   /* one slot per call: nothing lost; the lone 0xDCDD gives none */
+	static const WPARAM vks[] = { VK_LEFT, VK_RIGHT, VK_UP, VK_DOWN, VK_DELETE };
+	for (unsigned i = 0; i < 5; i++) PostMessageW(win, WM_KEYDOWN, vks[i], 0);
+	CHECK(input(k, 1) == 11);   /* one slot per call: nothing lost; the lone 0xDCDD gives none */
 	CHECK(k[0] == 'a' && k[1] == 0x1D4DD && k[2] == KEY_BS && k[3] == KEY_ESC && k[4] == 0xE9
-	      && k[5] == KEY_ENTER && k[6] == KEY_LEFT && k[7] == KEY_RIGHT && k[8] == KEY_UP && k[9] == KEY_DOWN);
+	      && k[5] == KEY_ENTER && k[6] == KEY_LEFT && k[7] == KEY_RIGHT && k[8] == KEY_UP && k[9] == KEY_DOWN && k[10] == KEY_DEL);
 	BYTE ks[256] = { 0 };
 	ks[VK_CONTROL] = 0x80;
 	SetKeyboardState(ks);
