@@ -1,7 +1,6 @@
 /* Syntax colours (package 12, src/syntax/): tree-sitter, in Neovim's and
    Helix's shape.  The tree is edited on every change, reparsed after a
-   frame is drawn, and only the visible bytes are queried.  ref/syntax.c has
-   no grammars, so nothing is coloured until package 12. */
+   frame is drawn, and only the visible bytes are queried. */
 #ifndef SYNTAX_H
 #define SYNTAX_H
 #include <stddef.h>

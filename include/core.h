@@ -61,8 +61,13 @@ typedef struct Buf {
 	unsigned flags;            /* CORE_EMPTY */
 	unsigned long saved_seq;   /* undo_seq at the last load or save */
 	int nr;                    /* buffer number, from 1 (:b N) */
+	long lastused;             /* seconds when a window last entered it (b_last_used), for the buffers picker */
 	WinInfo *wi;
 	struct Syntax *syn;        /* syntax.h; NULL: no grammar for this file */
+	/* where syn is NULL: one FACE_* per byte of [a, z), as syntax_faces (git's
+	   diff and status buffers); NULL: none */
+	void (*faces)(const struct Buf *b, size_t a, size_t z, unsigned char *face);
+	int nonumber;              /* setlocal nonumber norelativenumber (neogit's buffers) */
 	struct LspDoc *lsp;        /* lsp.h; NULL: no language server for this file */
 	Mark mark[MARK_N];
 	Mark change[JUMPLIST_SIZE];   /* the change list (g; g,), oldest first */

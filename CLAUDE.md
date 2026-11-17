@@ -37,7 +37,7 @@ Prefer copying the behaviour of a reference editor (Neovim 0.12 first; Helix, Em
 | Path | What | Owner |
 |---|---|---|
 | `include/` | the headers every package codes against | thread 0 only |
-| `ref/` | reference implementations: the thin editor (text in an array, undo as a list, code-point Unicode, terminal grid, a dozen Vim keys, safe save) | thread 0 |
+| `ref/` | reference implementations: the thin editor (text in an array, undo as a list, code-point Unicode, terminal grid, a dozen Vim keys, safe save); once a package's `src/<module>/` is on main, the Makefile never builds `ref/<module>.c` again, so the package's PR deletes it (a dead copy only drifts) and moves its plants to `src/` | thread 0 |
 | `src/main.c` | the editor's main loop (Render.tla "ok") | thread 0 |
 | `src/<module>/` | a package's real implementation; once it has `.c` files the Makefile builds it instead of `ref/<module>.c`; a `build.mk` there adds its libraries (`CPPFLAGS`, `LIBS`, from pkg-config) and objects built outside our warnings (`OBJS`, into `build/<module>/`) | that package |
 | `tests/` | unit tests, fuzzers, the Neovim conformance driver and its recorded traces | thread 0; a package adds its own `tests/test_<module>*.c` and `tests/fuzz_<module>*.c`, and replaces `tests/plants/<module>.txt` (the plants aimed at `ref/<module>.c`) with plants for its code; the Makefile and `planted.sh` find them by name |
