@@ -1,0 +1,7 @@
+# Plants for src/syntax/ (format in tools/planted.sh).
+syntax: a priority tie goes to the earlier capture (test_syntax)~test TESTS=syntax~~src/syntax/syntax.c~if (pr >= s->prio[i - a])~if (pr > s->prio[i - a])
+syntax: not- predicates are not negated (test_syntax)~test TESTS=syntax~~src/syntax/syntax.c~if (test(src, m, &P->p[i]) == P->p[i].neg) return 0;~if (!test(src, m, &P->p[i])) return 0;
+syntax: an edit keeps a stopped parse going on the changed text (test_syntax, sliced)~test TESTS=syntax~~src/syntax/syntax.c~		/* the text a suspended parse was reading has changed: start it again */¶		ts_parser_reset(s->p);¶		s->susp = NULL;~
+syntax: Lua's lazy - takes one character at least (test_syntax, LuaJIT)~test TESTS=syntax~~src/syntax/lmatch.c~		long r = match(ms, s, ep + 1);~		long r = s < ms->end ? -1 : match(ms, s, ep + 1);
+syntax: a dropped region's tree leaks (fuzz_syntax)~fuzz FUZZERS=syntax FUZZ_SECONDS=60~~src/syntax/syntax.c~	if (r->tree) ts_tree_delete(r->tree);¶	free(r->r);~	free(r->r);
+syntax: an edit leaves injected regions where they were (test_syntax, frames before a parse)~test TESTS=syntax~~src/syntax/syntax.c~			range_edit(&g->r[k], e);~			if (!g) range_edit(&g->r[k], e);
