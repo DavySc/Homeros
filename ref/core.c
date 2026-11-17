@@ -124,6 +124,15 @@ int core_delete_lines(Editor *e, size_t a, size_t z)
 	return edit(e, core_line_start(e, a), core_line_start(e, z) - core_line_start(e, a), "", 0, 0);
 }
 
+/* The thin editor does not wrap. */
+void core_set_wrap(Editor *e, int on) { (void)e; (void)on; }
+
+/* The thin editor keeps marks but does not move them (package 4 does). */
+void core_mark_join(Editor *e, size_t line, size_t mincol, long line_amount, long col_amount, int spaces_removed)
+{
+	(void)e; (void)line; (void)mincol; (void)line_amount; (void)col_amount; (void)spaces_removed;
+}
+
 /* Neovim's cursor after undo and redo (undo.c, u_undoredo): back where the
    change started if that is inside or next to the changed lines, else the
    first changed line at its first non-blank. */
@@ -328,8 +337,8 @@ int  core_win_move(Editor *e, int how, long count) { (void)how; (void)count; ret
 void core_resize(Editor *e, int vertical, long n, int set) { (void)e; (void)vertical; (void)n; (void)set; }
 void core_equal(Editor *e) { (void)e; }
 void core_scroll(Editor *e, long n) { (void)e; (void)n; }
-void core_scroll_half(Editor *e, int dir, long count) { (void)e; (void)dir; (void)count; }
-void core_scroll_page(Editor *e, int dir, long count) { (void)e; (void)dir; (void)count; }
+int  core_scroll_half(Editor *e, int dir, long count) { (void)e; (void)dir; (void)count; return -1; }
+int  core_scroll_page(Editor *e, int dir, long count) { (void)e; (void)dir; (void)count; return -1; }
 void core_scroll_cursor(Editor *e, int how) { (void)e; (void)how; }
 size_t core_screen_line(Editor *e, int how, long count) { (void)how; (void)count; return e->win->line; }
 int  core_screen_move(Editor *e, long n) { (void)e; (void)n; return -1; }
