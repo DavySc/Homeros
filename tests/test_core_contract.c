@@ -85,6 +85,11 @@ int main(void)
 	CHECK(seen == 3);
 	core_pum(&e, NULL, 0, -1, 0);
 
+	/* a byte inside a cluster has the cluster's start column (getvcol();
+	   package 5 measured nvim on "x" U+0301: the composing byte is at 0) */
+	CHECK(!core_edit(&e, 0, 0, "x\xcc\x81\t", 4));
+	CHECK(core_vcol(&e, 0, 1) == 0 && core_vcol(&e, 0, 2) == 0 && core_vcol(&e, 0, 3) == 1 && core_vcol(&e, 0, 4) == 8);
+
 	/* the last window closes only without unsaved changes (E37), or with ! */
 	CHECK(!core_edit(&e, 0, 0, "z", 1));
 	CHECK(core_close(&e, 0) == -1 && !e.quit && strstr(e.msg, "E37"));

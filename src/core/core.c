@@ -1112,7 +1112,9 @@ size_t core_vcol(Editor *e, size_t l, size_t col)
 {
 	size_t n, v = 0;
 	const unsigned char *s = core_line(e, l, &n);
-	for (size_t i = 0; i < col && i < n; i += uni_glen(s, n, i)) v += (size_t)core_cellw(e->win, s, n, i, v);
+	/* a byte inside a cluster counts from the cluster's start (getvcol(),
+	   measured by package 5) */
+	for (size_t i = 0, k; i < n && i + (k = uni_glen(s, n, i)) <= col; i += k) v += (size_t)core_cellw(e->win, s, n, i, v);
 	return v;
 }
 
