@@ -33,9 +33,9 @@ static void settle(void)
 {
 	long long t0 = ms();
 	while (ms() - t0 < 300) {
-		e.changed = 0;
+		core_changed = 0;
 		CHECK(!loop_once(300));
-		if (e.changed) t0 = ms();
+		if (core_changed) t0 = ms();
 	}
 }
 

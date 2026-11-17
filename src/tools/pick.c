@@ -263,7 +263,7 @@ static void line(const char *s, size_t n)
 static void on_out(void *ctx, int stream, const char *b, size_t n)
 {
 	if ((int)(long)ctx != P.gen || !P.open) return;
-	if (stream == 0) { P.proc = -1; P.done = 1; P.e->changed = 1; return; }
+	if (stream == 0) { P.proc = -1; P.done = 1; core_changed = 1; return; }
 	if (stream != 1) return;
 	size_t before = P.nshown;
 	for (size_t i = 0; i < n; i++) {
@@ -278,7 +278,7 @@ static void on_out(void *ctx, int stream, const char *b, size_t n)
 	if (P.nshown != before) {
 		if (sorting()) qsort(P.shown, P.nshown, sizeof *P.shown, cmp);
 		preview();
-		P.e->changed = 1;
+		core_changed = 1;
 	}
 }
 
