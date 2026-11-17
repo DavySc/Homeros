@@ -67,6 +67,7 @@ test: $(OBJS) | build/san
 	python3 tools/conform.py build/san/conform_drv --replay tests/conform-recorded.json
 	gcc $(WARN) $(CPPFLAGS) $(SAN) -o build/san/homeros $(SRCS) src/main.c $(OBJS) $(LIBS)
 	@python3 tests/paste.py build/san/homeros -t 40000 || { echo "FAIL paste"; exit 1; }
+	@python3 tests/hup.py build/san/homeros || { echo "FAIL hup"; exit 1; }
 
 # libFuzzer, each target against a simple model, FUZZ_SECONDS each; an input
 # that runs 20 s is a hang and fails (a planted bug once spun 20 min)

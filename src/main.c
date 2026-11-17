@@ -17,6 +17,7 @@ enum { BATCH = 64, QMAX = 4096 };
 static const Backend *b = &backend_tty;
 static int q[QMAX], qh, qn;     /* keys read but not yet run */
 static int resized, running;   /* running: inside a command */
+static int lost;               /* the backend's input is gone for good */
 
 static void on_watch(void *ctx, int fd) { core_watch(ctx, fd); }
 
@@ -31,6 +32,7 @@ static void on_input(void *ctx, int fd)
 	int room = QMAX - qn;
 	if (!room && !running) return;
 	int n = b->input(k, room && room < 256 ? room : 256);
+	if (n < 0) { lost = 1; loop_int = 1; return; }
 	for (int i = 0; i < n; i++) {
 		if (k[i] == KEY_RESIZE) { resized = 1; continue; }
 		/* Neovim's got_int; the keys typed before it go (Vim's
@@ -65,7 +67,7 @@ int main(int argc, char **argv)
 			if (grid_resize(&g, rows, cols)) break;
 			dirty = 1;
 		}
-		for (int i = 0; i < BATCH && qn && !e.quit; i++, dirty = 1) {
+		for (int i = 0; i < BATCH && qn && !e.quit && !lost; i++, dirty = 1) {
 			int k = q[qh];
 			qh = (qh + 1) % QMAX;
 			qn--;
@@ -80,7 +82,7 @@ int main(int argc, char **argv)
 			}
 			loop_int = 0;
 		}
-		if (e.quit) break;
+		if (e.quit || lost) break;
 		if (dirty) syn = e.buf->syn != NULL;
 		if (dirty && b->ready()) {
 			/* the cluster store was emptied: shown's numbers mean nothing
@@ -109,6 +111,8 @@ out:
 	b->close();
 	grid_free(&g);
 	grid_free(&shown);
+	/* core_free would remove the journals as after a clean exit */
+	if (lost) { if (e.buf->journal) journal_sync(e.buf->journal); return 1; }
 	core_free(&e);
 	return 0;
 }
