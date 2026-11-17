@@ -202,6 +202,12 @@ int main(void)
 	unsigned long a = allocs;
 	font_stats(&h1, &m1);
 	CHECK(a == 0 && m1 == m0 && h1 == h0 + (unsigned long)n);
+	/* and so does a run longer than any before, of glyphs already drawn
+	   (HarfBuzz's buffer is taken at font_open, not grown here) */
+	static char longer[2001];
+	memset(longer, 'a', 2000);
+	n = shape(longer);
+	CHECK(allocs == 0 && n == 2000);
 
 	/* the cache fills and empties itself, and glyphs stay right across it:
 	   its slots with 8,000 CJK characters, its memory with every emoji at

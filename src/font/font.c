@@ -130,7 +130,8 @@ int font_open(const char *family, int size)
 	slot = malloc(SLOTS * sizeof *slot);
 	arena = malloc(ARENA);
 	buf = hb_buffer_create();
-	if (!face || !slot || !arena || !hb_buffer_allocation_successful(buf) || !load(0)) goto fail;
+	/* the longest run now, so a longer row later allocates nothing */
+	if (!face || !slot || !arena || !hb_buffer_pre_allocate(buf, RUN) || !load(0)) goto fail;
 	flush();
 	FT_Face f = face[0].ft;
 	base = (int)((f->size->metrics.ascender + 63) >> 6);
