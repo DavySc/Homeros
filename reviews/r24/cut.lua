@@ -1,0 +1,12 @@
+local function show(name, s)
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { s .. 'X' })
+  vim.cmd('redraw')
+  local a, b = vim.fn.screenstring(1, 1), vim.fn.screenstring(1, 2)
+  local w = vim.fn.strdisplaywidth(s)
+  io.write(string.format('%s: %d bytes in, cell 1 holds %d bytes, valid prefix %s, next cell %q (width %d)\n', name, #s, #a, tostring(s:sub(1, #a) == a), vim.fn.screenstring(1, 1 + w), w))
+end
+show('e + 20 U+0301', 'e' .. string.rep('\204\129', 20))
+show('e + 15 U+0301', 'e' .. string.rep('\204\129', 15))
+show('ZWJ chain 39 bytes', '\240\159\145\168' .. string.rep('\226\128\141\240\159\145\169', 5))
+show('e + 10 U+20DD (3 bytes each)', 'e' .. string.rep('\226\131\157', 12))
+vim.cmd('qa!')
