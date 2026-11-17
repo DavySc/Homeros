@@ -141,12 +141,14 @@ static int blank(unsigned char c) { return c == ' ' || c == '\t'; }
 
 /* Joins line l and the next without a space (do_join with insert_space
    off).  Neovim saves both lines (u_save), so its undo and redo count the
-   joined line as changed when placing the cursor (u_undoredo).  Deleting
-   only the "\n" of an empty line would read, in core_undo, as a deleted
-   line (dd), so then the next line is rewritten too. */
+   joined line as changed when placing the cursor (u_undoredo).  The thin
+   core ignores core_mark_join, and deleting only the "\n" of an empty line
+   would read there as a deleted line (dd), so then the next line is
+   rewritten too. */
 static int join(Editor *e, size_t l)
 {
 	size_t ls = core_line_start(e, l), n = core_line_len(e, l), m;
+	core_mark_join(e, l + 1, 0, -1, (long)n, 0);
 	if (n) return core_edit(e, ls + n, 1, "", 0);
 	const unsigned char *s = core_line(e, l + 1, &m);
 	return m ? core_edit(e, ls, m + 1, (const char *)s, m) : core_edit(e, ls, 2, "\n", 1);

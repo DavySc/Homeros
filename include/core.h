@@ -137,10 +137,14 @@ const unsigned char *core_line(Editor *e, size_t l, size_t *len);
 int  core_edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins);
 /* Delete lines [a, z); deleting all leaves the empty buffer.  0 ok, -1 out of memory. */
 int  core_delete_lines(Editor *e, size_t a, size_t z);
-/* A join (J, gJ, Backspace over a line break, a charwise delete across
-   lines) just made: marks at or after column mincol of line move by
-   line_amount lines and col_amount columns, as Neovim's mark_col_adjust(),
-   with spaces_removed as do_join() passes it.  Keys call it. */
+/* A join (J, gJ, Backspace or Delete over a line break, a charwise delete
+   across lines) about to be made: marks at or after column mincol of line
+   move by line_amount lines and col_amount columns, as Neovim's
+   mark_col_adjust(), with spaces_removed as do_join() passes it.  Keys call
+   it before the core_edit that joins, with the line numbers before it, as
+   do_join() calls mark_col_adjust() before del_lines(); a call with
+   line_amount != 0 also marks the step a join, so undo and redo count the
+   joined line as changed (do_join's u_save) when placing the cursor. */
 void core_mark_join(Editor *e, size_t line, size_t mincol, long line_amount, long col_amount, int spaces_removed);
 /* Neovim's setpcmark(): the cursor becomes the '' mark and the newest jump,
    the oldest falling off a full list; keys call it before a jump (G, gg,
