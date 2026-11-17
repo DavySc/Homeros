@@ -33,7 +33,8 @@ int file_save(const char *path, const Text *t, size_t n, FileId *id, int force,
 
 /* Outside changes: inotify on the file's directory (ReadDirectoryChangesW on
    Windows), so a file replaced by rename is still seen.  Returns an fd for
-   loop_watch, -1 on error; close it to stop. */
+   loop_watch, -1 on error: the same fd for every file, never closed (closing
+   one costs milliseconds), so a directory stays watched for the session. */
 int  file_watch(const char *path);
 /* Reads the fd's pending events.  1 if path no longer matches id, 0 if it
    does, -1 on error.  A stat decides, not the events, so our own saves never
@@ -61,8 +62,9 @@ int  journal_open(const char *path, Journal **j, Text **t,
    after journal_open or journal_saved records t, state and id as the base;
    later calls do nothing.  0 ok, -1 write error. */
 int  journal_base(Journal *j, const Text *t, unsigned state, const FileId *id);
-/* After the change: bytes [pos, pos + ndel) of the old text became ins;
-   state is the core's flags now.  0 ok, -1 write error. */
+/* Each change (just before or after it is made): bytes [pos, pos + ndel)
+   of the old text become ins; state is the core's flags.  0 ok, -1 write
+   error. */
 int  journal_edit(Journal *j, size_t pos, size_t ndel, const char *ins,
                   size_t nins, unsigned state);
 void journal_saved(Journal *j);       /* after a save: empty, base again at the next change */

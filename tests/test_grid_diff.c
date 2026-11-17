@@ -16,6 +16,107 @@
 
 static unsigned char out[1 << 20];
 
+/* What each face must look like, written out by hand from catppuccin/nvim
+   (Mocha), not computed from the shared table: per face the SGR after the
+   attribute that its treesitter.lua gives the capture, with
+   its default styles (comments, conditionals and "miscs" italic), links
+   followed and unlisted captures falling back to their parent.  Its
+   per-language overrides (@markup.heading.1.markdown and the like) have no
+   face of their own. */
+static const char *const face_sgr[FACE_COUNT] = {
+	"",
+	";38;2;205;214;244",                  /* variable: text */
+	";38;2;243;139;168",                  /* variable.builtin: red */
+	";38;2;235;160;172",                  /* variable.parameter: maroon */
+	";38;2;235;160;172",                  /* variable.parameter.builtin: maroon */
+	";38;2;180;190;254",                  /* variable.member: lavender */
+	";38;2;250;179;135",                  /* constant: peach */
+	";38;2;250;179;135",                  /* constant.builtin: peach */
+	";38;2;203;166;247",                  /* constant.macro: mauve */
+	";3;38;2;249;226;175",                /* module: yellow, italic */
+	";3;38;2;249;226;175",                /* module.builtin: yellow, italic */
+	";38;2;116;199;236",                  /* label: sapphire */
+	";38;2;166;227;161",                  /* string: green */
+	";38;2;148;226;213",                  /* string.documentation: teal */
+	";38;2;245;194;231",                  /* string.regexp: pink */
+	";38;2;245;194;231",                  /* string.escape: pink */
+	";38;2;245;194;231",                  /* string.special: pink */
+	";38;2;242;205;205",                  /* string.special.symbol: flamingo */
+	";38;2;245;194;231",                  /* string.special.path: pink */
+	";3;4;38;2;137;180;250",              /* string.special.url: blue, italic underline */
+	";38;2;148;226;213",                  /* character: teal */
+	";38;2;245;194;231",                  /* character.special: pink */
+	";38;2;250;179;135",                  /* boolean: peach */
+	";38;2;250;179;135",                  /* number: peach */
+	";38;2;250;179;135",                  /* number.float: peach */
+	";38;2;249;226;175",                  /* type: yellow */
+	";38;2;203;166;247",                  /* type.builtin: mauve */
+	";38;2;249;226;175",                  /* type.definition: yellow */
+	";38;2;250;179;135",                  /* attribute: peach */
+	";38;2;250;179;135",                  /* attribute.builtin: peach */
+	";38;2;180;190;254",                  /* property: lavender */
+	";38;2;137;180;250",                  /* function: blue */
+	";38;2;250;179;135",                  /* function.builtin: peach */
+	";38;2;137;180;250",                  /* function.call: blue */
+	";38;2;245;194;231",                  /* function.macro: pink */
+	";38;2;137;180;250",                  /* function.method: blue */
+	";38;2;137;180;250",                  /* function.method.call: blue */
+	";38;2;249;226;175",                  /* constructor: yellow */
+	";38;2;137;220;235",                  /* operator: sky */
+	";38;2;203;166;247",                  /* keyword: mauve */
+	";38;2;203;166;247",                  /* keyword.coroutine: mauve */
+	";38;2;203;166;247",                  /* keyword.function: mauve */
+	";38;2;203;166;247",                  /* keyword.operator: mauve */
+	";38;2;203;166;247",                  /* keyword.import: mauve */
+	";38;2;203;166;247",                  /* keyword.type: mauve */
+	";38;2;203;166;247",                  /* keyword.modifier: mauve */
+	";38;2;203;166;247",                  /* keyword.repeat: mauve */
+	";38;2;203;166;247",                  /* keyword.return: mauve */
+	";38;2;203;166;247",                  /* keyword.debug: mauve */
+	";38;2;203;166;247",                  /* keyword.exception: mauve */
+	";3;38;2;203;166;247",                /* keyword.conditional: mauve, italic */
+	";38;2;137;220;235",                  /* keyword.conditional.ternary: sky */
+	";38;2;245;194;231",                  /* keyword.directive: pink */
+	";38;2;245;194;231",                  /* keyword.directive.define: pink */
+	";38;2;147;153;178",                  /* punctuation.delimiter: overlay2 */
+	";38;2;147;153;178",                  /* punctuation.bracket: overlay2 */
+	";38;2;245;194;231",                  /* punctuation.special: pink */
+	";3;38;2;147;153;178",                /* comment: overlay2, italic */
+	";3;38;2;147;153;178",                /* comment.documentation: overlay2, italic */
+	";38;2;30;30;46;48;2;243;139;168",    /* comment.error: base on red */
+	";38;2;30;30;46;48;2;249;226;175",    /* comment.warning: base on yellow */
+	";38;2;30;30;46;48;2;242;205;205",    /* comment.todo: base on flamingo */
+	";38;2;30;30;46;48;2;245;224;220",    /* comment.note: base on rosewater */
+	";1;38;2;243;139;168",                /* markup.strong: red, bold */
+	";3;38;2;243;139;168",                /* markup.italic: red, italic */
+	";9;38;2;205;214;244",                /* markup.strikethrough: text, strikethrough */
+	";4",                                 /* markup.underline: underline */
+	";38;2;137;180;250",                  /* markup.heading: blue */
+	";38;2;137;180;250",                  /* markup.heading.1: blue */
+	";38;2;137;180;250",                  /* markup.heading.2: blue */
+	";38;2;137;180;250",                  /* markup.heading.3: blue */
+	";38;2;137;180;250",                  /* markup.heading.4: blue */
+	";38;2;137;180;250",                  /* markup.heading.5: blue */
+	";38;2;137;180;250",                  /* markup.heading.6: blue */
+	";38;2;245;194;231",                  /* markup.quote: pink */
+	";38;2;137;180;250",                  /* markup.math: blue */
+	";38;2;180;190;254",                  /* markup.link: lavender */
+	";38;2;180;190;254",                  /* markup.link.label: lavender */
+	";3;4;38;2;137;180;250",              /* markup.link.url: blue, italic underline */
+	";38;2;166;227;161",                  /* markup.raw: green */
+	";38;2;166;227;161",                  /* markup.raw.block: green */
+	";38;2;148;226;213",                  /* markup.list: teal */
+	";38;2;166;227;161",                  /* markup.list.checked: green */
+	";38;2;127;132;156",                  /* markup.list.unchecked: overlay1 */
+	";38;2;166;227;161",                  /* diff.plus: green */
+	";38;2;243;139;168",                  /* diff.minus: red */
+	";38;2;137;180;250",                  /* diff.delta: blue */
+	";38;2;137;180;250",                  /* tag: blue */
+	";38;2;137;180;250",                  /* tag.builtin: blue */
+	";3;38;2;249;226;175",                /* tag.attribute: yellow, italic */
+	";38;2;148;226;213",                  /* tag.delimiter: teal */
+};
+
 /* backend_present's output, through a file: a frame may be larger than a pipe holds */
 static size_t present(const Grid *g, Grid *shown)
 {
@@ -112,31 +213,22 @@ static void run(int (*width)(const unsigned char *, int), int frames)
 
 int main(void)
 {
-	/* each face's SGR, as the model numbers it: one cell drawn alone */
-	for (int f = 0; f < FACE_COUNT; f++) {
-		static Vt t;
-		Grid one = { 0 }, shown = { 0 };
-		CHECK(!grid_resize(&one, 1, 1));
-		grid_put(&one, 0, 0, (const unsigned char *)"x", 1, 1, ATTR_NONE);
-		one.c[0].face = (unsigned char)f;
-		vt_init(&t, 1, 1, same_width);
-		vt_feed(&t, out, present(&one, &shown));
-		CHECK(!t.bad);
-		vt_face[f] = t.c[0].face;
-		grid_free(&one);
-		grid_free(&shown);
-	}
+	/* the model numbers each face's SGR; the backend must send exactly that */
+	for (int f = 0; f < FACE_COUNT; f++) vt_face[f] = vt_style_id(face_sgr[f]);
 
 	/* grid_put's rules, one case each */
 	Grid g = { 0 };
 	CHECK(!grid_resize(&g, 1, 6));
 	const unsigned char *wide = (const unsigned char *)"\xe6\xbc\xa2";
+	/* the '>' and the blank keep the attribute and face of the half they replace */
 	CHECK(grid_put(&g, 0, 1, wide, 3, 2, ATTR_REV) == 2);
+	g.c[1].face = g.c[2].face = FACE_STRING;
 	CHECK(grid_put(&g, 0, 2, (const unsigned char *)"x", 1, 1, ATTR_NONE) == 1);   /* right half */
-	CHECK(g.c[1].len == 1 && g.c[1].ch[0] == '>' && g.c[1].attr == ATTR_REV && g.c[2].ch[0] == 'x');
+	CHECK(g.c[1].len == 1 && g.c[1].ch[0] == '>' && g.c[1].attr == ATTR_REV && g.c[1].face == FACE_STRING && g.c[2].ch[0] == 'x');
 	CHECK(grid_put(&g, 0, 3, wide, 3, 2, ATTR_DIM) == 2);
+	g.c[3].face = g.c[4].face = FACE_COMMENT;
 	CHECK(grid_put(&g, 0, 3, (const unsigned char *)"y", 1, 1, ATTR_NONE) == 1);   /* left half */
-	CHECK(g.c[4].len == 1 && g.c[4].ch[0] == ' ' && g.c[4].attr == ATTR_DIM);
+	CHECK(g.c[4].len == 1 && g.c[4].ch[0] == ' ' && g.c[4].attr == ATTR_DIM && g.c[4].face == FACE_COMMENT);
 	CHECK(grid_put(&g, 0, 4, wide, 3, 2, ATTR_NONE) == 2);
 	CHECK(grid_put(&g, 0, 3, wide, 3, 2, ATTR_DIM) == 2);                           /* overlapping wide */
 	CHECK(g.c[3].len == 3 && !g.c[4].len && g.c[5].len == 1 && g.c[5].ch[0] == ' ');
