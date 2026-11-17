@@ -1,5 +1,5 @@
-# Plants for ref/keys.c (format in tools/planted.sh).  The package that builds
-# src/keys/ replaces this file with plants for its own code.
-keys: j and k forget the wanted column (recorded traces)~test TESTS=~~ref/keys.c~	e->win->col = core_col_at(e, l, e->win->want, e->mode == MODE_INSERT);~	e->win->col = core_col_at(e, l, 0, e->mode == MODE_INSERT);
-keys: w does not stop on an empty line (live nvim)~conform CONFORM_N=2000 SEED=1~~ref/keys.c~		while (cls(e, p) == 0 && !empty_line(e, p))~		while (cls(e, p) == 0)
-keys: l steps one byte, into a character (fuzz_keys)~fuzz FUZZERS=keys FUZZ_SECONDS=60~~ref/keys.c~e->win->col + uni_len(s, len, e->win->col) < len) e->win->col += uni_len(s, len, e->win->col);~e->win->col + uni_len(s, len, e->win->col) < len) e->win->col += 1;
+# Plants for src/keys/ (format in tools/planted.sh).
+keys: j and k forget the wanted column (recorded traces)~test TESTS=~~src/keys/buf.c~	W->line = (size_t)(l + n >= nl ? nl - 1 : l + n);¶	coladvance(curswant());~	W->line = (size_t)(l + n >= nl ? nl - 1 : l + n);¶	coladvance(0);
+keys: Lean symbols are word characters again (live nvim)~conform CONFORM_N=2000 SEED=1~~src/keys/motion.c~		else return (int)classes[mid].cls;~		else return 2;
+keys: the cursor steps one byte, into a character (fuzz_keys)~fuzz FUZZERS=keys FUZZ_SECONDS=60~~src/keys/buf.c~		p->col += clen(ring[i].s, ring[i].n, p->col);~		p->col += 1;
+keys: tilde steps one byte, into a character (fuzz_keys_all)~fuzz FUZZERS=keys_all FUZZ_SECONDS=60~~src/keys/normal.c~		inc_cursor();¶		if (gchar_cursor() == 0) break;~		W->col++;¶		if (gchar_cursor() == 0) break;
