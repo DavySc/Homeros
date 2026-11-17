@@ -8,7 +8,7 @@ tty: a new size is not drawn whole~test TESTS=tty_render~~src/tty/tty.c~		outs("
 tty: an Esc alone is sent at once~test TESTS=tty_input~~src/tty/tty.c~TTIMEOUTLEN = 50 ~TTIMEOUTLEN = 0 
 tty: a key cut by a read is not kept~test TESTS=tty_input~~src/tty/tty.c~	int i = 0, force = 0, x, len;~	int i = 0, force = 1, x, len;
 Render drain: all input runs before a frame~test TESTS=tty_render~~src/main.c~for (int i = 0; i < BATCH && qn~for (int i = 0; qn
-Render midcmd: a frame inside a command~test TESTS=tty_render~~src/main.c~			} else { running = 1; keys_feed(&e, k, qn > 0); running = 0; }~			} else if (k == 0xE9) { keys_feed(&e, 'X', 1); core_draw(&e, &g); b->present(&g, &shown); keys_feed(&e, KEY_BS, 1); keys_feed(&e, k, qn > 0); } else { running = 1; keys_feed(&e, k, qn > 0); running = 0; }
+Render midcmd: a frame inside a command~test TESTS=tty_render~~src/main.c~				running = 1;¶				if (e.ks.pending || (!tools_key(&e, k)~				running = 1;¶				if (k == 0xE9) { keys_feed(&e, 'X', 1); core_draw(&e, &g); b->present(&g, &shown); keys_feed(&e, KEY_BS, 1); }¶				if (e.ks.pending || (!tools_key(&e, k)
 Ctrl-Z: the screen is not redrawn whole after fg~test TESTS=tty_render~~src/main.c~				grid_free(&shown);~
 tty: a resize while suspended is not seen~test TESTS=tty_render~~src/tty/tty.c~	if (write(sigpipe[1], "w", 1) < 0) {}¶}~}
 tty: bytes past U+10FFFF, surrogates and overlongs decoded~test TESTS=tty_input~~src/tty/tty.c~		return 1;¶	*k = (int)v;~		*k = (int)v;¶	*k = (int)v;

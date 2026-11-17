@@ -1,0 +1,115 @@
+diff --git a/src/uni/uni.c b/src/uni/uni.c
+index 7c087c5..ca6a96e 100644
+--- a/src/uni/uni.c
++++ b/src/uni/uni.c
+@@ -103,6 +103,25 @@ size_t uni_glen(const unsigned char *s, size_t n, size_t i)
+ 	return j - i;
+ }
+ 
++/* Helix's rule (uni.h): step forward from a known start, so the step back
++   lands on the starts uni_glen makes even where a backward reading of the
++   rules would not (regional indicator pairs, GB9c conjuncts, lam-alef).
++   Nothing joins an ASCII byte to what precedes it, so the walk starts at the
++   last one before i (or at 0) and costs the length of the non-ASCII run. */
++size_t uni_gprev(const unsigned char *s, size_t n, size_t i)
++{
++	size_t b = i - 1, g;
++	/*@ loop invariant 0 <= b <= i - 1;
++	    loop assigns b;
++	    loop variant b; */
++	while (b > 0 && s[b] >= 0x80) b--;
++	/*@ loop invariant bound(s, n, b) && b < i;
++	    loop assigns b, g;
++	    loop variant i - b; */
++	while ((g = uni_glen(s, n, b)) < i - b) b += g;
++	return b;
++}
++
+ int uni_width(const unsigned char *s, size_t n, size_t i)
+ {
+ 	if (s[i] < 0x80) return 1;
+diff --git a/tests/fuzz_uni.c b/tests/fuzz_uni.c
+index 254b564..16ab602 100644
+--- a/tests/fuzz_uni.c
++++ b/tests/fuzz_uni.c
+@@ -1,7 +1,7 @@
+ /* libFuzzer: uni.h's cluster kernels on any bytes, against the code point
+    model (uni_len): clusters tile the line, are whole code points, hold no
+    ASCII byte after their first and split an invalid byte from what follows;
+-   widths are 1, 2, 4 or 6, 1 for ASCII and 4 for an invalid byte.  Neovim
++   uni_gprev steps back onto exactly those starts from every byte; widths are 1, 2, 4 or 6, 1 for ASCII and 4 for an invalid byte.  Neovim
+    agreement is tests/test_uni_nvim.c's job. */
+ #include <stdint.h>
+ #include <stdlib.h>
+@@ -10,7 +10,7 @@
+ int LLVMFuzzerTestOneInput(const uint8_t *s, size_t n)
+ {
+ 	if (n == 0 || n > 256) return 0;
+-	size_t i = 0;
++	size_t i = 0, start[257];
+ 	while (i < n) {
+ 		size_t g = uni_glen(s, n, i), k = uni_len(s, n, i), j = i + k;
+ 		int w = uni_width(s, n, i);
+@@ -23,7 +23,10 @@ int LLVMFuzzerTestOneInput(const uint8_t *s, size_t n)
+ 			j += uni_len(s, n, j);
+ 		}
+ 		if (j != i + g) abort();
++		for (j = i + 1; j <= i + g; j++) start[j] = i;
+ 		i += g;
+ 	}
++	for (size_t j = 1; j <= n; j++)
++		if (uni_gprev(s, n, j) != start[j]) abort();
+ 	return 0;
+ }
+diff --git a/tests/plants/uni.txt b/tests/plants/uni.txt
+index 3b2c762..2a2047a 100644
+--- a/tests/plants/uni.txt
++++ b/tests/plants/uni.txt
+@@ -1,7 +1,7 @@
+ # Plants for src/uni/uni.c (format in tools/planted.sh).  Frama-C catches the
+ # contract ones; test_uni_nvim the data and Neovim-rule ones (the tables' link
+ # to Unicode is admitted in Frama-C, so only that test can see it); fuzz_uni
+-# the tiling ones.
++# the tiling ones.  uni_gprev has one plant per check.
+ uni: 0xF8 read as a 4-byte lead~test TESTS=uni~~src/uni/uni.c~c < 0xF8 ? 4 : 0;~c < 0xFC ? 4 : 0;
+ frama-c: the UTF-8 kernel returns 1 (weak contract trap)~frama~~src/uni/uni.c~		if (s[i + j] < 0x80 || s[i + j] >= 0xC0) return 1;¶	return k;~		if (s[i + j] < 0x80 || s[i + j] >= 0xC0) return 1;¶	return 1;
+ frama-c: uni_prev always steps one byte back (weak contract trap)~frama~~src/uni/uni.c~	if (i >= 2 && uni_len(s, n, i - 2) == 2) return i - 2;~	return i - 1;
+@@ -12,3 +12,6 @@ uni: table read one code point off~test TESTS=uni_nvim~~src/uni/uni.c~uni_t2[uni
+ uni: lam and alef do not join~test TESTS=uni_nvim~~src/uni/uni.c~!(p == 0x644 &&~!(p == 0x645 &&
+ uni: GB9c Linker Extend state dropped~test TESTS=uni_nvim~~src/uni/uni.c~ic = ic == 1 && it == 3 ? 1 : it;~ic = it;
+ uni: an invalid lead byte joins what follows (fuzz_uni)~fuzz FUZZERS=uni FUZZ_SECONDS=60~~src/uni/uni.c~	if (k == 1 && s[i] >= 0x80) return 1;¶	unsigned p~	unsigned p
++frama-c: uni_gprev steps onto the cluster at i~frama~~src/uni/uni.c~uni_glen(s, n, b)) < i - b)~uni_glen(s, n, b)) <= i - b)
++uni: uni_gprev starts at the last lead byte (code point step back, splits a conjunct)~test TESTS=uni_nvim~~src/uni/uni.c~	while (b > 0 && s[b] >= 0x80) b--;~	while (b > 0 && s[b] >= 0x80 && s[b] < 0xC0) b--;
++uni: uni_gprev starts at a continuation byte (fuzz_uni)~fuzz FUZZERS=uni FUZZ_SECONDS=60~~src/uni/uni.c~	while (b > 0 && s[b] >= 0x80) b--;~	while (b > 0 && s[b] >= 0xC0) b--;
+diff --git a/tests/test_uni_nvim.c b/tests/test_uni_nvim.c
+index e6a7766..5a54801 100644
+--- a/tests/test_uni_nvim.c
++++ b/tests/test_uni_nvim.c
+@@ -6,7 +6,7 @@
+       utf8proc (the facts uni.c admits), and uni_width alone and before
+       U+FE0F against utf_ptr2cells (exhaustive);
+    2. 20,000 random lines: cluster starts and widths against utfc_ptr2len
+-      and utf_ptr2cells;
++      and utf_ptr2cells, and uni_gprev from every byte onto those starts;
+    3. GraphemeBreakTest.txt (Unicode 18): every case, with Neovim's one
+       exception (ASCII never joins) applied to the expected breaks. */
+ #include <string.h>
+@@ -183,14 +183,17 @@ int main(void)
+ 	CHECK(f);
+ 	for (int r = 0; r < LINES; r++) {
+ 		const unsigned char *s = lines[r];
+-		size_t n = len[r], i = 0;
++		size_t n = len[r], i = 0, b = 0, j = 1;
+ 		for (; i < n; i += uni_glen(s, n, i)) {
+ 			unsigned long at, w;
+ 			CHECK(fscanf(f, "%lu %lu", &at, &w) == 2);
+ 			if (at != i) fprintf(stderr, "line %d: cluster at %zu, nvim %lu\n", r + 1, i, at);
+ 			CHECK(at == i && w == (unsigned long)uni_width(s, n, i));
++			for (; j <= i; j++) CHECK(uni_gprev(s, n, j) == b);   /* bytes b .. i - 1: Neovim's cluster at b */
++			b = i;
+ 		}
+ 		CHECK(i == n);
++		for (; j <= n; j++) CHECK(uni_gprev(s, n, j) == b);
+ 	}
+ 	int c;
+ 	while ((c = fgetc(f)) == '\n' || c == ' ') {}

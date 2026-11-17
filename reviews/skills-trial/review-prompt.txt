@@ -1,0 +1,16 @@
+You are reviewing one change to a C repository at /home/claude/trial/rev/ID (a git repo with two commits: "base", and "The change under review" on top). It is a text editor written for one person, Davy; read its CLAUDE.md first: those are the project's rules, and the change is judged against them.
+
+The author was given this task:
+---
+TASK
+---
+
+Review the change (`git diff HEAD~1 HEAD`) for defects. A defect is any of: wrong behaviour against the task, the header contract or Neovim 0.12; a check (test, fuzzer, Frama-C proof, plant) that does not catch what it claims to, or a claim in a comment or test message that is false; a break of a CLAUDE.md rule (for example code that is not needed, a check without a plant that it catches, an untagged claim, a comment that says what instead of why); a needless cost (time, memory, lines). Judge the change, not the base.
+
+Rules:
+- Work only inside /home/claude/trial/rev/ID. Do not read any other directory under /home/claude, /tmp or /mnt, and do not use GitHub. Write scratch files under /home/claude/trial/rev/ID/review/.
+- Tools: `export PATH=/home/claude/trial/rev/ID/tools-env/bin:$PATH` (Neovim 0.12, Frama-C with Z3 and CVC5, why3 configured). Relevant targets: `make compilers`, `make test TESTS="uni uni_nvim"`, `make fuzz FUZZERS=uni FUZZ_SECONDS=60`, `make frama`. Only the Unicode plants: `mkdir -p build && sed 's#tests/plants/\*.txt#tests/plants/uni.txt#' tools/planted.sh > build/planted-uni.sh && bash build/planted-uni.sh`. The machine is shared with several other jobs: Frama-C has a 20 s per-goal timeout, and one goal in uni_glen (base code) is known to time out under load; `FRAMAC_WP_CACHE=rebuild` forces a real retry. A timeout that a quiet retry proves is not a defect.
+- Reproduce every finding by running something (a test, an input, a plant, a Neovim comparison, a measurement). A suspicion you could not reproduce goes in a separate list and does not count.
+- Do not fix the code.
+
+Write your report to /home/claude/trial/rev/ID/review/report.md: for each confirmed defect, a number, a severity (major: wrong result, a check that cannot fail, a broken rule that matters; minor: everything else), one sentence on what is wrong, and the command that reproduces it with its output. Then the unconfirmed list. Then what you ran, with counts. End your final answer with one line exactly of the form `DEFECTS major=<n> minor=<n>`.

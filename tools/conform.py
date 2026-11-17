@@ -12,9 +12,9 @@ import json, os, random, subprocess, sys, tempfile
 # and that take one cell, as the thin editor assumes (math symbols such as
 # ∀ and 𝓝 are punctuation there: package 5 takes that table)
 WORDS = ['foo', 'bar_1', 'x', '(', ').', ',', 'é', 'λx', 'ა', '𐐀x', '--', '']
-INS = list('abc xy,.(') + ['é', 'ა', '𐐀', '<CR>', '<CR>', '<BS>', '<BS>', '<Tab>', '  ']
-NORM = ['h', 'j', 'k', 'l', '0', '^', '$', 'w', 'b', 'gg', 'G', 'x', 'dd', 'u', '<C-r>']
-CODES = {'<Esc>': 27, '<CR>': 13, '<BS>': 127, '<Tab>': 9, '<C-r>': 18}
+INS = list('abc xy,.(') + ['é', 'ა', '𐐀', '<CR>', '<CR>', '<BS>', '<BS>', '<Del>', '<Tab>', '  ']
+NORM = ['h', 'j', 'k', 'l', '0', '^', '$', 'w', 'b', 'gg', 'G', 'x', 'dd', 'u', '<C-r>', '<Del>']
+CODES = {'<Esc>': 27, '<CR>': 13, '<BS>': 127, '<Tab>': 9, '<C-r>': 18, '<Del>': 0x110009}
 
 def gen_text(r):
     lines = []
