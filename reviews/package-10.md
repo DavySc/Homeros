@@ -89,3 +89,35 @@ Yes, with no header change.
 
 - **Esc 50 ms wait**: `loop_timer(fn, ctx, 50)`. Timers round up, so it never fires early (plant caught), and they do not run inside a command.
 - **Restoring the terminal on SIGTERM and SIGHUP**: `tty.c` already has a self-pipe on `loop_watch` for SIGWINCH; the same pipe carries these. `loop_once` returns 0 on a signal and watched fds also run inside `loop_breakcheck`, so the terminal is restored even during a long command. Two things for whoever does it: on SIGHUP fd 0 reports end of input on every poll, so `on_input` must stop the loop rather than spin; and children are not killed when the editor exits (Neovim stops its jobs then), which packages 13 and 15 will want, after finding 4.
+
+## Re-review at `2204e10` (2026-11-17)
+
+**Verdict: approved**, to merge once the branch holds current main and CI is green on it. The three tests asked for below come with that push.
+
+Every finding of the first review is fixed, each checked by rerunning its repro:
+
+| Finding | At `a240489` | At `2204e10` |
+|---|---|---|
+| 1. SIGPIPE plant in CI | not caught under `trap '' PIPE` | `make planted` under `trap '' PIPE`: 99 of 99 caught, 1 run |
+| 2. exit behind a holder (`holder.c`, 3 runs each) | 3003 and 3004 ms | 1 to 2 ms, as Neovim; 300,005 bytes written before the exit all arrive before it |
+| 3. stale kill (`stalekill.c`, 3 runs) | the stranger is killed | the stranger lives |
+| 4. SIGKILL with many kills (`killtable.c`) | 20 killed, 4 alive; 32 killed, 16 alive | 0 alive for 16, 20 and 32 |
+| 5. zero-byte write (`zero.c`) | UBSan stops, gcc and clang | returns 0, both |
+| 6, 7. lines nothing held | 6 plants not caught | the two lines and the fd guard are gone; the rest have tests and plants |
+| 8. exit timing model | none | `Exit.tla`: ok passes, waiteof fails NoStale, waiteof_live fails Reported, early fails OutputFirst (TLC, 1 run in `check.sh`) |
+
+`make check` passes on `2204e10` with SIGPIPE ignored as in CI (15 min 54 s, 1 run); 0 wake-ups in 20 s idle; peak RSS grew 9.7 MB while 256 MB passed through `cat`.
+
+The deleted guard in `loop_once` (`c->fd[s] != pf[k].fd`) is right to go: the output fds are now closed only by their own entry in the pass or by `report`, which runs after the pass, and a slot is freed only in `report`.
+
+### Still without a test (my plants, `extra-plants-2.txt`: 1 of 5 caught)
+
+Not defects: the lines are there and needed. But nothing fails without them, and the first is severe.
+
+- **`c->killat = 0` in `report`.** Without it, a child that dies on SIGTERM leaves its deadline in a free slot and 2 s later the loop sends `kill(-0, SIGKILL)`: the editor kills its own process group. Measured with `killself.c`, 3 of 3 runs: exit 0 as merged, killed by signal 9 with the line removed. The loop test never runs 2 s past such a kill with the slot unused.
+- **The pipes closed at the exit** (`close(c->fd[s])` and `close_in(c)` in `report`). A test that counts `/proc/self/fd` before and after covers both.
+- **`kill(-p[i].pid, SIGKILL)` to the group.** A grandchild that ignores SIGTERM must be dead after the 2 s.
+
+### Residual risk (hypothesis)
+
+`report` calls the output callbacks after the reap with `c->pid` still set, so a callback that calls `proc_kill` on its own child there signals a reaped pid. It would need the pid to be given out again within those callbacks (a full wrap of the pid space in microseconds). Exit.tla treats the reap and the report as one step and does not show it. Not worth a line.
