@@ -284,11 +284,11 @@ static int open_line(int dir)
 			replace_bytes(l, rest, len - rest, b, nl_len + 1);
 			free(b);
 		}
-		W->line = (size_t)(l + 1);
+		l++;
 	}
 	free(line);
 	free(nl);
-	W->col = (size_t)ind;
+	setcur((Pos){ l, ind, 0 });
 	ai_col = ind;
 	if (replacing()) for (long i = 0; i < ind; i++) replace_push_nul();
 	did_ai_flag = 1;
@@ -319,7 +319,7 @@ static int ins_tab(void)
 	redo_append('\t');
 	/* smarttab in the indent uses 'shiftwidth', elsewhere 'softtabstop':
 	   both 4 */
-	long v = vcol_of((long)W->line, (long)W->col), temp = SW - v % SW;
+	long v = getviscol(), temp = SW - v % SW;   /* get_nolist_virtcol(): with coladd */
 	ins_char(' ');
 	while (--temp > 0) {
 		ins_bytes(" ", 1);
@@ -691,6 +691,7 @@ void insert_key(int k, int pending)
 		} else if (w == 7) {  /* CTRL-G */
 			if (c == 'u') ctrl_g_u();
 		}
+		c = w;   /* lastc is the command: ins_reg() reads its register itself */
 		goto post;
 	}
 	if (batch_len && c >= ' ' && c < 0x7f && c != '0' && c != '^') {

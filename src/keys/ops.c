@@ -1543,10 +1543,11 @@ int insert_reg(int regname, int literally)
 		do_put('-', dir, 1, PUT_CURSEND);
 		return 1;
 	}
-	Sbuf b = { 0 };
-	bput(&b, reg->s, reg->n);
-	if (reg->type == MLINE) bput(&b, "\n", 1);
-	stuff_bytes(b.s ? b.s : "", b.n, 0, literally);
-	free(b.s);
+	/* each line escaped, the line breaks typed as Enter */
+	for (long i = 0, j; i <= reg->n; i = j + 1) {
+		for (j = i; j < reg->n && reg->s[j] != '\n'; j++) {}
+		stuff_bytes(reg->s + i, j - i, 0, literally);
+		if (j < reg->n || reg->type == MLINE) stuff_bytes("\n", 1, 0, 0);
+	}
 	return 1;
 }
