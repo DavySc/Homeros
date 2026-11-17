@@ -495,8 +495,7 @@ enum { ENTER_B, ENTER_E, ENTER_NEW, ENTER_ALT };
 static int enter_buffer(Editor *e, Buf *b, int how)
 {
 	Win *w = e->win;
-	int loaded = !!b->text;
-	if (!loaded && buf_reload(e, b)) return -1;
+	if (!b->text && buf_reload(e, b)) return -1;
 	if (how == ENTER_E || how == ENTER_ALT) buf_list(e, b);   /* BLN_LISTED */
 	if (w->buf != b) {
 		if (how != ENTER_NEW) core_wininfo_set(w->buf, w, 0);   /* buflist_altfpos() */
@@ -516,18 +515,22 @@ static int enter_buffer(Editor *e, Buf *b, int how)
 	/* didset_window_options(): one of leftcol and skipcol goes, as for :set wrap */
 	if (w->wrap) w->left = 0;
 	else w->skipcol = 0;
-	if (i && i->line != UNSET) {
+	int pos = i && i->line != UNSET;
+	if (pos) {
 		w->line = i->line;
 		w->col = i->col;       /* nostartofline */
 	} else if (i ? how != ENTER_B : how == ENTER_E || (how == ENTER_ALT && line1_blank(e)))
 		w->col = core_first_nonblank(e, 0);
 	win_check_cursor(w);
-	/* buflist_getfile() sets w_set_curswant only for a column other than 0;
-	   do_ecmd()'s beginline() keeps curwin_init()'s curswant 0 (measured:
-	   CTRL-^ back to column 0 of a tab, then 2gg, lands on column 0) */
-	/* (an unloaded buffer goes through do_ecmd() whole, which sets it:
-	   measured, :bd then CTRL-^ onto a tab and j lands on its end) */
-	if (how == ENTER_ALT && !w->col && loaded) w->want = 0;
+	/* CTRL-^ (buflist_getfile()): a position from b's entry (this
+	   window's, else the newest) reaches do_ecmd() as a line number, and
+	   beginline(BL_SOL) with 'nostartofline' keeps curwin_init()'s
+	   curswant 0; buflist_getfile() sets w_set_curswant only for a column
+	   other than 0.  Without a position do_ecmd()'s beginline(BL_WHITE)
+	   sets it, so the wanted column is the cursor's (measured, 1 run each: :e f1 then CTRL-^ onto
+	   a tab, then j, lands on column 0; after :vnew, or after :bd, on the
+	   tab's end) */
+	if (how == ENTER_ALT && !w->col && pos) w->want = 0;
 	else core_set_want(e);
 	if (how != ENTER_B) { win_ecmd_topline(e, w); return 0; }
 	w->top = 0;
@@ -954,9 +957,16 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 	/* changed_common(): a change at or before a window's cursor makes its
 	   view be looked at again */
 	if (!r)
-		for (Win *w = e->wins; w; w = w->next)
-			if (w->buf == b && (w->line > L || (w->line == L && w->col >= pos - text_line_start(b->text, L))))
-				win_invalidate(w);
+		for (Win *w = e->wins; w; w = w->next) {
+			if (w->buf != b) continue;
+			WinState *ws = &w->frame->s;
+			int bv = ws->bv;
+			if (w->line > L || (w->line == L && w->col >= pos - text_line_start(b->text, L))) win_invalidate(w);
+			/* w_botline at or below the change: lines removed invalidate
+			   it, else it is kept as an approximation (inserted lines push
+			   others below it); measured, c_open_below */
+			ws->bv = ws->bot < L ? bv : newlines(del, ndel) > newlines(ins, nins) ? 0 : bv & ~BOT_EXACT;
+		}
 	if (!r) adjust_edit(e, L, at_start, ndel && del[ndel - 1] == '\n', nins && ins[nins - 1] == '\n',
 	                    newlines(del, ndel), newlines(ins, nins));
 	free(del);

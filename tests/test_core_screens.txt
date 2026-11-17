@@ -60079,3 +60079,713 @@ S f0 [+]                1,724-692      All
 S 
 M - - -
 E
+C 6 40
+F 090ac3a9202d2d20cebb7820cebb78206162e6bca2
+F 
+F 
+T vnew
+T alt
+T w:p
+T w:c
+T L
+P
+S 1
+S   1 é -- λx λx ab漢
+S ~
+S ~
+S f0                    1,1-8          All
+S 
+M - - -
+P
+S 1                  │1
+S   1 é -- λx λx ab漢│~
+S ~                  │~
+S ~                  │~
+S <1,1-8          All < 0,0-1          All
+S :vnew
+M - - -
+P
+R
+S   1 é -- λx λx ab漢│  1 é -- λx λx ab漢
+R
+R
+S <1,1-8          All < 1,1-8          All
+R
+M - - -
+P
+S 1                   │1
+S   1 é -- λx λx ab漢 │  1 é -- λx λx ab漢
+S ~                   │~
+S ~                   │~
+S < 1,1-8          All <1,1-8          All
+R
+M - - -
+P
+S 1
+S   1 é -- λx λx ab漢
+S ~
+S ~
+S f0                    1,1-8          All
+R
+M - - -
+P
+S   1
+S 2   é -- λx λx ab漢
+R
+R
+S f0                    2,10-8         All
+R
+M - - -
+E
+C 6 20
+F 202020202d2d2061616161616161616161616161616161616161616161616161616161616120e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a79220292e2061616161616161616161616161616161616161616161616161616161616120666f6f20616161616161616161616161616161616161616161616161616161616161200120e1839020292e207f20f09f9880
+F 
+T k:5G
+T k:Onew line<Esc>
+T w2:s
+T wrap
+T pum:5:20:4
+P
+S 1       -- aaaaaaaaa
+S ~
+S ~
+S ~
+S < 1,1            All
+S 
+M - - -
+P
+R
+R
+R
+R
+R
+R
+M - - -
+P
+S 1       new line
+S   1     -- aaaaaaaaa
+R
+R
+S < 1,12           All
+R
+M - - -
+P
+R
+S < 1,12           Top
+S 1       new line
+S   1     -- aaaaaaaaa
+R
+R
+M - - -
+P
+R
+R
+R
+S   1     -- aaaaaa@@@
+S < 1,12           Top
+S :set wrap
+M - - -
+P
+S 1       new linez
+R
+S 1       new linez
+S    z
+S <  foo2
+S -- INSERT --
+M - - -
+E
+C 15 20
+F 097f20c3a9206162e6bca2
+F 
+T k:Ayyyyyyyyyyyyyyyyyyyyyyyyyyy<Esc>
+T vs
+T vs
+T k:0
+P
+S 1           ^? é ab>
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S < 1,1-8          All
+S 
+M - - -
+P
+S 1   yyyyyyyyyyyyyyy
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S < 1,38-44        All
+R
+M - - -
+P
+S 1│1   yyyyyyyyyyyyyy
+S ~│~
+S ~│~
+S ~│~
+S ~│~
+S ~│~
+S ~│~
+S ~│~
+S ~│~
+S ~│~
+S ~│~
+S ~│~
+S ~│~
+S < <,38-44        All
+S :vs
+M - - -
+P
+S 1│1│1   yyyyyyyyyyyy
+S ~│~│~
+S ~│~│~
+S ~│~│~
+S ~│~│~
+S ~│~│~
+S ~│~│~
+S ~│~│~
+S ~│~│~
+S ~│~│~
+S ~│~│~
+S ~│~│~
+S ~│~│~
+S < < <8-44        All
+R
+M - - -
+P
+S 1│1│1          ^? é
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S < < <-8          All
+R
+M - - -
+E
+C 6 20
+F 091b
+T w:v
+T w2:v
+T sp
+T close
+T vnew
+T w:h
+P
+S 1           ^[
+S ~
+S ~
+S ~
+S < 1,1-8          All
+S 
+M - - -
+P
+S 1│1           ^[
+S ~│~
+S ~│~
+S ~│~
+S < <,1-8          All
+R
+M - - -
+P
+S 1│1           ^[ │1
+S ~│~              │~
+S ~│~              │~
+S ~│~              │~
+S < <8          All <l
+R
+M - - -
+P
+S 1│1│1           ^[
+S ~│~│~
+S ~│~│<-8          All
+S ~│~│1           ^[
+S < < <-8          All
+S :sp
+M - - -
+P
+R
+R
+S ~│~│~
+S ~│~│~
+R
+S :close
+M - - -
+P
+S 1│1│1│1
+S ~│~│~│~
+S ~│~│~│~
+S ~│~│~│~
+S < < < <          All
+S :vnew
+M - - -
+P
+S 1│1│1         ^[  │1
+S ~│~│~             │~
+S ~│~│~             │~
+S ~│~│~             │~
+S < < <          All <
+R
+M - - -
+E
+C 30 40
+F 77c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642020206161616161616161616161616161616161616161616161616161616161612020090a0a1b207a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a20782009201b20207a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a202820c3a9207f207f0a20cebb782061616161616161616161616161616161616161616161616161616161616120c3a9200920666f6f2001207f20666f6f0a2028207a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a207a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a20666f6f20c3a920cebb7820666f6f201b201b2077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b67264200a0a0120c3a920666f6f2020090a202820666f6f207f202077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b6726420
+F 
+T size:9:13
+T k:7$
+P
+S 1   wörd wörd wörd wörd wörd wörd wörd w
+S   1
+S   2 ^[ zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S   3  λx aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa é
+S   4  ( zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S   5
+S   6 ^A é foo
+S   7  ( foo ^?  wörd wörd wörd wörd wörd
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S f0                    1,1            All
+S 
+M - - -
+P
+S 1   wörd wörd
+S   1
+S   2 ^[ zzzzzz
+S   3  λx aaaaa
+S   4  ( zzzzzz
+S   5
+S   6 ^A é foo
+S <         Top
+S 
+M - - -
+P
+S   5
+S   4 zzzzzzzzz
+S   3 aaaaaaaaa
+S   2 zzzzzzzzz
+S   1
+S 7
+S   1 wörd wörd
+S <6        Bot
+R
+M - - -
+E
+C 30 40
+F 090120666f6f20e6bca2e5ad97207f207a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a0a206162e6bca20a20207f207820616161616161616161616161616161616161616161616161616161616161206162e6bca220780ae6bca220e6bca220666f6f0a206162e6bca220c3a920206162e6bca220e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a79220cebb780a207a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a20f09f98800a20
+T 2C-d
+T wrap
+T k:oa<CR>b<CR>c<Esc>
+T k:Onew line<Esc>
+P
+S 1           ^A foo 漢字 ^? zzzzzzzzzzzzz
+S   1  ab漢
+S   2   ^? x aaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+S   3 漢 漢 foo
+S   4  ab漢 é  ab漢 全角全角全角全角全角全
+S   5  zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S   6
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S f0                    1,1-8          All
+S 
+M - - -
+P
+S   2         ^A foo 漢字 ^? zzzzzzzzzzzzz
+R
+S 3     ^? x aaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+S   1 漢 漢 foo
+S   2  ab漢 é  ab漢 全角全角全角全角全角全
+S   3  zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S   4
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S f0                    3,7-8          All
+R
+M - - -
+P
+R
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S   1  ab漢
+S 3     ^? x aaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+S     a ab漢 x
+S   1 漢 漢 foo
+S   2  ab漢 é  ab漢 全角全角全角全角全角全
+S     角全角全角全角全角全角全角全角全角全
+S     角全角全角全角全角全角 λx
+S   3  zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzz 😀
+S   4
+R
+R
+R
+S :set wrap
+M - - -
+P
+S   5         ^A foo 漢字 ^? zzzzzzzzzzzzz
+R
+R
+R
+R
+R
+R
+R
+R
+S   4  ab漢
+S   3   ^? x aaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+R
+S   2   a
+S   1   b
+S 6     c
+S   1 漢 漢 foo
+S   2  ab漢 é  ab漢 全角全角全角全角全角全
+S     角全角全角全角全角全角全角全角全角全
+S     角全角全角全角全角全角 λx
+S   3  zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+R
+R
+R
+R
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzz 😀
+S f0 [+]                6,3            Top
+S 
+M - - -
+P
+S   4  ab漢
+S   3   ^? x aaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+S     a ab漢 x
+S   2   a
+S   1   b
+S 6     new line
+S   1   c
+S   2 漢 漢 foo
+S   3  ab漢 é  ab漢 全角全角全角全角全角全
+S     角全角全角全角全角全角全角全角全角全
+S     角全角全角全角全角全角 λx
+S   4  zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzz 😀
+S   5
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S f0 [+]                6,10           Bot
+R
+M - - -
+E
+C 6 60
+F 666f6f201b2077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b67264202077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b67264200a2028207820780a09207a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a207a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a0a0977c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b6726420202077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b672642077c3b6726420206161616161616161616161616161616161616161616161616161616161612061616161616161616161616161616161616161616161616161616161616120cebb7820012028201b2078
+T wrap
+T size:37:64
+T k:oa<CR>b<CR>c<Esc>
+P
+S 1   foo ^[ wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd
+S   1  ( x x
+S   2          zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S   3         wörd wörd wörd wörd wörd wörd wörd wörd wörd wör
+S f0                                        1,1            All
+S 
+M - - -
+P
+R
+S      wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd
+S     wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd w
+S     örd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wö
+S f0                                        1,1            Top
+S :set wrap
+M - - -
+P
+S 1   foo ^[ wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wör
+S     d wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wör
+S     d wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wör
+S     d wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wör
+S     d wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wör
+S     d wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wör
+S     d wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wör
+S     d wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wör
+S     d wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wör
+S     d wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wör
+S     d wörd  wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wö
+S     rd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wö
+S     rd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wö
+S     rd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wö
+S     rd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wö
+S     rd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wö
+S     rd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wö
+S     rd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wö
+S     rd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wö
+S     rd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wö
+S     rd wörd
+S   1  ( x x
+S   2          zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzz zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzz
+S   3         wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wö
+S     rd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd@@@
+S f0                                            1,1            Top
+S 
+M - - -
+P
+S   2 a
+S   1 b
+S 4   c
+S   1  ( x x
+S   2          zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzz zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzz
+S   3         wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wö
+R
+R
+R
+R
+S     rd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wö
+S     rd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wö
+S     rd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wö
+S     rd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wö
+S     rd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wö
+S     rd wörd   wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd
+S     wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd
+S     wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd
+S     wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd
+S     wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd
+S     wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd
+S     wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd
+S     wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd
+S     wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd
+S     wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wörd wö@@@
+S f0 [+]                                        4,1            50%
+R
+M - - -
+E
+C 24 60
+F 20202020666f6f202820f09f9880200120cebb78206c6f6e676572776f7264206261725f312009200120f09f98800a0ae585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a7922061616161616161616161616161616161616161616161616161616161616120f09f9880207f20090a280a20202020280a097820e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792207a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a0a0a666f6f2020cebb7820c3a920e6bca20ae585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a7920a0a202020207a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a20e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a79220616161616161616161616161616161616161616161616161616161616161207f200120666f6f206162e6bca22078207f2020666f6f0a0120666f6f0a202020202c2078207f2001206162e6bca2202d2d202028206162e6bca2200120780a010a0a7f20c3a9207f20616161616161616161616161616161616161616161616161616161616161202d2d207820292e206c6f6e676572776f7264207a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a206162e6bca2202c0a097f206162e6bca2207f0a01202c0a0a0978200920666f6f20f09f9880206162e6bca220e183902078206c6f6e676572776f7264
+T k:15G
+T wrap
+T k:oa<CR>b<CR>c<Esc>
+P
+S 1       foo ( 😀 ^A λx longerword bar_1      ^A 😀
+S   1
+S   2 全角全角全角全角全角全角全角全角全角全角全角全角全角全角
+S   3 (
+S   4     (
+S   5         x 全角全角全角全角全角全角全角全角全角全角全角全
+S   6
+S   7 foo  λx é 漢
+S   8 全角全角全角全角全角全角全角全角全角全角全角全角全角全角
+S   9
+S  10     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S  11 ^A foo
+S  12     , x ^? ^A ab漢 --  ( ab漢 ^A x
+S  13 ^A
+S  14
+S  15 ^? é ^? aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa -- x ). longerwor
+S  16         ^? ab漢 ^?
+S  17 ^A ,
+S  18
+S  19         x        foo 😀 ab漢 ა x longerword
+S ~
+S ~
+S f0                                        1,1            All
+S 
+M - - -
+P
+S  14     foo ( 😀 ^A λx longerword bar_1      ^A 😀
+S  13
+S  12 全角全角全角全角全角全角全角全角全角全角全角全角全角全角
+S  11 (
+S  10     (
+S   9         x 全角全角全角全角全角全角全角全角全角全角全角全
+S   8
+R
+S   6 全角全角全角全角全角全角全角全角全角全角全角全角全角全角
+S   5
+S   4     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S   3 ^A foo
+S   2     , x ^? ^A ab漢 --  ( ab漢 ^A x
+S   1 ^A
+S 15
+S   1 ^? é ^? aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa -- x ). longerwor
+S   2         ^? ab漢 ^?
+S   3 ^A ,
+S   4
+S   5         x        foo 😀 ab漢 ა x longerword
+R
+R
+S f0                                        15,0-1         All
+R
+M - - -
+P
+S   6 全角全角全角全角全角全角全角全角全角全角全角全角全角全角
+S     全角全角全角全角全角全角
+S   5
+S   4     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzz 全角全角全角全角全角全角全角全>
+S     角全角全角全角全角全角全角全角全角全角全角全角全角 aaaaa
+S     aaaaaaaaaaaaaaaaaaaaaaaaa ^? ^A foo ab漢 x ^?  foo
+R
+R
+R
+R
+R
+S     d zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzz ab漢 ,
+S f0                                        15,0-1         66%
+S :set wrap
+M - - -
+P
+S   7     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+R
+S     zzzzzzzzzzzzzzzzzzzzzzzz 全角全角全角全角全角全角全角全>
+S     角全角全角全角全角全角全角全角全角全角全角全角全角 aaaaa
+S     aaaaaaaaaaaaaaaaaaaaaaaaa ^? ^A foo ab漢 x ^?  foo
+S   6 ^A foo
+S   5     , x ^? ^A ab漢 --  ( ab漢 ^A x
+S   4 ^A
+S   3
+S   2 a
+S   1 b
+S 18  c
+R
+R
+R
+R
+R
+R
+R
+S f0 [+]                                    18,1           71%
+S 
+M - - -
+E

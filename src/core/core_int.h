@@ -26,7 +26,13 @@ typedef struct {
 	size_t bot;
 	int empty, bv;
 	int allwrap;                  /* w_allbuf_opt's 'wrap': what :set gave the window */
+	/* w_valid's VALID_WCOL for the sideways scroll: the cursor, leftcol
+	   and width it was done for (check_cursor_moved(), win_new_width()) */
+	int sideok, sw;
+	size_t sline, scol, sleft;
 } WinState;
+
+enum { BOT_EXACT = 1, BOT_AP = 2 };   /* WinState.bv */
 
 /* Neovim's frame_T.  A leaf holds one window and that window's WinState. */
 struct Frame {

@@ -29,6 +29,9 @@ core: a reused buffer keeps the old undo marks (finding 7) (test_core_undo)~test
 core: an undo group takes its neighbour's marks (test_core_undo)~test TESTS=core_undo~~src/core/core.c~	if (u && (u->b != b || u->seq != seq)) u = NULL;~	(void)0;
 core: marks kept for 3 undo groups only (test_core_undo)~test TESTS=core_undo~~src/core/core.c~enum { UMARKS_MAX = 2000, UMARKS_TRIM = 64 };~enum { UMARKS_MAX = 3, UMARKS_TRIM = 64 };
 core: a save leaves the outside-change flag set (test_core_contract)~test TESTS=core_contract~~src/core/core.c~		b->saved_seq = undo_seq(b->undo);¶		b->changed = 0;¶		if (b->journal) journal_saved(b->journal);¶		core_msg(e, "\"%s\" %zuL~		b->saved_seq = undo_seq(b->undo);¶		if (b->journal) journal_saved(b->journal);¶		core_msg(e, "\"%s\" %zuL
-core: an unloaded buffer entered by CTRL-^ wants column 0 (test_core_screens)~test TESTS=core_screens~~src/core/core.c~	if (how == ENTER_ALT && !w->col && loaded) w->want = 0;~	if (how == ENTER_ALT && !w->col) w->want = 0;
+core: CTRL-^ onto column 0 wants column 0 even without a position (test_core_screens)~test TESTS=core_screens~~src/core/core.c~	if (how == ENTER_ALT && !w->col && pos) w->want = 0;~	if (how == ENTER_ALT && !w->col) w->want = 0;
 core: scroll_cursor_halfway() drops skipcol without smoothscroll (test_core_screens)~test TESTS=core_screens~~src/core/move.c~	if (p_sms && w->wrap) w->skipcol = 0;¶	w->frame->s.topvalid = 1;~	w->skipcol = 0;¶	w->frame->s.topvalid = 1;
 core: core_vcol counts a byte inside a cluster to its end (test_core_contract)~test TESTS=core_contract~~src/core/core.c~i < n && i + (k = uni_glen(s, n, i)) <= col; i += k)~i < col && i < n && (k = uni_glen(s, n, i)); i += k)
+core: the cursor line's height less skipcol (test_core_screens)~test TESTS=core_screens~~src/core/move.c~b.cheight = plines_lim(w, l, 1); }~b.cheight = k; }
+core: the sideways scroll redone for an unmoved cursor (test_core_screens)~test TESTS=core_screens~~src/core/move.c~		int valid = s->sideok && s->sline~		int valid = 0 * s->sideok && s->sline
+core: an insertion drops w_botline (test_core_screens)~test TESTS=core_screens~~src/core/core.c~? 0 : bv & ~BOT_EXACT;~? 0 : 0;

@@ -94,7 +94,9 @@ static Bot comp_botline(const Win *w)
 	int done = 0;
 	for (; l < n; l++) {
 		int k = plines_top(w, l, 1);
-		if (l == (lnr)w->line) { b.crow = done; b.cheight = k; }
+		/* curs_rows(): a changed line's height is plines_win_full(),
+		   which skipcol does not shorten */
+		if (l == (lnr)w->line) { b.crow = done; b.cheight = plines_lim(w, l, 1); }
 		if (done + k > w->h) break;
 		done += k;
 	}
@@ -102,8 +104,6 @@ static Bot comp_botline(const Win *w)
 	b.empty = done == 0 ? 0 : w->h - done;
 	return b;
 }
-
-enum { BOT_EXACT = 1, BOT_AP = 2 };
 
 /* validate_botline_win() */
 static void validate_botline(Win *w)
@@ -166,7 +166,7 @@ static void set_topline(Win *w, lnr l)
 }
 
 /* changed_line_abv_curs_win() with invalidate_botline_win() (changed_lines()) */
-void win_invalidate(Win *w) { w->frame->s.topvalid = 0; w->frame->s.bv = 0; }
+void win_invalidate(Win *w) { w->frame->s.topvalid = 0; w->frame->s.bv = 0; w->frame->s.sideok = 0; }
 
 /* check_cursor_moved(): the view is looked at again once the cursor
    leaves its line or 'wrap' changes; w_botline once skipcol changes */
@@ -461,7 +461,13 @@ static void curs_columns(Editor *e, Win *w, int may_scroll)
 	} else if (may_scroll) {
 		long off_left = (long)start - (long)w->left;
 		long off_right = endcol - (long)w->left - w->w + 1;
-		if (off_left < 0 || off_right > 0) {
+		/* validate_cursor() scrolls only for a cursor or view that moved:
+		   a tab across the left edge stays as it was scrolled to (third
+		   review of PR 20, c_narrow_0) */
+		WinState *s = &w->frame->s;
+		int valid = s->sideok && s->sline == w->line && s->scol == w->col && s->sleft == w->left
+		            && s->sw == w->w;
+		if (!valid && (off_left < 0 || off_right > 0)) {
 			long diff = off_left < 0 ? -off_left : off_right;
 			long nl;
 			/* sidescroll 1, sidescrolloff 0 */
@@ -470,6 +476,7 @@ static void curs_columns(Editor *e, Win *w, int may_scroll)
 			if (nl < 0) nl = 0;
 			w->left = (size_t)nl;
 		}
+		s->sideok = 1; s->sline = w->line; s->scol = w->col; s->sleft = w->left; s->sw = w->w;
 		wcol -= (long)w->left;
 	} else if (wcol > (long)w->left) wcol -= (long)w->left;
 	else wcol = 0;
