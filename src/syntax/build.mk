@@ -6,7 +6,7 @@ SYN = build/syntax
 SYN_GRAMMARS = c/src/parser lua/src/parser lua/src/scanner \
   markdown/tree-sitter-markdown/src/parser markdown/tree-sitter-markdown/src/scanner \
   markdown/tree-sitter-markdown-inline/src/parser markdown/tree-sitter-markdown-inline/src/scanner
-CPPFLAGS += -I$(SYN)/src/tree-sitter/lib/include
+CPPFLAGS += -I$(SYN)/src/tree-sitter/lib/include -I$(SYN)/src/tree-sitter/lib/src
 OBJS += $(SYN)/tree-sitter.o $(SYN_GRAMMARS:%=$(SYN)/g/%.o) $(SYN)/queries.o
 
 $(SYN)/src:
