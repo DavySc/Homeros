@@ -5,7 +5,8 @@
    there.  Linux; the Windows twin is pending (phase 1).
    1. Order (Save2 "fsync", the power-loss half TLC checks): data is fsynced
       before a name points at it, the directory after; in place, the backup
-      is durable before the file is touched, and removed only after.
+      and its name are durable before the file is touched, and it is
+      removed only after.
    2. Crash before every step: the file is the old or the new text, whole;
       in place, a torn file only with the old text in the backup.
    3. An outside writer before every step (Save2 NoLossAtAll): its version is
@@ -272,8 +273,12 @@ static void order(void)
 	int bs = first('s', bk, last('w', bk, n), n), w1 = first('w', tgt, 0, n);
 	int ts = first('s', tgt, last('c', tgt, n), n), u = last('u', -1, n);
 	CHECK(bs > last('w', bk, n) && w1 > bs && ts > w1 && u > ts);
+	/* and the backup's name: its directory fsynced before the file is touched */
+	int ds = 0;
+	for (int i = bs + 1; i < w1; i++) ds |= logv[i].op == 's';
+	CHECK(ds);
 	text_free(t);
-	puts("  order: data durable before a name points at it; backup durable before, removed after");
+	puts("  order: data durable before a name points at it; backup and its name durable before, removed after");
 }
 
 static void fallbacks(void)
@@ -291,31 +296,53 @@ static void fallbacks(void)
 	Text *s = text_new("x\n", 2);
 	CHECK(save(s, &id, kept) == SAVE_OK && is(path, "x\n") && is(l, "x\n"));
 	text_free(s);
+	/* no backup name (here an unusable state directory): refused, :w! writes */
+	CHECK(!setenv("XDG_STATE_HOME", "/dev/null/state", 1));
+	CHECK(!load(&id) && save(t, &id, kept) == SAVE_ERR && is(path, "x\n"));
+	CHECK(file_save(path, t, strlen(NEW), &id, 1, kept, sizeof kept) == SAVE_OK && is(path, NEW) && is(l, NEW));
+	CHECK(!setenv("XDG_STATE_HOME", state, 1));
 	plain();
-	/* read-only directory and a file owned by someone else: as an
-	   unprivileged user, since root may do both */
-	char st2[300];
+	/* a symlink whose target does not exist yet: the target is created (Neovim) */
+	char lk[300], tg[300];
+	snprintf(lk, sizeof lk, "%s/link", dir);
+	snprintf(tg, sizeof tg, "%s/target", dir);
+	unlink(lk); unlink(tg);
+	CHECK(!symlink("target", lk));
+	FileId none = { 0 };
+	CHECK(file_save(lk, t, strlen(NEW), &none, 0, kept, sizeof kept) == SAVE_OK && is(tg, NEW));
+	CHECK(!lstat(lk, &sl) && S_ISLNK(sl.st_mode));
+	CHECK(!unlink(lk) && !unlink(tg));
+	/* read-only directory and a file owned by someone else (root), saved by
+	   an unprivileged user, since root may do both: as root, the child
+	   becomes nobody; otherwise it is us, and sudo gives the file to root
+	   (CI's runner is not root; with neither, the check fails, not skips) */
+	char st2[300], cmd[400];
 	snprintf(st2, sizeof st2, "%s/state2", dir);
 	put(path, OLD);
-	CHECK(!chmod(path, 0666) && !chown(path, 0, 0) && !mkdir(st2, 0700));
-	CHECK(!chown(dir, 65534, 65534) && !chown(st2, 65534, 65534));
+	CHECK(!chmod(path, 0666) && !mkdir(st2, 0700));
+	int root = geteuid() == 0;
+	snprintf(cmd, sizeof cmd, "%schown 0:0 %s", root ? "" : "sudo -n ", path);
+	CHECK(!system(cmd));
+	if (root) CHECK(!chown(dir, 65534, 65534) && !chown(st2, 65534, 65534));
 	fflush(stdout);
 	pid_t p = fork();
 	if (!p) {
-		CHECK(!setgid(65534) && !setuid(65534) && !setenv("XDG_STATE_HOME", st2, 1));
+		CHECK(!root || (!setgid(65534) && !setuid(65534)));
+		CHECK(!setenv("XDG_STATE_HOME", st2, 1));
 		CHECK(!load(&id) && save(t, &id, kept) == SAVE_OK && is(path, NEW));
 		CHECK(!stat(path, &st) && st.st_uid == 0 && (st.st_mode & 0777) == 0666);   /* owner kept */
 		CHECK(!chmod(dir, 0555));
 		Text *s2 = text_new(OLD, strlen(OLD));
 		CHECK(!load(&id) && save(s2, &id, kept) == SAVE_OK && is(path, OLD));    /* read-only directory */
 		CHECK(count_backups(st2) == 0);
+		CHECK(!chmod(dir, 0700));
 		_exit(0);
 	}
 	int w;
 	CHECK(waitpid(p, &w, 0) == p && WIFEXITED(w) && WEXITSTATUS(w) == 0);
-	CHECK(!chmod(dir, 0700) && !chown(dir, 0, 0));
+	CHECK(!root || !chown(dir, 0, 0));
 	text_free(t);
-	puts("  fallbacks: hard link kept, read-only directory, foreign owner kept, no backup left");
+	puts("  fallbacks: hard link kept (and written by :w! where no backup can be made), dangling symlink's target created, read-only directory, foreign owner kept, no backup left");
 }
 
 /* a write that fails part way (a full disk, here a file-size limit): nothing

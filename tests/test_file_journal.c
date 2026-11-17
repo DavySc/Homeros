@@ -386,8 +386,10 @@ static void durable(void)
 	CHECK(datasyncs == 2 && fsyncs == 1);   /* the directory once */
 	journal_sync(j);
 	CHECK(datasyncs == 2);                  /* nothing pending, nothing done */
-	/* a failed append (a full disk; here a size limit) is cut back, so the
-	   next one is found */
+	/* a failed append (a full disk; here a size limit) is cut back, and the
+	   next change writes a new base, as the core calls it (a change journalled
+	   after the hole would replay onto the wrong text: review of PR 16) */
+	CHECK(!text_insert(t, 0, "gfe", 3));
 	struct rlimit rl, low;
 	CHECK(!getrlimit(RLIMIT_FSIZE, &rl) && !stat(jname, &sb));
 	low = (struct rlimit){ (rlim_t)sb.st_size + 40, rl.rlim_max };
@@ -396,7 +398,8 @@ static void durable(void)
 	char big[100] = { 0 };
 	CHECK(journal_edit(j, 0, 0, big, sizeof big, 0) == -1);
 	CHECK(!setrlimit(RLIMIT_FSIZE, &rl));
-	CHECK(!journal_edit(j, 0, 0, "h", 1, 7));
+	CHECK(!text_insert(t, 0, big, sizeof big));
+	CHECK(!journal_base(j, t, 0, &id) && !journal_edit(j, 0, 0, "h", 1, 7) && !text_insert(t, 0, "h", 1));
 	/* a crash: keep the bytes, not the clean close's removal */
 	int fd = open(jname, O_RDONLY);
 	char copy[4096];
@@ -406,11 +409,25 @@ static void durable(void)
 	fd = open(jname, O_WRONLY | O_CREAT, 0600);
 	CHECK(n > 0 && write(fd, copy, (size_t)n) == n);
 	close(fd);
-	CHECK(journal_open(path, &j, &x, &st, &id) == 1 && st == 7 && text_len(x) == 6);   /* hgfed\n */
+	char a[256], b[256];
+	CHECK(journal_open(path, &j, &x, &st, &id) == 1 && st == 7 && text_len(x) == text_len(t)
+	      && text_read(x, 0, a, sizeof a) == text_read(t, 0, b, sizeof b) && !memcmp(a, b, text_len(t)));
+	text_free(x);
+	/* a whole record that does not apply (only a bug writes one) ends the
+	   journal like a torn tail, rather than keeping it from opening */
+	CHECK(!journal_edit(j, 999, 0, "x", 1, 3));
+	fd = open(jname, O_RDONLY);
+	n = read(fd, copy, sizeof copy);
+	close(fd);
+	journal_close(j);
+	fd = open(jname, O_WRONLY | O_CREAT, 0600);
+	CHECK(n > 0 && write(fd, copy, (size_t)n) == n);
+	close(fd);
+	CHECK(journal_open(path, &j, &x, &st, &id) == 1 && st == 7 && text_len(x) == text_len(t));
 	text_free(x);
 	journal_close(j);
 	text_free(t);
-	puts("  durable within a second: due counts down from the first unsynced record; sync is fdatasync, the directory once; owner only; a failed append cut back");
+	puts("  durable within a second: due counts down from the first unsynced record; sync is fdatasync, the directory once; owner only; a failed append cut back and followed by a new base; a record that does not apply ends the journal");
 }
 
 int main(void)

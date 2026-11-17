@@ -15,14 +15,17 @@ enum { J_NOEOL = 1 << 8 };              /* the journal keeps noeol with the flag
 static unsigned jstate(const Buf *b) { return b->flags | (b->noeol ? J_NOEOL : 0); }
 
 /* every change reaches the syntax tree and the journal before it is made
-   (UndoHook); the journal's state is the one before, and jdone records a
-   change of state the command made */
+   (UndoHook).  An edit's record carries the state after it (jnext), so a
+   kill between two writes cannot keep the change with a stale state (review
+   of PR 16, 7); an undo step's state is known only once it is done, so
+   jdone records it then */
+static unsigned jnext = (unsigned)-1;   /* -1: the state now */
 static void undo_seen(void *ctx, const Text *t, size_t pos, size_t ndel, const char *ins, size_t nins)
 {
 	Buf *b = ctx;
 	if (b->syn) syntax_edit(b->syn, t, pos, ndel, ins, nins);
 	if (b->journal && (journal_base(b->journal, t, jstate(b), &b->id)
-	                   || journal_edit(b->journal, pos, ndel, ins, nins, jstate(b)))) b->jerr = 1;
+	                   || journal_edit(b->journal, pos, ndel, ins, nins, jnext != (unsigned)-1 ? jnext : jstate(b)))) b->jerr = 1;
 }
 
 static int same_id(const FileId *a, const FileId *b)
@@ -50,7 +53,10 @@ static void recover(Buf *b, Text *t, unsigned st, const FileId *id, const char *
 {
 	size_t tn = st & CORE_EMPTY ? 0 : text_len(t) - (st & J_NOEOL ? 1 : 0);
 	char *s = malloc(tn ? tn : 1);
-	int same = s && tn == n && text_read(t, 0, s, tn) == tn && !memcmp(s, data, n) && same_id(id, &b->id);
+	/* equal bytes are nothing to recover, whoever wrote them (a power loss
+	   right after :w brings back the journal from before it, whose FileId is
+	   the old one: review of PR 16, 3) */
+	int same = s && tn == n && text_read(t, 0, s, tn) == tn && !memcmp(s, data, n);
 	free(s);
 	if (same) { text_free(t); journal_saved(b->journal); return; }
 	text_free(b->text);
@@ -95,6 +101,8 @@ int core_open(Editor *e, const char *path)
 	if (j == 1) recover(e->buf, rt, rs, &rid, data, n);
 	free(data);
 	e->buf->watch = file_watch(path);
+	/* a change between the load and the watch has no event: look once */
+	if (e->buf->watch >= 0) core_watch(e, e->buf->watch);
 	e->buf->syn = syntax_open(path, e->buf->text);
 	undo_hook(e->buf->undo, undo_seen, e->buf);
 	core_set_want(e);
@@ -144,12 +152,15 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 {
 	char *del = malloc(ndel ? ndel : 1);
 	UndoCursor c = { e->win->line, e->win->col, e->buf->flags };
-	unsigned js = jstate(e->buf);
+	/* the state after: an empty file saves empty until it gets a line of text (Vim) */
+	unsigned js = after | (e->buf->noeol && e->buf->id.size ? J_NOEOL : 0);
 	int r = -1;
 	/* the syntax tree hears of the change first; the thin editor does not
 	   tell it of the rollback below (out of memory), package 4 must */
+	jnext = js;
 	if (del && text_read(e->buf->text, pos, del, ndel) == ndel) undo_seen(e->buf, e->buf->text, pos, ndel, ins, nins);
 	else { free(del); del = NULL; }
+	jnext = (unsigned)-1;
 	if (del && !text_delete(e->buf->text, pos, ndel)) {
 		if (!text_insert(e->buf->text, pos, ins, nins)) {
 			if (!undo_record(e->buf->undo, pos, del, ndel, ins, nins, c, after)) r = 0;
@@ -159,11 +170,10 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 	free(del);
 	e->win->vc.ok = 0;
 	if (r) core_msg(e, "out of memory");
-	/* an empty file saves empty until it gets a line of text (Vim) */
 	else {
 		e->buf->flags = after;
-		if (e->buf->noeol && !e->buf->id.size) e->buf->noeol = 0;
-		jdone(e, e->buf, js);
+		e->buf->noeol = !!(js & J_NOEOL);
+		jdone(e, e->buf, js);   /* the state is in the record already */
 	}
 	return r;
 }

@@ -8,5 +8,7 @@
 /* Opens (with flags, mode 0600) the kind file for the absolute path abs,
    creating the directories; its name goes to out.  fd, or -1 (errno set). */
 int state_open(const char *kind, const char *abs, char *out, size_t outsz, int flags);
+/* fsyncs the directory holding name: its entry durable.  0 ok, -1 error. */
+int state_sync_dir(const char *name);
 int file_write_all(int fd, const char *b, size_t n);   /* 0 ok, -1 error */
 #endif

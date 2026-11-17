@@ -108,9 +108,8 @@ static void take(Rd *r, void *out, size_t n)
 }
 
 /* Replays the journal in b into *t; *end is the length of the whole
-   records.  0 ok (*t NULL: no whole base), 1 the base names another file,
-   -1 out of memory, or a record that summed right but does not apply, which
-   only a bug could write: the journal is then left untouched. */
+   records that apply.  0 ok (*t NULL: no whole base), 1 the base names
+   another file, -1 out of memory: the journal is then left untouched. */
 static int replay(const char *b, size_t n, const char *file, Text **t, unsigned *state,
                   FileId *id, size_t *end)
 {
@@ -149,6 +148,10 @@ static int replay(const char *b, size_t n, const char *file, Text **t, unsigned 
 		r.p += e[2]; r.n -= (size_t)e[2];
 		take(&r, &s, 4);
 		if (!r.ok || s != sum(SUM0, at, (size_t)(r.p - 4 - at))) return 0;
+		/* a whole record that does not apply ends the journal like a torn
+		   one: only a bug writes it, and refusing it would keep the file
+		   without a journal for good */
+		if (e[0] > text_len(*t) || e[1] > text_len(*t) - e[0]) return 0;
 		if (text_delete(*t, (size_t)e[0], (size_t)e[1]) || text_insert(*t, (size_t)e[0], ins, (size_t)e[2])) {
 			text_free(*t);
 			*t = NULL;
@@ -221,7 +224,8 @@ int journal_base(Journal *j, const Text *t, unsigned state, const FileId *id)
 	j->based = 1;
 	return 0;
 fail:
-	/* a torn base is no base: the text is still the file's, nothing to lose */
+	/* a torn base is no base; the core has said E297 (the text is the
+	   file's, unless this base follows a failed append) */
 	if (ftruncate(j->fd, 0)) {}
 	j->end = 0;
 	return -1;
@@ -233,7 +237,11 @@ int journal_edit(Journal *j, size_t pos, size_t ndel, const char *ins, size_t ni
 	uint32_t st = state, h;
 	Piece v[] = { PIECE(e, sizeof e), PIECE(&st, 4), PIECE(ins, nins), PIECE(&h, 4) };
 	h = sums(SUM0, v, 3);
-	return append(j, v, 4);
+	if (!append(j, v, 4)) return 0;
+	/* the change is not in the journal, so later ones would replay onto the
+	   wrong text: the next change writes a new base instead */
+	j->based = 0;
+	return -1;
 }
 
 void journal_saved(Journal *j)
@@ -256,12 +264,8 @@ void journal_sync(Journal *j)
 {
 	if (!j->dirty) return;
 	fdatasync(j->fd);
-	if (!j->dir_synced) {   /* the name, once, or a power loss can lose the whole file */
-		char d[PATH_MAX];
-		strcpy(d, j->name);
-		int fd = open(dirname(d), O_RDONLY | O_DIRECTORY | O_CLOEXEC);
-		if (fd >= 0) { j->dir_synced = !fsync(fd); close(fd); }
-	}
+	/* the name, once, or a power loss can lose the whole file */
+	if (!j->dir_synced) j->dir_synced = !state_sync_dir(j->name);
 	j->dirty = 0;
 }
 

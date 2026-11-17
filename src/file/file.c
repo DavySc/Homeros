@@ -113,24 +113,30 @@ static int save_in_place(const char *real, const Text *t, size_t n, FileId *id,
 	ident(&st, &before);
 	if (!force && !same(id, &before)) { close(fd); return SAVE_CHANGED; }
 	int b = state_open("backup", real, bak, sizeof bak, O_WRONLY | O_CREAT | O_TRUNC);
-	if (b < 0) goto err;
-	if (copy_fd(fd, b) || fsync(b) || fstat(fd, &st)) { int e = errno; close(b); unlink(bak); close(fd); errno = e; return SAVE_ERR; }
-	close(b);
-	ident(&st, &after);
-	if (!force && !same(&after, &before)) { unlink(bak); close(fd); return SAVE_CHANGED; }
+	/* no backup (a name too long, a full or unwritable state directory):
+	   refused, but :w! writes without one, as Neovim's E510 */
+	int backed = b >= 0;
+	if (!backed && !force) goto err;
+	if (backed) {
+		if (copy_fd(fd, b) || fsync(b) || fstat(fd, &st)) { int e = errno; close(b); unlink(bak); close(fd); errno = e; return SAVE_ERR; }
+		close(b);
+		state_sync_dir(bak);   /* the backup's name durable too */
+		ident(&st, &after);
+		if (!force && !same(&after, &before)) { unlink(bak); close(fd); return SAVE_CHANGED; }
+	}
 	/* Trunc and Fill: write first, cut after, so the file is never empty */
 	if (write_text(fd, t, n) == 0 && ftruncate(fd, (off_t)n) == 0 && fsync(fd) == 0 && fstat(fd, &st) == 0) {
 		ident(&st, id);
 		close(fd);
-		unlink(bak);
+		if (backed) unlink(bak);
 		return SAVE_OK;
 	}
 	/* torn: put the original back from the backup; keep the backup if that fails too */
 	int e = errno;
-	b = open(bak, O_RDONLY | O_CLOEXEC);
+	if (backed) b = open(bak, O_RDONLY | O_CLOEXEC);
 	if (b >= 0 && lseek(fd, 0, SEEK_SET) == 0 && copy_fd(b, fd) == 0
 	    && ftruncate(fd, (off_t)before.size) == 0 && fsync(fd) == 0) unlink(bak);
-	else snprintf(kept, keptsz, "%s", bak);
+	else if (backed) snprintf(kept, keptsz, "%s", bak);
 	if (b >= 0) close(b);
 	close(fd);
 	errno = e;
@@ -140,17 +146,34 @@ err:
 	return SAVE_ERR;
 }
 
+/* Neovim writes through a symlink to its target, and creates a target that
+   does not exist yet: follow the links by hand where realpath fails. */
+static int target(const char *path, char *real)
+{
+	char l[PATH_MAX];
+	if (realpath(path, real)) return 0;
+	if (errno != ENOENT || strlen(path) >= PATH_MAX) return -1;
+	strcpy(real, path);
+	for (int hops = 0; hops < 40; hops++) {   /* Linux's MAXSYMLINKS */
+		ssize_t k = readlink(real, l, sizeof l);
+		if (k < 0) return errno == EINVAL || errno == ENOENT ? 0 : -1;
+		char *s = strrchr(real, '/');
+		size_t d = l[0] == '/' || !s ? 0 : (size_t)(s + 1 - real);   /* relative to the link's directory */
+		if (d + (size_t)k >= PATH_MAX) { errno = ENAMETOOLONG; return -1; }
+		memcpy(real + d, l, (size_t)k);
+		real[d + (size_t)k] = 0;
+	}
+	errno = ELOOP;
+	return -1;
+}
+
 int file_save(const char *path, const Text *t, size_t n, FileId *id, int force,
               char *kept, size_t keptsz)
 {
 	char real[PATH_MAX], dir[PATH_MAX], base[PATH_MAX], tmp[PATH_MAX + 32];
 	struct stat st;
 	FileId now = { 0 }, mine;
-	/* write through a symlink to its target, as Neovim does */
-	if (!realpath(path, real)) {
-		if (errno != ENOENT || strlen(path) >= sizeof real) return SAVE_ERR;
-		strcpy(real, path);
-	}
+	if (target(path, real)) return SAVE_ERR;
 	if (!stat(real, &st)) ident(&st, &now);
 	else if (errno != ENOENT) return SAVE_ERR;
 	/* Check: an outside change since load is never overwritten unasked */
@@ -202,7 +225,7 @@ int file_save(const char *path, const Text *t, size_t n, FileId *id, int force,
 			if (same(&out, &now)) unlink(tmp);
 			else { r = SAVE_KEPT; snprintf(kept, keptsz, "%s", tmp); }
 		}
-	} else if (renameat2(AT_FDCWD, tmp, AT_FDCWD, real, RENAME_NOREPLACE)) {
+	} else if (force ? rename(tmp, real) : renameat2(AT_FDCWD, tmp, AT_FDCWD, real, RENAME_NOREPLACE)) {
 		int e = errno;
 		unlink(tmp);
 		errno = e;

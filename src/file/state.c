@@ -1,10 +1,13 @@
 #define _GNU_SOURCE
 #include <errno.h>
 #include <fcntl.h>
+#include <libgen.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include "state.h"
 
 int state_open(const char *kind, const char *abs, char *out, size_t outsz, int flags)
@@ -28,4 +31,15 @@ int state_open(const char *kind, const char *abs, char *out, size_t outsz, int f
 		if (r && errno != EEXIST) return -1;
 	}
 	return open(out, flags | O_CLOEXEC, 0600);
+}
+
+int state_sync_dir(const char *name)
+{
+	char d[PATH_MAX];
+	snprintf(d, sizeof d, "%s", name);
+	int fd = open(dirname(d), O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+	if (fd < 0) return -1;
+	int r = fsync(fd);
+	close(fd);
+	return r;
 }

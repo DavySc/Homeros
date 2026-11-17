@@ -6,8 +6,11 @@
    an outside change gives W11 at the next edit, E13 at a plain :w, and a
    recovered buffer whose file changed since keeps the old identity, so :w
    is refused there too. */
+#define _GNU_SOURCE
 #include <fcntl.h>
 #include <poll.h>
+#include <sys/inotify.h>
+#include <sys/syscall.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,6 +20,16 @@
 #include "core.h"
 
 static char dir[] = "/tmp/homeros-core-XXXXXX", path[256], jname[700];
+static void put(const char *p, const char *s);
+
+/* the test's own inotify_add_watch wins over libc's: armed, it lets an
+   outside writer in just before the watch is added */
+static int late;
+int inotify_add_watch(int fd, const char *p, uint32_t mask)
+{
+	if (late) { late = 0; put(path, "late\n"); }
+	return (int)syscall(SYS_inotify_add_watch, fd, p, mask);
+}
 
 static void put(const char *p, const char *s)
 {
@@ -110,6 +123,82 @@ static void outside(void)
 	puts("  outside change: W11 once at the next edit, E13 at :w, kept across a crash; :w! writes");
 }
 
+static void put_journal(const char *j, size_t n)
+{
+	int fd = open(jname, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+	CHECK(fd >= 0 && write(fd, j, n) == (ssize_t)n);
+	close(fd);
+}
+
+/* A power loss right after :w can bring back the journal from before it:
+   equal bytes are nothing to recover, whatever FileId the journal holds. */
+static void after_save(void)
+{
+	static char j[1 << 16];
+	Editor e;
+	put(path, "one\n");
+	CHECK(!core_open(&e, path));
+	keys_feed(&e, 'x', 0);
+	size_t n = slurp(jname, j, sizeof j);
+	CHECK(n > 0 && !core_write(&e, e.buf, 0));
+	core_free(&e);
+	put_journal(j, n);
+	CHECK(!core_open(&e, path) && !core_modified(e.buf) && !strstr(e.msg, "recovered"));
+	CHECK(!core_write(&e, e.buf, 0));
+	core_free(&e);
+	puts("  the journal from before a :w, back after a power loss: nothing recovered, :w works");
+}
+
+/* The first character typed into an empty file: every whole-record prefix
+   of the journal that holds the character recovers it (a kill between two
+   writes of one command; review of PR 16, 7). */
+static void firstchar(void)
+{
+	static char j[1 << 16];
+	Editor e;
+	put(path, "");
+	CHECK(!core_open(&e, path));
+	keys_feed(&e, 'i', 0);
+	keys_feed(&e, 'h', 0);
+	keys_feed(&e, KEY_ESC, 0);
+	size_t n = slurp(jname, j, sizeof j);
+	core_free(&e);
+	int with = 0;
+	for (size_t k = 1; k <= n; k++) {
+		Journal *jj;
+		Text *t;
+		unsigned st;
+		FileId id;
+		char b[8];
+		put_journal(j, k);
+		int got = journal_open(path, &jj, &t, &st, &id) == 1 && text_read(t, 0, b, sizeof b) == 2 && b[0] == 'h';
+		if (got) text_free(t);
+		else if (jj && t) text_free(t);
+		journal_close(jj);
+		if (!got) continue;
+		with++;
+		put_journal(j, k);
+		CHECK(!core_open(&e, path) && core_modified(e.buf) && text_len(e.buf->text) == 2);
+		core_free(&e);
+	}
+	CHECK(with > 0);
+	puts("  the first character typed into an empty file: recovered from every journal prefix that holds it");
+}
+
+/* a change between the load and the watch: W11 all the same (review of
+   PR 16, 9) */
+static void before_watch(void)
+{
+	Editor e;
+	put(path, "early\n");
+	late = 1;
+	CHECK(!core_open(&e, path) && !late);
+	keys_feed(&e, 'x', 0);
+	CHECK(strstr(e.msg, "W11"));
+	core_free(&e);
+	puts("  an outside change between the load and the watch: W11 at the first edit");
+}
+
 int main(void)
 {
 	CHECK(mkdtemp(dir));
@@ -121,6 +210,9 @@ int main(void)
 	for (char *c = jname + strlen(st) + 17; *c; c++) if (*c == '/') *c = '%';
 	sessions();
 	outside();
+	after_save();
+	firstchar();
+	before_watch();
 	char cmd[300];
 	snprintf(cmd, sizeof cmd, "rm -rf %s", dir);
 	CHECK(!system(cmd));
