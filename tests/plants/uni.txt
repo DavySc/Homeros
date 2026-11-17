@@ -14,3 +14,4 @@ uni: lam and alef do not join~test TESTS=uni_nvim~~src/uni/uni.c~!(p == 0x644 &&
 uni: GB9c Linker Extend state dropped~test TESTS=uni_nvim~~src/uni/uni.c~ic = ic == 1 && it == 3 ? 1 : it;~ic = it;
 uni: an invalid lead byte joins what follows (fuzz_uni)~fuzz FUZZERS=uni FUZZ_SECONDS=60~~src/uni/uni.c~	if (k == 1 && s[i] >= 0x80) return 1;¶	unsigned p~	unsigned p
 uni: uni_gprev starts on a continuation byte (fuzz_uni)~fuzz FUZZERS=uni FUZZ_SECONDS=60~~src/uni/uni.c~while (j > 0 && s[j] >= 0x80) j--;~while (j > 0 && s[j] >= 0xC0) j--;
+uni: lam and alef with hamza above do not join~test TESTS=uni_nvim~~src/uni/uni.c~c == 0x623 || ~

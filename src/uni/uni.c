@@ -104,7 +104,9 @@ size_t uni_glen(const unsigned char *s, size_t n, size_t i)
 }
 
 /* Back to an ASCII byte or the line start, both cluster starts, then
-   forward: the start found is one the forward steps make (bound). */
+   forward: the start found is one the forward steps make (bound).  The cost
+   grows with the distance to that byte: 5.7 ms on a 1 MB line without ASCII
+   (measured, PR 12 review); Neovim's and Helix's steps are bounded. */
 size_t uni_gprev(const unsigned char *s, size_t n, size_t i)
 {
 	size_t j = i - 1;
@@ -128,8 +130,9 @@ int uni_width(const unsigned char *s, size_t n, size_t i)
 	size_t k = uni_len(s, n, i);
 	if (k == 1) return 4;
 	unsigned c = dec(s, n, i, k), q = prop(c), w = q / 64, g = q % 16;
-	/* utf_ptr2cells(): an emoji that is narrow alone is wide before VS16 */
-	if (w == 0 && (g == 12 || g == 8) && i + k < n && dec(s, n, i + k, uni_len(s, n, i + k)) == 0xFE0F)
+	/* utf_ptr2cells(): an emoji that is narrow alone is wide before VS16
+	   (its regional indicators are wide anyway, so they need no test) */
+	if (w == 0 && g == 12 && i + k < n && dec(s, n, i + k, uni_len(s, n, i + k)) == 0xFE0F)
 		return 2;
 	return w == 0 ? 1 : w == 1 ? 2 : w == 2 ? 4 : 6;
 }
