@@ -754,6 +754,9 @@ void op_insert(Oparg *oap, long count1)
 		} else {
 			setcur(oap->end);
 			check_cursor_col();
+			/* Neovim can stay inside a character here and then writes a
+			   split one (src/keys/README, not copied): keep to its head */
+			W->col = (size_t)head(ml_get((long)W->line), (long)W->col);
 			if (!lineempty((long)W->line) && oap->start_vcol != oap->end_vcol) inc_cursor();
 		}
 	}

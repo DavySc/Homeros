@@ -343,8 +343,10 @@ void check_cursor_col(void)
 {
 	long l = (long)W->line, n = ml_len(l), c = (long)W->col;
 	if (c > n) c = n;
+	/* Neovim's check_cursor_col() moves to a head byte only past the end:
+	   inside a line the cursor may stay in a cluster (stop_insert() then
+	   sees the mark after an autoindent, not its blank) */
 	if (c == n && n > 0 && !one_more() && !virtual_active()) c = head(ml_get(l), n - 1);
-	else if (c < n) c = head(ml_get(l), c);
 	W->col = (size_t)c;
 }
 

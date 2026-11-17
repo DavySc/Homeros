@@ -26,6 +26,8 @@ Not built (FEATURES.md section 2), part two of package 5:
   read them next. Until then a CTRL-O that reaches Normal mode (an insert
   that never started, after a failed motion) differs.
 - folds, spell, snippet jumps, CTRL-S: with their packages.
+- U (undo line) is not in FEATURES.md, so not built; Visual gUU reaches it
+  (gU on the selection, then U).
 
 Waits for package 4's core (src/core, PR 20), passing with it (measured):
 - CTRL-D, CTRL-U, CTRL-E, CTRL-Y, zz zt zb H M L: ref/core.c stubs them
@@ -44,8 +46,16 @@ Waits for package 4, still differing with PR 20's core:
   with k ("    \u0301 -3\n).\n    'c' 7", j dd k I Down): Neovim's column
   2, ours 3; not traced yet (owner package 5, with package 4's core_vcol
   inside a cluster above).
+- gv after an Insert-mode BS that joins lines, then CTRL-O l and Del, over a
+  4-byte character ("'c'\n  \U00010400x { x ,", + v c Up Esc o Esc V p s BS
+  C-o l Del Space Esc gv): Neovim's column 3, ours 6. ref/core.c, which moves
+  no marks, matches Neovim here, so the mark moves of PR 20's core are the
+  suspect (owner package 4, not traced).
 
 Not traced to a fix yet (owner package 5):
+- block I, then CTRL-T with the block's start inside the indent ("} foo",
+  i Tab Esc h C-v I C-t): Neovim's op_insert leaves the cursor at column 0,
+  ours at 2.
 - s on a Tab that ends its line, then Tab ("(\t", l s Tab): Neovim's cached
   w_virtcol stays the Tab's last cell, since del_bytes() backs the cursor up
   and op_change() steps it forward again before check_cursor_moved() looks,
@@ -54,6 +64,11 @@ Not traced to a fix yet (owner package 5):
   for an edit after the cursor).
 
 Neovim's own oddities, not copied:
+- block > over blanks that end in a combining mark ("    \u0301", C-v >):
+  Neovim drops the mark.
+- an operator with v over a sentence that ends the buffer in a multibyte
+  character ("a b\nx \u10d0", gU v as; d v as leaves one byte of it):
+  Neovim ends the motion inside the character.
 - Visual A over a 3-byte character ("∀" vAx), V A over a 2-byte one ("λ"
   V A 𐐀) or a cluster ("x" with U+0300 U+0301, V A .) and C-v $ ~ over a
   4-byte one ("-3 𐐀x"): Neovim writes a split character.
