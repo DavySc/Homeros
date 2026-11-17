@@ -21,7 +21,7 @@ if s.count(old) != 1: sys.exit('plant does not apply: %r' % old)
 open(p, 'w').write(s.replace(old, new))
 PY
 	then echo "BROKEN PLANT  $name"; rc=1; rm -rf "$tmp"; continue; fi
-	if (cd "$tmp" && eval "$prep" && eval make $target) >"$tmp.log" 2>&1
+	if (cd "$tmp" && eval "$prep" && eval make $target) </dev/null >"$tmp.log" 2>&1
 	then echo "NOT CAUGHT    $name   (make $target passed)"; rc=1
 	else
 		# a check that fails for another reason (a missing tool, a make error)

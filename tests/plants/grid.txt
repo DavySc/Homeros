@@ -1,0 +1,3 @@
+# Plants for ref/grid.c and ref/tty.c (format in tools/planted.sh).  The package that builds
+# src/grid/ replaces this file with plants for its own code.
+tty: every cell sent every frame~test TESTS=grid~~ref/tty.c~			if (grid_cell_eq(x, y)) continue;~

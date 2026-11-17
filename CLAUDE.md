@@ -40,7 +40,7 @@ Prefer copying the behaviour of a reference editor (Neovim 0.12 first; Helix, Em
 | `ref/` | reference implementations: the thin editor (text in an array, undo as a list, code-point Unicode, terminal grid, a dozen Vim keys, safe save) | thread 0 |
 | `src/main.c` | the editor's main loop (Render.tla "ok") | thread 0 |
 | `src/<module>/` | a package's real implementation; once it has `.c` files the Makefile builds it instead of `ref/<module>.c` | that package |
-| `tests/` | unit tests, fuzzers, the Neovim conformance driver and its recorded traces | thread 0; a package adds its own `tests/test_<module>*.c`, `tests/fuzz_<module>*.c` and `tests/plants/<module>.txt`, which the Makefile and `planted.sh` find by name |
+| `tests/` | unit tests, fuzzers, the Neovim conformance driver and its recorded traces | thread 0; a package adds its own `tests/test_<module>*.c` and `tests/fuzz_<module>*.c`, and replaces `tests/plants/<module>.txt` (the plants aimed at `ref/<module>.c`) with plants for its code; the Makefile and `planted.sh` find them by name |
 | `tools/` | `conform.py` (differential test against nvim), `planted.sh` (every check fails on a planted bug) | thread 0 |
 | `design/` | the design package, copied unchanged | changes go through DESIGN.md's rules |
 | `Makefile`, `README.md`, `.github/` | the build and the check, the overview, CI | thread 0 |

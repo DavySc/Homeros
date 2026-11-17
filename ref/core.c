@@ -211,9 +211,13 @@ void core_clamp(Editor *e)
 	const unsigned char *s = core_line(e, e->line, &len);
 	if (e->mode == MODE_INSERT) { if (e->col > len) e->col = len; return; }
 	if (e->col >= len) e->col = len ? uni_prev(s, len, len) : 0;
-	/* a column restored by undo may fall inside a character: back to its
-	   first byte, as check_cursor_col() does with mb_adjust_cursor() */
-	else e->col = uni_prev(s, len, e->col + 1);
+	else {
+		/* a column restored by undo may fall inside a character: back to
+		   its first byte, as check_cursor_col() does with mb_adjust_cursor() */
+		size_t p = 0;
+		for (size_t k; p + (k = uni_len(s, len, p)) <= e->col; p += k) {}
+		e->col = p;
+	}
 }
 
 void core_set_want(Editor *e)

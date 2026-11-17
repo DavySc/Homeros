@@ -23,14 +23,14 @@ static void valid(const char *b, size_t n)
 int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 {
 	static const int keys[] = { 'h', 'j', 'k', 'l', '0', '^', '$', 'w', 'b', 'g', 'G', 'x', 'd', 'i', 'a',
-		'I', 'A', 'o', 'O', 'u', KEY_CTRL_R, KEY_ESC, KEY_ENTER, KEY_BS, KEY_TAB, ' ', 'q', 0xE9, '2', KEY_LEFT, 0x3BB };
+		'I', 'A', 'o', 'O', 'u', KEY_CTRL_R, KEY_ESC, KEY_ENTER, KEY_BS, KEY_TAB, ' ', 'q', 0xE9, '2', KEY_LEFT, 0x3BB, 0x10D0, 0x10400 };
 	static char before[1 << 16], after[1 << 16], now[1 << 16];
 	static Editor e;
 	size_t nb, na, nn;
 	if (!path[0]) {
 		strcpy(path, "/tmp/homeros-fuzz-XXXXXX");
 		int fd = mkstemp(path);
-		if (fd < 0 || write(fd, "ab \xce\xbb" "d\n\tef\n\n  gh", 16) != 16) abort();
+		if (fd < 0 || write(fd, "ab \xce\xbb" "d \xe1\x83\x90\xf0\x90\x90\x80" "\n\tef\n\n  gh", 24) != 24) abort();
 		close(fd);
 	}
 	if (core_open(&e, path)) abort();
@@ -40,7 +40,9 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 		size_t len, nl = core_lines(&e);
 		const unsigned char *s = core_line(&e, e.line, &len);
 		if (!nl || e.line >= nl || e.col > len) abort();
-		if (e.col < len && uni_prev(s, len, e.col + 1) != e.col) abort();
+		size_t p = 0;   /* the cursor is where a scan from the line start lands */
+		while (p < e.col) p += uni_len(s, len, p);
+		if (p != e.col) abort();
 		if (e.mode == MODE_NORMAL && len && e.col >= len) abort();
 		if (text_len(e.text) == 0 || core_line_start(&e, nl) != text_len(e.text)) abort();
 	}

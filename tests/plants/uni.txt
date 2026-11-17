@@ -1,0 +1,5 @@
+# Plants for ref/uni.c (format in tools/planted.sh).  The package that builds
+# src/uni/ replaces this file with plants for its own code.
+uni: 0xF8 read as a 4-byte lead~test TESTS=uni~~ref/uni.c~c < 0xF8 ? 4 : 0;~c < 0xFC ? 4 : 0;
+frama-c: the UTF-8 kernel returns 1 (weak contract trap)~frama~~ref/uni.c~		if (s[i + j] < 0x80 || s[i + j] >= 0xC0) return 1;¶	return k;~		if (s[i + j] < 0x80 || s[i + j] >= 0xC0) return 1;¶	return 1;
+frama-c: uni_prev always steps one byte back (weak contract trap)~frama~~ref/uni.c~	if (i >= 2 && uni_len(s, n, i - 2) == 2) return i - 2;~	return i - 1;

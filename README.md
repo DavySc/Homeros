@@ -31,11 +31,11 @@ CI (`.github/workflows/check.yml`) runs `make check` and `make planted`.
 
 Tags as CLAUDE.md asks.
 
-- **measured**: 0 of 44,000 fresh random key sequences differ from `nvim --headless` 0.12.6 (10,000 each for seeds 12 to 15; 2,000 each for seed 26 and 1794915425, the two seeds the review found failing before the fix); the 1,009 recorded cases (1,000 from seed 101 plus the 9 that once differed) replay with 0 differences.
+- **measured**: 0 of 16,000 fresh random key sequences, with 2-, 3- and 4-byte characters, differ from `nvim --headless` 0.12.6 (10,000 for seed 16, 3,000 for seed 77, 2,000 in `make check`, earlier 44,000 with 2-byte characters only); the 1,013 recorded cases (1,000 from seed 101 plus the 13 that once differed) replay with 0 differences.
 - **measured**: the undo oracle reports 0 of 5,000 sequences differing from Neovim's tree.
 - **proved**: Frama-C WP, 77 of 77 goals, for `uni_len`, `uni_prev` and `uni_cp`, with contracts in `include/uni.h` that state each result (a body that returns 1, or steps one byte back, fails).
 - **proved**: TLC passes or fails every design spec config as expected; Lean checks `Undo.lean` with no `sorry`.
-- **measured**: `tools/planted.sh` catches all 19 plants in `tests/plants/` (at least one per check), each by the failure its check reports.
+- **measured**: `tools/planted.sh` catches all 19 plants in `tests/plants/` (one file per module, plus the harness's) (at least one per check), each by the failure its check reports.
 - **measured**: `test_uni` checks every 1 to 3 byte input exhaustively and 16.7 M random 4-byte inputs; `test_text` runs 200,000 random edits against an array model.
 
 ## Choices made in package 0 (open in the design, picked here)
@@ -50,4 +50,4 @@ Tags as CLAUDE.md asks.
 
 ## Next
 
-Packages 1 to 12 can start now (13, 15, 16 and 17 after the loop, package 10; 14 after 13), each in its own thread, owning `src/<module>/`. Packages whose header is not in `include/` yet (7 `font.h`, 12 `syntax.h`, and 13 to 17) start by asking thread 0 for it. A package adds its tests, fuzzers and plants as files (`tests/test_<module>*.c`, `tests/fuzz_<module>*.c`, `tests/plants/<module>.txt`); the Makefile finds them, so no package edits a shared file. The rope, the Wayland backend and the org parser are built twice, independently, and the smaller and faster passing version wins. Every package is reviewed by a separate agent before it merges.
+Packages 1 to 12 can start now (13, 15, 16 and 17 after the loop, package 10; 14 after 13), each in its own thread, owning `src/<module>/`. Packages whose header is not in `include/` yet (7 `font.h`, 12 `syntax.h`, and 13 to 17) start by asking thread 0 for it. A package adds its tests and fuzzers as files (`tests/test_<module>*.c`, `tests/fuzz_<module>*.c`) and replaces `tests/plants/<module>.txt` with plants for its own code; the Makefile finds them, so no package edits a shared file. The rope, the Wayland backend and the org parser are built twice, independently, and the smaller and faster passing version wins. Every package is reviewed by a separate agent before it merges.

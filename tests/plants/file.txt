@@ -1,0 +1,3 @@
+# Plants for ref/file.c (format in tools/planted.sh).  The package that builds
+# src/file/ replaces this file with plants for its own code.
+file: no check before saving (Save_nocheck)~test TESTS=file~~ref/file.c~	if (!force && id->exists && !same(id, &now)) return SAVE_CHANGED;~
