@@ -6,6 +6,11 @@
 # runtime for this target, so it runs without.
 set -eu
 cd "$(dirname "$0")/../.."
+# without the tools say so in words planted.sh does not count as a caught
+# plant, so a missing Wine never passes for a failing test
+for t in zig wine xvfb-run; do
+	command -v $t >/dev/null || { echo "src/win/check.sh: $t is not on PATH"; exit 2; }
+done
 pick() { if ls src/$1/*.c >/dev/null 2>&1; then echo src/$1/*.c; else echo ref/$1.c; fi; }
 mkdir -p build/win
 export WINEDEBUG=-all WINEDLLOVERRIDES="mscoree,mshtml=" WINEPREFIX=${WINEPREFIX:-$PWD/build/win/prefix}
