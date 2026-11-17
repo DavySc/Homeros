@@ -235,6 +235,9 @@ int journal_edit(Journal *j, size_t pos, size_t ndel, const char *ins, size_t ni
 {
 	uint64_t e[3] = { pos, ndel, nins };
 	uint32_t st = state, h;
+	/* no base (or a hole since it): a record now would replay onto the
+	   wrong text, so it waits for journal_base */
+	if (!j->based) { errno = EINVAL; return -1; }
 	Piece v[] = { PIECE(e, sizeof e), PIECE(&st, 4), PIECE(ins, nins), PIECE(&h, 4) };
 	h = sums(SUM0, v, 3);
 	if (!append(j, v, 4)) return 0;

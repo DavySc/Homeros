@@ -399,6 +399,7 @@ static void durable(void)
 	CHECK(journal_edit(j, 0, 0, big, sizeof big, 0) == -1);
 	CHECK(!setrlimit(RLIMIT_FSIZE, &rl));
 	CHECK(!text_insert(t, 0, big, sizeof big));
+	CHECK(journal_edit(j, 0, 0, "h", 1, 7) == -1);   /* not before the new base */
 	CHECK(!journal_base(j, t, 0, &id) && !journal_edit(j, 0, 0, "h", 1, 7) && !text_insert(t, 0, "h", 1));
 	/* a crash: keep the bytes, not the clean close's removal */
 	int fd = open(jname, O_RDONLY);

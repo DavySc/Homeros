@@ -33,3 +33,4 @@ file: backup's directory not fsynced (review of PR 16, 6)~test TESTS=file_save~~
 core wiring: recovery requires the old identity (review of PR 16, 3)~test TESTS=file_core~~ref/core.c~!memcmp(s, data, n);~!memcmp(s, data, n) && same_id(id, &b->id);
 core wiring: an edit journalled with the state before it (review of PR 16, 7)~test TESTS=file_core~~ref/core.c~	jnext = js;¶~
 core wiring: no look after adding the watch (review of PR 16, 9)~test TESTS=file_core~~ref/core.c~	if (e->buf->watch >= 0) core_watch(e, e->buf->watch);¶~
+journal: an edit appended without a base (review of PR 16, 2)~test TESTS=file_journal~~src/file/journal.c~	if (!j->based) { errno = EINVAL; return -1; }~
