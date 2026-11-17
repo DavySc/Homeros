@@ -21,3 +21,7 @@ loop: stdin kept after a failed write~test TESTS=loop IDLE_SECONDS=2~~src/loop/l
 loop: a watch removed by a callback still runs (loop_once)~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~			if (w[i].fd == pf[k].fd + 1) w[i].fn(w[i].ctx, pf[k].fd);~			w[i].fn(w[i].ctx, pf[k].fd);
 loop: a watch removed by a callback still runs (loop_breakcheck)~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~		if (pf[k].revents && w[slot[k]].fd == pf[k].fd + 1)~		if (pf[k].revents)
 loop: loop_waiting runs the read functions~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	return ready(pf, slot) > 0;~	int n = ready(pf, slot);¶	for (int k = 0; k < n; k++) if (pf[k].revents) w[slot[k]].fn(w[slot[k]].ctx, pf[k].fd);¶	return n > 0;
+loop: a freed slot keeps its SIGKILL deadline (kill(-0) hits the editor)~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	c->killat = 0;¶~
+loop: the pipes stay open after the exit~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~			c->fn(c->ctx, s, buf, (size_t)got);¶		close(c->fd[s]);~			c->fn(c->ctx, s, buf, (size_t)got);
+loop: stdin stays open after the exit~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	if (c->fd[0] >= 0) close_in(c);¶	c->killat = 0;~	c->killat = 0;
+loop: SIGKILL reaches the child but not its group~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~kill(-p[i].pid, SIGKILL)~kill(p[i].pid, SIGKILL)

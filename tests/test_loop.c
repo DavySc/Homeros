@@ -8,6 +8,7 @@
    pipes (Neovim's on_exit); SIGKILL comes for every killed child; a failed
    write stops the polling; the queue stays as large as its backlog; a
    watch removed by another watch's function does not run. */
+#include <dirent.h>
 #include <signal.h>
 #include <string.h>
 #include <sys/wait.h>
@@ -178,14 +179,35 @@ static void kills(void)
 
 	/* SIGKILL 2 s later when SIGTERM is ignored; loop_once(-1) must wake
 	   for it, as for a timer */
-	id = spawn(&g, "trap '' TERM; sleep 100 & sleep 100");
+	id = spawn(&g, "trap '' TERM; sleep 100 & echo $!; wait");
 	CHECK(id >= 0);
-	usleep(100000);                          /* let the shell set its trap */
+	while (!g.nout || g.out[g.nout - 1] != '\n') CHECK(loop_once(1000) == 0);
+	grandchild = atoi(g.out);
 	long long t0 = ms();
 	proc_kill(id);
 	while (!g.ended[0]) CHECK(loop_once(-1) == 0);
 	long long took = ms() - t0;
 	CHECK(g.code == 128 + SIGKILL && took >= 1990 && took < 2500);
+	usleep(100000);
+	CHECK(dead(grandchild));                 /* the SIGKILL went to the group too */
+	free(g.out);
+
+	/* a child that dies on the SIGTERM leaves no SIGKILL behind: its free
+	   slot has pid 0, and kill(-0) would hit the editor's own group.  In a
+	   forked editor with its own session, so the test survives it. */
+	pid_t ed = fork();
+	if (!ed) {
+		setsid();
+		id = spawn(&g, "sleep 100");
+		CHECK(id >= 0);
+		proc_kill(id);
+		run(&g, 1000);
+		for (long long t1 = ms(); ms() - t1 < 2500;) loop_once(100);
+		_exit(0);
+	}
+	int st;
+	CHECK(waitpid(ed, &st, 0) == ed && WIFEXITED(st) && WEXITSTATUS(st) == 0);
+	CHECK(loop_once(0) == 0);                /* the SIGCHLD wake-ups it left in the shared pipe */
 }
 
 /* What a child wrote before it exited all arrives before its exit, even
@@ -321,13 +343,25 @@ static void no_leak(void)
 
 /* The exit comes with the child's output, though a process it started
    still holds the pipes (Neovim: 1 to 2 ms; review finding 2). */
+static int open_fds(void)
+{
+	int n = 0;
+	DIR *d = opendir("/proc/self/fd");
+	CHECK(d);
+	while (readdir(d)) n++;
+	closedir(d);
+	return n;
+}
+
 static void holder(void)
 {
 	Got g;
+	int fds = open_fds();
 	long long t0 = ms();
 	CHECK(spawn(&g, "sleep 3 & echo hi") >= 0);
 	run(&g, 1000);
 	CHECK(g.code == 0 && g.nout == 3 && !memcmp(g.out, "hi\n", 3) && ms() - t0 < 500);
+	CHECK(open_fds() == fds);                /* its pipes are closed at the exit */
 	free(g.out);
 	/* nothing to write to or kill once reported (finding 3) */
 	char *argv[] = { "true", NULL };
