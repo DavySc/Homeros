@@ -9,7 +9,7 @@
 
 SHELL = /bin/bash
 
-BASE = text undo uni core keys grid tty loop file syntax theme
+BASE = text undo uni core keys grid tty loop file syntax theme tools git
 # src/win/ (package 9) is the Windows build's, cross-compiled on its own
 MODULES = $(BASE) $(filter-out $(BASE) win,$(patsubst src/%/,%,$(wildcard src/*/)))
 pick = $(if $(wildcard src/$(1)/*.c),$(wildcard src/$(1)/*.c),ref/$(1).c)
@@ -27,8 +27,8 @@ OBJS =
 
 # the unit tests link everything (a test may include src/main.c, which
 # names the window backend); the fuzzers and drivers everything but the
-# terminal, the window and the loop
-LIB_SRCS := $(filter-out $(call pick,tty) $(call pick,loop) $(call pick,wl),$(SRCS))
+# terminal and the window (the tools and git spawn through the loop)
+LIB_SRCS := $(filter-out $(call pick,tty) $(call pick,wl),$(SRCS))
 
 CC ?= cc
 CFLAGS ?= -O2
