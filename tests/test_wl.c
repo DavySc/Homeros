@@ -210,9 +210,10 @@ static int above(int rows)
 	return memcmp(x, y, (size_t)rows * 40 * 3) != 0;
 }
 
-/* Whether the screen at (x, y), w by h pixels, has any pixel other than
-   the window's background */
-static int ink(int x, int y, int w, int h)
+/* How many pixels of the screen at (x, y), w by h, are not the window's
+   background; with warm, only those far redder than blue (an emoji's
+   skin, which no face's colour is) */
+static int ink(int x, int y, int w, int h, int warm)
 {
 	char b[512];
 	snprintf(b, sizeof b, "grim -g '%d,%d %dx%d' -t ppm %s/i.ppm", x, y, w, h, dir);
@@ -225,7 +226,7 @@ static int ink(int x, int y, int w, int h)
 		unsigned char p[3];
 		CHECK(fread(p, 1, 3, f) == 3);
 		c = p[0] << 16 | p[1] << 8 | p[2];
-		n += c != 0x1e1e2e;
+		n += warm ? p[0] > p[2] + 64 : c != 0x1e1e2e;
 	}
 	fclose(f);
 	return n;
@@ -265,19 +266,20 @@ static void test_sway(void)
 	draw();
 
 	/* only changed rows are drawn, and moved rows copied: after random
-	   edits (characters, ligatures, wide and overflowing symbols, attrs,
+	   edits (characters, ligatures, wide and overflowing symbols, long
+	   clusters, attrs,
 	   faces, the cursor) and scrolls over many frames into both buffers, the
 	   screen is what a whole redraw gives, and not what it was before */
 	cmd("grim -t ppm %s/0.ppm # %s", dir);
-	static const char *const ch[] = { "a", "Z", "~", "λ", "é", " ", "#", "-", ">", "⟹", "😀" };
+	static const char *const ch[] = { "a", "Z", "~", "λ", "é", " ", "#", "-", ">", "⟹", "😀", "👨‍👩‍👧", "e\xcc\x81\xcc\xa3" };   /* the last two longer than 4 bytes: kept in grid.c's cluster store */
 	for (int f = 0; f < 75; f++) {   /* ends after cursor-only frames */
 		/* edits in 10 frames of each 20 (the first over every row, so
 		   rows differ), then 5 frames that move only the cursor and 5 that
 		   only scroll, so a buffer's rows, two frames old, are found moved */
 		int phase = f % 20;
 		for (int i = 0; i < (phase ? 30 : 20 * g.rows) && phase < 10; i++) {
-			int n = (int)rnd(11), r = phase ? (int)rnd(16) : i / 20;
-			grid_put(&g, r, phase ? (int)rnd(20) : i % 20, (const unsigned char *)ch[n], strlen(ch[n]), n == 10 ? 2 : 1, (int)rnd(3));
+			int n = (int)rnd(13), r = phase ? (int)rnd(16) : i / 20;
+			grid_put(&g, r, phase ? (int)rnd(20) : i % 20, (const unsigned char *)ch[n], strlen(ch[n]), n == 10 || n == 11 ? 2 : 1, (int)rnd(3));
 			g.c[r * g.cols + rnd(20)].face = (unsigned char)rnd(FACE_COUNT);
 		}
 		if (phase >= 15) {         /* a scroll by k rows, either way */
@@ -300,7 +302,7 @@ static void test_sway(void)
 	grid_put(&g, 0, 0, (const unsigned char *)"⟹", 3, 1, ATTR_NONE);
 	g.crow = 5;
 	show();
-	CHECK(ink(cellw(), 0, cellw(), cellh()));
+	CHECK(ink(cellw(), 0, cellw(), cellh(), 0));
 	/* but not into a cell that has a character: there it is cut, so the
 	   next cell looks the same with or without ⟹ before it */
 	char b[512];
@@ -312,6 +314,12 @@ static void test_sway(void)
 	show();
 	snprintf(b, sizeof b, "grim -g '%d,0 %dx%d' -t ppm %s/y.ppm && cmp -s %s/x.ppm %s/y.ppm", cellw(), cellw(), cellh(), dir, dir, dir);
 	run(b);
+
+	/* a cluster longer than a cell's 4 bytes is drawn from grid.c's store:
+	   a thumbs up with a skin tone (8 bytes) is one brown glyph */
+	grid_put(&g, 0, 0, (const unsigned char *)"👍🏽", 8, 2, ATTR_NONE);
+	show();
+	CHECK(ink(0, 0, 2 * cellw(), cellh(), 1) > cellw() * cellh() / 4);
 
 	/* keys, with the Control transformation and the keys keys.h names */
 	k0 = nkeys;

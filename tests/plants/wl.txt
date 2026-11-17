@@ -22,3 +22,4 @@ wl: glyph cut at its cell~test TESTS=wl~~src/wl/wl.c~zx = gx + gl->w > xe ? xe -
 wl: changed span not widened left~test TESTS=wl~~src/wl/wl.c~	while (l > 0 && !EDGE(l)) l--;¶~¶
 wl: changed span not widened right~test TESTS=wl~~src/wl/wl.c~	while (h < n && !EDGE(h)) h++;¶~¶
 wl: spill past a non-blank cell~test TESTS=wl~~src/wl/wl.c~		while (e < hi && (!x[e].len || blank(&x[e]))) e++;~		while (e < hi) e++;
+wl: long cluster read from the cell~test TESTS=wl~~src/wl/wl.c~		const unsigned char *t = grid_text(&x[c]);~		const unsigned char *t = x[c].ch;

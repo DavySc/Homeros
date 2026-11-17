@@ -623,7 +623,8 @@ static void draw_span(uint32_t *px, const Grid *g, int r, int lo, int hi)
 		fill(px, c * cell_w, y0, w * cell_w, cell_h, bg);
 		if (x[c].attr == ATTR_PRE || f->style & FACE_UNDERLINE) fill(px, c * cell_w, y0 + cell_h - 1, w * cell_w, 1, fg);
 		if (f->style & FACE_STRIKE) fill(px, c * cell_w, y0 + cell_h / 2, w * cell_w, 1, fg);
-		for (int i = 0; i < x[c].len && n < ROW; i++) { s[n] = x[c].ch[i]; col[n++] = (unsigned short)c; }
+		const unsigned char *t = grid_text(&x[c]);
+		for (int i = 0; i < x[c].len && n < ROW; i++) { s[n] = t[i]; col[n++] = (unsigned short)c; }
 	}
 	for (int i = 0, m = font_shape(s, (size_t)n, pl, ROW); i < m; i++) {
 		const Glyph *gl = pl[i].g;
@@ -690,7 +691,7 @@ static unsigned long row_hash(const Grid *g, int r)
 		h = (h ^ x->len) * 16777619u;
 		h = (h ^ x->attr) * 16777619u;
 		h = (h ^ x->face) * 16777619u;
-		for (int i = 0; i < x->len; i++) h = (h ^ x->ch[i]) * 16777619u;
+		for (int i = 0; i < x->len && i < 4; i++) h = (h ^ x->ch[i]) * 16777619u;   /* a long cluster: its number, as grid_cell_eq */
 	}
 	return h;
 }

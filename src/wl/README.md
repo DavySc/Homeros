@@ -38,9 +38,10 @@ wtype, wl-clipboard, grim, adwaita-icon-theme):
   screenshots: the I-beam reaches above the pointer, the default arrow does
   not); left click, wheel and touchpad keys and their cell; no drawing while
   hidden in the scratchpad, drawing again once shown; close; a wide symbol
-  (⟹) spills into the blank cell after it and is cut at a character; and a
+  (⟹) spills into the blank cell after it and is cut at a character; a
+  cluster longer than a cell's 4 bytes (👍🏽) drawn from grid.c's store; and a
   screenshot check that after 75 frames of random edits (characters, `->`,
-  ⟹, emoji, attrs, faces), cursor moves and scrolls either way, into both
+  ⟹, emoji, long clusters, attrs, faces), cursor moves and scrolls either way, into both
   buffers, the screen equals a whole redraw.
 
 **measured**: 10 of 10 runs pass (system sway 1.9, weston 13) before
@@ -50,12 +51,12 @@ fixed here: the seat's capabilities arrive in the bind's roundtrip, so a
 listener added after it lost the keyboard (3 of 10 runs failed); and a
 keyboard or pointer that goes away must be released and fetched again.
 
-**measured**: `tests/plants/wl.txt` has 23 plants (frame callback, repeat,
+**measured**: `tests/plants/wl.txt` has 24 plants (frame callback, repeat,
 Backspace, seat listener, clipboard short send, clipboard past max, input
 method text, preedit redraw, scale, size, text cursor, mouse cell, wheel,
 touchpad step, close, changed cells, cursor move, damage, scroll source,
 glyph cut at its cell, span widened left, span widened right, spill past a
-character); each was run and each fails the test. Copying a scroll against
+character, long cluster read from the cell); each was run and each fails the test. Copying a scroll against
 its direction has no plant: a row is copied only where the cells it shows
 equal the source's, so the screen stays right and only the copy is lost.
 
