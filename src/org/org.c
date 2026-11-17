@@ -258,6 +258,16 @@ static size_t pair(size_t p, int o, int c)
 		else if (S[p] == c && --d == 0) return p + 1;
 	return ORG_NONE;
 }
+/* org-element-babel-call-parser's end for the #+CALL: line at q: its
+   brackets may span lines, to the end of the text */
+static size_t call_end(size_t q, size_t lim)
+{
+	size_t p = blanks((size_t)((const unsigned char *)memchr(S + q, ':', N - q) - S) + 1), bb = nextl(q), f;
+	while (p < bb && S[p] != '[' && S[p] != ']' && S[p] != '(' && S[p] != ')') p++;
+	if (p < N && S[p] == '[' && (f = pair(p, '[', ']')) != ORG_NONE) p = f;
+	if (p < N && S[p] == '(' && (f = pair(p, '(', ')')) != ORG_NONE) p = f;
+	return after(nextl(p), lim);
+}
 static int f_dynend(size_t p, size_t a, size_t b)
 {
 	(void)a; (void)b;
@@ -579,12 +589,8 @@ static void element(OrgNode *e, size_t q, size_t lim, int mode, size_t *st, size
 			*e = (OrgNode){ b, q, c < f ? c : ORG_NONE, c < f ? f : ORG_NONE, end, 0, type };
 		else *e = (OrgNode){ b, q, ORG_NONE, ORG_NONE, end, 0, type };
 		return;
-	} else if (lit(t, "#+CALL:")) {     /* org-element-babel-call-parser: its brackets may span lines */
-		size_t p = blanks((size_t)((const unsigned char *)memchr(S + q, ':', N - q) - S) + 1), bb = nextl(q);
-		while (p < bb && S[p] != '[' && S[p] != ']' && S[p] != '(' && S[p] != ')') p++;
-		if (p < N && S[p] == '[' && (f = pair(p, '[', ']')) != ORG_NONE) p = f;
-		if (p < N && S[p] == '(' && (f = pair(p, '(', ')')) != ORG_NONE) p = f;
-		*e = (OrgNode){ b, q, ORG_NONE, ORG_NONE, after(nextl(p), lim), 0, ORG_BABEL_CALL };
+	} else if (lit(t, "#+CALL:")) {
+		*e = (OrgNode){ b, q, ORG_NONE, ORG_NONE, call_end(q, lim), 0, ORG_BABEL_CALL };
 		return;
 	} else if (lit(t, "#+") && kwcolon(t + 2)) type = ORG_KEYWORD;
 	else if (fnl(q)) {                  /* org-element-footnote-definition-parser */
@@ -683,15 +689,15 @@ static int next_mode(int mode, int t)
 	return M_NIL;
 }
 
-/* org-element-parse-buffer and org-element--parse-elements */
-OrgNode *org_parse(const char *s, size_t n, size_t *count)
+/* org-element--parse-elements over the top level from pos to lim */
+static OrgNode *parse(size_t pos, size_t lim, int mode, size_t *count)
 {
-	S = (const unsigned char *)s; N = n; nomem = 0;
+	nomem = 0;
 	OrgNode *out = NULL; Frame *fr = NULL;
 	size_t no = 0, co = 0, nf = 0, cf = 0;
 	it = NULL; nit = cit = 0;
 	if (grow((void **)&fr, &cf, 0, sizeof *fr) && grow((void **)&out, &co, 0, sizeof *out))
-		fr[nf++] = (Frame){ ORG_NONE, bol(fwd(0, N)), N, 0, 0, ORG_NONE, M_FIRST };
+		fr[nf++] = (Frame){ ORG_NONE, pos, lim, 0, 0, ORG_NONE, mode };
 	while (nf && !nomem) {
 		Frame *F = &fr[nf - 1];
 		if (F->pos >= F->lim) {
@@ -720,6 +726,86 @@ OrgNode *org_parse(const char *s, size_t n, size_t *count)
 	if (nomem) { free(out); return NULL; }
 	*count = no;
 	return out;
+}
+
+/* org-element-parse-buffer */
+OrgNode *org_parse(const char *s, size_t n, size_t *count)
+{
+	S = (const unsigned char *)s; N = n;
+	return parse(bol(fwd(0, N)), N, M_FIRST, count);
+}
+
+/* the first node that begins at p or later */
+static size_t first(const OrgNode *e, size_t k, size_t p)
+{
+	size_t lo = 0, hi = k;
+	while (lo < hi) { size_t m = lo + (hi - lo) / 2; if (e[m].begin < p) lo = m + 1; else hi = m; }
+	return lo;
+}
+static size_t top(const OrgNode *e, size_t i) { while (e[i].parent != ORG_NONE) i = e[i].parent; return i; }
+static size_t moved(size_t x, size_t del, size_t ins) { return x == ORG_NONE ? x : x - del + ins; }
+
+/* Reparses from the top-level node before the edit to the one after it.
+   Org's top level is a section, then headlines each ending at the next one
+   with as many stars or fewer, so the text before that span parses as
+   before when the headline line at its start is untouched; the text after
+   it, when its first headline stays at the top (no new shallower headline
+   in the span: the span's last node would then end past it).  Only a babel
+   call reads past its subtree (its brackets are matched to the end of the
+   text); one before the span is measured again, and a whole reparse
+   follows when its end moved. */
+int org_edit(OrgNode **pe, size_t *pk, const char *s, size_t n, size_t pos, size_t del, size_t ins)
+{
+	OrgNode *e = *pe, *f, *g;
+	size_t k = *pk, lo = 0, c, z, hi, m, t, L, R;
+	S = (const unsigned char *)s; N = n;
+	int mode = M_FIRST;
+	if (!k) goto whole;
+	if ((c = first(e, k, pos + 1)) && (c = top(e, c - 1)) && !memchr(S + e[c].begin, '\n', pos - e[c].begin))
+		c = top(e, c - 1);   /* the edit touches its headline line */
+	if (c) { lo = c; L = e[c].begin; mode = M_NIL; } else L = bol(fwd(0, N));
+	for (size_t j = 0; j < lo; j++)   /* if its end moved, so did what its parent holds */
+		if (e[j].type == ORG_BABEL_CALL) {
+			size_t x = call_end(e[j].aff, e[e[j].parent].cend);
+			if (x != (e[j].end <= pos ? e[j].end : e[j].end - del + ins)) goto whole;
+			e[j].end = x;
+		}
+	z = first(e, k, pos + del + 1);
+	R = e[z ? top(e, z - 1) : 0].end;
+	for (;;) {   /* until the span's last top-level node ends inside it */
+		hi = first(e, k, R);
+		if (!(f = parse(L, R - del + ins, mode, &m))) goto fail;
+		for (t = m; t && f[t - 1].parent != ORG_NONE; t--) ;
+		if (hi == k || !t || f[t - 1].end <= R - del + ins) break;
+		free(f);
+		R = e[hi].end;
+	}
+	if (m > hi - lo) {
+		if (!(g = realloc(e, (k - (hi - lo) + m) * sizeof *e))) { free(f); goto fail; }
+		e = g;
+	}
+	memmove(e + lo + m, e + hi, (k - hi) * sizeof *e);
+	k = k - (hi - lo) + m;
+	for (size_t j = lo + m; j < k; j++) {
+		OrgNode *x = &e[j];
+		x->begin = moved(x->begin, del, ins); x->aff = moved(x->aff, del, ins); x->end = moved(x->end, del, ins);
+		x->cbeg = moved(x->cbeg, del, ins); x->cend = moved(x->cend, del, ins);
+		if (x->parent != ORG_NONE) x->parent = x->parent - hi + lo + m;
+	}
+	for (size_t j = 0; j < m; j++) {
+		e[lo + j] = f[j];
+		if (f[j].parent != ORG_NONE) e[lo + j].parent += lo;
+	}
+	free(f);
+	*pe = e; *pk = k;
+	return 0;
+whole:
+	free(e);
+	*pe = org_parse(s, n, pk);
+	return *pe ? 0 : -1;
+fail:
+	free(e); *pe = NULL; *pk = 0;
+	return -1;
 }
 
 /* org-element--headline-parse-title */
