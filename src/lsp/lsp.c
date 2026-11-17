@@ -14,6 +14,7 @@
 #include <string.h>
 #include <strings.h>
 #include <unistd.h>
+#include "core.h"
 #include "json.h"
 #include "loop.h"
 #include "lsp.h"
@@ -34,7 +35,6 @@ static const LspServer table[] = {
 	{ NULL, NULL, NULL, NULL, 0 },
 };
 const LspServer *lsp_servers = table;
-int lsp_dirty;
 
 typedef struct { LspDiag *v; int n, cap; long ver; } Set;   /* ver: the version it came for */
 
@@ -197,7 +197,7 @@ static void forget(LspDoc *d)
 	clear(&d->diag);
 	clear(&d->prog);
 	for (int k = 0; k < LSP_NASK; k++) { free(d->ask[k].ans); d->ask[k].ans = NULL; d->ask[k].id = 0; }
-	lsp_dirty = 1;
+	core_changed = 1;
 }
 
 /* Opens d again as a new version, showing nothing, so what the server
@@ -229,7 +229,7 @@ static void shift_set(Set *v, size_t pos, size_t ndel, size_t nins)
 	for (int i = 0; i < v->n; i++)
 		if (shift(&v->v[i], pos, ndel, nins)) v->v[k++] = v->v[i];
 		else free(v->v[i].msg);
-	if (k != v->n) lsp_dirty = 1;
+	if (k != v->n) core_changed = 1;
 	v->n = k;
 }
 
@@ -502,7 +502,7 @@ static void ranges(LspDoc *d, Set *v, long ver, const char *m, int arr, int add)
 		v->v[v->n++] = g;
 	}
 	if (v->n > 1) qsort(v->v, (size_t)v->n, sizeof *v->v, cmp);
-	lsp_dirty = 1;
+	core_changed = 1;
 }
 
 static LspDoc *doc(Srv *s, const char *m, int uri)
@@ -565,7 +565,7 @@ static void handle(Srv *s, const char *m, size_t n)
 			if (c >= 0 && tk[c].type == 'a') c = json_at(tk, c, 0);                 /* MarkedString[] */
 			if (c >= 0 && tk[c].type == 'o') c = json_get(m, tk, c, "value");      /* {language, value} */
 			d->ask[k].ans = c >= 0 && tk[c].type == 's' ? str(m, c) : strdup("");
-			lsp_dirty = 1;
+			core_changed = 1;
 			return;
 		}
 }

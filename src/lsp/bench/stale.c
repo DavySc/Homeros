@@ -32,6 +32,8 @@
 #include "../json.h"
 #include "text.h"
 
+int core_changed;                     /* core.h's, which this program does not link */
+
 static long long now(void)
 {
 	struct timespec ts;
@@ -124,7 +126,35 @@ static void edit(LspDoc *d, size_t pos, size_t ndel, const char *ins, size_t nin
 	lsp_flush(d);
 }
 
-static void run_for(long long ms) { for (long long end = now() + ms; now() < end; ) loop_once((int)(end - now())); }
+/* Real Lean as an oracle for the mapping: its "declaration uses 'sorry'"
+   warning covers the theorem's name, so wherever the client shows one,
+   mapped or not, the text there must be a name tNNN. */
+static LspDoc *doc;
+static long sorry_ok, sorry_bad;
+
+static void check_sorry(void)
+{
+	int n;
+	const LspDiag *g = lsp_diags(doc, &n);
+	for (int i = 0; i < n; i++) {
+		if (!g[i].msg || !strstr(g[i].msg, "sorry")) continue;
+		char b[16] = "";
+		size_t k = g[i].z - g[i].a < sizeof b - 1 ? g[i].z - g[i].a : sizeof b - 1;
+		b[text_read(t, g[i].a, b, k)] = 0;
+		int good = b[0] == 't' && b[1] >= '0' && b[1] <= '9';
+		for (size_t j = 1; j < k; j++) good = good && b[j] >= '0' && b[j] <= '9';
+		if (good) sorry_ok++;
+		else { sorry_bad++; fprintf(stderr, "sorry warning on \"%s\"\n", b); }
+	}
+}
+
+static void run_for(long long ms)
+{
+	for (long long end = now() + ms; now() < end; ) {
+		loop_once((int)(end - now()));
+		if (core_changed && doc) { core_changed = 0; check_sorry(); }
+	}
+}
 
 static int cmpl(const void *a, const void *b) { long long x = *(const long long *)a, y = *(const long long *)b; return (x > y) - (x < y); }
 
@@ -203,13 +233,13 @@ int main(int argc, char **argv)
 	lsp_servers = table;
 
 	t = text_new(src, n);
-	LspDoc *d = lsp_open(path, t);
+	LspDoc *d = doc = lsp_open(path, t);
 	if (!d) { fprintf(stderr, "stale: no server\n"); return 1; }
 	/* the first full elaboration: until file progress has been empty for 3 s */
 	long long t0 = now(), quiet = now();
 	int np;
 	while (now() - t0 < 600000) {
-		loop_once(100);
+		run_for(100);
 		lsp_progress(d, &np);
 		if (np) quiet = now();
 		else if (now() - quiet > 3000 && now() - t0 > 3000) break;
@@ -247,14 +277,14 @@ int main(int argc, char **argv)
 	/* catch up: until progress is quiet again */
 	quiet = now();
 	while (now() - quiet < 3000 && now() - stop < 300000) {
-		loop_once(100);
+		run_for(100);
 		lsp_progress(d, &np);
 		if (np) quiet = now();
 	}
 	lsp_close(d);
 	run_for(500);
 
-	printf("%d keys\n", keys);
+	printf("%d keys; sorry warnings checked against the text: %ld on a theorem name, %ld elsewhere\n", keys, sorry_ok, sorry_bad);
 	report(log);
 	text_free(t);
 	return 0;

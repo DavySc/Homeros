@@ -89,42 +89,67 @@ static size_t fbyte(long l, long c)
 	return i;
 }
 
+/* The text a publication is about: the current one or an older version's. */
+static const char *pd;
+static size_t pn;
+static long pv;
+static struct { long v; char *text; size_t n; } old[16];   /* the last versions, by v % 16 */
+
 static void fpos(Str *m, size_t b)
 {
 	long l = 0, c = 0;
-	for (size_t i = 0; i < b; i += cplen((unsigned char)sdoc[i]))
-		if (sdoc[i] == '\n') l++, c = 0;
-		else c += cplen((unsigned char)sdoc[i]) == 4 ? 2 : 1;
+	for (size_t i = 0; i < b; i += cplen((unsigned char)pd[i]))
+		if (pd[i] == '\n') l++, c = 0;
+		else c += cplen((unsigned char)pd[i]) == 4 ? 2 : 1;
 	str_putf(m, "{\"line\":%ld,\"character\":%ld}", l, c);
 }
 
-static size_t fchar(size_t i) { while (i > 0 && (sdoc[i] & 0xC0) == 0x80) i--; return i; }   /* a character start */
+static size_t fchar(size_t i) { while (i > 0 && i < pn && (pd[i] & 0xC0) == 0x80) i--; return i; }   /* a character start */
 
 /* A diagnostic: a random range, its message "#pid.serial v n a z ghost":
    n is how many diagnostics version v has once this message is in, a and z
    the bytes of the range in version v. */
 static void fdiag(Str *m, int point, long n)
 {
-	size_t a = fchar(rnd((unsigned)sn + 1)), z = point ? a : fchar(a + rnd((unsigned)(sn - a) + 1));
-	if (!point && rnd(8) == 0) a = 0, z = sn;
+	size_t a = fchar(rnd((unsigned)pn + 1)), z = point ? a : fchar(a + rnd((unsigned)(pn - a) + 1));
+	if (!point && rnd(8) == 0) a = 0, z = pn;
 	if (z < a) z = a;
 	str_lit(m, "{\"range\":{\"start\":");
 	fpos(m, a);
 	str_lit(m, ",\"end\":");
 	fpos(m, z);
-	str_putf(m, "},\"severity\":%u,\"message\":\"#%d.%ld %ld %ld %zu %zu ", 1 + rnd(4), (int)getpid(), ++serial, sver, n, a, z);
-	str_putq(m, sdoc + a, z - a);
+	str_putf(m, "},\"severity\":%u,\"message\":\"#%d.%ld %ld %ld %zu %zu ", 1 + rnd(4), (int)getpid(), ++serial, pv, n, a, z);
+	str_putq(m, pd + a, z - a);
 	str_lit(m, "\"}");
 }
 
 static int incr;                      /* a full set went out for sver: incremental may follow */
 static long ndiag;                    /* diagnostics sent for sver */
 
+static long lastpub = -1;             /* the newest version published */
+
 static void fpublish(void)
 {
 	Str m = { 0 };
-	int inc = incr && rnd(2);
-	str_putf(&m, "{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{\"uri\":\"%s\",\"version\":%ld,", suri, sver);
+	/* mostly the current version; sometimes one the editor has left, in
+	   order (Lean elaborating behind the typing), and now and then one
+	   older than the last published (a reporter late after a reopen) */
+	unsigned r = rnd(10);
+	long v = sver;
+	if (r < 3) {
+		long lo = r < 2 ? (lastpub > sver - 15 ? lastpub : sver - 15) : sver - 15, hi = r < 2 ? sver : lastpub - 1;
+		if (lo < 0) lo = 0;
+		if (hi >= lo) {
+			long w = lo + (long)rnd((unsigned)(hi - lo + 1));
+			if (old[w % 16].v == w && old[w % 16].text) v = w;
+		}
+	}
+	if (v == sver) { pd = sdoc; pn = sn; }
+	else { pd = old[v % 16].text; pn = old[v % 16].n; incr = 0; }
+	pv = v;
+	if (v > lastpub) lastpub = v;
+	int inc = v == sver && incr && rnd(2);
+	str_putf(&m, "{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{\"uri\":\"%s\",\"version\":%ld,", suri, v);
 	if (inc) str_lit(&m, "\"isIncremental\":true,");
 	str_lit(&m, "\"diagnostics\":[");
 	unsigned n = 1 + rnd(3);
@@ -133,10 +158,12 @@ static void fpublish(void)
 	str_lit(&m, "]}}");
 	fsend(&m);
 	free(m.b);
-	incr = 1;
+	incr = v == sver;
+	pd = sdoc; pn = sn; pv = sver;
 	if (rnd(3) == 0) {
 		m = (Str){ 0 };
 		str_putf(&m, "{\"jsonrpc\":\"2.0\",\"method\":\"$/lean/fileProgress\",\"params\":{\"textDocument\":{\"uri\":\"%s\",\"version\":%ld},\"processing\":[", suri, sver);
+		lastpub = sver;
 		if (rnd(2)) fdiag(&m, 0, 0);
 		str_lit(&m, "]}}");
 		fsend(&m);
@@ -199,6 +226,17 @@ static void fapply(const char *m, int ch)
 	}
 }
 
+static void fkeep(void)
+{
+	int k = (int)(sver % 16);
+	free(old[k].text);
+	old[k].text = malloc(sn + 1);
+	if (!old[k].text) wrong("out of memory");
+	memcpy(old[k].text, sdoc, sn);
+	old[k].n = sn;
+	old[k].v = sver;
+}
+
 static void fhandle(const char *m, size_t n)
 {
 	if (json_parse(m, n, &ft, &fcap) < 0) wrong("not JSON: %.*s", (int)n, m);
@@ -243,6 +281,7 @@ static void fhandle(const char *m, size_t n)
 		sn = json_str(m, ft, t, sdoc);
 		sver = json_int(m, ft, json_get(m, ft, td, "version"));
 		opened = 1; incr = 0;
+		fkeep();
 	} else if (!strcmp(meth, "textDocument/didClose")) {
 		if (!opened) wrong("didClose before didOpen");
 		opened = 0;
@@ -252,6 +291,7 @@ static void fhandle(const char *m, size_t n)
 		if (v != sver + 1) wrong("version %ld after %ld", v, sver);
 		fapply(m, json_get(m, ft, p, "contentChanges"));
 		sver = v; incr = 0;
+		fkeep();
 	} else if (!strcmp(meth, "textDocument/hover") || !strcmp(meth, "$/lean/plainGoal")) {
 		int q = json_get(m, ft, p, "position");
 		if (npark == 64) wrong("64 requests parked");
