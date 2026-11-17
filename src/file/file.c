@@ -1,6 +1,7 @@
 /* Files on Linux: load, save (Save2.tla "exchange", or in place with a
    backup where a swap would break the file), and outside changes.  Each save
-   step names the model action it implements. */
+   step names the model action it implements.  win.c is the Windows twin. */
+#ifndef _WIN32
 #define _GNU_SOURCE
 #include <errno.h>
 #include <fcntl.h>
@@ -277,3 +278,4 @@ int file_watch_read(int fd, const char *path, const FileId *id)
 	else if (errno != ENOENT) return -1;
 	return !same(id, &now);
 }
+#endif
