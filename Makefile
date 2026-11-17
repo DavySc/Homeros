@@ -116,10 +116,11 @@ frama: | build
 	  -cpp-extra-args="-Iinclude" $(FRAMA_FILES) | tee build/frama.log
 	grep -qE "Proved goals: +([0-9]+) / \1$$" build/frama.log
 
-# the Windows build (package 9): cross-built with zig cc, run under Wine on
-# a virtual X display; src/win/check.sh says how
+# the Windows builds (packages 9 and 11): each package's src/<module>/check.sh
+# cross-builds its tests with zig cc and runs them under Wine (package 9's on
+# a virtual X display)
 win:
-	@if [ -f src/win/check.sh ]; then bash src/win/check.sh; else echo "win: no src/win yet"; fi
+	@for s in src/*/check.sh; do [ -f "$$s" ] || continue; echo "win: $$s"; bash "$$s" || exit 1; done
 
 check: compilers test fuzz conform undo-diff lean frama specs win
 	@echo "check: all passed"
