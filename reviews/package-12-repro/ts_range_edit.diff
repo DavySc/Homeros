@@ -1,0 +1,46 @@
+diff --git a/src/syntax/syntax.c b/src/syntax/syntax.c
+index 6634b81..d1c3ab6 100644
+--- a/src/syntax/syntax.c
++++ b/src/syntax/syntax.c
+@@ -365,32 +365,6 @@ static TSPoint point(const Text *t, size_t pos)
+ 	return (TSPoint){ (uint32_t)r, (uint32_t)(pos - text_line_start(t, r)) };
+ }
+ 
+-/* tree-sitter's ts_range_edit, on our copy of a region's ranges */
+-static TSPoint padd(TSPoint a, TSPoint b) { return b.row ? (TSPoint){ a.row + b.row, b.column } : (TSPoint){ a.row, a.column + b.column }; }
+-static TSPoint psub(TSPoint a, TSPoint b) { return a.row > b.row ? (TSPoint){ a.row - b.row, a.column } : (TSPoint){ 0, a.column - b.column }; }
+-
+-static void range_edit(TSRange *r, const TSInputEdit *e)
+-{
+-	if (r->end_byte >= e->old_end_byte) {
+-		if (r->end_byte != UINT32_MAX) {
+-			r->end_byte = e->new_end_byte + (r->end_byte - e->old_end_byte);
+-			r->end_point = padd(e->new_end_point, psub(r->end_point, e->old_end_point));
+-			if (r->end_byte < e->new_end_byte) r->end_byte = UINT32_MAX, r->end_point = (TSPoint){ UINT32_MAX, UINT32_MAX };
+-		}
+-	} else if (r->end_byte > e->start_byte) {
+-		r->end_byte = e->start_byte;
+-		r->end_point = e->start_point;
+-	}
+-	if (r->start_byte >= e->old_end_byte) {
+-		r->start_byte = e->new_end_byte + (r->start_byte - e->old_end_byte);
+-		r->start_point = padd(e->new_end_point, psub(r->start_point, e->old_end_point));
+-		if (r->start_byte < e->new_end_byte) r->start_byte = UINT32_MAX, r->start_point = (TSPoint){ UINT32_MAX, UINT32_MAX };
+-	} else if (r->start_byte > e->start_byte) {
+-		r->start_byte = e->start_byte;
+-		r->start_point = e->start_point;
+-	}
+-}
+-
+ /* LanguageTree:_edit: edit every tree and region; a region meeting the edit
+    (or the whole text) must be parsed again */
+ static void edit_ltree(LTree *L, const TSInputEdit *e)
+@@ -400,7 +374,7 @@ static void edit_ltree(LTree *L, const TSInputEdit *e)
+ 		if (g->tree) ts_tree_edit(g->tree, e);
+ 		int hit = !g->n;
+ 		for (uint32_t k = 0; k < g->n; k++) {
+-			range_edit(&g->r[k], e);
++			ts_range_edit(&g->r[k], e);
+ 			hit |= g->r[k].end_byte > e->start_byte && g->r[k].start_byte < e->old_end_byte;
+ 		}
+ 		if (hit) g->valid = 0;
