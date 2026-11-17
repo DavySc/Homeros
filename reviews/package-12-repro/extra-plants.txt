@@ -1,0 +1,17 @@
+# Review of package 12: bugs planted beyond tests/plants/syntax.txt, to see what the checks miss (format in tools/planted.sh).
+x1: the faces cache survives an edit~test TESTS=syntax~~src/syntax/syntax.c~	s->t = t;¶	s->cz = 0;¶	if (s->susp) {~	s->t = t;¶	if (s->susp) {
+x2: the faces cache survives a parse~test TESTS=syntax~~src/syntax/syntax.c~	s->stop = stop;¶	s->cz = 0;~	s->stop = stop;
+x3: captures are not clipped to the tree's included ranges~test TESTS=syntax~~src/syntax/syntax.c~				if (g->n) {¶					if (rb~				if (0) {¶					if (rb
+x4: has-ancestor? never holds~test TESTS=syntax~~src/syntax/syntax.c~!ts_node_is_null(u) && u.id != n.id;~0;
+x5: #set! priority is ignored~test TESTS=syntax~~src/syntax/syntax.c~		else P->prio = atoi(v);~		else P->prio = PRIO;
+x6: injections are looked for only after a parse, not when the window moves~test TESTS=syntax~~src/syntax/syntax.c~	if (L->scan || s->ra < L->pa || s->rz > L->pz) {~	if (L->scan) {
+x8: the match limit is 2~test TESTS=syntax~~src/syntax/syntax.c~	ts_query_cursor_set_match_limit(s->qc, LIMIT);~	ts_query_cursor_set_match_limit(s->qc, 2);
+x9: a range of 8192 bytes or more keeps the last chunk's priorities~test TESTS=syntax~~src/syntax/syntax.c~		memset(s->prio, 0, cz - ca);~
+x10: a range of 8192 bytes or more is coloured from its first chunk only~test TESTS=syntax~~src/syntax/syntax.c~		faces_tree(s, s->t, s->root, ca, cz, face + (c - a));~		if (c == a) faces_tree(s, s->t, s->root, ca, cz, face + (c - a));
+x11: any-of? must hold for every node~test TESTS=syntax~~src/syntax/syntax.c~	int any = p->any || p->kind >= P_ANYOF, seen = 0;~	int any = p->any || p->kind > P_ANYOF, seen = 0;
+x12: a combined injection is one region per match~test TESTS=syntax~~src/syntax/syntax.c~			if (P->icombined)¶~			if (0)¶
+x13: the file name capture of an injection is ignored~test TESTS=syntax~~src/syntax/syntax.c~					lang = lang_of_path(b, k);~					(void)b;
+x14: #eq? with two captures always holds~test TESTS=syntax~~src/syntax/syntax.c~					if (oz - oa != z - a) return 0;¶~					return 1;¶
+x15: #contains? always holds~test TESTS=syntax~~src/syntax/syntax.c~			if (found == p->any) return found;~			if (found == p->any) return 1;
+x16: %b in a Lua pattern never matches~test TESTS=syntax~~src/syntax/lmatch.c~				if (s >= ms->end || S(ms, s) != b) { r = -1; goto out; }~				if (1) { r = -1; goto out; }
+x17: %f in a Lua pattern always matches~test TESTS=syntax~~src/syntax/lmatch.c~				if (bracket(ms, prev, p, ep - 1) || !bracket(ms, S(ms, s), p, ep - 1)) { r = -1; goto out; }~

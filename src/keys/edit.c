@@ -768,6 +768,7 @@ void insert_key(int k, int pending)
 	case 10: case 13: ins_eol(); inserted_space = 0; break;
 	default:
 		if (c < ' ' && c != 26) break;   /* completion, digraphs, CTRL-V: not here */
+		if (c >= KEY_UP) break;          /* the mouse and the wheel do nothing here */
 		if (c == ' ') inserted_space = 1;
 		stop_arrow();
 		insertchar(c, pending, 0);

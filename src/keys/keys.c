@@ -103,6 +103,9 @@ static void key(int k, int pending)
 
 void keys_feed(Editor *e, int k, int pending)
 {
+	/* the window's close button: :qa, as Neovim's GUIs do (E37 if
+	   modified), as ref/keys.c */
+	if (k == KEY_CLOSE) { core_close(e, 0); return; }
 	E = e;
 	buf_changed();
 	if ((E->mode != MODE_INSERT && E->mode != MODE_CMDLINE) || arrow_used) undo_close(B->undo);
