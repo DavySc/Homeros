@@ -287,7 +287,7 @@ static int cellw(const unsigned char *s, size_t n, size_t i, size_t v)
 	unsigned c = uni_cp(s, n, i);
 	if (c == '\t') return TABSTOP - (int)(v % TABSTOP);
 	if (c < 0x20 || c == 0x7f) return 2;                      /* ^X */
-	return uni_width(c);
+	return uni_width(s, n, i);
 }
 
 size_t core_vcol(Editor *e, size_t l, size_t col)

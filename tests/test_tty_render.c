@@ -69,7 +69,7 @@ static int has(size_t from, size_t to, const char *s)
 }
 
 /* the terminal agrees with the core's widths */
-static int width(const unsigned char *s, int n) { return uni_width(uni_cp(s, (size_t)n, 0)); }
+static int width(const unsigned char *s, int n) { return uni_width(s, (size_t)n, 0); }
 
 /* Reads the editor's output until it has been quiet for ms (or exits). */
 static int pump(int m, const unsigned char *in, size_t n, int ms)
