@@ -87,3 +87,33 @@ Also unused by the four languages' queries (grep): `injection.parent`, the `any-
 
 1. Main builds again (PR 13), PR 9 rebased on it, whole `make check` and `make planted` green there and in CI.
 2. Findings 2 and 3 applied; finding 1's PR text corrected and its two costs found or recorded; finding 4 fixed or recorded.
+
+## Second pass: head 8b9b393 (c8b1f88 answers the review, main ab4bcd4 merged in)
+
+**Verdict: approved for merge, with the Markdown frame share and the stop interval left open and recorded below.**
+
+What I ran:
+
+- **measured** (1 run): `make check` passes here in every target except `win`, which needs Wine that this machine lacks: both compilers, all unit tests under ASan and UBSan (test_syntax 0 of 120 cases, 0 of 508 frames, 0 of 4,000 Lua patterns), 1,014 recorded traces, the fuzzers (fuzz_syntax 130,176 runs in 31 s), 2,000 live sequences (seed 1794934422), undo-diff and undo_conform, Lean, Frama-C 77 of 77, all TLA+ configs. CI run 44128817146 on this head is green, and it includes `win` and `make planted`.
+- **measured** (1 run): `make planted` here caught 93, among them all 8 syntax plants; every plant not caught here is a `win` plant that failed for the missing Wine.
+- **measured**: `screen.sh 100`, seeds 1 and 2: 1 of 295 and 0 of 294 windows differ from Neovim's real redraw; the one is again the `query` string in `_query_linter.lua`.
+- **measured**: `window.c`, 400 rounds, seeds 1 to 3: 0 windows differ in keys.c and lsp.lua; DESIGN.md differs once (seed 1, round 303), and there the whole-text Syntax again equals Neovim replaying the same edits, both differing from a fresh parse (Markdown's history-dependent trees).
+
+The findings:
+
+1. **Frame share.** `syntax_edit` no longer frees the stopped parse: its p99 is 0.01 to 0.07 ms on every file (was 1.5 to 2.0 on coding.c). `src/syntax/bench/run.sh 5 200`, own p99 per key in ms (median, range), **measured**:
+
+   | file | first pass | now | runs over 2 ms |
+   |---|---|---|---|
+   | ref/core.c | 1.01 | 0.88 (0.76–1.63) | 0 of 5 |
+   | xdisp.c | 1.00 | 0.62 (0.52–0.84) | 0 of 5 |
+   | coding.c | 2.22 | 1.19 (0.57–1.64) | 0 of 5 |
+   | design/DESIGN.md | 2.40 | 2.14 (1.48–2.58) | 3 of 5 |
+   | lsp.lua | 0.66 | 0.60 (0.35–0.72) | 0 of 5 |
+
+   **Open:** Markdown. On this machine (about 1.5 times slower than the author's, where 1 of 5 runs was over) `syntax_faces` alone uses the 2 ms budget on DESIGN.md. The author measured the split (57% the block query, 43% the inline queries). The gate "frame budget held with tree-sitter on" is therefore held for C and Lua and not shown for Markdown; it must be closed, by a faster path or by a measurement on Davy's machine, before the phase 0 gate.
+
+   **Open:** the stop interval. `gap.c`, 5 seeds of 460 keys: coding.c median 0.87 to 1.01 ms (was 1.34 to 1.46), p99 2.1 to 3.0, max 6.3; xdisp.c p99 0.9 to 2.0, max 4.1; the first parse of xdisp.c 27.9 ms (1 run). These stretches are inside `ts_parser_parse`. syntax.h still says 0.86 ms; thread 0 has been asked to correct it. A key that arrives in such a stretch waits that long, which is the measurement DESIGN.md names as the reason to revisit "no threads".
+2. **Fixed.** `ts_range_edit` is used; the plant follows.
+3. **Fixed**, by deleting: `contains?`, the `any-` forms, two-capture `#eq?`, `injection.parent`, `injection.filename`, combined and include-children injections (those patterns are disabled; all are of languages not built) and capture-level priority (grep: no `#set! @capture priority` in the four languages). The block quote case catches the clipping plant. x9 and x10 (ranges of 8,192 bytes or more) wait for thread 0 to bound `syntax_faces` in syntax.h.
+4. **Fixed.** The eight queries are compiled in (`build/syntax/queries.c`); no file is read at run time.
