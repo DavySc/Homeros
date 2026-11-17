@@ -3,7 +3,7 @@
    COLS bytes) is one run, one row.  Prints, per file and in total, cache
    hits and misses; with -cold the cache starts empty for each file (font_open
    per file: the first screen of a freshly started editor).  Build and run:
-     cc -O2 -Iinclude src/font/bench/hitrate.c src/font/font.c ref/uni.c \
+     cc -O2 -Iinclude src/font/bench/hitrate.c src/font/font.c src/uni/uni.c \
        $(pkg-config --cflags --libs freetype2 harfbuzz fontconfig) -o build/hitrate
      find mathlib4/Mathlib -name '*.lean' | sort | FONTCONFIG_FILE=build/fonts.conf build/hitrate [-cold] [-rows N]
    (build/fonts.conf is the one the font tests write.) */
