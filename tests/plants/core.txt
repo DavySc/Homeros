@@ -33,8 +33,8 @@ core: CTRL-^ onto column 0 wants column 0 even without a position (test_core_scr
 core: scroll_cursor_halfway() drops skipcol without smoothscroll (test_core_screens)~test TESTS=core_screens~~src/core/move.c~	if (p_sms && w->wrap) w->skipcol = 0;¶	w->frame->s.topvalid = 1;~	w->skipcol = 0;¶	w->frame->s.topvalid = 1;
 core: core_vcol counts a byte inside a cluster to its end (test_core_contract)~test TESTS=core_contract~~src/core/core.c~i < n && i + (k = uni_glen(s, n, i)) <= col; i += k)~i < col && i < n && (k = uni_glen(s, n, i)); i += k)
 core: the cursor line's height less skipcol (test_core_screens)~test TESTS=core_screens~~src/core/move.c~b.cheight = plines_lim(w, l, 1); }~b.cheight = k; }
-core: the sideways scroll redone for an unmoved cursor (test_core_screens)~test TESTS=core_screens~~src/core/move.c~		int valid = s->sideok && s->sline~		int valid = 0 * s->sideok && s->sline
-core: an insertion drops w_botline (test_core_screens)~test TESTS=core_screens~~src/core/core.c~? 0 : bv & ~BOT_EXACT;~? 0 : 0;
+core: the sideways scroll redone for an unmoved cursor (test_core_screens)~test TESTS=core_screens~~src/core/move.c~		int valid = s->sideok && s->sline~		int valid = s->sideok == 2 && s->sline
+core: an insertion drops w_botline (test_core_screens)~test TESTS=core_screens~~src/core/core.c~			int bv = ws->bv;~			int bv = 0;
 core: the popup placed before update_screen() (test_core_screens)~test TESTS=core_screens~~src/core/draw.c~	win_drawn(e);                      /* pum_call_update_screen() */~	(void)0;
 core: entering a buffer keeps the sideways scroll valid (test_core_screens)~test TESTS=core_screens~~src/core/core.c~	w->vc.ok = w->frame->s.sideok = 0;   /* w_valid = 0 */~	w->vc.ok = 0;   /* w_valid = 0 */
 core: a composing character at a cluster start is drawn without its space (test_core_screens)~test TESTS=core_screens~~src/core/draw.c~		if (uni_glen(b, k + 1, 0) > 1) {~		if (uni_glen(b, k + 1, 0) > 9) {
