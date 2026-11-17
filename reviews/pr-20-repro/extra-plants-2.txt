@@ -1,0 +1,12 @@
+# Second review of PR 20: plants aimed at the fixes for findings 2 to 8.
+# Run with: extra-plants.sh [repo root] extra-plants-2.txt
+review2: entering a window does not look at its view again (finding 6)~test~~src/core/win.c~	w->frame->s.topvalid = 0;¶	if (w->h < p_wh)~	if (w->h < p_wh)
+review2: a taller command line keeps the wanted column (finding 2)~test~~src/core/win.c~		if (e->win->want != WANT_EOL) core_set_want(e);~		(void)0;
+review2: a new buffer does not get the window's :set wrap (finding 4)~test~~src/core/core.c~	else w->wrap = w->frame->s.allwrap;~	else (void)0;
+review2: a double-width character never takes the border cell (finding 1)~test~~src/core/core.c~== (size_t)tw - 1 ? 3 : 2;~== (size_t)tw - 1 ? 2 : 2;
+review2: no '<' where the view starts inside a double-width character~test~~src/core/draw.c~(const unsigned char *)"<", 1, 0, 1, face);~(const unsigned char *)" ", 1, 0, 1, face);
+review2: plines_col counts bytes again (finding 5)~test~~src/core/move.c~		i++;~		i += k;
+review2: a reused buffer keeps the old undo marks (finding 7)~test~~src/core/core.c~			umarks_drop(b);            /* by address~			(void)0;                  /* by address
+review2: an undo group takes its neighbour's marks~test~~src/core/core.c~	if (u && (u->b != b || u->seq != seq)) u = NULL;~	(void)0;
+review2: marks kept for 3 undo groups only~test~~src/core/core.c~enum { UMARKS_MAX = 1000 };~enum { UMARKS_MAX = 3 };
+review2: a save leaves the outside-change flag set~test~~src/core/core.c~		b->saved_seq = undo_seq(b->undo);¶		b->changed = 0;¶		if (b->journal) journal_saved(b->journal);¶		core_msg(e, "\"%s\" %zuL~		b->saved_seq = undo_seq(b->undo);¶		if (b->journal) journal_saved(b->journal);¶		core_msg(e, "\"%s\" %zuL
