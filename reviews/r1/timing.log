@@ -1,0 +1,168 @@
+== author A's workload (50000 edits, 1000000 lookups each way)
+benchA_A C    open_s=0.097 edit_s=0.062 undo_s=0.036 read_s=0.081 lookup_s=1.884 ok=1 sink=3 wall=2.29s maxrss=316MB  
+benchA_B C    open_s=0.110 edit_s=0.076 undo_s=0.052 read_s=0.074 lookup_s=1.513 ok=1 sink=3 wall=1.92s maxrss=317MB  
+ropeyA Rope open_s=0.112 edit_s=0.103 undo_s=0.064 read_s=0.111 lookup_s=2.407 ok=1 sink=3 wall=2.91s maxrss=325MB  
+benchA_A C    open_s=0.086 edit_s=0.064 undo_s=0.047 read_s=0.096 lookup_s=1.647 ok=1 sink=3 wall=2.03s maxrss=316MB  
+benchA_B C    open_s=0.094 edit_s=0.079 undo_s=0.049 read_s=0.092 lookup_s=1.469 ok=1 sink=3 wall=1.88s maxrss=317MB  
+ropeyA Rope open_s=0.121 edit_s=0.107 undo_s=0.060 read_s=0.107 lookup_s=2.404 ok=1 sink=3 wall=2.92s maxrss=325MB  
+benchA_A C    open_s=0.085 edit_s=0.061 undo_s=0.044 read_s=0.085 lookup_s=1.895 ok=1 sink=3 wall=2.26s maxrss=316MB  
+benchA_B C    open_s=0.083 edit_s=0.065 undo_s=0.045 read_s=0.072 lookup_s=1.481 ok=1 sink=3 wall=1.83s maxrss=317MB  
+ropeyA Rope open_s=0.120 edit_s=0.115 undo_s=0.062 read_s=0.103 lookup_s=2.335 ok=1 sink=3 wall=2.85s maxrss=325MB  
+benchA_A C    open_s=0.079 edit_s=0.052 undo_s=0.037 read_s=0.080 lookup_s=1.403 ok=1 sink=3 wall=1.74s maxrss=316MB  
+benchA_B C    open_s=0.104 edit_s=0.071 undo_s=0.056 read_s=0.071 lookup_s=1.441 ok=1 sink=3 wall=1.84s maxrss=317MB  
+ropeyA Rope open_s=0.131 edit_s=0.105 undo_s=0.058 read_s=0.092 lookup_s=2.312 ok=1 sink=3 wall=2.81s maxrss=325MB  
+benchA_A C    open_s=0.085 edit_s=0.050 undo_s=0.035 read_s=0.078 lookup_s=1.537 ok=1 sink=3 wall=1.88s maxrss=316MB  
+benchA_B C    open_s=0.088 edit_s=0.069 undo_s=0.046 read_s=0.070 lookup_s=1.334 ok=1 sink=3 wall=1.69s maxrss=317MB  
+ropeyA Rope open_s=0.115 edit_s=0.116 undo_s=0.059 read_s=0.088 lookup_s=2.390 ok=1 sink=3 wall=2.89s maxrss=325MB  
+== author B's workload (50000 edits and lookups)
+benchB_A C    load_s=0.078 edit_s=0.055 lines_s=0.077 undo_s=0.039 sum=2557253800608 ok=1 wall=0.68s maxrss=314MB  
+benchB_B C    load_s=0.099 edit_s=0.073 lines_s=0.082 undo_s=0.054 sum=2557253800608 ok=1 wall=0.75s maxrss=315MB  
+ropeyB Rope load_s=0.120 edit_s=0.092 lines_s=0.114 undo_s=0.058 sum=2557253800608 ok=true wall=0.84s maxrss=325MB  
+benchB_A C    load_s=0.075 edit_s=0.055 lines_s=0.071 undo_s=0.038 sum=2557253800608 ok=1 wall=0.69s maxrss=314MB  
+benchB_B C    load_s=0.080 edit_s=0.062 lines_s=0.071 undo_s=0.053 sum=2557253800608 ok=1 wall=0.69s maxrss=315MB  
+ropeyB Rope load_s=0.107 edit_s=0.113 lines_s=0.122 undo_s=0.071 sum=2557253800608 ok=true wall=0.90s maxrss=325MB  
+benchB_A C    load_s=0.101 edit_s=0.062 lines_s=0.074 undo_s=0.039 sum=2557253800608 ok=1 wall=0.71s maxrss=314MB  
+benchB_B C    load_s=0.087 edit_s=0.071 lines_s=0.073 undo_s=0.044 sum=2557253800608 ok=1 wall=0.69s maxrss=315MB  
+ropeyB Rope load_s=0.097 edit_s=0.096 lines_s=0.110 undo_s=0.054 sum=2557253800608 ok=true wall=0.81s maxrss=325MB  
+benchB_A C    load_s=0.076 edit_s=0.062 lines_s=0.093 undo_s=0.045 sum=2557253800608 ok=1 wall=0.71s maxrss=314MB  
+benchB_B C    load_s=0.087 edit_s=0.065 lines_s=0.074 undo_s=0.046 sum=2557253800608 ok=1 wall=0.69s maxrss=315MB  
+ropeyB Rope load_s=0.098 edit_s=0.097 lines_s=0.125 undo_s=0.063 sum=2557253800608 ok=true wall=0.85s maxrss=325MB  
+benchB_A C    load_s=0.074 edit_s=0.051 lines_s=0.063 undo_s=0.035 sum=2557253800608 ok=1 wall=0.64s maxrss=314MB  
+benchB_B C    load_s=0.093 edit_s=0.061 lines_s=0.070 undo_s=0.047 sum=2557253800608 ok=1 wall=0.69s maxrss=315MB  
+ropeyB Rope load_s=0.106 edit_s=0.093 lines_s=0.126 undo_s=0.059 sum=2557253800608 ok=true wall=0.85s maxrss=325MB  
+== scenarios
+scen_A open s=0.1068 heap_open=1216 heap_after=107486432 len=100000002 sink=0 wall=0.19s maxrss=199MB  
+scen_B open s=0.0784 heap_open=1088 heap_after=108338976 len=100000002 sink=0 wall=0.14s maxrss=200MB  
+ropescen open s=0.1109 len=100000002 sink=0 wall=0.21s maxrss=207MB  
+scen_A open s=0.0763 heap_open=1216 heap_after=107486432 len=100000002 sink=0 wall=0.14s maxrss=199MB  
+scen_B open s=0.0791 heap_open=1088 heap_after=108338976 len=100000002 sink=0 wall=0.15s maxrss=200MB  
+ropescen open s=0.1212 len=100000002 sink=0 wall=0.22s maxrss=207MB  
+scen_A open s=0.1015 heap_open=1216 heap_after=107486432 len=100000002 sink=0 wall=0.17s maxrss=199MB  
+scen_B open s=0.0898 heap_open=1088 heap_after=108338976 len=100000002 sink=0 wall=0.16s maxrss=200MB  
+ropescen open s=0.1129 len=100000002 sink=0 wall=0.22s maxrss=207MB  
+scen_A open s=0.0853 heap_open=1216 heap_after=107486432 len=100000002 sink=0 wall=0.16s maxrss=199MB  
+scen_B open s=0.0768 heap_open=1088 heap_after=108338976 len=100000002 sink=0 wall=0.15s maxrss=200MB  
+ropescen open s=0.1014 len=100000002 sink=0 wall=0.19s maxrss=207MB  
+scen_A open s=0.0907 heap_open=1216 heap_after=107486432 len=100000002 sink=0 wall=0.16s maxrss=199MB  
+scen_B open s=0.0770 heap_open=1088 heap_after=108338976 len=100000002 sink=0 wall=0.14s maxrss=200MB  
+ropescen open s=0.1018 len=100000002 sink=0 wall=0.19s maxrss=207MB  
+scen_A type s=0.0039 heap_open=107485216 heap_after=107700496 len=100100002 sink=0 wall=0.15s maxrss=199MB  
+scen_B type s=0.0045 heap_open=108337888 heap_after=108555248 len=100100002 sink=0 wall=0.17s maxrss=200MB  
+ropescen type s=0.0158 len=100100002 sink=0 wall=0.21s maxrss=207MB  
+scen_A type s=0.0066 heap_open=107485216 heap_after=107700496 len=100100002 sink=0 wall=0.16s maxrss=199MB  
+scen_B type s=0.0075 heap_open=108337888 heap_after=108555248 len=100100002 sink=0 wall=0.18s maxrss=200MB  
+ropescen type s=0.0235 len=100100002 sink=0 wall=0.26s maxrss=207MB  
+scen_A type s=0.0047 heap_open=107485216 heap_after=107700496 len=100100002 sink=0 wall=0.15s maxrss=199MB  
+scen_B type s=0.0061 heap_open=108337888 heap_after=108555248 len=100100002 sink=0 wall=0.17s maxrss=200MB  
+ropescen type s=0.0222 len=100100002 sink=0 wall=0.26s maxrss=207MB  
+scen_A type s=0.0061 heap_open=107485216 heap_after=107700496 len=100100002 sink=0 wall=0.17s maxrss=199MB  
+scen_B type s=0.0046 heap_open=108337888 heap_after=108555248 len=100100002 sink=0 wall=0.16s maxrss=200MB  
+ropescen type s=0.0153 len=100100002 sink=0 wall=0.22s maxrss=207MB  
+scen_A type s=0.0042 heap_open=107485216 heap_after=107700496 len=100100002 sink=0 wall=0.16s maxrss=199MB  
+scen_B type s=0.0049 heap_open=108337888 heap_after=108555248 len=100100002 sink=0 wall=0.18s maxrss=200MB  
+ropescen type s=0.0183 len=100100002 sink=0 wall=0.23s maxrss=207MB  
+scen_A backspace s=0.0065 heap_open=107485216 heap_after=107383296 len=99900002 sink=0 wall=0.19s maxrss=199MB  
+scen_B backspace s=0.0093 heap_open=108337888 heap_after=108234928 len=99900002 sink=0 wall=0.16s maxrss=200MB  
+ropescen backspace s=0.0248 len=99900002 sink=0 wall=0.22s maxrss=207MB  
+scen_A backspace s=0.0037 heap_open=107485216 heap_after=107383296 len=99900002 sink=0 wall=0.16s maxrss=199MB  
+scen_B backspace s=0.0130 heap_open=108337888 heap_after=108234928 len=99900002 sink=0 wall=0.20s maxrss=200MB  
+ropescen backspace s=0.0357 len=99900002 sink=0 wall=0.26s maxrss=207MB  
+scen_A backspace s=0.0037 heap_open=107485216 heap_after=107383296 len=99900002 sink=0 wall=0.16s maxrss=199MB  
+scen_B backspace s=0.0108 heap_open=108337888 heap_after=108234928 len=99900002 sink=0 wall=0.19s maxrss=200MB  
+ropescen backspace s=0.0250 len=99900002 sink=0 wall=0.24s maxrss=207MB  
+scen_A backspace s=0.0040 heap_open=107485216 heap_after=107383296 len=99900002 sink=0 wall=0.15s maxrss=199MB  
+scen_B backspace s=0.0096 heap_open=108337888 heap_after=108234928 len=99900002 sink=0 wall=0.16s maxrss=200MB  
+ropescen backspace s=0.0237 len=99900002 sink=0 wall=0.22s maxrss=207MB  
+scen_A backspace s=0.0038 heap_open=107485216 heap_after=107383296 len=99900002 sink=0 wall=0.16s maxrss=199MB  
+scen_B backspace s=0.0141 heap_open=108337888 heap_after=108234928 len=99900002 sink=0 wall=0.19s maxrss=200MB  
+ropescen backspace s=0.0218 len=99900002 sink=0 wall=0.25s maxrss=207MB  
+scen_A paste s=0.0145 heap_open=107485216 heap_after=107501856 len=100000002 sink=0 wall=0.16s maxrss=200MB  
+scen_B paste s=0.0100 heap_open=108337888 heap_after=108354528 len=100000002 sink=0 wall=0.16s maxrss=201MB  
+ropescen paste s=0.0147 len=100000002 sink=0 wall=0.24s maxrss=208MB  
+scen_A paste s=0.0180 heap_open=107485216 heap_after=107501856 len=100000002 sink=0 wall=0.20s maxrss=200MB  
+scen_B paste s=0.0084 heap_open=108337888 heap_after=108354528 len=100000002 sink=0 wall=0.16s maxrss=201MB  
+ropescen paste s=0.0135 len=100000002 sink=0 wall=0.21s maxrss=208MB  
+scen_A paste s=0.0140 heap_open=107485216 heap_after=107501856 len=100000002 sink=0 wall=0.17s maxrss=200MB  
+scen_B paste s=0.0086 heap_open=108337888 heap_after=108354528 len=100000002 sink=0 wall=0.16s maxrss=201MB  
+ropescen paste s=0.0150 len=100000002 sink=0 wall=0.25s maxrss=208MB  
+scen_A paste s=0.0217 heap_open=107485216 heap_after=107501856 len=100000002 sink=0 wall=0.19s maxrss=200MB  
+scen_B paste s=0.0086 heap_open=108337888 heap_after=108354528 len=100000002 sink=0 wall=0.16s maxrss=201MB  
+ropescen paste s=0.0147 len=100000002 sink=0 wall=0.22s maxrss=208MB  
+scen_A paste s=0.0233 heap_open=107485216 heap_after=107501856 len=100000002 sink=0 wall=0.20s maxrss=200MB  
+scen_B paste s=0.0085 heap_open=108337888 heap_after=108354528 len=100000002 sink=0 wall=0.16s maxrss=201MB  
+ropescen paste s=0.0168 len=100000002 sink=0 wall=0.23s maxrss=208MB  
+scen_A bigdel s=0.2474 heap_open=107485216 heap_after=107483136 len=100000002 sink=0 wall=0.43s maxrss=199MB  
+scen_B bigdel s=0.1833 heap_open=108337888 heap_after=108337888 len=100000002 sink=0 wall=0.37s maxrss=200MB  
+ropescen bigdel s=0.2639 len=100000002 sink=0 wall=0.52s maxrss=207MB  
+scen_A bigdel s=0.2927 heap_open=107485216 heap_after=107483136 len=100000002 sink=0 wall=0.47s maxrss=199MB  
+scen_B bigdel s=0.1361 heap_open=108337888 heap_after=108337888 len=100000002 sink=0 wall=0.31s maxrss=200MB  
+ropescen bigdel s=0.2581 len=100000002 sink=0 wall=0.50s maxrss=207MB  
+scen_A bigdel s=0.2772 heap_open=107485216 heap_after=107483136 len=100000002 sink=0 wall=0.46s maxrss=199MB  
+scen_B bigdel s=0.1431 heap_open=108337888 heap_after=108337888 len=100000002 sink=0 wall=0.30s maxrss=200MB  
+ropescen bigdel s=0.2547 len=100000002 sink=0 wall=0.50s maxrss=207MB  
+scen_A bigdel s=0.2725 heap_open=107485216 heap_after=107483136 len=100000002 sink=0 wall=0.43s maxrss=199MB  
+scen_B bigdel s=0.1881 heap_open=108337888 heap_after=108337888 len=100000002 sink=0 wall=0.37s maxrss=200MB  
+ropescen bigdel s=0.2444 len=100000002 sink=0 wall=0.47s maxrss=207MB  
+scen_A bigdel s=0.2899 heap_open=107485216 heap_after=107483136 len=100000002 sink=0 wall=0.45s maxrss=199MB  
+scen_B bigdel s=0.1754 heap_open=108337888 heap_after=108337888 len=100000002 sink=0 wall=0.35s maxrss=200MB  
+ropescen bigdel s=0.2323 len=100000002 sink=0 wall=0.45s maxrss=207MB  
+scen_A screen s=0.2047 heap_open=107485216 heap_after=107485216 len=100000002 sink=954 wall=0.39s maxrss=199MB  
+scen_B screen s=0.1368 heap_open=108337888 heap_after=108337888 len=100000002 sink=954 wall=0.29s maxrss=200MB  
+ropescen screen s=0.2790 len=100000002 sink=954 wall=0.49s maxrss=207MB  
+scen_A screen s=0.1936 heap_open=107485216 heap_after=107485216 len=100000002 sink=954 wall=0.34s maxrss=199MB  
+scen_B screen s=0.1582 heap_open=108337888 heap_after=108337888 len=100000002 sink=954 wall=0.35s maxrss=200MB  
+ropescen screen s=0.2354 len=100000002 sink=954 wall=0.43s maxrss=207MB  
+scen_A screen s=0.2169 heap_open=107485216 heap_after=107485216 len=100000002 sink=954 wall=0.40s maxrss=199MB  
+scen_B screen s=0.1248 heap_open=108337888 heap_after=108337888 len=100000002 sink=954 wall=0.28s maxrss=200MB  
+ropescen screen s=0.2571 len=100000002 sink=954 wall=0.47s maxrss=207MB  
+scen_A screen s=0.2061 heap_open=107485216 heap_after=107485216 len=100000002 sink=954 wall=0.39s maxrss=199MB  
+scen_B screen s=0.1508 heap_open=108337888 heap_after=108337888 len=100000002 sink=954 wall=0.32s maxrss=200MB  
+ropescen screen s=0.2500 len=100000002 sink=954 wall=0.45s maxrss=207MB  
+scen_A screen s=0.1573 heap_open=107485216 heap_after=107485216 len=100000002 sink=954 wall=0.33s maxrss=199MB  
+scen_B screen s=0.1229 heap_open=108337888 heap_after=108337888 len=100000002 sink=954 wall=0.27s maxrss=200MB  
+ropescen screen s=0.3372 len=100000002 sink=954 wall=0.59s maxrss=207MB  
+scen_A lines s=0.3782 heap_open=107485216 heap_after=107485216 len=100000002 sink=2 wall=0.53s maxrss=199MB  
+scen_B lines s=0.5175 heap_open=108337888 heap_after=108337888 len=100000002 sink=2 wall=0.69s maxrss=200MB  
+ropescen lines s=0.3925 len=100000002 sink=2 wall=0.61s maxrss=207MB  
+scen_A lines s=0.3809 heap_open=107485216 heap_after=107485216 len=100000002 sink=2 wall=0.53s maxrss=199MB  
+scen_B lines s=0.4990 heap_open=108337888 heap_after=108337888 len=100000002 sink=2 wall=0.67s maxrss=200MB  
+ropescen lines s=0.4224 len=100000002 sink=2 wall=0.65s maxrss=207MB  
+scen_A lines s=0.3894 heap_open=107485216 heap_after=107485216 len=100000002 sink=2 wall=0.59s maxrss=199MB  
+scen_B lines s=0.4475 heap_open=108337888 heap_after=108337888 len=100000002 sink=2 wall=0.63s maxrss=200MB  
+ropescen lines s=0.3256 len=100000002 sink=2 wall=0.55s maxrss=207MB  
+scen_A lines s=0.3644 heap_open=107485216 heap_after=107485216 len=100000002 sink=2 wall=0.51s maxrss=199MB  
+scen_B lines s=0.5072 heap_open=108337888 heap_after=108337888 len=100000002 sink=2 wall=0.66s maxrss=200MB  
+ropescen lines s=0.3369 len=100000002 sink=2 wall=0.54s maxrss=207MB  
+scen_A lines s=0.4484 heap_open=107485216 heap_after=107485216 len=100000002 sink=2 wall=0.63s maxrss=199MB  
+scen_B lines s=0.5199 heap_open=108337888 heap_after=108337888 len=100000002 sink=2 wall=0.69s maxrss=200MB  
+ropescen lines s=0.3289 len=100000002 sink=2 wall=0.54s maxrss=207MB  
+scen_A readall s=0.0609 heap_open=107485216 heap_after=107485216 len=100000002 sink=2 wall=0.22s maxrss=294MB  
+scen_B readall s=0.0595 heap_open=108337888 heap_after=108337888 len=100000002 sink=2 wall=0.23s maxrss=295MB  
+ropescen readall s=0.0061 len=100000002 sink=964 wall=0.22s maxrss=207MB  
+scen_A readall s=0.0566 heap_open=107485216 heap_after=107485216 len=100000002 sink=2 wall=0.21s maxrss=294MB  
+scen_B readall s=0.0660 heap_open=108337888 heap_after=108337888 len=100000002 sink=2 wall=0.24s maxrss=295MB  
+ropescen readall s=0.0072 len=100000002 sink=964 wall=0.25s maxrss=207MB  
+scen_A readall s=0.0517 heap_open=107485216 heap_after=107485216 len=100000002 sink=2 wall=0.20s maxrss=294MB  
+scen_B readall s=0.0514 heap_open=108337888 heap_after=108337888 len=100000002 sink=2 wall=0.22s maxrss=295MB  
+ropescen readall s=0.0085 len=100000002 sink=964 wall=0.26s maxrss=207MB  
+scen_A readall s=0.0700 heap_open=107485216 heap_after=107485216 len=100000002 sink=2 wall=0.23s maxrss=294MB  
+scen_B readall s=0.0616 heap_open=108337888 heap_after=108337888 len=100000002 sink=2 wall=0.26s maxrss=295MB  
+ropescen readall s=0.0061 len=100000002 sink=964 wall=0.20s maxrss=207MB  
+scen_A readall s=0.0690 heap_open=107485216 heap_after=107485216 len=100000002 sink=2 wall=0.23s maxrss=294MB  
+scen_B readall s=0.0568 heap_open=108337888 heap_after=108337888 len=100000002 sink=2 wall=0.22s maxrss=295MB  
+ropescen readall s=0.0063 len=100000002 sink=964 wall=0.20s maxrss=207MB  
+scen_A randedit s=0.0608 heap_open=107485216 heap_after=128145856 len=99998691 sink=0 wall=0.23s maxrss=219MB  
+scen_B randedit s=0.0640 heap_open=108337888 heap_after=129058848 len=99998691 sink=0 wall=0.21s maxrss=220MB  
+ropescen randedit s=0.1001 len=99998691 sink=0 wall=0.34s maxrss=227MB  
+scen_A randedit s=0.0621 heap_open=107485216 heap_after=128145856 len=99998691 sink=0 wall=0.26s maxrss=219MB  
+scen_B randedit s=0.0599 heap_open=108337888 heap_after=129058848 len=99998691 sink=0 wall=0.22s maxrss=220MB  
+ropescen randedit s=0.0828 len=99998691 sink=0 wall=0.29s maxrss=228MB  
+scen_A randedit s=0.0584 heap_open=107485216 heap_after=128145856 len=99998691 sink=0 wall=0.24s maxrss=219MB  
+scen_B randedit s=0.0557 heap_open=108337888 heap_after=129058848 len=99998691 sink=0 wall=0.20s maxrss=220MB  
+ropescen randedit s=0.0922 len=99998691 sink=0 wall=0.32s maxrss=228MB  
+scen_A randedit s=0.0520 heap_open=107485216 heap_after=128145856 len=99998691 sink=0 wall=0.21s maxrss=219MB  
+scen_B randedit s=0.0565 heap_open=108337888 heap_after=129058848 len=99998691 sink=0 wall=0.20s maxrss=220MB  
+ropescen randedit s=0.0814 len=99998691 sink=0 wall=0.28s maxrss=228MB  
+scen_A randedit s=0.0618 heap_open=107485216 heap_after=128145856 len=99998691 sink=0 wall=0.22s maxrss=219MB  
+scen_B randedit s=0.0579 heap_open=108337888 heap_after=129058848 len=99998691 sink=0 wall=0.20s maxrss=220MB  
+ropescen randedit s=0.0906 len=99998691 sink=0 wall=0.31s maxrss=228MB  
