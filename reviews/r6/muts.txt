@@ -1,0 +1,28 @@
+grid_put accepts width 0 and 3~src/grid/grid.c~(width != 1 && width != 2) || ~
+'>' takes the new attr, not the old cell's~src/grid/grid.c~(Cell){ ">", 1, x[-1].attr }~(Cell){ ">", 1, (unsigned char)attr }
+blank right half takes the new attr~src/grid/grid.c~(Cell){ " ", 1, x[width].attr }~(Cell){ " ", 1, (unsigned char)attr }
+grid_cell_eq ignores attr~src/grid/grid.c~ && a->attr == b->attr~
+grid_resize keeps the cursor~src/grid/grid.c~ g->crow = g->ccol = 0;~
+grid_resize does not clear~src/grid/grid.c~	grid_clear(g);¶	return 0;~	return 0;
+grid_free keeps rows/cols~src/grid/grid.c~g->c = NULL; g->rows = g->cols = 0;~g->c = NULL;
+resize clear without SGR reset~src/tty/tty.c~outs("\x1b[0m\x1b[H\x1b[2J");¶	}~outs("\x1b[H\x1b[2J");¶	}
+failed resize leaves the update open~src/tty/tty.c~{ outs("\x1b[?25h\x1b[?2026l"); flush(); return; }~return;
+cursor not hidden during the frame~src/tty/tty.c~outs("\x1b[?2026h\x1b[?25l");~outs("\x1b[?2026h");
+no SGR reset at frame end~src/tty/tty.c~"\x1b[0m\x1b[%d;%dH\x1b[?25h\x1b[?2026l"~"\x1b[%d;%dH\x1b[?25h\x1b[?2026l"
+read ignores the slot count~src/tty/tty.c~	int room = max - n - held;~	int room = 256 - held;
+full-buffer tail waits forever~src/tty/tty.c~r - i < (ssize_t)sizeof b && (~(
+EINTR in the wait forces the tail~src/tty/tty.c~poll(&p, 1, TTIMEOUTLEN) < 0 || p.revents & POLLIN~p.revents & POLLIN
+Esc then non-[ swallows the key~src/tty/tty.c~if (s[1] != '[') return 1;~if (s[1] != '[') return 2;
+CSI final byte range off by one~src/tty/tty.c~s[j] > 0x7e)) j++;~s[j] > 0x7d)) j++;
+CSI with parameters taken as arrow~src/tty/tty.c~*k = j > 2 ? -1 : ~*k = 
+several resizes give several KEY_RESIZE~src/tty/tty.c~if (!n && max > 0) k[n++]~if (n < max) k[n++]
+suspend does not restore raw mode~src/tty/tty.c~	kill(0, SIGTSTP);¶	raw();~	kill(0, SIGTSTP);¶	raw_on = 1;
+suspend does not leave raw mode~src/tty/tty.c~	cooked();¶	kill(0, SIGTSTP);~	kill(0, SIGTSTP);
+close leaves the terminal raw~src/tty/tty.c~	tcsetattr(0, TCSAFLUSH, &saved);¶	raw_on = 0;~	raw_on = 0;
+SIGWINCH handler writes nothing~src/tty/tty.c~if (write(sigpipe[1], "w", 1) < 0) {}~
+backend_size always 24x80~src/tty/tty.c~if (ioctl(1, TIOCGWINSZ, &ws) || !ws.ws_row || !ws.ws_col)~if (1)
+wide flag ignores column bound~src/tty/tty.c~int wide = c + 1 < g->cols && !x[1].len;~int wide = !x[1].len;
+attr cache not reset on a new size~src/tty/tty.c~	int a = -1, pr = -1, pc = -1;~	static int a = -1; int pr = -1, pc = -1;
+DIM sent as normal~src/tty/tty.c~a == ATTR_DIM ? "\x1b[0;2m"~a == ATTR_DIM ? "\x1b[0m"
+4-byte lead decoded with the 3-byte mask~src/tty/tty.c~len == 3 ? 0x0Fu : 0x07u~len == 3 ? 0x0Fu : 0x0Fu
+output buffer never flushed when full~src/tty/tty.c~	if (on + n > sizeof ob) flush();~
