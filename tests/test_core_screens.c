@@ -52,7 +52,7 @@ static const char *row_text(const Grid *g, int r)
 	size_t k = 0;
 	for (int c = 0; c < g->cols; c++) {
 		const Cell *x = &g->c[r * g->cols + c];
-		memcpy(got + k, x->ch, x->len);
+		memcpy(got + k, grid_text(x), x->len);   /* a long cluster is in the store */
 		k += x->len;
 	}
 	while (k && got[k - 1] == ' ') k--;   /* the file keeps no trailing spaces */

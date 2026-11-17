@@ -43,6 +43,12 @@ Tokens are those of `tests/test_core_screens.py`: `k:` keys, `w<n>:x` CTRL-W x, 
 | `pum_scroll_vs.txt` | 15x60 | wrap, `2 CTRL-W _`, `vs`, `3 CTRL-F`, `pum:5:20:12` | the other window's view | another view |
 | `pum_vs_skipcol.txt` | 10x40 | `45G vs wrap CTRL-W t CTRL-W w 3 CTRL-F CTRL-W p pum:5:10:4` | no `<<<` | `<<<` (skipcol kept) |
 
+**The cursor's position.** This is the only listed difference in where the cursor goes rather than in what is shown. It was found by the fourth review, on the generator seeds 26 to 31.
+
+| Case | Size | Tokens | Neovim | Core |
+|---|---|---|---|---|
+| `d_want_wrap_gg.txt` | 6x20 | `3$`, `60G`, `:e f1`, CTRL-^, wrap, `gg` | ruler `1,171-130` | `1,170-129` |
+
 **Top line after jumps, splits and resizes.** These involve wrapped lines or double-width characters.
 
 | Case | Size | Tokens | Neovim | Core |
@@ -52,6 +58,7 @@ Tokens are those of `tests/test_core_screens.py`: `k:` keys, `w<n>:x` CTRL-W x, 
 | `vs_wrap_100G.txt` | 30x20 | wrap, `100G`, `:vs` | another top line | |
 | `jump_wide.txt` | 15x60 | `:set lines=21 columns=17`, `7 CTRL-W -`, `100G` | top line 6 | line 5 |
 | `undo_topline.txt` | 6x80 | `30G`, `A` + 14 y, `CTRL-E`, `u` | top line 2 | line 1 |
+| `d_open_above_skipcol.txt` | 10x40 | `$`, `60G`, wrap, `:sp`, `Onew line<Esc>` | the new line at the top | `--1<<<` (skipcol kept) |
 | `append_cmdheight.txt` | 30x60 | `7$`, `CTRL-W -`, wrap, `A` + 80 y | one row further, a `~` row left | |
 
 `:vs` with wrap on screens under 41 columns, where 'winwidth' squeezes the other window, is the first review's point 10. It has no single case: the review's `scan_vs.py` finds 28 of 288 combinations that differ.

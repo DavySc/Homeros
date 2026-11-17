@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "core_int.h"
+#include "lsp.h"
 #include "syntax.h"
 #include "uni.h"
 
@@ -111,8 +112,8 @@ enum { J_NOEOL = 1 << 8 };              /* the journal keeps noeol with the flag
 
 static unsigned jstate(const Buf *b) { return b->flags | (b->noeol ? J_NOEOL : 0); }
 
-/* every change reaches the syntax tree and the journal before it is made
-   (UndoHook), as in ref/core.c.  An edit's record carries the state after
+/* every change reaches the syntax tree, the language server and the
+   journal before it is made (UndoHook).  An edit's record carries the state after
    it (jnext), so a kill between two writes cannot keep the change with a
    stale state (review of PR 16, 7); an undo step's state is known only once
    it is done, so jdone records it then */
@@ -121,6 +122,7 @@ static void undo_seen(void *ctx, const Text *t, size_t pos, size_t ndel, const c
 {
 	Buf *b = ctx;
 	if (b->syn) syntax_edit(b->syn, t, pos, ndel, ins, nins);
+	lsp_edit(b->lsp, t, pos, ndel, ins, nins);
 	if (b->journal && (journal_base(b->journal, t, jstate(b), &b->id)
 	                   || journal_edit(b->journal, pos, ndel, ins, nins, jnext != (unsigned)-1 ? jnext : jstate(b)))) b->jerr = 1;
 }
@@ -259,6 +261,7 @@ static int buf_load(Editor *e, Buf *b, const char *path)
 	}
 	free(data);
 	b->syn = path ? syntax_open(path, b->text) : NULL;
+	b->lsp = path ? lsp_open(path, b->text) : NULL;
 	undo_hook(u, undo_seen, b);
 	if (!path) return 0;
 	if (j < 0) core_msg(e, "E303: Unable to open journal for \"%s\", recovery impossible%s", path,
@@ -382,6 +385,7 @@ static void buf_unload(Buf *b)
 	umarks_drop(b);
 	journal_close(b->journal);   /* nothing to recover: :bd! and :q! drop the changes */
 	syntax_free(b->syn);
+	lsp_close(b->lsp);
 	text_free(b->text);
 	undo_free(b->undo);
 	free(b->path);
@@ -540,16 +544,19 @@ static int enter_buffer(Editor *e, Buf *b, int how)
 	return 0;
 }
 
-/* setpcmark(): the cursor joins the window's jump list, as the buffer
-   commands do before they leave a buffer (jumpoptions "clean", not
-   "stack": nothing after the current entry is cut) */
-static void setpcmark(Editor *e)
+int core_changed;
+
+/* setpcmark(): the cursor becomes the '' mark and joins the window's jump
+   list (jumpoptions "clean", not "stack": nothing after the current entry
+   is cut) */
+void core_setpcmark(Editor *e)
 {
 	Win *w = e->win;
+	w->pcmark = (Mark){ w->line, w->col, 1 };
 	if (w->njump == JUMPLIST_SIZE) memmove(w->jump, w->jump + 1, (JUMPLIST_SIZE - 1) * sizeof w->jump[0]);
 	else w->njump++;
 	w->jump[w->njump - 1].buf = e->buf;
-	w->jump[w->njump - 1].m = (Mark){ w->line, w->col, 1 };
+	w->jump[w->njump - 1].m = w->pcmark;
 	w->jumpidx = w->njump;
 }
 
@@ -568,7 +575,7 @@ static void jump_forget(Win *w, const Buf *b)
 static int buf_switch(Editor *e, Buf *b, int how)
 {
 	if (b == e->buf) return 0;
-	setpcmark(e);
+	core_setpcmark(e);
 	return enter_buffer(e, b, how);
 }
 
@@ -613,7 +620,7 @@ static int edit_file(Editor *e, const char *path, int force, int split)
 {
 	Buf *b = e->buf;
 	Win *w = e->win;
-	setpcmark(e);                      /* do_exedit(), empty_curbuf(), even when it fails */
+	core_setpcmark(e);                      /* do_exedit(), empty_curbuf(), even when it fails */
 	if (!path || (*path && b->path && !strcmp(b->path, path))) {   /* :e, :e!, :e on its own name */
 		if (!b->path) { core_msg(e, "E32: No file name"); return -1; }
 		if (!force && core_modified(b)) {
@@ -724,6 +731,7 @@ int core_buf_next(Editor *e, long n)
 static void buf_unlist(Editor *e, Buf *b)
 {
 	syntax_free(b->syn);
+	lsp_close(b->lsp);
 	text_free(b->text);
 	undo_free(b->undo);
 	umarks_drop(b);
@@ -800,7 +808,7 @@ int core_buf_delete(Editor *e, int nr, int force)
 			else if (x->nr > b->nr && !to) { if (x->text) to = x; else if (!bp) bp = x; }
 		if (!to) to = below;
 		if (!to) to = bp ? bp : below_bp;
-		setpcmark(e);                  /* set_curbuf(), not found in the jump list */
+		core_setpcmark(e);                  /* set_curbuf(), not found in the jump list */
 	}
 	if (enter_buffer(e, to, ENTER_B)) return -1;
 	buf_unlist(e, b);
@@ -851,7 +859,9 @@ static void adjust(Editor *e, Buf *b, size_t l1, size_t l2, long amount, long af
 		    && (k != MARK_QUOTE || b->mark[k].line || b->mark[k].col))
 			mark_adjust1(&b->mark[k], k == MARK_LT || k == MARK_GT, l1, l2, amount, after);
 	for (int k = 0; k < b->nchange; k++) mark_adjust1(&b->change[k], 1, l1, l2, amount, after);
-	/* every window's jump list entries in b, whatever it shows */
+	/* the current window's '' (ONE_ADJUST), every window's jump list
+	   entries in b, whatever it shows */
+	if (e->win->buf == b) mark_adjust1(&e->win->pcmark, 0, l1, l2, amount, after);
 	for (Win *w = e->wins; w; w = w->next)
 		for (int k = 0; k < w->njump; k++)
 			if (w->jump[k].buf == b) mark_adjust1(&w->jump[k].m, 1, l1, l2, amount, after);

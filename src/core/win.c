@@ -386,6 +386,7 @@ static void win_init(Win *n, Win *o)
 	memcpy(n->jump, o->jump, (size_t)o->njump * sizeof o->jump[0]);   /* copy_jumplist() */
 	n->njump = o->njump;
 	n->jumpidx = o->jumpidx;
+	n->pcmark = o->pcmark;                                            /* win_init() */
 	n->changeidx = o->changeidx;
 	n->frame->s.wrow = o->frame->s.wrow;
 	n->frame->s.fraction = o->frame->s.fraction;

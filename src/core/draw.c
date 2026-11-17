@@ -8,11 +8,30 @@
 #include "syntax.h"
 #include "uni.h"
 
+/* A cluster into the grid.  One that starts with a character that would
+   join a space is drawn on a space (utf_iscomposing_first(),
+   schar_from_buf_first()); the grid cuts what is then too long. */
+static void put(Grid *g, int r, int c, const unsigned char *s, size_t n, int width, int attr)
+{
+	unsigned char b[1 + GRID_CLUSTER_MAX] = " ";
+	if (s[0] >= 0x80) {
+		size_t k = uni_len(s, n, 0);
+		memcpy(b + 1, s, k);
+		if (uni_glen(b, k + 1, 0) > 1) {
+			if (n > GRID_CLUSTER_MAX) n = GRID_CLUSTER_MAX;
+			memcpy(b + 1, s, n);
+			s = b;
+			n++;
+		}
+	}
+	grid_put(g, r, c, s, n, width, attr);
+}
+
 /* The text area of window w: a cell put at window row r, column c, clipped
    to the window. */
 static void wput(Grid *g, const Win *w, int r, int c, const unsigned char *s, size_t n, int width, int attr)
 {
-	if (c >= 0 && c + width <= w->w) grid_put(g, w->y + r, w->x + c, s, n, width, attr);
+	if (c >= 0 && c + width <= w->w) put(g, w->y + r, w->x + c, s, n, width, attr);
 }
 
 static void wputs(Grid *g, const Win *w, int r, int c, const char *s, int attr)
@@ -212,7 +231,7 @@ static void draw_status(Editor *e, Grid *g, Win *w)
 		/* %=: the fill goes where the right part starts */
 		if (s + i == (const unsigned char *)right && fill) c += maxw - width;
 		int cw = uni_width(s, n, i);
-		if (c + cw <= maxw) grid_put(g, r, w->x + c, s + i, uni_glen(s, n, i), cw, ATTR_REV);
+		if (c + cw <= maxw) put(g, r, w->x + c, s + i, uni_glen(s, n, i), cw, ATTR_REV);
 		c += cw;
 	}
 }
@@ -362,7 +381,7 @@ static void draw_pum(Editor *e, Grid *g)
 					for (size_t q = 0; q < n; q += uni_glen(s, n, q)) {
 						int w1 = uni_width(s, n, q);
 						if (trunc && shown + w1 > avail) break;
-						grid_put(g, r, left + gc + shown, s + q, uni_glen(s, n, q), w1, attr);
+						put(g, r, left + gc + shown, s + q, uni_glen(s, n, q), w1, attr);
 						shown += w1;
 					}
 					gc += trunc ? shown : cw;

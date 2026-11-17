@@ -61146,3 +61146,79 @@ R
 R
 M - - 0:0
 E
+C 6 20
+F cc81610a09cc81620a01cc81630acc81cc82cc83cc84cc85cc86cc87cc88cc89cc8acc8bcc8c7a
+T k:j
+P
+S 1    ́a
+S   1          ́b
+S   2 ^A ́c
+S   3  ́̂̃̄̅̆̇̈̉̊̋̌z
+S < 1,1            All
+S 
+M - - -
+P
+S   1  ́a
+S 2            ́b
+S   1 ^A ́c
+S   2  ́̂̃̄̅̆̇̈̉̊̋̌z
+S < 2,1-8          All
+R
+M - - -
+E
+C 6 20
+F 6165cc81cc816220e298baefb88f206320cc8178cc8120e0a495e0a58de0a4b720656e64206f66206c696e6520686572650a
+T k:$
+T sp
+T k:0
+T wrap
+T k:$
+P
+S 1   aé́b ☺️ c ́x́ क्ष end
+S ~
+S ~
+S ~
+S < 1,1            All
+S 
+M - - -
+P
+S 1   line here
+R
+R
+R
+S < 1,49-29        All
+R
+M - - -
+P
+R
+S < 1,49-29        All
+S 1   line here
+R
+R
+S :sp
+M - - -
+P
+R
+R
+S 1   aé́b ☺️ c ́x́ क्ष end
+R
+S < 1,1            All
+R
+M - - -
+P
+R
+R
+R
+S      of line here
+R
+S :set wrap
+M - - -
+P
+R
+R
+R
+R
+S < 1,49-29        All
+R
+M - - -
+E
