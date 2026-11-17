@@ -59,7 +59,7 @@ test: $(OBJS) | build/san
 	  ./build/san/test_$$t || { echo "FAIL test_$$t"; exit 1; }; done
 	gcc $(WARN) $(CPPFLAGS) $(SAN) -o build/san/conform_drv tests/conform_drv.c $(LIB_SRCS) $(OBJS) $(LIBS)
 	python3 tools/conform.py build/san/conform_drv --replay tests/conform-recorded.json
-	gcc $(WARN) $(CPPFLAGS) $(SAN) -o build/san/homeros $(TEST_SRCS) src/main.c $(OBJS) $(LIBS)
+	gcc $(WARN) $(CPPFLAGS) $(SAN) -o build/san/homeros $(SRCS) src/main.c $(OBJS) $(LIBS)
 	@python3 tests/paste.py build/san/homeros -t 40000 || { echo "FAIL paste"; exit 1; }
 
 # libFuzzer, each target against a simple model, FUZZ_SECONDS each; an input
