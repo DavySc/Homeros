@@ -84,3 +84,23 @@ I planted six bugs outside the package's ten (scratch copies, as `planted.sh` do
 ## After the fixes
 
 Findings 1 and 2 are needed for approval; 3 and 4 are a line and a test and should come with them. I will rerun the 48 parallel runs of `test_undo_file`, the reader fuzzer for 240 s, `newhead`, the span test with its plants, `make check` and `make planted` on the new head. PR 7 has to be on main before this merges.
+
+## Second pass, head a704905
+
+The author cherry-picked this report and applied all four findings. Rerun on the new head:
+
+- **measured**: finding 1: `test_undo_file` passed 48 of 48 with 6 running at once; it has its own clock now (so `tick.c` no longer links with it), and a plant for it.
+- **measured**: finding 2: `tests/fuzz_undo_read.c` (this review's harness; the read back after the 60 ops may now be refused, since numbers read just under the bounds can grow past them) ran 238,551 times in 241 s from the earlier corpus with nothing found; both kept inputs pass.
+- **measured** (1 run): finding 3: `newhead` prints "damaged file refused".
+- Finding 4: `tests/test_undo_span.c` is `span.c`, with plants A, C and D.
+
+### 5. `undo_time` overflows on a count at the end of `long`'s range
+
+- **measured** (1 run, `reviews/r2/step.c`): one change, then `undo_time(u, LONG_MAX, UNDO_SEQ)`: `undo.c:283:17: signed integer overflow: 1 + 9223372036854775807`. The same sum is made for seconds and writes (lines 267, 274, 277). `undo.h` gives no range for `step`, and `:later 9223372036854775807` reaches it if the core passes the number on.
+
+```
+gcc -std=c17 -D_DEFAULT_SOURCE -Iinclude -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=all \
+  -o build/step reviews/r2/step.c ref/text.c src/undo/undo.c && ./build/step
+```
+
+Fix: clamp `step` at the top of `undo_time` for the relative units (to the reader's bounds, which every stored number is below), which changes no result since the target is clamped to the ends anyway; add the extreme counts to `fuzz_undo` or a unit test, with a plant. I missed this in the first pass; it is not from the fixes.
