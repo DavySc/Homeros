@@ -25,7 +25,7 @@ int main(int argc, char **argv)
 			else putchar(s[i]);
 		putchar('"');
 	}
-	printf("], \"cursor\": [%zu, %zu], \"mode\": %d}\n", e.line + 1, e.col, e.mode);
+	printf("], \"cursor\": [%zu, %zu], \"mode\": %d}\n", e.win->line + 1, e.win->col, e.mode);
 	core_free(&e);
 	return 0;
 }

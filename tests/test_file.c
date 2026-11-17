@@ -44,7 +44,7 @@ static void roundtrip(const char *s, size_t n)
 	Editor e;
 	put(path, s, n);
 	CHECK(!core_open(&e, path));
-	CHECK(!core_write(&e, 0));
+	CHECK(!core_write(&e, e.buf, 0));
 	CHECK(is(path, s, n));
 	CHECK(only_one_file());
 	core_free(&e);
@@ -65,7 +65,7 @@ int main(void)
 
 	/* an edit to a file without a final newline keeps it without one */
 	put(path, "ab", 2);
-	CHECK(!core_open(&e, path) && !core_edit(&e, 0, 0, "x", 1) && !core_write(&e, 0));
+	CHECK(!core_open(&e, path) && !core_edit(&e, 0, 0, "x", 1) && !core_write(&e, e.buf, 0));
 	CHECK(is(path, "xab", 3));
 	core_free(&e);
 
@@ -73,13 +73,13 @@ int main(void)
 	   mode open(O_CREAT, 0666) would give */
 	unlink(path);
 	mode_t mask = umask(022);
-	CHECK(!core_open(&e, path) && !e.id.exists);
-	CHECK(!core_edit(&e, 0, 0, "hi", 2) && !core_write(&e, 0) && is(path, "hi\n", 3));
+	CHECK(!core_open(&e, path) && !e.buf->id.exists);
+	CHECK(!core_edit(&e, 0, 0, "hi", 2) && !core_write(&e, e.buf, 0) && is(path, "hi\n", 3));
 	struct stat st;
 	CHECK(!stat(path, &st) && (st.st_mode & 0777) == 0644);
 	umask(mask);
 	/* deleting every line leaves the empty buffer, which writes 0 bytes */
-	CHECK(!core_delete_lines(&e, 0, 1) && !core_write(&e, 0) && is(path, "", 0));
+	CHECK(!core_delete_lines(&e, 0, 1) && !core_write(&e, e.buf, 0) && is(path, "", 0));
 	core_free(&e);
 
 	/* outside change after load: refused, file untouched; then :w! wins */
@@ -88,27 +88,27 @@ int main(void)
 	usleep(10000);
 	put(path, "outside\n", 8);
 	CHECK(!core_edit(&e, 0, 0, "X", 1));
-	CHECK(core_write(&e, 0) == -1 && is(path, "outside\n", 8) && core_modified(&e));
-	CHECK(!core_write(&e, 1) && is(path, "Xone\n", 5) && !core_modified(&e));
+	CHECK(core_write(&e, e.buf, 0) == -1 && is(path, "outside\n", 8) && core_modified(e.buf));
+	CHECK(!core_write(&e, e.buf, 1) && is(path, "Xone\n", 5) && !core_modified(e.buf));
 	/* an outside program replacing the file by rename is seen too */
 	char other[300];
 	snprintf(other, sizeof other, "%s/g", dir);
 	put(other, "renamed in\n", 11);
 	CHECK(!rename(other, path));
 	CHECK(!core_edit(&e, 0, 1, "", 0));
-	CHECK(core_write(&e, 0) == -1 && is(path, "renamed in\n", 11));
+	CHECK(core_write(&e, e.buf, 0) == -1 && is(path, "renamed in\n", 11));
 	core_free(&e);
 	CHECK(only_one_file());
 
 	/* mode kept; a symlink keeps pointing at the file it names */
 	chmod(path, 0600);
-	CHECK(!core_open(&e, path) && !core_edit(&e, 0, 0, "m", 1) && !core_write(&e, 0));
+	CHECK(!core_open(&e, path) && !core_edit(&e, 0, 0, "m", 1) && !core_write(&e, e.buf, 0));
 	CHECK(!stat(path, &st) && (st.st_mode & 0777) == 0600);
 	core_free(&e);
 	char link[300];
 	snprintf(link, sizeof link, "%s/link", dir);
 	CHECK(!symlink(path, link));
-	CHECK(!core_open(&e, link) && !core_edit(&e, 0, 0, "s", 1) && !core_write(&e, 0));
+	CHECK(!core_open(&e, link) && !core_edit(&e, 0, 0, "s", 1) && !core_write(&e, e.buf, 0));
 	CHECK(!lstat(link, &st) && S_ISLNK(st.st_mode) && is(path, "smrenamed in\n", 13));
 	core_free(&e);
 

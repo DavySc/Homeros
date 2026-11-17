@@ -41,17 +41,21 @@ def gen_keys(r):
 LUA = r'''
 local cases = vim.json.decode(io.open(IN):read('*a'))
 local out = {}
-for _, c in ipairs(cases) do
+-- each case opens its text as a file, as the editor does (an empty file is
+-- then ML_EMPTY, which nvim_buf_set_lines would not give)
+-- (a new file each time: rewriting one would raise W11)
+for i, c in ipairs(cases) do
+  local F = OUT .. '.' .. i
+  local f = io.open(F, 'wb')
+  f:write(c.text)
+  f:close()
   local old = vim.api.nvim_get_current_buf()
-  local b = vim.api.nvim_create_buf(true, false)
-  vim.api.nvim_set_current_buf(b)
-  vim.api.nvim_buf_delete(old, {force = true})
-  vim.bo.undolevels = -1
-  local lines = vim.split(c.text, '\n', {plain = true})
-  if #lines > 1 and lines[#lines] == '' then table.remove(lines) end
-  vim.api.nvim_buf_set_lines(b, 0, -1, false, lines)
-  vim.bo.undolevels = 1000
-  vim.api.nvim_win_set_cursor(0, {1, 0})
+  vim.cmd('silent edit! ' .. vim.fn.fnameescape(F))
+  os.remove(F)
+  local b = vim.api.nvim_get_current_buf()
+  -- an empty unnamed buffer is reused by :edit
+  if old ~= b then vim.api.nvim_buf_delete(old, {force = true}) end
+  vim.api.nvim_win_set_cursor(0, {1, 0})   -- :edit puts it on the first non-blank
   local ks = table.concat(vim.tbl_map(function(k) return k == '<' and '<lt>' or k end, c.keys))
   vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(ks, true, false, true), 'xt', false)
   local cur = vim.api.nvim_win_get_cursor(0)

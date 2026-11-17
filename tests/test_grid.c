@@ -14,7 +14,7 @@ static size_t present(const Grid *g, Grid *shown)
 	int p[2], saved = dup(1);
 	CHECK(!pipe(p));
 	dup2(p[1], 1);
-	backend_present(g, shown);
+	backend_tty.present(g, shown);
 	dup2(saved, 1);
 	close(p[1]);
 	close(saved);
@@ -33,7 +33,7 @@ static int input(const char *s, size_t n, int *k, int max)
 	close(p[1]);
 	dup2(p[0], 0);
 	close(p[0]);
-	while ((r = backend_input(k + got, max)) > 0) got += r;
+	while ((r = backend_tty.input(k + got, max)) > 0) got += r;
 	dup2(saved, 0);
 	close(saved);
 	return got;
