@@ -307,7 +307,7 @@ Scenarios listed but not yet designed or tested: invalid UTF-8, CRLF, a byte-ord
 
 ## pstack as the project harness
 
-In a Claude project the project itself is the harness: the coordinator, one thread per package, project memory, the repo's CLAUDE.md and Fable review threads. pstack adds to that only as copied skills: four of them, after the review (see Proposal). Its router, its team-kit dependencies and its fan-out skills stay out; their ideas (arena, swarm) are run as parallel threads instead. Whether the skills help is a hypothesis to test, because nobody has published evidence that pstack improves results.
+In a Claude project the project itself is the harness: the coordinator, one thread per package, project memory, the repo's CLAUDE.md and Fable review threads. pstack adds to that only as copied skills: four of them, after the review (see Proposal). Its router, its team-kit dependencies and its fan-out skills stay out; their ideas (arena, swarm) are run as parallel threads instead. Whether the skills help was tested: they do not (see the verdict below Proposal).
 
 **What it is.** [pstack](https://github.com/cursor/plugins/tree/main/pstack) is a Cursor plugin by Lauren Tan (poteto), MIT, version 0.15.43, last changed 2026-11-16: 58 skills and 2 agents, 6,692 lines of Markdown, cloned and read here. A router skill, `poteto-mode`, picks a playbook and calls the rest. Claude Code runs it through a community port, [pstack-claude](https://github.com/michael-denyer/pstack-claude) (version 0.9.138, last commit 2026-11-13, about 3,400 stars per the GitHub page). A companion, [agent-formal-verify](https://github.com/michael-denyer/agent-formal-verify), adds guided TLA+, Lean 4 and Kani, under GPL-3.0.
 
@@ -330,6 +330,8 @@ In a Claude project the project itself is the harness: the coordinator, one thre
 - agent-formal-verify is GPL-3.0, so copying it into the editor repo needs a licence decision.
 
 **Proposal (revised after review).** The five principle skills are 9 to 18 lines each and restate your standing rules, so they become a few lines of the editor's CLAUDE.md, with nothing to pin. Copy four skills into .claude/skills, pinned to a commit with the MIT notice: benchmark-checklist, create-formal-verification-skill, maintain-formal-verification-skill and tdd. Leave out statechart (408 files, 4.1 MB, TypeScript) and architect (it hands large designs to arena). To test whether the four help, one pair of runs is not enough by benchmark-checklist's own rule: run five small, comparable tasks from package 3 (Unicode kernels) with the skills and five without, alternating, and compare defects found by the Fable review, lines of code and tokens. Keep them only if the difference is outside the run-to-run spread.
+
+**Verdict: the skills are not kept** (PR 31, reviews/skills-trial.md). Five pairs of package 3 tasks showed no measurable difference in defects or lines of code, and the skills cost more tokens in all five (median 16 %); they are also marked `disable-model-invocation`, so copied into .claude/skills they would never run on their own. **measured** (10 attempts, 10 reviews). Nothing from pstack is copied.
 
 ## Open questions for you
 

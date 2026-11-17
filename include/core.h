@@ -241,8 +241,10 @@ void core_scroll(Editor *e, long n);
 int  core_scroll_half(Editor *e, int dir, long count);
 int  core_scroll_page(Editor *e, int dir, long count);
 void core_scroll_cursor(Editor *e, int how);
-/* The line H, M or L goes to (how 'H' 'M' 'L'; count lines from the top or bottom). */
-size_t core_screen_line(Editor *e, int how, long count);
+/* The line H, M or L goes to (how 'H' 'M' 'L'; count lines from the top or
+   bottom).  so: apply scrolloff (cursor_correct()); nv_scroll() passes 0
+   while an operator is pending, so d L reaches the last line shown. */
+size_t core_screen_line(Editor *e, int how, long count, int so);
 /* gj and gk: n screen lines down (n < 0 up), keeping the wanted column.
    0 ok, -1 at the first or last screen line. */
 int  core_screen_move(Editor *e, long n);
