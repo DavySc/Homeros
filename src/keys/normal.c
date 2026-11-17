@@ -281,8 +281,9 @@ static void v_swap_corners(int cmdchar)
 {
 	if (cmdchar == 'O' && VIsual_mode == 22) {
 		Pos old = cur();
-		long l1 = vcol_of(old.lnum, old.col), r1 = vcol_end(old.lnum, old.col);
-		long l2 = vcol_of(VIsual.lnum, VIsual.col), r2 = vcol_end(VIsual.lnum, VIsual.col);
+		long l1, r1, l2, r2;   /* getvcols(): with coladd */
+		getvvcol(old, &l1, &r1);
+		getvvcol(VIsual, &l2, &r2);
 		long left = l1 < l2 ? l1 : l2, right = r1 > r2 ? r1 : r2;
 		W->line = (size_t)VIsual.lnum;
 		coladvance(left);
@@ -290,7 +291,7 @@ static void v_swap_corners(int cmdchar)
 		W->line = (size_t)old.lnum;
 		set_want(right);
 		coladvance(right);
-		if ((long)W->col == old.col) {
+		if ((long)W->col == old.col && (!virtual_active() || cur().coladd == old.coladd)) {
 			W->line = (size_t)VIsual.lnum;
 			coladvance(right);
 			VIsual = cur();
