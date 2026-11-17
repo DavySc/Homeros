@@ -59,14 +59,17 @@ test: $(OBJS) | build/san
 	  ./build/san/test_$$t || { echo "FAIL test_$$t"; exit 1; }; done
 	gcc $(WARN) $(CPPFLAGS) $(SAN) -o build/san/conform_drv tests/conform_drv.c $(LIB_SRCS) $(OBJS) $(LIBS)
 	python3 tools/conform.py build/san/conform_drv --replay tests/conform-recorded.json
+	gcc $(WARN) $(CPPFLAGS) $(SAN) -o build/san/homeros $(TEST_SRCS) src/main.c $(OBJS) $(LIBS)
+	@python3 tests/paste.py build/san/homeros -t 40000 || { echo "FAIL paste"; exit 1; }
 
-# libFuzzer, each target against a simple model, FUZZ_SECONDS each
+# libFuzzer, each target against a simple model, FUZZ_SECONDS each; an input
+# that runs 20 s is a hang and fails (a planted bug once spun 20 min)
 FUZZERS = $(patsubst tests/fuzz_%.c,%,$(wildcard tests/fuzz_*.c))
 fuzz: $(OBJS) | build/fuzz
 	@for f in $(FUZZERS); do \
 	  clang $(WARN) -O1 -g -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all \
 	    $(CPPFLAGS) -o build/fuzz/fuzz_$$f tests/fuzz_$$f.c $(LIB_SRCS) $(OBJS) $(LIBS) || exit 1; \
-	  ./build/fuzz/fuzz_$$f -max_total_time=$(FUZZ_SECONDS) -max_len=256 -artifact_prefix=build/fuzz/ 2>build/fuzz/$$f.log \
+	  ./build/fuzz/fuzz_$$f -max_total_time=$(FUZZ_SECONDS) -max_len=256 -timeout=20 -artifact_prefix=build/fuzz/ 2>build/fuzz/$$f.log \
 	    || { tail -40 build/fuzz/$$f.log; echo "FAIL fuzz_$$f"; exit 1; }; \
 	  echo "fuzz_$$f: $$(grep -m1 -o 'Done [0-9]* runs in [0-9]* second(s)' build/fuzz/$$f.log)"; done
 

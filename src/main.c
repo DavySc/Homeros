@@ -1,7 +1,6 @@
 /* The editor's main loop, Render.tla "ok": draw only between commands, at
    most BATCH commands per frame, and only when the backend says a frame may
    be drawn (the compositor's frame callback, Present.tla). */
-#include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,27 +13,27 @@ enum { BATCH = 64, QMAX = 4096 };
 
 static const Backend *b = &backend_tty;
 static int q[QMAX], qh, qn;     /* keys read but not yet run */
-static int resized;
-static struct pollfd in[2];
-static int nin;
+static int resized, running;   /* running: inside a command */
 
 static void on_input(void *ctx, int fd)
 {
 	(void)ctx; (void)fd;
 	int k[256];
-	/* Reads even when the queue is full, so a Ctrl-C behind a long paste
-	   still stops a command (Break.tla "ok"); keys that do not fit are lost. */
-	int n = b->input(k, 256);
+	/* Between commands the loop drains the queue, so a full queue leaves the
+	   input waiting in the terminal and nothing is lost.  Inside a command
+	   (loop_breakcheck) it reads on, so a Ctrl-C behind a long paste still
+	   stops the command; keys that do not fit then are dropped. */
+	int room = QMAX - qn;
+	if (!room && !running) return;
+	int n = b->input(k, room && room < 256 ? room : 256);
 	for (int i = 0; i < n; i++) {
 		if (k[i] == KEY_RESIZE) { resized = 1; continue; }
-		/* Neovim's got_int; the keys typed before it go (flush_buffers) */
+		/* Neovim's got_int; the keys typed before it go (Vim's
+		   fill_input_buf() drops what was typed before a CTRL-C) */
 		if (k[i] == KEY_CTRL_C) { loop_int = 1; qn = 0; }
 		if (qn < QMAX) q[(qh + qn++) % QMAX] = k[i];
 	}
 }
-
-/* syntax_update's stop: is input waiting? */
-static int input_waiting(void) { return poll(in, (nfds_t)nin, 0) > 0; }
 
 int main(int argc, char **argv)
 {
@@ -42,16 +41,14 @@ int main(int argc, char **argv)
 	Grid g = { 0 }, shown = { 0 };
 	int fds[2], rows, cols, tty = argc == 3 && !strcmp(argv[1], "-t");
 	if (argc != 2 + tty) { fprintf(stderr, "usage: homeros [-t] FILE\n"); return 2; }
-#ifdef HOMEROS_WL
+#if defined _WIN32
+	if (!tty) b = &backend_win;
+#elif defined HOMEROS_WL
 	if (!tty && getenv("WAYLAND_DISPLAY")) b = &backend_wl;
 #endif
 	if (core_open(&e, argv[1 + tty])) { fprintf(stderr, "homeros: %s\n", e.msg); return 1; }
 	if (b->open()) { fprintf(stderr, "homeros: no terminal or window\n"); core_free(&e); return 1; }
-	nin = b->fds(fds);
-	for (int i = 0; i < nin; i++) {
-		in[i] = (struct pollfd){ .fd = fds[i], .events = POLLIN };
-		loop_watch(fds[i], on_input, NULL);
-	}
+	for (int i = 0, n = b->fds(fds); i < n; i++) loop_watch(fds[i], on_input, NULL);
 	b->size(&rows, &cols);
 	if (grid_resize(&g, rows, cols)) goto out;
 	int dirty = 1, syn = e.buf->syn != NULL;   /* syn: a reparse is pending */
@@ -69,7 +66,7 @@ int main(int argc, char **argv)
 			if (k == KEY_CTRL_Z && e.mode == MODE_NORMAL) {
 				b->suspend();
 				grid_free(&shown);     /* the terminal was used meanwhile: redraw all */
-			} else keys_feed(&e, k, qn > 0);
+			} else { running = 1; keys_feed(&e, k, qn > 0); running = 0; }
 			loop_int = 0;
 		}
 		if (e.quit) break;
@@ -81,7 +78,7 @@ int main(int argc, char **argv)
 		}
 		/* deferred work only once the frame is out and no key waits */
 		if (syn && !dirty && !qn) {
-			int r = syntax_update(e.buf->syn, e.buf->text, input_waiting);
+			int r = syntax_update(e.buf->syn, e.buf->text, loop_waiting);
 			syn = r == 2;
 			dirty = r == 1;
 		}
