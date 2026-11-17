@@ -143,7 +143,7 @@ static int start_redo(long count)
 void start_redo_ins(void)
 {
 	long i = 0;
-	while (i < redo_n && !strchr("AaIiRrOo", redobuf[i] < 0x80 ? redobuf[i] : 1)) i++;
+	while (i < redo_n && !has("AaIiRrOo", redobuf[i])) i++;
 	if (i >= redo_n) return;
 	int c = redobuf[i++], nl = '\n';
 	if (c == 'O' || c == 'o') stuff_redo(&nl, 1);
@@ -1073,7 +1073,7 @@ static int cmd_flags(int c)
 
 static int known(int c)
 {
-	return strchr(" \"$%()+,-.0:;<>@ABCDEFGIJOPQRSTUWXYV[]^_abcdefghijklopqrstuvwxy{|}~", c) || c == 1 || c == 3
+	return has(" \"$%()+,-.0:;<>@ABCDEFGIJOPQRSTUWXYV[]^_abcdefghijklopqrstuvwxy{|}~", c) || c == 1 || c == 3
 	       || c == 8 || c == 10 || c == 13 || c == 14 || c == 16 || c == 22 || c == 24 || c == KEY_CTRL_R
 	       || c == KEY_ESC || c == KEY_BS || c == KEY_UP || c == KEY_DOWN || c == KEY_LEFT || c == KEY_RIGHT;
 }

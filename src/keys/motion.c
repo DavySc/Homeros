@@ -190,12 +190,12 @@ int findsent(int dir, long count)
 			goto found;
 		} else if (dir == BACKWARD) decl(&pos);
 		int found_dot = 0;
-		while (c = gchar(pos), is_white(c) || (c && strchr(".!?)]\"'", c))) {
+		while (c = gchar(pos), is_white(c) || has(".!?)]\"'", c)) {
 			Pos tpos = pos;
 			if (decl(&tpos) == -1 || (lineempty(tpos.lnum) && dir == FORWARD)) break;
 			if (found_dot) break;
-			if (strchr(".!?", c)) found_dot = 1;
-			if (strchr(")]\"'", c) && !(gchar(tpos) && strchr(".!?)]\"'", gchar(tpos)))) break;
+			if (has(".!?", c)) found_dot = 1;
+			if (has(")]\"'", c) && !has(".!?)]\"'", gchar(tpos))) break;
 			decl(&pos);
 		}
 		long startlnum = pos.lnum;
@@ -208,7 +208,7 @@ int findsent(int dir, long count)
 			if (c == '.' || c == '!' || c == '?') {
 				Pos tpos = pos;
 				do if ((c = inc(&tpos)) == -1) break;
-				while ((c = gchar(tpos)) && strchr(")]\"'", c));
+				while (has(")]\"'", c = gchar(tpos)));
 				if (c == -1 || c == ' ' || c == '\t' || c == 0) {
 					pos = tpos;
 					if (gchar(pos) == 0) inc(&pos);
@@ -878,7 +878,7 @@ static long find_next_quote(const char *line, long col, int quotechar, const cha
 	for (;;) {
 		int c = (unsigned char)line[col];
 		if (c == 0) return -1;
-		else if (escape && strchr(escape, c)) {
+		else if (escape && has(escape, c)) {
 			col++;
 			if (line[col] == 0) return -1;
 		} else if (c == quotechar) break;

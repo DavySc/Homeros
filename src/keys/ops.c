@@ -32,7 +32,7 @@ static int op_reg_index(int r)
 int valid_yank_reg(int r, int writing)
 {
 	if ((r > 0 && r < 0x80 && ((r >= '0' && r <= '9') || (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')))
-	    || (!writing && r && strchr("/.%:", r)) || r == '"' || r == '-' || r == '_' || r == '*' || r == '+')
+	    || (!writing && has("/.%:", r)) || r == '"' || r == '-' || r == '_' || r == '*' || r == '+')
 		return 1;
 	return 0;
 }

@@ -7,11 +7,16 @@
 #define K_H
 #include <stddef.h>
 #include <stdlib.h>
+#include <string.h>
 #include "core.h"
 
 /* coladd: screen cells past col, with 'virtualedit' block in a Visual
    block (Neovim's pos_T) */
 typedef struct { long lnum, col, coladd; } Pos;
+
+/* vim_strchr() for a key or code point: strchr() would take the low byte,
+   so U+2200 would match the terminating NUL */
+static inline int has(const char *s, int c) { return c > 0 && c < 0x80 && strchr(s, c); }
 enum { FORWARD = 1, BACKWARD = -1 };
 enum { MCHAR, MLINE, MBLOCK };
 #define MAXCOL (1L << 40)
