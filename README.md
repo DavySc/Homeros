@@ -10,7 +10,7 @@ The thin editor runs in a terminal: `make && ./homeros FILE`. It has the text in
 
 ## The check
 
-Tools: `nix build -f design/env.nix tools -o tools-env`, put `tools-env/bin` on PATH, run `why3 config detect` once; clang needs its compiler-rt (on Debian/Ubuntu `libclang-rt-18-dev`).
+Tools: `nix build -f tools.nix tools -o tools-env` (design/env.nix's tools plus Wine; C libraries and fonts from the distribution, as CI's apt line), put `tools-env/bin` on PATH, run `why3 config detect` once; clang needs its compiler-rt (on Debian/Ubuntu `libclang-rt-18-dev`).
 
 | Target | What it runs |
 |---|---|
@@ -50,4 +50,4 @@ Tags as CLAUDE.md asks.
 
 ## Next
 
-Packages 1 to 12 can start now (13, 15, 16 and 17 after the loop, package 10; 14 after 13), each in its own thread, owning `src/<module>/`. Packages whose header is not in `include/` yet (7 `font.h`, 12 `syntax.h`, and 13 to 17) start by asking thread 0 for it. A package adds its tests and fuzzers as files (`tests/test_<module>*.c`, `tests/fuzz_<module>*.c`) and replaces `tests/plants/<module>.txt` with plants for its own code; the Makefile finds them, so no package edits a shared file. The rope, the Wayland backend and the org parser are built twice, independently, and the smaller and faster passing version wins. Every package is reviewed by a separate agent before it merges.
+The headers now also hold what packages 2, 5, 7, 8, 10, 11 and 12 asked for before writing code: the undo tree's time travel and undo file, the key state, `font.h`, the backend as a table (terminal, or the window with `-t` choosing the terminal) with clipboard and mouse, the loop's timer, Ctrl-C polling and processes, the crash journal and file watch, and `syntax.h` with faces in the grid (drawn in Catppuccin Mocha by the terminal). Packages 1 to 12 can start now (13, 15, 16 and 17 after the loop, package 10; 14 after 13), each in its own thread, owning `src/<module>/`. Packages whose header is not in `include/` yet (7 `font.h`, 12 `syntax.h`, and 13 to 17) start by asking thread 0 for it. A package adds its tests and fuzzers as files (`tests/test_<module>*.c`, `tests/fuzz_<module>*.c`) and replaces `tests/plants/<module>.txt` with plants for its own code; the Makefile finds them, so no package edits a shared file. The rope, the Wayland backend and the org parser are built twice, independently, and the smaller and faster passing version wins. Every package is reviewed by a separate agent before it merges.

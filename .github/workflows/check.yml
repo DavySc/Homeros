@@ -12,8 +12,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v31
-      - run: sudo apt-get update && sudo apt-get install -y clang libclang-rt-18-dev
-      - run: nix build -f design/env.nix tools -o tools-env
+      # C libraries come from the distribution, not nix: nix's need a newer
+      # glibc than the system compiler links against (package 12, measured)
+      - run: >
+          sudo apt-get update && sudo apt-get install -y clang libclang-rt-18-dev pkg-config
+          libfreetype-dev libharfbuzz-dev libfontconfig-dev
+          libwayland-dev wayland-protocols libxkbcommon-dev weston sway xvfb
+          fonts-jetbrains-mono fonts-noto-core fonts-noto-cjk fonts-noto-color-emoji fonts-dejavu-core
+      - run: nix build -f tools.nix tools -o tools-env
       - run: echo "$PWD/tools-env/bin" >> "$GITHUB_PATH"
       - run: why3 config detect
       - run: make check
