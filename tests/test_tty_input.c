@@ -100,14 +100,14 @@ static int feed(size_t n, int slow, int (*slots)(void), int drain, int *out)
 		struct pollfd q = { .fd = 0, .events = POLLIN };
 		CHECK(poll(&q, 1, slow ? 100 : 0) >= 0);
 		if (!(q.revents & POLLIN)) break;
-		int max = slots(), r = backend_input(out + ng, max);
+		int max = slots(), r = backend_tty.input(out + ng, max);
 		CHECK(r >= 0 && r <= max);
 		if (!ng && r) first = now();
 		ng += r;
 		idle = r ? 0 : idle + 1;
 		CHECK(idle < 10000);           /* readable, yet no key comes */
 	}
-	if (drain) ng += backend_input(out + ng, 300);
+	if (drain) ng += backend_tty.input(out + ng, 300);
 	if (!slow) close(p[1]);
 	int st;
 	if (slow) CHECK(waitpid(w, &st, 0) == w && WIFEXITED(st) && !WEXITSTATUS(st));
