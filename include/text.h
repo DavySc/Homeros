@@ -1,5 +1,5 @@
-/* Text: the bytes of one buffer.  Package 1 (src/text/) replaces the array in
-   ref/text.c with a rope; this header is the whole contract between them.
+/* Text: the bytes of one buffer, in a rope (package 1, src/text/); this
+   header is its whole contract.
    Offsets are bytes.  Lines end with '\n'; line l (from 0) starts after the
    l-th '\n', so a text holds text_lines() lines plus the bytes after the last
    '\n' (the core keeps that tail empty, see core.h). */

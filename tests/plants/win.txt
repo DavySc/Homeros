@@ -2,41 +2,41 @@
 # cannot see them under Wine: an astral character's surrogates (no font with
 # such a glyph, so right and wrong both draw a box) and the period read again
 # on WM_DISPLAYCHANGE (Wine's period never changes); both are pending for Windows.
-win: every cell drawn every frame~win~~src/win/backend.c~			if (grid_cell_eq(x, y) && cur == was) continue;~			if (cur && was && 0) continue;
-win: the cell the cursor left is not restored~win~~src/win/backend.c~int pr = all ? -1 : shown->crow, pc = shown->ccol;~int pr = all ? -1 : g->crow, pc = g->ccol;
-win: no cursor at (0, 0) after a whole redraw~win~~src/win/backend.c~int pr = all ? -1 : shown->crow,~int pr = shown->crow,
-win: the cursor is not drawn reversed~win~~src/win/backend.c~int rev = cursor || x->attr == ATTR_REV;~int rev = (cursor && 0) || x->attr == ATTR_REV;
-win: Backspace sent as 8~win~~src/win/backend.c~put(w == 8 && GetKeyState(VK_CONTROL) >= 0 ? KEY_BS : (int)w);~put((int)w);
-win: Ctrl-H sent as Backspace~win~~src/win/backend.c~w == 8 && GetKeyState(VK_CONTROL) >= 0 ? KEY_BS~w == 8 ? KEY_BS
-win: surrogate pair joined wrong~win~~src/win/backend.c~((surr - 0xD800) << 10)~((surr - 0xD801) << 10)
-win: a lone low surrogate makes a key~win~~src/win/backend.c~if (surr) put(0x10000~put(0x10000
-win: keys dropped when the ring is full~win~~src/win/backend.c~while (rn < RING && PeekMessageW~while (PeekMessageW
-win: Left sent as Right~win~~src/win/backend.c~case VK_LEFT: put(KEY_LEFT);~case VK_LEFT: put(KEY_RIGHT);
-win: Right sent as Left~win~~src/win/backend.c~case VK_RIGHT: put(KEY_RIGHT);~case VK_RIGHT: put(KEY_LEFT);
-win: Down sent as Up~win~~src/win/backend.c~case VK_DOWN: put(KEY_DOWN);~case VK_DOWN: put(KEY_UP);
-win: mouse row taken from x~win~~src/win/backend.c~mrow = GET_Y_LPARAM(l) / ch;~mrow = GET_X_LPARAM(l) / ch;
-win: wheel up sent as down~win~~src/win/backend.c~put(KEY_WHEEL_UP);~put(KEY_WHEEL_DOWN);
-win: wheel position left in screen coordinates~win~~src/win/backend.c~		ScreenToClient(h, &pt);¶~
-win: clipboard set without CRLF~win~~src/win/backend.c~		if (u[i] == '\n') u[j++] = '\r';¶~
-win: clipboard got with CRLF~win~~src/win/backend.c~			if (u[i] == '\r' && u[i + 1] == '\n') continue;¶~
-win: clipboard get writes past max~win~~src/win/backend.c~if ((size_t)n < max) buf[n] = b[j];~if ((size_t)n < max + 1) buf[n] = b[j];
-win: no glyph drawn, only cell backgrounds~win~~src/win/backend.c~&rc, u, n, NULL);~&rc, u, n * 0, NULL);
-win: dim text in the normal colour~win~~src/win/backend.c~RGB(108, 112, 134)~RGB(205, 214, 245)
-win: syntax faces ignored~win~~src/win/backend.c~fa->style & FACE_FG ? RGB~fa->style & 0 ? RGB
-win: face backgrounds ignored~win~~src/win/backend.c~fa->style & FACE_BG ? RGB~fa->style & 0 ? RGB
-win: a wide character drawn one cell wide~win~~src/win/backend.c~(c + 1 + wide) * cw~(c + 1 + wide * 0) * cw
-win: the right half of a wide character not sent to the window~win~~src/win/backend.c~hi = c + 1 + (c + 1 < g->cols && !x[1].len);~hi = c + 1;
-win: an uncovered window not repainted (WM_PAINT)~win~~src/win/backend.c~BitBlt(dc, r->left, r->top, r->right - r->left, r->bottom - r->top, mem, r->left, r->top, SRCCOPY);~(void)dc; (void)r;
-win: the close button destroys the window~win~~src/win/backend.c~	case WM_CLOSE:   /* the editor decides (:qa), not DefWindowProc */¶		put(KEY_CLOSE);¶		return 0;¶~
-win: the close button gives no key~win~~src/win/backend.c~		put(KEY_CLOSE);¶~
-win: one column too many reported~win~~src/win/backend.c~*cols = r.right / cw > 0 ? r.right / cw : 1;~*cols = r.right / cw + 1;
-win: the new DPI ignored~win~~src/win/backend.c~		dpi = HIWORD(w);¶~
-win: no pacing~win~~src/win/backend.c~	if (now.QuadPart >= next) return 1;~	return 1;
-win: pacing without the margin over the period~win~~src/win/backend.c~next = now.QuadPart + period + period / 8;~next = now.QuadPart + period;
-win: pacing timer fires at once (busy wake-ups)~win~~src/win/backend.c~due.QuadPart = -(~due.QuadPart = (
-win: pacing timer far too late~win~~src/win/backend.c~* 10000000 +~* 1000000000 +
-win: pacing timer keeps firing when idle~win~~src/win/backend.c~SetWaitableTimer(timer, &due, 0,~SetWaitableTimer(timer, &due, 16,
-win: draws while minimised~win~~src/win/backend.c~	if (IsIconic(win)) return 0;¶~
-win: resize sends no KEY_RESIZE~win~~src/win/backend.c~HIWORD(l) != dh)) resized = stale = 1;~HIWORD(l) != dh)) stale = 1;
-win: the DIB keeps its old size~win~~src/win/backend.c~if (all && (grid_resize(shown, g->rows, g->cols) || make_dib())) return;~if (all && grid_resize(shown, g->rows, g->cols)) return;
+win: every cell drawn every frame~win WIN=win~~src/win/backend.c~			if (grid_cell_eq(x, y) && cur == was) continue;~			if (cur && was && 0) continue;
+win: the cell the cursor left is not restored~win WIN=win~~src/win/backend.c~int pr = all ? -1 : shown->crow, pc = shown->ccol;~int pr = all ? -1 : g->crow, pc = g->ccol;
+win: no cursor at (0, 0) after a whole redraw~win WIN=win~~src/win/backend.c~int pr = all ? -1 : shown->crow,~int pr = shown->crow,
+win: the cursor is not drawn reversed~win WIN=win~~src/win/backend.c~int rev = cursor || x->attr == ATTR_REV;~int rev = (cursor && 0) || x->attr == ATTR_REV;
+win: Backspace sent as 8~win WIN=win~~src/win/backend.c~put(w == 8 && GetKeyState(VK_CONTROL) >= 0 ? KEY_BS : (int)w);~put((int)w);
+win: Ctrl-H sent as Backspace~win WIN=win~~src/win/backend.c~w == 8 && GetKeyState(VK_CONTROL) >= 0 ? KEY_BS~w == 8 ? KEY_BS
+win: surrogate pair joined wrong~win WIN=win~~src/win/backend.c~((surr - 0xD800) << 10)~((surr - 0xD801) << 10)
+win: a lone low surrogate makes a key~win WIN=win~~src/win/backend.c~if (surr) put(0x10000~put(0x10000
+win: keys dropped when the ring is full~win WIN=win~~src/win/backend.c~while (rn < RING && PeekMessageW~while (PeekMessageW
+win: Left sent as Right~win WIN=win~~src/win/backend.c~case VK_LEFT: put(KEY_LEFT);~case VK_LEFT: put(KEY_RIGHT);
+win: Right sent as Left~win WIN=win~~src/win/backend.c~case VK_RIGHT: put(KEY_RIGHT);~case VK_RIGHT: put(KEY_LEFT);
+win: Down sent as Up~win WIN=win~~src/win/backend.c~case VK_DOWN: put(KEY_DOWN);~case VK_DOWN: put(KEY_UP);
+win: mouse row taken from x~win WIN=win~~src/win/backend.c~mrow = GET_Y_LPARAM(l) / ch;~mrow = GET_X_LPARAM(l) / ch;
+win: wheel up sent as down~win WIN=win~~src/win/backend.c~put(KEY_WHEEL_UP);~put(KEY_WHEEL_DOWN);
+win: wheel position left in screen coordinates~win WIN=win~~src/win/backend.c~		ScreenToClient(h, &pt);¶~
+win: clipboard set without CRLF~win WIN=win~~src/win/backend.c~		if (u[i] == '\n') u[j++] = '\r';¶~
+win: clipboard got with CRLF~win WIN=win~~src/win/backend.c~			if (u[i] == '\r' && u[i + 1] == '\n') continue;¶~
+win: clipboard get writes past max~win WIN=win~~src/win/backend.c~if ((size_t)n < max) buf[n] = b[j];~if ((size_t)n < max + 1) buf[n] = b[j];
+win: no glyph drawn, only cell backgrounds~win WIN=win~~src/win/backend.c~&rc, u, n, NULL);~&rc, u, n * 0, NULL);
+win: dim text in the normal colour~win WIN=win~~src/win/backend.c~RGB(108, 112, 134)~RGB(205, 214, 245)
+win: syntax faces ignored~win WIN=win~~src/win/backend.c~fa->style & FACE_FG ? RGB~fa->style & 0 ? RGB
+win: face backgrounds ignored~win WIN=win~~src/win/backend.c~fa->style & FACE_BG ? RGB~fa->style & 0 ? RGB
+win: a wide character drawn one cell wide~win WIN=win~~src/win/backend.c~(c + 1 + wide) * cw~(c + 1 + wide * 0) * cw
+win: the right half of a wide character not sent to the window~win WIN=win~~src/win/backend.c~hi = c + 1 + (c + 1 < g->cols && !x[1].len);~hi = c + 1;
+win: an uncovered window not repainted (WM_PAINT)~win WIN=win~~src/win/backend.c~BitBlt(dc, r->left, r->top, r->right - r->left, r->bottom - r->top, mem, r->left, r->top, SRCCOPY);~(void)dc; (void)r;
+win: the close button destroys the window~win WIN=win~~src/win/backend.c~	case WM_CLOSE:   /* the editor decides (:qa), not DefWindowProc */¶		put(KEY_CLOSE);¶		return 0;¶~
+win: the close button gives no key~win WIN=win~~src/win/backend.c~		put(KEY_CLOSE);¶~
+win: one column too many reported~win WIN=win~~src/win/backend.c~*cols = r.right / cw > 0 ? r.right / cw : 1;~*cols = r.right / cw + 1;
+win: the new DPI ignored~win WIN=win~~src/win/backend.c~		dpi = HIWORD(w);¶~
+win: no pacing~win WIN=win~~src/win/backend.c~	if (now.QuadPart >= next) return 1;~	return 1;
+win: pacing without the margin over the period~win WIN=win~~src/win/backend.c~next = now.QuadPart + period + period / 8;~next = now.QuadPart + period;
+win: pacing timer fires at once (busy wake-ups)~win WIN=win~~src/win/backend.c~due.QuadPart = -(~due.QuadPart = (
+win: pacing timer far too late~win WIN=win~~src/win/backend.c~* 10000000 +~* 1000000000 +
+win: pacing timer keeps firing when idle~win WIN=win~~src/win/backend.c~SetWaitableTimer(timer, &due, 0,~SetWaitableTimer(timer, &due, 16,
+win: draws while minimised~win WIN=win~~src/win/backend.c~	if (IsIconic(win)) return 0;¶~
+win: resize sends no KEY_RESIZE~win WIN=win~~src/win/backend.c~HIWORD(l) != dh)) resized = stale = 1;~HIWORD(l) != dh)) stale = 1;
+win: the DIB keeps its old size~win WIN=win~~src/win/backend.c~if (all && (grid_resize(shown, g->rows, g->cols) || make_dib())) return;~if (all && grid_resize(shown, g->rows, g->cols)) return;
 specs: Pace with frames only P + D apart~specs~find design/specs -name '*.cfg' ! -name Pace_ok.cfg -delete~design/specs/Pace_ok.cfg~ Gap = 5~ Gap = 4
