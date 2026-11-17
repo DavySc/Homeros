@@ -373,6 +373,9 @@ int op_delete(Oparg *oap)
 			long sl = oap->start.lnum;
 			size_t a = core_line_start(E, (size_t)sl) + (size_t)oap->start.col;
 			size_t z = core_line_start(E, (size_t)oap->end.lnum) + (size_t)line_end_of(oap);
+			/* op_delete() ends with do_join(2): the last line's marks go to
+			   the start line, after its first start.col bytes */
+			core_mark_join(E, (size_t)oap->end.lnum, 0, sl - oap->end.lnum, oap->start.col, 0);
 			core_edit(E, a, z - a, "", 0);
 			replace_bytes(sl, 0, 0, "", 0);   /* new generation for the line cache */
 			if (oap->op_type == OP_DELETE) check_cursor_col();
@@ -885,6 +888,10 @@ int do_join(long count, int insert_space)
 		}
 		currsize = (long)strlen(curr);
 		col = b.n;      /* the cursor goes on the space inserted */
+		/* mark_col_adjust() for each joined line, before the edit; the
+		   spaces skipped beyond those inserted are spaces_removed */
+		long removed = (long)(curr - ml_get(l0 + t)) - spaces;
+		core_mark_join(E, (size_t)(l0 + t), 0, -t, col - removed, (int)removed);
 		bspaces(&b, spaces);
 		bput(&b, curr, currsize);
 		endcurr1 = endcurr2 = 0;
