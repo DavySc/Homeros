@@ -209,6 +209,10 @@ int main(void)
 	put(&g, 7, 1, "\xe4\xb8\xad", 2, ATTR_REV);   /* U+4E2D, two cells */
 	put(&g, 8, 1, " ", 1, ATTR_NONE);
 	g.c[8 * g.cols + 1].face = FACE_COMMENT_TODO;   /* a face with a background */
+	/* a cluster longer than a cell's 4 bytes, from the grid's store: its
+	   accents draw over the letter */
+	put(&g, 9, 1, "e", 1, ATTR_NONE);
+	put(&g, 10, 1, "e\xcc\x81\xcc\x81\xcc\x81\xcc\x81", 1, ATTR_NONE);   /* 4 combining acutes */
 	present(&g, &shown);
 	/* glyph edges are blended (ClearType), so few pixels are exactly the
 	   text colour: look at the inked pixels and the one furthest from the
@@ -219,6 +223,7 @@ int main(void)
 	CHECK(inked(6, 1) > 0 && GetGValue(s) > GetRValue(s) && GetGValue(s) > GetBValue(s));   /* green */
 	CHECK(GetBValue(m) > GetGValue(m));                /* the text colour is blue-white, not green */
 	CHECK(count(7, 2, REV) > cw * ch / 2 && count(7, 3, REV) == 0);
+	CHECK(g.c[10 * g.cols + 1].len == 9 && inked(10, 1) > inked(9, 1));
 	CHECK(count(8, 1, RGB(faces[FACE_COMMENT_TODO].bg[0], faces[FACE_COMMENT_TODO].bg[1], faces[FACE_COMMENT_TODO].bg[2])) == cw * ch);
 
 	/* covered and uncovered: WM_PAINT draws from the DIB */
@@ -308,7 +313,7 @@ int main(void)
 	grid_free(&g);
 	grid_free(&shown);
 	puts("test_win: keys, mouse and clipboard; identical frame draws nothing; one change draws one cell; "
-	     "text, dim, face, face background and wide cells; cursor drawn, restored and at (0,0) after a whole redraw; WM_PAINT; "
+	     "text, dim, face, face background, long cluster and wide cells; cursor drawn, restored and at (0,0) after a whole redraw; WM_PAINT; "
 	     "resize and DPI redraw whole; close is a key; paced; idle quiet; minimised draws nothing");
 	return 0;
 }
