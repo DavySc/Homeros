@@ -1,3 +1,27 @@
-# Plants for ref/file.c (format in tools/planted.sh).  The package that builds
-# src/file/ replaces this file with plants for its own code.
-file: no check before saving (Save_nocheck)~test TESTS=file~~ref/file.c~	if (!force && id->exists && !same(id, &now)) return SAVE_CHANGED;~
+# Plants for src/file/ (format in tools/planted.sh), one per check of package 11.
+file: no check before saving (Save_nocheck)~test TESTS=file_save~~src/file/file.c~	if (!force && id->exists && !same(id, &now)) return SAVE_CHANGED;~
+file: rename without fsync (Save2_nofsync)~test TESTS=file_save~~src/file/file.c~if (write_text(fd, t, n) || fsync(fd) || fstat(fd, &st))~if (write_text(fd, t, n) || fstat(fd, &st))
+file: identity by path after the swap (review 0, finding 3)~test TESTS=file_save~~src/file/file.c~	*id = mine;~	if (stat(real, &st) == 0) ident(&st, id); else *id = mine;
+file: load identity taken after reading (review 0, finding 3)~test TESTS=file_save~sed -i 's/^\tident(&st, id);$//' src/file/file.c~src/file/file.c~	close(fd);¶	if (!b) { memset~	fstat(fd, &st); ident(&st, id);¶	close(fd);¶	if (!b) { memset
+file: in place without a durable backup~test TESTS=file_save~~src/file/file.c~if (copy_fd(fd, b) || fsync(b) || fstat(fd, &st))~if (copy_fd(fd, b) || fstat(fd, &st))
+file: in place without the recheck after the copy~test TESTS=file_save~~src/file/file.c~	if (!force && !same(&after, &before)) { unlink(bak); close(fd); return SAVE_CHANGED; }~
+file: in place, torn file not put back~test TESTS=file_save~~src/file/file.c~	if (b >= 0 && lseek(fd, 0, SEEK_SET) == 0~	if (b >= 0 && 0 && lseek(fd, 0, SEEK_SET) == 0
+file: foreign owner lost (temp kept though fchown failed)~test TESTS=file_save~~src/file/file.c~		    && fchown(fd, st.st_uid, st.st_gid))) {~		    && fchown(fd, st.st_uid, st.st_gid) && 0)) {
+file: hard link split by the swap~test TESTS=file_save~~src/file/file.c~	if (now.exists && st.st_nlink > 1) return~	if (now.exists && st.st_nlink > 1 && 0) return
+file: read-only directory refused~test TESTS=file_save~~src/file/file.c~(errno == EACCES || errno == EPERM) && !access(real, W_OK))~(errno == EACCES || errno == EPERM) && !access(real, W_OK) && 0)
+file: watch on the file, not its directory~test TESTS=file_save~~src/file/file.c~	if (inotify_add_watch(fd, dirname(dir),~	if (dirname(dir) && inotify_add_watch(fd, real,
+file: watch never reports~test TESTS=file_save~~src/file/file.c~	return !same(id, &now);~	return 0 && !same(id, &now);
+journal: record sum not checked~test TESTS=file_journal~~src/file/journal.c~		if (!r.ok || s != sum(SUM0, at, (size_t)(r.p - 4 - at))) return 0;~		if (!r.ok || (s != sum(SUM0, at, (size_t)(r.p - 4 - at)) && 0)) return 0;
+journal: torn tail left before appending~test TESTS=file_journal~~src/file/journal.c~	if (ftruncate(j->fd, (off_t)end)) {}~
+journal: failed append not cut back~test TESTS=file_journal~~src/file/journal.c~			if (ftruncate(j->fd, j->end)) {}~
+journal: no lock~test TESTS=file_journal~~src/file/journal.c~		if (flock(j->fd, LOCK_EX | LOCK_NB)) goto fail_fd;~
+journal: no new base after a save~test TESTS=file_journal~~src/file/journal.c~	j->end = 0;¶	j->based = 0;~	j->end = 0;
+journal: due counted from the last record~test TESTS=file_journal~~src/file/journal.c~	if (!j->dirty) { j->dirty = 1; j->first_ms = now_ms(); }~	j->dirty = 1; j->first_ms = now_ms();
+journal: sync without fdatasync~test TESTS=file_journal~~src/file/journal.c~	fdatasync(j->fd);~
+journal: directory never fsynced~test TESTS=file_journal~~src/file/journal.c~	if (!j->dir_synced) {~	if (0) {
+journal: readable by others~test TESTS=file_journal~~src/file/state.c~mkdir(out, 0700)~mkdir(out, 0755)
+journal: record length not bounded (fuzzer)~fuzz FUZZERS=file_journal FUZZ_SECONDS=60~~src/file/journal.c~		if (!r.ok || e[2] > r.n) return 0;~		if (!r.ok) return 0;
+core wiring: journal kept after a save~test TESTS=file_core~~ref/core.c~	case SAVE_OK:¶		b->saved_seq = undo_seq(b->undo);¶		b->changed = 0;¶		if (b->journal) journal_saved(b->journal);~	case SAVE_OK:¶		b->saved_seq = undo_seq(b->undo);¶		b->changed = 0;
+core wiring: flags not journalled~test TESTS=file_core~~ref/core.c~	if (b->journal && jstate(b) != before && journal_edit~	if (0 && b->journal && jstate(b) != before && journal_edit
+core wiring: outside change never noted~test TESTS=file_core~~ref/core.c~ && !b->changed) b->changed = 1;~ && !b->changed) b->changed = 0;
+core wiring: recovered identity replaced by the file's~test TESTS=file_core~~ref/core.c~	b->changed = !same_id(id, &b->id);¶	b->id = *id;~	b->changed = !same_id(id, &b->id);

@@ -61,8 +61,9 @@ int  journal_open(const char *path, Journal **j, Text **t,
    after journal_open or journal_saved records t, state and id as the base;
    later calls do nothing.  0 ok, -1 write error. */
 int  journal_base(Journal *j, const Text *t, unsigned state, const FileId *id);
-/* After the change: bytes [pos, pos + ndel) of the old text became ins;
-   state is the core's flags now.  0 ok, -1 write error. */
+/* Each change (just before or after it is made): bytes [pos, pos + ndel)
+   of the old text become ins; state is the core's flags.  0 ok, -1 write
+   error. */
 int  journal_edit(Journal *j, size_t pos, size_t ndel, const char *ins,
                   size_t nins, unsigned state);
 void journal_saved(Journal *j);       /* after a save: empty, base again at the next change */

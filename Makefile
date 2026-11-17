@@ -8,6 +8,10 @@
 # files in its own places and never edits this one.
 
 SHELL = /bin/bash
+# crash journals and in-place backups of test runs (file.h) stay out of $HOME,
+# and one left by a crashed run never reaches the next: each target that
+# opens files starts with none
+export XDG_STATE_HOME := $(CURDIR)/build/state
 
 BASE = text undo uni core keys grid tty loop file syntax
 # src/win/ (package 9) is the Windows build's, cross-compiled on its own
@@ -54,6 +58,7 @@ compilers: $(OBJS) | build/gcc build/clang
 # unit tests and the recorded Neovim traces, under ASan and UBSan
 TESTS = $(patsubst tests/test_%.c,%,$(wildcard tests/test_*.c))
 test: $(OBJS) | build/san
+	@rm -rf $(XDG_STATE_HOME)
 	@for t in $(TESTS); do \
 	  gcc $(WARN) $(CPPFLAGS) $(SAN) -o build/san/test_$$t tests/test_$$t.c $(TEST_SRCS) $(OBJS) $(LIBS) || exit 1; \
 	  ./build/san/test_$$t || { echo "FAIL test_$$t"; exit 1; }; done
@@ -66,6 +71,7 @@ test: $(OBJS) | build/san
 # that runs 20 s is a hang and fails (a planted bug once spun 20 min)
 FUZZERS = $(patsubst tests/fuzz_%.c,%,$(wildcard tests/fuzz_*.c))
 fuzz: $(OBJS) | build/fuzz
+	@rm -rf $(XDG_STATE_HOME)
 	@for f in $(FUZZERS); do \
 	  clang $(WARN) -O1 -g -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all \
 	    $(CPPFLAGS) -o build/fuzz/fuzz_$$f tests/fuzz_$$f.c $(LIB_SRCS) $(OBJS) $(LIBS) || exit 1; \
@@ -75,6 +81,7 @@ fuzz: $(OBJS) | build/fuzz
 
 # Vim keys against nvim --headless, fresh random sequences
 conform: $(OBJS) | build/san
+	@rm -rf $(XDG_STATE_HOME)
 	gcc $(WARN) $(CPPFLAGS) $(SAN) -o build/san/conform_drv tests/conform_drv.c $(LIB_SRCS) $(OBJS) $(LIBS)
 	python3 tools/conform.py build/san/conform_drv $(CONFORM_N) $${SEED:-$$(date +%s)}
 
