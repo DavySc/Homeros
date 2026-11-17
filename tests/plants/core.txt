@@ -2,3 +2,4 @@
 # src/core/ replaces this file with plants for its own code.
 core: undo loses deleted text (fuzz_keys)~fuzz FUZZERS=keys FUZZ_SECONDS=60~~ref/core.c~undo_record(e->buf->undo, pos, del, ndel, ins, nins, c, after)~undo_record(e->buf->undo, pos, del, ndel ? ndel - 1 : 0, ins, nins, c, after)
 core: undo leaves the cursor inside a 3- or 4-byte character (recorded traces)~test TESTS=~~ref/core.c~		size_t p = 0;¶		for (size_t k; p + (k = uni_len(s, len, p)) <= e->win->col; p += k) {}¶		e->win->col = p;~		e->win->col = uni_prev(s, len, e->win->col + 1);
+core: undo of a deletion at a line start reads as lines removed (recorded traces)~test TESTS=~~ref/core.c~	if (w.hi == w.lo && at_start && n < before) last = first - 1;~	if (w.hi == w.lo && at_start) last = first - 1;

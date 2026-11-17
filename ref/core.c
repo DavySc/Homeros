@@ -154,7 +154,9 @@ int core_undo(Editor *e, int redo)
 	size_t first = text_line_of(e->buf->text, w.lo), last;
 	e->buf->flags = w.flags;
 	int at_start = w.lo == core_line_start(e, first);
-	if (w.hi == w.lo && at_start) last = first - 1;   /* whole lines removed: none left */
+	/* whole lines removed, none left; a deletion at a line start that leaves
+	   as many lines changed that line (u_save saved it) */
+	if (w.hi == w.lo && at_start && n < before) last = first - 1;
 	else last = text_line_of(e->buf->text, w.hi > w.lo ? w.hi - 1 : w.lo);
 	size_t l = w.cur.line + 1 >= first && w.cur.line <= last + 1 ? w.cur.line : first;
 	if (l >= n) l = n - 1;                          /* check_cursor_lnum() */
