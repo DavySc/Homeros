@@ -214,21 +214,37 @@ void coladvance_force(long want)
 	W->col = (size_t)idx;
 }
 
+/* validate_virtcol(): w_virtcol as curs_columns() leaves it after each
+   command, kept until the cursor moves, also across Visual mode's start and
+   end (VALID_VIRTCOL; measured: "v Esc j", "w v h Esc j", "C-v { Esc j" on
+   a Tab).  In Visual mode it is getvvcol() of the cursor: with
+   'virtualedit' a Tab's first cell plus coladd, and with the cursor at or
+   before Visual's start ('selection' inclusive) a Tab's first cell. */
+void validate_virtcol(void)
+{
+	static long coladd;   /* Win.vc has no coladd, which moves the cursor too */
+	if (W->vc.ok && W->vc.line == W->line && W->vc.col == W->col && W->vc.mode == E->mode && coladd == cur().coladd) return;
+	coladd = cur().coladd;
+	long v;
+	if (virtual_active()) v = getviscol();
+	else if (VIsual_active && !lt(VIsual, cur())) v = vcol_of((long)W->line, (long)W->col);
+	else {
+		/* core_set_want() fills the cache; on a Tab Neovim's virtcol is
+		   its last cell in Normal mode */
+		size_t w = W->want;
+		core_set_want(E);
+		W->want = w;
+		return;
+	}
+	W->vc.line = W->line; W->vc.col = W->col; W->vc.v = (size_t)v;
+	W->vc.mode = E->mode; W->vc.ok = 1;
+}
+
 void update_curswant(void)
 {
 	if (!set_curswant) return;
-	/* w_virtcol: getvvcol() of the cursor; on a Tab Neovim's virtcol is
-	   its last cell in Normal mode, which core_set_want() gives */
-	if (virtual_active()) W->want = (size_t)getviscol();
-	/* getvcol(): in Visual mode with the cursor at or before its start the
-	   cursor is on a Tab's first cell ('selection' inclusive) */
-	else if (VIsual_active && !lt(VIsual, cur())) {
-		/* and w_virtcol keeps it until the cursor moves, also after Visual
-		   mode ends (VALID_VIRTCOL; measured: "w v h Esc j" on a Tab line) */
-		W->want = (size_t)vcol_of((long)W->line, (long)W->col);
-		W->vc.line = W->line; W->vc.col = W->col; W->vc.v = W->want;
-		W->vc.mode = E->mode; W->vc.ok = 1;
-	} else core_set_want(E);
+	validate_virtcol();
+	W->want = W->vc.v;
 	set_curswant = 0;
 }
 

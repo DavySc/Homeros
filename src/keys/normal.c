@@ -586,7 +586,8 @@ static void nv_brackets(Cmdarg *cap)
 			int ok = findmatchlimit(&found, findc, cap->cmdchar == '[' ? FM_BACKWARD : FM_FORWARD);
 			setcur(save);
 			if (!ok) {
-				if (eq(p, old)) { clearopbeep(oap); return; }
+				/* nv_bracket_block() puts back old_pos, coladd too */
+				if (eq(p, old)) { setcur(old); clearopbeep(oap); return; }
 				break;
 			}
 			p = found;
@@ -1335,9 +1336,11 @@ static int run(void)
 	}
 	if (oa.op_type == OP_NOP) finish_op = 0;
 	opcount = ca.opcount;
-	/* normal_check() before the next command; an insert the command
-	   started keeps curswant as it is (edit() runs inside the command) */
-	// X
+	/* mb_check_adjust_col(): ^ on a blank a combining mark is on lands
+	   inside the character */
+	if (E->mode == MODE_NORMAL && W->col) W->col = (size_t)head(ml_get((long)W->line), (long)W->col);
+	/* normal_check() before the next command: validate_cursor() */
+	if (stuff_empty() && E->mode == MODE_NORMAL) validate_virtcol();
 	if (!(ca.retval & CA_COMMAND_BUSY)) restart_insert();
 	return 1;
 }

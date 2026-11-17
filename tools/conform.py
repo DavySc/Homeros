@@ -45,8 +45,11 @@ def gen_text(r):
     return '\n'.join(lines) + ('\n' if lines and r.random() < .8 else '')
 
 def count(r, keys):
-    if r.random() < .25:   # never followed by 0, which would extend it
+    x = r.random()
+    if x < .25:   # never followed by 0, which would extend it
         keys.append(str(r.randint(1, 4)))
+    elif x < .27:   # two digits, typed one by one (fuzz_keys keeps counts to one)
+        keys += list(str(r.randint(10, 19)))
 
 def motion(r, keys, objects=True):
     # text objects only after an operator or in Visual mode: in Normal
@@ -57,7 +60,10 @@ def motion(r, keys, objects=True):
     else: keys.append(r.choice(MOTIONS))
 
 def insert(r, keys, cmd=True, sure=True):
-    if cmd: keys.append(r.choice(['i', 'a', 'I', 'A', 'o', 'O', 'gI', 'R', 's', 'S', 'C']))
+    if cmd:
+        keys.append(r.choice(['i', 'a', 'I', 'A', 'o', 'O', 'gI', 'R', 's', 'S', 'C']))
+        # 3S and 3C fail past the last line
+        if keys[-1] in ('S', 'C') and len(keys) > 1 and keys[-2].isdigit(): sure = False
     for _ in range(r.randint(0, 5)):
         x = r.random()
         if x < .06: keys += ['<C-r>', r.choice(['a', '"', '0', '-', '.'])]
@@ -90,7 +96,7 @@ def command(r, keys, depth=0):
         count(r, keys)
         k = r.choice(SIMPLE)
         keys.append(k)
-        if k in ('C', 's', 'S', 'cc'): insert(r, keys, False)
+        if k in ('C', 's', 'S', 'cc'): insert(r, keys, False, len(keys) < 2 or not keys[-2].isdigit())
     elif x < .9:
         keys.append(r.choice(['v', 'V', '<C-v>']))
         for _ in range(r.randint(0, 3)):
@@ -115,6 +121,8 @@ def command(r, keys, depth=0):
         for _ in range(r.randint(1, 3)): command(r, keys, 1)
         keys.append('q')
     elif depth == 0:
+        # not from the Visual mode gv left: Visual @ and Q need :normal
+        if keys and keys[-1] == 'gv': keys.append('<Esc>')
         count(r, keys)
         keys += r.choice([['@', 'q'], ['@', 'w'], ['@', '@'], ['Q']])
     else:

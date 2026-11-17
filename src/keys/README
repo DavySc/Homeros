@@ -36,20 +36,35 @@ Waits for package 4, still differing with PR 20's core:
 - core_vcol at a byte inside a cluster (x + U+0301 with the cursor after x)
   gives the cluster's end; Neovim's getvcol gives its start.
 - the cursor after undoing a linewise change of several lines (4cc Esc u,
-  2cc, 2S, V j c Esc u): Neovim takes it from u_undoredo's last entry, the
-  core from the whole step.
+  2cc, 2S, 3S Esc u, 3S C-o u, V j c Esc u): Neovim takes it from
+  u_undoredo's last entry, the core from the whole step.
+- I Down from a blank a combining mark is on, after the cursor came there
+  with k ("    \u0301 -3\n).\n    'c' 7", j dd k I Down): Neovim's column
+  2, ours 3; not traced yet (owner package 5, with package 4's core_vcol
+  inside a cluster above).
 
 Waits for thread 0's core.h (PR 32: core_screen_line takes so):
 - d L, d H with scrolloff: Neovim's nv_scroll() skips cursor_correct() while
   an operator is pending, so on 60 lines d L deletes 22 lines in Neovim and
   16 here (measured, PR 26 review N4). keys passes so = 0 once PR 32 merges.
 
+Not traced to a fix yet (owner package 5):
+- s on a Tab that ends its line, then Tab ("(\t", l s Tab): Neovim's cached
+  w_virtcol stays the Tab's last cell, since del_bytes() backs the cursor up
+  and op_change() steps it forward again before check_cursor_moved() looks,
+  so softtabstop counts from column 7 (one space); ours counts from 1 (three).
+  The core drops its cached column on every edit (changed_common() keeps it
+  for an edit after the cursor).
+
 Neovim's own oddities, not copied:
 - Replace mode, Enter before blanks that end in a combining mark, then
   backspacing over the Enter ("  \t \u0301x", l R Enter t BS BS): Neovim
   loses the Tab and does not join the lines.
-- Visual A over a 3-byte character ("∀" vAx) and C-v $ ~ over a 4-byte one
-  ("-3 𐐀x"): Neovim writes a split character.
+- Visual A over a 3-byte character ("∀" vAx), V A over a 2-byte one ("λ"
+  V A 𐐀) or a cluster ("x" with U+0300 U+0301, V A .) and C-v $ ~ over a
+  4-byte one ("-3 𐐀x"): Neovim writes a split character.
+- C-v on a Tab then ~ u U over a 2-byte character ("\té ab cd", C-v w ~):
+  Neovim moves the character to the end of the line (" ab cd É").
 
 Choices:
 - go is gg everywhere: Normal, after an operator, Visual (Davy, FEATURES.md).

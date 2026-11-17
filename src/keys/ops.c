@@ -920,13 +920,14 @@ int do_join(long count, int insert_space)
 			}
 		}
 	}
-	/* one edit over the joined lines; when they join to nothing it keeps a
-	   line break, so the edit is a changed line, not lines deleted, and
-	   redo puts the cursor as Neovim's (measured against nvim: "a\n\n\nb" j j i <BS> Esc u <C-r>) */
+	/* one edit over the joined lines; when they join to nothing it deletes
+	   the later lines' breaks, so the first line and the marks
+	   mark_col_adjust() put there stay (measured against nvim: "a\n\n\nb"
+	   j j i <BS> Esc u <C-r>, and "j j V c <BS> Esc gv") */
 	size_t a = core_line_start(E, (size_t)l0);
 	size_t z = core_line_start(E, (size_t)(l0 + count)) - 1;
 	long len = b.n;
-	if (!len) { z++; bput(&b, "\n", 1); }
+	if (!len) { a++; z++; }
 	core_edit(E, a, z - a, b.s, (size_t)b.n);
 	replace_bytes(l0, 0, 0, "", 0);
 	free(b.s);
@@ -1102,9 +1103,10 @@ void do_put(int regname, int dir, long count, int flags)
 				do {
 					long oldlen = ml_len(lnum);
 					if (lnum > start_lnum) {
-						/* getvpos(): the character at vcol, MAXCOL past the end */
+						/* getvpos(): the character at vcol, MAXCOL past the end
+						   unless 'virtualedit' reaches it (a block: the end) */
 						col = col_of_vcol(lnum, vcol, 1);
-						if (vcol_of(lnum, col) < vcol) col = MAXCOL;
+						if (vcol_of(lnum, col) < vcol && !virtual_active()) col = MAXCOL;
 					}
 					if (VIsual_active && col > oldlen) { lnum++; continue; }
 					replace_bytes(lnum, col, 0, b.s, b.n);

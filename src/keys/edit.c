@@ -291,12 +291,22 @@ static int open_line(int dir)
 			rest = insert ? c : len;
 			if (trunc) while (rest > 0 && (line[rest - 1] == ' ' || line[rest - 1] == '\t')) rest--;
 		}
-		/* one edit: the end of this line becomes the new line */
+		/* one edit: the end of this line becomes the new line; when it
+		   keeps all its text the new line goes in after its break, so the
+		   core sees a line appended below it, also when it is empty
+		   (appended_lines_mark(): "x" V d o Esc gv stays on line 1) */
 		char *b = malloc((size_t)nl_len + 2);
 		if (b) {
-			b[0] = '\n';
-			memcpy(b + 1, nl, (size_t)nl_len);
-			replace_bytes(l, rest, len - rest, b, nl_len + 1);
+			if (rest == len) {
+				memcpy(b, nl, (size_t)nl_len);
+				b[nl_len] = '\n';
+				core_edit(E, core_line_start(E, (size_t)l + 1), 0, b, (size_t)nl_len + 1);
+				buf_changed();
+			} else {
+				b[0] = '\n';
+				memcpy(b + 1, nl, (size_t)nl_len);
+				replace_bytes(l, rest, len - rest, b, nl_len + 1);
+			}
 			free(b);
 		}
 		l++;
@@ -736,6 +746,9 @@ void insert_key(int k, int pending)
 	batch_len = 0;
 	switch (c) {
 	case KEY_ESC: case KEY_CTRL_C:
+		/* when the count repeats the insert, its CTRL-D sees the Esc
+		   before it, not a typed 0 or ^ ("2a C-d ^ Esc" gives ^^) */
+		lastc = c;
 		ins_esc(0);
 		return;
 	case 15:                  /* CTRL-O: one Normal mode command */
