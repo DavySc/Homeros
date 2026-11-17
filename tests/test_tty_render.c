@@ -16,6 +16,7 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
+#include <sys/prctl.h>
 #include <sys/wait.h>
 #include <termios.h>
 #include <unistd.h>
@@ -33,18 +34,34 @@ static size_t outn;
 static int keys[NKEYS + 2];
 static unsigned long long want[NKEYS + 2];
 
-static unsigned long long hash(const Cell *c, int rows, int cols, int crow, int ccol)
+static unsigned long long mix(unsigned long long h, const unsigned char *b, int n)
 {
-	unsigned long long h = 1469598103934665603ULL;
-	for (int i = 0; i < rows * cols; i++) {
-		unsigned char b[6] = { c[i].len, c[i].attr, 0, 0, 0, 0 };
-		memcpy(b + 2, c[i].ch, c[i].len);
-		for (int j = 0; j < 2 + c[i].len; j++) h = (h ^ b[j]) * 1099511628211ULL;
-	}
-	return (h ^ (unsigned)(crow * 1000 + ccol)) * 1099511628211ULL;
+	for (int j = 0; j < n; j++) h = (h ^ b[j]) * 1099511628211ULL;
+	return h;
 }
 
-static unsigned long long grid_hash(const Grid *g) { return hash(g->c, g->rows, g->cols, g->crow, g->ccol); }
+static unsigned long long done(unsigned long long h, int crow, int ccol) { return (h ^ (unsigned)(crow * 1000 + ccol)) * 1099511628211ULL; }
+
+/* a screen's hash: the same for a grid and the model terminal showing it */
+static unsigned long long grid_hash(const Grid *g)
+{
+	unsigned long long h = 1469598103934665603ULL;
+	for (int i = 0; i < g->rows * g->cols; i++) {
+		const Cell *c = &g->c[i];
+		h = mix(mix(h, (const unsigned char[]){ c->len, c->attr }, 2), grid_text(c), c->len);
+	}
+	return done(h, g->crow, g->ccol);
+}
+
+static unsigned long long vt_hash(const Vt *t)
+{
+	unsigned long long h = 1469598103934665603ULL;
+	for (int i = 0; i < t->rows * t->cols; i++) {
+		const VtCell *c = &t->c[i];
+		h = mix(mix(h, (const unsigned char[]){ c->len, c->attr }, 2), c->ch, c->len);
+	}
+	return done(h, t->r, t->col);
+}
 
 static int has(size_t from, size_t to, const char *s)
 {
@@ -88,7 +105,7 @@ static unsigned long long frames(Vt *t, size_t from, size_t to, int phase_a, int
 		vt_feed(t, outb + i, 1);
 		if (t->bad) { fprintf(stderr, "byte %zu: %s\n", i, t->why); CHECK(0); }
 		if (t->frames == f) continue;
-		last = hash(t->c, t->rows, t->cols, t->r, t->col);
+		last = vt_hash(t);
 		++*nframes;
 		if (!phase_a) continue;
 		int j = at;
@@ -140,9 +157,13 @@ int main(void)
 	CHECK(!ioctl(m, TIOCSWINSZ, &ws));
 	char *slave = ptsname(m);
 	fflush(stdout);
-	pid_t sh = fork();
+	pid_t test = getpid(), sh = fork();
 	CHECK(sh >= 0);
 	if (!sh) {
+		/* a failed CHECK in the test kills the shell, and the shell's
+		   death the editor: no process outlives a failing run */
+		prctl(PR_SET_PDEATHSIG, SIGKILL);
+		if (getppid() != test) _exit(14);
 		/* a job-control shell: a session on the terminal, the editor its
 		   foreground job, continued (fg) whenever it stops; while it is
 		   stopped the second time, the shell has the terminal and the
@@ -151,8 +172,10 @@ int main(void)
 		signal(SIGTTOU, SIG_IGN);
 		int s = open(slave, O_RDWR);
 		if (s < 0) _exit(10);
-		pid_t ed = fork();
+		pid_t shell = getpid(), ed = fork();
 		if (!ed) {
+			prctl(PR_SET_PDEATHSIG, SIGKILL);
+			if (getppid() != shell) _exit(14);
 			setpgid(0, 0);
 			tcsetpgrp(s, getpid());
 			signal(SIGTTOU, SIG_DFL);
