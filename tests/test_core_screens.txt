@@ -60789,3 +60789,142 @@ S f0 [+]                                    18,1           71%
 S 
 M - - -
 E
+C 24 20
+F 090920f09f9880206161616161616161616161616161616161616161616161616161616161612028202c207a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a0ae1839020616161616161616161616161616161616161616161616161616161616161207f20e6bca20a20202020e6bca220cebb780a202020207820c3a920c3a9206c6f6e676572776f726420cebb78200920292e20e1839020e183900a092d2d206162e6bca2206261725f310a09292e0a090a09e6bca22009206c6f6e676572776f7264202c20cebb7820cebb7820f09f98802028206162e6bca20a2d2d20e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792
+F 
+F 
+T wrap
+T k:45G
+T 7H
+T pum:17:2:2
+P
+S 1
+S   1 ა aaaaaaaaaaaaaa
+S   2     漢 λx
+S   3     x é é longer
+S   4         -- ab漢
+S   5         ).
+S   6
+S   7         漢
+S   8 -- 全角全角全角>
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S < 1,1-8          All
+S 
+M - - -
+P
+R
+S      😀 aaaaaaaaaaaa
+S     aaaaaaaaaaaaaaaa
+S     aa ( , zzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S < 1,1-8          Top
+S :set wrap
+M - - -
+P
+S   7 ა aaaaaaaaaaaaaa
+S     aaaaaaaaaaaaaaaa
+S      ^? 漢
+S   6     漢 λx
+S   5     x é é longer
+S     word λx
+S      ). ა ა
+S   4         -- ab漢
+S     bar_1
+S   3         ).
+S   2
+S   1         漢
+S      longerword , λx
+S      λx 😀 ( ab漢
+S 9   -- 全角全角全角>
+S     全角全角全角全角
+S     全角全角全角全角
+S     全角全角全角全角
+S     全角全角全角全角
+S     全角
+S ~
+S ~
+S < 9,10-8         Bot
+R
+M - - -
+P
+S   6 ა aaaaaaaaaaaaaa
+R
+R
+S   5     漢 λx
+S   4     x é é longer
+R
+R
+S   3         -- ab漢
+R
+S   2         ).
+S   1
+S 8           漢
+R
+R
+S   1 -- 全角全角全角>
+R
+R
+R
+R
+R
+R
+R
+S < 8,1-8          Bot
+R
+M - - -
+P
+S   5     漢 λx
+S   4     x é é longer
+S     word λx
+S      ). ა ა
+S   3         -- ab漢
+S     bar_1
+S   2         ).
+S   1
+S 8           漢
+S      longerword , λx
+S      λx 😀 ( ab漢
+S   1 λx2
+S     yyyyyyyyyyyyyyy>
+S     全角全角全角全角
+S     全角全角全角全角
+R
+S     全角
+S ~
+S ~
+S ~
+R
+R
+S < 8,45-49        Bot
+S -- INSERT --
+M - - -
+E

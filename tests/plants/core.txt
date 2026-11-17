@@ -35,3 +35,4 @@ core: core_vcol counts a byte inside a cluster to its end (test_core_contract)~t
 core: the cursor line's height less skipcol (test_core_screens)~test TESTS=core_screens~~src/core/move.c~b.cheight = plines_lim(w, l, 1); }~b.cheight = k; }
 core: the sideways scroll redone for an unmoved cursor (test_core_screens)~test TESTS=core_screens~~src/core/move.c~		int valid = s->sideok && s->sline~		int valid = 0 * s->sideok && s->sline
 core: an insertion drops w_botline (test_core_screens)~test TESTS=core_screens~~src/core/core.c~? 0 : bv & ~BOT_EXACT;~? 0 : 0;
+core: the popup placed before update_screen() (test_core_screens)~test TESTS=core_screens~~src/core/draw.c~	win_drawn(e);                      /* pum_call_update_screen() */~	(void)0;

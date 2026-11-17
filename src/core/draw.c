@@ -244,6 +244,7 @@ void core_pum(Editor *e, const PumItem *items, int n, int sel, size_t col)
 	if (!e->pum) return;
 	Win *w = e->win;
 	core_update(e);
+	win_drawn(e);                      /* pum_call_update_screen() */
 	/* validate_cursor_col() with the cursor at the word's start; the row
 	   stays the cursor's */
 	int off = win_numw(w), width = w->w - off;
