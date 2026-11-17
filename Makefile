@@ -9,7 +9,7 @@
 
 SHELL = /bin/bash
 
-BASE = text undo uni core keys grid tty loop file syntax
+BASE = text undo uni core keys grid tty loop file syntax theme
 # src/win/ (package 9) is the Windows build's, cross-compiled on its own
 MODULES = $(BASE) $(filter-out $(BASE) win,$(patsubst src/%/,%,$(wildcard src/*/)))
 pick = $(if $(wildcard src/$(1)/*.c),$(wildcard src/$(1)/*.c),ref/$(1).c)
