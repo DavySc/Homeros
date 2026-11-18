@@ -19,7 +19,7 @@ typedef struct { long lnum, col, coladd; } Pos;
 static inline int has(const char *s, int c) { return c > 0 && c < 0x80 && strchr(s, c); }
 enum { FORWARD = 1, BACKWARD = -1 };
 enum { MCHAR, MLINE, MBLOCK };
-#define MAXCOL (1L << 40)
+#define MAXCOL 0x7fffffffL   /* Neovim's (INT_MAX), so it fits a Windows long */
 
 /* the editor keys_feed is working on (one at a time: Neovim's curwin) */
 extern Editor *E;
