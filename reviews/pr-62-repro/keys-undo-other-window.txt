@@ -1,0 +1,77 @@
+C 12 40
+F 20202020780a790a
+T sp
+T k:l
+T k:oa<Esc>
+T k:u
+P
+S 1       x
+S   1 y
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S f0                    1,5            All
+S 
+M - - -
+P
+R
+R
+R
+R
+S f0                    1,5            All
+S 1       x
+S   1 y
+R
+R
+R
+R
+S :sp
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+M - - -
+P
+R
+S   1     a
+S   2 y
+R
+S f0 [+]                1,5            All
+S   1     x
+S 2       a
+S   1 y
+R
+R
+S f0 [+]                2,5            All
+S 
+M - - -
+P
+R
+S   1 y
+S ~
+R
+S f0                    1,5            All
+S 1       x
+S   1 y
+S ~
+R
+R
+S f0                    1,5            All
+S 1 line less;...0 seconds ago
+M - - -
+E
