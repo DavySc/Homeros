@@ -21,6 +21,8 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
       RdiSpan v = rdi_voffs_from_line(&r, l.file, l.line);
       for (uint64_t i = 0; i < v.n; i += 1) sum += ((const uint64_t *)v.p)[i];
       sum += rdi_path(&r, rdi_at(&r, RDI_SOURCE_FILES, RdiSourceFile, l.file)->path_node, path, sizeof path);
+      const RdiSymbol *y = rdi_at(&r, RDI_PROCEDURES, RdiSymbol, rdi_at(&r, RDI_SCOPES, RdiScope, rdi_vmap(&r, RDI_SCOPE_VMAP, voff))->proc);
+      sum += rdi_str(&r, y->name).n + rdi_str(&r, y->link_name).n;
     }
     free(rdi);
   }

@@ -1,7 +1,7 @@
 #!/bin/bash
 # The prototype's check. `./check.sh` builds with gcc and clang (-Werror), runs the tests under
 # ASan+UBSan and ThreadSanitizer, checks the TLA+ models (needs TLA_JAR or tlc), compares the reader with RAD's dump of every file in rdi/, and runs each fuzzer for FUZZ_SECONDS (default 20). `./check.sh plants` then proves each check
-# can fail: every line of tests/plants.txt must make its check fail.
+# can fail: every line of tests/plants.txt (or of the file PLANTS names, to rerun a few) must make its check fail.
 set -u
 cd "$(dirname "$0")"
 # a small queue, so the stress test runs with both queues full most of the time
@@ -31,12 +31,12 @@ run() { # run <dir with the sources> <test|specs|oracle|fuzz|all>: 0 when the na
     gcc $FLAGS $SAN "$src"/dbg/*.c "$src"/tests/pdbq.c -o "$b/pdbq" || return 2
     python3 -I "$src/tests/oracle_pdb.py" "$b/pdbq" "$b"/pdb/*.pdb $(ls "$src"/rdi/*.pdb 2>/dev/null) || return 1
     gcc $FLAGS $SAN "$src"/dbg/*.c "$src"/cmd/pdb2rdi.c -o "$b/pdb2rdi" || return 2
-    python3 -I "$src/tests/oracle_conv.py" "$b/pdb2rdi" "$b/rdiq" "$b"/pdb/*.pdb || return 1
+    python3 -I "$src/tests/oracle_conv.py" "$b/pdb2rdi" "$b/rdiq" "$b"/pdb/*.pdb $(ls "$src"/rdi/*.pdb 2>/dev/null) || return 1
   fi
   if [ "$what" = fuzz ] || [ "$what" = all ]; then
     for f in "$src"/tests/fuzz_*.c; do
       clang $FLAGS -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all "$src"/dbg/*.c "$f" -o "$b/fuzz" || return 2
-      mkdir -p "$b/corpus" && cp "$b/seed.rdi" "$b"/pdb/steps-*.pdb "$b/corpus/"
+      mkdir -p "$b/corpus" && cp "$b/seed.rdi" "$b"/pdb/steps-*.pdb "$b"/pdb/bad/* "$b/corpus/"
       (cd "$b" && ./fuzz corpus -max_total_time="${FUZZ_SECONDS:-20}" -max_len=131072 -timeout=20 >fuzz.log 2>&1) || { grep -m2 "ERROR\|SUMMARY" "$b/fuzz.log"; return 1; }
     done
   fi
@@ -56,5 +56,5 @@ while IFS='|' read -r what file find repl; do
   case $? in 0) echo "NOT CAUGHT ($what): $find"; missed=$((missed+1));;
              2) echo "BAD PLANT, does not compile: $find"; missed=$((missed+1));; esac
   rm -rf "$t"
-done < tests/plants.txt
+done < "${PLANTS:-tests/plants.txt}"
 echo "plants: $((total-missed)) of $total caught"; [ $missed = 0 ]

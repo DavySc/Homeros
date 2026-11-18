@@ -35,6 +35,8 @@ static int rec_cmp(const void *a, const void *b)
   for (int i = 0; i < 4; i += 1) if (x[i] != y[i]) return x[i] < y[i] ? -1 : 1;
   return 0;
 }
+/* a name map entry: `index` of a table is filed under a string; nothing is filed under the empty string */
+static void named(Buf *pairs, uint64_t kind, uint32_t string, uint64_t index) { if (string) rec(pairs, kind, string, index, 0); }
 static uint64_t *sorted(Buf *b, uint64_t *count)
 {
   *count = b->n / 32;
@@ -76,18 +78,21 @@ static uint32_t intern(Names *m, const void *key, uint32_t len)
 
 /* ---- the output ---- */
 
+enum { S_END = 0x0006, S_THUNK32 = 0x1102, S_BLOCK32 = 0x1103, S_PUB32 = 0x110e, S_LPROC32 = 0x110f, S_GPROC32 = 0x1110 };   /* CV_SymKind */
+
 typedef struct {
   Buf s[RDI_SECTIONS];
   Names strings, nodes, files;
   Buf pairs;                 /* name map entries: (kind, string, index) */
+  Buf scopes;                /* what each scope covers: (first, ~end, scope) */
 } Out;
 
 static bool slash(uint8_t c) { return c == '/' || c == '\\'; }
 
 /* The path's node in the tree of path parts, made if new. Parts split at either slash, a
    leading '/' stays on the first part, "." stays and ".." goes up (rdim_bake_path_tree_insert;
-   that function never returns for a path that starts with a backslash, this one skips it). */
-/* the node for `path`, taken from the folder `node` */
+   that function never returns for a path that starts with a backslash, this one skips it).
+   A relative path starts from `node`. */
 static uint32_t path_node(Out *o, uint32_t node, PdbSpan path)
 {
   for (uint32_t i = 0; i < path.n;) {
@@ -133,6 +138,41 @@ static uint32_t source_file(Out *o, const PdbLineBlock *b, uint32_t folder)
     memcpy(add(sums, b->sum.n), b->sum.p, b->sum.n);
   }
   return file;
+}
+
+/* A scope of `proc` inside `parent` that covers [first, opl), or nothing when it has no address. */
+static uint32_t scope(Out *o, uint32_t proc, uint32_t parent, uint64_t first, uint64_t opl)
+{
+  uint32_t idx = COUNT(o->s[RDI_SCOPES], RdiScope), at = COUNT(o->s[RDI_SCOPE_VOFFS], uint64_t);
+  bool covers = first != 0 && first < opl;
+  *(RdiScope *)add(&o->s[RDI_SCOPES], sizeof(RdiScope)) = (RdiScope){.proc = proc, .parent = parent, .voff_first = at, .voff_opl = at + 2 * covers};
+  if (covers) {
+    uint64_t *v = add(&o->s[RDI_SCOPE_VOFFS], 16);
+    v[0] = first, v[1] = opl;
+    rec(&o->scopes, first, ~opl, idx, 0);
+  }
+  return idx;
+}
+
+/* A procedure and its root scope. */
+static uint32_t procedure(Out *o, RdiSymbol y, uint64_t first, uint64_t opl)
+{
+  uint32_t idx = COUNT(o->s[RDI_PROCEDURES], RdiSymbol);
+  y.root_scope = scope(o, idx, 0, first, opl);
+  *(RdiSymbol *)add(&o->s[RDI_PROCEDURES], sizeof y) = y;
+  named(&o->pairs, RDI_NAMES_PROCEDURES, y.name, idx);
+  named(&o->pairs, RDI_NAMES_LINK_PROCEDURES, y.link_name, idx);
+  return idx;
+}
+
+/* Each record's children as a list in order of creation. A record is uint32s with its
+   parent, first child and next sibling at 1, 2 and 3; records without a parent are not listed. */
+static void link_children(Buf *table, uint64_t size)
+{
+  for (uint64_t k = table->n / size - 1; k > 0; k -= 1) {
+    uint32_t *r = (uint32_t *)(table->p + k * size), *parent = (uint32_t *)(table->p + r[1] * size);
+    if (r[1] != 0) r[3] = parent[2], parent[2] = (uint32_t)k;
+  }
 }
 
 /* A vmap from ranges (first, ~end, index): at each offset the answer is the covering range
@@ -218,10 +258,10 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
   Pdb pdb;
   if (!pdb_open(&pdb, data, size)) return 0;
   Out o = {0};
-  Buf lines = {0}, maps = {0}, ranges = {0}, scratch = {0};
+  Buf lines = {0}, maps = {0}, ranges = {0}, scratch = {0}, open = {0}, links = {0};
   /* index 0 of every table is the record that means "none" */
-  static const int tables[] = {RDI_BINARY_SECTIONS, RDI_FILE_PATH_NODES, RDI_SOURCE_FILES, RDI_LINE_TABLES, RDI_SOURCE_LINE_MAPS, RDI_UNITS};
-  static const uint8_t table_size[] = {sizeof(RdiSection), sizeof(RdiPathNode), sizeof(RdiSourceFile), sizeof(RdiLineTable), sizeof(RdiSourceLineMap), sizeof(RdiUnit)};
+  static const int tables[] = {RDI_BINARY_SECTIONS, RDI_FILE_PATH_NODES, RDI_SOURCE_FILES, RDI_LINE_TABLES, RDI_SOURCE_LINE_MAPS, RDI_UNITS, RDI_SCOPES, RDI_PROCEDURES};
+  static const uint8_t table_size[] = {sizeof(RdiSection), sizeof(RdiPathNode), sizeof(RdiSourceFile), sizeof(RdiLineTable), sizeof(RdiSourceLineMap), sizeof(RdiUnit), sizeof(RdiScope), sizeof(RdiSymbol)};
   for (unsigned i = 0; i < sizeof tables / sizeof *tables; i += 1) add(&o.s[tables[i]], table_size[i]);
   intern(&o.strings, "", 0);
   intern(&o.nodes, (uint32_t[2]){0, 0}, 8);
@@ -238,19 +278,20 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
   }
 
   PdbModule m;
+  PdbSpan syms, c13, d;
+  uint16_t kind;
   uint64_t order = 0;
   for (uint32_t at = 0; pdb_module(&pdb, &at, &m);) {
     /* a unit is named by the last part of its object file's path (rdi_from_codeview.c) */
     PdbSpan name = m.name;
     for (uint32_t i = 0; i + 1 < m.name.n; i += 1) if (slash(m.name.p[i])) name = (PdbSpan){m.name.p + i + 1, m.name.n - i - 1};
     RdiUnit unit = {.name = intern(&o.strings, name.p, name.n), .object_path = path_node(&o, 0, m.name), .archive_path = path_node(&o, 0, m.obj)};
-    rec(&o.pairs, RDI_NAMES_UNITS, unit.name, COUNT(o.s[RDI_UNITS], RdiUnit), 0);
+    named(&o.pairs, RDI_NAMES_UNITS, unit.name, COUNT(o.s[RDI_UNITS], RdiUnit));
 
     /* Lines: every record, and after each block a record that ends it. Sorted by offset, an
        end sorts before a line at the same offset and later lines after earlier ones, because
        our reader takes the last record at an offset. RAD sorts by offset only, and its reader
        can then answer "no line" at the first byte of a function that follows another without a gap. */
-    PdbSpan syms, c13;
     uint8_t *stream = pdb_module_stream(&pdb, &m, &syms, &c13);
     PdbLineBlock b;
     lines.n = 0;
@@ -263,7 +304,6 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
       }
       rec(&lines, b.opl, order++, 0, 0);
     }
-    free(stream);
     uint64_t n, *l = sorted(&lines, &n);
     if (n) {
       unit.line_table = COUNT(o.s[RDI_LINE_TABLES], RdiLineTable);
@@ -276,6 +316,32 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
       *(uint64_t *)add(&o.s[RDI_LINE_VOFFS], 8) = UINT64_MAX;   /* RAD's reader looks one past the last */
       *(RdiLineTable *)add(&o.s[RDI_LINE_TABLES], sizeof t) = t;
     }
+
+    /* Procedures and scopes (rdi_from_codeview.c, "symbols pass 2"): a procedure opens its root
+       scope, a block opens a scope inside the open one, S_END closes the open one. A thunk is a
+       procedure that opens nothing. `open` is the stack of open scopes; every module leaves it empty. */
+    unit.procs_first = COUNT(o.s[RDI_PROCEDURES], RdiSymbol);
+    for (uint32_t at = 0; pdb_symbol(syms, &at, &kind, &d);) {
+      uint32_t top = open.n ? *LAST(open, uint32_t) : 0, made = 0;
+      if (kind == S_END && open.n) open.n -= 4;
+      else if ((kind == S_GPROC32 || kind == S_LPROC32) && d.n >= 35) {   /* CV_SymProc32 */
+        uint64_t voff = pdb_voff(&pdb, le16(d.p + 32), le32(d.p + 28));
+        PdbSpan name = pdb_string(d, &(uint32_t){35});
+        uint32_t proc = procedure(&o, (RdiSymbol){.name = intern(&o.strings, name.p, name.n), .container_flags = kind == S_GPROC32 ? 0x80 : 0}, voff, voff + le32(d.p + 12));
+        rec(&links, voff, 0, proc, 0);
+        made = COUNT(o.s[RDI_SCOPES], RdiScope) - 1;
+      } else if (kind == S_THUNK32 && d.n >= 21) {                         /* CV_SymThunk32 */
+        uint64_t voff = pdb_voff(&pdb, le16(d.p + 16), le32(d.p + 12));
+        PdbSpan name = pdb_string(d, &(uint32_t){21});
+        procedure(&o, (RdiSymbol){.name = intern(&o.strings, name.p, name.n), .flags = 2}, voff, voff + le16(d.p + 18));
+      } else if (kind == S_BLOCK32 && d.n >= 18) {                         /* CV_SymBlock32 */
+        uint64_t voff = pdb_voff(&pdb, le16(d.p + 16), le32(d.p + 12));
+        made = scope(&o, ((RdiScope *)o.s[RDI_SCOPES].p)[top].proc, top, voff, voff + le32(d.p + 8));
+      }
+      if (made) *(uint32_t *)add(&open, 4) = made;
+    }
+    unit.procs_count = COUNT(o.s[RDI_PROCEDURES], RdiSymbol) - unit.procs_first;
+    free(stream);
     *(RdiUnit *)add(&o.s[RDI_UNITS], sizeof unit) = unit;
   }
 
@@ -287,8 +353,43 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
   }
   vmap_build(&o.s[RDI_UNIT_VMAP], &ranges);
 
+  /* Link names (rdi_from_codeview.c, "build link name map" and "produce stub procedures from all
+     pub32 symbols"). At one offset, sorted: the procedures that start there, then the public
+     symbols in file order. The procedures take the name of the last public symbol. Where no
+     procedure starts, each public symbol of code becomes a procedure that runs to the next
+     boundary of the unit map, which is the end of its contribution. (RAD gives a symbol outside
+     every contribution one byte; no file we have holds one, and here it runs to the next
+     contribution, or gets no procedure after the last.) */
+  uint8_t *globals = pdb_globals(&pdb, &syms);
+  for (uint32_t at = 0; pdb_symbol(syms, &at, &kind, &d);) {
+    uint64_t voff = kind == S_PUB32 && d.n >= 10 ? pdb_voff(&pdb, le16(d.p + 8), le32(d.p + 4)) : 0;   /* CV_SymPub32 */
+    if (voff == 0) continue;
+    PdbSpan name = pdb_string(d, &(uint32_t){10});
+    rec(&links, voff, ++order, intern(&o.strings, name.p, name.n), le32(d.p) & 3);   /* code or function */
+  }
+  free(globals);
+  uint64_t n, *l = sorted(&links, &n);
+  const RdiVMap *held = (const RdiVMap *)o.s[RDI_UNIT_VMAP].p;   /* null when there are no contributions: indexed, never offset */
+  uint32_t next = 0, none = COUNT(o.s[RDI_UNIT_VMAP], RdiVMap);
+  for (uint64_t i = 0, first = 0; i < n; first = i) {
+    while (i < n && l[4 * i] == l[4 * first]) i += 1;
+    uint64_t voff = l[4 * first], last = i - 1;
+    if (l[4 * last + 1] == 0) continue;                    /* no public symbol here */
+    while (next < none && held[next].voff <= voff) next += 1;
+    for (uint64_t j = first; j < i; j += 1) {
+      if (l[4 * j + 1] == 0) {
+        RdiSymbol *y = (RdiSymbol *)o.s[RDI_PROCEDURES].p + l[4 * j + 2];
+        y->link_name = (uint32_t)l[4 * last + 2];
+        named(&o.pairs, RDI_NAMES_LINK_PROCEDURES, y->link_name, l[4 * j + 2]);
+      } else if (l[4 * first + 1] != 0 && l[4 * j + 3] != 0 && next < none)
+        procedure(&o, (RdiSymbol){.name = (uint32_t)l[4 * j + 2], .link_name = (uint32_t)l[4 * j + 2]}, voff, held[next].voff);
+    }
+  }
+  vmap_build(&o.s[RDI_SCOPE_VMAP], &o.scopes);
+  link_children(&o.s[RDI_SCOPES], sizeof(RdiScope));
+
   /* per source file: its lines that have code, ascending, each with its offsets */
-  uint64_t n, *r = sorted(&maps, &n);
+  uint64_t *r = sorted(&maps, &n);
   for (uint32_t file = 1; file < COUNT(o.s[RDI_SOURCE_FILES], RdiSourceFile); file += 1) add(&o.s[RDI_SOURCE_LINE_MAPS], sizeof(RdiSourceLineMap));
   for (uint64_t i = 0; i < n; i += 1) {
     RdiSourceLineMap *map = (RdiSourceLineMap *)o.s[RDI_SOURCE_LINE_MAPS].p + r[4 * i];
@@ -306,17 +407,12 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
     *LAST(o.s[RDI_SOURCE_LINE_RANGES], uint32_t) = ++map->voff_count;
   }
 
-  /* each node's children as a list, in order of creation; each source file's normal path */
-  RdiPathNode *nodes = (RdiPathNode *)o.s[RDI_FILE_PATH_NODES].p;
-  for (uint32_t k = COUNT(o.s[RDI_FILE_PATH_NODES], RdiPathNode) - 1; k > 0; k -= 1) {
-    nodes[k].next_sibling = nodes[nodes[k].parent].first_child;
-    nodes[nodes[k].parent].first_child = k;
-  }
-  nodes[0].first_child = 0;
+  link_children(&o.s[RDI_FILE_PATH_NODES], sizeof(RdiPathNode));
+  /* each source file's normal path */
   for (uint32_t file = 1; file < COUNT(o.s[RDI_SOURCE_FILES], RdiSourceFile); file += 1) {
     uint32_t path = normal_path(&o, ((RdiSourceFile *)o.s[RDI_SOURCE_FILES].p)[file].path_node, &scratch);
     ((RdiSourceFile *)o.s[RDI_SOURCE_FILES].p)[file].path = path;
-    rec(&o.pairs, RDI_NAMES_SOURCE_PATHS, path, file, 0);
+    named(&o.pairs, RDI_NAMES_SOURCE_PATHS, path, file);
   }
   name_maps(&o);
   o.s[RDI_STRING_DATA] = o.strings.keys, o.s[RDI_STRING_TABLE] = o.strings.at;
@@ -332,7 +428,7 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
     if (o.s[k].n) memcpy(add(&file, (o.s[k].n + 7) / 8 * 8), o.s[k].p, o.s[k].n);
     free(o.s[k].p);
   }
-  Buf *rest[] = {&o.strings.slots, &o.nodes.keys, &o.nodes.at, &o.nodes.slots, &o.files.keys, &o.files.at, &o.files.slots, &o.pairs, &lines, &maps, &ranges, &scratch};
+  Buf *rest[] = {&o.strings.slots, &o.nodes.keys, &o.nodes.at, &o.nodes.slots, &o.files.keys, &o.files.at, &o.files.slots, &o.pairs, &o.scopes, &lines, &maps, &ranges, &scratch, &open, &links};
   for (unsigned i = 0; i < sizeof rest / sizeof *rest; i += 1) free(rest[i]->p);
   pdb_close(&pdb);
   *out_size = file.n;

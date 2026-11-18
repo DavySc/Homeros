@@ -16,8 +16,7 @@ static PdbSpan part(PdbSpan s, uint64_t off, uint64_t n)
   return (PdbSpan){s.p + off, (uint32_t)n};
 }
 
-/* the zero-terminated string at *at in s; moves *at past it. Empty at or past the end of s. */
-static PdbSpan string_at(PdbSpan s, uint32_t *at)
+PdbSpan pdb_string(PdbSpan s, uint32_t *at)
 {
   uint32_t start = *at < s.n ? *at : s.n, end = start;
   while (end < s.n && s.p[end] != 0) end += 1;
@@ -38,7 +37,7 @@ static uint16_t named_stream(PdbSpan info, const char *name)
   PdbSpan pairs = part(info, at, 8 * (uint64_t)count);
   for (uint32_t i = 0; i + 8 <= pairs.n; i += 8) {
     uint32_t off = le32(pairs.p + i);
-    PdbSpan s = string_at(names, &off);
+    PdbSpan s = pdb_string(names, &off);
     if (s.n == strlen(name) && memcmp(s.p, name, s.n) == 0) return le16(pairs.p + i + 4);
   }
   return 0xffff;
@@ -102,10 +101,27 @@ bool pdb_module(const Pdb *p, uint32_t *at, PdbModule *m)
   *m = (PdbModule){.first = contrib_at(h + 4), .stream = le16(h + 34), .sym_size = le32(h + 36),
                    .c11_size = le32(h + 40), .c13_size = le32(h + 44)};
   *at += MODULE_HEADER;
-  m->name = string_at(p->mods, at);
-  m->obj = string_at(p->mods, at);
+  m->name = pdb_string(p->mods, at);
+  m->obj = pdb_string(p->mods, at);
   *at = (*at + 3) / 4 * 4;                              /* records are 4-aligned */
   if (*at > p->mods.n) *at = p->mods.n;
+  return true;
+}
+
+uint8_t *pdb_globals(const Pdb *p, PdbSpan *syms)
+{
+  uint8_t *stream = msf_stream(&p->msf, le16(p->dbi + 20), &syms->n);   /* PDB_DbiHeader.sym_sn */
+  syms->p = stream;
+  return stream;
+}
+
+bool pdb_symbol(PdbSpan syms, uint32_t *at, uint16_t *kind, PdbSpan *data)
+{
+  if (syms.n - *at < 4) return false;                    /* *at <= syms.n always */
+  uint16_t size = le16(syms.p + *at);                    /* counts the kind and the data (CV_RecHeader) */
+  *kind = le16(syms.p + *at + 2);
+  *data = part(syms, (uint64_t)*at + 4, size < 2 ? 0 : size - 2);
+  *at = (uint32_t)(data->p - syms.p) + data->n;
   return true;
 }
 
@@ -155,7 +171,7 @@ bool pdb_line_block(const Pdb *p, PdbSpan c13, PdbLineCursor *c, PdbLineBlock *b
   *b = (PdbLineBlock){.base = c->base, .opl = c->opl, .lines = file + 12, .count = le32(file + 4) < most ? le32(file + 4) : most};
   if (sum.n == 6) {
     name_at = le32(sum.p);
-    b->file = string_at(p->strings, &name_at);
+    b->file = pdb_string(p->strings, &name_at);
     b->sum_kind = sum.p[5];
     b->sum = part(c->sums, (uint64_t)sum_at + 6, sum.p[4]);
   }

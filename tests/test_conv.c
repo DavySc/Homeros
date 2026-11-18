@@ -1,4 +1,4 @@
-/* The vmap builder against its definition on random ranges, nested or not: at every offset the
+/* A scope covers nothing when it has no address or no bytes. The vmap builder against its definition on random ranges, nested or not: at every offset the
    answer is the covering range that sorts last, 0 where none covers, and keys strictly ascend. */
 #define rdi_from_pdb rdi_from_pdb_under_test   /* conv.c is compiled into this file to reach vmap_build */
 #include "../dbg/conv.c"
@@ -6,6 +6,11 @@
 
 int main(void)
 {
+  Out o = {0};
+  scope(&o, 1, 0, 0, 16), scope(&o, 1, 0, 16, 16), scope(&o, 1, 0, 16, 32);
+  const RdiScope *made = (const RdiScope *)o.s[RDI_SCOPES].p;
+  if (o.scopes.n != 32 || made[0].voff_opl != made[0].voff_first || made[1].voff_opl != made[1].voff_first || made[2].voff_opl != made[2].voff_first + 2) { printf("scope: a range for a scope without address or bytes\n"); return 1; }
+  free(o.s[RDI_SCOPES].p), free(o.s[RDI_SCOPE_VOFFS].p), free(o.scopes.p);
   uint32_t seed = 1;
   for (int round = 0; round < 200000; round += 1) {
     Buf ranges = {0}, out = {0};

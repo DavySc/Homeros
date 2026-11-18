@@ -5,13 +5,13 @@ fuzz | dbg/rdi.c | sec[k].encoded_size > size - sec[k].off | sec[k].encoded_size
 fuzz | dbg/rdi.c | if (count > n - first) count = n - first; |
 test | dbg/rdi.c | if (off > opl) off = opl; |
 test | dbg/rdi.c | uint64_t above = lower_bound(keys, n, stride, 8, voff + 1); | uint64_t above = lower_bound(keys, n, stride, 8, voff) + 1;
-test | dbg/rdi.c | return above == 0 || above == n ? n : above - 1; | return above == 0 ? n : above - 1;
+test | dbg/rdi.c | return above == 0 \p\p above == n ? n : above - 1; | return above == 0 ? n : above - 1;
 test | dbg/rdi.c | if (i == nums.n) i -= 1; | if (i == nums.n) return (RdiSpan){zero, 0};
-test | dbg/rdi.c | if (s.n != len || memcmp(s.p, name, len) != 0) continue; | if (s.n < len || memcmp(s.p, name, len) != 0) continue;
+test | dbg/rdi.c | if (s.n != len \p\p memcmp(s.p, name, len) != 0) continue; | if (s.n < len \p\p memcmp(s.p, name, len) != 0) continue;
 test | dbg/rdi.c | hash = hash * 33 + ((const uint8_t *)bytes)[i]; | hash = hash * 31 + ((const uint8_t *)bytes)[i];
 oracle | dbg/rdi.c | if (i == nums.n) i -= 1; | if (i == nums.n) i -= 1; else if (i > 0) i -= 1;
 oracle | dbg/rdi.c | hash = hash * 33 + ((const uint8_t *)bytes)[i]; | hash = hash * 33 ^ ((const uint8_t *)bytes)[i];
-oracle | dbg/rdi.c | return above == 0 || above == n ? n : above - 1; | return above == 0 || above == n ? n : above == 1 ? 0 : above - 2;
+oracle | dbg/rdi.c | return above == 0 \p\p above == n ? n : above - 1; | return above == 0 \p\p above == n ? n : above == 1 ? 0 : above - 2;
 oracle | dbg/rdi.h | typedef struct { uint32_t proc, parent, first_child, next_sibling, | typedef struct { uint32_t proc, first_child, parent, next_sibling,
 oracle | dbg/rdi.h | uint32_t container, type, root_scope, link_name; } RdiSymbol; | uint32_t container, root_scope, type, link_name; } RdiSymbol;
 test | dbg/queue.c |   if (q->wake) q->wake(q->wake_arg); |
@@ -22,7 +22,7 @@ test | dbg/queue.c | uint32_t first = n < QUEUE_BYTES - start ? n : QUEUE_BYTES 
 test | dbg/queue.c |   pthread_mutex_lock(&q->lock);\n  /* test and wait |   /* test and wait
 test | dbg/queue.c |     q->head = (q->head + sizeof n + n) % QUEUE_BYTES; |     q->head = q->head + sizeof n + n;
 fuzz | dbg/msf.c |     if (pn >= m->pages) { |     if (pn > m->pages) {
-fuzz | dbg/msf.c | if (n == 0 \p\p n > m->size \p\p count > have) return 0; | if (n == 0 \p\p n > m->size) return 0;
+fuzz | dbg/msf.c | if (n == 0 \p\p n > m->size \p\p count > have) return 0; | if (n == 0 \p\p n > m->size \p\p count > have + 1) return 0;
 fuzz | dbg/msf.c | \p\p le32(m->dir) > (m->dir_size - 4) / 4) { | ) {
 oracle | dbg/msf.c | for (uint32_t j = 0; j < i; j += 1) first += pages_for(m, stream_size(m, j)); | for (uint32_t j = 0; j < i; j += 1) first += pages_for(m, le32(m->dir + 4 + 4 * (uint64_t)j));
 oracle | dbg/msf.c | uint64_t dir_pages = pages_for(m, m->dir_size), map_pages = pages_for(m, dir_pages * 4); | uint64_t dir_pages = 1, map_pages = 1;
@@ -37,7 +37,7 @@ oracle | dbg/pdb.c | for (int i = 0; i < 6; i += 1) at += sizes[i]; | for (int i
 oracle | dbg/pdb.c | .stream = le16(h + 34), | .stream = le16(h + 32),
 fuzz | dbg/pdb.c |   if (c13.n - *next < 8) return false; |   if (c13.n == *next) return false;
 fuzz | dbg/pdb.c | .count = le32(file + 4) < most ? le32(file + 4) : most}; | .count = le32(file + 4) < most + 1 ? le32(file + 4) : most + 1};
-fuzz | dbg/pdb.c |   if (sum.n == 6) { |   if (sum.n > 0) {
+test | dbg/pdb.c |   if (sum.n == 6) { |   if (sum.n > 0) {
 oracle | dbg/pdb.c |     c->item = le16(data.p + 6) & 1 ? 12 : 8; |     c->item = 8;
 oracle | dbg/pdb.c |   c->at += 12 + c->item * b->count; |   c->at = c->sub_opl;
 oracle | dbg/pdb.c |     c->base = pdb_voff(p, le16(data.p + 4), le32(data.p)); |     c->base = pdb_voff(p, le16(data.p + 4), 0);
@@ -57,4 +57,29 @@ oracle | dbg/conv.c |     b->flags = (s.flags >> 30 & 1) \p (s.flags >> 31 & 1) 
 oracle | dbg/conv.c |   if (m->slots.n < (uint64_t)(count + 1) * 8) { |   if (m->slots.n == 0) {
 oracle | dbg/rdi.c |         if (at > 0 && --at < cap) buf[at] = '/'; |         if (at > 0 && --at < cap) buf[at] = '-';
 test | dbg/rdi.c |     for (uint64_t steps = r->s[RDI_FILE_PATH_NODES].n; k != 0 && steps > 0; steps -= 1) { |     for (uint64_t steps = 1; k != 0 && steps > 0; steps += 1) {
-oracle | dbg/conv.c | path_node(o, rooted ? 0 : folder, b->file) | path_node(o, 0, b->file)
+oracle | dbg/conv.c | path_node(o, rooted ? 0 : folder, b->file) | path_node(o, rooted ? folder : 0, b->file)
+oracle | dbg/conv.c | if (kind == S_END && open.n) open.n -= 4; | if (kind == S_END && open.n) open.n -= 0;
+oracle | dbg/conv.c | [top].proc, top, voff, voff + le32(d.p + 8)); | [top].proc, 0, voff, voff + le32(d.p + 8));
+oracle | dbg/conv.c | made = scope(&o, ((RdiScope *)o.s[RDI_SCOPES].p)[top].proc, top, | made = scope(&o, 0, top,
+oracle | dbg/conv.c | y->link_name = (uint32_t)l[4 * last + 2]; | y->link_name = (uint32_t)l[4 * (first + 1) + 2];
+oracle | dbg/conv.c | voff, held[next].voff); | voff, voff + 1);
+oracle | dbg/conv.c | .name = intern(&o.strings, name.p, name.n), .flags = 2} | .name = intern(&o.strings, name.p, name.n)}
+oracle | dbg/conv.c | .container_flags = kind == S_GPROC32 ? 0x80 : 0} | .container_flags = 0x80}
+oracle | dbg/pdb.c | size < 2 ? 0 : size - 2); | size);
+oracle | dbg/conv.c | voff, voff + le32(d.p + 12)); | voff, voff + le32(d.p + 16));
+oracle | dbg/conv.c | le32(d.p) & 3); | le32(d.p) \p 1);
+oracle | dbg/conv.c | } else if (l[4 * first + 1] != 0 && l[4 * j + 3] != 0 && next < none) | } else if (l[4 * j + 3] != 0 && next < none)
+oracle | dbg/conv.c | if (r[1] != 0) r[3] = parent[2], parent[2] = (uint32_t)k; | r[3] = parent[2], parent[2] = (uint32_t)k;
+oracle | dbg/conv.c | if (r[1] != 0) r[3] = parent[2], parent[2] = (uint32_t)k; | if (r[1] != 0) r[3] = 0, parent[2] = (uint32_t)k;
+oracle | dbg/conv.c | while (next < none && held[next].voff <= voff) next += 1; | while (next < none && held[next].voff < voff) next += 1;
+oracle | dbg/conv.c | if (voff == 0) continue; |
+oracle | dbg/conv.c | uint64_t index) { if (string) rec | uint64_t index) { rec
+oracle | dbg/conv.c | unit.procs_count = COUNT(o.s[RDI_PROCEDURES], RdiSymbol) - unit.procs_first; |
+oracle | dbg/conv.c |   named(&o->pairs, RDI_NAMES_PROCEDURES, y.name, idx); |
+oracle | dbg/conv.c | named(&o.pairs, RDI_NAMES_LINK_PROCEDURES, y->link_name, l[4 * j + 2]); |
+oracle | dbg/conv.c |   named(&o->pairs, RDI_NAMES_LINK_PROCEDURES, y.link_name, idx); |
+oracle | dbg/conv.c | rec(&links, voff, ++order, intern | rec(&links, voff, 1, intern
+oracle | dbg/conv.c | if (l[4 * last + 1] == 0) continue; |
+fuzz | dbg/conv.c | && l[4 * j + 3] != 0 && next < none) | && l[4 * j + 3] != 0)
+test | dbg/conv.c | bool covers = first != 0 && first < opl; | bool covers = first < opl;
+test | dbg/conv.c | bool covers = first != 0 && first < opl; | bool covers = first != 0;

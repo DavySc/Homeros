@@ -19,7 +19,7 @@ int main(int argc, char **argv)
   CHECK(rdi_open(&r, buf, n));
   RdiSpan s = rdi_str(&r, 1);
   CHECK(s.n == 3 && memcmp(s.p, "a.c", 3) == 0);
-  CHECK(rdi_str(&r, 2).n == 4 && rdi_str(&r, 3).n == 0 && rdi_str(&r, 0).n == 0);
+  CHECK(rdi_str(&r, 2).n == 4 && rdi_str(&r, 3).n == 5 && rdi_str(&r, 4).n == 0 && rdi_str(&r, 0).n == 0);
   /* a string table that runs backwards yields the empty string (the section table starts at byte 24,
      32 bytes a section, the offset 8 bytes in) */
   uint32_t *table = (uint32_t *)((uint8_t *)buf + ((uint64_t *)((uint8_t *)buf + 24 + 3 * 32 + 8))[0]);
@@ -48,6 +48,7 @@ int main(int argc, char **argv)
   CHECK(rdi_path(&r, 2, path, 8) == 8 && memcmp(path, "main/a.c", 8) == 0);
   CHECK(rdi_path(&r, 2, path, 4) == 8 && memcmp(path, "main", 4) == 0 && rdi_path(&r, 0, path, 8) == 0);
   CHECK(rdi_path(&r, 3, path, 8) > 8);
+  CHECK(rdi_vmap(&r, RDI_GLOBAL_VMAP, 0x2000) == 1 && rdi_vmap(&r, RDI_GLOBAL_VMAP, 0x2010) == 0 && rdi_vmap(&r, RDI_GLOBAL_VMAP, 0x1fff) == 0);
   /* names */
   RdiSpan m = rdi_matches(&r, RDI_NAMES_PROCEDURES, "main", 4);
   CHECK(m.n == 1 && *(const uint32_t *)m.p == 1);

@@ -34,6 +34,15 @@ PdbContrib pdb_contrib(const Pdb *p, uint32_t i);          /* i < pdb_contribs(p
 /* The module's stream, which the caller frees, with its symbol records and its line info (C13). */
 uint8_t *pdb_module_stream(const Pdb *p, const PdbModule *m, PdbSpan *syms, PdbSpan *c13);
 
+/* The stream of symbol records that belong to no module (public symbols among them), which the
+   caller frees. */
+uint8_t *pdb_globals(const Pdb *p, PdbSpan *syms);
+/* The symbol record at *at of syms (start at 0): its kind and the bytes after the kind. Moves
+   *at to the next record. False at the end. */
+bool pdb_symbol(PdbSpan syms, uint32_t *at, uint16_t *kind, PdbSpan *data);
+/* the zero-terminated string at *at in s; moves *at past it. Empty at or past the end of s. */
+PdbSpan pdb_string(PdbSpan s, uint32_t *at);
+
 /* A run of line records for one source file inside one contiguous piece of code. Record i is
    8 bytes: lines + 8*i holds the offset from `base`, then the line number in the low 24 bits. */
 typedef struct {

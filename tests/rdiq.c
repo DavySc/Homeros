@@ -1,7 +1,8 @@
 /* Answers lookup queries from stdin against an RDI file, one answer line per query, so
    tests/oracle_rdi.py can compare the reader with RAD's own dump of the same file.
    v <section> <voff> | l <voff> | s <file> <line> | n <kind> <hex name> | t <string idx> |
-   p <procedure idx> | c <scope idx> | L <voff> | S <line> <hex path> | U <voff> | B <section> */
+   p <procedure idx> | c <scope idx> | L <voff> | S <line> <hex path> | U <voff> | B <section> |
+   N <section> | D <scope idx> | u <unit idx> */
 #include "../dbg/rdi.h"
 #include "load.h"
 #include <stdbool.h>
@@ -59,6 +60,24 @@ int main(int argc, char **argv)
       const RdiSection *b = rdi_at(&r, RDI_BINARY_SECTIONS, RdiSection, a);
       s = rdi_str(&r, b->name);
       printf("%.*s %u %llx %llx %llx %llx", (int)s.n, (const char *)s.p, b->flags, (unsigned long long)b->voff, (unsigned long long)b->voff_opl, (unsigned long long)b->foff, (unsigned long long)b->foff_opl);
+    } else if (op == 'N') printf("%llu", (unsigned long long)r.s[a < RDI_SECTIONS ? a : 0].n);
+    else if (op == 'D') {     /* a scope by meaning: parent, inline site, child, sibling, ranges; then its procedure's flags, name, link name */
+      const RdiScope *c = rdi_at(&r, RDI_SCOPES, RdiScope, a);
+      const RdiSymbol *y = rdi_at(&r, RDI_PROCEDURES, RdiSymbol, c->proc);
+      printf("%u %u %u %u %u", c->parent, c->inline_site, c->first_child, c->next_sibling, c->proc);
+      s = rdi_run(&r, RDI_SCOPE_VOFFS, c->voff_first, c->voff_opl - c->voff_first);
+      for (uint64_t i = 0; i < s.n; i += 1) printf(" %llx", (unsigned long long)((const uint64_t *)s.p)[i]);
+      printf("\t%u %u %d\t", y->flags, y->container_flags, rdi_at(&r, RDI_SCOPES, RdiScope, y->root_scope) == c);
+      s = rdi_str(&r, y->name);
+      fwrite(s.p, 1, s.n, stdout);
+      putchar('\t');
+      s = rdi_str(&r, y->link_name);
+      fwrite(s.p, 1, s.n, stdout);
+    } else if (op == 'u') {   /* a unit: its procedures, then its name */
+      const RdiUnit *u = rdi_at(&r, RDI_UNITS, RdiUnit, a);
+      s = rdi_str(&r, u->name);
+      printf("%u %u ", u->procs_first, u->procs_count);
+      fwrite(s.p, 1, s.n, stdout);
     } else if (op == 't') { s = rdi_str(&r, (uint32_t)a); fwrite(s.p, 1, s.n, stdout); }
     putchar('\n');
   }
