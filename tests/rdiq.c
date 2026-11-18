@@ -3,19 +3,14 @@
    v <section> <voff> | l <voff> | s <file> <line> | n <kind> <hex name> | t <string idx> |
    p <procedure idx> | c <scope idx> */
 #include "../dbg/rdi.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "load.h"
 
 int main(int argc, char **argv)
 {
-  FILE *f = argc == 2 ? fopen(argv[1], "rb") : 0;
-  if (!f) return 2;
-  fseek(f, 0, SEEK_END);
-  long size = ftell(f);
-  rewind(f);
-  uint64_t *buf = malloc((size_t)size + 8);
+  uint64_t size;
+  void *buf = argc == 2 ? load(argv[1], &size) : 0;
   Rdi r;
-  if (fread(buf, 1, (size_t)size, f) != (size_t)size || !rdi_open(&r, buf, (uint64_t)size)) return 2;
+  if (!buf || !rdi_open(&r, buf, size)) return 2;
   static char hex[1 << 16];
   char op;
   unsigned long long a, b;

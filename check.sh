@@ -26,6 +26,8 @@ run() { # run <dir with the sources> <test|specs|oracle|fuzz|all>: 0 when the na
     for f in "$src"/rdi/*.rdi; do python3 -I "$src/tests/oracle_rdi.py" "$b/rdiq" "$f" "$f.dump.txt.gz" || return 1; done
     gcc $FLAGS $SAN "$src"/dbg/*.c "$src"/tests/msfq.c -o "$b/msfq" || return 1
     "$src/tests/oracle_msf.sh" "$b/msfq" "$b"/pdb/*.pdb $(ls "$src"/rdi/*.pdb 2>/dev/null) || return 1
+    gcc $FLAGS $SAN "$src"/dbg/*.c "$src"/tests/pdbq.c -o "$b/pdbq" || return 1
+    python3 -I "$src/tests/oracle_pdb.py" "$b/pdbq" "$b"/pdb/*.pdb $(ls "$src"/rdi/*.pdb 2>/dev/null) || return 1
   fi
   if [ "$what" = fuzz ] || [ "$what" = all ]; then
     for f in "$src"/tests/fuzz_*.c; do

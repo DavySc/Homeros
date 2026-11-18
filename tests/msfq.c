@@ -1,19 +1,14 @@
 /* msfq <file.pdb> <dir>: writes every stream to <dir>/<index> and prints "index size" lines,
    for tests/oracle_msf.sh to compare with llvm-pdbutil. */
 #include "../dbg/msf.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "load.h"
 
 int main(int argc, char **argv)
 {
-  FILE *f = argc == 3 ? fopen(argv[1], "rb") : 0;
-  if (!f) return 2;
-  fseek(f, 0, SEEK_END);
-  long size = ftell(f);
-  rewind(f);
-  uint8_t *buf = malloc((size_t)size + 1);
+  uint64_t size;
+  void *buf = argc == 3 ? load(argv[1], &size) : 0;
   Msf m;
-  if (fread(buf, 1, (size_t)size, f) != (size_t)size || !msf_open(&m, buf, (uint64_t)size)) return 2;
+  if (!buf || !msf_open(&m, buf, size)) return 2;
   for (uint32_t i = 0; i < m.streams; i += 1) {
     char path[4096];
     uint32_t n;
@@ -26,6 +21,5 @@ int main(int argc, char **argv)
   }
   msf_close(&m);
   free(buf);
-  fclose(f);
   return 0;
 }

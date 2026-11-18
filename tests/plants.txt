@@ -23,7 +23,15 @@ test | dbg/queue.c |   pthread_mutex_lock(&q->lock);\n  /* test and wait |   /* 
 test | dbg/queue.c |     q->head = (q->head + sizeof n + n) % QUEUE_BYTES; |     q->head = q->head + sizeof n + n;
 fuzz | dbg/msf.c |     if (pn >= m->pages) { |     if (pn > m->pages) {
 fuzz | dbg/msf.c | if (n == 0 \p\p n > m->size \p\p count > have) return 0; | if (n == 0 \p\p n > m->size) return 0;
-fuzz | dbg/msf.c | \p\p u32_at(m->dir, 0) > (m->dir_size - 4) / 4) { | ) {
-oracle | dbg/msf.c | for (uint32_t j = 0; j < i; j += 1) first += pages_for(m, stream_size(m, j)); | for (uint32_t j = 0; j < i; j += 1) first += pages_for(m, u32_at(m->dir, 1 + j));
+fuzz | dbg/msf.c | \p\p le32(m->dir) > (m->dir_size - 4) / 4) { | ) {
+oracle | dbg/msf.c | for (uint32_t j = 0; j < i; j += 1) first += pages_for(m, stream_size(m, j)); | for (uint32_t j = 0; j < i; j += 1) first += pages_for(m, le32(m->dir + 4 + 4 * (uint64_t)j));
 oracle | dbg/msf.c | uint64_t dir_pages = pages_for(m, m->dir_size), map_pages = pages_for(m, dir_pages * 4); | uint64_t dir_pages = 1, map_pages = 1;
 oracle | dbg/msf.c | memcpy(out + i * m->page, m->file + (uint64_t)pn * m->page, take); | memcpy(out + i * m->page, m->file + (uint64_t)pn * 4096, take);
+fuzz | dbg/pdb.c |   if (n > s.n - off) n = s.n - off; |
+fuzz | dbg/pdb.c |   if (p->mods.n - *at < MODULE_HEADER) return false; |   if (p->mods.n == *at) return false;
+fuzz | dbg/pdb.c |   while (end < s.n && s.p[end] != 0) end += 1; |   while (s.p[end] != 0) end += 1;
+fuzz | dbg/pdb.c |   if (number == 0 \p\p number > p->sections) return (PdbSection){0}; |   if (number == 0) return (PdbSection){0};
+oracle | dbg/pdb.c |   *at = (*at + 3) / 4 * 4; |
+oracle | dbg/pdb.c | ? 28 : version == 0xeffe0000u + 20140516u ? 32 : 1; | ? 32 : version == 0xeffe0000u + 20140516u ? 28 : 1;
+oracle | dbg/pdb.c | for (int i = 0; i < 6; i += 1) at += sizes[i]; | for (int i = 0; i < 5; i += 1) at += sizes[i];
+oracle | dbg/pdb.c | .stream = le16(h + 34), | .stream = le16(h + 32),
