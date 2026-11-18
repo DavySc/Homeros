@@ -40,3 +40,14 @@ core: entering a buffer keeps the sideways scroll valid (test_core_screens)~test
 core: a composing character at a cluster start is drawn without its space (test_core_screens)~test TESTS=core_screens~~src/core/draw.c~		if (uni_glen(b, k + 1, 0) > 1) {~		if (uni_glen(b, k + 1, 0) > 9) {
 core: H and L apply scrolloff under an operator (test_core_contract)~test TESTS=core_contract~~src/core/move.c~	if (so) cursor_correct(e, w);~	if (so || 1) cursor_correct(e, w);
 core: a join leaves the next line's marks behind (recorded key traces)~test TESTS=~~src/core/core.c~	if (line_amount) join_next = b;~	(void)0;
+core: an indented heading is not drawn (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~			else if (!hn && *s == ' ') {}¶~
+core: a setext heading's text after an inline face is drawn as a marker (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~			if (!hl) { if (k != 1 || !memchr(" \t>-+*.)0123456789", *s, 15)) hn = HN_NO; }~			if (!hl) {}
+core: a '#' run with no blank after it is a heading (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~hn == hl && (*s == ' ' || *s == '\t') ? HN_YES~hn == hl ? HN_YES
+core: a heading's icon on its first '#' (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~				if (v - m0 == (size_t)n - 1) grid_put~				if (v - m0 == 0) grid_put
+core: a heading's background starts at its marker, not its indent (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~			if (v < b0 || (k == 0~			if (v < (b0 > m0 ? b0 : m0) || (k == 0
+core: a heading's icon keeps the text's colour (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~				z->face = (unsigned char)(FACE_MARKUP_HEADING_1 + n - 1);¶~
+core: a heading drawn in insert mode (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~ ? e->mode != MODE_INSERT && !e->ks.visual~ ? !e->ks.visual
+core: a heading drawn while the window is scrolled sideways (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~ && !e->win->left : !w->left;~ : !w->left;
+core: the cursor line's heading drawn (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~	size_t raw = cur ? e->win->line : (size_t)-1;~	size_t raw = (size_t)-1;
+core: a heading marker cut at the window's edge is not read on (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~			if (!hl || hn == HN_NO || hn == HN_YES) break;~			break;
+core: a heading's background not drawn (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~			z->bg = (unsigned char)(FACE_HEADING_1_BG + n - 1);¶~
