@@ -15,6 +15,7 @@
 #include "grid.h"
 #include "syntax.h"
 #include "lmatch.h"
+#include "tsql.h"
 
 /* Neovim's standard capture names (:h treesitter-highlight-groups), in
    grid.h's order: name i is face i + 1.  A capture takes the longest of these
@@ -137,6 +138,7 @@ typedef struct LTree {
 } LTree;
 
 struct Syntax {
+	Tsql *sql;                 /* T-SQL, by word lists instead (tsql.c) */
 	LTree *root;
 	TSParser *p;
 	TSQueryCursor *qc;
@@ -326,7 +328,13 @@ static void free_ltree(Syntax *s, LTree *L)
 
 Syntax *syntax_open(const char *path, const Text *t)
 {
-	int li = lang_of_path(path, strlen(path));
+	size_t pl = strlen(path);
+	if (pl > 4 && !memcmp(path + pl - 4, ".sql", 4)) {
+		Syntax *s = calloc(1, sizeof *s);
+		if (s && !(s->sql = tsql_new(t))) free(s), s = NULL;
+		return s;
+	}
+	int li = lang_of_path(path, pl);
 	if (li < 0) return NULL;
 	Syntax *s = calloc(1, sizeof *s);
 	if (!s) return NULL;
@@ -349,6 +357,7 @@ static int started(const Syntax *s) { return (uintptr_t)s->root > NLANGS; }
 void syntax_free(Syntax *s)
 {
 	if (!s) return;
+	tsql_free(s->sql);
 	if (started(s)) free_ltree(s, s->root);
 	if (s->qc) ts_query_cursor_delete(s->qc);
 	if (s->p) ts_parser_delete(s->p);
@@ -389,6 +398,10 @@ static Region edited;      /* s->susp of a parse whose text changed */
 void syntax_edit(Syntax *s, const Text *t, size_t pos, size_t ndel, const char *ins, size_t nins)
 {
 	if (!s) return;
+	if (s->sql) {
+		tsql_edit(s->sql, t, pos);
+		return;
+	}
 	s->dirty = 1;
 	s->t = t;
 	/* the cached faces follow the text, and the bytes around the edit are
@@ -786,6 +799,10 @@ static int parse(Syntax *s, LTree *L, const Text *t)
 int syntax_update(Syntax *s, const Text *t, int (*stop)(void))
 {
 	if (!s) return 0;
+	if (s->sql) {
+		tsql_update(s->sql);
+		return 0;
+	}
 	/* the trees the last parse replaced, freed in steps (release.c) */
 	while (syntax_release(NULL, stop ? RELEASE_STEP : UINT32_MAX))
 		if (stop()) return 2;
@@ -900,6 +917,10 @@ void syntax_faces(Syntax *s, size_t a, size_t z, unsigned char *face)
 {
 	memset(face, 0, z - a);
 	if (!s || a >= z) return;
+	if (s->sql) {
+		tsql_faces(s->sql, a, z, face);
+		return;
+	}
 	if (a < s->va) s->va = (uint32_t)a;
 	if (z > s->vz) s->vz = (uint32_t)z;
 	/* bytes whose injections are not known yet: the next update finds them */
