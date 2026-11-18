@@ -1,0 +1,156 @@
+case 20 [wide] row 2 S:
+  nvim [  2  󰲣 é combining ạ̈                              ]
+  core [  2  󰲣 é combining ạ̈                              ]
+case 56 [crlf-ish/ctrl] row 1 F:
+  nvim [....r.r..r........................................]
+  core [....r.rrrr........................................]
+mdcmp: 59 screens: 2 differ
+case 2 [side 2] row 4 S:
+  nvim [  4    󰲣 ind                 │  4    󰲣 nd                   ]
+  core [  4    󰲣 ind                 │  4   󰲣 ind                   ]
+case 3 [side 3] row 4 S:
+  nvim [  4    󰲣 ind                 │  4    󰲣 d                    ]
+  core [  4    󰲣 ind                 │  4  󰲣 ind                    ]
+case 4 [side 4] row 4 S:
+  nvim [  4    󰲣 ind                 │  4    󰲣                      ]
+  core [  4    󰲣 ind                 │  4  󰲣 nd                     ]
+case 5 [side 5] row 4 S:
+  nvim [  4    󰲣 ind                 │  4    󰲣                      ]
+  core [  4    󰲣 ind                 │  4  󰲣 d                      ]
+case 6 [side 8] row 4 S:
+  nvim [  4    󰲣 ind                 │  4    󰲣                      ]
+  core [  4    󰲣 ind                 │  4  󰲣                        ]
+case 7 [side 30] row 4 S:
+  nvim [  4    󰲣 ind                 │  4    󰲣                      ]
+  core [  4    󰲣 ind                 │  4  󰲣                        ]
+case 9 [side cur left on heading] row 4 S:
+  nvim [  3    󰲣 ind                 │  4    󰲣 d                    ]
+  core [  3    󰲣 ind                 │  4  󰲣 ind                    ]
+case 10 [side sp] row 15 S:
+  nvim [  4    󰲣                                ]
+  core [  4  󰲣 d                                ]
+case 18 [other buffer current] row 2 S:
+  nvim [3   ### Three                │~                             ]
+  core [3     󰲥 Three                │~                             ]
+case 19 [other buffer insert] row 2 S:
+  nvim [3   ### Three                │~                             ]
+  core [3     󰲥 Three                │~                             ]
+case 21 [two md buffers] row 2 S:
+  nvim [3   ### Three                │~                             ]
+  core [3     󰲥 Three                │~                             ]
+case 32 [open line under heading] row 0 S:
+  nvim [  1 # One                                         ]
+  core [  1 󰲡 One                                         ]
+mdcmp: 37 screens: 12 differ
+case 2 [leave by :e in a split] row 2 S:
+  nvim [3   ### Three                │~                             ]
+  core [3     󰲥 Three                │~                             ]
+case 3 [o Esc in one send] row 0 S:
+  nvim [  1 # One                                         ]
+  core [  1 󰲡 One                                         ]
+case 5 [o text Esc] row 0 S:
+  nvim [  1 # One                                         ]
+  core [  1 󰲡 One                                         ]
+case 7 [O Esc above] row 0 S:
+  nvim [  1 # One                                         ]
+  core [  1 󰲡 One                                         ]
+mdcmp: 18 screens: 4 differ
+case 4 [setext emphasis start] row 2 S:
+  nvim [  2 *1* # b                                       ]
+  core [  2 *1* 󰲡 b                                       ]
+mdcmp: 5 screens: 1 differ
+mdcmp: 6 screens: 0 differ
+mdcmp: 4 screens: 0 differ
+case 2 [skipcol other buffer, 3-digit number] row 0 S:
+  nvim [121<<< word word word word wo│1                             ]
+  core [121<<< 󰲣 rd word word word wo│1                             ]
+case 3 [skipcol same buffer cursor line] row 1 S:
+  nvim [  1  󰲣 word word word word wo│    rd word word word word wor]
+  core [  1 ## word word word word wo│    rd word word word word wor]
+mdcmp: 4 screens: 2 differ
+case 4 [side 2 + CTRL-L] row 4 S:
+  nvim [  4    󰲣 ind                 │  4    󰲣 nd                   ]
+  core [  4    󰲣 ind                 │  4   󰲣 ind                   ]
+case 5 [side 3 + CTRL-L] row 4 S:
+  nvim [  4    󰲣 ind                 │  4    󰲣 d                    ]
+  core [  4    󰲣 ind                 │  4  󰲣 ind                    ]
+case 6 [side 5 + CTRL-L] row 4 S:
+  nvim [  4    󰲣 ind                 │  4    󰲣                      ]
+  core [  4    󰲣 ind                 │  4  󰲣 d                      ]
+case 7 [side 30 + CTRL-L] row 4 S:
+  nvim [  4    󰲣 ind                 │  4    󰲣                      ]
+  core [  4    󰲣 ind                 │  4  󰲣                        ]
+case 8 [side cur left on heading + CTRL-L] row 4 S:
+  nvim [  3    󰲣 ind                 │  4    󰲣 d                    ]
+  core [  3    󰲣 ind                 │  4  󰲣 ind                    ]
+case 9 [side sp + CTRL-L] row 15 S:
+  nvim [  4    󰲣                                ]
+  core [  4  󰲣 d                                ]
+case 13 [other buffer current + CTRL-L] row 2 S:
+  nvim [3   ### Three                │~                             ]
+  core [3     󰲥 Three                │~                             ]
+case 14 [other buffer insert + CTRL-L] row 0 S:
+  nvim [  2 󰲡 One                    │1   hello^L                   ]
+  core [  2 󰲡 One                    │1   hello                     ]
+case 15 [two md buffers + CTRL-L] row 2 S:
+  nvim [3   ### Three                │~                             ]
+  core [3     󰲥 Three                │~                             ]
+case 16 [open line under heading + CTRL-L] row 0 S:
+  nvim [  1 # One                                         ]
+  core [  1 󰲡 One                                         ]
+case 18 [leave by :e in a split + CTRL-L] row 2 S:
+  nvim [3   ### Three                │~                             ]
+  core [3     󰲥 Three                │~                             ]
+case 19 [o Esc in one send + CTRL-L] row 0 S:
+  nvim [  1 # One                                         ]
+  core [  1 󰲡 One                                         ]
+case 20 [O Esc above + CTRL-L] row 0 S:
+  nvim [  1 # One                                         ]
+  core [  1 󰲡 One                                         ]
+case 23 [setext emphasis start + CTRL-L] row 2 S:
+  nvim [  2 *1* # b                                       ]
+  core [  2 *1* 󰲡 b                                       ]
+case 25 [skipcol other buffer, 3-digit number + CTRL-L] row 0 S:
+  nvim [121<<< word word word word wo│1                             ]
+  core [121<<< 󰲣 rd word word word wo│1                             ]
+mdcmp: 27 screens: 15 differ
+case 1 [side9 leftcol 1] row 2 S:
+  nvim [  2      󰲥 abcdefghijklmnop  │  2      󰲥 bcdefghijklmnop    ]
+  core [  2      󰲥 abcdefghijklmnop  │  2     󰲥 abcdefghijklmnop    ]
+case 2 [side9 leftcol 2] row 2 S:
+  nvim [  2      󰲥 abcdefghijklmnop  │  2      󰲥 cdefghijklmnop     ]
+  core [  2      󰲥 abcdefghijklmnop  │  2    󰲥 abcdefghijklmnop     ]
+case 3 [side9 leftcol 3] row 2 S:
+  nvim [  2      󰲥 abcdefghijklmnop  │  2      󰲥 defghijklmnop      ]
+  core [  2      󰲥 abcdefghijklmnop  │  2   󰲥 abcdefghijklmnop      ]
+case 4 [side9 leftcol 4] row 2 S:
+  nvim [  2      󰲥 abcdefghijklmnop  │  2      󰲥 efghijklmnop       ]
+  core [  2      󰲥 abcdefghijklmnop  │  2   󰲥 bcdefghijklmnop       ]
+case 5 [side9 leftcol 5] row 2 S:
+  nvim [  2      󰲥 abcdefghijklmnop  │  2      󰲥 fghijklmnop        ]
+  core [  2      󰲥 abcdefghijklmnop  │  2   󰲥 cdefghijklmnop        ]
+case 6 [side9 leftcol 7] row 2 S:
+  nvim [  2      󰲥 abcdefghijklmnop  │  2      󰲥 hijklmnop          ]
+  core [  2      󰲥 abcdefghijklmnop  │  2   󰲥 efghijklmnop          ]
+case 7 [side9 leftcol 11] row 2 S:
+  nvim [  2      󰲥 abcdefghijklmnop  │  2      󰲥 lmnop              ]
+  core [  2      󰲥 abcdefghijklmnop  │  2   󰲥 ijklmnop              ]
+case 8 [side9 leftcol 39] row 2 S:
+  nvim [  2      󰲥 abcdefghijklmnop  │  2      󰲥                    ]
+  core [  2      󰲥 abcdefghijklmnop  │  2   󰲥                       ]
+case 9 [skip9 indent] row 0 S:
+  nvim [2<<<    󰲣 word word word word│1                             ]
+  core [2<<< 󰲣 rd word word word word│1                             ]
+case 12 [skip9 col0 3-digit] row 0 S:
+  nvim [121<<< word word word word wo│1                             ]
+  core [121<<< 󰲣 rd word word word wo│1                             ]
+case 21 [filler < leftcol 2] row 1 S:
+  nvim [  1 󰲡 漢字 heading           │  1 󰲡   heading               ]
+  core [  1 󰲡 漢字 heading           │  1 <󰲡  heading               ]
+case 23 [C: after :e] row 1 S:
+  nvim [2      ### abcdefghijklmnop  │~                             ]
+  core [2        󰲥 abcdefghijklmnop  │~                             ]
+case 24 [E: setext inline start] row 8 S:
+  nvim [  8 *1* # d                                       ]
+  core [  8 *1* 󰲡 d                                       ]
+mdcmp: 24 screens: 13 differ

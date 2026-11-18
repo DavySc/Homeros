@@ -1,0 +1,40 @@
+case 27 row 7 S:
+  nvim [  4  󰲣 xxxxxxxxxxxxxxxxx│    > ### ## ## # bar    ]
+  core [  4 ## xxxxxxxxxxxxxxxxx│    > ### ## ## # bar    ]
+case 38 row 10 S:
+  nvim [  1 ## xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [  1  󰲣 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 48 row 9 S:
+  nvim [  4  󰲣 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [  4 ## xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 52 row 18 S:
+  nvim [f.md                            3,0-1          Top]
+  core [f.md                            3,1            Top]
+case 70 row 2 F:
+  nvim [..................................................]
+  core [....rrrrrrrrrr....................................]
+case 74 cursor: nvim 4,4 core 3,4
+case 74 row 0 S:
+  nvim [  4 > quote                                       ]
+case 85 row 4 S:
+  nvim [  4  󰲣 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [  4 ## xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 90 cursor: nvim 2,4 core 1,4
+case 90 row 0 S:
+  nvim [  2 [link](u)                                     ]
+case 109 row 18 S:
+  nvim [f.md  1,1            All g.md   1,0-1          All]
+  core [f.md  1,1            All g.md   1,1            All]
+case 139 row 5 S:
+  nvim [  3  󰲣 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [  3 ## xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 157 row 18 S:
+  nvim [f.md  1,0-1          All g.md   4,1            All]
+  core [f.md  1,1            All g.md   4,1            All]
+case 181 row 9 S:
+  nvim [  2 > > > > > > > > > > > > > > > > > > > > > >   ]
+  core [  1 <b>                                           ]
+case 188 cursor: nvim 12,4 core 11,4
+case 188 row 9 S:
+  nvim [  3 > ##x                                         ]
+test_core_markdown: 200 render-markdown screens: 13 differ (0 known, not compared)

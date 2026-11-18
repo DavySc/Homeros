@@ -1,0 +1,28 @@
+case 44 row 0 F:
+  nvim [..................................................]
+  core [..........rrrrrrrrrr..............................]
+case 52 row 9 S:
+  nvim [  3 > > ##### xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [  2 ```c                                          ]
+case 53 cursor: nvim 4,4 core 3,4
+case 53 row 0 S:
+  nvim [  4 <b> foo                                       ]
+case 60 row 17 S:
+  nvim [  7 >    󰲧  foo foo #@@@│    #                    ]
+  core [  7 > ####  foo foo #@@@│    #                    ]
+case 64 row 18 S:
+  nvim [f.md  1,1-8          All g.md   4,1            All]
+  core [f.md  1,1            All g.md   4,1            All]
+case 75 row 18 S:
+  nvim [g.md                            3,0-1          All]
+  core [g.md                            3,1            All]
+case 88 row 8 S:
+  nvim [f.md                            1,0-1          All]
+  core [f.md                            1,1            All]
+case 119 cursor: nvim 2,4 core 1,4
+case 119 row 0 S:
+  nvim [  2 é **strong** *em* bar                         ]
+case 139 row 9 S:
+  nvim [  3   ##x                                         ]
+  core [  2 #                                             ]
+test_core_markdown: 200 render-markdown screens: 9 differ (0 known, not compared)
