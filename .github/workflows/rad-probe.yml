@@ -1,0 +1,39 @@
+# Does the RAD Debugger build and run on a hosted Windows runner, and can it be driven over its socket?
+name: rad-probe
+on:
+  push:
+    branches: [claude/project-thread-l4spyq]
+permissions:
+  contents: read
+concurrency:
+  group: rad-probe
+  cancel-in-progress: true
+jobs:
+  probe:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      RAD_COMMIT: 5b0d5f67a46af5fffa52322e95a116dabf393103
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch RAD at the pinned commit
+        shell: cmd
+        run: |
+          git init rad && cd rad && git remote add origin https://github.com/EpicGamesExt/raddebugger
+          git fetch --depth 1 origin %RAD_COMMIT% && git checkout FETCH_HEAD && git rev-parse HEAD
+      - name: Build raddbg and the test program
+        shell: cmd
+        run: |
+          for /f "usebackq delims=" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath`) do call "%%i\VC\Auxiliary\Build\vcvars64.bat"
+          cd rad
+          call build raddbg release || exit /b 1
+          call build mule_main || exit /b 1
+          dir build
+      - name: Run and drive it
+        shell: pwsh
+        run: ./probe/probe.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rad-probe
+          path: out/
