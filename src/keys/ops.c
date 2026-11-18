@@ -16,7 +16,7 @@ Reg *put_override;             /* nv_put()'s copy of the register (Visual p) */
 
 /* ---- registers ---- */
 
-/* 0-9, a-z, "-" and "+" (the clipboard, until the backend has one) */
+/* 0-9, a-z, "-" and "+" (the clipboard's copy, get_clipboard()) */
 static Reg y_regs[38];
 static Reg *y_previous;
 static char *last_cmdline;
@@ -40,8 +40,11 @@ int valid_yank_reg(int r, int writing)
 }
 
 /* get_yank_register() */
+static Reg *get_clipboard(int r);
 Reg *get_reg(int r, int yank)
 {
+	Reg *c = yank ? NULL : get_clipboard(r);
+	if (c) return c;
 	if (!yank && (r == 0 || r == '"') && y_previous) return y_previous;
 	int i = op_reg_index(r);
 	if (i < 0) i = 0;
@@ -107,6 +110,53 @@ static void bput(Sbuf *b, const char *s, long n)
 	b->s[b->n] = 0;
 }
 static void bspaces(Sbuf *b, long n) { while (n-- > 0) bput(b, " ", 1); }
+
+/* The system clipboard, with 'clipboard' unnamedplus (Davy, 2026-11-18):
+   Neovim's clipboard.c, set_clipboard() after a yank or delete and
+   get_clipboard() before a put, for "+ "* and the unnamed register.  "+
+   doubles as the provider's cache (clipboard.vim's s:selections), so a
+   text read back as it was set keeps its type (a block, lines); other text
+   is lines when it ends in a line break. */
+static void clip_text(const Reg *r, Sbuf *b)
+{
+	bput(b, "", 0);
+	bput(b, r->s ? r->s : "", r->n);
+	if (r->type != MCHAR) bput(b, "\n", 1);
+}
+
+static void set_clipboard(int r, const Reg *y)
+{
+	if (!E->clip_set || (r && r != '+' && r != '*')) return;
+	Sbuf b = { 0 };
+	clip_text(y, &b);
+	if (!E->clip_set(b.s, (size_t)b.n) && y != &y_regs[37]) {
+		set_reg('+', y->s ? y->s : "", y->n, y->type);
+		y_regs[37].width = y->width;
+	}
+	free(b.s);
+}
+
+static Reg *get_clipboard(int r)
+{
+	if (!E->clip_get || (r && r != '+' && r != '*')) return NULL;
+	long n = 4096, m;
+	char *s = malloc((size_t)n);
+	while (s && (m = E->clip_get(s, (size_t)n)) > n) {
+		char *t = realloc(s, (size_t)m);
+		if (!t) { free(s); s = NULL; }
+		else { s = t; n = m; }
+	}
+	if (!s || m < 0) { free(s); return NULL; }
+	Sbuf b = { 0 };
+	clip_text(&y_regs[37], &b);
+	if (b.n != m || memcmp(b.s, s, (size_t)m)) {
+		int line = m && s[m - 1] == '\n';
+		set_reg('+', s, m - line, line ? MLINE : MCHAR);
+	}
+	free(b.s);
+	free(s);
+	return &y_regs[37];
+}
 
 /* ---- block_prep() ---- */
 
@@ -280,6 +330,7 @@ int op_yank(Oparg *oap)
 	int r = oap->regname;
 	Reg *reg = get_reg(r, 1);
 	yank_into(oap, reg, r >= 'A' && r <= 'Z');
+	set_clipboard(r, reg);
 	return 1;
 }
 
@@ -339,7 +390,7 @@ int op_delete(Oparg *oap)
 			yank_into(oap, reg, 0);
 			did_yank = 1;
 		}
-		(void)did_yank;
+		if (did_yank) set_clipboard(oap->regname, reg);
 	}
 	if (oap->motion_type == MBLOCK) {
 		u_save_cursor();

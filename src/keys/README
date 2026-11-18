@@ -25,7 +25,7 @@ Not built (FEATURES.md section 2), part two of package 5:
   mark_col_adjust()).  core_mark_join() would mark the next edit a join, so
   this waits for a core call from package 4 (reviews/pr-67.md, finding B).
 - tag objects it at.
-- registers "+ "* (clipboard, needs the window backend) and "/ (search).
+- register "/ (search).
 - ex commands beyond :w :w! :q :q! :wq :x: ranges, :5, :s, :g, :norm, :d,
   :y, :e, :sp, :vs, :b. Visual @ and Q need :norm.
 - Insert CTRL-K digraphs, gi.
@@ -123,6 +123,10 @@ and 1.0 s in Neovim (one run each), most of it in core_vcol (package 4).
 
 Choices:
 - go is gg everywhere: Normal, after an operator, Visual (Davy, FEATURES.md).
+- 'clipboard' is unnamedplus (Davy, 2026-11-18): every yank, delete and
+  put of the unnamed register, "+ and "* goes through the system clipboard
+  of the Windows or Wayland window (the terminal has none, as Neovim
+  without a provider).
 - % is Neovim's built-in one for now; Davy wants matchit's word pairs too
   (2026-11-17), a follow-up PR.
 - U (undo line) is not in FEATURES.md and not built.  CTRL-F and CTRL-B

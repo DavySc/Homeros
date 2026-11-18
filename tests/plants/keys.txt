@@ -59,3 +59,6 @@ keys: Insert mode drops a typed or register CTRL-L instead of inserting it (reco
 keys: gq on a long line it cannot break recomputes w_virtcol, so a later gg keeps the cursor's column, not textwidth (recorded traces)~test TESTS=~~src/keys/ops.c~if (foundcol == 0) { W->vc.v = (size_t)tw; W->vc.ok = 1; return; }~if (foundcol == 0) { return; }
 keys: CTRL-W g leaves the next key to run on its own, so CTRL-W g x deletes a character (recorded traces)~test TESTS=~~src/keys/normal.c~(ca.nchar == 'g' || ca.nchar == 7)) GET~(ca.nchar == 7)) GET
 keys: internal_format() does not validate w_virtcol on each line, so a stale textwidth column survives a gq that moved the cursor (recorded traces)~test TESTS=~~src/keys/ops.c~		W->col = (size_t)c;¶		validate_virtcol();~		W->col = (size_t)c;
+keys: a delete does not reach the clipboard (test_keys_clip)~test TESTS=keys_clip~~src/keys/ops.c~		if (did_yank) set_clipboard(oap->regname, reg);~		(void)did_yank;
+keys: a put does not read the clipboard, so text another program copied is not pasted (test_keys_clip)~test TESTS=keys_clip~~src/keys/ops.c~	Reg *c = yank ? NULL : get_clipboard(r);~	Reg *c = yank || 1 ? NULL : get_clipboard(r);
+keys: the clipboard forgets the type it was set with, so a yanked block is put as lines (test_keys_clip)~test TESTS=keys_clip~~src/keys/ops.c~	if (b.n != m || memcmp(b.s, s, (size_t)m)) {~	if (1) {
