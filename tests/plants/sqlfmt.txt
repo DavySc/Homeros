@@ -1,0 +1,20 @@
+# Plants for src/sqlfmt/sqlfmt.c (format in tools/planted.sh).
+sqlfmt: FROM starts no line (test_sqlfmt, cases)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~case W_FROM: c = prev != W_DELETE && prev != W_DISTINCT;~case W_FROM: c = 0;
+sqlfmt: a statement without `;` runs into the next (test_sqlfmt, cases)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~if (begins(w, head, prevw, prevk, seen, kw(1) == W_INSERT)) break;~if (begins(w, head, prevw, prevk, seen, kw(1) == W_INSERT) && k == SEMI) break;
+sqlfmt: ELSE IF's IF goes on a line of its own (test_sqlfmt, cases)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~word_of(P, (size_t)ls) == W_ELSE~word_of(P, (size_t)ls) == W_END
+sqlfmt: a BEGIN ... END body is indented under its header (test_sqlfmt, cases)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~children == 1 ? level : level + 1;~children == 1 ? level + 1 : level + 1;
+sqlfmt: END stays on the line before it (test_sqlfmt, cases)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~ P->t[i].brk = B_FOOTER;¶~ P->t[i].brk = B_NONE;¶
+sqlfmt: a comment before END lines up with END (test_sqlfmt, cases)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~p->t[j].brk == B_FOOTER ? p->t[j].level + 1~p->t[j].brk == B_FOOTER ? p->t[j].level
+sqlfmt: every keyword is recased, NOCOUNT too (test_sqlfmt, cases)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~& TQ_RECASE) != 0;~& TQ_KEYWORD) != 0;
+sqlfmt: a word after a dot is recased (test_sqlfmt, cases)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~!(prev >= 0 && P->t[prev].k == DOT) && ~
+sqlfmt: no space between = and a sign (test_sqlfmt, cases)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~(b->k != OP || sign)~(b->k != OP || (sign && a->k == ERR))
+sqlfmt: GO is a word, not a batch separator (test_sqlfmt, cases)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~			if (g) k = GO, end = g;~			if (g && n == 3) k = GO, end = g;
+sqlfmt: the output is not checked (test_sqlfmt, cases)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~		if (!v) { kept = 0; break; }~		if (1) { kept = 0; break; }
+sqlfmt: an unclosed string is no parse problem (test_sqlfmt, cases)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~if (k == ERR || !closed(s, n, k)) diag(p, pos);~if (k == ERR || (!closed(s, n, k) && k == WORD)) diag(p, pos);
+sqlfmt: blank lines are not limited (test_sqlfmt, cases)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~size_t n = nls < 2 ? nls : 2;~size_t n = nls;
+sqlfmt: a range edits from the start (test_sqlfmt, range)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~	while (i0 < in.n && in.t[i0].s < *a) i0++;¶~
+sqlfmt: keywords keep their case (test_sqlfmt, cases)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~(char)(out[j] + 32)~out[j]
+sqlfmt: parentheses do not indent (test_sqlfmt, cases)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~t->level + 1 + t->depth;~t->level + 1;
+sqlfmt: sqlcmd lines are laid out (test_sqlfmt, cases)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~(s[t->s] == '\\' || s[t->s] == ':')~(s[t->s] == '\\')
+sqlfmt: a kept statement's tokens are recased (test_sqlfmt, random)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~if (t->kw && !kept && !in_rev && !oom)~if (t->kw && !oom)
+sqlfmt: an empty text formats into no buffer (fuzz_sqlfmt, UBSan)~fuzz FUZZERS=sqlfmt FUZZ_SECONDS=60~~src/sqlfmt/sqlfmt.c~	while (nout + n >= outcap)~	while (nout + n > outcap)
