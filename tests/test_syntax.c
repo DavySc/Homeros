@@ -350,6 +350,37 @@ static void edit_before_region(const char *dir)
 	text_free(t);
 }
 
+/* A window past the cache's 8 KB grows the cache in syntax_update; the new
+   memory holds no faces yet, so the faces cached for the smaller window
+   before must go with the old memory. */
+static void cache_grows(const char *dir)
+{
+	static char b[MAXT];
+	static unsigned char f[64], g[64], w[16384];
+	size_t n = 0;
+	for (int l = 0; l < 1000; l++)
+		n += (size_t)snprintf(b + n, sizeof b - n, "int v%d = %d; /* c */\n", l, l);
+	char path[2048];
+	snprintf(path, sizeof path, "%s/grow.c", dir);
+	Text *t = text_new(b, n);
+	CHECK(t && n > 16384);
+	Syntax *s = syntax_open(path, t), *F = syntax_open(path, t);
+	CHECK(s && F);
+	syntax_faces(s, 0, 64, f);
+	while (syntax_update(s, t, NULL) == 2) ;
+	syntax_faces(s, 0, 64, f);                   /* cached for a small window */
+	syntax_faces(s, 0, sizeof w, w);             /* past the cache */
+	while (syntax_update(s, t, NULL) == 2) ;     /* grows the cache */
+	syntax_faces(s, 0, 64, f);
+	syntax_faces(F, 0, 64, g);
+	while (syntax_update(F, t, NULL) == 2) ;
+	syntax_faces(F, 0, 64, g);
+	CHECK(!memcmp(f, g, 64));
+	syntax_free(s);
+	syntax_free(F);
+	text_free(t);
+}
+
 /* The trees a reparse replaces are freed in steps that ask stop: an edit
    that deletes 2,000 lines frees about 10,000 nodes, so the update
    after it must stop more than once before it is done. */
@@ -406,6 +437,7 @@ int main(void)
 	edit_while_stopped(dir);
 	edits_then_frame(dir);
 	edit_before_region(dir);
+	cache_grows(dir);
 	release_in_steps(dir);
 	char path[2048], vrt[1024] = "";
 	FILE *p = popen("nvim --headless --clean -l /dev/stdin <<'E'\nio.write(vim.env.VIMRUNTIME)\nE", "r");
