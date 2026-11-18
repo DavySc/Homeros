@@ -1,0 +1,70 @@
+--- src/loop/win.c	2026-11-18 00:14:35.234960463 +0000
++++ build/win/win-fix.c	2026-11-18 00:24:47.535765711 +0000
+@@ -206,15 +206,18 @@
+ 
+ static void CALLBACK on_read(DWORD e, DWORD n, OVERLAPPED *ov);
+ 
+-static void read_next(struct Proc *c, int s)
++/* Called only by loop_once, before its wait: one read per stream per
++   pass, as loop.c's one read per poll, so a child that never stops writing
++   cannot keep the wait in its completion routines.  0 if the stream ended. */
++static int read_next(struct Proc *c, int s)
+ {
+ 	c->ov[s] = (OVERLAPPED){ .hEvent = (HANDLE)(INT_PTR)((c - p) * 3 + s) };
+-	if (ReadFileEx(c->h[s], buf, 0, &c->ov[s], on_read)) c->busy[s] = 1;
+-	else ended(c, s);
++	if (ReadFileEx(c->h[s], buf, 0, &c->ov[s], on_read)) return c->busy[s] = 1;
++	ended(c, s);
++	return 0;
+ }
+ 
+-/* The zero-byte read is done: bytes are there, or the pipe broke (EOF).
+-   One buffer's worth per wake, as loop.c's one read per poll. */
++/* The zero-byte read is done: bytes are there, or the pipe broke (EOF). */
+ static void CALLBACK on_read(DWORD e, DWORD n, OVERLAPPED *ov)
+ {
+ 	int s;
+@@ -225,7 +228,6 @@
+ 	if (c->reaping) return;   /* report reads what is left */
+ 	if (e) { ended(c, s); return; }
+ 	if (PeekNamedPipe(c->h[s], NULL, 0, NULL, &left, NULL) && left) take(c, s, left);
+-	read_next(c, s);
+ }
+ 
+ static void close_in(struct Proc *c)
+@@ -295,11 +297,8 @@
+ 		else { TerminateProcess(pi.hProcess, 1); CloseHandle(pi.hProcess); }
+ 		CloseHandle(pi.hThread);
+ 	}
+-	if (ok) {
++	if (ok)
+ 		p[id] = (struct Proc){ .ph = pi.hProcess, .job = job, .h = { mine[0], mine[1], mine[2] }, .fn = fn, .ctx = ctx };
+-		read_next(&p[id], 1);
+-		read_next(&p[id], 2);
+-	}
+ out:
+ 	for (int s = 0; s < 3; s++) {
+ 		if (theirs[s]) CloseHandle(theirs[s]);
+@@ -313,7 +312,7 @@
+ int proc_write(int id, const void *b, size_t n)
+ {
+ 	struct Proc *c = proc(id);
+-	if (!c || !c->h[0] || c->closing) return -1;
++	if (!c || !c->h[0] || c->closing || c->reaping) return -1;   /* reaping: report closes stdin next, a write begun now would complete on a freed slot */
+ 	if (!n) return 0;
+ 	if (c->qlen + n > c->qcap) {
+ 		size_t cap = c->qcap ? c->qcap : 4096;
+@@ -383,7 +382,12 @@
+ 		if (w[i].fd == LOOP_MSGQ) mask = QS_ALLINPUT;
+ 		else { h[n] = H(w[i].fd); who[n++] = i; }
+ 	}
+-	for (int i = 0; i < MAXP; i++) if (p[i].ph) { h[n] = p[i].ph; who[n++] = -1; }
++	for (int i = 0; i < MAXP; i++) {
++		if (!p[i].ph) continue;
++		h[n] = p[i].ph; who[n++] = -1;
++		for (int s = 1; s < 3; s++)
++			if (p[i].h[s] && !p[i].busy[s] && !read_next(&p[i], s)) timeout_ms = 0;   /* its end was reported: the caller may have work */
++	}
+ 	long long first = -1;
+ 	for (int i = 0; i < MAXT; i++) if (t[i].fn && (first < 0 || t[i].at < first)) first = t[i].at;
+ 	if (first >= 0) {

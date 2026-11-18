@@ -3,7 +3,8 @@
    child never block: what the pipe does not take waits in that child's
    queue until poll says the pipe has room (Pipe.tla "queue"; a blocking
    write deadlocks against a child that writes before it reads, as
-   design/reviews/r1/dead.py shows). */
+   design/reviews/r1/dead.py shows).  win.c is the Windows twin. */
+#ifndef _WIN32
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
@@ -313,3 +314,4 @@ int loop_once(int timeout_ms)
 	}
 	return 0;
 }
+#endif
