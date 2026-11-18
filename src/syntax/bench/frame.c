@@ -8,8 +8,8 @@
    syntax_faces inside the frame.  The last two are timed by wrapping them
    (ld --wrap), since the thin editor's own core is far slower than package
    4's will be and would hide them; so are text.h's line lookups made inside
-   them, O(n) in ref/text.c's array and O(log n) in package 1's rope, so the
-   cost is also given without them.  run.sh builds and runs it.
+   them (O(log n) in package 1's rope), so the cost is also given without
+   them.  run.sh builds and runs it.
    usage: frame FILE KEYS SEED */
 #include <stdio.h>
 #include <stdlib.h>

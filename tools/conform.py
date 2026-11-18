@@ -12,7 +12,8 @@ a "keys" regex (and optionally a "text" regex) matched against a case's
 keys as typed (''.join) and its text, and an "example" case.  A live case
 that differs and matches an entry counts as known, not as a failure; every
 example must still differ from Neovim and match its own entry, so a fixed
-difference fails the run until its entry is removed.  --record keeps only
+difference fails the run until its entry is removed.  A driver that
+crashes or fails is never a known difference.  --record keeps only
 the cases that match Neovim; --replay takes no known differences."""
 import json, os, random, re, subprocess, sys, tempfile
 from concurrent.futures import ThreadPoolExecutor
@@ -239,14 +240,14 @@ def main():
         got = list(x.map(lambda c: ours(drv, c), cases + [k['example'] for k in known]))
     got, kgot = got[:len(cases)], got[len(cases):]
     for k, w, g in zip(known, kwant, kgot):
-        if known_rule([k], k['example']) is not k or same(g, w):
+        if known_rule([k], k['example']) is not k or same(g, w) or 'error' in g:
             bad += 1
-            print('KNOWN ENTRY STALE (its example now matches Neovim or not its rule): %s' % k['why'])
+            print('KNOWN ENTRY STALE (its example now matches Neovim, not its rule, or the driver failed): %s' % k['why'])
     keep = []
     for c, w, g in zip(cases, want, got):
         if same(g, w):
             keep.append(dict(c, nvim=w))
-        elif 'error' not in g and known_rule(known, c):   # a crash is never known
+        elif 'error' not in g and known_rule(known, c):
             nknown += 1
         else:
             bad += 1

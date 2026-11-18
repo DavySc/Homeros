@@ -10,6 +10,8 @@
 # so CI can spread them over n runners.
 cd "$(dirname "$0")/.."
 shard=${SHARD:-0/1}
+# a shard that selects no plant would pass having checked nothing
+[[ $shard =~ ^([0-9]+)/([1-9][0-9]*)$ ]] && (( BASH_REMATCH[1] < BASH_REMATCH[2] )) || { echo "SHARD=$shard is not k/n with k < n"; exit 1; }
 rc=0
 while IFS='~' read -r name target prep file old new; do
 	[ -z "$name" ] && continue
@@ -32,7 +34,8 @@ PY
 		# elsewhere it means the plant broke the build)
 		cc='^$'
 		case $target in compilers*) ;; *) cc='\.[ch]:[0-9]+(:[0-9]+)?: (error|warning):|^cc1|undefined reference|ld returned';; esac
-		why=$(grep -E 'CHECK\(|[1-9][0-9]* differ|WRONG|error|ERROR|Proved goals|sorry|deadly signal|FAIL' "$tmp.log" | grep -v -E '^(gcc|clang|cc) |^make|No rule' | grep -v -E "$cc" | head -1)
+		# "N differ" or "N of M ... differ" with N > 0, not "0 of 2000 differ"
+		why=$(grep -P 'CHECK\(|(?<!of )\b[1-9][0-9]* differ|\b[1-9][0-9]* of [0-9]+ [^.;]*?differ|WRONG|error|ERROR|Proved goals|sorry|deadly signal|FAIL' "$tmp.log" | grep -v -E '^(gcc|clang|cc) |^make|No rule' | grep -v -E "$cc" | head -1)
 		if [ -n "$why" ]; then echo "caught        $name   (make $target): $why"
 		else echo "FAILED OTHERWISE  $name   (make $target): $(tail -1 "$tmp.log")"; rc=1; fi
 	fi
