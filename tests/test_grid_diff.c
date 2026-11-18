@@ -175,6 +175,16 @@ static const char *const face_sgr[FACE_COUNT] = {
 	";1;38;2;243;139;168",                /* kitten heart: red */
 	";1;38;2;245;194;231",                /* kitten text: pink */
 	";38;2;108;112;134",                  /* kitten dim: overlay0 */
+	";1;38;2;180;190;254",                /* dashboard title: lavender */
+	";1;38;2;137;180;250",                /* dashboard footer: blue */
+	";1;38;2;245;224;220",                /* dashboard cat: rosewater */
+	";1;38;2;127;132;156",                /* dashboard cat patch: overlay1 */
+	";1;38;2;166;227;161",                /* dashboard frog: green */
+	";1;38;2;235;160;172",                /* dashboard frog cheek: maroon */
+	";1;38;2;250;179;135",                /* dashboard frog mouth: peach */
+	";1;38;2;249;226;175",                /* dashboard sparkle: yellow */
+	";1;38;2;108;112;134",                /* dashboard terminal: overlay0 */
+	";1;38;2;203;166;247",                /* dashboard prompt: mauve */
 };
 
 /* backend_present's output, through a file: a frame may be larger than a pipe holds */

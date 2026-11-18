@@ -166,4 +166,15 @@ const Face faces[FACE_COUNT] = {
 	{ {243, 139, 168}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} },  /* kitten heart: red */
 	{ {245, 194, 231}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} },  /* kitten text: pink */
 	{ {108, 112, 134}, {0, 0, 0}, FACE_FG, {0} },  /* kitten dim: overlay0 */
+	/* the start screen: bold, in the app icon's colours */
+	{ {180, 190, 254}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} },  /* dashboard title: lavender */
+	{ {137, 180, 250}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} },  /* dashboard footer: blue */
+	{ {245, 224, 220}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} },  /* dashboard cat: rosewater */
+	{ {127, 132, 156}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} },  /* dashboard cat patch: overlay1 */
+	{ {166, 227, 161}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} },  /* dashboard frog: green */
+	{ {235, 160, 172}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} },  /* dashboard frog cheek: maroon */
+	{ {250, 179, 135}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} },  /* dashboard frog mouth: peach */
+	{ {249, 226, 175}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} },  /* dashboard sparkle: yellow */
+	{ {108, 112, 134}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} },  /* dashboard terminal: overlay0 */
+	{ {203, 166, 247}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} },  /* dashboard prompt: mauve */
 };
