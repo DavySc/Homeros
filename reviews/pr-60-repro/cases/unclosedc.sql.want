@@ -1,0 +1,3 @@
+SELECT 1
+/* abc
+SELECT 2

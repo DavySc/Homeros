@@ -1,0 +1,4 @@
+exec sp_executesql N'SELECT 1', N'@a INT', @a = 1
+exec('select 1')
+insert t exec p
+insert into t execute p @a
