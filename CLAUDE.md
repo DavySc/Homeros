@@ -8,6 +8,8 @@ This repo builds a native text editor for one person, Davy. The design, its evid
 
 So: the smallest change that does the job; delete before you add; no speculative generality, no plugin system, no option nobody asked for. Personal fit beats generality: if Davy does not use it (FEATURES.md), it is not built.
 
+Davy, 2026-11-18: "I want as little code duplication as possible in the codebase." So: before writing a helper, look for one that exists (another package, `ref/`, the backends) and use it; when two places need the same code, it moves to one module both call, through a header (thread 0 for `include/`). A review flags duplicated code as a finding.
+
 ## New approaches
 
 "You're allowed to try never seen before approaches to problems, but you're only allowed to settle on them if they're better than any combination of existing approaches in all scenarios. Remember that we might not be able to think of all possible scenarios."
@@ -44,6 +46,7 @@ Prefer copying the behaviour of a reference editor (Neovim 0.12 first; Helix, Em
 | `tools/` | `conform.py` (differential test against nvim), `planted.sh` (every check fails on a planted bug) | thread 0 |
 | `design/` | the design package, copied unchanged | changes go through DESIGN.md's rules |
 | `Makefile`, `README.md`, `.github/` | the build and the check, the overview, CI | thread 0 |
+| `assets/` | the app icon and desktop file (PR 55) | thread 0 |
 | `reviews/` | one report per package review (`reviews/package-<n>.md`) and its repro files | that review's thread |
 
 Modules and their packages: text 1, undo 2, uni 3, core 4, keys 5, grid and tty 6, font 7, wl 8, win 9, loop 10, file 11, syntax 12, lsp 13, tools 15, org 16, git 17. C libraries and the test fonts come from the distribution (CI's apt line), not nix, whose libraries need a newer glibc than the system compiler links. The headers say what each package adds.
