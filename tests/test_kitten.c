@@ -137,6 +137,12 @@ static void colours(void)
 	CHECK(face_at(11, 5) == FACE_KITTEN_DIM && face_at(11, 11) == FACE_KITTEN_DIM);
 	CHECK(face_at(11, 12) == FACE_KITTEN_TEXT && face_at(11, 20) == FACE_KITTEN_TEXT);
 	/* another message: no colours */
+	/* a non-ASCII name: the message is the core's, cell for cell (no bytes
+	   left over), and tinted to its end */
+	core_msg(&e, "=^.^= saved 全角.md");
+	draw();
+	CHECK(!strcmp(row(11), "=^.^= saved 全角.md                     |"));
+	CHECK(face_at(11, 12) == FACE_KITTEN_TEXT && face_at(11, 18) == FACE_KITTEN_TEXT && face_at(11, 19) == FACE_NONE);
 	core_msg(&e, "\"notes.org\" 0L, 0B written");
 	draw();
 	CHECK(face_at(11, 0) == FACE_NONE);

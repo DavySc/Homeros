@@ -25,6 +25,7 @@ void core_msg(Editor *e, const char *fmt, ...)
 
 static Editor e;
 static Buf b;
+static Win w = { .y = 0, .h = 10 };   /* its status line on row 10, the command line on 11 */
 static Grid g;
 
 static long long ms(void) { return (long long)GetTickCount64(); }
@@ -67,6 +68,7 @@ int main(void)
 	char path[] = "C:\\Users\\davy\\notes.org";
 	b.path = path;
 	e.buf = &b;
+	e.wins = &w;
 	CHECK(!grid_resize(&g, 12, 40));
 	kitten_paw(&e);
 	for (int i = 0; i < 6; i++) {

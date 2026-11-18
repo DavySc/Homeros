@@ -89,30 +89,6 @@ void kitten_key(void)
 	if (frame >= 0) stop();
 }
 
-/* Puts s (n bytes) from column c with face f, up to column end; returns the
-   next column. */
-static int put(Grid *g, int r, int c, int end, const char *s, size_t n, int f)
-{
-	const unsigned char *u = (const unsigned char *)s;
-	for (size_t i = 0; i < n; i += uni_glen(u, n, i)) {
-		int w = uni_width(u, n, i);
-		if (c + w > end) break;
-		w = grid_put(g, r, c, u + i, uni_glen(u, n, i), w, ATTR_NONE);
-		if (w) g->c[r * g->cols + c].face = (unsigned char)f;
-		c += w;
-	}
-	return c;
-}
-
-static int width(const char *s)
-{
-	const unsigned char *u = (const unsigned char *)s;
-	size_t n = strlen(s);
-	int w = 0;
-	for (size_t i = 0; i < n; i += uni_glen(u, n, i)) w += uni_width(u, n, i);
-	return w;
-}
-
 /* The command line's first row: under the lowest window's status line
    (laststatus 2), so a taller command line moves it up (cmdheight). */
 static int cmdrow(const Editor *e)
@@ -130,9 +106,9 @@ void kitten_draw(Editor *e, Grid *g)
 		/* the message keeps its colours (nvim_echo's chunks) while it is shown */
 		if (e->mode != MODE_NORMAL || strncmp(e->msg, "=^.^= saved ", 12) || cr >= g->rows) return;
 		int end = g->cols;
-		int c = put(g, cr, 0, end, "=^.^=", 5, FACE_KITTEN_CAT);
-		c = put(g, cr, c, end, " saved ", 7, FACE_KITTEN_DIM);
-		put(g, cr, c, end, e->msg + 12, strlen(e->msg + 12), FACE_KITTEN_TEXT);
+		int c = grid_puts(g, cr, 0, end, "=^.^=", 5, ATTR_NONE, FACE_KITTEN_CAT);
+		c = grid_puts(g, cr, c, end, " saved ", 7, ATTR_NONE, FACE_KITTEN_DIM);
+		grid_puts(g, cr, c, end, e->msg + 12, strlen(e->msg + 12), ATTR_NONE, FACE_KITTEN_TEXT);
 		return;
 	}
 	const Frame *f = &frames[frame];
@@ -147,31 +123,31 @@ void kitten_draw(Editor *e, Grid *g)
 	/* the float: as wide as its widest line (10 cells, more with the
 	   heart and text), two columns from the right, on the three rows above
 	   the last status line and the command line (lines - cmdheight - 1 - 3) */
-	int w = f->heart[0] ? 16 + width(name) : 10;
+	int w = f->heart[0] ? 16 + grid_width(name, strlen(name)) : 10;
 	int r = cr - 1 - 3, c = g->cols - w - 2, end;
 	if (r < 0) r = 0;
 	if (c < 0) c = 0;
 	if (r + 3 > g->rows) return;
 	end = c + w < g->cols ? c + w : g->cols;
 	for (int i = 0; i < 3; i++)
-		for (int x = c; x < end; x++) put(g, r + i, x, end, " ", 1, FACE_NONE);
-	int x = put(g, r, c, end, " /\\_/\\ ", 7, FACE_KITTEN_CAT);
-	put(g, r, x + 2, end, f->heart, strlen(f->heart), FACE_KITTEN_HEART);
-	x = put(g, r + 1, c, end, "( ", 2, FACE_KITTEN_CAT);
-	x = put(g, r + 1, x, end, f->eyes, 3, FACE_KITTEN_FACE);
-	x = put(g, r + 1, x, end, " )", 2, FACE_KITTEN_CAT);
-	put(g, r + 1, x, end, f->paw, strlen(f->paw), FACE_KITTEN_PAW);
-	x = put(g, r + 2, c, end, " > ^ < ", 7, FACE_KITTEN_CAT);
+		for (int x = c; x < end; x++) grid_puts(g, r + i, x, end, " ", 1, ATTR_NONE, FACE_NONE);
+	int x = grid_puts(g, r, c, end, " /\\_/\\ ", 7, ATTR_NONE, FACE_KITTEN_CAT);
+	grid_puts(g, r, x + 2, end, f->heart, strlen(f->heart), ATTR_NONE, FACE_KITTEN_HEART);
+	x = grid_puts(g, r + 1, c, end, "( ", 2, ATTR_NONE, FACE_KITTEN_CAT);
+	x = grid_puts(g, r + 1, x, end, f->eyes, 3, ATTR_NONE, FACE_KITTEN_FACE);
+	x = grid_puts(g, r + 1, x, end, " )", 2, ATTR_NONE, FACE_KITTEN_CAT);
+	grid_puts(g, r + 1, x, end, f->paw, strlen(f->paw), ATTR_NONE, FACE_KITTEN_PAW);
+	x = grid_puts(g, r + 2, c, end, " > ^ < ", 7, ATTR_NONE, FACE_KITTEN_CAT);
 	if (f->heart[0]) {
-		x = put(g, r + 2, x + 3, end, "saved ", 6, FACE_KITTEN_TEXT);
-		put(g, r + 2, x, end, name, strlen(name), FACE_KITTEN_TEXT);
+		x = grid_puts(g, r + 2, x + 3, end, "saved ", 6, ATTR_NONE, FACE_KITTEN_TEXT);
+		grid_puts(g, r + 2, x, end, name, strlen(name), ATTR_NONE, FACE_KITTEN_TEXT);
 		/* wider than the screen: the float is cut to it and its last line
 		   wraps out of sight, so 'display' lastline ends it in "@@@"
 		   (NonText: overlay0, as the dim face); a double-width character
 		   cut by it is an "@" too (measured) */
 		if (c + w > g->cols && end - c >= 4) {
 			int a = end - 3 - !g->c[(r + 2) * g->cols + end - 3].len;
-			put(g, r + 2, a, end, "@@@@", (size_t)(end - a), FACE_KITTEN_DIM);
+			grid_puts(g, r + 2, a, end, "@@@@", (size_t)(end - a), ATTR_NONE, FACE_KITTEN_DIM);
 		}
 	}
 }
