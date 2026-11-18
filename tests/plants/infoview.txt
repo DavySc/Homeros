@@ -1,0 +1,13 @@
+# Plants for src/infoview/ (format in tools/planted.sh); the names in
+# parentheses are design/specs/Infoview.tla's broken variants.
+infoview: an event for a page whose stream is down is dropped (Infoview nobox)~test TESTS=infoview~~src/infoview/serve/serve.c~	chunk(p->stream ? &p->stream->out : &p->outbox, json, n);~	if (p->stream) chunk(&p->stream->out, json, n);
+infoview: a forgotten page that comes back is not told to reload (Infoview noreload)~test TESTS=infoview~~src/infoview/serve/serve.c~	if (was_forgotten(id)) {¶		/* its~	if (0) {¶		/* its
+infoview: files outside the page's own are served~test TESTS=infoview~~src/infoview/serve/serve.c~	return !strstr(name, "//") && !strstr(name, "/.");~	return !strstr(name, "//");
+infoview: the page is served without the token~test TESTS=infoview~~src/infoview/serve/serve.c~path[0] != '/' || strncmp(path + 1, token, t) ||~path[0] != '/' ||
+infoview: the server fuzzer on a page id longer than its buffer~fuzz FUZZERS=infoview_serve FUZZ_SECONDS=60~~src/infoview/serve/serve.c~	while (n < 64 &&~	while (n < 80 &&
+infoview: an answer after the child forgot the page makes it again (Infoview create)~test TESTS=infoview~~src/infoview/infoview.c~	Page *p = find(r->page);    /*~	Page *p = page(r->page);    /*
+infoview: incremental diagnostics replace the list~test TESTS=infoview~~src/infoview/infoview.c~	if (inc == NONE || n - inc < 4 || memcmp(m + inc, "true", 4)) k->d.n = 0;~	if (inc != NONE || 1) k->d.n = 0;
+infoview: initialize before the cursor (VS Code's initInfoView order)~test TESTS=infoview~~src/infoview/infoview.c~	event(p->id, "changedCursorLocation", loc, strlen(loc));¶	event(p->id, "initialize", loc, strlen(loc));~	event(p->id, "initialize", loc, strlen(loc));¶	event(p->id, "changedCursorLocation", loc, strlen(loc));
+infoview: the hello is sent again after every command~test TESTS=infoview~~src/infoview/infoview.c~	p->greeted = gen;¶~
+infoview: Lean's UTF-16 columns taken as bytes~test TESTS=infoview~~src/infoview/infoview.c~lsp_u16_byte(t, w, (size_t)c)~lsp_u16_byte(t, w, (size_t)c) * 0 + (size_t)c
+infoview: the scanner returns an element it has not checked~fuzz FUZZERS=infoview_scan FUZZ_SECONDS=60~~src/infoview/scan.c~	return j_skip(s, n, i) != NONE ? i : NONE;~	return i;
