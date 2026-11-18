@@ -63,6 +63,17 @@ long head(const char *s, long i)
 	return (long)uni_gprev((const unsigned char *)s, (size_t)n, (size_t)i + 1);   /* the cluster holding byte i */
 }
 
+/* WHITECHAR(): a blank no combining mark is on; utf_iscomposing_first()
+   asks whether the next character joins a space, also after a Tab */
+int whitechar(const char *s, long n, long i)
+{
+	if (s[i] != ' ' && s[i] != '\t') return 0;
+	char b[8] = " ";
+	long k = n - i - 1 < 6 ? n - i - 1 : 6;
+	memcpy(b + 1, s + i + 1, (size_t)k);
+	return clen(b, k + 1, 0) == 1;
+}
+
 /* utf_ptr2char(): an invalid byte stands for itself */
 static int char_at(const char *s, long n, long i)
 {

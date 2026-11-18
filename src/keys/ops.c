@@ -1662,13 +1662,101 @@ int sql_format(size_t a, size_t z)
 	return 0;
 }
 
+/* fmt_check_par() without 'comments' (see do_join()): a blank line, or a
+   nroff paragraph macro, is not part of a paragraph */
+static int fmt_check_par(long l) { return linewhite(l) || startPS(l, 0, 0); }
+
+/* utf_head_off() before byte c: head() would count the line each step */
+static long gprev(const char *s, long n, long c) { return (long)uni_gprev((const unsigned char *)s, (size_t)n, (size_t)c); }
+
+/* internal_format() for format_lines() ('formatoptions' tcqj, no comment
+   leaders): while the line's last non-blank ends past textwidth, break it
+   at the last blanks that start at or before textwidth (the first blanks
+   when none do).  Neovim finds them scanning back from the line's end and
+   moves the rest of the line with open_line(), which is quadratic in a
+   long line (gqq on a 190 KB line: 4 s and 446 MB of undo, measured once);
+   scanning forward to textwidth finds the same blanks, and replacing just
+   them with a line break and open_line()'s indent is the same text */
+static void internal_format(long tw)
+{
+	for (;;) {
+		long l = (long)W->line, n = ml_len(l);
+		const char *s = ml_get(l);
+		long c = n ? gprev(s, n, n) : 0;   /* the last non-blank */
+		while (c && (s[c] == ' ' || (s[c] >= 9 && s[c] <= 13))) c = gprev(s, n, c);
+		long wantcol = col_of_vcol(l, tw, 1), foundcol = 0;
+		if (c == 0 || wantcol > c) return;
+		/* blanks after a non-blank, so not the indent */
+		for (long i = 0, prev = 0; i < c; i += clen(s, n, i)) {
+			int w = whitechar(s, n, i);
+			if (w && prev) {
+				if (i > wantcol) { if (!foundcol) foundcol = i; break; }
+				foundcol = i;
+			}
+			prev = !w;
+		}
+		if (foundcol == 0) return;   /* no blanks: the line stays long */
+		long q = foundcol, ind = 0;
+		while (q < n && whitechar(s, n, q)) q++;
+		for (long i = 0; s[i] == ' ' || s[i] == '\t'; i++) ind += s[i] == '\t' ? 8 - ind % 8 : 1;
+		if (!ind) ind = old_indent;   /* "^ CTRL-D" in the last insert */
+		old_indent = 0;
+		Sbuf b = { 0 };
+		bput(&b, "\n", 1);
+		bspaces(&b, ind);
+		replace_bytes(l, foundcol, q - foundcol, b.s, b.n);
+		free(b.s);
+		W->line = (size_t)l + 1;
+	}
+}
+
+/* format_lines() without 'comments' and with textwidth 0: the window's
+   width less one, at most 79 (comp_textwidth()).  Each paragraph's lines
+   are joined as J does and broken again by internal_format(); a line
+   longer than three times that is formatted before the next join */
+static void format_lines(long line_count)
+{
+	long tw = W->w - 1 < 79 ? W->w - 1 : 79, max_len = tw * 3, l = (long)W->line;
+	int next_is_not_par = fmt_check_par(l), is_not_par = 0, advance = 1, need_set_indent = 1, force_format = 0;
+	l--;
+	for (long count = line_count; count != 0; count--) {
+		if (advance) { l++; is_not_par = next_is_not_par; }
+		next_is_not_par = count == 1 || l == nlines() - 1 || fmt_check_par(l + 1);
+		advance = 1;
+		int is_end_par = is_not_par || next_is_not_par;
+		if (is_not_par) continue;
+		if (is_end_par || force_format) {
+			if (need_set_indent) set_indent(l, get_indent(l));
+			W->line = (size_t)l;
+			if (tw > 0) internal_format(tw);
+			l = (long)W->line;
+			need_set_indent = is_end_par;
+			force_format = 0;
+		}
+		if (!is_end_par) {
+			advance = 0;
+			W->line = (size_t)l;
+			do_join(2, 1);
+			force_format = ml_len(l) > max_len;
+		}
+	}
+	W->line = (size_t)l;
+}
+
 /* OP_FORMAT: a .sql buffer has Davy's 'formatexpr' (op_formatexpr()) over
-   the operator's lines */
+   the operator's lines; other buffers op_format() */
 void op_format(Oparg *oap)
 {
 	if (is_sql()) {
 		sql_format(core_line_start(E, (size_t)oap->start.lnum), core_line_start(E, (size_t)oap->end.lnum + 1));
 		return;
 	}
-	beep();
+	/* the cursor where gq was typed, so u puts it back there */
+	setcur(oap->cursor_start);
+	u_save_gap((size_t)oap->start.lnum);
+	setcur(oap->start);
+	format_lines(oap->line_count);
+	/* the first non-blank of the last formatted line; after "Q}" the next */
+	if (oap->end_adjusted && (long)W->line < nlines() - 1) W->line++;
+	beginline(BL_WHITE | BL_FIX);
 }

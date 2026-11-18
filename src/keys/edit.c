@@ -251,7 +251,7 @@ static void insertchar(int c, int pending, int ctrlv)
    (o and O, dir BACKWARD for O) */
 /* the indent before "^ CTRL-D", which the next line gets back (Neovim's
    old_indent, open_line()'s second_line_indent) */
-static long old_indent;
+long old_indent;
 
 static int open_line(int dir)
 {
@@ -271,14 +271,7 @@ static int open_line(int dir)
 	if (insert) {
 		extra = c;
 		if (replacing()) replace_push_nul();
-		/* not a blank a combining mark is on: utf_iscomposing_first() asks
-		   whether the next character joins a space, also after a Tab */
-		while (extra < len && (line[extra] == ' ' || line[extra] == '\t')) {
-			char b = line[extra];
-			line[extra] = ' ';
-			long k = clen(line, len, extra);
-			line[extra] = b;
-			if (k > 1) break;
+		while (extra < len && whitechar(line, len, extra)) {
 			if (replacing()) replace_push(line + extra, 1);
 			extra++;
 		}

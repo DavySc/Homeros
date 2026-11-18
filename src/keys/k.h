@@ -34,6 +34,7 @@ int  gchar(Pos p);                    /* code point at p, NUL at the end of line
 int  gchar_cursor(void);
 int  clen(const char *s, long n, long i);   /* bytes of the character at s[i] */
 long head(const char *s, long i);           /* start of the character holding s[i] */
+int  whitechar(const char *s, long n, long i);
 int  inc(Pos *p);
 int  dec(Pos *p);
 int  incl(Pos *p);
@@ -97,7 +98,7 @@ extern int virtual_op, ins_at_eol;
 typedef struct {
 	int op_type, regname, motion_type, motion_force;
 	int use_reg_one, inclusive, end_adjusted, empty, is_visual, block_mode;
-	Pos start, end;
+	Pos start, end, cursor_start;   /* cursor_start: where gq was typed */
 	long line_count, start_vcol, end_vcol;
 } Oparg;
 enum { OP_NOP, OP_DELETE, OP_YANK, OP_CHANGE, OP_LSHIFT, OP_RSHIFT, OP_TILDE,
@@ -156,6 +157,7 @@ int  stuff_inserted(int c, long count, int no_esc);
 long last_insert_keys(const int **k);
 void set_last_insert(int c);
 extern int restart_edit, arrow_used, did_ai_flag;
+extern long old_indent;              /* open_line()'s second_line_indent */
 
 /* normal.c */
 void normal_key(int k);

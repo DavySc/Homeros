@@ -12,8 +12,14 @@ Not built (FEATURES.md section 2), part two of package 5:
 - search: / ? n N * # and search as a motion (d/x). / and ? read their line
   and drop it with a beep, so the pattern does not run as commands; n N * #
   beep.
-- operators = gq ! and gc (comment); the surround, align and other section 3
+- operators = ! and gc (comment); the surround, align and other section 3
   extras.
+- gq's 'comments': Neovim formats with 'formatoptions' tcqj, so a comment
+  leader ("# ", "// ", "> ", "- " with 'comments' at their default, a
+  Markdown list with its ftplugin's) is kept on each broken line and dropped
+  from joined ones; ours treats it as text, as J does (conform.py sends no
+  leaders).  Also not built: a cindent buffer's paragraph indent, 'textwidth'
+  set (ours is Neovim's 0: the window's width less one, at most 79), gw.
 - tag objects it at.
 - registers "+ "* (clipboard, needs the window backend) and "/ (search).
 - ex commands beyond :w :w! :q :q! :wq :x: ranges, :5, :s, :g, :norm, :d,

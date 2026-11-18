@@ -1,10 +1,12 @@
-/* The keys' SQL formatting hooks, as Davy's Neovim has them (conform.nvim
-   with sqldiff): gq on a .sql buffer formats the operator's lines through
+/* gq.  Its SQL hooks, as Davy's Neovim has them (conform.nvim with
+   sqldiff): gq on a .sql buffer formats the operator's lines through
    sqlfmt's range (the whole text formatted, only the changes in those
    lines applied), :Format the whole buffer, and :w, :wq and :x format
    first when a sqldiff.toml is in the file's directory or one above it.
    The expected text is sqlfmt's own edit applied by hand, so this checks
-   the wiring; test_sqlfmt checks the formatting against SQLDiff. */
+   the wiring; test_sqlfmt checks the formatting against SQLDiff.  gq on
+   other buffers is Neovim's, checked by the recorded traces; here only
+   that a long paragraph's undo stays linear in its size. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,7 +18,7 @@
 #include "sqlfmt.h"
 
 static const char SRC[] = "select a,b from t where x=1\nSELECT  c   from u\nselect d from v\n";
-static char dir[] = "/tmp/keys_sqlXXXXXX", sub[128], file[160], toml[160];
+static char dir[] = "/tmp/keys_gqXXXXXX", sub[128], file[160], toml[160];
 
 static void keys(Editor *e, const char *s)
 {
@@ -44,6 +46,14 @@ static char *want(size_t a, size_t z)
 	strcpy(b + a + n, SRC + z);
 	text_free(t);
 	return b;
+}
+
+/* the bytes an undo puts back and takes out */
+static size_t undone;
+static void count(void *ctx, const Text *t, size_t pos, size_t ndel, const char *ins, size_t nins)
+{
+	(void)ctx; (void)t; (void)pos; (void)ins;
+	undone += ndel + nins;
 }
 
 static void load(Editor *e, const char *path)
@@ -139,7 +149,23 @@ int main(void)
 	CHECK(!strcmp(disk("a.sql"), want(0, sizeof SRC - 1)));
 	core_free(&e);
 
+	/* gqG on a paragraph of 3,000 lines: format_lines() breaks a joined
+	   line once it passes three times textwidth, so each join copies a few
+	   lines at most (the undo moves 5.2 times the text, measured once;
+	   joining the whole paragraph first would move about 1,500 times) */
+	FILE *p = fopen(txt, "w");
+	CHECK(p);
+	for (int i = 0; i < 3000; i++) fputs("lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod\n", p);
+	CHECK(!fclose(p));
+	CHECK(!core_open(&e, txt));
+	size_t size = text_len(e.buf->text);
+	keys(&e, "gqG");
+	undo_hook(e.buf->undo, count, NULL);
+	keys(&e, "u");
+	CHECK(text_len(e.buf->text) == size && undone < 8 * size);
+	core_free(&e);
+
 	unlink(file); unlink(txt); unlink(toml); rmdir(sub); rmdir(dir);
-	puts("test_keys_sql: ok");
+	puts("test_keys_gq: ok");
 	return 0;
 }

@@ -1115,7 +1115,8 @@ static void nv_g_cmd(Cmdarg *cap)
 	/* Davy (2026-11-17): go is gg everywhere, as noremap go gg; Neovim's
 	   go (byte N) is not kept */
 	case 'g': case 'o': cap->arg = 0; nv_goto(cap); break;
-	case '~': case 'u': case 'U': case 'q': nv_operator(cap); break;
+	case 'q': cap->oap->cursor_start = cur(); /* fall through */
+	case '~': case 'u': case 'U': nv_operator(cap); break;
 	case 'p': case 'P': nv_put(cap, 0); break;
 	default: clearopbeep(oap);
 	}
