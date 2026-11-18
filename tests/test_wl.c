@@ -348,6 +348,14 @@ static void test_sway(void)
 	show();
 	CHECK(ink(0, 0, 2 * cellw(), cellh(), 1) > cellw() * cellh() / 4);
 
+	/* a ligature's glyph sits on its last cell and reaches back over the
+	   others ("->"; " /\ " in JetBrains Mono): the first cell has its ink */
+	grid_clear(&g);
+	grid_puts(&g, 0, 0, "x /\\ y ->", ATTR_NONE);
+	show();
+	CHECK(ink(2 * cellw(), 0, cellw(), cellh(), 0) > cellh() / 2);
+	CHECK(ink(7 * cellw(), 0, cellw(), cellh(), 0) > cellw() / 2);
+
 	/* keys, with the Control transformation and the keys keys.h names */
 	k0 = nkeys;
 	run("LC_ALL=C.UTF-8 wtype aé -k Escape -k BackSpace -M ctrl r -m ctrl -k Up -k Return -k Tab");

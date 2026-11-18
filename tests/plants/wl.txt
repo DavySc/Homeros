@@ -29,3 +29,4 @@ wl: clipboard written by the editor itself~test TESTS=wl~~src/wl/wl.c~	pid_t p =
 wl: lost compositor ignored~test TESTS=wl~~src/wl/wl.c~dispatch_pending(dpy) < 0) return -1;~dispatch_pending(dpy) < 0) return 0;
 wl: the background layer ignored~test TESTS=wl~~src/wl/wl.c~	*bg = b->style & FACE_BG ? rgb(b->bg) : BG;~	*bg = f->style & FACE_BG ? rgb(f->bg) : BG;
 wl: a guide drawn as the preedit~test TESTS=wl~~src/wl/wl.c~ATTR_PRE = ATTR_GUIDE + 1,~ATTR_PRE = ATTR_GUIDE,
+wl: ligature cut at its own cell~test TESTS=wl~~src/wl/wl.c~int ax = gx < lo * cell_w ? lo * cell_w - gx : 0~int ax = gx < c * cell_w ? c * cell_w - gx : 0

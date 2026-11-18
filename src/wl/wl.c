@@ -643,7 +643,9 @@ static int blank(const Cell *x) { return x->len == 1 && x->ch[0] == ' '; }
    cells shaped as one run, since colour does not change the font (kitty
    splits runs by font only).  A glyph wider than its cell (73 of Mathlib's
    295 symbols, reviews/package-7.md) spills into the blank cells after it,
-   as foot's overflowing glyphs do; span keeps spills inside lo..hi. */
+   as foot's overflowing glyphs do, and a ligature's glyph ("->", JetBrains
+   Mono's " /\ ") reaches back over its run's cells, as in foot and kitty;
+   span keeps both inside lo..hi. */
 static void draw_span(uint32_t *px, const Grid *g, int r, int lo, int hi)
 {
 	static unsigned char s[ROW];
@@ -668,7 +670,7 @@ static void draw_span(uint32_t *px, const Grid *g, int r, int lo, int hi)
 		while (e < hi && (!x[e].len || blank(&x[e]))) e++;
 		colours(g, r, c, &fg, &bg);
 		int gx = c * cell_w + pl[i].x + gl->left, gy = y0 + cell_b - pl[i].y - gl->top, xe = e * cell_w;
-		int ax = gx < c * cell_w ? c * cell_w - gx : 0, zx = gx + gl->w > xe ? xe - gx : gl->w;
+		int ax = gx < lo * cell_w ? lo * cell_w - gx : 0, zx = gx + gl->w > xe ? xe - gx : gl->w;
 		int ay = gy < y0 ? y0 - gy : 0, zy = gy + gl->h > ye ? ye - gy : gl->h;
 		for (int y = ay; y < zy; y++) {
 			uint32_t *p = px + (gy + y) * bw + gx;
