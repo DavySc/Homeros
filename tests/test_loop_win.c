@@ -14,6 +14,9 @@
       handle whose signal loop_waiting took still runs its function.
    5. Ctrl-C inside an endless command; pipes and timers wait until it is
       over.  6. No return from an idle loop_once before its timeout.
+   7. From the review of PR 41: a child that never stops writing does not
+      hold loop_once; output still in the pipe at the exit is read first; a
+      write begun inside the exit's drain is refused.
    Runs on Windows or under Wine (src/loop/check.sh); elsewhere it says so. */
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -86,6 +89,13 @@ static int child(char **argv)
 		return !(WriteFile(out, "x", 1, &n, NULL) | WriteFile(err, "x", 1, &n, NULL));
 	}
 	if (!strcmp(r, "sleep")) { Sleep(30000); return 0; }
+	if (!strcmp(r, "flood")) { memset(b, 'f', sizeof b); while (WriteFile(out, b, sizeof b, &n, NULL)) {} return 0; }
+	if (!strcmp(r, "say")) { put(out, "hello\n"); return 7; }
+	if (!strcmp(r, "holdin")) {   /* a grandchild holds all its pipes, stdin too; asks with its pid */
+		snprintf(b, sizeof b, "%lu\n", start("sleep", 1));
+		put(out, b);
+		return 0;
+	}
 	if (!strcmp(r, "tree")) {   /* starts a grandchild, says its pid, waits */
 		snprintf(b, sizeof b, "%lu\n", start("sleep", 0));
 		put(out, b);
@@ -360,6 +370,7 @@ static void ctrl_c(void)
 	CHECK(loop_watch((int)(INT_PTR)key, on_key, NULL) == 0);
 	CHECK(!loop_waiting());
 	CHECK(spawn(&g, "streams", NULL) >= 0);
+	CHECK(loop_once(0) == 0);                /* its reads are armed, so their completions wait in the queue */
 	CHECK(loop_timer(tick, &fired[3], 0) == 0);
 	Sleep(300);                              /* the child has written and exited */
 	CHECK(SetWaitableTimer(key, &due, 0, NULL, NULL, FALSE));
@@ -379,6 +390,94 @@ static void ctrl_c(void)
 
 /* Idle with a child, a watch and a timer far ahead, loop_once returns at
    its timeout and not before. */
+/* A child that never stops writing: one loop_once hands on one buffer per
+   stream, as loop.c's one read per poll, and a key is not kept waiting
+   (review of PR 41, 1: completion routines that re-armed their reads held
+   one loop_once(0) for 1.9 s). */
+static long long flooded;
+static void on_flood(void *ctx, int s, const char *b, size_t n) { (void)b; if (s == 1) flooded += (long long)n; if (!s) *(int *)ctx = 1; }
+static long long key_at;
+static void on_key_at(void *ctx, int fd) { (void)ctx; (void)fd; if (!key_at) key_at = ms(); }
+
+static void flood(void)
+{
+	LARGE_INTEGER due = { .QuadPart = -300 * 10000LL };
+	HANDLE k = CreateWaitableTimerW(NULL, FALSE, NULL);
+	int done = 0;
+	char *argv[] = { self, "flood", NULL };
+	CHECK(k && loop_watch((int)(INT_PTR)k, on_key_at, NULL) == 0);
+	int id = proc_spawn(argv, NULL, on_flood, &done);
+	CHECK(id >= 0);
+	long long t0 = ms(), worst = 0, most = 0;
+	CHECK(SetWaitableTimer(k, &due, 0, NULL, NULL, FALSE));
+	while (ms() - t0 < 1000) {
+		long long a = ms(), b0 = flooded;
+		CHECK(loop_once(0) == 0);
+		if (ms() - a > worst) worst = ms() - a;
+		if (flooded - b0 > most) most = flooded - b0;
+	}
+	fprintf(stderr, "test_loop_win: flood: longest loop_once(0) %lld ms, at most %lld bytes in one, key due at 300 ms ran at %lld ms\n", worst, most, key_at - t0);
+	CHECK(worst < 100 && most <= 1 << 16 && key_at && key_at - t0 < 400);
+	proc_kill(id);
+	while (!done) CHECK(loop_once(100) == 0);
+	loop_unwatch((int)(INT_PTR)k);
+	CloseHandle(k);
+}
+
+/* The exit seen while the child's output is still in the pipe (a watch
+   function sleeps over its whole life): report reads it first. */
+static void on_slow(void *ctx, int fd) { (void)ctx; (void)fd; Sleep(1500); }
+
+static void drain(void)
+{
+	HANDLE e = CreateEventW(NULL, FALSE, FALSE, NULL);
+	CHECK(e && loop_watch((int)(INT_PTR)e, on_slow, NULL) == 0);
+	CHECK(spawn(&g, "say", NULL) >= 0);
+	SetEvent(e);
+	CHECK(loop_once(-1) == 0);               /* the child writes and exits meanwhile */
+	CHECK(g.ended[0] && g.order && g.code == 7 && g.nout == 6 && !memcmp(g.out, "hello\n", 6));
+	free(g.out);
+	loop_unwatch((int)(INT_PTR)e);
+	CloseHandle(e);
+}
+
+/* A proc_write from the callback inside the exit's drain, to a child whose
+   stdin a grandchild still holds, is refused: begun, it would complete on
+   the slot's next child and close its stdin (review of PR 41, 2). */
+static int asker = -1, answer = -2;
+static DWORD asker_gc;
+static void on_ask(void *ctx, int s, const char *b, size_t n)
+{
+	static char mb[1 << 20];
+	if (s == 1 && n && answer == -2) { asker_gc = (DWORD)atol(b); answer = proc_write(asker, mb, sizeof mb); }
+	if (!s) *(int *)ctx = 1;
+}
+
+static void stale(void)
+{
+	HANDLE e = CreateEventW(NULL, FALSE, FALSE, NULL);
+	int done = 0;
+	char *argv[] = { self, "holdin", NULL };
+	CHECK(e && loop_watch((int)(INT_PTR)e, on_slow, NULL) == 0);
+	CHECK((asker = proc_spawn(argv, NULL, on_ask, &done)) >= 0);
+	SetEvent(e);
+	CHECK(loop_once(-1) == 0);               /* its question is still in the pipe at the exit */
+	loop_unwatch((int)(INT_PTR)e);
+	CloseHandle(e);
+	CHECK(done && answer == -1);
+	int id = spawn(&g, "cat", NULL);
+	CHECK(id == asker);                      /* the same slot */
+	CHECK(proc_write(id, "abc", 3) == 0);
+	for (int i = 0; i < 5; i++) CHECK(loop_once(100) == 0);
+	CHECK(proc_write(id, "def", 3) == 0);
+	proc_close(id);
+	run(&g, 5000);
+	CHECK(g.code == 0 && g.nout == 6 && !memcmp(g.out, "abcdef", 6));
+	free(g.out);
+	HANDLE h = OpenProcess(PROCESS_TERMINATE, FALSE, asker_gc);
+	if (h) { TerminateProcess(h, 0); CloseHandle(h); }
+}
+
 static void idle(void)
 {
 	HANDLE e = CreateEventW(NULL, FALSE, FALSE, NULL);
@@ -410,7 +509,10 @@ int main(int argc, char **argv)
 	watches();
 	ctrl_c();
 	idle();
-	fprintf(stderr, "test_loop_win: 4 MB through cat; dead.py; streams, codes, arguments, directory, closed stdin; 32 children; kill takes the tree; exit with a holder, its pipes closed; timers; every ready watch, a taken signal kept, unwatch in a pass; message queue; Ctrl-C; idle\n");
+	flood();
+	drain();
+	stale();
+	fprintf(stderr, "test_loop_win: flood, drain and a write refused while reaping; 4 MB through cat; dead.py; streams, codes, arguments, directory, closed stdin; 32 children; kill takes the tree; exit with a holder, its pipes closed; timers; every ready watch, a taken signal kept, unwatch in a pass; message queue; Ctrl-C; idle\n");
 	return 0;
 }
 #else

@@ -27,6 +27,9 @@ loop: stdin stays open after the exit~test TESTS=loop IDLE_SECONDS=2~~src/loop/l
 loop: SIGKILL reaches the child but not its group~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~kill(-p[i].pid, SIGKILL)~kill(p[i].pid, SIGKILL)
 
 # Windows (src/loop/win.c, run under Wine by make win WIN=loop)
+loop: win: the exit drops what the pipes still hold~win WIN=loop~~src/loop/win.c~		for (; left && (got = take(c, s, left)); left -= got) {}¶~		(void)got;¶
+loop: win: a completion routine re-arms its read, so a flood holds loop_once (review of PR 41, 1)~win WIN=loop~~src/loop/win.c~&& left) take(c, s, left);¶}~&& left) take(c, s, left);¶	read_next(c, s);¶}
+loop: win: a write begun while reaping completes on the slot's next child (review of PR 41, 2)~win WIN=loop~~src/loop/win.c~ || c->reaping) return -1;~) return -1;
 loop: win: loop_waiting takes an auto-reset signal and forgets it~win WIN=loop~~src/loop/win.c~(w[i].pend = ready(i))~ready(i)
 loop: win: only the handle the wait names runs, not every ready watch~win WIN=loop~~src/loop/win.c~		if (w[i].used && (w[i].pend || ready(i))) {~		if (w[i].used && w[i].pend) {
 loop: win: pipe APCs run inside a command (alertable breakcheck)~win WIN=loop~~src/loop/win.c~return WaitForSingleObject(H(w[i].fd), 0) == WAIT_OBJECT_0;~return WaitForSingleObjectEx(H(w[i].fd), 0, TRUE) == WAIT_OBJECT_0;
