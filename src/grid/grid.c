@@ -99,12 +99,13 @@ int grid_put(Grid *g, int r, int c, const unsigned char *s, size_t n, int width,
 int grid_puts(Grid *g, int r, int c, int end, const char *s, size_t n, int attr, int face)
 {
 	const unsigned char *u = (const unsigned char *)s;
-	for (size_t i = 0; i < n; i += uni_glen(u, n, i)) {
+	for (size_t i = 0, len; i < n; i += len) {
 		int w = uni_width(u, n, i), k = c;
+		len = uni_glen(u, n, i);
 		if (c + w > end) break;
 		if (w > 2 || u[i] < 0x20 || u[i] == 0x7f)
 			for (int j = 0; j < w; j++) c += grid_put(g, r, c, (const unsigned char *)" ", 1, 1, attr);
-		else c += grid_put(g, r, c, u + i, uni_glen(u, n, i), w, attr);
+		else c += grid_put(g, r, c, u + i, len, w, attr);
 		for (; k < c; k++) g->c[r * g->cols + k].face = (unsigned char)face;
 	}
 	return c;

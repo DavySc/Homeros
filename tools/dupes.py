@@ -10,13 +10,14 @@ the list only shrinks."""
 import re, sys, glob, zlib
 
 TOK = re.compile(r'"(?:\\.|[^"\\\n])*"|\'(?:\\.|[^\'\\\n])*\'|\w+|[^\s\w]')
-GAP = re.compile(r'/\*.*?\*/|//[^\n]*|^\s*#[^\n]*', re.S | re.M)
+# strings first, so a "/*" inside one starts no comment
+GAP = re.compile(r'("(?:\\.|[^"\\\n])*"|\'(?:\\.|[^\'\\\n])*\')|/\*.*?\*/|//[^\n]*|^\s*#[^\n]*', re.S | re.M)
 
 
 def tokens(path):
 	src = open(path, encoding='utf-8', errors='replace').read()
 	# comments and preprocessor lines blanked, newlines kept so lines stay right
-	src = GAP.sub(lambda m: '\n' * m.group().count('\n'), src)
+	src = GAP.sub(lambda m: m.group(1) or '\n' * m.group().count('\n'), src)
 	out, depth, prev, body = [], 0, '', False
 	for n, line in enumerate(src.split('\n'), 1):
 		for t in TOK.findall(line):
