@@ -1,0 +1,46 @@
+diff --git a/src/tty/tty.c b/src/tty/tty.c
+index 3cc7f9b..f8d7bff 100644
+--- a/src/tty/tty.c
++++ b/src/tty/tty.c
+@@ -111,7 +111,7 @@ static int key(const unsigned char *s, int n, int force, int *k)
+ 		while (j < n && (s[j] < 0x40 || s[j] > 0x7e)) j++;
+ 		if (j == n) return force;
+ 		*k = s[2] == 'A' ? KEY_UP : s[2] == 'B' ? KEY_DOWN : s[2] == 'C' ? KEY_RIGHT : s[2] == 'D' ? KEY_LEFT
+-		   : j == 3 && s[2] == '3' && s[3] == '~' ? KEY_DEL : -1;   /* Delete: termkey's CSI 3 ~ */
++		   : s[2] == '3' && s[3] == '~' ? KEY_DEL : -1;   /* Delete: termkey's CSI 3 ~ */
+ 		return j + 1;
+ 	}
+ 	if (s[0] < 0xC2 || s[0] > 0xF4) return 1;      /* ASCII, or no UTF-8 lead */
+diff --git a/tests/plants/tty.txt b/tests/plants/tty.txt
+index 0376b70..4a0ab00 100644
+--- a/tests/plants/tty.txt
++++ b/tests/plants/tty.txt
+@@ -26,4 +26,5 @@ tty: a face's background not sent~test TESTS=grid_diff~~src/tty/tty.c~	if (f->st
+ tty: a face's style bits not sent~test TESTS=grid_diff~~src/tty/tty.c~f->style & FACE_ITALIC ? ";3"~0 ? ";3"
+ tty: a long cluster printed from the cell's number~test TESTS=grid_diff~~src/tty/tty.c~out(grid_text(x), x->len);~out(x->ch, x->len < 4 ? x->len : 4);
+ tty: a cluster's ambiguity read from the cell's number~test TESTS=grid_diff~~src/tty/tty.c~if (wide && x->len > 1) {~if (wide && x->ch[0] >= 0x80) {
+-tty: Delete dropped as an unknown sequence~test TESTS=tty_input~~src/tty/tty.c~j == 3 && s[2] == '3' && s[3] ==~j == 3 && s[2] == '9' && s[3] ==
++tty: Delete dropped as an unknown sequence~test TESTS=tty_input~~src/tty/tty.c~s[2] == '3' && s[3] ==~s[2] == '9' && s[3] ==
++tty: Insert (CSI 2 tilde) taken for Delete~test TESTS=tty_input~~src/tty/tty.c~s[2] == '3' && s[3] ==~s[3] ==
+diff --git a/tests/test_tty_input.c b/tests/test_tty_input.c
+index 3167cc9..c262a24 100644
+--- a/tests/test_tty_input.c
++++ b/tests/test_tty_input.c
+@@ -35,7 +35,7 @@ static void put(size_t *n, const char *s) { memcpy(in + *n, s, strlen(s)); *n +=
+ /* appends one random key's bytes to in and its keys (or none) to want */
+ static void token(size_t *n, int *nw, int last)
+ {
+-	static const char *const csi[] = { "\x1b[1;5A", "\x1b[3;5~", "\x1b[200~", "\x1b[?1u", "\x1b[H" };
++	static const char *const csi[] = { "\x1b[1;5A", "\x1b[3;5~", "\x1b[2~", "\x1b[200~", "\x1b[?1u", "\x1b[H" };
+ 	/* not UTF-8: overlong, surrogate, past U+10FFFF (0x110000 would be
+ 	   KEY_UP), a lead cut by another lead; each byte is U+FFFD */
+ 	static const char *const bad[] = { "\xf4\x90\x80\x80", "\xf4\x90\x80\x84", "\xed\xa0\x80", "\xc0\x80",
+@@ -54,7 +54,7 @@ static void token(size_t *n, int *nw, int last)
+ 		put(n, (const char *[]){ "\x1b[A", "\x1b[B", "\x1b[C", "\x1b[D", "\x1b[3~" }[i]);
+ 		want[(*nw)++] = (int[]){ KEY_UP, KEY_DOWN, KEY_RIGHT, KEY_LEFT, KEY_DEL }[i];
+ 	} else if (t < 9) {                /* a sequence that is no key: dropped */
+-		put(n, csi[rnd(5)]);
++		put(n, csi[rnd(6)]);
+ 	} else if (t < 10) {
+ 		const char *s = bad[rnd(9)];
+ 		put(n, s);
