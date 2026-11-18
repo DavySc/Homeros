@@ -1,0 +1,38 @@
+# The random checks against Neovim, Org and Neovim's undo with a fresh SEED
+# each night (a pull request's check uses seed 1, Makefile).  A failure opens
+# or updates the issue "nightly: fresh-seed differences", so a thread picks
+# it up: reduce each case, then fix it or list it (tests/conform-known.json).
+name: nightly
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+jobs:
+  random:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+      - run: >
+          sudo apt-get update && sudo apt-get install -y clang libclang-rt-18-dev pkg-config
+          libfreetype-dev libharfbuzz-dev libfontconfig-dev ripgrep
+          fonts-jetbrains-mono fonts-noto-core fonts-noto-cjk fonts-noto-color-emoji fonts-dejavu-core
+      - run: nix build -f tools.nix tools -o tools-env
+      - run: echo "$PWD/tools-env/bin" >> "$GITHUB_PATH"
+      - run: make conform org-conform undo-diff SEED=${{ github.run_id }} 2>&1 | tee nightly.log; exit ${PIPESTATUS[0]}
+        shell: bash
+      - if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          t="nightly: fresh-seed differences"
+          body=$(printf 'Seed %s, run %s/%s/actions/runs/%s, commit %s\n\n```\n%s\n```\n' \
+            "${{ github.run_id }}" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "${{ github.run_id }}" "$GITHUB_SHA" \
+            "$(grep -E 'differ|DIFF|STALE|FAIL|Error' nightly.log | tail -40)")
+          n=$(gh issue list --state open --search "\"$t\" in:title" --json number --jq '.[0].number')
+          if [ -n "$n" ]; then gh issue comment "$n" --body "$body"; else gh issue create --title "$t" --body "$body"; fi

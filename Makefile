@@ -83,8 +83,9 @@ fuzz: $(OBJS) | build/fuzz
 
 # Vim keys against nvim --headless on random sequences.  The random checks
 # (conform, org-conform, undo-conform) take SEED, 1 by default, so a pull
-# request's check is the same each run; CI's nightly run takes a fresh SEED,
-# and what it finds is reduced, then fixed or listed (tests/conform-known.json)
+# request's check is the same each run; CI's nightly run (nightly.yml) takes a
+# fresh SEED, and what it finds is reduced, then fixed or listed
+# (tests/conform-known.json)
 conform: $(OBJS) | build/san
 	@rm -rf build/state
 	gcc $(WARN) $(CPPFLAGS) $(SAN) -o build/san/conform_drv tests/conform_drv.c $(LIB_SRCS) $(OBJS) $(LIBS)
