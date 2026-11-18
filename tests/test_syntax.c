@@ -48,7 +48,8 @@ static void spit(const char *path, const char *s, size_t n)
 	fclose(f);
 }
 
-/* the corpus: the repo's own sources and design, Neovim's runtime Lua */
+/* the corpus: the repo's own sources and design, Neovim's runtime Lua,
+   PostgreSQL's regression tests (the first 64 by name) */
 static char *corpus[NL][64];
 static size_t ncorpus[NL];
 
@@ -75,7 +76,7 @@ static const char *const snip[NL][16] = {
 	{ "\n", "/*", "*/", "\"", "'", "{", "}", "(", ")", "x", "  ", "\xc3\xa9", "#define A 1\n", "int", "FOO_BAR", ";" },
 	{ "\n", "--", "[[", "]]", "\"", "'", "(", ")", "x", "  ", "\xc3\xa9", "local", "function", "end", "--- @param", "vim.cmd" },
 	{ "\n", "#", "```", "```c\n", "```lua\n", "*", "_", "`", "[", "](", ")", "- ", "| a |", "\n\n", "\xc3\xa9", "> " },
-	{ "\n", "--", "/*", "*/", "'", "\"", "(", ")", ",", ";", "@x", "\xc3\xa9", "SELECT", " FROM [t]", "WHERE", "CREATE TABLE " },
+	{ "\n", "--", "/*", "*/", "'", "\"", "(", ")", ",", ";", "@x", "\xc3\xa9", "SELECT", " FROM [t]", "$$", "CREATE TABLE " },
 };
 
 static int stops_left;

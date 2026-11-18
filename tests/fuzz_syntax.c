@@ -1,5 +1,5 @@
 /* libFuzzer: syntax.h on text and edits decoded from the input, in C, Lua
-   and Markdown (injections, code blocks), with parses stopped and resumed at
+   Markdown (injections, code blocks) and SQL (its scanner's $tag$ strings), with parses stopped and resumed at
    input-chosen points and faces read at any moment, stale trees included.
    Sanitizers catch the memory errors; the faces must be grid.h's. */
 #include <stdint.h>
@@ -9,12 +9,13 @@
 #include "syntax.h"
 #include "text.h"
 
-static const char *const tok[3][16] = {
+static const char *const tok[4][16] = {
 	{ "\n", "/*", "*/", "\"", "'", "{", "}", "(", ")", "x", " ", "\xc3\xa9", "#define A(x) x\n", "int", "FOO", ";" },
 	{ "\n", "--", "[[", "]]", "\"", "'", "(", ")", "x", " ", "\xc3", "local", "function", "end", "--- @param", "vim.cmd" },
 	{ "\n", "#", "```", "```c\n", "```lua\n", "*", "_", "`", "[", "](", ")", "- ", "| a |", "\n\n", "\xa9", "> " },
+	{ "\n", "$$", "$a$", "$", "'", "--", "(", ")", ";", " ", "x", "SELECT", "CREATE FUNCTION f() RETURNS int AS ", "DO ", "BEGIN", "END" },
 };
-static const char *const path[3] = { "f.c", "f.lua", "f.md" };
+static const char *const path[4] = { "f.c", "f.lua", "f.md", "f.sql" };
 
 static const uint8_t *d;
 static size_t n, at;
@@ -25,7 +26,7 @@ static int stop(void) { return left > 0 && --left == 0; }
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
 	d = data, n = size, at = 0;
-	int lang = (int)(byte() % 3);
+	int lang = (int)(byte() % 4);
 	char b[4096];
 	size_t bn = 0;
 	for (unsigned k = byte() % 32; k--; ) {
