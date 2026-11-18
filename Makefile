@@ -14,7 +14,7 @@ SHELL = /bin/bash
 # value from the command line or make -e never points it at a real one)
 override export XDG_STATE_HOME := $(CURDIR)/build/state
 
-BASE = text undo uni core keys grid tty loop file syntax theme tools git lsp
+BASE = text undo uni core keys grid tty loop file syntax theme tools git lsp infoview
 # src/win/ (package 9) is the Windows build's, cross-compiled on its own
 MODULES = $(BASE) $(filter-out $(BASE) win,$(patsubst src/%/,%,$(wildcard src/*/)))
 pick = $(if $(wildcard src/$(1)/*.c),$(wildcard src/$(1)/*.c),ref/$(1).c)
@@ -81,11 +81,14 @@ fuzz: $(OBJS) | build/fuzz
 	    || { tail -40 build/fuzz/$$f.log; echo "FAIL fuzz_$$f"; exit 1; }; \
 	  echo "fuzz_$$f: $$(grep -m1 -o 'Done [0-9]* runs in [0-9]* second(s)' build/fuzz/$$f.log)"; done
 
-# Vim keys against nvim --headless, fresh random sequences
+# Vim keys against nvim --headless on random sequences.  The random checks
+# (conform, org-conform, undo-conform) take SEED, 1 by default, so a pull
+# request's check is the same each run; CI's nightly run takes a fresh SEED,
+# and what it finds is reduced, then fixed or listed (tests/conform-known.json)
 conform: $(OBJS) | build/san
 	@rm -rf build/state
 	gcc $(WARN) $(CPPFLAGS) $(SAN) -o build/san/conform_drv tests/conform_drv.c $(LIB_SRCS) $(OBJS) $(LIBS)
-	python3 tools/conform.py build/san/conform_drv $(CONFORM_N) $${SEED:-$$(date +%s)}
+	python3 tools/conform.py build/san/conform_drv $(CONFORM_N) $${SEED:-1}
 
 # Org's parser against Org itself (package 16): fresh random org texts fed
 # to src/org and to org-element in emacs -Q --batch (tools/org_dump.el)
@@ -93,7 +96,7 @@ ORG_N ?= 2000
 org-conform: $(OBJS) | build/san
 ifneq ($(wildcard src/org/*.c),)
 	gcc $(WARN) $(CPPFLAGS) $(SAN) -o build/san/org_drv tests/org_drv.c $(LIB_SRCS) $(OBJS) $(LIBS)
-	python3 tools/org_conform.py build/san/org_drv $(ORG_N) $${SEED:-$$(date +%s)}
+	python3 tools/org_conform.py build/san/org_drv $(ORG_N) $${SEED:-1}
 endif
 
 # Neovim's undo tree against UndoTree.tla's rules (package 2's oracle);
@@ -105,7 +108,7 @@ undo-diff: | build
 	python3 design/ref/undo/undo_diff.py $(UNDO_N) 30 $${SEED:-2} | tee build/undo-diff.log
 	grep -q ": 0 differ" build/undo-diff.log
 ifneq ($(wildcard tools/undo_conform.py),)
-	@seed=$${SEED:-$$(date +%s)}; $(UNDO_CONFORM) $(UNDO_N) 60 1000 $$seed && \
+	@seed=$${SEED:-1}; $(UNDO_CONFORM) $(UNDO_N) 60 1000 $$seed && \
 	  $(UNDO_CONFORM) $(UNDO_N) 60 3 $$seed && $(UNDO_CONFORM) 10 4000 1000 $$seed
 endif
 

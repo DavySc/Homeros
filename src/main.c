@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "backend.h"
+#include "bridge.h"
 #include "core.h"
 #include "git.h"
 #include "loop.h"
@@ -79,6 +80,7 @@ int main(int argc, char **argv)
 				if (e.ks.pending || (!tools_key(&e, k) && !git_key(&e, k))) keys_feed(&e, k, qn > 0);
 				running = 0;
 				lsp_flush(e.buf->lsp);   /* one didChange per command (Helix) */
+				bridge_update(&e);
 			}
 			loop_int = 0;
 		}
@@ -108,6 +110,7 @@ int main(int argc, char **argv)
 	}
 out:
 	git_free();
+	bridge_free();
 	b->close();
 	grid_free(&g);
 	grid_free(&shown);
