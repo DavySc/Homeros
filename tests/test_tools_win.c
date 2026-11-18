@@ -61,20 +61,20 @@ int main(void)
 	CHECK(_getcwd(d, sizeof d));
 	_mkdir("sub");
 	_mkdir("state");
-	put("a.txt", "a\n"); put("b.txt", "b\n"); put("sub\\c.txt", "c\n"); put("sub\\d.txt", "d\n");
+	put("a.txt", "a\n"); put("b.txt", "b\n"); put("sub\\zqc.txt", "c\n"); put("sub\\zqd.txt", "d\n");
 	snprintf(st, sizeof st, "XDG_STATE_HOME=%s\\state", d);
 	CHECK(!_putenv(st));
 	CHECK(!_putenv("XDG_DATA_HOME="));   /* the frecency into %LOCALAPPDATA%: set it here */
 	snprintf(st, sizeof st, "LOCALAPPDATA=%s\\state", d);
 	CHECK(!_putenv(st));
-	/* v:oldfiles: b (also a buffer below, typed with '/'), sub\c, a file of
+	/* v:oldfiles: b (also a buffer below, typed with '/'), sub\zqc and zqd, a file of
 	   homeros' own, and a (the current buffer) */
-	snprintf(f, sizeof f, "9 %s\\b.txt\n8 %s\\sub\\c.txt\n7 %s\\sub\\d.txt\n6 %s\\state\\homeros-data\\x\n5 %s\\a.txt\n", d, d, d, d, d);
+	snprintf(f, sizeof f, "9 %s\\b.txt\n8 %s\\sub\\zqc.txt\n7 %s\\sub\\zqd.txt\n6 %s\\state\\homeros-data\\x\n5 %s\\a.txt\n", d, d, d, d, d);
 	snprintf(st, sizeof st, "%s\\state\\homeros-data\\oldfiles", d);
 	_mkdir("state\\homeros-data");
 	put(st, f);
-	/* sub\d visited often: its frecency deadline far ahead */
-	snprintf(f, sizeof f, "1e12 %s\\sub\\d.txt\n", d);
+	/* sub\zqd visited often: its frecency deadline far ahead */
+	snprintf(f, sizeof f, "1e12 %s\\sub\\zqd.txt\n", d);
 	snprintf(st, sizeof st, "%s\\state\\homeros-data\\picker-frecency", d);
 	put(st, f);
 	CHECK(!shada_read());
@@ -84,13 +84,14 @@ int main(void)
 	CHECK(!grid_resize(&g, 40, 140));
 	CHECK(!tools_pick(&e, PICK_RECENT));
 	rows(got, sizeof got);
-	if (strcmp(got, "b.txt|sub\\c.txt|sub\\d.txt|")) { fprintf(stderr, "recent: %s\n", got); CHECK(0); }
+	if (strcmp(got, "b.txt|sub\\zqc.txt|sub\\zqd.txt|")) { fprintf(stderr, "recent: %s\n", got); CHECK(0); }
 	tools_key(&e, KEY_ESC);
-	/* smart, "sub": the same match, so the frecency decides */
+	/* smart, "zq" (in no temp directory's name): the same match, so the
+	   frecency decides */
 	CHECK(!tools_pick(&e, PICK_SMART));
-	for (const char *k = "sub"; *k; k++) CHECK(tools_key(&e, *k));
+	for (const char *k = "zq"; *k; k++) CHECK(tools_key(&e, *k));
 	rows(got, sizeof got);
-	if (strcmp(got, "sub\\d.txt|sub\\c.txt|")) { fprintf(stderr, "smart: %s\n", got); CHECK(0); }
+	if (strcmp(got, "sub\\zqd.txt|sub\\zqc.txt|")) { fprintf(stderr, "smart: %s\n", got); CHECK(0); }
 	tools_key(&e, KEY_ESC);
 	tools_key(&e, KEY_ESC);
 	/* the picker's first open visits the open buffers: the frecency file */
@@ -100,7 +101,7 @@ int main(void)
 	size_t n = fread(got, 1, sizeof got - 1, fp);
 	got[n] = 0;
 	fclose(fp);
-	CHECK(strstr(got, "\\a.txt\n") && strstr(got, "\\b.txt\n") && strstr(got, "\\sub\\d.txt\n"));
+	CHECK(strstr(got, "\\a.txt\n") && strstr(got, "\\b.txt\n") && strstr(got, "\\sub\\zqd.txt\n"));
 	grid_free(&g);
 	core_free(&e);
 	printf("test_tools_win: recent files relative to C:\\..., listed once, frecency written and read\n");
