@@ -4,5 +4,5 @@ org: a headline ends only at a shallower one (fuzz)~fuzz FUZZERS=org FUZZ_SECOND
 org: checkbox [x] not folded to [X] (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~(S[u + 1] == ' ' || up(S[u + 1]) == 'X' || S[u + 1] == '-')~(S[u + 1] == ' ' || S[u + 1] == 'X' || S[u + 1] == '-')
 org: tags take [[:word:]] for [[:alnum:]] above ASCII~test TESTS=org~~src/org/org.c~IN(ALNUM, uni_cp(S, N, x))~IN(WORD, uni_cp(S, N, x))
 org: drawer and footnote names take any non-ASCII byte (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	return c == '-' || c == '_' || IN(WORD, c) ? uni_len(S, N, p) : 0;~	return c == '-' || c == '_' || c >= 0x80 || IN(WORD, c) ? uni_len(S, N, p) : 0;
-org: org_edit stops its span before a new shallower headline's subtree ends (fuzz)~fuzz FUZZERS=org FUZZ_SECONDS=30~~src/org/org.c~		if (hi == k || !t || f[t - 1].end <= R - del + ins) break;~		break;
+org: org_edit stops its span before a new shallower headline's subtree ends (fuzz)~fuzz FUZZERS=org FUZZ_SECONDS=30~~src/org/org.c~	if (t && f[t - 1].end > R - del + ins) R = f[t - 1].end + del - ins;~	;
 org: org_edit starts its span at a headline whose line the edit touches (fuzz)~fuzz FUZZERS=org FUZZ_SECONDS=30~~src/org/org.c~		c = top(e, c - 1);   /* the edit touches its headline line */~		;

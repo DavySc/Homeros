@@ -772,14 +772,12 @@ int org_edit(OrgNode **pe, size_t *pk, const char *s, size_t n, size_t pos, size
 		}
 	z = first(e, k, pos + del + 1);
 	R = e[z ? top(e, z - 1) : 0].end;
-	for (;;) {   /* until the span's last top-level node ends inside it */
-		hi = first(e, k, R);
-		if (!(f = parse(L, R - del + ins, mode, &m))) goto fail;
-		for (t = m; t && f[t - 1].parent != ORG_NONE; t--) ;
-		if (hi == k || !t || f[t - 1].end <= R - del + ins) break;
-		free(f);
-		R = e[hi].end;
-	}
+	if (!(f = parse(L, R - del + ins, mode, &m))) goto fail;
+	for (t = m; t && f[t - 1].parent != ORG_NONE; t--) ;
+	/* a new shallower headline holds what followed: parse() went on to its
+	   end, where a top-level node began before */
+	if (t && f[t - 1].end > R - del + ins) R = f[t - 1].end + del - ins;
+	hi = first(e, k, R);
 	if (m > hi - lo) {
 		if (!(g = realloc(e, (k - (hi - lo) + m) * sizeof *e))) { free(f); goto fail; }
 		e = g;
@@ -801,7 +799,7 @@ int org_edit(OrgNode **pe, size_t *pk, const char *s, size_t n, size_t pos, size
 	return 0;
 whole:
 	free(e);
-	*pe = org_parse(s, n, pk);
+	if (!(*pe = org_parse(s, n, pk))) *pk = 0;
 	return *pe ? 0 : -1;
 fail:
 	free(e); *pe = NULL; *pk = 0;
