@@ -110,7 +110,8 @@ static int key(const unsigned char *s, int n, int force, int *k)
 		int j = 2;                                   /* CSI: parameters, then a final byte */
 		while (j < n && (s[j] < 0x40 || s[j] > 0x7e)) j++;
 		if (j == n) return force;
-		*k = s[2] == 'A' ? KEY_UP : s[2] == 'B' ? KEY_DOWN : s[2] == 'C' ? KEY_RIGHT : s[2] == 'D' ? KEY_LEFT : -1;
+		*k = s[2] == 'A' ? KEY_UP : s[2] == 'B' ? KEY_DOWN : s[2] == 'C' ? KEY_RIGHT : s[2] == 'D' ? KEY_LEFT
+		   : s[2] == '3' && s[3] == '~' ? KEY_DEL : -1;   /* Delete: termkey's CSI 3 ~ */
 		return j + 1;
 	}
 	if (s[0] < 0xC2 || s[0] > 0xF4) return 1;      /* ASCII, or no UTF-8 lead */
@@ -126,7 +127,7 @@ static int key(const unsigned char *s, int n, int force, int *k)
 	return len;
 }
 
-/* Bytes to keys: UTF-8 to code points, CSI arrows to KEY_*, other CSI
+/* Bytes to keys: UTF-8 to code points, CSI arrows and Delete to KEY_*, other CSI
    sequences dropped.  A read that ends inside a key keeps that tail and, if
    no more input comes within TTIMEOUTLEN ms, takes it byte by byte: an Esc
    typed alone is Esc, as in Neovim (tinput_timer_cb). */
