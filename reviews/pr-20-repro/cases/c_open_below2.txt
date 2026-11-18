@@ -1,0 +1,110 @@
+C 24 60
+F 20202020666f6f202820f09f9880200120cebb78206c6f6e676572776f7264206261725f312009200120f09f98800a0ae585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a7922061616161616161616161616161616161616161616161616161616161616120f09f9880207f20090a280a20202020280a097820e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792207a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a0a0a666f6f2020cebb7820c3a920e6bca20ae585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a7920a0a202020207a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a20e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a79220616161616161616161616161616161616161616161616161616161616161207f200120666f6f206162e6bca22078207f2020666f6f0a0120666f6f0a202020202c2078207f2001206162e6bca2202d2d202028206162e6bca2200120780a010a0a7f20c3a9207f20616161616161616161616161616161616161616161616161616161616161202d2d207820292e206c6f6e676572776f7264207a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a206162e6bca2202c0a097f206162e6bca2207f0a01202c0a0a0978200920666f6f20f09f9880206162e6bca220e183902078206c6f6e676572776f7264
+T k:15G
+T wrap
+T k:oa<CR>b<CR>c<Esc>
+P
+S 1       foo ( 😀 ^A λx longerword bar_1      ^A 😀
+S   1
+S   2 全角全角全角全角全角全角全角全角全角全角全角全角全角全角
+S   3 (
+S   4     (
+S   5         x 全角全角全角全角全角全角全角全角全角全角全角全
+S   6
+S   7 foo  λx é 漢
+S   8 全角全角全角全角全角全角全角全角全角全角全角全角全角全角
+S   9
+S  10     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S  11 ^A foo
+S  12     , x ^? ^A ab漢 --  ( ab漢 ^A x
+S  13 ^A
+S  14
+S  15 ^? é ^? aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa -- x ). longerwor
+S  16         ^? ab漢 ^?
+S  17 ^A ,
+S  18
+S  19         x        foo 😀 ab漢 ა x longerword
+S ~
+S ~
+S f0                                        1,1            All
+S 
+M - - -
+P
+S  14     foo ( 😀 ^A λx longerword bar_1      ^A 😀
+S  13
+S  12 全角全角全角全角全角全角全角全角全角全角全角全角全角全角
+S  11 (
+S  10     (
+S   9         x 全角全角全角全角全角全角全角全角全角全角全角全
+S   8
+R
+S   6 全角全角全角全角全角全角全角全角全角全角全角全角全角全角
+S   5
+S   4     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S   3 ^A foo
+S   2     , x ^? ^A ab漢 --  ( ab漢 ^A x
+S   1 ^A
+S 15
+S   1 ^? é ^? aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa -- x ). longerwor
+S   2         ^? ab漢 ^?
+S   3 ^A ,
+S   4
+S   5         x        foo 😀 ab漢 ა x longerword
+R
+R
+S f0                                        15,0-1         All
+R
+M - - -
+P
+S   6 全角全角全角全角全角全角全角全角全角全角全角全角全角全角
+S     全角全角全角全角全角全角
+S   5
+S   4     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzz 全角全角全角全角全角全角全角全>
+S     角全角全角全角全角全角全角全角全角全角全角全角全角 aaaaa
+S     aaaaaaaaaaaaaaaaaaaaaaaaa ^? ^A foo ab漢 x ^?  foo
+R
+R
+R
+R
+R
+S     d zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzz ab漢 ,
+S f0                                        15,0-1         66%
+S :set wrap
+M - - -
+P
+S   7     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+R
+S     zzzzzzzzzzzzzzzzzzzzzzzz 全角全角全角全角全角全角全角全>
+S     角全角全角全角全角全角全角全角全角全角全角全角全角 aaaaa
+S     aaaaaaaaaaaaaaaaaaaaaaaaa ^? ^A foo ab漢 x ^?  foo
+S   6 ^A foo
+S   5     , x ^? ^A ab漢 --  ( ab漢 ^A x
+S   4 ^A
+S   3
+S   2 a
+S   1 b
+S 18  c
+R
+R
+R
+R
+R
+R
+R
+S f0 [+]                                    18,1           71%
+S 
+M - - -
+E
