@@ -28,7 +28,9 @@
    and `<?` keep their gap, bytes that are not UTF-8 are formatted around
    (SQLDiff refuses the file), and a lone CR ends a `--` comment, as in SQL
    Server.  `<<` and `>>` are one operator, as SQL Server 2022 reads them,
-   so `e->>'a'` takes no space (SQLDiff: `e->> 'a'`). */
+   so `e->>'a'` takes no space (SQLDiff: `e->> 'a'`); and PostgreSQL's
+   `CREATE RECURSIVE VIEW v AS VALUES ... UNION SELECT` gets no clause
+   breaks (SQLDiff breaks them). */
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -620,9 +622,9 @@ static void clauses(size_t a, size_t z)
 		if (head < 0) head = word_of(P, (size_t)i);
 	}
 	/* SQLDiff also breaks a CREATE VIEW's clauses, but in T-SQL the view's
-	   query is a statement of its own (begins()), so that rule never applies
-	   (measured: without it 0 of 1,687 texts, SQLDiff's files and tsql.py,
-	   change) */
+	   query is a statement of its own (begins()), so for T-SQL that rule
+	   never applies (measured: without it 0 of 1,687 texts, SQLDiff's files
+	   and tsql.py, change) */
 	if (!(head == W_SELECT || head == W_INSERT || head == W_UPDATE || head == W_DELETE || head == W_MERGE || head == W_WITH))
 		return;
 	int case_open = 0;
