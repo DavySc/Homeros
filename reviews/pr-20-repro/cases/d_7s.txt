@@ -1,0 +1,130 @@
+C 15 80
+F 202020207a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a0a202020200ac3a920f09f988020c3a9207f20c3a9206162e6bca22009206162e6bca220e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a7920a09
+F 
+F 
+T new
+T w7:t
+T w7:p
+T w:W
+T k:2G
+T w7:s
+P
+S 1       zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S   1
+S   2 é 😀 é ^? é ab漢         ab漢 全角全角全角全角全角全角全角全角全角全角全角全
+S   3
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S f0                                                            1,1            All
+S 
+M - - -
+P
+R
+R
+R
+R
+R
+R
+S f0                                                            1,1            All
+S 1
+R
+R
+R
+R
+R
+S [No Name]                                                     0,0-1          All
+S :new
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+M - - -
+P
+S   1     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S 2
+S   1 é 😀 é ^? é ab漢         ab漢 全角全角全角全角全角全角全角全角全角全角全角全
+S   2
+R
+R
+S f0                                                            2,1            All
+R
+R
+R
+R
+R
+R
+R
+R
+M - - -
+P
+S 2
+S   1 é 😀 é ^? é ab漢         ab漢 全角全角全角全角全角全角全角全角全角全角全角全
+S   2
+S f0                                                            2,1            Bot
+S   1     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S 2
+S   1 é 😀 é ^? é ab漢         ab漢 全角全角全角全角全角全角全角全角全角全角全角全
+S   2
+R
+R
+R
+S f0                                                            2,1            All
+S 1
+R
+R
+M - - -
+E
