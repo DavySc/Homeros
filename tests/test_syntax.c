@@ -316,6 +316,40 @@ static void edits_then_frame(const char *dir)
 	                (size_t[]){ 6 }, (size_t[]){ 1 }, (const char *const[]){ "" });
 }
 
+/* An edit that deletes the line before an injected region ends where the
+   region now starts: Neovim's LanguageTree:_edit compares rows and columns,
+   finds no overlap and keeps the region's tree without a reparse.  Here a
+   reparse would lose the emphasis that Neovim shows (as does a fresh
+   parse, which the check compares with). */
+static void edit_before_region(const char *dir)
+{
+	static unsigned char f[64], g[64];
+	char path[2048];
+	snprintf(path, sizeof path, "%s/region.md", dir);
+	const char *b = "a\n (D\n\ny,_)_\n";
+	Text *t = text_new(b, strlen(b));
+	CHECK(t);
+	Syntax *A = syntax_open(path, t);
+	CHECK(A);
+	syntax_faces(A, 0, strlen(b), f);
+	while (syntax_update(A, t, NULL) == 2) ;
+	syntax_edit(A, t, 2, 4, "- ", 2);
+	CHECK(!text_delete(t, 2, 4) && !text_insert(t, 2, "- ", 2));
+	size_t n = text_len(t);
+	syntax_faces(A, 0, n, f);
+	while (syntax_update(A, t, NULL) == 2) ;
+	syntax_faces(A, 0, n, f);
+	Syntax *F = syntax_open(path, t);
+	CHECK(F);
+	syntax_faces(F, 0, n, g);
+	while (syntax_update(F, t, NULL) == 2) ;
+	syntax_faces(F, 0, n, g);
+	CHECK(!memcmp(f, g, n));
+	syntax_free(A);
+	syntax_free(F);
+	text_free(t);
+}
+
 /* The trees a reparse replaces are freed in steps that ask stop: an edit
    that deletes 2,000 lines frees about 10,000 nodes, so the update
    after it must stop more than once before it is done. */
@@ -371,6 +405,7 @@ int main(void)
 	scroll_while_stopped(dir);
 	edit_while_stopped(dir);
 	edits_then_frame(dir);
+	edit_before_region(dir);
 	release_in_steps(dir);
 	char path[2048], vrt[1024] = "";
 	FILE *p = popen("nvim --headless --clean -l /dev/stdin <<'E'\nio.write(vim.env.VIMRUNTIME)\nE", "r");
