@@ -81,9 +81,10 @@ Neovim's own oddities, not copied:
   Neovim ends the motion inside the character.
 - Visual A over a 3-byte character ("∀" vAx), V A over a 2-byte one ("λ"
   V A 𐐀) or a cluster ("x" with U+0300 U+0301, V A .) and C-v $ ~ over a
-  4-byte one ("-3 𐐀x"): Neovim writes a split character.
+  4-byte one ("-3 𐐀x"): Neovim writes a split character. Also when the
+  character was typed, not in the text ("    ", s 𐐀 Esc v A 0).
 - C-v on a Tab then ~ u U over a 2-byte character ("\té ab cd", C-v w ~):
-  Neovim moves the character to the end of the line (" ab cd É").
+  Neovim moves the character to the end of the line (" ab cd É").  The Tab can be on another line of the block ("\t0x1f\n  ẞß", C-v ]] U).
 
 Counts (measured, 2026-11-17): a count folds at 999999999 as Neovim's
 does, and the work grows with it.  Large counts are checked by recorded

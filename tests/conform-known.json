@@ -1,6 +1,6 @@
 [
 {"why": "Visual A over a multibyte character: Neovim writes a split character (src/keys/README, Neovim's own)", "keys": "[vV][^<]{0,40}A", "text": "[^\\x00-\\x7f]", "example": {"text": "λ). -3 7\n", "keys": ["V", "A", "x"]}},
-{"why": "CTRL-V on a Tab then ~ u U over a 2-byte character: Neovim moves the character to the end of the line (src/keys/README, Neovim's own)", "keys": "<C-v>[^~uU]{0,40}[~uU]", "text": "\t[\\u0080-\\u07ff]", "example": {"text": "\té ab cd\n", "keys": ["<C-v>", "w", "~"]}},
+{"why": "CTRL-V on a Tab then ~ u U over a 2-byte character: Neovim moves the character to the end of the line (src/keys/README, Neovim's own)", "keys": "<C-v>[^~uU]{0,40}[~uU]", "text": "(?s)\\t.*[\\u0080-\\u07ff]|[\\u0080-\\u07ff].*\\t", "example": {"text": "\té ab cd\n", "keys": ["<C-v>", "w", "~"]}},
 {"why": "s on a Tab that ends its line, then Tab: Neovim's w_virtcol stays the Tab's last cell (src/keys/README, package 5)", "keys": "s<Tab>", "text": "\t(\n|$)", "example": {"text": "(\t\n", "keys": ["l", "s", "<Tab>"]}},
 {"why": "I Down from a blank a combining mark is on, after k (src/keys/README, package 5)", "keys": "I<Down>", "text": "[ \t]́", "example": {"text": "    ́ -3\n).\n    'c' 7\n", "keys": ["j", "d", "d", "k", "I", "<Down>"]}},
 {"why": "Visual gUU is gU then U, and U (undo line) is not in FEATURES.md, so not built (src/keys/README)", "keys": "[vV][^<]{0,40}gUU", "example": {"text": "ab c\n", "keys": ["v", "l", "gUU"]}},
@@ -13,5 +13,6 @@
 {"why": "Up, Down, CTRL-O or Del at a cursor inside a cluster that typing made with a lone combining mark: core_vcol gives the cluster's end, Neovim's getvcol its start (src/keys/README, package 4)", "keys": "<(Up|Down|C-o|Del)>", "text": "(^|\\n)́", "example": {"text": "  \"a b\" x\ń\n", "keys": ["j", "i", "a", "<Up>", "<C-w>"]}},
 {"why": "CTRL-W Tab (CTRL-W CTRL-I, split and jump to a keyword's definition) needs search and windows: not built (src/keys/README)", "keys": "<C-w><Tab>", "example": {"text": "foo\nbar foo\n", "keys": ["j", "w", "<C-w>", "<Tab>"]}},
 {"why": "R after r, then CTRL-U back over the r: Neovim's replace stack still holds the character r replaced and puts it back (src/keys/README, Neovim's own)", "keys": "r.{1,20}R<C-u>", "example": {"text": "  0\n", "keys": ["r", "3", "l", "R", "<C-u>"]}},
-{"why": "block C, then Down and more text: the cursor after Esc differs by one (src/keys/README, not traced, package 5)", "keys": "<C-v>[^<]{0,20}C[^<]{0,10}<Down>", "example": {"text": "", "keys": ["A", "<CR>", "<Esc>", "<C-v>", "[[", "C", "∀", "<Down>", " "]}}
+{"why": "block C, then Down and more text: the cursor after Esc differs by one (src/keys/README, not traced, package 5)", "keys": "<C-v>[^<]{0,20}C[^<]{0,10}<Down>", "example": {"text": "", "keys": ["A", "<CR>", "<Esc>", "<C-v>", "[[", "C", "∀", "<Down>", " "]}},
+{"why": "Visual A over a multibyte character typed earlier: Neovim writes a split character (src/keys/README, Neovim's own; the rule above needs it in the text)", "keys": "[^\\x00-\\x7f].*[vV][^<]{0,40}A", "example": {"text": "    \n", "keys": ["s", "𐐀", "<Esc>", "v", "A", "0"]}}
 ]
