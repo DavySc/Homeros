@@ -806,6 +806,183 @@ fail:
 	return -1;
 }
 
+/* ---- timestamps ---- */
+
+/* string-to-number on digits, held at a bound instead of growing */
+static int num(size_t a, size_t z)
+{
+	int v = 0;
+	for (; a < z; a++) v = v > 99999999 ? v : v * 10 + (S[a] - '0');
+	return v;
+}
+static size_t digits(size_t p, size_t lim) { while (p < lim && digit(p)) p++; return p; }
+/* org-ts-regexp-both at p: its closing bracket, or ORG_NONE */
+static size_t ts_both(size_t p)
+{
+	static const char form[] = "<dddd-dd-dd";
+	for (size_t i = 0; form[i]; i++) {
+		if (p + i >= N) return ORG_NONE;
+		int c = S[p + i];
+		if (!i ? c != '<' && c != '[' : form[i] == 'd' ? !digit(p + i) : c != '-') return ORG_NONE;
+	}
+	size_t q = p + 11;
+	if (q < N && (S[q] == ']' || S[q] == '>')) return q;
+	if (q >= N || S[q] != ' ') return ORG_NONE;
+	while (++q < N && S[q] != '\n' && S[q] != ']' && S[q] != '>') ;
+	return q < N && S[q] != '\n' ? q : ORG_NONE;
+}
+/* [012]?[0-9]:[0-5][0-9] at p, below lim: its end, else 0; the hour's
+   digits [p, *hz).  The two readings of [012]? never both fit. */
+static size_t hm(size_t p, size_t lim, size_t *hz)
+{
+	size_t h = p + 1;
+	if (h < lim && digit(h)) { if (S[p] > '2') return 0; h++; }
+	if (!(p < lim && digit(p) && h + 2 < lim && S[h] == ':' && S[h + 1] >= '0' && S[h + 1] <= '5' && digit(h + 2)))
+		return 0;
+	*hz = h;
+	return h + 3;
+}
+/* org-parse-time-string with nodefault on [p, lim): org-ts-regexp0 is
+   found at p + 1, where the timestamp's date is */
+static void tstime(size_t p, size_t lim, int *y, int *m, int *d, int *h, int *mi)
+{
+	p++;
+	*y = num(p, p + 4); *m = num(p + 5, p + 7); *d = num(p + 8, p + 10);
+	*h = *mi = -1;
+	size_t q = p + 10, r = q;
+	while (r < lim && S[r] == ' ') r++;
+	if (r > q) {   /* \( +[^]+0-9>\r\n -]+\)? */
+		size_t w = r;
+		while (w < lim && !strchr("]+0123456789>\r\n -", S[w])) w++;
+		if (w > r) q = w;
+	}
+	for (r = q; r < lim && S[r] == ' '; r++) ;
+	if (r == q || !digit(r)) return;   /* \( +\([0-9]\{1,2\}\):\([0-9]\{2\}\)\)? */
+	size_t c = r + 1 < lim && digit(r + 1) ? r + 2 : r + 1;
+	if (c + 2 < lim && S[c] == ':' && digit(c + 1) && digit(c + 2)) { *h = num(r, c); *mi = num(c + 1, c + 3); }
+}
+static char unit(int c) { return c == 'h' || c == 'd' || c == 'w' || c == 'm' ? (char)c : 'y'; }
+static int unitc(size_t p, size_t lim, int fold)
+{
+	return p < lim && (strchr("hdwmy", S[p]) || (fold && strchr("HDWMY", S[p])));
+}
+
+static int ts(size_t p, int fold, OrgTs *t)
+{
+	size_t c, ds, de, r = ORG_NONE, z, e2 = ORG_NONE;
+	int diary = 0;
+	if ((c = ts_both(p)) == ORG_NONE) {   /* <%%([^>\n]+)\([^\n>]*\)> */
+		if (!lit(p, "<%%(")) return 0;
+		for (z = p + 4; z < N && S[z] != '>' && S[z] != '\n'; z++) if (S[z] == ')' && z > p + 4) r = z;
+		if (z >= N || S[z] != '>' || r == ORG_NONE) return 0;
+		diary = 1;
+		ds = r + 1; de = z;
+		for (c = p + 3; S[c] != ']' && S[c] != '>'; c++) ;   /* the raw value's .*?[]>] */
+	} else ds = p, de = c;
+	z = c + 1;   /* \(?:--\(org-ts-regexp-both\)\)? */
+	if (z + 1 < N && S[z] == '-' && S[z + 1] == '-' && (e2 = ts_both(z + 2)) != ORG_NONE) z = e2 + 1;
+	memset(t, 0, sizeof *t);
+	t->begin = p;
+	while (z < N && (S[z] == ' ' || S[z] == '\t')) z++;
+	t->end = z;
+	z = e2 != ORG_NONE ? e2 + 1 : c + 1;   /* the raw value ends here */
+	t->y = t->m = t->d = t->h = t->min = t->y2 = t->m2 = t->d2 = t->h2 = t->min2 = -1;
+	int th = -1, tm = -1;
+	size_t i, a, hz, hz2, q;
+	for (i = ds; i < de; i++)   /* [012]?[0-9]:[0-5][0-9]\(-\([012]?[0-9]\):\([0-5][0-9]\)\) */
+		if ((a = hm(i, de, &hz)) && a < de && S[a] == '-' && hm(a + 1, de, &hz2)) {
+			th = num(a + 1, hz2); tm = num(hz2 + 1, hz2 + 3);
+			break;
+		}
+	if (diary)   /* \([012]?[0-9]\):\([0-5][0-9]\)\(-\([012]?[0-9]\):\([0-5][0-9]\)\)? */
+		for (i = ds; i < de; i++)
+			if ((a = hm(i, de, &hz))) {
+				t->h = num(i, hz); t->min = num(hz + 1, hz + 3);
+				if (a < de && S[a] == '-' && hm(a + 1, de, &hz2)) { t->h2 = num(a + 1, hz2); t->min2 = num(hz2 + 1, hz2 + 3); }
+				break;
+			}
+	int act = S[p] == '<';
+	t->type = diary ? 'd' : (e2 != ORG_NONE || th >= 0) ? (act ? 'A' : 'I') : act ? 'a' : 'i';
+	t->range = e2 != ORG_NONE ? 'd' : th >= 0 ? 't' : 0;
+	if (diary) return 1;
+	tstime(ds, de, &t->y, &t->m, &t->d, &t->h, &t->min);
+	int y2 = -1, m2 = -1, d2 = -1, h2 = -1, mi2 = -1;
+	if (e2 != ORG_NONE) tstime(c + 3, e2 + 1, &y2, &m2, &d2, &h2, &mi2);
+	t->y2 = y2 >= 0 ? y2 : t->y; t->m2 = m2 >= 0 ? m2 : t->m; t->d2 = d2 >= 0 ? d2 : t->d;
+	t->h2 = h2 >= 0 ? h2 : th >= 0 ? th : t->h;
+	t->min2 = mi2 >= 0 ? mi2 : tm >= 0 ? tm : t->min;
+	for (i = p; i < z; i++) {   /* \(\+\|\+\+\|\.\+\)\([0-9]+\)\([hdwmy]\)\(?:/\([0-9]+\)\([hdwmy]\)\)? */
+		static const char *const k[] = { "+", "++", ".+" };
+		int j;
+		for (j = 0; j < 3; j++) {
+			size_t l = strlen(k[j]);
+			if (i + l > z || memcmp(S + i, k[j], l)) continue;
+			a = digits(i + l, z);
+			if (a > i + l && unitc(a, z, fold)) break;
+		}
+		if (j == 3) continue;
+		size_t l = strlen(k[j]);
+		t->rep = "+#."[j]; t->rep_n = num(i + l, a); t->rep_unit = unit(S[a]);
+		if (a + 1 < z && S[a + 1] == '/' && (q = digits(a + 2, z)) > a + 2 && unitc(q, z, fold)) {
+			t->rep_dl_n = num(a + 2, q); t->rep_dl_unit = unit(S[q]);
+		}
+		break;
+	}
+	for (i = p; i < z; i++) {   /* \(-\)?-\([0-9]+\)\([hdwmy]\) */
+		if (S[i] != '-') continue;
+		int first = i + 1 < z && S[i + 1] == '-' && (a = digits(i + 2, z)) > i + 2 && unitc(a, z, fold);
+		q = i + 1 + first;
+		if (!first && !((a = digits(q, z)) > q && unitc(a, z, fold))) continue;
+		t->warn = first ? 'f' : 'a'; t->warn_n = num(q, a); t->warn_unit = unit(S[a]);
+		break;
+	}
+	return 1;
+}
+
+int org_ts(const char *s, size_t n, size_t p, OrgTs *t)
+{
+	S = (const unsigned char *)s; N = n;
+	return ts(p, 1, t);
+}
+
+/* org-element-planning-parser: case-fold-search nil */
+int org_planning(const char *s, size_t n, const OrgNode *e, OrgTs t[3])
+{
+	S = (const unsigned char *)s; N = n;
+	static const char *const k[] = { "CLOSED:", "DEADLINE:", "SCHEDULED:" };
+	int got = 0;
+	for (size_t p = e->begin; p < e->end; p++)
+		for (int j = 0; j < 3; j++) {
+			size_t l = strlen(k[j]);
+			if (p + l > e->end || memcmp(S + p, k[j], l)) continue;
+			p += l;
+			while (p < e->end && blank(p)) p++;
+			if (ts(p, 0, &t[j])) got |= 1 << j;
+			else got &= ~(1 << j);
+			p--;
+			break;
+		}
+	return got;
+}
+
+/* org-element-clock-parser, case-fold-search on */
+int org_clock(const char *s, size_t n, const OrgNode *e, OrgTs *t, size_t dur[2])
+{
+	S = (const unsigned char *)s; N = n;
+	size_t p = e->begin, z = eol(p);
+	while (!lit(p, "CLOCK:")) p++;
+	p = blanks(p + 6);
+	int got = ts(p, 1, t);
+	dur[0] = dur[1] = p;
+	for (; p + 3 <= z; p++)
+		if (!memcmp(S + p, "=> ", 3)) {
+			size_t a = blanks(p + 3), b = run(a), c = blanks(b);
+			if (b > a && b <= z && c == z) { dur[0] = a; dur[1] = b; }
+			break;
+		}
+	return got;
+}
+
 /* org-element--headline-parse-title */
 void org_head(const char *s, size_t n, size_t q, OrgHead *h)
 {
