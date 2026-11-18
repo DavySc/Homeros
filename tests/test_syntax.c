@@ -245,6 +245,38 @@ static void edit_while_stopped(const char *dir)
 	CHECK(stopped > 10);
 }
 
+/* The frame after a key recomputes only what the edit can change: a
+   predicate gates every capture of its match, so editing "find" into "fin"
+   must take string.regexp off the string after it, which the edit does not
+   touch.  Before the parse, as the frame after the key; then after it. */
+static void edit_far_capture(const char *dir)
+{
+	static const char b[] = "local a = s:find(\"%d+\")\n";
+	static unsigned char f[sizeof b], g[sizeof b];
+	size_t n = sizeof b - 1;
+	char path[2048];
+	snprintf(path, sizeof path, "%s/far.lua", dir);
+	Text *t = text_new(b, n);
+	CHECK(t);
+	Syntax *s = syntax_open(path, t);
+	CHECK(s);
+	syntax_faces(s, 0, n, f);
+	while (syntax_update(s, t, NULL) == 2) ;
+	syntax_faces(s, 0, n, f);
+	syntax_edit(s, t, 15, 1, "", 0);                 /* s:fin("%d+") */
+	CHECK(!text_delete(t, 15, 1));
+	syntax_faces(s, 0, n - 1, f);
+	Syntax *F = syntax_open(path, t);
+	CHECK(F);
+	syntax_faces(F, 0, n - 1, g);
+	while (syntax_update(F, t, NULL) == 2) ;
+	syntax_faces(F, 0, n - 1, g);
+	CHECK(!memcmp(f, g, n - 1));
+	syntax_free(F);
+	syntax_free(s);
+	text_free(t);
+}
+
 /* The trees a reparse replaces are freed in steps that ask stop: an edit
    that deletes 2,000 lines frees about 10,000 nodes, so the update
    after it must stop more than once before it is done. */
@@ -299,6 +331,7 @@ int main(void)
 	CHECK(mkdtemp(dir));
 	scroll_while_stopped(dir);
 	edit_while_stopped(dir);
+	edit_far_capture(dir);
 	release_in_steps(dir);
 	char path[2048], vrt[1024] = "";
 	FILE *p = popen("nvim --headless --clean -l /dev/stdin <<'E'\nio.write(vim.env.VIMRUNTIME)\nE", "r");

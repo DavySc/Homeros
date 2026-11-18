@@ -157,9 +157,26 @@ struct Syntax {
 	   ref/core.c, 0.044 vs 0.620 ms in Neovim's lsp.lua). */
 	uint32_t ca, cz;
 	unsigned char cache[CHUNK];
+	/* Bytes edited since the cache was filled (sa < sz): until the next
+	   parse the trees are only edited, so a face can change only under a
+	   match that has a capture over these bytes, and syntax_faces
+	   recomputes just those (the frame after a key), as Emacs's jit-lock
+	   refontifies only the changed region widened to whole constructs
+	   (jit-lock-after-change, font-lock-extend-region-functions).  A new
+	   tree empties the cache instead: tree-sitter's changed ranges miss
+	   changes that error recovery makes elsewhere (measured: a newline in
+	   a C string turned a later "char" from primitive_type into
+	   identifier, with only the newline's bytes reported). */
+	uint32_t sa, sz;
 };
 
 static int prio_rank(int p) { return p < 0 ? 0 : p > 254 ? 254 : p; }
+
+/* where byte x of the text before an edit of d bytes at p into i is now */
+static uint32_t moved(uint32_t x, uint32_t p, uint32_t d, uint32_t i)
+{
+	return x <= p ? x : x >= p + d ? x - d + i : p;
+}
 
 #define STR(k, l) ts_query_string_value_for_id(Q->q, st[k].value_id, &(l))
 #define ISSTR(k) (st[k].type == TSQueryPredicateStepTypeString)
@@ -283,7 +300,7 @@ static void free_region(Syntax *s, Region *r)
 		ts_parser_reset(s->p);
 		s->susp = NULL;
 	}
-	if (r->tree) syntax_release(r->tree, 0);
+	if (r->tree) s->cz = 0, syntax_release(r->tree, 0);
 	free(r->r);
 }
 
@@ -354,7 +371,21 @@ void syntax_edit(Syntax *s, const Text *t, size_t pos, size_t ndel, const char *
 	if (!s) return;
 	s->dirty = 1;
 	s->t = t;
-	s->cz = 0;
+	/* the cached faces follow the text, and the bytes around the edit are
+	   seeds; an edit at the window's edge or one that outgrows the cache
+	   empties it */
+	uint32_t p = (uint32_t)pos, d = (uint32_t)ndel, i = (uint32_t)nins;
+	if (!s->cz || p < s->ca || p + d > s->cz || s->cz - d + i - s->ca > CHUNK) s->cz = 0;
+	else {
+		memmove(s->cache + (p + i - s->ca), s->cache + (p + d - s->ca), s->cz - p - d);
+		memset(s->cache + (p - s->ca), 0, i);
+		s->cz = s->cz - d + i;
+	}
+	if (s->sa < s->sz) {
+		s->sa = moved(s->sa, p, d, i), s->sz = moved(s->sz, p, d, i);
+		if (p && p - 1 < s->sa) s->sa = p - 1;
+		if (p + i + 1 > s->sz) s->sz = p + i + 1;
+	} else s->sa = p ? p - 1 : 0, s->sz = p + i + 1;
 	/* the text a suspended parse was reading has changed, so no region may
 	   resume it; parse() drops it after asking stop, because freeing it
 	   (ts_parser_reset) can take a millisecond the frame may not have */
@@ -606,6 +637,7 @@ static int set_regions(Syntax *s, LTree *K, Injs *I, int lang)
 				s->susp = NULL;
 			}
 			g->valid = 0;
+			s->cz = 0;          /* faces are clipped to the ranges */
 			free(g->r);
 			g->r = I->v[i].r.r;
 			g->n = I->v[i].r.n;
@@ -712,6 +744,7 @@ static int parse(Syntax *s, LTree *L, const Text *t)
 		s->susp = NULL;
 		if (g->tree) syntax_release(g->tree, 0);
 		g->tree = n;
+		s->cz = 0;
 		g->valid = 1;
 		L->scan = changed = 1;
 	}
@@ -750,7 +783,6 @@ int syntax_update(Syntax *s, const Text *t, int (*stop)(void))
 	}
 	s->t = t;
 	s->stop = stop;
-	s->cz = 0;
 	if (s->va < s->vz) {
 		/* whole lines, as iter_matches(root, source, start_row, end_row + 1) */
 		s->ra = (uint32_t)text_line_start(t, text_line_of(t, s->va));
@@ -806,6 +838,31 @@ static void faces_tree(Syntax *s, const Text *t, LTree *L, uint32_t a, uint32_t 
 	for (uint32_t i = 0; i < L->nkid; i++) faces_tree(s, t, L->kid[i], a, z, face);
 }
 
+/* Widens [*a, *z) to every capture with a face in a match that has a
+   capture over it, predicates aside: a predicate reads all of a node's
+   text, and gates every capture of its match. */
+static void widen(Syntax *s, LTree *L, uint32_t *a, uint32_t *z)
+{
+	Q *Q = &queries[L->lang].hl;
+	uint32_t sa = s->sa, sz = s->sz;
+	for (uint32_t ri = 0; Q->q && ri < L->nreg; ri++) {
+		Region *g = &L->reg[ri];
+		if (!g->tree || (g->n && (g->r[0].start_byte >= sz || g->r[g->n - 1].end_byte <= sa))) continue;
+		ts_query_cursor_set_byte_range(s->qc, sa, sz);
+		ts_query_cursor_exec(s->qc, Q->q, ts_tree_root_node(g->tree));
+		TSQueryMatch m;
+		uint32_t ci;
+		while (ts_query_cursor_next_capture(s->qc, &m, &ci))
+			for (uint16_t k = 0; k < m.capture_count; k++) {
+				TSNode n = m.captures[k].node;
+				if (!Q->face[m.captures[k].index]) continue;
+				if (ts_node_start_byte(n) < *a) *a = ts_node_start_byte(n);
+				if (ts_node_end_byte(n) > *z) *z = ts_node_end_byte(n);
+			}
+	}
+	for (uint32_t i = 0; i < L->nkid; i++) widen(s, L->kid[i], a, z);
+}
+
 void syntax_faces(Syntax *s, size_t a, size_t z, unsigned char *face)
 {
 	memset(face, 0, z - a);
@@ -816,6 +873,18 @@ void syntax_faces(Syntax *s, size_t a, size_t z, unsigned char *face)
 	if (a < s->ra || z > s->rz) s->dirty = 1;
 	if (!started(s)) return;
 	if (a >= s->ca && z <= s->cz) {
+		if (s->sa < s->sz) {
+			uint32_t ra = s->sa, rz = s->sz;
+			widen(s, s->root, &ra, &rz);
+			if (ra < s->ca) ra = s->ca;
+			if (rz > s->cz) rz = s->cz;
+			s->sa = s->sz = 0;
+			if (ra < rz) {
+				memset(s->cache + (ra - s->ca), 0, rz - ra);
+				memset(s->prio, 0, rz - ra);
+				faces_tree(s, s->t, s->root, ra, rz, s->cache + (ra - s->ca));
+			}
+		}
 		memcpy(face, s->cache + (a - s->ca), z - a);
 		return;
 	}
@@ -827,6 +896,7 @@ void syntax_faces(Syntax *s, size_t a, size_t z, unsigned char *face)
 		if (s->cz < z) s->cz = (uint32_t)z;
 		memset(s->cache, 0, s->cz - s->ca);
 		memset(s->prio, 0, s->cz - s->ca);
+		s->sa = s->sz = 0;
 		faces_tree(s, s->t, s->root, s->ca, s->cz, s->cache);
 		memcpy(face, s->cache, z - a);
 		return;
