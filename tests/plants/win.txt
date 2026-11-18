@@ -4,7 +4,7 @@
 # on WM_DISPLAYCHANGE (Wine's period never changes); and greyscale rather than
 # ClearType smoothing (Wine 11.0 draws CLEARTYPE_QUALITY greyscale too, even
 # with ClearType set in the registry: 0 fringed pixels either way, measured, 1
-# run); and the Nerd Font picked first (no Nerd Font in CI's fonts: by hand
+# run); and the Nerd Font picked first when installed (CI has none: by hand
 # under Wine with JetBrainsMonoNerdFontMono-Regular.ttf added, the face is
 # "JetBrainsMono NFM" and U+E0B0 draws its glyph, measured, 1 run); all four
 # are pending for Windows.
@@ -48,3 +48,4 @@ win: draws while minimised~win WIN=win~~src/win/backend.c~	if (IsIconic(win)) re
 win: resize sends no KEY_RESIZE~win WIN=win~~src/win/backend.c~HIWORD(l) != dh)) resized = stale = 1;~HIWORD(l) != dh)) stale = 1;
 win: the DIB keeps its old size~win WIN=win~~src/win/backend.c~if (all && (grid_resize(shown, g->rows, g->cols) || make_dib())) return;~if (all && grid_resize(shown, g->rows, g->cols)) return;
 specs: Pace with frames only P + D apart~specs~find design/specs -name '*.cfg' ! -name Pace_ok.cfg -delete~design/specs/Pace_ok.cfg~ Gap = 5~ Gap = 4
+win: GDI's substitute for a missing family kept~win WIN=win~~src/win/backend.c~if (!lstrcmpiW(face, family[i])) break;~break;
