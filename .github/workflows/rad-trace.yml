@@ -1,0 +1,44 @@
+# Slice 0: record step traces from the real RAD Debugger on our own subject programs,
+# and commit them to this branch as the oracle the prototype engine is compared with.
+name: rad-trace
+on:
+  push:
+    branches: [claude/project-thread-l4spyq]
+    paths: ['subjects/**', 'oracle/**', '.github/workflows/rad-trace.yml']
+permissions:
+  contents: write
+concurrency:
+  group: rad-trace
+  cancel-in-progress: true
+jobs:
+  trace:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      RAD_COMMIT: 5b0d5f67a46af5fffa52322e95a116dabf393103
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch RAD at the pinned commit
+        shell: cmd
+        run: |
+          git init rad && cd rad && git remote add origin https://github.com/EpicGamesExt/raddebugger
+          git fetch --depth 1 origin %RAD_COMMIT% && git checkout FETCH_HEAD && git rev-parse HEAD
+      - name: Build raddbg and the subjects
+        shell: cmd
+        run: |
+          for /f "usebackq delims=" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath`) do call "%%i\VC\Auxiliary\Build\vcvars64.bat"
+          pushd rad && call build raddbg release || exit /b 1
+          popd
+          mkdir bin
+          rem /Od with no inlining keeps one line per step; DYNAMICBASE:NO keeps addresses the same on every run
+          for %%f in (subjects\*.c) do cl /nologo /Zi /Od /Ob0 /GS- %%f /Fo:bin\ /Fd:bin\%%~nf.pdb /Fe:bin\%%~nf.exe /link /DEBUG /INCREMENTAL:NO /DYNAMICBASE:NO || exit /b 1
+      - name: Record traces
+        shell: pwsh
+        run: |
+          foreach ($exe in Get-ChildItem bin/*.exe) { ./oracle/rad-trace.ps1 (Resolve-Path rad/build/raddbg.exe) $exe.FullName (Join-Path $PWD traces) }
+          foreach ($f in Get-ChildItem traces/*.txt) { "===== $($f.Name) (first 40 lines)"; Get-Content $f -TotalCount 40 }
+      - name: Commit the traces to this branch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add traces && git diff --cached --quiet || { git commit -qm "Traces recorded from RAD at ${RAD_COMMIT:0:8} [skip ci]" && git pull -q --rebase && git push -q; }
