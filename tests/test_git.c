@@ -329,7 +329,7 @@ static void scenario(const char *name, const char *setup, Step *steps, int n, ch
 	o = run(": > '%s'", gitlog);
 	free(o);
 	CHECK(git_status(&e, repo) == 0);
-	if (nowatch) { loop_unwatch(R()->ifd); close(R()->ifd); R()->ifd = -1; }
+	if (nowatch) R()->watched = 1;   /* never starts watching */
 	settle();
 	/* the refresh that opened it: the git processes the shim saw */
 	int nproc = 0;
