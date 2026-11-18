@@ -1064,14 +1064,18 @@ static void nv_g_cmd(Cmdarg *cap)
 		} else clearopbeep(oap);
 		break;
 	case 'v': nv_gv_cmd(cap); break;
-	case 'j': case KEY_DOWN:     /* 'nowrap': screen lines are text lines */
-		oap->motion_type = MLINE;
-		if (!cursor_down(cap->count1)) clearopbeep(oap);
+	case 'j': case KEY_DOWN: case 'k': case KEY_UP: {
+		int up = cap->nchar == 'k' || cap->nchar == KEY_UP;
+		if (W->wrap) {          /* nv_screengo(): the core moves by screen lines */
+			oap->motion_type = MCHAR;
+			oap->inclusive = W->want == WANT_EOL;
+			if (core_screen_move(E, up ? -cap->count1 : cap->count1) < 0) clearopbeep(oap);
+		} else {                /* 'nowrap': screen lines are text lines */
+			oap->motion_type = MLINE;
+			if (!(up ? cursor_up(cap->count1) : cursor_down(cap->count1))) clearopbeep(oap);
+		}
 		break;
-	case 'k': case KEY_UP:
-		oap->motion_type = MLINE;
-		if (!cursor_up(cap->count1)) clearopbeep(oap);
-		break;
+	}
 	case 'J': nv_join(cap); break;
 	case '_': {
 		/* g_: the last non-blank, count - 1 lines down */
@@ -1116,9 +1120,16 @@ enum { NCH = 1, NCH_NOP = 2 | NCH, NCH_ALW = 4 | NCH, KEEPREG = 8 };
 
 /* ---- scrolling and windows: the core moves the view (core.h) ---- */
 
+/* pagescroll() beeps when it cannot move, which ends a macro */
 static void nv_halfpage(Cmdarg *cap)
 {
-	if (!checkclearop(cap->oap)) core_scroll_half(E, cap->cmdchar == 4 ? 1 : -1, cap->count0);
+	if (!checkclearop(cap->oap) && core_scroll_half(E, cap->cmdchar == 4 ? 1 : -1, cap->count0) < 0) beep();
+}
+
+/* CTRL-F and CTRL-B (nv_page()) */
+static void nv_page(Cmdarg *cap)
+{
+	if (!checkclearop(cap->oap) && core_scroll_page(E, cap->cmdchar == 6 ? 1 : -1, cap->count1) < 0) beep();
 }
 
 static void nv_scroll_line(Cmdarg *cap)
@@ -1200,7 +1211,7 @@ static int known(int c)
 {
 	return has(" \"$%'()+,-./0:;<>?@ABCDEFGHIJLMOPQRSTUWXYV[]^_`abcdefghijklmopqrstuvwxyz{|}~", c) || c == 1 || c == 3
 	       || c == 8 || c == 10 || c == 13 || c == 14 || c == 16 || c == 22 || c == 24 || c == KEY_CTRL_R
-	       || c == 4 || c == 21 || c == 5 || c == 25 || c == 23
+	       || c == 4 || c == 21 || c == 6 || c == 2 || c == 5 || c == 25 || c == 23
 	       || c == KEY_ESC || c == KEY_BS || c == KEY_UP || c == KEY_DOWN || c == KEY_LEFT || c == KEY_RIGHT || c == KEY_DEL;
 }
 
@@ -1259,6 +1270,7 @@ static void execute(Cmdarg *cap)
 	case '|': nv_pipe(cap); break;
 	case '~': nv_tilde(cap); break;
 	case 4: case 21: nv_halfpage(cap); break;
+	case 6: case 2: nv_page(cap); break;
 	case 5: case 25: nv_scroll_line(cap); break;
 	case 'H': case 'L': case 'M': nv_scroll(cap); break;
 	case 'z': nv_zet(cap); break;
