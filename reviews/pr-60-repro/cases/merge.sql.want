@@ -1,0 +1,7 @@
+merge t as d
+USING s on d.id = s.id
+when MATCHED then update
+set d.a = s.a
+when not MATCHED then insert (a)
+values (s.a)
+OUTPUT $action;

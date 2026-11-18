@@ -1,0 +1,5 @@
+:setvar x 1
+select $(x)
+:r file.sql
+  :on error exit
+select 1 :foo

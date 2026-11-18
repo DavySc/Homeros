@@ -51,7 +51,7 @@ Prefer copying the behaviour of a reference editor (Neovim 0.12 first; Helix, Em
 | `assets/` | the app icon and desktop file (PR 55) | thread 0 |
 | `reviews/` | one report per package review (`reviews/package-<n>.md`) and its repro files | that review's thread |
 
-Modules and their packages: text 1, undo 2, uni 3, core 4, keys 5, grid and tty 6, font 7, wl 8, win 9, loop 10, file 11, syntax 12, lsp 13, tools 15, org 16, git 17. C libraries and the test fonts come from the distribution (CI's apt line), not nix, whose libraries need a newer glibc than the system compiler links. The headers say what each package adds.
+Modules and their packages: text 1, undo 2, uni 3, core 4, keys 5, grid and tty 6, font 7, wl 8, win 9, loop 10, file 11, syntax 12, lsp 13, tools 15, org 16, git 17, sqlfmt 18. C libraries and the test fonts come from the distribution (CI's apt line), not nix, whose libraries need a newer glibc than the system compiler links. The headers say what each package adds.
 
 ## The check
 
