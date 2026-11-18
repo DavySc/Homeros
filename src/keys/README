@@ -40,7 +40,8 @@ Waits for package 4, still differing with PR 20's core:
 - core_vcol at a byte inside a cluster (x + U+0301 with the cursor after x)
   gives the cluster's end; Neovim's getvcol gives its start.
 - the cursor after undoing a linewise change of several lines (4cc Esc u,
-  2cc, 2S, 3S Esc u, 3S C-o u, V j c Esc u, V } c Esc u): Neovim takes it from
+  2cc, 2S, 3S Esc u, 3S C-o u, V j c Esc u, V } c Esc u, c+ Esc u, c2k,
+  cap, V s C-o u): Neovim takes it from
   u_undoredo's last entry, the core from the whole step.
 - I Down from a blank a combining mark is on, after the cursor came there
   with k ("    \u0301 -3\n).\n    'c' 7", j dd k I Down): Neovim's column
@@ -53,6 +54,12 @@ Waits for package 4, still differing with PR 20's core:
   suspect (owner package 4, not traced).
 
 Not traced to a fix yet (owner package 5):
+- after A x Esc, v 3B y, then a linewise yank (y 2j or y ][), Neovim's
+  wanted column is 5 cells and ours 0 ("\tab\n    cd", A b x Esc v 3 B y
+  y 2 j j: Neovim's column 5, ours 0).
+- block $ I with CTRL-W and CTRL-R over a ZWJ emoji that r and s split
+  earlier: Neovim and ours write different split characters (the case is
+  the example in tests/conform-known.json; no shorter one found).
 - block I, then CTRL-T with the block's start inside the indent ("} foo",
   i Tab Esc h C-v I C-t): Neovim's op_insert leaves the cursor at column 0,
   ours at 2.
