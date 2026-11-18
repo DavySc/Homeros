@@ -120,6 +120,22 @@ typedef struct {
    (kNone) outside operators */
 int virtual_op = -1;
 
+/* The walks of block_prep() and do_put(): from byte from, step whole
+   characters while the column is below target.  Returns where that stops,
+   with *prev the last character stepped and *incr its cells (both kept if
+   none was), in a few core lookups instead of one per character, so a long
+   line costs its length, not its length squared. */
+static long walk(long l, const char *s, long len, long from, long target, long *prev, long *incr)
+{
+	if (from >= len || vcol_of(l, from) >= target) return from;
+	long p = col_of_vcol(l, target, 1), i;
+	if (p < len && vcol_of(l, p) < target) i = p + clen(s, len, p);   /* a character spans target */
+	else i = p < len ? p : len;
+	*prev = head(s, i - 1);
+	*incr = vcol_of(l, i) - vcol_of(l, *prev);
+	return i;
+}
+
 static void bprep(Oparg *oap, Block *bd, long l, int is_del)
 {
 	long incr = 0;
@@ -127,16 +143,13 @@ static void bprep(Oparg *oap, Block *bd, long l, int is_del)
 	memset(bd, 0, sizeof *bd);
 	bd->is_MAX = is_MAX;
 	const char *line = ml_get(l);
-	long len = ml_len(l), i = 0, prev_pstart = 0, vcol = 0;
-	while (vcol < oap->start_vcol && i < len) {
-		long k = clen(line, len, i);
-		incr = vcol_of(l, i + k) - vcol;
-		vcol += incr;
-		if (line[i] == ' ' || line[i] == '\t') { bd->pre_whitesp += incr; bd->pre_whitesp_c++; }
-		else { bd->pre_whitesp = 0; bd->pre_whitesp_c = 0; }
-		prev_pstart = i;
-		i += k;
-	}
+	long len = ml_len(l), prev_pstart = 0;
+	long i = walk(l, line, len, 0, oap->start_vcol, &prev_pstart, &incr), vcol = vcol_of(l, i);
+	/* the blanks the walk stepped over last (a character that starts with
+	   one counts, as Neovim tests its first byte) */
+	long b0 = i;
+	for (long c; b0 > 0 && (line[c = head(line, b0 - 1)] == ' ' || line[c] == '\t'); b0 = c) bd->pre_whitesp_c++;
+	bd->pre_whitesp = vcol - vcol_of(l, b0);
 	bd->start_vcol = vcol;
 	long pstart = i;
 	bd->start_char_vcols = incr;
@@ -164,15 +177,8 @@ static void bprep(Oparg *oap, Block *bd, long l, int is_del)
 			}
 		} else {
 			long prev_pend = pend;
-			vcol = bd->end_vcol;
-			i = pend;
-			while (vcol <= oap->end_vcol && i < len) {
-				prev_pend = i;
-				long k = clen(line, len, i);
-				incr = vcol_of(l, i + k) - vcol;
-				vcol += incr;
-				i += k;
-			}
+			i = walk(l, line, len, pend, oap->end_vcol + 1, &prev_pend, &incr);
+			vcol = i == pend ? bd->end_vcol : vcol_of(l, i);
 			bd->end_vcol = vcol;
 			pend = i;
 			if (bd->end_vcol <= oap->end_vcol && (!is_del || oap->op_type == OP_APPEND || oap->op_type == OP_REPLACE)) {
@@ -1051,19 +1057,9 @@ void do_put(int regname, int dir, long count, int flags)
 			const char *oldp = ml_get(l);
 			long oldlen = ml_len(l), vcol = 0, j = 0, incr = 0;
 			long startspaces = 0, endspaces = 0, delcount = 0;
-			/* do_put()'s walk to col, done with two lookups so a long
-			   line costs its length, not its length squared */
-			if (col > 0) {
-				long p = col_of_vcol(l, col, 1), v = p < oldlen ? vcol_of(l, p) : 0;
-				if (p < oldlen && v < col) {      /* a character spans col */
-					j = p + clen(oldp, oldlen, p);
-					vcol = vcol_of(l, j);
-					incr = vcol - v;
-				} else {                           /* stop at p, after the character before it */
-					j = p < oldlen ? p : oldlen;
-					vcol = vcol_of(l, j);
-					incr = j ? vcol - vcol_of(l, head(oldp, j - 1)) : 0;
-				}
+			if (col > 0) {            /* do_put()'s walk to col */
+				j = walk(l, oldp, oldlen, 0, col, &(long){ 0 }, &incr);
+				vcol = vcol_of(l, j);
 			}
 			textcol = j;
 			int shortline = vcol < col || (vcol == col && j >= oldlen);
