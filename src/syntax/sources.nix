@@ -13,8 +13,17 @@ let
   nv = pkgs.neovim-unwrapped;
   p = nv.treesitter-parsers;
   ts = pkgs.vimPlugins.nvim-treesitter;
-  g = l: ts.builtGrammars.${l}.overrideAttrs (o: { postInstall = (o.postInstall or "") + "cp -r src $out/src\n"; });
-  sql = g "sql";
+  g = l: patch: ts.builtGrammars.${l}.overrideAttrs (o: {
+    postPatch = (o.postPatch or "") + patch;
+    postInstall = (o.postInstall or "") + "cp -r src $out/src\n";
+  });
+  # its scanner returns without freeing the tag it read when that tag
+  # equals the open one (LeakSanitizer, test_syntax SEED=2 CASES=300)
+  sql = g "sql" ''
+    substituteInPlace src/scanner.c --replace-fail \
+      'strcmp(state->start_tag, start_tag) == 0) {' \
+      'strcmp(state->start_tag, start_tag) == 0) { free(start_tag);'
+  '';
 in
 pkgs.runCommandLocal "homeros-syntax-src" { } ''
   mkdir -p $out/c $out/lua $out/markdown $out/queries $out/nvim/parser $out/nvim/queries $out/corpus

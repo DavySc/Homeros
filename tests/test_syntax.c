@@ -386,6 +386,25 @@ static void cache_grows(const char *dir)
 	text_free(t);
 }
 
+/* SQL's scanner, inside a $$ body, reads a "$$" where a string could start:
+   it must free that tag (sources.nix patches it), which LeakSanitizer
+   checks when the test exits. */
+static void sql_body(const char *dir)
+{
+	static unsigned char f[64];
+	char path[2048];
+	snprintf(path, sizeof path, "%s/body.sql", dir);
+	const char *b = "CREATE FUNCTION f() RETURNS int AS $$ SELECT $$;\n";
+	Text *t = text_new(b, strlen(b));
+	CHECK(t);
+	Syntax *s = syntax_open(path, t);
+	CHECK(s);
+	syntax_faces(s, 0, strlen(b), f);
+	while (syntax_update(s, t, NULL) == 2) ;
+	syntax_free(s);
+	text_free(t);
+}
+
 /* The trees a reparse replaces are freed in steps that ask stop: an edit
    that deletes 2,000 lines frees about 10,000 nodes, so the update
    after it must stop more than once before it is done. */
@@ -443,6 +462,7 @@ int main(void)
 	edits_then_frame(dir);
 	edit_before_region(dir);
 	cache_grows(dir);
+	sql_body(dir);
 	release_in_steps(dir);
 	char path[2048], vrt[1024] = "";
 	FILE *p = popen("nvim --headless --clean -l /dev/stdin <<'E'\nio.write(vim.env.VIMRUNTIME)\nE", "r");
