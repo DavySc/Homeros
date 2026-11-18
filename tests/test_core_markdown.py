@@ -12,7 +12,7 @@ N, SEED = int(sys.argv[1]), int(sys.argv[2])
 W, H = 50, 20
 INIT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'test_core_markdown.lua')
 # catppuccin's RenderMarkdownH1Bg..H6Bg and rainbow1..6, as ref/theme.c
-BG = {'5a3d50': 'R', '5c4847': 'P', '5b5552': 'Y', '44554e': 'G', '364d63': 'S', '484b68': 'L'}
+BG = {'32283a': 'R', '332c36': 'P', '33313a': 'Y', '2b3139': 'G', '262e40': 'S', '2c2d42': 'L'}
 FG = {'f38ba8': 'r', 'fab387': 'p', 'f9e2af': 'y', 'a6e3a1': 'g', '74c7ec': 's', 'b4befe': 'l'}
 WORDS = ['foo', 'bar', '`code`', '[link](u)', '*em*', '**strong**', '漢字', 'x' * 60, '#', '##', '\t', 'é', '<b>', '\\#']
 

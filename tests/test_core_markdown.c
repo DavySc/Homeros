@@ -20,7 +20,7 @@ static char letter(const unsigned char *c, const char *const *hex, const char *s
 	for (int i = 0; i < 6; i++) if (!strcmp(h, hex[i])) return set[i];
 	return '.';
 }
-static const char *const BG[] = { "5a3d50", "5c4847", "5b5552", "44554e", "364d63", "484b68" };
+static const char *const BG[] = { "32283a", "332c36", "33313a", "2b3139", "262e40", "2c2d42" };
 static const char *const FG[] = { "f38ba8", "fab387", "f9e2af", "a6e3a1", "74c7ec", "b4befe" };
 
 /* row r of g as the .py writes it: 'S' text, 'B' backgrounds, 'F'
@@ -33,7 +33,7 @@ static const char *row(const Grid *g, int r, char what)
 		const Cell *x = &g->c[r * g->cols + c];
 		/* a right half shows its left half's colours */
 		if (!x->len && c) x--;
-		const Face *f = &faces[x->face], *bg = x->bg ? &faces[x->bg] : f;
+		const Face *bg, *f = grid_face(x, &bg);
 		if (what == 'S') { if (x == &g->c[r * g->cols + c]) { memcpy(b + n, grid_text(x), x->len); n += x->len; } }
 		else if (what == 'B') b[n++] = bg->style & FACE_BG ? letter(bg->bg, BG, "RPYGSL") : '.';
 		else b[n++] = f->style & FACE_FG && !(x->len == 1 && x->ch[0] == ' ') ? letter(f->fg, FG, "rpygsl") : '.';
