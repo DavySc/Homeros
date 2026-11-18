@@ -19,7 +19,7 @@ typedef struct { long lnum, col, coladd; } Pos;
 static inline int has(const char *s, int c) { return c > 0 && c < 0x80 && strchr(s, c); }
 enum { FORWARD = 1, BACKWARD = -1 };
 enum { MCHAR, MLINE, MBLOCK };
-#define MAXCOL (1L << 40)
+#define MAXCOL 0x7fffffffL   /* Neovim's (INT_MAX), so it fits a Windows long */
 
 /* the editor keys_feed is working on (one at a time: Neovim's curwin) */
 extern Editor *E;
@@ -65,6 +65,7 @@ void check_cursor(void);
 void check_cursor_col(void);
 void adjust_cursor_eol(void);
 void update_curswant(void);
+void validate_virtcol(void);
 extern int set_curswant;
 int  replace_bytes(long l, long col, long ndel, const char *ins, long nins);
 int  append_lines(long after, const char *s, long n);   /* lines s (joined by '\n') below line after (-1: at the top) */
@@ -175,7 +176,7 @@ extern int redo_busy;
 extern int searchc_inclusive;
 
 /* ops.c: the '[ and '] marks, registers, recording */
-extern Pos b_op_start, b_op_end;
+extern Pos b_op_start, b_op_end, b_op_start_orig;
 extern Reg *put_override;
 extern int reg_recording, reg_executing, reg_recorded;
 int  swapchar(int op_type, Pos *pos);

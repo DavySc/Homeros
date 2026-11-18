@@ -1,0 +1,200 @@
+C 30 20
+F 
+T bd
+T k:oa<CR>b<CR>c<Esc>
+T wrap
+T vs
+T pum:0:3:0
+P
+S 1
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S < 0,0-1          All
+S 
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S :bd
+M - - -
+P
+S   3
+S   2 a
+S   1 b
+S 4   c
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S < 4,1            All
+S 
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S :set wrap
+M - - -
+P
+S  │  3
+S  │  2 a
+S  │  1 b
+S  │4   c
+S  │~
+S  │~
+S  │~
+S  │~
+S  │~
+S  │~
+S  │~
+S  │~
+S  │~
+S  │~
+S  │~
+S  │~
+S  │~
+S  │~
+S  │~
+S  │~
+S  │~
+S  │~
+S  │~
+S  │~
+S  │~
+S  │~
+S  │~
+S  │~
+S < <,1            All
+S :vs
+M - - -
+P
+R
+R
+R
+S  │4   cfoo
+S  │~ foo    v
+S  │~ foobar f module>
+S  │~ é        λx menu
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S @│~
+R
+S -- INSERT --
+M - - -
+E

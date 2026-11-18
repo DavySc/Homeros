@@ -612,9 +612,12 @@ int current_word(Oparg *oap, long count, int include, int bigword)
 				p = cur(); incl(&p); setcur(p);
 			}
 		} else {
+			/* incl(&curwin->w_cursor): a failure at the end of the
+			   buffer leaves the cursor on the NUL it reached */
 			Pos p = cur();
-			if (incl(&p) == -1) return 0;
+			int r = incl(&p);
 			setcur(p);
+			if (r == -1) return 0;
 			if (include != (cls() == 0)) {
 				if (!fwd_word(1, bigword, 1) && count > 1) return 0;
 				if (!oneleft()) inclusive = 0;

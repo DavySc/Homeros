@@ -1,0 +1,39 @@
+C 6 40
+F 200a09
+F 
+T k:23G
+T k:ix<Esc>
+T k:u
+P
+S 1
+S   1
+S ~
+S ~
+S f0                    1,1            All
+S 
+M - - -
+P
+S   1
+S 2
+R
+R
+S f0                    2,1-8          All
+R
+M - - -
+P
+R
+S 2   x
+R
+R
+S f0 [+]                2,1            All
+R
+M - - -
+P
+R
+S 2
+R
+R
+S f0                    2,1            All
+S 1 change; be...0 seconds ago
+M - - -
+E

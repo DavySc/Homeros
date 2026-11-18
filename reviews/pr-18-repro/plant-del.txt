@@ -1,0 +1,4 @@
+# Finding 3: a plant in tools/planted.sh's format.  Insert-mode Delete removes
+# one byte too few of a multi-byte character.  make fuzz FUZZERS=keys and
+# make test pass with it; only live make conform catches it.
+keys: Delete splits a multi-byte character~fuzz FUZZERS=keys FUZZ_SECONDS=60~~ref/keys.c~	if (c < n) core_edit(e, ls + c, uni_len(s, n, c), "", 0);~	if (c < n) core_edit(e, ls + c, uni_len(s, n, c) - (uni_len(s, n, c) > 1), "", 0);

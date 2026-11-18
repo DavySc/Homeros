@@ -10,6 +10,7 @@
 enum { SW = 4 };
 
 Pos b_op_start, b_op_end;      /* the '[ and '] marks */
+Pos b_op_start_orig;          /* Insstart_orig of the last insert, for a block I or A */
 Reg *put_override;             /* nv_put()'s copy of the register (Visual p) */
 
 /* ---- registers ---- */
@@ -119,6 +120,22 @@ typedef struct {
    (kNone) outside operators */
 int virtual_op = -1;
 
+/* The walks of block_prep() and do_put(): from byte from, step whole
+   characters while the column is below target.  Returns where that stops,
+   with *prev the last character stepped and *incr its cells (both kept if
+   none was), in a few core lookups instead of one per character, so a long
+   line costs its length, not its length squared. */
+static long walk(long l, const char *s, long len, long from, long target, long *prev, long *incr)
+{
+	if (from >= len || vcol_of(l, from) >= target) return from;
+	long p = col_of_vcol(l, target, 1), i;
+	if (p < len && vcol_of(l, p) < target) i = p + clen(s, len, p);   /* a character spans target */
+	else i = p < len ? p : len;
+	*prev = head(s, i - 1);
+	*incr = vcol_of(l, i) - vcol_of(l, *prev);
+	return i;
+}
+
 static void bprep(Oparg *oap, Block *bd, long l, int is_del)
 {
 	long incr = 0;
@@ -126,16 +143,13 @@ static void bprep(Oparg *oap, Block *bd, long l, int is_del)
 	memset(bd, 0, sizeof *bd);
 	bd->is_MAX = is_MAX;
 	const char *line = ml_get(l);
-	long len = ml_len(l), i = 0, prev_pstart = 0, vcol = 0;
-	while (vcol < oap->start_vcol && i < len) {
-		long k = clen(line, len, i);
-		incr = vcol_of(l, i + k) - vcol;
-		vcol += incr;
-		if (line[i] == ' ' || line[i] == '\t') { bd->pre_whitesp += incr; bd->pre_whitesp_c++; }
-		else { bd->pre_whitesp = 0; bd->pre_whitesp_c = 0; }
-		prev_pstart = i;
-		i += k;
-	}
+	long len = ml_len(l), prev_pstart = 0;
+	long i = walk(l, line, len, 0, oap->start_vcol, &prev_pstart, &incr), vcol = vcol_of(l, i);
+	/* the blanks the walk stepped over last (a character that starts with
+	   one counts, as Neovim tests its first byte) */
+	long b0 = i;
+	for (long c; b0 > 0 && (line[c = head(line, b0 - 1)] == ' ' || line[c] == '\t'); b0 = c) bd->pre_whitesp_c++;
+	bd->pre_whitesp = vcol - vcol_of(l, b0);
 	bd->start_vcol = vcol;
 	long pstart = i;
 	bd->start_char_vcols = incr;
@@ -163,15 +177,8 @@ static void bprep(Oparg *oap, Block *bd, long l, int is_del)
 			}
 		} else {
 			long prev_pend = pend;
-			vcol = bd->end_vcol;
-			i = pend;
-			while (vcol <= oap->end_vcol && i < len) {
-				prev_pend = i;
-				long k = clen(line, len, i);
-				incr = vcol_of(l, i + k) - vcol;
-				vcol += incr;
-				i += k;
-			}
+			i = walk(l, line, len, pend, oap->end_vcol + 1, &prev_pend, &incr);
+			vcol = i == pend ? bd->end_vcol : vcol_of(l, i);
 			bd->end_vcol = vcol;
 			pend = i;
 			if (bd->end_vcol <= oap->end_vcol && (!is_del || oap->op_type == OP_APPEND || oap->op_type == OP_REPLACE)) {
@@ -349,7 +356,14 @@ int op_delete(Oparg *oap)
 		oap->line_count = 0;
 	} else if (oap->motion_type == MLINE) {
 		if (oap->op_type == OP_CHANGE) {
-			if (oap->line_count > 1) del_lines((long)W->line + 1, oap->line_count - 1);
+			/* op_delete(): Neovim deletes the lines with the cursor one line
+			   down, so undo saves that line as its cursor (package 4 traced it) */
+			if (oap->line_count > 1) {
+				size_t l0 = W->line;
+				W->line++;
+				del_lines((long)l0 + 1, oap->line_count - 1);
+				W->line = l0;
+			}
 			u_save_cursor();
 			/* 'autoindent': keep the indent, which goes if nothing is typed */
 			beginline(BL_WHITE);
@@ -406,6 +420,8 @@ int op_change(Oparg *oap)
 	if (l > (long)W->col && !lineempty((long)W->line) && !virtual_op) inc_cursor();
 	change_block.active = 0;
 	if (oap->motion_type == MBLOCK) {
+		/* op_change(): spaces up to a block that starts past the line's end */
+		if (virtual_op && (cur().coladd > 0 || gchar_cursor() == 0)) coladvance_force(getviscol());
 		change_block.active = 1;
 		change_block.oa = *oap;
 		const char *s = ml_get(oap->start.lnum);
@@ -440,7 +456,9 @@ void change_done(void)
 	char *ins = malloc((size_t)ins_len);
 	if (!ins) return;
 	memcpy(ins, ml_get(oap->start.lnum) + textcol, (size_t)ins_len);
-	for (long ln = oap->start.lnum + 1; ln <= oap->end.lnum; ln++) {
+	/* a Del typed in the block's first line may have joined the lines
+	   below: Neovim's ml_replace() fails past the last line */
+	for (long ln = oap->start.lnum + 1; ln <= oap->end.lnum && ln < nlines(); ln++) {
 		Block bd = { 0 };
 		bprep(oap, &bd, ln, 1);
 		if (!bd.is_short || virtual_op) {
@@ -458,6 +476,11 @@ void change_done(void)
 	}
 	free(ins);
 	check_cursor();
+	/* text that went in before the cursor (a line break typed in the
+	   block's first line puts the cursor on a copied line) can leave it
+	   inside a character: Neovim's cursor ends on its first byte (measured,
+	   "C-v j e y gg C-v j C x C-r \" Esc") */
+	W->col = (size_t)head(ml_get((long)W->line), (long)W->col);
 }
 
 /* ---- shift ---- */
@@ -662,6 +685,11 @@ int op_replace(Oparg *oap, int c)
 			}
 			long numc = oap->end_vcol - oap->start_vcol + 1;
 			if (bd.is_short && (!virtual_op || is_MAX)) numc -= (oap->end_vcol - bd.end_vcol) + 1;
+			/* a double-wide character fills two columns of the block */
+			if (uni_width((const unsigned char *)cb, (size_t)cn, 0) > 1) {
+				if (numc % 2 && !bd.is_short) bd.endspaces++;
+				numc /= 2;
+			}
 			Sbuf b = { 0 };
 			bspaces(&b, bd.startspaces);
 			if (c != '\r' && c != '\n') {
@@ -749,6 +777,9 @@ void op_insert(Oparg *oap, long count1)
 		} else {
 			setcur(oap->end);
 			check_cursor_col();
+			/* Neovim can stay inside a character here and then writes a
+			   split one (src/keys/README, not copied): keep to its head */
+			W->col = (size_t)head(ml_get((long)W->line), (long)W->col);
 			if (!lineempty((long)W->line) && oap->start_vcol != oap->end_vcol) inc_cursor();
 		}
 	}
@@ -827,6 +858,22 @@ void insert_block_done(Pos insstart)
 		ind_post_vcol = get_indent(oap->start.lnum);
 		bd.start_vcol += ind_post_vcol - ins_block.ind_pre_vcol;
 		did_indent = 1;
+	}
+	/* the cursor moved before anything was typed (C-v I Right x): the
+	   block starts where the insert did */
+	if (oap->start.lnum == b_op_start_orig.lnum && !bd.is_MAX && !did_indent) {
+		long t = vcol_of(b_op_start_orig.lnum, b_op_start_orig.col) + b_op_start_orig.coladd;
+		if (oap->op_type == OP_INSERT && oap->start.col + oap->start.coladd != b_op_start_orig.col + b_op_start_orig.coladd) {
+			oap->start.col = b_op_start_orig.col;
+			pre_textlen -= t - oap->start_vcol;
+			oap->start_vcol = t;
+		} else if (oap->op_type == OP_APPEND && oap->start.col + oap->start.coladd >= b_op_start_orig.col + b_op_start_orig.coladd) {
+			oap->start.col = b_op_start_orig.col;
+			pre_textlen += bd.textlen;
+			pre_textlen -= t - oap->start_vcol;
+			oap->start_vcol = t;
+			oap->op_type = OP_INSERT;
+		}
 	}
 	if (did_indent && bd.textcol - ind_post_col > 0) {
 		oap->start.col += ind_post_col - ins_block.ind_pre_col;
@@ -915,13 +962,14 @@ int do_join(long count, int insert_space)
 			}
 		}
 	}
-	/* one edit over the joined lines; when they join to nothing it keeps a
-	   line break, so the edit is a changed line, not lines deleted, and
-	   redo puts the cursor as Neovim's (measured against nvim: "a\n\n\nb" j j i <BS> Esc u <C-r>) */
+	/* one edit over the joined lines; when they join to nothing it deletes
+	   the later lines' breaks, so the first line and the marks
+	   mark_col_adjust() put there stay (measured against nvim: "a\n\n\nb"
+	   j j i <BS> Esc u <C-r>, and "j j V c <BS> Esc gv") */
 	size_t a = core_line_start(E, (size_t)l0);
 	size_t z = core_line_start(E, (size_t)(l0 + count)) - 1;
 	long len = b.n;
-	if (!len) { z++; bput(&b, "\n", 1); }
+	if (!len) { a++; z++; }
 	core_edit(E, a, z - a, b.s, (size_t)b.n);
 	replace_bytes(l0, 0, 0, "", 0);
 	free(b.s);
@@ -1016,11 +1064,9 @@ void do_put(int regname, int dir, long count, int flags)
 			const char *oldp = ml_get(l);
 			long oldlen = ml_len(l), vcol = 0, j = 0, incr = 0;
 			long startspaces = 0, endspaces = 0, delcount = 0;
-			while (vcol < col && j < oldlen) {
-				long k = clen(oldp, oldlen, j);
-				incr = vcol_of(l, j + k) - vcol;
-				vcol += incr;
-				j += k;
+			if (col > 0) {            /* do_put()'s walk to col */
+				j = walk(l, oldp, oldlen, 0, col, &(long){ 0 }, &incr);
+				vcol = vcol_of(l, j);
 			}
 			textcol = j;
 			int shortline = vcol < col || (vcol == col && j >= oldlen);
@@ -1035,7 +1081,11 @@ void do_put(int regname, int dir, long count, int flags)
 			long yl;
 			const char *ys = reg_line(reg, i, &yl);
 			long spaces = y_width + 1;
-			for (long q = 0; q < yl; q += clen(ys, yl, q)) spaces--;   /* cells, one each */
+			/* win_charsize() at column 0: a Tab is 'tabstop' (8), ^X two */
+			for (long q = 0; q < yl; q += clen(ys, yl, q)) {
+				unsigned char c = (unsigned char)ys[q];
+				spaces -= c == '\t' ? 8 : c < 0x20 || c == 0x7f ? 2 : uni_width((const unsigned char *)ys, (size_t)yl, (size_t)q);
+			}
 			if (spaces < 0) spaces = 0;
 			Sbuf b = { 0 };
 			bspaces(&b, startspaces);
@@ -1044,7 +1094,7 @@ void do_put(int regname, int dir, long count, int flags)
 				if ((r < count - 1 || !shortline) && spaces > 0) bspaces(&b, spaces);
 			}
 			bspaces(&b, endspaces);
-			totlen = b.n - startspaces - endspaces;
+			totlen = b.n;   /* with the start and end spaces, as do_put() counts it */
 			replace_bytes(l, textcol, delcount, b.s ? b.s : "", b.n);
 			free(b.s);
 			W->line++;
@@ -1093,9 +1143,10 @@ void do_put(int regname, int dir, long count, int flags)
 				do {
 					long oldlen = ml_len(lnum);
 					if (lnum > start_lnum) {
-						/* getvpos(): the character at vcol, MAXCOL past the end */
+						/* getvpos(): the character at vcol, MAXCOL past the end
+						   unless 'virtualedit' reaches it (a block: the end) */
 						col = col_of_vcol(lnum, vcol, 1);
-						if (vcol_of(lnum, col) < vcol) col = MAXCOL;
+						if (vcol_of(lnum, col) < vcol && !virtual_active()) col = MAXCOL;
 					}
 					if (VIsual_active && col > oldlen) { lnum++; continue; }
 					replace_bytes(lnum, col, 0, b.s, b.n);
@@ -1154,8 +1205,10 @@ void do_put(int regname, int dir, long count, int flags)
 			}
 			b_op_end.lnum = new_lnum;
 			long yll;
-			reg_line(reg, y_size - 1, &yll);
-			b_op_end.col = yll > 1 ? yll - 1 : 0;
+			/* do_put(): '] is the start of the last character, col - 1 minus
+			   utf_head_off(); the register line has no NUL, so not head() */
+			const char *yle = reg_line(reg, y_size - 1, &yll);
+			b_op_end.col = yll > 1 ? (long)uni_gprev((const unsigned char *)yle, (size_t)yll, (size_t)yll) : 0;
 			if (flags & PUT_CURSEND) {
 				if (y_type == MLINE) {
 					W->line = (size_t)(lnum + 1 >= nlines() ? nlines() - 1 : lnum + 1);
@@ -1401,7 +1454,11 @@ static void stuff_bytes(const char *s, long n, int typeahead, int literally)
 	if (!k) return;
 	long m = 0;
 	for (long i = 0; i < n;) {
-		if ((unsigned char)s[i] == 0x80 && i + 2 < n) {
+		/* stuffescaped(): literally, a recorded key's K_SPECIAL bytes go in
+		   as text (0x80 escaped by stuffcharReadbuff()), not as the key, so
+		   "qj i x BS Esc q" then "a C-r j" inserts x<80>kb<1b> as Neovim
+		   does; an executed register (@) types them as keys */
+		if ((unsigned char)s[i] == 0x80 && i + 2 < n && !literally) {
 			int found = 0;
 			for (unsigned j = 0; j < sizeof special / sizeof *special; j++)
 				if (special[j].a == s[i + 1] && special[j].b == s[i + 2]) { k[m++] = special[j].key; found = 1; }

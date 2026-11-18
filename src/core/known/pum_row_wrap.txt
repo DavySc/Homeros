@@ -1,0 +1,31 @@
+C 6 20
+F 09
+F 
+F 
+T wrap
+T pum:16:11:2
+P
+S 1
+S ~
+S ~
+S ~
+S < 1,1-8          All
+S 
+M - - -
+P
+R
+R
+R
+R
+R
+S :set wrap
+M - - -
+P
+S 1           yyyyyyyy
+S    bar_12
+S    λx2
+S    yyyyyyyyyyyyyyy>
+S <  z2
+S -- INSERT --
+M - - -
+E

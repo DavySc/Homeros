@@ -61,8 +61,14 @@ typedef struct Buf {
 	unsigned flags;            /* CORE_EMPTY */
 	unsigned long saved_seq;   /* undo_seq at the last load or save */
 	int nr;                    /* buffer number, from 1 (:b N) */
+	long lastused;             /* seconds when a window last entered it (b_last_used), for the buffers picker */
 	WinInfo *wi;
 	struct Syntax *syn;        /* syntax.h; NULL: no grammar for this file */
+	/* where syn is NULL: one FACE_* per byte of [a, z), as syntax_faces (git's
+	   diff and status buffers); NULL: none */
+	void (*faces)(const struct Buf *b, size_t a, size_t z, unsigned char *face);
+	int nonumber;              /* setlocal nonumber norelativenumber (neogit's buffers) */
+	struct LspDoc *lsp;        /* lsp.h; NULL: no language server for this file */
 	Mark mark[MARK_N];
 	Mark change[JUMPLIST_SIZE];   /* the change list (g; g,), oldest first */
 	int nchange;
@@ -118,14 +124,17 @@ typedef struct Editor {
 	size_t cmdlen, cmdpos;     /* command line bytes, the cursor in them */
 	char msg[256];
 	int quit;
-	int changed;               /* a package changed what is shown between keys (a
-	                              picker's list, a git refresh): main.c redraws, clears it */
 	const PumItem *pum;        /* completion popup items (the caller's), or NULL */
 	int npum, pumsel;          /* how many, which is selected (-1 none) */
 	size_t pumcol;             /* byte in the cursor line where the completed word starts */
 	unsigned char *lb;         /* scratch copy of one line */
 	size_t lbcap;
 } Editor;
+
+/* Set by any package when what is shown changed between keys (a picker's
+   list, a git refresh, a language server's reply): main.c redraws after the
+   loop and clears it.  One flag for every package, defined in the core. */
+extern int core_changed;
 
 /* The first buffer, on path, in the first window.  0 ok, -1 error (msg set). */
 int  core_open(Editor *e, const char *path);
@@ -232,8 +241,10 @@ void core_scroll(Editor *e, long n);
 int  core_scroll_half(Editor *e, int dir, long count);
 int  core_scroll_page(Editor *e, int dir, long count);
 void core_scroll_cursor(Editor *e, int how);
-/* The line H, M or L goes to (how 'H' 'M' 'L'; count lines from the top or bottom). */
-size_t core_screen_line(Editor *e, int how, long count);
+/* The line H, M or L goes to (how 'H' 'M' 'L'; count lines from the top or
+   bottom).  so: apply scrolloff (cursor_correct()); nv_scroll() passes 0
+   while an operator is pending, so d L reaches the last line shown. */
+size_t core_screen_line(Editor *e, int how, long count, int so);
 /* gj and gk: n screen lines down (n < 0 up), keeping the wanted column.
    0 ok, -1 at the first or last screen line. */
 int  core_screen_move(Editor *e, long n);

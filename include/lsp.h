@@ -1,11 +1,15 @@
 /* Language servers (package 13, src/lsp/).  Sync as Helix: incremental,
    one didChange per command, versions +1.  What the server says is shown
-   by LspSync.tla's "simple" rules: diagnostics for an older version are
-   ignored, shown ones move with every edit, and a reply is shown only if
-   the text has not changed since the request (else dropped; the caller
-   asks again).  One server per project root, shared by its files; Lean's
-   is `lake serve` with Lean's extensions (file progress, plain goals,
-   widgets, incremental diagnostics). */
+   by LspSync.tla's "ok" rules, as VS Code shows it: what it says about a
+   version the text has since left is mapped through the edits made since,
+   shown ranges move with every edit, and a reply is shown only if the text
+   has not changed since the request (else dropped; the caller asks
+   again).  A file holding bytes that are not UTF-8 is sent with U+FFFD for
+   them, one per UTF-16 unit lsp_u16 counts, as the whole text on every
+   change; nothing older is mapped across its edits.  One server per
+   project root, shared by its files; Lean's is `lake serve` with Lean's
+   extensions (file progress, plain goals, widgets, incremental
+   diagnostics). */
 #ifndef LSP_H
 #define LSP_H
 #include <stddef.h>
@@ -55,9 +59,26 @@ enum { LSP_HOVER, LSP_GOAL, LSP_NASK };
 void        lsp_ask(LspDoc *d, int kind, size_t pos);
 const char *lsp_answer(const LspDoc *d, int kind);
 
-/* Set when something shown changed (a reply came in, the server died);
-   the main loop draws again and clears it. */
-extern int lsp_dirty;
+/* When something shown changes (a reply comes in, the server dies) it
+   sets core_changed (core.h). */
+
+/* The infoview bridge (package 14) relays Lean's JSON as it passes,
+   unparsed.  lsp_tap, when set, is given each message a Lean server
+   (LspServer.lean) sends that is not the answer to a request (its
+   notifications), its answer to initialize (the capabilities), and each
+   didChange and didClose sent to it (out 1), whole. */
+extern void (*lsp_tap)(int out, const char *msg, size_t n);
+/* A message to the server that has uri open: method with params (JSON
+   text, n bytes).  fn NULL sends a notification; else a request, whose
+   whole answer goes to fn (msg NULL, n 0 if the server died first).  The
+   document's edits not yet sent go first (lsp_flush), so the server
+   answers about the text as it is.  0 ok, -1 no server has uri open. */
+typedef void (*LspRawFn)(void *ctx, const char *msg, size_t n);
+int  lsp_send(const char *uri, const char *method, const char *params, size_t n, LspRawFn fn, void *ctx);
+const char *lsp_uri(const LspDoc *d);    /* d's file:// URI */
+/* The answer to initialize of d's Lean server, whole (n bytes), NULL before
+   it came: a bridge opened later has missed it on lsp_tap (PR 43 review). */
+const char *lsp_init(const LspDoc *d, size_t *n);
 
 /* The UTF-16 boundary (Lean 4.35 takes no UTF-8 positions): code units in
    the n bytes of s, and the byte where unit c starts (a unit inside a

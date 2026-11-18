@@ -70,18 +70,23 @@ static int checkclearopq(Oparg *oap)
 
 /* ResetRedobuff() keeps the previous command (old_redobuff): "." after
    CTRL-O repeats that one, not the insert CTRL-O interrupted */
-enum { REDO_MAX = 4096 };
-static int redo_a[REDO_MAX], redo_b[REDO_MAX], *redobuf = redo_a, *old_redobuf = redo_b;
-static long redo_n, old_redo_n;
+/* Neovim's redo buffer has no limit: "." after typing 10,000 characters
+   types them all again; each buffer grows to the longest command, then
+   stays */
+static int *redobuf, *old_redobuf;
+static long redo_n, old_redo_n, redo_cap, old_redo_cap;
 int redo_busy;
 
 void redo_reset(void)
 {
 	if (redo_busy) return;
 	int *t = old_redobuf;
+	long tc = old_redo_cap;
 	old_redobuf = redobuf;
+	old_redo_cap = redo_cap;
 	old_redo_n = redo_n;
 	redobuf = t;
+	redo_cap = tc;
 	redo_n = 0;
 }
 
@@ -90,7 +95,14 @@ long redo_get(const int **k) { *k = redobuf; return redo_n; }
 int redo_append(int k)
 {
 	if (redo_busy) return 0;
-	if (redo_n < REDO_MAX) redobuf[redo_n++] = k;
+	if (redo_n == redo_cap) {
+		long c = redo_cap ? 2 * redo_cap : 256;
+		int *b = realloc(redobuf, sizeof(int) * (size_t)c);
+		if (!b) return 0;   /* the command repeats cut short, as on any failed allocation */
+		redobuf = b;
+		redo_cap = c;
+	}
+	redobuf[redo_n++] = k;
 	return 0;
 }
 
@@ -128,7 +140,7 @@ static int start_redo(long count, int old_redo)
 	const int *rb = old_redo ? old_redobuf : redobuf;
 	long rn = old_redo ? old_redo_n : redo_n;
 	if (!rn) return 0;
-	int b[REDO_MAX + 24];
+	int b[32];   /* register, v, count and command; the rest goes as it is */
 	long n = 0, i = 0;
 	int c = rb[i++];
 	if (c == '"') {
@@ -586,7 +598,8 @@ static void nv_brackets(Cmdarg *cap)
 			int ok = findmatchlimit(&found, findc, cap->cmdchar == '[' ? FM_BACKWARD : FM_FORWARD);
 			setcur(save);
 			if (!ok) {
-				if (eq(p, old)) { clearopbeep(oap); return; }
+				/* nv_bracket_block() puts back old_pos, coladd too */
+				if (eq(p, old)) { setcur(old); clearopbeep(oap); return; }
 				break;
 			}
 			p = found;
@@ -680,7 +693,8 @@ static void nv_Replace(Cmdarg *cap)
 static void nv_replace(Cmdarg *cap)
 {
 	if (checkclearop(cap->oap)) return;
-	if (cap->nchar >= KEY_UP) { clearopbeep(cap->oap); return; }
+	/* a special key aborts; <BS> (127) is Neovim's K_BS */
+	if (cap->nchar >= KEY_UP || cap->nchar == 127) { clearopbeep(cap->oap); return; }
 	if (VIsual_active) { nv_operator(cap); return; }
 	const char *s = ml_get((long)W->line);
 	long len = ml_len((long)W->line), c = (long)W->col, chars = 0;
@@ -888,18 +902,21 @@ static void nv_undo(Cmdarg *cap)
 	/* nv_kundo() recomputes curswant from the cached screen column, which
 	   the core keeps across the undo unless a step invalidated it
 	   (core_set_want, Win.vc) */
+	/* in a CTRL-O command that column is an Insert mode one (a Tab's first
+	   cell, not its last), so restarting the insert does not step past a
+	   Tab (measured: "\t", i y C-o u x puts x before it) */
+	int mode = E->mode;
+	if (restart_edit) E->mode = MODE_INSERT;
 	size_t w0 = W->want;
 	core_set_want(E);
 	W->want = w0;
 	/* u_doit() stops at the first step that finds nothing; in a CTRL-O
 	   command check_cursor_col() lets the cursor stay past the end
 	   (restart_edit), which core_clamp() allows in Insert mode */
-	int mode = E->mode;
-	if (restart_edit) E->mode = MODE_INSERT;
 	for (long n = cap->count1; n-- && core_undo(E, cap->cmdchar == KEY_CTRL_R) >= 0;) {}
-	E->mode = mode;
 	buf_changed();
 	core_set_want(E);
+	E->mode = mode;
 	set_curswant = 0;
 }
 
@@ -1050,14 +1067,18 @@ static void nv_g_cmd(Cmdarg *cap)
 		} else clearopbeep(oap);
 		break;
 	case 'v': nv_gv_cmd(cap); break;
-	case 'j': case KEY_DOWN:     /* 'nowrap': screen lines are text lines */
-		oap->motion_type = MLINE;
-		if (!cursor_down(cap->count1)) clearopbeep(oap);
+	case 'j': case KEY_DOWN: case 'k': case KEY_UP: {
+		int up = cap->nchar == 'k' || cap->nchar == KEY_UP;
+		if (W->wrap) {          /* nv_screengo(): the core moves by screen lines */
+			oap->motion_type = MCHAR;
+			oap->inclusive = W->want == WANT_EOL;
+			if (core_screen_move(E, up ? -cap->count1 : cap->count1) < 0) clearopbeep(oap);
+		} else {                /* 'nowrap': screen lines are text lines */
+			oap->motion_type = MLINE;
+			if (!(up ? cursor_up(cap->count1) : cursor_down(cap->count1))) clearopbeep(oap);
+		}
 		break;
-	case 'k': case KEY_UP:
-		oap->motion_type = MLINE;
-		if (!cursor_up(cap->count1)) clearopbeep(oap);
-		break;
+	}
 	case 'J': nv_join(cap); break;
 	case '_': {
 		/* g_: the last non-blank, count - 1 lines down */
@@ -1066,9 +1087,12 @@ static void nv_g_cmd(Cmdarg *cap)
 		set_want(MAXCOL);
 		if (!cursor_down(cap->count1 - 1)) { clearopbeep(oap); break; }
 		const char *s = ml_get((long)W->line);
-		long i = ml_len((long)W->line);
-		while (i > 0 && (s[i - 1] == ' ' || s[i - 1] == '\t')) i--;
-		W->col = (size_t)(i > 0 ? head(s, i - 1) : 0);
+		/* nv_g_underscore_cmd: from the last character step back by bytes
+		   while on a blank, then mb_adjust_cursor; a blank under a
+		   combining mark is skipped, the mark's bytes are not blanks */
+		long n = ml_len((long)W->line), i = n ? head(s, n - 1) : 0;
+		while (i > 0 && (s[i] == ' ' || s[i] == '\t')) i--;
+		W->col = (size_t)head(s, i);
 		set_curswant = 1;
 		break;
 	}
@@ -1099,9 +1123,16 @@ enum { NCH = 1, NCH_NOP = 2 | NCH, NCH_ALW = 4 | NCH, KEEPREG = 8 };
 
 /* ---- scrolling and windows: the core moves the view (core.h) ---- */
 
+/* pagescroll() beeps when it cannot move, which ends a macro */
 static void nv_halfpage(Cmdarg *cap)
 {
-	if (!checkclearop(cap->oap)) core_scroll_half(E, cap->cmdchar == 4 ? 1 : -1, cap->count0);
+	if (!checkclearop(cap->oap) && core_scroll_half(E, cap->cmdchar == 4 ? 1 : -1, cap->count0) < 0) beep();
+}
+
+/* CTRL-F and CTRL-B (nv_page()) */
+static void nv_page(Cmdarg *cap)
+{
+	if (!checkclearop(cap->oap) && core_scroll_page(E, cap->cmdchar == 6 ? 1 : -1, cap->count1) < 0) beep();
 }
 
 static void nv_scroll_line(Cmdarg *cap)
@@ -1112,7 +1143,9 @@ static void nv_scroll_line(Cmdarg *cap)
 static void nv_scroll(Cmdarg *cap)
 {
 	cap->oap->motion_type = MLINE;
-	W->line = core_screen_line(E, cap->cmdchar, cap->count1);
+	/* nv_scroll(): no cursor_correct() while an operator is pending, so
+	   d L deletes to the last line shown */
+	W->line = core_screen_line(E, cap->cmdchar, cap->count1, cap->oap->op_type == OP_NOP);
 	beginline(BL_SOL | BL_FIX);
 }
 
@@ -1132,6 +1165,13 @@ static void nv_window(Cmdarg *cap)
 	if (c == ':') { cap->cmdchar = ':'; cap->nchar = 0; nv_colon(cap); return; }
 	if (checkclearop(cap->oap)) return;
 	int one = E->wins->next == NULL, r = 0;
+	Win *ow = E->win;
+	Pos oc = cur();
+	/* do_window(): these stop Visual mode first (reset_VIsual_and_resel()) */
+	if (has("sSvnqcorR", c) || c == 19 || c == 22 || c == 14 || c == 17 || c == 3 || c == 15 || c == 18) {
+		if (VIsual_active) end_visual_mode();
+		VIsual_reselect = 0;
+	}
 	switch (c) {
 	case 's': case 'S': case 19: r = core_split(E, 0, (int)n); break;
 	case 'v': case 22: r = core_split(E, 1, (int)n); break;
@@ -1162,6 +1202,17 @@ static void nv_window(Cmdarg *cap)
 	case '|': core_resize(E, 1, n, 1); break;
 	default: r = -1;
 	}
+	/* win_goto() and win_exchange(): Visual mode ends in the window left when the buffer
+	   changes; on the same buffer the new window takes the cursor */
+	if (VIsual_active && E->win != ow) {
+		if (E->win->buf != ow->buf) {
+			Win *nw = E->win;
+			E->win = ow; E->buf = ow->buf;
+			end_visual_mode();
+			VIsual_reselect = 0;
+			E->win = nw; E->buf = nw->buf;
+		} else setcur(oc);
+	}
 	if (r < 0) beep();
 }
 
@@ -1181,7 +1232,7 @@ static int known(int c)
 {
 	return has(" \"$%'()+,-./0:;<>?@ABCDEFGHIJLMOPQRSTUWXYV[]^_`abcdefghijklmopqrstuvwxyz{|}~", c) || c == 1 || c == 3
 	       || c == 8 || c == 10 || c == 13 || c == 14 || c == 16 || c == 22 || c == 24 || c == KEY_CTRL_R
-	       || c == 4 || c == 21 || c == 5 || c == 25 || c == 23
+	       || c == 4 || c == 21 || c == 6 || c == 2 || c == 5 || c == 25 || c == 23
 	       || c == KEY_ESC || c == KEY_BS || c == KEY_UP || c == KEY_DOWN || c == KEY_LEFT || c == KEY_RIGHT || c == KEY_DEL;
 }
 
@@ -1240,6 +1291,7 @@ static void execute(Cmdarg *cap)
 	case '|': nv_pipe(cap); break;
 	case '~': nv_tilde(cap); break;
 	case 4: case 21: nv_halfpage(cap); break;
+	case 6: case 2: nv_page(cap); break;
 	case 5: case 25: nv_scroll_line(cap); break;
 	case 'H': case 'L': case 'M': nv_scroll(cap); break;
 	case 'z': nv_zet(cap); break;
@@ -1335,9 +1387,11 @@ static int run(void)
 	}
 	if (oa.op_type == OP_NOP) finish_op = 0;
 	opcount = ca.opcount;
-	/* normal_check() before the next command; an insert the command
-	   started keeps curswant as it is (edit() runs inside the command) */
-	// X
+	/* mb_check_adjust_col(): ^ on a blank a combining mark is on lands
+	   inside the character */
+	if (E->mode == MODE_NORMAL && W->col) W->col = (size_t)head(ml_get((long)W->line), (long)W->col);
+	/* normal_check() before the next command: validate_cursor() */
+	if (stuff_empty() && E->mode == MODE_NORMAL) validate_virtcol();
 	if (!(ca.retval & CA_COMMAND_BUSY)) restart_insert();
 	return 1;
 }
@@ -1525,7 +1579,9 @@ static void do_pending_operator(Cmdarg *cap, long old_col)
 		else {
 			oap->end.col = ml_len(oap->end.lnum);
 			if (oap->end.col) {
-				oap->end.col = head(ml_get(oap->end.lnum), oap->end.col - 1);
+				/* the last byte, as Neovim's --oap->end.col: inclusive then
+				   takes the whole character, which a head would split */
+				oap->end.col--;
 				oap->inclusive = 1;
 			}
 		}

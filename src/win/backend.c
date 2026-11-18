@@ -115,6 +115,7 @@ static LRESULT CALLBACK proc(HWND h, UINT m, WPARAM w, LPARAM l)
 		case VK_RIGHT: put(KEY_RIGHT); return 0;
 		case VK_UP: put(KEY_UP); return 0;
 		case VK_DOWN: put(KEY_DOWN); return 0;
+		case VK_DELETE: put(KEY_DEL); return 0;
 		}
 		break;
 	case WM_LBUTTONDOWN:
@@ -249,19 +250,21 @@ static int win_ready(void)
 static void draw_cell(const Grid *g, int r, int c, int cursor)
 {
 	const Cell *x = &g->c[r * g->cols + c];
-	unsigned cp = uni_cp(x->ch, x->len, 0);
-	WCHAR u[2] = { (WCHAR)cp };
-	UINT n = 1;
+	const unsigned char *s = grid_text(x);
+	WCHAR u[GRID_CLUSTER_MAX];   /* UTF-16 takes no more units than UTF-8 bytes */
+	UINT n = 0;
+	for (size_t i = 0; i < x->len; i += uni_len(s, x->len, i)) {   /* the whole cluster */
+		unsigned cp = uni_cp(s, x->len, i);
+		if (cp >= 0x10000) {   /* UTF-16 surrogates */
+			u[n++] = (WCHAR)(0xD800 + (cp - 0x10000) / 0x400);
+			u[n++] = (WCHAR)(0xDC00 + (cp - 0x10000) % 0x400);
+		} else u[n++] = (WCHAR)cp;
+	}
 	int wide = c + 1 < g->cols && !x[1].len;
 	const Face *fa = &faces[x->face < FACE_COUNT ? x->face : FACE_NONE];
 	COLORREF f = x->attr == ATTR_DIM ? DIMC : fa->style & FACE_FG ? RGB(fa->fg[0], fa->fg[1], fa->fg[2]) : TEXT;
 	COLORREF b = fa->style & FACE_BG ? RGB(fa->bg[0], fa->bg[1], fa->bg[2]) : BASE;
 	RECT rc = { c * cw, r * ch, (c + 1 + wide) * cw, (r + 1) * ch };
-	if (cp >= 0x10000) {   /* UTF-16 surrogates */
-		u[0] = (WCHAR)(0xD800 + (cp - 0x10000) / 0x400);
-		u[1] = (WCHAR)(0xDC00 + (cp - 0x10000) % 0x400);
-		n = 2;
-	}
 	/* reversed (status line, cursor): the colours swap, as a terminal's SGR 7 */
 	int rev = cursor || x->attr == ATTR_REV;
 	SetTextColor(mem, rev ? b : f);

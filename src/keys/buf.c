@@ -214,13 +214,37 @@ void coladvance_force(long want)
 	W->col = (size_t)idx;
 }
 
+/* validate_virtcol(): w_virtcol as curs_columns() leaves it after each
+   command, kept until the cursor moves, also across Visual mode's start and
+   end (VALID_VIRTCOL; measured: "v Esc j", "w v h Esc j", "C-v { Esc j" on
+   a Tab).  In Visual mode it is getvvcol() of the cursor: with
+   'virtualedit' a Tab's first cell plus coladd, and with the cursor at or
+   before Visual's start ('selection' inclusive) a Tab's first cell. */
+void validate_virtcol(void)
+{
+	static long coladd;   /* Win.vc has no coladd, which moves the cursor too */
+	if (W->vc.ok && W->vc.line == W->line && W->vc.col == W->col && W->vc.mode == E->mode && coladd == cur().coladd) return;
+	coladd = cur().coladd;
+	long v;
+	if (virtual_active()) v = getviscol();
+	else if (VIsual_active && !lt(VIsual, cur())) v = vcol_of((long)W->line, (long)W->col);
+	else {
+		/* core_set_want() fills the cache; on a Tab Neovim's virtcol is
+		   its last cell in Normal mode */
+		size_t w = W->want;
+		core_set_want(E);
+		W->want = w;
+		return;
+	}
+	W->vc.line = W->line; W->vc.col = W->col; W->vc.v = (size_t)v;
+	W->vc.mode = E->mode; W->vc.ok = 1;
+}
+
 void update_curswant(void)
 {
 	if (!set_curswant) return;
-	/* w_virtcol: getvvcol() of the cursor; on a Tab Neovim's virtcol is
-	   its last cell in Normal mode, which core_set_want() gives */
-	if (virtual_active()) W->want = (size_t)getviscol();
-	else core_set_want(E);
+	validate_virtcol();
+	W->want = W->vc.v;
 	set_curswant = 0;
 }
 
@@ -243,7 +267,14 @@ void beginline(int flags)
 	set_curswant = 1;
 }
 
-long get_indent(long l) { const char *s = ml_get(l); long i = 0; while (s[i] == ' ' || s[i] == '\t') i++; return vcol_of(l, i); }
+/* get_indent_str(): counts the blanks byte by byte, so a combining mark on
+   the last blank ends the indent ('tabstop' 8) */
+long get_indent(long l)
+{
+	long v = 0;
+	for (const char *s = ml_get(l); *s == ' ' || *s == '\t'; s++) v += *s == '\t' ? 8 - v % 8 : 1;
+	return v;
+}
 
 int linewhite(long l)
 {
@@ -312,8 +343,10 @@ void check_cursor_col(void)
 {
 	long l = (long)W->line, n = ml_len(l), c = (long)W->col;
 	if (c > n) c = n;
+	/* Neovim's check_cursor_col() moves to a head byte only past the end:
+	   inside a line the cursor may stay in a cluster (stop_insert() then
+	   sees the mark after an autoindent, not its blank) */
 	if (c == n && n > 0 && !one_more() && !virtual_active()) c = head(ml_get(l), n - 1);
-	else if (c < n) c = head(ml_get(l), c);
 	W->col = (size_t)c;
 }
 

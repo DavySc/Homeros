@@ -6,8 +6,12 @@
 # The plants are the lines of tests/plants/*.txt, one file per package
 # (# starts a comment).  A plant is: name ~ make target (with arguments) ~
 # shell command run first in the copy ~ file ~ text ~ replacement (¶ for a
-# newline).
+# newline).  SHARD=k/n runs only every n-th plant from the k-th (k from 0),
+# so CI can spread them over n runners.
 cd "$(dirname "$0")/.."
+shard=${SHARD:-0/1}
+# a shard that selects no plant would pass having checked nothing
+[[ $shard =~ ^([0-9]+)/([1-9][0-9]*)$ ]] && (( BASH_REMATCH[1] < BASH_REMATCH[2] )) || { echo "SHARD=$shard is not k/n with k < n"; exit 1; }
 rc=0
 while IFS='~' read -r name target prep file old new; do
 	[ -z "$name" ] && continue
@@ -21,7 +25,8 @@ if s.count(old) != 1: sys.exit('plant does not apply: %r' % old)
 open(p, 'w').write(s.replace(old, new))
 PY
 	then echo "BROKEN PLANT  $name"; rc=1; rm -rf "$tmp"; continue; fi
-	if (cd "$tmp" && eval "$prep" && eval make $target) </dev/null >"$tmp.log" 2>&1
+	# make -s: an echoed recipe line that names FAIL or error is not a catch
+	if (cd "$tmp" && eval "$prep" && eval make -s $target) </dev/null >"$tmp.log" 2>&1
 	then echo "NOT CAUGHT    $name   (make $target passed)"; rc=1
 	else
 		# a check that fails for another reason (a missing tool, a make error)
@@ -29,11 +34,13 @@ PY
 		# (a C compile or link error catches only for the compilers check:
 		# elsewhere it means the plant broke the build)
 		cc='^$'
-		case $target in compilers*) ;; *) cc='\.[ch]:[0-9]+(:[0-9]+)?: (error|warning):|^cc1|undefined reference|ld returned';; esac
-		why=$(grep -E 'CHECK\(|[1-9][0-9]* differ|WRONG|error|ERROR|Proved goals|sorry|deadly signal|FAIL' "$tmp.log" | grep -v -E '^(gcc|clang|cc) |^make|No rule' | grep -v -E "$cc" | head -1)
+		case $target in compilers*|wincc*) ;; *) cc='\.[ch]:[0-9]+(:[0-9]+)?: (fatal )?(error|warning):|^cc1|undefined reference|ld returned';; esac
+		# "N differ" or "N of M ... differ" with N > 0, not "0 of 2000 differ"
+		# "got error WRONG" is a model TLC could not run (no tlc, a parse error)
+		why=$(grep -P 'CHECK\(|(?<!of )\b[1-9][0-9]* differ|\b[1-9][0-9]* of [0-9]+ [^.;]*?differ|WRONG|error|ERROR|Proved goals|sorry|deadly signal|FAIL' "$tmp.log" | grep -v -E '^(gcc|clang|cc) |^make|No rule|got error' | grep -v -E "$cc" | head -1)
 		if [ -n "$why" ]; then echo "caught        $name   (make $target): $why"
 		else echo "FAILED OTHERWISE  $name   (make $target): $(tail -1 "$tmp.log")"; rc=1; fi
 	fi
 	rm -rf "$tmp" "$tmp.log"
-done < <(cat tests/plants/*.txt | grep -v -e "^#" -e "^$")
+done < <(cat tests/plants/*.txt | grep -v -e "^#" -e "^$" | awk -v k="${shard%/*}" -v n="${shard#*/}" '(NR - 1) % n == k')
 exit $rc

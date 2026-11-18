@@ -86,15 +86,21 @@ size_t uni_glen(const unsigned char *s, size_t n, size_t i)
 		unsigned c = dec(s, n, j, k);
 		q = prop(c);
 		unsigned t = q % 16, it = q / 16 % 4;
+		//@ assert c == cpx(s, n, j) && k == ulen(s, n, j) && t == gcb(c) && it == incb(c);
 		int glue = l != 1 && t != 1 &&
 			((l == 3 && (t == 3 || t == 4 || t == 6 || t == 7)) ||
 			 ((l == 6 || l == 4) && (t == 4 || t == 5)) ||
 			 ((l == 7 || l == 5) && t == 5) ||
 			 t == 2 || t == 11 || t == 9 || l == 10 ||
 			 (l == 13 && t == 12) || (l == 8 && t == 8));
-		if (!glue && !(ic == 1 && it == 2) &&
+		/* GB3 (CR x LF) by code point: gcb has one class for CR, LF and
+		   Control, and a cluster whose last code point is CR is CR alone */
+		if (!glue && !(ic == 1 && it == 2) && !(p == 0x0D && c == 0x0A) &&
 		    !(p == 0x644 && (c == 0x622 || c == 0x623 || c == 0x625 || c == 0x627)))
 			break;
+		/* the step that loop invariant 3 needs, as its own goal: proved
+		   whole, it ran close to the 20 s limit (CI timed out) */
+		//@ assert more(s, n, j, l, ic, p) == k + more(s, n, j + k, nbc(l, t), nic(ic, it), c);
 		l = l == 8 && t == 8 ? 0 : l == 12 && t == 2 ? 12 : l == 12 && t == 11 ? 13 : t;
 		ic = ic == 1 && it == 3 ? 1 : it;
 		p = c;

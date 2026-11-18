@@ -1,0 +1,29 @@
+# Plants for src/wl/ (format in tools/planted.sh); all caught by tests/test_wl.c.
+wl: draws before the frame callback~test TESTS=wl~~src/wl/wl.c~	if (!configured || waiting) return 0;~	if (!configured) return 0;
+wl: no key repeat~test TESTS=wl~~src/wl/wl.c~	if (c && xkb_keymap_key_repeats(keymap, key + 8)) repeat_arm(key);~	if (0) repeat_arm(key);
+wl: Backspace as XKB's 8~test TESTS=wl~~src/wl/wl.c~	case XKB_KEY_BackSpace: return KEY_BS;~
+wl: seat not listened to~test TESTS=wl~~src/wl/wl.c~		wl_seat_add_listener(seat, &seat_l, NULL);¶	}~	}¶	if (0) wl_seat_add_listener(seat, &seat_l, NULL);
+wl: clipboard sends one byte short~test TESTS=wl~~src/wl/wl.c~	for (size_t i = 0; i < clipn;) {~	for (size_t i = 1; i < clipn;) {
+wl: clipboard copies past max~test TESTS=wl~~src/wl/wl.c~	memcpy(buf, s, n < max ? n : max);~	memcpy(buf, s, n < max ? n : max + 1);
+wl: input method's text dropped~test TESTS=wl~~src/wl/wl.c~	push_utf8(commit_next);~	push_utf8("");
+wl: preedit not redrawn~test TESTS=wl~~src/wl/wl.c~memcpy(pre, pre_next, sizeof pre); push(KEY_RESIZE); }~memcpy(pre, pre_next, sizeof pre); }
+wl: fractional scale ignored~test TESTS=wl~~src/wl/wl.c~	if ((int)s == scale || font(~	if (1 || font(
+wl: configured size ignored~test TESTS=wl~~src/wl/wl.c~	if (w > 0) nlw = w;~	if (0) nlw = w;
+wl: no text cursor~test TESTS=wl~~src/wl/wl.c~	if (shape) wp_cursor_shape_device_v1_set_shape~	if (0) wp_cursor_shape_device_v1_set_shape
+wl: mouse row from x~test TESTS=wl~~src/wl/wl.c~	mrow = my / cell_h;~	mrow = mx / cell_h;
+wl: a key per two notches~test TESTS=wl~~src/wl/wl.c~scroll(v, 120);~scroll(v, 240);
+wl: touchpad scrolls 6 rows a key~test TESTS=wl~~src/wl/wl.c~scroll(v, 3 * cell_h * 256~scroll(v, 6 * cell_h * 256
+wl: close ignored~test TESTS=wl~~src/wl/wl.c~(void)t; push(KEY_CLOSE); }~(void)t; }
+wl: changed cells not drawn~test TESTS=wl~~src/wl/wl.c~		&& grid_cell_eq(&a->c[r * a->cols + c], &b->c[q * b->cols + c]);~		&& grid_cell_eq(&a->c[r * a->cols + c], &a->c[r * a->cols + c]);
+wl: cursor move not drawn~test TESTS=wl~~src/wl/wl.c~	return (a->crow == r && a->ccol == c) == (b->crow == q && b->ccol == c)~	return 1
+wl: damage one row short~test TESTS=wl~~src/wl/wl.c~g->cols * cell_w, cell_h);~g->cols * cell_w, cell_h - 1);
+wl: scroll copies the wrong row~test TESTS=wl~~src/wl/wl.c~b->px + (size_t)(r + k) * row~b->px + (size_t)(r - k) * row
+wl: glyph cut at its cell~test TESTS=wl~~src/wl/wl.c~zx = gx + gl->w > xe ? xe - gx : gl->w;~zx = gx + gl->w > (c + 1) * cell_w && xe ? (c + 1) * cell_w - gx : gl->w;
+wl: changed span not widened left~test TESTS=wl~~src/wl/wl.c~	while (l > 0 && !EDGE(l)) l--;¶~¶
+wl: changed span not widened right~test TESTS=wl~~src/wl/wl.c~	while (h < n && !EDGE(h)) h++;¶~¶
+wl: spill past a non-blank cell~test TESTS=wl~~src/wl/wl.c~		while (e < hi && (!x[e].len || blank(&x[e]))) e++;~		while (e < hi) e++;
+wl: long cluster read from the cell~test TESTS=wl~~src/wl/wl.c~		const unsigned char *t = grid_text(&x[c]);~		const unsigned char *t = x[c].ch;
+wl: damage only rows drawn~test TESTS=wl~~src/wl/wl.c~			if (o) d = o == b ? n : span(g, r, &o->g, r, &l, &h);~			if (o) d = n;
+wl: keys left waiting~test TESTS=wl~~src/wl/wl.c~	long long at = kn ? 1 : rkey ? rnext : 0;~	long long at = rkey ? rnext : 0;
+wl: clipboard written by the editor itself~test TESTS=wl~~src/wl/wl.c~	pid_t p = fork();~	send_all(fd);¶	pid_t p = -1;
+wl: lost compositor ignored~test TESTS=wl~~src/wl/wl.c~dispatch_pending(dpy) < 0) return -1;~dispatch_pending(dpy) < 0) return 0;

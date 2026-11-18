@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "k.h"
+#include "uni.h"
 
 enum { SW = 4 };
 enum { BACKSPACE_CHAR = 1, BACKSPACE_WORD, BACKSPACE_WORD_NOT_SPACE, BACKSPACE_LINE };
@@ -15,7 +16,7 @@ enum { BACKSPACE_CHAR = 1, BACKSPACE_WORD, BACKSPACE_WORD_NOT_SPACE, BACKSPACE_L
 int restart_edit, arrow_used, did_ai_flag;
 int ins_at_eol;
 static int cmdchar_s, did_restart_edit, update_Insstart_orig, ins_need_undo;
-static int inserted_space, lastc, wait_for, batch_len;
+static int inserted_space, lastc, wait_for, batch_len, check_owed;
 static long count_s, ai_col, new_insert_skip, o_lnum;
 static Pos Insstart, Insstart_orig;
 
@@ -24,7 +25,7 @@ static Pos Insstart, Insstart_orig;
 static int *last_ins;
 static long last_ins_n, last_ins_skip;
 
-void edit_reset(void) { free(last_ins); last_ins = NULL; last_ins_n = last_ins_skip = 0; }
+void edit_reset(void) { free(last_ins); last_ins = NULL; last_ins_n = last_ins_skip = 0; check_owed = 0; }
 
 static int replacing(void) { return E->ks.replace; }
 
@@ -76,11 +77,14 @@ static void ins_bytes(const char *s, long n)
 	W->col += (size_t)n;
 }
 
-/* mb_replace_pop_ins(): insert the character on top */
+/* mb_replace_pop_ins(): insert the character on top; its utf_head_off()
+   stops at the entry's NUL and steps by cluster, so a ZWJ emoji comes back
+   whole, not one code point before the cursor at a time */
 static void mb_replace_pop_ins(void)
 {
-	long i = rs_n - 1;
-	while (i > 0 && ((unsigned char)rs[i] & 0xC0) == 0x80 && rs[i - 1]) i--;
+	long e = rs_n - 1;
+	while (e > 0 && rs[e - 1]) e--;
+	long i = e + (long)uni_gprev((const unsigned char *)rs + e, (size_t)(rs_n - e), (size_t)(rs_n - e));
 	long n = rs_n - i;
 	rs_n = i;
 	ins_bytes(rs + i, n);
@@ -220,6 +224,7 @@ static void stop_insert(Pos end, int esc, int nomove)
 	}
 	did_ai_flag = 0;
 	b_op_start = Insstart;
+	b_op_start_orig = Insstart_orig;
 	b_op_end = end;
 }
 
@@ -244,15 +249,20 @@ static void insertchar(int c, int pending, int ctrlv)
 
 /* open_line(dir) with 'autoindent', from Insert mode (Enter) or Normal mode
    (o and O, dir BACKWARD for O) */
+/* the indent before "^ CTRL-D", which the next line gets back (Neovim's
+   old_indent, open_line()'s second_line_indent) */
+static long old_indent;
+
 static int open_line(int dir)
 {
 	long l = (long)W->line, c = (long)W->col, len = ml_len(l);
 	const char *s = ml_get(l);
 	int insert = E->mode == MODE_INSERT, trunc = dir == FORWARD && did_ai_flag;
-	/* the indent of the text before the cursor (p_extra cut it off) */
-	long i = 0;
-	while ((!insert || i < c) && (s[i] == ' ' || s[i] == '\t')) i++;
-	long ind = vcol_of(l, i), rest = len;
+	/* the indent of the text before the cursor (p_extra cut it off), byte
+	   by byte as get_indent_str() counts it */
+	long ind = 0, rest = len;
+	for (long i = 0; (!insert || i < c) && (s[i] == ' ' || s[i] == '\t'); i++) ind += s[i] == '\t' ? 8 - ind % 8 : 1;
+	if (!ind && insert) ind = old_indent;
 	ai_col = 0;
 	char *line = malloc((size_t)len + 1);
 	if (!line) return 0;
@@ -261,8 +271,14 @@ static int open_line(int dir)
 	if (insert) {
 		extra = c;
 		if (replacing()) replace_push_nul();
-		/* not a blank a combining mark is on (utf_iscomposing_first()) */
-		while (extra < len && (line[extra] == ' ' || line[extra] == '\t') && clen(line, len, extra) == 1) {
+		/* not a blank a combining mark is on: utf_iscomposing_first() asks
+		   whether the next character joins a space, also after a Tab */
+		while (extra < len && (line[extra] == ' ' || line[extra] == '\t')) {
+			char b = line[extra];
+			line[extra] = ' ';
+			long k = clen(line, len, extra);
+			line[extra] = b;
+			if (k > 1) break;
 			if (replacing()) replace_push(line + extra, 1);
 			extra++;
 		}
@@ -280,12 +296,22 @@ static int open_line(int dir)
 			rest = insert ? c : len;
 			if (trunc) while (rest > 0 && (line[rest - 1] == ' ' || line[rest - 1] == '\t')) rest--;
 		}
-		/* one edit: the end of this line becomes the new line */
+		/* one edit: the end of this line becomes the new line; when it
+		   keeps all its text the new line goes in after its break, so the
+		   core sees a line appended below it, also when it is empty
+		   (appended_lines_mark(): "x" V d o Esc gv stays on line 1) */
 		char *b = malloc((size_t)nl_len + 2);
 		if (b) {
-			b[0] = '\n';
-			memcpy(b + 1, nl, (size_t)nl_len);
-			replace_bytes(l, rest, len - rest, b, nl_len + 1);
+			if (rest == len) {
+				memcpy(b, nl, (size_t)nl_len);
+				b[nl_len] = '\n';
+				core_edit(E, core_line_start(E, (size_t)l + 1), 0, b, (size_t)nl_len + 1);
+				buf_changed();
+			} else {
+				b[0] = '\n';
+				memcpy(b + 1, nl, (size_t)nl_len);
+				replace_bytes(l, rest, len - rest, b, nl_len + 1);
+			}
 			free(b);
 		}
 		l++;
@@ -314,6 +340,7 @@ static void ins_eol(void)
 	if (virtual_active() && cur().coladd > 0) coladvance(getviscol());
 	redo_append('\n');
 	open_line(FORWARD);
+	old_indent = 0;
 }
 
 static int ins_tab(void)
@@ -477,6 +504,7 @@ static void ins_shift(int c)
 	if (new_cursor_col < 0) vcol = get_indent(l) - vcol;
 	if (new_cursor_col > 0) start_col = -1;
 	long ind = get_indent(l), n;
+	if (c == 4 && lastc == '^') old_indent = ind;
 	if (c == 4 && (lastc == '0' || lastc == '^')) n = 0;
 	else if (c == 4) n = ind % SW ? ind - ind % SW : (ind >= SW ? ind - SW : 0);
 	else n = ind - ind % SW + SW;
@@ -541,6 +569,7 @@ void invoke_edit(int cmdchar, long count, int repl)
 void edit_start(int cmdchar, long count)
 {
 	restore_restart = 0;
+	old_indent = 0;
 	int startln = cmdchar == 'o' || cmdchar == 'O';
 	did_restart_edit = restart_edit;
 	update_Insstart_orig = 1;
@@ -643,8 +672,8 @@ static void insert_special(int c)
 {
 	static const char *const name[] = { "<Up>", "<Down>", "<Left>", "<Right>" };
 	if (c >= KEY_UP) {
-		if (c > KEY_RIGHT) return;
-		const char *p = name[c - KEY_UP];
+		if (c > KEY_RIGHT && c != KEY_DEL) return;
+		const char *p = c == KEY_DEL ? "<Del>" : name[c - KEY_UP];
 		long n = (long)strlen(p) - 1;
 		stop_arrow();
 		ins_bytes(p, n);
@@ -670,7 +699,7 @@ static int literal_key(int nc, int pending)
 	else if (nc == 'u' || nc == 'U') lit.unicode = nc;
 	else {
 		int d = nc >= '0' && nc <= '9' ? nc - '0' : nc >= 'a' && nc <= 'f' ? nc - 'a' + 10 : nc >= 'A' && nc <= 'F' ? nc - 'A' + 10 : -1;
-		if (lit.hex || lit.unicode) { if (d < 0) brk = 1; else lit.cc = lit.cc * 16 + d; }
+		if (lit.hex || lit.unicode) { if (d < 0) brk = 1; else if (lit.cc <= 0x10FFFF) lit.cc = lit.cc * 16 + d; }
 		else if (lit.octal) { if (d < 0 || d > 7) brk = 1; else lit.cc = lit.cc * 8 + d; }
 		else { if (d < 0 || d > 9) brk = 1; else lit.cc = lit.cc * 10 + d; }
 		if (!brk) lit.i++;
@@ -684,7 +713,9 @@ static int literal_key(int nc, int pending)
 	if (lit.i == 0) { cc = nc; nc = 0; }
 	lit.on = 0;
 	/* NUL is stored as NL, which this buffer cannot hold in a line */
-	if (cc != 0 && cc != '\n') insert_special(cc);
+	/* a code typed past U+10FFFF: Neovim writes bytes that are not UTF-8
+	   (README); a special key (lit.i 0) inserts its name */
+	if (cc != 0 && cc != '\n' && (lit.i == 0 || cc <= 0x10FFFF)) insert_special(cc);
 	if (E->mode == MODE_INSERT) insert_check();
 	if (nc) insert_key(nc, pending);
 	return 1;
@@ -713,15 +744,21 @@ void insert_key(int k, int pending)
 		c = w;   /* lastc is the command: ins_reg() reads its register itself */
 		goto post;
 	}
+	/* inside insertchar()'s string: no key handling, and Neovim's edit()
+	   runs insert_check() once for the string, not per character, which
+	   keeps a long line from costing its length per key */
 	if (batch_len && c >= ' ' && c < 0x7f && c != '0' && c != '^') {
-		/* inside insertchar()'s string: no key handling */
 		insertchar(c, pending, 0);
-		insert_check();
+		check_owed = 1;
 		return;
 	}
+	if (check_owed) { check_owed = 0; insert_check(); }
 	batch_len = 0;
 	switch (c) {
 	case KEY_ESC: case KEY_CTRL_C:
+		/* when the count repeats the insert, its CTRL-D sees the Esc
+		   before it, not a typed 0 or ^ ("2a C-d ^ Esc" gives ^^) */
+		lastc = c;
 		ins_esc(0);
 		return;
 	case 15:                  /* CTRL-O: one Normal mode command */
@@ -793,11 +830,20 @@ int stuff_inserted(int c, long count, int no_esc)
 	long n = last_ins_n - last_ins_skip;
 	for (long i = n; i-- > 0;)
 		if (k[i] == KEY_ESC) { n = i; break; }
-	int *b = malloc(sizeof(int) * (size_t)(n * (count > 0 ? count : 1) + 2));
+	/* a trailing 0 or ^ would make a later CTRL-D special: Neovim quotes it,
+	   as <C-V>048 and <C-V>^, when no Esc follows or CTRL-D starts it */
+	int last = 0;
+	if (n > 0 && (k[n - 1] == '0' || k[n - 1] == '^') && (no_esc || (k[0] == 4 && count > 1))) last = k[--n];
+	int *b = malloc(sizeof(int) * (size_t)((n + 4) * (count > 0 ? count : 1) + 2));
 	if (!b) return 0;
 	long m = 0;
 	if (c) b[m++] = c;
-	do { memcpy(b + m, k, sizeof(int) * (size_t)n); m += n; } while (--count > 0);
+	do {
+		memcpy(b + m, k, sizeof(int) * (size_t)n); m += n;
+		if (last) b[m++] = 22;
+		if (last == '0') { b[m++] = '0'; b[m++] = '4'; b[m++] = '8'; }
+		else if (last) b[m++] = '^';
+	} while (--count > 0);
 	if (!no_esc) b[m++] = KEY_ESC;
 	stuff(b, m);
 	free(b);

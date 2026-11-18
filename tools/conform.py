@@ -5,7 +5,16 @@ Generates N random key sequences from the supported set on random text, runs
 each in nvim --headless (FEATURES.md settings, swapfile off) and in DRIVER
 (tests/conform_drv), and compares the lines and the cursor.  --record also
 saves the cases with Neovim's results, so `make test` can replay them without
-Neovim (--replay).  Exit 1 on any difference."""
+Neovim (--replay).  Exit 1 on any difference.
+
+tests/conform-known.json lists known differences: each entry has a "why",
+a "keys" regex (and optionally a "text" regex) matched against a case's
+keys as typed (''.join) and its text, and an "example" case.  A live case
+that differs and matches an entry counts as known, not as a failure; every
+example must still differ from Neovim and match its own entry, so a fixed
+difference fails the run until its entry is removed.  A driver that
+crashes or fails is never a known difference.  --record keeps only
+the cases that match Neovim; --replay takes no known differences."""
 import json, os, random, re, subprocess, sys, tempfile
 from concurrent.futures import ThreadPoolExecutor
 
@@ -28,7 +37,9 @@ MOTIONS = ['h', 'j', 'k', 'l', '0', '^', '$', 'w', 'b', 'e', 'W', 'B', 'E', 'ge'
 FIND = ['f', 'F', 't', 'T']
 OBJECTS = [a + o for a in 'ia' for o in 'wWsp([{<b)B"\'`']
 OPS = ['d', 'c', 'y', '<', '>', 'g~', 'gu', 'gU']
-SIMPLE = ['x', 'X', 'D', 'C', 's', 'S', 'Y', 'J', 'gJ', '~', 'p', 'P', 'gp', 'gP', 'u', '<C-r>', '.', '.',
+# Normal-mode Y is Neovim's default map to y$; after a beep Neovim drops the
+# next mapped key (as for go), so it is sent as y$ (recorded traces keep Y)
+SIMPLE = ['x', 'X', 'D', 'C', 's', 'S', 'y$', 'J', 'gJ', '~', 'p', 'P', 'gp', 'gP', 'u', '<C-r>', '.', '.',
           '<C-a>', '<C-x>', 'dd', 'cc', 'yy', '>>', '<<', 'g~~', 'guu', 'gUU', 'gv', '<Del>']
 VOPS = ['d', 'c', 'y', '<', '>', '~', 'u', 'U', 'J', 'gJ', 'I', 'A', 'p', 'P', 'x', 'X', 'D', 'C', 'S', 'Y',
         'R', 's', '<C-a>', '<C-x>', 'g<C-a>', 'o', 'O', '$', 'gv', '<Esc>', 'r']
@@ -45,8 +56,11 @@ def gen_text(r):
     return '\n'.join(lines) + ('\n' if lines and r.random() < .8 else '')
 
 def count(r, keys):
-    if r.random() < .25:   # never followed by 0, which would extend it
+    x = r.random()
+    if x < .25:   # never followed by 0, which would extend it
         keys.append(str(r.randint(1, 4)))
+    elif x < .27:   # two digits, typed one by one (fuzz_keys keeps counts to one)
+        keys += list(str(r.randint(10, 19)))
 
 def motion(r, keys, objects=True):
     # text objects only after an operator or in Visual mode: in Normal
@@ -56,12 +70,18 @@ def motion(r, keys, objects=True):
     elif objects and x < .27: keys.append(r.choice(OBJECTS))
     else: keys.append(r.choice(MOTIONS))
 
-def insert(r, keys, cmd=True):
-    if cmd: keys.append(r.choice(['i', 'a', 'I', 'A', 'o', 'O', 'gI', 'R', 's', 'S', 'C']))
+def insert(r, keys, cmd=True, sure=True):
+    if cmd:
+        keys.append(r.choice(['i', 'a', 'I', 'A', 'o', 'O', 'gI', 'R', 's', 'S', 'C']))
+        # 3S and 3C fail past the last line
+        if keys[-1] in ('S', 'C') and len(keys) > 1 and keys[-2].isdigit(): sure = False
     for _ in range(r.randint(0, 5)):
         x = r.random()
         if x < .06: keys += ['<C-r>', r.choice(['a', '"', '0', '-', '.'])]
-        elif x < .1: keys += ['<C-o>', r.choice(['l', 'h', '$', '0', 'w', 'x', 'dd', 'p', 'u'])]
+        # CTRL-O only where the insert surely started: after a failed
+        # motion its keys reach Normal mode, where CTRL-O is the jump list,
+        # not built yet (src/keys/README)
+        elif x < .1 and sure: keys += ['<C-o>', r.choice(['l', 'h', '$', '0', 'w', 'x', 'dd', 'p', 'u'])]
         else: keys.append(r.choice(INS))
     keys.append('<Esc>')
 
@@ -81,13 +101,13 @@ def command(r, keys, depth=0):
         count(r, keys)
         if r.random() < .1: keys.append(r.choice(['v', 'V']))
         motion(r, keys)
-        if op == 'c': insert(r, keys, False)
+        if op == 'c': insert(r, keys, False, False)
     elif x < .8:
         if r.random() < .15: keys += ['"', r.choice(REGS)]
         count(r, keys)
         k = r.choice(SIMPLE)
         keys.append(k)
-        if k in ('C', 's', 'S', 'cc'): insert(r, keys, False)
+        if k in ('C', 's', 'S', 'cc'): insert(r, keys, False, len(keys) < 2 or not keys[-2].isdigit())
     elif x < .9:
         keys.append(r.choice(['v', 'V', '<C-v>']))
         for _ in range(r.randint(0, 3)):
@@ -99,6 +119,8 @@ def command(r, keys, depth=0):
         keys.append(op)
         if op == 'r': keys.append(r.choice(CHARS + ['<CR>']))
         if op in ('c', 'I', 'A', 's', 'S', 'C', 'R'): insert(r, keys, False)
+        # these keep Visual mode, where @ and Q need :normal (not built)
+        if op in ('o', 'O', '$', 'gv'): keys.append('<Esc>')
     elif x < .94:
         count(r, keys)
         keys += ['r', r.choice(CHARS + ['<CR>', '<Tab>'])]
@@ -110,6 +132,8 @@ def command(r, keys, depth=0):
         for _ in range(r.randint(1, 3)): command(r, keys, 1)
         keys.append('q')
     elif depth == 0:
+        # not from the Visual mode gv left: Visual @ and Q need :normal
+        if keys and keys[-1] == 'gv': keys.append('<Esc>')
         count(r, keys)
         keys += r.choice([['@', 'q'], ['@', 'w'], ['@', '@'], ['Q']])
     else:
@@ -140,7 +164,9 @@ for i, c in ipairs(cases) do
   -- an empty unnamed buffer is reused by :edit
   if old ~= b then vim.api.nvim_buf_delete(old, {force = true}) end
   vim.api.nvim_win_set_cursor(0, {1, 0})   -- :edit puts it on the first non-blank
-  local ks = table.concat(vim.tbl_map(function(k) return k == '<' and '<lt>' or k end, c.keys))
+  -- go is gg (Davy, FEATURES.md): sent as gg, since after a beep Neovim
+  -- drops the next mapped key, which a map would make go
+  local ks = table.concat(vim.tbl_map(function(k) return k == '<' and '<lt>' or k == 'go' and 'gg' or k end, c.keys))
   vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(ks, true, true, true), 'xt', false)
   local cur = vim.api.nvim_win_get_cursor(0)
   out[#out + 1] = {lines = vim.api.nvim_buf_get_lines(b, 0, -1, false), cursor = cur}
@@ -150,7 +176,7 @@ vim.cmd('qa!')
 '''
 SETUP = ('set noswapfile nomore expandtab shiftwidth=4 softtabstop=4 autoindent smarttab '
          'nostartofline backspace=indent,eol,start tabstop=8 virtualedit=block nowrap shortmess+=I'
-         ' | noremap go gg')   # Davy's map, 2026-11-17
+         ' scrolloff=6')   # FEATURES.md's scrolloff, which the core keeps
 
 def nvim1(cases):
     d = tempfile.mkdtemp()
@@ -182,35 +208,58 @@ def ours(drv, c):
     if p.returncode: return {'error': p.returncode, 'stderr': p.stderr[-2000:].decode(errors='backslashreplace')}
     return json.loads(p.stdout.decode(errors='surrogateescape'))
 
+def known_rule(known, c):
+    ks = ''.join(c['keys'])
+    for k in known:
+        if re.search(k['keys'], ks) and re.search(k.get('text', ''), c['text']):
+            return k
+    return None
+
+def same(g, w):
+    return g.get('lines') == w['lines'] and g.get('cursor') == w['cursor']
+
 def main():
     a = sys.argv[1:]
     drv, mode, path = a[0], None, None
     if '--record' in a: mode, path = 'record', a[a.index('--record') + 1]
     if '--replay' in a: mode, path = 'replay', a[a.index('--replay') + 1]
     seed = None
+    kp = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tests', 'conform-known.json')
+    known = json.load(open(kp)) if mode != 'replay' and os.path.exists(kp) else []
     if mode == 'replay':
         cases = json.load(open(path))
-        want = [c.pop('nvim') for c in cases]
+        want, kwant = [c.pop('nvim') for c in cases], []
     else:
         n, seed = int(a[1]), int(a[2]) if len(a) > 2 and a[2][0] != '-' else 1
         r = random.Random(seed)
         cases = [{'text': gen_text(r), 'keys': gen_keys(r)} for _ in range(n)]
-        want = nvim(cases)
-    bad = 0
+        want = nvim(cases + [k['example'] for k in known])
+        want, kwant = want[:n], want[n:]
+    bad = nknown = 0
     with ThreadPoolExecutor(os.cpu_count()) as x:
-        got = list(x.map(lambda c: ours(drv, c), cases))
+        got = list(x.map(lambda c: ours(drv, c), cases + [k['example'] for k in known]))
+    got, kgot = got[:len(cases)], got[len(cases):]
+    for k, w, g in zip(known, kwant, kgot):
+        if known_rule([k], k['example']) is not k or same(g, w) or 'error' in g:
+            bad += 1
+            print('KNOWN ENTRY STALE (its example now matches Neovim, not its rule, or the driver failed): %s' % k['why'])
+    keep = []
     for c, w, g in zip(cases, want, got):
-        if g.get('lines') != w['lines'] or g.get('cursor') != w['cursor']:
+        if same(g, w):
+            keep.append(dict(c, nvim=w))
+        elif 'error' not in g and known_rule(known, c):
+            nknown += 1
+        else:
             bad += 1
             if bad <= 5:
                 print('DIFF text=%s keys=%s\n  nvim  %r %r\n  ours  %r %r' % (
                     json.dumps(c['text'], ensure_ascii=False), json.dumps(c['keys'], ensure_ascii=False), w['lines'], w['cursor'], g.get('lines'), g.get('cursor') or g))
     split = sum(1 for w in want if any('\udc80' <= ch <= '\udcff' for l in w['lines'] for ch in l))
-    print('%d sequences%s: %d differ from Neovim%s' % (len(cases), '' if seed is None else ' (seed %d)' % seed, bad,
-          ' (%d where Neovim wrote a split character)' % split if split else ''))
+    print('%d sequences%s: %d differ from Neovim%s%s' % (len(cases), '' if seed is None else ' (seed %d)' % seed, bad,
+          ' (%d where Neovim wrote a split character)' % split if split else '',
+          ', %d more are known differences (tests/conform-known.json)' % nknown if nknown else ''))
     if mode == 'record':
-        for c, w in zip(cases, want): c['nvim'] = w
-        json.dump(cases, open(path, 'w'), ensure_ascii=False, indent=0)
+        json.dump(keep, open(path, 'w'), ensure_ascii=False, indent=0)
     sys.exit(1 if bad else 0)
 
 main()

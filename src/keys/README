@@ -2,11 +2,11 @@ Package 5, the Vim keys: what is not built yet, and what waits for whom.
 
 The rest of FEATURES.md section 2 is ported from Neovim 0.12.6 and checked
 against nvim --headless (tools/conform.py, tests/conform-recorded.json).
-Every line below is a known difference; conform.py's random sequences still
-reach some of them (measured, 2026-11-17, seed 1794946549, 2,000 sequences:
-56 differ with ref/core.c, 22 with package 4's core from PR 20; one of those
-22 is not traced yet: a block put after gE in a Visual block, "  ( ,\n\t\n,\n
-  -3" with gI ა C-o $ b ^ Esc C-v 4 gE j p J P).
+Every line below is a known difference, and those conform.py's random
+sequences reach have a rule in tests/conform-known.json (on the keys and
+text, with an example that must still differ).  Measured 2026-11-18, seed 1,
+2,000 sequences: with package 4's core (PR 20) 0 differ outside the rules
+(3 inside them); with ref/core.c 38 differ, from what it stubs.
 
 Not built (FEATURES.md section 2), part two of package 5:
 - search: / ? n N * # and search as a motion (d/x). / and ? read their line
@@ -24,25 +24,87 @@ Not built (FEATURES.md section 2), part two of package 5:
   read them next. Until then a CTRL-O that reaches Normal mode (an insert
   that never started, after a failed motion) differs.
 - folds, spell, snippet jumps, CTRL-S: with their packages.
+- U (undo line) is not in FEATURES.md, so not built; Visual gUU reaches it
+  (gU on the selection, then U).
+- CTRL-W Tab (CTRL-W CTRL-I) needs search and windows; a C whose motion
+  fails sends the insert's C-w and Tab to Normal mode.
 
 Waits for package 4's core (src/core, PR 20), passing with it (measured):
-- CTRL-D, CTRL-U, CTRL-E, CTRL-Y, zz zt zb H M L: ref/core.c stubs them.
+- CTRL-D, CTRL-U, CTRL-E, CTRL-Y, CTRL-F, CTRL-B, zz zt zb H M L, and gj
+  gk with 'wrap': ref/core.c stubs them (they match with package 4's core
+  and Neovim at scrolloff=6; its tests/test_core_screens.c types them).
 - gv after edits: its ends are the buffer's '< and '> marks, which only
   package 4's core moves.
 - columns of grapheme clusters: ref/core.c's core_vcol and core_col_at step
   by code point.
 Waits for package 4, still differing with PR 20's core:
+- gv after a counted C over the lines that held the Visual marks (C-v Esc
+  O Esc 5C Esc gv, the example in tests/conform-known.json): Neovim's '<
+  ends on the joined line 1, ours on line 2; not traced yet.
 - core_vcol at a byte inside a cluster (x + U+0301 with the cursor after x)
-  gives the cluster's end; Neovim's getvcol gives its start.
-- the cursor after undoing a linewise change of several lines (4cc Esc u,
-  2cc, 2S, V j c Esc u): Neovim takes it from u_undoredo's last entry, the
-  core from the whole step.
+  gives the cluster's end; Neovim's getvcol gives its start. Typing before
+  a lone mark makes such a cursor ("x\n\u0301", j i a Up C-w: Neovim's
+  column 0, ours 1); CTRL-O and Del there differ the same way
+  ("\u0301 \"a b\"", I é C-o).
+- I Down from a blank a combining mark is on, after the cursor came there
+  with k ("    \u0301 -3\n).\n    'c' 7", j dd k I Down): Neovim's column
+  2, ours 3; not traced yet (owner package 5, with package 4's core_vcol
+  inside a cluster above).
+
+Not traced to a fix yet (owner package 5):
+- gg, then C-v < on a line that is only a Tab ("\t\n\tfoo", gg C-v <):
+  Neovim shifts it to 4 spaces, ours to 7; without gg Neovim gives 7 too.
+- a counted insert, Left, then Tab ("\tFoo", 2 a Left Tab Esc): Neovim
+  inserts one space, ours four; like s Tab below, Neovim's softtabstop
+  counts from a stale cached w_virtcol.
+- after A x Esc, v 3B y, then a linewise yank (y 2j or y ][), Neovim's
+  wanted column is 5 cells and ours 0 ("\tab\n    cd", A b x Esc v 3 B y
+  y 2 j j: Neovim's column 5, ours 0).
+- block $ I with CTRL-W and CTRL-R over a ZWJ emoji that r and s split
+  earlier: Neovim and ours write different split characters (the case is
+  the example in tests/conform-known.json; no shorter one found).
+- s on a Tab that ends its line, then Tab ("(\t", l s Tab): Neovim's cached
+  w_virtcol stays the Tab's last cell, since del_bytes() backs the cursor up
+  and op_change() steps it forward again before check_cursor_moved() looks,
+  so softtabstop counts from column 7 (one space); ours counts from 1 (three).
+  The core drops its cached column on every edit (changed_common() keeps it
+  for an edit after the cursor).
 
 Neovim's own oddities, not copied:
-- Visual A over a 3-byte character ("∀" vAx) and C-v $ ~ over a 4-byte one
-  ("-3 𐐀x"): Neovim writes a split character.
+- r, then R and CTRL-U back over the replaced character ("  0", r 3 l R
+  C-u): Neovim's replace stack still holds what r replaced and puts it back.
+- block I, then Left past the block's start and text ("abcd\nefgh", l C-v j
+  I Left x): Neovim puts "a" in the other lines, ours "x" (its
+  Insstart_orig stays at the block's start; not traced further).
+- block > over blanks that end in a combining mark ("    \u0301", C-v >):
+  Neovim drops the mark.
+- an operator with v over a sentence that ends the buffer in a multibyte
+  character ("a b\nx \u10d0", gU v as; d v as leaves one byte of it):
+  Neovim ends the motion inside the character.
+- Visual A over a 3-byte character ("∀" vAx), V A over a 2-byte one ("λ"
+  V A 𐐀) or a cluster ("x" with U+0300 U+0301, V A .) and C-v $ ~ over a
+  4-byte one ("-3 𐐀x"): Neovim writes a split character. Also when the
+  character was typed, not in the text ("    ", s 𐐀 Esc v A 0).
+- C-v on a Tab then ~ u U over a 2-byte character ("\té ab cd", C-v w ~):
+  Neovim moves the character to the end of the line (" ab cd É").  The Tab can be on another line of the block ("\t0x1f\n  ẞß", C-v ]] U).
+- CTRL-V U with a code past U+10FFFF ("ab", i C-v U110000 Esc): Neovim
+  writes bytes that are not UTF-8 (from 0x80000000 a special-key code); ours
+  inserts nothing, and stops adding digits there so the code cannot overflow.
+
+Counts (measured, 2026-11-17): a count folds at 999999999 as Neovim's
+does, and the work grows with it.  Large counts are checked by recorded
+traces (22202o λ, 12000a, 3000yyp, 22222222x, 9999999999j), not by
+fuzz_keys, which keeps counts to one digit to bound its work.  22202o λ
+takes 0.30 s here and 0.07 s in Neovim (median of 5 runs each, -O2 driver;
+222222o 2.95 s and 0.44 s): 61% of it is the rope's line lookup
+(text_line_start, memchr; package 1).  Typing into one long line is
+quadratic in both, since each key validates the cursor's column
+(insert_check()); 22a CTRL-R over 1,000 recorded "x y BS" takes 4.0 s here
+and 1.0 s in Neovim (one run each), most of it in core_vcol (package 4).
 
 Choices:
-- go is gg in Normal mode (Davy, FEATURES.md).
-- % is Neovim's built-in one, not the matchit plugin (FEATURES.md).
-- U (undo line) is not in FEATURES.md and not built.
+- go is gg everywhere: Normal, after an operator, Visual (Davy, FEATURES.md).
+- % is Neovim's built-in one for now; Davy wants matchit's word pairs too
+  (2026-11-17), a follow-up PR.
+- U (undo line) is not in FEATURES.md and not built.  CTRL-F and CTRL-B
+  are not in it either, but package 4's screens test types them.

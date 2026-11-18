@@ -1,6 +1,5 @@
-/* Unicode kernels.  ref/uni.c steps by code point and calls every character
-   one cell wide; package 3 (src/uni/) steps by extended grapheme cluster as
-   Neovim 0.12 does and takes widths as Neovim does, with tables generated from
+/* Unicode kernels (package 3, src/uni/): steps by extended grapheme cluster
+   as Neovim 0.12 does and takes widths as Neovim does, with tables generated from
    Unicode 18 data (the version of the utf8proc that the tools' Neovim links).
    The contracts below state each result and are what Frama-C WP proves
    (make frama) for whichever implementation is built; no bit tricks in
@@ -52,10 +51,11 @@
     logic integer nbc(integer l, integer t) =
       l == 8 && t == 8 ? 0 : l == 12 && t == 2 ? 12 : l == 12 && t == 11 ? 13 : t;
     logic integer nic(integer i, integer t) = i == 1 && t == 3 ? 1 : t;
-    // c joins the cluster: utf8proc (GB9c: Linker Extend* x Consonant), or
+    // c joins the cluster: utf8proc (GB9c: Linker Extend* x Consonant; GB3:
+    // CR x LF, which only an overlong LF reaches, as ASCII never joins), or
     // Neovim's arabic_combine() (lam then alef, 'arabicshape' on)
     predicate joins(integer l, integer i, integer p, integer c) =
-      glue(l, gcb(c)) || (i == 1 && incb(c) == 2) ||
+      glue(l, gcb(c)) || (i == 1 && incb(c) == 2) || (p == 0x0D && c == 0x0A) ||
       (p == 0x644 && (c == 0x622 || c == 0x623 || c == 0x625 || c == 0x627));
     // bytes from j on that join a cluster in state (l, i) whose last code
     // point is p; ASCII never joins (Neovim's utf_composinglike())

@@ -1,0 +1,7 @@
+undo tree oracle: Ctrl-R to the first child~undo-diff UNDO_N=2000~~Makefile~python3 design~MUT=firstchild python3 design
+lean: inv_inv states something false~lean~~design/proofs/Undo.lean~theorem Edit.inv_inv (e : Edit α) : e.inv.inv = e~theorem Edit.inv_inv (e : Edit α) : e.inv = e
+specs: save renames without fsync (Save2)~specs~find design/specs -name '*.cfg' ! -name Save2_fsync.cfg -delete~design/specs/Save2_fsync.cfg~Variant = "fsync"~Variant = "nofsync"
+conform: a known difference that Neovim now matches~conform CONFORM_N=50 SEED=1~printf '%s' '[{"why": "stale", "keys": "^x$", "example": {"text": "ab\n", "keys": ["x"]}}]' > tests/conform-known.json~tools/conform.py~so a fixed¶difference fails the run~so a fixed¶difference fails the run 
+frama-c: the UTF-8 kernel returns 1 (weak contract trap)~frama~~src/uni/uni.c~		if (s[i + j] < 0x80 || s[i + j] >= 0xC0) return 1;¶	return k;~		if (s[i + j] < 0x80 || s[i + j] >= 0xC0) return 1;¶	return 1;
+win: every cell drawn every frame~win WIN=win~~src/win/backend.c~			if (grid_cell_eq(x, y) && cur == was) continue;~			if (cur && was && 0) continue;
+win: ReplaceFileW instead of the rename (caught under Wine, whose ReplaceFileW is three renames; on Windows maybe not)~win WIN=file~~src/file/win.c~	if (!MoveFileExW(tmp, w, MOVEFILE_WRITE_THROUGH | (now.exists || force ? MOVEFILE_REPLACE_EXISTING : 0))) {~	if (now.exists ? !ReplaceFileW(w, tmp, NULL, 0, NULL, NULL) : !MoveFileExW(tmp, w, MOVEFILE_WRITE_THROUGH)) {
