@@ -30,7 +30,7 @@ keys: gj and gk move by text lines with 'wrap' on (test_core_screens)~test TESTS
 keys: CTRL-W s in Visual mode keeps Visual mode on (recorded traces)~test TESTS=~~src/keys/normal.c~		if (VIsual_active) end_visual_mode();¶		VIsual_reselect = 0;¶	}¶	switch (c) {~		if (0) end_visual_mode();¶		VIsual_reselect = 0;¶	}¶	switch (c) {
 keys: CTRL-W w to a window on the same buffer leaves the Visual cursor behind (recorded traces)~test TESTS=~~src/keys/normal.c~	if (VIsual_active && E->win != ow) {~	if (0) {
 keys: CTRL-D and CTRL-U that cannot scroll do not beep, so a macro goes on (recorded traces)~test TESTS=~~src/keys/normal.c~core_scroll_half(E, cap->cmdchar == 4 ? 1 : -1, cap->count0) < 0) beep();~core_scroll_half(E, cap->cmdchar == 4 ? 1 : -1, cap->count0) < -1) beep();
-keys: o's undo step starts on the cursor line, so undo moves another window's cursor on it to column 0 (recorded traces)~test TESTS=~~src/keys/edit.c~	u_save_gap(W->line + (dir == FORWARD));~	u_save_gap(W->line);
+keys: o's undo step starts on the cursor line, so undo moves another window's cursor on it to column 0 (recorded traces)~test TESTS=~~src/keys/edit.c~	u_save(W->line + (dir == FORWARD), W->line + (dir == FORWARD));~	u_save(W->line, W->line);
 keys: a linewise put's undo step starts on the cursor line, so undo moves another window's cursor on it to column 0 (recorded traces)~test TESTS=~~src/keys/ops.c~if (reg->type == MLINE && !(flags & PUT_LINE_SPLIT) && !is_empty_buf())~if (0)
 keys: gq on a .sql buffer is not recognised as SQL (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	return n > 4 && !memcmp(B->path + n - 4, ".sql", 4);~	return n > 4 && 0;
 keys: gq formats one line less than the operator covers (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~(size_t)oap->end.lnum + 1));~(size_t)oap->end.lnum));
@@ -42,7 +42,7 @@ keys: :Format does nothing on a .sql buffer (test_keys_gq)~test TESTS=keys_gq~~s
 keys: gq breaks before the blank at textwidth, not at it (recorded traces)~test TESTS=~~src/keys/ops.c~				if (i > wantcol) {~				if (i >= wantcol) {
 keys: gq leaves the cursor on the last paragraph line, not the last line it went over (recorded traces)~test TESTS=~~src/keys/ops.c~	}¶	W->line = (size_t)l;¶}~	}¶}
 keys: gq keeps a Tab in a paragraph's indent instead of making it spaces (recorded traces)~test TESTS=~~src/keys/ops.c~if (need_set_indent) set_indent(~if (need_set_indent && 0) set_indent(
-keys: u after gq puts the cursor at the start of the lines, not where gq was typed (recorded traces)~test TESTS=~~src/keys/ops.c~	setcur(oap->cursor_start);¶	u_save_gap~	u_save_gap
+keys: u after gq puts the cursor at the start of the lines, not where gq was typed (recorded traces)~test TESTS=~~src/keys/ops.c~	setcur(oap->cursor_start);¶	u_save(~	u_save(
 keys: gq} stays on the paragraph's last line instead of going to the next (recorded traces)~test TESTS=~~src/keys/ops.c~	if (oap->end_adjusted && (long)W->line < nlines() - 1) W->line++;~	if (0) W->line++;
 keys: a blank with a combining mark on it is a break for gq (recorded traces)~test TESTS=~~src/keys/buf.c~	return clen(b, k + 1, 0) == 1;~	return 1;
 keys: gq joins a nroff paragraph macro line into the paragraph (recorded traces)~test TESTS=~~src/keys/ops.c~return linewhite(l) || startPS(l, 0, 0);~return linewhite(l);
