@@ -1761,11 +1761,13 @@ static void internal_format(long tw)
 			}
 			prev = !w;
 		}
-		/* no blanks: the line stays long, and w_virtcol stays the
-		   textwidth that coladvance() went to, until the cursor leaves
-		   the last non-blank: beginline() on a line of one word keeps
-		   it (F and G of reviews/pr-67.md) */
-		if (foundcol == 0) { W->vc.v = (size_t)tw; W->vc.ok = 1; return; }
+		/* no blanks: the line stays long, and w_virtcol what
+		   coladvance(textwidth) made it (F, G and H1 of reviews/pr-67.md) */
+		if (foundcol == 0) {
+			if (vcol_of(l, wantcol) == tw) W->vc.v = (size_t)tw;
+			else W->vc.ok = 0;
+			return;
+		}
 		long q = foundcol, ind = get_indent(l);
 		while (q < n && whitechar(s, n, q)) q++;
 		if (!ind) ind = old_indent;   /* "^ CTRL-D" in the last insert */

@@ -1095,8 +1095,10 @@ static void nv_g_cmd(Cmdarg *cap)
 		const char *s = ml_get((long)W->line);
 		/* nv_g_underscore_cmd: from the last character step back by bytes
 		   while on a blank, then mb_adjust_cursor; a blank under a
-		   combining mark is skipped, the mark's bytes are not blanks */
-		long n = ml_len((long)W->line), i = n ? head(s, n - 1) : 0;
+		   combining mark is skipped, the mark's bytes are not blanks;
+		   in Visual mode coladvance(MAXCOL) is past the line ('selection'
+		   inclusive), so the step back starts at its last byte */
+		long n = ml_len((long)W->line), i = !n ? 0 : VIsual_active ? n - 1 : head(s, n - 1);
 		while (i > 0 && (s[i] == ' ' || s[i] == '\t')) i--;
 		W->col = (size_t)head(s, i);
 		set_curswant = 1;
@@ -1401,7 +1403,7 @@ static int run(void)
 	   inside the character */
 	if (E->mode == MODE_NORMAL && W->col) W->col = (size_t)head(ml_get((long)W->line), (long)W->col);
 	/* normal_check() before the next command: validate_cursor() */
-	if (stuff_empty() && E->mode == MODE_NORMAL) validate_virtcol();
+	if (stuff_empty() && E->mode == MODE_NORMAL) curs_columns();
 	if (!(ca.retval & CA_COMMAND_BUSY)) restart_insert();
 	return 1;
 }

@@ -188,10 +188,14 @@ void coladvance(long want)
 	long l = (long)W->line;
 	W->col = (size_t)col_of_vcol(l, want, one_more());
 	coladd = 0;
-	if (virtual_active() && want < MAXCOL) {
-		long v = vcol_of(l, (long)W->col);
-		if (want > v) coladd = want - v;
-	}
+	long v = vcol_of(l, (long)W->col);
+	if (virtual_active() && want < MAXCOL && want > v) coladd = want - v, v = want;
+	/* set_valid_virtcol() when coladvance2() reached want (OK), unseen as a
+	   move until the cursor leaves where it was last validated; not after
+	   an edit (the core's vc.ok = 0), as changed_lines() clears VALID_WCOL
+	   too, so curs_columns() recomputes it anyway */
+	if (W->vc.ok && want < MAXCOL && v == want) W->vc.v = (size_t)want;
+	else W->vc.ok = 0;
 }
 
 /* coladvance_force(): coladvance2() with addspaces, as 'virtualedit' does
@@ -231,10 +235,14 @@ void coladvance_force(long want)
    a Tab).  In Visual mode it is getvvcol() of the cursor: with
    'virtualedit' a Tab's first cell plus coladd, and with the cursor at or
    before Visual's start ('selection' inclusive) a Tab's first cell. */
+static int moved;   /* check_cursor_moved() cleared VALID_WCOL: curs_columns() recomputes */
+
 void validate_virtcol(void)
 {
 	static long coladd;   /* Win.vc has no coladd, which moves the cursor too */
-	if (W->vc.ok && W->vc.line == W->line && W->vc.col == W->col && W->vc.mode == E->mode && coladd == cur().coladd) return;
+	int same = W->vc.line == W->line && W->vc.col == W->col && coladd == cur().coladd;
+	moved |= !same;
+	if (W->vc.ok && same && W->vc.mode == E->mode) return;
 	coladd = cur().coladd;
 	long v;
 	if (virtual_active()) v = getviscol();
@@ -249,6 +257,16 @@ void validate_virtcol(void)
 	}
 	W->vc.line = W->line; W->vc.col = W->col; W->vc.v = (size_t)v;
 	W->vc.mode = E->mode; W->vc.ok = 1;
+}
+
+/* curs_columns() after each command: w_virtcol is recomputed when the
+   cursor was seen to move, and otherwise may stay what coladvance() made it
+   (measured: a second gqq on 80 spaces and "I", then gg, goes to column 79) */
+void curs_columns(void)
+{
+	if (moved) W->vc.ok = 0;
+	validate_virtcol();
+	moved = 0;
 }
 
 void update_curswant(void)

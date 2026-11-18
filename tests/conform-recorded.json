@@ -70295,5 +70295,149 @@
 "\tx(o)  λ∀  a\tb  (bar) é ́x\té\txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx abcdefghijklmnopqrstuvwxyz0123456789abcdefghij\t́x  λ∀ lorem ́x\tabcdefghijklmnopqrstuvwxyz0123456789abcdefghij abcdefghijklmnopqrstuvwxyz0123456789abcdefghij  λ∀ ́x é a\tb (bar)  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij あい  (bar) 𝓝x x(o)\tx(o)\tλ∀  lorem é\t(bar) é ox\tlorem 𝓝x lorem"
 ]
 }
+},
+{
+"text": "                                                                                I\n",
+"keys": [
+"gq",
+"as",
+">>"
+],
+"nvim": {
+"cursor": [
+1,
+80
+],
+"lines": [
+"                                                                                    I"
+]
+}
+},
+{
+"text": "                                                                                I\n",
+"keys": [
+"gq",
+"q",
+"gq",
+"q",
+">>"
+],
+"nvim": {
+"cursor": [
+1,
+79
+],
+"lines": [
+"                                                                                    I"
+]
+}
+},
+{
+"text": "  \n",
+"keys": [
+"<C-v>",
+"}",
+"gq",
+"G"
+],
+"nvim": {
+"cursor": [
+1,
+0
+],
+"lines": [
+"  "
+]
+}
+},
+{
+"text": "a\tb\n",
+"keys": [
+"l",
+"<C-v>",
+"l",
+"d"
+],
+"nvim": {
+"cursor": [
+1,
+7
+],
+"lines": [
+"a      "
+]
+}
+},
+{
+"text": "a\tb\nxxxxxxxxxx\n",
+"keys": [
+"j",
+"5|",
+"<C-v>",
+"k",
+"l",
+"d"
+],
+"nvim": {
+"cursor": [
+1,
+4
+],
+"lines": [
+"a     b",
+"xxxxxxxx"
+]
+}
+},
+{
+"text": "x\n\tab\n",
+"keys": [
+"dd",
+"gg",
+">>"
+],
+"nvim": {
+"cursor": [
+1,
+7
+],
+"lines": [
+"            ab"
+]
+}
+},
+{
+"text": "\t, 7 ́\n",
+"keys": [
+"<C-v>",
+"g_",
+"d"
+],
+"nvim": {
+"cursor": [
+1,
+7
+],
+"lines": [
+"       "
+]
+}
+},
+{
+"text": "ab ́ \n",
+"keys": [
+"v",
+"g_",
+"d"
+],
+"nvim": {
+"cursor": [
+1,
+0
+],
+"lines": [
+" "
+]
+}
 }
 ]

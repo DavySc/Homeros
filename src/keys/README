@@ -24,6 +24,8 @@ Not built (FEATURES.md section 2), part two of package 5:
   line; Neovim's open_line() moves them to the new line (OPENLINE_MARKFIX's
   mark_col_adjust()).  core_mark_join() would mark the next edit a join, so
   this waits for a core call from package 4 (reviews/pr-67.md, finding B).
+  The same holds for the '> mark of a Visual gq, so gv after it differs
+  (H2).
 - tag objects it at.
 - register "/ (search).
 - ex commands beyond :w :w! :q :q! :wq :x: ranges, :5, :s, :g, :norm, :d,
