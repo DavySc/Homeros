@@ -32,6 +32,10 @@ Normal, insert, visual (char, line, block), operator-pending, replace and comman
 
 Neovim 0.12 defaults that my-nvim keeps: `[b ]b [B ]B` buffers, `[q ]q [Q ]Q [C-q ]C-q` quickfix, `[l ]l` location list, `[a ]a` args, `[t ]t` tags, `[<Space> ]<Space>` blank lines, `[d ]d [D ]D` diagnostics, `C-w d` diagnostic float, `gx` open URL, `gO` outline, `grn gra grr gri grt grx` LSP, `gd gD K`, visual `* #`, `&`, `Q`, `@` in visual, `C-l` clears highlight.
 
+Davy, 2026-11-17: `go` is exactly `gg` (counts too: `5go` is line 5), in Normal mode, after an operator (`dgo`) and in Visual mode, as `noremap go gg`; Neovim's `go` (byte N) is not kept. `tools/conform.py` sends Neovim `gg` where it types `go`.
+
+`%` is Neovim's built-in one (brackets, C comments, `#if`), not the matchit plugin Neovim 0.12 loads by default, which also pairs words such as Lua's `function`/`end` and differs on some lines (`%` on `a /* x */ (b)`: matchit byte 7, built-in 12; PR 26 review, measured). `tools/conform.py` starts Neovim without matchit. A choice for Davy to overturn (2026-11-17, package 5).
+
 ## 3. Editing extras (both; mini.nvim in my-nvim, evil packages in kittymax)
 
 - Surround: `ys{motion}{char}`, `cs{old}{new}`, `ds{char}`, visual `gs`; `*` makes `**bold**` in markdown.

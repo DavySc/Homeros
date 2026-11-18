@@ -1,0 +1,11 @@
+update t
+set a = case when b = 1 then 2 else 3 end, c = 1
+from t
+join u on t.i = u.i
+where a in (select a from u where x = 1 group by a having COUNT(*) > 1)
+delete from t
+OUTPUT deleted.*
+where a = 1
+delete t
+from t
+join u on 1 = 1

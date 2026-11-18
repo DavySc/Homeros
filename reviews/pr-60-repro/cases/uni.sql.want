@@ -1,0 +1,3 @@
+select N'héllo', café, ÉCOLE
+from tàble
+where SÉLECT = 1

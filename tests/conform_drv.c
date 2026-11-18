@@ -14,6 +14,11 @@ int main(int argc, char **argv)
 		more = scanf("%d", &next) == 1;
 		keys_feed(&e, k, more);
 	}
+	/* feedkeys(…, 'x') ends an insert left open, or a command half typed:
+	   vgetorpeek() returns ESC when asked for a key with the typeahead empty
+	   ("Must return something to avoid getting stuck"); a pending CTRL-V or
+	   CTRL-R eats one */
+	while (e.mode == MODE_INSERT || e.ks.pending) keys_feed(&e, KEY_ESC, 0);
 	printf("{\"lines\": [");
 	for (size_t l = 0; l < core_lines(&e); l++) {
 		size_t n;
