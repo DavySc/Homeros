@@ -1,0 +1,746 @@
+case 29 row 18 S:
+  nvim [f.md                            8,0-1          Bot]
+  core [f.md                            8,1            Bot]
+case 39 row 18 S:
+  nvim [g.md                            2,1-8          All]
+  core [g.md                            2,1            All]
+case 58 cursor: nvim 1,4 core 0,4
+case 58 row 0 S:
+  nvim [  1 é \# \# bar *em*                              ]
+  core [6   ## xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 58 row 0 F:
+  nvim [................rrrr..............................]
+  core [....pp.ppppppppppppppppppppppppppppppppppppppppppp]
+case 58 row 1 S:
+  nvim [6   ## xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [    xxxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 58 row 1 F:
+  nvim [....pp.ppppppppppppppppppppppppppppppppppppppppppp]
+  core [....ppppppppppppppppp.pppppppppppppppppppppppppppp]
+case 58 row 2 S:
+  nvim [    xxxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx xxxxxxxxxxxxx]
+case 58 row 2 F:
+  nvim [....ppppppppppppppppp.pppppppppppppppppppppppppppp]
+  core [....pppppppppppppppppppppppppppppppp.ppppppppppppp]
+case 58 row 3 S:
+  nvim [    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx xxxxxxxxxxxxx]
+  core [    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 58 row 3 F:
+  nvim [....pppppppppppppppppppppppppppppppp.ppppppppppppp]
+  core [....pppppppppppppppppppppppppppppppppppppppppppppp]
+case 58 row 4 S:
+  nvim [    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [    x xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 58 row 4 F:
+  nvim [....pppppppppppppppppppppppppppppppppppppppppppppp]
+  core [....p.pppppppppppppppppppppppppppppppppppppppppppp]
+case 58 row 5 S:
+  nvim [    x xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [    xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 58 row 5 F:
+  nvim [....p.pppppppppppppppppppppppppppppppppppppppppppp]
+  core [....pppppppppppppppp.ppppppppppppppppppppppppppppp]
+case 58 row 6 S:
+  nvim [    xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx xxxxxxxxxxxxxx]
+case 58 row 6 F:
+  nvim [....pppppppppppppppp.ppppppppppppppppppppppppppppp]
+  core [....ppppppppppppppppppppppppppppppp.pppppppppppppp]
+case 58 row 7 S:
+  nvim [    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx xxxxxxxxxxxxxx]
+  core [    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 58 row 7 F:
+  nvim [....ppppppppppppppppppppppppppppppp.pppppppppppppp]
+  core [....pppppppppppppppppppppppppppppppppppppppppppppp]
+case 58 row 8 S:
+  nvim [    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [     xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 58 row 8 F:
+  nvim [....pppppppppppppppppppppppppppppppppppppppppppppp]
+  core [.....ppppppppppppppppppppppppppppppppppppppppppppp]
+case 58 row 9 S:
+  nvim [     xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [    xxxxxxxxxxxxxxx xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 58 row 9 F:
+  nvim [.....ppppppppppppppppppppppppppppppppppppppppppppp]
+  core [....ppppppppppppppp.pppppppppppppppppppppppppppppp]
+case 58 row 10 S:
+  nvim [    xxxxxxxxxxxxxxx xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx xxxxxxxxxxxxxxx]
+case 58 row 10 F:
+  nvim [....ppppppppppppppp.pppppppppppppppppppppppppppppp]
+  core [....pppppppppppppppppppppppppppppp.ppppppppppppppp]
+case 58 row 11 S:
+  nvim [    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx xxxxxxxxxxxxxxx]
+  core [    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ]
+case 58 row 11 F:
+  nvim [....pppppppppppppppppppppppppppppp.ppppppppppppppp]
+  core [....ppppppppppppppppppppppppppppppppppppppppppppp.]
+case 58 row 12 S:
+  nvim [    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ]
+  core [    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 58 row 12 F:
+  nvim [....ppppppppppppppppppppppppppppppppppppppppppppp.]
+  core [....pppppppppppppppppppppppppppppppppppppppppppppp]
+case 58 row 13 S:
+  nvim [    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [    xxxxxxxxxxxxxx                                ]
+case 58 row 13 F:
+  nvim [....pppppppppppppppppppppppppppppppppppppppppppppp]
+  core [....pppppppppppppp................................]
+case 58 row 14 S:
+  nvim [    xxxxxxxxxxxxxx                                ]
+  core [  1  󰲣 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 58 row 14 B:
+  nvim [..................................................]
+  core [....PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP]
+case 58 row 14 F:
+  nvim [....pppppppppppppp................................]
+  core [.....p.ppppppppppppppppppppppppppppppppppppppppppp]
+case 58 row 15 S:
+  nvim [  1  󰲣 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [    xxxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 58 row 15 F:
+  nvim [.....p.ppppppppppppppppppppppppppppppppppppppppppp]
+  core [....ppppppppppppppppp.pppppppppppppppppppppppppppp]
+case 58 row 16 S:
+  nvim [    xxxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx xxxxxxxxxxxxx]
+case 58 row 16 F:
+  nvim [....ppppppppppppppppp.pppppppppppppppppppppppppppp]
+  core [....pppppppppppppppppppppppppppppppp.ppppppppppppp]
+case 58 row 17 S:
+  nvim [    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx xxxxxxxxxx@@@]
+  core [    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx@@@]
+case 58 row 17 F:
+  nvim [....pppppppppppppppppppppppppppppppp.pppppppppp...]
+  core [....ppppppppppppppppppppppppppppppppppppppppppp...]
+case 58 row 18 S:
+  nvim [f.md                            6,1            40%]
+  core [f.md                            6,1            45%]
+case 101 row 14 S:
+  nvim [  4    󰲡                                          ]
+  core [  4 󰲡                                             ]
+case 101 row 14 F:
+  nvim [.......r..........................................]
+  core [....r.............................................]
+case 115 row 18 S:
+  nvim [f.md                            4,51-56        All]
+  core [f.md                            4,51           All]
+case 214 row 18 S:
+  nvim [f.md  1,0-1          All g.md   7,12           All]
+  core [f.md  1,1            All g.md   7,12           All]
+case 233 row 18 S:
+  nvim [g.md                            3,1-8          All]
+  core [g.md                            3,1            All]
+case 247 row 8 S:
+  nvim [f.md                            1,1-8          Top]
+  core [f.md                            1,1            Top]
+case 259 cursor: nvim 4,4 core 3,4
+case 259 row 0 S:
+  nvim [  4    󰲡 `code` [link](u) é                       ]
+  core [  3  󰲣  <b> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 259 row 0 B:
+  nvim [.......RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR]
+  core [....PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP]
+case 259 row 0 F:
+  nvim [.......r.gggggg.lllllll.l.r.......................]
+  core [.....p..ppp.pppppppppppppppppppppppppppppppppppppp]
+case 259 row 1 S:
+  nvim [  3  󰲣  <b> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [  2 1. ##é                                        ]
+case 259 row 1 B:
+  nvim [....PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP]
+  core [..................................................]
+case 259 row 1 F:
+  nvim [.....p..ppp.pppppppppppppppppppppppppppppppppppppp]
+  core [..................................................]
+case 259 row 2 S:
+  nvim [  2 1. ##é                                        ]
+  core [  1  󰲣 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 259 row 2 B:
+  nvim [..................................................]
+  core [....PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP]
+case 259 row 2 F:
+  nvim [..................................................]
+  core [.....p.ppppppppppppppppppppppppppppppppppppppppppp]
+case 259 row 3 S:
+  nvim [  1  󰲣 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [6                                                 ]
+case 259 row 3 B:
+  nvim [....PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP]
+  core [..................................................]
+case 259 row 3 F:
+  nvim [.....p.ppppppppppppppppppppppppppppppppppppppppppp]
+  core [..................................................]
+case 259 row 4 S:
+  nvim [6                                                 ]
+  core [  1 ~~~                                           ]
+case 259 row 4 F:
+  nvim [..................................................]
+  core [....ggg...........................................]
+case 259 row 5 S:
+  nvim [  1 ~~~                                           ]
+  core [  2 ####[link](u) <b> xxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 259 row 5 F:
+  nvim [....ggg...........................................]
+  core [....ggggggggggggg.ggg.gggggggggggggggggggggggggggg]
+case 259 row 6 S:
+  nvim [  2 ####[link](u) <b> xxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [  3                                               ]
+case 259 row 6 F:
+  nvim [....ggggggggggggg.ggg.gggggggggggggggggggggggggggg]
+  core [..................................................]
+case 259 row 7 S:
+  nvim [  3                                               ]
+  core [  4 ## <b> é <b> ##                               ]
+case 259 row 7 F:
+  nvim [..................................................]
+  core [....gg.ggg.g.ggg.gg...............................]
+case 259 row 8 S:
+  nvim [f.md                            6,0-1          33%]
+  core [f.md                            6,0-1          66%]
+case 455 cursor: nvim 4,4 core 3,4
+case 455 row 0 S:
+  nvim [  4 > > ###### é     漢字                         ]
+  core [  3 > > ####`code` *em* bar é #                   ]
+case 455 row 0 F:
+  nvim [........llllll.l.....llll.........................]
+  core [............gggggg.rrrr...........................]
+case 455 row 1 S:
+  nvim [  3 > > ####`code` *em* bar é #                   ]
+  core [  2    #######x#                                  ]
+case 455 row 1 F:
+  nvim [............gggggg.rrrr...........................]
+  core [..................................................]
+case 455 row 2 S:
+  nvim [  2    #######x#                                  ]
+  core [  1   #              bar                          ]
+case 455 row 2 F:
+  nvim [..................................................]
+  core [......r..............rrr..........................]
+case 455 row 3 S:
+  nvim [  1   #              bar                          ]
+  core [6   <b> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 455 row 3 F:
+  nvim [......r..............rrr..........................]
+  core [..................................................]
+case 455 row 4 S:
+  nvim [6   <b> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [  1          # 漢字 é 漢字                        ]
+case 455 row 5 S:
+  nvim [  1          # 漢字 é 漢字                        ]
+  core [  2 é                                             ]
+case 455 row 6 S:
+  nvim [  2 é                                             ]
+  core [  3                                               ]
+case 455 row 7 S:
+  nvim [  3                                               ]
+  core [  4   7. #  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 455 row 7 F:
+  nvim [..................................................]
+  core [.........r..rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr]
+case 455 row 8 S:
+  nvim [f.md                            6,1            33%]
+  core [f.md                            6,1            66%]
+case 482 cursor: nvim 4,4 core 3,4
+case 482 row 0 S:
+  nvim [  4 ```                                           ]
+  core [  3 ##  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 482 row 0 F:
+  nvim [....ggg...........................................]
+  core [....gg..gggggggggggggggggggggggggggggggggggggggggg]
+case 482 row 1 S:
+  nvim [  3 ##  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [  2 ######   é [link](u)#                         ]
+case 482 row 1 F:
+  nvim [....gg..gggggggggggggggggggggggggggggggggggggggggg]
+  core [....gggggg...g.gggggggggg.........................]
+case 482 row 2 S:
+  nvim [  2 ######   é [link](u)#                         ]
+  core [  1 ####### [link](u) #                           ]
+case 482 row 2 F:
+  nvim [....gggggg...g.gggggggggg.........................]
+  core [....ggggggg.ggggggggg.g...........................]
+case 482 row 3 S:
+  nvim [  1 ####### [link](u) #                           ]
+  core [8   `c` # #                                       ]
+case 482 row 3 F:
+  nvim [....ggggggg.ggggggggg.g...........................]
+  core [....ggg.g.g.......................................]
+case 482 row 4 S:
+  nvim [8   `c` # #                                       ]
+  core [  1 ---                                           ]
+case 482 row 4 F:
+  nvim [....ggg.g.g.......................................]
+  core [....ggg...........................................]
+case 482 row 5 S:
+  nvim [  1 ---                                           ]
+  core [  2 ## xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 482 row 5 F:
+  nvim [....ggg...........................................]
+  core [....gg.ggggggggggggggggggggggggggggggggggggggggggg]
+case 482 row 6 S:
+  nvim [  2 ## xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [  3                                               ]
+case 482 row 6 F:
+  nvim [....gg.ggggggggggggggggggggggggggggggggggggggggggg]
+  core [..................................................]
+case 482 row 7 S:
+  nvim [  3                                               ]
+  core [  4 # *em* ## ## # \#                             ]
+case 482 row 7 F:
+  nvim [..................................................]
+  core [....g.gggg.gg.gg.g.gg.............................]
+case 482 row 8 S:
+  nvim [f.md                            8,1            42%]
+  core [f.md                            8,1            57%]
+case 488 cursor: nvim 2,4 core 0,4
+case 488 row 0 S:
+  nvim [  1 1. ####x**strong** xxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [7   é                                             ]
+case 488 row 0 F:
+  nvim [............rrrrrrrrrr............................]
+  core [..................................................]
+case 488 row 1 S:
+  nvim [    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ###         ]
+  core [  1  󰲣 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 488 row 1 B:
+  nvim [..................................................]
+  core [....PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP]
+case 488 row 1 F:
+  nvim [..................................................]
+  core [.....p.ppppppppppppppppppppppppppppppppppppppppppp]
+case 488 row 2 S:
+  nvim [7   é                                             ]
+  core [    xxxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 488 row 2 B:
+  nvim [..................................................]
+  core [....PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP]
+case 488 row 2 F:
+  nvim [..................................................]
+  core [....ppppppppppppppppp.pppppppppppppppppppppppppppp]
+case 488 row 3 S:
+  nvim [  1  󰲣 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx xxxxxxxxxxxxx]
+case 488 row 3 F:
+  nvim [.....p.ppppppppppppppppppppppppppppppppppppppppppp]
+  core [....pppppppppppppppppppppppppppppppp.ppppppppppppp]
+case 488 row 4 S:
+  nvim [    xxxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 488 row 4 F:
+  nvim [....ppppppppppppppppp.pppppppppppppppppppppppppppp]
+  core [....pppppppppppppppppppppppppppppppppppppppppppppp]
+case 488 row 5 S:
+  nvim [    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx xxxxxxxxxxxxx]
+  core [    x xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 488 row 5 F:
+  nvim [....pppppppppppppppppppppppppppppppp.ppppppppppppp]
+  core [....p.pppppppppppppppppppppppppppppppppppppppppppp]
+case 488 row 6 S:
+  nvim [    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [    xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 488 row 6 F:
+  nvim [....pppppppppppppppppppppppppppppppppppppppppppppp]
+  core [....pppppppppppppppp.ppppppppppppppppppppppppppppp]
+case 488 row 7 S:
+  nvim [    x xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx@@@]
+  core [    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx xxxxxxxxxxx@@@]
+case 488 row 7 F:
+  nvim [....p.ppppppppppppppppppppppppppppppppppppppppp...]
+  core [....ppppppppppppppppppppppppppppppp.ppppppppppp...]
+case 488 row 8 S:
+  nvim [f.md                            7,1            50%]
+  core [f.md                            7,1            54%]
+case 489 row 16 S:
+  nvim [  2   󰲥 \# xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [  2 ### \# xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 489 row 16 B:
+  nvim [....YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY]
+  core [..................................................]
+case 489 row 16 F:
+  nvim [......y....yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy]
+  core [....yyy....yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy]
+case 489 row 17 B:
+  nvim [....YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY...]
+  core [..................................................]
+case 517 row 18 S:
+  nvim [f.md  1,0-1          Top g.md   3,63           All]
+  core [f.md  1,1            Top g.md   3,63           All]
+case 534 cursor: nvim 4,4 core 3,4
+case 534 row 0 S:
+  nvim [  4 漢字 <b> 漢字 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [  3 *em* # ##                                     ]
+case 534 row 0 F:
+  nvim [....pppp.ppp.pppp.pppppppppppppppppppppppppppppppp]
+  core [....rrrr.p.pp.....................................]
+case 534 row 1 S:
+  nvim [  3 *em* # ##                                     ]
+  core [  2 ---                                           ]
+case 534 row 1 F:
+  nvim [....rrrr.p.pp.....................................]
+  core [....ppp...........................................]
+case 534 row 2 S:
+  nvim [  2 ---                                           ]
+  core [  1 1. #  ###                                     ]
+case 534 row 2 F:
+  nvim [....ppp...........................................]
+  core [.......r..rrr.....................................]
+case 534 row 3 S:
+  nvim [  1 1. #  ###                                     ]
+  core [7   #       *em*                                  ]
+case 534 row 3 F:
+  nvim [.......r..rrr.....................................]
+  core [....r.......rrrr..................................]
+case 534 row 4 S:
+  nvim [7   #       *em*                                  ]
+  core [  1 \# # <b>                                      ]
+case 534 row 4 F:
+  nvim [....r.......rrrr..................................]
+  core [.......p.ppp......................................]
+case 534 row 5 S:
+  nvim [  1 \# # <b>                                      ]
+  core [  2 ---                                           ]
+case 534 row 5 F:
+  nvim [.......p.ppp......................................]
+  core [....ppp...........................................]
+case 534 row 6 S:
+  nvim [  2 ---                                           ]
+  core [  3 > > #####<b> é   `code`                       ]
+case 534 row 6 F:
+  nvim [....ppp...........................................]
+  core [.....................gggggg.......................]
+case 534 row 7 S:
+  nvim [  3 > > #####<b> é   `code`                       ]
+  core [  4 漢字 foo 漢字 **strong**                      ]
+case 534 row 7 F:
+  nvim [.....................gggggg.......................]
+  core [..................rrrrrrrrrr......................]
+case 534 row 8 S:
+  nvim [f.md                            7,1            28%]
+  core [f.md                            7,1            42%]
+case 547 row 9 S:
+  nvim [  3 `c` # `code`                                  ]
+  core [  2 ---                                           ]
+case 547 row 9 F:
+  nvim [....ggg.p.gggggg..................................]
+  core [....ppp...........................................]
+case 547 row 10 S:
+  nvim [  2 ---                                           ]
+  core [  1 [link](u) bar *em* é                          ]
+case 547 row 10 F:
+  nvim [....ppp...........................................]
+  core [....lllllll.l.....rrrr............................]
+case 547 row 11 S:
+  nvim [  1 [link](u) bar *em* é                          ]
+  core [5   [link](u) bar                                 ]
+case 547 row 11 F:
+  nvim [....lllllll.l.....rrrr............................]
+  core [....lllllll.l.....................................]
+case 547 row 12 S:
+  nvim [5   [link](u) bar                                 ]
+  core [  1 [link](u) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 547 row 13 S:
+  nvim [  1 [link](u) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [    xxxxxxxxxxxxxxxxxxxxxxxx [link](u) xxxxxxxxxxx]
+case 547 row 13 F:
+  nvim [....lllllll.l.....................................]
+  core [.............................lllllll.l............]
+case 547 row 14 S:
+  nvim [    xxxxxxxxxxxxxxxxxxxxxxxx [link](u) xxxxxxxxxxx]
+  core [    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 547 row 14 F:
+  nvim [.............................lllllll.l............]
+  core [..................................................]
+case 547 row 15 S:
+  nvim [    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [    xxx                                           ]
+case 547 row 16 S:
+  nvim [    xxx                                           ]
+  core [  2 <b> [link](u) foo **strong**                  ]
+case 547 row 16 F:
+  nvim [..................................................]
+  core [........lllllll.l.....rrrrrrrrrr..................]
+case 547 row 17 S:
+  nvim [  2 <b> [link](u) foo **strong**                  ]
+  core [  3 1.     󰲩 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx@@@]
+case 547 row 17 B:
+  nvim [..................................................]
+  core [.......SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS...]
+case 547 row 17 F:
+  nvim [........lllllll.l.....rrrrrrrrrr..................]
+  core [...........s.ssssssssssssssssssssssssssssssssss...]
+case 547 row 18 S:
+  nvim [g.md                            5,13           33%]
+  core [g.md                            5,13           50%]
+case 582 row 18 S:
+  nvim [f.md  1,1            All f.md   2,0-1          All]
+  core [f.md  1,1            All f.md   2,1            All]
+case 650 row 8 S:
+  nvim [f.md                            1,0-1          Top]
+  core [f.md                            1,1            Top]
+case 660 row 18 S:
+  nvim [f.md  3,1            All g.md   1,0-1          All]
+  core [f.md  3,1            All g.md   1,1            All]
+case 674 row 18 S:
+  nvim [f.md                            2,1-8          All]
+  core [f.md                            2,1            All]
+case 738 row 9 S:
+  nvim [  3 > >     󰲩       [link](u) ###                 ]
+  core [  2 -   󰲥 漢字#                                   ]
+case 738 row 9 B:
+  nvim [........SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS]
+  core [......YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY]
+case 738 row 9 F:
+  nvim [............s.......lllllll.l.sss.................]
+  core [........y.yyyyy...................................]
+case 738 row 10 S:
+  nvim [  2 -   󰲥 漢字#                                   ]
+  core [  1 ~~~                                           ]
+case 738 row 10 B:
+  nvim [......YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY]
+  core [..................................................]
+case 738 row 10 F:
+  nvim [........y.yyyyy...................................]
+  core [....ggg...........................................]
+case 738 row 11 S:
+  nvim [  1 ~~~                                           ]
+  core [6       # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 738 row 11 F:
+  nvim [....ggg...........................................]
+  core [........g.gggggggggggggggggggggggggggggggggggggggg]
+case 738 row 12 S:
+  nvim [6       # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [    xxxxxxxxxxxxxxxxxxxx                          ]
+case 738 row 12 F:
+  nvim [........g.gggggggggggggggggggggggggggggggggggggggg]
+  core [....gggggggggggggggggggg..........................]
+case 738 row 13 S:
+  nvim [    xxxxxxxxxxxxxxxxxxxx                          ]
+  core [  1 - ##### xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 738 row 13 F:
+  nvim [....gggggggggggggggggggg..........................]
+  core [....g.ggggg.gggggggggggggggggggggggggggggggggggggg]
+case 738 row 14 S:
+  nvim [  1 - ##### xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [    xxxxxxxxxxxxxxxxxxxxxx ## # ###               ]
+case 738 row 14 F:
+  nvim [....g.ggggg.gggggggggggggggggggggggggggggggggggggg]
+  core [....gggggggggggggggggggggg.gg.g.ggg...............]
+case 738 row 15 S:
+  nvim [    xxxxxxxxxxxxxxxxxxxxxx ## # ###               ]
+  core [  2 ##                                            ]
+case 738 row 15 F:
+  nvim [....gggggggggggggggggggggg.gg.g.ggg...............]
+  core [....gg............................................]
+case 738 row 16 S:
+  nvim [  2 ##                                            ]
+  core [  3 > > ####x漢字 foo xxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 738 row 16 F:
+  nvim [....gg............................................]
+  core [....g.g.ggggggggg.ggg.gggggggggggggggggggggggggggg]
+case 738 row 17 S:
+  nvim [  3 > > ####x漢字 foo xxxxxxxxxxxxxxxxxxxxxxxxx@@@]
+  core [    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx #            ]
+case 738 row 17 F:
+  nvim [....g.g.ggggggggg.ggg.ggggggggggggggggggggggggg...]
+  core [....gggggggggggggggggggggggggggggggg.g............]
+case 738 row 18 S:
+  nvim [f.md                            6,66           28%]
+  core [f.md                            6,66           42%]
+case 761 row 0 S:
+  nvim [  2 xxxxxxxxxxxxxxxxxxxx│  1 12) ##### 漢字 é ##  ]
+  core [  2 xxxxxxxxxxxxxxxxxxxx│11  bar [link](u)        ]
+case 761 row 0 F:
+  nvim [....gggggggggggggggggggg.....ggg.ggggg.gggg.g.gg..]
+  core [....gggggggggggggggggggg.....ggg.ggggggggg........]
+case 761 row 1 S:
+  nvim [    xxxxxxxxxxxxxxxxxxxx│        ###              ]
+  core [    xxxxxxxxxxxxxxxxxxxx│  1 ## xxxxxxxxxxxxxxxxxx]
+case 761 row 1 F:
+  nvim [....gggggggggggggggggggg.........ggg..............]
+  core [....gggggggggggggggggggg.....gg.gggggggggggggggggg]
+case 761 row 2 S:
+  nvim [    xxxxxxxxxxxxxxxxxxxx│11  bar [link](u)        ]
+  core [    xxxxxxxxxxxxxxxxxxxx│    xxxxxxxxxxxxxxxxxxxxx]
+case 761 row 2 F:
+  nvim [....gggggggggggggggggggg.....ggg.ggggggggg........]
+  core [....gggggggggggggggggggg.....ggggggggggggggggggggg]
+case 761 row 3 S:
+  nvim [     漢字 **strong** *em│  1 ## xxxxxxxxxxxxxxxxxx]
+  core [     漢字 **strong** *em│    xxxxxxxxxxxxxxxxxxxxx]
+case 761 row 3 F:
+  nvim [.....gggg.gggggggggg.ggg.....gg.gggggggggggggggggg]
+  core [.....gggg.gggggggggg.ggg.....ggggggggggggggggggggg]
+case 761 row 4 S:
+  nvim [    *                   │    xxxxxxxxxxxxxxxxxxxxx]
+  core [    *                   │     xxxxxxxxxxxxxxxxxxxx]
+case 761 row 4 F:
+  nvim [....g........................ggggggggggggggggggggg]
+  core [....g.........................gggggggggggggggggggg]
+case 761 row 6 S:
+  nvim [10  12) ##### 漢字 é ## │     xxxxxxxxxxxxxxxxxxxx]
+  core [10  12) ##### 漢字 é ## │    xxxxxxxxxxxxxxxxxxx x]
+case 761 row 6 F:
+  nvim [....ggg.ggggg.gggg.g.gg.......gggggggggggggggggggg]
+  core [....ggg.ggggg.gggg.g.gg......ggggggggggggggggggg.g]
+case 761 row 8 S:
+  nvim [  1 bar [link](u)       │    xxxxxxxxxxxxxxxxxxx x]
+  core [  1 bar [link](u)       │    xxxxxxxxxxxxxxxxxxxxx]
+case 761 row 8 F:
+  nvim [....ggg.ggggggggg............ggggggggggggggggggg.g]
+  core [....ggg.ggggggggg............ggggggggggggggggggggg]
+case 761 row 9 S:
+  nvim [  2 ## xxxxxxxxxxxxxxxxx│    xxxxxxxxxxxxxxxxxxxxx]
+  core [  2 ## xxxxxxxxxxxxxxxxx│    xxxxxxxxxxxxxxxxx xxx]
+case 761 row 9 F:
+  nvim [....gg.ggggggggggggggggg.....ggggggggggggggggggggg]
+  core [....gg.ggggggggggggggggg.....ggggggggggggggggg.ggg]
+case 761 row 11 S:
+  nvim [    xxxxxxxxxxxxxxxxxxxx│    xxxxxxxxxxxxxxxxx xxx]
+  core [    xxxxxxxxxxxxxxxxxxxx│    xxxxxxxxxxxxxxxxxxxxx]
+case 761 row 11 F:
+  nvim [....gggggggggggggggggggg.....ggggggggggggggggg.ggg]
+  core [....gggggggggggggggggggg.....ggggggggggggggggggggg]
+case 761 row 12 S:
+  nvim [    xxx xxxxxxxxxxxxxxxx│    xxxxxxxxxxxxxxxxxxxxx]
+  core [    xxx xxxxxxxxxxxxxxxx│    xxxxxxxxxxxxxxx xxxxx]
+case 761 row 12 F:
+  nvim [....ggg.gggggggggggggggg.....ggggggggggggggggggggg]
+  core [....ggg.gggggggggggggggg.....ggggggggggggggg.ggggg]
+case 761 row 14 S:
+  nvim [    xxxxxxxxxxxxxxxxxxxx│    xxxxxxxxxxxxxxx xxxxx]
+  core [    xxxxxxxxxxxxxxxxxxxx│    xxxxxxxxxxxxxxxxxxxxx]
+case 761 row 14 F:
+  nvim [....gggggggggggggggggggg.....ggggggggggggggg.ggggg]
+  core [....gggggggggggggggggggg.....ggggggggggggggggggggg]
+case 761 row 15 S:
+  nvim [    xxxx xxxxxxxxxxxxxxx│    xxxxxxxxxxxxxxxxxxxxx]
+  core [    xxxx xxxxxxxxxxxxxxx│    xxxxxxxxxxxxx xxxxxxx]
+case 761 row 15 F:
+  nvim [....gggg.ggggggggggggggg.....ggggggggggggggggggggg]
+  core [....gggg.ggggggggggggggg.....ggggggggggggg.ggggggg]
+case 761 row 17 S:
+  nvim [    xxxxxxxxxxxxxxxxx@@@│    xxxxxxxxxxxxx xxxx@@@]
+  core [    xxxxxxxxxxxxxxxxx@@@│    xxxxxxxxxxxxxxxxxx@@@]
+case 761 row 17 F:
+  nvim [....ggggggggggggggggg........ggggggggggggg.gggg...]
+  core [....ggggggggggggggggg........gggggggggggggggggg...]
+case 761 row 18 S:
+  nvim [f.md  10,1           77% f.md   11,1           81%]
+  core [f.md  10,1           77% f.md   11,1           83%]
+case 804 row 3 F:
+  nvim [..................................................]
+  core [................rrrrrrrrrr........................]
+case 804 row 4 F:
+  nvim [..................................................]
+  core [..........................................lllllll.]
+case 804 row 5 F:
+  nvim [..................................................]
+  core [....l.............................................]
+case 815 cursor: nvim 4,4 core 2,4
+case 815 row 0 S:
+  nvim [  3 > > ##  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [  2 ```                                           ]
+case 815 row 0 F:
+  nvim [........pp..pppppppppppppppppppppppppppppppppppppp]
+  core [....ggg...........................................]
+case 815 row 1 S:
+  nvim [    xxxxxxxxxxxxxxxxxxxxxx                        ]
+  core [  1 <b> # 漢字 [link](u) `code`                   ]
+case 815 row 1 F:
+  nvim [....pppppppppppppppppppppp........................]
+  core [....ggg.g.gggg.ggggggggg.gggggg...................]
+case 815 row 2 S:
+  nvim [  2 ```                                           ]
+  core [7                                                 ]
+case 815 row 2 F:
+  nvim [....ggg...........................................]
+  core [..................................................]
+case 815 row 3 S:
+  nvim [  1 <b> # 漢字 [link](u) `code`                   ]
+  core [  1 1. #######      **strong** *em*          **str]
+case 815 row 3 F:
+  nvim [....ggg.g.gggg.ggggggggg.gggggg...................]
+  core [....gg.ggggggg......gggggggggg.gggg..........ggggg]
+case 815 row 4 S:
+  nvim [7                                                 ]
+  core [    ong**#                                        ]
+case 815 row 4 F:
+  nvim [..................................................]
+  core [....gggggg........................................]
+case 815 row 5 S:
+  nvim [  1 1. #######      **strong** *em*          **str]
+  core [  2    #[link](u)#                                ]
+case 815 row 5 F:
+  nvim [....gg.ggggggg......gggggggggg.gggg..........ggggg]
+  core [.......ggggggggggg................................]
+case 815 row 6 S:
+  nvim [    ong**#                                        ]
+  core [  3 # bar *em*#                                   ]
+case 815 row 6 F:
+  nvim [....gggggg........................................]
+  core [....g.ggg.ggggg...................................]
+case 815 row 7 S:
+  nvim [  2    #[link](u)#                                ]
+  core [  4                                               ]
+case 815 row 7 F:
+  nvim [.......ggggggggggg................................]
+  core [..................................................]
+case 815 row 8 S:
+  nvim [f.md                            7,1            42%]
+  core [f.md                            7,1            66%]
+case 914 row 0 S:
+  nvim [  4                                               ]
+  core [  3 [link](u) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+case 914 row 0 F:
+  nvim [..................................................]
+  core [....lllllll.l.....................................]
+case 914 row 1 S:
+  nvim [  3 [link](u) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [  2 ##bar `code` ###                              ]
+case 914 row 1 F:
+  nvim [....lllllll.l.....................................]
+  core [..........gggggg..................................]
+case 914 row 2 S:
+  nvim [  2 ##bar `code` ###                              ]
+  core [  1 ```c                                          ]
+case 914 row 2 F:
+  nvim [..........gggggg..................................]
+  core [....gggs..........................................]
+case 914 row 3 S:
+  nvim [  1 ```c                                          ]
+  core [7   - ### [link](u)                               ]
+case 914 row 3 F:
+  nvim [....gggs..........................................]
+  core [......ggg.........................................]
+case 914 row 4 S:
+  nvim [7   - ### [link](u)                               ]
+  core [  1 é `code` [link](u) **strong** #               ]
+case 914 row 4 F:
+  nvim [......ggg.........................................]
+  core [......g....g......................g...............]
+case 914 row 5 S:
+  nvim [  1 é `code` [link](u) **strong** #               ]
+  core [  2 `code` foo [link](u) xxxxxxxxxxxxxxxxxxxxxxxxx]
+case 914 row 5 F:
+  nvim [......g....g......................g...............]
+  core [....g....g........................................]
+case 914 row 6 S:
+  nvim [  2 `code` foo [link](u) xxxxxxxxxxxxxxxxxxxxxxxxx]
+  core [  3   9. ###### \#   ## foo                       ]
+case 914 row 6 F:
+  nvim [....g....g........................................]
+  core [......pp.gggggg.gg...g............................]
+case 914 row 7 S:
+  nvim [  3   9. ###### \#   ## foo                       ]
+  core [  4                                               ]
+case 914 row 7 F:
+  nvim [......pp.gggggg.gg...g............................]
+  core [..................................................]
+case 914 row 8 S:
+  nvim [f.md                            7,1            50%]
+  core [f.md                            7,1            75%]
+test_core_markdown: 1000 render-markdown screens: 25 differ (0 known, not compared)
