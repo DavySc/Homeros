@@ -18,3 +18,10 @@ before the next starts; no duplicated code.
 | `subjects/` | Small programs with known behaviour that the debugger is tested on |
 | `oracle/` | Scripts that record what the real RAD Debugger (pinned commit) does on the subjects |
 | `traces/` | Those recordings, committed by the runner; the engine's stepping is compared with them |
+| `rdi/` | RAD's conversion of each subject's debug info and its text dump, committed by the runner |
+| `dbg/` | The debugger: `rdi` (debug info reader), `queue` (the two queues between editor and engine thread) |
+| `specs/` | TLA+ models, each with broken variants that must fail (`specs/check.sh`) |
+| `tests/` | Known-answer tests, the stress test, fuzzers, the comparison with RAD's dump, `plants.txt` |
+
+`./check.sh` runs everything (set `TLA_JAR` to `tla2tools.jar`); `./check.sh plants` shows every check
+fails on its planted bugs.
