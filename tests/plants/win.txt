@@ -4,7 +4,10 @@
 # on WM_DISPLAYCHANGE (Wine's period never changes); and greyscale rather than
 # ClearType smoothing (Wine 11.0 draws CLEARTYPE_QUALITY greyscale too, even
 # with ClearType set in the registry: 0 fringed pixels either way, measured, 1
-# run); all three are pending for Windows.
+# run); and the Nerd Font picked first (no Nerd Font in CI's fonts: by hand
+# under Wine with JetBrainsMonoNerdFontMono-Regular.ttf added, the face is
+# "JetBrainsMono NFM" and U+E0B0 draws its glyph, measured, 1 run); all four
+# are pending for Windows.
 win: every cell drawn every frame~win WIN=win~~src/win/backend.c~			if (grid_cell_eq(x, y) && cur == was) continue;~			if (cur && was && 0) continue;
 win: the cell the cursor left is not restored~win WIN=win~~src/win/backend.c~int pr = all ? -1 : shown->crow, pc = shown->ccol;~int pr = all ? -1 : g->crow, pc = g->ccol;
 win: no cursor at (0, 0) after a whole redraw~win WIN=win~~src/win/backend.c~int pr = all ? -1 : shown->crow,~int pr = shown->crow,
