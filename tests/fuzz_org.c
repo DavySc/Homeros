@@ -76,6 +76,20 @@ static void check_org(const char *s, size_t n)
 		}
 		free(f);
 	}
+	/* the timestamp readers stay inside the text and their node */
+	for (size_t j = 0; j < k; j++) {
+		OrgTs t[3];
+		size_t d[2];
+		int got = e[j].type == ORG_PLANNING ? org_planning(s, n, &e[j], t) :
+		          e[j].type == ORG_CLOCK ? org_clock(s, n, &e[j], t, d) : 0;
+		if (e[j].type == ORG_CLOCK && (d[0] > d[1] || d[1] > e[j].end)) abort();
+		for (int i = 0; i < 3; i++)
+			if (got >> i & 1 && (t[i].begin < e[j].begin || t[i].begin >= t[i].end || t[i].end > n || !strchr("aAiId", t[i].type))) abort();
+	}
+	for (size_t p = 0; p < n; p++) {
+		OrgTs t;
+		if (org_ts(s, n, p, &t) && (t.begin != p || t.end <= p || t.end > n || (t.type != 'd' && (t.m < 0 || t.d < 0)))) abort();
+	}
 	free(last);
 	free(e);
 }
@@ -104,7 +118,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 		"1. ", "2) ", " * ", "[ ] ", "[X] ", "[@3] ", " :: ", "#+begin_src", "#+end_src", "#+BEGIN_QUOTE",
 		"#+END_QUOTE", "#+begin_foo", "#+end_foo", "#+BEGIN: x", "#+END:", "#+END", ":PROPERTIES:", ":END:",
 		":LOGBOOK:", ":ID: x", "SCHEDULED: <2026-11-22 Sun .+1d>", "CLOCK: [2026-11-01 Sun 09:00]--[2026-11-01 Sun 10:30] =>  1:30",
-		"# ", "#+NAME: x", "#+CAPTION[a]: b", "#+RESULTS:", "#+TBLFM: $1=2", "#+CALL: f[", "]", "(", ")", "| a |",
+		"# ", "#+NAME: x", "#+CAPTION[a]: b", "#+RESULTS:", "#+TBLFM: $1=2", "#+CALL: f[", "]", "(", ")", "<2026-11-22 Sun 9:00-10:30 .+1d/3d -2d>", "--", "<%%(x) 9:00>", "CLOSED: ", "DEADLINE: ", " => 1:30", "[2026-01-02]", "| a |",
 		"|-", "+--+", ": x", "-----", "%%(x)", "[fn:1] ", "\\begin{x}", "\\end{x}", "TODO ", "DONE ", "[#A] ",
 		"COMMENT ", ":a:b:", "x", "y", "é", "#", ":", "|", "[", "\r" };
 	static char s[1 << 14];

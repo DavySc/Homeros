@@ -6,3 +6,5 @@ org: tags take [[:word:]] for [[:alnum:]] above ASCII~test TESTS=org~~src/org/or
 org: drawer and footnote names take any non-ASCII byte (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	return c == '-' || c == '_' || IN(WORD, c) ? uni_len(S, N, p) : 0;~	return c == '-' || c == '_' || c >= 0x80 || IN(WORD, c) ? uni_len(S, N, p) : 0;
 org: org_edit stops its span before a new shallower headline's subtree ends (fuzz)~fuzz FUZZERS=org FUZZ_SECONDS=30~~src/org/org.c~	if (t && f[t - 1].end > R - del + ins) R = f[t - 1].end + del - ins;~	;
 org: org_edit starts its span at a headline whose line the edit touches (fuzz)~fuzz FUZZERS=org FUZZ_SECONDS=30~~src/org/org.c~		c = top(e, c - 1);   /* the edit touches its headline line */~		;
+org: planning reads a repeater's unit case-folded (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~if (ts(p, 0, &t[j])) got~if (ts(p, 1, &t[j])) got
+org: a timestamp's repeater is looked for only before its range (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	z = e2 != ORG_NONE ? e2 + 1 : c + 1;   /* the raw value ends here */~	z = c + 1;
