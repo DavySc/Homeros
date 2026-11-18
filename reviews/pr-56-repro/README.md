@@ -41,3 +41,8 @@ The PR's lua changed (`transparent_background = false`), so the heading backgrou
 - `known_all.c`: the PR's test with the known list empty and every differing row printed.
 - `muts.txt`: the 21 mutations for this head (`muts-pass1.txt`: the first pass's 16). `mut.sh` now reads the test's "screens: N differ" line.
 - `pass2/`: `cases*.txt` (Neovim's screens), `mdcmp-ad620a8.out`, `cmprec-ad620a8.out`, `mut-ad620a8.log`, `planted-ad620a8.log` (four shards, one broken plant), `check-ad620a8.log` (`make check`, compiler lines removed), `bench-ad620a8-vs-7049bd4.log`, `known-all-rows-ad620a8.out`, `fresh-seed21/22-first-differences.out`.
+
+## Third pass (head cea1ae6 merged with main)
+
+- `muts.txt`: 25 mutations for cea1ae6's `draw_heading` (`muts-pass2.txt`: the second pass's 21).
+- `pass3/`: `check-5753f34.log` and `planted-5753f34.log` (the merge gate: cea1ae6 merged with main d4646c4, tree 8bd4ed39de81), `mdcmp-5753f34.out` (rounds 1 to 9 against `pass2/cases*.txt`), `mut-9b25135.log` (on the merge with a4d8bd1; `draw.c` is the same in both).
