@@ -23,7 +23,7 @@ function Place($s) {
   $m = [IO.Path]::GetFileName((Field $s 'ip_module')); $sym = Field $s 'ip_voff_symbol'; $line = Field $s 'line_num'
   if ($s -notmatch '(?s)threads:\s*\{\s*\{') { return 'ended' }
   if ($m -ne "$name.exe") { return "outside $m!$sym" }
-  return "$sym $(Field $s 'file_name'):$line +$(Field $s 'ip_voff')"
+  return "$sym $(Field $s 'file_name'):$line +$(Field $s 'ip_voff') [$(Field $s 'explanation')]"
 }
 function Trace($script, $cap) {
   $p = Start-Process $rad -ArgumentList "--user:$tmp/u.raddbg_user", "--project:$tmp/p.raddbg_project", "--logs:$tmp", '--auto_step', "`"$exe`"" -PassThru
@@ -52,5 +52,8 @@ foreach ($script in 'into', 'over', 'mix') {
   $same = (($a -join "`n") -eq ($b -join "`n"))
   $a | Set-Content "$out/$name.$script.txt"
   if (-not $same) { $b | Set-Content "$out/$name.$script.second-run.txt" }
+  # a line with no place in it means the recorder is broken, not the debugger
+  if ($a | Where-Object { $_ -match '-> $' }) { "TRACE $name.$script has empty lines"; $script:broken = $true }
   "TRACE $name.$script steps=$($a.Count - 1) repeatable=$same last=[$($a[-1])]"
 }
+if ($script:broken) { exit 1 }
