@@ -334,6 +334,10 @@ static int requests(Conn *k)
 		for (char *l = h; l && l < e; l = strstr(l, "\r\n"), l = l ? l + 2 : l)
 			if (!strncasecmp(l, "Content-Length:", 15)) len = strtoul(l + 15, NULL, 10);
 		if (len > BODY_MAX) return -1;
+		/* a body is waited for (and held) only under the token */
+		size_t t = strlen(token);
+		char *sp = memchr(h, ' ', hn);
+		if (len && !(sp && sp[1] == '/' && !strncmp(sp + 2, token, t) && sp[t + 2] == '/')) return -1;
 		if (k->in.n - at < hn + 4 + len) break;
 		char *eol = strstr(h, "\r\n");
 		*eol = 0;                     /* the request line */
@@ -372,7 +376,13 @@ static void open_browser(void)
 	memcpy(argv, opener, (size_t)n * sizeof *argv);
 	snprintf(url, sizeof url, "file://%s", redirect);
 	argv[n] = url;
-	posix_spawnp(&pid, argv[0], NULL, NULL, argv, environ);   /* reaped: SIGCHLD ignored */
+	/* not the editor's pipe: what a browser prints would be read as lines */
+	posix_spawn_file_actions_t fa;
+	posix_spawn_file_actions_init(&fa);
+	posix_spawn_file_actions_addopen(&fa, 0, "/dev/null", O_RDONLY, 0);
+	posix_spawn_file_actions_addopen(&fa, 1, "/dev/null", O_WRONLY, 0);
+	posix_spawnp(&pid, argv[0], &fa, NULL, argv, environ);   /* reaped: SIGCHLD ignored */
+	posix_spawn_file_actions_destroy(&fa);
 	free(argv);
 }
 
@@ -412,7 +422,7 @@ static int listener(int *port)
 static int write_redirect(int port)
 {
 	const char *dir = getenv("XDG_RUNTIME_DIR");
-	if (!dir || strlen(dir) > 40) dir = "/tmp";
+	if (!dir || strlen(dir) > 39) dir = "/tmp";
 	snprintf(redirect, sizeof redirect, "%s/homeros-infoview-XXXXXX", dir);
 	int fd = mkstemp(redirect);
 	if (fd < 0) return -1;

@@ -93,6 +93,18 @@ static int fake(const char *log)
 				      "\"end\":{\"line\":1,\"character\":9}},\"severity\":3,\"message\":\"two\",\"isSilent\":false}]}}", ul, m + u);
 				reply("{\"jsonrpc\":\"2.0\",\"method\":\"$/lean/fileProgress\",\"params\":{\"textDocument\":{\"uri\":%.*s,"
 				      "\"version\":0},\"processing\":[]}}", ul, m + u);
+			} else if (!strcmp(name, "textDocument/didChange")) {
+				size_t u = j_member(m, len, j_member(m, len, p, "textDocument"), "uri");
+				int ul = (int)j_len(m, len, u);
+				/* a fresh list, one more, the progress: after the bridge listens */
+				reply("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{\"uri\":%.*s,"
+				      "\"version\":1,\"diagnostics\":[{\"range\":{\"start\":{\"line\":0,\"character\":0},\"end\":{\"line\":0,\"character\":1}},"
+				      "\"severity\":1,\"message\":\"three\"}]}}", ul, m + u);
+				reply("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{\"uri\":%.*s,"
+				      "\"version\":1,\"isIncremental\":true,\"diagnostics\":[{\"range\":{\"start\":{\"line\":0,\"character\":1},"
+				      "\"end\":{\"line\":0,\"character\":2}},\"severity\":2,\"message\":\"four\"}]}}", ul, m + u);
+				reply("{\"jsonrpc\":\"2.0\",\"method\":\"$/lean/fileProgress\",\"params\":{\"textDocument\":{\"uri\":%.*s,"
+				      "\"version\":1},\"processing\":[]}}", ul, m + u);
 			} else if (!strcmp(name, "$/lean/rpc/connect") && ++connects == 2)
 				snprintf(held, sizeof held, "%s", idv);   /* late: its page is forgotten first */
 			else if (!strcmp(name, "$/lean/rpc/connect"))
@@ -297,10 +309,16 @@ int main(int argc, char **argv)
 	CHECK(bridge_open(&e) == -1 && strstr(e.msg, "install.sh"));
 	setenv("HOMEROS_INFOVIEW", root, 1);
 
-	CHECK(!bridge_open(&e));
-	snprintf(opened, sizeof opened, "%s/opened", dir);
+	/* \w comes after the file is open: Lean has answered initialize before
+	   the bridge listens (the page must still get its hello) */
 	long long end = ms() + 5000;
 	char *o;
+	while ((o = slurp(logpath)), !strstr(o, "\ninitialized ") && ms() < end) { free(o); loop_once(10); }
+	CHECK(strstr(o, "\ninitialized "));
+	free(o);
+	CHECK(!bridge_open(&e));
+	snprintf(opened, sizeof opened, "%s/opened", dir);
+	end = ms() + 5000;
 	while ((o = slurp(opened)), count(o, "\n") < 1 && ms() < end) { free(o); loop_once(10); }
 	free(o);
 	CHECK(!bridge_open(&e));                 /* \w again: the same page, opened again */
@@ -316,8 +334,15 @@ int main(int argc, char **argv)
 	port = atoi(u + 21);
 	char *slash = strchr(u + 21, '/');
 	snprintf(url, sizeof url, "%.*s", (int)(strchr(slash, '"') - slash - 1), slash + 1);   /* TOKEN/ */
-	char redirect[256];
+	char redirect[256], token1[sizeof url];
 	snprintf(redirect, sizeof redirect, "%s", o + 7);
+	snprintf(token1, sizeof token1, "%s", url);
+	/* only this machine can connect: the listener is on 127.0.0.1 */
+	char *tcp = slurp("/proc/net/tcp"), lo[32], any[32];
+	snprintf(lo, sizeof lo, "0100007F:%04X 00000000:0000 0A", port);
+	snprintf(any, sizeof any, "00000000:%04X 00000000:0000 0A", port);
+	CHECK(strstr(tcp, lo) && !strstr(tcp, any));
+	free(tcp);
 	free(html); free(o);
 
 	/* only the page's own files, only under the token */
@@ -343,6 +368,24 @@ int main(int argc, char **argv)
 	CHECK(http("GET", p, NULL, &b) == 404);
 	snprintf(p, sizeof p, "/%sindex.html", url);
 	CHECK(http("DELETE", p, NULL, &b) == 405);
+	/* a body is not waited for (nor held) without the token */
+	{
+		int fd = conn();
+		const char big[] = "POST /nothing HTTP/1.1\r\nContent-Length: 60000000\r\n\r\nxx";
+		CHECK(write(fd, big, sizeof big - 1) == (ssize_t)sizeof big - 1);
+		char c;
+		ssize_t k = -1;
+		end = ms() + 2000;
+		fcntl(fd, F_SETFL, O_NONBLOCK);
+		while (ms() < end && (k = read(fd, &c, 1)) < 0) loop_once(10);
+		CHECK(k == 0);
+		close(fd);
+	}
+	/* a page id longer than 64 is no page */
+	char id65[66];
+	memset(id65, 'a', 65);
+	id65[65] = 0;
+	CHECK(call(id65, "{\"id\":0,\"m\":\"saveConfig\",\"a\":[null]}") == 400);
 
 	/* the hello: once a Lean file is known and Lean has answered initialize,
 	   the cursor first, then what VS Code's initInfoView sends */
@@ -356,11 +399,10 @@ int main(int argc, char **argv)
 	CHECK(!strncmp(A.ev.b, "{\"m\":\"changedCursorLocation\",", 29));
 	CHECK(has(&A, "\"m\":\"initialize\"") && has(&A, "\"m\":\"changedInfoviewConfig\"") && has(&A, "\"Lean 4 Server\""));
 	CHECK(has(&B, "\"m\":\"initialize\""));
-	/* the diagnostics as one list (the infoview keeps one per file), the
-	   file progress as Lean sent it */
+	/* the diagnostics as one list (the infoview keeps one per file) */
 	CHECK(wait_for(both, 2, &A, "\"message\":\"two\""));
 	char *d = strstr(A.ev.b, "\"message\":\"one\"");
-	CHECK(d && strstr(d, "\"message\":\"two\"") && has(&A, "$/lean/fileProgress"));
+	CHECK(d && strstr(d, "\"message\":\"two\""));
 
 	/* calls: a session, then a request answered with Lean's own JSON, to
 	   the page that asked only */
@@ -389,6 +431,13 @@ int main(int argc, char **argv)
 	/* no server for the file: an error, not a hang */
 	CHECK(call("pageA", "{\"id\":3,\"m\":\"sendClientRequest\",\"a\":[\"file:///nowhere.lean\",\"x\",{}]}") == 204);
 	CHECK(wait_for(both, 2, &A, "{\"id\":3,\"k\":\"err\""));
+	/* calls short of their arguments (the review's fuzzer found these) */
+	CHECK(call("pageA", "{\"id\":13,\"m\":\"createRpcSession\"}") == 204);
+	CHECK(wait_for(both, 2, &A, "{\"id\":13,"));
+	snprintf(s, sizeof s, "{\"id\":14,\"m\":\"applyEdit\",\"a\":[{\"documentChanges\":[{\"textDocument\":{\"uri\":\"%s\"},"
+	         "\"edits\":[]}]}]}", uri);
+	CHECK(call("pageA", s) == 204);
+	CHECK(wait_for(both, 2, &A, "{\"id\":14,"));
 
 	/* subscriptions: Lean's notifications and our edits to the pages that
 	   asked for them */
@@ -475,6 +524,11 @@ int main(int argc, char **argv)
 	stream_open(&P, "pageP");
 	CHECK(wait_for(withp, 3, &P, "{\"id\":7,\"k\":\"val\",\"v\":null}"));
 	CHECK(has(&P, "\"m\":\"initialize\""));
+	CHECK(has(&P, "$/lean/fileProgress"));      /* the last one Lean sent */
+	/* Lean's incremental diagnostics, joined as vscode-lean4 does: the
+	   fresh list and the one after it, and nothing from before */
+	char *d3 = strstr(P.ev.b, "\"message\":\"three\"");
+	CHECK(d3 && strstr(d3, "\"message\":\"four\"") && !has(&P, "\"message\":\"one\""));
 	CHECK(strstr(P.ev.b, "\"m\":") == strstr(P.ev.b, "\"m\":\"changedCursorLocation\""));
 
 	/* sessions are kept alive (every 10 s) while their page is */
@@ -519,6 +573,16 @@ int main(int argc, char **argv)
 	end = ms() + 3000;
 	while (!access(redirect, F_OK) && ms() < end) loop_once(10);
 	CHECK(access(redirect, F_OK));
+	/* \w again: a new child, a new token */
+	CHECK(!bridge_open(&e));
+	end = ms() + 5000;
+	while ((o = slurp(opened)), count(o, "\n") < 3 && ms() < end) { free(o); loop_once(10); }
+	CHECK(count(o, "\n") == 3);
+	*strrchr(o, '\n') = 0;
+	html = slurp(strrchr(o, '\n') + 8);
+	CHECK(strstr(html, "url=http://127.0.0.1:") && !strstr(html, token1));
+	free(html); free(o);
+	bridge_free();
 	core_free(&e);
 	free(uri); free(b.b);
 	free(A.raw.b); free(A.ev.b); free(B.raw.b); free(B.ev.b); free(P.raw.b); free(P.ev.b);

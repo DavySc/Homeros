@@ -13,4 +13,5 @@ extern void (*lsp_tap)(int out, const char *msg, size_t n);
 typedef void (*LspRawFn)(void *ctx, const char *msg, size_t n);
 int  lsp_send(const char *uri, const char *method, const char *params, size_t n, LspRawFn fn, void *ctx);
 const char *lsp_uri(const LspDoc *d);
+const char *lsp_init(const LspDoc *d, size_t *n);
 #endif

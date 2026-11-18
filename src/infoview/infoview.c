@@ -14,6 +14,7 @@
    stream, outbox and timeout are the child's; it says "- P" when it forgets
    a page, and as its lines come in order, no call of a forgotten page ever
    follows (design/specs/Infoview.tla). */
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -47,6 +48,7 @@ typedef struct { char page[65]; char *id; int connect; char *uri; } Req;
 
 static Editor *ed;
 static int proc = -1, open_wanted, ticking;
+static intptr_t children;                 /* children started: the current one's number */
 static char *redirect;                  /* the child's first line: the file the browser opens */
 static Str in, o;                       /* the child's output not yet a line; the line being sent */
 static Page *pages;
@@ -243,8 +245,11 @@ static void tap(int out, const char *m, size_t n)
 static void seed(void)
 {
 	for (Buf *b = ed->bufs; b; b = b->next) {
-		const char *u = b->lsp ? lsp_uri(b->lsp) : NULL;
+		const char *u = b->lsp ? lsp_uri(b->lsp) : NULL, *m;
+		size_t mn;
 		int nd;
+		/* a server that answered initialize before the bridge listened */
+		if (u && !init && (m = lsp_init(b->lsp, &mn))) tap(0, m, mn);
 		const LspDiag *d = u ? lsp_diags(b->lsp, &nd) : NULL;
 		Kept *k = d ? kept_for(u, strlen(u)) : NULL;
 		if (!k || k->ver) continue;
@@ -398,7 +403,7 @@ static int edits(const char *s, size_t n, const char *uri, size_t arr)
 		v[ne].t = j_str(s, n, j_member(s, n, e, "newText"), &v[ne].n);
 		if (!v[ne].t) v[ne].t = j_copy("", 0), v[ne].n = 0;
 	}
-	qsort(v, (size_t)ne, sizeof *v, later);
+	if (ne) qsort(v, (size_t)ne, sizeof *v, later);
 	for (int i = 0; i < ne; i++) {
 		if (!r && v[i].t) r = core_edit(ed, v[i].a, v[i].z - v[i].a, v[i].t, v[i].n);
 		free(v[i].t);
@@ -446,7 +451,7 @@ static void call(const char *pid, char *s, size_t n)
 		Req *r = calloc(1, sizeof *r);
 		char *meth = c ? j_copy("$/lean/rpc/connect", 18) : j_str(s, n, a1, NULL);
 		Str prm = { 0 };
-		if (c) { j_puts(&prm, "{\"uri\":"); j_put(&prm, s + a0, j_len(s, n, a0)); j_puts(&prm, "}"); }
+		if (c) { j_puts(&prm, "{\"uri\":"); if (a0 != NONE) j_put(&prm, s + a0, j_len(s, n, a0)); j_puts(&prm, "}"); }
 		else if (a2 != NONE) j_put(&prm, s + a2, j_len(s, n, a2));
 		if (r && meth && uri && prm.b) {
 			snprintf(r->page, sizeof r->page, "%s", pid);
@@ -554,7 +559,9 @@ static void from_child(char *l, size_t n)
 
 static void out(void *ctx, int stream, const char *b, size_t n)
 {
-	(void)ctx;
+	/* a child let go by bridge_free may still end after its successor
+	   started: what it says is no longer ours */
+	if ((intptr_t)ctx != children) return;
 	if (stream == 0) {     /* the child is gone: so are its pages */
 		proc = -1;
 		while (pages) drop(pages);
@@ -598,7 +605,7 @@ int bridge_open(Editor *e)
 		if (!slash || access(exe, X_OK)) strcpy(exe, "homeros-infoview");
 		const char *opener = getenv("HOMEROS_OPEN");
 		char *argv[] = { exe, r, (char *)(opener && *opener ? opener : "xdg-open"), NULL };
-		if ((proc = proc_spawn(argv, NULL, out, NULL)) < 0) { core_msg(e, "Infoview: %s does not start", exe); return -1; }
+		if ((proc = proc_spawn(argv, NULL, out, (void *)++children)) < 0) { core_msg(e, "Infoview: %s does not start", exe); return -1; }
 		lsp_tap = tap;
 		seed();
 	}
