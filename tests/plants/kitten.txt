@@ -11,7 +11,7 @@ kitten: no "@@@" when cut~test TESTS=kitten~~src/kitten/kitten.c~		if (c + w > g
 kitten: a second save restarts it~test TESTS=kitten~~src/kitten/kitten.c~if (!off && b == e->buf && !(frame >= 0 && for_buf == b)) kitten_paw(e);~if (!off && b == e->buf) kitten_paw(e);
 kitten: plays for another buffer's save~test TESTS=kitten~~src/kitten/kitten.c~if (!off && b == e->buf && !(frame >= 0 && for_buf == b)) kitten_paw(e);~if (!off && !(frame >= 0 && for_buf == b)) kitten_paw(e);
 kitten: a key leaves its timer running~test TESTS=kitten~~src/kitten/kitten.c~	if (armed >= 0) loop_timer(step, ed, -1);~
-kitten: the heart in the cat's colour~test TESTS=kitten~~src/kitten/kitten.c~f->heart, strlen(f->heart), FACE_KITTEN_HEART~f->heart, strlen(f->heart), FACE_KITTEN_CAT
+kitten: the heart in the cat's colour~test TESTS=kitten~~src/kitten/kitten.c~f->heart, strlen(f->heart), ATTR_NONE, FACE_KITTEN_HEART~f->heart, strlen(f->heart), ATTR_NONE, FACE_KITTEN_CAT
 kitten: the message loses its colours~test TESTS=kitten~~src/kitten/kitten.c~		c = grid_puts(g, cr, c, end, " saved ", 7, ATTR_NONE, FACE_KITTEN_DIM);~		c = grid_puts(g, cr, c, end, " saved ", 7, ATTR_NONE, FACE_KITTEN_TEXT);
 kitten: the toggle does nothing~test TESTS=kitten~~src/kitten/kitten.c~	off = !off;~
 kitten: a Windows path keeps its directory (Windows)~win WIN=kitten~~src/kitten/kitten.c~	                         || *p == '\\'~
