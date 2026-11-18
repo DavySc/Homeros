@@ -1,0 +1,3 @@
+CREATE OR ALTER VIEW v AS
+-- c
+SELECT a FROM t JOIN u ON t.i=u.i ORDER BY a
