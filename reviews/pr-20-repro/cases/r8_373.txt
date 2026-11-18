@@ -1,0 +1,47 @@
+C 6 20
+F 096261725f3120292e2009202820e18390202c20666f6f202d2d20292e206261725f31202820280a6161616161616161616161616161616161616161616161616161616161610a2c0a090a0a092820666f6f20780a6261725f3120292e
+T wrap
+T k:oa<CR>b<CR>c<Esc>
+T 3C-f
+T k:Ayyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy<Esc>
+P
+S 1           bar_1 ).
+S   1 aaaaaaaaaaaaaaaa
+S   2 ,
+S   3
+S < 1,1-8          Top
+S 
+M - - -
+P
+R
+S              ( ა , f
+S     oo -- ). bar_1 (
+S      (
+R
+S :set wrap
+M - - -
+P
+S   1         b
+S 4           c
+S   1 aaaaaaaaaaaaaaaa
+S     aaaaaaaaaaaaaa
+S < 4,9            28%
+S 
+M - - -
+P
+S 10  bar_1 ).
+S ~
+S ~
+S ~
+S < 10,8           Bot
+R
+M - - -
+P
+S 10<<<yyyyyyyyyyyyyyy
+S     yyyyyyyyyyyyyyyy
+S     yyyyyyyyyyyyyyyy
+S     y
+S < 10,65          Bot
+R
+M - - -
+E

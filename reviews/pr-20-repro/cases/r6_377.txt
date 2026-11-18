@@ -1,0 +1,110 @@
+C 15 60
+F 09292e2061616161616161616161616161616161616161616161616161616161616120280a20202020292e206c6f6e676572776f726420cebb7820cebb78202820206261725f31202c202d2d0a092c206c6f6e676572776f72640a202020202d2d20280a0a096261725f31202d2d202820292e202d2d2009202820200a20202020cebb78
+F 
+F 
+T L
+T k:oa<CR>b<CR>c<Esc>
+T wrap
+T w:s
+T size:5:83
+T k:Ayyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy<Esc>
+P
+S 1           ). aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (
+S   1     ). longerword λx λx (  bar_1 , --
+S   2         , longerword
+S   3     -- (
+S   4
+S   5         bar_1 -- ( ). --         (
+S   6     λx
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S f0                                        1,1-8          All
+S 
+M - - -
+P
+S   6         ). aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (
+S   5     ). longerword λx λx (  bar_1 , --
+S   4         , longerword
+R
+S   2
+S   1         bar_1 -- ( ). --         (
+S 7       λx
+R
+R
+R
+R
+R
+R
+S f0                                        7,7-6          All
+R
+M - - -
+P
+S   9         ). aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (
+S   8     ). longerword λx λx (  bar_1 , --
+S   7         , longerword
+S   6     -- (
+S   5
+S   4         bar_1 -- ( ). --         (
+S   3     λx
+S   2     a
+S   1     b
+S 10      c
+R
+R
+R
+S f0 [+]                                    10,5           All
+R
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S :set wrap
+M - - -
+P
+S   5
+S   4         bar_1 -- ( ). --         (
+S   3     λx
+S   2     a
+S   1     b
+S 10      c
+S f0 [+]                                    10,5           Bot
+S   5
+S   4         bar_1 -- ( ). --         (
+S   3     λx
+S   2     a
+S   1     b
+S 10      c
+S f0 [+]                                    10,5           Bot
+R
+M - - -
+P
+S 10      c
+S f0 [+]                                                           10,5           Bot
+S 10      c
+S f0 [+]                                                           10,5           Bot
+S 
+M - - -
+P
+S 10      cyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+R
+S 10<<<yy
+S f0 [+]                                                           10,82          Bot
+R
+M - - -
+E

@@ -1,0 +1,19 @@
+--- a/src/core/win.c
++++ b/src/core/win.c
+@@ -365,6 +365,7 @@
+ 	e->win = w;
+ 	e->buf = w->buf;
+ 	win_check_cursor(w);
++	w->frame->s.topvalid = 0;   /* review experiment: win_enter_ext()'s changed_line_abv_curs() */
+ 	if (w->h < p_wh) win_setheight(e, w, p_wh);
+ 	else if (w->h == 0) win_setheight(e, w, 1);
+ 	if (w->w < p_wiw) win_setwidth(e, w, p_wiw);
+@@ -903,6 +904,8 @@
+ 			for (Frame *p = f->parent; p; p = p->parent) p->height += old - nch;
+ 		}
+ 		ch = nch < old ? nch : old;   /* E36 keeps what could be taken */
++		/* review experiment: 'cmdheight' changed, an option with redraw all_windows, which sets w_set_curswant */
++		if (e->win->want != WANT_EOL) core_set_want(e);
+ 	}
+ 	if (height > e->rows - ch) height = e->rows - ch;   /* ROWS_AVAIL */
+ 	new_height(e, t, height, 0);

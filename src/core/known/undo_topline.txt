@@ -1,0 +1,49 @@
+C 6 80
+F 09e1839020e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a7922061616161616161616161616161616161616161616161616161616161616120e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792207820e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792200920e18390207f2061616161616161616161616161616161616161616161616161616161616120206261725f310a01
+F 
+F 
+T k:30G
+T k:Ayyyyyyyyyyyyyy<Esc>
+T C-e
+T k:u
+P
+S 1           ა 全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全
+S   1 ^A
+S ~
+S ~
+S f0                                                            1,1-8          All
+S 
+M - - -
+P
+S   1         ა 全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全
+S 2   ^A
+R
+R
+S f0                                                            2,1            All
+R
+M - - -
+P
+R
+S 2   ^Ayyyyyyyyyyyyyy
+R
+R
+S f0 [+]                                                        2,15-16        All
+R
+M - - -
+P
+S 2   ^Ayyyyyyyyyyyyyy
+S ~
+R
+R
+S f0 [+]                                                        2,15-16        Bot
+R
+M - - -
+P
+S 2   ^A
+R
+R
+R
+S f0                                                            2,1            Bot
+S 1 change; before #1  0 seconds ago
+M - - -
+E

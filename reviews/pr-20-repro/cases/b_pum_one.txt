@@ -1,0 +1,73 @@
+C 10 20
+F 0909202028206c6f6e676572776f7264
+F 
+F 
+T size:25:29
+T pum:23:1:4
+P
+S 1
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S < 1,1-8          All
+S 
+M - - -
+P
+S 1                     ( longe
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S f0         1,1-8          All
+S 
+M - - -
+P
+S 1   longerword_completion3
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S f0 [+]     1,39-53        All
+R
+M - - -
+E
