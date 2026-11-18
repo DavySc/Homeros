@@ -132,6 +132,23 @@ static void render(const Text *t, const unsigned char *f, char *out)
 	out[n] = 0;
 }
 
+/* a failing case's text and edits, so a failure on CI can be replayed
+   (nvim --headless --clean -l tests/test_syntax.lua OUT DIR CASE: .ops
+   lines are e POS DEL HEX, f for a frame, p for a parse) */
+static void show(const char *dir, int c)
+{
+	char path[2048];
+	size_t n;
+	snprintf(path, sizeof path, "%s/%d.%s", dir, c, ext[c % NL]);
+	char *b = slurp(path, &n);
+	fprintf(stderr, "---- %d.%s ----\n%.*s---- %d.%s.ops ----\n", c, ext[c % NL], (int)n, b, c, ext[c % NL]);
+	free(b);
+	snprintf(path + strlen(path), sizeof path - strlen(path), ".ops");
+	b = slurp(path, &n);
+	fprintf(stderr, "%.*s---- end ----\n", (int)n, b);
+	free(b);
+}
+
 static char want[MAXCASES * NL][MAXT + 1];
 static int sliced_same[MAXCASES * NL];
 
@@ -489,6 +506,7 @@ int main(void)
 				if (q[i] != want[c][i]) {
 					fprintf(stderr, "%s/%d.%s line %zu: face %d in Neovim, %d here\n",
 					        dir, c, ext[c % NL], line, (unsigned char)q[i] - '0', (unsigned char)want[c][i] - '0');
+					show(dir, c);
 					break;
 				}
 			}
@@ -505,6 +523,7 @@ int main(void)
 			else {
 				slice_differ++;
 				fprintf(stderr, "%s/%d.%s: sliced parse or windows starting elsewhere differ, no syntax error\n", dir, c, ext[c % NL]);
+				show(dir, c);
 			}
 		}
 		q += wl;
@@ -526,6 +545,7 @@ int main(void)
 			snap_differ++;
 			fprintf(stderr, "%s/%.*s: a frame before the parse differs from Neovim's\n", dir,
 			        (int)strcspn(w + 1, "\n"), w + 1);
+			show(dir, atoi(w + 1));
 		}
 		w = we, v = ve;
 	}

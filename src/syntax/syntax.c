@@ -397,6 +397,9 @@ void syntax_edit(Syntax *s, const Text *t, size_t pos, size_t ndel, const char *
 		memset(s->cache + (p - s->ca), 0, i);
 		s->cz = s->cz - d + i;
 	}
+	/* the window served moves with the text, so the next fill still spans
+	   it (else its last line gets a query of its own) */
+	s->ra = moved(s->ra, p, d, i), s->rz = moved(s->rz, p, d, i);
 	if (s->sa < s->sz) {
 		s->sa = moved(s->sa, p, d, i), s->sz = moved(s->sz, p, d, i);
 		if ((p ? p - 1 : 0) < s->sa) s->sa = p ? p - 1 : 0;
@@ -919,7 +922,7 @@ void syntax_faces(Syntax *s, size_t a, size_t z, unsigned char *face)
 	/* a window as large as the last one shown, from here: the core asks
 	   from the window's first line */
 	size_t w = s->rz - s->ra, n = text_len(s->t);
-	if (w > s->cap) w = CHUNK;
+	if (w > s->cap) w = w > WINDOW ? CHUNK : s->cap;
 	s->ca = (uint32_t)a;
 	s->cz = (uint32_t)(a + w > n ? n : a + w);
 	if (s->cz < z) s->cz = (uint32_t)z;
