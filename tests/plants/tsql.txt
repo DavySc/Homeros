@@ -27,7 +27,7 @@ tsql: 0x takes letters past f (test_tsql, tokens)~test TESTS=tsql~~src/syntax/ts
 tsql: numbers are plain (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~	case TQ_NUMBER: return FACE_NUMBER;¶~
 tsql: sp_ alone is a procedure (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~l[2] == '_' && l[3]~l[2] == '_'
 tsql: words of 20 bytes and more are not looked up (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~	if (n >= 40) return 0;~	if (n >= 20) return 0;
-tsql: a name is read from byte 1 (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~while (b && p - b < 40~while (b > 1 && p - b < 40
+tsql: the schema's name is read from byte 1 (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~while (b && p - b < 40~while (b > 1 && p - b < 40
 tsql: ( is an operator token, not punctuation (test_tsql, tokens)~test TESTS=tsql~~src/syntax/tsql.c~c == '(' || ~
 tsql: << and >> are two operators (test_tsql, tokens)~test TESTS=tsql~~src/syntax/tsql.c~ || ((c == '<' || c == '>') && d == c)~
 tsql: a NUL starts a two-byte operator (test_tsql)~test TESTS=tsql~~src/syntax/tsql.c~d == '=' && c && strchr~d == '=' && strchr
@@ -49,9 +49,5 @@ tsql: an unclosed comment is not flagged open (test_tsql, open)~test TESTS=tsql~
 tsql: an unclosed string is not flagged open (test_tsql, open)~test TESTS=tsql~~src/syntax/tsql.c~		r->open = c < 0;¶~
 tsql: the open flag keeps the last token's (test_tsql, open)~test TESTS=tsql~~src/syntax/tsql.c~	r->open = 0;¶	if (c < 0)~	if (c < 0)
 tsql: a word it lacks still gets an id (test_tsql)~test TESTS=tsql~~src/syntax/tsql.c~	if (id) *id = k;~	if (id) *id = 1;
-tsql: a type that is also a function is a function after a variable (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~ && after_name(r, p)) return FACE_KEYWORD;~ && after_name(r, p) > 1) return FACE_KEYWORD;
-tsql: a type is a keyword after @@x too (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~l[0] == '@' ? l[1] != '@' :~l[0] == '@' ? 1 :
-tsql: a type is a function after [name] (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~if (c == ']' || c == '"') return 1;~if (c == ']' && c == '"') return 1;
-tsql: a type is a function after a plain name (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~: !id || !classes[id - 1];~: !id && id;
 # Not planted: reusing the last token's end and face (tsql_faces).  Without it every call lexes that token again: the colours are the same, only slower (reviews/pr-58-repro/bench.c, mode open).
 # Not planted, because without them the colours are the same, only slower, and no check times them: a read that lands on a moved start making all known again; syntax_update starting from the token the last faces ended in.  bench5.c in the PR's description times them.

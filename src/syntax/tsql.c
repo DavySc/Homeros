@@ -168,41 +168,18 @@ static int copy(TsqlRd *r, size_t p, size_t n, char l[40])
 
 static int is_schema(const char *l) { return !strcmp(l, "sys") || !strcmp(l, "information_schema"); }
 
-/* the name that ends at p into l, lower case; 0 when there is none or it
-   does not fit */
-static int name_before(TsqlRd *r, size_t p, char l[40])
-{
-	size_t b = p;
-	while (b && p - b < 40 && is_id(tsql_byte(r, b - 1))) b--;
-	return b < p && copy(r, b, p - b, l);
-}
-
 /* the name before the dot at p is a system schema */
 static int after_schema(TsqlRd *r, size_t p)
 {
 	char l[40];
-	return name_before(r, p, l) && is_schema(l);
+	size_t b = p;
+	while (b && p - b < 40 && is_id(tsql_byte(r, b - 1))) b--;
+	return copy(r, b, p - b, l) && is_schema(l);
 }
 
-/* a variable or a plain name ends just before p, past spaces: a type is
-   what follows (DECLARE @c char(10), id nchar(5)) */
-static int after_name(TsqlRd *r, size_t p)
-{
-	char l[40];
-	while (p && is_space(tsql_byte(r, p - 1))) p--;
-	int c = p ? tsql_byte(r, p - 1) : -1;
-	if (c == ']' || c == '"') return 1;
-	if (!name_before(r, p, l) || is_digit(l[0])) return 0;
-	size_t id = lookup(l);
-	return l[0] == '@' ? l[1] != '@' : !id || !classes[id - 1];
-}
-
-/* SSMS colours mostly by word lists, so a word in two lists mostly takes
-   one colour wherever it is: LEFT JOIN and LEFT( are operators, and the day
-   of DATEADD(day, ..) is a function, as DAY( is.  Its parser shows in one
-   place: a type that is also a function (CHAR, NCHAR) is a keyword after a
-   variable, a function elsewhere (Davy's screenshots; after a column name
-   is a hypothesis) */
+/* SSMS colours by word lists alone, so a word in two lists takes one
+   colour wherever it is: LEFT JOIN and LEFT( are operators, and the day of
+   DATEADD(day, ..) is a function, as DAY( is (Davy's screenshots) */
 static unsigned char word_face(TsqlRd *r, size_t p, size_t e)
 {
 	char l[40];
@@ -213,7 +190,6 @@ static unsigned char word_face(TsqlRd *r, size_t p, size_t e)
 	if ((l[0] == 's' || l[0] == 'x') && l[1] == 'p' && l[2] == '_' && l[3]) return FACE_FUNCTION;
 	size_t id = lookup(l);
 	int c = id ? classes[id - 1] : 0;
-	if ((c & TQ_FUNCTION) && (c & TQ_KEYWORD) && !(c & TQ_OPERATOR) && after_name(r, p)) return FACE_KEYWORD;
 	return c & TQ_OPERATOR ? FACE_OPERATOR : c & TQ_FUNCTION ? FACE_FUNCTION_BUILTIN : c & TQ_KEYWORD ? FACE_KEYWORD : FACE_NONE;
 }
 
