@@ -1,216 +1,18 @@
-/* T-SQL formatting (src/sqlfmt/).  Directed texts with what SQLDiff's own
-   `sqldiff fmt -d tsql --keyword-case lower` printed for them (recorded
-   2026-11-18 from DavySc/SQLDiff main, but for its CR LF case: Homeros
-   breaks lines with LF, see newline()), one per rule sqlfmt.c ports; a
-   range edits only its tokens' gaps; then random token soup, where the
-   result keeps every token (keywords may change case only) and, when no
-   statement was kept as written, formatting it again changes nothing. */
+/* T-SQL formatting (src/sqlfmt/).  Replays tests/test_sqlfmt.txt: texts
+   with what SQLDiff's own `sqldiff fmt -d tsql --keyword-case lower`
+   printed for them (src/sqlfmt/oracle/record.py; directed cases, one or
+   more per rule sqlfmt.c ports, then generated T-SQL and token soup).  A
+   statement of more than 65,536 tokens keeps its clause breaks.  A range
+   edits only its tokens' gaps, and the edit is trimmed to bytes that
+   differ.  Then random token soup, where the result keeps every token
+   (keywords may change case only) and, when no statement was kept as
+   written, formatting it again changes nothing. */
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "check.h"
 #include "text.h"
 #include "sqlfmt.h"
-
-static const char *const cases[][2] = {
-	{ "SELECT a,b FROM t WHERE a=1 AND b<>2 ORDER BY a",
-	  "select a, b\n"
-	  "from t\n"
-	  "where a = 1 and b <> 2\n"
-	  "order by a\n"
-	  "" },
-	{ "select o.Id, COUNT(*) from dbo.Orders o inner join Lines l on l.OrderId=o.Id left outer join X x on 1=1 cross apply f(o.Id) group by o.Id having COUNT(*)>1",
-	  "select o.Id, COUNT(*)\n"
-	  "from dbo.Orders o\n"
-	  "inner join Lines l on l.OrderId = o.Id\n"
-	  "left outer join X x on 1 = 1\n"
-	  "cross apply f(o.Id)\n"
-	  "group by o.Id\n"
-	  "having COUNT(*) > 1\n"
-	  "" },
-	{ "SET NOCOUNT ON\n"
-	  "DECLARE @x int = 5\n"
-	  "UPDATE t SET a = @x WHERE b = 1\n"
-	  "DELETE FROM t WHERE a = 2\n"
-	  "INSERT INTO t (a, b) SELECT a, b FROM s\n"
-	  "EXEC dbo.P @a = 1",
-	  "set NOCOUNT on\n"
-	  "declare @x int = 5\n"
-	  "update t\n"
-	  "set a = @x\n"
-	  "where b = 1\n"
-	  "delete from t\n"
-	  "where a = 2\n"
-	  "insert into t (a, b)\n"
-	  "select a, b\n"
-	  "from s\n"
-	  "exec dbo.P @a = 1\n"
-	  "" },
-	{ "IF @a = 1\n"
-	  "BEGIN\n"
-	  "SELECT 1\n"
-	  "END\n"
-	  "ELSE IF @a = 2\n"
-	  "SELECT 2\n"
-	  "ELSE\n"
-	  "BEGIN\n"
-	  "WHILE @i < 10\n"
-	  "SET @i += 1\n"
-	  "END",
-	  "if @a = 1\n"
-	  "begin\n"
-	  "    select 1\n"
-	  "end\n"
-	  "else if @a = 2\n"
-	  "    select 2\n"
-	  "else\n"
-	  "begin\n"
-	  "    while @i < 10\n"
-	  "        set @i += 1\n"
-	  "end\n"
-	  "" },
-	{ "BEGIN TRY\n"
-	  "BEGIN TRAN\n"
-	  "UPDATE t SET a = 1\n"
-	  "COMMIT\n"
-	  "END TRY\n"
-	  "BEGIN CATCH\n"
-	  "ROLLBACK;\n"
-	  "THROW;\n"
-	  "END CATCH",
-	  "begin TRY\n"
-	  "    begin tran\n"
-	  "    update t\n"
-	  "    set a = 1\n"
-	  "    commit\n"
-	  "end TRY\n"
-	  "begin CATCH\n"
-	  "    rollback;\n"
-	  "    THROW;\n"
-	  "end CATCH\n"
-	  "" },
-	{ "create procedure dbo.P @a int, @b int = 0 as\n"
-	  "begin\n"
-	  "set nocount on;\n"
-	  "select @a\n"
-	  "end\n"
-	  "GO\n"
-	  "CREATE PROC dbo.Q AS\n"
-	  "SELECT 1\n"
-	  "SELECT 2\n"
-	  "GO",
-	  "create procedure dbo.P @a int, @b int = 0 as\n"
-	  "begin\n"
-	  "    set nocount on;\n"
-	  "    select @a\n"
-	  "end\n"
-	  "GO\n"
-	  "create proc dbo.Q as\n"
-	  "    select 1\n"
-	  "    select 2\n"
-	  "GO\n"
-	  "" },
-	{ "BEGIN\n"
-	  "-- first\n"
-	  "SELECT 1 -- after\n"
-	  "/* block */ SELECT 2\n"
-	  "-- before end\n"
-	  "END\n"
-	  "GO 2\n"
-	  "",
-	  "begin\n"
-	  "    -- first\n"
-	  "    select 1 -- after\n"
-	  "    /* block */\n"
-	  "    select 2\n"
-	  "    -- before end\n"
-	  "end\n"
-	  "GO 2\n"
-	  "" },
-	{ "SELECT CASE WHEN a = 1 THEN 'x' ELSE 'y' END AS c,\n"
-	  "(SELECT MAX(b)\n"
-	  "FROM s WHERE s.a = t.a) AS m FROM t",
-	  "select case when a = 1 then 'x' else 'y' end as c,\n"
-	  "    (select MAX(b)\n"
-	  "        from s where s.a = t.a) as m\n"
-	  "from t\n"
-	  "" },
-	{ "UPDATE t SET a*=2, b=-1, c='a'\n"
-	  "'b' WHERE x=y",
-	  "update t\n"
-	  "set a*=2, b = -1, c = 'a'\n"
-	  "'b'\n"
-	  "where x = y\n"
-	  "" },
-	{ ":setvar  DB  Test\n"
-	  "SELECT t.Select, x.FROM FROM t\n"
-	  "lbl: SELECT 1\n"
-	  "GOTO lbl",
-	  ":setvar  DB  Test\n"
-	  "select t.Select, x.FROM\n"
-	  "from t\n"
-	  "    lbl:\n"
-	  "select 1\n"
-	  "goto lbl\n"
-	  "" },
-	{ "SELECT 1\n"
-	  "BEGIN\n"
-	  "SELECT 2\n"
-	  "SELECT 'unclosed",
-	  "select 1\n"
-	  "BEGIN\n"
-	  "SELECT 2\n"
-	  "SELECT 'unclosed" },
-	{ "\r\n"
-	  "\r\n"
-	  "SELECT a FROM t   \r\n"
-	  "\r\n"
-	  "\r\n"
-	  "\r\n"
-	  "SELECT b FROM u\r\n"
-	  "",
-	  "select a\n"
-	  "from t\n"
-	  "\n"
-	  "select b\n"
-	  "from u\n"
-	  "" },
-	{ "WITH c AS (SELECT a FROM t) SELECT * FROM c\n"
-	  "MERGE INTO t USING s ON t.a = s.a WHEN MATCHED THEN UPDATE SET b = 1 WHEN NOT MATCHED THEN INSERT (a) VALUES (s.a) OUTPUT inserted.a;",
-	  "with c as (select a from t)\n"
-	  "select *\n"
-	  "from c\n"
-	  "merge into t\n"
-	  "USING s on t.a = s.a\n"
-	  "when MATCHED then update\n"
-	  "set b = 1\n"
-	  "when not MATCHED then insert (a)\n"
-	  "values (s.a)\n"
-	  "OUTPUT inserted.a;\n"
-	  "" },
-	{ "select 1; go\n"
-	  "select 2",
-	  "select 1; go\n"
-	  "select 2" },
-	{ "SELECT  a,b\n"
-	  "BEGIN go\n"
-	  "END",
-	  "select a, b\n"
-	  "BEGIN go\n"
-	  "END\n"
-	  "" },
-	{ "CREATE VIEW v AS SELECT a FROM t WHERE b = 1\n"
-	  "GO\n"
-	  "CREATE FUNCTION f(@a int) RETURNS int BEGIN RETURN @a END",
-	  "create view v as\n"
-	  "    select a\n"
-	  "    from t\n"
-	  "    where b = 1\n"
-	  "GO\n"
-	  "create function f(@a int) RETURNS int\n"
-	  "begin\n"
-	  "    return @a\n"
-	  "end\n"
-	  "" },
-};
 
 static int kept;
 
@@ -223,14 +25,25 @@ static char *fmt(const char *src, size_t n, size_t a, size_t z, size_t *len)
 	size_t m;
 	CHECK((kept = sqlfmt(t, &a, &z, &r, &m)) >= 0);
 	CHECK(a <= z && z <= n);
-	static char out[1 << 16];
+	static char out[1 << 23];
 	CHECK(n - (z - a) + m < sizeof out);
+	/* the edit is as small as it can be */
+	CHECK(!m || a == z || (r[0] != src[a] && r[m - 1] != src[z - 1]));
 	memcpy(out, src, a);
 	memcpy(out + a, r, m);
 	memcpy(out + a + m, src + z, n - z);
 	*len = n - (z - a) + m;
 	text_free(t);
 	return out;
+}
+
+/* a failing case's text, with control bytes as \xNN (a NUL would make
+   grep in tools/planted.sh read the log as binary) */
+static void show(const char *s, size_t n)
+{
+	for (size_t i = 0; i < n; i++)
+		fprintf(stderr, (unsigned char)s[i] < 32 && s[i] != '\n' ? "\\x%02x" : "%c", (unsigned char)s[i]);
+	fprintf(stderr, "\n---\n");
 }
 
 static int eq(const char *got, size_t n, const char *want) { return n == strlen(want) && !memcmp(got, want, n); }
@@ -254,14 +67,33 @@ static const char *const soup[] = {
 
 int main(void)
 {
-	size_t n;
-	for (size_t i = 0; i < sizeof cases / sizeof *cases; i++) {
-		const char *got = fmt(cases[i][0], strlen(cases[i][0]), 0, strlen(cases[i][0]), &n);
-		if (!eq(got, n, cases[i][1])) {
-			fprintf(stderr, "case %zu:\n%.*s\n--- want:\n%s\n", i, (int)n, got, cases[i][1]);
+	FILE *f = fopen("tests/test_sqlfmt.txt", "rb");
+	CHECK(f);
+	static char rec[1 << 21];
+	size_t rn = fread(rec, 1, sizeof rec, f), n, cases = 0;
+	CHECK(rn < sizeof rec);
+	fclose(f);
+	for (char *p = strchr(rec, '\n') + 1, *e; p < rec + rn; cases++) {
+		size_t in = strtoul(p, &e, 10), want = strtoul(e, &e, 10);
+		const char *src = e + 1, *got = fmt(src, in, 0, in, &n);
+		if (n != want || memcmp(got, src + in, n)) {
+			fprintf(stderr, "case %zu:\n", cases);
+			show(src, in), show(got, n), show(src + in, want);
 			CHECK(0);
 		}
+		p = e + 1 + in + want;
 	}
+	CHECK(cases > 400);
+
+	/* SQLDiff has no token limit: `from` still starts a line (as sqldiff
+	   prints it, measured in reviews/pr-60.md) */
+	static char big[1 << 19];
+	size_t bn = 0, gn;
+	memcpy(big, "SELECT a", 8), bn = 8;
+	for (int k = 0; k < 40000; k++) memcpy(big + bn, ",a", 2), bn += 2;
+	memcpy(big + bn, " FROM t", 7), bn += 7;
+	const char *gb = fmt(big, bn, 0, bn, &gn);
+	CHECK(gn == bn + 40000 + 1 && !memcmp(gb + gn - 8, "\nfrom t\n", 8));
 
 	/* a range: only the second statement's gaps and words change */
 	const char *two = "SELECT a,b FROM t\nSELECT c,d FROM u\n";

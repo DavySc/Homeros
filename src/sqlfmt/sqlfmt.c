@@ -11,14 +11,23 @@
    breaks kept, a final newline) with keyword_case lower, and line endings
    as Homeros keeps them (see newline()).
 
-   The result is checked as SQLDiff checks it, less its equivalence engine
-   (steps 1 to 3 of docs/formatter.md): the output is lexed and parsed
-   again and must give the same tokens (keywords may differ in case), the
-   same tree and the same parse problems.  A top-level statement that fails
-   is kept as written; if a failure cannot be pinned to one, nothing
-   changes.  The engine's step is not needed for meaning: the tokens are
-   the same, and the gaps whose shape matters (after a `--` comment, around
-   GO, sqlcmd lines, between two strings) are kept as written. */
+   The result is checked by step 1 of SQLDiff's check (docs/formatter.md):
+   the output is lexed again and must give the same tokens (keywords may
+   differ in case); verify() says why steps 2 and 3 are not needed.  A
+   top-level statement that fails is kept as written; if a failure cannot
+   be pinned to one, nothing changes.  The equivalence engine (step 4) is
+   not needed for meaning: the tokens are the same, and the gaps whose
+   shape matters (after a `--` comment, around GO, sqlcmd lines, between
+   two strings) are kept as written.
+
+   Known differences from sqldiff (measured, reviews/pr-60.md), each
+   changing less or the same: line breaks are LF (newline()); a word after
+   a label and a block comment is recased where SQLDiff keeps the
+   statement; and on malformed text, as package 12's lexer reads it: a
+   stray `]` keeps its statement, a bare `@` before `=` takes a space, `}<`
+   and `<?` keep their gap, bytes that are not UTF-8 are formatted around
+   (SQLDiff refuses the file), and a lone CR ends a `--` comment, as in SQL
+   Server. */
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -112,7 +121,8 @@ static int lookup(const char *s, size_t n)
 
 /* ---- lexing: package 12's tokens in SQLDiff's kinds ---- */
 
-static int is_space(char c) { return c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '\f' || c == '\v'; }
+/* a gap the layout may rewrite holds only these */
+static int blank(char c) { return c == ' ' || c == '\t' || c == '\r' || c == '\n'; }
 
 /* whether an unclosed string, name or comment runs to the end (SQLDiff
    reports it, so its statement is kept as written) */
@@ -181,7 +191,7 @@ static void lex(Pass *p, const Text *t)
 		case TQ_PUNCT: k = s[0] == ',' ? COMMA : s[0] == '(' ? LP : s[0] == ')' ? RP : s[0] == ';' ? SEMI : DOT; break;
 		case TQ_COMMENT: k = s[0] == '-' ? LCOMMENT : BCOMMENT; break;
 		default:
-			k = s[0] == ':' && n == 1 ? COLON : strchr("+-*/<>=~!@#%^&|`?:{}", s[0]) ? OP : ERR;
+			k = s[0] == ':' && n == 1 ? COLON : s[0] && strchr("+-*/<>=~!@#%^&|`?:{}", s[0]) ? OP : ERR;
 		}
 		if (k == WORD && n == 2 && (s[0] | 32) == 'g' && (s[1] | 32) == 'o') {
 			size_t g = go_end(p->src, p->len, pos, end);
@@ -620,46 +630,52 @@ static int is_join_prefix(int w)
 	    || w == W_LOOP || w == W_HASH || w == W_MERGE || w == W_REMOTE;
 }
 
+/* the next token of events [*j, z) that is no comment, or -1 */
+static int next_sig(size_t *j, size_t z)
+{
+	for (; *j < z; ++*j)
+		if (!P->ev[*j].node && !comment((size_t)P->ev[*j].tok)) return P->ev[(*j)++].tok;
+	return -1;
+}
+
 /* line breaks before the clauses of a query or DML statement */
 static void clauses(size_t a, size_t z)
 {
-	enum { MAXS = 1 << 16 };
-	static int sig_[MAXS];
-	size_t ns = 0;
-	for (size_t j = a; j < z; j++) {
-		if (P->ev[j].node) continue;
-		int i = P->ev[j].tok;
-		if (comment((size_t)i)) continue;
-		if (P->t[i].verb || ns == MAXS) return;
-		sig_[ns++] = i;
+	int f[5], nf = 0, i;
+	for (size_t j = a; (i = next_sig(&j, z)) >= 0; ) {
+		if (P->t[i].verb) return;
+		if (nf < 5) f[nf++] = i;
 	}
-	if (!ns) return;
-	int head = word_of(P, (size_t)sig_[0]);
+	if (!nf) return;
+	int head = word_of(P, (size_t)f[0]);
 	int view = 0;
 	if (head == W_CREATE || head == W_ALTER) {
-		size_t v = 0;
-		for (size_t k = 1; k < ns && k <= 4; k++)
-			if (word_of(P, (size_t)sig_[k]) == W_VIEW) { v = k; break; }
+		int v = 0;
+		for (int k = 1; k < nf; k++)
+			if (word_of(P, (size_t)f[k]) == W_VIEW) { v = k; break; }
 		view = v > 0;
-		for (size_t k = 1; view && k < v; k++) {
-			int w = word_of(P, (size_t)sig_[k]);
+		for (int k = 1; view && k < v; k++) {
+			int w = word_of(P, (size_t)f[k]);
 			view = w == W_OR || w == W_REPLACE || w == W_ALTER || w == W_MATERIALIZED || w == W_RECURSIVE || w == W_TEMP || w == W_TEMPORARY;
 		}
 	}
 	if (!(head == W_SELECT || head == W_INSERT || head == W_UPDATE || head == W_DELETE || head == W_MERGE || head == W_WITH) && !view)
 		return;
 	int case_open = 0;
-	for (size_t k = 1; k < ns; k++) {
-		Tok *t = &P->t[sig_[k]];
-		int w = word_of(P, (size_t)sig_[k]), prev = word_of(P, (size_t)sig_[k - 1]);
-		int next = k + 1 < ns ? word_of(P, (size_t)sig_[k + 1]) : W_NONE;
+	size_t j = a;
+	int pi = next_sig(&j, z), ci = next_sig(&j, z);
+	for (int ni; ci >= 0; pi = ci, ci = ni) {
+		ni = next_sig(&j, z);
+		Tok *t = &P->t[ci];
+		int w = word_of(P, (size_t)ci), prev = word_of(P, (size_t)pi);
+		int next = ni >= 0 ? word_of(P, (size_t)ni) : W_NONE;
 		if (!t->depth) {
 			if (w == W_CASE) case_open++;
 			else if (w == W_END && case_open) case_open--;
 		}
 		if (t->depth || case_open || t->brk != B_NONE) continue;
 		/* `t.select` is a name */
-		if (t->k != WORD || P->t[sig_[k - 1]].k == DOT) continue;
+		if (t->k != WORD || P->t[pi].k == DOT) continue;
 		int c;
 		switch (w) {
 		case W_FROM: c = prev != W_DELETE && prev != W_DISTINCT; break;
@@ -818,14 +834,13 @@ static int comparison_gap(const Pass *p, size_t i)
 
 static int line_indent(const Tok *t) { return t->brk != B_NONE ? t->level : t->level + 1 + t->depth; }
 
-static int indent_of(const Pass *p, size_t i)
+/* token i's indent; c is the first token at or after i that is no comment */
+static int indent_of(const Pass *p, size_t i, size_t c)
 {
 	const Tok *t = &p->t[i];
-	if (t->k != LCOMMENT && t->k != BCOMMENT) return line_indent(t);
+	if (c == i) return line_indent(t);
 	/* a comment on its own line lines up with the code after it */
-	for (size_t j = i + 1; j < p->n; j++)
-		if (p->t[j].k != LCOMMENT && p->t[j].k != BCOMMENT)
-			return p->t[j].brk == B_FOOTER ? p->t[j].level + 1 : line_indent(&p->t[j]);
+	if (c < p->n) return p->t[c].brk == B_FOOTER ? p->t[c].level + 1 : line_indent(&p->t[c]);
 	return t->level;
 }
 
@@ -833,10 +848,10 @@ static int indent_of(const Pass *p, size_t i)
    dos, PR 53), so a CR left in the text is a character, as in Neovim.
    SQLDiff keeps the ending most of its input uses instead, which a string
    holding line breaks can flip between one run and the next. */
-static void newline(const Pass *p, size_t i, size_t n)
+static void newline(const Pass *p, size_t i, size_t c, size_t n)
 {
 	while (n--) put("\n", 1);
-	for (int k = indent_of(p, i) * 4; k-- > 0; ) put(" ", 1);
+	for (int k = indent_of(p, i, c) * 4; k-- > 0; ) put(" ", 1);
 }
 
 /* reverted: one byte per top-level statement, kept as written if set */
@@ -844,14 +859,16 @@ static void render(const Pass *p, const unsigned char *reverted)
 {
 	const char *s = p->src;
 	nout = 0;
-	for (size_t i = 0; i < p->n; i++) {
+	/* c: the next token that is no comment, found once per run of comments */
+	for (size_t i = 0, c = 0; i < p->n; i++) {
 		const Tok *t = &p->t[i];
+		for (c = c > i ? c : i; c < p->n && (p->t[c].k == LCOMMENT || p->t[c].k == BCOMMENT); c++) ;
 		size_t pe = i ? p->t[i - 1].e : 0;
 		const char *g = s + pe;
 		size_t gn = t->s - pe, nls = 0;
 		int plain = 1;
 		for (size_t j = 0; j < gn; j++) {
-			plain &= is_space(g[j]) && g[j] != '\f' && g[j] != '\v';
+			plain &= blank(g[j]);
 			nls += g[j] == '\n';
 		}
 		int in_rev = t->top >= 0 && reverted[t->top];
@@ -863,13 +880,13 @@ static void render(const Pass *p, const unsigned char *reverted)
 		if (!i) {
 			if (!plain) put(g, gn);
 		} else if (kept || t->gapk || !plain || strings || errs) put(g, gn);
-		else if (a->k == LCOMMENT) newline(p, i, n ? n : 1);
+		else if (a->k == LCOMMENT) newline(p, i, c, n ? n : 1);
 		else if (t->k == GO) for (size_t k = n ? n : 1; k--; ) put("\n", 1);
 		else if (a->k == GO) {
 			if ((t->k == LCOMMENT || t->k == BCOMMENT) && !nls) put(g, gn);
-			else newline(p, i, n ? n : 1);
-		} else if (t->brk != B_NONE) newline(p, i, n ? n : 1);
-		else if (nls) newline(p, i, n);
+			else newline(p, i, c, n ? n : 1);
+		} else if (t->brk != B_NONE) newline(p, i, c, n ? n : 1);
+		else if (nls) newline(p, i, c, n);
 		else if (!gn) { if (a->k == COMMA || comparison_gap(p, i)) put(" ", 1); }
 		else put(" ", 1);
 		if (!GROW(starts, i, startcap)) { oom = 1; return; }
@@ -883,7 +900,7 @@ static void render(const Pass *p, const unsigned char *reverted)
 	}
 	size_t te = p->n ? p->t[p->n - 1].e : 0;
 	int plain = 1;
-	for (size_t j = te; j < p->len; j++) plain &= is_space(s[j]) && s[j] != '\f' && s[j] != '\v';
+	for (size_t j = te; j < p->len; j++) plain &= blank(s[j]);
 	/* a token kept as written may run to the end (an unclosed string): a
 	   line ending after it would land inside it */
 	if (!plain || !p->n || p->t[p->n - 1].verb) put(s + te, p->len - te);
@@ -936,7 +953,7 @@ static int verify(const Text *ot)
 	return 0;
 }
 
-int sqlfmt(const Text *t, size_t *a, size_t *z, const char **res, size_t *n)
+static int run(const Text *t, size_t *a, size_t *z, const char **res, size_t *n)
 {
 	size_t len = text_len(t);
 	while (srccap < len + 1)
@@ -956,6 +973,7 @@ int sqlfmt(const Text *t, size_t *a, size_t *z, const char **res, size_t *n)
 		int v = verify(ot);
 		text_free(ot);
 		P = &in;
+		if (oom) return -1;
 		if (!v) { kept = 0; break; }
 		if (v < 0) break;
 	}
@@ -979,4 +997,22 @@ int sqlfmt(const Text *t, size_t *a, size_t *z, const char **res, size_t *n)
 	while (ib > ia && ob > oa && src[ib - 1] == out[ob - 1]) ib--, ob--;
 	*a = ia, *z = ib, *res = out + oa, *n = ob - oa;
 	return kept;
+}
+
+/* Only the result lives on until the next call: the tokens, events and
+   copies take 20 times a large text (11.8 MB for 585 KB, measured), and
+   growing them again each call shows no measurable difference (measured:
+   303 KB, 7 alternating runs, median 8.7 ms freed, 8.5 ms kept, ranges
+   8.6 to 10.4 and 7.9 to 11.7). */
+int sqlfmt(const Text *t, size_t *a, size_t *z, const char **res, size_t *n)
+{
+	int r = run(t, a, z, res, n);
+	Pass *ps[] = { &in, &again };
+	for (int k = 0; k < 2; k++) {
+		free(ps[k]->t), free(ps[k]->ev), free(ps[k]->diag), free(ps[k]->tops);
+		*ps[k] = (Pass){ 0 };
+	}
+	free(src), free(rev), free(starts);
+	src = NULL, rev = NULL, starts = NULL, srccap = revcap = startcap = 0;
+	return r;
 }

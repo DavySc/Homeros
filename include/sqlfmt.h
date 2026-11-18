@@ -4,7 +4,8 @@
    The whole text t is formatted; the result is the edit for the tokens
    that start in bytes [*a, *z) (pass 0 and text_len(t) for all of it): on
    return, replace bytes [*a, *z) of t by the *n bytes at *res, which stay
-   valid until the next call.  An edit with *a == *z and *n == 0 changes
+   valid until the next call; the edit starts and ends at bytes that
+   change.  An edit with *a == *z and *n == 0 changes
    nothing.  Returns how many top-level statements were kept as written
    because the output check failed for them (when it cannot be pinned to
    one, the whole text is kept and the count is every statement's), or -1
