@@ -36,13 +36,13 @@ MOTIONS = ['h', 'j', 'k', 'l', '0', '^', '$', 'w', 'b', 'e', 'W', 'B', 'E', 'ge'
            '[(', '[{', '])', ']}', ';', ',', '%']
 FIND = ['f', 'F', 't', 'T']
 OBJECTS = [a + o for a in 'ia' for o in 'wWsp([{<b)B"\'`']
-OPS = ['d', 'c', 'y', '<', '>', 'g~', 'gu', 'gU']
+OPS = ['d', 'c', 'y', '<', '>', 'g~', 'gu', 'gU', 'gq']
 # Normal-mode Y is Neovim's default map to y$; after a beep Neovim drops the
 # next mapped key (as for go), so it is sent as y$ (recorded traces keep Y)
 SIMPLE = ['x', 'X', 'D', 'C', 's', 'S', 'y$', 'J', 'gJ', '~', 'p', 'P', 'gp', 'gP', 'u', '<C-r>', '.', '.',
-          '<C-a>', '<C-x>', 'dd', 'cc', 'yy', '>>', '<<', 'g~~', 'guu', 'gUU', 'gv', '<Del>']
+          '<C-a>', '<C-x>', 'dd', 'cc', 'yy', '>>', '<<', 'g~~', 'guu', 'gUU', 'gqq', 'gv', '<Del>']
 VOPS = ['d', 'c', 'y', '<', '>', '~', 'u', 'U', 'J', 'gJ', 'I', 'A', 'p', 'P', 'x', 'X', 'D', 'C', 'S', 'Y',
-        'R', 's', '<C-a>', '<C-x>', 'g<C-a>', 'o', 'O', '$', 'gv', '<Esc>', 'r']
+        'R', 's', '<C-a>', '<C-x>', 'g<C-a>', 'o', 'O', '$', 'gv', '<Esc>', 'r', 'gq']
 NORM = MOTIONS + SIMPLE   # the keys whose count is generated
 CODES = {'<Esc>': 27, '<CR>': 13, '<BS>': 127, '<Tab>': 9, '<C-r>': 18, '<C-w>': 23, '<C-u>': 21,
          '<C-t>': 20, '<C-d>': 4, '<C-o>': 15, '<C-a>': 1, '<C-x>': 24, '<C-v>': 22, '<C-p>': 16,
