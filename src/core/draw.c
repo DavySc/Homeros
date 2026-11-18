@@ -39,6 +39,14 @@ static void wputs(Grid *g, const Win *w, int r, int c, const char *s, int attr)
 	for (; *s; s++, c++) wput(g, w, r, c, (const unsigned char *)s, 1, 1, attr);
 }
 
+/* Window w's cell at row r, column c, or NULL past the window or the grid:
+   a window can reach past a terminal that shrank (see grid_put). */
+static Cell *wcell(Grid *g, const Win *w, int r, int c)
+{
+	int y = w->y + r, x = w->x + c;
+	return c >= 0 && c < w->w && y >= 0 && y < g->rows && x >= 0 && x < g->cols ? &g->c[y * g->cols + x] : NULL;
+}
+
 /* Cell j of the character s (k bytes) that takes width cells: a tab is
    spaces, a control character ^X, an invalid byte or what cannot be
    printed in hex (transchar_hex()). */
@@ -58,9 +66,8 @@ static void put_cell(Grid *g, const Win *w, int r, int c, const unsigned char *s
 	else if (j) return;
 	else { b = 0; wput(g, w, r, c, s, k, width, ATTR_NONE); }
 	if (b) wput(g, w, r, c, &b, 1, 1, ATTR_NONE);
-	/* a window can reach past a terminal that shrank (see grid_put) */
-	int y = w->y + r, x = w->x + c;
-	if (c >= 0 && c < w->w && y >= 0 && y < g->rows && x >= 0 && x < g->cols) g->c[y * g->cols + x].face = face;
+	Cell *z = wcell(g, w, r, c);
+	if (z) z->face = face;
 }
 
 /* The number column of line l (get_line_number_str()): relative to the
@@ -102,18 +109,17 @@ static int line_rows(const Win *w, size_t l)
 static void draw_heading(Grid *g, const Win *w, size_t l, int r, size_t skip, int cover, size_t b0, size_t m0, int n)
 {
 	int nw = win_numw(w), tw = w->w - nw, rows = line_rows(w, l);
-	/* nf-md-format_header_1 to 6: U+F0CA1 to U+F0CAB by twos */
+	/* nf-md-numeric_1_circle_outline to 6: U+F0CA1 to U+F0CAB by twos */
 	const unsigned char icon[4] = { 0xf3, 0xb0, 0xb2, (unsigned char)(0xa1 + 2 * (n - 1)) };
 	for (int k = 0; k < rows && r + k < w->h; k++)
 		for (int c = nw; c < w->w; c++) {
 			size_t v = skip + (size_t)k * (size_t)tw + (size_t)(c - nw);
-			int y = w->y + r + k, x = w->x + c;
-			/* a window can reach past a terminal that shrank (see grid_put) */
-			if (v < b0 || (k == 0 && c < cover) || y >= g->rows || x >= g->cols) continue;
-			Cell *z = &g->c[y * g->cols + x];
-			if (v >= m0 && v - m0 <= (size_t)n) {
-				if (v - m0 == (size_t)n - 1) grid_put(g, y, x, icon, 4, 1, ATTR_NONE);
-				else grid_put(g, y, x, (const unsigned char *)" ", 1, 1, ATTR_NONE);
+			Cell *z = wcell(g, w, r + k, c);
+			if (v < b0 || (k == 0 && c < cover) || !z) continue;
+			/* the cell after the marker is a blank already */
+			if (v >= m0 && v - m0 < (size_t)n) {
+				if (v - m0 == (size_t)n - 1) grid_put(g, w->y + r + k, w->x + c, icon, 4, 1, ATTR_NONE);
+				else grid_put(g, w->y + r + k, w->x + c, (const unsigned char *)" ", 1, 1, ATTR_NONE);
 				z->face = (unsigned char)(FACE_MARKUP_HEADING_1 + n - 1);
 			}
 			z->bg = (unsigned char)(FACE_HEADING_1_BG + n - 1);
@@ -161,7 +167,7 @@ static int draw_line(Grid *g, Win *w, size_t l, int r, int rm)
 			/* before it only block quote and list markers: an inline
 			   face (an escaped \#, code, emphasis) can hide the start of
 			   a setext heading's text, whose rest has the heading face */
-			if (!hl) { if (k != 1 || !memchr(" \t>-+*.)0123456789", *s, 15)) hn = HN_NO; }
+			if (!hl) { if (k != 1 || !memchr(" \t>-+*.)0123456789", *s, 18)) hn = HN_NO; }
 			else if (!hn && *s == ' ') {}
 			else if (*s == '#' && k == 1 && hn < hl) { if (!hn++) hm = v; }
 			else hn = hn == hl && (*s == ' ' || *s == '\t') ? HN_YES : HN_NO;
