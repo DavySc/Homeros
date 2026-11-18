@@ -32,3 +32,10 @@ keys: CTRL-W w to a window on the same buffer leaves the Visual cursor behind (r
 keys: CTRL-D and CTRL-U that cannot scroll do not beep, so a macro goes on (recorded traces)~test TESTS=~~src/keys/normal.c~core_scroll_half(E, cap->cmdchar == 4 ? 1 : -1, cap->count0) < 0) beep();~core_scroll_half(E, cap->cmdchar == 4 ? 1 : -1, cap->count0) < -1) beep();
 keys: o's undo step starts on the cursor line, so undo moves another window's cursor on it to column 0 (recorded traces)~test TESTS=~~src/keys/edit.c~	u_save_gap(W->line + (dir == FORWARD));~	u_save_gap(W->line);
 keys: a linewise put's undo step starts on the cursor line, so undo moves another window's cursor on it to column 0 (recorded traces)~test TESTS=~~src/keys/ops.c~if (reg->type == MLINE && !(flags & PUT_LINE_SPLIT) && !is_empty_buf())~if (0)
+keys: gq on a .sql buffer is not recognised as SQL (test_keys_sql)~test TESTS=keys_sql~~src/keys/ops.c~	return n > 4 && !memcmp(B->path + n - 4, ".sql", 4);~	return n > 4 && 0;
+keys: gq formats one line less than the operator covers (test_keys_sql)~test TESTS=keys_sql~~src/keys/ops.c~(size_t)oap->end.lnum + 1));~(size_t)oap->end.lnum));
+keys: gqq is not gqgq (test_keys_sql)~test TESTS=keys_sql~~src/keys/normal.c~	if (cap->oap->op_type == OP_FORMAT) { cap->cmdchar~	if (0) { cap->cmdchar
+keys: v $ gq takes the next line too, as if gq did not work on lines (test_keys_sql)~test TESTS=keys_sql~~src/keys/normal.c~ && oap->op_type != OP_FORMAT && oap->end.lnum~ && oap->end.lnum
+keys: the save looks for sqldiff.toml only in the file's own directory (test_keys_sql)~test TESTS=keys_sql~~src/keys/keys.c~				if (n <= 1 || (n == 3 && d[1] == ':')) break;~				break;
+keys: a relative path looks for sqldiff.toml from the root, not the working directory (test_keys_sql)~test TESTS=keys_sql~~src/keys/keys.c~		if (B->path[0] != '/' && B->path[0] != '\\' && B->path[1] != ':') {~		if (0) {
+keys: :Format does nothing on a .sql buffer (test_keys_sql)~test TESTS=keys_sql~~src/keys/keys.c~{ if (is_sql()) sql_format(0, text_len(B->text)); }~{ }

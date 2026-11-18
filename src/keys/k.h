@@ -102,7 +102,7 @@ typedef struct {
 } Oparg;
 enum { OP_NOP, OP_DELETE, OP_YANK, OP_CHANGE, OP_LSHIFT, OP_RSHIFT, OP_TILDE,
 	OP_UPPER, OP_LOWER, OP_JOIN, OP_JOIN_NS, OP_REPLACE, OP_INSERT, OP_APPEND,
-	OP_NR_ADD, OP_NR_SUB };
+	OP_NR_ADD, OP_NR_SUB, OP_FORMAT };
 
 /* text objects (textobject.c); the Visual state they extend */
 extern int VIsual_active, VIsual_mode;
@@ -122,6 +122,9 @@ int  op_yank(Oparg *oap);
 int  op_change(Oparg *oap);
 void op_shift(Oparg *oap, long amount);
 void op_tilde(Oparg *oap);
+void op_format(Oparg *oap);
+int  is_sql(void);
+int  sql_format(size_t a, size_t z);   /* the edit for bytes [a, z), -1 out of memory */
 int  op_replace(Oparg *oap, int c);
 void op_insert(Oparg *oap, long count1);
 void op_addsub(Oparg *oap, long count1, int g_cmd);

@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "k.h"
+#include "sqlfmt.h"
 #include "uni.h"
 
 enum { SW = 4 };
@@ -1637,4 +1638,37 @@ int insert_reg(int regname, int literally)
 		if (j < reg->n || reg->type == MLINE) stuff_bytes("\n", 1, 0, 0);
 	}
 	return 1;
+}
+
+/* ---- gq and :Format ---- */
+
+int is_sql(void)
+{
+	size_t n = B->path ? strlen(B->path) : 0;
+	return n > 4 && !memcmp(B->path + n - 4, ".sql", 4);
+}
+
+/* conform.nvim with sqldiff, Davy's formatter for .sql: the whole text goes
+   to the formatter and only the changes in bytes [a, z) are applied, as
+   sqlfmt's range does */
+int sql_format(size_t a, size_t z)
+{
+	const char *res;
+	size_t n;
+	int kept = sqlfmt(B->text, &a, &z, &res, &n);
+	if (kept < 0) { core_msg(E, "E342: Out of memory!"); return -1; }
+	if (z > a || n) { core_edit(E, a, z - a, res, n); buf_changed(); }
+	if (kept) core_msg(E, "%d statement%s kept as written", kept, kept == 1 ? "" : "s");
+	return 0;
+}
+
+/* OP_FORMAT: a .sql buffer has Davy's 'formatexpr' (op_formatexpr()) over
+   the operator's lines */
+void op_format(Oparg *oap)
+{
+	if (is_sql()) {
+		sql_format(core_line_start(E, (size_t)oap->start.lnum), core_line_start(E, (size_t)oap->end.lnum + 1));
+		return;
+	}
+	beep();
 }
