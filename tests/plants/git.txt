@@ -33,3 +33,10 @@ git: SPC g L logs every file (git_signs)~test TESTS=git_signs~~src/git/keys.c~		
 git: changes a view's read drains wait for the next one (git_signs)~test TESTS=git_signs~~src/git/keys.c~	git_schedule(a->r);                /* the drain may have found changes */¶~
 git: the log's age subtracts a time from git as it comes (fuzz_git found inputs)~fuzz FUZZERS=git FUZZ_SECONDS=1~~src/git/sec.c~	unsigned long secs = at > now ? (unsigned long)at - (unsigned long)now : (unsigned long)now - (unsigned long)at;~	unsigned long secs = (unsigned long)(now - at);
 git: behind negates git's count (fuzz_git found inputs)~fuzz FUZZERS=git FUZZ_SECONDS=1~~src/git/sec.c~			b->behind = strtol(q, NULL, 10) != 0;~			b->behind = -strtol(q, NULL, 10);
+# The Windows half (src/git/win.c, src/git/check.sh under Wine)
+git: a change under an ignored directory counts (Windows watch)~win WIN=git~~src/git/git.c~		if (ignored(r, d)) return 0;~		if (0 && ignored(r, d)) return 0;
+git: a nested repository's .git counts (Windows watch)~win WIN=git~~src/git/git.c~		if (i - s == 4 && !memcmp(rel + s, ".git", 4)) return 0;~		if (0 && i - s == 4) return 0;
+git: the watch is not armed again after a change (Windows watch)~win WIN=git~~src/git/win.c~		if (any) { r->ver++; r->dirty = 1; }¶		arm(t);~		if (any) { r->ver++; r->dirty = 1; }
+git: the trash deletes instead of using the Recycle Bin (Windows trash)~win WIN=git~~src/git/win.c~	op.fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION~	op.fFlags = FOF_NOCONFIRMATION
+git: git_real keeps a lower-case drive letter (Windows paths)~win WIN=git~~src/git/win.c~	if (out[0] >= 'a' && out[0] <= 'z' && out[1] == ':') out[0] -= 'a' - 'A';~
+git: the change entries are read in place, unaligned under Wine (Windows watch)~win WIN=git~~src/git/win.c~			memcpy(&f, p, at);~			f.NextEntryOffset = ((FILE_NOTIFY_INFORMATION *)p)->NextEntryOffset; f.FileNameLength = ((FILE_NOTIFY_INFORMATION *)p)->FileNameLength;
