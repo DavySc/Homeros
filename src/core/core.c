@@ -1268,24 +1268,34 @@ void core_set_wrap(Editor *e, int on)
 	if (w->want != WANT_EOL) core_set_want(e);
 }
 
-size_t win_vcol(Editor *e, Win *w, size_t *start, size_t *end)
+int win_vcols(const Win *w, size_t l, size_t col, size_t *start, size_t *end)
 {
 	LineIt it;
 	const unsigned char *s;
 	size_t v = 0, i = 0, k, cw = 1;
-	lit_init(&it, w->buf, w->line);
+	lit_init(&it, w->buf, l);
 	while ((k = lit_next(&it, &s))) {
 		cw = (size_t)core_cellw(w, s, k, 0, v);
-		if (i >= w->col) break;
+		if (i >= col) break;
 		v += cw;
 		i += k;
 	}
 	if (!k) cw = 1;                /* past the end: one cell */
 	/* getvcol(): a double-width character after its '>' cell starts one
 	   later (head) */
-	size_t head = k && cw == 3 && *s != '\t';
-	if (start) *start = v + head;
-	if (end) *end = v + cw - 1;
-	/* in normal mode the cursor shows on the last cell of a tab */
-	return k && *s == '\t' && e->mode != MODE_INSERT ? v + cw - 1 : v + head;
+	*start = v + (k && cw == 3 && *s != '\t');
+	*end = v + cw - 1;
+	return k && *s == '\t';
+}
+
+size_t win_vcol(Editor *e, Win *w, size_t *start, size_t *end)
+{
+	size_t s, x;
+	int tab = win_vcols(w, w->line, w->col, &s, &x);
+	if (start) *start = s;
+	if (end) *end = x;
+	/* in normal mode the cursor shows on the last cell of a tab, but on
+	   its first in Visual mode at or before VIsual ('selection' inclusive) */
+	int first = e->ks.visual && (w->line < e->ks.vline || (w->line == e->ks.vline && w->col <= e->ks.vcol));
+	return tab && e->mode != MODE_INSERT && !first ? x : s;
 }

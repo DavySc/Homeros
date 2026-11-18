@@ -61,3 +61,14 @@ A file opens with the cursor on line 1's first non-blank since PR 62, so the cas
 | `append_cmdheight.txt` | 30x60 | `7$`, `CTRL-W -`, wrap, `A` + 80 y | one row further, a `~` row left | |
 
 `:vs` with wrap on screens under 41 columns, where 'winwidth' squeezes the other window, is the first review's point 10. It has no single case: the review's `scan_vs.py` finds 28 of 288 combinations that differ.
+
+## The Visual area (`test_core_visual`)
+
+Cases in the format of `tests/test_core_visual.txt`; replay one with `build/san/test_core_visual -v src/core/known/<case>.txt`. Found on 3,000 fresh cases of `tests/test_core_visual.py` (1,000 each, seeds 1 to 3, **measured**, 1 run): 6 differ (0.2 %). In five the view differs before any highlight is drawn: each has the cursor moved to the line's end by `$` in Visual mode, where Neovim puts it on the NUL. **hypothesis**: the core's `curs_columns()` and `update_topline()` take a cursor on the NUL in Visual mode differently. The sixth differs in the cell under the cursor only, which the block cursor covers.
+
+| Case | Size | State | Neovim | Core |
+|---|---|---|---|---|
+| `visual_eol_left.txt`, `visual_eol_left2.txt` | 10x20, 24x20 | nowrap, the cursor on a long line, `$` | leftcol 24, 52 | 23, 51 |
+| `visual_eol_jump_left.txt`, `visual_eol_jump_left2.txt` | 5x20, 5x80 | nowrap, VIsual far right on a long line, the cursor on a short one, `$` | leftcol 0 | 12, 9 |
+| `visual_nul_top.txt` | 24x40 | wrap, `V`, `$` on line 12 | top line 10 | line 9 |
+| `visual_cursor_after_filler.txt` | 5x40 | wrap, skipcol 36, the cursor after `>` fillers of double-width characters | the cursor's cell in the area | not |

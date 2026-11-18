@@ -12,6 +12,7 @@
 #include "check.h"
 #include "core.h"
 #include "grid.h"
+#include "../src/core/core_int.h"
 
 static char path[] = "/tmp/core_contractXXXXXX";
 
@@ -71,6 +72,13 @@ int main(void)
 	const Cell *c = &g.c[r * g.cols];
 	CHECK(c[0].len == 1 && c[0].ch[0] == ':' && c[1].ch[0] == 's' && c[2].len == 2 && c[3].ch[0] == 'x');
 	CHECK(g.crow == r && g.ccol == 3);
+	/* showmode() in Replace mode (measured in tmux, 1 run: R shows it) */
+	e.mode = MODE_INSERT;
+	e.ks.replace = 1;
+	core_draw(&e, &g);
+	c = &g.c[(g.rows - 1) * g.cols];
+	CHECK(c[0].ch[0] == '-' && c[3].ch[0] == 'R' && c[9].ch[0] == 'E' && c[11].ch[0] == '-');
+	e.ks.replace = 0;
 	e.mode = MODE_NORMAL;
 
 	/* the popup: the selected item drawn plainly, the others reversed
@@ -174,6 +182,24 @@ int main(void)
 	core_update(&e);
 	core_draw(&e, &g);
 	CHECK(e.wins->next && e.wins->next->top == 2);
+	/* the Visual area shows in every window on the buffer (win_line():
+	   wp->w_buffer == curwin->w_buffer) */
+	e.ks.visual = 'V';
+	e.ks.vline = 5;
+	core_draw(&e, &g);
+	for (const Win *w = e.wins; w; w = w->next)
+		CHECK(w->top <= 5 && g.c[(w->y + 5 - (int)w->top) * g.cols + w->x + win_numw(w)].bg == FACE_VISUAL);
+	/* an area that starts on a line's NUL shows one cell there (win_line()'s
+	   "invert at least one char"): v$ojj on "abc" shows the cell after c
+	   (measured in nvim --headless, 3 runs) */
+	e.ks.visual = 'v';
+	e.ks.vline = 2;
+	e.ks.vcol = 1;
+	e.win->line = 4;
+	e.win->col = 0;
+	core_update(&e);
+	core_draw(&e, &g);
+	CHECK(e.win->top <= 2 && g.c[(e.win->y + 2 - (int)e.win->top) * g.cols + e.win->x + win_numw(e.win) + 1].bg == FACE_VISUAL);
 	core_free(&e);
 	for (int i = 0; i < 4; i++) unlink(fn[i]);
 	grid_free(&g);

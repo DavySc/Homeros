@@ -52,3 +52,14 @@ core: a group the keys open saves no marks (test_core_undo)~test TESTS=core_undo
 core: a group an edit opens saves no marks (test_core_undo)~test TESTS=core_undo~~src/core/core.c~				umarks_new(b, seq, snap);~				(void)seq;
 core: a group's marks are saved again at each of its edits (test_core_undo)~test TESTS=core_undo~~src/core/core.c~	if (undo_seq(b->undo) == seq) return;~	if (seq == (unsigned long)-1) return;
 core: the view is looked at again only when drawn (test_core_contract)~test TESTS=core_contract~~src/core/move.c~MODE_CMDLINE) drawn(e, e->win);~MODE_CMDLINE) (void)0;
+core: a block ends at the cursor's column, not the wider end's (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~(b > d ? b : d) + 1;~b + 1;
+core: no blank cell where the area starts at a line's end (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~	if ((v > skip ? from == v : from <= skip) && vs < to~	if ((v > skip ? from == v + 1 : from <= skip) && vs < to
+core: the cursor's cell is in the Visual area (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~	if (w == cw && l == cl) {~	if (w == cw && l == cl + 1) {
+core: a double-width character half in the area is left out (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~(v >= from || (wide && v + 1 == from))~(v >= from || (wide && v + 2 == from))
+core: Visual mode shows the cursor on a tab's last cell before VIsual (test_core_visual)~test TESTS=core_visual~~src/core/core.c~	int first = e->ks.visual && (~	int first = e->ks.visual == 1 && (
+core: "<<<" over a double-width character leaves its second cell out of the area (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~if (wide && j == lead && c + 1 == cover)~if (wide && j == lead && c + 2 == cover)
+core: '<' of a character starting at the area is in it (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~face, from < v ? bg : 0);~face, bg);
+core: '>' is in the area (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~1, 0, 1, face, 0);   /* not in the area (measured) */~1, 0, 1, face, bg);
+core: -- VISUAL LINE -- shows as -- VISUAL -- (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~e->ks.visual == 'V' ? 1~e->ks.visual == 'V' ? 0
+core: -- REPLACE -- shows as -- INSERT -- (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~? 3 + !!e->ks.replace :~? 3 :
+core: a window on the same buffer shows no Visual area (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~	if (!e->ks.visual || w->buf != e->buf) return;~	if (!e->ks.visual || w != e->win) return;
