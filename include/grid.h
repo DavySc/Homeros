@@ -131,8 +131,14 @@ const unsigned char *grid_text(const Cell *c);
    caller draws everything again (Neovim's schar_cache_clear_if_full()).
    The store is static: nothing is allocated. */
 int  grid_frame(void);
-/* Puts an ASCII string; returns the next column. */
-int  grid_puts(Grid *g, int r, int c, const char *s, int attr);
+/* Puts UTF-8 s (n bytes) from column c, cluster by cluster at uni_width's
+   cells, up to column end (a cluster that would pass it is left out): what
+   is not printable (a control character, an invalid byte, <xxxx>) as that
+   many blanks, so the layout matches grid_width.  Every cell gets attr and
+   face.  Returns the next column. */
+int  grid_puts(Grid *g, int r, int c, int end, const char *s, size_t n, int attr, int face);
+/* The cells grid_puts takes for s (Neovim's mb_string2cells()). */
+int  grid_width(const char *s, size_t n);
 int  grid_cell_eq(const Cell *a, const Cell *b);
 /* The face cell x is drawn with (FACE_NONE for an unknown one) and, in *bg,
    the face its background comes from: the layer if set, else the same. */

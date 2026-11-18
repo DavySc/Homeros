@@ -151,7 +151,7 @@ win: wincc
 # Not the terminal (no Windows half yet), the fonts (the window draws with
 # GDI) or the daily tools (POSIX only so far): the trial build stubs them.
 # It reads tree-sitter's headers only, so it needs the sources, not $(OBJS)
-WIN_SRCS = $(foreach m,$(filter-out tty font tools,$(BASE)),$(call pick,$(m))) $(wildcard src/win/*.c) src/main.c
+WIN_SRCS = $(foreach m,$(filter-out tty font tools wl,$(MODULES)),$(call pick,$(m))) $(wildcard src/win/*.c) src/main.c
 wincc: | $(SYN)/src build/win
 	@for f in $(WIN_SRCS); do zig cc -target x86_64-windows-gnu $(WARN) $(CPPFLAGS) -c -o build/win/cc.o $$f || exit 1; done
 	zig rc /fo build/win/homeros.res assets/homeros.rc
@@ -159,8 +159,16 @@ wincc: | $(SYN)/src build/win
 build/win:
 	mkdir -p $@
 
-check: compilers test fuzz conform org-conform undo-diff lean frama specs win
+check: compilers test fuzz conform org-conform undo-diff lean frama specs win dupes
 	@echo "check: all passed"
+
+# copied code fails (CLAUDE.md: no duplication)
+dupes:
+	@python3 tools/dupes.py
+
+# every function defined, file:line and signature: grep it before writing one
+index:
+	@grep -rnE '^(static )?[a-zA-Z_][a-zA-Z0-9_ *]*[ *][a-zA-Z_][a-zA-Z0-9_]*\([^;]*$$' --include=*.c src ref
 
 planted:
 	SHARD=$(SHARD) bash tools/planted.sh
@@ -178,4 +186,4 @@ install: homeros
 clean:
 	rm -rf build homeros
 
-.PHONY: compilers test fuzz conform org-conform undo-diff specs lean frama win wincc check planted install clean
+.PHONY: dupes index compilers test fuzz conform org-conform undo-diff specs lean frama win wincc check planted install clean

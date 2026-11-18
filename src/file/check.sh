@@ -16,5 +16,5 @@ mkdir -p build/win
 export WINEDEBUG=-all WINEDLLOVERRIDES="mscoree,mshtml=" WINEPREFIX=$PWD/build/win/prefix-file
 exe=build/win/test_file_win.exe
 zig cc -target x86_64-windows-gnu -std=c17 -Wall -Wextra -Werror -D_FILE_OFFSET_BITS=64 -Iinclude -O1 -g \
-  -fsanitize=undefined -fsanitize-trap=undefined -o "$exe" tests/test_file_win.c src/file/*.c $(pick text)
+  -fsanitize=undefined -fsanitize-trap=undefined -o "$exe" tests/test_file_win.c src/file/*.c src/loop/*.c $(pick text) -lshell32
 timeout 600 wine "$exe" || { echo "FAIL test_file_win"; exit 1; }

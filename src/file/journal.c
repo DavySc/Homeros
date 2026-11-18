@@ -14,9 +14,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <unistd.h>
 #include "file.h"
+#include "loop.h"
 #include "state.h"
 
 enum { SYNC_MS = 1000 };   /* DESIGN.md: fsync at most once per second */
@@ -39,11 +39,10 @@ static uint32_t sum(uint32_t h, const void *p, size_t n)
 }
 #define SUM0 2166136261u
 
-static long long now_ms(void)
+int file_same(const FileId *a, const FileId *b)
 {
-	struct timespec ts;
-	clock_gettime(CLOCK_MONOTONIC, &ts);
-	return (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+	return a->exists == b->exists && (!a->exists || (a->dev == b->dev && a->ino == b->ino
+	       && a->size == b->size && a->mtime_ns == b->mtime_ns));
 }
 
 typedef struct iovec Piece;   /* iov_base, iov_len */
@@ -67,7 +66,7 @@ static int append(Journal *j, Piece *v, int k)
 		for (; i < k && (size_t)w >= v[i].iov_len; i++) w -= (ssize_t)v[i].iov_len;
 		if (i < k) { v[i].iov_base = (char *)v[i].iov_base + w; v[i].iov_len -= (size_t)w; }
 	}
-	if (!j->dirty) { j->dirty = 1; j->first_ms = now_ms(); }
+	if (!j->dirty) { j->dirty = 1; j->first_ms = loop_now() / 1000000; }
 	return 0;
 }
 
@@ -226,7 +225,7 @@ void journal_saved(Journal *j)
 int journal_due(const Journal *j)
 {
 	if (!j->dirty) return -1;
-	long long d = j->first_ms + SYNC_MS - now_ms();
+	long long d = j->first_ms + SYNC_MS - loop_now() / 1000000;
 	return d < 0 ? 0 : (int)d;
 }
 

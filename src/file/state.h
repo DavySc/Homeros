@@ -8,7 +8,7 @@
 #ifndef FILE_STATE_H
 #define FILE_STATE_H
 #include <stddef.h>
-#include "text.h"
+#include "file.h"
 #ifdef _WIN32
 #include <limits.h>
 #include <sys/types.h>
@@ -38,4 +38,6 @@ int file_write_all(int fd, const char *b, size_t n);   /* 0 ok, -1 error */
 /* The next bytes of t from *pos (below n) into b, at most cap, each LF as
    CR LF if dos; *pos moves past what was read.  Returns the bytes in b. */
 size_t file_text_read(const Text *t, size_t *pos, size_t n, int dos, char *b, size_t cap);
+/* The same file, unchanged since: both missing, or equal ids. */
+int file_same(const FileId *a, const FileId *b);
 #endif
