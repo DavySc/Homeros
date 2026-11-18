@@ -19,6 +19,12 @@ typedef struct {
    0 bytes and id->exists = 0.  0 ok, -1 error (errno set). */
 int file_load(const char *path, char **data, size_t *n, FileId *id);
 
+/* Neovim's 'fileformats' "unix,dos" ("dos,unix" on Windows), as readfile()
+   decides: dos when the data has a LF and every LF follows a CR; data with
+   no LF takes the first entry (dos on Windows, unix elsewhere).  For dos it
+   drops the CR before each LF in place and shrinks *n.  1 dos, 0 unix. */
+int file_eol(char *data, size_t *n);
+
 enum {
 	SAVE_OK,
 	SAVE_CHANGED,  /* changed on disk since it was loaded or saved: nothing written */
@@ -26,10 +32,11 @@ enum {
 	                  version is kept at the path written to kept */
 	SAVE_ERR       /* nothing replaced; errno set */
 };
-/* Writes the first n bytes of t to path.  id is what we last loaded or saved
-   there and is updated on success.  force skips the identity check (:w!). */
-int file_save(const char *path, const Text *t, size_t n, FileId *id, int force,
-              char *kept, size_t keptsz);
+/* Writes the first n bytes of t to path, each LF as CR LF if dos.  id is
+   what we last loaded or saved there and is updated on success (its size is
+   the bytes written).  force skips the identity check (:w!). */
+int file_save(const char *path, const Text *t, size_t n, int dos, FileId *id,
+              int force, char *kept, size_t keptsz);
 
 /* Outside changes: inotify on the file's directory (FindFirstChangeNotificationW
    on Windows), so a file replaced by rename is still seen.  Returns an fd for

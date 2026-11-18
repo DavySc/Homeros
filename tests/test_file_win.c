@@ -12,6 +12,9 @@
       the one being written); a second editor is kept out (EWOULDBLOCK) while
       the first lives, and recovers once it is killed; cut at every byte, the
       whole records are kept; a clean close leaves nothing.
+   5. Line ends: 'fileformats' is "dos,unix" here, so data with no LF is dos;
+      a CR LF file loads as dos and saves byte for byte (several chunks of
+      it), and its identity is the bytes written, so the next :w is allowed.
    Runs on Windows or under Wine (src/file/check.sh); elsewhere it says so. */
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -45,7 +48,7 @@ static int saved(const char *s, FileId *id, int force)
 {
 	Text *t = text_new(s, strlen(s));
 	char kept[4];
-	int r = file_save(path, t, strlen(s), id, force, kept, sizeof kept);
+	int r = file_save(path, t, strlen(s), 0, id, force, kept, sizeof kept);
 	text_free(t);
 	return r;
 }
@@ -55,6 +58,44 @@ static void is(const char *s)
 	char b[256];
 	size_t n = slurp(path, b, sizeof b);
 	CHECK(n == strlen(s) && !memcmp(b, s, n));
+}
+
+static int eol(const char *s, const char *want)
+{
+	char b[16];
+	size_t n = strlen(s);
+	memcpy(b, s, n);
+	int dos = file_eol(b, &n);
+	CHECK(n == strlen(want) && !memcmp(b, want, n));
+	return dos;
+}
+
+static char big[100001];
+
+static void line_ends(void)
+{
+	CHECK(eol("", "") == 1 && eol("a", "a") == 1 && eol("a\r", "a\r") == 1);
+	CHECK(eol("a\nb", "a\nb") == 0 && eol("a\r\nb\n", "a\r\nb\n") == 0);
+	CHECK(eol("a\r\nb", "a\nb") == 1 && eol("a\r\r\n", "a\r\n") == 1);
+	static char d[sizeof big + sizeof big / 9];
+	size_t n = 0;
+	for (size_t i = 0; i < sizeof big - 1; i++) { if (big[i] == '\n') d[n++] = '\r'; d[n++] = big[i]; }
+	FILE *f = fopen(path, "wb");
+	CHECK(f && fwrite(d, 1, n, f) == n);
+	fclose(f);
+	char *data;
+	size_t m;
+	FileId id;
+	CHECK(!file_load(path, &data, &m, &id) && file_eol(data, &m) == 1 && m == sizeof big - 1);
+	Text *t = text_new(data, m);
+	char kept[4];
+	CHECK(t && file_save(path, t, m, 1, &id, 0, kept, sizeof kept) == SAVE_OK && id.size == n);
+	CHECK(file_save(path, t, m, 1, &id, 0, kept, sizeof kept) == SAVE_OK);
+	static char back[sizeof d];
+	CHECK(slurp(path, back, sizeof back) == n && !memcmp(back, d, n));
+	text_free(t);
+	free(data);
+	puts("  line ends: dos first; CR LF loaded as dos and saved byte for byte, then saved again");
 }
 
 static int same(const FileId *a, const FileId *b)
@@ -146,8 +187,6 @@ static void kill_child(HANDLE p)
 	CHECK(WaitForSingleObject(p, 10000) == WAIT_OBJECT_0);
 	CloseHandle(p);
 }
-
-static char big[100001];
 
 static void saver(void)
 {
@@ -432,6 +471,7 @@ int main(int argc, char **argv)
 	killed_journal();
 	locks();
 	torn();
+	line_ends();
 	puts("test_file_win: saves refuse outside changes and are never torn; the watch and the journal work");
 	return 0;
 }

@@ -58,6 +58,7 @@ typedef struct Buf {
 	int changed;               /* changed on disk since read or written: 1, then 2 once warned */
 	int jerr;                  /* a journal write failed during this command */
 	int noeol;                 /* file had no final newline (or was empty) */
+	int dos;                   /* 'fileformat' dos: saved with CR LF (file_eol) */
 	unsigned flags;            /* CORE_EMPTY */
 	unsigned long saved_seq;   /* undo_seq at the last load or save */
 	int nr;                    /* buffer number, from 1 (:b N) */

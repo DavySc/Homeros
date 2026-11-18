@@ -1,0 +1,22 @@
+diff --git a/include/file.h b/include/file.h
+index fa662b9..35cda83 100644
+--- a/include/file.h
++++ b/include/file.h
+@@ -19,10 +19,14 @@ typedef struct {
+    0 bytes and id->exists = 0.  0 ok, -1 error (errno set). */
+ int file_load(const char *path, char **data, size_t *n, FileId *id);
+ 
+-/* Neovim's 'fileformats' "unix,dos" ("dos,unix" on Windows), as readfile()
+-   decides: dos when the data has a LF and every LF follows a CR; data with
++/* Neovim's 'fileformats' "unix,dos" ("dos,unix" on Windows), as its help
++   states it: dos when the data has a LF and every LF follows a CR; data with
+    no LF takes the first entry (dos on Windows, unix elsewhere).  For dos it
+-   drops the CR before each LF in place and shrinks *n.  1 dos, 0 unix. */
++   drops the CR before each LF in place and shrinks *n.  1 dos, 0 unix.
++   Two things readfile() does are not copied (reviews/pr-53.md, 2 and 3):
++   it decides from its first 8,192 bytes, so with "unix,dos" a CR LF file
++   whose first line is longer is unix there and dos here; and it hides a
++   CTRL-Z that ends a dos file, which is text here. */
+ int file_eol(char *data, size_t *n);
+ 
+ enum {
