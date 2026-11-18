@@ -82,9 +82,10 @@ static int ntk;
 static char *uri(const char *abs)
 {
 	Str u = { 0 };
-	str_lit(&u, "file://");
+	if (abs[0] == '/') str_lit(&u, "file://");
+	else str_lit(&u, "file:///");        /* C:/x is file:///C:/x (RFC 8089) */
 	for (const unsigned char *p = (const unsigned char *)abs; *p; p++)
-		if ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') || (*p >= '0' && *p <= '9') || strchr("/-._~", *p))
+		if ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') || (*p >= '0' && *p <= '9') || strchr("/-._~:", *p))
 			str_put(&u, p, 1);
 		else str_putf(&u, "%%%02X", *p);
 	return u.b;
@@ -246,12 +247,18 @@ static void shift_set(Set *v, size_t pos, size_t ndel, size_t nins)
 
 static char *absolute(const char *path)
 {
+#ifdef _WIN32
+	char *abs = _fullpath(NULL, path, 0);   /* realpath's twin; a URI has '/' */
+	for (char *p = abs; p && *p; p++) if (*p == '\\') *p = '/';
+	return abs;
+#else
 	char *abs = realpath(path, NULL), cwd[4096];
 	if (abs) return abs;
 	if (path[0] == '/') return strdup(path);
 	Str a = { 0 };
 	if (getcwd(cwd, sizeof cwd)) str_putf(&a, "%s/%s", cwd, path);
 	return a.b;
+#endif
 }
 
 /* The nearest directory above file abs holding one of roots, else the
