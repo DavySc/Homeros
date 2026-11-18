@@ -1,0 +1,8 @@
+NOT CAUGHT    x1 dash: f opens the recent picker   (make test TESTS=tools_dash passed)
+NOT CAUGHT    x2 dash: g opens the smart picker   (make test TESTS=tools_dash passed)
+NOT CAUGHT    x3 dash: stays when a second window opens   (make test TESTS=tools_dash passed)
+NOT CAUGHT    x4 dash: stays over another buffer   (make test TESTS=tools_dash passed)
+NOT CAUGHT    x5 shada: the r items match case   (make test TESTS=shada passed)
+NOT CAUGHT    x6 shada: /private/ kept   (make test TESTS=shada passed)
+NOT CAUGHT    x7 main: no dashboard without a file   (make test passed)
+NOT CAUGHT    x8 main: recent files never written   (make test passed)
