@@ -136,6 +136,7 @@ int main(int argc, char **argv)
 	long frames = 0, bad = 0, partial = 0, order = 0, badhit = 0;
 	size_t cur = 0;
 	static Syntax S, S2;
+	static unsigned char B[2 * WINDOW], B2[2 * WINDOW];   /* the cache and priorities, which the struct only points to */
 	for (int i = 0; i < steps; i++) {
 		if (getenv("DUMP") && atoi(getenv("DUMP")) == i) {   /* the text before step i, for directed.c */
 			static char d[1 << 22];
@@ -187,13 +188,17 @@ int main(int argc, char **argv)
 		if (top >= text_lines(t)) top = text_lines(t) - 1;
 		if (!started(s)) continue;
 		memcpy(&S, s, sizeof S);
+		memcpy(B, s->cache, 2 * (size_t)s->cap);
 		int hit = s->cz && s->sa < s->sz;
 		frame(F);
 		memcpy(&S2, s, sizeof S);
+		memcpy(B2, s->cache, 2 * (size_t)s->cap);
 		memcpy(s, &S, sizeof S);
+		memcpy(s->cache, B, 2 * (size_t)s->cap);
 		s->cz = 0;
 		frame(G);
 		memcpy(s, &S2, sizeof S);
+		memcpy(s->cache, B2, 2 * (size_t)s->cap);
 		frames++;
 		partial += hit;
 		if (memcmp(F, G, wz - wa)) {
