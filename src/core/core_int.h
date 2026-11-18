@@ -6,6 +6,7 @@
 
 enum { SCROLLOFF = 6, TABSTOP = 8, MAXH = 1 << 30 };   /* FEATURES.md 1; Vim's tabstop */
 enum { FR_LEAF, FR_ROW, FR_COL };
+enum { ROWS, COLS };                  /* an axis: Frame.size[ROWS] is the height */
 
 /* What Neovim keeps in win_T beyond what core.h shows. */
 typedef struct {
@@ -37,7 +38,7 @@ enum { BOT_EXACT = 1, BOT_AP = 2 };   /* WinState.bv */
 /* Neovim's frame_T.  A leaf holds one window and that window's WinState. */
 struct Frame {
 	int layout;
-	int width, height;            /* with the status line and the separator */
+	int size[2];                  /* with the status line and the separator */
 	struct Frame *parent, *child, *next, *prev;
 	Win *win;
 	int vsep;                     /* leaf: w_vsep_width */
