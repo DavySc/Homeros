@@ -1296,7 +1296,9 @@ size_t win_vcol(Editor *e, Win *w, size_t *start, size_t *end)
 	if (start) *start = s;
 	if (end) *end = x;
 	/* in normal mode the cursor shows on the last cell of a tab, but on
-	   its first in Visual mode at or before VIsual ('selection' inclusive) */
-	int first = e->ks.visual && (w->line < e->ks.vline || (w->line == e->ks.vline && w->col <= e->ks.vcol));
+	   its first in Visual mode at or before VIsual ('selection' inclusive);
+	   another window keeps the w_virtcol it validated before (measured: its
+	   ruler stays "1,1-8" after v and :redraw!, 3 runs) */
+	int first = w == e->win && e->ks.visual && (w->line < e->ks.vline || (w->line == e->ks.vline && w->col <= e->ks.vcol));
 	return tab && e->mode != MODE_INSERT && !first ? x : s;
 }
