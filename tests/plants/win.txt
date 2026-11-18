@@ -1,7 +1,13 @@
 # Plants for src/win/ (format in tools/planted.sh).  Not planted, as test_win
 # cannot see them under Wine: an astral character's surrogates (no font with
 # such a glyph, so right and wrong both draw a box) and the period read again
-# on WM_DISPLAYCHANGE (Wine's period never changes); both are pending for Windows.
+# on WM_DISPLAYCHANGE (Wine's period never changes); and greyscale rather than
+# ClearType smoothing (Wine 11.0 draws CLEARTYPE_QUALITY greyscale too, even
+# with ClearType set in the registry: 0 fringed pixels either way, measured, 1
+# run); and the Nerd Font picked first when installed (CI has none: by hand
+# under Wine with JetBrainsMonoNerdFontMono-Regular.ttf added, the face is
+# "JetBrainsMono NFM" and U+E0B0 draws its glyph, measured, 1 run); all four
+# are pending for Windows.
 win: every cell drawn every frame~win WIN=win~~src/win/backend.c~			if (grid_cell_eq(x, y) && cur == was) continue;~			if (cur && was && 0) continue;
 win: the cell the cursor left is not restored~win WIN=win~~src/win/backend.c~int pr = all ? -1 : shown->crow, pc = shown->ccol;~int pr = all ? -1 : g->crow, pc = g->ccol;
 win: no cursor at (0, 0) after a whole redraw~win WIN=win~~src/win/backend.c~int pr = all ? -1 : shown->crow,~int pr = shown->crow,
@@ -42,3 +48,4 @@ win: draws while minimised~win WIN=win~~src/win/backend.c~	if (IsIconic(win)) re
 win: resize sends no KEY_RESIZE~win WIN=win~~src/win/backend.c~HIWORD(l) != dh)) resized = stale = 1;~HIWORD(l) != dh)) stale = 1;
 win: the DIB keeps its old size~win WIN=win~~src/win/backend.c~if (all && (grid_resize(shown, g->rows, g->cols) || make_dib())) return;~if (all && grid_resize(shown, g->rows, g->cols)) return;
 specs: Pace with frames only P + D apart~specs~find design/specs -name '*.cfg' ! -name Pace_ok.cfg -delete~design/specs/Pace_ok.cfg~ Gap = 5~ Gap = 4
+win: GDI's substitute for a missing family kept~win WIN=win~~src/win/backend.c~if (!lstrcmpiW(face, family[i])) break;~break;
