@@ -179,7 +179,7 @@ SETUP = ('set noswapfile nomore expandtab shiftwidth=4 softtabstop=4 autoindent 
          ' scrolloff=6')   # FEATURES.md's scrolloff, which the core keeps
 
 def nvim1(cases):
-    d = tempfile.mkdtemp()
+  with tempfile.TemporaryDirectory() as d:   # one per case: 2,000 a run
     fi, fo, fl = d + '/in.json', d + '/out.json', d + '/t.lua'
     json.dump(cases, open(fi, 'w'))
     open(fl, 'w').write('local IN, OUT = %r, %r\n' % (fi, fo) + LUA)
