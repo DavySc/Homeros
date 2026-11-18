@@ -5,8 +5,7 @@
 SYN = build/syntax
 SYN_GRAMMARS = c/src/parser lua/src/parser lua/src/scanner \
   markdown/tree-sitter-markdown/src/parser markdown/tree-sitter-markdown/src/scanner \
-  markdown/tree-sitter-markdown-inline/src/parser markdown/tree-sitter-markdown-inline/src/scanner \
-  sql/parser sql/scanner
+  markdown/tree-sitter-markdown-inline/src/parser markdown/tree-sitter-markdown-inline/src/scanner
 CPPFLAGS += -I$(SYN)/src/tree-sitter/lib/include -I$(SYN)/src/tree-sitter/lib/src
 OBJS += $(SYN)/tree-sitter.o $(SYN_GRAMMARS:%=$(SYN)/g/%.o) $(SYN)/queries.o
 
@@ -27,7 +26,7 @@ $(SYN)/g/%.o: | $(SYN)/src
 # languages in syntax.c's order, each file as one string of octal escapes.
 $(SYN)/queries.c: src/syntax/build.mk | $(SYN)/src
 	{ echo 'const char *const syntax_queries[][2] = {'; \
-	  for l in c lua markdown markdown_inline sql; do for f in highlights injections; do \
+	  for l in c lua markdown markdown_inline; do for f in highlights injections; do \
 	    printf '"'; od -An -v -to1 $(SYN)/src/queries/$$l/$$f.scm | tr -d '\n' | sed 's/ /\\/g'; echo '",'; \
 	  done; done; echo '};'; } > $@
 

@@ -1,6 +1,6 @@
 /* Syntax colours against Neovim 0.12 (nvim --headless on PATH, running
-   tests/test_syntax.lua): random windows of real C, Lua, Markdown and SQL
-   (PostgreSQL's regression tests) files, then random edits applied incrementally with parses in between.  Neovim
+   tests/test_syntax.lua): random windows of real C, Lua and Markdown files,
+   then random edits applied incrementally with parses in between.  Neovim
    replays the same edits and parses, and its highlighter's captures, with
    its predicates, injections and #set! priority, must give the same face
    for every byte (per byte the highest priority wins, the later capture on
@@ -20,8 +20,8 @@
 #include "text.h"
 #include "../src/syntax/lmatch.h"
 
-enum { NL = 4, MAXCASES = 300, EDITS = 25, MAXT = 1 << 15 };
-static const char *const ext[NL] = { "c", "lua", "md", "sql" };
+enum { NL = 3, MAXCASES = 300, EDITS = 25, MAXT = 1 << 15 };
+static const char *const ext[NL] = { "c", "lua", "md" };
 static int CASES = 40;   /* per language; CASES and SEED in the environment */
 
 static char dir[] = "/tmp/test_syntax_XXXXXX";
@@ -48,8 +48,7 @@ static void spit(const char *path, const char *s, size_t n)
 	fclose(f);
 }
 
-/* the corpus: the repo's own sources and design, Neovim's runtime Lua,
-   PostgreSQL's regression tests (the first 64 by name) */
+/* the corpus: the repo's own sources and design, Neovim's runtime Lua */
 static char *corpus[NL][64];
 static size_t ncorpus[NL];
 
@@ -76,7 +75,6 @@ static const char *const snip[NL][16] = {
 	{ "\n", "/*", "*/", "\"", "'", "{", "}", "(", ")", "x", "  ", "\xc3\xa9", "#define A 1\n", "int", "FOO_BAR", ";" },
 	{ "\n", "--", "[[", "]]", "\"", "'", "(", ")", "x", "  ", "\xc3\xa9", "local", "function", "end", "--- @param", "vim.cmd" },
 	{ "\n", "#", "```", "```c\n", "```lua\n", "*", "_", "`", "[", "](", ")", "- ", "| a |", "\n\n", "\xc3\xa9", "> " },
-	{ "\n", "--", "/*", "*/", "'", "\"", "(", ")", ",", ";", "@x", "\xc3\xa9", "SELECT", " FROM [t]", "$$", "CREATE TABLE " },
 };
 
 static int stops_left;
@@ -387,25 +385,6 @@ static void cache_grows(const char *dir)
 	text_free(t);
 }
 
-/* SQL's scanner, inside a $$ body, reads a "$$" where a string could start:
-   it must free that tag (sources.nix patches it), which LeakSanitizer
-   checks when the test exits. */
-static void sql_body(const char *dir)
-{
-	static unsigned char f[64];
-	char path[2048];
-	snprintf(path, sizeof path, "%s/body.sql", dir);
-	const char *b = "CREATE FUNCTION f() RETURNS int AS $$ SELECT $$;\n";
-	Text *t = text_new(b, strlen(b));
-	CHECK(t);
-	Syntax *s = syntax_open(path, t);
-	CHECK(s);
-	syntax_faces(s, 0, strlen(b), f);
-	while (syntax_update(s, t, NULL) == 2) ;
-	syntax_free(s);
-	text_free(t);
-}
-
 /* The trees a reparse replaces are freed in steps that ask stop: an edit
    that deletes 2,000 lines frees about 10,000 nodes, so the update
    after it must stop more than once before it is done. */
@@ -463,7 +442,6 @@ int main(void)
 	edits_then_frame(dir);
 	edit_before_region(dir);
 	cache_grows(dir);
-	sql_body(dir);
 	release_in_steps(dir);
 	char path[2048], vrt[1024] = "";
 	FILE *p = popen("nvim --headless --clean -l /dev/stdin <<'E'\nio.write(vim.env.VIMRUNTIME)\nE", "r");
@@ -475,7 +453,6 @@ int main(void)
 	add_dir(1, path, ".lua");
 	add_dir(2, "design", ".md");
 	add_dir(2, ".", ".md");
-	add_dir(3, "build/syntax/src/corpus/sql", ".sql");
 	for (int l = 0; l < NL; l++) CHECK(ncorpus[l]);
 
 	static unsigned char fa[MAXT], fb[MAXT], fs[MAXT], ff[MAXT];
