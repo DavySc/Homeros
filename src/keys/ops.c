@@ -1051,11 +1051,19 @@ void do_put(int regname, int dir, long count, int flags)
 			const char *oldp = ml_get(l);
 			long oldlen = ml_len(l), vcol = 0, j = 0, incr = 0;
 			long startspaces = 0, endspaces = 0, delcount = 0;
-			while (vcol < col && j < oldlen) {
-				long k = clen(oldp, oldlen, j);
-				incr = vcol_of(l, j + k) - vcol;
-				vcol += incr;
-				j += k;
+			/* do_put()'s walk to col, done with two lookups so a long
+			   line costs its length, not its length squared */
+			if (col > 0) {
+				long p = col_of_vcol(l, col, 1), v = p < oldlen ? vcol_of(l, p) : 0;
+				if (p < oldlen && v < col) {      /* a character spans col */
+					j = p + clen(oldp, oldlen, p);
+					vcol = vcol_of(l, j);
+					incr = vcol - v;
+				} else {                           /* stop at p, after the character before it */
+					j = p < oldlen ? p : oldlen;
+					vcol = vcol_of(l, j);
+					incr = j ? vcol - vcol_of(l, head(oldp, j - 1)) : 0;
+				}
 			}
 			textcol = j;
 			int shortline = vcol < col || (vcol == col && j >= oldlen);

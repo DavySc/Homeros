@@ -53,6 +53,10 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 	for (size_t i = 0; i < n && text_len(e.buf->text) < 30000; i++) {
 		int k = keys[d[i] % (sizeof keys / sizeof *keys)];
 		if (k >= '0' && k <= '9' && prev >= '0' && prev <= '9') continue;
+		/* a literal CTRL-A in an insert split by an arrow key makes a later
+		   CTRL-A type itself again for ever, in Neovim too (measured: "i s
+		   Left C-v C-a Left C-a" had not ended in nvim --headless after 15 s) */
+		if (k == 1 && prev == 22) continue;
 		prev = k;
 		keys_feed(&e, k, i + 1 < n);
 		size_t len, nl = core_lines(&e);
@@ -85,5 +89,23 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 	read_all(&e, now, &nn);
 	if (nn != na || memcmp(now, after, na)) abort();
 	core_free(&e);
+	return 0;
+}
+
+/* inputs fuzzing found that a 60 s run seldom finds again: every run starts
+   with them, so their plants are caught every time */
+int LLVMFuzzerInitialize(int *argc, char ***argv)
+{
+	static const struct { const char *s; size_t n; } found[] = {
+		/* a block change whose text has a Del past the last line */
+		{ "\xc0\xc0\xc4\x17\x09\xff\xd2\x98\x6c\xba\x01\x90\x51\x00\x00", 15 },
+		/* i CTRL-V U EEEEEEEE: past U+10FFFF */
+		{ "\x31\x57\x2d\x0c\x0c\x0c\x0c\x0c\x0c\x0c\x0c", 11 },
+		/* v CTRL-W n o: Visual mode ends in the new window */
+		{ "\x37\x5b\x45\x35", 4 },
+	};
+	(void)argc; (void)argv;
+	for (size_t i = 0; i < sizeof found / sizeof *found; i++)
+		LLVMFuzzerTestOneInput((const uint8_t *)found[i].s, found[i].n);
 	return 0;
 }
