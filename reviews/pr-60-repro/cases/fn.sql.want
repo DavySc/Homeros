@@ -1,0 +1,8 @@
+create function f(@a INT) RETURNS table as
+    return (select @a as a)
+GO
+create function g(@a INT) RETURNS INT as
+begin
+    return @a+1
+end
+GO

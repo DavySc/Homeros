@@ -1,0 +1,12 @@
+1 #+HEADER is no affiliated keyword: caught by make org-conform: 16 of 2000 differ (Org failed on 1)
+3 a comment needs its space ("#" alone is none): caught by make org-conform: 94 of 2000 differ (Org failed on 1)
+4 four dashes make a rule: caught by make org-conform: 110 of 2000 differ (Org failed on 1)
+6 planning after a blank line under the headline: caught by make org-conform: 5 of 2000 differ (Org failed on 1)
+8 one blank line ends a list: caught by make org-conform: 186 of 2000 differ (Org failed on 1)
+9 a rule row is told by "|+": caught by make test: tests/test_org.c:554: CHECK(!strcmp(got, cases[i].want)) failed
+12 a headline ends only at a shallower one: caught by make test: tests/test_org.c:554: CHECK(!strcmp(got, cases[i].want)) failed
+13 an unclosed drawer line ends a paragraph: caught by make org-conform: 344 of 2000 differ (Org failed on 1)
+14 a dynamic block needs "#+END:" with its colon: caught by make org-conform: 26 of 2000 differ (Org failed on 1)
+16 TODO keywords in any case: caught by make org-conform: 5 of 2000 differ (Org failed on 1)
+17 priority 65 is one: caught by make test: tests/test_org.c:554: CHECK(!strcmp(got, cases[i].want)) failed
+18 no @ in tags: caught by make test: tests/test_org.c:554: CHECK(!strcmp(got, cases[i].want)) failed

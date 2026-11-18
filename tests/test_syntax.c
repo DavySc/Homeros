@@ -52,20 +52,23 @@ static void spit(const char *path, const char *s, size_t n)
 static char *corpus[NL][64];
 static size_t ncorpus[NL];
 
+/* in name order: readdir's differs between file systems, so a failure on
+   CI would test other text than a run here */
 static void add_dir(int lang, const char *d, const char *e)
 {
-	DIR *D = opendir(d);
-	if (!D) return;
-	struct dirent *de;
-	while ((de = readdir(D)) && ncorpus[lang] < 64) {
-		size_t l = strlen(de->d_name), el = strlen(e);
-		if (l <= el || strcmp(de->d_name + l - el, e)) continue;
-		char p[2048];
-		size_t n;
-		snprintf(p, sizeof p, "%s/%s", d, de->d_name);
-		corpus[lang][ncorpus[lang]++] = slurp(p, &n);
+	struct dirent **de;
+	int nd = scandir(d, &de, NULL, alphasort);
+	for (int i = 0; i < nd; i++) {
+		size_t l = strlen(de[i]->d_name), el = strlen(e);
+		if (ncorpus[lang] < 64 && l > el && !strcmp(de[i]->d_name + l - el, e)) {
+			char p[2048];
+			size_t n;
+			snprintf(p, sizeof p, "%s/%s", d, de[i]->d_name);
+			corpus[lang][ncorpus[lang]++] = slurp(p, &n);
+		}
+		free(de[i]);
 	}
-	closedir(D);
+	if (nd >= 0) free(de);
 }
 
 static const char *const snip[NL][16] = {
@@ -127,6 +130,27 @@ static void render(const Text *t, const unsigned char *f, char *out)
 	size_t n = text_read(t, 0, b, sizeof b);
 	for (size_t i = 0; i < n; i++) out[i] = b[i] == '\n' ? '\n' : (char)('0' + f[i]);
 	out[n] = 0;
+}
+
+/* a failing case's text and edits, so a failure on CI can be replayed
+   (nvim --headless --clean -l tests/test_syntax.lua OUT DIR CASE: .ops
+   lines are e POS DEL HEX, f for a frame, p for a parse).  The text goes
+   out in hex (xxd -r -p turns it back): a word in it such as "error"
+   would be what planted.sh reports as the failure */
+static void show(const char *dir, int c)
+{
+	char path[2048];
+	size_t n;
+	snprintf(path, sizeof path, "%s/%d.%s", dir, c, ext[c % NL]);
+	char *b = slurp(path, &n);
+	fprintf(stderr, "---- %d.%s, in hex ----\n", c, ext[c % NL]);
+	for (size_t i = 0; i < n; i++) fprintf(stderr, i % 32 == 31 || i == n - 1 ? "%02x\n" : "%02x", (unsigned char)b[i]);
+	fprintf(stderr, "---- %d.%s.ops ----\n", c, ext[c % NL]);
+	free(b);
+	snprintf(path + strlen(path), sizeof path - strlen(path), ".ops");
+	b = slurp(path, &n);
+	fprintf(stderr, "%.*s---- end ----\n", (int)n, b);
+	free(b);
 }
 
 static char want[MAXCASES * NL][MAXT + 1];
@@ -245,6 +269,122 @@ static void edit_while_stopped(const char *dir)
 	CHECK(stopped > 10);
 }
 
+/* The frame after a key recomputes only what its edits can change, and
+   must show what a full recompute over the same trees does: A draws
+   between the parse and the edits (so it recomputes part), B does not (so
+   its cache is empty and it fills the window). */
+static void edit_then_frame(const char *dir, const char *name, const char *b, int ne,
+                            const size_t *pos, const size_t *del, const char *const *ins)
+{
+	static unsigned char f[1024], g[1024];
+	size_t n = strlen(b);
+	char path[2048];
+	snprintf(path, sizeof path, "%s/%s", dir, name);
+	Text *t = text_new(b, n);
+	CHECK(t);
+	Syntax *A = syntax_open(path, t), *B = syntax_open(path, t);
+	CHECK(A && B);
+	syntax_faces(A, 0, n, f);
+	syntax_faces(B, 0, n, g);
+	while (syntax_update(A, t, NULL) == 2) ;
+	while (syntax_update(B, t, NULL) == 2) ;
+	syntax_faces(A, 0, n, f);
+	for (int e = 0; e < ne; e++) {
+		syntax_edit(A, t, pos[e], del[e], ins[e], strlen(ins[e]));
+		syntax_edit(B, t, pos[e], del[e], ins[e], strlen(ins[e]));
+		CHECK(!text_delete(t, pos[e], del[e]) && !text_insert(t, pos[e], ins[e], strlen(ins[e])));
+	}
+	n = text_len(t);
+	syntax_faces(A, 0, n, f);
+	syntax_faces(B, 0, n, g);
+	CHECK(!memcmp(f, g, n));
+	syntax_free(A);
+	syntax_free(B);
+	text_free(t);
+}
+
+static void edits_then_frame(const char *dir)
+{
+	/* a predicate gates every capture of its match: "find" into "fin"
+	   takes string.regexp off the string, which the edit does not touch */
+	edit_then_frame(dir, "far.lua", "local a = s:find(\"%d+\")\n", 1,
+	                (size_t[]){ 15 }, (size_t[]){ 1 }, (const char *const[]){ "" });
+	/* two edits before one frame, the later at byte 0: the bytes to
+	   recompute start there (review of PR 42, finding 1) */
+	edit_then_frame(dir, "zero.c", "// a\n// b\n", 2,
+	                (size_t[]){ 8, 0 }, (size_t[]){ 1, 1 }, (const char *const[]){ "c", "/" });
+	/* where captures of one priority overlap (the "*" is @operator and in
+	   @variable.parameter), their order depends on where the query starts,
+	   so the recompute queries from where the fill did (finding 2) */
+	edit_then_frame(dir, "order.c", "d f(u*s)\n*A;\n", 1,
+	                (size_t[]){ 6 }, (size_t[]){ 1 }, (const char *const[]){ "" });
+}
+
+/* An edit that deletes the line before an injected region ends where the
+   region now starts: Neovim's LanguageTree:_edit compares rows and columns,
+   finds no overlap and keeps the region's tree without a reparse.  Here a
+   reparse would lose the emphasis that Neovim shows (as does a fresh
+   parse, which the check compares with). */
+static void edit_before_region(const char *dir)
+{
+	static unsigned char f[64], g[64];
+	char path[2048];
+	snprintf(path, sizeof path, "%s/region.md", dir);
+	const char *b = "a\n (D\n\ny,_)_\n";
+	Text *t = text_new(b, strlen(b));
+	CHECK(t);
+	Syntax *A = syntax_open(path, t);
+	CHECK(A);
+	syntax_faces(A, 0, strlen(b), f);
+	while (syntax_update(A, t, NULL) == 2) ;
+	syntax_edit(A, t, 2, 4, "- ", 2);
+	CHECK(!text_delete(t, 2, 4) && !text_insert(t, 2, "- ", 2));
+	size_t n = text_len(t);
+	syntax_faces(A, 0, n, f);
+	while (syntax_update(A, t, NULL) == 2) ;
+	syntax_faces(A, 0, n, f);
+	Syntax *F = syntax_open(path, t);
+	CHECK(F);
+	syntax_faces(F, 0, n, g);
+	while (syntax_update(F, t, NULL) == 2) ;
+	syntax_faces(F, 0, n, g);
+	CHECK(!memcmp(f, g, n));
+	syntax_free(A);
+	syntax_free(F);
+	text_free(t);
+}
+
+/* A window past the cache's 8 KB grows the cache in syntax_update; the new
+   memory holds no faces yet, so the faces cached for the smaller window
+   before must go with the old memory. */
+static void cache_grows(const char *dir)
+{
+	static char b[MAXT];
+	static unsigned char f[64], g[64], w[16384];
+	size_t n = 0;
+	for (int l = 0; l < 1000; l++)
+		n += (size_t)snprintf(b + n, sizeof b - n, "int v%d = %d; /* c */\n", l, l);
+	char path[2048];
+	snprintf(path, sizeof path, "%s/grow.c", dir);
+	Text *t = text_new(b, n);
+	CHECK(t && n > 16384);
+	Syntax *s = syntax_open(path, t), *F = syntax_open(path, t);
+	CHECK(s && F);
+	syntax_faces(s, 0, 64, f);
+	while (syntax_update(s, t, NULL) == 2) ;
+	syntax_faces(s, 0, 64, f);                   /* cached for a small window */
+	syntax_faces(s, 0, sizeof w, w);             /* past the cache */
+	while (syntax_update(s, t, NULL) == 2) ;     /* grows the cache */
+	syntax_faces(s, 0, 64, f);
+	syntax_faces(F, 0, 64, g);
+	while (syntax_update(F, t, NULL) == 2) ;
+	syntax_faces(F, 0, 64, g);
+	CHECK(!memcmp(f, g, 64));
+	syntax_free(s);
+	syntax_free(F);
+	text_free(t);
+}
+
 /* The trees a reparse replaces are freed in steps that ask stop: an edit
    that deletes 2,000 lines frees about 10,000 nodes, so the update
    after it must stop more than once before it is done. */
@@ -299,6 +439,9 @@ int main(void)
 	CHECK(mkdtemp(dir));
 	scroll_while_stopped(dir);
 	edit_while_stopped(dir);
+	edits_then_frame(dir);
+	edit_before_region(dir);
+	cache_grows(dir);
 	release_in_steps(dir);
 	char path[2048], vrt[1024] = "";
 	FILE *p = popen("nvim --headless --clean -l /dev/stdin <<'E'\nio.write(vim.env.VIMRUNTIME)\nE", "r");
@@ -434,6 +577,7 @@ int main(void)
 				if (q[i] != want[c][i]) {
 					fprintf(stderr, "%s/%d.%s line %zu: face %d in Neovim, %d here\n",
 					        dir, c, ext[c % NL], line, (unsigned char)q[i] - '0', (unsigned char)want[c][i] - '0');
+					show(dir, c);
 					break;
 				}
 			}
@@ -450,6 +594,7 @@ int main(void)
 			else {
 				slice_differ++;
 				fprintf(stderr, "%s/%d.%s: sliced parse or windows starting elsewhere differ, no syntax error\n", dir, c, ext[c % NL]);
+				show(dir, c);
 			}
 		}
 		q += wl;
@@ -471,6 +616,7 @@ int main(void)
 			snap_differ++;
 			fprintf(stderr, "%s/%.*s: a frame before the parse differs from Neovim's\n", dir,
 			        (int)strcspn(w + 1, "\n"), w + 1);
+			show(dir, atoi(w + 1));
 		}
 		w = we, v = ve;
 	}

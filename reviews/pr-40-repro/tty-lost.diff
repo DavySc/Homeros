@@ -1,0 +1,13 @@
+--- a/src/tty/tty.c
++++ b/src/tty/tty.c
+@@ -139,6 +139,10 @@ static int tty_input(int *k, int max)
+ 	static int held;
+ 	unsigned char c;
+ 	int n = 0;
++	/* review probe: what package 6 will do in its own way: a hung-up
++	   terminal is input gone for good (backend.h) */
++	struct pollfd hp = { .fd = 0, .events = POLLIN };
++	if (poll(&hp, 1, 0) > 0 && hp.revents & (POLLHUP | POLLERR)) return -1;
+ 	while (read(sigpipe[0], &c, 1) == 1) if (!n && max > 0) k[n++] = KEY_RESIZE;
+ 	/* each byte gives at most one key, so never read more than there are
+ 	   slots: what is not read stays in the terminal and keeps poll waking */

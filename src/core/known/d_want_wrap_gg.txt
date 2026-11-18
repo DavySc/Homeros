@@ -1,0 +1,66 @@
+C 6 20
+F 6261725f31206c6f6e676572776f726420e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a79220cebb78206c6f6e676572776f726420cebb78207f20666f6f2078202820c3a9207f
+F 
+T k:3$
+T k:60G
+T e:f1
+T alt
+T wrap
+T k:gg
+P
+S 1   bar_1 longerword
+S ~
+S ~
+S ~
+S < 1,1            All
+S 
+M - - -
+P
+R
+R
+R
+R
+R
+R
+M - - -
+P
+S 1   o x ( é ^?
+R
+R
+R
+S < 1,171-129      All
+R
+M - - -
+P
+S 1
+R
+R
+R
+S < 0,0-1          All
+S :e f1
+M - - -
+P
+S 1   o x ( é ^?
+R
+R
+R
+S < 1,171-129      All
+R
+M - - -
+P
+S 1<<<角全角全角全角全
+S     角 λx longerword
+S      λx ^? foo x ( é
+S      ^?
+S < 1,171-130      All
+S :set wrap
+M - - -
+P
+R
+R
+R
+R
+R
+R
+M - - -
+E

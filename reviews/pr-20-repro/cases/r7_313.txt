@@ -1,0 +1,40 @@
+C 6 40
+F 202020200a09
+F 
+F 
+T k:G
+T w:-
+T k:dd
+P
+S 1
+S   1
+S ~
+S ~
+S f0                    1,1            All
+S 
+M - - -
+P
+S   1
+S 2
+R
+R
+S f0                    2,1-8          All
+R
+M - - -
+P
+R
+R
+R
+S f0                    2,1-8          All
+S 
+R
+M - - -
+P
+S 1
+S ~
+R
+S f0 [+]                1,4            All
+R
+R
+M - - -
+E

@@ -25,3 +25,23 @@ loop: a freed slot keeps its SIGKILL deadline (kill(-0) hits the editor)~test TE
 loop: the pipes stay open after the exit~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~			c->fn(c->ctx, s, buf, (size_t)got);¶		close(c->fd[s]);~			c->fn(c->ctx, s, buf, (size_t)got);
 loop: stdin stays open after the exit~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	if (c->fd[0] >= 0) close_in(c);¶	c->killat = 0;~	c->killat = 0;
 loop: SIGKILL reaches the child but not its group~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~kill(-p[i].pid, SIGKILL)~kill(p[i].pid, SIGKILL)
+
+# Windows (src/loop/win.c, run under Wine by make win WIN=loop)
+loop: win: the exit drops what the pipes still hold~win WIN=loop~~src/loop/win.c~		for (; left && (got = take(c, s, left)); left -= got) {}¶~		(void)got;¶
+loop: win: a completion routine re-arms its read, so a flood holds loop_once (review of PR 41, 1)~win WIN=loop~~src/loop/win.c~&& left) take(c, s, left);¶}~&& left) take(c, s, left);¶	read_next(c, s);¶}
+loop: win: a write begun while reaping completes on the slot's next child (review of PR 41, 2)~win WIN=loop~~src/loop/win.c~ || c->reaping) return -1;~) return -1;
+loop: win: loop_waiting takes an auto-reset signal and forgets it~win WIN=loop~~src/loop/win.c~(w[i].pend = ready(i))~ready(i)
+loop: win: only the handle the wait names runs, not every ready watch~win WIN=loop~~src/loop/win.c~		if (w[i].used && (w[i].pend || ready(i))) {~		if (w[i].used && w[i].pend) {
+loop: win: pipe APCs run inside a command (alertable breakcheck)~win WIN=loop~~src/loop/win.c~return WaitForSingleObject(H(w[i].fd), 0) == WAIT_OBJECT_0;~return WaitForSingleObjectEx(H(w[i].fd), 0, TRUE) == WAIT_OBJECT_0;
+loop: win: the wait is not alertable, so no pipe I/O completes~win WIN=loop~~src/loop/win.c~MWMO_ALERTABLE | MWMO_INPUTAVAILABLE);~MWMO_INPUTAVAILABLE);
+loop: win: a message seen but left queued does not wake the loop~win WIN=loop~~src/loop/win.c~mask, MWMO_ALERTABLE | MWMO_INPUTAVAILABLE);~mask, MWMO_ALERTABLE);
+loop: win: proc_kill ends the child but not what it started~win WIN=loop~~src/loop/win.c~if (c) TerminateJobObject(c->job, KILLED);~if (c) TerminateProcess(c->ph, KILLED);
+loop: win: a killed child exits 1, not 128 + SIGTERM~win WIN=loop~~src/loop/win.c~TerminateJobObject(c->job, KILLED)~TerminateJobObject(c->job, 1)
+loop: win: the exit comes before the output's end (Exit.tla early)~win WIN=loop~~src/loop/win.c~	c->reaping = 1;¶~	c->fn(c->ctx, 0, NULL, code);¶	c->reaping = 1;¶
+loop: win: the pipes stay open after the exit~win WIN=loop~~src/loop/win.c~		ended(c, s);¶	}¶	if (c->h[0]) close_in(c);~		c->fn(c->ctx, s, NULL, 0);¶	}¶	if (c->h[0]) close_in(c);
+loop: win: a finished write is written again~win WIN=loop~~src/loop/win.c~	c->outoff += n;¶~	(void)n;¶
+loop: win: backslashes before a quote are not doubled~win WIN=loop~~src/loop/win.c~bs = 2 * bs + (*a == '"');~bs = bs + (*a == '"');
+loop: win: the pipe is read only when it ends, so a full pipe hangs the child~win WIN=loop~~src/loop/win.c~	if (PeekNamedPipe(c->h[s], NULL, 0, NULL, &left, NULL) && left) take(c, s, left);~&& left) {}
+loop: win: loop_breakcheck never looks at input~win WIN=loop~~src/loop/win.c~if (loop_int || ++count < 32) return loop_int;~if (loop_int || ++count < 1 << 30) return loop_int;
+loop: win: an idle loop wakes every 100 ms~win WIN=loop~~src/loop/win.c~timeout_ms < 0 ? INFINITE : (DWORD)timeout_ms,~timeout_ms < 0 || timeout_ms > 100 ? 100 : (DWORD)timeout_ms,
+loop: win: proc_write blocks until the pipe takes it all~win WIN=loop~~src/loop/win.c~	if (!c->busy[0]) write_next(c);¶	return~	if (!c->busy[0]) write_next(c);¶	while (c->busy[0]) SleepEx(INFINITE, TRUE);¶	return

@@ -1,0 +1,134 @@
+C 30 20
+F 2c20e183900a0928206c6f6e676572776f72640a0a090a09cebb7820666f6f20292e0a2020202009202028202c202d2d20666f6f2009206c6f6e676572776f72642061616161616161616161616161616161616161616161616161616161616120616161616161616161616161616161616161616161616161616161616161202d2d0a28
+T wrap
+T k:100G
+T vs
+P
+S 1   , ა
+S   1         ( longer
+S   2
+S   3
+S   4         λx foo )
+S   5           ( , --
+S   6 (
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S < 1,1            All
+S 
+M - - -
+P
+R
+R
+S     word
+S   2
+S   3
+S   4         λx foo )
+S     .
+S   5           ( , --
+S      foo     longerw
+S     ord aaaaaaaaaaaa
+S     aaaaaaaaaaaaaaaa
+S     aa aaaaaaaaaaaaa
+S     aaaaaaaaaaaaaaaa
+S     a --
+S   6 (
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S :set wrap
+M - - -
+P
+S   6 , ა
+S   5         ( longer
+R
+S   4
+R
+S   2         λx foo )
+R
+S   1           ( , --
+R
+R
+R
+R
+R
+R
+S 7   (
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S < 7,1            All
+R
+M - - -
+P
+S  │  5         ( long
+S  │    erword
+S  │  4
+S  │  3
+S  │  2         λx foo
+S  │     ).
+S  │  1           ( ,
+S  │    -- foo     lon
+S  │    gerword aaaaaa
+S  │    aaaaaaaaaaaaaa
+S  │    aaaaaaaaaa aaa
+S  │    aaaaaaaaaaaaaa
+S  │    aaaaaaaaaaaaa
+S  │    --
+S  │7   (
+S  │~
+S  │~
+S  │~
+S  │~
+S  │~
+S  │~
+S  │~
+S  │~
+S  │~
+S  │~
+S  │~
+S  │~
+S  │~
+S < <,1            Bot
+S :vs
+M - - -
+E

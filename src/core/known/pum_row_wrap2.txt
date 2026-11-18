@@ -1,0 +1,55 @@
+C 10 20
+F 
+F 
+T w2:_
+T wrap
+T pum:4:20:9
+P
+S 1
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S < 0,0-1          All
+S 
+M - - -
+P
+R
+R
+S < 0,0-1          All
+S 
+S 
+S 
+S 
+S 
+S 
+R
+M - - -
+P
+R
+R
+R
+S :set wrap
+R
+R
+R
+R
+R
+R
+M - - -
+P
+S 1   longerword_compl
+S    foobar2
+S <  é2
+R
+R
+R
+R
+R
+R
+S -- INSERT --
+M - - -
+E

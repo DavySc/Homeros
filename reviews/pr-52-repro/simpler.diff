@@ -1,0 +1,11 @@
+--- a/src/core/core.c
++++ b/src/core/core.c
+@@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins, unsigned after)
+ 	unsigned js = after | (b->noeol && b->id.size ? J_NOEOL : 0);
+-	unsigned long seq = undo_seq(b->undo);
+ 	Mark snap[28];
+@@
+ 				r = 0;
+-				if (undo_seq(b->undo) != seq || snap_buf != b || snap_seq != seq) {   /* a new group */
++				if (snap_buf != b || snap_seq != undo_seq(b->undo)) {   /* a new group */
+ 					snap_buf = b;
