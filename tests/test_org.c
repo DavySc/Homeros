@@ -3,9 +3,9 @@
    that disqualified orgize and tree-sitter-org (design/reviews/r2/org/
    reductions), the start of design/org/synthetic-agenda.org, and the cases
    tools/org_conform.py once found differing, and Emacs's [[:word:]] and
-   [[:alnum:]] above ASCII in drawer names, footnote labels and tags.  Each
-   text also passes the fuzzer's checks (outline model, invariants, subtree
-   reparse). */
+   [[:alnum:]] above ASCII in drawer names, footnote labels and tags, and
+   the timestamps of planning and clock lines.  Each text also passes the
+   fuzzer's checks (outline model, invariants, subtree reparse). */
 #define _GNU_SOURCE
 #define ORG_DRV_LIB
 #include "check.h"
@@ -24,6 +24,7 @@ static const struct { const char *name, *text, *want; } cases[] = {
 	  "+ 1 TODO - - \"x\" \n"
 	  "section 9 9 9 75 75\n"
 	  "planning 9 9 - - 42\n"
+	  "@ scheduled active - 2026 11 22 - - 2026 11 22 - - restart 1 day - - - - - 20 41\n"
 	  "property-drawer 42 42 55 69 75\n"
 	  "node-property 55 55 - - 69\n" },
 	{ "aff.org",
@@ -48,6 +49,7 @@ static const struct { const char *name, *text, *want; } cases[] = {
 	  "+ 1 TODO - - \"x\" \n"
 	  "section 9 9 9 74 74\n"
 	  "planning 9 9 - - 41\n"
+	  "@ scheduled active - 2026 11 22 - - 2026 11 22 - - cumulate 1 day - - - - - 20 40\n"
 	  "property-drawer 41 41 54 68 74\n"
 	  "node-property 54 54 - - 68\n" },
 	{ "blocks.org",
@@ -82,6 +84,7 @@ static const struct { const char *name, *text, *want; } cases[] = {
 	  "+ 1 TODO - - \"x\" \n"
 	  "section 9 9 9 70 70\n"
 	  "planning 9 9 - - 37\n"
+	  "@ scheduled active - 2026 11 22 - - 2026 11 22 - - - - - - - - - - 20 36\n"
 	  "property-drawer 37 37 50 64 70\n"
 	  "node-property 50 50 - - 64\n" },
 	{ "call.org",
@@ -113,6 +116,7 @@ static const struct { const char *name, *text, *want; } cases[] = {
 	  "+ 1 TODO - - \"x\" \n"
 	  "section 9 9 9 75 75\n"
 	  "planning 9 9 - - 42\n"
+	  "@ scheduled active - 2026 11 22 - - 2026 11 22 - - restart 1 day - - - - - 20 41\n"
 	  "property-drawer 42 42 55 69 75\n"
 	  "node-property 55 55 - - 69\n" },
 	{ "drawer.org",
@@ -129,6 +133,8 @@ static const struct { const char *name, *text, *want; } cases[] = {
 	  "section 4 4 4 144 144\n"
 	  "drawer 4 4 14 127 134\n"
 	  "clock 14 14 - - 77\n"
+	  "@ clock inactive-range daterange 2026 11 1 9 0 2026 11 1 10 30 - - - - - - - - 21 68\n"
+	  "= 1:30\n"
 	  "plain-list 77 77 77 127 127\n"
 	  "item 77 77 79 127 127\n"
 	  "paragraph 79 79 79 127 127\n"
@@ -153,6 +159,7 @@ static const struct { const char *name, *text, *want; } cases[] = {
 	  "+ 1 TODO - - \"x\" \n"
 	  "section 9 9 9 75 75\n"
 	  "planning 9 9 - - 42\n"
+	  "@ scheduled active - 2026 11 22 - - 2026 11 22 - - catch-up 1 week - - - - - 20 41\n"
 	  "property-drawer 42 42 55 69 75\n"
 	  "node-property 55 55 - - 69\n" },
 	{ "empty.org",
@@ -168,6 +175,7 @@ static const struct { const char *name, *text, *want; } cases[] = {
 	  "+ 1 TODO - - \"x\" \n"
 	  "section 9 9 9 78 78\n"
 	  "planning 9 9 - - 45\n"
+	  "@ scheduled active - 2026 11 22 - - 2026 11 22 - - restart 1 day 3 day - - - 20 44\n"
 	  "property-drawer 45 45 58 72 78\n"
 	  "node-property 58 58 - - 72\n" },
 	{ "foot.org",
@@ -198,6 +206,7 @@ static const struct { const char *name, *text, *want; } cases[] = {
 	  "+ 1 TODO - - \"x\" \n"
 	  "section 9 9 9 84 84\n"
 	  "planning 9 9 - - 51\n"
+	  "@ scheduled active - 2026 11 22 9 0 2026 11 22 9 0 cumulate 1 week - - all 2 day 20 50\n"
 	  "property-drawer 51 51 64 78 84\n"
 	  "node-property 64 64 - - 78\n" },
 	{ "items.org",
@@ -356,10 +365,14 @@ static const struct { const char *name, *text, *want; } cases[] = {
 	  "+ 2 NEXT - - \"Item 0\" \n"
 	  "section 47 47 47 401 401\n"
 	  "planning 47 47 - - 107\n"
+	  "@ deadline active - 2026 12 19 - - 2026 12 19 - - - - - - - - - - 90 106\n"
+	  "@ scheduled active - 2026 11 18 - - 2026 11 18 - - restart 1 day - - - - - 58 80\n"
 	  "property-drawer 107 107 120 134 140\n"
 	  "node-property 120 120 - - 134\n"
 	  "drawer 140 140 150 275 281\n"
 	  "clock 150 150 - - 213\n"
+	  "@ clock inactive-range daterange 2026 11 14 9 0 2026 11 3 10 30 - - - - - - - - 157 204\n"
+	  "= 1:30\n"
 	  "plain-list 213 213 213 275 275\n"
 	  "item 213 213 215 275 275\n"
 	  "paragraph 215 215 215 275 275\n"
@@ -377,6 +390,8 @@ static const struct { const char *name, *text, *want; } cases[] = {
 	  "section 410 410 410 643 643\n"
 	  "drawer 410 410 420 545 551\n"
 	  "clock 420 420 - - 483\n"
+	  "@ clock inactive-range daterange 2026 11 28 9 0 2026 11 5 10 30 - - - - - - - - 427 474\n"
+	  "= 1:30\n"
 	  "plain-list 483 483 483 545 545\n"
 	  "item 483 483 485 545 545\n"
 	  "paragraph 485 485 485 545 545\n"
@@ -389,6 +404,8 @@ static const struct { const char *name, *text, *want; } cases[] = {
 	  "+ 2 DONE - - \"Item 3\" \n"
 	  "section 705 705 705 821 821\n"
 	  "planning 705 705 - - 760\n"
+	  "@ deadline active - 2026 12 8 - - 2026 12 8 - - - - - - - - - - 743 759\n"
+	  "@ scheduled active - 2026 11 6 - - 2026 11 6 - - - - - - - - - - 716 733\n"
 	  "property-drawer 760 760 773 787 793\n"
 	  "node-property 773 773 - - 787\n"
 	  "plain-list 793 793 793 821 821\n"
@@ -403,16 +420,22 @@ static const struct { const char *name, *text, *want; } cases[] = {
 	  "+ 2 NEXT 66 - \"Item 4\" home:lean\n"
 	  "section 853 853 853 913 913\n"
 	  "planning 853 853 - - 913\n"
+	  "@ deadline active - 2026 12 18 - - 2026 12 18 - - - - - - - - - - 896 912\n"
+	  "@ scheduled active - 2026 11 22 - - 2026 11 22 - - restart 1 day - - - - - 864 886\n"
 	  "headline 913 913 928 1080 1080\n"
 	  "+ 2 TODO - - \"Item 5\" \n"
 	  "section 928 928 928 1080 1080\n"
 	  "planning 928 928 - - 988\n"
+	  "@ deadline active - 2026 12 24 - - 2026 12 24 - - - - - - - - - - 971 987\n"
+	  "@ scheduled active - 2026 11 22 - - 2026 11 22 - - restart 1 day - - - - - 939 961\n"
 	  "paragraph 988 988 988 1080 1080\n"
 	  "headline 1080 1080 1095 1236 1236\n"
 	  "+ 2 TODO - - \"Item 6\" \n"
 	  "section 1095 1095 1095 1236 1236\n"
 	  "drawer 1095 1095 1105 1230 1236\n"
 	  "clock 1105 1105 - - 1168\n"
+	  "@ clock inactive-range daterange 2026 11 10 9 0 2026 11 5 10 30 - - - - - - - - 1112 1159\n"
+	  "= 1:30\n"
 	  "plain-list 1168 1168 1168 1230 1230\n"
 	  "item 1168 1168 1170 1230 1230\n"
 	  "paragraph 1170 1170 1170 1230 1230\n"
@@ -425,6 +448,8 @@ static const struct { const char *name, *text, *want; } cases[] = {
 	  "node-property 1282 1282 - - 1296\n"
 	  "drawer 1302 1302 1312 1437 1443\n"
 	  "clock 1312 1312 - - 1375\n"
+	  "@ clock inactive-range daterange 2026 11 1 9 0 2026 11 5 10 30 - - - - - - - - 1319 1366\n"
+	  "= 1:30\n"
 	  "plain-list 1375 1375 1375 1437 1437\n"
 	  "item 1375 1375 1377 1437 1437\n"
 	  "paragraph 1377 1377 1377 1437 1437\n"
@@ -434,10 +459,14 @@ static const struct { const char *name, *text, *want; } cases[] = {
 	  "+ 2 TODO 65 - \"Item 10\" work\n"
 	  "section 1483 1483 1483 1644 1644\n"
 	  "planning 1483 1483 - - 1538\n"
+	  "@ deadline active - 2026 12 2 - - 2026 12 2 - - - - - - - - - - 1521 1537\n"
+	  "@ scheduled active - 2026 11 4 - - 2026 11 4 - - - - - - - - - - 1494 1511\n"
 	  "property-drawer 1538 1538 1551 1565 1571\n"
 	  "node-property 1551 1551 - - 1565\n"
 	  "paragraph 1571 1571 1571 1581 1581\n"
-	  "clock 1581 1581 - - 1644\n" },
+	  "clock 1581 1581 - - 1644\n"
+	  "@ clock inactive-range daterange 2026 11 12 9 0 2026 11 20 10 30 - - - - - - - - 1588 1635\n"
+	  "= 1:30\n" },
 	{ "t1.org",
 	  "#+NAME: data\n"
 	  "| a | b |\n"
@@ -534,8 +563,63 @@ static const struct { const char *name, *text, *want; } cases[] = {
 	  "+ 1 - - - \"h\" \n"
 	  "section 36 36 36 92 92\n"
 	  "planning 36 36 - - 67\n"
+	  "@ scheduled active - 2026 11 22 - - 2026 11 22 - - - - - - - - - - 49 65\n"
 	  "property-drawer 67 67 80 86 92\n"
 	  "node-property 80 80 - - 86\n" },
+	{ "ts-clock.org",
+	  "CLOCK: [2026-11-01 Sun 09:00 +1D --3W]\n"
+	  "clock: [2026-11-01 Sun 9:00-10:00]--[2026-11-02 Mon 8:00] =>  23:00\n"
+	  "CLOCK: => 1:00\n",
+	  "section 0 0 0 122 122\n"
+	  "clock 0 0 - - 39\n"
+	  "@ clock inactive - 2026 11 1 9 0 2026 11 1 9 0 cumulate 1 year - - first 3 year 7 38\n"
+	  "= running\n"
+	  "clock 39 39 - - 107\n"
+	  "@ clock inactive-range daterange 2026 11 1 9 0 2026 11 2 8 0 - - - - - - - - 46 97\n"
+	  "= 23:00\n"
+	  "clock 107 107 - - 122\n"
+	  "= 1:00\n" },
+	{ "ts-odd.org",
+	  "* a\n"
+	  "SCHEDULED: <2026-11-22 Sun +1D -2D]--[2026-11-23 9:00] xCLOSED:[2026-11-01 Mon. 123:45] DEADLINE:<2026-11-22 DEADLINE: x>\n"
+	  "CLOCK: [2026-11-01 Sun 09:00 +1D --3W] =>  x y\n"
+	  "CLOCK: <%%(a]b) 9:00>   => 0:10\f\n"
+	  "CLOCK: [2026-11-01 Sun 9:00-10:00] =>   2:00  \n",
+	  "headline 0 0 4 253 253\n"
+	  "+ 1 - - - \"a\" \n"
+	  "section 4 4 4 253 253\n"
+	  "planning 4 4 - - 126\n"
+	  "@ closed inactive - 2026 11 1 - - 2026 11 1 - - - - - - - - - - 67 92\n"
+	  "@ scheduled active-range daterange 2026 11 22 - - 2026 11 23 9 0 - - - - - - - - 15 59\n"
+	  "paragraph 126 126 126 253 253\n" },
+	{ "ts-planning.org",
+	  "* TODO a\n"
+	  "SCHEDULED: <2026-11-22 Sun .+1d/3d> DEADLINE: <2026-11-22 Sun 9:00-10:30 -2d>\n"
+	  ":LOGBOOK:\n"
+	  "CLOCK: [2026-11-01 Sun 09:00]--[2026-11-01 Sun 10:30] =>  1:30\n"
+	  "CLOCK: [2026-11-01 Sun 11:00]\n"
+	  ":END:\n"
+	  "* b\n"
+	  "CLOSED: [2026-11-02 Mon 08:00] SCHEDULED: <%%(diary-float t 4 2) 9:00-10:00>\n",
+	  "headline 0 0 9 196 196\n"
+	  "+ 1 TODO - - \"a\" \n"
+	  "section 9 9 9 196 196\n"
+	  "planning 9 9 - - 87\n"
+	  "@ deadline active-range timerange 2026 11 22 9 0 2026 11 22 10 30 - - - - - all 2 day 55 86\n"
+	  "@ scheduled active - 2026 11 22 - - 2026 11 22 - - restart 1 day 3 day - - - 20 45\n"
+	  "drawer 87 87 97 190 196\n"
+	  "clock 97 97 - - 160\n"
+	  "@ clock inactive-range daterange 2026 11 1 9 0 2026 11 1 10 30 - - - - - - - - 104 151\n"
+	  "= 1:30\n"
+	  "clock 160 160 - - 190\n"
+	  "@ clock inactive - 2026 11 1 11 0 2026 11 1 11 0 - - - - - - - - 167 189\n"
+	  "= running\n"
+	  "headline 196 196 200 277 277\n"
+	  "+ 1 - - - \"b\" \n"
+	  "section 200 200 200 277 277\n"
+	  "planning 200 200 - - 277\n"
+	  "@ closed inactive - 2026 11 2 8 0 2026 11 2 8 0 - - - - - - - - 208 231\n"
+	  "@ scheduled diary timerange - - - 9 0 - - - 10 0 - - - - - - - - 242 276\n" },
 	{ "uni-drawer.org",
 	  ":x·:\n"
 	  "a\n"

@@ -34,28 +34,45 @@ def indent(r):
 
 
 def ts(r, c='['):
-    d = '2026-11-%02d' % r.randint(1, 30)
+    if r.random() < .1:
+        return '<%%(' + r.choice(['diary-float t 4 2', 'x', 'a)b', '']) + ')' + r.choice(['', ' 9:00', ' 9:00-10:30', ' x 10:00-11:00', ']']) + '>'
+    d = '%04d-%02d-%02d' % (r.choice([2026, 2026, 999, 12345]) % 10000, r.randint(0, 13), r.randint(0, 32))
     e = {'[': ']', '<': '>'}[c]
-    return c + d + r.choice(['', ' Sun', ' Mon 09:00', ' Sun .+1d', ' Sun .+1d/3d', ' x]y']) + e
+    if r.random() < .1:
+        e = r.choice('[]<>')
+    tail = ''.join(r.choice(['', ' Sun', ' Mon.', ' Sun', '  Sun', ' 9:00', ' 09:00', ' 19:30', ' 9:00-10:30', ' 123:45', '-11:00',
+                             ' +1d', ' ++1w', ' .+1d', ' .+1d/3d', ' +2D', ' -2d', ' --3w', ' -1M', ' +1y/x', ' x]y', ' x', '+5h'])
+                   for _ in range(r.randint(0, 3)))
+    if tail and tail[0] != ' ' and r.random() < .7:
+        tail = ' ' + tail
+    t = c + d + tail + e
+    if r.random() < .15:
+        t += '--' + ts(r, r.choice('<['))
+    return t
 
 
 BLOCKS = ['src', 'SRC', 'example', 'quote', 'center', 'verse', 'export', 'comment', 'foo', 'src:']   # no regexp characters: see src/org/org.c's first comment
 
 
 def line(r):
-    k = r.randint(0, 31)
+    return line_k(r, r.randint(0, 31))
+
+
+def line_k(r, k):
     i = indent(r)
     if k == 0:
         return '*' * r.choice([1, 1, 2, 3]) + r.choice([' ', ' ', ' ', '', '\t']) + text(r, 5) + r.choice(['', ' :' + uni(r) + ':'])
     if k == 1:
-        return i + r.choice(['SCHEDULED:', 'DEADLINE:', 'CLOSED:', 'scheduled:']) + ' ' + ts(r, r.choice('<[')) + r.choice(['', ' DEADLINE: ' + ts(r, '<')])
+        return i + ' '.join(r.choice(['SCHEDULED:', 'DEADLINE:', 'CLOSED:', 'scheduled:', 'xCLOSED:']) + r.choice([' ', '', '\t', '  ']) + ts(r, r.choice('<['))
+                            for _ in range(r.randint(1, 3))) + r.choice(['', ' x', ' DEADLINE:'])
     if k == 2:
         return i + r.choice([':PROPERTIES:', ':properties:', ':END:', ':end:', ':LOGBOOK:', ':a-b_c:', ':é:', ':x:y:', ':' + uni(r) + ':'])
     if k == 3:
         return i + r.choice([':EFFORT: 0:12', ':STYLE: habit', ':ID:', ':a:b', ':x+: 1', ': x', ':', ':A:\tb'])
     if k == 4:
         return i + r.choice(['CLOCK: ', 'clock: ', 'CLOCK:\t']) + r.choice([
-            ts(r) + '--' + ts(r) + ' =>  1:30', ts(r), ts(r) + ' x', '=> 0:10', ts(r) + '--' + ts(r), ts(r) + '--' + ts(r) + ' => 1:3'])
+            ts(r) + '--' + ts(r) + ' =>  1:30', ts(r), ts(r) + ' x', '=> 0:10', ts(r) + '--' + ts(r), ts(r) + '--' + ts(r) + ' => 1:3',
+            ts(r, r.choice('<[')) + r.choice([' => 1:30 ', ' =>  x y', ' => ', '=> 2:00', ' => 1:30\f'])])
     if k == 5:
         return i + r.choice(['# ', '#', '#x ']) + text(r)
     if k == 6:
@@ -89,7 +106,13 @@ def line(r):
     return i + text(r, 6)
 
 
+def planning(r):
+    return '* ' + text(r, 2) + '\n' + line_k(r, 1) + '\n' + '\n'.join(line_k(r, 4) for _ in range(r.randint(0, 3)))
+
+
 def gen(r):
+    if r.random() < .3:   # headlines with planning and clock lines, where Org reads their timestamps
+        return '\n'.join(planning(r) for _ in range(r.randint(1, 6))) + r.choice(['\n', ''])
     return '\n'.join(line(r) for _ in range(r.randint(1, 30))) + r.choice(['\n', '\n', '', '\n\n', '\n  '])
 
 

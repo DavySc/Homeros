@@ -1,0 +1,8 @@
+caught        org: table row contents start at the bar   (make test TESTS=org): tests/test_org.c:585: CHECK(!strcmp(got, cases[i].want)) failed
+caught        org: a headline ends only at a shallower one (fuzz)   (make fuzz FUZZERS=org FUZZ_SECONDS=30): ==17022== ERROR: libFuzzer: deadly signal
+caught        org: checkbox [x] not folded to [X] (against Org)   (make org-conform ORG_N=2000 SEED=1): 185 of 2000 differ (Org failed on 1)
+caught        org: tags take [[:word:]] for [[:alnum:]] above ASCII   (make test TESTS=org): tests/test_org.c:585: CHECK(!strcmp(got, cases[i].want)) failed
+caught        org: drawer and footnote names take any non-ASCII byte (against Org)   (make org-conform ORG_N=2000 SEED=1): 61 of 2000 differ (Org failed on 1)
+caught        org: org_edit stops its span before a new shallower headline's subtree ends (fuzz)   (make fuzz FUZZERS=org FUZZ_SECONDS=30): ==18028== ERROR: libFuzzer: deadly signal
+caught        org: org_edit starts its span at a headline whose line the edit touches (fuzz)   (make fuzz FUZZERS=org FUZZ_SECONDS=30): ==18341== ERROR: libFuzzer: deadly signal
+exit 0

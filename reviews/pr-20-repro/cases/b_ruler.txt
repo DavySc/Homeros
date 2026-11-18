@@ -1,0 +1,136 @@
+C 30 80
+F 20202020f09f988020666f6f206162e6bca2206261725f3120f09f9880206261725f3120e6bca2200920616161616161616161616161616161616161616161616161616161616161202c0a092d2d206c6f6e676572776f7264
+F 
+F 
+T k:30G
+T k:x
+T k:u
+P
+S 1       😀 foo ab漢 bar_1 😀 bar_1 漢        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa ,
+S   1         -- longerword
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S f0                                                            1,1            All
+S 
+M - - -
+P
+S   1     😀 foo ab漢 bar_1 😀 bar_1 漢        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa ,
+S 2           -- longerword
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S f0                                                            2,1-8          All
+R
+M - - -
+P
+R
+S 2   -- longerword
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S f0 [+]                                                        2,1            All
+R
+M - - -
+P
+R
+S 2           -- longerword
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S f0                                                            2,1            All
+S 1 change; before #1  0 seconds ago
+M - - -
+E

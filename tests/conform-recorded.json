@@ -67744,5 +67744,111 @@
 0
 ]
 }
+},
+{
+"text": "ab\ncd\nef\n",
+"keys": [
+"G",
+"q",
+"a",
+"<C-d>",
+"x",
+"q",
+"@",
+"a"
+],
+"nvim": {
+"cursor": [
+3,
+0
+],
+"lines": [
+"ab",
+"cd",
+"f"
+]
+}
+},
+{
+"text": "ab\ncd\nef\n",
+"keys": [
+"q",
+"a",
+"<C-u>",
+"x",
+"q",
+"@",
+"a"
+],
+"nvim": {
+"cursor": [
+1,
+0
+],
+"lines": [
+"b",
+"cd",
+"ef"
+]
+}
+},
+{
+"text": "abc\n",
+"keys": [
+"v",
+"l",
+"<C-w>",
+"s",
+"x"
+],
+"nvim": {
+"lines": [
+"ac"
+],
+"cursor": [
+1,
+1
+]
+}
+},
+{
+"text": "abc\n",
+"keys": [
+"v",
+"l",
+"<C-w>",
+"v",
+"x"
+],
+"nvim": {
+"cursor": [
+1,
+1
+],
+"lines": [
+"ac"
+]
+}
+},
+{
+"text": "abc\n",
+"keys": [
+"<C-w>",
+"s",
+"v",
+"l",
+"<C-w>",
+"w",
+"x"
+],
+"nvim": {
+"lines": [
+"c"
+],
+"cursor": [
+1,
+0
+]
+}
 }
 ]

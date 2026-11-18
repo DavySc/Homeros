@@ -1,5 +1,42 @@
-# Plants for ref/core.c (format in tools/planted.sh).  The package that builds
-# src/core/ replaces this file with plants for its own code.
-core: undo loses deleted text (fuzz_keys)~fuzz FUZZERS=keys FUZZ_SECONDS=60~~ref/core.c~undo_record(e->buf->undo, pos, del, ndel, ins, nins, c, after)~undo_record(e->buf->undo, pos, del, ndel ? ndel - 1 : 0, ins, nins, c, after)
-core: undo leaves the cursor inside a 3- or 4-byte character (recorded traces)~test TESTS=~~ref/core.c~		size_t p = 0;¶		for (size_t k; p + (k = uni_len(s, len, p)) <= e->win->col; p += k) {}¶		e->win->col = p;~		e->win->col = uni_prev(s, len, e->win->col + 1);
-core: undo of a deletion at a line start reads as lines removed (recorded traces)~test TESTS=~~ref/core.c~	if (w.hi == w.lo && at_start && n < before) last = first - 1;~	if (w.hi == w.lo && at_start) last = first - 1;
+# Plants for src/core (format in tools/planted.sh), one per check that
+# guards the package: the recorded Neovim traces (test_core_screens), the
+# undo test, the fuzzers.
+core: undo loses deleted text (fuzz_keys)~fuzz FUZZERS=keys FUZZ_SECONDS=60~~src/core/core.c~if (!undo_record(b->undo, pos, del, ndel, ins, nins, c, after)) {~if (!undo_record(b->undo, pos, del, ndel ? ndel - 1 : 0, ins, nins, c, after)) {
+core: a deleted line keeps its mark (recorded traces)~test TESTS=core_screens~~src/core/core.c~		else m->set = 0;~		else m->line = l1;
+core: undo does not bring back the group's marks (test_core_undo)~test TESTS=core_undo~~src/core/core.c~		if (saved[i].set) b->mark[i] = saved[i];~		(void)0;
+core: redo of a join forgets the joined line (test_core_undo)~test TESTS=core_undo~~src/core/core.c~n < before && !(u && u->join)) last~n < before) last
+core: :bd searches the jump list from its oldest entry (test_core_contract)~test TESTS=core_contract~~src/core/core.c~		if (w->jumpidx == w->njump) w->jumpidx = w->njump - 1;~		if (w->jumpidx == w->njump) w->jumpidx = 0;
+core: set_topline() keeps w_botline valid (recorded traces)~test TESTS=core_screens~~src/core/move.c~	s->topvalid = 0;      /* scrolloff is still to be checked */¶	s->bv~	s->topvalid = 0;      /* scrolloff is still to be checked */¶	if (0) s->bv
+core: the popup leaves no space before kind and menu (recorded traces)~test TESTS=core_screens~~src/core/draw.c~			int cw = s ? cells(s) + (j > 0) : 0;~			int cw = s ? cells(s) : 0;
+core: CTRL-F overlaps one line too many (recorded traces)~test TESTS=core_screens~~src/core/move.c~		int minh = w->h - 2, ov;~		int minh = w->h - 1, ov;
+core: a split forgets the alternate buffer (test_core_contract)~test TESTS=core_contract~~src/core/win.c~	n->alt = o->alt;~	n->alt = NULL;
+core: the cursor clamp counts bytes, not characters (fuzz_core)~fuzz FUZZERS=core FUZZ_SECONDS=120~~src/core/move.c~	while ((k = lit_next(&it, &c)) && p + k <= w->col) { last = p; p += k; }~	while ((k = lit_next(&it, &c)) && p + k <= w->col) { last = p + k - 1; p += k; }
+core: the face of a cell past a shrunk screen is written (fuzz_core)~fuzz FUZZERS=core FUZZ_SECONDS=120~~src/core/draw.c~y >= 0 && y < g->rows && x >= 0 && x < g->cols~y >= 0 && x >= 0 && x < g->cols
+
+core: an undone insert at a line start counts as lines removed (test_core_undo)~test TESTS=core_undo~~src/core/core.c~at_start && n < before &&~at_start &&
+core: CTRL-D and CTRL-F never report that they could not move (no beep) (test_core_contract)~test TESTS=core_contract~~src/core/move.c~	return moved ? 0 : -1;~	return 0;
+core: gj and gk never fail at the first or last screen line (test_core_contract)~test TESTS=core_contract~~src/core/move.c~	} else r = screengo(e, w, n < 0 ? -1 : 1, n < 0 ? -n : n) ? 0 : -1;~	} else r = (screengo(e, w, n < 0 ? -1 : 1, n < 0 ? -n : n), 0);
+core: closing the last window quits with unsaved changes (test_core_contract)~test TESTS=core_contract~~src/core/win.c~		if (quit_check(e, force)) return -1;~		if (0 && quit_check(e, force)) return -1;
+core: the command line is drawn one cell to the right (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~		int c = grid_puts(g, r, 0, t, ATTR_NONE), cc = c;~		int c = grid_puts(g, r, 1, t, ATTR_NONE), cc = c;
+core: the selected popup item is not highlighted (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~		int attr = idx == e->pumsel ? ATTR_NONE : ATTR_REV;~		int attr = ATTR_REV;
+core: entering a window does not look at its view again (finding 6) (test_core_screens)~test TESTS=core_screens~~src/core/win.c~	w->frame->s.topvalid = 0;¶	if (w->h < p_wh)~	if (w->h < p_wh)
+core: a taller command line keeps the wanted column (finding 2) (test_core_screens)~test TESTS=core_screens~~src/core/win.c~		if (e->win->want != WANT_EOL) core_set_want(e);~		(void)0;
+core: a new buffer does not get the window's :set wrap (finding 4) (test_core_screens)~test TESTS=core_screens~~src/core/core.c~	else w->wrap = w->frame->s.allwrap;~	else (void)0;
+core: a double-width character never takes the border cell (finding 1) (test_core_screens)~test TESTS=core_screens~~src/core/core.c~== (size_t)tw - 1 ? 3 : 2;~== (size_t)tw - 1 ? 2 : 2;
+core: no '<' where the view starts inside a double-width character (test_core_screens)~test TESTS=core_screens~~src/core/draw.c~(const unsigned char *)"<", 1, 0, 1, face);~(const unsigned char *)" ", 1, 0, 1, face);
+core: plines_col counts bytes again (finding 5) (test_core_screens)~test TESTS=core_screens~~src/core/move.c~		i++;~		i += k;
+core: a reused buffer keeps the old undo marks (finding 7) (test_core_undo)~test TESTS=core_undo~~src/core/core.c~			umarks_drop(b);            /* by address~			(void)0;                  /* by address
+core: an undo group takes its neighbour's marks (test_core_undo)~test TESTS=core_undo~~src/core/core.c~	if (u && (u->b != b || u->seq != seq)) u = NULL;~	(void)0;
+core: marks kept for 3 undo groups only (test_core_undo)~test TESTS=core_undo~~src/core/core.c~enum { UMARKS_MAX = 2000, UMARKS_TRIM = 64 };~enum { UMARKS_MAX = 3, UMARKS_TRIM = 64 };
+core: a save leaves the outside-change flag set (test_core_contract)~test TESTS=core_contract~~src/core/core.c~		b->saved_seq = undo_seq(b->undo);¶		b->changed = 0;¶		if (b->journal) journal_saved(b->journal);¶		core_msg(e, "\"%s\" %zuL~		b->saved_seq = undo_seq(b->undo);¶		if (b->journal) journal_saved(b->journal);¶		core_msg(e, "\"%s\" %zuL
+core: CTRL-^ onto column 0 wants column 0 even without a position (test_core_screens)~test TESTS=core_screens~~src/core/core.c~	if (how == ENTER_ALT && !w->col && pos) w->want = 0;~	if (how == ENTER_ALT && !w->col) w->want = 0;
+core: scroll_cursor_halfway() drops skipcol without smoothscroll (test_core_screens)~test TESTS=core_screens~~src/core/move.c~	if (p_sms && w->wrap) w->skipcol = 0;¶	w->frame->s.topvalid = 1;~	w->skipcol = 0;¶	w->frame->s.topvalid = 1;
+core: core_vcol counts a byte inside a cluster to its end (test_core_contract)~test TESTS=core_contract~~src/core/core.c~i < n && i + (k = uni_glen(s, n, i)) <= col; i += k)~i < col && i < n && (k = uni_glen(s, n, i)); i += k)
+core: the cursor line's height less skipcol (test_core_screens)~test TESTS=core_screens~~src/core/move.c~b.cheight = plines_lim(w, l, 1); }~b.cheight = k; }
+core: the sideways scroll redone for an unmoved cursor (test_core_screens)~test TESTS=core_screens~~src/core/move.c~		int valid = s->sideok && s->sline~		int valid = s->sideok == 2 && s->sline
+core: an insertion drops w_botline (test_core_screens)~test TESTS=core_screens~~src/core/core.c~			int bv = ws->bv;~			int bv = 0;
+core: the popup placed before update_screen() (test_core_screens)~test TESTS=core_screens~~src/core/draw.c~	win_drawn(e);                      /* pum_call_update_screen() */~	(void)0;
+core: entering a buffer keeps the sideways scroll valid (test_core_screens)~test TESTS=core_screens~~src/core/core.c~	w->vc.ok = w->frame->s.sideok = 0;   /* w_valid = 0 */~	w->vc.ok = 0;   /* w_valid = 0 */
+core: a composing character at a cluster start is drawn without its space (test_core_screens)~test TESTS=core_screens~~src/core/draw.c~		if (uni_glen(b, k + 1, 0) > 1) {~		if (uni_glen(b, k + 1, 0) > 9) {
+core: H and L apply scrolloff under an operator (test_core_contract)~test TESTS=core_contract~~src/core/move.c~	if (so) cursor_correct(e, w);~	if (so || 1) cursor_correct(e, w);
+core: a join leaves the next line's marks behind (recorded key traces)~test TESTS=~~src/core/core.c~	if (line_amount) join_next = b;~	(void)0;

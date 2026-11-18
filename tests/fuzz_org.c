@@ -76,8 +76,40 @@ static void check_org(const char *s, size_t n)
 		}
 		free(f);
 	}
+	/* the timestamp readers stay inside the text and their node */
+	for (size_t j = 0; j < k; j++) {
+		OrgTs t[3];
+		size_t d[2];
+		int got = e[j].type == ORG_PLANNING ? org_planning(s, n, &e[j], t) :
+		          e[j].type == ORG_CLOCK ? org_clock(s, n, &e[j], t, d) : 0;
+		if (e[j].type == ORG_CLOCK && (d[0] > d[1] || d[1] > e[j].end)) abort();
+		for (int i = 0; i < 3; i++)
+			if (got >> i & 1 && (t[i].begin < e[j].begin || t[i].begin >= t[i].end || t[i].end > n || !strchr("aAiId", t[i].type))) abort();
+	}
+	for (size_t p = 0; p < n; p++) {
+		OrgTs t;
+		if (org_ts(s, n, p, &t) && (t.begin != p || t.end <= p || t.end > n || (t.type != 'd' && (t.m < 0 || t.d < 0)))) abort();
+	}
 	free(last);
 	free(e);
+}
+
+/* org_edit: s with [pos, pos + del) replaced by ins bytes from s + q,
+   reparsed in place, equals the new text parsed whole */
+static void check_edit(const char *s, size_t n, size_t pos, size_t del, size_t q, size_t ins)
+{
+	static char t[1 << 15];
+	size_t k, m, tn = pos + ins + (n - pos - del);
+	memcpy(t, s, pos);
+	memcpy(t + pos, s + q, ins);
+	memcpy(t + pos + ins, s + pos + del, n - pos - del);
+	OrgNode *e = org_parse(s, n, &k), *f = org_parse(t, tn, &m);
+	if (!e || !f || org_edit(&e, &k, t, tn, pos, del, ins) || k != m) abort();
+	for (size_t i = 0; i < k; i++)
+		if (e[i].begin != f[i].begin || e[i].aff != f[i].aff || e[i].cbeg != f[i].cbeg || e[i].cend != f[i].cend ||
+		    e[i].end != f[i].end || e[i].parent != f[i].parent || e[i].type != f[i].type) abort();
+	free(e);
+	free(f);
 }
 
 int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
@@ -86,7 +118,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 		"1. ", "2) ", " * ", "[ ] ", "[X] ", "[@3] ", " :: ", "#+begin_src", "#+end_src", "#+BEGIN_QUOTE",
 		"#+END_QUOTE", "#+begin_foo", "#+end_foo", "#+BEGIN: x", "#+END:", "#+END", ":PROPERTIES:", ":END:",
 		":LOGBOOK:", ":ID: x", "SCHEDULED: <2026-11-22 Sun .+1d>", "CLOCK: [2026-11-01 Sun 09:00]--[2026-11-01 Sun 10:30] =>  1:30",
-		"# ", "#+NAME: x", "#+CAPTION[a]: b", "#+RESULTS:", "#+TBLFM: $1=2", "#+CALL: f[", "]", "(", ")", "| a |",
+		"# ", "#+NAME: x", "#+CAPTION[a]: b", "#+RESULTS:", "#+TBLFM: $1=2", "#+CALL: f[", "]", "(", ")", "<2026-11-22 Sun 9:00-10:30 .+1d/3d -2d>", "--", "<%%(x) 9:00>", "CLOSED: ", "DEADLINE: ", " => 1:30", "[2026-01-02]", "| a |",
 		"|-", "+--+", ": x", "-----", "%%(x)", "[fn:1] ", "\\begin{x}", "\\end{x}", "TODO ", "DONE ", "[#A] ",
 		"COMMENT ", ":a:b:", "x", "y", "é", "#", ":", "|", "[", "\r" };
 	static char s[1 << 14];
@@ -99,5 +131,11 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 		len += l;
 	}
 	check_org(s, len);
+	if (n >= 4) {
+		size_t pos = d[0] * (len + 1) / 256, del = d[1] % 16, q = d[2] * (len + 1) / 256, ins = d[3] % 24;
+		if (del > len - pos) del = len - pos;
+		if (ins > len - q) ins = len - q;
+		check_edit(s, len, pos, del, q, ins);
+	}
 	return 0;
 }

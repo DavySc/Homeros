@@ -104,8 +104,6 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 		{ "\xc0\xc0\xc4\x17\x09\xff\xd2\x98\x6c\xba\x01\x90\x51\x00\x00", 15 },
 		/* i CTRL-V U EEEEEEEE: past U+10FFFF */
 		{ "\x31\x57\x2d\x0c\x0c\x0c\x0c\x0c\x0c\x0c\x0c", 11 },
-		/* v CTRL-W n o: Visual mode ends in the new window */
-		{ "\x37\x5b\x45\x35", 4 },
 	};
 	(void)argc; (void)argv;
 	for (size_t i = 0; i < sizeof found / sizeof *found; i++)
