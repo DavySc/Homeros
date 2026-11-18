@@ -33,6 +33,7 @@ typedef struct { uint32_t name, compiler, source_path, object_path, archive_path
                  tvars_count, consts_first, consts_count; } RdiUnit;
 typedef struct { uint32_t proc, parent, first_child, next_sibling, voff_first, voff_opl, local_first,
                  local_count, inline_site; } RdiScope;
+typedef struct { uint32_t name, type, owner_type, line_table; } RdiInlineSite;
 typedef struct { uint32_t name; uint8_t flags, container_flags; uint16_t reserved; uint64_t location;
                  uint32_t container, type, root_scope, link_name; } RdiSymbol;
 typedef struct { uint32_t bucket_base, node_base, bucket_count, node_count; } RdiNameMap;

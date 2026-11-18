@@ -1,37 +1,41 @@
 """oracle_conv.py <pdb2rdi> <rdiq> <file.pdb>...: convert each PDB and ask the result, through the
 reader, what llvm-pdbutil says about the PDB: the line at every offset where a line record starts
 and at the last byte before the next, the offsets of every source line, the unit at both ends of
-every section contribution, every section, and every procedure and block with the blocks around
-it. Compared by meaning (paths, names, offsets), not by table index. Where RAD's own conversion
+every section contribution, every section, and every procedure, block and inlined call with the scopes
+around it. Compared by meaning (paths, names, offsets), not by table index. Where RAD's own conversion
 of the PDB sits beside it (<file>.rdi), the line at every offset of the code and every scope must
-also equal RAD's. In our file the scope the vmap gives at every offset must be the innermost
+also equal RAD's, except what an inlined call covers (RAD reads the annotations differently,
+and its calls then overlap; lessons, L26). In our file the scope the vmap gives at every offset must be the innermost
 scope that covers it (RAD's own vmap is not sorted, so it cannot be the reference for that)."""
 import collections, os, re, subprocess, sys, tempfile
 pdb2rdi, rdiq = sys.argv[1:3]
 def run(rdi, queries):
     return subprocess.run([rdiq, rdi], input='\n'.join(queries) + '\n', capture_output=True, text=True, errors='surrogateescape').stdout.split('\n')[:-1]
 def scopes(rdi):
-    """per scope: parent, inline site, the offsets it covers, [thunk, container flags, is a root], name, link name, first child,
-    next sibling, procedure, name of the procedure's unit ('' for a procedure made from a public symbol, which RAD files under a unit of its own)"""
-    unit, out = {}, [(0, 0, (), [], '', '', 0, 0, 0, '')]
+    """per scope: parent, inline site, the offsets it covers (pieces without bytes left out), [thunk, container flags, is a root],
+    name, link name, first child, next sibling, procedure, name of the procedure's unit ('' for a procedure made from a public
+    symbol, which RAD files under a unit of its own), and for an inlined call the name of the inlined function"""
+    unit, out = {}, [(0, 0, (), [], '', '', 0, 0, 0, '', None)]
     for line in run(rdi, [f'u {i}' for i in range(1, int(run(rdi, ['N 16'])[0]))]):
         first, count, name = line.split(' ', 2)
         for p in range(int(first), int(first) + int(count)): unit[p] = name.replace('*global*', '')
     for line in run(rdi, [f'D {i}' for i in range(1, int(run(rdi, ['N 23'])[0]))]):
-        place, flags, name, link = line.split('\t')
+        place, flags, name, link, site = line.split('\t')
         parent, inline, child, sibling, proc, *ranges = place.split()
-        out.append((int(parent), int(inline), tuple(int(v, 16) for v in ranges), flags.split(), name, link, int(child), int(sibling), int(proc), unit.get(int(proc), '')))
+        ranges = tuple(v for i in range(0, len(ranges), 2) if ranges[i] != ranges[i + 1] for v in (int(ranges[i], 16), int(ranges[i + 1], 16)))
+        out.append((int(parent), int(inline), ranges, flags.split(), name, link, int(child), int(sibling), int(proc), unit.get(int(proc), ''), site if int(inline) else None))
     return out
-def described(all_scopes, key):
+def described(all_scopes, key, calls=True):
     """how often each description occurs; a description is what a scope covers, what the scopes around it cover, its unit and
-    key(flags, name, link). Inlined calls are left out, also from the scopes around (NOT YET: a later slice)."""
+    key(flags, name, link, inlined function). Without `calls`, what an inlined call covers is left out."""
+    covers = lambda s: s[2] if calls or not s[1] else 'inline'
     out = collections.Counter()
-    for parent, inline, ranges, flags, name, link, _, _, _, unit in all_scopes[1:]:
-        chain = []
+    for s in all_scopes[1:]:
+        chain, parent = [], s[0]
         while parent:
-            if not all_scopes[parent][1]: chain.append(all_scopes[parent][2])
+            chain.append(covers(all_scopes[parent]))
             parent = all_scopes[parent][0]
-        if not inline: out[(ranges, tuple(chain), unit, *key(flags, name, link))] += 1
+        out[(covers(s), tuple(chain), s[9], *key(s[3], s[4], s[5], s[10]))] += 1
     return out
 total = 0
 for pdb in sys.argv[3:]:
@@ -58,13 +62,31 @@ for pdb in sys.argv[3:]:
             if sec in va and size > 0:
                 for voff in (va[sec] + int(m[3]), va[sec] + int(m[3]) + size - 1): ask(f'U {voff}', mods[int(m[1])])
         elif part == 'Symbols' and (m := re.match(r' *Mod (\d+) \| `', line)): syms, mod = {}, mods[int(m[1])]
-        elif part == 'Symbols' and (m := re.match(r' +(\d+) \| (S_GPROC32|S_LPROC32|S_BLOCK32) \[size = \d+\] `(.*)`$', line)):
-            # a procedure, or a block that names the record it is inside: (what it covers, what is around it, external, name)
+        elif part == 'Symbols' and (m := re.match(r' *(\d+) \| (S_GPROC32|S_LPROC32|S_THUNK32|S_BLOCK32) \[size = \d+\] `(.*)`$', line)):
+            # a procedure, a thunk, or a block that names the record it is inside: (what it covers, what is around it, unit, external, name, inlined function)
             p = re.match(r' +parent = (\d+), end = \d+(?:, addr = (\d+):(\d+), code size = (\d+))?', lines[i + 1])
-            sec, off, size = map(int, p.groups()[1:] if p[2] else re.match(r' +code size = (\d+), addr = (\d+):(\d+)', lines[i + 2]).group(2, 3, 1))
+            sec, off, size = map(int, p.groups()[1:] if p[2] else re.search(r'size = (\d+), addr = (\d+):(\d+)', lines[i + 2]).group(2, 3, 1))
             covers = (va[sec] + off, va[sec] + off + size) if sec in va and size else ()
-            around = syms.get(int(p[1]), ((), (), mod, 0, None)) if m[2] == 'S_BLOCK32' else ((), (), mod, 0x80 * (m[2] == 'S_GPROC32'), m[3])
-            syms[int(m[1])] = (covers, (around[0],) + around[1] if m[2] == 'S_BLOCK32' else (), mod, around[3], m[3] if m[2] != 'S_BLOCK32' else None)
+            if m[2] == 'S_BLOCK32': around = syms.get(int(p[1]), ((), (), mod, 0))
+            else: around, base = ((), (), mod, 0x80 * (m[2] == 'S_GPROC32')), va.get(sec, 0) + off
+            syms[int(m[1])] = (covers, (around[0],) + around[1] if m[2] == 'S_BLOCK32' else (), mod, around[3], m[3] if m[2] != 'S_BLOCK32' else None, None)
+            expected[syms[int(m[1])]] += 1
+        elif part == 'Symbols' and (m := re.match(r' *(\d+) \| S_INLINESITE2? \[', line)):
+            # an inlined call covers, from the procedure's start, what llvm-pdbutil prints for its annotations: from the
+            # first "code" since the last end (or from that end) to each "code end"; pieces that touch are one
+            p, j, at, first, pieces = re.match(r' +inlinee = \S+ \((.*)\), parent = (\d+)', lines[i + 1]), i + 2, base, None, []
+            while not re.match(r' *\d+ \| |\s*Mod |\s*$', lines[j]):
+                for end, x in re.findall(r'code (end )?0x([0-9A-F]+)', lines[j]):
+                    at = base + int(x, 16)
+                    if not end and first is None: first = at
+                    elif end: pieces.append((at if first is None else first, at)); first = None
+                j += 1
+            covers = []
+            for a, b in sorted(pieces + [(at if first is None else first, at)]):
+                if covers and a <= covers[-1]: covers[-1] = max(covers[-1], b)
+                elif a < b: covers += [a, b]
+            around = syms.get(int(p[2]), ((), (), mod, 0))
+            syms[int(m[1])] = (tuple(covers), (around[0],) + around[1], mod, around[3], None, p[1])
             expected[syms[int(m[1])]] += 1
         elif part == 'Lines' and (m := re.match(r' *Mod \d+ \| `(.*)`: *$', line)): folder = re.sub(r'[^/\\]*$', '', m[1])
         elif part == 'Lines' and (m := re.match(r'(\S.*) \((?:[\w-]+: [0-9A-F]+|no checksum)\)$', line)): src = m[1]
@@ -98,8 +120,10 @@ for pdb in sys.argv[3:]:
         if subprocess.run(['timeout', '120', pdb2rdi, pdb, rdi]).returncode != 0: sys.exit(f'oracle_conv: {pdb} does not convert (or takes over 2 minutes)')
         got = run(rdi, q)
         ours = scopes(rdi)
-        has = described(ours, lambda flags, name, link: (int(flags[1]) & 0x80, name if flags[2] == '1' else None))
-        for k, n in expected.items(): q.append(f'procedure or block {k}'); want.append(str(n)); got.append(str(has[k]))
+        has = described(ours, lambda flags, name, link, site: (int(flags[1]) & 0x80, name if flags[2] == '1' else None,
+                                                             site and (site if len(site) <= 32 else site[:32] + '...')))   # as llvm-pdbutil prints a long name
+        for k in expected | has:
+            if k[2]: q.append(f'scope {k}'); want.append(str(expected[k])); got.append(str(has[k]))   # not the procedures made from public symbols
         # the list of a scope's children is the scopes that name it as parent, in order
         inside = collections.defaultdict(list)
         for k, s in enumerate(ours):
@@ -128,8 +152,8 @@ for pdb in sys.argv[3:]:
             every = [f'L {v}' for a, n in spans for v in range(a, a + n)]
             q += every; want += run(rad, every); got += run(rdi, every)
             # NOT YET (types slice): the kind of container, and the container's name cut from the front of a procedure's name
-            a, b = (described(s, lambda flags, name, link: (flags[0], int(flags[1]) & 0x80, name.split('::')[-1], link)) for s in (ours, scopes(rad)))
-            for k in a | b: q.append(f'scope {k}'); want.append(str(b[k])); got.append(str(a[k]))
+            a, b = (described(s, lambda flags, name, link, site: (flags[0], int(flags[1]) & 0x80, name.split('::')[-1], link, site), calls=False) for s in (ours, scopes(rad)))
+            for k in a | b: q.append(f'scope, as RAD has it, {k}'); want.append(str(b[k])); got.append(str(a[k]))
     bad = [(a, w, g) for a, w, g in zip(q, want, got) if w != g]
     if bad or len(got) != len(q):
         print(f'oracle_conv: {pdb}: {len(q)} questions, {len(got)} answers, {len(bad)} differ')

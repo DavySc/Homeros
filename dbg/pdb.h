@@ -37,8 +37,11 @@ uint8_t *pdb_module_stream(const Pdb *p, const PdbModule *m, PdbSpan *syms, PdbS
 /* The stream of symbol records that belong to no module (public symbols among them), which the
    caller frees. */
 uint8_t *pdb_globals(const Pdb *p, PdbSpan *syms);
-/* The symbol record at *at of syms (start at 0): its kind and the bytes after the kind. Moves
-   *at to the next record. False at the end. */
+/* The stream of id records (the names of inlined functions among them), which the caller
+   frees. Record i, counted from 0, has id *first + i. */
+uint8_t *pdb_ids(const Pdb *p, PdbSpan *records, uint32_t *first);
+/* The symbol or id record at *at of a run of records (start at 0): its kind and the bytes after
+   the kind. Moves *at to the next record. False at the end. */
 bool pdb_symbol(PdbSpan syms, uint32_t *at, uint16_t *kind, PdbSpan *data);
 /* the zero-terminated string at *at in s; moves *at past it. Empty at or past the end of s. */
 PdbSpan pdb_string(PdbSpan s, uint32_t *at);

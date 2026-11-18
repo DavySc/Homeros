@@ -58,9 +58,9 @@ oracle | dbg/conv.c |   if (m->slots.n < (uint64_t)(count + 1) * 8) { |   if (m-
 oracle | dbg/rdi.c |         if (at > 0 && --at < cap) buf[at] = '/'; |         if (at > 0 && --at < cap) buf[at] = '-';
 test | dbg/rdi.c |     for (uint64_t steps = r->s[RDI_FILE_PATH_NODES].n; k != 0 && steps > 0; steps -= 1) { |     for (uint64_t steps = 1; k != 0 && steps > 0; steps += 1) {
 oracle | dbg/conv.c | path_node(o, rooted ? 0 : folder, b->file) | path_node(o, rooted ? folder : 0, b->file)
-oracle | dbg/conv.c | if (kind == S_END && open.n) open.n -= 4; | if (kind == S_END && open.n) open.n -= 0;
-oracle | dbg/conv.c | [top].proc, top, voff, voff + le32(d.p + 8)); | [top].proc, 0, voff, voff + le32(d.p + 8));
-oracle | dbg/conv.c | made = scope(&o, ((RdiScope *)o.s[RDI_SCOPES].p)[top].proc, top, | made = scope(&o, 0, top,
+oracle | dbg/conv.c | if ((kind == S_END \p\p kind == S_INLINESITE_END) && open.n) open.n -= 4; | if ((kind == S_END \p\p kind == S_INLINESITE_END) && open.n) open.n -= 0;
+oracle | dbg/conv.c | made = scope(&o, inside, top, 0, o.s[RDI_SCOPE_VOFFS].n - 16); | made = scope(&o, inside, 0, 0, o.s[RDI_SCOPE_VOFFS].n - 16);
+oracle | dbg/conv.c | made = scope(&o, inside, top, 0, o.s[RDI_SCOPE_VOFFS].n - 16); | made = scope(&o, 0, top, 0, o.s[RDI_SCOPE_VOFFS].n - 16);
 oracle | dbg/conv.c | y->link_name = (uint32_t)l[4 * last + 2]; | y->link_name = (uint32_t)l[4 * (first + 1) + 2];
 oracle | dbg/conv.c | voff, held[next].voff); | voff, voff + 1);
 oracle | dbg/conv.c | .name = intern(&o.strings, name.p, name.n), .flags = 2} | .name = intern(&o.strings, name.p, name.n)}
@@ -81,5 +81,29 @@ oracle | dbg/conv.c |   named(&o->pairs, RDI_NAMES_LINK_PROCEDURES, y.link_name,
 oracle | dbg/conv.c | rec(&links, voff, ++order, intern | rec(&links, voff, 1, intern
 oracle | dbg/conv.c | if (l[4 * last + 1] == 0) continue; |
 fuzz | dbg/conv.c | && l[4 * j + 3] != 0 && next < none) | && l[4 * j + 3] != 0)
-test | dbg/conv.c | bool covers = first != 0 && first < opl; | bool covers = first < opl;
-test | dbg/conv.c | bool covers = first != 0 && first < opl; | bool covers = first != 0;
+test | dbg/conv.c | uint32_t size = first < 0x80 ? 1 : first < 0xc0 ? 2 : first < 0xe0 ? 4 : 0; | uint32_t size = first < 0x80 ? 1 : first < 0xc0 ? 2 : first < 0xe0 ? 4 : 1;
+test | dbg/conv.c | if (size == 0 \p\p size > a.n - *at) return false; | if (size == 0) return false;
+test | dbg/conv.c | *value = first & (size == 4 ? 0x1f : 0x7f); | *value = first & 0x7f;
+test | dbg/conv.c | *value = *value << 8 \p a.p[*at + i]; | *value = *value << 7 \p a.p[*at + i];
+test | dbg/conv.c | else if (op == 11) off += x & 15; | else if (op == 11) off += x;
+test | dbg/conv.c | else if (op != 0 && op != 4 && op != 5 && op != 6) ok = false; |
+test | dbg/conv.c | out->n = start;\n      return; | return;
+test | dbg/conv.c | if (!open && op != 0 && op != 5 && op != 6) lo = off, open = true; | if (op != 0 && op != 5 && op != 6) lo = off, open = true;
+test | dbg/conv.c | else if (op == 0 && open) end = base + off; |
+test | dbg/conv.c | if (out->n > start && *LAST(*out, uint64_t) == base + lo) | if (*LAST(*out, uint64_t) == base + lo)
+test | dbg/conv.c | if (out->n > start && *LAST(*out, uint64_t) == base + lo) | if (0)
+oracle | dbg/conv.c | if (op == 4) off += x; | if (op == 4 \p\p op == 12) off += x;
+oracle | dbg/conv.c | if (op == 4) off += x; |
+test | dbg/conv.c | if (p[i] == 0 \p\p p[i] >= p[i + 1]) continue; | if (p[i] >= p[i + 1]) continue;
+test | dbg/conv.c | if (p[i] == 0 \p\p p[i] >= p[i + 1]) continue; | if (p[i] == 0 \p\p p[i] > p[i + 1]) continue;
+test | dbg/conv.c | v->n = kept * 8; |
+oracle | dbg/conv.c | if ((kind == S_END \p\p kind == S_INLINESITE_END) && open.n) open.n -= 4; | if (kind == S_END && open.n) open.n -= 4;
+oracle | dbg/conv.c | uint64_t voff = base = pdb_voff( | uint64_t voff = pdb_voff(
+oracle | dbg/conv.c | uint32_t id = le32(d.p + 8) - first_id, | uint32_t id = le32(d.p + 8),
+oracle | dbg/conv.c | (kind == LF_FUNC_ID \p\p kind == LF_MFUNC_ID) | kind == LF_FUNC_ID
+oracle | dbg/conv.c | pdb_string(d, &(uint32_t){8}) | pdb_string(d, &(uint32_t){4})
+fuzz | dbg/conv.c | id_at = id < COUNT(id_ats, uint32_t) ? ((uint32_t *)id_ats.p)[id] : ids.n; | id_at = ((uint32_t *)id_ats.p)[id];
+fuzz | dbg/pdb.c | bool has = n >= 20; | bool has = true;
+oracle | dbg/pdb.c | *first = has ? le32(stream + 8) : 0; | *first = has ? le32(stream + 12) : 0;
+oracle | dbg/pdb.c | part((PdbSpan){stream, n}, le32(stream + 4), le32(stream + 16)) | part((PdbSpan){stream, n}, le32(stream + 8), le32(stream + 16))
+oracle | dbg/rdi.c | [RDI_INLINE_SITES] = sizeof(RdiInlineSite) | [RDI_INLINE_SITES] = 1

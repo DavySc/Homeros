@@ -78,7 +78,9 @@ static uint32_t intern(Names *m, const void *key, uint32_t len)
 
 /* ---- the output ---- */
 
-enum { S_END = 0x0006, S_THUNK32 = 0x1102, S_BLOCK32 = 0x1103, S_PUB32 = 0x110e, S_LPROC32 = 0x110f, S_GPROC32 = 0x1110 };   /* CV_SymKind */
+enum { S_END = 0x0006, S_THUNK32 = 0x1102, S_BLOCK32 = 0x1103, S_PUB32 = 0x110e, S_LPROC32 = 0x110f, S_GPROC32 = 0x1110,
+       S_INLINESITE = 0x114d, S_INLINESITE_END = 0x114e,   /* CV_SymKind */
+       LF_FUNC_ID = 0x1601, LF_MFUNC_ID = 0x1602 };                                 /* CV_LeafKind */
 
 typedef struct {
   Buf s[RDI_SECTIONS];
@@ -140,25 +142,87 @@ static uint32_t source_file(Out *o, const PdbLineBlock *b, uint32_t folder)
   return file;
 }
 
-/* A scope of `proc` inside `parent` that covers [first, opl), or nothing when it has no address. */
-static uint32_t scope(Out *o, uint32_t proc, uint32_t parent, uint64_t first, uint64_t opl)
+static void pair(Buf *b, uint64_t first, uint64_t opl)
 {
-  uint32_t idx = COUNT(o->s[RDI_SCOPES], RdiScope), at = COUNT(o->s[RDI_SCOPE_VOFFS], uint64_t);
-  bool covers = first != 0 && first < opl;
-  *(RdiScope *)add(&o->s[RDI_SCOPES], sizeof(RdiScope)) = (RdiScope){.proc = proc, .parent = parent, .voff_first = at, .voff_opl = at + 2 * covers};
-  if (covers) {
-    uint64_t *v = add(&o->s[RDI_SCOPE_VOFFS], 16);
-    v[0] = first, v[1] = opl;
-    rec(&o->scopes, first, ~opl, idx, 0);
+  uint64_t *v = add(b, 16);
+  v[0] = first, v[1] = opl;
+}
+
+/* A scope of `proc` inside `parent`. It covers the pairs [first, opl) written to the scope
+   offsets since `start`; a pair without an address or without bytes is dropped. */
+static uint32_t scope(Out *o, uint32_t proc, uint32_t parent, uint32_t inline_site, uint64_t start)
+{
+  Buf *v = &o->s[RDI_SCOPE_VOFFS];
+  uint32_t idx = COUNT(o->s[RDI_SCOPES], RdiScope);
+  uint64_t *p = (uint64_t *)v->p, kept = start / 8;
+  for (uint64_t i = start / 8; i < v->n / 8; i += 2) {
+    if (p[i] == 0 || p[i] >= p[i + 1]) continue;
+    rec(&o->scopes, p[i], ~p[i + 1], idx, 0);
+    p[kept] = p[i], p[kept + 1] = p[i + 1], kept += 2;
   }
+  v->n = kept * 8;
+  *(RdiScope *)add(&o->s[RDI_SCOPES], sizeof(RdiScope)) = (RdiScope){.proc = proc, .parent = parent, .voff_first = (uint32_t)(start / 8), .voff_opl = (uint32_t)kept, .inline_site = inline_site};
   return idx;
+}
+
+/* One operand of an inline site's annotations: 1, 2 or 4 bytes, by the top bits of the first
+   (cv_decode_inline_annot_u32). False when it is cut short or malformed. */
+static bool operand(PdbSpan a, uint32_t *at, uint32_t *value)
+{
+  uint8_t first = *at < a.n ? a.p[*at] : 0xff;
+  uint32_t size = first < 0x80 ? 1 : first < 0xc0 ? 2 : first < 0xe0 ? 4 : 0;
+  if (size == 0 || size > a.n - *at) return false;
+  *value = first & (size == 4 ? 0x1f : 0x7f);
+  for (uint32_t i = 1; i < size; i += 1) *value = *value << 8 | a.p[*at + i];
+  *at += size;
+  return true;
+}
+
+/* What an inlined call covers, as pairs added to `out`, from the annotations of its
+   S_INLINESITE record; offsets count from the procedure's first byte, `base`. An annotation
+   moves the code offset (a line starts there), or gives the length of the code at the offset,
+   which ends a piece; a piece runs from the first offset since the last piece ended, and one
+   that starts where the piece before ended continues it. Offsets left without a length are a
+   piece up to the last of them. This is how LLVM reads and writes them (llvm-pdbutil's "code"
+   and "code end", MCCodeView.cpp). RAD (cv_c13_inline_site_decoder_step) also adds the length
+   of annotation 12 to the offset, and sibling calls then overlap (lessons, L26). Nothing is
+   added when the annotations are malformed or of a kind not decoded. NOT YET decoded: code
+   moved out of the procedure (annotation 2), an offset that is not a step (annotation 1) and
+   S_INLINESITE2; no compiler here writes them, and LLVM and RAD read the first two differently. */
+static void inline_pieces(Buf *out, PdbSpan a, uint64_t base)
+{
+  uint64_t start = out->n;
+  uint32_t off = 0, lo = 0;
+  bool open = false;                                     /* an offset was given since the last piece ended: `lo` */
+  for (uint32_t at = 0, op = 1, x, y; op != 0;) {
+    uint64_t end = 0;                                    /* where a piece ends, when this annotation ends one */
+    x = y = op = 0;                                      /* the end of the record is annotation 0, the end */
+    bool ok = at == a.n || (operand(a, &at, &op) && (op == 0 || operand(a, &at, &x)) && (op != 12 || operand(a, &at, &y)));
+    if (op == 3) off += x;                               /* ChangeCodeOffset */
+    else if (op == 11) off += x & 15;                    /* ChangeCodeOffsetAndLineOffset */
+    else if (op == 12) off += y;                         /* ChangeCodeLengthAndCodeOffset */
+    else if (op != 0 && op != 4 && op != 5 && op != 6) ok = false;   /* ChangeCodeLength, ChangeFile and ChangeLineOffset move nothing */
+    if (!ok) {
+      out->n = start;
+      return;
+    }
+    if (!open && op != 0 && op != 5 && op != 6) lo = off, open = true;
+    if (op == 4 || op == 12) end = base + off + x;
+    else if (op == 0 && open) end = base + off;
+    if (op == 4) off += x;                               /* the next offset counts from this end; after annotation 12 it does not */
+    if (end == 0) continue;
+    if (out->n > start && *LAST(*out, uint64_t) == base + lo) *LAST(*out, uint64_t) = end;
+    else pair(out, base + lo, end);
+    open = false;
+  }
 }
 
 /* A procedure and its root scope. */
 static uint32_t procedure(Out *o, RdiSymbol y, uint64_t first, uint64_t opl)
 {
   uint32_t idx = COUNT(o->s[RDI_PROCEDURES], RdiSymbol);
-  y.root_scope = scope(o, idx, 0, first, opl);
+  pair(&o->s[RDI_SCOPE_VOFFS], first, opl);
+  y.root_scope = scope(o, idx, 0, 0, o->s[RDI_SCOPE_VOFFS].n - 16);
   *(RdiSymbol *)add(&o->s[RDI_PROCEDURES], sizeof y) = y;
   named(&o->pairs, RDI_NAMES_PROCEDURES, y.name, idx);
   named(&o->pairs, RDI_NAMES_LINK_PROCEDURES, y.link_name, idx);
@@ -258,10 +322,10 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
   Pdb pdb;
   if (!pdb_open(&pdb, data, size)) return 0;
   Out o = {0};
-  Buf lines = {0}, maps = {0}, ranges = {0}, scratch = {0}, open = {0}, links = {0};
+  Buf lines = {0}, maps = {0}, ranges = {0}, scratch = {0}, open = {0}, links = {0}, id_ats = {0};
   /* index 0 of every table is the record that means "none" */
-  static const int tables[] = {RDI_BINARY_SECTIONS, RDI_FILE_PATH_NODES, RDI_SOURCE_FILES, RDI_LINE_TABLES, RDI_SOURCE_LINE_MAPS, RDI_UNITS, RDI_SCOPES, RDI_PROCEDURES};
-  static const uint8_t table_size[] = {sizeof(RdiSection), sizeof(RdiPathNode), sizeof(RdiSourceFile), sizeof(RdiLineTable), sizeof(RdiSourceLineMap), sizeof(RdiUnit), sizeof(RdiScope), sizeof(RdiSymbol)};
+  static const int tables[] = {RDI_BINARY_SECTIONS, RDI_FILE_PATH_NODES, RDI_SOURCE_FILES, RDI_LINE_TABLES, RDI_SOURCE_LINE_MAPS, RDI_UNITS, RDI_SCOPES, RDI_PROCEDURES, RDI_INLINE_SITES};
+  static const uint8_t table_size[] = {sizeof(RdiSection), sizeof(RdiPathNode), sizeof(RdiSourceFile), sizeof(RdiLineTable), sizeof(RdiSourceLineMap), sizeof(RdiUnit), sizeof(RdiScope), sizeof(RdiSymbol), sizeof(RdiInlineSite)};
   for (unsigned i = 0; i < sizeof tables / sizeof *tables; i += 1) add(&o.s[tables[i]], table_size[i]);
   intern(&o.strings, "", 0);
   intern(&o.nodes, (uint32_t[2]){0, 0}, 8);
@@ -278,7 +342,10 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
   }
 
   PdbModule m;
-  PdbSpan syms, c13, d;
+  PdbSpan syms, c13, d, ids;
+  uint32_t first_id;
+  uint8_t *id_stream = pdb_ids(&pdb, &ids, &first_id);
+  for (uint32_t at = 0, next = 0; pdb_symbol(ids, &next, &(uint16_t){0}, &(PdbSpan){0}); at = next) *(uint32_t *)add(&id_ats, 4) = at;
   uint16_t kind;
   uint64_t order = 0;
   for (uint32_t at = 0; pdb_module(&pdb, &at, &m);) {
@@ -318,14 +385,16 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
     }
 
     /* Procedures and scopes (rdi_from_codeview.c, "symbols pass 2"): a procedure opens its root
-       scope, a block opens a scope inside the open one, S_END closes the open one. A thunk is a
-       procedure that opens nothing. `open` is the stack of open scopes; every module leaves it empty. */
+       scope; a block or an inlined call opens a scope inside the open one; S_END and
+       S_INLINESITE_END close the open one. A thunk is a procedure that opens nothing. `open` is
+       the stack of open scopes; every module leaves it empty. */
     unit.procs_first = COUNT(o.s[RDI_PROCEDURES], RdiSymbol);
+    uint64_t base = 0;                                                      /* where the procedure being read starts */
     for (uint32_t at = 0; pdb_symbol(syms, &at, &kind, &d);) {
-      uint32_t top = open.n ? *LAST(open, uint32_t) : 0, made = 0;
-      if (kind == S_END && open.n) open.n -= 4;
+      uint32_t top = open.n ? *LAST(open, uint32_t) : 0, made = 0, inside = ((RdiScope *)o.s[RDI_SCOPES].p)[top].proc;
+      if ((kind == S_END || kind == S_INLINESITE_END) && open.n) open.n -= 4;
       else if ((kind == S_GPROC32 || kind == S_LPROC32) && d.n >= 35) {   /* CV_SymProc32 */
-        uint64_t voff = pdb_voff(&pdb, le16(d.p + 32), le32(d.p + 28));
+        uint64_t voff = base = pdb_voff(&pdb, le16(d.p + 32), le32(d.p + 28));
         PdbSpan name = pdb_string(d, &(uint32_t){35});
         uint32_t proc = procedure(&o, (RdiSymbol){.name = intern(&o.strings, name.p, name.n), .container_flags = kind == S_GPROC32 ? 0x80 : 0}, voff, voff + le32(d.p + 12));
         rec(&links, voff, 0, proc, 0);
@@ -336,7 +405,16 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
         procedure(&o, (RdiSymbol){.name = intern(&o.strings, name.p, name.n), .flags = 2}, voff, voff + le16(d.p + 18));
       } else if (kind == S_BLOCK32 && d.n >= 18) {                         /* CV_SymBlock32 */
         uint64_t voff = pdb_voff(&pdb, le16(d.p + 16), le32(d.p + 12));
-        made = scope(&o, ((RdiScope *)o.s[RDI_SCOPES].p)[top].proc, top, voff, voff + le32(d.p + 8));
+        pair(&o.s[RDI_SCOPE_VOFFS], voff, voff + le32(d.p + 8));
+        made = scope(&o, inside, top, 0, o.s[RDI_SCOPE_VOFFS].n - 16);
+      } else if (kind == S_INLINESITE && d.n >= 12) {                       /* CV_SymInlineSite: parent, end, id, annotations */
+        uint64_t start = o.s[RDI_SCOPE_VOFFS].n;
+        inline_pieces(&o.s[RDI_SCOPE_VOFFS], (PdbSpan){d.p + 12, d.n - 12}, base);
+        /* its name is in the id record it names: two type ids, then the name (CV_LeafFuncId, CV_LeafMFuncId) */
+        uint32_t id = le32(d.p + 8) - first_id, id_at = id < COUNT(id_ats, uint32_t) ? ((uint32_t *)id_ats.p)[id] : ids.n;
+        PdbSpan name = pdb_symbol(ids, &id_at, &kind, &d) && (kind == LF_FUNC_ID || kind == LF_MFUNC_ID) ? pdb_string(d, &(uint32_t){8}) : (PdbSpan){0};
+        made = scope(&o, inside, top, COUNT(o.s[RDI_INLINE_SITES], RdiInlineSite), start);
+        *(RdiInlineSite *)add(&o.s[RDI_INLINE_SITES], sizeof(RdiInlineSite)) = (RdiInlineSite){.name = intern(&o.strings, name.p, name.n)};
       }
       if (made) *(uint32_t *)add(&open, 4) = made;
     }
@@ -368,6 +446,7 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
     rec(&links, voff, ++order, intern(&o.strings, name.p, name.n), le32(d.p) & 3);   /* code or function */
   }
   free(globals);
+  free(id_stream);
   uint64_t n, *l = sorted(&links, &n);
   const RdiVMap *held = (const RdiVMap *)o.s[RDI_UNIT_VMAP].p;   /* null when there are no contributions: indexed, never offset */
   uint32_t next = 0, none = COUNT(o.s[RDI_UNIT_VMAP], RdiVMap);
@@ -428,7 +507,7 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
     if (o.s[k].n) memcpy(add(&file, (o.s[k].n + 7) / 8 * 8), o.s[k].p, o.s[k].n);
     free(o.s[k].p);
   }
-  Buf *rest[] = {&o.strings.slots, &o.nodes.keys, &o.nodes.at, &o.nodes.slots, &o.files.keys, &o.files.at, &o.files.slots, &o.pairs, &o.scopes, &lines, &maps, &ranges, &scratch, &open, &links};
+  Buf *rest[] = {&o.strings.slots, &o.nodes.keys, &o.nodes.at, &o.nodes.slots, &o.files.keys, &o.files.at, &o.files.slots, &o.pairs, &o.scopes, &lines, &maps, &ranges, &scratch, &open, &links, &id_ats};
   for (unsigned i = 0; i < sizeof rest / sizeof *rest; i += 1) free(rest[i]->p);
   pdb_close(&pdb);
   *out_size = file.n;
