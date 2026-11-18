@@ -38,9 +38,10 @@ Waits for package 4's core (src/core, PR 20), passing with it (measured):
 - columns of grapheme clusters: ref/core.c's core_vcol and core_col_at step
   by code point.
 Waits for package 4, still differing with PR 20's core:
-- gv after a counted C over the lines that held the Visual marks (C-v Esc
-  O Esc 5C Esc gv, the example in tests/conform-known.json): Neovim's '<
-  ends on the joined line 1, ours on line 2; not traced yet.
+- a group the keys open without an edit (d{ that cannot move) saves no
+  marks, so after v Esc d{ v j Esc u on "bar\nab,", gv covers lines 1-2
+  where Neovim's u_undoredo restores '> to line 1 (reviews/pr-52.md,
+  finding 4; needs a core.h change from thread 0).
 - core_vcol at a byte inside a cluster (x + U+0301 with the cursor after x)
   gives the cluster's end; Neovim's getvcol gives its start. Typing before
   a lone mark makes such a cursor ("x\n\u0301", j i a Up C-w: Neovim's
