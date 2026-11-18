@@ -28,7 +28,12 @@ int  font_open(const char *family, int px);
 void font_close(void);
 /* The cell, from the first font: width, height, baseline from the top. */
 void font_cell(int *w, int *h, int *baseline);
-/* Shapes one run of UTF-8 text (one row, one attribute); returns how many
+/* The style the next font_shape calls use: FONT_BOLD and FONT_ITALIC are
+   FACE_BOLD and FACE_ITALIC's bits, so a face's style & 3 is the index.  A
+   style the family lacks draws in regular, as foot does. */
+enum { FONT_REGULAR, FONT_BOLD, FONT_ITALIC, FONT_BOLD_ITALIC };
+void font_style(int style);
+/* Shapes one run of UTF-8 text (one row, one attribute, one style); returns how many
    glyphs it wrote to out (at most max), in cluster order. */
 int  font_shape(const unsigned char *s, size_t n, Placed *out, int max);
 /* Glyph cache lookups since font_open. */
