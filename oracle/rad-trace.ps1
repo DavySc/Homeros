@@ -13,23 +13,24 @@ function Field($s, $n) { if ($s -match "(?m)^\s*${n}:\s*(.*)$") { $Matches[1].Tr
 function Stopped($minStops) {
   for ($i = 0; $i -lt 200; $i++) {
     $s = Send 'state'
-    if ((Field $s 'running') -eq '0' -and [int]('0' + (Field $s 'stop_count')) -ge $minStops) { return $s }
+    if ((Field $s 'running') -eq '0' -and ([int]('0' + (Field $s 'stop_count')) -ge $minStops -or (Place $s) -eq 'ended')) { return $s }
     Start-Sleep -Milliseconds 50
   }
   return $null
 }
-function Where($s) {
+# Not named Where: that is PowerShell's alias for Where-Object, and an alias wins over a function.
+function Place($s) {
   $m = [IO.Path]::GetFileName((Field $s 'ip_module')); $sym = Field $s 'ip_voff_symbol'; $line = Field $s 'line_num'
   if ($s -notmatch '(?s)threads:\s*\{\s*\{') { return 'ended' }
   if ($m -ne "$name.exe") { return "outside $m!$sym" }
-  return "$sym $(Field $s 'file_name'):$line"
+  return "$sym $(Field $s 'file_name'):$line +$(Field $s 'ip_voff')"
 }
 function Trace($script, $cap) {
   $p = Start-Process $rad -ArgumentList "--user:$tmp/u.raddbg_user", "--project:$tmp/p.raddbg_project", "--logs:$tmp", '--auto_step', "`"$exe`"" -PassThru
   $lines = @(); $s = $null
   for ($i = 0; $i -lt 100 -and -not $s; $i++) { Start-Sleep -Milliseconds 300; $s = Stopped 1 }
   if (-not $s) { $lines += 'FAILED to reach the entry stop' } else {
-    $lines += "start -> $(Where $s)"; $stops = [int](Field $s 'stop_count'); $seed = 12345
+    $lines += "start -> $(Place $s)"; $stops = [int](Field $s 'stop_count'); $seed = 12345
     for ($n = 1; $n -le $cap; $n++) {
       $kind = switch ($script) {
         'into' { 'step_into_line' } 'over' { 'step_over_line' }
@@ -37,7 +38,7 @@ function Trace($script, $cap) {
       }
       Send $kind | Out-Null; $stops++; $s = Stopped $stops
       if (-not $s) { $lines += "$kind -> NO STOP within 10 s"; break }
-      $w = Where $s; $lines += "$kind -> $w"
+      $w = Place $s; $lines += "$kind -> $w"
       if ($w -eq 'ended' -or $w -like 'outside*') { break }
     }
   }
