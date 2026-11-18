@@ -132,7 +132,15 @@ int main(void)
 	   "abc def\nxyz uvw\nfoo bar\nbar baz\nqq\n", j w l v Esc k l d5w,
 	   then getpos("'<") is 1,12, and after u it is 2,6 */
 	load(&e, "abc def\nxyz uvw\nfoo bar\nbar baz\nqq\n");
-	e.buf->mark[MARK_LT] = e.buf->mark[MARK_GT] = (Mark){ 1, 5, 1 };
+	e.buf->mark[MARK_LT] = (Mark){ 1, 5, 1 };
+	e.buf->mark[MARK_GT] = (Mark){ 1, 6, 1 };
+	/* the change list and the jump list move the same way (the review of
+	   PR 52 measured them in nvim: lists.lua) */
+	e.buf->change[0] = (Mark){ 1, 2, 1 };
+	e.buf->nchange = 1;
+	e.win->jump[0].buf = e.buf;
+	e.win->jump[0].m = (Mark){ 1, 3, 1 };
+	e.win->njump = 1;
 	undo_close(e.buf->undo);
 	e.win->col = 6;
 	{
@@ -143,6 +151,9 @@ int main(void)
 	CHECK(!core_edit(&e, 6, core_line_start(&e, 2) + core_line_len(&e, 2) - 6, "", 0));
 	undo_close(e.buf->undo);
 	CHECK(core_lines(&e) == 3 && e.buf->mark[MARK_LT].line == 0 && e.buf->mark[MARK_LT].col == 11);
+	CHECK(e.buf->mark[MARK_GT].line == 0 && e.buf->mark[MARK_GT].col == 12);
+	CHECK(e.buf->change[0].line == 0 && e.buf->change[0].col == 8);
+	CHECK(e.win->jump[0].m.line == 0 && e.win->jump[0].m.col == 9);
 	CHECK(core_undo(&e, 0) >= 0 && e.buf->mark[MARK_LT].line == 1 && e.buf->mark[MARK_LT].col == 5);
 	core_free(&e);
 	/* J: undo brings back the '< from before do_join()'s mark_col_adjust().
@@ -155,7 +166,54 @@ int main(void)
 	undo_close(e.buf->undo);
 	CHECK(e.buf->mark[MARK_LT].line == 0 && e.buf->mark[MARK_LT].col == 4);
 	CHECK(core_undo(&e, 0) >= 0 && e.buf->mark[MARK_LT].line == 1 && e.buf->mark[MARK_LT].col == 1);
+	/* the next group saves the marks as they are then, not the ones
+	   saved before the join */
+	undo_close(e.buf->undo);
+	e.buf->mark[MARK_LT] = (Mark){ 2, 1, 1 };
+	CHECK(!core_edit(&e, 0, 0, "z", 1));
+	undo_close(e.buf->undo);
+	e.buf->mark[MARK_LT] = (Mark){ 0, 0, 1 };
+	CHECK(core_undo(&e, 0) >= 0 && e.buf->mark[MARK_LT].line == 2 && e.buf->mark[MARK_LT].col == 1);
 	core_free(&e);
+	/* 3J: two core_mark_join() before one edit; undo brings back the '<
+	   from before the first.  nvim (review of PR 52): "ab\ncd\nef\ngh\n",
+	   G k v k Esc gg 3J u, then getpos("'<") is 2,1 */
+	load(&e, "ab\ncd\nef\ngh\n");
+	e.buf->mark[MARK_LT] = (Mark){ 1, 0, 1 };
+	e.buf->mark[MARK_GT] = (Mark){ 2, 0, 1 };
+	undo_close(e.buf->undo);
+	core_mark_join(&e, 1, 0, -1, 3, 0);
+	core_mark_join(&e, 2, 0, -2, 6, 0);
+	CHECK(!core_edit(&e, 2, 4, " cd ", 4));
+	undo_close(e.buf->undo);
+	CHECK(core_lines(&e) == 2 && e.buf->mark[MARK_LT].line == 0 && e.buf->mark[MARK_LT].col == 3);
+	CHECK(core_undo(&e, 0) >= 0 && e.buf->mark[MARK_LT].line == 1 && e.buf->mark[MARK_LT].col == 0);
+	core_free(&e);
+	/* a group the keys opened keeps the marks of its first edit through
+	   the next ones, also when another buffer is edited in between
+	   (review of PR 52, finding 1: twobuf.c) */
+	{
+		char other[] = "/tmp/core_undo2XXXXXX";
+		FILE *f = fdopen(mkstemp(other), "w");
+		CHECK(f && fputs("x\n", f) >= 0 && !fclose(f));
+		load(&e, "a\nb\nc\n");
+		Buf *a = e.buf;
+		int nr = a->nr;
+		CHECK(!core_edit(&e, 0, 0, "w", 1));   /* a's next group gets another number than the other buffer's */
+		undo_close(a->undo);
+		a->mark[0] = (Mark){ 1, 0, 1 };
+		UndoCursor c = { 0, 0, a->flags };     /* the keys' u_save_cursor() */
+		CHECK(!undo_record(a->undo, 0, "", 0, "", 0, c, a->flags));
+		CHECK(!core_edit(&e, 0, 0, "new\n", 4));   /* a moves to line 2 */
+		CHECK(!core_edit(&e, 0, 0, "z", 1));        /* the same group */
+		CHECK(!core_edit_file(&e, other, 0) && !core_edit(&e, 0, 0, "y", 1));
+		undo_close(e.buf->undo);
+		CHECK(!core_buf_goto(&e, nr) && !core_edit(&e, 0, 0, "z", 1));   /* still a's group */
+		undo_close(a->undo);
+		CHECK(core_undo(&e, 0) >= 0 && core_lines(&e) == 3 && a->mark[0].line == 1);
+		core_free(&e);
+		unlink(other);
+	}
 	unlink(path);
 	printf("test_core_undo: ok\n");
 	return 0;

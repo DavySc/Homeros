@@ -366,16 +366,18 @@ static Buf *join_next;
    op_delete() u_save() before mark_col_adjust(), so undo brings these back */
 static Buf *join_snapped;
 static Mark join_snap[28];
-/* the group whose marks are saved: a group the keys open with undo_record()
-   alone (u_save_cursor()) gets them at its first edit */
-static const Buf *snap_buf;
-static unsigned long snap_seq;
+/* per buffer, the group whose marks are saved: a group the keys open with
+   undo_record() alone (u_save_cursor()) gets them at its first edit, even
+   if another buffer was edited since */
+typedef struct Snapped { const Buf *b; unsigned long seq; struct Snapped *next; } Snapped;
+static Snapped *snapped;
 
 static void umarks_drop(const Buf *b)
 {
 	if (join_next == b) join_next = NULL;
 	if (join_snapped == b) join_snapped = NULL;
-	if (snap_buf == b) snap_buf = NULL;
+	for (Snapped **p = &snapped; *p; p = &(*p)->next)
+		if ((*p)->b == b) { Snapped *s = *p; *p = s->next; free(s); break; }
 	for (UndoMarks **p = &umarks; *p;)
 		if ((*p)->b == b) { UndoMarks *u = *p; *p = u->next; free(u); }
 		else p = &(*p)->next;
@@ -962,7 +964,6 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 	/* the state after: an empty file saves empty until it gets a line of
 	   text (Vim) */
 	unsigned js = after | (b->noeol && b->id.size ? J_NOEOL : 0);
-	unsigned long seq = undo_seq(b->undo);
 	Mark snap[28];
 	if (join_snapped == b) memcpy(snap, join_snap, sizeof snap);
 	else marks_snap(b, snap);
@@ -978,9 +979,11 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 		if (!text_insert(b->text, pos, ins, nins)) {
 			if (!undo_record(b->undo, pos, del, ndel, ins, nins, c, after)) {
 				r = 0;
-				if (undo_seq(b->undo) != seq || snap_buf != b || snap_seq != seq) {   /* a new group */
-					snap_buf = b;
-					snap_seq = undo_seq(b->undo);
+				Snapped *s = snapped;
+				while (s && s->b != b) s = s->next;
+				if (!s || s->seq != undo_seq(b->undo)) {   /* a new group */
+					if (!s && (s = malloc(sizeof *s))) { s->b = b; s->next = snapped; snapped = s; }
+					if (s) s->seq = undo_seq(b->undo);
 					umarks_put(b, undo_seq(b->undo), snap, 0);
 					if (undo_seq(b->undo) % UMARKS_TRIM == 0) umarks_trim(b);
 				}
