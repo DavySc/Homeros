@@ -10,6 +10,8 @@ So: the smallest change that does the job; delete before you add; no speculative
 
 Davy, 2026-11-18: "I want as little code duplication as possible in the codebase." So: before writing a helper, look for one that exists (another package, `ref/`, the backends) and use it; when two places need the same code, it moves to one module both call, through a header (thread 0 for `include/`). A review flags duplicated code as a finding.
 
+Davy, 2026-11-18: "Simplicity and minimal lines of code is always best (So long as the solution satisfies functional and technical requirements of course)". So between two solutions that both meet the requirements (FEATURES.md, DESIGN.md's gates, the checks), the shorter and simpler one wins; a review flags code that could be shorter without losing a requirement.
+
 ## New approaches
 
 "You're allowed to try never seen before approaches to problems, but you're only allowed to settle on them if they're better than any combination of existing approaches in all scenarios. Remember that we might not be able to think of all possible scenarios."
