@@ -23,7 +23,7 @@ core: entering a window does not look at its view again (finding 6) (test_core_s
 core: a taller command line keeps the wanted column (finding 2) (test_core_screens)~test TESTS=core_screens~~src/core/win.c~		if (e->win->want != WANT_EOL) core_set_want(e);~		(void)0;
 core: a new buffer does not get the window's :set wrap (finding 4) (test_core_screens)~test TESTS=core_screens~~src/core/core.c~	else w->wrap = w->frame->s.allwrap;~	else (void)0;
 core: a double-width character never takes the border cell (finding 1) (test_core_screens)~test TESTS=core_screens~~src/core/core.c~== (size_t)tw - 1 ? 3 : 2;~== (size_t)tw - 1 ? 2 : 2;
-core: no '<' where the view starts inside a double-width character (test_core_screens)~test TESTS=core_screens~~src/core/draw.c~(const unsigned char *)"<", 1, 0, 1, face);~(const unsigned char *)" ", 1, 0, 1, face);
+core: no '<' where the view starts inside a double-width character (test_core_screens)~test TESTS=core_screens~~src/core/draw.c~(const unsigned char *)"<", 1, 0, 1, face, from~(const unsigned char *)" ", 1, 0, 1, face, from
 core: plines_col counts bytes again (finding 5) (test_core_screens)~test TESTS=core_screens~~src/core/move.c~		i++;~		i += k;
 core: a reused buffer keeps the old undo marks (finding 7) (test_core_undo)~test TESTS=core_undo~~src/core/core.c~			umarks_drop(b);            /* by address~			(void)0;                  /* by address
 core: an undo group takes its neighbour's marks (test_core_undo)~test TESTS=core_undo~~src/core/core.c~	if (u && (u->b != b || u->seq != seq)) u = NULL;~	(void)0;
