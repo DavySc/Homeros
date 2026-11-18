@@ -1,0 +1,268 @@
+C 10 60 skipcol other buffer
+L a
+L ## word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word 
+L b
+T wrap
+T vs
+T e:o.txt
+T w:h
+T k:2G$
+T w:l
+X 0 34
+S 2<<< 󰲣 word word word word wo│1                             
+B ....PPPPPPPPPPPPPPPPPPPPPPPPP...............................
+F .....p.pppp.pppp.pppp.pppp.pp...............................
+S     rd word word word word wo│~                             
+B ....PPPPPPPPPPPPPPPPPPPPPPPPP...............................
+F ....pp.pppp.pppp.pppp.pppp.pp...............................
+S     rd word word word word wo│~                             
+B ....PPPPPPPPPPPPPPPPPPPPPPPPP...............................
+F ....pp.pppp.pppp.pppp.pppp.pp...............................
+S     rd word word word word wo│~                             
+B ....PPPPPPPPPPPPPPPPPPPPPPPPP...............................
+F ....pp.pppp.pppp.pppp.pppp.pp...............................
+S     rd word word word word wo│~                             
+B ....PPPPPPPPPPPPPPPPPPPPPPPPP...............................
+F ....pp.pppp.pppp.pppp.pppp.pp...............................
+S     rd word word word word wo│~                             
+B ....PPPPPPPPPPPPPPPPPPPPPPPPP...............................
+F ....pp.pppp.pppp.pppp.pppp.pp...............................
+S     rd word word word word wo│~                             
+B ....PPPPPPPPPPPPPPPPPPPPPPPPP...............................
+F ....pp.pppp.pppp.pppp.pppp.pp...............................
+S     rd                       │~                             
+B ....PPPPPPPPPPPPPPPPPPPPPPPPP...............................
+F ....pp......................................................
+S f.md       2,303          50% o.txt       0,0-1          All
+B ............................................................
+F ............................................................
+E
+C 10 60 skipcol other buffer, 3-digit number
+L l0
+L l1
+L l2
+L l3
+L l4
+L l5
+L l6
+L l7
+L l8
+L l9
+L l10
+L l11
+L l12
+L l13
+L l14
+L l15
+L l16
+L l17
+L l18
+L l19
+L l20
+L l21
+L l22
+L l23
+L l24
+L l25
+L l26
+L l27
+L l28
+L l29
+L l30
+L l31
+L l32
+L l33
+L l34
+L l35
+L l36
+L l37
+L l38
+L l39
+L l40
+L l41
+L l42
+L l43
+L l44
+L l45
+L l46
+L l47
+L l48
+L l49
+L l50
+L l51
+L l52
+L l53
+L l54
+L l55
+L l56
+L l57
+L l58
+L l59
+L l60
+L l61
+L l62
+L l63
+L l64
+L l65
+L l66
+L l67
+L l68
+L l69
+L l70
+L l71
+L l72
+L l73
+L l74
+L l75
+L l76
+L l77
+L l78
+L l79
+L l80
+L l81
+L l82
+L l83
+L l84
+L l85
+L l86
+L l87
+L l88
+L l89
+L l90
+L l91
+L l92
+L l93
+L l94
+L l95
+L l96
+L l97
+L l98
+L l99
+L l100
+L l101
+L l102
+L l103
+L l104
+L l105
+L l106
+L l107
+L l108
+L l109
+L l110
+L l111
+L l112
+L l113
+L l114
+L l115
+L l116
+L l117
+L l118
+L l119
+L ## word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word 
+L b
+T wrap
+T vs
+T e:o.txt
+T w:h
+T k:121G$
+T w:l
+X 0 34
+S 121<<< word word word word wo│1                             
+B ......PPPPPPPPPPPPPPPPPPPPPPP...............................
+F .......pppp.pppp.pppp.pppp.pp...............................
+S     rd word word word word wo│~                             
+B ....PPPPPPPPPPPPPPPPPPPPPPPPP...............................
+F ....pp.pppp.pppp.pppp.pppp.pp...............................
+S     rd word word word word wo│~                             
+B ....PPPPPPPPPPPPPPPPPPPPPPPPP...............................
+F ....pp.pppp.pppp.pppp.pppp.pp...............................
+S     rd word word word word wo│~                             
+B ....PPPPPPPPPPPPPPPPPPPPPPPPP...............................
+F ....pp.pppp.pppp.pppp.pppp.pp...............................
+S     rd word word word word wo│~                             
+B ....PPPPPPPPPPPPPPPPPPPPPPPPP...............................
+F ....pp.pppp.pppp.pppp.pppp.pp...............................
+S     rd word word word word wo│~                             
+B ....PPPPPPPPPPPPPPPPPPPPPPPPP...............................
+F ....pp.pppp.pppp.pppp.pppp.pp...............................
+S     rd word word word word wo│~                             
+B ....PPPPPPPPPPPPPPPPPPPPPPPPP...............................
+F ....pp.pppp.pppp.pppp.pppp.pp...............................
+S     rd                       │~                             
+B ....PPPPPPPPPPPPPPPPPPPPPPPPP...............................
+F ....pp......................................................
+S f.md       121,353        99% o.txt       0,0-1          All
+B ............................................................
+F ............................................................
+E
+C 10 60 skipcol same buffer cursor line
+L a
+L ## word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word 
+L b
+T wrap
+T vs
+T k:2G$
+X 7 50
+S 1   a                        │2<<<ord word word word word wo
+B ............................................................
+F ..................................ppp.pppp.pppp.pppp.pppp.pp
+S   1  󰲣 word word word word wo│    rd word word word word wor
+B ....PPPPPPPPPPPPPPPPPPPPPPPPP...............................
+F .....p.pppp.pppp.pppp.pppp.pp.....pp.pppp.pppp.pppp.pppp.ppp
+S     rd word word word word wo│    d word word word word word
+B ....PPPPPPPPPPPPPPPPPPPPPPPPP...............................
+F ....pp.pppp.pppp.pppp.pppp.pp.....p.pppp.pppp.pppp.pppp.pppp
+S     rd word word word word wo│     word word word word word 
+B ....PPPPPPPPPPPPPPPPPPPPPPPPP...............................
+F ....pp.pppp.pppp.pppp.pppp.pp......pppp.pppp.pppp.pppp.pppp.
+S     rd word word word word wo│    word word word word word w
+B ....PPPPPPPPPPPPPPPPPPPPPPPPP...............................
+F ....pp.pppp.pppp.pppp.pppp.pp.....pppp.pppp.pppp.pppp.pppp.p
+S     rd word word word word wo│    ord word word word word wo
+B ....PPPPPPPPPPPPPPPPPPPPPPPPP...............................
+F ....pp.pppp.pppp.pppp.pppp.pp.....ppp.pppp.pppp.pppp.pppp.pp
+S     rd word word word word wo│    rd word word word word wor
+B ....PPPPPPPPPPPPPPPPPPPPPPPPP...............................
+F ....pp.pppp.pppp.pppp.pppp.pp.....pp.pppp.pppp.pppp.pppp.ppp
+S     rd word word word word@@@│    d word word word          
+B ....PPPPPPPPPPPPPPPPPPPPPP..................................
+F ....pp.pppp.pppp.pppp.pppp........p.pppp.pppp.pppp..........
+S f.md       1,1            Top f.md        2,303          50%
+B ............................................................
+F ............................................................
+E
+C 10 40 skipcol current
+L a
+L ## word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word 
+L b
+T wrap
+T k:2G$
+X 7 18
+S 2<<<d word word word word word word word
+B ........................................
+F ....p.pppp.pppp.pppp.pppp.pppp.pppp.pppp
+S      word word word word word word word 
+B ........................................
+F .....pppp.pppp.pppp.pppp.pppp.pppp.pppp.
+S     word word word word word word word w
+B ........................................
+F ....pppp.pppp.pppp.pppp.pppp.pppp.pppp.p
+S     ord word word word word word word wo
+B ........................................
+F ....ppp.pppp.pppp.pppp.pppp.pppp.pppp.pp
+S     rd word word word word word word wor
+B ........................................
+F ....pp.pppp.pppp.pppp.pppp.pppp.pppp.ppp
+S     d word word word word word word word
+B ........................................
+F ....p.pppp.pppp.pppp.pppp.pppp.pppp.pppp
+S      word word word word word word word 
+B ........................................
+F .....pppp.pppp.pppp.pppp.pppp.pppp.pppp.
+S     word word word                      
+B ........................................
+F ....pppp.pppp.pppp......................
+S f.md                  2,303          50%
+B ........................................
+F ........................................
+E
