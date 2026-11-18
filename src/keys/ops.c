@@ -962,14 +962,11 @@ int do_join(long count, int insert_space)
 			}
 		}
 	}
-	/* one edit over the joined lines; when they join to nothing it deletes
-	   the later lines' breaks, so the first line and the marks
-	   mark_col_adjust() put there stay (measured against nvim: "a\n\n\nb"
-	   j j i <BS> Esc u <C-r>, and "j j V c <BS> Esc gv") */
+	/* one edit over the joined lines; core_mark_join() marks the step a
+	   join, so lines that join to nothing undo and redo as do_join()'s */
 	size_t a = core_line_start(E, (size_t)l0);
 	size_t z = core_line_start(E, (size_t)(l0 + count)) - 1;
 	long len = b.n;
-	if (!len) { a++; z++; }
 	core_edit(E, a, z - a, b.s, (size_t)b.n);
 	replace_bytes(l0, 0, 0, "", 0);
 	free(b.s);
