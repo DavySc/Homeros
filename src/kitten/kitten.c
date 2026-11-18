@@ -13,14 +13,15 @@
 
 /* M.frame_ms and M.hold_ms; the blink is math.floor(d * 0.7) */
 enum { MS = 140, HOLD = 1400, NFRAMES = 6 };
-typedef struct { const char *eyes, *paw, *heart; int text, ms; } Frame;
+/* the last frame, with the heart, also has the text */
+typedef struct { const char *eyes, *paw, *heart; int ms; } Frame;
 static const Frame frames[NFRAMES] = {
-	{ "o.o", "", "", 0, MS },
-	{ "-.-", "", "", 0, MS * 7 / 10 },
-	{ "o.o", "_", "", 0, MS },
-	{ "^.^", "__", "", 0, MS },
-	{ "^.^", "__o", "", 0, MS },
-	{ "^.^", "__o", "<3", 1, HOLD },
+	{ "o.o", "", "", MS },
+	{ "-.-", "", "", MS * 7 / 10 },
+	{ "o.o", "_", "", MS },
+	{ "^.^", "__", "", MS },
+	{ "^.^", "__o", "", MS },
+	{ "^.^", "__o", "<3", HOLD },
 };
 
 static int off;                  /* <leader>uk: vim.g.kitten_on_save == false */
@@ -29,7 +30,6 @@ static int armed = -1;           /* the frame whose timer runs; -1: none */
 static const Buf *for_buf;       /* the buffer it plays for (state.for_buf) */
 static Editor *ed;
 static char name[1024];          /* "saved NAME"'s NAME: a Windows file name is up to 765 bytes */
-static char sum[sizeof ((Editor *)0)->msg];   /* the message it leaves; tinted while e->msg is it */
 
 static void step(void *ctx);
 
@@ -49,7 +49,6 @@ static void step(void *ctx)
 	if (++frame < NFRAMES) return;
 	stop();
 	core_msg(e, "=^.^= saved %s", name);
-	memcpy(sum, e->msg, sizeof sum);
 }
 
 void kitten_paw(Editor *e)
@@ -70,7 +69,6 @@ void kitten_paw(Editor *e)
 	ed = e;
 	for_buf = e->buf;
 	frame = 0;
-	sum[0] = 0;
 }
 
 void kitten_toggle(Editor *e)
@@ -115,25 +113,45 @@ static int width(const char *s)
 	return w;
 }
 
+/* The command line's first row: under the lowest window's status line
+   (laststatus 2), so a taller command line moves it up (cmdheight). */
+static int cmdrow(const Editor *e)
+{
+	int r = 0;
+	for (const Win *w = e->wins; w; w = w->next)
+		if (w->y + w->h + 1 > r) r = w->y + w->h + 1;
+	return r;
+}
+
 void kitten_draw(Editor *e, Grid *g)
 {
+	int cr = cmdrow(e);
 	if (frame < 0) {
 		/* the message keeps its colours (nvim_echo's chunks) while it is shown */
-		if (!sum[0] || e->mode != MODE_NORMAL || strcmp(e->msg, sum)) return;
-		int r = g->rows - 1, end = g->cols;
-		int c = put(g, r, 0, end, "=^.^=", 5, FACE_KITTEN_CAT);
-		c = put(g, r, c, end, " saved ", 7, FACE_KITTEN_DIM);
-		put(g, r, c, end, sum + 12, strlen(sum + 12), FACE_KITTEN_TEXT);
+		if (e->mode != MODE_NORMAL || strncmp(e->msg, "=^.^= saved ", 12) || cr >= g->rows) return;
+		int end = g->cols;
+		int c = put(g, cr, 0, end, "=^.^=", 5, FACE_KITTEN_CAT);
+		c = put(g, cr, c, end, " saved ", 7, FACE_KITTEN_DIM);
+		put(g, cr, c, end, e->msg + 12, strlen(e->msg + 12), FACE_KITTEN_TEXT);
 		return;
 	}
 	const Frame *f = &frames[frame];
-	/* the float: as wide as its widest line (10 cells, 11 with the heart,
-	   more with the text), two columns from the right, on the three rows
-	   above the last status line and the command line */
-	int w = f->text ? 16 + width(name) : 10;
-	int r = g->rows - 2 - 3, c = g->cols - w - 2, end;
+	/* Kitten.tla "ok": only the draw that first shows a frame arms the next;
+	   arming on every draw lets other redraws push it back for ever.  A
+	   screen too small for it still counts the frame as shown, so the
+	   kitten ends on time. */
+	if (armed != frame) {
+		armed = frame;
+		loop_timer(step, ed, f->ms);
+	}
+	/* the float: as wide as its widest line (10 cells, more with the
+	   heart and text), two columns from the right, on the three rows above
+	   the last status line and the command line (lines - cmdheight - 1 - 3) */
+	int w = f->heart[0] ? 16 + width(name) : 10;
+	int r = cr - 1 - 3, c = g->cols - w - 2, end;
 	if (r < 0) r = 0;
 	if (c < 0) c = 0;
+	if (r + 3 > g->rows) return;
 	end = c + w < g->cols ? c + w : g->cols;
 	for (int i = 0; i < 3; i++)
 		for (int x = c; x < end; x++) put(g, r + i, x, end, " ", 1, FACE_NONE);
@@ -144,22 +162,16 @@ void kitten_draw(Editor *e, Grid *g)
 	x = put(g, r + 1, x, end, " )", 2, FACE_KITTEN_CAT);
 	put(g, r + 1, x, end, f->paw, strlen(f->paw), FACE_KITTEN_PAW);
 	x = put(g, r + 2, c, end, " > ^ < ", 7, FACE_KITTEN_CAT);
-	if (f->text) {
+	if (f->heart[0]) {
 		x = put(g, r + 2, x + 3, end, "saved ", 6, FACE_KITTEN_TEXT);
 		put(g, r + 2, x, end, name, strlen(name), FACE_KITTEN_TEXT);
 		/* wider than the screen: the float is cut to it and its last line
 		   wraps out of sight, so 'display' lastline ends it in "@@@"
-		   (NonText: overlay0, as the dim face) */
-		if (c + w > g->cols) {
-			/* a double-width character cut by it is an "@" too (measured) */
+		   (NonText: overlay0, as the dim face); a double-width character
+		   cut by it is an "@" too (measured) */
+		if (c + w > g->cols && end - c >= 4) {
 			int a = end - 3 - !g->c[(r + 2) * g->cols + end - 3].len;
 			put(g, r + 2, a, end, "@@@@", (size_t)(end - a), FACE_KITTEN_DIM);
 		}
-	}
-	/* Kitten.tla "ok": only the draw that first shows a frame arms the next;
-	   arming on every draw lets other redraws push it back for ever */
-	if (armed != frame) {
-		armed = frame;
-		loop_timer(step, ed, f->ms);
 	}
 }

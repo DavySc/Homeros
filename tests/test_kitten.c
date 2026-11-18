@@ -22,11 +22,11 @@ static long long ms(void)
 	return t.tv_sec * 1000LL + t.tv_nsec / 1000000;
 }
 
-/* What Neovim shows under the float on an empty buffer: "~" rows. */
+/* As main.c draws: the core (an empty buffer: "~" rows under the
+   float, as in Neovim), then the kitten. */
 static void draw(void)
 {
-	grid_clear(&g);
-	for (int r = 0; r < g.rows; r++) grid_puts(&g, r, 0, "~", ATTR_NONE);
+	core_draw(&e, &g);
 	kitten_draw(&e, &g);
 }
 
@@ -132,17 +132,13 @@ static void colours(void)
 	CHECK(face_at(9, 22) == FACE_NONE);
 	tick();
 	CHECK(!strcmp(e.msg, "=^.^= saved notes.org"));
-	grid_clear(&g);
-	grid_puts(&g, 11, 0, e.msg, ATTR_NONE);
-	kitten_draw(&e, &g);
+	draw();
 	CHECK(face_at(11, 0) == FACE_KITTEN_CAT && face_at(11, 4) == FACE_KITTEN_CAT);
 	CHECK(face_at(11, 5) == FACE_KITTEN_DIM && face_at(11, 11) == FACE_KITTEN_DIM);
 	CHECK(face_at(11, 12) == FACE_KITTEN_TEXT && face_at(11, 20) == FACE_KITTEN_TEXT);
 	/* another message: no colours */
-	core_msg(&e, "=^.^= saved other");
-	grid_clear(&g);
-	grid_puts(&g, 11, 0, e.msg, ATTR_NONE);
-	kitten_draw(&e, &g);
+	core_msg(&e, "\"notes.org\" 0L, 0B written");
+	draw();
 	CHECK(face_at(11, 0) == FACE_NONE);
 	core_free(&e);
 }
@@ -218,12 +214,44 @@ static void rules(void)
 	core_free(&e);
 }
 
+/* Every frame on every screen from 1 x 1 to 6 x 18 (the sanitizers say if
+   a cell outside the grid is touched), and a taller command line. */
+static void small(void)
+{
+	open_file("全角ファイル名.md", 1, 1);
+	kitten_paw(&e);
+	for (int i = 0; i < 6; i++) {
+		for (int rows = 1; rows <= 6; rows++)
+			for (int cols = 1; cols <= 18; cols++) {
+				CHECK(!grid_resize(&g, rows, cols));
+				draw();
+			}
+		CHECK(!grid_resize(&g, 24, 80));
+		draw();      /* arms this frame's timer */
+		if (i < 5) tick();
+	}
+	kitten_key();
+	core_free(&e);
+	/* cmdheight 3 (resize -2 in one window): Neovim puts the float at row 3
+	   of 10 x 40, above the status line, and the message on row 7 */
+	open_file("notes.org", 10, 40);
+	core_draw(&e, &g);
+	core_resize(&e, 0, -2, 0);
+	kitten_paw(&e);
+	draw();
+	CHECK(strstr(row(4), "( o.o )") && strstr(row(6), "notes.org"));
+	for (int i = 0; i < 6; i++) { tick(); draw(); }
+	CHECK(face_at(7, 0) == FACE_KITTEN_CAT && face_at(9, 0) == FACE_NONE);
+	core_free(&e);
+}
+
 int main(void)
 {
 	CHECK(mkdtemp(dir));
 	frames();
 	colours();
 	rules();
+	small();
 	char cmd[600];
 	snprintf(cmd, sizeof cmd, "rm -rf %s", dir);
 	CHECK(!system(cmd));

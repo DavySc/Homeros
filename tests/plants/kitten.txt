@@ -4,10 +4,10 @@
 kitten: every draw arms the timer (redraws hold it back)~test TESTS=kitten~~src/kitten/kitten.c~	if (armed != frame) {~	if (frame >= 0) {
 kitten: the timer arms the next frame itself (wakes a hidden window)~test TESTS=kitten~~src/kitten/kitten.c~	if (++frame < NFRAMES) return;~	if (++frame < NFRAMES) { loop_timer(step, ed, MS); return; }
 kitten: core_write does not tell it~test TESTS=kitten~~src/core/core.c~		kitten_written(e, b);   /* BufWritePost, after the message as in Neovim */~
-kitten: the blink as long as a frame~test TESTS=kitten~~src/kitten/kitten.c~	{ "-.-", "", "", 0, MS * 7 / 10 },~	{ "-.-", "", "", 0, MS },
-kitten: wide eyes~test TESTS=kitten~~src/kitten/kitten.c~	{ "o.o", "_", "", 0, MS },~	{ "O.O", "_", "", 0, MS },
+kitten: the blink as long as a frame~test TESTS=kitten~~src/kitten/kitten.c~	{ "-.-", "", "", MS * 7 / 10 },~	{ "-.-", "", "", MS },
+kitten: wide eyes~test TESTS=kitten~~src/kitten/kitten.c~	{ "o.o", "_", "", MS },~	{ "O.O", "_", "", MS },
 kitten: one column too far right~test TESTS=kitten~~src/kitten/kitten.c~c = g->cols - w - 2, end;~c = g->cols - w - 1, end;
-kitten: no "@@@" when cut~test TESTS=kitten~~src/kitten/kitten.c~		if (c + w > g->cols) {~		if (0) {
+kitten: no "@@@" when cut~test TESTS=kitten~~src/kitten/kitten.c~		if (c + w > g->cols && end - c >= 4) {~		if (0) {
 kitten: a second save restarts it~test TESTS=kitten~~src/kitten/kitten.c~if (!off && b == e->buf && !(frame >= 0 && for_buf == b)) kitten_paw(e);~if (!off && b == e->buf) kitten_paw(e);
 kitten: plays for another buffer's save~test TESTS=kitten~~src/kitten/kitten.c~if (!off && b == e->buf && !(frame >= 0 && for_buf == b)) kitten_paw(e);~if (!off && !(frame >= 0 && for_buf == b)) kitten_paw(e);
 kitten: a key leaves its timer running~test TESTS=kitten~~src/kitten/kitten.c~	if (armed >= 0) loop_timer(step, ed, -1);~
@@ -16,3 +16,7 @@ kitten: the message loses its colours~test TESTS=kitten~~src/kitten/kitten.c~		c
 kitten: the toggle does nothing~test TESTS=kitten~~src/kitten/kitten.c~	off = !off;~
 kitten: a Windows path keeps its directory (Windows)~win WIN=kitten~~src/kitten/kitten.c~	                         || *p == '\\'~
 kitten: Windows, every draw arms the timer~win WIN=kitten~~src/kitten/kitten.c~	if (armed != frame) {~	if (frame >= 0) {
+kitten: draws on a screen too small for it (reads outside the grid)~test TESTS=kitten~~src/kitten/kitten.c~	if (r + 3 > g->rows) return;~
+kitten: ignores a taller command line~test TESTS=kitten~~src/kitten/kitten.c~	int r = cr - 1 - 3, c~	int r = g->rows - 2 - 3, c
+kitten: the message tinted on the screen's last row~test TESTS=kitten~~src/kitten/kitten.c~		int c = put(g, cr, 0, end, "=^.^=", 5, FACE_KITTEN_CAT);~		int c = put(g, g->rows - 1, 0, end, "=^.^=", 5, FACE_KITTEN_CAT);
+specs: Kitten with every draw arming the timer~specs~find design/specs -name '*.cfg' ! -name Kitten_ok.cfg -delete~design/specs/Kitten_ok.cfg~ ArmOn = "newframe"~ ArmOn = "everydraw"
