@@ -4,11 +4,12 @@
    procedures).  SSMS colours by word lists, not by a parse, so a statement
    it does not know never spoils the colours after it.  Its categories
    (learn.microsoft.com, "Color coding in query editors") map to Catppuccin's
-   faces: keyword, string, comment, system function, system table, view or
-   schema, stored procedure, operator; numbers, names and variables stay
-   plain, as there.  Faces are found from the nearest token start known
-   before the bytes asked: one every CK bytes is kept, and those past an
-   edit are dropped, since what follows a byte can change how it lexes. */
+   faces: keyword, string, comment, number, system function, system table,
+   view or schema, stored procedure, operator; names and variables stay
+   plain, as there.  Faces are read from the nearest known token start
+   before the bytes asked; syntax_update keeps one every CK bytes to the
+   text's end, and an edit keeps those after it until a read confirms them
+   (struct Tsql). */
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
