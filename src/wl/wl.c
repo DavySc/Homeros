@@ -88,7 +88,6 @@ static Grid vis;                    /* cur with the preedit, when there is one *
 static size_t pool_size;
 
 static int kq[KQ], kh, kn;          /* keys for wl_input */
-static int gone;                    /* the connection to the compositor broke */
 static void push(int k) { if (kn < KQ) kq[(kh + kn++) % KQ] = k; }
 static void push_utf8(const char *s)
 {
@@ -804,7 +803,7 @@ static void wl_close(void)
 	tim = NULL; ddm = NULL; seat = NULL; wm = NULL; shm = NULL; comp = NULL; reg = NULL; dpy = NULL;
 	xst = NULL; keymap = NULL; xctx = NULL; rfd = -1; clip = got = NULL;
 	gotn = 0;
-	configured = waiting = ti_on = kn = gone = 0;
+	configured = waiting = ti_on = kn = 0;
 	rkey = 0;
 	scale = 120;
 	lw = 800;
@@ -857,16 +856,11 @@ static int wl_input(int *out, int n)
 {
 	uint64_t x;
 	if (read(rfd, &x, sizeof x) < 0) {}   /* only clears the timer */
-	if (!gone) {
-		int e = 0;
-		while (!e && wl_display_prepare_read(dpy)) e = wl_display_dispatch_pending(dpy) < 0;
-		if (!e) e = wl_display_read_events(dpy) < 0;   /* reads what is there, never blocks */
-		/* the compositor is gone: once a close, the window's X; quitting
-		   without asking, as Neovim's preserve_exit() does on SIGHUP, is
-		   input() returning -1 once thread 0's backend.h change is in */
-		if (e || wl_display_dispatch_pending(dpy) < 0) { gone = 1; push(KEY_CLOSE); }
-		else wl_display_flush(dpy);
-	}
+	int e = 0;
+	while (!e && wl_display_prepare_read(dpy)) e = wl_display_dispatch_pending(dpy) < 0;
+	if (!e) e = wl_display_read_events(dpy) < 0;   /* reads what is there, never blocks */
+	if (e || wl_display_dispatch_pending(dpy) < 0) return -1;   /* the compositor is gone */
+	wl_display_flush(dpy);
 	long long t = now();
 	if (rkey && rate > 0 && t >= rnext) {
 		long long per = 1000000000LL / rate, c = 1 + (t - rnext) / per;

@@ -496,18 +496,18 @@ static void test_sway(void)
 	pump(100);
 	CHECK(count(KEY_CLOSE, k0) == 1);
 
-	/* the compositor gone: noticed once, as a close (the review of package
-	   8, finding 4); the input method's connection dies too, so not pump */
-	k0 = nkeys;
+	/* the compositor gone: input() says so with -1 (backend.h), not a key
+	   (the review of package 8, finding 4); the input method's connection
+	   dies too, so not pump */
 	kill(-cpid, SIGKILL);
 	waitpid(cpid, NULL, 0);
-	for (int i = 0, fds[2]; i < 5; i++) {
+	{
+		int fds[2];
 		backend_wl.fds(fds);
 		struct pollfd p = { fds[0], POLLIN, 0 };
 		CHECK(poll(&p, 1, 1000) > 0);
-		nkeys += backend_wl.input(keys + nkeys, 64);
+		CHECK(backend_wl.input(keys + nkeys, 64) == -1);
 	}
-	CHECK(count(KEY_CLOSE, k0) == 1 && nkeys - k0 == 1);
 
 	backend_wl.close();
 	zwp_input_method_v2_destroy(im);

@@ -17,7 +17,7 @@ threads, its text shaped by package 7's font.h.
 | Input method | text-input-v3: committed text becomes keys, the preedit is drawn underlined at the cursor, the cursor rectangle is sent on each move | foot |
 | Clipboard | wl_data_device, text/plain;charset=utf-8; our own selection is answered without the compositor; another's is read through a pipe with a 1 s timeout per read, as Neovim's clipboard provider times out; ours is written to a reader by a forked grandchild, so a reader that stalls never stops the editor | Neovim, foot, wl-copy |
 | Pointer | cursor-shape-v1's text cursor; a left press is KEY_MOUSE_LEFT, a wheel notch (value120) one KEY_WHEEL_UP/DOWN, a touchpad one per 3 rows scrolled, at the pointer's cell | Neovim GUIs |
-| Close | xdg_toplevel.close is KEY_CLOSE; a broken connection to the compositor is noticed and sent once as KEY_CLOSE (thread 0's backend.h change, input() returning -1 to quit without writing as Neovim's preserve_exit() does, replaces this when it merges) | build B notices it too |
+| Close | xdg_toplevel.close is KEY_CLOSE; a broken connection to the compositor makes input() return -1, so main.c quits without writing and keeps the crash journal, as Neovim's preserve_exit() does (backend.h) | build B notices it too |
 | Colours | grid.h's `faces` (ref/theme.c, Catppuccin Mocha): their colours, underline and strikethrough; colour glyphs (emoji) blended as premultiplied BGRA; no bold or italic, which font.h does not open | ref/tty.c |
 
 The font size, 16 px at scale 1, is a hypothesis: Davy's size is not recorded.
