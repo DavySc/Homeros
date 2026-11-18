@@ -1,0 +1,220 @@
+/* Undo and redo in the core where the bytes alone do not say what Neovim
+   saved: an empty line joined to an empty line removes the same "\n" as dd
+   on it, but u_save() kept the joined line, so redo leaves the cursor on the
+   line it started on (measured in conform, seed 1794930960); the marks a
+   group saved come back (u_undoredo()). */
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include "check.h"
+#include "core.h"
+#include "undo.h"
+
+static char path[] = "/tmp/core_undoXXXXXX";
+
+static void load(Editor *e, const char *text)
+{
+	FILE *f = fopen(path, "w");
+	CHECK(f && fputs(text, f) >= 0 && !fclose(f));
+	CHECK(!core_open(e, path));
+}
+
+/* the "\n" before line l removed (Backspace at its start), as one group,
+   the cursor at line `from` first; join: the keys report it */
+static void remove_nl(Editor *e, size_t l, int join)
+{
+	undo_close(e->buf->undo);
+	e->win->line = l;
+	e->win->col = 0;
+	size_t pl = core_line_len(e, l - 1);
+	if (join) core_mark_join(e, l, 0, -1, (long)pl, 0);   /* before, as do_join() */
+	CHECK(!core_edit(e, core_line_start(e, l) - 1, 1, "", 0));
+	e->win->line = l - 1;
+	e->win->col = pl;
+	undo_close(e->buf->undo);
+}
+
+int main(void)
+{
+	static Editor e;
+	CHECK(mkstemp(path) >= 0);
+	/* the join: redo goes back to the line the group started on */
+	load(&e, "x\n\n\ny\n");
+	remove_nl(&e, 2, 1);
+	CHECK(core_lines(&e) == 3);
+	CHECK(core_undo(&e, 0) >= 0 && core_lines(&e) == 4);
+	CHECK(core_undo(&e, 1) >= 0 && core_lines(&e) == 3 && e.win->line == 2);
+	core_free(&e);
+	/* the same bytes as dd on the empty line: whole lines, the first one */
+	load(&e, "x\n\n\ny\n");
+	remove_nl(&e, 2, 0);
+	CHECK(core_undo(&e, 0) >= 0 && core_undo(&e, 1) >= 0 && e.win->line == 1);
+	core_free(&e);
+	/* an insert at a line start undone leaves lo == hi there too, but the
+	   line stays: lines removed only when the count drops (thread 0's
+	   rule, from "𐐀x\n\t(\n" j i é Esc u dd against nvim) */
+	load(&e, "x\n\t(\n");
+	undo_close(e.buf->undo);
+	e.win->line = 1;
+	e.win->col = 0;
+	CHECK(!core_edit(&e, core_line_start(&e, 1), 0, "\xc3\xa9", 2));
+	undo_close(e.buf->undo);
+	CHECK(core_undo(&e, 0) == 0 && e.win->line == 1);
+	core_free(&e);
+	/* a join moves the marks of the joined line onto the line before */
+	load(&e, "ab\ncd\nef\n");
+	e.buf->mark[0] = (Mark){ 1, 1, 1 };
+	e.buf->mark[1] = (Mark){ 2, 1, 1 };
+	remove_nl(&e, 1, 1);
+	CHECK(e.buf->mark[0].set && e.buf->mark[0].line == 0 && e.buf->mark[0].col == 3);
+	CHECK(e.buf->mark[1].set && e.buf->mark[1].line == 1 && e.buf->mark[1].col == 1);
+	core_free(&e);
+	/* a mark set after a group opened is back where it was on undo, and
+	   the one undo replaced returns on redo (u_undoredo()'s swap) */
+	load(&e, "a\nb\nc\n");
+	e.buf->mark[0] = (Mark){ 2, 0, 1 };
+	undo_close(e.buf->undo);
+	CHECK(!core_edit(&e, 0, 0, "z", 1));      /* "za": no mark moves */
+	undo_close(e.buf->undo);
+	e.buf->mark[0] = (Mark){ 0, 1, 1 };       /* set again after the change */
+	CHECK(core_undo(&e, 0) >= 0 && e.buf->mark[0].line == 2 && e.buf->mark[0].col == 0);
+	CHECK(core_undo(&e, 1) >= 0 && e.buf->mark[0].line == 0 && e.buf->mark[0].col == 1);
+	core_free(&e);
+	/* an empty unnamed buffer reused by :e keeps none of its old undo
+	   groups' entries: a join undone there leaves no join flag for the
+	   new file's first group (review of PR 20, 7: stalejoin.c) */
+	CHECK(!core_open(&e, NULL));
+	CHECK(!core_edit(&e, 0, 0, "\n", 1));
+	core_mark_join(&e, 1, 0, -1, 0, 0);
+	CHECK(!core_edit(&e, 0, 1, "", 0));
+	undo_close(e.buf->undo);
+	CHECK(core_undo(&e, 0) >= 0);
+	{
+		FILE *f = fopen(path, "w");
+		CHECK(f && fputs("x\n\n\ny\n", f) >= 0 && !fclose(f));
+	}
+	CHECK(!core_edit_file(&e, path, 0));
+	remove_nl(&e, 2, 0);
+	CHECK(core_undo(&e, 0) >= 0 && core_undo(&e, 1) >= 0 && e.win->line == 1);
+	core_free(&e);
+	/* an undo group without an entry does not take its neighbour's: the
+	   marks group 1 saved come back after group 2 is undone */
+	load(&e, "a\nb\n");
+	e.buf->mark[0] = (Mark){ 0, 0, 1 };
+	CHECK(!core_edit(&e, 0, 0, "x", 1));      /* group 1 saves a at column 0 */
+	undo_close(e.buf->undo);
+	e.buf->mark[0].set = 0;
+	CHECK(!core_edit(&e, 0, 0, "y", 1));      /* group 2 saves no mark */
+	undo_close(e.buf->undo);
+	e.buf->mark[0] = (Mark){ 1, 1, 1 };
+	CHECK(core_undo(&e, 0) >= 0 && core_undo(&e, 0) >= 0);
+	CHECK(e.buf->mark[0].set && e.buf->mark[0].line == 0 && e.buf->mark[0].col == 0);
+	core_free(&e);
+	/* past 'undolevels': mark a moved before each of 1,100 groups is
+	   where it was when each group opened, as far as undo goes (the
+	   second review of PR 20 found the 1,001st entry freed while used) */
+	load(&e, "abc\n");
+	static int col[1101];
+	for (int g = 1; g <= 1100; g++) {
+		e.buf->mark[0] = (Mark){ 0, col[g] = g % 3, 1 };
+		CHECK(!core_edit(&e, 3, 0, "z", 1));
+		undo_close(e.buf->undo);
+	}
+	int undone = 0;
+	for (int g = 1100; core_undo(&e, 0) >= 0; g--, undone++)
+		CHECK(e.buf->mark[0].set && e.buf->mark[0].col == (size_t)col[g]);
+	CHECK(undone >= 1000);
+	core_free(&e);
+	/* op_delete() over lines from the middle of one: del_lines() puts
+	   '< on the last line (ONE_ADJUST_NODEL) and do_join() joins it to
+	   the start line after start.col bytes; undo brings back the '< from
+	   before the join, also in a group u_save_cursor() opened.  nvim:
+	   "abc def\nxyz uvw\nfoo bar\nbar baz\nqq\n", j w l v Esc k l d5w,
+	   then getpos("'<") is 1,12, and after u it is 2,6 */
+	load(&e, "abc def\nxyz uvw\nfoo bar\nbar baz\nqq\n");
+	e.buf->mark[MARK_LT] = (Mark){ 1, 5, 1 };
+	e.buf->mark[MARK_GT] = (Mark){ 1, 6, 1 };
+	/* the change list and the jump list move the same way (the review of
+	   PR 52 measured them in nvim: lists.lua) */
+	e.buf->change[0] = (Mark){ 1, 2, 1 };
+	e.buf->nchange = 1;
+	e.win->jump[0].buf = e.buf;
+	e.win->jump[0].m = (Mark){ 1, 3, 1 };
+	e.win->njump = 1;
+	undo_close(e.buf->undo);
+	e.win->col = 6;
+	{
+		UndoCursor c = { 0, 6, e.buf->flags };   /* the keys' u_save_cursor() */
+		CHECK(!undo_record(e.buf->undo, 0, "", 0, "", 0, c, e.buf->flags));
+	}
+	core_mark_join(&e, 2, 0, -2, 6, 0);
+	CHECK(!core_edit(&e, 6, core_line_start(&e, 2) + core_line_len(&e, 2) - 6, "", 0));
+	undo_close(e.buf->undo);
+	CHECK(core_lines(&e) == 3 && e.buf->mark[MARK_LT].line == 0 && e.buf->mark[MARK_LT].col == 11);
+	CHECK(e.buf->mark[MARK_GT].line == 0 && e.buf->mark[MARK_GT].col == 12);
+	CHECK(e.buf->change[0].line == 0 && e.buf->change[0].col == 8);
+	CHECK(e.win->jump[0].m.line == 0 && e.win->jump[0].m.col == 9);
+	CHECK(core_undo(&e, 0) >= 0 && e.buf->mark[MARK_LT].line == 1 && e.buf->mark[MARK_LT].col == 5);
+	core_free(&e);
+	/* J: undo brings back the '< from before do_join()'s mark_col_adjust().
+	   nvim: "ab\ncd\nef\n", j l v Esc k J u, then getpos("'<") is 2,2 */
+	load(&e, "ab\ncd\nef\n");
+	e.buf->mark[MARK_LT] = e.buf->mark[MARK_GT] = (Mark){ 1, 1, 1 };
+	undo_close(e.buf->undo);
+	core_mark_join(&e, 1, 0, -1, 3, 0);
+	CHECK(!core_edit(&e, 2, 1, " ", 1));
+	undo_close(e.buf->undo);
+	CHECK(e.buf->mark[MARK_LT].line == 0 && e.buf->mark[MARK_LT].col == 4);
+	CHECK(core_undo(&e, 0) >= 0 && e.buf->mark[MARK_LT].line == 1 && e.buf->mark[MARK_LT].col == 1);
+	/* the next group saves the marks as they are then, not the ones
+	   saved before the join */
+	undo_close(e.buf->undo);
+	e.buf->mark[MARK_LT] = (Mark){ 2, 1, 1 };
+	CHECK(!core_edit(&e, 0, 0, "z", 1));
+	undo_close(e.buf->undo);
+	e.buf->mark[MARK_LT] = (Mark){ 0, 0, 1 };
+	CHECK(core_undo(&e, 0) >= 0 && e.buf->mark[MARK_LT].line == 2 && e.buf->mark[MARK_LT].col == 1);
+	core_free(&e);
+	/* 3J: two core_mark_join() before one edit; undo brings back the '<
+	   from before the first.  nvim (review of PR 52): "ab\ncd\nef\ngh\n",
+	   G k v k Esc gg 3J u, then getpos("'<") is 2,1 */
+	load(&e, "ab\ncd\nef\ngh\n");
+	e.buf->mark[MARK_LT] = (Mark){ 1, 0, 1 };
+	e.buf->mark[MARK_GT] = (Mark){ 2, 0, 1 };
+	undo_close(e.buf->undo);
+	core_mark_join(&e, 1, 0, -1, 3, 0);
+	core_mark_join(&e, 2, 0, -2, 6, 0);
+	CHECK(!core_edit(&e, 2, 4, " cd ", 4));
+	undo_close(e.buf->undo);
+	CHECK(core_lines(&e) == 2 && e.buf->mark[MARK_LT].line == 0 && e.buf->mark[MARK_LT].col == 3);
+	CHECK(core_undo(&e, 0) >= 0 && e.buf->mark[MARK_LT].line == 1 && e.buf->mark[MARK_LT].col == 0);
+	core_free(&e);
+	/* a group the keys opened keeps the marks of its first edit through
+	   the next ones, also when another buffer is edited in between
+	   (review of PR 52, finding 1: twobuf.c) */
+	{
+		char other[] = "/tmp/core_undo2XXXXXX";
+		FILE *f = fdopen(mkstemp(other), "w");
+		CHECK(f && fputs("x\n", f) >= 0 && !fclose(f));
+		load(&e, "a\nb\nc\n");
+		Buf *a = e.buf;
+		int nr = a->nr;
+		CHECK(!core_edit(&e, 0, 0, "w", 1));   /* a's next group gets another number than the other buffer's */
+		undo_close(a->undo);
+		a->mark[0] = (Mark){ 1, 0, 1 };
+		UndoCursor c = { 0, 0, a->flags };     /* the keys' u_save_cursor() */
+		CHECK(!undo_record(a->undo, 0, "", 0, "", 0, c, a->flags));
+		CHECK(!core_edit(&e, 0, 0, "new\n", 4));   /* a moves to line 2 */
+		CHECK(!core_edit(&e, 0, 0, "z", 1));        /* the same group */
+		CHECK(!core_edit_file(&e, other, 0) && !core_edit(&e, 0, 0, "y", 1));
+		undo_close(e.buf->undo);
+		CHECK(!core_buf_goto(&e, nr) && !core_edit(&e, 0, 0, "z", 1));   /* still a's group */
+		undo_close(a->undo);
+		CHECK(core_undo(&e, 0) >= 0 && core_lines(&e) == 3 && a->mark[0].line == 1);
+		core_free(&e);
+		unlink(other);
+	}
+	unlink(path);
+	printf("test_core_undo: ok\n");
+	return 0;
+}

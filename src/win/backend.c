@@ -58,13 +58,29 @@ static void measure_period(void)
 	period = SUCCEEDED(DwmGetCompositionTimingInfo(NULL, &t)) ? (LONGLONG)t.qpcRefreshPeriod : 0;
 }
 
+/* The first installed of JetBrains Mono's Nerd Font builds (DESIGN.md), for
+   the icons, then plain JetBrains Mono: GDI substitutes any font for a
+   missing family, so the face it gave is compared with the one asked.
+   Greyscale smoothing: ClearType's coloured fringes made text look blue on
+   the dark background on Davy's laptop. */
 static int make_font(void)
 {
-	HFONT f = CreateFontW(-MulDiv(PT, dpi, 72), 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET,
-	                      OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
-	                      FIXED_PITCH | FF_MODERN, L"JetBrains Mono");
+	static const WCHAR *const family[] = { L"JetBrainsMono Nerd Font Mono", L"JetBrainsMono NFM",
+	                                       L"JetBrainsMono Nerd Font", L"JetBrains Mono" };
+	HFONT f = NULL;
+	for (unsigned i = 0; i < sizeof family / sizeof *family; i++) {
+		WCHAR face[LF_FACESIZE];
+		if (f) DeleteObject(f);
+		f = CreateFontW(-MulDiv(PT, dpi, 72), 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET,
+		                OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY,
+		                FIXED_PITCH | FF_MODERN, family[i]);
+		if (!f) return -1;
+		HGDIOBJ old = SelectObject(mem, f);
+		GetTextFaceW(mem, LF_FACESIZE, face);
+		SelectObject(mem, old);
+		if (!lstrcmpiW(face, family[i])) break;
+	}
 	TEXTMETRICW tm;
-	if (!f) return -1;
 	SelectObject(mem, f);
 	if (font) DeleteObject(font);
 	font = f;
@@ -115,6 +131,7 @@ static LRESULT CALLBACK proc(HWND h, UINT m, WPARAM w, LPARAM l)
 		case VK_RIGHT: put(KEY_RIGHT); return 0;
 		case VK_UP: put(KEY_UP); return 0;
 		case VK_DOWN: put(KEY_DOWN); return 0;
+		case VK_DELETE: put(KEY_DEL); return 0;
 		}
 		break;
 	case WM_LBUTTONDOWN:
@@ -179,7 +196,10 @@ static void win_close(void)
 static int win_open(void)
 {
 	WNDCLASSW wc = { .lpfnWndProc = proc, .hInstance = GetModuleHandleW(NULL),
-	                 .hCursor = LoadCursorW(NULL, (LPCWSTR)IDC_IBEAM), .lpszClassName = L"homeros" };
+	                 .hCursor = LoadCursorW(NULL, (LPCWSTR)IDC_IBEAM), .lpszClassName = L"homeros",
+	                 /* assets/homeros.rc; Windows takes the title bar's small
+	                    icon from the same resource */
+	                 .hIcon = LoadIconW(GetModuleHandleW(NULL), MAKEINTRESOURCEW(1)) };
 	SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 	if (!RegisterClassW(&wc)) return -1;
 	win = CreateWindowExW(0, L"homeros", L"homeros", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
@@ -249,19 +269,21 @@ static int win_ready(void)
 static void draw_cell(const Grid *g, int r, int c, int cursor)
 {
 	const Cell *x = &g->c[r * g->cols + c];
-	unsigned cp = uni_cp(x->ch, x->len, 0);
-	WCHAR u[2] = { (WCHAR)cp };
-	UINT n = 1;
+	const unsigned char *s = grid_text(x);
+	WCHAR u[GRID_CLUSTER_MAX];   /* UTF-16 takes no more units than UTF-8 bytes */
+	UINT n = 0;
+	for (size_t i = 0; i < x->len; i += uni_len(s, x->len, i)) {   /* the whole cluster */
+		unsigned cp = uni_cp(s, x->len, i);
+		if (cp >= 0x10000) {   /* UTF-16 surrogates */
+			u[n++] = (WCHAR)(0xD800 + (cp - 0x10000) / 0x400);
+			u[n++] = (WCHAR)(0xDC00 + (cp - 0x10000) % 0x400);
+		} else u[n++] = (WCHAR)cp;
+	}
 	int wide = c + 1 < g->cols && !x[1].len;
 	const Face *fa = &faces[x->face < FACE_COUNT ? x->face : FACE_NONE];
 	COLORREF f = x->attr == ATTR_DIM ? DIMC : fa->style & FACE_FG ? RGB(fa->fg[0], fa->fg[1], fa->fg[2]) : TEXT;
 	COLORREF b = fa->style & FACE_BG ? RGB(fa->bg[0], fa->bg[1], fa->bg[2]) : BASE;
 	RECT rc = { c * cw, r * ch, (c + 1 + wide) * cw, (r + 1) * ch };
-	if (cp >= 0x10000) {   /* UTF-16 surrogates */
-		u[0] = (WCHAR)(0xD800 + (cp - 0x10000) / 0x400);
-		u[1] = (WCHAR)(0xDC00 + (cp - 0x10000) % 0x400);
-		n = 2;
-	}
 	/* reversed (status line, cursor): the colours swap, as a terminal's SGR 7 */
 	int rev = cursor || x->attr == ATTR_REV;
 	SetTextColor(mem, rev ? b : f);

@@ -1,0 +1,9 @@
+# The reviewer's plants for PR 37, in planted.sh's format (run by extra-plants.sh).
+# They apply to the PR's head ecaaee3 (the follow-up commit 393f390 changes the line).
+# A plant's fields are split at the tilde, so none of these texts holds one.
+x: Ctrl-Delete (CSI 3;5 tilde) is Delete~test TESTS=tty_input~~src/tty/tty.c~j == 3 && s[2] == '3' && s[3] ==~s[2] == '3' && s[j] ==
+x: any CSI n tilde is Delete (Insert, PageUp)~test TESTS=tty_input~~src/tty/tty.c~j == 3 && s[2] == '3' && s[3] ==~j == 3 && s[3] ==
+x: Delete is the x key~test TESTS=tty_input~~src/tty/tty.c~? KEY_DEL : -1;~? 'x' : -1;
+x: Delete is KEY_LEFT~test TESTS=tty_input~~src/tty/tty.c~? KEY_DEL : -1;~? KEY_LEFT : -1;
+x: Delete takes the byte after it~test TESTS=tty_input~~src/tty/tty.c~		return j + 1;~		return j + 1 + (*k == KEY_DEL);
+x: the redundant test dropped (must NOT be caught: same behaviour)~test TESTS=tty_input~~src/tty/tty.c~j == 3 && s[2] == '3' && s[3] ==~s[2] == '3' && s[3] ==

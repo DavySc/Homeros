@@ -1,0 +1,92 @@
+C 15 80
+F 
+T vs
+T w2:|
+T w:R
+T pum:6:2:2
+P
+S 1
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S f0                                                            0,0-1          All
+S 
+M - - -
+P
+S 1                                      │1
+S ~                                      │~
+S ~                                      │~
+S ~                                      │~
+S ~                                      │~
+S ~                                      │~
+S ~                                      │~
+S ~                                      │~
+S ~                                      │~
+S ~                                      │~
+S ~                                      │~
+S ~                                      │~
+S ~                                      │~
+S f0                   0,0-1          All f0                    0,0-1          All
+S :vs
+M - - -
+P
+S 1                                                                            │1
+S ~                                                                            │~
+S ~                                                                            │~
+S ~                                                                            │~
+S ~                                                                            │~
+S ~                                                                            │~
+S ~                                                                            │~
+S ~                                                                            │~
+S ~                                                                            │~
+S ~                                                                            │~
+S ~                                                                            │~
+S ~                                                                            │~
+S ~                                                                            │~
+S f0                                                         0,0-1          All <l
+R
+M - - -
+P
+S 1 │1
+S ~ │~
+S ~ │~
+S ~ │~
+S ~ │~
+S ~ │~
+S ~ │~
+S ~ │~
+S ~ │~
+S ~ │~
+S ~ │~
+S ~ │~
+S ~ │~
+S <l f0                                                         0,0-1          All
+R
+M - - -
+P
+R
+S  bar_1 v m
+S  λx    f
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S <l f0 [+]                                                     1,1            All
+S -- INSERT --
+M - - -
+E

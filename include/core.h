@@ -58,11 +58,17 @@ typedef struct Buf {
 	int changed;               /* changed on disk since read or written: 1, then 2 once warned */
 	int jerr;                  /* a journal write failed during this command */
 	int noeol;                 /* file had no final newline (or was empty) */
+	int dos;                   /* 'fileformat' dos: saved with CR LF (file_eol) */
 	unsigned flags;            /* CORE_EMPTY */
 	unsigned long saved_seq;   /* undo_seq at the last load or save */
 	int nr;                    /* buffer number, from 1 (:b N) */
+	long lastused;             /* seconds when a window last entered it (b_last_used), for the buffers picker */
 	WinInfo *wi;
 	struct Syntax *syn;        /* syntax.h; NULL: no grammar for this file */
+	/* where syn is NULL: one FACE_* per byte of [a, z), as syntax_faces (git's
+	   diff and status buffers); NULL: none */
+	void (*faces)(const struct Buf *b, size_t a, size_t z, unsigned char *face);
+	int nonumber;              /* setlocal nonumber norelativenumber (neogit's buffers) */
 	struct LspDoc *lsp;        /* lsp.h; NULL: no language server for this file */
 	Mark mark[MARK_N];
 	Mark change[JUMPLIST_SIZE];   /* the change list (g; g,), oldest first */
@@ -236,8 +242,10 @@ void core_scroll(Editor *e, long n);
 int  core_scroll_half(Editor *e, int dir, long count);
 int  core_scroll_page(Editor *e, int dir, long count);
 void core_scroll_cursor(Editor *e, int how);
-/* The line H, M or L goes to (how 'H' 'M' 'L'; count lines from the top or bottom). */
-size_t core_screen_line(Editor *e, int how, long count);
+/* The line H, M or L goes to (how 'H' 'M' 'L'; count lines from the top or
+   bottom).  so: apply scrolloff (cursor_correct()); nv_scroll() passes 0
+   while an operator is pending, so d L reaches the last line shown. */
+size_t core_screen_line(Editor *e, int how, long count, int so);
 /* gj and gk: n screen lines down (n < 0 up), keeping the wanted column.
    0 ok, -1 at the first or last screen line. */
 int  core_screen_move(Editor *e, long n);

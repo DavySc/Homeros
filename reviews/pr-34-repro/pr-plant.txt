@@ -1,0 +1,1 @@
+conform: a crashing driver counted as a known difference~conform CONFORM_N=200 SEED=1~printf '%s' '[{"why": "Delete", "keys": "<Del>", "example": {"text": "ab\n", "keys": ["<Del>"]}}]' > tests/conform-known.json~tests/conform_drv.c~		keys_feed(&e, k, more);~		if (k == KEY_DEL) return 3;¶		keys_feed(&e, k, more);

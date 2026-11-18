@@ -1,0 +1,53 @@
+# Plants for src/syntax/tsql.c (format in tools/planted.sh).
+tsql: an edit keeps the token start at its own byte (test_tsql, edit near a kept start)~test TESTS=tsql~~src/syntax/tsql.c~size_t lo = pos > 2 ? pos - 2 : 0;~size_t lo = pos + 1;
+tsql: an edit keeps the token start two bytes before it (test_tsql, edit near a kept start)~test TESTS=tsql~~src/syntax/tsql.c~size_t lo = pos > 2 ? pos - 2 : 0;~size_t lo = pos > 1 ? pos - 1 : 0;
+tsql: an edit keeps the starts after it as known (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~		q->v = i;¶~
+tsql: an edit keeps where the last faces ended (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~	if (q->at >= lo) q->at~	if (q->at > lo + 4096) q->at
+tsql: an edit keeps the old text's window (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~	q->r.n = 0;¶~
+tsql: comments do not nest (test_tsql, tokens)~test TESTS=tsql~~src/syntax/tsql.c~if (c == '/' && d == '*') depth++, p += 2;~if (c == '/' && d == '*') p += 2;
+tsql: a doubled quote ends the string (test_tsql, tokens)~test TESTS=tsql~~src/syntax/tsql.c~if (c == e && tsql_byte(r, ++p) != e) break;~if (c == e && ++p) break;
+tsql: N'..' is a word and a string (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~	if ((c == 'N' || c == 'n') && d == '\'') c = '\'', p++;¶~
+tsql: <> is two operators (test_tsql, tokens)~test TESTS=tsql~~src/syntax/tsql.c~(c == '<' && d == '>') || ~
+tsql: a function word beats an operator word, so LEFT JOIN is a function (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~c & TQ_OPERATOR ? FACE_OPERATOR : c & TQ_FUNCTION ? FACE_FUNCTION_BUILTIN~c & TQ_FUNCTION ? FACE_FUNCTION_BUILTIN : c & TQ_OPERATOR ? FACE_OPERATOR
+tsql: a keyword word beats a function word, so DATEADD's day is a keyword (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~c & TQ_FUNCTION ? FACE_FUNCTION_BUILTIN : c & TQ_KEYWORD ? FACE_KEYWORD~c & TQ_KEYWORD ? FACE_KEYWORD : c & TQ_FUNCTION ? FACE_FUNCTION_BUILTIN
+tsql: what is in sys is plain (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~(p && tsql_byte(r, p - 1) == '.' && after_schema~(p && tsql_byte(r, p - 1) == '?' && after_schema
+tsql: words are looked up as typed, not lower case (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~c + 32 : c; }~c : c; }
+tsql: sp_ procedures are plain (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~l[2] == '_' && l[3]~l[2] == '-' && l[3]
+tsql: @@globals are plain (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~case TQ_VAR: return tsql_byte(r, p + 1) == '@'~case TQ_VAR: return tsql_byte(r, p + 1) == '#'
+tsql: .sql files are not T-SQL (test_tsql)~test TESTS=tsql~~src/syntax/syntax.c~!memcmp(path + pl - 4, ".sql", 4)~!memcmp(path + pl - 4, ".sqx", 4)
+tsql: the end of the text is a one-byte token (test_tsql, tokens)~test TESTS=tsql~~src/syntax/tsql.c~	if (c < 0) return *k = TQ_SPACE, p;¶~
+tsql: a word longer than the lookup buffer is copied into it (fuzz_tsql, ASan)~fuzz FUZZERS=tsql FUZZ_SECONDS=60~~src/syntax/tsql.c~	if (n >= 40) return 0;¶~
+tsql: a dot is an operator (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~	case TQ_PUNCT: return tsql_byte(r, p) != '.'~	case TQ_PUNCT: return tsql_byte(r, p) != ','
+tsql: a -- comment takes the \r of a CR LF (test_tsql, tokens)~test TESTS=tsql~~src/syntax/tsql.c~ && c != '\r') ;~ ) ;
+tsql: || is two operators (test_tsql, tokens)~test TESTS=tsql~~src/syntax/tsql.c~ || (c == '|' && d == '|'))~)
+tsql: a number takes the letters after it (test_tsql, tokens and lines)~test TESTS=tsql~~src/syntax/tsql.c~		while (is_digit(tsql_byte(r, p))) p++;~		while (is_id(tsql_byte(r, p))) p++;
+tsql: an exponent needs no digit (test_tsql, tokens)~test TESTS=tsql~~src/syntax/tsql.c~			if (is_digit(tsql_byte(r, e)))¶~
+tsql: a number takes .. (test_tsql, tokens)~test TESTS=tsql~~src/syntax/tsql.c~ && tsql_byte(r, p + 1) != '.')~)
+tsql: 0x takes letters past f (test_tsql, tokens)~test TESTS=tsql~~src/syntax/tsql.c~(c >= 'a' && c <= 'f')~(c >= 'a' && c <= 'z')
+tsql: numbers are plain (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~	case TQ_NUMBER: return FACE_NUMBER;¶~
+tsql: sp_ alone is a procedure (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~l[2] == '_' && l[3]~l[2] == '_'
+tsql: words of 20 bytes and more are not looked up (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~	if (n >= 40) return 0;~	if (n >= 20) return 0;
+tsql: the schema's name is read from byte 1 (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~while (b && p - b < 40~while (b > 1 && p - b < 40
+tsql: ( is an operator token, not punctuation (test_tsql, tokens)~test TESTS=tsql~~src/syntax/tsql.c~c == '(' || ~
+tsql: << and >> are two operators (test_tsql, tokens)~test TESTS=tsql~~src/syntax/tsql.c~ || ((c == '<' || c == '>') && d == c)~
+tsql: a NUL starts a two-byte operator (test_tsql)~test TESTS=tsql~~src/syntax/tsql.c~d == '=' && c && strchr~d == '=' && strchr
+tsql: an edit keeps the last token's end (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~	if (q->end + 2 >= pos) q->end = 0;¶~
+tsql: an edit two bytes past the last token keeps its end (test_tsql, edit near a kept start)~test TESTS=tsql~~src/syntax/tsql.c~q->end + 2 >= pos~q->end >= pos
+tsql: the last token's face is not kept (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~q->end = e, q->face = c;~q->end = e;
+tsql: storing a kept token start aborts (fuzz_tsql reaches the index)~fuzz FUZZERS=tsql FUZZ_SECONDS=60~~src/syntax/tsql.c~q->ck[q->v++] = (uint32_t)p, q->n++;~abort();
+tsql: moved starts do not move (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~+ nins - ndel)~+ 0 * nins - 0 * ndel)
+tsql: an edit among moved starts keeps those after it (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~	if (i > q->v) q->n = i;~	if (i > q->v) ;
+tsql: moved starts of an older edit stay (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~first_at(q, q->n = q->v, pos + ndel)~first_at(q, q->n, pos + ndel)
+tsql: a moved start a read passed stays (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~	while (q->v < q->n && q->ck[q->v] < p) q->n--, memmove(q->ck + q->v, q->ck + q->v + 1, (q->n - q->v) * sizeof *q->ck);¶~
+tsql: a read starts from a moved start (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~first_at(q, q->v, a + 1)~first_at(q, q->n, a + 1)
+tsql: the index is filled from past a token start (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~size_t p = q->v ? q->ck[q->v - 1] : 0;~size_t p = q->v ? q->ck[q->v - 1] + 1 : 0;
+tsql: a far window stays plain once the index is filled (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~if (a - p > FAR && !(q->v == q->n && q->n && q->ck[q->n - 1] == text_len(q->r.t))) {~if (a - p > FAR) {
+tsql: syntax_update does not ask for a redraw after a plain window (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~	int r = q->skipped;~	int r = 0;
+tsql: syntax_update stops without saying so (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~stop()) return 2;~stop()) return 0;
+tsql: the filled index does not mark the text's end (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~ q->ck[q->n++] = (uint32_t)len, q->v = q->n;~ q->v = q->n;
+tsql: an unclosed comment is not flagged open (test_tsql, open)~test TESTS=tsql~~src/syntax/tsql.c~		r->open = depth;¶~
+tsql: an unclosed string is not flagged open (test_tsql, open)~test TESTS=tsql~~src/syntax/tsql.c~		r->open = c < 0;¶~
+tsql: the open flag keeps the last token's (test_tsql, open)~test TESTS=tsql~~src/syntax/tsql.c~	r->open = 0;¶	if (c < 0)~	if (c < 0)
+tsql: a word it lacks still gets an id (test_tsql)~test TESTS=tsql~~src/syntax/tsql.c~	if (id) *id = k;~	if (id) *id = 1;
+# Not planted: reusing the last token's end and face (tsql_faces).  Without it every call lexes that token again: the colours are the same, only slower (reviews/pr-58-repro/bench.c, mode open).
+# Not planted, because without them the colours are the same, only slower, and no check times them: a read that lands on a moved start making all known again; syntax_update starting from the token the last faces ended in.  bench5.c in the PR's description times them.

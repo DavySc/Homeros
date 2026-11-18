@@ -1,0 +1,95 @@
+C 10 20
+F 090a6161616161616161616161616161616161616161616161616161616161610a666f6f206c6f6e676572776f7264206261725f310a6261725f31
+F 
+F 
+T L
+T k:3j
+T gj
+T 2C-f
+T w2:_
+T k:2k
+P
+S 1
+S   1 aaaaaaaaaaaaaaaa
+S   2 foo longerword b
+S   3 bar_1
+S ~
+S ~
+S ~
+S ~
+S < 1,1-8          All
+S 
+M - - -
+P
+S   3
+S   2 aaaaaaaaaaaaaaaa
+S   1 foo longerword b
+S 4   bar_1
+R
+R
+R
+R
+S < 4,5            All
+R
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+M - - -
+P
+S 4   bar_1
+S ~
+S ~
+S ~
+R
+R
+R
+R
+S < 4,5            Bot
+R
+M - - -
+P
+S   1 foo longerword b
+S 4   bar_1
+S < 4,5            Bot
+S 
+S 
+S 
+S 
+S 
+S 
+R
+M - - -
+P
+S 2   aaaaaaaaaaaaaaaa
+S   1 foo longerword b
+S < 2,5            50%
+R
+R
+R
+R
+R
+R
+R
+M - - -
+E

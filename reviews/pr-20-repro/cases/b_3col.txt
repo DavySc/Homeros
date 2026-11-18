@@ -1,0 +1,56 @@
+C 10 60
+F 
+F 
+F 
+T w3:v
+T wrap
+T 2C-b
+P
+S 1
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S f0                                        0,0-1          All
+S 
+M - - -
+P
+S 1                                                       │1
+S ~                                                       │~
+S ~                                                       │~
+S ~                                                       │~
+S ~                                                       │~
+S ~                                                       │~
+S ~                                                       │~
+S ~                                                       │~
+S f0                                    0,0-1          All <ll
+R
+M - - -
+P
+R
+S ~                                                       │
+S ~                                                       │
+S ~                                                       │
+S ~                                                       │
+S ~                                                       │
+S ~                                                       │
+S ~                                                       │
+R
+S :set wrap
+M - - -
+P
+S 1                                                       │1<<
+R
+R
+R
+R
+R
+R
+R
+R
+R
+M - - -
+E

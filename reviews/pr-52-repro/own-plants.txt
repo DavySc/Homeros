@@ -1,0 +1,10 @@
+# Review of PR 52: the reviewer's plants against the two fixes, in the format of tests/plants/*.txt.
+# Run: bash reviews/pr-52-repro/own-plants.sh   (from the repo root)
+review: a mark joined from a deleted line keeps its column~test TESTS="core_undo core_contract core_screens"~~src/core/core.c~{ m->line = L; m->col += col; }~{ m->line = L; m->col += col - col; }
+review: '> on a line deleted from mid-line is not joined~test TESTS="core_undo core_contract core_screens"~~src/core/core.c~			nodel_join(&b->mark[MARK_GT], L, d, col);~
+review: the change list on a line deleted from mid-line is not joined~test TESTS="core_undo core_contract core_screens"~~src/core/core.c~			for (int k = 0; k < b->nchange; k++) nodel_join(&b->change[k], L, d, col);~
+review: the jump list on a line deleted from mid-line is not joined~test TESTS="core_undo core_contract core_screens"~~src/core/core.c~					if (w->jump[k].buf == b) nodel_join(&w->jump[k].m, L, d, col);~					;
+review: every core_mark_join() of an edit saves the marks again~test TESTS="core_undo core_contract core_screens"~~src/core/core.c~	if (join_snapped != b) { marks_snap(b, join_snap); join_snapped = b; }~	{ marks_snap(b, join_snap); join_snapped = b; }
+review: the marks saved before a join are used by later groups too~test TESTS="core_undo core_contract core_screens"~~src/core/core.c~	join_snapped = NULL;¶	int r = -1;~	int r = -1;
+review: every edit of a group saves the marks again~test TESTS="core_undo core_contract core_screens"~~src/core/core.c~					snap_seq = undo_seq(b->undo);~
+review: an unloaded buffer keeps its saved group~test TESTS="core_undo core_contract core_screens"~~src/core/core.c~	if (snap_buf == b) snap_buf = NULL;~

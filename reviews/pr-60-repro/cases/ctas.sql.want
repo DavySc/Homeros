@@ -1,0 +1,5 @@
+select a into #t
+from t;
+drop table if exists #t;
+create table #t(a INT not null primary KEY, b VARCHAR(10) default 'x')
+alter table t add constraint c default 0 for a
