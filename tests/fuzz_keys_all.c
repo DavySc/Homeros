@@ -49,14 +49,17 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 	if (core_open(&e, path)) abort();
 	int nr = e.buf->nr;
 	read_all(&e, before, &nb);
-	int prev = 0;
+	int prev = 0, lit = 0;
 	for (size_t i = 0; i < n && text_len(e.buf->text) < 30000; i++) {
 		int k = keys[d[i] % (sizeof keys / sizeof *keys)];
 		if (k >= '0' && k <= '9' && prev >= '0' && prev <= '9') continue;
-		/* a literal CTRL-A in an insert split by an arrow key makes a later
-		   CTRL-A type itself again for ever, in Neovim too (measured: "i s
-		   Left C-v C-a Left C-a" had not ended in nvim --headless after 15 s) */
-		if (k == 1 && prev == 22) continue;
+		/* once CTRL-V may have put a literal CTRL-A in an insert, an Insert
+		   mode CTRL-A can type itself again for ever, in Neovim too
+		   (measured: "i s Left C-v C-a Left C-a" and "a Right C-v o C-a
+		   Del C-a Right k B h C-a" had not ended in nvim --headless after
+		   15 s) */
+		if (k == 22 && e.mode == MODE_INSERT) lit = 1;
+		if (k == 1 && lit && e.mode == MODE_INSERT) continue;
 		prev = k;
 		keys_feed(&e, k, i + 1 < n);
 		size_t len, nl = core_lines(&e);
