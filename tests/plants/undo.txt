@@ -8,6 +8,7 @@ undo cap: the redo branch it cannot reconnect is kept~undo-diff UNDO_N=1000~~src
 undo cap: 1,000 changes kept instead of 1,001~test TESTS=undo_file~~src/undo/undo.c~while (u->numhead > UNDO_LEVELS && u->oldhead) {~while (u->numhead >= UNDO_LEVELS && u->oldhead) {
 undo file: a change that does not apply is accepted~test TESTS=undo_file~~src/undo/undo.c~if (!bad) bad = check_text(c, u->oldhead);~if (!bad) bad = 0 && check_text(c, u->oldhead);
 undo file: SHA-256 with a wrong round constant~test TESTS=undo_file~~src/undo/undo.c~0x428a2f98~0x428a2f99
+undo file: SHA-256 rotates two working words in the wrong order~test TESTS=undo_file~~src/undo/undo.c~v[2] = v[1]; v[1] = v[0];~v[1] = v[0]; v[2] = v[1];
 undo hook: told after the change instead of before~fuzz FUZZERS=undo FUZZ_SECONDS=30~~src/undo/undo.c~		if (u->hook) u->hook(u->ctx, t, e->pos, nd, ins, ni);¶		if (text_delete(t, e->pos, nd) || text_insert(t, e->pos, ins, ni)) return -1;~		if (text_delete(t, e->pos, nd) || text_insert(t, e->pos, ins, ni)) return -1;¶		if (u->hook) u->hook(u->ctx, t, e->pos, nd, ins, ni);
 undo file test: the clock ticks between the two copies' ops~test TESTS=undo_file~~tests/test_undo_file.c~			rng = s;~			rng = s;¶			now++;
 undo file: numbers from the file taken as they are~test TESTS=undo_file~~src/undo/undo.c~	if (v[0] >= MAX_NR || v[1] > v[0] || v[2] >= MAX_NR || v[3] > v[2] || v[4] >= MAX_TIME) goto out;¶~
