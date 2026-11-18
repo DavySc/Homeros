@@ -11,7 +11,8 @@ HOMEROS = os.environ.get('HOMEROS')
 if HOMEROS: CASES = [c for c in CASES if all(t.startswith('k:') for t in c[4])]
 HERE = os.path.dirname(os.path.abspath(__file__))
 INIT = sys.argv[2] if len(sys.argv) > 2 else os.path.join(HERE, '../../tests/test_core_markdown.lua')
-BG = {'5a3d50': 'R', '5c4847': 'P', '5b5552': 'Y', '44554e': 'G', '364d63': 'S', '484b68': 'L'}
+# second pass: the .lua's opaque background (77530d6); the first pass's were '5a3d50' ...
+BG = {'32283a': 'R', '332c36': 'P', '33313a': 'Y', '2b3139': 'G', '262e40': 'S', '2c2d42': 'L'}
 FG = {'f38ba8': 'r', 'fab387': 'p', 'f9e2af': 'y', 'a6e3a1': 'g', '74c7ec': 's', 'b4befe': 'l'}
 
 def nvkeys(t):
