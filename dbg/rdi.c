@@ -83,21 +83,20 @@ static uint64_t lower_bound(const void *keys, uint64_t n, size_t stride, size_t 
   return lo;
 }
 
-/* First i whose key is the greatest key <= voff, or n when voff is outside [key(0), key(n-1)):
-   the last entry of these tables only marks the end (rdi_vmap_idx_from_voff). */
-static uint64_t floor_first(const uint64_t *keys, uint64_t n, size_t stride, uint64_t voff)
+/* Last i whose key is <= voff, or n when voff is outside [key(0), key(n-1)): the last entry of
+   these tables only marks the end. Among entries with equal keys the last one is the one whose
+   range holds voff; RAD answers with the first when voff equals the key exactly
+   (rdi_line_info_idx_range_from_voff), which hides the line behind a zero-length entry. */
+static uint64_t floor_index(const uint64_t *keys, uint64_t n, size_t stride, uint64_t voff)
 {
-  if (n == 0 || voff == UINT64_MAX) return n;
+  if (voff == UINT64_MAX) return n;
   uint64_t above = lower_bound(keys, n, stride, 8, voff + 1);
-  if (above == 0 || above == n) return n;
-  uint64_t k;
-  memcpy(&k, (const uint8_t *)keys + (above - 1) * stride, 8);
-  return lower_bound(keys, n, stride, 8, k);
+  return above == 0 || above == n ? n : above - 1;
 }
 
 uint32_t rdi_vmap(const Rdi *r, int k, uint64_t voff)
 {
-  uint64_t i = floor_first(r->s[k].p, r->s[k].n, sizeof(RdiVMap), voff);
+  uint64_t i = floor_index(r->s[k].p, r->s[k].n, sizeof(RdiVMap), voff);
   return (uint32_t)rdi_at(r, k, RdiVMap, i)->idx;
 }
 
@@ -106,7 +105,7 @@ RdiLine rdi_line_from_voff(const Rdi *r, uint64_t voff)
   const RdiUnit *unit = rdi_at(r, RDI_UNITS, RdiUnit, rdi_vmap(r, RDI_UNIT_VMAP, voff));
   const RdiLineTable *t = rdi_at(r, RDI_LINE_TABLES, RdiLineTable, unit->line_table);
   RdiSpan voffs = rdi_run(r, RDI_LINE_VOFFS, t->voffs_base, t->lines_count);
-  uint64_t i = floor_first(voffs.p, voffs.n, 8, voff);
+  uint64_t i = floor_index(voffs.p, voffs.n, 8, voff);
   return *rdi_at(r, RDI_LINE_LINES, RdiLine, i < voffs.n ? t->lines_base + i : UINT64_MAX);
 }
 

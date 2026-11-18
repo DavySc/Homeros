@@ -26,11 +26,12 @@ int main(int argc, char **argv)
   table[1] = 5;
   CHECK(rdi_str(&r, 1).n == 0);
   table[1] = 0;
-  /* lines: 0x1000 -> 10, 0x1010 -> 11 (two entries, 11 then 13: the first is taken), 0x1020 -> 12, 0x1030 ends */
+  /* lines: 0x1000 -> 10, 0x1010 -> 11 (two entries, 11 then 13: the last is taken), 0x1020 -> 12, 0x1030 ends */
   CHECK(rdi_line_from_voff(&r, 0x0fff).line == 0);
   CHECK(rdi_line_from_voff(&r, 0x1000).line == 10 && rdi_line_from_voff(&r, 0x1000).file == 1);
   CHECK(rdi_line_from_voff(&r, 0x100f).line == 10);
-  CHECK(rdi_line_from_voff(&r, 0x1010).line == 11);
+  CHECK(rdi_line_from_voff(&r, 0x1010).line == 13);
+  CHECK(rdi_line_from_voff(&r, 0x1011).line == 13);
   CHECK(rdi_line_from_voff(&r, 0x102f).line == 12);
   CHECK(rdi_line_from_voff(&r, 0x1030).line == 0);
   CHECK(rdi_line_from_voff(&r, UINT64_MAX).line == 0);

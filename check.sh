@@ -1,21 +1,25 @@
 #!/bin/bash
 # The prototype's check. `./check.sh` builds with gcc and clang (-Werror), runs the tests under
-# ASan+UBSan and each fuzzer for FUZZ_SECONDS (default 20). `./check.sh plants` then proves each check
+# ASan+UBSan, compares the reader with RAD's dump of every file in rdi/, and runs each fuzzer for FUZZ_SECONDS (default 20). `./check.sh plants` then proves each check
 # can fail: every line of tests/plants.txt must make its check fail.
 set -u
 cd "$(dirname "$0")"
 FLAGS="-std=c17 -g -O1 -Wall -Wextra -Werror"
 SAN="-fsanitize=address,undefined -fno-sanitize-recover=all"
-run() { # run <dir with the sources> <test|fuzz|all>: 0 when the named checks pass
+run() { # run <dir with the sources> <test|oracle|fuzz|all>: 0 when the named checks pass
   local src=$1 what=$2 b; b=$(mktemp -d)
   python3 -I "$src/tests/seed_rdi.py" "$b/seed.rdi" || return 1
-  if [ "$what" != fuzz ]; then
+  if [ "$what" = test ] || [ "$what" = all ]; then
     for cc in gcc clang; do
       $cc $FLAGS $SAN "$src"/dbg/*.c "$src"/tests/test_*.c -o "$b/test-$cc" || return 1
       "$b/test-$cc" "$b/seed.rdi" >"$b/out" 2>&1 || { tail -5 "$b/out"; return 1; }
     done
   fi
-  if [ "$what" != test ]; then
+  if [ "$what" = oracle ] || [ "$what" = all ]; then
+    gcc $FLAGS $SAN "$src"/dbg/*.c "$src"/tests/rdiq.c -o "$b/rdiq" || return 1
+    for f in "$src"/rdi/*.rdi; do python3 -I "$src/tests/oracle_rdi.py" "$b/rdiq" "$f" "$f.dump.txt.gz" || return 1; done
+  fi
+  if [ "$what" = fuzz ] || [ "$what" = all ]; then
     for f in "$src"/tests/fuzz_*.c; do
       clang $FLAGS -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all "$src"/dbg/*.c "$f" -o "$b/fuzz" || return 1
       mkdir -p "$b/corpus" && cp "$b/seed.rdi" "$b/corpus/" && cp "$src"/rdi/*.rdi "$b/corpus/" 2>/dev/null
