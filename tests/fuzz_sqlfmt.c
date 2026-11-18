@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "text.h"
-#include "../src/sqlfmt/sqlfmt.h"
+#include "sqlfmt.h"
 
 static const char *const tok[32] = {
 	"select ", "from ", "where ", "begin ", "end ", "if ", "else ", "while ", "try ", "catch ", "case ",

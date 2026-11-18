@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "text.h"
-#include "../src/sqlfmt/sqlfmt.h"
+#include "sqlfmt.h"
 int main(int argc, char **argv)
 {
 	static char buf[1 << 24];

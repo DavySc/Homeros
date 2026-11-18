@@ -8,7 +8,7 @@
 #include <string.h>
 #include "check.h"
 #include "text.h"
-#include "../src/sqlfmt/sqlfmt.h"
+#include "sqlfmt.h"
 
 static const char *const cases[][2] = {
 	{ "SELECT a,b FROM t WHERE a=1 AND b<>2 ORDER BY a",
