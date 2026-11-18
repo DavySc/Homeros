@@ -1,0 +1,3 @@
+// The Windows build links this (zig cc takes .rc files): the first icon is
+// the one Explorer and the taskbar show, and backend.c's window class loads it
+1 ICON "homeros.ico"
