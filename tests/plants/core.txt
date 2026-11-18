@@ -51,3 +51,4 @@ core: CTRL-W > in a shrunk terminal grows past its row of windows (test_core_con
 core: a group the keys open saves no marks (test_core_undo)~test TESTS=core_undo~~src/core/core.c~"", 0, "", 0, c, b->flags)) umarks_new(b, seq, snap);~"", 0, "", 0, c, b->flags)) umarks_new(b, seq ? undo_seq(b->undo) : undo_seq(b->undo), snap);
 core: a group an edit opens saves no marks (test_core_undo)~test TESTS=core_undo~~src/core/core.c~				umarks_new(b, seq, snap);~				(void)seq;
 core: a group's marks are saved again at each of its edits (test_core_undo)~test TESTS=core_undo~~src/core/core.c~	if (undo_seq(b->undo) == seq) return;~	if (seq == (unsigned long)-1) return;
+core: the view is looked at again only when drawn (test_core_contract)~test TESTS=core_contract~~src/core/move.c~MODE_CMDLINE) drawn(e, e->win);~MODE_CMDLINE) (void)0;

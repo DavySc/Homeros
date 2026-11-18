@@ -152,6 +152,29 @@ int main(void)
 		CHECK(k == 5);
 	}
 	core_free(&e);
+	/* the view is drawn after each command, before the next one runs
+	   (normal_check()'s normal_redraw(), typeahead or not): wrap, CTRL-W s,
+	   6G$, CTRL-W w puts the lower window's top at line 3 (measured in tmux,
+	   20x50, line 6 of 60 or 140 characters: tops 3 and 4; render-markdown's
+	   case 738) */
+	{
+		FILE *h = fopen(fn[1], "w");
+		CHECK(h && fprintf(h, "a\na\na\na\na\n%060d\nb\nb\nb\nb\nb\nb\nb\nb\n", 0) > 0 && !fclose(h));
+	}
+	CHECK(!core_open(&e, fn[1]) && !grid_resize(&g, 20, 50));
+	core_set_wrap(&e, 1);
+	core_draw(&e, &g);
+	CHECK(!core_split(&e, 0, 0));
+	core_update(&e);
+	e.win->line = 5;
+	e.win->col = 59;
+	core_set_want(&e);
+	core_update(&e);
+	CHECK(!core_win_goto(&e, 'w', 0));
+	core_update(&e);
+	core_draw(&e, &g);
+	CHECK(e.wins->next && e.wins->next->top == 2);
+	core_free(&e);
 	for (int i = 0; i < 4; i++) unlink(fn[i]);
 	grid_free(&g);
 	unlink(path);

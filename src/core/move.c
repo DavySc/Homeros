@@ -537,35 +537,42 @@ void win_ecmd_topline(Editor *e, Win *w)
 	update_topline(e, w);
 	p_so = SCROLLOFF;
 }
-void core_update(Editor *e) { curs_columns(e, e->win, 1); }
-
-/* win_update() for each window: skipcol made valid, then w_botline as drawn.  update_topline() may have
-   used an approximate one, so for the current window a drawn value that
-   differs looks at the view again, once (drawscreen.c, "There is a trick
-   with w_botline") */
-void win_drawn(Editor *e)
+/* win_update(): skipcol made valid, then w_botline as drawn.
+   update_topline() may have used an approximate one, so for the current
+   window a drawn value that differs looks at the view again, once
+   (drawscreen.c, "There is a trick with w_botline") */
+static void drawn(Editor *e, Win *w)
 {
-	for (Win *w = e->wins; w; w = w->next) {
-		/* win_update()'s start: skipcol, set for another width, rounded
-		   down to a row start */
-		long w1 = width1(w);
-		if (w->skipcol > 0 && w1 > 0)
-			w->skipcol = (long)w->skipcol < w1 ? 0 : (size_t)(w1 + ((long)w->skipcol - w1) / w1 * w1);
-		WinState *s = &w->frame->s;
-		size_t old = s->bot, top = w->top, skip = w->skipcol;
-		for (int again = w == e->win; ; again = 0) {
-			Bot b = comp_botline(w);
-			s->bot = (size_t)b.bot;
-			s->empty = b.empty;
-			s->bv |= BOT_EXACT;
-			if (!again || s->bot == old) break;
-			s->topvalid = 0;
-			update_topline(e, w);
-			if (w->top == top && w->skipcol == skip) break;   /* no redraw */
-			curs_columns(e, w, 1);
-		}
+	/* win_update()'s start: skipcol, set for another width, rounded
+	   down to a row start */
+	long w1 = width1(w);
+	if (w->skipcol > 0 && w1 > 0)
+		w->skipcol = (long)w->skipcol < w1 ? 0 : (size_t)(w1 + ((long)w->skipcol - w1) / w1 * w1);
+	WinState *s = &w->frame->s;
+	size_t old = s->bot, top = w->top, skip = w->skipcol;
+	for (int again = w == e->win; ; again = 0) {
+		Bot b = comp_botline(w);
+		s->bot = (size_t)b.bot;
+		s->empty = b.empty;
+		s->bv |= BOT_EXACT;
+		if (!again || s->bot == old) break;
+		s->topvalid = 0;
+		update_topline(e, w);
+		if (w->top == top && w->skipcol == skip) break;   /* no redraw */
+		curs_columns(e, w, 1);
 	}
 }
+
+/* normal_check() runs normal_redraw() after each command in Normal and
+   Visual mode, typeahead or not ('lazyredraw' off): update_screen()'s
+   win_update() of the current window comes before the next command */
+void core_update(Editor *e)
+{
+	curs_columns(e, e->win, 1);
+	if (e->mode != MODE_INSERT && e->mode != MODE_CMDLINE) drawn(e, e->win);
+}
+
+void win_drawn(Editor *e) { for (Win *w = e->wins; w; w = w->next) drawn(e, w); }
 
 void win_set_fraction(Win *w)
 {
