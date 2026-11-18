@@ -10,6 +10,7 @@ SAN="-fsanitize=address,undefined -fno-sanitize-recover=all"
 run() { # run <dir with the sources> <test|specs|oracle|fuzz|all>: 0 when the named checks pass
   local src=$1 what=$2 b; b=$(mktemp -d)
   python3 -I "$src/tests/seed_rdi.py" "$b/seed.rdi" || return 1
+  "$src/tests/make_pdbs.sh" "$b/pdb" || return 1
   if [ "$what" = test ] || [ "$what" = all ]; then
     # each tests/test_*.c is its own program: ASan+UBSan with both compilers, then ThreadSanitizer
     for t in "$src"/tests/test_*.c; do
@@ -23,12 +24,14 @@ run() { # run <dir with the sources> <test|specs|oracle|fuzz|all>: 0 when the na
   if [ "$what" = oracle ] || [ "$what" = all ]; then
     gcc $FLAGS $SAN "$src"/dbg/*.c "$src"/tests/rdiq.c -o "$b/rdiq" || return 1
     for f in "$src"/rdi/*.rdi; do python3 -I "$src/tests/oracle_rdi.py" "$b/rdiq" "$f" "$f.dump.txt.gz" || return 1; done
+    gcc $FLAGS $SAN "$src"/dbg/*.c "$src"/tests/msfq.c -o "$b/msfq" || return 1
+    "$src/tests/oracle_msf.sh" "$b/msfq" "$b"/pdb/*.pdb $(ls "$src"/rdi/*.pdb 2>/dev/null) || return 1
   fi
   if [ "$what" = fuzz ] || [ "$what" = all ]; then
     for f in "$src"/tests/fuzz_*.c; do
       clang $FLAGS -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all "$src"/dbg/*.c "$f" -o "$b/fuzz" || return 1
-      mkdir -p "$b/corpus" && cp "$b/seed.rdi" "$b/corpus/" && cp "$src"/rdi/*.rdi "$b/corpus/" 2>/dev/null
-      (cd "$b" && ./fuzz corpus -max_total_time="${FUZZ_SECONDS:-20}" -max_len=65536 >fuzz.log 2>&1) || { grep -m2 "ERROR\|SUMMARY" "$b/fuzz.log"; return 1; }
+      mkdir -p "$b/corpus" && cp "$b/seed.rdi" "$b"/pdb/steps-*.pdb "$b/corpus/"
+      (cd "$b" && ./fuzz corpus -max_total_time="${FUZZ_SECONDS:-20}" -max_len=131072 >fuzz.log 2>&1) || { grep -m2 "ERROR\|SUMMARY" "$b/fuzz.log"; return 1; }
     done
   fi
   rm -rf "$b"
@@ -39,7 +42,7 @@ while IFS='|' read -r what file find repl; do
   case "$what" in ''|'#'*) continue;; esac
   what=$(echo $what); file=$(echo $file); find=${find# }; find=${find% }; repl=${repl# }
   t=$(mktemp -d); cp -r dbg tests specs "$t/"; [ -d rdi ] && cp -r rdi "$t/"
-  FIND="$find" REPL="$repl" python3 -I -c 'import os,sys;p=sys.argv[1];s=open(p).read();f,r=(os.environ[k].replace("\\n","\n") for k in ("FIND","REPL"));assert s.count(f)==1,("plant text not found once: "+f);open(p,"w").write(s.replace(f,r))' "$t/$file" || { echo "BAD PLANT: $find"; missed=$((missed+1)); continue; }
+  FIND="$find" REPL="$repl" python3 -I -c 'import os,sys;p=sys.argv[1];s=open(p).read();f,r=(os.environ[k].replace("\\n","\n").replace("\\p","|") for k in ("FIND","REPL"));assert s.count(f)==1,("plant text not found once: "+f);open(p,"w").write(s.replace(f,r))' "$t/$file" || { echo "BAD PLANT: $find"; missed=$((missed+1)); continue; }
   total=$((total+1))
   if run "$t" "$what" >/dev/null 2>&1; then echo "NOT CAUGHT ($what): $find"; missed=$((missed+1)); fi
   rm -rf "$t"

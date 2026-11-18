@@ -1,5 +1,5 @@
 # One planted bug per line: check | file | text to find | replacement. `check.sh plants` applies each
-# to a scratch copy and the named check (test, oracle or fuzz) must then fail; \n in a text is a line break.
+# to a scratch copy and the named check (test, oracle or fuzz) must then fail; \n in a text is a line break and \p a bar.
 # The models' plants are their own broken configurations (specs/*.cfg with expect: fail). A check never seen to fail proves nothing.
 fuzz | dbg/rdi.c | sec[k].encoded_size > size - sec[k].off | sec[k].encoded_size > size
 fuzz | dbg/rdi.c | if (count > n - first) count = n - first; |
@@ -21,3 +21,9 @@ test | dbg/queue.c | while (q->used + sizeof n + n > QUEUE_BYTES) { | while (q->
 test | dbg/queue.c | uint32_t first = n < QUEUE_BYTES - start ? n : QUEUE_BYTES - start; | uint32_t first = n;
 test | dbg/queue.c |   pthread_mutex_lock(&q->lock);\n  /* test and wait |   /* test and wait
 test | dbg/queue.c |     q->head = (q->head + sizeof n + n) % QUEUE_BYTES; |     q->head = q->head + sizeof n + n;
+fuzz | dbg/msf.c |     if (pn >= m->pages) { |     if (pn > m->pages) {
+fuzz | dbg/msf.c | if (n == 0 \p\p n > m->size \p\p count > have) return 0; | if (n == 0 \p\p n > m->size) return 0;
+fuzz | dbg/msf.c | \p\p u32_at(m->dir, 0) > (m->dir_size - 4) / 4) { | ) {
+oracle | dbg/msf.c | for (uint32_t j = 0; j < i; j += 1) first += pages_for(m, stream_size(m, j)); | for (uint32_t j = 0; j < i; j += 1) first += pages_for(m, u32_at(m->dir, 1 + j));
+oracle | dbg/msf.c | uint64_t dir_pages = pages_for(m, m->dir_size), map_pages = pages_for(m, dir_pages * 4); | uint64_t dir_pages = 1, map_pages = 1;
+oracle | dbg/msf.c | memcpy(out + i * m->page, m->file + (uint64_t)pn * m->page, take); | memcpy(out + i * m->page, m->file + (uint64_t)pn * 4096, take);
