@@ -11,10 +11,11 @@
 #ifndef SHADA_H
 #define SHADA_H
 #include <stddef.h>
+#include "file.h"
 struct Editor;
 
 /* At startup: reads the file once (v:oldfiles is not read again).  0 ok,
-   also with no file yet; -1 out of memory. */
+   also with no file yet or one that cannot be read; -1 out of memory. */
 int  shada_read(void);
 /* v:oldfiles[i] (absolute paths, newest first), NULL past the end. */
 const char *shada_oldfile(size_t i);
@@ -25,9 +26,15 @@ void shada_track(const struct Editor *e);
    holds now (another editor may have written since) and written.  0 ok,
    -1 error. */
 int  shada_write(const struct Editor *e);
-/* Neovim's stdpath(state ? "state" : "data") for homeros, followed by name
-   (which starts with the separator), into f, n bytes, truncated. */
-void shada_stdpath(char *f, size_t n, int state, const char *name);
-/* mkdir -p of the directories in f (a file's path), private. */
-void shada_mkdirs(char *f);
+/* The store under both this and the pickers' frecency: lines "t path", t a
+   number (seconds), path to the line's end. */
+typedef struct { double t; char *path; } ShadaLine;
+/* Reads the file name into *v (malloc'd, each path too; *v is NULL with no
+   lines), *n lines, and its identity into *id for shada_save.  No file is 0
+   lines.  0 ok; -1 error (errno set; ENOMEM: *v holds the lines read so far). */
+int  shada_load(const char *name, ShadaLine **v, size_t *n, FileId *id);
+/* Replaces the file name with the n lines, making its directories, with
+   file_save; when another editor wrote it since *id, ours wins (its copy is
+   removed).  *id is updated.  0 ok, -1 error. */
+int  shada_save(const char *name, const ShadaLine *v, size_t n, FileId *id);
 #endif
