@@ -241,7 +241,7 @@ int parse_status(const char *s, size_t n, Branch *b)
 			char t[64], *q;
 			snprintf(t, sizeof t, "%.*s", (int)(len - 12 < 63 ? len - 12 : 63), p + 12);
 			b->ahead = strtol(t, &q, 10);
-			b->behind = -strtol(q, NULL, 10);
+			b->behind = strtol(q, NULL, 10) != 0;	/* only whether: "-N" can be LONG_MIN */
 			b->ab = 1;
 		} else if (prefix(p, len, "? ")) {
 			if (str_add(&b->untracked, p + 2, len - 2) || str_add(&b->untracked, "", 1)) return -1;
@@ -558,18 +558,20 @@ out:
 /* --- the log buffer (magit-log-mode) ------------------------------------------ */
 
 /* magit--age: the first unit the age reaches at least once, rounded */
-static int age(long secs, Str *out)
+static int age(long now, long at, Str *out)
 {
-	static const struct { const char *one, *many; long w; } u[] = {
+	static const struct { const char *one, *many; unsigned long w; } u[] = {
 		{ "year", "years", 31556952 }, { "month", "months", 2629746 }, { "week", "weeks", 604800 },
 		{ "day", "days", 86400 }, { "hour", "hours", 3600 }, { "minute", "minutes", 60 },
 		{ "second", "seconds", 1 } };
-	if (secs < 0) secs = -secs;
+	/* magit--age takes the absolute difference; unsigned, as a time from
+	   git can be any long and the difference of two longs fits there */
+	unsigned long secs = at > now ? (unsigned long)at - (unsigned long)now : (unsigned long)now - (unsigned long)at;
 	int k = 0;
 	while (k < 6 && secs < u[k].w) k++;
-	long c = (secs + u[k].w / 2) / u[k].w;
+	unsigned long c = secs / u[k].w + (secs % u[k].w >= u[k].w - u[k].w / 2);
 	char t[64];
-	return str_add(out, t, (size_t)snprintf(t, sizeof t, "%2ld %-7s", c, c == 1 ? u[k].one : u[k].many));
+	return str_add(out, t, (size_t)snprintf(t, sizeof t, "%2lu %-7s", c, c == 1 ? u[k].one : u[k].many));
 }
 
 /* columns of UTF-8 text: code points (wide characters count one; hypothesis) */
@@ -626,7 +628,7 @@ int parse_logbuf(View *v, const char *s, size_t n, const Branch *b, int width, l
 		for (; ac < 19; ac++) if (str_add(&t, " ", 1)) goto out;
 		char num[32];
 		snprintf(num, sizeof num, "%.*s", (int)(at.n < 31 ? at.n : 31), at.p);
-		if (age(now - strtol(num, NULL, 10), &t)) goto out;
+		if (age(now, strtol(num, NULL, 10), &t)) goto out;
 		if (sec_open(v, T_COMMIT, hash.p, hash.n, 0) < 0 || sec_line(v, t.s, t.n)) goto out;
 		sec_close(v);
 	}

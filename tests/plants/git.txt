@@ -31,3 +31,5 @@ git: SPC g B opens the line above (git_signs)~test TESTS=git_signs~~src/git/keys
 git: SPC g d diffs the whole tree (git_signs)~test TESTS=git_signs~~src/git/keys.c~	case 'd': diff_open(e, r, T_UNSTAGED, o && o->rel ? o->rel : NULL); return 0;~	case 'd': diff_open(e, r, T_UNSTAGED, NULL); return 0;
 git: SPC g L logs every file (git_signs)~test TESTS=git_signs~~src/git/keys.c~		log_open(e, r, "HEAD", NULL, o->rel);~		log_open(e, r, "HEAD", NULL, NULL);
 git: changes a view's read drains wait for the next one (git_signs)~test TESTS=git_signs~~src/git/keys.c~	git_schedule(a->r);                /* the drain may have found changes */¶~
+git: the log's age subtracts a time from git as it comes (fuzz_git found inputs)~fuzz FUZZERS=git FUZZ_SECONDS=1~~src/git/sec.c~	unsigned long secs = at > now ? (unsigned long)at - (unsigned long)now : (unsigned long)now - (unsigned long)at;~	unsigned long secs = (unsigned long)(now - at);
+git: behind negates git's count (fuzz_git found inputs)~fuzz FUZZERS=git FUZZ_SECONDS=1~~src/git/sec.c~			b->behind = strtol(q, NULL, 10) != 0;~			b->behind = -strtol(q, NULL, 10);
