@@ -99,7 +99,7 @@ static int load(FileId *id)
 static int save(Text *t, FileId *id, char *kept)
 {
 	kept[0] = 0;
-	return file_save(path, t, text_len(t), id, 0, kept, 512);
+	return file_save(path, t, text_len(t), 0, id, 0, kept, 512);
 }
 
 /* outside writers; each writes a version nobody else has written */
@@ -299,7 +299,7 @@ static void fallbacks(void)
 	/* no backup name (here an unusable state directory): refused, :w! writes */
 	CHECK(!setenv("XDG_STATE_HOME", "/dev/null/state", 1));
 	CHECK(!load(&id) && save(t, &id, kept) == SAVE_ERR && is(path, "x\n"));
-	CHECK(file_save(path, t, strlen(NEW), &id, 1, kept, sizeof kept) == SAVE_OK && is(path, NEW) && is(l, NEW));
+	CHECK(file_save(path, t, strlen(NEW), 0, &id, 1, kept, sizeof kept) == SAVE_OK && is(path, NEW) && is(l, NEW));
 	CHECK(!setenv("XDG_STATE_HOME", state, 1));
 	plain();
 	/* a symlink whose target does not exist yet: the target is created (Neovim) */
@@ -309,7 +309,7 @@ static void fallbacks(void)
 	unlink(lk); unlink(tg);
 	CHECK(!symlink("target", lk));
 	FileId none = { 0 };
-	CHECK(file_save(lk, t, strlen(NEW), &none, 0, kept, sizeof kept) == SAVE_OK && is(tg, NEW));
+	CHECK(file_save(lk, t, strlen(NEW), 0, &none, 0, kept, sizeof kept) == SAVE_OK && is(tg, NEW));
 	CHECK(!lstat(lk, &sl) && S_ISLNK(sl.st_mode));
 	CHECK(!unlink(lk) && !unlink(tg));
 	/* read-only directory and a file owned by someone else (root), saved by

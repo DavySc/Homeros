@@ -108,9 +108,20 @@ size_t win_vcol_end(const Win *w, size_t l)
 
 /* ---- opening and closing buffers ---- */
 
-enum { J_NOEOL = 1 << 8 };              /* the journal keeps noeol with the flags */
+enum { J_NOEOL = 1 << 8, J_DOS = 1 << 9 };   /* the journal keeps noeol and dos with the flags */
+#ifdef _WIN32
+enum { DOS_FIRST = 1 };   /* file.h: file_eol's format for data with no LF */
+#else
+enum { DOS_FIRST = 0 };
+#endif
 
-static unsigned jstate(const Buf *b) { return b->flags | (b->noeol ? J_NOEOL : 0); }
+static unsigned jstate(const Buf *b) { return b->flags | (b->noeol ? J_NOEOL : 0) | (b->dos ? J_DOS : 0); }
+/* msg_add_fileformat(): the format is named only where it is not the
+   system's first; it follows [noeol] without a space */
+static const char *ff(const Buf *b, int noeol)
+{
+	return b->dos == DOS_FIRST ? "" : b->dos ? (noeol ? "[dos]" : " [dos]") : (noeol ? "[unix]" : " [unix]");
+}
 
 /* every change reaches the syntax tree, the language server and the
    journal before it is made (UndoHook).  An edit's record carries the state after
@@ -154,13 +165,16 @@ static void recover(Buf *b, Text *t, unsigned st, const FileId *id, const char *
 {
 	size_t tn = st & CORE_EMPTY ? 0 : text_len(t) - (st & J_NOEOL ? 1 : 0);
 	char *s = malloc(tn ? tn : 1);
-	int same = s && tn == n && text_read(t, 0, s, tn) == tn && !memcmp(s, data, n);
+	/* data is the file's after file_eol, which is undone exactly when the
+	   format is the same */
+	int same = s && tn == n && !(st & J_DOS) == !b->dos && text_read(t, 0, s, tn) == tn && !memcmp(s, data, n);
 	free(s);
 	if (same) { text_free(t); journal_saved(b->journal); return; }
 	text_free(b->text);
 	b->text = t;
 	b->flags = st & CORE_EMPTY;
 	b->noeol = !!(st & J_NOEOL);
+	b->dos = !!(st & J_DOS);
 	b->saved_seq = (unsigned long)-1;
 	b->changed = !same_id(id, &b->id);
 	b->id = *id;
@@ -212,7 +226,7 @@ static Buf *buf_find(Editor *e, int nr)
 static int buf_load(Editor *e, Buf *b, const char *path)
 {
 	char *data = NULL, *name = NULL;
-	size_t n = 0;
+	size_t n = 0, bytes;
 	FileId id = { 0 };
 	Text *t;
 	Undo *u;
@@ -224,7 +238,8 @@ static int buf_load(Editor *e, Buf *b, const char *path)
 			return -1;
 		}
 	}
-	int noeol = n == 0 || data[n - 1] != '\n';
+	bytes = n;
+	int dos = file_eol(data, &n), noeol = n == 0 || data[n - 1] != '\n';
 	t = text_new(data, n);
 	u = undo_new();
 	if (!t || !u || (noeol && text_insert(t, n, "\n", 1))) {
@@ -239,6 +254,7 @@ static int buf_load(Editor *e, Buf *b, const char *path)
 	b->path = name;
 	b->id = id;
 	b->noeol = noeol;
+	b->dos = dos;
 	b->flags = n ? 0 : CORE_EMPTY;
 	b->saved_seq = 0;
 	b->changed = b->jerr = 0;
@@ -271,7 +287,7 @@ static int buf_load(Editor *e, Buf *b, const char *path)
 		         b->changed ? "; the file changed since (:w! overwrites it)" : "");
 	/* readfile()'s message */
 	else if (!id.exists) core_msg(e, "\"%s\" [New]", path);
-	else core_msg(e, "\"%s\"%s %zuL, %zuB", path, noeol && n ? " [noeol]" : "", n ? buf_lines(b) : 0, n);
+	else core_msg(e, "\"%s\"%s%s %zuL, %zuB", path, noeol && n ? " [noeol]" : "", ff(b, noeol && n), n ? buf_lines(b) : 0, bytes);
 	return 0;
 oom:
 	core_msg(e, "out of memory");
@@ -645,6 +661,8 @@ static int edit_file(Editor *e, const char *path, int force, int split)
 		size_t n, len = text_len(b->text);
 		FileId id;
 		if (file_load(b->path, &data, &n, &id)) { core_msg(e, "\"%s\": cannot read", b->path); return -1; }
+		size_t bytes = n;
+		int dos = file_eol(data, &n);
 		/* the whole text replaced as one undo step, as 'undoreload' does;
 		   the cursors stay on their lines (check_lnums()) */
 		int noeol = n == 0 || data[n - 1] != '\n';
@@ -662,6 +680,7 @@ static int edit_file(Editor *e, const char *path, int force, int split)
 		undo_close(b->undo);
 		b->id = id;
 		b->noeol = noeol;
+		b->dos = dos;
 		b->saved_seq = undo_seq(b->undo);
 		b->changed = 0;                    /* the file as it is now */
 		if (b->journal) journal_saved(b->journal);
@@ -669,7 +688,7 @@ static int edit_file(Editor *e, const char *path, int force, int split)
 		if (line1_blank(e)) { w->line = 0; w->col = core_first_nonblank(e, 0); }
 		core_set_want(e);
 		win_ecmd_topline(e, w);
-		core_msg(e, "\"%s\" %zuL, %zuB", b->path, n ? buf_lines(b) : 0, n);
+		core_msg(e, "\"%s\"%s %zuL, %zuB", b->path, ff(b, 0), n ? buf_lines(b) : 0, bytes);
 		return 0;
 	}
 	Buf *to = *path ? buf_by_path(e, path) : NULL, *prev_alt = w->alt;
@@ -965,7 +984,7 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 	UndoCursor c = { e->win->line, e->win->col, b->flags };
 	/* the state after: an empty file saves empty until it gets a line of
 	   text (Vim) */
-	unsigned js = after | (b->noeol && b->id.size ? J_NOEOL : 0);
+	unsigned js = after | (b->noeol && b->id.size ? J_NOEOL : 0) | (b->dos ? J_DOS : 0);
 	Mark snap[28];
 	if (join_snapped == b) memcpy(snap, join_snap, sizeof snap);
 	else marks_snap(b, snap);
@@ -1127,12 +1146,12 @@ int core_write(Editor *e, Buf *b, int force)
 	if (!b->path) { core_msg(e, "E32: No file name"); return -1; }
 	/* an empty buffer (ML_EMPTY) writes no bytes, not one empty line */
 	size_t n = b->flags & CORE_EMPTY ? 0 : text_len(b->text) - (b->noeol ? 1 : 0);
-	switch (file_save(b->path, b->text, n, &b->id, force, kept, sizeof kept)) {
+	switch (file_save(b->path, b->text, n, b->dos, &b->id, force, kept, sizeof kept)) {
 	case SAVE_OK:
 		b->saved_seq = undo_seq(b->undo);
 		b->changed = 0;
 		if (b->journal) journal_saved(b->journal);
-		core_msg(e, "\"%s\" %zuL, %zuB written", b->path, n ? buf_lines(b) : 0, n);
+		core_msg(e, "\"%s\"%s %zuL, %zuB written", b->path, ff(b, 0), n ? buf_lines(b) : 0, (size_t)b->id.size);
 		return 0;
 	case SAVE_CHANGED:
 		core_msg(e, "E13: \"%s\" changed on disk since it was read (add ! to override)", b->path);

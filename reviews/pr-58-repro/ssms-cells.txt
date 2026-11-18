@@ -1,0 +1,44 @@
+/* Demo: SSMS-style colours, mapped to Catppuccin */
+CC CCCCC CCCCCCNKKK KKKKKKKK KKKKKK KK KKKKKKKKKK KK
+SET ANSI_NULLS ON;
+KKK KKKKKKKKKK KKN
+GO
+KK
+CREATE OR ALTER PROCEDURE dbo.usp_orders
+KKKKKK oo KKKKK KKKKKKKKK ...o...o.N..N.
+    @customer_id int,
+    ..o......... KKKN
+    @since datetime2 = NULL
+    ...o.. KKKKKKKKK o oooo
+AS
+KK
+BEGIN
+KKKKK
+    SET NOCOUNT ON;
+    KKK KKKKKKK KKN
+    DECLARE @n int = 0;  -- row count
+    KKKKKKK .o KKK o NN  CC CCC CCCCC
+    SELECT TOP (10) o.id, o.total, ISNULL(o.note, N'none') AS [note]
+    KKKKKK KKK oNNo .o..N .o....NN FFFFPPo.o....N SSSSSSSo KK ......
+    FROM dbo.orders AS o
+    KKKK ...o.N..N. KK .
+    LEFT JOIN dbo.customers c ON c.id = o.customer_id
+    Nooo oooo ...o.o....... . KK .o.. o .o.o.........
+    WHERE o.customer_id = @customer_id
+    KKKKK .o.....N.No.. o ......N.No..
+      AND o.created >= COALESCE(@since, DATEADD(day, -30, GETDATE()))
+      ooo .o....... oo FFFPFFFFK......N FFFFFFFoFFFN oNNN FFFFFFFoooo
+      AND o.status NOT IN ('void', 'it''s')
+      ooo .oKKKKKK ooo oo oSSSSSSo SSSSSSSo
+    ORDER BY o.created DESC;
+    KKKKK KK .o....... KKKKN
+    SET @n = @@ROWCOUNT;
+    KKK .o o FFFFFFFFFFN
+    IF @n = 0 EXEC sp_executesql N'PRINT ''none''';
+    KK .. o N KKKK PPPPPPPSPPPPP SSSSSSS SSSSSSSSSN
+    SELECT name FROM sys.objects WHERE type = 'U';
+    KKKKKK KKKK KKKK TTToTTTTTTT KKKKK KKKK o SSSN
+END
+KKK
+GO
+KK

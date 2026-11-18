@@ -1,13 +1,21 @@
 /* libFuzzer: any key sequence leaves the editor consistent (the cursor on
    the first byte of a character, the text valid UTF-8), and undoing
    everything gives back the loaded text exactly (Undo.lean's undo_group law
-   on the whole editor), redoing everything the text it had. */
+   on the whole editor), redoing everything the text it had.  As in
+   fuzz_keys_all.c, each input starts a fresh session, so a failing input
+   replays alone, and a count is limited to one digit to bound the work:
+   22222222O only measures the rope (test_text, fuzz_text) and passes the
+   64 KiB read buffer.  Multi-digit counts are checked by conform.py's
+   random sequences (10 to 19, typed digit by digit) and by the recorded
+   traces' long counts: 22202o, 12000a, 3000yyp, 22222222x, a count folded
+   at 999999999 (src/keys/README, "Counts"). */
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include "core.h"
 #include "uni.h"
+#include "../src/keys/k.h"
 
 static char path[64];
 
@@ -33,10 +41,18 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 		if (fd < 0 || write(fd, "ab \xce\xbb" "d \xe1\x83\x90\xf0\x90\x90\x80" "\n\tef\n\n  gh", 24) != 24) abort();
 		close(fd);
 	}
+	normal_reset();
+	ops_reset();
+	edit_reset();
+	motion_reset();
 	if (core_open(&e, path)) abort();
 	read_all(&e, before, &nb);
+	int prev = 0;
 	for (size_t i = 0; i < n && text_len(e.buf->text) < 30000; i++) {
-		keys_feed(&e, keys[d[i] % (sizeof keys / sizeof *keys)], i + 1 < n);
+		int k = keys[d[i] % (sizeof keys / sizeof *keys)];
+		if (k >= '0' && k <= '9' && prev >= '0' && prev <= '9') continue;
+		prev = k;
+		keys_feed(&e, k, i + 1 < n);
 		size_t len, nl = core_lines(&e);
 		const unsigned char *s = core_line(&e, e.win->line, &len);
 		if (!nl || e.win->line >= nl || e.win->col > len) abort();

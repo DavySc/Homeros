@@ -1,0 +1,11 @@
+# Reviewer's plants on PR 57's new lines (format of tools/planted.sh).
+rev: wl ignores the background layer~test TESTS=wl~~src/wl/wl.c~const Face *b = x->bg ? &faces[x->bg] : f;~const Face *b = f;
+rev: wl row hash ignores the background layer~test TESTS=wl~~src/wl/wl.c~		h = (h ^ x->bg) * 16777619u;¶~
+rev: win ignores the background layer~win WIN=win~~src/win/backend.c~const Face *fb = x->bg ? &faces[x->bg] : fa;~const Face *fb = fa;
+rev: cursor line colour wrong~test TESTS=grid_diff~~ref/theme.c~{ {0, 0, 0}, {42, 43, 60}, FACE_BG, {0} },  /* cursor line:~{ {0, 0, 0}, {42, 43, 61}, FACE_BG, {0} },  /* cursor line:
+rev: dashboard title colour wrong~test TESTS=grid_diff~~ref/theme.c~{ {180, 190, 254}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} },  /* dashboard title~{ {180, 190, 253}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} },  /* dashboard title
+rev: diagnostic span loses its undercurl~test TESTS=grid_diff~~ref/theme.c~FACE_UNDERCURL | FACE_SP, {243, 139, 168} }~FACE_SP, {243, 139, 168} }
+rev: diagnostic span's special colour wrong~test TESTS=grid_diff~~ref/theme.c~FACE_UNDERCURL | FACE_SP, {249, 226, 175} }~FACE_UNDERCURL | FACE_SP, {1, 2, 3} }
+rev: a wide character's right half keeps the old background layer~test TESTS=grid_diff~~src/grid/grid.c~(Cell){ "", 0, (unsigned char)attr, FACE_NONE, 0 }~(Cell){ "", 0, (unsigned char)attr, FACE_NONE, x[1].bg }
+rev: grid_clear leaves a background layer~test TESTS=grid_diff~~src/grid/grid.c~(Cell){ " ", 1, ATTR_NONE, FACE_NONE, 0 }~(Cell){ " ", 1, ATTR_NONE, FACE_NONE, FACE_CURSOR_LINE }
+rev: tty draws the layer's foreground too~test TESTS=grid_diff~~src/tty/tty.c~	if (f->style & FACE_FG) n += snprintf(s + n, sizeof s - (size_t)n, ";38;2;%d;%d;%d", f->fg[0], f->fg[1], f->fg[2]);¶	if (x->bg) f = &faces[x->bg];¶~	if (x->bg) f = &faces[x->bg];¶	if (f->style & FACE_FG) n += snprintf(s + n, sizeof s - (size_t)n, ";38;2;%d;%d;%d", f->fg[0], f->fg[1], f->fg[2]);¶

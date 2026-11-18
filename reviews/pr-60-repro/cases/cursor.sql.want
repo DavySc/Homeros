@@ -1,0 +1,10 @@
+declare c cursor for select a from t
+open c
+fetch NEXT from c into @a
+while @@FETCH_STATUS = 0
+begin
+    print @a
+    fetch NEXT from c into @a
+end
+close c
+DEALLOCATE c

@@ -21,21 +21,22 @@ static unsigned char out[1 << 20];
    (Mocha), not computed from the shared table: per face the SGR after the
    attribute that its treesitter.lua gives the capture, with
    its default styles (comments, conditionals and "miscs" italic), links
-   followed and unlisted captures falling back to their parent.  Its
-   per-language overrides (@markup.heading.1.markdown and the like) have no
-   face of their own. */
+   followed and unlisted captures falling back to their parent.  Of its
+   per-language overrides only the markdown headings are taken (no other
+   grammar here has markup.heading.1 to 6); the heading backgrounds are catppuccin's
+   render_markdown integration. */
 static const char *const face_sgr[FACE_COUNT] = {
 	"",
 	";38;2;205;214;244",                  /* variable: text */
 	";38;2;243;139;168",                  /* variable.builtin: red */
 	";38;2;235;160;172",                  /* variable.parameter: maroon */
-	";38;2;235;160;172",                  /* variable.parameter.builtin: maroon */
+	";38;2;245;194;231",                  /* variable.parameter.builtin: pink */
 	";38;2;180;190;254",                  /* variable.member: lavender */
 	";38;2;250;179;135",                  /* constant: peach */
 	";38;2;250;179;135",                  /* constant.builtin: peach */
 	";38;2;203;166;247",                  /* constant.macro: mauve */
 	";3;38;2;249;226;175",                /* module: yellow, italic */
-	";3;38;2;249;226;175",                /* module.builtin: yellow, italic */
+	";38;2;245;194;231",                  /* module.builtin: pink */
 	";38;2;116;199;236",                  /* label: sapphire */
 	";38;2;166;227;161",                  /* string: green */
 	";38;2;148;226;213",                  /* string.documentation: teal */
@@ -54,7 +55,7 @@ static const char *const face_sgr[FACE_COUNT] = {
 	";38;2;203;166;247",                  /* type.builtin: mauve */
 	";38;2;249;226;175",                  /* type.definition: yellow */
 	";38;2;250;179;135",                  /* attribute: peach */
-	";38;2;250;179;135",                  /* attribute.builtin: peach */
+	";38;2;245;194;231",                  /* attribute.builtin: pink */
 	";38;2;180;190;254",                  /* property: lavender */
 	";38;2;137;180;250",                  /* function: blue */
 	";38;2;250;179;135",                  /* function.builtin: peach */
@@ -87,18 +88,18 @@ static const char *const face_sgr[FACE_COUNT] = {
 	";38;2;30;30;46;48;2;243;139;168",    /* comment.error: base on red */
 	";38;2;30;30;46;48;2;249;226;175",    /* comment.warning: base on yellow */
 	";38;2;30;30;46;48;2;242;205;205",    /* comment.todo: base on flamingo */
-	";38;2;30;30;46;48;2;245;224;220",    /* comment.note: base on rosewater */
+	";38;2;30;30;46;48;2;137;180;250",    /* comment.note: base on blue */
 	";1;38;2;243;139;168",                /* markup.strong: red, bold */
 	";3;38;2;243;139;168",                /* markup.italic: red, italic */
 	";9;38;2;205;214;244",                /* markup.strikethrough: text, strikethrough */
 	";4",                                 /* markup.underline: underline */
 	";38;2;137;180;250",                  /* markup.heading: blue */
-	";38;2;137;180;250",                  /* markup.heading.1: blue */
-	";38;2;137;180;250",                  /* markup.heading.2: blue */
-	";38;2;137;180;250",                  /* markup.heading.3: blue */
-	";38;2;137;180;250",                  /* markup.heading.4: blue */
-	";38;2;137;180;250",                  /* markup.heading.5: blue */
-	";38;2;137;180;250",                  /* markup.heading.6: blue */
+	";38;2;243;139;168",                  /* markup.heading.1: red (@markup.heading.1.markdown) */
+	";38;2;250;179;135",                  /* markup.heading.2: peach (@markup.heading.2.markdown) */
+	";38;2;249;226;175",                  /* markup.heading.3: yellow (@markup.heading.3.markdown) */
+	";38;2;166;227;161",                  /* markup.heading.4: green (@markup.heading.4.markdown) */
+	";38;2;116;199;236",                  /* markup.heading.5: sapphire (@markup.heading.5.markdown) */
+	";38;2;180;190;254",                  /* markup.heading.6: lavender (@markup.heading.6.markdown) */
 	";38;2;245;194;231",                  /* markup.quote: pink */
 	";38;2;137;180;250",                  /* markup.math: blue */
 	";38;2;180;190;254",                  /* markup.link: lavender */
@@ -116,6 +117,74 @@ static const char *const face_sgr[FACE_COUNT] = {
 	";38;2;137;180;250",                  /* tag.builtin: blue */
 	";3;38;2;249;226;175",                /* tag.attribute: yellow, italic */
 	";38;2;148;226;213",                  /* tag.delimiter: teal */
+	";48;2;50;40;58",                    /* heading 1 background */
+	";48;2;51;44;54",                    /* heading 2 background */
+	";48;2;51;49;58",                    /* heading 3 background */
+	";48;2;43;49;57",                    /* heading 4 background */
+	";48;2;38;46;64",                    /* heading 5 background */
+	";48;2;44;45;66",                    /* heading 6 background */
+	";48;2;42;43;60",                     /* cursor line */
+	";38;2;180;190;254",                  /* cursor line nr */
+	";38;2;69;71;90",                     /* line nr */
+	";38;2;205;214;244;48;2;24;24;37",    /* status line */
+	";38;2;137;180;250;48;2;24;24;37",    /* status line nc */
+	";38;2;17;17;27",                     /* win separator */
+	";38;2;69;71;90",                     /* end of buffer */
+	";1;48;2;69;71;90",                   /* visual */
+	";38;2;205;214;244;48;2;62;87;103",   /* search */
+	";38;2;24;24;37;48;2;243;139;168",    /* cur search */
+	";1;38;2;250;179;135;48;2;57;59;77",  /* match paren */
+	";38;2;147;153;178;48;2;24;24;37",    /* pmenu */
+	";1;48;2;49;50;68",                   /* pmenu sel */
+	";38;2;205;214;244;48;2;24;24;37",    /* normal float */
+	";38;2;137;180;250;48;2;24;24;37",    /* float border */
+	";38;2;166;173;200;48;2;24;24;37",    /* float title */
+	";38;2;30;30;46;48;2;245;224;220",    /* cursor */
+	";1;38;2;24;24;37;48;2;137;180;250",  /* mode normal */
+	";1;38;2;30;30;46;48;2;166;227;161",  /* mode insert */
+	";1;38;2;30;30;46;48;2;203;166;247",  /* mode visual */
+	";1;38;2;30;30;46;48;2;243;139;168",  /* mode replace */
+	";1;38;2;30;30;46;48;2;250;179;135",  /* mode command */
+	";1;38;2;30;30;46;48;2;148;226;213",  /* mode other */
+	";38;2;186;194;222;48;2;69;71;90",    /* status info */
+	";38;2;166;227;161",                  /* git add */
+	";38;2;249;226;175",                  /* git change */
+	";38;2;243;139;168",                  /* git delete */
+	";3;38;2;243;139;168",                /* diag error */
+	";3;38;2;249;226;175",                /* diag warn */
+	";3;38;2;137;220;235",                /* diag info */
+	";3;38;2;148;226;213",                /* diag hint */
+	"",                                   /* diag under error (the terminal draws no undercurl yet) */
+	"",                                   /* diag under warn (the terminal draws no undercurl yet) */
+	"",                                   /* diag under info (the terminal draws no undercurl yet) */
+	"",                                   /* diag under hint (the terminal draws no undercurl yet) */
+	";3;38;2;243;139;168;48;2;50;40;58",  /* diag vt error */
+	";3;38;2;249;226;175;48;2;51;49;58",  /* diag vt warn */
+	";3;38;2;137;220;235;48;2;40;48;64",  /* diag vt info */
+	";3;38;2;148;226;213;48;2;41;49;62",  /* diag vt hint */
+	";38;2;49;50;68",                     /* indent */
+	";38;2;147;153;178",                  /* indent scope */
+	";38;2;137;180;250",                  /* pick match */
+	";38;2;242;205;205",                  /* pick prompt */
+	";38;2;137;180;250",                  /* which-key group */
+	";38;2;245;194;231",                  /* which-key desc */
+	";38;2;108;112;134",                  /* which-key separator */
+	";1;38;2;203;166;247",                /* kitten cat: mauve */
+	";1;38;2;166;227;161",                /* kitten face: green */
+	";1;38;2;250;179;135",                /* kitten paw: peach */
+	";1;38;2;243;139;168",                /* kitten heart: red */
+	";1;38;2;245;194;231",                /* kitten text: pink */
+	";38;2;108;112;134",                  /* kitten dim: overlay0 */
+	";1;38;2;180;190;254",                /* dashboard title: lavender */
+	";1;38;2;137;180;250",                /* dashboard footer: blue */
+	";1;38;2;245;224;220",                /* dashboard cat: rosewater */
+	";1;38;2;127;132;156",                /* dashboard cat patch: overlay1 */
+	";1;38;2;166;227;161",                /* dashboard frog: green */
+	";1;38;2;235;160;172",                /* dashboard frog cheek: maroon */
+	";1;38;2;250;179;135",                /* dashboard frog mouth: peach */
+	";1;38;2;249;226;175",                /* dashboard sparkle: yellow */
+	";1;38;2;108;112;134",                /* dashboard terminal: overlay0 */
+	";1;38;2;203;166;247",                /* dashboard prompt: mauve */
 };
 
 /* backend_present's output, through a file: a frame may be larger than a pipe holds */
@@ -188,12 +257,17 @@ static void run(int (*width)(const unsigned char *, int), int frames)
 		for (int k = (int)rnd(3) ? (int)rnd(8) : (int)rnd(200); k > 0; k--) {
 			unsigned i = rnd(sizeof chars / sizeof *chars);
 			int r = (int)rnd((unsigned)rows + 1) - (rnd(9) == 0), c = (int)rnd((unsigned)cols + 1) - (rnd(9) == 0);
-			int w = grid_put(&g, r, c, (const unsigned char *)chars[i], strlen(chars[i]), widths[i], (int)rnd(3));
+			int w = grid_put(&g, r, c, (const unsigned char *)chars[i], strlen(chars[i]), widths[i], (int)rnd(4));
 			CHECK(w == (r >= 0 && r < rows && c >= 0 && c + widths[i] <= cols ? widths[i] : 0));
 			if (w && rnd(2)) {        /* the core sets a face after grid_put */
 				unsigned char f = (unsigned char)rnd(FACE_COUNT);
 				g.c[r * cols + c].face = f;
 				if (w == 2) g.c[r * cols + c + 1].face = f;
+			}
+			if (w && rnd(2)) {        /* and a background layer */
+				unsigned char b = rnd(2) ? 0 : (unsigned char)(FACE_HEADING_1_BG + rnd(6));
+				g.c[r * cols + c].bg = b;
+				if (w == 2) g.c[r * cols + c + 1].bg = b;
 			}
 			invariant(&g);
 		}
@@ -227,20 +301,40 @@ int main(void)
 {
 	/* the model numbers each face's SGR; the backend must send exactly that */
 	for (int f = 0; f < FACE_COUNT; f++) vt_face[f] = vt_style_id(face_sgr[f]);
+	/* under a bg layer: the face's SGR without its background, then the
+	   layer's (which is a background only) */
+	for (int b = FACE_HEADING_1_BG; b <= FACE_HEADING_6_BG; b++)
+		for (int f = 0; f < FACE_COUNT; f++) {
+			char s[64];
+			const char *bg = strstr(face_sgr[f], ";48;");
+			snprintf(s, sizeof s, "%.*s%s", bg ? (int)(bg - face_sgr[f]) : (int)strlen(face_sgr[f]), face_sgr[f], face_sgr[b]);
+			vt_layer[b][f] = vt_style_id(s);
+		}
 
 	/* grid_put's rules, one case each */
 	Grid g = { 0 };
+	/* grid_face: an unknown face or layer falls back, never reads past faces[] */
+	const Face *b;
+	Cell q = { " ", 1, ATTR_NONE, FACE_COUNT, FACE_COUNT };
+	CHECK(grid_face(&q, &b) == &faces[FACE_NONE] && b == &faces[FACE_NONE]);
+	q.face = FACE_STRING; q.bg = 0;
+	CHECK(grid_face(&q, &b) == &faces[FACE_STRING] && b == &faces[FACE_STRING]);
+	q.bg = FACE_CURSOR_LINE;
+	CHECK(grid_face(&q, &b) == &faces[FACE_STRING] && b == &faces[FACE_CURSOR_LINE]);
 	CHECK(!grid_resize(&g, 1, 6));
 	const unsigned char *wide = (const unsigned char *)"\xe6\xbc\xa2";
-	/* the '>' and the blank keep the attribute and face of the half they replace */
+	/* the '>' and the blank keep the attribute, face and background layer
+	   of the half they replace */
 	CHECK(grid_put(&g, 0, 1, wide, 3, 2, ATTR_REV) == 2);
 	g.c[1].face = g.c[2].face = FACE_STRING;
+	g.c[1].bg = g.c[2].bg = FACE_CURSOR_LINE;
 	CHECK(grid_put(&g, 0, 2, (const unsigned char *)"x", 1, 1, ATTR_NONE) == 1);   /* right half */
-	CHECK(g.c[1].len == 1 && g.c[1].ch[0] == '>' && g.c[1].attr == ATTR_REV && g.c[1].face == FACE_STRING && g.c[2].ch[0] == 'x');
+	CHECK(g.c[1].len == 1 && g.c[1].ch[0] == '>' && g.c[1].attr == ATTR_REV && g.c[1].face == FACE_STRING && g.c[1].bg == FACE_CURSOR_LINE && g.c[2].ch[0] == 'x');
 	CHECK(grid_put(&g, 0, 3, wide, 3, 2, ATTR_DIM) == 2);
 	g.c[3].face = g.c[4].face = FACE_COMMENT;
+	g.c[3].bg = g.c[4].bg = FACE_HEADING_1_BG;
 	CHECK(grid_put(&g, 0, 3, (const unsigned char *)"y", 1, 1, ATTR_NONE) == 1);   /* left half */
-	CHECK(g.c[4].len == 1 && g.c[4].ch[0] == ' ' && g.c[4].attr == ATTR_DIM && g.c[4].face == FACE_COMMENT);
+	CHECK(g.c[4].len == 1 && g.c[4].ch[0] == ' ' && g.c[4].attr == ATTR_DIM && g.c[4].face == FACE_COMMENT && g.c[4].bg == FACE_HEADING_1_BG);
 	CHECK(grid_put(&g, 0, 4, wide, 3, 2, ATTR_NONE) == 2);
 	CHECK(grid_put(&g, 0, 3, wide, 3, 2, ATTR_DIM) == 2);                           /* overlapping wide */
 	CHECK(g.c[3].len == 3 && !g.c[4].len && g.c[5].len == 1 && g.c[5].ch[0] == ' ');
@@ -340,6 +434,6 @@ int main(void)
 	grid_free(&g);
 	grid_free(&shown);
 
-	puts("test_grid_diff: 24000 random frames with random faces and clusters, and 3 of over 64 KiB, shown exactly by a model terminal, only changed cells sent; wide pairs kept whole; long clusters cut as nvim cuts them, stored once, the store emptied past half");
+	puts("test_grid_diff: 24000 random frames with random faces, background layers and clusters, and 3 of over 64 KiB, shown exactly by a model terminal, only changed cells sent; wide pairs kept whole; long clusters cut as nvim cuts them, stored once, the store emptied past half");
 	return 0;
 }

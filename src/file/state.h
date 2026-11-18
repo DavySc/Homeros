@@ -8,6 +8,7 @@
 #ifndef FILE_STATE_H
 #define FILE_STATE_H
 #include <stddef.h>
+#include "text.h"
 #ifdef _WIN32
 #include <limits.h>
 #include <sys/types.h>
@@ -34,4 +35,7 @@ void state_close(int fd, const char *name);
 /* fsyncs the directory holding name: its entry durable.  0 ok, -1 error. */
 int state_sync_dir(const char *name);
 int file_write_all(int fd, const char *b, size_t n);   /* 0 ok, -1 error */
+/* The next bytes of t from *pos (below n) into b, at most cap, each LF as
+   CR LF if dos; *pos moves past what was read.  Returns the bytes in b. */
+size_t file_text_read(const Text *t, size_t *pos, size_t n, int dos, char *b, size_t cap);
 #endif

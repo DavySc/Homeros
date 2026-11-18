@@ -4,6 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#if defined _WIN32
+#include <windows.h>
+#endif
 #include "backend.h"
 #include "bridge.h"
 #include "core.h"
@@ -48,6 +51,13 @@ int main(int argc, char **argv)
 	static Editor e;
 	Grid g = { 0 }, shown = { 0 };
 	int fds[2], rows, cols, tty = argc == 3 && !strcmp(argv[1], "-t");
+#if defined _WIN32
+	/* a GUI-subsystem program has no console: borrow the one it was started
+	   from, if any, so usage and error messages still reach the terminal
+	   (only a stream not already redirected: "2> file" and pipes keep theirs) */
+	int out = !GetStdHandle(STD_OUTPUT_HANDLE), err = !GetStdHandle(STD_ERROR_HANDLE);
+	if (AttachConsole(ATTACH_PARENT_PROCESS)) { if (out) freopen("CONOUT$", "w", stdout); if (err) freopen("CONOUT$", "w", stderr); }
+#endif
 	if (argc != 2 + tty) { fprintf(stderr, "usage: homeros [-t] FILE\n"); return 2; }
 #if defined _WIN32
 	if (!tty) b = &backend_win;

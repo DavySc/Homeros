@@ -1,0 +1,230 @@
+DIFF  j = =
+      nvim cursor [2, 0] lines 8; ours cursor [2, 0] lines 8; first differing lines [(2, '    bar(x, "a b");', '\tbar(x, "a b");')]
+DIFF  = G
+      nvim cursor [1, 0] lines 8; ours cursor [8, 0] lines 8; first differing lines [(2, '    bar(x, "a b");', '\tbar(x, "a b");'), (3, '    baz = foo + 0x1f;', '        baz = foo + 0x1f;')]
+DIFF  j w g q q
+      nvim cursor [2, 8] lines 8; ours cursor [2, 1] lines 8; first differing lines [(2, '        bar(x, "a b");', '\tbar(x, "a b");')]
+DIFF  g q G
+      nvim cursor [4, 0] lines 4; ours cursor [8, 0] lines 8; first differing lines [(1, 'if (foo) { bar(x, "a b"); baz = foo + 0x1f; }', 'if (foo) {'), (2, '', '\tbar(x, "a b");')]
+DIFF  j ! ! t r <Space> a <Space> b <CR>
+      nvim cursor [2, 1] lines 8; ours cursor [3, 7] lines 9; first differing lines [(2, '\tbbr(x, "b b");', '\tbar b'), (3, '        baz = foo + 0x1f;', '        (x, "a b");')]
+DIFF  / f o o <CR>
+      nvim cursor [1, 4] lines 8; ours cursor [3, 0] lines 10; first differing lines [(2, '\tbar(x, "a b");', ''), (3, '        baz = foo + 0x1f;', '')]
+DIFF  ? f o o <CR>
+      nvim cursor [7, 8] lines 8; ours cursor [3, 0] lines 10; first differing lines [(2, '\tbar(x, "a b");', ''), (3, '        baz = foo + 0x1f;', '')]
+DIFF  / f o o <CR> n
+      nvim cursor [3, 14] lines 8; ours cursor [3, 0] lines 10; first differing lines [(2, '\tbar(x, "a b");', ''), (3, '        baz = foo + 0x1f;', 'n')]
+DIFF  / f o o <CR> N
+      nvim cursor [7, 8] lines 8; ours cursor [3, 0] lines 10; first differing lines [(2, '\tbar(x, "a b");', ''), (3, '        baz = foo + 0x1f;', 'N')]
+DIFF  w w *
+      nvim cursor [3, 14] lines 8; ours cursor [1, 4] lines 8; first differing lines []
+DIFF  G k #
+      nvim cursor [6, 6] lines 8; ours cursor [7, 0] lines 8; first differing lines []
+DIFF  w * N
+      nvim cursor [1, 4] lines 8; ours cursor [1, 3] lines 8; first differing lines []
+DIFF  / b a / e <CR>
+      nvim cursor [2, 2] lines 8; ours cursor [2, 0] lines 9; first differing lines [(1, 'if (foo) {', 'i/e'), (2, '\tbar(x, "a b");', 'f (foo) {')]
+DIFF  d / b a z <CR>
+      nvim cursor [1, 0] lines 6; ours cursor [2, 0] lines 9; first differing lines [(1, 'baz = foo + 0x1f;', 'iz'), (2, '}', 'f (foo) {')]
+same  5 G f f d i t
+same  5 G f f d a t
+same  5 G f f v a t a t d
+DIFF  y y " + p
+      nvim cursor [2, 0] lines 9; ours cursor [1, 0] lines 8; first differing lines [(2, 'if (foo) {', '\tbar(x, "a b");'), (3, '\tbar(x, "a b");', '        baz = foo + 0x1f;')]
+DIFF  y y " * p
+      nvim cursor [2, 0] lines 9; ours cursor [1, 0] lines 8; first differing lines [(2, 'if (foo) {', '\tbar(x, "a b");'), (3, '\tbar(x, "a b");', '        baz = foo + 0x1f;')]
+DIFF  : s / f o o / X / <CR>
+      nvim cursor [1, 0] lines 8; ours cursor [1, 0] lines 8; first differing lines [(1, 'if (X) {', 'if (foo) {')]
+DIFF  : % s / f o o / X / g <CR>
+      nvim cursor [7, 0] lines 8; ours cursor [1, 0] lines 8; first differing lines [(1, 'if (X) {', 'if (foo) {'), (3, '        baz = X + 0x1f;', '        baz = foo + 0x1f;')]
+DIFF  : g / f o o / d <CR>
+      nvim cursor [4, 0] lines 4; ours cursor [1, 0] lines 8; first differing lines [(1, '\tbar(x, "a b");', 'if (foo) {'), (2, '}', '\tbar(x, "a b");')]
+DIFF  : 2 , 3 d <CR>
+      nvim cursor [2, 0] lines 6; ours cursor [1, 0] lines 8; first differing lines [(2, '}', '\tbar(x, "a b");'), (3, '', '        baz = foo + 0x1f;')]
+DIFF  : 3 <CR>
+      nvim cursor [3, 0] lines 8; ours cursor [1, 0] lines 8; first differing lines []
+DIFF  : n o r m a l <Space> x <CR>
+      nvim cursor [1, 0] lines 8; ours cursor [1, 0] lines 8; first differing lines [(1, 'f (foo) {', 'if (foo) {')]
+DIFF  : 2 , 3 n o r m <Space> A ; <CR>
+      nvim cursor [3, 25] lines 8; ours cursor [1, 0] lines 8; first differing lines [(2, '\tbar(x, "a b");;', '\tbar(x, "a b");'), (3, '        baz = foo + 0x1f;;', '        baz = foo + 0x1f;')]
+DIFF  j m a G ' a
+      nvim cursor [2, 1] lines 8; ours cursor [8, 0] lines 8; first differing lines []
+DIFF  j l m a G ` a
+      nvim cursor [2, 1] lines 8; ours cursor [8, 8] lines 8; first differing lines []
+DIFF  j m a G d ' a
+      nvim cursor [1, 0] lines 1; ours cursor [8, 0] lines 8; first differing lines []
+DIFF  G ' '
+      nvim cursor [1, 0] lines 8; ours cursor [8, 0] lines 8; first differing lines []
+DIFF  G ` `
+      nvim cursor [1, 0] lines 8; ours cursor [8, 0] lines 8; first differing lines []
+DIFF  G <C-o>
+      nvim cursor [1, 0] lines 8; ours cursor [8, 0] lines 8; first differing lines []
+same  G <C-o> <C-i>
+same  x j x g ;
+same  x j x g ; g ; g ,
+DIFF  j x G ' .
+      nvim cursor [2, 0] lines 8; ours cursor [8, 0] lines 8; first differing lines []
+DIFF  j x G ` [
+      nvim cursor [2, 0] lines 8; ours cursor [8, 0] lines 8; first differing lines []
+DIFF  j i x <Esc> G g i y <Esc>
+      nvim cursor [2, 1] lines 8; ours cursor [8, 0] lines 8; first differing lines [(2, 'xy\tbar(x, "a b");', 'x\tbar(x, "a b");')]
+DIFF  j v l <Esc> G ' <
+      nvim cursor [2, 1] lines 8; ours cursor [8, 8] lines 8; first differing lines []
+same  j v l <Esc> G g v d
+same  %
+same  l l l %
+same  j $ %
+same  2 5 %
+same  H
+DIFF  L
+      nvim cursor [8, 0] lines 8; ours cursor [1, 0] lines 8; first differing lines []
+DIFF  M
+      nvim cursor [4, 0] lines 8; ours cursor [1, 0] lines 8; first differing lines []
+DIFF  3 H
+      nvim cursor [3, 0] lines 8; ours cursor [1, 0] lines 8; first differing lines []
+DIFF  d L
+      nvim cursor [1, 0] lines 1; ours cursor [1, 0] lines 7; first differing lines [(1, '', '\tbar(x, "a b");')]
+DIFF  <C-d>
+      nvim cursor [8, 0] lines 8; ours cursor [1, 0] lines 8; first differing lines []
+same  <C-d> <C-u>
+DIFF  <C-e>
+      nvim cursor [2, 0] lines 8; ours cursor [1, 0] lines 8; first differing lines []
+DIFF  <C-e> <C-y>
+      nvim cursor [2, 0] lines 8; ours cursor [1, 0] lines 8; first differing lines []
+DIFF  <C-f>
+      nvim cursor [8, 0] lines 8; ours cursor [1, 0] lines 8; first differing lines []
+DIFF  <C-f> <C-b>
+      nvim cursor [8, 0] lines 8; ours cursor [1, 0] lines 8; first differing lines []
+same  z t
+same  z z
+same  z b
+same  z <CR>
+same  z .
+same  z -
+same  j U
+DIFF  j x x U
+      nvim cursor [2, 0] lines 8; ours cursor [2, 0] lines 8; first differing lines [(2, '\tbar(x, "a b");', 'ar(x, "a b");')]
+DIFF  w g ? w
+      nvim cursor [1, 3] lines 8; ours cursor [1, 4] lines 8; first differing lines []
+DIFF  g ? ?
+      nvim cursor [1, 0] lines 8; ours cursor [1, 0] lines 8; first differing lines [(1, 'vs (sbb) {', 'if (foo) {')]
+same  j &
+same  g &
+DIFF  w g i <Esc>
+      nvim cursor [1, 2] lines 8; ours cursor [1, 3] lines 8; first differing lines []
+same  w R x <BS> <BS> <Esc>
+same  g J
+same  3 J
+same  w g u i w
+same  w " a y w " A y w " a p
+same  q a x q u @ a
+same  q a x q 2 @ a
+same  w y w : <C-r> "
+same  " . p
+same  i a b <Esc> " . p
+same  : w q <Esc> " : p
+DIFF  / b a r <CR> " / p
+      nvim cursor [2, 4] lines 8; ours cursor [2, 2] lines 9; first differing lines [(1, 'if (foo) {', 'ir'), (2, '\tbbarar(x, "a b");', '"/pf (foo) {')]
+DIFF  j z f j
+      nvim cursor [2, 0] lines 8; ours cursor [3, 0] lines 8; first differing lines []
+same  z a
+same  z o
+same  z c
+same  z R
+same  z M
+same  ] s
+DIFF  i <C-k> a : <Esc>
+      nvim cursor [1, 0] lines 8; ours cursor [1, 1] lines 8; first differing lines [(1, 'äif (foo) {', 'a:if (foo) {')]
+same  i <C-v> u 2 2 0 0 <Esc>
+same  i <C-v> 0 6 5 <Esc>
+same  i a <C-o> 0 b <Esc>
+same  i <C-a> <Esc>
+same  i x <Esc> o <C-a> <Esc>
+DIFF  i <C-e> <Esc>
+      nvim cursor [1, 0] lines 8; ours cursor [1, 0] lines 8; first differing lines [(1, '\tif (foo) {', 'if (foo) {')]
+DIFF  j i <C-y> <Esc>
+      nvim cursor [2, 0] lines 8; ours cursor [2, 0] lines 8; first differing lines [(2, 'i\tbar(x, "a b");', '\tbar(x, "a b");')]
+same  j A <C-h> <Esc>
+same  i a <C-j> b <Esc>
+DIFF  i <C-n> <Esc>
+      nvim cursor [1, 1] lines 8; ours cursor [1, 0] lines 8; first differing lines [(1, 'ifif (foo) {', 'if (foo) {')]
+same  [ <Space>
+same  ] <Space>
+same  3 ] <Space>
+same  g d
+same  g D
+same  w g d
+same  g O
+same  g a
+same  g 8
+same  g <C-g>
+same  <C-l>
+same  <C-g>
+DIFF  g m
+      nvim cursor [1, 9] lines 8; ours cursor [1, 0] lines 8; first differing lines []
+DIFF  g M
+      nvim cursor [1, 5] lines 8; ours cursor [1, 0] lines 8; first differing lines []
+same  g 0
+DIFF  g $
+      nvim cursor [1, 9] lines 8; ours cursor [1, 0] lines 8; first differing lines []
+same  g ^
+same  g I x <Esc>
+same  g i
+same  g &
+same  g -
+DIFF  x x g -
+      nvim cursor [1, 0] lines 8; ours cursor [1, 0] lines 8; first differing lines [(1, 'f (foo) {', ' (foo) {')]
+DIFF  x x u g +
+      nvim cursor [1, 0] lines 8; ours cursor [1, 0] lines 8; first differing lines [(1, ' (foo) {', 'f (foo) {')]
+DIFF  w g *
+      nvim cursor [3, 14] lines 8; ours cursor [1, 3] lines 8; first differing lines []
+DIFF  w g #
+      nvim cursor [7, 8] lines 8; ours cursor [1, 3] lines 8; first differing lines []
+same  w y s i w )
+same  w d s (
+same  j c s " '
+same  v g s
+same  g c c
+DIFF  g c j
+      nvim cursor [1, 0] lines 8; ours cursor [2, 0] lines 8; first differing lines []
+DIFF  v j g c
+      nvim cursor [1, 0] lines 8; ours cursor [2, 0] lines 8; first differing lines []
+same  g a i p =
+same  " _ d d p
+same  " a d d " a P
+same  " A y y
+same  : r e g <CR>
+same  : e <Space> x <CR>
+same  : s p <CR>
+same  : v s <CR>
+same  : b n <CR>
+DIFF  : 5 <CR>
+      nvim cursor [5, 0] lines 8; ours cursor [1, 0] lines 8; first differing lines []
+DIFF  : $ <CR>
+      nvim cursor [8, 0] lines 8; ours cursor [1, 0] lines 8; first differing lines []
+DIFF  : . , $ d <CR>
+      nvim cursor [1, 0] lines 1; ours cursor [1, 0] lines 8; first differing lines [(1, '', 'if (foo) {')]
+same  : u <CR>
+same  : r e d o <CR>
+DIFF  : 2 y <CR> P
+      nvim cursor [1, 1] lines 9; ours cursor [1, 0] lines 8; first differing lines [(1, '\tbar(x, "a b");', 'if (foo) {'), (2, 'if (foo) {', '\tbar(x, "a b");')]
+same  <C-w> s
+same  <C-w> v
+same  <C-w> s <C-w> j x
+same  <C-w> s <C-w> c
+same  <C-w> o
+same  <Tab>
+same  <C-i>
+same  <C-n>
+same  <C-p>
+same  <C-j>
+same  <C-m>
+same  <C-h>
+same  <BS>
+same  <Space>
+same  <Del>
+same  <C-c>
+same  &
+same  \
+same  Y p
+164 sequences, 65 differ
