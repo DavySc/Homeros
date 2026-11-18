@@ -1,0 +1,52 @@
+CLOCK: => 1:00
+:PROPERTIES:
+    :CUSTOM_ID:
+:END:
+#+TBLNAME: x
+    | 1 | 2 |
+#+BEGIN_SRC
+  #+BEGIN: clocktable :scope file
+closed:[1999-06-04 zo 13:61]--<%%(diary-float t 4 2) 9:30-11:00> DEADLINE:  [2026-09-10 Sun 2:61 --1m] SCHEDULED:[1999-11-18 2:27]
+SCHEDULED:  [2026-04-09 zo --4y]
+#+TBLFM: $2=$1
+	#+END_SRC x
+  : x
+ #+END_a.b
+    :ID:v
+    * [ ] a) /a/
+ % : bar été x TODO
+
+    - [ ] COMMENT |
+
+  #+BEGIN_VERSE
+  2) [X] 
+    DEADLINE: <%%(diary-float t 4 2) 9:30-11:00>
+ # 
+\begin{x}
+# + [2026-11-22 Sun] Ä :a:b: x
+:a:b: | :a:b: # bar [2026-11-22 Sun]
+* 
+  2) 
+       :END:
+    - + été
+
+     COMMENT  
+	- \\ =v= <2026-11-22 Sun> :a:b: /a/
+
+	:drawer:
+  #+RESULTS:
+ ----
+ :END:
+  #+begin_QUOTE
+    :
+
+** [#a] # # % \\ [2026-11-22 Sun]
+été Ä : CLOCK: CLOCK:
+  :é:
+  #+BEGIN_src c -n :results output
+	#+BEGIN: clocktable :scope file
+
+
+ CLOSED: <1999-04-25 Sun -6h>
+ #+END_src 
+	

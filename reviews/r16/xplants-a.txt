@@ -1,0 +1,13 @@
+# name ~ file ~ text ~ replacement   (build A)
+1 #+HEADER is no affiliated keyword~src/org/org.c~\\|HEADERS?\\|~\\|HEADERZ?\\|
+3 a comment needs its space ("#" alone is none)~src/org/org.c~static const char COMMENT_RE[] = "^[\t ]*#\\(?: \\|$\\)";~static const char COMMENT_RE[] = "^[\t ]*#\\(?: \\)";
+4 four dashes make a rule~src/org/org.c~\\(?10:[ \t]*-----+[ \t]*$\\)~\\(?10:[ \t]*----+[ \t]*$\\)
+6 planning after a blank line under the headline~src/org/org.c~	if (mode == M_PLANNING && star && la(PLANNING_LINE_RE, x))~	if (mode == M_PLANNING && la(PLANNING_LINE_RE, x))
+8 one blank line ends a list~src/org/org.c~		if (la("^[ \t]*\n[ \t]*\n", x)) { while (on)~		if (la("^[ \t]*\n", x)) { while (on)
+9 a rule row is told by "|+"~src/org/org.c~		if (!la("^[ \t]*|-", x)) {~		if (!la("^[ \t]*|\\+", x)) {
+12 a headline ends only at a shallower one~src/org/org.c~		while (on && (!n || o->v[open[on - 1]].level >= n->level)) {~		while (on && (!n || o->v[open[on - 1]].level > n->level)) {
+13 an unclosed drawer line ends a paragraph~src/org/org.c~		if (la(DRAWER_RE, p)) stop = rs(END_RE, nextl(p), lim);~		if (la(DRAWER_RE, p)) stop = 1;
+14 a dynamic block needs "#+END:" with its colon~src/org/org.c~	case ORG_DYNAMIC_BLOCK: if (!rs("^[ \t]*#\\+END:?[ \t]*$", y, lim)) return 0; break;~	case ORG_DYNAMIC_BLOCK: if (!rs("^[ \t]*#\\+END:[ \t]*$", y, lim)) return 0; break;
+16 TODO keywords in any case~src/org/org.c~	if (lacs("\\(CANCELLED\\|DONE\\|NEXT\\|TODO\\|WAIT\\)\\(?: \\|$\\)", x)) {~	if (la("\\(CANCELLED\\|DONE\\|NEXT\\|TODO\\|WAIT\\)\\(?: \\|$\\)", x)) {
+17 priority 65 is one~src/org/org.c~\\|6[0-4]\\)\\] ?\\)", x)) {~\\|6[0-5]\\)\\] ?\\)", x)) {
+18 no @ in tags~src/org/org.c~	if (rs("[ \t]+\\(:\\([[:alnum:]_@#%:]+\\):\\)[ \t]*$", y, e)) {~	if (rs("[ \t]+\\(:\\([[:alnum:]_#%:]+\\):\\)[ \t]*$", y, e)) {
