@@ -12,7 +12,7 @@ enum {
 	TQ_NUMBER, TQ_OP,              /* OP: + - * / % = < > ! & | ^ ~ :, and
 	                                  SQL Server's two-byte ones as one */
 	TQ_PUNCT,                      /* , ( ) ; . */
-	TQ_COMMENT,                    /* -- to the line's end; nested slash-star */
+	TQ_COMMENT,                    /* -- to the line's end (\r or \n); nested slash-star */
 };
 /* tsql_word's classes, any of them */
 enum { TQ_KEYWORD = 1, TQ_FUNCTION = 2, TQ_OPERATOR = 4, TQ_RECASE = 8 };
@@ -26,8 +26,17 @@ void   tsql_edit(Tsql *q, const Text *t, size_t pos);
 void   tsql_update(Tsql *q);
 /* one face per byte of [a, z) into face, no allocation */
 void   tsql_faces(Tsql *q, size_t a, size_t z, unsigned char *face);
+/* The text's bytes through a window: set t, and n to 0 (again after the
+   text changes). */
+typedef struct {
+	const Text *t;
+	size_t a, n;
+	char b[4096];
+} TsqlRd;
+/* byte i, or -1 past the end */
+int    tsql_byte(TsqlRd *r, size_t i);
 /* the token starting at pos (its kind into *kind); its end, pos at the end */
-size_t tsql_token(const Text *t, size_t pos, int *kind);
+size_t tsql_token(TsqlRd *r, size_t pos, int *kind);
 /* the classes of the n bytes at w, any case; 0 for a word it lacks */
 int    tsql_word(const char *w, size_t n);
 #endif

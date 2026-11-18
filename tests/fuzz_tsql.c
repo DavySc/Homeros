@@ -46,9 +46,11 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 			syntax_faces(r, 0, z, g);
 			syntax_free(r);
 			if (memcmp(f, g + a, z - a)) abort();
+			static TsqlRd rd;
+			rd.t = t, rd.n = 0;
 			for (size_t p = 0, e; p < len; p = e) {
 				int k;
-				e = tsql_token(t, p, &k);
+				e = tsql_token(&rd, p, &k);
 				if (e <= p || e > len) abort();
 			}
 		} else {                           /* an edit */

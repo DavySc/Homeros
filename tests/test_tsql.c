@@ -1,9 +1,10 @@
 /* T-SQL's colours (src/syntax/tsql.c).  Directed lines with the face of
    every byte, one per SSMS rule tsql.c copies (the categories are SSMS's;
-   which words fall in which is a hypothesis until checked against SSMS
-   itself); tsql_token's kinds where SQL Server's lexing is subtle; then
-   random texts and edits, where the faces read through the kept token
-   starts, in any order and window, must equal a fresh read from byte 0. */
+   which words fall in which is checked against SSMS only for the words of
+   ssms-check.sql); tsql_token's kinds where SQL Server's lexing is
+   subtle; then random texts and edits, where the faces read through the
+   kept token starts, in any order and window, must equal a fresh read
+   from byte 0. */
 #include <string.h>
 #include "check.h"
 #include "grid.h"
@@ -45,10 +46,34 @@ static const char *const lines[][2] = {
 	{ "LEFT JOIN t; LEFT(x, 2)", "oooo.oooo..o.FFFFo.o..o" },
 	{ "SELECT GETDATE(), COUNT (*), @@ROWCOUNT, @@nope", "KKKKKK.FFFFFFFooo.FFFFF.oooo.FFFFFFFFFFo......." },
 	{ "CHAR(10) + CONVERT(int, x); DECLARE @c char", "FFFFo..o.o.FFFFFFFoKKKo..oo.KKKKKKK....KKKK" },
-	{ "FROM sys.objects o JOIN INFORMATION_SCHEMA.TABLES", "KKKK.TTToTTTTTTT...oooo.TTTTTTTTTTTTTTTTTToTTTTTT" },
-	{ "EXEC sp_executesql @q; EXEC dbo.usp_x", "KKKK.PPPPPPPPPPPPP...o.KKKK....o....." },
+	{ "FROM sys.objects o JOIN INFORMATION_SCHEMA.TABLES", "KKKK.TTTTTTTTTTT...oooo.TTTTTTTTTTTTTTTTTTTTTTTTT" },
+	{ "EXEC sp_executesql @q; EXEC dbo.usp_x", "KKKK.PPPPPPPPPPPPP...o.KKKK.........." },
 	{ "SET NOCOUNT ON;\nGO", "KKK.KKKKKKK.KKo.KK" },
 	{ "SELECT 1.5e3, 0x1F, #t, ##g", "KKKKKK......o.....o...o...." },
+	/* the lines of ssms-check.sql as Davy's SSMS colours them (his
+	   screenshot of 2026-11-18, read colour by colour) */
+	{ "/* Demo: SSMS-style colours, mapped to Catppuccin */", "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC" },
+	{ "SET ANSI_NULLS ON;", "KKK.KKKKKKKKKK.KKo" },
+	{ "GO", "KK" },
+	{ "CREATE OR ALTER PROCEDURE dbo.usp_orders", "KKKKKK.oo.KKKKK.KKKKKKKKK..............." },
+	{ "    @customer_id int,", ".................KKKo" },
+	{ "    @since datetime2 = NULL", "...........KKKKKKKKK.o.oooo" },
+	{ "AS", "KK" },
+	{ "BEGIN", "KKKKK" },
+	{ "    SET NOCOUNT ON;", "....KKK.KKKKKKK.KKo" },
+	{ "    DECLARE @n int = 0;  -- row count", "....KKKKKKK....KKK.o..o..CCCCCCCCCCCC" },
+	{ "    SELECT TOP (10) o.id, o.total, ISNULL(o.note, N'none') AS [note]", "....KKKKKK.KKK.o..o.....o........o.FFFFFFo......o.SSSSSSSo.KK......." },
+	{ "    FROM dbo.orders AS o", "....KKKK............KK.." },
+	{ "    LEFT JOIN dbo.customers c ON c.id = o.customer_id", "....oooo.oooo.................KK......o.............." },
+	{ "    WHERE o.customer_id = @customer_id", "....KKKKK...............o............." },
+	{ "      AND o.created >= COALESCE(@since, DATEADD(day, -30, GETDATE()))", "......ooo...........oo.FFFFFFFFo......o.FFFFFFFoKKKo.o..o.FFFFFFFoooo" },
+	{ "      AND o.status NOT IN ('void', 'it''s')", "......ooo...KKKKKK.ooo.oo.oSSSSSSo.SSSSSSSo" },
+	{ "    ORDER BY o.created DESC;", "....KKKKK.KK...........KKKKo" },
+	{ "    SET @n = @@ROWCOUNT;", "....KKK....o.FFFFFFFFFFo" },
+	{ "    IF @n = 0 EXEC sp_executesql N'PRINT ''none''';", "....KK....o...KKKK.PPPPPPPPPPPPP.SSSSSSSSSSSSSSSSSo" },
+	{ "    SELECT name FROM sys.objects WHERE type = 'U';", "....KKKKKK.KKKK.KKKK.TTTTTTTTTTT.KKKKK.KKKK.o.SSSo" },
+	{ "END", "KKK" },
+	{ "GO", "KK" },
 };
 
 /* tsql_token's kinds and ends */
@@ -62,6 +87,8 @@ static const struct { const char *src; size_t pos, end; int kind; } toks[] = {
 	{ "/* a /* b */", 0, 12, TQ_COMMENT },
 	{ "/* /* */ */x", 0, 11, TQ_COMMENT },
 	{ "-- a\nb", 0, 4, TQ_COMMENT },
+	{ "-- a\r\nb", 0, 4, TQ_COMMENT },
+	{ "||x", 0, 2, TQ_OP },
 	{ "!<x", 0, 2, TQ_OP },
 	{ "::x", 0, 2, TQ_OP },
 	{ "^=", 0, 2, TQ_OP },
@@ -139,7 +166,8 @@ int main(void)
 	for (size_t i = 0; i < sizeof toks / sizeof *toks; i++) {
 		Text *t = text_new(toks[i].src, strlen(toks[i].src));
 		int k = -1;
-		size_t e = tsql_token(t, toks[i].pos, &k);
+		TsqlRd r = { t, 0, 0, { 0 } };
+		size_t e = tsql_token(&r, toks[i].pos, &k);
 		if (e != toks[i].end || k != toks[i].kind) fprintf(stderr, "token %zu: end %zu kind %d\n", i, e, k);
 		CHECK(e == toks[i].end && k == toks[i].kind);
 		text_free(t);

@@ -18,14 +18,7 @@
 
 enum { CK = 4096, NWORDS = sizeof words / sizeof *words };
 
-/* bytes of the text through a window */
-typedef struct {
-	const Text *t;
-	size_t a, n;
-	char b[4096];
-} Rd;
-
-static int rd(Rd *r, size_t i)
+int tsql_byte(TsqlRd *r, size_t i)
 {
 	if (i - r->a >= r->n) {
 		r->a = i;
@@ -36,7 +29,7 @@ static int rd(Rd *r, size_t i)
 }
 
 struct Tsql {
-	Rd r;
+	TsqlRd r;
 	uint32_t *ck, n, cap;      /* token starts, ascending, CK apart */
 	size_t at;                 /* a token start, where the last faces ended */
 };
@@ -49,23 +42,23 @@ static int is_id(int c)
 	return is_digit(c) || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || c == '@' || c == '#' || c == '$' || c >= 0x80;
 }
 
-static size_t token(Rd *r, size_t p, int *k)
+size_t tsql_token(TsqlRd *r, size_t p, int *k)
 {
-	int c = rd(r, p), d = rd(r, p + 1);
+	int c = tsql_byte(r, p), d = tsql_byte(r, p + 1);
 	if (c < 0) return *k = TQ_SPACE, p;
 	if (is_space(c)) {
-		while (is_space(rd(r, ++p))) ;
+		while (is_space(tsql_byte(r, ++p))) ;
 		return *k = TQ_SPACE, p;
 	}
 	if (c == '-' && d == '-') {
-		while ((c = rd(r, ++p)) >= 0 && c != '\n') ;
+		while ((c = tsql_byte(r, ++p)) >= 0 && c != '\n' && c != '\r') ;
 		return *k = TQ_COMMENT, p;
 	}
 	if (c == '/' && d == '*') {
 		/* SQL Server nests them */
 		int depth = 1;
-		for (p += 2; depth && (c = rd(r, p)) >= 0; ) {
-			d = rd(r, p + 1);
+		for (p += 2; depth && (c = tsql_byte(r, p)) >= 0; ) {
+			d = tsql_byte(r, p + 1);
 			if (c == '/' && d == '*') depth++, p += 2;
 			else if (c == '*' && d == '/') depth--, p += 2;
 			else p++;
@@ -77,34 +70,28 @@ static size_t token(Rd *r, size_t p, int *k)
 		/* the closer doubled stands for itself; unclosed runs to the end */
 		int e = c == '[' ? ']' : c;
 		*k = c == '\'' ? TQ_STRING : TQ_IDENT;
-		while ((c = rd(r, ++p)) >= 0)
-			if (c == e && rd(r, ++p) != e) break;
+		while ((c = tsql_byte(r, ++p)) >= 0)
+			if (c == e && tsql_byte(r, ++p) != e) break;
 		return p;
 	}
 	if (is_digit(c) || (c == '.' && is_digit(d))) {
-		while (is_id(c = rd(r, ++p)) || c == '.') ;
+		while (is_id(c = tsql_byte(r, ++p)) || c == '.') ;
 		return *k = TQ_NUMBER, p;
 	}
 	if (c == '@' || c == '#') {
-		while (is_id(rd(r, ++p))) ;
+		while (is_id(tsql_byte(r, ++p))) ;
 		return *k = TQ_VAR, p;
 	}
 	if (is_id(c)) {
-		while (is_id(rd(r, ++p))) ;
+		while (is_id(tsql_byte(r, ++p))) ;
 		return *k = TQ_WORD, p;
 	}
 	if (c == ',' || c == '(' || c == ')' || c == ';' || c == '.') return *k = TQ_PUNCT, p + 1;
 	*k = TQ_OP;
-	/* <> != >= <= !< !> and the compound assignments, :: */
-	if ((d == '=' && strchr("<>!+-*/%&|^", c)) || (c == '<' && d == '>') || (c == '!' && (d == '<' || d == '>')) || (c == ':' && d == ':'))
+	/* <> != >= <= !< !> and the compound assignments, ::, || */
+	if ((d == '=' && strchr("<>!+-*/%&|^", c)) || (c == '<' && d == '>') || (c == '!' && (d == '<' || d == '>')) || (c == ':' && d == ':') || (c == '|' && d == '|'))
 		return p + 2;
 	return p + 1;
-}
-
-size_t tsql_token(const Text *t, size_t pos, int *kind)
-{
-	Rd r = { t, 0, 0, { 0 } };
-	return token(&r, pos, kind);
 }
 
 int tsql_word(const char *w, size_t n)
@@ -125,38 +112,38 @@ int tsql_word(const char *w, size_t n)
 }
 
 /* the n bytes at p, lower case, equal to lit */
-static int is(Rd *r, size_t p, size_t n, const char *lit)
+static int is(TsqlRd *r, size_t p, size_t n, const char *lit)
 {
 	if (n != strlen(lit)) return 0;
 	for (size_t i = 0; i < n; i++) {
-		int c = rd(r, p + i);
+		int c = tsql_byte(r, p + i);
 		if ((c >= 'A' && c <= 'Z' ? c + 32 : c) != lit[i]) return 0;
 	}
 	return 1;
 }
 
-static int schema(Rd *r, size_t p, size_t n) { return is(r, p, n, "sys") || is(r, p, n, "information_schema"); }
+static int schema(TsqlRd *r, size_t p, size_t n) { return is(r, p, n, "sys") || is(r, p, n, "information_schema"); }
 
-static unsigned char word_face(Rd *r, size_t p, size_t e)
+static unsigned char word_face(TsqlRd *r, size_t p, size_t e)
 {
 	char w[40];
 	size_t n = e - p;
 	/* the system schemas and what is in them (SSMS's system table colour) */
 	if (schema(r, p, n)) return FACE_MODULE_BUILTIN;
-	if (p > 1 && rd(r, p - 1) == '.') {
+	if (p > 1 && tsql_byte(r, p - 1) == '.') {
 		size_t b = p - 1;
-		while (b && is_id(rd(r, b - 1))) b--;
+		while (b && is_id(tsql_byte(r, b - 1))) b--;
 		if (schema(r, b, p - 1 - b)) return FACE_MODULE_BUILTIN;
 	}
 	if (n >= sizeof w) return FACE_NONE;
-	for (size_t i = 0; i < n; i++) w[i] = (char)rd(r, p + i);
+	for (size_t i = 0; i < n; i++) w[i] = (char)tsql_byte(r, p + i);
 	/* SQL Server's own stored procedures (hypothesis: by their sp_ and xp_) */
 	if (n > 3 && (w[0] == 's' || w[0] == 'S' || w[0] == 'x' || w[0] == 'X') && (w[1] == 'p' || w[1] == 'P') && w[2] == '_')
 		return FACE_FUNCTION;
 	int c = tsql_word(w, n);
 	size_t q = e;
-	while (is_space(rd(r, q))) q++;
-	int call = rd(r, q) == '(';
+	while (is_space(tsql_byte(r, q))) q++;
+	int call = tsql_byte(r, q) == '(';
 	/* LEFT and RIGHT are joins, or functions when called; a function that
 	   is also a keyword (CHAR, CONVERT, YEAR) only when called */
 	if ((c & TQ_OPERATOR) && !((c & TQ_FUNCTION) && call)) return FACE_OPERATOR;
@@ -164,15 +151,20 @@ static unsigned char word_face(Rd *r, size_t p, size_t e)
 	return c & TQ_KEYWORD ? FACE_KEYWORD : FACE_NONE;
 }
 
-static unsigned char face(Rd *r, size_t p, size_t e, int k)
+static unsigned char face(TsqlRd *r, size_t p, size_t e, int k)
 {
 	switch (k) {
 	case TQ_COMMENT: return FACE_COMMENT;
 	case TQ_STRING: return FACE_STRING;
-	case TQ_OP: case TQ_PUNCT: return FACE_OPERATOR;
+	/* a dot is plain, but in sys.objects it is the system table's (SSMS,
+	   Davy's screenshot of 2026-11-18) */
+	case TQ_PUNCT: if (tsql_byte(r, p) != '.') return FACE_OPERATOR;
+		for (e = p; e && is_id(tsql_byte(r, e - 1)); e--) ;
+		return schema(r, e, p - e) ? FACE_MODULE_BUILTIN : FACE_NONE;
+	case TQ_OP: return FACE_OPERATOR;
 	case TQ_WORD: return word_face(r, p, e);
 	/* @@ROWCOUNT and the other globals are system functions; @x is plain */
-	case TQ_VAR: return rd(r, p + 1) == '@' ? word_face(r, p, e) : FACE_NONE;
+	case TQ_VAR: return tsql_byte(r, p + 1) == '@' ? word_face(r, p, e) : FACE_NONE;
 	}
 	return FACE_NONE;
 }
@@ -224,7 +216,7 @@ void tsql_faces(Tsql *q, size_t a, size_t z, unsigned char *f)
 	if (lo && q->ck[lo - 1] > p) p = q->ck[lo - 1];
 	while (p < z) {
 		int k;
-		size_t e = token(&q->r, p, &k);
+		size_t e = tsql_token(&q->r, p, &k);
 		if (e == p) break;
 		if (p >= (q->n ? q->ck[q->n - 1] + (size_t)CK : CK) && q->n < q->cap) q->ck[q->n++] = (uint32_t)p;
 		if (e > a) {
