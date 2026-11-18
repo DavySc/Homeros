@@ -40,8 +40,10 @@ cases = [
  "SELECT  a,b\nBEGIN go\nEND",
  # ALTER and CREATE VIEW, a function with RETURNS ... BEGIN
  "CREATE VIEW v AS SELECT a FROM t WHERE b = 1\nGO\nCREATE FUNCTION f(@a int) RETURNS int BEGIN RETURN @a END",
- # a byte the lexer does not know keeps its gaps
+ # a byte the lexer does not know is a problem: its statement is kept
  "SELECT  a \x01  b,c FROM  t",
+ # CREATE OR ALTER VIEW: the view's query is laid out
+ "CREATE OR ALTER VIEW v AS SELECT a,b FROM t WHERE c=1",
  # an unclosed block comment, string or name is a parse problem: kept as written
  "SELECT  a,b\n/* open",
  "SELECT  a,b\nSELECT 'it''s",

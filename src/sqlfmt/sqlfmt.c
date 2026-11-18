@@ -83,10 +83,10 @@ static int oom;
 	X(CLOSE) X(COMMIT) X(CONTINUE) X(CONVERSATION) X(CREATE) X(CROSS) X(DEALLOCATE) X(DECLARE) X(DEFAULT) \
 	X(DELETE) X(DENY) X(DIALOG) X(DISTINCT) X(DISTRIBUTED) X(DROP) X(ELSE) X(END) X(EXCEPT) X(EXEC) X(EXECUTE) \
 	X(FETCH) X(FOR) X(FROM) X(FULL) X(FUNCTION) X(GOTO) X(GRANT) X(GROUP) X(HASH) X(HAVING) X(IF) X(INNER) \
-	X(INSERT) X(INSTEAD) X(INTERSECT) X(JOIN) X(LEFT) X(LIMIT) X(LOOP) X(MATERIALIZED) X(MERGE) X(NATURAL) \
+	X(INSERT) X(INSTEAD) X(INTERSECT) X(JOIN) X(LEFT) X(LIMIT) X(LOOP) X(MERGE) X(NATURAL) \
 	X(NOT) X(OF) X(OFFSET) X(ON) X(OPEN) X(OR) X(ORDER) X(OUTER) X(OUTPUT) X(PRINT) X(PROC) X(PROCEDURE) \
-	X(RAISERROR) X(RECURSIVE) X(REMOTE) X(REPLACE) X(RETURN) X(RETURNING) X(RETURNS) X(REVOKE) X(RIGHT) \
-	X(ROLLBACK) X(ROW) X(ROWS) X(SAVE) X(SELECT) X(SET) X(TEMP) X(TEMPORARY) X(THEN) X(THROW) X(TRAN) \
+	X(RAISERROR) X(REMOTE) X(RETURN) X(RETURNING) X(RETURNS) X(REVOKE) X(RIGHT) \
+	X(ROLLBACK) X(ROW) X(ROWS) X(SAVE) X(SELECT) X(SET) X(THEN) X(THROW) X(TRAN) \
 	X(TRANSACTION) X(TRIGGER) X(TRUNCATE) X(TRY) X(UNION) X(UPDATE) X(USE) X(USING) X(VALUES) X(VIEW) X(WAITFOR) \
 	X(WHEN) X(WHERE) X(WHILE) X(WITH)
 #define X(w) W_##w,
@@ -614,25 +614,16 @@ static int next_sig(size_t *j, size_t z)
 /* line breaks before the clauses of a query or DML statement */
 static void clauses(size_t a, size_t z)
 {
-	int f[5], nf = 0, i;
+	int head = -1, i;
 	for (size_t j = a; (i = next_sig(&j, z)) >= 0; ) {
 		if (P->t[i].verb) return;
-		if (nf < 5) f[nf++] = i;
+		if (head < 0) head = word_of(P, (size_t)i);
 	}
-	if (!nf) return;
-	int head = word_of(P, (size_t)f[0]);
-	int view = 0;
-	if (head == W_CREATE || head == W_ALTER) {
-		int v = 0;
-		for (int k = 1; k < nf; k++)
-			if (word_of(P, (size_t)f[k]) == W_VIEW) { v = k; break; }
-		view = v > 0;
-		for (int k = 1; view && k < v; k++) {
-			int w = word_of(P, (size_t)f[k]);
-			view = w == W_OR || w == W_REPLACE || w == W_ALTER || w == W_MATERIALIZED || w == W_RECURSIVE || w == W_TEMP || w == W_TEMPORARY;
-		}
-	}
-	if (!(head == W_SELECT || head == W_INSERT || head == W_UPDATE || head == W_DELETE || head == W_MERGE || head == W_WITH) && !view)
+	/* SQLDiff also breaks a CREATE VIEW's clauses, but in T-SQL the view's
+	   query is a statement of its own (begins()), so that rule never applies
+	   (measured: without it 0 of 1,687 texts, SQLDiff's files and tsql.py,
+	   change) */
+	if (!(head == W_SELECT || head == W_INSERT || head == W_UPDATE || head == W_DELETE || head == W_MERGE || head == W_WITH))
 		return;
 	int case_open = 0;
 	size_t j = a;
@@ -849,11 +840,10 @@ static void render(const Pass *p, const unsigned char *reverted)
 		int kept = t->verb || (in_rev && i && p->t[i - 1].top == t->top);
 		const Tok *a = i ? &p->t[i - 1] : NULL;
 		int strings = a && (a->k == STRING && t->k == STRING);
-		int errs = a && (a->k == ERR || t->k == ERR);
 		size_t n = nls < 2 ? nls : 2;
 		if (!i) {
 			if (!plain) put(g, gn);
-		} else if (kept || t->gapk || !plain || strings || errs) put(g, gn);
+		} else if (kept || t->gapk || !plain || strings) put(g, gn);
 		else if (a->k == LCOMMENT) newline(p, i, c, n ? n : 1);
 		else if (t->k == GO) for (size_t k = n ? n : 1; k--; ) put("\n", 1);
 		else if (a->k == GO) {

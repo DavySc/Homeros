@@ -95,6 +95,14 @@ int main(void)
 	const char *gb = fmt(big, bn, 0, bn, &gn);
 	CHECK(gn == bn + 40000 + 1 && !memcmp(gb + gn - 8, "\nfrom t\n", 8));
 
+	/* 999 nested BEGINs are laid out (1,000 is SQLDiff's limit, recorded) */
+	bn = 0;
+	for (int k = 0; k < 999; k++) memcpy(big + bn, "BEGIN\n", 6), bn += 6;
+	memcpy(big + bn, "SELECT  1\n", 10), bn += 10;
+	for (int k = 0; k < 999; k++) memcpy(big + bn, "END\n", 4), bn += 4;
+	gb = fmt(big, bn, 0, bn, &gn);
+	CHECK(!kept && !memcmp(gb, "begin\n    begin\n", 16));
+
 	/* a range: only the second statement's gaps and words change */
 	const char *two = "SELECT a,b FROM t\nSELECT c,d FROM u\n";
 	const char *got = fmt(two, strlen(two), 18, strlen(two), &n);
