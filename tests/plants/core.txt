@@ -17,7 +17,7 @@ core: an undone insert at a line start counts as lines removed (test_core_undo)~
 core: CTRL-D and CTRL-F never report that they could not move (no beep) (test_core_contract)~test TESTS=core_contract~~src/core/move.c~	return moved ? 0 : -1;~	return 0;
 core: gj and gk never fail at the first or last screen line (test_core_contract)~test TESTS=core_contract~~src/core/move.c~	} else r = screengo(e, w, n < 0 ? -1 : 1, n < 0 ? -n : n) ? 0 : -1;~	} else r = (screengo(e, w, n < 0 ? -1 : 1, n < 0 ? -n : n), 0);
 core: closing the last window quits with unsaved changes (test_core_contract)~test TESTS=core_contract~~src/core/win.c~		if (quit_check(e, force)) return -1;~		if (0 && quit_check(e, force)) return -1;
-core: the command line is drawn one cell to the right (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~		int c = grid_puts(g, r, 0, t, ATTR_NONE), cc = c;~		int c = grid_puts(g, r, 1, t, ATTR_NONE), cc = c;
+core: the command line is drawn one cell to the right (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~		int cc = grid_puts(g, r, 1, g->cols, e->cmd, e->cmdpos,~		int cc = grid_puts(g, r, 2, g->cols, e->cmd, e->cmdpos,
 core: the selected popup item is not highlighted (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~		int attr = idx == e->pumsel ? ATTR_NONE : ATTR_REV;~		int attr = ATTR_REV;
 core: entering a window does not look at its view again (finding 6) (test_core_screens)~test TESTS=core_screens~~src/core/win.c~	w->frame->s.topvalid = 0;¶	if (w->h < p_wh)~	if (w->h < p_wh)
 core: a taller command line keeps the wanted column (finding 2) (test_core_screens)~test TESTS=core_screens~~src/core/win.c~		if (e->win->want != WANT_EOL) core_set_want(e);~		(void)0;
