@@ -8,7 +8,8 @@
 typedef struct { const uint8_t *p; uint32_t n; } PdbSpan;
 typedef struct {
   Msf msf;
-  uint8_t *dbi, *sec;         /* the DBI stream and the image's section headers, owned */
+  uint8_t *dbi, *sec, *names; /* the DBI stream, the image's section headers, the string table: owned */
+  PdbSpan strings;            /* the string table's bytes, in names */
   PdbSpan mods, contribs;     /* parts of dbi: module records, section contributions */
   uint32_t contrib_size;      /* bytes per contribution */
   uint32_t sections;
@@ -29,6 +30,22 @@ void pdb_close(Pdb *p);
 bool pdb_module(const Pdb *p, uint32_t *at, PdbModule *m);
 static inline uint32_t pdb_contribs(const Pdb *p) { return p->contribs.n / p->contrib_size; }
 PdbContrib pdb_contrib(const Pdb *p, uint32_t i);          /* i < pdb_contribs(p) */
+/* The module's stream, which the caller frees, with its symbol records and its line info (C13). */
+uint8_t *pdb_module_stream(const Pdb *p, const PdbModule *m, PdbSpan *syms, PdbSpan *c13);
+
+/* A run of line records for one source file inside one contiguous piece of code. Record i is
+   8 bytes: lines + 8*i holds the offset from `base`, then the line number in the low 24 bits. */
+typedef struct {
+  PdbSpan file, sum;          /* the source file's path; its checksum */
+  uint8_t sum_kind;           /* CV_C13ChecksumKind: 0 none, 1 MD5, 2 SHA1, 3 SHA256 */
+  uint64_t base, opl;         /* image offsets: where the piece of code starts and ends */
+  const uint8_t *lines;
+  uint32_t count;
+} PdbLineBlock;
+typedef struct { PdbSpan sums; uint32_t next, at, sub_opl, item; uint64_t base, opl; bool started; } PdbLineCursor;
+/* the next block of c13; *c starts zeroed. False at the end. */
+bool pdb_line_block(const Pdb *p, PdbSpan c13, PdbLineCursor *c, PdbLineBlock *b);
+
 PdbSection pdb_section(const Pdb *p, uint32_t number);     /* 1-based; all zero when out of range */
 /* section:offset as an offset from the image base, 0 when there is no such section */
 uint64_t pdb_voff(const Pdb *p, uint16_t sec, uint32_t off);

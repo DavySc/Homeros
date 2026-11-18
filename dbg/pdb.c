@@ -1,16 +1,47 @@
 #include "pdb.h"
 #include "le.h"
 #include <stdlib.h>
+#include <string.h>
 
-enum { DBI_STREAM = 3, DBI_HEADER = 64, MODULE_HEADER = 64, SECTION_HEADER = 40,
-       SECTION_HEADER_SLOT = 5 /* PDB_DbiStream_SECTION_HEADER */ };
+enum { INFO_STREAM = 1, INFO_HEADER = 28 /* version, signature, age, GUID */, DBI_STREAM = 3, DBI_HEADER = 64, MODULE_HEADER = 64, SECTION_HEADER = 40,
+       SECTION_HEADER_SLOT = 5 /* PDB_DbiStream_SECTION_HEADER */,
+       C13_LINES = 0xf2, C13_CHECKSUMS = 0xf4 };
 
 /* [off, off+n) of s, cut to what s holds */
 static PdbSpan part(PdbSpan s, uint64_t off, uint64_t n)
 {
+  if (s.n == 0) return s;       /* an absent stream is a null pointer, which takes no offset */
   if (off > s.n) off = s.n;
   if (n > s.n - off) n = s.n - off;
   return (PdbSpan){s.p + off, (uint32_t)n};
+}
+
+/* the zero-terminated string at *at in s; moves *at past it. Empty at or past the end of s. */
+static PdbSpan string_at(PdbSpan s, uint32_t *at)
+{
+  uint32_t start = *at < s.n ? *at : s.n, end = start;
+  while (end < s.n && s.p[end] != 0) end += 1;
+  *at = end < s.n ? end + 1 : end;
+  return part(s, start, end - start);
+}
+
+/* The number of the stream called `name`, from the table in the info stream
+   (pdb_named_stream_table_from_info): name bytes, a count, a capacity, two bit sets, then
+   count pairs of (offset of a name, stream number). 0xffff when there is none. */
+static uint16_t named_stream(PdbSpan info, const char *name)
+{
+  PdbSpan names = part(info, INFO_HEADER + 4, info.n >= INFO_HEADER + 4 ? le32(info.p + INFO_HEADER) : 0);
+  uint64_t at = INFO_HEADER + 4 + (uint64_t)names.n;
+  uint32_t count = part(info, at, 4).n == 4 ? le32(info.p + at) : 0;
+  at += 8;                                               /* count, capacity */
+  for (int set = 0; set < 2; set += 1) at += 4 + 4 * (uint64_t)(part(info, at, 4).n == 4 ? le32(info.p + at) : 0);
+  PdbSpan pairs = part(info, at, 8 * (uint64_t)count);
+  for (uint32_t i = 0; i + 8 <= pairs.n; i += 8) {
+    uint32_t off = le32(pairs.p + i);
+    PdbSpan s = string_at(names, &off);
+    if (s.n == strlen(name) && memcmp(s.p, name, s.n) == 0) return le16(pairs.p + i + 4);
+  }
+  return 0xffff;
 }
 
 bool pdb_open(Pdb *p, const void *data, uint64_t size)
@@ -40,6 +71,12 @@ bool pdb_open(Pdb *p, const void *data, uint64_t size)
     p->sec = msf_stream(&p->msf, le16(slots.p + 2 * SECTION_HEADER_SLOT), &n);
     p->sections = n / SECTION_HEADER;
   }
+  /* the string table: a signature, a version, the size of the strings, the strings (PDB_StrtblHeader) */
+  uint8_t *info = msf_stream(&p->msf, INFO_STREAM, &n);
+  uint16_t names = named_stream((PdbSpan){info, n}, "/names");
+  free(info);
+  p->names = msf_stream(&p->msf, names, &n);
+  p->strings = part((PdbSpan){p->names, n}, 12, n >= 12 ? le32(p->names + 8) : 0);
   return true;
 }
 
@@ -47,22 +84,14 @@ void pdb_close(Pdb *p)
 {
   free(p->dbi);
   free(p->sec);
+  free(p->names);
   msf_close(&p->msf);
-  p->dbi = p->sec = 0;
+  p->dbi = p->sec = p->names = 0;
 }
 
 static PdbContrib contrib_at(const uint8_t *c)   /* PDB_DbiSC40 */
 {
   return (PdbContrib){.sec = le16(c), .off = le32(c + 4), .size = le32(c + 8), .mod = le16(c + 16)};
-}
-
-/* the zero-terminated string at *at in s; moves *at past it. Empty at the end of s. */
-static PdbSpan string_at(PdbSpan s, uint32_t *at)
-{
-  uint32_t start = *at, end = start;
-  while (end < s.n && s.p[end] != 0) end += 1;
-  *at = end < s.n ? end + 1 : end;
-  return (PdbSpan){s.p + start, end - start};
 }
 
 bool pdb_module(const Pdb *p, uint32_t *at, PdbModule *m)
@@ -76,6 +105,60 @@ bool pdb_module(const Pdb *p, uint32_t *at, PdbModule *m)
   m->obj = string_at(p->mods, at);
   *at = (*at + 3) / 4 * 4;                              /* records are 4-aligned */
   if (*at > p->mods.n) *at = p->mods.n;
+  return true;
+}
+
+uint8_t *pdb_module_stream(const Pdb *p, const PdbModule *m, PdbSpan *syms, PdbSpan *c13)
+{
+  uint32_t n;
+  uint8_t *stream = msf_stream(&p->msf, m->stream, &n);
+  /* symbols (after a 4-byte signature), old-style lines, then C13 */
+  *syms = part((PdbSpan){stream, n}, 4, m->sym_size < 4 ? 0 : m->sym_size - 4);
+  *c13 = part((PdbSpan){stream, n}, (uint64_t)m->sym_size + m->c11_size, m->c13_size);
+  return stream;
+}
+
+/* the subsection at *next: kind, size, data, padded to 4 (cv_c13_sub_section_from_data) */
+static bool subsection(PdbSpan c13, uint32_t *next, uint32_t *kind, PdbSpan *data)
+{
+  if (c13.n - *next < 8) return false;
+  *kind = le32(c13.p + *next);
+  *data = part(c13, (uint64_t)*next + 8, le32(c13.p + *next + 4));
+  uint64_t end = (uint64_t)(data->p - c13.p) + data->n;
+  *next = (end + 3) / 4 * 4 < c13.n ? (uint32_t)((end + 3) / 4 * 4) : c13.n;
+  return true;
+}
+
+bool pdb_line_block(const Pdb *p, PdbSpan c13, PdbLineCursor *c, PdbLineBlock *b)
+{
+  uint32_t kind;
+  PdbSpan data;
+  if (!c->started) {   /* file names come from the module's checksum subsection, wherever it is */
+    for (uint32_t next = 0; subsection(c13, &next, &kind, &data);) if (kind == C13_CHECKSUMS) c->sums = data;
+    c->started = true;
+  }
+  /* a lines subsection: section offset, section, flags, length; then per file: the offset of
+     its checksum, a line count, a byte size, the lines, the columns (CV_C13File) */
+  while (c->sub_opl - c->at < 12) {
+    if (!subsection(c13, &c->next, &kind, &data)) return false;
+    if (kind != C13_LINES || data.n < 12 || pdb_voff(p, le16(data.p + 4), 0) == 0) continue;
+    c->base = pdb_voff(p, le16(data.p + 4), le32(data.p));
+    c->opl = c->base + le32(data.p + 8);
+    c->item = le16(data.p + 6) & 1 ? 12 : 8;            /* CV_C13SubSecLinesFlag_HasColumns */
+    c->at = (uint32_t)(data.p - c13.p) + 12;
+    c->sub_opl = (uint32_t)(data.p - c13.p) + data.n;
+  }
+  const uint8_t *file = c13.p + c->at;
+  uint32_t most = (c->sub_opl - c->at - 12) / c->item, sum_at = le32(file), name_at = 0;
+  PdbSpan sum = part(c->sums, sum_at, 6);              /* CV_C13Checksum: name, length, kind, bytes */
+  *b = (PdbLineBlock){.base = c->base, .opl = c->opl, .lines = file + 12, .count = le32(file + 4) < most ? le32(file + 4) : most};
+  if (sum.n == 6) {
+    name_at = le32(sum.p);
+    b->file = string_at(p->strings, &name_at);
+    b->sum_kind = sum.p[5];
+    b->sum = part(c->sums, (uint64_t)sum_at + 6, sum.p[4]);
+  }
+  c->at += 12 + c->item * b->count;
   return true;
 }
 

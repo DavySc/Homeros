@@ -35,3 +35,12 @@ oracle | dbg/pdb.c |   *at = (*at + 3) / 4 * 4; |
 oracle | dbg/pdb.c | ? 28 : version == 0xeffe0000u + 20140516u ? 32 : 1; | ? 32 : version == 0xeffe0000u + 20140516u ? 28 : 1;
 oracle | dbg/pdb.c | for (int i = 0; i < 6; i += 1) at += sizes[i]; | for (int i = 0; i < 5; i += 1) at += sizes[i];
 oracle | dbg/pdb.c | .stream = le16(h + 34), | .stream = le16(h + 32),
+fuzz | dbg/pdb.c |   if (c13.n - *next < 8) return false; |   if (c13.n == *next) return false;
+fuzz | dbg/pdb.c | .count = le32(file + 4) < most ? le32(file + 4) : most}; | .count = le32(file + 4) < most + 1 ? le32(file + 4) : most + 1};
+fuzz | dbg/pdb.c |   if (sum.n == 6) { |   if (sum.n > 0) {
+oracle | dbg/pdb.c |     c->item = le16(data.p + 6) & 1 ? 12 : 8; |     c->item = 8;
+oracle | dbg/pdb.c |   c->at += 12 + c->item * b->count; |   c->at = c->sub_opl;
+oracle | dbg/pdb.c |     c->base = pdb_voff(p, le16(data.p + 4), le32(data.p)); |     c->base = pdb_voff(p, le16(data.p + 4), 0);
+oracle | dbg/pdb.c |     name_at = le32(sum.p); |     name_at = sum_at;
+oracle | dbg/pdb.c |   at += 8;                                               /* count, capacity */ |   at += 4;
+oracle | dbg/pdb.c | if (kind == C13_CHECKSUMS) c->sums = data; | if (kind == C13_CHECKSUMS && !c->sums.n) c->sums = (PdbSpan){data.p, 1};

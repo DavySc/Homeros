@@ -12,6 +12,12 @@ for s in steps crash deep; do
   done
 done
 link "$out/obj/steps-O0.obj" /pdbpagesize:8192 /out:"$out/steps-8k.exe" /pdb:"$out/steps-8k.pdb"
+# column records, and one function whose lines come from two files
+clang --target=x86_64-pc-windows-msvc -g -gcodeview -gcolumn-info -O0 -ffreestanding -c "$here/subjects/steps.c" -o "$out/obj/cols.obj"
+link "$out/obj/cols.obj" /out:"$out/cols.exe" /pdb:"$out/cols.pdb"
+printf 'int main(void)\n{\n  volatile int a = 1;\n#line 100 "other.c"\n  a += 2;\n  a += 3;\n#line 7 "twofiles.c"\n  return a;\n}\n' > "$out/obj/twofiles.c"
+clang --target=x86_64-pc-windows-msvc -g -gcodeview -O0 -ffreestanding -c "$out/obj/twofiles.c" -o "$out/obj/twofiles.obj"
+link "$out/obj/twofiles.obj" /out:"$out/twofiles.exe" /pdb:"$out/twofiles.pdb"
 mkdir -p "$out/many"; cd "$out/many"
 for i in $(seq 400); do echo "int f$i(int x) { int y = x + $i; return y * 2; }" > "f$i.c"; done
 echo "int f1(int); int main(void) { return f1(0); }" > main.c
