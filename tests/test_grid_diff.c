@@ -30,13 +30,13 @@ static const char *const face_sgr[FACE_COUNT] = {
 	";38;2;205;214;244",                  /* variable: text */
 	";38;2;243;139;168",                  /* variable.builtin: red */
 	";38;2;235;160;172",                  /* variable.parameter: maroon */
-	";38;2;235;160;172",                  /* variable.parameter.builtin: maroon */
+	";38;2;245;194;231",                  /* variable.parameter.builtin: pink */
 	";38;2;180;190;254",                  /* variable.member: lavender */
 	";38;2;250;179;135",                  /* constant: peach */
 	";38;2;250;179;135",                  /* constant.builtin: peach */
 	";38;2;203;166;247",                  /* constant.macro: mauve */
 	";3;38;2;249;226;175",                /* module: yellow, italic */
-	";3;38;2;249;226;175",                /* module.builtin: yellow, italic */
+	";38;2;245;194;231",                  /* module.builtin: pink */
 	";38;2;116;199;236",                  /* label: sapphire */
 	";38;2;166;227;161",                  /* string: green */
 	";38;2;148;226;213",                  /* string.documentation: teal */
@@ -55,7 +55,7 @@ static const char *const face_sgr[FACE_COUNT] = {
 	";38;2;203;166;247",                  /* type.builtin: mauve */
 	";38;2;249;226;175",                  /* type.definition: yellow */
 	";38;2;250;179;135",                  /* attribute: peach */
-	";38;2;250;179;135",                  /* attribute.builtin: peach */
+	";38;2;245;194;231",                  /* attribute.builtin: pink */
 	";38;2;180;190;254",                  /* property: lavender */
 	";38;2;137;180;250",                  /* function: blue */
 	";38;2;250;179;135",                  /* function.builtin: peach */
@@ -88,7 +88,7 @@ static const char *const face_sgr[FACE_COUNT] = {
 	";38;2;30;30;46;48;2;243;139;168",    /* comment.error: base on red */
 	";38;2;30;30;46;48;2;249;226;175",    /* comment.warning: base on yellow */
 	";38;2;30;30;46;48;2;242;205;205",    /* comment.todo: base on flamingo */
-	";38;2;30;30;46;48;2;245;224;220",    /* comment.note: base on rosewater */
+	";38;2;30;30;46;48;2;137;180;250",    /* comment.note: base on blue */
 	";1;38;2;243;139;168",                /* markup.strong: red, bold */
 	";3;38;2;243;139;168",                /* markup.italic: red, italic */
 	";9;38;2;205;214;244",                /* markup.strikethrough: text, strikethrough */
@@ -117,12 +117,12 @@ static const char *const face_sgr[FACE_COUNT] = {
 	";38;2;137;180;250",                  /* tag.builtin: blue */
 	";3;38;2;249;226;175",                /* tag.attribute: yellow, italic */
 	";38;2;148;226;213",                  /* tag.delimiter: teal */
-	";48;2;90;61;80",                    /* heading 1 background */
-	";48;2;92;72;71",                    /* heading 2 background */
-	";48;2;91;85;82",                    /* heading 3 background */
-	";48;2;68;85;78",                    /* heading 4 background */
-	";48;2;54;77;99",                    /* heading 5 background */
-	";48;2;72;75;104",                    /* heading 6 background */
+	";48;2;50;40;58",                    /* heading 1 background */
+	";48;2;51;44;54",                    /* heading 2 background */
+	";48;2;51;49;58",                    /* heading 3 background */
+	";48;2;43;49;57",                    /* heading 4 background */
+	";48;2;38;46;64",                    /* heading 5 background */
+	";48;2;44;45;66",                    /* heading 6 background */
 	";48;2;42;43;60",                     /* cursor line */
 	";38;2;180;190;254",                  /* cursor line nr */
 	";38;2;69;71;90",                     /* line nr */
@@ -257,7 +257,7 @@ static void run(int (*width)(const unsigned char *, int), int frames)
 		for (int k = (int)rnd(3) ? (int)rnd(8) : (int)rnd(200); k > 0; k--) {
 			unsigned i = rnd(sizeof chars / sizeof *chars);
 			int r = (int)rnd((unsigned)rows + 1) - (rnd(9) == 0), c = (int)rnd((unsigned)cols + 1) - (rnd(9) == 0);
-			int w = grid_put(&g, r, c, (const unsigned char *)chars[i], strlen(chars[i]), widths[i], (int)rnd(3));
+			int w = grid_put(&g, r, c, (const unsigned char *)chars[i], strlen(chars[i]), widths[i], (int)rnd(4));
 			CHECK(w == (r >= 0 && r < rows && c >= 0 && c + widths[i] <= cols ? widths[i] : 0));
 			if (w && rnd(2)) {        /* the core sets a face after grid_put */
 				unsigned char f = (unsigned char)rnd(FACE_COUNT);
@@ -313,6 +313,14 @@ int main(void)
 
 	/* grid_put's rules, one case each */
 	Grid g = { 0 };
+	/* grid_face: an unknown face or layer falls back, never reads past faces[] */
+	const Face *b;
+	Cell q = { " ", 1, ATTR_NONE, FACE_COUNT, FACE_COUNT };
+	CHECK(grid_face(&q, &b) == &faces[FACE_NONE] && b == &faces[FACE_NONE]);
+	q.face = FACE_STRING; q.bg = 0;
+	CHECK(grid_face(&q, &b) == &faces[FACE_STRING] && b == &faces[FACE_STRING]);
+	q.bg = FACE_CURSOR_LINE;
+	CHECK(grid_face(&q, &b) == &faces[FACE_STRING] && b == &faces[FACE_CURSOR_LINE]);
 	CHECK(!grid_resize(&g, 1, 6));
 	const unsigned char *wide = (const unsigned char *)"\xe6\xbc\xa2";
 	/* the '>' and the blank keep the attribute, face and background layer

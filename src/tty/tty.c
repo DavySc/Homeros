@@ -168,13 +168,12 @@ static int tty_input(int *k, int max)
 static void style(const Cell *x)
 {
 	char s[64];
-	const Face *f = &faces[x->face < FACE_COUNT ? x->face : FACE_NONE];
+	const Face *b, *f = grid_face(x, &b);
 	int n = snprintf(s, sizeof s, "\x1b[0%s%s%s%s%s", x->attr == ATTR_REV ? ";7" : x->attr == ATTR_DIM ? ";2" : "",
 	                 f->style & FACE_BOLD ? ";1" : "", f->style & FACE_ITALIC ? ";3" : "",
 	                 f->style & FACE_UNDERLINE ? ";4" : "", f->style & FACE_STRIKE ? ";9" : "");
 	if (f->style & FACE_FG) n += snprintf(s + n, sizeof s - (size_t)n, ";38;2;%d;%d;%d", f->fg[0], f->fg[1], f->fg[2]);
-	if (x->bg) f = &faces[x->bg];
-	if (f->style & FACE_BG) n += snprintf(s + n, sizeof s - (size_t)n, ";48;2;%d;%d;%d", f->bg[0], f->bg[1], f->bg[2]);
+	if (b->style & FACE_BG) n += snprintf(s + n, sizeof s - (size_t)n, ";48;2;%d;%d;%d", b->bg[0], b->bg[1], b->bg[2]);
 	s[n] = 'm'; s[n + 1] = 0;
 	outs(s);
 }

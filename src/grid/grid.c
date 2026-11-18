@@ -101,6 +101,13 @@ int grid_puts(Grid *g, int r, int c, const char *s, int attr)
 	return c;
 }
 
+const Face *grid_face(const Cell *x, const Face **bg)
+{
+	const Face *f = &faces[x->face < FACE_COUNT ? x->face : FACE_NONE];
+	*bg = x->bg && x->bg < FACE_COUNT ? &faces[x->bg] : f;
+	return f;
+}
+
 int grid_cell_eq(const Cell *a, const Cell *b)
 {
 	return a->len == b->len && a->attr == b->attr && a->face == b->face && a->bg == b->bg && !memcmp(a->ch, b->ch, a->len < 4 ? a->len : 4);

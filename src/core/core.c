@@ -363,10 +363,22 @@ static void umarks_trim(const Buf *b)
 
 /* core_mark_join() was called: the next edit of this buffer joins */
 static Buf *join_next;
+/* the marks before the first core_mark_join() of that edit: do_join() and
+   op_delete() u_save() before mark_col_adjust(), so undo brings these back */
+static Buf *join_snapped;
+static Mark join_snap[28];
+/* per buffer, the group whose marks are saved: a group the keys open with
+   undo_record() alone (u_save_cursor()) gets them at its first edit, even
+   if another buffer was edited since */
+typedef struct Snapped { const Buf *b; unsigned long seq; struct Snapped *next; } Snapped;
+static Snapped *snapped;
 
 static void umarks_drop(const Buf *b)
 {
 	if (join_next == b) join_next = NULL;
+	if (join_snapped == b) join_snapped = NULL;
+	for (Snapped **p = &snapped; *p; p = &(*p)->next)
+		if ((*p)->b == b) { Snapped *s = *p; *p = s->next; free(s); break; }
 	for (UndoMarks **p = &umarks; *p;)
 		if ((*p)->b == b) { UndoMarks *u = *p; *p = u->next; free(u); }
 		else p = &(*p)->next;
@@ -883,6 +895,7 @@ void core_mark_join(Editor *e, size_t line, size_t mincol, long line_amount, lon
 {
 	if (!col_amount && !line_amount) return;
 	Buf *b = e->buf;
+	if (join_snapped != b) { marks_snap(b, join_snap); join_snapped = b; }
 	/* do_join() adjusts the marks before it deletes: the edit that joins
 	   comes next, and its undo step is a join */
 	if (line_amount) join_next = b;
@@ -914,12 +927,29 @@ static size_t newlines(const char *s, size_t n)
 /* The marks of an edit at pos that deleted d lines' newlines and inserted
    i: whole lines when it starts and ends at line starts (del_lines(),
    appended_lines_mark()), else lines joined to or split from line L. */
-static void adjust_edit(Editor *e, size_t L, int at_start, int whole_del, int whole_ins, size_t d, size_t i)
+static void nodel_join(Mark *m, size_t L, size_t d, size_t col)
+{
+	if (m->set && m->line > L && m->line < L + d) { m->line = L; m->col += col; }
+}
+
+static void adjust_edit(Editor *e, size_t L, size_t col, int at_start, int whole_del, int whole_ins, size_t d, size_t i)
 {
 	if (reloading) return;
 	if (d) {
 		if (at_start && whole_del) adjust(e, e->buf, L, L + d, DEL, -(long)d);
-		else adjust(e, e->buf, L + 1, L + d + 1, DEL, -(long)d);
+		else {
+			/* op_delete(): del_lines() of the lines between moves the
+			   ONE_ADJUST_NODEL marks on them to the last line, which
+			   do_join() then joins to L after its first col bytes */
+			Buf *b = e->buf;
+			nodel_join(&b->mark[MARK_LT], L, d, col);
+			nodel_join(&b->mark[MARK_GT], L, d, col);
+			for (int k = 0; k < b->nchange; k++) nodel_join(&b->change[k], L, d, col);
+			for (Win *w = e->wins; w; w = w->next)
+				for (int k = 0; k < w->njump; k++)
+					if (w->jump[k].buf == b) nodel_join(&w->jump[k].m, L, d, col);
+			adjust(e, b, L + 1, L + d + 1, DEL, -(long)d);
+		}
 	}
 	if (i) adjust(e, e->buf, at_start && whole_ins ? L : L + 1, (size_t)-1, (long)i, 0);
 }
@@ -935,9 +965,10 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 	/* the state after: an empty file saves empty until it gets a line of
 	   text (Vim) */
 	unsigned js = after | (b->noeol && b->id.size ? J_NOEOL : 0);
-	unsigned long seq = undo_seq(b->undo);
 	Mark snap[28];
-	marks_snap(b, snap);
+	if (join_snapped == b) memcpy(snap, join_snap, sizeof snap);
+	else marks_snap(b, snap);
+	join_snapped = NULL;
 	int r = -1;
 	size_t L = text_line_of(b->text, pos);
 	int at_start = pos == text_line_start(b->text, L);
@@ -949,7 +980,11 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 		if (!text_insert(b->text, pos, ins, nins)) {
 			if (!undo_record(b->undo, pos, del, ndel, ins, nins, c, after)) {
 				r = 0;
-				if (undo_seq(b->undo) != seq) {   /* a new group */
+				Snapped *s = snapped;
+				while (s && s->b != b) s = s->next;
+				if (!s || s->seq != undo_seq(b->undo)) {   /* a new group */
+					if (!s && (s = malloc(sizeof *s))) { s->b = b; s->next = snapped; snapped = s; }
+					if (s) s->seq = undo_seq(b->undo);
 					umarks_put(b, undo_seq(b->undo), snap, 0);
 					if (undo_seq(b->undo) % UMARKS_TRIM == 0) umarks_trim(b);
 				}
@@ -978,7 +1013,7 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 			   others below it); measured, c_open_below */
 			ws->bv = ws->bot < L ? bv : newlines(del, ndel) > newlines(ins, nins) ? 0 : bv & ~BOT_EXACT;
 		}
-	if (!r) adjust_edit(e, L, at_start, ndel && del[ndel - 1] == '\n', nins && ins[nins - 1] == '\n',
+	if (!r) adjust_edit(e, L, pos - text_line_start(b->text, L), at_start, ndel && del[ndel - 1] == '\n', nins && ins[nins - 1] == '\n',
 	                    newlines(del, ndel), newlines(ins, nins));
 	free(del);
 	if (r) core_msg(e, "out of memory");

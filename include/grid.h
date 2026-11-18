@@ -134,4 +134,7 @@ int  grid_frame(void);
 /* Puts an ASCII string; returns the next column. */
 int  grid_puts(Grid *g, int r, int c, const char *s, int attr);
 int  grid_cell_eq(const Cell *a, const Cell *b);
+/* The face cell x is drawn with (FACE_NONE for an unknown one) and, in *bg,
+   the face its background comes from: the layer if set, else the same. */
+const Face *grid_face(const Cell *x, const Face **bg);
 #endif

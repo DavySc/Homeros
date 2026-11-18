@@ -1,0 +1,6 @@
+# Second pass: the PR 56 reviewer's three plants as they apply at 94e50e1, and two more.
+rev2: wl colours() ignores the background layer~test TESTS=wl~~src/wl/wl.c~	const Face *b, *f = grid_face(x, &b);¶~	const Face *b, *f = grid_face(x, &b);¶	b = f;¶
+rev2: win draw_cell: fb = fa~win WIN=win~~src/win/backend.c~	const Face *fb, *fa = grid_face(x, &fb);¶~	const Face *fb, *fa = grid_face(x, &fb);¶	fb = fa;¶
+rev2: tty style: b = f~test TESTS=grid_diff~~src/tty/tty.c~	const Face *b, *f = grid_face(x, &b);¶~	const Face *b, *f = grid_face(x, &b);¶	b = f;¶
+rev2: grid_face takes the layer for the face too~test TESTS=grid_diff~~src/grid/grid.c~	return f;¶}¶¶int grid_cell_eq~	return *bg;¶}¶¶int grid_cell_eq
+rev2: grid_cell_eq ignores the layer (wl span leaves stale backgrounds)~test TESTS=wl~~src/grid/grid.c~ && a->bg == b->bg~

@@ -175,8 +175,10 @@ static inline const char *vt_differs(Vt *t, const Grid *g)
 		for (int c = 0; c < g->cols; c++) {
 			const Cell *x = &g->c[r * g->cols + c];
 			const VtCell *y = vt_at(t, r, c);
-			int ok = x->len ? x->len == y->len && x->attr == y->attr && !memcmp(grid_text(x), y->ch, x->len)
-			       : (!y->len || (y->len == 1 && y->ch[0] == ' ')) && y->attr == x->attr;
+			/* the terminal draws no indent guide yet (package 6, round B) */
+			int a = x->attr == ATTR_GUIDE ? ATTR_NONE : x->attr;
+			int ok = x->len ? x->len == y->len && a == y->attr && !memcmp(grid_text(x), y->ch, x->len)
+			       : (!y->len || (y->len == 1 && y->ch[0] == ' ')) && y->attr == a;
 			ok = ok && y->face == (x->bg ? vt_layer[x->bg][x->face] : vt_face[x->face]);
 			if (!ok) { snprintf(why, sizeof why, "cell %d,%d", r, c); return why; }
 		}
