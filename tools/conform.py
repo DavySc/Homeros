@@ -12,7 +12,8 @@ a "keys" regex (and optionally a "text" regex) matched against a case's
 keys as typed (''.join) and its text, and an "example" case.  A live case
 that differs and matches an entry counts as known, not as a failure; every
 example must still differ from Neovim and match its own entry, so a fixed
-difference fails the run until its entry is removed.  --record keeps only
+difference fails the run until its entry is removed.  A driver that
+crashes or fails is never a known difference.  --record keeps only
 the cases that match Neovim; --replay takes no known differences."""
 import json, os, random, re, subprocess, sys, tempfile
 
@@ -123,15 +124,16 @@ def main():
         want, kwant = want[:n], want[n:]
     bad = nknown = 0
     for k, w in zip(known, kwant):
-        if known_rule([k], k['example']) is not k or same(ours(drv, k['example']), w):
+        g = ours(drv, k['example'])
+        if known_rule([k], k['example']) is not k or same(g, w) or 'error' in g:
             bad += 1
-            print('KNOWN ENTRY STALE (its example now matches Neovim or not its rule): %s' % k['why'])
+            print('KNOWN ENTRY STALE (its example now matches Neovim, not its rule, or the driver failed): %s' % k['why'])
     keep = []
     for c, w in zip(cases, want):
         g = ours(drv, c)
         if same(g, w):
             keep.append(dict(c, nvim=w))
-        elif known_rule(known, c):
+        elif 'error' not in g and known_rule(known, c):
             nknown += 1
         else:
             bad += 1

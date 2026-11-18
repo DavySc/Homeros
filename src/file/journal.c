@@ -9,22 +9,18 @@
 #define _GNU_SOURCE
 #include <errno.h>
 #include <fcntl.h>
-#include <libgen.h>
 #include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/file.h>
-#include <sys/stat.h>
-#include <sys/uio.h>
 #include <time.h>
 #include <unistd.h>
 #include "file.h"
 #include "state.h"
 
 enum { SYNC_MS = 1000 };   /* DESIGN.md: fsync at most once per second */
-static const char MAGIC[8] = "homeros\1";
+static const char MAGIC[8] = { 'h', 'o', 'm', 'e', 'r', 'o', 's', 1 };
 
 struct Journal {
 	int fd;
@@ -72,22 +68,6 @@ static int append(Journal *j, Piece *v, int k)
 		if (i < k) { v[i].iov_base = (char *)v[i].iov_base + w; v[i].iov_len -= (size_t)w; }
 	}
 	if (!j->dirty) { j->dirty = 1; j->first_ms = now_ms(); }
-	return 0;
-}
-
-static int abs_path(const char *path, char *out)
-{
-	char dir[PATH_MAX], base[PATH_MAX], d[PATH_MAX];
-	if (realpath(path, out)) return 0;
-	if (errno != ENOENT || strlen(path) >= PATH_MAX) return -1;
-	/* a new file: its directory exists */
-	strcpy(dir, path);
-	strcpy(base, path);
-	if (!realpath(dirname(dir), d)) return -1;
-	if (snprintf(out, PATH_MAX, "%s/%s", strcmp(d, "/") ? d : "", basename(base)) >= PATH_MAX) {
-		errno = ENAMETOOLONG;
-		return -1;
-	}
 	return 0;
 }
 
@@ -157,21 +137,20 @@ static int replay(const char *b, size_t n, const char *file, Text **t, unsigned 
 int journal_open(const char *path, Journal **jp, Text **t, unsigned *state, FileId *id)
 {
 	Journal *j = calloc(1, sizeof *j);
-	struct stat a, b;
+	long long size;
+	int l;
 	*jp = NULL; *t = NULL;
-	if (!j || abs_path(path, j->file)) goto fail;
+	if (!j || state_abs(path, j->file)) goto fail;
 	for (;;) {
 		j->fd = state_open("journal", j->file, j->name, sizeof j->name, O_RDWR | O_CREAT | O_APPEND);
 		if (j->fd < 0) goto fail;
-		/* a lock, not the file's presence, says another editor is live: a
-		   crashed one's lock went with its process */
-		if (flock(j->fd, LOCK_EX | LOCK_NB)) goto fail_fd;
-		/* the holder before us may have removed the name meanwhile */
-		if (fstat(j->fd, &a) == 0 && stat(j->name, &b) == 0 && a.st_ino == b.st_ino && a.st_dev == b.st_dev) break;
+		if (!(l = state_lock(j->fd, j->name, &size))) break;
+		if (l < 0) goto fail_fd;
 		close(j->fd);
 	}
-	char *buf = malloc((size_t)a.st_size + 1);
-	ssize_t got = buf ? pread(j->fd, buf, (size_t)a.st_size, 0) : -1;
+	/* just opened, so the read starts at 0 */
+	char *buf = malloc((size_t)size + 1);
+	ssize_t got = buf ? read(j->fd, buf, (size_t)size) : -1;
 	if (got < 0) { free(buf); goto fail_fd; }
 	size_t end = 0;
 	int r = replay(buf, (size_t)got, j->file, t, state, id, &end);
@@ -263,7 +242,6 @@ void journal_sync(Journal *j)
 void journal_close(Journal *j)
 {
 	if (!j) return;
-	unlink(j->name);   /* before close: the lock covers the removal */
-	close(j->fd);
+	state_close(j->fd, j->name);   /* removes the name before closing: the lock covers the removal */
 	free(j);
 }

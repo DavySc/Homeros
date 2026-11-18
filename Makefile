@@ -133,10 +133,13 @@ ifneq ($(wildcard src/lsp/u16.c),)
 	grep -qE "Proved goals: +([0-9]+) / \1$$" build/frama-lsp.log
 endif
 
-# the Windows build (package 9): cross-built with zig cc, run under Wine on
-# a virtual X display; src/win/check.sh says how
+# the Windows builds (packages 9 and 11): each package's src/<module>/check.sh
+# cross-builds its tests with zig cc and runs them under Wine (package 9's on
+# a virtual X display); a plant names the one module whose check can catch it
+# (make win WIN=file), so it does not run the others' slow tests too
+WIN = $(patsubst src/%/check.sh,%,$(wildcard src/*/check.sh))
 win:
-	@if [ -f src/win/check.sh ]; then bash src/win/check.sh; else echo "win: no src/win yet"; fi
+	@for m in $(WIN); do echo "win: src/$$m/check.sh"; bash src/$$m/check.sh || exit 1; done
 
 check: compilers test fuzz conform org-conform undo-diff lean frama specs win
 	@echo "check: all passed"
