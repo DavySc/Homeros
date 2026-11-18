@@ -27,7 +27,8 @@
    stray `]` keeps its statement, a bare `@` before `=` takes a space, `}<`
    and `<?` keep their gap, bytes that are not UTF-8 are formatted around
    (SQLDiff refuses the file), and a lone CR ends a `--` comment, as in SQL
-   Server. */
+   Server.  `<<` and `>>` are one operator, as SQL Server 2022 reads them,
+   so `e->>'a'` takes no space (SQLDiff: `e->> 'a'`). */
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -44,7 +45,7 @@ enum { B_NONE, B_UNIT, B_FOOTER, B_CLAUSE };
 
 typedef struct {
 	uint32_t s, e;
-	uint8_t k, w, brk, verb, gapk, kw;   /* w: the word (W_*), looked up once */
+	uint8_t k, w, rc, brk, verb, gapk, kw;   /* w: the word (W_*), rc: SQLDiff recases it */
 	int32_t level, depth, top;
 } Tok;
 
@@ -75,75 +76,43 @@ static int oom;
 
 /* ---- words the parser and the layout look at ---- */
 
-enum { W_NONE, W_AFTER, W_ALL, W_ALTER, W_AND, W_APPLY, W_AS, W_BEFORE, W_BEGIN, W_BREAK, W_BULK, W_BY, W_CASE,
-       W_CATCH, W_CLOSE, W_COMMIT, W_CONTINUE, W_CONVERSATION, W_CREATE, W_CROSS, W_DEALLOCATE, W_DECLARE,
-       W_DEFAULT, W_DELETE, W_DENY, W_DIALOG, W_DISTINCT, W_DISTRIBUTED, W_DROP, W_ELSE, W_END, W_EXCEPT,
-       W_EXEC, W_EXECUTE, W_FETCH, W_FOR, W_FROM, W_FULL, W_FUNCTION, W_GOTO, W_GRANT, W_GROUP, W_HASH,
-       W_HAVING, W_IF, W_INNER, W_INSERT, W_INSTEAD, W_INTERSECT, W_JOIN, W_LEFT, W_LIMIT, W_LOOP,
-       W_MATERIALIZED, W_MERGE, W_NATURAL, W_NOT, W_OF, W_OFFSET, W_ON, W_OPEN, W_OR, W_ORDER, W_OUTER,
-       W_OUTPUT, W_PRINT, W_PROC, W_PROCEDURE, W_RAISERROR, W_RECURSIVE, W_REMOTE, W_REPLACE, W_RETURN,
-       W_RETURNING, W_RETURNS, W_REVOKE, W_RIGHT, W_ROLLBACK, W_ROW, W_ROWS, W_SAVE, W_SELECT, W_SET,
-       W_TEMP, W_TEMPORARY, W_THEN, W_THROW, W_TRAN, W_TRANSACTION, W_TRIGGER, W_TRUNCATE, W_TRY, W_UNION,
-       W_UPDATE, W_USE, W_USING, W_VALUES, W_VIEW, W_WAITFOR, W_WHEN, W_WHERE, W_WHILE, W_WITH };
-static const char *const wname[] = { "", "after", "all", "alter", "and", "apply", "as", "before", "begin",
-	"break", "bulk", "by", "case", "catch", "close", "commit", "continue", "conversation", "create", "cross",
-	"deallocate", "declare", "default", "delete", "deny", "dialog", "distinct", "distributed", "drop", "else",
-	"end", "except", "exec", "execute", "fetch", "for", "from", "full", "function", "goto", "grant", "group",
-	"hash", "having", "if", "inner", "insert", "instead", "intersect", "join", "left", "limit", "loop",
-	"materialized", "merge", "natural", "not", "of", "offset", "on", "open", "or", "order", "outer", "output",
-	"print", "proc", "procedure", "raiserror", "recursive", "remote", "replace", "return", "returning",
-	"returns", "revoke", "right", "rollback", "row", "rows", "save", "select", "set", "temp", "temporary",
-	"then", "throw", "tran", "transaction", "trigger", "truncate", "try", "union", "update", "use", "using",
-	"values", "view", "waitfor", "when", "where", "while", "with" };
-enum { NW = sizeof wname / sizeof *wname };
+/* Their W_* numbers; package 12's word table gives each word an id, and
+   wmap takes an id to its W_* (W_NONE for the words the layout ignores). */
+#define WORDS \
+	X(AFTER) X(ALL) X(ALTER) X(AND) X(APPLY) X(AS) X(BEFORE) X(BEGIN) X(BREAK) X(BULK) X(BY) X(CASE) X(CATCH) \
+	X(CLOSE) X(COMMIT) X(CONTINUE) X(CONVERSATION) X(CREATE) X(CROSS) X(DEALLOCATE) X(DECLARE) X(DEFAULT) \
+	X(DELETE) X(DENY) X(DIALOG) X(DISTINCT) X(DISTRIBUTED) X(DROP) X(ELSE) X(END) X(EXCEPT) X(EXEC) X(EXECUTE) \
+	X(FETCH) X(FOR) X(FROM) X(FULL) X(FUNCTION) X(GOTO) X(GRANT) X(GROUP) X(HASH) X(HAVING) X(IF) X(INNER) \
+	X(INSERT) X(INSTEAD) X(INTERSECT) X(JOIN) X(LEFT) X(LIMIT) X(LOOP) X(MATERIALIZED) X(MERGE) X(NATURAL) \
+	X(NOT) X(OF) X(OFFSET) X(ON) X(OPEN) X(OR) X(ORDER) X(OUTER) X(OUTPUT) X(PRINT) X(PROC) X(PROCEDURE) \
+	X(RAISERROR) X(RECURSIVE) X(REMOTE) X(REPLACE) X(RETURN) X(RETURNING) X(RETURNS) X(REVOKE) X(RIGHT) \
+	X(ROLLBACK) X(ROW) X(ROWS) X(SAVE) X(SELECT) X(SET) X(TEMP) X(TEMPORARY) X(THEN) X(THROW) X(TRAN) \
+	X(TRANSACTION) X(TRIGGER) X(TRUNCATE) X(TRY) X(UNION) X(UPDATE) X(USE) X(USING) X(VALUES) X(VIEW) X(WAITFOR) \
+	X(WHEN) X(WHERE) X(WHILE) X(WITH)
+#define X(w) W_##w,
+enum { W_NONE, WORDS NW };
+#undef X
+static uint8_t *wmap;
 
 static int word_of(const Pass *p, size_t i) { return p->t[i].w; }
 
-static int lookup(const char *s, size_t n)
+/* once: tsql_word reads any case, so the names are the enum's */
+static int words(void)
 {
-	char w[16];
-	if (n >= sizeof w) return W_NONE;
-	for (size_t j = 0; j < n; j++) {
-		char c = s[j];
-		w[j] = c >= 'A' && c <= 'Z' ? (char)(c + 32) : c;
-	}
-	w[n] = 0;
-	size_t lo = 1, hi = NW;
-	while (lo < hi) {
-		size_t m = lo + (hi - lo) / 2;
-		int c = strcmp(wname[m], w);
-		if (!c) return (int)m;
-		if (c < 0) lo = m + 1;
-		else hi = m;
-	}
-	return W_NONE;
+	if (wmap) return 1;
+	if (!(wmap = calloc(tsql_nwords + 1, 1))) return 0;
+#define X(w) #w,
+	static const char *const name[] = { WORDS };
+#undef X
+	for (size_t i = 0, id; i < NW - 1; i++)
+		if (tsql_word(name[i], strlen(name[i]), &id), id) wmap[id] = (uint8_t)(i + 1);
+	return 1;
 }
 
 /* ---- lexing: package 12's tokens in SQLDiff's kinds ---- */
 
 /* a gap the layout may rewrite holds only these */
 static int blank(char c) { return c == ' ' || c == '\t' || c == '\r' || c == '\n'; }
-
-/* whether an unclosed string, name or comment runs to the end (SQLDiff
-   reports it, so its statement is kept as written) */
-static int closed(const char *s, size_t n, int k)
-{
-	if (k == BCOMMENT) {
-		size_t d = 0;
-		for (size_t i = 0; i + 1 < n; i++)
-			if (s[i] == '/' && s[i + 1] == '*') d++, i++;
-			else if (s[i] == '*' && s[i + 1] == '/' && !--d) return i + 2 == n;
-		return 0;
-	}
-	if (k == STRING || k == QUOTED) {
-		size_t i = (s[0] == 'N' || s[0] == 'n') && k == STRING;
-		char e = s[i] == '[' ? ']' : s[i];
-		for (i++; i < n; i++)
-			if (s[i] == e && !(i + 1 < n && s[++i] == e)) return 1;
-		return 0;
-	}
-	return 1;
-}
 
 /* GO [count] alone on its line, before a line break, the end or a `--` */
 static size_t go_end(const char *s, size_t len, size_t a, size_t e)
@@ -198,8 +167,12 @@ static void lex(Pass *p, const Text *t)
 			if (g) k = GO, end = g;
 		}
 		if (!GROW(p->t, p->n, p->cap)) { oom = 1; return; }
-		p->t[p->n++] = (Tok){ (uint32_t)pos, (uint32_t)end, (uint8_t)k, (uint8_t)(k == WORD ? lookup(s, n) : W_NONE), 0, 0, 0, 0, 0, 0, -1 };
-		if (k == ERR || !closed(s, n, k)) diag(p, pos);
+		size_t id = 0;
+		int rc = k == WORD && tsql_word(s, n, &id) & TQ_RECASE;
+		p->t[p->n++] = (Tok){ (uint32_t)pos, (uint32_t)end, (uint8_t)k, wmap[id], (uint8_t)rc, 0, 0, 0, 0, 0, 0, -1 };
+		/* an unclosed string, name or comment: SQLDiff reports it, so its
+		   statement is kept as written */
+		if (k == ERR || r.open) diag(p, pos);
 	}
 }
 
@@ -782,7 +755,7 @@ static void keywords(void)
 			ok = c->e < t->s && prev2 >= 0 && (P->t[prev2].k == WORD || P->t[prev2].k == QUOTED) && P->t[prev2].e == c->s;
 		}
 		for (size_t j = t->s; ok && j < t->e; j++) ok = (unsigned char)P->src[j] < 0x80;
-		if (ok) t->kw = (tsql_word(P->src + t->s, t->e - t->s) & TQ_RECASE) != 0;
+		t->kw = ok && t->rc;
 		prev2 = prev, prev = (int)k;
 	}
 }
@@ -791,6 +764,7 @@ static int layout(Pass *p, const Text *t)
 {
 	oom = 0;
 	p->ntops = 0;
+	if (!words()) return -1;
 	lex(p, t);
 	parse(p);
 	depth_ = base_ = 0, top_ = -1;
