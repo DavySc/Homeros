@@ -399,7 +399,7 @@ void syntax_edit(Syntax *s, const Text *t, size_t pos, size_t ndel, const char *
 {
 	if (!s) return;
 	if (s->sql) {
-		tsql_edit(s->sql, t, pos);
+		tsql_edit(s->sql, t, pos, ndel, nins);
 		return;
 	}
 	s->dirty = 1;
@@ -799,10 +799,7 @@ static int parse(Syntax *s, LTree *L, const Text *t)
 int syntax_update(Syntax *s, const Text *t, int (*stop)(void))
 {
 	if (!s) return 0;
-	if (s->sql) {
-		tsql_update(s->sql);
-		return 0;
-	}
+	if (s->sql) return tsql_update(s->sql, stop);
 	/* the trees the last parse replaced, freed in steps (release.c) */
 	while (syntax_release(NULL, stop ? RELEASE_STEP : UINT32_MAX))
 		if (stop()) return 2;
