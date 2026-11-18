@@ -129,6 +129,17 @@ The editor process never waits on a server, a file or the webview: it reacts to 
 
 **Why no threads.** Every part above fits in a loop that blocks in `poll`, and the slow work (type checking, parsing big projects) already runs in other processes. A thread would add locking for no measured gain. If tree-sitter parsing of a large file breaks the frame budget, that is the first place to revisit, with a measurement. That measurement came (review of package 12, reviews/package-12-review.md, **measured**, 5 runs of 200 to 460 keys per file on a machine about 1.5 times slower than the author's): syntax's own share of a key stays under 2 ms p99 for C and Lua, but `syntax_faces` alone takes the 2 ms budget on Markdown (DESIGN.md as the test file); tree-sitter's reparse runs without asking `stop` for a median 0.87 to 1.01 ms and up to 6.3 ms on coding.c (p99 2.1 to 3.0), the first parse of a 1 MB C file 21 to 28 ms, and the first use of a language compiles its queries in 9 to 23 ms. A key that arrives in such a stretch waits for it. **Decision (Davy, 2026-11-17): keep one thread, no threads.** Do not reopen this; the open Markdown cost is closed by a faster path or by a measurement on Davy's machine before the phase 0 gate.
 
+**The one exception: the debugger's engine thread (Davy, 2026-11-18).** "I might be willing to relax the no thread rule so long as we do it in a way that limits the concerns we had about multi threading", then "Agreed" to these rules (the debugger research, project files `raddbg-kb/09-homeros-fit.md`). The reason: `waitpid` and `WaitForDebugEvent` block, and Windows delivers a process's debug events only to the thread that started debugging it. It covers the debugger and nothing else:
+
+1. One thread, for the debug engine only, alive only while a debug session is open. No pool, no thread for anything else.
+2. The two sides share no memory both can write: two queues, commands in and events out, are the only locked code.
+3. The engine wakes the editor through the event loop (a pipe or eventfd on Linux, a posted message on Windows, `LOOP_MSGQ`).
+4. Editor code never calls engine code and engine code never calls editor code: separate directories, enforced by a check in `make check` with a plant.
+5. The engine owns what it touches (the target, its debug info, its caches); the editor gets copies in events, or read-only data never freed while a reader holds it.
+6. The queue protocol is modelled in TLA+ before it is written, and its tests run under ThreadSanitizer as well as ASan and UBSan.
+
+Accepted cost: an engine crash takes the editor down; debug-info converters stay separate processes, and the journal keeps unsaved text.
+
 **Why the editor draws its own window.** You asked for a window by default, with the same experience on Windows and Linux. Three routes were possible: a toolkit (GTK, Qt), a portability layer (SDL3, GLFW), or a thin backend per system with shared drawing code. A toolkit fails the minimalism rule outright. SDL3 was built and measured against a raw Wayland client doing the same job (gui/ in the project files, weston headless, 200 keystrokes, 3 runs each; the reviewer's reruns in brackets):
 
 |  | SDL3 + SDL3\_ttf | Raw Wayland + FreeType |

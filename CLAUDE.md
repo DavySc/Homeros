@@ -32,7 +32,7 @@ Prefer copying the behaviour of a reference editor (Neovim 0.12 first; Helix, Em
 
 - C17, gcc and clang, `-Wall -Wextra -Werror`. ASan and UBSan on every test run.
 - Kernels (UTF-8, graphemes, UTF-16, and what DESIGN.md lists) carry Frama-C contracts that state the result, not only bounds. No bit tricks in proved code: write comparisons, so the provers finish.
-- No allocation in the redraw path after first use (buffers grow to the largest frame, then stay). No threads (one event loop). Draw only after the compositor's frame callback.
+- No allocation in the redraw path after first use (buffers grow to the largest frame, then stay). No threads (one event loop); the only exception is the debugger's engine thread, under the six rules in DESIGN.md ("The one exception"). Draw only after the compositor's frame callback.
 - Behaviour that copies Neovim is tested against `nvim --headless` (with `swapfile` off) on random input (`tools/conform.py`); undo against `design/ref/undo/undo_diff.py`.
 - Comments say why, not what. Where a rule copies a Neovim function, the comment names it.
 
