@@ -1,0 +1,167 @@
+C 30 40
+F 090120666f6f20e6bca2e5ad97207f207a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a0a206162e6bca20a20207f207820616161616161616161616161616161616161616161616161616161616161206162e6bca220780ae6bca220e6bca220666f6f0a206162e6bca220c3a920206162e6bca220e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a79220cebb780a207a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a20f09f98800a20
+T 2C-d
+T wrap
+T k:oa<CR>b<CR>c<Esc>
+T k:Onew line<Esc>
+P
+S 1           ^A foo 漢字 ^? zzzzzzzzzzzzz
+S   1  ab漢
+S   2   ^? x aaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+S   3 漢 漢 foo
+S   4  ab漢 é  ab漢 全角全角全角全角全角全
+S   5  zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S   6
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S f0                    1,1-8          All
+S 
+M - - -
+P
+S   2         ^A foo 漢字 ^? zzzzzzzzzzzzz
+R
+S 3     ^? x aaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+S   1 漢 漢 foo
+S   2  ab漢 é  ab漢 全角全角全角全角全角全
+S   3  zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S   4
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S f0                    3,7-8          All
+R
+M - - -
+P
+R
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S   1  ab漢
+S 3     ^? x aaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+S     a ab漢 x
+S   1 漢 漢 foo
+S   2  ab漢 é  ab漢 全角全角全角全角全角全
+S     角全角全角全角全角全角全角全角全角全
+S     角全角全角全角全角全角 λx
+S   3  zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzz 😀
+S   4
+R
+R
+R
+S :set wrap
+M - - -
+P
+S   5         ^A foo 漢字 ^? zzzzzzzzzzzzz
+R
+R
+R
+R
+R
+R
+R
+R
+S   4  ab漢
+S   3   ^? x aaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+R
+S   2   a
+S   1   b
+S 6     c
+S   1 漢 漢 foo
+S   2  ab漢 é  ab漢 全角全角全角全角全角全
+S     角全角全角全角全角全角全角全角全角全
+S     角全角全角全角全角全角 λx
+S   3  zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+R
+R
+R
+R
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzz 😀
+S f0 [+]                6,3            Top
+S 
+M - - -
+P
+S   4  ab漢
+S   3   ^? x aaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+S     a ab漢 x
+S   2   a
+S   1   b
+S 6     new line
+S   1   c
+S   2 漢 漢 foo
+S   3  ab漢 é  ab漢 全角全角全角全角全角全
+S     角全角全角全角全角全角全角全角全角全
+S     角全角全角全角全角全角 λx
+S   4  zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzz 😀
+S   5
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S f0 [+]                6,10           Bot
+R
+M - - -
+E

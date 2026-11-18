@@ -1,0 +1,103 @@
+C 30 80
+F 0120e18390207a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a202820c3a9202c20666f6f20292e0a096261725f31207f207a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a0ac3a9207820282028207f202020e1839020206162e6bca20a202020206161616161616161616161616161616161616161616161616161616161610a0a0a292e20cebb78202d2d206c6f6e676572776f726420cebb78202d2d200920666f6f20292e0a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a20cebb7820e6bca20a090af09f98800a6c6f6e676572776f7264202c20012001206c6f6e676572776f7264207a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a2020292e207f0ae585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a79220c3a9202c20cebb78200920c3a9207a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a206261725f3120e1839020e183900ae6bca220f09f98800a20202020616161616161616161616161616161616161616161616161616161616161202c200120e18390206261725f31206261725f31202c0a202020200120cebb782020e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792206161616161616161616161616161616161616161616161616161616161610a6162e6bca20a09e18390206261725f31207f0acebb78202c202d2d206c6f6e676572776f7264200920666f6f20e1839020e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a7920a0a0a20202020e1839020090a6261725f31206261725f3120c3a90a78202d2d202d2d202c20e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a7920a0a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a20e6bca2202c0a7f0a6162e6bca2207a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a20cebb78206261725f3120616161616161616161616161616161616161616161616161616161616161202820cebb782009206261725f3120f09f988020e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a79220f09f9880
+F 
+F 
+T 3L
+T sp
+P
+S 1   ^A ა zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S   1         bar_1 ^? zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S   2 é x ( ( ^?   ა  ab漢
+S   3     aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+S   4
+S   5
+S   6 ). λx -- longerword λx --        foo ).
+S   7 zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S   8
+S   9 😀
+S  10 longerword , ^A ^A longerword zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S  11 全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角
+S  12 漢 😀
+S  13     aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa , ^A ა bar_1 bar_1 ,
+S  14     ^A λx  全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角>
+S  15 ab漢
+S  16         ა bar_1 ^?
+S  17 λx , -- longerword       foo ა 全角全角全角全角全角全角全角全角全角全角全角>
+S  18
+S  19
+S  20     ა
+S  21 bar_1 bar_1 é
+S  22 x -- -- , 全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全
+S  23
+S  24 zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S  25 ^?
+S  26 ab漢 zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S ~
+S f0                                                            1,1            All
+S 
+M - - -
+P
+S  24 ^A ა zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S  23         bar_1 ^? zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S  22 é x ( ( ^?   ა  ab漢
+S  21     aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+S  20
+S  19
+S  18 ). λx -- longerword λx --        foo ).
+S  17 zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S  16
+S  15 😀
+S  14 longerword , ^A ^A longerword zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S  13 全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角
+R
+S  11     aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa , ^A ა bar_1 bar_1 ,
+S  10     ^A λx  全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角>
+S   9 ab漢
+S   8         ა bar_1 ^?
+S   7 λx , -- longerword       foo ა 全角全角全角全角全角全角全角全角全角全角全角>
+S   6
+S   5
+S   4     ა
+S   3 bar_1 bar_1 é
+S   2 x -- -- , 全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全
+S   1
+S 25  zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S   1 ^?
+S   2 ab漢 zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+R
+S f0                                                            25,1           All
+R
+M - - -
+P
+S  11     aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa , ^A ა bar_1 bar_1 ,
+S  10     ^A λx  全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角>
+S   9 ab漢
+S   8         ა bar_1 ^?
+S   7 λx , -- longerword       foo ა 全角全角全角全角全角全角全角全角全角全角全角>
+S   6
+S   5
+S   4     ა
+S   3 bar_1 bar_1 é
+S   2 x -- -- , 全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全
+S   1
+S 25  zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S   1 ^?
+S f0                                                            25,1           92%
+S  11     aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa , ^A ა bar_1 bar_1 ,
+S  10     ^A λx  全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角>
+S   9 ab漢
+S   8         ა bar_1 ^?
+S   7 λx , -- longerword       foo ა 全角全角全角全角全角全角全角全角全角全角全角>
+S   6
+S   5
+S   4     ა
+S   3 bar_1 bar_1 é
+S   2 x -- -- , 全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全
+S   1
+S 25  zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S   1 ^?
+S   2 ab漢 zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S f0                                                            25,1           Bot
+S :sp
+M - - -
+E

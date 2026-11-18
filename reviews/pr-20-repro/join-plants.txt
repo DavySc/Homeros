@@ -1,0 +1,3 @@
+review5: core_mark_join does not mark the next edit as a join (recorded key traces)~test TESTS=~~src/core/core.c~	if (line_amount) join_next = b;~	(void)0;
+review5: core_mark_join does not mark the next edit as a join (live nvim)~conform CONFORM_N=2000 SEED=1794930960~~src/core/core.c~	if (line_amount) join_next = b;~	(void)0;
+review5: core_mark_join does nothing (recorded key traces)~test TESTS=~~src/core/core.c~	if (!col_amount && !line_amount) return;~	if (1) return;

@@ -1,0 +1,93 @@
+C 15 20
+F 097f20c3a9206162e6bca2
+F 
+T k:Ayyyyyyyyyyyyyyyyyyyyyyyyyyy<Esc>
+T vs
+T vs
+T k:0
+P
+S 1           ^? é ab>
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S < 1,1-8          All
+S 
+M - - -
+P
+S 1   yyyyyyyyyyyyyyy
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S < 1,38-44        All
+R
+M - - -
+P
+S 1│1   yyyyyyyyyyyyyy
+S ~│~
+S ~│~
+S ~│~
+S ~│~
+S ~│~
+S ~│~
+S ~│~
+S ~│~
+S ~│~
+S ~│~
+S ~│~
+S ~│~
+S < <,38-44        All
+S :vs
+M - - -
+P
+S 1│1│1   yyyyyyyyyyyy
+S ~│~│~
+S ~│~│~
+S ~│~│~
+S ~│~│~
+S ~│~│~
+S ~│~│~
+S ~│~│~
+S ~│~│~
+S ~│~│~
+S ~│~│~
+S ~│~│~
+S ~│~│~
+S < < <8-44        All
+R
+M - - -
+P
+S 1│1│1          ^? é
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S < < <-8          All
+R
+M - - -
+E
