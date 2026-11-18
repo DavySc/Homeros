@@ -644,8 +644,9 @@ static int blank(const Cell *x) { return x->len == 1 && x->ch[0] == ' '; }
    splits runs by font only).  A glyph wider than its cell (73 of Mathlib's
    295 symbols, reviews/package-7.md) spills into the blank cells after it,
    as foot's overflowing glyphs do, and a ligature's glyph ("->", JetBrains
-   Mono's " /\ ") reaches back over its run's cells, as in foot and kitty;
-   span keeps both inside lo..hi. */
+   Mono's " /\ ") reaches back over its word, as in foot and kitty.  A glyph
+   is cut at its word's start, which span never splits, so a partial redraw
+   draws what a whole one does. */
 static void draw_span(uint32_t *px, const Grid *g, int r, int lo, int hi)
 {
 	static unsigned char s[ROW];
@@ -654,6 +655,7 @@ static void draw_span(uint32_t *px, const Grid *g, int r, int lo, int hi)
 	const Cell *x = &g->c[r * g->cols];
 	int y0 = r * cell_h, ye = y0 + cell_h, n = 0;
 	uint32_t fg, bg;
+	if (lo) { s[n] = ' '; col[n++] = (unsigned short)(lo - 1); }   /* span starts after a blank: shape with it, as a whole row */
 	for (int c = lo; c < hi; c++) {
 		if (!x[c].len) continue;   /* right half: drawn with its left half */
 		int w = c + 1 < g->cols && !x[c + 1].len ? 2 : 1;
@@ -670,7 +672,9 @@ static void draw_span(uint32_t *px, const Grid *g, int r, int lo, int hi)
 		while (e < hi && (!x[e].len || blank(&x[e]))) e++;
 		colours(g, r, c, &fg, &bg);
 		int gx = c * cell_w + pl[i].x + gl->left, gy = y0 + cell_b - pl[i].y - gl->top, xe = e * cell_w;
-		int ax = gx < lo * cell_w ? lo * cell_w - gx : 0, zx = gx + gl->w > xe ? xe - gx : gl->w;
+		int w = c;
+		while (w > 0 && !blank(&x[w - 1])) w--;
+		int ax = gx < w * cell_w ? w * cell_w - gx : 0, zx = gx + gl->w > xe ? xe - gx : gl->w;
 		int ay = gy < y0 ? y0 - gy : 0, zy = gy + gl->h > ye ? ye - gy : gl->h;
 		for (int y = ay; y < zy; y++) {
 			uint32_t *p = px + (gy + y) * bw + gx;

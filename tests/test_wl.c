@@ -313,6 +313,26 @@ static void test_sway(void)
 		cmd("grim -t ppm %s/2.ppm && cmp -s %s/1.ppm %s/2.ppm", dir);
 	}
 
+	/* a row changed to or from a glyph that reaches left (↔ starts left of
+	   its cell; " /\ " joins only with the blank before it, which a
+	   partial redraw starts after) looks as a whole redraw draws it (the
+	   review of PR 68); each old row is presented three times, so both
+	   buffers hold it */
+	static const char *const lig[][2] = { { " ↔", " a" }, { " a", " ↔" }, { " ⇔ b", " a b" }, { "x ↔", "x a" }, { "x /\\", "x /\\ y" } };
+	for (int i = 0; i < 5; i++) {
+		char a[64], b[64];
+		snprintf(a, sizeof a, "%-24s", lig[i][0]);
+		snprintf(b, sizeof b, "%-24s", lig[i][1]);
+		grid_puts(&g, 3, 0, a, ATTR_NONE);
+		for (int k = 0; k < 3; k++) show();
+		grid_puts(&g, 3, 0, b, ATTR_NONE);
+		show();
+		cmd("grim -t ppm %s/1.ppm # %s", dir);
+		grid_free(&shown);
+		show();
+		cmd("grim -t ppm %s/2.ppm && cmp -s %s/1.ppm %s/2.ppm", dir);
+	}
+
 	/* a symbol wider than its cell (⟹; 73 of Mathlib's 295 are) spills into
 	   the space after it rather than being cut at its cell */
 	grid_clear(&g);
