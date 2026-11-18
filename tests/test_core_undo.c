@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include "check.h"
 #include "core.h"
+#include "undo.h"
 
 static char path[] = "/tmp/core_undoXXXXXX";
 
@@ -123,6 +124,37 @@ int main(void)
 	for (int g = 1100; core_undo(&e, 0) >= 0; g--, undone++)
 		CHECK(e.buf->mark[0].set && e.buf->mark[0].col == (size_t)col[g]);
 	CHECK(undone >= 1000);
+	core_free(&e);
+	/* op_delete() over lines from the middle of one: del_lines() puts
+	   '< on the last line (ONE_ADJUST_NODEL) and do_join() joins it to
+	   the start line after start.col bytes; undo brings back the '< from
+	   before the join, also in a group u_save_cursor() opened.  nvim:
+	   "abc def\nxyz uvw\nfoo bar\nbar baz\nqq\n", j w l v Esc k l d5w,
+	   then getpos("'<") is 1,12, and after u it is 2,6 */
+	load(&e, "abc def\nxyz uvw\nfoo bar\nbar baz\nqq\n");
+	e.buf->mark[MARK_LT] = e.buf->mark[MARK_GT] = (Mark){ 1, 5, 1 };
+	undo_close(e.buf->undo);
+	e.win->col = 6;
+	{
+		UndoCursor c = { 0, 6, e.buf->flags };   /* the keys' u_save_cursor() */
+		CHECK(!undo_record(e.buf->undo, 0, "", 0, "", 0, c, e.buf->flags));
+	}
+	core_mark_join(&e, 2, 0, -2, 6, 0);
+	CHECK(!core_edit(&e, 6, core_line_start(&e, 2) + core_line_len(&e, 2) - 6, "", 0));
+	undo_close(e.buf->undo);
+	CHECK(core_lines(&e) == 3 && e.buf->mark[MARK_LT].line == 0 && e.buf->mark[MARK_LT].col == 11);
+	CHECK(core_undo(&e, 0) >= 0 && e.buf->mark[MARK_LT].line == 1 && e.buf->mark[MARK_LT].col == 5);
+	core_free(&e);
+	/* J: undo brings back the '< from before do_join()'s mark_col_adjust().
+	   nvim: "ab\ncd\nef\n", j l v Esc k J u, then getpos("'<") is 2,2 */
+	load(&e, "ab\ncd\nef\n");
+	e.buf->mark[MARK_LT] = e.buf->mark[MARK_GT] = (Mark){ 1, 1, 1 };
+	undo_close(e.buf->undo);
+	core_mark_join(&e, 1, 0, -1, 3, 0);
+	CHECK(!core_edit(&e, 2, 1, " ", 1));
+	undo_close(e.buf->undo);
+	CHECK(e.buf->mark[MARK_LT].line == 0 && e.buf->mark[MARK_LT].col == 4);
+	CHECK(core_undo(&e, 0) >= 0 && e.buf->mark[MARK_LT].line == 1 && e.buf->mark[MARK_LT].col == 1);
 	core_free(&e);
 	unlink(path);
 	printf("test_core_undo: ok\n");
