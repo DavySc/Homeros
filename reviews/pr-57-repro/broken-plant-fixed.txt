@@ -1,0 +1,1 @@
+tty: a face's background not sent (text fixed)~test TESTS=grid_diff~~src/tty/tty.c~	if (b->style & FACE_BG) n +=~	if (0) n +=

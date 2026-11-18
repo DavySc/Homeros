@@ -1,2 +1,0 @@
-wine: created the configuration directory '/home/claude/review57/pr-57-repro/prefix'
-X connection to :99 broken (explicit kill or server shutdown).
