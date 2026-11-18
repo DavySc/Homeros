@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+"""Records render-markdown's headings for tests/test_core_markdown.c.
+usage: RM_RTP=render-markdown.nvim:catppuccin-nvim test_core_markdown.py N SEED > FILE
+(the checked-in file: N 1000, SEED 1)
+Makes N random Markdown files (f.md, and g.md for a second buffer) and
+commands (T: k:keys, wrap, sp, vs, w:<c> for CTRL-W <c>, e:file, visual),
+runs each in a 50x20 tmux in Neovim with tests/test_core_markdown.lua
+(render-markdown has no headless output: what it draws is only on a screen)
+and writes, per case, the files' lines (L, M), the commands, the cursor (X)
+and the rows but the command line: their text, their background (a letter
+per heading level, '.' otherwise) and their foreground (the same for the
+rainbow colours of headings; blanks '.').  Needs nvim 0.12, tmux and python's pyte."""
+import os, random, subprocess, sys, time, pyte, concurrent.futures
+N, SEED = int(sys.argv[1]), int(sys.argv[2])
+W, H = 50, 20
+INIT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'test_core_markdown.lua')
+# catppuccin's RenderMarkdownH1Bg..H6Bg and rainbow1..6, as ref/theme.c
+BG = {'32283a': 'R', '332c36': 'P', '33313a': 'Y', '2b3139': 'G', '262e40': 'S', '2c2d42': 'L'}
+FG = {'f38ba8': 'r', 'fab387': 'p', 'f9e2af': 'y', 'a6e3a1': 'g', '74c7ec': 's', 'b4befe': 'l'}
+WORDS = ['foo', 'bar', '`code`', '[link](u)', '*em*', '**strong**', '漢字', 'x' * 60, '#', '##', '\t', 'é', '<b>', '\\#']
+
+def line(r):
+    k = r.random()
+    if k < 0.45:   # headings and near misses: indent, containers, 7 '#', no blank, closing '#'
+        # (22 '> ' put the marker at the window's edge)
+        ind = r.choice(['', '', '', ' ', '  ', '   ', '    ', '> ', '- ', '1. ', '> > ', '> ' * 22, '%d%s ' % (r.randint(1, 20), r.choice('.)')), '  %d. ' % r.randint(7, 9)])
+        after = r.choice([' ', ' ', ' ', '\t', '', 'x', '  '])
+        tail = ' '.join(r.choice(WORDS) for _ in range(r.randint(0, 4)))
+        return ind + '#' * r.choice([1, 1, 2, 2, 3, 4, 5, 6, 7]) + after + tail + r.choice(['', '', ' #', ' ###', '#'])
+    if k < 0.75: return ' '.join(r.choice(WORDS) for _ in range(r.randint(1, 6)))
+    if k < 0.85: return ''
+    if k < 0.9: return r.choice(['```', '```c', '~~~'])
+    # a setext heading whose text starts with an inline face, then '#'
+    if k < 0.94: return '## ' + ' '.join(['x' * 60] * 10)   # taller than a window: skipcol
+    if k < 0.97: return r.choice(['\\#', '`c`', '*em*']) + ' # ' + r.choice(WORDS) + '\n' + r.choice(['===', '---'])
+    # setext underlines, so a paragraph starting with '#' gets a heading face
+    # (not drawn here yet, nor by the .lua's render-markdown)
+    return r.choice(['- item', '> quote', '    indented code # x', '<!-- # c -->', '===', '---'])
+
+def nvkeys(t):
+    if t.startswith('k:'): return t[2:]
+    if t in ('wrap', 'sp', 'vs'): return ':set wrap\r' if t == 'wrap' else ':%s\r' % t
+    if t.startswith('w:'): return '\x17' + t[2]
+    if t.startswith('e:'): return ':e %s\r' % t[2:]
+    return 'v'   # visual
+
+def case(i):
+    r = random.Random(SEED * 100000 + i)
+    lines = [x for _ in range(r.randint(3, 14)) for x in line(r).split('\n')]
+    other = [x for _ in range(r.randint(3, 8)) for x in line(r).split('\n')]
+    n = len(lines)
+    # commands: 'wrap'; a split, its cursor line, and maybe another buffer
+    # in it (with a CTRL-W there and back: after ':e' render-markdown keeps
+    # the old window's cursor line raw until it is entered again); then a
+    # cursor line and the mode: normal, insert, command line, visual or
+    # the line's end (a long line scrolls the window sideways)
+    # '0' first: Neovim opens a file on line 1's first non-blank, the core
+    # on column 0 (package 4's, not drawing's)
+    toks = ['k:0'] + (['wrap'] if r.random() < 0.5 else [])
+    if r.random() < 0.5:
+        # (the line's end in one window scrolls it sideways, or with wrap
+        # shows a long line from skipcol, while the other is current)
+        toks += [r.choice(['sp', 'vs']), 'k:%dG%s' % (r.randint(1, n), r.choice(['', '$']))]
+        if r.random() < 0.4: toks += ['e:g.md', 'w:w', 'w:w', 'k:%dG%s' % (r.randint(1, len(other)), r.choice(['', '$']))]
+        if r.random() < 0.5: toks += ['w:w']
+    toks += ['k:%dG' % r.randint(1, n)] if toks[-1] != 'w:w' or r.random() < 0.5 else []
+    mode = r.choice(['', '', '', 'k:i', 'k::', 'k:$', 'visual'])
+    toks += [mode] if mode else []
+    d = '/tmp/rm%d_%d' % (os.getpid(), i)
+    os.makedirs(d, exist_ok=True)
+    open(d + '/f.md', 'w').write('\n'.join(lines) + '\n')
+    open(d + '/g.md', 'w').write('\n'.join(other) + '\n')
+    tm = lambda *a: subprocess.run(['tmux', '-L', 'rm%d' % i, *a], capture_output=True, text=True).stdout
+    tm('kill-server')
+    tm('new-session', '-d', '-x', str(W), '-y', str(H), '-c', d, 'nvim -u %s f.md' % INIT)
+    time.sleep(1.2)
+    # a command at a time, once render-markdown has drawn after the last:
+    # it redraws on a mode change but not on entering the command line, so
+    # a ':' typed within its debounce (100 ms) shows the cursor line rendered
+    for t in toks:
+        tm('send-keys', '-l', nvkeys(t))
+        time.sleep(0.5)
+    time.sleep(1.0)   # Neovim parses the inline grammar of the lines in view late
+    # CTRL-L where it only redraws: Neovim leaves windows it has no reason
+    # to redraw stale (an extmark visual mode took away still shows)
+    if mode not in ('k:i', 'k::'):
+        tm('send-keys', '-l', '\x0c')
+        time.sleep(0.5)
+    raw = tm('capture-pane', '-e', '-p', '-N')
+    cur = tm('display-message', '-p', '#{cursor_y} #{cursor_x}').strip()
+    tm('kill-server')
+    scr = pyte.Screen(W, H)
+    pyte.Stream(scr).feed(raw.rstrip('\n').replace('\n', '\r\n'))
+    out = ['C %d %d' % (H, W)] + ['L ' + l for l in lines] + ['M ' + l for l in other] + ['T ' + t for t in toks] + ['X ' + cur]
+    for y in range(H - 1):   # not the command line
+        row = scr.buffer[y]
+        out.append('S ' + ''.join(row[x].data for x in range(W)))
+        out.append('B ' + ''.join(BG.get(row[x].bg, '.') for x in range(W)))
+        # a blank's foreground does not show (and Neovim may not send one)
+        out.append('F ' + ''.join('.' if row[x].data == ' ' else FG.get(row[x].fg, '.') for x in range(W)))
+    return '\n'.join(out + ['E'])
+
+with concurrent.futures.ThreadPoolExecutor(4) as ex:
+    for c in ex.map(case, range(N)): print(c)

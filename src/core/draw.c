@@ -39,6 +39,14 @@ static void wputs(Grid *g, const Win *w, int r, int c, const char *s, int attr)
 	for (; *s; s++, c++) wput(g, w, r, c, (const unsigned char *)s, 1, 1, attr);
 }
 
+/* Window w's cell at row r, column c, or NULL past the window or the grid:
+   a window can reach past a terminal that shrank (see grid_put). */
+static Cell *wcell(Grid *g, const Win *w, int r, int c)
+{
+	int y = w->y + r, x = w->x + c;
+	return c >= 0 && c < w->w && y >= 0 && y < g->rows && x >= 0 && x < g->cols ? &g->c[y * g->cols + x] : NULL;
+}
+
 /* Cell j of the character s (k bytes) that takes width cells: a tab is
    spaces, a control character ^X, an invalid byte or what cannot be
    printed in hex (transchar_hex()). */
@@ -58,9 +66,8 @@ static void put_cell(Grid *g, const Win *w, int r, int c, const unsigned char *s
 	else if (j) return;
 	else { b = 0; wput(g, w, r, c, s, k, width, ATTR_NONE); }
 	if (b) wput(g, w, r, c, &b, 1, 1, ATTR_NONE);
-	/* a window can reach past a terminal that shrank (see grid_put) */
-	int y = w->y + r, x = w->x + c;
-	if (c >= 0 && c < w->w && y >= 0 && y < g->rows && x >= 0 && x < g->cols) g->c[y * g->cols + x].face = face;
+	Cell *z = wcell(g, w, r, c);
+	if (z) z->face = face;
 }
 
 /* The number column of line l (get_line_number_str()): relative to the
@@ -84,10 +91,56 @@ static int put_number(Grid *g, const Win *w, int r, size_t l, int top_skipped)
 	return d + 3;
 }
 
+static int line_rows(const Win *w, size_t l)
+{
+	int tw = w->w - win_numw(w);
+	if (!w->wrap || tw <= 0) return 1;
+	size_t v = win_vcol_end(w, l), skip = l == w->top ? w->skipcol : 0;
+	return v <= skip ? 1 : (int)((v - skip + (size_t)tw - 1) / (size_t)tw);
+}
+
+/* An ATX heading as render-markdown 8.14 draws it with its defaults (Davy's
+   Neovim; heading.lua, position 'overlay', width 'full'): the n '#' of the
+   marker and the cell after them become n - 1 spaces, the level's icon and
+   a space, and from the marker on every cell of the line's rows takes the
+   level's background, to the window's edge (hl_eol).  The background
+   starts at screen column b0, with the heading's indent; the marker at m0.
+   The rest as draw_line. */
+static void draw_heading(Grid *g, const Win *w, size_t l, int r, size_t skip, int cover, size_t b0, size_t m0, int n)
+{
+	int nw = win_numw(w), tw = w->w - nw, rows = line_rows(w, l);
+	/* nf-md-numeric_1_circle_outline to 6: U+F0CA1 to U+F0CAB by twos */
+	const unsigned char icon[4] = { 0xf3, 0xb0, 0xb2, (unsigned char)(0xa1 + 2 * (n - 1)) };
+	/* the overlay, columns s0 to e0: blanks from the heading's start, the
+	   icon, a blank.  Neovim draws an overlay that starts before the view
+	   (leftcol, skipcol) whole from the view's first column (measured:
+	   leftcol 1 to 39, the review of PR 56) */
+	size_t d = skip > b0 ? skip - b0 : 0, s0 = b0 + d, e0 = m0 + (size_t)n + d;
+	for (int k = 0; k < rows && r + k < w->h; k++)
+		for (int c = nw; c < w->w; c++) {
+			size_t v = skip + (size_t)k * (size_t)tw + (size_t)(c - nw);
+			Cell *z = wcell(g, w, r + k, c);
+			/* skipcol's "<<<" stays on top */
+			if (v < b0 || !z || (k == 0 && c < cover)) continue;
+			/* cut at its row's end (measured: the rest of a marker that
+			   wraps stays as typed); over a filler cell too */
+			if (v >= s0 && v <= e0 && v - (size_t)(c - nw) <= s0) {
+				if (v == e0 - 1) wput(g, w, r + k, c, icon, 4, 1, ATTR_NONE);
+				else wputs(g, w, r + k, c, " ", ATTR_NONE);
+				z->face = (unsigned char)(FACE_MARKUP_HEADING_1 + n - 1);
+			}
+			/* else a filler cell (NonText) keeps its colours: win_line()
+			   gives it extra_attr alone */
+			else if (z->attr == ATTR_DIM) continue;
+			z->bg = (unsigned char)(FACE_HEADING_1_BG + n - 1);
+		}
+}
+
 /* Line l from window row r: in rows of the text width with wrap (the top
-   line from skipcol), else one row from leftcol.  Returns 1 if the line was
-   drawn to its end. */
-static int draw_line(Grid *g, Win *w, size_t l, int r)
+   line from skipcol), else one row from leftcol.  rm: render-markdown draws
+   the line's heading (see draw_win).  Returns 1 if the line was drawn to its
+   end. */
+static int draw_line(Grid *g, Win *w, size_t l, int r, int rm)
 {
 	int nw = win_numw(w), tw = w->w - nw;
 	size_t skip = w->wrap ? (l == w->top ? w->skipcol : 0) : w->left;
@@ -100,6 +153,15 @@ static int draw_line(Grid *g, Win *w, size_t l, int r)
 	size_t k, v = 0, i = 0, ls = text_line_start(w->buf->text, l), f0 = (size_t)-1;
 	unsigned char fc[256];          /* faces of bytes [f0, f0 + 256) of the line */
 	struct Syntax *syn = w->buf->syn;
+	/* drawn: 1 to the line's end, 0 cut at the window's bottom, 2 cut at its
+	   right edge.  An ATX heading starts at the first byte with a heading
+	   face (after block quote and list markers), level hl at screen
+	   column hb, if blanks (its indent) then hl '#' and a blank or the
+	   line's end follow, the '#' from column hm.  hn counts the '#' read;
+	   HN_NO: no heading, HN_YES: one */
+	enum { HN_NO = -1, HN_YES = 7 };
+	int drawn = 1, hl = 0, hn = rm && syn ? 0 : HN_NO;
+	size_t hb = 0, hm = 0;
 	lit_init(&it, w->buf, l);
 	while ((k = lit_next(&it, &s))) {
 		int cw = core_cellw(w, s, k, 0, v);
@@ -108,6 +170,26 @@ static int draw_line(Grid *g, Win *w, size_t l, int r)
 			f0 = i;
 			syntax_faces(syn, ls + f0, ls + f0 + sizeof fc < z ? ls + f0 + sizeof fc : z, fc);
 		}
+		if (hn != HN_NO && hn != HN_YES) {
+			unsigned char f = fc[i - f0];
+			if (!hl && f >= FACE_MARKUP_HEADING_1 && f <= FACE_MARKUP_HEADING_6)
+				hl = f - FACE_MARKUP_HEADING_1 + 1, hb = v;
+			/* before it only block quote and list markers: an inline
+			   face (an escaped \#, code, emphasis) can hide the start of
+			   a setext heading's text, whose rest has the heading face */
+			if (!hl) { if (k != 1 || !memchr(" \t>-+*.)0123456789", *s, 18)) hn = HN_NO; }
+			else if (!hn && *s == ' ') {}
+			/* at most 3 columns of indent: more is a setext heading's
+			   text (an ATX heading would interrupt its paragraph) */
+			else if (*s == '#' && k == 1 && hn < hl) { if (!hn++) hm = v, hn = v - hb > 3 ? HN_NO : hn; }
+			else hn = hn == hl && (*s == ' ' || *s == '\t') ? HN_YES : HN_NO;
+		}
+		if (drawn != 1) {
+			/* past the window: read on only while a marker is half read */
+			if (!hl || hn == HN_NO || hn == HN_YES) break;
+			i += k;
+			continue;
+		}
 		/* a double-width character: after the '>' of a wrapping row's
 		   last cell (core_cellw's 3), the two cells of the character */
 		int lead = cw == 3 && *s != '\t', wide = *s >= 0x80 && cw - lead == 2;
@@ -115,42 +197,44 @@ static int draw_line(Grid *g, Win *w, size_t l, int r)
 			if (v < skip) continue;
 			size_t d = v - skip;
 			int row = w->wrap ? r + (int)(d / (size_t)tw) : r;
-			if (!w->wrap && d >= (size_t)tw) return 1;
-			if (row >= w->h) return 0;
+			if (!w->wrap && d >= (size_t)tw) { drawn = 2; break; }
+			if (row >= w->h) { drawn = 0; break; }
 			int c = nw + (int)(d % (size_t)tw);
 			if (row == r && c < cover) continue;
 			unsigned char face = syn ? fc[i - f0] : 0;
 			/* win_line(): '>' where a double-width character does not fit
 			   (the line's end without wrap), '<' where the view starts in
-			   its second half (MB_FILLER_CHAR) */
+			   its second half (MB_FILLER_CHAR), both in NonText (HLF_AT,
+			   which the core draws dim, as '~') */
 			if (j < lead || (wide && j == 0 && !w->wrap && d == (size_t)tw - 1))
-				put_cell(g, w, row, c, (const unsigned char *)">", 1, 0, 1, face);
+				wputs(g, w, row, c, ">", ATTR_DIM);
 			else if (wide && j - lead == 1 && v == skip)
-				put_cell(g, w, row, c, (const unsigned char *)"<", 1, 0, 1, face);
+				wputs(g, w, row, c, "<", ATTR_DIM);
 			else put_cell(g, w, row, c, s, k, j - lead, cw - lead, face);
 		}
 		i += k;
 	}
-	return 1;
-}
-
-static int line_rows(const Win *w, size_t l)
-{
-	int tw = w->w - win_numw(w);
-	if (!w->wrap || tw <= 0) return 1;
-	size_t v = win_vcol_end(w, l), skip = l == w->top ? w->skipcol : 0;
-	return v <= skip ? 1 : (int)((v - skip + (size_t)tw - 1) / (size_t)tw);
+	if (hl && (hn == hl || hn == HN_YES)) draw_heading(g, w, l, r, skip, cover, hb, hm, hl);
+	return drawn != 0;
 }
 
 /* win_update(): the lines from the top, "@@@" where the last one does not
    fit (display=lastline), "~" below the end of the buffer */
-static void draw_win(Grid *g, Win *w)
+static void draw_win(Editor *e, Grid *g, Win *w)
 {
 	size_t n = buf_lines(w->buf), l = w->top;
 	int r = 0;
+	/* render-markdown 8.14 draws a buffer in normal and command-line mode
+	   (render_modes; visual mode is normal mode with a selection here) while
+	   the current window is not scrolled sideways (Updater:run), and leaves
+	   the current window's cursor line as typed in every window on its
+	   buffer (anti_conceal).  Another buffer keeps what it drew while it was
+	   current: rendered unless its window is scrolled sideways. */
+	int cur = w->buf == e->buf, rm = cur ? e->mode != MODE_INSERT && !e->ks.visual && !e->win->left : !w->left;
+	size_t raw = cur ? e->win->line : (size_t)-1;
 	for (; r < w->h && l < n; l++) {
 		int rows = line_rows(w, l);
-		if (!draw_line(g, w, l, r)) {
+		if (!draw_line(g, w, l, r, rm && l != raw)) {
 			/* a double-width character the "@@@" starts in becomes '@' too
 			   (measured: four '@' after one) */
 			int c0 = w->w - 3 < 0 ? 0 : w->w - 3, y = w->y + w->h - 1, x = w->x + c0;
@@ -414,7 +498,7 @@ void core_draw(Editor *e, Grid *g)
 	win_drawn(e);
 	grid_clear(g);
 	for (Win *w = e->wins; w; w = w->next) {
-		draw_win(g, w);
+		draw_win(e, g, w);
 		if (w->frame->vsep)
 			for (int r = 0; r < w->h; r++)
 				grid_put(g, w->y + r, w->x + w->w, (const unsigned char *)"│", 3, 1, ATTR_REV);
