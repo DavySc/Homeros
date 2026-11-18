@@ -18,7 +18,7 @@ static char code(unsigned char f)
 {
 	return f == FACE_KEYWORD ? 'K' : f == FACE_STRING ? 'S' : f == FACE_COMMENT ? 'C'
 	     : f == FACE_FUNCTION_BUILTIN ? 'F' : f == FACE_MODULE_BUILTIN ? 'T' : f == FACE_FUNCTION ? 'P'
-	     : f == FACE_NUMBER ? 'N' : f == FACE_PUNCTUATION_DELIMITER ? 'o' : f == FACE_NONE ? '.' : '?';
+	     : f == FACE_NUMBER ? 'N' : f == FACE_OPERATOR ? 'o' : f == FACE_NONE ? '.' : '?';
 }
 
 static void faces_of(const char *src, char *out)
