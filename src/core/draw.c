@@ -106,33 +106,32 @@ static int line_rows(const Win *w, size_t l)
    level's background, to the window's edge (hl_eol).  The background
    starts at screen column b0, with the heading's indent; the marker at m0.
    The rest as draw_line. */
-static void draw_heading(Grid *g, const Win *w, size_t l, int r, size_t skip, size_t b0, size_t m0, int n)
+static void draw_heading(Grid *g, const Win *w, size_t l, int r, size_t skip, int cover, size_t b0, size_t m0, int n)
 {
 	int nw = win_numw(w), tw = w->w - nw, rows = line_rows(w, l);
 	/* nf-md-numeric_1_circle_outline to 6: U+F0CA1 to U+F0CAB by twos */
 	const unsigned char icon[4] = { 0xf3, 0xb0, 0xb2, (unsigned char)(0xa1 + 2 * (n - 1)) };
-	/* the overlay's start: the marker, or the first cell drawn when the
-	   view starts past it (Neovim draws an overlay that starts before the
-	   window's first column there; measured with leftcol and skipcol) */
-	size_t o = (size_t)-1;
+	/* the overlay, columns s0 to e0: blanks from the heading's start, the
+	   icon, a blank.  Neovim draws an overlay that starts before the view
+	   (leftcol, skipcol) whole from the view's first column (measured:
+	   leftcol 1 to 39, the review of PR 56) */
+	size_t d = skip > b0 ? skip - b0 : 0, s0 = b0 + d, e0 = m0 + (size_t)n + d;
 	for (int k = 0; k < rows && r + k < w->h; k++)
 		for (int c = nw; c < w->w; c++) {
 			size_t v = skip + (size_t)k * (size_t)tw + (size_t)(c - nw);
 			Cell *z = wcell(g, w, r + k, c);
-			/* a NonText cell (skipcol's "<<<", the '>' of a double-width
-			   character that does not fit) keeps its colours: win_line()
-			   gives it extra_attr alone */
-			if (v < b0 || !z || z->attr == ATTR_DIM) continue;
-			if (o == (size_t)-1) o = v > m0 ? v : m0;
-			/* n - 1 spaces, the icon and a space (the last is the blank
-			   after the marker, but not where the overlay moved to the
-			   view's start); cut at its row's end (measured: the rest of a
-			   marker that wraps stays as typed) */
-			if (v >= o && v - o <= (size_t)n && v - (size_t)(c - nw) <= o) {
-				if (v - o == (size_t)n - 1) grid_put(g, w->y + r + k, w->x + c, icon, 4, 1, ATTR_NONE);
-				else grid_put(g, w->y + r + k, w->x + c, (const unsigned char *)" ", 1, 1, ATTR_NONE);
+			/* skipcol's "<<<" stays on top */
+			if (v < b0 || !z || (k == 0 && c < cover)) continue;
+			/* cut at its row's end (measured: the rest of a marker that
+			   wraps stays as typed); over a filler cell too */
+			if (v >= s0 && v <= e0 && v - (size_t)(c - nw) <= s0) {
+				if (v == e0 - 1) wput(g, w, r + k, c, icon, 4, 1, ATTR_NONE);
+				else wputs(g, w, r + k, c, " ", ATTR_NONE);
 				z->face = (unsigned char)(FACE_MARKUP_HEADING_1 + n - 1);
 			}
+			/* else a filler cell (NonText) keeps its colours: win_line()
+			   gives it extra_attr alone */
+			else if (z->attr == ATTR_DIM) continue;
 			z->bg = (unsigned char)(FACE_HEADING_1_BG + n - 1);
 		}
 }
@@ -215,7 +214,7 @@ static int draw_line(Grid *g, Win *w, size_t l, int r, int rm)
 		}
 		i += k;
 	}
-	if (hl && (hn == hl || hn == HN_YES)) draw_heading(g, w, l, r, skip, hb, hm, hl);
+	if (hl && (hn == hl || hn == HN_YES)) draw_heading(g, w, l, r, skip, cover, hb, hm, hl);
 	return drawn != 0;
 }
 

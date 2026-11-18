@@ -1,7 +1,9 @@
 /* render-markdown's headings against Neovim: replays the cases that
    tests/test_core_markdown.py recorded from Neovim with render-markdown
-   (tests/test_core_markdown.txt) and compares every row's text, background
-   and heading colours, and the cursor.  usage: test_core_markdown [FILE] [-v] */
+   (tests/test_core_markdown.txt; its last 22 the review of PR 56 recorded,
+   reviews/pr-56-repro/cases9.py: sideways scroll, skipcol, fillers) and
+   compares every row's text, background and heading colours, and the
+   cursor.  usage: test_core_markdown [FILE] [-v] */
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -54,24 +56,24 @@ static void command(Editor *e, Grid *g, const char *t)
 	else if (!strncmp(t, "e:", 2)) CHECK(!core_edit_file(e, t + 2, 0));
 	/* ref/keys.c has no visual mode: its flag, as 'v' sets it */
 	else if (!strcmp(t, "visual")) e->ks.visual = 'v';
+	else if (!strcmp(t, "redraw")) {}   /* CTRL-L: the core draws whole frames */
 	else CHECK(!"command");
 	do core_draw(e, g);
 	while (syntax_update(e->buf->syn, e->buf->text, NULL));
 }
 
-/* Cases listed as known, 25 of 1000.  The core's (package 4, reported):
-   the window's top after a split (58 ... 914).  Neovim's own: a status
-   line it had no reason to redraw keeps a stale ruler, in insert and
-   command-line mode, where the recorder cannot send CTRL-L (29 ... 674);
-   a line still rendered in insert mode (489, hypothesis: stale too).  The
-   syntax package's: an inline colour Neovim does not give (804).  Not
-   copied: where Neovim puts the icon of a short line in a window scrolled
-   past its end (101). */
+/* Cases listed as known, 24 of 1000.  The core's (package 4, reported):
+   the window's top after a split (58 ... 914).  Also the core's: the
+   ruler of a window that is not the current one, on an empty line, in
+   insert or command-line mode: "8,0-1" in Neovim, also after :redraw!
+   (29 ... 674; the review of PR 56).  Neovim's own: a line still rendered
+   in insert mode, raw after :redraw! (489).  The
+   syntax package's: an inline colour Neovim does not give (804). */
 static int known(int n)
 {
 	static const int k[] = { 58, 259, 455, 482, 488, 534, 547, 738, 761, 815, 914,
 	                         29, 39, 115, 214, 233, 247, 517, 582, 650, 660, 674,
-	                         489, 804, 101 };
+	                         489, 804 };
 	for (size_t i = 0; i < sizeof k / sizeof *k; i++) if (k[i] == n) return 1;
 	return 0;
 }
