@@ -32,3 +32,18 @@ picker: grep drops the rg arguments after --~test TESTS=tools_pick~~src/tools/pi
 oil: a link target's icon ignores the trailing /~test TESTS=tools_oil~~src/tools/icons.c~if (!slash && (r = GET(ft_icons~if ((r = GET(ft_icons
 oil: a relisted name gets a new id~test TESTS=tools_oil~~src/tools/oil.c~	int i = find(dir, name, strlen(name));¶	if (i < 0) {~	int i = find(dir, name, strlen(name));¶	if (1) {
 matcher: at most 16 terms~test TESTS=tools_match~~src/tools/match.h~MATCH_TERMS = MATCH_MAX / 2,~MATCH_TERMS = 16,
+dashboard: an odd width's half column goes left~test TESTS=tools_dash~~src/tools/dash.c~	int col = (e->cols - WIDTH) / 2, r = top;~	int col = (e->cols - WIDTH + 1) / 2, r = top;
+dashboard: the footer centred on bytes, not cells~test TESTS=tools_dash~~src/tools/dash.c~	int x = col + (WIDTH - width(foot)) / 2;~	int x = col + (WIDTH - (int)strlen(foot)) / 2 + 0 * width(foot);
+dashboard: k goes above the first item~test TESTS=tools_dash~~src/tools/dash.c~if (D.sel > 0) D.sel--;~D.sel -= D.sel > -1;
+dashboard: stays over a changed buffer~test TESTS=tools_dash~~src/tools/dash.c~ || undo_seq(D.buf->undo) != D.seq~
+dashboard: n leaves it over insert mode~test TESTS=tools_dash~~src/tools/dash.c~ || e->mode == MODE_INSERT~
+dashboard: the picture ignores the 18 lines below it~test TESTS=tools_dash~~src/tools/dash.c~height(e) >= ART_ROWS + BELOW~height(e) >= ART_ROWS
+dashboard: the picture needs no spare columns~test TESTS=tools_dash~~src/tools/dash.c~e->cols >= ART_COLS + 6~e->cols >= ART_COLS
+dashboard: the cheeks in the frog's face~test TESTS=tools_dash~~src/tools/dash.c~case 'k': return FACE_DASHBOARD_FROG_CHEEK;~case 'k': return FACE_DASHBOARD_FROG;
+dashboard: the picture one column right~test TESTS=tools_dash~~src/tools/dash.c~int x0 = col + (WIDTH - ART_COLS) / 2;~int x0 = col + (WIDTH - ART_COLS) / 2 + 1;
+recent: the current file listed~test TESTS=tools_pick~~src/tools/pick.c~		int want = n < sizeof f && strcmp(f, cur) && stat(f, &st) == 0;~		int want = n < sizeof f && stat(f, &st) == 0;
+recent: a missing file listed~test TESTS=tools_pick~~src/tools/pick.c~		int want = n < sizeof f && strcmp(f, cur) && stat(f, &st) == 0;~		int want = n < sizeof f && strcmp(f, cur) && (stat(f, &st) == 0 || 1);
+recent: a file listed twice~test TESTS=tools_pick~~src/tools/pick.c~		for (size_t k = first; k < P.nit && want; k++) want = ~		for (size_t k = first; k < P.nit && 0; k++) want = 
+smart: a recent file listed again by rg~test TESTS=tools_pick~~src/tools/pick.c~P.nit && (P.it[k].buf || P.it[k].recent); k++)~P.nit && P.it[k].buf; k++)
+smart: a recent file's frecency not seeded from its mtime~test TESTS=tools_pick~~src/tools/pick.c~	if (i->recent) return stat(f, &st) ? 0 : exp(-LAMBDA * (now - (double)st.st_mtime));~	(void)st;
+files: smart's buffers listed too~test TESTS=tools_pick~~src/tools/pick.c~	if (what == PICK_SMART || what == PICK_BUFFERS) buffers(e);~	buffers(e);

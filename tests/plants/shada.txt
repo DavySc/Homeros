@@ -1,0 +1,12 @@
+# Plants for src/shada/ (recent files; format in tools/planted.sh).
+shada: files under /tmp/ kept~test TESTS=shada~~src/shada/shada.c~	if (removable(path)) return;~	if (0 && removable(path)) return;
+shada: a buffer left by a window not stamped~test TESTS=shada~~src/shada/shada.c~	if (cur && *curabs) note(curabs, (long long)time(NULL));~	(void)note;
+shada: the buffers still shown at exit not stamped~test TESTS=shada~~src/shada/shada.c~		if (w->buf->path && !full(w->buf->path, p)) note(p, now);~		if (w->buf->path && !full(w->buf->path, p)) (void)now;
+shada: a merge takes this session's older time~test TESTS=shada~~src/shada/shada.c~			if (j < nleft) { if (v[i].t > all[j].t) all[j].t = v[i].t; }~			if (j < nleft) { }
+shada: the file's entries dropped at a write~test TESTS=shada~~src/shada/shada.c~			else all[m++] = v[i];~			else (void)0;
+shada: more than 100 kept~test TESTS=shada~~src/shada/shada.c~enum { KEEP = 100 };~enum { KEEP = 1000 };
+shada: oldest first~test TESTS=shada~~src/shada/shada.c~			for (; j && all[j - 1].t < x.t; j--) all[j] = all[j - 1];~			for (; j && all[j - 1].t > x.t; j--) all[j] = all[j - 1];
+shada: v:oldfiles not read at startup~test TESTS=shada~~src/shada/shada.c~	int r = parse(d, n, &old, &nold);~	int r = 0;
+shada: the last path character dropped~test TESTS=shada~~src/shada/shada.c~			size_t k = (size_t)(e - sp - 1);~			size_t k = (size_t)(e - sp - 2);
+shada: a Windows name not made full~win WIN=shada~~src/shada/shada.c~	DWORD k = GetFullPathNameW(w, PATH_MAX, f, NULL);~	DWORD k = (DWORD)wcslen(w); wcscpy(f, w);
+shada: the Windows state directory not made~win WIN=shada~~src/shada/shada.c~		_mkdir(f);~		(void)f;
