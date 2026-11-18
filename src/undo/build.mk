@@ -5,8 +5,8 @@
 compilers: undo-win
 undo-win:
 	@mkdir -p build/win
-	zig cc -target x86_64-windows-gnu $(WARN) -O1 -fsanitize=undefined -fsanitize-trap=undefined \
+	@zig cc -target x86_64-windows-gnu $(WARN) -O1 -fsanitize=undefined -fsanitize-trap=undefined \
 	  -o build/win/test_undo_win.exe tests/test_undo_win.c src/undo/undo.c src/text/*.c
-	cd build/win && WINEDEBUG=-all WINEPREFIX=$${WINEPREFIX:-$$PWD/prefix} timeout 300 wine test_undo_win.exe 2>/dev/null \
+	@cd build/win && WINEDEBUG=-all WINEPREFIX=$${WINEPREFIX:-$$PWD/prefix} timeout 300 wine test_undo_win.exe 2>/dev/null \
 	  || { echo "FAIL test_undo_win (Windows, under Wine)"; exit 1; }
 .PHONY: undo-win
