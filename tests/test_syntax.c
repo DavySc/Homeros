@@ -134,14 +134,18 @@ static void render(const Text *t, const unsigned char *f, char *out)
 
 /* a failing case's text and edits, so a failure on CI can be replayed
    (nvim --headless --clean -l tests/test_syntax.lua OUT DIR CASE: .ops
-   lines are e POS DEL HEX, f for a frame, p for a parse) */
+   lines are e POS DEL HEX, f for a frame, p for a parse).  The text goes
+   out in hex (xxd -r -p turns it back): a word in it such as "error"
+   would be what planted.sh reports as the failure */
 static void show(const char *dir, int c)
 {
 	char path[2048];
 	size_t n;
 	snprintf(path, sizeof path, "%s/%d.%s", dir, c, ext[c % NL]);
 	char *b = slurp(path, &n);
-	fprintf(stderr, "---- %d.%s ----\n%.*s---- %d.%s.ops ----\n", c, ext[c % NL], (int)n, b, c, ext[c % NL]);
+	fprintf(stderr, "---- %d.%s, in hex ----\n", c, ext[c % NL]);
+	for (size_t i = 0; i < n; i++) fprintf(stderr, i % 32 == 31 || i == n - 1 ? "%02x\n" : "%02x", (unsigned char)b[i]);
+	fprintf(stderr, "---- %d.%s.ops ----\n", c, ext[c % NL]);
 	free(b);
 	snprintf(path + strlen(path), sizeof path - strlen(path), ".ops");
 	b = slurp(path, &n);
