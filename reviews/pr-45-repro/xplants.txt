@@ -1,0 +1,14 @@
+# Reviewer's plants in org_edit (PR 45 at ae7aa25): name ~ file ~ text ~ replacement
+span starts at the node after the edit's first byte~src/org/org.c~	if ((c = first(e, k, pos + 1)) && ~	if ((c = first(e, k, pos)) && 
+span ends before a node that begins where the edit ends~src/org/org.c~	z = first(e, k, pos + del + 1);~	z = first(e, k, pos + del);
+a babel call before the span is not measured again~src/org/org.c~			if (x != (e[j].end <= pos ? e[j].end : e[j].end - del + ins)) goto whole;~			if (x != (e[j].end <= pos ? e[j].end : e[j].end - del + ins)) break;
+a babel call's end past the edit is not shifted~src/org/org.c~			e[j].end = x;¶~			;¶
+a babel call ending at the edit counts as shifted~src/org/org.c~(e[j].end <= pos ? e[j].end~(e[j].end < pos ? e[j].end
+parents after the span keep their old index~src/org/org.c~		if (x->parent != ORG_NONE) x->parent = x->parent - hi + lo + m;~		;
+parents inside the span are not offset~src/org/org.c~		if (f[j].parent != ORG_NONE) e[lo + j].parent += lo;~		;
+contents after the span are not shifted~src/org/org.c~		x->cbeg = moved(x->cbeg, del, ins); x->cend = moved(x->cend, del, ins);~		;
+an empty list is spliced, not parsed whole~src/org/org.c~	if (!k) goto whole;~	;
+the first span starts at byte 0, not after the leading blank lines~src/org/org.c~	if (c) { lo = c; L = e[c].begin; mode = M_NIL; } else L = bol(fwd(0, N));~	if (c) { lo = c; L = e[c].begin; mode = M_NIL; } else L = 0;
+the list is not grown when the span gains nodes~src/org/org.c~	if (m > hi - lo) {~	if (m > hi - lo + 8) {
+nodes after the span are not moved in the list~src/org/org.c~	memmove(e + lo + m, e + hi, (k - hi) * sizeof *e);~	if (m <= hi - lo) memmove(e + lo + m, e + hi, (k - hi) * sizeof *e);
+the span's right end is the edited node's end, not its top-level node's~src/org/org.c~	R = e[z ? top(e, z - 1) : 0].end;~	R = e[z ? z - 1 : 0].end;
