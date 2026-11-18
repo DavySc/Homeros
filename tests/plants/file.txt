@@ -56,6 +56,6 @@ core wiring: the written message counts the buffer's bytes, not the file's~test 
 core wiring: the journal's base without the format~test TESTS=file_eol~~src/core/core.c~| (b->noeol ? J_NOEOL : 0) | (b->dos ? J_DOS : 0); }~| (b->noeol ? J_NOEOL : 0); }
 core wiring: an edit's record without the format~test TESTS=file_eol~~src/core/core.c~b->id.size ? J_NOEOL : 0) | (b->dos ? J_DOS : 0);~b->id.size ? J_NOEOL : 0);
 core wiring: recovery ignores the format when the lines equal the file's~test TESTS=file_eol~~src/core/core.c~tn == n && !(st & J_DOS) == !b->dos && text_read~tn == n && text_read
-core wiring: :e keeps the old format~test TESTS=file_eol~~src/core/core.c~		b->dos = dos;¶		b->saved_seq~		b->saved_seq
+core wiring: :e keeps the old format~test TESTS=file_eol~~src/core/core.c~		b->dos = dos;¶		b->saved_seq~		b->dos = dos && b->dos;¶		b->saved_seq
 win: data with no LF unix on Windows~win WIN=file~~src/file/eol.c~enum { FIRST = 1 };   /* 'fileformats' "dos,unix" */~enum { FIRST = 0 };
 win: saved with LF in a dos file~win WIN=file~~src/file/win.c~file_text_read(t, &pos, n, dos, b, sizeof b)~file_text_read(t, &pos, n, dos && 0, b, sizeof b)

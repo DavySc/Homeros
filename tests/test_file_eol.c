@@ -159,6 +159,22 @@ static void journal(void)
 	CHECK(slurp(path, b, sizeof b) == 7 && !memcmp(b, "xa\r\nb\r\n", 7));
 	puts("  a crashed dos buffer comes back dos and saves CR LF");
 
+	/* each edit's record carries the format, so a dos edit writes one
+	   record as a unix one does (none to put the format right after it,
+	   which a kill could miss) */
+	static char j[1 << 16];
+	size_t jn[2];
+	for (int dos = 0; dos < 2; dos++) {
+		put(path, dos ? "a\r\nb\r\n" : "a\nb\n", dos ? 6 : 4);
+		CHECK(!core_open(&e, path) && e.buf->dos == dos);
+		CHECK(!core_edit(&e, 0, 0, "x", 1) && !core_edit(&e, 1, 0, "y", 1));
+		jn[dos] = slurp(jname, j, sizeof j);
+		core_free(&e);
+	}
+	CHECK(jn[0] == jn[1]);
+	put(path, "xa\r\nb\r\n", 7);
+	puts("  an edit in a dos buffer journals one record, as in a unix one");
+
 	/* the journal's text equals the file's lines, but not its format */
 	CHECK(!core_open(&e, path) && e.buf->dos);
 	CHECK(!core_edit(&e, 0, 1, "", 0));
