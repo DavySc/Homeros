@@ -420,6 +420,8 @@ int op_change(Oparg *oap)
 	if (l > (long)W->col && !lineempty((long)W->line) && !virtual_op) inc_cursor();
 	change_block.active = 0;
 	if (oap->motion_type == MBLOCK) {
+		/* op_change(): spaces up to a block that starts past the line's end */
+		if (virtual_op && (cur().coladd > 0 || gchar_cursor() == 0)) coladvance_force(getviscol());
 		change_block.active = 1;
 		change_block.oa = *oap;
 		const char *s = ml_get(oap->start.lnum);
