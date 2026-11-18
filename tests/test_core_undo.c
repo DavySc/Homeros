@@ -140,7 +140,10 @@ int main(void)
 	e.buf->nchange = 1;
 	e.win->jump[0].buf = e.buf;
 	e.win->jump[0].m = (Mark){ 1, 3, 1 };
-	e.win->njump = 1;
+	static Buf elsewhere;                     /* an entry in another buffer stays */
+	e.win->jump[1].buf = &elsewhere;
+	e.win->jump[1].m = (Mark){ 1, 3, 1 };
+	e.win->njump = 2;
 	undo_close(e.buf->undo);
 	e.win->col = 6;
 	core_u_save(&e, 0);                       /* the keys' u_save_cursor() */
@@ -151,6 +154,7 @@ int main(void)
 	CHECK(e.buf->mark[MARK_GT].line == 0 && e.buf->mark[MARK_GT].col == 12);
 	CHECK(e.buf->change[0].line == 0 && e.buf->change[0].col == 8);
 	CHECK(e.win->jump[0].m.line == 0 && e.win->jump[0].m.col == 9);
+	CHECK(e.win->jump[1].m.line == 1 && e.win->jump[1].m.col == 3);
 	CHECK(core_undo(&e, 0) >= 0 && e.buf->mark[MARK_LT].line == 1 && e.buf->mark[MARK_LT].col == 5);
 	core_free(&e);
 	/* J: undo brings back the '< from before do_join()'s mark_col_adjust().

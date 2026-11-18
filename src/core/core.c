@@ -847,6 +847,22 @@ int core_buf_delete(Editor *e, int nr, int force)
 
 /* ---- editing ---- */
 
+/* The marks kept in lists: b's change list, then every window's jump
+   list entries in b, whatever the window shows.  Call with *i = 0 until
+   it returns NULL. */
+static Mark *list_mark(Editor *e, Buf *b, size_t *i)
+{
+	for (;;) {
+		size_t k = (*i)++;
+		if (k < (size_t)b->nchange) return &b->change[k];
+		k -= (size_t)b->nchange;
+		Win *w = e->wins;
+		while (w && k >= (size_t)w->njump) { k -= (size_t)w->njump; w = w->next; }
+		if (!w) return NULL;
+		if (w->jump[k].buf == b) return &w->jump[k].m;
+	}
+}
+
 /* ONE_ADJUST (nodel 0: a deleted line unsets the mark) and
    ONE_ADJUST_NODEL (1: it goes to the first deleted line) */
 static void mark_adjust1(Mark *m, int nodel, size_t l1, size_t l2, long amount, long after)
@@ -888,13 +904,10 @@ static void adjust(Editor *e, Buf *b, size_t l1, size_t l2, long amount, long af
 		if (k != MARK_LBRACKET && k != MARK_RBRACKET
 		    && (k != MARK_QUOTE || b->mark[k].line || b->mark[k].col))
 			mark_adjust1(&b->mark[k], k == MARK_LT || k == MARK_GT, l1, l2, amount, after);
-	for (int k = 0; k < b->nchange; k++) mark_adjust1(&b->change[k], 1, l1, l2, amount, after);
-	/* the current window's '' (ONE_ADJUST), every window's jump list
-	   entries in b, whatever it shows */
+	Mark *m;
+	for (size_t i = 0; (m = list_mark(e, b, &i));) mark_adjust1(m, 1, l1, l2, amount, after);
+	/* the current window's '' (ONE_ADJUST) */
 	if (e->win->buf == b) mark_adjust1(&e->win->pcmark, 0, l1, l2, amount, after);
-	for (Win *w = e->wins; w; w = w->next)
-		for (int k = 0; k < w->njump; k++)
-			if (w->jump[k].buf == b) mark_adjust1(&w->jump[k].m, 1, l1, l2, amount, after);
 }
 
 /* mark_col_adjust() with COL_ADJUST: marks at or after column mincol of
@@ -919,18 +932,16 @@ void core_mark_join(Editor *e, size_t line, size_t mincol, long line_amount, lon
 	for (int k = 0; k < MARK_N; k++)
 		if (k < 26 || k == MARK_CARET || k == MARK_DOT || k == MARK_LT || k == MARK_GT)
 			col_adjust(&b->mark[k], line, mincol, line_amount, col_amount, spaces_removed);
-	for (int k = 0; k < b->nchange; k++) col_adjust(&b->change[k], line, mincol, line_amount, col_amount, spaces_removed);
-	for (Win *w = e->wins; w; w = w->next) {
-		for (int k = 0; k < w->njump; k++)
-			if (w->jump[k].buf == b) col_adjust(&w->jump[k].m, line, mincol, line_amount, col_amount, spaces_removed);
-		/* the cursor of the other windows on b */
+	Mark *m;
+	for (size_t i = 0; (m = list_mark(e, b, &i));) col_adjust(m, line, mincol, line_amount, col_amount, spaces_removed);
+	/* the cursor of the other windows on b */
+	for (Win *w = e->wins; w; w = w->next)
 		if (w->buf == b && w != e->win) {
 			Mark c = { w->line, w->col, 1 };
 			col_adjust(&c, line, mincol, line_amount, col_amount, spaces_removed);
 			w->line = c.line;
 			w->col = c.col;
 		}
-	}
 }
 
 static size_t newlines(const char *s, size_t n)
@@ -960,10 +971,8 @@ static void adjust_edit(Editor *e, size_t L, size_t col, int at_start, int whole
 			Buf *b = e->buf;
 			nodel_join(&b->mark[MARK_LT], L, d, col);
 			nodel_join(&b->mark[MARK_GT], L, d, col);
-			for (int k = 0; k < b->nchange; k++) nodel_join(&b->change[k], L, d, col);
-			for (Win *w = e->wins; w; w = w->next)
-				for (int k = 0; k < w->njump; k++)
-					if (w->jump[k].buf == b) nodel_join(&w->jump[k].m, L, d, col);
+			Mark *m;
+			for (size_t i = 0; (m = list_mark(e, b, &i));) nodel_join(m, L, d, col);
 			adjust(e, b, L + 1, L + d + 1, DEL, -(long)d);
 		}
 	}

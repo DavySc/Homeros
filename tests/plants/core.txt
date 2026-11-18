@@ -42,8 +42,10 @@ core: H and L apply scrolloff under an operator (test_core_contract)~test TESTS=
 core: undo forgets that a step joined lines (test_core_undo)~test TESTS=core_undo~~src/core/core.c~	if (line_amount) join_next = b;~	(void)0;
 core: a mark on a line deleted from mid-line stays off the joined line (test_core_undo)~test TESTS=core_undo~~src/core/core.c~{ m->line = L; m->col += col; }~{ m->col += col; }
 core: '> on a line deleted from mid-line stays off the joined line (test_core_undo)~test TESTS=core_undo~~src/core/core.c~nodel_join(&b->mark[MARK_GT], L, d, col);~(void)0;
-core: the change list on a line deleted from mid-line stays off the joined line (test_core_undo)~test TESTS=core_undo~~src/core/core.c~for (int k = 0; k < b->nchange; k++) nodel_join(&b->change[k], L, d, col);~(void)0;
-core: the jump list on a line deleted from mid-line stays off the joined line (test_core_undo)~test TESTS=core_undo~~src/core/core.c~if (w->jump[k].buf == b) nodel_join(&w->jump[k].m, L, d, col);~if (0) nodel_join(&w->jump[k].m, L, d, col);
+core: a list mark on a line deleted from mid-line stays off the joined line (test_core_undo)~test TESTS=core_undo~~src/core/core.c~(m = list_mark(e, b, &i));) nodel_join(m, L, d, col);~(m = list_mark(e, b, &i));) (void)d;
+core: the change list is not a list of marks (test_core_undo)~test TESTS=core_undo~~src/core/core.c~if (k < (size_t)b->nchange) return &b->change[k];~if (k < (size_t)b->nchange) continue;
+core: another buffer's jump list entries move with this one (test_core_undo)~test TESTS=core_undo~~src/core/core.c~if (w->jump[k].buf == b) return &w->jump[k].m;~return &w->jump[k].m;
+core: the jump list is not a list of marks (test_core_undo)~test TESTS=core_undo~~src/core/core.c~if (w->jump[k].buf == b) return &w->jump[k].m;~if (0) return &w->jump[k].m;
 core: a file opens with the cursor in column 0 (test_core_screens)~test TESTS=core_screens~~src/core/core.c~(measured in tmux, 7 texts) */¶	w->col = core_first_nonblank(e, 0);~(measured in tmux, 7 texts) */¶	w->col = 0;
 core: CTRL-W > in a shrunk terminal grows past its row of windows (test_core_contract)~test TESTS=core_contract~~src/core/win.c~full = a == ROWS ? e->cols : e->layout->size[ROWS];~full = a == ROWS ? e->cols : e->rows;
 core: a group the keys open saves no marks (test_core_undo)~test TESTS=core_undo~~src/core/core.c~"", 0, "", 0, c, b->flags)) umarks_new(b, seq, snap);~"", 0, "", 0, c, b->flags)) umarks_new(b, seq ? undo_seq(b->undo) : undo_seq(b->undo), snap);
