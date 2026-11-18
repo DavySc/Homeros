@@ -71,6 +71,9 @@ int main(int argc, char **argv)
 			fclose(md);
 			CHECK(!chdir(dir) && !core_open(&e, "f.md") && !grid_resize(&g, rows, cols));
 			CHECK(e.buf->syn);
+			/* a first frame tells the core its size, as main.c: before it
+			   the window is Neovim's default 80 columns */
+			core_draw(&e, &g);
 			for (const char *s = keys; *s; s++) keys_feed(&e, (unsigned char)*s, 0);
 			/* as main.c: a frame, then the parse it asked for (the injected
 			   inline grammar of the lines in view), until nothing changes */
