@@ -132,6 +132,23 @@ static void render(const Text *t, const unsigned char *f, char *out)
 	out[n] = 0;
 }
 
+/* a failing case's text and edits, so a failure on CI can be replayed
+   (nvim --headless --clean -l tests/test_syntax.lua OUT DIR CASE: .ops
+   lines are e POS DEL HEX, f for a frame, p for a parse) */
+static void show(const char *dir, int c)
+{
+	char path[2048];
+	size_t n;
+	snprintf(path, sizeof path, "%s/%d.%s", dir, c, ext[c % NL]);
+	char *b = slurp(path, &n);
+	fprintf(stderr, "---- %d.%s ----\n%.*s---- %d.%s.ops ----\n", c, ext[c % NL], (int)n, b, c, ext[c % NL]);
+	free(b);
+	snprintf(path + strlen(path), sizeof path - strlen(path), ".ops");
+	b = slurp(path, &n);
+	fprintf(stderr, "%.*s---- end ----\n", (int)n, b);
+	free(b);
+}
+
 static char want[MAXCASES * NL][MAXT + 1];
 static int sliced_same[MAXCASES * NL];
 
@@ -299,6 +316,71 @@ static void edits_then_frame(const char *dir)
 	                (size_t[]){ 6 }, (size_t[]){ 1 }, (const char *const[]){ "" });
 }
 
+/* An edit that deletes the line before an injected region ends where the
+   region now starts: Neovim's LanguageTree:_edit compares rows and columns,
+   finds no overlap and keeps the region's tree without a reparse.  Here a
+   reparse would lose the emphasis that Neovim shows (as does a fresh
+   parse, which the check compares with). */
+static void edit_before_region(const char *dir)
+{
+	static unsigned char f[64], g[64];
+	char path[2048];
+	snprintf(path, sizeof path, "%s/region.md", dir);
+	const char *b = "a\n (D\n\ny,_)_\n";
+	Text *t = text_new(b, strlen(b));
+	CHECK(t);
+	Syntax *A = syntax_open(path, t);
+	CHECK(A);
+	syntax_faces(A, 0, strlen(b), f);
+	while (syntax_update(A, t, NULL) == 2) ;
+	syntax_edit(A, t, 2, 4, "- ", 2);
+	CHECK(!text_delete(t, 2, 4) && !text_insert(t, 2, "- ", 2));
+	size_t n = text_len(t);
+	syntax_faces(A, 0, n, f);
+	while (syntax_update(A, t, NULL) == 2) ;
+	syntax_faces(A, 0, n, f);
+	Syntax *F = syntax_open(path, t);
+	CHECK(F);
+	syntax_faces(F, 0, n, g);
+	while (syntax_update(F, t, NULL) == 2) ;
+	syntax_faces(F, 0, n, g);
+	CHECK(!memcmp(f, g, n));
+	syntax_free(A);
+	syntax_free(F);
+	text_free(t);
+}
+
+/* A window past the cache's 8 KB grows the cache in syntax_update; the new
+   memory holds no faces yet, so the faces cached for the smaller window
+   before must go with the old memory. */
+static void cache_grows(const char *dir)
+{
+	static char b[MAXT];
+	static unsigned char f[64], g[64], w[16384];
+	size_t n = 0;
+	for (int l = 0; l < 1000; l++)
+		n += (size_t)snprintf(b + n, sizeof b - n, "int v%d = %d; /* c */\n", l, l);
+	char path[2048];
+	snprintf(path, sizeof path, "%s/grow.c", dir);
+	Text *t = text_new(b, n);
+	CHECK(t && n > 16384);
+	Syntax *s = syntax_open(path, t), *F = syntax_open(path, t);
+	CHECK(s && F);
+	syntax_faces(s, 0, 64, f);
+	while (syntax_update(s, t, NULL) == 2) ;
+	syntax_faces(s, 0, 64, f);                   /* cached for a small window */
+	syntax_faces(s, 0, sizeof w, w);             /* past the cache */
+	while (syntax_update(s, t, NULL) == 2) ;     /* grows the cache */
+	syntax_faces(s, 0, 64, f);
+	syntax_faces(F, 0, 64, g);
+	while (syntax_update(F, t, NULL) == 2) ;
+	syntax_faces(F, 0, 64, g);
+	CHECK(!memcmp(f, g, 64));
+	syntax_free(s);
+	syntax_free(F);
+	text_free(t);
+}
+
 /* The trees a reparse replaces are freed in steps that ask stop: an edit
    that deletes 2,000 lines frees about 10,000 nodes, so the update
    after it must stop more than once before it is done. */
@@ -354,6 +436,8 @@ int main(void)
 	scroll_while_stopped(dir);
 	edit_while_stopped(dir);
 	edits_then_frame(dir);
+	edit_before_region(dir);
+	cache_grows(dir);
 	release_in_steps(dir);
 	char path[2048], vrt[1024] = "";
 	FILE *p = popen("nvim --headless --clean -l /dev/stdin <<'E'\nio.write(vim.env.VIMRUNTIME)\nE", "r");
@@ -489,6 +573,7 @@ int main(void)
 				if (q[i] != want[c][i]) {
 					fprintf(stderr, "%s/%d.%s line %zu: face %d in Neovim, %d here\n",
 					        dir, c, ext[c % NL], line, (unsigned char)q[i] - '0', (unsigned char)want[c][i] - '0');
+					show(dir, c);
 					break;
 				}
 			}
@@ -505,6 +590,7 @@ int main(void)
 			else {
 				slice_differ++;
 				fprintf(stderr, "%s/%d.%s: sliced parse or windows starting elsewhere differ, no syntax error\n", dir, c, ext[c % NL]);
+				show(dir, c);
 			}
 		}
 		q += wl;
@@ -526,6 +612,7 @@ int main(void)
 			snap_differ++;
 			fprintf(stderr, "%s/%.*s: a frame before the parse differs from Neovim's\n", dir,
 			        (int)strcspn(w + 1, "\n"), w + 1);
+			show(dir, atoi(w + 1));
 		}
 		w = we, v = ve;
 	}
