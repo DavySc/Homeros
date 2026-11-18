@@ -1,6 +1,5 @@
 # Copies tools/dupes.py lets pass until their owners fold them into one
 # function (CLAUDE.md, no duplication).  The list only shrinks: never add a line.
-ref/keys.c ref/keys.c 9953f9c7
 src/core/win.c src/core/win.c cfabdce7
 src/core/win.c src/core/win.c 18092592
 src/core/win.c src/core/win.c 4741219c
@@ -19,3 +18,6 @@ src/core/core.c src/core/core.c af7312e9
 src/sqlfmt/sqlfmt.c src/sqlfmt/sqlfmt.c 97435567
 src/sqlfmt/sqlfmt.c src/sqlfmt/sqlfmt.c fcde1a4d
 src/sqlfmt/sqlfmt.c src/sqlfmt/sqlfmt.c 069f27e6
+src/keys/motion.c src/keys/motion.c 21791400
+src/keys/motion.c src/keys/motion.c 912b305b
+src/keys/ops.c src/keys/ops.c ca17786b

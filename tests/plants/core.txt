@@ -7,7 +7,7 @@ core: undo does not bring back the group's marks (test_core_undo)~test TESTS=cor
 core: redo of a join forgets the joined line (test_core_undo)~test TESTS=core_undo~~src/core/core.c~n < before && !(u && u->join)) last~n < before) last
 core: :bd searches the jump list from its oldest entry (test_core_contract)~test TESTS=core_contract~~src/core/core.c~		if (w->jumpidx == w->njump) w->jumpidx = w->njump - 1;~		if (w->jumpidx == w->njump) w->jumpidx = 0;
 core: set_topline() keeps w_botline valid (recorded traces)~test TESTS=core_screens~~src/core/move.c~	s->topvalid = 0;      /* scrolloff is still to be checked */¶	s->bv~	s->topvalid = 0;      /* scrolloff is still to be checked */¶	if (0) s->bv
-core: the popup leaves no space before kind and menu (recorded traces)~test TESTS=core_screens~~src/core/draw.c~			int cw = s ? cells(s) + (j > 0) : 0;~			int cw = s ? cells(s) : 0;
+core: the popup leaves no space before kind and menu (recorded traces)~test TESTS=core_screens~~src/core/draw.c~			int cw = s ? grid_width(s, strlen(s)) + (j > 0) : 0;~			int cw = s ? grid_width(s, strlen(s)) : 0;
 core: CTRL-F overlaps one line too many (recorded traces)~test TESTS=core_screens~~src/core/move.c~		int minh = w->h - 2, ov;~		int minh = w->h - 1, ov;
 core: a split forgets the alternate buffer (test_core_contract)~test TESTS=core_contract~~src/core/win.c~	n->alt = o->alt;~	n->alt = NULL;
 core: the cursor clamp counts bytes, not characters (fuzz_core)~fuzz FUZZERS=core FUZZ_SECONDS=120~~src/core/move.c~	while ((k = lit_next(&it, &c)) && p + k <= w->col) { last = p; p += k; }~	while ((k = lit_next(&it, &c)) && p + k <= w->col) { last = p + k - 1; p += k; }

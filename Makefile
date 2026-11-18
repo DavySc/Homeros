@@ -168,7 +168,7 @@ dupes:
 
 # every function defined, file:line and signature: grep it before writing one
 index:
-	@grep -rnE '^(static )?[a-zA-Z_][a-zA-Z0-9_ *]*[ *][a-zA-Z_][a-zA-Z0-9_]*\([^;]*$$' --include=*.c src ref
+	@grep -rnE '^(static )?[a-zA-Z_][a-zA-Z0-9_ *]*[ *][a-zA-Z_][a-zA-Z0-9_]*\([^;{]*(\{.*)?$$' --include=*.c src ref
 
 planted:
 	SHARD=$(SHARD) bash tools/planted.sh
