@@ -40,21 +40,14 @@ Waits for package 4's core (src/core, PR 20), passing with it (measured):
   by code point.
 Waits for package 4, still differing with PR 20's core:
 - core_vcol at a byte inside a cluster (x + U+0301 with the cursor after x)
-  gives the cluster's end; Neovim's getvcol gives its start.  Typing before a lone mark makes such a cursor ("x\n\u0301", j i a Up
-  C-w: Neovim's column 0, ours 1).  CTRL-O and Del there differ the same way ("\u0301 \"a b\"", I é C-o).
-- the cursor after undoing a linewise change of several lines (4cc Esc u,
-  2cc, 2S, 3S Esc u, 3S C-o u, V j c Esc u, V } c Esc u, c+ Esc u, c2k,
-  cap, V s C-o u): Neovim takes it from
-  u_undoredo's last entry, the core from the whole step.
+  gives the cluster's end; Neovim's getvcol gives its start. Typing before
+  a lone mark makes such a cursor ("x\n\u0301", j i a Up C-w: Neovim's
+  column 0, ours 1); CTRL-O and Del there differ the same way
+  ("\u0301 \"a b\"", I é C-o).
 - I Down from a blank a combining mark is on, after the cursor came there
   with k ("    \u0301 -3\n).\n    'c' 7", j dd k I Down): Neovim's column
   2, ours 3; not traced yet (owner package 5, with package 4's core_vcol
   inside a cluster above).
-- gv after an Insert-mode BS that joins lines, then CTRL-O l and Del, over a
-  4-byte character ("'c'\n  \U00010400x { x ,", + v c Up Esc o Esc V p s BS
-  C-o l Del Space Esc gv): Neovim's column 3, ours 6. ref/core.c, which moves
-  no marks, matches Neovim here, so the mark moves of PR 20's core are the
-  suspect (owner package 4, not traced).
 
 Not traced to a fix yet (owner package 5):
 - block C, then Down and a space ("", A Enter Esc C-v [[ C ∀ Down Space):

@@ -67228,5 +67228,126 @@
 1
 ]
 }
+},
+{
+"text": "ab\ncd\nef\ngh",
+"keys": [
+"j",
+"3",
+"S",
+"x",
+"<Esc>",
+"u"
+],
+"nvim": {
+"cursor": [
+3,
+0
+],
+"lines": [
+"ab",
+"cd",
+"ef",
+"gh"
+]
+}
+},
+{
+"text": "ab\ncd\nef",
+"keys": [
+"2",
+"c",
+"c",
+"<Esc>",
+"u"
+],
+"nvim": {
+"lines": [
+"ab",
+"cd",
+"ef"
+],
+"cursor": [
+2,
+0
+]
+}
+},
+{
+"text": "ab\ncd\nef",
+"keys": [
+"V",
+"j",
+"c",
+"y",
+"<Esc>",
+"u"
+],
+"nvim": {
+"lines": [
+"ab",
+"cd",
+"ef"
+],
+"cursor": [
+2,
+0
+]
+}
+},
+{
+"text": "ab\ncd\nef",
+"keys": [
+"3",
+"S",
+"<C-o>",
+"u"
+],
+"nvim": {
+"lines": [
+"ab",
+"cd",
+"ef"
+],
+"cursor": [
+2,
+0
+]
+}
+},
+{
+"text": "'c'\n  𐐀x",
+"keys": [
+"+",
+"v",
+"y",
+"k",
+"o",
+"<Esc>",
+"V",
+"p",
+"I",
+"z",
+"z",
+"z",
+"z",
+"z",
+"z",
+"<Esc>",
+"g",
+"v",
+"<Esc>"
+],
+"nvim": {
+"cursor": [
+2,
+0
+],
+"lines": [
+"'c'",
+"zzzzzz𐐀",
+"  𐐀x"
+]
+}
 }
 ]

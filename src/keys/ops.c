@@ -350,7 +350,14 @@ int op_delete(Oparg *oap)
 		oap->line_count = 0;
 	} else if (oap->motion_type == MLINE) {
 		if (oap->op_type == OP_CHANGE) {
-			if (oap->line_count > 1) del_lines((long)W->line + 1, oap->line_count - 1);
+			/* op_delete(): Neovim deletes the lines with the cursor one line
+			   down, so undo saves that line as its cursor (package 4 traced it) */
+			if (oap->line_count > 1) {
+				size_t l0 = W->line;
+				W->line++;
+				del_lines((long)l0 + 1, oap->line_count - 1);
+				W->line = l0;
+			}
 			u_save_cursor();
 			/* 'autoindent': keep the indent, which goes if nothing is typed */
 			beginline(BL_WHITE);
@@ -1185,8 +1192,10 @@ void do_put(int regname, int dir, long count, int flags)
 			}
 			b_op_end.lnum = new_lnum;
 			long yll;
-			reg_line(reg, y_size - 1, &yll);
-			b_op_end.col = yll > 1 ? yll - 1 : 0;
+			/* do_put(): '] is the start of the last character, col - 1 minus
+			   utf_head_off(); the register line has no NUL, so not head() */
+			const char *yle = reg_line(reg, y_size - 1, &yll);
+			b_op_end.col = yll > 1 ? (long)uni_gprev((const unsigned char *)yle, (size_t)yll, (size_t)yll) : 0;
 			if (flags & PUT_CURSEND) {
 				if (y_type == MLINE) {
 					W->line = (size_t)(lnum + 1 >= nlines() ? nlines() - 1 : lnum + 1);
