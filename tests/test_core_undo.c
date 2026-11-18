@@ -50,6 +50,17 @@ int main(void)
 	remove_nl(&e, 2, 0);
 	CHECK(core_undo(&e, 0) >= 0 && core_undo(&e, 1) >= 0 && e.win->line == 1);
 	core_free(&e);
+	/* a split moves the marks after it to the new line (open_line()'s
+	   OPENLINE_MARKFIX, after the edit) and is no join: the next group's
+	   dd-like edit still redoes to its first line */
+	load(&e, "xabc\n\n\ny\n");
+	e.buf->mark[0] = (Mark){ 0, 2, 1 };
+	CHECK(!core_edit(&e, 1, 0, "\n", 1));
+	core_mark_join(&e, 0, 1, 1, -1, 0);
+	CHECK(e.buf->mark[0].line == 1 && e.buf->mark[0].col == 1);
+	remove_nl(&e, 3, 0);
+	CHECK(core_undo(&e, 0) >= 0 && core_undo(&e, 1) >= 0 && e.win->line == 2);
+	core_free(&e);
 	/* an insert at a line start undone leaves lo == hi there too, but the
 	   line stays: lines removed only when the count drops (thread 0's
 	   rule, from "𐐀x\n\t(\n" j i é Esc u dd against nvim) */

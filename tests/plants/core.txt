@@ -63,3 +63,4 @@ core: '>' is in the area (test_core_visual)~test TESTS=core_visual~~src/core/dra
 core: -- VISUAL LINE -- shows as -- VISUAL -- (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~e->ks.visual == 'V' ? 1~e->ks.visual == 'V' ? 0
 core: -- REPLACE -- shows as -- INSERT -- (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~? 3 + !!e->ks.replace :~? 3 :
 core: a window on the same buffer shows no Visual area (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~	if (!e->ks.visual || w->buf != e->buf) return;~	if (!e->ks.visual || w != e->win) return;
+core: a split marks the next edit a join (test_core_undo)~test TESTS=core_undo~~src/core/core.c~	if (line_amount < 0) join_next = b;~	if (line_amount) join_next = b;
