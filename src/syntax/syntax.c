@@ -63,6 +63,7 @@ const TSLanguage *tree_sitter_c(void);
 const TSLanguage *tree_sitter_lua(void);
 const TSLanguage *tree_sitter_markdown(void);
 const TSLanguage *tree_sitter_markdown_inline(void);
+const TSLanguage *tree_sitter_rust(void);
 static const struct Lang {
 	const char *name;
 	const TSLanguage *(*fn)(void);
@@ -71,6 +72,7 @@ static const struct Lang {
 	{ "lua", tree_sitter_lua },
 	{ "markdown", tree_sitter_markdown },
 	{ "markdown_inline", tree_sitter_markdown_inline },
+	{ "rust", tree_sitter_rust },
 };
 enum { NLANGS = sizeof langs / sizeof *langs };
 
@@ -86,7 +88,7 @@ enum { BY_NONE = -1, BY_SQL = -2, BY_JSON = -3, BY_DL = -4 };
 static const struct { const char *ext, *ft; int lang; } fts[] = {
 	{ ".c", "c", 0 }, { ".h", "cpp", 0 }, { ".lua", "lua", 1 }, { ".md", "markdown", 2 },
 	{ ".sql", "sql", BY_SQL }, { ".json", "json", BY_JSON }, { "CMakeLists.txt", "cmake", BY_NONE },
-	{ ".txt", "text", BY_NONE }, { ".rs", "rust", BY_NONE }, { ".nix", "nix", BY_NONE },
+	{ ".txt", "text", BY_NONE }, { ".rs", "rust", 4 }, { ".nix", "nix", BY_NONE },
 	{ ".glsl", "glsl", BY_NONE }, { ".vert", "glsl", BY_NONE }, { ".frag", "glsl", BY_NONE },
 	{ ".comp", "glsl", BY_NONE }, { ".geom", "glsl", BY_NONE }, { ".tesc", "glsl", BY_NONE },
 	{ ".tese", "glsl", BY_NONE }, { ".sv", "systemverilog", BY_NONE }, { ".svh", "systemverilog", BY_NONE },
@@ -122,7 +124,7 @@ extern const char *const syntax_queries[][2];
 int syntax_release(TSTree *t, unsigned n);   /* release.c */
 enum { RELEASE_STEP = 1024 };                /* nodes freed between stop asks */
 
-enum { P_EQ, P_MATCH, P_ANYOF, P_ANCESTOR, P_PARENT };
+enum { P_EQ, P_MATCH, P_ANYOF, P_ANCESTOR, P_PARENT, P_CONTAINS };
 typedef struct {
 	unsigned char kind, neg;
 	uint32_t cap;
@@ -137,7 +139,7 @@ typedef struct {
 	int prio;                  /* #set! priority N */
 	const char *ilang;         /* #set! injection.language "x" */
 	uint32_t ilen;
-	unsigned char iself;
+	unsigned char iself, incl;  /* injection.self, injection.include-children */
 } Pattern;
 
 typedef struct {
@@ -241,14 +243,35 @@ static void set(Q *Q, uint32_t i, Pattern *P, const TSQueryPredicateStep *st, ui
 	if (EQ(key, l, "priority") && v) P->prio = atoi(v);
 	else if (EQ(key, l, "injection.language") && v) P->ilang = v, P->ilen = vl;
 	else if (EQ(key, l, "injection.self")) P->iself = 1;
-	else if (EQ(key, l, "injection.combined") || EQ(key, l, "injection.include-children"))
-		ts_query_disable_pattern(Q->q, i);
+	else if (EQ(key, l, "injection.include-children")) P->incl = 1;
+	else if (EQ(key, l, "injection.combined")) ts_query_disable_pattern(Q->q, i);
+}
+
+typedef struct Src Src;
+static int resolve(Src *src, const char *s, uint32_t a, uint32_t z);
+
+/* An injection of a language we lack, named in the pattern: like Neovim
+   without that parser, it injects nothing, so the pattern goes before its
+   predicates are read (Rust's re2c pattern uses Vim's match?). */
+static int lacked(const TSQueryPredicateStep *st, uint32_t ns, const TSQuery *q)
+{
+	for (uint32_t a = 0; a + 2 < ns; a++) {
+		uint32_t l, vl;
+		if (st[a].type != TSQueryPredicateStepTypeString || st[a + 1].type != TSQueryPredicateStepTypeString
+		    || st[a + 2].type != TSQueryPredicateStepTypeString) continue;
+		const char *n = ts_query_string_value_for_id(q, st[a].value_id, &l);
+		const char *k = ts_query_string_value_for_id(q, st[a + 1].value_id, &vl);
+		if (!EQ(n, l, "set!") || !EQ(k, vl, "injection.language")) continue;
+		k = ts_query_string_value_for_id(q, st[a + 2].value_id, &vl);
+		return resolve(NULL, k, 0, vl) < 0;
+	}
+	return 0;
 }
 
 /* Turns each pattern's predicate steps into Preds and metadata, as
    query.lua's process_patterns: "not-" negates.  A predicate these
-   languages' queries do not use (contains?, match?, the any- forms, #eq?
-   of two captures) fails the query, as Neovim errors on an unknown one. */
+   languages' queries do not use (match?, the any- forms, #eq? of two
+   captures) fails the query, as Neovim errors on an unknown one. */
 static int compile(Q *Q, int hl)
 {
 	uint32_t np = ts_query_pattern_count(Q->q), nc = ts_query_capture_count(Q->q);
@@ -270,6 +293,10 @@ static int compile(Q *Q, int hl)
 		P->prio = PRIO;
 		P->p = calloc(ns ? ns : 1, sizeof *P->p);
 		if (!P->p) return -1;
+		if (!hl && lacked(st, ns, Q->q)) {
+			ts_query_disable_pattern(Q->q, i);
+			continue;
+		}
 		for (uint32_t a = 0; a < ns; ) {
 			uint32_t b = a;
 			while (st[b].type != TSQueryPredicateStepTypeDone) b++;
@@ -291,6 +318,7 @@ static int compile(Q *Q, int hl)
 				else if (EQ(name, l, "any-of?")) p->kind = P_ANYOF;
 				else if (EQ(name, l, "has-ancestor?")) p->kind = P_ANCESTOR;
 				else if (EQ(name, l, "has-parent?")) p->kind = P_PARENT;
+				else if (EQ(name, l, "contains?")) p->kind = P_CONTAINS;
 				else return -1;
 				if (n < 2 || !ISCAP(a + 1)) return -1;
 				p->cap = st[a + 1].value_id;
@@ -473,7 +501,7 @@ void syntax_edit(Syntax *s, const Text *t, size_t pos, size_t ndel, const char *
 
 /* Bytes of the text through a small window, so a predicate can read a node
    of any size without allocating in the redraw path. */
-typedef struct { const Text *t; size_t base, n; char w[256]; } Src;
+typedef struct Src { const Text *t; size_t base, n; char w[256]; } Src;
 
 static int at(void *v, size_t i)
 {
@@ -516,6 +544,14 @@ static int test1(Src *src, const Pred *p, TSNode n)
 		for (uint32_t k = 0; k < p->nstr; k++)
 			if (text_eq(src, a, z, p->str[k], p->len[k])) return 1;
 		return 0;
+	case P_CONTAINS:
+		/* every string, as a plain substring of the node's text */
+		for (uint32_t k = 0; k < p->nstr; k++) {
+			uint32_t i = a;
+			while (i + p->len[k] <= z && !text_eq(src, i, i + p->len[k], p->str[k], p->len[k])) i++;
+			if (i + p->len[k] > z) return 0;
+		}
+		return 1;
 	case P_ANCESTOR:
 		/* down from the root, as Neovim's __has_ancestor: each ts_node_parent
 		   walks from the root again (measured: a fifth of the colouring time) */
@@ -534,7 +570,7 @@ static int test1(Src *src, const Pred *p, TSNode n)
    (query.lua's handlers).  Neovim's any-of?, has-ancestor? and has-parent?
    need one node, not all, but in these languages' queries every predicate
    tests a capture of exactly one node (ts_query_capture_quantifier_for_id:
-   39 of 39), where the two agree. */
+   82 of 82 with SQL and Rust), where the two agree. */
 static int test(Src *src, const TSQueryMatch *m, const Pred *p)
 {
 	for (uint16_t i = 0; i < m->capture_count; i++)
@@ -603,8 +639,8 @@ static TSRange mkrange(uint32_t a, TSPoint pa, uint32_t z, TSPoint pz)
 	return (TSRange){ pa, pz, a, z };
 }
 
-/* get_node_ranges: the node's range without its named children (patterns
-   with injection.include-children are disabled) */
+/* get_node_ranges: the node's range without its named children (with
+   injection.include-children inject() takes the whole range instead) */
 static int node_ranges(TSNode n, Ranges *out)
 {
 	TSPoint sp = ts_node_start_point(n), ep = ts_node_end_point(n);
@@ -737,7 +773,9 @@ static int inject(Syntax *s, LTree *L, const Text *t)
 				const TSQueryCapture *c = &m.captures[i];
 				uint32_t a = ts_node_start_byte(c->node), z = ts_node_end_byte(c->node);
 				if (c->index == Q->langcap) lang = resolve(&src, NULL, a, z);
-				else if (c->index == Q->content) rc = node_ranges(c->node, &cr);
+				else if (c->index == Q->content)
+					rc = P->incl ? push(&cr, mkrange(a, ts_node_start_point(c->node), z, ts_node_end_point(c->node)))
+					             : node_ranges(c->node, &cr);
 			}
 			if (rc || lang < 0 || !cr.n) continue;
 			Inj *j = inj_new(&I, lang);
