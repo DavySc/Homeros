@@ -378,22 +378,19 @@ static void umarks_trim(const Buf *b)
 
 /* core_mark_join() was called: the next edit of this buffer joins */
 static Buf *join_next;
-/* the marks before the first core_mark_join() of that edit: do_join() and
-   op_delete() u_save() before mark_col_adjust(), so undo brings these back */
-static Buf *join_snapped;
-static Mark join_snap[28];
-/* per buffer, the group whose marks are saved: a group the keys open with
-   undo_record() alone (u_save_cursor()) gets them at its first edit, even
-   if another buffer was edited since */
-typedef struct Snapped { const Buf *b; unsigned long seq; struct Snapped *next; } Snapped;
-static Snapped *snapped;
+
+/* a group that undo_record() just opened (seq is undo_seq() before it)
+   saves the marks m from before its change (u_savecommon()) */
+static void umarks_new(Buf *b, unsigned long seq, const Mark *m)
+{
+	if (undo_seq(b->undo) == seq) return;
+	umarks_put(b, undo_seq(b->undo), m, 0);
+	if (undo_seq(b->undo) % UMARKS_TRIM == 0) umarks_trim(b);
+}
 
 static void umarks_drop(const Buf *b)
 {
 	if (join_next == b) join_next = NULL;
-	if (join_snapped == b) join_snapped = NULL;
-	for (Snapped **p = &snapped; *p; p = &(*p)->next)
-		if ((*p)->b == b) { Snapped *s = *p; *p = s->next; free(s); break; }
 	for (UndoMarks **p = &umarks; *p;)
 		if ((*p)->b == b) { UndoMarks *u = *p; *p = u->next; free(u); }
 		else p = &(*p)->next;
@@ -915,7 +912,6 @@ void core_mark_join(Editor *e, size_t line, size_t mincol, long line_amount, lon
 {
 	if (!col_amount && !line_amount) return;
 	Buf *b = e->buf;
-	if (join_snapped != b) { marks_snap(b, join_snap); join_snapped = b; }
 	/* do_join() adjusts the marks before it deletes: the edit that joins
 	   comes next, and its undo step is a join */
 	if (line_amount) join_next = b;
@@ -986,9 +982,8 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 	   text (Vim) */
 	unsigned js = after | (b->noeol && b->id.size ? J_NOEOL : 0) | (b->dos ? J_DOS : 0);
 	Mark snap[28];
-	if (join_snapped == b) memcpy(snap, join_snap, sizeof snap);
-	else marks_snap(b, snap);
-	join_snapped = NULL;
+	marks_snap(b, snap);
+	unsigned long seq = undo_seq(b->undo);
 	int r = -1;
 	size_t L = text_line_of(b->text, pos);
 	int at_start = pos == text_line_start(b->text, L);
@@ -1000,14 +995,7 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 		if (!text_insert(b->text, pos, ins, nins)) {
 			if (!undo_record(b->undo, pos, del, ndel, ins, nins, c, after)) {
 				r = 0;
-				Snapped *s = snapped;
-				while (s && s->b != b) s = s->next;
-				if (!s || s->seq != undo_seq(b->undo)) {   /* a new group */
-					if (!s && (s = malloc(sizeof *s))) { s->b = b; s->next = snapped; snapped = s; }
-					if (s) s->seq = undo_seq(b->undo);
-					umarks_put(b, undo_seq(b->undo), snap, 0);
-					if (undo_seq(b->undo) % UMARKS_TRIM == 0) umarks_trim(b);
-				}
+				umarks_new(b, seq, snap);
 				if (join_next == b) umarks_put(b, undo_seq(b->undo), NULL, 1);
 			}
 			else { text_delete(b->text, pos, nins); text_insert(b->text, pos, del, ndel); }
@@ -1044,6 +1032,16 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 	}
 	join_next = NULL;
 	return r;
+}
+
+void core_u_save(Editor *e, size_t line)
+{
+	Buf *b = e->buf;
+	Mark snap[28];
+	marks_snap(b, snap);
+	unsigned long seq = undo_seq(b->undo);
+	UndoCursor c = { e->win->line, e->win->col, b->flags };
+	if (!undo_record(b->undo, core_line_start(e, line), "", 0, "", 0, c, b->flags)) umarks_new(b, seq, snap);
 }
 
 int core_edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins)

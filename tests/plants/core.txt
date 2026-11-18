@@ -41,13 +41,11 @@ core: a composing character at a cluster start is drawn without its space (test_
 core: H and L apply scrolloff under an operator (test_core_contract)~test TESTS=core_contract~~src/core/move.c~	if (so) cursor_correct(e, w);~	if (so || 1) cursor_correct(e, w);
 core: undo forgets that a step joined lines (test_core_undo)~test TESTS=core_undo~~src/core/core.c~	if (line_amount) join_next = b;~	(void)0;
 core: a mark on a line deleted from mid-line stays off the joined line (test_core_undo)~test TESTS=core_undo~~src/core/core.c~{ m->line = L; m->col += col; }~{ m->col += col; }
-core: undo saves the marks after a join moved them (test_core_undo)~test TESTS=core_undo~~src/core/core.c~	if (join_snapped == b) memcpy(snap, join_snap, sizeof snap);~	if (join_snapped == b && 0) memcpy(snap, join_snap, sizeof snap);
-core: a group's marks are saved again at each of its edits (test_core_undo)~test TESTS=core_undo~~src/core/core.c~if (s) s->seq = undo_seq(b->undo);~if (s) s->seq = 0;
-core: one buffer's open group taken for new after another buffer's edit (test_core_undo)~test TESTS=core_undo~~src/core/core.c~while (s && s->b != b) s = s->next;~while (0) s = s->next;
 core: '> on a line deleted from mid-line stays off the joined line (test_core_undo)~test TESTS=core_undo~~src/core/core.c~nodel_join(&b->mark[MARK_GT], L, d, col);~(void)0;
 core: the change list on a line deleted from mid-line stays off the joined line (test_core_undo)~test TESTS=core_undo~~src/core/core.c~for (int k = 0; k < b->nchange; k++) nodel_join(&b->change[k], L, d, col);~(void)0;
 core: the jump list on a line deleted from mid-line stays off the joined line (test_core_undo)~test TESTS=core_undo~~src/core/core.c~if (w->jump[k].buf == b) nodel_join(&w->jump[k].m, L, d, col);~if (0) nodel_join(&w->jump[k].m, L, d, col);
-core: each core_mark_join() of one edit saves the marks again (test_core_undo)~test TESTS=core_undo~~src/core/core.c~if (join_snapped != b) { marks_snap~if (1) { marks_snap
-core: the marks saved before a join outlive its edit (test_core_undo)~test TESTS=core_undo~~src/core/core.c~	join_snapped = NULL;~	(void)0;
 core: a file opens with the cursor in column 0 (test_core_screens)~test TESTS=core_screens~~src/core/core.c~(measured in tmux, 7 texts) */¶	w->col = core_first_nonblank(e, 0);~(measured in tmux, 7 texts) */¶	w->col = 0;
 core: CTRL-W > in a shrunk terminal grows past its row of windows (test_core_contract)~test TESTS=core_contract~~src/core/win.c~full = a == ROWS ? e->cols : e->layout->size[ROWS];~full = a == ROWS ? e->cols : e->rows;
+core: a group the keys open saves no marks (test_core_undo)~test TESTS=core_undo~~src/core/core.c~"", 0, "", 0, c, b->flags)) umarks_new(b, seq, snap);~"", 0, "", 0, c, b->flags)) umarks_new(b, seq ? undo_seq(b->undo) : undo_seq(b->undo), snap);
+core: a group an edit opens saves no marks (test_core_undo)~test TESTS=core_undo~~src/core/core.c~				umarks_new(b, seq, snap);~				(void)seq;
+core: a group's marks are saved again at each of its edits (test_core_undo)~test TESTS=core_undo~~src/core/core.c~	if (undo_seq(b->undo) == seq) return;~	if (seq == (unsigned long)-1) return;

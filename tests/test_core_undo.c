@@ -143,10 +143,7 @@ int main(void)
 	e.win->njump = 1;
 	undo_close(e.buf->undo);
 	e.win->col = 6;
-	{
-		UndoCursor c = { 0, 6, e.buf->flags };   /* the keys' u_save_cursor() */
-		CHECK(!undo_record(e.buf->undo, 0, "", 0, "", 0, c, e.buf->flags));
-	}
+	core_u_save(&e, 0);                       /* the keys' u_save_cursor() */
 	core_mark_join(&e, 2, 0, -2, 6, 0);
 	CHECK(!core_edit(&e, 6, core_line_start(&e, 2) + core_line_len(&e, 2) - 6, "", 0));
 	undo_close(e.buf->undo);
@@ -161,6 +158,7 @@ int main(void)
 	load(&e, "ab\ncd\nef\n");
 	e.buf->mark[MARK_LT] = e.buf->mark[MARK_GT] = (Mark){ 1, 1, 1 };
 	undo_close(e.buf->undo);
+	core_u_save(&e, 0);                       /* do_join()'s u_save_cursor() */
 	core_mark_join(&e, 1, 0, -1, 3, 0);
 	CHECK(!core_edit(&e, 2, 1, " ", 1));
 	undo_close(e.buf->undo);
@@ -182,6 +180,7 @@ int main(void)
 	e.buf->mark[MARK_LT] = (Mark){ 1, 0, 1 };
 	e.buf->mark[MARK_GT] = (Mark){ 2, 0, 1 };
 	undo_close(e.buf->undo);
+	core_u_save(&e, 0);
 	core_mark_join(&e, 1, 0, -1, 3, 0);
 	core_mark_join(&e, 2, 0, -2, 6, 0);
 	CHECK(!core_edit(&e, 2, 4, " cd ", 4));
@@ -202,8 +201,7 @@ int main(void)
 		CHECK(!core_edit(&e, 0, 0, "w", 1));   /* a's next group gets another number than the other buffer's */
 		undo_close(a->undo);
 		a->mark[0] = (Mark){ 1, 0, 1 };
-		UndoCursor c = { 0, 0, a->flags };     /* the keys' u_save_cursor() */
-		CHECK(!undo_record(a->undo, 0, "", 0, "", 0, c, a->flags));
+		core_u_save(&e, 0);                    /* the keys' u_save_cursor() */
 		CHECK(!core_edit(&e, 0, 0, "new\n", 4));   /* a moves to line 2 */
 		CHECK(!core_edit(&e, 0, 0, "z", 1));        /* the same group */
 		CHECK(!core_edit_file(&e, other, 0) && !core_edit(&e, 0, 0, "y", 1));
