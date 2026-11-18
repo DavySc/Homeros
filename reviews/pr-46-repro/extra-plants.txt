@@ -1,0 +1,2 @@
+wl: lost compositor as a close key (old behaviour)~test TESTS=wl~~src/wl/wl.c~dispatch_pending(dpy) < 0) return -1;~dispatch_pending(dpy) < 0) { push(KEY_CLOSE); }
+wl: lost compositor only after read error~test TESTS=wl~~src/wl/wl.c~if (e || wl_display_dispatch_pending(dpy) < 0) return -1;~if (e) return -1;
