@@ -86,8 +86,9 @@ int main(int argc, char **argv)
 	Grid g = { 0 };
 	if (core_open(&e, argv[1]) || grid_resize(&g, 50, 200)) return 1;
 	double *add = malloc((size_t)nk * sizeof *add), *ed = malloc((size_t)nk * sizeof *ed), stopmax = 0;
-	double *own = malloc((size_t)nk * sizeof *own);
-	if (!add || !ed || !own) return 1;
+	double *own = malloc((size_t)nk * sizeof *own), *kf = malloc((size_t)nk * sizeof *kf);
+	double *pf = malloc((size_t)nk * sizeof *pf);
+	if (!add || !ed || !own || !kf || !pf) return 1;
 	/* start-up, not measured: the first frame, the parse, the frame with
 	   colours */
 	core_draw(&e, &g);
@@ -98,7 +99,7 @@ int main(int argc, char **argv)
 	snprintf(go, sizeof go, "%uG", 1 + rnd((unsigned)core_lines(&e)));
 	for (char *k = go; *k; k++) keys_feed(&e, *k, 0);
 	static const char *const ty = "ox = foo(a, b); /* c */\x1bj";
-	int pending = 1, parses = 0, stopped = 0;
+	int pending = 1, parses = 0, stopped = 0, np = 0;
 	for (int i = 0; i < nk; i++) {
 		/* the next key comes 0 to 40 ms after the last frame */
 		key_at = now() + rnd(40000) / 1000.0;
@@ -109,6 +110,14 @@ int main(int argc, char **argv)
 			pending = r == 2;
 			stopped += pending;
 			parses += r == 1;
+			/* src/main.c draws the frame with the new colours once a parse
+			   finishes; a key that arrives meanwhile waits for it */
+			if (r == 1) {
+				in_syntax = 0;
+				core_draw(&e, &g);
+				pf[np++] = in_syntax;
+				back = now();
+			}
 		}
 		double late = back > arrived ? back - arrived : 0;
 		if (late > stopmax) stopmax = late;
@@ -119,16 +128,22 @@ int main(int argc, char **argv)
 		add[i] = late + in_syntax;
 		ed[i] = in_edit;
 		own[i] = add[i] - in_text;
+		kf[i] = in_syntax - in_edit;
 		pending = e.buf->syn != NULL;
 	}
 	qsort(add, (size_t)nk, sizeof *add, cmp);
 	qsort(ed, (size_t)nk, sizeof *ed, cmp);
 	qsort(own, (size_t)nk, sizeof *own, cmp);
+	qsort(kf, (size_t)nk, sizeof *kf, cmp);
+	qsort(pf, (size_t)np, sizeof *pf, cmp);
 	printf("%s: %d keys; syntax adds to a key: median %.3f ms, p99 %.3f, max %.3f; without text.h's "
 	       "line lookups: median %.3f, p99 %.3f, max %.3f; syntax_edit alone: median %.3f, p99 %.3f; "
-	       "parse back at most %.3f ms after a key; %d parses finished, %d stopped by a key\n",
+	       "parse back at most %.3f ms after a key; %d parses finished, %d stopped by a key; "
+	       "syntax_faces in a key's frame: median %.3f, p99 %.3f, max %.3f; in the frame after a parse: "
+	       "median %.3f, p99 %.3f, max %.3f\n",
 	       argv[1], nk, add[nk / 2], add[nk * 99 / 100], add[nk - 1], own[nk / 2], own[nk * 99 / 100],
-	       own[nk - 1], ed[nk / 2], ed[nk * 99 / 100], stopmax, parses, stopped);
+	       own[nk - 1], ed[nk / 2], ed[nk * 99 / 100], stopmax, parses, stopped,
+	       kf[nk / 2], kf[nk * 99 / 100], kf[nk - 1], np ? pf[np / 2] : 0, np ? pf[np * 99 / 100] : 0, np ? pf[np - 1] : 0);
 	core_free(&e);
 	grid_free(&g);
 	return 0;
