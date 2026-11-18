@@ -44,12 +44,13 @@ def main(argv):
 			if hit and not run:
 				hits.append((g, j, f, i))
 			run = hit
-	known = {l.strip() for l in open('tests/dupes-known.txt') if l.strip() and l[0] != '#'}
+	# a list, not a set: a window copied three times is listed twice
+	known = [l.strip() for l in open('tests/dupes-known.txt') if l.strip() and l[0] != '#']
 	toks = {f: tokens(f) for f in {h[0] for h in hits} | {h[2] for h in hits}}
 	bad = 0
 	for g, j, f, i in hits:
 		k = f'{g} {f} {zlib.crc32(" ".join(x for x, _ in toks[f][i:i + m]).encode()):08x}'
-		if k in known: known.discard(k); continue
+		if k in known: known.remove(k); continue
 		print(f'FAIL copied: {g}:{toks[g][j][1]} {f}:{toks[f][i][1]}   ({k})')
 		bad = 1
 	for k in sorted(known): print(f'FAIL no longer copied, delete from tests/dupes-known.txt: {k}')

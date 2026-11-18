@@ -21,3 +21,10 @@ src/sqlfmt/sqlfmt.c src/sqlfmt/sqlfmt.c 069f27e6
 src/keys/motion.c src/keys/motion.c 21791400
 src/keys/motion.c src/keys/motion.c 912b305b
 src/keys/ops.c src/keys/ops.c ca17786b
+src/git/keys.c src/git/keys.c 6007b6c5
+src/git/keys.c src/git/keys.c 4ad9ff27
+src/git/keys.c src/git/keys.c 6f94d5ca
+src/git/keys.c src/git/keys.c 6f94d5ca
+src/git/keys.c src/git/keys.c c72bdd04
+src/git/sec.c src/git/sec.c 5086807d
+src/git/status.c src/git/status.c 29f7bf54
