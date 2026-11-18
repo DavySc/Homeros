@@ -1,0 +1,3 @@
+# Review of PR 51: plants of the reviewer's, run by extra-plants.sh.
+review: SQL gets another language's queries (build.mk's order differs from syntax.c's)~test TESTS=syntax~~src/syntax/build.mk~for l in c lua markdown markdown_inline sql; do~for l in c lua markdown sql markdown_inline; do
+review: the patch frees the tag twice~test TESTS=syntax~~src/syntax/sources.nix~== 0) { free(start_tag);'~== 0) { free(start_tag); free(start_tag);'

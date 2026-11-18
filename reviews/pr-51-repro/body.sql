@@ -1,0 +1,1 @@
+CREATE FUNCTION f() RETURNS int AS $$ SELECT $$;
