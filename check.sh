@@ -16,8 +16,9 @@ run() { # run <dir with the sources> <test|specs|oracle|fuzz|all>: 0 when the na
     # each tests/test_*.c is its own program: ASan+UBSan with both compilers, then ThreadSanitizer
     for t in "$src"/tests/test_*.c; do
       for build in "gcc $SAN" "clang $SAN" "clang -fsanitize=thread"; do
-        $build $FLAGS "$src"/dbg/*.c "$t" -o "$b/test" || return 2
-        "$b/test" "$b/seed.rdi" >"$b/out" 2>&1 || { tail -5 "$b/out"; return 1; }
+        # a test that includes a module's .c file, to reach its static functions, is not linked with it again
+        $build $FLAGS $(ls "$src"/dbg/*.c | grep -vFx "$src/dbg/$(sed -n 's|^#include "\.\./dbg/\(.*\.c\)"|\1|p' "$t")") "$t" -o "$b/test" || return 2
+        timeout 300 "$b/test" "$b/seed.rdi" >"$b/out" 2>&1 || { tail -5 "$b/out"; return 1; }
       done
     done
   fi
@@ -29,12 +30,14 @@ run() { # run <dir with the sources> <test|specs|oracle|fuzz|all>: 0 when the na
     "$src/tests/oracle_msf.sh" "$b/msfq" "$b"/pdb/*.pdb $(ls "$src"/rdi/*.pdb 2>/dev/null) || return 1
     gcc $FLAGS $SAN "$src"/dbg/*.c "$src"/tests/pdbq.c -o "$b/pdbq" || return 2
     python3 -I "$src/tests/oracle_pdb.py" "$b/pdbq" "$b"/pdb/*.pdb $(ls "$src"/rdi/*.pdb 2>/dev/null) || return 1
+    gcc $FLAGS $SAN "$src"/dbg/*.c "$src"/cmd/pdb2rdi.c -o "$b/pdb2rdi" || return 2
+    python3 -I "$src/tests/oracle_conv.py" "$b/pdb2rdi" "$b/rdiq" "$b"/pdb/*.pdb || return 1
   fi
   if [ "$what" = fuzz ] || [ "$what" = all ]; then
     for f in "$src"/tests/fuzz_*.c; do
       clang $FLAGS -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all "$src"/dbg/*.c "$f" -o "$b/fuzz" || return 2
       mkdir -p "$b/corpus" && cp "$b/seed.rdi" "$b"/pdb/steps-*.pdb "$b/corpus/"
-      (cd "$b" && ./fuzz corpus -max_total_time="${FUZZ_SECONDS:-20}" -max_len=131072 >fuzz.log 2>&1) || { grep -m2 "ERROR\|SUMMARY" "$b/fuzz.log"; return 1; }
+      (cd "$b" && ./fuzz corpus -max_total_time="${FUZZ_SECONDS:-20}" -max_len=131072 -timeout=20 >fuzz.log 2>&1) || { grep -m2 "ERROR\|SUMMARY" "$b/fuzz.log"; return 1; }
     done
   fi
   rm -rf "$b"
@@ -46,7 +49,7 @@ missed=0; total=0
 while IFS='|' read -r what file find repl; do
   case "$what" in ''|'#'*) continue;; esac
   what=$(echo $what); file=$(echo $file); find=${find# }; find=${find% }; repl=${repl# }
-  t=$(mktemp -d); cp -r dbg tests specs "$t/"; [ -d rdi ] && cp -r rdi "$t/"
+  t=$(mktemp -d); cp -r dbg tests specs cmd subjects "$t/"; [ -d rdi ] && cp -r rdi "$t/"
   FIND="$find" REPL="$repl" python3 -I -c 'import os,sys;p=sys.argv[1];s=open(p).read();f,r=(os.environ[k].replace("\\n","\n").replace("\\p","|") for k in ("FIND","REPL"));assert s.count(f)==1,("plant text not found once: "+f);open(p,"w").write(s.replace(f,r))' "$t/$file" || { echo "BAD PLANT: $find"; missed=$((missed+1)); continue; }
   total=$((total+1))
   run "$t" "$what" >/dev/null 2>&1

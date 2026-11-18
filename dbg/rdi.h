@@ -24,6 +24,8 @@ enum {
 typedef struct { uint64_t voff, idx; } RdiVMap;
 typedef struct { uint32_t voffs_base, lines_base, cols_base, lines_count, cols_count; } RdiLineTable;
 typedef struct { uint32_t file, line; } RdiLine;
+typedef struct { uint32_t name, flags; uint64_t voff, voff_opl, foff, foff_opl; } RdiSection;   /* flags: 1 read, 2 write, 4 execute */
+typedef struct { uint32_t name, parent, first_child, next_sibling, source_file; } RdiPathNode;
 typedef struct { uint32_t path_node, path, line_map, checksum_kind, checksum; } RdiSourceFile;
 typedef struct { uint32_t line_count, voff_count, nums_base, ranges_base, voffs_base; } RdiSourceLineMap;
 typedef struct { uint32_t name, compiler, source_path, object_path, archive_path, build_path, language,
@@ -38,7 +40,7 @@ typedef struct { uint32_t first_node, node_count; } RdiBucket;
 typedef struct { uint32_t string, match_count, match; } RdiNameNode;
 
 enum { RDI_NAMES_GLOBALS = 1, RDI_NAMES_THREAD_VARS, RDI_NAMES_CONSTANTS, RDI_NAMES_PROCEDURES,
-       RDI_NAMES_TYPES, RDI_NAMES_LINK_PROCEDURES, RDI_NAMES_SOURCE_PATHS, RDI_NAMES_UNITS };
+       RDI_NAMES_TYPES, RDI_NAMES_LINK_PROCEDURES, RDI_NAMES_SOURCE_PATHS, RDI_NAMES_UNITS, RDI_NAMES_KINDS };
 
 typedef struct { const void *p; uint64_t n; } RdiSpan;   /* n elements */
 typedef struct { RdiSpan s[RDI_SECTIONS]; } Rdi;
@@ -50,8 +52,13 @@ bool rdi_open(Rdi *r, const void *data, uint64_t size);
 #define rdi_at(r, k, T, i) ((const T *)rdi_elem((r), (k), (i)))
 const void *rdi_elem(const Rdi *r, int k, uint64_t i);
 
+uint64_t rdi_hash(const void *bytes, uint64_t len);                 /* the hash of name maps */
 RdiSpan rdi_str(const Rdi *r, uint32_t idx);                        /* bytes, not zero-terminated */
 RdiSpan rdi_run(const Rdi *r, int k, uint64_t first, uint64_t count); /* [first, first+count) clamped to k */
+
+/* The path of a path node (a source file's path_node) into buf, parts joined by '/', not
+   terminated. Returns its length; bytes past cap are not written. */
+uint64_t rdi_path(const Rdi *r, uint32_t node, char *buf, uint64_t cap);
 
 uint32_t rdi_vmap(const Rdi *r, int vmap_section, uint64_t voff);   /* table index at voff, 0 if none */
 RdiLine  rdi_line_from_voff(const Rdi *r, uint64_t voff);

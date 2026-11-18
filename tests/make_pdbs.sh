@@ -18,6 +18,11 @@ link "$out/obj/cols.obj" /out:"$out/cols.exe" /pdb:"$out/cols.pdb"
 printf 'int main(void)\n{\n  volatile int a = 1;\n#line 100 "other.c"\n  a += 2;\n  a += 3;\n#line 7 "twofiles.c"\n  return a;\n}\n' > "$out/obj/twofiles.c"
 clang --target=x86_64-pc-windows-msvc -g -gcodeview -O0 -ffreestanding -c "$out/obj/twofiles.c" -o "$out/obj/twofiles.obj"
 link "$out/obj/twofiles.obj" /out:"$out/twofiles.exe" /pdb:"$out/twofiles.pdb"
+# the second function's lines come first but it is placed second, right at the end of main:
+# main's end marker and its first line share an offset, and the marker is the later record
+printf '__attribute__((section(".text$b"), aligned(1))) int second(int x)\n{\n  return x + 1;\n}\n__attribute__((section(".text$a"), aligned(1))) int main(void)\n{\n  return second(1);\n}\n' > "$out/obj/reversed.c"
+clang --target=x86_64-pc-windows-msvc -g -gcodeview -O0 -ffreestanding -falign-functions=1 -c "$out/obj/reversed.c" -o "$out/obj/reversed.obj"
+link "$out/obj/reversed.obj" /out:"$out/reversed.exe" /pdb:"$out/reversed.pdb"
 mkdir -p "$out/many"; cd "$out/many"
 for i in $(seq 400); do echo "int f$i(int x) { int y = x + $i; return y * 2; }" > "f$i.c"; done
 echo "int f1(int); int main(void) { return f1(0); }" > main.c

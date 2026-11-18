@@ -4,7 +4,7 @@
 /* element sizes; a section this reader does not interpret yet is bytes */
 static const uint8_t elem_size[RDI_SECTIONS] = {
   [RDI_NULL] = 1, [RDI_TOP_LEVEL_INFO] = 1, [RDI_STRING_DATA] = 1, [RDI_STRING_TABLE] = 4,
-  [RDI_INDEX_RUNS] = 4, [RDI_BINARY_SECTIONS] = 1, [RDI_FILE_PATH_NODES] = 20,
+  [RDI_INDEX_RUNS] = 4, [RDI_BINARY_SECTIONS] = sizeof(RdiSection), [RDI_FILE_PATH_NODES] = sizeof(RdiPathNode),
   [RDI_SOURCE_FILES] = sizeof(RdiSourceFile), [RDI_LINE_TABLES] = sizeof(RdiLineTable),
   [RDI_LINE_VOFFS] = 8, [RDI_LINE_LINES] = sizeof(RdiLine), [RDI_LINE_COLUMNS] = 4,
   [RDI_SOURCE_LINE_MAPS] = sizeof(RdiSourceLineMap), [RDI_SOURCE_LINE_NUMS] = 4,
@@ -127,14 +127,42 @@ RdiSpan rdi_voffs_from_line(const Rdi *r, uint32_t file, uint32_t line)
   return rdi_run(r, RDI_SOURCE_LINE_VOFFS, (uint64_t)m->voffs_base + b[0], b[1] - b[0]);
 }
 
+uint64_t rdi_path(const Rdi *r, uint32_t node, char *buf, uint64_t cap)
+{
+  /* two walks to the root: one for the length, one to write the parts from the back. A file
+     may link nodes in a ring, so a walk takes at most as many steps as there are nodes. */
+  uint64_t len = 0, at = 0;
+  for (int pass = 0; pass < 2; pass += 1) {
+    uint32_t k = node;
+    for (uint64_t steps = r->s[RDI_FILE_PATH_NODES].n; k != 0 && steps > 0; steps -= 1) {
+      const RdiPathNode *n = rdi_at(r, RDI_FILE_PATH_NODES, RdiPathNode, k);
+      RdiSpan name = rdi_str(r, n->name);
+      if (pass == 0) len += name.n + 1;
+      else {
+        at -= name.n;
+        for (uint64_t i = 0; i < name.n && at + i < cap; i += 1) buf[at + i] = ((const char *)name.p)[i];
+        if (at > 0 && --at < cap) buf[at] = '/';
+      }
+      k = n->parent;
+    }
+    if (len > 0 && pass == 0) at = len -= 1;
+  }
+  return len;
+}
+
+uint64_t rdi_hash(const void *bytes, uint64_t len)   /* djb2, and 0 for the empty string */
+{
+  uint64_t hash = len ? 5381 : 0;
+  for (uint64_t i = 0; i < len; i += 1) hash = hash * 33 + ((const uint8_t *)bytes)[i];
+  return hash;
+}
+
 RdiSpan rdi_matches(const Rdi *r, uint32_t kind, const char *name, uint64_t len)
 {
   const RdiNameMap *m = rdi_at(r, RDI_NAME_MAPS, RdiNameMap, kind);
   RdiSpan buckets = rdi_run(r, RDI_NAME_MAP_BUCKETS, m->bucket_base, m->bucket_count);
   if (buckets.n == 0) return (RdiSpan){zero, 0};
-  uint64_t hash = len ? 5381 : 0;   /* rdi_hash: djb2, and 0 for the empty string */
-  for (uint64_t i = 0; i < len; i += 1) hash = hash * 33 + (uint8_t)name[i];
-  const RdiBucket *b = (const RdiBucket *)buckets.p + hash % buckets.n;
+  const RdiBucket *b = (const RdiBucket *)buckets.p + rdi_hash(name, len) % buckets.n;
   RdiSpan nodes = rdi_run(r, RDI_NAME_MAP_NODES, (uint64_t)m->node_base + b->first_node, b->node_count);
   for (uint64_t i = 0; i < nodes.n; i += 1) {
     const RdiNameNode *node = (const RdiNameNode *)nodes.p + i;

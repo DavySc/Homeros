@@ -30,8 +30,8 @@ for pdb in sys.argv[2:]:
             c = sc(line)
             want.append('contrib %d:%d:%d:%d voff %x' % (c + ((va[c[1]] + c[2]) if c[1] in va else 0,)))
         elif part == 'Lines' and (m := re.match(r' *Mod (\d+) \| `', line)): mod, src = int(m[1]), ''
-        elif part == 'Lines' and (m := re.match(r'(\S.*) \((?:(\w+): ([0-9A-F]+)|no checksum)\)$', line)):
-            src = '%s %d:%s' % (m[1], {None: 0, 'MD5': 1, 'SHA1': 2, 'SHA256': 3}[m[2]], m[3] or '')
+        elif part == 'Lines' and (m := re.match(r'(\S.*) \((?:([\w-]+): ([0-9A-F]+)|no checksum)\)$', line)):
+            src = '%s %d:%s' % (m[1], {None: 0, 'MD5': 1, 'SHA-1': 2, 'SHA-256': 3}[m[2]], m[3] or '')
         elif part == 'Lines' and (m := re.match(r'  ([0-9A-F]{4}):([0-9A-F]{8})-([0-9A-F]{8}), line/(?:column/)?addr entries = (\d+)', line)):
             base, j, entries = va[int(m[1], 16)], i + 1, []
             while len(entries) < int(m[4]):

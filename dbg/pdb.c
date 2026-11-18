@@ -57,6 +57,7 @@ bool pdb_open(Pdb *p, const void *data, uint64_t size)
   /* after the header: modules, contributions, section map, file info, type server map,
      edit-and-continue info, then the numbers of the optional streams (PDB_DbiHeader) */
   PdbSpan dbi = {p->dbi, n};
+  p->machine = le16(p->dbi + 58);
   uint64_t at = DBI_HEADER, sizes[6];
   for (int i = 0; i < 6; i += 1) sizes[i] = le32(p->dbi + (i < 5 ? 24 + 4 * i : 52));
   p->mods = part(dbi, at, sizes[0]);

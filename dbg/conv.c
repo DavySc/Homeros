@@ -1,0 +1,340 @@
+#include "conv.h"
+#include "le.h"
+#include "pdb.h"
+#include "rdi.h"
+#include <stdlib.h>
+
+/* ---- growing arrays ---- */
+
+typedef struct { uint8_t *p; uint64_t n, cap; } Buf;
+
+static void *add(Buf *b, uint64_t n)   /* n more zeroed bytes */
+{
+  if (b->n + n >= b->cap) {
+    b->cap = (b->n + n) * 2 + 64;
+    b->p = realloc(b->p, b->cap);
+    if (!b->p) abort();
+  }
+  void *at = memset(b->p + b->n, 0, n);
+  b->n += n;
+  return at;
+}
+#define COUNT(buf, T) ((uint32_t)((buf).n / sizeof(T)))
+#define LAST(buf, T) ((T *)((buf).p + (buf).n) - 1)
+
+/* Everything that is sorted is a record of four numbers compared in order, so there is one
+   comparison function. */
+static void rec(Buf *b, uint64_t k0, uint64_t k1, uint64_t k2, uint64_t k3)
+{
+  uint64_t *r = add(b, 32);
+  r[0] = k0, r[1] = k1, r[2] = k2, r[3] = k3;
+}
+static int rec_cmp(const void *a, const void *b)
+{
+  const uint64_t *x = a, *y = b;
+  for (int i = 0; i < 4; i += 1) if (x[i] != y[i]) return x[i] < y[i] ? -1 : 1;
+  return 0;
+}
+static uint64_t *sorted(Buf *b, uint64_t *count)
+{
+  *count = b->n / 32;
+  if (*count) qsort(b->p, *count, 32, rec_cmp);
+  return (uint64_t *)b->p;
+}
+
+/* ---- a set of byte strings numbered in order of arrival: the string table, the path tree's
+   (parent, name) pairs and the source files are each one of these ---- */
+
+typedef struct { Buf keys, at, slots; } Names;   /* at: where each key starts, then the end */
+
+static uint32_t *names_slot(Names *m, const void *key, uint32_t len)   /* the key's slot, or the empty one it belongs in */
+{
+  uint32_t *slots = (uint32_t *)m->slots.p, *at = (uint32_t *)m->at.p;
+  for (uint64_t n = m->slots.n / 4, i = rdi_hash(key, len) % n;; i = (i + 1) % n) {
+    uint32_t e = slots[i] - 1;
+    if (slots[i] == 0 || (at[e + 1] - at[e] == len && (len == 0 || memcmp(m->keys.p + at[e], key, len) == 0))) return slots + i;
+  }
+}
+
+static uint32_t intern(Names *m, const void *key, uint32_t len)
+{
+  if (!m->at.n) add(&m->at, 4), add(&m->keys, 0);     /* keys.p is never null, even when every key is empty */
+  uint32_t count = COUNT(m->at, uint32_t) - 1, *at = (uint32_t *)m->at.p;
+  if (m->slots.n < (uint64_t)(count + 1) * 8) {       /* at most half full */
+    uint64_t size = m->slots.n ? m->slots.n * 2 : 1024;
+    m->slots.n = 0;
+    add(&m->slots, size);
+    for (uint32_t e = 0; e < count; e += 1) *names_slot(m, m->keys.p + at[e], at[e + 1] - at[e]) = e + 1;
+  }
+  uint32_t *slot = names_slot(m, key, len);
+  if (*slot) return *slot - 1;
+  *slot = count + 1;
+  if (len) memcpy(add(&m->keys, len), key, len);
+  *(uint32_t *)add(&m->at, 4) = (uint32_t)m->keys.n;
+  return count;
+}
+
+/* ---- the output ---- */
+
+typedef struct {
+  Buf s[RDI_SECTIONS];
+  Names strings, nodes, files;
+  Buf pairs;                 /* name map entries: (kind, string, index) */
+} Out;
+
+static bool slash(uint8_t c) { return c == '/' || c == '\\'; }
+
+/* The path's node in the tree of path parts, made if new. Parts split at either slash, a
+   leading '/' stays on the first part, "." stays and ".." goes up (rdim_bake_path_tree_insert;
+   that function never returns for a path that starts with a backslash, this one skips it). */
+/* the node for `path`, taken from the folder `node` */
+static uint32_t path_node(Out *o, uint32_t node, PdbSpan path)
+{
+  for (uint32_t i = 0; i < path.n;) {
+    uint32_t start = i;
+    if (slash(path.p[i])) {
+      i += 1;
+      if (start > 0 || path.p[0] == '\\') continue;
+    }
+    while (i < path.n && !slash(path.p[i])) i += 1;
+    uint32_t len = i - start;
+    const uint8_t *part = path.p + start;
+    if (len == 1 && part[0] == '.') continue;
+    if (len == 2 && part[0] == '.' && part[1] == '.' && node != 0) {
+      node = ((RdiPathNode *)o->s[RDI_FILE_PATH_NODES].p)[node].parent;
+      continue;
+    }
+    uint32_t key[2] = {node, intern(&o->strings, part, len)};
+    uint32_t child = intern(&o->nodes, key, sizeof key);
+    if (child == COUNT(o->s[RDI_FILE_PATH_NODES], RdiPathNode)) *(RdiPathNode *)add(&o->s[RDI_FILE_PATH_NODES], sizeof(RdiPathNode)) = (RdiPathNode){.name = key[1], .parent = node};
+    node = child;
+  }
+  return node;
+}
+
+/* the source file at a path, made if new; a file keeps the first checksum seen for it */
+static uint32_t source_file(Out *o, const PdbLineBlock *b, uint32_t folder)
+{
+  static const uint8_t sum_size[4] = {0, 16, 20, 32};
+  static const int sum_section[4] = {0, RDI_MD5, RDI_SHA1, RDI_SHA256};
+  /* a relative path is taken from the folder of the unit's object file (rdi_from_codeview.c, PathStyle_Relative) */
+  bool rooted = b->file.n == 0 || slash(b->file.p[0]) || (b->file.n > 1 && b->file.p[1] == ':');
+  uint32_t node = path_node(o, rooted ? 0 : folder, b->file), file = intern(&o->files, &node, sizeof node);
+  if (file == COUNT(o->s[RDI_SOURCE_FILES], RdiSourceFile)) {
+    *(RdiSourceFile *)add(&o->s[RDI_SOURCE_FILES], sizeof(RdiSourceFile)) = (RdiSourceFile){.path_node = node, .line_map = file};
+    ((RdiPathNode *)o->s[RDI_FILE_PATH_NODES].p)[node].source_file = file;
+  }
+  RdiSourceFile *f = (RdiSourceFile *)o->s[RDI_SOURCE_FILES].p + file;
+  if (file != 0 && f->checksum_kind == 0 && b->sum_kind < 4 && b->sum.n != 0 && b->sum.n == sum_size[b->sum_kind]) {
+    Buf *sums = &o->s[sum_section[b->sum_kind]];
+    if (!sums->n) add(sums, b->sum.n);                 /* index 0 is no checksum */
+    f->checksum_kind = b->sum_kind;
+    f->checksum = (uint32_t)(sums->n / b->sum.n);
+    memcpy(add(sums, b->sum.n), b->sum.p, b->sum.n);
+  }
+  return file;
+}
+
+/* A vmap from ranges (first, ~end, index): at each offset the answer is the covering range
+   that sorts last, so a range inside another wins. RAD's version of this loop
+   (rdi_make_local.c, "bake vmaps") only drops the innermost range when it ends; when ranges
+   overlap without nesting, one that ended earlier stays underneath and is written out later,
+   out of order. Here everything that has ended is dropped at once, so keys only ascend. */
+static void vmap_build(Buf *out, Buf *ranges)
+{
+  uint64_t n, *r = sorted(ranges, &n), top = 0;
+  uint64_t *stack = malloc((n + 1) * sizeof *stack);
+  if (!stack) abort();
+  for (uint64_t i = 0; i <= n; i += 1) {
+    uint64_t start = i < n ? r[4 * i] : UINT64_MAX;
+    for (int ended = 1; ended;) {
+      ended = top > 0 && ~r[4 * stack[top - 1] + 1] <= start;
+      uint64_t end = ended ? ~r[4 * stack[top - 1] + 1] : start;
+      while (top > 0 && ~r[4 * stack[top - 1] + 1] <= end) top -= 1;
+      if (!ended && i == n) break;
+      if (!ended) stack[top++] = i;
+      /* one entry per offset: a later answer at the same offset replaces the earlier */
+      if (!out->n || LAST(*out, RdiVMap)->voff != end) add(out, sizeof(RdiVMap));
+      *LAST(*out, RdiVMap) = (RdiVMap){end, top ? r[4 * stack[top - 1] + 2] : 0};
+    }
+  }
+  free(stack);
+}
+
+/* Name maps: for each kind, one node per distinct string holding the indices filed under it,
+   in buckets by rdi_hash of the string. */
+static void name_maps(Out *o)
+{
+  uint64_t n, *p = sorted(&o->pairs, &n), strings[RDI_NAMES_KINDS] = {0};
+  uint32_t *at = (uint32_t *)o->strings.at.p;
+  for (uint64_t i = 0; i < n; i += 1) if (i == 0 || p[4 * i] != p[4 * i - 4] || p[4 * i + 1] != p[4 * i - 3]) strings[p[4 * i]] += 1;
+  for (uint64_t i = 0; i < n; i += 1) {   /* now that the bucket counts are known: sort by kind, bucket, string, index */
+    uint64_t s = p[4 * i + 1];
+    p[4 * i + 3] = p[4 * i + 2], p[4 * i + 2] = s;
+    p[4 * i + 1] = rdi_hash(o->strings.keys.p + at[s], at[s + 1] - at[s]) % strings[p[4 * i]];
+  }
+  p = sorted(&o->pairs, &n);
+  add(&o->s[RDI_INDEX_RUNS], 4);
+  RdiNameMap *maps = add(&o->s[RDI_NAME_MAPS], RDI_NAMES_KINDS * sizeof *maps);
+  for (uint64_t i = 0, kind = 0; kind < RDI_NAMES_KINDS; kind += 1) {
+    maps[kind] = (RdiNameMap){COUNT(o->s[RDI_NAME_MAP_BUCKETS], RdiBucket), COUNT(o->s[RDI_NAME_MAP_NODES], RdiNameNode), (uint32_t)strings[kind], (uint32_t)strings[kind]};
+    RdiBucket *buckets = add(&o->s[RDI_NAME_MAP_BUCKETS], strings[kind] * sizeof *buckets);
+    for (uint32_t node = 0; i < n && p[4 * i] == kind; node += 1) {
+      uint64_t first = i, bucket = p[4 * i + 1];
+      while (i < n && p[4 * i] == kind && p[4 * i + 2] == p[4 * first + 2]) i += 1;
+      if (buckets[bucket].node_count++ == 0) buckets[bucket].first_node = node;
+      /* one index sits in the node, more are a run of indices */
+      uint32_t count = (uint32_t)(i - first), match = count == 1 ? (uint32_t)p[4 * first + 3] : COUNT(o->s[RDI_INDEX_RUNS], uint32_t);
+      for (uint64_t j = first; count > 1 && j < i; j += 1) *(uint32_t *)add(&o->s[RDI_INDEX_RUNS], 4) = (uint32_t)p[4 * j + 3];
+      *(RdiNameNode *)add(&o->s[RDI_NAME_MAP_NODES], sizeof(RdiNameNode)) = (RdiNameNode){(uint32_t)p[4 * first + 2], count, match};
+    }
+  }
+}
+
+/* The path of a node as RAD normalises it: parts joined by '/', ASCII lower case
+   (rdim_normalized_from_path). Its string index. */
+static uint32_t normal_path(Out *o, uint32_t node, Buf *scratch)
+{
+  uint32_t depth = 0, *at = (uint32_t *)o->strings.at.p;
+  const RdiPathNode *nodes = (const RdiPathNode *)o->s[RDI_FILE_PATH_NODES].p;
+  for (uint32_t k = node; k != 0; k = nodes[k].parent) depth += 1;
+  scratch->n = 0;
+  for (uint32_t d = depth; d > 0; d -= 1) {
+    uint32_t k = node;
+    for (uint32_t up = 1; up < d; up += 1) k = nodes[k].parent;
+    uint32_t len = at[nodes[k].name + 1] - at[nodes[k].name];
+    uint8_t *to = add(scratch, len + (d > 1));
+    for (uint32_t i = 0; i < len; i += 1) {
+      uint8_t c = o->strings.keys.p[at[nodes[k].name] + i];
+      to[i] = c >= 'A' && c <= 'Z' ? c + 32 : c;
+    }
+    if (d > 1) to[len] = '/';
+  }
+  return intern(&o->strings, scratch->p, (uint32_t)scratch->n);
+}
+
+uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
+{
+  Pdb pdb;
+  if (!pdb_open(&pdb, data, size)) return 0;
+  Out o = {0};
+  Buf lines = {0}, maps = {0}, ranges = {0}, scratch = {0};
+  /* index 0 of every table is the record that means "none" */
+  static const int tables[] = {RDI_BINARY_SECTIONS, RDI_FILE_PATH_NODES, RDI_SOURCE_FILES, RDI_LINE_TABLES, RDI_SOURCE_LINE_MAPS, RDI_UNITS};
+  static const uint8_t table_size[] = {sizeof(RdiSection), sizeof(RdiPathNode), sizeof(RdiSourceFile), sizeof(RdiLineTable), sizeof(RdiSourceLineMap), sizeof(RdiUnit)};
+  for (unsigned i = 0; i < sizeof tables / sizeof *tables; i += 1) add(&o.s[tables[i]], table_size[i]);
+  intern(&o.strings, "", 0);
+  intern(&o.nodes, (uint32_t[2]){0, 0}, 8);
+  intern(&o.files, (uint32_t[1]){0}, 4);
+
+  *(uint32_t *)add(&o.s[RDI_TOP_LEVEL_INFO], 48) = pdb.machine == 0x8664 ? 1 : pdb.machine == 0x14c ? 2 : 0;   /* RDI_Arch */
+
+  for (uint32_t i = 1; i <= pdb.sections; i += 1) {
+    PdbSection s = pdb_section(&pdb, i);
+    RdiSection *b = add(&o.s[RDI_BINARY_SECTIONS], sizeof *b);
+    b->name = intern(&o.strings, s.name.p, s.name.n);
+    b->flags = (s.flags >> 30 & 1) | (s.flags >> 31 & 1) << 1 | (s.flags >> 29 & 1) << 2;   /* read, write, execute */
+    b->voff = s.voff, b->voff_opl = (uint64_t)s.voff + s.vsize, b->foff = s.foff, b->foff_opl = (uint64_t)s.foff + s.fsize;
+  }
+
+  PdbModule m;
+  uint64_t order = 0;
+  for (uint32_t at = 0; pdb_module(&pdb, &at, &m);) {
+    /* a unit is named by the last part of its object file's path (rdi_from_codeview.c) */
+    PdbSpan name = m.name;
+    for (uint32_t i = 0; i + 1 < m.name.n; i += 1) if (slash(m.name.p[i])) name = (PdbSpan){m.name.p + i + 1, m.name.n - i - 1};
+    RdiUnit unit = {.name = intern(&o.strings, name.p, name.n), .object_path = path_node(&o, 0, m.name), .archive_path = path_node(&o, 0, m.obj)};
+    rec(&o.pairs, RDI_NAMES_UNITS, unit.name, COUNT(o.s[RDI_UNITS], RdiUnit), 0);
+
+    /* Lines: every record, and after each block a record that ends it. Sorted by offset, an
+       end sorts before a line at the same offset and later lines after earlier ones, because
+       our reader takes the last record at an offset. RAD sorts by offset only, and its reader
+       can then answer "no line" at the first byte of a function that follows another without a gap. */
+    PdbSpan syms, c13;
+    uint8_t *stream = pdb_module_stream(&pdb, &m, &syms, &c13);
+    PdbLineBlock b;
+    lines.n = 0;
+    for (PdbLineCursor c = {0}; pdb_line_block(&pdb, c13, &c, &b);) {
+      uint32_t file = source_file(&o, &b, ((RdiPathNode *)o.s[RDI_FILE_PATH_NODES].p)[unit.object_path].parent);
+      for (uint32_t j = 0; j < b.count; j += 1) {
+        uint64_t voff = b.base + le32(b.lines + 8 * j), line = le32(b.lines + 8 * j + 4) & 0xffffff;
+        rec(&lines, voff, 1ull << 63 | order++, file, line);
+        rec(&maps, file, line, voff, 0);
+      }
+      rec(&lines, b.opl, order++, 0, 0);
+    }
+    free(stream);
+    uint64_t n, *l = sorted(&lines, &n);
+    if (n) {
+      unit.line_table = COUNT(o.s[RDI_LINE_TABLES], RdiLineTable);
+      RdiLineTable t = {.voffs_base = COUNT(o.s[RDI_LINE_VOFFS], uint64_t), .lines_base = COUNT(o.s[RDI_LINE_LINES], RdiLine)};
+      for (uint64_t i = 0; i < n; i += 1) {
+        *(uint64_t *)add(&o.s[RDI_LINE_VOFFS], 8) = l[4 * i];
+        *(RdiLine *)add(&o.s[RDI_LINE_LINES], sizeof(RdiLine)) = (RdiLine){(uint32_t)l[4 * i + 2], (uint32_t)l[4 * i + 3]};
+        t.lines_count += 1;
+      }
+      *(uint64_t *)add(&o.s[RDI_LINE_VOFFS], 8) = UINT64_MAX;   /* RAD's reader looks one past the last */
+      *(RdiLineTable *)add(&o.s[RDI_LINE_TABLES], sizeof t) = t;
+    }
+    *(RdiUnit *)add(&o.s[RDI_UNITS], sizeof unit) = unit;
+  }
+
+  /* which unit each piece of the image came from (pdb_comp_unit_contribution_array_from_data) */
+  for (uint32_t i = 0; i < pdb_contribs(&pdb); i += 1) {
+    PdbContrib c = pdb_contrib(&pdb, i);
+    uint64_t voff = pdb_voff(&pdb, c.sec, c.off);
+    if (voff != 0 && c.size != 0) rec(&ranges, voff, ~(voff + c.size), (uint64_t)c.mod + 1, 0);
+  }
+  vmap_build(&o.s[RDI_UNIT_VMAP], &ranges);
+
+  /* per source file: its lines that have code, ascending, each with its offsets */
+  uint64_t n, *r = sorted(&maps, &n);
+  for (uint32_t file = 1; file < COUNT(o.s[RDI_SOURCE_FILES], RdiSourceFile); file += 1) add(&o.s[RDI_SOURCE_LINE_MAPS], sizeof(RdiSourceLineMap));
+  for (uint64_t i = 0; i < n; i += 1) {
+    RdiSourceLineMap *map = (RdiSourceLineMap *)o.s[RDI_SOURCE_LINE_MAPS].p + r[4 * i];
+    if (i == 0 || r[4 * i] != r[4 * i - 4]) {
+      map->nums_base = COUNT(o.s[RDI_SOURCE_LINE_NUMS], uint32_t), map->voffs_base = COUNT(o.s[RDI_SOURCE_LINE_VOFFS], uint64_t);
+      map->ranges_base = COUNT(o.s[RDI_SOURCE_LINE_RANGES], uint32_t);
+      add(&o.s[RDI_SOURCE_LINE_RANGES], 4);              /* line_count + 1 bounds; the first is 0 */
+    }
+    if (map->line_count == 0 || r[4 * i + 1] != r[4 * i - 3]) {
+      *(uint32_t *)add(&o.s[RDI_SOURCE_LINE_NUMS], 4) = (uint32_t)r[4 * i + 1];
+      add(&o.s[RDI_SOURCE_LINE_RANGES], 4);
+      map->line_count += 1;
+    }
+    *(uint64_t *)add(&o.s[RDI_SOURCE_LINE_VOFFS], 8) = r[4 * i + 2];
+    *LAST(o.s[RDI_SOURCE_LINE_RANGES], uint32_t) = ++map->voff_count;
+  }
+
+  /* each node's children as a list, in order of creation; each source file's normal path */
+  RdiPathNode *nodes = (RdiPathNode *)o.s[RDI_FILE_PATH_NODES].p;
+  for (uint32_t k = COUNT(o.s[RDI_FILE_PATH_NODES], RdiPathNode) - 1; k > 0; k -= 1) {
+    nodes[k].next_sibling = nodes[nodes[k].parent].first_child;
+    nodes[nodes[k].parent].first_child = k;
+  }
+  nodes[0].first_child = 0;
+  for (uint32_t file = 1; file < COUNT(o.s[RDI_SOURCE_FILES], RdiSourceFile); file += 1) {
+    uint32_t path = normal_path(&o, ((RdiSourceFile *)o.s[RDI_SOURCE_FILES].p)[file].path_node, &scratch);
+    ((RdiSourceFile *)o.s[RDI_SOURCE_FILES].p)[file].path = path;
+    rec(&o.pairs, RDI_NAMES_SOURCE_PATHS, path, file, 0);
+  }
+  name_maps(&o);
+  o.s[RDI_STRING_DATA] = o.strings.keys, o.s[RDI_STRING_TABLE] = o.strings.at;
+
+  /* the file: header, the table of sections, then each section at a multiple of 8 */
+  Buf file = {0};
+  struct { uint64_t magic; uint32_t version, sections_off, sections_count; } *h = add(&file, 24);   /* RDI_Header */
+  h->magic = 0x0000676264646172u, h->version = 23, h->sections_off = 24, h->sections_count = RDI_SECTIONS;
+  add(&file, RDI_SECTIONS * 32);
+  for (int k = 0; k < RDI_SECTIONS; k += 1) {
+    uint64_t *sec = (uint64_t *)(file.p + 24 + 32 * k);    /* encoding 0; offset; size; unpacked size */
+    sec[1] = file.n, sec[2] = sec[3] = o.s[k].n;
+    if (o.s[k].n) memcpy(add(&file, (o.s[k].n + 7) / 8 * 8), o.s[k].p, o.s[k].n);
+    free(o.s[k].p);
+  }
+  Buf *rest[] = {&o.strings.slots, &o.nodes.keys, &o.nodes.at, &o.nodes.slots, &o.files.keys, &o.files.at, &o.files.slots, &o.pairs, &lines, &maps, &ranges, &scratch};
+  for (unsigned i = 0; i < sizeof rest / sizeof *rest; i += 1) free(rest[i]->p);
+  pdb_close(&pdb);
+  *out_size = file.n;
+  return file.p;
+}

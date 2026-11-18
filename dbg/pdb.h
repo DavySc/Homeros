@@ -13,6 +13,7 @@ typedef struct {
   PdbSpan mods, contribs;     /* parts of dbi: module records, section contributions */
   uint32_t contrib_size;      /* bytes per contribution */
   uint32_t sections;
+  uint16_t machine;           /* COFF machine type: 0x8664 x64, 0x14c x86 */
 } Pdb;
 
 typedef struct { uint16_t sec, mod; uint32_t off, size; } PdbContrib;

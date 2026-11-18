@@ -43,6 +43,11 @@ int main(int argc, char **argv)
   v = rdi_voffs_from_line(&r, 1, 99);
   CHECK(v.n == 1 && *(const uint64_t *)v.p == 0x1020);
   CHECK(rdi_voffs_from_line(&r, 0, 11).n == 0 && rdi_voffs_from_line(&r, 7, 11).n == 0);
+  /* paths: built from the leaf back to the root, cut to the buffer; a ring of nodes ends */
+  char path[8];
+  CHECK(rdi_path(&r, 2, path, 8) == 8 && memcmp(path, "main/a.c", 8) == 0);
+  CHECK(rdi_path(&r, 2, path, 4) == 8 && memcmp(path, "main", 4) == 0 && rdi_path(&r, 0, path, 8) == 0);
+  CHECK(rdi_path(&r, 3, path, 8) > 8);
   /* names */
   RdiSpan m = rdi_matches(&r, RDI_NAMES_PROCEDURES, "main", 4);
   CHECK(m.n == 1 && *(const uint32_t *)m.p == 1);

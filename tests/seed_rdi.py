@@ -9,6 +9,7 @@ offs, o = [], 0
 for s in strings: offs.append(o); o += len(s)
 S[3] = struct.pack("<%dI" % len(offs), *offs)
 S[4] = struct.pack("<4I", 0, 1, 1, 1)
+S[6] = b"".join(struct.pack("<5I", name, parent, 0, 0, 0) for name, parent in ((0, 0), (2, 0), (1, 1), (1, 4), (2, 3)))  # path nodes: main/a.c, then a ring
 S[7] = struct.pack("<5I", 0, 0, 0, 0, 0) + struct.pack("<5I", 0, 1, 1, 0, 0)              # source files
 S[8] = struct.pack("<5I", 0, 0, 0, 0, 0) + struct.pack("<5I", 0, 0, 0, 5, 0)              # line tables
 S[9] = struct.pack("<5Q", 0x1000, 0x1010, 0x1010, 0x1020, 0x1030)
