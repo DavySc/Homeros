@@ -1,0 +1,14 @@
+span starts at the node after the edit's first byte: NOT CAUGHT
+span ends before a node that begins where the edit ends: NOT CAUGHT
+a babel call before the span is not measured again: caught by make fuzz: ==11007== ERROR: libFuzzer: deadly signal
+a babel call's end past the edit is not shifted: caught by make fuzz: ==11192== ERROR: libFuzzer: deadly signal
+a babel call ending at the edit counts as shifted: NOT CAUGHT
+parents after the span keep their old index: caught by make fuzz: ==15655== ERROR: libFuzzer: deadly signal
+parents inside the span are not offset: caught by make fuzz: ==15794== ERROR: libFuzzer: deadly signal
+contents after the span are not shifted: caught by make fuzz: ==15931== ERROR: libFuzzer: deadly signal
+an empty list is spliced, not parsed whole: caught by make fuzz: ==16086== ERROR: libFuzzer: deadly signal
+the first span starts at byte 0, not after the leading blank lines: caught by make fuzz: ==16255== ERROR: libFuzzer: deadly signal
+the list is not grown when the span gains nodes: caught by make fuzz: FAIL fuzz_org
+nodes after the span are not moved in the list: caught by make fuzz: ==16578== ERROR: libFuzzer: deadly signal
+the span's right end is the edited node's end, not its top-level node's: caught by make fuzz: ==16701== ERROR: libFuzzer: deadly signal
+exit 0
