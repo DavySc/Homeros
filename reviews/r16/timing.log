@@ -1,0 +1,160 @@
+../corpus/000-synthetic-agenda.org a full 81205 bytes 4218 elements 2.021 ms
+../corpus/000-synthetic-agenda.org b full 81205 bytes 4218 elements 0.474 ms
+../corpus/000-synthetic-agenda.org a edits r 4318 elements median 21.0 us p99 48.3 us max 374.4 us
+../corpus/000-synthetic-agenda.org b edits r 4318 elements median 641.6 us p99 924.8 us max 2156.6 us
+../corpus/000-synthetic-agenda.org bs edits r 4318 elements median 8.0 us p99 22.5 us max 35.0 us
+../corpus/000-synthetic-agenda.org a edits t 4211 elements median 26.9 us p99 64.9 us max 116.1 us
+../corpus/000-synthetic-agenda.org b edits t 4211 elements median 490.6 us p99 828.1 us max 1571.8 us
+../corpus/000-synthetic-agenda.org bs edits t 4211 elements median 7.2 us p99 28.3 us max 88.7 us
+../corpus/000-synthetic-agenda.org a full 81205 bytes 4218 elements 2.019 ms
+../corpus/000-synthetic-agenda.org b full 81205 bytes 4218 elements 0.468 ms
+../corpus/000-synthetic-agenda.org a edits r 4318 elements median 20.0 us p99 43.5 us max 96.0 us
+../corpus/000-synthetic-agenda.org b edits r 4318 elements median 634.6 us p99 1135.1 us max 2766.7 us
+../corpus/000-synthetic-agenda.org bs edits r 4318 elements median 8.4 us p99 23.3 us max 38.1 us
+../corpus/000-synthetic-agenda.org a edits t 4211 elements median 18.4 us p99 41.8 us max 68.7 us
+../corpus/000-synthetic-agenda.org b edits t 4211 elements median 490.4 us p99 672.4 us max 1091.7 us
+../corpus/000-synthetic-agenda.org bs edits t 4211 elements median 7.2 us p99 24.7 us max 43.0 us
+../corpus/000-synthetic-agenda.org a full 81205 bytes 4218 elements 2.929 ms
+../corpus/000-synthetic-agenda.org b full 81205 bytes 4218 elements 0.484 ms
+../corpus/000-synthetic-agenda.org a edits r 4318 elements median 25.2 us p99 61.0 us max 124.1 us
+../corpus/000-synthetic-agenda.org b edits r 4318 elements median 627.2 us p99 838.9 us max 1753.3 us
+../corpus/000-synthetic-agenda.org bs edits r 4318 elements median 7.9 us p99 22.0 us max 36.5 us
+../corpus/000-synthetic-agenda.org a edits t 4211 elements median 18.6 us p99 42.4 us max 199.8 us
+../corpus/000-synthetic-agenda.org b edits t 4211 elements median 484.4 us p99 768.8 us max 1193.1 us
+../corpus/000-synthetic-agenda.org bs edits t 4211 elements median 7.3 us p99 22.5 us max 58.6 us
+../corpus/000-synthetic-agenda.org a full 81205 bytes 4218 elements 2.005 ms
+../corpus/000-synthetic-agenda.org b full 81205 bytes 4218 elements 0.501 ms
+../corpus/000-synthetic-agenda.org a edits r 4318 elements median 20.3 us p99 43.2 us max 118.2 us
+../corpus/000-synthetic-agenda.org b edits r 4318 elements median 636.6 us p99 1084.6 us max 1660.2 us
+../corpus/000-synthetic-agenda.org bs edits r 4318 elements median 8.1 us p99 22.8 us max 85.8 us
+../corpus/000-synthetic-agenda.org a edits t 4211 elements median 17.8 us p99 35.8 us max 48.3 us
+../corpus/000-synthetic-agenda.org b edits t 4211 elements median 478.6 us p99 647.9 us max 1898.8 us
+../corpus/000-synthetic-agenda.org bs edits t 4211 elements median 7.2 us p99 22.1 us max 45.6 us
+../corpus/000-synthetic-agenda.org a full 81205 bytes 4218 elements 2.049 ms
+../corpus/000-synthetic-agenda.org b full 81205 bytes 4218 elements 0.488 ms
+../corpus/000-synthetic-agenda.org a edits r 4318 elements median 20.9 us p99 53.9 us max 110.1 us
+../corpus/000-synthetic-agenda.org b edits r 4318 elements median 634.0 us p99 919.0 us max 2766.9 us
+../corpus/000-synthetic-agenda.org bs edits r 4318 elements median 8.3 us p99 23.3 us max 41.3 us
+../corpus/000-synthetic-agenda.org a edits t 4211 elements median 17.9 us p99 41.1 us max 686.6 us
+../corpus/000-synthetic-agenda.org b edits t 4211 elements median 483.2 us p99 723.5 us max 1343.7 us
+../corpus/000-synthetic-agenda.org bs edits t 4211 elements median 7.2 us p99 20.4 us max 47.4 us
+../corpus/900-ORG-NEWS.org a full 405923 bytes 5164 elements 3.202 ms
+../corpus/900-ORG-NEWS.org b full 405923 bytes 5164 elements 2.069 ms
+../corpus/900-ORG-NEWS.org a edits r 5504 elements median 28.4 us p99 117.7 us max 863.6 us
+../corpus/900-ORG-NEWS.org b edits r 5504 elements median 1690.8 us p99 2657.6 us max 7617.4 us
+../corpus/900-ORG-NEWS.org bs edits r 5504 elements median 11.1 us p99 42.7 us max 1966.5 us
+../corpus/900-ORG-NEWS.org a edits t 5164 elements median 22.1 us p99 63.7 us max 2068.7 us
+../corpus/900-ORG-NEWS.org b edits t 5164 elements median 1513.1 us p99 2177.7 us max 3184.2 us
+../corpus/900-ORG-NEWS.org bs edits t 5164 elements median 9.9 us p99 29.7 us max 89.7 us
+../corpus/900-ORG-NEWS.org a full 405923 bytes 5164 elements 3.398 ms
+../corpus/900-ORG-NEWS.org b full 405923 bytes 5164 elements 1.471 ms
+../corpus/900-ORG-NEWS.org a edits r 5504 elements median 30.6 us p99 111.7 us max 159.2 us
+../corpus/900-ORG-NEWS.org b edits r 5504 elements median 1651.8 us p99 1983.4 us max 3903.1 us
+../corpus/900-ORG-NEWS.org bs edits r 5504 elements median 10.9 us p99 39.7 us max 1936.0 us
+../corpus/900-ORG-NEWS.org a edits t 5164 elements median 22.7 us p99 59.7 us max 650.7 us
+../corpus/900-ORG-NEWS.org b edits t 5164 elements median 1524.0 us p99 2120.3 us max 2578.6 us
+../corpus/900-ORG-NEWS.org bs edits t 5164 elements median 10.2 us p99 27.8 us max 44.4 us
+../corpus/900-ORG-NEWS.org a full 405923 bytes 5164 elements 2.965 ms
+../corpus/900-ORG-NEWS.org b full 405923 bytes 5164 elements 1.498 ms
+../corpus/900-ORG-NEWS.org a edits r 5504 elements median 27.4 us p99 102.2 us max 165.9 us
+../corpus/900-ORG-NEWS.org b edits r 5504 elements median 1720.7 us p99 2325.2 us max 5359.0 us
+../corpus/900-ORG-NEWS.org bs edits r 5504 elements median 11.1 us p99 47.0 us max 2474.7 us
+../corpus/900-ORG-NEWS.org a edits t 5164 elements median 32.3 us p99 92.1 us max 127.0 us
+../corpus/900-ORG-NEWS.org b edits t 5164 elements median 1505.2 us p99 2137.2 us max 4212.1 us
+../corpus/900-ORG-NEWS.org bs edits t 5164 elements median 9.8 us p99 27.8 us max 46.5 us
+../corpus/900-ORG-NEWS.org a full 405923 bytes 5164 elements 3.046 ms
+../corpus/900-ORG-NEWS.org b full 405923 bytes 5164 elements 1.525 ms
+../corpus/900-ORG-NEWS.org a edits r 5504 elements median 28.1 us p99 102.3 us max 134.5 us
+../corpus/900-ORG-NEWS.org b edits r 5504 elements median 1662.0 us p99 2374.4 us max 4006.0 us
+../corpus/900-ORG-NEWS.org bs edits r 5504 elements median 10.5 us p99 41.4 us max 1842.3 us
+../corpus/900-ORG-NEWS.org a edits t 5164 elements median 21.7 us p99 52.4 us max 129.5 us
+../corpus/900-ORG-NEWS.org b edits t 5164 elements median 1503.7 us p99 2140.2 us max 3112.9 us
+../corpus/900-ORG-NEWS.org bs edits t 5164 elements median 9.4 us p99 25.3 us max 2091.7 us
+../corpus/900-ORG-NEWS.org a full 405923 bytes 5164 elements 3.004 ms
+../corpus/900-ORG-NEWS.org b full 405923 bytes 5164 elements 1.462 ms
+../corpus/900-ORG-NEWS.org a edits r 5504 elements median 27.5 us p99 101.3 us max 126.4 us
+../corpus/900-ORG-NEWS.org b edits r 5504 elements median 1676.0 us p99 2317.3 us max 3566.1 us
+../corpus/900-ORG-NEWS.org bs edits r 5504 elements median 10.8 us p99 46.9 us max 2132.4 us
+../corpus/900-ORG-NEWS.org a edits t 5164 elements median 26.1 us p99 58.2 us max 342.4 us
+../corpus/900-ORG-NEWS.org b edits t 5164 elements median 1494.6 us p99 2240.9 us max 15228.6 us
+../corpus/900-ORG-NEWS.org bs edits t 5164 elements median 9.3 us p99 24.6 us max 41.1 us
+../corpus/023-org-manual.org a full 902433 bytes 10683 elements 16.947 ms
+../corpus/023-org-manual.org b full 902433 bytes 10683 elements 5.694 ms
+../corpus/023-org-manual.org a edits r 11339 elements median 93.2 us p99 390.6 us max 1180.3 us
+../corpus/023-org-manual.org b edits r 11339 elements median 4425.3 us p99 6615.0 us max 13259.3 us
+../corpus/023-org-manual.org bs edits r 11339 elements median 27.5 us p99 237.5 us max 4880.0 us
+../corpus/023-org-manual.org a edits t 10683 elements median 68.3 us p99 380.9 us max 523.8 us
+../corpus/023-org-manual.org b edits t 10683 elements median 4244.4 us p99 6253.6 us max 19205.5 us
+../corpus/023-org-manual.org bs edits t 10683 elements median 23.0 us p99 69.3 us max 117.0 us
+../corpus/023-org-manual.org a full 902433 bytes 10683 elements 11.820 ms
+../corpus/023-org-manual.org b full 902433 bytes 10683 elements 4.277 ms
+../corpus/023-org-manual.org a edits r 11339 elements median 86.8 us p99 366.4 us max 846.1 us
+../corpus/023-org-manual.org b edits r 11339 elements median 4415.5 us p99 6547.4 us max 14562.6 us
+../corpus/023-org-manual.org bs edits r 11339 elements median 26.8 us p99 212.1 us max 4673.3 us
+../corpus/023-org-manual.org a edits t 10683 elements median 66.7 us p99 372.0 us max 440.0 us
+../corpus/023-org-manual.org b edits t 10683 elements median 4223.7 us p99 6065.0 us max 10442.8 us
+../corpus/023-org-manual.org bs edits t 10683 elements median 22.8 us p99 79.3 us max 823.0 us
+../corpus/023-org-manual.org a full 902433 bytes 10683 elements 12.431 ms
+../corpus/023-org-manual.org b full 902433 bytes 10683 elements 4.320 ms
+../corpus/023-org-manual.org a edits r 11339 elements median 87.9 us p99 392.7 us max 1419.1 us
+../corpus/023-org-manual.org b edits r 11339 elements median 4384.6 us p99 6784.4 us max 10575.3 us
+../corpus/023-org-manual.org bs edits r 11339 elements median 26.6 us p99 241.0 us max 4414.0 us
+../corpus/023-org-manual.org a edits t 10683 elements median 69.0 us p99 386.1 us max 508.3 us
+../corpus/023-org-manual.org b edits t 10683 elements median 4213.3 us p99 6185.8 us max 15907.1 us
+../corpus/023-org-manual.org bs edits t 10683 elements median 23.2 us p99 70.5 us max 285.0 us
+../corpus/023-org-manual.org a full 902433 bytes 10683 elements 12.904 ms
+../corpus/023-org-manual.org b full 902433 bytes 10683 elements 4.268 ms
+../corpus/023-org-manual.org a edits r 11339 elements median 87.3 us p99 368.9 us max 945.6 us
+../corpus/023-org-manual.org b edits r 11339 elements median 4444.9 us p99 6423.8 us max 10772.4 us
+../corpus/023-org-manual.org bs edits r 11339 elements median 28.1 us p99 238.0 us max 4779.2 us
+../corpus/023-org-manual.org a edits t 10683 elements median 74.6 us p99 379.8 us max 465.9 us
+../corpus/023-org-manual.org b edits t 10683 elements median 4197.4 us p99 6213.7 us max 11954.2 us
+../corpus/023-org-manual.org bs edits t 10683 elements median 24.5 us p99 70.5 us max 125.6 us
+../corpus/023-org-manual.org a full 902433 bytes 10683 elements 11.871 ms
+../corpus/023-org-manual.org b full 902433 bytes 10683 elements 4.719 ms
+../corpus/023-org-manual.org a edits r 11339 elements median 85.1 us p99 356.5 us max 469.2 us
+../corpus/023-org-manual.org b edits r 11339 elements median 4369.5 us p99 6111.4 us max 10605.3 us
+../corpus/023-org-manual.org bs edits r 11339 elements median 26.7 us p99 225.9 us max 4450.1 us
+../corpus/023-org-manual.org a edits t 10683 elements median 89.2 us p99 567.9 us max 714.4 us
+../corpus/023-org-manual.org b edits t 10683 elements median 4203.4 us p99 5955.9 us max 10694.9 us
+../corpus/023-org-manual.org bs edits t 10683 elements median 23.0 us p99 64.2 us max 88.8 us
+big/agenda12.org a full 974460 bytes 50605 elements 23.839 ms
+big/agenda12.org b full 974460 bytes 50605 elements 6.019 ms
+big/agenda12.org a edits r 50809 elements median 383.8 us p99 575.3 us max 1456.7 us
+big/agenda12.org b edits r 50809 elements median 6308.3 us p99 9059.8 us max 15171.6 us
+big/agenda12.org bs edits r 50809 elements median 77.8 us p99 176.8 us max 4174.5 us
+big/agenda12.org a edits t 50604 elements median 275.0 us p99 441.2 us max 975.0 us
+big/agenda12.org b edits t 50604 elements median 5926.0 us p99 8625.3 us max 9924.0 us
+big/agenda12.org bs edits t 50604 elements median 63.6 us p99 184.5 us max 291.1 us
+big/agenda12.org a full 974460 bytes 50605 elements 23.780 ms
+big/agenda12.org b full 974460 bytes 50605 elements 6.155 ms
+big/agenda12.org a edits r 50809 elements median 358.7 us p99 480.3 us max 599.1 us
+big/agenda12.org b edits r 50809 elements median 6286.6 us p99 9542.0 us max 17218.7 us
+big/agenda12.org bs edits r 50809 elements median 78.1 us p99 167.3 us max 428.8 us
+big/agenda12.org a edits t 50604 elements median 278.3 us p99 630.8 us max 1985.2 us
+big/agenda12.org b edits t 50604 elements median 5958.4 us p99 8599.0 us max 12194.6 us
+big/agenda12.org bs edits t 50604 elements median 64.7 us p99 150.6 us max 555.6 us
+big/agenda12.org a full 974460 bytes 50605 elements 25.199 ms
+big/agenda12.org b full 974460 bytes 50605 elements 6.149 ms
+big/agenda12.org a edits r 50809 elements median 375.1 us p99 513.1 us max 1275.9 us
+big/agenda12.org b edits r 50809 elements median 6299.8 us p99 9665.1 us max 13679.3 us
+big/agenda12.org bs edits r 50809 elements median 78.6 us p99 171.1 us max 2116.7 us
+big/agenda12.org a edits t 50604 elements median 290.7 us p99 453.6 us max 1048.6 us
+big/agenda12.org b edits t 50604 elements median 6134.1 us p99 10108.6 us max 16082.2 us
+big/agenda12.org bs edits t 50604 elements median 64.1 us p99 141.4 us max 223.4 us
+big/agenda12.org a full 974460 bytes 50605 elements 24.993 ms
+big/agenda12.org b full 974460 bytes 50605 elements 7.278 ms
+big/agenda12.org a edits r 50809 elements median 374.5 us p99 549.6 us max 3098.3 us
+big/agenda12.org b edits r 50809 elements median 6386.4 us p99 9966.4 us max 12366.2 us
+big/agenda12.org bs edits r 50809 elements median 78.8 us p99 178.4 us max 728.8 us
+big/agenda12.org a edits t 50604 elements median 268.2 us p99 317.6 us max 381.6 us
+big/agenda12.org b edits t 50604 elements median 6069.4 us p99 8931.9 us max 13796.6 us
+big/agenda12.org bs edits t 50604 elements median 64.7 us p99 138.7 us max 549.2 us
+big/agenda12.org a full 974460 bytes 50605 elements 25.138 ms
+big/agenda12.org b full 974460 bytes 50605 elements 6.168 ms
+big/agenda12.org a edits r 50809 elements median 365.8 us p99 583.9 us max 1443.6 us
+big/agenda12.org b edits r 50809 elements median 6379.0 us p99 10021.8 us max 17637.8 us
+big/agenda12.org bs edits r 50809 elements median 78.9 us p99 167.4 us max 942.4 us
+big/agenda12.org a edits t 50604 elements median 281.2 us p99 548.8 us max 3871.2 us
+big/agenda12.org b edits t 50604 elements median 5993.8 us p99 8837.2 us max 13794.5 us
+big/agenda12.org bs edits t 50604 elements median 64.9 us p99 142.0 us max 330.9 us
