@@ -1,7 +1,7 @@
 """Compare the reader with RAD's dump of the same file (radbin --dump at the pinned commit).
 usage: oracle_rdi.py <rdiq binary> <file.rdi> <file.rdi.dump.txt.gz>
-Every vmap entry, unit line table entry, source line, name and string in the dump becomes a
-lookup; the reader must answer each as the dump says."""
+Every vmap entry, unit line table entry, source line, name, string, procedure and scope in the
+dump becomes a lookup; the reader must answer each as the dump says."""
 import bisect, gzip, re, subprocess, sys
 rdiq, rdi, dump = sys.argv[1:]
 VMAPS = {'unit_vmap': 17, 'scope_vmap': 25, 'global_variables_vmap': 28}
@@ -29,6 +29,11 @@ for line in gzip.open(dump, 'rt', encoding='utf-8', errors='surrogateescape'):
         last_line[sub] = int(m[1])
     elif section == 'name_maps' and (m := re.match(r'      "(.*)": ([\d, ]+?)( // idx_run.*)?$', line)) and '\\' not in m[1] and m[1]:
         ask(f'n {sub} x{m[1].encode("utf-8", "surrogateescape").hex()}', ''.join(f' {v}' for v in m[2].split(', ')))
+    elif section == 'procedures' and (m := re.match(r"  '(.*)': // procedures\[(\d+)\]$", line)): sub, name = int(m[2]), m[1]
+    elif section == 'procedures' and (m := re.match(r'    root_scope_idx: (\d+)$', line)) and '\\' not in name: ask(f'p {sub}', f'{m[1]} {name}')
+    elif section == 'scopes' and (m := re.match(r'    (proc_idx|first_child_scope_idx|next_sibling_scope_idx): (\d+)', line)): scope = scope + [m[2]] if m[1] != 'proc_idx' else [m[2]]
+    elif section == 'scopes' and line.startswith('    voff_ranges:'):
+        ask(f'c {sub}', ' '.join(scope + [str(int(v, 16)) for v in re.findall(r'0x([0-9a-f]+)', line)]))
     elif section == 'strings' and (m := re.match(r'  "(.*)" // string\[(\d+)\]$', line)) and '\\' not in m[1]:
         ask(f't {m[2]}', m[1])
 # A vmap answers for the last key at or below the offset; its last entry only marks the end.
@@ -52,7 +57,10 @@ for unit, t in unit_table.items():
         for voff in {first, opl - 1}:
             if unit_at(voff) == unit: ask(f'l {voff}', answer); lines += 1
 got = subprocess.run([rdiq, rdi], input='\n'.join(q) + '\n', capture_output=True, text=True, encoding='utf-8', errors='surrogateescape').stdout.split('\n')[:-1]
-bad = [(a, w, g) for a, w, g in zip(q, want, got) if w != g]
+# The dump prints a procedure's name with its container in front; the reader has no qualified
+# names yet (slice 6 needs them), so a member's name is compared as the part after the last "::".
+def same(a, w, g): return w == g or (a[0] == 'p' and w.split(' ', 1)[0] == g.split(' ', 1)[0] and w.endswith('::' + g.split(' ', 1)[1]))
+bad = [(a, w, g) for a, w, g in zip(q, want, got) if not same(a, w, g)]
 print(f'oracle: {len(q)} lookups ({lines} line lookups), {len(got)} answers, {len(bad)} differ; tables RAD wrote out of order, skipped: {unsorted}; zero-length line entries where RAD answers differently at the exact offset: {shadowed}')
 for b in bad[:10]: print('  query %s: dump says [%s], reader says [%s]' % b)
 sys.exit(1 if bad or len(got) != len(q) or len(q) < 1000 else 0)
