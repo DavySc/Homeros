@@ -42,7 +42,7 @@ static const char *const names[] = {
 	"markup.raw.block", "markup.list", "markup.list.checked", "markup.list.unchecked", "diff.plus",
 	"diff.minus", "diff.delta", "tag", "tag.builtin", "tag.attribute", "tag.delimiter",
 };
-enum { NNAMES = sizeof names / sizeof *names, PRIO = 100, CHUNK = 8192, LIMIT = 256 };
+enum { NNAMES = sizeof names / sizeof *names, PRIO = 100, CHUNK = 8192, WINDOW = 65536, LIMIT = 256 };
 #define NONE UINT32_MAX
 
 static unsigned char face_of(const char *cap, uint32_t n)
@@ -150,13 +150,24 @@ struct Syntax {
 	const Text *t;
 	int (*stop)(void);
 	char buf[4096];            /* the chunk tree-sitter is reading */
-	unsigned char prio[CHUNK]; /* winning priority per byte of a chunk */
 	/* The faces of [ca, cz), kept until the trees change: the core asks line
 	   by line, and one query over the window costs a third to a tenth of one
 	   per line (measured, 48 lines, best of 50: 0.165 vs 0.424 ms in
-	   ref/core.c, 0.044 vs 0.620 ms in Neovim's lsp.lua). */
-	uint32_t ca, cz;
-	unsigned char cache[CHUNK];
+	   ref/core.c, 0.044 vs 0.620 ms in Neovim's lsp.lua).  It holds the
+	   whole window, filled by one query from its first line, as the
+	   highlighter's one iter_captures per redraw from the first row drawn:
+	   where captures of one priority overlap, tree-sitter's order between
+	   them depends on where the query starts (measured: fills from a line
+	   start differ from one from the top in 8 of 36,759 edited texts).
+	   cap bytes each for the faces and the winning priorities; grown by
+	   syntax_update, to the window it serves, never in the redraw.  A
+	   window past WINDOW bytes (lines of tens of kilobytes) is filled in
+	   CHUNK pieces from each line asked instead, where that order may
+	   differ: with a 1.1 MB line in the window, one query costs up to
+	   770 ms a frame after a key (measured, worst of 5 runs; 15 ms in
+	   pieces). */
+	uint32_t ca, cz, cap;
+	unsigned char *cache, *prio;
 	/* Bytes edited since the cache was filled (sa < sz): until the next
 	   parse the trees are only edited, so a face can change only under a
 	   match that has a capture over these bytes, and syntax_faces
@@ -323,6 +334,10 @@ Syntax *syntax_open(const char *path, const Text *t)
 	s->dirty = 1;
 	s->t = t;
 	s->va = UINT32_MAX;
+	s->cap = CHUNK;            /* syntax_faces' largest request */
+	s->cache = malloc(2 * CHUNK);
+	if (!s->cache) return free(s), NULL;
+	s->prio = s->cache + CHUNK;
 	/* the root is made on the first update, after the first frame: compiling
 	   the queries takes 13 to 20 ms (measured) */
 	s->root = (LTree *)(intptr_t)(li + 1);
@@ -338,6 +353,7 @@ void syntax_free(Syntax *s)
 	if (s->qc) ts_query_cursor_delete(s->qc);
 	if (s->p) ts_parser_delete(s->p);
 	syntax_release(NULL, UINT32_MAX);
+	free(s->cache);
 	free(s);
 }
 
@@ -375,7 +391,7 @@ void syntax_edit(Syntax *s, const Text *t, size_t pos, size_t ndel, const char *
 	   seeds; an edit at the window's edge or one that outgrows the cache
 	   empties it */
 	uint32_t p = (uint32_t)pos, d = (uint32_t)ndel, i = (uint32_t)nins;
-	if (!s->cz || p < s->ca || p + d > s->cz || s->cz - d + i - s->ca > CHUNK) s->cz = 0;
+	if (!s->cz || p < s->ca || p + d > s->cz || s->cz - d + i - s->ca > s->cap) s->cz = 0;
 	else {
 		memmove(s->cache + (p + i - s->ca), s->cache + (p + d - s->ca), s->cz - p - d);
 		memset(s->cache + (p - s->ca), 0, i);
@@ -383,7 +399,7 @@ void syntax_edit(Syntax *s, const Text *t, size_t pos, size_t ndel, const char *
 	}
 	if (s->sa < s->sz) {
 		s->sa = moved(s->sa, p, d, i), s->sz = moved(s->sz, p, d, i);
-		if (p && p - 1 < s->sa) s->sa = p - 1;
+		if ((p ? p - 1 : 0) < s->sa) s->sa = p ? p - 1 : 0;
 		if (p + i + 1 > s->sz) s->sz = p + i + 1;
 	} else s->sa = p ? p - 1 : 0, s->sz = p + i + 1;
 	/* the text a suspended parse was reading has changed, so no region may
@@ -789,6 +805,14 @@ int syntax_update(Syntax *s, const Text *t, int (*stop)(void))
 		s->rz = (uint32_t)text_line_start(t, text_line_of(t, s->vz - 1) + 1);
 		s->va = UINT32_MAX;
 		s->vz = 0;
+		unsigned char *c;
+		if (s->rz - s->ra > s->cap && s->rz - s->ra <= WINDOW && (c = malloc(2 * (size_t)(s->rz - s->ra)))) {
+			free(s->cache);
+			s->cache = c;
+			s->cap = s->rz - s->ra;
+			s->prio = c + s->cap;
+			s->cz = 0;
+		}
 	}
 	int r = parse(s, s->root, t);
 	if (r == 2) return 2;
@@ -798,14 +822,16 @@ int syntax_update(Syntax *s, const Text *t, int (*stop)(void))
 
 /* ---- colours (the redraw path: no allocation) ---- */
 
-static void faces_tree(Syntax *s, const Text *t, LTree *L, uint32_t a, uint32_t z, unsigned char *face)
+/* Faces of [a, z) into the cache, by a query of [q, z) (q <= a: see
+   cache) */
+static void faces_tree(Syntax *s, const Text *t, LTree *L, uint32_t q, uint32_t a, uint32_t z)
 {
 	Q *Q = &queries[L->lang].hl;
 	for (uint32_t ri = 0; Q->q && ri < L->nreg; ri++) {
 		Region *g = &L->reg[ri];
 		if (!g->tree) continue;
 		if (g->n && (g->r[0].start_byte >= z || g->r[g->n - 1].end_byte <= a)) continue;
-		ts_query_cursor_set_byte_range(s->qc, a, z);
+		ts_query_cursor_set_byte_range(s->qc, q, z);
 		ts_query_cursor_exec(s->qc, Q->q, ts_tree_root_node(g->tree));
 		Src src = { t, 0, 0, { 0 } };
 		TSQueryMatch m;
@@ -831,11 +857,11 @@ static void faces_tree(Syntax *s, const Text *t, LTree *L, uint32_t a, uint32_t 
 				if (rb < a) rb = a;
 				if (re > z) re = z;
 				for (uint32_t i = rb; i < re; i++)
-					if (pr >= s->prio[i - a]) s->prio[i - a] = (unsigned char)pr, face[i - a] = f;
+					if (pr >= s->prio[i - s->ca]) s->prio[i - s->ca] = (unsigned char)pr, s->cache[i - s->ca] = f;
 			}
 		}
 	}
-	for (uint32_t i = 0; i < L->nkid; i++) faces_tree(s, t, L->kid[i], a, z, face);
+	for (uint32_t i = 0; i < L->nkid; i++) faces_tree(s, t, L->kid[i], q, a, z);
 }
 
 /* Widens [*a, *z) to every capture with a face in a match that has a
@@ -871,7 +897,9 @@ void syntax_faces(Syntax *s, size_t a, size_t z, unsigned char *face)
 	if (z > s->vz) s->vz = (uint32_t)z;
 	/* bytes whose injections are not known yet: the next update finds them */
 	if (a < s->ra || z > s->rz) s->dirty = 1;
-	if (!started(s)) return;
+	/* past syntax.h's 8,192 (the tests' way to show the whole text): no
+	   faces, only the window */
+	if (!started(s) || z - a > s->cap) return;
 	if (a >= s->ca && z <= s->cz) {
 		if (s->sa < s->sz) {
 			uint32_t ra = s->sa, rz = s->sz;
@@ -881,29 +909,23 @@ void syntax_faces(Syntax *s, size_t a, size_t z, unsigned char *face)
 			s->sa = s->sz = 0;
 			if (ra < rz) {
 				memset(s->cache + (ra - s->ca), 0, rz - ra);
-				memset(s->prio, 0, rz - ra);
-				faces_tree(s, s->t, s->root, ra, rz, s->cache + (ra - s->ca));
+				memset(s->prio + (ra - s->ca), 0, rz - ra);
+				faces_tree(s, s->t, s->root, s->ca, ra, rz);
 			}
 		}
 		memcpy(face, s->cache + (a - s->ca), z - a);
 		return;
 	}
-	if (z - a < CHUNK) {
-		/* a window as large as the last one shown, from here */
-		size_t w = s->rz - s->ra > z - a ? s->rz - s->ra : z - a, n = text_len(s->t);
-		s->ca = (uint32_t)a;
-		s->cz = (uint32_t)(w > CHUNK ? a + CHUNK : a + w > n ? n : a + w);
-		if (s->cz < z) s->cz = (uint32_t)z;
-		memset(s->cache, 0, s->cz - s->ca);
-		memset(s->prio, 0, s->cz - s->ca);
-		s->sa = s->sz = 0;
-		faces_tree(s, s->t, s->root, s->ca, s->cz, s->cache);
-		memcpy(face, s->cache, z - a);
-		return;
-	}
-	for (size_t c = a; c < z; c += CHUNK) {
-		uint32_t ca = (uint32_t)c, cz = (uint32_t)(z - c < CHUNK ? z : c + CHUNK);
-		memset(s->prio, 0, cz - ca);
-		faces_tree(s, s->t, s->root, ca, cz, face + (c - a));
-	}
+	/* a window as large as the last one shown, from here: the core asks
+	   from the window's first line */
+	size_t w = s->rz - s->ra, n = text_len(s->t);
+	if (w > s->cap) w = CHUNK;
+	s->ca = (uint32_t)a;
+	s->cz = (uint32_t)(a + w > n ? n : a + w);
+	if (s->cz < z) s->cz = (uint32_t)z;
+	memset(s->cache, 0, s->cz - s->ca);
+	memset(s->prio, 0, s->cz - s->ca);
+	s->sa = s->sz = 0;
+	faces_tree(s, s->t, s->root, s->ca, s->ca, s->cz);
+	memcpy(face, s->cache + (a - s->ca), z - a);
 }
