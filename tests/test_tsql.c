@@ -13,12 +13,12 @@
 #include "../src/syntax/tsql.h"
 
 /* K keyword, S string, C comment, F system function, T system table, view
-   or schema, P stored procedure, o operator, . plain */
+   or schema, P stored procedure, N number, o operator, . plain */
 static char code(unsigned char f)
 {
 	return f == FACE_KEYWORD ? 'K' : f == FACE_STRING ? 'S' : f == FACE_COMMENT ? 'C'
 	     : f == FACE_FUNCTION_BUILTIN ? 'F' : f == FACE_MODULE_BUILTIN ? 'T' : f == FACE_FUNCTION ? 'P'
-	     : f == FACE_OPERATOR ? 'o' : f == FACE_NONE ? '.' : '?';
+	     : f == FACE_NUMBER ? 'N' : f == FACE_OPERATOR ? 'o' : f == FACE_NONE ? '.' : '?';
 }
 
 static void faces_of(const char *src, char *out)
@@ -37,21 +37,27 @@ static void faces_of(const char *src, char *out)
 }
 
 static const char *const lines[][2] = {
-	{ "DECLARE @id int = 5;", "KKKKKKK.....KKK.o..o" },
+	{ "DECLARE @id int = 5;", "KKKKKKK.....KKK.o.No" },
 	{ "select [select], \"from\" From t", "KKKKKK.........o........KKKK.." },
 	{ "WHERE a = N'it''s' + 'x'", "KKKKK...o.SSSSSSSS.o.SSS" },
 	{ "x /* a /* b */ c */ y -- z", "..CCCCCCCCCCCCCCCCC...CCCC" },
-	{ "a <> b >= c != d += 1", "..oo...oo...oo...oo.." },
+	{ "a <> b >= c != d += 1 << 2", "..oo...oo...oo...oo.N.oo.N" },
 	{ "INNER JOIN t ON a LIKE b AND NOT c IS NULL", "ooooo.oooo...KK...oooo...ooo.ooo...oo.oooo" },
-	{ "LEFT JOIN t; LEFT(x, 2)", "oooo.oooo..o.FFFFo.o..o" },
+	/* a word in two lists has one colour (hypothesis but for LEFT JOIN, day
+	   and DAY(, which Davy's screenshot shows) */
+	{ "LEFT JOIN t; LEFT(x, 2)", "oooo.oooo..o.ooooo.o.No" },
+	{ "DATEADD(day, 1, x), DAY(x)", "FFFFFFFoFFFo.No..oo.FFFo.o" },
 	{ "SELECT GETDATE(), COUNT (*), @@ROWCOUNT, @@nope", "KKKKKK.FFFFFFFooo.FFFFF.oooo.FFFFFFFFFFo......." },
-	{ "CHAR(10) + CONVERT(int, x); DECLARE @c char", "FFFFo..o.o.FFFFFFFoKKKo..oo.KKKKKKK....KKKK" },
+	{ "CHAR(10) + CONVERT(int, x); DECLARE @c char", "FFFFoNNo.o.FFFFFFFoKKKo..oo.KKKKKKK....FFFF" },
 	{ "FROM sys.objects o JOIN INFORMATION_SCHEMA.TABLES", "KKKK.TTTTTTTTTTT...oooo.TTTTTTTTTTTTTTTTTTTTTTTTT" },
 	{ "EXEC sp_executesql @q; EXEC dbo.usp_x", "KKKK.PPPPPPPPPPPPP...o.KKKK.........." },
+	/* sp_ alone is a name; a word of 22 bytes is looked up; sys at byte 0 */
+	{ "sp_ current_transaction_id", "....FFFFFFFFFFFFFFFFFFFFFF" },
+	{ "sys.x", "TTTTT" },
 	{ "SET NOCOUNT ON;\nGO", "KKK.KKKKKKK.KKo.KK" },
-	{ "SELECT 1.5e3, 0x1F, #t, ##g", "KKKKKK......o.....o...o...." },
+	{ "SELECT 1.5e3, 0x1F, #t, ##g", "KKKKKK.NNNNNo.NNNNo...o...." },
 	/* a number ends where SQL Server ends it, so the word after is coloured */
-	{ "SELECT 1as x, 2.5full", "KKKKKK..KK..o....oooo" },
+	{ "SELECT 1as x, 2.5full", "KKKKKK.NKK..o.NNNoooo" },
 	/* the lines of ssms-check.sql as Davy's SSMS colours them (his
 	   screenshot of 2026-11-18, read colour by colour) */
 	{ "/* Demo: SSMS-style colours, mapped to Catppuccin */", "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC" },
@@ -63,16 +69,16 @@ static const char *const lines[][2] = {
 	{ "AS", "KK" },
 	{ "BEGIN", "KKKKK" },
 	{ "    SET NOCOUNT ON;", "....KKK.KKKKKKK.KKo" },
-	{ "    DECLARE @n int = 0;  -- row count", "....KKKKKKK....KKK.o..o..CCCCCCCCCCCC" },
-	{ "    SELECT TOP (10) o.id, o.total, ISNULL(o.note, N'none') AS [note]", "....KKKKKK.KKK.o..o.....o........o.FFFFFFo......o.SSSSSSSo.KK......." },
+	{ "    DECLARE @n int = 0;  -- row count", "....KKKKKKK....KKK.o.No..CCCCCCCCCCCC" },
+	{ "    SELECT TOP (10) o.id, o.total, ISNULL(o.note, N'none') AS [note]", "....KKKKKK.KKK.oNNo.....o........o.FFFFFFo......o.SSSSSSSo.KK......." },
 	{ "    FROM dbo.orders AS o", "....KKKK............KK.." },
 	{ "    LEFT JOIN dbo.customers c ON c.id = o.customer_id", "....oooo.oooo.................KK......o.............." },
 	{ "    WHERE o.customer_id = @customer_id", "....KKKKK...............o............." },
-	{ "      AND o.created >= COALESCE(@since, DATEADD(day, -30, GETDATE()))", "......ooo...........oo.FFFFFFFFo......o.FFFFFFFoKKKo.o..o.FFFFFFFoooo" },
+	{ "      AND o.created >= COALESCE(@since, DATEADD(day, -30, GETDATE()))", "......ooo...........oo.FFFFFFFFo......o.FFFFFFFoFFFo.oNNo.FFFFFFFoooo" },
 	{ "      AND o.status NOT IN ('void', 'it''s')", "......ooo...KKKKKK.ooo.oo.oSSSSSSo.SSSSSSSo" },
 	{ "    ORDER BY o.created DESC;", "....KKKKK.KK...........KKKKo" },
 	{ "    SET @n = @@ROWCOUNT;", "....KKK....o.FFFFFFFFFFo" },
-	{ "    IF @n = 0 EXEC sp_executesql N'PRINT ''none''';", "....KK....o...KKKK.PPPPPPPPPPPPP.SSSSSSSSSSSSSSSSSo" },
+	{ "    IF @n = 0 EXEC sp_executesql N'PRINT ''none''';", "....KK....o.N.KKKK.PPPPPPPPPPPPP.SSSSSSSSSSSSSSSSSo" },
 	{ "    SELECT name FROM sys.objects WHERE type = 'U';", "....KKKKKK.KKKK.KKKK.TTTTTTTTTTT.KKKKK.KKKK.o.SSSo" },
 	{ "END", "KKK" },
 	{ "GO", "KK" },
@@ -108,6 +114,8 @@ static const struct { const char *src; size_t pos, end; int kind; } toks[] = {
 	{ "1.e", 0, 2, TQ_NUMBER },
 	{ "0x1Fg", 0, 4, TQ_NUMBER },
 	{ "a.b", 1, 2, TQ_PUNCT },
+	{ "(x", 0, 1, TQ_PUNCT },
+	{ ">>=", 0, 2, TQ_OP },
 	{ "  \r\n x", 0, 5, TQ_SPACE },
 	{ "", 0, 0, TQ_SPACE },
 };
@@ -117,25 +125,30 @@ static const char *const snip[] = {
 	"<>", "SELECT", " FROM ", "sys", "LEFT", "GETDATE", "@@ERROR", "@x", "#t", "sp_who", "12", "\xc3\xa9", "e", "+", "0x", "as",
 	"BEGIN\n  SET NOCOUNT ON;\n", "END\nGO\n", "x",
 };
-enum { NSNIP = sizeof snip / sizeof *snip, MAXT = 1 << 15 };
+enum { NSNIP = sizeof snip / sizeof *snip, MAXT = 1 << 17 };
 
-static size_t gen(char *b, size_t max)
+/* snippets into b until want bytes, and never past cap */
+static size_t gen(char *b, size_t want, size_t cap)
 {
-	size_t n = 0, want = rnd(4) ? rnd(600) : rnd(max - 64);
+	size_t n = 0;
 	while (n < want) {
 		const char *s = snip[rnd(NSNIP)];
 		size_t l = strlen(s);
+		if (n + l > cap) break;
 		memcpy(b + n, s, l);
 		n += l;
 	}
 	return n;
 }
 
+static int stop_rnd(void) { return !rnd(2); }
+
 /* the faces of the whole text, read once from byte 0 by a fresh Syntax */
 static void fresh(const Text *t, unsigned char *f)
 {
 	Syntax *s = syntax_open("x.sql", t);
 	CHECK(s);
+	syntax_update(s, t, NULL);
 	size_t n = text_len(t);
 	for (size_t a = 0; a < n; a += 8192) syntax_faces(s, a, a + 8192 < n ? a + 8192 : n, f + a);
 	syntax_free(s);
@@ -146,7 +159,7 @@ static void fresh(const Text *t, unsigned char *f)
    The index keeps a start every 4,096 bytes, the first at the first token
    from byte 4,096: mid is put at 4,095, so that start is mid's second
    byte. */
-static void edit_near_start(const char *mid, size_t at, const char *ins)
+static void edit_near_start(const char *mid, size_t z0, size_t at, const char *ins)
 {
 	static char b[4200];
 	static unsigned char f[4200], g[4200];
@@ -158,7 +171,7 @@ static void edit_near_start(const char *mid, size_t at, const char *ins)
 	Syntax *s = syntax_open("x.sql", t);
 	CHECK(t && s);
 	syntax_update(s, t, NULL);
-	syntax_faces(s, 0, n, f);
+	syntax_faces(s, 0, z0, f);
 	syntax_edit(s, t, at, 0, ins, il);
 	CHECK(!text_insert(t, at, ins, il));
 	syntax_faces(s, 4096, n + il, f + 4096);
@@ -179,24 +192,51 @@ int main(void)
 	for (size_t i = 0; i < sizeof toks / sizeof *toks; i++) {
 		Text *t = text_new(toks[i].src, strlen(toks[i].src));
 		int k = -1;
-		TsqlRd r = { t, 0, 0, { 0 } };
+		TsqlRd r = { t, 0, 0, { 0 }, 0 };
 		size_t e = tsql_token(&r, toks[i].pos, &k);
 		if (e != toks[i].end || k != toks[i].kind) fprintf(stderr, "token %zu: end %zu kind %d\n", i, e, k);
 		CHECK(e == toks[i].end && k == toks[i].kind);
 		text_free(t);
 	}
-	edit_near_start("-b\n", 4096, "-");     /* "-b" becomes a comment */
-	edit_near_start("1e+ ", 4098, "3");      /* "e" and "+" join 1e+3 */
-	CHECK(tsql_word("SeLeCt", 6) == (TQ_KEYWORD | TQ_RECASE) && tsql_word("selectx", 7) == 0 && tsql_word("@@rowcount", 10) == TQ_FUNCTION);
+	edit_near_start("-b\n", 4098, 4096, "-");   /* "-b" becomes a comment */
+	edit_near_start("1e+ ", 4099, 4098, "3");   /* "e" and "+" join 1e+3 */
+	/* the last token read, "1", ends two bytes before the edit */
+	edit_near_start("1e+ ", 4096, 4098, "3");
+	/* a NUL starts no two-byte operator (strchr finds the terminator) */
+	Text *t0 = text_new("\0=", 2);
+	TsqlRd r0 = { t0, 0, 0, { 0 }, 0 };
+	int k0;
+	CHECK(t0 && tsql_token(&r0, 0, &k0) == 1);
+	text_free(t0);
+	size_t id, id2;
+	CHECK(tsql_word("SeLeCt", 6, &id) == (TQ_KEYWORD | TQ_RECASE) && tsql_word("select", 6, &id2) == (TQ_KEYWORD | TQ_RECASE) && id == id2 && id >= 1 && id <= tsql_nwords);
+	CHECK(tsql_word("selectx", 7, &id) == 0 && id == 0 && tsql_word("@@rowcount", 10, NULL) == TQ_FUNCTION);
+	/* a formatter's word: known, with no class, so plain */
+	CHECK(tsql_word("LIMIT", 5, &id) == 0 && id);
+	faces_of("LIMIT 1 OFFSET 2", got);
+	CHECK(!strcmp(got, "......N........N"));
+	/* whether a token ran to the end unclosed */
+	static const struct { const char *src; int open; } opens[] = {
+		{ "'a'", 0 }, { "'a", 1 }, { "[a", 1 }, { "\"a\"\"", 1 }, { "/* /* */", 1 }, { "/* */", 0 }, { "x", 0 },
+	};
+	for (size_t i = 0; i < sizeof opens / sizeof *opens; i++) {
+		Text *t = text_new(opens[i].src, strlen(opens[i].src));
+		TsqlRd r = { t, 0, 0, { 0 }, 1 };
+		int k;
+		tsql_token(&r, 0, &k);
+		CHECK(r.open == opens[i].open);
+		text_free(t);
+	}
 
 	/* random texts and edits: what the kept token starts give must equal a
 	   fresh read, wherever the windows are asked and the index grows */
 	static char b[MAXT];
 	static unsigned char f[MAXT], g[MAXT];
-	unsigned cases = 400, steps = 0;
+	unsigned cases = 400, steps = 0, windows = 0;
 	size_t bytes = 0;
 	for (unsigned c = 0; c < cases; c++) {
-		size_t n = gen(b, MAXT / 2);
+		size_t n = rnd(4) ? rnd(600) : rnd(MAXT / 2 - 64);
+		n = gen(b, n, MAXT);
 		Text *t = text_new(b, n);
 		CHECK(t);
 		Syntax *s = syntax_open("x.sql", t);
@@ -209,31 +249,30 @@ int main(void)
 				if (d > n - p) d = n - p;
 				char ins[600];
 				size_t ni = rnd(3) ? 1 + rnd(64) : 0;
-				if (ni) {
-					size_t m = 0;
-					while (m < ni) {
-						const char *x = snip[rnd(NSNIP)];
-						size_t l = strlen(x);
-						if (m + l > sizeof ins) break;
-						memcpy(ins + m, x, l), m += l;
-					}
-					ni = m;
-				}
+				ni = gen(ins, ni, sizeof ins);
 				if (n - d + ni > MAXT) continue;
 				syntax_edit(s, t, p, d, ins, ni);
 				CHECK(!text_delete(t, p, d) && !text_insert(t, p, ins, ni));
 				n = text_len(t);
 			}
-			if (rnd(2)) syntax_update(s, t, NULL);
-			/* a window line by line from somewhere, as the core asks */
+			/* the index filled partly, or not, and edits that pile up */
+			if (rnd(2)) syntax_update(s, t, stop_rnd);
+			if (!rnd(3)) continue;
+			/* a window line by line from somewhere, as the core asks; drawn
+			   again when syntax_update says, as the main loop does */
 			size_t wa = n ? rnd((unsigned)n) : 0, z = wa + rnd(3000);
 			if (z > n) z = n;
-			for (size_t a = wa; a < z; ) {
-				size_t e2 = text_line_start(t, text_line_of(t, a) + 1);
-				if (e2 > z) e2 = z;
-				if (e2 - a > 1024) e2 = a + 1024;
-				syntax_faces(s, a, e2, f + a);
-				a = e2;
+			for (int k = 0; k < 2; k++) {
+				for (size_t a = wa; a < z; ) {
+					size_t e2 = text_line_start(t, text_line_of(t, a) + 1);
+					if (e2 > z) e2 = z;
+					if (e2 - a > 1024) e2 = a + 1024;
+					syntax_faces(s, a, e2, f + a);
+					a = e2;
+				}
+				int r;
+				while ((r = syntax_update(s, t, stop_rnd)) == 2) ;
+				if (r != 1) break;
 			}
 			fresh(t, g);
 			for (size_t i = wa; i < z; i++)
@@ -248,12 +287,12 @@ int main(void)
 				fprintf(stderr, "window %zu..%zu\n", wa, z);
 			}
 			CHECK(!memcmp(f + wa, g + wa, z - wa));
-			bytes += z - wa;
+			bytes += z - wa, windows++;
 		}
 		syntax_free(s);
 		text_free(t);
 	}
-	printf("test_tsql: %zu lines, %zu tokens, %u random texts, %u edits and windows (%zu bytes) equal to fresh reads\n",
-	       sizeof lines / sizeof *lines, sizeof toks / sizeof *toks, cases, steps, bytes);
+	printf("test_tsql: %zu lines, %zu tokens, %u random texts, %u edits, %u windows (%zu bytes) equal to fresh reads\n",
+	       sizeof lines / sizeof *lines, sizeof toks / sizeof *toks, cases, steps, windows, bytes);
 	return 0;
 }

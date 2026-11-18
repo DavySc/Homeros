@@ -1,6 +1,7 @@
 /* libFuzzer: T-SQL's colours (src/syntax/tsql.c) on text, edits and
    windows decoded from the input, raw bytes included, so every lexing path
-   meets every byte.  Each token advances and ends inside the text, and a
+   meets every byte, and runs of spaces in 1 KB steps, so the text passes
+   the 4,096 bytes between kept token starts.  Each token advances and ends inside the text, and a
    window read through the kept token starts equals a fresh read from 0. */
 #include <stdint.h>
 #include <stdlib.h>
@@ -17,12 +18,13 @@ static const uint8_t *d;
 static size_t n, at;
 static unsigned byte(void) { return at < n ? d[at++] : 0; }
 
-enum { MAX = 1 << 13 };
+enum { MAX = 1 << 15 };       /* past FAR, where a far window is left plain */
+static int stop(void) { return byte() & 1; }
 
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
 	d = data, n = size, at = 0;
-	char b[MAX];
+	static char b[MAX];
 	size_t bn = 0;
 	for (unsigned k = byte() % 64; k--; ) {
 		unsigned c = byte();
@@ -37,14 +39,17 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	while (at < n) {
 		unsigned op = byte();
 		size_t len = text_len(t);
-		if (op % 4 == 0) syntax_update(s, t, NULL);
+		if (op % 4 == 0) syntax_update(s, t, stop);
 		else if (op % 4 == 1) {            /* a window, then every token */
 			size_t a = byte() * len / 256, z = a + byte() * 8;
 			if (z > len) z = len;
+			/* drawn again when syntax_update says, as the main loop does */
 			syntax_faces(s, a, z, f);
+			if (syntax_update(s, t, NULL) == 1) syntax_faces(s, a, z, f);
 			Syntax *r = syntax_open("f.sql", t);
 			if (!r) abort();
-			syntax_faces(r, 0, z, g);
+			syntax_update(r, t, NULL);    /* so no far window is left plain */
+			for (size_t i = 0; i < z; i += 8192) syntax_faces(r, i, i + 8192 < z ? i + 8192 : z, g + i);
 			syntax_free(r);
 			if (memcmp(f, g + a, z - a)) abort();
 			static TsqlRd rd;
@@ -60,6 +65,8 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 			unsigned c = byte();
 			const char *ins = c < 128 ? tok[c % 32] : (const char *)&d[at - 1];
 			size_t il = c < 128 ? strlen(ins) : 1;
+			static char sp[4096];
+			if (c == 127) ins = memset(sp, ' ', sizeof sp), il = (byte() % 4 + 1) << 10;
 			if (len + il > MAX) continue;
 			syntax_edit(s, t, pos, del, ins, il);
 			if (text_delete(t, pos, del) || text_insert(t, pos, ins, il)) abort();
