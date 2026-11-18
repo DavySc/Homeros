@@ -320,6 +320,10 @@ static void edits_then_frame(const char *dir)
 	   so the recompute queries from where the fill did (finding 2) */
 	edit_then_frame(dir, "order.c", "d f(u*s)\n*A;\n", 1,
 	                (size_t[]){ 6 }, (size_t[]){ 1 }, (const char *const[]){ "" });
+	/* "z" into "assert" takes keyword.exception off the whole match,
+	   whose "!" lies past the edited bytes */
+	edit_then_frame(dir, "macro.rs", "fn f() { assert_eq!(a); }\n", 1,
+	                (size_t[]){ 10 }, (size_t[]){ 0 }, (const char *const[]){ "z" });
 }
 
 /* An edit that deletes the line before an injected region ends where the

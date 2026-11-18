@@ -967,8 +967,10 @@ static void widen(Syntax *s, LTree *L, uint32_t *a, uint32_t *z)
 		ts_query_cursor_set_byte_range(s->qc, sa, sz);
 		ts_query_cursor_exec(s->qc, Q->q, ts_tree_root_node(g->tree));
 		TSQueryMatch m;
-		uint32_t ci;
-		while (ts_query_cursor_next_capture(s->qc, &m, &ci))
+		/* whole matches: next_capture hands out a match before its
+		   captures past the range are found (measured: a Rust macro's
+		   name without its "!") */
+		while (ts_query_cursor_next_match(s->qc, &m))
 			for (uint16_t k = 0; k < m.capture_count; k++) {
 				TSNode n = m.captures[k].node;
 				if (!Q->face[m.captures[k].index]) continue;
