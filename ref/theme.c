@@ -4,7 +4,8 @@
 /* Catppuccin Mocha (FEATURES.md: Catppuccin, flavour toggle later): per
    face the colours and style that catppuccin/nvim's treesitter.lua gives the capture, with
    its default styles (comments, conditionals and "miscs" italic), links
-   followed and unlisted captures falling back to their parent.  Of its
+   followed and unlisted captures falling back to their parent, or to
+   Neovim's default link (Special) where catppuccin sets none.  Of its
    per-language overrides only @markup.heading.1.markdown to 6 are taken
    (rainbow1 to 6), for markup.heading.1 to 6: no other grammar here has
    those captures. */

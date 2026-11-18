@@ -1,2 +1,0 @@
-[?25lusage: homeros [-t] FILE
-[?25h

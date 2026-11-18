@@ -160,6 +160,18 @@ int main(void)
 	while (px(0, ch) == REV) ch++;
 	CHECK(cw > 3 && ch > 3 && px(cw, 0) == BG && px(0, ch) == BG);
 	CHECK(at(2, 2) == REV && at(1, 1) == BG);   /* the cursor */
+	{   /* CI has no Nerd Font, so the face is plain JetBrains Mono, not what
+	       GDI substitutes for a missing family (Liberation Mono under Wine) */
+		HDC dc = CreateCompatibleDC(NULL);
+		HFONT f = CreateFontW(-MulDiv(12, (int)GetDpiForWindow(win), 72), 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET,
+		                      OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY, FIXED_PITCH | FF_MODERN, L"JetBrains Mono");
+		TEXTMETRICW tm;
+		SelectObject(dc, f);
+		GetTextMetricsW(dc, &tm);
+		CHECK(ch == tm.tmHeight && cw == tm.tmAveCharWidth);
+		DeleteDC(dc);
+		DeleteObject(f);
+	}
 
 	/* the mouse and the wheel, at their cells */
 	PostMessageW(win, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(3 * cw + 1, 2 * ch + 1));
@@ -216,7 +228,7 @@ int main(void)
 	put(&g, 9, 1, "e", 1, ATTR_NONE);
 	put(&g, 10, 1, "e\xcc\x81\xcc\x81\xcc\x81\xcc\x81", 1, ATTR_NONE);   /* 4 combining acutes */
 	present(&g, &shown);
-	/* glyph edges are blended (ClearType), so few pixels are exactly the
+	/* glyph edges are blended (antialiased), so few pixels are exactly the
 	   text colour: look at the inked pixels and the one furthest from the
 	   background instead */
 	COLORREF m = ink(4, 1), d = ink(5, 1), s = ink(6, 1);

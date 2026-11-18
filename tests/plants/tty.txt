@@ -22,7 +22,7 @@ tty: the cursor shown while drawing~test TESTS=grid_diff~~src/tty/tty.c~outs("\x
 tty: a changed face keeps the last style~test TESTS=grid_diff~~src/tty/tty.c~			if (k != a) { a = k; style(x); }~			if ((x->attr) != (a & 255)) { a = k; style(x); }
 tty: a wrong colour in the shared face table~test TESTS=grid_diff~~ref/theme.c~{ {166, 227, 161}, {0, 0, 0}, FACE_FG, {0} },     /* string: green */~{ {166, 227, 160}, {0, 0, 0}, FACE_FG, {0} },     /* string: green */
 tty: foreground channels in the wrong order~test TESTS=grid_diff~~src/tty/tty.c~f->fg[0], f->fg[1], f->fg[2]~f->fg[2], f->fg[1], f->fg[0]
-tty: a face's background not sent~test TESTS=grid_diff~~src/tty/tty.c~	if (f->style & FACE_BG) n +=~	if (0) n +=
+tty: a face's background not sent~test TESTS=grid_diff~~src/tty/tty.c~	if (b->style & FACE_BG) n +=~	if (0) n +=
 tty: a face's style bits not sent~test TESTS=grid_diff~~src/tty/tty.c~f->style & FACE_ITALIC ? ";3"~0 ? ";3"
 tty: a long cluster printed from the cell's number~test TESTS=grid_diff~~src/tty/tty.c~out(grid_text(x), x->len);~out(x->ch, x->len < 4 ? x->len : 4);
 tty: a cluster's ambiguity read from the cell's number~test TESTS=grid_diff~~src/tty/tty.c~if (wide && x->len > 1) {~if (wide && x->ch[0] >= 0x80) {
