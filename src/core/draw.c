@@ -205,7 +205,7 @@ static void draw_win(Editor *e, Grid *g, Win *w)
 {
 	size_t n = buf_lines(w->buf), l = w->top;
 	int r = 0;
-	/* render-markdown draws a buffer in normal and command-line mode
+	/* render-markdown 8.14 draws a buffer in normal and command-line mode
 	   (render_modes; visual mode is normal mode with a selection here) while
 	   the current window is not scrolled sideways (Updater:run), and leaves
 	   the current window's cursor line as typed in every window on its
