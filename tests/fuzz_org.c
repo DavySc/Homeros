@@ -80,6 +80,24 @@ static void check_org(const char *s, size_t n)
 	free(e);
 }
 
+/* org_edit: s with [pos, pos + del) replaced by ins bytes from s + q,
+   reparsed in place, equals the new text parsed whole */
+static void check_edit(const char *s, size_t n, size_t pos, size_t del, size_t q, size_t ins)
+{
+	static char t[1 << 15];
+	size_t k, m, tn = pos + ins + (n - pos - del);
+	memcpy(t, s, pos);
+	memcpy(t + pos, s + q, ins);
+	memcpy(t + pos + ins, s + pos + del, n - pos - del);
+	OrgNode *e = org_parse(s, n, &k), *f = org_parse(t, tn, &m);
+	if (!e || !f || org_edit(&e, &k, t, tn, pos, del, ins) || k != m) abort();
+	for (size_t i = 0; i < k; i++)
+		if (e[i].begin != f[i].begin || e[i].aff != f[i].aff || e[i].cbeg != f[i].cbeg || e[i].cend != f[i].cend ||
+		    e[i].end != f[i].end || e[i].parent != f[i].parent || e[i].type != f[i].type) abort();
+	free(e);
+	free(f);
+}
+
 int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 {
 	static const char *const frag[] = { "* ", "** ", "*** ", "\n", "\n", "\n", " ", "  ", "\t", "- ", "+ ",
@@ -99,5 +117,11 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 		len += l;
 	}
 	check_org(s, len);
+	if (n >= 4) {
+		size_t pos = d[0] * (len + 1) / 256, del = d[1] % 16, q = d[2] * (len + 1) / 256, ins = d[3] % 24;
+		if (del > len - pos) del = len - pos;
+		if (ins > len - q) ins = len - q;
+		check_edit(s, len, pos, del, q, ins);
+	}
 	return 0;
 }

@@ -1,0 +1,2 @@
+review: input gone is not noticed (main.c)~test TESTS=~~src/main.c~	if (n < 0) { lost = 1; loop_int = 1; return; }~
+review: a lost display exits through core_free, which removes the journals~test TESTS=~~src/main.c~	if (lost) { if (e.buf->journal) journal_sync(e.buf->journal); return 1; }~

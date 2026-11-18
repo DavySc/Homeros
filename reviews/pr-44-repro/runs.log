@@ -1,0 +1,58 @@
+== A.out
+FAILED OTHERWISE  undo tree oracle: Ctrl-R to the first child   (make undo-diff UNDO_N=2000): make: *** [Makefile:110: undo-diff] Error 1
+FAILED OTHERWISE  lean: inv_inv states something false   (make lean): make: *** [Makefile:122: lean] Error 1
+caught        specs: save renames without fsync (Save2)   (make specs): Save2_fsync.cfg          want pass got error WRONG
+FAILED OTHERWISE  conform: a known difference that Neovim now matches   (make conform CONFORM_N=50 SEED=1): make: *** [Makefile:92: conform] Error 1
+FAILED OTHERWISE  frama-c: the UTF-8 kernel returns 1 (weak contract trap)   (make frama): make: *** [Makefile:128: frama] Error 127
+FAILED OTHERWISE  win: every cell drawn every frame   (make win WIN=win): make: *** [Makefile:147: win] Error 1
+FAILED OTHERWISE  win: ReplaceFileW instead of the rename (caught under Wine, whose ReplaceFileW is three renames; on Windows maybe not)   (make win WIN=file): make: *** [Makefile:147: win] Error 1
+== B.out
+FAILED OTHERWISE  undo tree oracle: Ctrl-R to the first child   (make undo-diff UNDO_N=2000): make: *** [Makefile:110: undo-diff] Error 1
+FAILED OTHERWISE  lean: inv_inv states something false   (make lean): make: *** [Makefile:122: lean] Error 1
+caught        specs: save renames without fsync (Save2)   (make specs): Save2_fsync.cfg          want pass got error WRONG
+FAILED OTHERWISE  conform: a known difference that Neovim now matches   (make conform CONFORM_N=50 SEED=1): make: *** [Makefile:92: conform] Error 1
+FAILED OTHERWISE  frama-c: the UTF-8 kernel returns 1 (weak contract trap)   (make frama): make: *** [Makefile:128: frama] Error 127
+FAILED OTHERWISE  win: every cell drawn every frame   (make win WIN=win): make: *** [Makefile:147: win] Error 1
+FAILED OTHERWISE  win: ReplaceFileW instead of the rename (caught under Wine, whose ReplaceFileW is three renames; on Windows maybe not)   (make win WIN=file): make: *** [Makefile:147: win] Error 1
+== A.frama.out
+caught        frama-c: the UTF-8 kernel returns 1 (weak contract trap)   (make frama): grep -qE "Proved goals: +([0-9]+) / \1$" build/frama.log
+caught        frama-c: uni_prev always steps one byte back (weak contract trap)   (make frama): grep -qE "Proved goals: +([0-9]+) / \1$" build/frama.log
+== B.frama.out
+FAILED OTHERWISE  frama-c: the UTF-8 kernel returns 1 (weak contract trap)   (make frama): make: *** [Makefile:130: frama] Error 1
+FAILED OTHERWISE  frama-c: uni_prev always steps one byte back (weak contract trap)   (make frama): make: *** [Makefile:130: frama] Error 1
+== undo5.A1.out
+caught        undo tree oracle: Ctrl-R to the first child   (make undo-diff UNDO_N=2000): sequences 2000, length 30: 537 differ from the model; first differing op: {'r': 537}; nvim same-number-different-text: 0
+caught        undo tree: a jump does not make its branch first, so Ctrl-R takes another   (make undo-diff UNDO_N=1000): undo_conform: 1000 sequences of 60 ops, undolevels 1000, seed 1: 970 differ from Neovim
+caught        undo tree: :earlier Ns stops on the closest change, not above it   (make undo-diff UNDO_N=1000): undo_conform: 1000 sequences of 60 ops, undolevels 1000, seed 1: 902 differ from Neovim
+caught        undo tree: :earlier Nf does not count changes since the last write   (make undo-diff UNDO_N=1000): undo_conform: 1000 sequences of 60 ops, undolevels 1000, seed 1: 222 differ from Neovim
+caught        undo cap: the redo branch it cannot reconnect is kept   (make undo-diff UNDO_N=1000): undo_conform: FAIL, the driver stopped (exit -6)
+== undo5.A2.out
+caught        undo tree oracle: Ctrl-R to the first child   (make undo-diff UNDO_N=2000): sequences 2000, length 30: 537 differ from the model; first differing op: {'r': 537}; nvim same-number-different-text: 0
+caught        undo tree: a jump does not make its branch first, so Ctrl-R takes another   (make undo-diff UNDO_N=1000): undo_conform: 1000 sequences of 60 ops, undolevels 1000, seed 1: 970 differ from Neovim
+caught        undo tree: :earlier Ns stops on the closest change, not above it   (make undo-diff UNDO_N=1000): undo_conform: 1000 sequences of 60 ops, undolevels 1000, seed 1: 902 differ from Neovim
+caught        undo tree: :earlier Nf does not count changes since the last write   (make undo-diff UNDO_N=1000): undo_conform: 1000 sequences of 60 ops, undolevels 1000, seed 1: 222 differ from Neovim
+caught        undo cap: the redo branch it cannot reconnect is kept   (make undo-diff UNDO_N=1000): undo_conform: FAIL, the driver stopped (exit -6)
+== undo5.B1.out
+caught        undo tree oracle: Ctrl-R to the first child   (make undo-diff UNDO_N=2000): sequences 2000, length 30: 537 differ from the model; first differing op: {'r': 537}; nvim same-number-different-text: 0
+caught        undo tree: a jump does not make its branch first, so Ctrl-R takes another   (make undo-diff UNDO_N=1000): undo_conform: 1000 sequences of 60 ops, undolevels 1000, seed 1: 970 differ from Neovim
+caught        undo tree: :earlier Ns stops on the closest change, not above it   (make undo-diff UNDO_N=1000): undo_conform: 1000 sequences of 60 ops, undolevels 1000, seed 1: 902 differ from Neovim
+caught        undo tree: :earlier Nf does not count changes since the last write   (make undo-diff UNDO_N=1000): undo_conform: 1000 sequences of 60 ops, undolevels 1000, seed 1: 222 differ from Neovim
+caught        undo cap: the redo branch it cannot reconnect is kept   (make undo-diff UNDO_N=1000): undo_conform: FAIL, the driver stopped (exit -6)
+== undo5.B2.out
+caught        undo tree oracle: Ctrl-R to the first child   (make undo-diff UNDO_N=2000): sequences 2000, length 30: 537 differ from the model; first differing op: {'r': 537}; nvim same-number-different-text: 0
+caught        undo tree: a jump does not make its branch first, so Ctrl-R takes another   (make undo-diff UNDO_N=1000): undo_conform: 1000 sequences of 60 ops, undolevels 1000, seed 1: 970 differ from Neovim
+caught        undo tree: :earlier Ns stops on the closest change, not above it   (make undo-diff UNDO_N=1000): undo_conform: 1000 sequences of 60 ops, undolevels 1000, seed 1: 902 differ from Neovim
+caught        undo tree: :earlier Nf does not count changes since the last write   (make undo-diff UNDO_N=1000): undo_conform: 1000 sequences of 60 ops, undolevels 1000, seed 1: 222 differ from Neovim
+caught        undo cap: the redo branch it cannot reconnect is kept   (make undo-diff UNDO_N=1000): undo_conform: FAIL, the driver stopped (exit -6)
+== undo5.B3.out
+caught        undo tree oracle: Ctrl-R to the first child   (make undo-diff UNDO_N=2000): sequences 2000, length 30: 537 differ from the model; first differing op: {'r': 537}; nvim same-number-different-text: 0
+caught        undo tree: a jump does not make its branch first, so Ctrl-R takes another   (make undo-diff UNDO_N=1000): undo_conform: 1000 sequences of 60 ops, undolevels 1000, seed 1: 970 differ from Neovim
+caught        undo tree: :earlier Ns stops on the closest change, not above it   (make undo-diff UNDO_N=1000): undo_conform: 1000 sequences of 60 ops, undolevels 1000, seed 1: 902 differ from Neovim
+caught        undo tree: :earlier Nf does not count changes since the last write   (make undo-diff UNDO_N=1000): undo_conform: 1000 sequences of 60 ops, undolevels 1000, seed 1: 222 differ from Neovim
+caught        undo cap: the redo branch it cannot reconnect is kept   (make undo-diff UNDO_N=1000): undo_conform: FAIL, the driver stopped (exit -6)
+== undo5.Afresh.out
+caught        undo tree oracle: Ctrl-R to the first child   (make undo-diff UNDO_N=2000): sequences 2000, length 30: 529 differ from the model; first differing op: {'r': 529}; nvim same-number-different-text: 0
+caught        undo tree: a jump does not make its branch first, so Ctrl-R takes another   (make undo-diff UNDO_N=1000): undo_conform: 1000 sequences of 60 ops, undolevels 1000, seed 44220282886: 976 differ from Neovim
+caught        undo tree: :earlier Ns stops on the closest change, not above it   (make undo-diff UNDO_N=1000): undo_conform: 1000 sequences of 60 ops, undolevels 1000, seed 44220282886: 911 differ from Neovim
+caught        undo tree: :earlier Nf does not count changes since the last write   (make undo-diff UNDO_N=1000): undo_conform: 1000 sequences of 60 ops, undolevels 1000, seed 44220282886: 237 differ from Neovim
+caught        undo cap: the redo branch it cannot reconnect is kept   (make undo-diff UNDO_N=1000): undo_conform: FAIL, the driver stopped (exit -6)

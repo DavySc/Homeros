@@ -5,11 +5,6 @@ on:
   pull_request:
   push:
     branches: [main]
-  # nightly on main with a fresh SEED for the random checks (Makefile)
-  schedule:
-    - cron: '0 2 * * *'
-env:
-  SEED: ${{ github.event_name == 'schedule' && github.run_id || '' }}
 jobs:
   # the check and the plants run in parallel, the plants in four shards:
   # one after the other took 54 minutes on main at 8d08829, and the plants

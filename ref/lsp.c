@@ -16,3 +16,4 @@ int lsp_send(const char *uri, const char *method, const char *params, size_t n, 
 	return -1;
 }
 const char *lsp_uri(const LspDoc *d) { (void)d; return NULL; }
+const char *lsp_init(const LspDoc *d, size_t *n) { (void)d; *n = 0; return NULL; }
