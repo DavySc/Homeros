@@ -1021,7 +1021,7 @@ void do_put(int regname, int dir, long count, int flags)
 		reg = &tmp;
 	} else reg = put_override ? put_override : get_reg(regname, 0);
 	/* do_put(): linewise, u_save(lnum - 1, lnum) at the line put before */
-	if (reg->type == MLINE && !(flags & PUT_LINE_SPLIT) && !is_empty_buf()) u_save_gap(W->line + (dir == FORWARD));
+	if (reg->type == MLINE && !(flags & PUT_LINE_SPLIT) && !is_empty_buf()) u_save(W->line + (dir == FORWARD), W->line + (dir == FORWARD));
 	else u_save_cursor();
 	y_type = reg->type;
 	y_width = reg->width;
@@ -1657,7 +1657,18 @@ int sql_format(size_t a, size_t z)
 	size_t n;
 	int kept = sqlfmt(B->text, &a, &z, &res, &n);
 	if (kept < 0) { core_msg(E, "E342: Out of memory!"); return -1; }
-	if (z > a || n) { core_edit(E, a, z - a, res, n); buf_changed(); }
+	if (z > a || n) {
+		/* the cursor stays on its text: after the edit it moves with it,
+		   inside it keeps its offset into the new text (as near as fits) */
+		size_t p = core_line_start(E, W->line) + W->col;
+		p = p >= z ? p - (z - a) + n : p > a ? a + (p - a < n ? p - a : n) : p;
+		core_edit(E, a, z - a, res, n);
+		buf_changed();
+		W->line = text_line_of(B->text, p);
+		W->col = p - core_line_start(E, W->line);
+		check_cursor();
+		W->col = (size_t)head(ml_get((long)W->line), (long)W->col);
+	}
 	if (kept) core_msg(E, "%d statement%s kept as written", kept, kept == 1 ? "" : "s");
 	return 0;
 }
@@ -1684,6 +1695,10 @@ static void internal_format(long tw)
 		const char *s = ml_get(l);
 		long c = n ? gprev(s, n, n) : 0;   /* the last non-blank */
 		while (c && (s[c] == ' ' || (s[c] >= 9 && s[c] <= 13))) c = gprev(s, n, c);
+		/* get_nolist_virtcol() validates w_virtcol here, on the last
+		   non-blank, where format_lines() put the cursor */
+		W->col = (size_t)c;
+		validate_virtcol();
 		long wantcol = col_of_vcol(l, tw, 1), foundcol = 0;
 		if (c == 0 || wantcol > c) return;
 		/* blanks after a non-blank, so not the indent */
@@ -1695,10 +1710,13 @@ static void internal_format(long tw)
 			}
 			prev = !w;
 		}
-		if (foundcol == 0) return;   /* no blanks: the line stays long */
-		long q = foundcol, ind = 0;
+		/* no blanks: the line stays long, and w_virtcol stays the
+		   textwidth that coladvance() went to, until the cursor leaves
+		   the last non-blank: beginline() on a line of one word keeps
+		   it (F and G of reviews/pr-67.md) */
+		if (foundcol == 0) { W->vc.v = (size_t)tw; W->vc.ok = 1; return; }
+		long q = foundcol, ind = get_indent(l);
 		while (q < n && whitechar(s, n, q)) q++;
-		for (long i = 0; s[i] == ' ' || s[i] == '\t'; i++) ind += s[i] == '\t' ? 8 - ind % 8 : 1;
 		if (!ind) ind = old_indent;   /* "^ CTRL-D" in the last insert */
 		old_indent = 0;
 		Sbuf b = { 0 };
@@ -1753,7 +1771,7 @@ void op_format(Oparg *oap)
 	}
 	/* the cursor where gq was typed, so u puts it back there */
 	setcur(oap->cursor_start);
-	u_save_gap((size_t)oap->start.lnum);
+	u_save((size_t)oap->start.lnum, (size_t)oap->end.lnum + 1);
 	setcur(oap->start);
 	format_lines(oap->line_count);
 	/* the first non-blank of the last formatted line; after "Q}" the next */

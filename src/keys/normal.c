@@ -910,10 +910,12 @@ static void nv_undo(Cmdarg *cap)
 	size_t w0 = W->want;
 	core_set_want(E);
 	W->want = w0;
-	/* u_doit() stops at the first step that finds nothing; in a CTRL-O
-	   command check_cursor_col() lets the cursor stay past the end
-	   (restart_edit), which core_clamp() allows in Insert mode */
-	for (long n = cap->count1; n-- && core_undo(E, cap->cmdchar == KEY_CTRL_R) >= 0;) {}
+	/* u_doit() stops at the first step that finds nothing, with
+	   beep_flush(), which ends a macro; in a CTRL-O command
+	   check_cursor_col() lets the cursor stay past the end (restart_edit),
+	   which core_clamp() allows in Insert mode */
+	for (long n = cap->count1; n--;)
+		if (core_undo(E, cap->cmdchar == KEY_CTRL_R) < 0) { beep(); break; }
 	buf_changed();
 	core_set_want(E);
 	E->mode = mode;
@@ -1383,6 +1385,9 @@ static int run(void)
 			done = 1;
 		}
 	}
+	/* do_window() reads the key after CTRL-W g; none of its tab page and
+	   tag commands is built, so each beeps */
+	if (!done && c == 23 && (ca.nchar == 'g' || ca.nchar == 7)) GET(ca.extra_char);
 #undef GET
 	if (!done) execute(&ca);
 	/* normal_finish_command() */
@@ -1489,7 +1494,9 @@ static void do_pending_operator(Cmdarg *cap, long old_col)
 		if (redo_VIsual.vcol == MAXCOL || VIsual_mode == 'v') {
 			if (VIsual_mode == 'v') {
 				if (redo_VIsual.line_count <= 1) {
-					set_want(vcol_of((long)W->line, (long)W->col) + redo_VIsual.vcol - 1);
+					/* w_virtcol: a Tab's last cell in Normal mode */
+					validate_virtcol();
+					set_want((long)W->vc.v + redo_VIsual.vcol - 1);
 				} else set_want(redo_VIsual.vcol);
 			} else set_want(MAXCOL);
 			coladvance(curswant());

@@ -73,7 +73,7 @@ int  append_lines(long after, const char *s, long n);   /* lines s (joined by '\
 int  del_lines(long l, long n);
 int  set_indent(long l, long cols);
 void u_save_cursor(void);             /* an undo step even if nothing changes */
-void u_save_gap(size_t l);           /* one that saves no line, at line l */
+void u_save(size_t a, size_t z);      /* one that saves lines [a, z) as they are */
 int  is_empty_buf(void);
 void beep(void);                      /* beep_flush(): drops stuffed keys */
 extern int beeped;

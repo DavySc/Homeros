@@ -20,6 +20,10 @@ Not built (FEATURES.md section 2), part two of package 5:
   from joined ones; ours treats it as text, as J does (conform.py sends no
   leaders).  Also not built: a cindent buffer's paragraph indent, 'textwidth'
   set (ours is Neovim's 0: the window's width less one, at most 79), gw.
+- gq leaves other windows' cursors and the marks past a break on the first
+  line; Neovim's open_line() moves them to the new line (OPENLINE_MARKFIX's
+  mark_col_adjust()).  core_mark_join() would mark the next edit a join, so
+  this waits for a core call from package 4 (reviews/pr-67.md, finding B).
 - tag objects it at.
 - registers "+ "* (clipboard, needs the window backend) and "/ (search).
 - ex commands beyond :w :w! :q :q! :wq :x: ranges, :5, :s, :g, :norm, :d,
@@ -94,6 +98,14 @@ Neovim's own oddities, not copied:
   character was typed, not in the text ("    ", s 𐐀 Esc v A 0).
 - C-v on a Tab then ~ u U over a 2-byte character ("\té ab cd", C-v w ~):
   Neovim moves the character to the end of the line (" ab cd É").  The Tab can be on another line of the block ("\t0x1f\n  ẞß", C-v ]] U).
+- an operator with g_ over trailing blanks after a multibyte character
+  ("  ", a ა Esc $ d g_): Neovim's nv_g_underscore_cmd steps back a
+  byte at a time and ends inside the character, deleting all but its first
+  two bytes.
+- Tab typed after two gq on a line indented past 'textwidth' (84 spaces
+  and "a", gqgq gqgq i Tab): Neovim's softtabstop counts from the w_virtcol
+  that internal_format()'s coladvance() left, as in s Tab; ours keeps that
+  stale column for motions (gq gg gql gg) but not for Insert mode.
 - CTRL-V U with a code past U+10FFFF ("ab", i C-v U110000 Esc): Neovim
   writes bytes that are not UTF-8 (from 0x80000000 a special-key code); ours
   inserts nothing, and stops adding digits there so the code cannot overflow.

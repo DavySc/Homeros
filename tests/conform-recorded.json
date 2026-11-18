@@ -69792,5 +69792,508 @@
 "abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd"
 ]
 }
+},
+{
+"text": "\tbar_1 x𝓝\n\t🇳🇱 ა λx ́\n",
+"keys": [
+"v",
+"<C-a>",
+"3",
+"."
+],
+"nvim": {
+"cursor": [
+1,
+0
+],
+"lines": [
+"\tbar_2 x𝓝",
+"\t🇳🇱 ა λx ́"
+]
+}
+},
+{
+"text": "\tbar_1 x\n",
+"keys": [
+"v",
+"<C-a>",
+"3",
+".",
+"3",
+"."
+],
+"nvim": {
+"cursor": [
+1,
+0
+],
+"lines": [
+"\tbar_3 x"
+]
+}
+},
+{
+"text": "a b c d\n\ne\n",
+"keys": [
+"G",
+"g",
+"q",
+"g",
+"g",
+"u"
+],
+"nvim": {
+"cursor": [
+3,
+0
+],
+"lines": [
+"a b c d",
+"",
+"e"
+]
+}
+},
+{
+"text": "ab\n",
+"keys": [
+"q",
+"q",
+"<C-r>",
+"x",
+"q",
+"@",
+"q"
+],
+"nvim": {
+"cursor": [
+1,
+0
+],
+"lines": [
+"b"
+]
+}
+},
+{
+"text": "    ∀ \"a b\" (\n  x̀́ ა",
+"keys": [
+"q",
+"Q",
+"<C-r>",
+"g~",
+"][",
+"q",
+"@",
+"q"
+],
+"nvim": {
+"cursor": [
+1,
+0
+],
+"lines": [
+"    ∀ \"A B\" (",
+"  x̀́ ა"
+]
+}
+},
+{
+"text": "ipsum\fsed.\n",
+"keys": [
+"y",
+"$",
+"A",
+"<C-r>",
+"\""
+],
+"nvim": {
+"cursor": [
+1,
+19
+],
+"lines": [
+"ipsum\fsed.ipsum\fsed."
+]
+}
+},
+{
+"text": "ab\n",
+"keys": [
+"i",
+"\u0002",
+"x",
+"\u001f",
+"<Esc>"
+],
+"nvim": {
+"cursor": [
+1,
+2
+],
+"lines": [
+"\u0002x\u001fab"
+]
+}
+},
+{
+"text": "a\nb\nc\n",
+"keys": [
+"G",
+"<C-w>",
+"g",
+"x",
+"gg"
+],
+"nvim": {
+"cursor": [
+1,
+0
+],
+"lines": [
+"a",
+"b",
+"c"
+]
+}
+},
+{
+"text": "a\nb\nc\n",
+"keys": [
+"G",
+"q",
+"a",
+"<C-w>",
+"g",
+"x",
+"q",
+"gg"
+],
+"nvim": {
+"cursor": [
+1,
+0
+],
+"lines": [
+"a",
+"b",
+"c"
+]
+}
+},
+{
+"text": "                                                                                a\n",
+"keys": [
+"gq",
+"gg",
+"gq",
+"l",
+"gg"
+],
+"nvim": {
+"cursor": [
+1,
+79
+],
+"lines": [
+"                                                                                a"
+]
+}
+},
+{
+"text": "                                                                                a\nb\n",
+"keys": [
+"gq",
+"gq",
+"gq",
+"gq",
+"j",
+"k"
+],
+"nvim": {
+"cursor": [
+1,
+79
+],
+"lines": [
+"                                                                                a",
+"b"
+]
+}
+},
+{
+"text": "あい foo. é lorem  a  ox ox 𝓝x  lorem あい 𝓝x a\tb あい  a\tb  ́x lorem  a\tb lorem\tox あい\tox  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij  foo. (bar) ox  (bar) 𝓝x xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\t𝓝x\t́x a\tb xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx é  ́x\nabcdefghijklmnopqrstuvwxyz0123456789abcdefghij あい 𝓝x\t𝓝x  ́x\ta\t𝓝x  (bar) foo. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx あい\tox a\txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx あい  lorem λ∀\txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx foo. λ∀ abcdefghijklmnopqrstuvwxyz0123456789abcdefghij xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx lorem 𝓝x\n\nox  é abcdefghijklmnopqrstuvwxyz0123456789abcdefghij ́x ox é\tox xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ox λ∀ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx 𝓝x 𝓝x\tfoo. é\tlorem  𝓝x (bar)\tfoo.  ́x ́x  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx 𝓝x é abcdefghijklmnopqrstuvwxyz0123456789abcdefghij (bar)  é \n  é  foo. ox a\tb\tあい  ́x λ∀ a lorem\n\n\txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  (bar)  𝓝x あい ́x  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij\tx(o) a 𝓝x abcdefghijklmnopqrstuvwxyz0123456789abcdefghij a\tb abcdefghijklmnopqrstuvwxyz0123456789abcdefghij  ox a\tb\ta\tx(o)\ta\tb\ta\tb xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx 𝓝x\ta\tb\nlorem  foo. x(o) (bar) あい\ta あい abcdefghijklmnopqrstuvwxyz0123456789abcdefghij  (bar)\tabcdefghijklmnopqrstuvwxyz0123456789abcdefghij xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\tabcdefghijklmnopqrstuvwxyz0123456789abcdefghij ox 𝓝x a\tfoo. ox (bar) ́x é ́x  あい あい あい  (bar) lorem (bar)  a\tb\t𝓝x abcdefghijklmnopqrstuvwxyz0123456789abcdefghij\t𝓝x ox\tx(o) abcdefghijklmnopqrstuvwxyz0123456789abcdefghij foo.\tあい あい\tabcdefghijklmnopqrstuvwxyz0123456789abcdefghij x(o) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n",
+"keys": [
+"i^<C-d><Esc>",
+"gqG",
+"gqip",
+"k"
+],
+"nvim": {
+"cursor": [
+41,
+8
+],
+"lines": [
+"あい foo. é lorem  a  ox ox 𝓝x  lorem あい 𝓝x a\tb あい  a\tb  ́x lorem  a",
+"b lorem\tox あい\tox  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij  foo. (bar)",
+"ox  (bar) 𝓝x",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"𝓝x\t́x a\tb",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"é  ́x abcdefghijklmnopqrstuvwxyz0123456789abcdefghij あい 𝓝x\t𝓝x  ́x\ta",
+"𝓝x  (bar) foo.",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"あい\tox a",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"あい  lorem λ∀",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"foo. λ∀ abcdefghijklmnopqrstuvwxyz0123456789abcdefghij",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"lorem 𝓝x",
+"",
+"ox  é abcdefghijklmnopqrstuvwxyz0123456789abcdefghij ́x ox é\tox",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"ox λ∀",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"𝓝x 𝓝x\tfoo. é\tlorem  𝓝x (bar)\tfoo.  ́x ́x",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"𝓝x é abcdefghijklmnopqrstuvwxyz0123456789abcdefghij (bar)  é é  foo. ox a",
+"b\tあい  ́x λ∀ a lorem",
+"",
+"        xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"        (bar)  𝓝x あい ́x  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij x(o) a",
+"        𝓝x abcdefghijklmnopqrstuvwxyz0123456789abcdefghij a\tb",
+"        abcdefghijklmnopqrstuvwxyz0123456789abcdefghij  ox a\tb\ta x(o)",
+"        a\tb\ta\tb",
+"        xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"        𝓝x\ta\tb lorem  foo. x(o) (bar) あい\ta あい",
+"        abcdefghijklmnopqrstuvwxyz0123456789abcdefghij  (bar)",
+"        abcdefghijklmnopqrstuvwxyz0123456789abcdefghij",
+"        xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"        abcdefghijklmnopqrstuvwxyz0123456789abcdefghij ox 𝓝x a\tfoo. ox (bar) ́x",
+"        é ́x  あい あい あい  (bar) lorem (bar)  a\tb\t𝓝x",
+"        abcdefghijklmnopqrstuvwxyz0123456789abcdefghij\t𝓝x ox\tx(o)",
+"        abcdefghijklmnopqrstuvwxyz0123456789abcdefghij foo.\tあい あい",
+"        abcdefghijklmnopqrstuvwxyz0123456789abcdefghij x(o)",
+"        xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+]
+}
+},
+{
+"text": "𝓝x ́x a\tb 𝓝x\tabcdefghijklmnopqrstuvwxyz0123456789abcdefghij x(o) ́x\tx(o) 𝓝x\tabcdefghijklmnopqrstuvwxyz0123456789abcdefghij  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij ́x x(o) lorem  (bar)\n    x(o) foo. あい ox (bar) lorem a a\tb あい abcdefghijklmnopqrstuvwxyz0123456789abcdefghij\tabcdefghijklmnopqrstuvwxyz0123456789abcdefghij  x(o)\tx(o) ́x abcdefghijklmnopqrstuvwxyz0123456789abcdefghij あい a\tb\t\nあい 𝓝x a a λ∀\tあい a  あい foo. x(o) x(o)\tox a xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\tox xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx foo. lorem\t𝓝x 𝓝x\té あい あい é  𝓝x  𝓝x λ∀  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\na\tb 𝓝x lorem é λ∀  \n",
+"keys": [
+"2gqj",
+"gqgq",
+"k",
+"j"
+],
+"nvim": {
+"cursor": [
+13,
+0
+],
+"lines": [
+"𝓝x ́x a\tb 𝓝x\tabcdefghijklmnopqrstuvwxyz0123456789abcdefghij x(o) ́x\tx(o) 𝓝x",
+"abcdefghijklmnopqrstuvwxyz0123456789abcdefghij",
+"abcdefghijklmnopqrstuvwxyz0123456789abcdefghij ́x x(o) lorem  (bar) x(o) foo.",
+"あい ox (bar) lorem a a\tb あい abcdefghijklmnopqrstuvwxyz0123456789abcdefghij",
+"abcdefghijklmnopqrstuvwxyz0123456789abcdefghij  x(o)\tx(o) ́x",
+"abcdefghijklmnopqrstuvwxyz0123456789abcdefghij あい a\tb\tあい 𝓝x a a λ∀",
+"あい a  あい foo. x(o) x(o)\tox a",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"ox",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"foo. lorem\t𝓝x 𝓝x\té あい あい é  𝓝x  𝓝x λ∀",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"a\tb 𝓝x lorem é λ∀  "
+]
+}
+},
+{
+"text": "𝓝x あい  foo.\tx(o)  é\nox lorem\ta  ́x\tfoo. a\tb\tあい  x(o)\tox a (bar)\tox\tabcdefghijklmnopqrstuvwxyz0123456789abcdefghij\tfoo.\tlorem\tx(o)\t(bar)\tox あい  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij\na\tb  あい\t(bar) λ∀ é λ∀  λ∀ あい  é  あい  foo.\tfoo.  ox foo. (bar) lorem a\tb  x(o) é\tlorem x(o)\tあい  λ∀ (bar) foo.\ta ́x 𝓝x ́x xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\tabcdefghijklmnopqrstuvwxyz0123456789abcdefghij\tabcdefghijklmnopqrstuvwxyz0123456789abcdefghij (bar) a  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\tabcdefghijklmnopqrstuvwxyz0123456789abcdefghij 𝓝x foo.  (bar)  x(o) foo.  ́x  foo. あい  é \n\nx(o)  (bar) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n",
+"keys": [
+"2gqj",
+"gqgq",
+"j"
+],
+"nvim": {
+"cursor": [
+7,
+0
+],
+"lines": [
+"𝓝x あい  foo.\tx(o)  é ox lorem\ta  ́x\tfoo. a\tb\tあい  x(o)",
+"ox a (bar)\tox\tabcdefghijklmnopqrstuvwxyz0123456789abcdefghij\tfoo.",
+"lorem\tx(o)\t(bar)\tox あい  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij",
+"a\tb  あい\t(bar) λ∀ é λ∀  λ∀ あい  é  あい  foo.\tfoo.  ox foo. (bar)",
+"lorem a\tb  x(o) é\tlorem x(o)\tあい  λ∀ (bar) foo.\ta ́x 𝓝x ́x",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"\tabcdefghijklmnopqrstuvwxyz0123456789abcdefghij\tabcdefghijklmnopqrstuvwxyz0123456789abcdefghij (bar) a  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\tabcdefghijklmnopqrstuvwxyz0123456789abcdefghij 𝓝x foo.  (bar)  x(o) foo.  ́x  foo. あい  é ",
+"",
+"x(o)  (bar) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+]
+}
+},
+{
+"text": "    λ∀ foo.  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\n  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\t́x abcdefghijklmnopqrstuvwxyz0123456789abcdefghij a\tb  ox  é\tabcdefghijklmnopqrstuvwxyz0123456789abcdefghij  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij foo. λ∀ ox λ∀ 𝓝x  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij (bar)\ta\tb\tox \nfoo. abcdefghijklmnopqrstuvwxyz0123456789abcdefghij ́x é  ́x\t𝓝x xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\t(bar) a\tb abcdefghijklmnopqrstuvwxyz0123456789abcdefghij lorem foo. 𝓝x\tfoo.\tx(o)\ta\tb λ∀\tあい 𝓝x ́x é  𝓝x a\txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  lorem 𝓝x あい\tλ∀  (bar) a\ta  a  あい  λ∀\tox λ∀ foo.\txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\t\né  あい  あい\tあい 𝓝x ox (bar) a lorem é  (bar) ́x λ∀  foo.  a\tb a\tb  a  a x(o) あい  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij a\tb a  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx あい ́x ́x  ́x abcdefghijklmnopqrstuvwxyz0123456789abcdefghij  lorem  あい\t(bar)\n  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx (bar) lorem lorem\t́x\ta ox\ta\tb ́x あい  𝓝x lorem  あい é  ox  lorem 𝓝x 𝓝x  (bar)  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  あい 𝓝x é x(o)  a  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij\tfoo. ́x\tあい a é あい\txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx λ∀ ox (bar) a\tb \n𝓝x lorem a\tb abcdefghijklmnopqrstuvwxyz0123456789abcdefghij\tあい ́x  ox a\tb\tfoo. lorem a\tb\té\té\txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\tfoo.  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij\ta\tb lorem  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij  é\tλ∀ ox a\tlorem ox λ∀ lorem\tfoo. (bar) ox \n\n",
+"keys": [
+"gqgq",
+"gqgq",
+"k"
+],
+"nvim": {
+"cursor": [
+1,
+4
+],
+"lines": [
+"    λ∀ foo.",
+"    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"",
+"  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\t́x abcdefghijklmnopqrstuvwxyz0123456789abcdefghij a\tb  ox  é\tabcdefghijklmnopqrstuvwxyz0123456789abcdefghij  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij foo. λ∀ ox λ∀ 𝓝x  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij (bar)\ta\tb\tox ",
+"foo. abcdefghijklmnopqrstuvwxyz0123456789abcdefghij ́x é  ́x\t𝓝x xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\t(bar) a\tb abcdefghijklmnopqrstuvwxyz0123456789abcdefghij lorem foo. 𝓝x\tfoo.\tx(o)\ta\tb λ∀\tあい 𝓝x ́x é  𝓝x a\txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  lorem 𝓝x あい\tλ∀  (bar) a\ta  a  あい  λ∀\tox λ∀ foo.\txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\t",
+"é  あい  あい\tあい 𝓝x ox (bar) a lorem é  (bar) ́x λ∀  foo.  a\tb a\tb  a  a x(o) あい  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij a\tb a  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx あい ́x ́x  ́x abcdefghijklmnopqrstuvwxyz0123456789abcdefghij  lorem  あい\t(bar)",
+"  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx (bar) lorem lorem\t́x\ta ox\ta\tb ́x あい  𝓝x lorem  あい é  ox  lorem 𝓝x 𝓝x  (bar)  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  あい 𝓝x é x(o)  a  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij\tfoo. ́x\tあい a é あい\txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx λ∀ ox (bar) a\tb ",
+"𝓝x lorem a\tb abcdefghijklmnopqrstuvwxyz0123456789abcdefghij\tあい ́x  ox a\tb\tfoo. lorem a\tb\té\té\txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\tfoo.  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij\ta\tb lorem  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij  é\tλ∀ ox a\tlorem ox λ∀ lorem\tfoo. (bar) ox ",
+""
+]
+}
+},
+{
+"text": "\nlorem  foo. a\tb  λ∀ ox x(o) a\tb a  (bar) λ∀\t𝓝x\tλ∀ 𝓝x λ∀ ́x (bar)  a\tb xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx lorem  a\ta é foo. あい x(o)\ta  foo. 𝓝x\t́x  a xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n \n    a\tb\ta\tb (bar) λ∀ foo. a\tb λ∀ foo.\tλ∀ é\ta a\tb ox a abcdefghijklmnopqrstuvwxyz0123456789abcdefghij  λ∀  ́x  é 𝓝x  é ox\t𝓝x  é (bar) ́x 𝓝x x(o) lorem lorem ox\na\tb\tx(o)\té  é λ∀\tλ∀ (bar)  𝓝x foo. あい λ∀\tfoo.  a foo. a\tb\n",
+"keys": [
+"gqk",
+"vjjgq",
+"gqk",
+"j",
+"ix<Esc>"
+],
+"nvim": {
+"cursor": [
+8,
+0
+],
+"lines": [
+"",
+"lorem  foo. a\tb  λ∀ ox x(o) a\tb a  (bar) λ∀\t𝓝x\tλ∀ 𝓝x λ∀ ́x (bar)  a",
+"b",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"lorem  a\ta é foo. あい x(o)\ta  foo. 𝓝x\t́x  a",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+" ",
+"x    a\tb\ta\tb (bar) λ∀ foo. a\tb λ∀ foo.\tλ∀ é\ta a\tb ox a abcdefghijklmnopqrstuvwxyz0123456789abcdefghij  λ∀  ́x  é 𝓝x  é ox\t𝓝x  é (bar) ́x 𝓝x x(o) lorem lorem ox",
+"a\tb\tx(o)\té  é λ∀\tλ∀ (bar)  𝓝x foo. あい λ∀\tfoo.  a foo. a\tb"
+]
+}
+},
+{
+"text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx あい abcdefghijklmnopqrstuvwxyz0123456789abcdefghij 𝓝x lorem lorem xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\ta\tλ∀ ́x a é ox  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij a\tb foo. lorem  ox λ∀\tλ∀\t(bar) a\nabcdefghijklmnopqrstuvwxyz0123456789abcdefghij  𝓝x\t(bar)\t́x a\tb  \n  foo.\ta\txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\tx(o)\t(bar) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx x(o)\t𝓝x\té ox a 𝓝x\tfoo.\tあい ox x(o)  a\tb λ∀\tox  é (bar)\té x(o) ox x(o)\tlorem a\tb foo.\ta\tb あい  (bar) λ∀ foo. 𝓝x\t́x あい\txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ́x  λ∀\n𝓝x あい あい\ta foo. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\té abcdefghijklmnopqrstuvwxyz0123456789abcdefghij あい x(o) ox ́x  あい  a\ta\tb  (bar)  a\tb a\tb 𝓝x foo.  foo. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  é  (bar) a  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  é\tlorem 𝓝x (bar)\t(bar)\t\nλ∀  lorem a あい abcdefghijklmnopqrstuvwxyz0123456789abcdefghij lorem  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij\té abcdefghijklmnopqrstuvwxyz0123456789abcdefghij foo.  a\tb (bar) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\t(bar) 𝓝x xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx foo.  ́x ox (bar)  é lorem a abcdefghijklmnopqrstuvwxyz0123456789abcdefghij  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n",
+"keys": [
+"gqG",
+"gqip",
+"gqgq",
+"k",
+"ix<Esc>"
+],
+"nvim": {
+"cursor": [
+27,
+0
+],
+"lines": [
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"あい abcdefghijklmnopqrstuvwxyz0123456789abcdefghij 𝓝x lorem lorem",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"a\tλ∀ ́x a é ox  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij a\tb foo.",
+"lorem  ox λ∀\tλ∀\t(bar) a abcdefghijklmnopqrstuvwxyz0123456789abcdefghij",
+"𝓝x\t(bar)\t́x a\tb  foo.\ta",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"x(o)\t(bar)",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"x(o)\t𝓝x\té ox a 𝓝x\tfoo.\tあい ox x(o)  a\tb λ∀\tox  é (bar) é",
+"x(o) ox x(o)\tlorem a\tb foo.\ta\tb あい  (bar) λ∀ foo. 𝓝x\t́x あい",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ́x",
+"λ∀ 𝓝x あい あい\ta foo.",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"é abcdefghijklmnopqrstuvwxyz0123456789abcdefghij あい x(o) ox ́x  あい  a a",
+"b  (bar)  a\tb a\tb 𝓝x foo.  foo.",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"é  (bar) a",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"é\tlorem 𝓝x (bar)\t(bar)\tλ∀  lorem a あい",
+"abcdefghijklmnopqrstuvwxyz0123456789abcdefghij lorem",
+"abcdefghijklmnopqrstuvwxyz0123456789abcdefghij\té",
+"abcdefghijklmnopqrstuvwxyz0123456789abcdefghij foo.  a\tb (bar)",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"(bar) 𝓝x",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"xfoo.  ́x ox (bar)  é lorem a abcdefghijklmnopqrstuvwxyz0123456789abcdefghij",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+]
+}
+},
+{
+"text": "    foo. (bar)\tx(o)\tox ́x λ∀ é λ∀ ́x\tあい a\tb é ox  λ∀\tx(o)\té\txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\né (bar)\tx(o)\n\ta\tb\t́x ́x  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij x(o) a (bar)  a\tb  (bar) foo. ́x  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij ox  あい\tabcdefghijklmnopqrstuvwxyz0123456789abcdefghij ox lorem\té foo. abcdefghijklmnopqrstuvwxyz0123456789abcdefghij foo. é 𝓝x (bar)\ta\n\n(bar)  𝓝x  𝓝x abcdefghijklmnopqrstuvwxyz0123456789abcdefghij foo.\t́x\na 𝓝x ox\t𝓝x\tあい λ∀ lorem x(o) (bar) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij é  λ∀ foo.\txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n",
+"keys": [
+"gqap",
+"gqgg",
+"<C-w>v<C-w>v",
+"2j"
+],
+"nvim": {
+"cursor": [
+6,
+0
+],
+"lines": [
+"    foo. (bar)\tx(o)\tox ́x λ∀ é λ∀ ́x\tあい a\tb é ox  λ∀\tx(o)\té",
+"    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"",
+"é (bar)\tx(o)",
+"\ta\tb\t́x ́x  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij x(o) a (bar)  a\tb  (bar) foo. ́x  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij ox  あい\tabcdefghijklmnopqrstuvwxyz0123456789abcdefghij ox lorem\té foo. abcdefghijklmnopqrstuvwxyz0123456789abcdefghij foo. é 𝓝x (bar)\ta",
+"",
+"(bar)  𝓝x  𝓝x abcdefghijklmnopqrstuvwxyz0123456789abcdefghij foo.\t́x",
+"a 𝓝x ox\t𝓝x\tあい λ∀ lorem x(o) (bar) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij é  λ∀ foo.\txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+]
+}
+},
+{
+"text": "    ox λ∀ ox a  (bar)  𝓝x\ta a\tλ∀  a\tb xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx 𝓝x ́x foo.\ta\tb (bar) é ox\txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\tあい\txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\tfoo.\t(bar) あい\tox a\tb 𝓝x  ́x  ́x\n    (bar) x(o) abcdefghijklmnopqrstuvwxyz0123456789abcdefghij  a (bar)  λ∀ foo. あい a\tb x(o) a\tb λ∀\tあい  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij ́x\tλ∀ é λ∀  ́x\tλ∀\ta λ∀ (bar)  a  a lorem\t𝓝x\t(bar)  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij foo.  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx (bar) é  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\na\tb é a\tb abcdefghijklmnopqrstuvwxyz0123456789abcdefghij (bar) \n  \nx(o) a\tb\tλ∀ foo.\tλ∀ abcdefghijklmnopqrstuvwxyz0123456789abcdefghij\na a 𝓝x 𝓝x ́x foo. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ox xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\té 𝓝x  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx λ∀ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx x(o)\t𝓝x a\tb 𝓝x\tfoo. foo.\txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  a\tb ox\tabcdefghijklmnopqrstuvwxyz0123456789abcdefghij é\t́x 𝓝x a\tb\t(bar) 𝓝x 𝓝x é\té xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx lorem\tあい\n\tx(o)  λ∀  a\tb  (bar) é ́x\té\txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx abcdefghijklmnopqrstuvwxyz0123456789abcdefghij\t́x  λ∀ lorem ́x\tabcdefghijklmnopqrstuvwxyz0123456789abcdefghij abcdefghijklmnopqrstuvwxyz0123456789abcdefghij  λ∀ ́x é a\tb (bar)  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij あい  (bar) 𝓝x x(o)\tx(o)\tλ∀  lorem é\t(bar) é ox\tlorem 𝓝x lorem\n",
+"keys": [
+"gqk",
+"gqj",
+"gqgq",
+"k"
+],
+"nvim": {
+"cursor": [
+13,
+4
+],
+"lines": [
+"    ox λ∀ ox a  (bar)  𝓝x\ta a\tλ∀  a\tb",
+"    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"    𝓝x ́x foo.\ta\tb (bar) é ox",
+"    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"    あい",
+"    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"    foo.\t(bar) あい\tox a\tb 𝓝x  ́x  ́x (bar) x(o)",
+"    abcdefghijklmnopqrstuvwxyz0123456789abcdefghij  a (bar)  λ∀ foo. あい a",
+"    b x(o) a\tb λ∀\tあい  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij ́x",
+"    λ∀ é λ∀  ́x\tλ∀\ta λ∀ (bar)  a  a lorem\t𝓝x\t(bar)",
+"    abcdefghijklmnopqrstuvwxyz0123456789abcdefghij foo.",
+"    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"    (bar) é",
+"    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"a\tb é a\tb abcdefghijklmnopqrstuvwxyz0123456789abcdefghij (bar) ",
+"  ",
+"x(o) a\tb\tλ∀ foo.\tλ∀ abcdefghijklmnopqrstuvwxyz0123456789abcdefghij",
+"a a 𝓝x 𝓝x ́x foo. xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ox xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\té 𝓝x  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx λ∀ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx x(o)\t𝓝x a\tb 𝓝x\tfoo. foo.\txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  a\tb ox\tabcdefghijklmnopqrstuvwxyz0123456789abcdefghij é\t́x 𝓝x a\tb\t(bar) 𝓝x 𝓝x é\té xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx lorem\tあい",
+"\tx(o)  λ∀  a\tb  (bar) é ́x\té\txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx abcdefghijklmnopqrstuvwxyz0123456789abcdefghij\t́x  λ∀ lorem ́x\tabcdefghijklmnopqrstuvwxyz0123456789abcdefghij abcdefghijklmnopqrstuvwxyz0123456789abcdefghij  λ∀ ́x é a\tb (bar)  abcdefghijklmnopqrstuvwxyz0123456789abcdefghij あい  (bar) 𝓝x x(o)\tx(o)\tλ∀  lorem é\t(bar) é ox\tlorem 𝓝x lorem"
+]
+}
 }
 ]
