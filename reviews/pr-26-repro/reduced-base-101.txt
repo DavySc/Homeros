@@ -1,0 +1,7 @@
+W C <Down> <CR> <Esc> C <C-o> u <Esc> A <C-o> u | "\té é 0x1f 7 0x1f\n∀ bar_1" | nvim {'lines': ['\t', '∀ bar_1'], 'cursor': [2, 8]} | ours {'lines': ['\t', '∀ bar_1'], 'cursor': [2, 7], 'mode': 0}
+v <CR> R <Esc> u | "x𝓝\nFoo. ( ẞß ," | nvim {'cursor': [2, 0], 'lines': ['x𝓝', 'Foo. ( ẞß ,']} | ours {'lines': ['x𝓝', 'Foo. ( ẞß ,'], 'cursor': [1, 0], 'mode': 0}
+r <Tab> V Q | "7 ( 𐐀x Foo." | nvim {'cursor': [1, 0], 'lines': ['     ( 𐐀x Foo.']} | ours {'lines': ['     ( 𐐀x Foo.'], 'cursor': [1, 3], 'mode': 0}
+$ T '   <C-o> | "    [y] \n\tλx -3 ( }" | nvim {'cursor': [1, 0], 'lines': ['    [y] ', '\tλx -3 ( }']} | ours {'lines': ['    [y] ', '\tλx -3 ( }'], 'cursor': [2, 0], 'mode': 0}
+]} <C-v> D < - | "{ 'c' ( 7\nfoo λx } ). <z>" | nvim {'cursor': [1, 6], 'lines': ["{ 'c' ( 7", 'foo λx ']} | ours {'lines': ["{ 'c' ( 7", 'foo λx '], 'cursor': [1, 7], 'mode': 0}
+<CR> c i[ <C-o> | "  \n    " | nvim {'cursor': [1, 0], 'lines': ['  ', '    ']} | ours {'lines': ['  ', '    '], 'cursor': [2, 3], 'mode': 0}
+A <CR> <Esc> d iW u | "  λx } ). -3\n[y] ẞß } x [y]" | nvim {'lines': ['  λx } ). -3', '[y] ẞß } x [y]'], 'cursor': [1, 12]} | ours {'lines': ['  λx } ). -3', '', '[y] ẞß } x [y]'], 'cursor': [2, 0], 'mode': 0}
