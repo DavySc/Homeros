@@ -224,6 +224,7 @@ static void stop_insert(Pos end, int esc, int nomove)
 	}
 	did_ai_flag = 0;
 	b_op_start = Insstart;
+	b_op_start_orig = Insstart_orig;
 	b_op_end = end;
 }
 

@@ -10,6 +10,7 @@
 enum { SW = 4 };
 
 Pos b_op_start, b_op_end;      /* the '[ and '] marks */
+Pos b_op_start_orig;          /* Insstart_orig of the last insert, for a block I or A */
 Reg *put_override;             /* nv_put()'s copy of the register (Visual p) */
 
 /* ---- registers ---- */
@@ -835,6 +836,22 @@ void insert_block_done(Pos insstart)
 		ind_post_vcol = get_indent(oap->start.lnum);
 		bd.start_vcol += ind_post_vcol - ins_block.ind_pre_vcol;
 		did_indent = 1;
+	}
+	/* the cursor moved before anything was typed (C-v I Right x): the
+	   block starts where the insert did */
+	if (oap->start.lnum == b_op_start_orig.lnum && !bd.is_MAX && !did_indent) {
+		long t = vcol_of(b_op_start_orig.lnum, b_op_start_orig.col) + b_op_start_orig.coladd;
+		if (oap->op_type == OP_INSERT && oap->start.col + oap->start.coladd != b_op_start_orig.col + b_op_start_orig.coladd) {
+			oap->start.col = b_op_start_orig.col;
+			pre_textlen -= t - oap->start_vcol;
+			oap->start_vcol = t;
+		} else if (oap->op_type == OP_APPEND && oap->start.col + oap->start.coladd >= b_op_start_orig.col + b_op_start_orig.coladd) {
+			oap->start.col = b_op_start_orig.col;
+			pre_textlen += bd.textlen;
+			pre_textlen -= t - oap->start_vcol;
+			oap->start_vcol = t;
+			oap->op_type = OP_INSERT;
+		}
 	}
 	if (did_indent && bd.textcol - ind_post_col > 0) {
 		oap->start.col += ind_post_col - ins_block.ind_pre_col;

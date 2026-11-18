@@ -1545,7 +1545,9 @@ static void do_pending_operator(Cmdarg *cap, long old_col)
 		else {
 			oap->end.col = ml_len(oap->end.lnum);
 			if (oap->end.col) {
-				oap->end.col = head(ml_get(oap->end.lnum), oap->end.col - 1);
+				/* the last byte, as Neovim's --oap->end.col: inclusive then
+				   takes the whole character, which a head would split */
+				oap->end.col--;
 				oap->inclusive = 1;
 			}
 		}

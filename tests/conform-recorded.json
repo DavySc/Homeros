@@ -67063,5 +67063,134 @@
 0
 ]
 }
+},
+{
+"text": "xé\n\nz",
+"keys": [
+"l",
+"y",
+"}",
+"P"
+],
+"nvim": {
+"cursor": [
+1,
+1
+],
+"lines": [
+"xéé",
+"",
+"z"
+]
+}
+},
+{
+"text": "xλ\n\nz",
+"keys": [
+"l",
+"c",
+"}",
+"<C-r>",
+"\"",
+"<Esc>"
+],
+"nvim": {
+"lines": [
+"xλ",
+"",
+"z"
+],
+"cursor": [
+1,
+1
+]
+}
+},
+{
+"text": "abcd\nefgh",
+"keys": [
+"<C-v>",
+"j",
+"I",
+"<Right>",
+"x",
+"<Esc>"
+],
+"nvim": {
+"lines": [
+"axbcd",
+"exfgh"
+],
+"cursor": [
+1,
+1
+]
+}
+},
+{
+"text": "abcd\nefgh",
+"keys": [
+"l",
+"<C-v>",
+"j",
+"I",
+"<Right>",
+"<Right>",
+"x",
+"<Esc>"
+],
+"nvim": {
+"cursor": [
+1,
+3
+],
+"lines": [
+"abcxd",
+"efgxh"
+]
+}
+},
+{
+"text": "} foo\nab",
+"keys": [
+"i",
+"<Tab>",
+"<Esc>",
+"h",
+"<C-v>",
+"I",
+"<C-t>"
+],
+"nvim": {
+"lines": [
+"        } foo",
+"ab"
+],
+"cursor": [
+1,
+0
+]
+}
+},
+{
+"text": "abcd\nefgh",
+"keys": [
+"<C-v>",
+"j",
+"$",
+"A",
+"<Left>",
+"x"
+],
+"nvim": {
+"lines": [
+"abcxd",
+"efgxh"
+],
+"cursor": [
+1,
+0
+]
+}
 }
 ]

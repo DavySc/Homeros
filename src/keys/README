@@ -38,7 +38,8 @@ Waits for package 4's core (src/core, PR 20), passing with it (measured):
   by code point.
 Waits for package 4, still differing with PR 20's core:
 - core_vcol at a byte inside a cluster (x + U+0301 with the cursor after x)
-  gives the cluster's end; Neovim's getvcol gives its start.
+  gives the cluster's end; Neovim's getvcol gives its start.  Typing before a lone mark makes such a cursor ("x\n\u0301", j i a Up
+  C-w: Neovim's column 0, ours 1).
 - the cursor after undoing a linewise change of several lines (4cc Esc u,
   2cc, 2S, 3S Esc u, 3S C-o u, V j c Esc u, V } c Esc u, c+ Esc u, c2k,
   cap, V s C-o u): Neovim takes it from
@@ -54,15 +55,15 @@ Waits for package 4, still differing with PR 20's core:
   suspect (owner package 4, not traced).
 
 Not traced to a fix yet (owner package 5):
+- a counted insert, Left, then Tab ("\tFoo", 2 a Left Tab Esc): Neovim
+  inserts one space, ours four; like s Tab below, Neovim's softtabstop
+  counts from a stale cached w_virtcol.
 - after A x Esc, v 3B y, then a linewise yank (y 2j or y ][), Neovim's
   wanted column is 5 cells and ours 0 ("\tab\n    cd", A b x Esc v 3 B y
   y 2 j j: Neovim's column 5, ours 0).
 - block $ I with CTRL-W and CTRL-R over a ZWJ emoji that r and s split
   earlier: Neovim and ours write different split characters (the case is
   the example in tests/conform-known.json; no shorter one found).
-- block I, then CTRL-T with the block's start inside the indent ("} foo",
-  i Tab Esc h C-v I C-t): Neovim's op_insert leaves the cursor at column 0,
-  ours at 2.
 - s on a Tab that ends its line, then Tab ("(\t", l s Tab): Neovim's cached
   w_virtcol stays the Tab's last cell, since del_bytes() backs the cursor up
   and op_change() steps it forward again before check_cursor_moved() looks,
@@ -71,6 +72,9 @@ Not traced to a fix yet (owner package 5):
   for an edit after the cursor).
 
 Neovim's own oddities, not copied:
+- block I, then Left past the block's start and text ("abcd\nefgh", l C-v j
+  I Left x): Neovim puts "a" in the other lines, ours "x" (its
+  Insstart_orig stays at the block's start; not traced further).
 - block > over blanks that end in a combining mark ("    \u0301", C-v >):
   Neovim drops the mark.
 - an operator with v over a sentence that ends the buffer in a multibyte

@@ -176,7 +176,7 @@ extern int redo_busy;
 extern int searchc_inclusive;
 
 /* ops.c: the '[ and '] marks, registers, recording */
-extern Pos b_op_start, b_op_end;
+extern Pos b_op_start, b_op_end, b_op_start_orig;
 extern Reg *put_override;
 extern int reg_recording, reg_executing, reg_recorded;
 int  swapchar(int op_type, Pos *pos);
