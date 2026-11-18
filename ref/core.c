@@ -6,16 +6,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include "core.h"
+#include "lsp.h"
 #include "syntax.h"
 #include "uni.h"
+
+int core_changed;
 
 enum { SCROLLOFF = 6, TABSTOP = 8 };   /* FEATURES.md 1; Vim's tabstop */
 enum { J_NOEOL = 1 << 8 };              /* the journal keeps noeol with the flags */
 
 static unsigned jstate(const Buf *b) { return b->flags | (b->noeol ? J_NOEOL : 0); }
 
-/* every change reaches the syntax tree and the journal before it is made
-   (UndoHook).  An edit's record carries the state after it (jnext), so a
+/* every change reaches the syntax tree, the language server and the journal
+   before it is made (UndoHook).  An edit's record carries the state after it (jnext), so a
    kill between two writes cannot keep the change with a stale state (review
    of PR 16, 7); an undo step's state is known only once it is done, so
    jdone records it then */
@@ -24,6 +27,7 @@ static void undo_seen(void *ctx, const Text *t, size_t pos, size_t ndel, const c
 {
 	Buf *b = ctx;
 	if (b->syn) syntax_edit(b->syn, t, pos, ndel, ins, nins);
+	lsp_edit(b->lsp, t, pos, ndel, ins, nins);
 	if (b->journal && (journal_base(b->journal, t, jstate(b), &b->id)
 	                   || journal_edit(b->journal, pos, ndel, ins, nins, jnext != (unsigned)-1 ? jnext : jstate(b)))) b->jerr = 1;
 }
@@ -104,6 +108,7 @@ int core_open(Editor *e, const char *path)
 	/* a change between the load and the watch has no event: look once */
 	if (e->buf->watch >= 0) core_watch(e, e->buf->watch);
 	e->buf->syn = syntax_open(path, e->buf->text);
+	e->buf->lsp = lsp_open(path, e->buf->text);
 	undo_hook(e->buf->undo, undo_seen, e->buf);
 	core_set_want(e);
 	if (j < 0) core_msg(e, "E303: Unable to open journal for \"%s\", recovery impossible%s", path,
@@ -119,6 +124,7 @@ void core_free(Editor *e)
 {
 	if (!e->buf || !e->win) { free(e->buf); free(e->win); return; }
 	syntax_free(e->buf->syn);
+	lsp_close(e->buf->lsp);
 	journal_close(e->buf->journal);   /* a clean exit: nothing to recover */
 	text_free(e->buf->text);
 	undo_free(e->buf->undo);
@@ -193,6 +199,16 @@ int core_delete_lines(Editor *e, size_t a, size_t z)
 /* The thin editor does not wrap. */
 void core_set_wrap(Editor *e, int on) { (void)e; (void)on; }
 
+void core_setpcmark(Editor *e)
+{
+	Win *w = e->win;
+	w->pcmark = (Mark){ w->line, w->col, 1 };
+	if (w->njump == JUMPLIST_SIZE) memmove(w->jump, w->jump + 1, --w->njump * sizeof *w->jump);
+	w->jump[w->njump].buf = e->buf;
+	w->jump[w->njump++].m = w->pcmark;
+	w->jumpidx = w->njump;
+}
+
 /* The thin editor keeps marks but does not move them (package 4 does). */
 void core_mark_join(Editor *e, size_t line, size_t mincol, long line_amount, long col_amount, int spaces_removed)
 {
@@ -216,7 +232,9 @@ int core_undo(Editor *e, int redo)
 	size_t first = text_line_of(e->buf->text, w.lo), last;
 	e->buf->flags = w.flags;
 	int at_start = w.lo == core_line_start(e, first);
-	if (w.hi == w.lo && at_start) last = first - 1;   /* whole lines removed: none left */
+	/* whole lines removed, none left; a deletion at a line start that leaves
+	   as many lines changed that line (u_save saved it) */
+	if (w.hi == w.lo && at_start && n < before) last = first - 1;
 	else last = text_line_of(e->buf->text, w.hi > w.lo ? w.hi - 1 : w.lo);
 	size_t l = w.cur.line + 1 >= first && w.cur.line <= last + 1 ? w.cur.line : first;
 	if (l >= n) l = n - 1;                          /* check_cursor_lnum() */
@@ -418,7 +436,7 @@ void core_scroll(Editor *e, long n) { (void)e; (void)n; }
 int  core_scroll_half(Editor *e, int dir, long count) { (void)e; (void)dir; (void)count; return -1; }
 int  core_scroll_page(Editor *e, int dir, long count) { (void)e; (void)dir; (void)count; return -1; }
 void core_scroll_cursor(Editor *e, int how) { (void)e; (void)how; }
-size_t core_screen_line(Editor *e, int how, long count) { (void)how; (void)count; return e->win->line; }
+size_t core_screen_line(Editor *e, int how, long count, int so) { (void)how; (void)count; (void)so; return e->win->line; }
 int  core_screen_move(Editor *e, long n) { (void)e; (void)n; return -1; }
 void core_pum(Editor *e, const PumItem *items, int n, int sel, size_t col) { (void)e; (void)items; (void)n; (void)sel; (void)col; }
 

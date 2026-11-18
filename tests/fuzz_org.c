@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../src/org/org.h"
+#include "org.h"
 
 static void check_org(const char *s, size_t n)
 {

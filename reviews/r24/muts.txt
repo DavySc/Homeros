@@ -1,0 +1,15 @@
+store full check off by one (probe never ends)~src/grid/grid.c~	if (used == SLOTS - 1) return -1;~	if (used == SLOTS) return -1;
+grid_text reads the store for 4 bytes~src/grid/grid.c~	if (c->len <= 4) return c->ch;~	if (c->len < 4) return c->ch;
+4-byte clusters interned~src/grid/grid.c~	long h = n > 4 ? intern(s, n) : 0;~	long h = n > 3 ? intern(s, n) : 0;
+cut at 32 bytes~src/grid/grid.c~for (n = GRID_CLUSTER_MAX; n > 1~for (n = GRID_CLUSTER_MAX + 1; n > 1
+a 31-byte cluster is cut~src/grid/grid.c~	if (n > GRID_CLUSTER_MAX)¶~	if (n >= GRID_CLUSTER_MAX)¶
+frame empties the count, not the slots~src/grid/grid.c~	memset(store, 0, sizeof store);¶~
+frame empties only when completely full~src/grid/grid.c~	if (used <= SLOTS / 2) return 0;~	if (used < SLOTS - 1) return 0;
+frame says nothing after emptying~src/grid/grid.c~	used = 0;¶	return 1;~	used = 0;¶	return 0;
+same length means same cluster~src/grid/grid.c~store[h].len == n && !memcmp(store[h].b, s, n)~store[h].len == n
+length not compared in the store~src/grid/grid.c~store[h].len == n && !memcmp(store[h].b, s, n)~!memcmp(store[h].b, s, n)
+all clusters hash to one slot~src/grid/grid.c~	for (h %= SLOTS; store[h].len;~	for (h = 0; store[h].len;
+probe does not wrap~src/grid/grid.c~h = (h + 1) % SLOTS)~h = h + 1)
+tty: a long cluster keeps the cursor row~src/tty/tty.c~			pr = x->len == 1 ? r : -1;~			pr = x->len <= 4 ? r : -1;
+main does not redraw all after the store is emptied~src/main.c~			if (grid_frame()) grid_free(&shown);¶~			grid_frame();¶
+main never calls grid_frame~src/main.c~			if (grid_frame()) grid_free(&shown);¶~

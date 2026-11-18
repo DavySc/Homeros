@@ -2,7 +2,9 @@
 text: join threshold a quarter, not half (shape)~test TESTS=text_rope~~src/text/text.c~	if (x->k[i].p->n < (h > 1 ? K : B) / 2) join(x, i, h - 1);~	if (x->k[i].p->n < (h > 1 ? K : B) / 4) join(x, i, h - 1);
 text: uneven split (shape)~test TESTS=text_rope~~src/text/text.c~	x->n = m / 2; y->n = m - x->n;~	x->n = m / 3; y->n = m - x->n;
 text: no rollback when a chunk cannot get its nodes~test TESTS=text_rope~~src/text/text.c~			if (!x) { text_delete(t, pos, done); return -1; }~			if (!x) return -1;
-text: line start one past the line~test TESTS=text~~src/text/text.c~	return pos + (size_t)(p - x->b);~	return pos + (size_t)(p - x->b) + (l > 1);
+text: line start one past the line~test TESTS=text~~src/text/text.c~	return pos + i;~	return pos + i + 1;
 text: newline count skips the block tail~test TESTS=text~~src/text/text.c~	for (; i < n; i++) c += s[i] == '\n';¶	return c;~	for (; i + 1 < n; i++) c += s[i] == '\n';¶	return c;
 text: shared nodes lose their newline count (fuzz)~fuzz FUZZERS=text_rope FUZZ_SECONDS=30~~src/text/text.c~	q->len = len - p->len; q->nl = nl - p->nl;~	q->len = len - p->len; q->nl = nl - p->nl + (q->nl > 40);
 text: insert drops the leaf's last byte (fuzz_text)~fuzz FUZZERS=text FUZZ_SECONDS=60~~src/text/text.c~		memmove(x->b + (at + m) * z, x->b + at * z, (x->n - at) * z);~		memmove(x->b + (at + m) * z, x->b + at * z, (x->n - at - (x->n > at + 5)) * z);
+text: one memchr per line in a leaf (lookups among empty lines 37 times dearer)~test TESTS=text_rope~~src/text/text.c~	while (x->n - i > 32 && l > (k = nls(x->b + i, 32))) { l -= k; i += 32; }¶	while (l) l -= x->b[i++] == '\n';~	(void)k;¶	for (const char *p = x->b; l; l--, i = (size_t)(p - x->b)) p = (const char *)memchr(p, '\n', (size_t)(x->b + x->n - p)) + 1;
+text: nls tail loop misses the last byte (frama-c)~frama~~src/text/text.c~	for (; i < n; i++) c += s[i] == '\n';¶	return c;~	for (; i + 1 < n; i++) c += s[i] == '\n';¶	return c;

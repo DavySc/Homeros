@@ -61,8 +61,14 @@ typedef struct Buf {
 	unsigned flags;            /* CORE_EMPTY */
 	unsigned long saved_seq;   /* undo_seq at the last load or save */
 	int nr;                    /* buffer number, from 1 (:b N) */
+	long lastused;             /* seconds when a window last entered it (b_last_used), for the buffers picker */
 	WinInfo *wi;
 	struct Syntax *syn;        /* syntax.h; NULL: no grammar for this file */
+	/* where syn is NULL: one FACE_* per byte of [a, z), as syntax_faces (git's
+	   diff and status buffers); NULL: none */
+	void (*faces)(const struct Buf *b, size_t a, size_t z, unsigned char *face);
+	int nonumber;              /* setlocal nonumber norelativenumber (neogit's buffers) */
+	struct LspDoc *lsp;        /* lsp.h; NULL: no language server for this file */
 	Mark mark[MARK_N];
 	Mark change[JUMPLIST_SIZE];   /* the change list (g; g,), oldest first */
 	int nchange;
@@ -88,10 +94,12 @@ typedef struct Win {
 	int wrap;                  /* 'wrap': off (FEATURES.md); set through core_set_wrap */
 	int y, x, h, w;
 	struct Frame *frame;       /* its leaf in the layout */
-	/* CTRL-O CTRL-I, oldest first; :bd drops the buffer's entries
-	   (Neovim's jumpoptions=clean), so buf is never a deleted buffer */
+	/* CTRL-O CTRL-I, oldest first.  :bd forgets the buffer's entries in the
+	   current window only (do_buffer_ext); other windows may keep a buffer
+	   :bd deleted, which stays allocated (unlisted) */
 	struct { Buf *buf; Mark m; } jump[JUMPLIST_SIZE];
 	int njump, jumpidx;
+	Mark pcmark;                /* the '' and `` mark (w_pcmark) */
 	int changeidx;             /* where g; and g, are in buf's change list (w_changelistidx) */
 	struct Win *next;          /* window order: top left to bottom right (CTRL-W w) */
 } Win;
@@ -123,6 +131,11 @@ typedef struct Editor {
 	size_t lbcap;
 } Editor;
 
+/* Set by any package when what is shown changed between keys (a picker's
+   list, a git refresh, a language server's reply): main.c redraws after the
+   loop and clears it.  One flag for every package, defined in the core. */
+extern int core_changed;
+
 /* The first buffer, on path, in the first window.  0 ok, -1 error (msg set). */
 int  core_open(Editor *e, const char *path);
 void core_free(Editor *e);
@@ -139,11 +152,19 @@ const unsigned char *core_line(Editor *e, size_t l, size_t *len);
 int  core_edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins);
 /* Delete lines [a, z); deleting all leaves the empty buffer.  0 ok, -1 out of memory. */
 int  core_delete_lines(Editor *e, size_t a, size_t z);
-/* A join (J, gJ, Backspace over a line break, a charwise delete across
-   lines) just made: marks at or after column mincol of line move by
-   line_amount lines and col_amount columns, as Neovim's mark_col_adjust(),
-   with spaces_removed as do_join() passes it.  Keys call it. */
+/* A join (J, gJ, Backspace or Delete over a line break, a charwise delete
+   across lines) about to be made: marks at or after column mincol of line
+   move by line_amount lines and col_amount columns, as Neovim's
+   mark_col_adjust(), with spaces_removed as do_join() passes it.  Keys call
+   it before the core_edit that joins, with the line numbers before it, as
+   do_join() calls mark_col_adjust() before del_lines(); a call with
+   line_amount != 0 also marks the step a join, so undo and redo count the
+   joined line as changed (do_join's u_save) when placing the cursor. */
 void core_mark_join(Editor *e, size_t line, size_t mincol, long line_amount, long col_amount, int spaces_removed);
+/* Neovim's setpcmark(): the cursor becomes the '' mark and the newest jump,
+   the oldest falling off a full list; keys call it before a jump (G, gg,
+   searches), the core before its buffer commands. */
+void core_setpcmark(Editor *e);
 /* One undo or redo step, placing the cursor as u_undoredo() does; the caller
    recomputes the wanted column once its count is done, even on failure.
    1 if the step invalidated Neovim's cached cursor column, 0 if not, -1 if
@@ -220,8 +241,10 @@ void core_scroll(Editor *e, long n);
 int  core_scroll_half(Editor *e, int dir, long count);
 int  core_scroll_page(Editor *e, int dir, long count);
 void core_scroll_cursor(Editor *e, int how);
-/* The line H, M or L goes to (how 'H' 'M' 'L'; count lines from the top or bottom). */
-size_t core_screen_line(Editor *e, int how, long count);
+/* The line H, M or L goes to (how 'H' 'M' 'L'; count lines from the top or
+   bottom).  so: apply scrolloff (cursor_correct()); nv_scroll() passes 0
+   while an operator is pending, so d L reaches the last line shown. */
+size_t core_screen_line(Editor *e, int how, long count, int so);
 /* gj and gk: n screen lines down (n < 0 up), keeping the wanted column.
    0 ok, -1 at the first or last screen line. */
 int  core_screen_move(Editor *e, long n);

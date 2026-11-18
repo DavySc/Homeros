@@ -14,7 +14,7 @@ SHELL = /bin/bash
 # value from the command line or make -e never points it at a real one)
 override export XDG_STATE_HOME := $(CURDIR)/build/state
 
-BASE = text undo uni core keys grid tty loop file syntax theme
+BASE = text undo uni core keys grid tty loop file syntax theme tools git lsp
 # src/win/ (package 9) is the Windows build's, cross-compiled on its own
 MODULES = $(BASE) $(filter-out $(BASE) win,$(patsubst src/%/,%,$(wildcard src/*/)))
 pick = $(if $(wildcard src/$(1)/*.c),$(wildcard src/$(1)/*.c),ref/$(1).c)
@@ -32,8 +32,8 @@ OBJS =
 
 # the unit tests link everything (a test may include src/main.c, which
 # names the window backend); the fuzzers and drivers everything but the
-# terminal, the window and the loop
-LIB_SRCS := $(filter-out $(call pick,tty) $(call pick,loop) $(call pick,wl),$(SRCS))
+# terminal and the window (the tools and git spawn through the loop)
+LIB_SRCS := $(filter-out $(call pick,tty) $(call pick,wl),$(SRCS))
 
 CC ?= cc
 CFLAGS ?= -O2
@@ -90,8 +90,10 @@ conform: $(OBJS) | build/san
 # to src/org and to org-element in emacs -Q --batch (tools/org_dump.el)
 ORG_N ?= 2000
 org-conform: $(OBJS) | build/san
+ifneq ($(wildcard src/org/*.c),)
 	gcc $(WARN) $(CPPFLAGS) $(SAN) -o build/san/org_drv tests/org_drv.c $(LIB_SRCS) $(OBJS) $(LIBS)
 	python3 tools/org_conform.py build/san/org_drv $(ORG_N) $${SEED:-$$(date +%s)}
+endif
 
 # Neovim's undo tree against UndoTree.tla's rules (package 2's oracle);
 # then the undo package against live nvim on one fake clock: short sequences
@@ -122,19 +124,30 @@ frama: | build
 	frama-c -wp -wp-rte -wp-prover z3,cvc5 -wp-timeout 20 \
 	  -cpp-extra-args="-Iinclude" $(FRAMA_FILES) | tee build/frama.log
 	grep -qE "Proved goals: +([0-9]+) / \1$$" build/frama.log
+	frama-c -wp -wp-rte -wp-prover z3,cvc5 -wp-timeout 20 -wp-fct nls \
+	  -cpp-extra-args="-Iinclude -D_DEFAULT_SOURCE" src/text/text.c | tee build/frama-text.log
+	grep -qE "Proved goals: +([0-9]+) / \1$$" build/frama-text.log
+ifneq ($(wildcard src/lsp/u16.c),)
+	frama-c -wp -wp-rte -wp-prover z3,cvc5 -wp-timeout 20 -wp-fct lsp_u16,lsp_u16_byte,step \
+	  -cpp-extra-args="-Iinclude" src/lsp/u16.c | tee build/frama-lsp.log
+	grep -qE "Proved goals: +([0-9]+) / \1$$" build/frama-lsp.log
+endif
 
-# the Windows build (package 9): cross-built with zig cc, run under Wine on
-# a virtual X display; src/win/check.sh says how
+# the Windows builds (packages 9 and 11): each package's src/<module>/check.sh
+# cross-builds its tests with zig cc and runs them under Wine (package 9's on
+# a virtual X display); a plant names the one module whose check can catch it
+# (make win WIN=file), so it does not run the others' slow tests too
+WIN = $(patsubst src/%/check.sh,%,$(wildcard src/*/check.sh))
 win:
-	@if [ -f src/win/check.sh ]; then bash src/win/check.sh; else echo "win: no src/win yet"; fi
+	@for m in $(WIN); do echo "win: src/$$m/check.sh"; bash src/$$m/check.sh || exit 1; done
 
 check: compilers test fuzz conform org-conform undo-diff lean frama specs win
 	@echo "check: all passed"
 
 planted:
-	bash tools/planted.sh
+	SHARD=$(SHARD) bash tools/planted.sh
 
 clean:
 	rm -rf build homeros
 
-.PHONY: compilers test fuzz conform undo-diff specs lean frama win check planted clean
+.PHONY: compilers test fuzz conform org-conform undo-diff specs lean frama win check planted clean

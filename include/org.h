@@ -2,8 +2,8 @@
    (Org 9.8.7 in Emacs 31.1), is the reference: org_parse gives the elements
    that org-element-parse-buffer gives at granularity element, with the same
    positions (bytes from 0 here, characters from 1 there).  Objects inside
-   paragraphs (markup, links, timestamps) are not parsed yet.  Private copy
-   until thread 0 adds include/org.h. */
+   paragraphs (markup, links, timestamps) are not parsed yet.  Build B won
+   the A/B comparison (2026-11-17). */
 #ifndef ORG_H
 #define ORG_H
 #include <stddef.h>
@@ -35,6 +35,11 @@ typedef struct {
    shifted, unless one of them ends past it (only a babel call can: its
    brackets are matched to the end of the text, as Org does). */
 OrgNode *org_parse(const char *s, size_t n, size_t *count);
+/* After an edit replaced del bytes at pos by ins bytes, making s[0, n):
+   updates *e and *count (from org_parse or org_edit, for the text before)
+   to what org_parse(s, n) gives, reparsing only the top-level subtrees the
+   edit touched.  0 ok; -1 out of memory, *e then freed and NULL. */
+int org_edit(OrgNode **e, size_t *count, const char *s, size_t n, size_t pos, size_t del, size_t ins);
 
 /* The keywords of org-todo-keywords, done ones from org_done on; NULL ends. */
 extern const char *const org_todo[];

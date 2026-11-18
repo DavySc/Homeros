@@ -139,6 +139,21 @@ static void enter(Editor *e)
 
 static int blank(unsigned char c) { return c == ' ' || c == '\t'; }
 
+/* Joins line l and the next without a space (do_join with insert_space
+   off).  Neovim saves both lines (u_save), so its undo and redo count the
+   joined line as changed when placing the cursor (u_undoredo).  The thin
+   core ignores core_mark_join, and deleting only the "\n" of an empty line
+   would read there as a deleted line (dd), so then the next line is
+   rewritten too. */
+static int join(Editor *e, size_t l)
+{
+	size_t ls = core_line_start(e, l), n = core_line_len(e, l), m;
+	core_mark_join(e, l + 1, 0, -1, (long)n, 0);
+	if (n) return core_edit(e, ls + n, 1, "", 0);
+	const unsigned char *s = core_line(e, l + 1, &m);
+	return m ? core_edit(e, ls, m + 1, (const char *)s, m) : core_edit(e, ls, 2, "\n", 1);
+}
+
 /* Backspace (ins_bs()): backspace=indent,eol,start.  In the indent (smarttab)
    or over blanks (softtabstop) it deletes back to the previous multiple of
    4, unless the space was typed on its own (KeyState.space) outside the indent. */
@@ -150,7 +165,7 @@ static void backspace(Editor *e)
 	if (c == 0) {
 		if (e->win->line == 0) return;
 		size_t pl = core_line_len(e, e->win->line - 1);
-		if (core_edit(e, ls - 1, 1, "", 0)) return;
+		if (join(e, e->win->line - 1)) return;
 		e->win->line--; e->win->col = pl;
 		e->ai = 0;
 		return;
@@ -224,6 +239,27 @@ static void insert_end(Editor *e)
 	undo_close(e->buf->undo);
 }
 
+static void empty_step(Editor *e)
+{
+	UndoCursor c = { e->win->line, e->win->col, e->buf->flags };
+	undo_record(e->buf->undo, core_line_start(e, e->win->line), "", 0, "", 0, c, e->buf->flags);
+}
+
+/* ins_del(): the character under the cursor, or at the end of the line
+   the line break (backspace=eol), joining without a space */
+static void del(Editor *e)
+{
+	size_t n;
+	const unsigned char *s = core_line(e, e->win->line, &n);
+	size_t ls = core_line_start(e, e->win->line), c = e->win->col;
+	if (c < n) core_edit(e, ls + c, uni_len(s, n, c), "", 0);
+	else if (e->win->line + 1 < core_lines(e)) join(e, e->win->line);
+	else empty_step(e);   /* at the last line the join fails, yet nvim makes an
+	                         undo step even on an empty buffer (measured: redo
+	                         is lost, u undoes nothing) */
+	e->ai = 0;
+}
+
 static void insert_key(Editor *e, int k, int pending)
 {
 	char b[4];
@@ -231,6 +267,7 @@ static void insert_key(Editor *e, int k, int pending)
 	case KEY_ESC: case KEY_CTRL_C: insert_end(e); return;
 	case KEY_ENTER: enter(e); e->ks.space = 0; break;
 	case KEY_BS: case 8: backspace(e); break;
+	case KEY_DEL: del(e); break;
 	case KEY_TAB: tab(e); break;
 	case KEY_LEFT: case KEY_RIGHT: case KEY_UP: case KEY_DOWN:
 		undo_close(e->buf->undo);    /* a cursor move splits the insert (Neovim) */
@@ -280,12 +317,6 @@ static void cmdline_key(Editor *e, int k)
 	e->cmdpos = e->cmdlen += utf8(k, e->cmd + e->cmdlen);
 }
 
-static void empty_step(Editor *e)
-{
-	UndoCursor c = { e->win->line, e->win->col, e->buf->flags };
-	undo_record(e->buf->undo, core_line_start(e, e->win->line), "", 0, "", 0, c, e->buf->flags);
-}
-
 static void insert_at(Editor *e, size_t col)
 {
 	e->win->col = col;
@@ -300,6 +331,7 @@ static int pending_op;
 
 static void normal_key(Editor *e, int k)
 {
+	if (k == KEY_DEL && count) { count /= 10; return; }   /* normal_cmd(): <Del> drops the count's last digit */
 	if (k >= '0' && k <= '9' && (k != '0' || count) && pending_op != 'g') {
 		count = count * 10 + (unsigned long)(k - '0');
 		if (count > 99999999) count = 99999999;
@@ -351,7 +383,7 @@ static void normal_key(Editor *e, int k)
 	case 'w': word_fwd(e, n); core_clamp(e); set_want(e); return;
 	case 'b': word_back(e, n); core_clamp(e); set_want(e); return;
 	case 'G': go_line(e, given && given <= nl ? given - 1 : nl - 1); return;
-	case 'x':
+	case 'x': case KEY_DEL:   /* nv_abbrev(): <Del> is x */
 		/* on an empty line x deletes nothing but still makes an undo step
 		   (op_delete() calls u_save_cursor()), so u then undoes nothing;
 		   on an empty buffer (ML_EMPTY) op_delete() returns first */
@@ -401,6 +433,7 @@ void keys_feed(Editor *e, int k, int pending)
 	case MODE_CMDLINE: cmdline_key(e, k); break;
 	default:
 		normal_key(e, k);
+		e->ks.pending = count || pending_op;
 		if (e->mode == MODE_NORMAL) undo_close(e->buf->undo);
 	}
 	core_update(e);

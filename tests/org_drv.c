@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../src/org/org.h"
+#include "org.h"
 
 static const char *const names[] = { "headline", "section", "planning", "property-drawer",
 	"node-property", "drawer", "clock", "comment", "keyword", "babel-call", "paragraph",
