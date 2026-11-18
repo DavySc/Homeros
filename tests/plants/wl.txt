@@ -3,7 +3,7 @@ wl: draws before the frame callback~test TESTS=wl~~src/wl/wl.c~	if (!configured 
 wl: no key repeat~test TESTS=wl~~src/wl/wl.c~	if (c && xkb_keymap_key_repeats(keymap, key + 8)) repeat_arm(key);~	if (0) repeat_arm(key);
 wl: Backspace as XKB's 8~test TESTS=wl~~src/wl/wl.c~	case XKB_KEY_BackSpace: return KEY_BS;~
 wl: seat not listened to~test TESTS=wl~~src/wl/wl.c~		wl_seat_add_listener(seat, &seat_l, NULL);¶	}~	}¶	if (0) wl_seat_add_listener(seat, &seat_l, NULL);
-wl: clipboard sends one byte short~test TESTS=wl~~src/wl/wl.c~	xfer(fd, clip, clipn, 1);~	xfer(fd, clip, clipn ? clipn - 1 : 0, 1);
+wl: clipboard sends one byte short~test TESTS=wl~~src/wl/wl.c~	for (size_t i = 0; i < clipn;) {~	for (size_t i = 1; i < clipn;) {
 wl: clipboard copies past max~test TESTS=wl~~src/wl/wl.c~	memcpy(buf, s, n < max ? n : max);~	memcpy(buf, s, n < max ? n : max + 1);
 wl: input method's text dropped~test TESTS=wl~~src/wl/wl.c~	push_utf8(commit_next);~	push_utf8("");
 wl: preedit not redrawn~test TESTS=wl~~src/wl/wl.c~memcpy(pre, pre_next, sizeof pre); push(KEY_RESIZE); }~memcpy(pre, pre_next, sizeof pre); }
