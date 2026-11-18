@@ -1,0 +1,4 @@
+select ROW_NUMBER() OVER(PARTITION by a order by b ROWS between 1 PRECEDING and current ROW)
+from t
+order by a
+OFFSET 5 ROWS fetch NEXT 5 ROWS ONLY

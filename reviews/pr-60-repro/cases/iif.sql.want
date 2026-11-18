@@ -1,0 +1,16 @@
+if exists(select 1)
+begin
+    select 1
+end
+else
+begin
+    select 2
+end
+while 1 = 1
+begin
+    break
+end
+if 1 = 1
+    select 1
+else
+    select 2

@@ -1,0 +1,6 @@
+again:
+select 1
+goto again
+    L1:
+begin tran;
+commit tran

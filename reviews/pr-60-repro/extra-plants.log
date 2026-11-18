@@ -1,0 +1,18 @@
+caught        adjacent strings lose their gap   (test_sqlfmt)
+NOT CAUGHT    the gap around a byte the lexer does not know is laid out
+caught        a line comment's line break is dropped   (test_sqlfmt)
+caught        clause breaks stop after 4 tokens   (test_sqlfmt)
+NOT CAUGHT    clause breaks stop after 4096 tokens
+NOT CAUGHT    nesting limit 10
+NOT CAUGHT    GO before a -- comment is a word
+NOT CAUGHT    an unclosed block comment is no problem
+caught        a range takes the token starting at z   (test_sqlfmt)
+NOT CAUGHT    a label's name is recased
+NO BUILD      a NUL byte is an operator (as the PR has it) or not
+NOT CAUGHT    sqlcmd statement ignores line breaks
+NOT CAUGHT    more than two blank lines kept after GO
+caught        the word table is searched from its second half only   (test_sqlfmt)
+NOT CAUGHT    a doubled quote closes a string
+NOT CAUGHT    ELSE ends no IF branch
+NOT CAUGHT    the edit is not shrunk at its end
+BROKEN        a statement with a problem is laid out
