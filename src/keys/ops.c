@@ -476,6 +476,11 @@ void change_done(void)
 	}
 	free(ins);
 	check_cursor();
+	/* text that went in before the cursor (a line break typed in the
+	   block's first line puts the cursor on a copied line) can leave it
+	   inside a character: Neovim's cursor ends on its first byte (measured,
+	   "C-v j e y gg C-v j C x C-r \" Esc") */
+	W->col = (size_t)head(ml_get((long)W->line), (long)W->col);
 }
 
 /* ---- shift ---- */

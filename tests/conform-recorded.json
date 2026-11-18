@@ -67419,5 +67419,167 @@
 "  ab"
 ]
 }
+},
+{
+"text": "ab\n",
+"keys": [
+"i",
+"<C-v>",
+"<Up>",
+"<C-v>",
+"<Del>",
+"<C-v>",
+"<Left>",
+"<Esc>"
+],
+"nvim": {
+"lines": [
+"<Up><Del><Left>ab"
+],
+"cursor": [
+1,
+14
+]
+}
+},
+{
+"text": "ab\ncd\n",
+"keys": [
+"y",
+"y",
+"o",
+"(",
+"<C-v>",
+"<Down>",
+"C",
+"<Esc>",
+"j",
+"."
+],
+"nvim": {
+"lines": [
+"ab",
+"(<Down>C",
+"cd",
+"(<Down>C"
+],
+"cursor": [
+4,
+7
+]
+}
+},
+{
+"text": "ab\n",
+"keys": [
+"A",
+"<C-v>",
+"<Del>",
+"x",
+"<Esc>",
+"u",
+"<C-r>"
+],
+"nvim": {
+"lines": [
+"ab<Del>x"
+],
+"cursor": [
+1,
+2
+]
+}
+},
+{
+"text": "ab (λd) ა𐐀 \"x y\"\n\tef {\n\n  gh ∀ [i]\n",
+"keys": [
+"<C-v>",
+"j",
+"$",
+"y",
+"gg",
+"<C-v>",
+"j",
+"C",
+"'",
+"V",
+"<C-r>",
+"\"",
+"<Esc>"
+],
+"nvim": {
+"cursor": [
+2,
+11
+],
+"lines": [
+"'Vab (λd) ა𐐀 \"x y\" ",
+"'Vab (λd) ა𐐀 \"x y\"     ef {     ",
+"",
+"",
+"  gh ∀ [i]"
+]
+}
+},
+{
+"text": "ab (λd) ა𐐀 \"x y\"\n\tef {\n\n  gh ∀ [i]\n",
+"keys": [
+"<C-v>",
+"j",
+"e",
+"y",
+"gg",
+"<C-v>",
+"j",
+"C",
+"x",
+"<C-r>",
+"\"",
+"<Esc>"
+],
+"nvim": {
+"lines": [
+"xab (λd) ა𐐀 \"x y\" ",
+"xab (λd) ა𐐀 \"x y\"     ef {     ",
+"",
+"",
+"  gh ∀ [i]"
+],
+"cursor": [
+2,
+10
+]
+}
+},
+{
+"text": "ab (λd) ა𐐀 \"x y\"\n\tef {\n\n  gh ∀ [i]\n",
+"keys": [
+"<C-v>",
+"j",
+"e",
+"y",
+"gg",
+"<C-v>",
+"j",
+"C",
+"x",
+"<C-r>",
+"\"",
+"<Esc>",
+"l"
+],
+"nvim": {
+"lines": [
+"xab (λd) ა𐐀 \"x y\" ",
+"xab (λd) ა𐐀 \"x y\"     ef {     ",
+"",
+"",
+"  gh ∀ [i]"
+],
+"cursor": [
+2,
+13
+]
+}
 }
 ]

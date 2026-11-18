@@ -672,8 +672,8 @@ static void insert_special(int c)
 {
 	static const char *const name[] = { "<Up>", "<Down>", "<Left>", "<Right>" };
 	if (c >= KEY_UP) {
-		if (c > KEY_RIGHT) return;
-		const char *p = name[c - KEY_UP];
+		if (c > KEY_RIGHT && c != KEY_DEL) return;
+		const char *p = c == KEY_DEL ? "<Del>" : name[c - KEY_UP];
 		long n = (long)strlen(p) - 1;
 		stop_arrow();
 		ins_bytes(p, n);
@@ -713,8 +713,9 @@ static int literal_key(int nc, int pending)
 	if (lit.i == 0) { cc = nc; nc = 0; }
 	lit.on = 0;
 	/* NUL is stored as NL, which this buffer cannot hold in a line */
-	/* past U+10FFFF Neovim writes bytes that are not UTF-8 (README) */
-	if (cc != 0 && cc != '\n' && cc <= 0x10FFFF) insert_special(cc);
+	/* a code typed past U+10FFFF: Neovim writes bytes that are not UTF-8
+	   (README); a special key (lit.i 0) inserts its name */
+	if (cc != 0 && cc != '\n' && (lit.i == 0 || cc <= 0x10FFFF)) insert_special(cc);
 	if (E->mode == MODE_INSERT) insert_check();
 	if (nc) insert_key(nc, pending);
 	return 1;
