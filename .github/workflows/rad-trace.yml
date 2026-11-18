@@ -37,8 +37,20 @@ jobs:
         run: |
           foreach ($exe in Get-ChildItem bin/*.exe) { ./oracle/rad-trace.ps1 (Resolve-Path rad/build/raddbg.exe) $exe.FullName (Join-Path $PWD traces) }
           foreach ($f in Get-ChildItem traces/*.txt) { "===== $($f.Name) (first 40 lines)"; Get-Content $f -TotalCount 40 }
+      - name: Convert the subjects' debug info with RAD and dump it (the oracle for our reader)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force rdi | Out-Null
+          foreach ($pdb in Get-ChildItem bin/*.pdb) {
+            $rdi = "rdi/$($pdb.BaseName).rdi"
+            cmd /c "rad\build\raddbg.exe --bin --rdi --deterministic $($pdb.FullName) --out:$rdi 2>&1"
+            cmd /c "rad\build\raddbg.exe --bin --dump $rdi --out:$rdi.dump.txt 2>&1"
+            Copy-Item "bin/$($pdb.BaseName).exe" rdi/
+            Get-ChildItem rdi | ForEach-Object { "RDI $($_.Name) $($_.Length)" }
+          }
+          & "C:\Program Files\Git\usr\bin\gzip.exe" -9 -f (Get-ChildItem rdi/*.dump.txt).FullName
       - name: Commit the traces to this branch
         shell: bash
         run: |
           git config user.name "github-actions[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add traces && git diff --cached --quiet || { git commit -qm "Traces recorded from RAD at ${RAD_COMMIT:0:8} [skip ci]" && git pull -q --rebase && git push -q; }
+          git add traces rdi && git diff --cached --quiet || { git commit -qm "Traces recorded from RAD at ${RAD_COMMIT:0:8} [skip ci]" && git pull -q --rebase && git push -q; }
