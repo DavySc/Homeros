@@ -15,7 +15,10 @@ typedef struct {
 	void (*close)(void);
 	int  (*fds)(int fds[2]);         /* how many fds to poll; then call input */
 	/* Reads what is available; returns how many keys it put in out (max n).
-	   A changed size comes as KEY_RESIZE. */
+	   A changed size comes as KEY_RESIZE.  -1: the input is gone for good
+	   (the terminal hung up, the compositor died); main.c then exits as
+	   Neovim does on SIGHUP or a read error (preserve_exit()): nothing is
+	   saved, the crash journal is kept for the next open. */
 	int  (*input)(int *out, int n);
 	void (*size)(int *rows, int *cols);
 	int  (*ready)(void);             /* may a frame be drawn now? */

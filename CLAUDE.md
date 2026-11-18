@@ -50,7 +50,7 @@ Modules and their packages: text 1, undo 2, uni 3, core 4, keys 5, grid and tty 
 
 ## The check
 
-`make check` runs everything a merge needs: `compilers` (gcc and clang, -Werror), `test` (unit tests under ASan+UBSan, recorded Neovim traces), `fuzz` (libFuzzer, `FUZZ_SECONDS` each), `conform` (fresh random key sequences against live `nvim --headless`, `CONFORM_N`), `undo-diff`, `lean`, `frama`, `specs` (all TLA+ configs, about 7 min). `make planted` must report every plant caught. Tools: `nix build -f tools.nix tools -o tools-env` (design/env.nix's tools plus Wine), put `tools-env/bin` on PATH and run `why3 config detect` once (Neovim 0.12, TLC, Lean 4.35, Frama-C with Z3 and CVC5); clang needs its compiler-rt (libFuzzer, sanitizers).
+`make check` runs everything a merge needs: `compilers` (gcc and clang, -Werror), `test` (unit tests under ASan+UBSan, recorded Neovim traces), `fuzz` (libFuzzer, `FUZZ_SECONDS` each), `conform` (random key sequences against live `nvim --headless`, `CONFORM_N`, seed `SEED`, 1 by default; CI runs fresh seeds nightly), `undo-diff`, `lean`, `frama`, `specs` (all TLA+ configs, about 7 min). `make planted` must report every plant caught. Tools: `nix build -f tools.nix tools -o tools-env` (design/env.nix's tools plus Wine), put `tools-env/bin` on PATH and run `why3 config detect` once (Neovim 0.12, TLC, Lean 4.35, Frama-C with Z3 and CVC5); clang needs its compiler-rt (libFuzzer, sanitizers).
 
 ## Working in parallel
 
