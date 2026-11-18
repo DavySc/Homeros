@@ -1,0 +1,10 @@
+# One planted bug per line: check | file | text to find | replacement. `check.sh plants` applies each
+# to a scratch copy and the named check (test or fuzz) must then fail. A check never seen to fail proves nothing.
+fuzz | dbg/rdi.c | sec[k].encoded_size > size - sec[k].off | sec[k].encoded_size > size
+fuzz | dbg/rdi.c | if (count > n - first) count = n - first; |
+test | dbg/rdi.c | if (off > opl) off = opl; |
+test | dbg/rdi.c | return lower_bound(keys, n, stride, 8, k); | return above - 1;
+test | dbg/rdi.c | if (above == 0 || above == n) return n; | if (above == 0) return n;
+test | dbg/rdi.c | if (i == nums.n) i -= 1; | if (i == nums.n) return (RdiSpan){zero, 0};
+test | dbg/rdi.c | if (s.n != len || memcmp(s.p, name, len) != 0) continue; | if (s.n < len || memcmp(s.p, name, len) != 0) continue;
+test | dbg/rdi.c | hash = hash * 33 + (uint8_t)name[i]; | hash = hash * 31 + (uint8_t)name[i];
