@@ -1,6 +1,6 @@
 /* Syntax colours against Neovim 0.12 (nvim --headless on PATH, running
-   tests/test_syntax.lua): random windows of real C, Lua and Markdown files,
-   then random edits applied incrementally with parses in between.  Neovim
+   tests/test_syntax.lua): random windows of real C, Lua, Markdown and SQL
+   (PostgreSQL's regression tests) files, then random edits applied incrementally with parses in between.  Neovim
    replays the same edits and parses, and its highlighter's captures, with
    its predicates, injections and #set! priority, must give the same face
    for every byte (per byte the highest priority wins, the later capture on
@@ -20,8 +20,8 @@
 #include "text.h"
 #include "../src/syntax/lmatch.h"
 
-enum { NL = 3, MAXCASES = 300, EDITS = 25, MAXT = 1 << 15 };
-static const char *const ext[NL] = { "c", "lua", "md" };
+enum { NL = 4, MAXCASES = 300, EDITS = 25, MAXT = 1 << 15 };
+static const char *const ext[NL] = { "c", "lua", "md", "sql" };
 static int CASES = 40;   /* per language; CASES and SEED in the environment */
 
 static char dir[] = "/tmp/test_syntax_XXXXXX";
@@ -75,6 +75,7 @@ static const char *const snip[NL][16] = {
 	{ "\n", "/*", "*/", "\"", "'", "{", "}", "(", ")", "x", "  ", "\xc3\xa9", "#define A 1\n", "int", "FOO_BAR", ";" },
 	{ "\n", "--", "[[", "]]", "\"", "'", "(", ")", "x", "  ", "\xc3\xa9", "local", "function", "end", "--- @param", "vim.cmd" },
 	{ "\n", "#", "```", "```c\n", "```lua\n", "*", "_", "`", "[", "](", ")", "- ", "| a |", "\n\n", "\xc3\xa9", "> " },
+	{ "\n", "--", "/*", "*/", "'", "\"", "(", ")", ",", ";", "@x", "\xc3\xa9", "SELECT", " FROM [t]", "WHERE", "CREATE TABLE " },
 };
 
 static int stops_left;
@@ -134,14 +135,18 @@ static void render(const Text *t, const unsigned char *f, char *out)
 
 /* a failing case's text and edits, so a failure on CI can be replayed
    (nvim --headless --clean -l tests/test_syntax.lua OUT DIR CASE: .ops
-   lines are e POS DEL HEX, f for a frame, p for a parse) */
+   lines are e POS DEL HEX, f for a frame, p for a parse).  The text goes
+   out in hex (xxd -r -p turns it back): a word in it such as "error"
+   would be what planted.sh reports as the failure */
 static void show(const char *dir, int c)
 {
 	char path[2048];
 	size_t n;
 	snprintf(path, sizeof path, "%s/%d.%s", dir, c, ext[c % NL]);
 	char *b = slurp(path, &n);
-	fprintf(stderr, "---- %d.%s ----\n%.*s---- %d.%s.ops ----\n", c, ext[c % NL], (int)n, b, c, ext[c % NL]);
+	fprintf(stderr, "---- %d.%s, in hex ----\n", c, ext[c % NL]);
+	for (size_t i = 0; i < n; i++) fprintf(stderr, i % 32 == 31 || i == n - 1 ? "%02x\n" : "%02x", (unsigned char)b[i]);
+	fprintf(stderr, "---- %d.%s.ops ----\n", c, ext[c % NL]);
 	free(b);
 	snprintf(path + strlen(path), sizeof path - strlen(path), ".ops");
 	b = slurp(path, &n);
@@ -449,6 +454,7 @@ int main(void)
 	add_dir(1, path, ".lua");
 	add_dir(2, "design", ".md");
 	add_dir(2, ".", ".md");
+	add_dir(3, "build/syntax/src/corpus/sql", ".sql");
 	for (int l = 0; l < NL; l++) CHECK(ncorpus[l]);
 
 	static unsigned char fa[MAXT], fb[MAXT], fs[MAXT], ff[MAXT];

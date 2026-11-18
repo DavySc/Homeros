@@ -62,6 +62,7 @@ const TSLanguage *tree_sitter_c(void);
 const TSLanguage *tree_sitter_lua(void);
 const TSLanguage *tree_sitter_markdown(void);
 const TSLanguage *tree_sitter_markdown_inline(void);
+const TSLanguage *tree_sitter_sql(void);
 static const struct Lang {
 	const char *name, *ext[3];
 	const TSLanguage *(*fn)(void);
@@ -70,6 +71,7 @@ static const struct Lang {
 	{ "lua", { ".lua" }, tree_sitter_lua },
 	{ "markdown", { ".md" }, tree_sitter_markdown },
 	{ "markdown_inline", { NULL }, tree_sitter_markdown_inline },
+	{ "sql", { ".sql" }, tree_sitter_sql },
 };
 enum { NLANGS = sizeof langs / sizeof *langs };
 
