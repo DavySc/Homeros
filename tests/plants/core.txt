@@ -50,3 +50,4 @@ core: the jump list on a line deleted from mid-line stays off the joined line (t
 core: each core_mark_join() of one edit saves the marks again (test_core_undo)~test TESTS=core_undo~~src/core/core.c~if (join_snapped != b) { marks_snap~if (1) { marks_snap
 core: the marks saved before a join outlive its edit (test_core_undo)~test TESTS=core_undo~~src/core/core.c~	join_snapped = NULL;~	(void)0;
 core: a file opens with the cursor in column 0 (test_core_screens)~test TESTS=core_screens~~src/core/core.c~(measured in tmux, 7 texts) */¶	w->col = core_first_nonblank(e, 0);~(measured in tmux, 7 texts) */¶	w->col = 0;
+core: CTRL-W > in a shrunk terminal grows past its row of windows (test_core_contract)~test TESTS=core_contract~~src/core/win.c~full = a == ROWS ? e->cols : e->layout->size[ROWS];~full = a == ROWS ? e->cols : e->rows;
