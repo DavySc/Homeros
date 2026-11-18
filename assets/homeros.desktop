@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Homeros
+GenericName=Text Editor
+Comment=Davy's text editor
+Exec=homeros %F
+Icon=homeros
+Terminal=false
+Categories=Utility;TextEditor;
+MimeType=text/plain;text/markdown;text/x-csrc;text/x-chdr;
+StartupWMClass=homeros
