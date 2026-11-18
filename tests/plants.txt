@@ -1,5 +1,6 @@
 # One planted bug per line: check | file | text to find | replacement. `check.sh plants` applies each
-# to a scratch copy and the named check (test or fuzz) must then fail. A check never seen to fail proves nothing.
+# to a scratch copy and the named check (test, oracle or fuzz) must then fail; \n in a text is a line break.
+# The models' plants are their own broken configurations (specs/*.cfg with expect: fail). A check never seen to fail proves nothing.
 fuzz | dbg/rdi.c | sec[k].encoded_size > size - sec[k].off | sec[k].encoded_size > size
 fuzz | dbg/rdi.c | if (count > n - first) count = n - first; |
 test | dbg/rdi.c | if (off > opl) off = opl; |
@@ -13,3 +14,10 @@ oracle | dbg/rdi.c | hash = hash * 33 + (uint8_t)name[i]; | hash = hash * 33 ^ (
 oracle | dbg/rdi.c | return above == 0 || above == n ? n : above - 1; | return above == 0 || above == n ? n : above == 1 ? 0 : above - 2;
 oracle | dbg/rdi.h | typedef struct { uint32_t proc, parent, first_child, next_sibling, | typedef struct { uint32_t proc, first_child, parent, next_sibling,
 oracle | dbg/rdi.h | uint32_t container, type, root_scope, link_name; } RdiSymbol; | uint32_t container, root_scope, type, link_name; } RdiSymbol;
+test | dbg/queue.c |   if (q->wake) q->wake(q->wake_arg); |
+test | dbg/queue.c |     q->used -= sizeof n + n; |     q->used -= sizeof n + n; if (0)
+test | dbg/queue.c |   q->used += sizeof n + n; |   q->used += sizeof n + n; if (0)
+test | dbg/queue.c | while (q->used + sizeof n + n > QUEUE_BYTES) { | while (q->used + n > QUEUE_BYTES) {
+test | dbg/queue.c | uint32_t first = n < QUEUE_BYTES - start ? n : QUEUE_BYTES - start; | uint32_t first = n;
+test | dbg/queue.c |   pthread_mutex_lock(&q->lock);\n  /* test and wait |   /* test and wait
+test | dbg/queue.c |     q->head = (q->head + sizeof n + n) % QUEUE_BYTES; |     q->head = q->head + sizeof n + n;

@@ -1,20 +1,25 @@
 #!/bin/bash
 # The prototype's check. `./check.sh` builds with gcc and clang (-Werror), runs the tests under
-# ASan+UBSan, compares the reader with RAD's dump of every file in rdi/, and runs each fuzzer for FUZZ_SECONDS (default 20). `./check.sh plants` then proves each check
+# ASan+UBSan and ThreadSanitizer, checks the TLA+ models (needs TLA_JAR or tlc), compares the reader with RAD's dump of every file in rdi/, and runs each fuzzer for FUZZ_SECONDS (default 20). `./check.sh plants` then proves each check
 # can fail: every line of tests/plants.txt must make its check fail.
 set -u
 cd "$(dirname "$0")"
-FLAGS="-std=c17 -g -O1 -Wall -Wextra -Werror"
+# a small queue, so the stress test runs with both queues full most of the time
+FLAGS="-std=c17 -D_GNU_SOURCE -pthread -DQUEUE_BYTES=256 -g -O1 -Wall -Wextra -Werror"
 SAN="-fsanitize=address,undefined -fno-sanitize-recover=all"
-run() { # run <dir with the sources> <test|oracle|fuzz|all>: 0 when the named checks pass
+run() { # run <dir with the sources> <test|specs|oracle|fuzz|all>: 0 when the named checks pass
   local src=$1 what=$2 b; b=$(mktemp -d)
   python3 -I "$src/tests/seed_rdi.py" "$b/seed.rdi" || return 1
   if [ "$what" = test ] || [ "$what" = all ]; then
-    for cc in gcc clang; do
-      $cc $FLAGS $SAN "$src"/dbg/*.c "$src"/tests/test_*.c -o "$b/test-$cc" || return 1
-      "$b/test-$cc" "$b/seed.rdi" >"$b/out" 2>&1 || { tail -5 "$b/out"; return 1; }
+    # each tests/test_*.c is its own program: ASan+UBSan with both compilers, then ThreadSanitizer
+    for t in "$src"/tests/test_*.c; do
+      for build in "gcc $SAN" "clang $SAN" "clang -fsanitize=thread"; do
+        $build $FLAGS "$src"/dbg/*.c "$t" -o "$b/test" || return 1
+        "$b/test" "$b/seed.rdi" >"$b/out" 2>&1 || { tail -5 "$b/out"; return 1; }
+      done
     done
   fi
+  if [ "$what" = specs ] || [ "$what" = all ]; then "$src/specs/check.sh" || return 1; fi
   if [ "$what" = oracle ] || [ "$what" = all ]; then
     gcc $FLAGS $SAN "$src"/dbg/*.c "$src"/tests/rdiq.c -o "$b/rdiq" || return 1
     for f in "$src"/rdi/*.rdi; do python3 -I "$src/tests/oracle_rdi.py" "$b/rdiq" "$f" "$f.dump.txt.gz" || return 1; done
@@ -33,8 +38,8 @@ missed=0; total=0
 while IFS='|' read -r what file find repl; do
   case "$what" in ''|'#'*) continue;; esac
   what=$(echo $what); file=$(echo $file); find=${find# }; find=${find% }; repl=${repl# }
-  t=$(mktemp -d); cp -r dbg tests "$t/"; [ -d rdi ] && cp -r rdi "$t/"
-  FIND="$find" REPL="$repl" python3 -I -c 'import os,sys;p=sys.argv[1];s=open(p).read();f=os.environ["FIND"];assert s.count(f)==1,("plant text not found once: "+f);open(p,"w").write(s.replace(f,os.environ["REPL"]))' "$t/$file" || { echo "BAD PLANT: $find"; missed=$((missed+1)); continue; }
+  t=$(mktemp -d); cp -r dbg tests specs "$t/"; [ -d rdi ] && cp -r rdi "$t/"
+  FIND="$find" REPL="$repl" python3 -I -c 'import os,sys;p=sys.argv[1];s=open(p).read();f,r=(os.environ[k].replace("\\n","\n") for k in ("FIND","REPL"));assert s.count(f)==1,("plant text not found once: "+f);open(p,"w").write(s.replace(f,r))' "$t/$file" || { echo "BAD PLANT: $find"; missed=$((missed+1)); continue; }
   total=$((total+1))
   if run "$t" "$what" >/dev/null 2>&1; then echo "NOT CAUGHT ($what): $find"; missed=$((missed+1)); fi
   rm -rf "$t"
