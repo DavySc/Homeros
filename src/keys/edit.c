@@ -699,7 +699,7 @@ static int literal_key(int nc, int pending)
 	else if (nc == 'u' || nc == 'U') lit.unicode = nc;
 	else {
 		int d = nc >= '0' && nc <= '9' ? nc - '0' : nc >= 'a' && nc <= 'f' ? nc - 'a' + 10 : nc >= 'A' && nc <= 'F' ? nc - 'A' + 10 : -1;
-		if (lit.hex || lit.unicode) { if (d < 0) brk = 1; else lit.cc = lit.cc * 16 + d; }
+		if (lit.hex || lit.unicode) { if (d < 0) brk = 1; else if (lit.cc <= 0x10FFFF) lit.cc = lit.cc * 16 + d; }
 		else if (lit.octal) { if (d < 0 || d > 7) brk = 1; else lit.cc = lit.cc * 8 + d; }
 		else { if (d < 0 || d > 9) brk = 1; else lit.cc = lit.cc * 10 + d; }
 		if (!brk) lit.i++;
@@ -713,7 +713,8 @@ static int literal_key(int nc, int pending)
 	if (lit.i == 0) { cc = nc; nc = 0; }
 	lit.on = 0;
 	/* NUL is stored as NL, which this buffer cannot hold in a line */
-	if (cc != 0 && cc != '\n') insert_special(cc);
+	/* past U+10FFFF Neovim writes bytes that are not UTF-8 (README) */
+	if (cc != 0 && cc != '\n' && cc <= 0x10FFFF) insert_special(cc);
 	if (E->mode == MODE_INSERT) insert_check();
 	if (nc) insert_key(nc, pending);
 	return 1;

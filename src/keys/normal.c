@@ -1162,6 +1162,13 @@ static void nv_window(Cmdarg *cap)
 	if (c == ':') { cap->cmdchar = ':'; cap->nchar = 0; nv_colon(cap); return; }
 	if (checkclearop(cap->oap)) return;
 	int one = E->wins->next == NULL, r = 0;
+	Win *ow = E->win;
+	Pos oc = cur();
+	/* do_window(): these stop Visual mode first (reset_VIsual_and_resel()) */
+	if (has("sSvnqcorR", c) || c == 19 || c == 22 || c == 14 || c == 17 || c == 3 || c == 15 || c == 18) {
+		if (VIsual_active) end_visual_mode();
+		VIsual_reselect = 0;
+	}
 	switch (c) {
 	case 's': case 'S': case 19: r = core_split(E, 0, (int)n); break;
 	case 'v': case 22: r = core_split(E, 1, (int)n); break;
@@ -1191,6 +1198,17 @@ static void nv_window(Cmdarg *cap)
 	case '<': core_resize(E, 1, -n1, 0); break;
 	case '|': core_resize(E, 1, n, 1); break;
 	default: r = -1;
+	}
+	/* win_goto() and win_exchange(): Visual mode ends in the window left when the buffer
+	   changes; on the same buffer the new window takes the cursor */
+	if (VIsual_active && E->win != ow) {
+		if (E->win->buf != ow->buf) {
+			Win *nw = E->win;
+			E->win = ow; E->buf = ow->buf;
+			end_visual_mode();
+			VIsual_reselect = 0;
+			E->win = nw; E->buf = nw->buf;
+		} else setcur(oc);
 	}
 	if (r < 0) beep();
 }

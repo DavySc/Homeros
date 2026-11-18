@@ -3,12 +3,10 @@ Package 5, the Vim keys: what is not built yet, and what waits for whom.
 The rest of FEATURES.md section 2 is ported from Neovim 0.12.6 and checked
 against nvim --headless (tools/conform.py, tests/conform-recorded.json).
 Every line below is a known difference, and those conform.py's random
-sequences reach on package 4's core have a rule in tests/conform-known.json
-(on the keys and text, with an example that must still differ); conform.py's random sequences still
-reach some of them (measured, 2026-11-17, seed 1794946549, 2,000 sequences:
-56 differ with ref/core.c, 22 with package 4's core from PR 20; one of those
-22 is not traced yet: a block put after gE in a Visual block, "  ( ,\n\t\n,\n
-  -3" with gI ა C-o $ b ^ Esc C-v 4 gE j p J P).
+sequences reach have a rule in tests/conform-known.json (on the keys and
+text, with an example that must still differ).  Measured 2026-11-18, seed 1,
+2,000 sequences: with package 4's core (PR 20) 0 differ outside the rules
+(3 inside them); with ref/core.c 38 differ, from what it stubs.
 
 Not built (FEATURES.md section 2), part two of package 5:
 - search: / ? n N * # and search as a motion (d/x). / and ? read their line
@@ -32,8 +30,9 @@ Not built (FEATURES.md section 2), part two of package 5:
   fails sends the insert's C-w and Tab to Normal mode.
 
 Waits for package 4's core (src/core, PR 20), passing with it (measured):
-- CTRL-D, CTRL-U, CTRL-E, CTRL-Y, zz zt zb H M L: ref/core.c stubs them
-  (they match with package 4's core and Neovim at scrolloff=6).
+- CTRL-D, CTRL-U, CTRL-E, CTRL-Y, CTRL-F, CTRL-B, zz zt zb H M L, and gj
+  gk with 'wrap': ref/core.c stubs them (they match with package 4's core
+  and Neovim at scrolloff=6; its tests/test_core_screens.c types them).
 - gv after edits: its ends are the buffer's '< and '> marks, which only
   package 4's core moves.
 - columns of grapheme clusters: ref/core.c's core_vcol and core_col_at step
@@ -90,6 +89,9 @@ Neovim's own oddities, not copied:
   character was typed, not in the text ("    ", s 𐐀 Esc v A 0).
 - C-v on a Tab then ~ u U over a 2-byte character ("\té ab cd", C-v w ~):
   Neovim moves the character to the end of the line (" ab cd É").  The Tab can be on another line of the block ("\t0x1f\n  ẞß", C-v ]] U).
+- CTRL-V U with a code past U+10FFFF ("ab", i C-v U110000 Esc): Neovim
+  writes bytes that are not UTF-8 (from 0x80000000 a special-key code); ours
+  inserts nothing, and stops adding digits there so the code cannot overflow.
 
 Counts (measured, 2026-11-17): a count folds at 999999999 as Neovim's
 does, and the work grows with it.  Large counts are checked by recorded
@@ -106,4 +108,5 @@ Choices:
 - go is gg everywhere: Normal, after an operator, Visual (Davy, FEATURES.md).
 - % is Neovim's built-in one for now; Davy wants matchit's word pairs too
   (2026-11-17), a follow-up PR.
-- U (undo line), CTRL-F and CTRL-B are not in FEATURES.md and not built.
+- U (undo line) is not in FEATURES.md and not built.  CTRL-F and CTRL-B
+  are not in it either, but package 4's screens test types them.

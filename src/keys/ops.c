@@ -448,7 +448,9 @@ void change_done(void)
 	char *ins = malloc((size_t)ins_len);
 	if (!ins) return;
 	memcpy(ins, ml_get(oap->start.lnum) + textcol, (size_t)ins_len);
-	for (long ln = oap->start.lnum + 1; ln <= oap->end.lnum; ln++) {
+	/* a Del typed in the block's first line may have joined the lines
+	   below: Neovim's ml_replace() fails past the last line */
+	for (long ln = oap->start.lnum + 1; ln <= oap->end.lnum && ln < nlines(); ln++) {
 		Block bd = { 0 };
 		bprep(oap, &bd, ln, 1);
 		if (!bd.is_short || virtual_op) {

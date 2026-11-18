@@ -47,6 +47,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 	edit_reset();
 	motion_reset();
 	if (core_open(&e, path)) abort();
+	int nr = e.buf->nr;
 	read_all(&e, before, &nb);
 	int prev = 0;
 	for (size_t i = 0; i < n && text_len(e.buf->text) < 30000; i++) {
@@ -68,6 +69,9 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 	for (int i = 0; i < 4; i++) keys_feed(&e, KEY_ESC, 0);
 	if (reg_recording) keys_feed(&e, 'q', 0);
 	if (e.mode != MODE_NORMAL || VIsual_active || reg_recording || e.ks.pending) abort();
+	/* CTRL-W n and CTRL-O may have left another buffer current: check undo
+	   on the file's (buffers stay loaded: 'hidden') */
+	if (e.buf->nr != nr && core_buf_goto(&e, nr)) abort();
 	read_all(&e, after, &na);
 	unsigned long seq = undo_seq(e.buf->undo);
 	while (undo_seq(e.buf->undo)) keys_feed(&e, 'u', 0);
