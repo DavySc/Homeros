@@ -2,6 +2,7 @@
    Neovim 0.12 run here through the core, on the same files and the same
    clock, and the file shada_write leaves must list Neovim's v:oldfiles; each
    session must also read the last one's as its own v:oldfiles. */
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -153,5 +154,16 @@ int main(void)
 	}
 	many_check(0);
 	many_check(1);
+	/* file_full, Neovim's fix_fname: the directory resolved, relative or
+	   through a link, the last part kept as typed, a link too */
+	char d[PATH_MAX], want[PATH_MAX + 16], got[PATH_MAX];
+	CHECK(realpath("/var/tmp/homeros-shada", d) && !chdir(d));
+	unlink("lnd"); unlink("lnf");
+	CHECK(!symlink("sub", "lnd") && !symlink("a", "lnf"));
+	snprintf(want, sizeof want, "%s/sub/d", d);
+	CHECK(!file_full("lnd/../sub/d", got) && !strcmp(got, want));
+	CHECK(!file_full("lnd/d", got) && !strcmp(got, want));
+	snprintf(want, sizeof want, "%s/lnf", d);
+	CHECK(!file_full("lnf", got) && !strcmp(got, want));
 	return 0;
 }

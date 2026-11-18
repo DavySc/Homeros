@@ -106,6 +106,14 @@ int main(void)
 	int seen = 0;   /* the buffer's text, not the dashboard */
 	for (int c = 0; c < g.cols; c++) seen |= g.c[c].len == 1 && grid_text(&g.c[c])[0] == 'x';
 	CHECK(seen);
+	/* a file opened from it (r, Enter) reuses the empty start buffer: gone */
+	core_free(&e);
+	CHECK(!core_open(&e, NULL));
+	open_dash();
+	CHECK(!core_edit_file(&e, "tests/test_tools_dash.c", 0));
+	draw();
+	for (int i = 0; i < g.rows * g.cols; i++) CHECK(!(g.c[i].len == 1 && grid_text(&g.c[i])[0] == 'Q' && i % g.cols > 0));   /* no "Quit" */
+	CHECK(!tools_key(&e, 'q') && !e.quit);
 	grid_free(&g);
 	core_free(&e);
 	return 0;

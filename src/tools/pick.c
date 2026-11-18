@@ -13,10 +13,6 @@
 #include <time.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#ifdef _WIN32
-#undef PATH_MAX   /* MAX_PATH UTF-16 units, as UTF-8 (src/file/state.h) */
-#define PATH_MAX (3 * 260)
-#endif
 #include "tools.h"
 #include "core.h"
 #include "dash.h"
@@ -82,6 +78,10 @@ static int sep(char c)
    returns its length, at most n - 1 */
 static size_t full(const char *path, char *out, size_t n)
 {
+#ifdef _WIN32
+	/* GetFullPathNameW: '\' only, as v:oldfiles spells them */
+	if (n >= PATH_MAX && !file_full(path, out)) return strlen(out);
+#endif
 	int k = absolute(path) ? snprintf(out, n, "%s", path) : snprintf(out, n, "%s/%s", P.cwd, path);
 	return k < 0 ? 0 : (size_t)k < n ? (size_t)k : n - 1;
 }
@@ -121,17 +121,18 @@ static int sorting(void) { return P.what != PICK_GREP && (P.m.ng || P.what == PI
    as the time it decays to 1 (its "deadline"), in a file of
    "deadline path" lines ($XDG_DATA_HOME/homeros/picker-frecency, as snacks'
    stdpath("data")/snacks/picker-frecency). */
-static struct { char *path; double deadline; } *fr;
+static ShadaLine *fr;   /* t: the deadline */
 static size_t nfr, frcap;
+static FileId frid;
 static int frloaded;
 #define LAMBDA (log(2.0) / (30.0 * 24 * 3600))
 
-static void fr_file(char *f, size_t n) { shada_stdpath(f, n, 0, "/picker-frecency"); }
+static void fr_file(char *f, size_t n) { file_stdpath(f, n, 0, "/picker-frecency"); }
 
 static double *fr_find(const char *path, size_t n, int make)
 {
 	for (size_t i = 0; i < nfr; i++)
-		if (strlen(fr[i].path) == n && !memcmp(fr[i].path, path, n)) return &fr[i].deadline;
+		if (strlen(fr[i].path) == n && !memcmp(fr[i].path, path, n)) return &fr[i].t;
 	if (!make) return NULL;
 	if (nfr == frcap) {
 		size_t c = frcap ? frcap * 2 : 64;
@@ -142,23 +143,16 @@ static double *fr_find(const char *path, size_t n, int make)
 	if (!(fr[nfr].path = malloc(n + 1))) return NULL;
 	memcpy(fr[nfr].path, path, n);
 	fr[nfr].path[n] = 0;
-	return &fr[nfr++].deadline;
+	return &fr[nfr++].t;
 }
 
 static void fr_load(void)
 {
-	char f[PATH_MAX], ln[PATH_MAX + 64];
+	char f[PATH_MAX];
 	frloaded = 1;
 	fr_file(f, sizeof f);
-	FILE *fp = fopen(f, "r");
-	if (!fp) return;
-	while (fgets(ln, sizeof ln, fp)) {
-		char *sp = strchr(ln, ' ');
-		if (!sp) continue;
-		double *d = fr_find(sp + 1, strcspn(sp + 1, "\n"), 1);
-		if (d) *d = strtod(ln, NULL);
-	}
-	fclose(fp);
+	shada_load(f, &fr, &nfr, &frid);   /* what it could read */
+	frcap = nfr;
 }
 
 /* M:visit: one more visit to an absolute path, saved at once */
@@ -168,20 +162,9 @@ static void fr_visit(const char *path, size_t n)
 	double sc = (d ? exp(LAMBDA * (*d - now)) : 0) + 1;
 	if (!d && !(d = fr_find(path, n, 1))) return;
 	*d = now + log(sc) / LAMBDA;
-	char f[PATH_MAX], tmp[PATH_MAX + 8];
+	char f[PATH_MAX];
 	fr_file(f, sizeof f);
-	snprintf(tmp, sizeof tmp, "%s.new", f);
-	shada_mkdirs(f);
-	FILE *fp = fopen(tmp, "w");
-	if (!fp) return;
-	for (size_t i = 0; i < nfr; i++) fprintf(fp, "%.17g %s\n", fr[i].deadline, fr[i].path);
-#ifdef _WIN32
-	if (fclose(fp)) return;
-	remove(f);   /* Windows' rename keeps an existing file */
-	rename(tmp, f);
-#else
-	if (!fclose(fp)) rename(tmp, f);
-#endif
+	shada_save(f, fr, nfr, &frid);
 }
 
 /* M:get: the stored score, or a seed (M:seed): for a buffer from when it
@@ -209,7 +192,7 @@ static double score(Item *i)
 	if (s && P.what == PICK_SMART && i->flen) {
 		if (i->frecency < 0) i->frecency = frecency(i, P.now);
 		r += (1 - 1 / (1 + i->frecency)) * 8;
-		if (!absolute(P.a + i->file) || (i->flen > P.cwdlen && !memcmp(P.a + i->file, P.cwd, P.cwdlen) && P.a[i->file + P.cwdlen] == '/'))
+		if (!absolute(P.a + i->file) || (i->flen > P.cwdlen && !memcmp(P.a + i->file, P.cwd, P.cwdlen) && sep(P.a[i->file + P.cwdlen])))
 			r += 10;
 	}
 	return i->score = r;
@@ -438,8 +421,8 @@ static void recent(Editor *e)
 		bs[j] = b;
 	}
 	if (e->buf->path) full(e->buf->path, cur, sizeof cur);
-	shada_stdpath(skip[0], sizeof skip[0], 0, "");
-	shada_stdpath(skip[1], sizeof skip[1], 1, "");
+	file_stdpath(skip[0], sizeof skip[0], 0, "");
+	file_stdpath(skip[1], sizeof skip[1], 1, "");
 	size_t first = P.nit;
 	for (size_t i = 0;; i++) {
 		const char *o = i < (size_t)nb ? NULL : shada_oldfile(i - (size_t)nb);

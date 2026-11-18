@@ -136,10 +136,11 @@ void tools_dash(Editor *e, long long start_ns)
 }
 
 /* still shown?  Gone once the window shows another buffer (bufhidden=wipe),
-   the buffer changed or another window opened */
+   a file was read into the start buffer (buflist_new() reuses it), the
+   buffer changed or another window opened */
 static int shown(Editor *e)
 {
-	if (D.open && (e->buf != D.buf || e->wins->next || e->mode == MODE_INSERT || undo_seq(D.buf->undo) != D.seq))
+	if (D.open && (e->buf != D.buf || D.buf->path || e->wins->next || e->mode == MODE_INSERT || undo_seq(D.buf->undo) != D.seq))
 		D.open = 0;
 	return D.open;
 }
