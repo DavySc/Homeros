@@ -13,14 +13,13 @@ How they were found (**measured**, 1 run each, on PR 20 after the third review's
 
 On the fresh seeds, 12 cases differ (0.13 %), and each falls in a class below. Two more cases were regressions from the third review's fixes and are fixed: gen2 seed 7 case 363 and ctl seed 7 case 67. Both are now in the recorded traces. Every case listed here differs on d3212dc too. The cases were cut down by the review's `reduce.py`.
 
-Tokens are those of `tests/test_core_screens.py`: `k:` keys, `w<n>:x` CTRL-W x, `pum:a:n:s` a popup with `n` items from item `a` and `s` CTRL-N. "Neovim" and "core" quote the first row that differs.
+A file opens with the cursor on line 1's first non-blank since PR 62, so the cases whose line 1 starts with blanks begin with `k:0`, which puts it in column 0 where they were reduced (re-recorded with that token, each still differing as before). Tokens are those of `tests/test_core_screens.py`: `k:` keys, `w<n>:x` CTRL-W x, `pum:a:n:s` a popup with `n` items from item `a` and `s` CTRL-N. "Neovim" and "core" quote the first row that differs.
 
 ## Not the core's
 
 | Case | Size | Tokens | Neovim | Core | Cause |
 |---|---|---|---|---|---|
 | `ruler_after_u.txt`, `ruler_after_u2.txt` | 30x80, 6x40 | `30G x u`; `23G ix<Esc> u` | ruler `2,1` | `2,1-8` | Neovim's own stale state: after `u` its ruler shows a virtual column that was not computed again on a tab (**hypothesis**) |
-| `x_last_char.txt`, `x_last_char2.txt` | 10x60, 6x60 | `2 CTRL-F $ x`; `A...<Esc> CTRL-F x` | the view kept | the view scrolls | Package 5: `ref/keys.c` calls `core_edit()` with the cursor still on the deleted character, but Neovim's `del_bytes()` moves it left first (review of PR 20) |
 
 ## The core's, not yet found
 
