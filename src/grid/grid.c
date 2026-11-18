@@ -9,7 +9,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "grid.h"
-#include "uni.h"
 
 /* The cluster store: an open-addressed hash table (linear probing) whose
    slot is the cluster itself, so a cluster's number is its slot.  Emptied by
@@ -96,26 +95,10 @@ int grid_put(Grid *g, int r, int c, const unsigned char *s, size_t n, int width,
 	return width;
 }
 
-int grid_puts(Grid *g, int r, int c, int end, const char *s, size_t n, int attr, int face)
+int grid_puts(Grid *g, int r, int c, const char *s, int attr)
 {
-	const unsigned char *u = (const unsigned char *)s;
-	for (size_t i = 0, k; i < n; i += k) {
-		k = uni_glen(u, n, i);
-		int w = uni_width(u, n, i), blank = u[i] < 0x20 || u[i] == 0x7f || w > 2;
-		if (c + w > end) break;
-		for (int j = 0; j < (blank ? w : 1); j++)
-			if (grid_put(g, r, c + j, blank ? (const unsigned char *)" " : u + i, blank ? 1 : k, blank ? 1 : w, attr))
-				for (int x = 0; x < (blank ? 1 : w); x++) g->c[r * g->cols + c + j + x].face = (unsigned char)face;
-		c += w;
-	}
+	for (; *s; s++) c += grid_put(g, r, c, (const unsigned char *)s, 1, 1, attr);
 	return c;
-}
-
-int grid_width(const char *s, size_t n)
-{
-	int w = 0;
-	for (size_t i = 0; i < n; i += uni_glen((const unsigned char *)s, n, i)) w += uni_width((const unsigned char *)s, n, i);
-	return w;
 }
 
 const Face *grid_face(const Cell *x, const Face **bg)

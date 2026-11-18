@@ -52,7 +52,7 @@ int main(void)
 
 	Grid g = { 0 }, shown = { 0 };
 	CHECK(!grid_resize(&g, 4, 10));
-	grid_puts(&g, 0, 0, g.cols, "hello", 5, ATTR_NONE, FACE_NONE);
+	grid_puts(&g, 0, 0, "hello", ATTR_NONE);
 	present(&g, &shown);
 	CHECK(strstr(out, "hello") && strstr(out, "\x1b[?2026h") && strstr(out, "\x1b[?2026l"));
 	size_t idle = present(&g, &shown);

@@ -614,7 +614,26 @@ static void border(Grid *g, Box b, const char *title)
 		grid_put(g, r, b.x + b.w - 1, (const unsigned char *)"│", 3, 1, ATTR_NONE);
 	}
 	hline(g, b.y + b.h - 1, b.x, b.w, "╰", "─", "╯");
-	if (title) grid_puts(g, b.y, b.x + (b.w - (int)strlen(title)) / 2, g->cols, title, strlen(title), ATTR_NONE, FACE_NONE);
+	if (title) grid_puts(g, b.y, b.x + (b.w - (int)strlen(title)) / 2, title, ATTR_NONE);
+}
+
+/* UTF-8 text into a row from column x, at most to column end; returns the
+   next column */
+static int text(Grid *g, int r, int x, int end, const char *s, size_t n, int attr)
+{
+	const unsigned char *u = (const unsigned char *)s;
+	for (size_t i = 0; i < n && x < end;) {
+		size_t k = uni_glen(u, n, i);
+		/* a control character, an invalid byte or what Neovim cannot
+		   print (uni_width 4 or 6) is one blank: a name is not edited here */
+		int w = u[i] < 0x20 || u[i] == 0x7f ? 0 : uni_width(u, n, i);
+		if (w > 2) w = 0;
+		if (x + (w ? w : 1) > end) break;
+		if (!w) grid_put(g, r, x, (const unsigned char *)" ", 1, 1, attr);
+		else grid_put(g, r, x, u + i, k, w, attr);
+		x += w ? w : 1; i += k;
+	}
+	return x;
 }
 
 /* Reads the preview of the selected item (preview.lua's file previewer):
@@ -671,12 +690,12 @@ void tools_draw(Editor *e, Grid *g)
 	border(g, l, title[P.what]);
 	border(g, p, NULL);
 	/* the prompt, its line, and the count at its right (input.lua) */
-	int x = grid_puts(g, l.y + 1, l.x + 2, g->cols, "> ", 2, ATTR_NONE, FACE_NONE);
-	int px = grid_puts(g, l.y + 1, x, l.x + l.w - 1, P.prompt, P.pcur, ATTR_NONE, FACE_NONE);
-	grid_puts(g, l.y + 1, px, l.x + l.w - 1, P.prompt + P.pcur, P.plen - P.pcur, ATTR_NONE, FACE_NONE);
+	int x = grid_puts(g, l.y + 1, l.x + 2, "> ", ATTR_NONE);
+	int px = text(g, l.y + 1, x, l.x + l.w - 1, P.prompt, P.pcur, ATTR_NONE);
+	text(g, l.y + 1, px, l.x + l.w - 1, P.prompt + P.pcur, P.plen - P.pcur, ATTR_NONE);
 	char cnt[48];
 	snprintf(cnt, sizeof cnt, "%zu/%zu ", P.nshown, P.nit);
-	grid_puts(g, l.y + 1, l.x + l.w - 1 - (int)strlen(cnt), g->cols, cnt, strlen(cnt), ATTR_DIM, FACE_NONE);
+	grid_puts(g, l.y + 1, l.x + l.w - 1 - (int)strlen(cnt), cnt, ATTR_DIM);
 	hline(g, l.y + 2, l.x, l.w, "├", "─", "┤");
 	/* the list, keeping the cursor in view */
 	if (P.sel < P.top) P.top = P.sel;
@@ -689,26 +708,26 @@ void tools_draw(Editor *e, Grid *g)
 		if (P.what == PICK_BUFFERS) {
 			char nr[16];
 			snprintf(nr, sizeof nr, "%d ", it->buf);
-			c = grid_puts(g, row, c + 1, g->cols, nr, strlen(nr), a ? a : ATTR_DIM, FACE_NONE);
+			c = grid_puts(g, row, c + 1, nr, a ? a : ATTR_DIM);
 		}
 		/* format "file": the directory dimmed, then the name */
 		size_t fn = it->flen ? it->flen : it->tlen;
 		const char *f = path_rel(P.a + (it->flen ? it->file : it->text), &fn);
 		size_t d = fn;
 		while (d && f[d - 1] != '/') d--;
-		c = grid_puts(g, row, c + 1, end, f, d, a ? a : ATTR_DIM, FACE_NONE);
-		c = grid_puts(g, row, c, end, f + d, fn - d, a, FACE_NONE);
+		c = text(g, row, c + 1, end, f, d, a ? a : ATTR_DIM);
+		c = text(g, row, c, end, f + d, fn - d, a);
 		if (it->line) {
 			/* grep: :line:col: and the line */
 			const char *t = P.a + it->text + it->flen + 1;
 			size_t tn = it->tlen - it->flen - 1;
-			c = grid_puts(g, row, c, end, ":", 1, a, FACE_NONE);
-			grid_puts(g, row, c, end, t, tn, a, FACE_NONE);
+			c = text(g, row, c, end, ":", 1, a);
+			text(g, row, c, end, t, tn, a);
 		}
 	}
 	/* the preview */
 	for (int r = 0; r < P.pvn && r < p.h - 2; r++)
-		grid_puts(g, p.y + 1 + r, p.x + 1, p.x + p.w - 1, P.pv[r], strlen(P.pv[r]), ATTR_NONE, FACE_NONE);
+		text(g, p.y + 1 + r, p.x + 1, p.x + p.w - 1, P.pv[r], strlen(P.pv[r]), ATTR_NONE);
 	g->crow = l.y + 1;
 	g->ccol = px;
 }
