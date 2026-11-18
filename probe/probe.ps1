@@ -30,5 +30,7 @@ Note "mule processes after kill_all: $((Get-Process mule_main -ErrorAction Silen
 Send 'exit'; Start-Sleep 5
 Note "raddbg exited: $($p.HasExited)"
 if (-not $p.HasExited) { $p.Kill() }
+# the artifact store is not reachable from where the results are read, so print the text files into the job log
+foreach ($f in Get-ChildItem "$out/logs", "$out/probe.raddbg_project", "$out/probe.raddbg_user" -File -Recurse) { "===== $($f.Name)"; Get-Content $f.FullName }
 Get-ChildItem $out -Recurse | Select-Object FullName, Length | Out-String | Tee-Object -Append "$out/probe.log"
 exit 0
