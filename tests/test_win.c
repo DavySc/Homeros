@@ -209,6 +209,8 @@ int main(void)
 	put(&g, 7, 1, "\xe4\xb8\xad", 2, ATTR_REV);   /* U+4E2D, two cells */
 	put(&g, 8, 1, " ", 1, ATTR_NONE);
 	g.c[8 * g.cols + 1].face = FACE_COMMENT_TODO;   /* a face with a background */
+	put(&g, 8, 2, " ", 1, ATTR_NONE);
+	g.c[8 * g.cols + 2].bg = FACE_CURSOR_LINE;      /* a background layer */
 	/* a cluster longer than a cell's 4 bytes, from the grid's store: its
 	   accents draw over the letter */
 	put(&g, 9, 1, "e", 1, ATTR_NONE);
@@ -225,6 +227,7 @@ int main(void)
 	CHECK(count(7, 2, REV) > cw * ch / 2 && count(7, 3, REV) == 0);
 	CHECK(g.c[10 * g.cols + 1].len == 9 && inked(10, 1) > inked(9, 1));
 	CHECK(count(8, 1, RGB(faces[FACE_COMMENT_TODO].bg[0], faces[FACE_COMMENT_TODO].bg[1], faces[FACE_COMMENT_TODO].bg[2])) == cw * ch);
+	CHECK(count(8, 2, RGB(faces[FACE_CURSOR_LINE].bg[0], faces[FACE_CURSOR_LINE].bg[1], faces[FACE_CURSOR_LINE].bg[2])) == cw * ch);
 
 	/* covered and uncovered: WM_PAINT draws from the DIB */
 	paint(RED);

@@ -29,5 +29,8 @@ tty: a cluster's ambiguity read from the cell's number~test TESTS=grid_diff~~src
 tty: Delete dropped as an unknown sequence~test TESTS=tty_input~~src/tty/tty.c~s[2] == '3' && s[3] ==~s[2] == '9' && s[3] ==
 tty: Insert (CSI 2 tilde) taken for Delete~test TESTS=tty_input~~src/tty/tty.c~s[2] == '3' && s[3] ==~s[3] ==
 tty: a new background layer sends no new style~test TESTS=grid_diff~~src/tty/tty.c~long k = (long)x->bg << 16 | x->face << 8 | x->attr;~long k = x->face << 8 | x->attr;
-tty: the background layer is not drawn~test TESTS=grid_diff~~src/tty/tty.c~	if (x->bg) f = &faces[x->bg];¶~
+tty: the background layer is not drawn~test TESTS=grid_diff~~src/tty/tty.c~b->bg[0], b->bg[1], b->bg[2]);~f->bg[0], f->bg[1], f->bg[2]);
 tty: a wrong colour for a UI face (the status line's)~test TESTS=grid_diff~~ref/theme.c~{ {205, 214, 244}, {24, 24, 37}, FACE_FG | FACE_BG, {0} },  /* status line:~{ {205, 214, 244}, {24, 24, 38}, FACE_FG | FACE_BG, {0} },  /* status line:
+tty: the cursor line's colour wrong in the shared face table~test TESTS=grid_diff~~ref/theme.c~{ {0, 0, 0}, {42, 43, 60}, FACE_BG, {0} },~{ {0, 0, 0}, {42, 43, 61}, FACE_BG, {0} },
+tty: a heading bar's colour wrong in the shared face table~test TESTS=grid_diff~~ref/theme.c~{ {0, 0, 0}, {50, 40, 58}, FACE_BG, {0} },~{ {0, 0, 0}, {90, 61, 80}, FACE_BG, {0} },
+tty: the layer's foreground drawn too~test TESTS=grid_diff~~src/tty/tty.c~	if (f->style & FACE_FG) n +=~	if (x->bg) f = b;¶	if (f->style & FACE_FG) n +=

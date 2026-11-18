@@ -53,8 +53,10 @@ int main(int argc, char **argv)
 	int fds[2], rows, cols, tty = argc == 3 && !strcmp(argv[1], "-t");
 #if defined _WIN32
 	/* a GUI-subsystem program has no console: borrow the one it was started
-	   from, if any, so usage and error messages still reach the terminal */
-	if (AttachConsole(ATTACH_PARENT_PROCESS)) { freopen("CONOUT$", "w", stdout); freopen("CONOUT$", "w", stderr); }
+	   from, if any, so usage and error messages still reach the terminal
+	   (only a stream not already redirected: "2> file" and pipes keep theirs) */
+	int out = !GetStdHandle(STD_OUTPUT_HANDLE), err = !GetStdHandle(STD_ERROR_HANDLE);
+	if (AttachConsole(ATTACH_PARENT_PROCESS)) { if (out) freopen("CONOUT$", "w", stdout); if (err) freopen("CONOUT$", "w", stderr); }
 #endif
 	if (argc != 2 + tty) { fprintf(stderr, "usage: homeros [-t] FILE\n"); return 2; }
 #if defined _WIN32

@@ -34,7 +34,7 @@
 /* FONT_PX: pixels per em at scale 1 (hypothesis: Davy's size is not recorded);
    ATTR_PRE: the preedit, underlined (backend-private, after grid.h's attrs);
    ROW: the most bytes and glyphs one row shapes (4 bytes a cell) */
-enum { FONT_PX = 16, NBUF = 2, KQ = 1024, PRE = 256, ATTR_PRE = ATTR_REV + 1, ROW = 4096 };
+enum { FONT_PX = 16, NBUF = 2, KQ = 1024, PRE = 256, ATTR_PRE = ATTR_GUIDE + 1, ROW = 4096 };
 static const char FAMILY[] = "JetBrains Mono";
 /* linux/input-event-codes.h's, whose KEY_* names clash with keys.h's */
 enum { BTN_LEFT = 0x110 };
@@ -630,9 +630,8 @@ static uint32_t mix(uint32_t bg, uint32_t fg, unsigned a)
 static const Face *colours(const Grid *g, int r, int c, uint32_t *fg, uint32_t *bg)
 {
 	const Cell *x = &g->c[r * g->cols + c];
-	const Face *f = &faces[x->face < FACE_COUNT ? x->face : 0];
+	const Face *b, *f = grid_face(x, &b);
 	uint32_t t = *fg = f->style & FACE_FG ? rgb(f->fg) : x->attr == ATTR_DIM ? DIM : FG;
-	const Face *b = x->bg ? &faces[x->bg] : f;
 	*bg = b->style & FACE_BG ? rgb(b->bg) : BG;
 	if (x->attr == ATTR_REV || (r == g->crow && c == g->ccol)) { *fg = *bg; *bg = t; }
 	return f;
@@ -719,7 +718,8 @@ static int span(const Grid *g, int r, const Grid *b, int q, int *lo, int *hi)
 }
 
 /* A hash of row r's text (FNV-1a over what grid_cell_eq compares), without
-   the number column (ATTR_DIM), which relative numbers change on a scroll */
+   the number column (ATTR_DIM), which relative numbers change on a scroll,
+   and the background layer, which the cursor line keeps on its row */
 static unsigned long row_hash(const Grid *g, int r)
 {
 	unsigned long h = 2166136261u;
@@ -728,7 +728,6 @@ static unsigned long row_hash(const Grid *g, int r)
 		h = (h ^ x->len) * 16777619u;
 		h = (h ^ x->attr) * 16777619u;
 		h = (h ^ x->face) * 16777619u;
-		h = (h ^ x->bg) * 16777619u;
 		for (int i = 0; i < x->len && i < 4; i++) h = (h ^ x->ch[i]) * 16777619u;   /* a long cluster: its number, as grid_cell_eq */
 	}
 	return h;
