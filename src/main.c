@@ -11,6 +11,7 @@
 #include "bridge.h"
 #include "core.h"
 #include "git.h"
+#include "kitten.h"
 #include "loop.h"
 #include "lsp.h"
 #include "syntax.h"
@@ -80,6 +81,7 @@ int main(int argc, char **argv)
 			int k = q[qh];
 			qh = (qh + 1) % QMAX;
 			qn--;
+			kitten_key();   /* any key sends the save kitten away (vim.on_key) */
 			if (k == KEY_CTRL_Z && e.mode == MODE_NORMAL) {
 				b->suspend();
 				grid_free(&shown);     /* the terminal was used meanwhile: redraw all */
@@ -100,6 +102,7 @@ int main(int argc, char **argv)
 			if (grid_frame()) grid_free(&shown);
 			core_draw(&e, &g);
 			tools_draw(&e, &g);
+			kitten_draw(&e, &g);
 			b->present(&g, &shown);
 			dirty = 0;
 		}
