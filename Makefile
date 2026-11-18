@@ -143,8 +143,20 @@ endif
 # a virtual X display); a plant names the one module whose check can catch it
 # (make win WIN=file), so it does not run the others' slow tests too
 WIN = $(patsubst src/%/check.sh,%,$(wildcard src/*/check.sh))
-win:
+win: wincc
 	@for m in $(WIN); do echo "win: src/$$m/check.sh"; bash src/$$m/check.sh || exit 1; done
+
+# every file of the Windows editor compiles for Windows under our warnings,
+# so a POSIX call in a shared module fails here, not first in a trial build.
+# Not the terminal (no Windows half yet), the fonts (the window draws with
+# GDI) or the daily tools (POSIX only so far): the trial build stubs them.
+# It reads tree-sitter's headers only, so it needs the sources, not $(OBJS)
+WIN_SRCS = $(foreach m,$(filter-out tty font tools,$(BASE)),$(call pick,$(m))) $(wildcard src/win/*.c) src/main.c
+wincc: | $(SYN)/src build/win
+	@for f in $(WIN_SRCS); do zig cc -target x86_64-windows-gnu $(WARN) $(CPPFLAGS) -c -o build/win/cc.o $$f || exit 1; done
+	@echo "wincc: $(words $(WIN_SRCS)) files compile for Windows"
+build/win:
+	mkdir -p $@
 
 check: compilers test fuzz conform org-conform undo-diff lean frama specs win
 	@echo "check: all passed"
@@ -155,4 +167,4 @@ planted:
 clean:
 	rm -rf build homeros
 
-.PHONY: compilers test fuzz conform org-conform undo-diff specs lean frama win check planted clean
+.PHONY: compilers test fuzz conform org-conform undo-diff specs lean frama win wincc check planted clean
