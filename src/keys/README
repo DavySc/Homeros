@@ -81,6 +81,13 @@ Not traced to a fix yet (owner package 5):
   The core drops its cached column on every edit (changed_common() keeps it
   for an edit after the cursor).
 
+Not yet like Neovim, for the Visual follow-up after PR 67 (with package
+4's cases: block l from a Tab, block O past a short line, G and block o
+after $ keeping curswant MAXCOL):
+- a Visual block p, then C-v X ("    x\u0300\u0301 \"a b\"", I CR ( b Esc
+  C-v gg p y i( C-v X): ours deletes nothing and leaves the cursor past
+  the line's end (not traced further).
+
 Neovim's own oddities, not copied:
 - r, then R and CTRL-U back over the replaced character ("  0", r 3 l R
   C-u): Neovim's replace stack still holds what r replaced and puts it back.
@@ -96,7 +103,8 @@ Neovim's own oddities, not copied:
   V A 𐐀) or a cluster ("x" with U+0300 U+0301, V A .) and C-v $ ~ over a
   4-byte one ("-3 𐐀x"): Neovim writes a split character. Also when the
   character was typed, not in the text ("    ", s 𐐀 Esc v A 0).
-- C-v on a Tab then ~ u U over a 2-byte character ("\té ab cd", C-v w ~):
+- C-v on a Tab then ~ u U over a multibyte character ("\té ab cd", C-v w ~;
+  "\t𐐀X", C-v w u):
   Neovim moves the character to the end of the line (" ab cd É").  The Tab can be on another line of the block ("\t0x1f\n  ẞß", C-v ]] U).
 - an operator with g_ over trailing blanks after a multibyte character
   ("  ", a ა Esc $ d g_): Neovim's nv_g_underscore_cmd steps back a
