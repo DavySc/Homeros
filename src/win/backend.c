@@ -58,10 +58,12 @@ static void measure_period(void)
 	period = SUCCEEDED(DwmGetCompositionTimingInfo(NULL, &t)) ? (LONGLONG)t.qpcRefreshPeriod : 0;
 }
 
+/* greyscale smoothing: ClearType's coloured fringes made text look blue on
+   the dark background on Davy's laptop */
 static int make_font(void)
 {
 	HFONT f = CreateFontW(-MulDiv(PT, dpi, 72), 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET,
-	                      OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
+	                      OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY,
 	                      FIXED_PITCH | FF_MODERN, L"JetBrains Mono");
 	TEXTMETRICW tm;
 	if (!f) return -1;
