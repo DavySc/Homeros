@@ -96,21 +96,20 @@ int file_load(const char *path, char **data, size_t *n, FileId *id)
 	return 0;
 }
 
-static int write_text(HANDLE h, const Text *t, size_t n)
+static int write_text(HANDLE h, const Text *t, size_t n, int dos)
 {
 	char b[1 << 16];
 	for (size_t pos = 0; pos < n;) {
-		size_t k = text_read(t, pos, b, n - pos < sizeof b ? n - pos : sizeof b);
+		size_t k = file_text_read(t, &pos, n, dos, b, sizeof b);
 		DWORD w;
 		for (size_t i = 0; i < k; i += w)
 			if (!WriteFile(h, b + i, (DWORD)(k - i), &w, NULL)) return fail();
-		pos += k;
 	}
 	return 0;
 }
 
-int file_save(const char *path, const Text *t, size_t n, FileId *id, int force,
-              char *kept, size_t keptsz)
+int file_save(const char *path, const Text *t, size_t n, int dos, FileId *id,
+              int force, char *kept, size_t keptsz)
 {
 	static unsigned k;
 	wchar_t w[PATH_MAX], tmp[PATH_MAX + 32];
@@ -126,7 +125,7 @@ int file_save(const char *path, const Text *t, size_t n, FileId *id, int force,
 	if (h == INVALID_HANDLE_VALUE) { fail(); return SAVE_ERR; }
 	/* WriteTmp: durable before the name points at it (Save2_nofsync's lesson
 	   holds for a rename too) */
-	if (write_text(h, t, n) || (!FlushFileBuffers(h) && fail())) {
+	if (write_text(h, t, n, dos) || (!FlushFileBuffers(h) && fail())) {
 		CloseHandle(h);
 		DeleteFileW(tmp);
 		return SAVE_ERR;
