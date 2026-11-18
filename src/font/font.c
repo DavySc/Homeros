@@ -301,6 +301,9 @@ static const Glyph *glyph(int fi, unsigned gid)
 	return &slot[h].g;
 }
 
+/* only the regular face is open yet: every style draws in it (font.h) */
+void font_style(int style) { (void)style; }
+
 int font_shape(const unsigned char *s, size_t n, Placed *out, int max)
 {
 	if (!face || n == 0 || max <= 0) return 0;

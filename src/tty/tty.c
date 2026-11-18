@@ -173,6 +173,7 @@ static void style(const Cell *x)
 	                 f->style & FACE_BOLD ? ";1" : "", f->style & FACE_ITALIC ? ";3" : "",
 	                 f->style & FACE_UNDERLINE ? ";4" : "", f->style & FACE_STRIKE ? ";9" : "");
 	if (f->style & FACE_FG) n += snprintf(s + n, sizeof s - (size_t)n, ";38;2;%d;%d;%d", f->fg[0], f->fg[1], f->fg[2]);
+	if (x->bg) f = &faces[x->bg];
 	if (f->style & FACE_BG) n += snprintf(s + n, sizeof s - (size_t)n, ";48;2;%d;%d;%d", f->bg[0], f->bg[1], f->bg[2]);
 	s[n] = 'm'; s[n + 1] = 0;
 	outs(s);
@@ -186,7 +187,8 @@ static void tty_present(const Grid *g, Grid *shown)
 		if (grid_resize(shown, g->rows, g->cols)) { outs("\x1b[?25h\x1b[?2026l"); flush(); return; }
 		outs("\x1b[0m\x1b[H\x1b[2J");
 	}
-	int a = -1, pr = -1, pc = -1;   /* a: the style sent last, attr and face */
+	long a = -1;                    /* the style sent last: bg, face and attr */
+	int pr = -1, pc = -1;
 	for (int r = 0; r < g->rows; r++)
 		for (int c = 0; c < g->cols; c++) {
 			const Cell *x = &g->c[r * g->cols + c];
@@ -195,7 +197,8 @@ static void tty_present(const Grid *g, Grid *shown)
 			*y = *x;
 			if (!x->len) continue;
 			int wide = c + 1 < g->cols && !x[1].len;
-			if ((x->face << 8 | x->attr) != a) { a = x->face << 8 | x->attr; style(x); }
+			long k = (long)x->bg << 16 | x->face << 8 | x->attr;
+			if (k != a) { a = k; style(x); }
 			/* The terminal may give a non-ASCII character another width
 			   than the grid does (East Asian ambiguous, newer emoji), so
 			   Neovim's print_cell_at_pos() clears both cells of a wide one

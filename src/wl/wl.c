@@ -632,7 +632,8 @@ static const Face *colours(const Grid *g, int r, int c, uint32_t *fg, uint32_t *
 	const Cell *x = &g->c[r * g->cols + c];
 	const Face *f = &faces[x->face < FACE_COUNT ? x->face : 0];
 	uint32_t t = *fg = f->style & FACE_FG ? rgb(f->fg) : x->attr == ATTR_DIM ? DIM : FG;
-	*bg = f->style & FACE_BG ? rgb(f->bg) : BG;
+	const Face *b = x->bg ? &faces[x->bg] : f;
+	*bg = b->style & FACE_BG ? rgb(b->bg) : BG;
 	if (x->attr == ATTR_REV || (r == g->crow && c == g->ccol)) { *fg = *bg; *bg = t; }
 	return f;
 }
@@ -727,6 +728,7 @@ static unsigned long row_hash(const Grid *g, int r)
 		h = (h ^ x->len) * 16777619u;
 		h = (h ^ x->attr) * 16777619u;
 		h = (h ^ x->face) * 16777619u;
+		h = (h ^ x->bg) * 16777619u;
 		for (int i = 0; i < x->len && i < 4; i++) h = (h ^ x->ch[i]) * 16777619u;   /* a long cluster: its number, as grid_cell_eq */
 	}
 	return h;

@@ -263,7 +263,8 @@ static void draw_cell(const Grid *g, int r, int c, int cursor)
 	int wide = c + 1 < g->cols && !x[1].len;
 	const Face *fa = &faces[x->face < FACE_COUNT ? x->face : FACE_NONE];
 	COLORREF f = x->attr == ATTR_DIM ? DIMC : fa->style & FACE_FG ? RGB(fa->fg[0], fa->fg[1], fa->fg[2]) : TEXT;
-	COLORREF b = fa->style & FACE_BG ? RGB(fa->bg[0], fa->bg[1], fa->bg[2]) : BASE;
+	const Face *fb = x->bg ? &faces[x->bg] : fa;
+	COLORREF b = fb->style & FACE_BG ? RGB(fb->bg[0], fb->bg[1], fb->bg[2]) : BASE;
 	RECT rc = { c * cw, r * ch, (c + 1 + wide) * cw, (r + 1) * ch };
 	/* reversed (status line, cursor): the colours swap, as a terminal's SGR 7 */
 	int rev = cursor || x->attr == ATTR_REV;

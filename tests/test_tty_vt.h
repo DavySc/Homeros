@@ -17,19 +17,20 @@ enum { VT_BADERASE = 99 };
 
 /* The colours and styles after SGR's attribute, as strings, numbered in the
    order first seen (0 is none); a cell's face holds that number.  vt_face
-   maps a grid face to the number of the SGR it must get. */
-static char vt_style[256][64];
-static int vt_nstyle = 1, vt_face[FACE_COUNT];
+   maps a grid face to the number of the SGR it must get, vt_layer[bg][face]
+   a face under a cell's bg layer (grid.h). */
+static char vt_style[1024][64];
+static int vt_nstyle = 1, vt_face[FACE_COUNT], vt_layer[FACE_COUNT][FACE_COUNT];
 
 static int vt_style_id(const char *s)
 {
 	for (int i = 0; i < vt_nstyle; i++) if (!strcmp(vt_style[i], s)) return i;
-	CHECK(vt_nstyle < 256 && strlen(s) < 64);
+	CHECK(vt_nstyle < 1024 && strlen(s) < 64);
 	strcpy(vt_style[vt_nstyle], s);
 	return vt_nstyle++;
 }
 
-typedef struct { unsigned char ch[GRID_CLUSTER_MAX], len, attr, face; } VtCell;
+typedef struct { unsigned char ch[GRID_CLUSTER_MAX], len, attr; unsigned short face; } VtCell;
 
 typedef struct {
 	int rows, cols;
@@ -92,8 +93,8 @@ static void vt_print(Vt *t, const unsigned char *s, int n)
 	memcpy(x->ch, s, (size_t)n);
 	x->len = (unsigned char)n;
 	x->attr = (unsigned char)t->attr;
-	x->face = (unsigned char)t->style;
-	if (w == 2) x[1] = (VtCell){ "", 0, (unsigned char)t->attr, (unsigned char)t->style };
+	x->face = (unsigned short)t->style;
+	if (w == 2) x[1] = (VtCell){ "", 0, (unsigned char)t->attr, (unsigned short)t->style };
 	t->col += w;
 	if (t->col == t->cols) { t->col--; t->pending = 1; }
 }
@@ -176,7 +177,7 @@ static inline const char *vt_differs(Vt *t, const Grid *g)
 			const VtCell *y = vt_at(t, r, c);
 			int ok = x->len ? x->len == y->len && x->attr == y->attr && !memcmp(grid_text(x), y->ch, x->len)
 			       : (!y->len || (y->len == 1 && y->ch[0] == ' ')) && y->attr == x->attr;
-			ok = ok && y->face == vt_face[x->face];
+			ok = ok && y->face == (x->bg ? vt_layer[x->bg][x->face] : vt_face[x->face]);
 			if (!ok) { snprintf(why, sizeof why, "cell %d,%d", r, c); return why; }
 		}
 	if (t->r != g->crow || t->col != g->ccol || t->hidden || t->sync) {
