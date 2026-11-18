@@ -137,19 +137,20 @@ static void token(Editor *e, Grid *g, const char *t)
 	}
 	if (!strcmp(t, "enew")) { core_edit_file(e, "", 0); goto upd; }
 	if (!strcmp(t, "bd")) { core_buf_delete(e, 0, 0); goto upd; }
+	/* the scrolling keys go through keys_feed as typed, count first, so
+	   keys update the wanted column first as Neovim's lazy curswant does
+	   (calling the core directly skipped that: PR 26) */
 	const char *p = t;
-	long n = count_of(&p);
-	if (!strcmp(p, "C-e")) core_scroll(e, n ? n : 1);
-	else if (!strcmp(p, "C-y")) core_scroll(e, -(n ? n : 1));
-	else if (!strcmp(p, "C-d") || !strcmp(p, "C-u")) core_scroll_half(e, p[2] == 'd' ? 1 : -1, n);
-	else if (!strcmp(p, "C-f") || !strcmp(p, "C-b")) core_scroll_page(e, p[2] == 'f' ? 1 : -1, n);
-	else if (p[0] == 'z') core_scroll_cursor(e, p[1] == 't' ? 't' : p[1] == 'z' ? 'z' : 'b');
-	else if (!strcmp(p, "H") || !strcmp(p, "M") || !strcmp(p, "L")) {
-		/* nv_scroll(), then beginline(BL_SOL | BL_FIX): nostartofline keeps curswant */
-		w->line = core_screen_line(e, p[0], n ? n : 1, 1);
-		w->col = core_col_at(e, w->line, w->want, 0);
-	} else if (!strcmp(p, "gj") || !strcmp(p, "gk")) core_screen_move(e, p[1] == 'j' ? (n ? n : 1) : -(n ? n : 1));
-	else { fprintf(stderr, "unknown token %s\n", t); exit(2); }
+	count_of(&p);
+	int k = !strcmp(p, "C-e") ? 5 : !strcmp(p, "C-y") ? 25 : !strcmp(p, "C-d") ? 4 : !strcmp(p, "C-u") ? 21
+	      : !strcmp(p, "C-f") ? 6 : !strcmp(p, "C-b") ? 2 : 0;
+	const char *ks = k ? NULL : !strcmp(p, "zt") ? "zt" : !strcmp(p, "zz") ? "zz" : !strcmp(p, "zb") ? "zb"
+	      : !strcmp(p, "H") ? "H" : !strcmp(p, "M") ? "M" : !strcmp(p, "L") ? "L"
+	      : !strcmp(p, "gj") ? "gj" : !strcmp(p, "gk") ? "gk" : NULL;
+	if (!k && !ks) { fprintf(stderr, "unknown token %s\n", t); exit(2); }
+	for (const char *c = t; c < p; c++) keys_feed(e, *c, 0);
+	if (k) keys_feed(e, k, 0);
+	else for (; *ks; ks++) keys_feed(e, *ks, 0);
 upd:
 	core_update(e);
 }

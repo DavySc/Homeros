@@ -1,0 +1,55 @@
+159 faces parsed from /home/claude/pr57n/ref/theme.c
+  no group claimed: none
+MISMATCH variable.parameter.builtin vs @variable.parameter.builtin  theme.c: fg=235,160,172 bg=- sp=- st=
+                                                         nvim:    fg=245,194,231 bg=- sp=- st= (via @variable.parameter.builtin)
+MISMATCH module.builtin         vs @module.builtin              theme.c: fg=249,226,175 bg=- sp=- st=italic
+                                                         nvim:    fg=245,194,231 bg=- sp=- st= (via @module.builtin)
+MISMATCH attribute.builtin      vs @attribute.builtin           theme.c: fg=250,179,135 bg=- sp=- st=
+                                                         nvim:    fg=245,194,231 bg=- sp=- st= (via @attribute.builtin)
+MISMATCH comment.note           vs @comment.note                theme.c: fg=30,30,46 bg=245,224,220 sp=- st=
+                                                         nvim:    fg=30,30,46 bg=137,180,250 sp=- st= (via @comment.note)
+MISMATCH heading 1 background   vs RenderMarkdownH1Bg           theme.c: fg=- bg=90,61,80 sp=- st=
+                                                         nvim:    fg=- bg=50,40,58 sp=- st= (via RenderMarkdownH1Bg)
+MISMATCH heading 2 background   vs RenderMarkdownH2Bg           theme.c: fg=- bg=92,72,71 sp=- st=
+                                                         nvim:    fg=- bg=51,44,54 sp=- st= (via RenderMarkdownH2Bg)
+MISMATCH heading 3 background   vs RenderMarkdownH3Bg           theme.c: fg=- bg=91,85,82 sp=- st=
+                                                         nvim:    fg=- bg=51,49,58 sp=- st= (via RenderMarkdownH3Bg)
+MISMATCH heading 4 background   vs RenderMarkdownH4Bg           theme.c: fg=- bg=68,85,78 sp=- st=
+                                                         nvim:    fg=- bg=43,49,57 sp=- st= (via RenderMarkdownH4Bg)
+MISMATCH heading 5 background   vs RenderMarkdownH5Bg           theme.c: fg=- bg=54,77,99 sp=- st=
+                                                         nvim:    fg=- bg=38,46,64 sp=- st= (via RenderMarkdownH5Bg)
+MISMATCH heading 6 background   vs RenderMarkdownH6Bg           theme.c: fg=- bg=72,75,104 sp=- st=
+                                                         nvim:    fg=- bg=44,45,66 sp=- st= (via RenderMarkdownH6Bg)
+MISMATCH status line nc         vs StatusLineNC                 theme.c: fg=137,180,250 bg=24,24,37 sp=- st=
+                                                         nvim:    fg=69,71,90 bg=24,24,37 sp=- st= (via StatusLineNC)
+MISMATCH normal float           vs WhichKeyNormal               theme.c: fg=205,214,244 bg=24,24,37 sp=- st=
+                                                         nvim:    fg=- bg=- sp=- st= (via WhichKeyNormal)
+MISMATCH diag under error       vs DiagnosticUnderlineError     theme.c: fg=- bg=- sp=243,139,168 st=undercurl
+                                                         nvim:    fg=- bg=- sp=243,139,168 st=underline (via DiagnosticUnderlineError)
+MISMATCH diag under warn        vs DiagnosticUnderlineWarn      theme.c: fg=- bg=- sp=249,226,175 st=undercurl
+                                                         nvim:    fg=- bg=- sp=249,226,175 st=underline (via DiagnosticUnderlineWarn)
+MISMATCH diag under info        vs DiagnosticUnderlineInfo      theme.c: fg=- bg=- sp=137,220,235 st=undercurl
+                                                         nvim:    fg=- bg=- sp=137,220,235 st=underline (via DiagnosticUnderlineInfo)
+MISMATCH diag under hint        vs DiagnosticUnderlineHint      theme.c: fg=- bg=- sp=148,226,213 st=undercurl
+                                                         nvim:    fg=- bg=- sp=148,226,213 st=underline (via DiagnosticUnderlineHint)
+  no group claimed: kitten cat
+  no group claimed: kitten face
+  no group claimed: kitten paw
+  no group claimed: kitten heart
+  no group claimed: kitten text
+  no group claimed: kitten dim
+MISMATCH dashboard title        vs SnacksDashboardTitle         theme.c: fg=180,190,254 bg=- sp=- st=bold
+                                                         nvim:    fg=137,180,250 bg=- sp=- st=bold (via SnacksDashboardTitle)
+MISMATCH dashboard title        vs SnacksDashboardHeader        theme.c: fg=180,190,254 bg=- sp=- st=bold
+                                                         nvim:    fg=137,180,250 bg=- sp=- st= (via SnacksDashboardHeader)
+MISMATCH dashboard footer       vs SnacksDashboardFooter        theme.c: fg=137,180,250 bg=- sp=- st=bold
+                                                         nvim:    fg=249,226,175 bg=- sp=- st=italic (via SnacksDashboardFooter)
+  no group claimed: dashboard cat
+  no group claimed: dashboard cat patch
+  no group claimed: dashboard frog
+  no group claimed: dashboard frog cheek
+  no group claimed: dashboard frog mouth
+  no group claimed: dashboard sparkle
+  no group claimed: dashboard terminal
+  no group claimed: dashboard prompt
+152 comparisons, 19 mismatches

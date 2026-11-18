@@ -31,7 +31,7 @@ win: clipboard get writes past max~win WIN=win~~src/win/backend.c~if ((size_t)n 
 win: no glyph drawn, only cell backgrounds~win WIN=win~~src/win/backend.c~&rc, u, n, NULL);~&rc, u, n * 0, NULL);
 win: dim text in the normal colour~win WIN=win~~src/win/backend.c~RGB(108, 112, 134)~RGB(205, 214, 245)
 win: syntax faces ignored~win WIN=win~~src/win/backend.c~fa->style & FACE_FG ? RGB~fa->style & 0 ? RGB
-win: face backgrounds ignored~win WIN=win~~src/win/backend.c~fa->style & FACE_BG ? RGB~fa->style & 0 ? RGB
+win: face backgrounds ignored~win WIN=win~~src/win/backend.c~fb->style & FACE_BG ? RGB~fb->style & 0 ? RGB
 win: a wide character drawn one cell wide~win WIN=win~~src/win/backend.c~(c + 1 + wide) * cw~(c + 1 + wide * 0) * cw
 win: the right half of a wide character not sent to the window~win WIN=win~~src/win/backend.c~hi = c + 1 + (c + 1 < g->cols && !x[1].len);~hi = c + 1;
 win: an uncovered window not repainted (WM_PAINT)~win WIN=win~~src/win/backend.c~BitBlt(dc, r->left, r->top, r->right - r->left, r->bottom - r->top, mem, r->left, r->top, SRCCOPY);~(void)dc; (void)r;
@@ -48,4 +48,5 @@ win: draws while minimised~win WIN=win~~src/win/backend.c~	if (IsIconic(win)) re
 win: resize sends no KEY_RESIZE~win WIN=win~~src/win/backend.c~HIWORD(l) != dh)) resized = stale = 1;~HIWORD(l) != dh)) stale = 1;
 win: the DIB keeps its old size~win WIN=win~~src/win/backend.c~if (all && (grid_resize(shown, g->rows, g->cols) || make_dib())) return;~if (all && grid_resize(shown, g->rows, g->cols)) return;
 specs: Pace with frames only P + D apart~specs~find design/specs -name '*.cfg' ! -name Pace_ok.cfg -delete~design/specs/Pace_ok.cfg~ Gap = 5~ Gap = 4
+win: the background layer ignored~win WIN=win~~src/win/backend.c~	COLORREF b = fb->style & FACE_BG ? RGB(fb->bg[0], fb->bg[1], fb->bg[2]) : BASE;~	COLORREF b = fa->style & FACE_BG ? RGB(fa->bg[0], fa->bg[1], fa->bg[2]) : BASE;
 win: GDI's substitute for a missing family kept~win WIN=win~~src/win/backend.c~if (!lstrcmpiW(face, family[i])) break;~break;
