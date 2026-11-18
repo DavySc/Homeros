@@ -75,8 +75,24 @@ size_t tsql_token(TsqlRd *r, size_t p, int *k)
 		return p;
 	}
 	if (is_digit(c) || (c == '.' && is_digit(d))) {
-		while (is_id(c = tsql_byte(r, ++p)) || c == '.') ;
-		return *k = TQ_NUMBER, p;
+		/* as SQL Server: letters after a number start a word (1as x is 1 as
+		   x); 0x then hex digits; digits, a dot (not ..), digits; an
+		   exponent only when a digit follows its e and sign */
+		*k = TQ_NUMBER;
+		if (c == '0' && (d == 'x' || d == 'X')) {
+			for (p += 2; is_digit(c = tsql_byte(r, p)) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'); p++) ;
+			return p;
+		}
+		while (is_digit(tsql_byte(r, p))) p++;
+		if (tsql_byte(r, p) == '.' && tsql_byte(r, p + 1) != '.')
+			while (is_digit(tsql_byte(r, ++p))) ;
+		if ((c = tsql_byte(r, p)) == 'e' || c == 'E') {
+			size_t e = p + 1;
+			if ((c = tsql_byte(r, e)) == '+' || c == '-') e++;
+			if (is_digit(tsql_byte(r, e)))
+				for (p = e; is_digit(tsql_byte(r, p)); p++) ;
+		}
+		return p;
 	}
 	if (c == '@' || c == '#') {
 		while (is_id(tsql_byte(r, ++p))) ;
@@ -184,10 +200,12 @@ void tsql_free(Tsql *q)
 
 void tsql_edit(Tsql *q, const Text *t, size_t pos)
 {
-	/* a token start depends on the bytes before it and on the one at it,
-	   which ends the token before (a word, a doubled quote, "<>") */
-	while (q->n && q->ck[q->n - 1] >= pos) q->n--;
-	if (q->at >= pos) q->at = q->n ? q->ck[q->n - 1] : 0;
+	/* a token start depends on the bytes before it and on the two from it,
+	   which can end the token before (a word, a doubled quote, "<>", the
+	   e and sign of 1e+3) */
+	size_t lo = pos > 2 ? pos - 2 : 0;
+	while (q->n && q->ck[q->n - 1] >= lo) q->n--;
+	if (q->at >= lo) q->at = q->n ? q->ck[q->n - 1] : 0;
 	q->r.t = t;
 	q->r.n = 0;
 }

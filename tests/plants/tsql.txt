@@ -1,7 +1,8 @@
 # Plants for src/syntax/tsql.c (format in tools/planted.sh).
-tsql: an edit keeps the token start at its own byte (test_tsql, edit at a kept start)~test TESTS=tsql~~src/syntax/tsql.c~q->ck[q->n - 1] >= pos) q->n--;~q->ck[q->n - 1] > pos) q->n--;
-tsql: an edit keeps the token starts after it (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~	while (q->n && q->ck[q->n - 1] >= pos) q->n--;¶~
-tsql: an edit keeps where the last faces ended (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~	if (q->at >= pos) q->at~	if (q->at > pos + 4096) q->at
+tsql: an edit keeps the token start at its own byte (test_tsql, edit near a kept start)~test TESTS=tsql~~src/syntax/tsql.c~size_t lo = pos > 2 ? pos - 2 : 0;~size_t lo = pos + 1;
+tsql: an edit keeps the token start two bytes before it (test_tsql, edit near a kept start)~test TESTS=tsql~~src/syntax/tsql.c~size_t lo = pos > 2 ? pos - 2 : 0;~size_t lo = pos > 1 ? pos - 1 : 0;
+tsql: an edit keeps the token starts after it (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~	while (q->n && q->ck[q->n - 1] >= lo) q->n--;¶~
+tsql: an edit keeps where the last faces ended (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~	if (q->at >= lo) q->at~	if (q->at > lo + 4096) q->at
 tsql: an edit keeps the old text's window (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~	q->r.n = 0;¶~
 tsql: comments do not nest (test_tsql, tokens)~test TESTS=tsql~~src/syntax/tsql.c~if (c == '/' && d == '*') depth++, p += 2;~if (c == '/' && d == '*') p += 2;
 tsql: a doubled quote ends the string (test_tsql, tokens)~test TESTS=tsql~~src/syntax/tsql.c~if (c == e && tsql_byte(r, ++p) != e) break;~if (c == e && ++p) break;
@@ -19,4 +20,8 @@ tsql: a word longer than the lookup buffer is copied into it (fuzz_tsql, ASan)~f
 tsql: a dot is an operator (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~	case TQ_PUNCT: if (tsql_byte(r, p) != '.') return FACE_OPERATOR;~	case TQ_PUNCT: if (tsql_byte(r, p) != ',') return FACE_OPERATOR;
 tsql: a -- comment takes the \r of a CR LF (test_tsql, tokens)~test TESTS=tsql~~src/syntax/tsql.c~ && c != '\r') ;~ ) ;
 tsql: || is two operators (test_tsql, tokens)~test TESTS=tsql~~src/syntax/tsql.c~ || (c == '|' && d == '|'))~)
+tsql: a number takes the letters after it (test_tsql, tokens and lines)~test TESTS=tsql~~src/syntax/tsql.c~		while (is_digit(tsql_byte(r, p))) p++;~		while (is_id(tsql_byte(r, p))) p++;
+tsql: an exponent needs no digit (test_tsql, tokens)~test TESTS=tsql~~src/syntax/tsql.c~			if (is_digit(tsql_byte(r, e)))¶~
+tsql: a number takes .. (test_tsql, tokens)~test TESTS=tsql~~src/syntax/tsql.c~ && tsql_byte(r, p + 1) != '.')~)
+tsql: 0x takes letters past f (test_tsql, tokens)~test TESTS=tsql~~src/syntax/tsql.c~(c >= 'a' && c <= 'f')~(c >= 'a' && c <= 'z')
 # Not planted: tsql_update growing the token index.  Without it every read starts from byte 0 or where the last one ended: the colours are the same, only slower, and no check times them.

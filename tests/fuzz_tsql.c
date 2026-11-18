@@ -9,8 +9,9 @@
 #include "text.h"
 #include "../src/syntax/tsql.h"
 
-static const char *const tok[16] = {
+static const char *const tok[32] = {
 	"'", "N'", "\"", "[", "]", "/*", "*/", "--", "\n", "<", ">", "=", "@@ERROR", "LEFT(", "sys.", "x ",
+	"1", "0x", "e", "E", "+", "-", ".", "as", "f", "9", " ", "|", "*", "N", "@", "#",
 };
 static const uint8_t *d;
 static size_t n, at;
@@ -25,7 +26,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	size_t bn = 0;
 	for (unsigned k = byte() % 64; k--; ) {
 		unsigned c = byte();
-		const char *s = c < 128 ? tok[c % 16] : (const char *)&d[at - 1];
+		const char *s = c < 128 ? tok[c % 32] : (const char *)&d[at - 1];
 		size_t l = c < 128 ? strlen(s) : 1;
 		if (bn + l < sizeof b) memcpy(b + bn, s, l), bn += l;
 	}
@@ -57,7 +58,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 			size_t pos = byte() * len / 256, del = byte() % 8;
 			if (del > len - pos) del = len - pos;
 			unsigned c = byte();
-			const char *ins = c < 128 ? tok[c % 16] : (const char *)&d[at - 1];
+			const char *ins = c < 128 ? tok[c % 32] : (const char *)&d[at - 1];
 			size_t il = c < 128 ? strlen(ins) : 1;
 			if (len + il > MAX) continue;
 			syntax_edit(s, t, pos, del, ins, il);

@@ -50,6 +50,8 @@ static const char *const lines[][2] = {
 	{ "EXEC sp_executesql @q; EXEC dbo.usp_x", "KKKK.PPPPPPPPPPPPP...o.KKKK.........." },
 	{ "SET NOCOUNT ON;\nGO", "KKK.KKKKKKK.KKo.KK" },
 	{ "SELECT 1.5e3, 0x1F, #t, ##g", "KKKKKK......o.....o...o...." },
+	/* a number ends where SQL Server ends it, so the word after is coloured */
+	{ "SELECT 1as x, 2.5full", "KKKKKK..KK..o....oooo" },
 	/* the lines of ssms-check.sql as Davy's SSMS colours them (his
 	   screenshot of 2026-11-18, read colour by colour) */
 	{ "/* Demo: SSMS-style colours, mapped to Catppuccin */", "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC" },
@@ -97,6 +99,14 @@ static const struct { const char *src; size_t pos, end; int kind; } toks[] = {
 	{ "- -", 0, 1, TQ_OP },
 	{ "@a.b", 0, 2, TQ_VAR },
 	{ ".5)", 0, 2, TQ_NUMBER },
+	{ "1as", 0, 1, TQ_NUMBER },
+	{ "2.5full", 0, 3, TQ_NUMBER },
+	{ "1e3select", 0, 3, TQ_NUMBER },
+	{ "1E-3x", 0, 4, TQ_NUMBER },
+	{ "1e+x", 0, 1, TQ_NUMBER },
+	{ "1..2", 0, 1, TQ_NUMBER },
+	{ "1.e", 0, 2, TQ_NUMBER },
+	{ "0x1Fg", 0, 4, TQ_NUMBER },
 	{ "a.b", 1, 2, TQ_PUNCT },
 	{ "  \r\n x", 0, 5, TQ_SPACE },
 	{ "", 0, 0, TQ_SPACE },
@@ -104,7 +114,7 @@ static const struct { const char *src; size_t pos, end; int kind; } toks[] = {
 
 static const char *const snip[] = {
 	"\n", " ", "'", "N'", "''", "\"", "[", "]", "/*", "*/", "--", "(", ")", ",", ";", ".",
-	"<>", "SELECT", " FROM ", "sys", "LEFT", "GETDATE", "@@ERROR", "@x", "#t", "sp_who", "12", "\xc3\xa9",
+	"<>", "SELECT", " FROM ", "sys", "LEFT", "GETDATE", "@@ERROR", "@x", "#t", "sp_who", "12", "\xc3\xa9", "e", "+", "0x", "as",
 	"BEGIN\n  SET NOCOUNT ON;\n", "END\nGO\n", "x",
 };
 enum { NSNIP = sizeof snip / sizeof *snip, MAXT = 1 << 15 };
@@ -131,26 +141,29 @@ static void fresh(const Text *t, unsigned char *f)
 	syntax_free(s);
 }
 
-/* An insertion at a kept token start can join it to the token before:
-   "-" then "-b" is a comment.  The index keeps a start every 4,096 bytes,
-   the first at the first token from byte 4,096, here the "b". */
-static void edit_at_start(void)
+/* An insertion at a kept token start, or two bytes after it, can join it
+   to the token before: "-" then "-b" is a comment, "1e+" then "3" a number.
+   The index keeps a start every 4,096 bytes, the first at the first token
+   from byte 4,096: mid is put at 4,095, so that start is mid's second
+   byte. */
+static void edit_near_start(const char *mid, size_t at, const char *ins)
 {
 	static char b[4200];
 	static unsigned char f[4200], g[4200];
 	memset(b, ' ', sizeof b);
-	b[0] = 'x', b[4095] = '-', b[4096] = 'b', b[4097] = '\n';
-	size_t n = 4098;
+	b[0] = 'x';
+	size_t n = 4095 + strlen(mid), il = strlen(ins);
+	memcpy(b + 4095, mid, strlen(mid));
 	Text *t = text_new(b, n);
 	Syntax *s = syntax_open("x.sql", t);
 	CHECK(t && s);
 	syntax_update(s, t, NULL);
 	syntax_faces(s, 0, n, f);
-	syntax_edit(s, t, 4096, 0, "-", 1);
-	CHECK(!text_insert(t, 4096, "-", 1));
-	syntax_faces(s, 4096, n + 1, f + 4096);
+	syntax_edit(s, t, at, 0, ins, il);
+	CHECK(!text_insert(t, at, ins, il));
+	syntax_faces(s, 4096, n + il, f + 4096);
 	fresh(t, g);
-	CHECK(f[4096] == FACE_COMMENT && !memcmp(f + 4096, g + 4096, n + 1 - 4096));
+	CHECK(!memcmp(f + 4096, g + 4096, n + il - 4096));
 	syntax_free(s);
 	text_free(t);
 }
@@ -172,7 +185,8 @@ int main(void)
 		CHECK(e == toks[i].end && k == toks[i].kind);
 		text_free(t);
 	}
-	edit_at_start();
+	edit_near_start("-b\n", 4096, "-");     /* "-b" becomes a comment */
+	edit_near_start("1e+ ", 4098, "3");      /* "e" and "+" join 1e+3 */
 	CHECK(tsql_word("SeLeCt", 6) == (TQ_KEYWORD | TQ_RECASE) && tsql_word("selectx", 7) == 0 && tsql_word("@@rowcount", 10) == TQ_FUNCTION);
 
 	/* random texts and edits: what the kept token starts give must equal a
