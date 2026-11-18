@@ -1,0 +1,40 @@
+[wide] row 4:
+  nvim    [F ....r.......rr....................................]
+  homeros [F ....r.rrrrrrrr....................................]
+[wide at edge] row 1:
+  nvim    [B ....RRRRRRRRRRRRRRRRRRRRRRRRR.]
+  homeros [B ....RRRRRRRRRRRRRRRRRRRRRRRRRR]
+[crlf-ish/ctrl] row 1:
+  nvim    [F ....r.r..r........................................]
+  homeros [F ....r.rrrr........................................]
+cmprec: 40 cases, 3 differ
+[cut wide nowrap h1] row 1:
+  nvim    [B ....RRRRRRRRRRRRRRRRRRRRRRRRR.]
+  homeros [B ....RRRRRRRRRRRRRRRRRRRRRRRRRR]
+[open line under heading] row 0:
+  nvim    [S   1 # One                                         ]
+  homeros [S   1 󰲡 One                                         ]
+cmprec: 15 cases, 2 differ
+[o Esc in one send] row 0:
+  nvim    [S   1 # One                                         ]
+  homeros [S   1 󰲡 One                                         ]
+[o text Esc] row 0:
+  nvim    [S   1 # One                                         ]
+  homeros [S   1 󰲡 One                                         ]
+[O Esc above] row 0:
+  nvim    [S   1 # One                                         ]
+  homeros [S   1 󰲡 One                                         ]
+cmprec: 14 cases, 3 differ
+[ordered list 6 to 9] row 2:
+  nvim    [S   2 7. 󰲡 seven                                    ]
+  homeros [S   2 7. # seven                                    ]
+[ordered list 7 alone] row 0:
+  nvim    [S   1 7. 󰲡 seven                                    ]
+  homeros [S   1 7. # seven                                    ]
+[nested 8] row 1:
+  nvim    [S   1   8.  󰲣 eight                                 ]
+  homeros [S   1   8. ## eight                                 ]
+[setext emphasis start] row 2:
+  nvim    [S   2 *1* # b                                       ]
+  homeros [S   2 *1* 󰲡 b                                       ]
+cmprec: 5 cases, 4 differ

@@ -61336,3 +61336,243 @@ S f0 [+]                                    2,39-38        Bot
 R
 M - - -
 E
+C 10 40
+F 202020780a20206162630a20202020790a20207a7a0a
+T k:0
+T w:v
+T k:1G$
+T w:w
+T k:3G
+P
+S 1      x
+S   1   abc
+S   2     y
+S   3   zz
+S ~
+S ~
+S ~
+S ~
+S f0                    1,4            All
+S 
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+S f0                    1,1            All
+R
+M - - -
+P
+S 1      x           │1      x
+S   1   abc          │  1   abc
+S   2     y          │  2     y
+S   3   zz           │  3   zz
+S ~                  │~
+S ~                  │~
+S ~                  │~
+S ~                  │~
+S <1,1            All < 1,1            All
+R
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+S <1,1            All < 1,4            All
+R
+M - - -
+P
+S 1      x            │1      x
+S   1   abc           │  1   abc
+S   2     y           │  2     y
+S   3   zz            │  3   zz
+S ~                   │~
+S ~                   │~
+S ~                   │~
+S ~                   │~
+S < 1,1            All <1,4            All
+R
+M - - -
+P
+S   2    x            │1      x
+R
+S 3       y           │  2     y
+S   1   zz            │  3   zz
+R
+R
+R
+R
+S < 3,1            All <1,4            All
+R
+M - - -
+E
+C 10 40
+F 202020780a20206162630a20202020790a20207a7a0a
+T k:0
+T sp
+T k:1G$
+T w:w
+T k:3G
+P
+S 1      x
+S   1   abc
+S   2     y
+S   3   zz
+S ~
+S ~
+S ~
+S ~
+S f0                    1,4            All
+S 
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+S f0                    1,1            All
+R
+M - - -
+P
+R
+R
+R
+S f0                    1,1            Top
+S 1      x
+S   1   abc
+S   2     y
+S   3   zz
+R
+S :sp
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+S f0                    1,4            All
+R
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+M - - -
+P
+S   1   abc
+S 3       y
+S   1   zz
+S f0                    3,1            Bot
+R
+R
+R
+R
+R
+R
+M - - -
+E
+C 10 40
+F 202020780a20206162630a20202020790a20207a7a0a
+T k:0
+T w:s
+T k:1G$
+T w:w
+T k:3G
+P
+S 1      x
+S   1   abc
+S   2     y
+S   3   zz
+S ~
+S ~
+S ~
+S ~
+S f0                    1,4            All
+S 
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+S f0                    1,1            All
+R
+M - - -
+P
+R
+R
+R
+S f0                    1,1            Top
+S 1      x
+S   1   abc
+S   2     y
+S   3   zz
+R
+R
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+S f0                    1,4            All
+R
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+M - - -
+P
+S   1   abc
+S 3       y
+S   1   zz
+S f0                    3,1            Bot
+R
+R
+R
+R
+R
+R
+M - - -
+E
