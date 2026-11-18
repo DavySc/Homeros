@@ -106,19 +106,30 @@ static int line_rows(const Win *w, size_t l)
    level's background, to the window's edge (hl_eol).  The background
    starts at screen column b0, with the heading's indent; the marker at m0.
    The rest as draw_line. */
-static void draw_heading(Grid *g, const Win *w, size_t l, int r, size_t skip, int cover, size_t b0, size_t m0, int n)
+static void draw_heading(Grid *g, const Win *w, size_t l, int r, size_t skip, size_t b0, size_t m0, int n)
 {
 	int nw = win_numw(w), tw = w->w - nw, rows = line_rows(w, l);
 	/* nf-md-numeric_1_circle_outline to 6: U+F0CA1 to U+F0CAB by twos */
 	const unsigned char icon[4] = { 0xf3, 0xb0, 0xb2, (unsigned char)(0xa1 + 2 * (n - 1)) };
+	/* the overlay's start: the marker, or the first cell drawn when the
+	   view starts past it (Neovim draws an overlay that starts before the
+	   window's first column there; measured with leftcol and skipcol) */
+	size_t o = (size_t)-1;
 	for (int k = 0; k < rows && r + k < w->h; k++)
 		for (int c = nw; c < w->w; c++) {
 			size_t v = skip + (size_t)k * (size_t)tw + (size_t)(c - nw);
 			Cell *z = wcell(g, w, r + k, c);
-			if (v < b0 || (k == 0 && c < cover) || !z) continue;
-			/* the cell after the marker is a blank already */
-			if (v >= m0 && v - m0 < (size_t)n) {
-				if (v - m0 == (size_t)n - 1) grid_put(g, w->y + r + k, w->x + c, icon, 4, 1, ATTR_NONE);
+			/* a NonText cell (skipcol's "<<<", the '>' of a double-width
+			   character that does not fit) keeps its colours: win_line()
+			   gives it extra_attr alone */
+			if (v < b0 || !z || z->attr == ATTR_DIM) continue;
+			if (o == (size_t)-1) o = v > m0 ? v : m0;
+			/* n - 1 spaces, the icon and a space (the last is the blank
+			   after the marker, but not where the overlay moved to the
+			   view's start); cut at its row's end (measured: the rest of a
+			   marker that wraps stays as typed) */
+			if (v >= o && v - o <= (size_t)n && v - (size_t)(c - nw) <= o) {
+				if (v - o == (size_t)n - 1) grid_put(g, w->y + r + k, w->x + c, icon, 4, 1, ATTR_NONE);
 				else grid_put(g, w->y + r + k, w->x + c, (const unsigned char *)" ", 1, 1, ATTR_NONE);
 				z->face = (unsigned char)(FACE_MARKUP_HEADING_1 + n - 1);
 			}
@@ -169,7 +180,9 @@ static int draw_line(Grid *g, Win *w, size_t l, int r, int rm)
 			   a setext heading's text, whose rest has the heading face */
 			if (!hl) { if (k != 1 || !memchr(" \t>-+*.)0123456789", *s, 18)) hn = HN_NO; }
 			else if (!hn && *s == ' ') {}
-			else if (*s == '#' && k == 1 && hn < hl) { if (!hn++) hm = v; }
+			/* at most 3 columns of indent: more is a setext heading's
+			   text (an ATX heading would interrupt its paragraph) */
+			else if (*s == '#' && k == 1 && hn < hl) { if (!hn++) hm = v, hn = v - hb > 3 ? HN_NO : hn; }
 			else hn = hn == hl && (*s == ' ' || *s == '\t') ? HN_YES : HN_NO;
 		}
 		if (drawn != 1) {
@@ -192,16 +205,17 @@ static int draw_line(Grid *g, Win *w, size_t l, int r, int rm)
 			unsigned char face = syn ? fc[i - f0] : 0;
 			/* win_line(): '>' where a double-width character does not fit
 			   (the line's end without wrap), '<' where the view starts in
-			   its second half (MB_FILLER_CHAR) */
+			   its second half (MB_FILLER_CHAR), both in NonText (HLF_AT,
+			   which the core draws dim, as '~') */
 			if (j < lead || (wide && j == 0 && !w->wrap && d == (size_t)tw - 1))
-				put_cell(g, w, row, c, (const unsigned char *)">", 1, 0, 1, face);
+				wputs(g, w, row, c, ">", ATTR_DIM);
 			else if (wide && j - lead == 1 && v == skip)
-				put_cell(g, w, row, c, (const unsigned char *)"<", 1, 0, 1, face);
+				wputs(g, w, row, c, "<", ATTR_DIM);
 			else put_cell(g, w, row, c, s, k, j - lead, cw - lead, face);
 		}
 		i += k;
 	}
-	if (hl && (hn == hl || hn == HN_YES)) draw_heading(g, w, l, r, skip, cover, hb, hm, hl);
+	if (hl && (hn == hl || hn == HN_YES)) draw_heading(g, w, l, r, skip, hb, hm, hl);
 	return drawn != 0;
 }
 

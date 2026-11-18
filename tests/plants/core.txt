@@ -41,13 +41,27 @@ core: a composing character at a cluster start is drawn without its space (test_
 core: H and L apply scrolloff under an operator (test_core_contract)~test TESTS=core_contract~~src/core/move.c~	if (so) cursor_correct(e, w);~	if (so || 1) cursor_correct(e, w);
 core: a join leaves the next line's marks behind (recorded key traces)~test TESTS=~~src/core/core.c~	if (line_amount) join_next = b;~	(void)0;
 core: an indented heading is not drawn (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~			else if (!hn && *s == ' ') {}¶~
-core: a setext heading's text after an inline face is drawn as a marker (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~			if (!hl) { if (k != 1 || !memchr(" \t>-+*.)0123456789", *s, 15)) hn = HN_NO; }~			if (!hl) {}
+core: a setext heading's text after an inline face is drawn as a marker (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~			if (!hl) { if (k != 1 || !memchr(" \t>-+*.)0123456789", *s, 18)) hn = HN_NO; }~			if (!hl) {}
 core: a '#' run with no blank after it is a heading (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~hn == hl && (*s == ' ' || *s == '\t') ? HN_YES~hn == hl ? HN_YES
-core: a heading's icon on its first '#' (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~				if (v - m0 == (size_t)n - 1) grid_put~				if (v - m0 == 0) grid_put
-core: a heading's background starts at its marker, not its indent (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~			if (v < b0 || (k == 0~			if (v < (b0 > m0 ? b0 : m0) || (k == 0
+core: a heading's icon on its first '#' (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~				if (v - o == (size_t)n - 1) grid_put~				if (v - o == 0) grid_put
+core: a heading's background starts at its marker, not its indent (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~			if (v < b0 || !z~			if (v < (b0 > m0 ? b0 : m0) || !z
 core: a heading's icon keeps the text's colour (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~				z->face = (unsigned char)(FACE_MARKUP_HEADING_1 + n - 1);¶~
 core: a heading drawn in insert mode (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~ ? e->mode != MODE_INSERT && !e->ks.visual~ ? !e->ks.visual
 core: a heading drawn while the window is scrolled sideways (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~ && !e->win->left : !w->left;~ : !w->left;
 core: the cursor line's heading drawn (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~	size_t raw = cur ? e->win->line : (size_t)-1;~	size_t raw = (size_t)-1;
 core: a heading marker cut at the window's edge is not read on (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~			if (!hl || hn == HN_NO || hn == HN_YES) break;~			break;
 core: a heading's background not drawn (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~			z->bg = (unsigned char)(FACE_HEADING_1_BG + n - 1);¶~
+core: a setext heading's text indented 4 columns drawn as a marker (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~hn = v - hb > 3 ? HN_NO : hn;~hn = hn;
+core: an overlay that starts before the view drawn at the marker (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~o = v > m0 ? v : m0;~o = m0;
+core: a wrapped heading's bar on its first row only (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~tw = w->w - nw, rows = line_rows(w, l);~tw = w->w - nw, rows = 1 + 0 * (int)l;
+core: a wrapped heading's bar below its window (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~k < rows && r + k < w->h; k++~k < rows; k++
+core: another buffer's window keeps its cursor line raw (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~size_t raw = cur ? e->win->line : (size_t)-1;~size_t raw = cur ? e->win->line : w->line;
+core: another buffer's window drawn while scrolled sideways (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~ && !e->win->left : !w->left;~ && !e->win->left : 1;
+core: another buffer's window follows the current buffer's mode (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~int cur = w->buf == e->buf, rm~int cur = 1, rm
+core: a heading drawn in visual mode (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~e->mode != MODE_INSERT && !e->ks.visual && ~e->mode != MODE_INSERT && 
+core: a NonText cell takes the heading's background (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~ || z->attr == ATTR_DIM) continue;~) continue;
+core: a heading's column from the line's start, not the view's (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~size_t v = skip + (size_t)k~size_t v = skip * 0 + (size_t)k
+core: a heading after list number 7, 8 or 9 not drawn (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~" \t>-+*.)0123456789", *s, 18)~" \t>-+*.)0123456789", *s, 15)
+core: a heading's icon wraps to the next row (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~ && v - (size_t)(c - nw) <= o) {~) {
+core: the '>' of a double-width character that does not fit in the text's colours (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~wputs(g, w, row, c, ">", ATTR_DIM);~put_cell(g, w, row, c, (const unsigned char *)">", 1, 0, 1, face);
+core: a heading drawn past a grid smaller than its window (fuzz_core)~fuzz FUZZERS=core FUZZ_SECONDS=120~~src/core/draw.c~			if (v < b0 || !z || ~			if (v < b0 || 
