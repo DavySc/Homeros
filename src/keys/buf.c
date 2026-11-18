@@ -416,9 +416,15 @@ int set_indent(long l, long cols)
 	return r;
 }
 
-/* u_save_cursor(): an undo step starts here even if nothing changes */
-void u_save_cursor(void)
+/* u_save(l - 1, l), which saves no line: an undo step starts at line l
+   even if nothing changes.  The core takes a group's lowest byte for its
+   first changed line and moves other windows' cursors off the lines it
+   replaced, so a line that only gets lines below it must not be in it */
+void u_save_gap(size_t l)
 {
 	UndoCursor c = { W->line, W->col, B->flags };
-	undo_record(B->undo, core_line_start(E, W->line), "", 0, "", 0, c, B->flags);
+	undo_record(B->undo, core_line_start(E, l), "", 0, "", 0, c, B->flags);
 }
+
+/* u_save_cursor() */
+void u_save_cursor(void) { u_save_gap(W->line); }

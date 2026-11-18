@@ -328,7 +328,7 @@ static int open_line(int dir)
 /* o and O (n_opencmd()) */
 int open_cmd(int dir)
 {
-	u_save_cursor();
+	u_save_gap(W->line + (dir == FORWARD));   /* n_opencmd()'s u_save() */
 	return open_line(dir);
 }
 

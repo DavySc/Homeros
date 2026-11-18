@@ -1019,7 +1019,9 @@ void do_put(int regname, int dir, long count, int flags)
 		tmp.type = MCHAR;
 		reg = &tmp;
 	} else reg = put_override ? put_override : get_reg(regname, 0);
-	u_save_cursor();
+	/* do_put(): linewise, u_save(lnum - 1, lnum) at the line put before */
+	if (reg->type == MLINE && !(flags & PUT_LINE_SPLIT) && !is_empty_buf()) u_save_gap(W->line + (dir == FORWARD));
+	else u_save_cursor();
 	y_type = reg->type;
 	y_width = reg->width;
 	long y_size = reg_lines(reg);
