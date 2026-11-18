@@ -138,7 +138,7 @@ typedef struct LTree {
 } LTree;
 
 struct Syntax {
-	Tsql *sql;                 /* T-SQL, by word lists instead (tsql.c) */
+	Tsql *sql;                 /* T-SQL by word lists, or JSON, instead (tsql.c) */
 	LTree *root;
 	TSParser *p;
 	TSQueryCursor *qc;
@@ -329,9 +329,10 @@ static void free_ltree(Syntax *s, LTree *L)
 Syntax *syntax_open(const char *path, const Text *t)
 {
 	size_t pl = strlen(path);
-	if (pl > 4 && !memcmp(path + pl - 4, ".sql", 4)) {
+	int json = pl > 5 && !memcmp(path + pl - 5, ".json", 5);
+	if (json || (pl > 4 && !memcmp(path + pl - 4, ".sql", 4))) {
 		Syntax *s = calloc(1, sizeof *s);
-		if (s && !(s->sql = tsql_new(t))) free(s), s = NULL;
+		if (s && !(s->sql = tsql_new(t, json))) free(s), s = NULL;
 		return s;
 	}
 	int li = lang_of_path(path, pl);

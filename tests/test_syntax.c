@@ -105,7 +105,7 @@ static void update(Syntax *s, const Text *t, int how)
    one window that starts where Neovim's redraw of the whole buffer does */
 static void faces_lines(Syntax *s, const Text *t, unsigned char *out)
 {
-	for (size_t l = 0, n = text_lines(t); l < n; l++) {
+	for (size_t l = 0, n = text_lines(t); l <= n; l++) {
 		size_t a = text_line_start(t, l), z = text_line_start(t, l + 1);
 		syntax_faces(s, a, z, out + a);
 	}

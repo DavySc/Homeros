@@ -43,9 +43,10 @@ struct Tsql {
 	uint32_t *ck, n, v, cap;
 	size_t at, end;            /* the token where the last faces ended; its
 	                              end, 0 when not known */
-	unsigned char face;        /* and its face, so the frame's later reads
+	int kind;                  /* and its kind, so the frame's later reads
 	                              inside a long comment do not lex it again */
 	int skipped;               /* a window was left plain, far from the index */
+	int json;                  /* JSON's lexer instead (json.c) */
 };
 
 static int is_space(int c) { return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == '\v'; }
@@ -213,10 +214,16 @@ static unsigned char face(TsqlRd *r, size_t p, size_t e, int k)
 	return FACE_NONE;
 }
 
-Tsql *tsql_new(const Text *t)
+static void paint(TsqlRd *r, size_t p, size_t e, int k, size_t a, size_t z, unsigned char *f)
+{
+	unsigned char c = face(r, p, e, k);
+	for (size_t i = p < a ? a : p; i < e && i < z; i++) f[i - a] = c;
+}
+
+Tsql *tsql_new(const Text *t, int json)
 {
 	Tsql *q = calloc(1, sizeof *q);
-	if (q) q->r.t = t;
+	if (q) q->r.t = t, q->json = json;
 	return q;
 }
 
@@ -286,7 +293,7 @@ int tsql_update(Tsql *q, int (*stop)(void))
 		if (stop && !(k % 1024) && stop()) return 2;
 		int kind;
 		/* the long comment the frame just read is not read again */
-		size_t e = p == q->at && q->end > p ? q->end : tsql_token(&q->r, p, &kind);
+		size_t e = p == q->at && q->end > p ? q->end : (q->json ? json_token : tsql_token)(&q->r, p, &kind);
 		step(q, p);
 		/* landed on a moved start: the rest is known */
 		p = q->n && q->v == q->n && q->ck[q->n - 1] > e ? q->ck[q->n - 1] : e;
@@ -310,17 +317,17 @@ void tsql_faces(Tsql *q, size_t a, size_t z, unsigned char *f)
 		return;
 	}
 	while (p < z) {
-		int k;
+		int k = q->kind;
 		size_t e = q->end;
-		unsigned char c = q->face;
 		if (p != q->at || e <= p) {
-			e = tsql_token(&q->r, p, &k);
+			e = (q->json ? json_token : tsql_token)(&q->r, p, &k);
 			if (e == p) break;
-			c = e > a ? face(&q->r, p, e, k) : FACE_NONE;
 		}
 		step(q, p);
-		for (size_t i = p < a ? a : p; i < e && i < z; i++) f[i - a] = c;
-		q->at = p, q->end = e, q->face = c;
+		/* a face is worked out on each read, as a JSON key's depends on
+		   the text after it */
+		if (e > a) (q->json ? json_paint : paint)(&q->r, p, e, k, a, z, f);
+		q->at = p, q->end = e, q->kind = k;
 		p = e;
 	}
 }
