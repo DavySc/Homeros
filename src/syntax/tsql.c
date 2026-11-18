@@ -5,11 +5,13 @@
    it does not know never spoils the colours after it.  Its categories
    (learn.microsoft.com, "Color coding in query editors") map to Catppuccin's
    faces: keyword, string, comment, number, system function, system table,
-   view or schema, stored procedure, operator; names and variables stay
-   plain, as there.  Faces are read from the nearest known token start
-   before the bytes asked; syntax_update keeps one every CK bytes to the
-   text's end, and an edit keeps those after it until a read confirms them
-   (struct Tsql). */
+   view or schema, stored procedure, operator (SSMS's grey for AND, EXISTS,
+   ( and =, so Catppuccin's grey: its punctuation's overlay2, as Davy's
+   SSMS screenshot of 2026-11-18 19:03 shows them muted); names and
+   variables stay plain, as there.  Faces are read from the nearest known
+   token start before the bytes asked; syntax_update keeps one every CK
+   bytes to the text's end, and an edit keeps those after it until a read
+   confirms them (struct Tsql). */
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -190,7 +192,7 @@ static unsigned char word_face(TsqlRd *r, size_t p, size_t e)
 	if ((l[0] == 's' || l[0] == 'x') && l[1] == 'p' && l[2] == '_' && l[3]) return FACE_FUNCTION;
 	size_t id = lookup(l);
 	int c = id ? classes[id - 1] : 0;
-	return c & TQ_OPERATOR ? FACE_OPERATOR : c & TQ_FUNCTION ? FACE_FUNCTION_BUILTIN : c & TQ_KEYWORD ? FACE_KEYWORD : FACE_NONE;
+	return c & TQ_OPERATOR ? FACE_PUNCTUATION_DELIMITER : c & TQ_FUNCTION ? FACE_FUNCTION_BUILTIN : c & TQ_KEYWORD ? FACE_KEYWORD : FACE_NONE;
 }
 
 static unsigned char face(TsqlRd *r, size_t p, size_t e, int k)
@@ -200,10 +202,10 @@ static unsigned char face(TsqlRd *r, size_t p, size_t e, int k)
 	case TQ_STRING: return FACE_STRING;
 	/* a dot is plain, but in sys.objects it is the system table's (SSMS,
 	   Davy's screenshot of 2026-11-18) */
-	case TQ_PUNCT: return tsql_byte(r, p) != '.' ? FACE_OPERATOR : after_schema(r, p) ? FACE_MODULE_BUILTIN : FACE_NONE;
+	case TQ_PUNCT: return tsql_byte(r, p) != '.' ? FACE_PUNCTUATION_DELIMITER : after_schema(r, p) ? FACE_MODULE_BUILTIN : FACE_NONE;
 	/* numbers are SSMS's light green (Davy's screenshot) */
 	case TQ_NUMBER: return FACE_NUMBER;
-	case TQ_OP: return FACE_OPERATOR;
+	case TQ_OP: return FACE_PUNCTUATION_DELIMITER;
 	case TQ_WORD: return word_face(r, p, e);
 	/* @@ROWCOUNT and the other globals are system functions; @x is plain */
 	case TQ_VAR: return tsql_byte(r, p + 1) == '@' ? word_face(r, p, e) : FACE_NONE;
