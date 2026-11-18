@@ -16,7 +16,7 @@ rc=0
 while IFS='~' read -r name target prep file old new; do
 	[ -z "$name" ] && continue
 	tmp=$(mktemp -d)
-	cp -r Makefile include ref src tests tools design "$tmp"/
+	cp -r Makefile assets include ref src tests tools design "$tmp"/
 	if ! python3 - "$tmp/$file" "$old" "$new" <<'PY'
 import sys
 p, old, new = sys.argv[1], sys.argv[2].replace('¶', '\n'), sys.argv[3].replace('¶', '\n')
