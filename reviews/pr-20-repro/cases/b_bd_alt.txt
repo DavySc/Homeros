@@ -1,0 +1,47 @@
+C 8 40
+F 096162630a7a7a7a7a7a7a7a7a7a7a7a7a0a
+F 
+T bd
+T alt
+T k:j
+P
+S 1           abc
+S   1 zzzzzzzzzzzz
+S ~
+S ~
+S ~
+S ~
+S f0                    1,1-8          All
+S 
+M - - -
+P
+S 1
+S ~
+R
+R
+R
+R
+S [No Name]             0,0-1          All
+S :bd
+M - - -
+P
+S 1           abc
+S   1 zzzzzzzzzzzz
+R
+R
+R
+R
+S f0                    1,1-8          All
+R
+M - - -
+P
+S   1         abc
+S 2   zzzzzzzzzzzz
+R
+R
+R
+R
+S f0                    2,8            All
+R
+M - - -
+E

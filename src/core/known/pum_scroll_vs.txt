@@ -1,0 +1,111 @@
+C 15 60
+F 666f6f207820e6bca2207a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a200920e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792206162e6bca22001
+F 
+T wrap
+T w2:_
+T vs
+T 3C-f
+T pum:5:20:12
+P
+S 1   foo x 漢 zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S f0                                        1,1            All
+S 
+M - - -
+P
+R
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzz    全角全角全角全角全角全>
+S     角全角全角全角全角全角全角全角全角全角全角全角全角全角全
+S     角 ab漢 ^A
+R
+R
+R
+R
+R
+R
+S :set wrap
+M - - -
+P
+R
+R
+S f0                                        1,1            All
+S 
+S 
+S 
+S 
+S 
+S 
+S 
+S 
+S 
+S 
+S 
+S 
+M - - -
+P
+S 1   foo x 漢 zzzzzzzzzzzzzzzz│1   foo x 漢 zzzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzzzzzzzzzzz│    zzzzzzzzzzzzzzzzzzzzzzzzzz
+S f0         1,1            All f0          1,1            All
+S :vs
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+M - - -
+P
+S 1   foo x 漢 zzzzzzzzzzzzzzzz│1<<<角全角全角全角全角全角全角
+S     zzzzzzzzzzzzzzzzzzzzzzzzz│    全角 ab漢 ^A
+S f0         1,1            All f0          1,441-401      All
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+M - - -
+P
+R
+S     zzzzzzzzzzzzzzzzzzzzzzzzz│    全角 ab漢 yyyyyyyyyyyyyyy>
+S f0 [+]     1,1            All f0 [+]       z
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S -- INSERT --
+M - - -
+E

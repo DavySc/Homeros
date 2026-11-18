@@ -1,0 +1,137 @@
+C 24 40
+F 202020206162e6bca22061616161616161616161616161616161616161616161616161616161616120012061616161616161616161616161616161616161616161616161616161616120cebb78206261725f3120c3a92028206c6f6e676572776f726420666f6f20e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a79220616161616161616161616161616161616161616161616161616161616161
+T C-f
+T wrap
+T w3:_
+T pum:14:11:25
+P
+S 1       ab漢 aaaaaaaaaaaaaaaaaaaaaaaaaaa
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S f0                    1,1            All
+S 
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+M - - -
+P
+R
+S     aaa ^A aaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+S     a λx bar_1 é ( longerword foo 全角全
+S     角全角全角全角全角全角全角全角全角全
+S     角全角全角全角全角全角全角全角全角全
+S     角 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S :set wrap
+M - - -
+P
+R
+R
+R
+S f0                    1,1            All
+S 
+S 
+S 
+S 
+S 
+S 
+S 
+S 
+S 
+S 
+S 
+S 
+S 
+S 
+S 
+S 
+S 
+S 
+S 
+S 
+M - - -
+P
+S 1<<<角全角全角全角全角全角全角全角全角全
+S     角 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaა_b
+S     2                  λx2
+S f0 [+]                 yyyyyyyyyyyyyyy>
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S -- INSERT --
+M - - -
+E

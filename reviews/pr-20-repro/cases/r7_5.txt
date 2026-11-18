@@ -1,0 +1,178 @@
+C 24 60
+F 09e1839020780a202020206c6f6e676572776f7264206c6f6e676572776f726420666f6f
+F 
+F 
+T w:s
+T wrap
+T k:$
+T sp
+T size:10:14
+T new
+T w:K
+P
+S 1           ა x
+S   1     longerword longerword foo
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S f0                                        1,1-8          All
+S 
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S f0                                        1,1-8          All
+S 1           ა x
+S   1     longerword longerword foo
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S :set wrap
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S f0                                        1,6-11         All
+R
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+S f0                                        1,1-8          All
+S 1           ა x
+S   1     longerword longerword foo
+S ~
+S ~
+S ~
+R
+S f0                                        1,6-11         All
+S 1           ა x
+S   1     longerword longerword foo
+R
+R
+R
+R
+R
+R
+S :sp
+M - - -
+P
+S 1           ა
+S   1     longer
+S ~
+S ~
+S <          All
+S 1           ა
+S <1         Top
+S 1<<<x
+S <1         Top
+S 
+M - - -
+P
+R
+S <          Top
+S 1           ა
+S     x
+S <1         Top
+S 1<<<x
+R
+S 1
+S <          All
+S :new
+M - - -
+P
+S 1
+S <          All
+R
+S <          Top
+S 1           ა
+S     x
+R
+S 1<<<x
+S <1         Top
+R
+M - - -
+E

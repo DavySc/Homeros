@@ -1,0 +1,93 @@
+C 10 20
+F 09292e202c20f09f98800a090a202020200a01202d2d206c6f6e676572776f72640af09f988020666f6f0a292e2009202d2d207a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a2078207f20f09f9880
+T wrap
+T C-d
+T zb
+T e:f0
+T w:-
+T w:+
+P
+S 1           ). , 😀
+S   1
+S   2
+S   3 ^A -- longerword
+S   4 😀 foo
+S   5 ).       -- zzzz
+S ~
+S ~
+S < 1,1-8          All
+S 
+M - - -
+P
+R
+R
+R
+R
+R
+R
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzz@@@
+S < 1,1-8          Top
+S :set wrap
+M - - -
+P
+S 5   😀 foo
+S   1 ).       -- zzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+R
+R
+S < 5,8-6          80%
+R
+M - - -
+P
+S   4         ). , 😀
+S   3
+S   2
+S   1 ^A -- longerword
+S 5   😀 foo
+S   1 ).       -- zzzz
+R
+R
+S < 5,8-6          Top
+R
+M - - -
+P
+S 5   😀 foo
+S   1 ).       -- zzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+R
+R
+S < 5,8-6          80%
+S :e f0
+M - - -
+P
+R
+R
+R
+R
+R
+R
+S     zzzzzzzzzzzzz@@@
+S < 5,8-6          80%
+S 
+S 
+M - - -
+P
+R
+R
+R
+R
+R
+R
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzz@@@
+S < 5,8-6          80%
+R
+M - - -
+E

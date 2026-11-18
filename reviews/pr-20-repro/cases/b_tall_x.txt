@@ -1,0 +1,200 @@
+C 30 20
+F 780a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a0a
+T k:2G
+T wrap
+T k:Ayyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy<Esc>
+T k:39h
+T k:30x
+P
+S 1   x
+S   1 zzzzzzzzzzzzzzzz
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S < 1,1            All
+S 
+M - - -
+P
+S   1 x
+S 2   zzzzzzzzzzzzzzzz
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S < 2,1            All
+R
+M - - -
+P
+S 2   zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S     zzzzzzzzzzzzzzzz
+S < 2,1            Bot
+S :set wrap
+M - - -
+P
+S 2<<<zzzzzzzzzzzzzzzz
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S     zzzzzzzzyyyyyyyy
+S     yyyyyyyyyyyyyyyy
+S     yyyyyyyyyyyyyyyy
+S ~
+S < 2,640          Bot
+S 
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S < 2,601          Bot
+R
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S     yy
+S ~
+R
+R
+R
+M - - -
+E
