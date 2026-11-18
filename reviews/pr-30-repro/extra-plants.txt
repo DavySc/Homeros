@@ -1,0 +1,8 @@
+# Review of PR 30: more plants in the stepwise free, in tests/plants' format.
+# Run by extra-plants.sh; the results are in reviews/pr-30.md.
+x1: a freed leaf keeps its external scanner state~test TESTS=syntax~~src/syntax/release.c~			if (x.ptr->has_external_tokens) ts_external_scanner_state_delete(&x.ptr->external_scanner_state);¶~
+x2: a released tree keeps its included ranges~test TESTS=syntax~~src/syntax/release.c~		ts_free(t->included_ranges);¶~
+x3: a freed node keeps its array of children~test TESTS=syntax~~src/syntax/release.c~			ts_free(c);¶~
+x4: syntax_free leaves the pending nodes~test TESTS=syntax~~src/syntax/syntax.c~	syntax_release(NULL, UINT32_MAX);¶	free(s);~	free(s);
+x5: a child is freed while another tree still holds it~test TESTS=syntax~~src/syntax/release.c~atomic_dec((volatile uint32_t *)&c[i].ptr->ref_count) == 0~atomic_dec((volatile uint32_t *)&c[i].ptr->ref_count) <= 1
+x4 by the fuzzer~fuzz FUZZERS=syntax FUZZ_SECONDS=30~~src/syntax/syntax.c~	syntax_release(NULL, UINT32_MAX);¶	free(s);~	free(s);

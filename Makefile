@@ -86,6 +86,15 @@ conform: $(OBJS) | build/san
 	gcc $(WARN) $(CPPFLAGS) $(SAN) -o build/san/conform_drv tests/conform_drv.c $(LIB_SRCS) $(OBJS) $(LIBS)
 	python3 tools/conform.py build/san/conform_drv $(CONFORM_N) $${SEED:-$$(date +%s)}
 
+# Org's parser against Org itself (package 16): fresh random org texts fed
+# to src/org and to org-element in emacs -Q --batch (tools/org_dump.el)
+ORG_N ?= 2000
+org-conform: $(OBJS) | build/san
+ifneq ($(wildcard src/org/*.c),)
+	gcc $(WARN) $(CPPFLAGS) $(SAN) -o build/san/org_drv tests/org_drv.c $(LIB_SRCS) $(OBJS) $(LIBS)
+	python3 tools/org_conform.py build/san/org_drv $(ORG_N) $${SEED:-$$(date +%s)}
+endif
+
 # Neovim's undo tree against UndoTree.tla's rules (package 2's oracle);
 # then the undo package against live nvim on one fake clock: short sequences
 # with the real cap and with a cap of 3 that they reach, and long ones that
@@ -124,18 +133,21 @@ ifneq ($(wildcard src/lsp/u16.c),)
 	grep -qE "Proved goals: +([0-9]+) / \1$$" build/frama-lsp.log
 endif
 
-# the Windows build (package 9): cross-built with zig cc, run under Wine on
-# a virtual X display; src/win/check.sh says how
+# the Windows builds (packages 9 and 11): each package's src/<module>/check.sh
+# cross-builds its tests with zig cc and runs them under Wine (package 9's on
+# a virtual X display); a plant names the one module whose check can catch it
+# (make win WIN=file), so it does not run the others' slow tests too
+WIN = $(patsubst src/%/check.sh,%,$(wildcard src/*/check.sh))
 win:
-	@if [ -f src/win/check.sh ]; then bash src/win/check.sh; else echo "win: no src/win yet"; fi
+	@for m in $(WIN); do echo "win: src/$$m/check.sh"; bash src/$$m/check.sh || exit 1; done
 
-check: compilers test fuzz conform undo-diff lean frama specs win
+check: compilers test fuzz conform org-conform undo-diff lean frama specs win
 	@echo "check: all passed"
 
 planted:
-	bash tools/planted.sh
+	SHARD=$(SHARD) bash tools/planted.sh
 
 clean:
 	rm -rf build homeros
 
-.PHONY: compilers test fuzz conform undo-diff specs lean frama win check planted clean
+.PHONY: compilers test fuzz conform org-conform undo-diff specs lean frama win check planted clean

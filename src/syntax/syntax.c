@@ -76,6 +76,8 @@ enum { NLANGS = sizeof langs / sizeof *langs };
 /* Neovim's highlights and injections queries per language, in langs' order
    (build.mk compiles them in) */
 extern const char *const syntax_queries[][2];
+int syntax_release(TSTree *t, unsigned n);   /* release.c */
+enum { RELEASE_STEP = 1024 };                /* nodes freed between stop asks */
 
 static int lang_of_path(const char *path, size_t pl)
 {
@@ -281,7 +283,7 @@ static void free_region(Syntax *s, Region *r)
 		ts_parser_reset(s->p);
 		s->susp = NULL;
 	}
-	if (r->tree) ts_tree_delete(r->tree);
+	if (r->tree) syntax_release(r->tree, 0);
 	free(r->r);
 }
 
@@ -318,6 +320,7 @@ void syntax_free(Syntax *s)
 	if (started(s)) free_ltree(s, s->root);
 	if (s->qc) ts_query_cursor_delete(s->qc);
 	if (s->p) ts_parser_delete(s->p);
+	syntax_release(NULL, UINT32_MAX);
 	free(s);
 }
 
@@ -707,7 +710,7 @@ static int parse(Syntax *s, LTree *L, const Text *t)
 			return 2;
 		}
 		s->susp = NULL;
-		if (g->tree) ts_tree_delete(g->tree);
+		if (g->tree) syntax_release(g->tree, 0);
 		g->tree = n;
 		g->valid = 1;
 		L->scan = changed = 1;
@@ -726,7 +729,11 @@ static int parse(Syntax *s, LTree *L, const Text *t)
 
 int syntax_update(Syntax *s, const Text *t, int (*stop)(void))
 {
-	if (!s || !s->dirty) return 0;
+	if (!s) return 0;
+	/* the trees the last parse replaced, freed in steps (release.c) */
+	while (syntax_release(NULL, stop ? RELEASE_STEP : UINT32_MAX))
+		if (stop()) return 2;
+	if (!s->dirty) return 0;
 	if (!started(s)) {
 		int li = (int)(intptr_t)s->root - 1;
 		LTree *R = ltree(li);

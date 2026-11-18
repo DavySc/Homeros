@@ -1,0 +1,42 @@
+{
+ "r28": {
+  "task": "T1",
+  "cond": "with"
+ },
+ "r13": {
+  "task": "T1",
+  "cond": "without"
+ },
+ "r39": {
+  "task": "T2",
+  "cond": "with"
+ },
+ "r35": {
+  "task": "T2",
+  "cond": "without"
+ },
+ "r37": {
+  "task": "T3",
+  "cond": "with"
+ },
+ "r53": {
+  "task": "T3",
+  "cond": "without"
+ },
+ "r48": {
+  "task": "T4",
+  "cond": "with"
+ },
+ "r54": {
+  "task": "T4",
+  "cond": "without"
+ },
+ "r69": {
+  "task": "T5",
+  "cond": "with"
+ },
+ "r17": {
+  "task": "T5",
+  "cond": "without"
+ }
+}
