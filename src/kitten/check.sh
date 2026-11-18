@@ -14,5 +14,5 @@ pick() { if ls src/$1/*.c >/dev/null 2>&1; then echo src/$1/*.c; else echo ref/$
 exe=build/win/test_kitten_win.exe
 zig cc -target x86_64-windows-gnu -std=c17 -Wall -Wextra -Werror -Iinclude -O1 -g \
   -fsanitize=undefined -fsanitize-trap=undefined -o "$exe" tests/test_kitten_win.c src/kitten/*.c \
-  src/loop/*.c $(pick grid) $(pick uni) -lshell32
+  src/loop/*.c $(pick grid) $(pick uni) $(pick theme) -lshell32
 timeout 120 wine "$exe" || { echo "FAIL test_kitten_win"; exit 1; }

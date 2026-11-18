@@ -4,16 +4,16 @@ loop: blocking writes to a child (Pipe_block)~test TESTS=loop IDLE_SECONDS=2~~sr
 loop: the exit waits for the pipes' end (Exit_waiteof)~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~			if (p[i].pid && waitpid(~			if (p[i].pid && p[i].fd[1] < 0 && p[i].fd[2] < 0 && waitpid(
 loop: output pending at the exit dropped (Exit_early)~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~		ioctl(c->fd[s], FIONREAD, &left);~
 loop: kill reaches the child but not its group~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	kill(-c->pid, SIGTERM);~	kill(c->pid, SIGTERM);
-loop: no SIGKILL after an ignored SIGTERM~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	c->killat = now() + KILL_MS * 1000000LL;~
+loop: no SIGKILL after an ignored SIGTERM~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	c->killat = loop_now() + KILL_MS * 1000000LL;~
 loop: poll sleeps past a SIGKILL that is due~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	for (int i = 0; i < MAXP; i++) if (p[i].killat && (first < 0 || p[i].killat < first)) first = p[i].killat;~
 loop: SIGPIPE kills the editor~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	signal(SIGPIPE, SIG_IGN);~
 loop: children inherit the ignored SIGPIPE~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~sigemptyset(&def); sigaddset(&def, SIGPIPE);~sigemptyset(&def);
 loop: pipe ends leak into later children~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	for (int i = 0; i < 6; i++) fcntl(fd[i], F_SETFD, FD_CLOEXEC);~
-loop: a timer wakes before it is due~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~(int)((d + 999999) / 1000000)~(int)(d / 1000000)
+loop: a timer wakes before it is due~test TESTS=loop IDLE_SECONDS=2~~src/loop/timer.c~(int)((d + 999999) / 1000000)~(int)(d / 1000000)
 loop: no input read inside a command (Break_nocheck)~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	if (loop_int || ++count < 32) return loop_int;~	if (loop_int || ++count < 32 || 1) return loop_int;
 loop: processes and timers run inside a command~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	if (loop_int || ++count < 32) return loop_int;~	if (loop_int || ++count < 32) return loop_int;¶	loop_once(0);
 loop: an idle loop wakes every second~test TESTS=loop~~src/loop/loop.c~	int r = poll(pf, (nfds_t)n, timeout_ms), sig = 0;~	int r = poll(pf, (nfds_t)n, timeout_ms < 0 || timeout_ms > 1000 ? 1000 : timeout_ms), sig = 0;
-loop: a full timer table not reported~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	if (f < 0) return -1;~	if (f < 0) f = 0;
+loop: a full timer table not reported~test TESTS=loop IDLE_SECONDS=2~~src/loop/timer.c~	if (f < 0) return -1;~	if (f < 0) f = 0;
 loop: queued bytes lost when the queue grows~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	memcpy(c->q + c->qlen, b, n);~	memcpy(c->q + c->qoff, b, n);
 loop: the queue is never compacted~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~		if (c->qoff) { memmove(c->q, c->q + c->qoff, c->qlen - c->qoff); c->qlen -= c->qoff; c->qoff = 0; }~
 loop: a write of 0 bytes copies to a null queue~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	if (!n) return 0;¶~

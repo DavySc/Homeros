@@ -1,0 +1,11 @@
+begin TRY
+    begin tran
+    insert t
+    values(1)
+    commit
+end TRY
+begin CATCH
+    if @@TRANCOUNT > 0
+        rollback;
+    THROW;
+end CATCH

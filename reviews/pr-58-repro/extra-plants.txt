@@ -1,0 +1,10 @@
+# Review of PR 58: plants no check catches (planted.sh's format; run with
+# reviews/pr-58-repro/extra-plants.sh).  The first shows the fuzzer never
+# stores a kept token start; the second that tsql_faces' memset is redundant.
+tsql: storing a kept token start aborts (fuzz_tsql)~fuzz FUZZERS=tsql FUZZ_SECONDS=60~~src/syntax/tsql.c~q->ck[q->n++] = (uint32_t)p;~{ abort(); }
+tsql: tsql_faces does not clear the faces itself (test_tsql)~test TESTS=tsql~~src/syntax/tsql.c~	memset(f, 0, z - a);¶~
+tsql: a called keyword-function with a space before ( is a keyword (test_tsql)~test TESTS=tsql~~src/syntax/tsql.c~	while (is_space(tsql_byte(r, q))) q++;¶~
+tsql: ( is an operator token, not punctuation (test_tsql)~test TESTS=tsql~~src/syntax/tsql.c~c == '(' || ~
+tsql: sp_ alone is a procedure (test_tsql)~test TESTS=tsql~~src/syntax/tsql.c~if (n > 3 && (w[0]~if (n > 2 && (w[0]
+tsql: words of 20 bytes and more are not looked up (test_tsql)~test TESTS=tsql~~src/syntax/tsql.c~if (n >= sizeof l) return 0;~if (n >= 20) return 0;
+tsql: the schema's name is read from byte 1 (test_tsql)~test TESTS=tsql~~src/syntax/tsql.c~while (b && is_id(tsql_byte(r, b - 1))) b--;~while (b > 1 && is_id(tsql_byte(r, b - 1))) b--;

@@ -151,20 +151,39 @@ win: wincc
 # Not the terminal (no Windows half yet), the fonts (the window draws with
 # GDI) or the daily tools (POSIX only so far): the trial build stubs them.
 # It reads tree-sitter's headers only, so it needs the sources, not $(OBJS)
-WIN_SRCS = $(foreach m,$(filter-out tty font tools,$(BASE)),$(call pick,$(m))) $(wildcard src/win/*.c) src/main.c
+WIN_SRCS = $(foreach m,$(filter-out tty font tools wl,$(MODULES)),$(call pick,$(m))) $(wildcard src/win/*.c) src/main.c
 wincc: | $(SYN)/src build/win
 	@for f in $(WIN_SRCS); do zig cc -target x86_64-windows-gnu $(WARN) $(CPPFLAGS) -c -o build/win/cc.o $$f || exit 1; done
-	@echo "wincc: $(words $(WIN_SRCS)) files compile for Windows"
+	zig rc /fo build/win/homeros.res assets/homeros.rc
+	@echo "wincc: $(words $(WIN_SRCS)) files and the icon resource compile for Windows"
 build/win:
 	mkdir -p $@
 
-check: compilers test fuzz conform org-conform undo-diff lean frama specs win
+check: compilers test fuzz conform org-conform undo-diff lean frama specs win dupes
 	@echo "check: all passed"
+
+# copied code fails (CLAUDE.md: no duplication)
+dupes:
+	@python3 tools/dupes.py
+
+# every function defined, file:line and signature: grep it before writing one
+index:
+	@grep -rnE '^(static )?[a-zA-Z_][a-zA-Z0-9_ *]*[ *][a-zA-Z_][a-zA-Z0-9_]*\([^;{]*(\{.*)?$$' --include=*.c src ref
 
 planted:
 	SHARD=$(SHARD) bash tools/planted.sh
 
+# the Linux window's icon and launcher entry: wl.c's app_id "homeros"
+# names homeros.desktop, whose Icon=homeros the hicolor theme resolves
+PREFIX ?= $(HOME)/.local
+install: homeros
+	install -Dm755 homeros $(DESTDIR)$(PREFIX)/bin/homeros
+	install -Dm644 assets/homeros.desktop $(DESTDIR)$(PREFIX)/share/applications/homeros.desktop
+	install -Dm644 assets/homeros.svg $(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/apps/homeros.svg
+	for n in 16 24 32 48; do install -Dm644 assets/hicolor/$${n}x$$n/apps/homeros.png \
+	  $(DESTDIR)$(PREFIX)/share/icons/hicolor/$${n}x$$n/apps/homeros.png; done
+
 clean:
 	rm -rf build homeros
 
-.PHONY: compilers test fuzz conform org-conform undo-diff specs lean frama win wincc check planted clean
+.PHONY: dupes index compilers test fuzz conform org-conform undo-diff specs lean frama win wincc check planted install clean

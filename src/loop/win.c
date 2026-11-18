@@ -15,16 +15,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include "loop.h"
+#include "timer.h"
 
 /* Neovim reports a job stopped by jobstop as 128 + SIGTERM on Windows too */
-enum { MAXW = 16, MAXT = 16, MAXP = 32, KILLED = 128 + 15 };
+enum { MAXW = 16, MAXP = 32, KILLED = 128 + 15 };
 
 int loop_int;
 
 /* pend: a wait took the handle's signal (an auto-reset event or timer)
    before its function ran; the next loop_once runs it */
 static struct { int used, fd, pend; LoopFn fn; void *ctx; } w[MAXW];
-static struct { void (*fn)(void *); void *ctx; long long at; } t[MAXT];
 static struct Proc {
 	HANDLE ph, job;         /* ph NULL: free slot */
 	HANDLE h[3];            /* our ends: stdin, stdout, stderr; NULL once closed */
@@ -42,7 +42,7 @@ static char buf[1 << 16];
 
 #define H(fd) ((HANDLE)(INT_PTR)(fd))   /* sign-extended, as LongToHandle */
 
-static long long now(void)
+long long loop_now(void)
 {
 	LARGE_INTEGER c, f;
 	QueryPerformanceCounter(&c);
@@ -60,19 +60,6 @@ int loop_watch(int fd, LoopFn fn, void *ctx)
 void loop_unwatch(int fd)
 {
 	for (int i = 0; i < MAXW; i++) if (w[i].used && w[i].fd == fd) w[i].used = 0;
-}
-
-int loop_timer(void (*fn)(void *), void *ctx, int ms)
-{
-	int f = -1;
-	for (int i = 0; i < MAXT; i++) {
-		if (t[i].fn == fn && t[i].ctx == ctx) { t[i].fn = NULL; f = i; break; }
-		if (!t[i].fn && f < 0) f = i;
-	}
-	if (ms < 0) return 0;
-	if (f < 0) return -1;
-	t[f].fn = fn; t[f].ctx = ctx; t[f].at = now() + ms * 1000000LL;
-	return 0;
 }
 
 /* Is watch i ready, without waiting and without APCs?  Takes the signal of
@@ -388,24 +375,12 @@ int loop_once(int timeout_ms)
 		for (int s = 1; s < 3; s++)
 			if (p[i].h[s] && !p[i].busy[s] && !read_next(&p[i], s)) timeout_ms = 0;   /* its end was reported: the caller may have work */
 	}
-	long long first = -1;
-	for (int i = 0; i < MAXT; i++) if (t[i].fn && (first < 0 || t[i].at < first)) first = t[i].at;
-	if (first >= 0) {
-		long long d = first - now();
-		int ms = d <= 0 ? 0 : (int)((d + 999999) / 1000000);   /* round up: never wake before it is due */
-		if (timeout_ms < 0 || ms < timeout_ms) timeout_ms = ms;
-	}
+	timeout_ms = timer_wait(-1, timeout_ms);
 	DWORD r = MsgWaitForMultipleObjectsEx((DWORD)n, h, timeout_ms < 0 ? INFINITE : (DWORD)timeout_ms, mask, MWMO_ALERTABLE | MWMO_INPUTAVAILABLE);
 	if (r == WAIT_FAILED) return -1;
 	if (r < WAIT_OBJECT_0 + (DWORD)n && who[r - WAIT_OBJECT_0] >= 0) w[who[r - WAIT_OBJECT_0]].pend = 1;   /* the wait took its signal */
 	run_ready();   /* as poll, every ready watch, not only the one the wait names */
-	long long tn = now();
-	for (int i = 0; i < MAXT; i++)
-		if (t[i].fn && t[i].at <= tn) {
-			void (*fn)(void *) = t[i].fn;
-			t[i].fn = NULL;
-			fn(t[i].ctx);
-		}
+	timer_run();
 	for (int i = 0; i < MAXP; i++)
 		if (p[i].ph && WaitForSingleObject(p[i].ph, 0) == WAIT_OBJECT_0) report(&p[i]);
 	return 0;

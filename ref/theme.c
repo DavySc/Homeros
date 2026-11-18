@@ -4,7 +4,8 @@
 /* Catppuccin Mocha (FEATURES.md: Catppuccin, flavour toggle later): per
    face the colours and style that catppuccin/nvim's treesitter.lua gives the capture, with
    its default styles (comments, conditionals and "miscs" italic), links
-   followed and unlisted captures falling back to their parent.  Of its
+   followed and unlisted captures falling back to their parent, or to
+   Neovim's default link (Special) where catppuccin sets none.  Of its
    per-language overrides only @markup.heading.1.markdown to 6 are taken
    (rainbow1 to 6), for markup.heading.1 to 6: no other grammar here has
    those captures. */
@@ -13,13 +14,13 @@ const Face faces[FACE_COUNT] = {
 	{ {205, 214, 244}, {0, 0, 0}, FACE_FG, {0} },     /* variable: text */
 	{ {243, 139, 168}, {0, 0, 0}, FACE_FG, {0} },     /* variable.builtin: red */
 	{ {235, 160, 172}, {0, 0, 0}, FACE_FG, {0} },     /* variable.parameter: maroon */
-	{ {235, 160, 172}, {0, 0, 0}, FACE_FG, {0} },     /* variable.parameter.builtin: maroon */
+	{ {245, 194, 231}, {0, 0, 0}, FACE_FG, {0} },     /* variable.parameter.builtin: pink (Neovim's link to Special) */
 	{ {180, 190, 254}, {0, 0, 0}, FACE_FG, {0} },     /* variable.member: lavender */
 	{ {250, 179, 135}, {0, 0, 0}, FACE_FG, {0} },     /* constant: peach */
 	{ {250, 179, 135}, {0, 0, 0}, FACE_FG, {0} },     /* constant.builtin: peach */
 	{ {203, 166, 247}, {0, 0, 0}, FACE_FG, {0} },     /* constant.macro: mauve */
 	{ {249, 226, 175}, {0, 0, 0}, FACE_ITALIC | FACE_FG, {0} }, /* module: yellow, italic */
-	{ {249, 226, 175}, {0, 0, 0}, FACE_ITALIC | FACE_FG, {0} }, /* module.builtin: yellow, italic */
+	{ {245, 194, 231}, {0, 0, 0}, FACE_FG, {0} },     /* module.builtin: pink (Neovim's link to Special) */
 	{ {116, 199, 236}, {0, 0, 0}, FACE_FG, {0} },     /* label: sapphire */
 	{ {166, 227, 161}, {0, 0, 0}, FACE_FG, {0} },     /* string: green */
 	{ {148, 226, 213}, {0, 0, 0}, FACE_FG, {0} },     /* string.documentation: teal */
@@ -38,7 +39,7 @@ const Face faces[FACE_COUNT] = {
 	{ {203, 166, 247}, {0, 0, 0}, FACE_FG, {0} },     /* type.builtin: mauve */
 	{ {249, 226, 175}, {0, 0, 0}, FACE_FG, {0} },     /* type.definition: yellow */
 	{ {250, 179, 135}, {0, 0, 0}, FACE_FG, {0} },     /* attribute: peach */
-	{ {250, 179, 135}, {0, 0, 0}, FACE_FG, {0} },     /* attribute.builtin: peach */
+	{ {245, 194, 231}, {0, 0, 0}, FACE_FG, {0} },     /* attribute.builtin: pink (Neovim's link to Special) */
 	{ {180, 190, 254}, {0, 0, 0}, FACE_FG, {0} },     /* property: lavender */
 	{ {137, 180, 250}, {0, 0, 0}, FACE_FG, {0} },     /* function: blue */
 	{ {250, 179, 135}, {0, 0, 0}, FACE_FG, {0} },     /* function.builtin: peach */
@@ -71,7 +72,7 @@ const Face faces[FACE_COUNT] = {
 	{ {30, 30, 46}, {243, 139, 168}, FACE_FG | FACE_BG, {0} }, /* comment.error: base on red */
 	{ {30, 30, 46}, {249, 226, 175}, FACE_FG | FACE_BG, {0} }, /* comment.warning: base on yellow */
 	{ {30, 30, 46}, {242, 205, 205}, FACE_FG | FACE_BG, {0} }, /* comment.todo: base on flamingo */
-	{ {30, 30, 46}, {245, 224, 220}, FACE_FG | FACE_BG, {0} }, /* comment.note: base on rosewater */
+	{ {30, 30, 46}, {137, 180, 250}, FACE_FG | FACE_BG, {0} }, /* comment.note: base on blue (catppuccin sets it to @comment.hint) */
 	{ {243, 139, 168}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} }, /* markup.strong: red, bold */
 	{ {243, 139, 168}, {0, 0, 0}, FACE_ITALIC | FACE_FG, {0} }, /* markup.italic: red, italic */
 	{ {205, 214, 244}, {0, 0, 0}, FACE_STRIKE | FACE_FG, {0} }, /* markup.strikethrough: text, strikethrough */
@@ -101,14 +102,15 @@ const Face faces[FACE_COUNT] = {
 	{ {249, 226, 175}, {0, 0, 0}, FACE_ITALIC | FACE_FG, {0} }, /* tag.attribute: yellow, italic */
 	{ {148, 226, 213}, {0, 0, 0}, FACE_FG, {0} },     /* tag.delimiter: teal */
 	/* catppuccin/nvim's render_markdown integration: rainbow N darkened
-	   into base by 0.28 (its transparent_background value, which Davy uses:
-	   measured from his screenshot, 2026-11-18) */
-	{ {0, 0, 0}, {90, 61, 80}, FACE_BG, {0} },     /* heading 1 background: red 28% on base */
-	{ {0, 0, 0}, {92, 72, 71}, FACE_BG, {0} },     /* heading 2 background: peach 28% on base */
-	{ {0, 0, 0}, {91, 85, 82}, FACE_BG, {0} },     /* heading 3 background: yellow 28% on base */
-	{ {0, 0, 0}, {68, 85, 78}, FACE_BG, {0} },     /* heading 4 background: green 28% on base */
-	{ {0, 0, 0}, {54, 77, 99}, FACE_BG, {0} },     /* heading 5 background: sapphire 28% on base */
-	{ {0, 0, 0}, {72, 75, 104}, FACE_BG, {0} },     /* heading 6 background: lavender 28% on base */
+	   into base by 0.095, its value without transparent_background (Davy
+	   chose the opaque Mocha base; measured in nvim 0.12.6, catppuccin
+	   05e8787, reviews/pr-57.md) */
+	{ {0, 0, 0}, {50, 40, 58}, FACE_BG, {0} },     /* heading 1 background: red 9.5% on base */
+	{ {0, 0, 0}, {51, 44, 54}, FACE_BG, {0} },     /* heading 2 background: peach 9.5% on base */
+	{ {0, 0, 0}, {51, 49, 58}, FACE_BG, {0} },     /* heading 3 background: yellow 9.5% on base */
+	{ {0, 0, 0}, {43, 49, 57}, FACE_BG, {0} },     /* heading 4 background: green 9.5% on base */
+	{ {0, 0, 0}, {38, 46, 64}, FACE_BG, {0} },     /* heading 5 background: sapphire 9.5% on base */
+	{ {0, 0, 0}, {44, 45, 66}, FACE_BG, {0} },     /* heading 6 background: lavender 9.5% on base */
 	/* the UI groups (Neovim, mini.statusline, gitsigns, snacks, which-key)
 	   as a live Neovim 0.12.6 with catppuccin 05e8787 (my-nvim's pin) shows
 	   them, opaque (measured: project files ui-look/hl-opaque.txt).  The
@@ -166,7 +168,8 @@ const Face faces[FACE_COUNT] = {
 	{ {243, 139, 168}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} },  /* kitten heart: red */
 	{ {245, 194, 231}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} },  /* kitten text: pink */
 	{ {108, 112, 134}, {0, 0, 0}, FACE_FG, {0} },  /* kitten dim: overlay0 */
-	/* the start screen: bold, in the app icon's colours */
+	/* the start screen: bold, in the app icon's colours (by design, not
+	   catppuccin's SnacksDashboard groups) */
 	{ {180, 190, 254}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} },  /* dashboard title: lavender */
 	{ {137, 180, 250}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} },  /* dashboard footer: blue */
 	{ {245, 224, 220}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} },  /* dashboard cat: rosewater */

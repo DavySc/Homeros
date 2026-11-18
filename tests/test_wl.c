@@ -127,7 +127,7 @@ static void draw(void)
 	int r, c;
 	backend_wl.size(&r, &c);
 	if (g.rows != r || g.cols != c) CHECK(!grid_resize(&g, r, c));
-	grid_puts(&g, 0, 0, "homeros", ATTR_NONE);
+	grid_puts(&g, 0, 0, g.cols, "homeros", 7, ATTR_NONE, FACE_NONE);
 	g.crow = 0;
 	g.ccol = 7;
 	show();
@@ -281,6 +281,7 @@ static void test_sway(void)
 			int n = (int)rnd(13), r = phase ? (int)rnd(16) : i / 20;
 			grid_put(&g, r, phase ? (int)rnd(20) : i % 20, (const unsigned char *)ch[n], strlen(ch[n]), n == 10 || n == 11 ? 2 : 1, (int)rnd(3));
 			g.c[r * g.cols + rnd(20)].face = (unsigned char)rnd(FACE_COUNT);
+			g.c[r * g.cols + rnd(20)].bg = (unsigned char)(rnd(2) ? rnd(FACE_COUNT) : 0);
 		}
 		if (phase >= 15) {         /* a scroll by k rows, either way */
 			int k = (int)rnd(7) - 3, a = k > 0 ? k : -k;
@@ -300,11 +301,11 @@ static void test_sway(void)
 	   drawn into, but the screen shows the other buffer's row: it still
 	   needs its damage (the review of package 8, finding 1) */
 	for (int i = 0; i < 4; i++) {
-		grid_puts(&g, 3, 0, "two frames ago", ATTR_NONE);
+		grid_puts(&g, 3, 0, g.cols, "two frames ago", 14, ATTR_NONE, FACE_NONE);
 		show();
-		grid_puts(&g, 3, 0, "the last frame", ATTR_NONE);
+		grid_puts(&g, 3, 0, g.cols, "the last frame", 14, ATTR_NONE, FACE_NONE);
 		show();
-		grid_puts(&g, 3, 0, "two frames ago", ATTR_NONE);
+		grid_puts(&g, 3, 0, g.cols, "two frames ago", 14, ATTR_NONE, FACE_NONE);
 		show();
 		cmd("grim -t ppm %s/1.ppm # %s", dir);
 		grid_free(&shown);
@@ -330,6 +331,16 @@ static void test_sway(void)
 	show();
 	snprintf(b, sizeof b, "grim -g '%d,0 %dx%d' -t ppm %s/y.ppm && cmp -s %s/x.ppm %s/y.ppm", cellw(), cellw(), cellh(), dir, dir, dir);
 	run(b);
+
+	/* the background layer (the cursor line) under a cell with no background of its own */
+	grid_put(&g, 0, 2, (const unsigned char *)" ", 1, 1, ATTR_NONE);
+	g.c[2].bg = FACE_CURSOR_LINE;
+	show();
+	CHECK(ink(2 * cellw(), 0, cellw(), cellh(), 0) == cellw() * cellh());
+	/* an indent guide is not the preedit: no underline (guides are drawn from round B) */
+	grid_put(&g, 0, 3, (const unsigned char *)" ", 1, 1, ATTR_GUIDE);
+	show();
+	CHECK(!ink(3 * cellw(), 0, cellw(), cellh(), 0));
 
 	/* a cluster longer than a cell's 4 bytes is drawn from grid.c's store:
 	   a thumbs up with a skin tone (8 bytes) is one brown glyph */
@@ -481,7 +492,7 @@ static void test_sway(void)
 	/* hidden: no frame callback, so nothing is drawn until shown again */
 	run(SWAYMSG "move scratchpad");
 	pump(100);
-	grid_puts(&g, 1, 0, "hidden", ATTR_NONE);
+	grid_puts(&g, 1, 0, g.cols, "hidden", 6, ATTR_NONE, FACE_NONE);
 	CHECK(backend_wl.ready());
 	backend_wl.present(&g, &shown);
 	pump(500);
