@@ -76,7 +76,9 @@ static size_t line(unsigned char *s)
 		0x2764, 0x915, 0x94D, 0x937, 0x600, 0x85, 0x1100, 0x1161, 0x11A8, 0xAC00, 0xAC01, 0x301,
 		0x903, 0xA9, 0x1F3FB, 0x1F468, 0x1F469, 0x4E2D };
 	static const char *odd[] = { "\xc1\x81", "\xc0\x80", "\xe0\x80\x81", "\xf4\x90\x80\x80", "\xf7\xbf\xbf\xbf",
-		"\xed\xa0\x80" };
+		"\xed\xa0\x80",
+		/* CR then LF joins (GB3) even when LF is overlong, which is not ASCII */
+		"\r\xc0\x8a", "\xc0\x8d\xc0\x8a", "\xe0\x80\x8d\xf0\x80\x80\x8a", "\xc0\x8a\xc0\x8d" };
 	size_t n = 0;
 	for (unsigned k = 1 + rnd(12); k--;) {
 		unsigned x = rnd(100), c;
