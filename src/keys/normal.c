@@ -902,18 +902,21 @@ static void nv_undo(Cmdarg *cap)
 	/* nv_kundo() recomputes curswant from the cached screen column, which
 	   the core keeps across the undo unless a step invalidated it
 	   (core_set_want, Win.vc) */
+	/* in a CTRL-O command that column is an Insert mode one (a Tab's first
+	   cell, not its last), so restarting the insert does not step past a
+	   Tab (measured: "\t", i y C-o u x puts x before it) */
+	int mode = E->mode;
+	if (restart_edit) E->mode = MODE_INSERT;
 	size_t w0 = W->want;
 	core_set_want(E);
 	W->want = w0;
 	/* u_doit() stops at the first step that finds nothing; in a CTRL-O
 	   command check_cursor_col() lets the cursor stay past the end
 	   (restart_edit), which core_clamp() allows in Insert mode */
-	int mode = E->mode;
-	if (restart_edit) E->mode = MODE_INSERT;
 	for (long n = cap->count1; n-- && core_undo(E, cap->cmdchar == KEY_CTRL_R) >= 0;) {}
-	E->mode = mode;
 	buf_changed();
 	core_set_want(E);
+	E->mode = mode;
 	set_curswant = 0;
 }
 

@@ -25,3 +25,4 @@ keys: a block change that starts past a short line's end leaves that line withou
 keys: CTRL-V then a special key inserts nothing, not its name (recorded traces)~test TESTS=~~src/keys/edit.c~(lit.i == 0 || cc <= 0x10FFFF)~(cc <= 0x10FFFF)
 keys: CTRL-V Del inserts nothing, not <Del> (recorded traces)~test TESTS=~~src/keys/edit.c~if (c > KEY_RIGHT && c != KEY_DEL) return;~if (c > KEY_RIGHT) return;
 keys: after a block change whose text broke the line, the cursor stays inside a character (recorded traces)~test TESTS=~~src/keys/ops.c~	W->col = (size_t)head(ml_get((long)W->line), (long)W->col);¶}~}
+keys: undo in a CTRL-O command takes a Tab's last cell as the wanted column, so the insert restarts past the Tab (recorded traces)~test TESTS=~~src/keys/normal.c~	core_set_want(E);¶	E->mode = mode;¶	set_curswant = 0;~	E->mode = mode;¶	core_set_want(E);¶	set_curswant = 0;

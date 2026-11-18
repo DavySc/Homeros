@@ -16,7 +16,7 @@ enum { BACKSPACE_CHAR = 1, BACKSPACE_WORD, BACKSPACE_WORD_NOT_SPACE, BACKSPACE_L
 int restart_edit, arrow_used, did_ai_flag;
 int ins_at_eol;
 static int cmdchar_s, did_restart_edit, update_Insstart_orig, ins_need_undo;
-static int inserted_space, lastc, wait_for, batch_len;
+static int inserted_space, lastc, wait_for, batch_len, check_owed;
 static long count_s, ai_col, new_insert_skip, o_lnum;
 static Pos Insstart, Insstart_orig;
 
@@ -25,7 +25,7 @@ static Pos Insstart, Insstart_orig;
 static int *last_ins;
 static long last_ins_n, last_ins_skip;
 
-void edit_reset(void) { free(last_ins); last_ins = NULL; last_ins_n = last_ins_skip = 0; }
+void edit_reset(void) { free(last_ins); last_ins = NULL; last_ins_n = last_ins_skip = 0; check_owed = 0; }
 
 static int replacing(void) { return E->ks.replace; }
 
@@ -744,12 +744,15 @@ void insert_key(int k, int pending)
 		c = w;   /* lastc is the command: ins_reg() reads its register itself */
 		goto post;
 	}
+	/* inside insertchar()'s string: no key handling, and Neovim's edit()
+	   runs insert_check() once for the string, not per character, which
+	   keeps a long line from costing its length per key */
 	if (batch_len && c >= ' ' && c < 0x7f && c != '0' && c != '^') {
-		/* inside insertchar()'s string: no key handling */
 		insertchar(c, pending, 0);
-		insert_check();
+		check_owed = 1;
 		return;
 	}
+	if (check_owed) { check_owed = 0; insert_check(); }
 	batch_len = 0;
 	switch (c) {
 	case KEY_ESC: case KEY_CTRL_C:

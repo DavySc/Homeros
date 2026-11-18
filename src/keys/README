@@ -54,8 +54,6 @@ Waits for package 4, still differing with PR 20's core:
 Not traced to a fix yet (owner package 5):
 - gg, then C-v < on a line that is only a Tab ("\t\n\tfoo", gg C-v <):
   Neovim shifts it to 4 spaces, ours to 7; without gg Neovim gives 7 too.
-- block C, then Down and a space ("", A Enter Esc C-v [[ C ∀ Down Space):
-  Neovim's cursor ends at column 0, ours at 1.
 - a counted insert, Left, then Tab ("\tFoo", 2 a Left Tab Esc): Neovim
   inserts one space, ours four; like s Tab below, Neovim's softtabstop
   counts from a stale cached w_virtcol.
