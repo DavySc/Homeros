@@ -10,7 +10,7 @@
 #include "grid.h"
 #include "syntax.h"
 #include "text.h"
-#include "../src/syntax/tsql.h"
+#include "tsql.h"
 
 /* K keyword, S string, C comment, F system function, T system table, view
    or schema, P stored procedure, N number, o operator, . plain */
