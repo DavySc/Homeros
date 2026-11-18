@@ -363,6 +363,10 @@ static int patch(const View *v, int h, int z, Str *p)
 static int apply(const View *v, int h, int z, const char *a1, const char *a2)
 {
 	if (!strncmp(v->pool.s + v->sec[v->sec[h].parent].aux, "diff --cc", 9)) return 1;
+	/* --index refuses a file whose stat the index has out of date ("does
+	   not match index"); magit's refresh has written it fresh, ours never
+	   writes (git_diff), so the write refreshes it first */
+	if (a2 && !strcmp(a2, "--index") && !wgit("update-index", "-q", "--refresh", NULL)) return -1;
 	Cmd *c = wgit("apply", NULL);
 	if (!c) return -1;
 	if (a1) cmd_add(c, a1);
@@ -813,10 +817,8 @@ static void diff_open(Editor *e, Repo *r, int dt, const char *file)
 {
 	Cmd c;
 	cmd_git(&c, 1);
-	cmd_add(&c, "diff");
-	if (dt == T_STAGED) cmd_add(&c, "--cached");
-	if (dt < 0) cmd_add(&c, "HEAD");
-	cmd_add(&c, "-p"); cmd_add(&c, "--stat"); cmd_add(&c, "--no-prefix"); cmd_add(&c, "--ita-visible-in-index");
+	git_diff(&c, dt);
+	cmd_add(&c, "--stat"); cmd_add(&c, "--no-prefix"); cmd_add(&c, "--ita-visible-in-index");
 	cmd_add(&c, "--no-ext-diff"); cmd_add(&c, "--");
 	if (file) cmd_add(&c, file);
 	aux_open(e, r, T_DIFF, dt, &c);

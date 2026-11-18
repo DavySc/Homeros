@@ -67,6 +67,19 @@ void cmd_editor(Cmd *c)
 	c->keepin = 1;
 }
 
+/* git diff's command for unstaged, staged or (-1) work tree changes: git
+   diff against the work tree takes index.lock, --no-optional-locks or
+   not, and writes the index whenever a file's stat is out of date and its
+   content is not (builtin/diff.c refresh_index_quietly; measured, git 2.43
+   and MinGit 2.47); the plumbing commands with the same output never do */
+void git_diff(Cmd *c, int dt)
+{
+	if (dt == T_STAGED) { cmd_add(c, "diff"); cmd_add(c, "--cached"); }
+	else if (dt < 0) { cmd_add(c, "diff-index"); cmd_add(c, "HEAD"); }
+	else cmd_add(c, "diff-files");
+	cmd_add(c, "-p");
+}
+
 void cmd_free(Cmd *c) { str_free(&c->args); str_free(&c->in); c->argc = 0; }
 
 /* --- processes --------------------------------------------------------- */
@@ -234,10 +247,10 @@ static void start_reads(Repo *r)
 		cmd_free(&c);
 	}
 	for (int k = 0; k < 2; k++) {
-		/* magit-insert-unstaged-changes, magit-insert-staged-changes */
+		/* magit-insert-unstaged-changes, magit-insert-staged-changes; the
+		   unstaged as diff-files, which never writes the index (git_diff) */
 		cmd_git(&c, 1);
-		cmd_add(&c, "diff");
-		if (k) cmd_add(&c, "--cached");
+		git_diff(&c, k ? T_STAGED : T_UNSTAGED);
 		cmd_add(&c, "--ita-visible-in-index"); cmd_add(&c, "--no-ext-diff");
 		cmd_add(&c, "--ignore-submodules=none"); cmd_add(&c, "--no-prefix"); cmd_add(&c, "--");
 		git_spawn(r, k ? SLOT_CACHED : SLOT_DIFF, &c);

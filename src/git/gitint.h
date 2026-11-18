@@ -109,6 +109,7 @@ Editor *git_ed(void);
 void  cmd_add(Cmd *c, const char *a);
 void  cmd_git(Cmd *c, int read);
 void  cmd_editor(Cmd *c);
+void  git_diff(Cmd *c, int dt);    /* adds git diff's subcommand for T_UNSTAGED, T_STAGED or -1 (the work tree) */
 void  cmd_free(Cmd *c);
 int   git_spawn(Repo *r, int slot, Cmd *c);
 int   git_live(const void *ctx);  /* ctx is a Run or Aux not freed (git_free leaves children's ends behind) */
