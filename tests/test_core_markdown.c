@@ -51,8 +51,12 @@ static void command(Editor *e, Grid *g, const char *t)
 {
 	if (!strncmp(t, "k:", 2)) for (const char *s = t + 2; *s; s++) keys_feed(e, (unsigned char)*s, 0);
 	else if (!strcmp(t, "wrap")) core_set_wrap(e, 1);
-	else if (!strcmp(t, "sp") || !strcmp(t, "vs")) CHECK(!core_split(e, t[0] == 'v', 0));
-	else if (!strncmp(t, "w:", 2)) core_win_goto(e, t[2], 0);
+	/* as CTRL-W s, v and w typed: a window command through the keys first
+	   settles the wanted column of the window it leaves (normal_cmd()) */
+	else if (!strcmp(t, "sp") || !strcmp(t, "vs") || !strncmp(t, "w:", 2)) {
+		keys_feed(e, 23, 0);
+		keys_feed(e, t[0] == 'w' ? t[2] : t[0] == 'v' ? 'v' : 's', 0);
+	}
 	else if (!strncmp(t, "e:", 2)) CHECK(!core_edit_file(e, t + 2, 0));
 	/* ref/keys.c has no visual mode: its flag, as 'v' sets it */
 	else if (!strcmp(t, "visual")) e->ks.visual = 'v';
