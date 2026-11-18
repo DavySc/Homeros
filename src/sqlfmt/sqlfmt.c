@@ -35,7 +35,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "sqlfmt.h"
-#include "../syntax/tsql.h"
+#include "tsql.h"
 
 /* SQLDiff's token kinds, as the parser and the layout tell them apart */
 enum { WORD, QUOTED, VAR, STRING, NUMBER, OP, COMMA, LP, RP, SEMI, DOT, COLON, LCOMMENT, BCOMMENT, GO, ERR };
