@@ -1,0 +1,58 @@
+C 6 40
+F 090ac3a9202d2d20cebb7820cebb78206162e6bca2
+F 
+F 
+T vnew
+T alt
+T w:p
+T w:c
+T L
+P
+S 1
+S   1 é -- λx λx ab漢
+S ~
+S ~
+S f0                    1,1-8          All
+S 
+M - - -
+P
+S 1                  │1
+S   1 é -- λx λx ab漢│~
+S ~                  │~
+S ~                  │~
+S <1,1-8          All < 0,0-1          All
+S :vnew
+M - - -
+P
+R
+S   1 é -- λx λx ab漢│  1 é -- λx λx ab漢
+R
+R
+S <1,1-8          All < 1,1-8          All
+R
+M - - -
+P
+S 1                   │1
+S   1 é -- λx λx ab漢 │  1 é -- λx λx ab漢
+S ~                   │~
+S ~                   │~
+S < 1,1-8          All <1,1-8          All
+R
+M - - -
+P
+S 1
+S   1 é -- λx λx ab漢
+S ~
+S ~
+S f0                    1,1-8          All
+R
+M - - -
+P
+S   1
+S 2   é -- λx λx ab漢
+R
+R
+S f0                    2,10-8         All
+R
+M - - -
+E
