@@ -1,5 +1,5 @@
 # Plants for src/syntax/ (format in tools/planted.sh).
-syntax: a priority tie goes to the earlier capture (test_syntax)~test TESTS=syntax~~src/syntax/syntax.c~if (pr >= s->prio[i - a])~if (pr > s->prio[i - a])
+syntax: a priority tie goes to the earlier capture (test_syntax)~test TESTS=syntax~~src/syntax/syntax.c~if (pr >= s->prio[i - s->ca])~if (pr > s->prio[i - s->ca])
 syntax: not- predicates are not negated (test_syntax)~test TESTS=syntax~~src/syntax/syntax.c~if (test(src, m, &P->p[i]) == P->p[i].neg) return 0;~if (!test(src, m, &P->p[i])) return 0;
 syntax: an edit keeps a stopped parse going on the changed text (test_syntax, edit while stopped)~test TESTS=syntax~~src/syntax/syntax.c~	if (s->susp) s->susp = &edited;~	if (!s->susp) s->susp = &edited;
 syntax: Lua's lazy - takes one character at least (test_syntax, LuaJIT)~test TESTS=syntax~~src/syntax/lmatch.c~		long r = match(ms, s, ep + 1);~		long r = s < ms->end ? -1 : match(ms, s, ep + 1);
