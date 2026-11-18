@@ -16,3 +16,4 @@ keys: check_cursor_col moves a cursor inside a cluster to its head, so Enter bef
 keys: aw at the end of the buffer does not leave the cursor on the NUL it reached (recorded traces)~test TESTS=~~src/keys/motion.c~			int r = incl(&p);¶			setcur(p);~			int r = incl(&p);¶			if (r != -1) setcur(p);
 keys: an exclusive motion moved to the line before ends on its last character's head, so y } yanks one byte of it (recorded traces)~test TESTS=~~src/keys/normal.c~				oap->end.col--;~				oap->end.col = head(ml_get(oap->end.lnum), oap->end.col - 1);
 keys: block I ignores a cursor moved before typing, so C-v j I Right x puts the wrong text below (recorded traces)~test TESTS=~~src/keys/ops.c~	if (oap->start.lnum == b_op_start_orig.lnum && !bd.is_MAX && !did_indent) {~	if (0) {
+keys: r BS puts a DEL character in instead of beeping (recorded traces)~test TESTS=~~src/keys/normal.c~	if (cap->nchar >= KEY_UP || cap->nchar == 127) {~	if (cap->nchar >= KEY_UP) {

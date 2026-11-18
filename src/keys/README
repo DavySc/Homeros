@@ -28,6 +28,8 @@ Not built (FEATURES.md section 2), part two of package 5:
 - folds, spell, snippet jumps, CTRL-S: with their packages.
 - U (undo line) is not in FEATURES.md, so not built; Visual gUU reaches it
   (gU on the selection, then U).
+- CTRL-W Tab (CTRL-W CTRL-I) needs search and windows; a C whose motion
+  fails sends the insert's C-w and Tab to Normal mode.
 
 Waits for package 4's core (src/core, PR 20), passing with it (measured):
 - CTRL-D, CTRL-U, CTRL-E, CTRL-Y, zz zt zb H M L: ref/core.c stubs them
@@ -39,7 +41,7 @@ Waits for package 4's core (src/core, PR 20), passing with it (measured):
 Waits for package 4, still differing with PR 20's core:
 - core_vcol at a byte inside a cluster (x + U+0301 with the cursor after x)
   gives the cluster's end; Neovim's getvcol gives its start.  Typing before a lone mark makes such a cursor ("x\n\u0301", j i a Up
-  C-w: Neovim's column 0, ours 1).
+  C-w: Neovim's column 0, ours 1).  CTRL-O and Del there differ the same way ("\u0301 \"a b\"", I é C-o).
 - the cursor after undoing a linewise change of several lines (4cc Esc u,
   2cc, 2S, 3S Esc u, 3S C-o u, V j c Esc u, V } c Esc u, c+ Esc u, c2k,
   cap, V s C-o u): Neovim takes it from
@@ -55,6 +57,8 @@ Waits for package 4, still differing with PR 20's core:
   suspect (owner package 4, not traced).
 
 Not traced to a fix yet (owner package 5):
+- block C, then Down and a space ("", A Enter Esc C-v [[ C ∀ Down Space):
+  Neovim's cursor ends at column 0, ours at 1.
 - a counted insert, Left, then Tab ("\tFoo", 2 a Left Tab Esc): Neovim
   inserts one space, ours four; like s Tab below, Neovim's softtabstop
   counts from a stale cached w_virtcol.
@@ -72,6 +76,8 @@ Not traced to a fix yet (owner package 5):
   for an edit after the cursor).
 
 Neovim's own oddities, not copied:
+- r, then R and CTRL-U back over the replaced character ("  0", r 3 l R
+  C-u): Neovim's replace stack still holds what r replaced and puts it back.
 - block I, then Left past the block's start and text ("abcd\nefgh", l C-v j
   I Left x): Neovim puts "a" in the other lines, ours "x" (its
   Insstart_orig stays at the block's start; not traced further).

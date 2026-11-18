@@ -693,7 +693,8 @@ static void nv_Replace(Cmdarg *cap)
 static void nv_replace(Cmdarg *cap)
 {
 	if (checkclearop(cap->oap)) return;
-	if (cap->nchar >= KEY_UP) { clearopbeep(cap->oap); return; }
+	/* a special key aborts; <BS> (127) is Neovim's K_BS */
+	if (cap->nchar >= KEY_UP || cap->nchar == 127) { clearopbeep(cap->oap); return; }
 	if (VIsual_active) { nv_operator(cap); return; }
 	const char *s = ml_get((long)W->line);
 	long len = ml_len((long)W->line), c = (long)W->col, chars = 0;

@@ -67192,5 +67192,41 @@
 0
 ]
 }
+},
+{
+"text": "bar\nxy",
+"keys": [
+"r",
+"<BS>"
+],
+"nvim": {
+"cursor": [
+1,
+0
+],
+"lines": [
+"bar",
+"xy"
+]
+}
+},
+{
+"text": "bar\nxy",
+"keys": [
+"v",
+"l",
+"r",
+"<BS>"
+],
+"nvim": {
+"lines": [
+"bar",
+"xy"
+],
+"cursor": [
+1,
+1
+]
+}
 }
 ]
