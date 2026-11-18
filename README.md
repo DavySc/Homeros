@@ -17,7 +17,7 @@ Tools: `nix build -f tools.nix tools -o tools-env` (design/env.nix's tools plus 
 | `make compilers` | gcc and clang, C17, `-Wall -Wextra -Werror` |
 | `make test` | unit tests under ASan and UBSan, and 1,000 recorded Neovim traces replayed |
 | `make fuzz` | libFuzzer on the text and on random key sequences, `FUZZ_SECONDS` each (default 30) |
-| `make conform` | `CONFORM_N` fresh random key sequences (default 2,000) against live `nvim --headless` |
+| `make conform` | `CONFORM_N` random key sequences (default 2,000, seed `SEED`, default 1; nightly CI takes a fresh one) against live `nvim --headless` |
 | `make undo-diff` | the undo tree oracle against Neovim's recorded tree (`design/ref/undo/undo_diff.py`) |
 | `make lean` | `design/proofs/Undo.lean`, failing on any `sorry` |
 | `make frama` | Frama-C WP on the UTF-8 kernels; every goal must be proved |

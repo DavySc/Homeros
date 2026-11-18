@@ -93,7 +93,9 @@ size_t uni_glen(const unsigned char *s, size_t n, size_t i)
 			 ((l == 7 || l == 5) && t == 5) ||
 			 t == 2 || t == 11 || t == 9 || l == 10 ||
 			 (l == 13 && t == 12) || (l == 8 && t == 8));
-		if (!glue && !(ic == 1 && it == 2) &&
+		/* GB3 (CR x LF) by code point: gcb has one class for CR, LF and
+		   Control, and a cluster whose last code point is CR is CR alone */
+		if (!glue && !(ic == 1 && it == 2) && !(p == 0x0D && c == 0x0A) &&
 		    !(p == 0x644 && (c == 0x622 || c == 0x623 || c == 0x625 || c == 0x627)))
 			break;
 		/* the step that loop invariant 3 needs, as its own goal: proved
