@@ -1,0 +1,88 @@
+diff --git a/include/keys.h b/include/keys.h
+index 4b19f16..b6a0604 100644
+--- a/include/keys.h
++++ b/include/keys.h
+@@ -40,5 +40,5 @@ void keys_feed(struct Editor *e, int key, int pending);
+ /* Davy's Normal-mode maps (FEATURES.md 4: Space as leader, - for oil), for
+    main.c: 1 if it took the key; while a map is incomplete ks.pending is set,
+    so the next key comes here first.  0: feed it to keys_feed */
+-int keys_map(struct Editor *e, int key);
++void keys_input(struct Editor *e, int key, int pending);
+ #endif
+diff --git a/src/keys/keys.c b/src/keys/keys.c
+index 4a0f706..478d004 100644
+--- a/src/keys/keys.c
++++ b/src/keys/keys.c
+@@ -123,7 +123,7 @@ static int lead[3], nlead;   /* the keys typed of a map not yet complete */
+    completed waits (a lone SPC as with which-key, without 'timeoutlen');
+    otherwise the first key runs unmapped and the rest are checked again
+    (Neovim's vgetorpeek() when no map matches) */
+-int keys_map(Editor *e, int k)
++static int map(Editor *e, int k)
+ {
+ 	if (!nlead && (e->mode != MODE_NORMAL || e->ks.visual || !normal_mappable(0))) return 0;
+ 	lead[nlead++] = k;
+@@ -146,15 +146,20 @@ int keys_map(Editor *e, int k)
+ 		return 1;
+ 	}
+ 	if (part) return e->ks.pending = 1;   /* main.c sends the next keys here first */
+-	int n = nlead;
++	int n = nlead, l[3];
++	memcpy(l, lead, sizeof l);
+ 	nlead = 0;
+ 	if (n == 1) return 0;
+-	keys_feed(e, lead[0], 1);
+-	for (int i = 1; i < n; i++)
+-		if (!keys_map(e, lead[i])) keys_feed(e, lead[i], i < n - 1);
++	keys_feed(e, l[0], 1);
++	for (int i = 1; i < n; i++) keys_input(e, l[i], i < n - 1);
+ 	return 1;
+ }
+ 
++void keys_input(Editor *e, int k, int pending)
++{
++	if (!(e->ks.pending ? map(e, k) : tools_key(e, k) || git_key(e, k) || map(e, k))) keys_feed(e, k, pending);
++}
++
+ void keys_feed(Editor *e, int k, int pending)
+ {
+ 	/* the window's close button: :qa, as Neovim's GUIs do (E37 if
+diff --git a/src/keys/normal.c b/src/keys/normal.c
+index e406124..64d506a 100644
+--- a/src/keys/normal.c
++++ b/src/keys/normal.c
+@@ -1427,7 +1427,7 @@ int normal_mappable(int drop)
+ {
+ 	if (oa.op_type != OP_NOP) return 0;
+ 	for (int i = 0; i < npend; i++)
+-		if (pend[i] == '"') i++;
++		if (pend[i] == '"') { if (++i == npend) return 0; }
+ 		else if (pend[i] < '0' || pend[i] > '9') return 0;
+ 	if (drop) { npend = 0; opcount = 0; clearop(&oa); }
+ 	return 1;
+diff --git a/src/main.c b/src/main.c
+index 5d87530..edf9212 100644
+--- a/src/main.c
++++ b/src/main.c
+@@ -97,7 +97,7 @@ int main(int argc, char **argv)
+ 				grid_free(&shown);     /* the terminal was used meanwhile: redraw all */
+ 			} else {
+ 				running = 1;
+-				if (!(e.ks.pending ? keys_map(&e, k) : tools_key(&e, k) || git_key(&e, k) || keys_map(&e, k))) keys_feed(&e, k, qn > 0);
++				keys_input(&e, k, qn > 0);
+ 				running = 0;
+ 				lsp_flush(e.buf->lsp);   /* one didChange per command (Helix) */
+ 				shada_track(&e);
+diff --git a/tests/test_keys_map.c b/tests/test_keys_map.c
+index e8a8746..b7f54a0 100644
+--- a/tests/test_keys_map.c
++++ b/tests/test_keys_map.c
+@@ -17,7 +17,7 @@ static void feed(Editor *e, const char *s)
+ {
+ 	for (; *s; s++) {
+ 		int k = *s == 27 ? KEY_ESC : (unsigned char)*s;
+-		if (!(e->ks.pending ? keys_map(e, k) : tools_key(e, k) || git_key(e, k) || keys_map(e, k))) keys_feed(e, k, s[1] != 0);
++		keys_input(e, k, s[1] != 0);
+ 	}
+ }
+ 

@@ -1,0 +1,15 @@
+diff --git a/tests/test_tools_win.c b/tests/test_tools_win.c
+index 33aa84f..bf695dc 100644
+--- a/tests/test_tools_win.c
++++ b/tests/test_tools_win.c
+@@ -14,6 +14,10 @@
+ #include "core.h"
+ #include "shada.h"
+ #include "tools.h"
++/* git is POSIX only so far (Makefile, wincc): keys.c reaches it through these */
++#include "git.h"
++int git_key(Editor *x, int k) { (void)x; (void)k; return 0; }
++int git_leader(Editor *x, int p, int k) { (void)x; (void)p; (void)k; return -1; }
+ static Editor e;
+ static Grid g;
+ 
