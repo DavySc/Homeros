@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include "check.h"
 #include "core.h"
 #include "grid.h"
@@ -180,6 +181,11 @@ int main(void)
 	CHECK(!core_edit_file(&e, "c1", 0));
 	e.win->col = 6;
 	draw(&e, &g, 80, "c1");
+	/* the file name without its directory: expand('%:t') */
+	CHECK(!mkdir("d", 0700));
+	file("d/s1", "a\n");
+	CHECK(!core_edit_file(&e, "d/s1", 0));
+	draw(&e, &g, 80, "d/s1");
 	file("e0", "");
 	CHECK(!core_edit_file(&e, "e0", 0));
 	draw(&e, &g, 80, "e0");
