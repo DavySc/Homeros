@@ -51,3 +51,4 @@ files: smart's buffers listed too~test TESTS=tools_pick~~src/tools/pick.c~	if (w
 recent on Windows: '/' and '\' spellings of one file listed twice~win WIN=tools~~src/tools/pick.c~	if (n >= PATH_MAX && !file_full(path, out)) return strlen(out);~
 recent on Windows: '\' not a separator~win WIN=tools~~src/tools/pick.c~	if (c == '\\') return 1;~	if (c == '\\') return 0;
 recent on Windows: a drive letter path not absolute~win WIN=tools~~src/tools/pick.c~	if (f[0] == '\\' || (f[0] && f[1] == ':' && (f[2] == '\\' || f[2] == '/'))) return 1;~	if (f[0] == '\\') return 1;
+picker: find.exe run on Windows~win WIN=tools~~src/tools/pick.c~#ifndef _WIN32¶		{ "find"~#if 1¶		{ "find"

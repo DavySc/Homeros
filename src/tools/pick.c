@@ -311,18 +311,26 @@ static int spawn(char *const argv[])
 	return P.proc;
 }
 
-/* source/files.lua: the first of fd, fdfind, rg and find there is */
+/* source/files.lua: the first of fd, fdfind, rg and find there is.  It
+   means to skip find on Windows, where find.exe searches text, but tests
+   has("win-32"), which is never set; this skips it. */
 static void files(void)
 {
 	static char *cmd[][12] = {
 		{ "fd", "--type", "f", "--type", "l", "--color", "never", "-E", ".git", NULL },
 		{ "fdfind", "--type", "f", "--type", "l", "--color", "never", "-E", ".git", NULL },
 		{ "rg", "--files", "--no-messages", "--color", "never", "-g", "!.git", NULL },
+#ifndef _WIN32
 		{ "find", ".", "-type", "f", "-not", "-path", "*/.git/*", "-not", "-path", "*/.*", NULL },
+#endif
 	};
 	for (size_t i = 0; i < sizeof cmd / sizeof *cmd; i++) if (spawn(cmd[i]) >= 0) return;
 	P.done = 1;
+#ifdef _WIN32
+	core_msg(P.e, "No supported finder found: `fd` `fdfind` `rg`");
+#else
 	core_msg(P.e, "No supported finder found: `fd` `fdfind` `rg` `find`");
+#endif
 }
 
 /* util.parse: "pattern -- rg args" (^(.-)%s+%-%-%s*(.*)$); the args,
