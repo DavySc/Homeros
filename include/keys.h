@@ -37,4 +37,9 @@ struct Editor;
 /* pending: more keys are already waiting (typeahead), which changes how
    Neovim inserts plain characters */
 void keys_feed(struct Editor *e, int key, int pending);
+/* A typed key, for main.c: an open picker (tools_key), git (git_key), then
+   Davy's Normal-mode maps (FEATURES.md 4: Space as leader, - for oil), then
+   keys_feed.  While a command or a map is half typed (ks.pending) the key
+   goes to the map, if one is incomplete, or straight to keys_feed */
+void keys_input(struct Editor *e, int key, int pending);
 #endif

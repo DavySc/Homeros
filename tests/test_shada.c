@@ -16,6 +16,8 @@
 
 /* Neovim's clock was tools/fake_time.c's; ours is this one */
 static time_t now;
+
+int shada_removable(const char *path);   /* shada.c's, not in shada.h */
 time_t time(time_t *t) { if (t) *t = now; return now; }
 
 static char state[4096];
@@ -165,5 +167,10 @@ int main(void)
 	CHECK(!file_full("lnd/d", got) && !strcmp(got, want));
 	snprintf(want, sizeof want, "%s/lnf", d);
 	CHECK(!file_full("lnf", got) && !strcmp(got, want));
+	/* the default 'shada' r/tmp/,r/private/, ignoring case: Neovim 0.12
+	   lists neither /private/ nor /TMP/ (measured in PR 73's review, 3
+	   runs); /tmp/ through the core is in the sessions above */
+	CHECK(shada_removable("/private/x.sql") && shada_removable("/TMP/y.sql") && shada_removable("/tmp/z.sql"));
+	CHECK(!shada_removable("/var/tmp/a") && !shada_removable("/privatex") && !shada_removable("/tm/"));
 	return 0;
 }

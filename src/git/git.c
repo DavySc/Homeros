@@ -3,7 +3,7 @@
    in the comments.  The timing is Git.tla's "ok": one git at a time, a
    write runs only if the repository is still the one the buffer shows
    (else it is dropped with a message), and a finished write or a change
-   seen by inotify on .git or the work tree marks the buffer dirty, read
+   seen in .git or the work tree (os.c, win.c) marks the buffer dirty, read
    again when nothing runs.  A refresh runs at most 5 git processes: status
    first (its ahead/behind picks the log's range), then log, diff, diff
    --cached and, only when tags exist, describe; the stash list is read
@@ -16,10 +16,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/inotify.h>
 #include <sys/stat.h>
 #include <time.h>
-#include <unistd.h>
 #include "core.h"
 #include "git.h"
 #include "loop.h"
@@ -33,7 +31,7 @@ static const char *const GLOBAL[] = { "git", "--no-pager", "--literal-pathspecs"
 #define LOGFMT "--format=%m%x1f%h%x1f%D%x1f%s%x1f%p"
 /* with-editor's sleeping editor: git runs it with the message file; it
    names the file and waits for a line: "y" finishes, anything else cancels */
-#define EDITOR "GIT_EDITOR=f() { printf '\\nHOMEROS-EDIT %s\\n' \"$1\"; read -r r; test \"$r\" = y; }; f"
+#define EDITOR "f() { printf '\\nHOMEROS-EDIT %s\\n' \"$1\"; read -r r; test \"$r\" = y; }; f"
 
 Repo *git_repos;
 static Editor *ed;
@@ -60,14 +58,25 @@ void cmd_git(Cmd *c, int read)
 	}
 }
 
-/* git commit's command: with-editor's sleeping editor in GIT_EDITOR */
+/* git commit's command: its stdin stays open for the sleeping editor's
+   answer (GIT_EDITOR, set in git_repo) */
 void cmd_editor(Cmd *c)
 {
-	*c = (Cmd){ 0 };
-	cmd_add(c, "env");
-	cmd_add(c, EDITOR);
-	for (int i = 0; GLOBAL[i]; i++) cmd_add(c, GLOBAL[i]);
+	cmd_git(c, 0);
 	c->keepin = 1;
+}
+
+/* git diff's command for unstaged, staged or (-1) work tree changes: git
+   diff against the work tree takes index.lock, --no-optional-locks or
+   not, and writes the index whenever a file's stat is out of date and its
+   content is not (builtin/diff.c refresh_index_quietly; measured, git 2.43
+   and MinGit 2.47); the plumbing commands with the same output never do */
+void git_diff(Cmd *c, int dt)
+{
+	if (dt == T_STAGED) { cmd_add(c, "diff"); cmd_add(c, "--cached"); }
+	else if (dt < 0) { cmd_add(c, "diff-index"); cmd_add(c, "-M"); cmd_add(c, "HEAD"); }
+	else cmd_add(c, "diff-files");
+	cmd_add(c, "-p");
 }
 
 void cmd_free(Cmd *c) { str_free(&c->args); str_free(&c->in); c->argc = 0; }
@@ -117,7 +126,7 @@ int git_spawn(Repo *r, int slot, Cmd *c)
 	return 0;
 }
 
-/* --- inotify: Git.tla's Outside ---------------------------------------- */
+/* --- Git.tla's Outside: which changes count (os.c and win.c watch) ------ */
 
 static int ignored(Repo *r, const char *rel)
 {
@@ -132,80 +141,30 @@ static int ignored(Repo *r, const char *rel)
 	return 0;
 }
 
-static void watch_dir(Repo *r, const char *path, int depth)
+/* A change at path counts unless it is the work tree's .git itself or in
+   another .git under it (a nested repository's) or under a path status
+   listed as ignored (a directory as "dir/"); one in the common directory
+   always counts.  Linux never watches those directories at all; Windows
+   watches the whole tree, so the directories above the path are asked too. */
+int git_counts(Repo *r, const char *path)
 {
-	if (r->ifd < 0 || depth > 64) return;
-	int wd = inotify_add_watch(r->ifd, path, IN_CREATE | IN_DELETE | IN_MODIFY | IN_MOVED_FROM
-	                           | IN_MOVED_TO | IN_ATTRIB | IN_CLOSE_WRITE | IN_ONLYDIR);
-	if (wd < 0) return;
-	if (wd >= (int)r->nwd) {
-		size_t n = (size_t)wd + 64;
-		char **q = realloc(r->wdpath, n * sizeof *q);
-		if (!q) return;
-		for (size_t i = r->nwd; i < n; i++) q[i] = NULL;
-		r->wdpath = q; r->nwd = n;
+	size_t tl = strlen(r->top), cl = strlen(r->common);
+	if (!strncmp(path, r->top, tl) && !strcmp(path + tl, "/.git")) return 0;
+	if (!strncmp(path, r->common, cl) && (!path[cl] || path[cl] == '/')) return 1;
+	const char *rel = path + tl + 1;
+	char d[PATH_MAX];
+	size_t n = strlen(rel), s = 0;
+	if (n + 2 > sizeof d) return 1;
+	if (ignored(r, rel)) return 0;
+	for (size_t i = 0; i <= n; i++) {
+		if (i < n && rel[i] != '/') continue;
+		if (i - s == 4 && !memcmp(rel + s, ".git", 4)) return 0;
+		memcpy(d, rel, i);
+		d[i] = '/'; d[i + 1] = 0;
+		if (ignored(r, d)) return 0;
+		s = i + 1;
 	}
-	free(r->wdpath[wd]);
-	r->wdpath[wd] = strdup(path);
-	DIR *d = opendir(path);
-	if (!d) return;
-	struct dirent *de;
-	char sub[PATH_MAX];
-	while ((de = readdir(d))) {
-		if (!strcmp(de->d_name, ".") || !strcmp(de->d_name, "..") || !strcmp(de->d_name, ".git")) continue;
-		if (de->d_type != DT_DIR && de->d_type != DT_UNKNOWN) continue;
-		snprintf(sub, sizeof sub, "%s/%s", path, de->d_name);
-		struct stat st;
-		if (de->d_type == DT_UNKNOWN && (lstat(sub, &st) || !S_ISDIR(st.st_mode))) continue;
-		size_t tl = strlen(r->top);
-		if (!strncmp(sub, r->top, tl) && sub[tl] == '/') {
-			char rel[PATH_MAX];
-			snprintf(rel, sizeof rel, "%s/", sub + tl + 1);
-			if (ignored(r, rel)) continue;
-		} else if (strncmp(sub, r->common, strlen(r->common))) continue;
-		watch_dir(r, sub, depth + 1);
-	}
-	closedir(d);
-}
-
-/* Reads every queued event: each one is a change to the repository. */
-void git_drain(Repo *r)
-{
-	char buf[4096] __attribute__((aligned(__alignof__(struct inotify_event))));
-	ssize_t n;
-	if (r->ifd < 0) return;
-	while ((n = read(r->ifd, buf, sizeof buf)) > 0) {
-		for (char *p = buf; p < buf + n; ) {
-			struct inotify_event *ev = (struct inotify_event *)p;
-			p += sizeof *ev + ev->len;
-			const char *dir = ev->wd >= 0 && (size_t)ev->wd < r->nwd ? r->wdpath[ev->wd] : NULL;
-			if (!dir) continue;
-			if (ev->mask & IN_IGNORED) { free(r->wdpath[ev->wd]); r->wdpath[ev->wd] = NULL; continue; }
-			char path[PATH_MAX];
-			snprintf(path, sizeof path, "%s/%s", dir, ev->len ? ev->name : "");
-			size_t tl = strlen(r->top);
-			int ingit = !strncmp(path, r->common, strlen(r->common));
-			if (!ingit) {
-				if (ev->len && !strcmp(ev->name, ".git")) continue;
-				const char *rel = path + tl + 1;
-				char reld[PATH_MAX];
-				snprintf(reld, sizeof reld, "%s/", rel);
-				if (ignored(r, rel) || ignored(r, reld)) continue;
-			}
-			if ((ev->mask & (IN_CREATE | IN_MOVED_TO)) && (ev->mask & IN_ISDIR)) watch_dir(r, path, 0);
-			r->ver++;
-			r->dirty = 1;
-		}
-	}
-}
-
-static void on_inotify(void *ctx, int fd)
-{
-	(void)fd;
-	Repo *r = ctx;
-	unsigned long v = r->ver;
-	git_drain(r);
-	if (r->ver != v) git_schedule(r);
+	return 1;
 }
 
 /* --- refresh ----------------------------------------------------------- */
@@ -287,10 +246,10 @@ static void start_reads(Repo *r)
 		cmd_free(&c);
 	}
 	for (int k = 0; k < 2; k++) {
-		/* magit-insert-unstaged-changes, magit-insert-staged-changes */
+		/* magit-insert-unstaged-changes, magit-insert-staged-changes; the
+		   unstaged as diff-files, which never writes the index (git_diff) */
 		cmd_git(&c, 1);
-		cmd_add(&c, "diff");
-		if (k) cmd_add(&c, "--cached");
+		git_diff(&c, k ? T_STAGED : T_UNSTAGED);
 		cmd_add(&c, "--ita-visible-in-index"); cmd_add(&c, "--no-ext-diff");
 		cmd_add(&c, "--ignore-submodules=none"); cmd_add(&c, "--no-prefix"); cmd_add(&c, "--");
 		git_spawn(r, k ? SLOT_CACHED : SLOT_DIFF, &c);
@@ -347,7 +306,7 @@ static void done(Repo *r, int slot)
 				str_add(&r->ignp, p + 2, len - 2 + 1);
 			}
 		}
-		if (!r->watched) { r->watched = 1; watch_dir(r, r->top, 0); watch_dir(r, r->common, 0); }
+		if (!r->watched) { r->watched = 1; git_watch(r); }
 		start_reads(r);
 		if (!r->left) { r->left = 1; done(r, -1); }
 		return;
@@ -365,6 +324,16 @@ static void done(Repo *r, int slot)
 	git_schedule(r);
 }
 
+/* a watch saw something: a refresh if it counts */
+void git_changed(void *ctx, int fd)
+{
+	(void)fd;
+	Repo *r = ctx;
+	unsigned long v = r->ver;
+	git_drain(r);
+	if (r->ver != v) git_schedule(r);
+}
+
 /* Git.tla: a write first, else a refresh when dirty; never two at once */
 void git_schedule(Repo *r)
 {
@@ -380,7 +349,7 @@ void git_schedule(Repo *r)
 static int find_top(const char *dir, char **top, char **gitdir)
 {
 	char p[PATH_MAX], g[3 * PATH_MAX];
-	if (!realpath(dir, p)) return -1;
+	if (git_real(dir, p)) return -1;
 	for (;;) {
 		struct stat st;
 		snprintf(g, sizeof g, "%s/.git", p);
@@ -392,9 +361,9 @@ static int find_top(const char *dir, char **top, char **gitdir)
 				line[strcspn(line, "\n")] = 0;
 				if (strncmp(line, "gitdir: ", 8)) return -1;
 				char rp[PATH_MAX];
-				if (line[8] == '/') snprintf(g, sizeof g, "%s", line + 8);
+				if (git_abs(line + 8)) snprintf(g, sizeof g, "%s", line + 8);
 				else snprintf(g, sizeof g, "%s/%s", p, line + 8);
-				if (!realpath(g, rp)) return -1;
+				if (git_real(g, rp)) return -1;
 				snprintf(g, sizeof g, "%s", rp);
 			}
 			*top = strdup(p);
@@ -424,13 +393,15 @@ Repo *git_repo(const char *dir)
 	line[0] = 0;
 	if (f) { if (!fgets(line, sizeof line, f)) line[0] = 0; fclose(f); }
 	line[strcspn(line, "\n")] = 0;
-	if (line[0] == '/') snprintf(g, sizeof g, "%s", line);
+	if (git_abs(line)) snprintf(g, sizeof g, "%s", line);
 	else snprintf(g, sizeof g, "%s/%s", gitdir, line);
-	r->common = strdup(line[0] && realpath(g, rp) ? rp : gitdir);
+	r->common = strdup(line[0] && !git_real(g, rp) ? rp : gitdir);
 	if (!r->common) { free(r); free(top); free(gitdir); return NULL; }
 	r->st.cache = &r->cache;
-	r->ifd = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
-	if (r->ifd >= 0) loop_watch(r->ifd, on_inotify, r);
+	/* with-editor's sleeping editor for every git we run: without a
+	   command of its own (env) that Windows lacks.  git runs it with its
+	   shell; a git with no message file to edit never calls it. */
+	putenv((char *)"GIT_EDITOR=" EDITOR);
 	r->dirty = 1;
 	for (int s = 0; s < NSLOT; s++) r->pid[s] = -1;
 	r->next = git_repos;
@@ -444,9 +415,7 @@ static void repo_free(Repo *r)
 	str_free(&r->err);
 	str_free(&r->ignp);
 	free(r->ign);
-	for (size_t i = 0; i < r->nwd; i++) free(r->wdpath[i]);
-	free(r->wdpath);
-	if (r->ifd >= 0) { loop_unwatch(r->ifd); close(r->ifd); }
+	git_unwatch(r);
 	for (int i = 0; i < r->qn; i++) git_write_free(&r->q[(r->qh + i) % QMAX]);
 	git_write_free(&r->w);
 	view_free(&r->st);
@@ -473,3 +442,5 @@ void git_free(void)
 
 void git_editor(Editor *e) { ed = e; }
 Editor *git_ed(void) { return ed; }
+
+int git_abs(const char *p) { return p[0] == '/' || (p[0] && p[1] == ':' && p[2] == '/'); }
