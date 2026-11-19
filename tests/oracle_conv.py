@@ -48,12 +48,16 @@ def tail(name):
     return name[cut:]
 def typed(rdi, table, op):
     """how often each (name, type by meaning) occurs among the records of a table. RAD calls `int` int32 and
-    `unsigned int` uint32 (its table of basic types has both names for one code, and the later wins); we do not."""
+    `unsigned int` uint32 (its table of basic types has both names for one code, and the later wins); we do not.
+    RAD reads no member after a virtual base (it does not step over the base's two numbers), so members are compared
+    up to the first one. Left out: what names subjects/kinds.cpp's Odd, whose methods and member pointers RAD reads
+    differently (knowledge base, 04: the `this` of an `&&` method, a `...` parameter, pointers to members)."""
     out = collections.Counter()
     for line in run(rdi, [f'{op} {i}' for i in range(1, int(run(rdi, [f'N {table}'])[0]))]):
         name, kind = line.split('\t') if op == 'P' else ('', line)
         kind = re.sub(r'2004 (u?)int32:4 on ', lambda m: '2004 %sint:4 on ' % ('unsigned ' * bool(m[1])), kind)
-        out[tail(name), re.sub(r'(20\d\d) (.*?):(\d+)', lambda m: f'{m[1]} {tail(m[2])}:{m[3]}', kind)] += 1
+        if op == 'M': kind = re.sub(r'( 202\+0 [^;]*; ).*', r'\1', kind)
+        if ' Odd:' not in line: out[tail(name), re.sub(r'(20\d\d) (.*?):(\d+)', lambda m: f'{m[1]} {tail(m[2])}:{m[3]}', kind)] += 1
     return out
 BASIC = {0x10: ('signed char', 'Char8', 1), 0x11: ('short', 'S16', 2), 0x12: ('long', 'S32', 4), 0x13: ('long long', 'S64', 8), 0x20: ('unsigned char', 'UChar8', 1),
          0x21: ('unsigned short', 'U16', 2), 0x22: ('unsigned long', 'U32', 4), 0x23: ('unsigned long long', 'U64', 8), 0x30: ('bool', 'S8', 1), 0x40: ('float', 'F32', 4),
