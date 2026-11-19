@@ -18,7 +18,8 @@
 #include "uni.h"
 #include "../src/keys/k.h"
 
-static char path[64];
+/* the same text in a .txt and a .sql file, which gq formats through sqlfmt */
+static char path[2][64];
 
 static void read_all(Editor *e, char *b, size_t *n) { *n = text_read(e->buf->text, 0, b, 1 << 16); }
 
@@ -35,9 +36,9 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 	static char before[1 << 16], after[1 << 16], now[1 << 16];
 	static Editor e;
 	size_t nb, na, nn;
-	if (!path[0]) {
-		strcpy(path, "/tmp/homeros-fuzz-XXXXXX");
-		int fd = mkstemp(path);
+	for (int i = 0; i < 2 && !path[i][0]; i++) {
+		strcpy(path[i], i ? "/tmp/homeros-fuzz-XXXXXX.sql" : "/tmp/homeros-fuzz-XXXXXX.txt");
+		int fd = mkstemps(path[i], 4);
 		static const char t[] = "ab (\xce\xbb" "d) \xe1\x83\x90\xf0\x90\x90\x80 \"x y\"\n\tef {\n\n  gh \xe2\x88\x80 [i]\n";
 		if (fd < 0 || write(fd, t, sizeof t - 1) != (ssize_t)(sizeof t - 1)) abort();
 		close(fd);
@@ -46,7 +47,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 	ops_reset();
 	edit_reset();
 	motion_reset();
-	if (core_open(&e, path)) abort();
+	if (core_open(&e, path[n && d[0] & 1])) abort();
 	int nr = e.buf->nr;
 	read_all(&e, before, &nb);
 	int prev = 0, lit = 0;

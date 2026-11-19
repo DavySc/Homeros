@@ -130,6 +130,10 @@ typedef struct Editor {
 	size_t pumcol;             /* byte in the cursor line where the completed word starts */
 	unsigned char *lb;         /* scratch copy of one line */
 	size_t lbcap;
+	/* the system clipboard, the backend's (backend.h); NULL: none, as
+	   Neovim without a clipboard provider (tests, the conform driver) */
+	int  (*clip_set)(const char *s, size_t n);
+	long (*clip_get)(char *buf, size_t max);
 } Editor;
 
 /* Set by any package when what is shown changed between keys (a picker's
