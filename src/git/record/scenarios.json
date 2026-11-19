@@ -507,5 +507,12 @@
    "x",
    "y"
   ]
+ },
+ "diff-worktree-rename": {
+  "setup": "git mv b.txt z.txt",
+  "keys": [
+   "d",
+   "w"
+  ]
  }
 }
