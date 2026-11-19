@@ -176,6 +176,10 @@ int main(int argc, char **argv)
       s = rdi_str(&r, site->name);
       fwrite(s.p, 1, s.n, stdout);
       putchar('\t');
+      type(&r, site->type);
+      printf(" of ");
+      type(&r, site->owner_type);
+      putchar('\t');
       const RdiLineTable *t = rdi_at(&r, RDI_LINE_TABLES, RdiLineTable, site->line_table);
       s = rdi_run(&r, RDI_LINE_VOFFS, t->voffs_base, t->lines_count);
       for (uint64_t i = 0; i < s.n; i += 1) {   /* what its own line table answers at each offset the table names */

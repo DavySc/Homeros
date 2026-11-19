@@ -419,3 +419,8 @@ oracle | dbg/conv.c | data_symbol(&o, &pdb, kind, d, false), local_symbol(&o, &p
 oracle | dbg/conv.c | locals_by_scope(&o);\n | if (0) locals_by_scope(&o);\n
 oracle | dbg/rdi.c | [RDI_LOCATION_SETS] = sizeof(RdiLocationCase), | [RDI_LOCATION_SETS] = 1,
 oracle | dbg/rdi.c | [RDI_LOCALS] = sizeof(RdiSymbol), | [RDI_LOCALS] = 1,
+# ---- slice 2f: the type and class of an inlined function ----
+oracle | dbg/conv.c | .type = named ? type_of(&o, le32(d.p + 4)) : 0, | .type = named ? type_of(&o, le32(d.p)) : 0,
+oracle | dbg/conv.c | .owner_type = named && kind == LF_MFUNC_ID ? type_of(&o, le32(d.p)) : 0, | .owner_type = named ? type_of(&o, le32(d.p)) : 0,
+oracle | dbg/conv.c | .owner_type = named && kind == LF_MFUNC_ID ? type_of(&o, le32(d.p)) : 0, | .owner_type = named && kind == LF_MFUNC_ID ? type_of(&o, le32(d.p + 4)) : 0,
+oracle | dbg/conv.c | .owner_type = named && kind == LF_MFUNC_ID ? type_of(&o, le32(d.p)) : 0, | .owner_type = 0,

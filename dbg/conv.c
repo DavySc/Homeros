@@ -840,12 +840,16 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
           l[4 * i + 2] = file;
           rec(&maps, file, l[4 * i + 3], l[4 * i], 0);
         }
-        /* its name is in the id record it names: two type ids, then the name (CV_LeafFuncId, CV_LeafMFuncId) */
+        /* the inlined function is the id record it names: a function's (CV_LeafFuncId: an id for where it is declared, its type, its
+           name) or a method's (CV_LeafMFuncId: its class, its type, its name). RAD reads the first field of both as a type; the
+           function's is an id in the other stream, so only a method has an owner here. */
         id -= first_id;
         uint32_t id_at = id < COUNT(id_ats, uint32_t) ? ((uint32_t *)id_ats.p)[id] : ids.n;
-        PdbSpan name = pdb_symbol(ids, &id_at, &kind, &d) && (kind == LF_FUNC_ID || kind == LF_MFUNC_ID) ? pdb_string(d, &(uint32_t){8}) : (PdbSpan){0};
+        bool named = pdb_symbol(ids, &id_at, &kind, &d) && (kind == LF_FUNC_ID || kind == LF_MFUNC_ID) && d.n >= 8;
+        PdbSpan name = named ? pdb_string(d, &(uint32_t){8}) : (PdbSpan){0};
         made = scope(&o, inside, top, COUNT(o.s[RDI_INLINE_SITES], RdiInlineSite), start);
-        *(RdiInlineSite *)add(&o.s[RDI_INLINE_SITES], sizeof(RdiInlineSite)) = (RdiInlineSite){.name = intern(&o.strings, name.p, name.n), .line_table = line_table(&o, &lines)};
+        *(RdiInlineSite *)add(&o.s[RDI_INLINE_SITES], sizeof(RdiInlineSite)) = (RdiInlineSite){.name = intern(&o.strings, name.p, name.n), .type = named ? type_of(&o, le32(d.p + 4)) : 0,
+          .owner_type = named && kind == LF_MFUNC_ID ? type_of(&o, le32(d.p)) : 0, .line_table = line_table(&o, &lines)};
       } else data_symbol(&o, &pdb, kind, d, false), local_symbol(&o, &pdb, &frame, top, kind, d);
       if (made) *(uint32_t *)add(&open, 4) = made;
     }

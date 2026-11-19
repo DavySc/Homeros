@@ -15,17 +15,17 @@ def scopes(rdi):
     """per scope: parent, inline site, the offsets it covers (pieces without bytes left out), [thunk, container flags, is a root],
     name, link name, first child, next sibling, procedure, name of the procedure's unit ('' for a procedure made from a public
     symbol, which RAD files under a unit of its own), for an inlined call (the name of the inlined function, what its own
-    line table answers at each offset it names), and its local variables"""
+    line table answers at each offset it names, its type and the class it is a method of), and its local variables"""
     unit, out = {}, [(0, 0, (), [], '', '', 0, 0, 0, '', None, '')]
     for line in run(rdi, [f'u {i}' for i in range(1, int(run(rdi, ['N 16'])[0]))]):
         first, count, name = line.split(' ', 2)
         for p in range(int(first), int(first) + int(count)): unit[p] = name.replace('*global*', '')
     count = int(run(rdi, ['N 23'])[0])
     for line, local in zip(run(rdi, [f'D {i}' for i in range(1, count)]), run(rdi, [f'V {i}' for i in range(1, count)])):
-        place, flags, name, link, site, site_lines = line.split('\t')
+        place, flags, name, link, site, site_type, site_lines = line.split('\t')
         parent, inline, child, sibling, proc, *ranges = place.split()
         ranges = tuple(v for i in range(0, len(ranges), 2) if ranges[i] != ranges[i + 1] for v in (int(ranges[i], 16), int(ranges[i + 1], 16)))
-        out.append((int(parent), int(inline), ranges, flags.split(), name, link, int(child), int(sibling), int(proc), unit.get(int(proc), ''), (site, site_lines) if int(inline) else None, local))
+        out.append((int(parent), int(inline), ranges, flags.split(), name, link, int(child), int(sibling), int(proc), unit.get(int(proc), ''), (site, site_lines, site_type) if int(inline) else None, local))
     return out
 def described(all_scopes, key, local, calls=True):
     """how often each description occurs; a description is what a scope covers, what the scopes around it cover, its unit,
@@ -255,7 +255,7 @@ for pdb in sys.argv[3:]:
                 if is_line: per_line.setdefault((text.rsplit(' ', 1)[0], int(text.rsplit(' ', 1)[1])), []).append(v)
             site_lines = ''.join(f'{v:x} {text};' for k, (v, _, _, text) in enumerate(events) if k + 1 == len(events) or events[k + 1][0] != v)
             around = syms.get(int(p[3]), ((), (), mod, 0))
-            syms[int(m[1])] = (tuple(covers), (around[0],) + around[1], mod, around[3], None, (p[2], site_lines))
+            syms[int(m[1])] = (tuple(covers), (around[0],) + around[1], mod, around[3], None, (p[2], site_lines, int(p[1], 16)))
             stack.append([]); made.append((syms[int(m[1])], stack[-1]))
         elif part == 'Lines' and (m := re.match(r' *Mod \d+ \| `(.*)`: *$', line)): folder = re.sub(r'[^/\\]*$', '', m[1])
         elif part == 'Lines' and (m := re.match(r'(\S.*) \((?:[\w-]+: [0-9A-F]+|no checksum)\)$', line)): src = m[1]
@@ -338,9 +338,13 @@ for pdb in sys.argv[3:]:
                 elif cursor < first + length: pieces.append((cursor, first + length, where))
             lone = len(pieces) == 1 and pieces[0][:2] == (0, 2**64 - 1)
             return f"{name} {int(param)} 2.1 {of(t)[0]} @ {pieces[0][2] if lone else ''.join(f'[{a:x}-{b:x} {w}]' for a, b, w in pieces) or 'none'}; "
-        for d, local in made: expected[d + (''.join(map(shown, local)),)] += 1
+        # an inlined call's function: the id record's type, and for a method's id record its class
+        ids = {int(m[1], 16): (int(m[2], 16), int(m[3] or '0', 16)) for m in re.finditer(r'(0x[0-9A-F]+) \| LF_M?FUNC_ID \[.*\]\n.*, type = (0x[0-9A-F]+)(?:, class type = (0x[0-9A-F]+))?',
+               subprocess.run(['llvm-pdbutil', 'dump', '--ids', pdb], capture_output=True, text=True, errors='surrogateescape').stdout)}
+        inlined = lambda site: site and site[:2] + (' of '.join(of(t)[0] for t in ids.get(site[2], (0, 0))),)
+        for d, local in made: expected[d[:5] + (inlined(d[5]), ''.join(map(shown, local)))] += 1
         has = described(ours, lambda flags, name, link, site: (int(flags[1]) & 0x80, name if flags[2] == '1' else None,
-                                                             site and (site[0] if len(site[0]) <= 32 else site[0][:32] + '...', site[1])), str)   # as llvm-pdbutil prints a long name
+                                                             site and (site[0] if len(site[0]) <= 32 else site[0][:32] + '...', site[1], site[2])), str)   # as llvm-pdbutil prints a long name
         for k in expected | has:
             if k[2]: q.append(f'scope {k}'); want.append(str(expected[k])); got.append(str(has[k]))   # not the procedures made from public symbols
         a = collections.Counter(line for line in run(rdi, [f'P {i}' for i in range(1, int(run(rdi, ['N 31'])[0]))]) if not line.endswith('\tnone'))
@@ -398,10 +402,12 @@ for pdb in sys.argv[3:]:
             # NOT YET (types slice): the kind of container, and the container's name cut from the front of a procedure's name
             # A local's lone place is the location itself in RAD's file even when it holds for a few bytes only (knowledge base, 04); ours is
             # then a list of one, compared as RAD has it. Types as in typed().
+            # An inlined call's function type is compared; its class is not: RAD reads the first field of a plain function's id record as a
+            # type too, where it is an id in the other stream (646 of 4,420 inlined calls in kinds_o2.pdb get a class that way).
             def as_rad(local):
                 local = re.sub(r'@ \[[0-9a-f]+-[0-9a-f]+ ([^\]\[]*)\]; ', r'@ \1; ', re.sub(r'2004 (u?)int32:4 on ', lambda m: '2004 %sint:4 on ' % ('unsigned ' * bool(m[1])), local))
                 return '' if 'Odd' in local else re.sub(r'(?<= )(20\d\d) (.*?):(\d+)', lambda m: f'{m[1]} {tail(m[2])}:{m[3]}', local)   # not where kinds.cpp's Odd is
-            a, b = (described(s, lambda flags, name, link, site: (flags[0], int(flags[1]) & 0x80, tail(name), link, site and site[0]), as_rad, calls=False) for s in (ours, scopes(rad)))
+            a, b = (described(s, lambda flags, name, link, site: (flags[0], int(flags[1]) & 0x80, tail(name), link, site and (site[0], as_rad(' ' + site[2].split(' of ')[0]))), as_rad, calls=False) for s in (ours, scopes(rad)))
             for k in a | b: q.append(f'scope, as RAD has it, {k}'); want.append(str(b[k])); got.append(str(a[k]))
             a, b = typed(rdi, 31, 'P'), typed(rad, 31, 'P')
             for k in a | b: q.append(f'procedure and its type {k}'); want.append(str(b[k])); got.append(str(a[k]))
