@@ -2,7 +2,8 @@
    the register's type) and a 150 ms timer clears it; a delete, the black
    hole register and an executing register do not.  The marks are Neovim's
    (measured once, 2026-11-19, nvim --headless on these lines; MAXCOL for
-   a line's end).  The core draws it (package 4). */
+   a line's end); a block's are screen columns, the left one and the
+   register's width (package 4's contract).  The core draws it. */
 #include <unistd.h>
 #include "check.h"
 #include "core.h"
@@ -30,7 +31,7 @@ int main(void)
 {
 	char path[] = "/tmp/keys_flashXXXXXX";
 	int fd = mkstemp(path);
-	CHECK(fd >= 0 && write(fd, "abc def\nghi jkl\n\nx\n", 19) == 19 && !close(fd));
+	CHECK(fd >= 0 && write(fd, "abc def\nghi jkl\n\nx\n\tab\n", 23) == 23 && !close(fd));
 	CHECK(!core_open(&e, path));
 	const size_t M = 0x7fffffff;
 	CHECK(flash("yiw", 'v', 0, 0, 0, 2));
@@ -40,10 +41,14 @@ int main(void)
 	CHECK(flash("yj", 'V', 0, 0, 1, M));
 	CHECK(flash("wye", 'v', 0, 4, 0, 6));
 	CHECK(flash("y}", 'V', 0, 0, 1, M));
-	CHECK(flash("lll\x16j$y", 22, 0, 3, 1, 7));
+	CHECK(flash("lll\x16j$y", 22, 0, 3, 1, 6));
 	CHECK(flash("\"ayy\"Ayiw", 'V', 0, 0, 0, 2));   /* the register's type: an append to a linewise one */
 	CHECK(flash("dd", 0, 0, 0, 0, 0) && flash("u\"_yy", 0, 0, 0, 0, 0));
 	CHECK(flash("qayiwq", 'v', 0, 0, 0, 2) && flash("@a", 0, 0, 0, 0, 0));
+	/* a block's columns are screen columns: the Tab's last, where the
+	   cursor stood ('virtualedit' block: "\x16" 2, '[ at coladd 7,
+	   measured once in nvim), and the a */
+	CHECK(flash("G\x16ly", 22, 4, 7, 4, 8) && flash("Gl\x16hy", 22, 4, 7, 4, 8));
 
 	/* the timer clears it after 150 ms and asks for a frame */
 	CHECK(flash("yiw", 'v', 0, 0, 0, 2));

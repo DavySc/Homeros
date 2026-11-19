@@ -8,6 +8,7 @@
    character.  Neovim picks its NFA engine for most patterns; both give the
    same matches, which tests/test_keys_regex.c checks against nvim. */
 #include <limits.h>
+#include <stdio.h>
 #include "k.h"
 #include "uni.h"
 
@@ -25,6 +26,14 @@ static int np, cap;
 static int (*rng)[2], nrng, caprng;   /* ranges; a < 0: the class [:...:] number -1 - a */
 static int ic;
 static const char *err;
+
+/* the messages are the NFA engine's, which Neovim shows */
+static const char *fmt(const char *f, int c)
+{
+	static char b[64];
+	snprintf(b, sizeof b, f, c);
+	return b;
+}
 
 static int node(int op)
 {
@@ -83,7 +92,9 @@ static int peek(void)
 	if (c == '\\' && d) {
 		if (d < 0x80 && strchr("%&()*+.123456789<=>?@ACDFHIKLMOPSUVWXZ[_acdfhiklmnopsuvwxz{|~", d)) {
 			/* a backslash toggles what the character would be (the
-			   position rules of ^ and * as for it) */
+			   position rules of ^ and * as for it, but not at the start:
+			   "/\*ptr") */
+			prev_at_start = at_start, at_start = 0;
 			rp++, after_slash++;
 			curchr = plain_magic(d) ? d : MAGIC + d;
 			rp--, after_slash--;
@@ -148,11 +159,10 @@ static int charclass(const char **p)
 	return -1;
 }
 
-/* the collection [...] at rp (on its "["): skip_anyof() finds the "]";
-   0 when there is none, so "[" is literal */
-static int collection(int *neg, int *nl)
+/* skip_anyof(): the "]" that ends the collection whose "[" is before p,
+   or the NUL */
+static const char *skip_anyof(const char *p)
 {
-	const char *p = rp + 1;
 	p += *p == '^';
 	if (*p == ']' || *p == '-') p++;
 	while (*p && *p != ']') {
@@ -162,8 +172,15 @@ static int collection(int *neg, int *nl)
 		else if (*p == '[') { if (charclass(&p) < 0) p++; }
 		else p++;
 	}
-	if (*p != ']') return 0;
-	const char *end = p;
+	return p;
+}
+
+/* the collection [...] at rp (on its "["); 0 when it has no "]", so "[" is
+   literal */
+static int collection(int *neg, int *nl)
+{
+	const char *end = skip_anyof(rp + 1), *p;
+	if (*end != ']') return 0;
 	p = rp + 1;
 	*neg = *p == '^';
 	p += *neg;
@@ -231,17 +248,23 @@ static Frag atom(int *simple)
 		else if (c == '[' || c == MAGIC + '[') {
 			rp = at + (*at == '\\');
 			a = nrng;
-			if (!collection(&neg, &nl)) { err = err ? err : "E769: Missing ] after \\_["; return NONE_; }
+			if (!collection(&neg, &nl)) {   /* no "]": "[" is a character */
+				if (err) return NONE_;
+				nrng = a;
+				skip();
+				c = '[';
+				break;
+			}
 			skip();
 			f = one_node(SET, a);
 			prog[f.first].b = nrng, prog[f.first].neg = neg;
 		} else if (isclassletter(c - MAGIC)) f = one_node(CLASS, c - MAGIC);
-		else { err = "E63: Invalid use of \\_"; return NONE_; }
+		else { err = fmt("E877: (NFA regexp) Invalid character class: %d", c > MAGIC ? c - MAGIC : c); return NONE_; }
 		prog[f.first].nl = 1;
 		return f;
 	}
 	case MAGIC + '(': {
-		if (nparens >= 9) { err = "E51: Too many \\("; return NONE_; }
+		if (nparens >= 9) { err = "E872: (NFA regexp) Too many '('"; return NONE_; }
 		int g = ++nparens, o = node(OPEN);
 		prog[o].a = g;
 		Frag f = alts(1);
@@ -264,16 +287,16 @@ static Frag atom(int *simple)
 			*simple = 1;
 			return one_node(CHAR, (int)v);
 		}
-		err = "E71: Invalid character after \\%";
+		err = fmt("E867: (NFA) Unknown operator '\\%%%c'", c > MAGIC ? c - MAGIC : c);
 		return NONE_;
 	case MAGIC + 'z':
 		c = get();
 		if (c == 's' || c == 'e') {
 			c = peek();
-			if (c == MAGIC + '*' || c == MAGIC + '+' || c == MAGIC + '{') { err = "E888: (NFA regexp) cannot repeat"; return NONE_; }
+			if (c == MAGIC + '*' || c == MAGIC + '+' || c == MAGIC + '{') { err = fmt("E888: (NFA regexp) cannot repeat \\z%c", rp[-1]); return NONE_; }
 			return one_node(rp[-1] == 's' ? ZS : ZE, 0);
 		}
-		err = "E68: Invalid character after \\z";
+		err = fmt("E867: (NFA) Unknown operator '\\z%c'", c > MAGIC ? c - MAGIC : c);
 		return NONE_;
 	case MAGIC + '[':
 		rp = at + (*at == '\\');
@@ -294,7 +317,7 @@ static Frag atom(int *simple)
 		err = "E33: No previous substitute regular expression";
 		return NONE_;
 	case MAGIC + '=': case MAGIC + '?': case MAGIC + '+': case MAGIC + '@': case MAGIC + '{': case MAGIC + '*':
-		err = c == MAGIC + '*' ? "E64: * follows nothing" : "E64: follows nothing";
+		err = fmt("E866: (NFA regexp) Misplaced %c", c - MAGIC);
 		return NONE_;
 	default:
 		if (c >= MAGIC + '1' && c <= MAGIC + '9') {
@@ -335,7 +358,7 @@ static Frag piece(void)
 		long lo = digits(&p, 10, 9), hi = lo;
 		if (*p == ',') p++, hi = digits(&p, 10, 9);
 		p += *p == '\\';
-		if (*p != '}') { err = "E554: Syntax error in \\{...}"; return a; }
+		if (*p != '}') { err = "E870: (NFA regexp) Error reading repetition limits"; return a; }
 		rp = p + 1, curchr = -1;
 		min = lo < 0 ? 0 : (int)lo, max = hi < 0 ? -1 : (int)hi;
 		if (max >= 0 && min > max) { int t = min; min = max, max = t; }
@@ -344,14 +367,14 @@ static Frag piece(void)
 		while (*p >= '0' && *p <= '9') p++;   /* \@123<= : no limit kept */
 		int k = *p == '=' || *p == '!' || *p == '>' ? *p : 0, neg = *p == '!';
 		if (*p == '<' && (p[1] == '=' || p[1] == '!')) k = '<', neg = p[1] == '!', p++;
-		if (!k) { err = "E59: Invalid character after \\@"; return a; }
+		if (!k) { err = fmt("E869: (NFA) Unknown operator '\\@%c'", *p); return a; }
 		rp = p + 1, curchr = -1;
 		int n = node(LOOK), e = node(LOOKEND);
 		prog[a.last].next = e;
 		prog[n].a = a.first, prog[n].b = k, prog[n].neg = neg;
 		return (Frag){ n, n };
 	}
-	if (ismulti(peek())) { err = peek() == MAGIC + '*' ? "E61: Nested *" : "E62: Nested multi"; return a; }
+	if (ismulti(peek())) { err = "E871: (NFA regexp) Can't have a multi follow a multi"; return a; }
 	int r = node(REP);
 	prog[r].a = a.first, prog[r].b = min, prog[r].c = max, prog[r].lazy = lazy, prog[r].simple = simple;
 	if (!simple) { int e = node(REPEND); prog[e].a = r; prog[a.last].next = e; }
@@ -368,7 +391,7 @@ static Frag branch(void)
 			if (c == MAGIC + 'c') ic = 1;
 			else if (c == MAGIC + 'C') ic = ic == 1;
 			else if (c != MAGIC + 'Z') magic = c == MAGIC + 'v' ? MAGIC_ALL : c == MAGIC + 'm' ? MAGIC_ON : c == MAGIC + 'M' ? MAGIC_OFF : MAGIC_NONE;
-			int s = at_start, pr = prev, pp = prevprev;
+			int s = prev_at_start, pr = prev, pp = prevprev;
 			skip();
 			at_start = s, prev = pr, prevprev = pp;   /* skipchr_keepstart() */
 			continue;
@@ -419,6 +442,25 @@ static Frag alts(int paren)
 }
 
 static int start;
+
+/* skip_regexp_ex(): where the pattern at p ends, at delim or the NUL; with
+   delim '?' each "\\?" in it becomes "?".  *all: \\v was the last of \\v \\V */
+char *re_skip(char *p, int delim, int *all)
+{
+	int my = MAGIC_ON;
+	for (; *p && *p != delim; p += cplen(p))
+		if ((*p == '[' && my >= MAGIC_ON) || (*p == '\\' && p[1] == '[' && my <= MAGIC_OFF)) {
+			p = (char *)skip_anyof(p + 1);
+			if (!*p) break;
+		} else if (*p == '\\' && p[1]) {
+			if (delim == '?' && p[1] == '?') memmove(p, p + 1, strlen(p));
+			else p++;
+			if (*p == 'v') my = MAGIC_ALL;
+			else if (*p == 'V') my = MAGIC_NONE;
+		}
+	if (all) *all = my == MAGIC_ALL;
+	return p;
+}
 
 /* Compile pat.  icase: 'ignorecase' ('smartcase' applied by the caller);
    \c and \C in the pattern win.  0, or -1 with Neovim's message in *msg. */

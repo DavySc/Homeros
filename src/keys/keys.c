@@ -287,12 +287,22 @@ static void ex(void)
 	}
 }
 
+/* leaving the command line: / and ? wait in normal.c for K_PAT (entered)
+   or another key (left) */
+static void cmdline_end(int entered)
+{
+	E->mode = MODE_NORMAL;
+	if (E->cmdtype != ':') normal_key(entered ? K_PAT : KEY_ESC);
+	else if (entered) ex();
+	restart_insert();
+}
+
 static void cmdline_key(int k)
 {
-	if (k == KEY_ESC || k == KEY_CTRL_C) { E->mode = MODE_NORMAL; restart_insert(); return; }
-	if (k == KEY_ENTER || k == '\n') { E->mode = MODE_NORMAL; core_msg(E, ""); if (E->cmdtype == ':') ex(); restart_insert(); return; }
+	if (k == KEY_ESC || k == KEY_CTRL_C) { cmdline_end(0); return; }
+	if (k == KEY_ENTER || k == '\n') { core_msg(E, ""); cmdline_end(1); return; }
 	if (k == KEY_BS || k == 8) {
-		if (!E->cmdlen) { E->mode = MODE_NORMAL; restart_insert(); return; }
+		if (!E->cmdlen) { cmdline_end(0); return; }
 		E->cmdlen = E->cmdpos = uni_gprev((unsigned char *)E->cmd, E->cmdlen, E->cmdlen);
 		return;
 	}

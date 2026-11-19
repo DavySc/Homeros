@@ -141,6 +141,13 @@ int  map_case(int c, int up);   /* utf_toupper() (up) or utf_tolower() */
 /* Vim's patterns (regex.c) */
 int  re_compile(const char *pat, int icase, const char **msg);
 int  re_exec(long l, long col, Pos *s, Pos *e, Pos *sub_s, Pos *sub_e);
+char *re_skip(char *p, int delim, int *all);
+
+/* search.c */
+int  do_search(Oparg *oap, int dirc, const char *pat, long count, int rev, int *wrapped);
+void search_reset(void);
+extern int no_smartcase;
+enum { K_PAT = KEY_DEL + 0x100 };   /* the command line of / or ? was entered (normal.c) */
 
 /* typeahead (keys.c) */
 extern int reg_executing;   /* executing a register's keys (@a) */

@@ -5,12 +5,14 @@
 #include <string.h>
 #include <stdio.h>
 #include "k.h"
+#include "uni.h"
 
 typedef struct {
 	Oparg *oap;
 	int cmdchar, nchar, extra_char;
 	long opcount, count0, count1;
 	int arg, retval;
+	const char *searchbuf;   /* / and ?: their command line */
 } Cmdarg;
 enum { CA_COMMAND_BUSY = 1, CA_NO_ADJ_OP_END = 2 };
 
@@ -995,13 +997,76 @@ static void nv_colon(Cmdarg *cap)
 	else cmdline(':', cap->count0 ? "." : "");
 }
 
-/* search is not built yet (src/keys/README): its command line is read and
-   dropped, so the pattern's letters do not run as commands */
+/* normal_search(): 0 not found, 1 found, 2 with a line offset */
+static int normal_search(Cmdarg *cap, int dir, const char *pat, int rev, int *wrapped)
+{
+	cap->oap->motion_type = MCHAR;
+	cap->oap->inclusive = 0;
+	cap->oap->use_reg_one = 1;
+	set_curswant = 1;
+	int i = do_search(cap->oap, dir, pat, cap->count1, rev, wrapped);
+	if (!i) clearop(cap->oap);
+	else if (i == 2) cap->oap->motion_type = MLINE;
+	check_cursor();
+	return i;
+}
+
+/* the line was read by the command line (run() waits for it) */
 static void nv_search(Cmdarg *cap)
 {
-	if (VIsual_active) end_visual_mode();
-	clearopbeep(cap->oap);
-	cmdline(cap->cmdchar, "");
+	static char buf[sizeof E->cmd + 1];
+	memcpy(buf, E->cmd, E->cmdlen);
+	buf[E->cmdlen] = 0;
+	cap->searchbuf = buf;
+	normal_search(cap, cap->cmdchar, buf, 0, NULL);
+}
+
+static void nv_next(Cmdarg *cap)
+{
+	Pos old = cur();
+	int wrapped = 0;
+	/* an offset can leave the cursor where it was: one match further */
+	if (normal_search(cap, 0, NULL, cap->arg, &wrapped) == 1 && !wrapped && eq(old, cur())) {
+		cap->count1++;
+		normal_search(cap, 0, NULL, cap->arg, NULL);
+		cap->count1--;
+	}
+}
+
+/* * # g* g#: the keyword under or after the cursor, else the non-blank
+   string (find_ident_at_pos() with FIND_IDENT|FIND_STRING) */
+static void nv_ident(Cmdarg *cap)
+{
+	int g = cap->cmdchar == 'g', c = g ? cap->nchar : cap->cmdchar, i, cls = 0;
+	long l = (long)W->line, n = ml_len(l), col = 0;
+	const char *s = ml_get(l);
+	for (i = 0; i < 2; i++) {
+		for (col = (long)W->col; col < n; col += clen(s, n, col))
+			if ((cls = cls_of(gchar((Pos){ l, col, 0 }))) && (i == 1 || cls != 1)) break;
+		cls = col < n ? cls_of(gchar((Pos){ l, col, 0 })) : 0;
+		while (col > 0 && cls) {
+			long p = head(s, col - 1);
+			if (cls_of(gchar((Pos){ l, p, 0 })) != cls) break;
+			col = p;
+		}
+		if (cls > 2) cls = 2;
+		if (cls == 2) break;
+	}
+	if (col >= n) { core_msg(E, "E348: No string under cursor"); clearop(cap->oap); return; }
+	long z = col;
+	int first = cls_of(gchar((Pos){ l, col, 0 }));
+	while (z < n && (i == 0 ? cls_of(gchar((Pos){ l, z, 0 })) == first : cls_of(gchar((Pos){ l, z, 0 })) != 0)) z += clen(s, n, z);
+	W->col = (size_t)col;
+	char buf[sizeof E->cmd * 2 + 8], *p = buf;
+	if (!g && first >= 2) p += sprintf(p, "\\<");
+	for (long k = col; k < z && p - buf < (long)sizeof buf - 8; k++) {
+		if (has(c == '*' ? "/.*~[^$\\" : "/?.*~[^$\\", (unsigned char)s[k])) *p++ = '\\';
+		*p++ = s[k];
+	}
+	if (!g && cls_of(gchar((Pos){ l, head(s, z - 1), 0 })) >= 2) p += sprintf(p, "\\>");
+	*p = 0;
+	no_smartcase = 1;
+	normal_search(cap, c == '*' ? '/' : '?', buf, 0, NULL);
 }
 
 /* ---- operators ---- */
@@ -1124,6 +1189,7 @@ static void nv_g_cmd(Cmdarg *cap)
 	case 'q': cap->oap->cursor_start = cur(); /* fall through */
 	case '~': case 'u': case 'U': nv_operator(cap); break;
 	case 'p': case 'P': nv_put(cap, 0); break;
+	case '*': case '#': nv_ident(cap); break;
 	default: clearopbeep(oap);
 	}
 }
@@ -1241,7 +1307,7 @@ static int cmd_flags(int c)
 
 static int known(int c)
 {
-	return has(" \"$%'()+,-./0:;<>?@ABCDEFGHIJLMOPQRSTUWXYV[]^_`abcdefghijklmopqrstuvwxyz{|}~", c) || c == 1 || c == 3
+	return has(" \"#$%'()*+,-./0:;<>?@ABCDEFGHIJLMNOPQRSTUWXYV[]^_`abcdefghijklmnopqrstuvwxyz{|}~", c) || c == 1 || c == 3
 	       || c == 8 || c == 10 || c == 13 || c == 14 || c == 16 || c == 22 || c == 24 || c == KEY_CTRL_R
 	       || c == 4 || c == 21 || c == 6 || c == 2 || c == 5 || c == 25 || c == 23
 	       || c == KEY_ESC || c == KEY_BS || c == KEY_UP || c == KEY_DOWN || c == KEY_LEFT || c == KEY_RIGHT || c == KEY_DEL;
@@ -1273,6 +1339,8 @@ static void execute(Cmdarg *cap)
 	case '^': cap->arg = BL_WHITE | BL_FIX; nv_beginline(cap); break;
 	case ':': nv_colon(cap); break;
 	case '/': case '?': nv_search(cap); break;
+	case 'n': case 'N': cap->arg = c == 'N'; nv_next(cap); break;
+	case '*': case '#': nv_ident(cap); break;
 	case '<': case '>': case 'c': case 'd': case 'y': nv_operator(cap); break;
 	case '@': nv_at(cap); break;
 	case 'A': case 'I': case 'a': case 'i': nv_edit(cap); break;
@@ -1389,6 +1457,12 @@ static int run(void)
 			done = 1;
 		}
 	}
+	/* / and ?: getcmdline() is the command line mode, which gives K_PAT
+	   when its line is entered and anything else when it is left */
+	if (!done && (c == '/' || c == '?')) {
+		if (rd >= npend) { cmdline(c, ""); return 0; }
+		if (pend[rd++] != K_PAT) { clearop(&oa); done = 1; }
+	}
 	/* do_window() reads the key after CTRL-W g; none of its tab page and
 	   tag commands is built, so each beeps */
 	if (!done && c == 23 && (ca.nchar == 'g' || ca.nchar == 7)) GET(ca.extra_char);
@@ -1434,7 +1508,7 @@ int normal_mappable(int drop)
 	if (drop) { npend = 0; opcount = 0; clearop(&oa); }
 	return 1;
 }
-void normal_reset(void) { redo_n = old_redo_n = 0; npend = 0; memset(&b_visual, 0, sizeof b_visual); }
+void normal_reset(void) { search_reset(); clearop(&oa); opcount = 0; VIsual_active = 0; redo_n = old_redo_n = 0; npend = 0; memset(&b_visual, 0, sizeof b_visual); }
 
 void normal_key(int k)
 {
@@ -1500,9 +1574,16 @@ static void do_pending_operator(Cmdarg *cap, long old_col)
 		if (!VIsual_active) { VIsual_active = 1; VIsual = oap->start; }
 		VIsual_mode = 22;
 	}
-	if (oap->op_type != OP_YANK && oap->op_type != OP_COLON && (!VIsual_active || oap->motion_force))
+	if (oap->op_type != OP_YANK && oap->op_type != OP_COLON && (!VIsual_active || oap->motion_force)) {
 		prep_redo(oap->regname, cap->count0, get_op_char(oap->op_type), get_extra_op_char(oap->op_type),
 		          oap->motion_force, cap->cmdchar, cap->nchar);
+		if (cap->searchbuf) {   /* the search's line, to type again */
+			size_t n = strlen(cap->searchbuf);
+			for (size_t i = 0; i < n; i += uni_len((const unsigned char *)cap->searchbuf, n, i))
+				redo_append((int)uni_cp((const unsigned char *)cap->searchbuf, n, i));
+			redo_append('\n');
+		}
+	}
 	if (redo_VIsual_busy) {
 		oap->start = cur();
 		long l = (long)W->line + redo_VIsual.line_count - 1;

@@ -100,3 +100,19 @@ keys: a match may end before a composing character (test_keys_regex)~test TESTS=
 keys: \zs in a look-around moves the match start (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~if (look && (p->op == ZS ||~if (look && (0 ||
 keys: \ze in a look-ahead stays when what follows fails (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~				ze = oz;¶				return 0;~				return 0;
 keys: a look-behind steps back by code point, into a letter with a composing character (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~s = (long)uni_gprev(~s = (long)uni_prev(
+keys: the next match is looked for a character after the last match's start, not from its end ('cpoptions' c) (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~me.col += eq(me, ms) && ~me.col += 1 + 0 * eq(me, ms) && 
+keys: ? skips the match at the cursor, as / does (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~	if (dir == BACKWARD) extra = 0;¶~
+keys: a search stops at the end of the file instead of wrapping ('wrapscan') (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~if (!found && !loop) lnum~if (!found && !loop && 0) lnum
+keys: d/x/e leaves the match's last character (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~if (off.end && oap) oap->inclusive = 1;~if (0) oap->inclusive = 1;
+keys: d/x/+1 deletes characters, not lines (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	else if (i == 2) cap->oap->motion_type = MLINE;¶~
+keys: n after /x/s-1 stays where it is (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~		cap->count1++;¶~
+keys: * finds the word inside other words, without \< \> (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~if (!g && first >= 2) p +=~if (0) p +=
+keys: . after d/x deletes up to the next x without typing the search again (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~			redo_append('\n');¶~
+keys: a search with an upper-case letter ignores case, as if 'smartcase' were off (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~spat_noscs || !has_upper(spat, all)~spat_noscs || 1 + 0 * !has_upper(spat, all)
+keys: * keeps 'smartcase', so * on Foo misses foo (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~, spat_noscs = no_smartcase;~, spat_noscs = 0;
+keys: * does not escape what the pattern would read as magic, so * on . finds any character (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~) *p++ = '\\';~) {}
+keys: * on a blank line searches for the last pattern instead of E348 (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	if (col >= n) { core_msg(E, "E348~	if (0) { core_msg(E, "E348
+keys: a block's yank flash takes byte columns, not screen columns, so a Tab's block flashes too little (test_keys_flash)~test TESTS=keys_flash~~src/keys/ops.c~		if (t == 22) {~		if (0) {
+keys: a block's yank flash starts at a Tab's first cell, not where the cursor stood on it (test_keys_flash)~test TESTS=keys_flash~~src/keys/ops.c~getvvcol(b_op_start, &a, NULL)~a = vcol_of(b_op_start.lnum, b_op_start.col)
+keys: a backslash at a pattern's start keeps it at the start, so /\*ptr is E866 (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~			prev_at_start = at_start, at_start = 0;¶			rp++, after_slash++;~			rp++, after_slash++;
+keys: \c at a pattern's start ends the start, so \c* is E866 (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~int s = prev_at_start, pr = prev~int s = at_start, pr = prev
