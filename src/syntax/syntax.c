@@ -1031,8 +1031,9 @@ void syntax_faces(Syntax *s, size_t a, size_t z, unsigned char *face)
    its place among its list_item siblings (sibling_count) and checkbox
    (task_list_marker_*, or the custom [-] after the marker); a heading's
    atx_hN_marker, alone or after the list marker ("- # x"); a
-   fenced_code_block's delimiters, info_string and language, unless the
-   block is 2 rows or fewer, which render-markdown skips.  The node is the
+   fenced_code_block's delimiters, info_string, language and background
+   rows, unless its range spans 1 row or fewer (Node:height() 2 or less),
+   which render-markdown skips.  The node is the
    one at the line's first byte past its indent and block quote markers. */
 static size_t blank(const char *b, size_t n, size_t i)
 {
@@ -1062,7 +1063,9 @@ int syntax_md(Syntax *s, const Text *t, size_t l, SyntaxMd *o)
 			TSNode k = ts_node_next_named_sibling(x);
 			const char *kt = ts_node_is_null(k) ? "" : ts_node_type(k);
 			if (!strncmp(kt, "task_list_marker_", 17)) o->task = kt[17] == 'c' ? 'x' : ' ', o->task_col = ts_node_start_byte(k) - ls;
-			else if (e + 3 <= n && !memcmp(b + e, "[-]", 3) && (e + 3 == len || b[e + 3] == ' ')) o->task = '-', o->task_col = e;
+			/* shortcut.lua: a shortcut_link "[-]" right after the marker with
+			   a blank after it (none at the line's end) */
+			else if (e + 4 <= n && !memcmp(b + e, "[-] ", 4)) o->task = '-', o->task_col = e;
 		}
 		e = blank(b, n, e);
 		x = ts_node_descendant_for_byte_range(r, (uint32_t)(ls + e), (uint32_t)(ls + e));
@@ -1074,10 +1077,11 @@ int syntax_md(Syntax *s, const Text *t, size_t l, SyntaxMd *o)
 	   lines after it) */
 	x = ts_node_descendant_for_byte_range(r, (uint32_t)(ls + (len ? len - 1 : 0)), (uint32_t)(ls + (len ? len - 1 : 0)));
 	for (; !ts_node_is_null(x) && strcmp(ts_node_type(x), "fenced_code_block"); x = ts_node_parent(x)) ;
-	if (!ts_node_is_null(x) && ts_node_end_point(x).row - ts_node_start_point(x).row > 2) {
-		/* render-markdown paints the body from the block's start column on
-		   every row (code.lua) */
-		o->code = 2, o->mark = ts_node_start_point(x).column;
+	uint32_t sr = 0, er = 0;
+	if (!ts_node_is_null(x) && (er = ts_node_end_point(x).row) - (sr = ts_node_start_point(x).row) > 1) {
+		/* code.lua: background(start_row + 1, end_row - 2), from the block's
+		   start column on every row */
+		if (l > sr && l + 2 <= er) o->code = 2, o->mark = ts_node_start_point(x).column;
 		for (uint32_t k = 0, d = 0; k < ts_node_child_count(x); k++) {
 			TSNode c = ts_node_child(x, k);
 			const char *ct = ts_node_type(c);

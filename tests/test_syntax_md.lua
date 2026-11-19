@@ -10,7 +10,7 @@ for i = 0, n - 1 do
   local src = io.open(dir .. '/' .. i .. '.md', 'rb'):read('a')
   local ls = { [0] = 0 }
   for p in src:gmatch('()\n') do ls[#ls + 1] = p end
-  local H, Li, C = {}, {}, {}
+  local H, Li, C, dash = {}, {}, {}, {}
   local function cols(node)
     local sr, _, sb, _, _, eb = node:range(true)
     return sr, sb - ls[sr], eb - ls[sr]
@@ -36,18 +36,15 @@ for i = 0, n - 1 do
       if k and k:type():match('^task_list_marker_') then
         f.task = k:type() == 'task_list_marker_checked' and string.byte('x') or string.byte(' ')
         f.task_col = select(2, cols(k))
-      else
-        local e = ls[r] + z
-        local after = src:sub(e + 4, e + 4)
-        if src:sub(e + 1, e + 3) == '[-]' and (after == '' or after == ' ' or after == '\n') then
-          f.task, f.task_col = string.byte('-'), z
-        end
+      elseif dash[r .. ':' .. z] then
+        f.task, f.task_col = string.byte('-'), z
       end
       Li[r] = Li[r] or f
     elseif t == 'fenced_code_block' then
       local sr, sc, sb, er, _, eb = node:range(true)
-      -- render-markdown skips a block of 2 rows or fewer
-      if er - sr > 2 then
+      -- render-markdown skips a block whose Node:height() (end_row -
+      -- start_row + 1) is 2 or less
+      if er - sr > 1 then
         local d = {}
         for c in node:iter_children() do
           if c:type() == 'fenced_code_block_delimiter' then d[#d + 1] = c end
@@ -67,29 +64,29 @@ for i = 0, n - 1 do
           end
         end
         C[orow] = C[orow] or f
-        -- the body: rows whose last byte (a blank row's start) lies inside
-        -- the block, up to the close
-        local last = orow
-        for r = orow + 1, er do
-          local e = (ls[r + 1] or #src + 1) - 1
-          local p = e > ls[r] and e - 1 or ls[r]
-          if r == er and not ls[r + 1] then p = #src > ls[r] and #src - 1 or ls[r] end
-          if p >= sb and p < eb then last = r end
+        -- code.lua's background(start_row + 1, end_row - 2), and the close
+        if d[2] then
+          local r, a, z = cols(d[2])
+          C[r] = C[r] or { code = 3, mark = a, mend = z }
         end
-        if d[2] then last = cols(d[2]) end
-        for r = orow + 1, last do
-          if d[2] and r == last then
-            local _, a, z = cols(d[2])
-            C[r] = C[r] or { code = 3, mark = a, mend = z }
-          else
-            C[r] = C[r] or { code = 2, mark = sc, mend = 0 }
-          end
-        end
+        for r = sr + 1, er - 2 do C[r] = C[r] or { code = 2, mark = sc, mend = 0 } end
       end
     end
     for c in node:iter_children() do walk(c) end
   end
-  local root = vim.treesitter.get_string_parser(src, 'markdown'):parse()[1]:root()
+  local lt = vim.treesitter.get_string_parser(src, 'markdown')
+  local root = lt:parse(true)[1]:root()
+  -- shortcut.lua's custom checkbox: a shortcut_link "[-]" with ' ' after
+  -- it (the inline trees), keyed by its row and start column
+  local function links(node)
+    if node:type() == 'shortcut_link' then
+      local r, c, er, ec = node:range()
+      local line = src:sub(ls[r] + 1, (ls[r + 1] or #src + 1) - 1)
+      if er == r and line:sub(c + 1, ec) == '[-]' and line:sub(ec + 1, ec + 1) == ' ' then dash[r .. ':' .. c] = true end
+    end
+    for c in node:iter_children() do links(c) end
+  end
+  for _, t in pairs(lt:children().markdown_inline and lt:children().markdown_inline:trees() or {}) do links(t:root()) end
   walk(root)
   local out = {}
   for r = 0, #ls do
