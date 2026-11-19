@@ -2,7 +2,8 @@
    running tests/test_syntax_md.lua on its bundled Markdown grammar, the
    one build/syntax compiles): random Markdown of headings, nested and
    ordered lists, checkboxes ([ ], [x], the custom [-]), fenced code with
-   info strings, inside block quotes and indents; every line's facts must
+   info strings, inside block quotes and indents, a heading after a list
+   marker; every line's facts must
    equal those of a walk of Neovim's whole tree. */
 #include <string.h>
 #include <unistd.h>
@@ -25,7 +26,7 @@ int main(void)
 	static const char *const quote[] = { "", "", "", "> ", "> > " }, *const ind[] = { "", "", "", "  ", "    ", "      ", "\t" },
 		*const body[] = { "# h", "### h", "###### h", "####### x", "#", "- a", "* a", "+ a", "1. a", "2) a", "10. a",
 		"- [ ] a", "- [x] a", "- [X] a", "- [-] a", "- [-]", "1. [ ] a", "* [-]x", "- ", "-", "```lua", "```", "~~~",
-		"``` c x", "````", "text", "", "", "- - a", "- # h", "- ```" };
+		"``` c x", "````", "text", "", "", "- - a", "- # h", "- ```", "- - # h", "3. # h", "```rust x", "``` {.py}" };
 	char dir[] = "/tmp/test_syntax_md_XXXXXX", path[256], cmd[512];
 	CHECK(mkdtemp(dir));
 	for (int i = 0; i < DOCS; i++) {
@@ -59,7 +60,8 @@ int main(void)
 			CHECK(fgets(want, sizeof want, o));
 			SyntaxMd m;
 			facts += syntax_md(s, t, l, &m);
-			snprintf(got, sizeof got, "%d %d %d %d %d %zu %zu %zu %zu %zu\n", m.head, m.list, m.ordered, m.task, m.code, m.mark, m.mend, m.task_col, m.info, m.ninfo);
+			snprintf(got, sizeof got, "%d %d %d %d %d %zu %zu %zu %zu %zu %zu %zu %zu %zu %zu\n", m.head, m.list, m.ordered, m.task, m.code,
+				m.mark, m.mend, m.item, m.iend, m.index, m.task_col, m.info, m.ninfo, m.lang, m.nlang);
 			if (strcmp(got, want)) {
 				size_t a = text_line_start(t, l), z = text_line_start(t, l + 1);
 				fprintf(stderr, "%s (and .md): line %zu: %.*s\nours   %sNeovim %s", path, l, (int)(z - a), b + a, got, want);
