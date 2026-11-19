@@ -63,7 +63,8 @@ void keys_input(struct Editor *e, int key, int pending);
    them until the next search.  The core calls it for each line of w it
    draws, from col 0 and then from *z (one character on after an empty
    match), and draws Search, and CurSearch for the match at the cursor.  It
-   runs in the redraw path: no allocation once the pattern has been
-   compiled (tests/test_keys_hl.c). */
+   runs in the redraw path: after the pattern's compile, only the keys'
+   line copies grow, to the longest line drawn, then stay
+   (tests/test_keys_ex.c). */
 int  keys_hl(struct Editor *e, const struct Win *w, size_t line, size_t col, size_t *s, size_t *z);
 #endif
