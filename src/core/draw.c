@@ -220,10 +220,10 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	/* 'cursorline' (Davy's pick of the UI proposals): CursorLine under the
 	   text area of the cursor line's rows, below syntax and render-markdown
 	   (low priority: it has no fg), not in the current window in Visual
-	   mode (win_line()) */
+	   mode (win_line()); not under skipcol's "<<<" */
 	unsigned char cl = l == w->line && !(w == e->win && e->ks.visual) ? FACE_CURSOR_LINE : 0;
 	for (int k = 0; cl && k < line_rows(w, l) && r + k < w->h; k++)
-		for (int c = nw; c < w->w; c++) {
+		for (int c = k || cover < nw ? nw : cover; c < w->w; c++) {
 			Cell *z = wcell(g, w, r + k, c);
 			if (z) z->bg = cl;
 		}
@@ -268,27 +268,27 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 			unsigned char face = syn ? fc[i - f0] : 0;
 			/* a double-width character whose second cell starts the area
 			   is in it (win_line()) */
-			unsigned char bg = (v >= from || (wide && v + 1 == from)) && v < to && (v < xf || v > xt) ? FACE_VISUAL : cl;
+			unsigned char vis = (v >= from || (wide && v + 1 == from)) && v < to && (v < xf || v > xt) ? FACE_VISUAL : 0;
 			if (row == r && c < cover) {
 				/* "<<<" over a double-width character's first cell leaves a
 				   blank in its second (measured) */
-				if (wide && j == lead && c + 1 == cover) put_cell(g, w, row, c + 1, (const unsigned char *)" ", 1, 0, 1, face, bg);
+				if (wide && j == lead && c + 1 == cover) put_cell(g, w, row, c + 1, (const unsigned char *)" ", 1, 0, 1, face, vis ? vis : cl);
 				continue;
 			}
 			/* win_line(): '>' where a double-width character does not fit
 			   (the line's end without wrap), '<' where the view starts in
 			   its second half (MB_FILLER_CHAR), both in NonText (HLF_AT,
 			   which the core draws dim, as '~') */
-			if (j < lead || (wide && j == 0 && !w->wrap && d == (size_t)tw - 1)) {
+			/* '>' is NonText alone, off CursorLine; '<' on it (multi_attr;
+			   measured) */
+			if (j < lead || (wide && j == 0 && !w->wrap && d == (size_t)tw - 1))
 				wputs(g, w, row, c, ">", FACE_NON_TEXT);   /* not in the area (measured) */
-				Cell *z = wcell(g, w, row, c);
-				if (z) z->bg = cl;
-			} else if (wide && j - lead == 1 && v == skip) {
+			else if (wide && j - lead == 1 && v == skip) {
 				/* in the area if its character is (measured) */
 				wputs(g, w, row, c, "<", FACE_NON_TEXT);
 				Cell *z = wcell(g, w, row, c);
-				if (z) z->bg = from < v ? bg : cl;
-			} else put_cell(g, w, row, c, s, k, j - lead, cw - lead, face, bg);
+				if (z) z->bg = from < v && vis ? vis : cl;
+			} else put_cell(g, w, row, c, s, k, j - lead, cw - lead, face, vis ? vis : cl);
 		}
 		i += k;
 	}

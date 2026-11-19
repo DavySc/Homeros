@@ -58,8 +58,8 @@ core: the cursor's cell is in the Visual area (test_core_visual)~test TESTS=core
 core: a double-width character half in the area is left out (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~(v >= from || (wide && v + 1 == from))~(v >= from || (wide && v + 2 == from))
 core: Visual mode shows the cursor on a tab's last cell before VIsual (test_core_visual)~test TESTS=core_visual~~src/core/core.c~	int first = w == e->win && e->ks.visual && (~	int first = w == e->win && e->ks.visual == 1 && (
 core: "<<<" over a double-width character leaves its second cell out of the area (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~if (wide && j == lead && c + 1 == cover)~if (wide && j == lead && c + 2 == cover)
-core: '<' of a character starting at the area is in it (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~if (z && from < v) z->bg = bg;~if (z) z->bg = bg;
-core: '>' is in the area (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~wputs(g, w, row, c, ">", FACE_NON_TEXT);   /* not in the area (measured) */¶				Cell *z = wcell(g, w, row, c);¶				if (z) z->bg = cl;~wputs(g, w, row, c, ">", FACE_NON_TEXT);   /* not in the area (measured) */¶				Cell *z = wcell(g, w, row, c);¶				if (z) z->bg = bg;
+core: '<' of a character starting at the area is in it (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~if (z) z->bg = from < v && vis ? vis : cl;~if (z) z->bg = vis ? vis : cl;
+core: '>' is in the area (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~wputs(g, w, row, c, ">", FACE_NON_TEXT);   /* not in the area (measured) */~{ wputs(g, w, row, c, ">", FACE_NON_TEXT); Cell *z = wcell(g, w, row, c); if (z) z->bg = vis; }
 core: -- VISUAL LINE -- shows as -- VISUAL -- (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~e->ks.visual == 'V' ? 1~e->ks.visual == 'V' ? 0
 core: -- REPLACE -- shows as -- INSERT -- (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~? 3 + !!e->ks.replace :~? 3 :
 core: a window on the same buffer shows no Visual area (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~	if (!e->ks.visual || w->buf != e->buf) return;~	if (!e->ks.visual || w != e->win) return;
@@ -124,3 +124,6 @@ core: "<<<" in the number's face (test_core_status)~test TESTS=core_status~~src/
 core: the separator without its face (test_core_status)~test TESTS=core_status~~src/core/draw.c~paint(g, w->y + r, w->x + w->w, 1, FACE_WIN_SEPARATOR);~paint(g, w->y + r, w->x + w->w, 1, FACE_NONE);
 core: the popup's scrollbar all thumb (test_core_status)~test TESTS=core_status~~src/core/draw.c~? FACE_PMENU_THUMB : FACE_PMENU_SBAR~? FACE_PMENU_THUMB : FACE_PMENU_THUMB
 core: %F's home directory not shortened (test_core_status)~test TESTS=core_status~~src/core/core.c~if (!k || strncmp(p, h, k)~if (1 || strncmp(p, h, k)
+core: the '>' filler on the cursor line's background (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~wputs(g, w, row, c, ">", FACE_NON_TEXT);   /* not in the area (measured) */~{ wputs(g, w, row, c, ">", FACE_NON_TEXT); Cell *z = wcell(g, w, row, c); if (z) z->bg = cl; }
+core: the '<' filler off the cursor line's background (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~if (z) z->bg = from < v && vis ? vis : cl;~if (z) z->bg = from < v && vis ? vis : 0;
+core: the cursor line's background under skipcol's "<<<" (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~for (int c = k || cover < nw ? nw : cover;~for (int c = nw;
