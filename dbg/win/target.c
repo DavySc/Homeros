@@ -3,9 +3,7 @@
 #include <windows.h>
 #include <stdlib.h>
 
-#include <stdio.h>
-static unsigned stops, shown, halting;   /* EXPERIMENT, not to stay */
-typedef struct { DWORD id; HANDLE handle; DWORD64 seen_rip; DWORD seen_flags, seen_err; unsigned seen_stop, born; int seen_kind; } Thread;
+typedef struct { DWORD id; HANDLE handle; } Thread;
 typedef struct { uint64_t addr; uint8_t own; bool in; } Trap;
 struct Target {
   HANDLE process;
@@ -26,7 +24,7 @@ static HANDLE thread_handle(const Target *t, DWORD id)
 static void thread_add(Target *t, DWORD id, HANDLE handle)
 {
   if (t->thread_count == t->thread_cap && !(t->threads = realloc(t->threads, (t->thread_cap = t->thread_cap * 2 + 8) * sizeof *t->threads))) abort();
-  t->threads[t->thread_count++] = (Thread){.id = id, .handle = handle, .born = stops};
+  t->threads[t->thread_count++] = (Thread){id, handle};
 }
 
 /* The first event of a process is its creation; it is held, so the target is stopped. */
@@ -103,14 +101,11 @@ static void stop(Target *t)
 {
   for (uint32_t i = 0; i < t->thread_count; i += 1) {
     CONTEXT c = {.ContextFlags = CONTEXT_CONTROL | CONTEXT_EXCEPTION_REQUEST};
-    BOOL got = GetThreadContext(t->threads[i].handle, &c);
-    t->threads[i].seen_err = got ? 0 : GetLastError(), t->threads[i].seen_rip = c.Rip, t->threads[i].seen_flags = c.ContextFlags, t->threads[i].seen_stop = stops, t->threads[i].seen_kind = halting ? 2 : 1;
-    if (!got || !(c.ContextFlags & CONTEXT_EXCEPTION_ACTIVE)) continue;
+    if (!GetThreadContext(t->threads[i].handle, &c) || !(c.ContextFlags & CONTEXT_EXCEPTION_ACTIVE)) continue;
     for (uint32_t k = 0; k < t->trap_count; k += 1)
       if (t->traps[k].in && t->traps[k].addr == c.Rip - 1) { thread_at(t->threads[i].handle, &t->traps[k].addr, false); break; }
   }
   for (uint32_t i = 0; i < t->trap_count; i += 1) if (t->traps[i].in) target_write(t, t->traps[i].addr, &t->traps[i].own, 1);
-  stops += 1;
 }
 
 bool target_wait(Target *t, uint32_t ms, TargetEvent *out)
@@ -155,12 +150,7 @@ bool target_wait(Target *t, uint32_t ms, TargetEvent *out)
       out->kind = TARGET_LATE;
       for (uint32_t i = 0; i < t->trap_count; i += 1) if (t->traps[i].addr == at && t->traps[i].in) out->kind = TARGET_TRAP;
       if (out->kind == TARGET_LATE && target_read(t, at, &own, 1) && (own == 0xcc || own == 0xcd)) out->kind = TARGET_BREAK;
-      else {
-        out->code = thread_at(thread_handle(t, e.dwThreadId), &at, false);
-        for (uint32_t i = 0; out->kind == TARGET_LATE && out->code && shown < 60 && i < t->thread_count; i += 1) if (t->threads[i].id == e.dwThreadId)
-          shown += 1, fprintf(stderr, "LATE-BEHIND thread %lu at %llx: stop now %u; born at stop %u; last seen at stop %u (halt=%d) rip %llx flags %lx err %lu; first chance %lu; threads %u\n", e.dwThreadId, (unsigned long long)at, stops,
-                  t->threads[i].born, t->threads[i].seen_stop, t->threads[i].seen_kind == 2, (unsigned long long)t->threads[i].seen_rip, t->threads[i].seen_flags, t->threads[i].seen_err, e.u.Exception.dwFirstChance, t->thread_count);
-      }
+      else out->code = thread_at(thread_handle(t, e.dwThreadId), &at, false);
     } else if (out->kind == TARGET_EXCEPTION) status = DBG_EXCEPTION_NOT_HANDLED;   /* the program's handlers get it */
   } break;
   default: break;   /* RIP_EVENT, and a second process cannot come (DEBUG_ONLY_THIS_PROCESS) */
@@ -174,7 +164,7 @@ bool target_wait(Target *t, uint32_t ms, TargetEvent *out)
 void target_halt(Target *t)
 {
   for (uint32_t i = 0; i < t->thread_count; i += 1) SuspendThread(t->threads[i].handle);
-  halting = 1, stop(t), halting = 0;
+  stop(t);
 }
 
 void target_close(Target *t)
