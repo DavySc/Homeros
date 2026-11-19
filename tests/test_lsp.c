@@ -20,6 +20,7 @@
 #include <signal.h>
 #include <stdarg.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
 #include "check.h"
@@ -658,7 +659,11 @@ static void scenario(int seed, const char *log)
 	nseen = nhist = 0;
 	cur = 0;
 	snapshot();
-	LspDoc *d = lsp_open("/tmp/homeros-test.fake", t);
+	/* A path past 512 bytes: its URI goes in every message (PR 27 review). */
+	char path[700] = "/tmp/";
+	for (int i = 0; i < 3; i++) { size_t k = strlen(path); memset(path + k, 'a', 200); path[k + 200] = 0; mkdir(path, 0700); strcat(path, "/"); }
+	strcat(path, "homeros-test.fake");
+	LspDoc *d = lsp_open(path, t);
 	CHECK(d);
 	long latest = -1;
 	size_t asked[LSP_NASK] = { 0 };

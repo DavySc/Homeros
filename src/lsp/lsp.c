@@ -670,7 +670,7 @@ const char *lsp_name(const LspDoc *d, int *work)
 }
 
 const char *lsp_uri(const LspDoc *d) { return d ? d->uri : NULL; }
-const char *lsp_init(const LspDoc *d, size_t *n) { *n = d->s->init.n; return *n ? d->s->init.s : NULL; }
+const char *lsp_init(const LspDoc *d, size_t *n) { *n = d ? d->s->init.n : 0; return *n ? d->s->init.s : NULL; }
 
 int lsp_send(const char *u, const char *method, const char *params, size_t n, LspRawFn fn, void *ctx)
 {

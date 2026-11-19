@@ -39,3 +39,4 @@ lsp: the status line counts no work begun~test TESTS=lsp~~src/lsp/lsp.c~s->work 
 lsp: the status line counts no work ended~test TESTS=lsp~~src/lsp/lsp.c~ && s->work > 0) s->work--;~ && s->work > 0) s->work += 0;
 lsp: a new server shows the old one's work~test TESTS=lsp~~src/lsp/lsp.c~	s->work = -1;¶~
 lsp: the status line names the server by its whole path~test TESTS=lsp~~src/lsp/lsp.c~	return b ? b + 1 : a;~	return b ? a : a;
+lsp: a formatted message cut at 512 bytes (a long path's URI lost)~test TESTS=lsp~~src/str/str.c~	if (n < 0 || grow(s, (size_t)n)) return -1;~	if (n < 0 || n >= 512 || grow(s, (size_t)n)) return -1;
