@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "k.h"
+#include "sqlfmt.h"
 #include "uni.h"
 
 enum { SW = 4 };
@@ -15,7 +16,7 @@ Reg *put_override;             /* nv_put()'s copy of the register (Visual p) */
 
 /* ---- registers ---- */
 
-/* 0-9, a-z, "-" and "+" (the clipboard, until the backend has one) */
+/* 0-9, a-z, "-" and "+" (the clipboard's copy, get_clipboard()) */
 static Reg y_regs[38];
 static Reg *y_previous;
 static char *last_cmdline;
@@ -39,8 +40,11 @@ int valid_yank_reg(int r, int writing)
 }
 
 /* get_yank_register() */
+static Reg *get_clipboard(int r);
 Reg *get_reg(int r, int yank)
 {
+	Reg *c = yank ? NULL : get_clipboard(r);
+	if (c) return c;
 	if (!yank && (r == 0 || r == '"') && y_previous) return y_previous;
 	int i = op_reg_index(r);
 	if (i < 0) i = 0;
@@ -106,6 +110,53 @@ static void bput(Sbuf *b, const char *s, long n)
 	b->s[b->n] = 0;
 }
 static void bspaces(Sbuf *b, long n) { while (n-- > 0) bput(b, " ", 1); }
+
+/* The system clipboard, with 'clipboard' unnamedplus (Davy, 2026-11-18):
+   Neovim's clipboard.c, set_clipboard() after a yank or delete and
+   get_clipboard() before a put, for "+ "* and the unnamed register.  "+
+   doubles as the provider's cache (clipboard.vim's s:selections), so a
+   text read back as it was set keeps its type (a block, lines); other text
+   is lines when it ends in a line break. */
+static void clip_text(const Reg *r, Sbuf *b)
+{
+	bput(b, "", 0);
+	bput(b, r->s ? r->s : "", r->n);
+	if (r->type != MCHAR) bput(b, "\n", 1);
+}
+
+static void set_clipboard(int r, const Reg *y)
+{
+	if (!E->clip_set || (r && r != '+' && r != '*')) return;
+	Sbuf b = { 0 };
+	clip_text(y, &b);
+	if (!E->clip_set(b.s, (size_t)b.n) && y != &y_regs[37]) {
+		set_reg('+', y->s ? y->s : "", y->n, y->type);
+		y_regs[37].width = y->width;
+	}
+	free(b.s);
+}
+
+static Reg *get_clipboard(int r)
+{
+	if (!E->clip_get || (r && r != '+' && r != '*')) return NULL;
+	long n = 4096, m;
+	char *s = malloc((size_t)n);
+	while (s && (m = E->clip_get(s, (size_t)n)) > n) {
+		char *t = realloc(s, (size_t)m);
+		if (!t) { free(s); s = NULL; }
+		else { s = t; n = m; }
+	}
+	if (!s || m < 0) { free(s); return NULL; }
+	Sbuf b = { 0 };
+	clip_text(&y_regs[37], &b);
+	if (b.n != m || memcmp(b.s, s, (size_t)m)) {
+		int line = m && s[m - 1] == '\n';
+		set_reg('+', s, m - line, line ? MLINE : MCHAR);
+	}
+	free(b.s);
+	free(s);
+	return &y_regs[37];
+}
 
 /* ---- block_prep() ---- */
 
@@ -279,6 +330,7 @@ int op_yank(Oparg *oap)
 	int r = oap->regname;
 	Reg *reg = get_reg(r, 1);
 	yank_into(oap, reg, r >= 'A' && r <= 'Z');
+	set_clipboard(r, reg);
 	return 1;
 }
 
@@ -338,7 +390,7 @@ int op_delete(Oparg *oap)
 			yank_into(oap, reg, 0);
 			did_yank = 1;
 		}
-		(void)did_yank;
+		if (did_yank) set_clipboard(oap->regname, reg);
 	}
 	if (oap->motion_type == MBLOCK) {
 		u_save_cursor();
@@ -385,7 +437,10 @@ int op_delete(Oparg *oap)
 			   top line: PR 20's review, rg1_84) */
 			if (oap->op_type == OP_DELETE && !oap->is_visual && c > 0 && c + n >= ml_len(l) && !restart_edit)
 				W->col = (size_t)head(ml_get(l), c - 1);
-			replace_bytes(l, c, n, "", 0);
+			/* del_bytes() refuses a count below 1 (E292): ]] with an
+			   operator past a last line that starts with "}" ends before
+			   the start (findpar(), then check_pos()) */
+			if (n > 0) replace_bytes(l, c, n, "", 0);
 			if (oap->op_type == OP_DELETE) check_cursor_col();
 		} else {
 			u_save_cursor();
@@ -1020,7 +1075,7 @@ void do_put(int regname, int dir, long count, int flags)
 		reg = &tmp;
 	} else reg = put_override ? put_override : get_reg(regname, 0);
 	/* do_put(): linewise, u_save(lnum - 1, lnum) at the line put before */
-	if (reg->type == MLINE && !(flags & PUT_LINE_SPLIT) && !is_empty_buf()) u_save_gap(W->line + (dir == FORWARD));
+	if (reg->type == MLINE && !(flags & PUT_LINE_SPLIT) && !is_empty_buf()) u_save(W->line + (dir == FORWARD), W->line + (dir == FORWARD));
 	else u_save_cursor();
 	y_type = reg->type;
 	y_width = reg->width;
@@ -1637,4 +1692,145 @@ int insert_reg(int regname, int literally)
 		if (j < reg->n || reg->type == MLINE) stuff_bytes("\n", 1, 0, 0);
 	}
 	return 1;
+}
+
+/* ---- gq and :Format ---- */
+
+int is_sql(void)
+{
+	size_t n = B->path ? strlen(B->path) : 0;
+	return n > 4 && !memcmp(B->path + n - 4, ".sql", 4);
+}
+
+/* conform.nvim with sqldiff, Davy's formatter for .sql: the whole text goes
+   to the formatter and only the changes in bytes [a, z) are applied, as
+   sqlfmt's range does */
+int sql_format(size_t a, size_t z)
+{
+	const char *res;
+	size_t n;
+	int kept = sqlfmt(B->text, &a, &z, &res, &n);
+	if (kept < 0) { core_msg(E, "E342: Out of memory!"); return -1; }
+	if (z > a || n) {
+		/* the cursor stays on its text: after the edit it moves with it,
+		   inside it keeps its offset into the new text (as near as fits) */
+		size_t p = core_line_start(E, W->line) + W->col;
+		p = p >= z ? p - (z - a) + n : p > a ? a + (p - a < n ? p - a : n) : p;
+		core_edit(E, a, z - a, res, n);
+		buf_changed();
+		W->line = text_line_of(B->text, p);
+		W->col = p - core_line_start(E, W->line);
+		check_cursor();
+		W->col = (size_t)head(ml_get((long)W->line), (long)W->col);
+	}
+	if (kept) core_msg(E, "%d statement%s kept as written", kept, kept == 1 ? "" : "s");
+	return 0;
+}
+
+/* fmt_check_par() without 'comments' (see do_join()): a blank line, or a
+   nroff paragraph macro, is not part of a paragraph */
+static int fmt_check_par(long l) { return linewhite(l) || startPS(l, 0, 0); }
+
+/* utf_head_off() before byte c: head() would count the line each step */
+static long gprev(const char *s, long n, long c) { return (long)uni_gprev((const unsigned char *)s, (size_t)n, (size_t)c); }
+
+/* internal_format() for format_lines() ('formatoptions' tcqj, no comment
+   leaders): while the line's last non-blank ends past textwidth, break it
+   at the last blanks that start at or before textwidth (the first blanks
+   when none do).  Neovim finds them scanning back from the line's end and
+   moves the rest of the line with open_line(), which is quadratic in a
+   long line (gqq on a 190 KB line: 4 s and 446 MB of undo, measured once);
+   scanning forward to textwidth finds the same blanks, and replacing just
+   them with a line break and open_line()'s indent is the same text */
+static void internal_format(long tw)
+{
+	for (;;) {
+		long l = (long)W->line, n = ml_len(l);
+		const char *s = ml_get(l);
+		long c = n ? gprev(s, n, n) : 0;   /* the last non-blank */
+		while (c && (s[c] == ' ' || (s[c] >= 9 && s[c] <= 13))) c = gprev(s, n, c);
+		/* get_nolist_virtcol() validates w_virtcol here, on the last
+		   non-blank, where format_lines() put the cursor */
+		W->col = (size_t)c;
+		validate_virtcol();
+		long wantcol = col_of_vcol(l, tw, 1), foundcol = 0;
+		if (c == 0 || wantcol > c) return;
+		/* blanks after a non-blank, so not the indent */
+		for (long i = 0, prev = 0; i < c; i += clen(s, n, i)) {
+			int w = whitechar(s, n, i);
+			if (w && prev) {
+				if (i > wantcol) { if (!foundcol) foundcol = i; break; }
+				foundcol = i;
+			}
+			prev = !w;
+		}
+		/* no blanks: the line stays long, and w_virtcol what
+		   coladvance(textwidth) made it (F, G and H1 of reviews/pr-67.md) */
+		if (foundcol == 0) {
+			if (vcol_of(l, wantcol) == tw) W->vc.v = (size_t)tw;
+			else W->vc.ok = 0;
+			return;
+		}
+		long q = foundcol, ind = get_indent(l);
+		while (q < n && whitechar(s, n, q)) q++;
+		if (!ind) ind = old_indent;   /* "^ CTRL-D" in the last insert */
+		old_indent = 0;
+		Sbuf b = { 0 };
+		bput(&b, "\n", 1);
+		bspaces(&b, ind);
+		replace_bytes(l, foundcol, q - foundcol, b.s, b.n);
+		free(b.s);
+		W->line = (size_t)l + 1;
+	}
+}
+
+/* format_lines() without 'comments' and with textwidth 0: the window's
+   width less one, at most 79 (comp_textwidth()).  Each paragraph's lines
+   are joined as J does and broken again by internal_format(); a line
+   longer than three times that is formatted before the next join */
+static void format_lines(long line_count)
+{
+	long tw = W->w - 1 < 79 ? W->w - 1 : 79, max_len = tw * 3, l = (long)W->line;
+	int next_is_not_par = fmt_check_par(l), is_not_par = 0, advance = 1, need_set_indent = 1, force_format = 0;
+	l--;
+	for (long count = line_count; count != 0; count--) {
+		if (advance) { l++; is_not_par = next_is_not_par; }
+		next_is_not_par = count == 1 || l == nlines() - 1 || fmt_check_par(l + 1);
+		advance = 1;
+		int is_end_par = is_not_par || next_is_not_par;
+		if (is_not_par) continue;
+		if (is_end_par || force_format) {
+			if (need_set_indent) set_indent(l, get_indent(l));
+			W->line = (size_t)l;
+			if (tw > 0) internal_format(tw);
+			l = (long)W->line;
+			need_set_indent = is_end_par;
+			force_format = 0;
+		}
+		if (!is_end_par) {
+			advance = 0;
+			W->line = (size_t)l;
+			do_join(2, 1);
+			force_format = ml_len(l) > max_len;
+		}
+	}
+	W->line = (size_t)l;
+}
+
+/* OP_FORMAT: a .sql buffer has Davy's 'formatexpr' (op_formatexpr()) over
+   the operator's lines; other buffers op_format() */
+void op_format(Oparg *oap)
+{
+	if (is_sql()) {
+		sql_format(core_line_start(E, (size_t)oap->start.lnum), core_line_start(E, (size_t)oap->end.lnum + 1));
+		return;
+	}
+	/* the cursor where gq was typed, so u puts it back there */
+	setcur(oap->cursor_start);
+	u_save((size_t)oap->start.lnum, (size_t)oap->end.lnum + 1);
+	setcur(oap->start);
+	format_lines(oap->line_count);
+	/* the first non-blank of the last formatted line; after "Q}" the next */
+	if (oap->end_adjusted && (long)W->line < nlines() - 1) W->line++;
+	beginline(BL_WHITE | BL_FIX);
 }
