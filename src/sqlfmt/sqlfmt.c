@@ -519,6 +519,9 @@ static int first_sig(size_t a, size_t z)
 	return -1;
 }
 
+/* the events that are node at's children: its tokens and its child nodes */
+#define CHILDREN(j, at) for (size_t j = (at) + 1; j < (size_t)P->ev[at].end; j = P->ev[j].node ? (size_t)P->ev[j].end : j + 1)
+
 static void unit(size_t at, int level, int brk);
 static void container(size_t at, int level);
 static void clauses(size_t a, size_t z);
@@ -535,7 +538,7 @@ static void own_token(size_t j, int level, int *after_body)
 
 static void inline_(size_t at, int level)
 {
-	for (size_t j = at + 1; j < (size_t)P->ev[at].end; j = P->ev[j].node ? (size_t)P->ev[j].end : j + 1) {
+	CHILDREN(j, at) {
 		int n = P->ev[j].node;
 		if (!n) token(P->ev[j].tok, level);
 		else if (container_node(n)) container(j, level);
@@ -548,7 +551,7 @@ static void unit(size_t at, int level, int brk)
 {
 	int after = 0, saved = base_;
 	base_ = depth_;
-	for (size_t j = at + 1; j < (size_t)P->ev[at].end; j = P->ev[j].node ? (size_t)P->ev[j].end : j + 1) {
+	CHILDREN(j, at) {
 		int n = P->ev[j].node;
 		if (!n) own_token(j, level, &after);
 		else if (n == N_CONDITION || n == N_LABEL) inline_(j, level);
@@ -569,7 +572,7 @@ static void container(size_t at, int level)
 {
 	int k = P->ev[at].node, units = 0, children = 0, only = 0;
 	size_t z = (size_t)P->ev[at].end;
-	for (size_t j = at + 1; j < z; j = P->ev[j].node ? (size_t)P->ev[j].end : j + 1)
+	CHILDREN(j, at)
 		if (P->ev[j].node) {
 			children++;
 			if (unit_node(P->ev[j].node)) units++, only = P->ev[j].node;
@@ -577,7 +580,7 @@ static void container(size_t at, int level)
 	int ls = last_sig(first_sig(at + 1, z) >= 0 ? first_sig(at + 1, z) : (int)P->n);
 	/* T-SQL `ELSE IF`: the nested IF stays on the ELSE line */
 	if (k == N_BRANCH && units == 1 && only == N_IF && children == 1 && ls >= 0 && word_of(P, (size_t)ls) == W_ELSE) {
-		for (size_t j = at + 1; j < z; j = P->ev[j].node ? (size_t)P->ev[j].end : j + 1)
+		CHILDREN(j, at)
 			if (!P->ev[j].node) token(P->ev[j].tok, level);
 			else unit(j, level, 0);
 		return;
@@ -585,7 +588,7 @@ static void container(size_t at, int level)
 	/* a body that is one BEGIN ... END block lines up with its header */
 	int inner = (k == N_BRANCH || k == N_ROUTINE_BODY) && units == 1 && only == N_BLOCK && children == 1 ? level : level + 1;
 	int after = 0;
-	for (size_t j = at + 1; j < z; j = P->ev[j].node ? (size_t)P->ev[j].end : j + 1) {
+	CHILDREN(j, at) {
 		int n = P->ev[j].node;
 		if (!n) own_token(j, level, &after);
 		else if (unit_node(n) && n != N_LABEL) unit(j, inner, 1), after = 1;
@@ -666,7 +669,7 @@ static void clauses(size_t a, size_t z)
 
 static void file(size_t at)
 {
-	for (size_t j = at + 1; j < (size_t)P->ev[at].end; j = P->ev[j].node ? (size_t)P->ev[j].end : j + 1) {
+	CHILDREN(j, at) {
 		int n = P->ev[j].node;
 		if (!n) token(P->ev[j].tok, 0);
 		else if (n == N_BATCH) file(j);
