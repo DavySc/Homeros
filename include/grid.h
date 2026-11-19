@@ -49,9 +49,9 @@ enum {
 	/* Neovim's UI highlight groups, as Davy's catppuccin draws them:
 	   CursorLine (only ever a cell's bg), CursorLineNr, LineNr, StatusLine,
 	   StatusLineNC, WinSeparator, EndOfBuffer, NonText ('@@@', the '<' and
-	   '>' fillers, and SpecialKey's ^X, which catppuccin links to it), Visual, Search, CurSearch, MatchParen, Pmenu,
-	   PmenuSel, PmenuSbar, PmenuThumb, NormalFloat, FloatBorder, FloatTitle,
-	   Cursor */
+	   '>' fillers, and SpecialKey's ^X, which catppuccin links to it),
+	   Visual, Search, CurSearch, MatchParen, Pmenu, PmenuSel, PmenuSbar,
+	   PmenuThumb, NormalFloat, FloatBorder, FloatTitle, Cursor */
 	FACE_CURSOR_LINE, FACE_CURSOR_LINE_NR, FACE_LINE_NR, FACE_STATUS_LINE,
 	FACE_STATUS_LINE_NC, FACE_WIN_SEPARATOR, FACE_END_OF_BUFFER, FACE_NON_TEXT,
 	FACE_VISUAL, FACE_SEARCH, FACE_CUR_SEARCH, FACE_MATCH_PAREN, FACE_PMENU,
