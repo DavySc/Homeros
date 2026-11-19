@@ -7,12 +7,21 @@ cd "$(dirname "$0")"
 # a small queue, so the stress test runs with both queues full most of the time
 FLAGS="-std=c17 -D_GNU_SOURCE -pthread -DQUEUE_BYTES=256 -g -O1 -Wall -Wextra -Werror"
 SAN="-fsanitize=address,undefined -fno-sanitize-recover=all"
-run() { # run <dir with the sources> <test|specs|oracle|fuzz|all>: 0 when the named checks pass, 2 when
+run() { # run <dir with the sources> <list|test|specs|oracle|fuzz|all>: 0 when the named checks pass, 2 when
         # something does not compile (a planted bug must be caught by a check, not by the compiler), 3 when the
         # test files cannot be made (nor by a full disk)
   local src=$1 what=$2 b t; b=$(mktemp -d)
   python3 -I "$src/tests/seed_rdi.py" "$b/seed.rdi" || return 3
   "$src/tests/make_pdbs.sh" "$b/pdb" || return 3
+  if [ "$what" = list ] || [ "$what" = all ]; then
+    # every plant still has its place: its text occurs once in the file it names (not asked of a planted tree)
+    python3 -I -c 'import sys
+for l in open(sys.argv[1] + "/tests/plants.txt"):
+    if l.strip() and l[0] != "#":
+        what, file, find, repl = l.rstrip("\n").split("|")
+        find = find[1:-1] if find.endswith(" ") else find[1:]
+        if open(sys.argv[1] + "/" + file.strip()).read().count(find.replace("\\n", "\n").replace("\\p", "|")) != 1: sys.exit("plants.txt: not found once: " + find)' "$src" || return 1
+  fi
   if [ "$what" = test ] || [ "$what" = all ]; then
     # each tests/test_*.c is its own program: ASan+UBSan with both compilers, then ThreadSanitizer
     for t in "$src"/tests/test_*.c; do

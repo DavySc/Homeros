@@ -276,8 +276,8 @@ test | dbg/conv.c | .member_first = first, .member_count = count}; | .member_fir
 fuzz | dbg/conv.c | .member_first = first, .member_count = count}; | .member_first = first + 1, .member_count = count};
 oracle | dbg/conv.c | .member_first = first, .member_count = count}; | .member_first = first, .member_count = 0};
 oracle | dbg/conv.c | id += 1) members(&o, id); | id += 2) members(&o, id);
-fuzz | dbg/conv.c | sizeof(RdiUdt), sizeof(RdiMember), sizeof(RdiEnumMember)}; | sizeof(RdiUdt), 0, sizeof(RdiEnumMember)};
-fuzz | dbg/conv.c | sizeof(RdiUdt), sizeof(RdiMember), sizeof(RdiEnumMember)}; | sizeof(RdiUdt), sizeof(RdiMember), 0};
+fuzz | dbg/conv.c | sizeof(RdiUdt), sizeof(RdiMember), sizeof(RdiEnumMember), | sizeof(RdiUdt), 0, sizeof(RdiEnumMember),
+fuzz | dbg/conv.c | sizeof(RdiUdt), sizeof(RdiMember), sizeof(RdiEnumMember), | sizeof(RdiUdt), sizeof(RdiMember), 0,
 test | dbg/conv.c | (v == 0x8000 \p\p v == 0x8001 \p\p | (v == 0x8001 \p\p
 test | dbg/conv.c | v == 0x8001 \p\p v == 0x8003) | v == 0x8003)
 test | dbg/conv.c | v == 0x8001 \p\p v == 0x8003) | v == 0x8001)
@@ -319,7 +319,7 @@ oracle | dbg/conv.c | at = 4;\n    uint64_t value = numeric(d, &at);\n    PdbSpa
 test | dbg/conv.c | type_node(o, (RdiType){.kind = 0x2004, .byte_size = y->byte_size, .a = intern(&o->strings, name.p, name.n), .b = type}); | type_node(o, (RdiType){.kind = 0x2004, .a = intern(&o->strings, name.p, name.n), .b = type});
 oracle | dbg/conv.c | type_node(o, (RdiType){.kind = 0x2004, .byte_size = y->byte_size, .a = intern(&o->strings, name.p, name.n), .b = type}); | type_node(o, (RdiType){.kind = 0x2004, .byte_size = y->byte_size, .a = intern(&o->strings, name.p, name.n)});
 oracle | dbg/conv.c | PdbSpan name = pdb_string(d, &(uint32_t){4}); | PdbSpan name = pdb_string(d, &(uint32_t){5});
-oracle | dbg/conv.c | } else data_symbol(&o, &pdb, kind, d, false); | }
+oracle | dbg/conv.c | } else data_symbol(&o, &pdb, kind, d, false), local_symbol( | } else local_symbol(
 oracle | dbg/conv.c | data_symbol(&o, &pdb, kind, d, true); | data_symbol(&o, &pdb, kind, d, false);
 oracle | dbg/conv.c | vmap_build(&o.s[RDI_GLOBAL_VMAP], &o.globals); |
 oracle | dbg/conv.c | if (y->kind < 0x1000 \p\p (y->kind >= 0x2000 && y->kind < 0xf000)) named(&o.pairs, RDI_NAMES_TYPES, y->a, i); | if (y->kind >= 0x2000 && y->kind < 0xf000) named(&o.pairs, RDI_NAMES_TYPES, y->a, i);
@@ -424,3 +424,5 @@ oracle | dbg/conv.c | .type = named ? type_of(&o, le32(d.p + 4)) : 0, | .type = 
 oracle | dbg/conv.c | .owner_type = named && kind == LF_MFUNC_ID ? type_of(&o, le32(d.p)) : 0, | .owner_type = named ? type_of(&o, le32(d.p)) : 0,
 oracle | dbg/conv.c | .owner_type = named && kind == LF_MFUNC_ID ? type_of(&o, le32(d.p)) : 0, | .owner_type = named && kind == LF_MFUNC_ID ? type_of(&o, le32(d.p + 4)) : 0,
 oracle | dbg/conv.c | .owner_type = named && kind == LF_MFUNC_ID ? type_of(&o, le32(d.p)) : 0, | .owner_type = 0,
+# ---- the list itself: a plant whose text is gone plants nothing ----
+list | tests/plants.txt | = 1,\noracle \p dbg/rdi.c \p [RDI_LOCALS] | = 1,\noracle \p dbg/rdi.c \p [RDI_NO_SUCH]

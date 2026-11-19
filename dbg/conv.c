@@ -802,7 +802,7 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
     Frame frame = {0};
     for (uint32_t at = 0; pdb_symbol(syms, &at, &kind, &d);) {
       uint32_t top = open.n ? *LAST(open, uint32_t) : 0, made = 0, inside = ((RdiScope *)o.s[RDI_SCOPES].p)[top].proc;
-      if (kind == S_END || kind == S_INLINESITE_END) open.n -= open.n ? 4 : 0;
+      if ((kind == S_END || kind == S_INLINESITE_END) && open.n) open.n -= 4;
       else if ((kind == S_GPROC32 || kind == S_LPROC32) && d.n >= 35) {   /* CV_SymProc32 */
         uint64_t voff = base = pdb_voff(&pdb, le16(d.p + 32), le32(d.p + 28));
         PdbSpan name = pdb_string(d, &(uint32_t){35});
