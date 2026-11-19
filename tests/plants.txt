@@ -1,0 +1,12 @@
+# file	old	new	why it must be caught
+# ---- slice 1: snapshot ----
+sqlref/snap.c	if (d == D_CI) return low(c);	if (d == D_CI) return c;	case ignored under a _CI_ collation
+sqlref/snap.c	s->ci = dialect == D_TSQL && strstr(f[1], "_CI") != NULL	s->ci = dialect == D_TSQL && strstr(f[1], "_C") != NULL	a _CS_ collation read as _CI_
+sqlref/snap.c	if (s[i] == close) i++;	;	]] inside a bracketed name not undoubled
+sqlref/snap.c	*w++ = *p == 't' ? '\t' : *p == 'n' ? '\n' : *p == 'r' ? '\r' : *p;	*w++ = *p == 't' ? '\t' : *p == 'n' ? '\n' : *p;	escaped CR not unescaped
+sqlref/snap.c	char *le = e > p && e[-1] == '\r' ? e - 1 : e;	char *le = e;	CRLF snapshot (sqlcmd on Windows)
+sqlref/snap.c	return hit >= 0 ? hit : many ? -2 : other;	return hit >= 0 ? hit : other;	an unqualified name in two schemas, neither the default
+sqlref/snap.c	if (s->c[s->o[o].col + j].id == id) return	if (j + 1 == id) return	foreign key column found by ordinal, not id (gap after a drop)
+sqlref/snap.c	if (schema.s) { if (same(d, s->o[v].schema, schema)) return (long)v; continue; }	if (schema.s) return (long)v;	schema ignored
+sqlref/snap.c	if (dflt && !strcmp(s->o[v].schema, dflt)) hit = (long)v;	if (0) hit = (long)v;	default schema not preferred
+sqlref/snap.c	if (*p == '\t') { *w++ = 0; p++;	if (*p == '\t' && n < 3) { *w++ = 0; p++;	tab splitting stops early
