@@ -26,6 +26,8 @@ int  loop_waiting(void);
    ms < 0 cancels it.  loop_once never sleeps past the next timer.  0 ok,
    -1 full. */
 int  loop_timer(void (*fn)(void *ctx), void *ctx, int ms);
+/* The monotonic clock in ns (CLOCK_MONOTONIC; QueryPerformanceCounter on Windows). */
+long long loop_now(void);
 
 /* Neovim's got_int and line_breakcheck(): a watch function that reads
    Ctrl-C sets loop_int, whoever runs commands clears it.  A long command

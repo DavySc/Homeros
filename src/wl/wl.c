@@ -27,6 +27,7 @@
 #include "fractional-scale-v1-client-protocol.h"
 #include "viewporter-client-protocol.h"
 #include "backend.h"
+#include "loop.h"
 #include "keys.h"
 #include "uni.h"
 #include "font.h"
@@ -106,17 +107,10 @@ static uint32_t rkey;               /* the key repeating, 0 none */
 static long long rnext;             /* when it repeats next, CLOCK_MONOTONIC ns */
 static uint32_t serial;             /* last input serial, for the clipboard */
 
-static long long now(void)
-{
-	struct timespec t;
-	clock_gettime(CLOCK_MONOTONIC, &t);
-	return t.tv_sec * 1000000000LL + t.tv_nsec;
-}
-
 static void repeat_arm(uint32_t key)
 {
 	rkey = rate > 0 ? key : 0;
-	rnext = now() + delay * 1000000LL;
+	rnext = loop_now() + delay * 1000000LL;
 }
 
 /* The timer fires at the next repeat, or at once while keys wait in kq
@@ -872,7 +866,7 @@ static int wl_input(int *out, int n)
 	if (!e) e = wl_display_read_events(dpy) < 0;   /* reads what is there, never blocks */
 	if (e || wl_display_dispatch_pending(dpy) < 0) return -1;   /* the compositor is gone */
 	wl_display_flush(dpy);
-	long long t = now();
+	long long t = loop_now();
 	if (rkey && rate > 0 && t >= rnext) {
 		long long per = 1000000000LL / rate, c = 1 + (t - rnext) / per;
 		for (long long j = 0, k = key_of(rkey); j < c && kn < KQ; j++) push((int)k);

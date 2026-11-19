@@ -259,15 +259,6 @@ static int stl_connected(const Win *w)
 	return 0;
 }
 
-static int cells(const char *s)
-{
-	int c = 0;
-	size_t n = strlen(s);
-	for (size_t i = 0; i < n; i += uni_glen((const unsigned char *)s, n, i))
-		c += uni_width((const unsigned char *)s, n, i);
-	return c;
-}
-
 /* The default 'statusline', "%<%f %h%w%m%r %=%-14.(%l,%c%V%) %P", as
    build_stl_str_hl() lays it out in the window's width. */
 static void draw_status(Editor *e, Grid *g, Win *w)
@@ -299,7 +290,7 @@ static void draw_status(Editor *e, Grid *g, Win *w)
 	for (int c = 0; c <= w->w; c++) grid_put(g, r, w->x + c, (const unsigned char *)" ", 1, 1, ATTR_REV);
 	if (w->frame->vsep && !stl_connected(w))
 		grid_put(g, r, w->x + w->w, (const unsigned char *)"│", 3, 1, ATTR_REV);
-	int width = cells(out), c = 0, fill = width < maxw;
+	int width = grid_width(out, strlen(out)), c = 0, fill = width < maxw;
 	const unsigned char *s = (const unsigned char *)out;
 	size_t n = strlen(out), i = 0;
 	if (width > maxw) {
@@ -377,7 +368,7 @@ void core_pum(Editor *e, const PumItem *items, int n, int sel, size_t col)
 		int *m[3] = { &pum.base, &pum.kind, &pum.extra };
 		for (int j = 0; j < 3; j++) {
 			const char *s = pum_text(&items[i], j);
-			int cw = s ? cells(s) + (j > 0) : 0;
+			int cw = s ? grid_width(s, strlen(s)) + (j > 0) : 0;
 			if (*m[j] < cw) *m[j] = cw;
 		}
 	}
@@ -508,21 +499,17 @@ void core_draw(Editor *e, Grid *g)
 	int r = e->layout->size[ROWS];
 	if (e->mode == MODE_CMDLINE) {
 		char t[2] = { (char)e->cmdtype, 0 };
-		int c = grid_puts(g, r, 0, t, ATTR_NONE), cc = c;
-		const unsigned char *s = (const unsigned char *)e->cmd;
-		for (size_t i = 0; i < e->cmdlen; i += uni_glen(s, e->cmdlen, i)) {
-			if (i == e->cmdpos) cc = c;
-			c += grid_put(g, r, c, s + i, uni_glen(s, e->cmdlen, i), uni_width(s, e->cmdlen, i), ATTR_NONE);
-		}
-		if (e->cmdpos >= e->cmdlen) cc = c;
+		int cc = grid_puts(g, r, 1, g->cols, e->cmd, e->cmdpos, ATTR_NONE, FACE_NONE);
+		grid_puts(g, r, 0, 1, t, 1, ATTR_NONE, FACE_NONE);
+		grid_puts(g, r, cc, g->cols, e->cmd + e->cmdpos, e->cmdlen - e->cmdpos, ATTR_NONE, FACE_NONE);
 		g->crow = r;
 		g->ccol = cc < g->cols ? cc : g->cols - 1;
 		return;
 	}
 	/* the mode goes on the screen's last row (msg_pos_mode()), below a
 	   taller command line; a message at the command line's first */
-	if (e->mode == MODE_INSERT) grid_puts(g, e->rows - 1, 0, "-- INSERT --", ATTR_NONE);
-	else grid_puts(g, r, 0, e->msg, ATTR_NONE);
+	if (e->mode == MODE_INSERT) grid_puts(g, e->rows - 1, 0, g->cols, "-- INSERT --", 12, ATTR_NONE, FACE_NONE);
+	else grid_puts(g, r, 0, g->cols, e->msg, strlen(e->msg), ATTR_NONE, FACE_NONE);
 	draw_pum(e, g);
 	Win *w = e->win;
 	g->crow = w->y + w->frame->s.wrow;

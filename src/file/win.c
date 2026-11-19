@@ -56,12 +56,6 @@ static int ident(HANDLE h, FileId *id)
 	return 0;
 }
 
-static int same(const FileId *a, const FileId *b)
-{
-	return a->exists == b->exists && (!a->exists || (a->dev == b->dev && a->ino == b->ino
-	       && a->size == b->size && a->mtime_ns == b->mtime_ns));
-}
-
 /* by path; a missing file is id->exists = 0 */
 static int stat_id(const wchar_t *w, FileId *id)
 {
@@ -138,7 +132,7 @@ int file_save(const char *path, const Text *t, size_t n, int dos, FileId *id,
 	if (stat_id(tmp, &mine)) { DeleteFileW(tmp); return SAVE_ERR; }
 	/* Check, as late as it can be: just before Rename */
 	if (stat_id(w, &now)) { DeleteFileW(tmp); return SAVE_ERR; }
-	if (!force && !same(id, &now)) { DeleteFileW(tmp); return SAVE_CHANGED; }
+	if (!force && !file_same(id, &now)) { DeleteFileW(tmp); return SAVE_CHANGED; }
 	/* Rename; a new file only where there is still none, unless :w! */
 	if (!MoveFileExW(tmp, w, MOVEFILE_WRITE_THROUGH | (now.exists || force ? MOVEFILE_REPLACE_EXISTING : 0))) {
 		DWORD e = GetLastError();
@@ -176,7 +170,7 @@ int file_watch_read(int fd, const char *path, const FileId *id)
 	FileId now;
 	if (!FindNextChangeNotification((HANDLE)(intptr_t)fd)) return fail();
 	if (wide(path, w) || stat_id(w, &now)) return -1;
-	return !same(id, &now);
+	return !file_same(id, &now);
 }
 
 /* The journal's calls (state.h) */
