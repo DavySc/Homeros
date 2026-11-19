@@ -1,9 +1,12 @@
 /* Process control under stress (dbg/target.h, specs/Run.tla): random runs of tests/spin.exe with
    random traps, single steps, halts after random waits. After every stop: the program's own
-   bytes are back (Clean), a trap stop stands on its trap (Reported), nothing moves, and no
-   exception, exit or second breakpoint of the program's own ever comes (a thread that went on
-   from behind a trap byte would run a torn instruction: Whole). At the end every thread has
-   got somewhere and every kind of stop has happened.
+   bytes are back (Clean), a trap stop stands on its trap with the function's argument in rcx
+   (Reported), no thread stands behind a trap byte (Settled), nothing moves, and no exception
+   but the one the program raises and handles itself, no exit and no second breakpoint of the
+   program's own ever comes (a thread that went on from behind a trap byte would run a torn
+   instruction: Whole). At the end every thread has got somewhere, every kind of stop has
+   happened, the program has handled each of its exceptions, and, told to quit by a write to
+   its memory, it ends with its exit code.
    usage: stress_target <spin.exe> <rounds> <seed> [attach] */
 #include "../dbg/target.h"
 #include <windows.h>
@@ -31,10 +34,11 @@ int main(int argc, char **argv)
     t = target_open(NULL, made.dwProcessId);
   } else t = target_open(argv[1], 0);
   if (!t) FAIL("cannot open the target");
-  unsigned long long fn[3] = {0}, counts = 0;
+  unsigned long long fn[3] = {0}, counts = 0, quit = 0, handled = 0;
+  uint32_t raised = 0;
   uint64_t traps[4];
   uint8_t own[3], now[3];
-  long long before[4], after[4], first[4];
+  long long before[4], after[4], first[4], base = 0;
   TargetEvent e = {.kind = TARGET_RUNNING};
   bool known = false;   /* the program has said where its functions are, and a stop without traps has shown their bytes */
   for (; round < rounds; round += 1) {
@@ -49,7 +53,7 @@ int main(int argc, char **argv)
       seen[e.kind] += 1, late_behind += e.kind == TARGET_LATE && e.code == 1;
       if (e.kind == TARGET_THREAD && lives < 64) live[lives++] = e.thread;
       for (uint32_t i = 0; e.kind == TARGET_THREAD_GONE && i < lives; i += 1) if (live[i] == e.thread) live[i--] = live[--lives];
-      if (e.kind == TARGET_OUTPUT && !fn[0] && (e.code < 5 || sscanf(e.text, "spin %llx %llx %llx %llx", &fn[0], &fn[1], &fn[2], &counts) != 4)) FAIL("unexpected debug text");
+      if (e.kind == TARGET_OUTPUT && !fn[0] && (e.code < 5 || sscanf(e.text, "spin %llx %llx %llx %llx %llx %llx", &fn[0], &fn[1], &fn[2], &counts, &quit, &handled) != 6)) FAIL("unexpected debug text");
       if (stopped || step || GetTickCount() - start < halt_after) {
         if (GetTickCount() - start > 20000) FAIL("no stop in 20 s (step of thread %u)", step);
         continue;
@@ -58,28 +62,45 @@ int main(int argc, char **argv)
       halts += 1, e.kind = TARGET_RUNNING;
       break;
     }
-    if (e.kind == TARGET_EXCEPTION || e.kind == TARGET_EXIT || (e.kind == TARGET_BREAK && seen[TARGET_BREAK] > 1)) FAIL("event %d code %llx at %llx", e.kind, (unsigned long long)e.code, (unsigned long long)e.addr);
+    raised += e.kind == TARGET_EXCEPTION && e.code == 0xe0000001;
+    if ((e.kind == TARGET_EXCEPTION && e.code != 0xe0000001) || e.kind == TARGET_EXIT || (e.kind == TARGET_BREAK && seen[TARGET_BREAK] > 1)) FAIL("event %d code %llx at %llx", e.kind, (unsigned long long)e.code, (unsigned long long)e.addr);
     TargetRegs regs;
     if (e.kind == TARGET_TRAP) {
       bool mine = false;
       for (uint32_t i = 0; i < trap_count; i += 1) mine = mine || traps[i] == e.addr;
-      if (!mine || !target_regs(t, e.thread, &regs) || regs.rip != e.addr) FAIL("a trap stop at %llx is not on a trap of this run", (unsigned long long)e.addr);
+      if (!mine || !target_regs(t, e.thread, &regs) || regs.rip != e.addr || regs.gp[1] > 3 || regs.gp[4] % 8 != 0 || regs.gp[4] == 0)
+        FAIL("a trap stop at %llx is not on a trap of this run with its argument in rcx", (unsigned long long)e.addr);
     }
     if (e.kind == TARGET_STEP && e.thread != step) FAIL("a step of thread %u was not asked for", e.thread);
     for (uint32_t i = 0; i < lives; i += 1)   /* Settled: no thread stands behind a trap byte (spin's three functions begin with longer instructions, so none can stand there otherwise) */
-      for (uint32_t k = 0; k < trap_count; k += 1)
-        if (target_regs(t, live[i], &regs) && regs.rip == traps[k] + 1) FAIL("thread %u stands behind a trap byte while stopped", live[i]);
+      for (uint32_t k = 0; k < trap_count; k += 1) {
+        if (!target_regs(t, live[i], &regs)) break;   /* it has ended and the event has not come yet */
+        if (regs.rip == traps[k] + 1) FAIL("thread %u stands behind a trap byte while stopped", live[i]);
+      }
     if (!fn[0]) continue;
     if (!target_read(t, fn[0], now, 1) || !target_read(t, fn[1], now + 1, 1) || !target_read(t, fn[2], now + 2, 1) || !target_read(t, counts, before, sizeof before)) FAIL("cannot read the target");
-    if (!known) memcpy(own, now, 3), memcpy(first, before, sizeof first), known = true;   /* this run had no traps */
+    if (!known) {   /* this run had no traps; attached, the program has handled exceptions before we came */
+      if (!target_read(t, handled, &base, sizeof base)) FAIL("cannot read the target");
+      memcpy(own, now, 3), memcpy(first, before, sizeof first), known = true, raised = e.kind == TARGET_EXCEPTION;
+    }
     if (memcmp(own, now, 3) != 0) FAIL("a trap byte is in memory while stopped");
     if (round % 16 == 0) Sleep(2);
     if (!target_read(t, counts, after, sizeof after) || memcmp(before, after, sizeof after) != 0) FAIL("the target moves while stopped");
   }
   for (int i = 0; i < 4; i += 1) if (!known || after[i] <= first[i]) FAIL("thread %d of the target got nowhere", i);
-  if (!seen[TARGET_TRAP] || !seen[TARGET_STEP] || !halts || !seen[TARGET_THREAD] || !seen[TARGET_THREAD_GONE] || !seen[TARGET_OUTPUT]) FAIL("a kind of event never came");
+  if (!seen[TARGET_TRAP] || !seen[TARGET_STEP] || !halts || !seen[TARGET_THREAD] || !seen[TARGET_THREAD_GONE] || !seen[TARGET_OUTPUT] || !raised) FAIL("a kind of event never came");
+  /* an exception the target stands on is still to be handled; then tell it to quit */
+  long long did;
+  if (!target_read(t, handled, &did, sizeof did) || did - base != raised - (e.kind == TARGET_EXCEPTION)) FAIL("the program handled %lld of its %u exceptions", did - base, raised);
+  if (!target_write(t, quit, &(int){1}, sizeof(int))) FAIL("cannot write the target");
+  for (DWORD start = GetTickCount(); e.kind != TARGET_EXIT;) {
+    target_resume(t, NULL, 0, 0);
+    while (!target_wait(t, 100, &e)) if (GetTickCount() - start > 20000) FAIL("it does not quit");
+    if (e.kind != TARGET_EXIT && !(e.kind == TARGET_EXCEPTION && e.code == 0xe0000001)) FAIL("event %d while it quits", e.kind);
+  }
+  if (e.code != 7) FAIL("exit code %llu", (unsigned long long)e.code);
   target_close(t);
-  printf("stress_target: %u rounds: %u trap stops, %u steps, %u halts, %u late events (%u with the thread still behind the trap byte), %u threads begun, %u debug strings\n",
-         rounds, seen[TARGET_TRAP], seen[TARGET_STEP], halts, seen[TARGET_LATE], late_behind, seen[TARGET_THREAD], seen[TARGET_OUTPUT]);
+  printf("stress_target: %u rounds: %u trap stops, %u steps, %u halts, %u late events (%u with the thread still behind the trap byte), %u threads begun, %u debug strings, %u exceptions handled by the program\n",
+         rounds, seen[TARGET_TRAP], seen[TARGET_STEP], halts, seen[TARGET_LATE], late_behind, seen[TARGET_THREAD], seen[TARGET_OUTPUT], raised);
   return 0;
 }

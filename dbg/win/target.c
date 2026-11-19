@@ -106,7 +106,6 @@ static void stop(Target *t)
       if (t->traps[k].in && t->traps[k].addr == c.Rip - 1) { thread_at(t->threads[i].handle, &t->traps[k].addr, false); break; }
   }
   for (uint32_t i = 0; i < t->trap_count; i += 1) if (t->traps[i].in) target_write(t, t->traps[i].addr, &t->traps[i].own, 1);
-  t->trap_count = 0;
 }
 
 bool target_wait(Target *t, uint32_t ms, TargetEvent *out)
@@ -135,7 +134,7 @@ bool target_wait(Target *t, uint32_t ms, TargetEvent *out)
   case EXIT_PROCESS_DEBUG_EVENT:   /* nothing is left to hold */
     ContinueDebugEvent(e.dwProcessId, e.dwThreadId, DBG_CONTINUE);
     *out = (TargetEvent){.kind = TARGET_EXIT, .thread = e.dwThreadId, .code = e.u.ExitProcess.dwExitCode};
-    t->pid = t->held = t->trap_count = 0;
+    t->pid = t->held = 0;
     return true;
   case EXCEPTION_DEBUG_EVENT: {
     uint64_t at = (uintptr_t)e.u.Exception.ExceptionRecord.ExceptionAddress;

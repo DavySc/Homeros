@@ -11,8 +11,10 @@ run() { # run <dir with the sources> <list|test|specs|oracle|win|fuzz|all>: 0 wh
         # something does not compile (a planted bug must be caught by a check, not by the compiler), 3 when the
         # test files cannot be made (nor by a full disk)
   local src=$1 what=$2 b t; b=$(mktemp -d)
-  python3 -I "$src/tests/seed_rdi.py" "$b/seed.rdi" || return 3
-  "$src/tests/make_pdbs.sh" "$b/pdb" || return 3
+  case $what in test|oracle|fuzz|all)
+    python3 -I "$src/tests/seed_rdi.py" "$b/seed.rdi" || return 3
+    "$src/tests/make_pdbs.sh" "$b/pdb" || return 3;;
+  esac
   if [ "$what" = list ] || [ "$what" = all ]; then
     # every plant still has its place: its text occurs once in the file it names (not asked of a planted tree)
     python3 -I -c 'import sys
@@ -47,10 +49,10 @@ for l in open(sys.argv[1] + "/tests/plants.txt"):
     "$b/pdb2rdi" "$b/pdb/bad/firstid.pdb" "$b/odd.rdi" && [ "$(printf 'N 19 T 1 T 2 T 3 T 4' | "$b/rdiq" "$b/odd.rdi" | tr '\n' ' ')" = "5 S32:4 2004 int:4 on S32:4 2004 Pair:0 2004 Op:0 " ] || return 1
   fi
   if [ "$what" = win ] || [ "$what" = all ]; then
-    # process control on Windows, here under Wine (WINE names it); the Windows runner runs the same test natively (.github/workflows/win-check.yml)
+    # process control on Windows, here under Wine (WINE names it). On Windows itself (.github/workflows/win-check.yml): WINE=env WINCC=gcc
     command -v "${WINE:-wine}" >/dev/null || { echo "check: no Wine (set WINE): the process-control stress test cannot run"; return 3; }
     for f in tests/spin.c "dbg/win/target.c tests/stress_target.c"; do
-      x86_64-w64-mingw32-gcc -std=c17 -O1 -g -Wall -Wextra -Werror $(printf "$src/%s " $f) -o "$b/$(basename "${f##* }" .c).exe" || return 2
+      ${WINCC:-x86_64-w64-mingw32-gcc} -std=c17 -O1 -g -Wall -Wextra -Werror $(printf "$src/%s " $f) -o "$b/$(basename "${f##* }" .c).exe" || return 2
     done
     for mode in "" attach; do
       (cd "$b" && WINEDEBUG=-all timeout 600 "${WINE:-wine}" stress_target.exe spin.exe "${STRESS_ROUNDS:-2000}" "${SEED:-1}" $mode 2>/dev/null | grep "^stress_target" | tee stress.out | grep -v "rounds:"; grep -q "rounds:" stress.out) || return 1
@@ -66,12 +68,12 @@ for l in open(sys.argv[1] + "/tests/plants.txt"):
   rm -rf "$b"
 }
 if [ "${1:-}" != plants ]; then run . "${1:-all}" && echo "check ok"; exit; fi   # or one step by name
-# a plant only shows something if the unplanted tree passes
-run . all >/dev/null 2>&1 || { echo "plants: the check fails without any plant"; exit 1; }
+# `./check.sh plants [step]`: every plant, or those of one step. A plant only shows something if the unplanted tree passes.
+run . "${2:-all}" >/dev/null 2>&1 || { echo "plants: the check fails without any plant"; exit 1; }
 missed=0; total=0
 while IFS='|' read -r what file find repl; do
-  case "$what" in ''|'#'*) continue;; esac
   what=$(echo $what); file=$(echo $file); find=${find# }; find=${find% }; repl=${repl# }
+  case "$what" in ''|'#'*) continue;; "${2:-$what}") ;; *) continue;; esac
   t=$(mktemp -d); cp -r dbg tests specs cmd subjects rdi "$t/" || { echo "plants: cannot copy the tree"; exit 1; }
   FIND="$find" REPL="$repl" python3 -I -c 'import os,sys;p=sys.argv[1];s=open(p).read();f,r=(os.environ[k].replace("\\n","\n").replace("\\p","|") for k in ("FIND","REPL"));assert s.count(f)==1,("plant text not found once: "+f);open(p,"w").write(s.replace(f,r))' "$t/$file" || { echo "BAD PLANT: $find"; missed=$((missed+1)); continue; }
   total=$((total+1))
