@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include "check.h"
 #include "core.h"
+#include "syntax.h"
 #include "grid.h"
 #include "../src/core/core_int.h"
 
@@ -200,6 +201,28 @@ int main(void)
 	core_update(&e);
 	core_draw(&e, &g);
 	CHECK(e.win->top <= 2 && g.c[(e.win->y + 2 - (int)e.win->top) * g.cols + e.win->x + win_numw(e.win) + 1].bg == FACE_VISUAL);
+	e.ks.visual = 0;
+
+	/* a heading's background stops at the grid's edge when the windows
+	   reach past a terminal too small for them (fuzz_core's case, which
+	   the fuzzer once missed in 120 s) */
+	char md[] = "/tmp/core_contractXXXXXX.md";
+	CHECK(mkstemps(md, 3) >= 0 && (f = fopen(md, "w")) && fputs("# heading\nx\n", f) >= 0 && !fclose(f));
+	CHECK(!core_edit_file(&e, md, 1) && !grid_resize(&g, 24, 80));
+	e.win->line = 1;
+	do core_draw(&e, &g);
+	while (syntax_update(e.buf->syn, e.buf->text, NULL));
+	CHECK(g.c[win_numw(e.win)].bg == FACE_HEADING_1_BG);   /* not on the cursor line */
+	/* nine windows one above another need 18 rows and the command line;
+	   the grid has 6 */
+	for (int i = 0; i < 8; i++) CHECK(!core_split(&e, 0, 0));
+	for (Win *w = e.wins; w; w = w->next)
+		if (w != e.win) w->line = w->top = 0;   /* the heading in view, not under the cursor */
+	CHECK(!grid_resize(&g, 6, 80));
+	core_draw(&e, &g);
+	CHECK(e.layout->size[ROWS] > g.rows);
+	CHECK(!core_only(&e));
+	unlink(md);
 	core_free(&e);
 	for (int i = 0; i < 4; i++) unlink(fn[i]);
 	grid_free(&g);
