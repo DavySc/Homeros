@@ -1,0 +1,81 @@
+C 10 40
+F e6bca220c3a920e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a79220e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a79220e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a79220012061616161616161616161616161616161616161616161616161616161616120c3a9202c20
+F 
+T k:$
+T k:60G
+T wrap
+T sp
+T k:Onew line<Esc>
+P
+S 1   漢 é 全角全角全角全角全角全角全角全>
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S f0                    1,1            All
+S 
+M - - -
+P
+S 1   aaaaaaaaaaaaaa é ,
+R
+R
+R
+R
+R
+R
+R
+S f0                    1,408-286      All
+R
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+M - - -
+P
+S 1<<<角全角全角全角全角全角全角全角全角全
+S     角全角全角全角 全角全角全角全角全角>
+S     全角全角全角全角全角全角全角全角全角
+S     全角全角全角全角全角全角 全角全角全>
+S     角全角全角全角全角全角全角全角全角全
+S     角全角全角全角全角全角全角全角全角 ^
+S     A aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa é ,
+S 
+S f0                    1,408-289      All
+S :set wrap
+M - - -
+P
+S 1<<<角全角全角全角全角全角全角全角全角 ^
+S     A aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa é ,
+S 
+S f0                    1,408-289      All
+S 1<<<角全角全角全角全角全角全角全角全角全
+R
+R
+R
+R
+S :sp
+M - - -
+P
+S   1 new line
+S 2   漢 é 全角全角全角全角全角全角全角全>
+S     角全角全角全角全角全角全角全角全@@@@
+S f0 [+]                2,408-289      Top
+S 1   new line
+S   1 漢 é 全角全角全角全角全角全角全角全>
+S     角全角全角全角全角全角全角全角全角全
+S     角全角全角全角 全角全角全角全角全@@@
+S f0 [+]                1,8            Top
+S 
+M - - -
+E

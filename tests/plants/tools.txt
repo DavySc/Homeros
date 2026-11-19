@@ -1,0 +1,53 @@
+# Plants for src/tools/ (package 15; format in tools/planted.sh).
+matcher: a consecutive byte scores 5, not fzf's 4~test TESTS=tools_match~~src/tools/match.c~BONUS_CONSECUTIVE = 4,~BONUS_CONSECUTIVE = 5,
+matcher: OR terms of equal entropy tried in their typed order (not LuaJIT's sort)~test TESTS=tools_match~~src/tools/match.c~		if (LT(u, l)) swap(t, l, u);¶		if (u - l == 1) break;~		if (u - l == 1) break;
+matcher: no filename bonus~test TESTS=tools_match~~src/tools/match.c~	if (file_bonus && !memchr~	if (0 && file_bonus && !memchr
+picker: longer texts first on a tie~test TESTS=tools_pick~~src/tools/pick.c~	if (a->tlen != b->tlen) return a->tlen < b->tlen ? -1 : 1;~	if (a->tlen != b->tlen) return a->tlen > b->tlen ? -1 : 1;
+picker: no frecency bonus~test TESTS=tools_pick~~src/tools/pick.c~		r += (1 - 1 / (1 + i->frecency)) * 8;~		r += 0;
+picker: grep keeps rg's ./ prefix~test TESTS=tools_pick~~src/tools/pick.c~	if (n > 2 && s[0] == '.' && s[1] == '/') s += 2, n -= 2;~	(void)0;
+picker: a buffer's file listed again by fd/rg~test TESTS=tools_pick~~src/tools/pick.c~			if (same(P.a + P.it[k].file, P.it[k].flen, file, fn)) { P.an = i->text; return 0; }~			if (0 && same(P.a + P.it[k].file, P.it[k].flen, file, fn)) { P.an = i->text; return 0; }
+oil: a link to a directory shown without the trailing /~test TESTS=tools_oil~~src/tools/oil.c~!e || e->type == OIL_DIR || (e->type == OIL_LINK && e->linkdir) ? "/" : ""~!e || e->type == OIL_DIR ? "/" : ""
+oil: names sorted byte by byte, not in natural order~test TESTS=tools_oil~~src/tools/oil.c~		if (nat && s[i] >= '0' && s[i] <= '9') {~		if (0 && nat && s[i] >= '0' && s[i] <= '9') {
+oil: a link line without " -> " kept as its entry~test TESTS=tools_oil~~src/tools/oil.c~				if (!a || strstr(a + 4, " -> ")) id = -1;~				if (!a || strstr(a + 4, " -> ")) name[0] = 0;
+oil: link targets compared with their trailing /~test TESTS=tools_oil~~src/tools/oil.c~	return n == trimsep(b) && !memcmp(a, b, n);~	return n == strlen(b) && !memcmp(a, b, n);
+oil: a directory's children waited on in list order, not name order~test TESTS=tools_oil~~src/tools/oil.c~		for (; j > from && strcmp(~		for (; j > from && 0 && strcmp(
+oil: a move cycle's temporary name made from the destination~test TESTS=tools_oil~~src/tools/oil.c~"%s__oil_tmp_%05d", a->src~"%s__oil_tmp_%05d", a->dst
+oil: no icon by exact file name~test TESTS=tools_oil~~src/tools/icons.c~	if ((r = GET(file_icons, base, n))) return r;~	if (0 && (r = GET(file_icons, base, n))) return r;
+oil: a failed copy leaves the new file~test TESTS=tools_oil~~src/tools/oil.c~	if (rc && out >= 0) unlink(dst);~	(void)0;
+oil: a broken link forgets its target was a directory~test TESTS=tools_oil~~src/tools/oil.c~	if (linkdir >= 0) E[i].linkdir = linkdir;~	E[i].linkdir = linkdir > 0;
+oil: a move keeps the entry's link target~test TESTS=tools_oil~~src/tools/oil.c~	E[i].dir = dir; E[i].name = name; E[i].link = NULL; E[i].linkdir = 0;~	E[i].dir = dir; E[i].name = name; E[i].link = NULL;
+oil: an open directory's buffer does not follow its move~test TESTS=tools_oil~~src/tools/oil.c~	if (a->type != OIL_MOVE || strncmp(path, a->src, n)~	if (1 || strncmp(path, a->src, n)
+oil: errors in strerror's words~test TESTS=tools_oil~~src/tools/oil.c~	for (size_t i = 0; i < sizeof t / sizeof *t; i++) if (t[i].e == e) return t[i].s;~	(void)t;
+oil: a move that cannot rename fails instead of copying~test TESTS=tools_oil~~src/tools/oil.c~	case OIL_MOVE: return rename(a->src, a->dst) && (cp_r(a->etype, a->src, a->dst) || rm_r(a->etype, a->src)) ? -1 : 0;~	case OIL_MOVE: return rename(a->src, a->dst) ? fail(a->src, a->dst) : 0;
+matcher: a long line number overflows (fuzz_tools_match)~fuzz FUZZERS=tools_match FUZZ_SECONDS=60~~src/tools/match.c~v = v > (LONG_MAX - 9) / 10 ? LONG_MAX : v * 10 + (s[i] - '0');~v = v * 10 + (s[i] - '0');
+oil: a long id overflows (fuzz_tools_oil)~fuzz FUZZERS=tools_oil FUZZ_SECONDS=60~~src/tools/oil.c~v = v > (LONG_MAX - 9) / 10 ? LONG_MAX : v * 10 + (l[i] - '0');~v = v * 10 + (l[i] - '0');
+oil: "/" alone is a name~test TESTS=tools_oil~~src/tools/oil.c~			isdir = parsedir(name);¶			int noname = !name[0];~			int noname = !name[0];¶			isdir = parsedir(name);
+oil: a link target ending in / gets another~test TESTS=tools_oil~~src/tools/oil.c~e->linkdir && k && e->link[k - 1] != '/' ? "/" : ""~e->linkdir && k ? "/" : ""
+oil: an empty path part is no trie child~test TESTS=tools_oil~~src/tools/oil.c~	return !strchr(c + n + 1, '/');~	return c[n + 1] && !strchr(c + n + 1, '/');
+oil: only the first brace group takes the alternative~test TESTS=tools_oil~~src/tools/oil.c~	if (a) for (; brace(p, k, i, &o, &c); i = c + 1) {~	if (a) for (int once = 1; once-- && brace(p, k, i, &o, &c); i = c + 1) {
+oil: a parent copied into itself is allowed~test TESTS=tools_oil~~src/tools/oil.c~				*msg = m;¶				goto out;~				(void)m;
+oil: natural order kept above 5,000 entries~test TESTS=tools_oil~~src/tools/oil.c~	sort_nat = k <= 5000;~	sort_nat = 1;
+picker: the frecency store read as all zeros~test TESTS=tools_pick~~src/shada/shada.c~			o->t = strtod(d + i, NULL);~			o->t = 0 * strtod(d + i, NULL);
+picker: grep drops the rg arguments after --~test TESTS=tools_pick~~src/tools/pick.c~	for (int i = 0; i < na; i++) argv[k++] = pa[i];~	for (int i = 0; i < na - na; i++) argv[k++] = pa[i];
+oil: a link target's icon ignores the trailing /~test TESTS=tools_oil~~src/tools/icons.c~if (!slash && (r = GET(ft_icons~if ((r = GET(ft_icons
+oil: a relisted name gets a new id~test TESTS=tools_oil~~src/tools/oil.c~	int i = find(dir, name, strlen(name));¶	if (i < 0) {~	int i = find(dir, name, strlen(name));¶	if (1) {
+matcher: at most 16 terms~test TESTS=tools_match~~src/tools/match.h~MATCH_TERMS = MATCH_MAX / 2,~MATCH_TERMS = 16,
+dashboard: an odd width's half column goes left~test TESTS=tools_dash~~src/tools/dash.c~	int col = (e->cols - WIDTH) / 2, r = top;~	int col = (e->cols - WIDTH + 1) / 2, r = top;
+dashboard: the footer centred on bytes, not cells~test TESTS=tools_dash~~src/tools/dash.c~	int x = col + (WIDTH - width(foot)) / 2;~	int x = col + (WIDTH - (int)strlen(foot)) / 2 + 0 * width(foot);
+dashboard: k goes above the first item~test TESTS=tools_dash~~src/tools/dash.c~if (D.sel > 0) D.sel--;~D.sel -= D.sel > -1;
+dashboard: stays over a changed buffer~test TESTS=tools_dash~~src/tools/dash.c~ || undo_seq(D.buf->undo) != D.seq~
+dashboard: stays over a file opened into the start buffer~test TESTS=tools_dash~~src/tools/dash.c~ || D.buf->path~
+dashboard: n leaves it over insert mode~test TESTS=tools_dash~~src/tools/dash.c~ || e->mode == MODE_INSERT~
+dashboard: the picture ignores the 18 lines below it~test TESTS=tools_dash~~src/tools/dash.c~height(e) >= ART_ROWS + BELOW~height(e) >= ART_ROWS
+dashboard: the picture needs no spare columns~test TESTS=tools_dash~~src/tools/dash.c~e->cols >= ART_COLS + 6~e->cols >= ART_COLS
+dashboard: the cheeks in the frog's face~test TESTS=tools_dash~~src/tools/dash.c~case 'k': return FACE_DASHBOARD_FROG_CHEEK;~case 'k': return FACE_DASHBOARD_FROG;
+dashboard: the picture one column right~test TESTS=tools_dash~~src/tools/dash.c~int x0 = col + (WIDTH - ART_COLS) / 2;~int x0 = col + (WIDTH - ART_COLS) / 2 + 1;
+recent: the current file listed~test TESTS=tools_pick~~src/tools/pick.c~		int want = n < sizeof f && strcmp(f, cur) && stat(f, &st) == 0;~		int want = n < sizeof f && stat(f, &st) == 0;
+recent: a missing file listed~test TESTS=tools_pick~~src/tools/pick.c~		int want = n < sizeof f && strcmp(f, cur) && stat(f, &st) == 0;~		int want = n < sizeof f && strcmp(f, cur) && (stat(f, &st) == 0 || 1);
+recent: a file listed twice~test TESTS=tools_pick~~src/tools/pick.c~		for (size_t k = first; k < P.nit && want; k++) want = ~		for (size_t k = first; k < P.nit && 0; k++) want = 
+smart: a recent file listed again by rg~test TESTS=tools_pick~~src/tools/pick.c~P.nit && (P.it[k].buf || P.it[k].recent); k++)~P.nit && P.it[k].buf; k++)
+smart: a recent file's frecency not seeded from its mtime~test TESTS=tools_pick~~src/tools/pick.c~	if (i->recent) return stat(f, &st) ? 0 : exp(-LAMBDA * (now - (double)st.st_mtime));~	(void)st;
+files: smart's buffers listed too~test TESTS=tools_pick~~src/tools/pick.c~	if (what == PICK_SMART || what == PICK_BUFFERS) buffers(e);~	buffers(e);
+recent on Windows: '/' and '\' spellings of one file listed twice~win WIN=tools~~src/tools/pick.c~	if (n >= PATH_MAX && !file_full(path, out)) return strlen(out);~
+recent on Windows: '\' not a separator~win WIN=tools~~src/tools/pick.c~	if (c == '\\') return 1;~	if (c == '\\') return 0;
+recent on Windows: a drive letter path not absolute~win WIN=tools~~src/tools/pick.c~	if (f[0] == '\\' || (f[0] && f[1] == ':' && (f[2] == '\\' || f[2] == '/'))) return 1;~	if (f[0] == '\\') return 1;

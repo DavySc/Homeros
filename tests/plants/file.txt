@@ -1,46 +1,63 @@
 # Plants for src/file/ (format in tools/planted.sh), one per check of package 11.
-file: no check before saving (Save_nocheck)~test TESTS=file_save~~src/file/file.c~	if (!force && id->exists && !same(id, &now)) return SAVE_CHANGED;~
-file: rename without fsync (Save2_nofsync)~test TESTS=file_save~~src/file/file.c~if (write_text(fd, t, n) || fsync(fd) || fstat(fd, &st))~if (write_text(fd, t, n) || fstat(fd, &st))
+file: no check before saving (Save_nocheck)~test TESTS=file_save~~src/file/file.c~	if (!force && id->exists && !file_same(id, &now)) return SAVE_CHANGED;~
+file: rename without fsync (Save2_nofsync)~test TESTS=file_save~~src/file/file.c~if (write_text(fd, t, n, dos, &w) || fsync(fd) || fstat(fd, &st))~if (write_text(fd, t, n, dos, &w) || fstat(fd, &st))
 file: identity by path after the swap (review 0, finding 3)~test TESTS=file_save~~src/file/file.c~	*id = mine;~	if (stat(real, &st) == 0) ident(&st, id); else *id = mine;
 file: load identity taken after reading (review 0, finding 3)~test TESTS=file_save~sed -i 's/^\tident(&st, id);$//' src/file/file.c~src/file/file.c~	close(fd);¶	if (!b) { memset~	fstat(fd, &st); ident(&st, id);¶	close(fd);¶	if (!b) { memset
 file: in place without a durable backup~test TESTS=file_save~~src/file/file.c~if (copy_fd(fd, b) || fsync(b)) {~if (copy_fd(fd, b)) {
-file: in place without the recheck after the copy~test TESTS=file_save~~src/file/file.c~	if (!force && !same(&after, &before)) { unlink(bak); close(fd); return SAVE_CHANGED; }~
+file: in place without the recheck after the copy~test TESTS=file_save~~src/file/file.c~	if (!force && !file_same(&after, &before)) { unlink(bak); close(fd); return SAVE_CHANGED; }~
 file: in place, torn file not put back~test TESTS=file_save~~src/file/file.c~	if (b >= 0 && lseek(fd, 0, SEEK_SET) == 0~	if (b >= 0 && 0 && lseek(fd, 0, SEEK_SET) == 0
 file: foreign owner lost (temp kept though fchown failed)~test TESTS=file_save~~src/file/file.c~		    && fchown(fd, st.st_uid, st.st_gid))) {~		    && fchown(fd, st.st_uid, st.st_gid) && 0)) {
 file: hard link split by the swap~test TESTS=file_save~~src/file/file.c~	if (now.exists && st.st_nlink > 1) return~	if (now.exists && st.st_nlink > 1 && 0) return
 file: read-only directory refused~test TESTS=file_save~~src/file/file.c~(errno == EACCES || errno == EPERM) && !access(real, W_OK))~(errno == EACCES || errno == EPERM) && !access(real, W_OK) && 0)
 file: watch on the file, not its directory~test TESTS=file_save~~src/file/file.c~	if (inotify_add_watch(fd, dirname(dir),~	if (dirname(dir) && inotify_add_watch(fd, real,
-file: watch never reports~test TESTS=file_save~~src/file/file.c~	return !same(id, &now);~	return 0 && !same(id, &now);
+file: watch never reports~test TESTS=file_save~~src/file/file.c~	return !file_same(id, &now);~	return 0 && !file_same(id, &now);
 journal: record sum not checked~test TESTS=file_journal~~src/file/journal.c~		if (!r.ok || s != sum(SUM0, at, (size_t)(r.p - 4 - at))) return 0;~		if (!r.ok || (s != sum(SUM0, at, (size_t)(r.p - 4 - at)) && 0)) return 0;
 journal: torn tail left before appending~test TESTS=file_journal~~src/file/journal.c~	if (ftruncate(j->fd, (off_t)end)) {}~
 journal: no lock~test TESTS=file_journal~~src/file/state.c~	if (flock(fd, LOCK_EX | LOCK_NB)) return -1;~
 journal: no new base after a save~test TESTS=file_journal~~src/file/journal.c~	if (ftruncate(j->fd, 0)) {}¶	j->based = 0;¶}~	if (ftruncate(j->fd, 0)) {}¶}
-journal: due counted from the last record~test TESTS=file_journal~~src/file/journal.c~	if (!j->dirty) { j->dirty = 1; j->first_ms = now_ms(); }~	j->dirty = 1; j->first_ms = now_ms();
+journal: due counted from the last record~test TESTS=file_journal~~src/file/journal.c~	if (!j->dirty) { j->dirty = 1; j->first_ms = loop_now() / 1000000; }~	j->dirty = 1; j->first_ms = loop_now() / 1000000;
 journal: sync without fdatasync~test TESTS=file_journal~~src/file/journal.c~	fdatasync(j->fd);~
 journal: directory never fsynced~test TESTS=file_journal~~src/file/journal.c~	if (!j->dir_synced) j->dir_synced = !state_sync_dir(j->name);~	if (0) j->dir_synced = !state_sync_dir(j->name);
-journal: readable by others~test TESTS=file_journal~~src/file/state.c~mkdir(out, 0700)~mkdir(out, 0755)
+journal: readable by others~test TESTS=file_journal~~src/file/state.c~mkdir(f, 0700)~mkdir(f, 0755)
 journal: record length not bounded (fuzzer)~fuzz FUZZERS=file_journal FUZZ_SECONDS=60~~src/file/journal.c~		if (!r.ok || e[2] > r.n) return 0;~		if (!r.ok) return 0;
-core wiring: journal kept after a save~test TESTS=file_core~~ref/core.c~	case SAVE_OK:¶		b->saved_seq = undo_seq(b->undo);¶		b->changed = 0;¶		if (b->journal) journal_saved(b->journal);~	case SAVE_OK:¶		b->saved_seq = undo_seq(b->undo);¶		b->changed = 0;
-core wiring: flags not journalled~test TESTS=file_core~~ref/core.c~	if (b->journal && jstate(b) != before && journal_edit~	if (0 && b->journal && jstate(b) != before && journal_edit
-core wiring: outside change never noted~test TESTS=file_core~~ref/core.c~ && !b->changed) b->changed = 1;~ && !b->changed) b->changed = 0;
-core wiring: recovered identity replaced by the file's~test TESTS=file_core~~ref/core.c~	b->changed = !same_id(id, &b->id);¶	b->id = *id;~	b->changed = !same_id(id, &b->id);
+core wiring: journal kept after a save~test TESTS=file_core~~src/core/core.c~	case SAVE_OK:¶		b->saved_seq = undo_seq(b->undo);¶		b->changed = 0;¶		if (b->journal) journal_saved(b->journal);~	case SAVE_OK:¶		b->saved_seq = undo_seq(b->undo);¶		b->changed = 0;
+core wiring: flags not journalled~test TESTS=file_core~~src/core/core.c~	if (b->journal && jstate(b) != before && journal_edit~	if (0 && b->journal && jstate(b) != before && journal_edit
+core wiring: outside change never noted~test TESTS=file_core~~src/core/core.c~file_watch_read(fd, b->path, &b->id) == 1 && !b->changed) b->changed = 1;~file_watch_read(fd, b->path, &b->id) == 1 && !b->changed) b->changed = 0;
+core wiring: recovered identity replaced by the file's~test TESTS=file_core~~src/core/core.c~	b->changed = !same_id(id, &b->id);¶	b->id = *id;~	b->changed = !same_id(id, &b->id);
 journal: no new base after a failed append (review of PR 16, 2)~test TESTS=file_journal~~src/file/journal.c~	j->based = 0;¶	return -1;~	return -1;
 journal: a record that does not apply blocks the journal (review of PR 16, 2)~test TESTS=file_journal~~src/file/journal.c~		if (e[0] > text_len(*t) || e[1] > text_len(*t) - e[0]) return 0;¶~
 file: dangling symlink saved over the link (review of PR 16, 4)~test TESTS=file_save~~src/file/file.c~		ssize_t k = readlink(real, l, sizeof l);~		ssize_t k = (errno = EINVAL, -1);
 file: no :w! without a backup (review of PR 16, 5)~test TESTS=file_save~~src/file/file.c~	if (!backed && !force) goto err;~	if (!backed) goto err;
 file: backup's directory not fsynced (review of PR 16, 6)~test TESTS=file_save~~src/file/file.c~		state_sync_dir(bak);   /* the backup's name durable too, before the recheck: the window after it stays short */¶~
-core wiring: recovery requires the old identity (review of PR 16, 3)~test TESTS=file_core~~ref/core.c~!memcmp(s, data, n);~!memcmp(s, data, n) && same_id(id, &b->id);
-core wiring: an edit journalled with the state before it (review of PR 16, 7)~test TESTS=file_core~~ref/core.c~	jnext = js;¶~
-core wiring: no look after adding the watch (review of PR 16, 9)~test TESTS=file_core~~ref/core.c~	if (e->buf->watch >= 0) core_watch(e, e->buf->watch);¶~
+core wiring: recovery requires the old identity (review of PR 16, 3)~test TESTS=file_core~~src/core/core.c~!memcmp(s, data, n);~!memcmp(s, data, n) && same_id(id, &b->id);
+core wiring: an edit journalled with the state before it (review of PR 16, 7)~test TESTS=file_core~~src/core/core.c~	jnext = js;¶~
+core wiring: no look after adding the watch (review of PR 16, 9)~test TESTS=file_core~~src/core/core.c~			if (file_watch_read(b->watch, path, &b->id) == 1 && !b->changed) b->changed = 1;¶~
 journal: an edit appended without a base (review of PR 16, 2)~test TESTS=file_journal~~src/file/journal.c~	if (!j->based) { errno = EINVAL; return -1; }~
 # Windows (src/file/win.c, run under Wine by make win)
 win: ReplaceFileW instead of the rename (caught under Wine, whose ReplaceFileW is three renames; on Windows maybe not)~win WIN=file~~src/file/win.c~	if (!MoveFileExW(tmp, w, MOVEFILE_WRITE_THROUGH | (now.exists || force ? MOVEFILE_REPLACE_EXISTING : 0))) {~	if (now.exists ? !ReplaceFileW(w, tmp, NULL, 0, NULL, NULL) : !MoveFileExW(tmp, w, MOVEFILE_WRITE_THROUGH)) {
-win: no check before saving~win WIN=file~~src/file/win.c~	if (!force && !same(id, &now)) { DeleteFileW(tmp); return SAVE_CHANGED; }~
+win: no check before saving~win WIN=file~~src/file/win.c~	if (!force && !file_same(id, &now)) { DeleteFileW(tmp); return SAVE_CHANGED; }~
 win: one watch handle per file, not per directory~win WIN=file~~src/file/win.c~	for (int i = 0; i < nd; i++) if (!wcscmp(d[i].dir, full)) return (int)(intptr_t)d[i].h;~
-win: watch never reports~win WIN=file~~src/file/win.c~	return !same(id, &now);~	return 0 && !same(id, &now);
+win: watch never reports~win WIN=file~~src/file/win.c~	return !file_same(id, &now);~	return 0 && !file_same(id, &now);
 win: journal without the lock~win WIN=file~~src/file/win.c~	if (!LockFileEx(h, LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY, 0, 1, 0, &o)) return fail();~	if (!LockFileEx(h, LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY, 0, 1, 0, &o) && 0) return fail();
 win: journal locked by its share mode, so a reader blocks recovery (review of PR 25, 2)~win WIN=file~~src/file/win.c~GENERIC_READ | GENERIC_WRITE, SHARE_ALL, NULL, OPEN_ALWAYS~GENERIC_READ | GENERIC_WRITE, FILE_SHARE_DELETE, NULL, OPEN_ALWAYS
 win: journal in text mode~win WIN=file~~src/file/win.c~_open_osfhandle((intptr_t)h, _O_APPEND);~_open_osfhandle((intptr_t)h, _O_APPEND | _O_TEXT);
 win: journal name by the path's case~win WIN=file~~src/file/win.c~	CharLowerBuffW(full, n);~
 win: journal left after a clean close~win WIN=file~~src/file/win.c~	if (!wide(name, w)) DeleteFileW(w);~	if (!wide(name, w) && 0) DeleteFileW(w);
-core wiring: recovery ignores noeol in the bytes a buffer saves~test TESTS=file_core~~ref/core.c~	size_t tn = st & CORE_EMPTY ? 0 : text_len(t) - (st & J_NOEOL ? 1 : 0);~	size_t tn = st & CORE_EMPTY ? 0 : text_len(t);
+core wiring: recovery ignores noeol in the bytes a buffer saves~test TESTS=file_core~~src/core/core.c~	size_t tn = st & CORE_EMPTY ? 0 : text_len(t) - (st & J_NOEOL ? 1 : 0);~	size_t tn = st & CORE_EMPTY ? 0 : text_len(t);
+eol: dos when some LF follows a CR, not every one~test TESTS=file_eol~~src/file/eol.c~	if (crlf < lf) return 0;~	if (crlf == 0) return 0;
+eol: every CR dropped in a dos file, not only the one before a LF~test TESTS=file_eol~~src/file/eol.c~if (!(data[i] == '\r' && i + 1 < *n && data[i + 1] == '\n')) data[j++] = data[i];~if (data[i] != '\r') data[j++] = data[i];
+eol: data with no LF dos on Linux~test TESTS=file_eol~~src/file/eol.c~enum { FIRST = 0 };   /* "unix,dos" */~enum { FIRST = 1 };
+eol: saved with LF in a dos file~test TESTS=file_eol~~src/file/eol.c~	if (!dos) return k;~	if (!dos || k) return k;
+eol: a dos chunk read whole, so its CRs overflow the buffer~test TESTS=file_eol~~src/file/eol.c~room = dos ? cap / 2 : cap;~room = cap;
+eol: the in-place save cut to the text's length, not the bytes written~test TESTS=file_eol~~src/file/file.c~ftruncate(fd, w) == 0~ftruncate(fd, (off_t)n) == 0
+core wiring: the format not passed to the save~test TESTS=file_eol~~src/core/core.c~file_save(b->path, b->text, n, b->dos,~file_save(b->path, b->text, n, 0,
+core wiring: [dos] not shown~test TESTS=file_eol~~src/core/core.c~return b->dos == DOS_FIRST ? "" :~return 1 ? "" :
+core wiring: the written message counts the buffer's bytes, not the file's~test TESTS=file_eol~~src/core/core.c~n ? buf_lines(b) : 0, (size_t)b->id.size);~n ? buf_lines(b) : 0, n);
+core wiring: the journal's base without the format~test TESTS=file_eol~~src/core/core.c~| (b->noeol ? J_NOEOL : 0) | (b->dos ? J_DOS : 0); }~| (b->noeol ? J_NOEOL : 0); }
+core wiring: an edit's record without the format~test TESTS=file_eol~~src/core/core.c~b->id.size ? J_NOEOL : 0) | (b->dos ? J_DOS : 0);~b->id.size ? J_NOEOL : 0);
+core wiring: recovery ignores the format when the lines equal the file's~test TESTS=file_eol~~src/core/core.c~tn == n && !(st & J_DOS) == !b->dos && text_read~tn == n && text_read
+core wiring: :e keeps the old format~test TESTS=file_eol~~src/core/core.c~		b->dos = dos;¶		b->saved_seq~		b->dos = dos && b->dos;¶		b->saved_seq
+win: data with no LF unix on Windows~win WIN=file~~src/file/eol.c~enum { FIRST = 1 };   /* 'fileformats' "dos,unix" */~enum { FIRST = 0 };
+win: saved with LF in a dos file~win WIN=file~~src/file/win.c~file_text_read(t, &pos, n, dos, b, sizeof b)~file_text_read(t, &pos, n, dos && 0, b, sizeof b)
+file: stdpath reads the data variable for state~test TESTS=file_journal~~src/file/state.c~	const char *d = getenv(state ? "XDG_STATE_HOME" : "XDG_DATA_HOME")~	const char *d = getenv(state ? "XDG_DATA_HOME" : "XDG_STATE_HOME")
+file: file_full leaves the directory as typed~test TESTS=shada~~src/file/state.c~	if (!realpath(dir, d)) return -1;~	if (!realpath(dir, d)) return -1;¶	snprintf(d, sizeof d, "%s", dir);

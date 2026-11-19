@@ -25,12 +25,6 @@ static void ident(const struct stat *st, FileId *id)
 	id->mtime_ns = (long long)st->st_mtim.tv_sec * 1000000000LL + st->st_mtim.tv_nsec;
 }
 
-static int same(const FileId *a, const FileId *b)
-{
-	return a->exists == b->exists && (!a->exists || (a->dev == b->dev && a->ino == b->ino
-	       && a->size == b->size && a->mtime_ns == b->mtime_ns));
-}
-
 int file_load(const char *path, char **data, size_t *n, FileId *id)
 {
 	struct stat st;
@@ -72,13 +66,15 @@ int file_write_all(int fd, const char *b, size_t n)
 	return 0;
 }
 
-static int write_text(int fd, const Text *t, size_t n)
+/* 0 ok (*w the bytes written), -1 error */
+static int write_text(int fd, const Text *t, size_t n, int dos, off_t *w)
 {
 	char b[1 << 16];
+	*w = 0;
 	for (size_t pos = 0; pos < n;) {
-		size_t k = text_read(t, pos, b, n - pos < sizeof b ? n - pos : sizeof b);
+		size_t k = file_text_read(t, &pos, n, dos, b, sizeof b);
 		if (file_write_all(fd, b, k)) return -1;
-		pos += k;
+		*w += (off_t)k;
 	}
 	return 0;
 }
@@ -105,17 +101,18 @@ static int copy_fd(int from, int to)
    rename during it leaves the outsider's file at the path and ours at the
    old inode (the other links): SAVE_OK, nothing lost, and the identity kept
    is the old inode's, so the next :w is refused. */
-static int save_in_place(const char *real, const Text *t, size_t n, FileId *id,
+static int save_in_place(const char *real, const Text *t, size_t n, int dos, FileId *id,
                          int force, char *kept, size_t keptsz)
 {
 	char bak[PATH_MAX];
+	off_t w;
 	struct stat st;
 	FileId before, after;
 	int fd = open(real, O_RDWR | O_CLOEXEC);
 	if (fd < 0) return SAVE_ERR;
 	if (fstat(fd, &st)) goto err;
 	ident(&st, &before);
-	if (!force && !same(id, &before)) { close(fd); return SAVE_CHANGED; }
+	if (!force && !file_same(id, &before)) { close(fd); return SAVE_CHANGED; }
 	int b = state_open("backup", real, bak, sizeof bak, O_WRONLY | O_CREAT | O_TRUNC);
 	/* no backup (a name too long, a full or unwritable state directory):
 	   refused, but :w! writes without one, as Neovim's E510 */
@@ -127,10 +124,10 @@ static int save_in_place(const char *real, const Text *t, size_t n, FileId *id,
 		state_sync_dir(bak);   /* the backup's name durable too, before the recheck: the window after it stays short */
 		if (fstat(fd, &st)) { int e = errno; unlink(bak); close(fd); errno = e; return SAVE_ERR; }
 		ident(&st, &after);
-		if (!force && !same(&after, &before)) { unlink(bak); close(fd); return SAVE_CHANGED; }
+		if (!force && !file_same(&after, &before)) { unlink(bak); close(fd); return SAVE_CHANGED; }
 	}
 	/* Trunc and Fill: write first, cut after, so the file is never empty */
-	if (write_text(fd, t, n) == 0 && ftruncate(fd, (off_t)n) == 0 && fsync(fd) == 0 && fstat(fd, &st) == 0) {
+	if (write_text(fd, t, n, dos, &w) == 0 && ftruncate(fd, w) == 0 && fsync(fd) == 0 && fstat(fd, &st) == 0) {
 		ident(&st, id);
 		close(fd);
 		if (backed) unlink(bak);
@@ -172,9 +169,10 @@ static int target(const char *path, char *real)
 	return -1;
 }
 
-int file_save(const char *path, const Text *t, size_t n, FileId *id, int force,
-              char *kept, size_t keptsz)
+int file_save(const char *path, const Text *t, size_t n, int dos, FileId *id,
+              int force, char *kept, size_t keptsz)
 {
+	off_t w;
 	char real[PATH_MAX], dir[PATH_MAX], base[PATH_MAX], tmp[PATH_MAX + 32];
 	struct stat st;
 	FileId now = { 0 }, mine;
@@ -182,9 +180,9 @@ int file_save(const char *path, const Text *t, size_t n, FileId *id, int force,
 	if (!stat(real, &st)) ident(&st, &now);
 	else if (errno != ENOENT) return SAVE_ERR;
 	/* Check: an outside change since load is never overwritten unasked */
-	if (!force && id->exists && !same(id, &now)) return SAVE_CHANGED;
+	if (!force && id->exists && !file_same(id, &now)) return SAVE_CHANGED;
 	if (!force && !id->exists && now.exists) return SAVE_CHANGED;
-	if (now.exists && st.st_nlink > 1) return save_in_place(real, t, n, id, force, kept, keptsz);
+	if (now.exists && st.st_nlink > 1) return save_in_place(real, t, n, dos, id, force, kept, keptsz);
 
 	/* dirname() and basename() may return static storage or change their
 	   argument, so each works on its own copy and its result is used */
@@ -196,7 +194,7 @@ int file_save(const char *path, const Text *t, size_t n, FileId *id, int force,
 	if (fd < 0) {
 		/* a directory we may not write in, holding a file we may */
 		if (now.exists && (errno == EACCES || errno == EPERM) && !access(real, W_OK))
-			return save_in_place(real, t, n, id, force, kept, keptsz);
+			return save_in_place(real, t, n, dos, id, force, kept, keptsz);
 		return SAVE_ERR;
 	}
 	if (now.exists) {
@@ -205,7 +203,7 @@ int file_save(const char *path, const Text *t, size_t n, FileId *id, int force,
 		    && fchown(fd, st.st_uid, st.st_gid))) {
 			close(fd);
 			unlink(tmp);
-			return save_in_place(real, t, n, id, force, kept, keptsz);
+			return save_in_place(real, t, n, dos, id, force, kept, keptsz);
 		}
 	} else { mode_t m = umask(0); umask(m); fchmod(fd, 0666 & ~m); }   /* as open(O_CREAT, 0666) */
 	/* temp written and fsynced before the swap: WholeAfterCrash needs the
@@ -213,7 +211,7 @@ int file_save(const char *path, const Text *t, size_t n, FileId *id, int force,
 	   identity is taken here, by descriptor: the swap changes none of inode,
 	   size or mtime, and a stat by path after the swap could see an outside
 	   write as ours (Save2's Rename sets seen in the same step). */
-	if (write_text(fd, t, n) || fsync(fd) || fstat(fd, &st)) { int e = errno; close(fd); unlink(tmp); errno = e; return SAVE_ERR; }
+	if (write_text(fd, t, n, dos, &w) || fsync(fd) || fstat(fd, &st)) { int e = errno; close(fd); unlink(tmp); errno = e; return SAVE_ERR; }
 	ident(&st, &mine);
 	close(fd);
 
@@ -227,7 +225,7 @@ int file_save(const char *path, const Text *t, size_t n, FileId *id, int force,
 		} else {
 			FileId out = { 0 };
 			if (!lstat(tmp, &st)) ident(&st, &out);
-			if (same(&out, &now)) unlink(tmp);
+			if (file_same(&out, &now)) unlink(tmp);
 			else { r = SAVE_KEPT; snprintf(kept, keptsz, "%s", tmp); }
 		}
 	} else if (force ? rename(tmp, real) : renameat2(AT_FDCWD, tmp, AT_FDCWD, real, RENAME_NOREPLACE)) {
@@ -276,6 +274,6 @@ int file_watch_read(int fd, const char *path, const FileId *id)
 	}
 	if (!stat(path, &st)) ident(&st, &now);
 	else if (errno != ENOENT) return -1;
-	return !same(id, &now);
+	return !file_same(id, &now);
 }
 #endif

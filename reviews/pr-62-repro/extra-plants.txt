@@ -1,0 +1,11 @@
+x1: a width stops growing at a frame as tall as the terminal, not ROWS_AVAIL~test TESTS="core_screens core_contract"~~src/core/win.c~full = a == ROWS ? e->cols : e->layout->size[ROWS];~full = a == ROWS ? e->cols : e->rows;
+x2: a leaf's edge is 1 on both axes~test TESTS="core_screens core_contract"~~src/core/win.c~return a == COLS ? f->vsep : STATUS; }~return a == COLS ? STATUS : STATUS; }
+x3: equalizing clamps next_size on both axes~test TESTS="core_screens core_contract"~~src/core/win.c~if (a == COLS && next_size < 0) next_size = 0;~if (next_size < 0) next_size = 0;
+x4: a top-level vertical split takes the status height off~test TESTS="core_screens core_contract"~~src/core/win.c~(a == ROWS ? STATUS : (flags & WSP_TOP) != 0)~STATUS
+x5: a width set on the top frame takes command-line rows~test TESTS="core_screens core_contract"~~src/core/win.c~if (a == ROWS && size > 0) top_new_height~if (size > 0) top_new_height
+x6: a size below the minimum is not raised~test TESTS="core_screens core_contract"~~src/core/win.c~	if (size < WM) size = WM;¶	setsize~	setsize
+x7: a width takes room from the command line~test TESTS="core_screens core_contract"~~src/core/win.c~if (a == ROWS && cur->size[COLS] == e->cols) {~if (cur->size[COLS] == e->cols) {
+x8: equalizing widths never counts the last separator~test TESTS="core_screens core_contract"~~src/core/win.c~extra_sep = at[COLS] + sz[COLS] == e->cols;~extra_sep = 0;
+x9: the old window keeps no separator after a vertical split~test TESTS="core_screens core_contract"~~src/core/win.c~		of->vsep |= !before;~		;
+x10: entering a window widens it only~test TESTS="core_screens core_contract"~~src/core/win.c~for (int a = ROWS; a <= COLS; a++) if (*wsize(w, a) < p_wsz[a])~for (int a = COLS; a <= COLS; a++) if (*wsize(w, a) < p_wsz[a])
+x11: the new window of a horizontal split keeps no separator~test TESTS="core_screens core_contract"~~src/core/win.c~else nf->vsep = toplevel ? 0 : of->vsep;~else nf->vsep = 0;

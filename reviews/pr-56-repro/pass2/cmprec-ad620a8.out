@@ -1,0 +1,25 @@
+[wide] row 4:
+  nvim    [F ....r.......rr....................................]
+  homeros [F ....r.rrrrrrrr....................................]
+[crlf-ish/ctrl] row 1:
+  nvim    [F ....r.r..r........................................]
+  homeros [F ....r.rrrr........................................]
+cmprec: 40 cases, 2 differ
+[open line under heading] row 0:
+  nvim    [S   1 # One                                         ]
+  homeros [S   1 󰲡 One                                         ]
+cmprec: 15 cases, 1 differ
+[o Esc in one send] row 0:
+  nvim    [S   1 # One                                         ]
+  homeros [S   1 󰲡 One                                         ]
+[o text Esc] row 0:
+  nvim    [S   1 # One                                         ]
+  homeros [S   1 󰲡 One                                         ]
+[O Esc above] row 0:
+  nvim    [S   1 # One                                         ]
+  homeros [S   1 󰲡 One                                         ]
+cmprec: 14 cases, 3 differ
+[setext emphasis start] row 2:
+  nvim    [S   2 *1* # b                                       ]
+  homeros [S   2 *1* 󰲡 b                                       ]
+cmprec: 5 cases, 1 differ

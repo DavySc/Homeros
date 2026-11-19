@@ -1,0 +1,3 @@
+again: SELECT 1 GOTO again
+L1:
+BEGIN TRAN; COMMIT TRAN

@@ -1,0 +1,2 @@
+frama-c: the UTF-8 kernel returns 1 (weak contract trap)~frama~~src/uni/uni.c~		if (s[i + j] < 0x80 || s[i + j] >= 0xC0) return 1;¶	return k;~		if (s[i + j] < 0x80 || s[i + j] >= 0xC0) return 1;¶	return 1;
+frama-c: uni_prev always steps one byte back (weak contract trap)~frama~~src/uni/uni.c~	if (i >= 2 && uni_len(s, n, i - 2) == 2) return i - 2;~	return i - 1;

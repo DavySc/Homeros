@@ -14,7 +14,7 @@ SHELL = /bin/bash
 # value from the command line or make -e never points it at a real one)
 override export XDG_STATE_HOME := $(CURDIR)/build/state
 
-BASE = text undo uni core keys grid tty loop file syntax theme tools git lsp
+BASE = text undo uni core keys grid tty loop file syntax theme tools git lsp infoview
 # src/win/ (package 9) is the Windows build's, cross-compiled on its own
 MODULES = $(BASE) $(filter-out $(BASE) win,$(patsubst src/%/,%,$(wildcard src/*/)))
 pick = $(if $(wildcard src/$(1)/*.c),$(wildcard src/$(1)/*.c),ref/$(1).c)
@@ -67,6 +67,7 @@ test: $(OBJS) | build/san
 	python3 tools/conform.py build/san/conform_drv --replay tests/conform-recorded.json
 	gcc $(WARN) $(CPPFLAGS) $(SAN) -o build/san/homeros $(SRCS) src/main.c $(OBJS) $(LIBS)
 	@python3 tests/paste.py build/san/homeros -t 40000 || { echo "FAIL paste"; exit 1; }
+	@python3 tests/hup.py build/san/homeros || { echo "FAIL hup"; exit 1; }
 
 # libFuzzer, each target against a simple model, FUZZ_SECONDS each; an input
 # that runs 20 s is a hang and fails (a planted bug once spun 20 min)
@@ -80,11 +81,15 @@ fuzz: $(OBJS) | build/fuzz
 	    || { tail -40 build/fuzz/$$f.log; echo "FAIL fuzz_$$f"; exit 1; }; \
 	  echo "fuzz_$$f: $$(grep -m1 -o 'Done [0-9]* runs in [0-9]* second(s)' build/fuzz/$$f.log)"; done
 
-# Vim keys against nvim --headless, fresh random sequences
+# Vim keys against nvim --headless on random sequences.  The random checks
+# (conform, org-conform, undo-conform) take SEED, 1 by default, so a pull
+# request's check is the same each run; CI's nightly run (nightly.yml) takes a
+# fresh SEED, and what it finds is reduced, then fixed or listed
+# (tests/conform-known.json)
 conform: $(OBJS) | build/san
 	@rm -rf build/state
 	gcc $(WARN) $(CPPFLAGS) $(SAN) -o build/san/conform_drv tests/conform_drv.c $(LIB_SRCS) $(OBJS) $(LIBS)
-	python3 tools/conform.py build/san/conform_drv $(CONFORM_N) $${SEED:-$$(date +%s)}
+	python3 tools/conform.py build/san/conform_drv $(CONFORM_N) $${SEED:-1}
 
 # Org's parser against Org itself (package 16): fresh random org texts fed
 # to src/org and to org-element in emacs -Q --batch (tools/org_dump.el)
@@ -92,7 +97,7 @@ ORG_N ?= 2000
 org-conform: $(OBJS) | build/san
 ifneq ($(wildcard src/org/*.c),)
 	gcc $(WARN) $(CPPFLAGS) $(SAN) -o build/san/org_drv tests/org_drv.c $(LIB_SRCS) $(OBJS) $(LIBS)
-	python3 tools/org_conform.py build/san/org_drv $(ORG_N) $${SEED:-$$(date +%s)}
+	python3 tools/org_conform.py build/san/org_drv $(ORG_N) $${SEED:-1}
 endif
 
 # Neovim's undo tree against UndoTree.tla's rules (package 2's oracle);
@@ -104,7 +109,7 @@ undo-diff: | build
 	python3 design/ref/undo/undo_diff.py $(UNDO_N) 30 $${SEED:-2} | tee build/undo-diff.log
 	grep -q ": 0 differ" build/undo-diff.log
 ifneq ($(wildcard tools/undo_conform.py),)
-	@seed=$${SEED:-$$(date +%s)}; $(UNDO_CONFORM) $(UNDO_N) 60 1000 $$seed && \
+	@seed=$${SEED:-1}; $(UNDO_CONFORM) $(UNDO_N) 60 1000 $$seed && \
 	  $(UNDO_CONFORM) $(UNDO_N) 60 3 $$seed && $(UNDO_CONFORM) 10 4000 1000 $$seed
 endif
 
@@ -138,16 +143,48 @@ endif
 # a virtual X display); a plant names the one module whose check can catch it
 # (make win WIN=file), so it does not run the others' slow tests too
 WIN = $(patsubst src/%/check.sh,%,$(wildcard src/*/check.sh))
-win:
+win: wincc
 	@for m in $(WIN); do echo "win: src/$$m/check.sh"; bash src/$$m/check.sh || exit 1; done
 
-check: compilers test fuzz conform org-conform undo-diff lean frama specs win
+# every file of the Windows editor compiles for Windows under our warnings,
+# so a POSIX call in a shared module fails here, not first in a trial build.
+# Not the terminal (no Windows half yet), the fonts (the window draws with
+# GDI) or the Wayland window (POSIX only): the trial build stubs them.  It
+# reads tree-sitter's headers only (not $(CPPFLAGS), which holds Linux paths
+# and -DHOMEROS_WL), so it needs the sources, not $(OBJS)
+WIN_SRCS = $(foreach m,$(filter-out tty font wl,$(MODULES)),$(call pick,$(m))) $(wildcard src/win/*.c) src/main.c
+wincc: | $(SYN)/src build/win
+	@for f in $(WIN_SRCS); do zig cc -target x86_64-windows-gnu $(WARN) $(CPPFLAGS) -c -o build/win/cc.o $$f || exit 1; done
+	zig rc /fo build/win/homeros.res assets/homeros.rc
+	@echo "wincc: $(words $(WIN_SRCS)) files and the icon resource compile for Windows"
+build/win:
+	mkdir -p $@
+
+check: compilers test fuzz conform org-conform undo-diff lean frama specs win dupes
 	@echo "check: all passed"
+
+# copied code fails (CLAUDE.md: no duplication)
+dupes:
+	@python3 tools/dupes.py
+
+# every function defined, file:line and signature: grep it before writing one
+index:
+	@grep -rnE '^(static )?[a-zA-Z_][a-zA-Z0-9_ *]*[ *][a-zA-Z_][a-zA-Z0-9_]*\([^;{]*(\{.*)?$$' --include=*.c src ref
 
 planted:
 	SHARD=$(SHARD) bash tools/planted.sh
 
+# the Linux window's icon and launcher entry: wl.c's app_id "homeros"
+# names homeros.desktop, whose Icon=homeros the hicolor theme resolves
+PREFIX ?= $(HOME)/.local
+install: homeros
+	install -Dm755 homeros $(DESTDIR)$(PREFIX)/bin/homeros
+	install -Dm644 assets/homeros.desktop $(DESTDIR)$(PREFIX)/share/applications/homeros.desktop
+	install -Dm644 assets/homeros.svg $(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/apps/homeros.svg
+	for n in 16 24 32 48; do install -Dm644 assets/hicolor/$${n}x$$n/apps/homeros.png \
+	  $(DESTDIR)$(PREFIX)/share/icons/hicolor/$${n}x$$n/apps/homeros.png; done
+
 clean:
 	rm -rf build homeros
 
-.PHONY: compilers test fuzz conform org-conform undo-diff specs lean frama win check planted clean
+.PHONY: dupes index compilers test fuzz conform org-conform undo-diff specs lean frama win wincc check planted install clean

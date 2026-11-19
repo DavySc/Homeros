@@ -56,12 +56,6 @@ static int ident(HANDLE h, FileId *id)
 	return 0;
 }
 
-static int same(const FileId *a, const FileId *b)
-{
-	return a->exists == b->exists && (!a->exists || (a->dev == b->dev && a->ino == b->ino
-	       && a->size == b->size && a->mtime_ns == b->mtime_ns));
-}
-
 /* by path; a missing file is id->exists = 0 */
 static int stat_id(const wchar_t *w, FileId *id)
 {
@@ -96,21 +90,20 @@ int file_load(const char *path, char **data, size_t *n, FileId *id)
 	return 0;
 }
 
-static int write_text(HANDLE h, const Text *t, size_t n)
+static int write_text(HANDLE h, const Text *t, size_t n, int dos)
 {
 	char b[1 << 16];
 	for (size_t pos = 0; pos < n;) {
-		size_t k = text_read(t, pos, b, n - pos < sizeof b ? n - pos : sizeof b);
+		size_t k = file_text_read(t, &pos, n, dos, b, sizeof b);
 		DWORD w;
 		for (size_t i = 0; i < k; i += w)
 			if (!WriteFile(h, b + i, (DWORD)(k - i), &w, NULL)) return fail();
-		pos += k;
 	}
 	return 0;
 }
 
-int file_save(const char *path, const Text *t, size_t n, FileId *id, int force,
-              char *kept, size_t keptsz)
+int file_save(const char *path, const Text *t, size_t n, int dos, FileId *id,
+              int force, char *kept, size_t keptsz)
 {
 	static unsigned k;
 	wchar_t w[PATH_MAX], tmp[PATH_MAX + 32];
@@ -126,7 +119,7 @@ int file_save(const char *path, const Text *t, size_t n, FileId *id, int force,
 	if (h == INVALID_HANDLE_VALUE) { fail(); return SAVE_ERR; }
 	/* WriteTmp: durable before the name points at it (Save2_nofsync's lesson
 	   holds for a rename too) */
-	if (write_text(h, t, n) || (!FlushFileBuffers(h) && fail())) {
+	if (write_text(h, t, n, dos) || (!FlushFileBuffers(h) && fail())) {
 		CloseHandle(h);
 		DeleteFileW(tmp);
 		return SAVE_ERR;
@@ -139,7 +132,7 @@ int file_save(const char *path, const Text *t, size_t n, FileId *id, int force,
 	if (stat_id(tmp, &mine)) { DeleteFileW(tmp); return SAVE_ERR; }
 	/* Check, as late as it can be: just before Rename */
 	if (stat_id(w, &now)) { DeleteFileW(tmp); return SAVE_ERR; }
-	if (!force && !same(id, &now)) { DeleteFileW(tmp); return SAVE_CHANGED; }
+	if (!force && !file_same(id, &now)) { DeleteFileW(tmp); return SAVE_CHANGED; }
 	/* Rename; a new file only where there is still none, unless :w! */
 	if (!MoveFileExW(tmp, w, MOVEFILE_WRITE_THROUGH | (now.exists || force ? MOVEFILE_REPLACE_EXISTING : 0))) {
 		DWORD e = GetLastError();
@@ -177,17 +170,63 @@ int file_watch_read(int fd, const char *path, const FileId *id)
 	FileId now;
 	if (!FindNextChangeNotification((HANDLE)(intptr_t)fd)) return fail();
 	if (wide(path, w) || stat_id(w, &now)) return -1;
-	return !same(id, &now);
+	return !file_same(id, &now);
 }
 
 /* The journal's calls (state.h) */
 
+void file_stdpath(char *f, size_t n, int state, const char *name)
+{
+	/* stdpath("state") and ("data") are both %LOCALAPPDATA%\\nvim-data */
+	const char *d = getenv(state ? "XDG_STATE_HOME" : "XDG_DATA_HOME");
+	if (!d || !*d) d = getenv("LOCALAPPDATA");
+	snprintf(f, n, "%s\\homeros-data%s", d ? d : "", name);
+}
+
+void file_mkdirs(char *f)
+{
+	wchar_t w[PATH_MAX];
+	if (wide(f, w)) return;
+	for (wchar_t *p = w + 1; *p; p++) {
+		if (*p != L'\\' && *p != L'/') continue;
+		wchar_t c = *p;
+		*p = 0;
+		CreateDirectoryW(w, NULL);
+		*p = c;
+	}
+}
+
+/* GetFullPathNameW into full: its length, 0 on error */
+static DWORD fullw(const char *path, wchar_t *full)
+{
+	wchar_t p[PATH_MAX];
+	DWORD n;
+	if (wide(path, p)) return 0;
+	if (!(n = GetFullPathNameW(p, PATH_MAX, full, NULL)) || n >= PATH_MAX) { errno = ENAMETOOLONG; return 0; }
+	return n;
+}
+
+static int narrow(const wchar_t *w, char *out)
+{
+	if (WideCharToMultiByte(CP_UTF8, 0, w, -1, out, PATH_MAX, NULL, NULL)) return 0;
+	errno = ENAMETOOLONG;
+	return -1;
+}
+
+int file_full(const char *path, char *out)
+{
+	wchar_t full[PATH_MAX];
+	return fullw(path, full) ? narrow(full, out) : -1;
+}
+
 int state_open(const char *kind, const char *abs, char *out, size_t outsz, int flags)
 {
 	(void)flags;   /* only the journal opens here: read, write, append, create */
-	const char *x = getenv("XDG_STATE_HOME"), *base = x && *x ? x : getenv("LOCALAPPDATA");
-	int k = snprintf(out, outsz, "%s\\homeros-data\\%s\\", base ? base : "", kind);
-	if (k < 0 || (size_t)k + strlen(abs) >= outsz) { errno = ENAMETOOLONG; return -1; }
+	char sub[64];
+	snprintf(sub, sizeof sub, "\\%s\\", kind);
+	file_stdpath(out, outsz, 1, sub);
+	size_t k = strlen(out);
+	if (k + 1 >= outsz || k + strlen(abs) >= outsz) { errno = ENAMETOOLONG; return -1; }
 	for (size_t i = 0; abs[i]; i++) out[k + i] = abs[i] == '\\' || abs[i] == '/' || abs[i] == ':' ? '%' : abs[i];
 	out[k + strlen(abs)] = 0;
 	wchar_t w[PATH_MAX];
@@ -199,12 +238,7 @@ int state_open(const char *kind, const char *abs, char *out, size_t outsz, int f
 	for (int again = 1;; again = 0) {
 		h = CreateFileW(w, GENERIC_READ | GENERIC_WRITE, SHARE_ALL, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 		if (h != INVALID_HANDLE_VALUE || GetLastError() != ERROR_PATH_NOT_FOUND || !again) break;
-		/* only the first time: the directories (a failing one shows at the open) */
-		for (wchar_t *p = wcschr(w, L'\\'); p; p = wcschr(p + 1, L'\\')) {
-			*p = 0;
-			CreateDirectoryW(w, NULL);
-			*p = L'\\';
-		}
+		file_mkdirs(out);   /* only the first time */
 	}
 	if (h == INVALID_HANDLE_VALUE) return fail();
 	/* without _O_TEXT the descriptor is binary: no CRLF in the records */
@@ -215,14 +249,12 @@ int state_open(const char *kind, const char *abs, char *out, size_t outsz, int f
 
 int state_abs(const char *path, char *out)
 {
-	wchar_t p[PATH_MAX], full[PATH_MAX];
-	DWORD n;
-	if (wide(path, p)) return -1;
-	if (!(n = GetFullPathNameW(p, PATH_MAX, full, NULL)) || n >= PATH_MAX) { errno = ENAMETOOLONG; return -1; }
+	wchar_t full[PATH_MAX];
+	DWORD n = fullw(path, full);
+	if (!n) return -1;
 	/* NTFS names ignore case: one journal per file however it is spelled */
 	CharLowerBuffW(full, n);
-	if (!WideCharToMultiByte(CP_UTF8, 0, full, -1, out, PATH_MAX, NULL, NULL)) { errno = ENAMETOOLONG; return -1; }
-	return 0;
+	return narrow(full, out);
 }
 
 int state_lock(int fd, const char *name, long long *size)

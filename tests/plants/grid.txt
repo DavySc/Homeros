@@ -1,14 +1,14 @@
 # Plants for src/grid/ (format in tools/planted.sh).
-grid: a character on a right half leaves its left half~test TESTS=grid_diff~~src/grid/grid.c~	if (c > 0 && !x->len) x[-1] = (Cell){ ">", 1, x[-1].attr, x[-1].face };¶~
-grid: covering a left half leaves its right half~test TESTS=grid_diff~~src/grid/grid.c~	if (c + width < g->cols && !x[width].len) x[width] = (Cell){ " ", 1, x[width].attr, x[width].face };¶~
+grid: a character on a right half leaves its left half~test TESTS=grid_diff~~src/grid/grid.c~	if (c > 0 && !x->len) x[-1] = (Cell){ ">", 1, x[-1].attr, x[-1].face, x[-1].bg };¶~
+grid: covering a left half leaves its right half~test TESTS=grid_diff~~src/grid/grid.c~	if (c + width < g->cols && !x[width].len) x[width] = (Cell){ " ", 1, x[width].attr, x[width].face, x[width].bg };¶~
 grid: a size that overflows is accepted~test TESTS=grid_diff~~src/grid/grid.c~ || (cols && rows > INT_MAX / cols)~
 grid: widths other than 1 and 2 accepted~test TESTS=grid_diff~~src/grid/grid.c~(width != 1 && width != 2) || ~
 grid: '>' takes the new attribute~test TESTS=grid_diff~~src/grid/grid.c~(Cell){ ">", 1, x[-1].attr,~(Cell){ ">", 1, (unsigned char)attr,
 grid: a blanked right half takes the new attribute~test TESTS=grid_diff~~src/grid/grid.c~(Cell){ " ", 1, x[width].attr,~(Cell){ " ", 1, (unsigned char)attr,
 grid: resize keeps the cursor~test TESTS=grid_diff~~src/grid/grid.c~ g->crow = g->ccol = 0;~
 grid: a changed face is an equal cell~test TESTS=grid_diff~~src/grid/grid.c~ && a->face == b->face~
-grid: the '>' loses the face of the half it replaces~test TESTS=grid_diff~~src/grid/grid.c~(Cell){ ">", 1, x[-1].attr, x[-1].face }~(Cell){ ">", 1, x[-1].attr, FACE_NONE }
-grid: the blank loses the face of the half it replaces~test TESTS=grid_diff~~src/grid/grid.c~(Cell){ " ", 1, x[width].attr, x[width].face }~(Cell){ " ", 1, x[width].attr, FACE_NONE }
+grid: the '>' loses the face of the half it replaces~test TESTS=grid_diff~~src/grid/grid.c~(Cell){ ">", 1, x[-1].attr, x[-1].face,~(Cell){ ">", 1, x[-1].attr, FACE_NONE,
+grid: the blank loses the face of the half it replaces~test TESTS=grid_diff~~src/grid/grid.c~(Cell){ " ", 1, x[width].attr, x[width].face,~(Cell){ " ", 1, x[width].attr, FACE_NONE,
 grid: a long cluster cut inside a code point~test TESTS=grid_diff~~src/grid/grid.c~n > 1 && is_cont(s[n]); n--~n > 1 && is_cont(s[n]) && 0; n--
 grid: equal clusters get new numbers~test TESTS=grid_diff~~src/grid/grid.c~		if (store[h].len == n && !memcmp(store[h].b, s, n)) return h;¶~
 grid: a long cluster compared by length only~test TESTS=grid_diff~~src/grid/grid.c~a->len < 4 ? a->len : 4~a->len < 4 ? a->len : 0
@@ -16,3 +16,15 @@ grid: the store never emptied~test TESTS=grid_diff~~src/grid/grid.c~	if (used <=
 grid: a full store reuses a slot~test TESTS=grid_diff~~src/grid/grid.c~	if (h < 0) { s = (const unsigned char *)"\xef\xbf\xbd"; n = 3; }~	if (h < 0) h = 0;
 grid: a 31-byte cluster cut~test TESTS=grid_diff~~src/grid/grid.c~	if (n > GRID_CLUSTER_MAX)¶~	if (n >= GRID_CLUSTER_MAX)¶
 grid: a stored cluster found by its prefix~test TESTS=grid_diff~~src/grid/grid.c~store[h].len == n && !memcmp~!memcmp
+grid: a changed background layer is an equal cell~test TESTS=grid_diff~~src/grid/grid.c~ && a->bg == b->bg~
+grid: the '>' loses the background layer of the half it replaces~test TESTS=grid_diff~~src/grid/grid.c~x[-1].face, x[-1].bg }~x[-1].face, 0 }
+grid: a put keeps the old background layer~test TESTS=grid_diff~~src/grid/grid.c~	x->bg = 0;¶~
+grid: the blank loses the background layer of the half it replaces~test TESTS=grid_diff~~src/grid/grid.c~x[width].face, x[width].bg }~x[width].face, 0 }
+grid: grid_face ignores the background layer~test TESTS=grid_diff~~src/grid/grid.c~	*bg = x->bg && x->bg < FACE_COUNT ? &faces[x->bg] : f;~	*bg = f;
+grid: grid_face reads past faces[] for an unknown layer~test TESTS=grid_diff~~src/grid/grid.c~x->bg && x->bg < FACE_COUNT ?~x->bg ?
+grid: a wide character's right half keeps the old background layer~test TESTS=grid_diff~~src/grid/grid.c~(Cell){ "", 0, (unsigned char)attr, FACE_NONE, 0 }~(Cell){ "", 0, (unsigned char)attr, FACE_NONE, x[1].bg }
+grid: grid_clear leaves a background layer~test TESTS=grid_diff~~src/grid/grid.c~(Cell){ " ", 1, ATTR_NONE, FACE_NONE, 0 }~(Cell){ " ", 1, ATTR_NONE, FACE_NONE, FACE_CURSOR_LINE }
+grid: grid_puts passes its end column~test TESTS=grid~~src/grid/grid.c~if (c + w > end) break;~if (c + w > end + 99) break;
+grid: grid_puts leaves the face off~test TESTS=grid~~src/grid/grid.c~.face = (unsigned char)face;~.face = (unsigned char)(face & 0);
+grid: grid_puts writes a control character as it is~test TESTS=grid~~src/grid/grid.c~if (w > 2 || u[i] < 0x20 || u[i] == 0x7f)~if (w > 2)
+grid: grid_width counts clusters, not cells~test TESTS=grid~~src/grid/grid.c~		c += uni_width((const unsigned char *)s, n, i);~		c += 1;

@@ -3,7 +3,8 @@
    child never block: what the pipe does not take waits in that child's
    queue until poll says the pipe has room (Pipe.tla "queue"; a blocking
    write deadlocks against a child that writes before it reads, as
-   design/reviews/r1/dead.py shows). */
+   design/reviews/r1/dead.py shows).  win.c is the Windows twin. */
+#ifndef _WIN32
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
@@ -16,13 +17,13 @@
 #include <time.h>
 #include <unistd.h>
 #include "loop.h"
+#include "timer.h"
 
-enum { MAXW = 16, MAXT = 16, MAXP = 32, MAXF = MAXW + 1 + 3 * MAXP, KILL_MS = 2000 };
+enum { MAXW = 16, MAXP = 32, MAXF = MAXW + 1 + 3 * MAXP, KILL_MS = 2000 };
 
 int loop_int;
 
 static struct { int fd; LoopFn fn; void *ctx; } w[MAXW];   /* fd 0 marks a free slot as fd + 1 */
-static struct { void (*fn)(void *); void *ctx; long long at; } t[MAXT];
 static struct Proc {
 	pid_t pid;              /* 0: free slot */
 	int fd[3];              /* stdin, stdout, stderr; -1 once closed */
@@ -36,7 +37,7 @@ static struct Proc {
 static int chld[2] = { -1, -1 };
 static char buf[1 << 16];
 
-static long long now(void)
+long long loop_now(void)
 {
 	struct timespec ts;
 	clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -53,19 +54,6 @@ int loop_watch(int fd, LoopFn fn, void *ctx)
 void loop_unwatch(int fd)
 {
 	for (int i = 0; i < MAXW; i++) if (w[i].fd == fd + 1) w[i].fd = 0;
-}
-
-int loop_timer(void (*fn)(void *), void *ctx, int ms)
-{
-	int f = -1;
-	for (int i = 0; i < MAXT; i++) {
-		if (t[i].fn == fn && t[i].ctx == ctx) { t[i].fn = NULL; f = i; break; }
-		if (!t[i].fn && f < 0) f = i;
-	}
-	if (ms < 0) return 0;
-	if (f < 0) return -1;
-	t[f].fn = fn; t[f].ctx = ctx; t[f].at = now() + ms * 1000000LL;
-	return 0;
 }
 
 /* Polls the watched fds without waiting; their slots go to slot. */
@@ -226,7 +214,7 @@ void proc_kill(int id)
 	struct Proc *c = proc(id);
 	if (!c) return;
 	kill(-c->pid, SIGTERM);
-	c->killat = now() + KILL_MS * 1000000LL;
+	c->killat = loop_now() + KILL_MS * 1000000LL;
 }
 
 /* Reports a reaped child at once, as Neovim's on_exit: what its output
@@ -266,13 +254,8 @@ int loop_once(int timeout_ms)
 				who[n] = (short)i; what[n++] = (short)s;
 			}
 	long long first = -1;
-	for (int i = 0; i < MAXT; i++) if (t[i].fn && (first < 0 || t[i].at < first)) first = t[i].at;
 	for (int i = 0; i < MAXP; i++) if (p[i].killat && (first < 0 || p[i].killat < first)) first = p[i].killat;
-	if (first >= 0) {
-		long long d = first - now();
-		int ms = d <= 0 ? 0 : (int)((d + 999999) / 1000000);   /* round up: never wake before it is due */
-		if (timeout_ms < 0 || ms < timeout_ms) timeout_ms = ms;
-	}
+	timeout_ms = timer_wait(first, timeout_ms);
 	int r = poll(pf, (nfds_t)n, timeout_ms), sig = 0;
 	if (r < 0 && errno != EINTR) return -1;
 	for (int k = 0; k < n && r > 0; k++) {
@@ -293,13 +276,7 @@ int loop_once(int timeout_ms)
 		c->fd[s] = -1;
 		c->fn(c->ctx, s, NULL, 0);
 	}
-	long long tn = now();
-	for (int i = 0; i < MAXT; i++)
-		if (t[i].fn && t[i].at <= tn) {
-			void (*fn)(void *) = t[i].fn;
-			t[i].fn = NULL;
-			fn(t[i].ctx);
-		}
+	long long tn = timer_run();
 	for (int i = 0; i < MAXP; i++)
 		if (p[i].killat && p[i].killat <= tn) { p[i].killat = 0; kill(-p[i].pid, SIGKILL); }
 	if (sig) {
@@ -313,3 +290,4 @@ int loop_once(int timeout_ms)
 	}
 	return 0;
 }
+#endif

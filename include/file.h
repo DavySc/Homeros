@@ -8,6 +8,11 @@
 #define FILE_H
 #include <stddef.h>
 #include "text.h"
+#ifdef _WIN32
+#include <limits.h>
+#undef PATH_MAX   /* mingw's is MAX_PATH, in UTF-16 units: as UTF-8, 3 bytes each */
+#define PATH_MAX (3 * 260)
+#endif
 
 typedef struct {
 	int exists;
@@ -19,6 +24,12 @@ typedef struct {
    0 bytes and id->exists = 0.  0 ok, -1 error (errno set). */
 int file_load(const char *path, char **data, size_t *n, FileId *id);
 
+/* Neovim's 'fileformats' "unix,dos" ("dos,unix" on Windows), as readfile()
+   decides: dos when the data has a LF and every LF follows a CR; data with
+   no LF takes the first entry (dos on Windows, unix elsewhere).  For dos it
+   drops the CR before each LF in place and shrinks *n.  1 dos, 0 unix. */
+int file_eol(char *data, size_t *n);
+
 enum {
 	SAVE_OK,
 	SAVE_CHANGED,  /* changed on disk since it was loaded or saved: nothing written */
@@ -26,10 +37,11 @@ enum {
 	                  version is kept at the path written to kept */
 	SAVE_ERR       /* nothing replaced; errno set */
 };
-/* Writes the first n bytes of t to path.  id is what we last loaded or saved
-   there and is updated on success.  force skips the identity check (:w!). */
-int file_save(const char *path, const Text *t, size_t n, FileId *id, int force,
-              char *kept, size_t keptsz);
+/* Writes the first n bytes of t to path, each LF as CR LF if dos.  id is
+   what we last loaded or saved there and is updated on success (its size is
+   the bytes written).  force skips the identity check (:w!). */
+int file_save(const char *path, const Text *t, size_t n, int dos, FileId *id,
+              int force, char *kept, size_t keptsz);
 
 /* Outside changes: inotify on the file's directory (FindFirstChangeNotificationW
    on Windows), so a file replaced by rename is still seen.  Returns an fd for
@@ -41,6 +53,22 @@ int  file_watch(const char *path);
    count (they update id).  The core warns at the first edit after a 1 and a
    plain save over it is refused as before (DESIGN.md "External change"). */
 int  file_watch_read(int fd, const char *path, const FileId *id);
+
+/* Neovim's stdpath(state ? "state" : "data") for homeros, followed by name
+   (which starts with the separator), into f, n bytes, truncated:
+   $XDG_STATE_HOME/homeros (default ~/.local/state/homeros) or the data twin
+   ($XDG_DATA_HOME, ~/.local/share); %LOCALAPPDATA%\homeros-data for both on
+   Windows (an XDG variable set there wins, as in Neovim). */
+void file_stdpath(char *f, size_t n, int state, const char *name);
+/* mkdir -p of the directories in f (a file's path; '\\' also on Windows), mode
+   0700; f is unchanged after.  A directory that cannot be made shows as the
+   file's open failing. */
+void file_mkdirs(char *f);
+/* Neovim's full name of a buffer (fix_fname()) into out, PATH_MAX bytes: the
+   directory resolved (symlinks too), the last part as typed, so a symlink or
+   a file not made yet keeps its name; GetFullPathNameW on Windows.  The
+   directory must exist.  0 ok, -1 error. */
+int  file_full(const char *path, char *out);
 
 /* Crash journal (Vim's swap file; Neovim's place for it): the buffer as it
    was when journalling started (its base: the bytes, the core's state flags

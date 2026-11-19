@@ -1,0 +1,50 @@
+    :PROPERTIES:
+
+	#+
+* |
+** NEXT  [#64] @ :
+
+ :: v
++---+---+
+#+ATTR_HTML: :w 1
+#+HEADER: :var x=1
+#+NAME: n
+
+:X+: 
+ 2) [ ] 
+	+ [X] foo | | SCHEDULED: a)
+  #+BEGIN_EXAMPLE
+  
+	- tag :: <2026-11-22 Sun> =v=
+  [fn:x_y] :: =v=   @ [fn:1]
+ 
+  - COMMENT TODO [2026-11-22 Sun] ::
+ 	DEADLINE:[0026-13-26 zo 10:47-18:49 .+6D/5h -3y] DEADLINE:[1999-13-21 Dé 20:12 +0D/7m]
+ 
+1. [ ] 
+  #+BEGIN_VERSE
+  
+    :END:
+	#+end_SRC
+    2)  CLOCK: | foo % a)  
+	:PROPERTIES:
+[fn:a-b]x
+    TODO Ä foo bar $ =v=
+:END:
+[fn:1] note
+
+%%(diary-anniversary 1 1 2000)
+
+	:A-b_c:
+	
+#+BEGIN_SRC
+#+begin_a.b html
+ :END:
+  * [ ]   =v= /a/
+        #+RESULTS:
+ 1. [fn:1] $ COMMENT
+  + tag :: bar
+ 
+ 
+ - tag :: 日本 =v=
+    2) 1.   été $

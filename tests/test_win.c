@@ -134,11 +134,11 @@ int main(void)
 	/* keys */
 	static const WPARAM chars[] = { 'a', 0xD835, 0xDCDD, 8, 27, 0xDCDD, 0xE9, 13 };
 	for (unsigned i = 0; i < sizeof chars / sizeof *chars; i++) PostMessageW(win, WM_CHAR, chars[i], 0);
-	static const WPARAM vks[] = { VK_LEFT, VK_RIGHT, VK_UP, VK_DOWN };
-	for (unsigned i = 0; i < 4; i++) PostMessageW(win, WM_KEYDOWN, vks[i], 0);
-	CHECK(input(k, 1) == 10);   /* one slot per call: nothing lost; the lone 0xDCDD gives none */
+	static const WPARAM vks[] = { VK_LEFT, VK_RIGHT, VK_UP, VK_DOWN, VK_DELETE };
+	for (unsigned i = 0; i < 5; i++) PostMessageW(win, WM_KEYDOWN, vks[i], 0);
+	CHECK(input(k, 1) == 11);   /* one slot per call: nothing lost; the lone 0xDCDD gives none */
 	CHECK(k[0] == 'a' && k[1] == 0x1D4DD && k[2] == KEY_BS && k[3] == KEY_ESC && k[4] == 0xE9
-	      && k[5] == KEY_ENTER && k[6] == KEY_LEFT && k[7] == KEY_RIGHT && k[8] == KEY_UP && k[9] == KEY_DOWN);
+	      && k[5] == KEY_ENTER && k[6] == KEY_LEFT && k[7] == KEY_RIGHT && k[8] == KEY_UP && k[9] == KEY_DOWN && k[10] == KEY_DEL);
 	BYTE ks[256] = { 0 };
 	ks[VK_CONTROL] = 0x80;
 	SetKeyboardState(ks);
@@ -160,6 +160,18 @@ int main(void)
 	while (px(0, ch) == REV) ch++;
 	CHECK(cw > 3 && ch > 3 && px(cw, 0) == BG && px(0, ch) == BG);
 	CHECK(at(2, 2) == REV && at(1, 1) == BG);   /* the cursor */
+	{   /* CI has no Nerd Font, so the face is plain JetBrains Mono, not what
+	       GDI substitutes for a missing family (Liberation Mono under Wine) */
+		HDC dc = CreateCompatibleDC(NULL);
+		HFONT f = CreateFontW(-MulDiv(12, (int)GetDpiForWindow(win), 72), 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET,
+		                      OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY, FIXED_PITCH | FF_MODERN, L"JetBrains Mono");
+		TEXTMETRICW tm;
+		SelectObject(dc, f);
+		GetTextMetricsW(dc, &tm);
+		CHECK(ch == tm.tmHeight && cw == tm.tmAveCharWidth);
+		DeleteDC(dc);
+		DeleteObject(f);
+	}
 
 	/* the mouse and the wheel, at their cells */
 	PostMessageW(win, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(3 * cw + 1, 2 * ch + 1));
@@ -209,8 +221,14 @@ int main(void)
 	put(&g, 7, 1, "\xe4\xb8\xad", 2, ATTR_REV);   /* U+4E2D, two cells */
 	put(&g, 8, 1, " ", 1, ATTR_NONE);
 	g.c[8 * g.cols + 1].face = FACE_COMMENT_TODO;   /* a face with a background */
+	put(&g, 8, 2, " ", 1, ATTR_NONE);
+	g.c[8 * g.cols + 2].bg = FACE_CURSOR_LINE;      /* a background layer */
+	/* a cluster longer than a cell's 4 bytes, from the grid's store: its
+	   accents draw over the letter */
+	put(&g, 9, 1, "e", 1, ATTR_NONE);
+	put(&g, 10, 1, "e\xcc\x81\xcc\x81\xcc\x81\xcc\x81", 1, ATTR_NONE);   /* 4 combining acutes */
 	present(&g, &shown);
-	/* glyph edges are blended (ClearType), so few pixels are exactly the
+	/* glyph edges are blended (antialiased), so few pixels are exactly the
 	   text colour: look at the inked pixels and the one furthest from the
 	   background instead */
 	COLORREF m = ink(4, 1), d = ink(5, 1), s = ink(6, 1);
@@ -219,7 +237,9 @@ int main(void)
 	CHECK(inked(6, 1) > 0 && GetGValue(s) > GetRValue(s) && GetGValue(s) > GetBValue(s));   /* green */
 	CHECK(GetBValue(m) > GetGValue(m));                /* the text colour is blue-white, not green */
 	CHECK(count(7, 2, REV) > cw * ch / 2 && count(7, 3, REV) == 0);
+	CHECK(g.c[10 * g.cols + 1].len == 9 && inked(10, 1) > inked(9, 1));
 	CHECK(count(8, 1, RGB(faces[FACE_COMMENT_TODO].bg[0], faces[FACE_COMMENT_TODO].bg[1], faces[FACE_COMMENT_TODO].bg[2])) == cw * ch);
+	CHECK(count(8, 2, RGB(faces[FACE_CURSOR_LINE].bg[0], faces[FACE_CURSOR_LINE].bg[1], faces[FACE_CURSOR_LINE].bg[2])) == cw * ch);
 
 	/* covered and uncovered: WM_PAINT draws from the DIB */
 	paint(RED);
@@ -308,7 +328,7 @@ int main(void)
 	grid_free(&g);
 	grid_free(&shown);
 	puts("test_win: keys, mouse and clipboard; identical frame draws nothing; one change draws one cell; "
-	     "text, dim, face, face background and wide cells; cursor drawn, restored and at (0,0) after a whole redraw; WM_PAINT; "
+	     "text, dim, face, face background, long cluster and wide cells; cursor drawn, restored and at (0,0) after a whole redraw; WM_PAINT; "
 	     "resize and DPI redraw whole; close is a key; paced; idle quiet; minimised draws nothing");
 	return 0;
 }

@@ -1,0 +1,9 @@
+# The reviewer's plants for src/tools/ at 58d859d (format in tools/planted.sh),
+# run by extra-plants.sh.  Each one is NOT CAUGHT there: no test reaches the line.
+review: oil_list types every entry as a file~test TESTS=tools_oil~~src/tools/oil.c~		int type = S_ISDIR(st.st_mode) ? OIL_DIR : S_ISLNK(st.st_mode) ? OIL_LINK : OIL_FILE;~		int type = OIL_FILE;
+review: oil_list skips names that start with a dot~test TESTS=tools_oil~~src/tools/oil.c~		if (!strcmp(de->d_name, ".") || !strcmp(de->d_name, "..")) continue;~		if (de->d_name[0] == 0x2e) continue;
+review: oil_list keeps the entries that are gone~test TESTS=tools_oil~~src/tools/oil.c~		if (E[i].dir && E[i].old) { free(E[i].dir); E[i].dir = NULL; E[i].old = 0; }~		if (0) {}
+review: natural order kept above 5,000 entries~test TESTS=tools_oil~~src/tools/oil.c~	sort_nat = k <= 5000;~	sort_nat = 1;
+review: a parent copied into itself is allowed~test TESTS=tools_oil~~src/tools/oil.c~				*msg = "Cannot move or copy parent into itself";¶				goto out;~				*msg = "Cannot move or copy parent into itself";
+review: the frecency store read as all zeros~test TESTS=tools_pick~~src/tools/pick.c~		if (d) *d = strtod(ln, NULL);~		if (d) *d = 0;
+review: the buffers picker lists no buffer's file~test TESTS="tools_pick tools_match tools_oil"~~src/tools/pick.c~		int n = snprintf(t, sizeof t, "%d %s  ", b->nr, b->path ? name : "");~		int n = snprintf(t, sizeof t, "%d %s  ", b->nr, P.what == PICK_BUFFERS ? "" : b->path ? name : "");

@@ -1,0 +1,13 @@
+# name ~ file ~ text ~ replacement   (build B)
+1 #+HEADER is no affiliated keyword~src/org/org.c~	static const char *const k[] = { "DATA", "HEADER", "HEADERS",~	static const char *const k[] = { "DATA", "HEADRR", "HEADRRS",
+3 a comment needs its space ("#" alone is none)~src/org/org.c~	return p < N && S[p] == '#' && (ateol(p + 1) || S[p + 1] == ' ');~	return p + 1 < N && S[p] == '#' && S[p + 1] == ' ';
+4 four dashes make a rule~src/org/org.c~		if (d - t >= 5 && ateol(blanks(d))) type = ORG_HORIZONTAL_RULE;~		if (d - t >= 4 && ateol(blanks(d))) type = ORG_HORIZONTAL_RULE;
+6 planning after a blank line under the headline~src/org/org.c~	if (star && planningl(q)) {   /* org-element-planning-parser */~	if (mode == M_PLANNING && planningl(q)) {   /* org-element-planning-parser */
+8 one blank line ends a list~src/org/org.c~	return p < N && S[p] == '\n' && (p = blanks(p + 1)) < N && S[p] == '\n';~	return p < N && S[p] == '\n';
+9 a rule row is told by "|+"~src/org/org.c~		if (!(t + 1 < N && S[t] == '|' && S[t + 1] == '-')) {~		if (!(t + 1 < N && S[t] == '|' && S[t + 1] == '+')) {
+12 a headline ends only at a shallower one~src/org/org.c~			if (j && j <= k && p + j < N && S[p + j] == ' ') { end = p; break; }~			if (j && j < k && p + j < N && S[p + j] == ' ') { end = p; break; }
+13 an unclosed drawer line ends a paragraph~src/org/org.c~		if (drawerl(q)) f = search(nextl(q), lim, f_drawer_end, 0, 0) != ORG_NONE;~		if (drawerl(q)) f = 1;
+14 a dynamic block needs "#+END:" with its colon~src/org/org.c~	return ateol(blanks(p + (p < N && S[p] == ':')));~	return p < N && S[p] == ':' && ateol(blanks(p + 1));
+16 TODO keywords in any case~src/org/org.c~		if (p + k <= N && !memcmp(S + p, org_todo[i], k) && (ateol(p + k) || S[p + k] == ' ')) {~		if (p + k <= N && lit(p, org_todo[i]) && (ateol(p + k) || S[p + k] == ' ')) {
+17 priority 65 is one~src/org/org.c~			if (v >= 10 && v <= 64) h->pri = v, p = x + 5;~			if (v >= 10 && v <= 65) h->pri = v, p = x + 5;
+18 no @ in tags~src/org/org.c~		while (x < z && (S[x] == ':' || S[x] == '_' || S[x] == '@' || S[x] == '#' || S[x] == '%' ||~		while (x < z && (S[x] == ':' || S[x] == '_' || S[x] == '#' || S[x] == '%' ||

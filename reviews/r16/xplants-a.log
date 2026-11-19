@@ -1,0 +1,12 @@
+1 #+HEADER is no affiliated keyword: NOT CAUGHT
+3 a comment needs its space ("#" alone is none): caught by make org-oracle: org-oracle: seed 1, 400 files, 850124 elements: 14 differ
+4 four dashes make a rule: caught by make org-oracle: org-oracle: seed 1, 400 files, 850124 elements: 12 differ
+6 planning after a blank line under the headline: caught by make org-oracle: org-oracle: seed 1, 400 files, 850124 elements: 52 differ
+8 one blank line ends a list: caught by make org-oracle: org-oracle: seed 1, 400 files, 850124 elements: 380 differ
+9 a rule row is told by "|+": caught by make test: tests/test_org.c:71: CHECK(!strcmp(got, C[i].want)) failed
+12 a headline ends only at a shallower one: caught by make test: tests/test_org.c:71: CHECK(!strcmp(got, C[i].want)) failed
+13 an unclosed drawer line ends a paragraph: caught by make test: tests/test_org.c:71: CHECK(!strcmp(got, C[i].want)) failed
+14 a dynamic block needs "#+END:" with its colon: caught by make org-oracle: org-oracle: seed 1, 400 files, 850124 elements: 4 differ
+16 TODO keywords in any case: caught by make org-oracle: org-oracle: seed 1, 400 files, 850124 elements: 35 differ
+17 priority 65 is one: NOT CAUGHT
+18 no @ in tags: NOT CAUGHT

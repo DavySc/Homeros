@@ -6,7 +6,7 @@ A native text editor for one person, Davy. The design, its evidence and its buil
 
 DESIGN.md splits the work into 18 packages. Package 0 is done: it gives every later package the headers it codes against, a reference implementation to replace, and a check that a merge must pass. Its acceptance rule is "the thin editor opens, edits and saves a file; every check runs and fails on a planted bug".
 
-The thin editor runs in a terminal: `make && ./homeros FILE`. It has the text in one array, undo as a list, code-point Unicode, a terminal grid sent as changed cells inside a synchronized update, and these Vim keys with Davy's settings (expandtab, sw=4, sts=4, autoindent, smarttab): counts, `h j k l 0 ^ $ w b gg G x dd i a I A o O u Ctrl-R :`, Esc, Backspace, Enter and Tab in insert mode, and `:w :w! :q :q! :wq :x`. Saving follows Save2.tla's "exchange" variant: a temp file in the same directory, fsync, `renameat2(RENAME_EXCHANGE)`, a check of what came out, fsync of the directory; it refuses to overwrite a file changed outside since it was read (`:w!` overrides).
+The thin editor runs in a terminal: `make && ./homeros FILE` (without FILE it opens on the start screen). It has the text in one array, undo as a list, code-point Unicode, a terminal grid sent as changed cells inside a synchronized update, and these Vim keys with Davy's settings (expandtab, sw=4, sts=4, autoindent, smarttab): counts, `h j k l 0 ^ $ w b gg G x dd i a I A o O u Ctrl-R :`, Esc, Backspace, Enter and Tab in insert mode, and `:w :w! :q :q! :wq :x`. Saving follows Save2.tla's "exchange" variant: a temp file in the same directory, fsync, `renameat2(RENAME_EXCHANGE)`, a check of what came out, fsync of the directory; it refuses to overwrite a file changed outside since it was read (`:w!` overrides).
 
 ## The check
 
@@ -17,7 +17,7 @@ Tools: `nix build -f tools.nix tools -o tools-env` (design/env.nix's tools plus 
 | `make compilers` | gcc and clang, C17, `-Wall -Wextra -Werror` |
 | `make test` | unit tests under ASan and UBSan, and 1,000 recorded Neovim traces replayed |
 | `make fuzz` | libFuzzer on the text and on random key sequences, `FUZZ_SECONDS` each (default 30) |
-| `make conform` | `CONFORM_N` fresh random key sequences (default 2,000) against live `nvim --headless` |
+| `make conform` | `CONFORM_N` random key sequences (default 2,000, seed `SEED`, default 1; nightly CI takes a fresh one) against live `nvim --headless` |
 | `make undo-diff` | the undo tree oracle against Neovim's recorded tree (`design/ref/undo/undo_diff.py`) |
 | `make lean` | `design/proofs/Undo.lean`, failing on any `sorry` |
 | `make frama` | Frama-C WP on the UTF-8 kernels; every goal must be proved |

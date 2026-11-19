@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "grid.h"
+#include "uni.h"
 
 /* The cluster store: an open-addressed hash table (linear probing) whose
    slot is the cluster itself, so a cluster's number is its slot.  Emptied by
@@ -66,7 +67,7 @@ void grid_free(Grid *g) { free(g->c); g->c = NULL; g->rows = g->cols = 0; }
 
 void grid_clear(Grid *g)
 {
-	for (int i = 0; i < g->rows * g->cols; i++) g->c[i] = (Cell){ " ", 1, ATTR_NONE, FACE_NONE };
+	for (int i = 0; i < g->rows * g->cols; i++) g->c[i] = (Cell){ " ", 1, ATTR_NONE, FACE_NONE, 0 };
 }
 
 int grid_put(Grid *g, int r, int c, const unsigned char *s, size_t n, int width, int attr)
@@ -82,25 +83,50 @@ int grid_put(Grid *g, int r, int c, const unsigned char *s, size_t n, int width,
 	Cell *x = &g->c[r * g->cols + c];
 	/* landing on the right half of a two-cell character: Neovim truncates
 	   its left half into '>' (grid_put_linebuf) */
-	if (c > 0 && !x->len) x[-1] = (Cell){ ">", 1, x[-1].attr, x[-1].face };
+	if (c > 0 && !x->len) x[-1] = (Cell){ ">", 1, x[-1].attr, x[-1].face, x[-1].bg };
 	/* covering only the left half of one: its right half becomes a space */
-	if (c + width < g->cols && !x[width].len) x[width] = (Cell){ " ", 1, x[width].attr, x[width].face };
+	if (c + width < g->cols && !x[width].len) x[width] = (Cell){ " ", 1, x[width].attr, x[width].face, x[width].bg };
 	if (n > 4) { unsigned u = (unsigned)h; memcpy(x->ch, &u, sizeof u); }
 	else memcpy(x->ch, s, n);
 	x->len = (unsigned char)n;
 	x->attr = (unsigned char)attr;
 	x->face = FACE_NONE;
-	if (width == 2) x[1] = (Cell){ "", 0, (unsigned char)attr, FACE_NONE };
+	x->bg = 0;
+	if (width == 2) x[1] = (Cell){ "", 0, (unsigned char)attr, FACE_NONE, 0 };
 	return width;
 }
 
-int grid_puts(Grid *g, int r, int c, const char *s, int attr)
+int grid_puts(Grid *g, int r, int c, int end, const char *s, size_t n, int attr, int face)
 {
-	for (; *s; s++) c += grid_put(g, r, c, (const unsigned char *)s, 1, 1, attr);
+	const unsigned char *u = (const unsigned char *)s;
+	for (size_t i = 0, len; i < n; i += len) {
+		int w = uni_width(u, n, i), k = c;
+		len = uni_glen(u, n, i);
+		if (c + w > end) break;
+		if (w > 2 || u[i] < 0x20 || u[i] == 0x7f)
+			for (int j = 0; j < w; j++) c += grid_put(g, r, c, (const unsigned char *)" ", 1, 1, attr);
+		else c += grid_put(g, r, c, u + i, len, w, attr);
+		for (; k < c; k++) g->c[r * g->cols + k].face = (unsigned char)face;
+	}
 	return c;
+}
+
+int grid_width(const char *s, size_t n)
+{
+	int c = 0;
+	for (size_t i = 0; i < n; i += uni_glen((const unsigned char *)s, n, i))
+		c += uni_width((const unsigned char *)s, n, i);
+	return c;
+}
+
+const Face *grid_face(const Cell *x, const Face **bg)
+{
+	const Face *f = &faces[x->face < FACE_COUNT ? x->face : FACE_NONE];
+	*bg = x->bg && x->bg < FACE_COUNT ? &faces[x->bg] : f;
+	return f;
 }
 
 int grid_cell_eq(const Cell *a, const Cell *b)
 {
-	return a->len == b->len && a->attr == b->attr && a->face == b->face && !memcmp(a->ch, b->ch, a->len < 4 ? a->len : 4);
+	return a->len == b->len && a->attr == b->attr && a->face == b->face && a->bg == b->bg && !memcmp(a->ch, b->ch, a->len < 4 ? a->len : 4);
 }

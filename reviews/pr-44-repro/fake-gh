@@ -1,0 +1,3 @@
+#!/bin/sh
+echo "gh $*" >> /tmp/gh.calls
+case "$2" in list) printf '%s\n' "$FAKE_N";; esac

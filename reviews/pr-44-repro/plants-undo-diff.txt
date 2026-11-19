@@ -1,0 +1,5 @@
+undo tree oracle: Ctrl-R to the first child~undo-diff UNDO_N=2000~~Makefile~python3 design~MUT=firstchild python3 design
+undo tree: a jump does not make its branch first, so Ctrl-R takes another~undo-diff UNDO_N=1000~~src/undo/undo.c~	if (last != h) {~	if (0) {
+undo tree: :earlier Ns stops on the closest change, not above it~undo-diff UNDO_N=1000~~src/undo/undo.c~if (step < 0) above = 1;~
+undo tree: :earlier Nf does not count changes since the last write~undo-diff UNDO_N=1000~~src/undo/undo.c~(h && h->save ? 0 : 1)~1
+undo cap: the redo branch it cannot reconnect is kept~undo-diff UNDO_N=1000~~src/undo/undo.c~if (f == old) freebranch(u, f, &old);~if (0) ;

@@ -1,0 +1,7 @@
+create trigger tr on t AFTER insert, update as
+begin
+    set NOCOUNT on;
+    if update(a)
+        return
+end
+GO

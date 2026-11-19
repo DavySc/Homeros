@@ -1,0 +1,211 @@
+test_undo_win: an undo file written over three times and read back; counts at long's ends
+test_core_contract: ok
+test_core_markdown: 300 render-markdown screens: 0 differ
+test_core_screens: 3028 screens of 320 cases match Neovim
+test_core_undo: ok
+test_file: byte-exact round trips, outside changes refused, :w! overwrites, no temp left
+  500 crashed sessions reopened exactly (416 with unsaved text recovered)
+  one empty line with noeol and the empty buffer: the same saved state across a crash
+  outside change: W11 once at the next edit, E13 at :w, kept across a crash; :w! writes
+  the journal from before a :w, back after a power loss: nothing recovered, :w works
+  the first character typed into an empty file: recovered from every journal prefix that holds it
+  an outside change between the load and the watch: W11 at the first edit
+test_file_core: crashed sessions recovered through the core, outside changes warned and refused
+  killed 300 times: each recovered the last edit that returned (50 the one being written, 49 had nothing left after a save)
+  cut at each of 412 bytes and changed at each of 525: whole records kept, the rest dropped, appends found again
+  a second editor (by a symlink too) kept out while the first lives, recovers once it is killed
+  a new file journals; two paths sharing a journal name do not mix
+  durable within a second: due counts down from the first unsynced record; sync is fdatasync, the directory once; owner only; a failed append followed by a new base; a record that does not apply ends the journal
+test_file_journal: recovered after kill -9, torn and corrupt tails dropped, one editor per file
+  order: data durable before a name points at it; backup and its name durable before, removed after
+  outside writer before each of 6 load steps: in the buffer or refused at save
+  crash before each of 9 steps: 5 old, 4 new, 0 torn with the old text in the backup
+  crash before each of 12 steps (in place): 7 old, 5 new, 0 torn with the old text in the backup
+  crash before each of 12 steps (in place): 7 old, 4 new, 1 torn with the old text in the backup
+  outside writer by rename before each step: never lost
+  outside writer in place before each step: never lost
+  outside writer same size before each step: never lost
+  in place, outside writer in place: lost at 4 of 12 steps, all inside the check-to-write window
+  in place, outside writer same size: lost at 4 of 12 steps, all inside the check-to-write window
+  fallbacks: hard link kept (and written by :w! where no backup can be made), dangling symlink's target created, read-only directory, foreign owner kept, no backup left
+  a write failing part way: nothing replaced, the original put back in place, nothing left behind
+  watch: outside rename, in-place, same-size writes and deletion seen; our save and other files not
+test_file_save: ordered for power loss, whole after a crash at any step, outside writers never lost
+test_file_win: Windows only (src/file/check.sh runs it under Wine)
+test_font: 295 of 295 Mathlib notation symbols draw; marks, ZWJ emoji, ligature, cache and refill
+test_grid: identical frame sends no cells; one change sends one cell; input keeps split characters and every byte
+test_grid_diff: 24000 random frames with random faces, background layers and clusters, and 3 of over 64 KiB, shown exactly by a model terminal, only changed cells sent; wide pairs kept whole; long clusters cut as nvim cuts them, stored once, the store emptied past half
+test_loop: Ctrl-C stopped the command 307 ms after the start (key sent at 300 ms), 283807 breakchecks
+test_loop: peak RSS grew 9804 KB while 256 MB passed through cat
+test_loop: 0 wake-ups in 20 s idle
+test_loop_win: Windows only (src/loop/check.sh runs it under Wine)
+test_org: 38 texts agree with Org
+test_syntax: 0 of 120 cases (304155 bytes) differ from Neovim, and 0 of 502 frames between an edit and its parse; sliced parses or other windows differ in 0 of 42 cases without syntax errors (and 0 of 78 with; Markdown's history-dependent trees in 0 more); 0 of 4000 Lua patterns differ from LuaJIT
+test_text: 200000 random edits match the array model
+test_text_rope: line lookup 997 ns among empty lines, 1037 ns among 50-byte lines
+test_text_rope: 20000 edits on 1 to 6 MB, height up to 3, invariants hold; 311 failed allocations leave the text unchanged
+test_tools_match: 1205 cases from snacks, 0 lines differ
+test_tools_oil: 405 cases from oil.nvim, 0 differ
+test_tools_pick: ok
+test_tty_input: 400 random key streams cut anywhere give the same keys, bytes that are not UTF-8 give U+FFFD, 150 byte soups do not depend on slot counts, a 302-byte sequence does not stall; Esc alone waits 50 ms, Esc then a key does not
+test_tty_render: 3001 keys in 52 frames, each a whole-key screen at most 64 keys apart; resize, Ctrl-Z and a resize while stopped redraw whole; the terminal is cooked again after :q!
+test_undo: 300 rounds of random groups; undo, redo and redo-clearing exact
+test_undo_file: SHA-256 vectors; 200 trees read back and moved 200 times in step; 4000 damaged files (1265 still consistent, every move applied); the 1,000 cap
+test_undo_span: 6717 groups checked (span covers the change, cursor and flags right); span starts at the first changed byte in 5903
+test_undo_win: an undo file written over three times and read back; counts at long's ends
+test_uni: 16.7 M short inputs exhaustive, 16.7 M random 4-byte, prev/cp cases
+test_uni_nvim: 2097152 code points exhaustive (class, InCB, width alone and before VS16), 20000 lines against Neovim
+test_uni_nvim: GraphemeBreakTest.txt 853 of 853 cases
+test_win: Windows only (make win runs it under Wine)
+repeat: 19 x for a 1000 ms hold
+wl_display_dispatch: Broken pipe
+python3 tools/conform.py build/san/conform_drv --replay tests/conform-recorded.json
+1027 sequences: 0 differ from Neovim
+pasted 40000 bytes (5000 lines); file has 40001 bytes (5001 lines): all there
+hang-up: exit status -1; after reopening, the file holds 'hello\n'
+fuzz_core: Done 21882 runs in 31 second(s)
+fuzz_file_journal: Done 33666 runs in 31 second(s)
+fuzz_font: Done 85597 runs in 31 second(s)
+fuzz_keys: Done 38277 runs in 31 second(s)
+fuzz_org: Done 382368 runs in 31 second(s)
+fuzz_syntax: Done 145362 runs in 31 second(s)
+fuzz_text: Done 987863 runs in 31 second(s)
+fuzz_text_rope: Done 26404 runs in 31 second(s)
+fuzz_tools_match: Done 1859010 runs in 31 second(s)
+fuzz_tools_oil: Done 208212 runs in 31 second(s)
+fuzz_undo: Done 71240 runs in 31 second(s)
+fuzz_undo_read: Done 51287 runs in 31 second(s)
+fuzz_uni: Done 284039 runs in 31 second(s)
+python3 tools/conform.py build/san/conform_drv 2000 ${SEED:-1}
+2000 sequences (seed 1): 0 differ from Neovim
+python3 tools/org_conform.py build/san/org_drv 2000 ${SEED:-1}
+org_conform: 2000 texts, seed 1
+0 of 2000 differ (Org failed on 0)
+python3 design/ref/undo/undo_diff.py 5000 30 ${SEED:-2} | tee build/undo-diff.log
+sequences 5000, length 30: 0 differ from the model; first differing op: {}; nvim same-number-different-text: 0
+grep -q ": 0 differ" build/undo-diff.log
+undo_conform: 5000 sequences of 60 ops, undolevels 1000, seed 1: 0 differ from Neovim
+undo_conform: 5000 sequences of 60 ops, undolevels 3, seed 1: 0 differ from Neovim
+undo_conform: 10 sequences of 4000 ops, undolevels 1000, seed 1: 0 differ from Neovim
+lean design/proofs/Undo.lean 2>&1 | tee build/lean.log; test ${PIPESTATUS[0]} -eq 0
+! grep -q "sorry" build/lean.log
+why3 config detect >/dev/null
+frama-c -wp -wp-rte -wp-prover z3,cvc5 -wp-timeout 20 \
+  -cpp-extra-args="-Iinclude" src/uni/uni.c | tee build/frama.log
+[kernel] Parsing src/uni/uni.c (with preprocessing)
+[wp] Running WP plugin...
+[wp] Warning: Skipped RTE guards: unaligned pointers (\aligned not supported)
+[wp] Warning: Skipped RTE guards: invalid function pointer calls (\valid_function not supported)
+[rte:annot] annotating function dec
+[rte:annot] annotating function prop
+[rte:annot] annotating function uni_cp
+[rte:annot] annotating function uni_glen
+[rte:annot] annotating function uni_gprev
+[rte:annot] annotating function uni_len
+[rte:annot] annotating function uni_prev
+[rte:annot] annotating function uni_width
+[wp] Computing [100 goals...]
+[wp] Computing [200 goals...]
+[wp] 223 goals scheduled
+[wp] [Cache] found:97
+[wp] Proved goals:  229 / 229
+  Terminating:     3
+  Unreachable:     3
+  Qed:           160 (5ms-603ms-21.4s)
+  CVC5 :          45 (14ms-90ms-626ms)
+  Z3 5.4.1:       18 (6ms-36ms-141ms)
+grep -qE "Proved goals: +([0-9]+) / \1$" build/frama.log
+frama-c -wp -wp-rte -wp-prover z3,cvc5 -wp-timeout 20 -wp-fct nls \
+  -cpp-extra-args="-Iinclude -D_DEFAULT_SOURCE" src/text/text.c | tee build/frama-text.log
+[kernel] Parsing src/text/text.c (with preprocessing)
+[wp] Running WP plugin...
+[wp] Warning: Skipped RTE guards: unaligned pointers (\aligned not supported)
+[wp] Warning: Skipped RTE guards: invalid function pointer calls (\valid_function not supported)
+[rte:annot] annotating function nls
+[wp] 24 goals scheduled
+[wp] [Cache] found:16
+[wp] Proved goals:   26 / 26
+  Terminating:     1
+  Unreachable:     1
+  Qed:            14 (2ms-5ms-18ms)
+  CVC5 :           6 (27ms-61ms-134ms)
+  Z3 5.4.1:        4 (16ms-27ms-47ms)
+grep -qE "Proved goals: +([0-9]+) / \1$" build/frama-text.log
+bash design/specs/check.sh
+Break_full.cfg           want fail got fail OK
+Break_nocheck.cfg        want fail got fail OK
+Break_ok.cfg             want pass got pass OK
+Exit_early.cfg           want fail got fail OK
+Exit_ok.cfg              want pass got pass OK
+Exit_waiteof.cfg         want fail got fail OK
+Exit_waiteof_live.cfg    want fail got fail OK
+Git_blind.cfg            want fail got fail OK
+Git_nowatch.cfg          want fail got fail OK
+Git_ok.cfg               want pass got pass OK
+Git_parallel.cfg         want fail got fail OK
+LspSync_mapreply.cfg     want fail got fail OK
+LspSync_nomap.cfg        want fail got fail OK
+LspSync_ok.cfg           want pass got pass OK
+LspSync_prunesend.cfg    want fail got fail OK
+LspSync_simple.cfg       want pass got pass OK
+Pace_exact.cfg           want fail got fail OK
+Pace_hidden.cfg          want fail got fail OK
+Pace_jitter.cfg          want fail got fail OK
+Pace_noguard.cfg         want fail got fail OK
+Pace_notimer.cfg         want fail got fail OK
+Pace_ok.cfg              want pass got pass OK
+Pace_ok_hidden.cfg       want pass got pass OK
+Pace_ok_steady.cfg       want pass got pass OK
+Pipe_block.cfg           want fail got fail OK
+Pipe_queue.cfg           want pass got pass OK
+Present_framecb_commit.cfg want pass got pass OK
+Present_framecb_hidden.cfg want pass got pass OK
+Present_framecb_prompt.cfg want fail got fail OK
+Present_framecb_replace.cfg want pass got pass OK
+Present_twobuf_commit.cfg want fail got fail OK
+Present_twobuf_commit_prompt.cfg want pass got pass OK
+Present_twobuf_hidden.cfg want fail got fail OK
+Present_twobuf_replace.cfg want pass got pass OK
+Present_twobuf_replace_prompt.cfg want fail got fail OK
+Render_drain.cfg         want fail got fail OK
+Render_midcmd.cfg        want fail got fail OK
+Render_ok.cfg            want pass got pass OK
+Save2_exchange.cfg       want pass got pass OK
+Save2_fsync.cfg          want pass got pass OK
+Save2_nofsync.cfg        want fail got fail OK
+Save_inplace.cfg         want fail got fail OK
+Save_nocheck.cfg         want fail got fail OK
+Save_ok.cfg              want pass got pass OK
+Save_ok_strong.cfg       want fail got fail OK
+UndoTree_direct.cfg      want fail got fail OK
+UndoTree_firstchild.cfg  want fail got fail OK
+UndoTree_linear.cfg      want fail got fail OK
+UndoTree_ok.cfg          want pass got pass OK
+Undo_keepredo.cfg        want fail got fail OK
+Undo_noclose.cfg         want fail got fail OK
+Undo_ok.cfg              want pass got pass OK
+wincc: 24 files compile for Windows
+win: src/file/check.sh
+  saves: one identity across saves; in place, rename, remove and create refused; :w! writes
+  200 saves killed at random: the old or the new text every time (136 old)
+  watch: one handle per directory; our save is no change, an outside rename is
+  100 journals killed at random: each recovered the last edit (20 the one being written)
+  locks: a second editor is kept out while the first lives, and recovers once it is killed, with a reader holding the journal, by any case of the name
+  cut at each of 237 bytes: the whole records kept
+test_file_win: saves refuse outside changes and are never torn; the watch and the journal work
+win: src/loop/check.sh
+test_loop_win: Ctrl-C stopped the command 304 ms after the start (key due at 300 ms), 6463 breakchecks
+test_loop_win: idle loop_once(2000) returned after 2004 ms
+test_loop_win: flood: longest loop_once(0) 17 ms, at most 65536 bytes in one, key due at 300 ms ran at 303 ms
+test_loop_win: flood, drain and a write refused while reaping; 4 MB through cat; dead.py; streams, codes, arguments, directory, closed stdin; 32 children; kill takes the tree; exit with a holder, its pipes closed; timers; every ready watch, a taken signal kept, unwatch in a pass; message queue; Ctrl-C; idle
+win: src/win/check.sh
+test_win: next frame allowed after 18.87 ms, refresh period 16.67 ms
+test_win: keys, mouse and clipboard; identical frame draws nothing; one change draws one cell; text, dim, face, face background, long cluster and wide cells; cursor drawn, restored and at (0,0) after a whole redraw; WM_PAINT; resize and DPI redraw whole; close is a key; paced; idle quiet; minimised draws nothing
+X connection to :99 broken (explicit kill or server shutdown).
+X connection to :99 broken (explicit kill or server shutdown).
+check: all passed
+
+real	46m45.617s
+user	33m46.293s
+sys	3m59.639s
+rc=0

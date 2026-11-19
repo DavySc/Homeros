@@ -1,0 +1,9 @@
+# Review of PR 39: plants beyond the PR's three, in tools/planted.sh's format.
+# The first is caught by the Windows compile.  The other two pass the check:
+# nothing here can tell whether the write-through or the flush is there.
+extra: the magic back in char[8] (fix 2, no plant in the PR)~compilers~~src/undo/undo.c~static const char MAGIC[] = "HomUndo1";~static const char MAGIC[8] = "HomUndo1";
+extra: no write-through on the replace~compilers~~src/undo/undo.c~MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)~MOVEFILE_REPLACE_EXISTING)
+extra: no fsync at all before the rename~compilers~~src/undo/undo.c~	if (fflush(f) || fsync(fileno(f))) r = -1;~	if (fflush(f)) r = -1;
+# For kill.sh's own plant: replace the MoveFileExA call's condition with
+#   (remove(path), rename(tmp, path))
+# in a copy of undo.c and pass the copy as kill.sh's second argument.

@@ -52,4 +52,25 @@ enum { org_done = 3 };
    when there are none). */
 typedef struct { int level, todo, pri, commented; size_t ta, tz, ga, gz; } OrgHead;
 void org_head(const char *s, size_t n, size_t begin, OrgHead *h);
+
+/* A timestamp as org-element-timestamp-parser reads it: [begin, end) with
+   the blanks after it; type 'a' active, 'A' active-range, 'i' inactive,
+   'I' inactive-range, 'd' diary; range 0, 'd' daterange, 't' timerange;
+   the start and end fields -1 when Org has nil; rep 0, '+' cumulate, '#'
+   catch-up (++), '.' restart (.+); warn 0, 'a' all (-), 'f' first (--);
+   units h d w m y. */
+typedef struct {
+	size_t begin, end;
+	char type, range, rep, rep_unit, rep_dl_unit, warn, warn_unit;
+	int y, m, d, h, min, y2, m2, d2, h2, min2, rep_n, rep_dl_n, warn_n;
+} OrgTs;
+/* The timestamp at p, read as in a paragraph or clock line
+   (case-fold-search on); 0 when there is none. */
+int org_ts(const char *s, size_t n, size_t p, OrgTs *t);
+/* A planning node's CLOSED, DEADLINE and SCHEDULED in t[0], t[1], t[2], as
+   org-element-planning-parser reads them; returns which (bits 1, 2, 4). */
+int org_planning(const char *s, size_t n, const OrgNode *e, OrgTs t[3]);
+/* A clock node's :value in *t (returns 0 when it has none) and its
+   :duration [dur[0], dur[1]), empty while the clock runs. */
+int org_clock(const char *s, size_t n, const OrgNode *e, OrgTs *t, size_t dur[2]);
 #endif

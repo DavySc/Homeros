@@ -6,6 +6,18 @@
 (require 'org-element)
 (setq org-todo-keywords '((sequence "TODO" "NEXT" "WAIT" "|" "DONE" "CANCELLED")))
 (defun org-dump-pos (p) (if p (number-to-string (1- (position-bytes p))) "-"))
+(defun org-dump-v (v) (if v (format "%s" v) "-"))
+(defun org-dump-ts (k ts)
+  (when ts
+    (princ (format "@ %s %s %s" k (org-element-property :type ts)
+                   (org-dump-v (org-element-property :range-type ts))))
+    (dolist (p '(:year-start :month-start :day-start :hour-start :minute-start
+                 :year-end :month-end :day-end :hour-end :minute-end
+                 :repeater-type :repeater-value :repeater-unit
+                 :repeater-deadline-value :repeater-deadline-unit
+                 :warning-type :warning-value :warning-unit))
+      (princ (format " %s" (org-dump-v (org-element-property p ts)))))
+    (princ (format " %s %s\n" (org-dump-pos (org-element-begin ts)) (org-dump-pos (org-element-end ts))))))
 (defun org-dump-node (e)
   (princ (format "%s %s %s %s %s %s\n" (org-element-type e)
                  (org-dump-pos (org-element-begin e))
@@ -13,6 +25,13 @@
                  (org-dump-pos (org-element-contents-begin e))
                  (org-dump-pos (org-element-contents-end e))
                  (org-dump-pos (org-element-end e))))
+  (when (eq (org-element-type e) 'planning)
+    (org-dump-ts "closed" (org-element-property :closed e))
+    (org-dump-ts "deadline" (org-element-property :deadline e))
+    (org-dump-ts "scheduled" (org-element-property :scheduled e)))
+  (when (eq (org-element-type e) 'clock)
+    (org-dump-ts "clock" (org-element-property :value e))
+    (princ (format "= %s\n" (or (org-element-property :duration e) "running"))))
   (when (eq (org-element-type e) 'headline)
     (princ (format "+ %d %s %s %s %S %s\n" (org-element-property :level e)
                    (or (org-element-property :todo-keyword e) "-")

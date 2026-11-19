@@ -8,6 +8,10 @@ This repo builds a native text editor for one person, Davy. The design, its evid
 
 So: the smallest change that does the job; delete before you add; no speculative generality, no plugin system, no option nobody asked for. Personal fit beats generality: if Davy does not use it (FEATURES.md), it is not built.
 
+Davy, 2026-11-18: "I want as little code duplication as possible in the codebase." So: before writing a function, look for one that exists: the headers in `include/` (every shared function, with what it does) and `make index | grep <word>` (every function defined, private ones too); use it; when two places need the same code, it moves to one module both call, through a header (thread 0 for `include/`). `make dupes` (in `make check`) fails on any 50-token run inside function bodies that occurs twice, except the copies in `tests/dupes-known.txt`, which only shrinks; a review flags shorter copies too, and what the check cannot see (measured in PR 66's review): a copy with one identifier renamed, copies in `tests/` and in macro bodies, a line added to the known list, a listed copy that grows past its first 50 tokens.
+
+Davy, 2026-11-18: "Simplicity and minimal lines of code is always best (So long as the solution satisfies functional and technical requirements of course)". So between two solutions that both meet the requirements (FEATURES.md, DESIGN.md's gates, the checks), the shorter and simpler one wins; a review flags code that could be shorter without losing a requirement.
+
 ## New approaches
 
 "You're allowed to try never seen before approaches to problems, but you're only allowed to settle on them if they're better than any combination of existing approaches in all scenarios. Remember that we might not be able to think of all possible scenarios."
@@ -28,7 +32,7 @@ Prefer copying the behaviour of a reference editor (Neovim 0.12 first; Helix, Em
 
 - C17, gcc and clang, `-Wall -Wextra -Werror`. ASan and UBSan on every test run.
 - Kernels (UTF-8, graphemes, UTF-16, and what DESIGN.md lists) carry Frama-C contracts that state the result, not only bounds. No bit tricks in proved code: write comparisons, so the provers finish.
-- No allocation in the redraw path after first use (buffers grow to the largest frame, then stay). No threads (one event loop). Draw only after the compositor's frame callback.
+- No allocation in the redraw path after first use (buffers grow to the largest frame, then stay). No threads (one event loop); the only exception is the debugger's engine thread, under the six rules in DESIGN.md ("The one exception"). Draw only after the compositor's frame callback.
 - Behaviour that copies Neovim is tested against `nvim --headless` (with `swapfile` off) on random input (`tools/conform.py`); undo against `design/ref/undo/undo_diff.py`.
 - Comments say why, not what. Where a rule copies a Neovim function, the comment names it.
 
@@ -41,16 +45,17 @@ Prefer copying the behaviour of a reference editor (Neovim 0.12 first; Helix, Em
 | `src/main.c` | the editor's main loop (Render.tla "ok") | thread 0 |
 | `src/<module>/` | a package's real implementation; once it has `.c` files the Makefile builds it instead of `ref/<module>.c`; a `build.mk` there adds its libraries (`CPPFLAGS`, `LIBS`, from pkg-config) and objects built outside our warnings (`OBJS`, into `build/<module>/`) | that package |
 | `tests/` | unit tests, fuzzers, the Neovim conformance driver and its recorded traces | thread 0; a package adds its own `tests/test_<module>*.c` and `tests/fuzz_<module>*.c`, and replaces `tests/plants/<module>.txt` (the plants aimed at `ref/<module>.c`) with plants for its code; the Makefile and `planted.sh` find them by name |
-| `tools/` | `conform.py` (differential test against nvim), `planted.sh` (every check fails on a planted bug) | thread 0 |
+| `tools/` | `conform.py` (differential test against nvim), `planted.sh` (every check fails on a planted bug), `dupes.py` (copied code) | thread 0 |
 | `design/` | the design package, copied unchanged | changes go through DESIGN.md's rules |
 | `Makefile`, `README.md`, `.github/` | the build and the check, the overview, CI | thread 0 |
+| `assets/` | the app icon and desktop file (PR 55) | thread 0 |
 | `reviews/` | one report per package review (`reviews/package-<n>.md`) and its repro files | that review's thread |
 
-Modules and their packages: text 1, undo 2, uni 3, core 4, keys 5, grid and tty 6, font 7, wl 8, win 9, loop 10, file 11, syntax 12, lsp 13, tools 15, org 16, git 17. C libraries and the test fonts come from the distribution (CI's apt line), not nix, whose libraries need a newer glibc than the system compiler links. The headers say what each package adds.
+Modules and their packages: text 1, undo 2, uni 3, core 4, keys 5, grid and tty 6, font 7, wl 8, win 9, loop 10, file 11, syntax 12, lsp 13, tools 15, org 16, git 17, sqlfmt 18. C libraries and the test fonts come from the distribution (CI's apt line), not nix, whose libraries need a newer glibc than the system compiler links. The headers say what each package adds.
 
 ## The check
 
-`make check` runs everything a merge needs: `compilers` (gcc and clang, -Werror), `test` (unit tests under ASan+UBSan, recorded Neovim traces), `fuzz` (libFuzzer, `FUZZ_SECONDS` each), `conform` (fresh random key sequences against live `nvim --headless`, `CONFORM_N`), `undo-diff`, `lean`, `frama`, `specs` (all TLA+ configs, about 7 min). `make planted` must report every plant caught. Tools: `nix build -f tools.nix tools -o tools-env` (design/env.nix's tools plus Wine), put `tools-env/bin` on PATH and run `why3 config detect` once (Neovim 0.12, TLC, Lean 4.35, Frama-C with Z3 and CVC5); clang needs its compiler-rt (libFuzzer, sanitizers).
+`make check` runs everything a merge needs: `compilers` (gcc and clang, -Werror), `test` (unit tests under ASan+UBSan, recorded Neovim traces), `fuzz` (libFuzzer, `FUZZ_SECONDS` each), `conform` (random key sequences against live `nvim --headless`, `CONFORM_N`, seed `SEED`, 1 by default; CI runs fresh seeds nightly), `undo-diff`, `lean`, `frama`, `specs` (all TLA+ configs, about 7 min), `dupes`. `make planted` must report every plant caught. Tools: `nix build -f tools.nix tools -o tools-env` (design/env.nix's tools plus Wine), put `tools-env/bin` on PATH and run `why3 config detect` once (Neovim 0.12, TLC, Lean 4.35, Frama-C with Z3 and CVC5); clang needs its compiler-rt (libFuzzer, sanitizers).
 
 ## Working in parallel
 

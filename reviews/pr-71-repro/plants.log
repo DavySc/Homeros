@@ -1,0 +1,102 @@
+caught        json: a .json file is not JSON (test_json)   (make test TESTS=json): tests/test_json.c:35: CHECK(s) failed
+caught        json: a window is lexed as T-SQL (test_json)   (make test TESTS=json): tests/test_json.c:155: CHECK(!strcmp(got, want)) failed
+caught        json: a string runs past its line's end (test_json, lines)   (make test TESTS=json): tests/test_json.c:177: CHECK(!strcmp(got, lines[i][1])) faile
+caught        json: a line comment runs past its line (test_json)   (make test TESTS=json): tests/test_json.c:155: CHECK(!strcmp(got, want)) failed
+caught        json: an unclosed block comment is no comment (test_json, lines)   (make test TESTS=json): tests/test_json.c:177: CHECK(!strcmp(got, lines[i][1]))
+caught        json: an exponent takes no minus (test_json)   (make test TESTS=json): tests/test_json.c:155: CHECK(!strcmp(got, want)) failed
+caught        json: a tab is not a space (test_json)   (make test TESTS=json): tests/test_json.c:155: CHECK(!strcmp(got, want)) failed
+caught        json: a key is a plain string (test_json)   (make test TESTS=json): tests/test_json.c:155: CHECK(!strcmp(got, want)) failed
+caught        json: null is a boolean (test_json)   (make test TESTS=json): tests/test_json.c:155: CHECK(!strcmp(got, want)) failed
+caught        json: an escape's second byte starts another (test_json)   (make test TESTS=json): tests/test_json.c:155: CHECK(!strcmp(got, want)) failed
+caught        syntax: a priority tie goes to the earlier capture (test_syntax)   (make test TESTS=syntax): tests/test_syntax.c:634: CHECK(!differ && !snap_diffe
+caught        syntax: an edit keeps a stopped parse going on the changed text (test_syntax, edit while stopped)   (make test TESTS=syntax): tests/test_syntax.c:
+caught        syntax: a dropped region's tree leaks (fuzz_syntax)   (make fuzz FUZZERS=syntax FUZZ_SECONDS=60): ==28037==ERROR: LeakSanitizer: detected memory l
+caught        syntax: a region's ranges change while its parse is stopped, and the parse resumes on the old ones (test_syntax, scrolling while stopped)   (make 
+caught        syntax: the old tree is freed in one go, without asking stop (test_syntax, release in steps)   (make test TESTS=syntax): tests/test_syntax.c:412: 
+caught        syntax: a released leaf's scanner state over 24 bytes leaks (test_syntax, 40 nested block quotes, LeakSanitizer)   (make test TESTS=syntax): ==299
+caught        syntax: the frame after a key recomputes only the edited bytes (test_syntax, frames before a parse)   (make test TESTS=syntax): tests/test_syntax.
+caught        syntax: the recomputed bytes leave out the byte before the edit (test_syntax, frames before a parse)   (make test TESTS=syntax): tests/test_syntax
+caught        syntax: a new tree keeps the cached faces (test_syntax, scrolling while stopped)   (make test TESTS=syntax): tests/test_syntax.c:223: CHECK(!memcm
+caught        syntax: the recompute after a key queries from the edit, not from where the fill started (test_syntax, edits then frame: order.c)   (make test TES
+caught        syntax: an edit that ends where a region now starts makes it parse again, which Neovim does not (test_syntax, edit before a region)   (make test T
+caught        tsql: an edit keeps the token start two bytes before it (test_tsql, edit near a kept start)   (make test TESTS=tsql): tests/test_tsql.c:197: CHECK
+caught        tsql: an edit keeps where the last faces ended (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:308: CHECK(!memcmp(f + wa, g 
+caught        tsql: comments do not nest (test_tsql, tokens)   (make test TESTS=tsql): tests/test_tsql.c:208: CHECK(!strcmp(got, lines[i][1])) failed
+caught        tsql: N'..' is a word and a string (test_tsql, lines)   (make test TESTS=tsql): tests/test_tsql.c:208: CHECK(!strcmp(got, lines[i][1])) failed
+caught        tsql: a function word beats an operator word, so LEFT JOIN is a function (test_tsql, lines)   (make test TESTS=tsql): tests/test_tsql.c:208: CHECK
+caught        tsql: what is in sys is plain (test_tsql, lines)   (make test TESTS=tsql): tests/test_tsql.c:208: CHECK(!strcmp(got, lines[i][1])) failed
+caught        tsql: sp_ procedures are plain (test_tsql, lines)   (make test TESTS=tsql): tests/test_tsql.c:208: CHECK(!strcmp(got, lines[i][1])) failed
+caught        tsql: .sql files are not T-SQL (test_tsql)   (make test TESTS=tsql): tests/test_tsql.c:31: CHECK(s) failed
+caught        tsql: a word longer than the lookup buffer is copied into it (fuzz_tsql, ASan)   (make fuzz FUZZERS=tsql FUZZ_SECONDS=60): FAIL fuzz_tsql
+caught        tsql: a -- comment takes the \r of a CR LF (test_tsql, tokens)   (make test TESTS=tsql): tests/test_tsql.c:216: CHECK(e == toks[i].end && k == tok
+caught        tsql: a number takes the letters after it (test_tsql, tokens and lines)   (make test TESTS=tsql): tests/test_tsql.c:208: CHECK(!strcmp(got, lines[
+caught        tsql: a number takes .. (test_tsql, tokens)   (make test TESTS=tsql): tests/test_tsql.c:216: CHECK(e == toks[i].end && k == toks[i].kind) failed
+caught        tsql: numbers are plain (test_tsql, lines)   (make test TESTS=tsql): tests/test_tsql.c:208: CHECK(!strcmp(got, lines[i][1])) failed
+caught        tsql: words of 20 bytes and more are not looked up (test_tsql, lines)   (make test TESTS=tsql): tests/test_tsql.c:208: CHECK(!strcmp(got, lines[i]
+caught        tsql: ( is an operator token, not punctuation (test_tsql, tokens)   (make test TESTS=tsql): tests/test_tsql.c:216: CHECK(e == toks[i].end && k == 
+caught        tsql: a NUL starts a two-byte operator (test_tsql)   (make test TESTS=tsql): tests/test_tsql.c:227: CHECK(t0 && tsql_token(&r0, 0, &k0) == 1) fail
+caught        tsql: an edit two bytes past the last token keeps its end (test_tsql, edit near a kept start)   (make test TESTS=tsql): tests/test_tsql.c:197: CHE
+caught        tsql: storing a kept token start aborts (fuzz_tsql reaches the index)   (make fuzz FUZZERS=tsql FUZZ_SECONDS=60): ==15448== ERROR: libFuzzer: dead
+caught        tsql: an edit among moved starts keeps those after it (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:308: CHECK(!memcmp(f +
+caught        tsql: a moved start a read passed stays (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:308: CHECK(!memcmp(f + wa, g + wa, z
+caught        tsql: the index is filled from past a token start (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:308: CHECK(!memcmp(f + wa,
+caught        tsql: syntax_update does not ask for a redraw after a plain window (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:308: CHEC
+caught        tsql: the filled index does not mark the text's end (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:308: CHECK(!memcmp(f + w
+caught        tsql: an unclosed string is not flagged open (test_tsql, open)   (make test TESTS=tsql): tests/test_tsql.c:245: CHECK(r.open == opens[i].open) fai
+caught        tsql: a word it lacks still gets an id (test_tsql)   (make test TESTS=tsql): tests/test_tsql.c:231: CHECK(tsql_word("selectx", 7, &id) == 0 && id 
+caught        xjson: true is plain   (make test TESTS=json): tests/test_json.c:155: CHECK(!strcmp(got, want)) failed
+NOT CAUGHT    xjson: an escape at a string's last byte but one is missed   (make test TESTS=json passed)
+NOT CAUGHT    xjson: a block comment nests   (make test TESTS=json passed)
+NOT CAUGHT    xjson: an exponent needs no digit   (make test TESTS=json passed)
+caught        xjson: the cached token's kind is lost between reads   (make test TESTS=json): tests/test_json.c:155: CHECK(!strcmp(got, want)) failed
+caught        json: the index is filled with T-SQL's tokens (test_json)   (make test TESTS=json): tests/test_json.c:155: CHECK(!strcmp(got, want)) failed
+caught        json: a window takes T-SQL's faces (test_json)   (make test TESTS=json): tests/test_json.c:155: CHECK(!strcmp(got, want)) failed
+caught        json: an escape takes the line's end (test_json, lines)   (make test TESTS=json): tests/test_json.c:177: CHECK(!strcmp(got, lines[i][1])) failed
+caught        json: a block comment ends a byte early (test_json)   (make test TESTS=json): tests/test_json.c:155: CHECK(!strcmp(got, want)) failed
+caught        json: a number's fraction is not read (test_json)   (make test TESTS=json): tests/test_json.c:155: CHECK(!strcmp(got, want)) failed
+caught        json: a minus starts no number (test_json)   (make test TESTS=json): tests/test_json.c:155: CHECK(!strcmp(got, want)) failed
+caught        json: a key's colon is not found past a comment (test_json)   (make test TESTS=json): tests/test_json.c:155: CHECK(!strcmp(got, want)) failed
+caught        json: a colon is a bracket (test_json)   (make test TESTS=json): tests/test_json.c:155: CHECK(!strcmp(got, want)) failed
+caught        json: false is plain (test_json)   (make test TESTS=json): tests/test_json.c:155: CHECK(!strcmp(got, want)) failed
+caught        json: escapes are not coloured (test_json)   (make test TESTS=json): tests/test_json.c:155: CHECK(!strcmp(got, want)) failed
+caught        syntax: not- predicates are not negated (test_syntax)   (make test TESTS=syntax): tests/test_syntax.c:634: CHECK(!differ && !snap_differ && !slice
+caught        syntax: Lua's lazy - takes one character at least (test_syntax, LuaJIT)   (make test TESTS=syntax): tests/test_syntax.c:634: CHECK(!differ && !sna
+caught        syntax: an edit leaves injected regions where they were (test_syntax, frames before a parse)   (make test TESTS=syntax): tests/test_syntax.c:351: 
+caught        syntax: captures are not clipped to the tree's included ranges (test_syntax, case 2: the block quote)   (make test TESTS=syntax): tests/test_synta
+caught        syntax: a released tree's children are never freed (test_syntax, LeakSanitizer)   (make test TESTS=syntax): tests/test_syntax.c:412: CHECK(steps >
+caught        syntax: the frame after a key recomputes only the captures over the edit, not the rest of their matches (test_syntax, edits then frame: far.lua)  
+caught        syntax: an edit leaves the cached faces where they were (test_syntax, frames before a parse)   (make test TESTS=syntax): tests/test_syntax.c:300: 
+caught        syntax: the recomputed bytes leave out the byte after the edit (test_syntax, frames before a parse)   (make test TESTS=syntax): tests/test_syntax.
+caught        syntax: two edits before one frame, the later at byte 0, leave byte 0 out of the recompute (test_syntax, edits then frame: zero.c)   (make test TE
+caught        syntax: a grown cache keeps the old one's window, over memory never filled (test_syntax, cache grows)   (make test TESTS=syntax): tests/test_synta
+caught        tsql: an edit keeps the token start at its own byte (test_tsql, edit near a kept start)   (make test TESTS=tsql): tests/test_tsql.c:197: CHECK(!me
+caught        tsql: an edit keeps the starts after it as known (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:308: CHECK(!memcmp(f + wa, 
+caught        tsql: an edit keeps the old text's window (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:197: CHECK(!memcmp(f + 4096, g + 4
+caught        tsql: a doubled quote ends the string (test_tsql, tokens)   (make test TESTS=tsql): tests/test_tsql.c:216: CHECK(e == toks[i].end && k == toks[i].
+caught        tsql: <> is two operators (test_tsql, tokens)   (make test TESTS=tsql): tests/test_tsql.c:216: CHECK(e == toks[i].end && k == toks[i].kind) failed
+caught        tsql: a keyword word beats a function word, so DATEADD's day is a keyword (test_tsql, lines)   (make test TESTS=tsql): tests/test_tsql.c:208: CHEC
+caught        tsql: words are looked up as typed, not lower case (test_tsql, lines)   (make test TESTS=tsql): tests/test_tsql.c:208: CHECK(!strcmp(got, lines[i]
+caught        tsql: @@globals are plain (test_tsql, lines)   (make test TESTS=tsql): tests/test_tsql.c:208: CHECK(!strcmp(got, lines[i][1])) failed
+caught        tsql: the end of the text is a one-byte token (test_tsql, tokens)   (make test TESTS=tsql): tests/test_tsql.c:216: CHECK(e == toks[i].end && k == 
+caught        tsql: a dot is an operator (test_tsql, lines)   (make test TESTS=tsql): tests/test_tsql.c:208: CHECK(!strcmp(got, lines[i][1])) failed
+caught        tsql: || is two operators (test_tsql, tokens)   (make test TESTS=tsql): tests/test_tsql.c:216: CHECK(e == toks[i].end && k == toks[i].kind) failed
+caught        tsql: an exponent needs no digit (test_tsql, tokens)   (make test TESTS=tsql): tests/test_tsql.c:216: CHECK(e == toks[i].end && k == toks[i].kind)
+caught        tsql: 0x takes letters past f (test_tsql, tokens)   (make test TESTS=tsql): tests/test_tsql.c:216: CHECK(e == toks[i].end && k == toks[i].kind) fa
+caught        tsql: sp_ alone is a procedure (test_tsql, lines)   (make test TESTS=tsql): tests/test_tsql.c:208: CHECK(!strcmp(got, lines[i][1])) failed
+caught        tsql: the schema's name is read from byte 1 (test_tsql, lines)   (make test TESTS=tsql): tests/test_tsql.c:208: CHECK(!strcmp(got, lines[i][1])) f
+caught        tsql: << and >> are two operators (test_tsql, tokens)   (make test TESTS=tsql): tests/test_tsql.c:216: CHECK(e == toks[i].end && k == toks[i].kind
+caught        tsql: an edit keeps the last token's end (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:197: CHECK(!memcmp(f + 4096, g + 40
+caught        tsql: the last token's kind is not kept (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:308: CHECK(!memcmp(f + wa, g + wa, z
+caught        tsql: moved starts do not move (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:308: CHECK(!memcmp(f + wa, g + wa, z - wa)) f
+caught        tsql: moved starts of an older edit stay (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:308: CHECK(!memcmp(f + wa, g + wa, 
+caught        tsql: a read starts from a moved start (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:308: CHECK(!memcmp(f + wa, g + wa, z 
+caught        tsql: a far window stays plain once the index is filled (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:308: CHECK(!memcmp(f
+caught        tsql: syntax_update stops without saying so (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:308: CHECK(!memcmp(f + wa, g + w
+caught        tsql: an unclosed comment is not flagged open (test_tsql, open)   (make test TESTS=tsql): tests/test_tsql.c:245: CHECK(r.open == opens[i].open) fa
+caught        tsql: the open flag keeps the last token's (test_tsql, open)   (make test TESTS=tsql): tests/test_tsql.c:245: CHECK(r.open == opens[i].open) faile
+caught        tsql: an operator takes the comments' grey, not the operator face (test_tsql, lines)   (make test TESTS=tsql): tests/test_tsql.c:208: CHECK(!strcm
+caught        xjson: brackets are plain   (make test TESTS=json): tests/test_json.c:155: CHECK(!strcmp(got, want)) failed
+caught        xjson: a closed string leaves its closing quote out   (make test TESTS=json): tests/test_json.c:155: CHECK(!strcmp(got, want)) failed
+caught        xjson: a number takes no exponent   (make test TESTS=json): tests/test_json.c:155: CHECK(!strcmp(got, want)) failed
+caught        xjson: a word runs on over digits   (make test TESTS=json): tests/test_json.c:155: CHECK(!strcmp(got, want)) failed
+caught        xjson: faces before the window are painted   (make test TESTS="json tsql"): tests/test_json.c:155: CHECK(!strcmp(got, want)) failed

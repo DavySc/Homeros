@@ -1,0 +1,95 @@
+C 15 80
+F 20202020666f6f20e6bca2200920e18390202d2d207a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a206162e6bca2206c6f6e676572776f7264202c202d2d206261725f3120cebb78
+F 
+T w7:v
+T size:25:78
+T wrap
+P
+S 1       foo 漢       ა -- zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S f0                                                            1,1            All
+S 
+M - - -
+P
+S 1       foo 漢       ა -- zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz│1
+S ~                                                                       │~
+S ~                                                                       │~
+S ~                                                                       │~
+S ~                                                                       │~
+S ~                                                                       │~
+S ~                                                                       │~
+S ~                                                                       │~
+S ~                                                                       │~
+S ~                                                                       │~
+S ~                                                                       │~
+S ~                                                                       │~
+S ~                                                                       │~
+S f0                                                    1,1            All <   All
+R
+M - - -
+P
+S 1       foo 漢       ა -- zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz│1
+S ~                                                                       │~
+S ~                                                                       │~
+S ~                                                                       │~
+S ~                                                                       │~
+S ~                                                                       │~
+S ~                                                                       │~
+S ~                                                                       │~
+S ~                                                                       │~
+S ~                                                                       │~
+S ~                                                                       │~
+S ~                                                                       │~
+S ~                                                                       │~
+S ~                                                                       │~
+S ~                                                                       │~
+S ~                                                                       │~
+S ~                                                                       │~
+S ~                                                                       │~
+S ~                                                                       │~
+S ~                                                                       │~
+S ~                                                                       │~
+S ~                                                                       │~
+S ~                                                                       │~
+S f0                                                    1,1            All < All
+S 
+M - - -
+P
+R
+S ~                                                                       │
+S ~                                                                       │
+S ~                                                                       │
+S ~                                                                       │    f
+S ~                                                                       │    o
+S ~                                                                       │    o
+S ~                                                                       │
+S ~                                                                       │    >
+S ~                                                                       │    >
+S ~                                                                       │    >
+S ~                                                                       │    >
+S ~                                                                       │    >
+S ~                                                                       │    >
+S ~                                                                       │    >
+S ~                                                                       │    >
+S ~                                                                       │    >
+S ~                                                                       │    >
+S ~                                                                       │    >
+S ~                                                                       │    >
+S ~                                                                       │    >
+S ~                                                                       │    >
+S ~                                                                       │    >
+R
+S :set wrap
+M - - -
+E

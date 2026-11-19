@@ -110,7 +110,8 @@ static int key(const unsigned char *s, int n, int force, int *k)
 		int j = 2;                                   /* CSI: parameters, then a final byte */
 		while (j < n && (s[j] < 0x40 || s[j] > 0x7e)) j++;
 		if (j == n) return force;
-		*k = s[2] == 'A' ? KEY_UP : s[2] == 'B' ? KEY_DOWN : s[2] == 'C' ? KEY_RIGHT : s[2] == 'D' ? KEY_LEFT : -1;
+		*k = s[2] == 'A' ? KEY_UP : s[2] == 'B' ? KEY_DOWN : s[2] == 'C' ? KEY_RIGHT : s[2] == 'D' ? KEY_LEFT
+		   : s[2] == '3' && s[3] == '~' ? KEY_DEL : -1;   /* Delete: termkey's CSI 3 ~ */
 		return j + 1;
 	}
 	if (s[0] < 0xC2 || s[0] > 0xF4) return 1;      /* ASCII, or no UTF-8 lead */
@@ -126,7 +127,7 @@ static int key(const unsigned char *s, int n, int force, int *k)
 	return len;
 }
 
-/* Bytes to keys: UTF-8 to code points, CSI arrows to KEY_*, other CSI
+/* Bytes to keys: UTF-8 to code points, CSI arrows and Delete to KEY_*, other CSI
    sequences dropped.  A read that ends inside a key keeps that tail and, if
    no more input comes within TTIMEOUTLEN ms, takes it byte by byte: an Esc
    typed alone is Esc, as in Neovim (tinput_timer_cb). */
@@ -167,12 +168,12 @@ static int tty_input(int *k, int max)
 static void style(const Cell *x)
 {
 	char s[64];
-	const Face *f = &faces[x->face < FACE_COUNT ? x->face : FACE_NONE];
+	const Face *b, *f = grid_face(x, &b);
 	int n = snprintf(s, sizeof s, "\x1b[0%s%s%s%s%s", x->attr == ATTR_REV ? ";7" : x->attr == ATTR_DIM ? ";2" : "",
 	                 f->style & FACE_BOLD ? ";1" : "", f->style & FACE_ITALIC ? ";3" : "",
 	                 f->style & FACE_UNDERLINE ? ";4" : "", f->style & FACE_STRIKE ? ";9" : "");
 	if (f->style & FACE_FG) n += snprintf(s + n, sizeof s - (size_t)n, ";38;2;%d;%d;%d", f->fg[0], f->fg[1], f->fg[2]);
-	if (f->style & FACE_BG) n += snprintf(s + n, sizeof s - (size_t)n, ";48;2;%d;%d;%d", f->bg[0], f->bg[1], f->bg[2]);
+	if (b->style & FACE_BG) n += snprintf(s + n, sizeof s - (size_t)n, ";48;2;%d;%d;%d", b->bg[0], b->bg[1], b->bg[2]);
 	s[n] = 'm'; s[n + 1] = 0;
 	outs(s);
 }
@@ -185,7 +186,8 @@ static void tty_present(const Grid *g, Grid *shown)
 		if (grid_resize(shown, g->rows, g->cols)) { outs("\x1b[?25h\x1b[?2026l"); flush(); return; }
 		outs("\x1b[0m\x1b[H\x1b[2J");
 	}
-	int a = -1, pr = -1, pc = -1;   /* a: the style sent last, attr and face */
+	long a = -1;                    /* the style sent last: bg, face and attr */
+	int pr = -1, pc = -1;
 	for (int r = 0; r < g->rows; r++)
 		for (int c = 0; c < g->cols; c++) {
 			const Cell *x = &g->c[r * g->cols + c];
@@ -194,7 +196,8 @@ static void tty_present(const Grid *g, Grid *shown)
 			*y = *x;
 			if (!x->len) continue;
 			int wide = c + 1 < g->cols && !x[1].len;
-			if ((x->face << 8 | x->attr) != a) { a = x->face << 8 | x->attr; style(x); }
+			long k = (long)x->bg << 16 | x->face << 8 | x->attr;
+			if (k != a) { a = k; style(x); }
 			/* The terminal may give a non-ASCII character another width
 			   than the grid does (East Asian ambiguous, newer emoji), so
 			   Neovim's print_cell_at_pos() clears both cells of a wide one

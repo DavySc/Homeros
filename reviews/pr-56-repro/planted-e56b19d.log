@@ -1,0 +1,390 @@
+caught        core: undo loses deleted text (fuzz_keys)   (make fuzz FUZZERS=keys FUZZ_SECONDS=60): ==5114== ERROR: libFuzzer: deadly signal
+caught        core: :bd searches the jump list from its oldest entry (test_core_contract)   (make test TESTS=core_contract): tests/test_core_contract.c:120: CHECK(!core_buf_delete(&e, 0, 0) && !strcmp(e.buf->path, fn[2])) failed
+caught        core: a split forgets the alternate buffer (test_core_contract)   (make test TESTS=core_contract): tests/test_core_contract.c:118: CHECK(alt && !strcmp(alt->path, fn[2]) && !core_split(&e, 0, 0) && e.win->alt == alt) failed
+caught        core: CTRL-D and CTRL-F never report that they could not move (no beep) (test_core_contract)   (make test TESTS=core_contract): tests/test_core_contract.c:45: CHECK(core_scroll_half(&e, -1, 0) == want[i].r[1]) failed
+caught        core: the selected popup item is not highlighted (test_core_contract)   (make test TESTS=core_contract): tests/test_core_contract.c:87: CHECK(p->attr == ATTR_NONE) failed
+caught        core: a double-width character never takes the border cell (finding 1) (test_core_screens)   (make test TESTS=core_screens): test_core_screens: 59 of 3028 screens differ from Neovim (15 of 320 cases)
+caught        core: an undo group takes its neighbour's marks (test_core_undo)   (make test TESTS=core_undo): tests/test_core_undo.c:110: CHECK(e.buf->mark[0].set && e.buf->mark[0].line == 0 && e.buf->mark[0].col == 0) failed
+caught        core: scroll_cursor_halfway() drops skipcol without smoothscroll (test_core_screens)   (make test TESTS=core_screens): test_core_screens: 2 of 3028 screens differ from Neovim (2 of 320 cases)
+caught        core: an insertion drops w_botline (test_core_screens)   (make test TESTS=core_screens): test_core_screens: 3 of 3028 screens differ from Neovim (3 of 320 cases)
+caught        core: H and L apply scrolloff under an operator (test_core_contract)   (make test TESTS=core_contract): tests/test_core_contract.c:59: CHECK(core_screen_line(&e, 'H', 1, 0) == e.win->top && core_screen_line(&e, 'H', 1, 1) == e.win->top + 6) failed
+caught        core: a '#' run with no blank after it is a heading (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 300 render-markdown screens: 5 differ
+caught        core: a heading drawn in insert mode (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 300 render-markdown screens: 30 differ
+caught        core: a heading's background not drawn (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 300 render-markdown screens: 199 differ
+caught        file: load identity taken after reading (review 0, finding 3)   (make test TESTS=file_save): tests/test_file_save.c:255: CHECK(has || save(t, &id, kept) == SAVE_CHANGED) failed
+caught        file: foreign owner lost (temp kept though fchown failed)   (make test TESTS=file_save): tests/test_file_save.c:333: CHECK(!stat(path, &st) && st.st_uid == 0 && (st.st_mode & 0777) == 0666) failed
+caught        file: watch never reports   (make test TESTS=file_save): tests/test_file_save.c:396: CHECK(poll(&pf, 1, 1000) == 1 && file_watch_read(fd, path, &id) == 1) failed
+caught        journal: no new base after a save   (make test TESTS=file_journal): tests/test_file_journal.c:143: CHECK(done || more) failed
+caught        journal: readable by others   (make test TESTS=file_journal): tests/test_file_journal.c:374: CHECK(!stat(jd, &sb) && (sb.st_mode & 0777) == 0700) failed
+caught        core wiring: outside change never noted   (make test TESTS=file_core): tests/test_file_core.c:117: CHECK(strstr(e.msg, "W11")) failed
+caught        file: dangling symlink saved over the link (review of PR 16, 4)   (make test TESTS=file_save): tests/test_file_save.c:312: CHECK(file_save(lk, t, strlen(NEW), &none, 0, kept, sizeof kept) == SAVE_OK && is(tg, NEW)) failed
+caught        core wiring: an edit journalled with the state before it (review of PR 16, 7)   (make test TESTS=file_core): tests/test_file_core.c:89: CHECK(sb == sa && !memcmp(a, b, sa)) failed
+caught        win: no check before saving   (make win WIN=file): tests/test_file_win.c:96: CHECK(saved("mine\n", &id, 0) == SAVE_CHANGED) failed
+caught        win: journal locked by its share mode, so a reader blocks recovery (review of PR 25, 2)   (make win WIN=file): tests/test_file_win.c:329: CHECK(journal_open(path, &j, &t, &st, &id) == 1 && text_len(t) == 5) failed
+caught        core wiring: recovery ignores noeol in the bytes a buffer saves   (make test TESTS=file_core): tests/test_file_core.c:93: CHECK(core_modified(g.buf) == differs) failed
+caught        font: emoji strike not scaled to the em   (make test TESTS=font): tests/test_font.c:164: CHECK(o[0].g->w <= 2 * cw + 2 && o[0].g->h <= ch && o[0].g->w >= cw) failed
+caught        font: clusters split inside characters   (make test TESTS=font): tests/test_font.c:107: CHECK(shape("\xcd\xb8") == 1) failed
+caught        grid: a character on a right half leaves its left half   (make test TESTS=grid_diff): tests/test_grid_diff.c:314: CHECK(g.c[1].len == 1 && g.c[1].ch[0] == '>' && g.c[1].attr == ATTR_REV && g.c[1].face == FACE_STRING && g.c[1].bg == FACE_CURSOR_LINE && g.c[2].ch[0] == 'x') failed
+caught        grid: '>' takes the new attribute   (make test TESTS=grid_diff): tests/test_grid_diff.c:314: CHECK(g.c[1].len == 1 && g.c[1].ch[0] == '>' && g.c[1].attr == ATTR_REV && g.c[1].face == FACE_STRING && g.c[1].bg == FACE_CURSOR_LINE && g.c[2].ch[0] == 'x') failed
+caught        grid: the '>' loses the face of the half it replaces   (make test TESTS=grid_diff): tests/test_grid_diff.c:314: CHECK(g.c[1].len == 1 && g.c[1].ch[0] == '>' && g.c[1].attr == ATTR_REV && g.c[1].face == FACE_STRING && g.c[1].bg == FACE_CURSOR_LINE && g.c[2].ch[0] == 'x') failed
+caught        grid: a long cluster compared by length only   (make test TESTS=grid_diff): tests/test_grid_diff.c:357: CHECK(!grid_cell_eq(&g.c[1], &g.c[8]) && !memcmp(grid_text(&g.c[8]), "a" M5, 11)) failed
+caught        grid: a stored cluster found by its prefix   (make test TESTS=grid_diff): tests/test_grid_diff.c:380: CHECK(g.c[6].len == 3 && !memcmp(g.c[6].ch, "\xef\xbf\xbd", 3)) failed
+caught        grid: the blank loses the background layer of the half it replaces   (make test TESTS=grid_diff): tests/test_grid_diff.c:319: CHECK(g.c[4].len == 1 && g.c[4].ch[0] == ' ' && g.c[4].attr == ATTR_DIM && g.c[4].face == FACE_COMMENT && g.c[4].bg == FACE_HEADING_1_BG) failed
+caught        lean: a proof left as sorry   (make lean): design/proofs/Undo.lean:37:8: warning: declaration uses `sorry`
+caught        conform: a driver that fails on a live case under a known rule   (make conform CONFORM_N=200 SEED=1):   ours  None {'error': 3, 'stderr': ''}
+caught        keys: j and k forget the wanted column (recorded traces)   (make test TESTS=): 1027 sequences: 267 differ from Neovim
+caught        keys: Delete while typing a count is x (recorded traces)   (make test TESTS=): 1027 sequences: 1 differ from Neovim
+caught        loop: kill reaches the child but not its group   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:177: CHECK(dead(grandchild)) failed
+caught        loop: children inherit the ignored SIGPIPE   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:147: CHECK(g.code == 0 && !g.nerr) failed
+caught        loop: processes and timers run inside a command   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:278: CHECK(!fired[3] && !g.nout && !g.ended[1]) failed
+caught        loop: the queue is never compacted   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:437: CHECK(grew < 64 * 1024) failed
+caught        loop: a watch removed by a callback still runs (loop_breakcheck)   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:455: CHECK(!ran_b) failed
+caught        loop: stdin stays open after the exit   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:364: CHECK(open_fds() == fds) failed
+caught        loop: win: a write begun while reaping completes on the slot's next child (review of PR 41, 2)   (make win WIN=loop): tests/test_loop_win.c:467: CHECK(done && answer == -1) failed
+caught        loop: win: the wait is not alertable, so no pipe I/O completes   (make win WIN=loop): tests/test_loop_win.c:149: CHECK(ms() < end) failed
+caught        loop: win: the exit comes before the output's end (Exit.tla early)   (make win WIN=loop): tests/test_loop_win.c:132: CHECK(!g->ended[0]) failed
+caught        loop: win: the pipe is read only when it ends, so a full pipe hangs the child   (make win WIN=loop): 4 errors generated.
+caught        org: table row contents start at the bar   (make test TESTS=org): tests/test_org.c:669: CHECK(!strcmp(got, cases[i].want)) failed
+caught        org: drawer and footnote names take any non-ASCII byte (against Org)   (make org-conform ORG_N=2000 SEED=1): 42 of 2000 differ (Org failed on 0)
+caught        org: a timestamp's repeater is looked for only before its range (against Org)   (make org-conform ORG_N=2000 SEED=1): 194 of 2000 differ (Org failed on 0)
+caught        syntax: Lua's lazy - takes one character at least (test_syntax, LuaJIT)   (make test TESTS=syntax): tests/test_syntax.c:630: CHECK(!differ && !snap_differ && !slice_differ && !pdiff) failed
+caught        syntax: captures are not clipped to the tree's included ranges (test_syntax, case 2: the block quote)   (make test TESTS=syntax): tests/test_syntax.c:630: CHECK(!differ && !snap_differ && !slice_differ && !pdiff) failed
+caught        syntax: the frame after a key recomputes only the captures over the edit, not the rest of their matches (test_syntax, edits then frame: far.lua)   (make test TESTS=syntax): tests/test_syntax.c:296: CHECK(!memcmp(f, g, n)) failed
+caught        syntax: the recomputed bytes leave out the byte after the edit (test_syntax, frames before a parse)   (make test TESTS=syntax): 	CHECK(!core_edit(&e, 0, 0, "x\xcc\x81\t", 4));
+caught        syntax: a grown cache keeps the old one's window, over memory never filled (test_syntax, cache grows)   (make test TESTS=syntax): tests/test_syntax.c:378: CHECK(!memcmp(f, g, 64)) failed
+caught        text: no rollback when a chunk cannot get its nodes   (make test TESTS=text_rope): tests/test_text_rope.c:57: CHECK(r_len(t) == mn) failed
+caught        text: insert drops the leaf's last byte (fuzz_text)   (make fuzz FUZZERS=text FUZZ_SECONDS=60): ==3645== ERROR: libFuzzer: deadly signal
+caught        matcher: OR terms of equal entropy tried in their typed order (not LuaJIT's sort)   (make test TESTS=tools_match): tests/test_tools_match.c:58: CHECK(cases > 0 && !bad) failed
+caught        picker: grep keeps rg's ./ prefix   (make test TESTS=tools_pick): FAIL test_tools_pick
+caught        oil: a link line without " -> " kept as its entry   (make test TESTS=tools_oil): tests/test_tools_oil.c:241: CHECK(cases > 0 && !bad) failed
+caught        oil: no icon by exact file name   (make test TESTS=tools_oil): tests/test_tools_oil.c:241: CHECK(cases > 0 && !bad) failed
+caught        oil: an open directory's buffer does not follow its move   (make test TESTS=tools_oil): tests/test_tools_oil.c:241: CHECK(cases > 0 && !bad) failed
+caught        oil: a long id overflows (fuzz_tools_oil)   (make fuzz FUZZERS=tools_oil FUZZ_SECONDS=60): src/tools/oil.c:256:59: runtime error: signed integer overflow: 3333333333333333333 * 10 cannot be represented in type 'long'
+caught        oil: only the first brace group takes the alternative   (make test TESTS=tools_oil): ==14198==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x5020000b349a at pc 0x555d3bf8a26b bp 0x7ffdab6840d0 sp 0x7ffdab6840c0
+caught        picker: grep drops the rg arguments after --   (make test TESTS=tools_pick): FAIL test_tools_pick
+caught        tty: every cell sent every frame   (make test TESTS=grid_diff): tests/test_grid_diff.c:282: CHECK(t.prints - before == want) failed
+caught        tty: a new size is not drawn whole   (make test TESTS=tty_render): tests/test_tty_render.c:227: CHECK(frames(&t, from, outn, 0, &nf) == resized_want) failed
+caught        Render midcmd: a frame inside a command   (make test TESTS=tty_render): tests/test_tty_render.c:113: CHECK(0) failed
+caught        tty: a failed resize leaves the update open   (make test TESTS=grid_diff): tests/test_grid_diff.c:397: CHECK(!t.bad && !t.sync && t.frames == 1 && !t.hidden) failed
+caught        tty: output never flushed when full   (make test TESTS=grid_diff): ==21740==ERROR: AddressSanitizer: global-buffer-overflow on address 0x55c87423065d at pc 0x55c87386ee00 bp 0x7ffffff1cdc0 sp 0x7ffffff1cdb0
+caught        tty: a wrong colour in the shared face table   (make test TESTS=grid_diff): tests/test_grid_diff.c:278: CHECK(0) failed
+caught        tty: a long cluster printed from the cell's number   (make test TESTS=grid_diff): tests/test_grid_diff.c:278: CHECK(0) failed
+caught        tty: a new background layer sends no new style   (make test TESTS=grid_diff): tests/test_grid_diff.c:278: CHECK(0) failed
+caught        undo: a group undone first edit first   (make test TESTS=undo): tests/test_undo.c:41: CHECK(is(t, g - 1)) failed
+caught        undo cap: the redo branch it cannot reconnect is kept   (make undo-diff UNDO_N=1000): undo_conform: FAIL, the driver stopped (exit -6)
+caught        undo file: SHA-256 rotates two working words in the wrong order   (make test TESTS=undo_file): tests/test_undo_file.c:77: CHECK(sscanf(hex + 2 * i, "%2x", &v) == 1 && b[8 + i] == v) failed
+caught        undo file: a newhead that is not the newest change accepted   (make test TESTS=undo_file): tests/test_undo_file.c:182: CHECK(!undo_read(t, path)) failed
+caught        undo: a count at the end of long's range overflows (review finding 5)   (make test TESTS=undo_file): src/undo/undo.c:298:17: runtime error: signed integer overflow: 1 + 9223372036854775807 cannot be represented in type 'long int'
+caught        uni: 0xF8 read as a 4-byte lead   (make test TESTS=uni): tests/test_uni.c:26: CHECK(uni_len(s, 4, 0) == spec(s, 4, 0)) failed
+caught        frama-c: GB11 state lost after Extend   (make frama): [wp] Proved goals:  228 / 229
+caught        uni: lam and alef do not join   (make test TESTS=uni_nvim): tests/test_uni_nvim.c:194: CHECK(at == i && w == (unsigned long)uni_width(s, n, i)) failed
+caught        uni: lam and alef with hamza above do not join   (make test TESTS=uni_nvim): tests/test_uni_nvim.c:194: CHECK(at == i && w == (unsigned long)uni_width(s, n, i)) failed
+caught        win: no cursor at (0, 0) after a whole redraw   (make win WIN=win): tests/test_win.c:276: CHECK(at(0, 0) == REV && at(0, 1) == BG) failed
+caught        win: surrogate pair joined wrong   (make win WIN=win): tests/test_win.c:141: CHECK(k[0] == 'a' && k[1] == 0x1D4DD && k[2] == KEY_BS && k[3] == KEY_ESC && k[4] == 0xE9 && k[5] == KEY_ENTER && k[6] == KEY_LEFT && k[7] == KEY_RIGHT && k[8] == KEY_UP && k[9] == KEY_DOWN && k[10] == KEY_DEL) failed
+caught        win: Left sent as Right   (make win WIN=win): tests/test_win.c:141: CHECK(k[0] == 'a' && k[1] == 0x1D4DD && k[2] == KEY_BS && k[3] == KEY_ESC && k[4] == 0xE9 && k[5] == KEY_ENTER && k[6] == KEY_LEFT && k[7] == KEY_RIGHT && k[8] == KEY_UP && k[9] == KEY_DOWN && k[10] == KEY_DEL) failed
+caught        win: mouse row taken from x   (make win WIN=win): tests/test_win.c:168: CHECK(r == 2 && c == 3) failed
+caught        win: clipboard got with CRLF   (make win WIN=win): tests/test_win.c:187: CHECK(b->clip_get(buf, sizeof buf) == (long)sizeof clip - 1 && !memcmp(buf, clip, sizeof clip - 1)) failed
+caught        win: syntax faces ignored   (make win WIN=win): tests/test_win.c:223: CHECK(inked(6, 1) > 0 && GetGValue(s) > GetRValue(s) && GetGValue(s) > GetBValue(s)) failed
+caught        win: an uncovered window not repainted (WM_PAINT)   (make win WIN=win): tests/test_win.c:233: CHECK(at(5, 5) == BG && at(3, 5) == REV && count(4, 1, RED) == 0) failed
+caught        win: the new DPI ignored   (make win WIN=win): tests/test_win.c:301: CHECK(rows < r2 * 6 / 10 && cols < c2 * 6 / 10) failed
+caught        win: pacing timer far too late   (make win WIN=win): tests/test_win.c:98: CHECK(WaitForSingleObject((HANDLE)(INT_PTR)fds[1], 1000) == WAIT_OBJECT_0) failed
+caught        win: the DIB keeps its old size   (make win WIN=win): tests/test_win.c:290: CHECK(at(0, 0) == REV && at(0, 1) == BG && at(r2 - 1, c2 - 1) == BG && shown.rows == r2 && shown.cols == c2) failed
+caught        wl: Backspace as XKB's 8   (make test TESTS=wl): tests/test_wl.c:348: CHECK(keys[k0 + i] == want[i]) failed
+caught        wl: input method's text dropped   (make test TESTS=wl): tests/test_wl.c:412: CHECK(nkeys - k0 == 3 && keys[k0] == 0xFC && keys[k0 + 1] == 0xF1 && keys[k0 + 2] == KEY_RESIZE) failed
+caught        wl: no text cursor   (make test TESTS=wl): tests/test_wl.c:429: CHECK(above(16)) failed
+caught        wl: close ignored   (make test TESTS=wl): tests/test_wl.c:497: CHECK(count(KEY_CLOSE, k0) == 1) failed
+caught        wl: scroll copies the wrong row   (make test TESTS=wl): ==24849==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x7ff1225fc000 at pc 0x7ff1278fb42e bp 0x7ffe3af963f0 sp 0x7ffe3af95b98
+caught        wl: spill past a non-blank cell   (make test TESTS=wl): tests/test_wl.c:105: CHECK(WIFEXITED(st) && !WEXITSTATUS(st)) failed
+caught        wl: clipboard written by the editor itself   (make test TESTS=wl): tests/test_wl.c:391: CHECK(worst < 200) failed
+caught        core: a deleted line keeps its mark (recorded traces)   (make test TESTS=core_screens): test_core_screens: 13 of 3028 screens differ from Neovim (3 of 320 cases)
+caught        core: set_topline() keeps w_botline valid (recorded traces)   (make test TESTS=core_screens): test_core_screens: 17 of 3028 screens differ from Neovim (5 of 320 cases)
+caught        core: the cursor clamp counts bytes, not characters (fuzz_core)   (make fuzz FUZZERS=core FUZZ_SECONDS=120): ==8218== ERROR: libFuzzer: deadly signal
+caught        core: gj and gk never fail at the first or last screen line (test_core_contract)   (make test TESTS=core_contract): tests/test_core_contract.c:52: CHECK(core_screen_move(&e, -1) == want[i].r[5]) failed
+caught        core: entering a window does not look at its view again (finding 6) (test_core_screens)   (make test TESTS=core_screens): test_core_screens: 1 of 3028 screens differ from Neovim (1 of 320 cases)
+caught        core: no '<' where the view starts inside a double-width character (test_core_screens)   (make test TESTS=core_screens): test_core_screens: 20 of 3028 screens differ from Neovim (11 of 320 cases)
+caught        core: marks kept for 3 undo groups only (test_core_undo)   (make test TESTS=core_undo): tests/test_core_undo.c:124: CHECK(e.buf->mark[0].set && e.buf->mark[0].col == (size_t)col[g]) failed
+caught        core: core_vcol counts a byte inside a cluster to its end (test_core_contract)   (make test TESTS=core_contract): tests/test_core_contract.c:96: CHECK(core_vcol(&e, 0, 1) == 0 && core_vcol(&e, 0, 2) == 0 && core_vcol(&e, 0, 3) == 1 && core_vcol(&e, 0, 4) == 8) failed
+caught        core: the popup placed before update_screen() (test_core_screens)   (make test TESTS=core_screens): test_core_screens: 1 of 3028 screens differ from Neovim (1 of 320 cases)
+caught        core: a join leaves the next line's marks behind (recorded key traces)   (make test TESTS=): 1027 sequences: 3 differ from Neovim
+caught        core: a heading's icon on its first '#' (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 300 render-markdown screens: 182 differ
+caught        core: a heading drawn while the window is scrolled sideways (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 300 render-markdown screens: 4 differ
+caught        file: no check before saving (Save_nocheck)   (make test TESTS=file_save): tests/test_file_save.c:255: CHECK(has || save(t, &id, kept) == SAVE_CHANGED) failed
+caught        file: in place without a durable backup   (make test TESTS=file_save): tests/test_file_save.c:279: CHECK(ds) failed
+caught        file: hard link split by the swap   (make test TESTS=file_save): tests/test_file_save.c:272: CHECK(bk != tgt) failed
+caught        journal: record sum not checked   (make test TESTS=file_journal): tests/test_file_journal.c:233: CHECK(equal(t, &snap[i]) && st == snap[i].state && same_id(&id, &snap[i].id)) failed
+caught        journal: due counted from the last record   (make test TESTS=file_journal): tests/test_file_journal.c:380: CHECK(!journal_edit(j, 0, 0, "f", 1, 0) && journal_due(j) <= d) failed
+caught        journal: record length not bounded (fuzzer)   (make fuzz FUZZERS=file_journal FUZZ_SECONDS=60): ==12515==ERROR: AddressSanitizer: SEGV on unknown address (pc 0x5569dea02f86 bp 0x7ffea5539010 sp 0x7ffea55387d0 T0)
+caught        core wiring: recovered identity replaced by the file's   (make test TESTS=file_core): tests/test_file_core.c:126: CHECK(core_write(&e, e.buf, 0) == -1 && strstr(e.msg, "E13")) failed
+caught        file: no :w! without a backup (review of PR 16, 5)   (make test TESTS=file_save): tests/test_file_save.c:302: CHECK(file_save(path, t, strlen(NEW), &id, 1, kept, sizeof kept) == SAVE_OK && is(path, NEW) && is(l, NEW)) failed
+caught        core wiring: no look after adding the watch (review of PR 16, 9)   (make test TESTS=file_core): tests/test_file_core.c:225: CHECK(strstr(e.msg, "W11")) failed
+caught        win: one watch handle per file, not per directory   (make win WIN=file): tests/test_file_win.c:199: CHECK(fd != -1 && file_watch(other) == fd) failed
+caught        win: journal in text mode   (make win WIN=file): tests/test_file_win.c:290: CHECK(now || then) failed
+caught        font: fallback takes a font without the character (Mathlib symbols)   (make test TESTS=font): tests/test_font.c:89: CHECK(ink(o[j].g)) failed
+caught        font: cache key ignores the font   (make test TESTS=font): tests/test_font.c:141: CHECK(hash(shape(s)) == sig[i]) failed
+caught        font: right-to-left runs reversed   (make test TESTS=font): tests/test_font.c:193: CHECK(shape("\xd7\x90\xd7\x91") == 2 && o[0].cluster == 0 && o[1].cluster == 2) failed
+caught        grid: covering a left half leaves its right half   (make test TESTS=grid_diff): tests/test_grid_diff.c:319: CHECK(g.c[4].len == 1 && g.c[4].ch[0] == ' ' && g.c[4].attr == ATTR_DIM && g.c[4].face == FACE_COMMENT && g.c[4].bg == FACE_HEADING_1_BG) failed
+caught        grid: a blanked right half takes the new attribute   (make test TESTS=grid_diff): tests/test_grid_diff.c:319: CHECK(g.c[4].len == 1 && g.c[4].ch[0] == ' ' && g.c[4].attr == ATTR_DIM && g.c[4].face == FACE_COMMENT && g.c[4].bg == FACE_HEADING_1_BG) failed
+caught        grid: the blank loses the face of the half it replaces   (make test TESTS=grid_diff): tests/test_grid_diff.c:319: CHECK(g.c[4].len == 1 && g.c[4].ch[0] == ' ' && g.c[4].attr == ATTR_DIM && g.c[4].face == FACE_COMMENT && g.c[4].bg == FACE_HEADING_1_BG) failed
+caught        grid: the store never emptied   (make test TESTS=grid_diff): tests/test_grid_diff.c:369: CHECK(grid_frame() && !grid_frame()) failed
+caught        grid: a changed background layer is an equal cell   (make test TESTS=grid_diff): tests/test_grid_diff.c:278: CHECK(0) failed
+caught        warning (gcc and clang -Werror)   (make compilers): src/main.c:50:7: error: unused variable 'unused' [-Werror=unused-variable]
+caught        specs: save renames without fsync (Save2)   (make specs): Save2_fsync.cfg          want pass got fail WRONG
+caught        conform: a known entry whose example makes the driver fail   (make conform CONFORM_N=50 SEED=1): 50 sequences (seed 1): 1 differ from Neovim
+caught        keys: w does not stop on an empty line (live nvim)   (make conform CONFORM_N=2000 SEED=1): 2000 sequences (seed 1): 9 differ from Neovim
+caught        loop: blocking writes to a child (Pipe_block)   (make test TESTS=loop IDLE_SECONDS=2): test_loop: CHECK(no hang) failed: a test ran over 60 s
+caught        loop: no SIGKILL after an ignored SIGTERM   (make test TESTS=loop IDLE_SECONDS=2): test_loop: CHECK(no hang) failed: a test ran over 60 s
+caught        loop: pipe ends leak into later children   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:54: CHECK(ms() < end) failed
+caught        loop: an idle loop wakes every second   (make test TESTS=loop): tests/test_loop.c:326: CHECK(b - a == 0) failed
+caught        loop: a write of 0 bytes copies to a null queue   (make test TESTS=loop IDLE_SECONDS=2): src/loop/loop.c:208:2: runtime error: null pointer passed as argument 1, which is declared to never be null
+caught        loop: loop_waiting runs the read functions   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:276: CHECK(write(input[1], "x", 1) == 1 && loop_waiting() && loop_waiting()) failed
+caught        loop: SIGKILL reaches the child but not its group   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:192: CHECK(dead(grandchild)) failed
+caught        loop: win: loop_waiting takes an auto-reset signal and forgets it   (make win WIN=loop): tests/test_loop_win.c:335: CHECK(loop_waiting() && loop_waiting() && ran[1] == 1) failed
+caught        loop: win: a message seen but left queued does not wake the loop   (make win WIN=loop): tests/test_loop_win.c:358: CHECK(loop_once(1000) == 0 && ran[2] == 2 && ms() - t0 < 500) failed
+caught        loop: win: the pipes stay open after the exit   (make win WIN=loop): tests/test_loop_win.c:287: CHECK(h && WaitForSingleObject(h, 3000) == WAIT_OBJECT_0 && GetExitCodeProcess(h, &code) && code == 1) failed
+caught        loop: win: loop_breakcheck never looks at input   (make win WIN=loop): tests/test_loop_win.c:346: CHECK(ran[0] == 3 && ran[1] == 2) failed
+caught        org: a headline ends only at a shallower one (fuzz)   (make fuzz FUZZERS=org FUZZ_SECONDS=30): ==4101== ERROR: libFuzzer: deadly signal
+caught        org: org_edit stops its span before a new shallower headline's subtree ends (fuzz)   (make fuzz FUZZERS=org FUZZ_SECONDS=30): ==4910== ERROR: libFuzzer: deadly signal
+caught        syntax: a priority tie goes to the earlier capture (test_syntax)   (make test TESTS=syntax): 	CHECK(!core_edit(&e, 0, 0, "x\xcc\x81\t", 4));
+caught        syntax: a dropped region's tree leaks (fuzz_syntax)   (make fuzz FUZZERS=syntax FUZZ_SECONDS=60): ==8102==ERROR: LeakSanitizer: detected memory leaks
+caught        syntax: the old tree is freed in one go, without asking stop (test_syntax, release in steps)   (make test TESTS=syntax): tests/test_syntax.c:408: CHECK(steps > 1) failed
+caught        syntax: the frame after a key recomputes only the edited bytes (test_syntax, frames before a parse)   (make test TESTS=syntax): tests/test_syntax.c:296: CHECK(!memcmp(f, g, n)) failed
+caught        syntax: a new tree keeps the cached faces (test_syntax, scrolling while stopped)   (make test TESTS=syntax): tests/test_syntax.c:219: CHECK(!memcmp(f, g, p2)) failed
+caught        syntax: an edit that ends where a region now starts makes it parse again, which Neovim does not (test_syntax, edit before a region)   (make test TESTS=syntax): tests/test_syntax.c:347: CHECK(!memcmp(f, g, n)) failed
+caught        text: line start one past the line   (make test TESTS=text): tests/test_text.c:18: CHECK(text_line_start(t, l) == i) failed
+caught        text: one memchr per line in a leaf (lookups among empty lines 37 times dearer)   (make test TESTS=text_rope): tests/test_text_rope.c:157: CHECK(dense < 4 * sparse) failed
+caught        matcher: no filename bonus   (make test TESTS=tools_match): tests/test_tools_match.c:58: CHECK(cases > 0 && !bad) failed
+caught        picker: a buffer's file listed again by fd/rg   (make test TESTS=tools_pick): FAIL test_tools_pick
+caught        oil: link targets compared with their trailing /   (make test TESTS=tools_oil): tests/test_tools_oil.c:241: CHECK(cases > 0 && !bad) failed
+caught        oil: a failed copy leaves the new file   (make test TESTS=tools_oil): tests/test_tools_oil.c:241: CHECK(cases > 0 && !bad) failed
+caught        oil: errors in strerror's words   (make test TESTS=tools_oil): tests/test_tools_oil.c:241: CHECK(cases > 0 && !bad) failed
+caught        oil: "/" alone is a name   (make test TESTS=tools_oil): tests/test_tools_oil.c:241: CHECK(cases > 0 && !bad) failed
+caught        oil: a parent copied into itself is allowed   (make test TESTS=tools_oil): tests/test_tools_oil.c:207: CHECK(oil_actions(2, dirs, text, len, &act, &err, &nerr) < 0 && nerr == 1) failed
+caught        oil: a link target's icon ignores the trailing /   (make test TESTS=tools_oil): tests/test_tools_oil.c:241: CHECK(cases > 0 && !bad) failed
+caught        tty: a frame outside a synchronized update   (make test TESTS=grid_diff): tests/test_grid_diff.c:278: CHECK(0) failed
+caught        tty: an Esc alone is sent at once   (make test TESTS=tty_input): tests/test_tty_input.c:131: CHECK(0) failed
+caught        Ctrl-Z: the screen is not redrawn whole after fg   (make test TESTS=tty_render): tests/test_tty_render.c:233: CHECK(frames(&t, from, outn, 0, &nf) == resized_want) failed
+caught        tty: close leaves the terminal raw   (make test TESTS=tty_render): tests/test_tty_render.c:252: CHECK(!tcgetattr(m, &tio) && (tio.c_lflag & ICANON) && (tio.c_lflag & ECHO)) failed
+caught        tty: erase under the last frame's attribute   (make test TESTS=grid_diff): tests/test_grid_diff.c:278: CHECK(0) failed
+caught        tty: foreground channels in the wrong order   (make test TESTS=grid_diff): tests/test_grid_diff.c:278: CHECK(0) failed
+caught        tty: a cluster's ambiguity read from the cell's number   (make test TESTS=grid_diff): tests/test_grid_diff.c:282: CHECK(t.prints - before == want) failed
+caught        tty: the background layer is not drawn   (make test TESTS=grid_diff): tests/test_grid_diff.c:278: CHECK(0) failed
+caught        undo tree: a jump does not make its branch first, so Ctrl-R takes another   (make undo-diff UNDO_N=1000): undo_conform: 1000 sequences of 60 ops, undolevels 1000, seed 1: 970 differ from Neovim
+caught        undo cap: 1,000 changes kept instead of 1,001   (make test TESTS=undo_file): tests/test_undo_file.c:218: CHECK(n == 1001 && text_len(t) == 1499 && undo_seq(u) == 0) failed
+caught        undo hook: told after the change instead of before   (make fuzz FUZZERS=undo FUZZ_SECONDS=30): ==11047== ERROR: libFuzzer: deadly signal
+caught        undo: flags after an undo are the group's after   (make test TESTS=undo_span): tests/test_undo_span.c:32: CHECK(w->flags == w->cur.flags && w->cur.flags == g % 2) failed
+caught        undo: Linux's fsync called on Windows (the Windows compile check)   (make compilers): src/undo/undo.c:520:19: error: call to undeclared function 'fsync'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+caught        frama-c: the UTF-8 kernel returns 1 (weak contract trap)   (make frama): [wp] Proved goals:  228 / 229
+caught        frama-c: uni_gprev stops one cluster early   (make frama): [wp] Proved goals:  228 / 229
+caught        uni: GB9c Linker Extend state dropped   (make test TESTS=uni_nvim): tests/test_uni_nvim.c:194: CHECK(at == i && w == (unsigned long)uni_width(s, n, i)) failed
+caught        uni: CR and an overlong LF split (GB3)   (make test TESTS=uni_nvim): tests/test_uni_nvim.c:194: CHECK(at == i && w == (unsigned long)uni_width(s, n, i)) failed
+caught        win: the cursor is not drawn reversed   (make win WIN=win): tests/test_win.c:162: CHECK(at(2, 2) == REV && at(1, 1) == BG) failed
+caught        win: only a cluster's first code point drawn   (make win WIN=win): tests/test_win.c:226: CHECK(g.c[10 * g.cols + 1].len == 9 && inked(10, 1) > inked(9, 1)) failed
+caught        win: Right sent as Left   (make win WIN=win): tests/test_win.c:141: CHECK(k[0] == 'a' && k[1] == 0x1D4DD && k[2] == KEY_BS && k[3] == KEY_ESC && k[4] == 0xE9 && k[5] == KEY_ENTER && k[6] == KEY_LEFT && k[7] == KEY_RIGHT && k[8] == KEY_UP && k[9] == KEY_DOWN && k[10] == KEY_DEL) failed
+caught        win: wheel up sent as down   (make win WIN=win): tests/test_win.c:174: CHECK(input(k, 8) == 3 && k[0] == KEY_WHEEL_UP && k[1] == KEY_WHEEL_UP && k[2] == KEY_WHEEL_DOWN) failed
+caught        win: clipboard get writes past max   (make win WIN=win): tests/test_win.c:189: CHECK(b->clip_get(buf, 3) == (long)sizeof clip - 1 && !memcmp(buf, clip, 3) && !buf[3]) failed
+caught        win: face backgrounds ignored   (make win WIN=win): tests/test_win.c:227: CHECK(count(8, 1, RGB(faces[FACE_COMMENT_TODO].bg[0], faces[FACE_COMMENT_TODO].bg[1], faces[FACE_COMMENT_TODO].bg[2])) == cw * ch) failed
+caught        win: the close button destroys the window   (make win WIN=win): tests/test_win.c:237: CHECK(input(k, 4) == 1 && k[0] == KEY_CLOSE && IsWindow(win)) failed
+caught        win: no pacing   (make win WIN=win): tests/test_win.c:250: CHECK(!b->ready()) failed
+caught        win: pacing timer keeps firing when idle   (make win WIN=win): tests/test_win.c:258: CHECK(WaitForSingleObject((HANDLE)(INT_PTR)fds[1], 200) == WAIT_TIMEOUT) failed
+caught        specs: Pace with frames only P + D apart   (make specs): Pace_ok.cfg              want pass got fail WRONG
+caught        wl: seat not listened to   (make test TESTS=wl): tests/test_wl.c:347: CHECK(nkeys - k0 == 8) failed
+caught        wl: preedit not redrawn   (make test TESTS=wl): tests/test_wl.c:406: CHECK(count(KEY_RESIZE, k0) == 1) failed
+caught        wl: mouse row from x   (make test TESTS=wl): tests/test_wl.c:456: CHECK(mr == 300 / cellh() && mc == 500 / cellw()) failed
+caught        wl: changed cells not drawn   (make test TESTS=wl): tests/test_wl.c:105: CHECK(WIFEXITED(st) && !WEXITSTATUS(st)) failed
+caught        wl: glyph cut at its cell   (make test TESTS=wl): tests/test_wl.c:321: CHECK(ink(cellw(), 0, cellw(), cellh(), 0)) failed
+caught        wl: long cluster read from the cell   (make test TESTS=wl): tests/test_wl.c:338: CHECK(ink(0, 0, 2 * cellw(), cellh(), 1) > cellw() * cellh() / 4) failed
+caught        wl: lost compositor ignored   (make test TESTS=wl): tests/test_wl.c:509: CHECK(backend_wl.input(keys + nkeys, 64) == -1) failed
+caught        core: undo does not bring back the group's marks (test_core_undo)   (make test TESTS=core_undo): tests/test_core_undo.c:79: CHECK(core_undo(&e, 0) >= 0 && e.buf->mark[0].line == 2 && e.buf->mark[0].col == 0) failed
+caught        core: the popup leaves no space before kind and menu (recorded traces)   (make test TESTS=core_screens): test_core_screens: 30 of 3028 screens differ from Neovim (30 of 320 cases)
+caught        core: the face of a cell past a shrunk screen is written (fuzz_core)   (make fuzz FUZZERS=core FUZZ_SECONDS=120): FAIL fuzz_core
+caught        core: closing the last window quits with unsaved changes (test_core_contract)   (make test TESTS=core_contract): tests/test_core_contract.c:100: CHECK(core_close(&e, 0) == -1 && !e.quit && strstr(e.msg, "E37")) failed
+caught        core: a taller command line keeps the wanted column (finding 2) (test_core_screens)   (make test TESTS=core_screens): test_core_screens: 1 of 3028 screens differ from Neovim (1 of 320 cases)
+caught        core: plines_col counts bytes again (finding 5) (test_core_screens)   (make test TESTS=core_screens): test_core_screens: 1 of 3028 screens differ from Neovim (1 of 320 cases)
+caught        core: a save leaves the outside-change flag set (test_core_contract)   (make test TESTS=core_contract): tests/test_core_contract.c:135: CHECK(!core_edit(&e, 0, 0, "z", 1) && !strstr(e.msg, "W11")) failed
+caught        core: the cursor line's height less skipcol (test_core_screens)   (make test TESTS=core_screens): test_core_screens: 1 of 3028 screens differ from Neovim (1 of 320 cases)
+caught        core: entering a buffer keeps the sideways scroll valid (test_core_screens)   (make test TESTS=core_screens): test_core_screens: 1 of 3028 screens differ from Neovim (1 of 320 cases)
+caught        core: an indented heading is not drawn (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 300 render-markdown screens: 71 differ
+caught        core: a heading's background starts at its marker, not its indent (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 300 render-markdown screens: 71 differ
+caught        core: the cursor line's heading drawn (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 300 render-markdown screens: 68 differ
+caught        file: rename without fsync (Save2_nofsync)   (make test TESTS=file_save): tests/test_file_save.c:268: CHECK(sy > ws && x > sy && first('s', -1, x, n) > x) failed
+caught        file: in place without the recheck after the copy   (make test TESTS=file_save): tests/test_file_save.c:446: CHECK(lost[k] - 1 > check2 && lost[k] - 1 <= fin) failed
+caught        file: read-only directory refused   (make test TESTS=file_save): tests/test_file_save.c:336: CHECK(!load(&id) && save(s2, &id, kept) == SAVE_OK && is(path, OLD)) failed
+caught        journal: torn tail left before appending   (make test TESTS=file_journal): tests/test_file_journal.c:249: CHECK(journal_open(path, &j, &t, &st, &id) == 1 && equal(t, &m) && st == 5 && same_id(&id, &m.id)) failed
+caught        journal: sync without fdatasync   (make test TESTS=file_journal): tests/test_file_journal.c:383: CHECK(datasyncs == 1 && fsyncs == 1 && journal_due(j) == -1) failed
+caught        core wiring: journal kept after a save   (make test TESTS=file_core): tests/test_file_core.c:171: CHECK(!stat(jname, &sb) && sb.st_size == 0) failed
+caught        journal: no new base after a failed append (review of PR 16, 2)   (make test TESTS=file_journal): tests/test_file_journal.c:402: CHECK(journal_edit(j, 0, 0, "h", 1, 7) == -1) failed
+caught        file: backup's directory not fsynced (review of PR 16, 6)   (make test TESTS=file_save): tests/test_file_save.c:279: CHECK(ds) failed
+caught        journal: an edit appended without a base (review of PR 16, 2)   (make test TESTS=file_journal): tests/test_file_journal.c:402: CHECK(journal_edit(j, 0, 0, "h", 1, 7) == -1) failed
+caught        win: watch never reports   (make win WIN=file): tests/test_file_win.c:210: CHECK(file_watch_read(fd, path, &id) == 1) failed
+caught        win: journal name by the path's case   (make win WIN=file): tests/test_file_win.c:341: CHECK(journal_open(up, &j, &t, &st, &id) == 1 && text_len(t) == 5) failed
+caught        font: a font must have joiners and selectors (rainbow flag)   (make test TESTS=font): tests/test_font.c:162: CHECK(shape(emoji[i]) == 1) failed
+caught        font: emptied cache keeps its count (refill)   (make test TESTS=font): tests/test_font.c:89: CHECK(ink(o[j].g)) failed
+caught        font: pen not reset per cluster (fuzz_font)   (make fuzz FUZZERS=font FUZZ_SECONDS=60): ==24728== ERROR: libFuzzer: deadly signal
+caught        grid: a size that overflows is accepted   (make test TESTS=grid_diff): ==25725==ERROR: AddressSanitizer: out of memory: allocator is trying to allocate 0x800000000 bytes
+caught        grid: resize keeps the cursor   (make test TESTS=grid_diff): tests/test_grid_diff.c:329: CHECK(!grid_resize(&g, 2, 2) && !g.crow && !g.ccol) failed
+caught        grid: a long cluster cut inside a code point   (make test TESTS=grid_diff): tests/test_grid_diff.c:345: CHECK(g.c[3].len == 28 && !memcmp(grid_text(&g.c[3]), chain, 28) && !g.c[4].len) failed
+caught        grid: a full store reuses a slot   (make test TESTS=grid_diff): tests/test_grid_diff.c:376: CHECK(g.c[6].len == 3 && !memcmp(g.c[6].ch, "\xef\xbf\xbd", 3)) failed
+caught        grid: the '>' loses the background layer of the half it replaces   (make test TESTS=grid_diff): tests/test_grid_diff.c:314: CHECK(g.c[1].len == 1 && g.c[1].ch[0] == '>' && g.c[1].attr == ATTR_REV && g.c[1].face == FACE_STRING && g.c[1].bg == FACE_CURSOR_LINE && g.c[2].ch[0] == 'x') failed
+caught        undo tree oracle: Ctrl-R to the first child   (make undo-diff UNDO_N=2000): sequences 2000, length 30: 537 differ from the model; first differing op: {'r': 537}; nvim same-number-different-text: 0
+caught        main loop: input read past a full queue between commands   (make test TESTS=): FAIL paste
+caught        main loop: a hang-up loses the unsaved text (journal not on disk)   (make test TESTS=): FAIL hup
+caught        keys: l steps one byte, into a character (fuzz_keys)   (make fuzz FUZZERS=keys FUZZ_SECONDS=60): ==13996== ERROR: libFuzzer: deadly signal
+caught        loop: the exit waits for the pipes' end (Exit_waiteof)   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:54: CHECK(ms() < end) failed
+caught        loop: poll sleeps past a SIGKILL that is due   (make test TESTS=loop IDLE_SECONDS=2): test_loop: CHECK(no hang) failed: a test ran over 60 s
+caught        loop: a timer wakes before it is due   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:239: CHECK(fired[1] == 1 && !fired[0] && ms() - t0 >= 200) failed
+caught        loop: a full timer table not reported   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:244: CHECK(loop_timer(tick, &slot[16], 1000) == -1) failed
+caught        loop: stdin kept after a failed write   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:400: CHECK(passes < 10 && g.code == 0) failed
+caught        loop: a freed slot keeps its SIGKILL deadline (kill(-0) hits the editor)   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:209: CHECK(waitpid(ed, &st, 0) == ed && WIFEXITED(st) && WEXITSTATUS(st) == 0) failed
+caught        loop: win: the exit drops what the pipes still hold   (make win WIN=loop): tests/test_loop_win.c:180: CHECK(g.code == 0 && g.nout == N && !memcmp(g.out, in, N) && !g.nerr) failed
+caught        loop: win: only the handle the wait names runs, not every ready watch   (make win WIN=loop): tests/test_loop_win.c:331: CHECK(loop_once(1000) == 0 && ran[0] == 1 && ran[1] == 1) failed
+caught        loop: win: proc_kill ends the child but not what it started   (make win WIN=loop): tests/test_loop_win.c:271: CHECK(!alive(gc)) failed
+caught        loop: win: a finished write is written again   (make win WIN=loop): tests/test_loop_win.c:149: CHECK(ms() < end) failed
+caught        loop: win: an idle loop wakes every 100 ms   (make win WIN=loop): tests/test_loop_win.c:234: CHECK(passes < 10 && g.code == 0) failed
+caught        org: checkbox [x] not folded to [X] (against Org)   (make org-conform ORG_N=2000 SEED=1): 133 of 2000 differ (Org failed on 0)
+caught        org: org_edit starts its span at a headline whose line the edit touches (fuzz)   (make fuzz FUZZERS=org FUZZ_SECONDS=30): ==30455== ERROR: libFuzzer: deadly signal
+caught        syntax: not- predicates are not negated (test_syntax)   (make test TESTS=syntax): 	CHECK(!core_edit(&e, 0, 0, "x\xcc\x81\t", 4));
+caught        syntax: an edit leaves injected regions where they were (test_syntax, frames before a parse)   (make test TESTS=syntax): tests/test_syntax.c:347: CHECK(!memcmp(f, g, n)) failed
+caught        syntax: a released tree's children are never freed (test_syntax, LeakSanitizer)   (make test TESTS=syntax): tests/test_syntax.c:408: CHECK(steps > 1) failed
+caught        syntax: an edit leaves the cached faces where they were (test_syntax, frames before a parse)   (make test TESTS=syntax): tests/test_syntax.c:296: CHECK(!memcmp(f, g, n)) failed
+caught        syntax: two edits before one frame, the later at byte 0, leave byte 0 out of the recompute (test_syntax, edits then frame: zero.c)   (make test TESTS=syntax): tests/test_syntax.c:296: CHECK(!memcmp(f, g, n)) failed
+caught        text: join threshold a quarter, not half (shape)   (make test TESTS=text_rope): tests/test_text_rope.c:34: CHECK(root ? (!h || x->n >= 2) : x->n >= c / 2) failed
+caught        text: newline count skips the block tail   (make test TESTS=text): tests/test_text.c:19: CHECK(text_line_of(t, i) == l) failed
+caught        text: nls tail loop misses the last byte (frama-c)   (make frama): [wp] Proved goals:  229 / 229
+caught        picker: longer texts first on a tie   (make test TESTS=tools_pick): FAIL test_tools_pick
+caught        oil: a link to a directory shown without the trailing /   (make test TESTS=tools_oil): tests/test_tools_oil.c:241: CHECK(cases > 0 && !bad) failed
+caught        oil: a directory's children waited on in list order, not name order   (make test TESTS=tools_oil): tests/test_tools_oil.c:241: CHECK(cases > 0 && !bad) failed
+caught        oil: a broken link forgets its target was a directory   (make test TESTS=tools_oil): tests/test_tools_oil.c:241: CHECK(cases > 0 && !bad) failed
+caught        oil: a move that cannot rename fails instead of copying   (make test TESTS=tools_oil): tests/test_tools_oil.c:182: CHECK(!mkdir(p, 0755) || !strcmp(name, "sub")) failed
+caught        oil: a link target ending in / gets another   (make test TESTS=tools_oil): tests/test_tools_oil.c:241: CHECK(cases > 0 && !bad) failed
+caught        oil: natural order kept above 5,000 entries   (make test TESTS=tools_oil): tests/test_tools_oil.c:226: CHECK(!strncmp(l, n == 5000 ? "f2\n" : "f10\n", n == 5000 ? 3 : 4)) failed
+caught        oil: a relisted name gets a new id   (make test TESTS=tools_oil): tests/test_tools_oil.c:241: CHECK(cases > 0 && !bad) failed
+caught        tty: no blanks before a non-ASCII wide character   (make test TESTS=grid_diff): tests/test_grid_diff.c:282: CHECK(t.prints - before == want) failed
+caught        tty: a key cut by a read is not kept   (make test TESTS=tty_input): tests/test_tty_input.c:131: CHECK(0) failed
+caught        tty: a resize while suspended is not seen   (make test TESTS=tty_render): tests/test_tty_render.c:106: CHECK(0) failed
+caught        tty: the read ignores the slot count   (make test TESTS=tty_input): tests/test_tty_input.c:131: CHECK(0) failed
+caught        tty: the cursor shown while drawing   (make test TESTS=grid_diff): tests/test_grid_diff.c:278: CHECK(0) failed
+caught        tty: a face's background not sent   (make test TESTS=grid_diff): tests/test_grid_diff.c:278: CHECK(0) failed
+caught        tty: Delete dropped as an unknown sequence   (make test TESTS=tty_input): tests/test_tty_input.c:131: CHECK(0) failed
+caught        tty: a wrong colour for a UI face (the status line's)   (make test TESTS=grid_diff): tests/test_grid_diff.c:278: CHECK(0) failed
+caught        undo tree: :earlier Ns stops on the closest change, not above it   (make undo-diff UNDO_N=1000): undo_conform: 1000 sequences of 60 ops, undolevels 1000, seed 1: 902 differ from Neovim
+caught        undo file: a change that does not apply is accepted   (make test TESTS=undo_file): tests/test_undo_file.c:54: CHECK(s == 0) failed
+caught        undo file test: the clock ticks between the two copies' ops   (make test TESTS=undo_file): tests/test_undo_file.c:63: CHECK(n == all(b, y) && !memcmp(x, y, n) && undo_seq(ua) == undo_seq(ub)) failed
+caught        undo file: the saved cursor is lost   (make test TESTS=undo_span): tests/test_undo_span.c:30: CHECK(g >= 1 && g < MAXG && w->cur.col == g * 3 % 11) failed
+caught        undo: a count held in long, 32 bits on Windows (the Windows compile check)   (make compilers): src/undo/undo.c:275:11: error: result of comparison of constant 1099511627776 with expression of type 'long' is always false [-Werror,-Wtautological-constant-out-of-range-compare]
+caught        frama-c: uni_prev always steps one byte back (weak contract trap)   (make frama): [wp] Proved goals:  213 / 216
+caught        frama-c: VS16 does not widen an emoji   (make frama): [wp] Proved goals:  228 / 229
+caught        uni: an invalid lead byte joins what follows (fuzz_uni)   (make fuzz FUZZERS=uni FUZZ_SECONDS=60): ==27909== ERROR: libFuzzer: deadly signal
+caught        win: every cell drawn every frame   (make win WIN=win): tests/test_win.c:194: CHECK(at(0, 0) == RED && at(2, 2) == RED && at(rows - 1, cols - 1) == RED) failed
+caught        win: Backspace sent as 8   (make win WIN=win): tests/test_win.c:141: CHECK(k[0] == 'a' && k[1] == 0x1D4DD && k[2] == KEY_BS && k[3] == KEY_ESC && k[4] == 0xE9 && k[5] == KEY_ENTER && k[6] == KEY_LEFT && k[7] == KEY_RIGHT && k[8] == KEY_UP && k[9] == KEY_DOWN && k[10] == KEY_DEL) failed
+caught        win: a lone low surrogate makes a key   (make win WIN=win): test_win: FAIL, exception 0xc000001d
+caught        win: Delete sends nothing   (make win WIN=win): tests/test_win.c:139: CHECK(input(k, 1) == 11) failed
+caught        win: wheel position left in screen coordinates   (make win WIN=win): tests/test_win.c:176: CHECK(r == 1 && c == 4) failed
+caught        win: no glyph drawn, only cell backgrounds   (make win WIN=win): tests/test_win.c:221: CHECK(inked(4, 1) > 0 && inked(4, 1) < cw * ch) failed
+caught        win: a wide character drawn one cell wide   (make win WIN=win): tests/test_win.c:225: CHECK(count(7, 2, REV) > cw * ch / 2 && count(7, 3, REV) == 0) failed
+caught        win: the close button gives no key   (make win WIN=win): tests/test_win.c:237: CHECK(input(k, 4) == 1 && k[0] == KEY_CLOSE && IsWindow(win)) failed
+caught        win: pacing without the margin over the period   (make win WIN=win): tests/test_win.c:252: CHECK(p > 0 && t1.QuadPart - t0.QuadPart >= p + p / 8) failed
+caught        win: draws while minimised   (make win WIN=win): tests/test_win.c:263: CHECK(IsIconic(win) && !b->ready()) failed
+caught        wl: draws before the frame callback   (make test TESTS=wl): tests/test_wl.c:142: CHECK(!backend_wl.ready()) failed
+caught        wl: clipboard sends one byte short   (make test TESTS=wl): tests/test_wl.c:105: CHECK(WIFEXITED(st) && !WEXITSTATUS(st)) failed
+caught        wl: fractional scale ignored   (make test TESTS=wl): tests/test_wl.c:472: CHECK(count(KEY_RESIZE, k0) >= 1 && cellh() > ch1) failed
+caught        wl: a key per two notches   (make test TESTS=wl): tests/test_wl.c:453: CHECK(nkeys - k0 == 4 && keys[k0] == KEY_MOUSE_LEFT && keys[k0 + 1] == KEY_WHEEL_DOWN && keys[k0 + 2] == KEY_WHEEL_UP && keys[k0 + 3] == KEY_WHEEL_DOWN) failed
+caught        wl: cursor move not drawn   (make test TESTS=wl): tests/test_wl.c:105: CHECK(WIFEXITED(st) && !WEXITSTATUS(st)) failed
+caught        wl: changed span not widened left   (make test TESTS=wl): tests/test_wl.c:105: CHECK(WIFEXITED(st) && !WEXITSTATUS(st)) failed
+caught        wl: damage only rows drawn   (make test TESTS=wl): tests/test_wl.c:105: CHECK(WIFEXITED(st) && !WEXITSTATUS(st)) failed
+caught        core: redo of a join forgets the joined line (test_core_undo)   (make test TESTS=core_undo): tests/test_core_undo.c:45: CHECK(core_undo(&e, 1) >= 0 && core_lines(&e) == 3 && e.win->line == 2) failed
+caught        core: CTRL-F overlaps one line too many (recorded traces)   (make test TESTS=core_screens): test_core_screens: 12 of 3028 screens differ from Neovim (8 of 320 cases)
+caught        core: an undone insert at a line start counts as lines removed (test_core_undo)   (make test TESTS=core_undo): tests/test_core_undo.c:61: CHECK(core_undo(&e, 0) == 0 && e.win->line == 1) failed
+caught        core: the command line is drawn one cell to the right (test_core_contract)   (make test TESTS=core_contract): tests/test_core_contract.c:72: CHECK(c[0].len == 1 && c[0].ch[0] == ':' && c[1].ch[0] == 's' && c[2].len == 2 && c[3].ch[0] == 'x') failed
+caught        core: a new buffer does not get the window's :set wrap (finding 4) (test_core_screens)   (make test TESTS=core_screens): test_core_screens: 7 of 3028 screens differ from Neovim (1 of 320 cases)
+caught        core: a reused buffer keeps the old undo marks (finding 7) (test_core_undo)   (make test TESTS=core_undo): tests/test_core_undo.c:97: CHECK(core_undo(&e, 0) >= 0 && core_undo(&e, 1) >= 0 && e.win->line == 1) failed
+caught        core: CTRL-^ onto column 0 wants column 0 even without a position (test_core_screens)   (make test TESTS=core_screens): test_core_screens: 2 of 3028 screens differ from Neovim (2 of 320 cases)
+caught        core: the sideways scroll redone for an unmoved cursor (test_core_screens)   (make test TESTS=core_screens): test_core_screens: 3 of 3028 screens differ from Neovim (3 of 320 cases)
+caught        core: a composing character at a cluster start is drawn without its space (test_core_screens)   (make test TESTS=core_screens): test_core_screens: 2 of 3028 screens differ from Neovim (1 of 320 cases)
+caught        core: a setext heading's text after an inline face is drawn as a marker (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 300 render-markdown screens: 3 differ
+caught        core: a heading's icon keeps the text's colour (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 300 render-markdown screens: 196 differ
+caught        core: a heading marker cut at the window's edge is not read on (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 300 render-markdown screens: 15 differ
+caught        file: identity by path after the swap (review 0, finding 3)   (make test TESTS=file_save): tests/test_file_save.c:434: CHECK(nl == 0) failed
+caught        file: in place, torn file not put back   (make test TESTS=file_save): tests/test_file_save.c:369: CHECK(waitpid(p, &w, 0) == p && WIFEXITED(w) && WEXITSTATUS(w) == 0) failed
+caught        file: watch on the file, not its directory   (make test TESTS=file_save): tests/test_file_save.c:393: CHECK(poll(&pf, 1, 1000) == 1 && file_watch_read(fd, path, &id) == 0) failed
+caught        journal: no lock   (make test TESTS=file_journal): tests/test_file_journal.c:309: CHECK(journal_open(path, &j, &t, &st, &id) == -1 && errno == EWOULDBLOCK) failed
+caught        journal: directory never fsynced   (make test TESTS=file_journal): tests/test_file_journal.c:383: CHECK(datasyncs == 1 && fsyncs == 1 && journal_due(j) == -1) failed
+caught        core wiring: flags not journalled   (make test TESTS=file_core): tests/test_file_core.c:89: CHECK(sb == sa && !memcmp(a, b, sa)) failed
+caught        journal: a record that does not apply blocks the journal (review of PR 16, 2)   (make test TESTS=file_journal): tests/test_file_journal.c:427: CHECK(journal_open(path, &j, &x, &st, &id) == 1 && st == 7 && text_len(x) == text_len(t)) failed
+caught        core wiring: recovery requires the old identity (review of PR 16, 3)   (make test TESTS=file_core): tests/test_file_core.c:154: CHECK(!core_open(&e, path) && (e.buf->flags & CORE_EMPTY) && !core_modified(e.buf)) failed
+caught        win: ReplaceFileW instead of the rename (caught under Wine, whose ReplaceFileW is three renames; on Windows maybe not)   (make win WIN=file): tests/test_file_win.c:173: CHECK(sh || (n == strlen(big) && !memcmp(b, big, n))) failed
+caught        win: journal without the lock   (make win WIN=file): tests/test_file_win.c:322: CHECK(journal_open(path, &j, &t, &st, &id) == -1 && errno == EWOULDBLOCK) failed
+caught        win: journal left after a clean close   (make win WIN=file): tests/test_file_win.c:294: CHECK(GetFileAttributesA(jname) == INVALID_FILE_ATTRIBUTES) failed
+caught        font: emoji stay in the first font that has them (colour)   (make test TESTS=font): tests/test_font.c:169: CHECK(shape("\xf0\x9f\x98\x80") == 1 && o[0].g->color) failed
+caught        font: clusters as code point indexes   (make test TESTS=font): tests/test_font.c:153: CHECK(shape("a\xcc\x81\xcc\xa3" "b") >= 2 && o[0].cluster == 0 && o[shape("a\xcc\x81\xcc\xa3" "b") - 1].cluster == 5) failed
+caught        font: HarfBuzz buffer grown while drawing (0 allocations on a longer run)   (make test TESTS=font): tests/test_font.c:210: CHECK(allocs == 0 && n == 2000) failed
+caught        grid: widths other than 1 and 2 accepted   (make test TESTS=grid_diff): tests/test_grid_diff.c:325: CHECK(!grid_put(&g, 0, 0, wide, 3, 0, ATTR_NONE) && !grid_put(&g, 0, 0, wide, 3, 3, ATTR_NONE)) failed
+caught        grid: a changed face is an equal cell   (make test TESTS=grid_diff): tests/test_grid_diff.c:278: CHECK(0) failed
+caught        grid: equal clusters get new numbers   (make test TESTS=grid_diff): tests/test_grid_diff.c:343: CHECK(g.c[1].len == 11 && !memcmp(grid_text(&g.c[1]), chars[11], 11) && grid_cell_eq(&g.c[1], &g.c[7])) failed
+caught        grid: a 31-byte cluster cut   (make test TESTS=grid_diff): ==27717==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x50300000014f at pc 0x55d0bf8005d5 bp 0x7ffc128b76e0 sp 0x7ffc128b76d0
+caught        grid: a put keeps the old background layer   (make test TESTS=grid_diff): tests/test_grid_diff.c:278: CHECK(0) failed
+caught        lean: inv_inv states something false   (make lean): design/proofs/Undo.lean:37:64: error: Tactic `rfl` failed: The left-hand side
+caught        conform: a known difference that Neovim now matches   (make conform CONFORM_N=50 SEED=1): 50 sequences (seed 1): 1 differ from Neovim
+caught        wincc: a warning only the Windows branch of main.c has   (make wincc): src/main.c:62:6: error: unused variable 'unused' [-Werror,-Wunused-variable]
+caught        keys: Delete at the end of the last line makes no undo step (recorded traces)   (make test TESTS=): 1027 sequences: 2 differ from Neovim
+caught        loop: output pending at the exit dropped (Exit_early)   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:223: CHECK(g.code == 0 && g.nout == 500000) failed
+caught        loop: SIGPIPE kills the editor   (make test TESTS=loop IDLE_SECONDS=2): FAIL test_loop
+caught        loop: no input read inside a command (Break_nocheck)   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:275: CHECK(!loop_waiting()) failed
+caught        loop: queued bytes lost when the queue grows   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:87: CHECK(g.code == 0 && g.nout == N && !memcmp(g.out, in, N) && !g.nerr) failed
+caught        loop: a watch removed by a callback still runs (loop_once)   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:455: CHECK(!ran_b) failed
+caught        loop: the pipes stay open after the exit   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:364: CHECK(open_fds() == fds) failed
+caught        loop: win: a completion routine re-arms its read, so a flood holds loop_once (review of PR 41, 1)   (make win WIN=loop): tests/test_loop_win.c:420: CHECK(worst < 100 && most <= 1 << 16 && key_at && key_at - t0 < 400) failed
+caught        loop: win: pipe APCs run inside a command (alertable breakcheck)   (make win WIN=loop): tests/test_loop_win.c:382: CHECK(!fired[3] && !g.nout && !g.ended[1]) failed
+caught        loop: win: a killed child exits 1, not 128 + SIGTERM   (make win WIN=loop): tests/test_loop_win.c:269: CHECK(g.code == 128 + 15 && ms() - t0 < 500) failed
+caught        loop: win: backslashes before a quote are not doubled   (make win WIN=loop): tests/test_loop_win.c:210: CHECK(g.code == 0 && g.nout == sizeof want - 1 && !memcmp(g.out, want, sizeof want - 1)) failed
+caught        loop: win: proc_write blocks until the pipe takes it all   (make win WIN=loop): FAIL test_loop_win
+caught        org: tags take [[:word:]] for [[:alnum:]] above ASCII   (make test TESTS=org): tests/test_org.c:669: CHECK(!strcmp(got, cases[i].want)) failed
+caught        org: planning reads a repeater's unit case-folded (against Org)   (make org-conform ORG_N=2000 SEED=1): 151 of 2000 differ (Org failed on 0)
+caught        syntax: an edit keeps a stopped parse going on the changed text (test_syntax, edit while stopped)   (make test TESTS=syntax): tests/test_syntax.c:259: CHECK(!memcmp(f, g, n + 1)) failed
+caught        syntax: a region's ranges change while its parse is stopped, and the parse resumes on the old ones (test_syntax, scrolling while stopped)   (make test TESTS=syntax): tests/test_syntax.c:219: CHECK(!memcmp(f, g, p2)) failed
+caught        syntax: a released leaf's scanner state over 24 bytes leaks (test_syntax, 40 nested block quotes, LeakSanitizer)   (make test TESTS=syntax): ==32307==ERROR: LeakSanitizer: detected memory leaks
+caught        syntax: the recomputed bytes leave out the byte before the edit (test_syntax, frames before a parse)   (make test TESTS=syntax): tests/test_syntax.c:296: CHECK(!memcmp(f, g, n)) failed
+caught        syntax: the recompute after a key queries from the edit, not from where the fill started (test_syntax, edits then frame: order.c)   (make test TESTS=syntax): tests/test_syntax.c:296: CHECK(!memcmp(f, g, n)) failed
+caught        text: uneven split (shape)   (make test TESTS=text_rope): ==4326==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x519000000e80 at pc 0x7fa3794fb303 bp 0x7ffd477a7510 sp 0x7ffd477a6cb8
+caught        text: shared nodes lose their newline count (fuzz)   (make fuzz FUZZERS=text_rope FUZZ_SECONDS=30): ==5098== ERROR: libFuzzer: deadly signal
+caught        matcher: a consecutive byte scores 5, not fzf's 4   (make test TESTS=tools_match): tests/test_tools_match.c:58: CHECK(cases > 0 && !bad) failed
+caught        picker: no frecency bonus   (make test TESTS=tools_pick): FAIL test_tools_pick
+caught        oil: names sorted byte by byte, not in natural order   (make test TESTS=tools_oil): tests/test_tools_oil.c:226: CHECK(!strncmp(l, n == 5000 ? "f2\n" : "f10\n", n == 5000 ? 3 : 4)) failed
+caught        oil: a move cycle's temporary name made from the destination   (make test TESTS=tools_oil): tests/test_tools_oil.c:183: CHECK(!symlink(link, p)) failed
+caught        oil: a move keeps the entry's link target   (make test TESTS=tools_oil): tests/test_tools_oil.c:241: CHECK(cases > 0 && !bad) failed
+caught        matcher: a long line number overflows (fuzz_tools_match)   (make fuzz FUZZERS=tools_match FUZZ_SECONDS=60): src/tools/match.c:202:39: runtime error: signed integer overflow: 8888888888888888888 * 10 cannot be represented in type 'long'
+caught        oil: an empty path part is no trie child   (make test TESTS=tools_oil): tests/test_tools_oil.c:241: CHECK(cases > 0 && !bad) failed
+caught        picker: the frecency store read as all zeros   (make test TESTS=tools_pick): FAIL test_tools_pick
+caught        matcher: at most 16 terms   (make test TESTS=tools_match): tests/test_tools_match.c:58: CHECK(cases > 0 && !bad) failed
+caught        tty: no cursor move after a non-ASCII character   (make test TESTS=grid_diff): tests/test_grid_diff.c:278: CHECK(0) failed
+caught        Render drain: all input runs before a frame   (make test TESTS=tty_render): tests/test_tty_render.c:114: CHECK(0) failed
+caught        tty: bytes past U+10FFFF, surrogates and overlongs decoded   (make test TESTS=tty_input): tests/test_tty_input.c:131: CHECK(0) failed
+caught        tty: a tail as long as the buffer waits forever   (make test TESTS=tty_input): tests/test_tty_input.c:108: CHECK(idle < 10000) failed
+caught        tty: a changed face keeps the last style   (make test TESTS=grid_diff): tests/test_grid_diff.c:278: CHECK(0) failed
+caught        tty: a face's style bits not sent   (make test TESTS=grid_diff): tests/test_grid_diff.c:278: CHECK(0) failed
+caught        tty: Insert (CSI 2 tilde) taken for Delete   (make test TESTS=tty_input): tests/test_tty_input.c:131: CHECK(0) failed
+caught        undo: undo leaves the group open (Undo_noclose)   (make test TESTS=undo): tests/test_undo.c:66: CHECK(undo_seq(u) == 2) failed
+caught        undo tree: :earlier Nf does not count changes since the last write   (make undo-diff UNDO_N=1000): undo_conform: 1000 sequences of 60 ops, undolevels 1000, seed 1: 222 differ from Neovim
+caught        undo file: SHA-256 with a wrong round constant   (make test TESTS=undo_file): tests/test_undo_file.c:77: CHECK(sscanf(hex + 2 * i, "%2x", &v) == 1 && b[8 + i] == v) failed
+caught        undo file: numbers from the file taken as they are   (make test TESTS=undo_file): tests/test_undo_file.c:200: CHECK(!undo_read(t, path)) failed
+caught        undo: the span ends too early after a redo   (make test TESTS=undo_span): tests/test_undo_span.c:25: CHECK(tail <= bn - w->lo && !memcmp(A + w->hi, B + bn - tail, tail)) failed
+caught        undo: Windows' rename() over an existing undo file (the Windows check)   (make compilers): tests/test_undo_win.c:19: CHECK(!undo_write(u, t, path)) failed
+caught        frama-c: GB9a forgotten (SpacingMark breaks)   (make frama): [wp] Proved goals:  226 / 227
+caught        uni: table read one code point off   (make test TESTS=uni_nvim): tests/test_uni_nvim.c:157: CHECK(uni_glen(lines[0], 3, 0) == 3 && uni_glen(lines[1], 18, 0) == 18 && uni_glen(lines[2], 8, 0) == 8) failed
+caught        uni: uni_gprev starts on a continuation byte (fuzz_uni)   (make fuzz FUZZERS=uni FUZZ_SECONDS=60): ==13118== ERROR: libFuzzer: deadly signal
+caught        win: the cell the cursor left is not restored   (make win WIN=win): tests/test_win.c:200: CHECK(at(3, 5) == REV && at(1, 1) == REV && at(2, 2) == BG) failed
+caught        win: Ctrl-H sent as Backspace   (make win WIN=win): tests/test_win.c:146: CHECK(input(k, 4) == 1 && k[0] == 8) failed
+caught        win: keys dropped when the ring is full   (make win WIN=win): tests/test_win.c:150: CHECK(input(k, 7) == 600) failed
+caught        win: Down sent as Up   (make win WIN=win): tests/test_win.c:141: CHECK(k[0] == 'a' && k[1] == 0x1D4DD && k[2] == KEY_BS && k[3] == KEY_ESC && k[4] == 0xE9 && k[5] == KEY_ENTER && k[6] == KEY_LEFT && k[7] == KEY_RIGHT && k[8] == KEY_UP && k[9] == KEY_DOWN && k[10] == KEY_DEL) failed
+caught        win: clipboard set without CRLF   (make win WIN=win): tests/test_win.c:184: CHECK(u && !wcscmp(u, L"a\r\n\xe9\xd835\xdcdd")) failed
+caught        win: dim text in the normal colour   (make win WIN=win): tests/test_win.c:222: CHECK(inked(5, 1) > 0 && lum(d) < lum(m)) failed
+caught        win: the right half of a wide character not sent to the window   (make win WIN=win): tests/test_win.c:225: CHECK(count(7, 2, REV) > cw * ch / 2 && count(7, 3, REV) == 0) failed
+caught        win: one column too many reported   (make win WIN=win): tests/test_win.c:194: CHECK(at(0, 0) == RED && at(2, 2) == RED && at(rows - 1, cols - 1) == RED) failed
+caught        win: pacing timer fires at once (busy wake-ups)   (make win WIN=win): tests/test_win.c:99: CHECK(wakes <= 2 && b->ready()) failed
+caught        win: resize sends no KEY_RESIZE   (make win WIN=win): tests/test_win.c:284: CHECK(resized) failed
+caught        wl: no key repeat   (make test TESTS=wl): tests/test_wl.c:368: CHECK(held >= 16 && held <= 21) failed
+caught        wl: clipboard copies past max   (make test TESTS=wl): ==22002==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x5020000bf5b4 at pc 0x7f16e9efb303 bp 0x7ffd16680240 sp 0x7ffd1667f9e8
+caught        wl: configured size ignored   (make test TESTS=wl): tests/test_wl.c:193: CHECK(r == bh / cellh() && c == bw / cellw()) failed
+caught        wl: touchpad scrolls 6 rows a key   (make test TESTS=wl): tests/test_wl.c:453: CHECK(nkeys - k0 == 4 && keys[k0] == KEY_MOUSE_LEFT && keys[k0 + 1] == KEY_WHEEL_DOWN && keys[k0 + 2] == KEY_WHEEL_UP && keys[k0 + 3] == KEY_WHEEL_DOWN) failed
+caught        wl: damage one row short   (make test TESTS=wl): tests/test_wl.c:105: CHECK(WIFEXITED(st) && !WEXITSTATUS(st)) failed
+caught        wl: changed span not widened right   (make test TESTS=wl): tests/test_wl.c:105: CHECK(WIFEXITED(st) && !WEXITSTATUS(st)) failed
+caught        wl: keys left waiting   (make test TESTS=wl): tests/test_wl.c:360: CHECK(count('a', k0) == 1 && count('h', k0) == 1 && nkeys - k0 == 8) failed
