@@ -92,22 +92,7 @@ static void cell(Grid *g, int r, int c, const char *s, size_t n, int w, int face
 /* UTF-8 s from column c in one face; returns the next column */
 static int str(Grid *g, int r, int c, const char *s, int face)
 {
-	size_t n = strlen(s);
-	for (size_t i = 0; i < n;) {
-		size_t k = uni_glen((const unsigned char *)s, n, i);
-		int w = uni_width((const unsigned char *)s, n, i);
-		cell(g, r, c, s + i, k, w, face);
-		c += w; i += k;
-	}
-	return c;
-}
-
-static int width(const char *s)
-{
-	size_t n = strlen(s);
-	int w = 0;
-	for (size_t i = 0; i < n; i += uni_glen((const unsigned char *)s, n, i)) w += uni_width((const unsigned char *)s, n, i);
-	return w;
+	return grid_puts(g, r, c, g->cols, s, strlen(s), ATTR_NONE, face);
 }
 
 /* the window's rows: the screen less the command line (laststatus=0) */
@@ -220,7 +205,7 @@ void dash_draw(Editor *e, Grid *g)
 	char ms[32], foot[64];
 	snprintf(ms, sizeof ms, "%.1fms", D.ms);
 	snprintf(foot, sizeof foot, "\xe2\x9a\xa1 Homeros loaded in %s", ms);
-	int x = col + (WIDTH - width(foot)) / 2;
+	int x = col + (WIDTH - grid_width(foot, strlen(foot))) / 2;
 	x = str(g, r, x, "\xe2\x9a\xa1 Homeros loaded in ", FACE_DASHBOARD_FOOTER);
 	str(g, r, x, ms, FACE_STRING_SPECIAL);
 	/* the cursor on the item's description */

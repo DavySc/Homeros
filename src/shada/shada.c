@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <time.h>
 #include "core.h"
 #include "shada.h"
@@ -96,13 +97,17 @@ int shada_read(void)
 
 const char *shada_oldfile(size_t i) { return i < nold ? old[i].path : NULL; }
 
+/* Neovim's shada_removable() with the default 'shada' r/tmp/,r/private/,
+   ignoring case on every system.  Not in shada.h: test_shada.c declares it */
+int shada_removable(const char *path)
+{
+	return !strncasecmp(path, "/tmp/", 5) || !strncasecmp(path, "/private/", 9);
+}
+
 /* buffer path left at time t: its entry moves to the newest time */
 static void note(const char *path, double t)
 {
-	/* shada_removable() with the default 'shada' r/tmp/,r/private/: the
-	   path is full, so no other spelling of /tmp/ reaches here, and
-	   /private/ is macOS's */
-	if (!strncmp(path, "/tmp/", 5)) return;
+	if (shada_removable(path)) return;
 	for (size_t i = 0; i < nleft; i++)
 		if (!strcmp(left[i].path, path)) { left[i].t = t; return; }
 	if (nleft == capleft) {

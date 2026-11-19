@@ -1,5 +1,7 @@
 # Plants for src/shada/ (recent files; format in tools/planted.sh).
-shada: files under /tmp/ kept~test TESTS=shada~~src/shada/shada.c~	if (!strncmp(path, "/tmp/", 5)) return;~	if (0 && !strncmp(path, "/tmp/", 5)) return;
+shada: files under /tmp/ kept~test TESTS=shada~~src/shada/shada.c~	if (shada_removable(path)) return;~
+shada: files under /private/ kept~test TESTS=shada~~src/shada/shada.c~ || !strncasecmp(path, "/private/", 9)~
+shada: r items matched with case~test TESTS=shada~~src/shada/shada.c~!strncasecmp(path, "/tmp/", 5)~!strncmp(path, "/tmp/", 5)
 shada: a buffer left by a window not stamped~test TESTS=shada~~src/shada/shada.c~	if (cur && *curabs) note(curabs, (double)time(NULL));~	(void)note;
 shada: the buffers still shown at exit not stamped~test TESTS=shada~~src/shada/shada.c~		if (w->buf->path && !file_full(w->buf->path, p)) note(p, now);~		if (w->buf->path && !file_full(w->buf->path, p)) (void)now;
 shada: a merge takes this session's older time~test TESTS=shada~~src/shada/shada.c~			if (j < nleft) { if (v[i].t > all[j].t) all[j].t = v[i].t; }~			if (j < nleft) { }

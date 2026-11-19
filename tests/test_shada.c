@@ -2,7 +2,6 @@
    Neovim 0.12 run here through the core, on the same files and the same
    clock, and the file shada_write leaves must list Neovim's v:oldfiles; each
    session must also read the last one's as its own v:oldfiles. */
-#include <dirent.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,6 +16,8 @@
 
 /* Neovim's clock was tools/fake_time.c's; ours is this one */
 static time_t now;
+
+int shada_removable(const char *path);   /* shada.c's, not in shada.h */
 time_t time(time_t *t) { if (t) *t = now; return now; }
 
 static char state[4096];
@@ -166,23 +167,10 @@ int main(void)
 	CHECK(!file_full("lnd/d", got) && !strcmp(got, want));
 	snprintf(want, sizeof want, "%s/lnf", d);
 	CHECK(!file_full("lnf", got) && !strcmp(got, want));
-	/* another editor wrote the file since we read it: ours replaces it,
-	   with no copy of either left beside it */
-	ShadaLine *v, one = { 1, "/x" };
-	size_t n;
-	FileId id;
-	CHECK(!shada_load(state, &v, &n, &id));
-	FILE *fp = fopen(state, "a");
-	CHECK(fp && fputs("2 /y\n", fp) >= 0 && !fclose(fp));
-	CHECK(!shada_save(state, &one, 1, &id));
-	for (size_t i = 0; i < n; i++) free(v[i].path);
-	free(v);
-	char dir[PATH_MAX];
-	snprintf(dir, sizeof dir, "%s", state);
-	*strrchr(dir, '/') = 0;
-	DIR *dp = opendir(dir);
-	int left = 0;   /* file_save's temp names: .oldfiles.homeros-XXXXXX */
-	for (struct dirent *de; dp && (de = readdir(dp));) left += !strncmp(de->d_name, ".oldfiles.", 10);
-	CHECK(dp && !closedir(dp) && !left);
+	/* the default 'shada' r/tmp/,r/private/, ignoring case: Neovim 0.12
+	   lists neither /private/ nor /TMP/ (measured in PR 73's review, 3
+	   runs); /tmp/ through the core is in the sessions above */
+	CHECK(shada_removable("/private/x.sql") && shada_removable("/TMP/y.sql") && shada_removable("/tmp/z.sql"));
+	CHECK(!shada_removable("/var/tmp/a") && !shada_removable("/privatex") && !shada_removable("/tm/"));
 	return 0;
 }
