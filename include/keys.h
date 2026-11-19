@@ -28,6 +28,9 @@ typedef struct {
 	int replace;         /* insert mode overtypes (R) */
 	int space;           /* Neovim's inserted_space: a space typed on its own */
 	int batch;           /* inserting typeahead as one string (Neovim's insertchar()) */
+	struct { int type; size_t l1, c1, l2, c2; } yank;
+	                     /* the area just yanked, flashed for 150 ms
+	                        (vim.highlight.on_yank): type 0 none, 'v', 'V' or 22 */
 	int pending;         /* a command is half typed: a count, register, operator or its
 	                        character (what showcmd shows); the conform driver ends it
 	                        with Esc, as feedkeys(..., 'x') does */
