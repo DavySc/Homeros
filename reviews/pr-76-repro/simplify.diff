@@ -1,0 +1,61 @@
+--- a/src/sqlfmt/sqlfmt.c	2026-11-19 08:37:42.691210983 +0000
++++ b/src/sqlfmt/sqlfmt.c	2026-11-19 08:46:20.066294209 +0000
+@@ -826,7 +826,7 @@
+ 
+ /* the indent, in spaces, of code token c starting a line; open: c is a `(`
+    that hangs */
+-static int column(const Pass *p, size_t c, int open)
++static int column(const Pass *p, size_t c)
+ {
+ 	const Tok *t = &p->t[c], *h = &p->t[head_];
+ 	if (t->brk != B_NONE) return t->level * 4;
+@@ -837,15 +837,14 @@
+ 		int r = (int)(h->e - h->s) - (int)(t->e - t->s);
+ 		return h->level * 4 + (r > 0 ? r : 0);
+ 	}
+-	return (t->level + 1 + t->depth - hangs(t) - open) * 4;
++	return (t->level + 1 + t->depth - hangs(t) - allman(p, c)) * 4;
+ }
+ 
+ /* token i's indent; c is the first token at or after i that is no comment */
+-static int indent_of(const Pass *p, size_t i, size_t c, int open)
++static int indent_of(const Pass *p, size_t i, size_t c)
+ {
+-	if (c == i) return column(p, c, open);
+ 	/* a comment on its own line lines up with the code after it */
+-	if (c < p->n) return p->t[c].brk == B_FOOTER ? (p->t[c].level + 1) * 4 : column(p, c, allman(p, c));
++	if (c < p->n) return c != i && p->t[c].brk == B_FOOTER ? (p->t[c].level + 1) * 4 : column(p, c);
+ 	return p->t[i].level * 4;
+ }
+ 
+@@ -853,12 +852,11 @@
+    dos, PR 53), so a CR left in the text is a character, as in Neovim.
+    SQLDiff keeps the ending most of its input uses instead, which a string
+    holding line breaks can flip between one run and the next. */
+-static int lined_;   /* newline() ran for the token being rendered */
+ static void newline(const Pass *p, size_t i, size_t c, size_t n)
+ {
+-	lined_ = 1;
+ 	while (n--) put("\n", 1);
+-	for (int k = indent_of(p, i, c, allman(p, i)); k-- > 0; ) put(" ", 1);
++	for (int k = indent_of(p, i, c); k-- > 0; ) put(" ", 1);
++	if (p->t[i].brk != B_NONE) head_ = i;
+ }
+ 
+ /* reverted: one byte per top-level statement, kept as written if set */
+@@ -883,7 +881,6 @@
+ 		const Tok *a = i ? &p->t[i - 1] : NULL;
+ 		int strings = a && (a->k == STRING && t->k == STRING);
+ 		size_t n = nls < 2 ? nls : 2;
+-		lined_ = 0;
+ 		if (!i) {
+ 			if (!plain) put(g, gn);
+ 		} else if (kept || t->gapk || !plain || strings) put(g, gn);
+@@ -900,7 +897,6 @@
+ 		starts[i] = nout;
+ 		size_t at = nout;
+ 		put(s + t->s, t->e - t->s);
+-		if (lined_ && t->brk != B_NONE) head_ = i;
+ 		if (t->k == RP && npar) npar--;
+ 		if (t->k == LP) {
+ 			if (!GROW(par, npar, parcap)) { oom = 1; return; }
