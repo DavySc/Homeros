@@ -491,7 +491,10 @@ static void draw_status(Editor *e, Grid *g, Win *w)
 		if (x + cw <= maxw) {
 			put(g, r, w->x + x, u + i, uni_glen(u, n, i), cw);
 			paint(g, r, w->x + x, cw, f[i]);
-			for (int k = 0; k < cw; k++) g->c[r * g->cols + w->x + x + k].bg = bl[i];
+			for (int k = 0; k < cw; k++) {
+				Cell *z = wcell(g, w, w->h, x + k);
+				if (z) z->bg = bl[i];
+			}
 		}
 		x += cw;
 	}

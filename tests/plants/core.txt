@@ -118,7 +118,7 @@ core: '<' in the face of the first character dropped (test_core_status)~test TES
 core: the backgrounds not moved with the text after '<' (test_core_status)~test TESTS=core_status~~src/core/draw.c~			memmove(bl + cut + 1, bl + cut + k, n - cut - k);¶~
 core: '>' one cell late (test_core_status)~test TESTS=core_status~~src/core/draw.c~for (int x = uni_width(u, n, p); x < maxw;~for (int x = uni_width(u, n, p); x <= maxw && p + 1 < n;
 core: the fill in the face after it (test_core_status)~test TESTS=core_status~~src/core/draw.c~paint(g, r, w->x + x, fill, f[i - 1]);~paint(g, r, w->x + x, fill, f[i]);
-core: the sections' backgrounds not drawn (test_core_status)~test TESTS=core_status~~src/core/draw.c~			for (int k = 0; k < cw; k++) g->c[r * g->cols + w->x + x + k].bg = bl[i];¶~
+core: the sections' backgrounds not drawn (test_core_status)~test TESTS=core_status~~src/core/draw.c~				if (z) z->bg = bl[i];~				(void)z;
 core: the cell under a separator always the separator (test_core_status)~test TESTS=core_status~~src/core/draw.c~int on = stl_connected(w);~int on = !stl_connected(w);
 core: the cursor line's number in LineNr (test_core_status)~test TESTS=core_status~~src/core/draw.c~unsigned char face = rel ? FACE_LINE_NR : FACE_CURSOR_LINE_NR;~unsigned char face = FACE_LINE_NR;
 core: the cursor line drawn in Visual mode (test_core_status)~test TESTS=core_status~~src/core/draw.c~!(w == e->win && e->ks.visual) ? FACE_CURSOR_LINE : 0;~1 ? FACE_CURSOR_LINE : 0;
@@ -132,3 +132,4 @@ core: the popup's scrollbar all thumb (test_core_status)~test TESTS=core_status~
 core: the '>' filler on the cursor line's background (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~wputs(g, w, row, c, ">", FACE_NON_TEXT);   /* not in the area (measured) */~{ wputs(g, w, row, c, ">", FACE_NON_TEXT); Cell *z = wcell(g, w, row, c); if (z) z->bg = cl; }
 core: the '<' filler off the cursor line's background (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~if (z) z->bg = from < v && vis ? vis : cl;~if (z) z->bg = from < v && vis ? vis : 0;
 core: the cursor line's background under skipcol's "<<<" (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~for (int c = k || cover < nw ? nw : cover;~for (int c = nw;
+core: the status line's backgrounds written past a shrunk grid (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~Cell *z = wcell(g, w, w->h, x + k);~Cell *z = &g->c[r * g->cols + w->x + x + k];
