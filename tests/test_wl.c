@@ -127,7 +127,7 @@ static void draw(void)
 	int r, c;
 	backend_wl.size(&r, &c);
 	if (g.rows != r || g.cols != c) CHECK(!grid_resize(&g, r, c));
-	grid_puts(&g, 0, 0, "homeros", ATTR_NONE);
+	grid_puts(&g, 0, 0, g.cols, "homeros", 7, ATTR_NONE, FACE_NONE);
 	g.crow = 0;
 	g.ccol = 7;
 	show();
@@ -301,11 +301,11 @@ static void test_sway(void)
 	   drawn into, but the screen shows the other buffer's row: it still
 	   needs its damage (the review of package 8, finding 1) */
 	for (int i = 0; i < 4; i++) {
-		grid_puts(&g, 3, 0, "two frames ago", ATTR_NONE);
+		grid_puts(&g, 3, 0, g.cols, "two frames ago", 14, ATTR_NONE, FACE_NONE);
 		show();
-		grid_puts(&g, 3, 0, "the last frame", ATTR_NONE);
+		grid_puts(&g, 3, 0, g.cols, "the last frame", 14, ATTR_NONE, FACE_NONE);
 		show();
-		grid_puts(&g, 3, 0, "two frames ago", ATTR_NONE);
+		grid_puts(&g, 3, 0, g.cols, "two frames ago", 14, ATTR_NONE, FACE_NONE);
 		show();
 		cmd("grim -t ppm %s/1.ppm # %s", dir);
 		grid_free(&shown);
@@ -323,9 +323,9 @@ static void test_sway(void)
 		char a[64], b[64];
 		snprintf(a, sizeof a, "%-24s", lig[i][0]);
 		snprintf(b, sizeof b, "%-24s", lig[i][1]);
-		grid_puts(&g, 3, 0, a, ATTR_NONE);
+		grid_puts(&g, 3, 0, g.cols, a, strlen(a), ATTR_NONE, FACE_NONE);
 		for (int k = 0; k < 3; k++) show();
-		grid_puts(&g, 3, 0, b, ATTR_NONE);
+		grid_puts(&g, 3, 0, g.cols, b, strlen(b), ATTR_NONE, FACE_NONE);
 		show();
 		cmd("grim -t ppm %s/1.ppm # %s", dir);
 		grid_free(&shown);
@@ -371,7 +371,7 @@ static void test_sway(void)
 	/* a ligature's glyph sits on its last cell and reaches back over the
 	   others ("->"; " /\ " in JetBrains Mono): the first cell has its ink */
 	grid_clear(&g);
-	grid_puts(&g, 0, 0, "x /\\ y ->", ATTR_NONE);
+	grid_puts(&g, 0, 0, g.cols, "x /\\ y ->", 9, ATTR_NONE, FACE_NONE);
 	show();
 	CHECK(ink(2 * cellw(), 0, cellw(), cellh(), 0) > cellh() / 2);
 	CHECK(ink(7 * cellw(), 0, cellw(), cellh(), 0) > cellw() / 2);
@@ -520,7 +520,7 @@ static void test_sway(void)
 	/* hidden: no frame callback, so nothing is drawn until shown again */
 	run(SWAYMSG "move scratchpad");
 	pump(100);
-	grid_puts(&g, 1, 0, "hidden", ATTR_NONE);
+	grid_puts(&g, 1, 0, g.cols, "hidden", 6, ATTR_NONE, FACE_NONE);
 	CHECK(backend_wl.ready());
 	backend_wl.present(&g, &shown);
 	pump(500);

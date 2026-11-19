@@ -10,7 +10,7 @@ on:
 # 125-156 of 243 runs had a newer run on their branch within 90-40 minutes)
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   # the check and the plants run in parallel, the plants in four shards:
   # one after the other took 54 minutes on main at 8d08829, and the plants
