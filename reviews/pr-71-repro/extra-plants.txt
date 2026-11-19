@@ -1,0 +1,11 @@
+# Reviewer's extra plants for src/syntax/json.c (PR 71), in tools/planted.sh's format
+xjson: true is plain~test TESTS=json~~src/syntax/json.c~is(r, p, e - p, "true") ||~is(r, p, e - p, "tru") ||
+xjson: brackets are plain~test TESTS=json~~src/syntax/json.c~FACE_PUNCTUATION_DELIMITER : FACE_PUNCTUATION_BRACKET;~FACE_PUNCTUATION_DELIMITER : FACE_NONE;
+xjson: an escape at a string's last byte but one is missed~test TESTS=json~~src/syntax/json.c~for (size_t i = p + 1; i + 1 < e; i++)~for (size_t i = p + 1; i + 2 < e; i++)
+xjson: a closed string leaves its closing quote out~test TESTS=json~~src/syntax/json.c~c == '"' ? p + 1 : p;~p;
+xjson: a block comment nests~test TESTS=json~~src/syntax/json.c~!(c == '*' && tsql_byte(r, p + 1) == '/'); p++) ;~!(c == '*' && tsql_byte(r, p + 1) == '/' && tsql_byte(r, p + 2) != '*'); p++) ;
+xjson: a number takes no exponent~test TESTS=json~~src/syntax/json.c~== 'e' || c == 'E') {~== 'e') {
+xjson: an exponent needs no digit~test TESTS=json~~src/syntax/json.c~			if (is_digit(tsql_byte(r, e)))¶~
+xjson: a word runs on over digits~test TESTS=json~~src/syntax/json.c~while ((c = tsql_byte(r, ++p)) >= 'a' && c <= 'z') ;~while ((c = tsql_byte(r, ++p)) >= '0' && c <= 'z') ;
+xjson: the cached token's kind is lost between reads~test TESTS=json~~src/syntax/tsql.c~		int k = q->kind;~		int k = 0;
+xjson: faces before the window are painted~test TESTS="json tsql"~~src/syntax/json.c~for (size_t i = p < a ? a : p; i < e && i < z; i++) f[i - a] = c;¶	/* a backslash~for (size_t i = p < a ? a : p; i < e; i++) f[i - a] = c;¶	/* a backslash

@@ -1,0 +1,24 @@
+# Copies tools/dupes.py lets pass until their owners fold them into one
+# function (CLAUDE.md, no duplication).  The list only shrinks: never add a line.
+src/file/file.c src/file/win.c 902a5964
+src/file/state.c src/file/win.c f6b010e6
+src/loop/loop.c src/loop/loop.c c184535e
+src/loop/loop.c src/loop/win.c e3ec2e1f
+src/org/org.c src/org/org.c 3d3a4c38
+src/org/org.c src/org/org.c 0842e25b
+src/org/org.c src/org/org.c 854f7973
+src/tools/oil.c src/tools/oil.c 4e751422
+src/tools/oil.c src/tools/oil.c b27d12dd
+src/tools/pick.c src/tools/pick.c d22d9731
+src/tty/tty.c src/win/backend.c 452e7412
+src/core/core.c src/core/core.c af7312e9
+src/keys/motion.c src/keys/motion.c 21791400
+src/keys/motion.c src/keys/motion.c 912b305b
+src/keys/ops.c src/keys/ops.c ca17786b
+src/git/keys.c src/git/keys.c 6007b6c5
+src/git/keys.c src/git/keys.c 4ad9ff27
+src/git/keys.c src/git/keys.c 6f94d5ca
+src/git/keys.c src/git/keys.c 6f94d5ca
+src/git/keys.c src/git/keys.c c72bdd04
+src/git/sec.c src/git/sec.c 5086807d
+src/git/status.c src/git/status.c 29f7bf54

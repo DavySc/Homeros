@@ -161,8 +161,16 @@ wincc: | $(SYN)/src build/win
 build/win:
 	mkdir -p $@
 
-check: compilers test fuzz conform org-conform undo-diff lean frama specs win
+check: compilers test fuzz conform org-conform undo-diff lean frama specs win dupes
 	@echo "check: all passed"
+
+# copied code fails (CLAUDE.md: no duplication)
+dupes:
+	@python3 tools/dupes.py
+
+# every function defined, file:line and signature: grep it before writing one
+index:
+	@grep -rnE '^(static )?[a-zA-Z_][a-zA-Z0-9_ *]*[ *][a-zA-Z_][a-zA-Z0-9_]*\([^;{]*(\{.*)?$$' --include=*.c src ref
 
 planted:
 	SHARD=$(SHARD) bash tools/planted.sh
@@ -180,4 +188,4 @@ install: homeros
 clean:
 	rm -rf build homeros
 
-.PHONY: compilers test fuzz conform org-conform undo-diff specs lean frama win wincc check planted install clean
+.PHONY: dupes index compilers test fuzz conform org-conform undo-diff specs lean frama win wincc check planted install clean

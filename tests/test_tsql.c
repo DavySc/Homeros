@@ -2,9 +2,9 @@
    every byte, one per SSMS rule tsql.c copies (the categories are SSMS's;
    which words fall in which is checked against SSMS only for the words of
    ssms-check.sql); tsql_token's kinds where SQL Server's lexing is
-   subtle; then random texts and edits, where the faces read through the
-   kept token starts, in any order and window, must equal a fresh read
-   from byte 0. */
+   subtle; then random texts and edits, T-SQL and JSON, where the
+   faces read through the kept token starts, in any order and window, must
+   equal a fresh read from byte 0. */
 #include <string.h>
 #include "check.h"
 #include "grid.h"
@@ -18,7 +18,7 @@ static char code(unsigned char f)
 {
 	return f == FACE_KEYWORD ? 'K' : f == FACE_STRING ? 'S' : f == FACE_COMMENT ? 'C'
 	     : f == FACE_FUNCTION_BUILTIN ? 'F' : f == FACE_MODULE_BUILTIN ? 'T' : f == FACE_FUNCTION ? 'P'
-	     : f == FACE_NUMBER ? 'N' : f == FACE_PUNCTUATION_DELIMITER ? 'o' : f == FACE_NONE ? '.' : '?';
+	     : f == FACE_NUMBER ? 'N' : f == FACE_OPERATOR ? 'o' : f == FACE_NONE ? '.' : '?';
 }
 
 static void faces_of(const char *src, char *out)
@@ -136,15 +136,21 @@ static const char *const snip[] = {
 	"\n", " ", "'", "N'", "''", "\"", "[", "]", "/*", "*/", "--", "(", ")", ",", ";", ".",
 	"<>", "SELECT", " FROM ", "sys", "LEFT", "GETDATE", "@@ERROR", "@x", "#t", "sp_who", "12", "\xc3\xa9", "e", "+", "0x", "as",
 	"BEGIN\n  SET NOCOUNT ON;\n", "END\nGO\n", "x",
+}, *const jsnip[] = {
+	"\n", " ", "\"", "\\", "\\\"", "{", "}", "[", "]", ",", ":", "//", "/*", "*/", "-", "1", "2.5", "e", "E",
+	"true", "null", "fals", "\"key\": ", "x", "\xc3\xa9", "0",
 };
-enum { NSNIP = sizeof snip / sizeof *snip, MAXT = 1 << 17 };
+enum { NSNIP = sizeof snip / sizeof *snip, NJSNIP = sizeof jsnip / sizeof *jsnip, MAXT = 1 << 17 };
+/* the random texts' language: a third are JSON, on the same index */
+static int json;
+#define PATH (json ? "x.json" : "x.sql")
 
 /* snippets into b until want bytes, and never past cap */
 static size_t gen(char *b, size_t want, size_t cap)
 {
 	size_t n = 0;
 	while (n < want) {
-		const char *s = snip[rnd(NSNIP)];
+		const char *s = json ? jsnip[rnd(NJSNIP)] : snip[rnd(NSNIP)];
 		size_t l = strlen(s);
 		if (n + l > cap) break;
 		memcpy(b + n, s, l);
@@ -158,7 +164,7 @@ static int stop_rnd(void) { return !rnd(2); }
 /* the faces of the whole text, read once from byte 0 by a fresh Syntax */
 static void fresh(const Text *t, unsigned char *f)
 {
-	Syntax *s = syntax_open("x.sql", t);
+	Syntax *s = syntax_open(PATH, t);
 	CHECK(s);
 	syntax_update(s, t, NULL);
 	size_t n = text_len(t);
@@ -244,14 +250,15 @@ int main(void)
 	   fresh read, wherever the windows are asked and the index grows */
 	static char b[MAXT];
 	static unsigned char f[MAXT], g[MAXT];
-	unsigned cases = 400, steps = 0, windows = 0;
+	unsigned cases = 600, steps = 0, windows = 0;
 	size_t bytes = 0;
 	for (unsigned c = 0; c < cases; c++) {
+		json = c % 3 == 2;
 		size_t n = rnd(4) ? rnd(600) : rnd(MAXT / 2 - 64);
 		n = gen(b, n, MAXT);
 		Text *t = text_new(b, n);
 		CHECK(t);
-		Syntax *s = syntax_open("x.sql", t);
+		Syntax *s = syntax_open(PATH, t);
 		CHECK(s);
 		for (int e = 0; e < 30; e++, steps++) {
 			n = text_len(t);
@@ -304,7 +311,7 @@ int main(void)
 		syntax_free(s);
 		text_free(t);
 	}
-	printf("test_tsql: %zu lines, %zu tokens, %u random texts, %u edits, %u windows (%zu bytes) equal to fresh reads\n",
+	printf("test_tsql: %zu lines, %zu tokens, %u random texts (a third JSON), %u edits, %u windows (%zu bytes) equal to fresh reads\n",
 	       sizeof lines / sizeof *lines, sizeof toks / sizeof *toks, cases, steps, windows, bytes);
 	return 0;
 }
