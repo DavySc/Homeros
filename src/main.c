@@ -73,6 +73,8 @@ int main(int argc, char **argv)
 	if (shada_read()) { fprintf(stderr, "homeros: out of memory\n"); return 1; }
 	if (core_open(&e, file)) { fprintf(stderr, "homeros: %s\n", e.msg); return 1; }
 	if (b->open()) { fprintf(stderr, "homeros: no terminal or window\n"); core_free(&e); return 1; }
+	e.clip_set = b->clip_set;
+	e.clip_get = b->clip_get;
 	for (int i = 0, n = b->fds(fds); i < n; i++) loop_watch(fds[i], on_input, NULL);
 	if (e.buf->watch >= 0) loop_watch(e.buf->watch, on_watch, &e);
 	b->size(&rows, &cols);
