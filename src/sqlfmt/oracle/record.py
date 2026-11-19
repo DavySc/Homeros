@@ -66,6 +66,15 @@ cases = [
  "DECLARE @rdbms_type rdbms_type = 0 --SQL Server\n\nINSERT INTO #prog_object\n(\nprog_object_id,\nprog_object_type_id,\nreport_id\n)\nSELECT\n'rpt_ds' + rds.report_id,\ncoalesce(r.generation_order_no, 100),\n0\nFROM report r\nJOIN report_excel_data_source rds\nON rds.model_id = r.model_id\nAND rds.branch_id = r.branch_id\nWHERE r.model_id = @model_id\nAND r.branch_id = @branch_id\nOR r.report_type = 'EXCEL_TEMPLATE'",
  "insert into #t\n(\na,\nb\n)\nselect x,\ncoalesce(\ny, 1)\nfrom t\nleft join u\non u.a = t.a\nand u.b = t.b\nwhere t.c = 1\nand t.e in\n(\n1, 2\n)\ngroup by x\nhaving count(*) > 1\nand max(y) < 2",
  "WITH L AS\n(\nSELECT a FROM t\nWHERE b = 1\nAND c = 2\n)\nSELECT * FROM L\nWHERE (a = 1\nOR a = 2)\n-- before\nAND a > 0",
+ # Davy's CTE: a ( that ends its line hangs, its body one step in
+ "-- x\nwith add_to_order_no as (\nselect template_id,\ntemplate_description\nfrom @custom_templates\nwhere a = 1\nand b = 2\n)\nselect * from add_to_order_no",
+ # nested hanging parentheses; the river inside them; BETWEEN's AND
+ "select *\nfrom t\nwhere exists\n(\nselect 1\nfrom u\njoin v\non v.a = u.a\nwhere u.a in\n(\nselect b\nfrom w\n)\nand u.c between 1\nand 2\nhaving count(*) > 1\nor max(a) = 2\n)",
+ # an unclosed ( does not shift the next statement (PR 76 review)
+ "T\n(\n(\n;A\n!",
+ "select 1 where x in\n(\n(\n1\n;\nselect a\nfrom t\nwhere b = 1\nand\nc = 2\n",
+ # a ( left open at a deeper level does not hang the next batch
+ "begin\ninsert into #t\n(\nGO\nselect a,\nb\nfrom t\n",
  # nesting: 20 levels laid out; 1,000 is SQLDiff's limit, kept as written
  "BEGIN\n" * 20 + "SELECT  1\n" + "END\n" * 20,
  "BEGIN\n" * 1000 + "SELECT  1\n" + "END\n" * 1000,
