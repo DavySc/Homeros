@@ -6,8 +6,9 @@
    Org parses recursively; this keeps the open containers in a stack of
    frames instead, so nesting depth costs heap, not C stack.  Known
    differences, all outside ASCII or outside Davy's files (hypothesis):
-   case folding is ASCII-only, and a block name inside a list is compared
-   literally where Org uses it unquoted as a regexp. */
+   case folding is ASCII-only, a block name inside a list is compared
+   literally where Org uses it unquoted as a regexp, and the TODO keywords
+   are Davy's (org_todo) whatever a file's #+TODO: lines say. */
 #include "org.h"
 #include "uni.h"
 #include "class.h"
@@ -89,12 +90,13 @@ static int digit(size_t p) { return p < N && S[p] >= '0' && S[p] <= '9'; }
 
 /* ---- line recognisers ---- */
 
+static size_t stars(size_t p) { while (p < N && S[p] == '*') p++; return p; }
+static size_t spaces(size_t p) { while (p < N && S[p] == ' ') p++; return p; }
+
 static int headline(size_t p)           /* ^\*+ */
 {
-	if (p != bol(p)) return 0;
-	size_t q = p;
-	while (q < N && S[q] == '*') q++;
-	return q > p && q < N && S[q] == ' ';
+	size_t q = stars(p);
+	return p == bol(p) && q > p && q < N && S[q] == ' ';
 }
 static int comment(size_t p)            /* org-comment-regexp ^[ \t]*#( |$) */
 {
@@ -327,8 +329,7 @@ static int fnl(size_t p)
 /* org-element-paragraph-separate at line p */
 static int separator(size_t p)
 {
-	size_t t = p;
-	while (t < N && S[t] == '*') t++;
+	size_t t = stars(p);
 	if (t > p && t < N && S[t] == ' ') return 1;
 	if (fnl(p) || lit(p, "%%(")) return 1;
 	t = blanks(p);
@@ -1016,8 +1017,7 @@ static size_t tags(size_t q, size_t e, size_t *z)
 void org_head(const char *s, size_t n, size_t q, OrgHead *h)
 {
 	S = (const unsigned char *)s; N = n;
-	size_t p = q, e = eol(q);
-	while (p < N && S[p] == '*') p++;
+	size_t p = stars(q), e = eol(q);
 	h->level = (int)(p - q);
 	p = blanks(p);
 	h->todo = -1;
@@ -1068,7 +1068,6 @@ static void set(size_t a, size_t b, int f)
 {
 	for (a = a < FA ? FA : a; a < b && a < FZ; a++) F[a - FA] = (unsigned char)f;
 }
-static size_t stars(size_t p) { while (p < N && S[p] == '*') p++; return p; }
 static int alpha(size_t p) { return p < N && up(S[p]) >= 'A' && up(S[p]) <= 'Z'; }
 static size_t letters(size_t p) { while (alpha(p)) p++; return p; }
 static int word(size_t p) { return p < N && IN(WORD, uni_cp(S, N, p)); }
@@ -1096,7 +1095,7 @@ static void meta(Scan *c)
 	c->at = nl;
 	if (c->st == 2) return;
 	if (c->st == 1) {
-		if (l < c->end) { if (c->quoting) set(l, nl < c->end ? nl : c->end, FACE_ORG_BLOCK); }
+		if (l < c->end) { if (c->quoting) set(l, nl, FACE_ORG_BLOCK); }
 		else {
 			if (S[l] != '*') set(l, e < N ? e + 1 : e, FACE_ORG_BLOCK_LINE);
 			c->st = 0;
@@ -1153,7 +1152,7 @@ static int level(size_t n)   /* org-get-level-face, org-cycle-level-faces */
 /* \(:?=[^|\n]*\) after " *" at p: the group's start, or ORG_NONE */
 static size_t formula(size_t p, size_t e)
 {
-	while (p < e && S[p] == ' ') p++;
+	p = spaces(p);
 	return p < e && (S[p] == '=' || (S[p] == ':' && p + 1 < e && S[p + 1] == '=')) ? p : ORG_NONE;
 }
 /* the todo keyword (index in org_todo) at p followed by " ", or blanks to
@@ -1166,7 +1165,6 @@ static int todo(size_t p, size_t e, size_t *k)
 	}
 	return -1;
 }
-static size_t spaces(size_t p) { while (p < N && S[p] == ' ') p++; return p; }
 static int dcolon(size_t x, size_t e) { return x + 2 <= e && S[x] == ':' && S[x + 1] == ':' && (x + 2 == e || blank(x + 2)); }
 
 /* The line l's faces, keyword by keyword in org-font-lock-keywords' order */
@@ -1185,7 +1183,7 @@ static void fontify(Scan *c)
 		/* ^[ \t]*|\(?:.*?|\)? *\(:?=[^|\n]*\) */
 		for (x = ORG_NONE, p = b + 1; p < e && x == ORG_NONE; p++) if (S[p] == '|') x = formula(p + 1, e);
 		if (x == ORG_NONE) x = formula(b + 1, e);
-		for (z = x + 1 + (x != ORG_NONE && S[x] == ':'); x != ORG_NONE && z < e && S[z] != '|'; z++) ;
+		for (z = x + 1; x != ORG_NONE && z < e && S[z] != '|'; z++) ;
 		if (x != ORG_NONE) set(x, z, FACE_ORG_FORMULA);
 		p = spaces(b + 1);   /* ^[ \t]*| *\([#*]\) *| */
 		if (one(p, "#*") && (x = spaces(p + 1)) < e && S[x] == '|') set(p, p + 1, FACE_ORG_FORMULA);
@@ -1222,7 +1220,7 @@ static void fontify(Scan *c)
 	for (p = l; p + 12 <= lc; p++) {   /* org-activate-dates: org-tsr-regexp-both */
 		if ((S[p] != '<' && S[p] != '[') || (x = ts_both(p)) == ORG_NONE) continue;
 		for (z = x + 1; z < e && z < x + 4 && S[z] == '-'; z++) ;
-		if (z > x + 1 && (z >= e || S[z] != '-') && (z = ts_both(z)) != ORG_NONE) x = z;
+		if (z > x + 1 && (z = ts_both(z)) != ORG_NONE) x = z;
 		/* Org stops dating the whole buffer at one preceded by "[", a
 		   live Emacs only the chunk it fontifies: this goes on */
 		if (!p || S[p - 1] != '[') set(p, x + 1, FACE_ORG_DATE);
@@ -1231,7 +1229,7 @@ static void fontify(Scan *c)
 	if (q > l && (p = spaces(q)) > q) {   /* org-heading-keyword-regexp-format */
 		int i = todo(p, e, &x);
 		if (i >= 0) set(p, x, i < org_done ? FACE_ORG_TODO : FACE_COMMENT);
-		if (i >= org_done && x < e && S[x] == ' ') {   /* org-headline-done */
+		if (i >= org_done) {   /* org-headline-done */
 			for (z = e, x = spaces(x); z > x && blank(z - 1); z--) ;
 			set(x, z, FACE_COMMENT);
 		}

@@ -14,7 +14,8 @@ import os, random, re, subprocess, sys, tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 WORDS = ['a', 'b', 'x', 'TODO', 'DONE', 'NEXT', 'WAIT', 'CANCELLED', 'todo', 'COMMENT', '[#A]', '[#a]',
          '[#1]', '[#12]', '[#65]', ':a:', ':b:c:', '::', ':@x_1:', '[fn:1]', '*', '-', '+', '1.', 'a)',
-         '|', '#', '#+', ':', '[', ']', '<2026-11-22 Sun>', '[2026-11-22 Sun 09:00]', 'é', 'λ', '→', '\u00a0', '\u3000', '\f', '\r']
+         '|', '#', '#+', ':', '[', ']', '<2026-11-22 Sun>', '[2026-11-22 Sun 09:00]', 'é', 'λ', '→', '\u00a0', '\u3000', '\f', '\r',
+         '[150%]', '[050%]', '@@a:b@@c:d@@', 'COMMENTx']
 # above ASCII, Emacs's [[:word:]] and [[:alnum:]] differ: é both, ² and · word only, º alnum only, → € neither
 U = ['é', '²', '·', 'º', '→', '€']
 
@@ -70,7 +71,7 @@ def line_k(r, k):
     if k == 2:
         return i + r.choice([':PROPERTIES:', ':properties:', ':END:', ':end:', ':LOGBOOK:', ':a-b_c:', ':é:', ':x:y:', ':' + uni(r) + ':'])
     if k == 3:
-        return i + r.choice([':EFFORT: 0:12', ':STYLE: habit', ':ID:', ':a:b', ':x+: 1', ': x', ':', ':A:\tb'])
+        return i + r.choice([':EFFORT: 0:12', ':STYLE: habit', ':ID:', ':a:b', ':x+: 1', ': x', ':', ':A:\tb', ':k: |<5>| x'])
     if k == 4:
         return i + r.choice(['CLOCK: ', 'clock: ', 'CLOCK:\t']) + r.choice([
             ts(r) + '--' + ts(r) + ' =>  1:30', ts(r), ts(r) + ' x', '=> 0:10', ts(r) + '--' + ts(r), ts(r) + '--' + ts(r) + ' => 1:3',
@@ -79,7 +80,7 @@ def line_k(r, k):
         return i + r.choice(['# ', '#', '#x ']) + text(r)
     if k == 6:
         return i + '#+' + r.choice(['NAME', 'name', 'CAPTION', 'CAPTION[x y]', 'RESULTS', 'RESULTS[ab]', 'ATTR_HTML',
-                                    'attr_latex', 'HEADER', 'TBLNAME', 'TITLE', 'a:b', 'x[y]', 'CALL', 'TBLFM', 'STARTUP']) + r.choice([':', ': ', '', ' :']) + text(r)
+                                    'attr_latex', 'HEADER', 'TBLNAME', 'TITLE', 'a:b', 'x[y]', 'CALL', 'TBLFM', 'STARTUP', 'caption[a]: b]']) + r.choice([':', ': ', '', ' :']) + text(r)
     if k in (7, 8):
         b = r.choice(BLOCKS)
         return i + r.choice(['#+begin_', '#+BEGIN_', '#+end_', '#+END_']) + b + r.choice(['', ' ', ' python -n 3 :var x=1'])
@@ -88,7 +89,7 @@ def line_k(r, k):
     if k in (10, 11, 12):
         return i + r.choice(['-', '+', '*', '1.', '2)', '10.', 'a.', '-', '-']) + r.choice([' ', ' ', '  ', '\t', '']) + r.choice(['', '', '[ ] ', '[X] ', '[x] ', '[-] ', '[@3] ', '[@start:2] ']) + text(r) + r.choice(['', '', ' :: ' + text(r), ' ::', ':: x'])
     if k == 13:
-        return i + r.choice(['|', '| a | b |', '|-', '|---+---|', '| x', '+--+--+', '+--+', '| a |\t'])
+        return i + r.choice(['|', '| a | b |', '|-', '|---+---|', '| x', '+--+--+', '+--+', '| a |\t', '| <c> |'])
     if k == 14:
         return i + r.choice(['#+TBLFM: $2=$1', '#+tblfm: x', '#+TBLFM:'])
     if k == 15:
