@@ -51,3 +51,11 @@ files: smart's buffers listed too~test TESTS=tools_pick~~src/tools/pick.c~	if (w
 recent on Windows: '/' and '\' spellings of one file listed twice~win WIN=tools~~src/tools/pick.c~	if (n >= PATH_MAX && !file_full(path, out)) return strlen(out);~
 recent on Windows: '\' not a separator~win WIN=tools~~src/tools/pick.c~	if (c == '\\') return 1;~	if (c == '\\') return 0;
 recent on Windows: a drive letter path not absolute~win WIN=tools~~src/tools/pick.c~	if (f[0] == '\\' || (f[0] && f[1] == ':' && (f[2] == '\\' || f[2] == '/'))) return 1;~	if (f[0] == '\\') return 1;
+dashboard: f opens another picker~test TESTS=tools_dash~~src/tools/dash.c~	case 'f': tools_pick(e, PICK_FILES); break;~	case 'f': tools_pick(e, PICK_RECENT); break;
+dashboard: g opens another picker~test TESTS=tools_dash~~src/tools/dash.c~	case 'g': tools_pick(e, PICK_GREP); break;~	case 'g': tools_pick(e, PICK_SMART); break;
+dashboard: stays when a second window opens~test TESTS=tools_dash~~src/tools/dash.c~ || e->wins->next~
+dashboard: Enter runs a fixed item~test TESTS=tools_dash~~src/tools/dash.c~	case KEY_ENTER: action(e, D.sel); return 1;~	case KEY_ENTER: action(e, NKEY - 1); return 1;
+recent: files in the state directory listed~test TESTS=tools_pick~~src/tools/pick.c~			want = !(!strncmp(f, skip[k], sn) && (!f[sn] || sep(f[sn])));~			want = 1 + 0 * sn;
+recent: this session's buffers oldest first~test TESTS=tools_pick~~src/tools/pick.c~bs[j - 1]->lastused < b->lastused~bs[j - 1]->lastused > b->lastused
+main: no start screen without a file~test TESTS=shada~~src/main.c~	if (!file) tools_dash(&e, ~	if (0) tools_dash(&e, 
+main: homeros without a file is a usage error~test TESTS=shada~~src/main.c~	if (argc > 2 + tty) {~	if (argc != 2 + tty) {

@@ -5,7 +5,7 @@
    here: f n g r q (c opens Neovim's config, which homeros does not have; s
    and L are hidden in my-nvim too, without lazy.nvim).  It covers the
    window, and the status line as snacks' laststatus=0 does, until the
-   window shows another buffer, the buffer changes or insert mode starts.
+   window shows a file, the buffer changes or insert mode starts.
    The comments name the snacks or splash function each rule comes from. */
 #include <stdio.h>
 #include <string.h>
@@ -135,12 +135,13 @@ void tools_dash(Editor *e, long long start_ns)
 	D.start = start_ns;
 }
 
-/* still shown?  Gone once the window shows another buffer (bufhidden=wipe),
-   a file was read into the start buffer (buflist_new() reuses it), the
-   buffer changed or another window opened */
+/* still shown?  Gone once the window shows a file (bufhidden=wipe), the
+   buffer changed or another window opened.  A file always comes into the
+   start buffer while it is empty and unchanged (buflist_new() reuses it, for
+   :enew too), so no other buffer can be shown while this one is open. */
 static int shown(Editor *e)
 {
-	if (D.open && (e->buf != D.buf || D.buf->path || e->wins->next || e->mode == MODE_INSERT || undo_seq(D.buf->undo) != D.seq))
+	if (D.open && (D.buf->path || e->wins->next || e->mode == MODE_INSERT || undo_seq(D.buf->undo) != D.seq))
 		D.open = 0;
 	return D.open;
 }

@@ -31,18 +31,6 @@ static int where(char *out, size_t n)
 	return strlen(out) + 1 >= n ? -1 : 0;
 }
 
-/* shada_removable(): a prefix of the 'shada' r items, ignoring case */
-static int removable(const char *p)
-{
-	static const char *const r[] = { "/tmp/", "/private/" };
-	for (size_t i = 0; i < sizeof r / sizeof *r; i++) {
-		size_t k = 0;
-		while (r[i][k] && (p[k] | 0x20) == r[i][k]) k++;
-		if (!r[i][k]) return 1;
-	}
-	return 0;
-}
-
 int shada_load(const char *name, ShadaLine **v, size_t *nv, FileId *id)
 {
 	char *d;
@@ -111,7 +99,10 @@ const char *shada_oldfile(size_t i) { return i < nold ? old[i].path : NULL; }
 /* buffer path left at time t: its entry moves to the newest time */
 static void note(const char *path, double t)
 {
-	if (removable(path)) return;
+	/* shada_removable() with the default 'shada' r/tmp/,r/private/: the
+	   path is full, so no other spelling of /tmp/ reaches here, and
+	   /private/ is macOS's */
+	if (!strncmp(path, "/tmp/", 5)) return;
 	for (size_t i = 0; i < nleft; i++)
 		if (!strcmp(left[i].path, path)) { left[i].t = t; return; }
 	if (nleft == capleft) {

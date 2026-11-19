@@ -2,6 +2,7 @@
    Neovim 0.12 run here through the core, on the same files and the same
    clock, and the file shada_write leaves must list Neovim's v:oldfiles; each
    session must also read the last one's as its own v:oldfiles. */
+#include <dirent.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
@@ -165,5 +166,23 @@ int main(void)
 	CHECK(!file_full("lnd/d", got) && !strcmp(got, want));
 	snprintf(want, sizeof want, "%s/lnf", d);
 	CHECK(!file_full("lnf", got) && !strcmp(got, want));
+	/* another editor wrote the file since we read it: ours replaces it,
+	   with no copy of either left beside it */
+	ShadaLine *v, one = { 1, "/x" };
+	size_t n;
+	FileId id;
+	CHECK(!shada_load(state, &v, &n, &id));
+	FILE *fp = fopen(state, "a");
+	CHECK(fp && fputs("2 /y\n", fp) >= 0 && !fclose(fp));
+	CHECK(!shada_save(state, &one, 1, &id));
+	for (size_t i = 0; i < n; i++) free(v[i].path);
+	free(v);
+	char dir[PATH_MAX];
+	snprintf(dir, sizeof dir, "%s", state);
+	*strrchr(dir, '/') = 0;
+	DIR *dp = opendir(dir);
+	int left = 0;   /* file_save's temp names: .oldfiles.homeros-XXXXXX */
+	for (struct dirent *de; dp && (de = readdir(dp));) left += !strncmp(de->d_name, ".oldfiles.", 10);
+	CHECK(dp && !closedir(dp) && !left);
 	return 0;
 }
