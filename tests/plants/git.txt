@@ -34,7 +34,7 @@ git: changes a view's read drains wait for the next one (git_signs)~test TESTS=g
 git: the log's age subtracts a time from git as it comes (fuzz_git found inputs)~fuzz FUZZERS=git FUZZ_SECONDS=1~~src/git/sec.c~	unsigned long secs = at > now ? (unsigned long)at - (unsigned long)now : (unsigned long)now - (unsigned long)at;~	unsigned long secs = (unsigned long)(now - at);
 git: behind negates git's count (fuzz_git found inputs)~fuzz FUZZERS=git FUZZ_SECONDS=1~~src/git/sec.c~			b->behind = strtol(q, NULL, 10) != 0;~			b->behind = -strtol(q, NULL, 10);
 git: the unstaged diff read with git diff, which writes the index (lock check)~test TESTS=git~~src/git/git.c~	else cmd_add(c, "diff-files");~	else cmd_add(c, "diff");
-git: discarding a staged hunk does not refresh the index first (touched-file pass)~test TESTS=git~~src/git/keys.c~	if (a2 && !strcmp(a2, "--index") && !wgit("update-index", "-q", "--refresh", NULL)) return -1;¶~
+git: discarding a staged hunk does not refresh the index first (touched-file pass)~test TESTS=git~~src/git/keys.c~	if (a2 && !strcmp(a2, "--index") && !wgit("update-index", "-q", "--unmerged", "--refresh", NULL)) return -1;¶~
 # The Windows half (src/git/win.c, src/git/check.sh under Wine)
 git: a change under an ignored directory counts (Windows watch)~win WIN=git~~src/git/git.c~		if (ignored(r, d)) return 0;~		if (0 && ignored(r, d)) return 0;
 git: a nested repository's .git counts (Windows watch)~win WIN=git~~src/git/git.c~		if (i - s == 4 && !memcmp(rel + s, ".git", 4)) return 0;~		if (0 && i - s == 4) return 0;
