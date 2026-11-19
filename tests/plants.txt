@@ -328,3 +328,94 @@ oracle | dbg/conv.c | if (y->kind < 0x1000 \p\p (y->kind >= 0x2000 && y->kind < 
 oracle | dbg/rdi.c | [RDI_LOCATION_CONSTANTS] = 8, | [RDI_LOCATION_CONSTANTS] = 1,
 oracle | dbg/rdi.c | [RDI_GLOBAL_VMAP] = sizeof(RdiVMap), | [RDI_GLOBAL_VMAP] = 1,
 oracle | dbg/rdi.c | [RDI_THREAD_VARS] = sizeof(RdiSymbol), | [RDI_THREAD_VARS] = 1,
+# ---- slice 2f: local variables ----
+test | dbg/conv.c | return cv == 0 ? 0 : cv <= 8 ? (cv - 1) % 4 + 1 : | return cv == 0 ? 0 : cv <= 8 ? cv :
+test | dbg/conv.c | cv <= 24 ? (cv - 9) % 8 + 1 : | cv <= 25 ? (cv - 9) % 8 + 1 :
+oracle | dbg/conv.c | cv >= 154 && cv <= 161 ? cv - 113 | cv >= 154 && cv <= 161 ? cv - 114
+oracle | dbg/conv.c | cv >= 162 && cv <= 193 ? (cv - 162) / 4 + 41 : | cv >= 162 && cv <= 193 ? cv - 162 + 41 :
+oracle | dbg/conv.c | cv >= 194 && cv <= 209 ? (cv - 194) % 8 + 41 : | cv >= 194 && cv <= 209 ? 0 :
+test | dbg/conv.c | cv >= 194 && cv <= 209 ? (cv - 194) % 8 + 41 : | cv >= 194 && cv <= 209 ? cv - 194 + 41 :
+test | dbg/conv.c | cv >= 252 && cv <= 259 ? cv - 203 | cv >= 252 && cv <= 258 ? cv - 203
+test | dbg/conv.c | cv >= 260 && cv <= 291 ? (cv - 260) / 4 + 49 : | cv >= 260 && cv <= 291 ? (cv - 260) / 4 + 48 :
+test | dbg/conv.c | cv >= 292 && cv <= 307 ? (cv - 292) % 8 + 49 : | cv >= 292 && cv <= 306 ? (cv - 292) % 8 + 49 :
+oracle | dbg/conv.c | static const uint8_t wide[] = {1, 4, 2, 3, 7, 8, 6, 5}, | static const uint8_t wide[] = {1, 2, 3, 4, 7, 8, 6, 5},
+oracle | dbg/conv.c | low[] = {7, 8, 6, 5}; | low[] = {7, 8, 5, 6};
+oracle | dbg/conv.c | cv >= 336 && cv <= 367 ? (cv - 336) % 8 + 9 : 0; | cv >= 336 && cv <= 343 ? (cv - 336) % 8 + 9 : 0;
+test | dbg/conv.c | if (off >= INT16_MIN && off <= INT16_MAX) return | if (off > INT16_MIN && off <= INT16_MAX) return
+test | dbg/conv.c | if (off >= INT16_MIN && off <= INT16_MAX) return | if (off >= INT16_MIN && off < INT16_MAX) return
+oracle | dbg/conv.c | if (off >= INT16_MIN && off <= INT16_MAX) return | if (off >= INT16_MIN) return
+test | dbg/conv.c | return (indirect ? 4ull : 3ull) << 56 \p reg << 48 \p (uint64_t)(uint16_t)off << 32; | return (indirect ? 4ull : 3ull) << 56 \p reg << 48 \p (uint64_t)(uint32_t)off << 32;
+test | dbg/conv.c | return (indirect ? 4ull : 3ull) << 56 \p reg << 48 | return 3ull << 56 \p reg << 48
+oracle | dbg/conv.c | uint8_t code[] = {5, (uint8_t)reg, 8, 0, 0, 13, | uint8_t code[] = {5, (uint8_t)reg, 4, 0, 0, 13,
+oracle | dbg/conv.c | (uint8_t)(off >> 24), 42, 32, 21, 0, 0, 4, 8, 0}; | (uint8_t)(off >> 24), 42, 16, 21, 0, 0, 4, 8, 0};
+test | dbg/conv.c | (uint8_t)off, (uint8_t)(off >> 8), (uint8_t)(off >> 16), (uint8_t)(off >> 24), 42, | (uint8_t)off, (uint8_t)(off >> 8), 0, 0, 42,
+test | dbg/conv.c | if (!indirect) code[15] = 0;\n | 
+fuzz | dbg/conv.c | memcpy(add(&o->s[RDI_LOCATION_BYTECODE], indirect ? 18 : 16), code, indirect ? 18 : 16); | memcpy(add(&o->s[RDI_LOCATION_BYTECODE], indirect ? 18 : 15), code, indirect ? 18 : 15);
+test | dbg/conv.c | memcpy(add(&o->s[RDI_LOCATION_BYTECODE], indirect ? 18 : 16), code, indirect ? 18 : 16); | memcpy(add(&o->s[RDI_LOCATION_BYTECODE], 18), code, 18);
+oracle | dbg/conv.c | return 1ull << 56 \p at; | return 1ull << 56 \p (at + 1);
+test | dbg/conv.c | for (uint32_t gap = at + 8; d.n - gap >= 4; gap += 4) { | for (uint32_t gap = at + 8; d.n - gap >= 1; gap += 4) {
+oracle | dbg/conv.c | for (uint32_t gap = at + 8; d.n - gap >= 4; gap += 4) { | for (uint32_t gap = at + 8; d.n - gap >= 4 && d.p[gap] < 0xf0; gap += 4) {
+test | dbg/conv.c | if (cursor < first + le16(d.p + gap)) rec(&o->cases, cursor, first + le16(d.p + gap), location, 0); | rec(&o->cases, cursor, first + le16(d.p + gap), location, 0);
+oracle | dbg/conv.c | cursor = first + le16(d.p + gap) + le16(d.p + gap + 2); | cursor = cursor + le16(d.p + gap) + le16(d.p + gap + 2);
+oracle | dbg/conv.c | cursor = first + le16(d.p + gap) + le16(d.p + gap + 2); | cursor = first + le16(d.p + gap + 2);
+test | dbg/conv.c | if (cursor < first + le16(d.p + at + 6)) rec(&o->cases, cursor, first + le16(d.p + at + 6), location, 0); | rec(&o->cases, cursor, first + le16(d.p + at + 6), location, 0);
+oracle | dbg/conv.c | if (cursor < first + le16(d.p + at + 6)) rec(&o->cases, cursor, first + le16(d.p + at + 6), location, 0); | if (cursor < first + le16(d.p + at + 6)) rec(&o->cases, first, first + le16(d.p + at + 6), location, 0);
+oracle | dbg/conv.c | uint64_t first = pdb_voff(pdb, le16(d.p + at + 4), le32(d.p + at)), cursor = first; | uint64_t first = pdb_voff(pdb, le16(d.p + at + 4), le32(d.p + at)) + 1, cursor = first;
+test | dbg/conv.c | uint32_t nth = f->regrels++, off | uint32_t nth = 0, off
+test | dbg/conv.c | if (f->optimised \p\p !top) return;\n    const RdiType *types | if (!top) return;\n    const RdiType *types
+oracle | dbg/conv.c | if (f->optimised \p\p !top) return;\n    const RdiType *types | if (!top) return;\n    const RdiType *types
+test | dbg/conv.c | if (f->optimised \p\p !top) return;\n    const RdiType *types | if (f->optimised) return;\n    const RdiType *types
+test | dbg/conv.c | bool param = (made->kind == 0x1005 \p\p made->kind == 0x1006) && nth < made->b, | bool param = (made->kind == 0x1005 \p\p made->kind == 0x1006) && nth <= made->b,
+oracle | dbg/conv.c | bool param = (made->kind == 0x1005 \p\p made->kind == 0x1006) && nth < made->b, | bool param = made->kind == 0x1005 && nth < made->b,
+test | dbg/conv.c | big = types[type].byte_size > 8 \p\p | big = types[type].byte_size > 16 \p\p
+test | dbg/conv.c | \p\p (types[type].byte_size & (types[type].byte_size - 1)) != 0; | ;
+test | dbg/conv.c | bool returned = (reg == 334 \p\p reg == 335) && | bool returned = reg == 335 &&
+test | dbg/conv.c | bool returned = (reg == 334 \p\p reg == 335) && | bool returned =
+test | dbg/conv.c | && f->framed && off > f->frame_size && | && off > f->frame_size &&
+test | dbg/conv.c | && f->framed && off > f->frame_size && | && f->framed && off >= f->frame_size &&
+test | dbg/conv.c | && le32(d.p + 4) == 0 && proc->type != 0;   /* rbp, rsp */ | && proc->type != 0;   /* rbp, rsp */
+test | dbg/conv.c | && le32(d.p + 4) == 0 && proc->type != 0;   /* rbp, rsp */ | && le32(d.p + 4) == 0;   /* rbp, rsp */
+test | dbg/conv.c | .type = returned ? made->a : type, | .type = type,
+test | dbg/conv.c | reg_plus(o, reg_code(reg), (int32_t)off, returned \p\p (param && big))}; | reg_plus(o, reg_code(reg), (int32_t)off, param && big)};
+test | dbg/conv.c | reg_plus(o, reg_code(reg), (int32_t)off, returned \p\p (param && big))}; | reg_plus(o, reg_code(reg), (int32_t)off, returned \p\p big)};
+oracle | dbg/conv.c | .flags = param, .type = returned | .type = returned
+test | dbg/conv.c | } else if (kind == S_LOCAL && d.n >= 6 && top) { | } else if (kind == S_LOCAL && d.n >= 6) {
+test | dbg/conv.c | } else if (kind == S_LOCAL && d.n >= 6 && top) { | } else if (kind == S_LOCAL && d.n >= 5 && top) {
+test | dbg/conv.c | f->target = le16(d.p + 4) & 0x600 ? 0 : | f->target = le16(d.p + 4) & 0x200 ? 0 :
+test | dbg/conv.c | f->target = le16(d.p + 4) & 0x600 ? 0 : | f->target = le16(d.p + 4) & 0x400 ? 0 :
+oracle | dbg/conv.c | f->target = le16(d.p + 4) & 0x600 ? 0 : | f->target =
+test | dbg/conv.c | .flags = le16(d.p + 4) & 1, .type = type_of(o, le32(d.p)), | .flags = le16(d.p + 4) & 3, .type = type_of(o, le32(d.p)),
+test | dbg/conv.c | } else if (kind == S_FILESTATIC) f->target = 0;\n | }\n
+oracle | dbg/conv.c | } else if (kind == S_FILESTATIC) f->target = 0;\n | }\n
+test | dbg/conv.c | else if (kind == S_DEFRANGE_REGISTER && d.n >= 12) ranged(o, pdb, d, 4, | else if (kind == S_DEFRANGE_REGISTER && d.n >= 11) ranged(o, pdb, d, 4,
+oracle | dbg/conv.c | else if (kind == S_DEFRANGE_REGISTER && d.n >= 12) ranged(o, pdb, d, 4, 5ull << 56 | else if (kind == S_DEFRANGE_REGISTER && d.n >= 12) ranged(o, pdb, d, 4, 3ull << 56
+test | dbg/conv.c | else if (kind == S_DEFRANGE_SUBFIELD_REGISTER && d.n >= 16 && le32(d.p + 4) == 0) | else if (kind == S_DEFRANGE_SUBFIELD_REGISTER && d.n >= 16)
+oracle | dbg/conv.c | else if (kind == S_DEFRANGE_SUBFIELD_REGISTER && d.n >= 16 && le32(d.p + 4) == 0) | else if (kind == S_DEFRANGE_SUBFIELD_REGISTER && d.n >= 16)
+test | dbg/conv.c | else if (kind == S_DEFRANGE_SUBFIELD_REGISTER && d.n >= 16 && le32(d.p + 4) == 0) | else if (kind == S_DEFRANGE_SUBFIELD_REGISTER && d.n >= 15 && le32(d.p + 4) == 0)
+oracle | dbg/conv.c | le32(d.p + 4) == 0) ranged(o, pdb, d, 8, | le32(d.p + 4) == 0) ranged(o, pdb, d, 4,
+test | dbg/conv.c | else if (kind == S_DEFRANGE_REGISTER_REL && d.n >= 16) | else if (kind == S_DEFRANGE_REGISTER_REL && d.n >= 15)
+oracle | dbg/conv.c | reg_plus(o, reg_code(le16(d.p)), (int32_t)le32(d.p + 4), false));   /* register, flags, offset, range */ | reg_plus(o, reg_code(le16(d.p)), (int32_t)le32(d.p + 4), true));   /* register, flags, offset, range */
+test | dbg/conv.c | (kind == S_DEFRANGE_FRAMEPOINTER_REL && d.n >= 12) \p\p | (kind == S_DEFRANGE_FRAMEPOINTER_REL && d.n >= 11) \p\p
+test | dbg/conv.c | (kind == S_DEFRANGE_FRAMEPOINTER_REL_FULL_SCOPE && d.n >= 4)) { | (kind == S_DEFRANGE_FRAMEPOINTER_REL_FULL_SCOPE && d.n >= 3)) {
+test | dbg/conv.c | static const uint8_t pointer[] = {0, 5, 6, 14}; | static const uint8_t pointer[] = {0, 5, 6, 13};
+oracle | dbg/conv.c | static const uint8_t pointer[] = {0, 5, 6, 14}; | static const uint8_t pointer[] = {0, 6, 5, 14};
+test | dbg/conv.c | if (!f->framed) return;\n    uint64_t location | uint64_t location
+test | dbg/conv.c | f->frame_flags >> (target->flags & 1 ? 16 : 14) & 3 | f->frame_flags >> (target->flags & 1 ? 14 : 16) & 3
+oracle | dbg/conv.c | if (kind == S_DEFRANGE_FRAMEPOINTER_REL) ranged(o, pdb, d, 4, location);\n    else rec(&o->cases, 0, UINT64_MAX, location, 0); | rec(&o->cases, 0, UINT64_MAX, location, 0);
+oracle | dbg/conv.c | if (f->target) ((RdiSymbol *)o->s[RDI_LOCALS].p)[f->target].link_name += (uint32_t)((o->cases.n - before) / 32); | if (f->target) ((RdiSymbol *)o->s[RDI_LOCALS].p)[f->target].link_name = (uint32_t)((o->cases.n - before) / 32);
+test | dbg/conv.c | for (uint32_t i = 1; i < n; i += 1) s[in[i].container].local_count += 1;\n  for (uint32_t i = 1, first = 1; i < scopes; first += s[i].local_count, i += 1) s[i].local_first = first; | for (uint32_t i = 1; i < n; i += 1) s[in[i].container].local_count += 1;\n  for (uint32_t i = 1, first = 0; i < scopes; first += s[i].local_count, i += 1) s[i].local_first = first;
+oracle | dbg/conv.c | .container_flags = 2, .container = in[i].container, .type = in[i].type, .location = in[i].location}; | .container_flags = 2, .type = in[i].type, .location = in[i].location};
+fuzz | dbg/conv.c | .container_flags = 2, .container = in[i].container, | .container_flags = 3, .container = in[i].container,
+oracle | dbg/conv.c | if (in[i].link_name == 1 && c[mine] == 0 && c[mine + 1] == UINT64_MAX) y->location = c[mine + 2]; | if (in[i].link_name == 1) y->location = c[mine + 2];
+test | dbg/conv.c | if (in[i].link_name == 1 && c[mine] == 0 && c[mine + 1] == UINT64_MAX) y->location = c[mine + 2]; | if (c[mine] == 0 && c[mine + 1] == UINT64_MAX) y->location = c[mine + 2];
+oracle | dbg/conv.c | y->location = 9ull << 56 \p (uint64_t)in[i].link_name << 32 \p COUNT(o->s[RDI_LOCATION_SETS], RdiLocationCase); | y->location = 9ull << 56 \p (uint64_t)in[i].link_name << 32 \p (COUNT(o->s[RDI_LOCATION_SETS], RdiLocationCase) - 1);
+fuzz | dbg/conv.c | y->location = 9ull << 56 \p (uint64_t)in[i].link_name << 32 \p COUNT(o->s[RDI_LOCATION_SETS], RdiLocationCase); | y->location = 9ull << 56 \p (uint64_t)(in[i].link_name + 1) << 32 \p COUNT(o->s[RDI_LOCATION_SETS], RdiLocationCase);
+oracle | dbg/conv.c | (RdiLocationCase){c[mine + 4 * k], c[mine + 4 * k + 1], c[mine + 4 * k + 2]}; | (RdiLocationCase){c[mine + 4 * k], c[mine + 4 * k + 1], c[mine + 2]};
+oracle | dbg/conv.c | frame = (Frame){.optimised = d.p[34] & 0x80}; | frame = (Frame){.optimised = d.p[34] & 0x40};
+oracle | dbg/conv.c | frame = (Frame){.optimised = d.p[34] & 0x80}; | frame.optimised = d.p[34] & 0x80;
+oracle | dbg/conv.c | !((kind == S_GPROC32 \p\p kind == S_LPROC32) && r.n >= 35);) | true;)
+oracle | dbg/conv.c | frame.frame_flags = le32(r.p + 22), | frame.frame_flags = le32(r.p + 20),
+oracle | dbg/conv.c | data_symbol(&o, &pdb, kind, d, false), local_symbol(&o, &pdb, &frame, top, kind, d); | data_symbol(&o, &pdb, kind, d, false), local_symbol(&o, &pdb, &frame, 1, kind, d);
+oracle | dbg/conv.c | locals_by_scope(&o);\n | if (0) locals_by_scope(&o);\n
+oracle | dbg/rdi.c | [RDI_LOCATION_SETS] = sizeof(RdiLocationCase), | [RDI_LOCATION_SETS] = 1,
+oracle | dbg/rdi.c | [RDI_LOCALS] = sizeof(RdiSymbol), | [RDI_LOCALS] = 1,
