@@ -106,9 +106,16 @@ int main(void)
 	put("a.txt", "b\n");
 	CHECK(seen(r, 5000));
 	/* a batch whose first entries do not count: Wine packs the later
-	   ones unaligned (measured, 1 run) */
-	put("build/w.o", "w"); put("build/z.o", "z"); put("a.txt", "a\n");
-	CHECK(seen(r, 5000));
+	   ones unaligned (measured, 1 run).  The first change completes the
+	   pending read; the rest come while none is pending, so they wait
+	   for the next one, together (measured, 5 runs); three rounds, as
+	   one was not enough on CI's machine (1 run) */
+	for (int k = 0; k < 3; k++) {
+		put("build/v.o", "v");
+		Sleep(200);
+		put("build/w.o", "w"); put("build/z.o", "z"); put("a.txt", k & 1 ? "a\n" : "b\n");
+		CHECK(seen(r, 5000));
+	}
 	put("build/y.o", "y");
 	Sleep(200);
 	put("a.txt", "a\n");
