@@ -139,3 +139,4 @@ core: the yank flash in every window on the buffer (test_core_contract)~test TES
 core: a yanked block cuts a character it touches (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~				if (v < *from) *from = v;¶~
 core: a yanked block one column narrower (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~		*to = cc + 1;~		*to = cc;
 core: the yank flash takes a cell at an empty line's end (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~	if (area == FACE_VISUAL && drawn == 1~	if (area && drawn == 1
+core: the c flag's match (ks.inc) not drawn (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~e->ks.inc.type ? &e->ks.inc : NULL;~NULL;

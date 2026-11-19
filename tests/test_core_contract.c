@@ -240,6 +240,12 @@ int main(void)
 	CHECK(e.win->top == 0 && g.c[g.cols + win_numw(e.win)].bg == FACE_CURSOR_LINE);
 	CHECK(g.c[2 * g.cols + win_numw(e.win)].bg == FACE_INC_SEARCH);
 	e.ks.yank.type = 0;
+	/* :s's c flag shows its match the same way: "b" of "bc", not "c" */
+	e.ks.inc = (KeyArea){ 'v', 2, 0, 2, 0 };
+	e.win->line = 0;
+	core_draw(&e, &g);
+	CHECK(g.c[2 * g.cols + win_numw(e.win)].bg == FACE_INC_SEARCH && g.c[2 * g.cols + win_numw(e.win) + 1].bg != FACE_INC_SEARCH);
+	e.ks.inc.type = 0;
 	unlink(ey);
 	core_free(&e);
 	for (int i = 0; i < 4; i++) unlink(fn[i]);

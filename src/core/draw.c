@@ -152,7 +152,8 @@ static void draw_heading(Grid *g, const Win *w, size_t l, int r, size_t skip, in
    vim.hl.on_yank()'s flash (Davy's my-nvim): vim.hl.range() from '[ to ']
    inclusive (a block: its screen columns) in IncSearch, over the text only
    (no hl_eol) and only in the current window (the one it was yanked in:
-   the flash is gone before another can be entered).  Cells [*from, *to),
+   the flash is gone before another can be entered).  :s's c flag shows
+   its match (ks.inc) the same way.  Cells [*from, *to),
    none if *from >= *to, less the cursor's [*xf, *xt], which Visual's block
    cursor shows (noinvcur: its cell, both of a double-width character's).
    Windows on the current buffer show the Visual area too.  Returns the
@@ -160,9 +161,10 @@ static void draw_heading(Grid *g, const Win *w, size_t l, int r, size_t skip, in
 static unsigned char visual(Editor *e, Win *w, size_t l, size_t *from, size_t *to, size_t *xf, size_t *xt)
 {
 	const Win *cw = e->win;
-	int y = e->ks.yank.type, type = y ? y : e->ks.visual;
-	size_t cl = y ? e->ks.yank.l2 : cw->line, cc = y ? e->ks.yank.c2 : cw->col, vl = y ? e->ks.yank.l1 : e->ks.vline,
-	       vc = y ? e->ks.yank.c1 : e->ks.vcol, a, b, c, d, n;
+	const KeyArea *ka = e->ks.yank.type ? &e->ks.yank : e->ks.inc.type ? &e->ks.inc : NULL;
+	int y = ka != NULL, type = y ? ka->type : e->ks.visual;
+	size_t cl = y ? ka->l2 : cw->line, cc = y ? ka->c2 : cw->col, vl = y ? ka->l1 : e->ks.vline,
+	       vc = y ? ka->c1 : e->ks.vcol, a, b, c, d, n;
 	*from = *xf = 1;
 	*to = *xt = 0;
 	if (!type || (y ? w != cw : w->buf != e->buf)) return 0;
