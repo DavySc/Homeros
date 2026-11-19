@@ -1,0 +1,12 @@
+NonText        fg=#6c7086 bg=- sp=- 
+SpecialKey     fg=#6c7086 bg=- sp=-  link=NonText
+EndOfBuffer    fg=#45475a bg=- sp=- 
+Whitespace     fg=#45475a bg=- sp=- 
+PmenuSbar      fg=- bg=#313244 sp=- 
+PmenuThumb     fg=- bg=#6c7086 sp=- 
+PmenuSel       fg=- bg=#313244 sp=- bold
+Pmenu          fg=#9399b2 bg=#181825 sp=- 
+PmenuKind      fg=#9399b2 bg=#181825 sp=-  link=Pmenu
+PmenuExtra     fg=#6c7086 bg=- sp=- 
+PmenuMatch     fg=#cdd6f4 bg=- sp=- bold
+PmenuMatchSel  fg=- bg=- sp=- bold
