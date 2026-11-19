@@ -28,4 +28,17 @@ int     syntax_update(Syntax *s, const Text *t, int (*stop)(void));
 /* One face (grid.h FACE_*) per byte of [a, z), z - a at most 8,192 (core_draw
    asks for at most 1,024), into face; no allocation. */
 void    syntax_faces(Syntax *s, size_t a, size_t z, unsigned char *face);
+/* What render-markdown draws on line l, from the tree, without allocating:
+   0 for a non-Markdown buffer or a line with none of these, else 1 */
+typedef struct {
+	unsigned char head;    /* ATX heading level 1-6, else 0 */
+	unsigned char list;    /* list_item nesting from 1, else 0 */
+	unsigned char ordered; /* the list marker is n. or n) */
+	unsigned char task;    /* ' ', 'x' or '-' for [ ], [x], [-]; else 0 */
+	unsigned char code;    /* fenced code: 1 open fence, 2 body, 3 close; else 0 */
+	size_t mark, mend;     /* byte columns of the '#'s, list marker or fence */
+	size_t task_col;       /* column of a task marker's '[' */
+	size_t info, ninfo;    /* the open fence's info string (language) */
+} SyntaxMd;
+int     syntax_md(Syntax *s, const Text *t, size_t l, SyntaxMd *out);
 #endif
