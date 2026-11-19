@@ -1,0 +1,2 @@
+caught        y1 file: the swapped-out copy left beside the file (shada)   (make test TESTS=shada): tests/test_shada.c:186: CHECK(dp && !closedir(dp) && !left) failed
+caught        y2 file: the swapped-out copy left beside the file (file tests)   (make test TESTS="file file_save file_core file_journal"): tests/test_file_save.c:372: CHECK(!system(cmd)) failed
