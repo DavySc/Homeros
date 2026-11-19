@@ -570,7 +570,7 @@ static int test1(Src *src, const Pred *p, TSNode n)
    (query.lua's handlers).  Neovim's any-of?, has-ancestor? and has-parent?
    need one node, not all, but in these languages' queries every predicate
    tests a capture of exactly one node (ts_query_capture_quantifier_for_id:
-   82 of 82 with SQL and Rust), where the two agree. */
+   63 of 63 with Rust), where the two agree. */
 static int test(Src *src, const TSQueryMatch *m, const Pred *p)
 {
 	for (uint16_t i = 0; i < m->capture_count; i++)
