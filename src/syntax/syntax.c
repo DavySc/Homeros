@@ -1025,3 +1025,53 @@ void syntax_faces(Syntax *s, size_t a, size_t z, unsigned char *face)
 	faces_tree(s, s->t, s->root, s->ca, s->ca, s->cz);
 	memcpy(face, s->cache + (a - s->ca), z - a);
 }
+
+/* render-markdown 8.14's facts for line l, from the Markdown block tree as
+   it reads them: a heading's atx_hN_marker, a list marker with its nesting
+   (node:level_in('list')) and checkbox (task_list_marker_*, or the custom
+   [-] after the marker), a fenced_code_block's delimiters and info_string.
+   The node is the one at the line's first byte past its indent and block
+   quote markers. */
+int syntax_md(Syntax *s, const Text *t, size_t l, SyntaxMd *o)
+{
+	memset(o, 0, sizeof *o);
+	if (!s || s->sql || !started(s) || s->root->lang != 2 || !s->root->reg->tree) return 0;
+	size_t ls = text_line_start(t, l), len = text_line_start(t, l + 1) - ls - (l < text_lines(t)), i = 0;
+	char b[256];
+	size_t n = text_read(t, ls, b, len < sizeof b ? len : sizeof b);
+	while (i < n && (b[i] == ' ' || b[i] == '\t' || b[i] == '>')) i++;
+	TSNode x = ts_node_descendant_for_byte_range(ts_tree_root_node(s->root->reg->tree), (uint32_t)(ls + i), (uint32_t)(ls + i));
+	const char *ty = ts_node_type(x);
+	if (!strncmp(ty, "atx_h", 5) && !strcmp(ty + 6, "_marker")) {
+		o->head = (unsigned char)(ty[5] - '0');
+	} else if (!strncmp(ty, "list_marker_", 12)) {
+		for (TSNode a = ts_node_parent(x); !ts_node_is_null(a); a = ts_node_parent(a)) o->list += !strcmp(ts_node_type(a), "list");
+		o->ordered = !strcmp(ty + 12, "dot") || !strcmp(ty + 12, "parenthesis");
+		TSNode k = ts_node_next_named_sibling(x);
+		const char *kt = ts_node_is_null(k) ? "" : ts_node_type(k);
+		size_t e = ts_node_end_byte(x) - ls;
+		if (!strncmp(kt, "task_list_marker_", 17)) o->task = kt[17] == 'c' ? 'x' : ' ', o->task_col = ts_node_start_byte(k) - ls;
+		else if (e + 3 <= n && !memcmp(b + e, "[-]", 3) && (e + 3 == len || b[e + 3] == ' ')) o->task = '-', o->task_col = e;
+	} else {
+		/* code: from the line's last byte, as its first can be a block
+		   quote's marker that is the code's own text (an unclosed fence
+		   takes "> " lines after it) */
+		size_t e = ls + (len ? len - 1 : 0);
+		x = ts_node_descendant_for_byte_range(ts_tree_root_node(s->root->reg->tree), (uint32_t)e, (uint32_t)e);
+		for (; !ts_node_is_null(x) && strcmp(ts_node_type(x), "fenced_code_block"); x = ts_node_parent(x)) ;
+		if (ts_node_is_null(x)) return 0;
+		o->code = 2;
+		for (uint32_t k = 0, d = 0; k < ts_node_child_count(x); k++) {
+			TSNode c = ts_node_child(x, k);
+			const char *ct = ts_node_type(c);
+			int here = ts_node_start_point(c).row == l, delim = !strcmp(ct, "fenced_code_block_delimiter");
+			if (delim && here) o->code = d ? 3 : 1;
+			d += delim;
+			if (delim && here) o->mark = ts_node_start_byte(c) - ls, o->mend = ts_node_end_byte(c) - ls;
+			else if (!strcmp(ct, "info_string") && here) o->info = ts_node_start_byte(c) - ls, o->ninfo = ts_node_end_byte(c) - ts_node_start_byte(c);
+		}
+		return 1;
+	}
+	o->mark = ts_node_start_byte(x) - ls, o->mend = ts_node_end_byte(x) - ls;
+	return 1;
+}
