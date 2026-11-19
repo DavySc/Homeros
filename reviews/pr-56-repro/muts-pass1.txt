@@ -1,0 +1,16 @@
+wrap: the bar only on a heading's first row~src/core/draw.c~tw = w->w - nw, rows = line_rows(w, l);~tw = w->w - nw, rows = 1 + 0 * (int)l;
+wrap: rows below the window not skipped~src/core/draw.c~k < rows && r + k < w->h; k++~k < rows; k++
+other buffer: its window's cursor line raw~src/core/draw.c~size_t raw = cur ? e->win->line : (size_t)-1;~size_t raw = cur ? e->win->line : w->line;
+other buffer: rendered though scrolled sideways~src/core/draw.c~ && !e->win->left : !w->left;~ && !e->win->left : 1;
+other buffer: follows the current buffer's mode~src/core/draw.c~int cur = w->buf == e->buf, rm~int cur = 1, rm
+visual mode rendered~src/core/draw.c~e->mode != MODE_INSERT && !e->ks.visual && ~e->mode != MODE_INSERT && 
+number column painted (cover dropped)~src/core/draw.c~(k == 0 && c < cover) ||~(k == 0 && c < cover * 0) ||
+no guard for a grid smaller than the window~src/core/draw.c~ || y >= g->rows || x >= g->cols) continue;~) continue;
+the cell after the marker kept~src/core/draw.c~if (v >= m0 && v - m0 <= (size_t)n) {~if (v >= m0 && v - m0 < (size_t)n) {
+a tab after the marker is no heading~src/core/draw.c~(*s == ' ' || *s == '\t') ? HN_YES~(*s == ' ') ? HN_YES
+a multi-byte character before the heading allowed~src/core/draw.c~if (k != 1 || !memchr(~if (!memchr(
+digits not list markers~src/core/draw.c~" \t>-+*.)0123456789", *s, 15)~" \t>-+*.)", *s, 8)
+skip dropped from the bar's column~src/core/draw.c~size_t v = skip + (size_t)k~size_t v = skip * 0 + (size_t)k
+more '#' than the level~src/core/draw.c~*s == '#' && k == 1 && hn < hl)~*s == '#' && k == 1)
+the syn test dropped~src/core/draw.c~hn = rm && syn ? 0 : HN_NO;~hn = rm ? 0 : HN_NO;
+cut line reads on to the end~src/core/draw.c~			if (!hl || hn == HN_NO || hn == HN_YES) break;~

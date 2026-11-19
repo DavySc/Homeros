@@ -8,7 +8,7 @@
 #include <string.h>
 #include "syntax.h"
 #include "text.h"
-#include "../src/syntax/tsql.h"
+#include "tsql.h"
 
 static const char *const tok[32] = {
 	"'", "N'", "\"", "[", "]", "/*", "*/", "--", "\n", "<", ">", "=", "@@ERROR", "LEFT(", "sys.", "x ",
