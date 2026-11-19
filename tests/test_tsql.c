@@ -18,7 +18,7 @@ static char code(unsigned char f)
 {
 	return f == FACE_KEYWORD ? 'K' : f == FACE_STRING ? 'S' : f == FACE_COMMENT ? 'C'
 	     : f == FACE_FUNCTION_BUILTIN ? 'F' : f == FACE_MODULE_BUILTIN ? 'T' : f == FACE_FUNCTION ? 'P'
-	     : f == FACE_NUMBER ? 'N' : f == FACE_OPERATOR ? 'o' : f == FACE_NONE ? '.' : '?';
+	     : f == FACE_NUMBER ? 'N' : f == FACE_PUNCTUATION_DELIMITER ? 'o' : f == FACE_NONE ? '.' : '?';
 }
 
 static void faces_of(const char *src, char *out)
@@ -48,7 +48,7 @@ static const char *const lines[][2] = {
 	{ "LEFT JOIN t; LEFT(x, 2)", "oooo.oooo..o.ooooo.o.No" },
 	{ "DATEADD(day, 1, x), DAY(x)", "FFFFFFFoFFFo.No..oo.FFFo.o" },
 	{ "SELECT GETDATE(), COUNT (*), @@ROWCOUNT, @@nope", "KKKKKK.FFFFFFFooo.FFFFF.oooo.FFFFFFFFFFo......." },
-	{ "CHAR(10) + CONVERT(int, x); DECLARE @c char", "FFFFoNNo.o.FFFFFFFoKKKo..oo.KKKKKKK....FFFF" },
+	{ "CHAR(10) + CONVERT(int, x); DECLARE @c char", "KKKKoNNo.o.FFFFFFFoKKKo..oo.KKKKKKK....KKKK" },
 	{ "FROM sys.objects o JOIN INFORMATION_SCHEMA.TABLES", "KKKK.TTTTTTTTTTT...oooo.TTTTTTTTTTTTTTTTTTTTTTTTT" },
 	{ "EXEC sp_executesql @q; EXEC dbo.usp_x", "KKKK.PPPPPPPPPPPPP...o.KKKK.........." },
 	/* sp_ alone is a name; a word of 22 bytes is looked up; sys at byte 0 */
@@ -82,6 +82,18 @@ static const char *const lines[][2] = {
 	{ "    SELECT name FROM sys.objects WHERE type = 'U';", "....KKKKKK.KKKK.KKKK.TTTTTTTTTTT.KKKKK.KKKK.o.SSSo" },
 	{ "END", "KKK" },
 	{ "GO", "KK" },
+	/* the lines of ssms-check-2.sql (words in two lists) as his SSMS colours
+	   them (screenshot of 2026-11-18, 16:31 UTC) */
+	{ "DECLARE @c char(10) = CHAR(65), @n nchar(5) = NCHAR(66);", "KKKKKKK....KKKKoNNo.o.KKKKoNNoo....KKKKKoNo.o.KKKKKoNNoo" },
+	{ "CREATE TABLE #t (id int IDENTITY(1, 1), at datetime DEFAULT CURRENT_TIMESTAMP);", "KKKKKK.KKKKK....o...KKK.KKKKKKKKoNo.Noo.KK.KKKKKKKK.KKKKKKK.FFFFFFFFFFFFFFFFFoo" },
+	{ "SELECT CONVERT(int, '5'), TRY_CONVERT(int, 'x'), YEAR(GETDATE()), MONTH(GETDATE()),", "KKKKKK.FFFFFFFoKKKo.SSSoo.FFFFFFFFFFFoKKKo.SSSoo.FFFFoFFFFFFFoooo.FFFFFoFFFFFFFoooo" },
+	{ "       DATEPART(year, GETDATE()), DATEPART(month, GETDATE()), LOG(10),", ".......FFFFFFFFoFFFFo.FFFFFFFoooo.FFFFFFFFoFFFFFo.FFFFFFFoooo.FFFoNNoo" },
+	{ "       RIGHT('abc', 2), REPLACE('a', 'b', 'c'), NULLIF(1, 1), CHECKSUM(1),", ".......ooooooSSSSSo.Noo.FFFFFFFoSSSo.SSSo.SSSoo.FFFFFFoNo.Noo.FFFFFFFFoNoo" },
+	{ "       CURRENT_USER, SESSION_USER, SYSTEM_USER, CURRENT_TIME, \"quoted\"", ".......FFFFFFFFFFFFo.FFFFFFFFFFFFo.FFFFFFFFFFFo.FFFFFFFFFFFFo........." },
+	{ "FROM dbo.a RIGHT JOIN dbo.b ON a.id = b.id", "KKKK.......ooooo.oooo.......KK......o....." },
+	{ "CROSS APPLY OPENJSON(N'[1]') j", "ooooo.ooooo.KKKKKKKKoSSSSSSo.." },
+	{ "GROUP BY a.id", "KKKKK.KK....." },
+	{ "OPTION (RECOMPILE);", "KKKKKK.oKKKKKKKKKoo" },
 };
 
 /* tsql_token's kinds and ends */

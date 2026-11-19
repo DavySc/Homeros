@@ -12,12 +12,43 @@
 #include <unistd.h>
 #include "state.h"
 
+void file_stdpath(char *f, size_t n, int state, const char *name)
+{
+	const char *d = getenv(state ? "XDG_STATE_HOME" : "XDG_DATA_HOME"), *h = getenv("HOME");
+	if (d && *d) snprintf(f, n, "%s/homeros%s", d, name);
+	else snprintf(f, n, "%s/%s/homeros%s", h ? h : "", state ? ".local/state" : ".local/share", name);
+}
+
+void file_mkdirs(char *f)
+{
+	for (char *p = strchr(f + 1, '/'); p; p = strchr(p + 1, '/')) {
+		*p = 0;
+		mkdir(f, 0700);
+		*p = '/';
+	}
+}
+
+int file_full(const char *path, char *out)
+{
+	char dir[PATH_MAX], d[PATH_MAX];
+	const char *slash = strrchr(path, '/'), *base = slash ? slash + 1 : path;
+	size_t dn = slash ? (size_t)(slash - path) + !(slash - path) : 1;
+	if (dn >= sizeof dir) { errno = ENAMETOOLONG; return -1; }
+	memcpy(dir, slash ? path : ".", dn);
+	dir[dn] = 0;
+	if (!realpath(dir, d)) return -1;
+	int k = snprintf(out, PATH_MAX, "%s/%s", strcmp(d, "/") ? d : "", base);
+	if (k < 0 || k >= PATH_MAX) { errno = ENAMETOOLONG; return -1; }
+	return 0;
+}
+
 int state_open(const char *kind, const char *abs, char *out, size_t outsz, int flags)
 {
-	const char *x = getenv("XDG_STATE_HOME"), *home = getenv("HOME");
-	int k = x && *x ? snprintf(out, outsz, "%s/homeros/%s/", x, kind)
-	      : snprintf(out, outsz, "%s/.local/state/homeros/%s/", home ? home : "", kind);
-	if (k < 0 || (size_t)k >= outsz || abs[0] != '/' || (size_t)k + strlen(abs) >= outsz) {
+	char sub[64];
+	snprintf(sub, sizeof sub, "/%s/", kind);
+	file_stdpath(out, outsz, 1, sub);
+	size_t k = strlen(out);
+	if (k + 1 >= outsz || abs[0] != '/' || k + strlen(abs) >= outsz) {
 		errno = ENAMETOOLONG;
 		return -1;
 	}
@@ -26,12 +57,7 @@ int state_open(const char *kind, const char *abs, char *out, size_t outsz, int f
 	int fd = open(out, flags | O_CLOEXEC, 0600);
 	if (fd >= 0 || errno != ENOENT) return fd;
 	/* only the first time: mkdir -p, private, since the journal holds unsaved text */
-	for (char *p = strchr(out + 1, '/'); p && p < out + k; p = strchr(p + 1, '/')) {
-		*p = 0;
-		int r = mkdir(out, 0700);
-		*p = '/';
-		if (r && errno != EEXIST) return -1;
-	}
+	file_mkdirs(out);
 	return open(out, flags | O_CLOEXEC, 0600);
 }
 
@@ -48,18 +74,9 @@ int state_sync_dir(const char *name)
 
 int state_abs(const char *path, char *out)
 {
-	char dir[PATH_MAX], base[PATH_MAX], d[PATH_MAX];
+	/* a new file (or a dangling link): its directory exists */
 	if (realpath(path, out)) return 0;
-	if (errno != ENOENT || strlen(path) >= PATH_MAX) return -1;
-	/* a new file: its directory exists */
-	strcpy(dir, path);
-	strcpy(base, path);
-	if (!realpath(dirname(dir), d)) return -1;
-	if (snprintf(out, PATH_MAX, "%s/%s", strcmp(d, "/") ? d : "", basename(base)) >= PATH_MAX) {
-		errno = ENAMETOOLONG;
-		return -1;
-	}
-	return 0;
+	return errno == ENOENT ? file_full(path, out) : -1;
 }
 
 int state_lock(int fd, const char *name, long long *size)

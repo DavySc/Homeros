@@ -135,6 +135,23 @@ int main(void)
 	CHECK(!core_edit(&e, 0, 0, "z", 1) && !strstr(e.msg, "W11"));
 	CHECK(!core_close(&e, 1));
 	core_free(&e);
+	/* CTRL-W > in a terminal shrunk below what the windows need: the
+	   window grows as far as its row of windows lets it, as Neovim's
+	   frame_setwidth() stops at a frame as tall as ROWS_AVAIL (measured
+	   in tmux: 12x40, :3vs :3sp :10vs :new, terminal 4x15, 17 CTRL-W >;
+	   review of PR 62, 1) */
+	CHECK(!core_open(&e, fn[0]) && !grid_resize(&g, 12, 40));
+	core_draw(&e, &g);
+	CHECK(!core_split(&e, 1, 3) && !core_split(&e, 0, 3) && !core_split(&e, 1, 10) && !core_new(&e, 0));
+	CHECK(!grid_resize(&g, 4, 15));
+	core_draw(&e, &g);
+	core_resize(&e, 1, 17, 0);
+	{
+		int k = 0, wd[] = { 1, 13, 1, 11, 11 };
+		for (Win *w = e.wins; w; w = w->next, k++) CHECK(k < 5 && w->w == wd[k]);
+		CHECK(k == 5);
+	}
+	core_free(&e);
 	for (int i = 0; i < 4; i++) unlink(fn[i]);
 	grid_free(&g);
 	unlink(path);

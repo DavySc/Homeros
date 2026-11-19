@@ -4,12 +4,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <math.h>
 #include <time.h>
 #include <unistd.h>
 #include "check.h"
 #include "core.h"
 #include "loop.h"
+#include "shada.h"
 #include "tools.h"
 static Editor e;
 static Grid g;
@@ -73,16 +75,18 @@ static void rows(char *out, size_t cap)
 	}
 }
 
-static void expect(const char *prompt, const char *want)
+static void expect_src(int what, const char *prompt, const char *want)
 {
 	char got[4096];
-	CHECK(!tools_pick(&e, PICK_SMART));
+	CHECK(!tools_pick(&e, what));
 	type(prompt);
 	rows(got, sizeof got);
 	if (getenv("SHOW")) for (int r = 0; r < g.rows; r++) { for (int c = 0; c < g.cols; c++) { Cell *x = &g.c[r * g.cols + c]; fwrite(x->ch, 1, x->len, stderr); } fputc('\n', stderr); }
 	if (strcmp(got, want)) { fprintf(stderr, "prompt \"%s\"\n  snacks %s\n  ours   %s\n", prompt, want, got); exit(1); }
 	tools_key(&e, KEY_ESC); tools_key(&e, KEY_ESC);
 }
+
+static void expect(const char *prompt, const char *want) { expect_src(PICK_SMART, prompt, want); }
 
 static int by_str(const void *a, const void *b) { return strcmp(*(char *const *)a, *(char *const *)b); }
 
@@ -138,6 +142,22 @@ int main(void)
 		fputs("line one\nint pick(void) { return 1; }\nlast line\n", f);
 		fclose(f);
 	}
+	/* pick.sh's mtimes: the recent files a day ahead */
+	for (const char **p = (const char *[]){ "README.md", "src/tools/pick.c", "tests/test_pick.c", NULL }; *p; p++) {
+		struct timeval tv[2] = { { (time_t)now + 86400, 0 }, { (time_t)now + 86400, 0 } };
+		CHECK(!utimes(*p, tv));
+	}
+	/* the oracle's v:oldfiles (pick.lua), as shada.c reads them */
+	char old[4096];
+	snprintf(old, sizeof old, "%s", getenv("XDG_STATE_HOME"));
+	mkdir(old, 0700);
+	strcat(old, "/homeros");
+	mkdir(old, 0700);
+	strcat(old, "/oldfiles");
+	fs = fopen(old, "w");
+	CHECK(fs && fputs("9 /tmp/hp/README.md\n8 /tmp/hp/nothere.c\n7 /tmp/hp/src/tools/pick.c\n"
+	                  "6 /tmp/hp/src/core/core.c\n5 /tmp/hp/README.md\n4 /tmp/hp/tests/test_pick.c\n", fs) >= 0 && !fclose(fs));
+	CHECK(!shada_read());
 	CHECK(!core_open(&e, "src/core/core.c"));
 	CHECK(!grid_resize(&g, 40, 140));
 	e.rows = 40; e.cols = 140;
