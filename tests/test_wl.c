@@ -323,9 +323,9 @@ static void test_sway(void)
 		char a[64], b[64];
 		snprintf(a, sizeof a, "%-24s", lig[i][0]);
 		snprintf(b, sizeof b, "%-24s", lig[i][1]);
-		grid_puts(&g, 3, 0, a, ATTR_NONE);
+		grid_puts(&g, 3, 0, g.cols, a, strlen(a), ATTR_NONE, FACE_NONE);
 		for (int k = 0; k < 3; k++) show();
-		grid_puts(&g, 3, 0, b, ATTR_NONE);
+		grid_puts(&g, 3, 0, g.cols, b, strlen(b), ATTR_NONE, FACE_NONE);
 		show();
 		cmd("grim -t ppm %s/1.ppm # %s", dir);
 		grid_free(&shown);
@@ -371,7 +371,7 @@ static void test_sway(void)
 	/* a ligature's glyph sits on its last cell and reaches back over the
 	   others ("->"; " /\ " in JetBrains Mono): the first cell has its ink */
 	grid_clear(&g);
-	grid_puts(&g, 0, 0, "x /\\ y ->", ATTR_NONE);
+	grid_puts(&g, 0, 0, g.cols, "x /\\ y ->", 9, ATTR_NONE, FACE_NONE);
 	show();
 	CHECK(ink(2 * cellw(), 0, cellw(), cellh(), 0) > cellh() / 2);
 	CHECK(ink(7 * cellw(), 0, cellw(), cellh(), 0) > cellw() / 2);
