@@ -102,8 +102,12 @@ uint32_t rdi_vmap(const Rdi *r, int k, uint64_t voff)
 
 RdiLine rdi_line_from_voff(const Rdi *r, uint64_t voff)
 {
-  const RdiUnit *unit = rdi_at(r, RDI_UNITS, RdiUnit, rdi_vmap(r, RDI_UNIT_VMAP, voff));
-  const RdiLineTable *t = rdi_at(r, RDI_LINE_TABLES, RdiLineTable, unit->line_table);
+  return rdi_line_in(r, rdi_at(r, RDI_UNITS, RdiUnit, rdi_vmap(r, RDI_UNIT_VMAP, voff))->line_table, voff);
+}
+
+RdiLine rdi_line_in(const Rdi *r, uint32_t line_table, uint64_t voff)
+{
+  const RdiLineTable *t = rdi_at(r, RDI_LINE_TABLES, RdiLineTable, line_table);
   RdiSpan voffs = rdi_run(r, RDI_LINE_VOFFS, t->voffs_base, t->lines_count);
   uint64_t i = floor_index(voffs.p, voffs.n, 8, voff);
   return *rdi_at(r, RDI_LINE_LINES, RdiLine, i < voffs.n ? t->lines_base + i : UINT64_MAX);

@@ -1,6 +1,6 @@
 /* pdb2rdi <in.pdb> <out.rdi> */
 #include "../dbg/conv.h"
-#include "../tests/load.h"
+#include "../dbg/load.h"
 
 int main(int argc, char **argv)
 {

@@ -4,7 +4,7 @@
    p <procedure idx> | c <scope idx> | L <voff> | S <line> <hex path> | U <voff> | B <section> |
    N <section> | D <scope idx> | u <unit idx> */
 #include "../dbg/rdi.h"
-#include "load.h"
+#include "../dbg/load.h"
 #include <stdbool.h>
 
 int main(int argc, char **argv)
@@ -61,7 +61,7 @@ int main(int argc, char **argv)
       s = rdi_str(&r, b->name);
       printf("%.*s %u %llx %llx %llx %llx", (int)s.n, (const char *)s.p, b->flags, (unsigned long long)b->voff, (unsigned long long)b->voff_opl, (unsigned long long)b->foff, (unsigned long long)b->foff_opl);
     } else if (op == 'N') printf("%llu", (unsigned long long)r.s[a < RDI_SECTIONS ? a : 0].n);
-    else if (op == 'D') {     /* a scope by meaning: parent, inline site, child, sibling, ranges; then its procedure's flags, name, link name; then the inlined function's name */
+    else if (op == 'D') {     /* a scope by meaning: parent, inline site, child, sibling, ranges; then its procedure's flags, name, link name; then the inlined function's name; then its lines */
       const RdiScope *c = rdi_at(&r, RDI_SCOPES, RdiScope, a);
       const RdiSymbol *y = rdi_at(&r, RDI_PROCEDURES, RdiSymbol, c->proc);
       printf("%u %u %u %u %u", c->parent, c->inline_site, c->first_child, c->next_sibling, c->proc);
@@ -74,8 +74,19 @@ int main(int argc, char **argv)
       s = rdi_str(&r, y->link_name);
       fwrite(s.p, 1, s.n, stdout);
       putchar('\t');
-      s = rdi_str(&r, rdi_at(&r, RDI_INLINE_SITES, RdiInlineSite, c->inline_site)->name);
+      const RdiInlineSite *site = rdi_at(&r, RDI_INLINE_SITES, RdiInlineSite, c->inline_site);
+      s = rdi_str(&r, site->name);
       fwrite(s.p, 1, s.n, stdout);
+      putchar('\t');
+      const RdiLineTable *t = rdi_at(&r, RDI_LINE_TABLES, RdiLineTable, site->line_table);
+      s = rdi_run(&r, RDI_LINE_VOFFS, t->voffs_base, t->lines_count);
+      for (uint64_t i = 0; i < s.n; i += 1) {   /* what its own line table answers at each offset the table names */
+        uint64_t voff = ((const uint64_t *)s.p)[i];
+        if (i + 1 < s.n && ((const uint64_t *)s.p)[i + 1] == voff) continue;
+        RdiLine l = rdi_line_in(&r, site->line_table, voff);
+        uint64_t len = rdi_path(&r, rdi_at(&r, RDI_SOURCE_FILES, RdiSourceFile, l.file)->path_node, hex, sizeof hex);
+        printf("%llx %.*s %u;", (unsigned long long)voff, (int)len, hex, l.line);
+      }
     } else if (op == 'u') {   /* a unit: its procedures, then its name */
       const RdiUnit *u = rdi_at(&r, RDI_UNITS, RdiUnit, a);
       s = rdi_str(&r, u->name);

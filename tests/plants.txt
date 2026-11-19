@@ -36,12 +36,12 @@ oracle | dbg/pdb.c | ? 28 : version == 0xeffe0000u + 20140516u ? 32 : 1; | ? 32 
 oracle | dbg/pdb.c | for (int i = 0; i < 6; i += 1) at += sizes[i]; | for (int i = 0; i < 5; i += 1) at += sizes[i];
 oracle | dbg/pdb.c | .stream = le16(h + 34), | .stream = le16(h + 32),
 fuzz | dbg/pdb.c |   if (c13.n - *next < 8) return false; |   if (c13.n == *next) return false;
-fuzz | dbg/pdb.c | .count = le32(file + 4) < most ? le32(file + 4) : most}; | .count = le32(file + 4) < most + 1 ? le32(file + 4) : most + 1};
+fuzz | dbg/pdb.c | b->count = le32(file + 4) < most ? le32(file + 4) : most; | b->count = le32(file + 4) < most + 1 ? le32(file + 4) : most + 1;
 test | dbg/pdb.c |   if (sum.n == 6) { |   if (sum.n > 0) {
 oracle | dbg/pdb.c |     c->item = le16(data.p + 6) & 1 ? 12 : 8; |     c->item = 8;
 oracle | dbg/pdb.c |   c->at += 12 + c->item * b->count; |   c->at = c->sub_opl;
 oracle | dbg/pdb.c |     c->base = pdb_voff(p, le16(data.p + 4), le32(data.p)); |     c->base = pdb_voff(p, le16(data.p + 4), 0);
-oracle | dbg/pdb.c |     name_at = le32(sum.p); |     name_at = sum_at;
+oracle | dbg/pdb.c | pdb_string(p->strings, &(uint32_t){le32(sum.p)}) | pdb_string(p->strings, &(uint32_t){sum_at})
 oracle | dbg/pdb.c |   at += 8;                                               /* count, capacity */ |   at += 4;
 oracle | dbg/pdb.c | if (kind == C13_CHECKSUMS) c->sums = data; | if (kind == C13_CHECKSUMS && !c->sums.n) c->sums = (PdbSpan){data.p, 1};
 test | dbg/conv.c |       while (top > 0 && ~r[4 * stack[top - 1] + 1] <= end) top -= 1; |       if (ended) top -= 1;
@@ -85,9 +85,9 @@ test | dbg/conv.c | uint32_t size = first < 0x80 ? 1 : first < 0xc0 ? 2 : first 
 test | dbg/conv.c | if (size == 0 \p\p size > a.n - *at) return false; | if (size == 0) return false;
 test | dbg/conv.c | *value = first & (size == 4 ? 0x1f : 0x7f); | *value = first & 0x7f;
 test | dbg/conv.c | *value = *value << 8 \p a.p[*at + i]; | *value = *value << 7 \p a.p[*at + i];
-test | dbg/conv.c | else if (op == 11) off += x & 15; | else if (op == 11) off += x;
-test | dbg/conv.c | else if (op != 0 && op != 4 && op != 5 && op != 6) ok = false; |
-test | dbg/conv.c | out->n = start;\n      return; | return;
+test | dbg/conv.c | else if (op == 11) off += x & 15, line += step(x >> 4); | else if (op == 11) off += x, line += step(x >> 4);
+test | dbg/conv.c | else if (op != 0 && op != 4) ok = false; |
+test | dbg/conv.c | out->n = start, lines->n = 0; | lines->n = 0;
 test | dbg/conv.c | if (!open && op != 0 && op != 5 && op != 6) lo = off, open = true; | if (op != 0 && op != 5 && op != 6) lo = off, open = true;
 test | dbg/conv.c | else if (op == 0 && open) end = base + off; |
 test | dbg/conv.c | if (out->n > start && *LAST(*out, uint64_t) == base + lo) | if (*LAST(*out, uint64_t) == base + lo)
@@ -99,7 +99,7 @@ test | dbg/conv.c | if (p[i] == 0 \p\p p[i] >= p[i + 1]) continue; | if (p[i] ==
 test | dbg/conv.c | v->n = kept * 8; |
 oracle | dbg/conv.c | if ((kind == S_END \p\p kind == S_INLINESITE_END) && open.n) open.n -= 4; | if (kind == S_END && open.n) open.n -= 4;
 oracle | dbg/conv.c | uint64_t voff = base = pdb_voff( | uint64_t voff = pdb_voff(
-oracle | dbg/conv.c | uint32_t id = le32(d.p + 8) - first_id, | uint32_t id = le32(d.p + 8),
+oracle | dbg/conv.c | id -= first_id; |
 oracle | dbg/conv.c | (kind == LF_FUNC_ID \p\p kind == LF_MFUNC_ID) | kind == LF_FUNC_ID
 oracle | dbg/conv.c | pdb_string(d, &(uint32_t){8}) | pdb_string(d, &(uint32_t){4})
 fuzz | dbg/conv.c | id_at = id < COUNT(id_ats, uint32_t) ? ((uint32_t *)id_ats.p)[id] : ids.n; | id_at = ((uint32_t *)id_ats.p)[id];
@@ -107,3 +107,23 @@ fuzz | dbg/pdb.c | bool has = n >= 20; | bool has = true;
 oracle | dbg/pdb.c | *first = has ? le32(stream + 8) : 0; | *first = has ? le32(stream + 12) : 0;
 oracle | dbg/pdb.c | part((PdbSpan){stream, n}, le32(stream + 4), le32(stream + 16)) | part((PdbSpan){stream, n}, le32(stream + 8), le32(stream + 16))
 oracle | dbg/rdi.c | [RDI_INLINE_SITES] = sizeof(RdiInlineSite) | [RDI_INLINE_SITES] = 1
+test | dbg/conv.c | out->n = start, lines->n = 0; | out->n = start;
+test | dbg/conv.c | static uint32_t step(uint32_t v) { return v & 1 ? 0 - (v >> 1) : v >> 1; } | static uint32_t step(uint32_t v) { return v >> 1; }
+test | dbg/conv.c | else if (op == 11) off += x & 15, line += step(x >> 4); | else if (op == 11) off += x & 15, line += x >> 4;
+test | dbg/conv.c | else if (op == 5) file = x; | else if (op == 5) file += x;
+test | dbg/conv.c | if (op == 3 \p\p op == 11 \p\p op == 12) rec(lines, | if (op == 3 \p\p op == 11) rec(lines,
+test | dbg/conv.c | rec(lines, end, lines->n, 0, 0); |
+oracle | dbg/conv.c | rec(lines, base + off, 1ull << 63 \p lines->n, file, line); | rec(lines, base + off, lines->n, file, line);
+oracle | dbg/conv.c | if (!listed) lines.n = 0; | (void)listed;
+oracle | dbg/conv.c | if (l[4 * i + 1] >> 63 == 0) continue; |
+oracle | dbg/conv.c | if (l[4 * i + 2] != last) { | if (i == 0) {
+oracle | dbg/conv.c | rec(&maps, file, l[4 * i + 3], l[4 * i], 0); |
+oracle | dbg/conv.c | .line_table = line_table(&o, &lines)}; | .line_table = 0};
+oracle | dbg/conv.c | PdbLineBlock f = pdb_file(&pdb, cur.sums, (uint32_t)last); | PdbLineBlock f = pdb_file(&pdb, cur.sums, sum_at);
+oracle | dbg/pdb.c | data.n < 4 \p\p le32(data.p) > 1) continue; | data.n < 4 \p\p le32(data.p) > 0) continue;
+test | dbg/pdb.c | data.n < 4 \p\p le32(data.p) > 1) continue; | le32(data.p) > 1) continue;
+test | dbg/pdb.c | uint32_t more = 4 * le32(data.p); | uint32_t more = 0;
+test | dbg/pdb.c | at <= data.n && data.n - at >= 12 + more; | data.n - at >= 12 + more;
+test | dbg/pdb.c | data.n - at >= 12 + more; at += | data.n - at >= 12; at +=
+test | dbg/pdb.c | *sum_at = le32(data.p + at + 4), *line = le32(data.p + at + 8); | *sum_at = le32(data.p + at + 8), *line = le32(data.p + at + 4);
+test | dbg/pdb.c | if (le32(data.p + at) != id) continue; | if (le32(data.p + at) < id) continue;

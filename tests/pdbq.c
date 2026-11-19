@@ -2,7 +2,7 @@
    compare with llvm-pdbutil. */
 #include "../dbg/pdb.h"
 #include "../dbg/le.h"
-#include "load.h"
+#include "../dbg/load.h"
 
 int main(int argc, char **argv)
 {

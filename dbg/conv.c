@@ -178,6 +178,9 @@ static bool operand(PdbSpan a, uint32_t *at, uint32_t *value)
   return true;
 }
 
+/* a signed operand of an annotation: the low bit is the sign (cv_inline_annot_signed_from_unsigned_operand) */
+static uint32_t step(uint32_t v) { return v & 1 ? 0 - (v >> 1) : v >> 1; }
+
 /* What an inlined call covers, as pairs added to `out`, from the annotations of its
    S_INLINESITE record; offsets count from the procedure's first byte, `base`. An annotation
    moves the code offset (a line starts there), or gives the length of the code at the offset,
@@ -185,11 +188,14 @@ static bool operand(PdbSpan a, uint32_t *at, uint32_t *value)
    that starts where the piece before ended continues it. Offsets left without a length are a
    piece up to the last of them. This is how LLVM reads and writes them (llvm-pdbutil's "code"
    and "code end", MCCodeView.cpp). RAD (cv_c13_inline_site_decoder_step) also adds the length
-   of annotation 12 to the offset, and sibling calls then overlap (lessons, L26). Nothing is
+   of annotation 12 to the offset, and sibling calls then overlap (lessons, L26). `lines`, which
+   is this call's alone, gets a line record at each new offset and an end record at each end of
+   a piece, as a unit's lines have; the file is still the offset of its checksum, and the first
+   are the `file` and `line` the function starts at. Nothing is
    added when the annotations are malformed or of a kind not decoded. NOT YET decoded: code
    moved out of the procedure (annotation 2), an offset that is not a step (annotation 1) and
    S_INLINESITE2; no compiler here writes them, and LLVM and RAD read the first two differently. */
-static void inline_pieces(Buf *out, PdbSpan a, uint64_t base)
+static void inline_pieces(Buf *out, Buf *lines, PdbSpan a, uint64_t base, uint32_t file, uint32_t line)
 {
   uint64_t start = out->n;
   uint32_t off = 0, lo = 0;
@@ -199,13 +205,16 @@ static void inline_pieces(Buf *out, PdbSpan a, uint64_t base)
     x = y = op = 0;                                      /* the end of the record is annotation 0, the end */
     bool ok = at == a.n || (operand(a, &at, &op) && (op == 0 || operand(a, &at, &x)) && (op != 12 || operand(a, &at, &y)));
     if (op == 3) off += x;                               /* ChangeCodeOffset */
-    else if (op == 11) off += x & 15;                    /* ChangeCodeOffsetAndLineOffset */
+    else if (op == 11) off += x & 15, line += step(x >> 4);   /* ChangeCodeOffsetAndLineOffset */
     else if (op == 12) off += y;                         /* ChangeCodeLengthAndCodeOffset */
-    else if (op != 0 && op != 4 && op != 5 && op != 6) ok = false;   /* ChangeCodeLength, ChangeFile and ChangeLineOffset move nothing */
+    else if (op == 5) file = x;                          /* ChangeFile */
+    else if (op == 6) line += step(x);                   /* ChangeLineOffset */
+    else if (op != 0 && op != 4) ok = false;             /* ChangeCodeLength moves nothing yet */
     if (!ok) {
-      out->n = start;
+      out->n = start, lines->n = 0;
       return;
     }
+    if (op == 3 || op == 11 || op == 12) rec(lines, base + off, 1ull << 63 | lines->n, file, line);   /* a line starts at each new offset */
     if (!open && op != 0 && op != 5 && op != 6) lo = off, open = true;
     if (op == 4 || op == 12) end = base + off + x;
     else if (op == 0 && open) end = base + off;
@@ -213,8 +222,23 @@ static void inline_pieces(Buf *out, PdbSpan a, uint64_t base)
     if (end == 0) continue;
     if (out->n > start && *LAST(*out, uint64_t) == base + lo) *LAST(*out, uint64_t) = end;
     else pair(out, base + lo, end);
+    rec(lines, end, lines->n, 0, 0);
     open = false;
   }
+}
+
+/* A line table from records (offset, order, file, line), sorted here. */
+static uint32_t line_table(Out *o, Buf *lines)
+{
+  uint64_t n, *l = sorted(lines, &n);
+  RdiLineTable t = {.voffs_base = COUNT(o->s[RDI_LINE_VOFFS], uint64_t), .lines_base = COUNT(o->s[RDI_LINE_LINES], RdiLine), .lines_count = (uint32_t)n};
+  for (uint64_t i = 0; i < n; i += 1) {
+    *(uint64_t *)add(&o->s[RDI_LINE_VOFFS], 8) = l[4 * i];
+    *(RdiLine *)add(&o->s[RDI_LINE_LINES], sizeof(RdiLine)) = (RdiLine){(uint32_t)l[4 * i + 2], (uint32_t)l[4 * i + 3]};
+  }
+  *(uint64_t *)add(&o->s[RDI_LINE_VOFFS], 8) = UINT64_MAX;   /* RAD's reader looks one past the last */
+  *(RdiLineTable *)add(&o->s[RDI_LINE_TABLES], sizeof t) = t;
+  return COUNT(o->s[RDI_LINE_TABLES], RdiLineTable) - 1;
 }
 
 /* A procedure and its root scope. */
@@ -361,9 +385,11 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
        can then answer "no line" at the first byte of a function that follows another without a gap. */
     uint8_t *stream = pdb_module_stream(&pdb, &m, &syms, &c13);
     PdbLineBlock b;
+    PdbLineCursor cur = {0};
+    uint32_t folder = ((RdiPathNode *)o.s[RDI_FILE_PATH_NODES].p)[unit.object_path].parent;
     lines.n = 0;
-    for (PdbLineCursor c = {0}; pdb_line_block(&pdb, c13, &c, &b);) {
-      uint32_t file = source_file(&o, &b, ((RdiPathNode *)o.s[RDI_FILE_PATH_NODES].p)[unit.object_path].parent);
+    while (pdb_line_block(&pdb, c13, &cur, &b)) {
+      uint32_t file = source_file(&o, &b, folder);
       for (uint32_t j = 0; j < b.count; j += 1) {
         uint64_t voff = b.base + le32(b.lines + 8 * j), line = le32(b.lines + 8 * j + 4) & 0xffffff;
         rec(&lines, voff, 1ull << 63 | order++, file, line);
@@ -371,18 +397,7 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
       }
       rec(&lines, b.opl, order++, 0, 0);
     }
-    uint64_t n, *l = sorted(&lines, &n);
-    if (n) {
-      unit.line_table = COUNT(o.s[RDI_LINE_TABLES], RdiLineTable);
-      RdiLineTable t = {.voffs_base = COUNT(o.s[RDI_LINE_VOFFS], uint64_t), .lines_base = COUNT(o.s[RDI_LINE_LINES], RdiLine)};
-      for (uint64_t i = 0; i < n; i += 1) {
-        *(uint64_t *)add(&o.s[RDI_LINE_VOFFS], 8) = l[4 * i];
-        *(RdiLine *)add(&o.s[RDI_LINE_LINES], sizeof(RdiLine)) = (RdiLine){(uint32_t)l[4 * i + 2], (uint32_t)l[4 * i + 3]};
-        t.lines_count += 1;
-      }
-      *(uint64_t *)add(&o.s[RDI_LINE_VOFFS], 8) = UINT64_MAX;   /* RAD's reader looks one past the last */
-      *(RdiLineTable *)add(&o.s[RDI_LINE_TABLES], sizeof t) = t;
-    }
+    unit.line_table = line_table(&o, &lines);
 
     /* Procedures and scopes (rdi_from_codeview.c, "symbols pass 2"): a procedure opens its root
        scope; a block or an inlined call opens a scope inside the open one; S_END and
@@ -409,12 +424,28 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
         made = scope(&o, inside, top, 0, o.s[RDI_SCOPE_VOFFS].n - 16);
       } else if (kind == S_INLINESITE && d.n >= 12) {                       /* CV_SymInlineSite: parent, end, id, annotations */
         uint64_t start = o.s[RDI_SCOPE_VOFFS].n;
-        inline_pieces(&o.s[RDI_SCOPE_VOFFS], (PdbSpan){d.p + 12, d.n - 12}, base);
+        uint32_t id = le32(d.p + 8), sum_at = 0, line = 0, file = 0;
+        bool listed = pdb_inlinee(c13, id, &sum_at, &line);
+        lines.n = 0;
+        inline_pieces(&o.s[RDI_SCOPE_VOFFS], &lines, (PdbSpan){d.p + 12, d.n - 12}, base, sum_at, line);
+        if (!listed) lines.n = 0;                                           /* no first line to count from: no lines */
+        uint64_t *l = (uint64_t *)lines.p;
+        for (uint64_t i = 0, last = UINT64_MAX; i < lines.n / 32; i += 1) {   /* each line's file, from the offset of its checksum */
+          if (l[4 * i + 1] >> 63 == 0) continue;
+          if (l[4 * i + 2] != last) {
+            last = l[4 * i + 2];
+            PdbLineBlock f = pdb_file(&pdb, cur.sums, (uint32_t)last);
+            file = source_file(&o, &f, folder);
+          }
+          l[4 * i + 2] = file;
+          rec(&maps, file, l[4 * i + 3], l[4 * i], 0);
+        }
         /* its name is in the id record it names: two type ids, then the name (CV_LeafFuncId, CV_LeafMFuncId) */
-        uint32_t id = le32(d.p + 8) - first_id, id_at = id < COUNT(id_ats, uint32_t) ? ((uint32_t *)id_ats.p)[id] : ids.n;
+        id -= first_id;
+        uint32_t id_at = id < COUNT(id_ats, uint32_t) ? ((uint32_t *)id_ats.p)[id] : ids.n;
         PdbSpan name = pdb_symbol(ids, &id_at, &kind, &d) && (kind == LF_FUNC_ID || kind == LF_MFUNC_ID) ? pdb_string(d, &(uint32_t){8}) : (PdbSpan){0};
         made = scope(&o, inside, top, COUNT(o.s[RDI_INLINE_SITES], RdiInlineSite), start);
-        *(RdiInlineSite *)add(&o.s[RDI_INLINE_SITES], sizeof(RdiInlineSite)) = (RdiInlineSite){.name = intern(&o.strings, name.p, name.n)};
+        *(RdiInlineSite *)add(&o.s[RDI_INLINE_SITES], sizeof(RdiInlineSite)) = (RdiInlineSite){.name = intern(&o.strings, name.p, name.n), .line_table = line_table(&o, &lines)};
       }
       if (made) *(uint32_t *)add(&open, 4) = made;
     }

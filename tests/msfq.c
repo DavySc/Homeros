@@ -1,7 +1,7 @@
 /* msfq <file.pdb> <dir>: writes every stream to <dir>/<index> and prints "index size" lines,
    for tests/oracle_msf.sh to compare with llvm-pdbutil. */
 #include "../dbg/msf.h"
-#include "load.h"
+#include "../dbg/load.h"
 
 int main(int argc, char **argv)
 {

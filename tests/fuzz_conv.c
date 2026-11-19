@@ -23,6 +23,8 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
       sum += rdi_path(&r, rdi_at(&r, RDI_SOURCE_FILES, RdiSourceFile, l.file)->path_node, path, sizeof path);
       const RdiSymbol *y = rdi_at(&r, RDI_PROCEDURES, RdiSymbol, rdi_at(&r, RDI_SCOPES, RdiScope, rdi_vmap(&r, RDI_SCOPE_VMAP, voff))->proc);
       sum += rdi_str(&r, y->name).n + rdi_str(&r, y->link_name).n;
+      const RdiInlineSite *site = rdi_at(&r, RDI_INLINE_SITES, RdiInlineSite, rdi_at(&r, RDI_SCOPES, RdiScope, rdi_vmap(&r, RDI_SCOPE_VMAP, voff))->inline_site);
+      sum += rdi_str(&r, site->name).n + rdi_line_in(&r, site->line_table, voff).line;
     }
     free(rdi);
   }

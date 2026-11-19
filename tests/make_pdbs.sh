@@ -27,7 +27,8 @@ link "$out/obj/reversed.obj" /out:"$out/reversed.exe" /pdb:"$out/reversed.pdb"
 # (size 0xffffffff); the tools still read it. In bad/, as fuzz seeds only: longlast.pdb, whose
 # last stream claims one page more than the directory lists, and nocontribs.pdb, whose section contributions have an
 # unknown version, so it has public symbols and no unit map, noids.pdb, whose id stream is empty, and farid.pdb, whose first inlined call names
-# an id far past the last.
+# an id far past the last. unlisted.pdb is a good file for every tool: the line info no longer lists its first
+# inlined function, so calls of it have no lines.
 mkdir -p "$out/bad"
 python3 -I -c 'import struct, sys
 good = open(sys.argv[1], "rb").read()
@@ -48,7 +49,11 @@ python3 -I -c 'import re, sys
 d = bytearray(open(sys.argv[1], "rb").read())
 at = re.search(rb"\x4d\x11.{8}.\x10\x00\x00", d, re.S).start()               # S_INLINESITE: parent, end, then the id
 d[at + 10:at + 14] = b"\xff\xff\xff\x7f"
-open(sys.argv[2], "wb").write(d)' "$out/gap-O2.pdb" "$out/bad/farid.pdb"
+open(sys.argv[2], "wb").write(d)
+d = bytearray(open(sys.argv[1], "rb").read())
+at = re.search(rb"\xf6\x00\x00\x00.{4}\x00\x00\x00\x00\x00\x10\x00\x00", d, re.S).start()   # the list of inlined functions: its first id
+d[at + 12:at + 16] = b"\xff\x1f\x00\x00"
+open(sys.argv[3], "wb").write(d)' "$out/gap-O2.pdb" "$out/bad/farid.pdb" "$out/unlisted.pdb"
 mkdir -p "$out/many"; cd "$out/many"
 for i in $(seq 400); do echo "int f$i(int x) { int y = x + $i; return y * 2; }" > "f$i.c"; done
 echo "int f1(int); int main(void) { return f1(0); }" > main.c

@@ -5,7 +5,7 @@
 
 enum { INFO_STREAM = 1, INFO_HEADER = 28 /* version, signature, age, GUID */, DBI_STREAM = 3, IPI_STREAM = 4, DBI_HEADER = 64, MODULE_HEADER = 64, SECTION_HEADER = 40,
        SECTION_HEADER_SLOT = 5 /* PDB_DbiStream_SECTION_HEADER */,
-       C13_LINES = 0xf2, C13_CHECKSUMS = 0xf4 };
+       C13_LINES = 0xf2, C13_CHECKSUMS = 0xf4, C13_INLINEE_LINES = 0xf6 };
 
 /* [off, off+n) of s, cut to what s holds */
 static PdbSpan part(PdbSpan s, uint64_t off, uint64_t n)
@@ -176,17 +176,41 @@ bool pdb_line_block(const Pdb *p, PdbSpan c13, PdbLineCursor *c, PdbLineBlock *b
     c->sub_opl = (uint32_t)(data.p - c13.p) + data.n;
   }
   const uint8_t *file = c13.p + c->at;
-  uint32_t most = (c->sub_opl - c->at - 12) / c->item, sum_at = le32(file), name_at = 0;
-  PdbSpan sum = part(c->sums, sum_at, 6);              /* CV_C13Checksum: name, length, kind, bytes */
-  *b = (PdbLineBlock){.base = c->base, .opl = c->opl, .lines = file + 12, .count = le32(file + 4) < most ? le32(file + 4) : most};
-  if (sum.n == 6) {
-    name_at = le32(sum.p);
-    b->file = pdb_string(p->strings, &name_at);
-    b->sum_kind = sum.p[5];
-    b->sum = part(c->sums, (uint64_t)sum_at + 6, sum.p[4]);
-  }
+  uint32_t most = (c->sub_opl - c->at - 12) / c->item;
+  *b = pdb_file(p, c->sums, le32(file));
+  b->base = c->base, b->opl = c->opl, b->lines = file + 12, b->count = le32(file + 4) < most ? le32(file + 4) : most;
   c->at += 12 + c->item * b->count;
   return true;
+}
+
+PdbLineBlock pdb_file(const Pdb *p, PdbSpan sums, uint32_t sum_at)
+{
+  PdbLineBlock b = {0};
+  PdbSpan sum = part(sums, sum_at, 6);                 /* CV_C13Checksum: name, length, kind, bytes */
+  if (sum.n == 6) {
+    b.file = pdb_string(p->strings, &(uint32_t){le32(sum.p)});
+    b.sum_kind = sum.p[5];
+    b.sum = part(sums, (uint64_t)sum_at + 6, sum.p[4]);
+  }
+  return b;
+}
+
+bool pdb_inlinee(PdbSpan c13, uint32_t id, uint32_t *sum_at, uint32_t *line)
+{
+  uint32_t kind;
+  PdbSpan data;
+  /* a signature, then per function: its id, the offset of its file's checksum, its first line
+     (CV_C13InlineeSourceLineHeader); with signature 1 also a count and that many more files */
+  for (uint32_t next = 0; subsection(c13, &next, &kind, &data);) {
+    if (kind != C13_INLINEE_LINES || data.n < 4 || le32(data.p) > 1) continue;
+    uint32_t more = 4 * le32(data.p);
+    for (uint64_t at = 4; at <= data.n && data.n - at >= 12 + more; at += 12 + more + (more ? 4 * (uint64_t)le32(data.p + at + 12) : 0)) {
+      if (le32(data.p + at) != id) continue;
+      *sum_at = le32(data.p + at + 4), *line = le32(data.p + at + 8);
+      return true;
+    }
+  }
+  return false;
 }
 
 PdbContrib pdb_contrib(const Pdb *p, uint32_t i) { return contrib_at(p->contribs.p + (uint64_t)i * p->contrib_size); }

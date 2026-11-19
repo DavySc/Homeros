@@ -40,12 +40,21 @@ int main(void)
     Buf out = {0};
     pair(&out, 1, 0x1008);                                                     /* what was there stays, though a piece may start at its end */
     uint8_t *a = memcpy(malloc(sites[i].n), sites[i].a, sites[i].n);           /* exactly as long, so that reading past it is seen */
-    inline_pieces(&out, (PdbSpan){a, sites[i].n}, sites[i].base);
+    Buf lines = {0};
+    inline_pieces(&out, &lines, (PdbSpan){a, sites[i].n}, sites[i].base, 0, 0);
     const uint64_t *v = (const uint64_t *)out.p;
     if (out.n != 16 + 16 * (uint64_t)sites[i].pairs || memcmp(v + 2, sites[i].want, out.n - 16) != 0 || v[0] != 1 || v[1] != 0x1008) { printf("inline site %u: wrong pieces\n", i); return 1; }
-    free(a);
-    free(out.p);
+    if (sites[i].pairs == 0 && lines.n != 0) { printf("inline site %u: lines from malformed annotations\n", i); return 1; }
+    free(a), free(out.p), free(lines.p);
   }
+  /* Its lines, from file 8 line 10: two lines down; an offset with one more line; another file; an offset; one line up;
+     an offset with a length. A record per offset with the file and line as they then are, and one for the end. */
+  static const uint8_t noted[] = {6, 4, 11, 0x24, 5, 12, 3, 4, 6, 3, 12, 2, 6};
+  static const uint64_t want[] = {0x1004, 1ull << 63, 8, 13, 0x1008, 1ull << 63 | 32, 12, 13, 0x100e, 1ull << 63 | 64, 12, 12, 0x1010, 96, 0, 0};
+  Buf out = {0}, lines = {0};
+  inline_pieces(&out, &lines, (PdbSpan){noted, sizeof noted}, 0x1000, 8, 10);
+  if (lines.n != sizeof want || memcmp(lines.p, want, sizeof want) != 0) { printf("inline site: wrong lines\n"); return 1; }
+  free(out.p), free(lines.p);
   free(o.s[RDI_SCOPES].p), free(o.s[RDI_SCOPE_VOFFS].p), free(o.scopes.p);
   uint32_t seed = 1;
   for (int round = 0; round < 200000; round += 1) {

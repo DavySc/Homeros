@@ -59,6 +59,13 @@ typedef struct { PdbSpan sums; uint32_t next, at, sub_opl, item; uint64_t base, 
 /* the next block of c13; *c starts zeroed. False at the end. */
 bool pdb_line_block(const Pdb *p, PdbSpan c13, PdbLineCursor *c, PdbLineBlock *b);
 
+/* the source file whose checksum record is at sum_at of a module's checksums (a cursor's `sums`
+   after its first use): file, sum and sum_kind, empty when there is no such record */
+PdbLineBlock pdb_file(const Pdb *p, PdbSpan sums, uint32_t sum_at);
+/* Where the module's line info says inlined function `id` is written: its file's checksum
+   record and its first line. False when it does not say. */
+bool pdb_inlinee(PdbSpan c13, uint32_t id, uint32_t *sum_at, uint32_t *line);
+
 PdbSection pdb_section(const Pdb *p, uint32_t number);     /* 1-based; all zero when out of range */
 /* section:offset as an offset from the image base, 0 when there is no such section */
 uint64_t pdb_voff(const Pdb *p, uint16_t sec, uint32_t off);
