@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include "check.h"
 #include "core.h"
+#include "uni.h"
 #include "../src/core/core_int.h"
 
 static char line[1 << 20];   /* a file is one line of hex: up to 512 KiB */
@@ -23,6 +24,9 @@ static const PumItem PUM1[] = {
 static PumItem pum_items[3 * 10];
 static char pum_words[3 * 10][48];
 static int verbose;
+/* Neovim redraws no status line while the popup is up, so the status lines
+   of a screen read then show the state before the completion: left out */
+static int in_pum;
 
 /* Neovim's key notation in a "k:" token: <Esc> <CR> <C-r>, the rest literal */
 static void feed(Editor *e, const char *s)
@@ -37,9 +41,43 @@ static void feed(Editor *e, const char *s)
 	for (int i = 0; i < n; i++) keys_feed(e, keys[i], 0);   /* no typeahead: see the .py */
 }
 
-static int status_row(const Editor *e, int r)
+/* Row r is a status line whose cursor agrees with Neovim's: the core draws
+   lualine's (test_core_status), the trace holds Neovim's default one, so
+   only its ruler "%l,%c%V" is compared, where the window's part of the row
+   shows it whole: the line, the byte column and the screen column ("0-1"
+   on an empty line, line 0 in an empty buffer) */
+static int status_row(Editor *e, int r, const char *row)
 {
-	for (const Win *w = e->wins; w; w = w->next) if (r == w->y + w->h) return 1;
+	for (Win *w = e->wins; w; w = w->next) {
+		if (r != w->y + w->h) continue;
+		if (in_pum) return 1;
+		/* the window's cells of the row, as one string between blanks */
+		const unsigned char *u = (const unsigned char *)row;
+		size_t n = strlen(row), i = 0, a;
+		char part[1024] = " ", want[64];
+		for (int c = 0; i < n && c < w->x; i += uni_glen(u, n, i)) c += uni_width(u, n, i);
+		for (a = i; i < n && (int)(i - a) < (int)sizeof part - 3; i += uni_glen(u, n, i)) {
+			int c = 0;
+			for (size_t k = a; k < i; k += uni_glen(u, n, k)) c += uni_width(u, n, k);
+			if (c >= w->w) break;
+		}
+		memcpy(part + 1, row + a, i - a);
+		strcpy(part + 1 + (i - a), " ");
+		size_t len = text_line_start(w->buf->text, w->line + 1) - text_line_start(w->buf->text, w->line) - 1,
+		       l = w->buf->flags & CORE_EMPTY ? 0 : w->line + 1, col = len ? (w->col < len ? w->col : len) + 1 : 0,
+		       v = win_vcol(e, w, NULL, NULL) + 1;
+		if (!col) snprintf(want, sizeof want, " %zu,0-1 ", l);
+		else if (v != col) snprintf(want, sizeof want, " %zu,%zu-%zu ", l, col, v);
+		else snprintf(want, sizeof want, " %zu,%zu ", l, col);
+		if (strstr(part, want)) return 1;
+		/* a ruler cut by the window's width ('<' before it) is not compared */
+		for (const char *p = part; *p; p++) {
+			unsigned long x, y;
+			char end;
+			if (p[0] == ' ' && sscanf(p + 1, "%lu,%lu%c", &x, &y, &end) == 3 && (end == ' ' || end == '-')) return 0;
+		}
+		return 1;
+	}
 	return 0;
 }
 
@@ -88,6 +126,7 @@ static void token(Editor *e, Grid *g, const char *t)
 			core_pum(e, pum_items + a, n > 1 ? n : 0, sel, col);
 			if (n == 1) core_update(e);
 		}
+		in_pum = 1;
 		return;
 	}
 	if (!strncmp(t, "k:", 2)) { feed(e, t + 2); return; }
@@ -197,17 +236,18 @@ int main(int argc, char **argv)
 			Grid g = { 0 };
 			int differ = 0;
 			CHECK(!chdir(dir) && !core_open(&e, "f0") && !grid_resize(&g, rows, cols));
+			in_pum = 0;
 			for (int s = 0; s < nscr; s++) {
 				if (s) token(&e, &g, tokens[s - 1]);
 				core_draw(&e, &g);
 				total++;
-				/* rows above the command line but the status lines (mini.statusline's,
-				   test_core_contract's): Neovim's headless command line shows typed
-				   commands and keeps no messages */
+				/* rows above the command line, the status lines by their
+				   rulers: Neovim's headless command line shows typed commands
+				   and keeps no messages */
 				int below = 0, r;
 				for (Win *w = e.wins; w; w = w->next) if (w->y + w->h + 1 > below) below = w->y + w->h + 1;
 				for (r = 0; r < below && screens[s][r]; r++)
-					if (strcmp(row_text(&g, r), screens[s][r]) && !status_row(&e, r)) break;
+					if (strcmp(row_text(&g, r), screens[s][r]) && !status_row(&e, r, screens[s][r])) break;
 				char mk[3][48], got[160];
 				for (int i = 0; i < 3; i++) {
 					Mark m = e.buf->mark[i];
