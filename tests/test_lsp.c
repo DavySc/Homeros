@@ -609,19 +609,21 @@ static void scenario(int seed, const char *log)
 			}
 			CHECK(lsp_answer(d, 0));
 		} else if (step == 125) {
-			usleep(50000);                    /* what the server says meanwhile waits */
 			/* one command of more edits than the log holds, the server
 			   unheard meanwhile: what it said before must go, not be
-			   mapped through half the edits */
-			for (int k = 0; k < 4200; k++) {
-				size_t pos = charstart(rnd((unsigned)len + 1));
-				if (k % 2 || !len) edit(d, pos, 0, "a", 1);
-				else {
-					text_read(t, 0, buf, len);
-					if (pos == len) pos = charstart(len - 1);
-					edit(d, pos, mstep((const unsigned char *)buf, len, pos), "", 0);
-				}
+			   mapped through the half of the edits the log kept.  The
+			   server first catches up and says things about the text as
+			   it is; all the edits go at the start of the text, so a
+			   wrong mapping moves line 0 by half as much, never by
+			   chance the right amount */
+			for (long long t0 = ms(); ms() - t0 < 2000; ) {
+				long l = -1;
+				loop_once(10);
+				check_shown(d, &l);
+				if (l == cur) break;
 			}
+			usleep(100000);
+			for (int k = 0; k < 4200; k++) edit(d, 0, 0, "a", 1);
 			lsp_flush(d);
 			cur++;
 			snapshot();
