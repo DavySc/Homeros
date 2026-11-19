@@ -94,9 +94,11 @@ after $ keeping curswant MAXCOL):
   the Tab.
 - $, then C-v on a Tab and Esc ("\t", $ C-v Esc >>): Neovim's curswant is
   the Tab's first cell (column 0 after >>), ours its last (column 7).
+- C-v on a Tab, then J ("\t[y] 0x1f }", C-v J a BS): Neovim's cursor
+  stays inside the Tab, so a splits it into spaces; ours is on the Tab.
 
 Neovim's own oddities, not copied:
-- r, then R and CTRL-U back over the replaced character ("  0", r 3 l R
+- r, then R and CTRL-U or BS back over the replaced character ("  0", r 3 l R
   C-u): Neovim's replace stack still holds what r replaced and puts it back.
 - block I, then Left past the block's start and text ("abcd\nefgh", l C-v j
   I Left x): Neovim puts "a" in the other lines, ours "x" (its
@@ -121,6 +123,8 @@ Neovim's own oddities, not copied:
   and "a", gqgq gqgq i Tab): Neovim's softtabstop counts from the w_virtcol
   that internal_format()'s coladvance() left, as in s Tab; ours keeps that
   stale column for motions (gq gg gql gg) but not for Insert mode.
+  The same after a Visual block gq on a blank line ("  ", C-v _ gq r Tab):
+  the block's coladvance() to its first column leaves w_virtcol 0.
 - CTRL-V U with a code past U+10FFFF ("ab", i C-v U110000 Esc): Neovim
   writes bytes that are not UTF-8 (from 0x80000000 a special-key code); ours
   inserts nothing, and stops adding digits there so the code cannot overflow.
