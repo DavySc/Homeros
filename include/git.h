@@ -19,14 +19,20 @@ int  git_key(struct Editor *e, int key);
    buffer, u unstage, p preview); prefix is 'g' or 'h'; keys call it.
    0 ok, -1 not (msg set). */
 int  git_leader(struct Editor *e, int prefix, int key);
+/* A file was read into b, or b got a new name (gitsigns' attach on
+   BufRead): finds its repository and starts its status read.  Attaching b
+   again replaces what it had. */
+void git_attach(const struct Buf *b);
 /* Gutter sign of line l (from 0) of buffer b, from the last refresh's
    diff: 0 none, '+' added, '~' changed, '_' lines deleted below it.  For
-   the core's sign column. */
+   the core's sign column.  No I/O, no allocation: 0 for a buffer never
+   attached. */
 int  git_sign(const struct Buf *b, size_t l);
 /* lualine's branch for the status line: the branch of b's repository
-   (.git/HEAD's ref name, a short hash when detached), NULL outside one or
-   before git has looked.  Cached by git's refresh: no I/O or allocation
-   per call, since it is asked every frame. */
+   (.git/HEAD's ref name, a short hash when detached), NULL outside one, for
+   a buffer never attached, or before git has looked.  Cached by git's
+   refresh: no I/O and no allocation per call, since it is asked every
+   frame. */
 const char *git_branch(const struct Buf *b);
 void git_free(void);                     /* kills git's children, frees all */
 #endif
