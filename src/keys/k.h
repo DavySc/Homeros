@@ -34,6 +34,7 @@ int  gchar(Pos p);                    /* code point at p, NUL at the end of line
 int  gchar_cursor(void);
 int  clen(const char *s, long n, long i);   /* bytes of the character at s[i] */
 long head(const char *s, long i);           /* start of the character holding s[i] */
+int  whitechar(const char *s, long n, long i);
 int  inc(Pos *p);
 int  dec(Pos *p);
 int  incl(Pos *p);
@@ -66,13 +67,14 @@ void check_cursor_col(void);
 void adjust_cursor_eol(void);
 void update_curswant(void);
 void validate_virtcol(void);
+void curs_columns(void);
 extern int set_curswant;
 int  replace_bytes(long l, long col, long ndel, const char *ins, long nins);
 int  append_lines(long after, const char *s, long n);   /* lines s (joined by '\n') below line after (-1: at the top) */
 int  del_lines(long l, long n);
 int  set_indent(long l, long cols);
 void u_save_cursor(void);             /* an undo step even if nothing changes */
-void u_save_gap(size_t l);           /* one that saves no line, at line l */
+void u_save(size_t a, size_t z);      /* one that saves lines [a, z) as they are */
 int  is_empty_buf(void);
 void beep(void);                      /* beep_flush(): drops stuffed keys */
 extern int beeped;
@@ -97,12 +99,12 @@ extern int virtual_op, ins_at_eol;
 typedef struct {
 	int op_type, regname, motion_type, motion_force;
 	int use_reg_one, inclusive, end_adjusted, empty, is_visual, block_mode;
-	Pos start, end;
+	Pos start, end, cursor_start;   /* cursor_start: where gq was typed */
 	long line_count, start_vcol, end_vcol;
 } Oparg;
 enum { OP_NOP, OP_DELETE, OP_YANK, OP_CHANGE, OP_LSHIFT, OP_RSHIFT, OP_TILDE,
 	OP_UPPER, OP_LOWER, OP_JOIN, OP_JOIN_NS, OP_REPLACE, OP_INSERT, OP_APPEND,
-	OP_NR_ADD, OP_NR_SUB };
+	OP_NR_ADD, OP_NR_SUB, OP_FORMAT };
 
 /* text objects (textobject.c); the Visual state they extend */
 extern int VIsual_active, VIsual_mode;
@@ -122,6 +124,9 @@ int  op_yank(Oparg *oap);
 int  op_change(Oparg *oap);
 void op_shift(Oparg *oap, long amount);
 void op_tilde(Oparg *oap);
+void op_format(Oparg *oap);
+int  is_sql(void);
+int  sql_format(size_t a, size_t z);   /* the edit for bytes [a, z), -1 out of memory */
 int  op_replace(Oparg *oap, int c);
 void op_insert(Oparg *oap, long count1);
 void op_addsub(Oparg *oap, long count1, int g_cmd);
@@ -153,6 +158,7 @@ int  stuff_inserted(int c, long count, int no_esc);
 long last_insert_keys(const int **k);
 void set_last_insert(int c);
 extern int restart_edit, arrow_used, did_ai_flag;
+extern long old_indent;              /* open_line()'s second_line_indent */
 
 /* normal.c */
 void normal_key(int k);

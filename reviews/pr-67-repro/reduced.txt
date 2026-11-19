@@ -1,0 +1,59 @@
+{"text": "                                                                                    a", "keys": ["<C-v>", "gq", "gq", "_", "i", "<Tab>"]} 
+ nvim {'lines': ['                                                                                     a'], 'cursor': [1, 84]} 
+ ours {'lines': ['                                                                                        a'], 'cursor': [1, 87], 'mode': 0}
+{"text": "                                                                                a", "keys": ["gq", "gg", "gq", "l", "gg"]} 
+ nvim {'lines': ['                                                                                a'], 'cursor': [1, 79]} 
+ ours {'lines': ['                                                                                a'], 'cursor': [1, 80], 'mode': 0}
+{"text": "\n\n sed.", "keys": ["5", "w", "gq", "[", "[", "u"]} 
+ nvim {'cursor': [3, 4], 'lines': ['', '', ' sed.']} 
+ ours {'lines': ['', '', ' sed.'], 'cursor': [1, 0], 'mode': 0}
+{"text": "sed. A\n.LP here\n A\tsed.", "keys": ["5", ")", "gq", "5", "-", "u"]} 
+ nvim {'cursor': [3, 6], 'lines': ['sed. A', '.LP here', ' A\tsed.']} 
+ ours {'lines': ['sed. A', '.LP here', ' A\tsed.'], 'cursor': [1, 1], 'mode': 0}
+{"text": "incididunt-ut\n \n 42", "keys": ["<C-v>", "j", "+", "gq", "u"]} 
+ nvim {'lines': ['incididunt-ut', ' ', ' 42'], 'cursor': [3, 1]} 
+ ours {'lines': ['incididunt-ut', ' ', ' 42'], 'cursor': [1, 1], 'mode': 0}
+{"text": "incididunt-ut\t̀ ｆｕｌｌ (tempor) ẞß 한글 42 🇳🇱 supercalifragilistic  🇳🇱 lorem", "keys": ["gq", "(", "<C-w>", "gq", "gg"]} 
+ nvim {'lines': ['incididunt-ut\t̀ ｆｕｌｌ (tempor) ẞß 한글 42 🇳🇱 supercalifragilistic  🇳🇱', 'lorem'], 'cursor': [1, 0]} 
+ ours {'lines': ['incididunt-ut\t̀ ｆｕｌｌ (tempor) ẞß 한글 42 🇳🇱 supercalifragilistic  🇳🇱', 'lorem'], 'cursor': [2, 0], 'mode': 0}
+{"text": "                                                                                    🇳🇱", "keys": ["gq", "h", "V", "gq", "i", "<Tab>"]} 
+ nvim {'lines': ['                                                                                     🇳🇱'], 'cursor': [1, 84]} 
+ ours {'lines': ['                                                                                        🇳🇱'], 'cursor': [1, 87], 'mode': 0}
+{"text": "\n\n x\nipsum", "keys": ["<C-v>", "G", "b", "gq", "u"]} 
+ nvim {'lines': ['', '', ' x', 'ipsum'], 'cursor': [3, 1]} 
+ ours {'lines': ['', '', ' x', 'ipsum'], 'cursor': [1, 0], 'mode': 0}
+{"text": "\tAAAAAAAAAAAAAAAAAA\t42\fipsum\t", "keys": ["S", "<C-r>", "\""]} 
+ nvim {'lines': ['\t    AAAAAAAAAAAAAAAAAA  42\x0cipsum   ', ''], 'cursor': [2, 0]} 
+ ours {'lines': ['\t    AAAAAAAAAAAAAAAAAA  42ipsum ', ''], 'cursor': [2, 0], 'mode': 0}
+{"text": " of\fdo,", "keys": ["v", "gq", "g", "o"]} 
+ nvim {'lines': [' of\x0cdo,'], 'cursor': [1, 0]} 
+ ours {'lines': [' of\x0cdo,'], 'cursor': [1, 1], 'mode': 0}
+{"text": "ipsum\fsed.", "keys": ["y", "$", "A", "<C-r>", "\""]} 
+ nvim {'lines': ['ipsum\x0csed.ipsum\x0csed.'], 'cursor': [1, 19]} 
+ ours {'lines': ['ipsum\x0csed.ipsumsed.'], 'cursor': [1, 18], 'mode': 0}
+{"text": "                                                                        \tI\t", "keys": ["gq", "|", "gq", "0", "go"]} 
+ nvim {'cursor': [1, 79], 'lines': ['                                                                                I\t']} 
+ ours {'lines': ['                                                                                I\t'], 'cursor': [1, 80], 'mode': 0}
+{"text": "supercalifragilistic\fof", "keys": ["c", "go", "<C-r>", "\""]} 
+ nvim {'lines': ['supercalifragilistic\x0cof', ''], 'cursor': [2, 0]} 
+ ours {'lines': ['supercalifragilisticof', ''], 'cursor': [2, 0], 'mode': 0}
+Traceback (most recent call last):
+  File "/home/claude/Homeros/reviews/pr-67-repro/reduce.py", line 24, in <module>
+    keys = shrink(keys, lambda t: {'text': text, 'keys': t})
+  File "/home/claude/Homeros/reviews/pr-67-repro/reduce.py", line 16, in shrink
+    if differs(make(t)): items = t
+       ~~~~~~~^^^^^^^^^
+  File "/home/claude/Homeros/reviews/pr-67-repro/reduce.py", line 11, in differs
+    return 'error' in g or not G['same'](g, G['nvim1']([c])[0])
+                                            ~~~~~~~~~~^^^^^
+  File "<string>", line 192, in nvim1
+FileNotFoundError: [Errno 2] No such file or directory: '/tmp/tmp1opi2bbb/out.json'
+{"text": "\n. PP\n\f", "keys": ["5", "_", "gq", "{", "u"]} 
+ nvim {'lines': ['', '. PP', '\x0c'], 'cursor': [3, 0]} 
+ ours {'lines': ['', '. PP', '\x0c'], 'cursor': [1, 0], 'mode': 0}
+{"text": "ipsum\fthe", "keys": ["<C-w>", "o", "S", "<C-r>", "\""]} 
+ nvim {'cursor': [2, 0], 'lines': ['ipsum\x0cthe', '']} 
+ ours {'lines': ['ipsumthe', ''], 'cursor': [2, 0], 'mode': 0}
+{"text": "                           a consectetur  e.g. incididunt-ut  e.g.   x sed. \tdo,", "keys": ["$", "<C-w>", "s", "<", "<", "<C-v>", "gq", "<C-w>", "c"]} 
+ nvim {'cursor': [2, 25], 'lines': ['                       a consectetur  e.g. incididunt-ut  e.g.   x sed.', '                       do,']} 
+ ours {'lines': ['                       a consectetur  e.g. incididunt-ut  e.g.   x sed.', '                       do,'], 'cursor': [1, 70], 'mode': 0}

@@ -7,6 +7,8 @@
    (beep_flush()). */
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include "k.h"
 #include "uni.h"
 
@@ -99,8 +101,10 @@ static void key(int k, int pending)
 	switch (E->mode) {
 	case MODE_INSERT: insert_key(k, pending); break;
 	case MODE_CMDLINE: cmdline_key(k); break;
-	default: normal_key(k);
+	default: normal_key(k); return;
 	}
+	/* normal_check() after edit() or the command line returns */
+	if (E->mode == MODE_NORMAL && stuff_empty()) curs_columns();
 }
 
 void keys_feed(Editor *e, int k, int pending)
@@ -123,7 +127,35 @@ void keys_feed(Editor *e, int k, int pending)
 	core_update(e);
 }
 
-/* ---- the command line: :w :q :wq :x ---- */
+/* ---- the command line: :w :q :wq :x :Format ---- */
+
+/* Davy's BufWritePre for .sql (after/ftplugin/sql.lua): format first when
+   a sqldiff.toml is in the file's directory or one above it */
+static int ex_write(int force)
+{
+	char d[4096];
+	size_t n = 0;
+	if (is_sql()) {
+		if (B->path[0] != '/' && B->path[0] != '\\' && B->path[1] != ':') {
+			if (!getcwd(d, sizeof d - 1)) d[0] = 0;
+			n = strlen(d);
+			if (n) d[n++] = '/';
+		}
+		size_t p = strlen(B->path);
+		if (n + p + 13 < sizeof d) {
+			memcpy(d + n, B->path, p);
+			n += p;
+			for (struct stat st;;) {
+				while (n && d[n - 1] != '/' && d[n - 1] != '\\') n--;
+				memcpy(d + n, "sqldiff.toml", 13);
+				if (!stat(d, &st)) { sql_format(0, text_len(B->text)); break; }
+				if (n <= 1 || (n == 3 && d[1] == ':')) break;
+				n--;
+			}
+		}
+	}
+	return core_write(E, B, force);
+}
 
 static void ex(void)
 {
@@ -131,10 +163,12 @@ static void ex(void)
 	E->cmd[E->cmdlen] = 0;
 	set_last_cmdline(c);
 	while (*c == ' ' || *c == ':') c++;
-	if (!strcmp(c, "w") || !strcmp(c, "w!")) core_write(E, B, c[1] == '!');
+	if (!strcmp(c, "w") || !strcmp(c, "w!")) ex_write(c[1] == '!');
 	else if (!strcmp(c, "q") || !strcmp(c, "q!")) core_close(E, c[1] == '!');
-	else if (!strcmp(c, "wq") || !strcmp(c, "wq!")) { if (!core_write(E, B, c[2] == '!')) core_close(E, 0); }
-	else if (!strcmp(c, "x")) { if (!core_modified(B) || !core_write(E, B, 0)) core_close(E, 0); }
+	else if (!strcmp(c, "wq") || !strcmp(c, "wq!")) { if (!ex_write(c[2] == '!')) core_close(E, 0); }
+	else if (!strcmp(c, "x")) { if (!core_modified(B) || !ex_write(0)) core_close(E, 0); }
+	/* Davy's :Format (conform.nvim): the whole buffer */
+	else if (!strcmp(c, "Format")) { if (is_sql()) sql_format(0, text_len(B->text)); }
 	else if (*c) core_msg(E, "E492: Not an editor command: %s", c);
 }
 
