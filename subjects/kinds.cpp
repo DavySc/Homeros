@@ -25,9 +25,9 @@ union UnknownUnion;
 class UnknownClass;
 enum class UnknownEnum : short;
 typedef int (*Fn)(int, const char *, ...);
-typedef int Odd::*Member;
-typedef int (Odd::*Method)(void) const;
-int odd(Odd &o, Odd &&r, Member m, Method me) { return o.lref() + static_cast<Odd &&>(r).rref() + o.many(1, 2) + o.*m + (o.*me)(); }
+typedef int Odd::*OddMember;
+typedef int (Odd::*OddMethod)(void) const;
+int odd(Odd &o, Odd &&r, OddMember m, OddMethod me) { return o.lref() + static_cast<Odd &&>(r).rref() + o.many(1, 2) + o.*m + (o.*me)(); }
 int use(Box &b, Box &&r, const Box *const cp, int *__restrict rp, volatile Either *e, Bits bits, Colour c, Plain p, Fn fn,
         Later *l, Unknown *u, UnknownUnion *uu, UnknownClass *uc, UnknownEnum *ue, signed char sc, unsigned short us, long lo, unsigned long ul, long long ll,
         unsigned long long ull, float fl, unsigned char uch, double grid[3][4], const volatile short cv, wchar_t w, char16_t c16, char32_t c32, bool flag, void *any, decltype(nullptr) np)
@@ -42,6 +42,7 @@ int second() { struct Local { int a, b; }; Local l = {1, 2}; Local *p = &l; retu
 #ifdef __clang__   // built without the C runtime, which has these
 extern "C" int _fltused = 0;               // the linker wants it once a float is used
 extern "C" int _purecall() { return 0; }   // what a call of a virtual method without a body reaches
+extern "C" unsigned _tls_index = 0;       // which block of per-thread variables is this program's
 #endif
 // every kind of member: a base, static data, nested types, one name with several methods, virtual methods new and
 // overriding, with and without a body
@@ -59,6 +60,10 @@ struct Rich : Abstract {
   Inner inner;
 };
 int Rich::shared = 1;
+// variables: seen by other files and not, in a namespace, one per thread; constants, which need no place: one with its own name, one named through its type
+namespace space { int counted = 3; static int hidden = 4; const long long fixed = -7; enum Tone { dark = 2 }; }
+__declspec(thread) int per_thread = 5;
+static __declspec(thread) Later own_thread = {6, 0};
 // a virtual base seen directly and through a base; RAD reads no member after one
 struct Left : virtual Base { int left; int pure() override { return 2; } };
 struct Right : virtual Base { int right; };
@@ -73,5 +78,5 @@ int main()
   Later l = {1, 0}; Box b; b.v = 0; Odd o; o.v = 0; Bottom bottom; Rich rich; Rich::Alias alias = Rich::over('a');
   Wide wide = tiny; UWide uwide = all; Signed sg = minus_one; Empty empty = Empty();
   return l.x + first() + second() + b.get() + odd(o, static_cast<Odd &&>(o), &Odd::v, &Odd::get) + bottom.pure() + rich.over(1) + rich.over(1, 2) + rich.intro()
-         + alias + (int)wide + (int)uwide + sg + empty;
+         + space::counted + space::hidden + (int)space::fixed + space::dark + per_thread + own_thread.x + alias + (int)wide + (int)uwide + sg + empty;
 }
