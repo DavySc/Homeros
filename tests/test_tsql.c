@@ -100,6 +100,8 @@ static const char *const lines[][2] = {
 	{ "CROSS APPLY OPENJSON(N'[1]') j", "ooooo.ooooo.KKKKKKKKoSSSSSSo.." },
 	{ "GROUP BY a.id", "KKKKK.KK....." },
 	{ "OPTION (RECOMPILE);", "KKKKKK.oKKKKKKKKKoo" },
+	/* CONCAT_WS as CONCAT (Davy, 2026-11-19), and the other newer built-ins */
+	{ "SELECT CONCAT(a), CONCAT_WS(',', a), DATEDIFF_BIG(day, a, b)", "KKKKKK.FFFFFFo.oo.FFFFFFFFFoSSSo..oo.FFFFFFFFFFFFoFFFo..o..o" },
 };
 
 /* Soufflé's, by scanner.ll's tokens (hypothesis: the faces, which no
