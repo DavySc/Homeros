@@ -28,12 +28,12 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t n)
 		set = 1;
 	}
 	Conn k = { .fd = -1 };
-	if (put(&k.in, data, n) || requests(&k)) { free(k.in.b); free(k.out.b); return 0; }
-	if (k.out.b && memmem(k.out.b, k.out.n, "MARKER-OUTSIDE", 14)) abort();
+	if (str_add(&k.in, data, n) || requests(&k)) { free(k.in.s); free(k.out.s); return 0; }
+	if (k.out.s && memmem(k.out.s, k.out.n, "MARKER-OUTSIDE", 14)) abort();
 	if (k.page) conn_close(&k);
-	free(k.in.b); free(k.out.b);
+	free(k.in.s); free(k.out.s);
 	/* what the editor was told, and the pages made, start afresh */
 	toed.n = 0;
-	for (int i = 0; i < MAXPAGE; i++) if (pages[i]) { free(pages[i]->outbox.b); free(pages[i]); pages[i] = NULL; }
+	for (int i = 0; i < MAXPAGE; i++) if (pages[i]) { free(pages[i]->outbox.s); free(pages[i]); pages[i] = NULL; }
 	return 0;
 }

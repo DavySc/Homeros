@@ -7,21 +7,6 @@
 #include <string.h>
 #include "scan.h"
 
-int j_put(Str *s, const void *p, size_t n)
-{
-	if (s->n + n + 1 > s->cap) {
-		size_t cap = s->cap ? s->cap : 256;
-		while (cap < s->n + n + 1) cap *= 2;
-		char *b = realloc(s->b, cap);
-		if (!b) return -1;
-		s->b = b; s->cap = cap;
-	}
-	if (n) memcpy(s->b + s->n, p, n);
-	s->n += n;
-	s->b[s->n] = 0;
-	return 0;
-}
-
 char *j_copy(const char *s, size_t n)
 {
 	char *d = malloc(n + 1);
@@ -69,6 +54,15 @@ int j_is(const char *s, size_t n, size_t v, const char *lit)
 	return v != NONE && v + l + 2 <= n && s[v] == '"' && !memcmp(s + v + 1, lit, l) && s[v + l + 1] == '"';
 }
 
+/* Past the comma after the value at v (and the space after it), or NONE
+   if no comma follows. */
+size_t j_next(const char *s, size_t n, size_t v)
+{
+	size_t i = j_skip(s, n, v);
+	if (i == NONE || (i = j_ws(s, n, i)) >= n || s[i] != ',') return NONE;
+	return j_ws(s, n, i + 1);
+}
+
 /* The value of key in the object at o, or NONE. */
 size_t j_member(const char *s, size_t n, size_t o, const char *key)
 {
@@ -78,8 +72,7 @@ size_t j_member(const char *s, size_t n, size_t o, const char *key)
 		if (e == NONE || (i = j_ws(s, n, e)) >= n || s[i] != ':') return NONE;
 		size_t v = j_ws(s, n, i + 1);
 		if (j_is(s, e, k, key)) return j_skip(s, n, v) != NONE ? v : NONE;
-		if ((i = j_skip(s, n, v)) == NONE || (i = j_ws(s, n, i)) >= n || s[i] != ',') return NONE;
-		i = j_ws(s, n, i + 1);
+		if ((i = j_next(s, n, v)) == NONE) return NONE;
 	}
 	return NONE;
 }
@@ -90,10 +83,8 @@ size_t j_elem(const char *s, size_t n, size_t a, int k)
 	if (a == NONE || (a = j_ws(s, n, a)) >= n || s[a] != '[') return NONE;
 	size_t i = j_ws(s, n, a + 1);
 	if (i >= n || s[i] == ']') return NONE;
-	for (; k > 0; k--) {
-		if ((i = j_skip(s, n, i)) == NONE || (i = j_ws(s, n, i)) >= n || s[i] != ',') return NONE;
-		i = j_ws(s, n, i + 1);
-	}
+	for (; k > 0; k--)
+		if ((i = j_next(s, n, i)) == NONE) return NONE;
 	return j_skip(s, n, i) != NONE ? i : NONE;
 }
 
@@ -108,7 +99,7 @@ static void utf8(Str *d, unsigned long c)
 		for (size_t i = k - 1; i > 0; i--) { b[i] = (char)(0x80 | (c & 0x3F)); c >>= 6; }
 		b[0] = (char)((k == 2 ? 0xC0 : k == 3 ? 0xE0 : 0xF0) | c);
 	}
-	j_put(d, b, k);
+	str_add(d, b, k);
 }
 
 long j_hex4(const char *s, size_t n, size_t i)
@@ -131,13 +122,13 @@ char *j_str(const char *s, size_t n, size_t v, size_t *out)
 	Str d = { 0 };
 	size_t e = j_skip(s, n, v);
 	if (e == NONE || s[v] != '"') return NULL;
-	j_put(&d, "", 0);
+	str_add(&d, "", 0);
 	for (size_t i = v + 1; i < e - 1; i++) {
-		if (s[i] != '\\') { j_put(&d, s + i, 1); continue; }
+		if (s[i] != '\\') { str_add(&d, s + i, 1); continue; }
 		char ch = s[++i];
 		if (ch != 'u') {
 			ch = ch == 'b' ? '\b' : ch == 'f' ? '\f' : ch == 'n' ? '\n' : ch == 'r' ? '\r' : ch == 't' ? '\t' : ch;
-			j_put(&d, &ch, 1);
+			str_add(&d, &ch, 1);
 			continue;
 		}
 		long c = j_hex4(s, e, i + 1), lo;
@@ -150,7 +141,7 @@ char *j_str(const char *s, size_t n, size_t v, size_t *out)
 		utf8(&d, (unsigned long)c);
 	}
 	if (out) *out = d.n;
-	return d.b;
+	return d.s;
 }
 
 /* s[0, n) as the inside of a JSON string. */
@@ -159,9 +150,9 @@ void j_quote(Str *d, const char *s, size_t n)
 	for (size_t i = 0; i < n; i++) {
 		unsigned char ch = (unsigned char)s[i];
 		char b[8];
-		if (ch == '"' || ch == '\\') { j_put(d, "\\", 1); j_put(d, s + i, 1); }
-		else if (ch < 0x20) { snprintf(b, sizeof b, "\\u%04x", ch); j_put(d, b, 6); }
-		else j_put(d, s + i, 1);
+		if (ch == '"' || ch == '\\') { str_add(d, "\\", 1); str_add(d, s + i, 1); }
+		else if (ch < 0x20) { snprintf(b, sizeof b, "\\u%04x", ch); str_add(d, b, 6); }
+		else str_add(d, s + i, 1);
 	}
 }
 

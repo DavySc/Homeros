@@ -4,15 +4,14 @@
 #define INFOVIEW_SCAN_H
 #include <stddef.h>
 #include <string.h>
+#include "str.h"
 
 #define NONE ((size_t)-1)
-typedef struct { char *b; size_t n, cap; } Str;
 
-int    j_put(Str *s, const void *p, size_t n);          /* 0, or -1 out of memory; b stays 0-ended */
-#define j_puts(s, z) j_put(s, z, strlen(z))
 char  *j_copy(const char *s, size_t n);                 /* s[0, n) 0-ended, malloc'd */
 size_t j_ws(const char *s, size_t n, size_t i);         /* i past JSON whitespace */
 size_t j_skip(const char *s, size_t n, size_t i);       /* the end of the value at i, or NONE */
+size_t j_next(const char *s, size_t n, size_t v);       /* past the comma after it, or NONE */
 size_t j_len(const char *s, size_t n, size_t v);        /* its length, 0 for none */
 int    j_is(const char *s, size_t n, size_t v, const char *lit);   /* the string lit, unescaped? */
 /* the value of key in the object at o, or element k of the array at a: a

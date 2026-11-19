@@ -38,12 +38,12 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t n)
 	const char *uri = lsp_uri(e.buf->lsp);
 	Str s = { 0 };
 	for (size_t i = 0; i < n; i++)
-		if (data[i] == 1) j_puts(&s, uri);
-		else if (data[i] == '\n' || data[i] == 0) j_put(&s, " ", 1);   /* a line holds neither */
-		else j_put(&s, data + i, 1);
-	j_put(&s, "", 0);
-	from_child(s.b, s.n);
-	free(s.b);
+		if (data[i] == 1) str_addz(&s, uri);
+		else if (data[i] == '\n' || data[i] == 0) str_add(&s, " ", 1);   /* a line holds neither */
+		else str_add(&s, data + i, 1);
+	str_add(&s, "", 0);
+	from_child(s.s, s.n);
+	free(s.s);
 	/* afresh: no pages, the buffer as it was, the first buffer current */
 	while (pages) drop(pages);
 	if (e.buf->nr != 1) core_buf_goto(&e, 1);

@@ -70,21 +70,21 @@ static const char config[] =
    whitespace) become spaces. */
 static void send_line(void)
 {
-	for (size_t i = 0; i < o.n; i++) if (o.b[i] == '\n' || o.b[i] == '\r') o.b[i] = ' ';
-	j_put(&o, "\n", 1);
-	if (proc >= 0) proc_write(proc, o.b, o.n);
+	for (size_t i = 0; i < o.n; i++) if (o.s[i] == '\n' || o.s[i] == '\r') o.s[i] = ' ';
+	str_add(&o, "\n", 1);
+	if (proc >= 0) proc_write(proc, o.s, o.n);
 	o.n = 0;
 }
 
-static void to(const char *page) { o.n = 0; j_puts(&o, page); j_put(&o, " ", 1); }
+static void to(const char *page) { o.n = 0; str_addz(&o, page); str_add(&o, " ", 1); }
 
 /* An InfoviewApi call with one argument (raw JSON). */
 static void event(const char *page, const char *m, const char *arg, size_t n)
 {
 	to(page);
-	j_puts(&o, "{\"m\":\""); j_puts(&o, m); j_puts(&o, "\",\"a\":[");
-	j_put(&o, arg, n);
-	j_puts(&o, "]}");
+	str_addz(&o, "{\"m\":\""); str_addz(&o, m); str_addz(&o, "\",\"a\":[");
+	str_add(&o, arg, n);
+	str_addz(&o, "]}");
 	send_line();
 }
 
@@ -93,11 +93,11 @@ static void event(const char *page, const char *m, const char *arg, size_t n)
 static void notification(const char *page, int out, const char *name, size_t nn, const char *msg, size_t n)
 {
 	to(page);
-	j_puts(&o, out ? "{\"m\":\"sentClientNotification\",\"n\":\"" : "{\"m\":\"gotServerNotification\",\"n\":\"");
-	j_put(&o, name, nn);
-	j_puts(&o, "\",\"raw\":");
-	j_put(&o, msg, n);
-	j_puts(&o, "}");
+	str_addz(&o, out ? "{\"m\":\"sentClientNotification\",\"n\":\"" : "{\"m\":\"gotServerNotification\",\"n\":\"");
+	str_add(&o, name, nn);
+	str_addz(&o, "\",\"raw\":");
+	str_add(&o, msg, n);
+	str_addz(&o, "}");
 	send_line();
 }
 
@@ -106,21 +106,21 @@ static void notification(const char *page, int out, const char *name, size_t nn,
 static void answer(const char *page, const char *id, const char *kind, const char *v, size_t n)
 {
 	to(page);
-	j_puts(&o, "{\"id\":"); j_puts(&o, id); j_puts(&o, ",\"k\":\""); j_puts(&o, kind); j_puts(&o, "\",\"v\":");
-	j_put(&o, v, n);
-	j_puts(&o, "}");
+	str_addz(&o, "{\"id\":"); str_addz(&o, id); str_addz(&o, ",\"k\":\""); str_addz(&o, kind); str_addz(&o, "\",\"v\":");
+	str_add(&o, v, n);
+	str_addz(&o, "}");
 	send_line();
 }
 
 static void fail(const char *page, const char *id, const char *why, const char *what)
 {
 	Str m = { 0 };
-	j_puts(&m, "{\"message\":\"");
+	str_addz(&m, "{\"message\":\"");
 	j_quote(&m, why, strlen(why));
 	if (what) j_quote(&m, what, strlen(what));
-	j_puts(&m, "\"}");
-	if (m.b) answer(page, id, "err", m.b, m.n);
-	free(m.b);
+	str_addz(&m, "\"}");
+	if (m.s) answer(page, id, "err", m.s, m.n);
+	free(m.s);
 }
 
 /* --- pages ---------------------------------------------------------------- */
@@ -160,12 +160,12 @@ static int subscribed(const Page *p, const char *name, size_t n)
 static void diagnostics(const char *page, const Kept *k)
 {
 	Str m = { 0 };
-	j_puts(&m, "{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{\"uri\":\"");
-	j_puts(&m, k->uri);
-	j_puts(&m, "\",\"version\":"); j_puts(&m, k->ver);
-	j_puts(&m, ",\"diagnostics\":["); j_put(&m, k->d.b, k->d.n); j_puts(&m, "]}}");
-	if (m.b) notification(page, 0, "textDocument/publishDiagnostics", 31, m.b, m.n);
-	free(m.b);
+	str_addz(&m, "{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{\"uri\":\"");
+	str_addz(&m, k->uri);
+	str_addz(&m, "\",\"version\":"); str_addz(&m, k->ver);
+	str_addz(&m, ",\"diagnostics\":["); str_add(&m, k->d.s, k->d.n); str_addz(&m, "]}}");
+	if (m.s) notification(page, 0, "textDocument/publishDiagnostics", 31, m.s, m.n);
+	free(m.s);
 }
 
 /* What a page needs before it shows anything: VS Code's initInfoView.
@@ -223,8 +223,8 @@ static void tap(int out, const char *m, size_t n)
 		k->ver = v == NONE ? j_copy("null", 4) : j_copy(m + v, j_len(m, n, v));
 		size_t dz = d + j_len(m, n, d) - 1, di = j_ws(m, n, d + 1);
 		if (di < dz) {
-			if (k->d.n) j_put(&k->d, ",", 1);
-			j_put(&k->d, m + di, dz - di);
+			if (k->d.n) str_add(&k->d, ",", 1);
+			str_add(&k->d, m + di, dz - di);
 		}
 		for (Page *q = pages; q; q = q->next)
 			if (subscribed(q, name, nn)) diagnostics(q->id, k);
@@ -268,9 +268,9 @@ static void seed(void)
 			snprintf(r, sizeof r, "%s{\"range\":{\"start\":{\"line\":%zu,\"character\":%zu},"
 			         "\"end\":{\"line\":%zu,\"character\":%zu}},\"severity\":%d,\"message\":\"",
 			         i ? "," : "", l[0], c[0], l[1], c[1], d[i].sev);
-			j_puts(&k->d, r);
+			str_addz(&k->d, r);
 			j_quote(&k->d, d[i].msg, strlen(d[i].msg));
-			j_puts(&k->d, "\"}");
+			str_addz(&k->d, "\"}");
 		}
 	}
 }
@@ -284,10 +284,10 @@ static void keepalive(void *ctx)
 	for (Page *p = pages; p; p = p->next)
 		for (int i = 0; i < p->nses; i++) {
 			Str m = { 0 };
-			j_puts(&m, "{\"uri\":\""); j_puts(&m, p->ses[i].uri);
-			j_puts(&m, "\",\"sessionId\":"); j_puts(&m, p->ses[i].sid); j_puts(&m, "}");
-			if (m.b) lsp_send(p->ses[i].uri, "$/lean/rpc/keepAlive", m.b, m.n, NULL, NULL);
-			free(m.b);
+			str_addz(&m, "{\"uri\":\""); str_addz(&m, p->ses[i].uri);
+			str_addz(&m, "\",\"sessionId\":"); str_addz(&m, p->ses[i].sid); str_addz(&m, "}");
+			if (m.s) lsp_send(p->ses[i].uri, "$/lean/rpc/keepAlive", m.s, m.n, NULL, NULL);
+			free(m.s);
 			ticking = 1;
 		}
 	if (ticking) loop_timer(keepalive, NULL, KEEPALIVE_MS);
@@ -428,11 +428,9 @@ static int apply(const char *s, size_t n, size_t we)
 		for (size_t i = j_ws(s, n, ch + 1); i < n && s[i] == '"'; ) {
 			char *u = j_str(s, n, i, NULL);
 			size_t v = j_ws(s, n, j_skip(s, n, i) + 1);
-			v = j_ws(s, n, v);
 			r |= u ? edits(s, n, u, v) : -1;
 			free(u);
-			if ((i = j_skip(s, n, v)) == NONE || (i = j_ws(s, n, i)) >= n || s[i] != ',') break;
-			i = j_ws(s, n, i + 1);
+			if ((i = j_next(s, n, v)) == NONE) break;
 		}
 	return r;
 }
@@ -451,14 +449,14 @@ static void call(const char *pid, char *s, size_t n)
 		Req *r = calloc(1, sizeof *r);
 		char *meth = c ? j_copy("$/lean/rpc/connect", 18) : j_str(s, n, a1, NULL);
 		Str prm = { 0 };
-		if (c) { j_puts(&prm, "{\"uri\":"); if (a0 != NONE) j_put(&prm, s + a0, j_len(s, n, a0)); j_puts(&prm, "}"); }
-		else if (a2 != NONE) j_put(&prm, s + a2, j_len(s, n, a2));
-		if (r && meth && uri && prm.b) {
+		if (c) { str_addz(&prm, "{\"uri\":"); if (a0 != NONE) str_add(&prm, s + a0, j_len(s, n, a0)); str_addz(&prm, "}"); }
+		else if (a2 != NONE) str_add(&prm, s + a2, j_len(s, n, a2));
+		if (r && meth && uri && prm.s) {
 			snprintf(r->page, sizeof r->page, "%s", pid);
 			r->id = id; id = NULL;
 			r->connect = c;
 			r->uri = uri; uri = NULL;
-			if (lsp_send(r->uri, meth, prm.b, prm.n, answered, r)) {
+			if (lsp_send(r->uri, meth, prm.s, prm.n, answered, r)) {
 				fail(pid, r->id, "No Lean server for ", r->uri);
 				free(r->uri); free(r->id); free(r);
 			}
@@ -466,7 +464,7 @@ static void call(const char *pid, char *s, size_t n)
 			fail(pid, id, "No Lean server for ", uri ? uri : "");
 			free(r);
 		}
-		free(meth); free(prm.b);
+		free(meth); free(prm.s);
 	} else if (j_is(s, n, m, "sendClientNotification")) {
 		char *meth = j_str(s, n, a1, NULL);
 		if (uri && meth && a2 != NONE) lsp_send(uri, meth, s + a2, j_len(s, n, a2), NULL, NULL);
@@ -507,10 +505,10 @@ static void call(const char *pid, char *s, size_t n)
 				size_t w = core_first_nonblank(ed, l), ln;
 				const unsigned char *b = core_line(ed, l, &ln);
 				Str x = { 0 };
-				j_put(&x, b, w); j_put(&x, t, tn); j_put(&x, "\n", 1);
+				str_add(&x, (const char *)b, w); str_add(&x, t, tn); str_add(&x, "\n", 1);
 				at = core_line_start(ed, l);
-				r = !x.b || core_edit(ed, at, 0, x.b, x.n);
-				free(x.b);
+				r = !x.s || core_edit(ed, at, 0, x.s, x.n);
+				free(x.s);
 			} else r = core_edit(ed, at, 0, t, tn) != 0;
 			edited();
 		}
@@ -572,8 +570,8 @@ static void out(void *ctx, int stream, const char *b, size_t n)
 	}
 	if (stream != 1) return;
 	for (size_t i = 0; i < n; i++) {
-		if (b[i] != '\n') { j_put(&in, b + i, 1); continue; }
-		if (in.b) from_child(in.b, in.n);
+		if (b[i] != '\n') { str_add(&in, b + i, 1); continue; }
+		if (in.s) from_child(in.s, in.n);
 		in.n = 0;
 	}
 }
@@ -637,10 +635,10 @@ void bridge_update(Editor *e)
 	snprintf(j, sizeof j, "{\"start\":{\"line\":%zu,\"character\":%zu},\"end\":{\"line\":%zu,\"character\":%zu}}",
 	         pt[0][0], c[0], pt[1][0], c[1]);
 	Str l = { 0 };
-	j_puts(&l, "{\"uri\":\""); j_puts(&l, u); j_puts(&l, "\",\"range\":"); j_puts(&l, j); j_puts(&l, "}");
-	if (!l.b || (loc && !strcmp(loc, l.b))) { free(l.b); return; }
+	str_addz(&l, "{\"uri\":\""); str_addz(&l, u); str_addz(&l, "\",\"range\":"); str_addz(&l, j); str_addz(&l, "}");
+	if (!l.s || (loc && !strcmp(loc, l.s))) { free(l.s); return; }
 	free(loc);
-	loc = l.b;
+	loc = l.s;
 	event("*", "changedCursorLocation", loc, l.n);
 	for (Page *p = pages; p; p = p->next) greet(p);
 }
@@ -651,8 +649,8 @@ void bridge_free(void)
 	proc = -1;
 	lsp_tap = NULL;
 	while (pages) drop(pages);
-	while (kept) { Kept *k = kept; kept = k->next; free(k->uri); free(k->ver); free(k->d.b); free(k->progress); free(k); }
-	free(redirect); free(init); free(loc); free(in.b); free(o.b);
+	while (kept) { Kept *k = kept; kept = k->next; free(k->uri); free(k->ver); free(k->d.s); free(k->progress); free(k); }
+	free(redirect); free(init); free(loc); free(in.s); free(o.s);
 	redirect = init = loc = NULL;
 	in = o = (Str){ 0 };
 	gen = open_wanted = 0;

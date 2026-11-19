@@ -36,7 +36,6 @@
 #include <poll.h>
 #include <signal.h>
 #include <spawn.h>
-#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -48,6 +47,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
+#include "str.h"
 
 enum { MAXC = 64, MAXPAGE = 32, FORGOTTEN = 32, HEAD_MAX = 16384, BODY_MAX = 64 << 20 };
 #ifndef PAGE_TIMEOUT
@@ -56,18 +56,17 @@ enum { MAXC = 64, MAXPAGE = 32, FORGOTTEN = 32, HEAD_MAX = 16384, BODY_MAX = 64 
 
 extern char **environ;
 
-typedef struct { char *b; size_t n, cap; } Buf;
 
 typedef struct Page {
 	char id[65];
 	struct Conn *stream;       /* NULL: down (or never opened) */
-	Buf outbox;                /* events while down, as SSE chunks */
+	Str outbox;                /* events while down, as SSE chunks */
 	long long gone;            /* when its stream went down */
 } Page;
 
 typedef struct Conn {
 	int fd;                    /* -1: free */
-	Buf in, out;
+	Str in, out;
 	size_t off;                /* bytes of out already sent */
 	Page *page;                /* the page this is the event stream of */
 	int close;                 /* close once out is sent */
@@ -79,7 +78,7 @@ static char forgotten[FORGOTTEN][65];
 static int nforgotten;
 static char token[65], *root, redirect[64];
 static char **opener;
-static Buf line, toed;         /* stdin not yet a line; stdout not yet taken */
+static Str line, toed;         /* stdin not yet a line; stdout not yet taken */
 
 static long long now(void)
 {
@@ -88,45 +87,13 @@ static long long now(void)
 	return ts.tv_sec * 1000LL + ts.tv_nsec / 1000000;
 }
 
-/* Room for n more bytes and a '\0'. */
-static int grow(Buf *b, size_t n)
-{
-	if (b->n + n + 1 <= b->cap) return 0;
-	size_t cap = b->cap ? b->cap : 4096;
-	while (cap < b->n + n + 1) cap *= 2;
-	char *nb = realloc(b->b, cap);
-	if (!nb) return -1;
-	b->b = nb; b->cap = cap;
-	return 0;
-}
-
-static int put(Buf *b, const void *p, size_t n)
-{
-	if (grow(b, n)) return -1;
-	if (n) memcpy(b->b + b->n, p, n);
-	b->n += n;
-	b->b[b->n] = 0;
-	return 0;
-}
-
-static void putf(Buf *b, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
-static void putf(Buf *b, const char *fmt, ...)
-{
-	char s[256];
-	va_list ap;
-	va_start(ap, fmt);
-	int n = vsnprintf(s, sizeof s, fmt, ap);
-	va_end(ap);
-	put(b, s, (size_t)n);
-}
-
 /* To the editor, in order, queued: stdout is non-blocking as the sockets
    are, so a busy editor never stops the pages' streams. */
 static void to_editor(const char *a, const char *b, size_t n)
 {
-	put(&toed, a, strlen(a));
-	put(&toed, b, n);
-	put(&toed, "\n", 1);
+	str_add(&toed, a, strlen(a));
+	str_add(&toed, b, n);
+	str_add(&toed, "\n", 1);
 }
 
 /* --- pages ---------------------------------------------------------------- */
@@ -168,16 +135,16 @@ static void forget(Page *p)
 	to_editor("- ", p->id, strlen(p->id));
 	strcpy(forgotten[nforgotten++ % FORGOTTEN], p->id);
 	for (int i = 0; i < MAXPAGE; i++) if (pages[i] == p) pages[i] = NULL;
-	free(p->outbox.b);
+	free(p->outbox.s);
 	free(p);
 }
 
 /* One SSE event as one HTTP chunk. */
-static void chunk(Buf *b, const char *json, size_t n)
+static void chunk(Str *b, const char *json, size_t n)
 {
-	putf(b, "%zx\r\ndata: ", n + 8);
-	put(b, json, n);
-	put(b, "\n\n\r\n", 4);
+	str_addf(b, "%zx\r\ndata: ", n + 8);
+	str_add(b, json, n);
+	str_add(b, "\n\n\r\n", 4);
 }
 
 static void send_page(Page *p, const char *json, size_t n)
@@ -193,12 +160,12 @@ static const char stream_head[] =
 
 static void open_stream(Conn *k, const char *id)
 {
-	put(&k->out, stream_head, sizeof stream_head - 1);
+	str_add(&k->out, stream_head, sizeof stream_head - 1);
 	if (was_forgotten(id)) {
 		/* its subscriptions and waiting answers are gone: start afresh */
 		static const char reload[] = "{\"reload\":true}";
 		chunk(&k->out, reload, sizeof reload - 1);
-		put(&k->out, "0\r\n\r\n", 5);
+		str_add(&k->out, "0\r\n\r\n", 5);
 		k->close = 1;
 		return;
 	}
@@ -207,8 +174,8 @@ static void open_stream(Conn *k, const char *id)
 	if (p->stream) conn_close(p->stream);
 	p->stream = k;
 	k->page = p;
-	put(&k->out, "3\r\n:\n\n\r\n", 8);   /* a comment: the browser sees the stream is up */
-	put(&k->out, p->outbox.b, p->outbox.n);
+	str_add(&k->out, "3\r\n:\n\n\r\n", 8);   /* a comment: the browser sees the stream is up */
+	str_add(&k->out, p->outbox.s, p->outbox.n);
 	p->outbox.n = 0;
 	to_editor("+ ", id, strlen(id));
 }
@@ -217,9 +184,9 @@ static void open_stream(Conn *k, const char *id)
 
 static void respond(Conn *k, const char *status, const char *type, const char *body, size_t n)
 {
-	putf(&k->out, "HTTP/1.1 %s\r\nContent-Type: %s\r\nContent-Length: %zu\r\nCache-Control: no-store\r\n\r\n",
+	str_addf(&k->out, "HTTP/1.1 %s\r\nContent-Type: %s\r\nContent-Length: %zu\r\nCache-Control: no-store\r\n\r\n",
 	     status, type, n);
-	put(&k->out, body, n);
+	str_add(&k->out, body, n);
 }
 
 static const char *type_of(const char *name)
@@ -263,14 +230,13 @@ static void serve(Conn *k, const char *name)
 		respond(k, "404 Not Found", "text/plain", "", 0);
 		return;
 	}
-	putf(&k->out, "HTTP/1.1 200 OK\r\nContent-Type: %s\r\nContent-Length: %lld\r\nCache-Control: no-store\r\n\r\n",
+	str_addf(&k->out, "HTTP/1.1 200 OK\r\nContent-Type: %s\r\nContent-Length: %lld\r\nCache-Control: no-store\r\n\r\n",
 	     type_of(name), (long long)st.st_size);
-	size_t size = (size_t)st.st_size, end = k->out.n + size;
-	if (grow(&k->out, size)) { close(fd); k->close = 1; return; }
-	while (k->out.n < end) {
-		ssize_t r = read(fd, k->out.b + k->out.n, end - k->out.n);
-		if (r <= 0) { k->close = 1; break; }    /* shorter than it said: the length is a lie, so close */
-		k->out.n += (size_t)r;
+	char b[65536];
+	for (off_t left = st.st_size; left > 0; ) {
+		ssize_t r = read(fd, b, left < (off_t)sizeof b ? (size_t)left : sizeof b);
+		if (r <= 0 || str_add(&k->out, b, (size_t)r)) { k->close = 1; break; }   /* shorter than it said: the length is a lie, so close */
+		left -= r;
 	}
 	close(fd);
 }
@@ -328,7 +294,7 @@ static int requests(Conn *k)
 {
 	size_t at = 0;
 	while (!k->close) {
-		char *h = k->in.b + at, *e = strstr(h, "\r\n\r\n");
+		char *h = k->in.s + at, *e = strstr(h, "\r\n\r\n");
 		if (!e) { if (k->in.n - at > HEAD_MAX) return -1; break; }
 		size_t hn = (size_t)(e - h), len = 0;
 		for (char *l = h; l && l < e; l = strstr(l, "\r\n"), l = l ? l + 2 : l)
@@ -345,9 +311,9 @@ static int requests(Conn *k)
 		at += hn + 4 + len;
 		if (k->page) break;           /* an event stream reads nothing more */
 	}
-	memmove(k->in.b, k->in.b + at, k->in.n - at);
+	memmove(k->in.s, k->in.s + at, k->in.n - at);
 	k->in.n -= at;
-	if (k->in.b) k->in.b[k->in.n] = 0;
+	if (k->in.s) k->in.s[k->in.n] = 0;
 	return 0;
 }
 
@@ -358,8 +324,8 @@ static void conn_close(Conn *k)
 		k->page->gone = now();
 	}
 	close(k->fd);
-	free(k->in.b);
-	free(k->out.b);
+	free(k->in.s);
+	free(k->out.s);
 	memset(k, 0, sizeof *k);
 	k->fd = -1;
 }
@@ -474,15 +440,15 @@ int main(int argc, char **argv)
 			ssize_t n = read(0, b, sizeof b);
 			if (n == 0 || (n < 0 && errno != EAGAIN && errno != EINTR)) break;   /* the editor is gone */
 			for (ssize_t i = 0; i < n; i++) {
-				if (b[i] != '\n') { put(&line, b + i, 1); continue; }
-				from_editor(line.b ? line.b : "", line.n);
+				if (b[i] != '\n') { str_add(&line, b + i, 1); continue; }
+				from_editor(line.s ? line.s : "", line.n);
 				line.n = 0;
 			}
 		}
 		if (f[1].revents && toed.n) {
-			ssize_t n = write(1, toed.b, toed.n);
+			ssize_t n = write(1, toed.s, toed.n);
 			if (n < 0 && errno != EAGAIN && errno != EINTR) break;
-			if (n > 0) { memmove(toed.b, toed.b + n, toed.n - (size_t)n); toed.n -= (size_t)n; }
+			if (n > 0) { memmove(toed.s, toed.s + n, toed.n - (size_t)n); toed.n -= (size_t)n; }
 		}
 		if (f[2].revents) {
 			int fd = accept(lfd, NULL, NULL);
@@ -500,7 +466,7 @@ int main(int argc, char **argv)
 				char b[65536];
 				ssize_t n = recv(k->fd, b, sizeof b, 0);
 				if (n == 0 || (n < 0 && errno != EAGAIN && errno != EINTR)) { conn_close(k); continue; }
-				if (n > 0 && !k->page && (put(&k->in, b, (size_t)n) || requests(k))) { conn_close(k); continue; }
+				if (n > 0 && !k->page && (str_add(&k->in, b, (size_t)n) || requests(k))) { conn_close(k); continue; }
 			}
 			if (ev & (POLLERR | POLLHUP) && !(ev & POLLIN)) { conn_close(k); continue; }
 		}
@@ -508,7 +474,7 @@ int main(int argc, char **argv)
 			Conn *k = &c[i];
 			if (k->fd < 0 || k->out.n == k->off) continue;
 			/* written as soon as queued: most events go out on the turn they come */
-			ssize_t n = send(k->fd, k->out.b + k->off, k->out.n - k->off, MSG_NOSIGNAL);
+			ssize_t n = send(k->fd, k->out.s + k->off, k->out.n - k->off, MSG_NOSIGNAL);
 			if (n < 0 && errno != EAGAIN && errno != EINTR) { conn_close(k); continue; }
 			if (n > 0) k->off += (size_t)n;
 			if (k->off == k->out.n) {

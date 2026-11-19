@@ -62,13 +62,13 @@ static int fake(const char *log)
 	ssize_t r;
 	setvbuf(lg, NULL, _IOLBF, 0);
 	while ((r = read(0, b, sizeof b)) > 0) {
-		j_put(&in, b, (size_t)r);
+		str_add(&in, b, (size_t)r);
 		for (;;) {
-			char *e = strstr(in.b, "\r\n\r\n");
+			char *e = strstr(in.s, "\r\n\r\n");
 			if (!e) break;
-			size_t h = (size_t)(e - in.b) + 4, len = strtoul(in.b + 16, NULL, 10);
+			size_t h = (size_t)(e - in.s) + 4, len = strtoul(in.s + 16, NULL, 10);
 			if (in.n < h + len) break;
-			char *m = in.b + h;
+			char *m = in.s + h;
 			size_t meth = j_member(m, len, 0, "method"), id = j_member(m, len, 0, "id"), p = j_member(m, len, 0, "params");
 			char *name = j_str(m, len, meth, NULL), idv[32] = "";
 			if (id != NONE) snprintf(idv, sizeof idv, "%.*s", (int)j_len(m, len, id), m + id);
@@ -112,9 +112,9 @@ static int fake(const char *log)
 			else if (id != NONE)    /* any other request: Lean's {} must reach the page as {} */
 				reply("{\"jsonrpc\":\"2.0\",\"id\":%s,\"result\":{\"goals\":[\"⊢ True\"],\"empty\":{},\"nothing\":null}}", idv);
 			free(name);
-			memmove(in.b, in.b + h + len, in.n - h - len);
+			memmove(in.s, in.s + h + len, in.n - h - len);
 			in.n -= h + len;
-			in.b[in.n] = 0;
+			in.s[in.n] = 0;
 		}
 	}
 	return 0;
@@ -150,15 +150,15 @@ static int http(const char *method, const char *path, const char *body, Str *out
 		loop_once(0);
 		if (poll(&p, 1, 10) <= 0) continue;
 		if ((k = read(fd, b, sizeof b)) <= 0) break;
-		j_put(&r, b, (size_t)k);
-		char *e = strstr(r.b, "\r\n\r\n"), *cl = strstr(r.b, "Content-Length:");
-		if (e && cl && r.n >= (size_t)(e - r.b) + 4 + strtoul(cl + 15, NULL, 10)) break;
+		str_add(&r, b, (size_t)k);
+		char *e = strstr(r.s, "\r\n\r\n"), *cl = strstr(r.s, "Content-Length:");
+		if (e && cl && r.n >= (size_t)(e - r.s) + 4 + strtoul(cl + 15, NULL, 10)) break;
 	}
 	close(fd);
-	CHECK(r.b);
-	int status = atoi(r.b + 9);
-	if (out) { char *e = strstr(r.b, "\r\n\r\n"); out->n = 0; j_put(out, e + 4, strlen(e + 4)); }
-	free(r.b);
+	CHECK(r.s);
+	int status = atoi(r.s + 9);
+	if (out) { char *e = strstr(r.s, "\r\n\r\n"); out->n = 0; str_add(out, e + 4, strlen(e + 4)); }
+	free(r.s);
 	return status;
 }
 
@@ -194,23 +194,23 @@ static void pump(Stream **ss, int n, int t)
 			Stream *s = ss[i];
 			char b[65536];
 			ssize_t k;
-			while (s->fd >= 0 && (k = read(s->fd, b, sizeof b)) > 0) j_put(&s->raw, b, (size_t)k);
+			while (s->fd >= 0 && (k = read(s->fd, b, sizeof b)) > 0) str_add(&s->raw, b, (size_t)k);
 			/* SSE lines "data: X" inside chunks: the editor's events never
 			   hold a line break, so a line is an event */
 			char *d;
-			while (s->raw.b && (d = strstr(s->raw.b, "data: "))) {
+			while (s->raw.s && (d = strstr(s->raw.s, "data: "))) {
 				char *e = strstr(d, "\n\n");
 				if (!e) break;
-				j_put(&s->ev, d + 6, (size_t)(e - d - 6));
-				j_put(&s->ev, "\n", 1);
-				memmove(s->raw.b, e + 2, s->raw.n - (size_t)(e + 2 - s->raw.b) + 1);
-				s->raw.n -= (size_t)(e + 2 - s->raw.b);
+				str_add(&s->ev, d + 6, (size_t)(e - d - 6));
+				str_add(&s->ev, "\n", 1);
+				memmove(s->raw.s, e + 2, s->raw.n - (size_t)(e + 2 - s->raw.s) + 1);
+				s->raw.n -= (size_t)(e + 2 - s->raw.s);
 			}
 		}
 	} while (ms() < end);
 }
 
-static int has(const Stream *s, const char *what) { return s->ev.b && strstr(s->ev.b, what); }
+static int has(const Stream *s, const char *what) { return s->ev.s && strstr(s->ev.s, what); }
 
 /* Pumps until stream s has what, at most 5 s. */
 static int wait_for(Stream **ss, int n, const Stream *s, const char *what)
@@ -233,10 +233,10 @@ static char *slurp(const char *path)
 	char b[4096];
 	int fd = open(path, O_RDONLY);
 	ssize_t k;
-	j_put(&s, "", 0);
-	while (fd >= 0 && (k = read(fd, b, sizeof b)) > 0) j_put(&s, b, (size_t)k);
+	str_add(&s, "", 0);
+	while (fd >= 0 && (k = read(fd, b, sizeof b)) > 0) str_add(&s, b, (size_t)k);
 	if (fd >= 0) close(fd);
-	return s.b;
+	return s.s;
 }
 
 static void put_file(const char *path, const char *text)
@@ -349,11 +349,11 @@ int main(int argc, char **argv)
 	Str b = { 0 };
 	char p[512];
 	snprintf(p, sizeof p, "/%s", url);
-	CHECK(http("GET", p, NULL, &b) == 200 && strstr(b.b, "host.js"));
+	CHECK(http("GET", p, NULL, &b) == 200 && strstr(b.s, "host.js"));
 	snprintf(p, sizeof p, "/%sdist/index.css", url);
-	CHECK(http("GET", p, NULL, &b) == 200 && !strcmp(b.b, "body{}"));
+	CHECK(http("GET", p, NULL, &b) == 200 && !strcmp(b.s, "body{}"));
 	snprintf(p, sizeof p, "/%stheme.css", url);
-	CHECK(http("GET", p, NULL, &b) == 200 && strstr(b.b, "--vscode-editor-foreground"));
+	CHECK(http("GET", p, NULL, &b) == 200 && strstr(b.s, "--vscode-editor-foreground"));
 	const char *bad[] = { "dist/../../secret", "dist/../secret", "dist//etc/passwd", "dist/~/.bashrc", "../secret",
 	                      "/etc/passwd", "dist/.%2e/secret", ".hidden" };
 	for (size_t i = 0; i < sizeof bad / sizeof *bad; i++) {
@@ -396,12 +396,12 @@ int main(int argc, char **argv)
 	bridge_update(&e);
 	CHECK(wait_for(both, 2, &A, "\"serverRestarted\""));
 	pump(both, 2, 200);
-	CHECK(!strncmp(A.ev.b, "{\"m\":\"changedCursorLocation\",", 29));
+	CHECK(!strncmp(A.ev.s, "{\"m\":\"changedCursorLocation\",", 29));
 	CHECK(has(&A, "\"m\":\"initialize\"") && has(&A, "\"m\":\"changedInfoviewConfig\"") && has(&A, "\"Lean 4 Server\""));
 	CHECK(has(&B, "\"m\":\"initialize\""));
 	/* the diagnostics as one list (the infoview keeps one per file) */
 	CHECK(wait_for(both, 2, &A, "\"message\":\"two\""));
-	char *d = strstr(A.ev.b, "\"message\":\"one\"");
+	char *d = strstr(A.ev.s, "\"message\":\"one\"");
 	CHECK(d && strstr(d, "\"message\":\"two\""));
 
 	/* calls: a session, then a request answered with Lean's own JSON, to
@@ -420,7 +420,7 @@ int main(int argc, char **argv)
 	/* B's id 0 is B's own */
 	CHECK(call("pageB", "{\"id\":0,\"m\":\"saveConfig\",\"a\":[null]}") == 204);
 	CHECK(wait_for(both, 2, &B, "{\"id\":0,\"k\":\"val\",\"v\":null}"));
-	CHECK(count(A.ev.b, "\"id\":0,") == 1);
+	CHECK(count(A.ev.s, "\"id\":0,") == 1);
 	/* a call that is no JSON, or has no id, is no error */
 	CHECK(call("pageA", "not json") == 204);
 	CHECK(call("pageA", "{\"m\":\"saveConfig\"}") == 204);
@@ -449,11 +449,11 @@ int main(int argc, char **argv)
 	CHECK(!has(&B, "sentClientNotification"));
 	CHECK(call("pageA", "{\"id\":5,\"m\":\"unsubscribeClientNotifications\",\"a\":[\"textDocument/didChange\"]}") == 204);
 	CHECK(wait_for(both, 2, &A, "{\"id\":5,"));
-	int before = count(A.ev.b, "sentClientNotification");
+	int before = count(A.ev.s, "sentClientNotification");
 	CHECK(!core_edit(&e, 0, 5, "", 0));
 	lsp_flush(e.buf->lsp);
 	pump(both, 2, 300);
-	CHECK(count(A.ev.b, "sentClientNotification") == before);
+	CHECK(count(A.ev.s, "sentClientNotification") == before);
 	/* only Lean is heard: another server's edits stay away from the pages */
 	CHECK(call("pageA", "{\"id\":10,\"m\":\"subscribeClientNotifications\",\"a\":[\"textDocument/didChange\"]}") == 204);
 	CHECK(wait_for(both, 2, &A, "{\"id\":10,"));
@@ -476,15 +476,15 @@ int main(int argc, char **argv)
 	CHECK(wait_for(both, 2, &A, "{\"id\":11,"));
 
 	/* the cursor: one event per move, none when it stays */
-	int moves = count(A.ev.b, "changedCursorLocation");
+	int moves = count(A.ev.s, "changedCursorLocation");
 	bridge_update(&e);
 	pump(both, 2, 50);
-	CHECK(count(A.ev.b, "changedCursorLocation") == moves);
+	CHECK(count(A.ev.s, "changedCursorLocation") == moves);
 	e.win->line = 1; e.win->col = 2;
 	bridge_update(&e);
 	CHECK(wait_for(both, 2, &A, "\"start\":{\"line\":1,\"character\":2}"));
 	pump(both, 2, 100);
-	CHECK(count(A.ev.b, "\"m\":\"initialize\"") == 1);
+	CHECK(count(A.ev.s, "\"m\":\"initialize\"") == 1);
 
 	/* the page's edits: Try this (applyEdit), insertText above the line */
 	snprintf(s, sizeof s, "{\"id\":6,\"m\":\"applyEdit\",\"a\":[{\"documentChanges\":[{\"textDocument\":{\"uri\":\"%s\","
@@ -527,9 +527,9 @@ int main(int argc, char **argv)
 	CHECK(has(&P, "$/lean/fileProgress"));      /* the last one Lean sent */
 	/* Lean's incremental diagnostics, joined as vscode-lean4 does: the
 	   fresh list and the one after it, and nothing from before */
-	char *d3 = strstr(P.ev.b, "\"message\":\"three\"");
+	char *d3 = strstr(P.ev.s, "\"message\":\"three\"");
 	CHECK(d3 && strstr(d3, "\"message\":\"four\"") && !has(&P, "\"message\":\"one\""));
-	CHECK(strstr(P.ev.b, "\"m\":") == strstr(P.ev.b, "\"m\":\"changedCursorLocation\""));
+	CHECK(strstr(P.ev.s, "\"m\":") == strstr(P.ev.s, "\"m\":\"changedCursorLocation\""));
 
 	/* sessions are kept alive (every 10 s) while their page is */
 	end = ms() + 11000;
@@ -563,10 +563,10 @@ int main(int argc, char **argv)
 	CHECK(wait_for(withp, 3, &B, "{\"id\":1,\"k\":\"val\""));
 
 	/* the hello comes again only for another server: a restarted one */
-	int hellos = count(B.ev.b, "serverRestarted");
+	int hellos = count(B.ev.s, "serverRestarted");
 	lsp_restart(e.buf->lsp);
 	pump(withp, 3, 300);
-	CHECK(count(B.ev.b, "serverRestarted") == hellos);
+	CHECK(count(B.ev.s, "serverRestarted") == hellos);
 
 	bridge_free();
 	/* the child deletes its file when the editor lets it go */
@@ -584,8 +584,8 @@ int main(int argc, char **argv)
 	free(html); free(o);
 	bridge_free();
 	core_free(&e);
-	free(uri); free(b.b);
-	free(A.raw.b); free(A.ev.b); free(B.raw.b); free(B.ev.b); free(P.raw.b); free(P.ev.b);
+	free(uri); free(b.s);
+	free(A.raw.s); free(A.ev.s); free(B.raw.s); free(B.ev.s); free(P.raw.s); free(P.ev.s);
 	snprintf(s, sizeof s, "rm -rf %s", dir);
 	CHECK(!system(s));
 	printf("test_infoview: ok\n");

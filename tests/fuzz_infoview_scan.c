@@ -31,14 +31,14 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t n)
 	}
 	/* round trip */
 	Str q = { 0 };
-	j_put(&q, "\"", 1);
+	str_add(&q, "\"", 1);
 	j_quote(&q, s, n);
-	j_put(&q, "\"", 1);
+	str_add(&q, "\"", 1);
 	size_t len;
-	char *d = q.b ? j_str(q.b, q.n, 0, &len) : NULL;
-	if (q.b && (!d || len != n || memcmp(d, s, n) || j_skip(q.b, q.n, 0) != q.n)) abort();
+	char *d = q.s ? j_str(q.s, q.n, 0, &len) : NULL;
+	if (q.s && (!d || len != n || memcmp(d, s, n) || j_skip(q.s, q.n, 0) != q.n)) abort();
 	free(d);
-	free(q.b);
+	free(q.s);
 	free(s);
 	return 0;
 }
