@@ -113,7 +113,7 @@ core: the status line cut from its start, as Neovim's default (test_core_status)
 core: the fill in the face after it (test_core_status)~test TESTS=core_status~~src/core/draw.c~paint(g, r, w->x + c, fill, f[i - 1]);~paint(g, r, w->x + c, fill, f[i]);
 core: another window's status line in the current one's face (test_core_status)~test TESTS=core_status~~src/core/draw.c~} else n = sep = stl_add(out, f, n, sizeof out, name, strlen(name), FACE_STATUS_LINE_NC);~} else n = sep = stl_add(out, f, n, sizeof out, name, strlen(name), FACE_STATUS_LINE);
 core: another window's status line shows the name as typed (test_core_status)~test TESTS=core_status~~src/core/draw.c~const char *name = b->full ? b->full : "[No Name]";~const char *name = b->path ? b->path : "[No Name]";
-core: the cell under a separator always the separator (test_core_status)~test TESTS=core_status~~src/core/draw.c~int on = stl_connected(w);~int on = 0;
+core: the cell under a separator always the separator (test_core_status)~test TESTS=core_status~~src/core/draw.c~int on = stl_connected(w);~int on = !stl_connected(w);
 core: the cursor line's number in LineNr (test_core_status)~test TESTS=core_status~~src/core/draw.c~unsigned char face = rel ? FACE_LINE_NR : FACE_CURSOR_LINE_NR;~unsigned char face = FACE_LINE_NR;
 core: the cursor line drawn in Visual mode (test_core_status)~test TESTS=core_status~~src/core/draw.c~!(w == e->win && e->ks.visual) ? FACE_CURSOR_LINE : 0;~1 ? FACE_CURSOR_LINE : 0;
 core: the cursor line only in the current window (test_core_status)~test TESTS=core_status~~src/core/draw.c~unsigned char cl = l == w->line && ~unsigned char cl = w == e->win && l == w->line && 
