@@ -36,7 +36,7 @@ int git_real(const char *path, char *out)
 	HANDLE h;
 	if (wide(path, w) || (h = CreateFileW(w, 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING,
 	                                      FILE_FLAG_BACKUP_SEMANTICS, NULL)) == INVALID_HANDLE_VALUE) return -1;
-	DWORD n = GetFinalPathNameByHandleW(h, full, PATH_MAX, FILE_NAME_NORMALIZED | VOLUME_NAME_DOS);
+	DWORD n = GetFullPathNameW(w, PATH_MAX, full, NULL);
 	CloseHandle(h);
 	if (!n || n >= PATH_MAX) return -1;
 	/* \\?\C:\x is C:\x; \\?\UNC\host\x is \\host\x */
