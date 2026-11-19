@@ -138,6 +138,10 @@ void block_prep(Oparg *oap, long l, int is_del, long *textcol, long *textlen,
 void set_reg(int r, const char *s, long n, int type);
 int  map_case(int c, int up);   /* utf_toupper() (up) or utf_tolower() */
 
+/* Vim's patterns (regex.c) */
+int  re_compile(const char *pat, int icase, const char **msg);
+int  re_exec(long l, long col, Pos *s, Pos *e, Pos *sub_s, Pos *sub_e);
+
 /* typeahead (keys.c) */
 extern int reg_executing;   /* executing a register's keys (@a) */
 void stuff(const int *k, long n);        /* stuffReadbuff(): readbuf1 */

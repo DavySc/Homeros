@@ -11,7 +11,15 @@ text, with an example that must still differ).  Measured 2026-11-18, seed 1,
 Not built (FEATURES.md section 2), part two of package 5:
 - search: / ? n N * # and search as a motion (d/x). / and ? read their line
   and drop it with a beep, so the pattern does not run as commands; n N * #
-  beep.
+  beep.  The pattern engine they will use is built (regex.c, Neovim's
+  regexp.c): magic levels, classes, collections, multis, groups and back
+  references, \zs \ze, \& and the look-arounds, 'ignorecase' and \c \C.
+  tests/test_keys_regex.c checks it against substitute() in nvim on random
+  patterns and lines; measured 2026-11-19, 16 seeds of 10,000: 4 differ, all
+  in the oddity below.  Not built yet: \%[ \%V \%# \%l \%c \%v and the
+  marks, \z( (syntax only), 'smartcase' (the search commands' part), a
+  look-behind that reaches into lines above, and multi-line text in the
+  random test (\n and \_x are built; :s will check them on a buffer).
 - operators = ! and gc (comment); the surround, align and other section 3
   extras.
 - gq's 'comments': Neovim formats with 'formatoptions' tcqj, so a comment
@@ -108,6 +116,16 @@ after $ keeping curswant MAXCOL):
   C-v - y C-v r ,): Neovim replaces at the Tab's first cell, ours after it.
 
 Neovim's own oddities, not copied:
+- patterns over a letter with a separate combining accent (e + U+0301):
+  Neovim's two engines disagree with each other there, and each with its own
+  rules (\(e\|\)\. on it: the NFA engine finds no match, the backtracking
+  one matches e and leaves the accent).  Ours follows the NFA engine, which
+  Neovim uses unless a pattern needs the other: a class or collection
+  matches the letter by its base, a repeated character takes the e and
+  leaves the accent, a match never ends before an accent.  The random test
+  takes either engine's answer (and none where Neovim loops or gives E363);
+  the 4 cases neither gives have a literal e next to the accented letter,
+  one listed in the test's KNOWN.
 - r, then R and CTRL-U or BS back over the replaced character ("  0", r 3 l R
   C-u): Neovim's replace stack still holds what r replaced and puts it back.
 - block I, then Left past the block's start and text ("abcd\nefgh", l C-v j

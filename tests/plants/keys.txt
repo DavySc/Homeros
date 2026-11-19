@@ -91,3 +91,12 @@ keys: a yank from an executing register flashes, where Neovim's on_yank skips it
 keys: the yank flash takes the motion's type, not the register's, so "Ayiw after "ayy flashes characters (test_keys_flash)~test TESTS=keys_flash~~src/keys/ops.c~int t = reg->type == MLINE~int t = oap->motion_type == MLINE
 keys: the yank flash is never cleared (test_keys_flash)~test TESTS=keys_flash~~src/keys/ops.c~		loop_timer(unflash, E, 150);~		(void)unflash;
 keys: clearing the yank flash asks for no frame, so it stays on screen until the next key (test_keys_flash)~test TESTS=keys_flash~~src/keys/ops.c~	core_changed = 1;¶}~}
+keys: a look-behind body may end anywhere, so \(\D\|\)\@<! matches (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~			if (behind.coladd && (behind.lnum != l || behind.col != c)) return 0;~			if (0) return 0;
+keys: an empty pass fails the match instead of ending the loop, so .\(\|\k\)\+ takes \k (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~{ n = r; continue; }~return 0;
+keys: a repeated character does not match a letter with a composing character, so e\{3,1}\k misses e + U+0301 (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~(rep || cp == len) ? cp : -1;~(rep > 1 || cp == len) ? cp : -1;
+keys: \& makes what is before it a negative look-ahead (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~prog[n].b = '=';~prog[n].b = '=', prog[n].neg = 1;
+keys: \c forgets that a group just opened, so \(\c* makes * a multi (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~prev = pr, prevprev = pp;~prev = prev + 0 * pr, prevprev = pp;
+keys: a match may end before a composing character (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~!= (size_t)c) return 0;~!= (size_t)c && 0) return 0;
+keys: \zs in a look-around moves the match start (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~if (look && (p->op == ZS ||~if (look && (0 ||
+keys: \ze in a look-ahead stays when what follows fails (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~				ze = oz;¶				return 0;~				return 0;
+keys: a look-behind steps back by code point, into a letter with a composing character (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~s = (long)uni_gprev(~s = (long)uni_prev(
