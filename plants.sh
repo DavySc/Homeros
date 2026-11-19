@@ -1,27 +1,33 @@
 #!/bin/sh
 # Every plant in tests/plants.txt (or $PLANTS) must make ./check.sh fail
-# (CLAUDE.md: a check never seen failing proves nothing).  Each runs in a
-# scratch copy; a plant that does not apply counts as not caught.
+# (CLAUDE.md: a check never seen failing proves nothing).  A plant line is
+# file, text, replacement (may be empty), why: tab-separated.  Each runs in
+# a scratch copy; a plant that does not apply counts as not caught.
 cd "$(dirname "$0")"
 here=$(pwd) main=$(cd "${HOMEROS:-../main}" && pwd) caught=0 total=0
+list=$(cd "$(dirname "${PLANTS:-tests/plants.txt}")" && pwd)/$(basename "${PLANTS:-tests/plants.txt}")
+copy() { d=$(mktemp -d) && cp -r "$here"/sqlref "$here"/cmd "$here"/oracle "$here"/tests "$here"/Makefile "$here"/check.sh "$d"/; }
 # a scratch copy with no plant must pass, or every "caught" is void
 # (the debugger prototype's lesson L33)
-d=$(mktemp -d) && cp -r "$here"/sqlref "$here"/cmd "$here"/oracle "$here"/Makefile "$here"/check.sh "$d"/ &&
-	HOMEROS="$main" "$d"/check.sh >/dev/null 2>&1 </dev/null || { echo "plants: the unplanted copy fails; nothing counted"; rm -rf "$d"; exit 1; }
+copy && HOMEROS="$main" "$d"/check.sh >/dev/null 2>&1 </dev/null || { echo "plants: the unplanted copy fails; nothing counted"; rm -rf "$d"; exit 1; }
 rm -rf "$d"
-grep -v '^#' "${PLANTS:-tests/plants.txt}" | grep -v '^$' > /tmp/plants.$$
-while IFS='	' read -r file old new why; do
+n=$(grep -c '' "$list")
+for line in $(seq 1 "$n"); do
+	sed -n "${line}p" "$list" | grep -q '^[^#]' || continue
 	total=$((total + 1))
-	d=$(mktemp -d) || exit 1
-	cp -r "$here"/sqlref "$here"/cmd "$here"/oracle "$here"/Makefile "$here"/check.sh "$d"/ || exit 1
-	if python3 -I -c 'import sys; p,o,n=sys.argv[1:]; s=open(p).read(); assert s.count(o)==1; open(p,"w").write(s.replace(o,n))' "$d/$file" "$old" "$new" 2>/dev/null &&
-	   ! HOMEROS="$main" "$d"/check.sh >/dev/null 2>&1 </dev/null; then
-		caught=$((caught + 1))
-	else
-		echo "NOT CAUGHT: $file: $why"
-	fi
+	copy || exit 1
+	why=$(python3 -I - "$list" "$line" "$d" <<'P'
+import sys
+f, old, new, why = open(sys.argv[1]).read().split('\n')[int(sys.argv[2]) - 1].split('\t')
+p = sys.argv[3] + '/' + f
+s = open(p).read()
+print(why)
+if s.count(old) != 1: sys.exit(1)
+open(p, 'w').write(s.replace(old, new))
+P
+) && if HOMEROS="$main" "$d"/check.sh >/dev/null 2>&1 </dev/null; then false; else true; fi
+	if [ $? = 0 ] && [ -n "$why" ]; then caught=$((caught + 1)); else echo "NOT CAUGHT: line $line: $why"; fi
 	rm -rf "$d"
-done < /tmp/plants.$$
-rm -f /tmp/plants.$$
+done
 echo "plants: $caught of $total caught"
 [ "$caught" = "$total" ]

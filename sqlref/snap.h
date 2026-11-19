@@ -45,9 +45,12 @@ typedef struct { const char *s; size_t n; int quoted; } Name;
 /* index of object schema.name, or -1; schema.s NULL: the default schema's
    first, else the only one of that name (-2 when several match) */
 long  snap_object(const Snap *s, Name schema, Name name);
+/* two names the same under the snapshot's rules (a catalog spelling is
+   quoted: exact) */
+int   snap_eq(const Snap *s, Name a, Name b);
 /* index into c of object o's column, or -1 */
 long  snap_column(const Snap *s, size_t o, Name col);
-/* Name of a token [s, s+n): strips [..] or ".." and undoubles ]] or "" into
-   buf (size n), sets quoted */
+/* Name of a token [s, s+n): strips [..], ".." or '..' (a column alias may
+   be a string) and undoubles ]], "" or '' into buf (size n), sets quoted */
 Name  snap_name(const char *s, size_t n, char *buf);
 #endif

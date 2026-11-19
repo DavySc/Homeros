@@ -16,15 +16,18 @@ static int fold(int d, int c, int quoted)
 	if (quoted || d == D_TSQL) return c;
 	return d == D_PG ? low(c) : up(c);
 }
-/* catalog names are stored as the server spells them: exact */
-static int same(int d, const char *cat, Name n)
+static int eq(int d, Name a, Name b)
 {
-	size_t i = 0;
-	for (; i < n.n; i++)
-		if (!cat[i] || fold(d, (unsigned char)cat[i], 1) != fold(d, (unsigned char)n.s[i], n.quoted)) return 0;
-	return !cat[i];
+	if (a.n != b.n) return 0;
+	for (size_t i = 0; i < a.n; i++)
+		if (fold(d, (unsigned char)a.s[i], a.quoted) != fold(d, (unsigned char)b.s[i], b.quoted)) return 0;
+	return 1;
 }
+/* catalog names are stored as the server spells them: exact */
+static Name cat(const char *s) { return (Name){s, strlen(s), 1}; }
+static int same(int d, const char *c, Name n) { return eq(d, cat(c), n); }
 static int mode(const Snap *s) { return s->ci ? D_CI : s->dialect; }
+int snap_eq(const Snap *s, Name a, Name b) { return eq(mode(s), a, b); }
 static uint32_t hash(int d, uint32_t h, const char *s, size_t n, int quoted)
 {
 	for (size_t i = 0; i < n; i++) h = (h ^ (uint32_t)fold(d, (unsigned char)s[i], quoted)) * 16777619u;
@@ -34,8 +37,6 @@ static uint32_t hash(int d, uint32_t h, const char *s, size_t n, int quoted)
    (exact) catalog spelling hashes as the folded identifier does */
 static uint32_t key_o(int d, Name n) { return hash(d, 2166136261u, n.s, n.n, n.quoted); }
 static uint32_t key_c(int d, size_t o, Name n) { return hash(d, 2166136261u ^ (uint32_t)(o + 1) * 2654435761u, n.s, n.n, n.quoted); }
-static Name cat(const char *s) { return (Name){s, strlen(s), 1}; }
-
 static void put(Snap *s, uint32_t k, uint32_t v)
 {
 	size_t i = k & (s->nh - 1);
@@ -193,8 +194,8 @@ long snap_column(const Snap *s, size_t o, Name col)
 
 Name snap_name(const char *s, size_t n, char *buf)
 {
-	if (n < 2 || (s[0] != '[' && s[0] != '"')) return (Name){s, n, 0};
-	char close = s[0] == '[' ? ']' : '"';
+	if (n < 2 || (s[0] != '[' && s[0] != '"' && s[0] != '\'')) return (Name){s, n, 0};
+	char close = s[0] == '[' ? ']' : s[0];
 	size_t w = 0;
 	for (size_t i = 1; i + 1 < n; i++) {
 		buf[w++] = s[i];

@@ -10,3 +10,26 @@ sqlref/snap.c	if (s->c[s->o[o].col + j].id == id) return	if (j + 1 == id) return
 sqlref/snap.c	if (schema.s) { if (same(d, s->o[v].schema, schema)) return (long)v; continue; }	if (schema.s) return (long)v;	schema ignored
 sqlref/snap.c	if (dflt && !strcmp(s->o[v].schema, dflt)) hit = (long)v;	if (0) hit = (long)v;	default schema not preferred
 sqlref/snap.c	if (*p == '\t') { *w++ = 0; p++;	if (*p == '\t' && n < 3) { *w++ = 0; p++;	tab splitting stops early
+# ---- slice 2: resolver ----
+sqlref/resolve.c	if (hits > 1) return RS_AMBIG;	if (hits > 1) return RS_OK;	two sources with the column: not ambiguous
+sqlref/resolve.c	int sees = lateral ? blk : r->b[blk].parent, sc;	int sees = blk, sc;	a derived table sees its siblings
+sqlref/resolve.c	return s->blk == blk && !s->hidden && (blk != p->on_blk || s->grp == p->on_grp);	return s->blk == blk && !s->hidden;	ON sees other comma items
+sqlref/resolve.c	if (n) { ref(p, p->t[s].s, p->t[s].e, RF_OUT,	if (0) { ref(p, p->t[s].s, p->t[s].e, RF_OUT,	ORDER BY ignores output names
+sqlref/resolve.c	for (size_t s = 0; s < r->nsrc; s++) {	for (size_t s = r->nsrc; s-- > 0;) {	* expands sources in reverse
+sqlref/resolve.c	p->res->src[sc].ns = p->t[i].s, p->res->src[sc].ne = p->t[i].e, p->res->src[sc].aliased = 1;	p->res->src[sc].aliased = 1;	an alias does not hide the table name
+sqlref/resolve.c	? RS_SAMENAME : RS_SAMEALIAS;	? RS_SAMENAME : RS_OK;	a correlation name twice
+sqlref/resolve.c	if (snap_eq(r->snap, a, b)) { r->r[ref_at].status = 8156; return; }	if (0) { r->r[ref_at].status = 8156; return; }	a derived table with two columns of one name
+sqlref/resolve.c	if (!a.s) { r->r[ref_at].status = 8155; return; }	if (!a.s) continue;	a derived table column without a name
+sqlref/resolve.c	if (*first < 0 && (*first = b, cte >= 0)) r->src[cte].inner = b;	if (*first < 0) *first = b;	a recursive CTE does not see its own columns
+sqlref/resolve.c	"convert", "try_convert", "dateadd",	"try_convert", "dateadd",	CONVERT's type read as a column
+sqlref/resolve.c	while (k < close && !(is(p, k, "as") && p->t[k].d == p->t[j].d + 1)) k++;	k = close;	CAST's type read as a column
+sqlref/resolve.c	{"partition", "rows",	{"rows",	PARTITION read as a column
+sqlref/resolve.c	if (is(p, i, "update") || is(p, i, "delete") || is(p, i, "merge")) p->blind = 1;	if (0) p->blind = 1;	SELECT inside UPDATE/DELETE judged without its outer names
+sqlref/resolve.c	|| (nq == 1 && (is(p, i, "inserted") || is(p, i, "deleted")));	;	a trigger's inserted read as a missing table
+sqlref/resolve.c	if (is(p, i, "pivot")) expr(p, i + 2, in, blk);	if (is(p, i, "pivot")) expr(p, i + 2, close, blk);	PIVOT's IN list read as columns
+sqlref/resolve.c	|| (is(p, i, "for") && any(p, i + 1, for_clause));	|| is(p, i, "for");	NEXT VALUE FOR ends the query
+sqlref/resolve.c	if (nq >= 2 && any(p, last, xml_methods)) colref(p, i, last - 2, q, nq - 1, sees, NULL, NULL);   /* x.col.nodes('..') */		an XML method's column in FROM not read
+sqlref/resolve.c	if (p->blind && st == RS_NOCOL) st = RS_UNSURE;		an unread outer name reported as missing
+sqlref/resolve.c	&& (k != 2 || is(p, z + 1, "by"))) at[k] = z;	) at[k] = z;	WITHIN GROUP read as GROUP BY
+sqlref/resolve.c	if (is(p, j, "as") && is(p, j + 1, "of")) expr(p, j + 2, j + 3, sees), j += 3;		FOR SYSTEM_TIME AS OF read as an alias
+sqlref/resolve.c	if (r->src[i].blk == s->blk && !r->src[i].hidden && r->src[i].ne && snap_eq(	if (0 && snap_eq(	duplicate exposed names not found
