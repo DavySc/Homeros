@@ -93,4 +93,9 @@ int    orgfx_update(OrgFx *f, int (*stop)(void));
    allocation.  Before an update, the bytes an edit did not touch keep the
    colours they had. */
 void   orgfx_faces(OrgFx *f, size_t a, size_t z, unsigned char *face);
+/* the fold level of line, as nvim-orgmode's foldexpr: the stars of the
+   headline whose subtree holds it (org-current-level), 0 before the first;
+   *start is 1 on the headline itself.  It sees edits made since the last
+   update (it updates first). */
+int    orgfx_foldexpr(OrgFx *f, size_t line, int *start);
 #endif
