@@ -142,6 +142,10 @@ end
 -- the popup token reads the screen in Insert mode, with the popup up
 -- ('redraw!' would close it)
 function CAPTURE() captured = screen(false); cmarks = marks() end
+-- -c commands run with the cursor on line 0 (exe_commands()), which
+-- leaves it in column 0; a start puts it on line 1's first non-blank
+-- (beginline(BL_WHITE | BL_FIX)), as ^ does
+vim.cmd('normal! 1G^')
 local out, mk, nop = {screen()}, {marks()}, {}
 for i, ks in ipairs(c.keys) do
   -- closing the last window would quit: the C side skips it too

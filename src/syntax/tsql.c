@@ -4,11 +4,13 @@
    procedures).  SSMS colours by word lists, not by a parse, so a statement
    it does not know never spoils the colours after it.  Its categories
    (learn.microsoft.com, "Color coding in query editors") map to Catppuccin's
-   faces: keyword, string, comment, system function, system table, view or
-   schema, stored procedure, operator; numbers, names and variables stay
-   plain, as there.  Faces are found from the nearest token start known
-   before the bytes asked: one every CK bytes is kept, and those past an
-   edit are dropped, since what follows a byte can change how it lexes. */
+   faces: keyword, string, comment, number, system function, system table,
+   view or schema, stored procedure, operator (one colour for AND, EXISTS,
+   ( and =, as SSMS's grey; Catppuccin's sky, since its grey is the
+   comments', Davy 2026-11-18); names and variables stay plain, as there.  Faces are read from the nearest known
+   token start before the bytes asked; syntax_update keeps one every CK
+   bytes to the text's end, and an edit keeps those after it until a read
+   confirms them (struct Tsql). */
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -40,9 +42,10 @@ struct Tsql {
 	uint32_t *ck, n, v, cap;
 	size_t at, end;            /* the token where the last faces ended; its
 	                              end, 0 when not known */
-	unsigned char face;        /* and its face, so the frame's later reads
+	int kind;                  /* and its kind, so the frame's later reads
 	                              inside a long comment do not lex it again */
 	int skipped;               /* a window was left plain, far from the index */
+	int json;                  /* JSON instead (json_token) */
 };
 
 static int is_space(int c) { return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == '\v'; }
@@ -51,6 +54,24 @@ static int is_digit(int c) { return c >= '0' && c <= '9'; }
 static int is_id(int c)
 {
 	return is_digit(c) || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || c == '@' || c == '#' || c == '$' || c >= 0x80;
+}
+
+/* a number from its digits: digits, a dot (not ..) and digits, an exponent
+   only when a digit follows its e and sign; SQL Server's and JSON's (RFC
+   8259, which tree-sitter-json takes without the exponent's plus) */
+static size_t number(TsqlRd *r, size_t p)
+{
+	int c;
+	while (is_digit(tsql_byte(r, p))) p++;
+	if (tsql_byte(r, p) == '.' && tsql_byte(r, p + 1) != '.')
+		while (is_digit(tsql_byte(r, ++p))) ;
+	if ((c = tsql_byte(r, p)) == 'e' || c == 'E') {
+		size_t e = p + 1;
+		if ((c = tsql_byte(r, e)) == '+' || c == '-') e++;
+		if (is_digit(tsql_byte(r, e)))
+			for (p = e; is_digit(tsql_byte(r, p)); p++) ;
+	}
+	return p;
 }
 
 size_t tsql_token(TsqlRd *r, size_t p, int *k)
@@ -90,23 +111,13 @@ size_t tsql_token(TsqlRd *r, size_t p, int *k)
 	}
 	if (is_digit(c) || (c == '.' && is_digit(d))) {
 		/* as SQL Server: letters after a number start a word (1as x is 1 as
-		   x); 0x then hex digits; digits, a dot (not ..), digits; an
-		   exponent only when a digit follows its e and sign */
+		   x); 0x then hex digits */
 		*k = TQ_NUMBER;
 		if (c == '0' && (d == 'x' || d == 'X')) {
 			for (p += 2; is_digit(c = tsql_byte(r, p)) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'); p++) ;
 			return p;
 		}
-		while (is_digit(tsql_byte(r, p))) p++;
-		if (tsql_byte(r, p) == '.' && tsql_byte(r, p + 1) != '.')
-			while (is_digit(tsql_byte(r, ++p))) ;
-		if ((c = tsql_byte(r, p)) == 'e' || c == 'E') {
-			size_t e = p + 1;
-			if ((c = tsql_byte(r, e)) == '+' || c == '-') e++;
-			if (is_digit(tsql_byte(r, e)))
-				for (p = e; is_digit(tsql_byte(r, p)); p++) ;
-		}
-		return p;
+		return number(r, p);
 	}
 	if (c == '@' || c == '#') {
 		while (is_id(tsql_byte(r, ++p))) ;
@@ -178,7 +189,7 @@ static int after_schema(TsqlRd *r, size_t p)
 
 /* SSMS colours by word lists alone, so a word in two lists takes one
    colour wherever it is: LEFT JOIN and LEFT( are operators, and the day of
-   DATEADD(day, ..) is a function, as DAY( is (Davy's screenshot) */
+   DATEADD(day, ..) is a function, as DAY( is (Davy's screenshots) */
 static unsigned char word_face(TsqlRd *r, size_t p, size_t e)
 {
 	char l[40];
@@ -210,10 +221,87 @@ static unsigned char face(TsqlRd *r, size_t p, size_t e, int k)
 	return FACE_NONE;
 }
 
-Tsql *tsql_new(const Text *t)
+/* JSON as nvim-treesitter's highlights colour tree-sitter-json (Neovim 0.12
+   bundles no JSON grammar), on the same index of token starts as T-SQL, so
+   a large file opens and edits as fast: this lexer keeps no state between
+   tokens either.  Its tokens in tsql_token's kinds; a string not closed on
+   its line ends there, so a quote being typed colours one line (tree-sitter
+   recovers further on). */
+static size_t json_token(TsqlRd *r, size_t p, int *k)
+{
+	int c = tsql_byte(r, p), d = tsql_byte(r, p + 1);
+	if (c < 0 || is_space(c)) return tsql_token(r, p, k);
+	r->open = 0;
+	if (c == '"') {
+		/* a backslash escapes the byte after it, but not a line's end */
+		while ((c = tsql_byte(r, ++p)) >= 0 && c != '"' && c != '\n')
+			if (c == '\\' && (d = tsql_byte(r, p + 1)) >= 0 && d != '\n') p++;
+		return *k = TQ_STRING, c == '"' ? p + 1 : p;
+	}
+	if (c == '/' && d == '/') {
+		while ((c = tsql_byte(r, ++p)) >= 0 && c != '\n') ;
+		return *k = TQ_COMMENT, p;
+	}
+	if (c == '/' && d == '*') {
+		/* not nested; unclosed, to the end, as T-SQL's (tree-sitter-json
+		   finds no comment there, but then one being typed would cost a
+		   read to the end on every frame) */
+		for (p += 2; (c = tsql_byte(r, p)) >= 0 && !(c == '*' && tsql_byte(r, p + 1) == '/'); p++) ;
+		r->open = c < 0;
+		return *k = TQ_COMMENT, c < 0 ? p : p + 2;
+	}
+	if (is_digit(c) || (c == '-' && is_digit(d))) return *k = TQ_NUMBER, number(r, p + (c == '-'));
+	if (c >= 'a' && c <= 'z') {
+		while ((c = tsql_byte(r, ++p)) >= 'a' && c <= 'z') ;
+		return *k = TQ_WORD, p;
+	}
+	*k = c == '{' || c == '}' || c == '[' || c == ']' || c == ',' || c == ':' ? TQ_PUNCT : TQ_OP;
+	return p + 1;
+}
+
+static unsigned char json_face(TsqlRd *r, size_t p, size_t e, int k)
+{
+	char l[40];
+	int c = tsql_byte(r, p);
+	switch (k) {
+	case TQ_STRING:
+		/* a key is a string before a colon, past spaces and comments */
+		for (size_t n; (n = json_token(r, e, &k)) > e && (k == TQ_SPACE || k == TQ_COMMENT); ) e = n;
+		return tsql_byte(r, e) == ':' ? FACE_PROPERTY : FACE_STRING;
+	case TQ_NUMBER: return FACE_NUMBER;
+	case TQ_COMMENT: return FACE_COMMENT;
+	case TQ_PUNCT: return c == ',' || c == ':' ? FACE_PUNCTUATION_DELIMITER : FACE_PUNCTUATION_BRACKET;
+	case TQ_WORD:
+		if (!copy(r, p, e - p, l)) break;
+		return !strcmp(l, "true") || !strcmp(l, "false") ? FACE_BOOLEAN : !strcmp(l, "null") ? FACE_CONSTANT_BUILTIN : FACE_NONE;
+	}
+	return FACE_NONE;
+}
+
+static void paint(Tsql *q, size_t p, size_t e, int k, size_t a, size_t z, unsigned char *f)
+{
+	TsqlRd *r = &q->r;
+	unsigned char c = q->json ? json_face(r, p, e, k) : face(r, p, e, k);
+	for (size_t i = p < a ? a : p; i < e && i < z; i++) f[i - a] = c;
+	if (!q->json || k != TQ_STRING) return;
+	/* a backslash and the byte after it (tree-sitter-json's escape_sequence,
+	   also the u of \u0041), found from the window's start, or from the run
+	   of backslashes it is in, which decides the pairs: a long string is
+	   not read from its start for each 256 bytes drawn */
+	size_t i = p + 1 < a ? a : p + 1;
+	while (i > p + 1 && tsql_byte(r, i - 1) == '\\') i--;
+	for (; i + 1 < e && i < z; i++)
+		if (tsql_byte(r, i) == '\\') {
+			for (size_t j = i; j < i + 2; j++)
+				if (j >= a && j < z) f[j - a] = FACE_STRING_ESCAPE;
+			i++;
+		}
+}
+
+Tsql *tsql_new(const Text *t, int json)
 {
 	Tsql *q = calloc(1, sizeof *q);
-	if (q) q->r.t = t;
+	if (q) q->r.t = t, q->json = json;
 	return q;
 }
 
@@ -283,7 +371,7 @@ int tsql_update(Tsql *q, int (*stop)(void))
 		if (stop && !(k % 1024) && stop()) return 2;
 		int kind;
 		/* the long comment the frame just read is not read again */
-		size_t e = p == q->at && q->end > p ? q->end : tsql_token(&q->r, p, &kind);
+		size_t e = p == q->at && q->end > p ? q->end : (q->json ? json_token : tsql_token)(&q->r, p, &kind);
 		step(q, p);
 		/* landed on a moved start: the rest is known */
 		p = q->n && q->v == q->n && q->ck[q->n - 1] > e ? q->ck[q->n - 1] : e;
@@ -307,17 +395,17 @@ void tsql_faces(Tsql *q, size_t a, size_t z, unsigned char *f)
 		return;
 	}
 	while (p < z) {
-		int k;
+		int k = q->kind;
 		size_t e = q->end;
-		unsigned char c = q->face;
 		if (p != q->at || e <= p) {
-			e = tsql_token(&q->r, p, &k);
+			e = (q->json ? json_token : tsql_token)(&q->r, p, &k);
 			if (e == p) break;
-			c = e > a ? face(&q->r, p, e, k) : FACE_NONE;
 		}
 		step(q, p);
-		for (size_t i = p < a ? a : p; i < e && i < z; i++) f[i - a] = c;
-		q->at = p, q->end = e, q->face = c;
+		/* a face is worked out on each read, as a JSON key's depends on
+		   the text after it */
+		if (e > a) paint(q, p, e, k, a, z, f);
+		q->at = p, q->end = e, q->kind = k;
 		p = e;
 	}
 }

@@ -251,7 +251,7 @@ static void insertchar(int c, int pending, int ctrlv)
    (o and O, dir BACKWARD for O) */
 /* the indent before "^ CTRL-D", which the next line gets back (Neovim's
    old_indent, open_line()'s second_line_indent) */
-static long old_indent;
+long old_indent;
 
 static int open_line(int dir)
 {
@@ -271,14 +271,7 @@ static int open_line(int dir)
 	if (insert) {
 		extra = c;
 		if (replacing()) replace_push_nul();
-		/* not a blank a combining mark is on: utf_iscomposing_first() asks
-		   whether the next character joins a space, also after a Tab */
-		while (extra < len && (line[extra] == ' ' || line[extra] == '\t')) {
-			char b = line[extra];
-			line[extra] = ' ';
-			long k = clen(line, len, extra);
-			line[extra] = b;
-			if (k > 1) break;
+		while (extra < len && whitechar(line, len, extra)) {
 			if (replacing()) replace_push(line + extra, 1);
 			extra++;
 		}
@@ -328,7 +321,7 @@ static int open_line(int dir)
 /* o and O (n_opencmd()) */
 int open_cmd(int dir)
 {
-	u_save_gap(W->line + (dir == FORWARD));   /* n_opencmd()'s u_save() */
+	u_save(W->line + (dir == FORWARD), W->line + (dir == FORWARD));   /* n_opencmd()'s u_save() */
 	return open_line(dir);
 }
 
@@ -807,7 +800,10 @@ void insert_key(int k, int pending)
 	case KEY_TAB: inserted_space = 0; ins_tab(); break;
 	case 10: case 13: ins_eol(); inserted_space = 0; break;
 	default:
-		if (c < ' ' && c != 26) break;   /* completion, digraphs, CTRL-V: not here */
+		/* insert_handle_key() goes to normalchar for CTRL-B, F, L, Z, backslash and _
+		   outside CTRL-X mode; the other control keys are commands here or
+		   not built (completion, digraphs) */
+		if (c < ' ' && !has("\x02\x06\x0c\x1a\x1c\x1f", c)) break;
 		if (c >= KEY_UP) break;          /* the mouse and the wheel do nothing here */
 		if (c == ' ') inserted_space = 1;
 		stop_arrow();

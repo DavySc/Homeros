@@ -175,12 +175,58 @@ int file_watch_read(int fd, const char *path, const FileId *id)
 
 /* The journal's calls (state.h) */
 
+void file_stdpath(char *f, size_t n, int state, const char *name)
+{
+	/* stdpath("state") and ("data") are both %LOCALAPPDATA%\\nvim-data */
+	const char *d = getenv(state ? "XDG_STATE_HOME" : "XDG_DATA_HOME");
+	if (!d || !*d) d = getenv("LOCALAPPDATA");
+	snprintf(f, n, "%s\\homeros-data%s", d ? d : "", name);
+}
+
+void file_mkdirs(char *f)
+{
+	wchar_t w[PATH_MAX];
+	if (wide(f, w)) return;
+	for (wchar_t *p = w + 1; *p; p++) {
+		if (*p != L'\\' && *p != L'/') continue;
+		wchar_t c = *p;
+		*p = 0;
+		CreateDirectoryW(w, NULL);
+		*p = c;
+	}
+}
+
+/* GetFullPathNameW into full: its length, 0 on error */
+static DWORD fullw(const char *path, wchar_t *full)
+{
+	wchar_t p[PATH_MAX];
+	DWORD n;
+	if (wide(path, p)) return 0;
+	if (!(n = GetFullPathNameW(p, PATH_MAX, full, NULL)) || n >= PATH_MAX) { errno = ENAMETOOLONG; return 0; }
+	return n;
+}
+
+static int narrow(const wchar_t *w, char *out)
+{
+	if (WideCharToMultiByte(CP_UTF8, 0, w, -1, out, PATH_MAX, NULL, NULL)) return 0;
+	errno = ENAMETOOLONG;
+	return -1;
+}
+
+int file_full(const char *path, char *out)
+{
+	wchar_t full[PATH_MAX];
+	return fullw(path, full) ? narrow(full, out) : -1;
+}
+
 int state_open(const char *kind, const char *abs, char *out, size_t outsz, int flags)
 {
 	(void)flags;   /* only the journal opens here: read, write, append, create */
-	const char *x = getenv("XDG_STATE_HOME"), *base = x && *x ? x : getenv("LOCALAPPDATA");
-	int k = snprintf(out, outsz, "%s\\homeros-data\\%s\\", base ? base : "", kind);
-	if (k < 0 || (size_t)k + strlen(abs) >= outsz) { errno = ENAMETOOLONG; return -1; }
+	char sub[64];
+	snprintf(sub, sizeof sub, "\\%s\\", kind);
+	file_stdpath(out, outsz, 1, sub);
+	size_t k = strlen(out);
+	if (k + 1 >= outsz || k + strlen(abs) >= outsz) { errno = ENAMETOOLONG; return -1; }
 	for (size_t i = 0; abs[i]; i++) out[k + i] = abs[i] == '\\' || abs[i] == '/' || abs[i] == ':' ? '%' : abs[i];
 	out[k + strlen(abs)] = 0;
 	wchar_t w[PATH_MAX];
@@ -192,12 +238,7 @@ int state_open(const char *kind, const char *abs, char *out, size_t outsz, int f
 	for (int again = 1;; again = 0) {
 		h = CreateFileW(w, GENERIC_READ | GENERIC_WRITE, SHARE_ALL, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 		if (h != INVALID_HANDLE_VALUE || GetLastError() != ERROR_PATH_NOT_FOUND || !again) break;
-		/* only the first time: the directories (a failing one shows at the open) */
-		for (wchar_t *p = wcschr(w, L'\\'); p; p = wcschr(p + 1, L'\\')) {
-			*p = 0;
-			CreateDirectoryW(w, NULL);
-			*p = L'\\';
-		}
+		file_mkdirs(out);   /* only the first time */
 	}
 	if (h == INVALID_HANDLE_VALUE) return fail();
 	/* without _O_TEXT the descriptor is binary: no CRLF in the records */
@@ -208,14 +249,12 @@ int state_open(const char *kind, const char *abs, char *out, size_t outsz, int f
 
 int state_abs(const char *path, char *out)
 {
-	wchar_t p[PATH_MAX], full[PATH_MAX];
-	DWORD n;
-	if (wide(path, p)) return -1;
-	if (!(n = GetFullPathNameW(p, PATH_MAX, full, NULL)) || n >= PATH_MAX) { errno = ENAMETOOLONG; return -1; }
+	wchar_t full[PATH_MAX];
+	DWORD n = fullw(path, full);
+	if (!n) return -1;
 	/* NTFS names ignore case: one journal per file however it is spelled */
 	CharLowerBuffW(full, n);
-	if (!WideCharToMultiByte(CP_UTF8, 0, full, -1, out, PATH_MAX, NULL, NULL)) { errno = ENAMETOOLONG; return -1; }
-	return 0;
+	return narrow(full, out);
 }
 
 int state_lock(int fd, const char *name, long long *size)

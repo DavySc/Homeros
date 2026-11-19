@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #if defined _WIN32
 #include <windows.h>
 #endif
@@ -14,6 +15,7 @@
 #include "kitten.h"
 #include "loop.h"
 #include "lsp.h"
+#include "shada.h"
 #include "syntax.h"
 #include "tools.h"
 
@@ -51,7 +53,9 @@ int main(int argc, char **argv)
 {
 	static Editor e;
 	Grid g = { 0 }, shown = { 0 };
-	int fds[2], rows, cols, tty = argc == 3 && !strcmp(argv[1], "-t");
+	struct timespec t0;
+	timespec_get(&t0, TIME_UTC);   /* for the dashboard's "loaded in" */
+	int fds[2], rows, cols, tty = argc > 1 && !strcmp(argv[1], "-t");
 #if defined _WIN32
 	/* a GUI-subsystem program has no console: borrow the one it was started
 	   from, if any, so usage and error messages still reach the terminal
@@ -59,18 +63,24 @@ int main(int argc, char **argv)
 	int out = !GetStdHandle(STD_OUTPUT_HANDLE), err = !GetStdHandle(STD_ERROR_HANDLE);
 	if (AttachConsole(ATTACH_PARENT_PROCESS)) { if (out) freopen("CONOUT$", "w", stdout); if (err) freopen("CONOUT$", "w", stderr); }
 #endif
-	if (argc != 2 + tty) { fprintf(stderr, "usage: homeros [-t] FILE\n"); return 2; }
+	if (argc > 2 + tty) { fprintf(stderr, "usage: homeros [-t] [FILE]\n"); return 2; }
 #if defined _WIN32
 	if (!tty) b = &backend_win;
 #elif defined HOMEROS_WL
 	if (!tty && getenv("WAYLAND_DISPLAY")) b = &backend_wl;
 #endif
-	if (core_open(&e, argv[1 + tty])) { fprintf(stderr, "homeros: %s\n", e.msg); return 1; }
+	/* no file: an empty buffer without a name, under the dashboard */
+	const char *file = argc > 1 + tty ? argv[1 + tty] : NULL;
+	if (shada_read()) { fprintf(stderr, "homeros: out of memory\n"); return 1; }
+	if (core_open(&e, file)) { fprintf(stderr, "homeros: %s\n", e.msg); return 1; }
 	if (b->open()) { fprintf(stderr, "homeros: no terminal or window\n"); core_free(&e); return 1; }
+	e.clip_set = b->clip_set;
+	e.clip_get = b->clip_get;
 	for (int i = 0, n = b->fds(fds); i < n; i++) loop_watch(fds[i], on_input, NULL);
 	if (e.buf->watch >= 0) loop_watch(e.buf->watch, on_watch, &e);
 	b->size(&rows, &cols);
 	if (grid_resize(&g, rows, cols)) goto out;
+	if (!file) tools_dash(&e, (long long)t0.tv_sec * 1000000000 + t0.tv_nsec);
 	int dirty = 1, syn = e.buf->syn != NULL;   /* syn: a reparse is pending */
 	while (!e.quit) {
 		if (resized) {
@@ -92,6 +102,7 @@ int main(int argc, char **argv)
 				if (e.ks.pending || (!tools_key(&e, k) && !git_key(&e, k))) keys_feed(&e, k, qn > 0);
 				running = 0;
 				lsp_flush(e.buf->lsp);   /* one didChange per command (Helix) */
+				shada_track(&e);
 				bridge_update(&e);
 			}
 			loop_int = 0;
@@ -129,6 +140,7 @@ out:
 	grid_free(&shown);
 	/* core_free would remove the journals as after a clean exit */
 	if (lost) { if (e.buf->journal) journal_sync(e.buf->journal); return 1; }
+	shada_write(&e);   /* Neovim writes its ShaDa file at exit (getout()) */
 	core_free(&e);
 	return 0;
 }

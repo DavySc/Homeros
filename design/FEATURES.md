@@ -89,6 +89,8 @@ Scope decisions:
 
 Catppuccin theme (flavour toggle), which-key style hints after a prefix, floating terminal, file manager (oil-style buffer editing of a directory), fuzzy pickers (files, grep, buffers, registers, symbols), Trouble-style diagnostics list, inlay hints, zen mode, rendered markdown, images and LaTeX inline (window mode).
 
+Start screen (nvim; Davy, 2026-11-18: started without a file, it shows a start screen): my-nvim's snacks dashboard, with the kittymax cat (`config/core/splash.lua`), the keys f find file, n new file, g find text, r recent files, q quit (c config is **out**: configuration is C), and the "loaded in" footer; recent files are Neovim's v:oldfiles (ShaDa), kept across sessions.
+
 ## 8. Platforms (Davy, 2026-11-17)
 
 Linux: Hyprland only (no client-side decorations needed). Windows: his work laptop, with the same fonts as Linux installed.

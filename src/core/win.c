@@ -5,10 +5,13 @@
 #include <string.h>
 #include "core_int.h"
 
-enum { WMH = 1, WMW = 1, STATUS = 1 };
+enum { WM = 1, STATUS = 1 };   /* winminheight, winminwidth */
+/* Neovim has a function for each direction (frame_setheight(),
+   frame_setwidth(), ...); here one function takes the axis a: ROWS for
+   heights, COLS for widths. */
 /* 'winheight' and 'winwidth': a split with a size sets them while it enters
    the new window, as win_split_ins() does */
-static int p_wh = 1, p_wiw = 20;
+static int p_wsz[2] = { 1, 20 };
 enum { WSP_VERT = 1, WSP_TOP = 2, WSP_BOT = 4 };
 typedef struct Frame Frame;
 
@@ -39,107 +42,73 @@ static int has_win(Frame *f, Win *w)
 	return 0;
 }
 
-static int cmdheight(Editor *e) { return e->rows - e->layout->height; }
+static int cmdheight(Editor *e) { return e->rows - e->layout->size[ROWS]; }
 
-/* frame_minheight(), frame_minwidth(): next_curwin gets winheight and
+/* the layout whose children lie one after another on axis a */
+static int along(int a) { return a == COLS ? FR_ROW : FR_COL; }
+/* a leaf's status line or separator, part of its frame's size */
+static int edge(const Frame *f, int a) { return a == COLS ? f->vsep : STATUS; }
+static int *wsize(Win *w, int a) { return a == COLS ? &w->w : &w->h; }
+static int *wpos(Win *w, int a) { return a == COLS ? &w->x : &w->y; }
+static void fix_size(Win *w, int a) { w->frame->size[a] = *wsize(w, a) + edge(w->frame, a); }
+static void win_new_size(Editor *e, Win *w, int size, int a)
+{
+	if (a == COLS) win_new_width(e, w, size);
+	else win_new_height(e, w, size);
+}
+
+/* frame_minheight(), frame_minwidth(): next_curwin gets winheight or
    winwidth instead of the minimum */
-static int minheight(Frame *f, Win *next)
+static int minsize(Frame *f, Win *next, int a)
 {
-	if (f->win) return (f->win == next ? p_wh : WMH) + STATUS;
+	if (f->win) return (f->win == next ? p_wsz[a] : WM) + edge(f, a);
 	int m = 0;
 	for (Frame *c = f->child; c; c = c->next) {
-		int n = minheight(c, next);
-		if (f->layout == FR_ROW) { if (n > m) m = n; }
-		else m += n;
+		int n = minsize(c, next, a);
+		if (f->layout == along(a)) m += n;
+		else if (n > m) m = n;
 	}
 	return m;
 }
 
-static int minwidth(Frame *f, Win *next)
-{
-	if (f->win) return (f->win == next ? p_wiw : WMW) + f->vsep;
-	int m = 0;
-	for (Frame *c = f->child; c; c = c->next) {
-		int n = minwidth(c, next);
-		if (f->layout == FR_COL) { if (n > m) m = n; }
-		else m += n;
-	}
-	return m;
-}
-
-static void fix_height(Win *w) { w->frame->height = w->h + STATUS; }
-static void fix_width(Win *w) { w->frame->width = w->w + w->frame->vsep; }
-
-/* frame_new_height() */
-static void new_height(Editor *e, Frame *f, int height, int topfirst)
-{
-	if (f->win) win_new_height(e, f->win, height - STATUS);
-	else if (f->layout == FR_ROW) {
-		Frame *c;
-		do {
-			for (c = f->child; c; c = c->next) {
-				new_height(e, c, height, topfirst);
-				if (c->height > height) { height = c->height; break; }
-			}
-		} while (c);
-	} else {
-		Frame *c = f->child;
-		if (!topfirst) while (c->next) c = c->next;
-		int extra = height - f->height;
-		if (extra < 0) {
-			while (c) {
-				int h = minheight(c, NULL);
-				if (c->height + extra < h) {
-					extra += c->height - h;
-					new_height(e, c, h, topfirst);
-				} else {
-					new_height(e, c, c->height + extra, topfirst);
-					break;
-				}
-				c = topfirst ? c->next : c->prev;
-				if (!c) height -= extra;
-			}
-		} else if (extra > 0) new_height(e, c, c->height + extra, topfirst);
-	}
-	f->height = height;
-}
-
-/* frame_new_width() */
-static void new_width(Editor *e, Frame *f, int width, int leftfirst)
+/* frame_new_height(), frame_new_width() */
+static void new_size(Editor *e, Frame *f, int size, int first, int a)
 {
 	if (f->win) {
-		Frame *p = f;
-		while (p->parent && !(p->parent->layout == FR_ROW && p->next)) p = p->parent;
-		if (!p->parent) f->vsep = 0;
-		win_new_width(e, f->win, width - f->vsep);
-	} else if (f->layout == FR_COL) {
+		if (a == COLS) {
+			Frame *p = f;
+			while (p->parent && !(p->parent->layout == FR_ROW && p->next)) p = p->parent;
+			if (!p->parent) f->vsep = 0;
+		}
+		win_new_size(e, f->win, size - edge(f, a), a);
+	} else if (f->layout != along(a)) {
 		Frame *c;
 		do {
 			for (c = f->child; c; c = c->next) {
-				new_width(e, c, width, leftfirst);
-				if (c->width > width) { width = c->width; break; }
+				new_size(e, c, size, first, a);
+				if (c->size[a] > size) { size = c->size[a]; break; }
 			}
 		} while (c);
 	} else {
 		Frame *c = f->child;
-		if (!leftfirst) while (c->next) c = c->next;
-		int extra = width - f->width;
+		if (!first) while (c->next) c = c->next;
+		int extra = size - f->size[a];
 		if (extra < 0) {
 			while (c) {
-				int w = minwidth(c, NULL);
-				if (c->width + extra < w) {
-					extra += c->width - w;
-					new_width(e, c, w, leftfirst);
+				int m = minsize(c, NULL, a);
+				if (c->size[a] + extra < m) {
+					extra += c->size[a] - m;
+					new_size(e, c, m, first, a);
 				} else {
-					new_width(e, c, c->width + extra, leftfirst);
+					new_size(e, c, c->size[a] + extra, first, a);
 					break;
 				}
-				c = leftfirst ? c->next : c->prev;
-				if (!c) width -= extra;
+				c = first ? c->next : c->prev;
+				if (!c) size -= extra;
 			}
-		} else if (extra > 0) new_width(e, c, c->width + extra, leftfirst);
+		} else if (extra > 0) new_size(e, c, c->size[a] + extra, first, a);
 	}
-	f->width = width;
+	f->size[a] = size;
 }
 
 /* frame_set_vsep() */
@@ -169,7 +138,7 @@ static void comp_pos(Frame *f, int *row, int *col)
 		Win *w = f->win;
 		w->y = *row;
 		w->x = *col;
-		*row += w->h + STATUS > f->height ? f->height : w->h + STATUS;
+		*row += w->h + STATUS > f->size[ROWS] ? f->size[ROWS] : w->h + STATUS;
 		*col += w->w + f->vsep;
 		return;
 	}
@@ -180,8 +149,8 @@ static void comp_pos(Frame *f, int *row, int *col)
 		comp_pos(c, row, col);
 	}
 	/* the frame is a rectangle: what follows starts past all of it */
-	if (f->layout == FR_ROW) *row = r0 + f->height;
-	else *col = c0 + f->width;
+	if (f->layout == FR_ROW) *row = r0 + f->size[ROWS];
+	else *col = c0 + f->size[COLS];
 }
 
 static void win_comp_pos(Editor *e) { int r = 0, c = 0; comp_pos(e->layout, &r, &c); }
@@ -189,92 +158,85 @@ static void win_comp_pos(Editor *e) { int r = 0, c = 0; comp_pos(e->layout, &r, 
 /* get_maximum_wincount() */
 static int max_wincount(Frame *f, int height)
 {
-	if (f->layout != FR_COL) return height / (WMH + STATUS);
+	if (f->layout != FR_COL) return height / (WM + STATUS);
 	int n = 0;
 	for (Frame *c = f->child; c; c = c->next) {
-		if (height < WMH + STATUS) break;
-		height -= WMH + STATUS;
+		if (height < WM + STATUS) break;
+		height -= WM + STATUS;
 		n++;
 	}
-	return n + height / (WMH + STATUS);
+	return n + height / (WM + STATUS);
 }
 
-/* win_equal_rec(), without 'winfixheight' and 'winfixwidth' (never set) */
-static void equal_rec(Editor *e, Win *next, int current, Frame *top, int dir,
-                      int col, int row, int width, int height)
+/* win_equal_rec(), without 'winfixheight' and 'winfixwidth' (never set):
+   top gets the place at[] and the size sz[] (ROWS, COLS) */
+static void equal_rec(Editor *e, Win *next, int current, Frame *top, int dir, const int at[2], const int sz[2])
 {
 	int extra_sep = 0, totwincount = 0, next_size = 0, room = 0, has_next = 0;
 	if (top->win) {
-		if (top->height != height || top->win->y != row || top->width != width || top->win->x != col) {
-			top->win->y = row;
-			new_height(e, top, height, 0);
-			top->win->x = col;
-			new_width(e, top, width, 0);
-		}
+		Win *w = top->win;
+		if (top->size[ROWS] != sz[ROWS] || w->y != at[ROWS] || top->size[COLS] != sz[COLS] || w->x != at[COLS])
+			for (int a = ROWS; a <= COLS; a++) { *wpos(w, a) = at[a]; new_size(e, top, sz[a], 0, a); }
 		return;
 	}
-	int rowl = top->layout == FR_ROW;
-	top->width = width;
-	top->height = height;
-	if (dir != (rowl ? 'v' : 'h')) {
-		int n, m;
-		if (rowl) {
-			n = minwidth(top, NULL);
-			extra_sep = col + width == e->cols;
-			totwincount = (n + extra_sep) / (WMW + 1);
-			m = minwidth(top, next);
-			room = width - m;
-		} else {
-			n = minheight(top, NULL);
-			totwincount = max_wincount(top, n);
-			m = minheight(top, next);
-			room = height - m;
-		}
+	/* children lie along axis a; dir 'v' equalizes only heights, 'h' only widths */
+	int a = top->layout == FR_ROW ? COLS : ROWS, keep = a == COLS ? 'v' : 'h';
+	int pos[2] = { at[ROWS], at[COLS] }, left[2] = { sz[ROWS], sz[COLS] };
+	top->size[ROWS] = sz[ROWS];
+	top->size[COLS] = sz[COLS];
+	if (dir != keep) {
+		int n = minsize(top, NULL, a), m = minsize(top, next, a);
+		if (a == COLS) {
+			extra_sep = at[COLS] + sz[COLS] == e->cols;
+			totwincount = (n + extra_sep) / (WM + 1);
+		} else totwincount = max_wincount(top, n);
+		room = sz[a] - m;
 		has_next = has_win(top, next);
-		int wh = rowl ? p_wiw : p_wh, wm = rowl ? WMW : WMH;
+		int wh = p_wsz[a];
 		if (room < 0) {
 			next_size = wh + room;
 			room = 0;
 		} else if (!has_next) next_size = 0;
 		else if (totwincount > 1 && (room + (totwincount - 2)) / (totwincount - 1) > wh) {
-			next_size = (room + wh + (totwincount - 1) * wm + (totwincount - 1)) / totwincount;
+			next_size = (room + wh + (totwincount - 1) * WM + (totwincount - 1)) / totwincount;
 			room -= next_size - wh;
 		} else next_size = wh;
 		if (has_next) totwincount--;
 	}
 	for (Frame *c = top->child; c; c = c->next) {
 		int wincount = 1, size;
-		if (!c->next) size = rowl ? width : height;
-		else if (dir == (rowl ? 'v' : 'h')) size = rowl ? c->width : c->height;
+		if (!c->next) size = left[a];
+		else if (dir == keep) size = c->size[a];
 		else {
-			int n = rowl ? minwidth(c, NULL) : minheight(c, NULL);
-			int m = rowl ? minwidth(c, next) : minheight(c, next);
-			wincount = rowl ? (n + (c->next ? 0 : extra_sep)) / (WMW + 1) : max_wincount(c, n);
+			int n = minsize(c, NULL, a), m = minsize(c, next, a);
+			/* Neovim adds extra_sep for the last frame, which the first branch takes */
+			wincount = a == COLS ? n / (WM + 1) : max_wincount(c, n);
 			int hnc = has_next && has_win(c, next);
 			if (hnc) wincount--;
 			size = totwincount ? (wincount * room + totwincount / 2) / totwincount : room;
 			if (hnc) {
-				next_size -= (rowl ? p_wiw : p_wh) - (m - n);
-				if (rowl && next_size < 0) next_size = 0;
+				next_size -= p_wsz[a] - (m - n);
+				if (a == COLS && next_size < 0) next_size = 0;
 				size += next_size;
 				room -= size - next_size;
 			} else room -= size;
 			size += n;
 		}
-		if (!current || dir != (rowl ? 'v' : 'h') || top->parent
-		    || size != (rowl ? c->width : c->height) || has_win(c, next)) {
-			if (rowl) equal_rec(e, next, current, c, dir, col, row, size, height);
-			else equal_rec(e, next, current, c, dir, col, row, width, size);
+		if (!current || dir != keep || top->parent || size != c->size[a] || has_win(c, next)) {
+			int csz[2] = { left[ROWS], left[COLS] };
+			csz[a] = size;
+			equal_rec(e, next, current, c, dir, pos, csz);
 		}
-		if (rowl) { col += size; width -= size; }
-		else { row += size; height -= size; }
+		pos[a] += size;
+		left[a] -= size;
 		totwincount -= wincount;
 	}
 }
 
 static void win_equal(Editor *e, Win *next, int current, int dir)
 {
-	equal_rec(e, next ? next : e->win, current, e->layout, dir, 0, 0, e->cols, e->layout->height);
+	equal_rec(e, next ? next : e->win, current, e->layout, dir, (int[2]){ 0, 0 },
+	          (int[2]){ e->layout->size[ROWS], e->cols });
 }
 
 /* ---- window list ---- */
@@ -334,10 +296,10 @@ void layout_init(Editor *e, Win *w)
 	f->s.vline = (size_t)-1;
 	f->s.bot = 1;                       /* win_init_empty(): w_botline 2 */
 	e->layout = f;
-	f->height = e->rows - 1;            /* cmdheight 1 */
-	f->width = e->cols;
-	w->h = f->height - STATUS;
-	w->w = f->width;
+	f->size[ROWS] = e->rows - 1;        /* cmdheight 1 */
+	f->size[COLS] = e->cols;
+	w->h = f->size[ROWS] - STATUS;
+	w->w = f->size[COLS];
 }
 
 /* win_new_screensize(): the top frame takes the screen, the command line keeps its height */
@@ -348,16 +310,15 @@ void layout_resize(Editor *e, int rows, int cols)
 	e->rows = rows;
 	e->cols = cols;
 	if (rows - ch < 2) ch = rows > 2 ? rows - 2 : 1;
-	new_height(e, e->layout, rows - ch, 0);
-	new_width(e, e->layout, cols, 0);
+	new_size(e, e->layout, rows - ch, 0, ROWS);
+	new_size(e, e->layout, cols, 0, COLS);
 	win_comp_pos(e);
 }
 
 /* ---- entering ---- */
 
 /* win_enter_ext(): prevwin, then make w current and at least winwidth wide */
-static void win_setwidth(Editor *e, Win *w, int width);
-static void win_setheight(Editor *e, Win *w, int height);
+static void win_setsize(Editor *e, Win *w, int size, int a);
 void win_enter(Editor *e, Win *w)
 {
 	if (w == e->win) return;
@@ -368,9 +329,8 @@ void win_enter(Editor *e, Win *w)
 	/* win_enter_ext()'s changed_line_abv_curs(): the view is looked at
 	   again with the window's real botline (review of PR 20, 6) */
 	w->frame->s.topvalid = 0;
-	if (w->h < p_wh) win_setheight(e, w, p_wh);
-	else if (w->h == 0) win_setheight(e, w, 1);
-	if (w->w < p_wiw) win_setwidth(e, w, p_wiw);
+	/* (Neovim's "else if (w_height == 0)" is dead: winheight is at least 1) */
+	for (int a = ROWS; a <= COLS; a++) if (*wsize(w, a) < p_wsz[a]) win_setsize(e, w, p_wsz[a], a);
 }
 
 /* ---- splitting ---- */
@@ -408,52 +368,25 @@ static Win *split_ins(Editor *e, int size, int flags, Win *new_wp, int dir, Fram
 	Win *old = flags & WSP_TOP ? e->wins : flags & WSP_BOT ? NULL : e->win, *w = new_wp;
 	if (flags & WSP_BOT) { old = e->wins; while (old->next) old = old->next; }
 	int vertical = flags & WSP_VERT, toplevel = flags & (WSP_TOP | WSP_BOT);
-	int do_equal = 0, old_h = 0, new_size = size;
+	/* the split is on axis a; the new window's separator or status line is 1 */
+	int a = vertical ? COLS : ROWS, do_equal = 0, nsz = size, old_size = *wsize(old, a);
 	Frame *of = old->frame;
-	if (vertical) {
-		int need = WMW + 1, minw, avail;
-		if (toplevel) { minw = minwidth(e->layout, NULL); avail = e->layout->width; }
-		else {
-			minw = minwidth(of, NULL);
-			for (Frame *pf = of, *p = of->parent; p; pf = p, p = p->parent)
-				if (p->layout == FR_ROW)
-					for (Frame *c = p->child; c; c = c->next) if (c != pf) minw += minwidth(c, NULL);
-			avail = e->layout->width;
-		}
-		if (avail < need + minw) { core_msg(e, "E36: Not enough room"); return NULL; }
-		if (!new_size) new_size = old->w / 2;
-		if (new_size > avail - minw - 1) new_size = avail - minw - 1;
-		if (new_size < WMW) new_size = WMW;
-		if (old->w - new_size - 1 < WMW) do_equal = 1;
-		if (!do_equal && size == 0 && of->parent)
-			for (Frame *c = of->parent->child; c; c = c->next)
-				if (c->win && c->win != old && (c->win->w > new_size || c->win->w > old->w - new_size - 1)) {
-					do_equal = 1;
-					break;
-				}
-	} else {
-		int need = WMH + STATUS, minh, avail;
-		if (toplevel) { minh = minheight(e->layout, NULL); avail = e->layout->height; }
-		else {
-			minh = minheight(of, NULL);
-			for (Frame *pf = of, *p = of->parent; p; pf = p, p = p->parent)
-				if (p->layout == FR_COL)
-					for (Frame *c = p->child; c; c = c->next) if (c != pf) minh += minheight(c, NULL);
-			avail = e->layout->height;
-		}
-		if (avail < need + minh) { core_msg(e, "E36: Not enough room"); return NULL; }
-		old_h = old->h;
-		if (!new_size) new_size = old_h / 2;
-		if (new_size > avail - minh - STATUS) new_size = avail - minh - STATUS;
-		if (new_size < WMH) new_size = WMH;
-		if (old_h - new_size - STATUS < WMH) do_equal = 1;
-		if (!do_equal && size == 0 && of->parent)
-			for (Frame *c = of->parent->child; c; c = c->next)
-				if (c->win && c->win != old && (c->win->h > new_size || c->win->h > old_h - new_size - STATUS)) {
-					do_equal = 1;
-					break;
-				}
-	}
+	int mins = minsize(toplevel ? e->layout : of, NULL, a), avail = e->layout->size[a];
+	if (!toplevel)
+		for (Frame *pf = of, *p = of->parent; p; pf = p, p = p->parent)
+			if (p->layout == along(a))
+				for (Frame *c = p->child; c; c = c->next) if (c != pf) mins += minsize(c, NULL, a);
+	if (avail < WM + 1 + mins) { core_msg(e, "E36: Not enough room"); return NULL; }
+	if (!nsz) nsz = old_size / 2;
+	if (nsz > avail - mins - 1) nsz = avail - mins - 1;
+	if (nsz < WM) nsz = WM;
+	if (old_size - nsz - 1 < WM) do_equal = 1;
+	if (!do_equal && size == 0 && of->parent)
+		for (Frame *c = of->parent->child; c; c = c->next)
+			if (c->win && c->win != old && (*wsize(c->win, a) > nsz || *wsize(c->win, a) > old_size - nsz - 1)) {
+				do_equal = 1;
+				break;
+			}
 	/* splitbelow and splitright: the new window goes after the old one */
 	int after = !(flags & WSP_TOP);
 	if (!new_wp) {
@@ -505,53 +438,31 @@ static Win *split_ins(Editor *e, int size, int flags, Win *new_wp, int dir, Fram
 	else frame_append(cur, nf);
 	win_set_fraction(old);
 	nf->s.fraction = old->frame->s.fraction;
-	if (vertical) {
-		w->scroll = e->win->scroll;
-		if (toplevel) {
-			w->y = 0;
-			win_new_height(e, w, cur->height - STATUS);
-		} else {
-			w->y = old->y;
-			win_new_height(e, w, old->h);
-		}
-		nf->height = cur->height;
-		win_new_width(e, w, new_size);
-		if (before) nf->vsep = 1;
-		else {
-			nf->vsep = of->vsep;
-			of->vsep = 1;
-		}
-		if (toplevel) {
-			if (flags & WSP_BOT) set_vsep(e, cur, 1);
-			new_width(e, cur, cur->width - (new_size + ((flags & WSP_TOP) != 0)), flags & WSP_TOP);
-		} else win_new_width(e, old, old->w - (new_size + 1));
-		if (before) { w->x = old->x; old->x += new_size + 1; }
-		else w->x = old->x + old->w + 1;
-		fix_width(old);
-		fix_width(w);
-	} else {
-		if (toplevel) {
-			w->x = 0;
-			win_new_width(e, w, e->cols);
-			nf->vsep = 0;
-		} else {
-			w->x = old->x;
-			win_new_width(e, w, old->w);
-			nf->vsep = of->vsep;
-		}
-		nf->width = cur->width;
-		win_new_height(e, w, new_size);
-		if (toplevel) new_height(e, cur, cur->height - new_size - STATUS, flags & WSP_TOP);
-		else win_new_height(e, old, old_h - (new_size + STATUS));
-		if (before) { w->y = old->y; old->y += w->h + STATUS; }
-		else w->y = old->y + old->h + STATUS;
-		fix_height(w);
-		fix_height(old);
+	/* across the split (axis o) the new window takes old's place, or the
+	   whole of cur at the top level */
+	int o = !a;
+	if (a == COLS) w->scroll = e->win->scroll;
+	else nf->vsep = toplevel ? 0 : of->vsep;
+	*wpos(w, o) = toplevel ? 0 : *wpos(old, o);
+	win_new_size(e, w, toplevel ? cur->size[o] - edge(nf, o) : *wsize(old, o), o);
+	nf->size[o] = cur->size[o];
+	win_new_size(e, w, nsz, a);
+	if (a == COLS) {
+		nf->vsep = before ? 1 : of->vsep;
+		of->vsep |= !before;
 	}
+	if (toplevel) {
+		if (a == COLS && flags & WSP_BOT) set_vsep(e, cur, 1);
+		new_size(e, cur, cur->size[a] - nsz - (a == ROWS ? STATUS : (flags & WSP_TOP) != 0), flags & WSP_TOP, a);
+	} else win_new_size(e, old, old_size - (nsz + 1), a);
+	if (before) { *wpos(w, a) = *wpos(old, a); *wpos(old, a) += nsz + 1; }
+	else *wpos(w, a) = *wpos(old, a) + *wsize(old, a) + 1;
+	fix_size(old, a);
+	fix_size(w, a);
 	if (toplevel) win_comp_pos(e);
 	if (do_equal || dir)
 		win_equal(e, w, 1, vertical ? (dir == 'v' ? 'b' : 'h') : (dir == 'h' ? 'b' : 'v'));
-	int *opt = vertical ? &p_wiw : &p_wh, keep = *opt;
+	int *opt = &p_wsz[a], keep = *opt;
 	if (size) *opt = size;
 	win_enter(e, w);
 	*opt = keep;
@@ -616,8 +527,8 @@ static Win *frame_take_out(Editor *e, Win *w, int *dir, Frame **alt)
 	*dir = f->parent->layout == FR_COL ? 'v' : 'h';
 	if (!f->vsep && f->parent->layout == FR_ROW && f->prev) set_vsep(e, f->prev, 0);
 	frame_remove(f);
-	if (*dir == 'v') new_height(e, a, a->height + f->height, a == f->next);
-	else new_width(e, a, a->width + f->width, a == f->next);
+	int x = *dir == 'v' ? ROWS : COLS;
+	new_size(e, a, a->size[x] + f->size[x], a == f->next, x);
 	if (a != f->prev) comp_pos(f->parent, &row, &col);
 	*alt = a;
 	return frame2win(a);
@@ -734,9 +645,9 @@ static Win *neighbor(Editor *e, Win *w, int vert, int back, long count)
 		for (;;) {
 			if (nf->win) { found = nf; break; }
 			f = nf->child;
-			if (nf->layout == (vert ? FR_ROW : FR_COL))
-				while (f->next && (vert ? frame2win(f)->x + f->width <= w->x + wcol
-				                        : frame2win(f)->y + f->height <= w->y + wrow))
+			int o = vert ? COLS : ROWS;
+			if (nf->layout == along(o))
+				while (f->next && *wpos(frame2win(f), o) + f->size[o] <= *wpos(w, o) + (vert ? wcol : wrow))
 					f = f->next;
 			if (nf->layout == (vert ? FR_COL : FR_ROW) && back) while (f->next) f = f->next;
 			nf = f;
@@ -792,8 +703,7 @@ static void exchange(Editor *e, long count)
 	int t = cw->frame->vsep;
 	cw->frame->vsep = w->frame->vsep;
 	w->frame->vsep = t;
-	fix_height(cw); fix_height(w);
-	fix_width(cw); fix_width(w);
+	for (int a = ROWS; a <= COLS; a++) { fix_size(cw, a); fix_size(w, a); }
 	win_comp_pos(e);
 	win_enter(e, w);
 }
@@ -828,8 +738,7 @@ static int rotate(Editor *e, int up, long count)
 		int t = w2->frame->vsep;
 		w2->frame->vsep = w1->frame->vsep;
 		w1->frame->vsep = t;
-		fix_height(w1); fix_height(w2);
-		fix_width(w1); fix_width(w2);
+		for (int a = ROWS; a <= COLS; a++) { fix_size(w1, a); fix_size(w2, a); }
 		win_comp_pos(e);
 	}
 	return 0;
@@ -852,14 +761,14 @@ static int splitmove(Editor *e, int flags, int size)
 		if (f->prev) frame_append(f->prev, f);
 		else frame_insert(f->next, f);
 		if (!f->vsep && f->parent->layout == FR_ROW && f->prev) set_vsep(e, f->prev, 1);
-		if (dir == 'v') new_height(e, alt, alt->height - f->height, alt == f->next);
-		else new_width(e, alt, alt->width - f->width, alt == f->next);
+		int a = dir == 'v' ? ROWS : COLS;
+		new_size(e, alt, alt->size[a] - f->size[a], alt == f->next, a);
 		win_comp_pos(e);
 		win_append(e, prev, w);
 		return -1;
 	}
 	if (!size && !(flags & WSP_VERT)) {
-		win_setheight(e, w, h);
+		win_setsize(e, w, h, ROWS);
 		win_equal(e, e->win, e->win == w, 'v');
 	}
 	return 0;
@@ -886,7 +795,7 @@ int core_win_move(Editor *e, int how, long count)
 static void top_new_height(Editor *e, int height)
 {
 	Frame *t = e->layout;
-	int ch = cmdheight(e), nch = ch + t->height - height;
+	int ch = cmdheight(e), nch = ch + t->size[ROWS] - height;
 	if (nch < 1) nch = 1;
 	if (nch != ch) {
 		/* command_height(): the last full-width frame gives or takes the lines */
@@ -894,18 +803,18 @@ static void top_new_height(Editor *e, int height)
 		Win *l = e->wins;
 		while (l->next) l = l->next;
 		f = l->frame;
-		while (f->width != e->cols && f->parent) f = f->parent;
+		while (f->size[COLS] != e->cols && f->parent) f = f->parent;
 		int old = ch;
 		while (nch > old && f) {
-			int h = nch - old < f->height - minheight(f, NULL) ? nch - old : f->height - minheight(f, NULL);
-			new_height(e, f, f->height - h, 0);
-			for (Frame *p = f->parent; p; p = p->parent) p->height -= h;
+			int h = nch - old < f->size[ROWS] - minsize(f, NULL, ROWS) ? nch - old : f->size[ROWS] - minsize(f, NULL, ROWS);
+			new_size(e, f, f->size[ROWS] - h, 0, ROWS);
+			for (Frame *p = f->parent; p; p = p->parent) p->size[ROWS] -= h;
 			old += h;
 			f = f->prev;
 		}
 		if (nch < old && f) {
-			new_height(e, f, f->height + old - nch, 0);
-			for (Frame *p = f->parent; p; p = p->parent) p->height += old - nch;
+			new_size(e, f, f->size[ROWS] + old - nch, 0, ROWS);
+			for (Frame *p = f->parent; p; p = p->parent) p->size[ROWS] += old - nch;
 		}
 		ch = nch < old ? nch : old;   /* E36 keeps what could be taken */
 		/* setting 'cmdheight' sets w_set_curswant, as for 'wrap' (measured:
@@ -913,94 +822,58 @@ static void top_new_height(Editor *e, int height)
 		if (e->win->want != WANT_EOL) core_set_want(e);
 	}
 	if (height > e->rows - ch) height = e->rows - ch;   /* ROWS_AVAIL */
-	new_height(e, t, height, 0);
+	new_size(e, t, height, 0, ROWS);
 }
 
-/* frame_setheight() */
-static void setheight(Editor *e, Frame *cur, int height)
+/* frame_setheight(), frame_setwidth(): only a height can take lines from
+   the command line */
+static void setsize(Editor *e, Frame *cur, int size, int a)
 {
-	if (cur->height == height) return;
-	if (!cur->parent) { if (height > 0) top_new_height(e, height); return; }
-	if (cur->parent->layout == FR_ROW) {
-		int h = minheight(cur->parent, NULL);
-		setheight(e, cur->parent, height > h ? height : h);
+	if (cur->size[a] == size) return;
+	if (!cur->parent) { if (a == ROWS && size > 0) top_new_height(e, size); return; }
+	if (cur->parent->layout != along(a)) {
+		int m = minsize(cur->parent, NULL, a);
+		setsize(e, cur->parent, size > m ? size : m, a);
 		return;
 	}
-	int room = 0, room_cmdline = 0;
+	/* a frame as tall as ROWS_AVAIL or as wide as Columns has no parent to grow */
+	int room = 0, room_cmdline = 0, full = a == ROWS ? e->cols : e->layout->size[ROWS];
 	for (int run = 1; run <= 2; run++) {
 		room = 0;
 		for (Frame *f = cur->parent->child; f; f = f->next) {
-			room += f->height;
-			if (f != cur) room -= minheight(f, NULL);
+			room += f->size[a];
+			if (f != cur) room -= minsize(f, NULL, a);
 		}
-		if (cur->width != e->cols) room_cmdline = 0;
-		else {
+		if (a == ROWS && cur->size[COLS] == e->cols) {
 			Win *l = e->wins;
 			while (l->next) l = l->next;
 			room_cmdline = e->rows - cmdheight(e) - (l->y + l->h + STATUS);
 			if (room_cmdline < 0) room_cmdline = 0;
-		}
-		if (height <= room + room_cmdline) break;
-		if (run == 2 || cur->width == e->cols) { height = room + room_cmdline; break; }
-		setheight(e, cur->parent, height + minheight(cur->parent, NULL) - WMH - 1);
+		} else room_cmdline = 0;
+		if (size <= room + room_cmdline) break;
+		if (run == 2 || cur->size[!a] >= full) { size = room + room_cmdline; break; }
+		setsize(e, cur->parent, size + minsize(cur->parent, NULL, a) - WM - 1, a);
 	}
-	int take = height - cur->height;
+	int take = size - cur->size[a];
 	if (take > 0 && room_cmdline > 0) {
 		if (room_cmdline > take) room_cmdline = take;
 		take -= room_cmdline;
-		e->layout->height += room_cmdline;
+		e->layout->size[ROWS] += room_cmdline;
 	}
-	new_height(e, cur, height, 0);
+	new_size(e, cur, size, 0, a);
 	for (int run = 0; run < 2; run++)
 		for (Frame *f = run ? cur->prev : cur->next; f && take; f = run ? f->prev : f->next) {
-			int h = minheight(f, NULL);
-			if (f->height - take < h) { take -= f->height - h; new_height(e, f, h, 0); }
-			else { new_height(e, f, f->height - take, 0); take = 0; }
+			int m = minsize(f, NULL, a);
+			if (f->size[a] - take < m) { take -= f->size[a] - m; new_size(e, f, m, 0, a); }
+			else { new_size(e, f, f->size[a] - take, 0, a); take = 0; }
 		}
 }
 
-static void win_setheight(Editor *e, Win *w, int height)
+/* win_setheight_win(), win_setwidth_win(): every caller passes curwin */
+static void win_setsize(Editor *e, Win *w, int size, int a)
 {
-	if (height < WMH) height = WMH;
-	setheight(e, w->frame, height + STATUS);
-	win_comp_pos(e);
-}
-
-/* frame_setwidth() */
-static void setwidth(Editor *e, Frame *cur, int width)
-{
-	if (cur->width == width || !cur->parent) return;
-	if (cur->parent->layout == FR_COL) {
-		int w = minwidth(cur->parent, NULL);
-		setwidth(e, cur->parent, width > w ? width : w);
-		return;
-	}
-	int room = 0;
-	for (int run = 1; run <= 2; run++) {
-		room = 0;
-		for (Frame *f = cur->parent->child; f; f = f->next) {
-			room += f->width;
-			if (f != cur) room -= minwidth(f, NULL);
-		}
-		if (width <= room) break;
-		if (run == 2 || cur->height >= e->rows) { width = room; break; }
-		setwidth(e, cur->parent, width + minwidth(cur->parent, NULL) - WMW - 1);
-	}
-	int take = width - cur->width;
-	new_width(e, cur, width, 0);
-	for (int run = 0; run < 2; run++)
-		for (Frame *f = run ? cur->prev : cur->next; f && take; f = run ? f->prev : f->next) {
-			int w = minwidth(f, NULL);
-			if (f->width - take < w) { take -= f->width - w; new_width(e, f, w, 0); }
-			else { new_width(e, f, f->width - take, 0); take = 0; }
-		}
-}
-
-static void win_setwidth(Editor *e, Win *w, int width)
-{
-	if (w == e->win && width < WMW) width = WMW;
-	if (width < 0) width = 0;
-	setwidth(e, w->frame, width + w->frame->vsep);
+	if (size < WM) size = WM;
+	setsize(e, w->frame, size + edge(w->frame, a), a);
 	win_comp_pos(e);
 }
 
@@ -1009,8 +882,8 @@ void core_resize(Editor *e, int vertical, long n, int set)
 	Win *w = e->win;
 	if (n > 100000) n = 100000;
 	if (n < -100000) n = -100000;
-	if (vertical) win_setwidth(e, w, set ? (n ? (int)n : e->cols) : w->w + (int)n);
-	else win_setheight(e, w, set ? (n ? (int)n : e->rows - 1) : w->h + (int)n);
+	int a = vertical ? COLS : ROWS;
+	win_setsize(e, w, set ? (n ? (int)n : a == COLS ? e->cols : e->rows - 1) : *wsize(w, a) + (int)n, a);
 }
 
 void core_equal(Editor *e) { win_equal(e, NULL, 0, 'b'); }
