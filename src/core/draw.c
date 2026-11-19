@@ -99,46 +99,123 @@ static int line_rows(const Win *w, size_t l)
 	return v <= skip ? 1 : (int)((v - skip + (size_t)tw - 1) / (size_t)tw);
 }
 
-/* An ATX heading as render-markdown 8.14 draws it with its defaults (Davy's
-   Neovim; heading.lua, position 'overlay', width 'full'): the n '#' of the
-   marker and the cell after them become n - 1 spaces, the level's icon and
-   a space, and from the marker on every cell of the line's rows takes the
-   level's background, to the window's edge (hl_eol).  The background
-   starts at screen column b0, with the heading's indent; the marker at m0.
-   The rest as draw_line. */
-static void draw_heading(Grid *g, const Win *w, size_t l, int r, size_t skip, int cover, size_t b0, size_t m0, int n)
+/* An overlay (virt_text_pos 'overlay', win_line()) of the clusters s[0, n),
+   reps times, at screen column v of line l from window row r, the overlay
+   starting at s0: drawn from the view's first column when s0 is before it
+   (leftcol, skipcol; measured: leftcol 1 to 39, the review of PR 56), cut
+   at the end of s0's row (measured: the rest of a heading marker that wraps
+   stays as typed), under skipcol's "<<<".  Its cells take face and bg, as
+   hl_mode 'replace' (measured: a bullet's '.' over a heading's background
+   has none).  Returns the column after it. */
+static size_t over(Grid *g, const Win *w, int r, size_t skip, int cover, size_t s0, size_t v,
+                   const char *s, size_t n, size_t reps, unsigned char face, unsigned char bg)
+{
+	int nw = win_numw(w), tw = w->w - nw;
+	size_t d = skip > s0 ? skip - s0 : 0, x0 = s0 + d - skip;
+	for (; reps; reps--)
+		for (size_t i = 0, k; i < n; i += k) {
+			k = uni_glen((const unsigned char *)s, n, i);
+			int cw = grid_width(s + i, k);
+			size_t x = v + d - skip;
+			if (x / (size_t)tw != x0 / (size_t)tw || (!w->wrap && x >= (size_t)tw)) return v;
+			int row = r + (int)(x / (size_t)tw), c = nw + (int)(x % (size_t)tw);
+			Cell *z = wcell(g, w, row, c);
+			v += (size_t)cw;
+			if (row >= w->h || !z || (row == r && c < cover)) continue;
+			wput(g, w, row, c, (const unsigned char *)s + i, k, cw, ATTR_NONE);
+			z->face = face;
+			z->bg = bg;
+		}
+	return v;
+}
+
+/* Background bg (hl_eol) on line l's cells from screen column b0 to the
+   window's edge, on every row, but a '>' filler cell (NonText) an overlay
+   left: win_line() gives it extra_attr alone (measured: a heading's and a
+   code block's; a '<' takes a code block's) */
+static void bar(Grid *g, const Win *w, size_t l, int r, size_t skip, int cover, size_t b0, unsigned char bg)
 {
 	int nw = win_numw(w), tw = w->w - nw, rows = line_rows(w, l);
-	/* nf-md-numeric_1_circle_outline to 6: U+F0CA1 to U+F0CAB by twos */
-	const unsigned char icon[4] = { 0xf3, 0xb0, 0xb2, (unsigned char)(0xa1 + 2 * (n - 1)) };
-	/* the overlay, columns s0 to e0: blanks from the heading's start, the
-	   icon, a blank.  Neovim draws an overlay that starts before the view
-	   (leftcol, skipcol) whole from the view's first column (measured:
-	   leftcol 1 to 39, the review of PR 56) */
-	size_t d = skip > b0 ? skip - b0 : 0, s0 = b0 + d, e0 = m0 + (size_t)n + d;
 	for (int k = 0; k < rows && r + k < w->h; k++)
 		for (int c = nw; c < w->w; c++) {
-			size_t v = skip + (size_t)k * (size_t)tw + (size_t)(c - nw);
 			Cell *z = wcell(g, w, r + k, c);
-			/* skipcol's "<<<" stays on top */
-			if (v < b0 || !z || (k == 0 && c < cover)) continue;
-			/* cut at its row's end (measured: the rest of a marker that
-			   wraps stays as typed); over a filler cell too */
-			if (v >= s0 && v <= e0 && v - (size_t)(c - nw) <= s0) {
-				if (v == e0 - 1) wput(g, w, r + k, c, icon, 4, 1, ATTR_NONE);
-				else wputs(g, w, r + k, c, " ", ATTR_NONE);
-				z->face = (unsigned char)(FACE_MARKUP_HEADING_1 + n - 1);
-			}
-			/* else a filler cell (NonText) keeps its colours: win_line()
-			   gives it extra_attr alone */
-			else if (z->attr == ATTR_DIM) continue;
-			z->bg = (unsigned char)(FACE_HEADING_1_BG + n - 1);
+			if (skip + (size_t)k * (size_t)tw + (size_t)(c - nw) >= b0 && z && !(k == 0 && c < cover) && !(z->attr == ATTR_DIM && z->ch[0] == '>'))
+				z->bg = bg;
 		}
+}
+
+/* The first byte of b[i, n) that is not a blank or a tab, or n */
+static size_t blanks(const char *b, size_t n, size_t i)
+{
+	while (i < n && (b[i] == ' ' || b[i] == '\t')) i++;
+	return i;
+}
+
+/* What render-markdown 8.14 draws over line l (Davy's Neovim, its
+   defaults) at conceallevel 0: what it conceals is not drawn yet.  Screen
+   columns: a0 of byte md->mark, a1 of the first non-blank from it, b1 of
+   md->item, t0 of md->task_col. */
+static void draw_md(Grid *g, const Win *w, size_t l, int r, size_t skip, int cover, const SyntaxMd *md,
+                    size_t a0, size_t a1, size_t b1, size_t t0)
+{
+	char b[256];
+	size_t n = text_read(w->buf->text, text_line_start(w->buf->text, l), b, sizeof b), v;
+	/* the backgrounds first: an overlay's cells take its own */
+	unsigned char hb = (unsigned char)(FACE_HEADING_1_BG + md->head - 1);
+	if (md->head) bar(g, w, l, r, skip, cover, a0, hb);
+	if (md->code == 2) bar(g, w, l, r, skip, cover, a0, FACE_MD_CODE_BG);
+	if (md->task) {
+		/* checkbox.lua: the icon and its blank, right_pad 1 */
+		static const char *const icon[] = { "\xf3\xb0\x84\xb1 ", "\xf3\xb0\xb1\x92 ", "\xf3\xb0\xa5\x94 " };
+		int k = md->task == ' ' ? 0 : md->task == 'x' ? 1 : 2;
+		over(g, w, r, skip, cover, t0, over(g, w, r, skip, cover, t0, t0, icon[k], 5, 1,
+		     k == 0 ? FACE_MARKUP_LIST_UNCHECKED : k == 1 ? FACE_MARKUP_LIST_CHECKED : FACE_MARKUP_RAW, 0),
+		     " ", 1, 1, FACE_NONE, 0);
+	} else if (md->list) {
+		/* bullet.lua: from the marker on, a blank per blank character it
+		   starts with (a tab too: str.spaces), then the icon by nesting
+		   level or, ordered (ordered_icons), the marker's number if above
+		   1, else the item's ordinal, and '.' (one wider than the marker is
+		   inline text there, which the core does not draw yet) */
+		char o[24];
+		size_t q = blanks(b, n, md->item), x = 0;
+		for (size_t j = q; j < n && b[j] >= '0' && b[j] <= '9'; j++) x = x * 10 + (size_t)(b[j] - '0');
+		static const char icon[] = "\xe2\x97\x8f\xe2\x97\x8b\xe2\x97\x86\xe2\x97\x87";
+		size_t k = md->ordered ? (size_t)snprintf(o, sizeof o, "%zu.", x > 1 ? x : md->index) : 3;
+		over(g, w, r, skip, cover, b1, over(g, w, r, skip, cover, b1, b1, " ", 1, q - md->item, FACE_MD_BULLET, 0),
+		     md->ordered ? o : icon + (md->list - 1) % 4 * 3, k, 1, FACE_MD_BULLET, 0);
+	}
+	/* after the marker's, over it where both start before the view
+	   (measured) */
+	if (md->head) {
+		/* heading.lua, position 'overlay', width 'full': the indent and
+		   the n '#' and the cell after them become blanks, the level's icon
+		   (nf-md-numeric_1_circle_outline to 6: U+F0CA1 to U+F0CAB by twos)
+		   and a blank, on the level's background */
+		unsigned char f = (unsigned char)(FACE_MARKUP_HEADING_1 + md->head - 1);
+		const char icon[] = { '\xf3', '\xb0', '\xb2', (char)(0xa1 + 2 * (md->head - 1)) };
+		v = over(g, w, r, skip, cover, a0, a0, " ", 1, a1 - a0 + md->head - 1, f, hb);
+		over(g, w, r, skip, cover, a0, over(g, w, r, skip, cover, a0, v, icon, 4, 1, f, hb), " ", 1, 1, f, hb);
+	}
+	if (md->code == 1 && md->nlang && md->info + md->ninfo <= n) {
+		/* code.lua, language(): from the fence on, a '█' per blank
+		   character it starts with (str.spaces), the
+		   info string (the language as Normal, the rest as @label) on
+		   RenderMarkdownCode's background, then '█' to the row's end */
+		const char *blk = "\xe2\x96\x88";
+		v = over(g, w, r, skip, cover, a0, a0, blk, 3, blanks(b, n, md->mark) - md->mark, FACE_MD_CODE_BORDER, 0);
+		v = over(g, w, r, skip, cover, a0, v, b + md->info, md->lang - md->info, 1, FACE_LABEL, FACE_MD_CODE_BG);
+		v = over(g, w, r, skip, cover, a0, v, b + md->lang, md->nlang, 1, FACE_NONE, FACE_MD_CODE_BG);
+		v = over(g, w, r, skip, cover, a0, v, b + md->lang + md->nlang, md->info + md->ninfo - md->lang - md->nlang, 1, FACE_LABEL, FACE_MD_CODE_BG);
+		over(g, w, r, skip, cover, a0, v, blk, 3, (size_t)w->w, FACE_MD_CODE_BORDER, 0);
+	}
 }
 
 /* Line l from window row r: in rows of the text width with wrap (the top
    line from skipcol), else one row from leftcol.  rm: render-markdown draws
-   the line's heading (see draw_win).  Returns 1 if the line was drawn to its
+   the line (2), or only what its anti_conceal leaves on the cursor line,
+   a code block's background (1; anti_conceal.ignore), or nothing (0; see
+   draw_win).  Returns 1 if the line was drawn to its
    end. */
 static int draw_line(Grid *g, Win *w, size_t l, int r, int rm)
 {
@@ -154,14 +231,11 @@ static int draw_line(Grid *g, Win *w, size_t l, int r, int rm)
 	unsigned char fc[256];          /* faces of bytes [f0, f0 + 256) of the line */
 	struct Syntax *syn = w->buf->syn;
 	/* drawn: 1 to the line's end, 0 cut at the window's bottom, 2 cut at its
-	   right edge.  An ATX heading starts at the first byte with a heading
-	   face (after block quote and list markers), level hl at screen
-	   column hb, if blanks (its indent) then hl '#' and a blank or the
-	   line's end follow, the '#' from column hm.  hn counts the '#' read;
-	   HN_NO: no heading, HN_YES: one */
-	enum { HN_NO = -1, HN_YES = 7 };
-	int drawn = 1, hl = 0, hn = rm && syn ? 0 : HN_NO;
-	size_t hb = 0, hm = 0;
+	   right edge.  Of render-markdown's marks (draw_md): screen columns a0,
+	   a1, b1, t0; one past the window marks nothing it shows */
+	SyntaxMd md = { 0 };
+	int drawn = 1, on = rm && syntax_md(syn, w->buf->text, l, &md);
+	size_t a0 = (size_t)-1, a1 = a0, b1 = a0, t0 = a0;
 	lit_init(&it, w->buf, l);
 	while ((k = lit_next(&it, &s))) {
 		int cw = core_cellw(w, s, k, 0, v);
@@ -170,26 +244,11 @@ static int draw_line(Grid *g, Win *w, size_t l, int r, int rm)
 			f0 = i;
 			syntax_faces(syn, ls + f0, ls + f0 + sizeof fc < z ? ls + f0 + sizeof fc : z, fc);
 		}
-		if (hn != HN_NO && hn != HN_YES) {
-			unsigned char f = fc[i - f0];
-			if (!hl && f >= FACE_MARKUP_HEADING_1 && f <= FACE_MARKUP_HEADING_6)
-				hl = f - FACE_MARKUP_HEADING_1 + 1, hb = v;
-			/* before it only block quote and list markers: an inline
-			   face (an escaped \#, code, emphasis) can hide the start of
-			   a setext heading's text, whose rest has the heading face */
-			if (!hl) { if (k != 1 || !memchr(" \t>-+*.)0123456789", *s, 18)) hn = HN_NO; }
-			else if (!hn && *s == ' ') {}
-			/* at most 3 columns of indent: more is a setext heading's
-			   text (an ATX heading would interrupt its paragraph) */
-			else if (*s == '#' && k == 1 && hn < hl) { if (!hn++) hm = v, hn = v - hb > 3 ? HN_NO : hn; }
-			else hn = hn == hl && (*s == ' ' || *s == '\t') ? HN_YES : HN_NO;
-		}
-		if (drawn != 1) {
-			/* past the window: read on only while a marker is half read */
-			if (!hl || hn == HN_NO || hn == HN_YES) break;
-			i += k;
-			continue;
-		}
+		if (i == md.mark) a0 = v;
+		if (i >= md.mark && a1 == (size_t)-1 && *s != ' ' && *s != '\t') a1 = v;
+		if (i == md.item) b1 = v;
+		if (i == md.task_col) t0 = v;
+		if (drawn != 1) break;
 		/* a double-width character: after the '>' of a wrapping row's
 		   last cell (core_cellw's 3), the two cells of the character */
 		int lead = cw == 3 && *s != '\t', wide = *s >= 0x80 && cw - lead == 2;
@@ -214,7 +273,11 @@ static int draw_line(Grid *g, Win *w, size_t l, int r, int rm)
 		}
 		i += k;
 	}
-	if (hl && (hn == hl || hn == HN_YES)) draw_heading(g, w, l, r, skip, cover, hb, hm, hl);
+	/* a code block's empty or short row: its background from the block's
+	   column (padding() pads it) */
+	if (a0 == (size_t)-1) a0 = v + md.mark - i;
+	if (rm == 1) md.head = md.list = md.task = 0, md.code = md.code == 2 ? 2 : 0;
+	if (on) draw_md(g, w, l, r, skip, cover, &md, a0, a1, b1, t0);
 	return drawn != 0;
 }
 
@@ -234,7 +297,7 @@ static void draw_win(Editor *e, Grid *g, Win *w)
 	size_t raw = cur ? e->win->line : (size_t)-1;
 	for (; r < w->h && l < n; l++) {
 		int rows = line_rows(w, l);
-		if (!draw_line(g, w, l, r, rm && l != raw)) {
+		if (!draw_line(g, w, l, r, rm ? 1 + (l != raw) : 0)) {
 			/* a double-width character the "@@@" starts in becomes '@' too
 			   (measured: four '@' after one) */
 			int c0 = w->w - 3 < 0 ? 0 : w->w - 3, y = w->y + w->h - 1, x = w->x + c0;

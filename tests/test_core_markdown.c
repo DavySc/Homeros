@@ -1,9 +1,9 @@
-/* render-markdown's headings against Neovim: replays the cases that
-   tests/test_core_markdown.py recorded from Neovim with render-markdown
-   (tests/test_core_markdown.txt; its last 22 the review of PR 56 recorded,
-   reviews/pr-56-repro/cases9.py: sideways scroll, skipcol, fillers) and
-   compares every row's text, background and heading colours, and the
-   cursor.  usage: test_core_markdown [FILE] [-v] */
+/* render-markdown (headings, bullets, checkboxes, fenced code) against
+   Neovim: replays the cases that tests/test_core_markdown.py recorded from
+   Neovim with render-markdown (tests/test_core_markdown.txt: 1000 random,
+   then tests/test_core_markdown_cases.py's 25: sideways scroll, skipcol,
+   fillers) and compares every row's text, the colours the .py names, and
+   the cursor.  usage: test_core_markdown [FILE] [-v] */
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -14,16 +14,16 @@
 
 static char line[4096];
 
-/* one letter per heading background and per rainbow foreground, as the .py */
+/* a letter per colour the .py names */
 static char letter(const unsigned char *c, const char *const *hex, const char *set)
 {
 	char h[8];
 	snprintf(h, sizeof h, "%02x%02x%02x", c[0], c[1], c[2]);
-	for (int i = 0; i < 6; i++) if (!strcmp(h, hex[i])) return set[i];
+	for (int i = 0; set[i]; i++) if (!strcmp(h, hex[i])) return set[i];
 	return '.';
 }
-static const char *const BG[] = { "32283a", "332c36", "33313a", "2b3139", "262e40", "2c2d42" };
-static const char *const FG[] = { "f38ba8", "fab387", "f9e2af", "a6e3a1", "74c7ec", "b4befe" };
+static const char *const BG[] = { "32283a", "332c36", "33313a", "2b3139", "262e40", "2c2d42", "181825" };
+static const char *const FG[] = { "f38ba8", "fab387", "f9e2af", "a6e3a1", "74c7ec", "b4befe", "89dceb", "7f849c", "181825" };
 
 /* row r of g as the .py writes it: 'S' text, 'B' backgrounds, 'F'
    foregrounds (none on a blank) */
@@ -37,8 +37,8 @@ static const char *row(const Grid *g, int r, char what)
 		if (!x->len && c) x--;
 		const Face *bg, *f = grid_face(x, &bg);
 		if (what == 'S') { if (x == &g->c[r * g->cols + c]) { memcpy(b + n, grid_text(x), x->len); n += x->len; } }
-		else if (what == 'B') b[n++] = bg->style & FACE_BG ? letter(bg->bg, BG, "RPYGSL") : '.';
-		else b[n++] = f->style & FACE_FG && !(x->len == 1 && x->ch[0] == ' ') ? letter(f->fg, FG, "rpygsl") : '.';
+		else if (what == 'B') b[n++] = bg->style & FACE_BG ? letter(bg->bg, BG, "RPYGSLC") : '.';
+		else b[n++] = f->style & FACE_FG && !(x->len == 1 && x->ch[0] == ' ') ? letter(f->fg, FG, "rpygslbuc") : '.';
 	}
 	b[n] = 0;
 	return b;
@@ -58,7 +58,8 @@ static void command(Editor *e, Grid *g, const char *t)
 		keys_feed(e, t[0] == 'w' ? t[2] : t[0] == 'v' ? 'v' : 's', 0);
 	}
 	else if (!strncmp(t, "e:", 2)) CHECK(!core_edit_file(e, t + 2, 0));
-	/* ref/keys.c has no visual mode: its flag, as 'v' sets it */
+	/* the flag 'v' sets: src/keys keeps visual mode in globals, which
+	   would outlive the editor into the next case */
 	else if (!strcmp(t, "visual")) e->ks.visual = 'v';
 	else if (!strcmp(t, "redraw")) {}   /* CTRL-L: the core draws whole frames */
 	else CHECK(!"command");
@@ -66,18 +67,16 @@ static void command(Editor *e, Grid *g, const char *t)
 	while (syntax_update(e->buf->syn, e->buf->text, NULL));
 }
 
-/* Cases listed as known, 24 of 1000.  The core's (package 4, reported):
-   the window's top after a split (58 ... 914).  Also the core's: the
-   ruler of a window that is not the current one, on an empty line, in
-   insert or command-line mode: "8,0-1" in Neovim, also after :redraw!
-   (29 ... 674; the review of PR 56).  Neovim's own: a line still rendered
-   in insert mode, raw after :redraw! (489).  The
-   syntax package's: an inline colour Neovim does not give (804). */
+/* Cases listed as known, 20 of 1025, none drawing's.  The core's
+   (package 4, reported): the window's top after a split (9 ... 961), and
+   with wrap after a jump near a line taller than scrolloff allows (110 ...
+   979); the ruler of a window that is not the current one in insert mode
+   (84).  The syntax package's: inline colours Neovim does not give (332,
+   384, 407). */
 static int known(int n)
 {
-	static const int k[] = { 58, 259, 455, 482, 488, 534, 547, 738, 761, 815, 914,
-	                         29, 39, 115, 214, 233, 247, 517, 582, 650, 660, 674,
-	                         489, 804 };
+	static const int k[] = { 9, 10, 11, 73, 138, 506, 549, 683, 693, 731, 882, 961,
+	                         110, 330, 854, 979, 84, 332, 384, 407 };
 	for (size_t i = 0; i < sizeof k / sizeof *k; i++) if (k[i] == n) return 1;
 	return 0;
 }
