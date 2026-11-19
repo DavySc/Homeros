@@ -23,9 +23,6 @@ static const PumItem PUM1[] = {
 static PumItem pum_items[3 * 10];
 static char pum_words[3 * 10][48];
 static int verbose;
-/* Neovim redraws no status line while the popup is up, so the status lines
-   of a screen read then show the state before the completion: left out */
-static int in_pum;
 
 /* Neovim's key notation in a "k:" token: <Esc> <CR> <C-r>, the rest literal */
 static void feed(Editor *e, const char *s)
@@ -91,7 +88,6 @@ static void token(Editor *e, Grid *g, const char *t)
 			core_pum(e, pum_items + a, n > 1 ? n : 0, sel, col);
 			if (n == 1) core_update(e);
 		}
-		in_pum = 1;
 		return;
 	}
 	if (!strncmp(t, "k:", 2)) { feed(e, t + 2); return; }
@@ -201,17 +197,17 @@ int main(int argc, char **argv)
 			Grid g = { 0 };
 			int differ = 0;
 			CHECK(!chdir(dir) && !core_open(&e, "f0") && !grid_resize(&g, rows, cols));
-			in_pum = 0;
 			for (int s = 0; s < nscr; s++) {
 				if (s) token(&e, &g, tokens[s - 1]);
 				core_draw(&e, &g);
 				total++;
-				/* rows above the command line: Neovim's headless command line
-				   shows typed commands and keeps no messages */
+				/* rows above the command line but the status lines (mini.statusline's,
+				   test_core_contract's): Neovim's headless command line shows typed
+				   commands and keeps no messages */
 				int below = 0, r;
 				for (Win *w = e.wins; w; w = w->next) if (w->y + w->h + 1 > below) below = w->y + w->h + 1;
 				for (r = 0; r < below && screens[s][r]; r++)
-					if (strcmp(row_text(&g, r), screens[s][r]) && !(in_pum && status_row(&e, r))) break;
+					if (strcmp(row_text(&g, r), screens[s][r]) && !status_row(&e, r)) break;
 				char mk[3][48], got[160];
 				for (int i = 0; i < 3; i++) {
 					Mark m = e.buf->mark[i];

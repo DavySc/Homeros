@@ -81,8 +81,7 @@ int main(void)
 	e.ks.replace = 0;
 	e.mode = MODE_NORMAL;
 
-	/* the popup: the selected item drawn plainly, the others reversed
-	   (PmenuSel against Pmenu) */
+	/* the popup: the selected item in PmenuSel, the others in Pmenu */
 	static const PumItem items[] = { { "foo", NULL, NULL }, { "foobar", NULL, NULL }, { "fop", NULL, NULL } };
 	at(&e, 10);
 	core_pum(&e, items, 3, 1, 0);
@@ -92,8 +91,8 @@ int main(void)
 		for (int x = 0; x + 2 < g.cols; x++) {
 			const Cell *p = &g.c[y * g.cols + x];
 			if (p[0].ch[0] != 'f' || p[1].ch[0] != 'o') continue;
-			if (p[2].ch[0] == 'o' && p[3].ch[0] == 'b') { CHECK(p->attr == ATTR_NONE); seen |= 1; }
-			else if (p[2].ch[0] == 'o' || p[2].ch[0] == 'p') { CHECK(p->attr == ATTR_REV); seen |= 2; }
+			if (p[2].ch[0] == 'o' && p[3].ch[0] == 'b') { CHECK(p->face == FACE_PMENU_SEL); seen |= 1; }
+			else if (p[2].ch[0] == 'o' || p[2].ch[0] == 'p') { CHECK(p->face == FACE_PMENU); seen |= 2; }
 		}
 	CHECK(seen == 3);
 	core_pum(&e, NULL, 0, -1, 0);

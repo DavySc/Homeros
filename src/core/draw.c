@@ -11,7 +11,7 @@
 /* A cluster into the grid.  One that starts with a character that would
    join a space is drawn on a space (utf_iscomposing_first(),
    schar_from_buf_first()); the grid cuts what is then too long. */
-static void put(Grid *g, int r, int c, const unsigned char *s, size_t n, int width, int attr)
+static void put(Grid *g, int r, int c, const unsigned char *s, size_t n, int width)
 {
 	unsigned char b[1 + GRID_CLUSTER_MAX] = " ";
 	if (s[0] >= 0x80) {
@@ -24,19 +24,14 @@ static void put(Grid *g, int r, int c, const unsigned char *s, size_t n, int wid
 			n++;
 		}
 	}
-	grid_put(g, r, c, s, n, width, attr);
+	grid_put(g, r, c, s, n, width, ATTR_NONE);
 }
 
 /* The text area of window w: a cell put at window row r, column c, clipped
    to the window. */
-static void wput(Grid *g, const Win *w, int r, int c, const unsigned char *s, size_t n, int width, int attr)
+static void wput(Grid *g, const Win *w, int r, int c, const unsigned char *s, size_t n, int width)
 {
-	if (c >= 0 && c + width <= w->w) put(g, w->y + r, w->x + c, s, n, width, attr);
-}
-
-static void wputs(Grid *g, const Win *w, int r, int c, const char *s, int attr)
-{
-	for (; *s; s++, c++) wput(g, w, r, c, (const unsigned char *)s, 1, 1, attr);
+	if (c >= 0 && c + width <= w->w) put(g, w->y + r, w->x + c, s, n, width);
 }
 
 /* Window w's cell at row r, column c, or NULL past the window or the grid:
@@ -45,6 +40,21 @@ static Cell *wcell(Grid *g, const Win *w, int r, int c)
 {
 	int y = w->y + r, x = w->x + c;
 	return c >= 0 && c < w->w && y >= 0 && y < g->rows && x >= 0 && x < g->cols ? &g->c[y * g->cols + x] : NULL;
+}
+
+static void wputs(Grid *g, const Win *w, int r, int c, const char *s, unsigned char face)
+{
+	for (; *s; s++, c++) {
+		wput(g, w, r, c, (const unsigned char *)s, 1, 1);
+		Cell *z = wcell(g, w, r, c);
+		if (z) z->face = face;
+	}
+}
+
+/* face on n cells of screen row r from column c */
+static void paint(Grid *g, int r, int c, int n, unsigned char face)
+{
+	for (; n > 0 && r < g->rows && c < g->cols; n--, c++) if (c >= 0) g->c[r * g->cols + c].face = face;
 }
 
 /* Cell j of the character s (k bytes) that takes width cells: a tab is
@@ -64,30 +74,32 @@ static void put_cell(Grid *g, const Win *w, int r, int c, const unsigned char *s
 		b = j == 0 ? '<' : j == width - 1 ? '>' : (unsigned char)hex[c % 16];
 	}
 	else if (j) return;
-	else { b = 0; wput(g, w, r, c, s, k, width, ATTR_NONE); }
-	if (b) wput(g, w, r, c, &b, 1, 1, ATTR_NONE);
+	else { b = 0; wput(g, w, r, c, s, k, width); }
+	if (b) wput(g, w, r, c, &b, 1, 1);
 	Cell *z = wcell(g, w, r, c);
 	if (z) { z->face = face; z->bg = bg; }
 }
 
 /* The number column of line l (get_line_number_str()): relative to the
-   cursor line, which shows its own number left-aligned.  Returns the
-   column the "<<<" marker reaches (0: none), which the text leaves. */
+   cursor line, which shows its own number left-aligned, in CursorLineNr
+   ('cursorline', get_line_number_attr()).  Returns the column the "<<<"
+   marker reaches (0: none), which the text leaves. */
 static int put_number(Grid *g, const Win *w, int r, size_t l, int top_skipped)
 {
 	char b[40];
 	int nw = win_numw(w) - 1;
 	size_t rel = l > w->line ? l - w->line : w->line - l;
+	unsigned char face = rel ? FACE_LINE_NR : FACE_CURSOR_LINE_NR;
 	snprintf(b, sizeof b, rel ? "%*zu " : "%-*zu ", nw, rel ? rel : l + 1);
-	wputs(g, w, r, 0, b, ATTR_DIM);
+	wputs(g, w, r, 0, b, face);
 	if (!top_skipped) return 0;
 	/* skipcol hides the line's start: "  5" becomes "--5" and three '<'
 	   follow the digits, over the text's first cells when the digits fill
 	   the column (win_line(), draw_lnum_col(); measured on lines 9, 10, 100) */
 	int d = 0;
-	for (; b[d] == ' '; d++) wputs(g, w, r, d, "-", ATTR_DIM);
+	for (; b[d] == ' '; d++) wputs(g, w, r, d, "-", face);
 	while (b[d] >= '0' && b[d] <= '9') d++;
-	wputs(g, w, r, d, "<<<", ATTR_DIM);
+	wputs(g, w, r, d, "<<<", FACE_NON_TEXT);
 	return d + 3;
 }
 
@@ -125,13 +137,13 @@ static void draw_heading(Grid *g, const Win *w, size_t l, int r, size_t skip, in
 			/* cut at its row's end (measured: the rest of a marker that
 			   wraps stays as typed); over a filler cell too */
 			if (v >= s0 && v <= e0 && v - (size_t)(c - nw) <= s0) {
-				if (v == e0 - 1) wput(g, w, r + k, c, icon, 4, 1, ATTR_NONE);
-				else wputs(g, w, r + k, c, " ", ATTR_NONE);
+				if (v == e0 - 1) wput(g, w, r + k, c, icon, 4, 1);
+				else wputs(g, w, r + k, c, " ", FACE_NONE);
 				z->face = (unsigned char)(FACE_MARKUP_HEADING_1 + n - 1);
 			}
 			/* else a filler cell (NonText) keeps its colours: win_line()
 			   gives it extra_attr alone */
-			else if (z->attr == ATTR_DIM) continue;
+			else if (z->face == FACE_NON_TEXT) continue;
 			z->bg = (unsigned char)(FACE_HEADING_1_BG + n - 1);
 		}
 }
@@ -205,6 +217,16 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	int drawn = 1, hl = 0, hn = rm && syn ? 0 : HN_NO;
 	size_t hb = 0, hm = 0, from, to, xf, xt;
 	visual(e, w, l, &from, &to, &xf, &xt);
+	/* 'cursorline' (Davy's pick of the UI proposals): CursorLine under the
+	   text area of the cursor line's rows, below syntax and render-markdown
+	   (low priority: it has no fg), not in the current window in Visual
+	   mode (win_line()) */
+	unsigned char cl = l == w->line && !(w == e->win && e->ks.visual) ? FACE_CURSOR_LINE : 0;
+	for (int k = 0; cl && k < line_rows(w, l) && r + k < w->h; k++)
+		for (int c = nw; c < w->w; c++) {
+			Cell *z = wcell(g, w, r + k, c);
+			if (z) z->bg = cl;
+		}
 	lit_init(&it, w->buf, l);
 	while ((k = lit_next(&it, &s))) {
 		int cw = core_cellw(w, s, k, 0, v);
@@ -246,7 +268,7 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 			unsigned char face = syn ? fc[i - f0] : 0;
 			/* a double-width character whose second cell starts the area
 			   is in it (win_line()) */
-			unsigned char bg = (v >= from || (wide && v + 1 == from)) && v < to && (v < xf || v > xt) ? FACE_VISUAL : 0;
+			unsigned char bg = (v >= from || (wide && v + 1 == from)) && v < to && (v < xf || v > xt) ? FACE_VISUAL : cl;
 			if (row == r && c < cover) {
 				/* "<<<" over a double-width character's first cell leaves a
 				   blank in its second (measured) */
@@ -257,13 +279,15 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 			   (the line's end without wrap), '<' where the view starts in
 			   its second half (MB_FILLER_CHAR), both in NonText (HLF_AT,
 			   which the core draws dim, as '~') */
-			if (j < lead || (wide && j == 0 && !w->wrap && d == (size_t)tw - 1))
-				wputs(g, w, row, c, ">", ATTR_DIM);   /* not in the area (measured) */
-			else if (wide && j - lead == 1 && v == skip) {
-				/* in the area if its character is (measured) */
-				wputs(g, w, row, c, "<", ATTR_DIM);
+			if (j < lead || (wide && j == 0 && !w->wrap && d == (size_t)tw - 1)) {
+				wputs(g, w, row, c, ">", FACE_NON_TEXT);   /* not in the area (measured) */
 				Cell *z = wcell(g, w, row, c);
-				if (z && from < v) z->bg = bg;
+				if (z) z->bg = cl;
+			} else if (wide && j - lead == 1 && v == skip) {
+				/* in the area if its character is (measured) */
+				wputs(g, w, row, c, "<", FACE_NON_TEXT);
+				Cell *z = wcell(g, w, row, c);
+				if (z) z->bg = from < v ? bg : cl;
 			} else put_cell(g, w, row, c, s, k, j - lead, cw - lead, face, bg);
 		}
 		i += k;
@@ -280,7 +304,7 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 		int full = w->wrap ? d && d % (size_t)tw == 0 : d >= (size_t)tw;
 		d -= (size_t)full;
 		int row = w->wrap ? r + (int)(d / (size_t)tw) : r, c = nw + (int)(d % (size_t)tw);
-		if (!full) wput(g, w, row, c, (const unsigned char *)" ", 1, 1, ATTR_NONE);
+		if (!full) wput(g, w, row, c, (const unsigned char *)" ", 1, 1);
 		Cell *z = row < w->h ? wcell(g, w, row, c) : NULL;
 		if (z) z->bg = FACE_VISUAL;
 	}
@@ -310,13 +334,12 @@ static void draw_win(Editor *e, Grid *g, Win *w)
 			int c0 = w->w - 3 < 0 ? 0 : w->w - 3, y = w->y + w->h - 1, x = w->x + c0;
 			if (c0 > 0 && y < g->rows && x < g->cols && !g->c[y * g->cols + x].len) c0--;
 			if (l != w->top)
-				for (int c = c0; c < w->w; c++)
-					wput(g, w, w->h - 1, c, (const unsigned char *)"@", 1, 1, ATTR_DIM);
+				for (int c = c0; c < w->w; c++) wputs(g, w, w->h - 1, c, "@", FACE_NON_TEXT);
 			return;
 		}
 		r += rows;
 	}
-	for (; r < w->h; r++) wputs(g, w, r, 0, "~", ATTR_DIM);
+	for (; r < w->h; r++) wputs(g, w, r, 0, "~", FACE_END_OF_BUFFER);
 }
 
 /* stl_connected(): the status line runs on into the one to its right */
@@ -329,54 +352,116 @@ static int stl_connected(const Win *w)
 	return 0;
 }
 
-/* The default 'statusline', "%<%f %h%w%m%r %=%-14.(%l,%c%V%) %P", as
-   build_stl_str_hl() lays it out in the window's width. */
+/* s (k bytes) onto the status line's text o (n bytes), each byte with face */
+static size_t stl_add(char *o, unsigned char *f, size_t n, size_t cap, const char *s, size_t k, unsigned char face)
+{
+	if (k > cap - n) k = cap - n;
+	memcpy(o + n, s, k);
+	memset(f + n, face, k);
+	return n + k;
+}
+
+/* mini.statusline's default content, as my-nvim sets it up, laid out by
+   build_stl_str_hl() in the window's width.  The current window:
+   "%#Mode# mode %#Devinfo#%<%#Filename# %F%m%r %=%#Fileinfo# info %#Mode# location ",
+   the mode, file name and info shorter in a narrow window (is_truncated());
+   the others "%#Inactive#%F%=".  Devinfo (git, diff, diagnostics, LSP), the
+   search count and the file type are not drawn yet. */
 static void draw_status(Editor *e, Grid *g, Win *w)
 {
-	char out[600], *right;
+	static const char *const mode[][2] = { { " Normal ", " N " }, { " Visual ", " V " }, { " V-Line ", " V-L " },
+	                                       { " V-Block ", " V-B " }, { " Insert ", " I " }, { " Replace ", " R " },
+	                                       { " Command ", " C " } };
+	static const unsigned char mface[] = { FACE_MODE_NORMAL, FACE_MODE_VISUAL, FACE_MODE_VISUAL, FACE_MODE_VISUAL,
+	                                       FACE_MODE_INSERT, FACE_MODE_REPLACE, FACE_MODE_COMMAND };
+	char out[4400], s[96];
+	unsigned char f[sizeof out];
 	int r = w->y + w->h, maxw = w->w;
-	size_t len = text_line_start(w->buf->text, w->line + 1) - text_line_start(w->buf->text, w->line) - 1;
+	Buf *b = w->buf;
+	size_t len = text_line_start(b->text, w->line + 1) - text_line_start(b->text, w->line) - 1, n = 0, cut = 0, sep;
 	/* another window's cursor may be past a line that changed: it is
 	   moved to the line's end, as build_stl_str_hl() does */
 	if (w->col > len) w->col = len;
-	/* %c is 0 on an empty line outside insert mode; %V shows the screen
-	   column when it differs */
-	size_t col = e->mode != MODE_INSERT && !len ? 0 : w->col + 1, vcol = win_vcol(e, w, NULL, NULL) + 1;
-	char grp[64], pos[8];
-	/* %l is 0 in an empty buffer */
-	int k = snprintf(grp, sizeof grp, "%zu,%zu", w->buf->flags & CORE_EMPTY ? 0 : w->line + 1, col);
-	if (vcol != col) snprintf(grp + k, sizeof grp - (size_t)k, "-%zu", vcol);
-	/* %P: get_rel_pos() */
-	size_t above = w->top, below = buf_lines(w->buf) - win_botline(e, w, NULL);
-	if (!below) snprintf(pos, sizeof pos, above ? "Bot" : "All");
-	else if (!above) snprintf(pos, sizeof pos, "Top");
-	else snprintf(pos, sizeof pos, "%2d%%", (int)(above > 1000000 ? above / ((above + below) / 100)
-	                                                               : above * 100 / (above + below)));
-	k = snprintf(out, sizeof out, "%s %s ", w->buf->path ? w->buf->path : "[No Name]",
-	             core_modified(w->buf) ? "[+]" : "");
-	if (k >= (int)sizeof out - 80) k = (int)sizeof out - 80;
-	right = out + k;
-	snprintf(right, 80, "%-14s %s", grp, pos);
-	for (int c = 0; c <= w->w; c++) grid_put(g, r, w->x + c, (const unsigned char *)" ", 1, 1, ATTR_REV);
-	if (w->frame->vsep && !stl_connected(w))
-		grid_put(g, r, w->x + w->w, (const unsigned char *)"│", 3, 1, ATTR_REV);
-	int width = grid_width(out, strlen(out)), c = 0, fill = width < maxw;
-	const unsigned char *s = (const unsigned char *)out;
-	size_t n = strlen(out), i = 0;
-	if (width > maxw) {
-		/* too long: drop characters from the start (the %< item) and put '<' */
-		while (width >= maxw && i < n) {
-			width -= uni_width(s, n, i);
-			i += uni_glen(s, n, i);
+	const char *name = b->full ? b->full : "[No Name]";
+	if (w == e->win) {
+		int m = e->mode == MODE_CMDLINE ? 6 : e->mode == MODE_INSERT ? 4 + !!e->ks.replace
+		      : e->ks.visual == 'v' ? 1 : e->ks.visual == 'V' ? 2 : e->ks.visual ? 3 : 0;
+		n = stl_add(out, f, n, sizeof out, mode[m][maxw < 120], strlen(mode[m][maxw < 120]), mface[m]);
+		cut = n;
+		/* %F below 140 columns is %f, the name relative to the current
+		   directory: the path as typed */
+		if (b->path && maxw < 140) name = b->path;
+		n = stl_add(out, f, n, sizeof out, " ", 1, FACE_STATUS_LINE);
+		n = stl_add(out, f, n, sizeof out, name, strlen(name), FACE_STATUS_LINE);
+		n = stl_add(out, f, n, sizeof out, core_modified(b) ? "[+] " : " ", core_modified(b) ? 4 : 1, FACE_STATUS_LINE);
+		sep = n;
+		if (maxw >= 120) {
+			/* 'fileencoding' is set by reading a file that exists, empty
+			   or not (measured), so a buffer without one shows none (a new
+			   file keeps none after :w, which here shows utf-8);
+			   get_filesize(): line2byte() past the last line, a 'dos'
+			   line counting its CR (measured) */
+			size_t z = b->flags & CORE_EMPTY ? 0 : text_len(b->text) + (b->dos ? buf_lines(b) : 0);
+			const char *enc = b->id.exists ? "utf-8" : "", *ff = b->dos ? "dos" : "unix";
+			int k = z < 1024 ? snprintf(s, sizeof s, " %s[%s] %zuB ", enc, ff, z)
+			      : snprintf(s, sizeof s, " %s[%s] %.2f%s ", enc, ff, (double)z / (z < 1048576 ? 1024 : 1048576),
+			                 z < 1048576 ? "KiB" : "MiB");
+			n = stl_add(out, f, n, sizeof out, s, (size_t)k, FACE_STATUS_INFO);
 		}
-		if (maxw > 0) grid_put(g, r, w->x, (const unsigned char *)"<", 1, 1, ATTR_REV);
-		c = 1;
+		/* %l is 0 in an empty buffer; %v is the cursor's screen column */
+		size_t l = b->flags & CORE_EMPTY ? 0 : w->line + 1, v = win_vcol(e, w, NULL, NULL) + 1;
+		int k = maxw < 75 ? snprintf(s, sizeof s, " %zu│%2zu ", l, v)
+		      : snprintf(s, sizeof s, " %zu|%zu│%2zu|%-2zu ", l, buf_lines(b), v, win_vcol_end(w, w->line));
+		n = stl_add(out, f, n, sizeof out, s, (size_t)k, mface[m]);
+	} else n = sep = stl_add(out, f, n, sizeof out, name, strlen(name), FACE_STATUS_LINE_NC);
+	const unsigned char *u = (const unsigned char *)out;
+	int width = grid_width(out, n), fill = 0;
+	if (width > maxw) {
+		if (width - grid_width(out + cut, n - cut) >= maxw) {
+			/* what comes before %< does not fit: cut the end, '>' on the
+			   character that reaches the width */
+			size_t p = 0;
+			for (int c = uni_width(u, n, p); c < maxw; c += uni_width(u, n, p)) p += uni_glen(u, n, p);
+			out[p] = '>';
+			n = p + 1;
+		} else {
+			/* drop characters from %< on and put '<' there, in the face of
+			   the last one dropped */
+			size_t k = 0;
+			while (width >= maxw) {
+				width -= uni_width(u, n, cut + k);
+				k += uni_glen(u, n, cut + k);
+			}
+			unsigned char fc = f[cut + k - 1];
+			memmove(out + cut + 1, out + cut + k, n - cut - k);
+			memmove(f + cut + 1, f + cut + k, n - cut - k);
+			out[cut] = '<';
+			f[cut] = fc;
+			n -= k - 1;
+		}
+	} else fill = maxw - width;
+	/* the rest (half a double-width character) in the last face */
+	for (int c = 0; c < maxw; c++) grid_put(g, r, w->x + c, (const unsigned char *)" ", 1, 1, ATTR_NONE);
+	paint(g, r, w->x, maxw, f[n - 1]);
+	/* the cell under a separator: the status line's fill when the status
+	   line runs on to the right, else the separator (win_redr_status()) */
+	if (w->frame->vsep) {
+		int on = stl_connected(w);
+		grid_put(g, r, w->x + w->w, (const unsigned char *)(on ? " " : "│"), on ? 1 : 3, 1, ATTR_NONE);
+		paint(g, r, w->x + w->w, 1, !on ? FACE_WIN_SEPARATOR : w == e->win ? FACE_STATUS_LINE : FACE_STATUS_LINE_NC);
 	}
-	for (; i < n && c < maxw; i += uni_glen(s, n, i)) {
-		/* %=: the fill goes where the right part starts */
-		if (s + i == (const unsigned char *)right && fill) c += maxw - width;
-		int cw = uni_width(s, n, i);
-		if (c + cw <= maxw) put(g, r, w->x + c, s + i, uni_glen(s, n, i), cw, ATTR_REV);
+	int c = 0;
+	for (size_t i = 0; i < n && c < maxw; i += uni_glen(u, n, i)) {
+		/* %=: the fill, in the face before it */
+		if (i == sep && fill) {
+			paint(g, r, w->x + c, fill, f[i - 1]);
+			c += fill;
+		}
+		int cw = uni_width(u, n, i);
+		if (c + cw <= maxw) {
+			put(g, r, w->x + c, u + i, uni_glen(u, n, i), cw);
+			paint(g, r, w->x + c, cw, f[i]);
+		}
 		c += cw;
 	}
 }
@@ -497,7 +582,6 @@ static void draw_pum(Editor *e, Grid *g)
 	int left = pum.col - col_off, iw[3] = { pum.base, pum.kind, pum.extra };
 	for (int i = 0; i < pum.height; i++) {
 		int idx = i + pum.first, r = pum.row + i, gc = col_off, tot = 0, trunc = 0;
-		int attr = idx == e->pumsel ? ATTR_NONE : ATTR_REV;
 		const PumItem *it = &e->pum[idx];
 		/* the popup is a float: Neovim's compositor leaves the halves of a
 		   double-width character it covers at its edges as they were,
@@ -510,7 +594,7 @@ static void draw_pum(Editor *e, Grid *g)
 		Cell *after = r < g->rows && end < g->cols && !g->c[r * g->cols + end].len
 		              ? &g->c[r * g->cols + end] : NULL, keep2 = after ? *after : (Cell){ 0 };
 		for (int c = 0; c < col_off + width + pum.scrollbar; c++)
-			grid_put(g, r, left + c, (const unsigned char *)" ", 1, 1, attr);
+			grid_put(g, r, left + c, (const unsigned char *)" ", 1, 1, ATTR_NONE);
 		for (int j = 0; j < 3; j++) {
 			const char *p = pum_text(it, j);
 			int next_empty = j == 2 || !pum_text(it, j + 1);
@@ -526,7 +610,7 @@ static void draw_pum(Editor *e, Grid *g)
 					for (size_t q = 0; q < n; q += uni_glen(s, n, q)) {
 						int w1 = uni_width(s, n, q);
 						if (trunc && shown + w1 > avail) break;
-						put(g, r, left + gc + shown, s + q, uni_glen(s, n, q), w1, attr);
+						put(g, r, left + gc + shown, s + q, uni_glen(s, n, q), w1);
 						shown += w1;
 					}
 					gc += trunc ? shown : cw;
@@ -542,11 +626,10 @@ static void draw_pum(Editor *e, Grid *g)
 			gc = col_off + pum.base + pad;
 			tot = pum.base + pad;
 		}
-		if (trunc) grid_put(g, r, left + col_off + width - 1, (const unsigned char *)">", 1, 1, attr);
-		if (pum.scrollbar) {
-			int thumb = i >= thumb_pos && i < thumb_pos + thumb_h;
-			grid_put(g, r, left + col_off + width, (const unsigned char *)" ", 1, 1, thumb ? ATTR_NONE : ATTR_DIM);
-		}
+		if (trunc) grid_put(g, r, left + col_off + width - 1, (const unsigned char *)">", 1, 1, ATTR_NONE);
+		paint(g, r, left, col_off + width, idx == e->pumsel ? FACE_PMENU_SEL : FACE_PMENU);
+		if (pum.scrollbar)
+			paint(g, r, left + col_off + width, 1, i >= thumb_pos && i < thumb_pos + thumb_h ? FACE_PMENU_THUMB : FACE_PMENU_SBAR);
 		if (under) *under = keep;
 		if (after) *after = keep2;
 	}
@@ -562,7 +645,8 @@ void core_draw(Editor *e, Grid *g)
 		draw_win(e, g, w);
 		if (w->frame->vsep)
 			for (int r = 0; r < w->h; r++)
-				grid_put(g, w->y + r, w->x + w->w, (const unsigned char *)"│", 3, 1, ATTR_REV);
+				if (grid_put(g, w->y + r, w->x + w->w, (const unsigned char *)"│", 3, 1, ATTR_NONE))
+					paint(g, w->y + r, w->x + w->w, 1, FACE_WIN_SEPARATOR);
 		draw_status(e, g, w);
 	}
 	/* the command line, or the mode and the last message (showmode) */
