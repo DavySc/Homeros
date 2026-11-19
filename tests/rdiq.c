@@ -2,7 +2,8 @@
    tests/oracle_rdi.py can compare the reader with RAD's own dump of the same file.
    v <section> <voff> | l <voff> | s <file> <line> | n <kind> <hex name> | t <string idx> |
    p <procedure idx> | c <scope idx> | L <voff> | S <line> <hex path> | U <voff> | B <section> |
-   N <section> | D <scope idx> | u <unit idx> | T <type idx> | P <procedure idx> | M <udt idx> */
+   N <section> | D <scope idx> | u <unit idx> | T <type idx> | P <procedure idx> | M <udt idx> |
+   G <section> <symbol idx> | O <voff> */
 #include "../dbg/rdi.h"
 #include "../dbg/load.h"
 #include <stdbool.h>
@@ -30,6 +31,17 @@ static void type(const Rdi *r, uint32_t idx)
     printf("%x %.*s:%u", t->kind, (int)name.n, (const char *)name.p, t->byte_size);
     if (t->b != 0 && t->b < idx) { printf(" on "); type(r, t->b); }
   }
+}
+
+/* a variable or constant by meaning: name, whether other files see it, the kind of its place and the offset (a constant's value), its type */
+static void variable(const Rdi *r, int section, uint64_t idx)
+{
+  const RdiSymbol *y = rdi_at(r, section, RdiSymbol, idx);
+  RdiSpan name = rdi_str(r, y->name);
+  uint64_t off = y->location & 0x00ffffffffffffff;
+  fwrite(name.p, 1, name.n, stdout);
+  printf("\t%u %u %llx\t", y->container_flags >> 7, (unsigned)(y->location >> 56), (unsigned long long)(y->location >> 56 == 8 ? *rdi_at(r, RDI_LOCATION_CONSTANTS, uint64_t, off / 8) : off));
+  type(r, y->type);
 }
 
 int main(int argc, char **argv)
@@ -72,7 +84,9 @@ int main(int argc, char **argv)
         if (u->flags & 1) printf("=%llu; ", (unsigned long long)e->val);
         else { printf(" %x+%u ", m->kind, m->off); type(&r, m->type); printf("; "); }
       }
-    } else if (op == 'p') {   /* a procedure: root scope, then its name */
+    } else if (op == 'G' && scanf("%llu", &b) == 1) variable(&r, (int)a < RDI_SECTIONS ? (int)a : 0, b);
+    else if (op == 'O') variable(&r, RDI_GLOBALS, rdi_vmap(&r, RDI_GLOBAL_VMAP, a));   /* the global variable at an offset */
+    else if (op == 'p') {   /* a procedure: root scope, then its name */
       const RdiSymbol *y = rdi_at(&r, RDI_PROCEDURES, RdiSymbol, a);
       s = rdi_str(&r, y->name);
       printf("%u ", y->root_scope);

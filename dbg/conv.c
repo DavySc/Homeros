@@ -78,7 +78,8 @@ static uint32_t intern(Names *m, const void *key, uint32_t len)
 
 /* ---- the output ---- */
 
-enum { S_END = 0x0006, S_THUNK32 = 0x1102, S_BLOCK32 = 0x1103, S_PUB32 = 0x110e, S_LPROC32 = 0x110f, S_GPROC32 = 0x1110,
+enum { S_END = 0x0006, S_THUNK32 = 0x1102, S_BLOCK32 = 0x1103, S_CONSTANT = 0x1107, S_UDT = 0x1108, S_LDATA32 = 0x110c, S_GDATA32 = 0x110d,
+       S_PUB32 = 0x110e, S_LTHREAD32 = 0x1112, S_GTHREAD32 = 0x1113, S_LPROC32 = 0x110f, S_GPROC32 = 0x1110,
        S_INLINESITE = 0x114d, S_INLINESITE_END = 0x114e,   /* CV_SymKind */
        LF_MODIFIER = 0x1001, LF_POINTER = 0x1002, LF_PROCEDURE = 0x1008, LF_MFUNCTION = 0x1009, LF_ARGLIST = 0x1201,
        LF_BITFIELD = 0x1205, LF_FIELDLIST = 0x1203, LF_METHODLIST = 0x1206, LF_BCLASS = 0x1400, LF_VBCLASS = 0x1401, LF_IVBCLASS = 0x1402,
@@ -91,6 +92,7 @@ typedef struct {
   Names strings, nodes, files;
   Buf pairs;                 /* name map entries: (kind, string, index) */
   Buf scopes;                /* what each scope covers: (first, ~end, scope) */
+  Buf globals;               /* what each global variable covers, the same way */
   /* types: the PDB's type records and where each starts; per type id, 1 + the index of the type
      made for it (0: not made); the full definitions by name; scratch for a key or a parameter list */
   PdbSpan leaves;
@@ -440,6 +442,51 @@ static void members(Out *o, uint32_t id)
   *(RdiUdt *)add(&o->s[RDI_UDTS], sizeof(RdiUdt)) = (RdiUdt){.self_type = self, .flags = values && count, .member_first = first, .member_count = count};
 }
 
+/* A variable, constant or typedef symbol, in the global stream or a module's ("symbols pass 2").
+   A place is one 64-bit location (RDI_Location): its kind in the top byte (6 an offset in the
+   image, 7 in the thread's block, 8 in the constants' data), the offset below. A constant's
+   value is 8 bytes there, and its name gets the containers of its type's name in front
+   (cv2r_end_of_cplusplus_container_name: up to the last "::" outside angle brackets), which
+   is how an enumerator of `a::E` becomes `a::name`. A typedef is read from the global stream
+   only. NOT made: RAD's variable without type or place for every public symbol that is not
+   code, through which nothing can be read. */
+static void data_symbol(Out *o, const Pdb *pdb, uint16_t kind, PdbSpan d, bool global_stream)
+{
+  bool data = kind == S_LDATA32 || kind == S_GDATA32, thread = kind == S_LTHREAD32 || kind == S_GTHREAD32;
+  if (d.n < (data || thread ? 10 : 4) || !(data || thread || kind == S_CONSTANT || (kind == S_UDT && global_stream))) return;
+  uint32_t type = type_of(o, le32(d.p)), at = 10;
+  const RdiType *y = (const RdiType *)o->s[RDI_TYPE_NODES].p + type;
+  if (data || thread) {                     /* CV_SymData32, CV_SymThread32: type, offset, section, name */
+    PdbSpan name = pdb_string(d, &at);
+    uint64_t off = data ? pdb_voff(pdb, le16(d.p + 8), le32(d.p + 4)) : le32(d.p + 4);
+    Buf *to = &o->s[data ? RDI_GLOBALS : RDI_THREAD_VARS];
+    RdiSymbol v = {.name = intern(&o->strings, name.p, name.n), .container_flags = kind == S_GDATA32 || kind == S_GTHREAD32 ? 0x80 : 0, .location = (uint64_t)(data ? 6 : 7) << 56 | off, .type = type};
+    named(&o->pairs, data ? RDI_NAMES_GLOBALS : RDI_NAMES_THREAD_VARS, v.name, COUNT(*to, RdiSymbol));
+    if (data) rec(&o->globals, off, ~(off + y->byte_size), COUNT(*to, RdiSymbol), 0);   /* "fill records" of the global map: one without a type covers nothing */
+    *(RdiSymbol *)add(to, sizeof v) = v;
+  } else if (kind == S_CONSTANT) {                         /* CV_SymConstant: type, value, name */
+    at = 4;
+    uint64_t value = numeric(d, &at);
+    PdbSpan name = pdb_string(d, &at);
+    const uint32_t *starts = (const uint32_t *)o->strings.at.p;
+    const uint8_t *of = o->strings.keys.p + starts[y->kind >= 0x2000 && y->kind < 0xf000 ? y->a : 0];
+    uint32_t end = y->kind >= 0x2000 && y->kind < 0xf000 ? starts[y->a + 1] - starts[y->a] : 0, depth = 0;
+    for (; end >= 2 && (depth != 0 || of[end - 2] != ':' || of[end - 1] != ':'); end -= 1)
+      depth = of[end - 1] == '>' ? depth + 1 : of[end - 1] == '<' && depth > 0 ? depth - 1 : depth;
+    o->scratch.n = 0;
+    if (end >= 2) memcpy(add(&o->scratch, end), of, end);
+    if (name.n) memcpy(add(&o->scratch, name.n), name.p, name.n);
+    if (o->scratch.n == 0) return;
+    RdiSymbol v = {.name = intern(&o->strings, o->scratch.p, (uint32_t)o->scratch.n), .location = 8ull << 56 | o->s[RDI_LOCATION_CONSTANTS].n, .type = type};
+    named(&o->pairs, RDI_NAMES_CONSTANTS, v.name, COUNT(o->s[RDI_CONSTANTS], RdiSymbol));
+    *(uint64_t *)add(&o->s[RDI_LOCATION_CONSTANTS], 8) = value;
+    *(RdiSymbol *)add(&o->s[RDI_CONSTANTS], sizeof v) = v;
+  } else {                                                 /* CV_SymUDT: type, name: an alias */
+    PdbSpan name = pdb_string(d, &(uint32_t){4});
+    type_node(o, (RdiType){.kind = 0x2004, .byte_size = y->byte_size, .a = intern(&o->strings, name.p, name.n), .b = type});
+  }
+}
+
 /* A line table from records (offset, order, file, line), sorted here. */
 static uint32_t line_table(Out *o, Buf *lines)
 {
@@ -560,8 +607,8 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
   Out o = {0};
   Buf lines = {0}, maps = {0}, ranges = {0}, open = {0}, links = {0}, id_ats = {0};
   /* index 0 of every table is the record that means "none" */
-  static const int tables[] = {RDI_BINARY_SECTIONS, RDI_FILE_PATH_NODES, RDI_SOURCE_FILES, RDI_LINE_TABLES, RDI_SOURCE_LINE_MAPS, RDI_UNITS, RDI_SCOPES, RDI_PROCEDURES, RDI_INLINE_SITES, RDI_TYPE_NODES, RDI_INDEX_RUNS, RDI_UDTS, RDI_MEMBERS, RDI_ENUM_MEMBERS};
-  static const uint8_t table_size[] = {sizeof(RdiSection), sizeof(RdiPathNode), sizeof(RdiSourceFile), sizeof(RdiLineTable), sizeof(RdiSourceLineMap), sizeof(RdiUnit), sizeof(RdiScope), sizeof(RdiSymbol), sizeof(RdiInlineSite), sizeof(RdiType), 4, sizeof(RdiUdt), sizeof(RdiMember), sizeof(RdiEnumMember)};
+  static const int tables[] = {RDI_BINARY_SECTIONS, RDI_FILE_PATH_NODES, RDI_SOURCE_FILES, RDI_LINE_TABLES, RDI_SOURCE_LINE_MAPS, RDI_UNITS, RDI_SCOPES, RDI_PROCEDURES, RDI_INLINE_SITES, RDI_TYPE_NODES, RDI_INDEX_RUNS, RDI_UDTS, RDI_MEMBERS, RDI_ENUM_MEMBERS, RDI_GLOBALS, RDI_THREAD_VARS, RDI_CONSTANTS};
+  static const uint8_t table_size[] = {sizeof(RdiSection), sizeof(RdiPathNode), sizeof(RdiSourceFile), sizeof(RdiLineTable), sizeof(RdiSourceLineMap), sizeof(RdiUnit), sizeof(RdiScope), sizeof(RdiSymbol), sizeof(RdiInlineSite), sizeof(RdiType), 4, sizeof(RdiUdt), sizeof(RdiMember), sizeof(RdiEnumMember), sizeof(RdiSymbol), sizeof(RdiSymbol), sizeof(RdiSymbol)};
   for (unsigned i = 0; i < sizeof tables / sizeof *tables; i += 1) add(&o.s[tables[i]], table_size[i]);
   intern(&o.strings, "", 0);
   intern(&o.nodes, (uint32_t[2]){0, 0}, 8);
@@ -676,7 +723,7 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
         PdbSpan name = pdb_symbol(ids, &id_at, &kind, &d) && (kind == LF_FUNC_ID || kind == LF_MFUNC_ID) ? pdb_string(d, &(uint32_t){8}) : (PdbSpan){0};
         made = scope(&o, inside, top, COUNT(o.s[RDI_INLINE_SITES], RdiInlineSite), start);
         *(RdiInlineSite *)add(&o.s[RDI_INLINE_SITES], sizeof(RdiInlineSite)) = (RdiInlineSite){.name = intern(&o.strings, name.p, name.n), .line_table = line_table(&o, &lines)};
-      }
+      } else data_symbol(&o, &pdb, kind, d, false);
       if (made) *(uint32_t *)add(&open, 4) = made;
     }
     unit.procs_count = COUNT(o.s[RDI_PROCEDURES], RdiSymbol) - unit.procs_first;
@@ -702,6 +749,7 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
   uint8_t *globals = pdb_globals(&pdb, &syms);
   for (uint32_t at = 0; pdb_symbol(syms, &at, &kind, &d);) {
     uint64_t voff = kind == S_PUB32 && d.n >= 10 ? pdb_voff(&pdb, le16(d.p + 8), le32(d.p + 4)) : 0;   /* CV_SymPub32 */
+    data_symbol(&o, &pdb, kind, d, true);
     if (voff == 0) continue;
     PdbSpan name = pdb_string(d, &(uint32_t){10});
     rec(&links, voff, ++order, intern(&o.strings, name.p, name.n), le32(d.p) & 3);   /* code or function */
@@ -727,6 +775,11 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
     }
   }
   vmap_build(&o.s[RDI_SCOPE_VMAP], &o.scopes);
+  vmap_build(&o.s[RDI_GLOBAL_VMAP], &o.globals);
+  for (uint32_t i = 1; i < COUNT(o.s[RDI_TYPE_NODES], RdiType); i += 1) {   /* every type with a name is found by it */
+    const RdiType *y = (const RdiType *)o.s[RDI_TYPE_NODES].p + i;
+    if (y->kind < 0x1000 || (y->kind >= 0x2000 && y->kind < 0xf000)) named(&o.pairs, RDI_NAMES_TYPES, y->a, i);
+  }
   link_children(&o.s[RDI_SCOPES], sizeof(RdiScope));
 
   /* per source file: its lines that have code, ascending, each with its offsets */
@@ -769,7 +822,7 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
     if (o.s[k].n) memcpy(add(&file, (o.s[k].n + 7) / 8 * 8), o.s[k].p, o.s[k].n);
     free(o.s[k].p);
   }
-  Buf *rest[] = {&o.strings.slots, &o.nodes.keys, &o.nodes.at, &o.nodes.slots, &o.files.keys, &o.files.at, &o.files.slots, &o.pairs, &o.scopes, &lines, &maps, &ranges, &open, &links, &id_ats,
+  Buf *rest[] = {&o.strings.slots, &o.nodes.keys, &o.nodes.at, &o.nodes.slots, &o.files.keys, &o.files.at, &o.files.slots, &o.pairs, &o.scopes, &o.globals, &lines, &maps, &ranges, &open, &links, &id_ats,
                  &o.leaf_at, &o.made, &o.scratch, &o.defined_id, &o.defined.keys, &o.defined.at, &o.defined.slots};
   for (unsigned i = 0; i < sizeof rest / sizeof *rest; i += 1) free(rest[i]->p);
   pdb_close(&pdb);

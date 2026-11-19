@@ -172,6 +172,56 @@ int main(void)
     free(a);
     if (got != numbers[i].want || at != numbers[i].after) { printf("number %u: wrong value or length\n", i); return 1; }
   }
+  /* Variable, constant and typedef symbols, each in a block of exactly its length, in an image whose one section starts at 0x1000.
+     Wanted: the table that gains one record (0: none), its flags, its place (a constant's value), its name, how many types there
+     are afterwards (2 for `int`, 1 for the enum `of` that a row sets up as type 0x1000), and the bytes a global covers. */
+#define INT 0x74, 0, 0, 0
+#define AT8 8, 0, 0, 0, 1, 0   /* offset 8 in section 1 */
+  static const struct { uint16_t kind; uint8_t global, n, d[16]; const char *of; int table; uint8_t flags; uint64_t place; const char *name; uint8_t nodes, covers; } symbols[] = {
+    {S_GDATA32, 1, 12, {INT, AT8, 'g', 0}, 0, RDI_GLOBALS, 0x80, 0x1008, "g", 3, 4}, {S_LDATA32, 0, 12, {INT, AT8, 'g', 0}, 0, RDI_GLOBALS, 0, 0x1008, "g", 3, 4},
+    {S_GDATA32, 1, 11, {INT, AT8, 'g'}, 0, RDI_GLOBALS, 0x80, 0x1008, "g", 3, 4}, {S_GDATA32, 1, 10, {INT, AT8}, 0, RDI_GLOBALS, 0x80, 0x1008, "", 3, 4},
+    {S_GDATA32, 1, 9, {INT, AT8}, 0, 0, 0, 0, 0, 1, 0}, {S_GDATA32, 1, 12, {0, 0, 0, 0, AT8, 'g', 0}, 0, RDI_GLOBALS, 0x80, 0x1008, "g", 1, 0},
+    {S_GDATA32, 1, 12, {INT, 8, 0, 0, 0, 2, 0, 'g', 0}, 0, RDI_GLOBALS, 0x80, 0, "g", 3, 4},     /* a section the image does not have */
+    {S_GDATA32, 1, 12, {0, 0x10, 0, 0, AT8, 'g', 0}, "a::E", RDI_GLOBALS, 0x80, 0x1008, "g", 2, 4},
+    {S_GTHREAD32, 1, 12, {INT, AT8, 't', 0}, 0, RDI_THREAD_VARS, 0x80, 8, "t", 3, 0}, {S_LTHREAD32, 0, 12, {INT, AT8, 't', 0}, 0, RDI_THREAD_VARS, 0, 8, "t", 3, 0},
+    {S_LTHREAD32, 0, 9, {INT, AT8}, 0, 0, 0, 0, 0, 1, 0},
+    {S_CONSTANT, 1, 8, {INT, 7, 0, 'c', 0}, 0, RDI_CONSTANTS, 0, 7, "c", 3, 0}, {S_CONSTANT, 0, 9, {INT, 0, 0x80, 0xff, 'c', 0}, 0, RDI_CONSTANTS, 0, UINT64_MAX, "c", 3, 0},
+    {S_CONSTANT, 1, 8, {0, 0x10, 0, 0, 7, 0, 'c', 0}, "a::B<c::d>::E", RDI_CONSTANTS, 0, 7, "a::B<c::d>::c", 2, 0},
+    {S_CONSTANT, 1, 8, {0, 0x10, 0, 0, 7, 0, 'c', 0}, "B<c::d>", RDI_CONSTANTS, 0, 7, "c", 2, 0}, {S_CONSTANT, 1, 8, {0, 0x10, 0, 0, 7, 0, 'c', 0}, "a::B<x::C<d>>", RDI_CONSTANTS, 0, 7, "a::c", 2, 0}, {S_CONSTANT, 1, 8, {0, 0x10, 0, 0, 7, 0, 'c', 0}, "a::<b", RDI_CONSTANTS, 0, 7, "a::c", 2, 0},
+    {S_CONSTANT, 1, 6, {0, 0x10, 0, 0, 7, 0}, "a::E", RDI_CONSTANTS, 0, 7, "a::", 2, 0}, {S_CONSTANT, 1, 8, {0, 0x10, 0, 0, 7, 0, 'c', 0}, "::E", RDI_CONSTANTS, 0, 7, "::c", 2, 0}, {S_CONSTANT, 1, 6, {INT, 7, 0}, 0, 0, 0, 0, 0, 3, 0},
+    {S_CONSTANT, 1, 4, {INT}, 0, 0, 0, 0, 0, 3, 0}, {S_CONSTANT, 1, 3, {INT}, 0, 0, 0, 0, 0, 1, 0},
+    {S_UDT, 1, 6, {INT, 'u', 0}, 0, RDI_TYPE_NODES, 0, 0, "u", 4, 0}, {S_UDT, 0, 6, {INT, 'u', 0}, 0, 0, 0, 0, 0, 1, 0}, {S_UDT, 1, 3, {INT}, 0, 0, 0, 0, 0, 1, 0},
+    {S_PUB32, 1, 12, {INT, AT8, 'p', 0}, 0, 0, 0, 0, 0, 1, 0}};
+  static const uint8_t header[40] = {[12] = 0x00, 0x10};   /* an image section header: its address */
+  static const int tables[] = {RDI_GLOBALS, RDI_THREAD_VARS, RDI_CONSTANTS};
+  for (unsigned i = 0; i < sizeof symbols / sizeof *symbols; i += 1) {
+    uint8_t *a = memcpy(malloc(symbols[i].n), symbols[i].d, symbols[i].n), *sec = memcpy(malloc(sizeof header), header, sizeof header);
+    Pdb pdb = {.sec = sec, .sections = 1};
+    Out t = {.pointer_size = 8};
+    for (unsigned k = 0; k < 3; k += 1) add(&t.s[tables[k]], sizeof(RdiSymbol));
+    add(&t.s[RDI_TYPE_NODES], sizeof(RdiType)), add(&t.s[RDI_LOCATION_CONSTANTS], 8), add(&t.made, 4 * (FIRST_RECORD + 1));
+    intern(&t.strings, "", 0);
+    if (symbols[i].of) ((uint32_t *)t.made.p)[FIRST_RECORD] = type_node(&t, (RdiType){.kind = 0x2003, .byte_size = 4, .a = intern(&t.strings, symbols[i].of, (uint32_t)strlen(symbols[i].of))});
+    data_symbol(&t, &pdb, symbols[i].kind, (PdbSpan){a, symbols[i].n}, symbols[i].global);
+    bool ok = COUNT(t.s[RDI_TYPE_NODES], RdiType) == symbols[i].nodes && t.globals.n == (symbols[i].table == RDI_GLOBALS ? 32u : 0u) && t.s[RDI_LOCATION_CONSTANTS].n == (symbols[i].table == RDI_CONSTANTS ? 16u : 8u);
+    for (unsigned k = 0; k < 3; k += 1) ok = ok && COUNT(t.s[tables[k]], RdiSymbol) == 1u + (symbols[i].table == tables[k]);
+    const uint32_t *starts = (const uint32_t *)t.strings.at.p;
+    if (ok && symbols[i].table) {
+      const RdiType *y = LAST(t.s[RDI_TYPE_NODES], RdiType);
+      const RdiSymbol *v = LAST(t.s[symbols[i].table == RDI_TYPE_NODES ? RDI_GLOBALS : symbols[i].table], RdiSymbol);
+      uint32_t name = symbols[i].table == RDI_TYPE_NODES ? y->a : v->name;
+      const uint64_t *g = (const uint64_t *)t.globals.p, *value = (const uint64_t *)t.s[RDI_LOCATION_CONSTANTS].p + 1;
+      ok = starts[name + 1] - starts[name] == strlen(symbols[i].name) && memcmp(t.strings.keys.p + starts[name], symbols[i].name, strlen(symbols[i].name)) == 0;
+      if (symbols[i].table == RDI_TYPE_NODES) ok = ok && y->kind == 0x2004 && y->byte_size == 4 && y->b == 2;
+      else if (symbols[i].table == RDI_CONSTANTS) ok = ok && v->location == (8ull << 56 | 8) && *value == symbols[i].place && v->container_flags == 0 && v->type != 0;
+      else ok = ok && v->location == ((symbols[i].table == RDI_GLOBALS ? 6ull : 7ull) << 56 | symbols[i].place) && v->container_flags == symbols[i].flags && (v->type != 0) == (symbols[i].nodes > 1);
+      if (symbols[i].table == RDI_GLOBALS) ok = ok && g[0] == symbols[i].place && g[1] == ~(symbols[i].place + symbols[i].covers) && g[2] == 1;
+    }
+    if (!ok) { printf("symbol %u: wrong variable, constant or typedef\n", i); return 1; }
+    Buf *used[] = {&t.s[RDI_GLOBALS], &t.s[RDI_THREAD_VARS], &t.s[RDI_CONSTANTS], &t.s[RDI_TYPE_NODES], &t.s[RDI_LOCATION_CONSTANTS], &t.made, &t.globals, &t.pairs, &t.scratch, &t.strings.keys, &t.strings.at, &t.strings.slots};
+    for (unsigned k = 0; k < sizeof used / sizeof *used; k += 1) free(used[k]->p);
+    free(a), free(sec);
+  }
   uint32_t seed = 1;
   for (int round = 0; round < 200000; round += 1) {
     Buf ranges = {0}, out = {0};

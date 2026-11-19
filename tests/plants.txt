@@ -286,3 +286,45 @@ oracle | dbg/conv.c | v = negative ? UINT64_MAX : 0; | v = negative ? 1 : 0;
 oracle | dbg/rdi.c | [RDI_UDTS] = sizeof(RdiUdt), | [RDI_UDTS] = 1,
 oracle | dbg/rdi.c | [RDI_MEMBERS] = sizeof(RdiMember), | [RDI_MEMBERS] = 1,
 oracle | dbg/rdi.c | [RDI_ENUM_MEMBERS] = sizeof(RdiEnumMember), | [RDI_ENUM_MEMBERS] = 1,
+# ---- slice 2f: variables, constants and typedefs ----
+test | dbg/conv.c | if (d.n < (data \p\p thread ? 10 : 4) \p\p | if (d.n < 4 \p\p
+test | dbg/conv.c | (data \p\p thread ? 10 : 4) | (data \p\p thread ? 10 : 3)
+test | dbg/conv.c | \p\p (kind == S_UDT && global_stream))) return; | \p\p (kind == S_UDT \p\p global_stream))) return;
+test | dbg/conv.c | uint32_t type = type_of(o, le32(d.p)), at = 10; | uint32_t type = type_of(o, le32(d.p)), at = 11;
+test | dbg/conv.c | uint64_t off = data ? pdb_voff(pdb, le16(d.p + 8), le32(d.p + 4)) : le32(d.p + 4); | uint64_t off = pdb_voff(pdb, le16(d.p + 8), le32(d.p + 4));
+oracle | dbg/conv.c | uint64_t off = data ? pdb_voff(pdb, le16(d.p + 8), le32(d.p + 4)) : le32(d.p + 4); | uint64_t off = data ? le32(d.p + 4) : pdb_voff(pdb, le16(d.p + 8), le32(d.p + 4));
+oracle | dbg/conv.c | .container_flags = kind == S_GDATA32 \p\p kind == S_GTHREAD32 ? 0x80 : 0, | .container_flags = kind == S_GDATA32 ? 0x80 : 0,
+test | dbg/conv.c | .container_flags = kind == S_GDATA32 \p\p kind == S_GTHREAD32 ? 0x80 : 0, | .container_flags = 0x80,
+oracle | dbg/conv.c | .location = (uint64_t)(data ? 6 : 7) << 56 \p off | .location = (uint64_t)6 << 56 \p off
+oracle | dbg/conv.c | named(&o->pairs, data ? RDI_NAMES_GLOBALS : RDI_NAMES_THREAD_VARS, v.name, COUNT(*to, RdiSymbol)); | named(&o->pairs, RDI_NAMES_GLOBALS, v.name, COUNT(*to, RdiSymbol));
+oracle | dbg/conv.c | named(&o->pairs, data ? RDI_NAMES_GLOBALS : RDI_NAMES_THREAD_VARS, v.name, COUNT(*to, RdiSymbol)); |
+test | dbg/conv.c | if (data) rec(&o->globals, off, ~(off + y->byte_size), | if (data) rec(&o->globals, off, ~(off + (type ? y->byte_size : 1)),
+oracle | dbg/conv.c | if (data) rec(&o->globals, off, ~(off + y->byte_size), | if (data) rec(&o->globals, off, ~(off + (type ? y->byte_size : 1)),
+test | dbg/conv.c | if (data) rec(&o->globals, off, | rec(&o->globals, off,
+oracle | dbg/conv.c | ~(off + y->byte_size), COUNT(*to, RdiSymbol), 0); | ~(off + y->byte_size), COUNT(*to, RdiSymbol) + 1, 0);
+oracle | dbg/conv.c | if (data) rec(&o->globals, off, ~(off + y->byte_size), | if (data) rec(&o->globals, off, ~(off + y->byte_size + 1),
+fuzz | dbg/conv.c | if (data) rec(&o->globals, off, ~(off + y->byte_size), | if (data) rec(&o->globals, off + 1, ~(off + y->byte_size + 1),
+fuzz | dbg/conv.c | .location = 8ull << 56 \p o->s[RDI_LOCATION_CONSTANTS].n, | .location = 8ull << 56 \p (o->s[RDI_LOCATION_CONSTANTS].n + 8),
+test | dbg/conv.c | .location = 8ull << 56 \p o->s[RDI_LOCATION_CONSTANTS].n, | .location = 8ull << 56 \p COUNT(o->s[RDI_CONSTANTS], RdiSymbol),
+test | dbg/conv.c | for (; end >= 2 && (depth != 0 \p\p of[end - 2] != ':' \p\p of[end - 1] != ':'); end -= 1) | for (; end >= 2 && (of[end - 2] != ':' \p\p of[end - 1] != ':'); end -= 1)
+test | dbg/conv.c | of[end - 1] == '<' && depth > 0 ? depth - 1 : depth; | of[end - 1] == '<' ? depth - 1 : depth;
+test | dbg/conv.c | depth = of[end - 1] == '>' ? depth + 1 : | depth = of[end - 1] == '>' ? 1 :
+oracle | dbg/conv.c | uint32_t end = y->kind >= 0x2000 && y->kind < 0xf000 ? starts[y->a + 1] - starts[y->a] : 0, depth = 0; | uint32_t end = 0, depth = 0;
+test | dbg/conv.c | if (end >= 2) memcpy(add(&o->scratch, end), of, end); | if (end > 2) memcpy(add(&o->scratch, end), of, end);
+test | dbg/conv.c | if (o->scratch.n == 0) return;\n    RdiSymbol v | RdiSymbol v
+oracle | dbg/conv.c | o->scratch.n = 0;\n    if (end >= 2) | if (end >= 2)
+oracle | dbg/conv.c | *(uint64_t *)add(&o->s[RDI_LOCATION_CONSTANTS], 8) = value; | *(uint64_t *)add(&o->s[RDI_LOCATION_CONSTANTS], 8) = (uint32_t)value;
+oracle | dbg/conv.c | named(&o->pairs, RDI_NAMES_CONSTANTS, v.name, COUNT(o->s[RDI_CONSTANTS], RdiSymbol)); |
+oracle | dbg/conv.c | at = 4;\n    uint64_t value = numeric(d, &at);\n    PdbSpan name = pdb_string(d, &at); | at = 4;\n    uint64_t value = numeric(d, &at);\n    at = 6;\n    PdbSpan name = pdb_string(d, &at);
+test | dbg/conv.c | type_node(o, (RdiType){.kind = 0x2004, .byte_size = y->byte_size, .a = intern(&o->strings, name.p, name.n), .b = type}); | type_node(o, (RdiType){.kind = 0x2004, .a = intern(&o->strings, name.p, name.n), .b = type});
+oracle | dbg/conv.c | type_node(o, (RdiType){.kind = 0x2004, .byte_size = y->byte_size, .a = intern(&o->strings, name.p, name.n), .b = type}); | type_node(o, (RdiType){.kind = 0x2004, .byte_size = y->byte_size, .a = intern(&o->strings, name.p, name.n)});
+oracle | dbg/conv.c | PdbSpan name = pdb_string(d, &(uint32_t){4}); | PdbSpan name = pdb_string(d, &(uint32_t){5});
+oracle | dbg/conv.c | } else data_symbol(&o, &pdb, kind, d, false); | }
+oracle | dbg/conv.c | data_symbol(&o, &pdb, kind, d, true); | data_symbol(&o, &pdb, kind, d, false);
+oracle | dbg/conv.c | vmap_build(&o.s[RDI_GLOBAL_VMAP], &o.globals); |
+oracle | dbg/conv.c | if (y->kind < 0x1000 \p\p (y->kind >= 0x2000 && y->kind < 0xf000)) named(&o.pairs, RDI_NAMES_TYPES, y->a, i); | if (y->kind >= 0x2000 && y->kind < 0xf000) named(&o.pairs, RDI_NAMES_TYPES, y->a, i);
+oracle | dbg/conv.c | if (y->kind < 0x1000 \p\p (y->kind >= 0x2000 && y->kind < 0xf000)) named(&o.pairs, RDI_NAMES_TYPES, y->a, i); | if (y->kind < 0x1000 \p\p y->kind >= 0x2000) named(&o.pairs, RDI_NAMES_TYPES, y->a, i);
+oracle | dbg/conv.c | if (y->kind < 0x1000 \p\p (y->kind >= 0x2000 && y->kind < 0xf000)) named(&o.pairs, RDI_NAMES_TYPES, y->a, i); | if (y->kind < 0x1000 \p\p (y->kind >= 0x2000 && y->kind < 0x2004)) named(&o.pairs, RDI_NAMES_TYPES, y->a, i);
+oracle | dbg/rdi.c | [RDI_LOCATION_CONSTANTS] = 8, | [RDI_LOCATION_CONSTANTS] = 1,
+oracle | dbg/rdi.c | [RDI_GLOBAL_VMAP] = sizeof(RdiVMap), | [RDI_GLOBAL_VMAP] = 1,
+oracle | dbg/rdi.c | [RDI_THREAD_VARS] = sizeof(RdiSymbol), | [RDI_THREAD_VARS] = 1,

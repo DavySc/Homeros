@@ -53,11 +53,11 @@ def typed(rdi, table, op):
     up to the first one. Left out: what names subjects/kinds.cpp's Odd, whose methods and member pointers RAD reads
     differently (knowledge base, 04: the `this` of an `&&` method, a `...` parameter, pointers to members)."""
     out = collections.Counter()
-    for line in run(rdi, [f'{op} {i}' for i in range(1, int(run(rdi, [f'N {table}'])[0]))]):
-        name, kind = line.split('\t') if op == 'P' else ('', line)
+    for line in run(rdi, [f'{op} {i}' for i in (range(1, int(run(rdi, [f'N {table}'])[0])) if isinstance(table, int) else table)]):
+        name, kind = line.split('\t', 1) if op[0] in 'PGO' else ('', line)
         kind = re.sub(r'2004 (u?)int32:4 on ', lambda m: '2004 %sint:4 on ' % ('unsigned ' * bool(m[1])), kind)
         if op == 'M': kind = re.sub(r'( 202\+0 [^;]*; ).*', r'\1', kind)
-        if ' Odd:' not in line: out[tail(name), re.sub(r'(20\d\d) (.*?):(\d+)', lambda m: f'{m[1]} {tail(m[2])}:{m[3]}', kind)] += 1
+        if 'Odd' not in line: out[tail(name), re.sub(r'(20\d\d) (.*?):(\d+)', lambda m: f'{m[1]} {tail(m[2])}:{m[3]}', kind)] += 1
     return out
 BASIC = {0x10: ('signed char', 'Char8', 1), 0x11: ('short', 'S16', 2), 0x12: ('long', 'S32', 4), 0x13: ('long long', 'S64', 8), 0x20: ('unsigned char', 'UChar8', 1),
          0x21: ('unsigned short', 'U16', 2), 0x22: ('unsigned long', 'U32', 4), 0x23: ('unsigned long long', 'U64', 8), 0x30: ('bool', 'S8', 1), 0x40: ('float', 'F32', 4),
@@ -138,14 +138,14 @@ def normal(src, folder):
     return '/'.join(parts)
 total = 0
 for pdb in sys.argv[3:]:
-    text = subprocess.run(['llvm-pdbutil', 'dump', '--modules', '--section-contribs', '--section-headers', '-l', '--il', '--files', '--symbols', pdb],
+    text = subprocess.run(['llvm-pdbutil', 'dump', '--modules', '--section-contribs', '--section-headers', '-l', '--il', '--files', '--symbols', '--globals', pdb],
                           capture_output=True, text=True, errors='surrogateescape').stdout
     lines = text.split('\n')
     part, va, q, want = '', {}, [], []
     def ask(query, answer): q.append(query); want.append(answer)
-    recs, per_line, mods, order, src, folder, spans, syms, expected, file_at, starts, proc_types = [], {}, {}, 0, '', '', [], {}, collections.Counter(), {}, {}, collections.Counter()
+    recs, per_line, mods, order, src, folder, spans, syms, expected, file_at, starts, proc_types, data = [], {}, {}, 0, '', '', [], {}, collections.Counter(), {}, {}, collections.Counter(), ([], [])
     for i, line in enumerate(lines):
-        if m := re.match(r' +(Modules|Section Headers|Section Contributions|Original Section Headers|Lines|Inlinee Lines|Files|Symbols) *$', line): part = m[1]
+        if m := re.match(r' +(Modules|Section Headers|Section Contributions|Original Section Headers|Lines|Inlinee Lines|Files|Symbols|Global Symbols) *$', line): part = m[1]
         elif part == 'Section Headers' and (m := re.match(r' +SECTION HEADER #(\d+)', line)):
             f = [lines[i + k].split()[0] for k in range(1, 6)]
             name, vsize, addr, fsize, foff = f[0], *(int(v, 16) for v in f[1:])
@@ -160,7 +160,7 @@ for pdb in sys.argv[3:]:
         elif part == 'Inlinee Lines' and (m := re.match(r' +0x([0-9A-F]+) \| +(\d+) \| (.*) \((?:[\w-]+: [0-9A-F]+|no checksum)\)$', line)):
             starts[mod, int(m[1], 16)] = (normal(m[3], folder), int(m[2]))
     for i, line in enumerate(lines):
-        if m := re.match(r' +(Modules|Section Headers|Section Contributions|Original Section Headers|Lines|Inlinee Lines|Files|Symbols) *$', line): part = m[1]
+        if m := re.match(r' +(Modules|Section Headers|Section Contributions|Original Section Headers|Lines|Inlinee Lines|Files|Symbols|Global Symbols) *$', line): part = m[1]
         elif part == 'Modules' and (m := re.match(r' *Mod (\d+) \| `(.*)`: *$', line)): mods[int(m[1])] = re.split(r'[/\\]', m[2])[-1] or m[2]
         elif part == 'Section Contributions' and (m := re.search(r'mod = (\d+), (\d+):(\d+), size = (-?\d+)', line)):
             sec, size = int(m[2]), int(m[4])
@@ -177,6 +177,11 @@ for pdb in sys.argv[3:]:
             syms[int(m[1])] = (covers, (around[0],) + around[1] if m[2] == 'S_BLOCK32' else (), mod, around[3], m[3] if m[2] != 'S_BLOCK32' else None, None)
             expected[syms[int(m[1])]] += 1
             if t := re.match(r' +type = `(0x[0-9A-F]+)', lines[i + 2]): proc_types[m[3], int(t[1], 16)] += 1
+        elif part in ('Symbols', 'Global Symbols') and (m := re.match(r' *(\d+) \| (S_[GL]DATA32|S_[GL]THREAD32|S_CONSTANT|S_UDT) \[size = \d+\] `(.*)`$', line)):
+            # a variable, constant or typedef: (kind, name, type id, section, offset or value), module streams first as the converter
+            # reads them, then the global stream in the order of its records (llvm-pdbutil prints it in the order of its hash table)
+            p = re.match(r' +(?:original )?type = (0x[0-9A-F]+|<no type>).*?(?:, addr = (\d+):(\d+)|, value = (-?\d+))?$', lines[i + 1])
+            data[part != 'Symbols'].append((int(m[1]), m[2], m[3], int(p[1].replace('<no type>', '0'), 16), int(p[2] or 0), int(p[3] or p[4] or 0), part != 'Symbols'))
         elif part == 'Symbols' and (m := re.match(r' *(\d+) \| S_INLINESITE2? \[', line)):
             # an inlined call covers, from the procedure's start, what llvm-pdbutil prints for its annotations: from the
             # first "code" since the last end (or from that end) to each "code end"; pieces that touch are one
@@ -267,16 +272,50 @@ for pdb in sys.argv[3:]:
         b = collections.Counter(f'{name}\t{of(t)[0]}' for name, t in proc_types.elements() if of(t)[0] != 'none')
         for k in a | b: q.append(f'procedure and its type {k}'); want.append(str(b[k])); got.append(str(a[k]))
         # every type record's meaning is a type of ours; each type of ours is one, or what a const pointer or a basic type's name stands on
-        a, b = set(run(rdi, [f'T {i}' for i in range(1, int(run(rdi, ['N 19'])[0]))])), {m for m, _ in means.values()} - {'none'}
+        # and each typedef of the global stream is a name on its type; the types of variables and constants are made too
+        data = [x[1:] for x in data[0] + sorted(data[1])]
+        for kind, _, t, _, _, in_globals in data:
+            if kind != 'S_UDT' or in_globals: of(t)
+        aliases = {f'2004 {name}:{of(t)[1]}' + (f' on {of(t)[0]}' if of(t)[0] != 'none' else '') for kind, name, t, _, _, in_globals in data if kind == 'S_UDT' and in_globals}
+        a, b = set(run(rdi, [f'T {i}' for i in range(1, int(run(rdi, ['N 19'])[0]))])), {m for m, _ in means.values()} - {'none'} | aliases
         under = {re.sub(r'^(1000\.\w\[0\]:\d+|2004 [\w ]+:\d on) ', '', m) for m in b}
         for k in a | b: q.append(f'type {k}'); want.append('True'); got.append(str(k in a and k in b | under))
         # each struct, class, union and enum that is defined has its members
         a = collections.Counter(run(rdi, [f'M {i}' for i in range(1, int(run(rdi, ['N 20'])[0]))]))
         for k in a | udts: q.append(f'members {k}'); want.append(str(udts[k])); got.append(str(a[k]))
+        # each variable and constant, by meaning; a constant's name has the containers of its type's name in front
+        vars_, shown = [], collections.Counter()
+        for kind, name, t, sec, off, in_globals in data:
+            if kind == 'S_CONSTANT':
+                named_type = re.match(r'20\d\d (.*?):\d+(?: on |$)', of(t)[0])
+                full = (named_type[1][:len(named_type[1]) - len(tail(named_type[1]))] if named_type else '') + name
+                if full: shown[f'30 {full}\t0 8 {off % 2**64:x}\t{of(t)[0]}'] += 1
+            elif 'DATA' in kind:
+                voff = va[sec] + off if sec in va else 0
+                vars_.append((voff, of(t)[1], f'{name}\t{int(kind[2] == "G")} 6 {voff:x}\t{of(t)[0]}'))
+                shown['27 ' + vars_[-1][2]] += 1
+            elif 'THREAD' in kind: shown[f'29 {name}\t{int(kind[2] == "G")} 7 {off:x}\t{of(t)[0]}'] += 1
+        a = collections.Counter(f'{sec} {line}' for sec in (27, 29, 30) for line in run(rdi, [f'G {sec} {i}' for i in range(1, int(run(rdi, [f'N {sec}'])[0]))]))
+        for k in a | shown: q.append(f'variable {k}'); want.append(str(shown[k])); got.append(str(a[k]))
+        # the name maps give the variables, constants and types of each name, and none for the empty name
+        for kind, table, op in ((1, 27, 'G 27'), (2, 29, 'G 29'), (3, 30, 'G 30'), (5, 19, 'T')):
+            by_name = collections.defaultdict(list, {'': []})
+            for i, line in enumerate(run(rdi, [f'{op} {i}' for i in range(1, int(run(rdi, [f'N {table}'])[0]))]), 1):
+                name = line.split('\t')[0] if op != 'T' else '' if re.match(r'1\w{3}\.|bits |none', line) else re.match(r'(?:2\w{3} )?(.*?):\d+(?: on |$)', line)[1]
+                if name: by_name[name].append(i)
+            names = [f'n {kind} x{name.encode("utf-8", "surrogateescape").hex()}' for name in by_name]
+            q += names; want += [''.join(f' {p}' for p in v) for v in by_name.values()]; got += run(rdi, names)
+        # the variable at an offset is, of those that cover it, the one that starts last: of two that start together the smaller, then the later
+        # (MSVC's C runtime has a 16-byte table that the 320-byte _load_config_used starts inside)
+        points = sorted({v for voff, size, _ in vars_ for v in ((voff, voff + size - 1, voff + size) if size else (voff,))})   # one without a type covers nothing
+        for v in points:
+            over = [(voff, -size, k, line) for k, (voff, size, line) in enumerate(vars_) if voff <= v < voff + size]
+            q.append(f'O {v}'); want.append(max(over)[3] if over else '\t0 0 0\tnone')
+        got += run(rdi, [f'O {v}' for v in points])
         # a basic type's name is made once
         every = collections.Counter(run(rdi, [f'T {i}' for i in range(1, int(run(rdi, ['N 19'])[0]))]))
         for k in every:
-            if k.startswith('2004 '): q.append(f'copies of type {k}'); want.append('1'); got.append(str(every[k]))
+            if re.match(r'2004 [\w ]+:\d+ on \w+:\d+$', k) and k not in aliases: q.append(f'copies of type {k}'); want.append('1'); got.append(str(every[k]))
         rad = pdb[:-4] + '.rdi'   # RAD's own conversion of the same PDB, where the runner recorded one: the line at every offset of the code
         if os.path.exists(rad):
             every = [f'L {v}' for a, n in spans for v in range(a, a + n)]
@@ -287,12 +326,24 @@ for pdb in sys.argv[3:]:
             a, b = typed(rdi, 31, 'P'), typed(rad, 31, 'P')
             for k in a | b: q.append(f'procedure and its type {k}'); want.append(str(b[k])); got.append(str(a[k]))
             # every type, but for the built-in ones, their aliases and the pointers to those (RAD makes one for every basic
-            # type code there could be, 3,199 of them pointers to no type; we make the ones used), and typedefs (NOT YET)
+            # type code there could be, 3,199 of them pointers to no type; we make the ones used)
+            # variables and constants; RAD also has a variable without type or place for each public symbol that is not code
+            for table in (27, 29, 30):
+                a, b = typed(rdi, table, f'G {table}'), typed(rad, table, f'G {table}')
+                for k in a | b:
+                    if k[1] != '0 0 0\tnone': q.append(f'variable, as RAD has it, {table} {k}'); want.append(str(b[k])); got.append(str(a[k]))
+            # the variable at an offset, but not inside two that overlap without one holding the other: there RAD's map is
+            # out of order and answers by luck (after the 16-byte table that _load_config_used starts inside, none in 2 of 14 files)
+            crossed = [(a, a + n) for a, n, _ in vars_ for b, m, _ in vars_ if a < b < a + n < b + m or b < a < b + m < a + n]
+            for v in points:
+                if any(lo <= v < hi for lo, hi in crossed): continue
+                a, b = typed(rdi, [v], 'O'), typed(rad, [v], 'O')
+                q.append(f'O {v}, as RAD has it'); want.append(str(b)); got.append(str(a))
             a, b = typed(rdi, 20, 'M'), typed(rad, 20, 'M')
             for k in a | b: q.append(f'members, as RAD has them, {k[1]}'); want.append(str(b[k])); got.append(str(a[k]))
             a, b = typed(rdi, 19, 'T'), typed(rad, 19, 'T')
             for k in a | b:
-                if not re.match(r'(1001\.0\[0\]:8 )?(none|\w+:\d+$|2004 )', k[1]): q.append(f'type {k[1]}'); want.append(str(b[k])); got.append(str(a[k]))
+                if not re.match(r'(1001\.0\[0\]:8 )?(none|\w+:\d+$|2004 [\w ]+:\d+ on \w+:\d+$)', k[1]): q.append(f'type {k[1]}'); want.append(str(b[k])); got.append(str(a[k]))
     bad = [(a, w, g) for a, w, g in zip(q, want, got) if w != g]
     if bad or len(got) != len(q):
         print(f'oracle_conv: {pdb}: {len(q)} questions, {len(got)} answers, {len(bad)} differ')

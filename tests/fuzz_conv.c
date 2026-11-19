@@ -41,6 +41,17 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
       next[u->flags & 1] += u->member_count;
     }
     if (next[0] != r.s[RDI_MEMBERS].n || next[1] != r.s[RDI_ENUM_MEMBERS].n) abort();
+    /* a variable or constant has a type that is there and a place of its kind; at a global variable's first byte the map finds one that covers it */
+    static const int tables[3] = {RDI_GLOBALS, RDI_THREAD_VARS, RDI_CONSTANTS};
+    for (int k = 0; k < 3; k += 1)
+      for (uint64_t i = 1; i < r.s[tables[k]].n; i += 1) {
+        const RdiSymbol *y = rdi_at(&r, tables[k], RdiSymbol, i), *found;
+        uint64_t off = y->location & 0x00ffffffffffffff;
+        if (y->type >= r.s[RDI_TYPE_NODES].n || y->location >> 56 != 6u + (unsigned)k || (k == 2 && off / 8 >= r.s[RDI_LOCATION_CONSTANTS].n)) abort();
+        if (k != 0 || rdi_at(&r, RDI_TYPE_NODES, RdiType, y->type)->byte_size == 0) continue;
+        found = rdi_at(&r, RDI_GLOBALS, RdiSymbol, rdi_vmap(&r, RDI_GLOBAL_VMAP, off));
+        if (off - (found->location & 0x00ffffffffffffff) >= rdi_at(&r, RDI_TYPE_NODES, RdiType, found->type)->byte_size) abort();
+      }
     free(rdi);
   }
   free(buf);
