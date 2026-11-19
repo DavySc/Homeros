@@ -248,7 +248,7 @@ static uint64_t numeric(PdbSpan d, uint32_t *at)
   uint64_t v = d.n - *at >= 2 ? le16(d.p + *at) : 0, n = v >= 0x8000 && v < 0x800b ? size[v - 0x8000] : 0;
   *at += d.n - *at >= 2 ? 2 : 0;
   if (v < 0x8000 || d.n - *at < n) return v < 0x8000 ? v : 0;
-  bool negative = n != 0 && (v == 0x8000 || v == 0x8001 || v == 0x8003 || v == 0x8009) && d.p[*at + n - 1] >= 0x80;   /* the signed kinds, widened as cv_u64_from_numeric does */
+  bool negative = n != 0 && (v == 0x8000 || v == 0x8001 || v == 0x8003) && d.p[*at + n - 1] >= 0x80;   /* the signed kinds shorter than 8 bytes, widened as cv_u64_from_numeric does */
   v = negative ? UINT64_MAX : 0;
   for (uint64_t i = n; i > 0; i -= 1) v = v << 8 | d.p[*at + i - 1];
   *at += (uint32_t)n;
