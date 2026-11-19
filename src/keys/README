@@ -39,9 +39,18 @@ Not built (FEATURES.md section 2), part two of package 5:
   The same holds for the '> mark of a Visual gq, so gv after it differs
   (H2).
 - tag objects it at.
-- ex commands beyond :w :w! :q :q! :wq :x, ranges and :<line>: :s, :g,
+- ex commands beyond :w :w! :q :q! :wq :x, ranges, :<line> and :s: :g,
   :norm, :d, :y, :e, :sp, :vs, :b; "|" between commands; the ":" motion
   (d:5, which beeps). Visual @ and Q need :norm.
+- :s (sub.c, Neovim's do_sub()): :s/pat/rep/ with the flags & g e n r i
+  I, a count, :& :&& :~, the keys & (Neovim's map to :&&) and g&; in the
+  replacement & \0-\9 ~ \u \l \U \L \e \E \r \n \t; matches over
+  line breaks.  tests/test_keys_ex.c checks it against nvim on random
+  command lines (cursor, error, text); measured 2026-11-19, seeds 1-9,
+  3,000 each: 0 differ.  Not built yet: the c flag (asks at each match),
+  \= (an expression), 'inccommand' (the preview), the p # l flags'
+  printing, a backwards range (ours E493; Neovim asks to swap), the names
+  :sg :si :sI :sr :sc (s with flags and no blank).
 - ranges (checked by tests/test_keys_ex.c against nvim on random command
   lines): a range before :w :q :wq :x gives E481, where Neovim writes part
   of the buffer (E140 without !) or closes window N; a line number past

@@ -641,11 +641,13 @@ static void nv_brackets(Cmdarg *cap)
 
 static void nv_optrans(Cmdarg *cap)
 {
-	static const char *ar[] = { "dl", "dh", "d$", "c$", "cl", "cc", "y$" };
-	static const char str[] = "xXDCsSY";
+	/* Neovim's default maps: Y is y$, & is :&& (keeping the flags) */
+	static const char *ar[] = { "dl", "dh", "d$", "c$", "cl", "cc", "y$", ":&&\n" };
+	static const char str[] = "xXDCsSY&";
 	if (!checkclearopq(cap->oap)) {
 		if (cap->count0) stuff_num(cap->count0);
-		stuff_str(ar[strchr(str, cap->cmdchar) - str], 2);
+		const char *a = ar[strchr(str, cap->cmdchar) - str];
+		stuff_str(a, (long)strlen(a));
 	}
 	cap->opcount = 0;
 }
@@ -1190,6 +1192,8 @@ static void nv_g_cmd(Cmdarg *cap)
 	case '~': case 'u': case 'U': nv_operator(cap); break;
 	case 'p': case 'P': nv_put(cap, 0); break;
 	case '*': case '#': nv_ident(cap); break;
+	/* do_cmdline_cmd("%s//~/&"), typed here */
+	case '&': stuff_str(":%s//~/&\n", 9); break;
 	default: clearopbeep(oap);
 	}
 }
@@ -1307,7 +1311,7 @@ static int cmd_flags(int c)
 
 static int known(int c)
 {
-	return has(" \"#$%'()*+,-./0:;<>?@ABCDEFGHIJLMNOPQRSTUWXYV[]^_`abcdefghijklmnopqrstuvwxyz{|}~", c) || c == 1 || c == 3
+	return has(" \"#$%&'()*+,-./0:;<>?@ABCDEFGHIJLMNOPQRSTUWXYV[]^_`abcdefghijklmnopqrstuvwxyz{|}~", c) || c == 1 || c == 3
 	       || c == 8 || c == 10 || c == 13 || c == 14 || c == 16 || c == 22 || c == 24 || c == KEY_CTRL_R
 	       || c == 4 || c == 21 || c == 6 || c == 2 || c == 5 || c == 25 || c == 23
 	       || c == KEY_ESC || c == KEY_BS || c == KEY_UP || c == KEY_DOWN || c == KEY_LEFT || c == KEY_RIGHT || c == KEY_DEL;
@@ -1347,6 +1351,7 @@ static void execute(Cmdarg *cap)
 	case 'B': cap->arg = 1; nv_bck_word(cap); break;
 	case 'b': cap->arg = 0; nv_bck_word(cap); break;
 	case 'C': case 'D': case 'X': case 'Y': case 'x': case KEY_DEL: nv_abbrev(cap); break;
+	case '&': nv_optrans(cap); break;
 	case 'E': case 'W': cap->arg = 1; nv_wordcmd(cap); break;
 	case 'e': case 'w': cap->arg = 0; nv_wordcmd(cap); break;
 	case 'F': case 'T': cap->arg = BACKWARD; nv_csearch(cap); break;
@@ -1508,7 +1513,7 @@ int normal_mappable(int drop)
 	if (drop) { npend = 0; opcount = 0; clearop(&oa); }
 	return 1;
 }
-void normal_reset(void) { search_reset(); clearop(&oa); opcount = 0; VIsual_active = 0; redo_n = old_redo_n = 0; npend = 0; memset(&b_visual, 0, sizeof b_visual); }
+void normal_reset(void) { search_reset(); sub_reset(); clearop(&oa); opcount = 0; VIsual_active = 0; redo_n = old_redo_n = 0; npend = 0; memset(&b_visual, 0, sizeof b_visual); }
 
 void normal_key(int k)
 {

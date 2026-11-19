@@ -116,3 +116,20 @@ keys: a block's yank flash takes byte columns, not screen columns, so a Tab's bl
 keys: a block's yank flash starts at a Tab's first cell, not where the cursor stood on it (test_keys_flash)~test TESTS=keys_flash~~src/keys/ops.c~getvvcol(b_op_start, &a, NULL)~a = vcol_of(b_op_start.lnum, b_op_start.col)
 keys: a backslash at a pattern's start keeps it at the start, so /\*ptr is E866 (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~			prev_at_start = at_start, at_start = 0;¶			rp++, after_slash++;~			rp++, after_slash++;
 keys: \c at a pattern's start ends the start, so \c* is E866 (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~int s = prev_at_start, pr = prev~int s = at_start, pr = prev
+keys: :s keeps the g flag it cleared after a match over the last line, so g& after it changes one match a line (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~	fl.all = save_all;~	fl.all = save_all * 0 + fl.all;
+keys: :s takes a NUL in a line (\n in a replacement) for the line's end (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~(matchcol >= line.n && nmatch <= 1~(!line.s[matchcol] && nmatch <= 1
+keys: a tilde in a replacement is not the last replacement (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~if (prev_sub) bput(&b, prev_sub~if (0) bput(&b, prev_sub
+keys: \u in a replacement does nothing (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~one = *p;~one = 0;
+keys: a line break from \r in a replacement leaves the range one line short (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~sub_firstlnum++, lnum++, line2++, W->line++;~sub_firstlnum++, lnum++, W->line++;
+keys: a match over a line break deletes the wrong line (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~del_lines(lnum + 1, nmatch_tl)~del_lines(lnum + 2, nmatch_tl)
+keys: :s/\n// on the last line leaves the cursor where it was (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~		W->line = (size_t)l1;¶~
+keys: a count after :s counts from the range's start, not its end (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~l1 = l2, l2 = l2 + i - 1~l2 = l2 + i - 1
+keys: :s with no pattern says E35 alone, not E476 after it (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~		if (fl.error) core_msg(E, "E476: Invalid command");~		if (0) core_msg(E, "E476: Invalid command");
+keys: a backslash in a replacement stays (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~if (nb.s[p] == '\\' && p + 1 < nb.n)~if (nb.s[p] == '\\' && 0)
+keys: a backslash the match copies is taken as an escape (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~if (s[col] == '\r' || s[col] == '\\')~if (s[col] == '\r')
+keys: & is :s, which drops the flags, not Neovim's map to :&& (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~":&&\n" };~":s\n" };
+keys: % is the last line alone, not 1,$ (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~l1 = all ? 1 : n ? l2 : a~l1 = n ? l2 : a
+keys: \_s is E877, its letter read with its magic (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~		if (c > MAGIC) c -= MAGIC;   /* no_Magic() */¶~
+keys: \n does not match the last line's line break (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~			if (c < ml_len(l) || l >= nlines()) return 0;¶			l++, c = 0;~			if (c < ml_len(l) || l + 1 >= nlines()) return 0;¶			l++, c = 0;
+keys: beginline stops at a NUL in the line (test_keys_ex)~test TESTS=keys_ex~~src/keys/buf.c~((flags & BL_FIX) && c + 1 >= n)~((flags & BL_FIX) && !s[c + 1] + 0 * n)
+keys: u after :s goes back to an undo step the oracle's text load made (test_keys_ex)~test TESTS=keys_ex~~src/keys/ex_oracle.lua~vim.bo.undolevels = -1¶~

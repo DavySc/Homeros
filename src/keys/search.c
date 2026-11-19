@@ -4,12 +4,21 @@
 #include "k.h"
 #include "uni.h"
 
-static char spat[sizeof ((Editor *)0)->cmd + 1];   /* spats[0] */
-static int has_spat, spat_noscs;
+/* spats[]: the last search pattern (RE_SEARCH) and the last :s one
+   (RE_SUBST), with 'smartcase' off for * #; last_idx: which was used last */
+static struct { char pat[sizeof ((Editor *)0)->cmd + 1]; int set, noscs; } spats[2];
+static int last_idx;
+static char used[sizeof spats[0].pat];   /* mr_pattern: the last compiled */
+const char *get_search_pat(void) { return used; }
 static struct { int dir, line, end; long off; } off = { '/', 0, 0, 0 };
 int no_smartcase;   /* * and # take 'ignorecase' alone */
 
-void search_reset(void) { has_spat = spat_noscs = no_smartcase = 0; off.dir = '/', off.line = off.end = 0, off.off = 0; }
+void search_reset(void)
+{
+	memset(spats, 0, sizeof spats);
+	last_idx = no_smartcase = 0;
+	off.dir = '/', off.line = off.end = 0, off.off = 0;
+}
 
 /* pat_has_uppercase(): \x \_x \%x (_x %x after \v) are not letters */
 static int has_upper(const char *p, int all)
@@ -26,6 +35,28 @@ static int has_upper(const char *p, int all)
 		else i++;
 	}
 	return 0;
+}
+
+/* search_regcomp(): pat, or for none spats[use] (RE_LAST: the last used),
+   kept as spats[save] (-1: not kept); ic -1 takes 'ignorecase' and
+   'smartcase'.  0 compiled; 1 no pattern, said; -1 *msg says why not. */
+int search_regcomp(const char *pat, int save, int use, int ic, const char **msg)
+{
+	int noscs = no_smartcase;
+	no_smartcase = 0;
+	if (!pat || !*pat) {
+		int i = use == RE_LAST ? last_idx : use;
+		if (!spats[i].set) {
+			core_msg(E, use == RE_SUBST ? "E33: No previous substitute regular expression" : "E35: No previous regular expression");
+			return 1;
+		}
+		pat = spats[i].pat, noscs = spats[i].noscs;
+	}
+	if (pat != used) snprintf(used, sizeof used, "%s", pat);
+	if (save >= 0) snprintf(spats[save].pat, sizeof spats[save].pat, "%s", used), spats[save].set = 1, spats[save].noscs = noscs, last_idx = save;
+	int all;
+	re_skip(used, 0, &all);
+	return re_compile(used, ic >= 0 ? ic : noscs || !has_upper(used, all), msg);
 }
 
 static int nul_at(Pos p) { return p.col >= ml_len(p.lnum); }
@@ -95,7 +126,7 @@ static int searchit(Pos *pos, int dir, long count, int end, int *wrapped)
 			if (!found && !loop) lnum = dir == BACKWARD ? n - 1 : 0, *wrapped = 1;
 		}
 	} while (--count > 0 && found);
-	if (!found) { core_msg(E, "E486: Pattern not found: %s", spat); return 0; }
+	if (!found) { core_msg(E, "E486: Pattern not found: %s", used); return 0; }
 	if (pos->lnum >= n) pos->lnum = n - 1, pos->col = ml_len(n - 1) ? ml_len(n - 1) - 1 : 0;
 	return 1;
 timeout:
@@ -113,7 +144,8 @@ int do_search(Oparg *oap, int dirc, const char *pat, long count, int rev, int *w
 	if (!dirc) dirc = off.dir;
 	else off.dir = dirc;
 	if (rev) dirc = dirc == '/' ? '?' : '/';
-	char buf[sizeof spat];
+	char buf[sizeof used];
+	const char *sp = NULL;   /* the pattern typed, NULL for the last used */
 	if (pat) {
 		/* the pattern is copied: skip_regexp_ex() may change "\?", and the
 		   caller keeps pat for redo */
@@ -125,16 +157,19 @@ int do_search(Oparg *oap, int dirc, const char *pat, long count, int rev, int *w
 		else if (*p == 'e' || *p == 's' || *p == 'b') off.end = *p++ == 'e';
 		if ((*p >= '0' && *p <= '9') || *p == '+' || *p == '-')
 			off.off = (*p >= '0' && *p <= '9') || (p[1] >= '0' && p[1] <= '9') ? strtol(p, NULL, 10) : *p == '-' ? -1 : 1;
-		if (*buf) snprintf(spat, sizeof spat, "%s", buf), has_spat = 1, spat_noscs = no_smartcase;
+		if (*buf) sp = buf;
 	}
-	no_smartcase = 0;
-	if (!has_spat) { core_msg(E, "E35: No previous regular expression"); return 0; }
-	int all;
-	re_skip(spat, 0, &all);
+	/* no search pattern yet: the :s one */
+	if (!sp && !spats[RE_SEARCH].set) {
+		if (!spats[RE_SUBST].set) { no_smartcase = 0; core_msg(E, "E35: No previous regular expression"); return 0; }
+		sp = spats[RE_SUBST].pat;
+	}
 	const char *msg;
-	if (re_compile(spat, spat_noscs || !has_upper(spat, all), &msg)) {
+	int r = search_regcomp(sp, RE_SEARCH, RE_LAST, -1, &msg);
+	if (r > 0) return 0;
+	if (r) {
 		/* searchit(): the NFA engine's E866 E867 E869 leave it to say */
-		if (!strncmp(msg, "E86", 3)) core_msg(E, "E383: Invalid search string: %s", spat);
+		if (!strncmp(msg, "E86", 3)) core_msg(E, "E383: Invalid search string: %s", used);
 		else core_msg(E, "%s", msg);
 		return 0;
 	}
@@ -143,7 +178,7 @@ int do_search(Oparg *oap, int dirc, const char *pat, long count, int rev, int *w
 		int k = snprintf(ob, sizeof ob, "%c%s", dirc, off.end ? "e" : off.line ? "" : "s");
 		if (off.off || off.line) snprintf(ob + k, sizeof ob - (size_t)k, "%+ld", off.off);
 	}
-	core_msg(E, "%c%s%s", dirc, spat, ob);
+	core_msg(E, "%c%s%s", dirc, spats[RE_SEARCH].pat, ob);
 	/* a character offset was added after the last match: start before it */
 	if (!off.line && off.off && pos.col < MAXCOL - 2) {
 		long c = off.off;

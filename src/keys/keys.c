@@ -252,19 +252,30 @@ static void ex(void)
 	/* the range (Neovim's parse_cmd_range()): % is 1,$; a missing address
 	   next to a separator is the cursor's line; ";" moves the cursor to its
 	   address, which the next one counts from */
-	long cur = (long)W->line + 1, l2 = NONE, n = 0;
+	long cur = (long)W->line + 1, l1 = NONE, l2 = NONE, n = 0;
 	for (p = c;; p++) {
 		p += strspn(p, " \t");
-		long a = *p == '%' ? (p++, nlines()) : address(&p, cur);
+		int all = *p == '%';
+		long a = all ? (p++, nlines()) : address(&p, cur);
 		if (a == FAIL) return;
 		if (a == NONE && (n || *p == ',' || *p == ';')) a = cur;
 		if (a == NONE) break;
-		l2 = a;
+		l1 = all ? 1 : n ? l2 : a, l2 = a;
 		n++;
 		if (*p == ';') W->line = (size_t)((cur = a > nlines() ? nlines() : a) < 1 ? 1 : cur) - 1, check_cursor_col();
 		else if (*p != ',') break;
 	}
 	while (*p == ' ' || *p == '\t' || *p == ':') p++;
+	/* :s[ubstitute] :& :~ (:&& is :& with the flag &), on the cursor's
+	   line by default; line 0 is line 1 (no EX_ZEROR) */
+	size_t k = *p == 's' ? strspn(p, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ") : *p == '&' || *p == '~';
+	if (k && (*p != 's' || (k <= 10 && !strncmp(p, "substitute", k)))) {
+		if (!n) l1 = l2 = cur;
+		if (l1 > l2) { core_msg(E, "E493: Backwards range given"); return; }
+		if (l1 < 0 || l2 > nlines()) { core_msg(E, "E16: Invalid range"); return; }
+		ex_sub(l1 > 0 ? l1 - 1 : 0, l2 > 0 ? l2 - 1 : 0, *p, p + k + strspn(p + k, " \t"));
+		return;
+	}
 	static const char *const cmds[] = { "", "w", "w!", "q", "q!", "wq", "wq!", "x", "Format" };
 	int i = 0;
 	while (i < 9 && strcmp(p, cmds[i])) i++;

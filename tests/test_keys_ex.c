@@ -7,6 +7,7 @@
 #include "check.h"
 #include "core.h"
 #include "keys.h"
+#include "uni.h"
 #include "../src/keys/k.h"
 
 enum { N = 3000 };
@@ -57,6 +58,48 @@ static void search(char *k)
 	for (unsigned t = rnd(3); t--;) strcat(k, AFTER[rnd(sizeof AFTER / sizeof *AFTER)]);
 }
 
+/* :s: what comes before, the range, the command, the pattern's and the
+   replacement's pieces, the flags, and the keys after */
+static const char *const XPRE[] = { "", "", "j", "G", "jjw", "Vj", "/o\r" };
+static const char *const XRANGE[] = { "", "", "", "%", "%", ".", "2", "1,3", ".,$", "2;+1", "$", "0", "3,4" };
+static const char *const XCMD[] = { "s", "s", "s", "s", "su", "substitute", "&", "&&", "~", "s" };
+static const char *const XDELIM[] = { "/", "/", "/", "#", "+" };
+static const char *const XPAT[] = { "foo", "o", "a", "Foo", "x", "\\<", "\\>", ".", "^", "$", "\\d", "[ab]", "\\c", "o\\+",
+                                    " ", "\\(o\\)", "\\(.\\)\\(.\\)", "zz", "\\n", "\\_s", "\\zs", "o*", "\\_.", "b\\n\\zs", "?\\\\" };
+static const char *const XSUB[] = { "", "x", "&", "\\0", "\\1", "\\2", "~", "\\r", "\\u", "\\U", "\\L", "\\l", "\\e", "\\&",
+                                    "\\\\", "é", "\\t", "-", "\\n", "AB", "\\é", "e\xcc\x81" };
+static const char *const XFLAGS[] = { "", "", "", "g", "g", "gi", "I", "e", "n", "&", "r", "ge", " 2", "g 3", "x", "gn", "i" };
+static const char *const XAFTER[] = { "n", "N", "u", "&", "g&", "x", "u", ".", "2&" };
+
+/* cases the random ones reached only with other seeds: a NUL in a line,
+   :s/\n// on the last line, a NUL after the indent */
+static const char *const XFIXED[] = { "/o\r:s+\\c+&\\n+gi\r.&", ":$s+\\n+\r", "G:3,4su/ \\zs/\\n/\r" };
+
+static void substitute(char *k)
+{
+	static unsigned fixed;
+	if (fixed < sizeof XFIXED / sizeof *XFIXED) { strcpy(k, XFIXED[fixed++]); return; }
+	strcpy(k, XPRE[rnd(sizeof XPRE / sizeof *XPRE)]);
+	strcat(k, ":");
+	/* after Visual mode's '<,'> a range is taken differently (range()) */
+	if (k[0] != 'V') strcat(k, XRANGE[rnd(sizeof XRANGE / sizeof *XRANGE)]);
+	const char *c = XCMD[rnd(sizeof XCMD / sizeof *XCMD)];
+	strcat(k, c);
+	/* letters after :s are its name (:sg is :s g, :se is :set): a blank */
+	if (c[0] == 's' && !rnd(6)) strcat(k, " ");
+	else if (c[0] == 's') {
+		const char *d = XDELIM[rnd(sizeof XDELIM / sizeof *XDELIM)];
+		strcat(k, d);
+		for (unsigned t = rnd(3); t--;) strcat(k, XPAT[rnd(sizeof XPAT / sizeof *XPAT)]);
+		strcat(k, d);
+		for (unsigned t = rnd(3); t--;) strcat(k, XSUB[rnd(sizeof XSUB / sizeof *XSUB)]);
+		if (rnd(4)) strcat(k, d);
+	}
+	strcat(k, XFLAGS[rnd(sizeof XFLAGS / sizeof *XFLAGS)]);
+	strcat(k, "\r");
+	for (unsigned t = rnd(3); t--;) strcat(k, XAFTER[rnd(sizeof XAFTER / sizeof *XAFTER)]);
+}
+
 /* n random cases of gen on text: how many differ from Neovim */
 static int check(const char *text, void (*gen)(char *))
 {
@@ -93,14 +136,18 @@ static int check(const char *text, void (*gen)(char *))
 		normal_reset();
 		/* v:errmsg: the last error, though later messages replace it */
 		char m[sizeof e.msg] = "-";
-		for (char *s = k; *s != '\n'; s++) {
-			keys_feed(&e, *s == '\r' ? KEY_ENTER : *s == 27 ? KEY_ESC : (unsigned char)*s, s[1] != '\n');
+		/* keys are code points (é is one key) */
+		for (size_t j = 0, n = strlen(k), l; k[j] != '\n'; j += l) {
+			l = uni_len((const unsigned char *)k, n, j);
+			int c = (int)uni_cp((const unsigned char *)k, n, j);
+			keys_feed(&e, c == '\r' ? KEY_ENTER : c == 27 ? KEY_ESC : c, k[j + l] != '\n');
 			if (e.msg[0] == 'E') memcpy(m, e.msg, sizeof m);
 		}
 		size_t n = text_read(e.buf->text, 0, got, sizeof got - 1);
+		if (n && got[n - 1] == '\n') n--;
 		got[n] = 0;
-		if (n && got[n - 1] == '\n') got[n - 1] = 0;
-		for (char *s = got; *s; s++) if (*s == '\n') *s = 1;
+		/* a NUL in a line (\n in a replacement) as ex_oracle.lua writes it */
+		for (size_t j = 0; j < n; j++) got[j] = got[j] == '\n' ? 1 : got[j] ? got[j] : 2;
 		if ((long)e.win->line + 1 != line || (long)e.win->col != col || strncmp(m, err, strlen(err)) || (m[0] == 'E' && m[strlen(err)] != ':')
 		    || strcmp(got, want)) {
 			k[strcspn(k, "\n")] = 0;
@@ -118,6 +165,7 @@ static int check(const char *text, void (*gen)(char *))
 
 int main(void)
 {
+	if (getenv("SEED")) rng += strtoull(getenv("SEED"), NULL, 10);
 	static const char TEXT[] = "abcdef\n  xy\nhello world\n\tq\nlast line\nz\n";
 	int bad = check(TEXT, range);
 	/* past 2^63 Neovim's line numbers wrap (":9223372036854775806+5" goes
@@ -132,7 +180,8 @@ int main(void)
 	core_free(&e);
 	unlink(path);
 	bad += check("foo bar\nabc Foo x\n  foo.bar(a) 12\nbaz?\n\nx/y?z foo\nfoofoo zz\nq .*[^$~/?\\\n", search);
+	bad += check("foo bar\nabc Foo x\n  foo.bar(a) 12\nbaz?\\\n\nx/y?z foo\nfoofoo zz\n", substitute);
 	CHECK(!bad);
-	printf("test_keys_ex: %d random ranges and %d random searches, each as Neovim (cursor, error, text)\n", N, N);
+	printf("test_keys_ex: %d random ranges, %d searches and %d substitutions, each as Neovim (cursor, error, text)\n", N, N, N);
 	return 0;
 }

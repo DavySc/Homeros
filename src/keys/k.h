@@ -136,16 +136,27 @@ enum { PUT_FIXINDENT = 1, PUT_CURSEND = 2, PUT_LINE = 4, PUT_LINE_SPLIT = 8, PUT
 void block_prep(Oparg *oap, long l, int is_del, long *textcol, long *textlen,
                 long *startspaces, long *endspaces, int *is_short, long *start_vcol, long *end_vcol);
 void set_reg(int r, const char *s, long n, int type);
+/* a growing byte buffer, kept NUL-terminated (ops.c) */
+typedef struct { char *s; long n, cap; } Sbuf;
+void bput(Sbuf *b, const char *s, long n);
 int  map_case(int c, int up);   /* utf_toupper() (up) or utf_tolower() */
+long utf8_put(int c, char *b);   /* utf_char2bytes() */
 
 /* Vim's patterns (regex.c) */
 int  re_compile(const char *pat, int icase, const char **msg);
 int  re_exec(long l, long col, Pos *s, Pos *e, Pos *sub_s, Pos *sub_e);
 char *re_skip(char *p, int delim, int *all);
+int  re_hasnl(void);   /* RF_HASNL: the compiled pattern can match a line break */
 
 /* search.c */
 int  do_search(Oparg *oap, int dirc, const char *pat, long count, int rev, int *wrapped);
 void search_reset(void);
+enum { RE_SEARCH, RE_SUBST, RE_LAST };
+int  search_regcomp(const char *pat, int save, int use, int ic, const char **msg);
+const char *get_search_pat(void);
+/* sub.c */
+void ex_sub(long l1, long l2, int cmd, char *arg);
+void sub_reset(void);
 extern int no_smartcase;
 enum { K_PAT = KEY_DEL + 0x100 };   /* the command line of / or ? was entered (normal.c) */
 

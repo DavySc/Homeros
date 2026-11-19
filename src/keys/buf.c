@@ -24,8 +24,10 @@ static int slot(long l)
 		if (ring[i].gen == gen && ring[i].l == l && ring[i].b == B) return i;
 	int i = ring_next;
 	ring_next = (ring_next + 1) % 4;
-	size_t n;
-	const unsigned char *s = core_line(E, (size_t)l, &n);
+	/* the line after the last, where a pattern's \n at the end of the
+	   last line goes (reg_getline()), is empty */
+	size_t n = 0;
+	const unsigned char *s = l < nlines() ? core_line(E, (size_t)l, &n) : (const unsigned char *)"";
 	if (n + 1 > ring[i].cap) {
 		/* doubling: a line growing by a few bytes per key (a count on an
 		   insert) would otherwise reallocate its whole copy every key */
@@ -288,9 +290,10 @@ void beginline(int flags)
 	W->col = 0;
 	coladd = 0;
 	if (flags & (BL_WHITE | BL_SOL)) {
+		/* by length: a NUL in the line (Neovim's NL) is not its end */
 		const char *s = ml_get((long)W->line);
-		long c = 0;
-		while ((s[c] == ' ' || s[c] == '\t') && !((flags & BL_FIX) && s[c + 1] == 0)) c++;
+		long c = 0, n = ml_len((long)W->line);
+		while ((s[c] == ' ' || s[c] == '\t') && !((flags & BL_FIX) && c + 1 >= n)) c++;
 		W->col = (size_t)c;
 	}
 	set_curswant = 1;

@@ -95,9 +95,7 @@ static const char *reg_line(const Reg *r, long i, long *len)
 	return p;
 }
 
-/* growing byte buffer */
-typedef struct { char *s; long n, cap; } Sbuf;
-static void bput(Sbuf *b, const char *s, long n)
+void bput(Sbuf *b, const char *s, long n)
 {
 	if (b->n + n + 1 > b->cap) {
 		long c = (b->n + n + 1) * 2;
@@ -672,7 +670,7 @@ int map_case(int c, int up)
 	return c;
 }
 
-static long utf8_put(int c, char *b)
+long utf8_put(int c, char *b)
 {
 	unsigned k = (unsigned)c;
 	if (k < 0x80) { b[0] = (char)k; return 1; }

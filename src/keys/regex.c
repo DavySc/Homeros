@@ -241,11 +241,12 @@ static Frag atom(int *simple)
 	case MAGIC + '_': {
 		at = rp;
 		c = get();
+		if (c > MAGIC) c -= MAGIC;   /* no_Magic() */
 		Frag f;
-		if (c == '^' || c == MAGIC + '^') return one_node(BOL, 0);
-		if (c == '$' || c == MAGIC + '$') return one_node(EOL, 0);
-		if (c == '.' || c == MAGIC + '.') f = one_node(ANY, 0);
-		else if (c == '[' || c == MAGIC + '[') {
+		if (c == '^') return one_node(BOL, 0);
+		if (c == '$') return one_node(EOL, 0);
+		if (c == '.') f = one_node(ANY, 0);
+		else if (c == '[') {
 			rp = at + (*at == '\\');
 			a = nrng;
 			if (!collection(&neg, &nl)) {   /* no "]": "[" is a character */
@@ -258,8 +259,8 @@ static Frag atom(int *simple)
 			skip();
 			f = one_node(SET, a);
 			prog[f.first].b = nrng, prog[f.first].neg = neg;
-		} else if (isclassletter(c - MAGIC)) f = one_node(CLASS, c - MAGIC);
-		else { err = fmt("E877: (NFA regexp) Invalid character class: %d", c > MAGIC ? c - MAGIC : c); return NONE_; }
+		} else if (isclassletter(c)) f = one_node(CLASS, c);
+		else { err = fmt("E877: (NFA regexp) Invalid character class: %d", c); return NONE_; }
 		prog[f.first].nl = 1;
 		return f;
 	}
@@ -482,6 +483,12 @@ int re_compile(const char *pat, int icase, const char **msg)
 	return err ? -1 : 0;
 }
 
+int re_hasnl(void)
+{
+	for (int i = 0; i < np; i++) if (prog[i].op == NEWLINE || prog[i].nl) return 1;
+	return 0;
+}
+
 /* ---- matching (regmatch(), regrepeat()) ---- */
 
 static Pos gs[10], ge[10], zs, ze, mend, lookend;
@@ -690,13 +697,13 @@ static int m(int n, long l, long c)
 		case NOTHING: break;
 		case ANY: case CHAR: case SET: case CLASS:
 			if ((len = one(p, l, c, 0)) >= 0) c += len;
-			else if (p->nl && c >= ml_len(l) && l + 1 < nlines()) l++, c = 0;
+			else if (p->nl && c >= ml_len(l) && l < nlines()) l++, c = 0;
 			else return 0;
 			break;
 		case BOL: if (c) return 0; break;
 		case EOL: if (c < ml_len(l)) return 0; break;
 		case BOF: if (l || c) return 0; break;
-		case EOFILE: if (l + 1 < nlines() || c < ml_len(l)) return 0; break;
+		case EOFILE: if (l + 1 != nlines() || c < ml_len(l)) return 0; break;
 		case BOW: {
 			int k = cls_at(l, c);
 			if (k <= 1 || (c && cls_before(l, c) == k)) return 0;
@@ -709,7 +716,7 @@ static int m(int n, long l, long c)
 			break;
 		}
 		case NEWLINE:
-			if (c < ml_len(l) || l + 1 >= nlines()) return 0;
+			if (c < ml_len(l) || l >= nlines()) return 0;
 			l++, c = 0;
 			break;
 		case OPEN: case CLOSE: case ZS: case ZE: {
@@ -730,7 +737,7 @@ static int m(int n, long l, long c)
 			if (!a.coladd || !z.coladd) break;
 			while (lt(a, z)) {
 				if (a.col >= ml_len(a.lnum)) {
-					if (c < ml_len(l) || l + 1 >= nlines()) return 0;
+					if (c < ml_len(l) || l >= nlines()) return 0;
 					a.lnum++, a.col = 0, l++, c = 0;
 					continue;
 				}
