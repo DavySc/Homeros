@@ -976,19 +976,23 @@ static void nv_esc(Cmdarg *cap)
 	clearop(cap->oap);
 }
 
+static void cmdline(int type, const char *range)
+{
+	E->mode = MODE_CMDLINE;
+	E->cmdtype = type;
+	E->cmdpos = E->cmdlen = strlen(range);
+	memcpy(E->cmd, range, E->cmdlen);
+}
+
+/* Visual mode is the operator ":" (op_colon() puts '<,'> on the line), a
+   count the range .,.+N-1 */
 static void nv_colon(Cmdarg *cap)
 {
-	if (VIsual_active || cap->oap->op_type != OP_NOP || cap->count0) {
-		/* ":'<,'>" and ":.,.+N" need ranges, which come with the ex
-		   commands; until then such a command line is refused */
-		if (VIsual_active) end_visual_mode();
-		clearop(cap->oap);
-		beep();
-		return;
-	}
-	E->mode = MODE_CMDLINE;
-	E->cmdtype = ':';
-	E->cmdlen = E->cmdpos = 0;
+	char r[32];
+	if (VIsual_active) cap->oap->op_type = OP_COLON;
+	else if (cap->oap->op_type != OP_NOP) clearopbeep(cap->oap);   /* ":" as a motion is not built */
+	else if (cap->count0 > 1) snprintf(r, sizeof r, ".,.+%ld", cap->count0 - 1), cmdline(':', r);
+	else cmdline(':', cap->count0 ? "." : "");
 }
 
 /* search is not built yet (src/keys/README): its command line is read and
@@ -997,9 +1001,7 @@ static void nv_search(Cmdarg *cap)
 {
 	if (VIsual_active) end_visual_mode();
 	clearopbeep(cap->oap);
-	E->mode = MODE_CMDLINE;
-	E->cmdtype = cap->cmdchar;
-	E->cmdlen = E->cmdpos = 0;
+	cmdline(cap->cmdchar, "");
 }
 
 /* ---- operators ---- */
@@ -1498,7 +1500,7 @@ static void do_pending_operator(Cmdarg *cap, long old_col)
 		if (!VIsual_active) { VIsual_active = 1; VIsual = oap->start; }
 		VIsual_mode = 22;
 	}
-	if (oap->op_type != OP_YANK && (!VIsual_active || oap->motion_force))
+	if (oap->op_type != OP_YANK && oap->op_type != OP_COLON && (!VIsual_active || oap->motion_force))
 		prep_redo(oap->regname, cap->count0, get_op_char(oap->op_type), get_extra_op_char(oap->op_type),
 		          oap->motion_force, cap->cmdchar, cap->nchar);
 	if (redo_VIsual_busy) {
@@ -1555,7 +1557,7 @@ static void do_pending_operator(Cmdarg *cap, long old_col)
 			}
 			resel_VIsual_line_count = oap->line_count;
 		}
-		if (oap->op_type != OP_YANK && oap->motion_force == 0) {
+		if (oap->op_type != OP_YANK && oap->op_type != OP_COLON && oap->motion_force == 0) {
 			int nchar = oap->op_type == OP_REPLACE ? cap->nchar : 0;
 			prep_redo(oap->regname, 0, 0, 'v', get_op_char(oap->op_type), get_extra_op_char(oap->op_type), nchar);
 			if (!redo_VIsual_busy) {
@@ -1650,6 +1652,9 @@ static void do_pending_operator(Cmdarg *cap, long old_col)
 	case OP_FORMAT:
 		op_format(oap);
 		check_cursor_col();
+		break;
+	case OP_COLON:
+		cmdline(':', "'<,'>");
 		break;
 	case OP_NR_ADD: case OP_NR_SUB:
 		VIsual_active = 1;

@@ -5,6 +5,7 @@
    (vgetorpeek()).  Typed keys alone sync undo and are recorded (gotchars(),
    may_sync_undo()); a beep drops the stuffed and executed keys
    (beep_flush()). */
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -181,7 +182,7 @@ void keys_feed(Editor *e, int k, int pending)
 	core_update(e);
 }
 
-/* ---- the command line: :w :q :wq :x :Format ---- */
+/* ---- the command line: ranges, :w :q :wq :x :Format ---- */
 
 /* Davy's BufWritePre for .sql (after/ftplugin/sql.lua): format first when
    a sqldiff.toml is in the file's directory or one above it */
@@ -211,19 +212,79 @@ static int ex_write(int force)
 	return core_write(E, B, force);
 }
 
+/* one address and its offsets, 1-based, from line cur (Neovim's
+   get_address()); NONE when there is none, FAIL after E20.  Past BIG a number
+   saturates, where Neovim's overflows. */
+static const long BIG = LONG_MAX / 4, NONE = LONG_MIN, FAIL = LONG_MIN + 1;
+static long sat(long v) { return v > BIG ? BIG : v < -BIG ? -BIG : v; }
+static long address(char **pp, long cur)
+{
+	char *p = *pp;
+	long l = NONE;
+	if (*p >= '0' && *p <= '9') l = sat(strtol(p, &p, 10));
+	else if (*p == '.' || *p == '$') l = *p++ == '.' ? cur : nlines();
+	else if (*p == '\'') {
+		static const char sp[] = "[]<>.^\"";
+		const char *q = p[1] ? strchr(sp, p[1]) : NULL;
+		Mark m = p[1] == '\'' ? W->pcmark : p[1] >= 'a' && p[1] <= 'z' ? B->mark[p[1] - 'a'] : q ? B->mark[MARK_LBRACKET + (q - sp)] : (Mark){ 0 };
+		if (!m.set) { core_msg(E, "E20: Mark not set"); return FAIL; }
+		l = (long)m.line + 1;
+		p += 2;
+	}
+	for (;;) {
+		while (*p == ' ' || *p == '\t') p++;
+		if (*p != '-' && *p != '+' && (*p < '0' || *p > '9')) break;
+		int sign = *p == '-' ? -1 : 1;
+		if (l == NONE) l = cur;
+		p += *p == '-' || *p == '+';
+		l = sat(l + sign * (*p >= '0' && *p <= '9' ? sat(strtol(p, &p, 10)) : 1));
+	}
+	*pp = p;
+	return l;
+}
+
 static void ex(void)
 {
-	char *c = E->cmd;
+	char *c = E->cmd, *p;
 	E->cmd[E->cmdlen] = 0;
 	set_last_cmdline(c);
 	while (*c == ' ' || *c == ':') c++;
-	if (!strcmp(c, "w") || !strcmp(c, "w!")) ex_write(c[1] == '!');
-	else if (!strcmp(c, "q") || !strcmp(c, "q!")) core_close(E, c[1] == '!');
-	else if (!strcmp(c, "wq") || !strcmp(c, "wq!")) { if (!ex_write(c[2] == '!')) core_close(E, 0); }
-	else if (!strcmp(c, "x")) { if (!core_modified(B) || !ex_write(0)) core_close(E, 0); }
+	/* the range (Neovim's parse_cmd_range()): % is 1,$; a missing address
+	   next to a separator is the cursor's line; ";" moves the cursor to its
+	   address, which the next one counts from */
+	long cur = (long)W->line + 1, l2 = NONE, n = 0;
+	for (p = c;; p++) {
+		p += strspn(p, " \t");
+		long a = *p == '%' ? (p++, nlines()) : address(&p, cur);
+		if (a == FAIL) return;
+		if (a == NONE && (n || *p == ',' || *p == ';')) a = cur;
+		if (a == NONE) break;
+		l2 = a;
+		n++;
+		if (*p == ';') W->line = (size_t)((cur = a > nlines() ? nlines() : a) < 1 ? 1 : cur) - 1, check_cursor_col();
+		else if (*p != ',') break;
+	}
+	while (*p == ' ' || *p == '\t' || *p == ':') p++;
+	static const char *const cmds[] = { "", "w", "w!", "q", "q!", "wq", "wq!", "x", "Format" };
+	int i = 0;
+	while (i < 9 && strcmp(p, cmds[i])) i++;
+	if (i == 9) { core_msg(E, "E492: Not an editor command: %s", c); return; }
+	if (n && i) { core_msg(E, "E481: No range allowed"); return; }
+	switch (i) {
+	case 0:   /* a range alone goes to its last line (do_one_cmd()) */
+		if (l2 < 0 && n) core_msg(E, "E16: Invalid range");
+		else if (n) {
+			W->line = (size_t)(l2 < 1 ? 1 : l2 > nlines() ? nlines() : l2) - 1;
+			beginline(BL_SOL | BL_FIX);
+		}
+		break;
+	case 1: case 2: ex_write(i == 2); break;
+	case 3: case 4: core_close(E, i == 4); break;
+	case 5: case 6: if (!ex_write(i == 6)) core_close(E, 0); break;
+	case 7: if (!core_modified(B) || !ex_write(0)) core_close(E, 0); break;
 	/* Davy's :Format (conform.nvim): the whole buffer */
-	else if (!strcmp(c, "Format")) { if (is_sql()) sql_format(0, text_len(B->text)); }
-	else if (*c) core_msg(E, "E492: Not an editor command: %s", c);
+	default: if (is_sql()) sql_format(0, text_len(B->text));
+	}
 }
 
 static void cmdline_key(int k)

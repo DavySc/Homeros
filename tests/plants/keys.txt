@@ -38,7 +38,7 @@ keys: gqq is not gqgq (test_keys_gq)~test TESTS=keys_gq~~src/keys/normal.c~	if (
 keys: v $ gq takes the next line too, as if gq did not work on lines (test_keys_gq)~test TESTS=keys_gq~~src/keys/normal.c~ && oap->op_type != OP_FORMAT && oap->end.lnum~ && oap->end.lnum
 keys: the save looks for sqldiff.toml only in the file's own directory (test_keys_gq)~test TESTS=keys_gq~~src/keys/keys.c~				if (n <= 1 || (n == 3 && d[1] == ':')) break;~				break;
 keys: a relative path looks for sqldiff.toml from the root, not the working directory (test_keys_gq)~test TESTS=keys_gq~~src/keys/keys.c~		if (B->path[0] != '/' && B->path[0] != '\\' && B->path[1] != ':') {~		if (0) {
-keys: :Format does nothing on a .sql buffer (test_keys_gq)~test TESTS=keys_gq~~src/keys/keys.c~{ if (is_sql()) sql_format(0, text_len(B->text)); }~{ }
+keys: :Format does nothing on a .sql buffer (test_keys_gq)~test TESTS=keys_gq~~src/keys/keys.c~default: if (is_sql()) sql_format(0, text_len(B->text));~default: ;
 keys: gq breaks before the blank at textwidth, not at it (recorded traces)~test TESTS=~~src/keys/ops.c~				if (i > wantcol) {~				if (i >= wantcol) {
 keys: gq leaves the cursor on the last paragraph line, not the last line it went over (recorded traces)~test TESTS=~~src/keys/ops.c~	}¶	W->line = (size_t)l;¶}~	}¶}
 keys: gq keeps a Tab in a paragraph's indent instead of making it spaces (recorded traces)~test TESTS=~~src/keys/ops.c~if (need_set_indent) set_indent(~if (need_set_indent && 0) set_indent(
@@ -76,3 +76,14 @@ keys: a map that runs leaves the count typed before it for the next command (tes
 keys: SPC after an operator starts a map instead of being its motion (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~	if (oa.op_type != OP_NOP) return 0;¶~
 keys: an incomplete map does not keep the next key, so a picker or git can take it (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (part) return e->ks.pending = 1;~	if (part) return 1;
 keys: a register's name is taken as a map's first key, so "-p opens oil (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~		if (pend[i] == '"') { if (++i == npend) return 0; }~		if (pend[i] == '"') i++;
+keys: after ";" the next address counts from the cursor, not from the address before it (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~((cur = a > nlines() ? nlines() : a) < 1 ? 1 : cur)~((a > nlines() ? nlines() : a) < 1 ? 1 : a)
+keys: ";" leaves the cursor's column past a shorter line's end (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~ - 1, check_cursor_col();~ - 1;
+keys: % is not an address, so :% and :1,% are not editor commands (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~*p == '%' ? (p++, nlines())~*p == '%' && 0 ? (p++, nlines())
+keys: a missing address before a separator is no address, so :,4 is not a range (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~(n || *p == ',' || *p == ';')~(n)
+keys: a number after an address is not added to it, so :.5 and :2 3 fail (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~(*p < '0' || *p > '9')) break;~1) break;
+keys: a range alone past the last line or below 0 goes there instead of the last line or E16 (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~		if (l2 < 0 && n) core_msg(E, "E16: Invalid range");~		if (0) core_msg(E, "E16: Invalid range");
+keys: :<line> goes to the first non-blank, as with 'startofline' (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~			beginline(BL_SOL | BL_FIX);~			beginline(BL_WHITE | BL_FIX);
+keys: the marks < and > are swapped in a range (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~"[]<>.^\""~"[]><.^\""
+keys: a line number past 2^63 overflows (test_keys_ex, UBSan)~test TESTS=keys_ex~~src/keys/keys.c~static long sat(long v) { return v > BIG ? BIG : v < -BIG ? -BIG : v; }~static long sat(long v) { return BIG ? v : v; }
+keys: Visual : leaves the cursor at its end, not the start, before the command runs (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	if (VIsual_active) cap->oap->op_type = OP_COLON;~	if (VIsual_active) end_visual_mode(), cmdline(':', "'<,'>");
+keys: N: puts .,.+N on the line, one line too many (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~".,.+%ld", cap->count0 - 1)~".,.+%ld", cap->count0)

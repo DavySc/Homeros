@@ -28,8 +28,16 @@ Not built (FEATURES.md section 2), part two of package 5:
   (H2).
 - tag objects it at.
 - register "/ (search).
-- ex commands beyond :w :w! :q :q! :wq :x: ranges, :5, :s, :g, :norm, :d,
-  :y, :e, :sp, :vs, :b. Visual @ and Q need :norm.
+- ex commands beyond :w :w! :q :q! :wq :x, ranges and :<line>: :s, :g,
+  :norm, :d, :y, :e, :sp, :vs, :b; "|" between commands; the ":" motion
+  (d:5, which beeps). Visual @ and Q need :norm.
+- ranges (checked by tests/test_keys_ex.c against nvim on random command
+  lines): a range before :w :q :wq :x gives E481, where Neovim writes part
+  of the buffer (E140 without !) or closes window N; a line number past
+  LONG_MAX / 4 saturates, where Neovim's wraps; a ":" typed after "'<,'>"
+  (blanks between) is left out, since Neovim takes it differently from one
+  after "1,2" (measured, 3 runs, not understood yet).  The marks a-z and ''
+  fail with E20 until the keys set them.
 - Insert CTRL-K digraphs, gi.
 - marks m ' `, the jump list (CTRL-O, CTRL-I in Normal mode) and the change
   list (g; g,): the core keeps and moves them (core.h Mark); keys set and

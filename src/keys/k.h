@@ -104,7 +104,7 @@ typedef struct {
 } Oparg;
 enum { OP_NOP, OP_DELETE, OP_YANK, OP_CHANGE, OP_LSHIFT, OP_RSHIFT, OP_TILDE,
 	OP_UPPER, OP_LOWER, OP_JOIN, OP_JOIN_NS, OP_REPLACE, OP_INSERT, OP_APPEND,
-	OP_NR_ADD, OP_NR_SUB, OP_FORMAT };
+	OP_NR_ADD, OP_NR_SUB, OP_FORMAT, OP_COLON };
 
 /* text objects (textobject.c); the Visual state they extend */
 extern int VIsual_active, VIsual_mode;
