@@ -52,9 +52,6 @@ typedef struct Buf {
 	Text *text;
 	Undo *undo;
 	char *path;                /* NULL for a buffer without a name */
-	char *full;                /* %F: path through file_full(), then Neovim's home_replace()
-	                              ($HOME at its start becomes ~); path as typed when
-	                              file_full() fails; set and freed with path */
 	FileId id;
 	Journal *journal;          /* crash journal; NULL if it could not be opened (msg said why) */
 	int watch;                 /* file_watch fd for the loop, -1 if none */
