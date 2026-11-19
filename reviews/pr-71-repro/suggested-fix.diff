@@ -1,0 +1,11 @@
+85,86c85,89
+< 	if (k == TQ_STRING)
+< 		for (size_t i = p + 1; i + 1 < e; i++)
+---
+> 	if (k == TQ_STRING) {
+> 		/* from the window's start, or the run of backslashes it is in */
+> 		size_t i = p + 1 < a ? a : p + 1;
+> 		while (i > p + 1 && tsql_byte(r, i - 1) == '\\') i--;
+> 		for (; i + 1 < e && i < z; i++)
+91a95
+> 	}
