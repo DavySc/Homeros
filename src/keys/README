@@ -144,6 +144,19 @@ and 1.0 s in Neovim (one run each), most of it in core_vcol (package 4).
 
 Choices:
 - go is gg everywhere: Normal, after an operator, Visual (Davy, FEATURES.md).
+- Davy's maps (FEATURES.md 4), Normal mode only, as nnoremap: SPC ff
+  files, SPC fg grep, SPC fr registers, SPC , buffers, SPC e explorer
+  (tools_pick), SPC pv and - oil (tools_oil), SPC g g s l L d b B and
+  SPC h s r S u p (git_leader).  They run in main.c's key chain
+  (keys_map()), not in keys_feed, so conform.py and the fuzzers, whose
+  Neovim has no maps, check the Vim keys alone; test_keys_map checks the
+  maps.  Like Neovim's maps they also follow a count or a register, which
+  they take, as a <Cmd> map does; a key that completes no map runs Space's
+  own motion, then the keys.  A lone SPC waits for the next key (no
+  'timeoutlen', as with Davy's which-key); which-key's hint popup is not
+  built yet.  Maps that only exist later (SPC i s snippets, SPC u k, SPC x,
+  SPC c, SPC d, SPC a, SPC o) join the table with their packages; a map
+  typed in a macro is not recorded.
 - 'clipboard' is unnamedplus (Davy, 2026-11-18): every yank, delete and
   put of the unnamed register, "+ and "* goes through the system clipboard
   of the Windows or Wayland window (the terminal has none, as Neovim
