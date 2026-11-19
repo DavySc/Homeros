@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <time.h>
 #include "core.h"
 #include "shada.h"
@@ -29,18 +30,6 @@ static int where(char *out, size_t n)
 {
 	file_stdpath(out, n, 1, SEP "oldfiles");
 	return strlen(out) + 1 >= n ? -1 : 0;
-}
-
-/* shada_removable(): a prefix of the 'shada' r items, ignoring case */
-static int removable(const char *p)
-{
-	static const char *const r[] = { "/tmp/", "/private/" };
-	for (size_t i = 0; i < sizeof r / sizeof *r; i++) {
-		size_t k = 0;
-		while (r[i][k] && (p[k] | 0x20) == r[i][k]) k++;
-		if (!r[i][k]) return 1;
-	}
-	return 0;
 }
 
 int shada_load(const char *name, ShadaLine **v, size_t *nv, FileId *id)
@@ -108,10 +97,17 @@ int shada_read(void)
 
 const char *shada_oldfile(size_t i) { return i < nold ? old[i].path : NULL; }
 
+/* Neovim's shada_removable() with the default 'shada' r/tmp/,r/private/,
+   ignoring case on every system.  Not in shada.h: test_shada.c declares it */
+int shada_removable(const char *path)
+{
+	return !strncasecmp(path, "/tmp/", 5) || !strncasecmp(path, "/private/", 9);
+}
+
 /* buffer path left at time t: its entry moves to the newest time */
 static void note(const char *path, double t)
 {
-	if (removable(path)) return;
+	if (shada_removable(path)) return;
 	for (size_t i = 0; i < nleft; i++)
 		if (!strcmp(left[i].path, path)) { left[i].t = t; return; }
 	if (nleft == capleft) {

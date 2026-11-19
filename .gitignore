@@ -4,3 +4,4 @@ build/
 design/specs/states/
 crash-*
 .frama-c/
+__pycache__/
