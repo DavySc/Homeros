@@ -467,6 +467,13 @@ char *re_skip(char *p, int delim, int *all)
    \c and \C in the pattern win.  0, or -1 with Neovim's message in *msg. */
 int re_compile(const char *pat, int icase, const char **msg)
 {
+	/* the program compiled last, kept: 'hlsearch' compiles for each line
+	   drawn (keys_hl()) */
+	static char last[sizeof ((Editor *)0)->cmd + 1];
+	static int last_ic = -1;
+	*msg = NULL;
+	if (last_ic == !!icase && !strcmp(pat, last)) return 0;
+	last_ic = -1;
 	np = nrng = nparens = 0;
 	memset(closed, 0, sizeof closed);
 	err = NULL;
@@ -480,6 +487,7 @@ int re_compile(const char *pat, int icase, const char **msg)
 	if (!err) prog[f.last].next = e, start = f.first;
 	ic = ic != 0;
 	*msg = err;
+	if (!err && strlen(pat) < sizeof last) strcpy(last, pat), last_ic = !!icase;
 	return err ? -1 : 0;
 }
 

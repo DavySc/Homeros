@@ -1,7 +1,8 @@
 /* The command line against Neovim on random keys (src/keys/ex_oracle.lua):
    ex ranges and :<line>, then / ? n N * # g* g# with offsets, as motions
-   and with operators.  After each: the cursor, the error number and the
-   text.  Marks a-z are not set by the keys yet, so 'a fails in both. */
+   and with operators, then :s, with :noh and CTRL-L among the keys after.
+   After each: the cursor, the error number, the text and the cells
+   'hlsearch' draws from the top line on.  Marks a-z are not set by the keys yet, so 'a fails in both. */
 #include <string.h>
 #include <unistd.h>
 #include "check.h"
@@ -19,7 +20,9 @@ static const char *const SPRE[] = { "", "", "w", "j", "G$", "jjw", "2", "d", "y"
 static const char *const PAT[] = { "foo", "o", "a", "Foo", "x", "\\<", "\\>", ".", "^", "$", "\\d", "[ab]", "\\c",
                                    "o\\+", " ", "\\/", "\\?", "?", "/", "b.r", "\\(o\\)", "*", "zz" };
 static const char *const OFF[] = { "", "", "", "/", "/e", "/s+1", "/b-1", "/e+1", "/+1", "/-1", "/2", "/e-2", "/s" };
-static const char *const AFTER[] = { "n", "N", "2n", "*", "#", "g*", "g#", "2*", ".", "dn", "yN", "n.", "x" };
+/* Esc before a : (an ex command as a motion is not built) */
+static const char *const AFTER[] = { "n", "N", "2n", "*", "#", "g*", "g#", "2*", ".", "dn", "yN", "n.", "x",
+                                     "\x1b:noh\r", "\x0c", "zt", "jzt", "d\x0c", "v\x0c\x1b", "\x1b" "3:nohlsearch\r", "\x1b:nohlsearc\r" };
 
 static void range(char *k)
 {
@@ -69,7 +72,7 @@ static const char *const XPAT[] = { "foo", "o", "a", "Foo", "x", "\\<", "\\>", "
 static const char *const XSUB[] = { "", "x", "&", "\\0", "\\1", "\\2", "~", "\\r", "\\u", "\\U", "\\L", "\\l", "\\e", "\\&",
                                     "\\\\", "é", "\\t", "-", "\\n", "AB", "\\é", "e\xcc\x81" };
 static const char *const XFLAGS[] = { "", "", "", "g", "g", "gi", "I", "e", "n", "&", "r", "ge", " 2", "g 3", "x", "gn", "i" };
-static const char *const XAFTER[] = { "n", "N", "u", "&", "g&", "x", "u", ".", "2&" };
+static const char *const XAFTER[] = { "n", "N", "u", "&", "g&", "x", "u", ".", "2&", ":noh\r", "\x0c", "zt", "jzt" };
 
 /* cases the random ones reached only with other seeds: a NUL in a line,
    :s/\n// on the last line, a NUL after the indent */
@@ -100,6 +103,40 @@ static void substitute(char *k)
 	for (unsigned t = rnd(3); t--;) strcat(k, XAFTER[rnd(sizeof XAFTER / sizeof *XAFTER)]);
 }
 
+/* the cells 'hlsearch' draws, as ex_oracle.lua writes them: the core's
+   use of keys_hl() (include/keys.h).  Drawn five times: after the first,
+   only the line copies may grow, each once (src/keys/buf.c, slot()) */
+static unsigned long allocs;
+static void on_malloc(const volatile void *p, size_t n) { (void)p, (void)n, allocs++; }
+static void on_free(const volatile void *p) { (void)p; }
+int __sanitizer_install_malloc_and_free_hooks(void (*)(const volatile void *, size_t), void (*)(const volatile void *));
+
+static void hlsearch(Editor *e, char *b, size_t cap)
+{
+	E = e;
+	unsigned long a = 0;
+	for (int pass = 0; pass < 5; pass++) {
+		a = pass == 1 ? allocs : a;
+		size_t n = (size_t)snprintf(b, cap, "%zu", e->win->top);
+		for (size_t l = e->win->top; l < core_lines(e); l++) {
+			long len = ml_len((long)l), w = vcol_of((long)l, len);
+			b[n++] = 1;
+			memset(b + n, '.', (size_t)w + 1);
+			size_t s, z;
+			for (size_t c = 0; c <= (size_t)len && keys_hl(e, e->win, l, c, &s, &z);) {
+				/* an empty match: one character */
+				size_t to = z > s ? z : s + (size_t)clen(ml_get((long)l), len, (long)s);
+				for (long j = (long)s; j < (long)to && j <= len; j += clen(ml_get((long)l), len, j))
+					memset(b + n + vcol_of((long)l, j), '#', (size_t)(vcol_end((long)l, j) - vcol_of((long)l, j) + 1));
+				c = to;
+			}
+			n += (size_t)w + 1;
+		}
+		b[n] = 0;
+		CHECK(n < cap && (pass < 1 || allocs - a <= 3));
+	}
+}
+
 /* n random cases of gen on text: how many differ from Neovim */
 static int check(const char *text, void (*gen)(char *))
 {
@@ -121,13 +158,14 @@ static int check(const char *text, void (*gen)(char *))
 	int bad = 0, none = 0;
 	for (int i = 0; i < N; i++) {
 		long line, col;
-		char err[16], want[512], got[512], of[80];
+		char err[16], want[512], got[512], of[80], hw[1024], hg[1024];
 		CHECK(fgets(k, sizeof k, c));
 		snprintf(of, sizeof of, "%s.%d", out, i + 1);
 		FILE *o = fopen(of, "r");
 		/* none: Neovim looped (a case that ends in a loop, such as a
 		   recursive macro, which the generator does not make, measured) */
-		int ok = o && fgets(want, sizeof want, o) && sscanf(want, "%ld %ld %15s", &line, &col, err) == 3 && fgets(want, sizeof want, o);
+		int ok = o && fgets(want, sizeof want, o) && sscanf(want, "%ld %ld %15s", &line, &col, err) == 3 && fgets(want, sizeof want, o)
+		         && fgets(hw, sizeof hw, o);
 		if (o) fclose(o), unlink(of);
 		if (!ok) { none++; continue; }
 		want[strcspn(want, "\n")] = 0;
@@ -148,11 +186,15 @@ static int check(const char *text, void (*gen)(char *))
 		got[n] = 0;
 		/* a NUL in a line (\n in a replacement) as ex_oracle.lua writes it */
 		for (size_t j = 0; j < n; j++) got[j] = got[j] == '\n' ? 1 : got[j] ? got[j] : 2;
+		hw[strcspn(hw, "\n")] = 0;
+		hlsearch(&e, hg, sizeof hg);
 		if ((long)e.win->line + 1 != line || (long)e.win->col != col || strncmp(m, err, strlen(err)) || (m[0] == 'E' && m[strlen(err)] != ':')
-		    || strcmp(got, want)) {
+		    || strcmp(got, want) || strcmp(hg, hw)) {
 			k[strcspn(k, "\n")] = 0;
 			for (char *s = k; *s; s++) if (*s == '\r' || *s == 27) *s = *s == '\r' ? '|' : '~';
-			if (bad++ < 10) fprintf(stderr, "%d %s: line %zu col %zu [%s], Neovim %ld %ld %s%s\n", i, k, e.win->line + 1, e.win->col, e.msg, line, col, err, strcmp(got, want) ? " (text differs)" : "");
+			if (bad++ < 10) fprintf(stderr, "%d %s: line %zu col %zu [%s], Neovim %ld %ld %s%s%s\n", i, k, e.win->line + 1, e.win->col, e.msg, line, col, err, strcmp(got, want) ? " (text differs)" : "",
+				                      strcmp(hg, hw) ? " (hlsearch differs)" : "");
+			if (bad <= 10 && strcmp(hg, hw)) fprintf(stderr, "  %s\n  Neovim %s\n", hg, hw);
 		}
 		core_free(&e);
 	}
@@ -166,6 +208,7 @@ static int check(const char *text, void (*gen)(char *))
 int main(void)
 {
 	if (getenv("SEED")) rng += strtoull(getenv("SEED"), NULL, 10);
+	CHECK(__sanitizer_install_malloc_and_free_hooks(on_malloc, on_free));
 	static const char TEXT[] = "abcdef\n  xy\nhello world\n\tq\nlast line\nz\n";
 	int bad = check(TEXT, range);
 	/* past 2^63 Neovim's line numbers wrap (":9223372036854775806+5" goes
@@ -177,6 +220,11 @@ int main(void)
 	CHECK(!core_open(&e, path));
 	for (const char *s = ":99999999999999999999+99999999999999999999+9999999999999999999\r"; *s; s++) keys_feed(&e, *s == '\r' ? KEY_ENTER : *s, s[1] != 0);
 	CHECK(e.win->line == 5 && !e.msg[0]);
+	/* 'hlsearch' after the text changed without a key (a reload, a format) */
+	size_t hs, hz;
+	for (const char *s = "/xy\r"; *s; s++) keys_feed(&e, *s == '\r' ? KEY_ENTER : *s, s[1] != 0);
+	CHECK(keys_hl(&e, e.win, 1, 0, &hs, &hz) && hs == 2 && hz == 4 && !core_edit(&e, 7, 0, "ab", 2));
+	CHECK(keys_hl(&e, e.win, 1, 0, &hs, &hz) && hs == 4 && hz == 6);
 	core_free(&e);
 	unlink(path);
 	bad += check("foo bar\nabc Foo x\n  foo.bar(a) 12\nbaz?\n\nx/y?z foo\nfoofoo zz\nq .*[^$~/?\\\n", search);

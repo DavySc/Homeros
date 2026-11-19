@@ -9,14 +9,16 @@
 static struct { char pat[sizeof ((Editor *)0)->cmd + 1]; int set, noscs; } spats[2];
 static int last_idx;
 static char used[sizeof spats[0].pat];   /* mr_pattern: the last compiled */
+static int used_ic;
 const char *get_search_pat(void) { return used; }
 static struct { int dir, line, end; long off; } off = { '/', 0, 0, 0 };
 int no_smartcase;   /* * and # take 'ignorecase' alone */
+int no_hlsearch;    /* :noh, CTRL-L: matches not shown until the next search */
 
 void search_reset(void)
 {
 	memset(spats, 0, sizeof spats);
-	last_idx = no_smartcase = 0;
+	last_idx = no_smartcase = no_hlsearch = 0;
 	off.dir = '/', off.line = off.end = 0, off.off = 0;
 }
 
@@ -37,15 +39,23 @@ static int has_upper(const char *p, int all)
 	return 0;
 }
 
+/* ic, or 'ignorecase' with 'smartcase' */
+static int ic_of(char *pat, int noscs, int ic)
+{
+	int all;
+	re_skip(pat, 0, &all);
+	return ic >= 0 ? ic : noscs || !has_upper(pat, all);
+}
+
 /* search_regcomp(): pat, or for none spats[use] (RE_LAST: the last used),
    kept as spats[save] (-1: not kept); ic -1 takes 'ignorecase' and
    'smartcase'.  0 compiled; 1 no pattern, said; -1 *msg says why not. */
 int search_regcomp(const char *pat, int save, int use, int ic, const char **msg)
 {
-	int noscs = no_smartcase;
+	int noscs = no_smartcase, i = -1;
 	no_smartcase = 0;
 	if (!pat || !*pat) {
-		int i = use == RE_LAST ? last_idx : use;
+		i = use == RE_LAST ? last_idx : use;
 		if (!spats[i].set) {
 			core_msg(E, use == RE_SUBST ? "E33: No previous substitute regular expression" : "E35: No previous regular expression");
 			return 1;
@@ -53,11 +63,22 @@ int search_regcomp(const char *pat, int save, int use, int ic, const char **msg)
 		pat = spats[i].pat, noscs = spats[i].noscs;
 	}
 	if (pat != used) snprintf(used, sizeof used, "%s", pat);
-	if (save >= 0) snprintf(spats[save].pat, sizeof spats[save].pat, "%s", used), spats[save].set = 1, spats[save].noscs = noscs, last_idx = save;
-	int all;
-	re_skip(used, 0, &all);
-	return re_compile(used, ic >= 0 ? ic : noscs || !has_upper(used, all), msg);
+	/* save_re_pat(): a pattern kept anew shows its matches */
+	if (save >= 0) {
+		no_hlsearch &= i == save;
+		snprintf(spats[save].pat, sizeof spats[save].pat, "%s", used), spats[save].set = 1, spats[save].noscs = noscs, last_idx = save;
+	}
+	return re_compile(used, used_ic = ic_of(used, noscs, ic), msg);
 }
+
+/* mr_pattern compiled again as search_regcomp() did ('hlsearch' compiles
+   its own while :s asks) */
+void search_recompile(void)
+{
+	const char *msg;
+	re_compile(used, used_ic, &msg);
+}
+
 
 static int nul_at(Pos p) { return p.col >= ml_len(p.lnum); }
 static long clen_at(Pos p) { return clen(ml_get(p.lnum), ml_len(p.lnum), p.col); }
@@ -141,6 +162,7 @@ int do_search(Oparg *oap, int dirc, const char *pat, long count, int rev, int *w
 {
 	Pos pos = cur();
 	int delim = dirc;
+	no_hlsearch = 0;
 	if (!dirc) dirc = off.dir;
 	else off.dir = dirc;
 	if (rev) dirc = dirc == '/' ? '?' : '/';
@@ -201,4 +223,39 @@ int do_search(Oparg *oap, int dirc, const char *pat, long count, int rev, int *w
 	setcur(pos);
 	set_curswant = 1;
 	return ret;
+}
+
+/* next_search_hl() from the window's top line on, as prepare_search_hl()
+   goes (a match that starts above the window is not drawn) */
+static int hl(size_t line, size_t col, size_t *s, size_t *z)
+{
+	const char *msg;
+	if (no_hlsearch || !spats[last_idx].set || re_compile(spats[last_idx].pat, ic_of(spats[last_idx].pat, spats[last_idx].noscs, -1), &msg)) return 0;
+	if (!col) buf_changed();   /* the text may have changed since the last key */
+	long l = (long)line;
+	Pos p = { !col && line > W->top && re_hasnl() ? (long)W->top : l, (long)col, 0 }, ms, me;
+	for (int r;;) {
+		if ((r = re_exec(p.lnum, p.col, &ms, &me, NULL, NULL)) < 0 || (!r && p.lnum == l)) return 0;
+		if (!r) p.lnum++, p.col = 0;
+		else if (ms.lnum == l || me.lnum > l || (me.lnum == l && me.col)) {
+			*s = (size_t)(ms.lnum < l ? 0 : ms.col), *z = (size_t)(me.lnum > l ? ml_len(l) + 1 : me.col);
+			return 1;
+		} else if (!eq(ms, me)) p = me;
+		else if (me.col < ml_len(me.lnum)) p.col = me.col + clen_at(me);
+		else p.lnum = me.lnum + 1, p.col = 0;
+	}
+}
+
+/* keys_hl(): the keys read the current window and buffer, so w is made
+   them while it runs.  re_compile() keeps an unchanged pattern, so nothing
+   allocates after the first call but the line copies growing to the
+   longest line (buf.c, slot()). */
+int keys_hl(Editor *e, const Win *w, size_t line, size_t col, size_t *s, size_t *z)
+{
+	Win *ow = e->win;
+	Buf *ob = e->buf;
+	E = e, e->win = (Win *)w, e->buf = w->buf;
+	int r = hl(line, col, s, z);
+	e->win = ow, e->buf = ob;
+	return r;
 }

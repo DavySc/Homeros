@@ -268,8 +268,13 @@ static void ex(void)
 	while (*p == ' ' || *p == '\t' || *p == ':') p++;
 	/* :s[ubstitute] :& :~ (:&& is :& with the flag &), on the cursor's
 	   line by default; line 0 is line 1 (no EX_ZEROR) */
-	size_t k = *p == 's' ? strspn(p, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ") : *p == '&' || *p == '~';
-	if (k && (*p != 's' || (k <= 10 && !strncmp(p, "substitute", k)))) {
+	size_t k = strspn(p, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
+	if (k >= 3 && k <= 10 && !strncmp(p, "nohlsearch", k) && !p[k]) {
+		if (n) core_msg(E, "E481: No range allowed");
+		else no_hlsearch = 1;
+		return;
+	}
+	if (k ? k <= 10 && !strncmp(p, "substitute", k) : (k = *p == '&' || *p == '~')) {
 		if (!n) l1 = l2 = cur;
 		if (l1 > l2) { core_msg(E, "E493: Backwards range given"); return; }
 		if (l1 < 0 || l2 > nlines()) { core_msg(E, "E16: Invalid range"); return; }

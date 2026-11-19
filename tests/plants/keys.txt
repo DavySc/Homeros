@@ -133,3 +133,15 @@ keys: \_s is E877, its letter read with its magic (test_keys_ex)~test TESTS=keys
 keys: \n does not match the last line's line break (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~			if (c < ml_len(l) || l >= nlines()) return 0;¶			l++, c = 0;~			if (c < ml_len(l) || l + 1 >= nlines()) return 0;¶			l++, c = 0;
 keys: beginline stops at a NUL in the line (test_keys_ex)~test TESTS=keys_ex~~src/keys/buf.c~((flags & BL_FIX) && c + 1 >= n)~((flags & BL_FIX) && !s[c + 1] + 0 * n)
 keys: u after :s goes back to an undo step the oracle's text load made (test_keys_ex)~test TESTS=keys_ex~~src/keys/ex_oracle.lua~vim.bo.undolevels = -1¶~
+keys: 'hlsearch' draws while :noh hides it (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~if (no_hlsearch || !spats~if (0 * no_hlsearch || !spats
+keys: a new search leaves the matches hidden (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~	int delim = dirc;¶	no_hlsearch = 0;~	int delim = dirc;
+keys: :s with a new pattern leaves the matches hidden (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~no_hlsearch &= i == save;~no_hlsearch &= 1;
+keys: a match from a line above is not drawn (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~!col && line > W->top && re_hasnl()~0 * !col && line > W->top && re_hasnl()
+keys: 'hlsearch' starts at the first line, not the window's top (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~(long)W->top : l~0 : l
+keys: a match's line break is not drawn (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~ml_len(l) + 1 : me.col~ml_len(l) : me.col
+keys: 'hlsearch' reads stale lines after an edit without a key (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~	if (!col) buf_changed();~
+keys: the kept regex ignores 'ignorecase' (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~if (last_ic == !!icase && !strcmp~if (last_ic >= 0 && !strcmp
+keys: CTRL-L hides the matches in Visual mode (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~!checkclearop(cap->oap) && !VIsual_active) no_hlsearch~!checkclearop(cap->oap)) no_hlsearch
+keys: CTRL-L hides the matches after an operator (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~if (!checkclearop(cap->oap) && !VIsual_active) no_hlsearch~if (!VIsual_active) no_hlsearch
+keys: :noh takes a range (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~		if (n) core_msg(E, "E481: No range allowed");¶		else no_hlsearch = 1;~		no_hlsearch = 1;
+keys: line copies grow on every redraw (test_keys_ex)~test TESTS=keys_ex~~src/keys/buf.c~big = cap = cap > big ? cap : big;~big = cap = n + 1;

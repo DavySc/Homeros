@@ -158,6 +158,7 @@ const char *get_search_pat(void);
 void ex_sub(long l1, long l2, int cmd, char *arg);
 void sub_reset(void);
 extern int no_smartcase;
+extern int no_hlsearch;
 enum { K_PAT = KEY_DEL + 0x100 };   /* the command line of / or ? was entered (normal.c) */
 
 /* typeahead (keys.c) */

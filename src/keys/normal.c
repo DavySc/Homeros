@@ -1313,7 +1313,7 @@ static int known(int c)
 {
 	return has(" \"#$%&'()*+,-./0:;<>?@ABCDEFGHIJLMNOPQRSTUWXYV[]^_`abcdefghijklmnopqrstuvwxyz{|}~", c) || c == 1 || c == 3
 	       || c == 8 || c == 10 || c == 13 || c == 14 || c == 16 || c == 22 || c == 24 || c == KEY_CTRL_R
-	       || c == 4 || c == 21 || c == 6 || c == 2 || c == 5 || c == 25 || c == 23
+	       || c == 4 || c == 12 || c == 21 || c == 6 || c == 2 || c == 5 || c == 25 || c == 23
 	       || c == KEY_ESC || c == KEY_BS || c == KEY_UP || c == KEY_DOWN || c == KEY_LEFT || c == KEY_RIGHT || c == KEY_DEL;
 }
 
@@ -1380,6 +1380,8 @@ static void execute(Cmdarg *cap)
 	case 'H': case 'L': case 'M': nv_scroll(cap); break;
 	case 'z': nv_zet(cap); break;
 	case 23: nv_window(cap); break;
+	/* nv_clear(), and Neovim's default map: CTRL-L is :nohlsearch first */
+	case 12: if (!checkclearop(cap->oap) && !VIsual_active) no_hlsearch = 1; break;
 	/* marks come with the core's mark table (include/core.h, after
 	   package 4): until then m sets nothing and every mark is unset (E20) */
 	case 'm':   /* nv_mark(): setmark_pos() knows these names */
