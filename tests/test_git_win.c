@@ -28,6 +28,7 @@ int syntax_open(void) { return 0; }
 void syntax_edit(void) {}
 void syntax_free(void) {}
 void syntax_faces(void) {}
+int syntax_md(void) { return 0; }
 
 static char top[MAX_PATH];
 
