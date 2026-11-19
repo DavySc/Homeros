@@ -1,10 +1,7 @@
 # Copies tools/dupes.py lets pass until their owners fold them into one
 # function (CLAUDE.md, no duplication).  The list only shrinks: never add a line.
-src/core/win.c src/core/win.c cfabdce7
-src/core/win.c src/core/win.c 18092592
-src/core/win.c src/core/win.c 4741219c
 src/file/file.c src/file/win.c 902a5964
-src/file/state.c src/file/win.c 1b27e05a
+src/file/state.c src/file/win.c f6b010e6
 src/loop/loop.c src/loop/loop.c c184535e
 src/loop/loop.c src/loop/win.c e3ec2e1f
 src/org/org.c src/org/org.c 3d3a4c38

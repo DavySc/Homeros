@@ -96,32 +96,31 @@ static void token(Editor *e, Grid *g, const char *t)
 	}
 	if (!strncmp(t, "k:", 2)) { feed(e, t + 2); return; }
 	if (!strncmp(t, "m:", 2)) { e->buf->mark[t[2] - 'a'] = (Mark){ w->line, w->col, 1 }; return; }
-	if (!strncmp(t, "e:", 2)) { core_edit_file(e, t + 2, 0); goto upd; }
-	if (!strncmp(t, "b:", 2)) { core_buf_goto(e, atoi(t + 2)); goto upd; }
 	if (!strncmp(t, "size:", 5)) {
 		int r, c;
 		CHECK(sscanf(t + 5, "%d:%d", &r, &c) == 2 && !grid_resize(g, r, c));
 		return;
 	}
-	if (t[0] == 'w' && strchr(t, ':')) {          /* CTRL-W with a count */
+	/* CTRL-W with a count, and the ':' of the ex commands (":sp<CR>"), go
+	   through the keys as the recorder types them, so normal_cmd() settles
+	   the wanted column of the window they leave (PR 62's review); the keys
+	   have no such ex command (nor CTRL-^), so the core then runs it */
+	if (t[0] == 'w' && strchr(t, ':')) {
 		const char *p = t + 1;
-		long n = count_of(&p);
-		int c = p[1];
-		switch (c) {
-		case 's': case 'v': core_split(e, c == 'v', (int)n); break;
-		case 'c': case 'q': if (!one) core_close(e, 0); break;
-		case 'o': core_only(e); break;
-		case 'w': case 'W': case 'h': case 'j': case 'k': case 'l': case 't': case 'b': case 'p':
-			core_win_goto(e, c, n); break;
-		case '=': core_equal(e); break;
-		case '+': case '-': core_resize(e, 0, c == '+' ? (n ? n : 1) : -(n ? n : 1), 0); break;
-		case '>': case '<': core_resize(e, 1, c == '>' ? (n ? n : 1) : -(n ? n : 1), 0); break;
-		case '_': core_resize(e, 0, n, 1); break;
-		case '|': core_resize(e, 1, n, 1); break;
-		default: core_win_move(e, c, n);
-		}
+		count_of(&p);
+		if (one && (p[1] == 'c' || p[1] == 'q')) goto upd;
+		for (const char *c = t + 1; c < p; c++) keys_feed(e, *c, 0);
+		keys_feed(e, 23, 0);
+		keys_feed(e, p[1], 0);
 		goto upd;
 	}
+	static const char *const ex[] = { "wrap", "nowrap", "sp", "vs", "new", "vnew", "close", "q", "only",
+	                                  "bn", "bp", "alt", "enew", "bd" };
+	int x = t[1] == ':' && (t[0] == 'e' || t[0] == 'b');
+	for (size_t i = 0; i < sizeof ex / sizeof *ex; i++) x |= !strcmp(t, ex[i]);
+	if (x) { keys_feed(e, ':', 0); keys_feed(e, KEY_ESC, 0); }
+	if (!strncmp(t, "e:", 2)) { core_edit_file(e, t + 2, 0); goto upd; }
+	if (!strncmp(t, "b:", 2)) { core_buf_goto(e, atoi(t + 2)); goto upd; }
 	if (!strcmp(t, "wrap") || !strcmp(t, "nowrap")) { core_set_wrap(e, t[0] == 'w'); goto upd; }
 	if (!strcmp(t, "sp") || !strcmp(t, "vs")) { core_split(e, t[0] == 'v', 0); goto upd; }
 	if (!strcmp(t, "new") || !strcmp(t, "vnew")) {

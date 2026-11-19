@@ -8,6 +8,11 @@
 #define FILE_H
 #include <stddef.h>
 #include "text.h"
+#ifdef _WIN32
+#include <limits.h>
+#undef PATH_MAX   /* mingw's is MAX_PATH, in UTF-16 units: as UTF-8, 3 bytes each */
+#define PATH_MAX (3 * 260)
+#endif
 
 typedef struct {
 	int exists;
@@ -48,6 +53,22 @@ int  file_watch(const char *path);
    count (they update id).  The core warns at the first edit after a 1 and a
    plain save over it is refused as before (DESIGN.md "External change"). */
 int  file_watch_read(int fd, const char *path, const FileId *id);
+
+/* Neovim's stdpath(state ? "state" : "data") for homeros, followed by name
+   (which starts with the separator), into f, n bytes, truncated:
+   $XDG_STATE_HOME/homeros (default ~/.local/state/homeros) or the data twin
+   ($XDG_DATA_HOME, ~/.local/share); %LOCALAPPDATA%\homeros-data for both on
+   Windows (an XDG variable set there wins, as in Neovim). */
+void file_stdpath(char *f, size_t n, int state, const char *name);
+/* mkdir -p of the directories in f (a file's path; '\\' also on Windows), mode
+   0700; f is unchanged after.  A directory that cannot be made shows as the
+   file's open failing. */
+void file_mkdirs(char *f);
+/* Neovim's full name of a buffer (fix_fname()) into out, PATH_MAX bytes: the
+   directory resolved (symlinks too), the last part as typed, so a symlink or
+   a file not made yet keeps its name; GetFullPathNameW on Windows.  The
+   directory must exist.  0 ok, -1 error. */
+int  file_full(const char *path, char *out);
 
 /* Crash journal (Vim's swap file; Neovim's place for it): the buffer as it
    was when journalling started (its base: the bytes, the core's state flags

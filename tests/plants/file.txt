@@ -18,7 +18,7 @@ journal: no new base after a save~test TESTS=file_journal~~src/file/journal.c~	i
 journal: due counted from the last record~test TESTS=file_journal~~src/file/journal.c~	if (!j->dirty) { j->dirty = 1; j->first_ms = loop_now() / 1000000; }~	j->dirty = 1; j->first_ms = loop_now() / 1000000;
 journal: sync without fdatasync~test TESTS=file_journal~~src/file/journal.c~	fdatasync(j->fd);~
 journal: directory never fsynced~test TESTS=file_journal~~src/file/journal.c~	if (!j->dir_synced) j->dir_synced = !state_sync_dir(j->name);~	if (0) j->dir_synced = !state_sync_dir(j->name);
-journal: readable by others~test TESTS=file_journal~~src/file/state.c~mkdir(out, 0700)~mkdir(out, 0755)
+journal: readable by others~test TESTS=file_journal~~src/file/state.c~mkdir(f, 0700)~mkdir(f, 0755)
 journal: record length not bounded (fuzzer)~fuzz FUZZERS=file_journal FUZZ_SECONDS=60~~src/file/journal.c~		if (!r.ok || e[2] > r.n) return 0;~		if (!r.ok) return 0;
 core wiring: journal kept after a save~test TESTS=file_core~~src/core/core.c~	case SAVE_OK:¶		b->saved_seq = undo_seq(b->undo);¶		b->changed = 0;¶		if (b->journal) journal_saved(b->journal);~	case SAVE_OK:¶		b->saved_seq = undo_seq(b->undo);¶		b->changed = 0;
 core wiring: flags not journalled~test TESTS=file_core~~src/core/core.c~	if (b->journal && jstate(b) != before && journal_edit~	if (0 && b->journal && jstate(b) != before && journal_edit
@@ -59,3 +59,5 @@ core wiring: recovery ignores the format when the lines equal the file's~test TE
 core wiring: :e keeps the old format~test TESTS=file_eol~~src/core/core.c~		b->dos = dos;¶		b->saved_seq~		b->dos = dos && b->dos;¶		b->saved_seq
 win: data with no LF unix on Windows~win WIN=file~~src/file/eol.c~enum { FIRST = 1 };   /* 'fileformats' "dos,unix" */~enum { FIRST = 0 };
 win: saved with LF in a dos file~win WIN=file~~src/file/win.c~file_text_read(t, &pos, n, dos, b, sizeof b)~file_text_read(t, &pos, n, dos && 0, b, sizeof b)
+file: stdpath reads the data variable for state~test TESTS=file_journal~~src/file/state.c~	const char *d = getenv(state ? "XDG_STATE_HOME" : "XDG_DATA_HOME")~	const char *d = getenv(state ? "XDG_DATA_HOME" : "XDG_STATE_HOME")
+file: file_full leaves the directory as typed~test TESTS=shada~~src/file/state.c~	if (!realpath(dir, d)) return -1;~	if (!realpath(dir, d)) return -1;¶	snprintf(d, sizeof d, "%s", dir);

@@ -1,5 +1,8 @@
 /* oil.nvim's model, from its Lua (the comments name the file): the cache
-   of entries by id, a directory's lines, and the lines back to actions. */
+   of entries by id, a directory's lines, and the lines back to actions.
+   POSIX only so far: the Windows build leaves it out (the editor does not
+   call it yet; tools_oil refuses on both). */
+#ifndef _WIN32
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -809,3 +812,4 @@ int oil_follow(const OilAction *a, char *path, size_t cap)
 	snprintf(path, cap, "%s", t);
 	return 1;
 }
+#endif
