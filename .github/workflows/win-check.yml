@@ -1,0 +1,23 @@
+# Process control on real Windows: the stress test that check.sh runs under Wine, natively and longer.
+name: win-check
+on:
+  push:
+    branches: [claude/project-thread-l4spyq]
+    paths: ['dbg/win/**', 'dbg/target.h', 'tests/spin.c', 'tests/stress_target.c', '.github/workflows/win-check.yml']
+jobs:
+  stress:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        shell: cmd
+        run: |
+          gcc --version
+          gcc -std=c17 -O1 -g -Wall -Wextra -Werror tests\spin.c -o spin.exe || exit /b 1
+          gcc -std=c17 -O1 -g -Wall -Wextra -Werror dbg\win\target.c tests\stress_target.c -o stress_target.exe || exit /b 1
+      - name: 10,000 random rounds, five seeds, then attached, two seeds
+        shell: cmd
+        run: |
+          for %%s in (1 2 3 4 5) do stress_target.exe spin.exe 10000 %%s || exit /b 1
+          for %%s in (6 7) do stress_target.exe spin.exe 10000 %%s attach || exit /b 1

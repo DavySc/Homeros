@@ -7,7 +7,7 @@ cd "$(dirname "$0")"
 # a small queue, so the stress test runs with both queues full most of the time
 FLAGS="-std=c17 -D_GNU_SOURCE -pthread -DQUEUE_BYTES=256 -g -O1 -Wall -Wextra -Werror"
 SAN="-fsanitize=address,undefined -fno-sanitize-recover=all"
-run() { # run <dir with the sources> <list|test|specs|oracle|fuzz|all>: 0 when the named checks pass, 2 when
+run() { # run <dir with the sources> <list|test|specs|oracle|win|fuzz|all>: 0 when the named checks pass, 2 when
         # something does not compile (a planted bug must be caught by a check, not by the compiler), 3 when the
         # test files cannot be made (nor by a full disk)
   local src=$1 what=$2 b t; b=$(mktemp -d)
@@ -46,6 +46,16 @@ for l in open(sys.argv[1] + "/tests/plants.txt"):
     "$b/pdb2rdi" "$b/pdb/bad/later.pdb" "$b/odd.rdi" && [ "$(echo T 8 | "$b/rdiq" "$b/odd.rdi")" = "1001.0[0]:8 none" ] || return 1
     "$b/pdb2rdi" "$b/pdb/bad/firstid.pdb" "$b/odd.rdi" && [ "$(printf 'N 19 T 1 T 2 T 3 T 4' | "$b/rdiq" "$b/odd.rdi" | tr '\n' ' ')" = "5 S32:4 2004 int:4 on S32:4 2004 Pair:0 2004 Op:0 " ] || return 1
   fi
+  if [ "$what" = win ] || [ "$what" = all ]; then
+    # process control on Windows, here under Wine (WINE names it); the Windows runner runs the same test natively (.github/workflows/win-check.yml)
+    command -v "${WINE:-wine}" >/dev/null || { echo "check: no Wine (set WINE): the process-control stress test cannot run"; return 3; }
+    for f in tests/spin.c "dbg/win/target.c tests/stress_target.c"; do
+      x86_64-w64-mingw32-gcc -std=c17 -O1 -g -Wall -Wextra -Werror $(printf "$src/%s " $f) -o "$b/$(basename "${f##* }" .c).exe" || return 2
+    done
+    for mode in "" attach; do
+      (cd "$b" && WINEDEBUG=-all timeout 600 "${WINE:-wine}" stress_target.exe spin.exe "${STRESS_ROUNDS:-2000}" "${SEED:-1}" $mode 2>/dev/null | grep "^stress_target" | tee stress.out | grep -v "rounds:"; grep -q "rounds:" stress.out) || return 1
+    done
+  fi
   if [ "$what" = fuzz ] || [ "$what" = all ]; then
     for f in "$src"/tests/fuzz_*.c; do
       clang $FLAGS -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all "$src"/dbg/*.c "$f" -o "$b/fuzz" || return 2
@@ -55,7 +65,7 @@ for l in open(sys.argv[1] + "/tests/plants.txt"):
   fi
   rm -rf "$b"
 }
-if [ "${1:-}" != plants ]; then run . all && echo "check ok"; exit; fi
+if [ "${1:-}" != plants ]; then run . "${1:-all}" && echo "check ok"; exit; fi   # or one step by name
 # a plant only shows something if the unplanted tree passes
 run . all >/dev/null 2>&1 || { echo "plants: the check fails without any plant"; exit 1; }
 missed=0; total=0

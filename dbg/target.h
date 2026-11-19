@@ -1,0 +1,43 @@
+/* Process control: the one place the debugger touches the operating system's debug interface
+   (specs/Run.tla). One target process; every call comes from the engine thread, the thread
+   that opened the target (Windows gives a process's debug events only to that thread).
+
+   The target is stopped or running. While it is stopped its memory holds the program's own
+   bytes: target_resume writes the breakpoint instructions ("traps") and every stop takes them
+   out again, so nothing remembers between runs what is planted. */
+#ifndef DBG_TARGET_H
+#define DBG_TARGET_H
+#include <stdbool.h>
+#include <stdint.h>
+
+enum { TARGET_RUNNING,                                   /* nothing happened in the time given */
+       TARGET_THREAD, TARGET_THREAD_GONE,                /* noted while it runs on: a thread began or ended, */
+       TARGET_MODULE, TARGET_MODULE_GONE,                /*   a module was mapped at addr or unmapped, */
+       TARGET_OUTPUT,                                    /*   the program wrote `code` bytes of debug text (`text`, good until the next wait), */
+       TARGET_LATE,                                      /*   the event of a trap or a step of an earlier run came only now: nothing to stop for
+                                                              (code 1: its thread still stood behind the trap byte and was put back) */
+       TARGET_TRAP, TARGET_BREAK, TARGET_STEP,           /* stopped: on a trap at addr, after a breakpoint of the program's own before addr, after one instruction, */
+       TARGET_EXCEPTION, TARGET_EXIT };                  /*   by exception `code` at addr, or ended with exit code `code` */
+typedef struct { int kind; uint32_t thread; uint64_t addr, code; const char *text; } TargetEvent;
+
+/* in the order of the instruction encoding, which is also RDI's register codes 1 to 16 */
+typedef struct { uint64_t gp[16], rip, rflags; } TargetRegs;
+
+typedef struct Target Target;
+
+/* Starts command_line under the debugger, or attaches to process `pid` when command_line is
+   null. The target is stopped before its first instruction (attached: wherever it was). */
+Target *target_open(const char *command_line, uint32_t pid);
+/* Plants the traps and lets the target run; step_thread (0: none) runs one instruction. */
+void target_resume(Target *t, const uint64_t *traps, uint32_t count, uint32_t step_thread);
+/* While running: waits up to ms for something to happen. True once the target is stopped. */
+bool target_wait(Target *t, uint32_t ms, TargetEvent *e);
+/* While running: stops every thread where it is. */
+void target_halt(Target *t);
+/* While stopped. False when the memory or the thread is not there. */
+bool target_read(Target *t, uint64_t addr, void *bytes, uint32_t n);
+bool target_write(Target *t, uint64_t addr, const void *bytes, uint32_t n);
+bool target_regs(Target *t, uint32_t thread, TargetRegs *regs);
+/* Ends the target process and frees t. */
+void target_close(Target *t);
+#endif
