@@ -1027,51 +1027,72 @@ void syntax_faces(Syntax *s, size_t a, size_t z, unsigned char *face)
 }
 
 /* render-markdown 8.14's facts for line l, from the Markdown block tree as
-   it reads them: a heading's atx_hN_marker, a list marker with its nesting
-   (node:level_in('list')) and checkbox (task_list_marker_*, or the custom
-   [-] after the marker), a fenced_code_block's delimiters and info_string.
-   The node is the one at the line's first byte past its indent and block
-   quote markers. */
+   it reads them: a list marker with its nesting (node:level_in('list')),
+   its place among its list_item siblings (sibling_count) and checkbox
+   (task_list_marker_*, or the custom [-] after the marker); a heading's
+   atx_hN_marker, alone or after the list marker ("- # x"); a
+   fenced_code_block's delimiters, info_string and language, unless the
+   block is 2 rows or fewer, which render-markdown skips.  The node is the
+   one at the line's first byte past its indent and block quote markers. */
+static size_t blank(const char *b, size_t n, size_t i)
+{
+	while (i < n && (b[i] == ' ' || b[i] == '\t' || b[i] == '>')) i++;
+	return i;
+}
+
 int syntax_md(Syntax *s, const Text *t, size_t l, SyntaxMd *o)
 {
 	memset(o, 0, sizeof *o);
 	if (!s || s->sql || !started(s) || s->root->lang != 2 || !s->root->reg->tree) return 0;
-	size_t ls = text_line_start(t, l), len = text_line_start(t, l + 1) - ls - (l < text_lines(t)), i = 0;
+	TSNode r = ts_tree_root_node(s->root->reg->tree);
+	size_t ls = text_line_start(t, l), len = text_line_start(t, l + 1) - ls - (l < text_lines(t));
 	char b[256];
-	size_t n = text_read(t, ls, b, len < sizeof b ? len : sizeof b);
-	while (i < n && (b[i] == ' ' || b[i] == '\t' || b[i] == '>')) i++;
-	TSNode x = ts_node_descendant_for_byte_range(ts_tree_root_node(s->root->reg->tree), (uint32_t)(ls + i), (uint32_t)(ls + i));
+	size_t n = text_read(t, ls, b, len < sizeof b ? len : sizeof b), i = blank(b, n, 0);
+	TSNode x = ts_node_descendant_for_byte_range(r, (uint32_t)(ls + i), (uint32_t)(ls + i));
 	const char *ty = ts_node_type(x);
-	if (!strncmp(ty, "atx_h", 5) && !strcmp(ty + 6, "_marker")) {
-		o->head = (unsigned char)(ty[5] - '0');
-	} else if (!strncmp(ty, "list_marker_", 12)) {
-		for (TSNode a = ts_node_parent(x); !ts_node_is_null(a); a = ts_node_parent(a)) o->list += !strcmp(ts_node_type(a), "list");
-		o->ordered = !strcmp(ty + 12, "dot") || !strcmp(ty + 12, "parenthesis");
-		TSNode k = ts_node_next_named_sibling(x);
-		const char *kt = ts_node_is_null(k) ? "" : ts_node_type(k);
-		size_t e = ts_node_end_byte(x) - ls;
-		if (!strncmp(kt, "task_list_marker_", 17)) o->task = kt[17] == 'c' ? 'x' : ' ', o->task_col = ts_node_start_byte(k) - ls;
-		else if (e + 3 <= n && !memcmp(b + e, "[-]", 3) && (e + 3 == len || b[e + 3] == ' ')) o->task = '-', o->task_col = e;
-	} else {
-		/* code: from the line's last byte, as its first can be a block
-		   quote's marker that is the code's own text (an unclosed fence
-		   takes "> " lines after it) */
-		size_t e = ls + (len ? len - 1 : 0);
-		x = ts_node_descendant_for_byte_range(ts_tree_root_node(s->root->reg->tree), (uint32_t)e, (uint32_t)e);
-		for (; !ts_node_is_null(x) && strcmp(ts_node_type(x), "fenced_code_block"); x = ts_node_parent(x)) ;
-		if (ts_node_is_null(x)) return 0;
-		o->code = 2;
+	/* list markers ("- - x" holds two: the first is the item's), then what
+	   follows them on the line: a heading */
+	for (size_t e; !strncmp(ty, "list_marker_", 12); ty = ts_node_type(x)) {
+		e = ts_node_end_byte(x) - ls;
+		if (!o->list) {
+			for (TSNode a = ts_node_parent(x); !ts_node_is_null(a); a = ts_node_parent(a)) o->list += !strcmp(ts_node_type(a), "list");
+			if ((o->ordered = !strcmp(ty + 12, "dot") || !strcmp(ty + 12, "parenthesis")))
+				for (TSNode a = ts_node_parent(x); !ts_node_is_null(a) && !strcmp(ts_node_type(a), "list_item"); a = ts_node_prev_sibling(a)) o->index++;
+			o->item = ts_node_start_byte(x) - ls, o->iend = e;
+			TSNode k = ts_node_next_named_sibling(x);
+			const char *kt = ts_node_is_null(k) ? "" : ts_node_type(k);
+			if (!strncmp(kt, "task_list_marker_", 17)) o->task = kt[17] == 'c' ? 'x' : ' ', o->task_col = ts_node_start_byte(k) - ls;
+			else if (e + 3 <= n && !memcmp(b + e, "[-]", 3) && (e + 3 == len || b[e + 3] == ' ')) o->task = '-', o->task_col = e;
+		}
+		e = blank(b, n, e);
+		x = ts_node_descendant_for_byte_range(r, (uint32_t)(ls + e), (uint32_t)(ls + e));
+	}
+	if (!strncmp(ty, "atx_h", 5) && !strcmp(ty + 6, "_marker"))
+		o->head = (unsigned char)(ty[5] - '0'), o->mark = ts_node_start_byte(x) - ls, o->mend = ts_node_end_byte(x) - ls;
+	/* code: from the line's last byte, as its first can be a block quote's
+	   marker that is the code's own text (an unclosed fence takes "> "
+	   lines after it) */
+	x = ts_node_descendant_for_byte_range(r, (uint32_t)(ls + (len ? len - 1 : 0)), (uint32_t)(ls + (len ? len - 1 : 0)));
+	for (; !ts_node_is_null(x) && strcmp(ts_node_type(x), "fenced_code_block"); x = ts_node_parent(x)) ;
+	if (!ts_node_is_null(x) && ts_node_end_point(x).row - ts_node_start_point(x).row > 2) {
+		/* render-markdown paints the body from the block's start column on
+		   every row (code.lua) */
+		o->code = 2, o->mark = ts_node_start_point(x).column;
 		for (uint32_t k = 0, d = 0; k < ts_node_child_count(x); k++) {
 			TSNode c = ts_node_child(x, k);
 			const char *ct = ts_node_type(c);
-			int here = ts_node_start_point(c).row == l, delim = !strcmp(ct, "fenced_code_block_delimiter");
-			if (delim && here) o->code = d ? 3 : 1;
-			d += delim;
-			if (delim && here) o->mark = ts_node_start_byte(c) - ls, o->mend = ts_node_end_byte(c) - ls;
-			else if (!strcmp(ct, "info_string") && here) o->info = ts_node_start_byte(c) - ls, o->ninfo = ts_node_end_byte(c) - ts_node_start_byte(c);
+			int fence = !strcmp(ct, "fenced_code_block_delimiter");
+			d += fence;
+			if (ts_node_start_point(c).row != l) continue;
+			if (fence)
+				o->code = d > 1 ? 3 : 1, o->mark = ts_node_start_byte(c) - ls, o->mend = ts_node_end_byte(c) - ls;
+			else if (!strcmp(ct, "info_string")) {
+				o->info = ts_node_start_byte(c) - ls, o->ninfo = ts_node_end_byte(c) - ts_node_start_byte(c);
+				TSNode g = ts_node_named_child(c, 0);
+				if (!ts_node_is_null(g) && !strcmp(ts_node_type(g), "language"))
+					o->lang = ts_node_start_byte(g) - ls, o->nlang = ts_node_end_byte(g) - ts_node_start_byte(g);
+			}
 		}
-		return 1;
 	}
-	o->mark = ts_node_start_byte(x) - ls, o->mend = ts_node_end_byte(x) - ls;
-	return 1;
+	return o->head || o->list || o->code;
 }
