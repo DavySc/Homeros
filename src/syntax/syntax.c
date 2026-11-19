@@ -58,37 +58,53 @@ static unsigned char face_of(const char *cap, uint32_t n)
 	return (unsigned char)(best + 1);   /* FACE_NONE when none */
 }
 
-/* Grammars linked in, by file name ending (Neovim's filetype for each). */
+/* Grammars linked in, by Neovim's name for each */
 const TSLanguage *tree_sitter_c(void);
 const TSLanguage *tree_sitter_lua(void);
 const TSLanguage *tree_sitter_markdown(void);
 const TSLanguage *tree_sitter_markdown_inline(void);
 static const struct Lang {
-	const char *name, *ext[3];
+	const char *name;
 	const TSLanguage *(*fn)(void);
 } langs[] = {
-	{ "c", { ".c", ".h" }, tree_sitter_c },
-	{ "lua", { ".lua" }, tree_sitter_lua },
-	{ "markdown", { ".md" }, tree_sitter_markdown },
-	{ "markdown_inline", { NULL }, tree_sitter_markdown_inline },
+	{ "c", tree_sitter_c },
+	{ "lua", tree_sitter_lua },
+	{ "markdown", tree_sitter_markdown },
+	{ "markdown_inline", tree_sitter_markdown_inline },
 };
 enum { NLANGS = sizeof langs / sizeof *langs };
+
+/* File name endings, Neovim's 'filetype' for each (nvim 0.12 --clean: a .h
+   is cpp unless g:c_syntax_for_h), and what colours it: a langs[] index,
+   T-SQL's or JSON's word lists (tsql.c), or nothing */
+enum { BY_NONE = -1, BY_SQL = -2, BY_JSON = -3 };
+static const struct { const char *ext, *ft; int lang; } fts[] = {
+	{ ".c", "c", 0 }, { ".h", "cpp", 0 }, { ".lua", "lua", 1 }, { ".md", "markdown", 2 },
+	{ ".sql", "sql", BY_SQL }, { ".json", "json", BY_JSON }, { ".txt", "text", BY_NONE },
+};
+
+/* fts[]'s entry for path, -1 for none */
+static int ft_of(const char *path)
+{
+	size_t pl = strlen(path);
+	for (int i = 0; i < (int)(sizeof fts / sizeof *fts); i++) {
+		size_t el = strlen(fts[i].ext);
+		if (pl > el && !memcmp(path + pl - el, fts[i].ext, el)) return i;
+	}
+	return -1;
+}
+
+const char *syntax_filetype(const char *path)
+{
+	int i = ft_of(path);
+	return i < 0 ? NULL : fts[i].ft;
+}
 
 /* Neovim's highlights and injections queries per language, in langs' order
    (build.mk compiles them in) */
 extern const char *const syntax_queries[][2];
 int syntax_release(TSTree *t, unsigned n);   /* release.c */
 enum { RELEASE_STEP = 1024 };                /* nodes freed between stop asks */
-
-static int lang_of_path(const char *path, size_t pl)
-{
-	for (int i = 0; i < NLANGS; i++)
-		for (int k = 0; k < 3 && langs[i].ext[k]; k++) {
-			size_t el = strlen(langs[i].ext[k]);
-			if (pl > el && !memcmp(path + pl - el, langs[i].ext[k], el)) return i;
-		}
-	return -1;
-}
 
 enum { P_EQ, P_MATCH, P_ANYOF, P_ANCESTOR, P_PARENT };
 typedef struct {
@@ -328,15 +344,13 @@ static void free_ltree(Syntax *s, LTree *L)
 
 Syntax *syntax_open(const char *path, const Text *t)
 {
-	size_t pl = strlen(path);
-	int json = pl > 5 && !memcmp(path + pl - 5, ".json", 5);
-	if (json || (pl > 4 && !memcmp(path + pl - 4, ".sql", 4))) {
+	int i = ft_of(path), li = i < 0 ? BY_NONE : fts[i].lang;
+	if (li == BY_NONE) return NULL;
+	if (li < BY_NONE) {
 		Syntax *s = calloc(1, sizeof *s);
-		if (s && !(s->sql = tsql_new(t, json))) free(s), s = NULL;
+		if (s && !(s->sql = tsql_new(t, li == BY_JSON))) free(s), s = NULL;
 		return s;
 	}
-	int li = lang_of_path(path, pl);
-	if (li < 0) return NULL;
 	Syntax *s = calloc(1, sizeof *s);
 	if (!s) return NULL;
 	s->plang = -1;

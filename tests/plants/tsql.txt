@@ -14,7 +14,7 @@ tsql: what is in sys is plain (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsq
 tsql: words are looked up as typed, not lower case (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~c + 32 : c; }~c : c; }
 tsql: sp_ procedures are plain (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~l[2] == '_' && l[3]~l[2] == '-' && l[3]
 tsql: @@globals are plain (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~case TQ_VAR: return tsql_byte(r, p + 1) == '@'~case TQ_VAR: return tsql_byte(r, p + 1) == '#'
-tsql: .sql files are not T-SQL (test_tsql)~test TESTS=tsql~~src/syntax/syntax.c~!memcmp(path + pl - 4, ".sql", 4)~!memcmp(path + pl - 4, ".sqx", 4)
+tsql: .sql files are not T-SQL (test_tsql)~test TESTS=tsql~~src/syntax/syntax.c~{ ".sql", "sql", BY_SQL }~{ ".sqx", "sql", BY_SQL }
 tsql: the end of the text is a one-byte token (test_tsql, tokens)~test TESTS=tsql~~src/syntax/tsql.c~	if (c < 0) return *k = TQ_SPACE, p;¶~
 tsql: a word longer than the lookup buffer is copied into it (fuzz_tsql, ASan)~fuzz FUZZERS=tsql FUZZ_SECONDS=60~~src/syntax/tsql.c~	if (n >= 40) return 0;¶~
 tsql: a dot is an operator (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~	case TQ_PUNCT: return tsql_byte(r, p) != '.'~	case TQ_PUNCT: return tsql_byte(r, p) != ','
