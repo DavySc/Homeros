@@ -34,3 +34,4 @@ tty: a wrong colour for a UI face (the status line's)~test TESTS=grid_diff~~ref/
 tty: the cursor line's colour wrong in the shared face table~test TESTS=grid_diff~~ref/theme.c~{ {0, 0, 0}, {42, 43, 60}, FACE_BG, {0} },~{ {0, 0, 0}, {42, 43, 61}, FACE_BG, {0} },
 tty: a heading bar's colour wrong in the shared face table~test TESTS=grid_diff~~ref/theme.c~{ {0, 0, 0}, {50, 40, 58}, FACE_BG, {0} },~{ {0, 0, 0}, {90, 61, 80}, FACE_BG, {0} },
 tty: the layer's foreground drawn too~test TESTS=grid_diff~~src/tty/tty.c~	if (f->style & FACE_FG) n +=~	if (x->bg) f = b;¶	if (f->style & FACE_FG) n +=
+tty: Shift-Tab dropped as an unknown sequence~test TESTS=tty_input~~src/tty/tty.c~: s[2] == 'Z' ? KEY_S_TAB : -1;~: -1;

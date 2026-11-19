@@ -138,6 +138,7 @@ static int key_of(uint32_t key)
 	case XKB_KEY_Left: return KEY_LEFT;
 	case XKB_KEY_Right: return KEY_RIGHT;
 	case XKB_KEY_BackSpace: return KEY_BS;     /* what a terminal sends */
+	case XKB_KEY_ISO_Left_Tab: return KEY_S_TAB;   /* Shift-Tab */
 	}
 	/* includes the Control transformation, so Ctrl-R is 18 */
 	return (int)xkb_state_key_get_utf32(xst, key + 8);

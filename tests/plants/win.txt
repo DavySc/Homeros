@@ -50,3 +50,4 @@ win: the DIB keeps its old size~win WIN=win~~src/win/backend.c~if (all && (grid_
 specs: Pace with frames only P + D apart~specs~find design/specs -name '*.cfg' ! -name Pace_ok.cfg -delete~design/specs/Pace_ok.cfg~ Gap = 5~ Gap = 4
 win: the background layer ignored~win WIN=win~~src/win/backend.c~	COLORREF b = fb->style & FACE_BG ? RGB(fb->bg[0], fb->bg[1], fb->bg[2]) : BASE;~	COLORREF b = fa->style & FACE_BG ? RGB(fa->bg[0], fa->bg[1], fa->bg[2]) : BASE;
 win: GDI's substitute for a missing family kept~win WIN=win~~src/win/backend.c~if (!lstrcmpiW(face, family[i])) break;~break;
+win: Shift-Tab sends Tab~win WIN=win~~src/win/backend.c~w == 9 && GetKeyState(VK_SHIFT) < 0~w == 9 && GetKeyState(VK_SHIFT) > 0
