@@ -40,7 +40,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t n)
 	for (size_t i = 0; i < n; i++)
 		if (data[i] == 1) str_addz(&s, uri);
 		else if (data[i] == '\n' || data[i] == 0) str_add(&s, " ", 1);   /* a line holds neither */
-		else str_add(&s, data + i, 1);
+		else str_add(&s, (const char *)data + i, 1);
 	str_add(&s, "", 0);
 	from_child(s.s, s.n);
 	free(s.s);

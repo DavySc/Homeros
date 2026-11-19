@@ -28,7 +28,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t n)
 		set = 1;
 	}
 	Conn k = { .fd = -1 };
-	if (str_add(&k.in, data, n) || requests(&k)) { free(k.in.s); free(k.out.s); return 0; }
+	if (str_add(&k.in, (const char *)data, n) || requests(&k)) { free(k.in.s); free(k.out.s); return 0; }
 	if (k.out.s && memmem(k.out.s, k.out.n, "MARKER-OUTSIDE", 14)) abort();
 	if (k.page) conn_close(&k);
 	free(k.in.s); free(k.out.s);
