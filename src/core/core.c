@@ -1250,7 +1250,11 @@ void core_set_want(Editor *e)
 		w->want = w->vc.v;
 		return;
 	}
-	w->want = win_vcol(e, w, NULL, NULL);   /* update_curswant(): w_virtcol */
+	/* update_curswant(): w_virtcol, a tab's last cell outside Insert mode;
+	   the keys give Visual mode's first cell themselves (validate_virtcol()),
+	   while ks still holds the previous key's Visual mode */
+	size_t s;
+	w->want = win_vcols(w, w->line, w->col, &s, &w->want) && e->mode != MODE_INSERT ? w->want : s;
 	w->vc.line = w->line; w->vc.col = w->col; w->vc.v = w->want;
 	w->vc.mode = e->mode; w->vc.ok = 1;
 }
