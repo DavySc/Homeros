@@ -49,6 +49,14 @@ static void settle(void)
 	CHECK(!"the repository never settled");
 }
 
+/* lualine's branch, once git has read the change */
+static void branch_check(const char *want)
+{
+	const char *got = NULL;
+	for (int i = 0; i < 200 && (!(got = git_branch(e.buf)) || strcmp(got, want)); i++) CHECK(loop_once(20) == 0);
+	if (!got || strcmp(got, want)) { fprintf(stderr, "git_branch %s, lualine's %s\n", got ? got : "NULL", want); fails++; }
+}
+
 /* the file's lines, numbered from 1 */
 enum { MAXL = 200 };
 static char *line[MAXL + 1];
@@ -223,6 +231,7 @@ int main(void)
 	e.rows = 40; e.cols = 100;
 	git_editor(&e);
 	git_headless = 1;
+	CHECK(!git_branch(e.buf));             /* before git has looked */
 	int rounds = 0, checks = 0;
 	for (int round = 0; round < 150; round++, rounds++) {
 		edit(round);
@@ -282,12 +291,24 @@ int main(void)
 	o = run("cat '%s/opened'", tmp);
 	if (strcmp(o, "https://github.com/someone/proj/blob/main/f.txt#L7\n")) { fprintf(stderr, "SPC g B opened %s", o); fails++; }
 	free(o);
+	branch_check("main");
+	o = run("cd '%s' && git checkout -q --detach && git rev-parse HEAD | cut -c1-6 | tr -d '\\n'", repo);
+	branch_check(o);
+	free(o);
+	o = run("cd '%s' && git checkout -q -b feature", repo);
+	free(o);
+	branch_check("feature");
+	o = run("echo x > '%s/out.txt'", tmp);
+	free(o);
+	snprintf(path, sizeof path, "%s/out.txt", tmp);
+	CHECK(core_edit_file(&e, path, 0) == 0);
+	CHECK(!git_branch(e.buf));             /* outside a repository */
 	git_free();
 	core_free(&e);
 	for (int i = 1; i <= nline; i++) free(line[i]);
 	o = run("rm -rf '%s'", tmp);
 	free(o);
 	if (fails) { fprintf(stderr, "%d differences from gitsigns\n", fails); return 1; }
-	printf("test_git_signs: %d rounds of random edits: every line's sign and SPC h s, r, u, S as gitsigns; SPC g L, d, B\n", rounds);
+	printf("test_git_signs: %d rounds of random edits: every line's sign and SPC h s, r, u, S as gitsigns; SPC g L, d, B; the branch as lualine\n", rounds);
 	return 0;
 }

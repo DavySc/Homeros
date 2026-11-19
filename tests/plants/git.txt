@@ -48,3 +48,6 @@ git: a linked work tree's common directory is not watched (Windows watch)~win WI
 git: the work tree diff misses renames (magit traces)~test TESTS=git~~src/git/git.c~cmd_add(c, "-M"); ~
 git: discarding staged changes refuses while a file is unmerged (unmerged check)~test TESTS=git~~src/git/keys.c~"--unmerged", ~
 git: an event on the work tree's own directory reads past the path (top check)~test TESTS=git~~src/git/os.c~"%s/%s", dir, ev->len~"%s%s%s", dir, ev->len ? "/" : "", ev->len~
+git: the branch shows a branch's hash (git_signs, branch)~test TESTS=git_signs~~src/git/keys.c~	if (br->head) return br->head;¶~
+git: a detached HEAD shows 7 characters, not lualine's 6 (git_signs, branch)~test TESTS=git_signs~~src/git/keys.c~	static char h[7];~	static char h[8];
+git: the branch before git has looked is not NULL (git_signs, branch)~test TESTS=git_signs~~src/git/keys.c~	if (!br || !br->oid) return NULL;~	if (!br) return NULL;

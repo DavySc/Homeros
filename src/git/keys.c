@@ -1461,6 +1461,20 @@ int git_sign(const Buf *b, size_t l)
 	return scfs < 0 ? 0 : block_at(&scr->st, scfs, (long)l + 1, &bk);
 }
 
+/* lualine's branch component (branch/git_branch.lua): the ref name, else
+   HEAD's first 6 characters; from the status's # branch lines, so no I/O
+   after the buffer's first call (of, as git_sign) */
+const char *git_branch(const Buf *b)
+{
+	static char h[7];
+	Of *o = of(b);
+	const Branch *br = o && o->r ? &o->r->br : NULL;
+	if (!br || !br->oid) return NULL;
+	if (br->head) return br->head;
+	snprintf(h, sizeof h, "%s", br->oid);
+	return h;
+}
+
 /* git_free's part: no prompt, focus or remembered buffer survives */
 void git_keys_free(void)
 {
