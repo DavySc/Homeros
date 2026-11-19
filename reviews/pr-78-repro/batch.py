@@ -15,5 +15,6 @@ for j, i in enumerate(keep):
     w = nv[i].split(' ', 3); want = '%s %s %s %s' % (w[0], w[1], w[2], S.esc(w[3]))
     if want != ours[j]:
         bad += 1
-        if bad <= 3: print('body %r\n nvim %s\n ours %s' % (cases[i]['body'][:60], want[:90], ours[j][:90]))
+        if bad <= 3:
+            d = next(k for k in range(len(want)) if k >= len(ours[j]) or want[k] != ours[j][k]); print(repr(cases[i]["body"][:300])); print(" nvim", want[max(0,d-60):d+60]); print(" ours", ours[j][max(0,d-60):d+60])
 print('%s: %d of %d differ (%d refused)' % (' '.join(keys), bad, len(keep), len(cases) - len(keep)))
