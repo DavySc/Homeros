@@ -64,6 +64,7 @@ const TSLanguage *tree_sitter_lua(void);
 const TSLanguage *tree_sitter_markdown(void);
 const TSLanguage *tree_sitter_markdown_inline(void);
 const TSLanguage *tree_sitter_rust(void);
+const TSLanguage *tree_sitter_glsl(void);
 static const struct Lang {
 	const char *name;
 	const TSLanguage *(*fn)(void);
@@ -73,6 +74,7 @@ static const struct Lang {
 	{ "markdown", tree_sitter_markdown },
 	{ "markdown_inline", tree_sitter_markdown_inline },
 	{ "rust", tree_sitter_rust },
+	{ "glsl", tree_sitter_glsl },
 };
 enum { NLANGS = sizeof langs / sizeof *langs };
 
@@ -89,9 +91,9 @@ static const struct { const char *ext, *ft; int lang; } fts[] = {
 	{ ".c", "c", 0 }, { ".h", "cpp", 0 }, { ".lua", "lua", 1 }, { ".md", "markdown", 2 },
 	{ ".sql", "sql", BY_SQL }, { ".json", "json", BY_JSON }, { "CMakeLists.txt", "cmake", BY_NONE },
 	{ ".txt", "text", BY_NONE }, { ".rs", "rust", 4 }, { ".nix", "nix", BY_NONE },
-	{ ".glsl", "glsl", BY_NONE }, { ".vert", "glsl", BY_NONE }, { ".frag", "glsl", BY_NONE },
-	{ ".comp", "glsl", BY_NONE }, { ".geom", "glsl", BY_NONE }, { ".tesc", "glsl", BY_NONE },
-	{ ".tese", "glsl", BY_NONE }, { ".sv", "systemverilog", BY_NONE }, { ".svh", "systemverilog", BY_NONE },
+	{ ".glsl", "glsl", 5 }, { ".vert", "glsl", 5 }, { ".frag", "glsl", 5 },
+	{ ".comp", "glsl", 5 }, { ".geom", "glsl", 5 }, { ".tesc", "glsl", 5 },
+	{ ".tese", "glsl", 5 }, { ".sv", "systemverilog", BY_NONE }, { ".svh", "systemverilog", BY_NONE },
 	{ ".cmake", "cmake", BY_NONE }, { ".lean", "lean", BY_NONE }, { ".cs", "cs", BY_NONE },
 	{ ".org", "org", BY_NONE }, { ".dl", "souffle", BY_DL },
 };

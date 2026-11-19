@@ -1,8 +1,7 @@
 /* Syntax colours against Neovim 0.12 (nvim --headless on PATH, running
-   tests/test_syntax.lua): random windows of real C, Lua, Markdown and Rust
-   (ripgrep's printer) files, then random edits applied incrementally with
-   parses in between.  Neovim
-   replays the same edits and parses, and its highlighter's captures, with
+   tests/test_syntax.lua): random windows of real C, Lua, Markdown, Rust
+   (ripgrep's printer) and GLSL (glslang's test shaders) files, then random
+   edits applied incrementally with parses in between.  Neovim replays the same edits and parses, and its highlighter's captures, with
    its predicates, injections and #set! priority, must give the same face
    for every byte (per byte the highest priority wins, the later capture on
    a tie).  The schedule must be the same because tree-sitter's incremental
@@ -21,8 +20,8 @@
 #include "text.h"
 #include "../src/syntax/lmatch.h"
 
-enum { NL = 4, MAXCASES = 300, EDITS = 25, MAXT = 1 << 15 };
-static const char *const ext[NL] = { "c", "lua", "md", "rs" };
+enum { NL = 5, MAXCASES = 300, EDITS = 25, MAXT = 1 << 15 };
+static const char *const ext[NL] = { "c", "lua", "md", "rs", "frag" };
 static int CASES = 40;   /* per language; CASES and SEED in the environment */
 
 static char dir[] = "/tmp/test_syntax_XXXXXX";
@@ -65,7 +64,9 @@ static void add_dir(int lang, const char *d, const char *e)
 			char p[2048];
 			size_t n;
 			snprintf(p, sizeof p, "%s/%s", d, de[i]->d_name);
-			corpus[lang][ncorpus[lang]++] = slurp(p, &n);
+			char *c = slurp(p, &n);
+			if (n) corpus[lang][ncorpus[lang]++] = c;   /* glslang has an empty.frag */
+			else free(c);
 		}
 		free(de[i]);
 	}
@@ -77,6 +78,7 @@ static const char *const snip[NL][16] = {
 	{ "\n", "--", "[[", "]]", "\"", "'", "(", ")", "x", "  ", "\xc3\xa9", "local", "function", "end", "--- @param", "vim.cmd" },
 	{ "\n", "#", "```", "```c\n", "```lua\n", "*", "_", "`", "[", "](", ")", "- ", "| a |", "\n\n", "\xc3\xa9", "> " },
 	{ "\n", "//", "/*", "*/", "\"", "'", "{", "}", "(", ")", "!", "x", "\xc3\xa9", "println!(\"{}\", a);", "fn f<T>(", "r#\"" },
+	{ "\n", "//", "/*", "*/", "{", "}", "(", ")", ".", "x", "\xc3\xa9", "#version 450\n", "uniform vec4 c;", "layout(location = 0) ", "gl_FragColor", "#define A 1\n" },
 };
 
 static int stops_left;
@@ -490,6 +492,7 @@ int main(void)
 	add_dir(2, "design", ".md");
 	add_dir(2, ".", ".md");
 	add_dir(3, "build/syntax/src/corpus/rust", ".rs");
+	add_dir(4, "build/syntax/src/corpus/glsl", ".frag");   /* the first 64 by name */
 	for (int l = 0; l < NL; l++) CHECK(ncorpus[l]);
 
 	static unsigned char fa[MAXT], fb[MAXT], fs[MAXT], ff[MAXT];
@@ -505,11 +508,11 @@ int main(void)
 		/* fixed and unedited, so the final check sees them: case 2, inline
 		   captures across block quote markers, which the highlighter colours
 		   only inside the inline tree's ranges, so the second "> " stays
-		   plain; case 4, Rust macros, whose bodies Neovim parses as Rust
+		   plain; case 3, Rust macros, whose bodies Neovim parses as Rust
 		   (injection.include-children) and whose name contains? "assert".
 		   The others: up to 80 lines of the corpus from a random line */
 		const char *fx = c == 2 ? "> *a\n> b* `c\n> d` [e\n> f](g)\n"
-		               : c == 4 ? "fn f() {\n    assert_eq!(v.len(), 3);\n    println!(\"{}\", g(x).y);\n}\n" : NULL;
+		               : c == 3 ? "fn f() {\n    assert_eq!(v.len(), 3);\n    println!(\"{}\", g(x).y);\n}\n" : NULL;
 		const char *src = fx ? fx : corpus[lang][rnd((unsigned)ncorpus[lang])];
 		size_t sn = strlen(src), a = fx ? 0 : rnd((unsigned)sn), z;
 		while (a && src[a - 1] != '\n') a--;

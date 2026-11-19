@@ -54,3 +54,4 @@ syntax_md: a delimiter on another row counts for the close (test_syntax_md)~test
 syntax_md: the background takes the last row before the close (test_syntax_md)~test TESTS=syntax_md~~src/syntax/syntax.c~if (l > sr && l + 2 <= er)~if (l > sr && l + 1 <= er)
 syntax_md: the custom [-] counts at the line's end (test_syntax_md)~test TESTS=syntax_md~~src/syntax/syntax.c~else if (e + 4 <= n && !memcmp(b + e, "[-] ", 4))~else if (e + 3 <= n && !memcmp(b + e, "[-]", 3) && (e + 3 == n || b[e + 3] == ' '))
 syntax_md: an empty list marker left by an unparsed edit loops forever (fuzz_syntax)~fuzz FUZZERS=syntax FUZZ_SECONDS=60~~src/syntax/syntax.c~!strncmp(ty, "list_marker_", 12) && ts_node_end_byte(x) > ls + e;~!strncmp(ty, "list_marker_", 12);
+syntax: a query that inherits another lacks the other's patterns (test_syntax, GLSL inherits C)~test TESTS=syntax~touch src/syntax/build.mk~src/syntax/build.mk~cat $${b:+$(SYN)/src/queries/$$b/$$f.scm} $$q~cat $$q
