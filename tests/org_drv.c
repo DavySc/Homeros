@@ -5,7 +5,6 @@
 #include <string.h>
 #include "org.h"
 #include "grid.h"
-#include "../src/org/fold.h"
 
 static const char *const names[] = { "headline", "section", "planning", "property-drawer",
 	"node-property", "drawer", "clock", "comment", "keyword", "babel-call", "paragraph",

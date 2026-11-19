@@ -12,7 +12,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "org.h"
-#include "../src/org/fold.h"
 
 static void check_org(const char *s, size_t n)
 {

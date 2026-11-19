@@ -12,7 +12,6 @@
 #include "uni.h"
 #include "class.h"
 #include "grid.h"
-#include "fold.h"
 #include <stdlib.h>
 #include <string.h>
 
