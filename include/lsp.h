@@ -51,6 +51,11 @@ void    lsp_restart(LspDoc *d);
 
 const LspDiag *lsp_diags(const LspDoc *d, int *n);
 const LspDiag *lsp_progress(const LspDoc *d, int *n);
+/* lualine's lsp_status: the server's name (argv[0]'s basename, a client's
+   default name), NULL for d NULL; *work is -1 before any $/progress, else
+   the tokens begun and not yet ended (the core draws a spinner or a check
+   mark).  No allocation: asked every frame. */
+const char    *lsp_name(const LspDoc *d, int *work);
 
 /* Requests about byte pos: hover (K) and Lean's goal ($/lean/plainGoal).
    A new one cancels the last of its kind ($/cancelRequest).  lsp_answer is
