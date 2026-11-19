@@ -355,7 +355,7 @@ void core_pum(Editor *e, const PumItem *items, int n, int sel, size_t col)
 	if (w->wrap && c >= w->w && width > 0) c -= ((c - w->w) / width + 1) * width;
 	c = c > (long)w->left ? c - (long)w->left : 0;
 	int prow = w->y + w->frame->s.wrow, cursor_col = w->x + (int)c;
-	int above_row = 0, below_row = e->layout->height;
+	int above_row = 0, below_row = e->layout->size[ROWS];
 	if (below_row < w->y + w->h) below_row = w->y + w->h;
 	/* pum_compute_vertical_placement() */
 	pum.height = n < PUM_DEF_HEIGHT ? n : PUM_DEF_HEIGHT;
@@ -505,7 +505,7 @@ void core_draw(Editor *e, Grid *g)
 		draw_status(e, g, w);
 	}
 	/* the command line, or the mode and the last message (showmode) */
-	int r = e->layout->height;
+	int r = e->layout->size[ROWS];
 	if (e->mode == MODE_CMDLINE) {
 		char t[2] = { (char)e->cmdtype, 0 };
 		int c = grid_puts(g, r, 0, t, ATTR_NONE), cc = c;
