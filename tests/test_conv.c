@@ -256,7 +256,7 @@ int main(void)
     {0, 0, 0, 0, 0, 0x20, 0, {REL(0x40, 0, 335)}, 1, 0, 0, AT(3, 5, 0x40), 0, {0}, {0}, 0}, {1, 0, 0, 0, 0, 0x20, 0, {REL(0x40, 0, 329)}, 1, 0, 0, AT(3, 4, 0x40), 0, {0}, {0}, 0},
     {1, 0, 0, 255, 0, 0x20, 0, {REL(0x40, 0, 335)}, 1, 0, 0, AT(3, 5, 0x40), 0, {0}, {0}, 0}, {1, 0, 0, 0, 0, 0x20, 0, {REL(0x40, 0x74, 335)}, 1, 0, 1, AT(3, 5, 0x40), 0, {0}, {0}, 0},
     /* S_LOCAL and its S_DEFRANGE records: in a register over a range, minus the gaps */
-    {0, 1, 0, 0, 0, 0, 0, {LOCAL(1)}, 1, 1, 1, 0, 0, {0}, {0}, 0}, {0, 1, 0, 0, 0, 0, 0, {LOCAL(0)}, 1, 0, 1, 0, 0, {0}, {0}, 0}, {0, 1, 1, 0, 0, 0, 0, {LOCAL(0)}, 0, 0, 0, 0, 0, {0}, {0}, 0},
+    {0, 1, 0, 0, 0, 0, 0, {LOCAL(1)}, 1, 1, 1, 0, 0, {0}, {0}, 0}, {0, 1, 0, 0, 0, 0, 0, {LOCAL(3)}, 1, 1, 1, 0, 0, {0}, {0}, 0}, {0, 1, 0, 0, 0, 0, 0, {LOCAL(0)}, 1, 0, 1, 0, 0, {0}, {0}, 0}, {0, 1, 1, 0, 0, 0, 0, {LOCAL(0)}, 0, 0, 0, 0, 0, {0}, {0}, 0},
     {0, 1, 0, 0, 0, 0, 0, {{S_LOCAL, 5, {0x74}}}, 0, 0, 0, 0, 0, {0}, {0}, 0}, {0, 1, 0, 0, 0, 0, 0, {{S_LOCAL, 6, {0x74}}}, 1, 0, 1, 0, 0, {0}, {0}, 0},
     {0, 1, 0, 0, 0, 0, 0, {LOCAL(1), {S_DEFRANGE_REGISTER, 12, {18, 0, 0, 0, RANGE(1)}}}, 1, 1, 1, 0, 1, {0x1010, 0x1030, AT(5, 2, 0)}, {0x1010, 0x1030, AT(5, 2, 0)}, 0},
     {0, 1, 0, 0, 0, 0, 0, {LOCAL(1), {S_DEFRANGE_REGISTER, 11, {18, 0, 0, 0, RANGE(1)}}}, 1, 1, 1, 0, 0, {0}, {0}, 0},
@@ -270,7 +270,6 @@ int main(void)
     {0, 1, 0, 0, 0, 0, 0, {LOCAL(0x200), {S_DEFRANGE_REGISTER, 12, {18, 0, 0, 0, RANGE(1)}}}, 0, 0, 0, 0, 0, {0}, {0}, 0}, {0, 1, 0, 0, 0, 0, 0, {LOCAL(0x400), {S_DEFRANGE_REGISTER, 12, {18, 0, 0, 0, RANGE(1)}}}, 0, 0, 0, 0, 0, {0}, {0}, 0},
     {0, 1, 0, 0, 0, 0, 0, {LOCAL(0), LOCAL(0x200), {S_DEFRANGE_REGISTER, 12, {18, 0, 0, 0, RANGE(1)}}}, 1, 0, 1, 0, 0, {0}, {0}, 0},
     {0, 1, 0, 0, 0, 0, 0, {LOCAL(0), {S_FILESTATIC, 8, {0x74}}, {S_DEFRANGE_REGISTER, 12, {18, 0, 0, 0, RANGE(1)}}}, 1, 0, 1, 0, 0, {0}, {0}, 0},
-    {0, 1, 0, 0, 0, 0, 0, {LOCAL(0), {S_END, 0, {0}}, {S_DEFRANGE_REGISTER, 12, {18, 0, 0, 0, RANGE(1)}}}, 1, 0, 1, 0, 0, {0}, {0}, 0},
     {0, 1, 0, 0, 0, 0, 0, {{S_DEFRANGE_REGISTER, 12, {18, 0, 0, 0, RANGE(1)}}}, 0, 0, 0, 0, 0, {0}, {0}, 0},
     {0, 1, 0, 2, 0, 0, 0, {LOCAL(0), REL(8, 0x74, 335), {S_DEFRANGE_REGISTER, 12, {18, 0, 0, 0, RANGE(1)}}}, 1, 0, 1, 0, 1, {0x1010, 0x1030, AT(5, 2, 0)}, {0x1010, 0x1030, AT(5, 2, 0)}, 0},
     /* a part of the variable in a register: only the part at offset 0 */
@@ -310,21 +309,20 @@ int main(void)
     Frame f = {.frame_size = locals[i].frame_size, .frame_flags = locals[i].frame_flags, .framed = locals[i].framed, .optimised = locals[i].optimised};
     for (unsigned k = 0; k < 3 && locals[i].r[k].kind; k += 1) {
       uint8_t *a = memcpy(malloc(locals[i].r[k].n + 1), locals[i].r[k].d, locals[i].r[k].n);
-      if (locals[i].r[k].kind == S_END) f.target = 0;   /* as the loop over a module's records does */
-      else local_symbol(&t, &pdb, &f, !locals[i].outside, locals[i].r[k].kind, (PdbSpan){a, locals[i].r[k].n});
+      local_symbol(&t, &pdb, &f, !locals[i].outside, locals[i].r[k].kind, (PdbSpan){a, locals[i].r[k].n});
       free(a);
     }
     locals_by_scope(&t);
     const RdiScope *in = (const RdiScope *)t.s[RDI_SCOPES].p + 1;
     const RdiSymbol *y = (const RdiSymbol *)t.s[RDI_LOCALS].p + in->local_first + in->local_count - (in->local_count != 0);
     const RdiLocationCase *c = (const RdiLocationCase *)t.s[RDI_LOCATION_SETS].p + (y->location & 0xffffffff);
-    bool ok = COUNT(t.s[RDI_LOCALS], RdiSymbol) == 1u + locals[i].count && in->local_count == locals[i].count && in->local_first == (locals[i].count != 0) && t.s[RDI_LOCATION_BYTECODE].n == locals[i].code;
+    bool ok = COUNT(t.s[RDI_LOCALS], RdiSymbol) == 1u + locals[i].count && in->local_count == locals[i].count && in->local_first == 1 && t.s[RDI_LOCATION_BYTECODE].n == locals[i].code;
     if (ok && locals[i].count) ok = y->flags == locals[i].flags && y->container_flags == 2 && y->container == 1 && y->type == (locals[i].typed == 2 ? returned : y->type) && (y->type != 0) == (locals[i].typed != 0);
     if (ok && locals[i].count && !locals[i].cases) ok = y->location == locals[i].location && COUNT(t.s[RDI_LOCATION_SETS], RdiLocationCase) == 1;
     if (ok && locals[i].cases) ok = y->location >> 32 == (9ull << 24 | locals[i].cases) && COUNT(t.s[RDI_LOCATION_SETS], RdiLocationCase) == 1u + locals[i].cases && (y->location & 0xffffffff) == 1
                                     && memcmp(c, locals[i].first, 24) == 0 && memcmp(c + locals[i].cases - 1, locals[i].last, 24) == 0;
-    static const uint8_t far[] = {5, 5, 8, 0, 0, 13, 0, 0x80, 0, 0, 42, 32, 21, 0, 0, 4, 8, 0};   /* read rsp; push 0x8000 as 32 bits, widen; add; read 8 bytes; end */
-    if (ok && locals[i].code && locals[i].r[0].d[1] == 0x80) ok = memcmp(t.s[RDI_LOCATION_BYTECODE].p, far, 15) == 0 && t.s[RDI_LOCATION_BYTECODE].p[locals[i].code - 1] == 0 && (locals[i].code == 16 || memcmp(t.s[RDI_LOCATION_BYTECODE].p, far, 18) == 0);
+    const uint8_t *off = locals[i].r[0].d, far[] = {5, 5, 8, 0, 0, 13, off[0], off[1], off[2], off[3], 42, 32, 21, 0, 0, 4, 8, 0};   /* read rsp; push the offset as 32 bits, widen; add; read 8 bytes; end */
+    if (ok && locals[i].code && locals[i].r[0].kind == S_REGREL32) ok = memcmp(t.s[RDI_LOCATION_BYTECODE].p, far, 15) == 0 && t.s[RDI_LOCATION_BYTECODE].p[locals[i].code - 1] == 0 && (locals[i].code == 16 || memcmp(t.s[RDI_LOCATION_BYTECODE].p, far, 18) == 0);
     if (!ok) { printf("local %u: wrong local variable or place\n", i); return 1; }
     Buf *used[] = {&t.s[RDI_TYPE_NODES], &t.s[RDI_PROCEDURES], &t.s[RDI_SCOPES], &t.s[RDI_LOCALS], &t.s[RDI_LOCATION_SETS], &t.s[RDI_LOCATION_BYTECODE], &t.made, &t.cases, &t.strings.keys, &t.strings.at, &t.strings.slots};
     for (unsigned k = 0; k < sizeof used / sizeof *used; k += 1) free(used[k]->p);

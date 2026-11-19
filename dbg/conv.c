@@ -601,7 +601,6 @@ static void locals_by_scope(Out *o)
     for (uint32_t k = 0; y->location >> 56 == 9 && k < in[i].link_name; k += 1)
       *(RdiLocationCase *)add(&o->s[RDI_LOCATION_SETS], sizeof(RdiLocationCase)) = (RdiLocationCase){c[mine + 4 * k], c[mine + 4 * k + 1], c[mine + 4 * k + 2]};
   }
-  for (uint32_t i = 1; i < scopes; i += 1) if (s[i].local_count == 0) s[i].local_first = 0;
   free(in);
 }
 
@@ -803,7 +802,7 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
     Frame frame = {0};
     for (uint32_t at = 0; pdb_symbol(syms, &at, &kind, &d);) {
       uint32_t top = open.n ? *LAST(open, uint32_t) : 0, made = 0, inside = ((RdiScope *)o.s[RDI_SCOPES].p)[top].proc;
-      if (kind == S_END || kind == S_INLINESITE_END) frame.target = 0, open.n -= open.n ? 4 : 0;
+      if (kind == S_END || kind == S_INLINESITE_END) open.n -= open.n ? 4 : 0;
       else if ((kind == S_GPROC32 || kind == S_LPROC32) && d.n >= 35) {   /* CV_SymProc32 */
         uint64_t voff = base = pdb_voff(&pdb, le16(d.p + 32), le32(d.p + 28));
         PdbSpan name = pdb_string(d, &(uint32_t){35});
