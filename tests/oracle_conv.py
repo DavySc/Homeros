@@ -38,6 +38,68 @@ def described(all_scopes, key, calls=True):
             parent = all_scopes[parent][0]
         out[(covers(s), tuple(chain), s[9], *key(s[3], s[4], s[5], s[10]))] += 1
     return out
+def tail(name):
+    """a C++ name without its containers: what follows the last "::" outside angle brackets.
+    NOT YET (namespaces): RAD cuts the container off a procedure's and a type's name and records it apart."""
+    depth = cut = 0
+    for i, c in enumerate(name):
+        depth += (c == '<') - (c == '>')
+        if depth == 0 and name[i:i + 2] == '::': cut = i + 2
+    return name[cut:]
+def typed(rdi, table, op):
+    """how often each (name, type by meaning) occurs among the records of a table. RAD calls `int` int32 and
+    `unsigned int` uint32 (its table of basic types has both names for one code, and the later wins); we do not."""
+    out = collections.Counter()
+    for line in run(rdi, [f'{op} {i}' for i in range(1, int(run(rdi, [f'N {table}'])[0]))]):
+        name, kind = line.split('\t') if op == 'P' else ('', line)
+        kind = re.sub(r'2004 (u?)int32:4 on ', lambda m: '2004 %sint:4 on ' % ('unsigned ' * bool(m[1])), kind)
+        out[tail(name), re.sub(r'(20\d\d) (.*?):(\d+)', lambda m: f'{m[1]} {tail(m[2])}:{m[3]}', kind)] += 1
+    return out
+BASIC = {0x10: ('signed char', 'Char8', 1), 0x11: ('short', 'S16', 2), 0x12: ('long', 'S32', 4), 0x13: ('long long', 'S64', 8), 0x20: ('unsigned char', 'UChar8', 1),
+         0x21: ('unsigned short', 'U16', 2), 0x22: ('unsigned long', 'U32', 4), 0x23: ('unsigned long long', 'U64', 8), 0x30: ('bool', 'S8', 1), 0x40: ('float', 'F32', 4),
+         0x41: ('double', 'F64', 8), 0x70: ('char', 'Char8', 1), 0x71: ('wchar_t', 'UChar16', 2), 0x74: ('int', 'S32', 4), 0x75: ('unsigned int', 'U32', 4),
+         0x76: ('__int64', 'S64', 8), 0x77: ('__uint64', 'U64', 8), 0x7a: ('char16_t', 'Char16', 2), 0x7b: ('char32_t', 'Char32', 4), 0x03: ('', 'Void', 0), 0x08: ('', 'HResult', 4)}
+def meanings(pdb):
+    """each type id's meaning, as rdiq prints a type, and its size, from llvm-pdbutil's reading of the type records (64-bit files),
+    taken in order: a record that names itself or a later one has no type there. A forward reference is the definition
+    llvm-pdbutil found for it, wherever that is. No types when the ids do not start at 0x1000."""
+    recs, memo, forward = {}, {}, []
+    for line in subprocess.run(['llvm-pdbutil', 'dump', '--types', pdb], capture_output=True, text=True, errors='surrogateescape').stdout.split('\n'):
+        if m := re.match(r' +(0x[0-9A-F]+) \| (LF_\w+) \[size = \d+\](?: `(.*)`)?$', line): rec = recs[int(m[1], 16)] = [m[2], m[3] or '', '']
+        elif recs: rec[2] += line + '\n'
+    def of(i):
+        if i not in memo and (i < 0x1000 or forward): memo[i] = make(i)
+        return memo.get(i, ('none', 0))
+    def make(i):
+        if 0xff < i < 0x1000: return '1001.0[0]:8 ' + of(i & 0xff)[0], 8
+        if i in BASIC: c, b, n = BASIC[i]; return (f'2004 {c}:{n} on {b}:{n}' if c else f'{b}:{n}'), n
+        kind, name, body = recs.get(i, ('', '', ''))
+        def field(label): m = re.search(label + r' (0x[0-9A-F]+|<no type>|\d+)', body); return int(m[1], 0) if m and m[1][0] != '<' else 0
+        def flagged(text, on):
+            flags = sum(bit for word, bit in (('const', 1), ('volatile', 2), ('restrict', 4)) if word in re.split(r'[ |]+', text))
+            return (f'1000.{flags:x}[0]:{on[1]} ' if flags else '') + on[0], on[1]
+        if kind == 'LF_MODIFIER': return flagged(re.search(r'modifiers = (.*)', body)[1], of(field('referent =')))
+        if kind == 'LF_POINTER':
+            mode, opts = re.search(r'mode = ([a-z ]+), opts = ([^,]*),', body).groups()
+            if mode not in ('pointer', 'ref', 'rvalue ref'): return 'none', 0   # pointers to members
+            return flagged(opts, ({'pointer': '1001', 'ref': '1002', 'rvalue ref': '1003'}[mode] + '.0[0]:8 ' + of(field('referent ='))[0], 8))
+        if kind in ('LF_PROCEDURE', 'LF_MFUNCTION'):
+            args = [int(x, 16) for x in re.findall(r'^ +(0x[0-9A-F]+)[ :]', recs.get(field('param list ='), ('', '', ''))[2], re.M)]
+            params = [of(x)[0] for x in ([field('this type =')] if field('this type =') else []) + [x for x in args if x]]
+            return f"{'1006' if field('this type =') else '1005'}.0[{len(params)}]:8 {of(field('return type ='))[0]}" + (f" ({', '.join(params)})" if params else ''), 8
+        if kind == 'LF_BITFIELD': on = of(field('type =')); return f"bits {field('bit offset =')}+{field('# bits =')}:{on[1]} of {on[0]}", on[1]
+        if kind == 'LF_ARRAY':
+            on, size = of(field('element type:')), field('size:')
+            return f'1004.0[{size // on[1] if on[1] else 0}]:{size} {on[0]}', size
+        if kind not in ('LF_STRUCTURE', 'LF_CLASS', 'LF_UNION', 'LF_ENUM'): return 'none', 0
+        if m := re.search(r'forward ref \(\S+ (0x[0-9A-F]+)\)', body):
+            if int(m[1], 16) != i: forward.append(i); full = of(int(m[1], 16)); forward.pop(); return full
+            return f"{ {'LF_STRUCTURE': 2005, 'LF_UNION': 2006, 'LF_CLASS': 2007, 'LF_ENUM': 2008}[kind]} {name}:0", 0
+        on = of(field('underlying type:')) if kind == 'LF_ENUM' else ('none', field('sizeof'))
+        return f"{ {'LF_STRUCTURE': 2000, 'LF_CLASS': 2001, 'LF_UNION': 2002, 'LF_ENUM': 2003}[kind]} {name}:{on[1]}" + (f' on {on[0]}' if on[0] != 'none' else ''), on[1]
+    if min(recs, default=0) != 0x1000: recs = {}
+    for i in recs: memo.setdefault(i, make(i))
+    return memo, of
 def normal(src, folder):
     """a source path as the converter's path tree has it: a relative one starts from the folder of the module's object file,
     "." stays out, ".." goes up"""
@@ -53,7 +115,7 @@ for pdb in sys.argv[3:]:
     lines = text.split('\n')
     part, va, q, want = '', {}, [], []
     def ask(query, answer): q.append(query); want.append(answer)
-    recs, per_line, mods, order, src, folder, spans, syms, expected, file_at, starts = [], {}, {}, 0, '', '', [], {}, collections.Counter(), {}, {}
+    recs, per_line, mods, order, src, folder, spans, syms, expected, file_at, starts, proc_types = [], {}, {}, 0, '', '', [], {}, collections.Counter(), {}, {}, collections.Counter()
     for i, line in enumerate(lines):
         if m := re.match(r' +(Modules|Section Headers|Section Contributions|Original Section Headers|Lines|Inlinee Lines|Files|Symbols) *$', line): part = m[1]
         elif part == 'Section Headers' and (m := re.match(r' +SECTION HEADER #(\d+)', line)):
@@ -86,6 +148,7 @@ for pdb in sys.argv[3:]:
             else: around, base = ((), (), mod, 0x80 * (m[2] == 'S_GPROC32')), va.get(sec, 0) + off
             syms[int(m[1])] = (covers, (around[0],) + around[1] if m[2] == 'S_BLOCK32' else (), mod, around[3], m[3] if m[2] != 'S_BLOCK32' else None, None)
             expected[syms[int(m[1])]] += 1
+            if t := re.match(r' +type = `(0x[0-9A-F]+)', lines[i + 2]): proc_types[m[3], int(t[1], 16)] += 1
         elif part == 'Symbols' and (m := re.match(r' *(\d+) \| S_INLINESITE2? \[', line)):
             # an inlined call covers, from the procedure's start, what llvm-pdbutil prints for its annotations: from the
             # first "code" since the last end (or from that end) to each "code end"; pieces that touch are one
@@ -170,13 +233,33 @@ for pdb in sys.argv[3:]:
         for size, k, first in pieces: inner[first - lo:first - lo - size] = [k] * -size
         vmap = [f'v 25 {v}' for v in range(lo, hi + 1)]
         q += vmap; want += map(str, inner); got += run(rdi, vmap)
+        # each procedure with a type has it, by llvm-pdbutil's reading of the type records
+        means, of = meanings(pdb)
+        a = collections.Counter(line for line in run(rdi, [f'P {i}' for i in range(1, int(run(rdi, ['N 31'])[0]))]) if not line.endswith('\tnone'))
+        b = collections.Counter(f'{name}\t{of(t)[0]}' for name, t in proc_types.elements() if of(t)[0] != 'none')
+        for k in a | b: q.append(f'procedure and its type {k}'); want.append(str(b[k])); got.append(str(a[k]))
+        # every type record's meaning is a type of ours; each type of ours is one, or what a const pointer or a basic type's name stands on
+        a, b = set(run(rdi, [f'T {i}' for i in range(1, int(run(rdi, ['N 19'])[0]))])), {m for m, _ in means.values()} - {'none'}
+        under = {re.sub(r'^(1000\.\w\[0\]:\d+|2004 [\w ]+:\d on) ', '', m) for m in b}
+        for k in a | b: q.append(f'type {k}'); want.append('True'); got.append(str(k in a and k in b | under))
+        # a basic type's name is made once
+        every = collections.Counter(run(rdi, [f'T {i}' for i in range(1, int(run(rdi, ['N 19'])[0]))]))
+        for k in every:
+            if k.startswith('2004 '): q.append(f'copies of type {k}'); want.append('1'); got.append(str(every[k]))
         rad = pdb[:-4] + '.rdi'   # RAD's own conversion of the same PDB, where the runner recorded one: the line at every offset of the code
         if os.path.exists(rad):
             every = [f'L {v}' for a, n in spans for v in range(a, a + n)]
             q += every; want += run(rad, every); got += run(rdi, every)
             # NOT YET (types slice): the kind of container, and the container's name cut from the front of a procedure's name
-            a, b = (described(s, lambda flags, name, link, site: (flags[0], int(flags[1]) & 0x80, name.split('::')[-1], link, site and site[0]), calls=False) for s in (ours, scopes(rad)))
+            a, b = (described(s, lambda flags, name, link, site: (flags[0], int(flags[1]) & 0x80, tail(name), link, site and site[0]), calls=False) for s in (ours, scopes(rad)))
             for k in a | b: q.append(f'scope, as RAD has it, {k}'); want.append(str(b[k])); got.append(str(a[k]))
+            a, b = typed(rdi, 31, 'P'), typed(rad, 31, 'P')
+            for k in a | b: q.append(f'procedure and its type {k}'); want.append(str(b[k])); got.append(str(a[k]))
+            # every type, but for the built-in ones, their aliases and the pointers to those (RAD makes one for every basic
+            # type code there could be, 3,199 of them pointers to no type; we make the ones used), and typedefs (NOT YET)
+            a, b = typed(rdi, 19, 'T'), typed(rad, 19, 'T')
+            for k in a | b:
+                if not re.match(r'(1001\.0\[0\]:8 )?(none|\w+:\d+$|2004 )', k[1]): q.append(f'type {k[1]}'); want.append(str(b[k])); got.append(str(a[k]))
     bad = [(a, w, g) for a, w, g in zip(q, want, got) if w != g]
     if bad or len(got) != len(q):
         print(f'oracle_conv: {pdb}: {len(q)} questions, {len(got)} answers, {len(bad)} differ')

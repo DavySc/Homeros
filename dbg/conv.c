@@ -80,6 +80,8 @@ static uint32_t intern(Names *m, const void *key, uint32_t len)
 
 enum { S_END = 0x0006, S_THUNK32 = 0x1102, S_BLOCK32 = 0x1103, S_PUB32 = 0x110e, S_LPROC32 = 0x110f, S_GPROC32 = 0x1110,
        S_INLINESITE = 0x114d, S_INLINESITE_END = 0x114e,   /* CV_SymKind */
+       LF_MODIFIER = 0x1001, LF_POINTER = 0x1002, LF_PROCEDURE = 0x1008, LF_MFUNCTION = 0x1009, LF_ARGLIST = 0x1201,
+       LF_BITFIELD = 0x1205, LF_ARRAY = 0x1503, LF_CLASS = 0x1504, LF_STRUCTURE = 0x1505, LF_UNION = 0x1506, LF_ENUM = 0x1507,
        LF_FUNC_ID = 0x1601, LF_MFUNC_ID = 0x1602 };                                 /* CV_LeafKind */
 
 typedef struct {
@@ -87,6 +89,12 @@ typedef struct {
   Names strings, nodes, files;
   Buf pairs;                 /* name map entries: (kind, string, index) */
   Buf scopes;                /* what each scope covers: (first, ~end, scope) */
+  /* types: the PDB's type records and where each starts; per type id, 1 + the index of the type
+     made for it (0: not made); the full definitions by name; scratch for a key or a parameter list */
+  PdbSpan leaves;
+  uint32_t pointer_size;
+  Buf leaf_at, made, scratch, defined_id;
+  Names defined;
 } Out;
 
 static bool slash(uint8_t c) { return c == '/' || c == '\\'; }
@@ -227,6 +235,142 @@ static void inline_pieces(Buf *out, Buf *lines, PdbSpan a, uint64_t base, uint32
   }
 }
 
+/* ---- types (rdi_from_codeview.c, "types pass 1" to "types pass 4") ---- */
+
+enum { FIRST_RECORD = 0x1000 };   /* the id of the first type record; the ids below are the basic types */
+
+/* a number in a type record: 2 bytes, which are the value when below 0x8000 and otherwise say how many bytes follow (cv_numeric_from_data_range) */
+static uint64_t numeric(PdbSpan d, uint32_t *at)
+{
+  static const uint8_t size[11] = {1, 2, 2, 4, 4, 0, 0, 0, 0, 8, 8};   /* LF_CHAR, SHORT, USHORT, LONG, ULONG, .., QUADWORD, UQUADWORD */
+  uint64_t v = d.n - *at >= 2 ? le16(d.p + *at) : 0, n = v >= 0x8000 && v < 0x800b ? size[v - 0x8000] : 0;
+  *at += d.n - *at >= 2 ? 2 : 0;
+  if (v < 0x8000 || d.n - *at < n) return v < 0x8000 ? v : 0;
+  v = 0;
+  for (uint64_t i = n; i > 0; i -= 1) v = v << 8 | d.p[*at + i - 1];
+  *at += (uint32_t)n;
+  return v;
+}
+
+/* the type record of an id: its kind and bytes; false when there is none */
+static bool leaf(const Out *o, uint32_t id, uint16_t *kind, PdbSpan *d)
+{
+  uint32_t i = id - FIRST_RECORD;
+  return i < COUNT(o->leaf_at, uint32_t) && pdb_symbol(o->leaves, &(uint32_t){((uint32_t *)o->leaf_at.p)[i]}, kind, d);
+}
+
+/* A struct, class, union or enum record: where its flags are, and its name. False for another kind. */
+static bool named_leaf(uint16_t kind, PdbSpan d, uint16_t *props, uint64_t *size, PdbSpan *name)
+{
+  bool record = kind == LF_CLASS || kind == LF_STRUCTURE;   /* CV_LeafStruct: count, props, 3 ids, size, name; CV_LeafUnion: count, props, id, size, name */
+  uint32_t at = record ? 16 : kind == LF_UNION ? 8 : 12;    /* CV_LeafEnum: count, props, 2 ids, name */
+  if ((!record && kind != LF_UNION && kind != LF_ENUM) || d.n < at) return false;
+  *props = le16(d.p + 2);
+  *size = kind == LF_ENUM ? 0 : numeric(d, &at);
+  *name = pdb_string(d, &at);
+  return true;
+}
+
+/* The id of the first full definition filed under a name; 0 when there is none. With `id`,
+   files that definition unless one is there. RAD looks a scoped type up by its unique name,
+   which follows the name in the record; in no test file does that find another definition. */
+static uint32_t defined(Out *o, PdbSpan name, uint32_t id)
+{
+  if (id && intern(&o->defined, name.p, name.n) == COUNT(o->defined_id, uint32_t)) *(uint32_t *)add(&o->defined_id, 4) = id;
+  uint32_t slot = o->defined.slots.n ? *names_slot(&o->defined, name.p, name.n) : 0;
+  return slot ? ((uint32_t *)o->defined_id.p)[slot - 1] : 0;
+}
+
+static uint32_t type_node(Out *o, RdiType y)
+{
+  *(RdiType *)add(&o->s[RDI_TYPE_NODES], sizeof y) = y;
+  return COUNT(o->s[RDI_TYPE_NODES], RdiType) - 1;
+}
+
+#define SIZE_OF(type) (((RdiType *)o->s[RDI_TYPE_NODES].p)[type].byte_size)
+
+/* The type made for a type id; 0 when there is none. A basic type (an id below the first
+   record's: its low byte, or with bits 8 to 11 a pointer to that) is made when first asked
+   for. A record's is looked up, never made here: `record_type` makes them in id order, so a
+   record that names a later one, or itself, has no type there, and nothing recurses however
+   a damaged file chains its records. RAD's `int32` and `uint32` are `int` and `unsigned int`. */
+static uint32_t type_of(Out *o, uint32_t id)
+{
+  /* CV_BasicType, its C name, and the built-in type it is an alias of with that type's size (the table in "types pass 4") */
+  static const struct { uint8_t cv, kind, size; const char *name, *built_in; } basic[] = {
+    {0x10, 0x04, 1, "signed char", "Char8"}, {0x11, 0x12, 2, "short", "S16"}, {0x12, 0x13, 4, "long", "S32"}, {0x13, 0x14, 8, "long long", "S64"},
+    {0x20, 0x07, 1, "unsigned char", "UChar8"}, {0x21, 0x0b, 2, "unsigned short", "U16"}, {0x22, 0x0c, 4, "unsigned long", "U32"},
+    {0x23, 0x0d, 8, "unsigned long long", "U64"}, {0x30, 0x11, 1, "bool", "S8"}, {0x40, 0x1b, 4, "float", "F32"}, {0x41, 0x1e, 8, "double", "F64"},
+    {0x70, 0x04, 1, "char", "Char8"}, {0x71, 0x08, 2, "wchar_t", "UChar16"}, {0x74, 0x13, 4, "int", "S32"}, {0x75, 0x0c, 4, "unsigned int", "U32"},
+    {0x76, 0x14, 8, "__int64", "S64"}, {0x77, 0x0d, 8, "__uint64", "U64"}, {0x7a, 0x05, 2, "char16_t", "Char16"}, {0x7b, 0x06, 4, "char32_t", "Char32"},
+    {0x03, 0x01, 0, 0, "Void"}, {0x08, 0x03, 4, 0, "HResult"}};
+  if (id >= COUNT(o->made, uint32_t)) return 0;
+  uint32_t made = ((uint32_t *)o->made.p)[id];
+  if (made || id >= FIRST_RECORD) return made;
+  if (id >> 8 != 0) {
+    made = type_of(o, id & 0xff);
+    made = type_node(o, (RdiType){.kind = 0x1001, .byte_size = o->pointer_size, .a = made});
+  } else for (unsigned i = 0; i < sizeof basic / sizeof *basic; i += 1) {
+    if (basic[i].cv != id) continue;
+    made = type_node(o, (RdiType){.kind = basic[i].kind, .byte_size = basic[i].size, .a = intern(&o->strings, basic[i].built_in, (uint32_t)strlen(basic[i].built_in))});
+    if (basic[i].name) made = type_node(o, (RdiType){.kind = 0x2004, .byte_size = basic[i].size, .a = intern(&o->strings, basic[i].name, (uint32_t)strlen(basic[i].name)), .b = made});
+  }
+  return ((uint32_t *)o->made.p)[id] = made;
+}
+
+/* Makes the type of a type record. NOT YET made, so no type: pointers to members (RAD makes
+   them plain pointers, which they are not), LF_ALIAS, the newer struct records. */
+static void record_type(Out *o, uint32_t id)
+{
+  uint32_t made = 0, direct;
+  uint16_t kind, props;
+  uint64_t size;
+  PdbSpan d, name;
+  if (!leaf(o, id, &kind, &d)) return;
+  if (kind == LF_MODIFIER && d.n >= 6) {                   /* CV_LeafModifier: id, flags (const, volatile) */
+    direct = made = type_of(o, le32(d.p));
+    if (le16(d.p + 4) & 3) made = type_node(o, (RdiType){.kind = 0x1000, .flags = le16(d.p + 4) & 3, .byte_size = SIZE_OF(direct), .a = direct});
+  } else if (kind == LF_POINTER && d.n >= 8 && ((le32(d.p + 4) >> 5 & 7) < 2 || (le32(d.p + 4) >> 5 & 7) == 4)) {
+    /* CV_LeafPointer: id, attributes. The mode (CV_PointerMode) says pointer, reference or rvalue reference. */
+    uint32_t attribs = le32(d.p + 4), mode = attribs >> 5 & 7;
+    direct = type_of(o, le32(d.p));
+    made = type_node(o, (RdiType){.kind = mode == 1 ? 0x1002 : mode == 4 ? 0x1003 : 0x1001, .byte_size = o->pointer_size, .a = direct});
+    uint16_t flags = (attribs >> 10 & 1) | (attribs >> 9 & 1) << 1 | (attribs >> 12 & 1) << 2;   /* const, volatile, restrict of the pointer itself */
+    if (flags) made = type_node(o, (RdiType){.kind = 0x1000, .flags = flags, .byte_size = o->pointer_size, .a = made});
+  } else if ((kind == LF_PROCEDURE && d.n >= 12) || (kind == LF_MFUNCTION && d.n >= 20)) {
+    /* CV_LeafProcedure: return type, 4 bytes, argument list. CV_LeafMFunction: return type, class, this, 4 bytes, argument list.
+       A method's first parameter is its `this`. An id of 0 in the list is the `...` and no parameter (RAD keeps it for a method). */
+    bool plain = kind == LF_PROCEDURE, method = !plain && le32(d.p + 8) != 0;
+    uint32_t first = COUNT(o->s[RDI_INDEX_RUNS], uint32_t), param;
+    PdbSpan args;
+    direct = type_of(o, le32(d.p));
+    if (method) param = type_of(o, le32(d.p + 8)), *(uint32_t *)add(&o->s[RDI_INDEX_RUNS], 4) = param;
+    if (leaf(o, le32(d.p + (plain ? 8 : 16)), &kind, &args) && kind == LF_ARGLIST && args.n >= 4)
+      for (uint32_t i = 0; i < le32(args.p) && args.n - 4 >= 4 * (uint64_t)(i + 1); i += 1)
+        if (le32(args.p + 4 + 4 * i) != 0) param = type_of(o, le32(args.p + 4 + 4 * i)), *(uint32_t *)add(&o->s[RDI_INDEX_RUNS], 4) = param;
+    made = type_node(o, (RdiType){.kind = method ? 0x1006 : 0x1005, .byte_size = o->pointer_size, .a = direct, .b = COUNT(o->s[RDI_INDEX_RUNS], uint32_t) - first, .c = first});
+  } else if (kind == LF_BITFIELD && d.n >= 6) {            /* CV_LeafBitField: id, length, position */
+    direct = type_of(o, le32(d.p));
+    made = type_node(o, (RdiType){.kind = 0xf000, .byte_size = SIZE_OF(direct), .a = direct, .b = d.p[5], .c = d.p[4]});
+  } else if (kind == LF_ARRAY && d.n >= 8) {               /* CV_LeafArray: element type, index type, size in bytes */
+    direct = type_of(o, le32(d.p));
+    size = numeric(d, &(uint32_t){8});
+    made = type_node(o, (RdiType){.kind = 0x1004, .byte_size = (uint32_t)size, .a = direct, .b = SIZE_OF(direct) ? (uint32_t)(size / SIZE_OF(direct)) : 0});
+  } else if (named_leaf(kind, d, &props, &size, &name)) {
+    bool forward = props >> 7 & 1;                         /* CV_TypeProp: forward reference */
+    /* A forward reference means the first full definition of its name, made now if it comes
+       later (it is no forward reference, so this goes one deep); without one it is a type with only a name. */
+    uint32_t full = forward ? defined(o, name, 0) : 0;
+    if (full && !type_of(o, full)) record_type(o, full);
+    direct = !forward && kind == LF_ENUM ? type_of(o, le32(d.p + 4)) : 0;
+    made = full ? type_of(o, full)
+                : type_node(o, (RdiType){.kind = forward ? (kind == LF_STRUCTURE ? 0x2005 : kind == LF_UNION ? 0x2006 : kind == LF_CLASS ? 0x2007 : 0x2008)
+                                                         : (kind == LF_STRUCTURE ? 0x2000 : kind == LF_CLASS ? 0x2001 : kind == LF_UNION ? 0x2002 : 0x2003),
+                                         .byte_size = kind == LF_ENUM ? SIZE_OF(direct) : (uint32_t)size, .a = intern(&o->strings, name.p, name.n), .b = direct});
+  }
+  ((uint32_t *)o->made.p)[id] = made;
+}
+
 /* A line table from records (offset, order, file, line), sorted here. */
 static uint32_t line_table(Out *o, Buf *lines)
 {
@@ -302,7 +446,6 @@ static void name_maps(Out *o)
     p[4 * i + 1] = rdi_hash(o->strings.keys.p + at[s], at[s + 1] - at[s]) % strings[p[4 * i]];
   }
   p = sorted(&o->pairs, &n);
-  add(&o->s[RDI_INDEX_RUNS], 4);
   RdiNameMap *maps = add(&o->s[RDI_NAME_MAPS], RDI_NAMES_KINDS * sizeof *maps);
   for (uint64_t i = 0, kind = 0; kind < RDI_NAMES_KINDS; kind += 1) {
     maps[kind] = (RdiNameMap){COUNT(o->s[RDI_NAME_MAP_BUCKETS], RdiBucket), COUNT(o->s[RDI_NAME_MAP_NODES], RdiNameNode), (uint32_t)strings[kind], (uint32_t)strings[kind]};
@@ -346,10 +489,10 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
   Pdb pdb;
   if (!pdb_open(&pdb, data, size)) return 0;
   Out o = {0};
-  Buf lines = {0}, maps = {0}, ranges = {0}, scratch = {0}, open = {0}, links = {0}, id_ats = {0};
+  Buf lines = {0}, maps = {0}, ranges = {0}, open = {0}, links = {0}, id_ats = {0};
   /* index 0 of every table is the record that means "none" */
-  static const int tables[] = {RDI_BINARY_SECTIONS, RDI_FILE_PATH_NODES, RDI_SOURCE_FILES, RDI_LINE_TABLES, RDI_SOURCE_LINE_MAPS, RDI_UNITS, RDI_SCOPES, RDI_PROCEDURES, RDI_INLINE_SITES};
-  static const uint8_t table_size[] = {sizeof(RdiSection), sizeof(RdiPathNode), sizeof(RdiSourceFile), sizeof(RdiLineTable), sizeof(RdiSourceLineMap), sizeof(RdiUnit), sizeof(RdiScope), sizeof(RdiSymbol), sizeof(RdiInlineSite)};
+  static const int tables[] = {RDI_BINARY_SECTIONS, RDI_FILE_PATH_NODES, RDI_SOURCE_FILES, RDI_LINE_TABLES, RDI_SOURCE_LINE_MAPS, RDI_UNITS, RDI_SCOPES, RDI_PROCEDURES, RDI_INLINE_SITES, RDI_TYPE_NODES, RDI_INDEX_RUNS};
+  static const uint8_t table_size[] = {sizeof(RdiSection), sizeof(RdiPathNode), sizeof(RdiSourceFile), sizeof(RdiLineTable), sizeof(RdiSourceLineMap), sizeof(RdiUnit), sizeof(RdiScope), sizeof(RdiSymbol), sizeof(RdiInlineSite), sizeof(RdiType), 4};
   for (unsigned i = 0; i < sizeof tables / sizeof *tables; i += 1) add(&o.s[tables[i]], table_size[i]);
   intern(&o.strings, "", 0);
   intern(&o.nodes, (uint32_t[2]){0, 0}, 8);
@@ -367,11 +510,28 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
 
   PdbModule m;
   PdbSpan syms, c13, d, ids;
-  uint32_t first_id;
-  uint8_t *id_stream = pdb_ids(&pdb, &ids, &first_id);
+  uint32_t first_id, first_type;
+  uint8_t *id_stream = pdb_leaves(&pdb, PDB_IDS, &ids, &first_id);
   for (uint32_t at = 0, next = 0; pdb_symbol(ids, &next, &(uint16_t){0}, &(PdbSpan){0}); at = next) *(uint32_t *)add(&id_ats, 4) = at;
   uint16_t kind;
   uint64_t order = 0;
+
+  /* Types: every record's type is made, as RAD makes them, after the full definitions are filed
+     by name. Type ids start at 0x1000 in every PDB; one that says otherwise has no types here. */
+  uint8_t *type_stream = pdb_leaves(&pdb, PDB_TYPES, &o.leaves, &first_type);
+  o.pointer_size = pdb.machine == 0x8664 ? 8 : 4;
+  if (first_type != FIRST_RECORD) o.leaves.n = 0;
+  for (uint32_t at = 0, next = 0; pdb_symbol(o.leaves, &next, &kind, &d); at = next) {
+    uint16_t props;
+    uint64_t size;
+    PdbSpan name;
+    *(uint32_t *)add(&o.leaf_at, 4) = at;
+    if (!named_leaf(kind, d, &props, &size, &name) || props >> 7 & 1) continue;
+    defined(&o, name, FIRST_RECORD + COUNT(o.leaf_at, uint32_t) - 1);
+  }
+  add(&o.made, 4 * (FIRST_RECORD + (uint64_t)COUNT(o.leaf_at, uint32_t)));
+  for (uint32_t id = FIRST_RECORD; id < COUNT(o.made, uint32_t); id += 1)
+    if (!type_of(&o, id)) record_type(&o, id);
   for (uint32_t at = 0; pdb_module(&pdb, &at, &m);) {
     /* a unit is named by the last part of its object file's path (rdi_from_codeview.c) */
     PdbSpan name = m.name;
@@ -411,7 +571,7 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
       else if ((kind == S_GPROC32 || kind == S_LPROC32) && d.n >= 35) {   /* CV_SymProc32 */
         uint64_t voff = base = pdb_voff(&pdb, le16(d.p + 32), le32(d.p + 28));
         PdbSpan name = pdb_string(d, &(uint32_t){35});
-        uint32_t proc = procedure(&o, (RdiSymbol){.name = intern(&o.strings, name.p, name.n), .container_flags = kind == S_GPROC32 ? 0x80 : 0}, voff, voff + le32(d.p + 12));
+        uint32_t proc = procedure(&o, (RdiSymbol){.name = intern(&o.strings, name.p, name.n), .container_flags = kind == S_GPROC32 ? 0x80 : 0, .type = type_of(&o, le32(d.p + 24))}, voff, voff + le32(d.p + 12));
         rec(&links, voff, 0, proc, 0);
         made = COUNT(o.s[RDI_SCOPES], RdiScope) - 1;
       } else if (kind == S_THUNK32 && d.n >= 21) {                         /* CV_SymThunk32 */
@@ -478,6 +638,7 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
   }
   free(globals);
   free(id_stream);
+  free(type_stream);
   uint64_t n, *l = sorted(&links, &n);
   const RdiVMap *held = (const RdiVMap *)o.s[RDI_UNIT_VMAP].p;   /* null when there are no contributions: indexed, never offset */
   uint32_t next = 0, none = COUNT(o.s[RDI_UNIT_VMAP], RdiVMap);
@@ -520,7 +681,7 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
   link_children(&o.s[RDI_FILE_PATH_NODES], sizeof(RdiPathNode));
   /* each source file's normal path */
   for (uint32_t file = 1; file < COUNT(o.s[RDI_SOURCE_FILES], RdiSourceFile); file += 1) {
-    uint32_t path = normal_path(&o, ((RdiSourceFile *)o.s[RDI_SOURCE_FILES].p)[file].path_node, &scratch);
+    uint32_t path = normal_path(&o, ((RdiSourceFile *)o.s[RDI_SOURCE_FILES].p)[file].path_node, &o.scratch);
     ((RdiSourceFile *)o.s[RDI_SOURCE_FILES].p)[file].path = path;
     named(&o.pairs, RDI_NAMES_SOURCE_PATHS, path, file);
   }
@@ -538,7 +699,8 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
     if (o.s[k].n) memcpy(add(&file, (o.s[k].n + 7) / 8 * 8), o.s[k].p, o.s[k].n);
     free(o.s[k].p);
   }
-  Buf *rest[] = {&o.strings.slots, &o.nodes.keys, &o.nodes.at, &o.nodes.slots, &o.files.keys, &o.files.at, &o.files.slots, &o.pairs, &o.scopes, &lines, &maps, &ranges, &scratch, &open, &links, &id_ats};
+  Buf *rest[] = {&o.strings.slots, &o.nodes.keys, &o.nodes.at, &o.nodes.slots, &o.files.keys, &o.files.at, &o.files.slots, &o.pairs, &o.scopes, &lines, &maps, &ranges, &open, &links, &id_ats,
+                 &o.leaf_at, &o.made, &o.scratch, &o.defined_id, &o.defined.keys, &o.defined.at, &o.defined.slots};
   for (unsigned i = 0; i < sizeof rest / sizeof *rest; i += 1) free(rest[i]->p);
   pdb_close(&pdb);
   *out_size = file.n;

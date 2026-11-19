@@ -56,6 +56,55 @@ int main(void)
   if (lines.n != sizeof want || memcmp(lines.p, want, sizeof want) != 0) { printf("inline site: wrong lines\n"); return 1; }
   free(out.p), free(lines.p);
   free(o.s[RDI_SCOPES].p), free(o.s[RDI_SCOPE_VOFFS].p), free(o.scopes.p);
+  /* One type record at a time, each in a block of exactly its length: the shortest record of each kind that makes a type, then one
+     a byte shorter, which makes none. Ids far past the last record are no type. The last two rows are argument lists read by the
+     procedure after them: one that claims three ids and has one, one too short to hold its count. */
+  static const struct { uint16_t kind; uint8_t n, d[20]; uint16_t want; uint8_t list; } records[] = {
+    {LF_MODIFIER, 6, {0x74, 0, 0, 0, 1, 0}, 0x1000, 0}, {LF_MODIFIER, 5, {0x74, 0, 0, 0, 1}, 0, 0},
+    {LF_POINTER, 8, {0xff, 0xff, 0xff, 0x7f, 0x0c, 0, 1, 0}, 0x1001, 0}, {LF_POINTER, 7, {0x74, 0, 0, 0, 0x0c, 0, 1}, 0, 0},
+    {LF_PROCEDURE, 12, {0x74, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, 0xff, 0x7f}, 0x1005, 0}, {LF_PROCEDURE, 11, {0x74}, 0, 0},
+    {LF_MFUNCTION, 20, {0x74, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, 0xff, 0x7f, 0, 0, 0, 0, 0xff, 0xff, 0xff, 0x7f}, 0x1006, 0}, {LF_MFUNCTION, 19, {0x74}, 0, 0},
+    {LF_BITFIELD, 6, {0x74, 0, 0, 0, 3, 1}, 0xf000, 0}, {LF_BITFIELD, 5, {0x74, 0, 0, 0, 3}, 0, 0},
+    {LF_ARRAY, 8, {0x74, 0, 0, 0, 0x23, 0, 0, 0}, 0x1004, 0}, {LF_ARRAY, 7, {0x74}, 0, 0},
+    {LF_STRUCTURE, 16, {0}, 0x2000, 0}, {LF_STRUCTURE, 15, {0}, 0, 0}, {LF_CLASS, 16, {0}, 0x2001, 0}, {LF_CLASS, 15, {0}, 0, 0},
+    {LF_UNION, 8, {0}, 0x2002, 0}, {LF_UNION, 7, {0}, 0, 0}, {LF_ENUM, 12, {0}, 0x2003, 0}, {LF_ENUM, 11, {0}, 0, 0},
+    {LF_ARGLIST, 8, {3, 0, 0, 0, 0x74, 0, 0, 0}, 0x1005, 1}, {LF_ARGLIST, 3, {3, 0, 0}, 0x1005, 1}};
+  for (unsigned i = 0; i < sizeof records / sizeof *records; i += 1) {
+    static const uint8_t reader[] = {14, 0, 0x08, 0x10, 0x74, 0, 0, 0, 0, 0, 0, 0, 0x00, 0x10, 0, 0};   /* a procedure whose argument list is record 0x1000 */
+    uint64_t n = 4 + (uint64_t)records[i].n, all = n + (records[i].list ? sizeof reader : 0);
+    uint8_t *a = malloc(all);
+    a[0] = (uint8_t)(n - 2), a[1] = 0, a[2] = (uint8_t)records[i].kind, a[3] = (uint8_t)(records[i].kind >> 8);
+    memcpy(a + 4, records[i].d, records[i].n);
+    if (records[i].list) memcpy(a + n, reader, sizeof reader);
+    Out t = {.pointer_size = 8, .leaves = {a, (uint32_t)all}};
+    add(&t.s[RDI_TYPE_NODES], sizeof(RdiType)), add(&t.s[RDI_INDEX_RUNS], 4);   /* each table's first record stands for none */
+    add(&t.leaf_at, 4);
+    if (records[i].list) *(uint32_t *)add(&t.leaf_at, 4) = (uint32_t)n;
+    add(&t.made, 4 * (FIRST_RECORD + 2));
+    for (uint32_t id = FIRST_RECORD; id < FIRST_RECORD + 2; id += 1) record_type(&t, id);
+    uint32_t made = ((uint32_t *)t.made.p)[FIRST_RECORD + records[i].list];
+    const RdiType *y = (const RdiType *)t.s[RDI_TYPE_NODES].p + made;
+    if ((made != 0) != (records[i].want != 0) || y->kind != records[i].want) { printf("type record %u: made a type of kind %x\n", i, y->kind); return 1; }
+    if (records[i].list && (y->b != (records[i].n == 8) || (y->b && ((uint32_t *)t.s[RDI_INDEX_RUNS].p)[y->c] == 0))) { printf("type record %u: wrong parameters\n", i); return 1; }
+    if (records[i].kind == LF_POINTER && y->a != 0) { printf("type record %u: a type for an id past the last\n", i); return 1; }
+    Buf *used[] = {&t.s[RDI_TYPE_NODES], &t.s[RDI_INDEX_RUNS], &t.leaf_at, &t.made, &t.strings.keys, &t.strings.at, &t.strings.slots};
+    for (unsigned k = 0; k < sizeof used / sizeof *used; k += 1) free(used[k]->p);
+    free(a);
+  }
+  /* A number in a type record: the 2 bytes themselves below 0x8000, else 1, 2, 4 or 8 bytes that follow; 0 when cut short or of
+     a kind not read. Each in a block of exactly its length. */
+  static const struct { uint8_t n, a[10], after; uint64_t want; } numbers[] = {
+    {2, {0x10, 0x00}, 2, 16}, {2, {0xff, 0x7f}, 2, 0x7fff}, {3, {0x00, 0x80, 0xfe}, 3, 0xfe}, {4, {0x02, 0x80, 0x34, 0x12}, 4, 0x1234},
+    {6, {0x04, 0x80, 4, 3, 2, 1}, 6, 0x01020304}, {4, {0x01, 0x80, 0x34, 0x12}, 4, 0x1234}, {6, {0x03, 0x80, 4, 3, 2, 1}, 6, 0x01020304},
+    {10, {0x09, 0x80, 8, 7, 6, 5, 4, 3, 2, 1}, 10, 0x0102030405060708}, {10, {0x0a, 0x80, 8, 7, 6, 5, 4, 3, 2, 1}, 10, 0x0102030405060708},
+    {5, {0x04, 0x80, 4, 3, 2}, 2, 0}, {4, {0x05, 0x80, 1, 2}, 2, 0}, {4, {0x0b, 0x80, 1, 2}, 2, 0}, {1, {0x10}, 0, 0}, {0, {0}, 0, 0}};
+  for (unsigned i = 0; i < sizeof numbers / sizeof *numbers; i += 1) {
+    uint8_t *a = memcpy(malloc(numbers[i].n + 1), numbers[i].a, numbers[i].n) ;
+    uint32_t at = 0;
+    uint64_t got = numeric((PdbSpan){a, numbers[i].n}, &at);
+    free(a);
+    if (got != numbers[i].want || at != numbers[i].after) { printf("number %u: wrong value or length\n", i); return 1; }
+  }
   uint32_t seed = 1;
   for (int round = 0; round < 200000; round += 1) {
     Buf ranges = {0}, out = {0};

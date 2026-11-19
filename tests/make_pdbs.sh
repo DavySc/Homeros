@@ -11,6 +11,9 @@ for s in steps crash deep blocks gap; do
     link "$out/obj/$s-$o.obj" /out:"$out/$s-$o.exe" /pdb:"$out/$s-$o.pdb"
   done
 done
+# C++: classes, methods, references, bit fields, member pointers, a forward reference with and without its definition
+clang --target=x86_64-pc-windows-msvc -g -gcodeview -O0 -ffreestanding -fno-rtti -fno-exceptions -c "$here/tests/kinds.cpp" -o "$out/obj/kinds.obj"
+link "$out/obj/kinds.obj" /out:"$out/kinds.exe" /pdb:"$out/kinds.pdb"
 link "$out/obj/steps-O0.obj" /pdbpagesize:8192 /out:"$out/steps-8k.exe" /pdb:"$out/steps-8k.pdb"
 # column records, and one function whose lines come from two files
 clang --target=x86_64-pc-windows-msvc -g -gcodeview -gcolumn-info -O0 -ffreestanding -c "$here/subjects/steps.c" -o "$out/obj/cols.obj"
@@ -45,6 +48,18 @@ sizes = [u32(good, at(4 + 4 * i)) for i in range(streams)]
 first = 4 + 4 * streams + 4 * sum(-(-n // page) for n in sizes[:3])            # the page list of stream 3, the DBI stream
 dbi = lambda k: u32(good, at(first + 4 * (k // page))) * page + k % page
 open(sys.argv[2] + "/bad/nocontribs.pdb", "wb").write(patched(dbi(64 + u32(good, dbi(24))), 0))' "$out/steps-O0.pdb" "$out"
+# Two more in bad/, with types no compiler writes, that check.sh also converts and looks at: in
+# later.pdb the first pointer record names the record two after it, which is a function that
+# takes that pointer (llvm-pdbutil 18 overflows its stack on it); firstid.pdb says its type ids
+# start at 0x1001.
+python3 -I -c 'import struct, sys
+d = bytearray(open(sys.argv[1], "rb").read())
+head = d.index(b"\x0b\xca\x31\x01\x38\x00\x00\x00\x00\x10\x00\x00")              # the type stream: version, header size, first id
+open(sys.argv[3], "wb").write(d[:head + 8] + b"\x01" + d[head + 9:])
+at, i = head + 56, 0x1000
+while d[at + 2:at + 4] != b"\x02\x10": at += 2 + struct.unpack_from("<H", d, at)[0]; i += 1   # LF_POINTER
+struct.pack_into("<I", d, at + 4, i + 2)
+open(sys.argv[2], "wb").write(d)' "$out/steps-O0.pdb" "$out/bad/later.pdb" "$out/bad/firstid.pdb"
 python3 -I -c 'import re, sys
 d = bytearray(open(sys.argv[1], "rb").read())
 at = re.search(rb"\x4d\x11.{8}.\x10\x00\x00", d, re.S).start()               # S_INLINESITE: parent, end, then the id

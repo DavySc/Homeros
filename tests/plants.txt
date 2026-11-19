@@ -64,7 +64,7 @@ oracle | dbg/conv.c | made = scope(&o, inside, top, 0, o.s[RDI_SCOPE_VOFFS].n - 
 oracle | dbg/conv.c | y->link_name = (uint32_t)l[4 * last + 2]; | y->link_name = (uint32_t)l[4 * (first + 1) + 2];
 oracle | dbg/conv.c | voff, held[next].voff); | voff, voff + 1);
 oracle | dbg/conv.c | .name = intern(&o.strings, name.p, name.n), .flags = 2} | .name = intern(&o.strings, name.p, name.n)}
-oracle | dbg/conv.c | .container_flags = kind == S_GPROC32 ? 0x80 : 0} | .container_flags = 0x80}
+oracle | dbg/conv.c | .container_flags = kind == S_GPROC32 ? 0x80 : 0, | .container_flags = 0x80,
 oracle | dbg/pdb.c | size < 2 ? 0 : size - 2); | size);
 oracle | dbg/conv.c | voff, voff + le32(d.p + 12)); | voff, voff + le32(d.p + 16));
 oracle | dbg/conv.c | le32(d.p) & 3); | le32(d.p) \p 1);
@@ -127,3 +127,82 @@ test | dbg/pdb.c | at <= data.n && data.n - at >= 12 + more; | data.n - at >= 12
 test | dbg/pdb.c | data.n - at >= 12 + more; at += | data.n - at >= 12; at +=
 test | dbg/pdb.c | *sum_at = le32(data.p + at + 4), *line = le32(data.p + at + 8); | *sum_at = le32(data.p + at + 8), *line = le32(data.p + at + 4);
 test | dbg/pdb.c | if (le32(data.p + at) != id) continue; | if (le32(data.p + at) < id) continue;
+# ---- slice 2f: types ----
+test | dbg/conv.c | v < 0x800b ? size | v < 0x800c ? size
+test | dbg/conv.c | if (v < 0x8000 \p\p d.n - *at < n) return v < 0x8000 ? v : 0; | if (v < 0x8000) return v;
+test | dbg/conv.c | v = v << 8 \p d.p[*at + i - 1]; | v = v << 8 \p d.p[*at + n - i];
+test | dbg/conv.c | *at += (uint32_t)n;\n  return v; | return v;
+test | dbg/conv.c | *at += d.n - *at >= 2 ? 2 : 0; | *at += 2;
+test | dbg/conv.c | {1, 2, 2, 4, 4, 0, 0, 0, 0, 8, 8} | {1, 2, 2, 4, 4, 0, 0, 0, 0, 4, 8}
+test | dbg/conv.c | {1, 2, 2, 4, 4, 0, 0, 0, 0, 8, 8} | {1, 4, 2, 4, 4, 0, 0, 0, 0, 8, 8}
+test | dbg/conv.c | {1, 2, 2, 4, 4, 0, 0, 0, 0, 8, 8} | {1, 2, 2, 2, 4, 0, 0, 0, 0, 8, 8}
+test | dbg/conv.c | {1, 2, 2, 4, 4, 0, 0, 0, 0, 8, 8} | {1, 2, 2, 4, 4, 1, 0, 0, 0, 8, 8}
+test | dbg/conv.c | kind == LF_MODIFIER && d.n >= 6 | kind == LF_MODIFIER && d.n >= 5
+test | dbg/conv.c | kind == LF_MODIFIER && d.n >= 6 | kind == LF_MODIFIER && d.n >= 7
+test | dbg/conv.c | kind == LF_POINTER && d.n >= 8 | kind == LF_POINTER && d.n >= 7
+test | dbg/conv.c | kind == LF_POINTER && d.n >= 8 | kind == LF_POINTER && d.n >= 9
+test | dbg/conv.c | kind == LF_PROCEDURE && d.n >= 12 | kind == LF_PROCEDURE && d.n >= 11
+test | dbg/conv.c | kind == LF_PROCEDURE && d.n >= 12 | kind == LF_PROCEDURE && d.n >= 13
+test | dbg/conv.c | kind == LF_MFUNCTION && d.n >= 20 | kind == LF_MFUNCTION && d.n >= 19
+test | dbg/conv.c | kind == LF_MFUNCTION && d.n >= 20 | kind == LF_MFUNCTION && d.n >= 21
+test | dbg/conv.c | kind == LF_BITFIELD && d.n >= 6 | kind == LF_BITFIELD && d.n >= 5
+test | dbg/conv.c | kind == LF_BITFIELD && d.n >= 6 | kind == LF_BITFIELD && d.n >= 7
+test | dbg/conv.c | kind == LF_ARRAY && d.n >= 8 | kind == LF_ARRAY && d.n >= 7
+test | dbg/conv.c | kind == LF_ARRAY && d.n >= 8 | kind == LF_ARRAY && d.n >= 9
+test | dbg/conv.c | kind != LF_ENUM) \p\p d.n < at) return false; | kind != LF_ENUM) \p\p d.n + 1 < at) return false;
+test | dbg/conv.c | kind != LF_ENUM) \p\p d.n < at) return false; | kind != LF_ENUM) \p\p d.n <= at) return false;
+test | dbg/conv.c | kind == LF_ARGLIST && args.n >= 4) | kind == LF_ARGLIST)
+test | dbg/conv.c | i < le32(args.p) && args.n - 4 >= 4 * (uint64_t)(i + 1); i += 1) | i < le32(args.p); i += 1)
+test | dbg/conv.c | return i < COUNT(o->leaf_at, uint32_t) && pdb_symbol( | return pdb_symbol(
+test | dbg/conv.c | if (id >= COUNT(o->made, uint32_t)) return 0; | 
+oracle | dbg/conv.c | bool record = kind == LF_CLASS \p\p kind == LF_STRUCTURE; | bool record = kind == LF_STRUCTURE;
+oracle | dbg/conv.c | kind == LF_UNION ? 8 : 12; | kind == LF_UNION ? 12 : 12;
+oracle | dbg/conv.c | *size = kind == LF_ENUM ? 0 : numeric(d, &at); | *size = numeric(d, &at);
+oracle | dbg/conv.c | *props = le16(d.p + 2); | *props = le16(d.p);
+oracle | dbg/conv.c | \p\p props >> 7 & 1) continue; | ) continue;
+oracle | dbg/conv.c | .kind = 0x1001, .byte_size = o->pointer_size, .a = made}); | .kind = 0x1001, .byte_size = o->pointer_size, .a = 0});
+oracle | dbg/conv.c | made = type_of(o, id & 0xff); | made = type_of(o, id & 0xf);
+oracle | dbg/conv.c | {0x74, 0x13, 4, "int", "S32"} | {0x74, 0x13, 4, "long", "S32"}
+oracle | dbg/conv.c | {0x03, 0x01, 0, 0, "Void"} | {0x03, 0x01, 0, 0, "HResult"}
+oracle | dbg/conv.c | if (basic[i].name) made = type_node( | if (basic[i].name && i > 0) made = type_node(
+oracle | dbg/conv.c | return ((uint32_t *)o->made.p)[id] = made; | return made;
+oracle | dbg/conv.c | if (le16(d.p + 4) & 3) made = | if (le16(d.p + 4) & 1) made =
+oracle | dbg/conv.c | .flags = le16(d.p + 4) & 3, .byte_size = SIZE_OF(direct), .a = direct}); | .flags = le16(d.p + 4) & 1, .byte_size = SIZE_OF(direct), .a = direct});
+oracle | dbg/conv.c | .flags = le16(d.p + 4) & 3, .byte_size = SIZE_OF(direct), .a = direct}); | .flags = le16(d.p + 4) & 3, .byte_size = 0, .a = direct});
+oracle | dbg/conv.c | (le32(d.p + 4) >> 5 & 7) < 2 \p\p | (le32(d.p + 4) >> 5 & 7) < 4 \p\p
+oracle | dbg/conv.c | (le32(d.p + 4) >> 5 & 7) == 4)) { | (le32(d.p + 4) >> 5 & 7) == 5)) {
+oracle | dbg/conv.c | .kind = mode == 1 ? 0x1002 : mode == 4 ? 0x1003 : 0x1001 | .kind = mode == 1 ? 0x1001 : mode == 4 ? 0x1003 : 0x1001
+oracle | dbg/conv.c | .kind = mode == 1 ? 0x1002 : mode == 4 ? 0x1003 : 0x1001 | .kind = mode == 1 ? 0x1002 : mode == 4 ? 0x1002 : 0x1001
+oracle | dbg/conv.c | (attribs >> 10 & 1) \p (attribs >> 9 & 1) << 1 | (attribs >> 11 & 1) \p (attribs >> 9 & 1) << 1
+oracle | dbg/conv.c | (attribs >> 10 & 1) \p (attribs >> 9 & 1) << 1 | (attribs >> 10 & 1) \p (attribs >> 9 & 1) << 3
+oracle | dbg/conv.c | (attribs >> 12 & 1) << 2; | (attribs >> 12 & 1) << 3;
+oracle | dbg/conv.c | .flags = flags, .byte_size = o->pointer_size, .a = made}); | .flags = flags, .byte_size = o->pointer_size, .a = direct});
+oracle | dbg/conv.c | .flags = flags, .byte_size = o->pointer_size, .a = made}); | .flags = flags, .byte_size = 0, .a = made});
+oracle | dbg/conv.c | method = !plain && le32(d.p + 8) != 0; | method = !plain;
+oracle | dbg/conv.c | if (le32(args.p + 4 + 4 * i) != 0) param | if (true) param
+oracle | dbg/conv.c | le32(d.p + (plain ? 8 : 16)) | le32(d.p + (plain ? 8 : 12))
+oracle | dbg/conv.c | .kind = method ? 0x1006 : 0x1005, .byte_size = o->pointer_size, | .kind = 0x1005, .byte_size = o->pointer_size,
+oracle | dbg/conv.c | .kind = method ? 0x1006 : 0x1005, .byte_size = o->pointer_size, | .kind = method ? 0x1006 : 0x1005, .byte_size = 0,
+oracle | dbg/conv.c | uint32_t) - first, .c = first}); | uint32_t) - first, .c = 0});
+oracle | dbg/conv.c | if (method) param = type_of(o, le32(d.p + 8)), | if (method) param = type_of(o, le32(d.p + 4)),
+oracle | dbg/conv.c | .byte_size = SIZE_OF(direct), .a = direct, .b = d.p[5], .c = d.p[4]}); | .byte_size = SIZE_OF(direct), .a = direct, .b = d.p[4], .c = d.p[5]});
+oracle | dbg/conv.c | .byte_size = SIZE_OF(direct), .a = direct, .b = d.p[5], .c = d.p[4]}); | .byte_size = 0, .a = direct, .b = d.p[5], .c = d.p[4]});
+oracle | dbg/conv.c | size = numeric(d, &(uint32_t){8}); | size = numeric(d, &(uint32_t){4});
+oracle | dbg/conv.c | .b = SIZE_OF(direct) ? (uint32_t)(size / SIZE_OF(direct)) : 0}); | .b = 0});
+oracle | dbg/conv.c | .kind = 0x1004, .byte_size = (uint32_t)size, | .kind = 0x1004, .byte_size = 0,
+oracle | dbg/conv.c | if (full && !type_of(o, full)) record_type(o, full); | 
+oracle | dbg/conv.c | direct = !forward && kind == LF_ENUM ? | direct = kind == LF_ENUM ?
+oracle | dbg/conv.c | kind == LF_STRUCTURE ? 0x2005 : kind == LF_UNION ? 0x2006 : kind == LF_CLASS ? 0x2007 : 0x2008 | kind == LF_STRUCTURE ? 0x2008 : kind == LF_UNION ? 0x2006 : kind == LF_CLASS ? 0x2007 : 0x2005
+oracle | dbg/conv.c | kind == LF_STRUCTURE ? 0x2005 : kind == LF_UNION ? 0x2006 : kind == LF_CLASS ? 0x2007 : 0x2008 | kind == LF_STRUCTURE ? 0x2005 : kind == LF_UNION ? 0x2007 : kind == LF_CLASS ? 0x2006 : 0x2008
+oracle | dbg/conv.c | kind == LF_STRUCTURE ? 0x2000 : kind == LF_CLASS ? 0x2001 : kind == LF_UNION ? 0x2002 : 0x2003 | kind == LF_STRUCTURE ? 0x2001 : kind == LF_CLASS ? 0x2000 : kind == LF_UNION ? 0x2002 : 0x2003
+oracle | dbg/conv.c | kind == LF_STRUCTURE ? 0x2000 : kind == LF_CLASS ? 0x2001 : kind == LF_UNION ? 0x2002 : 0x2003 | kind == LF_STRUCTURE ? 0x2000 : kind == LF_CLASS ? 0x2001 : kind == LF_UNION ? 0x2003 : 0x2002
+oracle | dbg/conv.c | .byte_size = kind == LF_ENUM ? SIZE_OF(direct) : (uint32_t)size, | .byte_size = (uint32_t)size,
+oracle | dbg/conv.c | .a = intern(&o->strings, name.p, name.n), .b = direct}); | .a = intern(&o->strings, name.p, name.n), .b = 0});
+oracle | dbg/conv.c | if (first_type != FIRST_RECORD) o.leaves.n = 0; | 
+oracle | dbg/conv.c | if (!type_of(&o, id)) record_type(&o, id); | record_type(&o, id);
+oracle | dbg/conv.c | .type = type_of(&o, le32(d.p + 24))} | .type = type_of(&o, le32(d.p + 20))}
+oracle | dbg/conv.c | o.pointer_size = pdb.machine == 0x8664 ? 8 : 4; | o.pointer_size = 4;
+oracle | dbg/pdb.c | *first = has ? le32(stream + 8) : 0; | *first = has ? le32(stream + 12) : 0;
+oracle | dbg/pdb.c | le32(stream + 4), le32(stream + 16)) : (PdbSpan){0}; | le32(stream + 4), le32(stream + 12)) : (PdbSpan){0};
+fuzz | dbg/conv.c | .byte_size = o->pointer_size, .a = direct});\n    uint16_t flags | .byte_size = o->pointer_size, .a = direct + 0x10000});\n    uint16_t flags
+fuzz | dbg/pdb.c | bool has = n >= 20; | bool has = true;

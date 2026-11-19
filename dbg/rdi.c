@@ -9,7 +9,7 @@ static const uint8_t elem_size[RDI_SECTIONS] = {
   [RDI_LINE_VOFFS] = 8, [RDI_LINE_LINES] = sizeof(RdiLine), [RDI_LINE_COLUMNS] = 4,
   [RDI_SOURCE_LINE_MAPS] = sizeof(RdiSourceLineMap), [RDI_SOURCE_LINE_NUMS] = 4,
   [RDI_SOURCE_LINE_RANGES] = 4, [RDI_SOURCE_LINE_VOFFS] = 8, [RDI_UNITS] = sizeof(RdiUnit),
-  [RDI_UNIT_VMAP] = sizeof(RdiVMap), [RDI_NAMESPACES] = 1, [RDI_TYPE_NODES] = 1, [RDI_UDTS] = 1,
+  [RDI_UNIT_VMAP] = sizeof(RdiVMap), [RDI_NAMESPACES] = 1, [RDI_TYPE_NODES] = sizeof(RdiType), [RDI_UDTS] = 1,
   [RDI_MEMBERS] = 1, [RDI_ENUM_MEMBERS] = 1, [RDI_SCOPES] = sizeof(RdiScope), [RDI_SCOPE_VOFFS] = 8,
   [RDI_SCOPE_VMAP] = sizeof(RdiVMap), [RDI_INLINE_SITES] = sizeof(RdiInlineSite), [RDI_GLOBALS] = sizeof(RdiSymbol),
   [RDI_GLOBAL_VMAP] = sizeof(RdiVMap), [RDI_THREAD_VARS] = sizeof(RdiSymbol),

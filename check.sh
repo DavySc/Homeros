@@ -8,10 +8,11 @@ cd "$(dirname "$0")"
 FLAGS="-std=c17 -D_GNU_SOURCE -pthread -DQUEUE_BYTES=256 -g -O1 -Wall -Wextra -Werror"
 SAN="-fsanitize=address,undefined -fno-sanitize-recover=all"
 run() { # run <dir with the sources> <test|specs|oracle|fuzz|all>: 0 when the named checks pass, 2 when
-        # something does not compile (a planted bug must be caught by a check, not by the compiler)
-  local src=$1 what=$2 b; b=$(mktemp -d)
-  python3 -I "$src/tests/seed_rdi.py" "$b/seed.rdi" || return 1
-  "$src/tests/make_pdbs.sh" "$b/pdb" || return 1
+        # something does not compile (a planted bug must be caught by a check, not by the compiler), 3 when the
+        # test files cannot be made (nor by a full disk)
+  local src=$1 what=$2 b t; b=$(mktemp -d)
+  python3 -I "$src/tests/seed_rdi.py" "$b/seed.rdi" || return 3
+  "$src/tests/make_pdbs.sh" "$b/pdb" || return 3
   if [ "$what" = test ] || [ "$what" = all ]; then
     # each tests/test_*.c is its own program: ASan+UBSan with both compilers, then ThreadSanitizer
     for t in "$src"/tests/test_*.c; do
@@ -32,11 +33,14 @@ run() { # run <dir with the sources> <test|specs|oracle|fuzz|all>: 0 when the na
     python3 -I "$src/tests/oracle_pdb.py" "$b/pdbq" "$b"/pdb/*.pdb $(ls "$src"/rdi/*.pdb 2>/dev/null) || return 1
     gcc $FLAGS $SAN "$src"/dbg/*.c "$src"/cmd/pdb2rdi.c -o "$b/pdb2rdi" || return 2
     python3 -I "$src/tests/oracle_conv.py" "$b/pdb2rdi" "$b/rdiq" "$b"/pdb/*.pdb $(ls "$src"/rdi/*.pdb 2>/dev/null) || return 1
+    # two files llvm-pdbutil cannot read: a pointer to a later record is a pointer to no type, and type ids that do not start at 0x1000 are no types (1 is the count with none)
+    "$b/pdb2rdi" "$b/pdb/bad/later.pdb" "$b/odd.rdi" && [ "$(echo T 8 | "$b/rdiq" "$b/odd.rdi")" = "1001.0[0]:8 none" ] || return 1
+    "$b/pdb2rdi" "$b/pdb/bad/firstid.pdb" "$b/odd.rdi" && [ "$(echo N 19 | "$b/rdiq" "$b/odd.rdi")" = 1 ] || return 1
   fi
   if [ "$what" = fuzz ] || [ "$what" = all ]; then
     for f in "$src"/tests/fuzz_*.c; do
       clang $FLAGS -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all "$src"/dbg/*.c "$f" -o "$b/fuzz" || return 2
-      mkdir -p "$b/corpus" && cp "$b/seed.rdi" "$b"/pdb/steps-*.pdb "$b"/pdb/gap-O2.pdb "$b"/pdb/bad/* "$b/corpus/"
+      mkdir -p "$b/corpus" && cp "$b/seed.rdi" "$b"/pdb/steps-*.pdb "$b"/pdb/gap-O2.pdb "$b"/pdb/kinds.pdb "$b"/pdb/bad/* "$b/corpus/"
       (cd "$b" && ./fuzz corpus -max_total_time="${FUZZ_SECONDS:-20}" -max_len=131072 -timeout=20 >fuzz.log 2>&1) || { grep -m2 "ERROR\|SUMMARY" "$b/fuzz.log"; return 1; }
     done
   fi
@@ -49,12 +53,13 @@ missed=0; total=0
 while IFS='|' read -r what file find repl; do
   case "$what" in ''|'#'*) continue;; esac
   what=$(echo $what); file=$(echo $file); find=${find# }; find=${find% }; repl=${repl# }
-  t=$(mktemp -d); cp -r dbg tests specs cmd subjects "$t/"; [ -d rdi ] && cp -r rdi "$t/"
+  t=$(mktemp -d); cp -r dbg tests specs cmd subjects rdi "$t/" || { echo "plants: cannot copy the tree"; exit 1; }
   FIND="$find" REPL="$repl" python3 -I -c 'import os,sys;p=sys.argv[1];s=open(p).read();f,r=(os.environ[k].replace("\\n","\n").replace("\\p","|") for k in ("FIND","REPL"));assert s.count(f)==1,("plant text not found once: "+f);open(p,"w").write(s.replace(f,r))' "$t/$file" || { echo "BAD PLANT: $find"; missed=$((missed+1)); continue; }
   total=$((total+1))
-  run "$t" "$what" >/dev/null 2>&1
+  TMPDIR=$t run "$t" "$what" >/dev/null 2>&1   # a failed run leaves its build directory: keep it inside $t
   case $? in 0) echo "NOT CAUGHT ($what): $find"; missed=$((missed+1));;
-             2) echo "BAD PLANT, does not compile: $find"; missed=$((missed+1));; esac
+             2) echo "BAD PLANT, does not compile: $find"; missed=$((missed+1));;
+             3) echo "plants: cannot make the test files"; exit 1;; esac
   rm -rf "$t"
 done < "${PLANTS:-tests/plants.txt}"
 echo "plants: $((total-missed)) of $total caught"; [ $missed = 0 ]

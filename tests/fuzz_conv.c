@@ -26,6 +26,13 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
       const RdiInlineSite *site = rdi_at(&r, RDI_INLINE_SITES, RdiInlineSite, rdi_at(&r, RDI_SCOPES, RdiScope, rdi_vmap(&r, RDI_SCOPE_VMAP, voff))->inline_site);
       sum += rdi_str(&r, site->name).n + rdi_line_in(&r, site->line_table, voff).line;
     }
+    /* a type is made only of types before it, so reading one through always ends */
+    for (uint64_t i = 1; i < r.s[RDI_TYPE_NODES].n; i += 1) {
+      const RdiType *t = rdi_at(&r, RDI_TYPE_NODES, RdiType, i);
+      RdiSpan params = rdi_run(&r, RDI_INDEX_RUNS, t->c, t->kind == 0x1005 || t->kind == 0x1006 ? t->b : 0);
+      if ((t->kind < 0x1000 ? 0 : t->kind < 0x2000 || t->kind == 0xf000 ? t->a : t->b) >= i) abort();
+      for (uint64_t k = 0; k < params.n; k += 1) if (((const uint32_t *)params.p)[k] >= i) abort();
+    }
     free(rdi);
   }
   free(buf);

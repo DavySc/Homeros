@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-enum { INFO_STREAM = 1, INFO_HEADER = 28 /* version, signature, age, GUID */, DBI_STREAM = 3, IPI_STREAM = 4, DBI_HEADER = 64, MODULE_HEADER = 64, SECTION_HEADER = 40,
+enum { INFO_STREAM = 1, INFO_HEADER = 28 /* version, signature, age, GUID */, DBI_STREAM = 3, DBI_HEADER = 64, MODULE_HEADER = 64, SECTION_HEADER = 40,
        SECTION_HEADER_SLOT = 5 /* PDB_DbiStream_SECTION_HEADER */,
        C13_LINES = 0xf2, C13_CHECKSUMS = 0xf4, C13_INLINEE_LINES = 0xf6 };
 
@@ -115,10 +115,10 @@ uint8_t *pdb_globals(const Pdb *p, PdbSpan *syms)
   return stream;
 }
 
-uint8_t *pdb_ids(const Pdb *p, PdbSpan *records, uint32_t *first)
+uint8_t *pdb_leaves(const Pdb *p, uint32_t number, PdbSpan *records, uint32_t *first)
 {
   uint32_t n;
-  uint8_t *stream = msf_stream(&p->msf, IPI_STREAM, &n);
+  uint8_t *stream = msf_stream(&p->msf, number, &n);
   bool has = n >= 20;          /* PDB_TpiHeader: version, header size, first id, one past the last, size of the records */
   *first = has ? le32(stream + 8) : 0;
   *records = has ? part((PdbSpan){stream, n}, le32(stream + 4), le32(stream + 16)) : (PdbSpan){0};

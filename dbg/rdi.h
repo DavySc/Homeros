@@ -34,6 +34,14 @@ typedef struct { uint32_t name, compiler, source_path, object_path, archive_path
 typedef struct { uint32_t proc, parent, first_child, next_sibling, voff_first, voff_opl, local_first,
                  local_count, inline_site; } RdiScope;
 typedef struct { uint32_t name, type, owner_type, line_table; } RdiInlineSite;
+/* A type. What a, b, c hold goes by kind (RDI_TypeNode): below 0x1000, built in: its name. From
+   0x1000, made from another (0x1000 modifier: flags 1 const, 2 volatile, 4 restrict; 0x1001
+   pointer; 0x1002, 0x1003 references; 0x1004 array; 0x1005 function; 0x1006 method): the type it
+   is made from, a count (array elements, parameters), where the parameters' type indices start
+   in the index runs. From 0x2000, with a name (0x2000 struct, 0x2001 class, 0x2002 union, 0x2003
+   enum, 0x2004 alias, 0x2005 to 0x2008 the same without a definition): name, the type it stands
+   on, its record of members. 0xf000 bit field: the type, first bit, bit count. */
+typedef struct { uint16_t kind, flags; uint32_t byte_size, a, b, c; } RdiType;
 typedef struct { uint32_t name; uint8_t flags, container_flags; uint16_t reserved; uint64_t location;
                  uint32_t container, type, root_scope, link_name; } RdiSymbol;
 typedef struct { uint32_t bucket_base, node_base, bucket_count, node_count; } RdiNameMap;

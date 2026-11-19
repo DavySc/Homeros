@@ -2,10 +2,35 @@
    tests/oracle_rdi.py can compare the reader with RAD's own dump of the same file.
    v <section> <voff> | l <voff> | s <file> <line> | n <kind> <hex name> | t <string idx> |
    p <procedure idx> | c <scope idx> | L <voff> | S <line> <hex path> | U <voff> | B <section> |
-   N <section> | D <scope idx> | u <unit idx> */
+   N <section> | D <scope idx> | u <unit idx> | T <type idx> | P <procedure idx> */
 #include "../dbg/rdi.h"
 #include "../dbg/load.h"
 #include <stdbool.h>
+
+/* a type by meaning: built in: its name and size; made from another: kind, flags, count, size,
+   the other type, then a function's parameters; with a name: kind, name, size, what it stands
+   on; a bit field: first bit, count, size, the type. A type refers only to types before it. */
+static void type(const Rdi *r, uint32_t idx)
+{
+  const RdiType *t = rdi_at(r, RDI_TYPE_NODES, RdiType, idx);
+  RdiSpan name = rdi_str(r, t->a);
+  if (idx == 0 || t->kind == 0) printf("none");   /* RAD writes a type of kind 0 for "no type" */
+  else if (t->kind < 0x1000) printf("%.*s:%u", (int)name.n, (const char *)name.p, t->byte_size);
+  else if (t->kind < 0x2000 || t->kind == 0xf000) {
+    if (t->kind == 0xf000) printf("bits %u+%u:%u of ", t->b, t->c, t->byte_size);
+    else printf("%x.%x[%u]:%u ", t->kind, t->flags, t->b, t->byte_size);
+    if (t->a < idx) type(r, t->a); else printf("?");
+    RdiSpan params = rdi_run(r, RDI_INDEX_RUNS, t->c, t->kind == 0x1005 || t->kind == 0x1006 ? t->b : 0);
+    for (uint64_t i = 0; i < params.n; i += 1) {
+      printf(i ? ", " : " (");
+      if (((const uint32_t *)params.p)[i] < idx) type(r, ((const uint32_t *)params.p)[i]); else printf("?");
+    }
+    if (params.n) printf(")");
+  } else {
+    printf("%x %.*s:%u", t->kind, (int)name.n, (const char *)name.p, t->byte_size);
+    if (t->b != 0 && t->b < idx) { printf(" on "); type(r, t->b); }
+  }
+}
 
 int main(int argc, char **argv)
 {
@@ -28,6 +53,13 @@ int main(int argc, char **argv)
       for (; hex[1 + 2 * len]; len += 1) { unsigned c; sscanf(hex + 1 + 2 * len, "%2x", &c); hex[len] = (char)c; }
       s = rdi_matches(&r, (uint32_t)a, hex, len);
       for (uint64_t i = 0; i < s.n; i += 1) printf(" %u", ((const uint32_t *)s.p)[i]);
+    } else if (op == 'T') type(&r, (uint32_t)a);
+    else if (op == 'P') {     /* a procedure by meaning: its name, then its type */
+      const RdiSymbol *y = rdi_at(&r, RDI_PROCEDURES, RdiSymbol, a);
+      s = rdi_str(&r, y->name);
+      fwrite(s.p, 1, s.n, stdout);
+      putchar('\t');
+      type(&r, y->type);
     } else if (op == 'p') {   /* a procedure: root scope, then its name */
       const RdiSymbol *y = rdi_at(&r, RDI_PROCEDURES, RdiSymbol, a);
       s = rdi_str(&r, y->name);
