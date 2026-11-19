@@ -110,21 +110,27 @@ static int line_rows(const Win *w, size_t l)
 static size_t over(Grid *g, const Win *w, int r, size_t skip, int cover, size_t s0, size_t v,
                    const char *s, size_t n, size_t reps, unsigned char face, unsigned char bg)
 {
+	const unsigned char *u = (const unsigned char *)s;
 	int nw = win_numw(w), tw = w->w - nw;
 	size_t d = skip > s0 ? skip - s0 : 0, x0 = s0 + d - skip;
+	if (s0 == (size_t)-1) return v;   /* a mark past the window's end */
 	for (; reps; reps--)
 		for (size_t i = 0, k; i < n; i += k) {
-			k = uni_glen((const unsigned char *)s, n, i);
-			int cw = grid_width(s + i, k);
-			size_t x = v + d - skip;
-			if (x / (size_t)tw != x0 / (size_t)tw || (!w->wrap && x >= (size_t)tw)) return v;
-			int row = r + (int)(x / (size_t)tw), c = nw + (int)(x % (size_t)tw);
-			Cell *z = wcell(g, w, row, c);
-			v += (size_t)cw;
-			if (row >= w->h || !z || (row == r && c < cover)) continue;
-			wput(g, w, row, c, (const unsigned char *)s + i, k, cw, ATTR_NONE);
-			z->face = face;
-			z->bg = bg;
+			/* file text (an info string) as draw_line draws it: a tab as
+			   blanks, a control character as ^X, an invalid byte as <xx>
+			   (measured: Neovim's overlay does the same) */
+			k = uni_glen(u, n, i);
+			int cw = core_cellw(w, u, n, i, v);
+			cw -= cw == 3;
+			for (int j = 0; j < cw; j++, v++) {
+				size_t x = v + d - skip;
+				if (x / (size_t)tw != x0 / (size_t)tw || (!w->wrap && x >= (size_t)tw)) return v;
+				int row = r + (int)(x / (size_t)tw), c = nw + (int)(x % (size_t)tw);
+				Cell *z = wcell(g, w, row, c);
+				if (row >= w->h || !z || (row == r && c < cover)) continue;
+				put_cell(g, w, row, c, u + i, k, j, cw, face);
+				z->bg = bg;
+			}
 		}
 	return v;
 }
@@ -175,14 +181,15 @@ static void draw_md(Grid *g, const Win *w, size_t l, int r, size_t skip, int cov
 		/* bullet.lua: from the marker on, a blank per blank character it
 		   starts with (a tab too: str.spaces), then the icon by nesting
 		   level or, ordered (ordered_icons), the marker's number if above
-		   1, else the item's ordinal, and '.' (one wider than the marker is
-		   inline text there, which the core does not draw yet) */
+		   1, else the item's ordinal, and '.'; one wider than the marker
+		   is inline text there, before the marker, which the core does not
+		   draw yet: it is left as typed rather than hide the item's text */
 		char o[24];
 		size_t q = blanks(b, n, md->item), x = 0;
 		for (size_t j = q; j < n && b[j] >= '0' && b[j] <= '9'; j++) x = x * 10 + (size_t)(b[j] - '0');
 		static const char icon[] = "\xe2\x97\x8f\xe2\x97\x8b\xe2\x97\x86\xe2\x97\x87";
 		size_t k = md->ordered ? (size_t)snprintf(o, sizeof o, "%zu.", x > 1 ? x : md->index) : 3;
-		over(g, w, r, skip, cover, b1, over(g, w, r, skip, cover, b1, b1, " ", 1, q - md->item, FACE_MD_BULLET, 0),
+		if (!md->ordered || k <= md->iend - q) over(g, w, r, skip, cover, b1, over(g, w, r, skip, cover, b1, b1, " ", 1, q - md->item, FACE_MD_BULLET, 0),
 		     md->ordered ? o : icon + (md->list - 1) % 4 * 3, k, 1, FACE_MD_BULLET, 0);
 	}
 	/* after the marker's, over it where both start before the view

@@ -19,4 +19,17 @@ CASES += [
  # the icons cycle by nesting level
  ('nested bullets', 12, 40, ['- a', '  - b', '    - c', '      - d', '        - e', '          1. f', '          1. g', 'end'], ['k:8G', 'redraw']),
  ('code > wrap', 12, 30, F, ['wrap', 'k:7G', 'redraw']),
+ # file text in the language line as the text draws it: an escape and a
+ # bell as ^X, a tab as blanks (the review of PR 84, 1)
+ ('info string controls', 10, 40, ['```c \x1b]0;PWNED\x07\tz', 'x', '```', '```c\tx y', 'y', '```', 'end'], ['k:7G', 'redraw']),
+ # a marker below the window's last row, at a text width that is a power
+ # of two, draws nothing (the review of PR 84, 2)
+ ('box cut below', 5, 36, ['a', '> ' * 40 + '- [ ] task', 'end'], ['wrap', 'redraw']),
+ ('bullet cut below', 5, 36, ['a', '> ' * 40 + '- item', 'end'], ['wrap', 'redraw']),
+ ('number cut below', 5, 20, ['a', '> ' * 20 + '3. item', 'end'], ['wrap', 'redraw']),
+ # "100." is wider than "1. ": Neovim puts it inline, before the marker;
+ # the core leaves the marker as typed (known)
+ ('ordered past the marker', 12, 40, ['1. item %d' % k for k in range(1, 104)], ['k:G', 'redraw']),
+ # "10." as wide as "1. " is an overlay
+ ('ordered as wide as the marker', 8, 30, ['1. item %d' % k for k in range(1, 13)], ['k:G', 'redraw']),
 ]
