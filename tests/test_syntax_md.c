@@ -26,7 +26,7 @@ int main(void)
 	static const char *const quote[] = { "", "", "", "> ", "> > " }, *const ind[] = { "", "", "", "  ", "    ", "      ", "\t" },
 		*const body[] = { "# h", "### h", "###### h", "####### x", "#", "- a", "* a", "+ a", "1. a", "2) a", "10. a",
 		"- [ ] a", "- [x] a", "- [X] a", "- [-] a", "- [-]", "1. [ ] a", "* [-]x", "- ", "-", "```lua", "```", "~~~",
-		"``` c x", "````", "text", "", "", "- - a", "- # h", "- ```", "- - # h", "3. # h", "```rust x", "``` {.py}" };
+		"``` c x", "````", "text", "", "", "- - a", "- # h", "- ```", "- - # h", "3. # h", "```rust x", "``` {.py}", "2.  [-] a", "- [-](u) a", "- [-] " };
 	char dir[] = "/tmp/test_syntax_md_XXXXXX", path[256], cmd[512];
 	CHECK(mkdtemp(dir));
 	for (int i = 0; i < DOCS; i++) {

@@ -38,7 +38,7 @@ syntax: an unnamed buffer's NULL path is read (test_syntax, filetypes)~test TEST
 syntax_md: a heading's level is always 1 (test_syntax_md)~test TESTS=syntax_md~~src/syntax/syntax.c~o->head = (unsigned char)(ty[5] - '0'),~o->head = 1,
 syntax_md: n) is not an ordered marker (test_syntax_md)~test TESTS=syntax_md~~src/syntax/syntax.c~ || !strcmp(ty + 12, "parenthesis")~
 syntax_md: a checked box reads as unchecked (test_syntax_md)~test TESTS=syntax_md~~src/syntax/syntax.c~o->task = kt[17] == 'c' ? 'x' : ' ',~o->task = ' ',
-syntax_md: the custom [-] is not a checkbox (test_syntax_md)~test TESTS=syntax_md~~src/syntax/syntax.c~!memcmp(b + e, "[-]", 3)~!memcmp(b + e, "[?]", 3)
+syntax_md: the custom [-] is not a checkbox (test_syntax_md)~test TESTS=syntax_md~~src/syntax/syntax.c~!memcmp(b + e, "[-] ", 4)~!memcmp(b + e, "[?] ", 4)
 syntax_md: a list's nesting counts only the innermost list (test_syntax_md)~test TESTS=syntax_md~~src/syntax/syntax.c~o->list += !strcmp(ts_node_type(a), "list");~o->list = 1;
 syntax_md: a closing fence reads as an opening one (test_syntax_md)~test TESTS=syntax_md~~src/syntax/syntax.c~o->code = d > 1 ? 3 : 1,~o->code = 1,
 syntax_md: the info string is not found (test_syntax_md)~test TESTS=syntax_md~~src/syntax/syntax.c~else if (!strcmp(ct, "info_string")) {~else if (0) {
@@ -47,7 +47,9 @@ syntax_md: an ordered item's index counts the items after it (test_syntax_md)~te
 syntax_md: the list marker's columns are the heading's (test_syntax_md)~test TESTS=syntax_md~~src/syntax/syntax.c~o->item = ts_node_start_byte(x) - ls, o->iend = e;~o->item = o->mark, o->iend = o->mend;
 syntax_md: a heading after a list marker is not found (test_syntax_md)~test TESTS=syntax_md~~src/syntax/syntax.c~		e = blank(b, n, e);¶		x = ts_node_descendant_for_byte_range~		e = blank(b, n, e);¶		break;¶		x = ts_node_descendant_for_byte_range
 syntax_md: a nested list marker counts again as the item's (test_syntax_md)~test TESTS=syntax_md~~src/syntax/syntax.c~		if (!o->list) {¶			for (TSNode a~		if (1) {¶			o->list = o->index = 0;¶			for (TSNode a
-syntax_md: a block of 2 rows is still code (test_syntax_md)~test TESTS=syntax_md~~src/syntax/syntax.c~ts_node_start_point(x).row > 2)~ts_node_start_point(x).row > 1)
+syntax_md: a block spanning 2 rows is skipped (test_syntax_md)~test TESTS=syntax_md~~src/syntax/syntax.c~(sr = ts_node_start_point(x).row) > 1)~(sr = ts_node_start_point(x).row) > 2)
 syntax_md: the body's column is the line's (test_syntax_md)~test TESTS=syntax_md~~src/syntax/syntax.c~o->code = 2, o->mark = ts_node_start_point(x).column;~o->code = 2;
 syntax_md: the language is not found (test_syntax_md)~test TESTS=syntax_md~~src/syntax/syntax.c~!strcmp(ts_node_type(g), "language")~!strcmp(ts_node_type(g), "lang")
 syntax_md: a delimiter on another row counts for the close (test_syntax_md)~test TESTS=syntax_md~~src/syntax/syntax.c~			d += fence;¶			if (ts_node_start_point(c).row != l) continue;~			if (ts_node_start_point(c).row != l) continue;¶			d += fence;
+syntax_md: the background takes the last row before the close (test_syntax_md)~test TESTS=syntax_md~~src/syntax/syntax.c~if (l > sr && l + 2 <= er)~if (l > sr && l + 1 <= er)
+syntax_md: the custom [-] counts at the line's end (test_syntax_md)~test TESTS=syntax_md~~src/syntax/syntax.c~else if (e + 4 <= n && !memcmp(b + e, "[-] ", 4))~else if (e + 3 <= n && !memcmp(b + e, "[-]", 3) && (e + 3 == n || b[e + 3] == ' '))

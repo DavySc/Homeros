@@ -39,10 +39,13 @@ typedef struct {
 	unsigned char list;    /* list_item nesting from 1, else 0 */
 	unsigned char ordered; /* the list marker is n. or n) */
 	unsigned char task;    /* ' ', 'x' or '-' for [ ], [x], [-]; else 0 */
-	unsigned char code;    /* fenced code: 1 open fence, 2 body, 3 close; else 0
-	                          (none for a block of 2 rows or fewer, as
-	                          render-markdown skips it) */
-	size_t mark, mend;     /* byte columns of the heading's '#'s or the fence */
+	unsigned char code;    /* fenced code: 1 open fence, 2 a background row
+	                          (start_row + 1 to end_row - 2 of the block's
+	                          range, as code.lua), 3 close; else 0 (none for
+	                          a range spanning 1 row or fewer, which
+	                          render-markdown skips) */
+	size_t mark, mend;     /* byte columns of the heading's '#'s or the fence;
+	                          on a code 2 row mark is the block's start column */
 	size_t item, iend;     /* byte columns of the list marker (a line can hold
 	                          a list marker and a heading: "- # x") */
 	size_t index;          /* ordered: this list_item and the list_items
