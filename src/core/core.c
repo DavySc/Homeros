@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "core_int.h"
+#include "git.h"
 #include "lsp.h"
 #include "syntax.h"
 #include "uni.h"
@@ -280,6 +281,8 @@ static int buf_load(Editor *e, Buf *b, const char *path)
 	b->lsp = path ? lsp_open(path, b->text) : NULL;
 	undo_hook(u, undo_seen, b);
 	if (!path) return 0;
+	/* gitsigns attaches on BufRead */
+	git_attach(b);
 	if (j < 0) core_msg(e, "E303: Unable to open journal for \"%s\", recovery impossible%s", path,
 	                    busy ? " (another editor has it open)" : "");
 	else if (core_modified(b))
@@ -300,9 +303,11 @@ static Buf *buf_new(Editor *e, const char *path)
 {
 	Buf *b = calloc(1, sizeof *b), **p = &e->bufs;
 	if (!b) { core_msg(e, "out of memory"); return NULL; }
+	/* numbered before the load, which hands b to git by its number */
+	b->nr = top_file_num + 1;
 	if (buf_load(e, b, path)) { free(b); return NULL; }
 	while (*p) p = &(*p)->next;
-	b->nr = ++top_file_num;
+	top_file_num++;
 	*p = b;
 	wininfo_reset(b, e->win);
 	return b;

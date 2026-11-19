@@ -133,3 +133,8 @@ core: the '>' filler on the cursor line's background (test_core_markdown)~test T
 core: the '<' filler off the cursor line's background (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~if (z) z->bg = from < v && vis ? vis : cl;~if (z) z->bg = from < v && vis ? vis : 0;
 core: the cursor line's background under skipcol's "<<<" (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~for (int c = k || cover < nw ? nw : cover;~for (int c = nw;
 core: the status line's backgrounds written past a shrunk grid (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~Cell *z = wcell(g, w, w->h, x + k);~Cell *z = &g->c[r * g->cols + w->x + x + k];
+core: a read file not handed to git, so no branch (test_core_status)~test TESTS=core_status~~src/core/core.c~	git_attach(b);¶~
+core: a new buffer numbered after its load, so git looks up the wrong one (test_core_status)~test TESTS=core_status~~src/core/core.c~	b->nr = top_file_num + 1;¶	if (buf_load(e, b, path)) { free(b); return NULL; }¶	while (*p) p = &(*p)->next;¶	top_file_num++;~	if (buf_load(e, b, path)) { free(b); return NULL; }¶	while (*p) p = &(*p)->next;¶	b->nr = ++top_file_num;
+core: the file type not drawn (test_core_status)~test TESTS=core_status~~src/core/draw.c~	if (ft) {¶		stl_add(&t, " ", c, 0);~	if (ft && 0) {¶		stl_add(&t, " ", c, 0);
+core: no separator between the file type and the encoding (test_core_status)~test TESTS=core_status~~src/core/draw.c~ft ? "\xc2\xb7 utf-8 " : " utf-8 "~" utf-8 "
+core: the branch in other windows too (test_core_status)~test TESTS=core_status~~src/core/draw.c~const char *br = cur ? git_branch(b) : NULL;~const char *br = git_branch(b);

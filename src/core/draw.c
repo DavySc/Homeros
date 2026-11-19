@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "core_int.h"
+#include "git.h"
 #include "syntax.h"
 #include "uni.h"
 
@@ -369,13 +370,14 @@ static void stl_add(Stl *t, const char *s, unsigned char face, unsigned char lay
 /* lualine with catppuccin's lualine theme, set up as UI proposal 5's
    mockup (tests/test_core_status.lua), laid out by build_stl_str_hl() in
    the window's width.  The current window:
-   (mode)%<( name ●)%=( utf-8 )(location)( progress)
+   (mode)%<( ⎇ branch )( name ●)%=( type )·( utf-8 )(location)( progress)
    with the mode and the progress as pills between rounded ends (U+E0B6,
    U+E0B4, transitional groups: the end's fg is the section's bg) and the
    location on surface0; the others lualine's inactive sections,
    "%< name ●%=location".  Each component is padded with a space either
-   side.  The branch, diagnostics, LSP status and file type are not drawn
-   yet. */
+   side.  The current window's also shows the branch before the name and
+   the file type before the encoding.  Diagnostics and the LSP status are
+   not drawn yet. */
 static void draw_status(Editor *e, Grid *g, Win *w)
 {
 	static const char *const mode[] = { " NORMAL ", " VISUAL ", " V-LINE ", " V-BLOCK ", " INSERT ", " REPLACE ", " COMMAND " };
@@ -402,6 +404,13 @@ static void draw_status(Editor *e, Grid *g, Win *w)
 		stl_add(&t, R, mb[m], 0);
 		cut = t.n;
 	}
+	/* branch: git's, with the mockup's icon (U+2387) */
+	const char *br = cur ? git_branch(b) : NULL;
+	if (br) {
+		stl_add(&t, " \xe2\x8e\x87 ", c, 0);
+		stl_add(&t, br, c, 0);
+		stl_add(&t, " ", c, 0);
+	}
 	/* filename: expand('%:t') */
 	const char *name = "[No Name]";
 	if (b->path)
@@ -417,7 +426,14 @@ static void draw_status(Editor *e, Grid *g, Win *w)
 	sep = t.n;
 	/* 'fileencoding' is set by reading a file that exists, empty or not
 	   (measured); encoding hides an empty one */
-	if (cur && b->id.exists) stl_add(&t, " utf-8 ", c, 0);
+	const char *ft = cur && b->path ? syntax_filetype(b->path) : NULL;
+	if (ft) {
+		stl_add(&t, " ", c, 0);
+		stl_add(&t, ft, c, 0);
+		stl_add(&t, " ", c, 0);
+	}
+	/* the component separator goes between two that are drawn */
+	if (cur && b->id.exists) stl_add(&t, ft ? "\xc2\xb7 utf-8 " : " utf-8 ", c, 0);
 	if (cur) stl_add(&t, L, FACE_STATUS_INFO, FACE_STATUS_LINE);
 	/* location: line('.') and charcol('.'), '%3d:%-2d' */
 	size_t l = w->line + 1, ch = 1, lines = buf_lines(b);

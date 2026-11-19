@@ -12,7 +12,9 @@
 #include <sys/stat.h>
 #include "check.h"
 #include "core.h"
+#include "git.h"
 #include "grid.h"
+#include "loop.h"
 #include "uni.h"
 #include "../src/core/core_int.h"
 
@@ -189,6 +191,20 @@ int main(void)
 	file("e0", "");
 	CHECK(!core_edit_file(&e, "e0", 0));
 	draw(&e, &g, 80, "e0");
+	/* in a repository, on a file with a file type: the branch (once git
+	   has looked) and the type */
+	CHECK(!system("git init -q -b main"));
+	file("q.sql", "select 1\n");
+	CHECK(!core_edit_file(&e, "q.sql", 0));
+	for (int i = 0; i < 200 && !git_branch(e.buf); i++) CHECK(loop_once(20) == 0);
+	draw(&e, &g, 80, "git 80");
+	draw(&e, &g, 40, "git 40");
+	/* the inactive sections have no branch */
+	draw(&e, &g, 80, "git 80");
+	CHECK(!core_split(&e, 1, 0));
+	core_draw(&e, &g);
+	status(&g, e.wins == e.win ? e.win->next : e.wins, "git other");
+	CHECK(!core_only(&e));
 
 	/* the window's cells: the cursor line's number in CursorLineNr, the
 	   others in LineNr; CursorLine under the cursor line's text to the

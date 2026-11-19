@@ -90,3 +90,14 @@ show('d/s1')
 vim.fn.writefile({}, 'e0')
 vim.cmd('e e0')
 show('e0')
+-- in a repository, on a file with a file type: the branch and the type
+vim.fn.system({ 'git', 'init', '-q', '-b', 'main' })
+vim.fn.writefile({ 'select 1' }, 'q.sql')
+vim.cmd('e q.sql')
+for _, c in ipairs({ 80, 40 }) do
+  vim.o.columns = c
+  show('git ' .. c)
+end
+vim.o.columns = 80
+vim.cmd('vsplit')
+show('git other', vim.fn.win_getid(vim.fn.winnr('l')))
