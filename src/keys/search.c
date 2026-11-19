@@ -237,6 +237,10 @@ static int hl(size_t line, size_t col, size_t *s, size_t *z)
 	for (int r;;) {
 		if ((r = re_exec(p.lnum, p.col, &ms, &me, NULL, NULL)) < 0 || (!r && p.lnum == l)) return 0;
 		if (!r) p.lnum++, p.col = 0;
+		/* one that \zs starts on a later line belongs to that line, which
+		   draws it unless it is empty: then it searches on from its end */
+		else if (ms.lnum > l) return 0;
+		else if (ms.lnum > p.lnum && eq(ms, me)) p = me;
 		else if (ms.lnum == l || me.lnum > l || (me.lnum == l && me.col)) {
 			*s = (size_t)(ms.lnum < l ? 0 : ms.col), *z = (size_t)(me.lnum > l ? ml_len(l) + 1 : me.col);
 			return 1;

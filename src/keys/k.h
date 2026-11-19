@@ -157,6 +157,9 @@ const char *get_search_pat(void);
 /* sub.c */
 void ex_sub(long l1, long l2, int cmd, char *arg);
 void sub_reset(void);
+extern int sub_asking;    /* the c flag waits for sub_key()'s key */
+void sub_key(int k);
+void search_recompile(void);
 extern int no_smartcase;
 extern int no_hlsearch;
 enum { K_PAT = KEY_DEL + 0x100 };   /* the command line of / or ? was entered (normal.c) */

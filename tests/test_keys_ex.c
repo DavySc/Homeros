@@ -1,6 +1,6 @@
 /* The command line against Neovim on random keys (src/keys/ex_oracle.lua):
    ex ranges and :<line>, then / ? n N * # g* g# with offsets, as motions
-   and with operators, then :s, with :noh and CTRL-L among the keys after.
+   and with operators, then :s (the c flag answered), with :noh and CTRL-L among the keys after.
    After each: the cursor, the error number, the text and the cells
    'hlsearch' draws from the top line on.  Marks a-z are not set by the keys yet, so 'a fails in both. */
 #include <string.h>
@@ -72,7 +72,7 @@ static const char *const XPAT[] = { "foo", "o", "a", "Foo", "x", "\\<", "\\>", "
 static const char *const XSUB[] = { "", "x", "&", "\\0", "\\1", "\\2", "~", "\\r", "\\u", "\\U", "\\L", "\\l", "\\e", "\\&",
                                     "\\\\", "é", "\\t", "-", "\\n", "AB", "\\é", "e\xcc\x81" };
 static const char *const XFLAGS[] = { "", "", "", "g", "g", "gi", "I", "e", "n", "&", "r", "ge", " 2", "g 3", "x", "gn", "i" };
-static const char *const XAFTER[] = { "n", "N", "u", "&", "g&", "x", "u", ".", "2&", ":noh\r", "\x0c", "zt", "jzt" };
+static const char *const XAFTER[] = { "n", "N", "u", "&", "g&", "x", "u", ".", "2&", "\x1b:noh\r", "\x0c", "zt", "jzt" };
 
 /* cases the random ones reached only with other seeds: a NUL in a line,
    :s/\n// on the last line, a NUL after the indent */
@@ -103,6 +103,36 @@ static void substitute(char *k)
 	for (unsigned t = rnd(3); t--;) strcat(k, XAFTER[rnd(sizeof XAFTER / sizeof *XAFTER)]);
 }
 
+/* :s with the c flag, a pattern that matches on every range so that it
+   asks (after an error the answers would be normal keys), its answers,
+   Esc for a question still open (Neovim would wait for a key), and keys
+   after, which & g& and . may make ask again.  a, q and l come last: past
+   the question a starts Insert mode and q a recording. */
+static const char *const CRANGE[] = { "", "%", "%", "1,3", ".,$", "2;+1", "10,25" };
+static const char *const CPAT[] = { "o", ".", "\\<", "^", "$", "o*", "\\_s", "\\n", "\\_.", "\\zs", "foo", "\\(o\\)" };
+static const char *const CFLAGS[] = { "c", "gc", "gc", "gci", "gce" };
+static const char *const CANSWER[] = { "y", "y", "n", "n", "\x05", "\x05", "\x19", "x", "\x1b", "\x03" };
+static const char *const CLAST[] = { "", "a", "q", "l" };
+
+static void confirm(char *k)
+{
+	strcpy(k, XPRE[rnd(sizeof XPRE / sizeof *XPRE)]);
+	strcat(k, ":");
+	if (k[0] != 'V') strcat(k, CRANGE[rnd(sizeof CRANGE / sizeof *CRANGE)]);
+	strcat(k, "s/");
+	strcat(k, CPAT[rnd(sizeof CPAT / sizeof *CPAT)]);
+	strcat(k, "/");
+	for (unsigned t = rnd(3); t--;) strcat(k, XSUB[rnd(sizeof XSUB / sizeof *XSUB)]);
+	strcat(k, "/");
+	strcat(k, CFLAGS[rnd(sizeof CFLAGS / sizeof *CFLAGS)]);
+	strcat(k, "\r");
+	for (unsigned t = 1 + rnd(5); t--;) strcat(k, CANSWER[rnd(sizeof CANSWER / sizeof *CANSWER)]);
+	strcat(k, CLAST[rnd(sizeof CLAST / sizeof *CLAST)]);
+	strcat(k, "\x1b\x1b");
+	for (unsigned t = rnd(3); t--;) strcat(k, XAFTER[rnd(sizeof XAFTER / sizeof *XAFTER)]);
+	strcat(k, "\x1b\x1b");
+}
+
 /* the cells 'hlsearch' draws, as ex_oracle.lua writes them: the core's
    use of keys_hl() (include/keys.h).  Drawn five times: after the first,
    only the line copies may grow, each once (src/keys/buf.c, slot()) */
@@ -118,8 +148,9 @@ static void hlsearch(Editor *e, char *b, size_t cap)
 	for (int pass = 0; pass < 5; pass++) {
 		a = pass == 1 ? allocs : a;
 		size_t n = (size_t)snprintf(b, cap, "%zu", e->win->top);
-		for (size_t l = e->win->top; l < core_lines(e); l++) {
-			long len = ml_len((long)l), w = vcol_of((long)l, len);
+		for (size_t l = e->win->top; l < core_lines(e) && l < e->win->top + (size_t)e->win->h; l++) {
+			/* Neovim's window: 80 cells, 'nowrap' */
+			long len = ml_len((long)l), w = vcol_of((long)l, len) < 79 ? vcol_of((long)l, len) : 79;
 			b[n++] = 1;
 			memset(b + n, '.', (size_t)w + 1);
 			size_t s, z;
@@ -127,7 +158,7 @@ static void hlsearch(Editor *e, char *b, size_t cap)
 				/* an empty match: one character */
 				size_t to = z > s ? z : s + (size_t)clen(ml_get((long)l), len, (long)s);
 				for (long j = (long)s; j < (long)to && j <= len; j += clen(ml_get((long)l), len, j))
-					memset(b + n + vcol_of((long)l, j), '#', (size_t)(vcol_end((long)l, j) - vcol_of((long)l, j) + 1));
+					for (long v = vcol_of((long)l, j); v <= vcol_end((long)l, j) && v <= w; v++) b[n + v] = '#';
 				c = to;
 			}
 			n += (size_t)w + 1;
@@ -158,7 +189,7 @@ static int check(const char *text, void (*gen)(char *))
 	int bad = 0, none = 0;
 	for (int i = 0; i < N; i++) {
 		long line, col;
-		char err[16], want[512], got[512], of[80], hw[1024], hg[1024];
+		char err[16], want[8192], got[8192], of[80], hw[16384], hg[16384];
 		CHECK(fgets(k, sizeof k, c));
 		snprintf(of, sizeof of, "%s.%d", out, i + 1);
 		FILE *o = fopen(of, "r");
@@ -172,6 +203,7 @@ static int check(const char *text, void (*gen)(char *))
 		static Editor e;
 		CHECK(!core_open(&e, tf));
 		normal_reset();
+		ops_reset(), edit_reset(), motion_reset();   /* each case is a fresh Neovim (a recording, registers) */
 		/* v:errmsg: the last error, though later messages replace it */
 		char m[sizeof e.msg] = "-";
 		/* keys are code points (é is one key) */
@@ -189,12 +221,12 @@ static int check(const char *text, void (*gen)(char *))
 		hw[strcspn(hw, "\n")] = 0;
 		hlsearch(&e, hg, sizeof hg);
 		if ((long)e.win->line + 1 != line || (long)e.win->col != col || strncmp(m, err, strlen(err)) || (m[0] == 'E' && m[strlen(err)] != ':')
-		    || strcmp(got, want) || strcmp(hg, hw)) {
+		    || strcmp(got, want) || (!strchr(hw, '?') && strcmp(hg, hw))) {
 			k[strcspn(k, "\n")] = 0;
 			for (char *s = k; *s; s++) if (*s == '\r' || *s == 27) *s = *s == '\r' ? '|' : '~';
 			if (bad++ < 10) fprintf(stderr, "%d %s: line %zu col %zu [%s], Neovim %ld %ld %s%s%s\n", i, k, e.win->line + 1, e.win->col, e.msg, line, col, err, strcmp(got, want) ? " (text differs)" : "",
-				                      strcmp(hg, hw) ? " (hlsearch differs)" : "");
-			if (bad <= 10 && strcmp(hg, hw)) fprintf(stderr, "  %s\n  Neovim %s\n", hg, hw);
+				                      !strchr(hw, '?') && strcmp(hg, hw) ? " (hlsearch differs)" : "");
+			if (bad <= 10 && !strchr(hw, '?') && strcmp(hg, hw)) fprintf(stderr, "  %s\n  Neovim %s\n", hg, hw);
 		}
 		core_free(&e);
 	}
@@ -225,11 +257,37 @@ int main(void)
 	for (const char *s = "/xy\r"; *s; s++) keys_feed(&e, *s == '\r' ? KEY_ENTER : *s, s[1] != 0);
 	CHECK(keys_hl(&e, e.win, 1, 0, &hs, &hz) && hs == 2 && hz == 4 && !core_edit(&e, 7, 0, "ab", 2));
 	CHECK(keys_hl(&e, e.win, 1, 0, &hs, &hz) && hs == 4 && hz == 6);
+	/* the c flag's question, which the random cases cannot see (Neovim
+	   waits for its key): the line shown with the substitutions so far,
+	   the cursor moved by their length again at each other key, the match
+	   in IncSearch, keys held back from maps; a redraw's 'hlsearch' ("O"
+	   without ignorecase) between the keys; one undo step */
+	size_t n;
+	for (const char *s = ":3s/O/XY/gci\ry"; *s; s++) {
+		keys_feed(&e, *s == '\r' ? KEY_ENTER : *s, s[1] != 0);
+		CHECK(!keys_hl(&e, e.win, 2, 0, &hs, &hz));
+	}
+	const unsigned char *l = core_line(&e, 2, &n);
+	CHECK(n == 12 && !memcmp(l, "hellXY world", 12) && e.win->col == 8 && e.ks.pending);
+	CHECK(e.ks.inc.type == 'v' && e.ks.inc.l1 == 2 && e.ks.inc.c1 == 8 && e.ks.inc.l2 == 2 && e.ks.inc.c2 == 8);
+	keys_feed(&e, 'z', 0);
+	CHECK(e.win->col == 9 && e.ks.inc.c1 == 9);
+	keys_feed(&e, KEY_ESC, 0);
+	l = core_line(&e, 2, &n);
+	CHECK(!e.ks.pending && !e.ks.inc.type && n == 12 && !memcmp(l, "hellXY world", 12));
+	keys_feed(&e, 'u', 0);
+	l = core_line(&e, 2, &n);
+	CHECK(n == 11 && !memcmp(l, "hello world", 11));
 	core_free(&e);
 	unlink(path);
 	bad += check("foo bar\nabc Foo x\n  foo.bar(a) 12\nbaz?\n\nx/y?z foo\nfoofoo zz\nq .*[^$~/?\\\n", search);
 	bad += check("foo bar\nabc Foo x\n  foo.bar(a) 12\nbaz?\\\n\nx/y?z foo\nfoofoo zz\n", substitute);
+	/* four times as long as the window's 22 lines can show: CTRL-E and
+	   CTRL-Y scroll */
+	char t4[256] = "";
+	for (int i = 0; i < 4; i++) strcat(t4, "foo bar\nabc Foo x\n  foo.bar(a) 12\nbaz?\\\n\nx/y?z foo\nfoofoo zz\n");
+	bad += check(t4, confirm);
 	CHECK(!bad);
-	printf("test_keys_ex: %d random ranges, %d searches and %d substitutions, each as Neovim (cursor, error, text)\n", N, N, N);
+	printf("test_keys_ex: %d random ranges, %d searches, %d substitutions and %d answered, each as Neovim (cursor, error, text, 'hlsearch')\n", N, N, N, N);
 	return 0;
 }

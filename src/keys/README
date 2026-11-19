@@ -14,8 +14,12 @@ Not built (FEATURES.md section 2), part two of package 5:
   and with . to repeat; 'ignorecase', 'smartcase' and 'wrapscan' on.
   tests/test_keys_ex.c checks them against nvim on random keys (cursor,
   error, text); measured 2026-11-19, seed 1, 3,000 searches: 0 differ.
-  Not built yet: ";" between searches (/x/;/y), 'hlsearch' and
-  'incsearch', the search history, Visual-mode * and #, register "/.
+  Not built yet: ";" between searches (/x/;/y), 'incsearch', the search
+  history, Visual-mode * and #, register "/.
+  'hlsearch' (keys_hl(), next_search_hl() from the window's top line),
+  :noh[lsearch] and CTRL-L (Neovim's default map, Normal mode): the same
+  test compares the cells 'hlsearch' changes on Neovim's screen (80
+  columns, the lines the window shows) after every random case.
   The pattern engine (regex.c, Neovim's regexp.c): magic levels, classes,
   collections, multis, groups and back references, \zs \ze, \& and the
   look-arounds, 'ignorecase' and \c \C.  tests/test_keys_regex.c checks it
@@ -39,15 +43,22 @@ Not built (FEATURES.md section 2), part two of package 5:
   The same holds for the '> mark of a Visual gq, so gv after it differs
   (H2).
 - tag objects it at.
+- Insert mode's CTRL-E and CTRL-Y (the character below or above).
+- after a t or f that fails, Neovim drops a following & (Neovim's map to
+  :&&) typed ahead, where : or g& still run (measured, nvim --headless
+  feedkeys, 1 run each; not understood yet); ours runs it.
 - ex commands beyond :w :w! :q :q! :wq :x, ranges, :<line> and :s: :g,
   :norm, :d, :y, :e, :sp, :vs, :b; "|" between commands; the ":" motion
   (d:5, which beeps). Visual @ and Q need :norm.
-- :s (sub.c, Neovim's do_sub()): :s/pat/rep/ with the flags & g e n r i
-  I, a count, :& :&& :~, the keys & (Neovim's map to :&&) and g&; in the
+- :s (sub.c, Neovim's do_sub()): :s/pat/rep/ with the flags & c g e n r
+  i I, a count, :& :&& :~, the keys & (Neovim's map to :&&) and g&; in the
   replacement & \0-\9 ~ \u \l \U \L \e \E \r \n \t; matches over
   line breaks.  tests/test_keys_ex.c checks it against nvim on random
   command lines (cursor, error, text); measured 2026-11-19, seeds 1-9,
-  3,000 each: 0 differ.  Not built yet: the c flag (asks at each match),
+  3,000 each: 0 differ.  The c flag's question (y n a q l CTRL-E CTRL-Y,
+  the line shown with its substitutions so far, the match in IncSearch) is
+  checked on random answers; a question still open at the end is not
+  compared, since Neovim's feedkeys() waits for its key.  Not built yet:
   \= (an expression), 'inccommand' (the preview), the p # l flags'
   printing, a backwards range (ours E493; Neovim asks to swap), the names
   :sg :si :sI :sr :sc (s with flags and no blank).

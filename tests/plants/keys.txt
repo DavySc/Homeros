@@ -78,7 +78,7 @@ keys: an incomplete map does not keep the next key, so a picker or git can take 
 keys: a register's name is taken as a map's first key, so "-p opens oil (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~		if (pend[i] == '"') { if (++i == npend) return 0; }~		if (pend[i] == '"') i++;
 keys: after ";" the next address counts from the cursor, not from the address before it (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~((cur = a > nlines() ? nlines() : a) < 1 ? 1 : cur)~((a > nlines() ? nlines() : a) < 1 ? 1 : a)
 keys: ";" leaves the cursor's column past a shorter line's end (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~ - 1, check_cursor_col();~ - 1;
-keys: % is not an address, so :% and :1,% are not editor commands (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~*p == '%' ? (p++, nlines())~*p == '%' && 0 ? (p++, nlines())
+keys: % is not an address, so :% and :1,% are not editor commands (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~int all = *p == '%';~int all = *p == '%' && 0;
 keys: a missing address before a separator is no address, so :,4 is not a range (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~(n || *p == ',' || *p == ';')~(n)
 keys: a number after an address is not added to it, so :.5 and :2 3 fail (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~(*p < '0' || *p > '9')) break;~1) break;
 keys: a range alone past the last line or below 0 goes there instead of the last line or E16 (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~		if (l2 < 0 && n) core_msg(E, "E16: Invalid range");~		if (0) core_msg(E, "E16: Invalid range");
@@ -108,15 +108,15 @@ keys: d/x/+1 deletes characters, not lines (test_keys_ex)~test TESTS=keys_ex~~sr
 keys: n after /x/s-1 stays where it is (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~		cap->count1++;¶~
 keys: * finds the word inside other words, without \< \> (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~if (!g && first >= 2) p +=~if (0) p +=
 keys: . after d/x deletes up to the next x without typing the search again (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~			redo_append('\n');¶~
-keys: a search with an upper-case letter ignores case, as if 'smartcase' were off (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~spat_noscs || !has_upper(spat, all)~spat_noscs || 1 + 0 * !has_upper(spat, all)
-keys: * keeps 'smartcase', so * on Foo misses foo (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~, spat_noscs = no_smartcase;~, spat_noscs = 0;
+keys: a search with an upper-case letter ignores case, as if 'smartcase' were off (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~noscs || !has_upper(pat, all)~noscs || 1 + 0 * !has_upper(pat, all)
+keys: * keeps 'smartcase', so * on Foo misses foo (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~int noscs = no_smartcase, i = -1;~int noscs = 0 * no_smartcase, i = -1;
 keys: * does not escape what the pattern would read as magic, so * on . finds any character (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~) *p++ = '\\';~) {}
 keys: * on a blank line searches for the last pattern instead of E348 (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	if (col >= n) { core_msg(E, "E348~	if (0) { core_msg(E, "E348
 keys: a block's yank flash takes byte columns, not screen columns, so a Tab's block flashes too little (test_keys_flash)~test TESTS=keys_flash~~src/keys/ops.c~		if (t == 22) {~		if (0) {
 keys: a block's yank flash starts at a Tab's first cell, not where the cursor stood on it (test_keys_flash)~test TESTS=keys_flash~~src/keys/ops.c~getvvcol(b_op_start, &a, NULL)~a = vcol_of(b_op_start.lnum, b_op_start.col)
 keys: a backslash at a pattern's start keeps it at the start, so /\*ptr is E866 (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~			prev_at_start = at_start, at_start = 0;¶			rp++, after_slash++;~			rp++, after_slash++;
 keys: \c at a pattern's start ends the start, so \c* is E866 (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~int s = prev_at_start, pr = prev~int s = at_start, pr = prev
-keys: :s keeps the g flag it cleared after a match over the last line, so g& after it changes one match a line (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~	fl.all = save_all;~	fl.all = save_all * 0 + fl.all;
+keys: :s keeps the g flag it cleared after a match over the last line, so g& after it changes one match a line (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~fl.all = save_all, fl.ask = save_ask;~fl.all = save_all * 0 + fl.all, fl.ask = save_ask;
 keys: :s takes a NUL in a line (\n in a replacement) for the line's end (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~(matchcol >= line.n && nmatch <= 1~(!line.s[matchcol] && nmatch <= 1
 keys: a tilde in a replacement is not the last replacement (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~if (prev_sub) bput(&b, prev_sub~if (0) bput(&b, prev_sub
 keys: \u in a replacement does nothing (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~one = *p;~one = 0;
@@ -145,3 +145,17 @@ keys: CTRL-L hides the matches in Visual mode (test_keys_ex)~test TESTS=keys_ex~
 keys: CTRL-L hides the matches after an operator (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~if (!checkclearop(cap->oap) && !VIsual_active) no_hlsearch~if (!VIsual_active) no_hlsearch
 keys: :noh takes a range (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~		if (n) core_msg(E, "E481: No range allowed");¶		else no_hlsearch = 1;~		no_hlsearch = 1;
 keys: line copies grow on every redraw (test_keys_ex)~test TESTS=keys_ex~~src/keys/buf.c~big = cap = cap > big ? cap : big;~big = cap = n + 1;
+keys: a match \zs starts on the next line is drawn on this one (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~		else if (ms.lnum > l) return 0;¶~
+keys: a answers this match but keeps asking (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~if (typed == 'a') fl.ask = 0;~if (typed == 'a') fl.ask = 1;
+keys: l answers this match but goes on to the next lines (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~if (typed == 'l') fl.all = 0, line2 = lnum;~if (typed == 'l') fl.all = 0;
+keys: Esc and CTRL-C answer yes instead of quitting (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~got_quit = typed == 'q' || typed == KEY_ESC || typed == KEY_CTRL_C;~got_quit = typed == 'q';
+keys: the question shows the line without its substitutions so far (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~				if (has_new) show(1);¶~
+keys: another key asks again without moving the cursor by the change again (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~W->col = (long)W->col + change > 0 ? (size_t)((long)W->col + change) : 0;~W->col = (size_t)gs[0].col + (size_t)change;
+keys: the answered :s is undone key by key (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~if (!sub_asking && ((E->mode~if (((E->mode
+keys: maps take the keys that answer :s (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~MODE_CMDLINE || sub_asking ||~MODE_CMDLINE || 0 * sub_asking ||
+keys: the match is not shown in IncSearch (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~E->ks.inc = (KeyArea){ 'v',~E->ks.inc = (KeyArea){ 0,
+keys: :s goes on with 'hlsearch''s program after a redraw (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~				search_recompile();¶~
+keys: CTRL-E scrolls the cursor into 'scrolloff' (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~(long)(W->line - W->top) - 1 >= SCROLLOFF) W->top++;~(long)(W->line - W->top) - 1 >= 0) W->top++;
+keys: CTRL-Y does not scroll (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~if (typed == 25 && W->top &&~if (typed == 25 && 0 * W->top &&
+keys: g& goes through the command line, so a pending operator cancels it (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~ex_sub(0, nlines() - 1, 's', a); break; }~(void)a; stuff_str(":%s//\x7e/&\n", 9); break; }
+keys: Visual : leaves curswant to be set after the command (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~		update_curswant();¶		cmdline(':', "'<,'>");~		cmdline(':', "'<,'>");

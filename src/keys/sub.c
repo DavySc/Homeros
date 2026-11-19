@@ -1,22 +1,23 @@
 /* Neovim's ex_cmds.c do_sub() for :s :& :~, with regexp.c's regtilde()
-   and vim_regsub_both() for the replacement.  Not built: the c flag, \=,
+   and vim_regsub_both() for the replacement.  Not built: \=,
    'inccommand', the p # l flags' printing. */
 #include <stdio.h>
 #include <stdlib.h>
 #include "k.h"
 #include "uni.h"
 
-static char *old_sub, *prev_sub;   /* old_sub: the last :s string; reg_prev_sub: ~ */
-static struct { int all, count, error, ic; } fl = { 0, 0, 1, -1 };   /* subflags (ic -1: the options) */
+static char *old_sub, *prev_sub, *sub;   /* old_sub: the last :s string; reg_prev_sub: ~; sub: this one's */
+static struct { int all, ask, count, error, ic; } fl = { 0, 0, 0, 1, -1 };   /* subflags (ic -1: the options) */
 static Pos gs[10], ge[10];   /* the match (0) and its groups, lines from the line searched; coladd: set */
 static int timed_out;
 static int one, all;         /* regsub's func_one, func_all: 'u' upper, 'l' lower */
 
 void sub_reset(void)
 {
-	free(old_sub), free(prev_sub);
-	old_sub = prev_sub = NULL;
-	fl.all = fl.count = 0, fl.error = 1, fl.ic = -1;
+	free(old_sub), free(prev_sub), free(sub);
+	old_sub = prev_sub = sub = NULL;
+	fl.all = fl.ask = fl.count = 0, fl.error = 1, fl.ic = -1;
+	sub_asking = 0;
 }
 
 /* c, through \u \l \U \L */
@@ -110,9 +111,10 @@ static void regsub(Sbuf *b, const char *src, long base)
 static char *flags(char *p, int *which)
 {
 	if (*p == '&') p++;
-	else fl.all = fl.count = 0, fl.error = 1, fl.ic = -1;
+	else fl.all = fl.ask = fl.count = 0, fl.error = 1, fl.ic = -1;
 	for (;; p++) {
 		if (*p == 'g') fl.all = !fl.all;
+		else if (*p == 'c') fl.ask = !fl.ask;
 		else if (*p == 'n') fl.count = 1;
 		else if (*p == 'e') fl.error = !fl.error;
 		else if (*p == 'r') *which = RE_LAST;
@@ -121,12 +123,23 @@ static char *flags(char *p, int *which)
 	}
 }
 
+/* do_sub()'s state, kept while the c flag waits for a key */
+int sub_asking;
+static long first, lnum, line2, nsubs, nlns, nmatch, copycol, matchcol, prev_matchcol, nmatch_tl, sub_firstlnum;
+static long change, l2, c2;   /* the question's: the line's change in length, the match's end */
+static int endcolumn, hasnl, save_all, save_ask, got_match, got_quit, did_save, did_sub, skip_match, do_again, has_new, lastone;
+static Sbuf line, nb, orig;   /* sub_firstline, new_start, the line shown changed while asking */
+static Pos old;
+
+static void loop(int typed);
+
 /* do_sub(): lines l1 to l2 (from 0); cmd 's', '&' or '~' with what
    follows its name */
 void ex_sub(long l1, long l2, int cmd, char *arg)
 {
-	int which = cmd == '~' ? RE_LAST : RE_SUBST, endcolumn = 0;
-	char *pat = NULL, *sub;
+	int which = cmd == '~' ? RE_LAST : RE_SUBST;
+	char *pat = NULL;
+	endcolumn = 0;
 	if (cmd == 's' && *arg && !strchr("0123456789cegriIp|\"", *arg)) {
 		if ((*arg >= 'a' && *arg <= 'z') || (*arg >= 'A' && *arg <= 'Z')) { core_msg(E, "E146: Regular expressions can't be delimited by letters"); return; }
 		int delim;
@@ -140,17 +153,17 @@ void ex_sub(long l1, long l2, int cmd, char *arg)
 			if (*arg == delim) *arg++ = 0;
 		}
 		/* skip_substitute() */
-		sub = arg;
+		char *rep = arg;
 		while (*arg && *arg != delim) arg += *arg == '\\' && arg[1] ? 1 + clen(arg + 1, (long)strlen(arg + 1), 0) : clen(arg, (long)strlen(arg), 0);
 		if (*arg) *arg++ = 0;
 		free(old_sub);
-		old_sub = strdup(sub);
+		old_sub = strdup(rep);
 	} else {
 		if (!old_sub) { core_msg(E, "E33: No previous substitute regular expression"); return; }
 		endcolumn = W->want == WANT_EOL;
 	}
 	/* sub_joining_lines(): :s/\n// joins the lines and the one below */
-	if (pat && !strcmp(pat, "\\n") && !*sub && (!*arg || (!arg[1] && strchr("glp#", *arg)))) {
+	if (pat && !strcmp(pat, "\\n") && !*old_sub && (!*arg || (!arg[1] && strchr("glp#", *arg)))) {
 		long n = l2 - l1 + 1 + (l2 < nlines() - 1);
 		W->line = (size_t)l1;
 		if (n > 1) {
@@ -179,18 +192,59 @@ void ex_sub(long l1, long l2, int cmd, char *arg)
 		if (fl.error) core_msg(E, "E476: Invalid command");
 		return;
 	}
-	int hasnl = re_hasnl(), save_all = fl.all;   /* the g typed, for :&& */
+	hasnl = re_hasnl(), save_all = fl.all, save_ask = fl.ask;   /* as typed, for :&& */
 	sub = tilde(old_sub);
-	Pos old = cur();
-	long nsubs = 0, nlns = 0, line2 = l2;
-	int got_match = 0, did_save = 0;
-	Sbuf line = { 0 }, nb = { 0 };   /* sub_firstline, new_start */
-	timed_out = 0;
-	for (long lnum = l1; lnum <= line2 && !timed_out; lnum++) {
-		long nmatch = exec(lnum, 0);
+	old = cur();
+	first = l1, line2 = l2, nsubs = nlns = 0;
+	got_match = got_quit = did_save = timed_out = 0;
+	loop(-1);
+}
+
+/* the rest of do_sub() once the lines are done */
+static void finish(void)
+{
+	free(sub);
+	sub = NULL;
+	int ask = fl.ask;
+	fl.all = save_all, fl.ask = save_ask;
+	if (fl.count) setcur(old);
+	if (timed_out) core_msg(E, "E363: Pattern uses more memory than 'maxmempattern'");
+	else if (nsubs) {
+		b_op_start = (Pos){ first, 0, 0 }, b_op_end = (Pos){ line2, 0, 0 };
+		/* asked: the cursor stays on the last match */
+		if (!ask) {
+			if (endcolumn) coladvance(MAXCOL);
+			else beginline(BL_WHITE | BL_FIX);
+		}
+		if (nsubs > 2 || fl.count)
+			core_msg(E, "%ld %s%s on %ld line%s", nsubs, fl.count ? "match" : "substitution", nsubs == 1 ? "" : fl.count ? "es" : "s", nlns, nlns == 1 ? "" : "s");
+	} else if (got_match) core_msg(E, "");
+	else if (fl.error) core_msg(E, "E486: Pattern not found: %s", get_search_pat());
+}
+
+/* the line shown while asking: the substitutions made in it so far
+   (do_sub() puts it in the buffer and back without an undo step) */
+static void show(int on)
+{
+	if (on) {
+		orig.n = 0, bput(&orig, ml_get(lnum), ml_len(lnum));
+		Sbuf t = { 0 };
+		bput(&t, nb.s, nb.n), bput(&t, line.s + copycol, line.n - copycol);
+		replace_bytes(lnum, 0, ml_len(lnum), t.s, t.n);
+		free(t.s);
+	} else replace_bytes(lnum, 0, ml_len(lnum), orig.s, orig.n);
+}
+
+/* do_sub()'s loop over the lines; typed: the key answering the c flag's
+   question, where it goes on */
+static void loop(int typed)
+{
+	if (typed >= 0) goto answer;
+	for (lnum = first; lnum <= line2 && !timed_out && !got_quit; lnum++) {
+		nmatch = exec(lnum, 0);
 		if (!nmatch) continue;
-		long copycol = 0, matchcol = 0, prev_matchcol = MAXCOL, nmatch_tl = 0, sub_firstlnum = lnum;
-		int did_sub = 0, skip_match = 0, do_again, has_new = 0, lastone;
+		copycol = 0, matchcol = 0, prev_matchcol = MAXCOL, nmatch_tl = 0, sub_firstlnum = lnum;
+		did_sub = skip_match = has_new = 0;
 		line.n = -1;   /* none yet */
 		got_match = 1;
 		for (;;) {
@@ -213,6 +267,44 @@ void ex_sub(long l1, long l2, int cmd, char *arg)
 				if (nmatch > 1) matchcol = line.n, nmatch = 1, skip_match = 1;
 				nsubs++, did_sub = 1;
 				goto skip;
+			}
+			if (fl.ask) {
+				/* the match in IncSearch (at least one character, for /^/),
+				   the cursor on it, then the question */
+				W->col = (size_t)gs[0].col;
+ask:
+				/* the line with this line's substitutions so far; the cursor
+				   moves by their change in length, again each time it asks */
+				change = has_new ? nb.n + line.n - copycol - ml_len(lnum) : 0;
+				if (has_new) show(1);
+				W->col = (long)W->col + change > 0 ? (size_t)((long)W->col + change) : 0;
+				l2 = lnum + ge[0].lnum - gs[0].lnum, c2 = ge[0].col + (l2 == lnum ? change : 0);
+				if (l2 > lnum && !c2) l2--, c2 = ml_len(l2) + 1;
+				E->ks.inc = (KeyArea){ 'v', (size_t)lnum, W->col, (size_t)l2, (size_t)(c2 > (long)W->col || l2 > lnum ? head(ml_get(l2), c2 - 1) : (long)W->col) };
+				core_msg(E, "replace with %s? (y)es/(n)o/(a)ll/(q)uit/(l)ast/scroll up(^E)/down(^Y)", sub);
+				sub_asking = 1;
+				return;
+answer:
+				if (has_new) show(0);
+				/* scrollup_clamp(), scrolldown_clamp(): only while the cursor
+				   stays 'scrolloff' lines inside the window */
+				if (typed == 5 && (long)W->top + 1 < nlines() && (long)(W->line - W->top) - 1 >= SCROLLOFF) W->top++;
+				if (typed == 25 && W->top && (long)(W->line - W->top) + 1 < W->h - SCROLLOFF) W->top--;
+				if (!has("ynalq", typed) && typed != KEY_ESC && typed != KEY_CTRL_C) goto ask;
+				sub_asking = 0;
+				E->ks.inc.type = 0;
+				core_msg(E, "");
+				/* 'hlsearch' may have compiled its pattern meanwhile */
+				search_recompile();
+				got_quit = typed == 'q' || typed == KEY_ESC || typed == KEY_CTRL_C;
+				if (typed == 'l') fl.all = 0, line2 = lnum;
+				if (typed == 'a') fl.ask = 0;
+				if (typed == 'n') {
+					/* past a match of more lines: on to the next line */
+					if (nmatch > 1) matchcol = line.n, skip_match = 1;
+					goto skip;
+				}
+				if (got_quit) goto skip;
 			}
 			W->col = (size_t)gs[0].col;
 			/* a match that takes the last line's line break */
@@ -249,7 +341,7 @@ void ex_sub(long l1, long l2, int cmd, char *arg)
 			}
 			if (!did_save) u_save_cursor(), did_save = 1;
 skip:
-			lastone = skip_match || lnum > line2 || !(fl.all || do_again) || (matchcol >= line.n && nmatch <= 1 && !hasnl);
+			lastone = skip_match || got_quit || lnum > line2 || !(fl.all || do_again) || (matchcol >= line.n && nmatch <= 1 && !hasnl);
 			nmatch = -1;
 			if (lastone || nmatch_tl > 0 || (nmatch = exec(sub_firstlnum, matchcol)) == 0 || gs[0].lnum > 0) {
 				if (has_new) {
@@ -272,17 +364,8 @@ skip:
 		}
 		nlns += did_sub;
 	}
-	free(line.s), free(nb.s), free(sub);
-	fl.all = save_all;
-	if (fl.count) setcur(old);
-	if (timed_out) core_msg(E, "E363: Pattern uses more memory than 'maxmempattern'");
-	else if (nsubs) {
-		b_op_start = (Pos){ l1, 0, 0 }, b_op_end = (Pos){ line2, 0, 0 };
-		if (endcolumn) coladvance(MAXCOL);
-		else beginline(BL_WHITE | BL_FIX);
-		if (nsubs > 2 || fl.count)
-			core_msg(E, "%ld %s%s on %ld line%s", nsubs, fl.count ? "match" : "substitution", nsubs == 1 ? "" : fl.count ? "es" : "s", nlns, nlns == 1 ? "" : "s");
-	} else if (!got_match && fl.error) {
-		core_msg(E, "E486: Pattern not found: %s", get_search_pat());
-	}
+	finish();
 }
+
+/* the key answering "replace with ...?" */
+void sub_key(int k) { loop(k); }

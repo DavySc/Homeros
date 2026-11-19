@@ -3,7 +3,7 @@
 -- buffer holding TEXT's lines, with Davy's 'ignorecase' and 'smartcase'
 -- (FEATURES.md 1); OUT gets "line col error", then the buffer's lines
 -- joined by \1 (a NUL in a line, from \n in a :s replacement, as \2),
--- then the top line and the 'hlsearch' cells of each line from it on
+-- then the top line and the 'hlsearch' cells of each line shown
 -- (# Search or CurSearch, . not; the line break's cell last), by \1.
 -- One case a process: Neovim keeps the last search, redo and Visual area
 -- from one buffer to the next, and some cases loop after others (not
@@ -20,6 +20,9 @@ vim.fn.chdir(vim.fs.dirname(_G.arg[3]))
 vim.o.ignorecase = true
 vim.o.smartcase = true
 vim.o.scrolloff = 6   -- FEATURES.md's, which the core keeps (zt)
+-- 'nowrap' (FEATURES.md): a line's cells past the window's 80 are not
+-- shown, and a view scrolled sideways is not compared ('?')
+vim.o.wrap = false
 -- with typeahead (feedkeys) a :s range's incsearch preview limits
 -- 'hlsearch' to that range after the command (search_first_line is not
 -- reset when the preview never drew, measured); typed, it is not
@@ -33,8 +36,8 @@ pcall(vim.api.nvim_feedkeys, k, 'xt', false)
 local function screen()
   vim.cmd('redraw!')
   local r = {}
-  for l = vim.fn.line('w0'), vim.fn.line('$') do
-    for c = 1, vim.fn.strdisplaywidth(vim.fn.getline(l)) + 1 do r[#r + 1] = vim.fn.screenattr(l - vim.fn.line('w0') + 1, c) end
+  for l = vim.fn.line('w0'), vim.fn.line('w$') do
+    for c = 1, math.min(vim.fn.strdisplaywidth(vim.fn.getline(l)) + 1, vim.fn.winwidth(0)) do r[#r + 1] = vim.fn.screenattr(l - vim.fn.line('w0') + 1, c) end
     r[#r + 1] = '|'
   end
   return r
@@ -45,6 +48,7 @@ local plain = screen()
 vim.v.hlsearch = h
 local hl, top = '', vim.fn.line('w0')
 for i, a in ipairs(screen()) do hl = hl .. (a == '|' and '\1' or a ~= plain[i] and '#' or '.') end
+if vim.fn.winsaveview().leftcol > 0 then hl = '?\1' end
 io.open(_G.arg[3], 'w'):write(string.format('%d %d %s\n%s\n%d\1%s\n', vim.fn.line('.'), vim.fn.col('.') - 1,
                               vim.v.errmsg:match('^E%d+') or '-', (table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\1'):gsub('[%z\n]', '\2')),
                               top - 1, hl:sub(1, -2)))

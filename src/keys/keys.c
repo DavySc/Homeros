@@ -101,6 +101,7 @@ static void cmdline_key(int k);
 
 static void key(int k, int pending)
 {
+	if (sub_asking) { sub_key(k); return; }
 	switch (E->mode) {
 	case MODE_INSERT: insert_key(k, pending); break;
 	case MODE_CMDLINE: cmdline_key(k); break;
@@ -169,7 +170,8 @@ void keys_feed(Editor *e, int k, int pending)
 	if (k == KEY_CLOSE) { core_close(e, 0); return; }
 	E = e;
 	buf_changed();
-	if ((E->mode != MODE_INSERT && E->mode != MODE_CMDLINE) || arrow_used) undo_close(B->undo);
+	/* :s with the c flag is one undo step, however many keys answer it */
+	if (!sub_asking && ((E->mode != MODE_INSERT && E->mode != MODE_CMDLINE) || arrow_used)) undo_close(B->undo);
 	if (reg_recording) record_key(k);
 	key_stuffed = 0;
 	reg_executing = 0;   /* typed: the typeahead holds no register keys */
@@ -178,7 +180,7 @@ void keys_feed(Editor *e, int k, int pending)
 	E->ks.visual = VIsual_active ? VIsual_mode : 0;
 	E->ks.vline = (size_t)VIsual.lnum;
 	E->ks.vcol = (size_t)VIsual.col;
-	E->ks.pending = E->mode == MODE_CMDLINE || (E->mode != MODE_INSERT && normal_pending());
+	E->ks.pending = E->mode == MODE_CMDLINE || sub_asking || (E->mode != MODE_INSERT && normal_pending());
 	core_update(e);
 }
 
