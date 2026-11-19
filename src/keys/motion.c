@@ -321,6 +321,8 @@ static const char *skipwhite(const char *s) { while (*s == ' ' || *s == '\t') s+
 
 int findmatch(Pos *out, int initc) { return findmatchlimit(out, initc, 0); }
 
+static int cpo_match;   /* 'cpoptions' has "%": quotes are not special */
+
 int findmatchlimit(Pos *out, int initc, int flags)
 {
 	Pos pos = cur(), match_pos = { 0, 0, 0 };
@@ -454,7 +456,8 @@ ok_line:
 			}
 			continue;
 		}
-		if (do_quotes == -1) {
+		if (cpo_match) do_quotes = 0;
+		else if (do_quotes == -1) {
 			const char *p;
 			at_start = do_quotes;
 			for (p = linep; *p; p++) {
@@ -761,7 +764,9 @@ int current_block(Oparg *oap, long count, int include, int what, int other)
 		old_start = VIsual;
 		setcur(VIsual);
 	} else old_end = VIsual;
-	/* findmatch() with 'cpoptions' "%": quotes are not special */
+	/* the unclosed bracket is found with 'cpoptions' "%": quotes are not
+	   special; the matching one without it */
+	cpo_match = 1;
 	if ((ok = findmatch(&p, what))) {
 		while (count-- > 0) {
 			if (!(ok = findmatch(&p, what))) break;
@@ -775,6 +780,7 @@ int current_block(Oparg *oap, long count, int include, int what, int other)
 			start_pos = p;
 		}
 	}
+	cpo_match = 0;
 	if (!ok || !findmatch(&end_pos, other)) { setcur(old_pos); return 0; }
 	setcur(end_pos);
 	while (!include) {

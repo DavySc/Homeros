@@ -910,10 +910,12 @@ static void nv_undo(Cmdarg *cap)
 	size_t w0 = W->want;
 	core_set_want(E);
 	W->want = w0;
-	/* u_doit() stops at the first step that finds nothing; in a CTRL-O
-	   command check_cursor_col() lets the cursor stay past the end
-	   (restart_edit), which core_clamp() allows in Insert mode */
-	for (long n = cap->count1; n-- && core_undo(E, cap->cmdchar == KEY_CTRL_R) >= 0;) {}
+	/* u_doit() stops at the first step that finds nothing, with
+	   beep_flush(), which ends a macro; in a CTRL-O command
+	   check_cursor_col() lets the cursor stay past the end (restart_edit),
+	   which core_clamp() allows in Insert mode */
+	for (long n = cap->count1; n--;)
+		if (core_undo(E, cap->cmdchar == KEY_CTRL_R) < 0) { beep(); break; }
 	buf_changed();
 	core_set_want(E);
 	E->mode = mode;
@@ -941,6 +943,8 @@ int  do_execreg(int regname);
 
 static void nv_record(Cmdarg *cap)
 {
+	/* "gqq" is "gqgq" */
+	if (cap->oap->op_type == OP_FORMAT) { cap->cmdchar = 'g'; cap->nchar = 'q'; nv_operator(cap); return; }
 	if (checkclearop(cap->oap)) return;
 	if (cap->nchar == ':' || cap->nchar == '/' || cap->nchar == '?') { beep(); return; }
 	if (!reg_executing && !do_record(cap->nchar)) clearopbeep(cap->oap);
@@ -1021,6 +1025,7 @@ static int get_op_type(int c1, int c2)
 		case 'u': return OP_LOWER;
 		case 'U': return OP_UPPER;
 		case 'J': return OP_JOIN_NS;
+		case 'q': return OP_FORMAT;
 		}
 	}
 	return -1;
@@ -1028,7 +1033,7 @@ static int get_op_type(int c1, int c2)
 
 static int get_op_char(int op)
 {
-	static const int c[] = { 0, 'd', 'y', 'c', '<', '>', 'g', 'g', 'g', 'J', 'g', 'r', 'I', 'A', 1, 24 };
+	static const int c[] = { 0, 'd', 'y', 'c', '<', '>', 'g', 'g', 'g', 'J', 'g', 'r', 'I', 'A', 1, 24, 'g' };
 	return c[op];
 }
 
@@ -1039,6 +1044,7 @@ static int get_extra_op_char(int op)
 	case OP_UPPER: return 'U';
 	case OP_LOWER: return 'u';
 	case OP_JOIN_NS: return 'J';
+	case OP_FORMAT: return 'q';
 	}
 	return 0;
 }
@@ -1089,8 +1095,10 @@ static void nv_g_cmd(Cmdarg *cap)
 		const char *s = ml_get((long)W->line);
 		/* nv_g_underscore_cmd: from the last character step back by bytes
 		   while on a blank, then mb_adjust_cursor; a blank under a
-		   combining mark is skipped, the mark's bytes are not blanks */
-		long n = ml_len((long)W->line), i = n ? head(s, n - 1) : 0;
+		   combining mark is skipped, the mark's bytes are not blanks;
+		   in Visual mode coladvance(MAXCOL) is past the line ('selection'
+		   inclusive), so the step back starts at its last byte */
+		long n = ml_len((long)W->line), i = !n ? 0 : VIsual_active ? n - 1 : head(s, n - 1);
 		while (i > 0 && (s[i] == ' ' || s[i] == '\t')) i--;
 		W->col = (size_t)head(s, i);
 		set_curswant = 1;
@@ -1111,6 +1119,7 @@ static void nv_g_cmd(Cmdarg *cap)
 	/* Davy (2026-11-17): go is gg everywhere, as noremap go gg; Neovim's
 	   go (byte N) is not kept */
 	case 'g': case 'o': cap->arg = 0; nv_goto(cap); break;
+	case 'q': cap->oap->cursor_start = cur(); /* fall through */
 	case '~': case 'u': case 'U': nv_operator(cap); break;
 	case 'p': case 'P': nv_put(cap, 0); break;
 	default: clearopbeep(oap);
@@ -1378,6 +1387,9 @@ static int run(void)
 			done = 1;
 		}
 	}
+	/* do_window() reads the key after CTRL-W g; none of its tab page and
+	   tag commands is built, so each beeps */
+	if (!done && c == 23 && (ca.nchar == 'g' || ca.nchar == 7)) GET(ca.extra_char);
 #undef GET
 	if (!done) execute(&ca);
 	/* normal_finish_command() */
@@ -1391,7 +1403,7 @@ static int run(void)
 	   inside the character */
 	if (E->mode == MODE_NORMAL && W->col) W->col = (size_t)head(ml_get((long)W->line), (long)W->col);
 	/* normal_check() before the next command: validate_cursor() */
-	if (stuff_empty() && E->mode == MODE_NORMAL) validate_virtcol();
+	if (stuff_empty() && E->mode == MODE_NORMAL) curs_columns();
 	if (!(ca.retval & CA_COMMAND_BUSY)) restart_insert();
 	return 1;
 }
@@ -1484,7 +1496,9 @@ static void do_pending_operator(Cmdarg *cap, long old_col)
 		if (redo_VIsual.vcol == MAXCOL || VIsual_mode == 'v') {
 			if (VIsual_mode == 'v') {
 				if (redo_VIsual.line_count <= 1) {
-					set_want(vcol_of((long)W->line, (long)W->col) + redo_VIsual.vcol - 1);
+					/* w_virtcol: a Tab's last cell in Normal mode */
+					validate_virtcol();
+					set_want((long)W->vc.v + redo_VIsual.vcol - 1);
 				} else set_want(redo_VIsual.vcol);
 			} else set_want(MAXCOL);
 			coladvance(curswant());
@@ -1546,8 +1560,9 @@ static void do_pending_operator(Cmdarg *cap, long old_col)
 			if (oap->end.col >= ml_len(oap->end.lnum) && (include_line_break || 1)) {
 				oap->inclusive = 0;
 				/* the line break is included */
+				/* !op_on_lines() */
 				if (oap->op_type != OP_LSHIFT && oap->op_type != OP_RSHIFT && oap->op_type != OP_JOIN
-				    && oap->op_type != OP_JOIN_NS && oap->end.lnum + 1 < nlines()) {
+				    && oap->op_type != OP_JOIN_NS && oap->op_type != OP_FORMAT && oap->end.lnum + 1 < nlines()) {
 					oap->end.lnum++;
 					oap->end.col = 0;
 					oap->line_count++;
@@ -1618,6 +1633,10 @@ static void do_pending_operator(Cmdarg *cap, long old_col)
 	case OP_REPLACE:
 		VIsual_reselect = 0;
 		op_replace(oap, cap->nchar);
+		break;
+	case OP_FORMAT:
+		op_format(oap);
+		check_cursor_col();
 		break;
 	case OP_NR_ADD: case OP_NR_SUB:
 		VIsual_active = 1;
