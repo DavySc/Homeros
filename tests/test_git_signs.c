@@ -306,10 +306,14 @@ int main(void)
 	snprintf(path, sizeof path, "%s/out.txt", tmp);
 	/* the same buffer renamed outside the repository (:saveas) and attached
 	   again: the old repository is gone */
+	int signs = 0;
+	for (int l = 0; l <= nline; l++) signs += git_sign(e.buf, (size_t)l) != 0;
+	CHECK(signs > 0);                      /* so the check below can fail */
 	char *was = e.buf->path;
 	e.buf->path = path;
 	git_attach(e.buf);
-	CHECK(!git_branch(e.buf) && !git_sign(e.buf, 0));
+	CHECK(!git_branch(e.buf));
+	for (int l = 0; l <= nline; l++) CHECK(!git_sign(e.buf, (size_t)l));
 	e.buf->path = was;
 	git_free();
 	core_free(&e);
