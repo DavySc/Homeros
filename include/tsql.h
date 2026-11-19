@@ -1,5 +1,5 @@
-/* T-SQL by word lists, as SSMS colours it (tsql.c), and JSON on the same
-   index of token starts (json.c).  The T-SQL lexer is shared with SQLDiff's
+/* T-SQL by word lists, as SSMS colours it, and JSON on the same index of
+   token starts (tsql.c).  The T-SQL lexer is shared with SQLDiff's
    formatter, so its tokens are SQL Server's own. */
 #ifndef TSQL_H
 #define TSQL_H
@@ -19,7 +19,7 @@ enum {
 enum { TQ_KEYWORD = 1, TQ_FUNCTION = 2, TQ_OPERATOR = 4, TQ_RECASE = 8 };
 
 typedef struct Tsql Tsql;
-/* json: JSON's tokens and faces (json.c) on the same index */
+/* json: JSON's tokens and faces instead */
 Tsql  *tsql_new(const Text *t, int json);
 void   tsql_free(Tsql *q);
 /* before every change, while t is still the old text: at pos, ndel bytes
@@ -50,8 +50,4 @@ size_t tsql_token(TsqlRd *r, size_t pos, int *kind);
    it (the formatter maps these to its own words). */
 int    tsql_word(const char *w, size_t n, size_t *id);
 extern const size_t tsql_nwords;
-/* JSON (json.c): its tokens, in tsql_token's kinds, and the faces of the
-   token [p, e) of kind k that fall in [a, z) into f */
-size_t json_token(TsqlRd *r, size_t pos, int *kind);
-void   json_paint(TsqlRd *r, size_t p, size_t e, int k, size_t a, size_t z, unsigned char *f);
 #endif

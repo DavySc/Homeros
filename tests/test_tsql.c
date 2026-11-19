@@ -2,7 +2,7 @@
    every byte, one per SSMS rule tsql.c copies (the categories are SSMS's;
    which words fall in which is checked against SSMS only for the words of
    ssms-check.sql); tsql_token's kinds where SQL Server's lexing is
-   subtle; then random texts and edits, T-SQL and JSON (json.c), where the
+   subtle; then random texts and edits, T-SQL and JSON, where the
    faces read through the kept token starts, in any order and window, must
    equal a fresh read from byte 0. */
 #include <string.h>
@@ -141,7 +141,7 @@ static const char *const snip[] = {
 	"true", "null", "fals", "\"key\": ", "x", "\xc3\xa9", "0",
 };
 enum { NSNIP = sizeof snip / sizeof *snip, NJSNIP = sizeof jsnip / sizeof *jsnip, MAXT = 1 << 17 };
-/* the random texts' language: a third are JSON (json.c), on the same index */
+/* the random texts' language: a third are JSON, on the same index */
 static int json;
 #define PATH (json ? "x.json" : "x.sql")
 

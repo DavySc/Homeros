@@ -1,21 +1,27 @@
-# Plants for src/syntax/json.c and JSON's use of tsql.c (format in tools/planted.sh).
+# Plants for JSON's colours (src/syntax/tsql.c's json_token, json_face, paint; format in tools/planted.sh).
 json: a .json file is not JSON (test_json)~test TESTS=json~~src/syntax/syntax.c~int json = pl > 5 &&~int json = pl > 50 &&
 json: the index is filled with T-SQL's tokens (test_json)~test TESTS=json~~src/syntax/tsql.c~: (q->json ? json_token : tsql_token)(&q->r, p, &kind);~: tsql_token(&q->r, p, &kind);
 json: a window is lexed as T-SQL (test_json)~test TESTS=json~~src/syntax/tsql.c~e = (q->json ? json_token : tsql_token)(&q->r, p, &k);~e = tsql_token(&q->r, p, &k);
-json: a window takes T-SQL's faces (test_json)~test TESTS=json~~src/syntax/tsql.c~(q->json ? json_paint : paint)(~paint(
-json: a string runs past its line's end (test_json, lines)~test TESTS=json~~src/syntax/json.c~c != '"' && c != '\n')~c != '"')
-json: an escape takes the line's end (test_json, lines)~test TESTS=json~~src/syntax/json.c~>= 0 && d != '\n') p++;~>= 0) p++;
-json: a line comment runs past its line (test_json)~test TESTS=json~~src/syntax/json.c~while ((c = tsql_byte(r, ++p)) >= 0 && c != '\n') ;~while ((c = tsql_byte(r, ++p)) >= 0) ;
-json: a block comment ends a byte early (test_json)~test TESTS=json~~src/syntax/json.c~c < 0 ? p : p + 2;~c < 0 ? p : p + 1;
-json: an unclosed block comment is no comment (test_json, lines)~test TESTS=json~~src/syntax/json.c~return *k = TQ_COMMENT, c < 0 ? p : p + 2;~return *k = c < 0 ? TQ_OP : TQ_COMMENT, c < 0 ? p : p + 2;
-json: a number's fraction is not read (test_json)~test TESTS=json~~src/syntax/json.c~		if (tsql_byte(r, p) == '.')¶			while~		if (tsql_byte(r, p) == '#')¶			while
-json: an exponent takes no minus (test_json)~test TESTS=json~~src/syntax/json.c~p + 1 + (tsql_byte(r, p + 1) == '-');~p + 1 + 0 * (tsql_byte(r, p + 1) == '-');
-json: a minus starts no number (test_json)~test TESTS=json~~src/syntax/json.c~(c == '-' && is_digit(d))~(c == '+' && is_digit(d))
-json: a tab is not a space (test_json)~test TESTS=json~~src/syntax/json.c~if (c == ' ' || (c >= '\t' && c <= '\r')) {~if (c == ' ' || (c >= '\n' && c <= '\r')) {
-json: a key's colon is not found past a comment (test_json)~test TESTS=json~~src/syntax/json.c~(k == TQ_SPACE || k == TQ_COMMENT)~(k == TQ_SPACE)
-json: a key is a plain string (test_json)~test TESTS=json~~src/syntax/json.c~== ':' ? FACE_PROPERTY : FACE_STRING;~== ':' ? FACE_STRING : FACE_STRING;
-json: a colon is a bracket (test_json)~test TESTS=json~~src/syntax/json.c~d == ',' || d == ':' ?~d == ',' ?
-json: null is a boolean (test_json)~test TESTS=json~~src/syntax/json.c~"null") ? FACE_CONSTANT_BUILTIN~"null") ? FACE_BOOLEAN
-json: false is plain (test_json)~test TESTS=json~~src/syntax/json.c~|| is(r, p, e - p, "false")~|| is(r, p, e - p, "fals")
-json: an escape's second byte starts another (test_json)~test TESTS=json~~src/syntax/json.c~					if (j >= a && j < z) f[j - a] = FACE_STRING_ESCAPE;¶				i++;~					if (j >= a && j < z) f[j - a] = FACE_STRING_ESCAPE;¶				i += 0;
-json: escapes are not coloured (test_json)~test TESTS=json~~src/syntax/json.c~f[j - a] = FACE_STRING_ESCAPE;~f[j - a] = FACE_STRING;
+json: a window takes T-SQL's faces (test_json)~test TESTS=json~~src/syntax/tsql.c~c = q->json ? json_face(r, p, e, k) : face(r, p, e, k);~c = 0 && q->json ? json_face(r, p, e, k) : face(r, p, e, k);
+json: a string runs past its line's end (test_json, lines)~test TESTS=json~~src/syntax/tsql.c~c != '"' && c != '\n')~c != '"')
+json: an escape takes the line's end (test_json, lines)~test TESTS=json~~src/syntax/tsql.c~>= 0 && d != '\n') p++;~>= 0) p++;
+json: a closed string leaves its closing quote out (test_json)~test TESTS=json~~src/syntax/tsql.c~c == '"' ? p + 1 : p;~p;
+json: a line comment runs past its line (test_json)~test TESTS=json~~src/syntax/tsql.c~	if (c == '/' && d == '/') {¶		while ((c = tsql_byte(r, ++p)) >= 0 && c != '\n') ;~	if (c == '/' && d == '/') {¶		while ((c = tsql_byte(r, ++p)) >= 0) ;
+json: a block comment ends a byte early (test_json)~test TESTS=json~~src/syntax/tsql.c~c < 0 ? p : p + 2;~c < 0 ? p : p + 1;
+json: an unclosed block comment is no comment (test_json, lines)~test TESTS=json~~src/syntax/tsql.c~return *k = TQ_COMMENT, c < 0 ? p : p + 2;~return *k = c < 0 ? TQ_OP : TQ_COMMENT, c < 0 ? p : p + 2;
+json: a minus starts no number (test_json)~test TESTS=json~~src/syntax/tsql.c~(c == '-' && is_digit(d))) return~(c == '+' && is_digit(d))) return
+json: an exponent takes no plus (test_json, lines)~test TESTS=json~~src/syntax/tsql.c~if ((c = tsql_byte(r, e)) == '+' || c == '-') e++;~if ((c = tsql_byte(r, e)) == '-') e++;
+json: a word runs on over digits (test_json)~test TESTS=json~~src/syntax/tsql.c~while ((c = tsql_byte(r, ++p)) >= 'a' && c <= 'z') ;~while ((c = tsql_byte(r, ++p)) >= '0' && c <= 'z') ;
+json: a key's colon is not found past a comment (test_json)~test TESTS=json~~src/syntax/tsql.c~(k == TQ_SPACE || k == TQ_COMMENT); ) e = n;~(k == TQ_SPACE); ) e = n;
+json: a key is a plain string (test_json)~test TESTS=json~~src/syntax/tsql.c~== ':' ? FACE_PROPERTY : FACE_STRING;~== ':' ? FACE_STRING : FACE_STRING;
+json: a colon is a bracket (test_json)~test TESTS=json~~src/syntax/tsql.c~c == ',' || c == ':' ? FACE_PUNCTUATION_DELIMITER~c == ',' ? FACE_PUNCTUATION_DELIMITER
+json: brackets are plain (test_json)~test TESTS=json~~src/syntax/tsql.c~FACE_PUNCTUATION_DELIMITER : FACE_PUNCTUATION_BRACKET;~FACE_PUNCTUATION_DELIMITER : FACE_NONE;
+json: null is a boolean (test_json)~test TESTS=json~~src/syntax/tsql.c~"null") ? FACE_CONSTANT_BUILTIN~"null") ? FACE_BOOLEAN
+json: false is plain (test_json)~test TESTS=json~~src/syntax/tsql.c~|| !strcmp(l, "false")~|| !strcmp(l, "fals")
+json: true is plain (test_json)~test TESTS=json~~src/syntax/tsql.c~!strcmp(l, "true") ||~!strcmp(l, "tru") ||
+json: an escape's second byte starts another (test_json)~test TESTS=json~~src/syntax/tsql.c~				if (j >= a && j < z) f[j - a] = FACE_STRING_ESCAPE;¶			i++;~				if (j >= a && j < z) f[j - a] = FACE_STRING_ESCAPE;¶			i += 0;
+json: escapes are not coloured (test_json)~test TESTS=json~~src/syntax/tsql.c~f[j - a] = FACE_STRING_ESCAPE;~f[j - a] = FACE_STRING;
+json: escapes are looked for from the window, not its run of backslashes (test_json, long strings)~test TESTS=json~~src/syntax/tsql.c~	while (i > p + 1 && tsql_byte(r, i - 1) == '\\') i--;~
+json: escapes are looked for only up to the window's start (test_json, long strings)~test TESTS=json~~src/syntax/tsql.c~for (; i + 1 < e && i < z; i++)~for (; i + 1 < e && i < a + 1; i++)
+json: the cached token's kind is lost between reads (test_json)~test TESTS=json~~src/syntax/tsql.c~		int k = q->kind;~		int k = 0;
+# Not planted: the escape scan starting at the window rather than at the string's start (paint).  Without it the colours are the same, only slower: reviews/pr-71-repro/longstr.c times it.

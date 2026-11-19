@@ -1,8 +1,10 @@
-/* libFuzzer: T-SQL's and JSON's colours (src/syntax/tsql.c, json.c) on text, edits and
-   windows decoded from the input, raw bytes included, so every lexing path
-   meets every byte, and runs of spaces in 1 KB steps, so the text passes
-   the 4,096 bytes between kept token starts.  Each token advances and ends inside the text, and a
-   window read through the kept token starts equals a fresh read from 0. */
+/* libFuzzer: T-SQL's and JSON's colours (src/syntax/tsql.c) on text, edits
+   and windows decoded from the input, raw bytes included, so every lexing
+   path meets every byte, and runs of spaces in 1 KB steps, so the text
+   passes the 4,096 bytes between kept token starts.  Each T-SQL token
+   advances and ends inside the text (a JSON one that did not would hang
+   syntax_update, the fuzzer's timeout), and a window read through the
+   kept token starts equals a fresh read from 0. */
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -59,7 +61,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 			rd.t = t, rd.n = 0;
 			for (size_t p = 0, e; p < len; p = e) {
 				int k;
-				e = (json ? json_token : tsql_token)(&rd, p, &k);
+				e = tsql_token(&rd, p, &k);
 				if (e <= p || e > len) abort();
 			}
 		} else {                           /* an edit */

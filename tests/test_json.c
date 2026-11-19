@@ -1,11 +1,10 @@
-/* JSON's colours (src/syntax/json.c) against Neovim (nvim --headless on
+/* JSON's colours (src/syntax/tsql.c) against Neovim (nvim --headless on
    PATH, running tests/test_json.lua) with tree-sitter-json and
    nvim-treesitter's highlights for it (build/syntax/src, from
    src/syntax/sources.nix): random valid documents, comments included,
    read line by line as the core draws, from the first or from the last up,
-   must give Neovim's face for every byte.  Then directed lines: the two
-   places json.c departs from it on purpose, and strings that end at their
-   line's end.  Edits and windows through the kept token starts are
+   must give Neovim's face for every byte.  Then directed lines where the
+   colours depart from it on purpose.  Edits and windows through the kept token starts are
    test_tsql's, whose random texts are a third JSON. */
 #include <string.h>
 #include <unistd.h>
@@ -73,7 +72,8 @@ static void str(void)
 {
 	static const char *const s[] = { "a", "key", " ", "\\\"", "\\\\", "\\/", "\\b", "\\n", "\\t", "\\u00e9", "\xc3\xa9", ":", "true", "1", "//", "/*", "'", "[", "--" };
 	put("\"");
-	for (unsigned k = rnd(5); k--; ) pick(s, nocom ? 14 : sizeof s / sizeof *s);
+	/* one in 40 long, so its escapes are read from windows inside it */
+	for (unsigned k = rnd(40) ? rnd(5) : 100 + rnd(200); k--; ) pick(s, nocom ? 14 : sizeof s / sizeof *s);
 	put("\"");
 }
 
@@ -163,11 +163,13 @@ int main(void)
 	/* on purpose: a string outside a pair or an array is a string (Neovim
 	   leaves it plain, a document that is only a string); an unclosed
 	   comment runs to the end (Neovim finds an error, and every frame would
-	   read to the end) */
+	   read to the end); an exponent takes a plus (RFC 8259; tree-sitter-json
+	   finds an error); a string not closed on its line ends there, escaped
+	   or not (tree-sitter-json goes on to a later quote) */
 	static const char *const lines[][2] = {
 		{ "\"a\\\"\"", "SSEES" },
 		{ "[1] /* x", "RNR.CCCC" },
-		/* as tree-sitter-json: a string ends at its line's end, escaped or not */
+		{ "[1e+5, -2.5E+10]", "RNNNND.NNNNNNNNR" },
 		{ "\"a\n1", "SS.N" },
 		{ "\"\\\n1", "SS.N" },
 	};
