@@ -72,21 +72,21 @@ static int pump(Pipe *p)
 	char b[1 << 16];
 	ssize_t r = read(p->from, b, sizeof b);
 	if (r <= 0) return -1;
-	str_put(&p->in, b, (size_t)r);
+	str_add(&p->in, b, (size_t)r);
 	for (;;) {
-		char *e = strstr(p->in.b, "\r\n\r\n");
+		char *e = strstr(p->in.s, "\r\n\r\n");
 		if (!e) return 0;
-		size_t h = (size_t)(e - p->in.b) + 4, len = strtoul(strchr(p->in.b, ':') + 1, NULL, 10);
+		size_t h = (size_t)(e - p->in.s) + 4, len = strtoul(strchr(p->in.s, ':') + 1, NULL, 10);
 		if (p->in.n - h < len) return 0;
-		note(p->dir, p->in.b + h, len);
+		note(p->dir, p->in.s + h, len);
 		for (size_t w = 0; w < h + len; ) {
-			ssize_t k = write(p->to, p->in.b + w, h + len - w);
+			ssize_t k = write(p->to, p->in.s + w, h + len - w);
 			if (k <= 0) return -1;
 			w += (size_t)k;
 		}
-		memmove(p->in.b, p->in.b + h + len, p->in.n - h - len);
+		memmove(p->in.s, p->in.s + h + len, p->in.n - h - len);
 		p->in.n -= h + len;
-		p->in.b[p->in.n] = 0;
+		p->in.s[p->in.n] = 0;
 	}
 }
 

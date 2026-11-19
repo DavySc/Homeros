@@ -109,7 +109,7 @@ static void fsend(Str *m)
 {
 	char h[40];
 	int n = snprintf(h, sizeof h, "Content-Length: %zu\r\n\r\n", m->n);
-	if (write(1, h, (size_t)n) < 0 || write(1, m->b, m->n) < 0) exit(0);
+	if (write(1, h, (size_t)n) < 0 || write(1, m->s, m->n) < 0) exit(0);
 }
 
 /* (line, UTF-16 column) <-> byte, in the server's copy, code point by code point */
@@ -143,7 +143,7 @@ static void fpos(Str *m, size_t b)
 	for (size_t i = 0; i < b; i += cplen((unsigned char)pd[i]))
 		if (pd[i] == '\n') l++, c = 0;
 		else c += cplen((unsigned char)pd[i]) == 4 ? 2 : 1;
-	str_putf(m, "{\"line\":%ld,\"character\":%ld}", l, c);
+	str_addf(m, "{\"line\":%ld,\"character\":%ld}", l, c);
 }
 
 static size_t fchar(size_t i) { while (i > 0 && i < pn && (pd[i] & 0xC0) == 0x80) i--; return i; }   /* a character start */
@@ -162,8 +162,8 @@ static void fdiag(Str *m, int point, long n)
 	fpos(m, a);
 	str_lit(m, ",\"end\":");
 	fpos(m, z);
-	str_putf(m, "},\"severity\":%u,\"message\":\"#%d.%ld %ld %ld %zu %zu ", 1 + rnd(4), (int)getpid(), ++serial, pv, n, a, z);
-	str_putq(m, pd + a, z - a);
+	str_addf(m, "},\"severity\":%u,\"message\":\"#%d.%ld %ld %ld %zu %zu ", 1 + rnd(4), (int)getpid(), ++serial, pv, n, a, z);
+	str_addq(m, pd + a, z - a);
 	str_lit(m, "\"}");
 }
 
@@ -193,7 +193,7 @@ static void fpublish(void)
 	pv = v;
 	if (v > lastpub) lastpub = v;
 	int inc = v == sver && incr && rnd(2);
-	str_putf(&m, "{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{\"uri\":\"%s\",\"version\":%ld,", suri, v);
+	str_addf(&m, "{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{\"uri\":\"%s\",\"version\":%ld,", suri, v);
 	if (inc) str_lit(&m, "\"isIncremental\":true,");
 	str_lit(&m, "\"diagnostics\":[");
 	unsigned n = 1 + rnd(3);
@@ -201,17 +201,17 @@ static void fpublish(void)
 	for (unsigned k = 0; k < n; k++) { if (k) str_lit(&m, ","); fdiag(&m, rnd(6) == 0, ndiag); }
 	str_lit(&m, "]}}");
 	fsend(&m);
-	free(m.b);
+	free(m.s);
 	incr = v == sver;
 	pd = sdoc; pn = sn; pv = sver;
 	if (rnd(3) == 0) {
 		m = (Str){ 0 };
-		str_putf(&m, "{\"jsonrpc\":\"2.0\",\"method\":\"$/lean/fileProgress\",\"params\":{\"textDocument\":{\"uri\":\"%s\",\"version\":%ld},\"processing\":[", suri, sver);
+		str_addf(&m, "{\"jsonrpc\":\"2.0\",\"method\":\"$/lean/fileProgress\",\"params\":{\"textDocument\":{\"uri\":\"%s\",\"version\":%ld},\"processing\":[", suri, sver);
 		lastpub = sver;
 		if (rnd(2)) fdiag(&m, 0, 0);
 		str_lit(&m, "]}}");
 		fsend(&m);
-		free(m.b);
+		free(m.s);
 	}
 }
 
@@ -220,12 +220,23 @@ static struct { long id; long l, c; int goal, cancelled; } park[64];
 static int npark;
 static long sreq;                     /* our requests to the editor not yet answered */
 static long long sreq_at;             /* when the last one went */
+static int owed;                      /* a request went before the marker's answer: the editor's reply comes before its '!' */
+
+static void freq(void)
+{
+	Str m = { 0 };
+	str_addf(&m, "{\"jsonrpc\":\"2.0\",\"id\":\"s%ld\",\"method\":\"workspace/configuration\",\"params\":{\"items\":[{}]}}", ++serial);
+	fsend(&m);
+	free(m.s);
+	sreq++;
+	sreq_at = ms();
+}
 
 static void fanswer(int k)
 {
 	Str m = { 0 };
 	if (rnd(5) == 0) {
-		str_putf(&m, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"error\":{\"code\":-32800,\"message\":\"cancelled\"}}", park[k].id);
+		str_addf(&m, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"error\":{\"code\":-32800,\"message\":\"cancelled\"}}", park[k].id);
 	} else {
 		/* the position on the server's text now, which may be newer than
 		   the request's (LspSync's "mapreply" mistake) */
@@ -238,20 +249,21 @@ static void fanswer(int k)
 				c -= cplen((unsigned char)sdoc[b]) == 4 ? 2 : 1;
 		}
 		size_t z = b < sn ? b + cplen((unsigned char)sdoc[b]) : b;
-		str_putf(&m, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"result\":", park[k].id);
+		str_addf(&m, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"result\":", park[k].id);
+		if (quiet) owed = sreq > 0;
 		quiet = 0;
 		/* Lean's plainGoal, a hover's MarkupContent or MarkedString[] */
 		static const char *const form[][2] = { { "{\"rendered\":\"", "\",\"goals\":[]}}" },
 			{ "{\"contents\":{\"kind\":\"markdown\",\"value\":\"", "\"}}}" },
 			{ "{\"contents\":[{\"language\":\"lean\",\"value\":\"", "\"}]}}" } };
 		int f = park[k].goal ? 0 : 1 + (int)rnd(2);
-		str_putf(&m, "%s", form[f][0]);
-		str_putf(&m, "#%d.%ld %ld 0 0 0 ", (int)getpid(), ++serial, sver);
-		str_putq(&m, sdoc + b, z - b);
-		str_putf(&m, "%s", form[f][1]);
+		str_addf(&m, "%s", form[f][0]);
+		str_addf(&m, "#%d.%ld %ld 0 0 0 ", (int)getpid(), ++serial, sver);
+		str_addq(&m, sdoc + b, z - b);
+		str_addf(&m, "%s", form[f][1]);
 	}
 	fsend(&m);
-	free(m.b);
+	free(m.s);
 	park[k] = park[--npark];
 }
 
@@ -310,9 +322,9 @@ static void fhandle(const char *m, size_t n)
 		struct pollfd pf = { 0, POLLIN, 0 };
 		if (fbehind || poll(&pf, 1, 0) > 0) wrong("a message sent before the initialize reply");
 		Str r = { 0 };
-		str_putf(&r, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"result\":{\"capabilities\":{\"textDocumentSync\":2}}}", json_int(m, ft, id));
+		str_addf(&r, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"result\":{\"capabilities\":{\"textDocumentSync\":2}}}", json_int(m, ft, id));
 		fsend(&r);
-		free(r.b);
+		free(r.s);
 		inited = 1;
 		return;
 	}
@@ -345,6 +357,7 @@ static void fhandle(const char *m, size_t n)
 		if (!opened) wrong("didChange before didOpen");
 		long v = json_int(m, ft, json_get(m, ft, td, "version"));
 		if (v != sver + 1) wrong("version %ld after %ld", v, sver);
+		if (owed && memchr(m, '!', n)) { if (sreq) wrong("the editor never answered our request"); owed = 0; }
 		fapply(m, json_get(m, ft, p, "contentChanges"));
 		sver = v; incr = 0;
 		fkeep();
@@ -355,11 +368,12 @@ static void fhandle(const char *m, size_t n)
 			Str d = { 0 };
 			pd = sdoc; pn = sn; pv = sver;
 			quiet = 1;
-			str_putf(&d, "{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{\"uri\":\"%s\",\"version\":%ld,\"diagnostics\":[", suri, sver);
+			str_addf(&d, "{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{\"uri\":\"%s\",\"version\":%ld,\"diagnostics\":[", suri, sver);
 			fdiag(&d, 0, ndiag = 1);
 			str_lit(&d, "]}}");
 			fsend(&d);
-			free(d.b);
+			free(d.s);
+			if (!sreq) freq();       /* and asks something, which the editor answers before it reads the answer */
 		}
 	} else if (!strcmp(meth, "textDocument/hover") || !strcmp(meth, "$/lean/plainGoal")) {
 		int q = json_get(m, ft, p, "position");
@@ -377,9 +391,9 @@ static void fhandle(const char *m, size_t n)
 	} else if (!strcmp(meth, "shutdown")) {
 		if (sreq && ms() - sreq_at > 300) wrong("the editor never answered our request");
 		Str r = { 0 };
-		str_putf(&r, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"result\":null}", json_int(m, ft, id));
+		str_addf(&r, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"result\":null}", json_int(m, ft, id));
 		fsend(&r);
-		free(r.b);
+		free(r.s);
 	} else if (!strcmp(meth, "exit")) {
 		exit(0);
 	} else wrong("unknown %s", meth);
@@ -416,14 +430,7 @@ static int fake(const char *seed, const char *log)
 		unsigned a = rnd(100);
 		if (a < 40 && !quiet) fpublish();
 		else if (a < 70 && npark) fanswer((int)rnd((unsigned)npark));
-		else if (a < 72 && !sreq && !quiet) {
-			Str m = { 0 };
-			str_putf(&m, "{\"jsonrpc\":\"2.0\",\"id\":\"s%ld\",\"method\":\"workspace/configuration\",\"params\":{\"items\":[{}]}}", ++serial);
-			fsend(&m);
-			free(m.b);
-			sreq++;
-			sreq_at = ms();
-		}
+		else if (a < 72 && !sreq && !quiet) freq();
 	}
 }
 
@@ -666,6 +673,10 @@ static void scenario(int seed, const char *log)
 			int n;
 			lsp_diags(d, &n);
 			CHECK(seed % 3 == 1 || n);
+			edit(d, len, 0, "!", 1);   /* typed after the answer: the fake's request must be answered by now */
+			lsp_flush(d);
+			cur++;
+			snapshot();
 		} else if (a < 35) {                              /* a command: a few edits */
 			for (unsigned k = 0, n = 1 + rnd(3); k < n; k++) {
 				size_t pos = charstart(rnd((unsigned)len + 1)), del = 0;
@@ -771,15 +782,15 @@ static void units(void)
 		for (size_t i = 0; i < n; i++) s[i] = rnd(3) ? (unsigned char)"a\xC3\xA9\xED\xA0\x80\xF4\x90\xC0\xFF\""[rnd(12)] : (unsigned char)rnd(256);
 		Str q = { 0 };
 		str_lit(&q, "\"");
-		CHECK(str_putq(&q, (const char *)s, n) >= 0);
+		CHECK(str_addq(&q, (const char *)s, n) >= 0);
 		str_lit(&q, "\"");
 		char got[256], want[256];
 		int wid[256], sid[64] = { 0 };
-		CHECK(json_parse(q.b, q.n, &qt, &qcap) == 1);
-		size_t gn = json_str(q.b, qt, 0, got);
+		CHECK(json_parse(q.s, q.n, &qt, &qcap) == 1);
+		size_t gn = json_str(q.s, qt, 0, got);
 		size_t wn = msent(s, n, sid, want, wid);
 		CHECK(gn == wn && !memcmp(got, want, gn));
-		free(q.b);
+		free(q.s);
 	}
 	free(qt);
 	/* JSON: what the client reads */

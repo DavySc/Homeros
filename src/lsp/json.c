@@ -188,31 +188,6 @@ size_t json_str(const char *s, const Jtok *t, int i, char *out)
 	return o;
 }
 
-int str_put(Str *s, const void *p, size_t n)
-{
-	if (s->n + n + 1 > s->cap) {
-		size_t c = s->cap ? s->cap : 256;
-		while (c < s->n + n + 1) c *= 2;
-		char *b = realloc(s->b, c);
-		if (!b) return -1;
-		s->b = b; s->cap = c;
-	}
-	memcpy(s->b + s->n, p, n);
-	s->n += n;
-	s->b[s->n] = 0;
-	return 0;
-}
-
-int str_putf(Str *s, const char *fmt, ...)
-{
-	char b[512];
-	va_list ap;
-	va_start(ap, fmt);
-	int n = vsnprintf(b, sizeof b, fmt, ap);
-	va_end(ap);
-	return n < 0 || (size_t)n >= sizeof b ? -1 : str_put(s, b, (size_t)n);
-}
-
 /* A byte sequence the UTF-16 kernel counts as one character (lsp.h's
    u16len), and whether it is UTF-8 a JSON reader takes: the kernel only
    checks the shape, so overlong forms, surrogates and code points past
@@ -225,7 +200,7 @@ static int valid(const unsigned char *b, size_t k)
 	     : b[0] <= 0xF4 && !(b[0] == 0xF0 && b[1] < 0x90) && !(b[0] == 0xF4 && b[1] >= 0x90);
 }
 
-int str_putq(Str *s, const char *p, size_t n)
+int str_addq(Str *s, const char *p, size_t n)
 {
 	const unsigned char *b = (const unsigned char *)p;
 	size_t i = 0;
@@ -233,7 +208,7 @@ int str_putq(Str *s, const char *p, size_t n)
 	while (i < n) {
 		size_t j = i;
 		while (j < n && b[j] >= 0x20 && b[j] < 0x80 && b[j] != '"' && b[j] != '\\') j++;
-		if (str_put(s, p + i, j - i)) return -1;
+		if (str_add(s, p + i, j - i)) return -1;
 		if (j == n) break;
 		if (b[j] >= 0x80) {
 			/* the kernel's own step, so the server counts the columns the
@@ -241,7 +216,7 @@ int str_putq(Str *s, const char *p, size_t n)
 			   form) has unit 1 inside it, so lsp_u16_byte answers 0 */
 			size_t k = lsp_u16_byte(b + j, n - j, 1);
 			if (!k) k = 4;
-			if (valid(b + j, k) ? str_put(s, p + j, k) : (bad++, k == 4 ? str_lit(s, "\xEF\xBF\xBD\xEF\xBF\xBD") : str_lit(s, "\xEF\xBF\xBD"))) return -1;
+			if (valid(b + j, k) ? str_add(s, p + j, k) : (bad++, k == 4 ? str_lit(s, "\xEF\xBF\xBD\xEF\xBF\xBD") : str_lit(s, "\xEF\xBF\xBD"))) return -1;
 			i = j + k;
 			continue;
 		}
@@ -250,7 +225,7 @@ int str_putq(Str *s, const char *p, size_t n)
 		int l = c == '"' || c == '\\' ? snprintf(e, sizeof e, "\\%c", c)
 		      : c == '\n' ? snprintf(e, sizeof e, "\\n") : c == '\t' ? snprintf(e, sizeof e, "\\t")
 		      : snprintf(e, sizeof e, "\\u%04x", c);
-		if (str_put(s, e, (size_t)l)) return -1;
+		if (str_add(s, e, (size_t)l)) return -1;
 		i = j + 1;
 	}
 	return bad;

@@ -86,9 +86,9 @@ static char *uri(const char *abs)
 	else str_lit(&u, "file:///");        /* C:/x is file:///C:/x (RFC 8089) */
 	for (const unsigned char *p = (const unsigned char *)abs; *p; p++)
 		if ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') || (*p >= '0' && *p <= '9') || strchr("/-._~:", *p))
-			str_put(&u, p, 1);
-		else str_putf(&u, "%%%02X", *p);
-	return u.b;
+			str_add(&u, (const char *)p, 1);
+		else str_addf(&u, "%%%02X", *p);
+	return u.s;
 }
 
 /* --- sending ------------------------------------------------------------ */
@@ -100,9 +100,9 @@ static void frame(Srv *s, int now)
 	char h[40];
 	int n = snprintf(h, sizeof h, "Content-Length: %zu\r\n\r\n", o.n);
 	if (s->proc < 0) return;
-	if (!s->ready && !now) { str_put(&s->held, h, (size_t)n); str_put(&s->held, o.b, o.n); return; }
+	if (!s->ready && !now) { str_add(&s->held, h, (size_t)n); str_add(&s->held, o.s, o.n); return; }
 	proc_write(s->proc, h, (size_t)n);
-	proc_write(s->proc, o.b, o.n);
+	proc_write(s->proc, o.s, o.n);
 }
 
 static void send(Srv *s) { frame(s, 0); }
@@ -110,7 +110,7 @@ static void send(Srv *s) { frame(s, 0); }
 static void begin(const char *method)
 {
 	o.n = 0;
-	str_putf(&o, "{\"jsonrpc\":\"2.0\",\"method\":\"%s\",\"params\":", method);
+	str_addf(&o, "{\"jsonrpc\":\"2.0\",\"method\":\"%s\",\"params\":", method);
 }
 
 static void end(Srv *s) { str_lit(&o, "}"); send(s); }
@@ -119,12 +119,12 @@ static void end(Srv *s) { str_lit(&o, "}"); send(s); }
 static const unsigned char *bytes(const Text *t, size_t a, size_t *n)
 {
 	if (line.cap < *n + 1) {
-		char *b = realloc(line.b, *n + 1);
+		char *b = realloc(line.s, *n + 1);
 		if (!b) { *n = 0; return (const unsigned char *)""; }
-		line.b = b; line.cap = *n + 1;
+		line.s = b; line.cap = *n + 1;
 	}
-	*n = text_read(t, a, line.b, *n);
-	return (const unsigned char *)line.b;
+	*n = text_read(t, a, line.s, *n);
+	return (const unsigned char *)line.s;
 }
 
 /* Line and UTF-16 column of byte pos in t. */
@@ -140,7 +140,7 @@ static void putpos(const Text *t, size_t pos)
 {
 	size_t l, c;
 	where(t, pos, &l, &c);
-	str_putf(&o, "{\"line\":%zu,\"character\":%zu}", l, c);
+	str_addf(&o, "{\"line\":%zu,\"character\":%zu}", l, c);
 }
 
 /* The whole text as a JSON string; whether it holds what is not UTF-8.
@@ -149,13 +149,13 @@ static int put_text(const Text *t)
 {
 	size_t n = text_len(t);
 	const unsigned char *b = bytes(t, 0, &n);
-	return str_putq(&o, (const char *)b, n) != 0;
+	return str_addq(&o, (const char *)b, n) != 0;
 }
 
 static void open_doc(LspDoc *d)
 {
 	begin("textDocument/didOpen");
-	str_putf(&o, "{\"textDocument\":{\"uri\":\"%s\",\"languageId\":\"%s\",\"version\":%ld,\"text\":\"",
+	str_addf(&o, "{\"textDocument\":{\"uri\":\"%s\",\"languageId\":\"%s\",\"version\":%ld,\"text\":\"",
 	         d->uri, d->s->def->lang, d->ver);
 	d->bad = put_text(d->t);
 	str_lit(&o, "\"}}");
@@ -171,8 +171,8 @@ static void start(Srv *s)
 	if (s->proc < 0) return;
 	char *u = uri(s->root);
 	o.n = 0;
-	str_putf(&o, "{\"jsonrpc\":\"2.0\",\"id\":0,\"method\":\"initialize\",\"params\":{\"processId\":%ld,\"rootUri\":\"", (long)getpid());
-	if (u) str_put(&o, u, strlen(u));
+	str_addf(&o, "{\"jsonrpc\":\"2.0\",\"id\":0,\"method\":\"initialize\",\"params\":{\"processId\":%ld,\"rootUri\":\"", (long)getpid());
+	if (u) str_add(&o, u, strlen(u));
 	free(u);
 	/* Lean: incremental diagnostics (else 420 MB of JSON, measured in
 	   kittymax) and widgets (the infoview, package 14) */
@@ -197,7 +197,7 @@ static void cancel(LspDoc *d, int k)
 {
 	if (!d->ask[k].id) return;
 	begin("$/cancelRequest");
-	str_putf(&o, "{\"id\":%ld}", d->ask[k].id);
+	str_addf(&o, "{\"id\":%ld}", d->ask[k].id);
 	end(d->s);
 	d->ask[k].id = 0;
 }
@@ -256,8 +256,8 @@ static char *absolute(const char *path)
 	if (abs) return abs;
 	if (path[0] == '/') return strdup(path);
 	Str a = { 0 };
-	if (getcwd(cwd, sizeof cwd)) str_putf(&a, "%s/%s", cwd, path);
-	return a.b;
+	if (getcwd(cwd, sizeof cwd)) str_addf(&a, "%s/%s", cwd, path);
+	return a.s;
 #endif
 }
 
@@ -272,8 +272,8 @@ static char *project(const char *abs, const char *const *roots)
 		*slash = 0;
 		for (const char *const *m = roots; *m; m++) {
 			Str p = { 0 };
-			int found = !str_putf(&p, "%s/%s", dir, *m) && !access(p.b, F_OK);
-			free(p.b);
+			int found = !str_addf(&p, "%s/%s", dir, *m) && !access(p.s, F_OK);
+			free(p.s);
 			if (found) { free(own); return dir; }
 		}
 	}
@@ -312,7 +312,7 @@ static void drop(Srv *s)
 	Srv **q = &srvs;
 	while (*q != s) q = &(*q)->link;
 	*q = s->link;
-	free(s->root); free(s->in.b); free(s->held.b); free(s);
+	free(s->root); free(s->in.s); free(s->held.s); free(s);
 }
 
 void lsp_close(LspDoc *d)
@@ -320,20 +320,20 @@ void lsp_close(LspDoc *d)
 	if (!d) return;
 	Srv *s = d->s;
 	begin("textDocument/didClose");
-	str_putf(&o, "{\"textDocument\":{\"uri\":\"%s\"}}", d->uri);
+	str_addf(&o, "{\"textDocument\":{\"uri\":\"%s\"}}", d->uri);
 	end(s);
 	LspDoc **p = &s->docs;
 	while (*p != d) p = &(*p)->link;
 	*p = d->link;
 	forget(d);
-	free(d->diag.v); free(d->prog.v); free(d->chg.b); free(d->log); free(d->uri); free(d);
+	free(d->diag.v); free(d->prog.v); free(d->chg.s); free(d->log); free(d->uri); free(d);
 	if (s->docs) return;
 	/* the last file of the project: the server goes (it is freed once it
 	   has exited, since the loop still calls lsp_out until then) */
 	s->closing = 1;
 	if (s->proc < 0) { drop(s); return; }
 	o.n = 0;
-	str_putf(&o, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"method\":\"shutdown\"}", s->next++);
+	str_addf(&o, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"method\":\"shutdown\"}", s->next++);
 	send(s);
 	o.n = 0;
 	str_lit(&o, "{\"jsonrpc\":\"2.0\",\"method\":\"exit\"}");
@@ -366,12 +366,12 @@ void lsp_edit(LspDoc *d, const Text *t, size_t pos, size_t ndel, const char *ins
 	Str keep = o;                   /* writes go to o */
 	o = *c;
 	if (o.n) str_lit(&o, ",");
-	str_putf(&o, "{\"range\":{\"start\":{\"line\":%zu,\"character\":%zu},\"end\":{\"line\":%zu,\"character\":%zu}},\"text\":\"",
+	str_addf(&o, "{\"range\":{\"start\":{\"line\":%zu,\"character\":%zu},\"end\":{\"line\":%zu,\"character\":%zu}},\"text\":\"",
 	         e.s.l, e.s.c, e.e.l, e.e.c);
 	/* U+FFFD for a byte that is not UTF-8 depends on its neighbours, so
 	   once the text holds one a change cannot be sent alone: from then on
 	   the whole text goes (lsp_flush) ... */
-	if (str_putq(&o, ins, nins)) d->bad = 1;
+	if (str_addq(&o, ins, nins)) d->bad = 1;
 	str_lit(&o, "\"}");
 	*c = o;
 	o = keep;
@@ -385,12 +385,12 @@ void lsp_flush(LspDoc *d)
 	if (!d || !d->chg.n) return;
 	d->ver++;
 	begin("textDocument/didChange");
-	str_putf(&o, "{\"textDocument\":{\"uri\":\"%s\",\"version\":%ld},\"contentChanges\":[", d->uri, d->ver);
+	str_addf(&o, "{\"textDocument\":{\"uri\":\"%s\",\"version\":%ld},\"contentChanges\":[", d->uri, d->ver);
 	if (d->bad) {
 		str_lit(&o, "{\"text\":\"");
 		put_text(d->t);
 		str_lit(&o, "\"}");
-	} else str_put(&o, d->chg.b, d->chg.n);
+	} else str_add(&o, d->chg.s, d->chg.n);
 	str_lit(&o, "]}");
 	d->chg.n = 0;
 	end(d->s);
@@ -401,7 +401,7 @@ void lsp_saved(LspDoc *d)
 	if (!d) return;
 	lsp_flush(d);
 	begin("textDocument/didSave");
-	str_putf(&o, "{\"textDocument\":{\"uri\":\"%s\"}}", d->uri);
+	str_addf(&o, "{\"textDocument\":{\"uri\":\"%s\"}}", d->uri);
 	end(d->s);
 }
 
@@ -417,7 +417,7 @@ void lsp_restart(LspDoc *d)
 	}
 	for (int k = 0; k < LSP_NASK; k++) cancel(d, k);
 	begin("textDocument/didClose");
-	str_putf(&o, "{\"textDocument\":{\"uri\":\"%s\"}}", d->uri);
+	str_addf(&o, "{\"textDocument\":{\"uri\":\"%s\"}}", d->uri);
 	end(s);
 	reopen(d);
 }
@@ -438,7 +438,7 @@ void lsp_ask(LspDoc *d, int kind, size_t pos)
 	d->ask[kind].id = d->s->next++;
 	d->ask[kind].ver = d->ver;
 	o.n = 0;
-	str_putf(&o, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"method\":\"%s\",\"params\":{\"textDocument\":{\"uri\":\"%s\"},\"position\":",
+	str_addf(&o, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"method\":\"%s\",\"params\":{\"textDocument\":{\"uri\":\"%s\"},\"position\":",
 	         d->ask[kind].id, method[kind], d->uri);
 	putpos(d->t, pos);
 	str_lit(&o, "}}");
@@ -550,7 +550,7 @@ static void handle(Srv *s, const char *m, size_t n)
 	if (meth >= 0 && id >= 0) {                 /* a request from the server */
 		o.n = 0;
 		str_lit(&o, "{\"jsonrpc\":\"2.0\",\"id\":");
-		str_put(&o, m + tk[id].a - (tk[id].type == 's'), tk[id].z - tk[id].a + 2 * (tk[id].type == 's'));
+		str_add(&o, m + tk[id].a - (tk[id].type == 's'), tk[id].z - tk[id].a + 2 * (tk[id].type == 's'));
 		str_lit(&o, ",\"result\":null}");
 		send(s);
 		return;
@@ -580,7 +580,7 @@ static void handle(Srv *s, const char *m, size_t n)
 		begin("initialized");
 		str_lit(&o, "{}");
 		end(s);
-		if (s->held.n) { proc_write(s->proc, s->held.b, s->held.n); s->held.n = 0; }
+		if (s->held.n) { proc_write(s->proc, s->held.s, s->held.n); s->held.n = 0; }
 		return;
 	}
 	for (LspDoc *d = s->docs; d; d = d->link)
@@ -610,19 +610,19 @@ static void out(void *ctx, int stream, const char *b, size_t n)
 {
 	Srv *s = ctx;
 	if (stream == 0) { dead(s); return; }
-	if (stream != 1 || !n || str_put(&s->in, b, n)) return;
+	if (stream != 1 || !n || str_add(&s->in, b, n)) return;
 	for (;;) {
-		char *e = strstr(s->in.b, "\r\n\r\n");   /* headers are text: no NUL before it */
+		char *e = strstr(s->in.s, "\r\n\r\n");   /* headers are text: no NUL before it */
 		if (!e) return;
-		size_t h = (size_t)(e - s->in.b) + 4, len = 0;
+		size_t h = (size_t)(e - s->in.s) + 4, len = 0;
 		int ok = 0;
-		for (char *l = s->in.b; l < e; l = strstr(l, "\r\n") + 2)
+		for (char *l = s->in.s; l < e; l = strstr(l, "\r\n") + 2)
 			if (!strncasecmp(l, "Content-Length:", 15)) { len = strtoul(l + 15, NULL, 10); ok = 1; }
 		if (!ok) { s->in.n = 0; return; }        /* not LSP: drop what came */
 		if (s->in.n - h < len) return;
-		handle(s, s->in.b + h, len);
-		memmove(s->in.b, s->in.b + h + len, s->in.n - h - len);
+		handle(s, s->in.s + h, len);
+		memmove(s->in.s, s->in.s + h + len, s->in.n - h - len);
 		s->in.n -= h + len;
-		s->in.b[s->in.n] = 0;
+		s->in.s[s->in.n] = 0;
 	}
 }

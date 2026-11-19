@@ -73,20 +73,20 @@ static int out(Str *o, const char *src, int i)
 		CHECK(b);
 		size_t n = json_str(src, t, i, b);
 		str_lit(o, "\"");
-		str_putq(o, b, n);
+		str_addq(o, b, n);
 		str_lit(o, "\"");
 		free(b);
 		return i + 1;
 	}
-	if (t[i].type == 'p') { str_put(o, src + t[i].a, t[i].z - t[i].a); return i + 1; }
+	if (t[i].type == 'p') { str_add(o, src + t[i].a, t[i].z - t[i].a); return i + 1; }
 	int obj = t[i].type == 'o', k = i + 1;
-	str_put(o, obj ? "{" : "[", 1);
+	str_add(o, obj ? "{" : "[", 1);
 	for (int m = 0; m < t[i].n; m++) {
 		if (m) str_lit(o, ",");
 		if (obj) { k = out(o, src, k); str_lit(o, ":"); }
 		k = out(o, src, k);
 	}
-	str_put(o, obj ? "}" : "]", 1);
+	str_add(o, obj ? "}" : "]", 1);
 	CHECK(k == t[i].end);
 	return k;
 }
@@ -106,10 +106,10 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 	out(&a, in, 0);
 	char *copy = malloc(a.n + 1);
 	CHECK(copy);
-	memcpy(copy, a.b, a.n);
+	memcpy(copy, a.s, a.n);
 	CHECK(json_parse(copy, a.n, &t, &cap) >= 0);
 	out(&b, copy, 0);
-	CHECK(a.n == b.n && !memcmp(a.b, b.b, a.n));
-	free(copy); free(a.b); free(b.b);
+	CHECK(a.n == b.n && !memcmp(a.s, b.s, a.n));
+	free(copy); free(a.s); free(b.s);
 	return 0;
 }

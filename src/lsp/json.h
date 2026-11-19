@@ -4,6 +4,7 @@
 #ifndef LSP_JSON_H
 #define LSP_JSON_H
 #include <stddef.h>
+#include "str.h"
 
 /* type: 'o' object, 'a' array, 's' string (a, z: the bytes between the
    quotes, still escaped), 'p' number, true, false or null (a, z: its
@@ -28,14 +29,10 @@ int  json_true(const char *s, const Jtok *t, int i);
    never grows a string); its length.  Lone surrogates become U+FFFD. */
 size_t json_str(const char *s, const Jtok *t, int i, char *out);
 
-/* A growing byte string; put* return -1 when out of memory. */
-typedef struct { char *b; size_t n, cap; } Str;
-int  str_put(Str *s, const void *p, size_t n);
-int  str_putf(Str *s, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 /* a string literal, its length known at compile time */
-#define str_lit(s, lit) str_put(s, lit, sizeof lit - 1)
+#define str_lit(s, lit) str_add(s, lit, sizeof lit - 1)
 /* p as the inside of a JSON string; what is not UTF-8 goes as one U+FFFD
    per UTF-16 unit lsp_u16 counts for it, so columns agree.  The number of
    such sequences, or -1 when out of memory. */
-int  str_putq(Str *s, const char *p, size_t n);
+int  str_addq(Str *s, const char *p, size_t n);
 #endif
