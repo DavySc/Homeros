@@ -229,12 +229,22 @@ int main(void)
 	free(o);
 	CHECK(core_open(&e, file) == 0);
 	e.rows = 40; e.cols = 100;
-	git_editor(&e);
-	git_headless = 1;
 	/* never attached: nothing, and no repository looked for (the redraw
 	   path does no I/O) */
 	CHECK(!git_branch(e.buf) && !git_sign(e.buf, 0) && !git_repos);
-	git_attach(e.buf);                     /* as the core on reading the file */
+	/* as the core on reading each file of "homeros f.txt g.txt", before
+	   the first key gives git the editor: both stay attached */
+	int fnr = e.buf->nr;
+	git_attach(e.buf);
+	char g[sizeof repo + 8];
+	snprintf(g, sizeof g, "%s/g.txt", repo);
+	o = run("echo g > '%s'", g);
+	free(o);
+	CHECK(core_edit_file(&e, g, 0) == 0);
+	git_attach(e.buf);
+	git_editor(&e);
+	CHECK(core_buf_goto(&e, fnr) == 0);
+	git_headless = 1;
 	CHECK(!git_branch(e.buf));             /* before git has looked */
 	int rounds = 0, checks = 0;
 	for (int round = 0; round < 150; round++, rounds++) {
