@@ -14,4 +14,8 @@ pkgs.runCommandLocal "homeros-syntax-src" { } ''
   tar xzf ${p.lua.src} -C $out/lua --strip-components=1
   tar xzf ${p.markdown.src} -C $out/markdown --strip-components=1
   ln -s ${nv}/share/nvim/runtime/queries $out/queries
+  # Neovim bundles no JSON grammar: tests/test_json.c checks JSON's colours
+  # against tree-sitter-json and nvim-treesitter's colours for it
+  ln -s ${pkgs.tree-sitter-grammars.tree-sitter-json}/parser $out/json.so
+  ln -s ${pkgs.vimPlugins.nvim-treesitter.src}/runtime/queries/json/highlights.scm $out/json.scm
 ''
