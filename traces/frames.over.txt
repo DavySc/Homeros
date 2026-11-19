@@ -1,0 +1,12 @@
+start -> main frames.c:34 +0x1150 [main_thread stopped at entry point]
+step_over_line -> main frames.c:35 +0x115a [main_thread completed step]
+step_over_line -> main frames.c:36 +0x1175 [main_thread completed step]
+step_over_line -> main frames.c:37 +0x1184 [main_thread completed step]
+step_over_line -> main frames.c:38 +0x11c5 [main_thread completed step]
+step_over_line -> main frames.c:39 +0x11f9 [main_thread completed step]
+step_over_line -> main frames.c:40 +0x1209 [main_thread completed step]
+step_over_line -> main frames.c:41 +0x120b [main_thread completed step]
+step_over_line -> __scrt_common_main_seh exe_common.inl:288 +0x149f [main_thread completed step]
+step_over_line -> __scrt_common_main_seh exe_common.inl:294 +0x14a1 [main_thread completed step]
+step_over_line -> __scrt_common_main_seh exe_common.inl:295 +0x14ff [main_thread completed step]
+step_over_line -> ended

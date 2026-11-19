@@ -1,0 +1,5 @@
+start -> main long.cpp:8 +0x1000 [main_thread stopped at entry point]
+step_over_line -> __scrt_common_main_seh exe_common.inl:288 +0x123f [main_thread completed step]
+step_over_line -> __scrt_common_main_seh exe_common.inl:294 +0x1241 [main_thread completed step]
+step_over_line -> __scrt_common_main_seh exe_common.inl:295 +0x129f [main_thread completed step]
+step_over_line -> ended
