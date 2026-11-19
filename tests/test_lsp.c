@@ -151,10 +151,12 @@ static size_t fchar(size_t i) { while (i > 0 && i < pn && (pd[i] & 0xC0) == 0x80
 /* A diagnostic: a random range, its message "#pid.serial v n a z ghost":
    n is how many diagnostics version v has once this message is in, a and z
    the bytes of the range in version v. */
+static int quiet;                     /* after a marker: nothing more is published until a request is answered */
+
 static void fdiag(Str *m, int point, long n)
 {
 	size_t a = fchar(rnd((unsigned)pn + 1)), z = point ? a : fchar(a + rnd((unsigned)(pn - a) + 1));
-	if (!point && rnd(8) == 0) a = 0, z = pn;
+	if (!point && (quiet || rnd(8) == 0)) a = 0, z = pn;
 	if (z < a) z = a;
 	str_lit(m, "{\"range\":{\"start\":");
 	fpos(m, a);
@@ -237,6 +239,7 @@ static void fanswer(int k)
 		}
 		size_t z = b < sn ? b + cplen((unsigned char)sdoc[b]) : b;
 		str_putf(&m, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"result\":", park[k].id);
+		quiet = 0;
 		/* Lean's plainGoal, a hover's MarkupContent or MarkedString[] */
 		static const char *const form[][2] = { { "{\"rendered\":\"", "\",\"goals\":[]}}" },
 			{ "{\"contents\":{\"kind\":\"markdown\",\"value\":\"", "\"}}}" },
@@ -345,6 +348,19 @@ static void fhandle(const char *m, size_t n)
 		fapply(m, json_get(m, ft, p, "contentChanges"));
 		sver = v; incr = 0;
 		fkeep();
+		/* a typed '@' (the test's marker): one diagnostic over the whole
+		   text, at once, then silence until a request is answered, so the
+		   test knows it is the last thing said before the answer */
+		if (memchr(m, '@', n)) {
+			Str d = { 0 };
+			pd = sdoc; pn = sn; pv = sver;
+			quiet = 1;
+			str_putf(&d, "{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{\"uri\":\"%s\",\"version\":%ld,\"diagnostics\":[", suri, sver);
+			fdiag(&d, 0, ndiag = 1);
+			str_lit(&d, "]}}");
+			fsend(&d);
+			free(d.b);
+		}
 	} else if (!strcmp(meth, "textDocument/hover") || !strcmp(meth, "$/lean/plainGoal")) {
 		int q = json_get(m, ft, p, "position");
 		if (npark == 64) wrong("64 requests parked");
@@ -398,9 +414,9 @@ static int fake(const char *seed, const char *log)
 		if (!inited || !opened) continue;
 		/* idle: do something the editor must cope with */
 		unsigned a = rnd(100);
-		if (a < 40) fpublish();
+		if (a < 40 && !quiet) fpublish();
 		else if (a < 70 && npark) fanswer((int)rnd((unsigned)npark));
-		else if (a < 72 && !sreq) {
+		else if (a < 72 && !sreq && !quiet) {
 			Str m = { 0 };
 			str_putf(&m, "{\"jsonrpc\":\"2.0\",\"id\":\"s%ld\",\"method\":\"workspace/configuration\",\"params\":{\"items\":[{}]}}", ++serial);
 			fsend(&m);
@@ -608,25 +624,41 @@ static void scenario(int seed, const char *log)
 				for (long long t0 = ms(); !lsp_answer(d, 0) && ms() - t0 < 300; ) { loop_once(10); check_shown(d, &latest); }
 			}
 			CHECK(lsp_answer(d, 0));
-		} else if (step == 125) {
+		} else if (step == 125 && seed % 3) {
 			/* one command of more edits than the log holds, the server
 			   unheard meanwhile: what it said before must go, not be
 			   mapped through the half of the edits the log kept.  The
-			   server first catches up and says things about the text as
-			   it is; all the edits go at the start of the text, so a
-			   wrong mapping moves line 0 by half as much, never by
-			   chance the right amount */
+			   server must be up (no didSave kills it from here; one sent
+			   before has had a second), then a typed '@' makes it say one
+			   thing about that version at once and nothing more until it
+			   answers a request (the fake's marker).  The edits all go at
+			   the start of the text, so a wrong mapping moves line 0 by
+			   half as much, never by chance the right amount.  The answer
+			   coming proves that the publication came before it. */
+			for (long long t0 = ms(); ms() - t0 < 1000; ) loop_once(10);
+			lsp_restart(d);
+			cur++;
+			snapshot();
 			for (long long t0 = ms(); ms() - t0 < 2000; ) {
 				long l = -1;
 				loop_once(10);
 				check_shown(d, &l);
 				if (l == cur) break;
 			}
-			usleep(100000);
+			edit(d, len, 0, "@", 1);
+			lsp_flush(d);
+			cur++;
+			snapshot();
 			for (int k = 0; k < 4200; k++) edit(d, 0, 0, "a", 1);
 			lsp_flush(d);
 			cur++;
 			snapshot();
+			asked[0] = 0;
+			for (int k = 0; k < 20 && !lsp_answer(d, 0); k++) {   /* the server may refuse it */
+				lsp_ask(d, 0, asked[0]);
+				for (long long t0 = ms(); !lsp_answer(d, 0) && ms() - t0 < 300; ) { loop_once(10); check_shown(d, &latest); }
+			}
+			CHECK(lsp_answer(d, 0));
 		} else if (a < 35) {                              /* a command: a few edits */
 			for (unsigned k = 0, n = 1 + rnd(3); k < n; k++) {
 				size_t pos = charstart(rnd((unsigned)len + 1)), del = 0;
