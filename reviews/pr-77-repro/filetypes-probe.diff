@@ -1,0 +1,13 @@
+diff --git a/tests/test_syntax.c b/tests/test_syntax.c
+index b2e715a..ba8eb7e 100644
+--- a/tests/test_syntax.c
++++ b/tests/test_syntax.c
+@@ -436,7 +436,7 @@ static void release_in_steps(const char *dir)
+ static void filetypes(void)
+ {
+ 	static const char *const names[] = {
+-		"d/a.c", "a.h", "a.lua", "a.md", "a.sql", "a.json", "a.txt", "a.xyz", "x.sql/b", "a.c.txt", "a.sql.md", "a.mdx", "Makefile.c",
++		"d/a.c", "a.h", "a.lua", "a.md", "a.sql", "a.json", "a.txt", "a.xyz", "x.sql/b", "a.c.txt", "a.sql.md", "a.mdx", "Makefile.c", "CMakeLists.txt", "a.rs", "a.nix", "a.glsl", "a.cmake", "a.lean", "a.sv", "a.cs", "a.org", "a.sql~",
+ 	};
+ 	char cmd[2048] = "nvim --headless --clean -l /dev/stdin <<'E'\nfor _, n in ipairs({", want[64];
+ 	for (size_t i = 0; i < sizeof names / sizeof *names; i++) snprintf(cmd + strlen(cmd), sizeof cmd - strlen(cmd), "'%s',", names[i]);
