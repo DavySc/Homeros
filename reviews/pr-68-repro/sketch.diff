@@ -1,0 +1,8 @@
+656a657
+> 	if (lo && blank(&x[lo - 1])) { s[n] = ' '; col[n++] = (unsigned short)(lo - 1); }   /* sketch: the blank before, as context */
+673c674,676
+< 		int ax = gx < lo * cell_w ? lo * cell_w - gx : 0, zx = gx + gl->w > xe ? xe - gx : gl->w;
+---
+> 		int w0 = c;
+> 		while (w0 > lo && !blank(&x[w0 - 1])) w0--;   /* sketch: cut at the word's start */
+> 		int ax = gx < w0 * cell_w ? w0 * cell_w - gx : 0, zx = gx + gl->w > xe ? xe - gx : gl->w;

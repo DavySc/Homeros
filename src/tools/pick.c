@@ -1,6 +1,7 @@
 /* The pickers, as my-nvim's snacks.picker (folke/snacks.nvim at 882c996):
-   SPC ff smart (open buffers, then the files fd or rg lists), SPC fg live
-   grep (rg), SPC , buffers.  One picker at a time, drawn as snacks' float
+   SPC ff smart (open buffers, recent files, then the files fd or rg lists),
+   SPC fg live grep (rg), SPC , buffers, and the dashboard's files and
+   recent.  One picker at a time, drawn as snacks' float
    over the windows: a prompt, the list, a preview.  The comments name the
    snacks file each rule comes from. */
 #include <limits.h>
@@ -8,13 +9,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include <time.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include "tools.h"
 #include "core.h"
+#include "dash.h"
 #include "loop.h"
 #include "match.h"
+#include "shada.h"
 #include "uni.h"
 
 /* An item: its text (what the matcher sees) and file in the arena, the
@@ -23,6 +27,7 @@ typedef struct {
 	size_t text, tlen, file, flen;
 	long line, col;            /* 1-based line, 0-based byte column; line 0: none */
 	int buf;
+	int recent;                /* from the recent source: frecency seeds from its mtime */
 	double score;
 	double frecency;           /* -1: not looked up yet */
 	unsigned idx;
@@ -51,6 +56,35 @@ static struct {
 	Editor *e;
 	double now;                /* the frecency's clock, read once per picker */
 } P = { .proc = -1, .pvfor = -1 };
+
+/* an absolute path: /x, or on Windows C:\x, C:/x or \\server */
+static int absolute(const char *f)
+{
+#ifdef _WIN32
+	if (f[0] == '\\' || (f[0] && f[1] == ':' && (f[2] == '\\' || f[2] == '/'))) return 1;
+#endif
+	return f[0] == '/';
+}
+
+static int sep(char c)
+{
+#ifdef _WIN32
+	if (c == '\\') return 1;
+#endif
+	return c == '/';
+}
+
+/* path made absolute against the cwd (fnamemodify ":p", without resolving);
+   returns its length, at most n - 1 */
+static size_t full(const char *path, char *out, size_t n)
+{
+#ifdef _WIN32
+	/* GetFullPathNameW: '\' only, as v:oldfiles spells them */
+	if (n >= PATH_MAX && !file_full(path, out)) return strlen(out);
+#endif
+	int k = absolute(path) ? snprintf(out, n, "%s", path) : snprintf(out, n, "%s/%s", P.cwd, path);
+	return k < 0 ? 0 : (size_t)k < n ? (size_t)k : n - 1;
+}
 
 static void layout(Editor *e, Box *outer, Box *list, Box *pv, int *wide);
 static void preview(void);
@@ -87,22 +121,18 @@ static int sorting(void) { return P.what != PICK_GREP && (P.m.ng || P.what == PI
    as the time it decays to 1 (its "deadline"), in a file of
    "deadline path" lines ($XDG_DATA_HOME/homeros/picker-frecency, as snacks'
    stdpath("data")/snacks/picker-frecency). */
-static struct { char *path; double deadline; } *fr;
+static ShadaLine *fr;   /* t: the deadline */
 static size_t nfr, frcap;
+static FileId frid;
 static int frloaded;
 #define LAMBDA (log(2.0) / (30.0 * 24 * 3600))
 
-static void fr_file(char *f, size_t n)
-{
-	const char *d = getenv("XDG_DATA_HOME"), *h = getenv("HOME");
-	if (d && *d) snprintf(f, n, "%s/homeros/picker-frecency", d);
-	else snprintf(f, n, "%s/.local/share/homeros/picker-frecency", h ? h : "");
-}
+static void fr_file(char *f, size_t n) { file_stdpath(f, n, 0, "/picker-frecency"); }
 
 static double *fr_find(const char *path, size_t n, int make)
 {
 	for (size_t i = 0; i < nfr; i++)
-		if (strlen(fr[i].path) == n && !memcmp(fr[i].path, path, n)) return &fr[i].deadline;
+		if (strlen(fr[i].path) == n && !memcmp(fr[i].path, path, n)) return &fr[i].t;
 	if (!make) return NULL;
 	if (nfr == frcap) {
 		size_t c = frcap ? frcap * 2 : 64;
@@ -110,24 +140,19 @@ static double *fr_find(const char *path, size_t n, int make)
 		if (!t) return NULL;
 		fr = t; frcap = c;
 	}
-	if (!(fr[nfr].path = strndup(path, n))) return NULL;
-	return &fr[nfr++].deadline;
+	if (!(fr[nfr].path = malloc(n + 1))) return NULL;
+	memcpy(fr[nfr].path, path, n);
+	fr[nfr].path[n] = 0;
+	return &fr[nfr++].t;
 }
 
 static void fr_load(void)
 {
-	char f[PATH_MAX], ln[PATH_MAX + 64];
+	char f[PATH_MAX];
 	frloaded = 1;
 	fr_file(f, sizeof f);
-	FILE *fp = fopen(f, "r");
-	if (!fp) return;
-	while (fgets(ln, sizeof ln, fp)) {
-		char *sp = strchr(ln, ' ');
-		if (!sp) continue;
-		double *d = fr_find(sp + 1, strcspn(sp + 1, "\n"), 1);
-		if (d) *d = strtod(ln, NULL);
-	}
-	fclose(fp);
+	shada_load(f, &fr, &nfr, &frid);   /* what it could read */
+	frcap = nfr;
 }
 
 /* M:visit: one more visit to an absolute path, saved at once */
@@ -137,29 +162,25 @@ static void fr_visit(const char *path, size_t n)
 	double sc = (d ? exp(LAMBDA * (*d - now)) : 0) + 1;
 	if (!d && !(d = fr_find(path, n, 1))) return;
 	*d = now + log(sc) / LAMBDA;
-	char f[PATH_MAX], tmp[PATH_MAX + 8];
+	char f[PATH_MAX];
 	fr_file(f, sizeof f);
-	snprintf(tmp, sizeof tmp, "%s.new", f);
-	char *slash = strrchr(f, '/');
-	*slash = 0;
-	mkdir(f, 0700);
-	*slash = '/';
-	FILE *fp = fopen(tmp, "w");
-	if (!fp) return;
-	for (size_t i = 0; i < nfr; i++) fprintf(fp, "%.17g %s\n", fr[i].deadline, fr[i].path);
-	if (!fclose(fp)) rename(tmp, f);
+	shada_save(f, fr, nfr, &frid);
 }
 
-/* M:get: the stored score, or for a buffer a seed from when it was last
-   used (here: now, a buffer's last use is not kept) */
+/* M:get: the stored score, or a seed (M:seed): for a buffer from when it
+   was last used (here: now), for a recent file from its mtime */
 static double frecency(Item *i, double now)
 {
 	char abs[2 * PATH_MAX];
 	const char *f = P.a + i->file;
 	size_t n = i->flen;
-	if (f[0] != '/') { n = (size_t)snprintf(abs, sizeof abs, "%s/%.*s", P.cwd, (int)n, f); f = abs; }
+	/* the arena's paths are not NUL-ended: stat wants a copy */
+	n = (size_t)(absolute(f) ? snprintf(abs, sizeof abs, "%.*s", (int)n, f) : snprintf(abs, sizeof abs, "%s/%.*s", P.cwd, (int)n, f));
+	f = abs;
 	double *d = fr_find(f, n, 0);
+	struct stat st;
 	if (d) return exp(LAMBDA * (*d - now));
+	if (i->recent) return stat(f, &st) ? 0 : exp(-LAMBDA * (now - (double)st.st_mtime));
 	return i->buf ? 1 : 0;
 }
 
@@ -171,7 +192,7 @@ static double score(Item *i)
 	if (s && P.what == PICK_SMART && i->flen) {
 		if (i->frecency < 0) i->frecency = frecency(i, P.now);
 		r += (1 - 1 / (1 + i->frecency)) * 8;
-		if (P.a[i->file] != '/' || (i->flen > P.cwdlen && !memcmp(P.a + i->file, P.cwd, P.cwdlen) && P.a[i->file + P.cwdlen] == '/'))
+		if (!absolute(P.a + i->file) || (i->flen > P.cwdlen && !memcmp(P.a + i->file, P.cwd, P.cwdlen) && sep(P.a[i->file + P.cwdlen])))
 			r += 10;
 	}
 	return i->score = r;
@@ -200,12 +221,12 @@ static void rematch(void)
 /* Do two paths, each absolute or relative to cwd, name the same file? */
 static int same(const char *a, size_t an, const char *b, size_t bn)
 {
-	if ((a[0] == '/') == (b[0] == '/')) return an == bn && !memcmp(a, b, an);
-	if (b[0] == '/') { const char *t = a; a = b; b = t; size_t n = an; an = bn; bn = n; }
-	return an == P.cwdlen + 1 + bn && !memcmp(a, P.cwd, P.cwdlen) && a[P.cwdlen] == '/' && !memcmp(a + P.cwdlen + 1, b, bn);
+	if (absolute(a) == absolute(b)) return an == bn && !memcmp(a, b, an);
+	if (absolute(b)) { const char *t = a; a = b; b = t; size_t n = an; an = bn; bn = n; }
+	return an == P.cwdlen + 1 + bn && !memcmp(a, P.cwd, P.cwdlen) && sep(a[P.cwdlen]) && !memcmp(a + P.cwdlen + 1, b, bn);
 }
 
-static int add(const char *text, size_t tn, const char *file, size_t fn, long line, long col, int buf)
+static int add(const char *text, size_t tn, const char *file, size_t fn, long line, long col, int buf, int recent)
 {
 	if (P.nit == P.itcap) {
 		size_t c = P.itcap ? P.itcap * 2 : 1024;
@@ -214,15 +235,15 @@ static int add(const char *text, size_t tn, const char *file, size_t fn, long li
 		P.it = t; P.itcap = c;
 	}
 	Item *i = &P.it[P.nit];
-	*i = (Item){ .line = line, .col = col, .buf = buf, .idx = (unsigned)P.nit + 1, .frecency = -1 };
+	*i = (Item){ .line = line, .col = col, .buf = buf, .recent = recent, .idx = (unsigned)P.nit + 1, .frecency = -1 };
 	if (put(text, tn, &i->text)) return -1;
 	i->tlen = tn;
 	if (file && put(file, fn, &i->file)) return -1;
 	i->flen = file ? fn : 0;
-	/* transform unique_file: a file listed once, as its first item (smart).
-	   Only the buffers, which come first, can list a file fd lists too. */
+	/* transform unique_file: a file listed once, as its first item (smart):
+	   the buffers, then the recent files, come before the files fd lists */
 	if (P.what == PICK_SMART && file && !buf)
-		for (size_t k = 0; k < P.nit && P.it[k].buf; k++)
+		for (size_t k = 0; k < P.nit && (P.it[k].buf || P.it[k].recent); k++)
 			if (same(P.a + P.it[k].file, P.it[k].flen, file, fn)) { P.an = i->text; return 0; }
 	P.nit++;
 	if (score(i) > 0) show((unsigned)P.nit - 1);
@@ -240,7 +261,7 @@ static void finder_stop(void)
 /* One line of a finder's output (source/files.lua, source/grep.lua). */
 static void line(const char *s, size_t n)
 {
-	if (P.what != PICK_GREP) { add(s, n, s, n, 0, 0, 0); return; }
+	if (P.what != PICK_GREP) { add(s, n, s, n, 0, 0, 0, 0); return; }
 	/* rg -0: file NUL line:col:text.  The search names "." because rg
 	   searches a piped stdin (ours is a pipe; snacks' is /dev/null), so
 	   every file starts "./". */
@@ -258,12 +279,12 @@ static void line(const char *s, size_t n)
 	char t[4096];
 	size_t tn = (size_t)snprintf(t, sizeof t, "%.*s:%.*s", (int)fn, s, (int)(e - z - 1), z + 1);
 	if (tn >= sizeof t) tn = sizeof t - 1;
-	add(t, tn, s, fn, ln, col - 1, 0);
+	add(t, tn, s, fn, ln, col - 1, 0, 0);
 }
 
 static void on_out(void *ctx, int stream, const char *b, size_t n)
 {
-	if ((int)(long)ctx != P.gen || !P.open) return;
+	if ((intptr_t)ctx != P.gen || !P.open) return;
 	if (stream == 0) { P.proc = -1; P.done = 1; core_changed = 1; return; }
 	if (stream != 1) return;
 	size_t before = P.nshown;
@@ -286,7 +307,7 @@ static void on_out(void *ctx, int stream, const char *b, size_t n)
 static int spawn(char *const argv[])
 {
 	P.done = 0;
-	P.proc = proc_spawn(argv, P.cwd, on_out, (void *)(long)P.gen);
+	P.proc = proc_spawn(argv, P.cwd, on_out, (void *)(intptr_t)P.gen);
 	return P.proc;
 }
 
@@ -364,7 +385,7 @@ static void grep(void)
 
 static const char *path_rel(const char *f, size_t *n)
 {
-	if (*n > P.cwdlen && !memcmp(f, P.cwd, P.cwdlen) && f[P.cwdlen] == '/') { *n -= P.cwdlen + 1; return f + P.cwdlen + 1; }
+	if (*n > P.cwdlen && !memcmp(f, P.cwd, P.cwdlen) && sep(f[P.cwdlen])) { *n -= P.cwdlen + 1; return f + P.cwdlen + 1; }
 	return f;
 }
 
@@ -375,17 +396,52 @@ static void buffers(Editor *e)
 		char t[3 * PATH_MAX], name[2 * PATH_MAX];
 		/* Neovim's buffer name is the full path */
 		if (!b->path) strcpy(name, "[Scratch]");
-		else snprintf(name, sizeof name, "%s%s%s", b->path[0] == '/' ? "" : P.cwd, b->path[0] == '/' ? "" : "/", b->path);
+		else full(b->path, name, sizeof name);
 		/* util.text(item, { "buf", "name", "filetype", "buftype" }), with no
 		   filetype known here */
 		int n = snprintf(t, sizeof t, "%d %s  ", b->nr, b->path ? name : "");
-		add(t, (size_t)(n < (int)sizeof t ? n : (int)sizeof t - 1), name, strlen(name), 0, 0, b->nr);
+		add(t, (size_t)(n < (int)sizeof t ? n : (int)sizeof t - 1), name, strlen(name), 0, 0, b->nr, 0);
+	}
+}
+
+/* source/recent.lua: this session's buffers last used first, then
+   v:oldfiles; each once, if it exists, not the current file and not in
+   stdpath data or state (the filter's paths; homeros has no cache) */
+static void recent(Editor *e)
+{
+	char cur[2 * PATH_MAX] = "", f[2 * PATH_MAX], skip[2][PATH_MAX];
+	enum { MAXB = 256 };
+	const Buf *bs[MAXB];
+	int nb = 0;
+	for (const Buf *b = e->bufs; b && nb < MAXB; b = b->next) {
+		if (!b->path) continue;
+		/* table.sort by lastused, newest first (stable here) */
+		int j = nb++;
+		for (; j && bs[j - 1]->lastused < b->lastused; j--) bs[j] = bs[j - 1];
+		bs[j] = b;
+	}
+	if (e->buf->path) full(e->buf->path, cur, sizeof cur);
+	file_stdpath(skip[0], sizeof skip[0], 0, "");
+	file_stdpath(skip[1], sizeof skip[1], 1, "");
+	size_t first = P.nit;
+	for (size_t i = 0;; i++) {
+		const char *o = i < (size_t)nb ? NULL : shada_oldfile(i - (size_t)nb);
+		if (i >= (size_t)nb && !o) break;
+		size_t n = o ? (size_t)snprintf(f, sizeof f, "%s", o) : full(bs[i]->path, f, sizeof f);
+		struct stat st;
+		int want = n < sizeof f && strcmp(f, cur) && stat(f, &st) == 0;
+		for (int k = 0; k < 2 && want; k++) {
+			size_t sn = strlen(skip[k]);
+			want = !(!strncmp(f, skip[k], sn) && (!f[sn] || sep(f[sn])));
+		}
+		for (size_t k = first; k < P.nit && want; k++) want = !same(P.a + P.it[k].file, P.it[k].flen, f, n);
+		if (want) add(f, n, f, n, 0, 0, 0, 1);
 	}
 }
 
 int tools_pick(Editor *e, int what)
 {
-	if (what != PICK_SMART && what != PICK_GREP && what != PICK_BUFFERS) {
+	if (what == PICK_REGISTERS || what == PICK_EXPLORER) {
 		core_msg(e, "picker not built yet");
 		return -1;
 	}
@@ -409,13 +465,14 @@ int tools_pick(Editor *e, int what)
 			char f[2 * PATH_MAX];
 			struct stat st;
 			if (!b->path) continue;
-			int n = snprintf(f, sizeof f, "%s%s%s", b->path[0] == '/' ? "" : P.cwd, b->path[0] == '/' ? "" : "/", b->path);
-			if (!stat(f, &st)) fr_visit(f, (size_t)n);
+			size_t n = full(b->path, f, sizeof f);
+			if (!stat(f, &st)) fr_visit(f, n);
 		}
 	}
 	if (what == PICK_GREP) return 0;
-	buffers(e);
-	if (what == PICK_SMART) files();
+	if (what == PICK_SMART || what == PICK_BUFFERS) buffers(e);
+	if (what == PICK_SMART || what == PICK_RECENT) recent(e);
+	if (what == PICK_SMART || what == PICK_FILES) files();
 	preview();
 	return 0;
 }
@@ -448,8 +505,7 @@ static void confirm(Editor *e)
 	if (it.buf ? core_buf_goto(e, it.buf) : core_edit_file(e, f, 0)) return;
 	/* BufWinEnter's visit (frecency.lua) */
 	char abs[2 * PATH_MAX];
-	int an = snprintf(abs, sizeof abs, "%s%s%s", f[0] == '/' ? "" : P.cwd, f[0] == '/' ? "" : "/", f);
-	fr_visit(abs, (size_t)an);
+	fr_visit(abs, full(f, abs, sizeof abs));
 	if (line) {
 		size_t l = (size_t)line - 1, n = core_lines(e);
 		e->win->line = l < n ? l : n - 1;
@@ -515,7 +571,7 @@ static int key(Editor *e, int k);
 
 int tools_key(Editor *e, int k)
 {
-	if (!P.open) return 0;
+	if (!P.open) return dash_key(e, k);
 	key(e, k);
 	if (P.open) preview();
 	return 1;
@@ -681,8 +737,9 @@ static void preview(void)
 
 void tools_draw(Editor *e, Grid *g)
 {
+	dash_draw(e, g);
 	if (!P.open) return;
-	static const char *title[] = { " Smart ", " Grep ", " Buffers " };
+	static const char *title[] = { " Smart ", " Grep ", " Buffers ", "", "", " Files ", " Recent " };
 	Box o, l, p;
 	int wide, h = list_height(e);
 	layout(e, &o, &l, &p, &wide);

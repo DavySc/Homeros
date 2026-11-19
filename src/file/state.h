@@ -8,12 +8,9 @@
 #ifndef FILE_STATE_H
 #define FILE_STATE_H
 #include <stddef.h>
-#include "text.h"
+#include "file.h"   /* PATH_MAX on Windows */
 #ifdef _WIN32
-#include <limits.h>
 #include <sys/types.h>
-#undef PATH_MAX   /* mingw's is MAX_PATH, in UTF-16 units: as UTF-8, 3 bytes each */
-#define PATH_MAX (3 * 260)
 struct iovec { void *iov_base; size_t iov_len; };
 ssize_t writev(int fd, const struct iovec *v, int k);
 int fdatasync(int fd);

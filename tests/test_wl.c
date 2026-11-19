@@ -313,6 +313,26 @@ static void test_sway(void)
 		cmd("grim -t ppm %s/2.ppm && cmp -s %s/1.ppm %s/2.ppm", dir);
 	}
 
+	/* a row changed to or from a glyph that reaches left (↔ starts left of
+	   its cell; " /\ " joins only with the blank before it, which a
+	   partial redraw starts after) looks as a whole redraw draws it (the
+	   review of PR 68); each old row is presented three times, so both
+	   buffers hold it */
+	static const char *const lig[][2] = { { " ↔", " a" }, { " a", " ↔" }, { " ⇔ b", " a b" }, { "x ↔", "x a" }, { "x /\\", "x /\\ y" } };
+	for (int i = 0; i < 5; i++) {
+		char a[64], b[64];
+		snprintf(a, sizeof a, "%-24s", lig[i][0]);
+		snprintf(b, sizeof b, "%-24s", lig[i][1]);
+		grid_puts(&g, 3, 0, a, ATTR_NONE);
+		for (int k = 0; k < 3; k++) show();
+		grid_puts(&g, 3, 0, b, ATTR_NONE);
+		show();
+		cmd("grim -t ppm %s/1.ppm # %s", dir);
+		grid_free(&shown);
+		show();
+		cmd("grim -t ppm %s/2.ppm && cmp -s %s/1.ppm %s/2.ppm", dir);
+	}
+
 	/* a symbol wider than its cell (⟹; 73 of Mathlib's 295 are) spills into
 	   the space after it rather than being cut at its cell */
 	grid_clear(&g);
@@ -347,6 +367,14 @@ static void test_sway(void)
 	grid_put(&g, 0, 0, (const unsigned char *)"👍🏽", 8, 2, ATTR_NONE);
 	show();
 	CHECK(ink(0, 0, 2 * cellw(), cellh(), 1) > cellw() * cellh() / 4);
+
+	/* a ligature's glyph sits on its last cell and reaches back over the
+	   others ("->"; " /\ " in JetBrains Mono): the first cell has its ink */
+	grid_clear(&g);
+	grid_puts(&g, 0, 0, "x /\\ y ->", ATTR_NONE);
+	show();
+	CHECK(ink(2 * cellw(), 0, cellw(), cellh(), 0) > cellh() / 2);
+	CHECK(ink(7 * cellw(), 0, cellw(), cellh(), 0) > cellw() / 2);
 
 	/* keys, with the Control transformation and the keys keys.h names */
 	k0 = nkeys;
