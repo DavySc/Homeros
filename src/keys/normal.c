@@ -1419,6 +1419,19 @@ void restart_insert(void)
 
 /* a command half typed: vgetorpeek() would be waiting for its next key */
 int normal_pending(void) { return npend > 0; }
+/* only a count and a register are typed: Neovim checks maps for the
+   command's first key there too (safe_vgetc()).  A map that runs takes them,
+   as its <Cmd> does (measured: with nnoremap <Space>ff <Cmd>echo<CR>,
+   "2 ffx" on "abcb" deletes one character) */
+int normal_mappable(int drop)
+{
+	if (oa.op_type != OP_NOP) return 0;
+	for (int i = 0; i < npend; i++)
+		if (pend[i] == '"') i++;
+		else if (pend[i] < '0' || pend[i] > '9') return 0;
+	if (drop) { npend = 0; opcount = 0; clearop(&oa); }
+	return 1;
+}
 void normal_reset(void) { redo_n = old_redo_n = 0; npend = 0; memset(&b_visual, 0, sizeof b_visual); }
 
 void normal_key(int k)
