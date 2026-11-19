@@ -25,12 +25,6 @@ static void ident(const struct stat *st, FileId *id)
 	id->mtime_ns = (long long)st->st_mtim.tv_sec * 1000000000LL + st->st_mtim.tv_nsec;
 }
 
-static int same(const FileId *a, const FileId *b)
-{
-	return a->exists == b->exists && (!a->exists || (a->dev == b->dev && a->ino == b->ino
-	       && a->size == b->size && a->mtime_ns == b->mtime_ns));
-}
-
 int file_load(const char *path, char **data, size_t *n, FileId *id)
 {
 	struct stat st;
@@ -118,7 +112,7 @@ static int save_in_place(const char *real, const Text *t, size_t n, int dos, Fil
 	if (fd < 0) return SAVE_ERR;
 	if (fstat(fd, &st)) goto err;
 	ident(&st, &before);
-	if (!force && !same(id, &before)) { close(fd); return SAVE_CHANGED; }
+	if (!force && !file_same(id, &before)) { close(fd); return SAVE_CHANGED; }
 	int b = state_open("backup", real, bak, sizeof bak, O_WRONLY | O_CREAT | O_TRUNC);
 	/* no backup (a name too long, a full or unwritable state directory):
 	   refused, but :w! writes without one, as Neovim's E510 */
@@ -130,7 +124,7 @@ static int save_in_place(const char *real, const Text *t, size_t n, int dos, Fil
 		state_sync_dir(bak);   /* the backup's name durable too, before the recheck: the window after it stays short */
 		if (fstat(fd, &st)) { int e = errno; unlink(bak); close(fd); errno = e; return SAVE_ERR; }
 		ident(&st, &after);
-		if (!force && !same(&after, &before)) { unlink(bak); close(fd); return SAVE_CHANGED; }
+		if (!force && !file_same(&after, &before)) { unlink(bak); close(fd); return SAVE_CHANGED; }
 	}
 	/* Trunc and Fill: write first, cut after, so the file is never empty */
 	if (write_text(fd, t, n, dos, &w) == 0 && ftruncate(fd, w) == 0 && fsync(fd) == 0 && fstat(fd, &st) == 0) {
@@ -186,7 +180,7 @@ int file_save(const char *path, const Text *t, size_t n, int dos, FileId *id,
 	if (!stat(real, &st)) ident(&st, &now);
 	else if (errno != ENOENT) return SAVE_ERR;
 	/* Check: an outside change since load is never overwritten unasked */
-	if (!force && id->exists && !same(id, &now)) return SAVE_CHANGED;
+	if (!force && id->exists && !file_same(id, &now)) return SAVE_CHANGED;
 	if (!force && !id->exists && now.exists) return SAVE_CHANGED;
 	if (now.exists && st.st_nlink > 1) return save_in_place(real, t, n, dos, id, force, kept, keptsz);
 
@@ -231,7 +225,7 @@ int file_save(const char *path, const Text *t, size_t n, int dos, FileId *id,
 		} else {
 			FileId out = { 0 };
 			if (!lstat(tmp, &st)) ident(&st, &out);
-			if (same(&out, &now)) unlink(tmp);
+			if (file_same(&out, &now)) unlink(tmp);
 			else { r = SAVE_KEPT; snprintf(kept, keptsz, "%s", tmp); }
 		}
 	} else if (force ? rename(tmp, real) : renameat2(AT_FDCWD, tmp, AT_FDCWD, real, RENAME_NOREPLACE)) {
@@ -280,6 +274,6 @@ int file_watch_read(int fd, const char *path, const FileId *id)
 	}
 	if (!stat(path, &st)) ident(&st, &now);
 	else if (errno != ENOENT) return -1;
-	return !same(id, &now);
+	return !file_same(id, &now);
 }
 #endif
