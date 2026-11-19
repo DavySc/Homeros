@@ -304,7 +304,7 @@ static int open_line(int dir)
 				/* only the white space after the break goes, and the
 				   break and indent come in: what follows keeps its marks,
 				   as Neovim's open_line() splices extmarks (a snippet's
-				   stops; package 5's) */
+				   stops; package 5's, agreed) */
 				b[0] = '\n';
 				memcpy(b + 1, nl, (size_t)ind);
 				replace_bytes(l, rest, extra - rest, b, ind + 1);

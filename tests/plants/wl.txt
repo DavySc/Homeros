@@ -32,4 +32,5 @@ wl: a guide drawn as the preedit~test TESTS=wl~~src/wl/wl.c~ATTR_PRE = ATTR_GUID
 wl: ligature cut at its own cell~test TESTS=wl~~src/wl/wl.c~int ax = gx < w * cell_w ? w * cell_w - gx : 0~int ax = gx < c * cell_w ? c * cell_w - gx : 0
 wl: glyph cut at the span, not its word~test TESTS=wl~~src/wl/wl.c~int ax = gx < w * cell_w ? w * cell_w - gx : 0~int ax = gx < lo * cell_w ? lo * cell_w - gx : 0
 wl: span shaped without the blank before it~test TESTS=wl~~src/wl/wl.c~	if (lo) { s[n] = ' ';~	if (0) { s[n] = ' ';
-wl: Shift-Tab sends Tab~test TESTS=wl~~src/wl/wl.c~	case XKB_KEY_ISO_Left_Tab: return KEY_S_TAB;   /* Shift-Tab */¶~
+wl: ISO_Left_Tab sends nothing~test TESTS=wl~~src/wl/wl.c~	case XKB_KEY_ISO_Left_Tab: return KEY_S_TAB;   /* Shift-Tab in most layouts */¶~
+wl: Tab with Shift sends Tab~test TESTS=wl~~src/wl/wl.c~XKB_STATE_MODS_EFFECTIVE) > 0) return KEY_S_TAB;~XKB_STATE_MODS_EFFECTIVE) > 1) return KEY_S_TAB;
