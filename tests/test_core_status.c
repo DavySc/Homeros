@@ -1,9 +1,10 @@
-/* The status line against mini.statusline's default content (my-nvim's,
-   without the icons and the sections the core does not draw yet) as
-   Neovim 0.12.6 lays it out: the texts and faces below are
-   nvim_eval_statusline()'s, from tests/test_core_status.lua (measured, 1
-   run each).  Then the faces of the windows' other cells, as Neovim's
-   highlight groups name them (drawline.c win_line(), win_redr_status()). */
+/* The status line against lualine with catppuccin's lualine theme, set up
+   as UI proposal 5's mockup (tests/test_core_status.lua), as Neovim 0.12.6
+   lays it out: tests/test_core_status.txt holds nvim_eval_statusline()'s
+   text and highlight groups for each state below (measured, 1 run each;
+   lualine 221ce6b, catppuccin 05e8787).  Then the faces of the windows'
+   other cells, as Neovim's highlight groups name them (drawline.c
+   win_line(), win_redr_status()). */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,160 +12,177 @@
 #include "check.h"
 #include "core.h"
 #include "grid.h"
+#include "uni.h"
 #include "../src/core/core_int.h"
 
-enum { M = FACE_MODE_NORMAL, F = FACE_STATUS_LINE, I = FACE_STATUS_INFO };
+static char rec[64][1024];
+static int nrec;
 
-/* cells [x, x + n) of row r: their text, and their faces as letters */
-static const char *text(const Grid *g, int r, int x, int n)
+/* lualine's highlight group as the face of a cell and its background */
+static void group(const char *s, size_t n, unsigned char *face, unsigned char *bg)
 {
-	static char b[1024];
-	size_t k = 0;
-	for (int c = x; c < x + n; c++) {
-		const Cell *z = &g->c[r * g->cols + c];
-		memcpy(b + k, grid_text(z), z->len);
-		k += z->len;
+	static const char *const mode[] = { "normal", "insert", "visual", "replace", "command" };
+	static const unsigned char a[] = { FACE_MODE_NORMAL, FACE_MODE_INSERT, FACE_MODE_VISUAL, FACE_MODE_REPLACE, FACE_MODE_COMMAND },
+	                           b[] = { FACE_MODE_NORMAL_FG, FACE_MODE_INSERT_FG, FACE_MODE_VISUAL_FG, FACE_MODE_REPLACE_FG,
+	                                   FACE_MODE_COMMAND_FG };
+	char g[128];
+	CHECK(n < sizeof g);
+	memcpy(g, s, n);
+	g[n] = 0;
+	const char *t = strncmp(g, "lualine_transitional_", 21) ? g : g + 21;
+	int m = 0;
+	while (m < 4 && strncmp(t + 10, mode[m], strlen(mode[m]))) m++;
+	*bg = 0;
+	if (!strcmp(g, "lualine_c_normal")) *face = FACE_STATUS_LINE;
+	else if (!strcmp(g, "lualine_c_inactive")) *face = FACE_STATUS_LINE_NC;
+	else if (t == g) {
+		CHECK(!strncmp(g, "lualine_a_", 10) || !strncmp(g, "lualine_b_", 10));
+		*face = g[8] == 'a' ? a[m] : b[m];
+		*bg = g[8] == 'a' ? 0 : FACE_STATUS_INFO;
+	} else if (t[8] == 'a') {
+		/* a pill's end: fg the pill's bg, bg the section's beside it */
+		*face = b[m];
+		*bg = strstr(t, "_to_lualine_b_") ? FACE_STATUS_INFO : 0;
+	} else {
+		CHECK(!strncmp(t, "lualine_b_", 10) && strstr(t, "_to_lualine_c_normal"));
+		*face = FACE_STATUS_INFO;
+		*bg = FACE_STATUS_LINE;
 	}
-	b[k] = 0;
-	return b;
 }
 
-/* the status line of window w: text, then the face of every cell */
-static void status(const Grid *g, const Win *w, const char *want, const int *face)
+/* the status line of window w against the recorded state tag: each cell's
+   text, face and background */
+static void status(const Grid *g, const Win *w, const char *tag)
 {
-	int r = w->y + w->h;
-	if (strcmp(text(g, r, w->x, w->w), want)) {
-		fprintf(stderr, "width %d:\n  nvim [%s]\n  core [%s]\n", w->w, want, text(g, r, w->x, w->w));
-		CHECK(!"status line text");
-	}
-	/* face: column, face, ..., -1: each face from its column on */
-	for (int c = 0, k = 0; c < w->w; c++) {
-		while (face[k + 2] >= 0 && c >= face[k + 2]) k += 2;
-		if (g->c[r * g->cols + w->x + c].face != face[k + 1]) {
-			fprintf(stderr, "width %d [%s]: cell %d has face %d, not %d\n", w->w, want, c,
-			        g->c[r * g->cols + w->x + c].face, face[k + 1]);
-			CHECK(!"status line face");
+	const char *line = NULL;
+	for (int i = 0; i < nrec && !line; i++)
+		if (!strncmp(rec[i], tag, strlen(tag)) && rec[i][strlen(tag)] == '\t') line = rec[i] + strlen(tag) + 1;
+	CHECK(line);
+	const char *hl = strchr(line, '\t');
+	const unsigned char *s = (const unsigned char *)line;
+	size_t n = (size_t)(hl - line);
+	int r = w->y + w->h, c = 0;
+	for (size_t i = 0; i < n; i += uni_glen(s, n, i)) {
+		/* the group of byte i: the last that starts at or before it */
+		unsigned char face = FACE_STATUS_LINE, bg = 0;
+		for (const char *h = hl + 1; *h && *h != '\n';) {
+			char *colon;
+			size_t at = strtoul(h, &colon, 10), k = strcspn(colon + 1, " \n");
+			if (at <= i) group(colon + 1, k, &face, &bg);
+			h = colon + 1 + k + (colon[1 + k] == ' ');
 		}
+		const Cell *z = &g->c[r * g->cols + w->x + c];
+		size_t k = uni_glen(s, n, i);
+		if (z->len != k || memcmp(grid_text(z), s + i, k) || z->face != face || z->bg != bg) {
+			fprintf(stderr, "%s, cell %d: nvim [%.*s] face %d bg %d, core [%.*s] face %d bg %d\n  nvim [%.*s]\n", tag, c,
+			        (int)k, s + i, face, bg, z->len, grid_text(z), z->face, z->bg, (int)n, line);
+			CHECK(!"status line");
+		}
+		c += uni_width(s, n, i);
 	}
+	CHECK(c == w->w);
 }
 
-/* mode, then the file name, a fill, the file info and the location, each
-   with mini's padding, faces as nvim_eval_statusline() gave them */
-static void line(Editor *e, Grid *g, int cols, const char *m, const char *name, const char *info, const char *loc)
+static void draw(Editor *e, Grid *g, int cols, const char *tag)
 {
-	char want[1024];
-	int a = (int)strlen(m), lw = grid_width(loc, strlen(loc)), b = cols - lw - (int)strlen(info);
 	CHECK(!grid_resize(g, 10, cols));
 	core_draw(e, g);
-	snprintf(want, sizeof want, "%s%s%*s%s%s", m, name, b - a - (int)strlen(name), "", info, loc);
-	int face[] = { 0, M, a, F, b, I, cols - lw, M, -1 };
-	status(g, e->win, want, face);
+	status(g, e->win, tag);
+}
+
+static void file(const char *name, const char *s)
+{
+	FILE *f = fopen(name, "w");
+	CHECK(f && fputs(s, f) >= 0 && !fclose(f));
 }
 
 int main(void)
 {
 	static Editor e;
 	static Grid g;
+	FILE *f = fopen("tests/test_core_status.txt", "r");
+	CHECK(f);
+	while (nrec < 64 && fgets(rec[nrec], sizeof *rec, f)) nrec++;
+	CHECK(!fclose(f));
 	char dir[] = "/tmp/core_statusXXXXXX";
 	CHECK(mkdtemp(dir) && !chdir(dir) && !setenv("HOME", dir, 1));
-	FILE *f = fopen("f0", "w");
-	CHECK(f && fputs("abc\n\tx\n\xe6\xbc\xa2\xe5\xad\x97 y\n", f) >= 0 && !fclose(f));
+	file("f0", "abc\n\tx\n\xe6\xbc\xa2\xe5\xad\x97 y\n");
 	CHECK(!core_open(&e, "f0"));
+	draw(&e, &g, 120, "width 120");
+	draw(&e, &g, 80, "width 80");
+	draw(&e, &g, 40, "width 40");
 
-	/* mini.statusline's widths: the mode and the file info shorter below
-	   120 columns, %F (home_replace(): "~/f0") from 140, the location's
-	   short form below 75 */
-	line(&e, &g, 200, " Normal ", " ~/f0 ", " utf-8[unix] 16B ", " 1|3│ 1|3  ");
-	line(&e, &g, 140, " Normal ", " ~/f0 ", " utf-8[unix] 16B ", " 1|3│ 1|3  ");
-	line(&e, &g, 139, " Normal ", " f0 ", " utf-8[unix] 16B ", " 1|3│ 1|3  ");
-	line(&e, &g, 120, " Normal ", " f0 ", " utf-8[unix] 16B ", " 1|3│ 1|3  ");
-	line(&e, &g, 119, " N ", " f0 ", "", " 1|3│ 1|3  ");
-	line(&e, &g, 80, " N ", " f0 ", "", " 1|3│ 1|3  ");
-	line(&e, &g, 75, " N ", " f0 ", "", " 1|3│ 1|3  ");
-	line(&e, &g, 74, " N ", " f0 ", "", " 1│ 1 ");
-	line(&e, &g, 40, " N ", " f0 ", "", " 1│ 1 ");
-
-	/* too long: %< drops from the file name on, '<' in the face of the
-	   last character dropped; what is before %< too long, '>' at the end */
-	static const struct { int w; const char *s; int face[9]; } cut[] = {
-		{ 12, " N <0  1│ 1 ", { 0, M, 3, F, 6, M, -1 } },
-		{ 11, " N <  1│ 1 ", { 0, M, 3, F, 5, M, -1 } },
-		{ 8, " N <│ 1 ", { 0, M, -1 } },
-		{ 6, " N <1 ", { 0, M, -1 } },
-		{ 5, " N < ", { 0, M, -1 } },
-		{ 4, " N <", { 0, M, -1 } },
-		{ 3, " N>", { 0, M, -1 } },
-		{ 2, " >", { 0, M, -1 } },
-		{ 1, ">", { 0, M, -1 } },
-	};
+	/* too long: %< (after the mode) drops from the file name on, '<' in
+	   the face of the last character dropped; what is before %< too long,
+	   '>' at the end */
+	static const int cut[] = { 30, 20, 16, 12, 10, 8, 6, 4, 3, 2, 1 };
 	CHECK(!grid_resize(&g, 10, 80) && !core_split(&e, 1, 0));
 	core_draw(&e, &g);
+	char tag[32];
 	for (size_t i = 0; i < sizeof cut / sizeof *cut; i++) {
-		core_resize(&e, 1, cut[i].w, 1);
+		core_resize(&e, 1, cut[i], 1);
 		core_draw(&e, &g);
-		CHECK(e.win->w == cut[i].w);
-		status(&g, e.win, cut[i].s, cut[i].face);
+		CHECK(e.win->w == cut[i]);
+		snprintf(tag, sizeof tag, "width %d", cut[i]);
+		status(&g, e.win, tag);
 	}
-	/* another window: "%#MiniStatuslineInactive#%F%=", the cell under its
+	/* another window: lualine's inactive sections, the cell under its
 	   separator StatusLineNC's fill, as its status line runs on into the
 	   next one (stl_connected()) */
 	const Win *o = e.wins == e.win ? e.win->next : e.wins, *l = e.wins;   /* 'splitright' */
-	char want[128];
-	snprintf(want, sizeof want, "%-*s", o->w, "~/f0");
-	status(&g, o, want, (int[]){ 0, FACE_STATUS_LINE_NC, -1 });
+	status(&g, o, "other");
 	const Cell *z = &g.c[(l->y + l->h) * g.cols + l->x + l->w];
 	CHECK(z->ch[0] == ' ' && z->face == FACE_STATUS_LINE_NC);
 	CHECK(!core_only(&e));
 
-	/* the location: the cursor's line, the line count, its screen column
-	   and its line's width (virtcol("$") - 1) */
+	/* the location: line('.') and charcol('.') (a Tab is one character);
+	   the progress */
 	e.win->line = 1;
 	e.win->col = 1;
-	line(&e, &g, 80, " N ", " f0 ", "", " 2|3│ 9|9  ");
+	draw(&e, &g, 80, "2,1");
 	e.win->line = 2;
-	e.win->col = 0;
-	line(&e, &g, 80, " N ", " f0 ", "", " 3|3│ 1|6  ");
+	e.win->col = 7;
+	draw(&e, &g, 80, "3,7");
 	CHECK(!core_edit(&e, text_line_start(e.buf->text, 2), 3, "", 0));
-	line(&e, &g, 80, " N ", " f0[+] ", "", " 3|3│ 1|4  ");
-	line(&e, &g, 130, " Normal ", " f0[+] ", " utf-8[unix] 13B ", " 3|3│ 1|4  ");
-	/* the modes: H.modes */
-	static const struct { int mode, replace, visual; const char *l, *s; int face; } mode[] = {
-		{ MODE_INSERT, 0, 0, " Insert ", " I ", FACE_MODE_INSERT },
-		{ MODE_INSERT, 1, 0, " Replace ", " R ", FACE_MODE_REPLACE },
-		{ MODE_NORMAL, 0, 'v', " Visual ", " V ", FACE_MODE_VISUAL },
-		{ MODE_NORMAL, 0, 'V', " V-Line ", " V-L ", FACE_MODE_VISUAL },
-		{ MODE_NORMAL, 0, 22, " V-Block ", " V-B ", FACE_MODE_VISUAL },
-		{ MODE_CMDLINE, 0, 0, " Command ", " C ", FACE_MODE_COMMAND },
+	e.win->col = 4;
+	draw(&e, &g, 80, "x");
+	/* the modes: lualine's Mode.map, the pills in the mode's colours */
+	static const struct { int mode, replace, visual; const char *tag; } mode[] = {
+		{ MODE_INSERT, 0, 0, "mode i" }, { MODE_INSERT, 1, 0, "mode R" }, { MODE_NORMAL, 0, 'v', "mode v" },
+		{ MODE_NORMAL, 0, 'V', "mode V" }, { MODE_NORMAL, 0, 22, "mode CTRL-V" }, { MODE_CMDLINE, 0, 0, "mode c" },
 	};
-	for (size_t i = 0; i < sizeof mode / sizeof *mode; i++)
-		for (int wide = 0; wide < 2; wide++) {
-			e.mode = mode[i].mode;
-			e.ks.replace = mode[i].replace;
-			e.ks.visual = mode[i].visual;
-			e.ks.vline = 2;
-			CHECK(!grid_resize(&g, 10, wide ? 130 : 80));
-			core_draw(&e, &g);
-			const char *m = wide ? mode[i].l : mode[i].s;
-			int r = e.win->y + e.win->h, n = (int)strlen(m);
-			CHECK(!strcmp(text(&g, r, 0, n), m));
-			for (int c = 0; c < n; c++) CHECK(g.c[r * g.cols + c].face == mode[i].face);
-			CHECK(g.c[r * g.cols + g.cols - 1].face == mode[i].face);
-		}
+	for (size_t i = 0; i < sizeof mode / sizeof *mode; i++) {
+		e.mode = mode[i].mode;
+		e.ks.replace = mode[i].replace;
+		e.ks.visual = mode[i].visual;
+		e.ks.vline = 2;
+		draw(&e, &g, 80, mode[i].tag);
+	}
 	e.mode = MODE_NORMAL;
 	e.ks.replace = e.ks.visual = 0;
 
-	/* the file info: a file that does not exist has no 'fileencoding';
-	   'dos' counts its CRs; KiB and MiB with two decimals */
+	/* a file that does not exist has no 'fileencoding', nor has a buffer
+	   without one; an empty file that exists has */
 	CHECK(!core_write(&e, e.buf, 0) && !core_edit_file(&e, "new", 0));
-	line(&e, &g, 130, " Normal ", " new ", " [unix] 0B ", " 0|1│ 1|0  ");
-	f = fopen("d1", "w");
-	CHECK(f && fputs("ab\r\ncd\r\n", f) >= 0 && !fclose(f));
-	CHECK(!core_edit_file(&e, "d1", 0));
-	line(&e, &g, 130, " Normal ", " d1 ", " utf-8[dos] 8B ", " 1|2│ 1|2  ");
+	draw(&e, &g, 80, "new");
+	CHECK(!core_edit_file(&e, "", 0));
+	draw(&e, &g, 80, "noname");
 	f = fopen("k1", "w");
-	for (int i = 0; i < 200; i++) fputs("123456789\n", f);   /* 2000 bytes */
+	for (int i = 0; i < 200; i++) fputs("123456789\n", f);
 	CHECK(!fclose(f) && !core_edit_file(&e, "k1", 0));
-	line(&e, &g, 130, " Normal ", " k1 ", " utf-8[unix] 1.95KiB ", " 1|200│ 1|9  ");
+	static const struct { size_t line; const char *tag; } k1[] = { { 99, "k1 100" }, { 1, "k1 2" }, { 57, "k1 58" } };
+	for (size_t i = 0; i < sizeof k1 / sizeof *k1; i++) {
+		e.win->line = k1[i].line;
+		draw(&e, &g, 80, k1[i].tag);
+	}
+	/* a combining mark is one character with its base */
+	file("c1", "e\xcc\x81" "e\xcc\x81x\n");
+	CHECK(!core_edit_file(&e, "c1", 0));
+	e.win->col = 6;
+	draw(&e, &g, 80, "c1");
+	file("e0", "");
+	CHECK(!core_edit_file(&e, "e0", 0));
+	draw(&e, &g, 80, "e0");
 
 	/* the window's cells: the cursor line's number in CursorLineNr, the
 	   others in LineNr; CursorLine under the cursor line's text to the

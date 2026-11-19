@@ -1,6 +1,5 @@
 /* Buffers: their text, undo, saving, and moving between them. */
 #include <errno.h>
-#include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -222,35 +221,20 @@ static Buf *buf_find(Editor *e, int nr)
 	return NULL;
 }
 
-/* The status line's %F: the full name (fix_fname()), or the name as typed
-   without one, with the home directory as "~" (home_replace()) */
-static char *full_name(const char *path)
-{
-	char f[PATH_MAX], *r;
-	const char *h = getenv("HOME"), *p = file_full(path, f) ? path : f;
-	if (!h) h = getenv("USERPROFILE");   /* Windows without HOME (init_homedir()) */
-	size_t k = h ? strlen(h) : 0;
-	while (k > 1 && (h[k - 1] == '/' || h[k - 1] == '\\')) k--;
-	if (!k || strncmp(p, h, k) || (p[k] && p[k] != '/' && p[k] != '\\')) return strdup(p);
-	if ((r = malloc(strlen(p + k) + 2))) { r[0] = '~'; strcpy(r + 1, p + k); }
-	return r;
-}
-
 /* Loads path into b, a buffer without text (path NULL: empty, no name).
    -1 on error, msg set, b as it was. */
 static int buf_load(Editor *e, Buf *b, const char *path)
 {
-	char *data = NULL, *name = NULL, *full = NULL;
+	char *data = NULL, *name = NULL;
 	size_t n = 0, bytes;
 	FileId id = { 0 };
 	Text *t;
 	Undo *u;
 	if (path) {
-		if (!(name = strdup(path)) || !(full = full_name(path))) { free(name); goto oom; }
+		if (!(name = strdup(path))) goto oom;
 		if (file_load(path, &data, &n, &id)) {
 			core_msg(e, "\"%s\": cannot read", path);
 			free(name);
-			free(full);
 			return -1;
 		}
 	}
@@ -263,13 +247,11 @@ static int buf_load(Editor *e, Buf *b, const char *path)
 		text_free(t);
 		undo_free(u);
 		free(name);
-		free(full);
 		goto oom;
 	}
 	b->text = t;
 	b->undo = u;
 	b->path = name;
-	b->full = full;
 	b->id = id;
 	b->noeol = noeol;
 	b->dos = dos;
@@ -432,17 +414,15 @@ static void buf_unload(Buf *b)
 	text_free(b->text);
 	undo_free(b->undo);
 	free(b->path);
-	free(b->full);
 }
 
 /* the file read again into an unloaded buffer (enter_buffer()'s
    open_buffer()); -1 msg set */
 static int buf_reload(Editor *e, Buf *b)
 {
-	char *path = b->path, *full = b->full;
+	char *path = b->path;
 	if (buf_load(e, b, path)) return -1;
 	free(path);
-	free(full);
 	return 0;
 }
 

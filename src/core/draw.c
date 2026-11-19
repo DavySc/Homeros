@@ -352,76 +352,104 @@ static int stl_connected(const Win *w)
 	return 0;
 }
 
-/* s (k bytes) onto the status line's text o (n bytes), each byte with face */
-static size_t stl_add(char *o, unsigned char *f, size_t n, size_t cap, const char *s, size_t k, unsigned char face)
+/* the status line's text, each byte with its face and the face its
+   background comes from (Cell.bg) */
+typedef struct { char o[4400]; unsigned char f[4400], l[4400]; size_t n; } Stl;
+
+static void stl_add(Stl *t, const char *s, unsigned char face, unsigned char layer)
 {
-	if (k > cap - n) k = cap - n;
-	memcpy(o + n, s, k);
-	memset(f + n, face, k);
-	return n + k;
+	size_t k = strlen(s);
+	if (k > sizeof t->o - t->n) k = sizeof t->o - t->n;
+	memcpy(t->o + t->n, s, k);
+	memset(t->f + t->n, face, k);
+	memset(t->l + t->n, layer, k);
+	t->n += k;
 }
 
-/* mini.statusline's default content, as my-nvim sets it up, laid out by
-   build_stl_str_hl() in the window's width.  The current window:
-   "%#Mode# mode %#Devinfo#%<%#Filename# %F%m%r %=%#Fileinfo# info %#Mode# location ",
-   the mode, file name and info shorter in a narrow window (is_truncated());
-   the others "%#Inactive#%F%=".  Devinfo (git, diff, diagnostics, LSP), the
-   search count and the file type are not drawn yet. */
+/* lualine with catppuccin's lualine theme, set up as UI proposal 5's
+   mockup (tests/test_core_status.lua), laid out by build_stl_str_hl() in
+   the window's width.  The current window:
+   (mode)%<( name ●)%=( utf-8 )(location)( progress)
+   with the mode and the progress as pills between rounded ends (U+E0B6,
+   U+E0B4, transitional groups: the end's fg is the section's bg) and the
+   location on surface0; the others lualine's inactive sections,
+   "%< name ●%=location".  Each component is padded with a space either
+   side.  The branch, diagnostics, LSP status and file type are not drawn
+   yet. */
 static void draw_status(Editor *e, Grid *g, Win *w)
 {
-	static const char *const mode[][2] = { { " Normal ", " N " }, { " Visual ", " V " }, { " V-Line ", " V-L " },
-	                                       { " V-Block ", " V-B " }, { " Insert ", " I " }, { " Replace ", " R " },
-	                                       { " Command ", " C " } };
-	static const unsigned char mface[] = { FACE_MODE_NORMAL, FACE_MODE_VISUAL, FACE_MODE_VISUAL, FACE_MODE_VISUAL,
-	                                       FACE_MODE_INSERT, FACE_MODE_REPLACE, FACE_MODE_COMMAND };
-	char out[4400], s[96];
-	unsigned char f[sizeof out];
-	int r = w->y + w->h, maxw = w->w;
+	static const char *const mode[] = { " NORMAL ", " VISUAL ", " V-LINE ", " V-BLOCK ", " INSERT ", " REPLACE ", " COMMAND " };
+	static const unsigned char ma[] = { FACE_MODE_NORMAL, FACE_MODE_VISUAL, FACE_MODE_VISUAL, FACE_MODE_VISUAL,
+	                                    FACE_MODE_INSERT, FACE_MODE_REPLACE, FACE_MODE_COMMAND },
+	                           mb[] = { FACE_MODE_NORMAL_FG, FACE_MODE_VISUAL_FG, FACE_MODE_VISUAL_FG, FACE_MODE_VISUAL_FG,
+	                                    FACE_MODE_INSERT_FG, FACE_MODE_REPLACE_FG, FACE_MODE_COMMAND_FG };
+	static const char L[] = "\xee\x82\xb6", R[] = "\xee\x82\xb4";
+	static Stl t;
+	char s[64];
+	int r = w->y + w->h, maxw = w->w, cur = w == e->win;
 	Buf *b = w->buf;
-	size_t len = text_line_start(b->text, w->line + 1) - text_line_start(b->text, w->line) - 1, n = 0, cut = 0, sep;
+	size_t ls = text_line_start(b->text, w->line), len = text_line_start(b->text, w->line + 1) - ls - 1, cut = 0, sep;
 	/* another window's cursor may be past a line that changed: it is
 	   moved to the line's end, as build_stl_str_hl() does */
 	if (w->col > len) w->col = len;
-	const char *name = b->full ? b->full : "[No Name]";
-	if (w == e->win) {
-		int m = e->mode == MODE_CMDLINE ? 6 : e->mode == MODE_INSERT ? 4 + !!e->ks.replace
-		      : e->ks.visual == 'v' ? 1 : e->ks.visual == 'V' ? 2 : e->ks.visual ? 3 : 0;
-		n = stl_add(out, f, n, sizeof out, mode[m][maxw < 120], strlen(mode[m][maxw < 120]), mface[m]);
-		cut = n;
-		/* %F below 140 columns is %f, the name relative to the current
-		   directory: the path as typed */
-		if (b->path && maxw < 140) name = b->path;
-		n = stl_add(out, f, n, sizeof out, " ", 1, FACE_STATUS_LINE);
-		n = stl_add(out, f, n, sizeof out, name, strlen(name), FACE_STATUS_LINE);
-		n = stl_add(out, f, n, sizeof out, core_modified(b) ? "[+] " : " ", core_modified(b) ? 4 : 1, FACE_STATUS_LINE);
-		sep = n;
-		if (maxw >= 120) {
-			/* 'fileencoding' is set by reading a file that exists, empty
-			   or not (measured), so a buffer without one shows none (a new
-			   file keeps none after :w, which here shows utf-8);
-			   get_filesize(): line2byte() past the last line, a 'dos'
-			   line counting its CR (measured) */
-			size_t z = b->flags & CORE_EMPTY ? 0 : text_len(b->text) + (b->dos ? buf_lines(b) : 0);
-			const char *enc = b->id.exists ? "utf-8" : "", *ff = b->dos ? "dos" : "unix";
-			int k = z < 1024 ? snprintf(s, sizeof s, " %s[%s] %zuB ", enc, ff, z)
-			      : snprintf(s, sizeof s, " %s[%s] %.2f%s ", enc, ff, (double)z / (z < 1048576 ? 1024 : 1048576),
-			                 z < 1048576 ? "KiB" : "MiB");
-			n = stl_add(out, f, n, sizeof out, s, (size_t)k, FACE_STATUS_INFO);
+	int m = !cur ? 0 : e->mode == MODE_CMDLINE ? 6 : e->mode == MODE_INSERT ? 4 + !!e->ks.replace
+	      : e->ks.visual == 'v' ? 1 : e->ks.visual == 'V' ? 2 : e->ks.visual ? 3 : 0;
+	unsigned char c = cur ? FACE_STATUS_LINE : FACE_STATUS_LINE_NC;
+	t.n = 0;
+	if (cur) {
+		stl_add(&t, L, mb[m], 0);
+		stl_add(&t, mode[m], ma[m], 0);
+		stl_add(&t, R, mb[m], 0);
+		cut = t.n;
+	}
+	/* filename: expand('%:t') */
+	const char *name = "[No Name]";
+	if (b->path)
+		for (const char *p = name = b->path; *p; p++)
+#ifdef _WIN32
+			if (*p == '/' || *p == '\\') name = p + 1;
+#else
+			if (*p == '/') name = p + 1;
+#endif
+	stl_add(&t, " ", c, 0);
+	stl_add(&t, name, c, 0);
+	stl_add(&t, core_modified(b) ? " \xe2\x97\x8f " : " ", c, 0);
+	sep = t.n;
+	/* 'fileencoding' is set by reading a file that exists, empty or not
+	   (measured); encoding hides an empty one */
+	if (cur && b->id.exists) stl_add(&t, " utf-8 ", c, 0);
+	if (cur) stl_add(&t, L, FACE_STATUS_INFO, FACE_STATUS_LINE);
+	/* location: line('.') and charcol('.'), '%3d:%-2d' */
+	size_t l = w->line + 1, ch = 1, lines = buf_lines(b);
+	LineIt it;
+	const unsigned char *u;
+	lit_init(&it, b, w->line);
+	for (size_t k, at = 0; at < w->col && (k = lit_next(&it, &u)); at += k) ch++;
+	snprintf(s, sizeof s, " %3zu:%-2zu ", l, ch);
+	stl_add(&t, s, cur ? mb[m] : c, cur ? FACE_STATUS_INFO : 0);
+	if (cur) {
+		stl_add(&t, L, mb[m], FACE_STATUS_INFO);
+		/* progress: math.floor(cur / total * 100), in doubles as Lua's
+		   (58 of 200 lines is 28%) */
+		if (l == 1) stl_add(&t, " Top ", ma[m], 0);
+		else if (l == lines) stl_add(&t, " Bot ", ma[m], 0);
+		else {
+			snprintf(s, sizeof s, " %2d%% ", (int)((double)l / (double)lines * 100));
+			stl_add(&t, s, ma[m], 0);
 		}
-		/* %l is 0 in an empty buffer; %v is the cursor's screen column */
-		size_t l = b->flags & CORE_EMPTY ? 0 : w->line + 1, v = win_vcol(e, w, NULL, NULL) + 1;
-		int k = maxw < 75 ? snprintf(s, sizeof s, " %zu│%2zu ", l, v)
-		      : snprintf(s, sizeof s, " %zu|%zu│%2zu|%-2zu ", l, buf_lines(b), v, win_vcol_end(w, w->line));
-		n = stl_add(out, f, n, sizeof out, s, (size_t)k, mface[m]);
-	} else n = sep = stl_add(out, f, n, sizeof out, name, strlen(name), FACE_STATUS_LINE_NC);
-	const unsigned char *u = (const unsigned char *)out;
+		stl_add(&t, R, mb[m], 0);
+	}
+	size_t n = t.n;
+	char *out = t.o;
+	unsigned char *f = t.f, *bl = t.l;
+	u = (const unsigned char *)out;
 	int width = grid_width(out, n), fill = 0;
 	if (width > maxw) {
 		if (width - grid_width(out + cut, n - cut) >= maxw) {
 			/* what comes before %< does not fit: cut the end, '>' on the
 			   character that reaches the width */
 			size_t p = 0;
-			for (int c = uni_width(u, n, p); c < maxw; c += uni_width(u, n, p)) p += uni_glen(u, n, p);
+			for (int x = uni_width(u, n, p); x < maxw; x += uni_width(u, n, p)) p += uni_glen(u, n, p);
 			out[p] = '>';
 			n = p + 1;
 		} else {
@@ -432,37 +460,40 @@ static void draw_status(Editor *e, Grid *g, Win *w)
 				width -= uni_width(u, n, cut + k);
 				k += uni_glen(u, n, cut + k);
 			}
-			unsigned char fc = f[cut + k - 1];
+			unsigned char fc = f[cut + k - 1], lc = bl[cut + k - 1];
 			memmove(out + cut + 1, out + cut + k, n - cut - k);
 			memmove(f + cut + 1, f + cut + k, n - cut - k);
+			memmove(bl + cut + 1, bl + cut + k, n - cut - k);
 			out[cut] = '<';
 			f[cut] = fc;
+			bl[cut] = lc;
 			n -= k - 1;
 		}
 	} else fill = maxw - width;
 	/* the rest (half a double-width character) in the last face */
-	for (int c = 0; c < maxw; c++) grid_put(g, r, w->x + c, (const unsigned char *)" ", 1, 1, ATTR_NONE);
+	for (int x = 0; x < maxw; x++) grid_put(g, r, w->x + x, (const unsigned char *)" ", 1, 1, ATTR_NONE);
 	paint(g, r, w->x, maxw, f[n - 1]);
 	/* the cell under a separator: the status line's fill when the status
 	   line runs on to the right, else the separator (win_redr_status()) */
 	if (w->frame->vsep) {
 		int on = stl_connected(w);
 		grid_put(g, r, w->x + w->w, (const unsigned char *)(on ? " " : "│"), on ? 1 : 3, 1, ATTR_NONE);
-		paint(g, r, w->x + w->w, 1, !on ? FACE_WIN_SEPARATOR : w == e->win ? FACE_STATUS_LINE : FACE_STATUS_LINE_NC);
+		paint(g, r, w->x + w->w, 1, !on ? FACE_WIN_SEPARATOR : c);
 	}
-	int c = 0;
-	for (size_t i = 0; i < n && c < maxw; i += uni_glen(u, n, i)) {
+	int x = 0;
+	for (size_t i = 0; i < n && x < maxw; i += uni_glen(u, n, i)) {
 		/* %=: the fill, in the face before it */
 		if (i == sep && fill) {
-			paint(g, r, w->x + c, fill, f[i - 1]);
-			c += fill;
+			paint(g, r, w->x + x, fill, f[i - 1]);
+			x += fill;
 		}
 		int cw = uni_width(u, n, i);
-		if (c + cw <= maxw) {
-			put(g, r, w->x + c, u + i, uni_glen(u, n, i), cw);
-			paint(g, r, w->x + c, cw, f[i]);
+		if (x + cw <= maxw) {
+			put(g, r, w->x + x, u + i, uni_glen(u, n, i), cw);
+			paint(g, r, w->x + x, cw, f[i]);
+			for (int k = 0; k < cw; k++) g->c[r * g->cols + w->x + x + k].bg = bl[i];
 		}
-		c += cw;
+		x += cw;
 	}
 }
 
