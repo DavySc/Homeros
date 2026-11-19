@@ -1,0 +1,7 @@
+start -> main gap.c:26 +0x10f0 [main_thread stopped at entry point]
+step_over_line -> main gap.c:27 +0x10f4 [main_thread completed step]
+step_over_line -> main gap.c:28 +0x1105 [main_thread completed step]
+step_over_line -> __scrt_common_main_seh exe_common.inl:288 +0x132f [main_thread completed step]
+step_over_line -> __scrt_common_main_seh exe_common.inl:294 +0x1331 [main_thread completed step]
+step_over_line -> __scrt_common_main_seh exe_common.inl:295 +0x138f [main_thread completed step]
+step_over_line -> ended

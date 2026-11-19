@@ -1,0 +1,7 @@
+start -> main gap.c:27 +0x1000 [main_thread stopped at entry point]
+step_into_line -> main gap.c:28 +0x10c4 [main_thread completed step]
+step_into_line -> __scrt_common_main_seh exe_common.inl:288 +0x13df [main_thread completed step]
+step_into_line -> __scrt_common_main_seh exe_common.inl:294 +0x13e1 [main_thread completed step]
+step_into_line -> __scrt_is_managed_app utility_desktop.cpp:32 +0x1d60 [main_thread completed step]
+step_into_line -> __scrt_is_managed_app utility_desktop.cpp:33 +0x1d64 [main_thread completed step]
+step_into_line -> outside kernel32.dll!
