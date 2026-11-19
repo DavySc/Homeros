@@ -10,7 +10,7 @@ against SQL Server (KB 05-oracles.md):
 Test server only (database gen, rebuilt each run).
 
 python3 oracle/gen_oracle.py [SEED] [N] [COLLATION]"""
-import random, subprocess, sys, pymssql
+import os, random, subprocess, sys, pymssql
 
 FILE = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].isdigit() else None   # statements to check, on WWI
 seed = int(sys.argv[1]) if len(sys.argv) > 1 and not FILE else 1
@@ -33,6 +33,8 @@ for i in range(1, 6 if not FILE else 1):
     sch = 's' if i == 5 else 'dbo'
     tables['t%d' % i] = (sch, cols)
     cur.execute('create table %s.t%d (%s)' % (sch, i, ', '.join('[%s] int' % c for c in cols)))
+    # rows, so O3 can compare results: few values, so joins match
+    cur.execute('insert %s.t%d values %s' % (sch, i, ', '.join('(%s)' % ', '.join(str(rnd.randint(0, 3)) for _ in cols) for _ in range(6))))
 
 snap = '/tmp/claude-0/%s.snap' % DB
 subprocess.run(['oracle/snap.sh', DB, snap], check=True)
@@ -153,6 +155,37 @@ def server(sql):
         cols = None
     return 0, desc, cols
 
+def rows(sql):
+    """O3: the result as a sorted list of rows, or the error number"""
+    try:
+        cur.execute(sql)
+        return sorted(cur.fetchall(), key=repr)
+    except pymssql.Error as e:
+        return 'error %s' % e.args[0]
+
+def refactor(op, sql, sdesc, scols):
+    """a refactor of a valid statement: refused, or the server sees the same
+    statement (O5 valid, O1 same columns, O2 same references, O3 same rows)"""
+    p = subprocess.run(['build/refq', snap, op], input=sql, capture_output=True, text=True)
+    want = expect.get(op)
+    if p.returncode == 3:
+        if os.environ.get('SHOW'): print('REFUSED', op, p.stdout.strip(), sql)
+        if want and not want.startswith('REFUSED'): return 'broke', 'refused, expected %s' % want
+        return 'refused', None
+    if p.returncode: return 'crash', p.stderr[-300:]
+    new = p.stdout
+    if want and want != new: return 'broke', 'expected %s, got %s' % (want, new)
+    err, ndesc, ncols = server(new)
+    if err: return 'broke', 'server %s on: %s' % (err, new)
+    if ndesc != sdesc: return 'broke', 'O1 %s -> %s: %s' % (sdesc, ndesc, new)
+    if scols is not None and ncols is not None and ncols != scols: return 'broke', 'O2 %s -> %s: %s' % (scols, ncols, new)
+    if new == sql: return 'same', None
+    # O3 only where rows are a function of the data (and running it changes
+    # nothing), and on gen's small tables: WWI's take minutes to fetch
+    if not FILE and not any(w in sql.lower() for w in ('next value for', 'tablesample', 'newid(', 'rand(')) and rows(sql) != rows(new):
+        return 'broke', 'O3 rows differ: %s' % new
+    return 'ok', None
+
 def ours(sql):
     out = subprocess.run(['build/resq', snap], input=sql, capture_output=True, text=True).stdout.splitlines()
     errs, cols, desc, top = set(), set(), [], None
@@ -163,7 +196,8 @@ def ours(sql):
             st = int(f[2])
             if st not in (0, 1): errs.add(st)
             if f[1] == 'column' and f[5] != '-': cols.add(f[5].lower())
-        elif f[0] == 'O':
+            if f[1] == 'star' and st == 1: desc = None   # a * over unknown columns: no outputs to compare
+        elif f[0] == 'O' and desc is not None:
             if f[3] != '-': cols.add(f[3].lower())
             if f[1] == top: desc.append((f[2] if f[2] != '-' else None, f[3]))
     return errs, sorted(cols), desc
@@ -180,12 +214,16 @@ def o1_same(sql, sdesc, odesc):
         if ss == '-' and os != '-' and not any(w in sql for w in (' union ', ' except ', ' intersect ')): return False
     return True
 
+stats = {}
 bad = valid = 0
 stmts = [x.strip() for x in open(FILE).read().split('\ngo\n') if x.strip()] if FILE else None
-stmts = [x.split('\n', 1)[1] if x.startswith('--') else x for x in stmts] if FILE else None
+# a case's comment lines: "-- star: <text>" is what star must give (or
+# REFUSED), likewise qualify; other comment lines say why the case is there
+cases = [([l for l in x.split('\n') if l.startswith('--')], '\n'.join(l for l in x.split('\n') if not l.startswith('--'))) for x in stmts] if FILE else None
 if FILE: N = len(stmts)
 for n in range(N):
-    sql = stmts[n] if FILE else statement()
+    expect = dict(l[3:].split(': ', 1) for l in cases[n][0] if l[3:].split(':')[0] in ('star', 'qualify')) if FILE else {}
+    sql = cases[n][1] if FILE else statement()
     err, sdesc, scols = server(sql)
     oerr, ocols, odesc = ours(sql)
     why = None
@@ -196,12 +234,24 @@ for n in range(N):
         valid += 1
         # the server keeps no column dependencies for FOR SYSTEM_TIME, and
         # FOR XML/JSON makes one column of the result (KB 05)
-        if scols is not None and scols != ocols and 'for system_time' not in sql: why = 'O2 server %s resolver %s' % (scols, ocols)
-        elif not o1_same(sql, sdesc, odesc) and not any(w in sql for w in (' for json', ' for xml', ' for system_time')):
+        # nor for the select list of EXISTS (..)
+        if scols is not None and scols != ocols and 'for system_time' not in sql and 'exists (select *' not in sql: why = 'O2 server %s resolver %s' % (scols, ocols)
+        elif odesc is not None and not o1_same(sql, sdesc, odesc) and not any(w in sql for w in (' for json', ' for xml', ' for system_time')):
             why = 'O1 server %s resolver %s' % (sdesc, odesc)
+    if not why and not err and sql.lower().startswith(('select', 'with')):
+        for op in ('star', 'qualify'):
+            res, detail = refactor(op, sql, sdesc, scols)
+            stats[op + ' ' + res] = stats.get(op + ' ' + res, 0) + 1
+            if detail: why = '%s %s: %s' % (op, res, detail); break
+    # "-- info <word>: <line>": info on the first <word> gives <line> first
+    for l in cases[n][0] if FILE else ():
+        if l.startswith('-- info ') and not why:
+            word, want = l[8:].split(': ', 1)
+            p = subprocess.run(['build/refq', snap, 'info', str(len(sql.encode()[:sql.encode().index(word.encode())]))], input=sql, capture_output=True, text=True)
+            if p.stdout.split('\n')[0] != want: why = 'info %s: expected %s, got %s' % (word, want, p.stdout + p.stderr[-300:])
     if why:
         bad += 1
         if bad <= 8: print('DIFF', why, '\n    ', sql)
 cur.execute('drop procedure if exists dbo.p')   # the sample database stays as restored
-print('%s: %d statements (%d valid), %d differ' % (FILE or 'gen seed %d' % seed, N, valid, bad))
+print('%s: %d statements (%d valid), %d differ%s' % (FILE or 'gen seed %d' % seed, N, valid, bad, ''.join('; %s %d' % kv for kv in sorted(stats.items()))))
 sys.exit(1 if bad else 0)

@@ -22,22 +22,12 @@ static char *slurp(FILE *f, size_t *n)
 	return b;
 }
 
-/* the catalog column behind column col of source sc, through derived
-   tables and CTEs */
 static void origin(const Res *r, int sc, int col)
 {
-	for (int guard = 0; sc >= 0 && col >= 0 && guard < 64; guard++) {
-		const Src *s = &r->src[sc];
-		if (s->kind == SRC_TABLE) {
-			const SnapCol *c = &r->snap->c[r->snap->o[s->obj].col + col];
-			printf("%s.%s.%s", r->snap->o[s->obj].schema, r->snap->o[s->obj].name, c->name);
-			return;
-		}
-		if (s->inner < 0 || (uint32_t)col >= r->b[s->inner].nout) break;   /* a column list renames inner's outputs */
-		const Out *o = &r->out[r->b[s->inner].out + col];
-		sc = o->src, col = o->col;
-	}
-	printf("-");
+	long k = res_origin(r, sc, col);
+	if (k < 0) { printf("-"); return; }
+	const SnapCol *c = &r->snap->c[k];
+	printf("%s.%s.%s", r->snap->o[c->obj].schema, r->snap->o[c->obj].name, c->name);
 }
 
 int main(int argc, char **argv)

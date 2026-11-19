@@ -139,6 +139,19 @@ Name src_col(const Res *res, size_t sc, size_t i, long *cat)
 	return out_name(res, src_out(res, sc, i));
 }
 
+long res_origin(const Res *r, int sc, int col)
+{
+	for (int guard = 0; sc >= 0 && col >= 0 && guard < 256; guard++) {
+		const Src *s = &r->src[sc];
+		if (s->kind == SRC_TABLE) return (long)(r->snap->o[s->obj].col + (uint32_t)col);
+		if (s->inner < 0 || (uint32_t)col >= r->b[s->inner].nout) return -1;   /* a column list renames inner's outputs */
+		const Out *o = &r->out[r->b[s->inner].out + (uint32_t)col];
+		if (o->src < 0) return -2 - ((long)s->inner << 16 | col);
+		sc = o->src, col = o->col;
+	}
+	return -1;
+}
+
 static void ref(P *p, uint32_t s, uint32_t e, int kind, int status, int src, int col)
 {
 	Res *r = p->res;
@@ -487,7 +500,8 @@ static size_t source(P *p, size_t i, size_t z, int blk, int lateral)
 		ref(p, p->t[i].s, p->t[last].e, RF_OBJECT, o >= 0 ? RS_OK : outside ? RS_UNSURE : RS_NOOBJ, sc, -1);
 		if (o >= 0 && !strchr("UVSI", r->snap->o[o].type[0]) && strcmp(r->snap->o[o].type, "TF")) r->src[sc].kind = SRC_UNKNOWN;
 	}
-	r->src[sc].s = p->t[i].s, r->src[sc].ns = p->t[last].s, r->src[sc].ne = p->t[last].e;
+	r->src[sc].s = p->t[i].s;
+	if (!call || o >= 0) r->src[sc].ns = p->t[last].s, r->src[sc].ne = p->t[last].e;   /* OPENJSON(..) has no name until aliased */
 	if (call) {
 		size_t close = p->t[j].m > 0 ? (size_t)p->t[j].m : z;
 		if (nq >= 2 && any(p, last, xml_methods)) colref(p, i, last - 2, q, nq - 1, sees, NULL, NULL);   /* x.col.nodes('..') */
@@ -816,6 +830,12 @@ static int lex(P *p)
 	return p->oom ? -1 : 0;
 }
 
+static int by_start(const void *a, const void *b)
+{
+	uint32_t x = ((const Ref *)a)->s, y = ((const Ref *)b)->s;
+	return (x > y) - (x < y);
+}
+
 int resolve(Res *res, const Snap *snap, const char *text, size_t n)
 {
 	P *p = calloc(1, sizeof *p);
@@ -839,6 +859,9 @@ int resolve(Res *res, const Snap *snap, const char *text, size_t n)
 			i = z > i ? z : i + 1;
 		} else i++;
 	}
+	/* in text order, which the walk is not (a block's outputs come after
+	   its FROM): refactors edit front to back and compare texts in order */
+	qsort(res->r, res->nr, sizeof *res->r, by_start);
 	return p->oom ? -1 : 0;
 }
 

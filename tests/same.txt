@@ -1,0 +1,8 @@
+# The meaning check alone (refactor_same), on WWI: expected, old text,
+# new text; tab-separated.  Refactors never produce most of these
+# changes, so only this file can see that the check notices them.
+same	select CityID x from Application.Cities	select Cities.CityID x from Application.Cities
+differ	select CityID from Application.Cities	select CityID from Application.Cities where nosuch = 1
+differ	select CityID x from Application.Cities	select CityID y from Application.Cities
+differ	select CityID, StateProvinceID from Application.Cities where StateProvinceID = CityID	select StateProvinceID CityID, CityID StateProvinceID from Application.Cities where CityID = StateProvinceID and StateProvinceID = CityID
+differ	select (select count(*) from Sales.Customers x0 where x0.CustomerID = OrderID) from Sales.Orders x0	select (select count(*) from Sales.Customers x0 where x0.CustomerID = x0.OrderID) from Sales.Orders x0

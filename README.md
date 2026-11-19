@@ -7,9 +7,10 @@ Davy, 2026-11-19: SQL refactors that use a database connection, ready when the t
 ## Layout
 | Path | What |
 |---|---|
-| `sqlref/` | the C code that would move into Homeros: `snap.[ch]` (catalog snapshot), later the resolver and refactors |
-| `cmd/` | small drivers the oracles talk to (`snapq`) |
+| `sqlref/` | the C code that would move into Homeros: `snap.[ch]` (catalog snapshot), `resolve.[ch]` (what every name refers to), `refactor.[ch]` (expand `*`, qualify, object info, and the one meaning check every refactor passes) |
+| `cmd/` | small drivers the oracles talk to (`snapq`, `resq`, `refq`) |
 | `oracle/` | the snapshot query per dialect (`snap-tsql.sql`), `snap.sh` (takes a snapshot from the test server), the oracles that check each slice against the server, test databases (`tricky.sql`) |
+| `tests/queries.sql` | hand-written cases, with the exact refactor results some must give |
 | `tests/plants.txt` | planted bugs: each must make `./check.sh` fail |
 | `check.sh`, `plants.sh` | the whole check; every plant caught |
 
@@ -27,4 +28,4 @@ pip install pymssql
 ```
 Restore: `RESTORE DATABASE AW FROM DISK='/tmp/aw.bak' WITH MOVE 'AdventureWorks2022' TO '/var/opt/mssql/data/aw.mdf', MOVE 'AdventureWorks2022_log' TO '/var/opt/mssql/data/aw.ldf'` (WWI: `WWI_Primary`, `WWI_UserData`, `WWI_Log`, `WWI_InMemory_Data_1`). clang's sanitizers need `libclang-rt-18-dev`.
 
-`./check.sh` (about 3 s), then `./plants.sh` (about 35 s).
+`./check.sh` (about 1.5 min), then `./plants.sh` (each plant reruns the check until it fails; about 20 min).

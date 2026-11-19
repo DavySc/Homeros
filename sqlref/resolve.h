@@ -77,6 +77,10 @@ void resolve_free(Res *res);
 size_t src_ncols(const Res *res, size_t sc);
 /* column i of source sc: its name (*cat: the snapshot column, or -1) */
 Name   src_col(const Res *res, size_t sc, size_t i, long *cat);
+/* what column col of source sc finally is, through derived tables and
+   CTEs: a snapshot column index (>= 0), or for a computed output of a
+   block, -2 - (block << 16 | output); -1 unknown */
+long   res_origin(const Res *res, int sc, int col);
 /* the name of an output column, NULL s when it has none */
 Name   out_name(const Res *res, const Out *o);
 #endif

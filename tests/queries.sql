@@ -130,3 +130,45 @@ update o set Comments = (select top 1 c.CustomerName from Sales.Customers c wher
 go
 delete o from Sales.Orders o where o.OrderID = (select max(l.OrderID) from Sales.OrderLines l where l.OrderLineID = CustomerID) and 1 = 0
 go
+-- slice 3: star and qualify give exactly this
+-- star: select o.OrderID, o.CustomerID, c.CustomerID, c.CustomerName from (select OrderID, CustomerID from Sales.Orders) o join (select CustomerID, CustomerName from Sales.Customers) c on c.CustomerID = o.CustomerID
+-- qualify: select * from (select Orders.OrderID, Orders.CustomerID from Sales.Orders) o join (select Customers.CustomerID, Customers.CustomerName from Sales.Customers) c on c.CustomerID = o.CustomerID
+select * from (select OrderID, CustomerID from Sales.Orders) o join (select CustomerID, CustomerName from Sales.Customers) c on c.CustomerID = o.CustomerID
+go
+-- names that must be bracketed: reserved, space, ], leading digit
+-- star: select d.[select], d.[a b], d.[x]]y], d.[1x], d.ok from (select 1 as [select], 2 as [a b], 3 as [x]]y], 4 [1x], 5 ok) d
+select * from (select 1 as [select], 2 as [a b], 3 as [x]]y], 4 [1x], 5 ok) d
+go
+-- EXISTS's * stays (the server ignores its list); the outer one is
+-- written out; qualify adds the exposed name, which is the alias
+-- star: select c.CityID, c.CityName from (select CityID, CityName from Application.Cities) c where exists (select * from Application.StateProvinces s where s.StateProvinceID = CityID)
+-- qualify: select * from (select Cities.CityID, Cities.CityName from Application.Cities) c where exists (select * from Application.StateProvinces s where s.StateProvinceID = c.CityID)
+select * from (select CityID, CityName from Application.Cities) c where exists (select * from Application.StateProvinces s where s.StateProvinceID = CityID)
+go
+-- x.* only expands x; an unaliased table's exposed name is its last part
+-- star: select CityID, s.StateProvinceID from Application.Cities join (select StateProvinceID from Application.StateProvinces) s on s.StateProvinceID = Cities.StateProvinceID
+-- qualify: select Cities.CityID, s.* from Application.Cities join (select StateProvinces.StateProvinceID from Application.StateProvinces) s on s.StateProvinceID = Cities.StateProvinceID
+select CityID, s.* from Application.Cities join (select StateProvinceID from Application.StateProvinces) s on s.StateProvinceID = Cities.StateProvinceID
+go
+-- the inner x0 hides the outer one: qualifying d would change its meaning
+-- qualify: REFUSED
+select (select count(*) from Sales.Customers x0 where x0.CustomerID = OrderID) from Sales.Orders x0
+go
+-- OPENJSON with no alias cannot be named
+-- qualify: REFUSED
+select v from openjson(N'[{"v":1}]') with (v int)
+go
+-- info: a column through a derived table, with its foreign keys; a table
+-- info CustomerID: Sales.Orders.CustomerID int not null
+-- info Orders: Sales.Orders (U)
+-- info cnt: REFUSED: a computed column
+select d.CustomerID, d.cnt from (select CustomerID, count(*) cnt from Sales.Orders group by CustomerID) d
+go
+-- a column that may come from a source of unknown columns is left alone
+-- qualify: select Cities.CityName, (select top 1 name from sys.objects) from Application.Cities
+select CityName, (select top 1 name from sys.objects) from Application.Cities
+go
+-- PIVOT's columns are not known yet: its * stays
+-- star: REFUSED
+select * from (select CityID, StateProvinceID, LastEditedBy from Application.Cities) s pivot (count(CityID) for StateProvinceID in ([1], [2])) p
+go

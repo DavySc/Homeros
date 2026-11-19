@@ -33,3 +33,19 @@ sqlref/resolve.c	if (p->blind && st == RS_NOCOL) st = RS_UNSURE;		an unread oute
 sqlref/resolve.c	&& (k != 2 || is(p, z + 1, "by"))) at[k] = z;	) at[k] = z;	WITHIN GROUP read as GROUP BY
 sqlref/resolve.c	if (is(p, j, "as") && is(p, j + 1, "of")) expr(p, j + 2, j + 3, sees), j += 3;		FOR SYSTEM_TIME AS OF read as an alias
 sqlref/resolve.c	if (r->src[i].blk == s->blk && !r->src[i].hidden && r->src[i].ne && snap_eq(	if (0 && snap_eq(	duplicate exposed names not found
+# ---- slice 3: refactors (star, qualify, info) ----
+sqlref/refactor.c	if (bare && (tsql_word(nm.s, nm.n, NULL) & TQ_RECASE)) bare = 0;		a reserved word written bare
+sqlref/refactor.c	(nm.s[i] == ']' && put(ed, "]", 1))	0	] not doubled inside [..]
+sqlref/refactor.c	(i && ((c >= '0'	(((c >= '0'	a leading digit written bare
+sqlref/refactor.c	r->src[s].blk == b && 		* writes out sources of other blocks
+sqlref/refactor.c	|| in_exists(r, r->b[b].s)		EXISTS's * written out
+sqlref/refactor.c	from = r->r[i - 1].s;	from = x->s;	x.* keeps its qualifier: x.x.a
+sqlref/refactor.c	if ((x->s && r->text[x->s - 1] == '.') || x->status == RS_UNSURE) continue;	if (x->status == RS_UNSURE) continue;	a qualified column qualified again
+sqlref/refactor.c	if ((x->s && r->text[x->s - 1] == '.') || x->status == RS_UNSURE) continue;	if (x->s && r->text[x->s - 1] == '.') continue;	an unsure column refuses the whole text
+sqlref/refactor.c	return !r->src[sc].ne && refuse(	return 0 && refuse(	OPENJSON with no alias qualified as OPENJSON.
+sqlref/refactor.c	|| origin_of(&y, &y.r[j]) != origin_of(&x, &x.r[i]) 		the meaning check ignores what a column refers to (capture)
+sqlref/refactor.c	for (size_t i = 0; i < y.nr; i++) if (y.r[i].status > RS_UNSURE) goto done;		the meaning check accepts new errors
+sqlref/refactor.c	|| res_origin(&x, o->src, o->col) != res_origin(&y, u->src, u->col)) goto done;	) goto done;	the meaning check ignores where outputs come from
+sqlref/refactor.c	(m.s && !snap_eq(s, m, n))	0	the meaning check ignores output names
+sqlref/resolve.c	qsort(res->r, res->nr, sizeof *res->r, by_start);	if (0) qsort(res->r, res->nr, sizeof *res->r, by_start);	references left in walk order, edits out of order
+sqlref/resolve.c	if (!call || o >= 0) r->src[sc].ns	r->src[sc].ns	OPENJSON(..) named OPENJSON

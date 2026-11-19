@@ -8,7 +8,7 @@ CPPFLAGS += -Isqlref -I$(HOMEROS)/include -I$(HOMEROS)/src/syntax
 MAIN = $(HOMEROS)/src/text/text.c $(HOMEROS)/src/syntax/tsql.c
 LIB = $(wildcard sqlref/*.c)
 
-all: build/snapq build/resq
+all: build/snapq build/resq build/refq
 
 build/%: cmd/%.c $(LIB) $(MAIN) sqlref/*.h
 	@mkdir -p build
