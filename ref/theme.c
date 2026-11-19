@@ -122,12 +122,15 @@ const Face faces[FACE_COUNT] = {
 	{ {137, 180, 250}, {24, 24, 37}, FACE_FG | FACE_BG, {0} },  /* status line nc: MiniStatuslineInactive (my-nvim uses mini.statusline) */
 	{ {17, 17, 27}, {0, 0, 0}, FACE_FG, {0} },  /* win separator: WinSeparator */
 	{ {69, 71, 90}, {0, 0, 0}, FACE_FG, {0} },  /* end of buffer: EndOfBuffer */
+	{ {108, 112, 134}, {0, 0, 0}, FACE_FG, {0} },  /* non text: NonText, overlay0 (catppuccin editor.lua:34) */
 	{ {0, 0, 0}, {69, 71, 90}, FACE_BOLD | FACE_BG, {0} },  /* visual: Visual */
 	{ {205, 214, 244}, {62, 87, 103}, FACE_FG | FACE_BG, {0} },  /* search: Search */
 	{ {24, 24, 37}, {243, 139, 168}, FACE_FG | FACE_BG, {0} },  /* cur search: CurSearch */
 	{ {250, 179, 135}, {57, 59, 77}, FACE_BOLD | FACE_FG | FACE_BG, {0} },  /* match paren: MatchParen */
 	{ {147, 153, 178}, {24, 24, 37}, FACE_FG | FACE_BG, {0} },  /* pmenu: Pmenu */
 	{ {0, 0, 0}, {49, 50, 68}, FACE_BOLD | FACE_BG, {0} },  /* pmenu sel: PmenuSel */
+	{ {0, 0, 0}, {49, 50, 68}, FACE_BG, {0} },  /* pmenu sbar: PmenuSbar, surface0 (editor.lua:72) */
+	{ {0, 0, 0}, {108, 112, 134}, FACE_BG, {0} },  /* pmenu thumb: PmenuThumb, overlay0 (editor.lua:73) */
 	{ {205, 214, 244}, {24, 24, 37}, FACE_FG | FACE_BG, {0} },  /* normal float: NormalFloat, WhichKey */
 	{ {137, 180, 250}, {24, 24, 37}, FACE_FG | FACE_BG, {0} },  /* float border: FloatBorder, SnacksPickerBorder, WhichKeyBorder */
 	{ {166, 173, 200}, {24, 24, 37}, FACE_FG | FACE_BG, {0} },  /* float title: FloatTitle */

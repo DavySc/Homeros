@@ -52,6 +52,8 @@ typedef struct Buf {
 	Text *text;
 	Undo *undo;
 	char *path;                /* NULL for a buffer without a name */
+	char *full;                /* %F: file_full() then home_replace() (~/...), set at load
+	                              and on :w to a new name; NULL without a name */
 	FileId id;
 	Journal *journal;          /* crash journal; NULL if it could not be opened (msg said why) */
 	int watch;                 /* file_watch fd for the loop, -1 if none */
