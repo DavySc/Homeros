@@ -11130,6 +11130,806 @@ v 1 4     x@xaa\n    @
     
 <BS> <Right>
 n 1 9         _type
+${1:x} $1\t${1}  @
+    if a = 
+<C-w> a
+i 1 12     if a = a a    a  @
+${1}
+x 
+
+i 1 2 x 
+${1:é_y}.${1}.
+
+a <S-Tab> <Del>
+i 1 4 a   a   .
+a${1}@$0\t${2:col}a$2é
+    if a = 
+<Esc> <C-r> <C-r> <Tab> <Space> <Tab>
+n 1 12     if a = a@    colacolé
+λ${3}
+    
+<Right> <BS> <Tab> x <Tab> <Tab>
+i 1 16         x       
+${2:a b}${3:col}λ
+    
+<BS> <S-Tab> <Tab> <C-w> <S-Tab> <Esc> <C-r> <S-Tab>
+n 1 4     colλ
+_type${1:x}\t$0é$1.${1:x}\t${1:x}
+    
+<Tab>
+i 1 14     _typex    éx.x    x
+\n${1:col}.${1:col}(${1:col}
+    if a = 
+<S-Tab> <BS>
+n 2 4     if a = \n    .(
+${4:a b}(λ@${1:col}$3
+    
+<Tab> <BS>
+i 1 13     a b(λ@co
+${4} $4${2:é_y}$0
+x 
+<S-Tab> é <Space> <C-w> <Tab> <Del> <Left> <Tab>
+i 1 4 x    
+${1:col}é${1}a
+\tb.
+<C-w> <BS> <BS> x <Del> <Space>
+n 1 2 \tba
+a\n${2:é_y}, (${2}, 
+
+a <C-w> a
+i 2 1 a\na, (a, 
+a${1:x}
+\tb.
+
+v 1 4 \tb.ax
+\n\t${2}\t$0é${3:é_y}
+    
+é <C-w>
+i 2 8     \n            éé_y
+${2:col}.${3:é_y}é\t, 
+    if a = 
+<Tab> é x <Right>
+i 1 20     if a = col.éxé    , 
+_type
+x 
+<Left> <CR> a <C-w> <BS> <Right> <Left>
+i 1 6 x _type
+λ
+    
+<Tab> x <Right> <Tab> <Right> <Esc> <BS> <CR>
+n 1 11     λ   x   
+é${2}
+\tb.
+a <BS>
+i 1 5 \tb.é
+λ\t 
+\tb.
+<Left> <S-Tab>
+i 1 10 \tb.λ      
+\t${3:a b}
+x 
+a <BS>
+i 1 6 x     
+${3:é_y}
+x 
+<Tab> <S-Tab> x <Tab> <Space> <Right>
+i 1 14 x é_y   x    
+\t.
+    if a = 
+<Tab> <Tab> <BS> <Right> <Del> <Tab> <Esc>
+n 1 23     if a =     .        
+.é${2:x}é${1:é_y}\n
+x 
+<Tab> <Del> <Left> <CR> <Esc>
+n 2 0 x .ééé_y\n
+${2:col}${4:x}λ${2:col}
+    if a = 
+<BS> <Del> <BS> <Left> <S-Tab> <C-w> <Space>
+n 1 10     if a = λ
+\t(${1:x}${4:col} ${2:é_y}
+x 
+<BS> <Tab> <Right> <CR> <BS> <CR> <BS> <S-Tab>
+n 1 6 x     (col é_y
+@@
+x 
+<C-w> <Tab> <CR> <BS> <Esc> u u x
+n 1 0 x
+(
+    
+<CR> <CR> <S-Tab> é <Right>
+i 3 10     (\n\n        é
+${3:a b}${4:a b}a
+    
+<Tab> <BS>
+n 1 7     a ba
+(
+    
+
+i 1 5     (
+(\t
+\tb.
+<Tab> a a <Esc> <C-r> <Right> <BS>
+n 1 9 \tb.(     aa
+. (
+x 
+<C-w> <Del> <S-Tab> <Del> <Esc> <S-Tab> <S-Tab>
+n 1 7 x .     
+\t${1:x}@a
+    if a = 
+<S-Tab> é <S-Tab> <CR> <Tab> <S-Tab> <Esc>
+n 2 7     if a =     é    \n    @a  
+é_type\t${1:x}λ${3}${4:col}
+    if a = 
+
+v 1 22     if a = é_type    xλcol
+${1}.$1
+
+
+i 1 0 .
+${1:col}é\n
+x 
+<Tab> <CR> <Right> <Tab>
+i 3 4 x colé\n\n    
+_type${4:a b}
+
+
+v 1 5 _typea b
+a${1:a b}
+    if a = 
+<Esc> <Space> <Right> x é <Esc> <Right>
+n 1 13     if a = aa 
+.${1} ${1}
+    
+<Del> <Tab> <Del> <Tab> <Space> <Tab> é <Left>
+i 1 12     .       é
+${1:col}é${1:col}, .${1:col}
+    if a = 
+<BS> <C-w>
+n 1 11     if a = é, .
+${2}.λ${1:x}\t.
+    
+<S-Tab> <Esc> <BS> <Tab> a
+i 1 7     .λx    .
+ _type
+    if a = 
+<Right> <Tab> <Tab> <C-w> x a <Space>
+i 1 15     if a =  xa 
+${1:a b}\n ${1:a b}@${1:a b} ${1:a b}
+    
+<BS> <S-Tab> <Del>
+n 1 2    \n     @ 
+${3:é_y}_typea${1:a b}a${2:x}
+x 
+<BS> <BS> <Left>
+n 1 10 x é_y_typeaax
+, _typeλ(${2:col}${3:col}_type
+\tb.
+
+v 1 13 \tb., _typeλ(colcol_type
+${2}
+\tb.
+<Del> <Tab> <Tab> <BS> x <Tab>
+i 1 9 \tb.  x   
+@, é
+\tb.
+<Tab>
+i 1 10 \tb.@, é  
+\n$3(${3}λ${1:col}
+
+<BS> x
+n 2 0 \n(
+${1}
+    if a = 
+<BS> <Tab> a <Space> <Esc> u <Tab> <Right>
+n 1 10     if a = 
+${4:a b} _type@a${2:é_y}(
+
+a
+i 1 12 a b _type@aa(
+, @${1:x}a${1}.${1}
+x 
+<Tab> a a x <Right> <Left> é <BS>
+i 1 12 x , @xax.xaax
+@${3:é_y}_type$3${4}.
+    
+
+v 1 5     @é_y_typeé_y.
+$3.${1:a b}${2:é_y}
+\tb.
+é <C-w> <Tab> é <Right>
+i 1 6 \tb..é
+, _type${3:col}λ${3:col}a${3:col}
+    if a = 
+<BS> <Right> é é
+n 1 20     if a = , _typeλa
+.${1:x}
+\tb.
+<Esc> <Space> <S-Tab> <C-w> <Esc> <S-Tab> <Tab> <S-Tab>
+n 1 4 \tb..x
+${1:col}, $1_type, 
+\tb.
+a <Tab> <S-Tab> <S-Tab> <BS> <Tab> <C-w> <BS>
+i 1 11 \tb.a, a_typ
+${1:é_y}
+
+<BS> x
+n 1 0 
+${2:a b} \n${1:a b}${2:a b}
+    
+x <Right> <Esc> a <Right> é
+i 2 9     a b \n    xa éb
+${3:x}
+\tb.
+<BS> <CR>
+n 1 2 \tb.
+_type\t
+x 
+
+i 1 11 x _type    
+${1:x}_typeλ${1:x}.${1:x} ${1}
+    
+<Del> <Tab> <Space> <Space> <Right> <Tab> <Tab> é
+n 1 7     _typeλ. 
+_type${2:é_y}@${2:é_y}é_type${2:é_y}
+    
+<Tab> <Space> <C-w> é <Space>
+i 1 32     _typeé_y@é_yé_typeé_yé 
+${3:col}@${3:col}${2:x}${1:a b}, \t
+\tb.
+<S-Tab> <Space> <S-Tab> <BS> x
+i 1 12 \tb.col@colxx,     
+${1:a b}
+
+<Tab> <Left> <Left> <Del> <Del> <Space> <Right>
+i 1 2 a 
+${1:é_y}
+    if a = 
+<BS> <Right> x <Tab> <S-Tab> <CR> <Space> <S-Tab>
+n 1 9     if a =
+${2:col}${1:x}\t 
+\tb.
+<Right> <C-w> <Tab>
+v 1 3 \tb.colx     
+$1a${2:é_y}a, \n
+
+<Tab> <CR>
+i 2 0 a\na, \n
+${4:x}@
+
+<C-w> <C-w> <S-Tab> <C-w> x <C-w> <Esc> <Space>
+n 1 0 @
+${1:x}@${1:x}
+x 
+<Left>
+v 1 1 x x@x
+${1:col}é$1
+    if a = 
+<Right> <Tab>
+i 1 19     if a = colécol
+${1:a b}é$1(é
+    
+<Del>
+n 1 4     é(é
+${1:é_y}λ$0
+
+<S-Tab> <BS> <Del>
+n 1 0 
+.${2:x}${1:a b}
+    
+<Left> <S-Tab> <S-Tab> x
+i 1 6     .x
+${1:x}é${1}
+    
+<BS> <Del> <S-Tab>
+n 1 3     
+${2:x}
+    
+<BS> <BS> <Tab> <S-Tab>
+n 1 2     
+.${1:x}λ$1é${1:x}
+
+<S-Tab>
+v 1 1 .xλxéx
+(a${1:col}${2:col}@$2$1@${2:col}
+x 
+<C-w> <Left> <S-Tab> <Esc> u <S-Tab>
+n 1 1 x 
+${1:é_y}
+
+é a <BS> <Esc> u u u u
+n 1 0 
+, \t_type(
+    
+<C-w> <Tab> <S-Tab> x
+i 1 21     ,     _type     x
+a_type
+    
+<Space> <Space>
+i 1 12     a_type  
+${4:a b}${2:x}
+
+<Right>
+v 1 4 a bx
+a${1:a b}(\t${2:col}${1}
+    
+<C-w>
+v 1 5     aa b(    cola b
+λa$0${3:a b}_type$2
+x 
+<Del> <Esc> <C-r> é <Tab> <S-Tab> <Tab>
+n 1 12 x λaa b_type
+${1:col}, ${1:col}@${1:col}é
+    if a = 
+<Tab> <Left> a <Tab> a <Esc>
+n 1 28     if a = col, col@cola    aé
+${1:a b}(${1} 
+
+<S-Tab> <Tab> <Del> <Esc> <C-r>
+n 1 7 a b(a b 
+${2:x}é(_type$0
+    if a = 
+x <Right> x
+i 1 15     if a = xéx(_type
+é
+    
+<Space> <BS> é <Tab>
+i 1 10     éé  
+ ${3:x}(${1:a b}${2:col} 
+
+<S-Tab> <Space> <Tab> é <Del> <Tab>
+v 1 1  x( é
+${1:a b}.
+
+x <CR> <BS> <Tab> é x <Space> <BS>
+i 1 5 x.éx
+_type${1:col}é.$2a_type
+    if a = 
+<S-Tab> <Tab> <Tab> <C-w> <Right> <C-w> <BS> <CR>
+i 2 4     if a = _typecol\n    
+.\n${2:é_y}${1:col}
+\tb.
+a <Tab> <Tab> x <Del> <S-Tab> <BS>
+i 2 7 \tb..\n\té_yax
+\n_type@${1:é_y}, ${1:é_y}
+    
+<BS> <Del> <Tab> <Space> <S-Tab> <BS>
+n 2 9     \n    _type@ 
+${2}(${2}\n
+x 
+<Del> <BS> <C-w> a <Tab> <C-w> <C-w>
+i 1 0 
+a$1, $1
+x 
+<Tab> <BS> <Space> <Tab> é
+i 1 10 x a,    é
+\t${1:col}λ$0
+
+a <C-w> x <BS> é <S-Tab>
+i 1 9     é   λ
+$4${1:col}, ${1:col}${3:a b}\t$1${2:x}_type
+\tb.
+<BS> <Tab>
+n 1 3 \tb., a b    x_type
+é@é${1:x}a${1:x}_type${1:x}\t${1:x}
+    
+<Right>
+v 1 10     é@éxax_typex    x
+ 
+
+<Tab> é <Del> <Del> <S-Tab> <C-w> <Left>
+i 1 3     
+${1:é_y}é
+
+<CR> x <Tab>
+i 2 3 \nxé
+${1:x}é${1:x}@é${1:x}
+    
+<S-Tab> <Tab> <Space> <Space>
+i 1 14     xéx@éx  
+$2${1:x}@${2}${3:x}λ$2
+\tb.
+<Del> <Tab> é
+n 1 3 \tb.@xλ
+${3:é_y}${1:é_y}$0_type${3:é_y}
+    
+<Left> <Tab> <S-Tab>
+v 1 8     é_yé_y_typeé_y
+\t${1}(${1}
+    if a = 
+
+i 1 15     if a =     (
+(é$1
+    if a = 
+a <Tab> <C-w> <BS> <Right> <Space>
+i 1 12     if a =  
+.$3($3${2:a b}
+    if a = 
+<Right> <BS> <Tab> x <Tab> <Del> <BS> <BS>
+n 1 9     if a = .
+${1:é_y}λ${1:é_y}
+
+
+v 1 0 é_yλé_y
+${2:é_y}.(${1:a b}\t$2
+    
+<Right> <Del> x x <S-Tab> <Tab> <BS>
+n 1 10     é_y.(a  é_y
+${3:x}, é(.\t
+    
+<Tab> <C-w> <S-Tab> x <Del> <Space>
+i 1 15     x, é    x 
+${1:é_y}${2:a b}
+    if a = 
+<C-w> <CR> <Tab> <S-Tab>
+v 1 10     if a = \n    a b
+${2:x}\n\t${1:col}${2:x}\n
+
+
+v 2 4 x\n    colx\n
+.${2:x}
+x 
+<Tab>
+i 1 4 x .x
+${2:x}λ@\n
+    
+<Tab> <BS>
+i 2 0     xλ@\n
+@${1} ${3:x}é_type
+    
+é <BS> <Tab>
+v 1 6     @ xé_type
+, , .
+    
+<Tab> <Del> <S-Tab> a <Space> é <S-Tab>
+i 1 21     , , .       a é 
+λ
+x 
+<Del> <S-Tab> <Right> <BS> <Tab> <Space>
+i 1 6 x λ  
+ ..${1:x}@${3:é_y}@$3
+    
+x <Left>
+i 1 7      ..x@é_y@é_y
+(_type
+\tb.
+x <Tab> <Del> <S-Tab>
+i 1 17 \tb.(_typex       
+@
+
+<Tab> <Space> <Tab> <Tab> <Tab> <BS> <BS>
+i 1 8 @       
+${2:a b} λ@
+    
+<Tab> <Right> <BS> <C-w> <Left>
+i 1 7     a b 
+. ${1:é_y}λ
+\tb.
+<CR> <Tab>
+i 2 10 \tb.. \n        λ
+${1:a b}, 
+    
+<Tab>
+i 1 9     a b, 
+@$0
+x 
+<Tab> <CR> <BS> <CR> a <C-w> <CR>
+i 3 0 x @ \n\n
+${1}_type$1\t${1}
+    
+<S-Tab> <Tab>
+i 1 25         _type            
+${1:col}é${1:col}@${1}
+x 
+<Tab> <Tab>
+i 1 17 x colécol@col   
+${1:x}.${1}
+\tb.
+<Right> <Esc> u u u
+n 1 0 
+${2}${1}_type${1}
+
+<Left> a <Right> a
+i 1 3 a_atypea
+${1:col}
+\tb.
+<BS> <Tab> <Tab> <Space> <BS> <BS> <Tab> <Right>
+n 1 1 \tb.
+.
+x 
+é <Tab> <Right>
+i 1 9 x .é    
+${1}@_type$2
+
+<Right> <Tab>
+i 1 4 @   _type
+${1:a b}${2:a b}
+\tb.
+<Esc> a <BS> <Right> <Tab> <S-Tab> <Esc>
+n 1 8 \tb.      ba b
+.
+    if a = 
+a <CR> <BS> <Esc>
+n 2 0     if a = .a\n
+\t@ $0 é
+x 
+<Space> <Esc> u <S-Tab>
+n 1 1 x 
+${1:a b}, $0 
+    if a = 
+<Right> <Tab> é <BS> <C-w> a <Del> <C-w>
+i 1 14     if a = a b
+, $0_type${2:a b}
+x 
+<BS> <Esc> <Right> <Right> <Del> <Right> <Esc> u
+n 1 8 x , _type
+λ@${1}_type
+    
+
+i 1 7     λ@_type
+_type${1:x}
+    
+<Right> <Tab> <S-Tab> <S-Tab> é <BS>
+i 1 16     _typex      
+aλ${2:a b}${1:a b}λ
+
+<Esc> <Esc> <BS> <Tab> <S-Tab>
+n 1 5 aλa ba bλ
+λé. 
+\tb.
+a <BS> <Right> é <Tab> <Space>
+i 1 13 \tb.λé. é  
+, 
+x 
+<CR> <Right> <Esc> <CR>
+n 2 0 x , \n
+${2:a b}
+
+<Tab>
+i 1 3 a b
+_type${4:col}
+\tb.
+<BS> <S-Tab> <C-w> <Esc> <BS> <Tab> <Right>
+n 1 7 \tb._type
+${3:a b}, ${3:a b}\t
+x 
+<BS> <Esc> <Left> <Right>
+n 1 2 x ,     
+é\n \n${2:a b}$3${1:x}
+
+<Tab> <Del> <Tab> <Tab> <Esc> u u <Del>
+n 1 0 
+.$1a$1
+    
+<Del>
+i 1 5     .
+${2:x}_type${2} ${1:col}\n$1(@
+    if a = 
+<Right> <Tab> <Tab> <Right> <BS> <Tab>
+i 2 12     if a = x_typex col\n    col(    
+ 
+
+<Del> <Space>
+i 1 2   
+${1:é_y}λ\né
+    if a = 
+<BS> <Esc> u u
+n 1 10     if a = 
+${1:a b}@${1:a b}, ${1:a b}, , ${1:a b}
+
+<Right> <S-Tab> é
+i 1 3 aé@aé, aé, , aé
+\t${3:x}λ
+    if a = 
+<Left>
+v 1 14     if a =     xλ
+éλ\t$3
+    
+<BS> é x <Tab> <Right> <BS> <S-Tab> <BS>
+i 1 12     éλ  é
+\n${1:col}.${1:col}
+    if a = 
+<BS> <Esc> <Space> <Tab> <Tab> <S-Tab> x
+n 2 3     if a = \n    
+${1:a b}λ\t${1:a b}
+    if a = 
+<Tab> <Right> <BS> <Tab> <Tab> x <Del> <Del>
+i 1 30     if a = a bλ    a        x
+${2:col}${1:col}, $0λ${1:col}$2
+\tb.
+<Tab> <BS>
+n 1 3 \tb.col, λcol
+${2:col}a${3:é_y}${4:x}
+x 
+<Tab> <Del> <Esc> u
+n 1 6 x colaé_yx
+${4:a b}\n@${3:x}
+\tb.
+<Left> <Right> <S-Tab> é <Tab> <C-w> <BS> <Tab>
+i 2 5 \tb.a b\n\t    
+\n${3}, 
+    if a = 
+<BS> <Tab> <Left> <Tab>
+i 2 4     if a = \n,    
+${1:é_y}${2:col}
+\tb.
+<CR> <BS> <BS> <Tab> <Tab> <Tab> é <Left>
+i 2 4 \tb.\ncol é
+(
+x 
+<Tab> a é <Esc>
+n 1 5 x ( aé
+${3:x}${2:x}${1}, $1${2:x}, ${2:x}
+\tb.
+<BS> <Left> x <C-w> x <Tab> <Right> <BS>
+i 1 5 \tb.xx x, x
+${3:x}$2λ${3}${1}
+    
+<Left> a <Del>
+i 1 8     xλa
+_type${1:x}, λ${2:col}, 
+\tb.
+<CR> <Space> <Del> <Del> <Del> <Del>
+i 2 9 \tb._type\n         ol, 
+\n$1@$1_type$1λ
+
+<Tab> x <Right> <Space> x a <Del> x
+i 2 13 \n@_typeλx xax
+@${3:é_y}
+
+<Space> <Space> <Tab> <BS> <Esc>
+n 1 1 @ 
+.$1
+
+<S-Tab> <S-Tab> <Esc> <Right> <Esc> u u
+n 1 0 
+$3$0a${4:x}é\t${1:col}
+    if a = 
+<S-Tab> <Tab>
+i 1 11     if a = axé    col
+${3:col}\n${3:col}a@\t
+\tb.
+<Esc>
+n 1 3 \tb.col\n\tcola@    
+$0
+    
+<BS> <Space> <S-Tab>
+i 1 4     
+${1:x}(\né
+
+<Tab> <S-Tab> <S-Tab>
+i 2 9 x(\né       
+(
+    if a = 
+<CR> é <Right> é <BS> a <BS>
+i 2 6     if a = (\n    é
+(_type${2:col}${1:col}
+    if a = 
+<Del> <BS> <Tab> <Space> <C-w>
+n 1 19     if a = (_typecol
+a, ${1:é_y}${2:é_y}_type$2
+    if a = 
+<Esc> <BS> <Esc> <C-r> <Tab>
+n 1 13     if a = a, é_yé_y_typeé_y
+${2:col}_type${2:col}${3:a b}\n${3:a b}${2}
+    
+<BS> x x <Tab> <Tab> <BS> <S-Tab>
+n 1 3     ypea b\n    a b
+${2:col}@a\n 
+    
+<Left> <C-w>
+v 1 3     col@a\n     
+${1:é_y}\né
+\tb.
+
+v 1 3 \tb.é_y\n\té
+${1}.${1}é${1}a${1}.$1
+    
+<Tab> <C-w> a <S-Tab> <Esc> x <BS>
+n 1 10     .éaa   
+, \n${2}${1:é_y} $2${1:é_y}@
+    
+<Space> <Del> <Tab> <C-w>
+i 2 0     , \n  @
+(${1:col}λ${1:col}@${2:é_y}${3:col}
+\tb.
+<Tab> a <S-Tab>
+v 1 4 \tb.(colλcol@acol
+${1:é_y}λ\t\n.
+x 
+<S-Tab> <Left> <C-w> <Right> <BS> <Space> <C-w>
+n 1 4 x λ    \n.
+${1:col}é${1:col}@${1} ${1}
+    
+<BS> <Esc> <Tab> é <BS> <Del>
+n 1 3    é@ 
+é
+
+x <S-Tab> <BS> <Left>
+i 1 2 éx
+(.
+    if a = 
+
+i 1 13     if a = (.
+$0\t${1:a b} , , ${1:a b}.$1
+    if a = 
+<BS> <S-Tab> <Tab> <Tab> <Del>
+n 1 15     if a =     , , .
+_type${2:a b}é(., 
+\tb.
+
+v 1 8 \tb._typea bé(., 
+${3:col}${1:col}
+x 
+<Esc> <C-r> u <Right>
+n 1 1 x 
+\nλ(${1:x} ${2:é_y}${1}
+    
+a <Right> <Esc> u <C-r> u <BS> x
+n 2 6     \n    λx é_yx
+${1:x}@$1
+
+<Del> <Right> <Esc>
+n 1 0 @
+$4a
+\tb.
+<S-Tab>
+i 1 5 \tb.  a
+é${1:a b}a${1:a b}a(${1:a b}
+\tb.
+<BS> <C-w> a <Left> é <Tab> <Del> <Tab>
+i 1 15 \tb.éé        a(
+${3:col}λ$4.\t
+    
+<BS> <Tab> <BS> x
+n 1 3    λ.    
+$3${2:col}λ$3é${2:col}éλ
+x 
+<C-w> <Esc> u
+n 1 1 x 
+(_type\té ${3:x}${1:col}
+    if a = 
+
+v 1 25     if a = (_type    é xcol
+${1}λ${1}${2:x}\t$0\t ${2:x}
+    
+é a <Tab> <BS> <S-Tab> a <Right> <S-Tab>
+i 1 15     éaλéa          
+${4:col}
+x 
+<BS> <S-Tab> <Tab> <C-w> x <S-Tab> <S-Tab>
+n 1 0 x
+, .${4:a b}\n\n${1:a b}
+\tb.
+x
+i 3 2 \tb., .a b\n\t\n\tx
+@λ${1:col}
+
+<Tab> é <BS> x <S-Tab>
+i 1 9 @λcolx  
+${3:é_y}${1:a b}, ${1:a b}@($3a
+
+
+v 1 4 é_ya b, a b@(é_ya
+éé
+x 
+x <Tab> <CR> x x <S-Tab>
+i 2 4 x ééx   \nxx  
+é${3:x}_type
+
+<S-Tab> <Space> <Esc> <Space> <Tab> <Esc> u
+n 1 2 éx_type
+${1:col}, $1\t${1:col}λ$1
+    if a = 
+<S-Tab> a <Esc>
+n 1 11     if a = a, a    aλa
+, $0, ${1:col} $1(${1:col}($1
+    
+<Del> <Space>
+n 1 9     , ,  ((
+${2:x}(
+
+<C-w> x x <Del> <Tab>
+i 1 2 xx
 dbo.tsf_user(),\nsysdatetime(),\ndbo.tsf_user(),\nsysdatetime()
 
 <Tab>
@@ -12302,3 +13102,1191 @@ if @${1:mode_col} is null or @${1:mode_col} = 0  -- A\nbegin\n    set @${2:switc
     if a = 
 <BS> <Right> x é <Esc>
 n 1 16     if a = if @ s null or @ = 0  -- A\n    begin\n        set @switch_to_a_type = 2\n    end\n    \n    if @ is null or @ = 1  -- B\n    begin\n        set @switch_to_b_type = 2\n    end
+exec dbo.tsf_send_message '${1:message_id}', null, 1\nrollback\nreturn
+
+<Del> a <Tab> <Tab> a <Tab> <S-Tab>
+i 1 44 exec dbo.tsf_send_message ''        a       , null, 1\nrollback\nreturn
+${2}  
+
+<C-w> <Tab> <BS> é a <Esc> u
+n 1 1   
+a$0${1:col}, , @\n
+x 
+x <Left> <Right> x <S-Tab> <BS>
+i 1 5 x axx, , @\n
+${1:x}\naλ
+    
+a <Tab> <C-w> <Space> <BS> <Space> <Del>
+i 2 5     a\n     
+ 
+x 
+<Tab> <Right> <Space> <Space>
+i 1 6 x     
+if exists (select 1 from inserted i where ${1:i.child_id = i.parent_id})\nbegin\n    exec tsf_send_message '${2:message_id}', null, 1\n    rollback tran\n    return\nend
+x 
+<CR> é
+i 2 2 x if exists (select 1 from inserted i where \né)\nbegin\n    exec tsf_send_message 'message_id', null, 1\n    rollback tran\n    return\nend
+case\n    when len(a.name) > 2 and b.name like '%' + a.name + '%' then 10\n    when len(b.name) > 2 and a.name like '%' + b.name + '%' then 20\n    else 30\nend as match_order_no
+\tb.
+<CR>
+i 6 8 \tb.case\n\t    when len(a.name) > 2 and b.name like '%' + a.name + '%' then 10\n\t    when len(b.name) > 2 and a.name like '%' + b.name + '%' then 20\n\t    else 30\n\tend as match_order_no\n        
+ , (
+    
+é <Tab>
+i 1 13      , (é   
+if @${1:grp_id} <> @upd_${1:grp_id}\nbegin\n    update r\n    set r.granted = 1\n    from ${2:role_overview} r\n    where r.${1:grp_id} = @${1:grp_id}\n      and r.granted = 0\n      and r.role_id in (select o.role_id from #old_roles o)\nend
+
+<Tab> a é <Tab> <Tab> <Esc> u <C-r>
+n 5 9 if @grp_id <> @upd_grp_id\nbegin\n    update r\n    set r.granted = 1\n    from aé r\n    where r.grp_id = @grp_id\n      and r.granted = 0\n      and r.role_id in (select o.role_id from #old_roles o)\nend 
+${3:é_y}${1:col}_type_type${4:é_y}
+\tb.
+<BS> <C-w> <S-Tab> <Del>
+n 1 7 \tb.é_ytype_typeé_y
+begin try\n    begin transaction;\n\n    $0\n\n    commit transaction;\nend try\nbegin catch\n    if @@trancount > 0\n    begin\n        rollback transaction;\n    end;\n\n    declare @errmsg varchar(500) = error_message(),\n            @errseverity int = error_severity(),\n            @errstate int = error_state()\n\n    raiserror(@errmsg, @errseverity, @errstate) with nowait;\nend catch;
+
+a <Esc> <C-r> u <C-r> <Tab> <Tab>
+n 1 0 begin try\n    begin transaction;\n\n    a\n\n    commit transaction;\nend try\nbegin catch\n    if @@trancount > 0\n    begin\n        rollback transaction;\n    end;\n\n    declare @errmsg varchar(500) = error_message(),\n            @errseverity int = error_severity(),\n            @errstate int = error_state()\n\n    raiserror(@errmsg, @errseverity, @errstate) with nowait;\nend catch;
+raiserror(@warning_message, 9, 10)
+x 
+<Tab>
+i 1 40 x raiserror(@warning_message, 9, 10)    
+if (@${1:id_a} is null or @${2:id_b} is null)\nbegin\n    return\nend
+    if a = 
+a <Right>
+i 1 18     if a = if (@a is null or @id_b is null)\n    begin\n        return\n    end
+if @${1:mode_col} is null or @${1:mode_col} = 0  -- A\nbegin\n    set @${2:switch_to_a}_type = 2\nend\n\nif @${1:mode_col} is null or @${1:mode_col} = 1  -- B\nbegin\n    set @${3:switch_to_b}_type = 2\nend
+\tb.
+<Left> x <Right> <Tab>
+i 1 9 \tb.if x  is null or @mode_col = 0  -- A\n\tbegin\n\t    set @switch_to_a_type = 2\n\tend\n\t\n\tif @mode_col is null or @mode_col = 1  -- B\n\tbegin\n\t    set @switch_to_b_type = 2\n\tend
+if @${1:mode_col} is null or @${1:mode_col} = 0  -- A\nbegin\n    set @${2:switch_to_a}_type = 2\nend\n\nif @${1:mode_col} is null or @${1:mode_col} = 1  -- B\nbegin\n    set @${3:switch_to_b}_type = 2\nend
+    
+<S-Tab> <Tab> <Space> <Tab> <BS>
+n 8 13     if @mode_col is null or @mode_col = 0  -- A\n    begin\n        set @ _type = 2\n    end\n    \n    if @mode_col is null or @mode_col = 1  -- B\n    begin\n        set @_type = 2\n    end
+update ${1:selection_table}\nset selected = 1\nwhere ${2:parent_id} = @${2:parent_id}\n  and ${3:item_id} = @${3:item_id}
+    
+<Tab> <S-Tab> x <BS> <Space>
+i 1 12     update  \n    set selected = 1\n    where parent_id = @parent_id\n      and item_id = @item_id
+update p\nset p.no_of_${1:items} = coalesce(n.cnt, 0)\nfrom ${2:parent} p\ncross apply\n(\n    select count(*) as cnt\n    from ${3:child} c\n    where c.${4:parent_id} = p.${4:parent_id}\n) n\nwhere exists\n(\n    select 1\n    from [INS_DEL] i  -- template param: inserted/deleted\n    where i.${4:parent_id} = p.${4:parent_id}\n)\n  and p.no_of_${1:items} <> coalesce(n.cnt, 0)
+
+<Del> é
+n 2 12 update p\nset p.no_of_ = coalesce(n.cnt, 0)\nfrom parent p\ncross apply\n(\n    select count(*) as cnt\n    from child c\n    where c.parent_id = p.parent_id\n) n\nwhere exists\n(\n    select 1\n    from [INS_DEL] i  -- template param: inserted/deleted\n    where i.parent_id = p.parent_id\n)\n  and p.no_of_ <> coalesce(n.cnt, 0)
+ ${1:é_y}a$0, ${1:é_y}
+    
+<Tab> <Tab> <C-w> x <Left>
+i 1 10      é_yax, é_y
+${1:é_y}(
+    
+<Tab> <BS> <C-w> <CR> <CR> <BS> <Tab>
+i 3 4     \n\n    
+ 
+\tb.
+<BS> <CR> <BS> <Left>
+i 2 3 \tb.\n    
+if @variant_id = '${1:variant_a}'\nbegin\n    select @badge_value = nullif(count(*), 0)\n    from ${2:table} t\n    where t.${3:parent_id} = @${3:parent_id}\n      and t.${4:kind} = 0  -- ${5:kind a}\nend\nelse if @variant_id = '${6:variant_b}'\nbegin\n    $0\nend
+
+<BS> <BS> a <Tab> <C-w>
+i 1 18 if @variant_id = ''\nbegin\n    select @badge_value = nullif(count(*), 0)\n    from table t\n    where t.parent_id = @parent_id\n      and t.kind = 0  -- kind a\nend\nelse if @variant_id = 'variant_b'\nbegin\n    \nend
+${1}($1 ${1}
+x 
+x <S-Tab> <Tab> <S-Tab> <Tab>
+i 1 16 x x (x  x       
+a
+    
+
+i 1 5     a
+update ${1:selection_table}\nset selected = 1\nwhere ${2:parent_id} = @${2:parent_id}\n  and ${3:item_id} = @${3:item_id}
+    if a = 
+<C-w>
+v 1 18     if a = update selection_table\n    set selected = 1\n    where parent_id = @parent_id\n      and item_id = @item_id
+if exists\n(\n    select 1\n    from inserted i\n    join deleted d\n      on d.${1:order_id} = i.${1:order_id}\n    where i.${2:status} = ${3:1}   -- ${4:completed}\n      and d.${2:status} <> ${3:1}\n)\nbegin\n    update o\n    set o.${5:completed_on} = sysdatetime(),\n        o.update_user = dbo.tsf_user(),\n        o.update_date_time = sysdatetime()\n    from ${6:order_header} o\n    where exists\n    (\n        select 1\n        from inserted i\n        join deleted d\n          on d.${1:order_id} = i.${1:order_id}\n        where i.${1:order_id} = o.${1:order_id}\n          and i.${2:status} = ${3:1}\n          and d.${2:status} <> ${3:1}\n    )\nend
+    
+<Right> <BS> <C-w> <Right>
+n 6 17     if exists\n    (\n        select 1\n        from inserted i\n        join deleted d\n          on d.o = i.o\n        where i.status = 1   -- completed\n          and d.status <> 1\n    )\n    begin\n        update o\n        set o.completed_on = sysdatetime(),\n            o.update_user = dbo.tsf_user(),\n            o.update_date_time = sysdatetime()\n        from order_header o\n        where exists\n        (\n            select 1\n            from inserted i\n            join deleted d\n              on d.o = i.o\n            where i.o = o.o\n              and i.status = 1\n              and d.status <> 1\n        )\n    end
+, ${1:a b} \t_type$1
+
+<Esc> <S-Tab> <S-Tab> <Del> <Tab> <Del> <S-Tab>
+n 1 2 , b     _typea b
+${1:é_y}, 
+
+<S-Tab> <C-w>
+v 1 0 é_y, 
+if exists (select 1 from inserted i where i.${1:flag} = 1)\nbegin\n    update c\n    set c.${1:flag} = 0,\n        c.update_user = dbo.tsf_user(),\n        c.update_date_time = sysdatetime()\n    from ${2:table} c\n    join inserted i\n      on i.${3:group_id} = c.${3:group_id}\n    where i.${1:flag} = 1\n      and c.${1:flag} = 1\n      and c.${4:id} <> i.${4:id}\nend
+    if a = 
+<Esc> u <BS> <Esc> u <Tab> <Del> <S-Tab>
+n 1 0 
+if exists (select 1 from ${1:configuration} c where c.${2:locked} = 1)\nbegin\n    select\n        @add_button_type     = 2,\n        @update_button_type  = 2,\n        @delete_button_type  = 2,\n        @confirm_button_type = 2,\n        @cancel_button_type  = 2\nend
+x 
+<Tab> a
+i 1 52 x if exists (select 1 from configuration c where c.a = 1)\nbegin\n    select\n        @add_button_type     = 2,\n        @update_button_type  = 2,\n        @delete_button_type  = 2,\n        @confirm_button_type = 2,\n        @cancel_button_type  = 2\nend
+\n${1:a b}.$1.${1:a b}
+    if a = 
+<S-Tab> <Esc> u <C-r> <Del> <S-Tab> x
+n 1 8     if a \n    a b.a b.a b
+exec dbo.tsf_send_message '${1:message_id}', null, 1\nrollback\nreturn
+x 
+a <Del>
+i 1 30 x exec dbo.tsf_send_message 'a, null, 1\nrollback\nreturn
+if @${1:type_col} <> ${2:0}  -- ${3:element}\nbegin\n    set @${4:task_id}_type = 2\nend
+
+<C-w> <BS> <C-w> <Space>
+n 1 5 if @ <> 0  -- element\nbegin\n    set @task_id_type = 2\nend
+declare @new_job int\n\ninsert into ${1:queued_task}\n(\n    task_type,\n    task_status,\n    owner_id,\n    queued_date_time,\n    cancelled,\n    waiting_for_id,\n    insert_user,\n    insert_date_time,\n    update_user,\n    update_date_time\n)\nvalues\n(\n    ${2:9},  -- ${3:task type}\n    0,       -- queued\n    dbo.get_usr_id(),\n    sysutcdatetime(),\n    0,\n    ${4:dbo.get_last_in_chain(@parent_id)},\n    dbo.tsf_user(),\n    sysdatetime(),\n    dbo.tsf_user(),\n    sysdatetime()\n)\n\nset @new_job = scope_identity()
+
+<Tab> <BS> <Del> <Space> <S-Tab>
+n 18 5 declare @new_job int\n\ninsert into queued_task\n(\n    task_type,\n    task_status,\n    owner_id,\n    queued_date_time,\n    cancelled,\n    waiting_for_id,\n    insert_user,\n    insert_date_time,\n    update_user,\n    update_date_time\n)\nvalues\n(\n      -- task type\n    0,       -- queued\n    dbo.get_usr_id(),\n    sysutcdatetime(),\n    0,\n    dbo.get_last_in_chain(@parent_id),\n    dbo.tsf_user(),\n    sysdatetime(),\n    dbo.tsf_user(),\n    sysdatetime()\n)\n\nset @new_job = scope_identity()
+t.${1:value} = case\n                   when @${2:type} = 1 then null  -- ${3:column based}\n                   when @${4:condition} in (10, 11) then null  -- ${5:is (not) empty}\n                   else @${1:value}\n               end
+    
+<C-w> <Tab> <Del> <S-Tab> <Del>
+n 2 29     t.value = case\n                       when @= 1 then null  -- column based\n                       when @condition in (10, 11) then null  -- is (not) empty\n                       else @value\n                   end
+\n${3:col}${1:col}\n$3
+
+<Right> <Del>
+n 2 3 \ncolc\ncol
+begin try\n    begin transaction;\n\n    $0\n\n    commit transaction;\nend try\nbegin catch\n    if @@trancount > 0\n    begin\n        rollback transaction;\n    end;\n\n    declare @errmsg varchar(500) = error_message(),\n            @errseverity int = error_severity(),\n            @errstate int = error_state()\n\n    raiserror(@errmsg, @errseverity, @errstate) with nowait;\nend catch;
+
+<Del>
+i 4 4 begin try\n    begin transaction;\n\n    \n    commit transaction;\nend try\nbegin catch\n    if @@trancount > 0\n    begin\n        rollback transaction;\n    end;\n\n    declare @errmsg varchar(500) = error_message(),\n            @errseverity int = error_severity(),\n            @errstate int = error_state()\n\n    raiserror(@errmsg, @errseverity, @errstate) with nowait;\nend catch;
+$1 $1, ${1}
+
+<Space> <Right> é <Right> <Tab>
+i 1 8    ,      
+if @${1:flag_col} <> 1\nbegin\n    set @ref_${2:parent}_${3:detail}_type = 2\nend
+
+<BS> a a a <Right> <C-w>
+i 1 7 if @ aa> 1\nbegin\n    set @ref_parent_detail_type = 2\nend
+if @${1:point_in_time} < sysutcdatetime()\nbegin\n    exec tsf_send_message '${2:message_id}', null, 0\n    set @${1:point_in_time} = convert(date, dateadd(day, 1, sysutcdatetime()))\nend
+    if a = 
+<C-w> <Left> <BS>
+n 1 14     if a = if  < sysutcdatetime()\n    begin\n        exec tsf_send_message 'message_id', null, 0\n        set @point_in_time = convert(date, dateadd(day, 1, sysutcdatetime()))\n    end
+$1
+    if a = 
+a <S-Tab>
+i 1 16     if a = a    
+${1:col}a${1:col}${2:x}λ
+
+<Tab> <Left> <Tab> <BS> x <S-Tab> <BS> <Tab>
+i 1 12 colacolxx   
+if @${1:type_col} not in (${2:1, 2})\nbegin\n    set @${3:dep_col} = null\nend
+x 
+<CR> <Esc> <C-r> u <BS> <Esc> <CR> <BS>
+n 1 27 x if @type_col not in (1, 2)\nbegin\n    set @dep_col = null\nend
+\n$2, ${2}.\n_type
+x 
+<S-Tab> é
+i 2 6 x \n    é,     é.\n_type
+if @${1:status} = ${2:2}  -- ${3:element name}\nbegin\n    set @${4:col}_mand = 1\nend\nelse\nbegin\n    set @${4:col}_type = 3  -- hidden\nend
+    
+
+v 1 8     if @status = 2  -- element name\n    begin\n        set @col_mand = 1\n    end\n    else\n    begin\n        set @col_type = 3  -- hidden\n    end
+_type
+x 
+<Tab> <S-Tab> <Right>
+i 1 12 x _type     
+, $1.$1λ$1
+    
+<Right> é <Right> <Tab> <Tab> <S-Tab> <Right>
+i 1 17     , .λ        
+t.${1:value} = case\n                   when @${2:type} = 1 then null  -- ${3:column based}\n                   when @${4:condition} in (10, 11) then null  -- ${5:is (not) empty}\n                   else @${1:value}\n               end
+    
+<Space> é <Space> <S-Tab> <BS> é <Esc>
+n 1 9     t. éé = case\n                       when @type = 1 then null  -- column based\n                       when @condition in (10, 11) then null  -- is (not) empty\n                       else @ éé\n                   end
+$0(${1:x}, @.
+
+
+v 1 1 (x, @.
+\t${1:col}${2:col}
+    
+a <Esc> é
+n 1 8         acol
+${2:a b}a(
+    
+<Tab> a <Esc> <Del> <CR>
+n 1 8     a ba(
+$3( $1
+    
+<Tab> a <BS> <BS> <Space> é
+i 1 3  é( 
+if @${1:flag_col} <> 1\nbegin\n    set @ref_${2:parent}_${3:detail}_type = 2\nend
+    
+<Esc> <Left> <S-Tab> <S-Tab>
+n 1 7     if @flag_col <> 1\n    begin\n        set @ref_parent_detail_type = 2\n    end
+${1:x} (, 
+x 
+x <CR> <S-Tab> <BS> <Space>
+i 2 1 x x\n (, 
+${1:a b}
+    if a = 
+<Esc> <Right> <Del> <CR>
+n 1 12     if a = ab
+if exists\n(\n    select 1\n    from ${1:table} t\n    where t.${2:parent_id} = @${2:parent_id}\n      and t.update_date_time > @last_refresh_utc\n)\nbegin\n    set @refresh_data = 1\nend
+    if a = 
+
+v 4 13     if a = if exists\n    (\n        select 1\n        from table t\n        where t.parent_id = @parent_id\n          and t.update_date_time > @last_refresh_utc\n    )\n    begin\n        set @refresh_data = 1\n    end
+update t\nset t.${1:col} = @${1:col},\n    t.update_user = dbo.tsf_user(),\n    t.update_date_time = sysdatetime()\nfrom ${2:table} t\nwhere t.${3:parent_id} = @upd_${3:parent_id}\n  and t.${4:id} = @upd_${4:id}
+\tb.
+<S-Tab> <Tab>
+v 5 6 \tb.update t\n\tset t.col = @col,\n\t    t.update_user = dbo.tsf_user(),\n\t    t.update_date_time = sysdatetime()\n\tfrom table t\n\twhere t.parent_id = @upd_parent_id\n\t  and t.id = @upd_id
+insert into ${1:table}_history\n(\n    ${2:id},\n    ${3:code},\n    action_type,\n    insert_user,\n    insert_date_time\n)\nselect\n    d.${2:id},\n    d.${3:code},\n    [action_type],\n    dbo.tsf_user(),\n    sysdatetime()\nfrom inserted i\njoin deleted d\n  on d.${2:id} = i.${2:id}\nwhere (d.${3:code} is null and i.${3:code} is not null)\n   or (d.${3:code} is not null and i.${3:code} is null)\n   or d.${3:code} <> i.${3:code}
+x 
+é a <Esc> u <S-Tab>
+n 1 14 x insert into table_history\n(\n    id,\n    code,\n    action_type,\n    insert_user,\n    insert_date_time\n)\nselect\n    d.id,\n    d.code,\n    [action_type],\n    dbo.tsf_user(),\n    sysdatetime()\nfrom inserted i\njoin deleted d\n  on d.id = i.id\nwhere (d.code is null and i.code is not null)\n   or (d.code is not null and i.code is null)\n   or d.code <> i.code
+\t${1}\t${1}.
+x 
+<Esc> x <Tab>
+n 1 5 x        .
+( 
+x 
+a <Space> <CR> <Left>
+i 2 0 x ( a \n
+.${1:a b}
+    if a = 
+<Del> <Left> <Left> <Space> <Left> <BS>
+n 1 8     if a = .
+and not exists\n(\n    select 1\n    from ${1:parent} b\n    join inserted i\n      on i.${2:parent_id} = b.${2:parent_id}\n    where b.lock_status = ${3:3}  -- ${4:merging}\n)
+    
+<Left> <Esc> <BS> <Tab> <Left> <Left>
+n 4 9     and not exists\n    (\n        select 1\n        from parent b\n        join inserted i\n          on i.parent_id = b.parent_id\n        where b.lock_status = 3  -- merging\n    )
+${3}${4:x}${2:col}a
+
+<Tab> <BS> <BS> <Esc> <BS> <Esc> u
+n 1 0 
+if ${1:@status = 1}\nbegin\n    set @${2:task_id}_type = 1  -- disabled\nend
+    
+é <Tab> é <Tab> <BS> <BS>
+i 4 5     if é\n    begin\n        set @é_type = 1  -- disabled\n    e
+${1:a b}${2:a b} λ${3:é_y}@
+
+a <S-Tab> <BS> x <Space> <Tab>
+v 1 3 ax a b λé_y@
+exec dbo.tsf_send_message '${1:message_id}', null, 1\nrollback\nreturn
+x 
+<S-Tab> <Del> a <Right> <Right>
+i 1 32 x exec dbo.tsf_send_message '', null, 1\nrollback\nreturn
+${1:x}($0
+\tb.
+<Tab> <Tab> a <Tab>
+i 1 13 \tb.x(    a   
+if exists\n(\n    select 1\n    from inserted i\n    join deleted d\n      on d.${1:order_id} = i.${1:order_id}\n    where i.${2:status} = ${3:1}   -- ${4:completed}\n      and d.${2:status} <> ${3:1}\n)\nbegin\n    update o\n    set o.${5:completed_on} = sysdatetime(),\n        o.update_user = dbo.tsf_user(),\n        o.update_date_time = sysdatetime()\n    from ${6:order_header} o\n    where exists\n    (\n        select 1\n        from inserted i\n        join deleted d\n          on d.${1:order_id} = i.${1:order_id}\n        where i.${1:order_id} = o.${1:order_id}\n          and i.${2:status} = ${3:1}\n          and d.${2:status} <> ${3:1}\n    )\nend
+
+<Tab> <S-Tab> <Tab> <Del> <Space> <S-Tab> <BS> <Tab>
+n 7 12 if exists\n(\n    select 1\n    from inserted i\n    join deleted d\n      on d.order_id = i.order_id\n    where i. = 1   -- completed\n      and d. <> 1\n)\nbegin\n    update o\n    set o.completed_on = sysdatetime(),\n        o.update_user = dbo.tsf_user(),\n        o.update_date_time = sysdatetime()\n    from order_header o\n    where exists\n    (\n        select 1\n        from inserted i\n        join deleted d\n          on d.order_id = i.order_id\n        where i.order_id = o.order_id\n          and i. = 1\n          and d. <> 1\n    )\nend
+$0
+x 
+<S-Tab> a
+i 1 5 x   a
+if exists\n(\n    select 1\n    from ${1:table} t\n    where t.${2:parent_id} = @${2:parent_id}\n      and t.${3:status} = ${4:0}  -- ${5:element}\n)\nbegin\n    $0\nend
+x 
+<Del> a <Tab> <Tab> <Tab> <Tab> <Tab> <Tab>
+i 4 32 x if exists\n(\n    select 1\n    from                        t\n    where t.parent_id = @parent_id\n      and t.status = 0  -- element\n)\nbegin\n    \nend
+${1} ${1}_type
+x 
+<Right> <Left> <BS> x <Tab> <Tab> <Esc> <C-r>
+n 1 11 xx x_type   
+${2:é_y}${3:x}@${3:x}@${1:col}${2:é_y}
+    if a = 
+<Del> <Tab>
+n 1 19     if a = é_yx@x@é_y
+@$0(${1:x}
+x 
+<S-Tab> x <C-w> <BS> a <Space> x
+i 1 6 x @a x
+, ( é.${1:a b}
+    
+<S-Tab>
+v 1 11     , ( é.a b
+and not exists\n(\n    select 1\n    from ${1:parent} b\n    join inserted i\n      on i.${2:parent_id} = b.${2:parent_id}\n    where b.lock_status = ${3:3}  -- ${4:merging}\n)
+x 
+<S-Tab> <BS> é <Del> <BS> <Tab> <Tab>
+n 4 8 x and not exists\n(\n    select 1\n    from b\n    join inserted i\n      on i.parent_id = b.parent_id\n    where b.lock_status = 3  -- merging\n)
+if @${1:grp_id} <> @upd_${1:grp_id}\nbegin\n    update r\n    set r.granted = 1\n    from ${2:role_overview} r\n    where r.${1:grp_id} = @${1:grp_id}\n      and r.granted = 0\n      and r.role_id in (select o.role_id from #old_roles o)\nend
+    
+<S-Tab> <Left>
+v 1 7     if @grp_id <> @upd_grp_id\n    begin\n        update r\n        set r.granted = 1\n        from role_overview r\n        where r.grp_id = @grp_id\n          and r.granted = 0\n          and r.role_id in (select o.role_id from #old_roles o)\n    end
+é${1:x}
+\tb.
+<BS> <Tab> <Tab> <Esc> u
+n 1 5 \tb.éx
+${2:x}
+
+
+v 1 0 x
+if (@${1:id_a} is null or @${2:id_b} is null)\nbegin\n    return\nend
+\tb.
+<Esc> <C-w> <S-Tab>
+n 1 8 \tb.if (@id_a is null or @id_b is null)\n\tbegin\n\t    return\n\tend
+if @${1:status} = ${2:2}  -- ${3:element name}\nbegin\n    set @${4:col}_mand = 1\nend\nelse\nbegin\n    set @${4:col}_type = 3  -- hidden\nend
+    if a = 
+<BS> x <Esc> <Esc> u <C-r> <S-Tab> <Tab>
+n 1 15     if a = if @= 2  -- element name\n    begin\n        set @col_mand = 1\n    end\n    else\n    begin\n        set @col_type = 3  -- hidden\n    end
+${1:é_y}@
+    
+<BS> <BS> <Tab> <CR> <C-w> <Tab> <Del>
+n 1 3    @
+${1:col}_type$1
+\tb.
+x <C-w> <Left> <Del> <S-Tab>
+i 1 5 \tb   _type
+$1${2:é_y}
+    if a = 
+<Tab> <BS> <S-Tab> a <Tab> <Del> <Space>
+i 1 13     if a =   
+${1:a b} ${1:a b}
+    
+<Tab> <Tab> <Del> é <Del> <BS> é <BS>
+i 1 12     a b a b 
+a(${1:x}λ${1}, , 
+    if a = 
+<C-w> <C-w>
+v 1 13     if a = a(xλx, , 
+and t.${1:col} in (${2:0, 3})  -- ${3:open, updated}
+
+x <BS> <Tab> <S-Tab> <Esc> <Left> a <CR>
+i 2 0 and t\n. in (0, 3)  -- open, updated
+update t\nset t.${1:col} = null,\n    t.update_user = dbo.tsf_user(),\n    t.update_date_time = sysdatetime()\nfrom ${2:table} t\njoin inserted i\n  on i.${3:id} = t.${3:id}\nwhere i.${4:type} in (${5:9, 10})\n  and t.${1:col} is not null
+    
+<S-Tab>
+v 2 10     update t\n    set t.col = null,\n        t.update_user = dbo.tsf_user(),\n        t.update_date_time = sysdatetime()\n    from table t\n    join inserted i\n      on i.id = t.id\n    where i.type in (9, 10)\n      and t.col is not null
+case\n    when len(a.name) > 2 and b.name like '%' + a.name + '%' then 10\n    when len(b.name) > 2 and a.name like '%' + b.name + '%' then 20\n    else 30\nend as match_order_no
+x 
+<Tab> <Left> <C-w> <Del> <Tab> <Tab>
+i 5 12 x case\n    when len(a.name) > 2 and b.name like '%' + a.name + '%' then 10\n    when len(b.name) > 2 and a.name like '%' + b.name + '%' then 20\n    else 30\nend as      
+update t\nset t.${1:applied} = t.${2:original_applied},\n    t.${2:original_applied} = null,\n    t.update_user = dbo.tsf_original_login(),\n    t.update_date_time = sysdatetime()\nfrom ${3:table} t\nwhere t.${4:session_id} = @${4:session_id}\n  and t.${5:action_id} = @${5:action_id}\n  and t.${1:applied} = ${6:4}
+\tb.
+<Tab> é <Left> <BS>
+i 2 18 \tb.update t\n\tset t.applied = té,\n\t    t.é = null,\n\t    t.update_user = dbo.tsf_original_login(),\n\t    t.update_date_time = sysdatetime()\n\tfrom table t\n\twhere t.session_id = @session_id\n\t  and t.action_id = @action_id\n\t  and t.applied = 4
+if @${1:grp_id} <> @upd_${1:grp_id}\nbegin\n    update r\n    set r.granted = 1\n    from ${2:role_overview} r\n    where r.${1:grp_id} = @${1:grp_id}\n      and r.granted = 0\n      and r.role_id in (select o.role_id from #old_roles o)\nend
+    
+
+v 1 8     if @grp_id <> @upd_grp_id\n    begin\n        update r\n        set r.granted = 1\n        from role_overview r\n        where r.grp_id = @grp_id\n          and r.granted = 0\n          and r.role_id in (select o.role_id from #old_roles o)\n    end
+${1:col}@${1:col}a${1:col}
+    
+<C-w> <BS> <S-Tab> <Left> <Left> a
+i 1 3     @a
+a${1:a b}é${1:a b}a
+\tb.
+<S-Tab> a <BS> <Left> <C-w> a <S-Tab>
+i 1 5 \tba  aéa
+if exists\n(\n    select 1\n    from ${1:table} t\n    where t.${2:parent_id} = @${2:parent_id}\n      and t.${3:status} = ${4:0}  -- ${5:element}\n)\nbegin\n    $0\nend
+    if a = 
+<Space> <S-Tab>
+i 4 16     if a = if exists\n    (\n        select 1\n        from     t\n        where t.parent_id = @parent_id\n          and t.status = 0  -- element\n    )\n    begin\n        \n    end
+if exists\n(\n    select 1\n    from ${1:table} t\n    where t.${2:parent_id} = @${2:parent_id}\n      and t.${3:status} = ${4:0}  -- ${5:element}\n)\nbegin\n    $0\nend
+
+<S-Tab> <Left> <Tab> <Tab> x
+i 4 9 if exists\n(\n    select 1\n    fromx t\n    where t.parent_id = @parent_id\n      and t.status = 0  -- element\n)\nbegin\n    \nend
+λ${1:é_y}$0@${2:x}${1}.$1
+    if a = 
+
+v 1 13     if a = λé_y@xé_y.é_y
+if @default_mode = 0  -- add\nand @${1:id_col} is not null\nand exists (select 1 from ${2:table} t where t.${1:id_col} = @${1:id_col})\nbegin\n    declare @error_msg nvarchar(500) = concat('<text>', @${1:id_col}, '</text>')\n\n    exec tsf_send_message '${3:message_id}', @error_msg, 0\nend
+    if a = 
+<C-w> <BS> <Tab> x <C-w> <S-Tab>
+n 2 9     if a = if @default_mode = 0  -- add\n    and @is not null\n    and exists (select 1 from table t where t. = @)\n    begin\n        declare @error_msg nvarchar(500) = concat('<text>', @, '</text>')\n    \n        exec tsf_send_message 'message_id', @error_msg, 0\n    end
+declare @msg nvarchar(500) = concat('<text>', @${1:var1}, '</text><text>', @${2:var2}, '</text>')\nexec dbo.tsf_send_message '${3:message_id}', @msg, ${4:0}
+
+é <Tab> <Space>
+i 1 70 declare @msg nvarchar(500) = concat('<text>', @é, '</text><text>', @ , '</text>')\nexec dbo.tsf_send_message 'message_id', @msg, 0
+if @layout_mode = 0  -- add\nbegin\n    set @${1:col}_type = 3\nend\nelse\nbegin\n    $0\nend
+    
+<Right> <BS> <S-Tab> é <BS> é
+n 3 13     if @layout_mode = 0  -- add\n    begin\n        set @c_type = 3\n    end\n    else\n    begin\n        \n    end
+, ${2:x}.$2
+    
+<Esc> <Tab> <BS> <Space> é
+n 1 6     , x.x
+${1:é_y}@, ${1:é_y}.${1:é_y}λ$1($0
+
+é <Space> <S-Tab> <Esc>
+n 1 4 é   @, é   .é   λé   (
+λ@${3:a b}, ${3:a b}
+    
+é <Tab> <Right> <Tab> <BS> <Tab> <Del>
+i 1 15     λ@é, é  
+begin try\n    begin transaction;\n\n    $0\n\n    commit transaction;\nend try\nbegin catch\n    if @@trancount > 0\n    begin\n        rollback transaction;\n    end;\n\n    declare @errmsg varchar(500) = error_message(),\n            @errseverity int = error_severity(),\n            @errstate int = error_state()\n\n    raiserror(@errmsg, @errseverity, @errstate) with nowait;\nend catch;
+    if a = 
+<C-w> é <C-w>
+i 4 0     if a = begin try\n        begin transaction;\n    \n\n    \n        commit transaction;\n    end try\n    begin catch\n        if @@trancount > 0\n        begin\n            rollback transaction;\n        end;\n    \n        declare @errmsg varchar(500) = error_message(),\n                @errseverity int = error_severity(),\n                @errstate int = error_state()\n    \n        raiserror(@errmsg, @errseverity, @errstate) with nowait;\n    end catch;
+, ${1}(
+x 
+<Esc>
+n 1 3 x , (
+_type${1:col}\t${1:col} $1\n${1:col}.\n
+    
+<S-Tab> <Del> <S-Tab> <C-w>
+n 1 9     _type     \n    .\n    
+\t\t${1:a b}\t${1:a b}
+x 
+<S-Tab> <BS>
+n 1 10 x             
+${1:a b}\né\n${1:a b}
+x 
+<Tab> <Space> <Tab> <Space>
+i 3 9 x a b\né\na b      
+@${1}.$1é
+x 
+<BS>
+i 1 2 x .é
+@$0@
+    if a = 
+<Tab> <S-Tab> x <Tab> é
+i 1 26     if a = @        x   é@
+update t\nset t.${1:applied} = t.${2:original_applied},\n    t.${2:original_applied} = null,\n    t.update_user = dbo.tsf_original_login(),\n    t.update_date_time = sysdatetime()\nfrom ${3:table} t\nwhere t.${4:session_id} = @${4:session_id}\n  and t.${5:action_id} = @${5:action_id}\n  and t.${1:applied} = ${6:4}
+    if a = 
+<C-w> <Esc> u <C-r> a x <Tab>
+i 1 16     if a = ux   pdate t\n    set t.applied = t.original_applied,\n        t.original_applied = null,\n        t.update_user = dbo.tsf_original_login(),\n        t.update_date_time = sysdatetime()\n    from table t\n    where t.session_id = @session_id\n      and t.action_id = @action_id\n      and t.applied = 4
+${2:é_y}é_type${1:col}@
+    if a = 
+<BS> <Tab> <Right>
+n 1 22     if a = é_yé_type@
+\n@${1:é_y}.${1}, 
+
+<BS> <Left> <Del> <Tab> <Tab> <S-Tab> <BS>
+n 1 0 \n., 
+$3
+    
+x <S-Tab> a <Space> <Left> <BS> <Left> <Del>
+i 1 7     x   
+\t$0é${3:x}$4@$4\n${4}
+    
+<Tab> x
+i 1 12         éxx@x\n    x
+if exists\n(\n    select 1\n    from inserted i\n    join deleted d\n      on d.${1:order_id} = i.${1:order_id}\n    where i.${2:status} = ${3:1}   -- ${4:completed}\n      and d.${2:status} <> ${3:1}\n)\nbegin\n    update o\n    set o.${5:completed_on} = sysdatetime(),\n        o.update_user = dbo.tsf_user(),\n        o.update_date_time = sysdatetime()\n    from ${6:order_header} o\n    where exists\n    (\n        select 1\n        from inserted i\n        join deleted d\n          on d.${1:order_id} = i.${1:order_id}\n        where i.${1:order_id} = o.${1:order_id}\n          and i.${2:status} = ${3:1}\n          and d.${2:status} <> ${3:1}\n    )\nend
+    
+<S-Tab> é x
+i 6 18     if exists\n    (\n        select 1\n        from inserted i\n        join deleted d\n          on d.éx = i.éx\n        where i.status = 1   -- completed\n          and d.status <> 1\n    )\n    begin\n        update o\n        set o.completed_on = sysdatetime(),\n            o.update_user = dbo.tsf_user(),\n            o.update_date_time = sysdatetime()\n        from order_header o\n        where exists\n        (\n            select 1\n            from inserted i\n            join deleted d\n              on d.éx = i.éx\n            where i.éx = o.éx\n              and i.status = 1\n              and d.status <> 1\n        )\n    end
+set @error_text =\n    case @status_code\n        when -1 then '${1:unknown}'\n        when -2 then '${2:missing id}'\n        else cast(@status_code as varchar(max)) + ' unknown status code'\n    end
+    if a = 
+<Right> x <S-Tab>
+i 3 32     if a = set @error_text =\n        case @status_code\n            when -1 then 'ux    '\n            when -2 then 'missing id'\n            else cast(@status_code as varchar(max)) + ' unknown status code'\n        end
+update t\nset t.${1:col} = @${1:col},\n    t.update_user = dbo.tsf_user(),\n    t.update_date_time = sysdatetime()\nfrom ${2:table} t\nwhere t.${3:parent_id} = @upd_${3:parent_id}\n  and t.${4:id} = @upd_${4:id}
+x 
+<Space> x a é <Left> <S-Tab>
+i 2 12 x update t\nset t. xa   é = @ xa   é,\n    t.update_user = dbo.tsf_user(),\n    t.update_date_time = sysdatetime()\nfrom table t\nwhere t.parent_id = @upd_parent_id\n  and t.id = @upd_id
+λ${2:col}a.
+x 
+<Tab> <CR>
+i 2 0 x λcola.\n
+if @can_start_with_number = 0 and @string like '[0-9]%'\nbegin\n    return 1\nend\nelse if @string like '%[^0-9a-z_]%'\nbegin\n    return 1\nend\n\nreturn 0
+    if a = 
+<Left> <Tab> <C-w> é a é
+i 10 16     if a = if @can_start_with_number = 0 and @string like '[0-9]%'\n    begin\n        return 1\n    end\n    else if @string like '%[^0-9a-z_]%'\n    begin\n        return 1\n    end\n    \n    return éaé0
+(${2:é_y}
+    
+<S-Tab> <Right>
+v 1 7     (é_y
+if not exists\n(\n    select 1\n    from ${1:detail_table} d\n    where d.${2:parent_id} = @${2:parent_id}\n)\nbegin\n    set @${3:task_id}_type = 2  -- hidden\nend
+\tb.
+
+v 4 10 \tb.if not exists\n\t(\n\t    select 1\n\t    from detail_table d\n\t    where d.parent_id = @parent_id\n\t)\n\tbegin\n\t    set @task_id_type = 2  -- hidden\n\tend
+${1:a b}é${1:a b}, ${1:a b}λ$1
+
+<Del> <Left> é
+n 1 0 é, λ
+${1:col}${3:col}@${1:col}a$1.
+
+
+v 1 0 colcol@colacol.
+${1:x}${3:col}_type${3:col}λ${3}
+
+<C-w> <Left> é <Right> é <S-Tab> <Space>
+i 1 7 écé  ol_typecolλcol
+if @${1:type_col} not in (${2:1, 2})\nbegin\n    set @${3:dep_col} = null\nend
+    
+
+v 1 8     if @type_col not in (1, 2)\n    begin\n        set @dep_col = null\n    end
+@${1}_typea
+x 
+<Esc> <S-Tab> <Esc> <Left> é é <Tab>
+n 1 1 x @_typea
+insert into ${1:base_table}\n(\n    ${2:col1},\n    ${3:col2}\n)\nselect\n    i.${2:col1},\n    i.${3:col2}\nfrom inserted i
+x 
+é <Tab> <C-w> <S-Tab> <S-Tab>
+v 1 14 x insert into é\n(\n    col1,\n    col2\n)\nselect\n    i.col1,\n    i.col2\nfrom inserted i
+if not exists\n(\n    select 1\n    from ${1:detail_table} d\n    where d.${2:parent_id} = @${2:parent_id}\n)\nbegin\n    set @${3:task_id}_type = 2  -- hidden\nend
+\tb.
+<Tab> <Tab> <BS> x x <Right>
+n 8 11 \tb.if not exists\n\t(\n\t    select 1\n\t    from detail_table d\n\t    where d.parent_id = @parent_id\n\t)\n\tbegin\n\t    set @ype = 2  -- hidden\n\tend
+select @badge_value = nullif(count(*), 0)\nfrom ${1:message} m\nwhere m.${2:parent_id} = @${2:parent_id}\n  and not exists\n  (\n      select 1\n      from ${1:message}_approved a\n      where a.${2:parent_id} = m.${2:parent_id}\n        and a.pk_hash = m.pk_hash\n  )
+x 
+a
+i 2 6 x select @badge_value = nullif(count(*), 0)\nfrom a m\nwhere m.parent_id = @parent_id\n  and not exists\n  (\n      select 1\n      from a_approved a\n      where a.parent_id = m.parent_id\n        and a.pk_hash = m.pk_hash\n  )
+(${1:x}
+x 
+<Space> <C-w> <S-Tab> é <Tab>
+i 1 6 x ( é
+select @badge_value = nullif(count(*), 0)\nfrom ${1:message} m\nwhere m.${2:parent_id} = @${2:parent_id}\n  and not exists\n  (\n      select 1\n      from ${1:message}_approved a\n      where a.${2:parent_id} = m.${2:parent_id}\n        and a.pk_hash = m.pk_hash\n  )
+
+<Space> <BS> <C-w> <Del> <C-w> <Tab> x
+i 2 9 select @badge_value = nullif(count(*), 0)m\nwhere m.x = @x\n  and not exists\n  (\n      select 1\n      from _approved a\n      where a.x = m.x\n        and a.pk_hash = m.pk_hash\n  )
+if exists\n(\n    select 1\n    from ${1:table} t\n    where t.${2:parent_id} = @${2:parent_id}\n      and t.${3:status} = ${4:0}  -- ${5:element}\n)\nbegin\n    $0\nend
+x 
+<Left> <BS> <Tab> <C-w>
+n 4 8 x if exists\n(\n    select 1\n    from t\n    where t.parent_id = @parent_id\n      and t.status = 0  -- element\n)\nbegin\n    \nend
+\n
+x 
+<Del> <BS> é a
+i 1 5 x éa
+t.${1:value} = case\n                   when @${2:type} = 1 then null  -- ${3:column based}\n                   when @${4:condition} in (10, 11) then null  -- ${5:is (not) empty}\n                   else @${1:value}\n               end
+    
+<C-w> <C-w> <Left>
+v 1 5     t.value = case\n                       when @type = 1 then null  -- column based\n                       when @condition in (10, 11) then null  -- is (not) empty\n                       else @value\n                   end
+${1:é_y}λ, \t ${2:é_y}λ
+\tb.
+<CR> <Tab> <S-Tab> <Tab> <S-Tab> <BS> <Del> <Esc>
+n 1 2 \tb,      é_yλ
+λ
+
+<C-w> <S-Tab> <Right> a <Left> <S-Tab>
+i 1 8         a
+\na@.${1}\n$1
+\tb.
+x <Del> <Space> <Del>
+i 2 6 \tb.\n\ta@.x x 
+${2:x}λ
+
+<C-w> <Tab> <Tab> <Tab> <Tab> <Left>
+i 1 12 xλ          
+${2:col} ${2}λ${2}, ${2}
+    if a = 
+<Space>
+i 1 12     if a =    λ ,  
+declare @msg nvarchar(500) = concat('<text>', @${1:var1}, '</text><text>', @${2:var2}, '</text>')\nexec dbo.tsf_send_message '${3:message_id}', @msg, ${4:0}
+\tb.
+<Tab> <S-Tab> a <Tab> <C-w> <BS> a <Esc>
+n 1 71 \tb.declare @msg nvarchar(500) = concat('<text>', @a, '</text><text>', @, '</text>')\n\texec dbo.tsf_send_message 'message_id', @msg, 0
+${3:x}${2:é_y}(${3:x}a_typeé
+\tb.
+
+v 1 4 \tb.xé_y(xa_typeé
+\téλ@
+x 
+<CR>
+i 2 0 x     éλ@\n
+if @${1:grp_id} <> @upd_${1:grp_id}\nbegin\n    update r\n    set r.granted = 1\n    from ${2:role_overview} r\n    where r.${1:grp_id} = @${1:grp_id}\n      and r.granted = 0\n      and r.role_id in (select o.role_id from #old_roles o)\nend
+    
+
+v 1 8     if @grp_id <> @upd_grp_id\n    begin\n        update r\n        set r.granted = 1\n        from role_overview r\n        where r.grp_id = @grp_id\n          and r.granted = 0\n          and r.role_id in (select o.role_id from #old_roles o)\n    end
+$0${3:é_y}λ\n
+    if a = 
+x <S-Tab> é <CR> <BS> <CR>
+i 3 0     if a = x    é\n\nλ\n    
+if @${1:flag_col} <> 1\nbegin\n    set @ref_${2:parent}_${3:detail}_type = 2\nend
+    if a = 
+<CR> <BS> <CR>
+i 3 0     if a = if @\n\n<> 1\n    begin\n        set @ref_parent_detail_type = 2\n    end
+update t\nset t.${1:applied} = t.${2:original_applied},\n    t.${2:original_applied} = null,\n    t.update_user = dbo.tsf_original_login(),\n    t.update_date_time = sysdatetime()\nfrom ${3:table} t\nwhere t.${4:session_id} = @${4:session_id}\n  and t.${5:action_id} = @${5:action_id}\n  and t.${1:applied} = ${6:4}
+\tb.
+é <Right> <Esc>
+n 2 9 \tb.update t\n\tset t.é = t.original_applied,\n\t    t.original_applied = null,\n\t    t.update_user = dbo.tsf_original_login(),\n\t    t.update_date_time = sysdatetime()\n\tfrom table t\n\twhere t.session_id = @session_id\n\t  and t.action_id = @action_id\n\t  and t.é = 4
+\t, 
+    
+
+i 1 10         , 
+raiserror(@warning_message, 9, 10)
+x 
+<S-Tab> é <Tab> <Esc>
+n 1 44 x raiserror(@warning_message, 9, 10)    é   
+$2\t$2
+x 
+<C-w> a <Del>
+i 1 1 a   a
+.${1:col},  ${1}a$0
+    if a = 
+é <BS> <C-w>
+i 1 11     if a = ,  a
+exec ${1:task_start_x}\n    @${2:parent_id} = @${2:parent_id},\n    @${3:input} = @${3:input}
+    
+<S-Tab>
+v 1 9     exec task_start_x\n        @parent_id = @parent_id,\n        @input = @input
+if @${1:mode_col} is null or @${1:mode_col} = 0  -- A\nbegin\n    set @${2:switch_to_a}_type = 2\nend\n\nif @${1:mode_col} is null or @${1:mode_col} = 1  -- B\nbegin\n    set @${3:switch_to_b}_type = 2\nend
+x 
+<Tab> x é
+i 3 12 x if @mode_col is null or @mode_col = 0  -- A\nbegin\n    set @xé_type = 2\nend\n\nif @mode_col is null or @mode_col = 1  -- B\nbegin\n    set @switch_to_b_type = 2\nend
+-- ${1:Random or empty}\nif isnull(@${2:type_col}, 1) = 1\nbegin\n    $0\nend\n-- ${3:Expression}\nelse if @${2:type_col} = 2\nbegin\nend
+x 
+<Tab> x <Esc> u x <BS>
+n 2 10 x -- Random or empty\nif isnull(@ype_col, 1) = 1\nbegin\n    \nend\n-- Expression\nelse if @type_col = 2\nbegin\nend
+insert into ${1:table}\n(\n    ${2:col1},\n    ${3:col2},\n    insert_user,\n    insert_date_time,\n    update_user,\n    update_date_time\n)\nselect\n    @${2:col1},\n    @${3:col2},\n    dbo.tsf_user(),\n    sysdatetime(),\n    dbo.tsf_user(),\n    sysdatetime()\n\nset @${4:new_id} = scope_identity()
+x 
+<Tab> <Tab> <Tab>
+v 18 5 x insert into table\n(\n    col1,\n    col2,\n    insert_user,\n    insert_date_time,\n    update_user,\n    update_date_time\n)\nselect\n    @col1,\n    @col2,\n    dbo.tsf_user(),\n    sysdatetime(),\n    dbo.tsf_user(),\n    sysdatetime()\n\nset @new_id = scope_identity()
+(a_type${3:col}\n
+
+<CR> <Tab> a <S-Tab> <Left>
+i 3 3 (a_type\n\na   
+if not exists\n(\n    select 1\n    from ${1:detail_table} d\n    where d.${2:parent_id} = @${2:parent_id}\n)\nbegin\n    set @${3:task_id}_type = 2  -- hidden\nend
+    if a = 
+
+v 4 13     if a = if not exists\n    (\n        select 1\n        from detail_table d\n        where d.parent_id = @parent_id\n    )\n    begin\n        set @task_id_type = 2  -- hidden\n    end
+if @can_start_with_number = 0 and @string like '[0-9]%'\nbegin\n    return 1\nend\nelse if @string like '%[^0-9a-z_]%'\nbegin\n    return 1\nend\n\nreturn 0
+    if a = 
+
+i 10 12     if a = if @can_start_with_number = 0 and @string like '[0-9]%'\n    begin\n        return 1\n    end\n    else if @string like '%[^0-9a-z_]%'\n    begin\n        return 1\n    end\n    \n    return 0
+@@${2:x}${3:col}\n
+    
+<C-w> x <Left> <Right>
+i 1 7     @@xcol\n    
+(${1}λ$0
+    if a = 
+<S-Tab> a <BS> é x é é
+i 1 23     if a = (    éxééλ
+if ${1:condition}\nand @${2:col}_type = 0  -- editable, not hidden\nbegin\n    set @${2:col}_type = 1  -- read only\nend
+
+é a é <BS>
+i 1 6 if éa\nand @col_type = 0  -- editable, not hidden\nbegin\n    set @col_type = 1  -- read only\nend
+update ${1:selection_table}\nset selected = 1\nwhere ${2:parent_id} = @${2:parent_id}\n  and ${3:item_id} = @${3:item_id}
+
+
+v 1 7 update selection_table\nset selected = 1\nwhere parent_id = @parent_id\n  and item_id = @item_id
+ λ, ${1:é_y}, é
+
+
+v 1 5  λ, é_y, é
+if @cursor_from_col_id is null\nand @${1:config_id} is null\nbegin\n    select top 1 @${1:config_id} = r.${1:config_id}\n    from ${2:run_history} r\n    where r.${3:parent_id} = @${3:parent_id}\n      and r.developer_id = dbo.get_usr_id()\n    order by r.${4:started_at} desc\nend
+    
+<Right> <Space> x x <BS> <Esc>
+n 2 11     if @cursor_from_col_id is null\n    and @c x is null\n    begin\n        select top 1 @c x = r.c x\n        from run_history r\n        where r.parent_id = @parent_id\n          and r.developer_id = dbo.get_usr_id()\n        order by r.started_at desc\n    end
+($2${1:a b}\n${1}é
+    
+<Esc> <Space> <S-Tab> <Del> <S-Tab> <Tab> <BS>
+n 1 5     (ab\n    a bé
+_type\t_type(
+\tb.
+é <Del> <CR> <S-Tab>
+i 2 12 \tb._type    _type(é\n            
+(${2}$0 ${2}é${3:col}é${3:col}
+    
+<Esc> u <C-w> <Right> <S-Tab> <Del>
+n 1 2    
+${1:a b}${2}
+\tb.
+x <BS> <BS> <Esc> <Del> <Right>
+n 1 0 \t
+insert into ${1:table}_history\n(\n    ${2:id},\n    ${3:code},\n    action_type,\n    insert_user,\n    insert_date_time\n)\nselect\n    d.${2:id},\n    d.${3:code},\n    [action_type],\n    dbo.tsf_user(),\n    sysdatetime()\nfrom inserted i\njoin deleted d\n  on d.${2:id} = i.${2:id}\nwhere (d.${3:code} is null and i.${3:code} is not null)\n   or (d.${3:code} is not null and i.${3:code} is null)\n   or d.${3:code} <> i.${3:code}
+    
+a <S-Tab> <Space> x <Left> <BS> é
+i 1 22     insert into a   éx_history\n    (\n        id,\n        code,\n        action_type,\n        insert_user,\n        insert_date_time\n    )\n    select\n        d.id,\n        d.code,\n        [action_type],\n        dbo.tsf_user(),\n        sysdatetime()\n    from inserted i\n    join deleted d\n      on d.id = i.id\n    where (d.code is null and i.code is not null)\n       or (d.code is not null and i.code is null)\n       or d.code <> i.code
+-- ${1:Random or empty}\nif isnull(@${2:type_col}, 1) = 1\nbegin\n    $0\nend\n-- ${3:Expression}\nelse if @${2:type_col} = 2\nbegin\nend
+    if a = 
+
+v 1 14     if a = -- Random or empty\n    if isnull(@type_col, 1) = 1\n    begin\n        \n    end\n    -- Expression\n    else if @type_col = 2\n    begin\n    end
+\n${4}$0
+    if a = 
+<C-w>
+i 2 0     if a = \n
+é${1:col}_type${2:a b}$3(${2}
+x 
+<Space>
+i 1 5 x é _typea b(a b
+${3:col}
+\tb.
+<S-Tab> <BS>
+n 1 2 \tb.
+${1:col}
+    if a = 
+<BS> é <C-w> <Tab> <Right> <CR> <Esc> u
+n 1 11     if a = col
+\n${1:é_y}a${1:é_y}, \n ${1:é_y}
+x 
+<S-Tab>
+v 2 0 x \né_yaé_y, \n é_y
+if ${1:@status = 1}\nbegin\n    set @${2:task_id}_type = 1  -- disabled\nend
+    
+<Tab> <C-w> <BS> <C-w> é
+n 3 13     if @status = 1\n    begin\n        set @_type = 1  -- disabled\n    end
+if not exists\n(\n    select 1\n    from ${1:detail_table} d\n    where d.${2:parent_id} = @${2:parent_id}\n)\nbegin\n    set @${3:task_id}_type = 2  -- hidden\nend
+    if a = 
+<Tab> <Right> a <Right> <Del> <BS> x a
+i 5 20     if a = if not exists\n    (\n        select 1\n        from detail_table d\n        where d.paxa @pa\n    )\n    begin\n        set @task_id_type = 2  -- hidden\n    end
+\n${3}\na$3
+\tb.
+<Space> <Esc> u <S-Tab> <C-w> <C-w>
+n 1 2 \tb.
+raiserror(@warning_message, 9, 10)
+    
+<CR> <C-w> <S-Tab>
+i 2 4     raiserror(@warning_message, 9, 10)\n    
+λ${1:x}λ${1:x}
+\tb.
+<Tab> x <Tab> <Del> <Right> <Esc> u a
+i 1 9 \tb.λxλx
+@$0, ${3:col}
+
+<Tab> <BS> <Tab>
+i 1 4     , col
+aa${3:col}
+\tb.
+x <C-w> <BS> <Tab> <Tab> <C-w> <S-Tab>
+i 1 5 \tb.a 
+-- ${1:Random or empty}\nif isnull(@${2:type_col}, 1) = 1\nbegin\n    $0\nend\n-- ${3:Expression}\nelse if @${2:type_col} = 2\nbegin\nend
+    
+<Right> <Del>
+n 1 7     -- R\n    if isnull(@type_col, 1) = 1\n    begin\n        \n    end\n    -- Expression\n    else if @type_col = 2\n    begin\n    end
+${1:é_y}\t${1}a${1:é_y}@
+
+é
+i 1 2 é    éaé@
+λ, 
+    
+<Tab> <Left> <Esc> <C-r> u <Tab> <Tab>
+n 1 3     
+ ${2:x}_type${1:x}
+\tb.
+<BS> x
+n 1 8 \tb. x_typ
+.${1:é_y}a${1:é_y}$4@${1:é_y}
+    if a = 
+<Space> <BS> <C-w> é <Tab> <Left> <S-Tab> <Left>
+v 1 10     if a = éaé@é
+if exists\n(\n    select 1\n    from ${1:table} t\n    where t.${2:parent_id} = @${2:parent_id}\n      and t.${3:needs_approval} = 1\n)\nbegin\n    exec dbo.tsf_send_message '${4:message_id}', null, 1\n    return\nend
+x 
+<Left> <Tab> <Esc> <Tab>
+n 4 8 x if exists\n(\n    select 1\n    from table t\n    where t.parent_id = @parent_id\n      and t.needs_approval = 1\n)\nbegin\n    exec dbo.tsf_send_message 'message_id', null, 1\n    return\nend
+_type${1:x}@${2:a b}
+
+<Left> <Right> x
+i 1 6 _typex@a b
+\n_type${2:é_y}_type${2:é_y}${3:a b}(
+x 
+<S-Tab> <Right> <BS> <Tab> <Right> <C-w> <Tab>
+n 2 8 x \n_typeé_typeéa b(
+if exists\n(\n    select 1\n    from ${1:queued_task} q\n    where q.${2:owner_id} = @${2:owner_id}\n      and q.${3:task_status} in (0, 1, 2)  -- queued, pending, active\n)\nbegin\n    set @confirm_button_type = 1\nend
+
+<Tab> <BS> <Space>
+n 5 13 if exists\n(\n    select 1\n    from queued_task q\n    where q. = @\n      and q.task_status in (0, 1, 2)  -- queued, pending, active\n)\nbegin\n    set @confirm_button_type = 1\nend
+\n\t\t$0\t$1
+    
+é
+i 2 18     \n                é
+é@${2:a b}\ta$3
+\tb.
+<Tab> <Right>
+i 1 14 \tb.é@a b    a
+if @${1:list} is null return\n\ndeclare @nr int = 1, @rest nvarchar(max) = @${1:list}\n\nwhile len(@rest) > 0\nbegin\n    insert into @items values (@nr, left(@rest, @${2:max_length}))\n    select @nr = @nr + 1, @rest = substring(@rest, @${2:max_length} + 1, len(@rest))\nend\n\nreturn
+
+<Right>
+v 1 5 if @list is null return\n\ndeclare @nr int = 1, @rest nvarchar(max) = @list\n\nwhile len(@rest) > 0\nbegin\n    insert into @items values (@nr, left(@rest, @max_length))\n    select @nr = @nr + 1, @rest = substring(@rest, @max_length + 1, len(@rest))\nend\n\nreturn
+.${3:é_y}${4:x}$0@
+    
+<Space> <Left> <S-Tab> x x é
+i 1 12     .   xxé x@
+${1:é_y}_type${1}é${1:é_y}_type${1}, $1
+\tb.
+<Space>
+i 1 4 \tb. _type é _type ,  
+ @λ${3:col}
+    if a = 
+<Tab>
+i 1 18     if a =  @λcol
+update t\nset t.${1:applied} = t.${2:original_applied},\n    t.${2:original_applied} = null,\n    t.update_user = dbo.tsf_original_login(),\n    t.update_date_time = sysdatetime()\nfrom ${3:table} t\nwhere t.${4:session_id} = @${4:session_id}\n  and t.${5:action_id} = @${5:action_id}\n  and t.${1:applied} = ${6:4}
+    
+<S-Tab> <Right> <Esc> <C-r>
+n 2 11     update t\n    set t.applied = t.original_applied,\n        t.original_applied = null,\n        t.update_user = dbo.tsf_original_login(),\n        t.update_date_time = sysdatetime()\n    from table t\n    where t.session_id = @session_id\n      and t.action_id = @action_id\n      and t.applied = 4
+if exists (select 1 from inserted i where i.${1:flag} = 1)\nbegin\n    update c\n    set c.${1:flag} = 0,\n        c.update_user = dbo.tsf_user(),\n        c.update_date_time = sysdatetime()\n    from ${2:table} c\n    join inserted i\n      on i.${3:group_id} = c.${3:group_id}\n    where i.${1:flag} = 1\n      and c.${1:flag} = 1\n      and c.${4:id} <> i.${4:id}\nend
+
+<S-Tab> <Tab> <Esc> <S-Tab> <Left> <Del> <Del> <Tab>
+n 7 8 if exists (select 1 from inserted i where i.flag = 1)\nbegin\n    update c\n    set c.flag = 0,\n        c.update_user = dbo.tsf_user(),\n        c.update_date_time = sysdatetime()\n    fromable c\n    join inserted i\n      on i.group_id = c.group_id\n    where i.flag = 1\n      and c.flag = 1\n      and c.id <> i.id\nend
+t.${1:value} = case\n                   when @${2:type} = 1 then null  -- ${3:column based}\n                   when @${4:condition} in (10, 11) then null  -- ${5:is (not) empty}\n                   else @${1:value}\n               end
+    if a = 
+<Esc> <Space> <Tab> <Right> a
+i 1 16     if a = t.value = case\n                       when @type = 1 then null  -- column based\n                       when @condition in (10, 11) then null  -- is (not) empty\n                       else @value\n                   end
+and not exists\n(\n    select 1\n    from ${1:parent} b\n    join inserted i\n      on i.${2:parent_id} = b.${2:parent_id}\n    where b.lock_status = ${3:3}  -- ${4:merging}\n)
+x 
+é <Left> <Left> <Space> <S-Tab>
+i 4 12 x and not exists\n(\n    select 1\n    from     é b\n    join inserted i\n      on i.parent_id = b.parent_id\n    where b.lock_status = 3  -- merging\n)
+if @can_start_with_number = 0 and @string like '[0-9]%'\nbegin\n    return 1\nend\nelse if @string like '%[^0-9a-z_]%'\nbegin\n    return 1\nend\n\nreturn 0
+    if a = 
+x <Left> x <BS> <Tab> <BS>
+i 10 12     if a = if @can_start_with_number = 0 and @string like '[0-9]%'\n    begin\n        return 1\n    end\n    else if @string like '%[^0-9a-z_]%'\n    begin\n        return 1\n    end\n    \n    return 0x
+(_type${1:x}
+\tb.
+<Tab> <BS> <Right>
+i 1 9 \tb.(_type
+${1:a b}${3:x}(
+
+<Esc>
+n 1 0 a bx(
+if @default_mode = 0  -- add\nand @${1:id_col} is not null\nand exists (select 1 from ${2:table} t where t.${1:id_col} = @${1:id_col})\nbegin\n    declare @error_msg nvarchar(500) = concat('<text>', @${1:id_col}, '</text>')\n\n    exec tsf_send_message '${3:message_id}', @error_msg, 0\nend
+    
+a <C-w> <S-Tab> <Tab>
+v 3 30     if @default_mode = 0  -- add\n    and @    is not null\n    and exists (select 1 from table t where t.    = @   )\n    begin\n        declare @error_msg nvarchar(500) = concat('<text>', @   , '</text>')\n    \n        exec tsf_send_message 'message_id', @error_msg, 0\n    end
+update p\nset p.no_of_${1:items} = coalesce(n.cnt, 0)\nfrom ${2:parent} p\ncross apply\n(\n    select count(*) as cnt\n    from ${3:child} c\n    where c.${4:parent_id} = p.${4:parent_id}\n) n\nwhere exists\n(\n    select 1\n    from [INS_DEL] i  -- template param: inserted/deleted\n    where i.${4:parent_id} = p.${4:parent_id}\n)\n  and p.no_of_${1:items} <> coalesce(n.cnt, 0)
+x 
+
+v 2 12 x update p\nset p.no_of_items = coalesce(n.cnt, 0)\nfrom parent p\ncross apply\n(\n    select count(*) as cnt\n    from child c\n    where c.parent_id = p.parent_id\n) n\nwhere exists\n(\n    select 1\n    from [INS_DEL] i  -- template param: inserted/deleted\n    where i.parent_id = p.parent_id\n)\n  and p.no_of_items <> coalesce(n.cnt, 0)
+if exists\n(\n    select 1\n    from ${1:queued_task} q\n    where q.${2:owner_id} = @${2:owner_id}\n      and q.${3:task_status} in (0, 1, 2)  -- queued, pending, active\n)\nbegin\n    set @confirm_button_type = 1\nend
+x 
+<BS> <Tab> <BS> <Space>
+n 4 9 x if exists\n(\n    select 1\n    from  q\n    where q.owner_id = @owner_id\n      and q.task_status in (0, 1, 2)  -- queued, pending, active\n)\nbegin\n    set @confirm_button_type = 1\nend
+if @${1:grp_id} <> @upd_${1:grp_id}\nbegin\n    update r\n    set r.granted = 1\n    from ${2:role_overview} r\n    where r.${1:grp_id} = @${1:grp_id}\n      and r.granted = 0\n      and r.role_id in (select o.role_id from #old_roles o)\nend
+    if a = 
+<Tab>
+v 5 13     if a = if @grp_id <> @upd_grp_id\n    begin\n        update r\n        set r.granted = 1\n        from role_overview r\n        where r.grp_id = @grp_id\n          and r.granted = 0\n          and r.role_id in (select o.role_id from #old_roles o)\n    end
+set @error_text =\n    case @status_code\n        when -1 then '${1:unknown}'\n        when -2 then '${2:missing id}'\n        else cast(@status_code as varchar(max)) + ' unknown status code'\n    end
+x 
+<Tab>
+v 4 22 x set @error_text =\n    case @status_code\n        when -1 then 'unknown'\n        when -2 then 'missing id'\n        else cast(@status_code as varchar(max)) + ' unknown status code'\n    end
+if @layout_mode = 0  -- add\nbegin\n    set @${1:col}_type = 3\nend\nelse\nbegin\n    $0\nend
+
+<S-Tab> <Left> a <Del>
+i 3 9 if @layout_mode = 0  -- add\nbegin\n    set atype = 3\nend\nelse\nbegin\n    \nend
+\n_type
+x 
+<Esc> u u u x <CR> <Tab>
+n 1 0 
+select @refresh_data = iif(s.update_date_time > @last_refresh_local, 1, 0)\nfrom ${1:step_table} s\nwhere s.${2:parent_id} = @${2:parent_id}\n  and s.step_status = ${3:2}  -- await user input
+    if a = 
+<Tab> x
+i 3 13     if a = select @refresh_data = iif(s.update_date_time > @last_refresh_local, 1, 0)\n    from step_table s\n    where s.x = @x\n      and s.step_status = 2  -- await user input
+set @error_text =\n    case @status_code\n        when -1 then '${1:unknown}'\n        when -2 then '${2:missing id}'\n        else cast(@status_code as varchar(max)) + ' unknown status code'\n    end
+    if a = 
+<BS> <Left> <Space> <Right> a <Tab> <BS> <BS>
+i 3 26     if a = set @error_text =\n        case @status_code\n            when -1 then '\n            when -2 then 'missing id'\n            else cast(@status_code as varchar(max)) + ' unknown status code'\n        end
+, é@
+\tb.
+<Space> <S-Tab> <Right> <Tab> <Tab> <Left> <Esc>
+n 1 16 \tb., é@          
+raiserror(@warning_message, 9, 10)
+\tb.
+<BS> a <S-Tab> é <Right>
+i 1 43 \tb.raiserror(@warning_message, 9, 10a    é
+select @refresh_data = iif(s.update_date_time > @last_refresh_local, 1, 0)\nfrom ${1:step_table} s\nwhere s.${2:parent_id} = @${2:parent_id}\n  and s.step_status = ${3:2}  -- await user input
+x 
+
+v 2 5 x select @refresh_data = iif(s.update_date_time > @last_refresh_local, 1, 0)\nfrom step_table s\nwhere s.parent_id = @parent_id\n  and s.step_status = 2  -- await user input
+\n${2:col}
+\tb.
+<Tab>
+i 2 4 \tb.\n\tcol
+${2:col}(\n$0.${2:col}
+x 
+<BS>
+n 1 2 x (\n.
+if @layout_mode = 0  -- add\nbegin\n    set @${1:col}_type = 3\nend\nelse\nbegin\n    $0\nend
+x 
+x <C-w> a <C-w> <S-Tab> <Space> <BS> <Space>
+i 3 13 x if @layout_mode = 0  -- add\nbegin\n    set @    _type = 3\nend\nelse\nbegin\n    \nend
+if @cursor_from_col_id is null\nand @${1:config_id} is null\nbegin\n    select top 1 @${1:config_id} = r.${1:config_id}\n    from ${2:run_history} r\n    where r.${3:parent_id} = @${3:parent_id}\n      and r.developer_id = dbo.get_usr_id()\n    order by r.${4:started_at} desc\nend
+
+<S-Tab> <Esc> <Left> <Space> <Left> a <Space>
+i 2 6 if @cursor_from_col_id is null\nand @ config_id is null\nbegin\n    select top 1 @config_id = r.config_id\n    from run_history r\n    where r.parent_id = @parent_id\n      and r.developer_id = dbo.get_usr_id()\n    order by r.started_at desc\nend
+${2:a b}\t${1:é_y}\t${1:é_y}\t${1}a$2
+x 
+<S-Tab>
+v 1 9 x a b    é_y    é_y    é_yaa b
+.${1:x}
+    if a = 
+x <Esc> <Space>
+n 1 12     if a = .x
+${1:x}_type.aλ${1:x}\n${1}
+
+<BS> <BS> <Tab> <BS>
+n 1 0 _type.aλ\n
+if @${1:mode_col} is null or @${1:mode_col} = 0  -- A\nbegin\n    set @${2:switch_to_a}_type = 2\nend\n\nif @${1:mode_col} is null or @${1:mode_col} = 1  -- B\nbegin\n    set @${3:switch_to_b}_type = 2\nend
+\tb.
+<Esc> <Del> <Left> <Esc>
+n 1 6 \tb.if @ode_col is null or @mode_col = 0  -- A\n\tbegin\n\t    set @switch_to_a_type = 2\n\tend\n\t\n\tif @mode_col is null or @mode_col = 1  -- B\n\tbegin\n\t    set @switch_to_b_type = 2\n\tend
+${2:x}\n${2:x}a$2
+    if a = 
+é é a <C-w> <Esc> <Tab> x
+n 1 9     if a =\n    a
+${1:col}${2:col}_type_type..
+x 
+<BS> <Del> é
+n 1 2 x ol_type_type..
+$0@${2:col}${1:é_y}λ
+\tb.
+<BS> <Tab> <CR> <Tab> <S-Tab>
+n 1 7 \tb.@colλ
+${4:é_y}.a\t
+    
+<Del>
+n 1 4     .a    
+if @${1:grp_id} <> @upd_${1:grp_id}\nbegin\n    update r\n    set r.granted = 1\n    from ${2:role_overview} r\n    where r.${1:grp_id} = @${1:grp_id}\n      and r.granted = 0\n      and r.role_id in (select o.role_id from #old_roles o)\nend
+    
+<Right> a <BS>
+i 1 9     if @g <> @upd_g\n    begin\n        update r\n        set r.granted = 1\n        from role_overview r\n        where r.g = @g\n          and r.granted = 0\n          and r.role_id in (select o.role_id from #old_roles o)\n    end
+if exists\n(\n    select 1\n    from ${1:table} t\n    where t.${2:parent_id} = @${2:parent_id}\n      and t.${3:status} = ${4:0}  -- ${5:element}\n)\nbegin\n    $0\nend
+\tb.
+<Left> <Tab> x a <Tab> <BS> a
+i 4 12 \tb.if exists\n\t(\n\t    select 1\n\t    fromxaa t\n\t    where t.parent_id = @parent_id\n\t      and t.status = 0  -- element\n\t)\n\tbegin\n\t    \n\tend
+$0${3}\n${2:a b}a${3}${2:a b}
+
+<Right> <Right> <Tab> <Tab> <Tab>
+i 1 4     \na baa b
+@$1\n$1 .${1}
+
+
+i 1 1 @\n .
+.\t
+    
+<Tab>
+i 1 12     .       
+insert into ${1:table}_history\n(\n    ${2:id},\n    ${3:code},\n    action_type,\n    insert_user,\n    insert_date_time\n)\nselect\n    d.${2:id},\n    d.${3:code},\n    [action_type],\n    dbo.tsf_user(),\n    sysdatetime()\nfrom inserted i\njoin deleted d\n  on d.${2:id} = i.${2:id}\nwhere (d.${3:code} is null and i.${3:code} is not null)\n   or (d.${3:code} is not null and i.${3:code} is null)\n   or d.${3:code} <> i.${3:code}
+x 
+<Tab> <Tab> <Space> <Right> é a <Tab>
+i 4 13 x insert into table_history\n(\n    id,\n     ,éa    \n    action_type,\n    insert_user,\n    insert_date_time\n)\nselect\n    d.id,\n    d. ,\n    [action_type],\n    dbo.tsf_user(),\n    sysdatetime()\nfrom inserted i\njoin deleted d\n  on d.id = i.id\nwhere (d.  is null and i.  is not null)\n   or (d.  is not null and i.  is null)\n   or d.  <> i. 
+-- ${1:Random or empty}\nif isnull(@${2:type_col}, 1) = 1\nbegin\n    $0\nend\n-- ${3:Expression}\nelse if @${2:type_col} = 2\nbegin\nend
+x 
+<Left> <S-Tab> <S-Tab> <S-Tab>
+v 1 4 x -- Random or empty\nif isnull(@type_col, 1) = 1\nbegin\n    \nend\n-- Expression\nelse if @type_col = 2\nbegin\nend
+é
+
+<C-w>
+i 1 0 
+_type${1:col}\n${1:col} ${1:col} ${1:col}(
+    
+<Del> <C-w> <S-Tab> <Esc>
+n 1 8     _type\n      (
+a${2:col}, 
+
+<S-Tab> <Tab> <Left> <Tab> <BS> <Tab>
+i 1 8 acol,    
+exec dbo.tsf_send_message '${1:message_id}', null, 1\nrollback\nreturn
+    
+<S-Tab> <Del> <Left>
+n 1 30     exec dbo.tsf_send_message '', null, 1\n    rollback\n    return
+${1}(\n$1_type$1
+    
+é <Esc> <Right> <Tab> x <Tab> <C-w> x
+n 1 3     \n    é_typeé
+if @can_start_with_number = 0 and @string like '[0-9]%'\nbegin\n    return 1\nend\nelse if @string like '%[^0-9a-z_]%'\nbegin\n    return 1\nend\n\nreturn 0
+
+<BS> <Del> <Left> <Del> <Right>
+i 10 6 if @can_start_with_number = 0 and @string like '[0-9]%'\nbegin\n    return 1\nend\nelse if @string like '%[^0-9a-z_]%'\nbegin\n    return 1\nend\n\nreturn
+ , (\t${1:x}@${1}
+    if a = 
+<Esc> <Del> <Left> <Space>
+n 1 19     if a =  , (    @x
+\n\n
+
+<Del> <C-w> <Tab> <BS> <Left> <Tab>
+i 2 4 \n    
+if @${1:flag_col} <> 1\nbegin\n    set @ref_${2:parent}_${3:detail}_type = 2\nend
+    
+<BS>
+n 1 8     if @ <> 1\n    begin\n        set @ref_parent_detail_type = 2\n    end
+$2λa.
+
+<CR> é <BS>
+i 2 0 \nλa.
+if @default_mode = 0  -- add\nand @${1:id_col} is not null\nand exists (select 1 from ${2:table} t where t.${1:id_col} = @${1:id_col})\nbegin\n    declare @error_msg nvarchar(500) = concat('<text>', @${1:id_col}, '</text>')\n\n    exec tsf_send_message '${3:message_id}', @error_msg, 0\nend
+    
+<S-Tab> x <Tab> <BS> <S-Tab> <BS> <Tab>
+n 3 29     if @default_mode = 0  -- add\n    and @x is not null\n    and exists (select 1 from  t where t.x = @x)\n    begin\n        declare @error_msg nvarchar(500) = concat('<text>', @x, '</text>')\n    \n        exec tsf_send_message 'message_id', @error_msg, 0\n    end
+${1:é_y}, λ\t\t${2:col}
+\tb.
+<S-Tab>
+v 1 3 \tb.é_y, λ        col
+λ${2:a b}\n\t
+x 
+
+v 1 4 x λa b\n    
+t.${1:value} = case\n                   when @${2:type} = 1 then null  -- ${3:column based}\n                   when @${4:condition} in (10, 11) then null  -- ${5:is (not) empty}\n                   else @${1:value}\n               end
+
+<Tab> <S-Tab>
+v 1 2 t.value = case\n                   when @type = 1 then null  -- column based\n                   when @condition in (10, 11) then null  -- is (not) empty\n                   else @value\n               end
+if @cursor_from_col_id is null\nand @${1:config_id} is null\nbegin\n    select top 1 @${1:config_id} = r.${1:config_id}\n    from ${2:run_history} r\n    where r.${3:parent_id} = @${3:parent_id}\n      and r.developer_id = dbo.get_usr_id()\n    order by r.${4:started_at} desc\nend
+
+<Esc> <C-w> <S-Tab> <S-Tab> x <BS>
+n 2 4 if @cursor_from_col_id is null\nand @onfig_id is null\nbegin\n    select top 1 @config_id = r.config_id\n    from run_history r\n    where r.parent_id = @parent_id\n      and r.developer_id = dbo.get_usr_id()\n    order by r.started_at desc\nend
+\n ${1:x}λ${1:x}${2}a
+x 
+<BS> <Left> <Space> <Esc> <Esc> <C-r> <Esc>
+n 2 1 x \n λa
+ .${1:é_y}\n${1:é_y}${2}.$1
+x 
+<Del> <Tab> é
+n 1 3 x  .\n.
+select @badge_value = nullif(count(*), 0)\nfrom ${1:message} m\nwhere m.${2:parent_id} = @${2:parent_id}\n  and not exists\n  (\n      select 1\n      from ${1:message}_approved a\n      where a.${2:parent_id} = m.${2:parent_id}\n        and a.pk_hash = m.pk_hash\n  )
+
+<Esc> x <Tab> <Del> <Space> <Tab> <Del> x
+n 2 6 select @badge_value = nullif(count(*), 0)\nfrom sge m\nwhere m.parent_id = @parent_id\n  and not exists\n  (\n      select 1\n      from message_approved a\n      where a.parent_id = m.parent_id\n        and a.pk_hash = m.pk_hash\n  )
+a${2}_type.
+
+<BS> a
+i 1 1 a_type.
+if @${1:flag_col} <> 1\nbegin\n    set @ref_${2:parent}_${3:detail}_type = 2\nend
+\tb.
+<Space> <S-Tab> <BS> <Space>
+i 1 8 \tb.if @  <> 1\n\tbegin\n\t    set @ref_parent_detail_type = 2\n\tend
+insert into ${1:table}_history\n(\n    ${2:id},\n    ${3:code},\n    action_type,\n    insert_user,\n    insert_date_time\n)\nselect\n    d.${2:id},\n    d.${3:code},\n    [action_type],\n    dbo.tsf_user(),\n    sysdatetime()\nfrom inserted i\njoin deleted d\n  on d.${2:id} = i.${2:id}\nwhere (d.${3:code} is null and i.${3:code} is not null)\n   or (d.${3:code} is not null and i.${3:code} is null)\n   or d.${3:code} <> i.${3:code}
+x 
+<S-Tab> <Del> é <Tab>
+n 1 14 x insert into _history\n(\n    id,\n    code,\n    action_type,\n    insert_user,\n    insert_date_time\n)\nselect\n    d.id,\n    d.code,\n    [action_type],\n    dbo.tsf_user(),\n    sysdatetime()\nfrom inserted i\njoin deleted d\n  on d.id = i.id\nwhere (d.code is null and i.code is not null)\n   or (d.code is not null and i.code is null)\n   or d.code <> i.code
+if exists (select 1 from ${1:configuration} c where c.${2:locked} = 1)\nbegin\n    select\n        @add_button_type     = 2,\n        @update_button_type  = 2,\n        @delete_button_type  = 2,\n        @confirm_button_type = 2,\n        @cancel_button_type  = 2\nend
+    
+<Left> <Right>
+v 1 29     if exists (select 1 from configuration c where c.locked = 1)\n    begin\n        select\n            @add_button_type     = 2,\n            @update_button_type  = 2,\n            @delete_button_type  = 2,\n            @confirm_button_type = 2,\n            @cancel_button_type  = 2\n    end
+if @cursor_from_col_id is null\nand @${1:config_id} is null\nbegin\n    select top 1 @${1:config_id} = r.${1:config_id}\n    from ${2:run_history} r\n    where r.${3:parent_id} = @${3:parent_id}\n      and r.developer_id = dbo.get_usr_id()\n    order by r.${4:started_at} desc\nend
+
+a <BS> <C-w> <Left> <BS> <Tab>
+i 2 4 if @cursor_from_col_id is null\nan    is null\nbegin\n    select top 1 @ = r.\n    from run_history r\n    where r.parent_id = @parent_id\n      and r.developer_id = dbo.get_usr_id()\n    order by r.started_at desc\nend
+${1:a b}a${1:a b}a${1:a b}_typeé 
+    
+<Right>
+v 1 5     a baa baa b_typeé 
+${1:a b}
+
+<Del>
+n 1 0 
+${1:col}
+\tb.
+<Tab> <CR> a <Del> x <Tab> é
+i 2 14 \tb.col\n        ax  é
+_type${1:a b}${4:x}\n$4
+
+<BS> <BS>
+n 1 4 _typex\nx
+update t\nset t.${1:col} = @${1:col},\n    t.update_user = dbo.tsf_user(),\n    t.update_date_time = sysdatetime()\nfrom ${2:table} t\nwhere t.${3:parent_id} = @upd_${3:parent_id}\n  and t.${4:id} = @upd_${4:id}
+    
+<BS> <Tab> <S-Tab> x <S-Tab> <S-Tab>
+n 2 10     update t\n    set t.= @,\n        t.update_user = dbo.tsf_user(),\n        t.update_date_time = sysdatetime()\n    from table t\n    where t.parent_id = @upd_parent_id\n      and t.id = @upd_id
+ ${2:é_y}, $2\t${2:é_y}\n
+x 
+<Right> <C-w> x
+i 1 6 x  éx, éx    éx\n
+${1:é_y}\t\n${1}@$1(${1}
+
+<Tab> <Tab> <Del> é <BS> <BS> <Left> <S-Tab>
+i 2 15 é_y    \né_y@é_y(é_  y
+${2:x}$0@$2(${2}a${2}
+    if a = 
+a
+i 1 12     if a = a@a(aaa
+if @${1:list} is null return\n\ndeclare @nr int = 1, @rest nvarchar(max) = @${1:list}\n\nwhile len(@rest) > 0\nbegin\n    insert into @items values (@nr, left(@rest, @${2:max_length}))\n    select @nr = @nr + 1, @rest = substring(@rest, @${2:max_length} + 1, len(@rest))\nend\n\nreturn
+
+<Del>
+n 1 4 if @ is null return\n\ndeclare @nr int = 1, @rest nvarchar(max) = @\n\nwhile len(@rest) > 0\nbegin\n    insert into @items values (@nr, left(@rest, @max_length))\n    select @nr = @nr + 1, @rest = substring(@rest, @max_length + 1, len(@rest))\nend\n\nreturn
+update ${1:selection_table}\nset selected = 1\nwhere ${2:parent_id} = @${2:parent_id}\n  and ${3:item_id} = @${3:item_id}
+x 
+x <Left> <Tab> <Tab> x <C-w> <C-w> <Space>
+i 4 3 x update x\nset selected = 1\nwhere parent_id = @parent_id\n    = @ 
+if exists\n(\n    select 1\n    from ${1:table} t\n    where t.${2:parent_id} = @${2:parent_id}\n      and t.update_date_time > @last_refresh_utc\n)\nbegin\n    set @refresh_data = 1\nend
+
+<S-Tab> <Tab> <Space> <S-Tab> x
+i 4 10 if exists\n(\n    select 1\n    from x t\n    where t.  = @ \n      and t.update_date_time > @last_refresh_utc\n)\nbegin\n    set @refresh_data = 1\nend
+update t\nset t.${1:col} = null,\n    t.update_user = dbo.tsf_user(),\n    t.update_date_time = sysdatetime()\nfrom ${2:table} t\njoin inserted i\n  on i.${3:id} = t.${3:id}\nwhere i.${4:type} in (${5:9, 10})\n  and t.${1:col} is not null
+
+
+v 2 6 update t\nset t.col = null,\n    t.update_user = dbo.tsf_user(),\n    t.update_date_time = sysdatetime()\nfrom table t\njoin inserted i\n  on i.id = t.id\nwhere i.type in (9, 10)\n  and t.col is not null
+${2:a b}@
+    if a = 
+<Tab> é é <S-Tab> <Tab>
+i 1 26     if a = a b@éé       
+\t ${1:a b} a
+    if a = 
+x <Del> <C-w> <BS> é <Left> <S-Tab> <Esc>
+n 1 15     if a =      éa
+${1:é_y}, $1
+
+<C-w> <Esc> <Tab>
+n 1 0 é_y, é_y
+${2:a b}_typeé
+
+<BS> <C-w> <Tab> x <Left> <BS> <Space> <S-Tab>
+n 1 1 typeé
+é
+    if a = 
+<S-Tab>
+i 1 17     if a = é    
+(${2:a b}\n${2:a b}\n${2}${1:a b}
+
+<BS> <Right> x <Space> <Tab> <Del>
+n 3 0 (a b\na b\na
+${1:é_y}λ
+    if a = 
+<Del> <Tab> <Space> <BS> <C-w> <Space> <Left>
+n 1 10     if a = λ
+${1:x} $1_type${1:x} 
+\tb.
+é x <Del>
+i 1 6 \tb.éxéx_typeéx 
+(λλ\n
+\tb.
+<CR> <CR> <Tab> a <Tab> <S-Tab>
+i 4 20 \tb.(λλ\n\t\n\n            a       
+a$2.$2 $0${1}λ
+\tb.
+<Tab> é <S-Tab>
+i 1 10 \tb.aé.é λ
+.\n${2:x}@$2${1:a b}\n
+    if a = 
+<Esc> <BS>
+n 2 6     if a = .\n    x@xa b\n    
+${3:é_y}${2}\n(
+x 
+<Del> <Del> <Right> <Tab> <S-Tab> <CR>
+i 2 0 x é_y\n
+${3:col}${1:a b}_type${3}${4:é_y}_type$4${2:x}
+
+<Esc> <BS> <BS> a <BS> <BS> <Right> <C-w>
+i 1 0 a b_typecolé_y_typeé_yx
+declare @new_job int\n\ninsert into ${1:queued_task}\n(\n    task_type,\n    task_status,\n    owner_id,\n    queued_date_time,\n    cancelled,\n    waiting_for_id,\n    insert_user,\n    insert_date_time,\n    update_user,\n    update_date_time\n)\nvalues\n(\n    ${2:9},  -- ${3:task type}\n    0,       -- queued\n    dbo.get_usr_id(),\n    sysutcdatetime(),\n    0,\n    ${4:dbo.get_last_in_chain(@parent_id)},\n    dbo.tsf_user(),\n    sysdatetime(),\n    dbo.tsf_user(),\n    sysdatetime()\n)\n\nset @new_job = scope_identity()
+    if a = 
+<BS> <Right> <S-Tab> <Right> <Right> x
+n 3 14     if a = declare @new_job int\n    \n    insert into\n    (\n        task_type,\n        task_status,\n        owner_id,\n        queued_date_time,\n        cancelled,\n        waiting_for_id,\n        insert_user,\n        insert_date_time,\n        update_user,\n        update_date_time\n    )\n    values\n    (\n        9,  -- task type\n        0,       -- queued\n        dbo.get_usr_id(),\n        sysutcdatetime(),\n        0,\n        dbo.get_last_in_chain(@parent_id),\n        dbo.tsf_user(),\n        sysdatetime(),\n        dbo.tsf_user(),\n        sysdatetime()\n    )\n    \n    set @new_job = scope_identity()
+select @badge_value = nullif(count(*), 0)\nfrom ${1:detail} d\nwhere d.${2:parent_id} = @${2:parent_id}\n  and d.${3:status} in (${4:0, 3})  -- ${5:open, changed}
+\tb.
+
+v 2 6 \tb.select @badge_value = nullif(count(*), 0)\n\tfrom detail d\n\twhere d.parent_id = @parent_id\n\t  and d.status in (0, 3)  -- open, changed
+${1}
+
+<Left> <BS> <Left> <C-w> x <BS> <C-w>
+i 1 0 
+${3:a b}.${4:x}${1}
+
+<Right> é
+i 1 7 a b.xé
+-- ${1:Random or empty}\nif isnull(@${2:type_col}, 1) = 1\nbegin\n    $0\nend\n-- ${3:Expression}\nelse if @${2:type_col} = 2\nbegin\nend
+
+x <Space> <C-w>
+i 1 3 -- \nif isnull(@type_col, 1) = 1\nbegin\n    \nend\n-- Expression\nelse if @type_col = 2\nbegin\nend
+${1}${2:a b}\n
+    
+<S-Tab> <Right> <Tab> <BS> <Del>
+n 1 6        \n    
+if @${1:type_col} not in (${2:1, 2})\nbegin\n    set @${3:dep_col} = null\nend
+\tb.
+<BS> <Del> <Del> <Del> <S-Tab> <CR> <Right>
+n 2 2 \tb.if @t in (1, 2)\n\tbegin\n\t    set @dep_col = null\n\tend
+if exists (select 1 from inserted i where ${1:i.child_id = i.parent_id})\nbegin\n    exec tsf_send_message '${2:message_id}', null, 1\n    rollback tran\n    return\nend
+\tb.
+<Tab> <S-Tab> <Tab> <S-Tab> a <S-Tab> <Esc> <C-r>
+n 1 48 \tb.if exists (select 1 from inserted i where a   )\n\tbegin\n\t    exec tsf_send_message 'message_id', null, 1\n\t    rollback tran\n\t    return\n\tend
+if @cursor_from_col_id is null\nand @${1:col} is null\nbegin\n    set @${1:col} = ${2:dbo.get_usr_id()}\nend
+\tb.
+<S-Tab> <Space> <C-w> <S-Tab> é <S-Tab>
+i 2 14 \tb.if @cursor_from_col_id is null\n\tand @   é    is null\n\tbegin\n\t    set @   é    = dbo.get_usr_id()\n\tend
+ $3_type${3}
+x 
+<Tab> <C-w> <BS> <Left> é <Left> a <Del>
+i 1 1 ax
+if @variant_id = '${1:variant_a}'\nbegin\n    select @badge_value = nullif(count(*), 0)\n    from ${2:table} t\n    where t.${3:parent_id} = @${3:parent_id}\n      and t.${4:kind} = 0  -- ${5:kind a}\nend\nelse if @variant_id = '${6:variant_b}'\nbegin\n    $0\nend
+    if a = 
+<Tab> <BS> <C-w> <C-w> <BS> <S-Tab> <Tab>
+n 4 12     if a = if @variant_id = 'variant_a'\n    begin\n        select @badge_value = nullif(count(*), 0)\n        from  t\n        where t.parent_id = @parent_id\n          and t.kind = 0  -- kind a\n    end\n    else if @variant_id = 'variant_b'\n    begin\n        \n    end
+if @${1:status} = ${2:2}  -- ${3:element name}\nbegin\n    set @${4:col}_mand = 1\nend\nelse\nbegin\n    set @${4:col}_type = 3  -- hidden\nend
+\tb.
+<Right> <Tab> x
+i 1 17 \tb.if @status = x  -- element name\n\tbegin\n\t    set @col_mand = 1\n\tend\n\telse\n\tbegin\n\t    set @col_type = 3  -- hidden\n\tend
+a${3:a b}λ ${1:a b}${3:a b}, 
+x 
+<Tab> <C-w> <BS>
+n 1 3 x aλ a b, 
+declare @msg nvarchar(500) = concat('<text>', @${1:var1}, '</text><text>', @${2:var2}, '</text>')\nexec dbo.tsf_send_message '${3:message_id}', @msg, ${4:0}
+    
+x <Tab> <BS>
+n 1 72     declare @msg nvarchar(500) = concat('<text>', @x, '</text><text>', @, '</text>')\n    exec dbo.tsf_send_message 'message_id', @msg, 0
+if @${1:status} = ${2:2}  -- ${3:element name}\nbegin\n    set @${4:col}_mand = 1\nend\nelse\nbegin\n    set @${4:col}_type = 3  -- hidden\nend
+    
+<Right> <S-Tab> x <Space> <Space>
+i 1 12     if @sx   = 2  -- element name\n    begin\n        set @col_mand = 1\n    end\n    else\n    begin\n        set @col_type = 3  -- hidden\n    end
+${1}λ_typea($1é${1}
+x 
+<BS> <Tab> <S-Tab> <BS>
+i 1 12 xλ_typea(é
+$0
+x 
+<S-Tab> <Space> <BS> <Tab> <Esc> <Tab>
+n 1 7 x       

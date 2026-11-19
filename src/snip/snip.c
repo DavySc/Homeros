@@ -409,7 +409,6 @@ static int expand(Editor *e, const char *body, size_t a, size_t z)
 	S.tick = 1;   /* the expansion, which neither autocmd has seen */
 	set_cursor(e, a + o.n);
 	jump(e, 1, 0);   /* Session.new() starts before the first stop */
-	if (S.b) after(e, 0);   /* the expansion's TextChanged, as below a jump */
 	return 0;
 }
 
@@ -466,10 +465,7 @@ int snip_key(Editor *e, int k, int pending)
 {
 	if (S.b && (S.b != e->buf || S.nr != e->buf->nr)) stop();   /* BufLeave */
 	if (e->pum && e->pum == items && pum_key(e, k)) return 1;
-	if (S.b && (k == KEY_TAB || k == KEY_S_TAB) && jump(e, k == KEY_TAB ? 1 : -1, S.s[S.cur].idx)) {
-		if (S.b) after(e, 0);   /* select_tabstop() leaves Insert mode with typeahead */
-		return 1;
-	}
+	if (S.b && (k == KEY_TAB || k == KEY_S_TAB) && jump(e, k == KEY_TAB ? 1 : -1, S.s[S.cur].idx)) return 1;
 	int ins = e->mode == MODE_INSERT;
 	if (sel && e->ks.visual) {
 		/* select mode: a character or Enter replaces the selection,
