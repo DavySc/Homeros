@@ -96,6 +96,8 @@ after $ keeping curswant MAXCOL):
   the Tab's first cell (column 0 after >>), ours its last (column 7).
 - C-v on a Tab, then J ("\t[y] 0x1f }", C-v J a BS): Neovim's cursor
   stays inside the Tab, so a splits it into spaces; ours is on the Tab.
+- a block yanked across a Tab, then C-v r ("\t", S 0 BS y Esc C CR Esc
+  C-v - y C-v r ,): Neovim replaces at the Tab's first cell, ours after it.
 
 Neovim's own oddities, not copied:
 - r, then R and CTRL-U or BS back over the replaced character ("  0", r 3 l R
