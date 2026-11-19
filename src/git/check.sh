@@ -29,7 +29,7 @@ for t in test_git_win test_git; do
 	zig cc -target x86_64-windows-gnu -std=c17 -Wall -Wextra -Werror -D_DEFAULT_SOURCE -Iinclude -O1 -g \
 	  -fsanitize=undefined -fsanitize-trap=undefined -o build/win/$t.exe tests/$t.c src/git/*.c \
 	  $(pick core) $(pick text) $(pick undo) $(pick uni) $(pick keys) $(pick loop) $(pick file) $(pick grid) \
-	  $(pick theme) $(pick lsp) -lshell32
+	  $(pick theme) $(pick lsp) $(pick sqlfmt) src/syntax/tsql.c -lshell32
 done
 timeout 300 wine build/win/test_git_win.exe || { echo "FAIL test_git_win"; exit 1; }
 
