@@ -1,5 +1,5 @@
-/* Davy's Normal-mode maps (keys_map(), FEATURES.md 4), fed as main.c
-   feeds keys.  Neovim with nnoremap <Space>ff <Nop> and <Space>fg <Nop>
+/* Davy's Normal-mode maps (FEATURES.md 4), fed through keys_input() as
+   main.c feeds keys.  Neovim with nnoremap <Space>ff <Nop> and <Space>fg <Nop>
    on "abcb" (measured once, 2026-11-19, nvim --headless, feedkeys 'xt'):
    " x" gives "acb" at column 1, " fb" stays "abcb" at column 3, "  ffx"
    gives "acb" at column 1: a key that completes no map runs Space's own
@@ -9,16 +9,12 @@
 #include <unistd.h>
 #include "check.h"
 #include "core.h"
-#include "git.h"
 #include "keys.h"
 #include "tools.h"
 
 static void feed(Editor *e, const char *s)
 {
-	for (; *s; s++) {
-		int k = *s == 27 ? KEY_ESC : (unsigned char)*s;
-		if (!(e->ks.pending ? keys_map(e, k) : tools_key(e, k) || git_key(e, k) || keys_map(e, k))) keys_feed(e, k, s[1] != 0);
-	}
+	for (; *s; s++) keys_input(e, *s == 27 ? KEY_ESC : (unsigned char)*s, s[1] != 0);
 }
 
 /* a picker opens in its Insert mode: Esc, then Esc closes it */
@@ -80,7 +76,25 @@ int main(void)
 	feed(&e, "2 x");                            /* no map: the count is Space's */
 	CHECK(at(&e, " ffacb\n", 4));
 
+	/* a register's name is read unmapped: "-p puts the small delete
+	   register, while "a- runs the map (Neovim's normal_cmd_get_more_chars()
+	   with no_mapping; reviews/pr-74-repro/nvim-regname.lua) */
+	feed(&e, "uu0xyl\"-p");   /* yl: the unnamed register differs from "- */
+	CHECK(at(&e, "bacb\n", 1));
+	e.msg[0] = 0;
+	feed(&e, "\"a-");
+	CHECK(!strcmp(e.msg, "tools: file manager not built yet") && !e.ks.pending);
 	core_free(&e);
+
+	/* the keys after a failed map go through the chain again: on the
+	   dashboard SPC q is Space, then the dashboard's q, which quits (Neovim
+	   checks them against buffer-local maps; nvim-replay.lua) */
+	static Editor d;
+	CHECK(!core_open(&d, NULL));
+	tools_dash(&d, 0);
+	feed(&d, " q");
+	CHECK(d.quit);
+	core_free(&d);
 	unlink(path);
 	puts("test_keys_map: ok");
 	return 0;

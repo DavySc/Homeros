@@ -1427,7 +1427,7 @@ int normal_mappable(int drop)
 {
 	if (oa.op_type != OP_NOP) return 0;
 	for (int i = 0; i < npend; i++)
-		if (pend[i] == '"') i++;
+		if (pend[i] == '"') { if (++i == npend) return 0; }   /* the name is read unmapped */
 		else if (pend[i] < '0' || pend[i] > '9') return 0;
 	if (drop) { npend = 0; opcount = 0; clearop(&oa); }
 	return 1;

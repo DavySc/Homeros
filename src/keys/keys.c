@@ -118,12 +118,11 @@ static const char *const maps[] = {
 };
 static int lead[3], nlead;   /* the keys typed of a map not yet complete */
 
-/* main.c calls it for a key typed with a command pending, else after the
-   pickers and git declined it.  A map completed runs; one that may still be
+/* A map completed runs; one that may still be
    completed waits (a lone SPC as with which-key, without 'timeoutlen');
    otherwise the first key runs unmapped and the rest are checked again
    (Neovim's vgetorpeek() when no map matches) */
-int keys_map(Editor *e, int k)
+static int map(Editor *e, int k)
 {
 	if (!nlead && (e->mode != MODE_NORMAL || e->ks.visual || !normal_mappable(0))) return 0;
 	lead[nlead++] = k;
@@ -145,14 +144,21 @@ int keys_map(Editor *e, int k)
 		}
 		return 1;
 	}
-	if (part) return e->ks.pending = 1;   /* main.c sends the next keys here first */
-	int n = nlead;
+	if (part) return e->ks.pending = 1;   /* keys_input() sends the next keys here first */
+	int n = nlead, l[3];
+	memcpy(l, lead, sizeof l);
 	nlead = 0;
 	if (n == 1) return 0;
-	keys_feed(e, lead[0], 1);
-	for (int i = 1; i < n; i++)
-		if (!keys_map(e, lead[i])) keys_feed(e, lead[i], i < n - 1);
+	keys_feed(e, l[0], 1);
+	/* the rest as typed: a picker, the dashboard or magit may take them
+	   (Neovim checks them against buffer-local maps too) */
+	for (int i = 1; i < n; i++) keys_input(e, l[i], i < n - 1);
 	return 1;
+}
+
+void keys_input(Editor *e, int k, int pending)
+{
+	if (!(e->ks.pending ? map(e, k) : tools_key(e, k) || git_key(e, k) || map(e, k))) keys_feed(e, k, pending);
 }
 
 void keys_feed(Editor *e, int k, int pending)
