@@ -403,7 +403,7 @@ for pdb in sys.argv[3:]:
             # A local's lone place is the location itself in RAD's file even when it holds for a few bytes only (knowledge base, 04); ours is
             # then a list of one, compared as RAD has it. Types as in typed().
             # An inlined call's function type is compared; its class is not: RAD reads the first field of a plain function's id record as a
-            # type too, where it is an id in the other stream (646 of 4,420 inlined calls in kinds_o2.pdb get a class that way).
+            # type too, where it is an id in the other stream (646 of 10,424 inlined calls in kinds_o2.pdb get a class that way).
             def as_rad(local):
                 local = re.sub(r'@ \[[0-9a-f]+-[0-9a-f]+ ([^\]\[]*)\]; ', r'@ \1; ', re.sub(r'2004 (u?)int32:4 on ', lambda m: '2004 %sint:4 on ' % ('unsigned ' * bool(m[1])), local))
                 return '' if 'Odd' in local else re.sub(r'(?<= )(20\d\d) (.*?):(\d+)', lambda m: f'{m[1]} {tail(m[2])}:{m[3]}', local)   # not where kinds.cpp's Odd is
