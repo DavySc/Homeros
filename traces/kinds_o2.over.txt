@@ -1,0 +1,7 @@
+start -> main kinds.cpp:69 +0x1370 [main_thread stopped at entry point]
+step_over_line -> main kinds.cpp:71 +0x1374 [main_thread completed step]
+step_over_line -> main kinds.cpp:72 +0x1394 [main_thread completed step]
+step_over_line -> __scrt_common_main_seh exe_common.inl:288 +0x15ff [main_thread completed step]
+step_over_line -> __scrt_common_main_seh exe_common.inl:294 +0x1601 [main_thread completed step]
+step_over_line -> __scrt_common_main_seh exe_common.inl:295 +0x165f [main_thread completed step]
+step_over_line -> ended

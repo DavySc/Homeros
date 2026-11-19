@@ -1,0 +1,10 @@
+start -> main kinds.cpp:69 +0x1370 [main_thread stopped at entry point]
+step_into_line -> main kinds.cpp:71 +0x1374 [main_thread completed step]
+step_into_line -> Box::many kinds.cpp:14 +0x1160 [main_thread completed step]
+step_into_line -> main kinds.cpp:71 +0x1391 [main_thread completed step]
+step_into_line -> main kinds.cpp:72 +0x1394 [main_thread completed step]
+step_into_line -> __scrt_common_main_seh exe_common.inl:288 +0x15ff [main_thread completed step]
+step_into_line -> __scrt_common_main_seh exe_common.inl:294 +0x1601 [main_thread completed step]
+step_into_line -> __scrt_is_managed_app utility_desktop.cpp:32 +0x1f90 [main_thread completed step]
+step_into_line -> __scrt_is_managed_app utility_desktop.cpp:33 +0x1f94 [main_thread completed step]
+step_into_line -> outside kernel32.dll!
