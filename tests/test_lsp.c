@@ -649,7 +649,11 @@ static void scenario(int seed, const char *log)
 			lsp_flush(d);
 			cur++;
 			snapshot();
-			for (int k = 0; k < 4200; k++) edit(d, 0, 0, "a", 1);
+			/* or, in every other such scenario, the '@' replaced: what it
+			   said about the whole text, read only now, is mapped and its
+			   end, inside the deletion, goes to the deletion's start */
+			if (seed % 3 == 1) for (int k = 0; k < 4200; k++) edit(d, 0, 0, "a", 1);
+			else edit(d, len - 1, 1, "xyz", 3);
 			lsp_flush(d);
 			cur++;
 			snapshot();
@@ -659,6 +663,9 @@ static void scenario(int seed, const char *log)
 				for (long long t0 = ms(); !lsp_answer(d, 0) && ms() - t0 < 300; ) { loop_once(10); check_shown(d, &latest); }
 			}
 			CHECK(lsp_answer(d, 0));
+			int n;
+			lsp_diags(d, &n);
+			CHECK(seed % 3 == 1 || n);
 		} else if (a < 35) {                              /* a command: a few edits */
 			for (unsigned k = 0, n = 1 + rnd(3); k < n; k++) {
 				size_t pos = charstart(rnd((unsigned)len + 1)), del = 0;
