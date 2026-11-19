@@ -5784,3 +5784,108 @@ w magit: repo|1|4
 e Discard unstaged changes in 2 files? (y or n) y
 s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 M. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba b.txt\n? c.txt\n
 s worktree 
+@ diff-worktree-rename
+$ git mv b.txt z.txt
+> 
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| renamed    b.txt -> z.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e For information about GNU Emacs and the GNU system, type C-h C-a.
+s cached diff --git a/b.txt b/z.txt\nsimilarity index 73%\nrename from b.txt\nrename to z.txt\nindex 85c3040..7a28df3 100644\n--- a/b.txt\n+++ b/z.txt\n@@ -1,3 +1,4 @@\n alpha\n beta\n gamma\n+delta\n
+s head refs/heads/main\n
+s log 65b2dec 87c805b Second commit\n87c805b  First commit\n
+s refs refs/heads/main 65b2dec origin/main\nrefs/remotes/origin/main 87c805b \n
+s stash 
+s status # branch.oid 65b2dece2307738c380c83800d37eed00b8adecb\n# branch.head main\n# branch.upstream origin/main\n# branch.ab +1 -0\n1 .M N... 100644 100644 100644 e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d e031777e6dd8bb5a9b38f0bba64a38e5ec76b92d a.txt\n2 R. N... 100644 100644 100644 85c30401ce288f253613cb07ee32e62128089caa 7a28df3c975fa62270a452251c4e0b24d685c4ba R73 z.txt\tb.txt\n? c.txt\n
+s worktree diff --git a/a.txt b/a.txt\nindex e031777..73b32b4 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,5 +1,5 @@\n one\n-two\n+TWO\n three\n four\n five\n@@ -8,5 +8,5 @@ seven\n eight\n nine\n ten\n-eleven\n+ELEVEN\n twelve\n
+> d
+w magit: repo|1|3
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| renamed    b.txt -> z.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+w  *transient*|0|-
+| Limit arguments
+|  -- Limit to files (--)
+|  -i Ignore submodules (--ignore-submodules)
+|  -b Ignore whitespace changes (--ignore-space-change)
+|  -w Ignore all whitespace (--ignore-all-space)
+| 
+| Context arguments
+|  -U Context lines (-U)
+|  -W Show surrounding functions (--function-context)
+| 
+| Tune arguments
+|  -A Diff algorithm (--diff-algorithm)
+|  -X Diff merges (--diff-merges)
+|  -M Detect renames (-M)
+|  -x Disallow external diff drivers (--no-ext-diff)
+|  -s Show stats (--stat)
+|  =g Show signature (--show-signature)
+| 
+| Actions
+|  d Dwim         u Diff unstaged   c Show commit
+|  r Diff range   s Diff staged     t Show stash
+|  p Diff paths   w Diff worktree
+e 
+> w
+w magit-diff: repo|1|0
+| 2 files changed, 3 insertions(+), 2 deletions(-)
+| a.txt          | 4 ++--
+| b.txt => z.txt | 1 +
+| 
+| modified   a.txt
+| @@ -1,5 +1,5 @@
+|  one
+| -two
+| +TWO
+|  three
+|  four
+|  five
+| @@ -8,5 +8,5 @@ seven
+|  eight
+|  nine
+|  ten
+| -eleven
+| +ELEVEN
+|  twelve
+| renamed    b.txt -> z.txt
+| rename from b.txt
+| rename to z.txt
+| @@ -1,3 +1,4 @@
+|  alpha
+|  beta
+|  gamma
+| +delta
+w magit: repo|0|-
+| Head:     main Second commit
+| Merge:    origin/main First commit
+| 
+| Untracked files (1)…
+| Unstaged changes (1)
+| modified   a.txt…
+| 
+| Staged changes (1)
+| renamed    b.txt -> z.txt…
+| 
+| Unmerged into origin/main (1)
+| 65b2dec main Second commit
+e 
