@@ -63,20 +63,15 @@ int Rich::shared = 1;
 struct Left : virtual Base { int left; int pure() override { return 2; } };
 struct Right : virtual Base { int right; };
 struct Bottom : Left, Right { int bottom; };
-// values of every width a record can hold, and so many names that their list continues in a second one
+// values of every width a record can hold
 enum Wide : long long { tiny = -1, small = -1000, medium = -100000, huge = -5000000000, top = 0x7fffffffffffffff, u16 = 0x8000, u32 = 0x80000000 };
 enum UWide : unsigned long long { all = 0xffffffffffffffff };
 enum Empty {};
 enum Signed { minus_one = -1, minus_byte = -128, minus_short = -32768, minus_long = -2147483647 - 1 };
-#define E1(p) p##0, p##1, p##2, p##3, p##4, p##5, p##6, p##7,
-#define E2(p) E1(p##0) E1(p##1) E1(p##2) E1(p##3) E1(p##4) E1(p##5) E1(p##6) E1(p##7)
-#define E3(p) E2(p##0) E2(p##1) E2(p##2) E2(p##3) E2(p##4) E2(p##5) E2(p##6) E2(p##7)
-#define E4(p) E3(p##0) E3(p##1) E3(p##2) E3(p##3) E3(p##4) E3(p##5) E3(p##6) E3(p##7)
-enum Long { E4(a_long_enumerator_name_) };
 int main()
 {
   Later l = {1, 0}; Box b; b.v = 0; Odd o; o.v = 0; Bottom bottom; Rich rich; Rich::Alias alias = Rich::over('a');
-  Wide wide = tiny; UWide uwide = all; Signed sg = minus_one; Empty empty = Empty(); Long lng = a_long_enumerator_name_0000;
+  Wide wide = tiny; UWide uwide = all; Signed sg = minus_one; Empty empty = Empty();
   return l.x + first() + second() + b.get() + odd(o, static_cast<Odd &&>(o), &Odd::v, &Odd::get) + bottom.pure() + rich.over(1) + rich.over(1, 2) + rich.intro()
-         + alias + (int)wide + (int)uwide + sg + empty + lng;
+         + alias + (int)wide + (int)uwide + sg + empty;
 }

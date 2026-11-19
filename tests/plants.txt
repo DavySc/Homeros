@@ -208,7 +208,7 @@ fuzz | dbg/conv.c | .byte_size = o->pointer_size, .a = direct});\n    uint16_t f
 fuzz | dbg/pdb.c | bool has = n >= 20; | bool has = true;
 # ---- slice 2f: members ----
 oracle | dbg/conv.c | (RdiMember){.kind = kind, .name | (RdiMember){.kind = kind ^ 1, .name
-oracle | dbg/conv.c | .type = type_of(o, type_id), .off = (uint32_t)off}; | .type = type_of(o, 0), .off = (uint32_t)off};
+oracle | dbg/conv.c | .type = type_of(o, type_id), .off = (uint32_t)off}; | .type = type_of(o, type_id + 1), .off = (uint32_t)off};
 oracle | dbg/conv.c | .type = type_of(o, type_id), .off = (uint32_t)off}; | .type = type_of(o, type_id), .off = (uint32_t)off + 1};
 oracle | dbg/conv.c | (RdiMember){.kind = kind, .name = intern(&o->strings, name.p, name.n) | (RdiMember){.kind = kind, .name = intern(&o->strings, name.p, 0)
 test | dbg/conv.c | method_kind[8] = {0x100, 0x102, 0x101, 0x100, 0x102, 0x102, 0x102, 0x100}; | method_kind[8] = {0x102, 0x102, 0x101, 0x100, 0x102, 0x102, 0x102, 0x100};

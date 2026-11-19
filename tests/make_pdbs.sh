@@ -12,8 +12,10 @@ for s in steps crash deep blocks gap; do
   done
 done
 # C++: classes, methods, references, bit fields, member pointers, a forward reference with and without its definition
-clang --target=x86_64-pc-windows-msvc -g -gcodeview -O0 -ffreestanding -fno-rtti -fno-exceptions -c "$here/subjects/kinds.cpp" -o "$out/obj/kinds.obj"
-link "$out/obj/kinds.obj" /out:"$out/kinds.exe" /pdb:"$out/kinds.pdb"
+for s in kinds long; do
+  clang --target=x86_64-pc-windows-msvc -g -gcodeview -O0 -ffreestanding -fno-rtti -fno-exceptions -c "$here/subjects/$s.cpp" -o "$out/obj/$s.obj"
+  link "$out/obj/$s.obj" /out:"$out/$s.exe" /pdb:"$out/$s.pdb"
+done
 link "$out/obj/steps-O0.obj" /pdbpagesize:8192 /out:"$out/steps-8k.exe" /pdb:"$out/steps-8k.pdb"
 # column records, and one function whose lines come from two files
 clang --target=x86_64-pc-windows-msvc -g -gcodeview -gcolumn-info -O0 -ffreestanding -c "$here/subjects/steps.c" -o "$out/obj/cols.obj"
