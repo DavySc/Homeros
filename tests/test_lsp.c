@@ -398,6 +398,26 @@ static void fhandle(const char *m, size_t n)
 		free(r.s);
 	} else if (!strcmp(meth, "exit")) {
 		exit(0);
+	} else if (!strcmp(meth, "$/test/echo")) {          /* the test's raw request: the version it saw */
+		Str r = { 0 };
+		str_addf(&r, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"result\":%ld}", json_int(m, ft, id), sver);
+		fsend(&r);
+		free(r.s);
+	} else if (!strcmp(meth, "$/test/note")) {          /* its raw notification, heard back on lsp_tap */
+		Str r = { 0 };
+		str_lit(&r, "{\"jsonrpc\":\"2.0\",\"method\":\"$/test/noted\",\"params\":{}}");
+		fsend(&r);
+		free(r.s);
+	} else if (!strcmp(meth, "$/test/work")) {          /* two tokens begun, one reported on, one ended: 1 at work */
+		static const char *const kind[] = { "begin", "begin", "report", "end" };
+		for (int i = 0; i < 4; i++) {
+			Str r = { 0 };
+			str_addf(&r, "{\"jsonrpc\":\"2.0\",\"method\":\"$/progress\",\"params\":{\"token\":%d,\"value\":{\"kind\":\"%s\"}}}", i == 1 ? 2 : 1, kind[i]);
+			fsend(&r);
+			free(r.s);
+		}
+	} else if (!strcmp(meth, "$/test/die")) {
+		exit(0);
 	} else wrong("unknown %s", meth);
 }
 
@@ -569,6 +589,49 @@ static const char *const alpha[] = { "a", "b", " ", "\n", "é", "€", "𝓝", "
    form, a surrogate, a cut-off character (in every third scenario) */
 static const char *const junk[] = { "\xE9", "\x80", "\xC0\x80", "\xED\xA0\x80", "\xE2\x82" };
 
+/* lsp_tap (package 14's infoview): out 1 only the edits and closes, out 0
+   only what the server says unasked and its answer to initialize */
+static long tapver = -1, nnoted;
+static char tapinit[4096];
+static size_t ntapinit;
+
+static void tap(int out, const char *m, size_t n)
+{
+	Jtok *k = NULL;
+	int cap = 0;
+	CHECK(json_parse(m, n, &k, &cap) > 0);
+	int me = json_get(m, k, 0, "method"), id = json_get(m, k, 0, "id");
+	if (out) {
+		CHECK(me >= 0 && id < 0);
+		if (!strncmp(m + k[me].a, "textDocument/didChange\"", 23))
+			tapver = json_int(m, k, json_get(m, k, json_get(m, k, json_get(m, k, 0, "params"), "textDocument"), "version"));
+		else CHECK(!strncmp(m + k[me].a, "textDocument/didClose\"", 22));
+	} else if (me >= 0) {
+		if (!strncmp(m + k[me].a, "$/test/noted\"", 13)) nnoted++;
+	} else {
+		CHECK(json_int(m, k, id) == 0 && json_get(m, k, json_get(m, k, 0, "result"), "capabilities") >= 0 && n < sizeof tapinit);
+		memcpy(tapinit, m, n);
+		ntapinit = n;
+	}
+	free(k);
+}
+
+/* lsp_send's answers: how many, the last one's result, or NULL (the server died) */
+typedef struct { int calls, null; long ver; } Got;
+
+static void got(void *ctx, const char *m, size_t n)
+{
+	Got *g = ctx;
+	g->calls++;
+	g->null = !m;
+	if (!m) return;
+	Jtok *k = NULL;
+	int cap = 0;
+	CHECK(json_parse(m, n, &k, &cap) > 0);
+	g->ver = json_int(m, k, json_get(m, k, 0, "result"));
+	free(k);
+}
+
 static void scenario(int seed, const char *log)
 {
 	static char exe[4096], sseed[24], *const roots[] = { NULL };
@@ -581,6 +644,7 @@ static void scenario(int seed, const char *log)
 	exe[el] = 0;
 	fake_table[0] = (LspServer){ ".fake", "fake", argv, (const char *const *)roots, 1 };
 	lsp_servers = fake_table;
+	lsp_tap = tap;
 	/* every sixth file holds what is not UTF-8 (and gets no more), every
 	   sixth other one gets some typed */
 	int bad = seed % 6 == 3;
@@ -633,6 +697,51 @@ static void scenario(int seed, const char *log)
 				for (long long t0 = ms(); !lsp_answer(d, 0) && ms() - t0 < 300; ) { loop_once(10); check_shown(d, &latest); }
 			}
 			CHECK(lsp_answer(d, 0));
+		} else if (step == 60) {
+			/* the infoview's raw access (package 14), the server up */
+			for (long long t0 = ms(); ms() - t0 < 1000; ) loop_once(10);
+			lsp_restart(d);
+			cur++;
+			snapshot();
+			for (long long t0 = ms(); ms() - t0 < 2000; ) {
+				long l = -1;
+				loop_once(10);
+				check_shown(d, &l);
+				if (l == cur) break;
+			}
+			const char *u = lsp_uri(d);
+			CHECK(u && !strncmp(u, "file:///", 8) && strstr(u, "/homeros-test.fake"));
+			size_t in;
+			const char *ini = lsp_init(d, &in);
+			CHECK(ini && in == ntapinit && !memcmp(ini, tapinit, in));
+			Got g = { 0 }, gd = { 0 };
+			CHECK(lsp_send("file:///nowhere", "$/test/echo", "{}", 2, got, &g) == -1);
+			edit(d, 0, 0, "a", 1);            /* not flushed: lsp_send sends it first */
+			CHECK(!lsp_send(u, "$/test/echo", "{}", 2, got, &g));
+			cur++;
+			snapshot();
+			CHECK(tapver == cur);
+			/* the status line: the server's name, and no work before any
+			   $/progress (it reports only when asked here) */
+			int w;
+			const char *nm = lsp_name(d, &w);
+			CHECK(nm && !strcmp(nm, strrchr(exe, '/') + 1) && w == -1);
+			CHECK(!lsp_name(NULL, &w) && w == -1);
+			long noted = nnoted;
+			CHECK(!lsp_send(u, "$/test/work", "{}", 2, NULL, NULL));
+			CHECK(!lsp_send(u, "$/test/note", "{}", 2, NULL, NULL));
+			for (long long t0 = ms(); (!g.calls || nnoted == noted) && ms() - t0 < 2000; ) { loop_once(10); check_shown(d, &latest); }
+			CHECK(g.calls == 1 && !g.null && g.ver == cur && nnoted == noted + 1);
+			lsp_name(d, &w);
+			CHECK(w == 1);
+			CHECK(!lsp_send(u, "$/test/die", "{}", 2, got, &gd));   /* never answered: the server dies */
+			for (long long t0 = ms(); !gd.calls && ms() - t0 < 2000; ) { loop_once(10); check_shown(d, &latest); }
+			CHECK(gd.calls == 1 && gd.null);
+			lsp_restart(d);
+			lsp_name(d, &w);
+			CHECK(w == -1);              /* a new server has said nothing yet */
+			cur++;
+			snapshot();
 		} else if (step == 125) {
 			/* one command of more edits than the log holds, the server
 			   unheard meanwhile: what it said before must go, not be

@@ -26,3 +26,16 @@ lsp: a file holding what is not UTF-8 gets changes alone~test TESTS=lsp~~src/lsp
 lsp: a full edit log is not cut~test TESTS=lsp~~src/lsp/lsp.c~	if (d->nlog == LOG) {~	if (0) {
 lsp: a cut edit log still maps what is older than it~test TESTS=lsp~~src/lsp/lsp.c~		d->floor = d->nlog ? d->log[0].v + 1 : d->ver + 1;¶~
 lsp: diagnostics mapped across an edit next to what is not UTF-8~test TESTS=lsp~~src/lsp/lsp.c~	if (d->bad) { d->nlog = 0; d->floor = d->ver + 1; }~
+lsp: the infoview does not hear the edits (lsp_tap out 1)~test TESTS=lsp~~src/lsp/lsp.c~	if (lsp_tap && s->def->lean && (!strncmp~	if (0 && lsp_tap && s->def->lean && (!strncmp
+lsp: the infoview hears every message sent, not only edits and closes~test TESTS=lsp~~src/lsp/lsp.c~	if (lsp_tap && s->def->lean && (!strncmp~	if (lsp_tap && s->def->lean && (1 || !strncmp
+lsp: the infoview does not hear what the server says unasked~test TESTS=lsp~~src/lsp/lsp.c~		if (lsp_tap && s->def->lean) lsp_tap(0, m, n);¶		char name[64];~		char name[64];
+lsp: the infoview hears every answer, not only initialize's~test TESTS=lsp~~src/lsp/lsp.c~	long rid = json_int(m, tk, id);¶~	long rid = json_int(m, tk, id);¶	if (lsp_tap && s->def->lean && rid) lsp_tap(0, m, n);¶
+lsp: the answer to initialize not kept for a bridge opened later~test TESTS=lsp~~src/lsp/lsp.c~		if (s->def->lean) { s->init.n = 0; str_add(&s->init, m, n); }~		if (s->def->lean) s->init.n = 0;
+lsp: a raw request goes before the edits not yet sent~test TESTS=lsp~~src/lsp/lsp.c~	lsp_flush(d);¶	o.n = 0;¶	str_lit(&o, "{\"jsonrpc\":\"2.0\",");~	o.n = 0;¶	str_lit(&o, "{\"jsonrpc\":\"2.0\",");
+lsp: a raw request's answer not given to its caller~test TESTS=lsp~~src/lsp/lsp.c~		if (r->s == s && r->id == rid) {~		if (r->s == s && r->id == rid + 1) {
+lsp: a raw request left waiting when its server dies~test TESTS=lsp~~src/lsp/lsp.c~		if (r->s == s) { *q = r->link; r->fn(r->ctx, NULL, 0); free(r); }~		if (r->s == s) { *q = r->link; free(r); }
+lsp: a raw message for a file no server has open is sent anyway~test TESTS=lsp~~src/lsp/lsp.c~	if (!d || d->s->proc < 0 || (fn && !r)) { free(r); return -1; }~	if (!d) d = srvs ? srvs->docs : NULL;¶	if (!d || d->s->proc < 0 || (fn && !r)) { free(r); return -1; }
+lsp: the status line counts no work begun~test TESTS=lsp~~src/lsp/lsp.c~s->work = (s->work < 0 ? 0 : s->work) + 1;~s->work = s->work < 0 ? 0 : s->work;
+lsp: the status line counts no work ended~test TESTS=lsp~~src/lsp/lsp.c~ && s->work > 0) s->work--;~ && s->work > 0) s->work += 0;
+lsp: a new server shows the old one's work~test TESTS=lsp~~src/lsp/lsp.c~	s->work = -1;¶~
+lsp: the status line names the server by its whole path~test TESTS=lsp~~src/lsp/lsp.c~	return b ? b + 1 : a;~	return b ? a : a;

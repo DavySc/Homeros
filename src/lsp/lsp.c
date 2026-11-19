@@ -51,6 +51,8 @@ typedef struct Srv {
 	int ready;              /* initialize answered: messages may go */
 	int closing;            /* its last file closed: freed once it exits */
 	Str in, held;           /* bytes read and not yet handled; messages waiting for ready */
+	Str init;               /* a Lean server's answer to initialize, for a bridge opened later */
+	int work;               /* $/progress tokens begun and not ended; -1 before any */
 	long next;              /* request ids; 0 is initialize */
 	LspDoc *docs;
 	struct Srv *link;
@@ -72,6 +74,10 @@ struct LspDoc {
 };
 
 static Srv *srvs;
+void (*lsp_tap)(int out, const char *msg, size_t n);
+/* lsp_send's requests waiting for their answers */
+typedef struct Raw { Srv *s; long id; LspRawFn fn; void *ctx; struct Raw *link; } Raw;
+static Raw *raws;
 static void out(void *ctx, int stream, const char *b, size_t n);
 static Str o, line;             /* the message being built; one line of text */
 static Jtok *tk;
@@ -100,6 +106,11 @@ static void frame(Srv *s, int now)
 	char h[40];
 	int n = snprintf(h, sizeof h, "Content-Length: %zu\r\n\r\n", o.n);
 	if (s->proc < 0) return;
+	/* the infoview hears the edits as Lean does (vscode-lean4's
+	   sentClientNotification) */
+	if (lsp_tap && s->def->lean && (!strncmp(o.s, "{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didChange\"", 50) ||
+	                                !strncmp(o.s, "{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didClose\"", 49)))
+		lsp_tap(1, o.s, o.n);
 	if (!s->ready && !now) { str_add(&s->held, h, (size_t)n); str_add(&s->held, o.s, o.n); return; }
 	proc_write(s->proc, h, (size_t)n);
 	proc_write(s->proc, o.s, o.n);
@@ -167,6 +178,7 @@ static void start(Srv *s)
 	s->ready = 0;
 	s->in.n = s->held.n = 0;
 	s->next = 1;
+	s->work = -1;
 	s->proc = proc_spawn((char *const *)s->def->argv, s->root, out, s);
 	if (s->proc < 0) return;
 	char *u = uri(s->root);
@@ -175,10 +187,11 @@ static void start(Srv *s)
 	if (u) str_add(&o, u, strlen(u));
 	free(u);
 	/* Lean: incremental diagnostics (else 420 MB of JSON, measured in
-	   kittymax) and widgets (the infoview, package 14) */
+	   kittymax) and widgets (the infoview, package 14); $/progress for the
+	   status line (lualine's lsp_status) */
 	str_lit(&o, "\",\"capabilities\":{\"textDocument\":{\"publishDiagnostics\":{\"versionSupport\":true},"
 	        "\"hover\":{\"contentFormat\":[\"markdown\",\"plaintext\"]},\"synchronization\":{\"didSave\":true}},"
-	        "\"general\":{\"positionEncodings\":[\"utf-16\"]},\"lean\":{\"incrementalDiagnosticSupport\":true}}");
+	        "\"window\":{\"workDoneProgress\":true},\"general\":{\"positionEncodings\":[\"utf-16\"]},\"lean\":{\"incrementalDiagnosticSupport\":true}}");
 	if (s->def->lean) str_lit(&o, ",\"initializationOptions\":{\"hasWidgets\":true}");
 	str_lit(&o, "}}");
 	frame(s, 1);
@@ -312,7 +325,7 @@ static void drop(Srv *s)
 	Srv **q = &srvs;
 	while (*q != s) q = &(*q)->link;
 	*q = s->link;
-	free(s->root); free(s->in.s); free(s->held.s); free(s);
+	free(s->root); free(s->in.s); free(s->held.s); free(s->init.s); free(s);
 }
 
 void lsp_close(LspDoc *d)
@@ -556,6 +569,7 @@ static void handle(Srv *s, const char *m, size_t n)
 		return;
 	}
 	if (meth >= 0) {
+		if (lsp_tap && s->def->lean) lsp_tap(0, m, n);
 		char name[64];
 		if (tk[meth].type != 's' || tk[meth].z - tk[meth].a >= sizeof name) return;
 		json_str(m, tk, meth, name);
@@ -571,11 +585,27 @@ static void handle(Srv *s, const char *m, size_t n)
 			LspDoc *d = doc(s, m, json_get(m, tk, td, "uri"));
 			long v = json_int(m, tk, json_get(m, tk, td, "version"));
 			if (d && v >= 0) ranges(d, &d->prog, v, m, json_get(m, tk, p, "processing"), 0);
+		} else if (!strcmp(name, "$/progress")) {        /* lualine's lsp_status counts the tokens */
+			int k = json_get(m, tk, json_get(m, tk, p, "value"), "kind");
+			size_t z = k >= 0 ? tk[k].z - tk[k].a : 0;
+			if (z == 5 && !memcmp(m + tk[k].a, "begin", 5)) s->work = (s->work < 0 ? 0 : s->work) + 1;
+			else if (z == 3 && !memcmp(m + tk[k].a, "end", 3) && s->work > 0) s->work--;
+			else return;
+			core_changed = 1;
 		}
 		return;
 	}
 	long rid = json_int(m, tk, id);
+	for (Raw **q = &raws, *r; (r = *q); q = &r->link)
+		if (r->s == s && r->id == rid) {
+			*q = r->link;
+			r->fn(r->ctx, m, n);
+			free(r);
+			return;
+		}
 	if (rid == 0) {                              /* initialize answered */
+		if (s->def->lean) { s->init.n = 0; str_add(&s->init, m, n); }
+		if (lsp_tap && s->def->lean) lsp_tap(0, m, n);
 		s->ready = 1;
 		begin("initialized");
 		str_lit(&o, "{}");
@@ -602,6 +632,10 @@ static void handle(Srv *s, const char *m, size_t n)
 static void dead(Srv *s)
 {
 	s->proc = -1;
+	s->init.n = 0;
+	for (Raw **q = &raws, *r; (r = *q); )
+		if (r->s == s) { *q = r->link; r->fn(r->ctx, NULL, 0); free(r); }
+		else q = &r->link;
 	for (LspDoc *d = s->docs; d; d = d->link) forget(d);
 	if (s->closing) drop(s);
 }
@@ -625,4 +659,39 @@ static void out(void *ctx, int stream, const char *b, size_t n)
 		s->in.n -= h + len;
 		s->in.s[s->in.n] = 0;
 	}
+}
+
+const char *lsp_name(const LspDoc *d, int *work)
+{
+	*work = d ? d->s->work : -1;
+	if (!d) return NULL;
+	const char *a = d->s->def->argv[0], *b = strrchr(a, '/');
+	return b ? b + 1 : a;
+}
+
+const char *lsp_uri(const LspDoc *d) { return d ? d->uri : NULL; }
+const char *lsp_init(const LspDoc *d, size_t *n) { *n = d->s->init.n; return *n ? d->s->init.s : NULL; }
+
+int lsp_send(const char *u, const char *method, const char *params, size_t n, LspRawFn fn, void *ctx)
+{
+	LspDoc *d = NULL;
+	for (Srv *s = srvs; s && !d; s = s->link)
+		for (d = s->docs; d && strcmp(d->uri, u); d = d->link) ;
+	Raw *r = fn ? malloc(sizeof *r) : NULL;
+	if (!d || d->s->proc < 0 || (fn && !r)) { free(r); return -1; }
+	lsp_flush(d);
+	o.n = 0;
+	str_lit(&o, "{\"jsonrpc\":\"2.0\",");
+	if (r) {
+		*r = (Raw){ d->s, d->s->next++, fn, ctx, raws };
+		raws = r;
+		str_addf(&o, "\"id\":%ld,", r->id);
+	}
+	str_lit(&o, "\"method\":\"");
+	str_addq(&o, method, strlen(method));
+	str_lit(&o, "\",\"params\":");
+	str_add(&o, params, n);
+	str_lit(&o, "}");
+	send(d->s);
+	return 0;
 }
