@@ -1,5 +1,5 @@
 # Plants for JSON's colours (src/syntax/tsql.c's json_token, json_face, paint; format in tools/planted.sh).
-json: a .json file is not JSON (test_json)~test TESTS=json~~src/syntax/syntax.c~int json = pl > 5 &&~int json = pl > 50 &&
+json: a .json file is T-SQL (test_json)~test TESTS=json~~src/syntax/syntax.c~{ ".json", "json", BY_JSON }~{ ".json", "json", BY_SQL }
 json: the index is filled with T-SQL's tokens (test_json)~test TESTS=json~~src/syntax/tsql.c~: (q->json ? json_token : tsql_token)(&q->r, p, &kind);~: tsql_token(&q->r, p, &kind);
 json: a window is lexed as T-SQL (test_json)~test TESTS=json~~src/syntax/tsql.c~e = (q->json ? json_token : tsql_token)(&q->r, p, &k);~e = tsql_token(&q->r, p, &k);
 json: a window takes T-SQL's faces (test_json)~test TESTS=json~~src/syntax/tsql.c~c = q->json ? json_face(r, p, e, k) : face(r, p, e, k);~c = 0 && q->json ? json_face(r, p, e, k) : face(r, p, e, k);
