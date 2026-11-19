@@ -21,6 +21,10 @@ export LANG=C.UTF-8
 wineserver -k 2>/dev/null || true
 export XDG_DATA_HOME=$PWD/build/win/git-data TEST_TRASH=$PWD/build/win/git-data/Trash/files
 rm -rf "$XDG_DATA_HOME"
+# a prefix made now is made by a server without this environment: the
+# trash would go elsewhere on that first run (measured, 4 of 4 runs); make
+# it, and let that server end, first
+wine wineboot -i; wineserver -w
 for t in test_git_win test_git; do
 	zig cc -target x86_64-windows-gnu -std=c17 -Wall -Wextra -Werror -D_DEFAULT_SOURCE -Iinclude -O1 -g \
 	  -fsanitize=undefined -fsanitize-trap=undefined -o build/win/$t.exe tests/$t.c src/git/*.c \

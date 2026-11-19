@@ -366,7 +366,7 @@ static int apply(const View *v, int h, int z, const char *a1, const char *a2)
 	/* --index refuses a file whose stat the index has out of date ("does
 	   not match index"); magit's refresh has written it fresh, ours never
 	   writes (git_diff), so the write refreshes it first */
-	if (a2 && !strcmp(a2, "--index") && !wgit("update-index", "-q", "--refresh", NULL)) return -1;
+	if (a2 && !strcmp(a2, "--index") && !wgit("update-index", "-q", "--unmerged", "--refresh", NULL)) return -1;
 	Cmd *c = wgit("apply", NULL);
 	if (!c) return -1;
 	if (a1) cmd_add(c, a1);

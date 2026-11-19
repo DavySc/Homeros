@@ -28,16 +28,22 @@ static int narrow(const wchar_t *w, int wn, char *s)
 	return 0;
 }
 
-/* realpath: the full name of an existing file, drive letter upper case as
-   git writes it */
+/* realpath: the stored name of an existing file, as libuv's (Neovim's)
+   uv_fs_realpath on Windows, drive letter upper case as git writes it */
 int git_real(const char *path, char *out)
 {
-	wchar_t w[PATH_MAX], full[PATH_MAX];
-	DWORD n;
-	if (wide(path, w) || !(n = GetFullPathNameW(w, PATH_MAX, full, NULL)) || n >= PATH_MAX
-	    || GetFileAttributesW(full) == INVALID_FILE_ATTRIBUTES) return -1;
-	if (n > 3 && full[n - 1] == L'\\') full[--n] = 0;
-	if (narrow(full, -1, out)) return -1;
+	wchar_t w[PATH_MAX], full[PATH_MAX], *p = full;
+	HANDLE h;
+	if (wide(path, w) || (h = CreateFileW(w, 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING,
+	                                      FILE_FLAG_BACKUP_SEMANTICS, NULL)) == INVALID_HANDLE_VALUE) return -1;
+	DWORD n = GetFinalPathNameByHandleW(h, full, PATH_MAX, FILE_NAME_NORMALIZED | VOLUME_NAME_DOS);
+	CloseHandle(h);
+	if (!n || n >= PATH_MAX) return -1;
+	/* \\?\C:\x is C:\x; \\?\UNC\host\x is \\host\x */
+	if (!wcsncmp(p, L"\\\\?\\", 4)) { p += 4; n -= 4; }
+	if (!wcsncmp(p, L"UNC\\", 4)) { p += 2; n -= 2; p[0] = L'\\'; }
+	if (n > 3 && p[n - 1] == L'\\') p[--n] = 0;
+	if (narrow(p, -1, out)) return -1;
 	if (out[0] >= 'a' && out[0] <= 'z' && out[1] == ':') out[0] -= 'a' - 'A';
 	return 0;
 }
@@ -57,48 +63,43 @@ static int arm(struct Root *t)
 	                              | FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_ATTRIBUTES, NULL, &t->ov, NULL);
 }
 
-/* Takes every completed batch of changes: each one that counts is a change.
-   A batch too large for the buffer comes back empty: that is a change too. */
+/* Takes every completed batch of changes, until a read is pending (as
+   os.c reads until the queue is empty): changes that came while one batch
+   was taken complete the next read at once.  A batch that counts is a
+   change; one too large for the buffer comes back empty, or a read that
+   failed: those are changes too. */
 void git_drain(Repo *r)
 {
 	struct Watch *w = r->wt;
 	for (int i = 0; w && i < w->n; i++) {
 		struct Root *t = &w->r[i];
-		DWORD n;
-		if (!GetOverlappedResult(t->dir, &t->ov, &n, FALSE) && GetLastError() == ERROR_IO_INCOMPLETE) continue;
-		int any = !n;
-		/* copied out: Wine packs the entries without Windows's DWORD
-		   alignment (measured, 1 run) */
-		for (char *p = (char *)t->buf; n && !any; ) {
-			FILE_NOTIFY_INFORMATION f;
-			WCHAR w[PATH_MAX];
-			char name[PATH_MAX], path[2 * PATH_MAX];
-			size_t at = offsetof(FILE_NOTIFY_INFORMATION, FileName);
-			memcpy(&f, p, at);
-			if (f.FileNameLength >= sizeof w) any = 1;
-			else {
-				memcpy(w, p + at, f.FileNameLength);
-				if (narrow(w, (int)(f.FileNameLength / sizeof(WCHAR)), name)) any = 1;
+		DWORD n = 0;
+		for (; GetOverlappedResult(t->dir, &t->ov, &n, FALSE) || GetLastError() != ERROR_IO_INCOMPLETE; n = 0) {
+			int any = !n;
+			/* copied out: Wine packs the entries without Windows's DWORD
+			   alignment (measured, 1 run) */
+			for (char *p = (char *)t->buf; n && !any; ) {
+				FILE_NOTIFY_INFORMATION f;
+				WCHAR w[PATH_MAX];
+				char name[PATH_MAX], path[2 * PATH_MAX];
+				size_t at = offsetof(FILE_NOTIFY_INFORMATION, FileName);
+				memcpy(&f, p, at);
+				if (f.FileNameLength >= sizeof w) any = 1;
 				else {
-					snprintf(path, sizeof path, "%s/%s", t->path, name);
-					any = git_counts(r, path);
+					memcpy(w, p + at, f.FileNameLength);
+					if (narrow(w, (int)(f.FileNameLength / sizeof(WCHAR)), name)) any = 1;
+					else {
+						snprintf(path, sizeof path, "%s/%s", t->path, name);
+						any = git_counts(r, path);
+					}
 				}
+				if (!f.NextEntryOffset) break;
+				p += f.NextEntryOffset;
 			}
-			if (!f.NextEntryOffset) break;
-			p += f.NextEntryOffset;
+			if (any) { r->ver++; r->dirty = 1; }
+			if (arm(t)) break;
 		}
-		if (any) { r->ver++; r->dirty = 1; }
-		arm(t);
 	}
-}
-
-static void on_change(void *ctx, int fd)
-{
-	(void)fd;
-	Repo *r = ctx;
-	unsigned long v = r->ver;
-	git_drain(r);
-	if (r->ver != v) git_schedule(r);
 }
 
 static int root(Repo *r, const char *path)
@@ -112,7 +113,7 @@ static int root(Repo *r, const char *path)
 	if (t->dir == INVALID_HANDLE_VALUE) return -1;
 	snprintf(t->path, sizeof t->path, "%s", path);
 	if (!(t->ov.hEvent = CreateEventW(NULL, TRUE, FALSE, NULL)) || arm(t)
-	    || loop_watch((int)(intptr_t)t->ov.hEvent, on_change, r)) {
+	    || loop_watch((int)(intptr_t)t->ov.hEvent, git_changed, r)) {
 		if (t->ov.hEvent) CloseHandle(t->ov.hEvent);
 		CloseHandle(t->dir);
 		return -1;

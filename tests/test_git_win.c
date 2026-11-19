@@ -1,9 +1,14 @@
 /* src/git/win.c, the Windows half of package 17:
    1. git_real: an existing path comes back full, '/'-separated, its drive
-      letter upper case; a missing one fails.
+      letter upper case; a missing one fails.  (Its names as stored, from
+      GetFinalPathNameByHandleW, are Windows only: Wine returns them as
+      typed, measured 1 run.)
    2. The watch (Git.tla's Outside): a change in the work tree, a directory
       of it or .git counts; one under an ignored directory or in a nested repository's
-      .git does not; after git_unwatch nothing is seen.
+      .git does not; one git_drain takes every change before it, not only
+      the first batch (Git.tla ActsOnSeen: write.c's gate is one git_drain);
+      a linked work tree's common directory outside the work tree is
+      watched too; after git_unwatch nothing is seen.
    3. git_trash: the file goes to the Recycle Bin, not away (under Wine the
       bin is $XDG_DATA_HOME/Trash, which src/git/check.sh points here and
       names in TEST_TRASH).
@@ -100,10 +105,29 @@ int main(void)
 	CHECK(!seen(r, 1000));
 	put("a.txt", "b\n");
 	CHECK(seen(r, 5000));
+	put("build/y.o", "y");
+	Sleep(200);
+	put("a.txt", "a\n");
+	Sleep(200);
+	unsigned long v = r->ver;
+	git_drain(r);
+	CHECK(r->ver != v);
+	seen(r, 300);
 	git_unwatch(r);
 	CHECK(!r->wt);
 	put("a.txt", "c\n");
 	CHECK(!seen(r, 1000));
+	/* a linked work tree: its refs live in the common directory, elsewhere */
+	dir("main.git");
+	snprintf(common, sizeof common, "%s/main.git", top);
+	char wt[2 * MAX_PATH];
+	snprintf(wt, sizeof wt, "%s/wt", top);
+	dir("wt");
+	r->top = wt;
+	git_watch(r);
+	put("main.git/packed-refs", "x\n");
+	CHECK(seen(r, 5000));
+	git_unwatch(r);
 
 	/* 3 */
 	char victim[2 * MAX_PATH], name[64];
@@ -120,7 +144,7 @@ int main(void)
 	snprintf(kept, sizeof kept, "Z:%s/%s", bin, name);
 	for (char *p = kept; *p; p++) if (*p == '/') *p = '\\';
 	CHECK(GetFileAttributesA(kept) != INVALID_FILE_ATTRIBUTES);
-	puts("test_git_win: paths full and '/'-separated; the watch sees the work tree and .git but not ignored or nested repositories, and stops; the trash is the Recycle Bin");
+	puts("test_git_win: paths full and '/'-separated; the watch sees the work tree, .git and a linked work tree's common directory but not ignored or nested repositories, one drain takes all, and it stops; the trash is the Recycle Bin");
 	return 0;
 }
 #else

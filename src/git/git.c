@@ -18,7 +18,6 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
-#include <unistd.h>
 #include "core.h"
 #include "git.h"
 #include "loop.h"
@@ -75,7 +74,7 @@ void cmd_editor(Cmd *c)
 void git_diff(Cmd *c, int dt)
 {
 	if (dt == T_STAGED) { cmd_add(c, "diff"); cmd_add(c, "--cached"); }
-	else if (dt < 0) { cmd_add(c, "diff-index"); cmd_add(c, "HEAD"); }
+	else if (dt < 0) { cmd_add(c, "diff-index"); cmd_add(c, "-M"); cmd_add(c, "HEAD"); }
 	else cmd_add(c, "diff-files");
 	cmd_add(c, "-p");
 }
@@ -326,6 +325,16 @@ static void done(Repo *r, int slot)
 }
 
 /* Git.tla: a write first, else a refresh when dirty; never two at once */
+/* a watch saw something: a refresh if it counts */
+void git_changed(void *ctx, int fd)
+{
+	(void)fd;
+	Repo *r = ctx;
+	unsigned long v = r->ver;
+	git_drain(r);
+	if (r->ver != v) git_schedule(r);
+}
+
 void git_schedule(Repo *r)
 {
 	if (r->busy) return;
@@ -392,11 +401,7 @@ Repo *git_repo(const char *dir)
 	/* with-editor's sleeping editor for every git we run: without a
 	   command of its own (env) that Windows lacks.  git runs it with its
 	   shell; a git with no message file to edit never calls it. */
-#ifdef _WIN32
-	_putenv("GIT_EDITOR=" EDITOR);
-#else
-	setenv("GIT_EDITOR", EDITOR, 1);
-#endif
+	putenv((char *)"GIT_EDITOR=" EDITOR);
 	r->dirty = 1;
 	for (int s = 0; s < NSLOT; s++) r->pid[s] = -1;
 	r->next = git_repos;

@@ -582,7 +582,44 @@ static void bury_check(void)
 	free(o);
 	git_free();
 }
+/* discarding a staged file while another is unmerged (a merge stopped on
+   a conflict): magit discards it */
+static void unmerged_check(void)
+{
+	free(run("rm -rf '%s' && sh src/git/mkrepo.sh '%s' >/dev/null 2>&1 && cd '%s' && git reset -q --hard && rm -f c.txt "
+	         "&& git checkout -q -b side && sed -i s/one/ONE/ a.txt && git commit -qam side && git checkout -q main "
+	         "&& sed -i s/one/uno/ a.txt && git commit -qam m2 && { git merge side >/dev/null 2>&1 || true; } "
+	         "&& echo delta >> b.txt && git add b.txt", repo, repo, repo));
+	git_free();
+	CHECK(git_status(&e, repo) == 0);
+	settle();
+	const View *v = &R()->st;
+	for (size_t k = 0; k < v->nvis; k++)
+		if (!strncmp(v->pool.s + v->ln[v->vis[k]].off, "modified   b.txt", 16)) R()->cur = k;
+	git_key(&e, 'x'); git_key(&e, 'y');
+	settle();
+	char *o = run("cd '%s' && '%s' --no-optional-locks diff --cached --name-only", repo, realgit);
+	if (strcmp(o, "a.txt\n")) fail("discard-staged-unmerged", "x y", "echo \"%s\", staged: %s", e.msg, o);
+	free(o);
+	git_free();
+}
 #ifndef _WIN32
+
+/* an event on the work tree's own directory (touch .) after one that does
+   not count: the directory's change counts, as any other in the tree */
+static void top_check(void)
+{
+	free(run("rm -rf '%s' && sh src/git/mkrepo.sh '%s' >/dev/null 2>&1 && cd '%s' && echo '*.o' > .gitignore "
+	         "&& git add .gitignore && git commit -qm ign && touch x.o", repo, repo, repo));
+	git_free();
+	CHECK(git_status(&e, repo) == 0);
+	settle();
+	unsigned long v = R()->ver;
+	free(run("cd '%s' && touch x.o && touch .", repo));
+	settle();
+	if (R()->ver == v) fail("touch-top", "", "touch . did not move the version");
+	git_free();
+}
 
 /* reads that cannot start (a full process table) say so, never show a
    clean tree */
@@ -785,7 +822,9 @@ int main(void)
 		bury_check();
 #ifndef _WIN32
 		full_check();
+		top_check();
 #endif
+		unmerged_check();
 	}
 	core_free(&e);
 	char *o = run("rm -rf '%s'", tmp);

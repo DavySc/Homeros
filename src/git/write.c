@@ -4,16 +4,13 @@
    with with-editor's sleeping-editor protocol: git's editor names the
    message file and waits until the message buffer is finished or
    cancelled (with-editor-finish, with-editor-cancel). */
-#include <errno.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include "core.h"
 #include "loop.h"
 #include "gitint.h"
-
 
 void git_write_free(Write *w)
 {

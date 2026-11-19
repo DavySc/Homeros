@@ -70,7 +70,7 @@ void git_drain(Repo *r)
 			if (!dir) continue;
 			if (ev->mask & IN_IGNORED) { free(w->path[ev->wd]); w->path[ev->wd] = NULL; continue; }
 			char path[PATH_MAX];
-			snprintf(path, sizeof path, "%s%s%s", dir, ev->len ? "/" : "", ev->len ? ev->name : "");
+			snprintf(path, sizeof path, "%s/%s", dir, ev->len ? ev->name : "");
 			if (!git_counts(r, path)) continue;
 			if ((ev->mask & (IN_CREATE | IN_MOVED_TO)) && (ev->mask & IN_ISDIR)) watch_dir(r, path, 0);
 			r->ver++;
@@ -79,21 +79,12 @@ void git_drain(Repo *r)
 	}
 }
 
-static void on_inotify(void *ctx, int fd)
-{
-	(void)fd;
-	Repo *r = ctx;
-	unsigned long v = r->ver;
-	git_drain(r);
-	if (r->ver != v) git_schedule(r);
-}
-
 void git_watch(Repo *r)
 {
 	struct Watch *w = calloc(1, sizeof *w);
 	if (!w || (w->fd = inotify_init1(IN_NONBLOCK | IN_CLOEXEC)) < 0) { free(w); return; }
 	r->wt = w;
-	loop_watch(w->fd, on_inotify, r);
+	loop_watch(w->fd, git_changed, r);
 	watch_dir(r, r->top, 0);
 	watch_dir(r, r->common, 0);
 }
