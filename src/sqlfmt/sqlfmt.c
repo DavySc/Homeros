@@ -859,7 +859,7 @@ static int column(const Pass *p, size_t c)
 	if (t->brk != B_NONE) return t->level * 4;
 	int r = river(p, c);
 	if (r >= 0) return r;
-	if (hangs(p, c)) return line_;
+	if (hangs(p, c)) return t->depth ? inner(t) : line_;
 	if (t->k == RP && (size_t)t->depth + 1 < nds && ds[t->depth + 1].hang >= 0) return ds[t->depth + 1].hang;
 	return inner(t);
 }
@@ -922,6 +922,8 @@ static void render(const Pass *p, const unsigned char *reverted)
 		size_t at = nout;
 		put(s + t->s, t->e - t->s);
 		size_t d = (size_t)t->depth;
+		/* a statement starts afresh: nothing of the last one carries over */
+		if (t->brk == B_UNIT || (i && p->t[i - 1].k == SEMI)) nds = 0;
 		for (; nds <= d; nds++) {
 			if (!GROW(ds, nds, dscap)) { oom = 1; return; }
 			ds[nds] = (struct Depth){ -1, -1, 0, NOHEAD, 0 };

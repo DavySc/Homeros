@@ -40,8 +40,10 @@ sqlfmt: a ( that ends its line does not hang (test_sqlfmt, recorded)~test TESTS=
 sqlfmt: the river works only at depth 0 (test_sqlfmt, recorded)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~if (head_word(w)) ds[d].head = i~if (head_word(w) && !d) ds[d].head = i
 sqlfmt: a ) leaves its ( open (test_sqlfmt, recorded)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~if (t->k == RP) nds = d + 1;~if (t->k == RP && !t) nds = d + 1;
 sqlfmt: BETWEEN's AND joins the river (test_sqlfmt, recorded)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~if (w == W_BETWEEN) ds[d].between++;~if (w == W_BETWEEN && !t) ds[d].between++;
-sqlfmt: a ( alone on its line sits with what it holds (test_sqlfmt, recorded)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~if (hangs(p, c)) return line_;~if (hangs(p, c)) return inner(t);
+sqlfmt: a ( alone on its line sits with what it holds (test_sqlfmt, recorded)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~? inner(t) : line_;~? inner(t) : inner(t);
 sqlfmt: a hanging ( leaves its ) unaligned (test_sqlfmt, recorded)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~&& ds[t->depth + 1].hang >= 0) return~&& ds[t->depth + 1].hang > 99) return
 sqlfmt: the last line level outlives a call (test_sqlfmt, recorded)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~nout = nds = 0, line_ = 0;~nout = nds = 0;
 sqlfmt: a ( opened deeper keeps stale depths (test_sqlfmt, recorded)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~			nds = d + 1;¶			if (!GROW(ds, nds, dscap))~			if (!GROW(ds, nds, dscap))
 sqlfmt: a ( after a river line sits at its spaces (test_sqlfmt, recorded)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~line_ = river(p, i) >= 0 ? ds[d].at : lined_;~line_ = lined_;
+sqlfmt: a ( alone on its line inside parentheses sits at the line before (test_sqlfmt, recorded)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~if (hangs(p, c)) return t->depth ? inner(t) : line_;~if (hangs(p, c)) return line_ + 0 * t->depth;
+sqlfmt: a statement keeps the last one's heads (test_sqlfmt, recorded)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~if (t->brk == B_UNIT || (i && p->t[i - 1].k == SEMI)) nds = 0;~if (t->brk == B_UNIT && !t) nds = 0;

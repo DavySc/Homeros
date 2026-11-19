@@ -70,6 +70,12 @@ cases = [
  "-- x\nwith add_to_order_no as (\nselect template_id,\ntemplate_description\nfrom @custom_templates\nwhere a = 1\nand b = 2\n)\nselect * from add_to_order_no",
  # nested hanging parentheses; the river inside them; BETWEEN's AND
  "select *\nfrom t\nwhere exists\n(\nselect 1\nfrom u\njoin v\non v.a = u.a\nwhere u.a in\n(\nselect b\nfrom w\n)\nand u.c between 1\nand 2\nhaving count(*) > 1\nor max(a) = 2\n)",
+ # a ( alone on its line inside parentheses sits with their lines
+ "select *\nfrom\n(\n(\nselect 1\n)\nunion all\n(\nselect 2\n)\n) q",
+ "where x in\n(\n(\n1\n)\n)",
+ # a head from one statement never rivers the next, even where the
+ # parser gives the next no break (a header without AS)
+ "create procedure p ()\nselect a from t\nwhere t.a = 1;\nmerge u\nusing v\non u.a = v.a",
  # an unclosed ( does not shift the next statement (PR 76 review)
  "T\n(\n(\n;A\n!",
  "select 1 where x in\n(\n(\n1\n;\nselect a\nfrom t\nwhere b = 1\nand\nc = 2\n",
