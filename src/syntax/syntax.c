@@ -1052,8 +1052,9 @@ int syntax_md(Syntax *s, const Text *t, size_t l, SyntaxMd *o)
 	TSNode x = ts_node_descendant_for_byte_range(r, (uint32_t)(ls + i), (uint32_t)(ls + i));
 	const char *ty = ts_node_type(x);
 	/* list markers ("- - x" holds two: the first is the item's), then what
-	   follows them on the line: a heading */
-	for (size_t e; !strncmp(ty, "list_marker_", 12); ty = ts_node_type(x)) {
+	   follows them on the line: a heading.  A marker must end past where it
+	   was looked up: an edit not yet parsed can leave it empty there. */
+	for (size_t e = i; !strncmp(ty, "list_marker_", 12) && ts_node_end_byte(x) > ls + e; ty = ts_node_type(x)) {
 		e = ts_node_end_byte(x) - ls;
 		if (!o->list) {
 			for (TSNode a = ts_node_parent(x); !ts_node_is_null(a); a = ts_node_parent(a)) o->list += !strcmp(ts_node_type(a), "list");
