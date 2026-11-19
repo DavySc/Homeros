@@ -12,6 +12,7 @@
 #include "uni.h"
 #include "class.h"
 #include "grid.h"
+#include "fold.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -1349,16 +1350,22 @@ int orgfx_update(OrgFx *f, int (*stop)(void))
 	return 1;
 }
 
+/* the headline whose line holds p or comes before it, ORG_NONE before the first */
+static size_t head_at(const OrgFx *f, size_t p)
+{
+	size_t i = f->k ? first(f->e, f->k, p + 1) : 0;
+	if (!i) return ORG_NONE;
+	for (i--; f->e[i].type != ORG_HEADLINE && f->e[i].parent != ORG_NONE; i = f->e[i].parent) ;
+	return f->e[i].type == ORG_HEADLINE ? f->e[i].begin : ORG_NONE;
+}
+
 /* the faces of [a, z) of the text at the last update into out */
 static void paint(OrgFx *f, size_t a, size_t z, unsigned char *out)
 {
 	S = (const unsigned char *)f->s; N = f->n; F = out; FA = a; FZ = z;
 	if (a >= z || a >= N) return;
-	size_t L = bol(a), R = 0, i = f->k ? first(f->e, f->k, L + 1) : 0;
-	if (i) {   /* the headline before: its line is outside any block */
-		for (i--; f->e[i].type != ORG_HEADLINE && f->e[i].parent != ORG_NONE; i = f->e[i].parent) ;
-		if (f->e[i].type == ORG_HEADLINE) R = f->e[i].begin;
-	}
+	size_t L = bol(a), R = head_at(f, L);   /* a headline's line is outside any block */
+	if (R == ORG_NONE) R = 0;
 	Scan c = f->c.at <= L && f->c.at >= R ? f->c : (Scan){ R, 0, 0, 0 };
 	while (c.at < L) meta(&c);
 	while (c.at < z && c.at < N) f->c = c, fontify(&c);
@@ -1373,4 +1380,15 @@ void orgfx_faces(OrgFx *f, size_t a, size_t z, unsigned char *face)
 		size_t b = a > f->hc ? a : f->hc;
 		paint(f, b - f->hc + f->ho, z - f->hc + f->ho, face + (b - a));
 	}
+}
+
+/* nvim-orgmode's foldexpr: a line's level is its subtree's headline's
+   stars (org-current-level), 0 before the first headline */
+int orgfx_foldexpr(OrgFx *f, size_t line, int *start)
+{
+	orgfx_update(f, NULL);
+	size_t p = text_line_start(f->t, line), h = head_at(f, p);
+	S = (const unsigned char *)f->s; N = f->n;
+	*start = h == p;
+	return h == ORG_NONE ? 0 : (int)(stars(h) - h);
 }

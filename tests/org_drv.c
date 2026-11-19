@@ -5,6 +5,7 @@
 #include <string.h>
 #include "org.h"
 #include "grid.h"
+#include "../src/org/fold.h"
 
 static const char *const names[] = { "headline", "section", "planning", "property-drawer",
 	"node-property", "drawer", "clock", "comment", "keyword", "babel-call", "paragraph",
@@ -130,6 +131,15 @@ int main(int argc, char **argv)
 			OrgTs t;
 			if ((b[p] & 0xc0) != 0x80 && org_ts(b, n, p, &t)) ts(stdout, "ts", &t);
 		}
+		Text *t = w ? NULL : text_new(b, n);   /* orgfx_foldexpr at every line */
+		OrgFx *x = t ? orgfx_new(t) : NULL;
+		if (!w && !x) return 3;
+		for (size_t l = 0; x && l <= text_lines(t); l++) {
+			int st, v = orgfx_foldexpr(x, l, &st);
+			printf("fold %zu %d %d\n", l, v, st);
+		}
+		orgfx_free(x);
+		text_free(t);
 	}
 	return 0;
 }

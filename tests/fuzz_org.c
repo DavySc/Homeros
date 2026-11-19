@@ -6,11 +6,13 @@
    checks the positions themselves against Org.  The colours (orgfx): read
    in windows of any size and order they are the whole text's, and after
    edits (an update after some) they are a fresh text's; before an update
-   the bytes an edit did not touch keep their colours. */
+   the bytes an edit did not touch keep their colours.  The fold levels
+   (orgfx_foldexpr) after edits are a fresh text's. */
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include "org.h"
+#include "../src/org/fold.h"
 
 static void check_org(const char *s, size_t n)
 {
@@ -152,12 +154,15 @@ static void check_fx(const char *s, size_t n, const uint8_t *d, size_t dn)
 			painted(x, n, n + 1, 0, a);
 		}
 	}
-	if (!fresh && orgfx_update(x, NULL) != 1) abort();
-	painted(x, n, n + 1, 0, a);
 	text_read(T, 0, t, n);
 	U = text_new(t, n);
 	y = orgfx_new(U);
 	if (!y || orgfx_update(y, NULL) != 1) abort();
+	for (size_t l = 0; l <= text_lines(T); l++) {   /* fold levels see the edits without an update */
+		int p, q;
+		if (orgfx_foldexpr(x, l, &p) != orgfx_foldexpr(y, l, &q) || p != q) abort();
+	}
+	painted(x, n, n + 1, 0, a);
 	painted(y, n, n + 1, 0, b);
 	if (memcmp(a, b, n)) abort();
 	orgfx_free(x); orgfx_free(y); text_free(T); text_free(U);

@@ -26,3 +26,5 @@ org: colours: an edit before the pending ones not merged (fuzz)~fuzz FUZZERS=org
 org: colours: the text after an edit not moved (fuzz)~fuzz FUZZERS=org FUZZ_SECONDS=60~~src/org/org.c~	memmove(f->s + f->hc, f->s + f->ho, f->n - f->ho);¶~
 org: org_ts reads case-sensitively, as planning does (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	return ts(p, 1, t);~	return ts(p, 0, t);
 org: a two-digit hour above 29 (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	if (h < lim && digit(h)) { if (S[p] > '2') return 0; h++; }~	if (h < lim && digit(h)) h++;
+org: folds: a headline's line takes the subtree before it (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~h = head_at(f, p);~h = head_at(f, p ? p - 1 : 0);
+org: folds: levels read from the parse before the edits (fuzz)~fuzz FUZZERS=org FUZZ_SECONDS=30~~src/org/org.c~	orgfx_update(f, NULL);¶	size_t p = text_line_start~	size_t p = text_line_start
