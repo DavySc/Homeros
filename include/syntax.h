@@ -39,10 +39,17 @@ typedef struct {
 	unsigned char list;    /* list_item nesting from 1, else 0 */
 	unsigned char ordered; /* the list marker is n. or n) */
 	unsigned char task;    /* ' ', 'x' or '-' for [ ], [x], [-]; else 0 */
-	unsigned char code;    /* fenced code: 1 open fence, 2 body, 3 close; else 0 */
-	size_t mark, mend;     /* byte columns of the '#'s, list marker or fence */
+	unsigned char code;    /* fenced code: 1 open fence, 2 body, 3 close; else 0
+	                          (none for a block of 2 rows or fewer, as
+	                          render-markdown skips it) */
+	size_t mark, mend;     /* byte columns of the heading's '#'s or the fence */
+	size_t item, iend;     /* byte columns of the list marker (a line can hold
+	                          a list marker and a heading: "- # x") */
+	size_t index;          /* ordered: this list_item and the list_items
+	                          right before it, from 1 (sibling_count) */
 	size_t task_col;       /* column of a task marker's '[' */
-	size_t info, ninfo;    /* the open fence's info string (language) */
+	size_t info, ninfo;    /* the open fence's info string */
+	size_t lang, nlang;    /* its language node, column and length */
 } SyntaxMd;
 int     syntax_md(Syntax *s, const Text *t, size_t l, SyntaxMd *out);
 #endif
