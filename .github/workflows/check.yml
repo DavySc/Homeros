@@ -44,7 +44,15 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
+      # the sources only: Windows cannot check out some repro files (a
+      # nul.sql under reviews/)
       - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            include
+            ref
+            src
+            tests
       - uses: mlugg/setup-zig@v2
         with:
           version: 0.17.1
