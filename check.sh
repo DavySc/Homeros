@@ -33,9 +33,9 @@ run() { # run <dir with the sources> <test|specs|oracle|fuzz|all>: 0 when the na
     python3 -I "$src/tests/oracle_pdb.py" "$b/pdbq" "$b"/pdb/*.pdb $(ls "$src"/rdi/*.pdb 2>/dev/null) || return 1
     gcc $FLAGS $SAN "$src"/dbg/*.c "$src"/cmd/pdb2rdi.c -o "$b/pdb2rdi" || return 2
     python3 -I "$src/tests/oracle_conv.py" "$b/pdb2rdi" "$b/rdiq" "$b"/pdb/*.pdb $(ls "$src"/rdi/*.pdb 2>/dev/null) || return 1
-    # two files llvm-pdbutil cannot read: a pointer to a later record is a pointer to no type, and type ids that do not start at 0x1000 are no types (what is left is "none" and the file's two typedefs, names on no type)
+    # two files llvm-pdbutil cannot read: a pointer to a later record is a pointer to no type, and type ids that do not start at 0x1000 are no types (what is left is "none", the `int` of the locals and the file's two typedefs, names on no type)
     "$b/pdb2rdi" "$b/pdb/bad/later.pdb" "$b/odd.rdi" && [ "$(echo T 8 | "$b/rdiq" "$b/odd.rdi")" = "1001.0[0]:8 none" ] || return 1
-    "$b/pdb2rdi" "$b/pdb/bad/firstid.pdb" "$b/odd.rdi" && [ "$(printf 'N 19 T 1 T 2' | "$b/rdiq" "$b/odd.rdi" | tr '\n' ' ')" = "3 2004 Pair:0 2004 Op:0 " ] || return 1
+    "$b/pdb2rdi" "$b/pdb/bad/firstid.pdb" "$b/odd.rdi" && [ "$(printf 'N 19 T 1 T 2 T 3 T 4' | "$b/rdiq" "$b/odd.rdi" | tr '\n' ' ')" = "5 S32:4 2004 int:4 on S32:4 2004 Pair:0 2004 Op:0 " ] || return 1
   fi
   if [ "$what" = fuzz ] || [ "$what" = all ]; then
     for f in "$src"/tests/fuzz_*.c; do
