@@ -937,7 +937,7 @@ static void nv_regname(Cmdarg *cap)
 	} else clearopbeep(cap->oap);
 }
 
-extern int reg_recording, reg_executing, reg_recorded;
+extern int reg_recording, reg_recorded;
 int  do_record(int c);
 int  do_execreg(int regname);
 

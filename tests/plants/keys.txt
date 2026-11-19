@@ -87,3 +87,7 @@ keys: the marks < and > are swapped in a range (test_keys_ex)~test TESTS=keys_ex
 keys: a line number past 2^63 overflows (test_keys_ex, UBSan)~test TESTS=keys_ex~~src/keys/keys.c~static long sat(long v) { return v > BIG ? BIG : v < -BIG ? -BIG : v; }~static long sat(long v) { return BIG ? v : v; }
 keys: Visual : leaves the cursor at its end, not the start, before the command runs (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	if (VIsual_active) cap->oap->op_type = OP_COLON;~	if (VIsual_active) end_visual_mode(), cmdline(':', "'<,'>");
 keys: N: puts .,.+N on the line, one line too many (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~".,.+%ld", cap->count0 - 1)~".,.+%ld", cap->count0)
+keys: a yank from an executing register flashes, where Neovim's on_yank skips it (test_keys_flash)~test TESTS=keys_flash~~src/keys/ops.c~	if (!reg_executing) {~	if (1) {
+keys: the yank flash takes the motion's type, not the register's, so "Ayiw after "ayy flashes characters (test_keys_flash)~test TESTS=keys_flash~~src/keys/ops.c~int t = reg->type == MLINE~int t = oap->motion_type == MLINE
+keys: the yank flash is never cleared (test_keys_flash)~test TESTS=keys_flash~~src/keys/ops.c~		loop_timer(unflash, E, 150);~		(void)unflash;
+keys: clearing the yank flash asks for no frame, so it stays on screen until the next key (test_keys_flash)~test TESTS=keys_flash~~src/keys/ops.c~	core_changed = 1;¶}~}

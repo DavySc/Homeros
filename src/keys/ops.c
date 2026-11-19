@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "k.h"
+#include "loop.h"
 #include "sqlfmt.h"
 #include "uni.h"
 
@@ -323,6 +324,12 @@ static void yank_into(Oparg *oap, Reg *reg, int append)
 	if (type != MLINE && !oap->inclusive && b_op_end.col > 0) b_op_end.col--;
 }
 
+static void unflash(void *e)
+{
+	((Editor *)e)->ks.yank.type = 0;
+	core_changed = 1;
+}
+
 int op_yank(Oparg *oap)
 {
 	if (oap->regname == '_') return 1;
@@ -331,6 +338,15 @@ int op_yank(Oparg *oap)
 	Reg *reg = get_reg(r, 1);
 	yank_into(oap, reg, r >= 'A' && r <= 'Z');
 	set_clipboard(r, reg);
+	/* Davy's vim.highlight.on_yank(): '[ to '] for 150 ms, not while a
+	   register executes */
+	if (!reg_executing) {
+		int t = reg->type == MLINE ? 'V' : reg->type == MBLOCK ? 22 : 'v';
+		E->ks.yank.type = t;
+		E->ks.yank.l1 = (size_t)b_op_start.lnum, E->ks.yank.c1 = (size_t)b_op_start.col;
+		E->ks.yank.l2 = (size_t)b_op_end.lnum, E->ks.yank.c2 = (size_t)b_op_end.col;
+		loop_timer(unflash, E, 150);
+	}
 	return 1;
 }
 
@@ -634,7 +650,7 @@ static const struct { unsigned first, last; int stride, delta; } upper_tab[] = {
 #include "lower.inc"
 };
 
-static int map_case(int c, int up)
+int map_case(int c, int up)
 {
 	if (c < 0x80) {
 		if (up && c >= 'a' && c <= 'z') return c - 32;

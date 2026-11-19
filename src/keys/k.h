@@ -136,8 +136,10 @@ enum { PUT_FIXINDENT = 1, PUT_CURSEND = 2, PUT_LINE = 4, PUT_LINE_SPLIT = 8, PUT
 void block_prep(Oparg *oap, long l, int is_del, long *textcol, long *textlen,
                 long *startspaces, long *endspaces, int *is_short, long *start_vcol, long *end_vcol);
 void set_reg(int r, const char *s, long n, int type);
+int  map_case(int c, int up);   /* utf_toupper() (up) or utf_tolower() */
 
 /* typeahead (keys.c) */
+extern int reg_executing;   /* executing a register's keys (@a) */
 void stuff(const int *k, long n);        /* stuffReadbuff(): readbuf1 */
 void stuff_redo(const int *k, long n);   /* readbuf2: "." and an insert's count */
 void stuff_str(const char *s, long n);
