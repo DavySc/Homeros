@@ -45,17 +45,20 @@ typedef struct {
 } KeyState;
 
 struct Editor;
+struct Win;
 /* pending: more keys are already waiting (typeahead), which changes how
    Neovim inserts plain characters */
 void keys_feed(struct Editor *e, int key, int pending);
 /* 'hlsearch' (FEATURES.md 1): the next match of the last search pattern
-   that covers line `line` at or after byte col there: 1 and its bytes
-   [*s, *z) on this line (a match from an earlier line starts at 0, one
-   going on past the line break ends at the line's length), or 0 for none
-   and while :noh or CTRL-L hides them until the next search.  The core
-   calls it for each drawn line, from col 0 and then from *z (one character
-   on after an empty match), and draws Search, and CurSearch for the match
-   at the cursor.  It runs in the redraw path: no allocation once the
-   pattern has been compiled (tests/test_keys_hl.c). */
-int  keys_hl(struct Editor *e, size_t line, size_t col, size_t *s, size_t *z);
+   that covers line `line` of window w at or after byte col there: 1 and
+   its bytes [*s, *z) on this line (a match from an earlier line starts at
+   0; one that takes the line break ends at the line's length + 1, its cell
+   after the last character; an empty match draws one character, the line
+   break's cell at the end), or 0 for none and while :noh or CTRL-L hides
+   them until the next search.  The core calls it for each line of w it
+   draws, from col 0 and then from *z (one character on after an empty
+   match), and draws Search, and CurSearch for the match at the cursor.  It
+   runs in the redraw path: no allocation once the pattern has been
+   compiled (tests/test_keys_hl.c). */
+int  keys_hl(struct Editor *e, const struct Win *w, size_t line, size_t col, size_t *s, size_t *z);
 #endif
