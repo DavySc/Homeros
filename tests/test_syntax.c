@@ -431,6 +431,33 @@ static void release_in_steps(const char *dir)
 	text_free(t);
 }
 
+/* syntax_filetype against Neovim's vim.filetype.match, for each ending
+   it knows and some it does not: 0 differ, or the test fails */
+static void filetypes(void)
+{
+	static const char *const names[] = {
+		"d/a.c", "a.h", "a.lua", "a.md", "a.sql", "a.json", "a.txt", "a.xyz", "x.sql/b", "a.c.txt", "a.sql.md", "a.mdx", "Makefile.c",
+		".sql", "a\\b.sql", "CMakeLists.txt", "x/CMakeLists.txt", "a\\CMakeLists.txt", "fooCMakeLists.txt", "a.rs", "a.nix",
+		"a.glsl", "a.vert", "a.frag", "a.comp", "a.geom", "a.tesc", "a.tese", "a.sv", "a.svh", "a.cmake", "a.lean", "a.cs", "a.org", "a.SQL",
+	};
+	char cmd[2048] = "nvim --headless --clean -l /dev/stdin <<'E'\nfor _, n in ipairs({", want[64];
+	for (size_t i = 0; i < sizeof names / sizeof *names; i++) snprintf(cmd + strlen(cmd), sizeof cmd - strlen(cmd), "[[%s]],", names[i]);
+	strcat(cmd, "}) do io.write((vim.filetype.match({filename = n}) or '-'), '\\n') end\nE");
+	FILE *p = popen(cmd, "r");
+	CHECK(p);
+	for (size_t i = 0; i < sizeof names / sizeof *names; i++) {
+		CHECK(fgets(want, sizeof want, p));
+		want[strcspn(want, "\n")] = 0;
+		const char *ft = syntax_filetype(names[i]);
+		if (strcmp(ft ? ft : "-", want)) fprintf(stderr, "%s: filetype %s, Neovim %s\n", names[i], ft ? ft : "-", want);
+		CHECK(!strcmp(ft ? ft : "-", want));
+	}
+	CHECK(!pclose(p));
+	/* an unnamed buffer */
+	CHECK(!syntax_filetype(NULL));
+	printf("test_syntax: %zu file names' filetypes as Neovim's\n", sizeof names / sizeof *names);
+}
+
 int main(void)
 {
 	if (getenv("SEED")) rng = 2 * strtoull(getenv("SEED"), NULL, 10) + 1;   /* distinct seeds stay distinct */
@@ -443,6 +470,7 @@ int main(void)
 	edit_before_region(dir);
 	cache_grows(dir);
 	release_in_steps(dir);
+	filetypes();
 	char path[2048], vrt[1024] = "";
 	FILE *p = popen("nvim --headless --clean -l /dev/stdin <<'E'\nio.write(vim.env.VIMRUNTIME)\nE", "r");
 	CHECK(p && fgets(vrt, sizeof vrt, p));
