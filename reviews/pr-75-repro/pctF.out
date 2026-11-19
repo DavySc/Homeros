@@ -1,0 +1,102 @@
+== relative   (HOME=T/home/u cwd=T/home/u/proj arg=a.txt)
+nvim  name=[T/home/u/proj/a.txt] %F=[~/proj/a.txt] %f=[a.txt]
+homeros file_full=[T/home/u/proj/a.txt]
+== relative with dir   (HOME=T/home/u cwd=T/home/u arg=proj/sub/b.txt)
+nvim  name=[T/home/u/proj/sub/b.txt] %F=[~/proj/sub/b.txt] %f=[proj/sub/b.txt]
+homeros file_full=[T/home/u/proj/sub/b.txt]
+== dot-slash   (HOME=T/home/u cwd=T/home/u/proj arg=./a.txt)
+nvim  name=[T/home/u/proj/a.txt] %F=[~/proj/a.txt] %f=[./a.txt]
+homeros file_full=[T/home/u/proj/a.txt]
+== dot-dot   (HOME=T/home/u cwd=T/home/u/proj/sub arg=../a.txt)
+nvim  name=[T/home/u/proj/a.txt] %F=[~/proj/a.txt] %f=[../a.txt]
+homeros file_full=[T/home/u/proj/a.txt]
+== dot-dot in the middle   (HOME=T/home/u cwd=T/home/u arg=proj/sub/../a.txt)
+nvim  name=[T/home/u/proj/a.txt] %F=[~/proj/a.txt] %f=[proj/sub/../a.txt]
+homeros file_full=[T/home/u/proj/a.txt]
+== double slash   (HOME=T/home/u cwd=T/home/u arg=proj//a.txt)
+nvim  name=[T/home/u/proj/a.txt] %F=[~/proj/a.txt] %f=[proj//a.txt]
+homeros file_full=[T/home/u/proj/a.txt]
+== absolute   (HOME=T/home/u cwd=/ arg=T/home/u/proj/a.txt)
+nvim  name=[T/home/u/proj/a.txt] %F=[~/proj/a.txt] %f=[T-rel/home/u/proj/a.txt]
+homeros file_full=[T/home/u/proj/a.txt]
+== symlinked file   (HOME=T/home/u cwd=T/home/u/proj arg=lnf)
+nvim  name=[T/home/u/proj/lnf] %F=[~/proj/lnf] %f=[lnf]
+homeros file_full=[T/home/u/proj/lnf]
+== symlinked dir   (HOME=T/home/u cwd=T/home/u/proj arg=lnd/r.txt)
+nvim  name=[T/other/real/r.txt] %F=[T/other/real/r.txt] %f=[lnd/r.txt]
+homeros file_full=[T/other/real/r.txt]
+== symlinked dir, absolute   (HOME=T/home/u cwd=/ arg=T/home/u/proj/lnd/r.txt)
+nvim  name=[T/other/real/r.txt] %F=[T/other/real/r.txt] %f=[T-rel/other/real/r.txt]
+homeros file_full=[T/other/real/r.txt]
+== dot-dot after a symlink   (HOME=T/home/u cwd=T/home/u/proj arg=lnd/../a.txt)
+nvim  name=[T/other/a.txt] %F=[T/other/a.txt] %f=[lnd/../a.txt]
+homeros file_full=[T/other/a.txt]
+== sibling of HOME (u2)   (HOME=T/home/u cwd=/ arg=T/home/u2/proj/c.txt)
+nvim  name=[T/home/u2/proj/c.txt] %F=[T/home/u2/proj/c.txt] %f=[T-rel/home/u2/proj/c.txt]
+homeros file_full=[T/home/u2/proj/c.txt]
+== HOME itself   (HOME=T/home/u cwd=T/home arg=u)
+nvim  name=[T/home/u] %F=[~] %f=[u]
+homeros file_full=[T/home/u]
+== HOME=/   (HOME=/ cwd=T/home/u/proj arg=a.txt)
+nvim  name=[T/home/u/proj/a.txt] %F=[T/home/u/proj/a.txt] %f=[a.txt]
+homeros file_full=[T/home/u/proj/a.txt]
+== HOME with trailing slash   (HOME=T/home/u/ cwd=T/home/u/proj arg=a.txt)
+nvim  name=[T/home/u/proj/a.txt] %F=[~/proj/a.txt] %f=[a.txt]
+homeros file_full=[T/home/u/proj/a.txt]
+== HOME a symlink, file via the link   (HOME=T/homelink cwd=T/homelink/proj arg=a.txt)
+nvim  name=[T/home/u/proj/a.txt] %F=[~/proj/a.txt] %f=[a.txt]
+homeros file_full=[T/home/u/proj/a.txt]
+== HOME a symlink, file via the real path   (HOME=T/homelink cwd=T/home/u/proj arg=a.txt)
+nvim  name=[T/home/u/proj/a.txt] %F=[~/proj/a.txt] %f=[a.txt]
+homeros file_full=[T/home/u/proj/a.txt]
+== HOME real, file via a link to HOME   (HOME=T/home/u cwd=/ arg=T/homelink/proj/a.txt)
+nvim  name=[T/home/u/proj/a.txt] %F=[~/proj/a.txt] %f=[T-rel/home/u/proj/a.txt]
+homeros file_full=[T/home/u/proj/a.txt]
+== HOME unset-like (empty)   (HOME= cwd=T/home/u/proj arg=a.txt)
+nvim  name=[T/home/u/proj/a.txt] %F=[~/a.txt] %f=[a.txt]
+homeros file_full=[T/home/u/proj/a.txt]
+== new file   (HOME=T/home/u cwd=T/home/u/proj arg=new.txt)
+nvim  name=[T/home/u/proj/new.txt] %F=[~/proj/new.txt] %f=[new.txt]
+homeros file_full=[T/home/u/proj/new.txt]
+== new file, dir missing   (HOME=T/home/u cwd=T/home/u/proj arg=nodir/new.txt)
+nvim  name=[T/home/u/proj/nodir/new.txt] %F=[~/proj/nodir/new.txt] %f=[nodir/new.txt]
+homeros file_full=[-1 No such file or directory]
+== space in a directory   (HOME=T/home/u cwd=T/home/u arg=sp ace/n.txt)
+nvim  name=[T/home/u/sp ace/n.txt] %F=[~/sp ace/n.txt] %f=[sp ace/n.txt]
+homeros file_full=[T/home/u/sp ace/n.txt]
+== control char in the name   (HOME=T/home/u cwd=T/home/u/proj arg=cx)
+nvim  name=[T/home/u/proj/cx] %F=[~/proj/c^Ax] %f=[c^Ax]
+homeros file_full=[T/home/u/proj/cx]
+== tilde argument   (HOME=T/home/u cwd=/ arg=~/proj/a.txt)
+nvim  name=[~/proj/a.txt] %F=[~/proj/a.txt] %f=[~/proj/a.txt]
+homeros file_full=[-1 No such file or directory]
+== no name
+nvim  name=[] %F=[[No Name]] %f=[[No Name]]
+== :cd after open
+nvim  name=[T/home/u/proj/a.txt] %F=[~/proj/a.txt] %f=[~/proj/a.txt]
+== :cd to / after open
+nvim  name=[T/home/u/proj/a.txt] %F=[~/proj/a.txt] %f=[T-rel/home/u/proj/a.txt]
+== :w new name from a named buffer (the buffer keeps its name)
+"w1.txt" "w1.txt" [New] 1L, 2B writtennvim  name=[T/home/u/proj/a.txt] %F=[~/proj/a.txt] %f=[a.txt]
+== :w name from a no-name buffer (the buffer takes it)
+"w2.txt" "w2.txt" [New] 0L, 0B writtennvim  name=[T/home/u/proj/w2.txt] %F=[~/proj/w2.txt] %f=[w2.txt]
+== :saveas
+"sub/s.txt" "sub/s.txt" [New] 1L, 2B writtennvim  name=[T/home/u/proj/sub/s.txt] %F=[~/proj/sub/s.txt] %f=[sub/s.txt]
+== :file newname
+nvim  name=[T/home/u/proj/sub/f.txt] %F=[~/proj/sub/f.txt] %f=[sub/f.txt]
+== :e other
+nvim  name=[T/home/u/proj/sub/b.txt] %F=[~/proj/sub/b.txt] %f=[sub/b.txt]
+== :w after cd, new file typed relative
+"w3.txt" "w3.txt" [New] 0L, 0B writtennvim  name=[T/home/u/proj/sub/w3.txt] %F=[~/proj/sub/w3.txt] %f=[T-rel/home/u/proj/sub/w3.txt]
+== the directory is renamed after open
+nvim  name=[T/home/u/proj/sub/b.txt] %F=[~/proj/sub/b.txt] %f=[sub/b.txt]
+== new file in a missing dir, the dir made later, :w
+"nodir2/n.txt" "nodir2/n.txt" [New] 0L, 0B writtennvim  name=[T/home/u/proj/nodir2/n.txt] %F=[~/proj/nodir2/n.txt] %f=[nodir2/n.txt]
+== scratch/nofile buffer with a name
+nvim  name=[T/home/u/proj/a.txt] %F=[a.txt] %f=[a.txt]
+== help buffer
+nvim  name=[/nix/store/ffc8cjrd3wkqyzf0jbbvwzh8yc4k0c2j-neovim-unwrapped-0.12.6/share/nvim/runtime/doc/helphelp.txt] %F=[helphelp.txt] %f=[helphelp.txt]
+== terminal buffer
+nvim  name=[term://~/proj//PID:true] %F=[term://~/proj//PID:true] %f=[term://~/proj//PID:true]
+== quickfix
+nvim  name=[] %F=[[Quickfix List]] %f=[[Quickfix List]]

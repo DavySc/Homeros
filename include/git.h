@@ -23,5 +23,10 @@ int  git_leader(struct Editor *e, int prefix, int key);
    diff: 0 none, '+' added, '~' changed, '_' lines deleted below it.  For
    the core's sign column. */
 int  git_sign(const struct Buf *b, size_t l);
+/* lualine's branch for the status line: the branch of b's repository
+   (.git/HEAD's ref name, a short hash when detached), NULL outside one or
+   before git has looked.  Cached by git's refresh: no I/O or allocation
+   per call, since it is asked every frame. */
+const char *git_branch(const struct Buf *b);
 void git_free(void);                     /* kills git's children, frees all */
 #endif

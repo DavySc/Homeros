@@ -22,15 +22,23 @@ enum {
    overtypes, so the core's modes and clamping stay as they are.  The pending
    command, count, registers, dot repeat and macros are global in Neovim (one
    typeahead, one register set), so they stay inside keys.c. */
+/* An area of the buffer the core draws over its text: type 0 none, 'v'
+   (l1,c1 to l2,c2 inclusive, byte columns on a character's first byte),
+   'V' (lines l1 to l2) or 22 (a block: c1 to c2 are screen columns). */
+typedef struct { int type; size_t l1, c1, l2, c2; } KeyArea;
 typedef struct {
 	int visual;          /* 0, 'v', 'V' or 22 (CTRL-V); the cursor is one end */
 	size_t vline, vcol;  /* the selection's other end */
 	int replace;         /* insert mode overtypes (R) */
 	int space;           /* Neovim's inserted_space: a space typed on its own */
 	int batch;           /* inserting typeahead as one string (Neovim's insertchar()) */
-	struct { int type; size_t l1, c1, l2, c2; } yank;
-	                     /* the area just yanked, flashed for 150 ms
-	                        (vim.highlight.on_yank): type 0 none, 'v', 'V' or 22 */
+	KeyArea yank;        /* the area just yanked, '[ to '] (a block's columns
+	                        as getregionpos() gives them: the marks' leftmost
+	                        virtcol and the register's width), flashed for
+	                        150 ms (vim.hl.on_yank) in IncSearch */
+	KeyArea inc;         /* the match :s with the c flag asks about (later
+	                        'incsearch' while / or ? is typed), IncSearch;
+	                        type 'v' while on */
 	int pending;         /* a command is half typed: a count, register, operator or its
 	                        character (what showcmd shows); the conform driver ends it
 	                        with Esc, as feedkeys(..., 'x') does */
@@ -45,4 +53,14 @@ void keys_feed(struct Editor *e, int key, int pending);
    keys_feed.  While a command or a map is half typed (ks.pending) the key
    goes to the map, if one is incomplete, or straight to keys_feed */
 void keys_input(struct Editor *e, int key, int pending);
+/* 'hlsearch' (FEATURES.md 1): the next match of the last search pattern
+   that covers line `line` at or after byte col there: 1 and its bytes
+   [*s, *z) on this line (a match from an earlier line starts at 0, one
+   going on past the line break ends at the line's length), or 0 for none
+   and while :noh or CTRL-L hides them until the next search.  The core
+   calls it for each drawn line, from col 0 and then from *z (one character
+   on after an empty match), and draws Search, and CurSearch for the match
+   at the cursor.  It runs in the redraw path: no allocation once the
+   pattern has been compiled (tests/test_keys_hl.c). */
+int  keys_hl(struct Editor *e, size_t line, size_t col, size_t *s, size_t *z);
 #endif
