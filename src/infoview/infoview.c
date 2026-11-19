@@ -22,7 +22,7 @@
 #include "core.h"
 #include "loop.h"
 #include "lsp.h"
-#include "pending.h"
+#include "bridge.h"
 #include "scan.h"
 
 enum { KEEPALIVE_MS = 10000 };
