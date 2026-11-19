@@ -1,7 +1,7 @@
 /* A function inlined three times, once inside a loop: clang at -O2 gives one call pieces with
    other code between them (a length annotation followed by more offsets). */
 volatile int sink;
-static inline __attribute__((always_inline)) int twice(int x)
+static __forceinline int twice(int x)
 {
   if (x > 10) {
     sink = x;
