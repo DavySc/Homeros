@@ -42,6 +42,13 @@ enum {
 	FACE_MARKUP_LIST, FACE_MARKUP_LIST_CHECKED, FACE_MARKUP_LIST_UNCHECKED, FACE_DIFF_PLUS,
 	FACE_DIFF_MINUS, FACE_DIFF_DELTA, FACE_TAG, FACE_TAG_BUILTIN, FACE_TAG_ATTRIBUTE,
 	FACE_TAG_DELIMITER,
+	/* Org's faces where no face above looks the same (package 16):
+	   org-level-7 and 8, org-todo, org-priority, org-tag, org-date,
+	   org-table, org-formula, org-drawer, org-checkbox, org-document-info,
+	   org-block, org-block-begin-line */
+	FACE_ORG_LEVEL_7, FACE_ORG_LEVEL_8, FACE_ORG_TODO, FACE_ORG_PRIORITY, FACE_ORG_TAG,
+	FACE_ORG_DATE, FACE_ORG_TABLE, FACE_ORG_FORMULA, FACE_ORG_DRAWER, FACE_ORG_CHECKBOX,
+	FACE_ORG_INFO, FACE_ORG_BLOCK, FACE_ORG_BLOCK_LINE,
 	/* render-markdown's heading backgrounds (RenderMarkdownH1Bg to H6Bg):
 	   only ever a cell's bg */
 	FACE_HEADING_1_BG, FACE_HEADING_2_BG, FACE_HEADING_3_BG, FACE_HEADING_4_BG,
