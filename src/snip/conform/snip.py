@@ -22,9 +22,10 @@ than a rule (measured; the generator avoids the first two):
 - Neovim refuses a placeholder holding text and a stop, and a '$' that
   starts nothing; VS Code, whose grammar Davy's catalogue uses, takes them
   (those cases are 'refused' here and not compared).
-- CTRL-W or CTRL-U after the expansion and an arrow key stops at the
-  insert's start one character later in Neovim, whose expansion syncs undo
-  (ins_need_undo then keeps Insstart_orig moving): 1 case in 196 of seed 4.
+- CTRL-W or CTRL-U after the expansion stops at the insert's start, which
+  Neovim's expansion moves (it syncs undo; ins_need_undo then keeps
+  Insstart_orig moving, hypothesis), so the two can delete different
+  amounts, also after the snippet has ended: 0 to 3 cases in 500.
 CTRL-W in Normal mode waits for a window command: both sides skip it."""
 import json, os, random, re, subprocess, sys, tempfile
 from concurrent.futures import ThreadPoolExecutor
@@ -124,7 +125,12 @@ def main():
         # difference, so not generated
         ix = re.findall(r'\$\{?(\d+)', b)
         ks = [k for k in KEYS if k != '<CR>' or len(ix) == len(set(ix))]
-        cases.append({'body': b, 'pre': r.choice(PRE), 'keys': [r.choice(ks) for _ in range(r.randint(0, 8))]})
+        k = [r.choice(ks) for _ in range(r.randint(0, 8))]
+        # undo and redo after an Esc only: a u typed in Insert mode is text
+        # (and may open the popup on a test snippet's name)
+        for j in range(1, len(k)):
+            if k[j - 1] in ('<Esc>', 'u', '<C-r>') and r.random() < .5: k[j] = r.choice(['u', 'u', '<C-r>'])
+        cases.append({'body': b, 'pre': r.choice(PRE), 'keys': k})
     # a fresh Neovim per case, as the driver starts a fresh editor: a
     # command left half typed (<C-w>) would eat the next case's keys
     with ThreadPoolExecutor(os.cpu_count()) as x:

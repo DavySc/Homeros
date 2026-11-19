@@ -14,6 +14,7 @@
 #include "file.h"
 #include "match.h"
 #include "snip.h"
+#include "uni.h"
 
 typedef struct { char *name, *desc, *body; } Snip;
 static char *cat;              /* the catalogue's bytes, cut into Snips in place */
@@ -29,6 +30,7 @@ typedef struct { size_t at; int right; } Mark_;
    body's top-level nodes (M.expand()'s placement). */
 typedef struct { int idx, place; Mark_ a, z; } Stop;
 static struct {
+	Editor *e;
 	Buf *b;                    /* NULL: no snippet active */
 	int nr;                    /* b's number: a buffer freed and made again at b is another */
 	Stop *s;
@@ -44,6 +46,8 @@ static struct {
    outlives the snippet, as Vim's mode does */
 static int sel;
 
+/* Read once, at the first key in a .sql buffer: an edit to the catalogue
+   shows after a restart (step 1; reloading on a change can come later) */
 static void load(void)
 {
 	char f[4096];
@@ -59,7 +63,10 @@ static void load(void)
 	cat[n] = 0;
 	int k = 0;
 	for (char *p = cat; (p = strstr(p, "```sql\n")); p++) k++;
-	if (!(sn = malloc(k * sizeof *sn)) || !(items = malloc(k * sizeof *items)) || !(score = malloc(k * sizeof *score))) return;
+	/* one block: Snips, then the popup's items and scores */
+	if (!(sn = malloc(k * (sizeof *sn + sizeof *items + sizeof *score)))) return;
+	items = (PumItem *)(sn + k);
+	score = (int *)(items + k);
 	for (char *p = cat; (p = strstr(p, "```sql\n-- "));) {
 		Snip *s = &sn[nsn];
 		s->name = p += 10;
@@ -80,8 +87,7 @@ static void load(void)
 static int is_sql(const Buf *b)
 {
 	size_t n = b->path ? strlen(b->path) : 0;
-	const char *x = b->path + n - 4;
-	return n > 4 && x[0] == '.' && (x[1] | 32) == 's' && (x[2] | 32) == 'q' && (x[3] | 32) == 'l';
+	return n > 4 && !memcmp(b->path + n - 4, ".sql", 4);
 }
 
 static size_t cursor(Editor *e) { return core_line_start(e, e->win->line) + e->win->col; }
@@ -126,6 +132,12 @@ void snip_edit(const Buf *b, const Text *t, size_t pos, size_t ndel, const char 
 	splice(&S.ra, pos, ndel, nins);
 	splice(&S.rz, pos, ndel, nins);
 	S.tick++;
+	/* changed_common(): a change over the cursor's line makes the next
+	   check run CursorMoved even if the cursor is where it last ran */
+	size_t l = text_line_of(t, pos), le = text_line_of(t, pos + ndel) + 1, cl = S.e->win->line;
+	long x = -(long)(le - 1 - l);
+	for (size_t i = 0; i < nins; i++) x += ins[i] == '\n';
+	if (l <= cl && le + (size_t)(x < 0 ? -x : x) > cl) S.line = (size_t)-1;
 }
 
 /* The TextChanged autocmds: a snippet whose text is all gone ends; the
@@ -146,7 +158,10 @@ static void sync(Editor *e)
 		int r = core_edit(e, a, z - a, t, n);
 		S.syncing = 0;
 		if (r) break;
-		if (at >= z) set_cursor(e, at - (z - a) + n);   /* nvim_buf_set_text() keeps the cursor on its text */
+		/* nvim_buf_set_text()'s fix_cursor_cols(): a cursor after the text
+		   moves with it, one inside it goes no further than its end */
+		if (at > z) set_cursor(e, at - (z - a) + n);
+		else if (at > a + n) set_cursor(e, a + n);
 	}
 	free(t);
 }
@@ -191,10 +206,12 @@ static void select_stop(Editor *e, Stop *t)
 	if (ins || e->ks.visual) keys_feed(e, KEY_ESC, 0);
 	set_cursor(e, t->a.at);
 	keys_feed(e, 'v', 0);
-	size_t last = t->z.at - 1;
-	unsigned char b;
-	while (last > t->a.at && text_read(e->buf->text, last, (char *)&b, 1) && (b & 0xC0) == 0x80) last--;
-	set_cursor(e, last);
+	/* move_cursor_to() the end: its last character, or the start of its
+	   line when it ends at one (that line's first character is selected) */
+	unsigned char b[4];
+	size_t k = t->z.at - t->a.at < 4 ? t->z.at - t->a.at : 4;
+	text_read(e->buf->text, t->z.at - k, (char *)b, k);
+	set_cursor(e, b[k - 1] == '\n' ? t->z.at : t->z.at - k + uni_prev(b, k, k));
 	keys_feed(e, 'o', 0);
 	sel = 1;
 }
@@ -216,6 +233,13 @@ static int jump(Editor *e, int dir, int cur)
 	S.cur = best;
 	sel = 0;
 	set_gravity(dest);
+	/* the TextChanged(I) that follows select_tabstop()'s keys, run before
+	   them: they are typeahead, which never syncs undo (gotchars()), so its
+	   mirror writes join the open undo step, as keys_feed() would not */
+	Stop *t = &S.s[best];
+	unsigned *seen = !dest || t->a.at == t->z.at ? &S.ti : &S.tn;
+	if (*seen != S.tick) sync(e), *seen = S.tick;
+	if (!S.b) return 1;
 	select_stop(e, &S.s[best]);
 	if (dest == 0) stop();
 	else S.line = e->win->line, S.col = e->win->col;
@@ -375,6 +399,7 @@ static int expand(Editor *e, const char *body, size_t a, size_t z)
 	if (r || core_edit(e, a, z - a, o.s, o.n)) { free(o.s); free(o.st); return -1; }
 	free(o.s);
 	for (int j = 0; j < o.nst; j++) o.st[j].a.at += a, o.st[j].z.at += a;
+	S.e = e;
 	S.b = e->buf;
 	S.nr = e->buf->nr;
 	S.s = o.st;

@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include "check.h"
 #include "core.h"
+#include "keyname.h"
 #include "../src/core/core_int.h"
 
 static char line[1 << 20];   /* a file is one line of hex: up to 512 KiB */
@@ -27,17 +28,10 @@ static int verbose;
    of a screen read then show the state before the completion: left out */
 static int in_pum;
 
-/* Neovim's key notation in a "k:" token: <Esc> <CR> <C-r>, the rest literal */
+/* the keys of a "k:" token (test_key: package 4's, agreed by thread 0) */
 static void feed(Editor *e, const char *s)
 {
-	int keys[512], n = 0;
-	while (*s && n < 512) {
-		if (!strncmp(s, "<Esc>", 5)) { keys[n++] = KEY_ESC; s += 5; }
-		else if (!strncmp(s, "<CR>", 4)) { keys[n++] = KEY_ENTER; s += 4; }
-		else if (!strncmp(s, "<C-r>", 5)) { keys[n++] = KEY_CTRL_R; s += 5; }
-		else keys[n++] = (unsigned char)*s++;
-	}
-	for (int i = 0; i < n; i++) keys_feed(e, keys[i], 0);   /* no typeahead: see the .py */
+	while (*s) keys_feed(e, test_key(&s), 0);   /* no typeahead: see the .py */
 }
 
 static int status_row(const Editor *e, int r)

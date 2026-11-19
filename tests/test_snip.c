@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include "check.h"
 #include "core.h"
+#include "keyname.h"
 #include "snip.h"
 
 enum { MAXC = 4096 };
@@ -39,23 +40,6 @@ static void feed(Editor *e, int k)
 	if (e->ks.pending || !snip_key(e, k, 0)) keys_feed(e, k, 0);   /* as main.c */
 }
 
-static int key(const char **s)
-{
-	static const struct { const char *name; int k; } named[] = {
-		{ "<BS>", KEY_BS }, { "<Del>", KEY_DEL }, { "<Tab>", KEY_TAB }, { "<S-Tab>", KEY_S_TAB },
-		{ "<Esc>", KEY_ESC }, { "<CR>", KEY_ENTER }, { "<C-w>", 23 }, { "<C-u>", 21 }, { "<Space>", ' ' },
-		{ "<C-n>", 14 }, { "<C-p>", 16 }, { "<C-y>", 25 }, { "<C-e>", 5 }, { "<Left>", KEY_LEFT }, { "<Right>", KEY_RIGHT },
-	};
-	for (size_t i = 0; i < sizeof named / sizeof *named; i++) {
-		size_t l = strlen(named[i].name);
-		if (!strncmp(*s, named[i].name, l)) { *s += l; return named[i].k; }
-	}
-	const unsigned char *u = (const unsigned char *)*s;
-	int len = *u < 0x80 ? 1 : *u < 0xE0 ? 2 : *u < 0xF0 ? 3 : 4, c = len == 1 ? *u : *u & (0x7F >> len);
-	for (int i = 1; i < len; i++) c = c * 64 + (u[i] & 0x3F);
-	*s += len;
-	return c;
-}
 
 /* one case: its result as snip.py prints Neovim's */
 static void run(int i, char *out, size_t cap)
@@ -71,7 +55,7 @@ static void run(int i, char *out, size_t cap)
 	feed(&e, 25);
 	for (const char *s = keys[i]; *s; ) {
 		if (*s == ' ') { s++; continue; }
-		int k = key(&s);
+		int k = test_key(&s);
 		if (k != 23 || e.mode != MODE_NORMAL || e.ks.visual || e.ks.pending) feed(&e, k);   /* as snip.py */
 	}
 	size_t w = (size_t)snprintf(out, cap, "%c %zu %zu ", e.ks.visual ? 'v' : e.mode == MODE_INSERT ? 'i' : 'n', e.win->line + 1, e.win->col);
@@ -88,13 +72,14 @@ static void run(int i, char *out, size_t cap)
 	core_free(&e);
 }
 
-/* text typed in Insert mode at the end of a new buffer called name */
+/* text typed in Insert mode at the end of a new buffer called name (NULL:
+   no name) */
 static Editor *typed(const char *name, const char *s)
 {
 	static Editor e;
 	char path[64];
 	snprintf(path, sizeof path, "%s/%s", dir, name);
-	CHECK(!core_open(&e, path));
+	CHECK(!core_open(&e, name ? path : NULL));
 	keys_feed(&e, 'A', 0);
 	for (; *s; s++) feed(&e, *s);
 	return &e;
@@ -123,6 +108,9 @@ static void popup(void)
 	CHECK(!e->pum);
 	feed(e, 25);
 	is(e, "pure\n");   /* CTRL-Y: the character above, none */
+	e = typed(NULL, "pure");
+	CHECK(!e->pum);
+	is(e, "pure\n");
 	/* CTRL-N, Tab and Down pick the next, CTRL-P, S-Tab and Up the one
 	   before, past either end to none; CTRL-E closes; Enter with none
 	   picked is a line break */

@@ -21,3 +21,8 @@ snip: the popup opens in any buffer~test TESTS=snip~~src/snip/snip.c~	if (!S.b &
 snip: a block with no name line taken as a snippet~test TESTS=snip~~src/snip/snip.c~	for (char *p = cat; (p = strstr(p, "```sql\n-- "));) {~	for (char *p = cat; (p = strstr(p, "```sql\n"));) {
 snip: a bare stop left empty~test TESTS=snip~~src/snip/snip.c~			if (ph->idx != t->idx) continue;~			if (ph->idx != t->idx || 1) continue;
 snip: unmapped S-Tab does nothing in Insert mode~test TESTS=snip~~src/keys/edit.c~	case KEY_S_TAB:   /* an unmapped <S-Tab> is a Tab (insert_handle_key's K_S_TAB) */¶~
+snip: an unnamed buffer asks for its .sql ending~test TESTS=snip~~src/snip/snip.c~	size_t n = b->path ? strlen(b->path) : 0;~	size_t n = strlen(b->path);
+snip: a cursor inside a rewritten mirror stays past its text~test TESTS=snip~~src/snip/snip.c~		else if (at > a + n) set_cursor(e, a + n);~
+snip: a jump's mirror write comes after its keys (its own undo step)~test TESTS=snip~~src/snip/snip.c~	if (*seen != S.tick) sync(e), *seen = S.tick;~
+snip: a change on the cursor's line does not rerun CursorMoved~test TESTS=snip~~src/snip/snip.c~> cl) S.line = (size_t)-1;~> cl) (void)0;
+snip: a stop ending at a line start selects up to its last byte~test TESTS=snip~~src/snip/snip.c~b[k - 1] == '\n' ? t->z.at : ~
