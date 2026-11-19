@@ -45,7 +45,7 @@ struct Tsql {
 	int kind;                  /* and its kind, so the frame's later reads
 	                              inside a long comment do not lex it again */
 	int skipped;               /* a window was left plain, far from the index */
-	int json;                  /* JSON instead (json_token) */
+	int lang;                  /* 0 T-SQL, 1 JSON, 2 Soufflé */
 };
 
 static int is_space(int c) { return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == '\v'; }
@@ -139,18 +139,14 @@ static int low(int c) { return c >= 'A' && c <= 'Z' ? c + 32 : c; }
 
 const size_t tsql_nwords = NWORDS;
 
+/* bsearch's order for a table whose entries start with their word */
+static int by_word(const void *k, const void *e) { return strcmp(k, *(const char *const *)e); }
+
 /* a lower-case word's index in words[] plus 1, 0 when it is not there */
 static size_t lookup(const char *l)
 {
-	size_t lo = 0, hi = NWORDS;
-	while (lo < hi) {
-		size_t m = lo + (hi - lo) / 2;
-		int c = strcmp(words[m], l);
-		if (!c) return m + 1;
-		if (c < 0) lo = m + 1;
-		else hi = m;
-	}
-	return 0;
+	const char *const *w = bsearch(l, words, NWORDS, sizeof *words, by_word);
+	return w ? (size_t)(w - words) + 1 : 0;
 }
 
 int tsql_word(const char *w, size_t n, size_t *id)
@@ -166,12 +162,12 @@ int tsql_word(const char *w, size_t n, size_t *id)
 	return k ? classes[k - 1] : 0;
 }
 
-/* the n bytes at p into l, lower case; 0 when they do not fit (no word in
-   the lists is that long) */
-static int copy(TsqlRd *r, size_t p, size_t n, char l[40])
+/* the n bytes at p into l, lower case with fold; 0 when they do not fit
+   (no word in the lists is that long) */
+static int copy(TsqlRd *r, size_t p, size_t n, char l[40], int fold)
 {
 	if (n >= 40) return 0;
-	for (size_t i = 0; i < n; i++) l[i] = (char)low(tsql_byte(r, p + i));
+	for (size_t i = 0; i < n; i++) l[i] = (char)(fold ? low(tsql_byte(r, p + i)) : tsql_byte(r, p + i));
 	l[n] = 0;
 	return 1;
 }
@@ -184,7 +180,7 @@ static int after_schema(TsqlRd *r, size_t p)
 	char l[40];
 	size_t b = p;
 	while (b && p - b < 40 && is_id(tsql_byte(r, b - 1))) b--;
-	return copy(r, b, p - b, l) && is_schema(l);
+	return copy(r, b, p - b, l, 1) && is_schema(l);
 }
 
 /* SSMS colours by word lists alone, so a word in two lists takes one
@@ -193,7 +189,7 @@ static int after_schema(TsqlRd *r, size_t p)
 static unsigned char word_face(TsqlRd *r, size_t p, size_t e)
 {
 	char l[40];
-	if (!copy(r, p, e - p, l)) return FACE_NONE;
+	if (!copy(r, p, e - p, l, 1)) return FACE_NONE;
 	/* the system schemas and what is in them (SSMS's system table colour) */
 	if (is_schema(l) || (p && tsql_byte(r, p - 1) == '.' && after_schema(r, p - 1))) return FACE_MODULE_BUILTIN;
 	/* SQL Server's own stored procedures (hypothesis: by their sp_ and xp_) */
@@ -227,21 +223,31 @@ static unsigned char face(TsqlRd *r, size_t p, size_t e, int k)
    tokens either.  Its tokens in tsql_token's kinds; a string not closed on
    its line ends there, so a quote being typed colours one line (tree-sitter
    recovers further on). */
+/* the string from the quote at p to its end: a backslash escapes the byte
+   after it; with nl, a line's end ends it and is not escaped */
+static size_t string(TsqlRd *r, size_t p, int nl)
+{
+	int c, d;
+	while ((c = tsql_byte(r, ++p)) >= 0 && c != '"' && !(nl && c == '\n'))
+		if (c == '\\' && (d = tsql_byte(r, p + 1)) >= 0 && !(nl && d == '\n')) p++;
+	r->open = c < 0;
+	return c == '"' ? p + 1 : p;
+}
+
+static size_t line_end(TsqlRd *r, size_t p)
+{
+	int c;
+	while ((c = tsql_byte(r, ++p)) >= 0 && c != '\n') ;
+	return p;
+}
+
 static size_t json_token(TsqlRd *r, size_t p, int *k)
 {
 	int c = tsql_byte(r, p), d = tsql_byte(r, p + 1);
 	if (c < 0 || is_space(c)) return tsql_token(r, p, k);
 	r->open = 0;
-	if (c == '"') {
-		/* a backslash escapes the byte after it, but not a line's end */
-		while ((c = tsql_byte(r, ++p)) >= 0 && c != '"' && c != '\n')
-			if (c == '\\' && (d = tsql_byte(r, p + 1)) >= 0 && d != '\n') p++;
-		return *k = TQ_STRING, c == '"' ? p + 1 : p;
-	}
-	if (c == '/' && d == '/') {
-		while ((c = tsql_byte(r, ++p)) >= 0 && c != '\n') ;
-		return *k = TQ_COMMENT, p;
-	}
+	if (c == '"') return *k = TQ_STRING, string(r, p, 1);
+	if (c == '/' && d == '/') return *k = TQ_COMMENT, line_end(r, p);
 	if (c == '/' && d == '*') {
 		/* not nested; unclosed, to the end, as T-SQL's (tree-sitter-json
 		   finds no comment there, but then one being typed would cost a
@@ -259,6 +265,11 @@ static size_t json_token(TsqlRd *r, size_t p, int *k)
 	return p + 1;
 }
 
+static unsigned char punct(int c)
+{
+	return c == ',' || c == ':' || c == ';' || c == '.' ? FACE_PUNCTUATION_DELIMITER : FACE_PUNCTUATION_BRACKET;
+}
+
 static unsigned char json_face(TsqlRd *r, size_t p, size_t e, int k)
 {
 	char l[40];
@@ -270,22 +281,124 @@ static unsigned char json_face(TsqlRd *r, size_t p, size_t e, int k)
 		return tsql_byte(r, e) == ':' ? FACE_PROPERTY : FACE_STRING;
 	case TQ_NUMBER: return FACE_NUMBER;
 	case TQ_COMMENT: return FACE_COMMENT;
-	case TQ_PUNCT: return c == ',' || c == ':' ? FACE_PUNCTUATION_DELIMITER : FACE_PUNCTUATION_BRACKET;
+	case TQ_PUNCT: return punct(c);
 	case TQ_WORD:
-		if (!copy(r, p, e - p, l)) break;
+		if (!copy(r, p, e - p, l, 0)) break;
 		return !strcmp(l, "true") || !strcmp(l, "false") ? FACE_BOOLEAN : !strcmp(l, "null") ? FACE_CONSTANT_BUILTIN : FACE_NONE;
 	}
 	return FACE_NONE;
 }
 
+/* Soufflé's Datalog by its own scanner's words (src/parser/scanner.ll,
+   2.5); no reference editor colours it (Neovim 0.12 knows no .dl, and
+   nvim-treesitter has no grammar for it).  Faces as Neovim gives C's:
+   .decl and the other directives keyword, qualifiers modifier, functors
+   and aggregates builtin, types type, a relation (a name before a paren)
+   function, a # line directive. */
+static const struct DlWord { const char *w; unsigned char f, dir; } dl_words[] = {
+	{ "__FILE__", FACE_CONSTANT_BUILTIN, 0 }, { "__INCL__", FACE_CONSTANT_BUILTIN, 0 },
+	{ "__LINE__", FACE_CONSTANT_BUILTIN, 0 }, { "as", FACE_KEYWORD_OPERATOR, 0 },
+	{ "autoinc", FACE_FUNCTION_BUILTIN, 0 }, { "band", FACE_KEYWORD_OPERATOR, 0 },
+	{ "bnot", FACE_KEYWORD_OPERATOR, 0 }, { "bor", FACE_KEYWORD_OPERATOR, 0 },
+	{ "brie", FACE_KEYWORD_MODIFIER, 0 }, { "bshl", FACE_KEYWORD_OPERATOR, 0 },
+	{ "bshr", FACE_KEYWORD_OPERATOR, 0 }, { "bshru", FACE_KEYWORD_OPERATOR, 0 },
+	{ "btree", FACE_KEYWORD_MODIFIER, 0 }, { "btree_delete", FACE_KEYWORD_MODIFIER, 0 },
+	{ "bxor", FACE_KEYWORD_OPERATOR, 0 }, { "cat", FACE_FUNCTION_BUILTIN, 0 }, { "comp", FACE_NONE, 1 },
+	{ "contains", FACE_FUNCTION_BUILTIN, 0 }, { "count", FACE_FUNCTION_BUILTIN, 0 },
+	{ "debug_delta", FACE_KEYWORD_MODIFIER, 0 }, { "decl", FACE_NONE, 1 },
+	{ "eqrel", FACE_KEYWORD_MODIFIER, 0 }, { "false", FACE_BOOLEAN, 0 }, { "float", FACE_TYPE, 0 },
+	{ "functor", FACE_NONE, 1 }, { "include", FACE_NONE, 1 }, { "init", FACE_NONE, 1 },
+	{ "inline", FACE_KEYWORD_MODIFIER, 0 }, { "input", FACE_KEYWORD_MODIFIER, 1 },
+	{ "land", FACE_KEYWORD_OPERATOR, 0 }, { "lattice", FACE_NONE, 1 }, { "limitsize", FACE_NONE, 1 },
+	{ "lnot", FACE_KEYWORD_OPERATOR, 0 }, { "lor", FACE_KEYWORD_OPERATOR, 0 },
+	{ "lxor", FACE_KEYWORD_OPERATOR, 0 }, { "magic", FACE_KEYWORD_MODIFIER, 0 },
+	{ "match", FACE_FUNCTION_BUILTIN, 0 }, { "max", FACE_FUNCTION_BUILTIN, 0 },
+	{ "mean", FACE_FUNCTION_BUILTIN, 0 }, { "min", FACE_FUNCTION_BUILTIN, 0 },
+	{ "nil", FACE_CONSTANT_BUILTIN, 0 }, { "no_inline", FACE_KEYWORD_MODIFIER, 0 },
+	{ "no_magic", FACE_KEYWORD_MODIFIER, 0 }, { "number", FACE_TYPE, 0 }, { "number_type", FACE_NONE, 1 },
+	{ "once", FACE_NONE, 1 }, { "ord", FACE_FUNCTION_BUILTIN, 0 }, { "output", FACE_KEYWORD_MODIFIER, 1 },
+	{ "overridable", FACE_KEYWORD_MODIFIER, 0 }, { "override", FACE_NONE, 1 }, { "plan", FACE_NONE, 1 },
+	{ "pragma", FACE_NONE, 1 }, { "printsize", FACE_KEYWORD_MODIFIER, 1 },
+	{ "range", FACE_FUNCTION_BUILTIN, 0 }, { "recursive_iteration_cnt", FACE_FUNCTION_BUILTIN, 0 },
+	{ "stateful", FACE_KEYWORD_MODIFIER, 0 }, { "strlen", FACE_FUNCTION_BUILTIN, 0 },
+	{ "substr", FACE_FUNCTION_BUILTIN, 0 }, { "sum", FACE_FUNCTION_BUILTIN, 0 }, { "symbol", FACE_TYPE, 0 },
+	{ "symbol_type", FACE_NONE, 1 }, { "to_float", FACE_FUNCTION_BUILTIN, 0 },
+	{ "to_number", FACE_FUNCTION_BUILTIN, 0 }, { "to_string", FACE_FUNCTION_BUILTIN, 0 },
+	{ "to_unsigned", FACE_FUNCTION_BUILTIN, 0 }, { "true", FACE_BOOLEAN, 0 }, { "type", FACE_NONE, 1 },
+	{ "unsigned", FACE_TYPE, 0 },
+};
+
+static int is_dl(int c) { return is_digit(c) || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || c == '?'; }
+
+/* scanner.ll's tokens; a dot is one of its own, so .decl is two and a token
+   start never depends on more than the two bytes from it */
+static size_t dl_token(TsqlRd *r, size_t p, int *k)
+{
+	int c = tsql_byte(r, p), d = tsql_byte(r, p + 1);
+	if (c < 0 || is_space(c) || (c == '/' && (d == '/' || d == '*'))) return json_token(r, p, k);
+	r->open = 0;
+	if (c == '"') return *k = TQ_STRING, string(r, p, 0);
+	if (c == '#') return *k = TQ_VAR, line_end(r, p);
+	if (is_dl(c)) {
+		/* 12, 0x1F, 0b1, 7u, 1.5 and 10.0.0.1 are one number */
+		*k = is_digit(c) ? TQ_NUMBER : TQ_WORD;
+		while (is_dl(c = tsql_byte(r, ++p)) || (*k == TQ_NUMBER && c == '.' && is_digit(tsql_byte(r, p + 1)))) ;
+		return p;
+	}
+	*k = TQ_OP;
+	if ((c == ':' && (d == '-' || d == ':')) || (c == '<' && (d == ':' || d == '=')) || (c == '-' && d == '>') || ((c == '!' || c == '>') && d == '=') || (c == '@' && d == '!'))
+		return p + 2;
+	if (c && strchr("()[]{},;:.", c)) *k = TQ_PUNCT;
+	return p + 1;
+}
+
+static const struct DlWord *dl_word(TsqlRd *r, size_t p, size_t e)
+{
+	char l[40];
+	return copy(r, p, e - p, l, 0) ? bsearch(l, dl_words, sizeof dl_words / sizeof *dl_words, sizeof *dl_words, by_word) : NULL;
+}
+
+/* the token at p, after a dot, is a directive's word (.decl) */
+static int directive(TsqlRd *r, size_t p)
+{
+	int k;
+	size_t e = dl_token(r, p, &k);
+	const struct DlWord *w = k == TQ_WORD ? dl_word(r, p, e) : NULL;
+	return w && w->dir;
+}
+
+static unsigned char dl_face(TsqlRd *r, size_t p, size_t e, int k)
+{
+	int c = tsql_byte(r, p);
+	switch (k) {
+	case TQ_STRING: return FACE_STRING;
+	case TQ_NUMBER: return FACE_NUMBER;
+	case TQ_COMMENT: return FACE_COMMENT;
+	case TQ_VAR: return FACE_KEYWORD_DIRECTIVE;
+	case TQ_OP: return FACE_OPERATOR;
+	case TQ_PUNCT: return c == '.' && directive(r, p + 1) ? FACE_KEYWORD : punct(c);
+	case TQ_WORD: {
+		if (p && tsql_byte(r, p - 1) == '.' && directive(r, p)) return FACE_KEYWORD;
+		const struct DlWord *w = dl_word(r, p, e);
+		if (w && w->f != FACE_NONE) return w->f;
+		while (is_space(c = tsql_byte(r, e))) e++;
+		return c == '(' ? FACE_FUNCTION : FACE_NONE;
+	}
+	}
+	return FACE_NONE;
+}
+
+static size_t (*const lang_token[])(TsqlRd *, size_t, int *) = { tsql_token, json_token, dl_token };
+static unsigned char (*const lang_face[])(TsqlRd *, size_t, size_t, int) = { face, json_face, dl_face };
+
 static void paint(Tsql *q, size_t p, size_t e, int k, size_t a, size_t z, unsigned char *f)
 {
 	TsqlRd *r = &q->r;
-	unsigned char c = q->json ? json_face(r, p, e, k) : face(r, p, e, k);
+	unsigned char c = lang_face[q->lang](r, p, e, k);
 	for (size_t i = p < a ? a : p; i < e && i < z; i++) f[i - a] = c;
-	if (!q->json || k != TQ_STRING) return;
+	if (!q->lang || k != TQ_STRING) return;
 	/* a backslash and the byte after it (tree-sitter-json's escape_sequence,
-	   also the u of \u0041), found from the window's start, or from the run
+	   also the u of \u0041; scanner.ll's \\.), found from the window's start, or from the run
 	   of backslashes it is in, which decides the pairs: a long string is
 	   not read from its start for each 256 bytes drawn */
 	size_t i = p + 1 < a ? a : p + 1;
@@ -298,10 +411,10 @@ static void paint(Tsql *q, size_t p, size_t e, int k, size_t a, size_t z, unsign
 		}
 }
 
-Tsql *tsql_new(const Text *t, int json)
+Tsql *tsql_new(const Text *t, int lang)
 {
 	Tsql *q = calloc(1, sizeof *q);
-	if (q) q->r.t = t, q->json = json;
+	if (q) q->r.t = t, q->lang = lang;
 	return q;
 }
 
@@ -371,7 +484,7 @@ int tsql_update(Tsql *q, int (*stop)(void))
 		if (stop && !(k % 1024) && stop()) return 2;
 		int kind;
 		/* the long comment the frame just read is not read again */
-		size_t e = p == q->at && q->end > p ? q->end : (q->json ? json_token : tsql_token)(&q->r, p, &kind);
+		size_t e = p == q->at && q->end > p ? q->end : lang_token[q->lang](&q->r, p, &kind);
 		step(q, p);
 		/* landed on a moved start: the rest is known */
 		p = q->n && q->v == q->n && q->ck[q->n - 1] > e ? q->ck[q->n - 1] : e;
@@ -398,7 +511,7 @@ void tsql_faces(Tsql *q, size_t a, size_t z, unsigned char *f)
 		int k = q->kind;
 		size_t e = q->end;
 		if (p != q->at || e <= p) {
-			e = (q->json ? json_token : tsql_token)(&q->r, p, &k);
+			e = lang_token[q->lang](&q->r, p, &k);
 			if (e == p) break;
 		}
 		step(q, p);

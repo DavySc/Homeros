@@ -1,12 +1,12 @@
 # Plants for JSON's colours (src/syntax/tsql.c's json_token, json_face, paint; format in tools/planted.sh).
 json: a .json file is T-SQL (test_json)~test TESTS=json~~src/syntax/syntax.c~{ ".json", "json", BY_JSON }~{ ".json", "json", BY_SQL }
-json: the index is filled with T-SQL's tokens (test_json)~test TESTS=json~~src/syntax/tsql.c~: (q->json ? json_token : tsql_token)(&q->r, p, &kind);~: tsql_token(&q->r, p, &kind);
-json: a window is lexed as T-SQL (test_json)~test TESTS=json~~src/syntax/tsql.c~e = (q->json ? json_token : tsql_token)(&q->r, p, &k);~e = tsql_token(&q->r, p, &k);
-json: a window takes T-SQL's faces (test_json)~test TESTS=json~~src/syntax/tsql.c~c = q->json ? json_face(r, p, e, k) : face(r, p, e, k);~c = 0 && q->json ? json_face(r, p, e, k) : face(r, p, e, k);
-json: a string runs past its line's end (test_json, lines)~test TESTS=json~~src/syntax/tsql.c~c != '"' && c != '\n')~c != '"')
-json: an escape takes the line's end (test_json, lines)~test TESTS=json~~src/syntax/tsql.c~>= 0 && d != '\n') p++;~>= 0) p++;
+json: the index is filled with T-SQL's tokens (test_json)~test TESTS=json~~src/syntax/tsql.c~: lang_token[q->lang](&q->r, p, &kind);~: tsql_token(&q->r, p, &kind);
+json: a window is lexed as T-SQL (test_json)~test TESTS=json~~src/syntax/tsql.c~e = lang_token[q->lang](&q->r, p, &k);~e = tsql_token(&q->r, p, &k);
+json: a window takes T-SQL's faces (test_json)~test TESTS=json~~src/syntax/tsql.c~c = lang_face[q->lang](r, p, e, k);~c = (0 ? lang_face[q->lang] : face)(r, p, e, k);
+json: a string runs past its line's end (test_json, lines)~test TESTS=json~~src/syntax/tsql.c~c != '"' && !(nl && c == '\n'))~c != '"')
+json: an escape takes the line's end (test_json, lines)~test TESTS=json~~src/syntax/tsql.c~>= 0 && !(nl && d == '\n')) p++;~>= 0) p++;
 json: a closed string leaves its closing quote out (test_json)~test TESTS=json~~src/syntax/tsql.c~c == '"' ? p + 1 : p;~p;
-json: a line comment runs past its line (test_json)~test TESTS=json~~src/syntax/tsql.c~	if (c == '/' && d == '/') {¶		while ((c = tsql_byte(r, ++p)) >= 0 && c != '\n') ;~	if (c == '/' && d == '/') {¶		while ((c = tsql_byte(r, ++p)) >= 0) ;
+json: a line comment runs past its line (test_json)~test TESTS=json~~src/syntax/tsql.c~	while ((c = tsql_byte(r, ++p)) >= 0 && c != '\n') ;¶	return p;~	while ((c = tsql_byte(r, ++p)) >= 0) ;¶	return p;
 json: a block comment ends a byte early (test_json)~test TESTS=json~~src/syntax/tsql.c~c < 0 ? p : p + 2;~c < 0 ? p : p + 1;
 json: an unclosed block comment is no comment (test_json, lines)~test TESTS=json~~src/syntax/tsql.c~return *k = TQ_COMMENT, c < 0 ? p : p + 2;~return *k = c < 0 ? TQ_OP : TQ_COMMENT, c < 0 ? p : p + 2;
 json: a minus starts no number (test_json)~test TESTS=json~~src/syntax/tsql.c~(c == '-' && is_digit(d))) return~(c == '+' && is_digit(d))) return
@@ -14,7 +14,7 @@ json: an exponent takes no plus (test_json, lines)~test TESTS=json~~src/syntax/t
 json: a word runs on over digits (test_json)~test TESTS=json~~src/syntax/tsql.c~while ((c = tsql_byte(r, ++p)) >= 'a' && c <= 'z') ;~while ((c = tsql_byte(r, ++p)) >= '0' && c <= 'z') ;
 json: a key's colon is not found past a comment (test_json)~test TESTS=json~~src/syntax/tsql.c~(k == TQ_SPACE || k == TQ_COMMENT); ) e = n;~(k == TQ_SPACE); ) e = n;
 json: a key is a plain string (test_json)~test TESTS=json~~src/syntax/tsql.c~== ':' ? FACE_PROPERTY : FACE_STRING;~== ':' ? FACE_STRING : FACE_STRING;
-json: a colon is a bracket (test_json)~test TESTS=json~~src/syntax/tsql.c~c == ',' || c == ':' ? FACE_PUNCTUATION_DELIMITER~c == ',' ? FACE_PUNCTUATION_DELIMITER
+json: a colon is a bracket (test_json)~test TESTS=json~~src/syntax/tsql.c~c == ',' || c == ':' || c == ';'~c == ',' || c == ';'
 json: brackets are plain (test_json)~test TESTS=json~~src/syntax/tsql.c~FACE_PUNCTUATION_DELIMITER : FACE_PUNCTUATION_BRACKET;~FACE_PUNCTUATION_DELIMITER : FACE_NONE;
 json: null is a boolean (test_json)~test TESTS=json~~src/syntax/tsql.c~"null") ? FACE_CONSTANT_BUILTIN~"null") ? FACE_BOOLEAN
 json: false is plain (test_json)~test TESTS=json~~src/syntax/tsql.c~|| !strcmp(l, "false")~|| !strcmp(l, "fals")

@@ -455,6 +455,8 @@ static void filetypes(void)
 	CHECK(!pclose(p));
 	/* an unnamed buffer */
 	CHECK(!syntax_filetype(NULL));
+	/* Neovim knows no .dl */
+	CHECK(!strcmp(syntax_filetype("x/a.dl"), "souffle"));
 	printf("test_syntax: %zu file names' filetypes as Neovim's\n", sizeof names / sizeof *names);
 }
 

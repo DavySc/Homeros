@@ -50,5 +50,5 @@ tsql: an unclosed string is not flagged open (test_tsql, open)~test TESTS=tsql~~
 tsql: the open flag keeps the last token's (test_tsql, open)~test TESTS=tsql~~src/syntax/tsql.c~	r->open = 0;¶	if (c < 0)~	if (c < 0)
 tsql: a word it lacks still gets an id (test_tsql)~test TESTS=tsql~~src/syntax/tsql.c~	if (id) *id = k;~	if (id) *id = 1;
 # Not planted: reusing the last token's end and kind (tsql_faces).  Without it every call lexes that token again: the colours are the same, only slower (reviews/pr-58-repro/bench.c, mode open).
-tsql: an operator takes the comments' grey, not the operator face (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~case TQ_OP: return FACE_OPERATOR;~case TQ_OP: return FACE_PUNCTUATION_DELIMITER;
+tsql: an operator takes the comments' grey, not the operator face (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~case TQ_OP: return FACE_OPERATOR;¶	case TQ_WORD: return word_face(r, p, e);~case TQ_OP: return FACE_PUNCTUATION_DELIMITER;¶	case TQ_WORD: return word_face(r, p, e);
 # Not planted, because without them the colours are the same, only slower, and no check times them: a read that lands on a moved start making all known again; syntax_update starting from the token the last faces ended in.  bench5.c in the PR's description times them.

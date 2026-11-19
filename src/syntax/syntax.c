@@ -77,10 +77,12 @@ enum { NLANGS = sizeof langs / sizeof *langs };
 /* File name endings, or whole names, Neovim's 'filetype' for each (nvim
    0.12 --clean, vim.filetype.match: a .h is cpp unless g:c_syntax_for_h;
    a .v is Verilog or V by its content, so it is left out; Neovim also
-   strips backup endings such as ~ and .bak, which these do not), and what
-   colours it: a langs[] index, T-SQL's or JSON's word lists (tsql.c), or
-   nothing yet (Davy's other languages, FEATURES.md) */
-enum { BY_NONE = -1, BY_SQL = -2, BY_JSON = -3 };
+   strips backup endings such as ~ and .bak, which these do not; it knows no
+   .dl, which is souffle as the Soufflé plugins for Vim name it), and what
+   colours it: a langs[] index, T-SQL's, JSON's or Soufflé's word lists
+   (tsql.c, in tsql_new's order), or nothing yet (Davy's other languages,
+   FEATURES.md) */
+enum { BY_NONE = -1, BY_SQL = -2, BY_JSON = -3, BY_DL = -4 };
 static const struct { const char *ext, *ft; int lang; } fts[] = {
 	{ ".c", "c", 0 }, { ".h", "cpp", 0 }, { ".lua", "lua", 1 }, { ".md", "markdown", 2 },
 	{ ".sql", "sql", BY_SQL }, { ".json", "json", BY_JSON }, { "CMakeLists.txt", "cmake", BY_NONE },
@@ -89,7 +91,7 @@ static const struct { const char *ext, *ft; int lang; } fts[] = {
 	{ ".comp", "glsl", BY_NONE }, { ".geom", "glsl", BY_NONE }, { ".tesc", "glsl", BY_NONE },
 	{ ".tese", "glsl", BY_NONE }, { ".sv", "systemverilog", BY_NONE }, { ".svh", "systemverilog", BY_NONE },
 	{ ".cmake", "cmake", BY_NONE }, { ".lean", "lean", BY_NONE }, { ".cs", "cs", BY_NONE },
-	{ ".org", "org", BY_NONE },
+	{ ".org", "org", BY_NONE }, { ".dl", "souffle", BY_DL },
 };
 
 /* fts[]'s entry for path's base name (after its last / or \, as Neovim),
@@ -362,7 +364,7 @@ Syntax *syntax_open(const char *path, const Text *t)
 	if (li == BY_NONE) return NULL;
 	if (li < BY_NONE) {
 		Syntax *s = calloc(1, sizeof *s);
-		if (s && !(s->sql = tsql_new(t, li == BY_JSON))) free(s), s = NULL;
+		if (s && !(s->sql = tsql_new(t, BY_SQL - li))) free(s), s = NULL;
 		return s;
 	}
 	Syntax *s = calloc(1, sizeof *s);
