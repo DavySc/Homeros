@@ -4,6 +4,8 @@
 local text = vim.split(io.open(_G.arg[1]):read('*a'), '\n')
 table.remove(text)
 local out = io.open(_G.arg[3], 'w')
+-- a command line that writes (:x file) writes there, not in the repository
+vim.fn.chdir(vim.fs.dirname(_G.arg[3]))
 for k in io.lines(_G.arg[2]) do
   vim.cmd('enew!')
   vim.api.nvim_buf_set_lines(0, 0, -1, false, text)
