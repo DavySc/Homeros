@@ -101,6 +101,22 @@ const Face faces[FACE_COUNT] = {
 	{ {137, 180, 250}, {0, 0, 0}, FACE_FG, {0} },     /* tag.builtin: blue */
 	{ {249, 226, 175}, {0, 0, 0}, FACE_ITALIC | FACE_FG, {0} }, /* tag.attribute: yellow, italic */
 	{ {148, 226, 213}, {0, 0, 0}, FACE_FG, {0} },     /* tag.delimiter: teal */
+	/* Org's faces as catppuccin/emacs (56c3cbe) gives them in Mocha; its
+	   org-drawer is Org's own LightSkyBlue, here sky, and its block lines
+	   take our comment's look on the block's mantle */
+	{ {203, 166, 247}, {0, 0, 0}, FACE_FG, {0} },     /* org-level-7: mauve */
+	{ {235, 160, 172}, {0, 0, 0}, FACE_FG, {0} },     /* org-level-8: maroon */
+	{ {250, 179, 135}, {0, 0, 0}, FACE_FG, {0} },     /* org-todo: peach */
+	{ {249, 226, 175}, {0, 0, 0}, FACE_FG, {0} },     /* org-priority: yellow */
+	{ {203, 166, 247}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} }, /* org-tag: mauve, bold */
+	{ {166, 173, 200}, {0, 0, 0}, FACE_FG, {0} },     /* org-date: subtext0 */
+	{ {108, 112, 134}, {0, 0, 0}, FACE_FG, {0} },     /* org-table: overlay0 */
+	{ {245, 194, 231}, {0, 0, 0}, FACE_FG, {0} },     /* org-formula: pink */
+	{ {137, 220, 235}, {0, 0, 0}, FACE_FG, {0} },     /* org-drawer: sky */
+	{ {0, 0, 0}, {0, 0, 0}, FACE_BOLD, {0} },         /* org-checkbox: bold */
+	{ {116, 199, 236}, {0, 0, 0}, FACE_FG, {0} },     /* org-document-info: sapphire */
+	{ {166, 227, 161}, {24, 24, 37}, FACE_FG | FACE_BG, {0} }, /* org-block: green on mantle */
+	{ {147, 153, 178}, {24, 24, 37}, FACE_ITALIC | FACE_FG | FACE_BG, {0} }, /* org-block-begin-line: overlay2, italic, on mantle */
 	/* catppuccin/nvim's render_markdown integration: rainbow N darkened
 	   into base by 0.095, its value without transparent_background (Davy
 	   chose the opaque Mocha base; measured in nvim 0.12.6, catppuccin
