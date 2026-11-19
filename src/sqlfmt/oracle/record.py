@@ -73,6 +73,11 @@ cases = [
  # a ( alone on its line inside parentheses sits with their lines
  "select *\nfrom\n(\n(\nselect 1\n)\nunion all\n(\nselect 2\n)\n) q",
  "where x in\n(\n(\n1\n)\n)",
+ # a stray ) closes nothing: it does not hang with a ( closed before it
+ "select a\nfrom\n(\nb\n)\n)\nx",
+ # a ; inside ( starts a statement, and its ) finds nothing to close: a (
+ # after it must not inherit depths the reset left behind
+ "( ; ) ( (\n exists",
  # a head from one statement never rivers the next, even where the
  # parser gives the next no break (a header without AS)
  "create procedure p ()\nselect a from t\nwhere t.a = 1;\nmerge u\nusing v\non u.a = v.a",
