@@ -4,7 +4,7 @@ sqlfmt: a statement without `;` runs into the next (test_sqlfmt, recorded)~test 
 sqlfmt: ELSE IF's IF goes on a line of its own (test_sqlfmt, recorded)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~word_of(P, (size_t)ls) == W_ELSE~word_of(P, (size_t)ls) == W_END
 sqlfmt: a BEGIN ... END body is indented under its header (test_sqlfmt, recorded)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~children == 1 ? level : level + 1;~children == 1 ? level + 1 : level + 1;
 sqlfmt: END stays on the line before it (test_sqlfmt, recorded)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~ P->t[i].brk = B_FOOTER;¶~ P->t[i].brk = B_NONE;¶
-sqlfmt: a comment before END lines up with END (test_sqlfmt, recorded)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~p->t[c].brk == B_FOOTER ? p->t[c].level + 1~p->t[c].brk == B_FOOTER ? p->t[c].level
+sqlfmt: a comment before END lines up with END (test_sqlfmt, recorded)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~p->t[c].brk == B_FOOTER ? (p->t[c].level + 1) * 4~p->t[c].brk == B_FOOTER ? (p->t[c].level) * 4
 sqlfmt: every keyword is recased, NOCOUNT too (test_sqlfmt, recorded)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~tsql_word(s, n, &id) & TQ_RECASE;~tsql_word(s, n, &id) & TQ_KEYWORD;
 sqlfmt: a word after a dot is recased (test_sqlfmt, recorded)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~!(prev >= 0 && P->t[prev].k == DOT) && ~
 sqlfmt: no space between = and a sign (test_sqlfmt, recorded)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~(b->k != OP || sign)~(b->k != OP || (sign && a->k == ERR))
@@ -14,7 +14,7 @@ sqlfmt: an unclosed string is no parse problem (test_sqlfmt, recorded)~test TEST
 sqlfmt: blank lines are not limited (test_sqlfmt, recorded)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~size_t n = nls < 2 ? nls : 2;~size_t n = nls;
 sqlfmt: a range edits from the start (test_sqlfmt, range)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~	while (i0 < in.n && in.t[i0].s < *a) i0++;¶~
 sqlfmt: keywords keep their case (test_sqlfmt, recorded)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~(char)(out[j] + 32)~out[j]
-sqlfmt: parentheses do not indent (test_sqlfmt, recorded)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~t->level + 1 + t->depth;~t->level + 1;
+sqlfmt: parentheses do not indent (test_sqlfmt, recorded)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~(t->level + 1 + t->depth - hangs(t) - open) * 4;~(t->level + 1 - hangs(t) - open) * 4;
 sqlfmt: sqlcmd lines are laid out (test_sqlfmt, recorded)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~(s[t->s] == '\\' || s[t->s] == ':')~(s[t->s] == '\\')
 sqlfmt: a kept statement's tokens are recased (test_sqlfmt, random)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~if (t->kw && !kept && !in_rev && !oom)~if (t->kw && !oom)
 sqlfmt: an empty text formats into no buffer (fuzz_sqlfmt, UBSan)~fuzz FUZZERS=sqlfmt FUZZ_SECONDS=60~~src/sqlfmt/sqlfmt.c~	while (nout + n >= outcap)~	while (nout + n > outcap)
@@ -34,3 +34,8 @@ sqlfmt: a comment run takes the indent of the token after its first comment (tes
 sqlfmt: the next call reuses freed memory (test_sqlfmt, ASan)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~		*ps[k] = (Pass){ 0 };¶~
 sqlfmt: the last of the layout's words is not mapped (test_sqlfmt, recorded)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~for (size_t i = 0, id; i < NW - 1; i++)~for (size_t i = 0, id; i + 2 < NW; i++)
 sqlfmt: nesting limit 999 (test_sqlfmt, 999 levels)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~if (nest >= 1000) {~if (nest >= 999) {
+sqlfmt: AND, OR and ON take no river (test_sqlfmt, recorded)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~return h->level * 4 + (r > 0 ? r : 0);~return h->level * 4;
+sqlfmt: HAVING takes no river (test_sqlfmt, recorded)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~(hw == W_WHERE || hw == W_HAVING ||~(hw == W_WHERE ||
+sqlfmt: a ( alone on its line does not hang (test_sqlfmt, recorded)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~(p->t[i + 1].brk != B_NONE || memchr(p->src + t->e, '\n', p->t[i + 1].s - t->e))~(p->t[i + 1].brk != B_NONE)
+sqlfmt: a hanging ( counts at every level (test_sqlfmt, recorded)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~par[npar - 1].level == t->level ?~npar ?
+sqlfmt: a ) leaves its ( open (test_sqlfmt, recorded)~test TESTS=sqlfmt~~src/sqlfmt/sqlfmt.c~if (t->k == RP && npar) npar--;~if (t->k == RP && npar && !t) npar--;
