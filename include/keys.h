@@ -30,7 +30,11 @@ typedef struct {
 	int batch;           /* inserting typeahead as one string (Neovim's insertchar()) */
 	struct { int type; size_t l1, c1, l2, c2; } yank;
 	                     /* the area just yanked, flashed for 150 ms
-	                        (vim.highlight.on_yank): type 0 none, 'v', 'V' or 22 */
+	                        (vim.hl.on_yank): type 0 none, 'v', 'V' or 22;
+	                        l1,c1 '[ and l2,c2 '] (bytes, on a character's
+	                        first byte); a block's c1,c2 are its first and
+	                        last screen columns (getregionpos(): the marks'
+	                        leftmost virtcol and the register's width) */
 	int pending;         /* a command is half typed: a count, register, operator or its
 	                        character (what showcmd shows); the conform driver ends it
 	                        with Esc, as feedkeys(..., 'x') does */
