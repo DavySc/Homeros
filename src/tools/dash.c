@@ -113,7 +113,9 @@ static void geometry(Editor *e, int *top, int *art_on, int *first)
 
 void tools_dash(Editor *e, long long start_ns)
 {
+	double ms = D.ms;   /* :Dashboard (start_ns 0) shows the startup time again */
 	memset(&D, 0, sizeof D);
+	D.ms = ms;
 	D.open = 1;
 	D.buf = e->buf;
 	D.seq = undo_seq(e->buf->undo);
@@ -159,14 +161,15 @@ int dash_key(Editor *e, int k)
 
 void dash_draw(Editor *e, Grid *g)
 {
-	if (!shown(e)) return;
-	if (D.start >= 0) {
-		/* the footer's number is measured once (ui.lua), at the first draw */
+	if (D.start) {
+		/* the footer's number is measured once (ui.lua), at the first
+		   draw, also when a file is shown then, for a later :Dashboard */
 		struct timespec t;
 		timespec_get(&t, TIME_UTC);
 		D.ms = ((long long)t.tv_sec * 1000000000 + t.tv_nsec - D.start) / 1e6;
-		D.start = -1;
+		D.start = 0;
 	}
+	if (!shown(e)) return;
 	int top, art_on, first, h = height(e);
 	geometry(e, &top, &art_on, &first);
 	/* the window, blank, with "~" past the buffer's last line */

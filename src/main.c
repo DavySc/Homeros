@@ -79,7 +79,9 @@ int main(int argc, char **argv)
 	if (e.buf->watch >= 0) loop_watch(e.buf->watch, on_watch, &e);
 	b->size(&rows, &cols);
 	if (grid_resize(&g, rows, cols)) goto out;
-	if (!file) tools_dash(&e, (long long)t0.tv_sec * 1000000000 + t0.tv_nsec);
+	/* also with a file: the first draw measures "loaded in" for a later
+	   :Dashboard (thread 0's, agreed) */
+	tools_dash(&e, (long long)t0.tv_sec * 1000000000 + t0.tv_nsec);
 	int dirty = 1, syn = e.buf->syn != NULL;   /* syn: a reparse is pending */
 	while (!e.quit) {
 		if (resized) {
