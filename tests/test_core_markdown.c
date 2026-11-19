@@ -1,7 +1,7 @@
 /* render-markdown (headings, bullets, checkboxes, fenced code) against
    Neovim: replays the cases that tests/test_core_markdown.py recorded from
    Neovim with render-markdown (tests/test_core_markdown.txt: 1000 random,
-   then tests/test_core_markdown_cases.py's 33: sideways scroll, skipcol,
+   then tests/test_core_markdown_cases.py's 42: sideways scroll, skipcol,
    fillers) and compares every row's text, the colours the .py names, and
    the cursor.  usage: test_core_markdown [FILE] [-v] */
 #include <stdlib.h>
@@ -67,8 +67,10 @@ static void command(Editor *e, Grid *g, const char *t)
 	while (syntax_update(e->buf->syn, e->buf->text, NULL));
 }
 
-/* Cases listed as known, 21 of 1033.  Drawing's: an ordered number wider
-   than its marker, which Neovim puts inline (1032).  The core's
+/* Cases listed as known, 23 of 1042.  Drawing's: an ordered number wider
+   than its marker, which Neovim puts inline (1032); a tab before a
+   heading's marker (1041); an info string past the 256 bytes draw_md
+   reads, in a window wider than they are (1042).  The core's
    (package 4, reported): the window's top after a split (9 ... 961), and
    with wrap after a jump near a line taller than scrolloff allows (110 ...
    979); the ruler of a window that is not the current one in insert mode
@@ -77,7 +79,7 @@ static void command(Editor *e, Grid *g, const char *t)
 static int known(int n)
 {
 	static const int k[] = { 9, 10, 11, 73, 138, 506, 549, 683, 693, 731, 882, 961,
-	                         110, 330, 854, 979, 84, 332, 384, 407, 1032 };
+	                         110, 330, 854, 979, 84, 332, 384, 407, 1032, 1041, 1042 };
 	for (size_t i = 0; i < sizeof k / sizeof *k; i++) if (k[i] == n) return 1;
 	return 0;
 }

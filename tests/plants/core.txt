@@ -89,3 +89,8 @@ core: a bullet over a heading's background takes it (test_core_markdown)~test TE
 core: the language line puts the file's bytes on the grid as they are, an escape too (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~				put_cell(g, w, row, c, u + i, k, j, cw, face);~				if (!j) wput(g, w, row, c, u + i, k, cw, ATTR_NONE), z->face = face;
 core: an overlay at a mark past the window's end draws on the row above it (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~	if (s0 == (size_t)-1) return v;~	if (s0 == (size_t)-2) return v;
 core: an ordered number as wide as its marker is left as typed (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~k <= md->iend - q) over(~k < md->iend - q) over(
+core: a tab in the language line 3 cells wide is drawn 2 (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~			cw -= cw == 3 && u[i] != '\t';~			cw -= cw == 3;
+core: a double-width character past the language line's row end is drawn in part (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~				if (fit) put_cell(~				if (fit || 1) put_cell(
+core: the info string's text before the language is not drawn (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~b + md->info, md->lang - md->info, 1~b + md->info, 0 * md->info, 1
+core: the language line's fence blanks counted in columns, not characters (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~blk, 3, blanks(b, n, md->mark) - md->mark,~blk, 3, a1 - a0 + 0 * n,
+core: an info string past b's bytes is read past them (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~md->info + md->ninfo < n ? md->info + md->ninfo : n;~md->info + md->ninfo;

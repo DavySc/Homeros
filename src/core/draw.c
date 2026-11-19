@@ -121,14 +121,19 @@ static size_t over(Grid *g, const Win *w, int r, size_t skip, int cover, size_t 
 			   (measured: Neovim's overlay does the same) */
 			k = uni_glen(u, n, i);
 			int cw = core_cellw(w, u, n, i, v);
-			cw -= cw == 3;
+			cw -= cw == 3 && u[i] != '\t';
+			/* a character that does not fit the row's end: blanks there
+			   (measured) */
+			size_t e = v + d - skip + (size_t)cw - 1;
+			int fit = e / (size_t)tw == x0 / (size_t)tw && (w->wrap || e < (size_t)tw);
 			for (int j = 0; j < cw; j++, v++) {
 				size_t x = v + d - skip;
 				if (x / (size_t)tw != x0 / (size_t)tw || (!w->wrap && x >= (size_t)tw)) return v;
 				int row = r + (int)(x / (size_t)tw), c = nw + (int)(x % (size_t)tw);
 				Cell *z = wcell(g, w, row, c);
 				if (row >= w->h || !z || (row == r && c < cover)) continue;
-				put_cell(g, w, row, c, u + i, k, j, cw, face);
+				if (fit) put_cell(g, w, row, c, u + i, k, j, cw, face);
+				else put_cell(g, w, row, c, (const unsigned char *)" ", 1, 0, 1, face);
 				z->bg = bg;
 			}
 		}
@@ -204,7 +209,7 @@ static void draw_md(Grid *g, const Win *w, size_t l, int r, size_t skip, int cov
 		v = over(g, w, r, skip, cover, a0, a0, " ", 1, a1 - a0 + md->head - 1, f, hb);
 		over(g, w, r, skip, cover, a0, over(g, w, r, skip, cover, a0, v, icon, 4, 1, f, hb), " ", 1, 1, f, hb);
 	}
-	if (md->code == 1 && md->nlang && md->info + md->ninfo <= n) {
+	if (md->code == 1 && md->nlang && md->lang + md->nlang <= n) {
 		/* code.lua, language(): from the fence on, a '█' per blank
 		   character it starts with (str.spaces), the
 		   info string (the language as Normal, the rest as @label) on
@@ -213,7 +218,9 @@ static void draw_md(Grid *g, const Win *w, size_t l, int r, size_t skip, int cov
 		v = over(g, w, r, skip, cover, a0, a0, blk, 3, blanks(b, n, md->mark) - md->mark, FACE_MD_CODE_BORDER, 0);
 		v = over(g, w, r, skip, cover, a0, v, b + md->info, md->lang - md->info, 1, FACE_LABEL, FACE_MD_CODE_BG);
 		v = over(g, w, r, skip, cover, a0, v, b + md->lang, md->nlang, 1, FACE_NONE, FACE_MD_CODE_BG);
-		v = over(g, w, r, skip, cover, a0, v, b + md->lang + md->nlang, md->info + md->ninfo - md->lang - md->nlang, 1, FACE_LABEL, FACE_MD_CODE_BG);
+		/* (the row ends before b's 256 bytes do, but in a wider window) */
+		size_t e = md->info + md->ninfo < n ? md->info + md->ninfo : n;
+		v = over(g, w, r, skip, cover, a0, v, b + md->lang + md->nlang, e - md->lang - md->nlang, 1, FACE_LABEL, FACE_MD_CODE_BG);
 		over(g, w, r, skip, cover, a0, v, blk, 3, (size_t)w->w, FACE_MD_CODE_BORDER, 0);
 	}
 }
