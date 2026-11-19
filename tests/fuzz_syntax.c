@@ -1,7 +1,8 @@
 /* libFuzzer: syntax.h on text and edits decoded from the input, in C, Lua,
    Markdown (injections, code blocks) and Rust (its scanner's raw strings
    and nested comments, macros), with parses stopped and resumed at
-   input-chosen points and faces read at any moment, stale trees included.
+   input-chosen points and faces and syntax_md read at any moment, stale
+   trees included.
    Sanitizers catch the memory errors; the faces must be grid.h's. */
 #include <stdint.h>
 #include <stdlib.h>
@@ -13,7 +14,7 @@
 static const char *const tok[4][16] = {
 	{ "\n", "/*", "*/", "\"", "'", "{", "}", "(", ")", "x", " ", "\xc3\xa9", "#define A(x) x\n", "int", "FOO", ";" },
 	{ "\n", "--", "[[", "]]", "\"", "'", "(", ")", "x", " ", "\xc3", "local", "function", "end", "--- @param", "vim.cmd" },
-	{ "\n", "#", "```", "```c\n", "```lua\n", "*", "_", "`", "[", "](", ")", "- ", "| a |", "\n\n", "\xa9", "> " },
+	{ "\n", "#", "```", "```c\n", "```lua\n", "*", "1. ", "`", "[", "](", ")", "- ", "| a |", "\n\n", "\xa9", "> " },
 	{ "\n", "r#\"", "\"#", "\"", "/*", "*/", "//", "{", "}", "(", ")", " ", "x", "println!(", "fn f<'a>(", "'a" },
 };
 static const char *const path[4] = { "f.c", "f.lua", "f.md", "f.rs" };
@@ -51,6 +52,8 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 			if (z > len) z = len;
 			syntax_faces(s, a, z, f);
 			for (size_t i = 0; i < z - a; i++) if (f[i] >= FACE_COUNT) abort();
+			SyntaxMd m;   /* render-markdown's facts, stale trees included */
+			syntax_md(s, t, byte() % (text_lines(t) + 1), &m);
 		} else {                           /* an edit, keeping the final '\n' */
 			size_t pos = byte() * len / 256, del = byte() % 8;
 			if (del > len - 1 - pos) del = len - 1 - pos;
