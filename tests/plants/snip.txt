@@ -1,0 +1,23 @@
+# Plants for src/snip/ and the hooks it needs in other packages (format in
+# tools/planted.sh).  test_snip replays the cases recorded from Neovim's
+# vim.snippet, then checks the popup's keys and the catalogue's odd blocks.
+snip: the core never tells the stops of an edit~test TESTS=snip~~src/core/core.c~	snip_edit(b, t, pos, ndel, ins, nins);~
+snip: a mark at an edge of the change ignores its gravity~test TESTS=snip~~src/snip/snip.c~	else if (k->at >= pos) k->at = k->right ? pos + nins : pos;~	else if (k->at >= pos) k->at = pos;
+snip: the stops jumped to do not grow at their start~test TESTS=snip~~src/snip/snip.c~{ t->a.right = 0; t->z.right = 1; continue; }~{ t->a.right = 1; t->z.right = 1; continue; }
+snip: a stop next to the stops jumped to is pushed on (no lock)~test TESTS=snip~~src/snip/snip.c~		t->a.right = t->z.right = !lock;~		t->a.right = t->z.right = 1;
+snip: text inside a placeholder counted as a placement~test TESTS=snip~~src/snip/snip.c~		if (!text) o->place += !braced, text = 1;~		if (!text) o->place++, text = 1;
+snip: mirrors never set~test TESTS=snip~~src/snip/snip.c~	if (*seen != S.tick) sync(e);~	if (*seen != S.tick && 0) sync(e);
+snip: TextChanged forgotten on leaving Insert mode with typeahead~test TESTS=snip~~src/snip/snip.c~	if (ins && !now && S.ti == S.tick) S.tn = S.tick;~	if (ins + 1 && !now && S.ti == S.tick) S.tn = S.tick;
+snip: no TextChanged right after the expansion~test TESTS=snip~~src/snip/snip.c~	if (S.b) after(e, 0);   /* the expansion's TextChanged, as below a jump */~
+snip: the cursor may leave the stops~test TESTS=snip~~src/snip/snip.c~		for (int j = 0; j < S.n; j++) on |= S.s[j].idx > 0 && S.s[j].a.at <= at && at <= S.s[j].z.at;~		on = 1;
+snip: a join spliced as its whole lines~test TESTS=snip~~src/snip/snip.c~	if (!S.syncing && !n) pos += k, ndel = d, nins = 0;~
+snip: a mirror spliced as only what changed~test TESTS=snip~~src/snip/snip.c~		S.syncing = 1;~
+snip: Enter at the end of a line spliced after the break~test TESTS=snip~~src/snip/snip.c~ && c == '\n') pos--;~ && c == '\n') pos -= 0;
+snip: Enter in a line moves the rest of it whole~test TESTS=snip~~src/keys/edit.c~				memcpy(b + 1, nl, (size_t)ind);¶				replace_bytes(l, rest, extra - rest, b, ind + 1);~				memcpy(b + 1, nl, (size_t)nl_len);¶				replace_bytes(l, rest, len - rest, b, nl_len + 1);
+snip: CTRL-W in select mode a window command~test TESTS=snip~~src/snip/snip.c~		if (k == KEY_S_TAB || k == 23) return 1;~		if (k == KEY_S_TAB) return 1;
+snip: Enter with nothing picked takes the first item~test TESTS=snip~~src/snip/snip.c~	case KEY_ENTER: if (s >= 0) break; core_pum(e, NULL, 0, -1, 0); return 0;~	case KEY_ENTER: if (s < 0) s = 0; break;
+snip: the popup's Tab does not pick~test TESTS=snip~~src/snip/snip.c~	case 14: case KEY_DOWN: case KEY_TAB:~	case 14: case KEY_DOWN:
+snip: the popup opens in any buffer~test TESTS=snip~~src/snip/snip.c~	if (!S.b && (e->mode != MODE_INSERT || !is_sql(e->buf))) return 0;~	if (!S.b && e->mode != MODE_INSERT) return 0;
+snip: a block with no name line taken as a snippet~test TESTS=snip~~src/snip/snip.c~	for (char *p = cat; (p = strstr(p, "```sql\n-- "));) {~	for (char *p = cat; (p = strstr(p, "```sql\n"));) {
+snip: a bare stop left empty~test TESTS=snip~~src/snip/snip.c~			if (ph->idx != t->idx) continue;~			if (ph->idx != t->idx || 1) continue;
+snip: unmapped S-Tab does nothing in Insert mode~test TESTS=snip~~src/keys/edit.c~	case KEY_S_TAB:   /* an unmapped <S-Tab> is a Tab (insert_handle_key's K_S_TAB) */¶~
