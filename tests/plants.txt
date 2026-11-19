@@ -424,5 +424,30 @@ oracle | dbg/conv.c | .type = named ? type_of(&o, le32(d.p + 4)) : 0, | .type = 
 oracle | dbg/conv.c | .owner_type = named && kind == LF_MFUNC_ID ? type_of(&o, le32(d.p)) : 0, | .owner_type = named ? type_of(&o, le32(d.p)) : 0,
 oracle | dbg/conv.c | .owner_type = named && kind == LF_MFUNC_ID ? type_of(&o, le32(d.p)) : 0, | .owner_type = named && kind == LF_MFUNC_ID ? type_of(&o, le32(d.p + 4)) : 0,
 oracle | dbg/conv.c | .owner_type = named && kind == LF_MFUNC_ID ? type_of(&o, le32(d.p)) : 0, | .owner_type = 0,
+# ---- slice 4: process control on Windows (the stress test; under Wine here, on Windows in .github/workflows/win-check.yml) ----
+win | dbg/win/target.c | if (t->traps[i].in) target_write(t, t->traps[i].addr, &t->traps[i].own, 1); | (void)0;
+win | dbg/win/target.c | if (t->traps[i].in) t->traps[i].in = target_write(t, traps[i], &(uint8_t){0xcc}, 1); | if (t->traps[i].in) target_read(t, traps[i], &t->traps[i].own, 1), t->traps[i].in = target_write(t, traps[i], &(uint8_t){0xcc}, 1);
+win | dbg/win/target.c | \p\p !(c.ContextFlags & CONTEXT_EXCEPTION_ACTIVE)) continue; | \p\p true) continue;
+win | dbg/win/target.c | if (t->traps[k].in && t->traps[k].addr == c.Rip - 1) { | if (t->traps[k].in && t->traps[k].addr == c.Rip) {
+win | dbg/win/target.c | for (uint32_t i = 0; i < t->thread_count; i += 1) SuspendThread(t->threads[i].handle); | for (uint32_t i = 1; i < t->thread_count; i += 1) SuspendThread(t->threads[i].handle);
+win | dbg/win/target.c | else for (uint32_t i = 0; i < t->thread_count; i += 1) ResumeThread(t->threads[i].handle); | else for (uint32_t i = 1; i < t->thread_count; i += 1) ResumeThread(t->threads[i].handle);
+win | dbg/win/target.c | if (step) c.EFlags \p= 0x100; | if (step) c.EFlags \p= 0x400;
+win | dbg/win/target.c | e.dwThreadId == t->step ? TARGET_STEP : TARGET_LATE; | TARGET_STEP;
+win | dbg/win/target.c | (own == 0xcc \p\p own == 0xcd)) out->kind = TARGET_BREAK; | own == 0xcd) out->kind = TARGET_BREAK;
+win | dbg/win/target.c | case CREATE_THREAD_DEBUG_EVENT: thread_add(t, e.dwThreadId, e.u.CreateThread.hThread), out->kind = TARGET_THREAD; break; | case CREATE_THREAD_DEBUG_EVENT: out->kind = TARGET_THREAD; break;
+win | dbg/win/target.c | for (int i = 0; i < 16; i += 1) regs->gp[i] = gp[i]; | for (int i = 0; i < 16; i += 1) regs->gp[i] = gp[15 - i];
+win | dbg/win/target.c | regs->rip = c.Rip, regs->rflags = c.EFlags; | regs->rip = c.Rip + 1, regs->rflags = c.EFlags;
+win | dbg/win/target.c | } else if (out->kind == TARGET_EXCEPTION) status = DBG_EXCEPTION_NOT_HANDLED; | } else if (out->kind == TARGET_EXCEPTION) status = DBG_CONTINUE;
+win | dbg/win/target.c | t->held = e.dwThreadId, t->held_status = status; | t->held = e.dwThreadId, t->held_status = DBG_CONTINUE;
+win | dbg/win/target.c | if (target_read(t, (uintptr_t)e.u.DebugString.lpDebugStringData, t->text, (uint32_t)out->code)) out->kind = TARGET_OUTPUT, out->text = t->text; | out->kind = TARGET_OUTPUT, out->text = t->text;
+win | dbg/win/target.c | *out = (TargetEvent){.kind = TARGET_EXIT, .thread = e.dwThreadId, .code = e.u.ExitProcess.dwExitCode}; | *out = (TargetEvent){.kind = TARGET_EXIT, .thread = e.dwThreadId};
+win | dbg/win/target.c | return ReadProcessMemory(t->process, (LPCVOID)(uintptr_t)addr, bytes, n, &got) && got == n; | return ReadProcessMemory(t->process, (LPCVOID)(uintptr_t)(addr + 1), bytes, n, &got) && got == n;
+win | dbg/win/target.c | return WriteProcessMemory(t->process, (LPVOID)(uintptr_t)addr, bytes, n, &put) | return WriteProcessMemory(t->process, (LPVOID)(uintptr_t)addr, bytes, 0, &put)
+win | dbg/win/target.c | for (uint32_t i = 0; i < t->trap_count; i += 1) if (t->traps[i].addr == at && t->traps[i].in) out->kind = TARGET_TRAP; | for (uint32_t i = 1; i < t->trap_count; i += 1) if (t->traps[i].addr == at && t->traps[i].in) out->kind = TARGET_TRAP;
+win | dbg/win/target.c | if (out->kind < TARGET_TRAP) return ContinueDebugEvent(e.dwProcessId, e.dwThreadId, status), false; | if (out->kind < TARGET_BREAK) return ContinueDebugEvent(e.dwProcessId, e.dwThreadId, status), false;
+win | dbg/win/target.c | stop(t);\n  t->held = e.dwThreadId, | t->held = e.dwThreadId,
+# these two only real Windows catches: Wine gives a new thread a new id and handle, and stops a thread before it has run a trap byte or after its event is queued, never between
+windows | dbg/win/target.c | if (t->threads[i].id == e.dwThreadId) t->threads[i] = t->threads[--t->thread_count]; | if (t->threads[i].id == e.dwThreadId) t->threads[i] = t->threads[t->thread_count - 1];
+windows | dbg/win/target.c | else out->code = thread_at(thread_handle(t, e.dwThreadId), &at, false); | else out->code = 0;
 # ---- the list itself: a plant whose text is gone plants nothing ----
 list | tests/plants.txt | = 1,\noracle \p dbg/rdi.c \p [RDI_LOCALS] | = 1,\noracle \p dbg/rdi.c \p [RDI_NO_SUCH]

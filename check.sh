@@ -7,7 +7,7 @@ cd "$(dirname "$0")"
 # a small queue, so the stress test runs with both queues full most of the time
 FLAGS="-std=c17 -D_GNU_SOURCE -pthread -DQUEUE_BYTES=256 -g -O1 -Wall -Wextra -Werror"
 SAN="-fsanitize=address,undefined -fno-sanitize-recover=all"
-run() { # run <dir with the sources> <list|test|specs|oracle|win|fuzz|all>: 0 when the named checks pass, 2 when
+run() { # run <dir with the sources> <list|test|specs|oracle|x64|win|windows|fuzz|all>: 0 when the named checks pass, 2 when
         # something does not compile (a planted bug must be caught by a check, not by the compiler), 3 when the
         # test files cannot be made (nor by a full disk)
   local src=$1 what=$2 b t; b=$(mktemp -d)
@@ -48,14 +48,20 @@ for l in open(sys.argv[1] + "/tests/plants.txt"):
     "$b/pdb2rdi" "$b/pdb/bad/later.pdb" "$b/odd.rdi" && [ "$(echo T 8 | "$b/rdiq" "$b/odd.rdi")" = "1001.0[0]:8 none" ] || return 1
     "$b/pdb2rdi" "$b/pdb/bad/firstid.pdb" "$b/odd.rdi" && [ "$(printf 'N 19 T 1 T 2 T 3 T 4' | "$b/rdiq" "$b/odd.rdi" | tr '\n' ' ')" = "5 S32:4 2004 int:4 on S32:4 2004 Pair:0 2004 Op:0 " ] || return 1
   fi
-  if [ "$what" = win ] || [ "$what" = all ]; then
-    # process control on Windows, here under Wine (WINE names it). On Windows itself (.github/workflows/win-check.yml): WINE=env WINCC=gcc
+  if [ "$what" = x64 ] || [ "$what" = all ]; then
+    # the instruction decoder against llvm-objdump: the test programs, every opcode once, and random bytes
+    gcc $FLAGS $SAN "$src"/dbg/x64.c "$src"/tests/x64q.c -o "$b/x64q" || return 2
+    python3 -I "$src/tests/oracle_x64.py" "$b/x64q" rdi/*.exe sweep random:1:100 || return 1
+  fi
+  if [ "$what" = win ] || [ "$what" = windows ] || [ "$what" = all ]; then
+    # process control on Windows, here under Wine (WINE names it). On Windows itself (.github/workflows/win-check.yml): WINE=env WINCC=gcc,
+    # and there also as `windows`, the step of the plants that Wine cannot catch (its kernel differs: knowledge base, lesson L43)
     command -v "${WINE:-wine}" >/dev/null || { echo "check: no Wine (set WINE): the process-control stress test cannot run"; return 3; }
     for f in tests/spin.c "dbg/win/target.c tests/stress_target.c"; do
       ${WINCC:-x86_64-w64-mingw32-gcc} -std=c17 -O1 -g -Wall -Wextra -Werror $(printf "$src/%s " $f) -o "$b/$(basename "${f##* }" .c).exe" || return 2
     done
     for mode in "" attach; do
-      (cd "$b" && WINEDEBUG=-all timeout 600 "${WINE:-wine}" stress_target.exe spin.exe "${STRESS_ROUNDS:-2000}" "${SEED:-1}" $mode 2>/dev/null | grep "^stress_target" | tee stress.out | grep -v "rounds:"; grep -q "rounds:" stress.out) || return 1
+      (cd "$b" && WINEDEBUG=-all timeout 600 "${WINE:-wine}" ./stress_target.exe spin.exe "${STRESS_ROUNDS:-2000}" "${SEED:-1}" $mode 2>/dev/null | grep "^stress_target" | tee stress.out; grep -q "rounds:" stress.out) || return 1
     done
   fi
   if [ "$what" = fuzz ] || [ "$what" = all ]; then
@@ -74,7 +80,9 @@ missed=0; total=0
 while IFS='|' read -r what file find repl; do
   what=$(echo $what); file=$(echo $file); find=${find# }; find=${find% }; repl=${repl# }
   case "$what" in ''|'#'*) continue;; "${2:-$what}") ;; *) continue;; esac
-  t=$(mktemp -d); cp -r dbg tests specs cmd subjects rdi "$t/" || { echo "plants: cannot copy the tree"; exit 1; }
+  if [ "$what" = windows ] && [ "${WINE:-}" != env ]; then continue; fi   # only real Windows catches these
+  t=$(mktemp -d); cp -r dbg tests specs cmd subjects "$t/" || { echo "plants: cannot copy the tree"; exit 1; }
+  if [ "$what" = oracle ]; then ln -s "$PWD/rdi" "$t/rdi"; fi   # 260 MB that only the oracle reads and no plant changes
   FIND="$find" REPL="$repl" python3 -I -c 'import os,sys;p=sys.argv[1];s=open(p).read();f,r=(os.environ[k].replace("\\n","\n").replace("\\p","|") for k in ("FIND","REPL"));assert s.count(f)==1,("plant text not found once: "+f);open(p,"w").write(s.replace(f,r))' "$t/$file" || { echo "BAD PLANT: $find"; missed=$((missed+1)); continue; }
   total=$((total+1))
   TMPDIR=$t run "$t" "$what" >/dev/null 2>&1   # a failed run leaves its build directory: keep it inside $t
