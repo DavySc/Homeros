@@ -13,6 +13,10 @@ local frecency = require("snacks.picker.core.frecency")
 for _, f in ipairs({ "src/tools/match.hh", "src/tools/match.hh", "src/tools/match.hh", "docs/READ.md" }) do
   frecency.new():visit({ file = cwd .. f })
 end
+-- v:oldfiles (the test writes the same): a duplicate, a missing file and
+-- the current one, which the recent source drops
+vim.v.oldfiles = { cwd .. "README.md", cwd .. "nothere.c", cwd .. "src/tools/pick.c", cwd .. "src/core/core.c",
+  cwd .. "README.md", cwd .. "tests/test_pick.c" }
 for i = 3, #arg do
   local opts = source == "grep" and { search = arg[i] } or { pattern = arg[i] }
   local p = Snacks.picker[source](opts)

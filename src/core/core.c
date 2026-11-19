@@ -458,6 +458,8 @@ int core_open(Editor *e, const char *path)
 	w->buf = e->buf;
 	layout_init(e, w);
 	if (!e->layout) { core_msg(e, "out of memory"); return -1; }
+	/* readfile(): line 1's first non-blank (measured in tmux, 7 texts) */
+	w->col = core_first_nonblank(e, 0);
 	core_set_want(e);
 	return 0;
 }
