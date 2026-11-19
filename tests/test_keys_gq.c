@@ -149,9 +149,40 @@ int main(void)
 	CHECK(!strcmp(disk("a.sql"), want(0, sizeof SRC - 1)));
 	core_free(&e);
 
+	/* the cursor after sqlfmt's edit stays inside the buffer and on its
+	   text: below the edit it moves with it, inside it keeps its offset
+	   (reviews/pr-67.md finding A: G :Format left it past the last line,
+	   and x then deleted a huge byte count) */
+	static const char *gap = "select 1\n\n\n\n\n\n\n\nSELECT   2,   3 FROM t\n";
+	const char *after[] = { "G:Format\nx", "G:Format\nD", "G:Format\nvd", "7GgqGx", "8GgqjD", "G:w\nx" };
+	for (int i = 0; i < 6; i++) {
+		FILE *g = fopen(file, "w");
+		CHECK(g && fputs(gap, g) >= 0 && !fclose(g));
+		CHECK(!core_open(&e, file));
+		keys(&e, after[i]);
+		CHECK(e.win->line < core_lines(&e) && e.win->col <= core_line_len(&e, e.win->line));
+		core_free(&e);
+	}
+	/* lines formatted above the cursor: it stays on "select d" */
+	load(&e, file);
+	keys(&e, "2j:Format\n");
+	size_t ln;
+	const unsigned char *cl = core_line(&e, e.win->line, &ln);
+	CHECK(e.win->col == 0 && ln >= 8 && !memcmp(cl, "select d", 8));
+	core_free(&e);
+	/* below the edit: the same character of the line under it */
+	FILE *f2 = fopen(file, "w");
+	CHECK(f2 && fputs("SELECT  c   from u\n-- end\n", f2) >= 0 && !fclose(f2));
+	CHECK(!core_open(&e, file));
+	keys(&e, "j$:Format\n");
+	cl = core_line(&e, e.win->line, &ln);
+	CHECK(ln == 6 && !memcmp(cl, "-- end", 6) && e.win->col == 5);
+	core_free(&e);
+
 	/* gqG on a paragraph of 3,000 lines: format_lines() breaks a joined
 	   line once it passes three times textwidth, so each join copies a few
-	   lines at most (the undo moves 5.2 times the text, measured once;
+	   lines at most (the undo moves 7.2 times the text with the lines gq saves
+	   first, measured once;
 	   joining the whole paragraph first would move about 1,500 times) */
 	FILE *p = fopen(txt, "w");
 	CHECK(p);
@@ -162,7 +193,7 @@ int main(void)
 	keys(&e, "gqG");
 	undo_hook(e.buf->undo, count, NULL);
 	keys(&e, "u");
-	CHECK(text_len(e.buf->text) == size && undone < 8 * size);
+	CHECK(text_len(e.buf->text) == size && undone < 10 * size);
 	core_free(&e);
 
 	unlink(file); unlink(txt); unlink(toml); rmdir(sub); rmdir(dir);

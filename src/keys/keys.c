@@ -101,8 +101,10 @@ static void key(int k, int pending)
 	switch (E->mode) {
 	case MODE_INSERT: insert_key(k, pending); break;
 	case MODE_CMDLINE: cmdline_key(k); break;
-	default: normal_key(k);
+	default: normal_key(k); return;
 	}
+	/* normal_check() after edit() or the command line returns */
+	if (E->mode == MODE_NORMAL && stuff_empty()) curs_columns();
 }
 
 void keys_feed(Editor *e, int k, int pending)

@@ -1,0 +1,20 @@
+wrap: the bar only on a heading's first row | PR's test: NOT CAUGHT | review cases: 59 screens: 11 differ 37 screens: 20 differ 18 screens: 4 differ 5 screens: 4 differ 6 screens: 4 differ
+wrap: rows below the window not skipped | PR's test: NOT CAUGHT | review cases: 59 screens: 5 differ 37 screens: 15 differ 18 screens: 4 differ 5 screens: 4 differ 6 screens: 3 differ
+other buffer: its window's cursor line raw | PR's test: NOT CAUGHT | review cases: 59 screens: 5 differ 37 screens: 12 differ 18 screens: 4 differ 5 screens: 4 differ 6 screens: 0 differ
+other buffer: rendered though scrolled sideways | PR's test: NOT CAUGHT | review cases: 59 screens: 5 differ 37 screens: 15 differ 18 screens: 4 differ 5 screens: 4 differ 6 screens: 1 differ
+other buffer: follows the current buffer's mode | PR's test: NOT CAUGHT | review cases: 59 screens: 5 differ 37 screens: 15 differ 18 screens: 5 differ 5 screens: 4 differ 6 screens: 1 differ
+visual mode rendered | PR's test: NOT CAUGHT | review cases: 59 screens: 7 differ 37 screens: 15 differ 18 screens: 4 differ 5 screens: 4 differ 6 screens: 0 differ
+number column painted (cover dropped) | PR's test: NOT CAUGHT | review cases: 59 screens: 5 differ 37 screens: 15 differ 18 screens: 4 differ 5 screens: 4 differ 6 screens: 0 differ
+no guard for a grid smaller than the window | PR's test: NOT CAUGHT | review cases: 59 screens: 5 differ 37 screens: 15 differ 18 screens: 4 differ 5 screens: 4 differ 6 screens: 0 differ
+the cell after the marker kept | PR's test: NOT CAUGHT | review cases: 59 screens: 5 differ 37 screens: 15 differ 18 screens: 4 differ 5 screens: 4 differ 6 screens: 0 differ
+a tab after the marker is no heading | PR's test: caught (test_core_markdown: 300 render-markdown screens: 68 differ) | review cases: 59 screens: 6 differ 37 screens: 16 differ 18 screens: 4 differ 5 screens: 4 differ 6 screens: 0 differ
+a multi-byte character before the heading allowed | PR's test: NOT CAUGHT | review cases: 59 screens: 5 differ 37 screens: 15 differ 18 screens: 4 differ 5 screens: 4 differ 6 screens: 0 differ
+digits not list markers | PR's test: caught (test_core_markdown: 300 render-markdown screens: 44 differ) | review cases: 59 screens: 6 differ 37 screens: 16 differ 18 screens: 4 differ 5 screens: 4 differ 6 screens: 0 differ
+skip dropped from the bar's column | PR's test: NOT CAUGHT | review cases: 59 screens: 4 differ 37 screens: 15 differ 18 screens: 4 differ 5 screens: 4 differ 6 screens: 0 differ
+more '#' than the level | PR's test: caught (test_core_markdown: 300 render-markdown screens: 1 differ) | review cases: 59 screens: 5 differ 37 screens: 15 differ 18 screens: 4 differ 5 screens: 4 differ 6 screens: 0 differ
+the syn test dropped | PR's test: NOT CAUGHT | review cases: 59 screens: 5 differ 37 screens: 15 differ 18 screens: 4 differ 5 screens: 4 differ 6 screens: 0 differ
+cut line reads on to the end | PR's test: NOT CAUGHT | review cases: 59 screens: 5 differ 37 screens: 15 differ 18 screens: 4 differ 5 screens: 4 differ 6 screens: 0 differ
+# cases7, cases8 (run later, three mutations)
+number column painted (cover dropped) | PR's test: NOT CAUGHT | review cases 7, 8: 3 of 4, 24 of 27 differ (unmutated: 2, 23)
+the cell after the marker kept | PR's test: NOT CAUGHT | review cases 7, 8: 2 of 4, 23 of 27 differ (unmutated: 2, 23)
+skip dropped from the bar's column | PR's test: NOT CAUGHT | review cases 7, 8: 1 of 4, 21 of 27 differ (unmutated: 2, 23)

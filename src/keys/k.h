@@ -67,13 +67,14 @@ void check_cursor_col(void);
 void adjust_cursor_eol(void);
 void update_curswant(void);
 void validate_virtcol(void);
+void curs_columns(void);
 extern int set_curswant;
 int  replace_bytes(long l, long col, long ndel, const char *ins, long nins);
 int  append_lines(long after, const char *s, long n);   /* lines s (joined by '\n') below line after (-1: at the top) */
 int  del_lines(long l, long n);
 int  set_indent(long l, long cols);
 void u_save_cursor(void);             /* an undo step even if nothing changes */
-void u_save_gap(size_t l);           /* one that saves no line, at line l */
+void u_save(size_t a, size_t z);      /* one that saves lines [a, z) as they are */
 int  is_empty_buf(void);
 void beep(void);                      /* beep_flush(): drops stuffed keys */
 extern int beeped;
