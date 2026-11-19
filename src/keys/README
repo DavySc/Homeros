@@ -89,6 +89,11 @@ after $ keeping curswant MAXCOL):
 - a Visual block p, then C-v X ("    x\u0300\u0301 \"a b\"", I CR ( b Esc
   C-v gg p y i( C-v X): ours deletes nothing and leaves the cursor past
   the line's end (not traced further).
+- a block yanked from a Tab, then p ("\t} , -3", C-v Y p): Neovim pads
+  the put out to the Tab's last cell ("\t} , -3  "), ours puts it inside
+  the Tab.
+- $, then C-v on a Tab and Esc ("\t", $ C-v Esc >>): Neovim's curswant is
+  the Tab's first cell (column 0 after >>), ours its last (column 7).
 
 Neovim's own oddities, not copied:
 - r, then R and CTRL-U back over the replaced character ("  0", r 3 l R
@@ -139,5 +144,7 @@ Choices:
   without a provider).
 - % is Neovim's built-in one for now; Davy wants matchit's word pairs too
   (2026-11-17), a follow-up PR.
+- Insert mode CTRL-X (Neovim's completion submode, e.g. CTRL-X CTRL-O)
+  is not in FEATURES.md and not built: the CTRL key after it acts alone.
 - U (undo line) is not in FEATURES.md and not built.  CTRL-F and CTRL-B
   are not in it either, but package 4's screens test types them.

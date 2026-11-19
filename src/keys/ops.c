@@ -437,7 +437,10 @@ int op_delete(Oparg *oap)
 			   top line: PR 20's review, rg1_84) */
 			if (oap->op_type == OP_DELETE && !oap->is_visual && c > 0 && c + n >= ml_len(l) && !restart_edit)
 				W->col = (size_t)head(ml_get(l), c - 1);
-			replace_bytes(l, c, n, "", 0);
+			/* del_bytes() refuses a count below 1 (E292): ]] with an
+			   operator past a last line that starts with "}" ends before
+			   the start (findpar(), then check_pos()) */
+			if (n > 0) replace_bytes(l, c, n, "", 0);
 			if (oap->op_type == OP_DELETE) check_cursor_col();
 		} else {
 			u_save_cursor();
