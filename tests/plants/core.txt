@@ -136,7 +136,6 @@ core: the status line's backgrounds written past a shrunk grid (test_core_contra
 
 core: the yank flash in Visual's colour (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~		return FACE_INC_SEARCH;~		return FACE_VISUAL;
 core: the yank flash in every window on the buffer (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~(y ? w != cw : w->buf != e->buf)~(y ? w->buf != e->buf : w->buf != e->buf)
-core: the yank flash past the text's end (hl_eol) (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~		if (*to > v) *to = v;¶~
 core: a yanked block cuts a character it touches (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~				if (v < *from) *from = v;¶~
 core: a yanked block one column narrower (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~		*to = cc + 1;~		*to = cc;
-core: the yank flash takes a cell at an empty line's end (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~	if (area == FACE_VISUAL && drawn == 1~	if (area && drawn == 1
+core: the yank flash takes a cell at an empty line's end (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~	if (area == FACE_VISUAL && drawn == 1~	if (area && drawn == 1

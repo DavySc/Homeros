@@ -224,8 +224,23 @@ int main(void)
 		const Cell *z = &g.c[(w->y + (int)(w->line - w->top)) * g.cols + w->x + win_numw(w)];
 		CHECK((z->bg == FACE_INC_SEARCH) == (w == e.win));
 	}
-	e.ks.yank.type = 0;
 	CHECK(!core_only(&e));
+	/* and only on text: none on an empty line, where Visual shows a cell
+	   ("a", "", "bc", 2Gvjy: measured in nvim --headless, 3 runs) */
+	char ey[] = "/tmp/core_contractXXXXXX";
+	CHECK(mkstemp(ey) >= 0 && (f = fopen(ey, "w")) && fputs("a\n\nbc\n", f) >= 0 && !fclose(f));
+	CHECK(!core_edit_file(&e, ey, 1));
+	e.ks.yank.type = 'v';
+	e.ks.yank.l1 = 1;
+	e.ks.yank.l2 = 2;
+	e.ks.yank.c1 = e.ks.yank.c2 = 0;
+	e.win->line = 1;
+	e.win->col = 0;
+	core_draw(&e, &g);
+	CHECK(e.win->top == 0 && g.c[g.cols + win_numw(e.win)].bg == FACE_CURSOR_LINE);
+	CHECK(g.c[2 * g.cols + win_numw(e.win)].bg == FACE_INC_SEARCH);
+	e.ks.yank.type = 0;
+	unlink(ey);
 	core_free(&e);
 	for (int i = 0; i < 4; i++) unlink(fn[i]);
 	grid_free(&g);

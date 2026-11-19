@@ -195,21 +195,19 @@ static unsigned char visual(Editor *e, Win *w, size_t l, size_t *from, size_t *t
 		}
 	}
 	if (y) {
-		/* the extmarks cover whole characters (a block's getregionpos()
-		   bytes): every character the cells touch, up to the text's end */
+		/* a block's extmarks cover whole characters (getregionpos()
+		   bytes): every character its columns touch */
 		LineIt it;
 		const unsigned char *s;
-		size_t f = *from, t = *to, v = 0, k;
+		size_t f = *from, t = *to, v = 0, k, n2;
 		lit_init(&it, w->buf, l);
-		while ((k = lit_next(&it, &s))) {
-			size_t cw2 = (size_t)core_cellw(w, s, k, 0, v);
-			if (type == 22 && v < t && v + cw2 > f) {
+		for (; type == 22 && (k = lit_next(&it, &s)); v += n2) {
+			n2 = (size_t)core_cellw(w, s, k, 0, v);
+			if (v < t && v + n2 > f) {
 				if (v < *from) *from = v;
-				if (v + cw2 > *to) *to = v + cw2;
+				if (v + n2 > *to) *to = v + n2;
 			}
-			v += cw2;
 		}
-		if (*to > v) *to = v;
 		return FACE_INC_SEARCH;
 	}
 	if (w == cw && l == cw->line) {
