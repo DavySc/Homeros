@@ -231,13 +231,16 @@ int main(void)
 	e.rows = 40; e.cols = 100;
 	git_editor(&e);
 	git_headless = 1;
+	/* never attached: nothing, and no repository looked for (the redraw
+	   path does no I/O) */
+	CHECK(!git_branch(e.buf) && !git_sign(e.buf, 0) && !git_repos);
+	git_attach(e.buf);                     /* as the core on reading the file */
 	CHECK(!git_branch(e.buf));             /* before git has looked */
 	int rounds = 0, checks = 0;
 	for (int round = 0; round < 150; round++, rounds++) {
 		edit(round);
 		if (rnd(2)) edit(round);
 		write_file();
-		git_sign(e.buf, 0);               /* the first sign asks for the status */
 		settle();
 		char when[32];
 		snprintf(when, sizeof when, "round %d", round);
@@ -301,8 +304,13 @@ int main(void)
 	o = run("echo x > '%s/out.txt'", tmp);
 	free(o);
 	snprintf(path, sizeof path, "%s/out.txt", tmp);
-	CHECK(core_edit_file(&e, path, 0) == 0);
-	CHECK(!git_branch(e.buf));             /* outside a repository */
+	/* the same buffer renamed outside the repository (:saveas) and attached
+	   again: the old repository is gone */
+	char *was = e.buf->path;
+	e.buf->path = path;
+	git_attach(e.buf);
+	CHECK(!git_branch(e.buf) && !git_sign(e.buf, 0));
+	e.buf->path = was;
 	git_free();
 	core_free(&e);
 	for (int i = 1; i <= nline; i++) free(line[i]);
