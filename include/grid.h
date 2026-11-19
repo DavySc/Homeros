@@ -49,10 +49,11 @@ enum {
 	/* Neovim's UI highlight groups, as Davy's catppuccin draws them:
 	   CursorLine (only ever a cell's bg), CursorLineNr, LineNr, StatusLine,
 	   StatusLineNC, WinSeparator, EndOfBuffer, Visual, Search, CurSearch,
+	   IncSearch (also on_yank's flash),
 	   MatchParen, Pmenu, PmenuSel, NormalFloat, FloatBorder, FloatTitle, Cursor */
 	FACE_CURSOR_LINE, FACE_CURSOR_LINE_NR, FACE_LINE_NR, FACE_STATUS_LINE,
 	FACE_STATUS_LINE_NC, FACE_WIN_SEPARATOR, FACE_END_OF_BUFFER, FACE_VISUAL,
-	FACE_SEARCH, FACE_CUR_SEARCH, FACE_MATCH_PAREN, FACE_PMENU, FACE_PMENU_SEL,
+	FACE_SEARCH, FACE_CUR_SEARCH, FACE_INC_SEARCH, FACE_MATCH_PAREN, FACE_PMENU, FACE_PMENU_SEL,
 	FACE_NORMAL_FLOAT, FACE_FLOAT_BORDER, FACE_FLOAT_TITLE, FACE_CURSOR,
 	/* the status line (mini.statusline, as my-nvim): the mode pill, other
 	   being the terminal, and the device and file info sections */
