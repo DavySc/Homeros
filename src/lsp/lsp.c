@@ -306,6 +306,15 @@ LspDoc *lsp_open(const char *path, const Text *t)
 	return d;
 }
 
+/* A server that is gone and has no files: off the list, freed. */
+static void drop(Srv *s)
+{
+	Srv **q = &srvs;
+	while (*q != s) q = &(*q)->link;
+	*q = s->link;
+	free(s->root); free(s->in.b); free(s->held.b); free(s);
+}
+
 void lsp_close(LspDoc *d)
 {
 	if (!d) return;
@@ -322,13 +331,7 @@ void lsp_close(LspDoc *d)
 	/* the last file of the project: the server goes (it is freed once it
 	   has exited, since the loop still calls lsp_out until then) */
 	s->closing = 1;
-	if (s->proc < 0) {
-		Srv **q = &srvs;
-		while (*q != s) q = &(*q)->link;
-		*q = s->link;
-		free(s->root); free(s->in.b); free(s->held.b); free(s);
-		return;
-	}
+	if (s->proc < 0) { drop(s); return; }
 	o.n = 0;
 	str_putf(&o, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"method\":\"shutdown\"}", s->next++);
 	send(s);
@@ -600,11 +603,7 @@ static void dead(Srv *s)
 {
 	s->proc = -1;
 	for (LspDoc *d = s->docs; d; d = d->link) forget(d);
-	if (!s->closing) return;
-	Srv **q = &srvs;
-	while (*q != s) q = &(*q)->link;
-	*q = s->link;
-	free(s->root); free(s->in.b); free(s->held.b); free(s);
+	if (s->closing) drop(s);
 }
 
 static void out(void *ctx, int stream, const char *b, size_t n)
