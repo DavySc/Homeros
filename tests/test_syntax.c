@@ -437,9 +437,11 @@ static void filetypes(void)
 {
 	static const char *const names[] = {
 		"d/a.c", "a.h", "a.lua", "a.md", "a.sql", "a.json", "a.txt", "a.xyz", "x.sql/b", "a.c.txt", "a.sql.md", "a.mdx", "Makefile.c",
+		".sql", "a\\b.sql", "CMakeLists.txt", "x/CMakeLists.txt", "a\\CMakeLists.txt", "fooCMakeLists.txt", "a.rs", "a.nix",
+		"a.glsl", "a.vert", "a.frag", "a.comp", "a.geom", "a.tesc", "a.tese", "a.sv", "a.svh", "a.cmake", "a.lean", "a.cs", "a.org", "a.SQL",
 	};
 	char cmd[2048] = "nvim --headless --clean -l /dev/stdin <<'E'\nfor _, n in ipairs({", want[64];
-	for (size_t i = 0; i < sizeof names / sizeof *names; i++) snprintf(cmd + strlen(cmd), sizeof cmd - strlen(cmd), "'%s',", names[i]);
+	for (size_t i = 0; i < sizeof names / sizeof *names; i++) snprintf(cmd + strlen(cmd), sizeof cmd - strlen(cmd), "[[%s]],", names[i]);
 	strcat(cmd, "}) do io.write((vim.filetype.match({filename = n}) or '-'), '\\n') end\nE");
 	FILE *p = popen(cmd, "r");
 	CHECK(p);
