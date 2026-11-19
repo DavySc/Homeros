@@ -99,7 +99,31 @@ def meanings(pdb):
         return f"{ {'LF_STRUCTURE': 2000, 'LF_CLASS': 2001, 'LF_UNION': 2002, 'LF_ENUM': 2003}[kind]} {name}:{on[1]}" + (f' on {on[0]}' if on[0] != 'none' else ''), on[1]
     if min(recs, default=0) != 0x1000: recs = {}
     for i in recs: memo.setdefault(i, make(i))
-    return memo, of
+    def fields(i):
+        """the members of a field list as rdiq prints them; a list that continues does so in an earlier one"""
+        out = []
+        for f in re.split(r'\n +- ', '\n' + recs.get(i, ('', '', ''))[2])[1:] if recs.get(i, ('',))[0] == 'LF_FIELDLIST' else []:
+            kind = re.match(r'\w+', f)[0]
+            def num(label): m = re.search(label + r' = (0x[0-9A-F]+|\d+)', f); return int(m[1], 0) if m else 0
+            name = m[1] if (m := re.search(r'name = `(.*)`(?:, |\])', f)) else ''
+            def method(text, t): return f"{name} {'102' if ' virtual' in text else '101' if ' static' in text else '100'}+0 {of(t)[0]}; "
+            if kind == 'LF_INDEX': return out + (fields(num('continuation')) if num('continuation') < i else [])
+            if kind == 'LF_ENUMERATE': m = re.match(r'LF_ENUMERATE \[(.*) = (-?\d+)\]', f); out.append(f'{m[1]}={int(m[2]) % 2**64}; ')
+            elif kind == 'LF_MEMBER': out.append(f"{name} 1+{num('offset')} {of(num('Type'))[0]}; ")
+            elif kind == 'LF_STMEMBER': out.append(f"{name} 2+0 {of(num('type'))[0]}; ")
+            elif kind == 'LF_NESTTYPE': out.append(f"{name} 300+0 {of(num('parent'))[0]}; ")
+            elif kind == 'LF_BCLASS': out.append(f" 201+{num('offset')} {of(num('type'))[0]}; ")
+            elif kind in ('LF_VBCLASS', 'LF_IVBCLASS'): out.append(f" 202+0 {of(num('base'))[0]}; ")
+            elif kind == 'LF_ONEMETHOD': out.append(method(f, num('type')))
+            elif kind == 'LF_METHOD': out += [method(x[1], int(x[0], 16)) for x in re.findall(r'Method \[type = (0x[0-9A-F]+)(.*)', recs.get(num('overload list'), ('', '', ''))[2])]
+            elif kind != 'LF_VFUNCTAB': sys.exit(f'oracle_conv: {pdb}: a field of a kind the oracle does not know: {f}')
+        return out
+    udts = collections.Counter()
+    for i, (kind, name, body) in recs.items():   # each full definition's record of members, as rdiq prints one
+        if kind in ('LF_STRUCTURE', 'LF_CLASS', 'LF_UNION', 'LF_ENUM') and 'forward ref' not in body:
+            m = fields(int(re.search(r'field list: (0x[0-9A-F]+|<no type>)', body)[1].replace('<no type>', '0'), 16))
+            udts[f"{memo[i][0]}\t1 {int(kind == 'LF_ENUM' and bool(m))}\t{''.join(m)}"] += 1
+    return memo, of, udts
 def normal(src, folder):
     """a source path as the converter's path tree has it: a relative one starts from the folder of the module's object file,
     "." stays out, ".." goes up"""
@@ -234,7 +258,7 @@ for pdb in sys.argv[3:]:
         vmap = [f'v 25 {v}' for v in range(lo, hi + 1)]
         q += vmap; want += map(str, inner); got += run(rdi, vmap)
         # each procedure with a type has it, by llvm-pdbutil's reading of the type records
-        means, of = meanings(pdb)
+        means, of, udts = meanings(pdb)
         a = collections.Counter(line for line in run(rdi, [f'P {i}' for i in range(1, int(run(rdi, ['N 31'])[0]))]) if not line.endswith('\tnone'))
         b = collections.Counter(f'{name}\t{of(t)[0]}' for name, t in proc_types.elements() if of(t)[0] != 'none')
         for k in a | b: q.append(f'procedure and its type {k}'); want.append(str(b[k])); got.append(str(a[k]))
@@ -242,6 +266,9 @@ for pdb in sys.argv[3:]:
         a, b = set(run(rdi, [f'T {i}' for i in range(1, int(run(rdi, ['N 19'])[0]))])), {m for m, _ in means.values()} - {'none'}
         under = {re.sub(r'^(1000\.\w\[0\]:\d+|2004 [\w ]+:\d on) ', '', m) for m in b}
         for k in a | b: q.append(f'type {k}'); want.append('True'); got.append(str(k in a and k in b | under))
+        # each struct, class, union and enum that is defined has its members
+        a = collections.Counter(run(rdi, [f'M {i}' for i in range(1, int(run(rdi, ['N 20'])[0]))]))
+        for k in a | udts: q.append(f'members {k}'); want.append(str(udts[k])); got.append(str(a[k]))
         # a basic type's name is made once
         every = collections.Counter(run(rdi, [f'T {i}' for i in range(1, int(run(rdi, ['N 19'])[0]))]))
         for k in every:
@@ -257,6 +284,8 @@ for pdb in sys.argv[3:]:
             for k in a | b: q.append(f'procedure and its type {k}'); want.append(str(b[k])); got.append(str(a[k]))
             # every type, but for the built-in ones, their aliases and the pointers to those (RAD makes one for every basic
             # type code there could be, 3,199 of them pointers to no type; we make the ones used), and typedefs (NOT YET)
+            a, b = typed(rdi, 20, 'M'), typed(rad, 20, 'M')
+            for k in a | b: q.append(f'members, as RAD has them, {k[1]}'); want.append(str(b[k])); got.append(str(a[k]))
             a, b = typed(rdi, 19, 'T'), typed(rad, 19, 'T')
             for k in a | b:
                 if not re.match(r'(1001\.0\[0\]:8 )?(none|\w+:\d+$|2004 )', k[1]): q.append(f'type {k[1]}'); want.append(str(b[k])); got.append(str(a[k]))

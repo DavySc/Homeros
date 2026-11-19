@@ -42,6 +42,14 @@ typedef struct { uint32_t name, type, owner_type, line_table; } RdiInlineSite;
    enum, 0x2004 alias, 0x2005 to 0x2008 the same without a definition): name, the type it stands
    on, its record of members. 0xf000 bit field: the type, first bit, bit count. */
 typedef struct { uint16_t kind, flags; uint32_t byte_size, a, b, c; } RdiType;
+/* A named type's record of members (RDI_UDT): its type, flags (1: the members are an enum's, in the
+   enum members), the members' first index and count. The rest is NOT YET written. */
+typedef struct { uint32_t self_type; uint8_t flags, container_flags; uint16_t reserved;
+                 uint32_t member_first, member_count, file, line, col, container; } RdiUdt;
+/* kind (RDI_MemberKind): 1 data, 2 static data, 0x100 method, 0x101 static method, 0x102 virtual
+   method, 0x201 base, 0x202 virtual base, 0x300 nested type; off: a data member's or base's offset */
+typedef struct { uint16_t kind, pad; uint32_t name, type, off; } RdiMember;
+typedef struct { uint32_t name, pad; uint64_t val; } RdiEnumMember;
 typedef struct { uint32_t name; uint8_t flags, container_flags; uint16_t reserved; uint64_t location;
                  uint32_t container, type, root_scope, link_name; } RdiSymbol;
 typedef struct { uint32_t bucket_base, node_base, bucket_count, node_count; } RdiNameMap;

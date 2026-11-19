@@ -81,7 +81,9 @@ static uint32_t intern(Names *m, const void *key, uint32_t len)
 enum { S_END = 0x0006, S_THUNK32 = 0x1102, S_BLOCK32 = 0x1103, S_PUB32 = 0x110e, S_LPROC32 = 0x110f, S_GPROC32 = 0x1110,
        S_INLINESITE = 0x114d, S_INLINESITE_END = 0x114e,   /* CV_SymKind */
        LF_MODIFIER = 0x1001, LF_POINTER = 0x1002, LF_PROCEDURE = 0x1008, LF_MFUNCTION = 0x1009, LF_ARGLIST = 0x1201,
-       LF_BITFIELD = 0x1205, LF_ARRAY = 0x1503, LF_CLASS = 0x1504, LF_STRUCTURE = 0x1505, LF_UNION = 0x1506, LF_ENUM = 0x1507,
+       LF_BITFIELD = 0x1205, LF_FIELDLIST = 0x1203, LF_METHODLIST = 0x1206, LF_BCLASS = 0x1400, LF_VBCLASS = 0x1401, LF_IVBCLASS = 0x1402,
+       LF_INDEX = 0x1404, LF_VFUNCTAB = 0x1409, LF_ENUMERATE = 0x1502, LF_MEMBER = 0x150d, LF_STMEMBER = 0x150e, LF_METHOD = 0x150f,
+       LF_NESTTYPE = 0x1510, LF_ONEMETHOD = 0x1511, LF_NESTTYPEEX = 0x1512, LF_ARRAY = 0x1503, LF_CLASS = 0x1504, LF_STRUCTURE = 0x1505, LF_UNION = 0x1506, LF_ENUM = 0x1507,
        LF_FUNC_ID = 0x1601, LF_MFUNC_ID = 0x1602 };                                 /* CV_LeafKind */
 
 typedef struct {
@@ -246,7 +248,8 @@ static uint64_t numeric(PdbSpan d, uint32_t *at)
   uint64_t v = d.n - *at >= 2 ? le16(d.p + *at) : 0, n = v >= 0x8000 && v < 0x800b ? size[v - 0x8000] : 0;
   *at += d.n - *at >= 2 ? 2 : 0;
   if (v < 0x8000 || d.n - *at < n) return v < 0x8000 ? v : 0;
-  v = 0;
+  bool negative = n != 0 && (v == 0x8000 || v == 0x8001 || v == 0x8003 || v == 0x8009) && d.p[*at + n - 1] >= 0x80;   /* the signed kinds, widened as cv_u64_from_numeric does */
+  v = negative ? UINT64_MAX : 0;
   for (uint64_t i = n; i > 0; i -= 1) v = v << 8 | d.p[*at + i - 1];
   *at += (uint32_t)n;
   return v;
@@ -371,6 +374,72 @@ static void record_type(Out *o, uint32_t id)
   ((uint32_t *)o->made.p)[id] = made;
 }
 
+static void member(Out *o, uint16_t kind, PdbSpan name, uint32_t type_id, uint64_t off)
+{
+  *(RdiMember *)add(&o->s[RDI_MEMBERS], sizeof(RdiMember)) = (RdiMember){.kind = kind, .name = intern(&o->strings, name.p, name.n), .type = type_of(o, type_id), .off = (uint32_t)off};
+}
+
+/* Gives the full struct, class, union or enum record of an id its record of members, from its
+   field list ("gather this lane's UDTs"). A field is its kind, 2 bytes (attributes, or a count),
+   mostly a type id, then what its kind says, padded to 4 bytes; so every field takes at least 8.
+   A long list ends in an LF_INDEX naming the list that continues it, which compilers write
+   before it: only an earlier one is followed, so a damaged file cannot loop. A kind not known
+   here ends the list, as does an enum's field in a struct or the reverse. RAD does not step
+   over the two numbers of a virtual base, which ends its list there; here they are stepped over. */
+static void members(Out *o, uint32_t id)
+{
+  /* a method's kind by CV_MethodProp: plain, virtual, static, friend, new virtual, virtual without a body, new and without a body */
+  static const uint16_t method_kind[8] = {0x100, 0x102, 0x101, 0x100, 0x102, 0x102, 0x102, 0x100};
+  static const uint8_t slot_bytes[8] = {0, 0, 0, 0, 4, 0, 4, 0};   /* a new virtual method says where its slot is */
+  uint16_t kind, props;
+  uint64_t size;
+  PdbSpan d, name, list, methods;
+  if (!leaf(o, id, &kind, &d) || !named_leaf(kind, d, &props, &size, &name) || props >> 7 & 1) return;
+  bool values = kind == LF_ENUM;
+  Buf *to = &o->s[values ? RDI_ENUM_MEMBERS : RDI_MEMBERS];
+  size_t each = values ? sizeof(RdiEnumMember) : sizeof(RdiMember);
+  uint32_t first = (uint32_t)(to->n / each), list_id = le32(d.p + (values ? 8 : 4)), at = 0;
+  while (leaf(o, list_id, &kind, &list) && kind == LF_FIELDLIST && at <= list.n && list.n - at >= 8) {
+    uint16_t field = le16(list.p + at), prop = le16(list.p + at + 2) >> 2 & 7;
+    uint32_t type_id = le32(list.p + at + 4), next = at + 8;
+    if (field == LF_INDEX) {
+      if (type_id >= list_id) break;
+      list_id = type_id, at = 0;
+      continue;
+    }
+    if (values != (field == LF_ENUMERATE)) break;
+    if (field == LF_ENUMERATE) {                           /* CV_LeafEnumerate: attributes, value, name */
+      next = at + 4;
+      uint64_t value = numeric(list, &next);
+      name = pdb_string(list, &next);
+      *(RdiEnumMember *)add(to, sizeof(RdiEnumMember)) = (RdiEnumMember){.name = intern(&o->strings, name.p, name.n), .val = value};
+    } else if (field == LF_MEMBER || field == LF_BCLASS) { /* CV_LeafMember: attributes, type, offset, name; CV_LeafBClass has no name */
+      uint64_t off = numeric(list, &next);
+      member(o, field == LF_MEMBER ? 1 : 0x201, field == LF_MEMBER ? pdb_string(list, &next) : (PdbSpan){0, 0}, type_id, off);
+    } else if (field == LF_STMEMBER || field == LF_NESTTYPE || field == LF_NESTTYPEEX) {   /* attributes or nothing, type, name */
+      member(o, field == LF_STMEMBER ? 2 : 0x300, pdb_string(list, &next), type_id, 0);
+    } else if (field == LF_ONEMETHOD) {                    /* CV_LeafOneMethod: attributes, type, for a new virtual method its slot's offset, name */
+      next += slot_bytes[prop];
+      member(o, method_kind[prop], pdb_string(list, &next), type_id, 0);
+    } else if (field == LF_METHOD) {                       /* CV_LeafMethod: count, method list, name; the list: attributes, 2 bytes, type, maybe the offset */
+      name = pdb_string(list, &next);
+      if (!leaf(o, type_id, &kind, &methods) || kind != LF_METHODLIST) methods.n = 0;
+      for (uint32_t m = 0; m <= methods.n && methods.n - m >= 8; m += 8 + slot_bytes[prop]) {
+        prop = le16(methods.p + m) >> 2 & 7;
+        member(o, method_kind[prop], name, le32(methods.p + m + 4), 0);
+      }
+    } else if (field == LF_VBCLASS || field == LF_IVBCLASS) {   /* CV_LeafVBClass: attributes, type, the pointer's type, two numbers */
+      next += 4;
+      numeric(list, &next), numeric(list, &next);
+      member(o, 0x202, (PdbSpan){0, 0}, type_id, 0);
+    } else if (field != LF_VFUNCTAB) break;                /* CV_LeafVFuncTab: 2 bytes, type: no member */
+    at = (next + 3) / 4 * 4;
+  }
+  uint32_t self = type_of(o, id), count = (uint32_t)(to->n / each) - first;
+  ((RdiType *)o->s[RDI_TYPE_NODES].p)[self].c = COUNT(o->s[RDI_UDTS], RdiUdt);
+  *(RdiUdt *)add(&o->s[RDI_UDTS], sizeof(RdiUdt)) = (RdiUdt){.self_type = self, .flags = values && count, .member_first = first, .member_count = count};
+}
+
 /* A line table from records (offset, order, file, line), sorted here. */
 static uint32_t line_table(Out *o, Buf *lines)
 {
@@ -491,8 +560,8 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
   Out o = {0};
   Buf lines = {0}, maps = {0}, ranges = {0}, open = {0}, links = {0}, id_ats = {0};
   /* index 0 of every table is the record that means "none" */
-  static const int tables[] = {RDI_BINARY_SECTIONS, RDI_FILE_PATH_NODES, RDI_SOURCE_FILES, RDI_LINE_TABLES, RDI_SOURCE_LINE_MAPS, RDI_UNITS, RDI_SCOPES, RDI_PROCEDURES, RDI_INLINE_SITES, RDI_TYPE_NODES, RDI_INDEX_RUNS};
-  static const uint8_t table_size[] = {sizeof(RdiSection), sizeof(RdiPathNode), sizeof(RdiSourceFile), sizeof(RdiLineTable), sizeof(RdiSourceLineMap), sizeof(RdiUnit), sizeof(RdiScope), sizeof(RdiSymbol), sizeof(RdiInlineSite), sizeof(RdiType), 4};
+  static const int tables[] = {RDI_BINARY_SECTIONS, RDI_FILE_PATH_NODES, RDI_SOURCE_FILES, RDI_LINE_TABLES, RDI_SOURCE_LINE_MAPS, RDI_UNITS, RDI_SCOPES, RDI_PROCEDURES, RDI_INLINE_SITES, RDI_TYPE_NODES, RDI_INDEX_RUNS, RDI_UDTS, RDI_MEMBERS, RDI_ENUM_MEMBERS};
+  static const uint8_t table_size[] = {sizeof(RdiSection), sizeof(RdiPathNode), sizeof(RdiSourceFile), sizeof(RdiLineTable), sizeof(RdiSourceLineMap), sizeof(RdiUnit), sizeof(RdiScope), sizeof(RdiSymbol), sizeof(RdiInlineSite), sizeof(RdiType), 4, sizeof(RdiUdt), sizeof(RdiMember), sizeof(RdiEnumMember)};
   for (unsigned i = 0; i < sizeof tables / sizeof *tables; i += 1) add(&o.s[tables[i]], table_size[i]);
   intern(&o.strings, "", 0);
   intern(&o.nodes, (uint32_t[2]){0, 0}, 8);
@@ -532,6 +601,7 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
   add(&o.made, 4 * (FIRST_RECORD + (uint64_t)COUNT(o.leaf_at, uint32_t)));
   for (uint32_t id = FIRST_RECORD; id < COUNT(o.made, uint32_t); id += 1)
     if (!type_of(&o, id)) record_type(&o, id);
+  for (uint32_t id = FIRST_RECORD; id < COUNT(o.made, uint32_t); id += 1) members(&o, id);
   for (uint32_t at = 0; pdb_module(&pdb, &at, &m);) {
     /* a unit is named by the last part of its object file's path (rdi_from_codeview.c) */
     PdbSpan name = m.name;

@@ -2,7 +2,7 @@
    tests/oracle_rdi.py can compare the reader with RAD's own dump of the same file.
    v <section> <voff> | l <voff> | s <file> <line> | n <kind> <hex name> | t <string idx> |
    p <procedure idx> | c <scope idx> | L <voff> | S <line> <hex path> | U <voff> | B <section> |
-   N <section> | D <scope idx> | u <unit idx> | T <type idx> | P <procedure idx> */
+   N <section> | D <scope idx> | u <unit idx> | T <type idx> | P <procedure idx> | M <udt idx> */
 #include "../dbg/rdi.h"
 #include "../dbg/load.h"
 #include <stdbool.h>
@@ -60,6 +60,18 @@ int main(int argc, char **argv)
       fwrite(s.p, 1, s.n, stdout);
       putchar('\t');
       type(&r, y->type);
+    } else if (op == 'M') {   /* a record of members by meaning: its type and whether that type names it, its flags, then each member */
+      const RdiUdt *u = rdi_at(&r, RDI_UDTS, RdiUdt, a);
+      type(&r, u->self_type);
+      printf("\t%d %u\t", rdi_at(&r, RDI_TYPE_NODES, RdiType, u->self_type)->c == a, u->flags);
+      for (uint32_t i = u->member_first; i - u->member_first < u->member_count; i += 1) {
+        const RdiMember *m = rdi_at(&r, RDI_MEMBERS, RdiMember, i);
+        const RdiEnumMember *e = rdi_at(&r, RDI_ENUM_MEMBERS, RdiEnumMember, i);
+        s = rdi_str(&r, u->flags & 1 ? e->name : m->name);
+        fwrite(s.p, 1, s.n, stdout);
+        if (u->flags & 1) printf("=%llu; ", (unsigned long long)e->val);
+        else { printf(" %x+%u ", m->kind, m->off); type(&r, m->type); printf("; "); }
+      }
     } else if (op == 'p') {   /* a procedure: root scope, then its name */
       const RdiSymbol *y = rdi_at(&r, RDI_PROCEDURES, RdiSymbol, a);
       s = rdi_str(&r, y->name);

@@ -206,3 +206,84 @@ oracle | dbg/pdb.c | *first = has ? le32(stream + 8) : 0; | *first = has ? le32(
 oracle | dbg/pdb.c | le32(stream + 4), le32(stream + 16)) : (PdbSpan){0}; | le32(stream + 4), le32(stream + 12)) : (PdbSpan){0};
 fuzz | dbg/conv.c | .byte_size = o->pointer_size, .a = direct});\n    uint16_t flags | .byte_size = o->pointer_size, .a = direct + 0x10000});\n    uint16_t flags
 fuzz | dbg/pdb.c | bool has = n >= 20; | bool has = true;
+# ---- slice 2f: members ----
+oracle | dbg/conv.c | (RdiMember){.kind = kind, .name | (RdiMember){.kind = 1, .name
+oracle | dbg/conv.c | .type = type_of(o, type_id), .off = (uint32_t)off}; | .type = 0, .off = (uint32_t)off};
+oracle | dbg/conv.c | .type = type_of(o, type_id), .off = (uint32_t)off}; | .type = type_of(o, type_id), .off = 0};
+oracle | dbg/conv.c | (RdiMember){.kind = kind, .name = intern(&o->strings, name.p, name.n) | (RdiMember){.kind = kind, .name = intern(&o->strings, name.p, 0)
+test | dbg/conv.c | method_kind[8] = {0x100, 0x102, 0x101, 0x100, 0x102, 0x102, 0x102, 0x100}; | method_kind[8] = {0x102, 0x102, 0x101, 0x100, 0x102, 0x102, 0x102, 0x100};
+oracle | dbg/conv.c | method_kind[8] = {0x100, 0x102, 0x101, 0x100, 0x102, 0x102, 0x102, 0x100}; | method_kind[8] = {0x100, 0x100, 0x101, 0x100, 0x102, 0x102, 0x102, 0x100};
+test | dbg/conv.c | method_kind[8] = {0x100, 0x102, 0x101, 0x100, 0x102, 0x102, 0x102, 0x100}; | method_kind[8] = {0x100, 0x102, 0x100, 0x100, 0x102, 0x102, 0x102, 0x100};
+test | dbg/conv.c | method_kind[8] = {0x100, 0x102, 0x101, 0x100, 0x102, 0x102, 0x102, 0x100}; | method_kind[8] = {0x100, 0x102, 0x101, 0x102, 0x102, 0x102, 0x102, 0x100};
+oracle | dbg/conv.c | method_kind[8] = {0x100, 0x102, 0x101, 0x100, 0x102, 0x102, 0x102, 0x100}; | method_kind[8] = {0x100, 0x102, 0x101, 0x100, 0x100, 0x102, 0x102, 0x100};
+oracle | dbg/conv.c | method_kind[8] = {0x100, 0x102, 0x101, 0x100, 0x102, 0x102, 0x102, 0x100}; | method_kind[8] = {0x100, 0x102, 0x101, 0x100, 0x102, 0x100, 0x102, 0x100};
+oracle | dbg/conv.c | method_kind[8] = {0x100, 0x102, 0x101, 0x100, 0x102, 0x102, 0x102, 0x100}; | method_kind[8] = {0x100, 0x102, 0x101, 0x100, 0x102, 0x102, 0x100, 0x100};
+test | dbg/conv.c | method_kind[8] = {0x100, 0x102, 0x101, 0x100, 0x102, 0x102, 0x102, 0x100}; | method_kind[8] = {0x100, 0x102, 0x101, 0x100, 0x102, 0x102, 0x102, 0x102};
+test | dbg/conv.c | slot_bytes[8] = {0, 0, 0, 0, 4, 0, 4, 0}; | slot_bytes[8] = {4, 0, 0, 0, 4, 0, 4, 0};
+test | dbg/conv.c | slot_bytes[8] = {0, 0, 0, 0, 4, 0, 4, 0}; | slot_bytes[8] = {0, 4, 0, 0, 4, 0, 4, 0};
+test | dbg/conv.c | slot_bytes[8] = {0, 0, 0, 0, 4, 0, 4, 0}; | slot_bytes[8] = {0, 0, 4, 0, 4, 0, 4, 0};
+test | dbg/conv.c | slot_bytes[8] = {0, 0, 0, 0, 4, 0, 4, 0}; | slot_bytes[8] = {0, 0, 0, 4, 4, 0, 4, 0};
+test | dbg/conv.c | slot_bytes[8] = {0, 0, 0, 0, 4, 0, 4, 0}; | slot_bytes[8] = {0, 0, 0, 0, 0, 0, 4, 0};
+oracle | dbg/conv.c | slot_bytes[8] = {0, 0, 0, 0, 4, 0, 4, 0}; | slot_bytes[8] = {0, 0, 0, 0, 4, 4, 4, 0};
+test | dbg/conv.c | slot_bytes[8] = {0, 0, 0, 0, 4, 0, 4, 0}; | slot_bytes[8] = {0, 0, 0, 0, 4, 0, 0, 0};
+test | dbg/conv.c | slot_bytes[8] = {0, 0, 0, 0, 4, 0, 4, 0}; | slot_bytes[8] = {0, 0, 0, 0, 4, 0, 4, 4};
+oracle | dbg/conv.c | \p\p props >> 7 & 1) return;\n  bool values | ) return;\n  bool values
+test | dbg/conv.c | bool values = kind == LF_ENUM; | bool values = false;
+oracle | dbg/conv.c | list_id = le32(d.p + (values ? 8 : 4)), at = 0; | list_id = le32(d.p + (values ? 4 : 4)), at = 0;
+oracle | dbg/conv.c | list_id = le32(d.p + (values ? 8 : 4)), at = 0; | list_id = le32(d.p + (values ? 8 : 8)), at = 0;
+test | dbg/conv.c | && kind == LF_FIELDLIST && at <= list.n | && at <= list.n
+test | dbg/conv.c | && at <= list.n && list.n - at >= 8) { | && list.n - at >= 8) {
+test | dbg/conv.c | && at <= list.n && list.n - at >= 8) { | && at <= list.n && list.n - at >= 7) {
+test | dbg/conv.c | if (type_id >= list_id) break; | if (type_id == list_id) break;
+test | dbg/conv.c | list_id = type_id, at = 0;\n      continue; | list_id = type_id;\n      continue;
+test | dbg/conv.c | if (values != (field == LF_ENUMERATE)) break; | 
+oracle | dbg/conv.c | next = at + 4;\n      uint64_t value | next = at + 8;\n      uint64_t value
+oracle | dbg/conv.c | .val = value}; | .val = 0};
+test | dbg/conv.c | .val = value}; | .val = (uint32_t)value};
+oracle | dbg/conv.c | (RdiEnumMember){.name = intern(&o->strings, name.p, name.n) | (RdiEnumMember){.name = intern(&o->strings, name.p, 0)
+test | dbg/conv.c | field == LF_MEMBER ? 1 : 0x201, | field == LF_MEMBER ? 1 : 1,
+oracle | dbg/conv.c | field == LF_MEMBER ? pdb_string(list, &next) : (PdbSpan){0, 0} | pdb_string(list, &next)
+test | dbg/conv.c | (field == LF_MEMBER \p\p field == LF_BCLASS) { | (field == LF_MEMBER) {
+test | dbg/conv.c | field == LF_STMEMBER ? 2 : 0x300 | field == LF_STMEMBER ? 2 : 2
+test | dbg/conv.c | field == LF_STMEMBER ? 2 : 0x300 | field == LF_STMEMBER ? 0x300 : 0x300
+test | dbg/conv.c | (field == LF_STMEMBER \p\p field == LF_NESTTYPE \p\p | (field == LF_NESTTYPE \p\p
+test | dbg/conv.c | field == LF_NESTTYPE \p\p field == LF_NESTTYPEEX) { | field == LF_NESTTYPEEX) {
+test | dbg/conv.c | field == LF_NESTTYPE \p\p field == LF_NESTTYPEEX) { | field == LF_NESTTYPE) {
+test | dbg/conv.c | next += slot_bytes[prop];\n | \n
+oracle | dbg/conv.c | member(o, method_kind[prop], pdb_string(list, &next), type_id, 0); | member(o, 0x100, pdb_string(list, &next), type_id, 0);
+test | dbg/conv.c | \p\p kind != LF_METHODLIST) methods.n = 0; | ) methods.n = 0;
+test | dbg/conv.c | m <= methods.n && methods.n - m >= 8; | methods.n - m >= 8;
+test | dbg/conv.c | m <= methods.n && methods.n - m >= 8; | m <= methods.n && methods.n - m >= 7;
+test | dbg/conv.c | m += 8 + slot_bytes[prop]) { | m += 8) {
+oracle | dbg/conv.c | member(o, method_kind[prop], name, le32(methods.p + m + 4), 0); | member(o, method_kind[prop], name, le32(methods.p + m), 0);
+oracle | dbg/conv.c | member(o, method_kind[prop], name, le32(methods.p + m + 4), 0); | member(o, 0x100, name, le32(methods.p + m + 4), 0);
+test | dbg/conv.c | (field == LF_VBCLASS \p\p field == LF_IVBCLASS) { | (field == LF_VBCLASS) {
+test | dbg/conv.c | (field == LF_VBCLASS \p\p field == LF_IVBCLASS) { | (field == LF_IVBCLASS) {
+test | dbg/conv.c | next += 4;\n      numeric(list, &next), numeric(list, &next); | numeric(list, &next), numeric(list, &next);
+test | dbg/conv.c | numeric(list, &next), numeric(list, &next); | numeric(list, &next);
+oracle | dbg/conv.c | numeric(list, &next), numeric(list, &next); | 
+test | dbg/conv.c | member(o, 0x202, (PdbSpan){0, 0}, type_id, 0); | member(o, 0x201, (PdbSpan){0, 0}, type_id, 0);
+test | dbg/conv.c | } else if (field != LF_VFUNCTAB) break; | } else break;
+test | dbg/conv.c | at = (next + 3) / 4 * 4; | at = next;
+oracle | dbg/conv.c | at = (next + 3) / 4 * 4; | at = (next + 7) / 8 * 8;
+test | dbg/conv.c | .c = COUNT(o->s[RDI_UDTS], RdiUdt); | .c = 0;
+fuzz | dbg/conv.c | .c = COUNT(o->s[RDI_UDTS], RdiUdt); | .c = 0;
+oracle | dbg/conv.c | (RdiUdt){.self_type = self, | (RdiUdt){.self_type = 0,
+test | dbg/conv.c | .flags = values && count, | .flags = values,
+oracle | dbg/conv.c | .flags = values && count, | .flags = values,
+oracle | dbg/conv.c | .flags = values && count, | .flags = 0,
+test | dbg/conv.c | .member_first = first, .member_count = count}; | .member_first = first + 1, .member_count = count};
+fuzz | dbg/conv.c | .member_first = first, .member_count = count}; | .member_first = first + 1, .member_count = count};
+oracle | dbg/conv.c | .member_first = first, .member_count = count}; | .member_first = first, .member_count = 0};
+oracle | dbg/conv.c | id += 1) members(&o, id); | id += 2) members(&o, id);
+oracle | dbg/conv.c | sizeof(RdiUdt), sizeof(RdiMember), sizeof(RdiEnumMember)}; | sizeof(RdiUdt), 0, sizeof(RdiEnumMember)};
+fuzz | dbg/conv.c | sizeof(RdiUdt), sizeof(RdiMember), sizeof(RdiEnumMember)}; | sizeof(RdiUdt), sizeof(RdiMember), 0};
+test | dbg/conv.c | (v == 0x8000 \p\p v == 0x8001 \p\p | (v == 0x8001 \p\p
+test | dbg/conv.c | v == 0x8001 \p\p v == 0x8003 \p\p v == 0x8009) | v == 0x8003 \p\p v == 0x8009)
+test | dbg/conv.c | v == 0x8001 \p\p v == 0x8003 \p\p v == 0x8009) | v == 0x8001 \p\p v == 0x8009)
+test | dbg/conv.c | v == 0x8001 \p\p v == 0x8003 \p\p v == 0x8009) | v == 0x8001 \p\p v == 0x8003)
+test | dbg/conv.c | && d.p[*at + n - 1] >= 0x80; | && d.p[*at + n - 1] > 0x80;
+oracle | dbg/conv.c | v = negative ? UINT64_MAX : 0; | v = 0;
+oracle | dbg/rdi.c | [RDI_UDTS] = sizeof(RdiUdt), | [RDI_UDTS] = 1,
+oracle | dbg/rdi.c | [RDI_MEMBERS] = sizeof(RdiMember), | [RDI_MEMBERS] = 1,
+oracle | dbg/rdi.c | [RDI_ENUM_MEMBERS] = sizeof(RdiEnumMember), | [RDI_ENUM_MEMBERS] = 1,

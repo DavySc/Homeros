@@ -33,6 +33,14 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
       if ((t->kind < 0x1000 ? 0 : t->kind < 0x2000 || t->kind == 0xf000 ? t->a : t->b) >= i) abort();
       for (uint64_t k = 0; k < params.n; k += 1) if (((const uint32_t *)params.p)[k] >= i) abort();
     }
+    /* each record of members is the one its type names, and the records share out the two member tables in order */
+    uint64_t next[2] = {1, 1};
+    for (uint64_t i = 1; i < r.s[RDI_UDTS].n; i += 1) {
+      const RdiUdt *u = rdi_at(&r, RDI_UDTS, RdiUdt, i);
+      if (rdi_at(&r, RDI_TYPE_NODES, RdiType, u->self_type)->c != i || (u->member_count && u->member_first != next[u->flags & 1])) abort();
+      next[u->flags & 1] += u->member_count;
+    }
+    if (next[0] != r.s[RDI_MEMBERS].n || next[1] != r.s[RDI_ENUM_MEMBERS].n) abort();
     free(rdi);
   }
   free(buf);

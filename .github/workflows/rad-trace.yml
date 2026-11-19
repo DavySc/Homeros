@@ -31,9 +31,9 @@ jobs:
           popd
           mkdir bin
           rem /Od with no inlining keeps one line per step; DYNAMICBASE:NO keeps addresses the same on every run
-          for %%f in (subjects\*.c) do cl /nologo /Zi /Od /Ob0 /GS- %%f /Fo:bin\ /Fd:bin\%%~nf.pdb /Fe:bin\%%~nf.exe /link /DEBUG /INCREMENTAL:NO /DYNAMICBASE:NO || exit /b 1
+          for %%f in (subjects\*.c subjects\*.cpp) do cl /nologo /Zi /Od /Ob0 /GS- %%f /Fo:bin\ /Fd:bin\%%~nf.pdb /Fe:bin\%%~nf.exe /link /DEBUG /INCREMENTAL:NO /DYNAMICBASE:NO || exit /b 1
           rem the same sources optimised: inlined calls, lines out of order, variables in registers
-          for %%f in (subjects\*.c) do cl /nologo /Zi /O2 /GS- %%f /Fo:bin\%%~nf_o2.obj /Fd:bin\%%~nf_o2.pdb /Fe:bin\%%~nf_o2.exe /link /DEBUG /INCREMENTAL:NO /DYNAMICBASE:NO || exit /b 1
+          for %%f in (subjects\*.c subjects\*.cpp) do cl /nologo /Zi /O2 /GS- %%f /Fo:bin\%%~nf_o2.obj /Fd:bin\%%~nf_o2.pdb /Fe:bin\%%~nf_o2.exe /link /DEBUG /INCREMENTAL:NO /DYNAMICBASE:NO || exit /b 1
       - name: Record traces
         shell: pwsh
         run: |

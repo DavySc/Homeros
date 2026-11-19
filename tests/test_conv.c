@@ -91,11 +91,74 @@ int main(void)
     for (unsigned k = 0; k < sizeof used / sizeof *used; k += 1) free(used[k]->p);
     free(a);
   }
+  /* Field lists, each in a block of exactly its length: record 0x1000 is `before` (a method list, or the list that continues),
+     0x1001 the field list, 0x1002 the struct or enum that has it. Wanted: how many members, and the last one's kind and offset
+     (for an enum, its value). `list` says which of the two lists the struct names. M is a member `a` at offset 8, 12 bytes; E an enumerator `a` with the value -1, 8 bytes. */
+#define M 0x0d, 0x15, 3, 0, 0x74, 0, 0, 0, 8, 0, 'a', 0
+#define E 0x02, 0x15, 3, 0, 0x00, 0x80, 0xff, 0
+  static const struct { uint8_t values, list, before_kind, before_n, before[24], n, d[40], count; uint16_t kind; uint64_t off; } lists[] = {
+    {0, 1, 3, 0, {0}, 12, {M}, 1, 1, 8}, {0, 1, 3, 0, {0}, 11, {M}, 1, 1, 8}, {0, 1, 3, 0, {0}, 7, {M}, 0, 0, 0},
+    {0, 1, 3, 0, {0}, 22, {M, 0x00, 0x14, 3, 0, 0x74, 0, 0, 0, 4, 0}, 2, 0x201, 4},                                   /* a base */
+    {0, 1, 3, 0, {0}, 28, {0x01, 0x14, 3, 0, 0x74, 0, 0, 0, 0x74, 0, 0, 0, 8, 0, 1, 0, M}, 2, 1, 8},                  /* a virtual base and its two numbers */
+    {0, 1, 3, 0, {0}, 28, {0x02, 0x14, 3, 0, 0x74, 0, 0, 0, 0x74, 0, 0, 0, 8, 0, 1, 0, M}, 2, 1, 8},
+    {0, 1, 3, 0, {0}, 16, {0x02, 0x14, 3, 0, 0x74, 0, 0, 0, 0x74, 0, 0, 0, 8, 0, 1, 0}, 1, 0x202, 0},
+    {0, 1, 3, 0, {0}, 10, {0x0e, 0x15, 3, 0, 0x74, 0, 0, 0, 'a', 0}, 1, 2, 0}, {0, 1, 3, 0, {0}, 10, {0x10, 0x15, 0, 0, 0x74, 0, 0, 0, 'a', 0}, 1, 0x300, 0},
+    {0, 1, 3, 0, {0}, 10, {0x12, 0x15, 3, 0, 0x74, 0, 0, 0, 'a', 0}, 1, 0x300, 0},
+    {0, 1, 3, 0, {0}, 20, {0x09, 0x14, 0, 0, 0x74, 0, 0, 0, M}, 1, 1, 8},                                             /* a table of virtual methods is no member */
+    {0, 1, 3, 0, {0}, 22, {0x11, 0x15, 0x0b, 0, 0x74, 0, 0, 0, 'a', 0, 0xf2, 0xf1, 0x11, 0x15, 3, 0, 0x74, 0, 0, 0, 'a', 0}, 2, 0x100, 0},   /* a static method, a plain one */
+    {0, 1, 3, 0, {0}, 28, {0x11, 0x15, 0x13, 0, 0x74, 0, 0, 0, 9, 9, 9, 9, 'a', 0, 0xf2, 0xf1, M}, 2, 1, 8},          /* a new virtual method has 4 more bytes */
+    {0, 1, 3, 0, {0}, 28, {0x11, 0x15, 0x1b, 0, 0x74, 0, 0, 0, 9, 9, 9, 9, 'a', 0, 0xf2, 0xf1, M}, 2, 1, 8},
+    {0, 1, 3, 0, {0}, 22, {0x11, 0x15, 0x07, 0, 0x74, 0, 0, 0, 'a', 0, 0xf2, 0xf1, 0x11, 0x15, 0x17, 0, 0x74, 0, 0, 0, 'a', 0}, 2, 0x102, 0},
+    {0, 1, 6, 20, {0x13, 0, 0, 0, 0x74, 0, 0, 0, 9, 9, 9, 9, 0x0b, 0, 0, 0, 0x74, 0, 0, 0}, 10, {0x0f, 0x15, 2, 0, 0x00, 0x10, 0, 0, 'a', 0}, 2, 0x101, 0},   /* two methods of one name */
+    {0, 1, 6, 19, {0x13, 0, 0, 0, 0x74, 0, 0, 0, 9, 9, 9, 9, 0x0b, 0, 0, 0, 0x74, 0, 0}, 10, {0x0f, 0x15, 2, 0, 0x00, 0x10, 0, 0, 'a', 0}, 1, 0x102, 0},
+    {0, 1, 3, 8, {0x0b, 0, 0, 0, 0x74, 0, 0, 0}, 10, {0x0f, 0x15, 2, 0, 0x00, 0x10, 0, 0, 'a', 0}, 0, 0, 0},          /* a method list that is none */
+    {0, 1, 6, 8, {0x13, 0, 0, 0, 0x74, 0, 0, 0}, 10, {0x0f, 0x15, 2, 0, 0x00, 0x10, 0, 0, 'a', 0}, 1, 0x102, 0},      /* one that ends before its last 4 bytes */
+    {0, 1, 6, 12, {M}, 20, {M, 0x04, 0x14, 0, 0, 0x00, 0x10, 0, 0}, 1, 1, 8},                                         /* continues in what is no field list */
+    {0, 0, 3, 20, {M, 0x04, 0x14, 0, 0, 0x01, 0x10, 0, 0}, 12, {M}, 1, 1, 8},                                         /* continues in a later list */
+    {0, 1, 3, 0, {0}, 22, {0x11, 0x15, 0x0f, 0, 0x74, 0, 0, 0, 'a', 0, 0xf2, 0xf1, 0x11, 0x15, 0x0b, 0, 0x74, 0, 0, 0, 'a', 0}, 2, 0x101, 0},   /* a friend */
+    {0, 1, 3, 0, {0}, 22, {0x11, 0x15, 0x0b, 0, 0x74, 0, 0, 0, 'a', 0, 0xf2, 0xf1, 0x11, 0x15, 0x0f, 0, 0x74, 0, 0, 0, 'a', 0}, 2, 0x100, 0},
+    {0, 1, 3, 0, {0}, 22, {0x11, 0x15, 0x1f, 0, 0x74, 0, 0, 0, 'a', 0, 0xf2, 0xf1, 0x11, 0x15, 0x0b, 0, 0x74, 0, 0, 0, 'a', 0}, 2, 0x101, 0},   /* the method kind no compiler writes */
+    {0, 1, 3, 0, {0}, 22, {0x11, 0x15, 0x0b, 0, 0x74, 0, 0, 0, 'a', 0, 0xf2, 0xf1, 0x11, 0x15, 0x1f, 0, 0x74, 0, 0, 0, 'a', 0}, 2, 0x100, 0},
+    {0, 1, 3, 12, {M}, 20, {M, 0x04, 0x14, 0, 0, 0x00, 0x10, 0, 0}, 2, 1, 8},                                         /* continues in the list before it */
+    {0, 1, 3, 12, {M}, 32, {M, 0x04, 0x14, 0, 0, 0x00, 0x10, 0, 0, M}, 2, 1, 8},                                      /* and nothing after that is read */
+    {0, 1, 3, 12, {M}, 20, {M, 0x04, 0x14, 0, 0, 0x01, 0x10, 0, 0}, 1, 1, 8}, {0, 1, 3, 12, {M}, 20, {M, 0x04, 0x14, 0, 0, 0x02, 0x10, 0, 0}, 1, 1, 8},   /* in itself, in a later record */
+    {0, 1, 3, 0, {0}, 32, {M, 0xff, 0x15, 0, 0, 0, 0, 0, 0, M}, 1, 1, 8},                                             /* a kind not known ends the list */
+    {0, 1, 3, 0, {0}, 20, {M, E}, 1, 1, 8}, {1, 1, 3, 0, {0}, 20, {E, M}, 1, 0, UINT64_MAX}, {1, 1, 3, 0, {0}, 16, {E, E}, 2, 0, UINT64_MAX},
+    {1, 1, 3, 8, {E}, 16, {E, 0x04, 0x14, 0, 0, 0x00, 0x10, 0, 0}, 2, 0, UINT64_MAX}};
+  for (unsigned i = 0; i < sizeof lists / sizeof *lists; i += 1) {
+    static const uint8_t record[2][20] = {{18, 0, 0x05, 0x15, 0, 0, 0, 0, 0x01, 0x10}, {14, 0, 0x07, 0x15, 0, 0, 0, 0, 0x74, 0, 0, 0, 0x01, 0x10}};
+    uint32_t first = 4 + (uint32_t)lists[i].before_n, second = first + 4 + lists[i].n, all = second + record[lists[i].values][0] + 2;
+    uint8_t *a = malloc(all);
+    a[0] = (uint8_t)(first - 2), a[1] = 0, a[2] = lists[i].before_kind, a[3] = 0x12;
+    memcpy(a + 4, lists[i].before, lists[i].before_n);
+    a[first] = (uint8_t)(lists[i].n + 2), a[first + 1] = 0, a[first + 2] = 0x03, a[first + 3] = 0x12;
+    memcpy(a + first + 4, lists[i].d, lists[i].n);
+    memcpy(a + second, record[lists[i].values], all - second);
+    a[second + (lists[i].values ? 12 : 8)] = lists[i].list;
+    Out t = {.pointer_size = 8, .leaves = {a, all}};
+    add(&t.s[RDI_TYPE_NODES], sizeof(RdiType)), add(&t.s[RDI_UDTS], sizeof(RdiUdt)), add(&t.s[RDI_MEMBERS], sizeof(RdiMember)), add(&t.s[RDI_ENUM_MEMBERS], sizeof(RdiEnumMember));
+    *(uint32_t *)add(&t.leaf_at, 4) = 0, *(uint32_t *)add(&t.leaf_at, 4) = first, *(uint32_t *)add(&t.leaf_at, 4) = second;
+    add(&t.made, 4 * (FIRST_RECORD + 3));
+    for (uint32_t id = FIRST_RECORD; id < FIRST_RECORD + 3; id += 1) record_type(&t, id);
+    for (uint32_t id = FIRST_RECORD; id < FIRST_RECORD + 3; id += 1) members(&t, id);
+    const RdiUdt *u = (const RdiUdt *)t.s[RDI_UDTS].p + 1;
+    const RdiMember *m = (const RdiMember *)t.s[RDI_MEMBERS].p + u->member_first + u->member_count - 1;
+    const RdiEnumMember *e = (const RdiEnumMember *)t.s[RDI_ENUM_MEMBERS].p + u->member_first + u->member_count - 1;
+    bool ok = t.s[RDI_UDTS].n == 2 * sizeof *u && u->member_count == lists[i].count && u->member_first == 1 && u->flags == (lists[i].values && lists[i].count)
+              && ((const RdiType *)t.s[RDI_TYPE_NODES].p)[u->self_type].c == 1 && t.s[lists[i].values ? RDI_MEMBERS : RDI_ENUM_MEMBERS].n == 16;
+    if (ok && lists[i].count) ok = lists[i].values ? e->val == lists[i].off : m->kind == lists[i].kind && m->off == lists[i].off && m->type != 0;
+    if (!ok) { printf("field list %u: wrong members\n", i); return 1; }
+    Buf *used[] = {&t.s[RDI_TYPE_NODES], &t.s[RDI_UDTS], &t.s[RDI_MEMBERS], &t.s[RDI_ENUM_MEMBERS], &t.leaf_at, &t.made, &t.strings.keys, &t.strings.at, &t.strings.slots};
+    for (unsigned k = 0; k < sizeof used / sizeof *used; k += 1) free(used[k]->p);
+    free(a);
+  }
   /* A number in a type record: the 2 bytes themselves below 0x8000, else 1, 2, 4 or 8 bytes that follow; 0 when cut short or of
-     a kind not read. Each in a block of exactly its length. */
+     a kind not read. The signed kinds are widened with their sign. Each in a block of exactly its length. */
   static const struct { uint8_t n, a[10], after; uint64_t want; } numbers[] = {
-    {2, {0x10, 0x00}, 2, 16}, {2, {0xff, 0x7f}, 2, 0x7fff}, {3, {0x00, 0x80, 0xfe}, 3, 0xfe}, {4, {0x02, 0x80, 0x34, 0x12}, 4, 0x1234},
+    {2, {0x10, 0x00}, 2, 16}, {2, {0xff, 0x7f}, 2, 0x7fff}, {3, {0x00, 0x80, 0xfe}, 3, UINT64_MAX - 1}, {3, {0x00, 0x80, 0x7f}, 3, 0x7f}, {3, {0x00, 0x80, 0x80}, 3, UINT64_MAX - 0x7f}, {4, {0x02, 0x80, 0x34, 0x12}, 4, 0x1234},
     {6, {0x04, 0x80, 4, 3, 2, 1}, 6, 0x01020304}, {4, {0x01, 0x80, 0x34, 0x12}, 4, 0x1234}, {6, {0x03, 0x80, 4, 3, 2, 1}, 6, 0x01020304},
+    {4, {0x01, 0x80, 0xfe, 0xff}, 4, UINT64_MAX - 1}, {4, {0x02, 0x80, 0xfe, 0xff}, 4, 0xfffe}, {6, {0x03, 0x80, 0xfe, 0xff, 0xff, 0xff}, 6, UINT64_MAX - 1},
+    {6, {0x04, 0x80, 0xfe, 0xff, 0xff, 0xff}, 6, 0xfffffffe}, {10, {0x09, 0x80, 0xfe, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}, 10, UINT64_MAX - 1},
     {10, {0x09, 0x80, 8, 7, 6, 5, 4, 3, 2, 1}, 10, 0x0102030405060708}, {10, {0x0a, 0x80, 8, 7, 6, 5, 4, 3, 2, 1}, 10, 0x0102030405060708},
     {5, {0x04, 0x80, 4, 3, 2}, 2, 0}, {4, {0x05, 0x80, 1, 2}, 2, 0}, {4, {0x0b, 0x80, 1, 2}, 2, 0}, {1, {0x10}, 0, 0}, {0, {0}, 0, 0}};
   for (unsigned i = 0; i < sizeof numbers / sizeof *numbers; i += 1) {

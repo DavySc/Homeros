@@ -12,7 +12,7 @@ for s in steps crash deep blocks gap; do
   done
 done
 # C++: classes, methods, references, bit fields, member pointers, a forward reference with and without its definition
-clang --target=x86_64-pc-windows-msvc -g -gcodeview -O0 -ffreestanding -fno-rtti -fno-exceptions -c "$here/tests/kinds.cpp" -o "$out/obj/kinds.obj"
+clang --target=x86_64-pc-windows-msvc -g -gcodeview -O0 -ffreestanding -fno-rtti -fno-exceptions -c "$here/subjects/kinds.cpp" -o "$out/obj/kinds.obj"
 link "$out/obj/kinds.obj" /out:"$out/kinds.exe" /pdb:"$out/kinds.pdb"
 link "$out/obj/steps-O0.obj" /pdbpagesize:8192 /out:"$out/steps-8k.exe" /pdb:"$out/steps-8k.pdb"
 # column records, and one function whose lines come from two files
