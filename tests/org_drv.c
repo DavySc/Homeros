@@ -72,6 +72,22 @@ static int dump(FILE *o, const char *b, size_t n)
 	return 0;
 }
 
+/* org_todo_step at pos (clamped to the text) for each of dirs ('r' right,
+   else left), at tools/org_todo.el's clock, printing each text and "--";
+   the new length, or -1 out of memory or room */
+static long steps(FILE *o, char *b, size_t n, size_t cap, size_t pos, const char *dirs)
+{
+	for (size_t a, z, len; *dirs; dirs++) {
+		const char *r = org_todo_step(b, n, pos < n ? pos : n, *dirs == 'r' ? 1 : -1, 29918490, &a, &z, &len);   /* 2026-11-19 17:30 */
+		if (!r || n - (z - a) + len > cap) return -1;
+		memmove(b + a + len, b + z, n - z);
+		memcpy(b + a, r, len);
+		n = n - (z - a) + len;
+		fprintf(o, "%.*s--\n", (int)n, b);
+	}
+	return (long)n;
+}
+
 #ifndef ORG_DRV_LIB
 /* The colours as tools/org_faces.el prints Org's: runs of one face, read
    through the syntax module's calls in windows of w bytes (the scan goes on
@@ -115,7 +131,9 @@ int main(int argc, char **argv)
 {
 	static char b[1 << 24];
 	size_t w = 0;   /* -f W: the colours, in windows of W bytes */
+	int todo = argc > 1 && !strcmp(argv[1], "-t");   /* -t: org_todo_step as FILE.cmd says, as tools/org_todo.el */
 	if (argc > 2 && !strcmp(argv[1], "-f")) w = strtoul(argv[2], NULL, 10), argv += 2, argc -= 2;
+	argv += todo, argc -= todo;
 	for (int i = 1; i < argc; i++) {
 		FILE *f = fopen(argv[i], "rb");
 		if (!f) return 2;
@@ -125,6 +143,16 @@ int main(int argc, char **argv)
 		if (more) { fprintf(stderr, "%s: over %zu bytes\n", argv[i], sizeof b); return 4; }
 		const char *base = strrchr(argv[i], '/');
 		printf("== %s\n", base ? base + 1 : argv[i]);
+		if (todo) {
+			static char c[4096], path[4096];
+			size_t pos;
+			snprintf(path, sizeof path, "%s.cmd", argv[i]);
+			FILE *g = fopen(path, "rb");
+			if (!g || fscanf(g, "%zu %4000s", &pos, c) != 2) return 2;
+			fclose(g);
+			if (steps(stdout, b, n, sizeof b, pos, c) < 0) return 3;
+			continue;
+		}
 		if (w ? colours(stdout, b, n, w) : dump(stdout, b, n)) return 3;
 		for (size_t p = 0; !w && p < n; p++) {   /* org_ts at every character */
 			OrgTs t;

@@ -100,6 +100,7 @@ ifneq ($(wildcard src/org/*.c),)
 	gcc $(WARN) $(CPPFLAGS) $(SAN) -o build/san/org_drv tests/org_drv.c $(LIB_SRCS) $(OBJS) $(LIBS)
 	python3 tools/org_conform.py build/san/org_drv $(ORG_N) $${SEED:-1}
 	python3 tools/org_conform.py -f build/san/org_drv $(ORG_N) $${SEED:-1}
+	python3 tools/org_conform.py -t build/san/org_drv $$(($(ORG_N) / 4)) $${SEED:-1}
 endif
 
 # Neovim's undo tree against UndoTree.tla's rules (package 2's oracle);

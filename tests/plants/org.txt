@@ -28,3 +28,14 @@ org: org_ts reads case-sensitively, as planning does (against Org)~org-conform O
 org: a two-digit hour above 29 (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	if (h < lim && digit(h)) { if (S[p] > '2') return 0; h++; }~	if (h < lim && digit(h)) h++;
 org: folds: a headline's line takes the subtree before it (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~h = head_at(f, p);~h = head_at(f, p ? p - 1 : 0);
 org: folds: levels read from the parse before the edits (fuzz)~fuzz FUZZERS=org FUZZ_SECONDS=30~~src/org/org.c~	orgfx_update(f, NULL);¶	size_t p = text_line_start~	size_t p = text_line_start
+org: todo: the first ORDERED value wins, not the last (against Org)~test TESTS=org~~src/org/org.c~	for (p = nextl(p); !drawer_end(p); p = nextl(p)) {¶		size_t q = blanks(p);~	for (p = nextl(p); !drawer_end(p) && !got; p = nextl(p)) {¶		size_t q = blanks(p);
+org: todo: a repeat from no keyword goes to TODO (against Org)~test TESTS=org~~src/org/org.c~from < 0 ? " " : " TODO ", from < 0 ? 1 : 6~from < -1 ? " " : " TODO ", from < -1 ? 1 : 6
+org: todo: the note's state padded to 11 (against Org)~test TESTS=org~~src/org/org.c~"- State %-12s from~"- State %-11s from
+org: todo: a week repeats as a day (against Org)~test TESTS=org~~src/org/org.c~(n *= 7, 'd')~(n *= 1, 'd')
+org: todo: a parent ignores undone children (against Org)~test TESTS=org~~src/org/org.c~ q = next_head(q)) if (notdone(q)) return 1;~ q = next_head(q)) if (notdone(q)) return 0;
+org: todo: CLOSED kept when going back to not done (against Org)~test TESTS=org~~src/org/org.c~		if (to < 0 || (to < org_done && !(from >= 0 && from < org_done))) closed(h, 0, nows);¶~
+org: todo: an edit one byte past its change (fuzz)~fuzz FUZZERS=org FUZZ_SECONDS=30~~src/org/org.c~	*a = i, *b = n - j,~	*a = i, *b = n - j + 1,
+org: colours: a long line coloured again for every piece (frame gate)~test TESTS=org~~src/org/org.c~		if (f->c.at == l) {~		if (0) {
+org: colours: a date scan from every opener to the line's end (frame gate)~test TESTS=org~~src/org/org.c~	for (p = l; p + 12 <= lc; p++) {~	for (p = l; p < e; p++) {
+org: colours: a diary sexp scan from every opener to the line's end (frame gate)~test TESTS=org~~src/org/org.c~			if (x == e) break;   /* none closes later ones either */~			if (x == e) continue;
+org: colours: a line's faces not cleared before it is coloured (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~ memset(F, 0, nl - l);~
