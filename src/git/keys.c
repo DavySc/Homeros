@@ -363,6 +363,10 @@ static int patch(const View *v, int h, int z, Str *p)
 static int apply(const View *v, int h, int z, const char *a1, const char *a2)
 {
 	if (!strncmp(v->pool.s + v->sec[v->sec[h].parent].aux, "diff --cc", 9)) return 1;
+	/* --index refuses a file whose stat the index has out of date ("does
+	   not match index"); magit's refresh has written it fresh, ours never
+	   writes (git_diff), so the write refreshes it first */
+	if (a2 && !strcmp(a2, "--index") && !wgit("update-index", "-q", "--unmerged", "--refresh", NULL)) return -1;
 	Cmd *c = wgit("apply", NULL);
 	if (!c) return -1;
 	if (a1) cmd_add(c, a1);
@@ -813,10 +817,8 @@ static void diff_open(Editor *e, Repo *r, int dt, const char *file)
 {
 	Cmd c;
 	cmd_git(&c, 1);
-	cmd_add(&c, "diff");
-	if (dt == T_STAGED) cmd_add(&c, "--cached");
-	if (dt < 0) cmd_add(&c, "HEAD");
-	cmd_add(&c, "-p"); cmd_add(&c, "--stat"); cmd_add(&c, "--no-prefix"); cmd_add(&c, "--ita-visible-in-index");
+	git_diff(&c, dt);
+	cmd_add(&c, "--stat"); cmd_add(&c, "--no-prefix"); cmd_add(&c, "--ita-visible-in-index");
 	cmd_add(&c, "--no-ext-diff"); cmd_add(&c, "--");
 	if (file) cmd_add(&c, file);
 	aux_open(e, r, T_DIFF, dt, &c);
@@ -825,20 +827,27 @@ static void diff_open(Editor *e, Repo *r, int dt, const char *file)
 /* magit-show-commit (magit-revision-sections-hook) and magit-stash-show
    (magit-stash-sections-hook): one shell runs their git commands, the parts
    NUL-ended (sec.c parse_revbuf, parse_stashbuf) */
+/* A shell script with one argument ($1), run by git's own shell as an
+   alias: Windows has no sh on PATH, only git's */
+static void cmd_sh(Cmd *c, const char *script, const char *a)
+{
+	char s[2048];
+	snprintf(s, sizeof s, "alias.homeros=!s() { %s; }; s", script);
+	cmd_add(c, "git"); cmd_add(c, "-c"); cmd_add(c, s); cmd_add(c, "homeros"); cmd_add(c, a);
+}
+
 #define G "g() { git --no-pager --no-optional-locks -c color.ui=false -c diff.noPrefix=false \"$@\"; }; "
 static void show_open(Editor *e, Repo *r, const char *rev, int stash)
 {
 	Cmd c = { 0 };
-	cmd_add(&c, "sh"); cmd_add(&c, "-c");
-	cmd_add(&c, stash ? G "g diff -p --no-prefix \"$1^2..$1\" --; printf '\\0'; "
+	cmd_sh(&c, stash ? G "g diff -p --no-prefix \"$1^2..$1\" --; printf '\\0'; "
 	                    "g diff -p --no-prefix \"$1^..$1^2\" --; printf '\\0'; "
 	                    "! g rev-parse -q --verify \"$1^3\" >/dev/null || g show --format= -p --no-prefix \"$1^3\""
 	                  : G "g show -s --decorate=full --format=format:'%D%x00%H%x00Author:     %aN <%aE>%nAuthorDate: %ad%n"
 	                    "Commit:     %cN <%cE>%nCommitDate: %cd%n%n%x00%B%x00' \"$1\" && "
 	                    "p=$(g rev-parse \"$1^@\") && { [ -z \"$p\" ] || g show -s --format='%h %s' $p; } && printf '\\0' && "
 	                    "g branch --merged \"$1\" && printf '\\0' && g branch --contains \"$1\" && printf '\\0' && "
-	                    "g show --format= -p --stat --no-prefix --no-ext-diff \"$1\" --");
-	cmd_add(&c, "sh"); cmd_add(&c, rev);
+	                    "g show --format= -p --stat --no-prefix --no-ext-diff \"$1\" --", rev);
 	aux_open(e, r, T_DIFF, stash ? T_STASH : T_COMMIT, &c);
 }
 
@@ -1041,14 +1050,12 @@ static void stash_go(Editor *e, Repo *r, const char *a)
 	Cmd *c = wstep();
 	if (!c) return;
 	cmd_free(c);
-	cmd_add(c, "sh"); cmd_add(c, "-c");
 	/* git stash create's commits, the stash's message replaced by m */
-	cmd_add(c, "m=$1; [ -n \"$m\" ] || m=\"On $(git symbolic-ref -q --short HEAD || echo '(no branch)'): "
+	cmd_sh(c, "m=$1; [ -n \"$m\" ] || m=\"On $(git symbolic-ref -q --short HEAD || echo '(no branch)'): "
 	           "$(git log -1 --format='%h %s')\"; h=$(git stash create) && [ -n \"$h\" ] "
 	           "|| { echo 'No local changes to save' >&2; exit 1; }; "
 	           "c=$(git commit-tree -p \"$h^1\" -p \"$h^2\" -m \"$m\" \"$h^{tree}\") "
-	           "&& git stash store -m \"$m\" \"$c\" && git reset -q --hard");
-	cmd_add(c, "sh"); cmd_add(c, a);
+	           "&& git stash store -m \"$m\" \"$c\" && git reset -q --hard", a);
 	wsend(r, NULL, NULL);
 }
 
@@ -1272,7 +1279,7 @@ static Of *of(const Buf *b)
 	Of *o = &ofs[nofs++];
 	*o = (Of){ b->nr, NULL, NULL };
 	char abs[PATH_MAX];
-	if (!b->path || !realpath(b->path, abs)) return o;
+	if (!b->path || git_real(b->path, abs)) return o;
 	char dir[PATH_MAX];
 	snprintf(dir, sizeof dir, "%s", abs);
 	char *s = strrchr(dir, '/');
@@ -1400,8 +1407,8 @@ static int browse(Editor *e)
 	char full[4096];
 	snprintf(full, sizeof full, "https://github.com/%s/blob/%s/%s#L%zu", h,
 	         o->r->br.head ? o->r->br.head : o->r->br.oid ? o->r->br.oid : "HEAD", o->rel, e->win->line + 1);
-	char *argv[] = { "xdg-open", full, NULL };
-	if (proc_spawn(argv, o->r->top, opened, NULL) < 0) { core_msg(e, "Cannot run xdg-open"); return -1; }
+	char *argv[] = { (char *)git_opener, full, NULL };
+	if (proc_spawn(argv, o->r->top, opened, NULL) < 0) { core_msg(e, "Cannot run %s", git_opener); return -1; }
 	return 0;
 }
 
