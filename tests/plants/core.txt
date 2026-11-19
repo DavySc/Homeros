@@ -90,7 +90,7 @@ core: a heading after list number 7, 8 or 9 not drawn (test_core_markdown)~test 
 core: a heading's icon wraps to the next row (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~ && v - (size_t)(c - nw) <= s0) {~) {
 core: the '>' of a double-width character that does not fit in the text's colours (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~wputs(g, w, row, c, ">", FACE_NON_TEXT);~put_cell(g, w, row, c, (const unsigned char *)">", 1, 0, 1, face, 0);
 core: a heading drawn past a grid smaller than its window (fuzz_core)~fuzz FUZZERS=core FUZZ_SECONDS=120~~src/core/draw.c~			if (v < b0 || !z || ~			if (v < b0 || 
-core: another window's ruler follows the Visual tab rule (test_core_markdown)~test TESTS=core_markdown~~src/core/core.c~	int first = w == e->win && e->ks.visual~	int first = e->ks.visual
+core: another window follows the Visual tab rule (test_core_contract)~test TESTS=core_contract~~src/core/core.c~	int first = w == e->win && e->ks.visual~	int first = e->ks.visual
 core: the wanted column on a Tab follows the Visual rule while the keys still show Visual mode (recorded traces)~test TESTS=~~src/core/core.c~	w->want = win_vcols(w, w->line, w->col, &s, &w->want) && e->mode != MODE_INSERT ? w->want : s;~	w->want = win_vcol(e, w, NULL, NULL); (void)s;
 core: the mode's long name below 120 columns (test_core_status)~test TESTS=core_status~~src/core/draw.c~mode[m][maxw < 120], strlen(mode[m][maxw < 120])~mode[m][maxw < 100], strlen(mode[m][maxw < 100])
 core: %F below 140 columns (test_core_status)~test TESTS=core_status~~src/core/draw.c~if (b->path && maxw < 140)~if (b->path && maxw < 120)

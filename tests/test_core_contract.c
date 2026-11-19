@@ -102,6 +102,20 @@ int main(void)
 	CHECK(!core_edit(&e, 0, 0, "x\xcc\x81\t", 4));
 	CHECK(core_vcol(&e, 0, 1) == 0 && core_vcol(&e, 0, 2) == 0 && core_vcol(&e, 0, 3) == 1 && core_vcol(&e, 0, 4) == 8);
 
+	/* Visual mode's Tab rule is the current window's: another window on the
+	   buffer keeps its cursor on a Tab's last cell (its w_virtcol stays;
+	   measured: its old ruler "1,1-8" after v and :redraw!, 3 runs) */
+	CHECK(!core_split(&e, 0, 0));
+	e.ks.visual = 'v';
+	e.ks.vline = e.win->line = 0;
+	e.ks.vcol = e.win->col = 3;             /* the Tab after "x\xcc\x81" */
+	Win *o = e.wins == e.win ? e.win->next : e.wins;
+	o->line = 0;
+	o->col = 3;
+	CHECK(win_vcol(&e, e.win, NULL, NULL) == 1 && win_vcol(&e, o, NULL, NULL) == 7);
+	e.ks.visual = 0;
+	CHECK(!core_close(&e, 0));
+
 	/* the last window closes only without unsaved changes (E37), or with ! */
 	CHECK(!core_edit(&e, 0, 0, "z", 1));
 	CHECK(core_close(&e, 0) == -1 && !e.quit && strstr(e.msg, "E37"));
