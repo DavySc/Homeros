@@ -14,6 +14,11 @@
 #include "core.h"
 #include "shada.h"
 #include "tools.h"
+/* git is POSIX only until PR 70 puts it in WIN_SRCS; keys.c calls these
+   (thread 0's, agreed) */
+#include "git.h"
+int git_key(Editor *x, int k) { (void)x; (void)k; return 0; }
+int git_leader(Editor *x, int p, int k) { (void)x; (void)p; (void)k; return -1; }
 static Editor e;
 static Grid g;
 
