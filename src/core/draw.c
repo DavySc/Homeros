@@ -150,11 +150,13 @@ static void draw_heading(Grid *g, const Win *w, size_t l, int r, size_t skip, in
 
 /* win_line()'s Visual area of line l in w ('selection' inclusive), or
    vim.hl.on_yank()'s flash (Davy's my-nvim): vim.hl.range() from '[ to ']
-   inclusive in IncSearch, over the text only (no hl_eol) and only in the
-   window it was yanked in.  Cells [*from, *to), none if *from >= *to, less
-   the cursor's [*xf, *xt], which Visual's block cursor shows (noinvcur: its
-   cell, both of a double-width character's).  Windows on the current
-   buffer show the Visual area too.  Returns the area's face. */
+   inclusive (a block: its screen columns) in IncSearch, over the text only
+   (no hl_eol) and only in the current window (the one it was yanked in:
+   the flash is gone before another can be entered).  Cells [*from, *to),
+   none if *from >= *to, less the cursor's [*xf, *xt], which Visual's block
+   cursor shows (noinvcur: its cell, both of a double-width character's).
+   Windows on the current buffer show the Visual area too.  Returns the
+   area's face. */
 static unsigned char visual(Editor *e, Win *w, size_t l, size_t *from, size_t *to, size_t *xf, size_t *xt)
 {
 	const Win *cw = e->win;
@@ -168,7 +170,11 @@ static unsigned char visual(Editor *e, Win *w, size_t l, size_t *from, size_t *t
 	int vtop = vl < cl || (vl == cl && vc < cc);
 	size_t tl = vtop ? vl : cl, tc = vtop ? vc : cc, bl = vtop ? cl : vl, bc = vtop ? cc : vc;
 	if (l < tl || l > bl) return 0;
-	if (type == 22) {
+	if (type == 22 && y) {
+		/* a yanked block: its screen columns (the register's width) */
+		*from = vc;
+		*to = cc + 1;
+	} else if (type == 22) {
 		/* block: w_old_cursor_fcol and _lcol (getvcols()), to the line's
 		   end after $ */
 		win_vcols(w, cl, cc, &a, &b);
@@ -189,8 +195,21 @@ static unsigned char visual(Editor *e, Win *w, size_t l, size_t *from, size_t *t
 		}
 	}
 	if (y) {
-		size_t z = win_vcol_end(w, l);
-		if (*to > z) *to = z;
+		/* the extmarks cover whole characters (a block's getregionpos()
+		   bytes): every character the cells touch, up to the text's end */
+		LineIt it;
+		const unsigned char *s;
+		size_t f = *from, t = *to, v = 0, k;
+		lit_init(&it, w->buf, l);
+		while ((k = lit_next(&it, &s))) {
+			size_t cw2 = (size_t)core_cellw(w, s, k, 0, v);
+			if (type == 22 && v < t && v + cw2 > f) {
+				if (v < *from) *from = v;
+				if (v + cw2 > *to) *to = v + cw2;
+			}
+			v += cw2;
+		}
+		if (*to > v) *to = v;
 		return FACE_INC_SEARCH;
 	}
 	if (w == cw && l == cw->line) {

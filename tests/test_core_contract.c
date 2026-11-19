@@ -213,6 +213,19 @@ int main(void)
 	core_update(&e);
 	core_draw(&e, &g);
 	CHECK(e.win->top <= 2 && g.c[(e.win->y + 2 - (int)e.win->top) * g.cols + e.win->x + win_numw(e.win) + 1].bg == FACE_VISUAL);
+	e.ks.visual = 0;
+	/* on_yank's flash shows only in the window it was yanked in (the
+	   namespace is scoped to it: nvim__ns_set()) */
+	e.ks.yank.type = 'V';
+	e.ks.yank.l1 = e.ks.yank.l2 = e.win->line;
+	CHECK(!core_split(&e, 1, 0));
+	core_draw(&e, &g);
+	for (const Win *w = e.wins; w; w = w->next) {
+		const Cell *z = &g.c[(w->y + (int)(w->line - w->top)) * g.cols + w->x + win_numw(w)];
+		CHECK((z->bg == FACE_INC_SEARCH) == (w == e.win));
+	}
+	e.ks.yank.type = 0;
+	CHECK(!core_only(&e));
 	core_free(&e);
 	for (int i = 0; i < 4; i++) unlink(fn[i]);
 	grid_free(&g);

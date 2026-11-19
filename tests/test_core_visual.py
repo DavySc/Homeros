@@ -54,10 +54,12 @@ for r = 1, info.height do
   rows[#rows + 1] = (table.concat(s):gsub('%.+$', ''))
 end
 local v = vim.fn.winsaveview()
--- with --yank: the type, '[ and '] (line, byte), then the cursor after y
+-- with --yank: the type, '[ and '] (line, byte), the cursor after y, a
+-- block's width (its register type's number)
 io.open(OUT, 'w'):write(vim.json.encode({rows = rows, view = {v.topline - 1, v.leftcol, v.skipcol}, pos = pos,
   yank = c.yank and {vim.fn.getregtype('"'):byte(), vim.fn.line("'[") - 1, vim.fn.col("'[") - 1, vim.fn.line("']") - 1,
-    math.min(vim.fn.col("']") - 1, 1e6), vim.fn.line('.') - 1, vim.fn.col('.') - 1} or nil}))
+    math.min(vim.fn.col("']") - 1, 1e6), vim.fn.line('.') - 1, vim.fn.col('.') - 1,
+    tonumber(vim.fn.getregtype('"'):sub(2)) or 0} or nil}))
 vim.cmd('qa!')
 '''
 
@@ -88,11 +90,12 @@ def main():
     # C rows cols wrap mode vline vcol line col eol, W the view (top line,
     # leftcol, skipcol), F the text in hex, A
     # each text row's Visual cells (V) up to the last, E; with --yank, Y the
-    # yank (type, '[ and '] as line and byte, the cursor after it) before W
+    # yank (type, '[ and '] as line and byte, the cursor after it, a
+    # block's width) before W
     with open(a[a.index('--record') + 1], 'w') as f:
         for c, o in zip(cases, out):
             f.write('C %d %d %d %d %d %d %d %d %d\n' % ((c['rows'], c['cols'], c['wrap'], {'v': 118, 'V': 86}.get(c['mode'], 22)) + tuple(o['pos'])))
-            if 'yank' in o: f.write('Y %d %d %d %d %d %d %d\n' % tuple(o['yank']))
+            if 'yank' in o: f.write('Y %d %d %d %d %d %d %d %d\n' % tuple(o['yank']))
             f.write('W %d %d %d\n' % tuple(o['view']))
             f.write('F %s\n' % c['text'].encode().hex())
             for row in o['rows']: f.write('A %s\n' % row)

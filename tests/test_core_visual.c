@@ -25,7 +25,7 @@ int main(int argc, char **argv)
 	close(fd);
 	static char want[200][256];
 	int rows = 0, cols = 0, wrap = 0, mode = 0, eol = 0, n = 0, ncase = 0, bad = 0;
-	size_t vl = 0, vc = 0, cl = 0, cc = 0, top = 0, left = 0, skip = 0, y[6];
+	size_t vl = 0, vc = 0, cl = 0, cc = 0, top = 0, left = 0, skip = 0, y[7];
 	int yank = 0;
 	for (int p = 0; p < np; p++) {
 	FILE *f = fopen(paths[p], "r");
@@ -36,7 +36,7 @@ int main(int argc, char **argv)
 			CHECK(sscanf(line, "C %d %d %d %d %zu %zu %zu %zu %d", &rows, &cols, &wrap, &mode, &vl, &vc, &cl, &cc, &eol) == 9);
 			n = yank = 0;
 		} else if (line[0] == 'Y')
-			CHECK(sscanf(line, "Y %d %zu %zu %zu %zu %zu %zu", &yank, &y[0], &y[1], &y[2], &y[3], &y[4], &y[5]) == 7);
+			CHECK(sscanf(line, "Y %d %zu %zu %zu %zu %zu %zu %zu", &yank, &y[0], &y[1], &y[2], &y[3], &y[4], &y[5], &y[6]) == 8);
 		else if (line[0] == 'W') CHECK(sscanf(line, "W %zu %zu %zu", &top, &left, &skip) == 3);
 		else if (line[0] == 'F') {
 			FILE *o = fopen(file, "w");
@@ -70,13 +70,29 @@ int main(int argc, char **argv)
 			core_set_want(&e);
 			if (eol) { e.win->want = WANT_EOL; core_update(&e); }
 			if (yank) {
-				/* y: the flash over '[ to '], the cursor to the area's start */
+				/* y (another ":normal!", after the view was brought to the
+				   cursor): the flash over '[ to '] ('] on its character's
+				   first byte, as the core keeps positions), the cursor to the
+				   area's start */
+				core_update(&e);
+				size_t n2;
+				const unsigned char *t2 = core_line(&e, y[2], &n2);
+				while (y[3] > 0 && y[3] < n2 && (t2[y[3]] & 0xc0) == 0x80) y[3]--;
 				e.ks.visual = 0;
 				e.ks.yank.type = yank;
 				e.ks.yank.l1 = y[0];
 				e.ks.yank.c1 = y[1];
 				e.ks.yank.l2 = y[2];
 				e.ks.yank.c2 = y[3];
+				if (yank == 22) {
+					/* a block as its screen columns: getregionpos() from the
+					   marks' columns and the register's width */
+					size_t a, b, c, d;
+					win_vcols(e.win, y[0], y[1], &a, &b);
+					win_vcols(e.win, y[2], y[3], &c, &d);
+					e.ks.yank.c1 = a < c ? a : c;
+					e.ks.yank.c2 = e.ks.yank.c1 + y[6] - 1;
+				}
 				e.win->line = y[4];
 				e.win->col = y[5];
 				core_set_want(&e);
