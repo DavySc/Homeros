@@ -41,7 +41,7 @@ X64Inst x64_decode(const uint8_t *code, uint32_t n, uint64_t addr)
   uint32_t at = 0, map = 0;   /* map: 0 one byte, 1 after 0f, 2 after 0f 38, 3 after 0f 3a */
   bool small = false, short_addr = false, wide = false, rex = false, rex_b = false, rex_r = false, third_sp = false;
   uint8_t vex = 0, rep = 0;   /* the byte that began VEX or EVEX; the last of f2 and f3 */
-#define BYTE(v) do { if (at >= n || at >= 15) return none; (v) = code[at++]; } while (0)
+#define BYTE(v) do { if (at >= n) return none; (v) = code[at++]; } while (0)
   uint8_t op, b;
   for (;;) {   /* prefixes */
     BYTE(op);
@@ -77,7 +77,6 @@ X64Inst x64_decode(const uint8_t *code, uint32_t n, uint64_t addr)
     uint8_t base = rm;
     if (mod != 3 && rm == 4) { BYTE(b); base = b & 7; }                 /* SIB */
     uint32_t disp = mod == 1 ? 1 : mod == 2 || (mod == 0 && base == 5) ? 4 : 0;
-    if (at + disp > n) return none;
     at += disp;
   }
   /* the immediate; the jumps and calls among them are relative to the next instruction */
@@ -87,14 +86,14 @@ X64Inst x64_decode(const uint8_t *code, uint32_t n, uint64_t addr)
   if (map == 0 && (op == 0xf6 || op == 0xf7) && reg < 2) imm = op == 0xf6 ? 1 : small && !wide ? 2 : 4;   /* test */
   bool amd = map == 1 && !vex && op == 0x78 && mod == 3 && (small || rep == 0xf2);                         /* extrq, insertq; else 78 is vmread */
   if (amd) imm = 2;
-  if (at + imm > n || at + imm > 15) return none;
+  if (at + imm > n || at + imm > 15) return none;   /* the one place that looks at the end: nothing after it reads before it has */
   int64_t rel = imm == 1 ? (int8_t)code[at] : imm == 4 ? (int32_t)((uint32_t)code[at] | (uint32_t)code[at + 1] << 8 | (uint32_t)code[at + 2] << 16 | (uint32_t)code[at + 3] << 24) : 0;
   at += imm;
   x.size = (uint8_t)at, x.target = addr + at + (uint64_t)rel;
   /* register 4 is the stack pointer, but as a byte without REX it is ah; in the one-byte map the even opcodes are the byte forms
      but for 8c (mov from a segment register), in the two-byte map setcc and the byte cmpxchg and xadd */
   bool sp = rex || vex || (map == 0 ? (op & 1) || op == 0x8c : map != 1 || !((op >= 0x90 && op <= 0x9f) || op == 0xb0 || op == 0xc0));
-  bool sp_rm = sp && mod == 3 && rm == 4 && !rex_b, sp_reg = sp && (flags & M) && reg == 4 && !rex_r;
+  bool sp_rm = sp && mod == 3 && rm == 4 && !rex_b, sp_reg = sp && reg == 4 && !rex_r;
   if (map == 0) {
     bool grp = op == 0xff;
     x.flow = op == 0xe8 || (grp && (reg == 2 || reg == 3)) ? X64_CALL : op == 0xe9 || op == 0xeb || (grp && (reg == 4 || reg == 5)) ? X64_JUMP
@@ -106,7 +105,7 @@ X64Inst x64_decode(const uint8_t *code, uint32_t n, uint64_t addr)
     x.moves_sp = (op >= 0x50 && op <= 0x5f) || op == 0x68 || op == 0x6a || op == 0x9c || op == 0x9d || op == 0xc8 || op == 0xc9 || (grp && reg == 6) || op == 0x8f
               || ((op == 0x94 || op == 0xbc || (op == 0xb4 && rex)) && !rex_b)
               || (sp_rm && ((op < 0x38 && (op & 6) == 0) || ((op == 0x80 || op == 0x81 || op == 0x83) && reg != 7) || (op >= 0x86 && op <= 0x89) || op == 0x8c
-                            || ((op == 0xc6 || op == 0xc7) && reg == 0) || ((op == 0xfe || grp) && reg < 2) || ((op == 0xf6 || op == 0xf7) && (reg == 2 || reg == 3))
+                            || op == 0xc6 || op == 0xc7 || ((op == 0xfe || grp) && reg < 2) || ((op == 0xf6 || op == 0xf7) && (reg == 2 || reg == 3))
                             || op == 0xc0 || op == 0xc1 || (op >= 0xd0 && op <= 0xd3)))
               || (sp_reg && ((op < 0x38 && (op & 6) == 2) || op == 0x63 || op == 0x69 || op == 0x6b || op == 0x86 || op == 0x87 || op == 0x8a || op == 0x8b || op == 0x8d));
   } else if (map == 1 && !vex) {
@@ -120,14 +119,14 @@ X64Inst x64_decode(const uint8_t *code, uint32_t n, uint64_t addr)
                             || (op == 0x00 && reg < 2) || (op == 0x01 && reg == 4) || (op == 0xba && reg > 4) || (op == 0xc7 && reg > 5)
                             || (rep == 0xf3 && ((op == 0xae && reg < 2) || (op == 0x1e && reg == 1)))));
   } else if (map == 1)   /* with VEX all are vector or mask instructions but the moves and conversions out of them */
-    x.moves_sp = (sp_reg && (op == 0x50 || op == 0x93 || op == 0xc5 || op == 0xd7 || (rep && (op == 0x2c || op == 0x2d || (vex == 0x62 && (op == 0x78 || op == 0x79))))))
+    x.moves_sp = (sp_reg && (op == 0x50 || op == 0x93 || op == 0xc5 || op == 0xd7 || (rep && (op == 0x2c || op == 0x2d || op == 0x78 || op == 0x79))))
               || (sp_rm && op == 0x7e && rep != 0xf3);
   else if (map == 2)   /* movbe, crc32, adcx, adox, encodekey, urdmsr; with VEX the bit instructions, of which f3 writes the third register and mulx it too */
     x.moves_sp = vex ? (sp_reg && (op == 0xf2 || op == 0xf5 || op == 0xf6 || op == 0xf7)) || (third_sp && (op == 0xf3 || op == 0xf6))
                      : sp_reg && (op == 0xf0 || (op == 0xf1 && rep == 0xf2) || (op == 0xf6 && (small || rep == 0xf3)) || ((op == 0xfa || op == 0xfb) && rep == 0xf3)
                                   || (op == 0xf8 && rep == 0xf2 && mod == 3));
   else   /* the extracts into r/m; rorx */
-    x.moves_sp = (sp_rm && op >= 0x14 && op <= 0x17) || (vex && sp_reg && op == 0xf0);
+    x.moves_sp = (sp_rm && op >= 0x14 && op <= 0x17) || (sp_reg && op == 0xf0);
   if (!x.known) x.target = 0;
   return x;
 }

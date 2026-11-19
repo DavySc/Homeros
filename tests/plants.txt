@@ -434,12 +434,12 @@ win | dbg/win/target.c | else for (uint32_t i = 0; i < t->thread_count; i += 1) 
 win | dbg/win/target.c | if (step) c.EFlags \p= 0x100; | if (step) c.EFlags \p= 0x400;
 win | dbg/win/target.c | e.dwThreadId == t->step ? TARGET_STEP : TARGET_LATE; | TARGET_STEP;
 win | dbg/win/target.c | (own == 0xcc \p\p own == 0xcd)) out->kind = TARGET_BREAK; | own == 0xcd) out->kind = TARGET_BREAK;
-win | dbg/win/target.c | case CREATE_THREAD_DEBUG_EVENT: thread_add(t, e.dwThreadId, e.u.CreateThread.hThread), out->kind = TARGET_THREAD; break; | case CREATE_THREAD_DEBUG_EVENT: out->kind = TARGET_THREAD; break;
+win | dbg/win/target.c | thread_add(t, e.dwThreadId, e.u.CreateThread.hThread), out->kind = TARGET_THREAD; | out->kind = TARGET_THREAD;
 win | dbg/win/target.c | for (int i = 0; i < 16; i += 1) regs->gp[i] = gp[i]; | for (int i = 0; i < 16; i += 1) regs->gp[i] = gp[15 - i];
 win | dbg/win/target.c | regs->rip = c.Rip, regs->rflags = c.EFlags; | regs->rip = c.Rip + 1, regs->rflags = c.EFlags;
 win | dbg/win/target.c | } else if (out->kind == TARGET_EXCEPTION) status = DBG_EXCEPTION_NOT_HANDLED; | } else if (out->kind == TARGET_EXCEPTION) status = DBG_CONTINUE;
 win | dbg/win/target.c | t->held = e.dwThreadId, t->held_status = status; | t->held = e.dwThreadId, t->held_status = DBG_CONTINUE;
-win | dbg/win/target.c | if (target_read(t, (uintptr_t)e.u.DebugString.lpDebugStringData, t->text, (uint32_t)out->code)) out->kind = TARGET_OUTPUT, out->text = t->text; | out->kind = TARGET_OUTPUT, out->text = t->text;
+win | dbg/win/target.c | if (target_read(t, (uintptr_t)e.u.DebugString.lpDebugStringData, text_room(t, (uint32_t)out->code), (uint32_t)out->code)) out->kind | text_room(t, (uint32_t)out->code); out->kind
 win | dbg/win/target.c | *out = (TargetEvent){.kind = TARGET_EXIT, .thread = e.dwThreadId, .code = e.u.ExitProcess.dwExitCode}; | *out = (TargetEvent){.kind = TARGET_EXIT, .thread = e.dwThreadId};
 win | dbg/win/target.c | return ReadProcessMemory(t->process, (LPCVOID)(uintptr_t)addr, bytes, n, &got) && got == n; | return ReadProcessMemory(t->process, (LPCVOID)(uintptr_t)(addr + 1), bytes, n, &got) && got == n;
 win | dbg/win/target.c | return WriteProcessMemory(t->process, (LPVOID)(uintptr_t)addr, bytes, n, &put) | return WriteProcessMemory(t->process, (LPVOID)(uintptr_t)addr, bytes, 0, &put)
@@ -449,5 +449,134 @@ win | dbg/win/target.c | stop(t);\n  t->held = e.dwThreadId, | t->held = e.dwThr
 # these two only real Windows catches: Wine gives a new thread a new id and handle, and stops a thread before it has run a trap byte or after its event is queued, never between
 windows | dbg/win/target.c | if (t->threads[i].id == e.dwThreadId) t->threads[i] = t->threads[--t->thread_count]; | if (t->threads[i].id == e.dwThreadId) t->threads[i] = t->threads[t->thread_count - 1];
 windows | dbg/win/target.c | else out->code = thread_at(thread_handle(t, e.dwThreadId), &at, false); | else out->code = 0;
+# ---- slice 5: the instruction decoder (tests/oracle_x64.py against llvm-objdump; tests/test_x64.c; tests/fuzz_x64.c) ----
+x64 | dbg/x64.c | /* 80 */ M \p I1, M \p Z, BAD, | /* 80 */ M \p I1, M \p I1, BAD,
+x64 | dbg/x64.c | /* 70 */ I1, I1, | /* 70 */ 0, I1,
+x64 | dbg/x64.c | I1, I1, I1, I1, Z, Z, BAD, I1, 0, 0, 0, 0, | I1, I1, I1, I1, Z, Z, BAD, 0, 0, 0, 0, 0,
+x64 | dbg/x64.c | /* c0 */ M \p I1, M \p I1, I2, 0, | /* c0 */ M \p I1, M \p I1, 0, 0,
+x64 | dbg/x64.c | 0x37, 0x77, 0xa0, | 0x37, 0xa0,
+x64 | dbg/x64.c | 0xc5, 0xc6}; | 0xc5};
+x64 | dbg/x64.c | 0xb5, 0xb6, 0xb7, | 0xb5, 0xb7,
+x64 | dbg/x64.c | 0xb0, 0xb1, 0xb3, | 0xb0, 0xb3,
+x64 | dbg/x64.c | small = small \p\p op == 0x66, short_addr | small = false, short_addr
+x64 | dbg/x64.c | short_addr = short_addr \p\p op == 0x67, | short_addr = false,
+x64 | dbg/x64.c | rep = op == 0xf2 \p\p op == 0xf3 ? op : rep; | rep = op == 0xf3 ? op : rep;
+x64 | dbg/x64.c | rex = true, wide = op & 8, | rex = true, wide = false,
+x64 | dbg/x64.c | rex_r = op & 4, rex_b = op & 1; | rex_r = op & 4, rex_b = false;
+x64 | dbg/x64.c | rex_r = op & 4, rex_b = op & 1; | rex_r = false, rex_b = op & 1;
+x64 | dbg/x64.c | { rex = true, wide | { rex = false, wide
+x64 | dbg/x64.c | if (op == 0xc5) map = 1; | if (op == 0xc5) map = 2;
+x64 | dbg/x64.c | if (op == 0x62) BYTE(b); | (void)b;
+x64 | dbg/x64.c | third_sp = (v >> 3 & 15) == 11, | third_sp = (v >> 3 & 15) == 4,
+x64 | dbg/x64.c | rep = (v & 3) == 2 ? 0xf3 : (v & 3) == 3 ? 0xf2 : 0; | rep = 0;
+x64 | dbg/x64.c | map = op == 0x38 ? 2 : 3; BYTE(op); } | map = 2; BYTE(op); }
+x64 | dbg/x64.c | op >= 0xc8 && op <= 0xcf ? 0 : | op >= 0xc9 && op <= 0xcf ? 0 :
+x64 | dbg/x64.c | else flags = map == 3 ? M \p I1 : M; | else flags = M;
+x64 | dbg/x64.c | if (mod != 3 && rm == 4) { BYTE(b); | if (rm == 4) { BYTE(b);
+x64 | dbg/x64.c | (mod == 0 && base == 5) ? 4 : 0; | (mod == 0 && base == 6) ? 4 : 0;
+x64 | dbg/x64.c | uint32_t disp = mod == 1 ? 1 : mod == 2 | uint32_t disp = mod == 1 ? 1 : mod == 3
+x64 | dbg/x64.c | (small && !wide && !(map == 0 && (op == 0xe8 | (small && !(map == 0 && (op == 0xe8
+test | dbg/x64.c | && !(map == 0 && (op == 0xe8 \p\p op == 0xe9)) && !(map == 1) ? 2 : 4) | && !(map == 1) ? 2 : 4)
+test | dbg/x64.c | (op == 0xe8 \p\p op == 0xe9)) && !(map == 1) ? 2 : 4) | (op == 0xe8 \p\p op == 0xe9)) ? 2 : 4)
+x64 | dbg/x64.c | imm = wide ? 8 : small ? 2 : 4; | imm = wide ? 8 : 4;
+x64 | dbg/x64.c | imm = wide ? 8 : small ? 2 : 4; | imm = small ? 2 : 4;
+x64 | dbg/x64.c | imm = short_addr ? 4 : 8; | imm = 8;
+test | dbg/x64.c | (op == 0xf6 \p\p op == 0xf7) && reg < 2) imm = | (op == 0xf6 \p\p op == 0xf7) && reg < 1) imm =
+x64 | dbg/x64.c | imm = op == 0xf6 ? 1 : small && !wide ? 2 : 4; | imm = op == 0xf6 ? 1 : 4;
+x64 | dbg/x64.c | if (amd) imm = 2; | (void)0;
+test | dbg/x64.c | if (at + imm > n \p\p at + imm > 15) return none; | if (at + imm > n) return none;
+fuzz | dbg/x64.c | if (at + imm > n \p\p at + imm > 15) return none; | if (at + imm > 15) return none;
+fuzz | dbg/x64.c | if (at >= n) return none; (v) = code[at++]; | if (at > n) return none; (v) = code[at++];
+x64 | dbg/x64.c | int64_t rel = imm == 1 ? (int8_t)code[at] | int64_t rel = imm == 1 ? (uint8_t)code[at]
+x64 | dbg/x64.c | x.target = addr + at + (uint64_t)rel; | x.target = addr + (uint64_t)rel;
+x64 | dbg/x64.c | (op & 1) \p\p op == 0x8c : map | (op & 1) : map
+x64 | dbg/x64.c | \p\p op == 0xb0 \p\p op == 0xc0)); | \p\p op == 0xb0));
+x64 | dbg/x64.c | bool sp = rex \p\p vex \p\p | bool sp = rex \p\p
+x64 | dbg/x64.c | sp_rm = sp && mod == 3 && rm == 4 && !rex_b, | sp_rm = sp && rm == 4 && !rex_b,
+x64 | dbg/x64.c | sp_rm = sp && mod == 3 && rm == 4 && !rex_b, | sp_rm = sp && mod == 3 && rm == 4,
+x64 | dbg/x64.c | reg == 4 && !rex_r; | reg == 4 && !rex_b;
+x64 | dbg/x64.c | (grp && (reg == 2 \p\p reg == 3)) ? X64_CALL | (grp && reg == 2) ? X64_CALL
+x64 | dbg/x64.c | (grp && (reg == 4 \p\p reg == 5)) ? X64_JUMP | (grp && reg == 4) ? X64_JUMP
+x64 | dbg/x64.c | op == 0xe9 \p\p op == 0xeb \p\p (grp | op == 0xe9 \p\p (grp
+x64 | dbg/x64.c | (op >= 0xe0 && op <= 0xe3) ? X64_BRANCH | (op >= 0xe0 && op <= 0xe2) ? X64_BRANCH
+x64 | dbg/x64.c | op == 0xca \p\p op == 0xcb \p\p op == 0xcf ? X64_RETURN | op == 0xca \p\p op == 0xcb ? X64_RETURN
+x64 | dbg/x64.c | x.flow != X64_RETURN && !grp; | x.flow != X64_RETURN;
+x64 | dbg/x64.c | (op >= 0xaa && op <= 0xaf) | (op >= 0xab && op <= 0xaf)
+x64 | dbg/x64.c | x.repeats = rep && ( | x.repeats = (
+x64 | dbg/x64.c | x.moves_sp = (op >= 0x50 && op <= 0x5f) | x.moves_sp = (op >= 0x50 && op <= 0x57)
+x64 | dbg/x64.c | op == 0xc8 \p\p op == 0xc9 \p\p (grp && reg == 6) | op == 0xc8 \p\p (grp && reg == 6)
+x64 | dbg/x64.c | (grp && reg == 6) \p\p op == 0x8f | (grp && reg == 6)
+x64 | dbg/x64.c | (op == 0xb4 && rex)) && !rex_b) | (op == 0xb4 && rex)))
+x64 | dbg/x64.c | ((op == 0x80 \p\p op == 0x81 \p\p op == 0x83) && reg != 7) | (op == 0x80 \p\p op == 0x81 \p\p op == 0x83)
+x64 | dbg/x64.c | (sp_rm && ((op < 0x38 && (op & 6) == 0) | (sp_rm && ((op < 0x40 && (op & 6) == 0)
+x64 | dbg/x64.c | ((op == 0xfe \p\p grp) && reg < 2) | (op == 0xfe \p\p grp)
+x64 | dbg/x64.c | op == 0x8a \p\p op == 0x8b \p\p op == 0x8d)); | op == 0x8a \p\p op == 0x8b));
+x64 | dbg/x64.c | x.flow = op >= 0x80 && op <= 0x8f ? X64_BRANCH : X64_OTHER, | x.flow = op >= 0x81 && op <= 0x8f ? X64_BRANCH : X64_OTHER,
+x64 | dbg/x64.c | (op == 0xcc && !rex_b)\n | (op == 0xcc)\n
+x64 | dbg/x64.c | \p\p (rep && (op == 0x2c \p\p op == 0x2d)))) | \p\p (op == 0x2c \p\p op == 0x2d)))
+x64 | dbg/x64.c | (op == 0x7e && rep != 0xf3) \p\p (op == 0x78 && !amd) | (op == 0x7e) \p\p (op == 0x78 && !amd)
+x64 | dbg/x64.c | \p\p (op == 0x78 && !amd) | \p\p (op == 0x78)
+x64 | dbg/x64.c | (op == 0x00 && reg < 2) \p\p (op == 0x01 && reg == 4) | (op == 0x00 && reg < 2) \p\p (op == 0x01)
+x64 | dbg/x64.c | (op == 0xba && reg > 4) | (op == 0xba)
+x64 | dbg/x64.c | (op == 0xae && reg < 2) \p\p (op == 0x1e && reg == 1) | (op == 0xae && reg < 2)
+x64 | dbg/x64.c | } else if (map == 1 && !vex) { | } else if (map == 1) {
+x64 | dbg/x64.c | op == 0x50 \p\p op == 0x93 \p\p op == 0xc5 | op == 0x50 \p\p op == 0xc5
+x64 | dbg/x64.c | \p\p (sp_rm && op == 0x7e && rep != 0xf3); | \p\p (sp_rm && op == 0x7e);
+x64 | dbg/x64.c | (third_sp && (op == 0xf3 \p\p op == 0xf6)) | (third_sp && op == 0xf3)
+x64 | dbg/x64.c | (op == 0xf1 && rep == 0xf2) | (op == 0xf1)
+x64 | dbg/x64.c | (op == 0xf8 && rep == 0xf2 && mod == 3) | (op == 0xf8 && rep == 0xf2)
+x64 | dbg/x64.c | (sp_rm && op >= 0x14 && op <= 0x17) | (sp_rm && op >= 0x15 && op <= 0x17)
+x64 | dbg/x64.c | if (!x.known) x.target = 0; | (void)0;
+test | dbg/x64.c | if (map < 1 \p\p map > 3) return none; | if (map < 1) return none;
+test | dbg/x64.c | if (flags & BAD) return none; | (void)0;
+# ---- slice 5: the unwinder (tests/test_unwind.c; the live comparison with the system's stack walker is tests/stress_unwind.c) ----
+test | dbg/unwind.c | r->gp[RSP] += 8;\n  return ok; | return ok;
+test | dbg/unwind.c | if (le32(m->table + 12 * mid) <= off) lo = mid + 1; | if (le32(m->table + 12 * mid) < off) lo = mid + 1;
+test | dbg/unwind.c | return lo && off < le32(m->table + 12 * (lo - 1) + 4) ? | return lo ?
+test | dbg/unwind.c | m->count = le32(pe + 24 + 112 + 3 * 8 + 4) / 12; | m->count = le32(pe + 24 + 112 + 3 * 8 + 4) / 24;
+test | dbg/unwind.c | m->size = le32(pe + 24 + 56), | m->size = le32(pe + 24 + 60),
+test | dbg/unwind.c | return op == ALLOC_LARGE ? 1 + (c[1] >> 4) : | return op == ALLOC_LARGE ? 1 :
+test | dbg/unwind.c | op == SAVE_NONVOL \p\p op == SAVE_XMM128 ? 1 : | op == SAVE_NONVOL ? 1 :
+test | dbg/unwind.c | op == SAVE_NONVOL_FAR \p\p op == SAVE_XMM128_FAR ? 2 : 0; | op == SAVE_NONVOL_FAR ? 2 : 0;
+test | dbg/unwind.c | uint32_t rex = (c[at] & 0xf0) == 0x40; | uint32_t rex = 0;
+test | dbg/unwind.c | (c[at + rex] & 0xf8) != 0x58) break; | (c[at + rex] & 0xf8) != 0x58 \p\p true) break;
+test | dbg/unwind.c | &r.gp[(rex ? (c[at] & 1u) << 3 : 0) \p (c[at + rex] & 7u)])) | &r.gp[c[at + rex] & 7u]))
+test | dbg/unwind.c | bool out = c[at] == 0xc3 \p\p c[at] == 0xc2 | bool out = c[at] == 0xc2
+test | dbg/unwind.c | \p\p (c[at] == 0xf3 && c[at + 1] == 0xc3)\n | \n
+test | dbg/unwind.c | && (to < begin \p\p to >= end \p\p to == begin)) | && (to < begin \p\p to >= end))
+test | dbg/unwind.c | && (to < begin \p\p to >= end \p\p to == begin)) | && (to < begin \p\p to >= end \p\p true))
+test | dbg/unwind.c | \p\p ((c[at] == 0xeb \p\p c[at] == 0xe9) && | \p\p (c[at] == 0xeb &&
+test | dbg/unwind.c | \p\p (c[at] == 0xff && c[at + 1] == 0x25) \p\p | \p\p
+test | dbg/unwind.c | \p\p ((c[at] & 0xf8) == 0x48 && c[at + 1] == 0xff && (c[at + 2] & 0x38) == 0x20); | ;
+test | dbg/unwind.c | if (out && at < got) *regs = r; | (void)r;
+test | dbg/unwind.c | const uint8_t *e = m && regs->rip >= m->base ? | const uint8_t *e = m && false ?
+test | dbg/unwind.c | bool body = !first \p\p in >= info[1]; | bool body = true;
+test | dbg/unwind.c | if (first && body && epilogue( | if (first && epilogue(
+test | dbg/unwind.c | uint64_t set = regs->gp[frame_reg] - 16 * (uint64_t)(info[3] >> 4); | uint64_t set = regs->gp[frame_reg];
+test | dbg/unwind.c | bool is_set = body \p\p (flags & CHAINED); | bool is_set = body;
+test | dbg/unwind.c | is_set = (info[4 + 2 * i + 1] & 15) == SET_FPREG && in >= info[4 + 2 * i]; | is_set = false;
+test | dbg/unwind.c | if (first) frame = frame_reg && is_set ? set : regs->gp[RSP]; | frame = frame_reg && is_set ? set : regs->gp[RSP];
+test | dbg/unwind.c | if (first) frame = frame_reg && is_set ? set : regs->gp[RSP]; | if (first) frame = regs->gp[RSP];
+test | dbg/unwind.c | if (!body && in < c[0]) continue; | if (!body && in <= c[0]) continue;
+test | dbg/unwind.c | if (!body && in < c[0]) continue; | (void)in;
+test | dbg/unwind.c | if (!pop(read, t, regs, &regs->gp[x])) return false; } | regs->gp[RSP] += 8; }
+test | dbg/unwind.c | regs->gp[RSP] += n == 2 ? arg : 8 * arg; | regs->gp[RSP] += 8 * arg;
+test | dbg/unwind.c | regs->gp[RSP] += 8 * x + 8; | regs->gp[RSP] += 8 * x;
+test | dbg/unwind.c | else if (op == SET_FPREG) regs->gp[RSP] = set; | else if (op == SET_FPREG) (void)set;
+test | dbg/unwind.c | if (!read(t, frame + (n == 2 ? arg : 8 * arg), &regs->gp[x], 8)) return false; } | (void)frame; }
+test | dbg/unwind.c | if (!read(t, frame + (n == 2 ? arg : 8 * arg), &regs->gp[x], 8)) return false; } | if (!read(t, frame + 8 * arg, &regs->gp[x], 8)) return false; }
+test | dbg/unwind.c | uint64_t sp = regs->gp[RSP] + 8 * x; | uint64_t sp = regs->gp[RSP];
+test | dbg/unwind.c | return read(t, sp, &regs->rip, 8) && read(t, sp + 24, &regs->gp[RSP], 8); | return read(t, sp, &regs->rip, 8);
+test | dbg/unwind.c | if (!(flags & CHAINED)) break; | break;
+test | dbg/unwind.c | memcpy(chain, info + 4 + 2 * slots, 12), | memcpy(chain, info + 4 + 2 * count, 12),
+test | dbg/unwind.c | uint64_t arg = n == 2 ? le32(c + 2) : n == 1 ? le16(c + 2) : 0; | uint64_t arg = n ? le16(c + 2) : 0;
+# ---- slice 4, later: module paths, a step runs its thread alone ----
+win | dbg/win/target.c | text[n < t->text_cap ? n : 0] = 0; | text[0] = 0;
+win | dbg/win/target.c | .addr = (uintptr_t)e.u.CreateProcessInfo.lpBaseOfImage, | .addr = 0,
+win | dbg/win/target.c | if (t->threads[i].id != step_thread) SuspendThread(t->threads[i].handle); | if (t->threads[i].id != step_thread) (void)0;
+win | dbg/win/target.c | if (t->threads[i].id != t->step) ResumeThread(t->threads[i].handle); | if (t->threads[i].id != t->step) (void)0;
+win | dbg/win/target.c | for (uint32_t i = 0; t->step && i < t->thread_count; i += 1) if (t->threads[i].id != t->step) | for (uint32_t i = 0; i < t->thread_count; i += 1) if (t->threads[i].id != t->step)
+win | dbg/win/target.c | if ((t->step = step_thread)) thread_at( | if (step_thread) thread_at(
+win | dbg/win/target.c | if (t->step) SuspendThread(e.u.CreateThread.hThread); | if (t->step) (void)0;
 # ---- the list itself: a plant whose text is gone plants nothing ----
 list | tests/plants.txt | = 1,\noracle \p dbg/rdi.c \p [RDI_LOCALS] | = 1,\noracle \p dbg/rdi.c \p [RDI_NO_SUCH]

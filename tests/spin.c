@@ -5,22 +5,23 @@
 #include <windows.h>
 #include <stdio.h>
 
-volatile long long counts[4], handled;
+volatile long long counts[5], handled;   /* one for each of the four threads that stay, one for the short-lived */
 volatile int quit;
 
-__declspec(noinline) void first(int i) { counts[i] += 1; }
-__declspec(noinline) void second(int i) { counts[i] += 2; }
-__declspec(noinline) void third(int i) { counts[i] += 3; }
+/* counts[i] += n, written out so that the first instruction torn by a trap byte does harm: without its first byte it
+   leaves half of the address in rax, and a thread that went on behind a trap byte faults (stress_target.c, Whole). */
+#define ADDER(name, n) void name(long long i); __asm__(".text\n" #name ": lea counts(%rip), %rax\n addq $" #n ", (%rax,%rcx,8)\n ret\n");
+ADDER(first, 1) ADDER(second, 2) ADDER(third, 3)
 
 static DWORD WINAPI worker(void *arg)
 {
-  for (;;) first((int)(INT_PTR)arg), second((int)(INT_PTR)arg), third((int)(INT_PTR)arg);
+  for (;;) first((INT_PTR)arg), second((INT_PTR)arg), third((INT_PTR)arg);
   return 0;   /* never; mingw's gcc asks for it */
 }
 
 static DWORD WINAPI brief(void *arg)
 {
-  third((int)(INT_PTR)arg);
+  third((INT_PTR)arg);
   return 0;
 }
 
@@ -41,7 +42,7 @@ int main(void)
     OutputDebugStringA(text);
     if (n % 8 == 7) RaiseException(0xe0000001, 0, 0, NULL);
     for (int i = 0; i < 100000; i += 1) first(3), second(3);   /* this thread is busy too */
-    HANDLE h = CreateThread(NULL, 0, brief, (void *)(INT_PTR)3, 0, NULL);
+    HANDLE h = CreateThread(NULL, 0, brief, (void *)(INT_PTR)4, 0, NULL);
     WaitForSingleObject(h, INFINITE);
     CloseHandle(h);
   }

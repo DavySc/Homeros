@@ -57,11 +57,15 @@ for l in open(sys.argv[1] + "/tests/plants.txt"):
     # process control on Windows, here under Wine (WINE names it). On Windows itself (.github/workflows/win-check.yml): WINE=env WINCC=gcc,
     # and there also as `windows`, the step of the plants that Wine cannot catch (its kernel differs: knowledge base, lesson L43)
     command -v "${WINE:-wine}" >/dev/null || { echo "check: no Wine (set WINE): the process-control stress test cannot run"; return 3; }
-    for f in tests/spin.c "dbg/win/target.c tests/stress_target.c"; do
-      ${WINCC:-x86_64-w64-mingw32-gcc} -std=c17 -O1 -g -Wall -Wextra -Werror $(printf "$src/%s " $f) -o "$b/$(basename "${f##* }" .c).exe" || return 2
+    for f in tests/spin.c "dbg/win/target.c tests/stress_target.c" "dbg/win/target.c dbg/unwind.c tests/stress_unwind.c"; do
+      ${WINCC:-x86_64-w64-mingw32-gcc} -std=c17 -O1 -g -Wall -Wextra -Werror $(printf "$src/%s " $f) -o "$b/$(basename "${f##* }" .c).exe" -ldbghelp || return 2
     done
     for mode in "" attach; do
       (cd "$b" && WINEDEBUG=-all timeout 600 "${WINE:-wine}" ./stress_target.exe spin.exe "${STRESS_ROUNDS:-2000}" "${SEED:-1}" $mode 2>/dev/null | grep "^stress_target" | tee stress.out; grep -q "rounds:" stress.out) || return 1
+    done
+    # the unwinder against the system's stack walker, single-stepping three recorded programs: in the loader, from the entry point, from main
+    for p in steps deep frames_o2; do
+      (cd "$b" && WINEDEBUG=-all timeout 900 "${WINE:-wine}" ./stress_unwind.exe "$OLDPWD/rdi/$p.exe" "${UNWIND_STEPS:-2000}" "$(sed -n '1s/.* +0x\([0-9a-f]*\) .*/\1/p' "$OLDPWD/traces/$p.over.txt")" 2>/dev/null | grep "^stress_unwind" | tee unwind.out; grep -q "frames agree" unwind.out) || return 1
     done
   fi
   if [ "$what" = fuzz ] || [ "$what" = all ]; then

@@ -10,7 +10,7 @@ struct Target {
   DWORD pid, held;              /* pid: 0 once it has ended. held: the thread whose debug event is not yet continued; 0 after a halt */
   DWORD held_status;            /* what to answer it with */
   DWORD step;                   /* the thread this run steps, or 0 */
-  char *text; uint32_t text_cap;   /* the last debug string */
+  char *text; uint32_t text_cap;   /* the last debug string or module path */
   Thread *threads; uint32_t thread_count, thread_cap;
   Trap *traps; uint32_t trap_count, trap_cap;   /* of this run; all out of memory while stopped */
 };
@@ -27,8 +27,25 @@ static void thread_add(Target *t, DWORD id, HANDLE handle)
   t->threads[t->thread_count++] = (Thread){id, handle};
 }
 
+static char *text_room(Target *t, uint32_t n)
+{
+  if (n > t->text_cap && !(t->text = realloc(t->text, t->text_cap = n))) abort();
+  return t->text;
+}
+
+/* The path of the file a module event came with (the event's handle is ours to close), in t->text. */
+static const char *module_path(Target *t, HANDLE file)
+{
+  char *text = text_room(t, MAX_PATH);
+  DWORD n = file ? GetFinalPathNameByHandleA(file, text, t->text_cap, 0) : 0;
+  if (n >= t->text_cap) text = text_room(t, n + 1), n = GetFinalPathNameByHandleA(file, text, t->text_cap, 0);   /* a longer path: the size it needs came back */
+  if (file) CloseHandle(file);
+  text[n < t->text_cap ? n : 0] = 0;
+  return t->text;
+}
+
 /* The first event of a process is its creation; it is held, so the target is stopped. */
-Target *target_open(const char *command_line, uint32_t pid)
+Target *target_open(const char *command_line, uint32_t pid, TargetEvent *first)
 {
   STARTUPINFOA start = {.cb = sizeof start};
   PROCESS_INFORMATION made = {0};
@@ -38,11 +55,11 @@ Target *target_open(const char *command_line, uint32_t pid)
   DEBUG_EVENT e;
   if (!ok || !WaitForDebugEvent(&e, INFINITE) || e.dwDebugEventCode != CREATE_PROCESS_DEBUG_EVENT) return NULL;
   if (made.hProcess) CloseHandle(made.hProcess), CloseHandle(made.hThread);   /* the event's handles serve */
-  if (e.u.CreateProcessInfo.hFile) CloseHandle(e.u.CreateProcessInfo.hFile);
   Target *t = calloc(1, sizeof *t);
   if (!t) abort();
   *t = (Target){.process = e.u.CreateProcessInfo.hProcess, .pid = e.dwProcessId, .held = e.dwThreadId, .held_status = DBG_CONTINUE};
   thread_add(t, e.dwThreadId, e.u.CreateProcessInfo.hThread);
+  *first = (TargetEvent){.kind = TARGET_MODULE, .thread = e.dwThreadId, .addr = (uintptr_t)e.u.CreateProcessInfo.lpBaseOfImage, .text = module_path(t, e.u.CreateProcessInfo.hFile)};
   return t;
 }
 
@@ -87,6 +104,7 @@ void target_resume(Target *t, const uint64_t *traps, uint32_t count, uint32_t st
   for (uint32_t i = 0; i < count; i += 1) t->traps[i] = (Trap){.addr = traps[i]}, t->traps[i].in = target_read(t, traps[i], &t->traps[i].own, 1);
   for (uint32_t i = 0; i < count; i += 1) if (t->traps[i].in) t->traps[i].in = target_write(t, traps[i], &(uint8_t){0xcc}, 1);
   if ((t->step = step_thread)) thread_at(thread_handle(t, step_thread), NULL, true);
+  for (uint32_t i = 0; step_thread && i < t->thread_count; i += 1) if (t->threads[i].id != step_thread) SuspendThread(t->threads[i].handle);   /* until the stop */
   if (t->held) ContinueDebugEvent(t->pid, t->held, t->held_status);
   else for (uint32_t i = 0; i < t->thread_count; i += 1) ResumeThread(t->threads[i].handle);
   t->held = 0;
@@ -106,6 +124,7 @@ static void stop(Target *t)
       if (t->traps[k].in && t->traps[k].addr == c.Rip - 1) { thread_at(t->threads[i].handle, &t->traps[k].addr, false); break; }
   }
   for (uint32_t i = 0; i < t->trap_count; i += 1) if (t->traps[i].in) target_write(t, t->traps[i].addr, &t->traps[i].own, 1);
+  for (uint32_t i = 0; t->step && i < t->thread_count; i += 1) if (t->threads[i].id != t->step) ResumeThread(t->threads[i].handle);
 }
 
 bool target_wait(Target *t, uint32_t ms, TargetEvent *out)
@@ -116,20 +135,21 @@ bool target_wait(Target *t, uint32_t ms, TargetEvent *out)
   out->thread = e.dwThreadId;
   DWORD status = DBG_CONTINUE;
   switch (e.dwDebugEventCode) {
-  case CREATE_THREAD_DEBUG_EVENT: thread_add(t, e.dwThreadId, e.u.CreateThread.hThread), out->kind = TARGET_THREAD; break;
+  case CREATE_THREAD_DEBUG_EVENT:
+    thread_add(t, e.dwThreadId, e.u.CreateThread.hThread), out->kind = TARGET_THREAD;
+    if (t->step) SuspendThread(e.u.CreateThread.hThread);   /* begun before the step, heard of only now: it has run nothing yet, and waits like the others */
+    break;
   case EXIT_THREAD_DEBUG_EVENT:
     for (uint32_t i = 0; i < t->thread_count; i += 1) if (t->threads[i].id == e.dwThreadId) t->threads[i] = t->threads[--t->thread_count];
     out->kind = TARGET_THREAD_GONE;
     break;
   case LOAD_DLL_DEBUG_EVENT:
-    if (e.u.LoadDll.hFile) CloseHandle(e.u.LoadDll.hFile);
-    out->kind = TARGET_MODULE, out->addr = (uintptr_t)e.u.LoadDll.lpBaseOfDll;
+    out->kind = TARGET_MODULE, out->addr = (uintptr_t)e.u.LoadDll.lpBaseOfDll, out->text = module_path(t, e.u.LoadDll.hFile);
     break;
   case UNLOAD_DLL_DEBUG_EVENT: out->kind = TARGET_MODULE_GONE, out->addr = (uintptr_t)e.u.UnloadDll.lpBaseOfDll; break;
   case OUTPUT_DEBUG_STRING_EVENT:   /* readable now, while the thread that wrote it waits for the answer */
     out->code = e.u.DebugString.nDebugStringLength;
-    if (out->code > t->text_cap && !(t->text = realloc(t->text, t->text_cap = (uint32_t)out->code))) abort();
-    if (target_read(t, (uintptr_t)e.u.DebugString.lpDebugStringData, t->text, (uint32_t)out->code)) out->kind = TARGET_OUTPUT, out->text = t->text;
+    if (target_read(t, (uintptr_t)e.u.DebugString.lpDebugStringData, text_room(t, (uint32_t)out->code), (uint32_t)out->code)) out->kind = TARGET_OUTPUT, out->text = t->text;
     break;
   case EXIT_PROCESS_DEBUG_EVENT:   /* nothing is left to hold */
     ContinueDebugEvent(e.dwProcessId, e.dwThreadId, DBG_CONTINUE);

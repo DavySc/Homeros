@@ -1,13 +1,14 @@
-# Process control on real Windows: the stress test that check.sh runs under Wine, natively and longer.
+# Process control and the unwinder on real Windows: what check.sh runs under Wine, natively and longer
+# (the unwinder here against Microsoft's own stack walker).
 name: win-check
 on:
   push:
     branches: [claude/project-thread-l4spyq]
-    paths: ['dbg/win/**', 'dbg/target.h', 'tests/spin.c', 'tests/stress_target.c', '.github/workflows/win-check.yml']
+    paths: ['dbg/win/**', 'dbg/target.h', 'dbg/unwind.*', 'tests/spin.c', 'tests/stress_*.c', 'tests/plants.txt', 'check.sh', '.github/workflows/win-check.yml']
 jobs:
   stress:
     runs-on: windows-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     defaults:
       run:
         shell: bash
@@ -20,6 +21,6 @@ jobs:
       - name: python3 for check.sh
         run: mkdir -p "$RUNNER_TEMP/shim" && printf '#!/bin/sh\nexec python "$@"\n' > "$RUNNER_TEMP/shim/python3" && echo "$RUNNER_TEMP/shim" >> "$GITHUB_PATH"
       - name: 10,000 random rounds, five seeds, launched and attached
-        run: gcc --version && for s in 1 2 3 4 5; do SEED=$s ./check.sh win || exit 1; done
+        run: gcc --version && for s in 1 2 3 4 5; do SEED=$s UNWIND_STEPS=$((s * 4000)) ./check.sh win || exit 1; done
       - name: Every plant is caught
-        run: ./check.sh plants win && ./check.sh plants windows
+        run: ./check.sh plants win && STRESS_ROUNDS=40000 ./check.sh plants windows   # what these two wait for comes about twice in 10,000 rounds

@@ -12,7 +12,7 @@
 
 enum { TARGET_RUNNING,                                   /* nothing happened in the time given */
        TARGET_THREAD, TARGET_THREAD_GONE,                /* noted while it runs on: a thread began or ended, */
-       TARGET_MODULE, TARGET_MODULE_GONE,                /*   a module was mapped at addr or unmapped, */
+       TARGET_MODULE, TARGET_MODULE_GONE,                /*   a module was mapped at addr (`text`: its file's path, good until the next wait) or unmapped, */
        TARGET_OUTPUT,                                    /*   the program wrote `code` bytes of debug text (`text`, good until the next wait), */
        TARGET_LATE,                                      /*   the event of a trap or a step of an earlier run came only now: nothing to stop for
                                                               (code 1: its thread still stood behind the trap byte and was put back) */
@@ -26,16 +26,19 @@ typedef struct { uint64_t gp[16], rip, rflags; } TargetRegs;
 typedef struct Target Target;
 
 /* Starts command_line under the debugger, or attaches to process `pid` when command_line is
-   null. The target is stopped before its first instruction (attached: wherever it was). */
-Target *target_open(const char *command_line, uint32_t pid);
-/* Plants the traps and lets the target run; step_thread (0: none) runs one instruction. */
+   null. The target is stopped before its first instruction (attached: wherever it was).
+   first: the program itself, as a TARGET_MODULE event. */
+Target *target_open(const char *command_line, uint32_t pid, TargetEvent *first);
+/* Plants the traps and lets the target run; or, with step_thread, lets that thread alone run one
+   instruction (alone, so that no other thread passes a place whose trap is out for the step). */
 void target_resume(Target *t, const uint64_t *traps, uint32_t count, uint32_t step_thread);
 /* While running: waits up to ms for something to happen. True once the target is stopped. */
 bool target_wait(Target *t, uint32_t ms, TargetEvent *e);
 /* While running: stops every thread where it is. */
 void target_halt(Target *t);
 /* While stopped. False when the memory or the thread is not there. */
-bool target_read(Target *t, uint64_t addr, void *bytes, uint32_t n);
+typedef bool TargetRead(Target *t, uint64_t addr, void *bytes, uint32_t n);   /* for code that tests run on memory of their own */
+TargetRead target_read;
 bool target_write(Target *t, uint64_t addr, const void *bytes, uint32_t n);
 bool target_regs(Target *t, uint32_t thread, TargetRegs *regs);
 /* Ends the target process and frees t. */

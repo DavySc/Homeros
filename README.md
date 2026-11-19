@@ -19,9 +19,11 @@ before the next starts; no duplicated code.
 | `oracle/` | Scripts that record what the real RAD Debugger (pinned commit) does on the subjects |
 | `traces/` | Those recordings, committed by the runner; the engine's stepping is compared with them |
 | `rdi/` | RAD's conversion of each subject's debug info and its text dump, committed by the runner |
-| `dbg/` | The debugger: `rdi` (debug info reader), `queue` (the two queues between editor and engine thread) |
+| `dbg/` | The debugger: `rdi` (debug info reader), `msf`, `pdb`, `conv` (PDB to RDI), `queue` (the two queues between editor and engine thread), `target.h` with `win/target.c` (process control), `x64` (what stepping needs to know of an instruction), `unwind` (one step up the stack) |
 | `specs/` | TLA+ models, each with broken variants that must fail (`specs/check.sh`) |
 | `tests/` | Known-answer tests, the stress test, fuzzers, the comparison with RAD's dump, `plants.txt` |
 
-`./check.sh` runs everything (set `TLA_JAR` to `tla2tools.jar`); `./check.sh plants` shows every check
-fails on its planted bugs.
+`./check.sh` runs everything (set `TLA_JAR` to `tla2tools.jar`, and `WINE` to a Wine for the Windows parts);
+`./check.sh <step>` runs one step (`list`, `test`, `specs`, `oracle`, `x64`, `win`, `fuzz`); `./check.sh plants [step]`
+shows every check fails on its planted bugs. On real Windows the `win` step and its plants run in
+`.github/workflows/win-check.yml`.
