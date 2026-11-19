@@ -52,6 +52,24 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
         found = rdi_at(&r, RDI_GLOBALS, RdiSymbol, rdi_vmap(&r, RDI_GLOBAL_VMAP, off));
         if (off - (found->location & 0x00ffffffffffffff) >= rdi_at(&r, RDI_TYPE_NODES, RdiType, found->type)->byte_size) abort();
       }
+    /* the scopes share out the locals in order; a local names its scope and a type that is there; its place is none, at or in a
+       register, bytecode that is all there, or a set of such places that is all there */
+    uint64_t local = 1;
+    for (uint64_t i = 1; i < r.s[RDI_SCOPES].n; i += 1) {
+      const RdiScope *c = rdi_at(&r, RDI_SCOPES, RdiScope, i);
+      if (c->local_count && c->local_first != local) abort();
+      local += c->local_count;
+      for (uint64_t j = c->local_first; j < local && c->local_count; j += 1) {
+        const RdiSymbol *y = rdi_at(&r, RDI_LOCALS, RdiSymbol, j);
+        uint64_t l = y->location, cases = l >> 56 == 9 ? l >> 32 & 0xffffff : 1;
+        if (y->container_flags != 2 || y->container != i || y->type >= r.s[RDI_TYPE_NODES].n || (l >> 56 == 9 && (l & 0xffffffff) + cases > r.s[RDI_LOCATION_SETS].n)) abort();
+        for (uint64_t k = 0; k < cases; k += 1) {
+          uint64_t at = l >> 56 == 9 ? rdi_at(&r, RDI_LOCATION_SETS, RdiLocationCase, (l & 0xffffffff) + k)->location : l, kind = at >> 56;
+          if (!(kind == 1 || kind == 3 || kind == 4 || kind == 5 || at == 0) || (l >> 56 == 9 && at == 0) || (kind == 1 && (at & 0x00ffffffffffffff) + 16 > r.s[RDI_LOCATION_BYTECODE].n)) abort();
+        }
+      }
+    }
+    if (local != r.s[RDI_LOCALS].n) abort();
     free(rdi);
   }
   free(buf);

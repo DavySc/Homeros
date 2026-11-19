@@ -52,6 +52,11 @@ typedef struct { uint16_t kind, pad; uint32_t name, type, off; } RdiMember;
 typedef struct { uint32_t name, pad; uint64_t val; } RdiEnumMember;
 typedef struct { uint32_t name; uint8_t flags, container_flags; uint16_t reserved; uint64_t location;
                  uint32_t container, type, root_scope, link_name; } RdiSymbol;
+/* One case of a location set (RDI_LocationSetElement): where the location holds. A location is 64 bits, its kind (RDI_LocationKind) in
+   the top byte: 1 the address is what the bytecode at this offset computes; 3 at register (bits 48 to 55) + offset (16 bits, signed, from
+   bit 32); 4 at the address stored there; 5 in the register; 6 at this offset in the image; 7 in the thread's block; 8 in the location
+   constants; 9 a set: the count from bit 32, the first case below. */
+typedef struct { uint64_t first, opl, location; } RdiLocationCase;
 typedef struct { uint32_t bucket_base, node_base, bucket_count, node_count; } RdiNameMap;
 typedef struct { uint32_t first_node, node_count; } RdiBucket;
 typedef struct { uint32_t string, match_count, match; } RdiNameNode;

@@ -15,7 +15,7 @@ static const uint8_t elem_size[RDI_SECTIONS] = {
   [RDI_GLOBAL_VMAP] = sizeof(RdiVMap), [RDI_THREAD_VARS] = sizeof(RdiSymbol),
   [RDI_CONSTANTS] = sizeof(RdiSymbol), [RDI_PROCEDURES] = sizeof(RdiSymbol),
   [RDI_LOCALS] = sizeof(RdiSymbol), [RDI_LOCATION_BYTECODE] = 1, [RDI_LOCATION_CONSTANTS] = 8,
-  [RDI_LOCATION_SETS] = 1, [RDI_MD5] = 1, [RDI_SHA1] = 1, [RDI_SHA256] = 1, [RDI_TIMESTAMPS] = 8,
+  [RDI_LOCATION_SETS] = sizeof(RdiLocationCase), [RDI_MD5] = 1, [RDI_SHA1] = 1, [RDI_SHA256] = 1, [RDI_TIMESTAMPS] = 8,
   [RDI_NAME_MAPS] = sizeof(RdiNameMap), [RDI_NAME_MAP_BUCKETS] = sizeof(RdiBucket),
   [RDI_NAME_MAP_NODES] = sizeof(RdiNameNode),
 };

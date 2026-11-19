@@ -5,7 +5,7 @@
 set -eu
 out=$1; mkdir -p "$out/obj"; here=$(cd "$(dirname "$0")/.." && pwd)
 link() { lld-link /nologo /debug /nodefaultlib /entry:main /subsystem:console /dynamicbase:no "$@"; }
-for s in steps crash deep blocks gap; do
+for s in steps crash deep blocks gap frames; do
   for o in O0 O2; do
     clang --target=x86_64-pc-windows-msvc -g -gcodeview -$o -ffreestanding -c "$here/subjects/$s.c" -o "$out/obj/$s-$o.obj"
     link "$out/obj/$s-$o.obj" /out:"$out/$s-$o.exe" /pdb:"$out/$s-$o.pdb"

@@ -3,7 +3,7 @@
    v <section> <voff> | l <voff> | s <file> <line> | n <kind> <hex name> | t <string idx> |
    p <procedure idx> | c <scope idx> | L <voff> | S <line> <hex path> | U <voff> | B <section> |
    N <section> | D <scope idx> | u <unit idx> | T <type idx> | P <procedure idx> | M <udt idx> |
-   G <section> <symbol idx> | O <voff> */
+   G <section> <symbol idx> | O <voff> | V <scope idx> */
 #include "../dbg/rdi.h"
 #include "../dbg/load.h"
 #include <stdbool.h>
@@ -42,6 +42,34 @@ static void variable(const Rdi *r, int section, uint64_t idx)
   fwrite(name.p, 1, name.n, stdout);
   printf("\t%u %u %llx\t", y->container_flags >> 7, (unsigned)(y->location >> 56), (unsigned long long)(y->location >> 56 == 8 ? *rdi_at(r, RDI_LOCATION_CONSTANTS, uint64_t, off / 8) : off));
   type(r, y->type);
+}
+
+/* where a local is: none; `3 reg off` at register + offset, `4` at the address stored there, `5 reg` in the register; `1` then the
+   bytecode's operations as op:operand; a set as [first-end place] for each case */
+static void place(const Rdi *r, uint64_t l, bool in_set)
+{
+  static const uint8_t operand[64] = {[4] = 1, [5] = 4, [11] = 1, [12] = 2, [13] = 4, [21] = 2, [42] = 1};   /* bytes after each operation RAD writes for a place */
+  unsigned kind = (unsigned)(l >> 56);
+  if (kind == 9 && !in_set) {
+    for (uint64_t i = 0; i < (l >> 32 & 0xffffff); i += 1) {
+      const RdiLocationCase *c = rdi_at(r, RDI_LOCATION_SETS, RdiLocationCase, (l & 0xffffffff) + i);
+      printf("[%llx-%llx ", (unsigned long long)c->first, (unsigned long long)c->opl);
+      place(r, c->location, true);
+      printf("]");
+    }
+  } else if (kind == 1) {
+    printf("1");
+    for (uint64_t at = l & 0x00ffffffffffffff, steps = 0; steps < 16; steps += 1) {
+      RdiSpan op = rdi_run(r, RDI_LOCATION_BYTECODE, at, 1);
+      if (op.n == 0 || *(const uint8_t *)op.p == 0) break;
+      RdiSpan p = rdi_run(r, RDI_LOCATION_BYTECODE, at + 1, operand[*(const uint8_t *)op.p & 63]);
+      printf(" %u:", *(const uint8_t *)op.p);
+      for (uint64_t i = p.n; i > 0; i -= 1) printf("%02x", ((const uint8_t *)p.p)[i - 1]);
+      at += 1 + p.n;
+    }
+  } else if (kind == 3 || kind == 4) printf("%u %u %d", kind, (unsigned)(l >> 48 & 0xff), (int16_t)(l >> 32 & 0xffff));
+  else if (kind == 5) printf("5 %u", (unsigned)(l >> 48 & 0xff));
+  else printf(kind ? "?%u" : "none", kind);
 }
 
 int main(int argc, char **argv)
@@ -83,6 +111,18 @@ int main(int argc, char **argv)
         fwrite(s.p, 1, s.n, stdout);
         if (u->flags & 1) printf("=%llu; ", (unsigned long long)e->val);
         else { printf(" %x+%u ", m->kind, m->off); type(&r, m->type); printf("; "); }
+      }
+    } else if (op == 'V') {   /* a scope's locals by meaning: name, whether a parameter, type, place */
+      const RdiScope *c = rdi_at(&r, RDI_SCOPES, RdiScope, a);
+      for (uint32_t i = c->local_first; i - c->local_first < c->local_count; i += 1) {
+        const RdiSymbol *y = rdi_at(&r, RDI_LOCALS, RdiSymbol, i);
+        s = rdi_str(&r, y->name);
+        fwrite(s.p, 1, s.n, stdout);
+        printf(" %u %u.%u ", y->flags, y->container_flags, y->container == a);
+        type(&r, y->type);
+        printf(" @ ");
+        place(&r, y->location, false);
+        printf("; ");
       }
     } else if (op == 'G' && scanf("%llu", &b) == 1) variable(&r, (int)a < RDI_SECTIONS ? (int)a : 0, b);
     else if (op == 'O') variable(&r, RDI_GLOBALS, rdi_vmap(&r, RDI_GLOBAL_VMAP, a));   /* the global variable at an offset */

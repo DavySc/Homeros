@@ -80,7 +80,9 @@ static uint32_t intern(Names *m, const void *key, uint32_t len)
 
 enum { S_END = 0x0006, S_THUNK32 = 0x1102, S_BLOCK32 = 0x1103, S_CONSTANT = 0x1107, S_UDT = 0x1108, S_LDATA32 = 0x110c, S_GDATA32 = 0x110d,
        S_PUB32 = 0x110e, S_LTHREAD32 = 0x1112, S_GTHREAD32 = 0x1113, S_LPROC32 = 0x110f, S_GPROC32 = 0x1110,
-       S_INLINESITE = 0x114d, S_INLINESITE_END = 0x114e,   /* CV_SymKind */
+       S_INLINESITE = 0x114d, S_INLINESITE_END = 0x114e, S_FRAMEPROC = 0x1012, S_REGREL32 = 0x1111, S_LOCAL = 0x113e,
+       S_DEFRANGE_REGISTER = 0x1141, S_DEFRANGE_FRAMEPOINTER_REL, S_DEFRANGE_SUBFIELD_REGISTER, S_DEFRANGE_FRAMEPOINTER_REL_FULL_SCOPE,
+       S_DEFRANGE_REGISTER_REL, S_FILESTATIC = 0x1153,   /* CV_SymKind */
        LF_MODIFIER = 0x1001, LF_POINTER = 0x1002, LF_PROCEDURE = 0x1008, LF_MFUNCTION = 0x1009, LF_ARGLIST = 0x1201,
        LF_BITFIELD = 0x1205, LF_FIELDLIST = 0x1203, LF_METHODLIST = 0x1206, LF_BCLASS = 0x1400, LF_VBCLASS = 0x1401, LF_IVBCLASS = 0x1402,
        LF_INDEX = 0x1404, LF_VFUNCTAB = 0x1409, LF_ENUMERATE = 0x1502, LF_MEMBER = 0x150d, LF_STMEMBER = 0x150e, LF_METHOD = 0x150f,
@@ -93,6 +95,7 @@ typedef struct {
   Buf pairs;                 /* name map entries: (kind, string, index) */
   Buf scopes;                /* what each scope covers: (first, ~end, scope) */
   Buf globals;               /* what each global variable covers, the same way */
+  Buf cases;                 /* where local variables live: (first, end, location), each local's together */
   /* types: the PDB's type records and where each starts; per type id, 1 + the index of the type
      made for it (0: not made); the full definitions by name; scratch for a key or a parameter list */
   PdbSpan leaves;
@@ -487,6 +490,121 @@ static void data_symbol(Out *o, const Pdb *pdb, uint16_t kind, PdbSpan d, bool g
   }
 }
 
+/* What is known of the procedure being read: its S_FRAMEPROC (size, flags), whether its
+   locals are S_LOCAL records (CV_ProcFlag_OptDbgInfo), how many S_REGREL32 it has had, and the
+   local that S_DEFRANGE records add places to (1 + its index; 0: none). */
+typedef struct { uint32_t frame_size, frame_flags, regrels, target; bool framed, optimised; } Frame;
+
+/* RDI_RegCodeX64 for a CV_Reg: the general registers at every width, and xmm0 to xmm15 whole,
+   as four floats and as two doubles (a float or double local of optimised code is in one of
+   those parts). 0: the rest of CV_Reg_X64_XList, which no local of the files measured uses. */
+static uint64_t reg_code(uint32_t cv)
+{
+  static const uint8_t wide[] = {1, 4, 2, 3, 7, 8, 6, 5}, low[] = {7, 8, 6, 5};   /* rax rbx rcx rdx rsi rdi rbp rsp; sil dil bpl spl */
+  return cv == 0 ? 0 : cv <= 8 ? (cv - 1) % 4 + 1 : cv <= 24 ? (cv - 9) % 8 + 1 : cv >= 154 && cv <= 161 ? cv - 113
+       : cv >= 162 && cv <= 193 ? (cv - 162) / 4 + 41 : cv >= 194 && cv <= 209 ? (cv - 194) % 8 + 41 : cv >= 252 && cv <= 259 ? cv - 203
+       : cv >= 260 && cv <= 291 ? (cv - 260) / 4 + 49 : cv >= 292 && cv <= 307 ? (cv - 292) % 8 + 49 : cv >= 324 && cv <= 327 ? low[cv - 324] : cv >= 328 && cv <= 335 ? wide[cv - 328]
+       : cv >= 336 && cv <= 367 ? (cv - 336) % 8 + 9 : 0;
+}
+
+/* The location "at register + offset" (cv2r_location_from_addr_reg_off), or with `indirect`
+   "at the address stored there": the register and a 16-bit offset in the location itself; a
+   wider offset as bytecode (read the 8-byte register, push the offset as 32 bits and widen it
+   with its sign, add, [read 8 bytes], end) that the location names by its offset. */
+static uint64_t reg_plus(Out *o, uint64_t reg, int32_t off, bool indirect)
+{
+  if (off >= INT16_MIN && off <= INT16_MAX) return (indirect ? 4ull : 3ull) << 56 | reg << 48 | (uint64_t)(uint16_t)off << 32;
+  uint64_t at = o->s[RDI_LOCATION_BYTECODE].n;
+  uint8_t code[] = {5, (uint8_t)reg, 8, 0, 0, 13, (uint8_t)off, (uint8_t)(off >> 8), (uint8_t)(off >> 16), (uint8_t)(off >> 24), 42, 32, 21, 0, 0, 4, 8, 0};
+  if (!indirect) code[15] = 0;
+  memcpy(add(&o->s[RDI_LOCATION_BYTECODE], indirect ? 18 : 16), code, indirect ? 18 : 16);
+  return 1ull << 56 | at;
+}
+
+/* The places of the target local over a CV_LvarAddrRange (offset, section, length at `at`)
+   minus the gaps listed after it (cv2r_location_case_list_push_over_lvar_addr_range). */
+static void ranged(Out *o, const Pdb *pdb, PdbSpan d, uint32_t at, uint64_t location)
+{
+  uint64_t first = pdb_voff(pdb, le16(d.p + at + 4), le32(d.p + at)), cursor = first;
+  for (uint32_t gap = at + 8; d.n - gap >= 4; gap += 4) {   /* CV_LvarAddrGap: offset from the range's start, length */
+    if (cursor < first + le16(d.p + gap)) rec(&o->cases, cursor, first + le16(d.p + gap), location, 0);
+    cursor = first + le16(d.p + gap) + le16(d.p + gap + 2);
+  }
+  if (cursor < first + le16(d.p + at + 6)) rec(&o->cases, cursor, first + le16(d.p + at + 6), location, 0);
+}
+
+/* A local variable's record in the scope `top` ("symbols pass 2"). Locals are kept in record
+   order with their scope in `container` and, for those with S_DEFRANGE records, their first
+   case in `root_scope` and how many in `link_name`, until `locals_by_scope` puts each scope's together.
+   S_REGREL32 (unoptimised MSVC): at register + offset, everywhere. It is a parameter when it
+   is among the first as many as the procedure's type has; a parameter that does not fit a
+   register (over 8 bytes, or not 1, 2, 4 or 8) is at the address stored there. One without a
+   type beyond the frame is where the caller wants a large return value: it gets the return type.
+   S_LOCAL (optimised MSVC, clang): a local whose places are the S_DEFRANGE records after it. */
+static void local_symbol(Out *o, const Pdb *pdb, Frame *f, uint32_t top, uint16_t kind, PdbSpan d)
+{
+  const RdiSymbol *proc = (const RdiSymbol *)o->s[RDI_PROCEDURES].p + ((const RdiScope *)o->s[RDI_SCOPES].p)[top].proc;
+  uint64_t before = o->cases.n;
+  RdiSymbol *target = (RdiSymbol *)o->s[RDI_LOCALS].p + f->target;
+  if (kind == S_REGREL32 && d.n >= 10) {                   /* CV_SymRegrel32: offset, type, register, name */
+    uint32_t nth = f->regrels++, off = le32(d.p), type = type_of(o, le32(d.p + 4)), reg = le16(d.p + 8);
+    if (f->optimised || !top) return;
+    const RdiType *types = (const RdiType *)o->s[RDI_TYPE_NODES].p, *made = types + proc->type;
+    bool param = (made->kind == 0x1005 || made->kind == 0x1006) && nth < made->b, big = types[type].byte_size > 8 || (types[type].byte_size & (types[type].byte_size - 1)) != 0;
+    bool returned = (reg == 334 || reg == 335) && f->framed && off > f->frame_size && le32(d.p + 4) == 0 && proc->type != 0;   /* rbp, rsp */
+    PdbSpan name = pdb_string(d, &(uint32_t){10});
+    *(RdiSymbol *)add(&o->s[RDI_LOCALS], sizeof(RdiSymbol)) = (RdiSymbol){.name = intern(&o->strings, name.p, name.n), .flags = param, .type = returned ? made->a : type, .container = top, .location = reg_plus(o, reg_code(reg), (int32_t)off, returned || (param && big))};
+    return;
+  } else if (kind == S_LOCAL && d.n >= 6 && top) {         /* CV_SymLocal: type, flags (1 parameter, 0x200 global, 0x400 static), name */
+    PdbSpan name = pdb_string(d, &(uint32_t){6});
+    f->target = le16(d.p + 4) & 0x600 ? 0 : COUNT(o->s[RDI_LOCALS], RdiSymbol);
+    if (f->target) *(RdiSymbol *)add(&o->s[RDI_LOCALS], sizeof(RdiSymbol)) = (RdiSymbol){.name = intern(&o->strings, name.p, name.n), .flags = le16(d.p + 4) & 1, .type = type_of(o, le32(d.p)), .container = top, .root_scope = (uint32_t)(before / 32)};
+  } else if (kind == S_FILESTATIC) f->target = 0;
+  else if (!f->target) return;
+  else if (kind == S_DEFRANGE_REGISTER && d.n >= 12) ranged(o, pdb, d, 4, 5ull << 56 | reg_code(le16(d.p)) << 48);   /* register, attributes, range: the value is in the register */
+  else if (kind == S_DEFRANGE_SUBFIELD_REGISTER && d.n >= 16 && le32(d.p + 4) == 0) ranged(o, pdb, d, 8, 5ull << 56 | reg_code(le16(d.p)) << 48);   /* only a part at offset 0 */
+  else if (kind == S_DEFRANGE_REGISTER_REL && d.n >= 16) ranged(o, pdb, d, 8, reg_plus(o, reg_code(le16(d.p)), (int32_t)le32(d.p + 4), false));   /* register, flags, offset, range */
+  else if ((kind == S_DEFRANGE_FRAMEPOINTER_REL && d.n >= 12) || (kind == S_DEFRANGE_FRAMEPOINTER_REL_FULL_SCOPE && d.n >= 4)) {
+    /* offset from the frame pointer, which S_FRAMEPROC's flags name for parameters and for the rest: 1 rsp, 2 rbp, 3 r13 */
+    static const uint8_t pointer[] = {0, 5, 6, 14};
+    if (!f->framed) return;
+    uint64_t location = reg_plus(o, pointer[f->frame_flags >> (target->flags & 1 ? 16 : 14) & 3], (int32_t)le32(d.p), false);
+    if (kind == S_DEFRANGE_FRAMEPOINTER_REL) ranged(o, pdb, d, 4, location);
+    else rec(&o->cases, 0, UINT64_MAX, location, 0);
+  }
+  if (f->target) ((RdiSymbol *)o->s[RDI_LOCALS].p)[f->target].link_name += (uint32_t)((o->cases.n - before) / 32);
+}
+
+/* Puts each scope's locals together, in record order, and writes each local's location: none
+   without a case; the case itself when it holds everywhere; else a set (kind 9: the count
+   above bit 32, the first element below) of (first, end, location).
+   RAD writes a lone case as the location itself whatever it covers, so a parameter that is in
+   rcx for the first 4 bytes of an optimised function reads rcx all the way down; here a case
+   that does not hold everywhere is always in a set. */
+static void locals_by_scope(Out *o)
+{
+  uint32_t n = COUNT(o->s[RDI_LOCALS], RdiSymbol), scopes = COUNT(o->s[RDI_SCOPES], RdiScope);
+  RdiScope *s = (RdiScope *)o->s[RDI_SCOPES].p;
+  RdiSymbol *all = (RdiSymbol *)o->s[RDI_LOCALS].p, *in = malloc((n + 1) * sizeof *in);
+  const uint64_t *c = (const uint64_t *)o->cases.p;
+  if (!in) abort();
+  memcpy(in, all, n * sizeof *in);
+  for (uint32_t i = 1; i < n; i += 1) s[in[i].container].local_count += 1;
+  for (uint32_t i = 1, first = 1; i < scopes; first += s[i].local_count, i += 1) s[i].local_first = first;
+  for (uint32_t i = 1; i < scopes; i += 1) s[i].local_count = 0;
+  for (uint32_t i = 1; i < n; i += 1) {
+    RdiSymbol *y = all + s[in[i].container].local_first + s[in[i].container].local_count++;
+    uint64_t mine = 4 * (uint64_t)in[i].root_scope;   /* its first case, when it has any */
+    *y = (RdiSymbol){.name = in[i].name, .flags = in[i].flags, .container_flags = 2, .container = in[i].container, .type = in[i].type, .location = in[i].location};   /* RDI_ContainerKind_Scope */
+    if (in[i].link_name == 1 && c[mine] == 0 && c[mine + 1] == UINT64_MAX) y->location = c[mine + 2];
+    else if (in[i].link_name != 0) y->location = 9ull << 56 | (uint64_t)in[i].link_name << 32 | COUNT(o->s[RDI_LOCATION_SETS], RdiLocationCase);
+    for (uint32_t k = 0; y->location >> 56 == 9 && k < in[i].link_name; k += 1)
+      *(RdiLocationCase *)add(&o->s[RDI_LOCATION_SETS], sizeof(RdiLocationCase)) = (RdiLocationCase){c[mine + 4 * k], c[mine + 4 * k + 1], c[mine + 4 * k + 2]};
+  }
+  for (uint32_t i = 1; i < scopes; i += 1) if (s[i].local_count == 0) s[i].local_first = 0;
+  free(in);
+}
+
 /* A line table from records (offset, order, file, line), sorted here. */
 static uint32_t line_table(Out *o, Buf *lines)
 {
@@ -607,8 +725,8 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
   Out o = {0};
   Buf lines = {0}, maps = {0}, ranges = {0}, open = {0}, links = {0}, id_ats = {0};
   /* index 0 of every table is the record that means "none" */
-  static const int tables[] = {RDI_BINARY_SECTIONS, RDI_FILE_PATH_NODES, RDI_SOURCE_FILES, RDI_LINE_TABLES, RDI_SOURCE_LINE_MAPS, RDI_UNITS, RDI_SCOPES, RDI_PROCEDURES, RDI_INLINE_SITES, RDI_TYPE_NODES, RDI_INDEX_RUNS, RDI_UDTS, RDI_MEMBERS, RDI_ENUM_MEMBERS, RDI_GLOBALS, RDI_THREAD_VARS, RDI_CONSTANTS};
-  static const uint8_t table_size[] = {sizeof(RdiSection), sizeof(RdiPathNode), sizeof(RdiSourceFile), sizeof(RdiLineTable), sizeof(RdiSourceLineMap), sizeof(RdiUnit), sizeof(RdiScope), sizeof(RdiSymbol), sizeof(RdiInlineSite), sizeof(RdiType), 4, sizeof(RdiUdt), sizeof(RdiMember), sizeof(RdiEnumMember), sizeof(RdiSymbol), sizeof(RdiSymbol), sizeof(RdiSymbol)};
+  static const int tables[] = {RDI_BINARY_SECTIONS, RDI_FILE_PATH_NODES, RDI_SOURCE_FILES, RDI_LINE_TABLES, RDI_SOURCE_LINE_MAPS, RDI_UNITS, RDI_SCOPES, RDI_PROCEDURES, RDI_INLINE_SITES, RDI_TYPE_NODES, RDI_INDEX_RUNS, RDI_UDTS, RDI_MEMBERS, RDI_ENUM_MEMBERS, RDI_GLOBALS, RDI_THREAD_VARS, RDI_CONSTANTS, RDI_LOCALS, RDI_LOCATION_SETS};
+  static const uint8_t table_size[] = {sizeof(RdiSection), sizeof(RdiPathNode), sizeof(RdiSourceFile), sizeof(RdiLineTable), sizeof(RdiSourceLineMap), sizeof(RdiUnit), sizeof(RdiScope), sizeof(RdiSymbol), sizeof(RdiInlineSite), sizeof(RdiType), 4, sizeof(RdiUdt), sizeof(RdiMember), sizeof(RdiEnumMember), sizeof(RdiSymbol), sizeof(RdiSymbol), sizeof(RdiSymbol), sizeof(RdiSymbol), sizeof(RdiLocationCase)};
   for (unsigned i = 0; i < sizeof tables / sizeof *tables; i += 1) add(&o.s[tables[i]], table_size[i]);
   intern(&o.strings, "", 0);
   intern(&o.nodes, (uint32_t[2]){0, 0}, 8);
@@ -682,15 +800,21 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
        the stack of open scopes; every module leaves it empty. */
     unit.procs_first = COUNT(o.s[RDI_PROCEDURES], RdiSymbol);
     uint64_t base = 0;                                                      /* where the procedure being read starts */
+    Frame frame = {0};
     for (uint32_t at = 0; pdb_symbol(syms, &at, &kind, &d);) {
       uint32_t top = open.n ? *LAST(open, uint32_t) : 0, made = 0, inside = ((RdiScope *)o.s[RDI_SCOPES].p)[top].proc;
-      if ((kind == S_END || kind == S_INLINESITE_END) && open.n) open.n -= 4;
+      if (kind == S_END || kind == S_INLINESITE_END) frame.target = 0, open.n -= open.n ? 4 : 0;
       else if ((kind == S_GPROC32 || kind == S_LPROC32) && d.n >= 35) {   /* CV_SymProc32 */
         uint64_t voff = base = pdb_voff(&pdb, le16(d.p + 32), le32(d.p + 28));
         PdbSpan name = pdb_string(d, &(uint32_t){35});
         uint32_t proc = procedure(&o, (RdiSymbol){.name = intern(&o.strings, name.p, name.n), .container_flags = kind == S_GPROC32 ? 0x80 : 0, .type = type_of(&o, le32(d.p + 24))}, voff, voff + le32(d.p + 12));
         rec(&links, voff, 0, proc, 0);
         made = COUNT(o.s[RDI_SCOPES], RdiScope) - 1;
+        /* its frame is the last S_FRAMEPROC before the next procedure, wherever the compiler put it ("symbols pass 1") */
+        frame = (Frame){.optimised = d.p[34] & 0x80};
+        PdbSpan r;
+        for (uint32_t next = at; pdb_symbol(syms, &next, &kind, &r) && !((kind == S_GPROC32 || kind == S_LPROC32) && r.n >= 35);)
+          if (kind == S_FRAMEPROC && r.n >= 26) frame.frame_size = le32(r.p), frame.frame_flags = le32(r.p + 22), frame.framed = true;   /* CV_SymFrameproc */
       } else if (kind == S_THUNK32 && d.n >= 21) {                         /* CV_SymThunk32 */
         uint64_t voff = pdb_voff(&pdb, le16(d.p + 16), le32(d.p + 12));
         PdbSpan name = pdb_string(d, &(uint32_t){21});
@@ -723,7 +847,7 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
         PdbSpan name = pdb_symbol(ids, &id_at, &kind, &d) && (kind == LF_FUNC_ID || kind == LF_MFUNC_ID) ? pdb_string(d, &(uint32_t){8}) : (PdbSpan){0};
         made = scope(&o, inside, top, COUNT(o.s[RDI_INLINE_SITES], RdiInlineSite), start);
         *(RdiInlineSite *)add(&o.s[RDI_INLINE_SITES], sizeof(RdiInlineSite)) = (RdiInlineSite){.name = intern(&o.strings, name.p, name.n), .line_table = line_table(&o, &lines)};
-      } else data_symbol(&o, &pdb, kind, d, false);
+      } else data_symbol(&o, &pdb, kind, d, false), local_symbol(&o, &pdb, &frame, top, kind, d);
       if (made) *(uint32_t *)add(&open, 4) = made;
     }
     unit.procs_count = COUNT(o.s[RDI_PROCEDURES], RdiSymbol) - unit.procs_first;
@@ -776,6 +900,7 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
   }
   vmap_build(&o.s[RDI_SCOPE_VMAP], &o.scopes);
   vmap_build(&o.s[RDI_GLOBAL_VMAP], &o.globals);
+  locals_by_scope(&o);
   for (uint32_t i = 1; i < COUNT(o.s[RDI_TYPE_NODES], RdiType); i += 1) {   /* every type with a name is found by it */
     const RdiType *y = (const RdiType *)o.s[RDI_TYPE_NODES].p + i;
     if (y->kind < 0x1000 || (y->kind >= 0x2000 && y->kind < 0xf000)) named(&o.pairs, RDI_NAMES_TYPES, y->a, i);
@@ -822,7 +947,7 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
     if (o.s[k].n) memcpy(add(&file, (o.s[k].n + 7) / 8 * 8), o.s[k].p, o.s[k].n);
     free(o.s[k].p);
   }
-  Buf *rest[] = {&o.strings.slots, &o.nodes.keys, &o.nodes.at, &o.nodes.slots, &o.files.keys, &o.files.at, &o.files.slots, &o.pairs, &o.scopes, &o.globals, &lines, &maps, &ranges, &open, &links, &id_ats,
+  Buf *rest[] = {&o.strings.slots, &o.nodes.keys, &o.nodes.at, &o.nodes.slots, &o.files.keys, &o.files.at, &o.files.slots, &o.pairs, &o.scopes, &o.globals, &o.cases, &lines, &maps, &ranges, &open, &links, &id_ats,
                  &o.leaf_at, &o.made, &o.scratch, &o.defined_id, &o.defined.keys, &o.defined.at, &o.defined.slots};
   for (unsigned i = 0; i < sizeof rest / sizeof *rest; i += 1) free(rest[i]->p);
   pdb_close(&pdb);

@@ -14,21 +14,22 @@ def run(rdi, queries):
 def scopes(rdi):
     """per scope: parent, inline site, the offsets it covers (pieces without bytes left out), [thunk, container flags, is a root],
     name, link name, first child, next sibling, procedure, name of the procedure's unit ('' for a procedure made from a public
-    symbol, which RAD files under a unit of its own), and for an inlined call (the name of the inlined function, what its own
-    line table answers at each offset it names)"""
-    unit, out = {}, [(0, 0, (), [], '', '', 0, 0, 0, '', None)]
+    symbol, which RAD files under a unit of its own), for an inlined call (the name of the inlined function, what its own
+    line table answers at each offset it names), and its local variables"""
+    unit, out = {}, [(0, 0, (), [], '', '', 0, 0, 0, '', None, '')]
     for line in run(rdi, [f'u {i}' for i in range(1, int(run(rdi, ['N 16'])[0]))]):
         first, count, name = line.split(' ', 2)
         for p in range(int(first), int(first) + int(count)): unit[p] = name.replace('*global*', '')
-    for line in run(rdi, [f'D {i}' for i in range(1, int(run(rdi, ['N 23'])[0]))]):
+    count = int(run(rdi, ['N 23'])[0])
+    for line, local in zip(run(rdi, [f'D {i}' for i in range(1, count)]), run(rdi, [f'V {i}' for i in range(1, count)])):
         place, flags, name, link, site, site_lines = line.split('\t')
         parent, inline, child, sibling, proc, *ranges = place.split()
         ranges = tuple(v for i in range(0, len(ranges), 2) if ranges[i] != ranges[i + 1] for v in (int(ranges[i], 16), int(ranges[i + 1], 16)))
-        out.append((int(parent), int(inline), ranges, flags.split(), name, link, int(child), int(sibling), int(proc), unit.get(int(proc), ''), (site, site_lines) if int(inline) else None))
+        out.append((int(parent), int(inline), ranges, flags.split(), name, link, int(child), int(sibling), int(proc), unit.get(int(proc), ''), (site, site_lines) if int(inline) else None, local))
     return out
-def described(all_scopes, key, calls=True):
-    """how often each description occurs; a description is what a scope covers, what the scopes around it cover, its unit and
-    key(flags, name, link, inlined function). Without `calls`, what an inlined call covers is left out."""
+def described(all_scopes, key, local, calls=True):
+    """how often each description occurs; a description is what a scope covers, what the scopes around it cover, its unit,
+    key(flags, name, link, inlined function) and local(its local variables). Without `calls`, what an inlined call covers is left out."""
     covers = lambda s: s[2] if calls or not s[1] else 'inline'
     out = collections.Counter()
     for s in all_scopes[1:]:
@@ -36,7 +37,7 @@ def described(all_scopes, key, calls=True):
         while parent:
             chain.append(covers(all_scopes[parent]))
             parent = all_scopes[parent][0]
-        out[(covers(s), tuple(chain), s[9], *key(s[3], s[4], s[5], s[10]))] += 1
+        out[(covers(s), tuple(chain), s[9], *key(s[3], s[4], s[5], s[10]), local(s[11]))] += 1
     return out
 def tail(name):
     """a C++ name without its containers: what follows the last "::" outside angle brackets.
@@ -67,7 +68,7 @@ def meanings(pdb):
     """each type id's meaning, as rdiq prints a type, and its size, from llvm-pdbutil's reading of the type records (64-bit files),
     taken in order: a record that names itself or a later one has no type there. A forward reference is the definition
     llvm-pdbutil found for it, wherever that is. No types when the ids do not start at 0x1000."""
-    recs, memo, forward = {}, {}, []
+    recs, memo, forward, funcs = {}, {}, [], {}
     for line in subprocess.run(['llvm-pdbutil', 'dump', '--types', pdb], capture_output=True, text=True, errors='surrogateescape').stdout.split('\n'):
         if m := re.match(r' +(0x[0-9A-F]+) \| (LF_\w+) \[size = \d+\](?: `(.*)`)?$', line): rec = recs[int(m[1], 16)] = [m[2], m[3] or '', '']
         elif recs: rec[2] += line + '\n'
@@ -90,6 +91,7 @@ def meanings(pdb):
         if kind in ('LF_PROCEDURE', 'LF_MFUNCTION'):
             args = [int(x, 16) for x in re.findall(r'^ +(0x[0-9A-F]+)[ :]', recs.get(field('param list ='), ('', '', ''))[2], re.M)]
             params = [of(x)[0] for x in ([field('this type =')] if field('this type =') else []) + [x for x in args if x]]
+            funcs[i] = (of(field('return type ='))[0], len(params))
             return f"{'1006' if field('this type =') else '1005'}.0[{len(params)}]:8 {of(field('return type ='))[0]}" + (f" ({', '.join(params)})" if params else ''), 8
         if kind == 'LF_BITFIELD': on = of(field('type =')); return f"bits {field('bit offset =')}+{field('# bits =')}:{on[1]} of {on[0]}", on[1]
         if kind == 'LF_ARRAY':
@@ -127,6 +129,7 @@ def meanings(pdb):
         if kind in ('LF_STRUCTURE', 'LF_CLASS', 'LF_UNION', 'LF_ENUM') and 'forward ref' not in body:
             m = fields(int(re.search(r'field list: (0x[0-9A-F]+|<no type>)', body)[1].replace('<no type>', '0'), 16))
             udts[f"{memo[i][0]}\t1 {int(kind == 'LF_ENUM' and bool(m))}\t{''.join(m)}"] += 1
+    of.funcs = funcs   # per function type: what it returns, how many parameters
     return memo, of, udts
 def normal(src, folder):
     """a source path as the converter's path tree has it: a relative one starts from the folder of the module's object file,
@@ -137,13 +140,26 @@ def normal(src, folder):
         elif p != '.' and (p or k == 0): parts.append(p)
     return '/'.join(parts)
 total = 0
+def raw_gaps(pdb):
+    """per (module, record offset) of an S_DEFRANGE record, its gaps (start, length) from the record's bytes: llvm-pdbutil 18 ends the
+    printed list at the first byte from 0xf0 up, which it takes for padding (a gap that starts at 255 or 508 is lost, and all after it)"""
+    out, mod, key = {}, 0, None
+    for line in subprocess.run(['llvm-pdbutil', 'dump', '--symbols', '--sym-data', pdb], capture_output=True, text=True, errors='surrogateescape').stdout.split('\n'):
+        if m := re.match(r' *Mod (\d+) \| `', line): mod = int(m[1])
+        elif m := re.match(r' *(\d+) \| (\w+) \[', line):
+            key = (mod, int(m[1])) if m[2].startswith('S_DEFRANGE_') else None
+            if key: out[key] = [bytearray(), 16 if 'REGISTER_REL' in m[2] or 'SUBFIELD' in m[2] else 12]
+        elif key and (m := re.match(r' +[0-9A-F]{4}: ((?:[0-9A-F]{2,8} ?)+) *\|', line)): out[key][0] += bytes.fromhex(m[1].replace(' ', ''))
+    return {k: [(d[i] | d[i + 1] << 8, d[i + 2] | d[i + 3] << 8) for i in range(head, len(d) - 3, 4)] for k, (d, head) in out.items()}
 for pdb in sys.argv[3:]:
     text = subprocess.run(['llvm-pdbutil', 'dump', '--modules', '--section-contribs', '--section-headers', '-l', '--il', '--files', '--symbols', '--globals', pdb],
                           capture_output=True, text=True, errors='surrogateescape').stdout
     lines = text.split('\n')
+    gaps_of = raw_gaps(pdb) if 'S_DEFRANGE_' in text else {}
     part, va, q, want = '', {}, [], []
     def ask(query, answer): q.append(query); want.append(answer)
     recs, per_line, mods, order, src, folder, spans, syms, expected, file_at, starts, proc_types, data = [], {}, {}, 0, '', '', [], {}, collections.Counter(), {}, {}, collections.Counter(), ([], [])
+    frames, made, at_proc, stack, cur = {}, [], None, [], {'target': None}   # per procedure record: its frame; per scope record: (its description, its locals)
     for i, line in enumerate(lines):
         if m := re.match(r' +(Modules|Section Headers|Section Contributions|Original Section Headers|Lines|Inlinee Lines|Files|Symbols|Global Symbols) *$', line): part = m[1]
         elif part == 'Section Headers' and (m := re.match(r' +SECTION HEADER #(\d+)', line)):
@@ -159,6 +175,11 @@ for pdb in sys.argv[3:]:
             file_at[mod, at] = normal(m[2], folder); at += (6 + len(m[1] or '') // 2 + 3) // 4 * 4
         elif part == 'Inlinee Lines' and (m := re.match(r' +0x([0-9A-F]+) \| +(\d+) \| (.*) \((?:[\w-]+: [0-9A-F]+|no checksum)\)$', line)):
             starts[mod, int(m[1], 16)] = (normal(m[3], folder), int(m[2]))
+        # a procedure's frame is the last S_FRAMEPROC before the next procedure: (size, the frame pointer for locals, for parameters)
+        elif part == 'Symbols' and (m := re.match(r' *Mod (\d+) \| `', line)): mod, at_proc = int(m[1]), None
+        elif part == 'Symbols' and (m := re.match(r' *(\d+) \| S_[GL]PROC32 \[', line)): at_proc = int(m[1])
+        elif part == 'Symbols' and at_proc is not None and re.match(r' *\d+ \| S_FRAMEPROC \[', line):
+            frames[mod, at_proc] = (int(re.search(r'size = (\d+)', lines[i + 1])[1]), *re.search(r'local fp reg = (\w+), param fp reg = (\w+)', lines[i + 3]).groups())
     for i, line in enumerate(lines):
         if m := re.match(r' +(Modules|Section Headers|Section Contributions|Original Section Headers|Lines|Inlinee Lines|Files|Symbols|Global Symbols) *$', line): part = m[1]
         elif part == 'Modules' and (m := re.match(r' *Mod (\d+) \| `(.*)`: *$', line)): mods[int(m[1])] = re.split(r'[/\\]', m[2])[-1] or m[2]
@@ -166,7 +187,8 @@ for pdb in sys.argv[3:]:
             sec, size = int(m[2]), int(m[4])
             if sec in va and size > 0:
                 for voff in (va[sec] + int(m[3]), va[sec] + int(m[3]) + size - 1): ask(f'U {voff}', mods[int(m[1])])
-        elif part == 'Symbols' and (m := re.match(r' *Mod (\d+) \| `', line)): syms, mod, modn = {}, mods[int(m[1])], int(m[1])
+        elif part == 'Symbols' and (m := re.match(r' *Mod (\d+) \| `', line)):
+            syms, mod, modn, stack, cur = {}, mods[int(m[1])], int(m[1]), [], {'type': 0, 'opt': False, 'n': 0, 'frame': None, 'target': None}
         elif part == 'Symbols' and (m := re.match(r' *(\d+) \| (S_GPROC32|S_LPROC32|S_THUNK32|S_BLOCK32) \[size = \d+\] `(.*)`$', line)):
             # a procedure, a thunk, or a block that names the record it is inside: (what it covers, what is around it, unit, external, name, inlined function)
             p = re.match(r' +parent = (\d+), end = \d+(?:, addr = (\d+):(\d+), code size = (\d+))?', lines[i + 1])
@@ -175,8 +197,31 @@ for pdb in sys.argv[3:]:
             if m[2] == 'S_BLOCK32': around = syms.get(int(p[1]), ((), (), mod, 0))
             else: around, base = ((), (), mod, 0x80 * (m[2] == 'S_GPROC32')), va.get(sec, 0) + off
             syms[int(m[1])] = (covers, (around[0],) + around[1] if m[2] == 'S_BLOCK32' else (), mod, around[3], m[3] if m[2] != 'S_BLOCK32' else None, None)
-            expected[syms[int(m[1])]] += 1
+            stack.append([]); made.append((syms[int(m[1])], stack[-1]))
             if t := re.match(r' +type = `(0x[0-9A-F]+)', lines[i + 2]): proc_types[m[3], int(t[1], 16)] += 1
+            if 'PROC' in m[2]: cur = {'type': int(t[1], 16) if t else 0, 'opt': 'opt debuginfo' in lines[i + 2], 'n': 0, 'frame': frames.get((modn, int(m[1]))), 'target': None}
+        # Locals, each in the innermost open scope, as (name, parameter, type id, cases) or for S_REGREL32 (name, its number in the procedure, type id,
+        # register, offset, the procedure's type and frame). S_REGREL32 is not read in a procedure with S_LOCAL records. S_DEFRANGE records give
+        # the cases of the S_LOCAL before them: (first, length, gaps, what kind of place, register or which frame pointer, offset).
+        elif part == 'Symbols' and re.match(r' *\d+ \| (S_END|S_INLINESITE_END) \[', line): stack[-1:] = []; cur['target'] = None
+        elif part == 'Symbols' and (m := re.match(r' *\d+ \| S_REGREL32 \[size = \d+\] `(.*)`$', line)):
+            p = re.match(r' +type = (0x[0-9A-F]+|<no type>).*, register = (\w*), offset = (-?\d+)$', lines[i + 1])
+            cur['n'] += 1
+            if stack and not cur['opt']: stack[-1].append((m[1], cur['n'] - 1, int(p[1].replace('<no type>', '0'), 16), p[2], int(p[3]), cur['type'], cur['frame']))
+        elif part == 'Symbols' and stack and (m := re.match(r' *\d+ \| S_LOCAL \[size = \d+\] `(.*)`$', line)):
+            p = re.match(r' +type=(0x[0-9A-F]+|<no type>).*, flags = (.*)$', lines[i + 1])
+            cur['target'] = None if 'enreg' in p[2] else (m[1], 'param' in p[2].split(' | '), int(p[1].replace('<no type>', '0'), 16), [])
+            if cur['target']: stack[-1].append(cur['target'])
+        elif part == 'Symbols' and re.match(r' *\d+ \| S_FILESTATIC \[', line): cur['target'] = None
+        elif part == 'Symbols' and cur['target'] and (m := re.match(r' *(\d+) \| S_DEFRANGE_(\w+) \[size = \d+\](.*)$', line)):
+            text = m[3] if m[2] == 'FRAMEPOINTER_REL_FULL_SCOPE' else lines[i + 1] + '\n' + lines[i + 2]
+            r = re.search(r'(?:range start = |range = \[)(\d+):(\d+),(?: length = |\+)(\d+)', text) or [0, 0, 0, 0]
+            reg, off, part_at = re.search(r'register = (\w+(?: \(\d+\))?|)', text), re.search(r'offset = (-?\d+)', text), re.search(r'offset in parent = (\d+)', text)
+            frame = cur['frame'] and cur['frame'][1 + cur['target'][1]]
+            where = ('reg', reg[1]) if m[2] == 'REGISTER' or (m[2] == 'SUBFIELD_REGISTER' and part_at[1] == '0') else ('at', reg[1], int(off[1])) if m[2] == 'REGISTER_REL' \
+                    else ('at', frame, int(off[1])) if m[2].startswith('FRAMEPOINTER_REL') and frame else None
+            first = va.get(int(r[1]), 0) + int(r[2]) if int(r[1]) in va else 0
+            if where: cur['target'][3].append((first, int(r[3]), gaps_of[modn, int(m[1])] if m[2] != 'FRAMEPOINTER_REL_FULL_SCOPE' else None, *where))
         elif part in ('Symbols', 'Global Symbols') and (m := re.match(r' *(\d+) \| (S_[GL]DATA32|S_[GL]THREAD32|S_CONSTANT|S_UDT) \[size = \d+\] `(.*)`$', line)):
             # a variable, constant or typedef: (kind, name, type id, section, offset or value), module streams first as the converter
             # reads them, then the global stream in the order of its records (llvm-pdbutil prints it in the order of its hash table)
@@ -211,7 +256,7 @@ for pdb in sys.argv[3:]:
             site_lines = ''.join(f'{v:x} {text};' for k, (v, _, _, text) in enumerate(events) if k + 1 == len(events) or events[k + 1][0] != v)
             around = syms.get(int(p[3]), ((), (), mod, 0))
             syms[int(m[1])] = (tuple(covers), (around[0],) + around[1], mod, around[3], None, (p[2], site_lines))
-            expected[syms[int(m[1])]] += 1
+            stack.append([]); made.append((syms[int(m[1])], stack[-1]))
         elif part == 'Lines' and (m := re.match(r' *Mod \d+ \| `(.*)`: *$', line)): folder = re.sub(r'[^/\\]*$', '', m[1])
         elif part == 'Lines' and (m := re.match(r'(\S.*) \((?:[\w-]+: [0-9A-F]+|no checksum)\)$', line)): src = m[1]
         elif part == 'Lines' and (m := re.match(r'  ([0-9A-F]{4}):([0-9A-F]{8})-([0-9A-F]{8}), line/(?:column/)?addr entries = (\d+)', line)):
@@ -239,10 +284,6 @@ for pdb in sys.argv[3:]:
         if subprocess.run(['timeout', '120', pdb2rdi, pdb, rdi]).returncode != 0: sys.exit(f'oracle_conv: {pdb} does not convert (or takes over 2 minutes)')
         got = run(rdi, q)
         ours = scopes(rdi)
-        has = described(ours, lambda flags, name, link, site: (int(flags[1]) & 0x80, name if flags[2] == '1' else None,
-                                                             site and (site[0] if len(site[0]) <= 32 else site[0][:32] + '...', site[1])))   # as llvm-pdbutil prints a long name
-        for k in expected | has:
-            if k[2]: q.append(f'scope {k}'); want.append(str(expected[k])); got.append(str(has[k]))   # not the procedures made from public symbols
         # the list of a scope's children is the scopes that name it as parent, in order
         inside = collections.defaultdict(list)
         for k, s in enumerate(ours):
@@ -268,6 +309,40 @@ for pdb in sys.argv[3:]:
         q += vmap; want += map(str, inner); got += run(rdi, vmap)
         # each procedure with a type has it, by llvm-pdbutil's reading of the type records
         means, of, udts = meanings(pdb)
+        # Every scope with its locals. A place is `3 register offset` (at register + offset), `4 ...` (at the address stored there), `5 register`
+        # (in it), or bytecode when the offset does not fit 16 bits; a local's place is none, one place that holds everywhere, or a list of
+        # [first-end place]. llvm-pdbutil prints the number of a register it has no name for: the parts of xmm0 to xmm7 (CV_AMD64_XMM0_0 = 162 and on: four floats each;
+        # CV_AMD64_XMM0L = 194 and on: the low doubles).
+        REG = {n: k + 1 for names in ('RAX RCX RDX RBX RSP RBP RSI RDI R8 R9 R10 R11 R12 R13 R14 R15', 'EAX ECX EDX EBX ESP EBP ESI EDI R8D R9D R10D R11D R12D R13D R14D R15D',
+               'AX CX DX BX SP BP SI DI R8W R9W R10W R11W R12W R13W R14W R15W', 'AL CL DL BL SPL BPL SIL DIL R8B R9B R10B R11B R12B R13B R14B R15B', 'AH CH DH BH') for k, n in enumerate(names.split())}
+        REG.update({f'XMM{k}': 41 + k for k in range(16)} | {f'unknown ({162 + k})': 41 + k // 4 for k in range(32)} | {f'unknown ({194 + k})': 41 + k for k in range(8)})
+        def at(reg, off, indirect=False):
+            off = (off + 2**31) % 2**32 - 2**31
+            if -2**15 <= off < 2**15: return f'{4 if indirect else 3} {REG.get(reg, 0)} {off}'
+            return f'1 5:{0x800 | REG.get(reg, 0):08x} 13:{off % 2**32:08x} 42:20 21:0000' + ' 4:08' * indirect
+        def shown(local):
+            if len(local) == 7:
+                name, nth, t, reg, off, proc, frame = local
+                param, size = nth < of.funcs.get(proc, ('', 0))[1], of(t)[1]
+                back = reg in ('RSP', 'RBP') and frame is not None and off % 2**32 > frame[0] and t == 0 and of(proc)[0] != 'none'
+                return f"{name} {int(param)} 2.1 {of.funcs.get(proc, ('none',))[0] if back else of(t)[0]} @ {at(reg, off, back or (param and (size > 8 or size & (size - 1) != 0)))}; "
+            name, param, t, cases = local
+            pieces = []
+            for first, length, gaps, kind, reg, *off in cases:
+                where = at(reg, *off) if kind == 'at' else f'5 {REG.get(reg, 0)}'
+                cursor = first
+                for a, b in gaps or []:
+                    if cursor < first + a: pieces.append((cursor, first + a, where))
+                    cursor = first + a + b
+                if gaps is None: pieces.append((0, 2**64 - 1, where))
+                elif cursor < first + length: pieces.append((cursor, first + length, where))
+            lone = len(pieces) == 1 and pieces[0][:2] == (0, 2**64 - 1)
+            return f"{name} {int(param)} 2.1 {of(t)[0]} @ {pieces[0][2] if lone else ''.join(f'[{a:x}-{b:x} {w}]' for a, b, w in pieces) or 'none'}; "
+        for d, local in made: expected[d + (''.join(map(shown, local)),)] += 1
+        has = described(ours, lambda flags, name, link, site: (int(flags[1]) & 0x80, name if flags[2] == '1' else None,
+                                                             site and (site[0] if len(site[0]) <= 32 else site[0][:32] + '...', site[1])), str)   # as llvm-pdbutil prints a long name
+        for k in expected | has:
+            if k[2]: q.append(f'scope {k}'); want.append(str(expected[k])); got.append(str(has[k]))   # not the procedures made from public symbols
         a = collections.Counter(line for line in run(rdi, [f'P {i}' for i in range(1, int(run(rdi, ['N 31'])[0]))]) if not line.endswith('\tnone'))
         b = collections.Counter(f'{name}\t{of(t)[0]}' for name, t in proc_types.elements() if of(t)[0] != 'none')
         for k in a | b: q.append(f'procedure and its type {k}'); want.append(str(b[k])); got.append(str(a[k]))
@@ -321,7 +396,12 @@ for pdb in sys.argv[3:]:
             every = [f'L {v}' for a, n in spans for v in range(a, a + n)]
             q += every; want += run(rad, every); got += run(rdi, every)
             # NOT YET (types slice): the kind of container, and the container's name cut from the front of a procedure's name
-            a, b = (described(s, lambda flags, name, link, site: (flags[0], int(flags[1]) & 0x80, tail(name), link, site and site[0]), calls=False) for s in (ours, scopes(rad)))
+            # A local's lone place is the location itself in RAD's file even when it holds for a few bytes only (knowledge base, 04); ours is
+            # then a list of one, compared as RAD has it. Types as in typed().
+            def as_rad(local):
+                local = re.sub(r'@ \[[0-9a-f]+-[0-9a-f]+ ([^\]\[]*)\]; ', r'@ \1; ', re.sub(r'2004 (u?)int32:4 on ', lambda m: '2004 %sint:4 on ' % ('unsigned ' * bool(m[1])), local))
+                return '' if 'Odd' in local else re.sub(r'(?<= )(20\d\d) (.*?):(\d+)', lambda m: f'{m[1]} {tail(m[2])}:{m[3]}', local)   # not where kinds.cpp's Odd is
+            a, b = (described(s, lambda flags, name, link, site: (flags[0], int(flags[1]) & 0x80, tail(name), link, site and site[0]), as_rad, calls=False) for s in (ours, scopes(rad)))
             for k in a | b: q.append(f'scope, as RAD has it, {k}'); want.append(str(b[k])); got.append(str(a[k]))
             a, b = typed(rdi, 31, 'P'), typed(rad, 31, 'P')
             for k in a | b: q.append(f'procedure and its type {k}'); want.append(str(b[k])); got.append(str(a[k]))
