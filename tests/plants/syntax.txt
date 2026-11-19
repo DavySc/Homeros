@@ -30,3 +30,4 @@ syntax: a backslash does not end the directory, so a\CMakeLists.txt is text (tes
 syntax: a name that is only the ending, .sql, has no filetype (test_syntax, filetypes)~test TESTS=syntax~~src/syntax/syntax.c~if (bl >= el &&~if (bl > el &&
 syntax: CMakeLists.txt is text, after .txt in the table (test_syntax, filetypes)~test TESTS=syntax~~src/syntax/syntax.c~{ "CMakeLists.txt", "cmake", BY_NONE },¶	{ ".txt", "text", BY_NONE },~{ ".txt", "text", BY_NONE },¶	{ "CMakeLists.txt", "cmake", BY_NONE },
 syntax: a .txt file has no filetype (test_syntax, filetypes)~test TESTS=syntax~~src/syntax/syntax.c~{ ".txt", "text", BY_NONE },~
+syntax: an unnamed buffer's NULL path is read (test_syntax, filetypes)~test TESTS=syntax~~src/syntax/syntax.c~	int i = path ? ft_of(path) : -1;~	int i = ft_of(path);

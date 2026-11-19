@@ -110,7 +110,7 @@ static int ft_of(const char *path)
 
 const char *syntax_filetype(const char *path)
 {
-	int i = ft_of(path);
+	int i = path ? ft_of(path) : -1;
 	return i < 0 ? NULL : fts[i].ft;
 }
 

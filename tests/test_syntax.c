@@ -453,6 +453,8 @@ static void filetypes(void)
 		CHECK(!strcmp(ft ? ft : "-", want));
 	}
 	CHECK(!pclose(p));
+	/* an unnamed buffer */
+	CHECK(!syntax_filetype(NULL));
 	printf("test_syntax: %zu file names' filetypes as Neovim's\n", sizeof names / sizeof *names);
 }
 

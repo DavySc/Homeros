@@ -10,8 +10,9 @@ typedef struct Syntax Syntax;
 
 /* The grammar for path's file type, or NULL if there is none. */
 Syntax *syntax_open(const char *path, const Text *t);
-/* Neovim's 'filetype' for path ("sql", "cpp" for a .h), NULL when unknown;
-   the status line shows it (thread 0's, agreed) */
+/* Neovim's 'filetype' for path ("sql", "cpp" for a .h), NULL when unknown
+   or path is NULL (an unnamed buffer); the status line shows it (thread
+   0's, agreed) */
 const char *syntax_filetype(const char *path);
 void    syntax_free(Syntax *s);
 /* Called before every change to the text (the core's edits and undo's
