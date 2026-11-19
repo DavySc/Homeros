@@ -61,6 +61,6 @@ win: data with no LF unix on Windows~win WIN=file~~src/file/eol.c~enum { FIRST =
 win: saved with LF in a dos file~win WIN=file~~src/file/win.c~file_text_read(t, &pos, n, dos, b, sizeof b)~file_text_read(t, &pos, n, dos && 0, b, sizeof b)
 file: stdpath reads the data variable for state~test TESTS=file_journal~~src/file/state.c~{ "XDG_DATA_HOME", "XDG_STATE_HOME", "XDG_CONFIG_HOME" }~{ "XDG_STATE_HOME", "XDG_DATA_HOME", "XDG_CONFIG_HOME" }
 file: the config folder read from the data variable~test TESTS=file~~src/file/state.c~"XDG_STATE_HOME", "XDG_CONFIG_HOME" }~"XDG_STATE_HOME", "XDG_DATA_HOME" }
-file: the config folder under ~/.local/share~test TESTS=file~~src/file/state.c~".local/state", ".config" }~".local/state", ".local/share" }
+file: the config folder under .local/share~test TESTS=file~~src/file/state.c~".local/state", ".config" }~".local/state", ".local/share" }
 win: the config folder named homeros-data~win WIN=file~~src/file/win.c~which < 2 ? "-data" : ""~which < 3 ? "-data" : ""
 file: file_full leaves the directory as typed~test TESTS=shada~~src/file/state.c~	if (!realpath(dir, d)) return -1;~	if (!realpath(dir, d)) return -1;¶	snprintf(d, sizeof d, "%s", dir);

@@ -17,7 +17,7 @@ snip: Enter in a line moves the rest of it whole~test TESTS=snip~~src/keys/edit.
 snip: CTRL-W in select mode a window command~test TESTS=snip~~src/snip/snip.c~		if (k == KEY_S_TAB || k == 23) return 1;~		if (k == KEY_S_TAB) return 1;
 snip: Enter with nothing picked takes the first item~test TESTS=snip~~src/snip/snip.c~	case KEY_ENTER: if (s >= 0) break; core_pum(e, NULL, 0, -1, 0); return 0;~	case KEY_ENTER: if (s < 0) s = 0; break;
 snip: the popup's Tab does not pick~test TESTS=snip~~src/snip/snip.c~	case 14: case KEY_DOWN: case KEY_TAB:~	case 14: case KEY_DOWN:
-snip: the popup opens in any buffer~test TESTS=snip~~src/snip/snip.c~	if (!S.b && (e->mode != MODE_INSERT || !is_sql(e->buf))) return 0;~	if (!S.b && e->mode != MODE_INSERT) return 0;
+snip: the popup opens in any buffer~test TESTS=snip~~src/snip/snip.c~	if (!S.b && (e->mode != MODE_INSERT || !is_sql(e->buf))) return 0;~	if (!S.b && (e->mode != MODE_INSERT || (!is_sql(e->buf) && 0))) return 0;
 snip: a block with no name line taken as a snippet~test TESTS=snip~~src/snip/snip.c~	for (char *p = cat; (p = strstr(p, "```sql\n-- "));) {~	for (char *p = cat; (p = strstr(p, "```sql\n"));) {
 snip: a bare stop left empty~test TESTS=snip~~src/snip/snip.c~			if (ph->idx != t->idx) continue;~			if (ph->idx != t->idx || 1) continue;
 snip: unmapped S-Tab does nothing in Insert mode~test TESTS=snip~~src/keys/edit.c~	case KEY_S_TAB:   /* an unmapped <S-Tab> is a Tab (insert_handle_key's K_S_TAB) */¶~
