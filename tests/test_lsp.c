@@ -151,7 +151,7 @@ static size_t fchar(size_t i) { while (i > 0 && i < pn && (pd[i] & 0xC0) == 0x80
 /* A diagnostic: a random range, its message "#pid.serial v n a z ghost":
    n is how many diagnostics version v has once this message is in, a and z
    the bytes of the range in version v. */
-static int quiet;                     /* after a marker: nothing more is published until a request is answered */
+static int quiet;                     /* after a marker: nothing more is said until a request is answered (1) and then a '!' typed (2) */
 
 static void fdiag(Str *m, int point, long n)
 {
@@ -250,8 +250,7 @@ static void fanswer(int k)
 		}
 		size_t z = b < sn ? b + cplen((unsigned char)sdoc[b]) : b;
 		str_addf(&m, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"result\":", park[k].id);
-		if (quiet) owed = sreq > 0;
-		quiet = 0;
+		if (quiet == 1) owed = sreq > 0, quiet = 2;   /* still silent: the test looks before it types '!' */
 		/* Lean's plainGoal, a hover's MarkupContent or MarkedString[] */
 		static const char *const form[][2] = { { "{\"rendered\":\"", "\",\"goals\":[]}}" },
 			{ "{\"contents\":{\"kind\":\"markdown\",\"value\":\"", "\"}}}" },
@@ -357,7 +356,10 @@ static void fhandle(const char *m, size_t n)
 		if (!opened) wrong("didChange before didOpen");
 		long v = json_int(m, ft, json_get(m, ft, td, "version"));
 		if (v != sver + 1) wrong("version %ld after %ld", v, sver);
-		if (owed && memchr(m, '!', n)) { if (sreq) wrong("the editor never answered our request"); owed = 0; }
+		if (quiet == 2 && memchr(m, '!', n)) {
+			if (owed && sreq) wrong("the editor never answered our request");
+			owed = quiet = 0;
+		}
 		fapply(m, json_get(m, ft, p, "contentChanges"));
 		sver = v; incr = 0;
 		fkeep();
@@ -631,7 +633,7 @@ static void scenario(int seed, const char *log)
 				for (long long t0 = ms(); !lsp_answer(d, 0) && ms() - t0 < 300; ) { loop_once(10); check_shown(d, &latest); }
 			}
 			CHECK(lsp_answer(d, 0));
-		} else if (step == 125 && seed % 3) {
+		} else if (step == 125) {
 			/* one command of more edits than the log holds, the server
 			   unheard meanwhile: what it said before must go, not be
 			   mapped through the half of the edits the log kept.  The
@@ -652,15 +654,17 @@ static void scenario(int seed, const char *log)
 				check_shown(d, &l);
 				if (l == cur) break;
 			}
-			edit(d, len, 0, "@", 1);
-			lsp_flush(d);
-			cur++;
-			snapshot();
-			/* or, in every other such scenario, the '@' replaced: what it
+			/* or, in the second such scenario, the '@' replaced: what it
 			   said about the whole text, read only now, is mapped and its
-			   end, inside the deletion, goes to the deletion's start */
+			   end, inside the deletion, goes to the deletion's start; or,
+			   in a file that is not UTF-8, replaced by the byte that
+			   joins a character: what it said must go, not be mapped */
+			edit(d, len, 0, seed % 3 ? "@" : "\xE2\x82@", seed % 3 ? 1 : 3);
+			lsp_flush(d);
+			long said = ++cur;
+			snapshot();
 			if (seed % 3 == 1) for (int k = 0; k < 4200; k++) edit(d, 0, 0, "a", 1);
-			else edit(d, len - 1, 1, "xyz", 3);
+			else edit(d, len - 1, 1, seed % 3 ? "xyz" : "\xAC", seed % 3 ? 3 : 1);
 			lsp_flush(d);
 			cur++;
 			snapshot();
@@ -671,8 +675,9 @@ static void scenario(int seed, const char *log)
 			}
 			CHECK(lsp_answer(d, 0));
 			int n;
-			lsp_diags(d, &n);
-			CHECK(seed % 3 == 1 || n);
+			const LspDiag *g = lsp_diags(d, &n);
+			CHECK(seed % 3 != 2 || n);
+			for (int i = 0; i < n && seed % 3 == 0; i++) CHECK(atol(strchr(g[i].msg, ' ') + 1) != said);
 			edit(d, len, 0, "!", 1);   /* typed after the answer: the fake's request must be answered by now */
 			lsp_flush(d);
 			cur++;
