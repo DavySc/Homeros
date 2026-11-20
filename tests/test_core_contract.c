@@ -135,6 +135,10 @@ int main(void)
 	}
 	CHECK(!core_open(&e, fn[0]));
 	for (int i = 1; i < 4; i++) CHECK(!core_edit_file(&e, fn[i], 0));
+	/* buflist_findname(): a file's name as typed and its full name are one
+	   buffer */
+	Buf *same = e.buf;
+	CHECK(!chdir("/tmp") && !core_edit_file(&e, strrchr(fn[3], '/') + 1, 0) && e.buf == same);
 	Buf *alt = e.win->alt;
 	CHECK(alt && !strcmp(alt->path, fn[2]) && !core_split(&e, 0, 0) && e.win->alt == alt);
 	CHECK(!core_close(&e, 0));

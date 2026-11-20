@@ -1,5 +1,6 @@
 /* Buffers: their text, undo, saving, and moving between them. */
 #include <errno.h>
+#include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -226,13 +227,18 @@ static Buf *buf_find(Editor *e, int nr)
    -1 on error, msg set, b as it was. */
 static int buf_load(Editor *e, Buf *b, const char *path)
 {
-	char *data = NULL, *name = NULL;
-	size_t n = 0, bytes;
+	char *data = NULL, *name = NULL, full[PATH_MAX];
+	size_t n = 0, bytes, pl = path ? strlen(path) + 1 : 0;
 	FileId id = { 0 };
 	Text *t;
 	Undo *u;
 	if (path) {
-		if (!(name = strdup(path))) goto oom;
+		/* the name as typed and Neovim's full name (b_sfname, b_ffname) in
+		   one block, freed with b->path */
+		if (file_full(path, full)) snprintf(full, sizeof full, "%s", path);
+		if (!(name = malloc(pl + strlen(full) + 1))) goto oom;
+		memcpy(name, path, pl);
+		strcpy(name + pl, full);
 		if (file_load(path, &data, &n, &id)) {
 			core_msg(e, "\"%s\": cannot read", path);
 			free(name);
@@ -253,6 +259,7 @@ static int buf_load(Editor *e, Buf *b, const char *path)
 	b->text = t;
 	b->undo = u;
 	b->path = name;
+	b->full = name ? name + pl : NULL;
 	b->id = id;
 	b->noeol = noeol;
 	b->dos = dos;
@@ -613,9 +620,12 @@ static int buf_switch(Editor *e, Buf *b, int how)
 
 static Buf *buf_by_path(Editor *e, const char *path)
 {
+	/* buflist_findname(): by full name, so "a" and its full path are one */
+	char full[PATH_MAX];
+	if (file_full(path, full)) snprintf(full, sizeof full, "%s", path);
 	for (int k = 0; k < 2; k++)
 		for (Buf *b = k ? unlisted : e->bufs; b; b = b->next)
-			if (b->path && !strcmp(b->path, path)) return b;
+			if (b->path && !strcmp(b->full, full)) return b;
 	return NULL;
 }
 
