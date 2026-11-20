@@ -100,6 +100,7 @@ void  git_watch(Repo *r);           /* after the first status: needs its ignored
 void  git_unwatch(Repo *r);
 void  git_drain(Repo *r);           /* takes the changes seen: ver++ and dirty for one that counts */
 int   git_counts(Repo *r, const char *path);   /* git.c: a change at path is the repository's */
+int   git_batch(Repo *r, const char *dir, const char *b, unsigned long n);   /* win.c: one ReadDirectoryChangesW batch of n bytes under dir counts */
 void  git_changed(void *r, int fd);   /* git.c: the loop_watch callback of a watch */
 int   git_real(const char *path, char *out);   /* realpath into PATH_MAX bytes; 0 ok */
 int   git_abs(const char *p);       /* "/x" or "C:/x" */
