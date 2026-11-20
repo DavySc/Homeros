@@ -45,6 +45,11 @@ typedef bool TargetRead(Target *t, uint64_t addr, void *bytes, uint32_t n);   /*
 TargetRead target_read;
 bool target_write(Target *t, uint64_t addr, const void *bytes, uint32_t n);
 bool target_regs(Target *t, uint32_t thread, TargetRegs *regs);
+/* Whether the thread has run into a trap without a TARGET_TRAP stop for it yet (another thread's stop came first).
+   It stands on the trap's address and has run nothing since: a run that plants the trap again stops for it.
+   (A thread that ran on, the trap not planted, and has come to stand on the same address again counts too:
+   nothing tells the two apart.) */
+bool target_owed(Target *t, uint32_t thread);
 /* Ends the target process and frees t. */
 void target_close(Target *t);
 #endif

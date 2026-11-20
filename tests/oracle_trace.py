@@ -18,7 +18,7 @@ steps = bad = 0
 for t in sorted(traces.glob('*.txt')):
     name, script = t.name.split('.')[:2]
     want = [kind(l) for l in t.read_text().splitlines()]
-    got = subprocess.run(wine + [driver, name + '.exe', script, '600'], cwd=programs, capture_output=True, text=True, timeout=600).stdout.splitlines()
+    got = subprocess.run(wine + [driver, name + '.exe', script, '600'], cwd=programs, capture_output=True, text=True, timeout=120).stdout.splitlines()
     if t.name in known:   # past that line the two are in different places
         at = known[t.name]
         if got[at - 1:at] == want[at - 1:at]: bad += 1; print(f'{t.name}: the known difference at line {at} is gone')

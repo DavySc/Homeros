@@ -22,5 +22,7 @@ jobs:
         run: mkdir -p "$RUNNER_TEMP/shim" && printf '#!/bin/sh\nexec python "$@"\n' > "$RUNNER_TEMP/shim/python3" && echo "$RUNNER_TEMP/shim" >> "$GITHUB_PATH"
       - name: 10,000 random rounds, five seeds, launched and attached
         run: gcc --version && for s in 1 2 3 4 5; do SEED=$s UNWIND_STEPS=$((s * 4000)) ./check.sh win || exit 1; done
+      - name: The stepping engine against RAD's recorded traces
+        run: ENGINE_ROUNDS=5000 ./check.sh engine
       - name: Every plant is caught
-        run: ./check.sh plants win && STRESS_ROUNDS=40000 ./check.sh plants windows   # what these two wait for comes about twice in 10,000 rounds
+        run: ./check.sh plants engine && ./check.sh plants win && STRESS_ROUNDS=40000 ./check.sh plants windows   # what these two wait for comes about twice in 10,000 rounds

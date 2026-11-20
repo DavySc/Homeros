@@ -445,7 +445,7 @@ win | dbg/win/target.c | return ReadProcessMemory(t->process, (LPCVOID)(uintptr_
 win | dbg/win/target.c | return WriteProcessMemory(t->process, (LPVOID)(uintptr_t)addr, bytes, n, &put) | return WriteProcessMemory(t->process, (LPVOID)(uintptr_t)addr, bytes, 0, &put)
 win | dbg/win/target.c | for (uint32_t i = 0; i < t->trap_count; i += 1) if (t->traps[i].addr == at && t->traps[i].in) out->kind = TARGET_TRAP; | for (uint32_t i = 1; i < t->trap_count; i += 1) if (t->traps[i].addr == at && t->traps[i].in) out->kind = TARGET_TRAP;
 win | dbg/win/target.c | if (out->kind < TARGET_TRAP) return ContinueDebugEvent(e.dwProcessId, e.dwThreadId, status), false; | if (out->kind < TARGET_BREAK) return ContinueDebugEvent(e.dwProcessId, e.dwThreadId, status), false;
-win | dbg/win/target.c | stop(t);\n  t->held = e.dwThreadId, | t->held = e.dwThreadId,
+win | dbg/win/target.c | stop(t, e.dwThreadId);\n  t->held = e.dwThreadId, | t->held = e.dwThreadId,
 # these two only real Windows catches: Wine gives a new thread a new id and handle, and stops a thread before it has run a trap byte or after its event is queued, never between
 windows | dbg/win/target.c | if (t->threads[i].id == e.dwThreadId) t->threads[i] = t->threads[--t->thread_count]; | if (t->threads[i].id == e.dwThreadId) t->threads[i] = t->threads[t->thread_count - 1];
 windows | dbg/win/target.c | else out->code = thread_at(thread_handle(t, e.dwThreadId), &at, false); | else out->code = 0;
@@ -625,3 +625,56 @@ win | dbg/win/target.c | if ((t->step = step_thread)) thread_at( | if (step_thre
 win | dbg/win/target.c | if (t->step) SuspendThread(e.u.CreateThread.hThread); | if (t->step) (void)0;
 # ---- the list itself: a plant whose text is gone plants nothing ----
 list | tests/plants.txt | = 1,\noracle \p dbg/rdi.c \p [RDI_LOCALS] | = 1,\noracle \p dbg/rdi.c \p [RDI_NO_SUCH]
+
+# ---- slice 5: the stepping engine (tests/oracle_trace.py against RAD's recorded traces, tests/stress_engine.c) ----
+engine | dbg/win/target.c | if (t->threads[i].id == reported \p\p !GetThreadContext( | if (!GetThreadContext(
+engine | dbg/win/target.c | out->unhandled = !e.u.Exception.dwFirstChance; | out->unhandled = true;
+engine | dbg/win/target.c | void target_swallow(Target *t) { t->held_status = DBG_CONTINUE; } | void target_swallow(Target *t) { (void)t; }
+engine | dbg/win/target.c | t->threads[i].owed = t->traps[k].addr; break; } | t->threads[i].owed = 0; break; }
+engine | dbg/win/target.c | thread->owed = out->kind == TARGET_LATE ? at : 0; | thread->owed = 0;
+engine | dbg/win/target.c | && c.Rip == thread->owed; | ;
+engine | dbg/engine.c | bool stop = ev.kind != TARGET_EXCEPTION \p\p ev.unhandled; | bool stop = ev.kind != TARGET_EXCEPTION;
+engine | dbg/engine.c | stop = stop \p\p ev.code == at_once[i]; | stop = stop \p\p ev.code == at_once[i] + 1;
+engine | dbg/engine.c | if (ev.kind == TARGET_EXCEPTION) target_swallow(e->target); | 
+engine | dbg/engine.c | if (x.flow == X64_CALL \p\p x.repeats) net_add(e, rip + x.size, END); | if (x.repeats) net_add(e, rip + x.size, END);
+engine | dbg/engine.c | if (x.flow == X64_CALL \p\p x.repeats) net_add(e, rip + x.size, END); | if (x.flow == X64_CALL) net_add(e, rip + x.size, END);
+engine | dbg/engine.c | e->ranges[2 * i + 1] = rdi_row(&m->rdi, e->ranges[2 * i]).opl; | e->ranges[2 * i + 1] = e->ranges[2 * i] + 1;
+engine | dbg/engine.c | for (bool grew = !into; grew;) { | for (bool grew = true; grew;) {
+engine | dbg/engine.c | for (bool grew = !into; grew;) { | for (bool grew = false; grew;) {
+engine | dbg/engine.c | if (after.line.line == 0xf00f00 \p\p after.line.line == 0xfeefee) hi = after.opl; | (void)after;
+engine | dbg/engine.c | for (int pass = into ? 0 : 1; pass < 2; pass += 1) | for (int pass = 1; pass < 2; pass += 1)
+engine | dbg/engine.c | net_add(e, addr, SAVE_BEFORE \p STEP_AFTER); | net_add(e, addr, STEP_AFTER);
+engine | dbg/engine.c | else if (x.flow == X64_CALL && !into) net_add( | else if (x.flow == X64_CALL && !into && false) net_add(
+engine | dbg/engine.c | bool stays = (to - base >= lo && to - base < hi) \p\p in_ranges(e, count, to - base) | bool stays = in_ranges(e, count, to - base)
+engine | dbg/engine.c | bool stays = (to - base >= lo && to - base < hi) \p\p in_ranges(e, count, to - base) | bool stays = (to - base >= lo && to - base < hi)
+engine | dbg/engine.c | (x.flow == X64_CALL && addr != last_call && to && | (x.flow == X64_CALL && addr == last_call && to &&
+engine | dbg/engine.c | (x.flow == X64_CALL && addr != last_call && to && | (x.flow == X64_CALL && to &&
+engine | dbg/engine.c | (x.flow == X64_CALL && addr != last_call && to && | (x.flow == X64_CALL && addr != last_call &&
+engine | dbg/engine.c | && !(tm && rdi_row(&tm->rdi, to - tm->image.base).opl)); | && !tm);
+engine | dbg/engine.c | END \p (into ? IGNORE_SP : 0) \p (to ? 0 : STEP_AFTER)); | END \p (to ? 0 : STEP_AFTER));
+engine | dbg/engine.c | END \p (into ? IGNORE_SP : 0) \p (to ? 0 : STEP_AFTER)); | END \p (into ? IGNORE_SP : 0));
+engine | dbg/engine.c | if (!stays) net_add(e, to ? to : addr, | if (!stays) net_add(e, addr,
+engine | dbg/engine.c | } else if (x.moves_sp) net_add(e, addr, STEP_AFTER \p SAVE_AFTER); | } else if (x.moves_sp && false) net_add(e, addr, STEP_AFTER \p SAVE_AFTER);
+engine | dbg/engine.c | joined = joined \p\p (k != i && e->ranges[2 * k] == e->ranges[2 * i + 1]); | joined = joined \p\p (k != i && false);
+engine | dbg/engine.c | if (!joined) net_add(e, base + e->ranges[2 * i + 1], END); | if (false) net_add(e, base + e->ranges[2 * i + 1], END);
+engine | dbg/engine.c | uint32_t count = bounds.n ? (uint32_t)bounds.n - 1 : 0; | uint32_t count = bounds.n ? 1 : 0;
+engine | dbg/engine.c | if (x.flow != X64_CALL && x.known && !in_ranges(e, count, x.target - base)) | if (x.known && !in_ranges(e, count, x.target - base))
+engine | dbg/engine.c | if (x.flow != X64_CALL && x.known && !in_ranges(e, count, x.target - base)) | if (x.flow != X64_CALL && !x.known && !in_ranges(e, count, x.target - base))
+engine | dbg/engine.c | if (!in_ranges(e, count, hi)) net_add(e, base + hi, END \p IGNORE_SP); | if (false) net_add(e, base + hi, END \p IGNORE_SP);
+engine | dbg/engine.c | if (!in_ranges(e, count, hi)) net_add(e, base + hi, END \p IGNORE_SP); | net_add(e, base + hi, END \p IGNORE_SP);
+engine | dbg/engine.c | &regs)) net_add(e, regs.rip, END \p IGNORE_SP); | &regs)) net_add(e, regs.rip, END);
+engine | dbg/engine.c | if (unwind_step(target_read, e->target, m ? &m->image : 0, &regs)) | if (false && unwind_step(target_read, e->target, m ? &m->image : 0, &regs))
+engine | dbg/engine.c | if (!e->net_count) return step_one(e, thread); | if (false) return step_one(e, thread);
+engine | dbg/engine.c | && !target_owed(e->target, e->threads[i]) && | &&
+engine | dbg/engine.c | stuck = stuck \p\p breakpoints[k] == r.rip; | stuck = false;
+engine | dbg/engine.c | uint64_t depth = regs.gp[4]; | uint64_t depth = 0;
+engine | dbg/engine.c | for (uint32_t i = 0; i < count; i += 1) if (breakpoints[i] == ev.addr) return ev; | 
+engine | dbg/engine.c | bool reached = ev.thread == thread && | bool reached =
+engine | dbg/engine.c | (flags & IGNORE_SP \p\p regs.gp[4] == depth); | (flags & IGNORE_SP \p\p true);
+engine | dbg/engine.c | (flags & IGNORE_SP \p\p regs.gp[4] == depth); | (regs.gp[4] == depth);
+engine | dbg/engine.c | if (reached && flags & SAVE_BEFORE) depth = regs.gp[4]; | 
+engine | dbg/engine.c | if ((!reached \p\p flags & STEP_AFTER) && | if (!reached &&
+engine | dbg/engine.c | if ((!reached \p\p flags & STEP_AFTER) && | if ((flags & STEP_AFTER) &&
+engine | dbg/engine.c | if (!reached) continue; | 
+engine | dbg/engine.c | if (flags & SAVE_AFTER && target_regs(e->target, thread, &regs)) depth = regs.gp[4]; | 
+engine | dbg/engine.c | if (flags & END) return (TargetEvent) | if (true) return (TargetEvent)

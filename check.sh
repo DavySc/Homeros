@@ -7,7 +7,7 @@ cd "$(dirname "$0")"
 # a small queue, so the stress test runs with both queues full most of the time
 FLAGS="-std=c17 -D_GNU_SOURCE -pthread -DQUEUE_BYTES=256 -g -O1 -Wall -Wextra -Werror"
 SAN="-fsanitize=address,undefined -fno-sanitize-recover=all"
-run() { # run <dir with the sources> <list|test|specs|oracle|x64|win|windows|fuzz|all>: 0 when the named checks pass, 2 when
+run() { # run <dir with the sources> <list|test|specs|oracle|x64|win|windows|engine|fuzz|all>: 0 when the named checks pass, 2 when
         # something does not compile (a planted bug must be caught by a check, not by the compiler), 3 when the
         # test files cannot be made (nor by a full disk)
   local src=$1 what=$2 b t lib; b=$(mktemp -d)
@@ -69,9 +69,17 @@ for l in open(sys.argv[1] + "/tests/plants.txt"):
     for p in steps deep frames_o2; do
       (cd "$b" && WINEDEBUG=-all timeout 900 "${WINE:-wine}" ./stress_unwind.exe "$OLDPWD/rdi/$p.exe" "${UNWIND_STEPS:-2000}" "$(sed -n '1s/.* +0x\([0-9a-f]*\) .*/\1/p' "$OLDPWD/traces/$p.over.txt")" 2>/dev/null | grep "^stress_unwind" | tee unwind.out; grep -q "frames agree" unwind.out) || return 1
     done
+  fi
+  if [ "$what" = engine ] || [ "$what" = all ]; then
+    local win="$(grep -v '/queue\.c$' <<<"$lib") $src/dbg/engine.c $src/dbg/win/target.c" at
     # the engine's stepping against RAD's recorded traces (oracle/rad-trace.ps1): every step of each must end where RAD's did
-    ${WINCC:-x86_64-w64-mingw32-gcc} -std=c17 -O1 -g -Wall -Wextra -Werror $(grep -v '/queue\.c$' <<<"$lib") "$src"/dbg/engine.c "$src"/dbg/win/target.c "$src"/tests/trace.c -o rdi/trace_$$.exe || return 2
+    ${WINCC:-x86_64-w64-mingw32-gcc} -std=c17 -O1 -g -Wall -Wextra -Werror $win "$src"/tests/trace.c -o rdi/trace_$$.exe || return 2
     WINEDEBUG=-all python3 -I "$src/tests/oracle_trace.py" ./trace_$$.exe traces rdi $([ "${WINE:-wine}" = env ] || echo "${WINE:-wine}") 2>/dev/null | tail -n 12; t=${PIPESTATUS[0]}; rm -f rdi/trace_$$.exe; [ "$t" = 0 ] || return 1
+    # and where the traces do not reach: threads in the same code, breakpoints, exceptions
+    ${WINCC:-x86_64-w64-mingw32-gcc} -std=c17 -O1 -g -Wall -Wextra -Werror "$src"/tests/scene.c -o "$b/scene.exe" || return 2
+    ${WINCC:-x86_64-w64-mingw32-gcc} -std=c17 -O1 -g -Wall -Wextra -Werror $win "$src"/tests/stress_engine.c -o "$b/stress_engine.exe" || return 2
+    at=$(for s in caller shared handled go; do nm "$b/scene.exe" | sed -n "s/^\([0-9a-f]*\) [TtBbCcDd] $s\$/\1/p"; done)
+    (cd "$b" && WINEDEBUG=-all timeout 600 "${WINE:-wine}" ./stress_engine.exe scene.exe "${ENGINE_ROUNDS:-300}" $at 2>/dev/null | grep "^stress_engine" | tee engine.out; grep -q "as they should be" engine.out) || return 1
   fi
   if [ "$what" = fuzz ] || [ "$what" = all ]; then
     for f in "$src"/tests/fuzz_*.c; do

@@ -240,11 +240,12 @@ TargetEvent engine_run(Engine *e, int how, uint32_t thread, const uint64_t *brea
     else if (how == ENGINE_STEP_OUT) out_net(e, regs);
     if (!e->net_count) return step_one(e, thread);
   }
-  /* a thread that stands on a breakpoint would hit it at once: each such thread first runs the instruction there, alone */
+  /* A thread that stands on a breakpoint would hit it at once: each such thread first runs the instruction there,
+     alone. Not a thread that has hit it without a stop for it yet (target_owed): its stop comes in this run. */
   for (uint32_t i = 0; i < e->thread_count; i += 1) {
     TargetRegs r;
     bool stuck = false;
-    for (uint32_t k = 0; k < count && target_regs(e->target, e->threads[i], &r); k += 1) stuck = stuck || breakpoints[k] == r.rip;
+    for (uint32_t k = 0; k < count && !target_owed(e->target, e->threads[i]) && target_regs(e->target, e->threads[i], &r); k += 1) stuck = stuck || breakpoints[k] == r.rip;
     if (stuck && (ev = step_one(e, e->threads[i])).kind != TARGET_STEP) return ev;
   }
   uint64_t depth = regs.gp[4];

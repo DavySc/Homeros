@@ -3,7 +3,7 @@
 #include <windows.h>
 #include <stdlib.h>
 
-typedef struct { DWORD id; HANDLE handle; } Thread;
+typedef struct { DWORD id; HANDLE handle; uint64_t owed; } Thread;   /* owed: the trap of target_owed, or 0 */
 typedef struct { uint64_t addr; uint8_t own; bool in; } Trap;
 struct Target {
   HANDLE process;
@@ -15,16 +15,29 @@ struct Target {
   Trap *traps; uint32_t trap_count, trap_cap;   /* of this run; all out of memory while stopped */
 };
 
+static Thread *thread_of(const Target *t, DWORD id)
+{
+  for (uint32_t i = 0; i < t->thread_count; i += 1) if (t->threads[i].id == id) return &t->threads[i];
+  return NULL;
+}
+
 static HANDLE thread_handle(const Target *t, DWORD id)
 {
-  for (uint32_t i = 0; i < t->thread_count; i += 1) if (t->threads[i].id == id) return t->threads[i].handle;
-  return NULL;
+  Thread *thread = thread_of(t, id);
+  return thread ? thread->handle : NULL;
+}
+
+bool target_owed(Target *t, uint32_t thread_id)
+{
+  Thread *thread = thread_of(t, thread_id);
+  CONTEXT c = {.ContextFlags = CONTEXT_CONTROL};
+  return thread && thread->owed && GetThreadContext(thread->handle, &c) && c.Rip == thread->owed;
 }
 
 static void thread_add(Target *t, DWORD id, HANDLE handle)
 {
   if (t->thread_count == t->thread_cap && !(t->threads = realloc(t->threads, (t->thread_cap = t->thread_cap * 2 + 8) * sizeof *t->threads))) abort();
-  t->threads[t->thread_count++] = (Thread){id, handle};
+  t->threads[t->thread_count++] = (Thread){id, handle, 0};
 }
 
 static char *text_room(Target *t, uint32_t n)
@@ -123,7 +136,7 @@ static void stop(Target *t, DWORD reported)
     CONTEXT c = {.ContextFlags = CONTEXT_CONTROL | CONTEXT_EXCEPTION_REQUEST};
     if (t->threads[i].id == reported || !GetThreadContext(t->threads[i].handle, &c) || !(c.ContextFlags & CONTEXT_EXCEPTION_ACTIVE)) continue;
     for (uint32_t k = 0; k < t->trap_count; k += 1)
-      if (t->traps[k].in && t->traps[k].addr == c.Rip - 1) { thread_at(t->threads[i].handle, &t->traps[k].addr, false); break; }
+      if (t->traps[k].in && t->traps[k].addr == c.Rip - 1) { thread_at(t->threads[i].handle, &t->traps[k].addr, false), t->threads[i].owed = t->traps[k].addr; break; }
   }
   for (uint32_t i = 0; i < t->trap_count; i += 1) if (t->traps[i].in) target_write(t, t->traps[i].addr, &t->traps[i].own, 1);
   for (uint32_t i = 0; t->step && i < t->thread_count; i += 1) if (t->threads[i].id != t->step) ResumeThread(t->threads[i].handle);
@@ -173,6 +186,8 @@ bool target_wait(Target *t, uint32_t ms, TargetEvent *out)
       for (uint32_t i = 0; i < t->trap_count; i += 1) if (t->traps[i].addr == at && t->traps[i].in) out->kind = TARGET_TRAP;
       if (out->kind == TARGET_LATE && target_read(t, at, &own, 1) && (own == 0xcc || own == 0xcd)) out->kind = TARGET_BREAK;
       else out->code = thread_at(thread_handle(t, e.dwThreadId), &at, false);
+      Thread *thread = thread_of(t, e.dwThreadId);
+      if (thread) thread->owed = out->kind == TARGET_LATE ? at : 0;   /* back on a trap nobody has heard of */
     } else if (out->kind == TARGET_EXCEPTION) status = DBG_EXCEPTION_NOT_HANDLED;   /* the program's handlers get it */
   } break;
   default: break;   /* RIP_EVENT, and a second process cannot come (DEBUG_ONLY_THIS_PROCESS) */
