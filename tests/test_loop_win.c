@@ -120,7 +120,7 @@ static int child(char **argv)
 		}
 		return 0;
 	}
-	if (!strcmp(r, "console")) {   /* its console's size, a line typed, the size after a resize */
+	if (!strcmp(r, "console")) {   /* its console's size, a line typed, the size after a resize, a line */
 		CONSOLE_SCREEN_BUFFER_INFO ci, now;
 		if (!GetConsoleScreenBufferInfo(out, &ci)) return 98;
 		snprintf(b, sizeof b, "size %d %d\n", ci.srWindow.Bottom - ci.srWindow.Top + 1, ci.srWindow.Right - ci.srWindow.Left + 1);
@@ -128,9 +128,11 @@ static int child(char **argv)
 		if (!ReadFile(in, b, 64, &n, NULL)) return 97;
 		put(out, n >= 2 && !memcmp(b, "hi", 2) ? "got:hi\n" : "got:?\n");
 		for (int k = 0; k < 200 && GetConsoleScreenBufferInfo(out, &now) && now.srWindow.Right == ci.srWindow.Right; k++) Sleep(10);
-		snprintf(b, sizeof b, "size %d %d\n", now.srWindow.Bottom - now.srWindow.Top + 1, now.srWindow.Right - now.srWindow.Left + 1);
+		snprintf(b, sizeof b, "now %d %d\n", now.srWindow.Bottom - now.srWindow.Top + 1, now.srWindow.Right - now.srWindow.Left + 1);
 		put(out, b);
-		return 3;
+		/* a line before exiting: Windows' ConPTY drops what a child writes
+		   just before it exits (seen on CI's windows job, 1 run) */
+		return ReadFile(in, b, 64, &n, NULL) ? 3 : 96;
 	}
 	return 99;
 }
@@ -194,11 +196,13 @@ static void pty(void)
 	CHECK(proc_write(id, "hi\r", 3) == 0);
 	while (!has("got:")) { CHECK(ms() < end); CHECK(loop_once(100) == 0); }
 	proc_resize(id, 9, 41);
+	while (!has("now ")) { CHECK(ms() < end); CHECK(loop_once(100) == 0); }
+	CHECK(proc_write(id, "\r", 1) == 0);
 	while (!g.ended[0]) { CHECK(ms() < end); CHECK(loop_once(100) == 0); }
 	/* Wine 11's ResizePseudoConsole is a stub (E_NOTIMPL), so there the
 	   size stays */
 	int wine = GetProcAddress(GetModuleHandleA("ntdll.dll"), "wine_get_version") != NULL;
-	if (!(g.code == 3 && g.ended[1] && !g.ended[2] && has("got:hi") && has(wine ? "got:hi\r\n\x1b[?25h\x1b[?25lsize 7 33" : "size 9 41"))) {
+	if (!(g.code == 3 && g.ended[1] && !g.ended[2] && has("got:hi") && has(wine ? "now 7 33" : "now 9 41"))) {
 		fprintf(stderr, "pty: code %d, ended %d %d %d, output:\n", g.code, g.ended[0], g.ended[1], g.ended[2]);
 		for (size_t i = 0; i < g.nout; i++) fprintf(stderr, g.out[i] >= ' ' && g.out[i] < 127 ? "%c" : "\\x%02x", (unsigned char)g.out[i]);
 		CHECK(0);
