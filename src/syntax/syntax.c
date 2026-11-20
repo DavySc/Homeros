@@ -696,7 +696,11 @@ static int clip(const Ranges *a, const Region *p, Ranges *out)
 }
 
 /* One injected region found by the scan of a tree; a combined one gathers
-   every match of its pattern in that tree (add_injection), else pat < 0. */
+   every match of its pattern in that tree (add_injection's keying), else
+   pat < 0.  Known difference: Neovim scans the whole tree when a query has
+   combined injections, we scan the window, so Lua opened in one string and
+   closed in another far away can colour differently; scanning the whole
+   tree is not worth its cost (PR 91's review). */
 typedef struct { int lang; Ranges r; int64_t pat; } Inj;
 typedef struct { Inj *v; uint32_t n, cap; } Injs;
 
@@ -764,7 +768,12 @@ static int set_regions(Syntax *s, LTree *K, Injs *I, int lang)
 	return 0;
 }
 
-/* LanguageTree:_get_injections and _add_injections, over every tree of L */
+/* LanguageTree:_get_injections and _add_injections, over every tree of L.
+   The query does not ask stop: tree-sitter's halt drops the matches in
+   progress, so a halted scan starts again and never ends while keys come
+   (measured: sliced parses looped).  Its worst case, a Lua string cut on
+   each of 250 lines, costs about 50 ms a key; Neovim 0.12.6 takes 834 ms
+   (measured, 5 runs each; PR 91's review). */
 static int inject(Syntax *s, LTree *L, const Text *t)
 {
 	uint32_t a = s->ra, z = s->rz;
