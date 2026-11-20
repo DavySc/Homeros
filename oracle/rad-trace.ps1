@@ -1,7 +1,9 @@
 # Record what the real RAD Debugger does on a subject program, one line per step.
 # usage: rad-trace.ps1 <raddbg.exe> <subject.exe> <out dir>
-# Three scripts per subject: `into` and `over` repeat one step kind until the program ends,
-# `mix` draws step kinds from a fixed generator. Each script runs twice; a script whose two runs
+# Five scripts per subject: `into` and `over` repeat one step kind until the program ends,
+# `mix` and `mix2` draw step kinds from a fixed generator (two seeds; `mix2` does not step out
+# of main, which ends a trace early), `back` steps into every line of main and, in the functions
+# it comes into, in turn into a line and out. Each script runs twice; a script whose two runs
 # differ is reported, because a trace that is not repeatable cannot be an oracle.
 param($rad, $exe, $out)
 $ErrorActionPreference = 'Continue'
@@ -30,12 +32,14 @@ function Trace($script, $cap) {
   $lines = @(); $s = $null
   for ($i = 0; $i -lt 100 -and -not $s; $i++) { Start-Sleep -Milliseconds 300; $s = Stopped 1 }
   if (-not $s) { $lines += 'FAILED to reach the entry stop' } else {
-    $lines += "start -> $(Place $s)"; $stops = [int](Field $s 'stop_count'); $seed = 12345
+    $lines += "start -> $(Place $s)"; $stops = [int](Field $s 'stop_count'); $seed = if ($script -eq 'mix2') { 54321 } else { 12345 }; $w = 'main start'; $deep = 0
     for ($n = 1; $n -le $cap; $n++) {
       $kind = switch ($script) {
         'into' { 'step_into_line' } 'over' { 'step_over_line' }
+        'back' { if ($w -like 'main *' -or (++$deep) % 2) { 'step_into_line' } else { 'step_out' } }
         default { $seed = ($seed * 1103515245 + 12345) % 2147483648; @('step_into_line', 'step_into_line', 'step_over_line', 'step_over_line', 'step_out', 'step_over_inst', 'step_into_inst')[[int]([math]::Floor($seed / 65536)) % 7] }
       }
+      if ($script -eq 'mix2' -and $kind -eq 'step_out' -and $w -like 'main *') { $kind = 'step_into_line' }
       Send $kind | Out-Null; $stops++; $s = Stopped $stops
       if (-not $s) { $lines += "$kind -> NO STOP within 10 s"; break }
       $w = Place $s; $lines += "$kind -> $w"
@@ -47,7 +51,7 @@ function Trace($script, $cap) {
   Remove-Item "$tmp/*" -Force -ErrorAction SilentlyContinue
   return $lines
 }
-foreach ($script in 'into', 'over', 'mix') {
+foreach ($script in 'into', 'over', 'mix', 'mix2', 'back') {
   $a = Trace $script 600; $b = Trace $script 600
   $same = (($a -join "`n") -eq ($b -join "`n"))
   $a | Set-Content "$out/$name.$script.txt"

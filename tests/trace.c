@@ -3,7 +3,7 @@
      <command> -> <function> <file>:<line> +0x<offset> [<why it stopped>]
      <command> -> outside <module>!<function>      (the trace ends when the thread leaves the program)
      <command> -> ended
-   usage: trace <program.exe> <into|over|mix> <most steps> */
+   usage: trace <program.exe> <into|over|mix|mix2|back> <most steps>   (the recorder's scripts) */
 #include "../dbg/engine.h"
 #include <math.h>
 #include <stdio.h>
@@ -17,6 +17,8 @@ static const char *leaf(const char *path, uint64_t n)   /* what follows the last
   return at;
 }
 
+static bool in_main;   /* the place last printed */
+
 /* Prints where rip is; false when the trace ends here. */
 static bool place(const Engine *e, uint64_t rip, const char *why)
 {
@@ -25,6 +27,7 @@ static bool place(const Engine *e, uint64_t rip, const char *why)
   const Rdi *r = m ? &m->rdi : &none;
   uint64_t off = m ? rip - m->image.base : 0;
   RdiSpan name = rdi_str(r, rdi_at(r, RDI_PROCEDURES, RdiSymbol, rdi_at(r, RDI_SCOPES, RdiScope, rdi_vmap(r, RDI_SCOPE_VMAP, off))->proc)->name);
+  in_main = name.n == 4 && !memcmp(name.p, "main", 4);
   if (m != e->modules) return printf("outside %s!%.*s\n", m ? leaf(m->path, strlen(m->path)) : "", (int)name.n, (const char *)name.p), false;
   RdiLine line = rdi_row(r, off).line;
   char path[1024];
@@ -44,13 +47,16 @@ int main(int argc, char **argv)
   setvbuf(stdout, NULL, _IONBF, 0);   /* a replay that hangs has shown how far it came */
   if (argc < 4 || !engine_open(&e, argv[1], 0, &thread)) return 2;
   uint64_t entry = engine_entry(&e);
-  double seed = 12345;   /* the recorder's generator, in the arithmetic of the recorder's language: numbers this large it rounds */
+  double seed = strcmp(argv[2], "mix2") ? 12345 : 54321;   /* the recorder's generator, in the arithmetic of the recorder's language: numbers this large it rounds */
   TargetEvent ev;
+  int deep = 0;
   do ev = engine_run(&e, ENGINE_RUN, 0, &entry, 1); while (ev.kind == TARGET_BREAK);   /* the loader's own breakpoint: RAD goes on from it without a word */
   printf("start -> ");
   bool on = ev.kind == TARGET_TRAP && place(&e, ev.addr, "stopped at entry point");
   for (int n = 0, cap = atoi(argv[3]); on && n < cap; n += 1) {
-    int how = argv[2][0] == 'i' ? ENGINE_STEP_INTO_LINE : argv[2][0] == 'o' ? ENGINE_STEP_OVER_LINE : mix[(uint64_t)((seed = fmod(seed * 1103515245.0 + 12345.0, 2147483648.0)) / 65536) % 7];
+    int how = !strcmp(argv[2], "into") ? ENGINE_STEP_INTO_LINE : !strcmp(argv[2], "over") ? ENGINE_STEP_OVER_LINE
+            : !strcmp(argv[2], "back") ? (in_main || ++deep % 2 ? ENGINE_STEP_INTO_LINE : ENGINE_STEP_OUT) : mix[(uint64_t)((seed = fmod(seed * 1103515245.0 + 12345.0, 2147483648.0)) / 65536) % 7];
+    if (how == ENGINE_STEP_OUT && in_main && !strcmp(argv[2], "mix2")) how = ENGINE_STEP_INTO_LINE;
     ev = engine_run(&e, how, ev.thread, NULL, 0);   /* the thread that stopped last is the one a command is for */
     printf("%s -> ", names[how]);
     if (ev.kind == TARGET_EXIT) on = false, printf("ended\n");
