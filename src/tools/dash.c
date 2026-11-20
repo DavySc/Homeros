@@ -122,13 +122,12 @@ void tools_dash(Editor *e, long long start_ns)
 	D.start = start_ns;
 }
 
-/* still shown?  Gone once the window shows a file (bufhidden=wipe), the
-   buffer changed or another window opened.  A file always comes into the
-   start buffer while it is empty and unchanged (buflist_new() reuses it, for
-   :enew too), so no other buffer can be shown while this one is open. */
+/* still shown?  Gone once the window shows a file or another buffer
+   (bufhidden=wipe; after :Dashboard the file's buffer is still there, for
+   CTRL-^ or SPC ,), the buffer changed or another window opened. */
 static int shown(Editor *e)
 {
-	if (D.open && (D.buf->path || e->wins->next || e->mode == MODE_INSERT || undo_seq(D.buf->undo) != D.seq))
+	if (D.open && (e->buf != D.buf || D.buf->path || e->wins->next || e->mode == MODE_INSERT || undo_seq(D.buf->undo) != D.seq))
 		D.open = 0;
 	return D.open;
 }
@@ -142,7 +141,9 @@ static void action(Editor *e, int i)
 	case 'r': tools_pick(e, PICK_RECENT); break;
 	/* :ene | startinsert: the empty buffer is already here */
 	case 'n': keys_feed(e, 'i', 0); shown(e); break;
-	case 'q': e->quit = 1; break;   /* :qa: nothing can be modified yet */
+	/* :qa; while it shows there is one window, so :q is :qa (E162 for a
+	   file changed before :Dashboard) */
+	case 'q': core_close(e, 0); break;
 	}
 }
 
