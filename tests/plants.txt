@@ -695,3 +695,53 @@ test | dbg/engine.c | enum { WAIT_MS = 10 }; | enum { WAIT_MS = 60000 };
 engine | dbg/engine.c | if (e->halt && e->halt(e->halt_arg)) return target_halt(e->target), (TargetEvent){.kind = TARGET_HALT}; | if (e->halt && e->halt(e->halt_arg)) return (TargetEvent){.kind = TARGET_HALT};
 # no call into the engine or the target from what the editor links (the nm line of the test step)
 test | dbg/queue.c | #include "queue.h" | #include "queue.h"\nvoid target_halt(void *t); void queue_cross(void) { target_halt(0); }
+# ---- slice 6: a name's place at a frame (tests/test_eval.c by hand; tests/zoo_check.c on a program that says where its variables are) ----
+test | dbg/eval.c | if (code < 1 \p\p code > 16) return false; | if (code > 16) return false;
+test | dbg/eval.c | if (code < 1 \p\p code > 16) return false; | if (code < 1 \p\p code > 15) return false;
+test | dbg/eval.c | if (code < 1 \p\p code > 16) return false; | if (code < 1 \p\p code > 17) return false;
+test | dbg/eval.c | *v = regs->gp[code - 1]; | *v = regs->gp[code % 16];
+test | dbg/eval.c | return *out = stack[0], n == 1; | return *out = stack[0], n >= 1;
+test | dbg/eval.c | return *out = stack[0], n == 1; | return *out = stack[0], true;
+test | dbg/eval.c | if (code >= 64 \p\p !operand[code]) return false; | if (code >= 64) return false;
+test | dbg/eval.c | if (imm >> 8 != 8 \p\p !reg(regs, imm & 0xff, &v)) return false; | if (!reg(regs, imm & 0xff, &v)) return false;
+test | dbg/eval.c | if (imm >> 8 != 8 \p\p !reg(regs, imm & 0xff, &v)) return false; | if (imm >> 8 != 8 \p\p !reg(regs, imm & 0xf, &v)) return false;
+test | dbg/eval.c | if (n < 1 \p\p imm > 8 \p\p !target_read(e->target, stack[--n], &v, (uint32_t)imm)) return false; | if (imm > 8 \p\p !target_read(e->target, stack[--n], &v, (uint32_t)imm)) return false;
+test | dbg/eval.c | if (n < 1 \p\p imm > 8 \p\p !target_read(e->target, stack[--n], &v, (uint32_t)imm)) return false; | if (n < 1 \p\p !target_read(e->target, stack[--n], &v, (uint32_t)imm)) return false;
+test | dbg/eval.c | if (n < 1 \p\p imm > 8 \p\p !target_read(e->target, stack[--n], &v, (uint32_t)imm)) return false; | if (n < 1 \p\p imm > 8) return false;\n      target_read(e->target, stack[--n], &v, (uint32_t)imm);
+test | dbg/eval.c | if (n < 2) return false; | if (n < 1) return false;
+test | dbg/eval.c | n -= 2, v = stack[n] + stack[n + 1]; | n -= 2, v = stack[n];
+test | dbg/eval.c | if (n < 1 \p\p imm < 1 \p\p imm > 64) return false; | if (imm < 1 \p\p imm > 64) return false;
+test | dbg/eval.c | if (n < 1 \p\p imm < 1 \p\p imm > 64) return false; | if (n < 1 \p\p imm > 64) return false;
+test | dbg/eval.c | if (n < 1 \p\p imm < 1 \p\p imm > 64) return false; | if (n < 1 \p\p imm < 1) return false;
+test | dbg/eval.c | & 1 ? v \p ~(((uint64_t)1 << imm) - 1) : v & (((uint64_t)1 << imm) - 1); | & 1 ? v & (((uint64_t)1 << imm) - 1) : v & (((uint64_t)1 << imm) - 1);
+test | dbg/eval.c | & 1 ? v \p ~(((uint64_t)1 << imm) - 1) : v & (((uint64_t)1 << imm) - 1); | & 1 ? v \p ~(((uint64_t)1 << imm) - 1) : v;
+test | dbg/eval.c | if (imm < 64) v = v >> (imm - 1) & 1 | if (imm < 64) v = v >> imm & 1
+test | dbg/eval.c | if (n == DEEP) return false; | 
+test | dbg/eval.c | steps < 64; steps += 1) { | steps < 640; steps += 1) {
+test | dbg/eval.c | for (uint64_t i = 0; i < count && !l; i += 1) { | for (uint64_t i = 0; i < count; i += 1) {
+test | dbg/eval.c | if (c->first <= voff && voff < c->opl) l = c->location; | if (c->first < voff && voff < c->opl) l = c->location;
+test | dbg/eval.c | if (c->first <= voff && voff < c->opl) l = c->location; | if (c->first <= voff && voff <= c->opl) l = c->location;
+test | dbg/eval.c | uint64_t count = l >> 32 & 0xffffff, first = l & 0xffffffff; | uint64_t count = l >> 32 & 0xffffff, first = 0;
+test | dbg/eval.c | p.at = base + (uint64_t)(int16_t)(rest >> 32); | p.at = base + (uint64_t)(uint16_t)(rest >> 32);
+test | dbg/eval.c | return l >> 56 == 3 \p\p target_read(e->target, p.at, &p.at, 8) ? p : none; | return p;
+test | dbg/eval.c | return l >> 56 == 3 \p\p target_read(e->target, p.at, &p.at, 8) ? p : none; | return target_read(e->target, p.at, &p.at, 8) ? p : none;
+test | dbg/eval.c | case 5: return rest >> 48 >= 1 && rest >> 48 <= 16 ? | case 5: return rest >> 48 <= 16 ?
+test | dbg/eval.c | case 5: return rest >> 48 >= 1 && rest >> 48 <= 16 ? | case 5: return rest >> 48 >= 1 ?
+test | dbg/eval.c | (EvalPlace){EVAL_REGISTER, m, type, (rest >> 48) - 1} : none; | (EvalPlace){EVAL_REGISTER, m, type, rest >> 48} : none;
+test | dbg/eval.c | case 6: return p.at = m->image.base + rest, p; | case 6: return p.at = rest, p;
+test | dbg/eval.c | case 8: return (EvalPlace){EVAL_CONSTANT, m, type, rest}; | 
+test | dbg/eval.c | if (n > 8 \p\p !eight.n) return false; | if (!eight.n) return false;
+test | dbg/eval.c | if (n > 8 \p\p !eight.n) return false; | if (n > 8) return false;
+test | dbg/eval.c | rdi_run(&p.module->rdi, RDI_LOCATION_CONSTANTS, p.at / 8, 1) | rdi_run(&p.module->rdi, RDI_LOCATION_CONSTANTS, p.at, 1)
+test | dbg/eval.c | if (p.kind == EVAL_MEMORY) return target_read(e->target, p.at, bytes, n); | if (p.kind == EVAL_MEMORY) return target_read(e->target, p.at + 1, bytes, n);
+eval | dbg/eval.c | frame->rip - called);\n  uint64_t voff = m ? frame->rip - called | frame->rip - 0 * called);\n  uint64_t voff = m ? frame->rip - 0 * called
+eval | dbg/eval.c | s && n < 256; s = scope->parent, n += 1) { | s && n < 256; s = 0, n += 1) {
+eval | dbg/eval.c | if (is.n == len && !memcmp(is.p, name, len)) | if (is.n >= len && !memcmp(is.p, name, len))
+eval | dbg/eval.c | if (is.n == len && !memcmp(is.p, name, len)) | if (is.n == len)
+eval | dbg/eval.c | return place(e, m, y->type, y->location, voff, frame); | return place(e, m, y->type, y->location, 0, frame);
+eval | dbg/eval.c | rdi_at(&m->rdi, RDI_LOCALS, RdiSymbol, scope->local_first + i); | rdi_at(&m->rdi, RDI_LOCALS, RdiSymbol, scope->local_first);
+eval | dbg/eval.c | i % 2 ? RDI_NAMES_CONSTANTS : RDI_NAMES_GLOBALS, name, len) | RDI_NAMES_GLOBALS, name, len)
+eval | dbg/eval.c | i % 2 ? RDI_NAMES_CONSTANTS : RDI_NAMES_GLOBALS, name, len) | RDI_NAMES_CONSTANTS, name, len)
+eval | dbg/eval.c | *v = regs->gp[code - 1]; | *v = regs->gp[code % 16];
+eval | dbg/eval.c | if (imm >> 8 != 8 \p\p !reg(regs, imm & 0xff, &v)) return false; | if (imm >> 8 != 9 \p\p !reg(regs, imm & 0xff, &v)) return false;
+eval | dbg/eval.c | (EvalPlace){EVAL_REGISTER, m, type, (rest >> 48) - 1} : none; | (EvalPlace){EVAL_REGISTER, m, type, rest >> 48} : none;

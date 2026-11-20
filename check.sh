@@ -7,11 +7,11 @@ cd "$(dirname "$0")"
 # a small queue, so the stress test runs with both queues full most of the time
 FLAGS="-std=c17 -D_GNU_SOURCE -pthread -DQUEUE_BYTES=256 -g -O1 -Wall -Wextra -Werror"
 SAN="-fsanitize=address,undefined -fno-sanitize-recover=all"
-run() { # run <dir with the sources> <list|test|specs|oracle|x64|win|windows|engine|fuzz|all>: 0 when the named checks pass, 2 when
+run() { # run <dir with the sources> <list|test|specs|oracle|x64|win|windows|engine|eval|fuzz|all>: 0 when the named checks pass, 2 when
         # something does not compile (a planted bug must be caught by a check, not by the compiler), 3 when the
         # test files cannot be made (nor by a full disk)
   local src=$1 what=$2 b t lib; b=$(mktemp -d)
-  lib=$(ls "$src"/dbg/*.c | grep -v '/engine\.c$\|/session\.c$')   # the engine and its thread need a target: linked in the engine step; here compiled, and run on a made-up target (tests/test_session.c)
+  lib=$(ls "$src"/dbg/*.c | grep -v '/engine\.c$\|/session\.c$\|/eval\.c$')   # the engine, its thread and the evaluator need a target: linked in the engine and eval steps; here compiled, and the thread run on a made-up target (tests/test_session.c)
   case $what in test|oracle|fuzz|all)
     python3 -I "$src/tests/seed_rdi.py" "$b/seed.rdi" || return 3
     "$src/tests/make_pdbs.sh" "$b/pdb" || return 3;;
@@ -26,7 +26,7 @@ for l in open(sys.argv[1] + "/tests/plants.txt"):
         if open(sys.argv[1] + "/" + file.strip()).read().count(find.replace("\\n", "\n").replace("\\p", "|")) != 1: sys.exit("plants.txt: not found once: " + find)' "$src" || return 1
   fi
   if [ "$what" = test ] || [ "$what" = all ]; then
-    for build in gcc clang; do for t in engine session; do $build $FLAGS -c "$src"/dbg/$t.c -o "$b/$t.o" || return 2; done; done
+    for build in gcc clang; do for t in engine session eval; do $build $FLAGS -c "$src"/dbg/$t.c -o "$b/$t.o" || return 2; done; done
     # only the engine and its thread call the target or the engine: what the editor links beside them shares nothing with a debugged program
     for t in $lib; do gcc $FLAGS -c "$t" -o "$b/o.o" || return 2; if nm -u "$b/o.o" | grep ' \(target\|engine\)_'; then return 1; fi; done
     # each tests/test_*.c is its own program: ASan+UBSan with both compilers, then ThreadSanitizer
@@ -82,6 +82,17 @@ for l in open(sys.argv[1] + "/tests/plants.txt"):
     ${WINCC:-x86_64-w64-mingw32-gcc} -std=c17 -O1 -g -Wall -Wextra -Werror $win "$src"/tests/stress_engine.c -o "$b/stress_engine.exe" || return 2
     at=$(for s in caller shared handled go; do nm "$b/scene.exe" | sed -n "s/^\([0-9a-f]*\) [TtBbCcDd] $s\$/\1/p"; done)
     (cd "$b" && WINEDEBUG=-all timeout 600 "${WINE:-wine}" ./stress_engine.exe scene.exe "${ENGINE_ROUNDS:-300}" $at 2>/dev/null | grep "^stress_engine" | tee engine.out; grep -q "as they should be" engine.out) || return 1
+  fi
+  if [ "$what" = eval ] || [ "$what" = all ]; then
+    # names and where their variables are (dbg/eval.c), on a program that says so itself: built here with clang, plain and optimised
+    # (each with the least number of variables that must be found, and found in a register), and as MSVC built it on the recorder
+    local link="lld-link /nologo /debug /nodefaultlib /entry:main /subsystem:console /dynamicbase:no /stack:1048576,1048576" o
+    ${WINCC:-x86_64-w64-mingw32-gcc} -std=c17 -O1 -g -Wall -Wextra -Werror $(grep -v '/queue\.c$' <<<"$lib") "$src"/dbg/engine.c "$src"/dbg/eval.c "$src"/dbg/win/target.c "$src"/tests/zoo_check.c -o "$b/zoo_check.exe" || return 2
+    echo 'int _fltused;' > "$b/flt.c" && clang --target=x86_64-pc-windows-msvc -ffreestanding -c "$b/flt.c" -o "$b/flt.obj" || return 3
+    for o in O0:67:0 O2:45:10; do
+      clang --target=x86_64-pc-windows-msvc -g -gcodeview -${o%%:*} -ffreestanding -mno-stack-arg-probe -c "$src/subjects/zoo.c" -o "$b/zoo.obj" && $link "$b/zoo.obj" "$b/flt.obj" /out:"$b/zoo-${o%%:*}.exe" /pdb:"$b/zoo-${o%%:*}.pdb" || return 3
+      (cd "$b" && WINEDEBUG=-all timeout 300 "${WINE:-wine}" ./zoo_check.exe zoo-${o%%:*}.exe $(tr : ' ' <<<"${o#*:}") 2>/dev/null | grep "^zoo_check" | tee zoo.out; grep -q "where the program says" zoo.out) || return 1
+    done
   fi
   if [ "$what" = fuzz ] || [ "$what" = all ]; then
     for f in "$src"/tests/fuzz_*.c; do
