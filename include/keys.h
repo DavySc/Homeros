@@ -30,6 +30,7 @@ typedef struct {
 	int visual;          /* 0, 'v', 'V' or 22 (CTRL-V); the cursor is one end */
 	size_t vline, vcol;  /* the selection's other end */
 	int replace;         /* insert mode overtypes (R) */
+	int executing;       /* a macro register is being replayed (reg_executing()) */
 	int space;           /* Neovim's inserted_space: a space typed on its own */
 	int batch;           /* inserting typeahead as one string (Neovim's insertchar()) */
 	KeyArea yank;        /* the area just yanked, '[ to '] (a block's columns
