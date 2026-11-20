@@ -7,6 +7,7 @@
 #include <time.h>
 #include "check.h"
 #include "core.h"
+#include "loop.h"
 #include "tools.h"
 #include "../src/tools/dash.h"
 #include "../src/tools/conform/dash-expect.inc"
@@ -22,6 +23,26 @@ int timespec_get(struct timespec *t, int base)
 	t->tv_sec = NOW;
 	t->tv_nsec = 0;
 	return base;
+}
+
+/* and a monotonic clock the test moves (loop_now, so the animation's
+   timers): frames come at once, 300 s pass in no time */
+static long long fake;
+int clock_gettime(clockid_t id, struct timespec *t)
+{
+	(void)id;
+	t->tv_sec = fake / 1000000000;
+	t->tv_nsec = fake % 1000000000;
+	return 0;
+}
+
+/* ms pass; did the animation ask for a redraw? */
+static int after(int ms)
+{
+	fake += ms * 1000000LL;
+	core_changed = 0;
+	CHECK(!loop_once(0));
+	return core_changed;
 }
 
 /* the legend's letter for a cell: its face's colour and boldness */
@@ -71,7 +92,9 @@ int main(void)
 	size_t ncase = sizeof cases / sizeof *cases;
 	for (size_t i = 0; i < ncase; i++) {
 		CHECK(!grid_resize(&g, cases[i].rows, cases[i].cols));
-		open_dash();
+		/* the animation's frames follow the last opening's: 350 ms each */
+		if (!cases[i].frame) open_dash();
+		else { CHECK(!after(349) && after(1)); draw(); }
 		for (int r = 0; r < g.rows - 1; r++) {
 			char text[4096], col[1024];
 			size_t k = 0, n = 0;
@@ -91,6 +114,31 @@ int main(void)
 		}
 		CHECK(g.crow == cases[i].crow && g.ccol == cases[i].ccol);
 	}
+
+	/* splash.lua's timing, on the newest frame: other redraws do not hold
+	   the next frame back; hidden (no draws), one wake and then none */
+	draw();
+	CHECK(!after(200));
+	draw();
+	CHECK(after(150));
+	CHECK(!after(10000));
+	/* shown again: on from there, until 300 s after it opened */
+	int frames = 0;
+	draw();
+	while (after(350)) { draw(); frames++; }
+	CHECK(frames > 800 && frames < 857);   /* 300 s at 350 ms, less the 14 s already passed */
+	CHECK(!after(10000));
+	/* :Dashboard opens it again: a fresh 300 s */
+	open_dash();
+	CHECK(after(350));
+	/* closed (insert mode): its timer goes with it */
+	draw();
+	CHECK(tools_key(&e, 'n'));
+	draw();
+	CHECK(!after(1000));
+	keys_feed(&e, KEY_ESC, 0);
+	core_free(&e);
+	CHECK(!core_open(&e, NULL));
 
 	/* keys: j and k go from item to item and stop at the ends */
 	CHECK(!grid_resize(&g, 40, 100));

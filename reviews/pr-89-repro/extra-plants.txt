@@ -1,0 +1,13 @@
+x1 the tick asks for no redraw~test TESTS=tools_dash~~src/tools/dash.c~	D.n++;¶	core_changed = 1;~	D.n++;
+x2 the tick leaves ticking set: one frame only~test TESTS=tools_dash~~src/tools/dash.c~	D.ticking = 0;¶~
+x3 the frame number never moves~test TESTS=tools_dash~~src/tools/dash.c~	D.n++;¶~
+x4 the cat blinks a frame early~test TESTS=tools_dash~~src/tools/dash.c~(y == 4 && D.n % 12 == 11)~(y == 4 && D.n % 12 == 10)
+x5 a frame every 351 ms~test TESTS=tools_dash~~src/tools/dash.c~enum { INTERVAL = 350 };~enum { INTERVAL = 351 };
+x6 a frame every 349 ms~test TESTS=tools_dash~~src/tools/dash.c~enum { INTERVAL = 350 };~enum { INTERVAL = 349 };
+x7 the terminal's rows all one shimmer colour~test TESTS=tools_dash~~src/tools/dash.c~	return shimmer(y);~	return shimmer(y * 0);
+x8 the name all one shimmer colour~test TESTS=tools_dash~~src/tools/dash.c~name + i, 1, 1, shimmer(i)~name + i, 1, 1, shimmer(0)
+x9 the ear's twitch starts a column late~test TESTS=tools_dash~~src/tools/dash.c~x >= 14 && x <= 16~x >= 15 && x <= 16
+x10 the frog never blinks~test TESTS=tools_dash~~src/tools/dash.c~ || (y == 3 && D.n % 12 == 5)~
+x11 :Dashboard keeps the old frame number~test TESTS=tools_dash~~src/tools/dash.c~	D.t0 = loop_now();~	D.t0 = loop_now(); D.n = 5;
+x12 the animation never stops~test TESTS=tools_dash~~src/tools/dash.c~loop_now() - D.t0 < SECONDS * 1000000000~loop_now() - D.t0 < SECONDS * 1000000000 * 1000
+x14 the whiskers never wiggle~test TESTS=tools_dash~~src/tools/dash.c~D.n % 9 == 4) s =~D.n % 9 == 99) s =
