@@ -1,9 +1,9 @@
 /* render-markdown (headings, bullets, checkboxes, fenced code) against
    Neovim: replays the cases that tests/test_core_markdown.py recorded from
    Neovim with render-markdown (tests/test_core_markdown.txt: 1000 random,
-   then tests/test_core_markdown_cases.py's 42: sideways scroll, skipcol,
-   fillers) and compares every row's text, the colours the .py names, and
-   the cursor.  usage: test_core_markdown [FILE] [-v] */
+   then tests/test_core_markdown_cases.py's 43: sideways scroll, skipcol,
+   fillers, Visual mode) and compares every row's text, the colours the .py
+   names, and the cursor.  usage: test_core_markdown [FILE] [-v] */
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -67,7 +67,7 @@ static void command(Editor *e, Grid *g, const char *t)
 	while (syntax_update(e->buf->syn, e->buf->text, NULL));
 }
 
-/* Cases listed as known, 23 of 1042.  Drawing's: an ordered number wider
+/* Cases listed as known, 23 of 1043.  Drawing's: an ordered number wider
    than its marker, which Neovim puts inline (1032); a tab before a
    heading's marker (1041); an info string past the 256 bytes draw_md
    reads, in a window wider than they are (1042).  The core's

@@ -48,4 +48,7 @@ CASES += [
  # a window wider than the 256 bytes draw_md reads: the language line
  # ends there (Neovim's goes on: known)
  ('info past byte 256, wide', 6, 300, ['```c ' + 'x' * 300, 'y', '```', 'end'], ['k:4G', 'redraw']),
+ # PR 72's Visual tab rule: the window left on a Tab keeps the Normal
+ # ruler while the other one is in Visual mode
+ ('another window on a tab', 10, 50, ['\tx', 'y', '# h'], ['k:0', 'vs', 'k:2G', 'visual']),
 ]
