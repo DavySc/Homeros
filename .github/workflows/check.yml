@@ -56,12 +56,26 @@ jobs:
   windows:
     if: github.event_name == 'pull_request'
     runs-on: windows-latest
-    timeout-minutes: 15
+    timeout-minutes: 30   # 15 before the terminal; a cold cache adds its zig build
     steps:
       - uses: actions/checkout@v4
       - uses: mlugg/setup-zig@v2
         with:
           version: 0.17.1
+      # libghostty-vt for Windows, which test_git_win links (the terminal,
+      # src/tools/): no nix here, so zig builds ghostty.nix's revision, once
+      # per change of it
+      - id: ghostty
+        uses: actions/cache@v4
+        with: { path: build/ghostty, key: "ghostty-win-${{ hashFiles('src/tools/ghostty.nix') }}" }
+      - if: steps.ghostty.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          rev=$(sed -n 's|.*github.com/ghostty-org/ghostty" "\([0-9a-f]*\)".*|\1|p' src/tools/ghostty.nix)
+          git init -q build/ghostty-src && cd build/ghostty-src
+          git fetch -q --depth 1 https://github.com/ghostty-org/ghostty "$rev" && git checkout -q FETCH_HEAD
+          zig build -Demit-lib-vt -Doptimize=ReleaseFast -Dcpu=baseline -Dtarget=x86_64-windows-gnu --prefix ../ghostty-out
+          mkdir -p ../ghostty && cp -r ../ghostty-out/include ../ghostty/ && cp ../ghostty-out/lib/ghostty-vt-static.lib ../ghostty/windows.lib
       - run: bash src/git/check.sh
         shell: bash
       # the pseudo-console (ConPTY), which Wine cannot resize (the terminal's)

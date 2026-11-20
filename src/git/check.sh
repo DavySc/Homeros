@@ -12,6 +12,7 @@ run=wine; [ "${OS:-}" = Windows_NT ] && run=
 for t in zig $run; do
 	command -v $t >/dev/null || { echo "src/git/check.sh: $t is not on PATH"; exit 2; }
 done
+. src/tools/ghostty-win.sh   # package 17's, agreed by thread 0
 pick() { if ls src/$1/*.c >/dev/null 2>&1; then echo src/$1/*.c; else echo ref/$1.c; fi; }
 mkdir -p build/win
 if [ -n "$run" ]; then
@@ -21,6 +22,10 @@ if [ -n "$run" ]; then
 export WINEDEBUG=-all WINEDLLOVERRIDES="mscoree,mshtml=" WINEPREFIX=$PWD/build/win/prefix-git
 # file names in UTF-8, as the bridge's shell writes them
 export LANG=C.UTF-8
+# libghostty-vt for Windows, which the terminal (src/tools/) links; CI's
+# windows job builds it with zig instead (no nix there).  Package 17's,
+# agreed by thread 0
+make -s build/ghostty/windows.lib
 # a server left from an earlier run keeps that run's environment
 wineserver -k 2>/dev/null || true
 export XDG_DATA_HOME=$PWD/build/win/git-data TEST_TRASH=$PWD/build/win/git-data/Trash/files
@@ -34,7 +39,7 @@ for t in test_git_win ${run:+test_git}; do
 	zig cc -target x86_64-windows-gnu -std=c17 -Wall -Wextra -Werror -D_DEFAULT_SOURCE -Iinclude -O1 -g \
 	  -fsanitize=undefined -fsanitize-trap=undefined -o build/win/$t.exe tests/$t.c src/git/*.c \
 	  $(pick core) $(pick text) $(pick undo) $(pick uni) $(pick keys) $(pick loop) $(pick file) $(pick grid) \
-	  $(pick theme) $(pick kitten) $(pick lsp) $(pick sqlfmt) $(pick tools) $(pick shada) $(pick str) src/syntax/tsql.c -lshell32   # str: package 17's, agreed by thread 0
+	  $(pick theme) $(pick kitten) $(pick lsp) $(pick sqlfmt) $(pick tools) $(pick shada) $(pick str) src/syntax/tsql.c $GHOSTTY_WIN -lshell32   # str: package 17's, agreed by thread 0
 done
 timeout 300 $run build/win/test_git_win.exe || { echo "FAIL test_git_win"; exit 1; }
 [ -n "$run" ] || exit 0
