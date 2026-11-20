@@ -12,14 +12,16 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
-  # the check and the plants run in parallel, the plants in four shards:
+  # the check and the plants run in parallel, the plants in eight shards:
   # one after the other took 54 minutes on main at 8d08829, and the plants
-  # alone 42 on PR 18 (reviews of PRs 18 and 24)
+  # alone 42 on PR 18 (reviews of PRs 18 and 24); with 708 plants four
+  # shards passed CI's 75 minutes (PR 59's review, both heads)
   check:
     strategy:
       fail-fast: false
       matrix:
-        target: [check, planted SHARD=0/4, planted SHARD=1/4, planted SHARD=2/4, planted SHARD=3/4]
+        target: [check, planted SHARD=0/8, planted SHARD=1/8, planted SHARD=2/8, planted SHARD=3/8,
+                 planted SHARD=4/8, planted SHARD=5/8, planted SHARD=6/8, planted SHARD=7/8]
     runs-on: ubuntu-24.04
     timeout-minutes: 75
     steps:
