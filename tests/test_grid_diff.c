@@ -193,6 +193,8 @@ static const char *const face_sgr[FACE_COUNT] = {
 	";1;38;2;249;226;175",                /* dashboard sparkle: yellow */
 	";1;38;2;108;112;134",                /* dashboard terminal: overlay0 */
 	";1;38;2;203;166;247",                /* dashboard prompt: mauve */
+	";1;38;2;116;199;236",                /* shimmer sapphire */
+	";1;38;2;148;226;213",                /* shimmer teal */
 };
 
 /* backend_present's output, through a file: a frame may be larger than a pipe holds */
