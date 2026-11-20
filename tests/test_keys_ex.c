@@ -286,6 +286,10 @@ int main(void)
 	CHECK(keys_hl(&e, e.win, 4, 0, &hs, &hz) && hs == 0 && hz == 1);
 	e.win->top = 3;
 	CHECK(!keys_hl(&e, e.win, 4, 0, &hs, &hz));
+	/* one that \zs starts on the next line is that line's */
+	for (const char *s = "/xy\\n\\zshe\r"; *s; s++) keys_feed(&e, *s == '\r' ? KEY_ENTER : *s, s[1] != 0);
+	e.win->top = 0;
+	CHECK(!keys_hl(&e, e.win, 1, 0, &hs, &hz) && keys_hl(&e, e.win, 2, 0, &hs, &hz) && hs == 0 && hz == 2);
 	core_free(&e);
 	unlink(path);
 	bad += check("foo bar\nabc Foo x\n  foo.bar(a) 12\nbaz?\n\nx/y?z foo\nfoofoo zz\nq .*[^$~/?\\\n", search);

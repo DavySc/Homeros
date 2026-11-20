@@ -144,7 +144,7 @@ keys: the kept regex ignores 'ignorecase' (test_keys_ex)~test TESTS=keys_ex~~src
 keys: CTRL-L hides the matches in Visual mode (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~!checkclearop(cap->oap) && !VIsual_active) no_hlsearch~!checkclearop(cap->oap)) no_hlsearch
 keys: CTRL-L hides the matches after an operator (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~if (!checkclearop(cap->oap) && !VIsual_active) no_hlsearch~if (!VIsual_active) no_hlsearch
 keys: :noh takes a range (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~		if (n) core_msg(E, "E481: No range allowed");¶		else no_hlsearch = 1;~		no_hlsearch = 1;
-keys: a match \zs starts on the next line is drawn on this one (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~		else if (ms.lnum > l) return 0;¶~
+keys: a match \zs starts on the next line is drawn on this one (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~else if (ms.lnum > l) return 0;~else if (ms.lnum > l) return *s = 0, *z = ml_len(l) + 1, 1;
 keys: a answers this match but keeps asking (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~if (typed == 'a') fl.ask = 0;~if (typed == 'a') fl.ask = 1;
 keys: l answers this match but goes on to the next lines (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~if (typed == 'l') fl.all = 0, line2 = lnum;~if (typed == 'l') fl.all = 0;
 keys: Esc and CTRL-C answer yes instead of quitting (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~got_quit = typed == 'q' || typed == KEY_ESC || typed == KEY_CTRL_C;~got_quit = typed == 'q';
