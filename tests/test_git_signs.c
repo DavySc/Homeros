@@ -334,6 +334,10 @@ int main(void)
 	git_attach(e.buf);
 	CHECK(!git_branch(e.buf));
 	for (int l = 0; l <= nline; l++) CHECK(!git_sign(e.buf, (size_t)l));
+	/* :e of a file not made yet in the repository: its directory's branch */
+	snprintf(path, sizeof path, "%s/new2.txt", repo);
+	git_attach(e.buf);
+	branch_check("feature");
 	e.buf->path = was;
 	git_free();
 	core_free(&e);
