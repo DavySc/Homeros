@@ -29,12 +29,14 @@ static bool place(const Engine *e, uint64_t rip, const char *why)
   RdiSpan name = rdi_str(r, rdi_at(r, RDI_PROCEDURES, RdiSymbol, rdi_at(r, RDI_SCOPES, RdiScope, rdi_vmap(r, RDI_SCOPE_VMAP, off))->proc)->name);
   in_main = name.n == 4 && !memcmp(name.p, "main", 4);
   if (m != e->modules) return printf("outside %s!%.*s\n", m ? leaf(m->path, strlen(m->path)) : "", (int)name.n, (const char *)name.p), false;
-  RdiLine line = rdi_row(r, off).line;
-  char path[1024];
+  RdiRow row = rdi_row(r, off);
+  RdiLine line = row.line;
+  char path[1024], number[12] = "";   /* no number where no line table has the place (RAD's is empty there); 0 where one has it without a line */
+  if (row.opl) snprintf(number, sizeof number, "%u", line.line);
   uint64_t n = rdi_path(r, rdi_at(r, RDI_SOURCE_FILES, RdiSourceFile, line.file)->path_node, path, sizeof path);
   if (n > sizeof path) n = sizeof path;
   const char *file = leaf(path, n);
-  printf("%.*s %.*s:%u +0x%llx [%s]\n", (int)name.n, (const char *)name.p, (int)(path + n - file), file, line.line, (unsigned long long)off, why);
+  printf("%.*s %.*s:%s +0x%llx [%s]\n", (int)name.n, (const char *)name.p, (int)(path + n - file), file, number, (unsigned long long)off, why);
   return true;
 }
 
