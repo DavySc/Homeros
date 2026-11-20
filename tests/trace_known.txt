@@ -1,8 +1,11 @@
-# Where a replay parts from RAD's trace for a reason that was looked into: trace, where (all, wine, windows), line, why.
+# Where a replay parts from RAD's trace for a reason that was looked into: trace, where (all, wine, windows), the line
+# up to which the two are compared, the line where they must differ.
 # Stepping out of an inlined call: what the call covers is read from the PDB as LLVM does, not as RAD (dbg/conv.c,
 # inline_pieces; knowledge base, lesson L26), so the step ends at the first instruction behind the call, where RAD goes one further.
-deep_o2.mix.txt all 6
-gap_o2.mix.txt all 6
-# __chkstk touches the stack's pages down to the new frame only where they are not yet there; under Wine they are.
-frames.into.txt wine 28
-frames_o2.into.txt wine 22
+deep_o2.mix.txt all 6 6
+gap_o2.mix.txt all 6 6
+# __chkstk touches the stack's pages down to the new frame, as many as are not yet there: how many depends on the
+# system and on what started the program (under Wine none; on Windows 25 rounds less than in RAD's run). From its
+# first branch on that, the two may differ (line 0 below: nothing has to).
+frames.into.txt all 28 0
+frames_o2.into.txt all 22 0
