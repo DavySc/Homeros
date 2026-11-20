@@ -8,6 +8,7 @@
 ;; at 2026-11-19 17:30; run with TZ=UTC.
 ;; emacs -Q --batch -l tools/org_todo.el FILE...
 (require 'org)
+(advice-add 'y-or-n-p :override (lambda (&rest _) t))   ; "Continue?" after ten repeats: yes, as Davy chose
 (setq org-todo-keywords '((sequence "TODO(t)" "NEXT(n)" "WAIT(w@)" "|" "DONE(d!)" "CANCELLED(c@)"))
       org-log-done 'time org-log-into-drawer t org-enforce-todo-dependencies t
       org-auto-align-tags nil org-tags-column 0)

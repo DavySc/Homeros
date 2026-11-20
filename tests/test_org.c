@@ -782,6 +782,176 @@ static const struct { size_t pos; const char *dirs, *text, *want; } todos[] = {
 	  "  - State \"CANCELLED\"  from              [2026-11-19 Thu 17:30]\n"
 	  "  :END:\n"
 	  "--\n" },
+	{ 58, "r",
+	  "* TODO p\n"
+	  ":PROPERTIES:\n"
+	  ":ORDEREDX: t\n"
+	  ":END:\n"
+	  "** TODO a\n"
+	  "** WAIT b\n",
+	  "* TODO p\n"
+	  ":PROPERTIES:\n"
+	  ":ORDEREDX: t\n"
+	  ":END:\n"
+	  "** TODO a\n"
+	  "** DONE b\n"
+	  "CLOSED: [2026-11-19 Thu 17:30]\n"
+	  ":LOGBOOK:\n"
+	  "- State \"DONE\"       from \"WAIT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "--\n" },
+	{ 0, "r",
+	  "* WAIT a\n"
+	  "SCHEDULED: <2026-11-19 Thu 18:00-19:15 .+1h>\n",
+	  "* TODO a\n"
+	  "SCHEDULED: <2026-11-19 Thu 18:30-19:45 .+1h>\n"
+	  ":PROPERTIES:\n"
+	  ":LAST_REPEAT: [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  ":LOGBOOK:\n"
+	  "- State \"DONE\"       from \"WAIT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "--\n" },
+	{ 0, "rr",
+	  "* NEXT a\n"
+	  "         :PROPERTIES:\n"
+	  "         :ID: 1\n"
+	  "         :END:\n",
+	  "* WAIT a\n"
+	  "         :PROPERTIES:\n"
+	  "         :ID: 1\n"
+	  "         :END:\n"
+	  "\t :LOGBOOK:\n"
+	  "\t - State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  "\t :END:\n"
+	  "--\n"
+	  "* DONE a\n"
+	  "CLOSED: [2026-11-19 Thu 17:30]\n"
+	  "         :PROPERTIES:\n"
+	  "         :ID: 1\n"
+	  "         :END:\n"
+	  "\t :LOGBOOK:\n"
+	  "\t - State \"DONE\"       from \"WAIT\"       [2026-11-19 Thu 17:30]\n"
+	  "\t - State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  "\t :END:\n"
+	  "--\n" },
+	{ 0, "rrrr",
+	  "* TODO [#A] COMMENT x\n",
+	  "* NEXT [#A] COMMENT x\n"
+	  "--\n"
+	  "* WAIT [#A] COMMENT x\n"
+	  ":LOGBOOK:\n"
+	  "- State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "--\n"
+	  "* DONE [#A] COMMENT x\n"
+	  "CLOSED: [2026-11-19 Thu 17:30]\n"
+	  ":LOGBOOK:\n"
+	  "- State \"DONE\"       from \"WAIT\"       [2026-11-19 Thu 17:30]\n"
+	  "- State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "--\n"
+	  "* CANCELLED [#A] COMMENT x\n"
+	  "CLOSED: [2026-11-19 Thu 17:30]\n"
+	  ":LOGBOOK:\n"
+	  "- State \"CANCELLED\"  from \"DONE\"       [2026-11-19 Thu 17:30]\n"
+	  "- State \"DONE\"       from \"WAIT\"       [2026-11-19 Thu 17:30]\n"
+	  "- State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "--\n" },
+	{ 0, "r",
+	  "* WAIT a\n"
+	  "| <2026-11-12 Thu +1d> |\n",
+	  "* TODO a\n"
+	  ":PROPERTIES:\n"
+	  ":LAST_REPEAT: [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  ":LOGBOOK:\n"
+	  "- State \"DONE\"       from \"WAIT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "| <2026-11-13 Fri +1d> |\n"
+	  "--\n" },
+	{ 0, "r",
+	  "* WAIT a\n"
+	  "scheduled: <2026-11-12 Thu +1d>\n",
+	  "* TODO a\n"
+	  ":PROPERTIES:\n"
+	  ":LAST_REPEAT: [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  ":LOGBOOK:\n"
+	  "- State \"DONE\"       from \"WAIT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "scheduled: <2026-11-13 Fri +1d>\n"
+	  "--\n" },
+	{ 0, "rrr",
+	  "* TODO a\n"
+	  " \tSCHEDULED: <2026-11-12 Thu +1w>\n",
+	  "* NEXT a\n"
+	  " \tSCHEDULED: <2026-11-12 Thu +1w>\n"
+	  "--\n"
+	  "* WAIT a\n"
+	  " \tSCHEDULED: <2026-11-12 Thu +1w>\n"
+	  "\t:LOGBOOK:\n"
+	  "\t- State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  "\t:END:\n"
+	  "--\n"
+	  "* TODO a\n"
+	  " \tSCHEDULED: <2026-11-19 Thu +1w>\n"
+	  "\t:PROPERTIES:\n"
+	  "\t:LAST_REPEAT: [2026-11-19 Thu 17:30]\n"
+	  "\t:END:\n"
+	  "\t:LOGBOOK:\n"
+	  "\t- State \"DONE\"       from \"WAIT\"       [2026-11-19 Thu 17:30]\n"
+	  "\t- State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  "\t:END:\n"
+	  "--\n" },
+	{ 0, "r",
+	  "* NEXT a\n"
+	  " \t:PROPERTIES:\n"
+	  " \t:ID: 1\n"
+	  " \t:END:\n",
+	  "* WAIT a\n"
+	  " \t:PROPERTIES:\n"
+	  " \t:ID: 1\n"
+	  " \t:END:\n"
+	  "\t:LOGBOOK:\n"
+	  "\t- State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  "\t:END:\n"
+	  "--\n" },
+	{ 0, "rrr",
+	  "* TODO a\n"
+	  "SCHEDULED: <2026-02-30 Mon +1m>\n",
+	  "* NEXT a\n"
+	  "SCHEDULED: <2026-02-30 Mon +1m>\n"
+	  "--\n"
+	  "* WAIT a\n"
+	  "SCHEDULED: <2026-02-30 Mon +1m>\n"
+	  ":LOGBOOK:\n"
+	  "- State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "--\n"
+	  "* TODO a\n"
+	  "SCHEDULED: <2026-03-30 Mon +1m>\n"
+	  ":PROPERTIES:\n"
+	  ":LAST_REPEAT: [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  ":LOGBOOK:\n"
+	  "- State \"DONE\"       from \"WAIT\"       [2026-11-19 Thu 17:30]\n"
+	  "- State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "--\n" },
+	{ 0, "r",   /* overdue past Org's tenth shift: "Continue?" answered yes */
+	  "* WAIT water the plants\n"
+	  "SCHEDULED: <2026-11-01 Sun ++1d>\n",
+	  "* TODO water the plants\n"
+	  "SCHEDULED: <2026-11-20 Fri ++1d>\n"
+	  ":PROPERTIES:\n"
+	  ":LAST_REPEAT: [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  ":LOGBOOK:\n"
+	  "- State \"DONE\"       from \"WAIT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "--\n" },
 };
 
 int main(void)
@@ -843,12 +1013,12 @@ int main(void)
 		while (m + ul < sizeof line) memcpy(line + m, units[i], ul), m += ul;
 		line[m++] = '\n';
 		struct timespec t0, t1;
-		clock_gettime(CLOCK_MONOTONIC, &t0);
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t0);
 		t = text_new(line, m);
 		x = t ? orgfx_new(t) : NULL;
 		CHECK(x && orgfx_update(x, NULL));
 		for (size_t a = 0; a < m; a += 256) orgfx_faces(x, a, a + 256 < m ? a + 256 : m, lf + a);
-		clock_gettime(CLOCK_MONOTONIC, &t1);
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t1);
 		CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000 < 100);
 		orgfx_free(x);
 		text_free(t);

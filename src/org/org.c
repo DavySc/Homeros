@@ -1444,14 +1444,8 @@ static size_t hlevel(size_t h) { return stars(h) - h; }
    else " *"; its end, *k the keyword (-1 for none) */
 static size_t kwmatch(size_t p, int *k)
 {
-	size_t q = p, r;
-	while (q < N && S[q] == ' ') q++;
-	for (*k = 0; q > p && org_todo[*k]; ++*k)
-		if (is(q, org_todo[*k])) {
-			r = q + strlen(org_todo[*k]);
-			if (r < N && S[r] == ' ') { while (r < N && S[r] == ' ') r++; return r; }
-			if (ateol(blanks(r))) return blanks(r);
-		}
+	size_t q = spaces(p), r;
+	if (q > p && (*k = todo(q, eol(q), &r)) >= 0) return S[r] == ' ' ? spaces(r) : blanks(r);
 	*k = -1;
 	return q;
 }
@@ -1553,9 +1547,7 @@ static size_t stamp(char *o, long t, int hm, int inactive, const char *x, size_t
 static size_t tsbody(size_t p, long *t)
 {
 	if (!date(p)) return 0;
-	size_t q = p + 10, r = q;
-	while (r < N && S[r] == ' ') r++;
-	size_t u = r;
+	size_t q = p + 10, r = spaces(q), u = r;
 	while (u < N && !strchr("]+0123456789>\r\n -", S[u])) u++;
 	if (u > r) q = u;
 	long h = 0, mi = 0;
@@ -1633,11 +1625,8 @@ static size_t tschange(size_t a, long n, char what, int nodelay)
 		x[1] = (char)('0' + h / 10), x[2] = (char)('0' + h % 10), x[4] = (char)('0' + mi / 10), x[5] = (char)('0' + mi % 10);
 	}
 	long day = fdiv(t, 1440), mi = t - day * 1440;
-	if (what == 'M' || what == 'y') {
-		int y, m, d;
-		civil(day, &y, &m, &d);
-		day = days(y + (what == 'y' ? n : 0), m + (what == 'M' ? n : 0), d);
-	}
+	if (what == 'M' || what == 'y')   /* from the digits, as Org: 2026-02-30 +1m is 03-30 */
+		day = days(num(a + 1, a + 5) + (what == 'y' ? n : 0), num(a + 6, a + 8) + (what == 'M' ? n : 0), num(a + 9, a + 11));
 	t = day * 1440 + mi + (what == 'd' ? n * 1440 : what == 'h' ? n * 60 : what == 'm' ? n : 0);
 	size_t len = stamp(o, t, hm, S[a] == '[', x, k);
 	wrep(a, z, o, len);
@@ -1730,6 +1719,14 @@ static void closed(size_t h, int add, const char *now)
 	if (!ateol(p + 8 + strlen(now))) wins(p + 8 + strlen(now), " ");
 }
 
+/* current-indentation, which indent-line-to and org-indent-line use: tab
+   stops every 8 (ind is org-element's, where a tab adds 8) */
+static size_t col(size_t p)
+{
+	size_t c = 0;
+	for (; blank(p); p++) c = S[p] == '\t' ? c / 8 * 8 + 8 : c + 1;
+	return c;
+}
 /* indent-line-to c at p (indent-tabs-mode: tabs, then spaces); after it */
 static size_t indent(size_t p, size_t c)
 {
@@ -1751,8 +1748,8 @@ static size_t sibling_ind(size_t h, size_t l)
 	for (i = k; i-- > 0 && e[i].aff + h != l; ) ;
 	if (i < k) {
 		for (j = i; j-- > 0 && e[j].parent != e[i].parent; ) ;
-		if (j < k && e[j].parent == e[i].parent) c = ind(e[j].begin + h);
-		else if (e[i].parent != ORG_NONE && e[e[i].parent].type == ORG_DRAWER) c = ind(e[e[i].parent].begin + h);
+		if (j < k && e[j].parent == e[i].parent) c = col(e[j].begin + h);
+		else if (e[i].parent != ORG_NONE && e[e[i].parent].type == ORG_DRAWER) c = col(e[e[i].parent].begin + h);
 	}
 	free(e);
 	return c;
@@ -1780,7 +1777,7 @@ static void note(size_t h, int to, int from, const char *now)
 			for (size_t i = 0; i < k; i++) if (e[i].type == ORG_DRAWER && e[i].aff + h == q) at = nextl(q);
 		}
 	free(e);
-	size_t c = at != ORG_NONE ? ind(prevl(at)) : 0;
+	size_t c = at != ORG_NONE ? col(prevl(at)) : 0;
 	if (at == ORG_NONE) {
 		if (p < N && p == bol(p) && headline(p)) p--;
 		int blank_line = p == bol(p) && ateol(blanks(p)), text_line = p == bol(p) && !ateol(p);
@@ -1804,7 +1801,7 @@ static void last_repeat(size_t h, const char *v)
 {
 	size_t p = after_planning(h, 0), q, z;
 	if (!propre(p, 0)) {   /* org-insert-property-drawer, indented as the planning line */
-		size_t c = p != nextl(h) ? ind(nextl(h)) : 0;
+		size_t c = p != nextl(h) ? col(nextl(h)) : 0;
 		q = p == bol(p) && p > 0 ? p - 1 : p;
 		int bob = q == 0;
 		if (!bob) wins(q++, "\n");
@@ -1819,7 +1816,7 @@ static void last_repeat(size_t h, const char *v)
 		if (lit(c, ":LAST_REPEAT:") && (ateol(c + 13) || blank(c + 13))) { wrep(q, eol(q), "", 0); break; }
 	}
 	if (q == z) wins(z, "\n");
-	q = indent(q, ind(prevl(q)));   /* as the property before it, or the drawer */
+	q = indent(q, col(prevl(q)));   /* as the property before it, or the drawer */
 	wins(q, ":LAST_REPEAT: ");
 	wins(q + 14, v);
 }
@@ -1827,10 +1824,8 @@ static void last_repeat(size_t h, const char *v)
 static void unschedule(size_t h)
 {
 	for (size_t q = next_head(h); q-- > h; ) {
-		size_t p = q + 10, z;
-		if (!is(q, "SCHEDULED:") || (q && alnum(q - 1)) || p >= N || S[p] != ' ') continue;
-		while (p < N && S[p] == ' ') p++;
-		if (p >= N || S[p] != '<') continue;
+		size_t p = spaces(q + 10), z;
+		if (!is(q, "SCHEDULED:") || (q && alnum(q - 1)) || p == q + 10 || p >= N || S[p] != '<') continue;
 		for (z = p + 1; z < N && S[z] != '>' && S[z] != '\n'; z++) ;
 		if (z == p + 1 || z >= N || S[z] != '>') continue;
 		wrep(q, blanks(z + 1), "", 0);
@@ -1848,11 +1843,8 @@ static void toggle_comment(size_t h, int on)
 {
 	size_t p = stars(h), q, r;
 	int k;
-	if (kwmatch(p, &k), k >= 0) {
-		while (S[p] == ' ') p++;
-		p += strlen(org_todo[k]);
-	}
-	for (q = p; q < N && S[q] == ' '; q++) ;
+	if (kwmatch(p, &k), k >= 0) p = spaces(p) + strlen(org_todo[k]);
+	q = spaces(p);
 	if (q > p && is(q, "[#") && q + 3 < N && S[q + 3] == ']' && (S[q + 4] == ' ' || ateol(blanks(q + 4)))) p = q + 4;
 	p = blanks(p);
 	if (!blank(p - 1)) wins(p++, " ");
@@ -1905,9 +1897,7 @@ static void repeat(size_t h, int from, const char *nows, long now)
 		tsbody(ts + 1, &t);
 		if (type == '.') tschange(ts, what == 'h' ? now - t : fdiv(now, 1440) - fdiv(t, 1440), what == 'h' ? 'm' : 'd', 0);
 		if (type == '+') {
-			int shift = 0;
-			do {
-				if (++shift == 10) { err = 1; return; }
+			do {   /* Org asks "Continue?" at the tenth shift; Davy's answer is yes */
 				tschange(ts, n, what, 0);
 				tsbody(ts + 1, &t);
 			} while (what == 'h' ? !(now < t) : fdiv(now, 1440) >= fdiv(t, 1440));

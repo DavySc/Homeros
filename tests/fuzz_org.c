@@ -192,7 +192,10 @@ static void check_todo(const char *s, size_t n, size_t pos, int dir)
 	const char *eol = memchr(s + h, '\n', n - h);
 	if (x.commented || memchr(s + h, '\t', (eol ? (size_t)(eol - s) : n) - h)) return;   /* org-todo reads the keyword with
 		COMMENT out ("COMMENT TODO a" holds TODO), and takes no tab around it where org-element does */
-	if (to < 0 && y.todo >= 0 && !strncmp(s + x.ta, org_todo[y.todo], strlen(org_todo[y.todo]))) y.todo = -1;   /* "TODO DONE a" */
+	k = h + x.level;   /* after the old keyword: x.ta is past a later "[#A]" */
+	while (k < n && s[k] == ' ') k++;
+	for (k += x.todo >= 0 ? strlen(org_todo[x.todo]) : 0; k < n && s[k] == ' '; k++) ;
+	if (to < 0 && y.todo >= 0 && !strncmp(s + k, org_todo[y.todo], strlen(org_todo[y.todo]))) y.todo = -1;   /* "TODO DONE a" */
 	if (y.level != x.level || (y.todo != to && y.todo != x.todo && !(to >= org_done && y.todo == (x.todo < 0 ? -1 : 0)))) abort();
 }
 
