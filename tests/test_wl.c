@@ -211,8 +211,9 @@ static int above(int rows)
 }
 
 /* How many pixels of the screen at (x, y), w by h, are not the window's
-   background; with warm, only those far redder than blue (an emoji's
-   skin, which no face's colour is) */
+   background; with warm 1, only those far redder than blue (an emoji's
+   skin, which no face's colour is); with 2, those not its corner's colour
+   (a cell's ink on any background) */
 static int ink(int x, int y, int w, int h, int warm)
 {
 	char b[512];
@@ -222,11 +223,12 @@ static int ink(int x, int y, int w, int h, int warm)
 	FILE *f = fopen(b, "rb");
 	int pw, ph, n = 0;
 	CHECK(f && fscanf(f, "P6 %d %d 255%*c", &pw, &ph) == 2);
-	for (int i = 0, c; i < pw * ph; i++) {
+	for (int i = 0, c, k = 0; i < pw * ph; i++) {
 		unsigned char p[3];
 		CHECK(fread(p, 1, 3, f) == 3);
 		c = p[0] << 16 | p[1] << 8 | p[2];
-		n += warm ? p[0] > p[2] + 64 : c != 0x1e1e2e;
+		if (!i) k = c;
+		n += warm == 1 ? p[0] > p[2] + 64 : c != (warm ? k : 0x1e1e2e);
 	}
 	fclose(f);
 	return n;
@@ -375,17 +377,27 @@ static void test_sway(void)
 	show();
 	CHECK(ink(2 * cellw(), 0, cellw(), cellh(), 0) > cellh() / 2);
 	CHECK(ink(7 * cellw(), 0, cellw(), cellh(), 0) > cellw() / 2);
-	/* the cursor on its first cell shows that cell's part of it reversed,
-	   as kitty colours a ligature per cell: not a bare cursor */
-	g.crow = 0;
-	g.ccol = 7;
-	show();
-	ink(7 * cellw(), 0, cellw(), cellh(), 0);
-	cmd("mv %s/i.ppm %s/c.ppm", dir);
-	g.ccol = 6;
-	show();
-	ink(6 * cellw(), 0, cellw(), cellh(), 0);
-	cmd("! cmp -s %s/i.ppm %s/c.ppm", dir);
+	/* each part of a ligature ("-->", its first cell reversed) in its cell's
+	   colours, as kitty's, and a spill (⟹) and a wide character's right half
+	   in the symbol's, as foot's: every cell has ink, as much wherever the
+	   cursor is */
+	static const char *const pc[] = { "-->", "⟹ ", "中" };
+	for (int i = 0; i < 3; i++) {
+		int base[3];
+		grid_clear(&g);
+		grid_puts(&g, 0, 0, g.cols, pc[i], strlen(pc[i]), ATTR_NONE, FACE_NONE);
+		if (!i) g.c[0].attr = ATTR_REV;
+		for (int cur = -1; cur < 3 - !!i; cur++) {
+			g.crow = cur < 0 ? 5 : 0;
+			g.ccol = cur < 0 ? 0 : cur;
+			show();
+			for (int k = 0; k < 3 - !!i; k++) {
+				int n = ink(k * cellw(), 0, cellw(), cellh(), 2);
+				if (cur < 0) base[k] = n;
+				CHECK(n && n == base[k]);
+			}
+		}
+	}
 	g.crow = 5;
 
 	/* keys, with the Control transformation and the keys keys.h names */

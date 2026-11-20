@@ -622,15 +622,15 @@ static uint32_t mix(uint32_t bg, uint32_t fg, unsigned a)
 }
 
 /* The colours of cell c of row r, as ref/tty.c: the attr, then the face's
-   colours, reversed last (the cursor too); bold and italic need fonts
-   font.h does not open */
-static const Face *colours(const Grid *g, int r, int c, uint32_t *fg, uint32_t *bg)
+   colours, reversed last (as under the cursor, cur); bold and italic need
+   fonts font.h does not open */
+static const Face *colours(const Grid *g, int r, int c, int cur, uint32_t *fg, uint32_t *bg)
 {
 	const Cell *x = &g->c[r * g->cols + c];
 	const Face *b, *f = grid_face(x, &b);
 	uint32_t t = *fg = f->style & FACE_FG ? rgb(f->fg) : x->attr == ATTR_DIM ? DIM : FG;
 	*bg = b->style & FACE_BG ? rgb(b->bg) : BG;
-	if (x->attr == ATTR_REV || (r == g->crow && c == g->ccol)) { *fg = *bg; *bg = t; }
+	if (x->attr == ATTR_REV || cur) { *fg = *bg; *bg = t; }
 	return f;
 }
 
@@ -656,7 +656,7 @@ static void draw_span(uint32_t *px, const Grid *g, int r, int lo, int hi)
 	for (int c = lo; c < hi; c++) {
 		if (!x[c].len) continue;   /* right half: drawn with its left half */
 		int w = c + 1 < g->cols && !x[c + 1].len ? 2 : 1;
-		const Face *f = colours(g, r, c, &fg, &bg);
+		const Face *f = colours(g, r, c, r == g->crow && c == g->ccol, &fg, &bg);
 		fill(px, c * cell_w, y0, w * cell_w, cell_h, bg);
 		if (x[c].attr == ATTR_PRE || f->style & FACE_UNDERLINE) fill(px, c * cell_w, y0 + cell_h - 1, w * cell_w, 1, fg);
 		if (f->style & FACE_STRIKE) fill(px, c * cell_w, y0 + cell_h / 2, w * cell_w, 1, fg);
@@ -673,11 +673,13 @@ static void draw_span(uint32_t *px, const Grid *g, int r, int lo, int hi)
 		int ax = gx < w * cell_w ? w * cell_w - gx : 0, zx = gx + gl->w > xe ? xe - gx : gl->w;
 		int ay = gy < y0 ? y0 - gy : 0, zy = gy + gl->h > ye ? ye - gy : gl->h;
 		/* the part over each earlier cell of its word in that cell's colours,
-		   the cursor's among them, as kitty colours a ligature per cell */
+		   as kitty colours a ligature per cell, the rest in its own (a spill,
+		   as foot's); each part reversed only where its cell is the cursor */
 		for (int j0 = ax, j1; j0 < zx; j0 = j1) {
 			int k = (gx + j0) / cell_w, m = (k + 1) * cell_w - gx;
-			j1 = k < c && m < zx ? m : zx;
-			colours(g, r, k < c ? k : c, &fg, &bg);
+			j1 = m < zx ? m : zx;
+			k -= !x[k].len;   /* a right half: its left half's */
+			colours(g, r, k < c ? k : c, r == g->crow && k == g->ccol, &fg, &bg);
 			for (int y = ay; y < zy; y++) {
 				uint32_t *p = px + (gy + y) * bw + gx;
 				if (gl->color) {   /* premultiplied BGRA, the buffer's own byte order */
