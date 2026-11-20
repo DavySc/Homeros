@@ -4,7 +4,8 @@ name: win-check
 on:
   push:
     branches: [claude/project-thread-l4spyq]
-    paths: ['dbg/**', 'tests/**', 'traces/**', 'check.sh', '.github/workflows/win-check.yml']
+    paths: ['dbg/**', 'tests/**', 'traces/**', 'subjects/zoo.c', 'check.sh', '.github/workflows/win-check.yml']
+concurrency: {group: win-check, cancel-in-progress: true}   # a newer push answers for the older
 jobs:
   stress:
     runs-on: windows-latest
@@ -23,6 +24,8 @@ jobs:
       - name: 10,000 random rounds, five seeds, launched and attached
         run: gcc --version && for s in 1 2 3 4 5; do SEED=$s UNWIND_STEPS=$((s * 4000)) ./check.sh win || exit 1; done
       - name: The stepping engine against RAD's recorded traces
-        run: ENGINE_ROUNDS=5000 ./check.sh engine
+        run: for n in 1 2 3 4 5 6; do ENGINE_ROUNDS=5000 ./check.sh engine || exit 1; done   # the put-back at a stop faulted in 3 of 5 single runs
+      - name: The evaluator on a program that says what its variables and expressions are
+        run: clang --version && ./check.sh eval
       - name: Every plant is caught
         run: ./check.sh plants engine && ./check.sh plants win && STRESS_ROUNDS=40000 ./check.sh plants windows   # what these two wait for comes about twice in 10,000 rounds

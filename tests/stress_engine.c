@@ -7,7 +7,8 @@
    - a halt, asked for after 0 to 3 waits, ends a run that has no breakpoint: no thread moves any more, and the
      next run comes to the breakpoint as before;
    - an exception the program handles is no stop; one nobody handles is, once; a fault is at once, and again
-     at every run, for the program is not given it.
+     at every run, for the program is not given it;
+   - a thread inside a fault, with a trap on the byte before it, has not run that trap: a halt leaves it where it is.
    usage: stress_engine <scene.exe> <rounds> <caller> <shared> <handled> <go>   (addresses as the linker gave them) */
 #include "../dbg/engine.h"
 #include "../dbg/x64.h"
@@ -80,6 +81,12 @@ int main(int argc, char **argv)
     ev = engine_run(&e, ENGINE_RUN, 0, NULL, 0);
     if (ev.kind != TARGET_EXCEPTION || ev.code != 0xc0000005 || ev.unhandled) FAIL("event %d code %llx, not the fault, at once (run %d)", ev.kind, (unsigned long long)ev.code, i);
   }
+  /* the fault's event is answered and comes again, and waits unread while the halt stops the target */
+  uint64_t before = ev.addr - 1;
+  target_swallow(e.target), target_resume(e.target, &before, 1, 0);
+  Sleep(50);
+  target_halt(e.target);
+  if (!target_regs(e.target, ev.thread, &r) || r.rip != ev.addr) FAIL("a halt moved the thread that is inside a fault by %lld", (long long)(r.rip - ev.addr));
   engine_close(&e);
   printf("stress_engine: %u stops on a breakpoint in three threads, %u instructions stepped over (%u calls, %u repeated), %u halts, exceptions as they should be\n", rounds, stepped, calls, repeats, halts);
   return 0;

@@ -84,20 +84,26 @@ for l in open(sys.argv[1] + "/tests/plants.txt"):
     (cd "$b" && WINEDEBUG=-all timeout 600 "${WINE:-wine}" ./stress_engine.exe scene.exe "${ENGINE_ROUNDS:-300}" $at 2>/dev/null | grep "^stress_engine" | tee engine.out; grep -q "as they should be" engine.out) || return 1
   fi
   if [ "$what" = eval ] || [ "$what" = all ]; then
-    # names and where their variables are (dbg/eval.c), on a program that says so itself: built here with clang, plain and optimised
-    # (each with the least number of variables that must be found, and found in a register), and as MSVC built it on the recorder
+    # names, where their variables are and expressions of them (dbg/eval.c), on a program that says what each is itself: built here with clang, plain and optimised
+    # (each with the number of texts the program shows, the least that must be right, and the least variables in a register), and as MSVC built it on the recorder
     local link="lld-link /nologo /debug /nodefaultlib /entry:main /subsystem:console /dynamicbase:no /stack:1048576,1048576" o
     ${WINCC:-x86_64-w64-mingw32-gcc} -std=c17 -O1 -g -Wall -Wextra -Werror $(grep -v '/queue\.c$' <<<"$lib") "$src"/dbg/engine.c "$src"/dbg/eval.c "$src"/dbg/win/target.c "$src"/tests/zoo_check.c -o "$b/zoo_check.exe" || return 2
     echo 'int _fltused;' > "$b/flt.c" && clang --target=x86_64-pc-windows-msvc -ffreestanding -c "$b/flt.c" -o "$b/flt.obj" || return 3
-    for o in O0:67:0 O2:45:10; do
+    for o in O0:269:269:0 O2:269:190:15; do
       clang --target=x86_64-pc-windows-msvc -g -gcodeview -${o%%:*} -ffreestanding -mno-stack-arg-probe -c "$src/subjects/zoo.c" -o "$b/zoo.obj" && $link "$b/zoo.obj" "$b/flt.obj" /out:"$b/zoo-${o%%:*}.exe" /pdb:"$b/zoo-${o%%:*}.pdb" || return 3
-      (cd "$b" && WINEDEBUG=-all timeout 300 "${WINE:-wine}" ./zoo_check.exe zoo-${o%%:*}.exe $(tr : ' ' <<<"${o#*:}") 2>/dev/null | grep "^zoo_check" | tee zoo.out; grep -q "where the program says" zoo.out) || return 1
+      (cd "$b" && WINEDEBUG=-all timeout 300 "${WINE:-wine}" ./zoo_check.exe zoo-${o%%:*}.exe $(tr : ' ' <<<"${o#*:}") 2>/dev/null | grep "^zoo_check" | tee zoo.out; grep -q "what the program says" zoo.out) || return 1
     done
   fi
   if [ "$what" = fuzz ] || [ "$what" = all ]; then
     for f in "$src"/tests/fuzz_*.c; do
       clang $FLAGS -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all $lib "$f" -o "$b/fuzz" || return 2
       mkdir -p "$b/corpus" && cp "$b/seed.rdi" "$b"/pdb/steps-*.pdb "$b"/pdb/gap-O2.pdb "$b"/pdb/kinds.pdb "$b"/pdb/frames-O0.pdb "$b"/pdb/bad/* "$b/corpus/"
+      # for tests/fuzz_eval.c: expressions alone, and after debug information that has their names
+      printf '%s' '*(char *)0x7000 + sizeof(int *) ? 1.5f : -~!3 % 2 << 1 >= 4 && 5 || (unsigned long long)6 / 7u' > "$b/corpus/text1" && printf '%s' "((short *)0x7010)[-2] == 'a' ^ 0x1fULL | sizeof 2.5e3 > 1 != .5" > "$b/corpus/text2" || return 3
+      gcc $FLAGS $lib "$src"/cmd/pdb2rdi.c -o "$b/pdb2rdi" && "$b/pdb2rdi" "$b/pdb/kinds.pdb" "$b/kinds.rdi" || return 3
+      for t in 'sizeof(Later) + ((Later *)0x7000)->next->x' '((Bits *)0x7010)->c * ((Box *)0x7020)->vp[1] - (Plain)3' '&((Either *)0x7000)->f == (float *)0x7000 ? (Colour)1 : 2.5'; do
+        cat "$b/kinds.rdi" > "$b/corpus/kinds-${#t}" && printf '%s' "$t" >> "$b/corpus/kinds-${#t}" || return 3
+      done
       (cd "$b" && ./fuzz corpus -max_total_time="${FUZZ_SECONDS:-20}" -max_len=131072 -timeout=20 >fuzz.log 2>&1) || { grep -m2 "ERROR\|SUMMARY" "$b/fuzz.log"; return 1; }
     done
   fi

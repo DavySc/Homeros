@@ -110,21 +110,15 @@ void target_resume(Target *t, const uint64_t *traps, uint32_t count, uint32_t st
   t->held = 0;
 }
 
-/* The stop: every thread stands still with the program's own registers, and the traps are out.
-   A thread can have run a trap byte without its event having come yet (Windows hands over one event
-   of a process at a time, specs/Run.tla); asked for, GetThreadContext says that the thread is inside
-   an exception, and it is put back on the trap now. Its event comes in a later run (TARGET_LATE).
-   Not `reported`, the thread whose event this stop is: it is inside an exception too, and stands where it
-   belongs, which may be just behind another trap (two traps on neighbouring bytes).
-   For a thread just suspended the same call waits until it stands still: SuspendThread only asks. */
-static void stop(Target *t, DWORD reported)
+/* The stop: the traps are out. A thread can have run a trap byte without its event having come yet (Windows
+   hands over one event of a process at a time, specs/Run.tla): it stands one byte behind the trap until its
+   event comes in a later run (TARGET_LATE, or TARGET_TRAP when the trap is planted again), which puts it back.
+   Not here: asked, the system says that such a thread is inside an exception (CONTEXT_EXCEPTION_REQUEST), but
+   so is a thread that ran the program's own one-byte instruction there earlier and whose next instruction
+   faults, and that one, put back, runs the instruction twice (Run_flag_twice; on Windows about once in 3,000
+   stops of three threads on one breakpoint). As RAD, which leaves all threads where they are. */
+static void stop(Target *t)
 {
-  for (uint32_t i = 0; i < t->thread_count; i += 1) {
-    CONTEXT c = {.ContextFlags = CONTEXT_CONTROL | CONTEXT_EXCEPTION_REQUEST};
-    if (t->threads[i].id == reported || !GetThreadContext(t->threads[i].handle, &c) || !(c.ContextFlags & CONTEXT_EXCEPTION_ACTIVE)) continue;
-    for (uint32_t k = 0; k < t->trap_count; k += 1)
-      if (t->traps[k].in && t->traps[k].addr == c.Rip - 1) { thread_at(t->threads[i].handle, &t->traps[k].addr, false); break; }
-  }
   for (uint32_t i = 0; i < t->trap_count; i += 1) if (t->traps[i].in) target_write(t, t->traps[i].addr, &t->traps[i].own, 1);
   for (uint32_t i = 0; t->step && i < t->thread_count; i += 1) if (t->threads[i].id != t->step) ResumeThread(t->threads[i].handle);
 }
@@ -178,7 +172,7 @@ bool target_wait(Target *t, uint32_t ms, TargetEvent *out)
   default: break;   /* RIP_EVENT, and a second process cannot come (DEBUG_ONLY_THIS_PROCESS) */
   }
   if (out->kind < TARGET_TRAP) return ContinueDebugEvent(e.dwProcessId, e.dwThreadId, status), false;
-  stop(t, e.dwThreadId);
+  stop(t);
   t->held = e.dwThreadId, t->held_status = status;
   return true;
 }
@@ -188,7 +182,7 @@ void target_swallow(Target *t) { t->held_status = DBG_CONTINUE; }
 void target_halt(Target *t)
 {
   for (uint32_t i = 0; i < t->thread_count; i += 1) SuspendThread(t->threads[i].handle);
-  stop(t, 0);
+  stop(t);
 }
 
 void target_close(Target *t)
