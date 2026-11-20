@@ -3,17 +3,21 @@
 # tests/test_git.c (the magit traces) for Windows with zig cc and runs them
 # under Wine, as src/file/check.sh does for package 11, with MinGit, Git for
 # Windows' own minimal build, as the git.  UBSan traps; ASan has no runtime
-# for this target, so it runs without.
+# for this target, so it runs without.  On Windows itself (CI's windows
+# job) it builds and runs test_git_win alone: the traces need the bridge
+# below, which is Wine's.
 set -eu
 cd "$(dirname "$0")/../.."
-for t in zig wine; do
+run=wine; [ "${OS:-}" = Windows_NT ] && run=
+for t in zig $run; do
 	command -v $t >/dev/null || { echo "src/git/check.sh: $t is not on PATH"; exit 2; }
 done
 pick() { if ls src/$1/*.c >/dev/null 2>&1; then echo src/$1/*.c; else echo ref/$1.c; fi; }
 mkdir -p build/win
+if [ -n "$run" ]; then
 [ -n "${XDG_RUNTIME_DIR:-}" ] || { export XDG_RUNTIME_DIR=$PWD/build/win/run; mkdir -p -m 700 "$XDG_RUNTIME_DIR"; }
 # a prefix of its own, as package 11's; Wine's Recycle Bin is the
-# freedesktop trash under XDG_DATA_HOME, which the test looks in
+# freedesktop trash under XDG_DATA_HOME, kept here (test_git looks in it)
 export WINEDEBUG=-all WINEDLLOVERRIDES="mscoree,mshtml=" WINEPREFIX=$PWD/build/win/prefix-git
 # file names in UTF-8, as the bridge's shell writes them
 export LANG=C.UTF-8
@@ -25,13 +29,15 @@ rm -rf "$XDG_DATA_HOME"
 # trash would go elsewhere on that first run (measured, 4 of 4 runs); make
 # it, and let that server end, first
 wine wineboot -i; wineserver -w
-for t in test_git_win test_git; do
+fi
+for t in test_git_win ${run:+test_git}; do
 	zig cc -target x86_64-windows-gnu -std=c17 -Wall -Wextra -Werror -D_DEFAULT_SOURCE -Iinclude -O1 -g \
 	  -fsanitize=undefined -fsanitize-trap=undefined -o build/win/$t.exe tests/$t.c src/git/*.c \
 	  $(pick core) $(pick text) $(pick undo) $(pick uni) $(pick keys) $(pick loop) $(pick file) $(pick grid) \
-	  $(pick theme) $(pick lsp) $(pick sqlfmt) src/syntax/tsql.c -lshell32
+	  $(pick theme) $(pick kitten) $(pick lsp) $(pick sqlfmt) $(pick tools) $(pick shada) $(pick str) src/syntax/tsql.c -lshell32   # str: package 17's, agreed by thread 0
 done
-timeout 300 wine build/win/test_git_win.exe || { echo "FAIL test_git_win"; exit 1; }
+timeout 300 $run build/win/test_git_win.exe || { echo "FAIL test_git_win"; exit 1; }
+[ -n "$run" ] || exit 0
 
 # MinGit, pinned by its hash
 mg=build/win/mingit-2.47.1

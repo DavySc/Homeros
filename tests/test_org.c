@@ -674,6 +674,23 @@ int main(void)
 	OrgNode *e = org_parse("", 0, &k);
 	CHECK(e && k == 0);
 	free(e);
+	/* an update drops the scan kept from one window to the next: once the
+	   begin line is gone, the end line is no block's */
+	static const char blk[] = "a\n#+begin_example\nb\n#+end_example\n";
+	size_t n = sizeof blk - 1;
+	unsigned char f[sizeof blk] = { 0 }, g[sizeof blk] = { 0 };
+	Text *t = text_new(blk, n);
+	OrgFx *x = t ? orgfx_new(t) : NULL;
+	CHECK(x && orgfx_update(x, NULL));
+	orgfx_faces(x, 0, n, f);   /* the scan ends at the end line, inside */
+	orgfx_edit(x, t, 2, 1, 1);
+	CHECK(!text_delete(t, 2, 1) && !text_insert(t, 2, "x", 1) && orgfx_update(x, NULL));
+	orgfx_faces(x, 20, n, g + 20);
+	memset(f, 0, n);
+	orgfx_faces(x, 0, n, f);
+	CHECK(!memcmp(f + 20, g + 20, n - 20));
+	orgfx_free(x);
+	text_free(t);
 	printf("test_org: %zu texts agree with Org\n", sizeof cases / sizeof *cases);
 	return 0;
 }

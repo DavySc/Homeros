@@ -81,7 +81,7 @@ static int oom;
 /* Their W_* numbers; package 12's word table gives each word an id, and
    wmap takes an id to its W_* (W_NONE for the words the layout ignores). */
 #define WORDS \
-	X(AFTER) X(ALL) X(ALTER) X(AND) X(APPLY) X(AS) X(BEFORE) X(BEGIN) X(BREAK) X(BULK) X(BY) X(CASE) X(CATCH) \
+	X(AFTER) X(ALL) X(ALTER) X(AND) X(APPLY) X(AS) X(BEFORE) X(BEGIN) X(BETWEEN) X(BREAK) X(BULK) X(BY) X(CASE) X(CATCH) \
 	X(CLOSE) X(COMMIT) X(CONTINUE) X(CONVERSATION) X(CREATE) X(CROSS) X(DEALLOCATE) X(DECLARE) X(DEFAULT) \
 	X(DELETE) X(DENY) X(DIALOG) X(DISTINCT) X(DISTRIBUTED) X(DROP) X(ELSE) X(END) X(EXCEPT) X(EXEC) X(EXECUTE) \
 	X(FETCH) X(FOR) X(FROM) X(FULL) X(FUNCTION) X(GOTO) X(GRANT) X(GROUP) X(HASH) X(HAVING) X(IF) X(INNER) \
@@ -802,16 +802,74 @@ static int comparison_gap(const Pass *p, size_t i)
 	return (comparison(p, b) && a->k != OP) || (comparison(p, a) && (b->k != OP || sign));
 }
 
-static int line_indent(const Tok *t) { return t->brk != B_NONE ? t->level : t->level + 1 + t->depth; }
+/* Davy's layout rules (2026-11-19, his screenshots; SQLDiff PR 516,
+   layout.rs Depth, hangs() and column()): a `(` that ends its line hangs:
+   what it holds sits one step in from the level of the line that opened
+   it, and its `)` at that level, as does the `(` when alone on its line.
+   AND, OR and ON that start a line of a WHERE, HAVING or join clause end
+   where the clause's first word ends (a river), at every depth.  ds holds,
+   per parenthesis depth of the statement: inner, the indent of a line in
+   the `(` that opened it (-1: none seen); hang, where that `(` and its `)`
+   sit (-1: it does not hang); head, the last river head that started a
+   line there (NOHEAD: none), at its indent; between, BETWEENs waiting for
+   their AND, which is no conjunction.  Indents only add, so an unclosed
+   `(` cannot push one below its level. */
+#define NOHEAD ((size_t)-1)
+static struct Depth { int inner, hang, at; size_t head; int between; } *ds;
+static size_t nds, dscap;
+static int line_;    /* the level, in spaces, of the last line starting with code */
+static int lined_;   /* the indent newline() gave the token being rendered, or -1 */
 
-/* token i's indent; c is the first token at or after i that is no comment */
-static int indent_of(const Pass *p, size_t i, size_t c)
+static int head_word(int w)
+{
+	return w == W_WHERE || w == W_HAVING || w == W_JOIN || w == W_LEFT || w == W_RIGHT || w == W_FULL
+	    || w == W_INNER || w == W_CROSS;
+}
+
+/* whether `(` i hangs: it ends its line (the gap after it holds a line
+   break, or what follows starts a line of its own) */
+static int hangs(const Pass *p, size_t i)
 {
 	const Tok *t = &p->t[i];
-	if (c == i) return line_indent(t);
-	/* a comment on its own line lines up with the code after it */
-	if (c < p->n) return p->t[c].brk == B_FOOTER ? p->t[c].level + 1 : line_indent(&p->t[c]);
-	return t->level;
+	if (t->k != LP || t->brk != B_NONE || i + 1 >= p->n) return 0;
+	return p->t[i + 1].brk != B_NONE || memchr(p->src + t->e, '\n', p->t[i + 1].s - t->e);
+}
+
+static int inner(const Tok *t)
+{
+	return (size_t)t->depth < nds && ds[t->depth].inner >= 0 ? ds[t->depth].inner : (t->level + 1 + t->depth) * 4;
+}
+
+/* the river indent of token c, or -1 */
+static int river(const Pass *p, size_t c)
+{
+	const Tok *t = &p->t[c];
+	int w = word_of(p, c);
+	if ((size_t)t->depth >= nds || (w != W_AND && w != W_OR && w != W_ON)) return -1;
+	const struct Depth *d = &ds[t->depth];
+	if (d->head == NOHEAD || d->between || p->t[d->head].level != t->level) return -1;
+	int r = (int)(p->t[d->head].e - p->t[d->head].s) - (int)(t->e - t->s);
+	return d->at + (r > 0 ? r : 0);
+}
+
+/* the indent, in spaces, of code token c starting a line */
+static int column(const Pass *p, size_t c)
+{
+	const Tok *t = &p->t[c];
+	if (t->brk != B_NONE) return t->level * 4;
+	int r = river(p, c);
+	if (r >= 0) return r;
+	if (hangs(p, c)) return t->depth ? inner(t) : line_;
+	if (t->k == RP && (size_t)t->depth + 1 < nds && ds[t->depth + 1].hang >= 0) return ds[t->depth + 1].hang;
+	return inner(t);
+}
+
+/* token i's indent; c is the first token at or after i that is no comment,
+   and a comment on its own line lines up with the code after it */
+static int indent_of(const Pass *p, size_t i, size_t c)
+{
+	if (c < p->n) return c != i && p->t[c].brk == B_FOOTER ? (p->t[c].level + 1) * 4 : column(p, c);
+	return p->t[i].level * 4;
 }
 
 /* Line breaks are "\n": a CR LF file is read without its CRs ('fileformat'
@@ -821,14 +879,14 @@ static int indent_of(const Pass *p, size_t i, size_t c)
 static void newline(const Pass *p, size_t i, size_t c, size_t n)
 {
 	while (n--) put("\n", 1);
-	for (int k = indent_of(p, i, c) * 4; k-- > 0; ) put(" ", 1);
+	for (int k = lined_ = indent_of(p, i, c); k-- > 0; ) put(" ", 1);
 }
 
 /* reverted: one byte per top-level statement, kept as written if set */
 static void render(const Pass *p, const unsigned char *reverted)
 {
 	const char *s = p->src;
-	nout = 0;
+	nout = nds = 0, line_ = 0;
 	/* c: the next token that is no comment, found once per run of comments */
 	for (size_t i = 0, c = 0; i < p->n; i++) {
 		const Tok *t = &p->t[i];
@@ -846,6 +904,7 @@ static void render(const Pass *p, const unsigned char *reverted)
 		const Tok *a = i ? &p->t[i - 1] : NULL;
 		int strings = a && (a->k == STRING && t->k == STRING);
 		size_t n = nls < 2 ? nls : 2;
+		lined_ = -1;
 		if (!i) {
 			if (!plain) put(g, gn);
 		} else if (kept || t->gapk || !plain || strings) put(g, gn);
@@ -862,6 +921,28 @@ static void render(const Pass *p, const unsigned char *reverted)
 		starts[i] = nout;
 		size_t at = nout;
 		put(s + t->s, t->e - t->s);
+		size_t d = (size_t)t->depth;
+		/* a statement starts afresh: nothing of the last one carries over */
+		if (t->brk == B_UNIT || (i && p->t[i - 1].k == SEMI)) nds = 0;
+		for (; nds <= d; nds++) {
+			if (!GROW(ds, nds, dscap)) { oom = 1; return; }
+			ds[nds] = (struct Depth){ -1, -1, 0, NOHEAD, 0 };
+		}
+		int w = word_of(p, i);
+		if (lined_ >= 0 && t->k != LCOMMENT && t->k != BCOMMENT) {
+			line_ = river(p, i) >= 0 ? ds[d].at : lined_;
+			if (head_word(w)) ds[d].head = i, ds[d].at = lined_, ds[d].between = 0;
+			else if (t->brk != B_NONE) ds[d].head = NOHEAD;
+		}
+		if (w == W_BETWEEN) ds[d].between++;
+		else if (w == W_AND && ds[d].between) ds[d].between--;
+		if (t->k == RP) nds = d + 1;
+		if (t->k == LP) {
+			int hang = hangs(p, i) ? line_ : -1, in = hang >= 0 ? hang : inner(t);
+			nds = d + 1;
+			if (!GROW(ds, nds, dscap)) { oom = 1; return; }
+			ds[nds++] = (struct Depth){ in + 4, hang, 0, NOHEAD, 0 };
+		}
 		/* a statement kept as written keeps the case of its first word too */
 		if (t->kw && !kept && !in_rev && !oom)
 			for (size_t j = at; j < nout; j++)
@@ -981,7 +1062,7 @@ int sqlfmt(const Text *t, size_t *a, size_t *z, const char **res, size_t *n)
 		free(ps[k]->t), free(ps[k]->ev), free(ps[k]->diag), free(ps[k]->tops);
 		*ps[k] = (Pass){ 0 };
 	}
-	free(src), free(rev), free(starts);
-	src = NULL, rev = NULL, starts = NULL, srccap = revcap = startcap = 0;
+	free(src), free(rev), free(starts), free(ds);
+	src = NULL, rev = NULL, starts = NULL, ds = NULL, srccap = revcap = startcap = dscap = 0;
 	return r;
 }

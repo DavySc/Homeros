@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Differential test of src/org (package 16) against Org's own parser.
 
-    org_conform.py DRIVER N SEED     N random org texts, fed to both
-    org_conform.py DRIVER FILE...    given files
+    org_conform.py [-f] DRIVER N SEED     N random org texts, fed to both
+    org_conform.py [-f] DRIVER FILE...    given files
 
 DRIVER is tests/org_drv.c built; Org runs as emacs -Q --batch with
-tools/org_dump.el.  Prints the first difference of each failing text (the
-text is kept in build/org-fail-*.org) and "N differ"."""
-import os, random, subprocess, sys, tempfile
+tools/org_dump.el, or with -f, the colours: tools/org_faces.el, its faces
+named as src/org shows them (FACES).  Prints the first difference of each
+failing text (the text is kept in build/org-fail-*.org) and "N differ"."""
+import os, random, re, subprocess, sys, tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 WORDS = ['a', 'b', 'x', 'TODO', 'DONE', 'NEXT', 'WAIT', 'CANCELLED', 'todo', 'COMMENT', '[#A]', '[#a]',
@@ -35,7 +36,7 @@ def indent(r):
 
 def ts(r, c='['):
     if r.random() < .1:
-        return '<%%(' + r.choice(['diary-float t 4 2', 'x', 'a)b', '']) + ')' + r.choice(['', ' 9:00', ' 9:00-10:30', ' x 10:00-11:00', ']']) + '>'
+        return '<%%(' + r.choice(['diary-float t 4 2', 'x', 'a)b', '']) + ')' + r.choice(['', ' 9:00', ' 9:00-10:30', ' x 10:00-11:00', ']', ' 39:30-10:00']) + '>'
     d = '%04d-%02d-%02d' % (r.choice([2026, 2026, 999, 12345]) % 10000, r.randint(0, 13), r.randint(0, 32))
     e = {'[': ']', '<': '>'}[c]
     if r.random() < .1:
@@ -106,6 +107,56 @@ def line_k(r, k):
     return i + text(r, 6)
 
 
+# lines for the colours: Org's font-lock reads these by regexp, anywhere
+FACE_LINES = ['| a | :=$1+1 |', '| # | x |', '| $ | a=1 |', '|<l5>| x |', '| <r> |', '|=x|', '| x | =y | z', '| * |', '| ! | x | y |',
+              '#+TITLE: x', '#+author: me', '#+date:', '#+subtitle:  s ', '#+email x', '#+CAPTION[a]: b', '#+caption: x', '#+captionx',
+              '#+caption[a]x', '#+title_x: y', '# x', '#', '#+', '#x', '#+begin:', '#+begin_', '#+BEGIN_SRC c', '#+end_src_x',
+              '#+END_SRCx', '#+end_src:y', '*\tx', '*', '- [3/3] x', 'a [100%] b', '[2/3]', '[/] [%]', '[03/3]', '- term :: desc',
+              '-   :: x', '  * a :: b', '+ x::y :: z', '- [@3] [X] x', '- [@start:2] [ ] y', 'a. [-] z', '10) [X]', '* x :ARCHIVE:',
+              '* COMMENT x', '* TODO COMMENT', '* [#A] COMMENT y', '** DONE x  ', '* TODO\tx', '*[#B] x', '* x [#C] y', '* NEXT',
+              '* CANCELLED  done  :t:', 'see DEADLINE: x', 'aCLOCK: x', 'éSCHEDULED:', ':a: b', ':a:b:', ':x::', ': v', ':a:\fb',
+              '<%%(x)> <%%(y z)>', '&%%(a)', 'x <2026-01-02 Fri>--<2026-01-03 Sat> y', '<2026-01-02>---<2026-01-03>',
+              '<2026-01-02>----<2026-01-03>', '[2026-01-02 Fri 10:00]', '[<2026-01-02 Fri>]',
+              '@@html:<b>@@ x @@latex:y@@', '@@a-b:@@@@', '@@:x@@', '@@X:y@@', '****** six', '******* seven :t:', '******** DONE eight',
+              '********* nine', '*** TODO [#B] three :a:b:', '**** WAIT x [50%]']
+
+
+def line_f(r):
+    return indent(r) * (r.random() < .2) + r.choice(FACE_LINES) if r.random() < .3 else line(r)
+
+
+def gen_faces(r):
+    return '\n'.join(line_f(r) for _ in range(r.randint(1, 30))) + r.choice(['\n', ''])
+
+
+# Org's faces as src/org names them (tests/org_drv.c -f); None: no colour
+FACES = dict({'org-level-%d' % i: 'markup.heading.%d' % i for i in range(1, 7)}, **{
+    'org-level-7': 'org.level.7', 'org-level-8': 'org.level.8', 'org-todo': 'org.todo',
+    'org-checkbox-statistics-todo': 'org.todo', 'org-done': 'comment', 'org-headline-done': 'comment',
+    'org-checkbox-statistics-done': 'comment', 'org-meta-line': 'comment', 'font-lock-comment-face': 'comment',
+    'org-document-info-keyword': 'comment', 'org-archived': 'comment', 'org-priority': 'org.priority',
+    'org-tag': 'org.tag', 'org-special-keyword': 'keyword', 'org-property-value': None, 'org-date': 'org.date',
+    'org-sexp-date': 'org.date', 'org-drawer': 'org.drawer', 'org-table': 'org.table', 'org-table-row': 'org.table',
+    'org-formula': 'org.formula', 'org-checkbox': 'org.checkbox', 'org-list-dt': 'org.checkbox',
+    'org-code': 'markup.raw', 'org-document-title': 'markup.heading', 'org-document-info': 'org.info',
+    'org-block': 'org.block', 'org-block-begin-line': 'org.block.line', 'org-block-end-line': 'org.block.line'})
+
+
+def runs(lines, names):
+    """'begin end face' lines as runs of one face, faces renamed by names"""
+    out = []
+    for l in lines:
+        a, b, f = l.split(' ')
+        f = names.get(f, '?' + f) if names else f
+        if f is None:
+            continue
+        if out and out[-1][1] == a and out[-1][2] == f:
+            out[-1][1] = b
+        else:
+            out.append([a, b, f])
+    return [' '.join(x) for x in out]
+
+
 def planning(r):
     return '* ' + text(r, 2) + '\n' + line_k(r, 1) + '\n' + '\n'.join(line_k(r, 4) for _ in range(r.randint(0, 3)))
 
@@ -116,10 +167,10 @@ def gen(r):
     return '\n'.join(line(r) for _ in range(r.randint(1, 30))) + r.choice(['\n', '\n', '', '\n\n', '\n  '])
 
 
-def run(driver, files):
-    el = subprocess.run(['emacs', '-Q', '--batch', '-l', os.path.join(HERE, 'org_dump.el')] + files,
+def run(driver, files, w):
+    el = subprocess.run(['emacs', '-Q', '--batch', '-l', os.path.join(HERE, 'org_faces.el' if w else 'org_dump.el')] + files,
                         capture_output=True)
-    c = subprocess.run([driver] + files, capture_output=True)
+    c = subprocess.run([driver] + (['-f', str(w)] if w else []) + files, capture_output=True)
     if c.returncode:
         sys.exit('driver failed: ' + c.stderr[-2000:].decode('utf-8', 'replace'))
 
@@ -139,6 +190,9 @@ def run(driver, files):
 
 
 def main():
+    faces = sys.argv[1] == '-f'
+    if faces:
+        del sys.argv[1]
     driver = sys.argv[1]
     os.makedirs('build', exist_ok=True)
     tmp = tempfile.mkdtemp()
@@ -148,8 +202,8 @@ def main():
         files = []
         for i in range(n):
             p = os.path.join(tmp, 't%05d.org' % i)
-            with open(p, 'w', encoding='utf-8', newline='') as f:
-                f.write(gen(r))
+            with open(p, 'w', encoding='utf-8', newline='') as g:
+                g.write((gen_faces if faces else gen)(r))
             files.append(p)
         print('org_conform: %d texts, seed %d' % (n, seed))
     else:
@@ -157,13 +211,22 @@ def main():
     bad = errors = 0
     for k in range(0, len(files), 400):
         part = files[k:k + 400]
-        el, c = run(driver, part)
+        # the colours are read in windows of w bytes, as the editor draws
+        el, c = run(driver, part, random.Random(k).choice([7, 64, 1024, 8192]) if faces else 0)
         for p in part:
             name = os.path.basename(p)
             a, b = el.get(name), c.get(name)
             if a and a[-1].startswith('!error'):
                 errors += 1   # no answer from Org to compare with
                 continue
+            if faces:
+                with open(p, 'rb') as t:
+                    # Org stops dating the whole buffer at a date after "[";
+                    # a live Emacs, which fontifies in chunks, does not
+                    if re.search(rb'\[[<\[][0-9]{4}-[0-9]{2}-[0-9]{2}[] >]', t.read()):
+                        errors += 1
+                        continue
+                a, b = runs(a or [], FACES), runs(b or [], None)
             if a == b:
                 continue
             bad += 1
@@ -175,7 +238,7 @@ def main():
                 j = next((j for j in range(max(len(a), len(b))) if j >= len(a) or j >= len(b) or a[j] != b[j]), 0)
                 print('%s (kept as %s): line %d\n  org: %s\n  ours: %s' % (
                     name, keep, j + 1, a[j] if j < len(a) else '(end)', b[j] if j < len(b) else '(end)'))
-    print('%d of %d differ (Org failed on %d)' % (bad, len(files), errors))
+    print('%d of %d differ (no answer from Org on %d)' % (bad, len(files), errors))
     sys.exit(1 if bad else 0)
 
 

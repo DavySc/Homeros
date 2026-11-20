@@ -12,16 +12,19 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
-  # the check and the plants run in parallel, the plants in four shards:
+  # the check and the plants run in parallel, the plants in eight shards:
   # one after the other took 54 minutes on main at 8d08829, and the plants
-  # alone 42 on PR 18 (reviews of PRs 18 and 24)
+  # alone 42 on PR 18 (reviews of PRs 18 and 24); with 708 plants (775 by PR 88) four
+  # shards passed 75 minutes (PR 59's review, both heads).  On PR 88 the
+  # eight shards took 44 to 63 minutes and the check 69, so 90 leaves room
   check:
     strategy:
       fail-fast: false
       matrix:
-        target: [check, planted SHARD=0/4, planted SHARD=1/4, planted SHARD=2/4, planted SHARD=3/4]
+        target: [check, planted SHARD=0/8, planted SHARD=1/8, planted SHARD=2/8, planted SHARD=3/8,
+                 planted SHARD=4/8, planted SHARD=5/8, planted SHARD=6/8, planted SHARD=7/8]
     runs-on: ubuntu-24.04
-    timeout-minutes: 75
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v31
@@ -36,3 +39,17 @@ jobs:
       - run: echo "$PWD/tools-env/bin" >> "$GITHUB_PATH"
       - run: why3 config detect
       - run: make ${{ matrix.target }}
+  # git's Windows half on Windows itself, for what Wine cannot show (a
+  # path's names as stored): test_git_win alone, pull requests only, so it
+  # stays short (package 17's, thread 0's, agreed)
+  windows:
+    if: github.event_name == 'pull_request'
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.17.1
+      - run: bash src/git/check.sh
+        shell: bash

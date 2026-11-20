@@ -3,7 +3,8 @@
    them, are shown relative to the cwd, a file open both as a buffer and in
    v:oldfiles is listed once, the current buffer and homeros' own files are
    left out, and the frecency file is written and read back (the smart
-   picker ranks a visited file first). */
+   picker ranks a visited file first), and the files picker never runs
+   find.exe. */
 #ifdef _WIN32
 #include <windows.h>
 #include <direct.h>
@@ -102,9 +103,16 @@ int main(void)
 	got[n] = 0;
 	fclose(fp);
 	CHECK(strstr(got, "\\a.txt\n") && strstr(got, "\\b.txt\n") && strstr(got, "\\sub\\zqd.txt\n"));
+	/* files with neither fd nor rg on PATH: Wine's find.exe, like Windows',
+	   searches text, so no finder is run */
+	CHECK(!_putenv("PATH=C:\\windows\\system32"));
+	tools_pick(&e, PICK_FILES);
+	rows(got, sizeof got);
+	if (got[0] || strcmp(e.msg, "No supported finder found: `fd` `fdfind` `rg`")) { fprintf(stderr, "files: %s / %s\n", got, e.msg); CHECK(0); }
+	tools_key(&e, KEY_ESC);
 	grid_free(&g);
 	core_free(&e);
-	printf("test_tools_win: recent files relative to C:\\..., listed once, frecency written and read\n");
+	printf("test_tools_win: recent files relative to C:\\..., listed once, frecency written and read; no find.exe\n");
 	return 0;
 }
 #else

@@ -14,7 +14,7 @@ tsql: what is in sys is plain (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsq
 tsql: words are looked up as typed, not lower case (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~c + 32 : c; }~c : c; }
 tsql: sp_ procedures are plain (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~l[2] == '_' && l[3]~l[2] == '-' && l[3]
 tsql: @@globals are plain (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~case TQ_VAR: return tsql_byte(r, p + 1) == '@'~case TQ_VAR: return tsql_byte(r, p + 1) == '#'
-tsql: .sql files are not T-SQL (test_tsql)~test TESTS=tsql~~src/syntax/syntax.c~!memcmp(path + pl - 4, ".sql", 4)~!memcmp(path + pl - 4, ".sqx", 4)
+tsql: .sql files are not T-SQL (test_tsql)~test TESTS=tsql~~src/syntax/syntax.c~{ ".sql", "sql", BY_SQL }~{ ".sqx", "sql", BY_SQL }
 tsql: the end of the text is a one-byte token (test_tsql, tokens)~test TESTS=tsql~~src/syntax/tsql.c~	if (c < 0) return *k = TQ_SPACE, p;¶~
 tsql: a word longer than the lookup buffer is copied into it (fuzz_tsql, ASan)~fuzz FUZZERS=tsql FUZZ_SECONDS=60~~src/syntax/tsql.c~	if (n >= 40) return 0;¶~
 tsql: a dot is an operator (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~	case TQ_PUNCT: return tsql_byte(r, p) != '.'~	case TQ_PUNCT: return tsql_byte(r, p) != ','
@@ -50,5 +50,6 @@ tsql: an unclosed string is not flagged open (test_tsql, open)~test TESTS=tsql~~
 tsql: the open flag keeps the last token's (test_tsql, open)~test TESTS=tsql~~src/syntax/tsql.c~	r->open = 0;¶	if (c < 0)~	if (c < 0)
 tsql: a word it lacks still gets an id (test_tsql)~test TESTS=tsql~~src/syntax/tsql.c~	if (id) *id = k;~	if (id) *id = 1;
 # Not planted: reusing the last token's end and kind (tsql_faces).  Without it every call lexes that token again: the colours are the same, only slower (reviews/pr-58-repro/bench.c, mode open).
-tsql: an operator takes the comments' grey, not the operator face (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~case TQ_OP: return FACE_OPERATOR;~case TQ_OP: return FACE_PUNCTUATION_DELIMITER;
+tsql: an operator takes the comments' grey, not the operator face (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql.c~case TQ_OP: return FACE_OPERATOR;¶	case TQ_WORD: return word_face(r, p, e);~case TQ_OP: return FACE_PUNCTUATION_DELIMITER;¶	case TQ_WORD: return word_face(r, p, e);
 # Not planted, because without them the colours are the same, only slower, and no check times them: a read that lands on a moved start making all known again; syntax_update starting from the token the last faces ended in.  bench5.c in the PR's description times them.
+tsql: CONCAT_WS is not in the word list, so plain (test_tsql, lines)~test TESTS=tsql~~src/syntax/tsql_words.h~"concat_ws",~"concat_wz",
