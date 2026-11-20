@@ -198,7 +198,11 @@ static void pty(void)
 	/* Wine 11's ResizePseudoConsole is a stub (E_NOTIMPL), so there the
 	   size stays */
 	int wine = GetProcAddress(GetModuleHandleA("ntdll.dll"), "wine_get_version") != NULL;
-	CHECK(g.code == 3 && g.ended[1] && !g.ended[2] && has("got:hi") && has(wine ? "got:hi\r\n\x1b[?25h\x1b[?25lsize 7 33" : "size 9 41"));
+	if (!(g.code == 3 && g.ended[1] && !g.ended[2] && has("got:hi") && has(wine ? "got:hi\r\n\x1b[?25h\x1b[?25lsize 7 33" : "size 9 41"))) {
+		fprintf(stderr, "pty: code %d, ended %d %d %d, output:\n", g.code, g.ended[0], g.ended[1], g.ended[2]);
+		for (size_t i = 0; i < g.nout; i++) fprintf(stderr, g.out[i] >= ' ' && g.out[i] < 127 ? "%c" : "\\x%02x", (unsigned char)g.out[i]);
+		CHECK(0);
+	}
 	free(g.out);
 }
 
