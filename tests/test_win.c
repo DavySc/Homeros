@@ -265,7 +265,7 @@ int main(void)
 	CHECK(!b->ready());
 	do QueryPerformanceCounter(&t1); while (!b->ready());
 	CHECK(p > 0 && t1.QuadPart - t0.QuadPart >= p + p / 8);
-	printf("test_win: next frame allowed after %.2f ms, refresh period %.2f ms\n",
+	printf("test_win (measured): next frame allowed after %.2f ms, refresh period %.2f ms\n",
 	       (double)(t1.QuadPart - t0.QuadPart) * 1000 / (double)f.QuadPart, (double)p * 1000 / (double)f.QuadPart);
 	present(&g, &shown);
 	/* idle: after a frame with nothing left to draw the timer stays quiet */

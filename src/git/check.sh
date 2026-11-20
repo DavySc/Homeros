@@ -8,6 +8,7 @@
 # below, which is Wine's.
 set -eu
 cd "$(dirname "$0")/../.."
+. tools/winpass.sh
 run=wine; [ "${OS:-}" = Windows_NT ] && run=
 for t in zig $run; do
 	command -v $t >/dev/null || { echo "src/git/check.sh: $t is not on PATH"; exit 2; }
@@ -36,7 +37,7 @@ for t in test_git_win ${run:+test_git}; do
 	  $(pick core) $(pick text) $(pick undo) $(pick uni) $(pick keys) $(pick loop) $(pick file) $(pick grid) \
 	  $(pick theme) $(pick kitten) $(pick lsp) $(pick sqlfmt) $(pick tools) $(pick shada) $(pick str) src/syntax/tsql.c -lshell32   # str: package 17's, agreed by thread 0
 done
-timeout 300 $run build/win/test_git_win.exe || { echo "FAIL test_git_win"; exit 1; }
+pass 300 build/win/test_git_win.exe $run || { echo "FAIL test_git_win"; exit 1; }
 [ -n "$run" ] || exit 0
 
 # MinGit, pinned by its hash
@@ -61,4 +62,4 @@ rm -rf "$TEST_BRIDGE" "$TEST_TMP" && mkdir -p "$TEST_BRIDGE" "$TEST_TMP"
 	else sleep 0.002; fi
 done ) &
 trap 'touch "$TEST_BRIDGE/stop"' EXIT
-timeout 1800 wine build/win/test_git.exe || { echo "FAIL test_git (Windows)"; exit 1; }
+pass 1800 build/win/test_git.exe wine || { echo "FAIL test_git (Windows)"; exit 1; }

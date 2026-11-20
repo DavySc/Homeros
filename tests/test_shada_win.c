@@ -44,6 +44,7 @@ int main(void)
 	char first[MAX_PATH + 16];
 	snprintf(first, sizeof first, "%s\\notes.txt", cwd);
 	CHECK(shada_oldfile(0) && !strcmp(shada_oldfile(0), first) && shada_oldfile(1) && !shada_oldfile(2));
+	puts("test_shada_win: oldfiles written and read back with Windows paths");
 	return 0;
 }
 #else
