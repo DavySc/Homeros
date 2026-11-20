@@ -67,7 +67,7 @@ static int cell_ink(int c, int cw, int ch, int *first)
 static void row(const char *s, int ccol)
 {
 	grid_clear(&g);
-	grid_puts(&g, 0, 0, s, ATTR_NONE);
+	grid_puts(&g, 0, 0, g.cols, s, strlen(s), ATTR_NONE, FACE_NONE);
 	g.crow = ccol < 0 ? 5 : 0;
 	g.ccol = ccol < 0 ? 0 : ccol;
 }
