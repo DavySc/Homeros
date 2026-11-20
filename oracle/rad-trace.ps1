@@ -1,11 +1,11 @@
 # Record what the real RAD Debugger does on a subject program, one line per step.
-# usage: rad-trace.ps1 <raddbg.exe> <subject.exe> <out dir>
+# usage: rad-trace.ps1 <raddbg.exe> <subject.exe> <out dir> [<subject.c>: then not the steps but the values, see Values]
 # Five scripts per subject: `into` and `over` repeat one step kind until the program ends,
 # `mix` and `mix2` draw step kinds from a fixed generator (two seeds; `mix2` does not step out
 # of main, which ends a trace early), `back` steps into every line of main and, in the functions
 # it comes into, in turn into a line and out. Each script runs twice; a script whose two runs
 # differ is reported, because a trace that is not repeatable cannot be an oracle.
-param($rad, $exe, $out)
+param($rad, $exe, $out, $source)
 $ErrorActionPreference = 'Continue'
 New-Item -ItemType Directory -Force $out | Out-Null
 $tmp = Join-Path $env:RUNNER_TEMP 'radtrace'; New-Item -ItemType Directory -Force $tmp | Out-Null
@@ -27,10 +27,44 @@ function Place($s) {
   if ($m -ne "$name.exe") { return "outside $m!$sym" }
   return "$sym $(Field $s 'file_name'):$line +$(Field $s 'ip_voff') [$(Field $s 'explanation')]"
 }
-function Trace($script, $cap) {
+# RAD started on the subject, stopped at its entry: the process and the state there (null: it did not get there).
+function Launch() {
   $p = Start-Process $rad -ArgumentList "--user:$tmp/u.raddbg_user", "--project:$tmp/p.raddbg_project", "--logs:$tmp", '--auto_step', "`"$exe`"" -PassThru
-  $lines = @(); $s = $null
+  $s = $null
   for ($i = 0; $i -lt 100 -and -not $s; $i++) { Start-Sleep -Milliseconds 300; $s = Stopped 1 }
+  return $p, $s
+}
+function Quit($p) {
+  Send 'kill_all' | Out-Null; Send 'exit' | Out-Null
+  if (-not $p.WaitForExit(10000)) { $p.Kill() }
+  Remove-Item "$tmp/*" -Force -ErrorAction SilentlyContinue
+}
+# What RAD shows for each expression the subject's main names before its line HERE(), asked when the program stands at that line:
+# "text => value | type | messages", and first the variables RAD has in scope there. A text goes after "--", which makes
+# RAD's command line take what follows as it is (a text may begin with - or /); not through cmd, which has its own meaning for & | < > ^.
+function Values() {
+  $text = Get-Content $source
+  $main = ($text | Select-String -Pattern '^int main\(' | Select-Object -First 1).LineNumber
+  $here = ($text | Select-String -Pattern '^\s*HERE\(\);' | Select-Object -First 1).LineNumber
+  $asked = [regex]::Matches(($text[$main..($here - 1)] -join "`n"), '\b(?:AT|VALUE|FIELD|REAL|SHOWN|TYPED)\((.+?)(?:, "[^\n]*?")?\);|\bREFUSED\("(.+?)", "') | ForEach-Object { "$($_.Groups[1].Value)$($_.Groups[2].Value)" } | Select-Object -Unique
+  $p, $s = Launch
+  $lines = @(); $stops = [int]('0' + (Field $s 'stop_count'))
+  for ($n = 0; $n -lt 300 -and $s -and (Field $s 'line_num') -ne "$here"; $n++) { Send 'step_over_line' | Out-Null; $stops++; $s = Stopped $stops }
+  if (-not $s -or (Field $s 'line_num') -ne "$here") { $lines += "FAILED to reach line $here" } else {
+    $lines += "LOCALS => $(if ($s -match '(?s)locals:\s*\{(.*?)\}') { ($Matches[1] -split '\s+' | Where-Object { $_ }) -join ' ' })"
+    foreach ($t in $asked) {
+      $f = "$tmp/ask.txt"
+      Start-Process $rad -ArgumentList "--ipc -- eval $t" -RedirectStandardOutput $f -NoNewWindow -Wait
+      $r = Get-Content $f -Raw
+      $lines += "$t => $(Field $r 'value') | $(Field $r 'type') | $(Field $r 'msgs')"
+    }
+  }
+  Quit $p
+  return $lines
+}
+function Trace($script, $cap) {
+  $p, $s = Launch
+  $lines = @()
   if (-not $s) { $lines += 'FAILED to reach the entry stop' } else {
     $lines += "start -> $(Place $s)"; $stops = [int](Field $s 'stop_count'); $seed = if ($script -eq 'mix2') { 54321 } else { 12345 }; $w = 'main start'; $deep = 0
     for ($n = 1; $n -le $cap; $n++) {
@@ -46,11 +80,10 @@ function Trace($script, $cap) {
       if ($w -eq 'ended' -or $w -like 'outside*') { break }
     }
   }
-  Send 'kill_all' | Out-Null; Send 'exit' | Out-Null
-  if (-not $p.WaitForExit(10000)) { $p.Kill() }
-  Remove-Item "$tmp/*" -Force -ErrorAction SilentlyContinue
+  Quit $p
   return $lines
 }
+if ($source) { Values | Set-Content "$out/$name.eval.txt"; exit 0 }
 foreach ($script in 'into', 'over', 'mix', 'mix2', 'back') {
   $a = Trace $script 600; $b = Trace $script 600
   $same = (($a -join "`n") -eq ($b -join "`n"))

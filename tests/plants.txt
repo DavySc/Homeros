@@ -735,13 +735,289 @@ test | dbg/eval.c | if (n > 8 \p\p !eight.n) return false; | if (n > 8) return f
 test | dbg/eval.c | rdi_run(&v.type.module->rdi, RDI_LOCATION_CONSTANTS, v.at / 8, 1) | rdi_run(&v.type.module->rdi, RDI_LOCATION_CONSTANTS, v.at, 1)
 test | dbg/eval.c | if (v.kind == EVAL_MEMORY) return target_read(e->target, v.at, bytes, n); | if (v.kind == EVAL_MEMORY) return target_read(e->target, v.at + 1, bytes, n);
 eval | dbg/eval.c | frame->rip - called), .p = text};\n  P.voff = P.module ? frame->rip - called | frame->rip - 0 * called), .p = text};\n  P.voff = P.module ? frame->rip - 0 * called
-eval | dbg/eval.c | s && n < 256; s = scope->parent, n += 1) { | s && n < 256; s = 0, n += 1) {
+eval | dbg/eval.c | l->scope = scope->parent; | l->scope = 0;
 eval | dbg/eval.c | return a.n == n && !memcmp(a.p, text, n); | return a.n >= n && !memcmp(a.p, text, n);
-eval | dbg/eval.c | return a.n == n && !memcmp(a.p, text, n); | return a.n == n;
 eval | dbg/eval.c | y->location, P->voff, P->frame) | y->location, 0, P->frame)
-eval | dbg/eval.c | const RdiSymbol *y = (const RdiSymbol *)locals.p + i; | const RdiSymbol *y = (const RdiSymbol *)locals.p;
+eval | dbg/eval.c | return (const RdiSymbol *)locals.p + l->i++; | return l->i++, (const RdiSymbol *)locals.p;
 eval | dbg/eval.c | known(g, i % 2 ? RDI_NAMES_CONSTANTS : RDI_NAMES_GLOBALS, id) | known(g, RDI_NAMES_GLOBALS, id)
 eval | dbg/eval.c | known(g, i % 2 ? RDI_NAMES_CONSTANTS : RDI_NAMES_GLOBALS, id) | known(g, RDI_NAMES_CONSTANTS, id)
 eval | dbg/eval.c | *v = regs->gp[code - 1]; | *v = regs->gp[code % 16];
 eval | dbg/eval.c | if (imm >> 8 != 8 \p\p !reg(regs, imm & 0xff, &v)) return false; | if (imm >> 8 != 9 \p\p !reg(regs, imm & 0xff, &v)) return false;
 eval | dbg/eval.c | p.kind = EVAL_REGISTER, p.at = (rest >> 48) - 1; | p.kind = EVAL_REGISTER, p.at = rest >> 48;
+# ---- slice 6, second part: expressions (tests/test_eval.c: the compiler of the test says what each text is; tests/zoo_check.c for what needs debug information) ----
+test | dbg/eval.c | if (bits >= 64) return v; | if (bits > 64) return v;
+test | dbg/eval.c | [CHAR] = 1 \p SIGN, 2, 4, | [CHAR] = 1, 2, 4,
+test | dbg/eval.c | [UCHAR] = 1, 2, 4, 1, 2, | [UCHAR] = 1 \p SIGN, 2, 4, 1, 2,
+test | dbg/eval.c | [U32] = 4, [U64] = 8, | [U32] = 4 \p SIGN, [U64] = 8,
+test | dbg/eval.c | [U32] = 4, [U64] = 8, | [U32] = 4, [U64] = 8 \p SIGN,
+test | dbg/eval.c | [S8] = 1 \p SIGN, [S16] = 2 \p SIGN, | [S8] = 1, [S16] = 2 \p SIGN,
+test | dbg/eval.c | [S32] = 4 \p SIGN, [S64] = 8 \p SIGN, | [S32] = 4, [S64] = 8 \p SIGN,
+test | dbg/eval.c | [S32] = 4 \p SIGN, [S64] = 8 \p SIGN, | [S32] = 4 \p SIGN, [S64] = 8,
+test | dbg/eval.c | [BOOL] = 1, [F32] = 4 \p FLOAT, [F64] = 8 \p FLOAT}; | [BOOL] = 1, [F32] = 4, [F64] = 8 \p FLOAT};
+test | dbg/eval.c | s.truth = kind == BOOL, | s.truth = false,
+test | dbg/eval.c | if (t.stars) return (EvalShape){EVAL_ADDRESS, .size = 8, .to = {t.module, t.idx, t.stars - 1}}; | if (t.stars) return (EvalShape){EVAL_ADDRESS, .size = 8, .to = {t.module, t.idx, t.stars}};
+eval | dbg/eval.c | case 0x1000: t.idx = y->a; break; | case 0x1000: t.idx = y->b; break;
+eval | dbg/eval.c | case 0x2003: case 0x2004: t.idx = y->b; break; | case 0x2003: case 0x2004: t.idx = y->a; break;
+eval | dbg/eval.c | s.first = y->b, s.count = y->c, t.idx = y->a; break; | s.first = y->c, s.count = y->b, t.idx = y->a; break;
+eval | dbg/eval.c | s.first = y->b, s.count = y->c, t.idx = y->a; break; | s.first = 0, s.count = y->c, t.idx = y->a; break;
+eval | dbg/eval.c | case 0x1001: return s.form = EVAL_ADDRESS, s.size = 8, s; | case 0x1001: return s.form = EVAL_ADDRESS, s.size = 4, s;
+eval | dbg/eval.c | case 0x1002: case 0x1003: return s.form = EVAL_REFERENCE, s.size = 8, s; | case 0x1002: case 0x1003: return s.form = EVAL_ADDRESS, s.size = 8, s;
+eval | dbg/eval.c | case 0x1004: return s.form = EVAL_ROW, s.size = y->byte_size, s; | case 0x1004: return s.form = EVAL_ADDRESS, s.size = y->byte_size, s;
+eval | dbg/eval.c | return s.form = EVAL_RECORD, s.size = y->byte_size, s.to.idx = y->c, s; | return s.form = EVAL_RECORD, s.size = y->byte_size, s;
+eval | dbg/eval.c | return eval_shape(p.type).size <= 8 ? p : none; | return p;
+test | dbg/eval.c | if (!P->error) P->error = why; | P->error = why;
+test | dbg/eval.c | if (s.form != EVAL_REAL) return s.sign ? (double)(int64_t)v.at : (double)v.at; | if (s.form != EVAL_REAL) return (double)(int64_t)v.at;
+test | dbg/eval.c | if (s.form != EVAL_REAL) return s.sign ? (double)(int64_t)v.at : (double)v.at; | if (s.form != EVAL_REAL) return (double)v.at;
+test | dbg/eval.c | if (s.size == 4) return memcpy(&f, &v.at, 4), (double)f; | if (s.size == 8) return memcpy(&f, &v.at, 4), (double)f;
+test | dbg/eval.c | return s.form == EVAL_REAL ? real(v, s) != 0 : v.at != 0; } | return s.form != EVAL_REAL ? real(v, s) != 0 : v.at != 0; }
+eval | dbg/eval.c | if (!v.kind \p\p s.form != EVAL_REFERENCE) return v; | return v;
+eval | dbg/eval.c | return (EvalValue){EVAL_VALUE, {s.to.module, s.to.idx, s.to.stars + 1}, v.at}; | return (EvalValue){EVAL_VALUE, {s.to.module, s.to.idx, s.to.stars}, v.at};
+test | dbg/eval.c | if (s.form != EVAL_INT && s.form != EVAL_REAL && s.form != EVAL_ADDRESS) return fail(P, "not a number"); | if (s.form == EVAL_NOTHING && 0) return fail(P, "not a number");
+test | dbg/eval.c | if (!P->dead && !eval_read(P->e, P->frame, v, &bits, s.size)) return fail(P, "cannot be read");\n  if (!s.count) | if (!eval_read(P->e, P->frame, v, &bits, s.size)) return fail(P, "cannot be read");\n  if (!s.count)
+test | dbg/eval.c | return (EvalValue){EVAL_VALUE, v.type, narrow(bits, s.size * 8, s.sign)}; | return (EvalValue){EVAL_VALUE, v.type, narrow(bits, s.size * 8, false)};
+test | dbg/eval.c | return (EvalValue){EVAL_VALUE, v.type, narrow(bits, s.size * 8, s.sign)}; | return (EvalValue){EVAL_VALUE, v.type, bits};
+eval | dbg/eval.c | s.count < 32 ? (EvalType){NULL, S32, 0} : s.to, | s.to,
+eval | dbg/eval.c | s.count < 32 ? (EvalType){NULL, S32, 0} : s.to, | s.count <= 32 ? (EvalType){NULL, S32, 0} : s.to,
+eval | dbg/eval.c | narrow(bits >> (s.first & 63), s.count, s.sign)}; | narrow(bits >> (s.first & 63), s.count, false)};
+eval | dbg/eval.c | narrow(bits >> (s.first & 63), s.count, s.sign)}; | narrow(bits, s.count, s.sign)};
+test | dbg/eval.c | if (s.form != EVAL_ADDRESS) return fail(P, "not an address"); | 
+test | dbg/eval.c | if (d >= -0x1p63 && d < 0x1p63) return (uint64_t)(int64_t)d;\n  return d >= 0x1p63 && d < 0x1p64 ? (uint64_t)d : (uint64_t)1 << 63; | if (d >= -0x1p63 && d < 0x1p63) return (uint64_t)(int64_t)d;\n  return d >= 0x1p63 && d < 0x1p64 ? (uint64_t)d : 0;
+test | dbg/eval.c | return d >= 0x1p63 && d < 0x1p64 ? (uint64_t)d : (uint64_t)1 << 63; | return (uint64_t)1 << 63;
+test | dbg/eval.c | if ((s.form == EVAL_REAL && from.form == EVAL_ADDRESS) \p\p (s.form == EVAL_ADDRESS && from.form == EVAL_REAL)) return fail(P, "no such conversion"); | if (s.form == EVAL_REAL && from.form == EVAL_ADDRESS) return fail(P, "no such conversion");
+test | dbg/eval.c | if ((s.form == EVAL_REAL && from.form == EVAL_ADDRESS) \p\p (s.form == EVAL_ADDRESS && from.form == EVAL_REAL)) return fail(P, "no such conversion"); | if (s.form == EVAL_ADDRESS && from.form == EVAL_REAL) return fail(P, "no such conversion");
+test | dbg/eval.c | if (s.size == 4) memcpy(&v.at, &f, 4); else memcpy(&v.at, &d, 8); | if (s.size == 8) memcpy(&v.at, &f, 4); else memcpy(&v.at, &d, 8);
+test | dbg/eval.c | v.at = s.truth ? nonzero(v, from) : narrow( | v.at = narrow(
+test | dbg/eval.c | narrow(from.form == EVAL_REAL ? whole(real(v, from)) : v.at, s.size * 8, s.sign); | narrow(from.form != EVAL_REAL ? whole(real(v, from)) : v.at, s.size * 8, s.sign);
+test | dbg/eval.c | narrow(from.form == EVAL_REAL ? whole(real(v, from)) : v.at, s.size * 8, s.sign); | narrow(from.form == EVAL_REAL ? whole(real(v, from)) : v.at, s.size * 8, false);
+test | dbg/eval.c | } else return fail(P, "no such conversion"); | }
+test | dbg/eval.c | return v.type = type, v; | return v;
+test | dbg/eval.c | (y.form == EVAL_REAL && y.size == 8) ? F64 : F32; | (y.form == EVAL_REAL && y.size == 8) ? F64 : F64;
+test | dbg/eval.c | return (x.form == EVAL_REAL && x.size == 8) \p\p | return (x.form == EVAL_REAL && x.size == 4) \p\p
+test | dbg/eval.c | if (size < 4) return S32; | 
+test | dbg/eval.c | bool sign = (x.size < size \p\p x.sign) && (y.size < size \p\p y.sign); | bool sign = x.sign && y.sign;
+test | dbg/eval.c | bool sign = (x.size < size \p\p x.sign) && (y.size < size \p\p y.sign); | bool sign = (x.size < size \p\p x.sign) \p\p (y.size < size \p\p y.sign);
+test | dbg/eval.c | return size == 8 ? (sign ? S64 : U64) : sign ? S32 : U32; | return sign ? S32 : U32;
+test | dbg/eval.c | if (x.form == EVAL_INT && y.form == EVAL_ADDRESS && op == '+') return arith(P, op, b, a); | 
+test | dbg/eval.c | (!compare \p\p x.form == EVAL_REAL \p\p y.form == EVAL_REAL)) { | !compare) {
+test | dbg/eval.c | return a.at += (op == '+' ? b.at : -b.at) * step, a; | return a.at += (op == '+' ? b.at : -b.at), a;
+test | dbg/eval.c | return a.at += (op == '+' ? b.at : -b.at) * step, a; | return a.at += b.at * step, a;
+test | dbg/eval.c | if (step && y.form == EVAL_INT && (op == '+' \p\p op == '-')) | if (y.form == EVAL_INT && (op == '+' \p\p op == '-'))
+test | dbg/eval.c | if (step && y.form == EVAL_INT && (op == '+' \p\p op == '-')) | if (step && y.form == EVAL_INT)
+test | dbg/eval.c | return value(S64, (uint64_t)((int64_t)(a.at - b.at) / (int64_t)step)); | return value(S64, a.at - b.at);
+test | dbg/eval.c | return value(S64, (uint64_t)((int64_t)(a.at - b.at) / (int64_t)step)); | return value(S64, (a.at - b.at) / step);
+test | dbg/eval.c | if (step && y.form == EVAL_ADDRESS && op == '-') | if (step && y.form == EVAL_ADDRESS)
+test | dbg/eval.c | if ((x.form == EVAL_REAL \p\p y.form == EVAL_REAL) && !compare && !strchr("+-*/", op)) return fail(P, "not for a real number"); | 
+test | dbg/eval.c | EvalType type = {NULL, common(x, shift ? x : y), 0}; | EvalType type = {NULL, common(x, shift ? y : y), 0};
+test | dbg/eval.c | if (P->dead) return value(compare ? S32 : type.idx, 0); | 
+test | dbg/eval.c | if (P->dead) return value(compare ? S32 : type.idx, 0); | if (P->dead) return value(type.idx, 0);
+test | dbg/eval.c | count = w & (s.size * 8 - 1); | count = w & 63;
+test | dbg/eval.c | bool less = s.form == EVAL_REAL ? d < f : s.sign ? i < j : u < w, | bool less = s.form == EVAL_REAL ? d < f : u < w,
+test | dbg/eval.c | bool less = s.form == EVAL_REAL ? d < f : s.sign ? i < j : u < w, | bool less = s.form == EVAL_REAL ? d < f : i < j,
+test | dbg/eval.c | more = s.form == EVAL_REAL ? d > f : s.sign ? i > j : u > w, | more = s.form == EVAL_REAL ? d > f : u > w,
+test | dbg/eval.c | more = s.form == EVAL_REAL ? d > f : s.sign ? i > j : u > w, | more = !less,
+test | dbg/eval.c | equal = s.form == EVAL_REAL ? d == f : u == w; | equal = u == w;
+test | dbg/eval.c | case '<': return value(S32, less); | case '<': return value(S32, less \p\p equal);
+test | dbg/eval.c | case '>': return value(S32, more); | case '>': return value(S32, more \p\p equal);
+test | dbg/eval.c | case 'l': return value(S32, less \p\p equal); | case 'l': return value(S32, less);
+test | dbg/eval.c | case 'l': return value(S32, less \p\p equal); | case 'l': return value(S32, !more);
+test | dbg/eval.c | case 'g': return value(S32, more \p\p equal); | case 'g': return value(S32, more);
+test | dbg/eval.c | case 'g': return value(S32, more \p\p equal); | case 'g': return value(S32, !less);
+test | dbg/eval.c | case 'e': return value(S32, equal); | case 'e': return value(S32, !equal);
+test | dbg/eval.c | case 'n': return value(S32, !equal); | case 'n': return value(S32, less \p\p more);
+test | dbg/eval.c | case '+': r = u + w, d += f; break; | case '+': r = u + w, d -= f; break;
+test | dbg/eval.c | case '+': r = u + w, d += f; break; | case '+': r = u - w, d += f; break;
+test | dbg/eval.c | case '-': r = u - w, d -= f; break; | case '-': r = w - u, d -= f; break;
+test | dbg/eval.c | case '-': r = u - w, d -= f; break; | case '-': r = u - w, d = f - d; break;
+test | dbg/eval.c | case '*': r = u * w, d *= f; break; | case '*': r = u * w, d /= f; break;
+test | dbg/eval.c | case '*': r = u * w, d *= f; break; | case '*': r = u + w, d *= f; break;
+test | dbg/eval.c | if (s.form == EVAL_REAL) { d /= f; break; } | if (s.form == EVAL_REAL) { d *= f; break; }
+test | dbg/eval.c | if (!w) return fail(P, "division by zero"); | if (!w) return value(type.idx, 0);
+test | dbg/eval.c | if (!s.sign) r = op == '/' ? u / w : u % w; | if (!s.sign) r = op == '/' ? u / w : u / w;
+test | dbg/eval.c | if (!s.sign) r = op == '/' ? u / w : u % w; | if (0) r = op == '/' ? u / w : u % w;
+test | dbg/eval.c | else if (j == -1) r = op == '/' ? -u : 0; | else if (j == -1) r = op == '/' ? u : 0;
+test | dbg/eval.c | else if (j == -1) r = op == '/' ? -u : 0; | else if (j == -1) r = -u;
+test | dbg/eval.c | else r = (uint64_t)(op == '/' ? i / j : i % j); | else r = (uint64_t)(op == '/' ? i / j : i / j);
+test | dbg/eval.c | else r = (uint64_t)(op == '/' ? i / j : i % j); | else r = op == '/' ? u / w : u % w;
+test | dbg/eval.c | case '&': r = u & w; break; | case '&': r = u \p w; break;
+test | dbg/eval.c | case '^': r = u ^ w; break; | case '^': r = u \p w; break;
+test | dbg/eval.c | case '\p': r = u \p w; break; | case '\p': r = u ^ w; break;
+test | dbg/eval.c | case 'L': r = u << count; break; | case 'L': r = u << w; break;
+test | dbg/eval.c | default: r = s.sign ? (uint64_t)(i >> count) : u >> count; break; | default: r = u >> count; break;
+test | dbg/eval.c | default: r = s.sign ? (uint64_t)(i >> count) : u >> count; break; | default: r = (uint64_t)(i >> count); break;
+test | dbg/eval.c | return convert(P, s.form == EVAL_REAL ? number(d) : value(type.idx, r), type); | return s.form == EVAL_REAL ? number(d) : value(type.idx, r);
+test | dbg/eval.c | while (*P->p == ' ') P->p += 1; | 
+test | dbg/eval.c | if (strncmp(P->p, text, n)) return false; | if (strncmp(P->p, text, 1)) return false;
+test | dbg/eval.c | while (*P->p == '_' \p\p isalpha((unsigned char)*P->p) | while (isalpha((unsigned char)*P->p)
+eval | dbg/eval.c | return a.n == n && !memcmp(a.p, text, n); } | return a.n == n && (!n \p\p *(const char *)a.p == *text); }
+test | dbg/eval.c | if (v.kind == EVAL_REGISTER \p\p v.kind == EVAL_CONSTANT) {   /* a record | if (0) {   /* a record
+eval | dbg/eval.c | return rdi_run(r, RDI_MEMBERS, u->member_first, u->member_count); | return rdi_run(r, RDI_MEMBERS, u->member_first, 1);
+eval | dbg/eval.c | const RdiMember *b = (const RdiMember *)members.p + i; | const RdiMember *b = (const RdiMember *)members.p;
+eval | dbg/eval.c | if (b->kind == 1 && same(id, is.p, is.n)) return | if (same(id, is.p, is.n) \p\p 1) return
+eval | dbg/eval.c | {v.type.module, b->type, 0}, v.kind == EVAL_MEMORY ? v.at + b->off | {v.type.module, b->type, 0}, v.kind == EVAL_MEMORY ? v.at
+eval | dbg/eval.c | {v.type.module, b->type, 0}, v.kind == EVAL_MEMORY ? v.at + b->off | {v.type.module, v.type.idx, 0}, v.kind == EVAL_MEMORY ? v.at + b->off
+test | dbg/eval.c | {"int", INT_WORD}, {"long", S32}, | {"int", S32}, {"long", S32},
+test | dbg/eval.c | {"signed", SIGNED}, {"unsigned", UNSIGNED}, | {"signed", SIGNED}, {"unsigned", SIGNED},
+test | dbg/eval.c | {"void", VOID}, {"char", CHAR}, {"short", S16}, | {"void", VOID}, {"char", S8}, {"short", S16},
+test | dbg/eval.c | {"__int64", S64}, {"float", F32}, {"double", F64}, | {"__int64", S64}, {"float", F64}, {"double", F64},
+test | dbg/eval.c | {"bool", BOOL}, {"_Bool", BOOL}}; | {"bool", BOOL}, {"_Bool", UCHAR}};
+eval | dbg/eval.c | if (w < sizeof words / sizeof *words && !named) { | if (w < sizeof words / sizeof *words) {
+test | dbg/eval.c | if (words[w].word[0] == 'l') kind = kind == S32 ? S64 : S32; | if (words[w].word[0] == 'l') kind = S32;
+test | dbg/eval.c | if (words[w].word[0] == 'l') kind = kind == S32 ? S64 : S32; | if (words[w].word[0] == 'l') kind = S64;
+test | dbg/eval.c | basic \p= k != NO, sign \p= k == SIGNED, unsign \p= k == UNSIGNED; | basic \p= k != NO, sign \p= k == SIGNED, unsign \p= k >= SIGNED;
+test | dbg/eval.c | basic \p= k != NO, sign \p= k == SIGNED, unsign \p= k == UNSIGNED; | basic = true, sign \p= k == SIGNED, unsign \p= k == UNSIGNED;
+eval | dbg/eval.c | } else if (id.n && !basic && !named && !name(P, id, &variable)) { | } else if (id.n && !basic && !named && (name(P, id, &variable), 1)) {
+eval | dbg/eval.c | type->module = nth(P, i), type->idx = known(type->module, RDI_NAMES_TYPES, id); | type->module = nth(P, i), type->idx = known(type->module, RDI_NAMES_GLOBALS, id);
+test | dbg/eval.c | if (kind == 0) kind = S32; | 
+test | dbg/eval.c | if (unsign) kind = kind == CHAR ? UCHAR : kind >= S16 && kind <= S64 ? kind - (S8 - 0xa) : kind; | if (unsign) kind = kind >= S16 && kind <= S64 ? kind - (S8 - 0xa) : kind;
+test | dbg/eval.c | kind >= S16 && kind <= S64 ? kind - (S8 - 0xa) : kind; | kind > S16 && kind <= S64 ? kind - (S8 - 0xa) : kind;
+test | dbg/eval.c | kind >= S16 && kind <= S64 ? kind - (S8 - 0xa) : kind; | kind >= S16 && kind < S64 ? kind - (S8 - 0xa) : kind;
+test | dbg/eval.c | if (sign && kind == CHAR) kind = S8; | 
+test | dbg/eval.c | if (eat(P, "*")) type->stars += 1;\n    else if (!eat(P, "const")) return true; | if (eat(P, "*")) type->stars += 1;\n    else return true;
+test | dbg/eval.c | if (eat(P, "*")) type->stars += 1; | if (eat(P, "*")) type->stars = 1;
+test | dbg/eval.c | if (*P->p != 'f' && *P->p != 'F') return number(d); | if (*P->p != 'f') return number(d);
+test | dbg/eval.c | return P->p += 1, convert(P, number(d), (EvalType){NULL, F32, 0}); | return P->p += 1, number(d);
+test | dbg/eval.c | if (errno == ERANGE) return fail(P, "a number too large"); | 
+test | dbg/eval.c | if ((*P->p \p 0x20) == 'u') u = true; | if (*P->p == 'u') u = true;
+test | dbg/eval.c | wide \p= (P->p[1] \p 0x20) == 'l'; | wide = true;
+test | dbg/eval.c | wide \p= v >> 32 \p\p (!u && !other && v >> 31); | wide \p= v >> 32 \p\p (!other && v >> 31);
+test | dbg/eval.c | wide \p= v >> 32 \p\p (!u && !other && v >> 31); | wide \p= v >> 32 \p\p (!u && v >> 31);
+test | dbg/eval.c | wide \p= v >> 32 \p\p (!u && !other && v >> 31); | wide \p= v >> 33 \p\p (!u && !other && v >> 31);
+test | dbg/eval.c | u \p= v >> 63 \p\p (other && !wide && v >> 31); | u \p= v >> 63 \p\p (other && v >> 31);
+test | dbg/eval.c | u \p= v >> 63 \p\p (other && !wide && v >> 31); | u \p= other && !wide && v >> 31;
+test | dbg/eval.c | u \p= v >> 63 \p\p (other && !wide && v >> 31); | u \p= v >> 63;
+test | dbg/eval.c | return value(wide ? (u ? U64 : S64) : u ? U32 : S32, v); | return value(wide ? S64 : u ? U32 : S32, v);
+test | dbg/eval.c | if (!eat(P, ")")) return fail(P, "a ) is missing"); | eat(P, ")");
+test | dbg/eval.c | if (*c == '\\' ? !e : !*c \p\p *c == '\'') return fail(P, "not a character"); | if (*c == '\\' ? !e : !*c) return fail(P, "not a character");
+test | dbg/eval.c | v = value(S32, (uint64_t)(int64_t)(e ? means[e - escaped] : *c)); | v = value(S32, (uint64_t)(int64_t)(e ? means[0] : *c));
+test | dbg/eval.c | c += e ? 2 : 1; | c += 1;
+test | dbg/eval.c | if (*c != '\'') return fail(P, "a ' is missing"); | 
+test | dbg/eval.c | (*P->p == '.' && isdigit((unsigned char)P->p[1]))) v = literal(P); | 0) v = literal(P);
+test | dbg/eval.c | if (!(eat(P, "(") && type_name(P, &type) && eat(P, ")"))) {\n        P->p = from, P->dead += 1; | if (!(eat(P, "(") && type_name(P, &type) && eat(P, ")"))) {\n        P->p = from;
+test | dbg/eval.c | if (!(eat(P, "(") && type_name(P, &type) && eat(P, ")"))) {\n        P->p = from, | if (!(eat(P, "(") && type_name(P, &type) && eat(P, ")"))) {\n        (void)from,
+test | dbg/eval.c | return value(U64, eval_shape(type).size); | return value(S32, eval_shape(type).size);
+test | dbg/eval.c | if (!id.n) return fail(P, "a value is missing"); | 
+eval | dbg/eval.c | if (!v.kind) return fail(P, "it has no place here"); | 
+test | dbg/eval.c | if (!eat(P, "]")) return fail(P, "a ] is missing"); | eat(P, "]");
+eval | dbg/eval.c | if (form == EVAL_ADDRESS \p\p form == EVAL_ROW) v = deref(P, v); | if (form == EVAL_ADDRESS) v = deref(P, v);
+eval | dbg/eval.c | if (form == EVAL_ADDRESS \p\p form == EVAL_ROW) v = deref(P, v); | if (form == EVAL_ROW) v = deref(P, v);
+eval | dbg/eval.c | } else if (eat(P, ".") \p\p eat(P, "->")) { | } else if (eat(P, ".")) {
+test | dbg/eval.c | if (P->deep == 64) return fail(P, "too deep"); | if (P->deep == 65) return fail(P, "too deep");
+test | dbg/eval.c | P->deep -= 1;\n  return v; | return v;
+test | dbg/eval.c | if (eat(P, "(") && type_name(P, &type) && eat(P, ")")) v = convert(P, load(P, unary(P)), type); | if (eat(P, "(") && type_name(P, &type) && eat(P, ")")) v = convert(P, load(P, primary(P)), type);
+test | dbg/eval.c | else if (P->p = from, eat(P, "*")) v = deref(P, unary(P)); | else if ((void)from, eat(P, "*")) v = deref(P, unary(P));
+test | dbg/eval.c | v = v.kind == EVAL_MEMORY ? (EvalValue){EVAL_VALUE, {v.type.module, v.type.idx, v.type.stars + 1}, v.at} : fail(P, "it has no address"); | v = v.kind ? (EvalValue){EVAL_VALUE, {v.type.module, v.type.idx, v.type.stars + 1}, v.at} : fail(P, "it has no address");
+test | dbg/eval.c | {v.type.module, v.type.idx, v.type.stars + 1}, v.at} : fail(P, "it has no address"); | {v.type.module, v.type.idx, v.type.stars}, v.at} : fail(P, "it has no address");
+test | dbg/eval.c | else if (eat(P, "-")) v = arith(P, '*', value(S32, (uint64_t)-1), load(P, unary(P))); | else if (eat(P, "-")) v = arith(P, '-', value(S32, 0), load(P, unary(P)));
+test | dbg/eval.c | else if (eat(P, "+")) v = arith(P, '*', value(S32, 1), load(P, unary(P))); | else if (eat(P, "+")) v = load(P, unary(P));
+test | dbg/eval.c | else if (eat(P, "~")) v = arith(P, '^', value(S32, (uint64_t)-1), load(P, unary(P))); | else if (eat(P, "~")) v = arith(P, '^', value(U32, 0xffffffff), load(P, unary(P)));
+test | dbg/eval.c | if (v.kind) v = value(S32, !nonzero(v, eval_shape(v.type))); | if (v.kind) v = value(S32, nonzero(v, eval_shape(v.type)));
+test | dbg/eval.c | {"*", '*', 3}, {"/", '/', 3}, {"%", '%', 3}, | {"*", '*', 3}, {"/", '/', 3}, {"%", '%', 4},
+test | dbg/eval.c | {"+", '+', 4}, {"-", '-', 4}, | {"+", '+', 3}, {"-", '-', 4},
+test | dbg/eval.c | {"<<", 'L', 5}, {">>", 'R', 5}, | {"<<", 'L', 4}, {">>", 'R', 5},
+test | dbg/eval.c | {"<<", 'L', 5}, {">>", 'R', 5}, | {"<<", 'L', 5}, {">>", 'R', 6},
+test | dbg/eval.c | {"<=", 'l', 6}, {">=", 'g', 6}, {"<", '<', 6}, {">", '>', 6}, | {"<=", 'l', 6}, {">=", 'g', 6}, {"<", '<', 7}, {">", '>', 6},
+test | dbg/eval.c | {"==", 'e', 7}, {"!=", 'n', 7}, | {"==", 'e', 6}, {"!=", 'n', 7},
+test | dbg/eval.c | {"==", 'e', 7}, {"!=", 'n', 7}, | {"==", 'e', 7}, {"!=", 'n', 8},
+test | dbg/eval.c | {"&&", 'A', 11}, {"\p\p", 'O', 12}, | {"&&", 'A', 12}, {"\p\p", 'O', 12},
+test | dbg/eval.c | {"&", '&', 8}, {"^", '^', 9}, {"\p", '\p', 10}}; | {"&", '&', 9}, {"^", '^', 9}, {"\p", '\p', 10}};
+test | dbg/eval.c | {"&", '&', 8}, {"^", '^', 9}, {"\p", '\p', 10}}; | {"&", '&', 8}, {"^", '^', 10}, {"\p", '\p', 10}};
+test | dbg/eval.c | {"&", '&', 8}, {"^", '^', 9}, {"\p", '\p', 10}}; | {"&", '&', 8}, {"^", '^', 9}, {"\p", '\p', 9}};
+test | dbg/eval.c | if (i == OPS \p\p ops[i].level > most) return P->p = from, a; | if (i == OPS \p\p ops[i].level > most) return (void)from, a;
+test | dbg/eval.c | if (i == OPS \p\p ops[i].level > most) return P->p = from, a; | if (i == OPS \p\p ops[i].level >= most) return P->p = from, a;
+test | dbg/eval.c | bool is = ops[i].op == 'O', decided = a.kind && nonzero(a, eval_shape(a.type)) == is; | bool is = ops[i].op == 'O', decided = false;
+test | dbg/eval.c | bool is = ops[i].op == 'O', decided = a.kind && nonzero(a, eval_shape(a.type)) == is; | bool is = ops[i].op == 'O', decided = a.kind && nonzero(a, eval_shape(a.type)) != is;
+test | dbg/eval.c | P->dead += decided;\n      b = load(P, binary(P, ops[i].level - 1));\n      P->dead -= decided; | P->dead += decided;\n      b = load(P, binary(P, ops[i].level - 1));
+test | dbg/eval.c | value(S32, decided ? is : nonzero(b, eval_shape(b.type))) | value(S32, nonzero(b, eval_shape(b.type)))
+test | dbg/eval.c | b = load(P, binary(P, ops[i].level - 1));\n      a = arith(P, ops[i].op, a, b); | b = load(P, binary(P, ops[i].level));\n      a = arith(P, ops[i].op, a, b);
+test | dbg/eval.c | P->dead += !chosen;\n  EvalValue v = ternary(P); | EvalValue v = ternary(P);
+test | dbg/eval.c | P->dead -= !chosen;\n  return v; | return v;
+test | dbg/eval.c | *is_number = form == EVAL_INT \p\p form == EVAL_REAL; | *is_number = form == EVAL_INT;
+test | dbg/eval.c | bool yes = c.kind && nonzero(c, eval_shape(c.type)); | bool yes = c.kind && !nonzero(c, eval_shape(c.type));
+test | dbg/eval.c | if (!eat(P, ":")) return fail(P, "a : is missing"); | eat(P, ":");
+test | dbg/eval.c | b = side(P, !yes, &b_number); | b = side(P, yes, &b_number);
+test | dbg/eval.c | if (!a_number \p\p !b_number) return yes ? a : b; | if (!a_number \p\p !b_number) return yes ? b : a;
+test | dbg/eval.c | if (!a_number \p\p !b_number) return yes ? a : b; | 
+test | dbg/eval.c | return convert(P, yes ? a : b, (EvalType){NULL, common(eval_shape(a.type), eval_shape(b.type)), 0}); | return yes ? a : b;
+test | dbg/eval.c | if (*P.p) fail(&P, "what follows is not understood"); | 
+test | dbg/eval.c | return P.error ? (EvalValue){0} : v; | return v;
+
+# slice 7: a value and a type as text, the variables in scope, rows (dbg/view.c; eval_locals and eval_members in dbg/eval.c)
+test | dbg/view.c | return more < 0 \p\p (uint32_t)more > n - 1 - at ? n - 1 : at + (uint32_t)more; | return more < 0 ? n - 1 : at + (uint32_t)more;
+test | dbg/view.c | [0xd] = "unsigned long long", | [0xe] = "unsigned long long",
+test | dbg/view.c | [0x11] = "signed char", "short", "int", "long long", | [0x11] = "signed char", "short", "long long", "int",
+test | dbg/view.c | at = put(text, n, type_text((EvalType){t.module, element, 0}, text, n, at), " "); | at = type_text((EvalType){t.module, element, 0}, text, n, at);
+test | dbg/view.c | hops += 1) element = rdi_at(r, RDI_TYPE_NODES, RdiType, element)->a; | hops += 1) element = rdi_at(r, RDI_TYPE_NODES, RdiType, element)->b;
+test | dbg/view.c | y = rdi_at(r, RDI_TYPE_NODES, RdiType, y->a)) at = put(text, n, at, "[%u]", y->b); | y = rdi_at(r, RDI_TYPE_NODES, RdiType, y->a)) at = put(text, n, at, "[%u]", y->byte_size);
+test | dbg/view.c | } else if (kind >= 0x2000 && kind < 0xf000) { | } else if (kind > 0x2000 && kind < 0xf000) {
+test | dbg/view.c | } else if (kind == 0x1000 \p\p kind == 0x1001 \p\p kind == 0xf000) { | } else if (kind == 0x1001 \p\p kind == 0xf000) {
+test | dbg/view.c | } else if (kind == 0x1000 \p\p kind == 0x1001 \p\p kind == 0xf000) { | } else if (kind == 0x1000 \p\p kind == 0x1001) {
+test | dbg/view.c | t.stars += kind == 0x1001; | t.stars += 1;
+test | dbg/view.c | t.stars += kind == 0x1001; | t.stars += kind == 0x1000;
+eval | dbg/view.c | if (kind == 0xf000) at = put(text, n, at, " : %u", y->c); | if (kind == 0xf000) at = put(text, n, at, " : %u", y->b);
+test | dbg/view.c | kind == 0x1005 ? "function" : "?"); | kind == 0x1005 ? "?" : "function");
+test | dbg/view.c | at = put(text, n, at, at && text[at - 1] == '*' ? "*" : " *"); | at = put(text, n, at, " *");
+test | dbg/view.c | at = put(text, n, at, at && text[at - 1] == '*' ? "*" : " *"); | at = put(text, n, at, "*");
+test | dbg/view.c | if (v.kind && eval_shape(v.type).form != EVAL_RECORD) v = eval_load(e, frame, v, &error); | if (v.kind) v = eval_load(e, frame, v, &error);
+test | dbg/view.c | at = put(text, n, 0, "%s", v.kind ? "{...}" : error); | at = put(text, n, 0, "%s", error);
+test | dbg/view.c | for (int digits = s.size == 4 ? 6 : 15, most = digits + (s.size == 4 ? 3 : 2); | for (int digits = s.size == 4 ? 6 : 17, most = digits + (s.size == 4 ? 3 : 2);
+test | dbg/view.c | for (int digits = s.size == 4 ? 6 : 15, most = digits + (s.size == 4 ? 3 : 2); | for (int digits = s.size == 4 ? 9 : 15, most = digits + (s.size == 4 ? 3 : 2);
+test | dbg/view.c | most = digits + (s.size == 4 ? 3 : 2); | most = digits + 2;
+test | dbg/view.c | ; digits <= most; digits += 1) { | ; digits < most; digits += 1) {
+test | dbg/view.c | if ((s.size == 4 ? (double)strtof(text, NULL) : strtod(text, NULL)) == d) break; | if (strtod(text, NULL) == d) break;
+test | dbg/view.c | if ((s.size == 4 ? (double)strtof(text, NULL) : strtod(text, NULL)) == d) break; | if ((double)strtof(text, NULL) == d) break;
+test | dbg/view.c | if (s.size == 4) memcpy(&f, &v.at, 4), d = (double)f; else memcpy(&d, &v.at, 8); | memcpy(&f, &v.at, 4), d = (double)f;
+test | dbg/view.c | else if (s.truth) at = put(text, n, 0, v.at ? "true" : "false"); | else if (s.truth) at = put(text, n, 0, v.at ? "false" : "true");
+test | dbg/view.c | else if (s.sign) at = put(text, n, 0, "%lld", (long long)v.at); | 
+test | dbg/view.c | else at = put(text, n, 0, "%llu", (unsigned long long)v.at); | else at = put(text, n, 0, "%lld", (long long)v.at);
+test | dbg/view.c | s.size == 1 && !s.truth && v.at >= ' ' && v.at < 127) | s.size == 1 && v.at >= ' ' && v.at < 127)
+test | dbg/view.c | s.size == 1 && !s.truth && v.at >= ' ' && v.at < 127) | s.size == 1 && !s.truth && v.at > ' ' && v.at < 127)
+test | dbg/view.c | s.size == 1 && !s.truth && v.at >= ' ' && v.at < 127) | s.size == 1 && !s.truth && v.at >= ' ' && v.at <= 127)
+test | dbg/view.c | s.size == 1 && !s.truth && v.at >= ' ' && v.at < 127) | !s.truth && v.at >= ' ' && v.at < 127)
+test | dbg/view.c | if (to.form != EVAL_INT \p\p to.size != 1 \p\p to.truth \p\p !target_read | if (to.form != EVAL_INT \p\p to.size != 1 \p\p !target_read
+test | dbg/view.c | if (to.form != EVAL_INT \p\p to.size != 1 \p\p to.truth \p\p !target_read | if (to.form != EVAL_INT \p\p to.truth \p\p !target_read
+test | dbg/view.c | for (uint64_t i = 1; c && i <= 64; i += 1) { | for (uint64_t i = 1; c && i < 64; i += 1) {
+eval | dbg/view.c | for (uint64_t i = 1; c && i <= 64; i += 1) { | for (uint64_t i = 1; c && i <= 65; i += 1) {
+test | dbg/view.c | at = put(text, n, at, "%c", c < ' ' ? '.' : c); | at = put(text, n, at, "%c", c);
+test | dbg/view.c | if (!target_read(e->target, v.at + i, &c, 1)) c = 0; | target_read(e->target, v.at + i, &c, 1);
+eval | dbg/view.c | put(text, n, at, c ? "\"..." : "\""); | put(text, n, at, "\"");
+eval | dbg/view.c | return x ^ x >> 31; | return parent;
+eval | dbg/view.c | uint64_t x = (parent ^ child) + 0x9e3779b97f4a7c15 * (child + 1); | uint64_t x = (parent ^ parent) + 0x9e3779b97f4a7c15 * (child + 1);
+eval | dbg/view.c | while (i < view->count && (view->open[i].parent != parent \p\p view->open[i].child != child)) i += 1; | while (i < view->count && (view->open[i].parent != parent && view->open[i].child != child)) i += 1;
+eval | dbg/view.c | if (i < view->count) return view->open[i] = view->open[--view->count], true; | if (i < view->count) return view->count -= 1, true;
+test | dbg/view.c | if (view->count == VIEW_OPEN) return false; | if (view->count == VIEW_OPEN) return true;
+test | dbg/view.c | if (view->count == VIEW_OPEN) return false; | if (view->count == VIEW_OPEN - 1) return false;
+test | dbg/view.c | if (i < view->count) return view->open[i] = view->open[--view->count], true; | if (i < view->count) return view->open[i] = view->open[view->count], view->count -= 1, true;
+eval | dbg/view.c | view->open[view->count].parent = row->parent, view->open[view->count++].child = row->child; | view->open[view->count].parent = row->parent, view->open[view->count].child = row->child;
+test | dbg/view.c | if (b->kind == 1 && data++ == i) name = rdi_str(&s.to.module->rdi, b->name); | if (data++ == i) name = rdi_str(&s.to.module->rdi, b->name);
+test | dbg/view.c | ViewRow row = {key, i, depth, (uint32_t)strlen(text), {0}}; | ViewRow row = {key, i, depth, 0, {0}};
+test | dbg/view.c | if (end == VIEW_TEXT - 1) row.text[0] = 0, row.label = 0; | if (end == VIEW_TEXT) row.text[0] = 0, row.label = 0;
+test | dbg/view.c | if (end == VIEW_TEXT - 1) row.text[0] = 0, row.label = 0; | if (end == VIEW_TEXT - 2) row.text[0] = 0, row.label = 0;
+test | dbg/view.c | if (end == VIEW_TEXT - 1) row.text[0] = 0, row.label = 0; | if (end == VIEW_TEXT - 1) row.text[0] = 0;
+test | dbg/view.c | for (uint64_t m = 0; m < members.n; m += 1) count += ((const RdiMember *)members.p + m)->kind == 1; | for (uint64_t m = 0; m < members.n; m += 1) count += 1;
+test | dbg/view.c | if (s.form == EVAL_ROW) count = eval_shape(s.to).size ? s.size / eval_shape(s.to).size : 0; | if (s.form == EVAL_ROW) count = s.size;
+test | dbg/view.c | if (s.form == EVAL_ADDRESS) count = eval_shape(s.to).form != EVAL_NOTHING; | if (s.form == EVAL_ADDRESS) count = 1;
+test | dbg/view.c | if (s.form == EVAL_ADDRESS) count = eval_shape(s.to).form != EVAL_NOTHING; | 
+eval | dbg/view.c | uint64_t count = v.kind ? children(s) : 0; | uint64_t count = children(s) / 2;
+eval | dbg/view.c | w->view->open[k].child >= i && w->view->open[k].child < next) next = w->view->open[k].child; | w->view->open[k].child > i && w->view->open[k].child < next) next = w->view->open[k].child;
+eval | dbg/view.c | if (w->view->open[k].parent == key && w->view->open[k].child >= i | if (w->view->open[k].child >= i
+eval | dbg/view.c | w->view->open[k].child >= i && w->view->open[k].child < next) next = w->view->open[k].child; | w->view->open[k].child >= i) next = w->view->open[k].child;
+eval | dbg/view.c | uint64_t end = next < count ? next + 1 : count, skip | uint64_t end = next, skip
+eval | dbg/view.c | skip = w->at < w->first ? w->first - w->at : 0; | skip = 0;
+eval | dbg/view.c | for (uint64_t j = i + skip; skip < end - i && j < end | for (uint64_t j = i; skip < end - i && j < end
+eval | dbg/view.c | skip < end - i && j < end && w->n < w->most; j += 1) | skip < end - i && j < end; j += 1)
+eval | dbg/view.c | w->rows[w->n++] = child(text, s, key, j, depth); | w->rows[w->n++] = child(text, s, key, j, depth + 1);
+eval | dbg/view.c | w->at += end - i, i = end; | i = end;
+eval | dbg/view.c | if (next < count) walk(w, child(text, s, key, next, depth).text, mix(key, next), depth + 1); | if (next < count) walk(w, child(text, s, key, next, depth).text, mix(key, next), depth);
+eval | dbg/view.c | if (next < count) walk(w, child(text, s, key, next, depth).text, mix(key, next), depth + 1); | if (next < count) walk(w, child(text, s, key, next, depth).text, key, depth + 1);
+eval | dbg/view.c | for (const char *c = roots[r]; *c; c += 1) row.child = mix(row.child, (uint8_t)*c); | for (const char *c = roots[r]; *c; c += 1) row.child = (uint8_t)*c;
+eval | dbg/view.c | if (w.at >= first && w.n < most) rows[w.n++] = row; | if (w.n < most) rows[w.n++] = row;
+eval | dbg/view.c | if (opened(view, 0, row.child) == view->count) continue; | 
+eval | dbg/view.c | put(text, VIEW_TEXT, 0, "(%s)", roots[r]); | put(text, VIEW_TEXT, 0, "%s", roots[r]);
+eval | dbg/view.c | walk(&w, text, mix(0, row.child), 1); | walk(&w, text, mix(0, row.child), 0);
+eval | dbg/view.c | walk(&w, text, mix(0, row.child), 1); | walk(&w, text, row.child, 1);
+eval | dbg/view.c | *shown = w.n;\n  return w.at; | *shown = w.n;\n  return w.n;
+eval | dbg/eval.c | for (; l->scope && l->hops < 256; l->hops += 1, l->i = 0) { | for (; l->scope && l->hops < 256; l->hops += 1) {
+eval | dbg/eval.c | for (; l->scope && l->hops < 256; l->hops += 1, l->i = 0) { | for (; l->scope && l->hops < 1; l->hops += 1, l->i = 0) {
+eval | dbg/eval.c | n += i == n; | n += 1;
+eval | dbg/eval.c | Locals l = {P.module ? rdi_vmap(&P.module->rdi, RDI_SCOPE_VMAP, P.voff) : 0, 0, 0};\n  uint32_t n = 0; | Locals l = {P.module ? rdi_vmap(&P.module->rdi, RDI_SCOPE_VMAP, P.voff + 1) : 0, 0, 0};\n  uint32_t n = 0;
+eval | dbg/eval.c | Parse P = {.e = e, .frame = frame};\n  v = load(&P, v); | Parse P = {.e = e, .frame = frame, .dead = 1};\n  v = load(&P, v);

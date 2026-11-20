@@ -36,6 +36,13 @@ jobs:
           for %%f in (subjects\*.c subjects\*.cpp) do cl /nologo /Zi /O2 /GS- %%f /Fo:bin\%%~nf_o2.obj /Fd:bin\%%~nf_o2.pdb /Fe:bin\%%~nf_o2.exe /link /DEBUG /INCREMENTAL:NO /DYNAMICBASE:NO || exit /b 1
           rem "just my code": a call at each function's start, under line numbers 0xf00f00 and 0xfeefee
           cl /nologo /Zi /Od /Ob0 /GS- /JMC subjects\calls.c /Fo:bin\calls_jmc.obj /Fd:bin\calls_jmc.pdb /Fe:bin\calls_jmc.exe /link /DEBUG /INCREMENTAL:NO /DYNAMICBASE:NO || exit /b 1
+      - name: Ask RAD for the values and types of the zoo's expressions (the oracle for what a view shows), and commit them at once
+        shell: pwsh
+        run: |
+          foreach ($exe in Get-ChildItem bin/zoo*.exe) { ./oracle/rad-trace.ps1 (Resolve-Path rad/build/raddbg.exe) $exe.FullName (Join-Path $PWD traces) (Join-Path $PWD subjects/zoo.c) }
+          foreach ($f in Get-ChildItem traces/*.eval.txt) { "===== $($f.Name)"; Get-Content $f }
+          git config user.name "github-actions[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add traces/*.eval.txt; git diff --cached --quiet; if ($LASTEXITCODE) { git commit -qm "What RAD shows for the zoo's expressions [skip ci]"; git pull -q --rebase; git push -q }
       - name: Record traces
         shell: pwsh
         run: |

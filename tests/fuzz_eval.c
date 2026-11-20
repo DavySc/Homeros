@@ -1,8 +1,10 @@
 /* libFuzzer: the input's last bytes (up to 96, after the last zero byte) as an expression, evaluated at a frame of a module whose debug information
    is the whole input (when it is a usable RDI file: else there is no module). The properties: no read outside
    the file or the text, an end for every text (the fuzzer's timeout), and the header's promise: no value exactly
-   when there is an error. */
+   when there is an error. Then what a person sees (dbg/view.c): the value and its type as text in a room too small or large enough,
+   and the rows of the text and of the variables in scope, opened one after another as far as they go. */
 #include "../dbg/eval.c"
+#include "../dbg/view.c"
 #include <stdlib.h>
 
 enum { BASE = 0x140000000, MEMORY = 0x7000 };
@@ -33,7 +35,25 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     uint64_t bytes = 0;
     EvalValue v = eval(&e, &regs, called, text, &error);
     if ((v.kind == EVAL_NONE) != (error != NULL)) abort();
-    if (v.kind) eval_read(&e, &regs, v, &bytes, eval_size(v.type));
+    if (v.kind) eval_read(&e, &regs, v, &bytes, eval_shape(v.type).size < 8 ? eval_shape(v.type).size : 8);
+    for (uint32_t room = 1; room <= 81; room += 40) {
+      char *shown = malloc(room);
+      view_value(&e, &regs, v, error, shown, room), view_type(v.type, shown, room);
+      free(shown);
+    }
+    RdiSpan names[7];
+    char name[7][VIEW_TEXT];
+    const char *roots[8] = {text};
+    uint32_t count = 1 + eval_locals(&e, &regs, called, names, 7), got = 1;
+    for (uint32_t i = 1; i < count; i += 1) memcpy(name[i - 1], names[i - 1].p, names[i - 1].n < VIEW_TEXT ? names[i - 1].n : VIEW_TEXT - 1), name[i - 1][names[i - 1].n < VIEW_TEXT ? names[i - 1].n : VIEW_TEXT - 1] = 0, roots[i] = name[i - 1];
+    View view = {.count = 0};
+    ViewRow *rows = malloc(24 * sizeof *rows);
+    for (uint32_t round = 0; round < 12 && got; round += 1) {   /* open the row in the middle of those seen, look from further down each time */
+      uint64_t total = view_rows(&view, &e, &regs, called, roots, count, round, rows, 24, &got);
+      if (got > 24 || round + got > total) abort();
+      if (got) view_toggle(&view, &rows[got / 2]);
+    }
+    free(rows);
   }
   free(text), free(buf);
   return 0;

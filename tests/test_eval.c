@@ -2,8 +2,10 @@
    location, the cases of a set, and the bytecode, operation by operation and broken in every way. Expressions
    of numbers: the compiler of this test is the oracle, each text is also compiled here and must give the same
    type and value (C(...)); what C leaves open, addresses, and what must be refused, by hand. Names, scopes and
-   members need real debug information: they are checked on a running program (tests/zoo_check.c). */
+   members need real debug information: they are checked on a running program (tests/zoo_check.c), as are the rows of
+   dbg/view.c; what a value and a type look like as text is checked here. */
 #include "../dbg/eval.c"
+#include "../dbg/view.c"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -59,7 +61,7 @@ static void expression(const char *text, uint32_t kind, uint32_t stars, uint64_t
   const char *error = "unset";
   EvalValue v = eval(&e, &regs, false, text, &error);
   uint64_t there = 0;
-  if (v.kind == EVAL_MEMORY) v.kind = eval_read(&e, &regs, v, &there, eval_size(v.type)) ? EVAL_VALUE : -1, v.at = there;   /* a place: what is there (no test here has a sign to carry) */
+  if (v.kind == EVAL_MEMORY) v.kind = eval_read(&e, &regs, v, &there, eval_shape(v.type).size) ? EVAL_VALUE : -1, v.at = there;   /* a place: what is there (no test here has a sign to carry) */
   if (why ? v.kind || !error || strcmp(error, why) : v.kind != EVAL_VALUE || error || v.type.module || v.type.idx != kind || v.type.stars != stars || v.at != bits)
     printf("test_eval: %s: kind %d, type %x under %u stars, %llx (%s), not type %x under %u stars, %llx (%s)\n", text, v.kind, v.type.idx, v.type.stars, (unsigned long long)v.at, error ? error : "no error", kind, stars, (unsigned long long)bits, why ? why : "no error"), failed = 1;
 }
@@ -113,7 +115,7 @@ static void expressions(void)
   C(1u << 31); C(1ll << 40); C(1ull << 63); C(1 << 1ll); C(6 & 3); C(6 | 3); C(6 ^ 3); C(~6); C(~6u); C(~6ll); C(~0ull); C(-6); C(-6u); C(- -6); C(+6); C(+-6); C(!6); C(!0); C(!!6);
   C(7.5 + 2); C(7.5 - 9); C(7.5 * -3); C(7.5 / 2); C(1 / 3.0); C(1.0f / 3); C(1.0f / 3.0); C(0.1f + 0.2f); C(0.1f * 3); C(0.1 + 0.2); C(-1.5); C(-0.0); C(+1.5f); C(!1.5); C(!0.0); C(-1.5f);
   C(1.0 / 0.0 > 1e308); C(-1.0 / 0.0 < -1e308); C(0.0 / 0.0 == 0.0 / 0.0); C(0.0 / 0.0 != 0.0 / 0.0); C(0.0 / 0.0 < 1.0); C(0.0 / 0.0 >= 1.0);
-  C(1 < 2); C(2 < 1); C(1 <= 1); C(1 >= 2); C(1 > 0); C(1 == 1); C(1 != 1); C(1.5 < 2); C(2 > 1.5f); C(1.5 == 1.5f); C(0.1 == 0.1f); C(1.5 != 1); C(1.5 <= 1.5); C(1.5 >= 2.5);
+  C(1 < 2); C(2 < 1); C(1 < 1); C(1 > 1); C(2u > 2u); C(1.5 < 1.5); C(1.5 > 1.5); C(-1 < -1); C(1 <= 1); C(1 >= 2); C(1 > 0); C(1 == 1); C(1 != 1); C(1.5 < 2); C(2 > 1.5f); C(1.5 == 1.5f); C(0.1 == 0.1f); C(1.5 != 1); C(1.5 <= 1.5); C(1.5 >= 2.5); C(2 >= 2); C(1.5 >= 1.5); C(2u <= 2u); C(0.0 / 0.0 <= 1.0); C(0.0 / 0.0 > 1.0); C(1.0 >= 0.0 / 0.0); C(1.0 <= 0.0 / 0.0); C(1.0 > 0.0 / 0.0); C(1.0 == 0.0 / 0.0); C(1.0 != 0.0 / 0.0);
   /* signed with unsigned, narrow with wide: C's usual conversions */
   C(-1 < 0u); C(-1 < 0); C(-1 < 0ll); C(-1 < 0ull); C(-1 > 1u); C(-1ll < 1u); C(-1 + 1u); C(-1 + 1ull); C(-1ll + 1u); C(1u - 2); C(1u - 2ll); C(0u - 1); C(0ull - 1); C(4294967295u + 1); C(4294967295u + 1ll);
   C(2147483647 + 1u); C(-2147483647 - 1); C((-2147483647 - 1) / -1ll); C(65535 * 65535u); C(100000 * 100000ll); C(-5 / 2u); C(-5ll / 2u); C(-5 % 2ull); C(-1 >> 1u); C(-1u >> 1); C(-1ll >> 60);
@@ -131,7 +133,7 @@ static void expressions(void)
   C(1 + 2 * 3); C((1 + 2) * 3); C(1 - 2 - 3); C(100 / 10 / 5); C(100 / 10 * 5); C(100 % 7 * 2); C(2 * 3 % 4); C(1 << 2 + 3); C(1 + 2 << 3); C(256 >> 2 << 1); C(256 >> 2 >> 1); C(1 < 2 == 1); C(3 > 2 > 1); C(1 == 1 < 0);
   C(1 << 2 < 3); C(1 & 2 == 2); C(3 & 2 == 2); C(1 == 3 & 1); C(6 & 3 ^ 5); C(6 ^ 3 & 5); C(6 ^ 3 | 5); C(6 | 3 ^ 5); C(6 | 3 & 5); C(6 & 3 | 5); C(1 | 2 && 0); C(0 && 1 | 2); C(1 || 0 && 0); C(0 && 0 || 1); C((1 || 0) && 0);
   C(1 ? 2 : 3); C(0 ? 2 : 3); C(1 ? 2 : 0 ? 4 : 5); C(0 ? 2 : 0 ? 4 : 5); C(0 ? 2 : 1 ? 4 : 5); C(1 ? 0 ? 6 : 7 : 8); C(0 || 0 ? 1 : 2); C(1 + 1 ? 3 : 4); C(1 ? 2 : 3 + 10); C(0 ? 2 : 3 + 10); C((0 ? 2 : 3) + 10);
-  C(-2 * 3); C(- 2 - - 3); C(!1 + 1); C(~1 + 1); C(-(1 + 1)); C(!(1 - 1)); C(- - - 1); C(!!!1); C(~~~1); C(-~!0); C((int)1.9 + 1.9); C((int)(1.9 + 1.9)); C(-(char)-128); C((unsigned char)-1 * 2); C((unsigned char)(-1 * 2)); C((double)1 / 2); C((double)(1 / 2));
+  C(-2 * 3); C(- 2 - - 3); C(!1 + 1); C(~1 + 1); C(-(1 + 1)); C(!(1 - 1)); C(- - - 1); C(!!!1); C(~~~1); C(-~!0); C((int)1.9 + 1.9); C((int)(1.9 + 1.9)); C(-(char)-128); C(+(char)65); C(-1 > 0); C(1 > 1); C(-2 > -1); C(2 > 1); C(-1 >= 0); C(-1ll > 0); C(-1 > 0u); C(3u > 2); C(-8ll >> 1); C(~0ull >> 1); C(0x8000000000000000ull >> 63); C(-1ll >> 40); C(1.5F); C(.5F + 1); C(2 == 1 < 2); C(1 & 2 != 2); C(1 != 2 == 1); C((signed)4000000000u); C((signed char)200); C((signed short)-1); C((signed long long)1); C((signed int)-1 < 0u); C(+(short)-3); C(!-0.0); C(-0.0 ? 1 : 2); C((unsigned char)-1 * 2); C((unsigned char)(-1 * 2)); C((double)1 / 2); C((double)(1 / 2));
   C(1+2*3-4/2); C( 1 +  2 ); C(((((1))))); C((1)+(2)); C(1<2); C(1<<2); C(1<=2); C(1>=2>=1); C(2>1); C(8>>1); C(1==1); C(1!=1); C(!1!=1); C(1&1); C(1&&1); C(1|0); C(1||0); C(1^1); C(5%3); C(1?2:3); C(-1); C(~1); C(1- -1); C(1-+1); C(2*-1); C(1&-1); C(1&&-1); C(1&&!1);
   /* a part C does not work out is not worked out: its division by zero is not met, its type still counts */
   C(0 && 1 / 0); C(1 || 1 / 0); C(1 ? 2 : 1 / 0); C(0 ? 1 / 0 : 3); C(0 && 1 % 0); C(1 || (0 && 1 / 0)); C(0 && (1 || 1 / 0)); C(1 && 0 && 1 / 0); C(0 || 1 || 1 / 0); C(0 ? 1 / 0 ? 1 : 2 : 3); C(1 && 2); C(1 && 0); C(0 || 0); C(0 || 2); C(1.5 && 1); C(0.0 || 0); C(0.5 || 0); C(1 && 0.0);
@@ -184,7 +186,7 @@ static void expressions(void)
   NO("1 . a", "no such member"); NO("(1).a", "no such member"); NO("((int *)0x7000)->a", "no such member"); NO("1 .", "no such member"); NO("1[", "a value is missing"); NO("((char *)0x7000)[1", "a ] is missing");
   NO("'ab'", "a ' is missing"); NO("'a", "a ' is missing"); NO("'", "not a character"); NO("''", "not a character"); NO("'\\q'", "not a character"); NO("'\\", "not a character"); NO("'\\n", "a ' is missing");
   NO("99999999999999999999", "a number too large"); NO("0x1ffffffffffffffff", "a number too large"); NO("1x", "what follows is not understood"); NO("1.5.5", "no such member"); NO("1ff", "what follows is not understood"); NO("#", "a value is missing"); NO("1 @ 2", "what follows is not understood");
-  NO("sizeof (char)1", "what follows is not understood"); NO("sizeof(int *)8", "what follows is not understood");   /* as in C: sizeof takes the type */
+  NO("(const)1", "no such name"); NO("(volatile)1", "no such name"); NO("(struct)1", "no such name"); NO("sizeof (char)1", "what follows is not understood"); NO("sizeof(int *)8", "what follows is not understood");   /* as in C: sizeof takes the type */
   /* nesting: 63 deep is taken, 64 is not, by brackets and by signs */
   char deep[200];
   for (int n = 63; n <= 64; n += 1) {
@@ -193,6 +195,9 @@ static void expressions(void)
     memset(deep, '!', (size_t)n), deep[n] = '1', deep[n + 1] = 0;
     expression(deep, S32, 0, 0, n == 64 ? "too deep" : NULL);
   }
+  /* one nesting after another counts from the start again */
+  memset(deep, '(', 40), deep[40] = '1', memset(deep + 41, ')', 40), deep[81] = '+', memcpy(deep + 82, deep, 81), deep[163] = 0;
+  expression(deep, S32, 0, 2, NULL);
 }
 
 int main(void)
@@ -278,6 +283,88 @@ int main(void)
   if (eval_read(&e, &regs, (EvalValue){EVAL_REGISTER, {&m, 0, 0}, 1}, &got, 9)) printf("test_eval: 9 bytes of a register were read\n"), failed = 1;
   if (eval_read(&e, &regs, (EvalValue){EVAL_NONE, {&m, 0, 0}, 0}, &got, 1)) printf("test_eval: no place was read\n"), failed = 1;
   if (eval_read(&e, &regs, (EvalValue){EVAL_MEMORY, {&m, 0, 0}, 1}, &got, 1)) printf("test_eval: memory outside was read\n"), failed = 1;
+
+  /* a record in a register or among the constants: a member is some of its 8 bytes. Types by hand: 1 short, 2 a bit field of it (4 bits from bit 4),
+     3 the record with members a (short at 0), b (the bit field at 2), far (short at 8, outside the 8 bytes), and a method named a before the member */
+  static const RdiType nodes[] = {{0}, {.kind = S16, .byte_size = 2}, {.kind = 0xf000, .a = 1, .b = 4, .c = 4}, {.kind = 0x2000, .byte_size = 10, .c = 1}};
+  static const RdiUdt udts[] = {{0}, {.self_type = 3, .member_first = 1, .member_count = 4}};
+  static const RdiMember members[] = {{0}, {.kind = 0x100, .name = 1, .type = 1}, {.kind = 1, .name = 1, .type = 1, .off = 0}, {.kind = 1, .name = 2, .type = 2, .off = 2}, {.kind = 1, .name = 3, .type = 1, .off = 8}, {.kind = 1, .name = 4, .type = 1}};
+  static const uint32_t offsets[] = {0, 0, 1, 2, 5};
+  static const uint64_t record_constants[] = {0, 0x1122334455a6f7f8};
+  EngineModule types = {.rdi.s = {[RDI_TYPE_NODES] = {nodes, 4}, [RDI_UDTS] = {udts, 2}, [RDI_MEMBERS] = {members, 6}, [RDI_STRING_TABLE] = {offsets, 5}, [RDI_STRING_DATA] = {"abfarz", 6}, [RDI_LOCATION_CONSTANTS] = {record_constants, 2}}};
+  static const struct { int kind; uint64_t at; const char *name; int64_t want; const char *why; } of[] = {
+    {EVAL_REGISTER, 15, "a", 0x1000, NULL}, {EVAL_CONSTANT, 8, "a", (int16_t)0xf7f8, NULL}, {EVAL_CONSTANT, 8, "b", (int16_t)0xfffa, NULL}, {EVAL_CONSTANT, 8, "far", 0, NULL},
+    {EVAL_CONSTANT, 16, "a", 0, "cannot be read"}, {EVAL_CONSTANT, 8, "c", 0, "no such member"}, {EVAL_CONSTANT, 8, "z", 0, "no such member"}, {EVAL_MEMORY, MEMORY + 8, "far", 0x1211, NULL}, {EVAL_MEMORY, MEMORY + 8, "b", 0, NULL}};
+  for (uint32_t i = 0; i < sizeof of / sizeof *of; i += 1) {
+    Parse P = {.e = &e, .frame = &regs};
+    EvalValue v = load(&P, member(&P, (EvalValue){of[i].kind, {&types, 3, 0}, of[i].at}, (RdiSpan){of[i].name, strlen(of[i].name)}));
+    if (of[i].why ? v.kind || !P.error || strcmp(P.error, of[i].why) : v.kind != EVAL_VALUE || v.at != (uint64_t)of[i].want)
+      printf("test_eval: member %s of a record of kind %d at %llx: %llx (%s), not %llx (%s)\n", of[i].name, of[i].kind, (unsigned long long)of[i].at, (unsigned long long)v.at, P.error ? P.error : "no error", (unsigned long long)of[i].want, of[i].why ? of[i].why : "no error"), failed = 1;
+  }
+
+  /* a type as text: 4 short [3], 5 an array of two of those, 6 a pointer to the record (named "far"), 7 that const, 8 a function */
+  static const RdiType more[] = {{0}, {.kind = S16, .byte_size = 2}, {.kind = 0xf000, .a = 1, .b = 4, .c = 4}, {.kind = 0x2000, .byte_size = 10, .a = 3, .c = 1},
+                                 {.kind = 0x1004, .byte_size = 6, .a = 1, .b = 3}, {.kind = 0x1004, .byte_size = 12, .a = 4, .b = 2}, {.kind = 0x1001, .byte_size = 8, .a = 3}, {.kind = 0x1000, .flags = 1, .a = 6}, {.kind = 0x1005}};
+  types.rdi.s[RDI_TYPE_NODES] = (RdiSpan){more, 9};
+  const struct { EvalType type; const char *want; } named[] = {
+    {{NULL, S32, 0}, "int"}, {{NULL, CHAR, 2}, "char **"}, {{NULL, U64, 0}, "unsigned long long"}, {{NULL, 0x29, 0}, "?"}, {{NULL, VOID, 1}, "void *"}, {{&types, 1, 0}, "short"}, {{&types, 2, 0}, "short : 4"},
+    {{&types, 3, 0}, "far"}, {{&types, 4, 0}, "short [3]"}, {{&types, 5, 0}, "short [2][3]"}, {{&types, 5, 1}, "short [2][3] *"}, {{&types, 6, 0}, "far *"}, {{&types, 6, 2}, "far ***"}, {{&types, 7, 0}, "far *"}, {{&types, 8, 1}, "function *"}};
+  for (uint32_t i = 0; i < sizeof named / sizeof *named; i += 1) {
+    char text[32];
+    view_type(named[i].type, text, sizeof text);
+    if (strcmp(text, named[i].want)) printf("test_eval: type %u is written \"%s\", not \"%s\"\n", i, text, named[i].want), failed = 1;
+  }
+  /* a value as text; memory holds the bytes 1 to 64, and "hi" at 16 */
+  memcpy(memory + 16, "hi", 3);
+  static const struct { const char *text, *want; } shown[] = {
+    {"1 + 1", "2"}, {"65", "65"}, {"0.3f", "0.3"}, {"0.10836270451545715f", "0.108362705"}, {"0.1083627f", "0.1083627"}, {"-7", "-7"}, {"4000000000u", "4000000000"}, {"-1ll", "-1"}, {"~0ull", "18446744073709551615"}, {"(char)65", "65 'A'"}, {"(char)-3", "-3"}, {"(unsigned char)200", "200"}, {"(char)31", "31"}, {"(char)127", "127"}, {"(char)126", "126 '~'"}, {"(char)32", "32 ' '"},
+    {"(bool)3", "true"}, {"*(bool *)0x703f", "true"}, {"(bool)0", "false"}, {"1 == 1", "1"}, {"0.1", "0.1"}, {"0.1f", "0.1"}, {"1.0 / 3", "0.3333333333333333"}, {"1.0f / 3", "0.33333334"}, {"0.1 + 0.2", "0.30000000000000004"}, {"1e300 * 1e10", "inf"}, {"-2.5e-7f", "-2.5e-07"}, {"100.0", "100"},
+    {"(int *)0x7000", "0x7000"}, {"(void *)0", "0x0"}, {"(char *)0x7010", "0x7010 \"hi\""}, {"(char *)0x7012", "0x7012 \"\""}, {"(unsigned char *)0x7011", "0x7011 \"i\""}, {"(char *)0x7000", "0x7000 \"................hi\""}, {"(bool *)0x7010", "0x7010"}, {"(char *)1", "0x1"},
+    {"(char *)0x7013", "0x7013 \"............ !\"#$%&'()*+,-./0123456789:;<=>?@\""}, {"*(char *)0x7010", "104 'h'"}, {"*(int *)0x6fff", "cannot be read"}, {"nothing", "no such name"}, {"*(char **)0x7000", "0x807060504030201"}};
+  for (uint32_t i = 0; i < sizeof shown / sizeof *shown; i += 1) {
+    char text[96];
+    const char *error;
+    EvalValue v = eval(&e, &regs, false, shown[i].text, &error);
+    view_value(&e, &regs, v, error, text, sizeof text);
+    if (strcmp(text, shown[i].want)) printf("test_eval: %s is shown as %s, not %s\n", shown[i].text, text, shown[i].want), failed = 1;
+  }
+  char cut[8], full[40];
+  const char *error;
+  view_value(&e, &regs, eval(&e, &regs, false, "(char *)0x7010", &error), NULL, cut, sizeof cut);   /* no room: cut off, with its end */
+  if (strcmp(cut, "0x7010 ")) printf("test_eval: a value in 8 bytes is shown as \"%s\"\n", cut), failed = 1;
+  memset(memory + 20, 'x', 44);   /* a text that does not end within 64 characters, or within memory */
+  view_value(&e, &regs, eval(&e, &regs, false, "(char *)0x7028", &error), NULL, full, sizeof full);
+  if (strcmp(full, "0x7028 \"xxxxxxxxxxxxxxxxxxxxxxxx\"")) printf("test_eval: a text up to the end of memory is shown as %s\n", full), failed = 1;
+  view_value(&e, &regs, (EvalValue){EVAL_MEMORY, {&types, 3, 0}, MEMORY}, NULL, full, sizeof full);
+  if (strcmp(full, "{...}")) printf("test_eval: a record is shown as %s\n", full), failed = 1;
+  view_value(&e, &regs, (EvalValue){EVAL_MEMORY, {&types, 4, 0}, MEMORY}, NULL, full, sizeof full);
+  if (strcmp(full, "0x7000")) printf("test_eval: an array is shown as %s\n", full), failed = 1;
+  memset(memory, 'y', 64);   /* 64 characters are shown */
+  char all[80];
+  view_value(&e, &regs, eval(&e, &regs, false, "(char *)0x7000", &error), NULL, all, sizeof all);
+  if (strcmp(all, "0x7000 \"yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy\"")) printf("test_eval: 64 characters are shown as %s\n", all), failed = 1;
+  for (uint32_t i = 0; i < sizeof memory; i += 1) memory[i] = (uint8_t)(i + 1);
+  /* the rows a row opens into: of the record its three members that are data, by name; of an array its elements; of a pointer one, unless it leads to nothing */
+  const struct { EvalType type; uint64_t count, i; const char *want; } below[] = {
+    {{&types, 3, 0}, 3, 0, "x.a"}, {{&types, 3, 0}, 3, 1, "x.b"}, {{&types, 3, 0}, 3, 2, "x.far"}, {{&types, 4, 0}, 3, 2, "x[2]"}, {{&types, 5, 0}, 2, 1, "x[1]"}, {{&types, 6, 0}, 1, 0, "x[0]"},
+    {{NULL, VOID, 1}, 0, 0, NULL}, {{NULL, S32, 1}, 1, 0, "x[0]"}, {{NULL, S32, 0}, 0, 0, NULL}, {{&types, 8, 1}, 0, 0, NULL}, {{&types, 8, 2}, 1, 0, "x[0]"}, {{&types, 1, 0}, 0, 0, NULL}};
+  for (uint32_t i = 0; i < sizeof below / sizeof *below; i += 1) {
+    EvalShape s = eval_shape(below[i].type);
+    ViewRow row = child("x", s, 77, below[i].i, 3);
+    if (children(s) != below[i].count || (below[i].want && (strcmp(row.text, below[i].want) || row.parent != 77 || row.child != below[i].i || row.depth != 3 || row.label != 1)))
+      printf("test_eval: a row of type %u opens into %llu rows, number %llu is %s: not %llu and %s\n", i, (unsigned long long)children(s), (unsigned long long)below[i].i, row.text, (unsigned long long)below[i].count, below[i].want ? below[i].want : "none"), failed = 1;
+  }
+  static View opens;   /* VIEW_OPEN rows open and no more; an open one closes */
+  ViewRow one = {0};
+  for (one.child = 0; one.child <= VIEW_OPEN; one.child += 1) if (view_toggle(&opens, &one) != (one.child < VIEW_OPEN)) printf("test_eval: opening row %llu of %d is %s\n", (unsigned long long)one.child, VIEW_OPEN, one.child < VIEW_OPEN ? "refused" : "taken"), failed = 1;
+  one.child = 7;
+  if (opens.count != VIEW_OPEN || !view_toggle(&opens, &one) || opens.count != VIEW_OPEN - 1 || opened(&opens, 0, 7) != opens.count || opened(&opens, 0, 8) == opens.count) printf("test_eval: closing a row of a full table leaves %u open\n", opens.count), failed = 1;
+  char parent[VIEW_TEXT];   /* a row whose text has no room is empty: cut off it would be another expression */
+  for (uint32_t n = VIEW_TEXT - 6; n <= VIEW_TEXT - 4; n += 1) {
+    memset(parent, 'p', n), parent[n] = 0;
+    ViewRow row = child(parent, eval_shape((EvalType){&types, 4, 0}), 0, 2, 1);   /* adds [2] */
+    if (n <= VIEW_TEXT - 5 ? strlen(row.text) != n + 3 || row.label != n : row.text[0] || row.label) printf("test_eval: below a row of %u characters comes one of %u\n", n, (unsigned)strlen(row.text)), failed = 1;
+  }
 
   expressions();
   if (!failed) printf("test_eval: ok\n");

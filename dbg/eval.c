@@ -23,23 +23,18 @@ static uint64_t narrow(uint64_t v, uint64_t bits, bool sign)
 /* ---- types ---- */
 
 enum { VOID = 1, CHAR = 4, UCHAR = 7, U32 = 0xc, U64 = 0xd, S8 = 0x11, S16, S32, S64, BOOL = 0x18, F32 = 0x1b, F64 = 0x1e };   /* RDI_TypeKind */
-enum { NOTHING, INT, REAL, ADDRESS, REFERENCE, ROW, RECORD };
-/* What a type is once its names and modifiers are taken off. to: what an address or a reference leads to, a row's element,
-   a record's members (idx: its RdiUdt), a bit field's whole number. count: not 0 for a bit field: so many bits from bit `first`. */
-typedef struct { int form; uint32_t size; bool sign, truth; uint32_t first, count; EvalType to; } Shape;
-
-static Shape shape(EvalType t)
+EvalShape eval_shape(EvalType t)
 {
   enum { SIGN = 0x10, FLOAT = 0x20 };
   static const uint8_t basic[F64 + 1] = {[2] = 8, [3] = 4 | SIGN, [CHAR] = 1 | SIGN, 2, 4, [UCHAR] = 1, 2, 4, 1, 2, [U32] = 4, [U64] = 8,
                                          [S8] = 1 | SIGN, [S16] = 2 | SIGN, [S32] = 4 | SIGN, [S64] = 8 | SIGN, [BOOL] = 1, [F32] = 4 | FLOAT, [F64] = 8 | FLOAT};
-  Shape s = {0};
-  if (t.stars) return (Shape){ADDRESS, .size = 8, .to = {t.module, t.idx, t.stars - 1}};
+  EvalShape s = {0};
+  if (t.stars) return (EvalShape){EVAL_ADDRESS, .size = 8, .to = {t.module, t.idx, t.stars - 1}};
   for (uint32_t hops = 0; hops < 64; hops += 1) {   /* a file whose types go round is not followed for ever */
     const RdiType *y = t.module ? rdi_at(&t.module->rdi, RDI_TYPE_NODES, RdiType, t.idx) : NULL;
     uint32_t kind = y ? y->kind : t.idx;
     if (kind < sizeof basic) {
-      if (basic[kind]) s.form = basic[kind] & FLOAT ? REAL : INT, s.size = basic[kind] & 15, s.sign = basic[kind] & SIGN, s.truth = kind == BOOL, s.to = t;
+      if (basic[kind]) s.form = basic[kind] & FLOAT ? EVAL_REAL : EVAL_INT, s.size = basic[kind] & 15, s.sign = basic[kind] & SIGN, s.truth = kind == BOOL, s.to = t;
       return s;
     }
     if (!y) return s;
@@ -48,17 +43,15 @@ static Shape shape(EvalType t)
     case 0x1000: t.idx = y->a; break;
     case 0x2003: case 0x2004: t.idx = y->b; break;
     case 0xf000: s.first = y->b, s.count = y->c, t.idx = y->a; break;
-    case 0x1001: return s.form = ADDRESS, s.size = 8, s;
-    case 0x1002: case 0x1003: return s.form = REFERENCE, s.size = 8, s;
-    case 0x1004: return s.form = ROW, s.size = y->byte_size, s;
-    case 0x2000: case 0x2001: case 0x2002: return s.form = RECORD, s.size = y->byte_size, s.to.idx = y->c, s;
+    case 0x1001: return s.form = EVAL_ADDRESS, s.size = 8, s;
+    case 0x1002: case 0x1003: return s.form = EVAL_REFERENCE, s.size = 8, s;
+    case 0x1004: return s.form = EVAL_ROW, s.size = y->byte_size, s;
+    case 0x2000: case 0x2001: case 0x2002: return s.form = EVAL_RECORD, s.size = y->byte_size, s.to.idx = y->c, s;
     default: return s;
     }
   }
-  return (Shape){0};
+  return (EvalShape){0};
 }
-
-uint32_t eval_size(EvalType type) { return shape(type).size; }
 
 /* ---- places ---- */
 
@@ -123,11 +116,12 @@ static EvalValue place(const Engine *e, const EngineModule *m, uint32_t type, ui
   default: return none;   /* 7, in the thread's block: not built yet */
   }
   /* a register or a constant has 8 bytes: a larger variable is not there (clang writes a struct it has taken apart as the constant 0) */
-  return eval_size(p.type) <= 8 ? p : none;
+  return eval_shape(p.type).size <= 8 ? p : none;
 }
 
 
-bool eval_read(const Engine *e, const TargetRegs *frame, EvalValue v, void *bytes, uint32_t n)
+/* The first n bytes of the value: any number of them from memory, up to 8 otherwise. */
+static bool eval_read(const Engine *e, const TargetRegs *frame, EvalValue v, void *bytes, uint32_t n)
 {
   if (v.kind == EVAL_MEMORY) return target_read(e->target, v.at, bytes, n);
   /* a register, a constant (the converter writes each as 8 bytes), or the value itself */
@@ -158,23 +152,24 @@ static EvalValue number(double d)
 }
 
 /* The number a loaded value is. */
-static double real(EvalValue v, Shape s)
+static double real(EvalValue v, EvalShape s)
 {
   double d;
   float f;
-  if (s.form != REAL) return s.sign ? (double)(int64_t)v.at : (double)v.at;
+  if (s.form != EVAL_REAL) return s.sign ? (double)(int64_t)v.at : (double)v.at;
   if (s.size == 4) return memcpy(&f, &v.at, 4), (double)f;
   return memcpy(&d, &v.at, 8), d;
 }
 
-static bool nonzero(EvalValue v, Shape s) { return s.form == REAL ? real(v, s) != 0 : v.at != 0; }
+static bool nonzero(EvalValue v, EvalShape s) { return s.form == EVAL_REAL ? real(v, s) != 0 : v.at != 0; }
 
-/* A reference stands for what it refers to. */
+/* A reference stands for what it refers to. (Only a variable can be one here: clang gives a parameter passed as a pointer to a copy the type
+   "reference to" what it is. A C++ program's members and pointers to references are not built.) */
 static EvalValue settle(Parse *P, EvalValue v)
 {
-  Shape s = shape(v.type);
+  EvalShape s = eval_shape(v.type);
   uint64_t at = 0;
-  if (!v.kind || s.form != REFERENCE) return v;
+  if (!v.kind || s.form != EVAL_REFERENCE) return v;
   if (!P->dead && !eval_read(P->e, P->frame, v, &at, 8)) return fail(P, "cannot be read");
   return (EvalValue){EVAL_MEMORY, s.to, at};
 }
@@ -182,11 +177,11 @@ static EvalValue settle(Parse *P, EvalValue v)
 /* What C reads at a place: a number or an address, its sign carried to 64 bits; of an array, the address of its first element. */
 static EvalValue load(Parse *P, EvalValue v)
 {
-  Shape s = shape(v.type);
+  EvalShape s = eval_shape(v.type);
   uint64_t bits = 0;
   if (!v.kind) return v;
-  if (s.form == ROW && v.kind == EVAL_MEMORY) return (EvalValue){EVAL_VALUE, {s.to.module, s.to.idx, s.to.stars + 1}, v.at};
-  if (s.form != INT && s.form != REAL && s.form != ADDRESS) return fail(P, "not a number");
+  if (s.form == EVAL_ROW && v.kind == EVAL_MEMORY) return (EvalValue){EVAL_VALUE, {s.to.module, s.to.idx, s.to.stars + 1}, v.at};
+  if (s.form != EVAL_INT && s.form != EVAL_REAL && s.form != EVAL_ADDRESS) return fail(P, "not a number");
   if (!P->dead && !eval_read(P->e, P->frame, v, &bits, s.size)) return fail(P, "cannot be read");
   if (!s.count) return (EvalValue){EVAL_VALUE, v.type, narrow(bits, s.size * 8, s.sign)};
   /* a bit field of fewer bits than an int is an int (C's promotion); else it is its whole number's type */
@@ -197,10 +192,10 @@ static EvalValue load(Parse *P, EvalValue v)
 static EvalValue deref(Parse *P, EvalValue v)
 {
   v = load(P, v);
-  Shape s = shape(v.type);
+  EvalShape s = eval_shape(v.type);
   if (!v.kind) return v;
-  if (s.form != ADDRESS) return fail(P, "not an address");
-  return settle(P, (EvalValue){EVAL_MEMORY, s.to, v.at});
+  if (s.form != EVAL_ADDRESS) return fail(P, "not an address");
+  return (EvalValue){EVAL_MEMORY, s.to, v.at};
 }
 
 /* A real number as a whole one: as the processor's cvttsd2si does it, and above that for the unsigned (C leaves these cases open). */
@@ -213,24 +208,24 @@ static uint64_t whole(double d)
 /* A loaded value as another type: C's conversions. */
 static EvalValue convert(Parse *P, EvalValue v, EvalType type)
 {
-  Shape from = shape(v.type), s = shape(type);
+  EvalShape from = eval_shape(v.type), s = eval_shape(type);
   if (!v.kind) return v;
-  if ((s.form == REAL && from.form == ADDRESS) || (s.form == ADDRESS && from.form == REAL)) return fail(P, "no such conversion");
-  if (s.form == REAL) {
+  if ((s.form == EVAL_REAL && from.form == EVAL_ADDRESS) || (s.form == EVAL_ADDRESS && from.form == EVAL_REAL)) return fail(P, "no such conversion");
+  if (s.form == EVAL_REAL) {
     double d = real(v, from);
     float f = (float)d;
     v.at = 0;
     if (s.size == 4) memcpy(&v.at, &f, 4); else memcpy(&v.at, &d, 8);
-  } else if (s.form == INT || s.form == ADDRESS) {
-    v.at = s.truth ? nonzero(v, from) : narrow(from.form == REAL ? whole(real(v, from)) : v.at, s.size * 8, s.sign);
+  } else if (s.form == EVAL_INT || s.form == EVAL_ADDRESS) {
+    v.at = s.truth ? nonzero(v, from) : narrow(from.form == EVAL_REAL ? whole(real(v, from)) : v.at, s.size * 8, s.sign);
   } else return fail(P, "no such conversion");
   return v.type = type, v;
 }
 
 /* The type two numbers meet in: C's usual arithmetic conversions, where long has 4 bytes. */
-static uint32_t common(Shape x, Shape y)
+static uint32_t common(EvalShape x, EvalShape y)
 {
-  if (x.form == REAL || y.form == REAL) return (x.form == REAL && x.size == 8) || (y.form == REAL && y.size == 8) ? F64 : F32;
+  if (x.form == EVAL_REAL || y.form == EVAL_REAL) return (x.form == EVAL_REAL && x.size == 8) || (y.form == EVAL_REAL && y.size == 8) ? F64 : F32;
   uint32_t size = x.size > y.size ? x.size : y.size;
   if (size < 4) return S32;
   bool sign = (x.size < size || x.sign) && (y.size < size || y.sign);
@@ -240,26 +235,26 @@ static uint32_t common(Shape x, Shape y)
 /* a `op` b, both loaded. op: the operator's character, or for one of two characters the letter in the table of `binary`. */
 static EvalValue arith(Parse *P, int op, EvalValue a, EvalValue b)
 {
-  Shape x = shape(a.type), y = shape(b.type);
+  EvalShape x = eval_shape(a.type), y = eval_shape(b.type);
   bool compare = strchr("<>lgen", op), shift = op == 'L' || op == 'R';
   if (!a.kind || !b.kind) return (EvalValue){0};
-  if (x.form == INT && y.form == ADDRESS && op == '+') return arith(P, op, b, a);
-  if ((x.form == ADDRESS || y.form == ADDRESS) && (!compare || x.form == REAL || y.form == REAL)) {
-    uint64_t step = x.form == ADDRESS ? eval_size(x.to) : 0;   /* 0 also for an address of nothing with a size */
-    if (step && y.form == INT && (op == '+' || op == '-')) return a.at += (op == '+' ? b.at : -b.at) * step, a;
-    if (step && y.form == ADDRESS && op == '-') return value(S64, (uint64_t)((int64_t)(a.at - b.at) / (int64_t)step));
+  if (x.form == EVAL_INT && y.form == EVAL_ADDRESS && op == '+') return arith(P, op, b, a);
+  if ((x.form == EVAL_ADDRESS || y.form == EVAL_ADDRESS) && (!compare || x.form == EVAL_REAL || y.form == EVAL_REAL)) {
+    uint64_t step = x.form == EVAL_ADDRESS ? eval_shape(x.to).size : 0;   /* 0 also for an address of nothing with a size */
+    if (step && y.form == EVAL_INT && (op == '+' || op == '-')) return a.at += (op == '+' ? b.at : -b.at) * step, a;
+    if (step && y.form == EVAL_ADDRESS && op == '-') return value(S64, (uint64_t)((int64_t)(a.at - b.at) / (int64_t)step));
     return fail(P, "not for an address");
   }
-  if ((x.form == REAL || y.form == REAL) && !compare && !strchr("+-*/", op)) return fail(P, "not for a real number");
+  if ((x.form == EVAL_REAL || y.form == EVAL_REAL) && !compare && !strchr("+-*/", op)) return fail(P, "not for a real number");
   EvalType type = {NULL, common(x, shift ? x : y), 0};
-  Shape s = shape(type);
+  EvalShape s = eval_shape(type);
   a = convert(P, a, type);
-  if (!shift) b = convert(P, b, type);
+  b = convert(P, b, type);   /* a shift's count too: its low bits stay */
   if (P->dead) return value(compare ? S32 : type.idx, 0);
   uint64_t u = a.at, w = b.at, r = 0, count = w & (s.size * 8 - 1);   /* a shift by the count's low bits, as the processor does it (C leaves more open) */
   int64_t i = (int64_t)u, j = (int64_t)w;
-  double d = s.form == REAL ? real(a, s) : 0, f = s.form == REAL ? real(b, s) : 0;
-  bool less = s.form == REAL ? d < f : s.sign ? i < j : u < w, more = s.form == REAL ? d > f : s.sign ? i > j : u > w, equal = s.form == REAL ? d == f : u == w;
+  double d = s.form == EVAL_REAL ? real(a, s) : 0, f = s.form == EVAL_REAL ? real(b, s) : 0;
+  bool less = s.form == EVAL_REAL ? d < f : s.sign ? i < j : u < w, more = s.form == EVAL_REAL ? d > f : s.sign ? i > j : u > w, equal = s.form == EVAL_REAL ? d == f : u == w;
   switch (op) {
   case '<': return value(S32, less);
   case '>': return value(S32, more);
@@ -271,7 +266,7 @@ static EvalValue arith(Parse *P, int op, EvalValue a, EvalValue b)
   case '-': r = u - w, d -= f; break;
   case '*': r = u * w, d *= f; break;
   case '/': case '%':
-    if (s.form == REAL) { d /= f; break; }
+    if (s.form == EVAL_REAL) { d /= f; break; }
     if (!w) return fail(P, "division by zero");
     if (!s.sign) r = op == '/' ? u / w : u % w;
     else if (j == -1) r = op == '/' ? -u : 0;   /* the least number by -1 has no quotient in C; this is the one that wraps */
@@ -283,7 +278,7 @@ static EvalValue arith(Parse *P, int op, EvalValue a, EvalValue b)
   case 'L': r = u << count; break;
   default: r = s.sign ? (uint64_t)(i >> count) : u >> count; break;   /* 'R' */
   }
-  return convert(P, s.form == REAL ? number(d) : value(type.idx, r), type);
+  return convert(P, s.form == EVAL_REAL ? number(d) : value(type.idx, r), type);
 }
 
 /* ---- the text ---- */
@@ -317,20 +312,29 @@ static uint32_t known(const EngineModule *m, uint32_t names, RdiSpan id)
   return found.n ? *(const uint32_t *)found.p : 0;
 }
 
-/* The variable of a name at the frame: in its scopes from the innermost out, then a global or a constant. False: there is none;
+/* The variables of the scopes around the frame's instruction, one at each call, from the innermost scope out; null after the last. */
+typedef struct { uint32_t scope, hops; uint64_t i; } Locals;
+
+static const RdiSymbol *local(const Parse *P, Locals *l)
+{
+  for (; l->scope && l->hops < 256; l->hops += 1, l->i = 0) {   /* a file whose scopes go round is not followed for ever */
+    const RdiScope *scope = rdi_at(&P->module->rdi, RDI_SCOPES, RdiScope, l->scope);
+    RdiSpan locals = rdi_run(&P->module->rdi, RDI_LOCALS, scope->local_first, scope->local_count);
+    if (l->i < locals.n) return (const RdiSymbol *)locals.p + l->i++;
+    l->scope = scope->parent;
+  }
+  return NULL;
+}
+
+/* The variable of a name at the frame: in its scopes, then a global or a constant. False: there is none;
    true with no kind: it has no place at this instruction. */
 static bool name(Parse *P, RdiSpan id, EvalValue *v)
 {
   const EngineModule *m = P->module;
-  const RdiScope *scope;
-  for (uint32_t s = m ? rdi_vmap(&m->rdi, RDI_SCOPE_VMAP, P->voff) : 0, n = 0; s && n < 256; s = scope->parent, n += 1) {
-    scope = rdi_at(&m->rdi, RDI_SCOPES, RdiScope, s);
-    RdiSpan locals = rdi_run(&m->rdi, RDI_LOCALS, scope->local_first, scope->local_count);
-    for (uint64_t i = 0; i < locals.n; i += 1) {
-      const RdiSymbol *y = (const RdiSymbol *)locals.p + i;
-      RdiSpan is = rdi_str(&m->rdi, y->name);
-      if (same(id, is.p, is.n)) return *v = settle(P, place(P->e, m, y->type, y->location, P->voff, P->frame)), true;
-    }
+  Locals l = {m ? rdi_vmap(&m->rdi, RDI_SCOPE_VMAP, P->voff) : 0, 0, 0};
+  for (const RdiSymbol *y; (y = local(P, &l));) {
+    RdiSpan is = rdi_str(&m->rdi, y->name);
+    if (same(id, is.p, is.n)) return *v = settle(P, place(P->e, m, y->type, y->location, P->voff, P->frame)), true;
   }
   for (uint32_t i = 0; i < 2 * (P->e->module_count + 1); i += 1) {   /* in each module: globals, then constants */
     const EngineModule *g = nth(P, i / 2);
@@ -341,22 +345,27 @@ static bool name(Parse *P, RdiSpan id, EvalValue *v)
   return false;
 }
 
+RdiSpan eval_members(EvalShape record)
+{
+  const Rdi *r = &record.to.module->rdi;
+  const RdiUdt *u = rdi_at(r, RDI_UDTS, RdiUdt, record.to.idx);
+  return rdi_run(r, RDI_MEMBERS, u->member_first, u->member_count);
+}
+
 /* The member of a name in a record. (Not built: members of what a C++ class is built on.) */
 static EvalValue member(Parse *P, EvalValue v, RdiSpan id)
 {
-  Shape s = shape(v.type);
+  EvalShape s = eval_shape(v.type);
   if (v.kind == EVAL_REGISTER || v.kind == EVAL_CONSTANT) {   /* a record of up to 8 bytes: its bytes, of which a member is some */
     uint64_t bits = 0;
     if (!P->dead && !eval_read(P->e, P->frame, v, &bits, 8)) return fail(P, "cannot be read");
     v.kind = EVAL_VALUE, v.at = bits;
   }
-  if (v.kind && s.form == RECORD) {
-    const Rdi *r = &v.type.module->rdi;
-    const RdiUdt *u = rdi_at(r, RDI_UDTS, RdiUdt, s.to.idx);
-    RdiSpan members = u->flags & 1 ? (RdiSpan){0} : rdi_run(r, RDI_MEMBERS, u->member_first, u->member_count);
+  if (v.kind && s.form == EVAL_RECORD) {
+    RdiSpan members = eval_members(s);
     for (uint64_t i = 0; i < members.n; i += 1) {
       const RdiMember *b = (const RdiMember *)members.p + i;
-      RdiSpan is = rdi_str(r, b->name);
+      RdiSpan is = rdi_str(&v.type.module->rdi, b->name);
       if (b->kind == 1 && same(id, is.p, is.n)) return (EvalValue){v.kind, {v.type.module, b->type, 0}, v.kind == EVAL_MEMORY ? v.at + b->off : b->off < 8 ? v.at >> 8 * b->off : 0};
     }
   }
@@ -364,14 +373,14 @@ static EvalValue member(Parse *P, EvalValue v, RdiSpan id)
 }
 
 /* A type's name at the text's position: C's words, or a name of the debug information that no variable here has; then its stars.
-   When there is none the position stays. */
+   False: there is none (and the position is anywhere). */
 static bool type_name(Parse *P, EvalType *type)
 {
   enum { NO = 0, INT_WORD = 0xfd, SIGNED, UNSIGNED };
   static const struct { const char *word; uint8_t kind; } words[] = {
     {"const", NO}, {"volatile", NO}, {"struct", NO}, {"union", NO}, {"enum", NO}, {"int", INT_WORD}, {"long", S32}, {"signed", SIGNED}, {"unsigned", UNSIGNED},
     {"void", VOID}, {"char", CHAR}, {"short", S16}, {"__int64", S64}, {"float", F32}, {"double", F64}, {"bool", BOOL}, {"_Bool", BOOL}};
-  const char *start = P->p, *before;
+  const char *before;
   uint32_t kind = 0;
   bool basic = false, named = false, sign = false, unsign = false;
   EvalValue variable;
@@ -395,7 +404,7 @@ static bool type_name(Parse *P, EvalType *type)
       break;
     }
   }
-  if (!basic && !named) return P->p = start, false;
+  if (!basic && !named) return false;
   if (basic) {
     if (kind == 0) kind = S32;
     if (unsign) kind = kind == CHAR ? UCHAR : kind >= S16 && kind <= S64 ? kind - (S8 - 0xa) : kind;
@@ -460,7 +469,7 @@ static EvalValue primary(Parse *P)
         type = unary(P).type;
         P->dead -= 1;
       }
-      return value(U64, eval_size(type));
+      return value(U64, eval_shape(type).size);
     }
     if (!id.n) return fail(P, "a value is missing");
     if (!name(P, id, &v)) return fail(P, "no such name");
@@ -473,9 +482,9 @@ static EvalValue primary(Parse *P)
       v = deref(P, arith(P, '+', load(P, v), i));
     } else if (eat(P, ".") || eat(P, "->")) {   /* either, on a record or on an address of one, as RAD has it */
       RdiSpan id = word(P);
-      int form = shape(v.type).form;
-      if (form == ADDRESS || form == ROW) v = deref(P, v);
-      v = settle(P, member(P, v, id));
+      int form = eval_shape(v.type).form;
+      if (form == EVAL_ADDRESS || form == EVAL_ROW) v = deref(P, v);
+      v = member(P, v, id);
     } else return v;
   }
 }
@@ -499,7 +508,7 @@ static EvalValue unary(Parse *P)
   else if (eat(P, "~")) v = arith(P, '^', value(S32, (uint64_t)-1), load(P, unary(P)));
   else if (eat(P, "!")) {
     v = load(P, unary(P));
-    if (v.kind) v = value(S32, !nonzero(v, shape(v.type)));
+    if (v.kind) v = value(S32, !nonzero(v, eval_shape(v.type)));
   } else v = primary(P);
   P->deep -= 1;
   return v;
@@ -521,11 +530,11 @@ static EvalValue binary(Parse *P, int most)
     if (i == OPS || ops[i].level > most) return P->p = from, a;
     a = load(P, a);
     if (ops[i].op == 'A' || ops[i].op == 'O') {
-      bool is = ops[i].op == 'O', decided = a.kind && nonzero(a, shape(a.type)) == is;
+      bool is = ops[i].op == 'O', decided = a.kind && nonzero(a, eval_shape(a.type)) == is;
       P->dead += decided;
       b = load(P, binary(P, ops[i].level - 1));
       P->dead -= decided;
-      a = a.kind && b.kind ? value(S32, decided ? is : nonzero(b, shape(b.type))) : (EvalValue){0};
+      a = a.kind && b.kind ? value(S32, decided ? is : nonzero(b, eval_shape(b.type))) : (EvalValue){0};
     } else {
       b = load(P, binary(P, ops[i].level - 1));
       a = arith(P, ops[i].op, a, b);
@@ -538,8 +547,8 @@ static EvalValue side(Parse *P, bool chosen, bool *is_number)
 {
   P->dead += !chosen;
   EvalValue v = ternary(P);
-  int form = shape(v.type).form;
-  *is_number = form == INT || form == REAL;
+  int form = eval_shape(v.type).form;
+  *is_number = form == EVAL_INT || form == EVAL_REAL;
   if (*is_number) v = load(P, v);
   P->dead -= !chosen;
   return v;
@@ -551,21 +560,48 @@ static EvalValue ternary(Parse *P)
   bool a_number, b_number;
   if (!eat(P, "?")) return c;
   c = load(P, c);
-  bool yes = c.kind && nonzero(c, shape(c.type));
+  bool yes = c.kind && nonzero(c, eval_shape(c.type));
   a = side(P, yes, &a_number);
   if (!eat(P, ":")) return fail(P, "a : is missing");
   b = side(P, !yes, &b_number);
   if (!a_number || !b_number) return yes ? a : b;
-  return convert(P, yes ? a : b, (EvalType){NULL, common(shape(a.type), shape(b.type)), 0});
+  return convert(P, yes ? a : b, (EvalType){NULL, common(eval_shape(a.type), eval_shape(b.type)), 0});
+}
+
+static Parse parse(const Engine *e, const TargetRegs *frame, bool called, const char *text)
+{
+  Parse P = {.e = e, .frame = frame, .module = engine_module(e, frame->rip - called), .p = text};
+  P.voff = P.module ? frame->rip - called - P.module->image.base : 0;
+  return P;
 }
 
 EvalValue eval(const Engine *e, const TargetRegs *frame, bool called, const char *text, const char **error)
 {
-  Parse P = {.e = e, .frame = frame, .module = engine_module(e, frame->rip - called), .p = text};
-  P.voff = P.module ? frame->rip - called - P.module->image.base : 0;
+  Parse P = parse(e, frame, called, text);
   EvalValue v = ternary(&P);
   eat(&P, "");
   if (*P.p) fail(&P, "what follows is not understood");
   *error = P.error;
   return P.error ? (EvalValue){0} : v;
+}
+
+EvalValue eval_load(const Engine *e, const TargetRegs *frame, EvalValue v, const char **error)
+{
+  Parse P = {.e = e, .frame = frame};
+  v = load(&P, v);
+  return *error = P.error, v;
+}
+
+uint32_t eval_locals(const Engine *e, const TargetRegs *frame, bool called, RdiSpan *names, uint32_t most)
+{
+  Parse P = parse(e, frame, called, NULL);
+  Locals l = {P.module ? rdi_vmap(&P.module->rdi, RDI_SCOPE_VMAP, P.voff) : 0, 0, 0};
+  uint32_t n = 0;
+  for (const RdiSymbol *y; n < most && (y = local(&P, &l));) {
+    uint32_t i = 0;
+    names[n] = rdi_str(&P.module->rdi, y->name);
+    while (!same(names[n], names[i].p, names[i].n)) i += 1;   /* a name of an inner scope hides the same name further out */
+    n += i == n;
+  }
+  return n;
 }

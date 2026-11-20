@@ -22,8 +22,16 @@ typedef struct { int kind; EvalType type; uint64_t at; } EvalValue;
    call that ends or begins a block it finds the other block's variable of the same name. gdb and lldb do as here.)
    error: where to put why the kind is EVAL_NONE (null when it is not): a text that lives for ever. */
 EvalValue eval(const Engine *e, const TargetRegs *frame, bool called, const char *text, const char **error);
-/* How many bytes a value of the type has. */
-uint32_t eval_size(EvalType type);
-/* The first n bytes of the value: any number of them from memory, up to 8 otherwise. */
-bool eval_read(const Engine *e, const TargetRegs *frame, EvalValue v, void *bytes, uint32_t n);
+enum { EVAL_NOTHING, EVAL_INT, EVAL_REAL, EVAL_ADDRESS, EVAL_REFERENCE, EVAL_ROW, EVAL_RECORD };
+/* What a type is once its names and modifiers are taken off. to: what an address or a reference leads to, a row's element,
+   a record's members (idx: its RdiUdt), a bit field's whole number. count: not 0 for a bit field: so many bits from bit `first`. */
+typedef struct { int form; uint32_t size; bool sign, truth; uint32_t first, count; EvalType to; } EvalShape;
+EvalShape eval_shape(EvalType type);
+/* A record's members: RdiMember, of kind 1 those that are data. */
+RdiSpan eval_members(EvalShape record);
+/* What C reads at a place: a number or an address, its sign carried to 64 bits; of an array, the address of its first
+   element (a bit field of fewer bits than an int as an int). */
+EvalValue eval_load(const Engine *e, const TargetRegs *frame, EvalValue v, const char **error);
+/* The names of the variables around the frame's instruction, the innermost first, each once; how many (up to most). */
+uint32_t eval_locals(const Engine *e, const TargetRegs *frame, bool called, RdiSpan *names, uint32_t most);
 #endif

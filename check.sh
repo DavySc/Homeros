@@ -11,7 +11,7 @@ run() { # run <dir with the sources> <list|test|specs|oracle|x64|win|windows|eng
         # something does not compile (a planted bug must be caught by a check, not by the compiler), 3 when the
         # test files cannot be made (nor by a full disk)
   local src=$1 what=$2 b t lib; b=$(mktemp -d)
-  lib=$(ls "$src"/dbg/*.c | grep -v '/engine\.c$\|/session\.c$\|/eval\.c$')   # the engine, its thread and the evaluator need a target: linked in the engine and eval steps; here compiled, and the thread run on a made-up target (tests/test_session.c)
+  lib=$(ls "$src"/dbg/*.c | grep -v '/engine\.c$\|/session\.c$\|/eval\.c$\|/view\.c$')   # the engine, its thread and the evaluator need a target: linked in the engine and eval steps; here compiled, and the thread run on a made-up target (tests/test_session.c)
   case $what in test|oracle|fuzz|all)
     python3 -I "$src/tests/seed_rdi.py" "$b/seed.rdi" || return 3
     "$src/tests/make_pdbs.sh" "$b/pdb" || return 3;;
@@ -26,11 +26,11 @@ for l in open(sys.argv[1] + "/tests/plants.txt"):
         if open(sys.argv[1] + "/" + file.strip()).read().count(find.replace("\\n", "\n").replace("\\p", "|")) != 1: sys.exit("plants.txt: not found once: " + find)' "$src" || return 1
   fi
   if [ "$what" = test ] || [ "$what" = all ]; then
-    for build in gcc clang; do for t in engine session eval; do $build $FLAGS -c "$src"/dbg/$t.c -o "$b/$t.o" || return 2; done; done
+    for build in gcc clang; do for t in engine session eval view; do $build $FLAGS -c "$src"/dbg/$t.c -o "$b/$t.o" || return 2; done; done
     # only the engine and its thread call the target or the engine: what the editor links beside them shares nothing with a debugged program
     for t in $lib; do gcc $FLAGS -c "$t" -o "$b/o.o" || return 2; if nm -u "$b/o.o" | grep ' \(target\|engine\)_'; then return 1; fi; done
     # each tests/test_*.c is its own program: ASan+UBSan with both compilers, then ThreadSanitizer
-    for t in "$src"/tests/test_*.c; do
+    for t in "$src"/tests/${TESTS:-test_*}.c; do   # TESTS=test_eval: that one alone (for the plants of one module)
       for build in "gcc $SAN" "clang $SAN" "clang -fsanitize=thread"; do
         # a test that includes a module's .c file, to reach its static functions, is not linked with it again
         $build $FLAGS $(grep -vFx "$src/dbg/$(sed -n 's|^#include "\.\./dbg/\(.*\.c\)"|\1|p' "$t")" <<<"$lib") "$t" -o "$b/test" || return 2
@@ -85,13 +85,15 @@ for l in open(sys.argv[1] + "/tests/plants.txt"):
   fi
   if [ "$what" = eval ] || [ "$what" = all ]; then
     # names, where their variables are and expressions of them (dbg/eval.c), on a program that says what each is itself: built here with clang, plain and optimised
-    # (each with the number of texts the program shows, the least that must be right, and the least variables in a register), and as MSVC built it on the recorder
-    local link="lld-link /nologo /debug /nodefaultlib /entry:main /subsystem:console /dynamicbase:no /stack:1048576,1048576" o
+    # (each with the number of texts the program shows, the least that must be right, the least variables in a register, and the least rows of the tables of variables: dbg/view.c), and as MSVC built it on the recorder
+    local link="lld-link -nologo -debug -nodefaultlib -entry:main -subsystem:console -dynamicbase:no -stack:1048576,1048576" o   # with dashes: the shell on Windows takes /nologo for a path
     ${WINCC:-x86_64-w64-mingw32-gcc} -std=c17 -O1 -g -Wall -Wextra -Werror $(grep -v '/queue\.c$' <<<"$lib") "$src"/dbg/engine.c "$src"/dbg/eval.c "$src"/dbg/win/target.c "$src"/tests/zoo_check.c -o "$b/zoo_check.exe" || return 2
     echo 'int _fltused;' > "$b/flt.c" && clang --target=x86_64-pc-windows-msvc -ffreestanding -c "$b/flt.c" -o "$b/flt.obj" || return 3
-    for o in O0:269:269:0 O2:269:190:15; do
-      clang --target=x86_64-pc-windows-msvc -g -gcodeview -${o%%:*} -ffreestanding -mno-stack-arg-probe -c "$src/subjects/zoo.c" -o "$b/zoo.obj" && $link "$b/zoo.obj" "$b/flt.obj" /out:"$b/zoo-${o%%:*}.exe" /pdb:"$b/zoo-${o%%:*}.pdb" || return 3
-      (cd "$b" && WINEDEBUG=-all timeout 300 "${WINE:-wine}" ./zoo_check.exe zoo-${o%%:*}.exe $(tr : ' ' <<<"${o#*:}") 2>/dev/null | grep "^zoo_check" | tee zoo.out; grep -q "what the program says" zoo.out) || return 1
+    for o in O0:379:379:0:5000 O2:379:250:15:3000; do
+      clang --target=x86_64-pc-windows-msvc -g -gcodeview -${o%%:*} -ffreestanding -mno-stack-arg-probe -c "$src/subjects/zoo.c" -o "$b/zoo.obj" && $link "$b/zoo.obj" "$b/flt.obj" -out:"$b/zoo-${o%%:*}.exe" -pdb:"$b/zoo-${o%%:*}.pdb" || return 3
+      for seed in 1 2 3; do   # of the rows opened and closed in the tables
+        (cd "$b" && WINEDEBUG=-all timeout 300 "${WINE:-wine}" ./zoo_check.exe zoo-${o%%:*}.exe $(tr : ' ' <<<"${o#*:}") $seed 2>/dev/null | grep "^zoo_check" | tee zoo.out; grep -q "what the program says" zoo.out) || return 1
+      done
     done
   fi
   if [ "$what" = fuzz ] || [ "$what" = all ]; then
@@ -101,7 +103,7 @@ for l in open(sys.argv[1] + "/tests/plants.txt"):
       # for tests/fuzz_eval.c: expressions alone, and after debug information that has their names
       printf '%s' '*(char *)0x7000 + sizeof(int *) ? 1.5f : -~!3 % 2 << 1 >= 4 && 5 || (unsigned long long)6 / 7u' > "$b/corpus/text1" && printf '%s' "((short *)0x7010)[-2] == 'a' ^ 0x1fULL | sizeof 2.5e3 > 1 != .5" > "$b/corpus/text2" || return 3
       gcc $FLAGS $lib "$src"/cmd/pdb2rdi.c -o "$b/pdb2rdi" && "$b/pdb2rdi" "$b/pdb/kinds.pdb" "$b/kinds.rdi" || return 3
-      for t in 'sizeof(Later) + ((Later *)0x7000)->next->x' '((Bits *)0x7010)->c * ((Box *)0x7020)->vp[1] - (Plain)3' '&((Either *)0x7000)->f == (float *)0x7000 ? (Colour)1 : 2.5'; do
+      for t in 'sizeof(Later) + ((Later *)0x7000)->next->x' '((Bits *)0x7010)->c * ((Box *)0x7020)->vp[1] - (Plain)3' '&((Either *)0x7000)->f == (float *)0x7000 ? (Colour)1 : 2.5' '(Later *)0x7000' '*(Box *)0x7020'; do
         cat "$b/kinds.rdi" > "$b/corpus/kinds-${#t}" && printf '%s' "$t" >> "$b/corpus/kinds-${#t}" || return 3
       done
       (cd "$b" && ./fuzz corpus -max_total_time="${FUZZ_SECONDS:-20}" -max_len=131072 -timeout=20 >fuzz.log 2>&1) || { grep -m2 "ERROR\|SUMMARY" "$b/fuzz.log"; return 1; }

@@ -2,7 +2,9 @@
    text: a debugger stopped at probe's first instruction has the text, the address and the size in the argument
    registers, and must work out the same from the debug information for the frame that called
    (tests/zoo_check.c). What is shown by value (address 0; 1 when the value is the bits of a double) has no
-   address taken, so optimised code may keep a variable in a register. */
+   address taken, so optimised code may keep a variable in a register. Address 2: the value is the text a person
+   is shown for it (dbg/view.c; from a " on: what follows the address); 3: the text of its type; 4: the name is the
+   list of the variables in scope there, each once; 5: the name is a text that has no meaning there, the value says why; 6: nothing is shown. */
 typedef struct { int a; char b; double c; } Pair;
 typedef struct { long long x[3]; } Big;
 typedef int Alias;
@@ -15,6 +17,7 @@ int global_int = 7;
 static long long file_static = -3;
 Pair global_pair = {1, 'x', 2.5};
 const char *global_text = "text";
+const char *long_text = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+/=-";   /* 66 characters */
 volatile unsigned long long sink;
 volatile long long unknown = 2;   /* so that the compiler cannot work the loop out */
 
@@ -27,12 +30,18 @@ void (*volatile show)(const char *, const void *, unsigned long long, unsigned l
 #define AT(v) show(#v, &(v), sizeof(v), 0)
 #define VALUE(v) show(#v, 0, sizeof(v), (unsigned long long)(v))
 #define FIELD(v) show(#v, 0, 0, (unsigned long long)(v))   /* a bit field has no sizeof: size 0, not compared */
+#define SHOWN(v, text) show(#v, (const void *)2, 0, (unsigned long long)(text))
+#define TYPED(v, text) show(#v, (const void *)3, 0, (unsigned long long)(text))
+#define LOCALS(names) show(names, (const void *)4, 0, 0)
+#define REFUSED(text, why) show(text, (const void *)5, 0, (unsigned long long)(why))
+#define HERE() show("", (const void *)6, 0, 0)   /* at this line the recorder asks RAD for every expression above it (oracle/rad-trace.ps1) */
 #define REAL(v) show(#v, (const void *)1, sizeof(v), (union { double d; unsigned long long u; }){.d = (v)}.u)
 
 __declspec(noinline) static int params(int first, char second, Pair small, Big large, Big *pointer, double real)
 {
   int local = first + 1;
   AT(first); AT(second); AT(small); AT(large); AT(pointer); AT(real); AT(local);
+  LOCALS("first second small large pointer real local");
   return local + second + small.a + (int)large.x[0] + (int)pointer->x[1] + (int)real;
 }
 
@@ -52,11 +61,11 @@ __declspec(noinline) static int blocks(int n)
     AT(x); AT(inner); AT(inner_most);
     {
       long long x = n + 2;
-      AT(x); AT(inner);
+      AT(x); AT(inner); LOCALS("x inner_most inner n"); TYPED(x, "long long");
     }
-    AT(x);
+    AT(x); TYPED(x, "int"); LOCALS("x inner_most inner n");   /* the block's last call: what comes after it is outside */
   }
-  AT(x);
+  AT(x); LOCALS("x n");
   return x;
 }
 
@@ -66,7 +75,7 @@ __declspec(noinline) static long long kept(long long n)
   int count = (int)n + 3;
   for (int i = (int)n - 2; i < count; i += 1) {
     sum += twice + i;
-    VALUE(i); VALUE(sum); VALUE(twice); VALUE(count); VALUE(n);
+    VALUE(i); VALUE(sum); VALUE(twice); VALUE(count); VALUE(n); LOCALS("i twice sum count n");
   }
   return sum + twice;
 }
@@ -77,6 +86,14 @@ __declspec(noinline) static int statics(void)
   function_static += 1;
   AT(function_static); AT(file_static); AT(global_int); AT(global_pair); AT(global_text);
   return function_static;
+}
+
+/* a variable with the name of a type: in its scope the name is the variable */
+__declspec(noinline) static long long shadow(long long n)
+{
+  long long Alias = n + 40;
+  AT(Alias); VALUE((Alias) - 1); VALUE(sizeof(Alias)); VALUE(sizeof (Alias) + 1); VALUE((Alias) * 2);
+  return Alias;
 }
 
 /* a frame so large that its variables are further from the stack pointer than a 16-bit offset reaches */
@@ -108,11 +125,13 @@ int main(void)
   AT(c); AT(s); AT(u); AT(wide); AT(f); AT(d); AT(array); AT(pair); AT(big); AT(pointer); AT(colour); AT(either); AT(alias); AT(function);
   Nest nest = {pair, &pair, {{1, 2, 3}, {4, 5, 6}}, {5, -3, 0x123456789a, 0xfffffff0, -2}, {.f = 0.5f}, GREEN};
   Nest *np = &nest;
+  Pair pairs[2] = {{7, 'q', 0.25}, {8, 'r', 0.75}};
   Pair **pp = &pointer;
   /* places */
   AT(pair.c); AT(pair.b); AT(pointer->b); AT(*pointer); AT((*pointer).c); AT(pointer[0]); AT(array[3]); AT(array[u]); AT(array[s + 3]); AT(*array); AT(*(array + 2)); AT(1[array]); AT(big.x[u - 1]);
   AT(nest.row); AT(nest.row[1]); AT(nest.row[1][2]); AT(*nest.row[1]); AT(**nest.row); AT(nest.pair.c); AT(nest.next->c); AT(*nest.next); AT(np->pair.a); AT(np->next->b); AT(*np); AT((*np).next); AT(np[0].row[1]);
   AT((&nest)->row); AT(*&c); AT(**pp); AT((*pp)->c); AT(pp[0]->a); AT(*pp); AT(nest.either.f); AT(np->either); AT(either.i); AT(global_text[1]); AT(*global_text); AT(global_pair.c); AT(np->colour);
+  AT(pairs->c); AT(pairs[1].b); AT((pairs + 1)->a); AT(*pairs);
   AT(np -> pair . b); AT(( pair ).a); AT(*(char *)&u); AT(((char *)&wide)[7]); AT(*(Pair *)&nest); AT(((Pair *)np)->c); AT(((Nest *)&nest.pair)->row[0][1]); AT(*(short *)array); AT(((Big *)&big)->x[2]);
   /* values: whole numbers and addresses */
   VALUE(c + u); VALUE(s * wide); VALUE(-s); VALUE(~u); VALUE(!wide); VALUE(u - 5); VALUE(s < u); VALUE(s < (int)u); VALUE(wide >> 1); VALUE(s >> 1); VALUE(u << 30); VALUE(wide % 3); VALUE(wide / 3); VALUE(c / s);
@@ -121,7 +140,8 @@ int main(void)
   VALUE(sizeof array); VALUE(sizeof(Pair)); VALUE(sizeof pair.c); VALUE(sizeof(Pair *)); VALUE(sizeof nest.row[0]); VALUE(sizeof nest.row); VALUE(sizeof nest); VALUE(sizeof(Nest)); VALUE(sizeof(Bits)); VALUE(sizeof(union Either)); VALUE(sizeof(enum Colour)); VALUE(sizeof *np);
   VALUE(sizeof np->pair); VALUE(sizeof(Alias)); VALUE(sizeof(struct Nest *)); VALUE(sizeof array / sizeof array[0]); VALUE(sizeof *pp); VALUE(sizeof **pp); VALUE(sizeof global_text); VALUE(sizeof *global_text); VALUE(sizeof(Big)); VALUE(sizeof big.x); VALUE(sizeof function);
   FIELD(nest.bits.low); FIELD(nest.bits.mid); FIELD(nest.bits.high); FIELD(nest.bits.full); FIELD(nest.bits.tiny); FIELD(np->bits.mid); VALUE(nest.bits.low - 6); VALUE(nest.bits.full + 16); VALUE(nest.bits.high << 30); VALUE(np->bits.mid * np->bits.tiny); VALUE(-nest.bits.low < 0);
-  VALUE(sizeof(nest.bits.low + 0)); VALUE(sizeof(nest.bits.full + 0)); VALUE(sizeof(nest.bits.high + 0)); VALUE(nest.bits.full > -1); VALUE(nest.bits.low > -1);
+  VALUE(sizeof(nest.bits.low + 0)); VALUE(sizeof(nest.bits.full + 0)); VALUE(sizeof(nest.bits.high + 0)); VALUE(nest.bits.full > -1); VALUE(nest.bits.low > -1); VALUE(nest.bits.full / 2); VALUE(nest.bits.full >> 4); VALUE(-nest.bits.full); VALUE(nest.bits.mid / 2); VALUE(pairs->a + pairs[1].a);
+  VALUE((Alias)wide + sizeof(Alias));
   VALUE(c == 'c'); VALUE(u && wide); VALUE(!u || !wide); VALUE(wide ? u : s); VALUE(u ? s : wide); VALUE(pointer == &pair); VALUE(pointer != 0); VALUE(!pointer); VALUE(pointer && np); VALUE((long long)pointer == (long long)&pair); VALUE(np->next == pointer);
   VALUE(((Pair *)&nest)->b); VALUE(*(char *)&u); VALUE(*(unsigned char *)&s); VALUE(global_text[0]); VALUE(*global_text); VALUE(global_text[4]); VALUE(global_pair.a + file_static); VALUE(global_int * file_static); VALUE(f > 1); VALUE(d * 2 > 4.9); VALUE((u > 2) + (s < 0));
   VALUE(u & 6 | 8 ^ 1); VALUE(0x7fffffff + u); VALUE(c - 'a'); VALUE(array[array[0]]); VALUE(array[nest.bits.low - 2]); VALUE(nest.row[1][array[1]]); VALUE((*np).row[u - 3][s + 4]); VALUE(*nest.row[1] + **nest.row); VALUE(pp[0]->a); VALUE((**pp).b);
@@ -130,9 +150,21 @@ int main(void)
   /* values: real numbers */
   REAL(f); REAL(d); REAL(f + 1); REAL(f * d); REAL(d / 4); REAL(-d); REAL((float)d); REAL((double)u); REAL(s * 0.5); REAL(f / 0.3f); REAL(f / 0.3); REAL((float)wide); REAL(u / 2.0); REAL(u / 2); REAL((float)0.1); REAL(wide ? d : s); REAL(u ? s : d);
   REAL(nest.pair.c); REAL(pointer->c); REAL(*&d); REAL(np->either.f); REAL(nest.either.f + f); REAL(global_pair.c * 2); REAL(pair.c / array[2]); REAL((int)pair.c / array[1]); REAL(d - (int)d); REAL(f * f * f); REAL(wide * 1.5f); REAL((float)u / 7); REAL(*(float *)&np->either);
+  /* as a person is shown them */
+  SHOWN(c, "99 'c'"); SHOWN(s, "-2"); SHOWN(u, "3"); SHOWN(wide, "-4"); SHOWN(f, "1.5"); SHOWN(d, "2.5"); SHOWN(pair, "{...}"); SHOWN(pair.b, "98 'b'"); SHOWN(global_text, "\"text\""); SHOWN(global_text + 1, "\"ext\""); SHOWN(long_text, "\"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+/\"..."); SHOWN(long_text + 2, "\"23456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+/=-\"");
+  SHOWN(colour, "5"); SHOWN(nest.bits.mid, "-3"); SHOWN(nest.bits.high, "78187493530"); SHOWN(nest.bits.tiny, "-2"); SHOWN(nest.either.f, "0.5"); SHOWN(c == 'c', "1"); SHOWN(d / 3, "0.8333333333333334"); SHOWN(f / 3, "0.5");
+  SHOWN(alias, "9"); SHOWN(unknown, "2"); SHOWN(*global_text, "116 't'"); SHOWN(nest.row[1][2], "6"); SHOWN(pairs[1].c, "0.75"); SHOWN((*pp)->b, "98 'b'"); SHOWN(sizeof nest, "80"); SHOWN(wide * 1.5f, "-6"); SHOWN(1 / (d - 2.5), "inf");
+  TYPED(c, "char"); TYPED(s, "short"); TYPED(u, "unsigned int"); TYPED(wide, "long long"); TYPED(f, "float"); TYPED(d, "double"); TYPED(array, "int [5]"); TYPED(pair, "Pair"); TYPED(pointer, "Pair *"); TYPED(pp, "Pair **"); TYPED(colour, "Colour");
+  TYPED(either, "Either"); TYPED(alias, "int"); TYPED(function, "function *"); TYPED(nest.row, "int [2][3]"); TYPED(nest.row[1], "int [3]"); TYPED(np, "Nest *"); TYPED(&np, "Nest **"); TYPED(nest.bits.mid, "int : 5"); TYPED(nest.bits.high, "unsigned long long : 40");
+  TYPED(global_text, "char *"); TYPED(&array, "int [5] *"); TYPED(c + 1, "int"); TYPED(u + wide, "long long"); TYPED(sizeof c, "unsigned long long"); TYPED(f * 2, "float"); TYPED(f * 2.0, "double"); TYPED(&nest.pair.c, "double *"); TYPED(*pp, "Pair *");
+  REFUSED("(Pair int)c", "no such name"); REFUSED("pair.nothing", "no such member"); REFUSED("pair + 1", "not a number"); REFUSED("*pair", "not a number"); REFUSED("nest.row.a", "no such member"); REFUSED("(Nothing)c", "no such name"); REFUSED("pair == pair", "not a number"); REFUSED("(Pair)c", "no such conversion");
+  REFUSED("colour.a", "no such member"); REFUSED("np->next->next->next->a", "no such member"); REFUSED("(Pair *)d", "no such conversion"); REFUSED("pointer * 2", "not for an address"); REFUSED("pointer + pointer", "not for an address"); REFUSED("array[d]", "not for an address"); REFUSED("function + 1", "not for an address");
+  REFUSED("sizeof(Nothing)", "no such name"); REFUSED("(struct Pair int)c", "no such name"); REFUSED("pair ? 1 : 2", "not a number"); REFUSED("!pair", "not a number"); REFUSED("&c + &c", "not for an address"); REFUSED("-pointer", "not for an address"); REFUSED("~d", "not for a real number"); REFUSED("d % 2", "not for a real number"); REFUSED("&(c + 1)", "it has no address");
+  HERE();
+  LOCALS("c s u wide f d array pair big pointer colour either alias function nest np pairs pp total");
   int total = params(1, 'p', pair, big, &big, d);
   big = returns(total);
-  total += blocks(3) + (int)kept(unknown) + statics() + (int)big.x[2];
+  total += blocks(3) + (int)kept(unknown) + statics() + (int)big.x[2] + (int)shadow(unknown);
   total += far_frame(total, big);
   VALUE(total); VALUE(GREEN);
   return (total + (int)sink) & 0;
