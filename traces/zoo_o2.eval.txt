@@ -118,7 +118,7 @@ sizeof *pp =>  |  | Missing expression.
 sizeof **pp =>  |  | Missing expression.
 sizeof global_text => 8 | uint64 |  | asked 3 times
 sizeof *global_text =>  |  | Missing expression.
-sizeof(Big) => 24 | uint64 | 
+sizeof(Big) => 24 | uint64 |  | asked 3 times
 sizeof big.x => 24 | uint64 | 
 sizeof function => 8 | uint64 | 
 nest.bits.low => 5 | uint32 : 3 | 
@@ -154,7 +154,7 @@ pointer != 0 => true | bool |
 pointer && np =>  |  | `np` could not be found.
 (long long)pointer == (long long)&pair => 0 | true | Missing `)`. | asked 3 times
 np->next == pointer =>  |  | `np` could not be found.. Could not find a member named `next`.
-((Pair *)&nest)->b =>  |  | Cannot use this operator on this type.. Could not find a member named `b`.
+((Pair *)&nest)->b =>  |  | Cannot use this operator on this type.. Could not find a member named `b`. | asked 3 times
 *(unsigned char *)&s => '\\0' (0) | uchar8 | 
 global_text[0] => '\\0' (0) | char | 
 global_text[4] => '\\0' (0) | char | 
