@@ -83,6 +83,8 @@ int main(void)
   session_start(&s, wake, 0);
   send(SESSION_OPEN, 0, "program");
   if (!take(&ev, 5000) || ev.stop.kind != TARGET_MODULE || ev.stop.thread != 1) FAIL("the program did not open");
+  send(SESSION_OPEN, 0, "program");
+  if (take(&ev, 30)) FAIL("a second program was opened beside the first");
   for (; round < 400; round += 1) {
     uint32_t what = (seed = seed * 1664525u + 1013904223u) >> 28;   /* 0..15 */
     if (what < 2) send(SESSION_HALT, 0, 0);   /* a halt when nothing runs is nothing */

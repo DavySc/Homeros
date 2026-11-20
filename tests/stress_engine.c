@@ -2,8 +2,8 @@
    breakpoints, and the exceptions that are no stop. On tests/scene.exe:
    - a breakpoint in a function three threads run: every stop is on it, and between two stops of one thread that
      thread has run the function exactly once (it was stepped off the breakpoint, alone, and ran no torn instruction);
-   - one thread steps over instructions, calls among them, while the others run through the step's traps: every
-     step ends with that thread just behind the instruction, at the same depth;
+   - one thread steps over instructions, calls and a repeated instruction among them, while the others run through
+     the step's traps: every step ends with that thread just behind the instruction, at the same depth;
    - a halt, asked for after 0 to 3 waits, ends a run that has no breakpoint: no thread moves any more, and the
      next run comes to the breakpoint as before;
    - an exception the program handles is no stop; one nobody handles is, once; a fault is at once, and again
@@ -26,7 +26,7 @@ int main(int argc, char **argv)
   if (argc < 7 || !engine_open(&e, argv[1], 0, &first)) FAIL("cannot start");
   uint64_t at[4];   /* caller, shared, handled, go: the linker counted from the base it asked for */
   for (int i = 0; i < 4; i += 1) at[i] = strtoull(argv[3 + i], 0, 16) - 0x140000000 + e.modules[0].image.base;
-  uint32_t rounds = (uint32_t)atoi(argv[2]), threads[3] = {0}, stepped = 0, calls = 0, halts = 0, waits;
+  uint32_t rounds = (uint32_t)atoi(argv[2]), threads[3] = {0}, stepped = 0, calls = 0, repeats = 0, halts = 0, waits;
   int32_t count[3] = {0}, now;
   TargetRegs r;
   TargetEvent ev = {0};
@@ -55,9 +55,10 @@ int main(int argc, char **argv)
     ev = engine_run(&e, ENGINE_STEP_OVER_INST, thread, NULL, 0);
     if (ev.kind != TARGET_STEP || ev.thread != thread || !target_regs(e.target, thread, &r) || r.rip != ev.addr) FAIL("step %u: event %d, thread %u at %llx", round, ev.kind, ev.thread, (unsigned long long)ev.addr);
     if (x.flow == X64_CALL && (r.rip != next || r.gp[4] != depth)) FAIL("step %u: a call was not stepped over", round);
-    stepped += 1, calls += x.flow == X64_CALL;
+    if (x.repeats && r.rip != next) FAIL("step %u: a repeated instruction was stepped into", round);
+    stepped += 1, calls += x.flow == X64_CALL, repeats += x.repeats;
   }
-  if (rounds && (!threads[2] || !calls)) FAIL("not every thread came to the breakpoint, or no call was stepped over");
+  if (rounds && (!threads[2] || !calls || !repeats)) FAIL("not every thread came to the breakpoint, or no call or no repeated instruction was stepped over");
   for (e.halt = soon, e.halt_arg = &waits; halts < rounds / 20; halts += 1) {
     uint64_t rip[3];
     waits = halts % 4;
@@ -80,6 +81,6 @@ int main(int argc, char **argv)
     if (ev.kind != TARGET_EXCEPTION || ev.code != 0xc0000005 || ev.unhandled) FAIL("event %d code %llx, not the fault, at once (run %d)", ev.kind, (unsigned long long)ev.code, i);
   }
   engine_close(&e);
-  printf("stress_engine: %u stops on a breakpoint in three threads, %u instructions stepped over (%u calls), %u halts, exceptions as they should be\n", rounds, stepped, calls, halts);
+  printf("stress_engine: %u stops on a breakpoint in three threads, %u instructions stepped over (%u calls, %u repeated), %u halts, exceptions as they should be\n", rounds, stepped, calls, repeats, halts);
   return 0;
 }

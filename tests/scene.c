@@ -5,7 +5,14 @@
 volatile LONG handled, go;
 
 __attribute__((noinline)) void shared(volatile LONG *n) { *n += 1; }
-__attribute__((noinline)) void caller(volatile LONG *n) { shared(n), shared(n); }
+__attribute__((noinline)) void caller(volatile LONG *n)
+{
+  char from[8] = {0}, to[8];
+  void *d = to, *s = from;
+  size_t count = sizeof to;
+  shared(n), shared(n);
+  __asm__ volatile("rep movsb" : "+D"(d), "+S"(s), "+c"(count) : : "memory");   /* one instruction that runs 8 times */
+}
 
 static DWORD WINAPI worker(void *arg)
 {

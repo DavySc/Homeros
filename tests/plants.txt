@@ -687,8 +687,8 @@ test | dbg/session.c | if (c.kind == SESSION_OPEN && !open && n > sizeof c) { | 
 test | dbg/session.c | } else if (c.kind == SESSION_RUN && open && c.count <= (n - sizeof c) / 8) { | } else if (c.kind == SESSION_RUN && c.count <= (n - sizeof c) / 8) {
 test | dbg/session.c | queue_push(&s->events, &(SessionEvent){.gone = true}, sizeof(SessionEvent), true); | queue_push(&s->events, &(SessionEvent){.gone = false}, sizeof(SessionEvent), true);
 test | dbg/session.c | if (open) engine_close(&e);\n  queue_push | queue_push
-test | dbg/session.c | if (open) e.halt = halt, e.halt_arg = s; | 
-test | dbg/session.c | queue_init(&s->commands, 0, 0), queue_init(&s->events, wake, wake_arg); | queue_init(&s->commands, 0, 0), queue_init(&s->events, 0, 0);
+test | dbg/session.c | if (open) e.halt = halt, e.halt_arg = s; | if (!open) e.halt = halt, e.halt_arg = s;
+test | dbg/session.c | queue_init(&s->commands, 0, 0), queue_init(&s->events, wake, wake_arg); | queue_init(&s->commands, 0, 0), queue_init(&s->events, wake ? 0 : wake, wake_arg);
 test | dbg/engine.c | if (e->halt && e->halt(e->halt_arg)) return target_halt(e->target), (TargetEvent){.kind = TARGET_HALT}; | if (e->halt && e->halt(e->halt_arg)) return (TargetEvent){.kind = TARGET_HALT};
 test | dbg/engine.c | if (e->halt && e->halt(e->halt_arg)) return target_halt(e->target), (TargetEvent){.kind = TARGET_HALT}; | if (e->halt) return target_halt(e->target), (TargetEvent){.kind = TARGET_HALT};
 test | dbg/engine.c | enum { WAIT_MS = 10 }; | enum { WAIT_MS = 60000 };
