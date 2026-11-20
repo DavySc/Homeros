@@ -11,7 +11,7 @@
    at random. All its rows must be those that a plain walk of the open rows gives; any window of it must be that part of the
    whole; a row below another must be inside its bytes (a member), at its place by number (an element) or where it points;
    and while the program stays in one function with the same variables, the rows stay the same.
-   usage: zoo_check <zoo.exe> <number of texts the program shows> <least that must be right> <and of them variables in a register> <least rows looked at> <least frames of a stack that show their own x> [seed of the opening and closing] */
+   usage: zoo_check <zoo.exe> <number of texts the program shows> <least that must be right> <and of them variables in a register> <least rows looked at> <least frames of a stack that show their own x> [seed of the opening and closing] [names the compiler dropped] [texts it does otherwise, with ; between] */
 #include "../dbg/view.c"
 #include "../dbg/ask.h"
 #include <stdio.h>
@@ -167,8 +167,10 @@ static int asks(const Engine *e, uint32_t thread, const View *view, uint64_t pro
     const AskFrame *a = (const AskFrame *)out + i;
     const ViewFrame *f = &frames[first + i];
     const char *path = f->module ? f->module->path : "";
+    char file[1024];   /* the whole path, of which the answer has the end that fits */
+    uint64_t len = f->module ? rdi_path(&f->module->rdi, rdi_at(&f->module->rdi, RDI_SOURCE_FILES, RdiSourceFile, f->line.file)->path_node, file, sizeof file) : 0;
     if (a->addr != f->at.regs.rip || a->line != f->line.line || strlen(a->name) != f->name.n || memcmp(a->name, f->name.p, f->name.n) || !*a->module != !f->module || strcmp(path + strlen(path) - strlen(a->module), a->module)
-        || (f->line.file ? strlen(a->file) < 5 || strcmp(a->file + strlen(a->file) - 5, "zoo.c") : *a->file)) FAIL("frame %u is answered as %s in %s at %s:%u", first + i, a->name, a->module, a->file, a->line);
+        || strlen(a->file) != (len < sizeof a->file ? len : sizeof a->file - 1) || memcmp(a->file, file + len - strlen(a->file), strlen(a->file))) FAIL("frame %u is answered as %s in %s at %s:%u", first + i, a->name, a->module, a->file, a->line);
   }
   count = eval_locals(e, &frames[1].at, names, ROOTS);
   for (uint32_t i = 0; i < count; i += 1) snprintf(texts[i], sizeof texts[i], "%.*s", (int)names[i].n, (const char *)names[i].p), roots[i] = texts[i];
@@ -196,8 +198,18 @@ static int asks(const Engine *e, uint32_t thread, const View *view, uint64_t pro
   return 0;
 }
 
+#define NAME "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
+/* Is the text one of the list's, which `between` separates? */
+static bool word(const char *list, char between, const char *text, size_t n)
+{
+  for (const char *w = list; *w; w += strcspn(w, (char[]){between, 0}), w += *w == between)
+    if (strcspn(w, (char[]){between, 0}) == n && !memcmp(w, text, n)) return true;
+  return false;
+}
+
 int main(int argc, char **argv)
 {
+  const char *dropped = argc > 8 ? argv[8] : "", *other = argc > 9 ? argv[9] : "";
   Engine e;
   uint32_t thread, xs = 0, shown = 0, in_memory = 0, in_register = 0, by_value = 0, missing = 0;
   static View view;
@@ -256,13 +268,14 @@ int main(int argc, char **argv)
     EvalFrame at = {r, true, 0};
     if (table(&e, &at, &view, rows, &seed, looked, before)) FAIL("(the table at +0x%llx, where %s is shown)", voff, text);
     if (addr == 6 && ++shown) continue;
-    if (addr == 4) {   /* the variables in scope: each is one the program names; all of them, unless optimised code has dropped some */
+    if (word(other, ';', text, strlen(text)) && ++missing) continue;   /* a text this compiler is known to work out otherwise than C says, or to have too little about (check.sh has the reasons) */
+    if (addr == 4) {   /* the variables in scope: each is one the program names; all of them, unless optimised code has dropped some; a name with $ is the compiler's own (RAD lists them too) */
       RdiSpan names[ROOTS];
       uint32_t count = eval_locals(&e, &at, names, ROOTS), said = 0;
       for (uint32_t i = 0; i < count; i += 1) {
         const char *w = text;
         while (*w && !(names[i].n == strcspn(w, " ") && !memcmp(names[i].p, w, names[i].n))) w += strcspn(w, " "), w += *w == ' ';
-        if (!*w) FAIL("at +0x%llx the variable %.*s is in scope, the program says only %s", voff, (int)names[i].n, (const char *)names[i].p, text);
+        if (!*w && *(const char *)names[i].p != '$') FAIL("at +0x%llx the variable %.*s is in scope, the program says only %s", voff, (int)names[i].n, (const char *)names[i].p, text);
       }
       for (const char *w = text; *w; w += strcspn(w, " "), w += *w == ' ') said += 1;
       if (said == count) shown += 1; else missing += 1;
@@ -270,6 +283,10 @@ int main(int argc, char **argv)
     }
     EvalValue v = eval(&e, &at, text, &why);
     if (!v.kind && !strcmp(why, "it has no place here") && ++missing) continue;
+    /* a variable this compiler is known to have dropped (check.sh has the reasons) */
+    for (const char *w = text; !v.kind && !strcmp(why, "no such name") && *w; w += strspn(w, NAME), w += strcspn(w, NAME))
+      if (word(dropped, ' ', w, strspn(w, NAME))) { why = NULL; break; }
+    if (!v.kind && !why && ++missing) continue;
     if (addr == 5) {   /* no meaning, and why */
       char want[64] = {0};
       for (uint32_t i = 0; i < sizeof want - 1 && target_read(e.target, value + i, &want[i], 1) && want[i]; i += 1) {}

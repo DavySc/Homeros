@@ -10,7 +10,7 @@ SAN="-fsanitize=address,undefined -fno-sanitize-recover=all"
 run() { # run <dir with the sources> <list|test|specs|oracle|x64|win|windows|engine|eval|front|fuzz|all>: 0 when the named checks pass, 2 when
         # something does not compile (a planted bug must be caught by a check, not by the compiler), 3 when the
         # test files cannot be made (nor by a full disk)
-  local src=$1 what=$2 b t lib; b=$(mktemp -d)
+  local src=$1 what=$2 b t lib here; b=$(mktemp -d); here=$(cd "$1" && pwd)
   lib=$(ls "$src"/dbg/*.c | grep -v '/engine\.c$\|/session\.c$\|/eval\.c$\|/view\.c$\|/ask\.c$')   # the engine, its thread and the evaluator need a target: linked in the engine and eval steps; here compiled, and the thread run on a made-up target (tests/test_session.c)
   case $what in test|oracle|fuzz|all)
     python3 -I "$src/tests/seed_rdi.py" "$b/seed.rdi" || return 3
@@ -95,6 +95,14 @@ for l in open(sys.argv[1] + "/tests/plants.txt"):
         (cd "$b" && WINEDEBUG=-all timeout 300 "${WINE:-wine}" ./zoo_check.exe zoo-${o%%:*}.exe $(tr : ' ' <<<"${o#*:}") $seed 2>/dev/null | grep "^zoo_check" | tee zoo.out; grep -q "what the program says" zoo.out) || return 1
       done
     done
+    # and as MSVC built it on the recorder (rdi/zoo.exe plain, rdi/zoo_o2.exe optimised: of the zoo.c of that recording), where the program cannot be the measure of everything:
+    # MSVC gives !x the size of a char and lets an unsigned bit field stay unsigned in arithmetic, where C makes both int: the evaluator follows C. Optimised, it
+    # drops np, pp and made, and puts the variables of all blocks of a function into one scope, each alive throughout: nothing says which x is meant where (the first is taken)
+    local msvc='!wide;!pointer;nest.bits.low > -1;nest.bits.low - 6;-nest.bits.low < 0'
+    for seed in 1 2 3; do
+      (cd "$b" && cp "$OLDPWD"/rdi/zoo.exe "$OLDPWD"/rdi/zoo.pdb "$OLDPWD"/rdi/zoo_o2.exe "$OLDPWD"/rdi/zoo_o2.pdb . && WINEDEBUG=-all timeout 300 "${WINE:-wine}" ./zoo_check.exe zoo.exe 400 395 0 5000 4 $seed "" "$msvc" 2>/dev/null | grep "^zoo_check" | tee zoo.out; grep -q "what the program says" zoo.out) || return 1
+      (cd "$b" && WINEDEBUG=-all timeout 300 "${WINE:-wine}" ./zoo_check.exe zoo_o2.exe 400 342 15 3000 4 $seed "np pp made" "$msvc;x;x n" 2>/dev/null | grep "^zoo_check" | tee zoo.out; grep -q "what the program says" zoo.out) || return 1
+    done
   fi
   if [ "$what" = front ] || [ "$what" = all ]; then
     # the whole of it as a person meets it: the console debugger (cmd/hdbg.c: the engine thread, its queues, the asks) taken through tests/hdbg.txt on tests/tour.c
@@ -102,7 +110,6 @@ for l in open(sys.argv[1] + "/tests/plants.txt"):
     ${WINCC:-x86_64-w64-mingw32-gcc} -std=c17 -O1 -g -Wall -Wextra -Werror -static -pthread $lib "$src"/dbg/engine.c "$src"/dbg/session.c "$src"/dbg/eval.c "$src"/dbg/view.c "$src"/dbg/ask.c "$src"/dbg/win/target.c "$src"/cmd/hdbg.c -o "$b/hdbg.exe" || return 2
     echo 'int _fltused;' > "$b/flt.c" && clang --target=x86_64-pc-windows-msvc -ffreestanding -c "$b/flt.c" -o "$b/flt.obj" || return 3
     clang --target=x86_64-pc-windows-msvc -g -gcodeview -O0 -funwind-tables -ffreestanding -mno-stack-arg-probe -c "$src/tests/tour.c" -o "$b/tour.obj" && lld-link -nologo -debug -nodefaultlib -entry:main -subsystem:console -dynamicbase:no "$b/tour.obj" "$b/flt.obj" -out:"$b/tour.exe" -pdb:"$b/tour.pdb" || return 3
-    local here; here=$(cd "$src" && pwd)
     (cd "$b" && WINEDEBUG=-all timeout 120 "${WINE:-wine}" ./hdbg.exe tour.exe < "$here/tests/hdbg.txt" 2>/dev/null | tr -d '\r' | sed -E 's/0x[0-9a-f]+/0x_/g; s/ [^ ]*[\\/]([^\\/ ]*:[0-9]+)$/ \1/; /^#/{/tour\.c:/!d}' > front.out; tr -d '\r' < "$here/tests/hdbg.expect" > expect.out; diff expect.out front.out | head -70; cmp -s expect.out front.out) || return 1   # on Windows git may give the file CR LF ends
     (cd "$b" && ! WINEDEBUG=-all timeout 120 "${WINE:-wine}" ./hdbg.exe nothing.exe < /dev/null >/dev/null 2>&1) || return 1
   fi

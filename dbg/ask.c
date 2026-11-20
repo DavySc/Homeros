@@ -10,13 +10,13 @@ static void tail(char *to, uint32_t n, const char *path, uint64_t len)
   memcpy(to, path + skip, len - skip), to[len - skip] = 0;
 }
 
-/* Is `end` the end of the path, from the start of one of its parts on? Letters of either case and both slashes are the same. */
+/* Is `end` the end of the path, from the start of one of its parts on? Letters of either case are the same, and `end` may have either slash (rdi_path writes /). */
 static bool ends(const char *path, uint64_t len, const char *end, uint64_t n)
 {
-  if (n == 0 || n > len || (n < len && path[len - n - 1] != '/' && path[len - n - 1] != '\\')) return false;
+  if (n == 0 || n > len || (n < len && path[len - n - 1] != '/')) return false;
   for (uint64_t i = 0; i < n; i += 1) {
     char a = path[len - n + i], b = end[i];
-    a = a == '\\' ? '/' : a >= 'A' && a <= 'Z' ? (char)(a + 32) : a, b = b == '\\' ? '/' : b >= 'A' && b <= 'Z' ? (char)(b + 32) : b;
+    a = a >= 'A' && a <= 'Z' ? (char)(a + 32) : a, b = b == '\\' ? '/' : b >= 'A' && b <= 'Z' ? (char)(b + 32) : b;
     if (a != b) return false;
   }
   return true;

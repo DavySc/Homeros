@@ -1086,7 +1086,6 @@ test | dbg/session.c | if (c.kind == SESSION_ASK) answer(s, NULL, n); |
 test | dbg/session.c | if (c.kind == SESSION_ASK) answer(s, open ? &e : NULL, n); | 
 test | dbg/session.c | if (c.kind == SESSION_ASK) answer(s, open ? &e : NULL, n); | if (c.kind == SESSION_ASK && open) answer(s, &e, n);
 eval | dbg/ask.c | uint64_t skip = len < n ? 0 : len - (n - 1); | uint64_t skip = len < n ? 0 : len - n;
-eval | dbg/ask.c | if (n == 0 \p\p n > len \p\p (n < len && path[len - n - 1] != '/' && path[len - n - 1] != '\\')) return false; | if (n == 0 \p\p n > len) return false;
 eval | dbg/ask.c | b = b == '\\' ? '/' : b >= 'A' && b <= 'Z' ? (char)(b + 32) : b; | b = b == '\\' ? '/' : b;
 eval | dbg/ask.c | if (a != b) return false; | 
 eval | dbg/ask.c | if (function && cap - used >= 8) memcpy((char *)out + used, &function, 8), used += 8; | if (cap - used >= 8) memcpy((char *)out + used, &function, 8), used += 8;
@@ -1126,3 +1125,7 @@ front | dbg/session.c | if (open) e.halt = halt, e.halt_arg = s; | if (!open) e.
 
 front | dbg/ask.c | uint64_t function = line ? 0 : engine_function(m, more, strlen(more)); | uint64_t function = 0;
 eval | dbg/ask.c | uint64_t function = line ? 0 : engine_function(m, more, strlen(more)); | uint64_t function = engine_function(m, more, 0);
+
+eval | dbg/ask.c | b = b == '\\' ? '/' : b >= 'A' && b <= 'Z' ? (char)(b + 32) : b; | b = b >= 'A' && b <= 'Z' ? (char)(b + 32) : b;
+
+eval | dbg/ask.c | if (n == 0 \p\p n > len \p\p (n < len && path[len - n - 1] != '/')) return false; | if (n == 0 \p\p n > len) return false;
