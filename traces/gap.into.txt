@@ -21,6 +21,6 @@ step_into_line -> work gap.c:24 +0x10e5 [main_thread completed step]
 step_into_line -> main gap.c:28 +0x1105 [main_thread completed step]
 step_into_line -> __scrt_common_main_seh exe_common.inl:288 +0x132f [main_thread completed step]
 step_into_line -> __scrt_common_main_seh exe_common.inl:294 +0x1331 [main_thread completed step]
-step_into_line -> __scrt_is_managed_app utility_desktop.cpp:32 +0x1cb0 [main_thread completed step]
-step_into_line -> __scrt_is_managed_app utility_desktop.cpp:33 +0x1cb4 [main_thread completed step]
+step_into_line -> __scrt_is_managed_app utility_desktop.cpp:32 +0x1cc0 [main_thread completed step]
+step_into_line -> __scrt_is_managed_app utility_desktop.cpp:33 +0x1cc4 [main_thread completed step]
 step_into_line -> outside kernel32.dll!

@@ -82,6 +82,6 @@ step_into_line -> main calls.c:300 +0x11cc [main_thread completed step]
 step_into_line -> main calls.c:301 +0x11d9 [main_thread completed step]
 step_into_line -> __scrt_common_main_seh exe_common.inl:288 +0x13ff [main_thread completed step]
 step_into_line -> __scrt_common_main_seh exe_common.inl:294 +0x1401 [main_thread completed step]
-step_into_line -> __scrt_is_managed_app utility_desktop.cpp:32 +0x1d80 [main_thread completed step]
-step_into_line -> __scrt_is_managed_app utility_desktop.cpp:33 +0x1d84 [main_thread completed step]
+step_into_line -> __scrt_is_managed_app utility_desktop.cpp:32 +0x1d90 [main_thread completed step]
+step_into_line -> __scrt_is_managed_app utility_desktop.cpp:33 +0x1d94 [main_thread completed step]
 step_into_line -> outside kernel32.dll!

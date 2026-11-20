@@ -1,0 +1,11 @@
+start -> main recur.c:22 +0x1070 [main_thread stopped at entry point]
+step_over_line -> main recur.c:23 +0x1074 [main_thread completed step]
+step_over_line -> main recur.c:24 +0x1081 [main_thread completed step]
+step_over_line -> main recur.c:25 +0x1095 [main_thread completed step]
+step_over_line -> main recur.c:26 +0x10b8 [main_thread completed step]
+step_over_line -> main recur.c:27 +0x10d8 [main_thread completed step]
+step_over_line -> main recur.c:28 +0x10de [main_thread completed step]
+step_over_line -> __scrt_common_main_seh exe_common.inl:288 +0x130f [main_thread completed step]
+step_over_line -> __scrt_common_main_seh exe_common.inl:294 +0x1311 [main_thread completed step]
+step_over_line -> __scrt_common_main_seh exe_common.inl:295 +0x136f [main_thread completed step]
+step_over_line -> ended
