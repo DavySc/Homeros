@@ -33,7 +33,7 @@ wl: ligature cut at its own cell~test TESTS=wl~~src/wl/wl.c~int ax = gx < w * ce
 wl: glyph cut at the span, not its word~test TESTS=wl~~src/wl/wl.c~int ax = gx < w * cell_w ? w * cell_w - gx : 0~int ax = gx < lo * cell_w ? lo * cell_w - gx : 0
 wl: span shaped without the blank before it~test TESTS=wl~~src/wl/wl.c~	if (lo) { s[n] = ' ';~	if (0) { s[n] = ' ';
 wl: ligature in its last cell's colours under the cursor~test TESTS=wl~~src/wl/wl.c~colours(g, r, k < c ? k : c, r == g->crow && k == g->ccol, &fg, &bg);~colours(g, r, c, r == g->crow && k == g->ccol, &fg, &bg);
-wl: whole glyph in its first cell's colours~test TESTS=wl~~src/wl/wl.c~j1 = m < zx ? m : zx;~j1 = zx;
+wl: whole glyph in its first cell's colours~test TESTS=wl~~src/wl/wl.c~j1 = m < zx ? m : zx;~j1 = m < zx ? zx : zx;
 wl: earlier cells in the colours of the one before the last~test TESTS=wl~~src/wl/wl.c~k < c ? k : c, r ==~k < c ? c - 1 : c, r ==
 wl: a part ends half a cell late~test TESTS=wl~~src/wl/wl.c~m = (k + 1) * cell_w - gx;~m = (k + 1) * cell_w - gx + cell_w / 2;
 wl: only the cursor's own cell coloured per cell~test TESTS=wl~~src/wl/wl.c~colours(g, r, k < c ? k : c, r == g->crow && k == g->ccol, &fg, &bg);~colours(g, r, k < c && r == g->crow && k == g->ccol ? k : c, r == g->crow && k == g->ccol, &fg, &bg);
