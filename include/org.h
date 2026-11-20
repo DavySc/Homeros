@@ -7,6 +7,7 @@
 #ifndef ORG_H
 #define ORG_H
 #include <stddef.h>
+#include "text.h"
 
 /* org-element-all-elements without inlinetask (org-inlinetask is not loaded
    by default, so 15 stars make a headline) */
@@ -73,4 +74,23 @@ int org_planning(const char *s, size_t n, const OrgNode *e, OrgTs t[3]);
 /* A clock node's :value in *t (returns 0 when it has none) and its
    :duration [dur[0], dur[1]), empty while the clock runs. */
 int org_clock(const char *s, size_t n, const OrgNode *e, OrgTs *t, size_t dur[2]);
+
+/* Org's colours for the syntax module (package 12), shaped as tsql.h: the
+   faces (grid.h) that Org's own font-lock gives a whole buffer
+   (org-set-font-lock-defaults); the objects inside paragraphs (links,
+   emphasis, footnotes) are not coloured yet. */
+typedef struct OrgFx OrgFx;
+OrgFx *orgfx_new(const Text *t);
+void   orgfx_free(OrgFx *f);
+/* Called before every change, while t is still the old text: at pos, ndel
+   bytes become nins. */
+void   orgfx_edit(OrgFx *f, const Text *t, size_t pos, size_t ndel, size_t nins);
+/* Deferred work, after a frame: reads the changed bytes and reparses the
+   subtrees they touch (org_edit, one step: stop is not asked).  0 nothing
+   changed, 1 colours changed. */
+int    orgfx_update(OrgFx *f, int (*stop)(void));
+/* One face per byte of [a, z) into face, cleared by the caller; no
+   allocation.  Before an update, the bytes an edit did not touch keep the
+   colours they had. */
+void   orgfx_faces(OrgFx *f, size_t a, size_t z, unsigned char *face);
 #endif

@@ -34,7 +34,7 @@ for t in test_git_win ${run:+test_git}; do
 	zig cc -target x86_64-windows-gnu -std=c17 -Wall -Wextra -Werror -D_DEFAULT_SOURCE -Iinclude -O1 -g \
 	  -fsanitize=undefined -fsanitize-trap=undefined -o build/win/$t.exe tests/$t.c src/git/*.c \
 	  $(pick core) $(pick text) $(pick undo) $(pick uni) $(pick keys) $(pick loop) $(pick file) $(pick grid) \
-	  $(pick theme) $(pick kitten) $(pick lsp) $(pick sqlfmt) $(pick snip) $(pick tools) $(pick shada) src/syntax/tsql.c -lshell32
+	  $(pick theme) $(pick kitten) $(pick lsp) $(pick sqlfmt) $(pick snip) $(pick tools) $(pick shada) $(pick str) src/syntax/tsql.c -lshell32   # str: package 17's, agreed by thread 0
 done
 timeout 300 $run build/win/test_git_win.exe || { echo "FAIL test_git_win"; exit 1; }
 [ -n "$run" ] || exit 0

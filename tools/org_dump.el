@@ -1,7 +1,9 @@
 ;;; -*- lexical-binding: t -*-
 ;; Org's own parser, org-element, as the oracle for src/org (package 16):
-;; for each file, "== name" and then every element in document order as
-;; tests/org_drv.c prints it.  Positions are bytes from 0; "-" is none.
+;; for each file, "== name", every element in document order as
+;; tests/org_drv.c prints it, then org-element-timestamp-parser at every
+;; character, as in a paragraph (case-fold-search t).  Positions are bytes
+;; from 0; "-" is none.
 ;; emacs -Q --batch -l tools/org_dump.el FILE...
 (require 'org-element)
 (setq org-todo-keywords '((sequence "TODO" "NEXT" "WAIT" "|" "DONE" "CANCELLED")))
@@ -49,7 +51,11 @@
     ;; Org itself fails on some texts (a CAPTION[...] with a blank inside its
     ;; brackets, left without an element, errors in the keyword parser)
     (condition-case err
-        (let ((tree (org-element-parse-buffer 'element)))
-          (dolist (c (org-element-contents tree)) (org-dump-node c)))
+        (let ((tree (org-element-parse-buffer 'element)) (case-fold-search t))
+          (dolist (c (org-element-contents tree)) (org-dump-node c))
+          (goto-char (point-min))
+          (while (not (eobp))
+            (org-dump-ts "ts" (org-element-timestamp-parser))
+            (forward-char 1)))
       (error (princ (format "!error %S\n" err))))))
 (setq command-line-args-left nil)

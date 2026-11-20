@@ -92,13 +92,15 @@ conform: $(OBJS) | build/san
 	gcc $(WARN) $(CPPFLAGS) $(SAN) -o build/san/conform_drv tests/conform_drv.c $(LIB_SRCS) $(OBJS) $(LIBS)
 	python3 tools/conform.py build/san/conform_drv $(CONFORM_N) $${SEED:-1}
 
-# Org's parser against Org itself (package 16): fresh random org texts fed
-# to src/org and to org-element in emacs -Q --batch (tools/org_dump.el)
+# Org's parser and colours against Org itself (package 16): fresh random org
+# texts fed to src/org and to emacs -Q --batch (org-element in
+# tools/org_dump.el, font-lock in tools/org_faces.el)
 ORG_N ?= 2000
 org-conform: $(OBJS) | build/san
 ifneq ($(wildcard src/org/*.c),)
 	gcc $(WARN) $(CPPFLAGS) $(SAN) -o build/san/org_drv tests/org_drv.c $(LIB_SRCS) $(OBJS) $(LIBS)
 	python3 tools/org_conform.py build/san/org_drv $(ORG_N) $${SEED:-1}
+	python3 tools/org_conform.py -f build/san/org_drv $(ORG_N) $${SEED:-1}
 endif
 
 # Neovim's undo tree against UndoTree.tla's rules (package 2's oracle);

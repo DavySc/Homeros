@@ -1,0 +1,42 @@
+# Plants for src/lsp/ (format in tools/planted.sh).  LspSync.tla's broken
+# variants (nomap, prunesend, mapreply) are here as code.
+lsp: diagnostics shown at their raw positions (LspSync nomap)~test TESTS=lsp~~src/lsp/lsp.c~	shift_set(&d->diag, pos, ndel, nins);~
+lsp: older diagnostics not mapped through the edits since~test TESTS=lsp~~src/lsp/lsp.c~	for (int k = 0; k < d->nlog; k++) if (d->log[k].v >= v) p = after(p, &d->log[k], end);~	for (int k = 0; k < d->nlog; k++) if (d->log[k].v >= v && 0) p = after(p, &d->log[k], end);
+lsp: the edit log dropped once didChange is sent (LspSync prunesend)~test TESTS=lsp~~src/lsp/lsp.c~	d->chg.n = 0;¶	end(d->s);~	d->chg.n = 0;¶	d->nlog = 0;¶	end(d->s);
+lsp: an older publication replaces a newer one~test TESTS=lsp~~src/lsp/lsp.c~	if (ver < d->floor) return;~
+lsp: a mapped end inside the deletion goes after the insertion~test TESTS=lsp~~src/lsp/lsp.c~	if (end ? !before(e->e, p) : before(p, e->e)) return end ? e->s : e->i;~	if (end ? !before(e->e, p) : before(p, e->e)) return e->i;
+lsp: a reply shown after the text changed (LspSync mapreply)~test TESTS=lsp~~src/lsp/lsp.c~	return d && current(d, d->ask[kind].ver) ? d->ask[kind].ans : NULL;~	return d && (current(d, d->ask[kind].ver) || 1) ? d->ask[kind].ans : NULL;
+lsp: the end of a range does not follow a deleted last character~test TESTS=lsp~~src/lsp/lsp.c~g->z <= pos + ndel ? pos~g->z <= pos + ndel ? g->z
+lsp: the start of a range does not follow a deleted first character~test TESTS=lsp~~src/lsp/lsp.c~(g->a > pos + ndel ? g->a : pos + ndel)~g->a
+lsp: incremental diagnostics replace the earlier ones~test TESTS=lsp~~src/lsp/lsp.c~json_true(m, tk, json_get(m, tk, p, "isIncremental"))~0
+lsp: versions jump by 2~test TESTS=lsp~~src/lsp/lsp.c~	if (!d || !d->chg.n) return;¶	d->ver++;~	if (!d || !d->chg.n) return;¶	d->ver += 2;
+lsp: messages sent before the initialize reply~test TESTS=lsp~~src/lsp/lsp.c~	if (!s->ready && !now) {~	if (!s->ready && !now && 0) {
+lsp: a new request does not cancel the last~test TESTS=lsp~~src/lsp/lsp.c~	cancel(d, kind);¶~¶
+lsp: a reopened file never gets didOpen~test TESTS=lsp~~src/lsp/lsp.c~	d->nlog = 0;¶	open_doc(d);~	d->nlog = 0;
+lsp: a request from the server left unanswered~test TESTS=lsp~~src/lsp/lsp.c~		send(s);¶		return;¶	}¶	if (meth >= 0) {~		return;¶	}¶	if (meth >= 0) {
+lsp: columns sent as bytes, not UTF-16~test TESTS=lsp~~src/lsp/lsp.c~	*c = lsp_u16(b, n);~	*c = n; (void)b;
+lsp: a column inside a surrogate pair goes to the next character~test TESTS=lsp~~src/lsp/u16.c~		if (c < u + w) return i;~		if (c <= u) return i;
+lsp: astral characters counted as one UTF-16 unit (Frama-C)~frama~~src/lsp/u16.c~		u += k == 4 ? 2 : 1;~		u += 1;
+lsp: JSON reader accepts a trailing comma~fuzz FUZZERS=lsp_json FUZZ_SECONDS=30~~src/lsp/json.c~			if (s[p->i++] != ',') return -1;~			if (s[p->i++] != ',') return -1;¶			ws(p);¶			if (p->i < p->n && s[p->i] == close) { p->i++; break; }
+lsp: bytes that are not UTF-8 sent as they are~test TESTS=lsp~~src/lsp/json.c~			if (valid(b + j, k) ? ~			if (valid(b + j, k) || 1 ? 
+lsp: a character past U+10FFFF sent as one U+FFFD, not two~test TESTS=lsp~~src/lsp/json.c~k == 4 ? str_lit(s, "\xEF\xBF\xBD\xEF\xBF\xBD")~k == 5 ? str_lit(s, "\xEF\xBF\xBD\xEF\xBF\xBD")
+lsp: an overlong 2-byte form sent as it is~test TESTS=lsp~~src/lsp/json.c~	     : k == 2 ? b[0] >= 0xC2~	     : k == 2 ? b[0] >= 0xC0
+lsp: a change holding what is not UTF-8 sent alone~test TESTS=lsp~~src/lsp/lsp.c~	if (str_addq(&o, ins, nins)) d->bad = 1;~	str_addq(&o, ins, nins);
+lsp: a file holding what is not UTF-8 gets changes alone~test TESTS=lsp~~src/lsp/lsp.c~	d->bad = put_text(d->t);~	put_text(d->t);
+lsp: a full edit log is not cut~test TESTS=lsp~~src/lsp/lsp.c~	if (d->nlog == LOG) {~	if (0) {
+lsp: a cut edit log still maps what is older than it~test TESTS=lsp~~src/lsp/lsp.c~		d->floor = d->nlog ? d->log[0].v + 1 : d->ver + 1;¶~
+lsp: diagnostics mapped across an edit next to what is not UTF-8~test TESTS=lsp~~src/lsp/lsp.c~	if (d->bad) { d->nlog = 0; d->floor = d->ver + 1; }~
+lsp: the infoview does not hear the edits (lsp_tap out 1)~test TESTS=lsp~~src/lsp/lsp.c~	if (lsp_tap && s->def->lean && (!strncmp~	if (0 && lsp_tap && s->def->lean && (!strncmp
+lsp: the infoview hears every message sent, not only edits and closes~test TESTS=lsp~~src/lsp/lsp.c~	if (lsp_tap && s->def->lean && (!strncmp~	if (lsp_tap && s->def->lean && (1 || !strncmp
+lsp: the infoview does not hear what the server says unasked~test TESTS=lsp~~src/lsp/lsp.c~		if (lsp_tap && s->def->lean) lsp_tap(0, m, n);¶		char name[64];~		char name[64];
+lsp: the infoview hears every answer, not only initialize's~test TESTS=lsp~~src/lsp/lsp.c~	long rid = json_int(m, tk, id);¶~	long rid = json_int(m, tk, id);¶	if (lsp_tap && s->def->lean && rid) lsp_tap(0, m, n);¶
+lsp: the answer to initialize not kept for a bridge opened later~test TESTS=lsp~~src/lsp/lsp.c~		if (s->def->lean) { s->init.n = 0; str_add(&s->init, m, n); }~		if (s->def->lean) s->init.n = 0;
+lsp: a raw request goes before the edits not yet sent~test TESTS=lsp~~src/lsp/lsp.c~	lsp_flush(d);¶	o.n = 0;¶	str_lit(&o, "{\"jsonrpc\":\"2.0\",");~	o.n = 0;¶	str_lit(&o, "{\"jsonrpc\":\"2.0\",");
+lsp: a raw request's answer not given to its caller~test TESTS=lsp~~src/lsp/lsp.c~		if (r->s == s && r->id == rid) {~		if (r->s == s && r->id == rid + 1) {
+lsp: a raw request left waiting when its server dies~test TESTS=lsp~~src/lsp/lsp.c~		if (r->s == s) { *q = r->link; r->fn(r->ctx, NULL, 0); free(r); }~		if (r->s == s) { *q = r->link; free(r); }
+lsp: a raw message for a file no server has open is sent anyway~test TESTS=lsp~~src/lsp/lsp.c~	if (!d || d->s->proc < 0 || (fn && !r)) { free(r); return -1; }~	if (!d) d = srvs ? srvs->docs : NULL;¶	if (!d || d->s->proc < 0 || (fn && !r)) { free(r); return -1; }
+lsp: the status line counts no work begun~test TESTS=lsp~~src/lsp/lsp.c~s->work = (s->work < 0 ? 0 : s->work) + 1;~s->work = s->work < 0 ? 0 : s->work;
+lsp: the status line counts no work ended~test TESTS=lsp~~src/lsp/lsp.c~ && s->work > 0) s->work--;~ && s->work > 0) s->work += 0;
+lsp: a new server shows the old one's work~test TESTS=lsp~~src/lsp/lsp.c~	s->work = -1;¶~
+lsp: the status line names the server by its whole path~test TESTS=lsp~~src/lsp/lsp.c~	return b ? b + 1 : a;~	return b ? a : a;
+lsp: a formatted message cut at 512 bytes (a long path's URI lost)~test TESTS=lsp~~src/str/str.c~	if (n < 0 || grow(s, (size_t)n)) return -1;~	if (n < 0 || n >= 512 || grow(s, (size_t)n)) return -1;

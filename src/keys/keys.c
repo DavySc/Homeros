@@ -114,10 +114,14 @@ static void key(int k, int pending)
 
 /* only those whose targets exist; the SPC g and SPC h ones are git.h's */
 static const char *const maps[] = {
-	" ff", " fg", " fr", " ,", " e", " pv", "-",
+	" ff", " fg", " fr", " ,", " e", " pv", "-", " D",
 	" gg", " gs", " gl", " gL", " gd", " gb", " gB", " hs", " hr", " hS", " hu", " hp"
 };
 static int lead[3], nlead;   /* the keys typed of a map not yet complete */
+
+/* snacks' :Dashboard, also SPC D: the start screen on a new empty buffer
+   (:enew) (package 5's, agreed) */
+static void dashboard(Editor *e) { if (!core_edit_file(e, "", 0)) tools_dash(e, 0); }
 
 /* A map completed runs; one that may still be
    completed waits (a lone SPC as with which-key, without 'timeoutlen');
@@ -141,6 +145,7 @@ static int map(Editor *e, int k)
 		case ',': tools_pick(e, PICK_BUFFERS); break;
 		case 'e': tools_pick(e, PICK_EXPLORER); break;
 		case 'p': tools_oil(e, NULL); break;
+		case 'D': dashboard(e); break;
 		default: git_leader(e, m[1], m[2]);
 		}
 		return 1;
@@ -224,6 +229,7 @@ static void ex(void)
 	else if (!strcmp(c, "x")) { if (!core_modified(B) || !ex_write(0)) core_close(E, 0); }
 	/* Davy's :Format (conform.nvim): the whole buffer */
 	else if (!strcmp(c, "Format")) { if (is_sql()) sql_format(0, text_len(B->text)); }
+	else if (!strcmp(c, "Dashboard")) dashboard(E);
 	else if (*c) core_msg(E, "E492: Not an editor command: %s", c);
 }
 
