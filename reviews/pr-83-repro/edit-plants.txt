@@ -1,0 +1,6 @@
+# Review of PR 83: extra plants in the edit and window paths, in tests/plants' format
+review: colours: after a pending edit the faces land at the buffer's start (fuzz)~fuzz FUZZERS=org FUZZ_SECONDS=60~~src/org/org.c~face + (b - a));~face);
+review: colours: an edit past the pending ones not merged (fuzz)~fuzz FUZZERS=org FUZZ_SECONDS=60~~src/org/org.c~	if (pos + ndel > f->hc) f->ho += pos + ndel - f->hc, f->hc = pos + ndel;¶~
+review: colours: a scan kept from a later window (fuzz)~fuzz FUZZERS=org FUZZ_SECONDS=60~~src/org/org.c~Scan c = f->c.at <= L && f->c.at >= R ? f->c~Scan c = f->c.at != ORG_NONE && f->c.at >= R ? f->c
+review: colours: the scan starts at the window's line, not the headline before (fuzz)~fuzz FUZZERS=org FUZZ_SECONDS=60~~src/org/org.c~: (Scan){ R, 0, 0, 0 };~: (Scan){ L, 0, 0, 0 };
+review: colours: the old text's colours from the new text's bytes (fuzz)~fuzz FUZZERS=org FUZZ_SECONDS=60~~src/org/org.c~paint(f, b - f->hc + f->ho, z - f->hc + f->ho, face + (b - a));~paint(f, b, z, face + (b - a));

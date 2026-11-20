@@ -1,0 +1,31 @@
+# Review of PR 83: extra plants in the new colour code, in tests/plants' format
+# without the target and prep fields: name~old~new.  Run by mutants.sh against
+# the colour oracle (org_conform.py -f, 2,000 texts, seed 1).
+block content clipped to the block's end (redundant?)~set(l, nl < c->end ? nl : c->end, FACE_ORG_BLOCK);~set(l, nl, FACE_ORG_BLOCK);
+a stars line ending a block takes the end line's face~			if (S[l] != '*') set(l, e < N ? e + 1 : e, FACE_ORG_BLOCK_LINE);~			set(l, e < N ? e + 1 : e, FACE_ORG_BLOCK_LINE);
+a property's value keeps the earlier face~		set(p, x, FACE_NONE);~
+a drawer line without its last colon~set(b, names(b + 1) + 1, FACE_ORG_DRAWER);~set(b, names(b + 1), FACE_ORG_DRAWER);
+after a sexp line, <%%( is searched again~set(l, e, FACE_ORG_DATE), p = e;~set(l, e, FACE_ORG_DATE);
+a date range's dashes may be followed by a dash~		if (z > x + 1 && (z >= e || S[z] != '-') && (z = ts_both(z)) != ORG_NONE) x = z;~		if (z > x + 1 && (z = ts_both(z)) != ORG_NONE) x = z;
+a done headline without the space after its keyword~		if (i >= org_done && x < e && S[x] == ' ') {~		if (i >= org_done) {
+[100x%] any three characters count as done~x == p + 4 && !memcmp(S + p + 1, "100", 3)~x == p + 4
+[/] counts as done~x > p + 1 && x - p - 1 == z - x - 1~x - p - 1 == z - x - 1
+a description term after * at the line's start~(S[b] == '*' && b > l)~S[b] == '*'
+:ARCHIVE: searched from the stars' end~for (p = q + 1; p + 9 <= e; p++) if (is(p, ":ARCHIVE:"))~for (p = q; p + 9 <= e; p++) if (is(p, ":ARCHIVE:"))
+COMMENT followed by anything~is(x, "COMMENT") && (x + 7 == e || S[x + 7] == ' ')~is(x, "COMMENT")
+a table rule from +- alone~(is(b, "+-") && one(b + 2, "-+"))~is(b, "+-")
+a column width cookie <c> missed~one(x + 1, "lrc")~one(x + 1, "lr")
+a document info value from the keyword's end~			set(blanks(z3), e < N ? e + 1 : e, i ? FACE_ORG_INFO : FACE_MARKUP_HEADING);~			set(z3, e < N ? e + 1 : e, i ? FACE_ORG_INFO : FACE_MARKUP_HEADING);
+[@start:N] not read~size_t v = x + 2 + 6 * is(x + 2, "start:");~size_t v = x + 2;
+after an export snippet, the scan goes on inside it~			p = z + 1;¶		}¶	if (hl)~		}¶	if (hl)
+a tags group of two characters~a + 3 > *z~a + 2 > *z
+a meta keyword without its colon~z3 = letters(g3 + 1), z3 += z3 < e && S[z3] == ':';~z3 = letters(g3 + 1);
+a block ends at stars and a space only~(stars(m) > m && sp(stars(m)))~(stars(m) > m && S[stars(m)] == ' ')
+CLOCK: not a special keyword~		for (int i = 0; i < 4; i++)¶			if (is(p, k[i]))~		for (int i = 0; i < 3; i++)¶			if (is(p, k[i]))
+a fixed-width line without its newline~if (fixedl(l)) set(b, nl, FACE_MARKUP_RAW);~if (fixedl(l)) set(b, e, FACE_MARKUP_RAW);
+a formula's colon not skipped~for (z = x + 1 + (x != ORG_NONE && S[x] == ':'); x != ORG_NONE~for (z = x + 1; x != ORG_NONE
+the caption's bracket closed by the first ]: (not the last)~for (size_t j = e; j > k + 1 && x == ORG_NONE; j--) if (S[j - 1] == ']' && j < e && S[j] == ':') x = j + 1;~for (size_t j = k + 2; j < e && x == ORG_NONE; j++) if (S[j - 1] == ']' && S[j] == ':') x = j + 1;
+a statistics cookie: the scan goes on inside it~			p = x + 1;¶		} else if~		} else if
+todo keyword followed by a tab~(blanks(*k) == e || S[*k] == ' ')~(blanks(*k) == e || blank(*k))
+a marking row's formula face to the last bar~if (z > x + 1) set(b + 1, z - 1, FACE_ORG_FORMULA);~if (z > x + 1) set(b + 1, z, FACE_ORG_FORMULA);
+a property key of one character missed~(z = run(b + 1)) >= b + 3~(z = run(b + 1)) >= b + 4

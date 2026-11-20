@@ -1,0 +1,77 @@
+caught        org: table row contents start at the bar   (make test TESTS=org): tests/test_org.c:669: CHECK(!strcmp(got, cases[i].want)) failed
+caught        org: drawer and footnote names take any non-ASCII byte (against Org)   (make org-conform ORG_N=2000 SEED=1): 39 of 2000 differ (no answer from Org on 1)
+caught        org: a timestamp's repeater is looked for only before its range (against Org)   (make org-conform ORG_N=2000 SEED=1): 525 of 2000 differ (no answer from Org on 1)
+caught        org: colours: tags without their outer colons (against Org)   (make org-conform ORG_N=2000 SEED=1): 258 of 2000 differ (no answer from Org on 135)
+caught        org: colours: export blocks not quoting (against Org)   (make org-conform ORG_N=2000 SEED=1): 22 of 2000 differ (no answer from Org on 135)
+caught        org: colours: special keywords inside a word (against Org)   (make org-conform ORG_N=2000 SEED=1): 323 of 2000 differ (no answer from Org on 135)
+caught        org: colours: the text after an edit not moved (fuzz)   (make fuzz FUZZERS=org FUZZ_SECONDS=60): ==18867== ERROR: libFuzzer: deadly signal
+caught        grid: covering a left half leaves its right half   (make test TESTS=grid_diff): tests/test_grid_diff.c:358: CHECK(g.c[4].len == 1 && g.c[4].ch[0] == ' ' && g.c[4].attr == ATTR_DIM && g.c[4].face == FACE_COMMENT && g.c[4].bg == FACE_HEADING_1_BG) failed
+caught        grid: a blanked right half takes the new attribute   (make test TESTS=grid_diff): tests/test_grid_diff.c:358: CHECK(g.c[4].len == 1 && g.c[4].ch[0] == ' ' && g.c[4].attr == ATTR_DIM && g.c[4].face == FACE_COMMENT && g.c[4].bg == FACE_HEADING_1_BG) failed
+caught        grid: the blank loses the face of the half it replaces   (make test TESTS=grid_diff): tests/test_grid_diff.c:358: CHECK(g.c[4].len == 1 && g.c[4].ch[0] == ' ' && g.c[4].attr == ATTR_DIM && g.c[4].face == FACE_COMMENT && g.c[4].bg == FACE_HEADING_1_BG) failed
+caught        grid: the store never emptied   (make test TESTS=grid_diff): tests/test_grid_diff.c:408: CHECK(grid_frame() && !grid_frame()) failed
+caught        grid: a changed background layer is an equal cell   (make test TESTS=grid_diff): tests/test_grid_diff.c:309: CHECK(0) failed
+caught        grid: grid_face ignores the background layer   (make test TESTS=grid_diff): tests/test_grid_diff.c:344: CHECK(grid_face(&q, &b) == &faces[FACE_STRING] && b == &faces[FACE_CURSOR_LINE]) failed
+caught        grid: grid_puts passes its end column   (make test TESTS=grid): tests/test_grid.c:71: CHECK(grid_puts(&g, 1, 0, 5, "ab\xe5\x85\xa8\xe8\xa7\x92", 8, ATTR_NONE, FACE_NONE) == 4 && g.c[16 + 4].ch[0] == ' ') failed
+caught        tty: every cell sent every frame   (make test TESTS=grid_diff): tests/test_grid_diff.c:313: CHECK(t.prints - before == want) failed
+caught        tty: a failed resize leaves the update open   (make test TESTS=grid_diff): tests/test_grid_diff.c:436: CHECK(!t.bad && !t.sync && t.frames == 1 && !t.hidden) failed
+caught        tty: a changed face keeps the last style   (make test TESTS=grid_diff): tests/test_grid_diff.c:309: CHECK(0) failed
+caught        tty: a face's style bits not sent   (make test TESTS=grid_diff): tests/test_grid_diff.c:309: CHECK(0) failed
+caught        tty: the background layer is not drawn   (make test TESTS=grid_diff): tests/test_grid_diff.c:309: CHECK(0) failed
+caught        tty: the layer's foreground drawn too   (make test TESTS=grid_diff): tests/test_grid_diff.c:309: CHECK(0) failed
+caught        org: a headline ends only at a shallower one (fuzz)   (make fuzz FUZZERS=org FUZZ_SECONDS=30): ==12960== ERROR: libFuzzer: deadly signal
+caught        org: org_edit stops its span before a new shallower headline's subtree ends (fuzz)   (make fuzz FUZZERS=org FUZZ_SECONDS=30): ==13844== ERROR: libFuzzer: deadly signal
+caught        org: colours: levels past 6 cycle over 6 faces, not Org's 8 (against Org)   (make org-conform ORG_N=2000 SEED=1): 271 of 2000 differ (no answer from Org on 135)
+caught        org: colours: a date range takes four dashes (against Org)   (make org-conform ORG_N=2000 SEED=1): 97 of 2000 differ (no answer from Org on 135)
+caught        org: colours: a failed caption line left plain (against Org)   (make org-conform ORG_N=2000 SEED=1): 217 of 2000 differ (no answer from Org on 135)
+caught        org: colours: the export snippet's backend without its colon (against Org)   (make org-conform ORG_N=2000 SEED=1): 177 of 2000 differ (no answer from Org on 135)
+caught        org: org_ts reads case-sensitively, as planning does (against Org)   (make org-conform ORG_N=2000 SEED=1): 637 of 2000 differ (no answer from Org on 1)
+caught        grid: a size that overflows is accepted   (make test TESTS=grid_diff): ==20420==ERROR: AddressSanitizer: out of memory: allocator is trying to allocate 0x800000000 bytes
+caught        grid: resize keeps the cursor   (make test TESTS=grid_diff): tests/test_grid_diff.c:368: CHECK(!grid_resize(&g, 2, 2) && !g.crow && !g.ccol) failed
+caught        grid: a long cluster cut inside a code point   (make test TESTS=grid_diff): tests/test_grid_diff.c:384: CHECK(g.c[3].len == 28 && !memcmp(grid_text(&g.c[3]), chain, 28) && !g.c[4].len) failed
+caught        grid: a full store reuses a slot   (make test TESTS=grid_diff): tests/test_grid_diff.c:415: CHECK(g.c[6].len == 3 && !memcmp(g.c[6].ch, "\xef\xbf\xbd", 3)) failed
+caught        grid: the '>' loses the background layer of the half it replaces   (make test TESTS=grid_diff): tests/test_grid_diff.c:353: CHECK(g.c[1].len == 1 && g.c[1].ch[0] == '>' && g.c[1].attr == ATTR_REV && g.c[1].face == FACE_STRING && g.c[1].bg == FACE_CURSOR_LINE && g.c[2].ch[0] == 'x') failed
+caught        grid: grid_face reads past faces[] for an unknown layer   (make test TESTS=grid_diff): tests/test_grid_diff.c:340: CHECK(grid_face(&q, &b) == &faces[FACE_NONE] && b == &faces[FACE_NONE]) failed
+caught        grid: grid_puts leaves the face off   (make test TESTS=grid): tests/test_grid.c:69: CHECK(g.c[i].face == FACE_KITTEN_TEXT) failed
+caught        tty: a frame outside a synchronized update   (make test TESTS=grid_diff): tests/test_grid_diff.c:309: CHECK(0) failed
+caught        tty: output never flushed when full   (make test TESTS=grid_diff): ==28212==ERROR: AddressSanitizer: global-buffer-overflow on address 0x558b51fd77fd at pc 0x558b51490dbf bp 0x7fff54de15c0 sp 0x7fff54de15b0
+caught        tty: a wrong colour in the shared face table   (make test TESTS=grid_diff): tests/test_grid_diff.c:309: CHECK(0) failed
+caught        tty: a long cluster printed from the cell's number   (make test TESTS=grid_diff): tests/test_grid_diff.c:309: CHECK(0) failed
+caught        tty: a wrong colour for a UI face (the status line's)   (make test TESTS=grid_diff): tests/test_grid_diff.c:309: CHECK(0) failed
+caught        org: checkbox [x] not folded to [X] (against Org)   (make org-conform ORG_N=2000 SEED=1): 127 of 2000 differ (no answer from Org on 1)
+caught        org: org_edit starts its span at a headline whose line the edit touches (fuzz)   (make fuzz FUZZERS=org FUZZ_SECONDS=30): ==13816== ERROR: libFuzzer: deadly signal
+caught        org: colours: DONE as a todo keyword (against Org)   (make org-conform ORG_N=2000 SEED=1): 164 of 2000 differ (no answer from Org on 135)
+caught        org: colours: a table row without its newline (against Org)   (make org-conform ORG_N=2000 SEED=1): 927 of 2000 differ (no answer from Org on 135)
+caught        org: colours: checkbox [x] (against Org)   (make org-conform ORG_N=2000 SEED=1): 132 of 2000 differ (no answer from Org on 135)
+caught        org: colours: a stale scan kept across an update   (make test TESTS=org): tests/test_org.c:691: CHECK(!memcmp(f + 20, g + 20, n - 20)) failed
+caught        org: a two-digit hour above 29 (against Org)   (make org-conform ORG_N=2000 SEED=1): 154 of 2000 differ (no answer from Org on 1)
+caught        grid: widths other than 1 and 2 accepted   (make test TESTS=grid_diff): tests/test_grid_diff.c:364: CHECK(!grid_put(&g, 0, 0, wide, 3, 0, ATTR_NONE) && !grid_put(&g, 0, 0, wide, 3, 3, ATTR_NONE)) failed
+caught        grid: a changed face is an equal cell   (make test TESTS=grid_diff): tests/test_grid_diff.c:309: CHECK(0) failed
+caught        grid: equal clusters get new numbers   (make test TESTS=grid_diff): tests/test_grid_diff.c:382: CHECK(g.c[1].len == 11 && !memcmp(grid_text(&g.c[1]), chars[11], 11) && grid_cell_eq(&g.c[1], &g.c[7])) failed
+caught        grid: a 31-byte cluster cut   (make test TESTS=grid_diff): ==22812==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x50300000014f at pc 0x565026cca02d bp 0x7ffc3847d530 sp 0x7ffc3847d520
+caught        grid: a put keeps the old background layer   (make test TESTS=grid_diff): tests/test_grid_diff.c:309: CHECK(0) failed
+caught        grid: a wide character's right half keeps the old background layer   (make test TESTS=grid_diff): tests/test_grid_diff.c:309: CHECK(0) failed
+caught        grid: grid_puts writes a control character as it is   (make test TESTS=grid): tests/test_grid.c:73: CHECK(g.c[16 + i].ch[0] == (i == 4 ? 'x' : ' ')) failed
+caught        tty: no blanks before a non-ASCII wide character   (make test TESTS=grid_diff): tests/test_grid_diff.c:313: CHECK(t.prints - before == want) failed
+caught        tty: erase under the last frame's attribute   (make test TESTS=grid_diff): tests/test_grid_diff.c:309: CHECK(0) failed
+caught        tty: foreground channels in the wrong order   (make test TESTS=grid_diff): tests/test_grid_diff.c:309: CHECK(0) failed
+caught        tty: a cluster's ambiguity read from the cell's number   (make test TESTS=grid_diff): tests/test_grid_diff.c:313: CHECK(t.prints - before == want) failed
+caught        tty: the cursor line's colour wrong in the shared face table   (make test TESTS=grid_diff): tests/test_grid_diff.c:309: CHECK(0) failed
+caught        org: tags take [[:word:]] for [[:alnum:]] above ASCII   (make test TESTS=org): tests/test_org.c:669: CHECK(!strcmp(got, cases[i].want)) failed
+caught        org: planning reads a repeater's unit case-folded (against Org)   (make org-conform ORG_N=2000 SEED=1): 162 of 2000 differ (no answer from Org on 1)
+caught        org: colours: font-lock's priority folds case (against Org)   (make org-conform ORG_N=2000 SEED=1): 21 of 2000 differ (no answer from Org on 135)
+caught        org: colours: a block's word end not checked (against Org)   (make org-conform ORG_N=2000 SEED=1): 6 of 2000 differ (no answer from Org on 135)
+caught        org: colours: a description term after two blanks missed (against Org)   (make org-conform ORG_N=2000 SEED=1): 114 of 2000 differ (no answer from Org on 135)
+caught        org: colours: an edit before the pending ones not merged (fuzz)   (make fuzz FUZZERS=org FUZZ_SECONDS=60): ==18042== ERROR: libFuzzer: deadly signal
+caught        grid: a character on a right half leaves its left half   (make test TESTS=grid_diff): tests/test_grid_diff.c:353: CHECK(g.c[1].len == 1 && g.c[1].ch[0] == '>' && g.c[1].attr == ATTR_REV && g.c[1].face == FACE_STRING && g.c[1].bg == FACE_CURSOR_LINE && g.c[2].ch[0] == 'x') failed
+caught        grid: '>' takes the new attribute   (make test TESTS=grid_diff): tests/test_grid_diff.c:353: CHECK(g.c[1].len == 1 && g.c[1].ch[0] == '>' && g.c[1].attr == ATTR_REV && g.c[1].face == FACE_STRING && g.c[1].bg == FACE_CURSOR_LINE && g.c[2].ch[0] == 'x') failed
+caught        grid: the '>' loses the face of the half it replaces   (make test TESTS=grid_diff): tests/test_grid_diff.c:353: CHECK(g.c[1].len == 1 && g.c[1].ch[0] == '>' && g.c[1].attr == ATTR_REV && g.c[1].face == FACE_STRING && g.c[1].bg == FACE_CURSOR_LINE && g.c[2].ch[0] == 'x') failed
+caught        grid: a long cluster compared by length only   (make test TESTS=grid_diff): tests/test_grid_diff.c:396: CHECK(!grid_cell_eq(&g.c[1], &g.c[8]) && !memcmp(grid_text(&g.c[8]), "a" M5, 11)) failed
+caught        grid: a stored cluster found by its prefix   (make test TESTS=grid_diff): tests/test_grid_diff.c:419: CHECK(g.c[6].len == 3 && !memcmp(g.c[6].ch, "\xef\xbf\xbd", 3)) failed
+caught        grid: the blank loses the background layer of the half it replaces   (make test TESTS=grid_diff): tests/test_grid_diff.c:358: CHECK(g.c[4].len == 1 && g.c[4].ch[0] == ' ' && g.c[4].attr == ATTR_DIM && g.c[4].face == FACE_COMMENT && g.c[4].bg == FACE_HEADING_1_BG) failed
+caught        grid: grid_clear leaves a background layer   (make test TESTS=grid_diff): tests/test_grid_diff.c:309: CHECK(0) failed
+caught        grid: grid_width counts clusters, not cells   (make test TESTS=grid): tests/test_grid.c:66: CHECK(grid_width(m, strlen(m)) == 13) failed
+caught        tty: no cursor move after a non-ASCII character   (make test TESTS=grid_diff): tests/test_grid_diff.c:309: CHECK(0) failed
+caught        tty: the cursor shown while drawing   (make test TESTS=grid_diff): tests/test_grid_diff.c:309: CHECK(0) failed
+caught        tty: a face's background not sent   (make test TESTS=grid_diff): tests/test_grid_diff.c:309: CHECK(0) failed
+caught        tty: a new background layer sends no new style   (make test TESTS=grid_diff): tests/test_grid_diff.c:309: CHECK(0) failed
+caught        tty: a heading bar's colour wrong in the shared face table   (make test TESTS=grid_diff): tests/test_grid_diff.c:309: CHECK(0) failed
