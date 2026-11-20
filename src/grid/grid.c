@@ -121,8 +121,8 @@ int grid_width(const char *s, size_t n)
 
 const Face *grid_face(const Cell *x, const Face **bg)
 {
-	const Face *f = &faces[x->face < FACE_COUNT ? x->face : FACE_NONE];
-	*bg = x->bg && x->bg < FACE_COUNT ? &faces[x->bg] : f;
+	const Face *f = &faces[x->face];
+	*bg = x->bg ? &faces[x->bg] : f;
 	return f;
 }
 

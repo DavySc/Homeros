@@ -68,3 +68,13 @@ keys: SPC D is not mapped (start.py)~test TESTS=shada~~src/keys/keys.c~ "-", " D
 keys: :Dashboard opens over the file, so it closes at once (start.py)~test TESTS=shada~~src/keys/keys.c~if (!core_edit_file(e, "", 0)) tools_dash(e, 0);~tools_dash(e, 0);
 dashboard: stays over the file brought back after :Dashboard (CTRL-^, SPC ,)~test TESTS=tools_dash~~src/tools/dash.c~e->buf != D.buf || ~
 dashboard: q quits over a file changed before :Dashboard~test TESTS=tools_dash~~src/tools/dash.c~	case 'q': core_close(e, 0); break;~	case 'q': e->quit = 1; break;
+# the terminal (term.c)
+terminal: a slot the shown frame holds is reused, leaving its cells in the old colours~test TESTS=tools_term~~src/tools/term.c~T.used[k] + 1 < T.frame~T.used[k] < T.frame
+terminal: cursor keys ignore DECCKM~test TESTS=tools_term~~src/tools/term.c~u[1] = m.value ? 'O' : '[';~u[1] = '[';
+terminal: inverse is not swapped~test TESTS=tools_term~~src/tools/term.c~	if (st.flags & GHOSTTY_STYLE_FLAG_INVERSE) {~	if (0) {
+terminal: a hidden terminal still takes keys~test TESTS=tools_term~~src/tools/term.c~	if (!T.open || k == KEY_RESIZE) return 0;~	if (!T.t || k == KEY_RESIZE) return 0;
+terminal: the shell is not told the new size~test TESTS=tools_term~~src/tools/term.c~		proc_resize(T.id, T.rows, T.cols);¶~¶
+terminal: a wide character takes one cell~test TESTS=tools_term~~src/tools/term.c~wide == GHOSTTY_CELL_WIDE_WIDE ? 2 : 1~1
+terminal: the shell's exit leaves it open~test TESTS=tools_term~~src/tools/term.c~		T.id = -1;¶		T.open = 0;~		T.id = -1;
+terminal: xterm's ANSI colours, not Catppuccin's~test TESTS=tools_term~~src/tools/term.c~	memcpy(pal, ansi, sizeof ansi);¶~¶
+terminal: a full slot table recolours a slot in use~test TESTS=tools_term~~src/tools/term.c~		else if (old) k = old;~		else if (1) k = SLOT0;

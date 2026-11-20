@@ -33,3 +33,4 @@ wl: ligature cut at its own cell~test TESTS=wl~~src/wl/wl.c~int ax = gx < w * ce
 wl: glyph cut at the span, not its word~test TESTS=wl~~src/wl/wl.c~int ax = gx < w * cell_w ? w * cell_w - gx : 0~int ax = gx < lo * cell_w ? lo * cell_w - gx : 0
 wl: span shaped without the blank before it~test TESTS=wl~~src/wl/wl.c~	if (lo) { s[n] = ' ';~	if (0) { s[n] = ' ';
 wl: ligature in its last cell's colours under the cursor~test TESTS=wl~~src/wl/wl.c~colours(g, r, k < c ? k : c, &fg, &bg);~colours(g, r, c, &fg, &bg);
+wl: Ctrl+. comes as a plain dot~test TESTS=wl~~src/wl/wl.c~XKB_STATE_MODS_EFFECTIVE) > 0) return KEY_CTRL_DOT;~XKB_STATE_MODS_EFFECTIVE) > 1) return KEY_CTRL_DOT;

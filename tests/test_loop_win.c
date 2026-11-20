@@ -17,6 +17,9 @@
    7. From the review of PR 41: a child that never stops writing does not
       hold loop_once; output still in the pipe at the exit is read first; a
       write begun inside the exit's drain is refused.
+   8. proc_pty: the child's console is the pseudoconsole, at the size
+      asked; what is typed reaches it; a resize reaches it (on Windows:
+      Wine does not resize one).
    Runs on Windows or under Wine (src/loop/check.sh); elsewhere it says so. */
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -115,6 +118,18 @@ static int child(char **argv)
 		}
 		return 0;
 	}
+	if (!strcmp(r, "console")) {   /* its console's size, a line typed, the size after a resize */
+		CONSOLE_SCREEN_BUFFER_INFO ci, now;
+		if (!GetConsoleScreenBufferInfo(out, &ci)) return 98;
+		snprintf(b, sizeof b, "size %d %d\n", ci.srWindow.Bottom - ci.srWindow.Top + 1, ci.srWindow.Right - ci.srWindow.Left + 1);
+		put(out, b);
+		if (!ReadFile(in, b, 64, &n, NULL)) return 97;
+		put(out, n >= 2 && !memcmp(b, "hi", 2) ? "got:hi\n" : "got:?\n");
+		for (int k = 0; k < 200 && GetConsoleScreenBufferInfo(out, &now) && now.srWindow.Right == ci.srWindow.Right; k++) Sleep(10);
+		snprintf(b, sizeof b, "size %d %d\n", now.srWindow.Bottom - now.srWindow.Top + 1, now.srWindow.Right - now.srWindow.Left + 1);
+		put(out, b);
+		return 3;
+	}
 	return 99;
 }
 
@@ -158,6 +173,32 @@ static int spawn(Got *g, const char *role, const char *dir)
 }
 
 static Got g, gs[33];
+
+static int has(const char *s)   /* mingw has no memmem */
+{
+	size_t k = strlen(s);
+	for (size_t i = 0; i + k <= g.nout; i++) if (!memcmp(g.out + i, s, k)) return 1;
+	return 0;
+}
+
+static void pty(void)
+{
+	char *argv[] = { self, "console", NULL };
+	memset(&g, 0, sizeof g);
+	int id = proc_pty(argv, NULL, 7, 33, on_proc, &g);
+	CHECK(id >= 0);
+	long long end = ms() + 20000;
+	while (!has("size 7 33")) { CHECK(ms() < end); CHECK(loop_once(100) == 0); }
+	CHECK(proc_write(id, "hi\r", 3) == 0);
+	while (!has("got:")) { CHECK(ms() < end); CHECK(loop_once(100) == 0); }
+	proc_resize(id, 9, 41);
+	while (!g.ended[0]) { CHECK(ms() < end); CHECK(loop_once(100) == 0); }
+	/* Wine 11's ResizePseudoConsole is a stub (E_NOTIMPL), so there the
+	   size stays */
+	int wine = GetProcAddress(GetModuleHandleA("ntdll.dll"), "wine_get_version") != NULL;
+	CHECK(g.code == 3 && g.ended[1] && !g.ended[2] && has("got:hi") && has(wine ? "got:hi\r\n\x1b[?25h\x1b[?25lsize 7 33" : "size 9 41"));
+	free(g.out);
+}
 
 static void pipes(void)
 {
@@ -512,7 +553,8 @@ int main(int argc, char **argv)
 	flood();
 	drain();
 	stale();
-	fprintf(stderr, "test_loop_win: flood, drain and a write refused while reaping; 4 MB through cat; dead.py; streams, codes, arguments, directory, closed stdin; 32 children; kill takes the tree; exit with a holder, its pipes closed; timers; every ready watch, a taken signal kept, unwatch in a pass; message queue; Ctrl-C; idle\n");
+	pty();
+	fprintf(stderr, "test_loop_win: pseudoconsole; flood, drain and a write refused while reaping; 4 MB through cat; dead.py; streams, codes, arguments, directory, closed stdin; 32 children; kill takes the tree; exit with a holder, its pipes closed; timers; every ready watch, a taken signal kept, unwatch in a pass; message queue; Ctrl-C; idle\n");
 	return 0;
 }
 #else

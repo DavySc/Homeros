@@ -45,3 +45,9 @@ loop: win: the pipe is read only when it ends, so a full pipe hangs the child~wi
 loop: win: loop_breakcheck never looks at input~win WIN=loop~~src/loop/win.c~if (loop_int || ++count < 32) return loop_int;~if (loop_int || ++count < 1 << 30) return loop_int;
 loop: win: an idle loop wakes every 100 ms~win WIN=loop~~src/loop/win.c~timeout_ms < 0 ? INFINITE : (DWORD)timeout_ms,~timeout_ms < 0 || timeout_ms > 100 ? 100 : (DWORD)timeout_ms,
 loop: win: proc_write blocks until the pipe takes it all~win WIN=loop~~src/loop/win.c~	if (!c->busy[0]) write_next(c);¶	return~	if (!c->busy[0]) write_next(c);¶	while (c->busy[0]) SleepEx(INFINITE, TRUE);¶	return
+# proc_pty (the terminal)
+loop: pty: no session, so no controlling terminal~test TESTS=loop~~src/loop/loop.c~rows ? POSIX_SPAWN_SETSID : POSIX_SPAWN_SETPGROUP~POSIX_SPAWN_SETPGROUP
+loop: pty: TERM left as the editor's~test TESTS=loop~~src/loop/loop.c~		env[n++] = "TERM=xterm-256color";¶~¶
+loop: pty: proc_resize does nothing~test TESTS=loop~~src/loop/loop.c~p[id].fd[1] >= 0) ioctl(~p[id].fd[1] < 0) ioctl(
+loop: pty: the size asked is not set~test TESTS=loop~~src/loop/loop.c~ || ioctl(fd[2], TIOCSWINSZ, &ws)~
+loop: win: pty: the editor's own std handles reach the child~win WIN=loop~~src/loop/win.c~		si.StartupInfo.dwFlags = STARTF_USESTDHANDLES;¶		si.StartupInfo.hStdInput~		si.StartupInfo.dwFlags = 0;¶		si.StartupInfo.hStdInput

@@ -38,10 +38,18 @@ jobs:
       - run: nix build -f tools.nix tools -o tools-env
       - run: echo "$PWD/tools-env/bin" >> "$GITHUB_PATH"
       - run: why3 config detect
+      # libghostty-vt (the terminal, src/tools/ghostty.nix) is 5 minutes of
+      # zig and changes only with its recipe; the cache keeps its mtime, older
+      # than the checkout's, so it is touched or make builds it again
+      - id: ghostty
+        uses: actions/cache@v4
+        with: { path: build/ghostty, key: "ghostty-${{ hashFiles('src/tools/ghostty.nix') }}" }
+      - if: steps.ghostty.outputs.cache-hit == 'true'
+        run: touch build/ghostty/libghostty-vt.a
       - run: make ${{ matrix.target }}
-  # git's Windows half on Windows itself, for what Wine cannot show (a
-  # path's names as stored): test_git_win alone, pull requests only, so it
-  # stays short (package 17's, thread 0's, agreed)
+  # git's and the loop's Windows halves on Windows itself, for what Wine
+  # cannot show (a path's names as stored, a pseudo-console's resize): pull
+  # requests only, so it stays short (packages 17 and 10, thread 0's, agreed)
   windows:
     if: github.event_name == 'pull_request'
     runs-on: windows-latest
@@ -52,4 +60,7 @@ jobs:
         with:
           version: 0.17.1
       - run: bash src/git/check.sh
+        shell: bash
+      # the pseudo-console (ConPTY), which Wine cannot resize (the terminal's)
+      - run: bash src/loop/check.sh
         shell: bash

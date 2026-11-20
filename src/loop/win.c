@@ -27,6 +27,7 @@ int loop_int;
 static struct { int used, fd, pend; LoopFn fn; void *ctx; } w[MAXW];
 static struct Proc {
 	HANDLE ph, job;         /* ph NULL: free slot */
+	HPCON pc;               /* proc_pty's pseudoconsole, else NULL */
 	HANDLE h[3];            /* our ends: stdin, stdout, stderr; NULL once closed */
 	OVERLAPPED ov[3];       /* hEvent, which ReadFileEx leaves to us, holds 3 * slot + stream */
 	int busy[3];            /* an I/O is in flight on h[s] */
@@ -257,43 +258,68 @@ static void CALLBACK on_write(DWORD e, DWORD n, OVERLAPPED *ov)
 	write_next(c);
 }
 
-int proc_spawn(char *const argv[], const char *dir, ProcFn fn, void *ctx)
+/* rows > 0: the child runs on a pseudoconsole of rows x cols (ConPTY, as
+   Neovim's conpty_win.c) fed by the stdin and stdout pipes, and gets no
+   std handles of its own, which would bypass it */
+int proc_start(char *const argv[], const char *dir, int rows, int cols, ProcFn fn, void *ctx)
 {
 	int id = 0, ok = 0;
 	while (id < MAXP && p[id].ph) id++;
 	if (id == MAXP) return -1;
 	HANDLE mine[3] = { 0 }, theirs[3] = { 0 };
+	HPCON pc = NULL;
 	/* the child's group (loop.c's setpgroup): proc_kill ends what it
 	   started too, as Neovim's os_proc_tree_kill walks the tree on Windows,
 	   but a job also holds a grandchild whose parent has exited */
 	HANDLE job = CreateJobObjectW(NULL, NULL);
 	char *line = cmdline(argv);
 	wchar_t *wl = line ? wide(line) : NULL, *wd = dir ? wide(dir) : NULL;
-	for (int s = 0; s < 3; s++) if (!(mine[s] = pipe_pair(s, &theirs[s]))) goto out;
+	for (int s = 0; s < 3 - !!rows; s++) if (!(mine[s] = pipe_pair(s, &theirs[s]))) goto out;
 	if (!job || !wl || (dir && !wd)) goto out;
+	if (rows && CreatePseudoConsole((COORD){ (SHORT)cols, (SHORT)rows }, theirs[0], theirs[1], 0, &pc) != S_OK) { pc = NULL; goto out; }
 	/* the editor's own handles are made uninheritable, so these three
 	   are all the child gets */
-	STARTUPINFOW si = { .cb = sizeof si, .dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW, .wShowWindow = SW_HIDE,
-	                    .hStdInput = theirs[0], .hStdOutput = theirs[1], .hStdError = theirs[2] };
+	STARTUPINFOEXW si = { .StartupInfo = { .cb = sizeof si, .dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW, .wShowWindow = SW_HIDE,
+	                      .hStdInput = theirs[0], .hStdOutput = theirs[1], .hStdError = theirs[2] } };
+	void *attrs[16];   /* a list of one attribute: 48 bytes on x64 */
+	SIZE_T an = sizeof attrs;
+	if (rows) {
+		/* std handles NULL but given, or a child of an editor whose own are
+		   redirected takes those instead of the pseudoconsole's (Windows
+		   Terminal's ConPTY sample notes it; Wine 11 does it, measured) */
+		si.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
+		si.StartupInfo.hStdInput = si.StartupInfo.hStdOutput = NULL;
+		si.lpAttributeList = (LPPROC_THREAD_ATTRIBUTE_LIST)attrs;
+		if (!InitializeProcThreadAttributeList(si.lpAttributeList, 1, 0, &an)
+		    || !UpdateProcThreadAttribute(si.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE, pc, sizeof pc, NULL, NULL)) goto out;
+	}
 	PROCESS_INFORMATION pi;
 	/* no console window per command (Neovim's jobs set windowsHide);
 	   suspended until it is in its job, so nothing it starts escapes */
-	if (CreateProcessW(NULL, wl, NULL, NULL, TRUE, CREATE_SUSPENDED | CREATE_NO_WINDOW, NULL, wd, &si, &pi)) {
+	if (CreateProcessW(NULL, wl, NULL, NULL, !rows, CREATE_SUSPENDED | (rows ? EXTENDED_STARTUPINFO_PRESENT : CREATE_NO_WINDOW), NULL, wd, &si.StartupInfo, &pi)) {
 		ok = AssignProcessToJobObject(job, pi.hProcess);
 		if (ok) ResumeThread(pi.hThread);
 		else { TerminateProcess(pi.hProcess, 1); CloseHandle(pi.hProcess); }
 		CloseHandle(pi.hThread);
 	}
+	if (rows) DeleteProcThreadAttributeList(si.lpAttributeList);
 	if (ok)
-		p[id] = (struct Proc){ .ph = pi.hProcess, .job = job, .h = { mine[0], mine[1], mine[2] }, .fn = fn, .ctx = ctx };
+		p[id] = (struct Proc){ .ph = pi.hProcess, .job = job, .pc = pc, .h = { mine[0], mine[1], mine[2] }, .fn = fn, .ctx = ctx };
 out:
 	for (int s = 0; s < 3; s++) {
 		if (theirs[s]) CloseHandle(theirs[s]);
 		if (!ok && mine[s]) CloseHandle(mine[s]);
 	}
+	if (!ok && pc) ClosePseudoConsole(pc);
 	if (!ok && job) CloseHandle(job);
 	free(line); free(wl); free(wd);
 	return ok ? id : -1;
+}
+
+void proc_resize(int id, int rows, int cols)
+{
+	struct Proc *c = proc(id);
+	if (c && c->pc) ResizePseudoConsole(c->pc, (COORD){ (SHORT)cols, (SHORT)rows });
 }
 
 int proc_write(int id, const void *b, size_t n)
@@ -350,6 +376,8 @@ static void report(struct Proc *c)
 		ended(c, s);
 	}
 	if (c->h[0]) close_in(c);
+	/* after our ends are closed, so it cannot wait for us to read */
+	if (c->pc) ClosePseudoConsole(c->pc);
 	CloseHandle(c->ph);
 	CloseHandle(c->job);
 	ProcFn fn = c->fn;
