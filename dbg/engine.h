@@ -13,10 +13,12 @@
 /* A module of the target: where it is mapped, its file. Without debug info rdi is empty: every lookup in it finds nothing. */
 typedef struct { UnwindModule image; char *path; Rdi rdi; void *rdi_bytes; } EngineModule;
 typedef struct { uint64_t addr; uint32_t flags; } EngineTrap;
+/* told: where the thread stood when a stop of its own was last reported, until it runs (specs/Hit.tla). */
+typedef struct { uint32_t id; uint64_t told; } EngineThread;
 typedef struct {
   Target *target;
   EngineModule *modules;   /* the first is the program */
-  uint32_t *threads;
+  EngineThread *threads;
   /* room that grows to the largest step and stays: the net, the addresses a run plants, a line's ranges, its code */
   EngineTrap *net;
   uint64_t *traps, *ranges;

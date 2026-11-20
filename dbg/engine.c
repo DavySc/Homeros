@@ -35,8 +35,8 @@ static void module_free(EngineModule *m) { free(m->image.table), free(m->path), 
 /* Keeps the lists of modules and threads as the target tells of them. A module's debug info is the PDB beside it, under its name. */
 static void note(Engine *e, const TargetEvent *ev)
 {
-  if (ev->kind == TARGET_THREAD) ROOM(e, threads, thread_cap, e->thread_count + 1), e->threads[e->thread_count++] = ev->thread;
-  for (uint32_t i = 0; ev->kind == TARGET_THREAD_GONE && i < e->thread_count; i += 1) if (e->threads[i] == ev->thread) e->threads[i--] = e->threads[--e->thread_count];
+  if (ev->kind == TARGET_THREAD) ROOM(e, threads, thread_cap, e->thread_count + 1), e->threads[e->thread_count++] = (EngineThread){ev->thread, 0};
+  for (uint32_t i = 0; ev->kind == TARGET_THREAD_GONE && i < e->thread_count; i += 1) if (e->threads[i].id == ev->thread) e->threads[i--] = e->threads[--e->thread_count];
   for (uint32_t i = 0; ev->kind == TARGET_MODULE_GONE && i < e->module_count; i += 1)
     if (e->modules[i].image.base == ev->addr) {   /* the order stays: the first is the program */
       module_free(&e->modules[i]);
@@ -228,7 +228,7 @@ static void out_net(Engine *e, TargetRegs regs)
 }
 
 /* RAD: d_ctrl_thread__run. */
-TargetEvent engine_run(Engine *e, int how, uint32_t thread, const uint64_t *breakpoints, uint32_t count)
+static TargetEvent run(Engine *e, int how, uint32_t thread, const uint64_t *breakpoints, uint32_t count)
 {
   TargetRegs regs = {0};
   TargetEvent ev = {0};
@@ -240,14 +240,18 @@ TargetEvent engine_run(Engine *e, int how, uint32_t thread, const uint64_t *brea
     else if (how == ENGINE_STEP_OUT) out_net(e, regs);
     if (!e->net_count) return step_one(e, thread);
   }
-  /* A thread that stands on a breakpoint would hit it at once: each such thread first runs the instruction there,
-     alone. Not a thread that has hit it without a stop for it yet (target_owed): its stop comes in this run. */
+  /* A thread that stands on a breakpoint where its stop has been reported would hit it again at once: each such
+     thread first runs the instruction there, alone. A thread nobody was told of stands there too (it ran the trap
+     during another thread's stop and was put back, or was stopped just before the trap): it is left to hit it now.
+     RAD steps every thread that stands on a breakpoint; specs/Hit.tla shows the hit that loses. */
   for (uint32_t i = 0; i < e->thread_count; i += 1) {
     TargetRegs r;
+    uint32_t id = e->threads[i].id;
     bool stuck = false;
-    for (uint32_t k = 0; k < count && !target_owed(e->target, e->threads[i]) && target_regs(e->target, e->threads[i], &r); k += 1) stuck = stuck || breakpoints[k] == r.rip;
-    if (stuck && (ev = step_one(e, e->threads[i])).kind != TARGET_STEP) return ev;
+    for (uint32_t k = 0; k < count && target_regs(e->target, id, &r) && r.rip == e->threads[i].told; k += 1) stuck = stuck || breakpoints[k] == r.rip;
+    if (stuck && (ev = step_one(e, id)).kind != TARGET_STEP) return ev;
   }
+  for (uint32_t i = 0; i < e->thread_count; i += 1) e->threads[i].told = 0;   /* now all run: one that comes to stand there again has not been told (Hit.tla, "kept") */
   uint64_t depth = regs.gp[4];
   ROOM(e, traps, trap_cap, count + e->net_count);
   for (uint32_t i = 0; i < count; i += 1) e->traps[i] = breakpoints[i];
@@ -266,4 +270,12 @@ TargetEvent engine_run(Engine *e, int how, uint32_t thread, const uint64_t *brea
     if (flags & SAVE_AFTER && target_regs(e->target, thread, &regs)) depth = regs.gp[4];
     if (flags & END) return (TargetEvent){.kind = TARGET_STEP, .thread = thread, .addr = ev.addr};
   }
+}
+
+TargetEvent engine_run(Engine *e, int how, uint32_t thread, const uint64_t *breakpoints, uint32_t count)
+{
+  TargetEvent ev = run(e, how, thread, breakpoints, count);
+  TargetRegs regs;
+  for (uint32_t i = 0; i < e->thread_count; i += 1) if (e->threads[i].id == ev.thread && target_regs(e->target, ev.thread, &regs)) e->threads[i].told = regs.rip;
+  return ev;
 }

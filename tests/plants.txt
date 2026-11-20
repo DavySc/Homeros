@@ -571,7 +571,7 @@ test | dbg/unwind.c | bool wide = c[1] == 0x81 \p\p (c[2] & 0xf8) == 0xa0; | boo
 test | dbg/unwind.c | uint32_t fp = (c[0] & 1u) << 3 \p (c[2] & 7u); | uint32_t fp = c[2] & 7u;
 test | dbg/unwind.c | else if ((c[0] & 0xfe) == 0x48 && | else if (c[0] == 0x48 &&
 test | dbg/unwind.c | fp && fp == frame_reg && | fp == frame_reg &&
-test | dbg/unwind.c | fp && fp == frame_reg && | fp != 0 &&
+test | dbg/unwind.c | fp && fp == frame_reg && | fp && fp != 0 * frame_reg &&
 test | dbg/unwind.c | ((c[2] & 0xf8) == 0x60 \p\p wide)) | wide)
 test | dbg/unwind.c | r.gp[RSP] = r.gp[fp] + n, | r.gp[RSP] += n,
 test | dbg/unwind.c | at += c[at] == 0xf2; | 
@@ -627,12 +627,9 @@ win | dbg/win/target.c | if (t->step) SuspendThread(e.u.CreateThread.hThread); |
 list | tests/plants.txt | = 1,\noracle \p dbg/rdi.c \p [RDI_LOCALS] | = 1,\noracle \p dbg/rdi.c \p [RDI_NO_SUCH]
 
 # ---- slice 5: the stepping engine (tests/oracle_trace.py against RAD's recorded traces, tests/stress_engine.c) ----
-engine | dbg/win/target.c | if (t->threads[i].id == reported \p\p !GetThreadContext( | if (!GetThreadContext(
+engine | dbg/win/target.c | if (t->threads[i].id == reported \p\p !GetThreadContext( | if (t->threads[i].id == reported + 1 \p\p !GetThreadContext(
 engine | dbg/win/target.c | out->unhandled = !e.u.Exception.dwFirstChance; | out->unhandled = true;
 engine | dbg/win/target.c | void target_swallow(Target *t) { t->held_status = DBG_CONTINUE; } | void target_swallow(Target *t) { (void)t; }
-engine | dbg/win/target.c | t->threads[i].owed = t->traps[k].addr; break; } | t->threads[i].owed = 0; break; }
-engine | dbg/win/target.c | thread->owed = out->kind == TARGET_LATE ? at : 0; | thread->owed = 0;
-engine | dbg/win/target.c | && c.Rip == thread->owed; | ;
 engine | dbg/engine.c | bool stop = ev.kind != TARGET_EXCEPTION \p\p ev.unhandled; | bool stop = ev.kind != TARGET_EXCEPTION;
 engine | dbg/engine.c | stop = stop \p\p ev.code == at_once[i]; | stop = stop \p\p ev.code == at_once[i] + 1;
 engine | dbg/engine.c | if (ev.kind == TARGET_EXCEPTION) target_swallow(e->target); | 
@@ -665,7 +662,8 @@ engine | dbg/engine.c | if (!in_ranges(e, count, hi)) net_add(e, base + hi, END 
 engine | dbg/engine.c | &regs)) net_add(e, regs.rip, END \p IGNORE_SP); | &regs)) net_add(e, regs.rip, END);
 engine | dbg/engine.c | if (unwind_step(target_read, e->target, m ? &m->image : 0, &regs)) | if (false && unwind_step(target_read, e->target, m ? &m->image : 0, &regs))
 engine | dbg/engine.c | if (!e->net_count) return step_one(e, thread); | if (false) return step_one(e, thread);
-engine | dbg/engine.c | && !target_owed(e->target, e->threads[i]) && | &&
+engine | dbg/engine.c | && r.rip == e->threads[i].told; k += 1) | ; k += 1)
+engine | dbg/engine.c | e->threads[i].told = regs.rip; | e->threads[i].told = 0;
 engine | dbg/engine.c | stuck = stuck \p\p breakpoints[k] == r.rip; | stuck = false;
 engine | dbg/engine.c | uint64_t depth = regs.gp[4]; | uint64_t depth = 0;
 engine | dbg/engine.c | for (uint32_t i = 0; i < count; i += 1) if (breakpoints[i] == ev.addr) return ev; | 
