@@ -39,3 +39,9 @@ org: colours: a long line coloured again for every piece (frame gate)~test TESTS
 org: colours: a date scan from every opener to the line's end (frame gate)~test TESTS=org~~src/org/org.c~	for (p = l; p + 12 <= lc; p++) {~	for (p = l; p < e; p++) {
 org: colours: a diary sexp scan from every opener to the line's end (frame gate)~test TESTS=org~~src/org/org.c~			if (x == e) break;   /* none closes later ones either */~			if (x == e) continue;
 org: colours: a line's faces not cleared before it is coloured (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~ memset(F, 0, nl - l);~
+org: colours: a property's value keeps the earlier face (against Org; PR 83 review)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		set(p, x, FACE_NONE);~
+org: colours: [100x%] any three characters count as done (against Org; PR 83 review)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~x == p + 4 && !memcmp(S + p + 1, "100", 3)~x == p + 4
+org: colours: COMMENT followed by anything (against Org; PR 83 review)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~is(x, "COMMENT") && (x + 7 == e || S[x + 7] == ' ')~is(x, "COMMENT")
+org: colours: a column width cookie <c> missed (against Org; PR 83 review)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~one(x + 1, "lrc")~one(x + 1, "lr")
+org: colours: after an export snippet, the scan goes on inside it (against Org; PR 83 review)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~			p = z + 1;¶		}¶	if (hl)~		}¶	if (hl)
+org: colours: the caption's bracket closed by the first ]: (not the last) (against Org; PR 83 review)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~for (size_t j = e; j > k + 1 && x == ORG_NONE; j--) if (S[j - 1] == ']' && j < e && S[j] == ':') x = j + 1;~for (size_t j = k + 2; j < e && x == ORG_NONE; j++) if (S[j - 1] == ']' && S[j] == ':') x = j + 1;
