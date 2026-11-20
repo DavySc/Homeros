@@ -381,7 +381,9 @@ static unsigned char dl_face(TsqlRd *r, size_t p, size_t e, int k)
 		if (p && tsql_byte(r, p - 1) == '.' && directive(r, p)) return FACE_KEYWORD;
 		const struct DlWord *w = dl_word(r, p, e);
 		if (w && w->f != FACE_NONE) return w->f;
-		while (is_space(c = tsql_byte(r, e))) e++;
+		/* only to the line's end: a word before a megabyte of blank lines
+		   would otherwise walk it every frame (PR 87's review) */
+		while ((c = tsql_byte(r, e)) == ' ' || c == '\t') e++;
 		return c == '(' ? FACE_FUNCTION : FACE_NONE;
 	}
 	}
