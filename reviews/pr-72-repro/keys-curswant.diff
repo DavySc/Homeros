@@ -1,0 +1,12 @@
+diff --git a/src/keys/keys.c b/src/keys/keys.c
+index d1e8ad7..4e1a01f 100644
+--- a/src/keys/keys.c
++++ b/src/keys/keys.c
+@@ -116,6 +116,7 @@ void keys_feed(Editor *e, int k, int pending)
+ 	reg_executing = 0;   /* typed: the typeahead holds no register keys */
+ 	key(k, pending || rb1.n || rb2.n || tb.n);
+ 	while (next(&k)) key(k, pending || rb1.n || rb2.n || tb.n);
++	if (VIsual_active) update_curswant();   /* update_screen(), UPD_INVERTED */
+ 	E->ks.visual = VIsual_active ? VIsual_mode : 0;
+ 	E->ks.vline = (size_t)VIsual.lnum;
+ 	E->ks.vcol = (size_t)VIsual.col;

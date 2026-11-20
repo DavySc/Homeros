@@ -25,6 +25,6 @@ grid: grid_face reads past faces[] for an unknown face~test TESTS=grid_diff~~src
 grid: a wide character's right half keeps the old background layer~test TESTS=grid_diff~~src/grid/grid.c~(Cell){ "", 0, (unsigned char)attr, FACE_NONE, 0 }~(Cell){ "", 0, (unsigned char)attr, FACE_NONE, x[1].bg }
 grid: grid_clear leaves a background layer~test TESTS=grid_diff~~src/grid/grid.c~(Cell){ " ", 1, ATTR_NONE, FACE_NONE, 0 }~(Cell){ " ", 1, ATTR_NONE, FACE_NONE, FACE_CURSOR_LINE }
 grid: grid_puts passes its end column~test TESTS=grid~~src/grid/grid.c~if (c + w > end) break;~if (c + w > end + 99) break;
-grid: grid_puts leaves the face off~test TESTS=grid~~src/grid/grid.c~.face = (unsigned char)face;~.face = (unsigned char)(face & 0);
+grid: grid_puts leaves the face off~test TESTS=grid~~src/grid/grid.c~.face = (unsigned short)face;~.face = (unsigned short)(face & 0);
 grid: grid_puts writes a control character as it is~test TESTS=grid~~src/grid/grid.c~if (w > 2 || u[i] < 0x20 || u[i] == 0x7f)~if (w > 2)
 grid: grid_width counts clusters, not cells~test TESTS=grid~~src/grid/grid.c~		c += uni_width((const unsigned char *)s, n, i);~		c += 1;

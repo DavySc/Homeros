@@ -379,22 +379,19 @@ static void umarks_trim(const Buf *b)
 
 /* core_mark_join() was called: the next edit of this buffer joins */
 static Buf *join_next;
-/* the marks before the first core_mark_join() of that edit: do_join() and
-   op_delete() u_save() before mark_col_adjust(), so undo brings these back */
-static Buf *join_snapped;
-static Mark join_snap[28];
-/* per buffer, the group whose marks are saved: a group the keys open with
-   undo_record() alone (u_save_cursor()) gets them at its first edit, even
-   if another buffer was edited since */
-typedef struct Snapped { const Buf *b; unsigned long seq; struct Snapped *next; } Snapped;
-static Snapped *snapped;
+
+/* a group that undo_record() just opened (seq is undo_seq() before it)
+   saves the marks m from before its change (u_savecommon()) */
+static void umarks_new(Buf *b, unsigned long seq, const Mark *m)
+{
+	if (undo_seq(b->undo) == seq) return;
+	umarks_put(b, undo_seq(b->undo), m, 0);
+	if (undo_seq(b->undo) % UMARKS_TRIM == 0) umarks_trim(b);
+}
 
 static void umarks_drop(const Buf *b)
 {
 	if (join_next == b) join_next = NULL;
-	if (join_snapped == b) join_snapped = NULL;
-	for (Snapped **p = &snapped; *p; p = &(*p)->next)
-		if ((*p)->b == b) { Snapped *s = *p; *p = s->next; free(s); break; }
 	for (UndoMarks **p = &umarks; *p;)
 		if ((*p)->b == b) { UndoMarks *u = *p; *p = u->next; free(u); }
 		else p = &(*p)->next;
@@ -851,6 +848,22 @@ int core_buf_delete(Editor *e, int nr, int force)
 
 /* ---- editing ---- */
 
+/* The marks kept in lists: b's change list, then every window's jump
+   list entries in b, whatever the window shows.  Call with *i = 0 until
+   it returns NULL. */
+static Mark *list_mark(Editor *e, Buf *b, size_t *i)
+{
+	for (;;) {
+		size_t k = (*i)++;
+		if (k < (size_t)b->nchange) return &b->change[k];
+		k -= (size_t)b->nchange;
+		Win *w = e->wins;
+		while (w && k >= (size_t)w->njump) { k -= (size_t)w->njump; w = w->next; }
+		if (!w) return NULL;
+		if (w->jump[k].buf == b) return &w->jump[k].m;
+	}
+}
+
 /* ONE_ADJUST (nodel 0: a deleted line unsets the mark) and
    ONE_ADJUST_NODEL (1: it goes to the first deleted line) */
 static void mark_adjust1(Mark *m, int nodel, size_t l1, size_t l2, long amount, long after)
@@ -892,13 +905,10 @@ static void adjust(Editor *e, Buf *b, size_t l1, size_t l2, long amount, long af
 		if (k != MARK_LBRACKET && k != MARK_RBRACKET
 		    && (k != MARK_QUOTE || b->mark[k].line || b->mark[k].col))
 			mark_adjust1(&b->mark[k], k == MARK_LT || k == MARK_GT, l1, l2, amount, after);
-	for (int k = 0; k < b->nchange; k++) mark_adjust1(&b->change[k], 1, l1, l2, amount, after);
-	/* the current window's '' (ONE_ADJUST), every window's jump list
-	   entries in b, whatever it shows */
+	Mark *m;
+	for (size_t i = 0; (m = list_mark(e, b, &i));) mark_adjust1(m, 1, l1, l2, amount, after);
+	/* the current window's '' (ONE_ADJUST) */
 	if (e->win->buf == b) mark_adjust1(&e->win->pcmark, 0, l1, l2, amount, after);
-	for (Win *w = e->wins; w; w = w->next)
-		for (int k = 0; k < w->njump; k++)
-			if (w->jump[k].buf == b) mark_adjust1(&w->jump[k].m, 1, l1, l2, amount, after);
 }
 
 /* mark_col_adjust() with COL_ADJUST: marks at or after column mincol of
@@ -916,26 +926,24 @@ void core_mark_join(Editor *e, size_t line, size_t mincol, long line_amount, lon
 {
 	if (!col_amount && !line_amount) return;
 	Buf *b = e->buf;
-	if (join_snapped != b) { marks_snap(b, join_snap); join_snapped = b; }
 	/* do_join() adjusts the marks before it deletes: the edit that joins
-	   comes next, and its undo step is a join */
-	if (line_amount) join_next = b;
+	   comes next, and its undo step is a join; open_line()'s split comes
+	   after its edit and is none */
+	if (line_amount < 0) join_next = b;
 	/* a-z, ^, ., the change list, < >; not [ ] or " */
 	for (int k = 0; k < MARK_N; k++)
 		if (k < 26 || k == MARK_CARET || k == MARK_DOT || k == MARK_LT || k == MARK_GT)
 			col_adjust(&b->mark[k], line, mincol, line_amount, col_amount, spaces_removed);
-	for (int k = 0; k < b->nchange; k++) col_adjust(&b->change[k], line, mincol, line_amount, col_amount, spaces_removed);
-	for (Win *w = e->wins; w; w = w->next) {
-		for (int k = 0; k < w->njump; k++)
-			if (w->jump[k].buf == b) col_adjust(&w->jump[k].m, line, mincol, line_amount, col_amount, spaces_removed);
-		/* the cursor of the other windows on b */
+	Mark *m;
+	for (size_t i = 0; (m = list_mark(e, b, &i));) col_adjust(m, line, mincol, line_amount, col_amount, spaces_removed);
+	/* the cursor of the other windows on b */
+	for (Win *w = e->wins; w; w = w->next)
 		if (w->buf == b && w != e->win) {
 			Mark c = { w->line, w->col, 1 };
 			col_adjust(&c, line, mincol, line_amount, col_amount, spaces_removed);
 			w->line = c.line;
 			w->col = c.col;
 		}
-	}
 }
 
 static size_t newlines(const char *s, size_t n)
@@ -965,10 +973,8 @@ static void adjust_edit(Editor *e, size_t L, size_t col, int at_start, int whole
 			Buf *b = e->buf;
 			nodel_join(&b->mark[MARK_LT], L, d, col);
 			nodel_join(&b->mark[MARK_GT], L, d, col);
-			for (int k = 0; k < b->nchange; k++) nodel_join(&b->change[k], L, d, col);
-			for (Win *w = e->wins; w; w = w->next)
-				for (int k = 0; k < w->njump; k++)
-					if (w->jump[k].buf == b) nodel_join(&w->jump[k].m, L, d, col);
+			Mark *m;
+			for (size_t i = 0; (m = list_mark(e, b, &i));) nodel_join(m, L, d, col);
 			adjust(e, b, L + 1, L + d + 1, DEL, -(long)d);
 		}
 	}
@@ -987,9 +993,8 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 	   text (Vim) */
 	unsigned js = after | (b->noeol && b->id.size ? J_NOEOL : 0) | (b->dos ? J_DOS : 0);
 	Mark snap[28];
-	if (join_snapped == b) memcpy(snap, join_snap, sizeof snap);
-	else marks_snap(b, snap);
-	join_snapped = NULL;
+	marks_snap(b, snap);
+	unsigned long seq = undo_seq(b->undo);
 	int r = -1;
 	size_t L = text_line_of(b->text, pos);
 	int at_start = pos == text_line_start(b->text, L);
@@ -1001,14 +1006,7 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 		if (!text_insert(b->text, pos, ins, nins)) {
 			if (!undo_record(b->undo, pos, del, ndel, ins, nins, c, after)) {
 				r = 0;
-				Snapped *s = snapped;
-				while (s && s->b != b) s = s->next;
-				if (!s || s->seq != undo_seq(b->undo)) {   /* a new group */
-					if (!s && (s = malloc(sizeof *s))) { s->b = b; s->next = snapped; snapped = s; }
-					if (s) s->seq = undo_seq(b->undo);
-					umarks_put(b, undo_seq(b->undo), snap, 0);
-					if (undo_seq(b->undo) % UMARKS_TRIM == 0) umarks_trim(b);
-				}
+				umarks_new(b, seq, snap);
 				if (join_next == b) umarks_put(b, undo_seq(b->undo), NULL, 1);
 			}
 			else { text_delete(b->text, pos, nins); text_insert(b->text, pos, del, ndel); }
@@ -1045,6 +1043,16 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 	}
 	join_next = NULL;
 	return r;
+}
+
+void core_u_save(Editor *e, size_t line)
+{
+	Buf *b = e->buf;
+	Mark snap[28];
+	marks_snap(b, snap);
+	unsigned long seq = undo_seq(b->undo);
+	UndoCursor c = { e->win->line, e->win->col, b->flags };
+	if (!undo_record(b->undo, core_line_start(e, line), "", 0, "", 0, c, b->flags)) umarks_new(b, seq, snap);
 }
 
 int core_edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins)
@@ -1245,7 +1253,11 @@ void core_set_want(Editor *e)
 		w->want = w->vc.v;
 		return;
 	}
-	w->want = win_vcol(e, w, NULL, NULL);   /* update_curswant(): w_virtcol */
+	/* update_curswant(): w_virtcol, a tab's last cell outside Insert mode;
+	   the keys give Visual mode's first cell themselves (validate_virtcol()),
+	   while ks still holds the previous key's Visual mode */
+	size_t s;
+	w->want = win_vcols(w, w->line, w->col, &s, &w->want) && e->mode != MODE_INSERT ? w->want : s;
 	w->vc.line = w->line; w->vc.col = w->col; w->vc.v = w->want;
 	w->vc.mode = e->mode; w->vc.ok = 1;
 }
@@ -1264,24 +1276,36 @@ void core_set_wrap(Editor *e, int on)
 	if (w->want != WANT_EOL) core_set_want(e);
 }
 
-size_t win_vcol(Editor *e, Win *w, size_t *start, size_t *end)
+int win_vcols(const Win *w, size_t l, size_t col, size_t *start, size_t *end)
 {
 	LineIt it;
 	const unsigned char *s;
 	size_t v = 0, i = 0, k, cw = 1;
-	lit_init(&it, w->buf, w->line);
+	lit_init(&it, w->buf, l);
 	while ((k = lit_next(&it, &s))) {
 		cw = (size_t)core_cellw(w, s, k, 0, v);
-		if (i >= w->col) break;
+		if (i >= col) break;
 		v += cw;
 		i += k;
 	}
 	if (!k) cw = 1;                /* past the end: one cell */
 	/* getvcol(): a double-width character after its '>' cell starts one
 	   later (head) */
-	size_t head = k && cw == 3 && *s != '\t';
-	if (start) *start = v + head;
-	if (end) *end = v + cw - 1;
-	/* in normal mode the cursor shows on the last cell of a tab */
-	return k && *s == '\t' && e->mode != MODE_INSERT ? v + cw - 1 : v + head;
+	*start = v + (k && cw == 3 && *s != '\t');
+	*end = v + cw - 1;
+	return k && *s == '\t';
+}
+
+size_t win_vcol(Editor *e, Win *w, size_t *start, size_t *end)
+{
+	size_t s, x;
+	int tab = win_vcols(w, w->line, w->col, &s, &x);
+	if (start) *start = s;
+	if (end) *end = x;
+	/* in normal mode the cursor shows on the last cell of a tab, but on
+	   its first in Visual mode at or before VIsual ('selection' inclusive);
+	   another window keeps the w_virtcol it validated before (measured: its
+	   ruler stays "1,1-8" after v and :redraw!, 3 runs) */
+	int first = w == e->win && e->ks.visual && (w->line < e->ks.vline || (w->line == e->ks.vline && w->col <= e->ks.vcol));
+	return tab && e->mode != MODE_INSERT && !first ? x : s;
 }

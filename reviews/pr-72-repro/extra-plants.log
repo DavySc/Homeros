@@ -1,0 +1,19 @@
+caught        x1 block after $ ends at the wider end: test_core_visual: 11 of 503 cases differ from Neovim
+caught        x3 block mode shows the end cell on every line: test_core_visual: 22 of 503 cases differ from Neovim
+NOT CAUGHT    x2 charwise area starting on a line's end covers the rest
+NOT CAUGHT    x4 a double-width cursor leaves its second cell in the area
+NOT CAUGHT    x5 vtop with equal columns
+caught        x7 a line ending before the view: test_core_visual: 15 of 503 cases differ from Neovim
+caught        x8 VISUAL BLOCK shows as VISUAL: test_core_visual: 183 of 503 cases differ from Neovim
+caught        x9 core_u_save starts its step at line 0: test_core_screens: 3 of 3056 screens differ from Neovim (1 of 325 cases)
+caught        x10 a double-width head is not counted: test_core_screens: 4 of 3056 screens differ from Neovim (2 of 325 cases)
+caught        x12 the bottom line of a charwise area runs to the end: test_core_visual: 48 of 503 cases differ from Neovim
+NOT CAUGHT    x6 the end cell at the window's edge
+NOT CAUGHT    x11 the view is looked at again in Insert mode too
+caught        x15 the tab rule ignores which end the cursor is: test_core_visual: 3 of 503 cases differ from Neovim
+NOT CAUGHT    x13 the end cell keeps the text under it
+NOT CAUGHT    x14 the ASCII shortcut before uni_width
+caught        x18 the "<<<" blank after a wide character: test_core_visual: 2 of 503 cases differ from Neovim
+caught        x17 the split's marks do not move: tests/test_core_undo.c:60: CHECK(e.buf->mark[0].line == 1 && e.buf->mark[0].col == 1) failed
+NOT CAUGHT    x16 INSERT shows in Visual mode order
+caught        x19 the keys' u_save_gap saves nothing: 1176 sequences: 18 differ from Neovim
