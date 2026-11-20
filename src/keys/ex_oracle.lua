@@ -34,7 +34,7 @@ vim.bo.undolevels = 1000
 pcall(vim.api.nvim_feedkeys, k, 'xt', false)
 -- a cell is a match's when 'hlsearch' changes how it is drawn
 local function screen()
-  vim.cmd('redraw!')
+  vim.cmd('silent! redraw!')   -- silent: no second's pause for an error shown (msg_check_for_delay())
   local r = {}
   for l = vim.fn.line('w0'), vim.fn.line('w$') do
     for c = 1, math.min(vim.fn.strdisplaywidth(vim.fn.getline(l)) + 1, vim.fn.winwidth(0)) do r[#r + 1] = vim.fn.screenattr(l - vim.fn.line('w0') + 1, c) end
