@@ -114,12 +114,14 @@ void target_resume(Target *t, const uint64_t *traps, uint32_t count, uint32_t st
    A thread can have run a trap byte without its event having come yet (Windows hands over one event
    of a process at a time, specs/Run.tla); asked for, GetThreadContext says that the thread is inside
    an exception, and it is put back on the trap now. Its event comes in a later run (TARGET_LATE).
+   Not `reported`, the thread whose event this stop is: it is inside an exception too, and stands where it
+   belongs, which may be just behind another trap (two traps on neighbouring bytes).
    For a thread just suspended the same call waits until it stands still: SuspendThread only asks. */
-static void stop(Target *t)
+static void stop(Target *t, DWORD reported)
 {
   for (uint32_t i = 0; i < t->thread_count; i += 1) {
     CONTEXT c = {.ContextFlags = CONTEXT_CONTROL | CONTEXT_EXCEPTION_REQUEST};
-    if (!GetThreadContext(t->threads[i].handle, &c) || !(c.ContextFlags & CONTEXT_EXCEPTION_ACTIVE)) continue;
+    if (t->threads[i].id == reported || !GetThreadContext(t->threads[i].handle, &c) || !(c.ContextFlags & CONTEXT_EXCEPTION_ACTIVE)) continue;
     for (uint32_t k = 0; k < t->trap_count; k += 1)
       if (t->traps[k].in && t->traps[k].addr == c.Rip - 1) { thread_at(t->threads[i].handle, &t->traps[k].addr, false); break; }
   }
@@ -158,7 +160,7 @@ bool target_wait(Target *t, uint32_t ms, TargetEvent *out)
     return true;
   case EXCEPTION_DEBUG_EVENT: {
     uint64_t at = (uintptr_t)e.u.Exception.ExceptionRecord.ExceptionAddress;
-    out->addr = at, out->code = e.u.Exception.ExceptionRecord.ExceptionCode;
+    out->addr = at, out->code = e.u.Exception.ExceptionRecord.ExceptionCode, out->unhandled = !e.u.Exception.dwFirstChance;
     /* a step asked of another thread in an earlier run, done only now, is no stop of this run */
     out->kind = out->code != EXCEPTION_SINGLE_STEP ? TARGET_EXCEPTION : e.dwThreadId == t->step ? TARGET_STEP : TARGET_LATE;
     if (out->code == EXCEPTION_BREAKPOINT) {
@@ -176,15 +178,17 @@ bool target_wait(Target *t, uint32_t ms, TargetEvent *out)
   default: break;   /* RIP_EVENT, and a second process cannot come (DEBUG_ONLY_THIS_PROCESS) */
   }
   if (out->kind < TARGET_TRAP) return ContinueDebugEvent(e.dwProcessId, e.dwThreadId, status), false;
-  stop(t);
+  stop(t, e.dwThreadId);
   t->held = e.dwThreadId, t->held_status = status;
   return true;
 }
 
+void target_swallow(Target *t) { t->held_status = DBG_CONTINUE; }
+
 void target_halt(Target *t)
 {
   for (uint32_t i = 0; i < t->thread_count; i += 1) SuspendThread(t->threads[i].handle);
-  stop(t);
+  stop(t, 0);
 }
 
 void target_close(Target *t)

@@ -130,6 +130,7 @@ static const Case cases[] = {
   {"version 2: no epilogue codes, no epilogue", {2, 5, 2, 0, OP(5, SMALL, 3), OP(1, PUSH, RBX)}, .in = 0x7c, .ret = 5, .rbx = 1 + 4},
   {"version 2: a code's argument is not taken for a push", {2, 9, 5, 0, OP(2, EPI, 1), OP(0, EPI, 0), OP(8, LARGE, 0), OP(0, PUSH, R12), OP(1, PUSH, RBX)}, .in = 0x7e, .ret = 1, .rbx = 1 + 0},
   {"version 2: an interrupt's frame under a pop nobody keeps", {2, 2, 5, 0, OP(3, EPI, 1), OP(0, EPI, 0), OP(2, PUSH, RBX), OP(1, SMALL, 0), OP(0, MACH, 0)}, .in = 0x7d, .mach = true, .ret = 2, .rbx = 1 + 0},
+  {"version 2: only a frame of 8 bytes is a pop", {2, 6, 4, 0, OP(2, EPI, 1), OP(0, EPI, 0), OP(2, PUSH, RBX), OP(1, SMALL, 3)}, .in = 0x7e, .ret = 1, .rbx = 1 + 0},
   {"version 2: an epilogue without pops", {2, 4, 3, 0, OP(1, EPI, 1), OP(0, EPI, 0), OP(4, SMALL, 3)}, .in = 0x7f, .ret = 0},
   {"version 2: an epilogue that ends an interrupt", {2, 0, 3, 0, OP(1, EPI, 1), OP(0, EPI, 0), OP(0, MACH, 0)}, .in = 0x7f, .mach = true, .ret = 0},
   {"version 2: the pushes are in the entry chained to", {2 | 4 << 3, 0, 2, 0, OP(2, EPI, 1), OP(0, EPI, 0), CHAIN}, {PUSH_SUB}, .in = 0x7e, .ret = 1, .rbx = 1 + 0},

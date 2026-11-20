@@ -571,7 +571,7 @@ test | dbg/unwind.c | bool wide = c[1] == 0x81 \p\p (c[2] & 0xf8) == 0xa0; | boo
 test | dbg/unwind.c | uint32_t fp = (c[0] & 1u) << 3 \p (c[2] & 7u); | uint32_t fp = c[2] & 7u;
 test | dbg/unwind.c | else if ((c[0] & 0xfe) == 0x48 && | else if (c[0] == 0x48 &&
 test | dbg/unwind.c | fp && fp == frame_reg && | fp == frame_reg &&
-test | dbg/unwind.c | fp && fp == frame_reg && | fp &&
+test | dbg/unwind.c | fp && fp == frame_reg && | fp != 0 &&
 test | dbg/unwind.c | ((c[2] & 0xf8) == 0x60 \p\p wide)) | wide)
 test | dbg/unwind.c | r.gp[RSP] = r.gp[fp] + n, | r.gp[RSP] += n,
 test | dbg/unwind.c | at += c[at] == 0xf2; | 
@@ -582,11 +582,11 @@ test | dbg/unwind.c | if (!out && (c[at] == 0xeb \p\p c[at] == 0xe9)) { | if (!o
 test | dbg/unwind.c | if (!out && (c[at] == 0xeb \p\p c[at] == 0xe9)) { | if (!out && c[at] == 0xe9) {
 test | dbg/unwind.c | out = to < le32(e) \p\p to >= le32(e + 4) ? | out = to >= le32(e + 4) ?
 test | dbg/unwind.c | out = to < le32(e) \p\p to >= le32(e + 4) ? | out = to < le32(e) ?
-test | dbg/unwind.c | ? !target \p\p primary(read, t, m, target) != begin \p\p to == begin : | ? true :
+test | dbg/unwind.c | != begin \p\p to == begin : | != begin \p\p true :
 test | dbg/unwind.c | ? !target \p\p primary(read, t, m, target) != begin \p\p to == begin : | ? !target \p\p primary(read, t, m, target) != begin :
 test | dbg/unwind.c | ? !target \p\p primary(read, t, m, target) != begin \p\p to == begin : | ? !target \p\p to == begin :
-test | dbg/unwind.c | : to == le32(e) && !(flags & CHAINED); | : to == le32(e);
-test | dbg/unwind.c | : to == le32(e) && !(flags & CHAINED); | : false;
+test | dbg/unwind.c | : to == le32(e) && !(flags & CHAINED); | : to == le32(e) && !(flags & 0);
+test | dbg/unwind.c | : to == le32(e) && !(flags & CHAINED); | : to == le32(e) + 1 && !(flags & CHAINED);
 test | dbg/unwind.c | bool is_set = in >= info[1] \p\p (flags & CHAINED); | bool is_set = in >= info[1];
 test | dbg/unwind.c | bool is_set = in >= info[1] \p\p (flags & CHAINED); | bool is_set = (flags & CHAINED);
 test | dbg/unwind.c | frame = frame_reg && is_set ? regs->gp[frame_reg] - 16 * (uint64_t)(info[3] >> 4) : regs->gp[RSP]; | frame = regs->gp[RSP];

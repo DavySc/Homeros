@@ -1,10 +1,10 @@
-# Process control and the unwinder on real Windows: what check.sh runs under Wine, natively and longer
-# (the unwinder here against Microsoft's own stack walker).
+# Process control, the unwinder and the stepping engine on real Windows: what check.sh runs under Wine, natively
+# and longer (the unwinder here against Microsoft's own stack walker).
 name: win-check
 on:
   push:
     branches: [claude/project-thread-l4spyq]
-    paths: ['dbg/win/**', 'dbg/target.h', 'dbg/unwind.*', 'tests/spin.c', 'tests/stress_*.c', 'tests/plants.txt', 'check.sh', '.github/workflows/win-check.yml']
+    paths: ['dbg/**', 'tests/**', 'traces/**', 'check.sh', '.github/workflows/win-check.yml']
 jobs:
   stress:
     runs-on: windows-latest

@@ -69,6 +69,9 @@ for l in open(sys.argv[1] + "/tests/plants.txt"):
     for p in steps deep frames_o2; do
       (cd "$b" && WINEDEBUG=-all timeout 900 "${WINE:-wine}" ./stress_unwind.exe "$OLDPWD/rdi/$p.exe" "${UNWIND_STEPS:-2000}" "$(sed -n '1s/.* +0x\([0-9a-f]*\) .*/\1/p' "$OLDPWD/traces/$p.over.txt")" 2>/dev/null | grep "^stress_unwind" | tee unwind.out; grep -q "frames agree" unwind.out) || return 1
     done
+    # the engine's stepping against RAD's recorded traces (oracle/rad-trace.ps1): every step of each must end where RAD's did
+    ${WINCC:-x86_64-w64-mingw32-gcc} -std=c17 -O1 -g -Wall -Wextra -Werror $(grep -v '/queue\.c$' <<<"$lib") "$src"/dbg/engine.c "$src"/dbg/win/target.c "$src"/tests/trace.c -o rdi/trace_$$.exe || return 2
+    WINEDEBUG=-all python3 -I "$src/tests/oracle_trace.py" ./trace_$$.exe traces rdi $([ "${WINE:-wine}" = env ] || echo "${WINE:-wine}") 2>/dev/null | tail -n 12; t=${PIPESTATUS[0]}; rm -f rdi/trace_$$.exe; [ "$t" = 0 ] || return 1
   fi
   if [ "$what" = fuzz ] || [ "$what" = all ]; then
     for f in "$src"/tests/fuzz_*.c; do

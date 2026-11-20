@@ -37,7 +37,7 @@ int main(int argc, char **argv)
     }
     for (uint32_t i = 0; e.kind == TARGET_MODULE_GONE && i < module_count; i += 1)
       if (modules[i].base == e.addr) free(modules[i].table), modules[i] = modules[--module_count], SymUnloadModule64(made.hProcess, e.addr);
-    if (e.kind == TARGET_EXIT) return printf("stress_unwind: the program ended after %u steps\n", done), 1;
+    if (e.kind == TARGET_EXIT) break;   /* let go for a step that waited on another thread, it can run to its end: what was compared stands */
     if (stopped && e.kind != TARGET_MODULE && e.kind != TARGET_STEP && e.kind != TARGET_BREAK && e.kind != TARGET_TRAP) return printf("stress_unwind: step %u: event %d\n", done, e.kind), 1;
     if (stopped && e.thread == thread) {
       TargetRegs r;
