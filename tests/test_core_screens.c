@@ -69,6 +69,10 @@ static int status_row(Editor *e, int r, const char *row)
 		if (!col) snprintf(want, sizeof want, " %zu,0-1 ", l);
 		else if (v != col) snprintf(want, sizeof want, " %zu,%zu-%zu ", l, col, v);
 		else snprintf(want, sizeof want, " %zu,%zu ", l, col);
+		/* Neovim's default status line: the name, "[+]" while modified
+		   (unless the name was cut with '<'), the ruler */
+		int plus = !!strstr(part, "[+]");
+		if (plus != core_modified(w->buf) && (plus || !strchr(part, '<'))) return 0;
 		if (strstr(part, want)) return 1;
 		/* a ruler cut by the window's width ('<' before it) is not compared */
 		for (const char *p = part; *p; p++) {
