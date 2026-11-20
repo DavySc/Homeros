@@ -1,0 +1,21 @@
+/* The VS Code colours the infoview uses, as Catppuccin Mocha (ref/theme.c's
+   theme, catppuccin/vscode's names): base #1e1e2e, text #cdd6f4, surface0
+   #313244, surface1 #45475a, overlay0 #6c7086, blue #89b4fa, green and red
+   at a quarter for diffs.  kittymax made these from Emacs' faces. */
+:root {
+  --vscode-editor-foreground: #cdd6f4; --vscode-editor-background: #1e1e2e;
+  --vscode-foreground: #cdd6f4;
+  --vscode-font-family: "JetBrains Mono", monospace; --vscode-font-size: 14px; --vscode-font-weight: normal;
+  --vscode-editor-font-family: "JetBrains Mono", monospace; --vscode-editor-font-size: 14px;
+  --vscode-editor-font-weight: normal; --vscode-editor-line-height: 1.4;
+  --vscode-editor-font-feature-settings: normal;
+  --vscode-diffEditor-insertedTextBackground: #a6e3a140; --vscode-diffEditor-removedTextBackground: #f38ba840;
+  --vscode-diffEditor-insertedTextBorder: transparent; --vscode-diffEditor-removedTextBorder: transparent;
+  --vscode-editor-selectionBackground: #45475a; --vscode-editor-findMatchBackground: #45475a;
+  --vscode-editorHoverWidget-background: #181825; --vscode-editorHoverWidget-foreground: #cdd6f4;
+  --vscode-editorHoverWidget-border: #6c7086; --vscode-widget-shadow: rgba(0,0,0,0.3);
+  --vscode-textCodeBlock-background: #313244; --vscode-textLink-foreground: #89b4fa;
+  --vscode-dropdown-background: #1e1e2e; --vscode-dropdown-foreground: #cdd6f4; --vscode-dropdown-border: #6c7086;
+  --vscode-editorOverviewRuler-rangeHighlightForeground: #45475a;
+}
+body { background: #1e1e2e; color: #cdd6f4; font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); }
