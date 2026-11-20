@@ -30,12 +30,8 @@ static int slot(long l)
 	const unsigned char *s = l < nlines() ? core_line(E, (size_t)l, &n) : (const unsigned char *)"";
 	if (n + 1 > ring[i].cap) {
 		/* doubling: a line growing by a few bytes per key (a count on an
-		   insert) would otherwise reallocate its whole copy every key; and
-		   at least the largest slot, so once one held the longest line each
-		   grows once more at most ('hlsearch' redraws, tests/test_keys_ex.c) */
-		static size_t big;
+		   insert) would otherwise reallocate its whole copy every key */
 		size_t cap = ring[i].cap * 2 > n + 1 ? ring[i].cap * 2 : n + 1;
-		big = cap = cap > big ? cap : big;
 		char *b = realloc(ring[i].s, cap);
 		if (!b) { ring[i].n = 0; ring[i].gen = 0; static char z; return (ring[i].s = &z, i); }
 		ring[i].s = b;

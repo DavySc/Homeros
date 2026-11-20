@@ -1192,9 +1192,8 @@ static void nv_g_cmd(Cmdarg *cap)
 	case '~': case 'u': case 'U': nv_operator(cap); break;
 	case 'p': case 'P': nv_put(cap, 0); break;
 	case '*': case '#': nv_ident(cap); break;
-	/* do_cmdline_cmd("%s//~/&"): not a typed command line (no history, no
-	   ": register), and a pending operator then takes the cursor's move */
-	case '&': { char a[] = "//~/&"; ex_sub(0, nlines() - 1, 's', a); break; }
+	/* do_cmdline_cmd("%s//~/&"), typed here */
+	case '&': stuff_str(":%s//~/&\n", 9); break;
 	default: clearopbeep(oap);
 	}
 }

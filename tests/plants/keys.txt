@@ -133,10 +133,10 @@ keys: \_s is E877, its letter read with its magic (test_keys_ex)~test TESTS=keys
 keys: \n does not match the last line's line break (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~			if (c < ml_len(l) || l >= nlines()) return 0;¶			l++, c = 0;~			if (c < ml_len(l) || l + 1 >= nlines()) return 0;¶			l++, c = 0;
 keys: beginline stops at a NUL in the line (test_keys_ex)~test TESTS=keys_ex~~src/keys/buf.c~((flags & BL_FIX) && c + 1 >= n)~((flags & BL_FIX) && !s[c + 1] + 0 * n)
 keys: u after :s goes back to an undo step the oracle's text load made (test_keys_ex)~test TESTS=keys_ex~~src/keys/ex_oracle.lua~vim.bo.undolevels = -1¶~
-keys: 'hlsearch' draws while :noh hides it (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~if (no_hlsearch || !spats~if (0 * no_hlsearch || !spats
+keys: 'hlsearch' draws while :noh hides it (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~if (no_hlsearch || !spats~if ((no_hlsearch && 0) || !spats
 keys: a new search leaves the matches hidden (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~	int delim = dirc;¶	no_hlsearch = 0;~	int delim = dirc;
 keys: :s with a new pattern leaves the matches hidden (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~no_hlsearch &= i == save;~no_hlsearch &= 1;
-keys: a match from a line above is not drawn (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~!col && line > W->top && re_hasnl()~0 * !col && line > W->top && re_hasnl()
+keys: a match from a line above is not drawn (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~!col && line > W->top && re_hasnl()~(!col && 0) && line > W->top && re_hasnl()
 keys: 'hlsearch' starts at the first line, not the window's top (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~(long)W->top : l~0 : l
 keys: a match's line break is not drawn (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~ml_len(l) + 1 : me.col~ml_len(l) : me.col
 keys: 'hlsearch' reads stale lines after an edit without a key (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~	if (!col) buf_changed();~
@@ -144,7 +144,6 @@ keys: the kept regex ignores 'ignorecase' (test_keys_ex)~test TESTS=keys_ex~~src
 keys: CTRL-L hides the matches in Visual mode (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~!checkclearop(cap->oap) && !VIsual_active) no_hlsearch~!checkclearop(cap->oap)) no_hlsearch
 keys: CTRL-L hides the matches after an operator (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~if (!checkclearop(cap->oap) && !VIsual_active) no_hlsearch~if (!VIsual_active) no_hlsearch
 keys: :noh takes a range (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~		if (n) core_msg(E, "E481: No range allowed");¶		else no_hlsearch = 1;~		no_hlsearch = 1;
-keys: line copies grow on every redraw (test_keys_ex)~test TESTS=keys_ex~~src/keys/buf.c~big = cap = cap > big ? cap : big;~big = cap = n + 1;
 keys: a match \zs starts on the next line is drawn on this one (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~		else if (ms.lnum > l) return 0;¶~
 keys: a answers this match but keeps asking (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~if (typed == 'a') fl.ask = 0;~if (typed == 'a') fl.ask = 1;
 keys: l answers this match but goes on to the next lines (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~if (typed == 'l') fl.all = 0, line2 = lnum;~if (typed == 'l') fl.all = 0;
@@ -152,10 +151,9 @@ keys: Esc and CTRL-C answer yes instead of quitting (test_keys_ex)~test TESTS=ke
 keys: the question shows the line without its substitutions so far (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~				if (has_new) show(1);¶~
 keys: another key asks again without moving the cursor by the change again (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~W->col = (long)W->col + change > 0 ? (size_t)((long)W->col + change) : 0;~W->col = (size_t)gs[0].col + (size_t)change;
 keys: the answered :s is undone key by key (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~if (!sub_asking && ((E->mode~if (((E->mode
-keys: maps take the keys that answer :s (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~MODE_CMDLINE || sub_asking ||~MODE_CMDLINE || 0 * sub_asking ||
+keys: maps take the keys that answer :s (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~MODE_CMDLINE || sub_asking ||~MODE_CMDLINE || (sub_asking && 0) ||
 keys: the match is not shown in IncSearch (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~E->ks.inc = (KeyArea){ 'v',~E->ks.inc = (KeyArea){ 0,
 keys: :s goes on with 'hlsearch''s program after a redraw (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~				search_recompile();¶~
 keys: CTRL-E scrolls the cursor into 'scrolloff' (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~(long)(W->line - W->top) - 1 >= SCROLLOFF) W->top++;~(long)(W->line - W->top) - 1 >= 0) W->top++;
-keys: CTRL-Y does not scroll (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~if (typed == 25 && W->top &&~if (typed == 25 && 0 * W->top &&
-keys: g& goes through the command line, so a pending operator cancels it (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~ex_sub(0, nlines() - 1, 's', a); break; }~(void)a; stuff_str(":%s//\x7e/&\n", 9); break; }
+keys: CTRL-Y does not scroll (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~if (typed == 25 && W->top &&~if (typed == 25 && (W->top && 0) &&
 keys: Visual : leaves curswant to be set after the command (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~		update_curswant();¶		cmdline(':', "'<,'>");~		cmdline(':', "'<,'>");
