@@ -6,12 +6,14 @@
    Org parses recursively; this keeps the open containers in a stack of
    frames instead, so nesting depth costs heap, not C stack.  Known
    differences, all outside ASCII or outside Davy's files (hypothesis):
-   case folding is ASCII-only, and a block name inside a list is compared
-   literally where Org uses it unquoted as a regexp. */
+   case folding is ASCII-only, a block name inside a list is compared
+   literally where Org uses it unquoted as a regexp, and the TODO keywords
+   are Davy's (org_todo) whatever a file's #+TODO: lines say. */
 #include "org.h"
 #include "uni.h"
 #include "class.h"
 #include "grid.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -88,12 +90,13 @@ static int digit(size_t p) { return p < N && S[p] >= '0' && S[p] <= '9'; }
 
 /* ---- line recognisers ---- */
 
+static size_t stars(size_t p) { while (p < N && S[p] == '*') p++; return p; }
+static size_t spaces(size_t p) { while (p < N && S[p] == ' ') p++; return p; }
+
 static int headline(size_t p)           /* ^\*+ */
 {
-	if (p != bol(p)) return 0;
-	size_t q = p;
-	while (q < N && S[q] == '*') q++;
-	return q > p && q < N && S[q] == ' ';
+	size_t q = stars(p);
+	return p == bol(p) && q > p && q < N && S[q] == ' ';
 }
 static int comment(size_t p)            /* org-comment-regexp ^[ \t]*#( |$) */
 {
@@ -326,8 +329,7 @@ static int fnl(size_t p)
 /* org-element-paragraph-separate at line p */
 static int separator(size_t p)
 {
-	size_t t = p;
-	while (t < N && S[t] == '*') t++;
+	size_t t = stars(p);
 	if (t > p && t < N && S[t] == ' ') return 1;
 	if (fnl(p) || lit(p, "%%(")) return 1;
 	t = blanks(p);
@@ -1015,8 +1017,7 @@ static size_t tags(size_t q, size_t e, size_t *z)
 void org_head(const char *s, size_t n, size_t q, OrgHead *h)
 {
 	S = (const unsigned char *)s; N = n;
-	size_t p = q, e = eol(q);
-	while (p < N && S[p] == '*') p++;
+	size_t p = stars(q), e = eol(q);
 	h->level = (int)(p - q);
 	p = blanks(p);
 	h->todo = -1;
@@ -1067,7 +1068,6 @@ static void set(size_t a, size_t b, int f)
 {
 	for (a = a < FA ? FA : a; a < b && a < FZ; a++) F[a - FA] = (unsigned char)f;
 }
-static size_t stars(size_t p) { while (p < N && S[p] == '*') p++; return p; }
 static int alpha(size_t p) { return p < N && up(S[p]) >= 'A' && up(S[p]) <= 'Z'; }
 static size_t letters(size_t p) { while (alpha(p)) p++; return p; }
 static int word(size_t p) { return p < N && IN(WORD, uni_cp(S, N, p)); }
@@ -1095,7 +1095,7 @@ static void meta(Scan *c)
 	c->at = nl;
 	if (c->st == 2) return;
 	if (c->st == 1) {
-		if (l < c->end) { if (c->quoting) set(l, nl < c->end ? nl : c->end, FACE_ORG_BLOCK); }
+		if (l < c->end) { if (c->quoting) set(l, nl, FACE_ORG_BLOCK); }
 		else {
 			if (S[l] != '*') set(l, e < N ? e + 1 : e, FACE_ORG_BLOCK_LINE);
 			c->st = 0;
@@ -1152,7 +1152,7 @@ static int level(size_t n)   /* org-get-level-face, org-cycle-level-faces */
 /* \(:?=[^|\n]*\) after " *" at p: the group's start, or ORG_NONE */
 static size_t formula(size_t p, size_t e)
 {
-	while (p < e && S[p] == ' ') p++;
+	p = spaces(p);
 	return p < e && (S[p] == '=' || (S[p] == ':' && p + 1 < e && S[p + 1] == '=')) ? p : ORG_NONE;
 }
 /* the todo keyword (index in org_todo) at p followed by " ", or blanks to
@@ -1165,7 +1165,6 @@ static int todo(size_t p, size_t e, size_t *k)
 	}
 	return -1;
 }
-static size_t spaces(size_t p) { while (p < N && S[p] == ' ') p++; return p; }
 static int dcolon(size_t x, size_t e) { return x + 2 <= e && S[x] == ':' && S[x + 1] == ':' && (x + 2 == e || blank(x + 2)); }
 
 /* The line l's faces, keyword by keyword in org-font-lock-keywords' order */
@@ -1184,7 +1183,7 @@ static void fontify(Scan *c)
 		/* ^[ \t]*|\(?:.*?|\)? *\(:?=[^|\n]*\) */
 		for (x = ORG_NONE, p = b + 1; p < e && x == ORG_NONE; p++) if (S[p] == '|') x = formula(p + 1, e);
 		if (x == ORG_NONE) x = formula(b + 1, e);
-		for (z = x + 1 + (x != ORG_NONE && S[x] == ':'); x != ORG_NONE && z < e && S[z] != '|'; z++) ;
+		for (z = x + 1; x != ORG_NONE && z < e && S[z] != '|'; z++) ;
 		if (x != ORG_NONE) set(x, z, FACE_ORG_FORMULA);
 		p = spaces(b + 1);   /* ^[ \t]*| *\([#*]\) *| */
 		if (one(p, "#*") && (x = spaces(p + 1)) < e && S[x] == '|') set(p, p + 1, FACE_ORG_FORMULA);
@@ -1212,13 +1211,16 @@ static void fontify(Scan *c)
 	for (; p + 4 <= e; p++)
 		if (is(p, "<%%(")) {
 			for (x = p + 4; x < e && S[x] != '>'; x++) ;
-			if (x < e) set(p, x + 1, FACE_ORG_DATE), p = x;
+			if (x == e) break;   /* none closes later ones either */
+			set(p, x + 1, FACE_ORG_DATE), p = x;
 		}
 	if (hl && (x = tags(l, e, &z)) != ORG_NONE) set(x, z, FACE_ORG_TAG);   /* org-activate-tags */
-	for (p = l; p < e; p++) {   /* org-activate-dates: org-tsr-regexp-both */
+	size_t lc = e;   /* after the line's last ] or >: a date needs one at p + 11 or later */
+	while (lc > l && S[lc - 1] != ']' && S[lc - 1] != '>') lc--;
+	for (p = l; p + 12 <= lc; p++) {   /* org-activate-dates: org-tsr-regexp-both */
 		if ((S[p] != '<' && S[p] != '[') || (x = ts_both(p)) == ORG_NONE) continue;
 		for (z = x + 1; z < e && z < x + 4 && S[z] == '-'; z++) ;
-		if (z > x + 1 && (z >= e || S[z] != '-') && (z = ts_both(z)) != ORG_NONE) x = z;
+		if (z > x + 1 && (z = ts_both(z)) != ORG_NONE) x = z;
 		/* Org stops dating the whole buffer at one preceded by "[", a
 		   live Emacs only the chunk it fontifies: this goes on */
 		if (!p || S[p - 1] != '[') set(p, x + 1, FACE_ORG_DATE);
@@ -1227,7 +1229,7 @@ static void fontify(Scan *c)
 	if (q > l && (p = spaces(q)) > q) {   /* org-heading-keyword-regexp-format */
 		int i = todo(p, e, &x);
 		if (i >= 0) set(p, x, i < org_done ? FACE_ORG_TODO : FACE_COMMENT);
-		if (i >= org_done && x < e && S[x] == ' ') {   /* org-headline-done */
+		if (i >= org_done) {   /* org-headline-done */
 			for (z = e, x = spaces(x); z > x && blank(z - 1); z--) ;
 			set(x, z, FACE_COMMENT);
 		}
@@ -1306,6 +1308,8 @@ struct OrgFx {
 	int dirty;             /* edited since: [lo, ho) of s is [lo, hc) of t */
 	size_t lo, ho, hc;
 	Scan c;                /* the scan's state at the last line it coloured */
+	unsigned char *lf;     /* that line's faces (the core asks a long line in pieces) */
+	size_t lcap;           /* as long as the longest line, unless out of memory */
 };
 
 OrgFx *orgfx_new(const Text *t)
@@ -1317,7 +1321,7 @@ OrgFx *orgfx_new(const Text *t)
 
 void orgfx_free(OrgFx *f)
 {
-	if (f) free(f->s), free(f->e);
+	if (f) free(f->s), free(f->e), free(f->lf);
 	free(f);
 }
 
@@ -1346,7 +1350,22 @@ int orgfx_update(OrgFx *f, int (*stop)(void))
 	org_edit(&f->e, &f->k, f->s, n, f->lo, f->ho - f->lo, f->hc - f->lo);   /* out of memory: no parse, scans from the start */
 	f->dirty = 0;
 	f->c.at = ORG_NONE;
+	S = (const unsigned char *)f->s; N = n;
+	for (size_t l = bol(f->lo), m; l < n && l <= f->hc; l = nextl(l))   /* the lines the edits touched */
+		if ((m = nextl(l) - l) > f->lcap) {
+			unsigned char *g = realloc(f->lf, m);
+			if (g) f->lf = g, f->lcap = m;
+		}
 	return 1;
+}
+
+/* the headline whose line holds p or comes before it, ORG_NONE before the first */
+static size_t head_at(const OrgFx *f, size_t p)
+{
+	size_t i = f->k ? first(f->e, f->k, p + 1) : 0;
+	if (!i) return ORG_NONE;
+	for (i--; f->e[i].type != ORG_HEADLINE && f->e[i].parent != ORG_NONE; i = f->e[i].parent) ;
+	return f->e[i].type == ORG_HEADLINE ? f->e[i].begin : ORG_NONE;
 }
 
 /* the faces of [a, z) of the text at the last update into out */
@@ -1354,14 +1373,17 @@ static void paint(OrgFx *f, size_t a, size_t z, unsigned char *out)
 {
 	S = (const unsigned char *)f->s; N = f->n; F = out; FA = a; FZ = z;
 	if (a >= z || a >= N) return;
-	size_t L = bol(a), R = 0, i = f->k ? first(f->e, f->k, L + 1) : 0;
-	if (i) {   /* the headline before: its line is outside any block */
-		for (i--; f->e[i].type != ORG_HEADLINE && f->e[i].parent != ORG_NONE; i = f->e[i].parent) ;
-		if (f->e[i].type == ORG_HEADLINE) R = f->e[i].begin;
-	}
+	size_t L = bol(a), R = head_at(f, L);   /* a headline's line is outside any block */
+	if (R == ORG_NONE) R = 0;
 	Scan c = f->c.at <= L && f->c.at >= R ? f->c : (Scan){ R, 0, 0, 0 };
 	while (c.at < L) meta(&c);
-	while (c.at < z && c.at < N) f->c = c, fontify(&c);
+	while (c.at < z && c.at < N) {
+		size_t l = c.at, nl = nextl(l), u = a > l ? a : l, v = z < nl ? z : nl;
+		if (f->c.at == l) { FZ = 0; c = f->c; meta(&c); }   /* coloured: the scan steps over it */
+		else if (nl - l > f->lcap) { F = out; FA = a; FZ = z; f->c.at = ORG_NONE; fontify(&c); continue; }   /* out of memory */
+		else { F = f->lf; FA = l; FZ = nl; memset(F, 0, nl - l); f->c = c; fontify(&c); }
+		memcpy(out + (u - a), f->lf + (u - l), v - u);
+	}
 }
 
 void orgfx_faces(OrgFx *f, size_t a, size_t z, unsigned char *face)
@@ -1373,4 +1395,549 @@ void orgfx_faces(OrgFx *f, size_t a, size_t z, unsigned char *face)
 		size_t b = a > f->hc ? a : f->hc;
 		paint(f, b - f->hc + f->ho, z - f->hc + f->ho, face + (b - a));
 	}
+}
+
+/* nvim-orgmode's foldexpr: a line's level is its subtree's headline's
+   stars (org-current-level), 0 before the first headline */
+int orgfx_foldexpr(OrgFx *f, size_t line, int *start)
+{
+	orgfx_update(f, NULL);
+	size_t p = text_line_start(f->t, line), h = head_at(f, p);
+	S = (const unsigned char *)f->s; N = f->n;
+	*start = h == p;
+	return h == ORG_NONE ? 0 : (int)(stars(h) - h);
+}
+
+/* ---- TODO states: org-todo as Davy's Emacs runs it (kittymax's
+   kitty-org.el: org-log-done time, org-log-into-drawer t,
+   org-enforce-todo-dependencies t; a note a state asks for is taken empty,
+   as C-c C-c on the note buffer) ---- */
+
+static char *W;        /* the text as org-todo changes it, step by step; S and N follow it */
+static size_t WC;
+static int oom;
+
+static void wrep(size_t a, size_t b, const char *x, size_t k)   /* [a, b) becomes x[0, k) */
+{
+	size_t m = N - (b - a) + k;
+	if (oom) return;
+	if (m > WC) {
+		char *w = realloc(W, m + m / 2 + 64);
+		if (!w) { oom = 1; return; }
+		W = w, WC = m + m / 2 + 64;
+	}
+	memmove(W + a + k, W + b, N - b);
+	memcpy(W + a, x, k);
+	N = m, S = (const unsigned char *)W;
+}
+static void wins(size_t a, const char *x) { wrep(a, a, x, strlen(x)); }
+
+static size_t heading(size_t p)   /* org-back-to-heading */
+{
+	for (p = bol(p); !headline(p); p = prevl(p)) if (!p) return ORG_NONE;
+	return p;
+}
+static size_t next_head(size_t p) { do p = nextl(p); while (p < N && !headline(p)); return p; }
+static size_t hlevel(size_t h) { return stars(h) - h; }
+
+/* org-todo's match at the space after a headline's stars: " +KW( +|[ \t]*$)",
+   else " *"; its end, *k the keyword (-1 for none) */
+static size_t kwmatch(size_t p, int *k)
+{
+	size_t q = spaces(p), r;
+	if (q > p && (*k = todo(q, eol(q), &r)) >= 0) return S[r] == ' ' ? spaces(r) : blanks(r);
+	*k = -1;
+	return q;
+}
+static int kw_at(size_t h) { int k; kwmatch(stars(h), &k); return k; }   /* org-get-todo-state */
+static int notdone(size_t h) { int k = kw_at(h); return k >= 0 && k < org_done; }
+
+/* the line after the headline at h and its planning line (case-sensitive,
+   as org-todo binds case-fold-search to nil, unless fold) */
+static size_t after_planning(size_t h, int fold)
+{
+	size_t p = nextl(h), q = blanks(p);
+	return (fold ? planningl(p) : is(q, "CLOSED:") || is(q, "DEADLINE:") || is(q, "SCHEDULED:")) ? nextl(p) : p;
+}
+static int propre(size_t p, int fold)   /* org-property-drawer-re at p */
+{
+	return fold ? propdrawer(p) : is(blanks(p), ":PROPERTIES:") && propdrawer(p);
+}
+
+/* org-entry-get h NAME without inheritance, read from h's property drawer
+   (the last line naming it, any case, measured): the value's [*a, *z), 0
+   when it has none */
+static int prop(size_t h, const char *name, size_t *a, size_t *z)
+{
+	size_t p = after_planning(h, 0), k = strlen(name);
+	int got = 0;
+	if (!propre(p, 0)) return 0;
+	for (p = nextl(p); !drawer_end(p); p = nextl(p)) {
+		size_t q = blanks(p);
+		if (S[q] != ':' || !lit(q + 1, name) || q + 1 + k >= N || S[q + 1 + k] != ':') continue;
+		*a = blanks(q + k + 2), *z = eol(p), got = 1;
+		while (*z > *a && blank(*z - 1)) --*z;
+	}
+	return got;
+}
+static int ordered(size_t h)   /* org-not-nil of the ORDERED property */
+{
+	size_t a, z;
+	return prop(h, "ORDERED", &a, &z) && !(z - a == 3 && is(a, "nil"));
+}
+static size_t up_heading(size_t h)   /* org-up-heading-safe */
+{
+	size_t l = hlevel(h);
+	while (h) if (headline(h = prevl(h)) && hlevel(h) < l) return h;
+	return ORG_NONE;
+}
+static int notdone_between(size_t a, size_t b)   /* re-search-forward org-not-done-heading-regexp a..b */
+{
+	for (; a < b; a = nextl(a)) if (headline(a) && notdone(a)) return 1;
+	return 0;
+}
+
+/* org-block-todo-from-children-or-siblings-or-parent */
+static int blocked(size_t h, int from, int to)
+{
+	if (from >= org_done || to < org_done) return 0;
+	size_t l = hlevel(h), p, q;
+	for (q = next_head(h); q < N && hlevel(q) > l; q = next_head(q)) if (notdone(q)) return 1;
+	for (p = h; (q = up_heading(p)) != ORG_NONE; p = q) {
+		if (ordered(q) && notdone_between(nextl(q), p)) return 1;
+		if (!notdone(q)) return 0;
+	}
+	return 0;
+}
+
+/* ---- dates, as Emacs's encode-time normalises them ---- */
+
+static long fdiv(long a, long b) { return a >= 0 ? a / b : -((-a + b - 1) / b); }
+static long days(long y, long m, long d)   /* since 1970-01-01; months past 12 roll over */
+{
+	y += fdiv(m - 1, 12), m -= 12 * fdiv(m - 1, 12);
+	y -= m <= 2;
+	long era = fdiv(y, 400), yoe = y - era * 400, doy = (153 * (m > 2 ? m - 3 : m + 9) + 2) / 5 + d - 1;
+	return era * 146097 + yoe * 365 + yoe / 4 - yoe / 100 + doy - 719468;
+}
+static void civil(long z, int *y, int *m, int *d)
+{
+	z += 719468;
+	long era = fdiv(z, 146097), doe = z - era * 146097, yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+	long doy = doe - (365 * yoe + yoe / 4 - yoe / 100), mp = (5 * doy + 2) / 153;
+	*d = (int)(doy - (153 * mp + 2) / 5 + 1), *m = (int)(mp < 10 ? mp + 3 : mp - 9), *y = (int)(yoe + era * 400 + (*m <= 2));
+}
+/* "<2026-11-19 Thu 17:30>" for minute t (since the epoch), with the time
+   when hm, extra x[0, k) before the closing bracket */
+static size_t stamp(char *o, long t, int hm, int inactive, const char *x, size_t k)
+{
+	static const char *const wd[] = { "Thu", "Fri", "Sat", "Sun", "Mon", "Tue", "Wed" };
+	long z = fdiv(t, 1440), mi = t - z * 1440;
+	int y, m, d;
+	civil(z, &y, &m, &d);
+	size_t n = (size_t)sprintf(o, "%c%04d-%02d-%02d %s", inactive ? '[' : '<', y, m, d, wd[z - 7 * fdiv(z, 7)]);
+	if (hm) n += (size_t)sprintf(o + n, " %02ld:%02ld", mi / 60, mi % 60);
+	memcpy(o + n, x, k);
+	o[n + k] = inactive ? ']' : '>';
+	return n + k + 1;
+}
+
+/* org-ts-regexp1's date and optional day name and " H:MM" at p (after the
+   bracket); its end, the minute it names in *t (0:00 without a time) */
+static size_t tsbody(size_t p, long *t)
+{
+	if (!date(p)) return 0;
+	size_t q = p + 10, r = spaces(q), u = r;
+	while (u < N && !strchr("]+0123456789>\r\n -", S[u])) u++;
+	if (u > r) q = u;
+	long h = 0, mi = 0;
+	if (q + 5 <= N && S[q] == ' ' && digit(q + 1)) {
+		size_t c = digit(q + 2) ? q + 3 : q + 2;
+		if (c + 3 <= N && S[c] == ':' && digit(c + 1) && digit(c + 2))
+			h = num(q + 1, c), mi = num(c + 1, c + 3), q = c + 3;
+	}
+	*t = days(num(p, p + 4), num(p + 5, p + 7), num(p + 8, p + 10)) * 1440 + h * 60 + mi;
+	return q;
+}
+/* the stamp org-ts-regexp3 matches at a ([<...]>, at most 16 bytes after
+   the time), its end; 0 when none */
+static size_t ts3(size_t a)
+{
+	long t;
+	size_t q, c;
+	if (a >= N || (S[a] != '<' && S[a] != '[') || !(q = tsbody(a + 1, &t))) return 0;
+	for (c = q; c < N && c - q <= 16 && S[c] != ']' && S[c] != '>' && S[c] != '\n'; c++) ;
+	return c < N && c - q <= 16 && (S[c] == ']' || S[c] == '>') ? c + 1 : 0;
+}
+/* org-in-regexp org-ts-regexp3 around q: the stamp's start, ORG_NONE */
+static size_t ts_around(size_t q)
+{
+	for (size_t a = bol(q), z; a <= q; a = z ? z : a + 1)
+		if ((z = ts3(a)) && z >= q) return a;
+	return ORG_NONE;
+}
+
+/* (-HH:MM)?( +[.+]?-?[-+]N[hdwmy](/N[hdwmy])?)*[]>] at i, in a stamp
+   ending at z: the group's end, 0 when no bracket follows it */
+static size_t extra_at(size_t i, size_t z)
+{
+	size_t p = i, q, r;
+	if (p + 6 < z && S[p] == '-' && S[p + 1] >= '0' && S[p + 1] <= '2' && digit(p + 2) && S[p + 3] == ':' &&
+	    S[p + 4] >= '0' && S[p + 4] <= '5' && digit(p + 5)) p += 6;
+	for (;;) {
+		for (q = p; S[q] == ' '; q++) ;
+		if (q == p) break;
+		size_t c = 0, x, y;   /* [.+]?-?[-+]N[hdwmy], backtracking as the regexp does */
+		for (x = S[q] == '.' || S[q] == '+'; !c && x != (size_t)-1; x--)
+			for (y = S[q + x] == '-'; !c && y != (size_t)-1; y--)
+				if (one(q + x + y, "-+") && (r = digits(q + x + y + 1, z)) > q + x + y + 1 && one(r, "hdwmy")) c = r;
+		if (!c) break;
+		p = c + 1;
+		if (S[p] == '/' && (r = digits(p + 1, z)) > p + 1 && one(r, "hdwmy")) p = r + 1;
+	}
+	return S[p] == ']' || S[p] == '>' ? p : 0;
+}
+
+/* org-timestamp-change: the stamp at a moves by n minutes ('m'), hours
+   ('h'), days ('d'), months ('M') or years ('y'); nodelay drops its " --Nu"
+   delays.  Returns the end of the new stamp. */
+static size_t tschange(size_t a, long n, char what, int nodelay)
+{
+	char o[96], x[32];
+	size_t z = ts3(a), i, j, k = 0, e;
+	long t;
+	tsbody(a + 1, &t);
+	for (i = a; !(e = extra_at(i, z)); i++) ;
+	for (j = i; j < e; j++) {   /* without the delays " --Nu" */
+		if (nodelay && S[j] == ' ' && j + 3 < e && S[j + 1] == '-' && S[j + 2] == '-' && digit(j + 3)) {
+			size_t r = digits(j + 3, e);
+			if (one(r, "hdwmy")) { j = r; continue; }
+		}
+		x[k++] = (char)S[j];
+	}
+	int hm = 0;   /* "^.{10}.*?[0-9]+:[0-9][0-9]" */
+	for (j = a + 11; j + 2 < z && !hm; j++) hm = S[j] == ':' && digit(j - 1) && digit(j + 1) && digit(j + 2);
+	if ((what == 'h' || what == 'm') && k >= 6 && x[0] == '-' && x[3] == ':') {   /* org-modify-ts-extra */
+		long h = (x[1] - '0') * 10 + x[2] - '0' + (what == 'h' ? n : 0), mi = (x[4] - '0') * 10 + x[5] - '0' + (what == 'm' ? n : 0);
+		if (mi < 0) mi += 60, h--;
+		if (mi > 59) mi -= 60, h++;
+		h -= 24 * fdiv(h, 24);
+		x[1] = (char)('0' + h / 10), x[2] = (char)('0' + h % 10), x[4] = (char)('0' + mi / 10), x[5] = (char)('0' + mi % 10);
+	}
+	long day = fdiv(t, 1440), mi = t - day * 1440;
+	if (what == 'M' || what == 'y')   /* from the digits, as Org: 2026-02-30 +1m is 03-30 */
+		day = days(num(a + 1, a + 5) + (what == 'y' ? n : 0), num(a + 6, a + 8) + (what == 'M' ? n : 0), num(a + 9, a + 11));
+	t = day * 1440 + mi + (what == 'd' ? n * 1440 : what == 'h' ? n * 60 : what == 'm' ? n : 0);
+	size_t len = stamp(o, t, hm, S[a] == '[', x, k);
+	wrep(a, z, o, len);
+	return a + len;
+}
+
+/* the entry at h parsed alone (org_parse leaves S and N on its text) */
+static OrgNode *entry(size_t h, size_t *k)
+{
+	size_t n = N;
+	OrgNode *e = org_parse((const char *)S + h, next_head(h) - h, k);
+	S = (const unsigned char *)W, N = n;
+	if (!e) oom = 1;
+	return e;
+}
+
+/* the innermost element of the entry parse e (k nodes, the entry at h)
+   holding q; its type, -1 when none */
+static int at_type(const OrgNode *e, size_t k, size_t h, size_t q)
+{
+	int t = -1;
+	for (size_t i = 0; i < k && e[i].begin + h <= q; i++) if (q < e[i].end + h) t = e[i].type;
+	return t;
+}
+/* org-at-timestamp-p 'agenda at q, in the stamp starting at a: a planning
+   or property line, or a timestamp object */
+static int agenda_ts(size_t h, size_t a, size_t q)
+{
+	size_t k;
+	OrgNode *e = entry(h, &k);
+	if (!e) return 0;
+	int t = at_type(e, k, h, q);
+	free(e);
+	OrgTs x;
+	if (t == ORG_PLANNING || t == ORG_NODE_PROPERTY) return 1;
+	return (t == ORG_PARAGRAPH || t == ORG_HEADLINE || t == ORG_TABLE_ROW || t == ORG_VERSE_BLOCK) &&
+	       org_ts((const char *)S, N, a, &x) && x.end >= q;
+}
+/* org-repeat-re from p on, bounded by lim: the stamp's start, the repeater
+   [*r, *re) ([.+]?\+N[hdwmy]); ORG_NONE */
+static size_t repeat_re(size_t p, size_t lim, size_t *r, size_t *re)
+{
+	for (; p + 12 < lim; p++) {
+		if (S[p] != '<' || !date(p + 1) || S[p + 11] != ' ') continue;
+		for (size_t q = p + 12; q < lim && S[q] != '>' && S[q] != '\n'; q++) {
+			size_t u = q + (S[q] == '.' || S[q] == '+'), v;
+			if (S[u] != '+') u = q;   /* [.+]? backtracks to nothing */
+			if (S[u] != '+' || (v = digits(u + 1, lim)) == u + 1 || v >= lim || !one(v, "hdwmy")) continue;
+			*r = q, *re = v + 1;
+			if (S[*re] == '/' && (v = digits(*re + 1, lim)) > *re + 1 && v < lim && one(v, "hdwmy")) *re = v + 1;
+			return p;
+		}
+	}
+	return ORG_NONE;
+}
+
+static int alnum(size_t p) { return p < N && (S[p] >= 0x80 || digit(p) || alpha(p)); }   /* a word's byte, for \< */
+/* \<KW *[[<]([^]>]+)[]>] at q (KW one of CLOSED: DEADLINE: SCHEDULED:, or
+   only CLOSED: and [ when closed): its end, 0 when none */
+static size_t kwtime(size_t q, size_t lim, int closed)
+{
+	static const char *const k[] = { "CLOSED:", "DEADLINE:", "SCHEDULED:" };
+	for (int i = 0; i < (closed ? 1 : 3); i++) {
+		if (!is(q, k[i]) || (q && alnum(q - 1))) continue;
+		size_t p = q + strlen(k[i]), r;
+		while (p < lim && S[p] == ' ') p++;
+		if (p >= lim || (S[p] != '[' && (closed || S[p] != '<'))) continue;
+		for (r = p + 1; r < lim && S[r] != ']' && (closed || S[r] != '>'); r++) ;
+		if (r > p + 1 && r < lim) return r + 1;
+	}
+	return 0;
+}
+/* org-add-planning-info: CLOSED at now added (add) or removed */
+static void closed(size_t h, int add, const char *now)
+{
+	size_t l = nextl(h), p = blanks(l), q, z;
+	if (l < N && after_planning(h, 0) != l) {
+		for (q = p; q < eol(l) && !(z = kwtime(q, eol(l), 1)); q++) ;
+		if (q < eol(l)) {
+			while (z < eol(l) && !kwtime(z, eol(l), 0)) z++;
+			wrep(q, z, "", 0);
+		}
+		if (!add && ateol(blanks(p))) { wrep(l - 1, eol(l), "", 0); return; }
+		for (z = q = eol(l); q > p && blank(q - 1); q--) ;
+		wrep(q, z, "", 0);
+	} else if (add) wins(p = eol(h), "\n"), p++;
+	if (!add) return;
+	wins(p, "CLOSED: ");
+	wins(p + 8, now);
+	if (!ateol(p + 8 + strlen(now))) wins(p + 8 + strlen(now), " ");
+}
+
+/* current-indentation, which indent-line-to and org-indent-line use: tab
+   stops every 8 (ind is org-element's, where a tab adds 8) */
+static size_t col(size_t p)
+{
+	size_t c = 0;
+	for (; blank(p); p++) c = S[p] == '\t' ? c / 8 * 8 + 8 : c + 1;
+	return c;
+}
+/* indent-line-to c at p (indent-tabs-mode: tabs, then spaces); after it */
+static size_t indent(size_t p, size_t c)
+{
+	char b[64];
+	size_t k = 0;
+	for (; c >= 8 && k < 48; c -= 8) b[k++] = '\t';
+	while (c-- && k < 63) b[k++] = ' ';
+	wrep(p, p, b, k);
+	return p + k;
+}
+
+/* org-indent-line's column for the element at line l of the entry at h:
+   its sibling before's first line, else its parent drawer's, else 0 */
+static size_t sibling_ind(size_t h, size_t l)
+{
+	size_t k, i, j, c = 0;
+	OrgNode *e = entry(h, &k);
+	if (!e) return 0;
+	for (i = k; i-- > 0 && e[i].aff + h != l; ) ;
+	if (i < k) {
+		for (j = i; j-- > 0 && e[j].parent != e[i].parent; ) ;
+		if (j < k && e[j].parent == e[i].parent) c = col(e[j].begin + h);
+		else if (e[i].parent != ORG_NONE && e[e[i].parent].type == ORG_DRAWER) c = col(e[e[i].parent].begin + h);
+	}
+	free(e);
+	return c;
+}
+
+/* org-end-of-meta-data, as the note is stored (case-fold-search on) */
+static size_t meta_end(size_t h)
+{
+	size_t m = after_planning(h, 1);
+	if (!propre(m, 1)) return m;
+	for (m = nextl(m); !drawer_end(m); m = nextl(m)) ;
+	return nextl(m);
+}
+/* org-store-log-note at org-log-beginning: the state line of a change from
+   to, at the top of the LOGBOOK drawer, made when there is none */
+static void note(size_t h, int to, int from, const char *now)
+{
+	size_t m = meta_end(h), ee = m < N && headline(m) ? m : next_head(m), at = ORG_NONE, k;
+	OrgNode *e = entry(h, &k);
+	if (!e) return;
+	size_t p = m;   /* where a drawer is made: after the last :LOGBOOK: line that is none */
+	for (size_t q = m; q < ee && at == ORG_NONE; q = nextl(q))
+		if (lit(blanks(q), ":LOGBOOK:") && ateol(blanks(blanks(q) + 9))) {
+			p = eol(q);
+			for (size_t i = 0; i < k; i++) if (e[i].type == ORG_DRAWER && e[i].aff + h == q) at = nextl(q);
+		}
+	free(e);
+	size_t c = at != ORG_NONE ? col(prevl(at)) : 0;
+	if (at == ORG_NONE) {
+		if (p < N && p == bol(p) && headline(p)) p--;
+		int blank_line = p == bol(p) && ateol(blanks(p)), text_line = p == bol(p) && !ateol(p);
+		if (p != bol(p)) wins(p++, "\n");
+		wins(p, ":LOGBOOK:\n:END:");
+		if (blank_line || text_line) wins(p + 15, "\n");
+		c = sibling_ind(h, p);
+		indent(at = indent(p, c) + 10, c);   /* org-indent-region */
+	}
+	if (at != bol(at)) wins(at++, "\n");
+	else if (!ateol(blanks(at))) wins(at, "\n");
+	at = indent(at, c);
+	char t[96], a[16], b[16] = "";
+	snprintf(a, sizeof a, "\"%s\"", org_todo[to]);
+	if (from >= 0) snprintf(b, sizeof b, "\"%s\"", org_todo[from]);
+	snprintf(t, sizeof t, "- State %-12s from %-12s %s", a, b, now);
+	wins(at, t);
+}
+/* org-entry-put h "LAST_REPEAT" v */
+static void last_repeat(size_t h, const char *v)
+{
+	size_t p = after_planning(h, 0), q, z;
+	if (!propre(p, 0)) {   /* org-insert-property-drawer, indented as the planning line */
+		size_t c = p != nextl(h) ? col(nextl(h)) : 0;
+		q = p == bol(p) && p > 0 ? p - 1 : p;
+		int bob = q == 0;
+		if (!bob) wins(q++, "\n");
+		wins(q = indent(q, c), ":PROPERTIES:\n");
+		wins(q = indent(q + 13, c), ":END:");
+		if (q + 5 == N || bob) wins(q + 5, "\n");
+		p = after_planning(h, 0);
+	}
+	for (z = nextl(p); !drawer_end(z); z = nextl(z)) ;
+	for (q = nextl(p); q < z; q = nextl(q)) {
+		size_t c = blanks(q);
+		if (lit(c, ":LAST_REPEAT:") && (ateol(c + 13) || blank(c + 13))) { wrep(q, eol(q), "", 0); break; }
+	}
+	if (q == z) wins(z, "\n");
+	q = indent(q, col(prevl(q)));   /* as the property before it, or the drawer */
+	wins(q, ":LAST_REPEAT: ");
+	wins(q + 14, v);
+}
+/* org-remove-timestamp-with-keyword "SCHEDULED:" in the entry at h */
+static void unschedule(size_t h)
+{
+	for (size_t q = next_head(h); q-- > h; ) {
+		size_t p = spaces(q + 10), z;
+		if (!is(q, "SCHEDULED:") || (q && alnum(q - 1)) || p == q + 10 || p >= N || S[p] != '<') continue;
+		for (z = p + 1; z < N && S[z] != '>' && S[z] != '\n'; z++) ;
+		if (z == p + 1 || z >= N || S[z] != '>') continue;
+		wrep(q, blanks(z + 1), "", 0);
+		size_t l = bol(q);
+		if (blanks(l) < q && S[q - 1] == ' ') wrep(q - 1, q, "", 0);
+		else if (ateol(blanks(l))) wrep(l, eol(l) < N ? eol(l) + 1 : N, "", 0);
+	}
+}
+
+static int err;   /* Org stops with an error part way, as Emacs leaves the text */
+
+/* org-toggle-comment on the headline at h: COMMENT after its keyword and
+   priority (org-complex-heading-regexp's groups), added or removed */
+static void toggle_comment(size_t h, int on)
+{
+	size_t p = stars(h), q, r;
+	int k;
+	if (kwmatch(p, &k), k >= 0) p = spaces(p) + strlen(org_todo[k]);
+	q = spaces(p);
+	if (q > p && is(q, "[#") && q + 3 < N && S[q + 3] == ']' && (S[q + 4] == ' ' || ateol(blanks(q + 4)))) p = q + 4;
+	p = blanks(p);
+	if (!blank(p - 1)) wins(p++, " ");
+	if (!on) {
+		for (r = p; r < eol(p) && S[r] != ' '; r++) ;
+		wrep(p, r < eol(p) ? blanks(r + 1) : r, "", 0);
+	} else {
+		wins(p, "COMMENT");
+		if (!ateol(p + 7)) wins(p + 7, " ");
+	}
+}
+
+/* org-auto-repeat-maybe: back to TODO, the repeating stamps moved on */
+static void repeat(size_t h, int from, const char *nows, long now)
+{
+	size_t a, r, re, p;
+	for (p = h; (a = repeat_re(p, next_head(h), &r, &re)) != ORG_NONE && !agenda_ts(h, a, re); p = a + 1) ;
+	size_t k = stars(h), x, z, ts, u = r;
+	if (a != ORG_NONE) while (S[u] == '.' || S[u] == '+') u++;
+	if (a == ORG_NONE || !num(u, digits(u, N))) return;   /* (string-to-number (substring repeat 1)) */
+	int kw;
+	wrep(k, kwmatch(k, &kw), from < 0 ? " " : " TODO ", from < 0 ? 1 : 6);   /* the sequence's head, none from none */
+	closed(h, 0, nows);
+	last_repeat(h, nows);
+	size_t pk;
+	OrgNode *e = entry(h, &pk);
+	if (!e) return;
+	for (size_t i = 0; i < pk; i++) {
+		OrgTs t[3];
+		if (e[i].type != ORG_PLANNING) continue;
+		e[i].begin += h, e[i].aff += h, e[i].end += h;
+		if (org_planning((const char *)S, N, &e[i], t) & 4) {
+			for (z = t[2].end; z > t[2].begin && (S[z - 1] == ' ' || S[z - 1] == '\t'); z--) ;
+			if (repeat_re(t[2].begin, z, &x, &x) == ORG_NONE) unschedule(h);
+		}
+		break;
+	}
+	free(e);
+	for (p = h; !err && (a = repeat_re(p, next_head(h), &r, &re)) != ORG_NONE; ) {
+		if (!agenda_ts(h, a, re)) { p = re; continue; }
+		char type = S[r] == '.' || (S[r] == '+' && S[r + 1] == '+') ? (char)S[r] : 0, what;
+		u = r + (type != 0) + 1;
+		long n = num(u, x = digits(u, N));
+		what = S[x] == 'w' ? (n *= 7, 'd') : S[x] == 'm' ? 'M' : (char)S[x];
+		int hm = 0;
+		for (z = a; z + 3 < re && !hm; z++) hm = digit(z) && S[z + 1] == ':' && digit(z + 2) && digit(z + 3);
+		if (what == 'h' && !hm) { err = 1; break; }
+		if ((ts = ts_around(re)) == ORG_NONE) { err = 1; break; }   /* "Not at a timestamp" */
+		long t;
+		tsbody(ts + 1, &t);
+		if (type == '.') tschange(ts, what == 'h' ? now - t : fdiv(now, 1440) - fdiv(t, 1440), what == 'h' ? 'm' : 'd', 0);
+		if (type == '+') {
+			do {   /* Org asks "Continue?" at the tenth shift; Davy's answer is yes */
+				tschange(ts, n, what, 0);
+				tsbody(ts + 1, &t);
+			} while (what == 'h' ? !(now < t) : fdiv(now, 1440) >= fdiv(t, 1440));
+			tschange(ts, -n, what, 0);
+		}
+		p = tschange(ts, n, what, 1);
+	}
+}
+
+const char *org_todo_step(const char *s, size_t n, size_t pos, int dir, long now, size_t *a, size_t *b, size_t *len)
+{
+	char nows[32], kw[16];
+	size_t h, i, j;
+	if (n + 64 > WC) {
+		char *w = realloc(W, n + 64);
+		if (!w) return NULL;
+		W = w, WC = n + 64;
+	}
+	memcpy(W, s, n);
+	S = (const unsigned char *)W, N = n, oom = err = 0;
+	if (pos > n || (h = heading(pos)) == ORG_NONE) return *a = *b = *len = 0, W;
+	OrgHead hd;
+	org_head(W, N, h, &hd);
+	if (hd.commented) toggle_comment(h, 0);   /* back after the change; a blocked one leaves it out, as Org */
+	int from = kw_at(h), to = dir > 0 ? (from + 1 < 5 ? from + 1 : -1) : from == 0 ? -1 : from < 0 ? 4 : from - 1;
+	if (!blocked(h, from, to)) {
+		snprintf(kw, sizeof kw, to < 0 ? " " : " %s ", to < 0 ? "" : org_todo[to]);
+		wrep(stars(h), kwmatch(stars(h), &(int){ 0 }), kw, strlen(kw));
+		nows[stamp(nows, now, 1, 1, "", 0)] = 0;
+		if (to < 0 || (to < org_done && !(from >= 0 && from < org_done))) closed(h, 0, nows);
+		if (to >= org_done && from < org_done) {
+			closed(h, 1, nows);
+			repeat(h, from, nows, now);
+		}
+		if (hd.commented && !err) toggle_comment(h, 1);
+		if (to >= 2 && !err) note(h, to, from, nows);
+	}
+	if (oom) return NULL;
+	for (i = 0; i < n && i < N && s[i] == W[i]; i++) ;
+	for (j = 0; j < n - i && j < N - i && s[n - 1 - j] == W[N - 1 - j]; j++) ;
+	*a = i, *b = n - j, *len = N - j - i;
+	return W + i;
 }
