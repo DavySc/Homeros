@@ -1,6 +1,7 @@
 /* The dashboard: snacks.dashboard (folke/snacks.nvim at 882c996) as my-nvim
    sets it up (lua/config/core/ui.lua), with the app icon's cat and frog in
-   place of splash.lua's cat (still shown only with 18 lines below it), the
+   place of splash.lua's cat (still shown only with 18 lines below it, and
+   animated as it is: blink, ear twitch, whiskers, shimmer), the
    keys, and the "loaded in" footer.  Its keys are the preset's that make sense
    here: f n g r q (c opens Neovim's config, which homeros does not have; s
    and L are hidden in my-nvim too, without lazy.nvim).  It covers the
@@ -13,6 +14,7 @@
 #include "tools.h"
 #include "core.h"
 #include "dash.h"
+#include "loop.h"
 #include "uni.h"
 
 enum { WIDTH = 60, BELOW = 18, NKEY = 5 };
@@ -24,6 +26,8 @@ static struct {
 	long long start;           /* main()'s start, then -1 once measured */
 	double ms;                 /* the "loaded in" time */
 	int sel;                   /* the item the cursor is on */
+	int n, ticking;            /* the animation's frame; its timer runs */
+	long long t0;              /* when it opened (loop_now) */
 } D;
 
 static const struct { const char *icon, *desc; char key; } keys[NKEY] = {
@@ -66,7 +70,20 @@ static const struct { const char *text; char role[ART_COLS + 1]; } art[ART_ROWS]
 	{ "╰───────────────────────────────────────╯",
 	  "ttttttttttttttttttttttttttttttttttttttttt" },
 };
-static int face_of(char r)
+/* splash.lua's shimmer (hl_for): the face at position i of frame n is
+   SplashCat((i + n / 2) % 12 + 1), its 12-step gradient */
+static int shimmer(int i)
+{
+	static const unsigned char gradient[12] = {
+		FACE_KITTEN_TEXT, FACE_DASHBOARD_PROMPT, FACE_DASHBOARD_TITLE, FACE_DASHBOARD_FOOTER,
+		FACE_SHIMMER_SAPPHIRE, FACE_SHIMMER_TEAL, FACE_DASHBOARD_FROG, FACE_SHIMMER_TEAL,
+		FACE_SHIMMER_SAPPHIRE, FACE_DASHBOARD_FOOTER, FACE_DASHBOARD_TITLE, FACE_DASHBOARD_PROMPT,
+	};
+	return gradient[(i + D.n / 2) % 12];
+}
+
+/* row y's role r; the terminal shimmers down its rows, as splash's outline */
+static int face_of(char r, int y)
 {
 	switch (r) {
 	case 'c': return FACE_DASHBOARD_CAT;
@@ -77,7 +94,7 @@ static int face_of(char r)
 	case 's': return FACE_DASHBOARD_SPARKLE;
 	case 'b': return FACE_DASHBOARD_PROMPT;
 	}
-	return FACE_DASHBOARD_TERMINAL;
+	return shimmer(y);
 }
 
 /* ---- the layout (D:render, D:format) ---- */
@@ -111,23 +128,42 @@ static void geometry(Editor *e, int *top, int *art_on, int *first)
 	*first = *top + (*art_on ? ART_ROWS : 0) + 2;
 }
 
+/* splash.lua's animation: a frame every 350 ms (M.interval) for 300 s
+   (M.seconds) from each opening.  As the save kitten (Kitten.tla "ok"),
+   only the draw that first shows a frame arms the next: an idle or hidden
+   dashboard is woken at most once, and other redraws do not hold it back. */
+enum { INTERVAL = 350 };
+static const long long SECONDS = 300;
+
+static void tick(void *ctx)
+{
+	(void)ctx;
+	D.ticking = 0;
+	D.n++;
+	core_changed = 1;
+}
+
 void tools_dash(Editor *e, long long start_ns)
 {
+	double ms = D.ms;   /* :Dashboard (start_ns 0) shows the startup time again */
 	memset(&D, 0, sizeof D);
+	D.ms = ms;
 	D.open = 1;
 	D.buf = e->buf;
 	D.seq = undo_seq(e->buf->undo);
 	D.start = start_ns;
+	D.t0 = loop_now();
 }
 
-/* still shown?  Gone once the window shows a file (bufhidden=wipe), the
-   buffer changed or another window opened.  A file always comes into the
-   start buffer while it is empty and unchanged (buflist_new() reuses it, for
-   :enew too), so no other buffer can be shown while this one is open. */
+/* still shown?  Gone once the window shows a file or another buffer
+   (bufhidden=wipe; after :Dashboard the file's buffer is still there, for
+   CTRL-^ or SPC ,), the buffer changed or another window opened. */
 static int shown(Editor *e)
 {
-	if (D.open && (D.buf->path || e->wins->next || e->mode == MODE_INSERT || undo_seq(D.buf->undo) != D.seq))
+	if (D.open && (e->buf != D.buf || D.buf->path || e->wins->next || e->mode == MODE_INSERT || undo_seq(D.buf->undo) != D.seq)) {
 		D.open = 0;
+		loop_timer(tick, NULL, -1);   /* M.stop on SnacksDashboardClosed */
+	}
 	return D.open;
 }
 
@@ -140,7 +176,9 @@ static void action(Editor *e, int i)
 	case 'r': tools_pick(e, PICK_RECENT); break;
 	/* :ene | startinsert: the empty buffer is already here */
 	case 'n': keys_feed(e, 'i', 0); shown(e); break;
-	case 'q': e->quit = 1; break;   /* :qa: nothing can be modified yet */
+	/* :qa; while it shows there is one window, so :q is :qa (E162 for a
+	   file changed before :Dashboard) */
+	case 'q': core_close(e, 0); break;
 	}
 }
 
@@ -159,13 +197,18 @@ int dash_key(Editor *e, int k)
 
 void dash_draw(Editor *e, Grid *g)
 {
-	if (!shown(e)) return;
-	if (D.start >= 0) {
-		/* the footer's number is measured once (ui.lua), at the first draw */
+	if (D.start) {
+		/* the footer's number is measured once (ui.lua), at the first
+		   draw, also when a file is shown then, for a later :Dashboard */
 		struct timespec t;
 		timespec_get(&t, TIME_UTC);
 		D.ms = ((long long)t.tv_sec * 1000000000 + t.tv_nsec - D.start) / 1e6;
-		D.start = -1;
+		D.start = 0;
+	}
+	if (!shown(e)) return;
+	if (!D.ticking && loop_now() - D.t0 < SECONDS * 1000000000) {
+		D.ticking = 1;
+		loop_timer(tick, NULL, INTERVAL);
 	}
 	int top, art_on, first, h = height(e);
 	geometry(e, &top, &art_on, &first);
@@ -185,14 +228,21 @@ void dash_draw(Editor *e, Grid *g)
 			size_t n = strlen(art[y].text);
 			for (size_t i = 0, x = 0; i < n; x++) {
 				size_t k = uni_glen(t, n, i);
-				if (t[i] != ' ') cell(g, r, x0 + (int)x, art[y].text + i, k, 1, face_of(art[y].role[x]));
+				/* M.texts: the right ear a column in (n % 31 == 7; row 1
+				   is ASCII), a blink (n % 12 == 11, the frog's half a
+				   cycle later) and wiggling whiskers (n % 9 == 4) */
+				size_t j = y == 1 && x >= 14 && x <= 16 && D.n % 31 == 7 ? i + 1 : i;
+				const char *s = art[y].text + j;
+				if (*s == '^' && ((y == 4 && D.n % 12 == 11) || (y == 3 && D.n % 12 == 5))) s = "-";
+				else if (*s == '=' && D.n % 9 == 4) s = "~";
+				if (*s != ' ') cell(g, r, x0 + (int)x, s, k, 1, face_of(art[y].role[x + j - i], y));
 				i += k;
 			}
 		}
 	}
 	static const char name[] = "h o m e r o s";
 	for (int i = 0, x0 = col + (WIDTH - (int)sizeof name + 1) / 2; name[i]; i++)
-		if (name[i] != ' ') cell(g, r, x0 + i, name + i, 1, 1, FACE_DASHBOARD_TITLE);
+		if (name[i] != ' ') cell(g, r, x0 + i, name + i, 1, 1, shimmer(i));
 	r += 2;
 	/* the keys: icon, description, key right-aligned (Icon and Desc link
 	   Special, Key links Number) */

@@ -12,6 +12,7 @@
 #include "bridge.h"
 #include "core.h"
 #include "git.h"
+#include "kitten.h"
 #include "loop.h"
 #include "lsp.h"
 #include "shada.h"
@@ -79,7 +80,9 @@ int main(int argc, char **argv)
 	if (e.buf->watch >= 0) loop_watch(e.buf->watch, on_watch, &e);
 	b->size(&rows, &cols);
 	if (grid_resize(&g, rows, cols)) goto out;
-	if (!file) tools_dash(&e, (long long)t0.tv_sec * 1000000000 + t0.tv_nsec);
+	/* also with a file: the first draw measures "loaded in" for a later
+	   :Dashboard (thread 0's, agreed) */
+	tools_dash(&e, (long long)t0.tv_sec * 1000000000 + t0.tv_nsec);
 	int dirty = 1, syn = e.buf->syn != NULL;   /* syn: a reparse is pending */
 	while (!e.quit) {
 		if (resized) {
@@ -92,6 +95,7 @@ int main(int argc, char **argv)
 			int k = q[qh];
 			qh = (qh + 1) % QMAX;
 			qn--;
+			kitten_key();   /* any key sends the save kitten away (vim.on_key) */
 			if (k == KEY_CTRL_Z && e.mode == MODE_NORMAL) {
 				b->suspend();
 				grid_free(&shown);     /* the terminal was used meanwhile: redraw all */
@@ -113,6 +117,7 @@ int main(int argc, char **argv)
 			if (grid_frame()) grid_free(&shown);
 			core_draw(&e, &g);
 			tools_draw(&e, &g);
+			kitten_draw(&e, &g);
 			b->present(&g, &shown);
 			dirty = 0;
 		}

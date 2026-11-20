@@ -68,6 +68,28 @@ static int arm(struct Root *t)
    was taken complete the next read at once.  A batch that counts is a
    change; one too large for the buffer comes back empty, or a read that
    failed: those are changes too. */
+/* A batch counts if one of its changes does; an empty one (too large for
+   the buffer) or one that cannot be read counts too.  Entries are copied
+   out: Wine packs them without Windows's DWORD alignment (measured, 1 run) */
+int git_batch(Repo *r, const char *dir, const char *p, unsigned long n)
+{
+	if (!n) return 1;
+	for (;;) {
+		FILE_NOTIFY_INFORMATION f;
+		WCHAR w[PATH_MAX];
+		char name[PATH_MAX], path[2 * PATH_MAX];
+		size_t at = offsetof(FILE_NOTIFY_INFORMATION, FileName);
+		memcpy(&f, p, at);
+		if (f.FileNameLength >= sizeof w) return 1;
+		memcpy(w, p + at, f.FileNameLength);
+		if (narrow(w, (int)(f.FileNameLength / sizeof(WCHAR)), name)) return 1;
+		snprintf(path, sizeof path, "%s/%s", dir, name);
+		if (git_counts(r, path)) return 1;
+		if (!f.NextEntryOffset) return 0;
+		p += f.NextEntryOffset;
+	}
+}
+
 void git_drain(Repo *r)
 {
 	struct Watch *w = r->wt;
@@ -75,28 +97,7 @@ void git_drain(Repo *r)
 		struct Root *t = &w->r[i];
 		DWORD n = 0;
 		for (; GetOverlappedResult(t->dir, &t->ov, &n, FALSE) || GetLastError() != ERROR_IO_INCOMPLETE; n = 0) {
-			int any = !n;
-			/* copied out: Wine packs the entries without Windows's DWORD
-			   alignment (measured, 1 run) */
-			for (char *p = (char *)t->buf; n && !any; ) {
-				FILE_NOTIFY_INFORMATION f;
-				WCHAR w[PATH_MAX];
-				char name[PATH_MAX], path[2 * PATH_MAX];
-				size_t at = offsetof(FILE_NOTIFY_INFORMATION, FileName);
-				memcpy(&f, p, at);
-				if (f.FileNameLength >= sizeof w) any = 1;
-				else {
-					memcpy(w, p + at, f.FileNameLength);
-					if (narrow(w, (int)(f.FileNameLength / sizeof(WCHAR)), name)) any = 1;
-					else {
-						snprintf(path, sizeof path, "%s/%s", t->path, name);
-						any = git_counts(r, path);
-					}
-				}
-				if (!f.NextEntryOffset) break;
-				p += f.NextEntryOffset;
-			}
-			if (any) { r->ver++; r->dirty = 1; }
+			if (git_batch(r, t->path, (const char *)t->buf, n)) { r->ver++; r->dirty = 1; }
 			if (arm(t)) break;
 		}
 	}

@@ -11,6 +11,7 @@
 #include "org.h"
 #include "uni.h"
 #include "class.h"
+#include "grid.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -983,6 +984,33 @@ int org_clock(const char *s, size_t n, const OrgNode *e, OrgTs *t, size_t dur[2]
 	return got;
 }
 
+/* \[#\(org-priority-value-regexp\)\] at x, before e: the value (-1 when
+   none) and in *end the position after it; fold: case-fold-search */
+static int prio(size_t x, size_t e, int fold, size_t *end)
+{
+	if (x + 3 >= e || S[x] != '[' || S[x + 1] != '#') return -1;
+	int c = fold ? up(S[x + 2]) : S[x + 2];
+	if (c >= 'A' && c <= 'Z' && S[x + 3] == ']') return *end = x + 4, S[x + 2];
+	if (digit(x + 2) && S[x + 3] == ']') return *end = x + 4, S[x + 2] - '0';
+	if (digit(x + 2) && digit(x + 3) && x + 4 < e && S[x + 4] == ']') {
+		int v = (S[x + 2] - '0') * 10 + S[x + 3] - '0';
+		if (v >= 10 && v <= 64) return *end = x + 5, v;
+	}
+	return -1;
+}
+/* [ \t]+\(:\([[:alnum:]_@#%:]+\):\)[ \t]*$ ending the line [q, e): the
+   group's first colon (ORG_NONE when none) and in *z the end of its last */
+static size_t tags(size_t q, size_t e, size_t *z)
+{
+	size_t a, x;
+	for (*z = e; *z > q && blank(*z - 1); --*z) ;
+	for (a = *z; a > q && !blank(a - 1); a--) ;
+	if (a == q || a + 3 > *z || S[a] != ':' || S[*z - 1] != ':') return ORG_NONE;
+	for (x = a; x < *z && (S[x] == ':' || S[x] == '_' || S[x] == '@' || S[x] == '#' || S[x] == '%' ||
+	                       IN(ALNUM, uni_cp(S, N, x))); x += uni_len(S, N, x)) ;
+	return x == *z ? a : ORG_NONE;
+}
+
 /* org-element--headline-parse-title */
 void org_head(const char *s, size_t n, size_t q, OrgHead *h)
 {
@@ -1000,18 +1028,9 @@ void org_head(const char *s, size_t n, size_t q, OrgHead *h)
 			break;
 		}
 	}
-	h->pri = -1;                          /* .*?(\[#([A-Z]|[0-9]|[1-5][0-9]|6[0-4])\] ?) */
-	for (size_t x = p; x + 3 < e; x++) {
-		if (S[x] != '[' || S[x + 1] != '#') continue;
-		int c = up(S[x + 2]);
-		if (c >= 'A' && c <= 'Z' && S[x + 3] == ']') h->pri = S[x + 2], p = x + 4;   /* case-fold-search t */
-		else if (digit(x + 2) && S[x + 3] == ']') h->pri = S[x + 2] - '0', p = x + 4;
-		else if (digit(x + 2) && digit(x + 3) && x + 4 < e && S[x + 4] == ']') {
-			int v = (S[x + 2] - '0') * 10 + S[x + 3] - '0';
-			if (v >= 10 && v <= 64) h->pri = v, p = x + 5;
-		}
-		if (h->pri >= 0) { if (p < N && S[p] == ' ') p++; break; }
-	}
+	h->pri = -1;                          /* .*?(\[#(org-priority-value-regexp)\] ?) */
+	for (size_t x = p; x + 3 < e; x++)
+		if ((h->pri = prio(x, e, 1, &p)) >= 0) { if (p < N && S[p] == ' ') p++; break; }
 	h->commented = 0;
 	if (p + 7 <= N && !memcmp(S + p, "COMMENT", 7) && (ateol(p + 7) || S[p + 7] == ' ')) {
 		h->commented = 1;
@@ -1019,21 +1038,339 @@ void org_head(const char *s, size_t n, size_t q, OrgHead *h)
 	}
 	/* tags: [ \t]+(:([[:alnum:]_@#%:]+):)[ \t]*$ searched from before the
 	   title's blanks */
-	size_t ts = p, te = e, z = e, a;
-	while (z > q && blank(z - 1)) z--;
-	for (a = z; a > q && !blank(a - 1); a--) ;
+	size_t ts = p, te = e, z, a = tags(q, e, &z), from = ts;
 	h->ga = h->gz = 0;
-	size_t from = ts;
 	while (from > q && blank(from - 1)) from--;
-	if (from < a && a + 3 <= z && S[a] == ':' && S[z - 1] == ':') {
-		size_t x = a, w = a;
-		while (x < z && (S[x] == ':' || S[x] == '_' || S[x] == '@' || S[x] == '#' || S[x] == '%' ||
-		                 IN(ALNUM, uni_cp(S, N, x)))) x += uni_len(S, N, x);
-		while (w > from && blank(w - 1)) w--;
-		if (x == z) { te = w; h->ga = a + 1; h->gz = z - 1; }
+	if (a != ORG_NONE && from < a) {
+		for (te = a; te > from && blank(te - 1); te--) ;
+		h->ga = a + 1; h->gz = z - 1;
 	}
 	size_t lo = ts < te ? ts : te, hi = ts < te ? te : ts;
 	while (lo < hi && (blank(lo) || S[lo] == '\r' || S[lo] == '\n')) lo++;
 	while (hi > lo && (blank(hi - 1) || S[hi - 1] == '\r')) hi--;
 	h->ta = lo; h->tz = hi;
+}
+
+/* ---- colours: Org's font-lock (org-set-font-lock-defaults) ----
+
+   Each line gets the faces of Org's font-lock keywords that a whole-buffer
+   fontification gives it, in the keywords' order, so the last one to set a
+   character's face is the face it shows (Emacs's top face).  Only the meta
+   lines and blocks keyword reads across lines: a block runs from its begin
+   line to its end line or to the next line of stars, so its state at a
+   headline is always outside, and a scan starts at the headline before the
+   window (from the parse) or where the last one stopped. */
+
+static unsigned char *F;   /* the faces of [FA, FZ) */
+static size_t FA, FZ;
+static void set(size_t a, size_t b, int f)
+{
+	for (a = a < FA ? FA : a; a < b && a < FZ; a++) F[a - FA] = (unsigned char)f;
+}
+static size_t stars(size_t p) { while (p < N && S[p] == '*') p++; return p; }
+static int alpha(size_t p) { return p < N && up(S[p]) >= 'A' && up(S[p]) <= 'Z'; }
+static size_t letters(size_t p) { while (alpha(p)) p++; return p; }
+static int word(size_t p) { return p < N && IN(WORD, uni_cp(S, N, p)); }
+static int is(size_t p, const char *k) { return p + strlen(k) <= N && !memcmp(S + p, k, strlen(k)); }
+static int one(size_t p, const char *k) { return p < N && S[p] && strchr(k, S[p]); }
+
+/* org-fontify-meta-lines-and-blocks-1's state at the line at: st 0
+   outside, 1 in a block whose end line (or line of stars) begins at end
+   (quoting: its content is org-block), 2 stopped (a block without an end:
+   the keyword's matcher returned nil) */
+typedef struct { size_t at, end; int st, quoting; } Scan;
+
+/* ^[ \t]*#\+end_NAME\> or ^\*+[[:space:]] at m, NAME at [g, g + len) */
+static int block_end(size_t m, size_t g, size_t len)
+{
+	size_t b = blanks(m);
+	return (stars(m) > m && sp(stars(m))) ||
+	       (lit(b, "#+END") && b + 5 + len <= N && same(b + 5, g, len) && !word(b + 5 + len));
+}
+
+/* org-fontify-meta-lines-and-blocks-1 at the line c->at; on to the next */
+static void meta(Scan *c)
+{
+	size_t l = c->at, e = eol(l), nl = nextl(l), q = blanks(l);
+	c->at = nl;
+	if (c->st == 2) return;
+	if (c->st == 1) {
+		if (l < c->end) { if (c->quoting) set(l, nl < c->end ? nl : c->end, FACE_ORG_BLOCK); }
+		else {
+			if (S[l] != '*') set(l, e < N ? e + 1 : e, FACE_ORG_BLOCK_LINE);
+			c->st = 0;
+		}
+		return;
+	}
+	/* ^[ \t]*#\(\(+[a-zA-Z]+:?\|[ \t]\|$\)\(_[a-zA-Z]+\)?\)[ \t]*... */
+	if (q >= e || S[q] != '#') return;
+	size_t g3 = q + 1, z3 = g3, z4;
+	if (g3 < e && S[g3] == '+' && alpha(g3 + 1)) z3 = letters(g3 + 1), z3 += z3 < e && S[z3] == ':';
+	else if (blank(g3)) z3 = g3 + 1;
+	else if (g3 < e) return;
+	z4 = z3 < e && S[z3] == '_' && alpha(z3 + 1) ? letters(z3 + 1) : z3;
+	if (z4 > z3 && z3 - g3 == 6 && lit(g3, "+begin")) {
+		size_t m;
+		for (m = nl; m < N && !block_end(m, z3, z4 - z3); m = nextl(m)) ;
+		if (m >= N) { c->st = 2; return; }
+		static const char *const quoting[] = { "src", "example", "export" };
+		c->quoting = 0;
+		for (int i = 0; i < 3; i++)
+			c->quoting |= z4 - z3 - 1 == strlen(quoting[i]) && lit(z3 + 1, quoting[i]);
+		set(l, nl, FACE_ORG_BLOCK_LINE);
+		c->st = 1; c->end = m;
+		return;
+	}
+	static const char *const info[] = { "+title:", "+subtitle:", "+author:", "+email:", "+date:" };
+	for (int i = 0; i < 5; i++)
+		if (z4 == z3 && z3 - g3 == strlen(info[i]) && lit(g3, info[i])) {
+			set(l, z3, FACE_COMMENT);
+			set(blanks(z3), e < N ? e + 1 : e, i ? FACE_ORG_INFO : FACE_MARKUP_HEADING);
+			return;
+		}
+	if (z3 - g3 >= 8 && lit(g3, "+caption")) {
+		/* [ \t]*#\+caption\(\[.*\]\)?:[ \t]* : when it fails, the match
+		   data are still the whole line's */
+		size_t k = g3 + 8, x = ORG_NONE;
+		if (k < e && S[k] == '[')
+			for (size_t j = e; j > k + 1 && x == ORG_NONE; j--) if (S[j - 1] == ']' && j < e && S[j] == ':') x = j + 1;
+		if (x == ORG_NONE && k < e && S[k] == ':') x = k + 1;
+		if (x == ORG_NONE) { set(l, e, FACE_COMMENT); return; }
+		set(l, x, FACE_COMMENT);
+		set(blanks(x), e, FACE_ORG_BLOCK);
+		return;
+	}
+	set(l, e, FACE_COMMENT);   /* a comment, or any other #+ line */
+}
+
+static int level(size_t n)   /* org-get-level-face, org-cycle-level-faces */
+{
+	static const unsigned char f[8] = { FACE_MARKUP_HEADING_1, FACE_MARKUP_HEADING_2, FACE_MARKUP_HEADING_3,
+		FACE_MARKUP_HEADING_4, FACE_MARKUP_HEADING_5, FACE_MARKUP_HEADING_6, FACE_ORG_LEVEL_7, FACE_ORG_LEVEL_8 };
+	return f[(n - 1) % 8];
+}
+/* \(:?=[^|\n]*\) after " *" at p: the group's start, or ORG_NONE */
+static size_t formula(size_t p, size_t e)
+{
+	while (p < e && S[p] == ' ') p++;
+	return p < e && (S[p] == '=' || (S[p] == ':' && p + 1 < e && S[p + 1] == '=')) ? p : ORG_NONE;
+}
+/* the todo keyword (index in org_todo) at p followed by " ", or blanks to
+   the end of the line e; -1 when none */
+static int todo(size_t p, size_t e, size_t *k)
+{
+	for (int i = 0; org_todo[i]; i++) {
+		*k = p + strlen(org_todo[i]);
+		if (*k <= e && is(p, org_todo[i]) && (blanks(*k) == e || S[*k] == ' ')) return i;
+	}
+	return -1;
+}
+static size_t spaces(size_t p) { while (p < N && S[p] == ' ') p++; return p; }
+static int dcolon(size_t x, size_t e) { return x + 2 <= e && S[x] == ':' && S[x + 1] == ':' && (x + 2 == e || blank(x + 2)); }
+
+/* The line l's faces, keyword by keyword in org-font-lock-keywords' order */
+static void fontify(Scan *c)
+{
+	size_t l = c->at, e = eol(l), nl = e < N ? e + 1 : e, b = blanks(l), q = stars(l), p, x, z;
+	int hl = q > l && q < N && S[q] == ' ';
+	if (hl) set(l, e, level(q - l));   /* ^\(\**\)\(\* \)\(.*\) */
+	/* ^[ \t]*\(\(|\|\+-[-+]\).*\S-\)\n? as org-table-row, its group as
+	   org-table: the same face here */
+	if (b < e && (S[b] == '|' || (is(b, "+-") && one(b + 2, "-+")))) {
+		for (z = 0, p = b + (S[b] == '|' ? 1 : 3); p < e; p += uni_len(S, N, p)) if (!sp(p)) z = p + uni_len(S, N, p);
+		if (z) set(l, z == e ? nl : z, FACE_ORG_TABLE);
+	}
+	if (b < e && S[b] == '|') {
+		/* ^[ \t]*|\(?:.*?|\)? *\(:?=[^|\n]*\) */
+		for (x = ORG_NONE, p = b + 1; p < e && x == ORG_NONE; p++) if (S[p] == '|') x = formula(p + 1, e);
+		if (x == ORG_NONE) x = formula(b + 1, e);
+		for (z = x + 1 + (x != ORG_NONE && S[x] == ':'); x != ORG_NONE && z < e && S[z] != '|'; z++) ;
+		if (x != ORG_NONE) set(x, z, FACE_ORG_FORMULA);
+		p = spaces(b + 1);   /* ^[ \t]*| *\([#*]\) *| */
+		if (one(p, "#*") && (x = spaces(p + 1)) < e && S[x] == '|') set(p, p + 1, FACE_ORG_FORMULA);
+		/* ^[ \t]*|\( *\([$!_^/]\) *|.*\)| */
+		if (one(p, "$!_^/") && (x = spaces(p + 1)) < e && S[x] == '|') {
+			for (z = e; z > x + 1 && S[z - 1] != '|'; z--) ;
+			if (z > x + 1) set(b + 1, z - 1, FACE_ORG_FORMULA);
+		}
+	}
+	for (p = l; p < e; p++)   /* | *\(<[lrc]?[0-9]*>\) */
+		if (S[p] == '|' && (x = spaces(p + 1)) < e && S[x] == '<') {
+			z = digits(x + 1 + one(x + 1, "lrc"), e);
+			if (z < e && S[z] == '>') set(x, z + 1, FACE_ORG_FORMULA), p = z;
+		}
+	/* org-property-re: :KEY: as org-special-keyword, the value as
+	   org-property-value (no colour) */
+	if (b < e && S[b] == ':' && (z = run(b + 1)) >= b + 3 && S[z - 1] == ':' && (z == e || blank(z))) {
+		set(b, z, FACE_KEYWORD);
+		for (x = e, p = blanks(z); x > p && blank(x - 1); x--) ;
+		set(p, x, FACE_NONE);
+	}
+	if (drawerl(l)) set(b, names(b + 1) + 1, FACE_ORG_DRAWER);
+	p = l;   /* ^&?%%(.*\|<%%([^>\n]*?> */
+	if (lit(l + (S[l] == '&'), "%%(")) set(l, e, FACE_ORG_DATE), p = e;
+	for (; p + 4 <= e; p++)
+		if (is(p, "<%%(")) {
+			for (x = p + 4; x < e && S[x] != '>'; x++) ;
+			if (x < e) set(p, x + 1, FACE_ORG_DATE), p = x;
+		}
+	if (hl && (x = tags(l, e, &z)) != ORG_NONE) set(x, z, FACE_ORG_TAG);   /* org-activate-tags */
+	for (p = l; p < e; p++) {   /* org-activate-dates: org-tsr-regexp-both */
+		if ((S[p] != '<' && S[p] != '[') || (x = ts_both(p)) == ORG_NONE) continue;
+		for (z = x + 1; z < e && z < x + 4 && S[z] == '-'; z++) ;
+		if (z > x + 1 && (z >= e || S[z] != '-') && (z = ts_both(z)) != ORG_NONE) x = z;
+		/* Org stops dating the whole buffer at one preceded by "[", a
+		   live Emacs only the chunk it fontifies: this goes on */
+		if (!p || S[p - 1] != '[') set(p, x + 1, FACE_ORG_DATE);
+		p = x;
+	}
+	if (q > l && (p = spaces(q)) > q) {   /* org-heading-keyword-regexp-format */
+		int i = todo(p, e, &x);
+		if (i >= 0) set(p, x, i < org_done ? FACE_ORG_TODO : FACE_COMMENT);
+		if (i >= org_done && x < e && S[x] == ' ') {   /* org-headline-done */
+			for (z = e, x = spaces(x); z > x && blank(z - 1); z--) ;
+			set(x, z, FACE_COMMENT);
+		}
+	}
+	if (q > l)   /* ^\*+.*?\(\[#\(V\)\] ?\) */
+		for (p = q; p + 3 < e; p++)
+			if (prio(p, e, 0, &x) >= 0) { set(p, x, FACE_ORG_PRIORITY); break; }
+	for (p = l; p < e; p++) {   /* \<DEADLINE: \<SCHEDULED: \<CLOSED: \<CLOCK: */
+		static const char *const k[] = { "DEADLINE:", "SCHEDULED:", "CLOSED:", "CLOCK:" };
+		if (p > l && word(uni_prev(S, N, p))) continue;
+		for (int i = 0; i < 4; i++)
+			if (is(p, k[i])) set(p, p + strlen(k[i]), FACE_KEYWORD);
+	}
+	/* org-list-full-item-re's checkbox: ^[ \t]*\(\(?:[-+*]\|\(?:[0-9]+\|[A-Za-z]\)[.)]\)\(?:[ \t]+\|$\)\)
+	   \(?:\[@\(?:start:\)?\([0-9]+\|[A-Za-z]\)\][ \t]*\)?\(\[[ X-]\]\)\(?:[ \t]+\|$\) */
+	x = one(b, "-+*") ? b + 1 : ORG_NONE;
+	if (digit(b) || alpha(b)) x = digit(b) ? digits(b, e) : b + 1, x = one(x, ".)") ? x + 1 : ORG_NONE;
+	if (x != ORG_NONE && (x == e || blank(x))) {
+		x = blanks(x);
+		if (is(x, "[@")) {
+			size_t v = x + 2 + 6 * is(x + 2, "start:");
+			p = digit(v) ? digits(v, e) : alpha(v) ? v + 1 : v;
+			if (p > v && p < e && S[p] == ']') x = blanks(p + 1);
+		}
+		if (is(x, "[") && one(x + 1, " X-") && is(x + 2, "]") && (x + 3 == e || blank(x + 3)))
+			set(x, x + 3, FACE_ORG_CHECKBOX);
+	}
+	for (p = l; p < e; p++) {   /* \[\([0-9]*%\)\]\|\[\([0-9]*\)/\([0-9]*\)\] */
+		if (S[p] != '[') continue;
+		x = digits(p + 1, e);
+		if (x + 1 < e && S[x] == '%' && S[x + 1] == ']') {
+			set(p, x + 2, x == p + 4 && !memcmp(S + p + 1, "100", 3) ? FACE_COMMENT : FACE_ORG_TODO);
+			p = x + 1;
+		} else if (x < e && S[x] == '/' && (z = digits(x + 1, e)) < e && S[z] == ']') {
+			set(p, z + 1, x > p + 1 && x - p - 1 == z - x - 1 && !memcmp(S + p + 1, S + x + 1, z - x - 1) ? FACE_COMMENT : FACE_ORG_TODO);
+			p = z;
+		}
+	}
+	/* \(?:^[ \t]*[-+]\|^[ \t]+[*]\)[ \t]+\(.*?[ \t]+::\)\([ \t]+\|$\) as org-list-dt */
+	if (b < e && (S[b] == '-' || S[b] == '+' || (S[b] == '*' && b > l)) && blank(b + 1)) {
+		size_t v = blanks(b + 1);
+		for (z = ORG_NONE, p = v; p < e && z == ORG_NONE; p++) if (blank(p) && dcolon(blanks(p), e)) z = blanks(p) + 2;
+		if (z != ORG_NONE) set(v, z, FACE_ORG_CHECKBOX);
+		else if (v >= b + 3 && dcolon(v, e)) set(v - 1, v + 2, FACE_ORG_CHECKBOX);
+	}
+	for (p = l; p + 1 < e; p++)   /* \(@@\)\([a-z-]+:\).*?\(@@\): an export snippet */
+		if (is(p, "@@")) {
+			for (x = p + 2; x < e && (S[x] == '-' || (S[x] >= 'a' && S[x] <= 'z')); x++) ;
+			if (x == p + 2 || !is(x, ":")) continue;
+			for (z = x + 1; z + 1 < e && !is(z, "@@"); z++) ;
+			if (z + 1 >= e) continue;
+			set(p, p + 2, FACE_COMMENT); set(p + 2, x + 1, FACE_ORG_TAG); set(z, z + 2, FACE_COMMENT);
+			p = z + 1;
+		}
+	if (hl)   /* ^\*+ \(.*:ARCHIVE:.*\) as org-archived */
+		for (p = q + 1; p + 9 <= e; p++) if (is(p, ":ARCHIVE:")) { set(q + 1, e, FACE_COMMENT); break; }
+	if (fixedl(l)) set(b, nl, FACE_MARKUP_RAW);   /* org-activate-code */
+	meta(c);
+	/* ^\*+\(?: +TODO\)?\(?: +\[#V\]\)? +\(COMMENT\)\(?: \|$\) */
+	for (int k = 0; q > l && k < 4; k++) {   /* k: bit 0 no keyword, bit 1 no priority */
+		p = q;
+		if (!(k & 1)) { if ((x = spaces(p)) == p || todo(x, e, &z) < 0 || !one(z, " ")) continue; p = z; }
+		if (!(k & 2)) { if ((x = spaces(p)) == p || prio(x, e, 0, &z) < 0) continue; p = z; }
+		if ((x = spaces(p)) > p && x + 7 <= e && is(x, "COMMENT") && (x + 7 == e || S[x + 7] == ' ')) {
+			set(x, x + 7, FACE_KEYWORD);
+			break;
+		}
+	}
+}
+
+struct OrgFx {
+	const Text *t;
+	char *s;               /* the text at the last update, and its parse */
+	size_t n, cap, k;
+	OrgNode *e;
+	int dirty;             /* edited since: [lo, ho) of s is [lo, hc) of t */
+	size_t lo, ho, hc;
+	Scan c;                /* the scan's state at the last line it coloured */
+};
+
+OrgFx *orgfx_new(const Text *t)
+{
+	OrgFx *f = calloc(1, sizeof *f);
+	if (f) f->t = t, f->dirty = 1, f->hc = text_len(t), f->c.at = ORG_NONE;
+	return f;
+}
+
+void orgfx_free(OrgFx *f)
+{
+	if (f) free(f->s), free(f->e);
+	free(f);
+}
+
+void orgfx_edit(OrgFx *f, const Text *t, size_t pos, size_t ndel, size_t nins)
+{
+	f->t = t;
+	if (!f->dirty) f->lo = f->ho = f->hc = pos, f->dirty = 1;
+	if (pos < f->lo) f->lo = pos;
+	if (pos + ndel > f->hc) f->ho += pos + ndel - f->hc, f->hc = pos + ndel;
+	f->hc = f->hc - ndel + nins;
+}
+
+int orgfx_update(OrgFx *f, int (*stop)(void))
+{
+	(void)stop;   /* org_edit reparses a subtree in one go (1.7 ms at most on the corpus, measured) */
+	size_t n = text_len(f->t);
+	if (!f->dirty) return 0;
+	if (n >= f->cap) {   /* one more: never a null s */
+		char *s = realloc(f->s, n + 1);
+		if (!s) return 0;
+		f->s = s; f->cap = n + 1;
+	}
+	memmove(f->s + f->hc, f->s + f->ho, f->n - f->ho);
+	text_read(f->t, f->lo, f->s + f->lo, f->hc - f->lo);
+	f->n = n;
+	org_edit(&f->e, &f->k, f->s, n, f->lo, f->ho - f->lo, f->hc - f->lo);   /* out of memory: no parse, scans from the start */
+	f->dirty = 0;
+	f->c.at = ORG_NONE;
+	return 1;
+}
+
+/* the faces of [a, z) of the text at the last update into out */
+static void paint(OrgFx *f, size_t a, size_t z, unsigned char *out)
+{
+	S = (const unsigned char *)f->s; N = f->n; F = out; FA = a; FZ = z;
+	if (a >= z || a >= N) return;
+	size_t L = bol(a), R = 0, i = f->k ? first(f->e, f->k, L + 1) : 0;
+	if (i) {   /* the headline before: its line is outside any block */
+		for (i--; f->e[i].type != ORG_HEADLINE && f->e[i].parent != ORG_NONE; i = f->e[i].parent) ;
+		if (f->e[i].type == ORG_HEADLINE) R = f->e[i].begin;
+	}
+	Scan c = f->c.at <= L && f->c.at >= R ? f->c : (Scan){ R, 0, 0, 0 };
+	while (c.at < L) meta(&c);
+	while (c.at < z && c.at < N) f->c = c, fontify(&c);
+}
+
+void orgfx_faces(OrgFx *f, size_t a, size_t z, unsigned char *face)
+{
+	if (!f->dirty) { paint(f, a, z, face); return; }
+	/* before the update: the old text's colours where it is unchanged */
+	paint(f, a, z < f->lo ? z : f->lo, face);
+	if (z > f->hc) {
+		size_t b = a > f->hc ? a : f->hc;
+		paint(f, b - f->hc + f->ho, z - f->hc + f->ho, face + (b - a));
+	}
 }

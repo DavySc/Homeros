@@ -12,7 +12,9 @@ configuration: the preset keys less c (no config directory), a fixed footer,
 and in place of splash.lua's cat a section like its M.section(18): the
 picture of src/tools/dash.c (read from there, in the Catppuccin Mocha
 colours its roles name) when it fits with 6 columns and 18 lines to spare,
-then "h o m e r o s" in lavender."""
+then "h o m e r o s"; the terminal and the name shimmer as splash.lua's
+cat outline does, and frame N (g:frame) blinks, twitches and wiggles as
+splash.lua's M.texts(N) does."""
 import fcntl, os, pty, select, struct, sys, termios, time
 import pyte
 import pyte.screens
@@ -37,9 +39,13 @@ vim.o.number, vim.o.relativenumber = true, true
 require("catppuccin").setup({ transparent_background = true })
 vim.cmd.colorscheme("catppuccin")
 local P = require("catppuccin.palettes").get_palette("mocha")
--- group names ignore case: the title is Name, not T beside t
-local roles = { c = "rosewater", p = "overlay1", f = "green", k = "maroon", m = "peach", s = "yellow", t = "overlay0", b = "mauve", Name = "lavender" }
+local roles = { c = "rosewater", p = "overlay1", f = "green", k = "maroon", m = "peach", s = "yellow", b = "mauve" }
 for r, c in pairs(roles) do vim.api.nvim_set_hl(0, "Homeros" .. r, { fg = P[c], bold = true }) end
+-- splash.lua's shimmer: SplashCat1 to 12, on the terminal's rows and the name
+local gradient = { "pink", "mauve", "lavender", "blue", "sapphire", "teal", "green", "teal", "sapphire", "blue", "lavender", "mauve" }
+for i, c in ipairs(gradient) do vim.api.nvim_set_hl(0, "SplashCat" .. i, { fg = P[c], bold = true }) end
+local n = vim.g.frame
+local function hl_for(i) return "SplashCat" .. ((i + math.floor(n / 2)) %% #gradient + 1) end
 local art = %s
 local function header()
   local win = vim.api.nvim_get_current_win()
@@ -49,18 +55,32 @@ local function header()
   for _, row in ipairs(art) do w = math.max(w, vim.fn.strchars(row[1])) end
   if width >= w + 6 and height >= #art + 18 then
     for y, row in ipairs(art) do
-      local ch = vim.fn.split(row[1], "\\zs")
+      local ch, ro = vim.fn.split(row[1], "\\zs"), vim.split(row[2], "")
+      -- splash.lua's M.texts on this picture: the right ear a column in
+      -- (n %% 31 == 7), the cat's blink (n %% 12 == 11) and the frog's half a
+      -- cycle later, the whiskers (n %% 9 == 4)
+      if y == 2 and n %% 31 == 7 then
+        for x = 15, 17 do ch[x], ro[x] = ch[x + 1], ro[x + 1] end
+      end
+      for x = 1, #ch do
+        if ch[x] == "^" and ((y == 5 and n %% 12 == 11) or (y == 4 and n %% 12 == 5)) then ch[x] = "-" end
+        if ch[x] == "=" and n %% 9 == 4 then ch[x] = "~" end
+      end
       local x = 1
       while x <= #ch do
-        local r, j = row[2]:sub(x, x), x
-        while j <= #ch and row[2]:sub(j, j) == r do j = j + 1 end
-        out[#out + 1] = { table.concat(ch, "", x, j - 1), hl = r ~= " " and ("Homeros" .. r) or nil }
+        local r, j = ro[x], x
+        while j <= #ch and ro[j] == r do j = j + 1 end
+        out[#out + 1] = { table.concat(ch, "", x, j - 1), hl = r == "t" and hl_for(y - 1) or (r ~= " " and ("Homeros" .. r) or nil) }
         x = j
       end
       out[#out + 1] = { "\n" }
     end
   end
-  for c in ("h o m e r o s"):gmatch(".") do out[#out + 1] = { c, hl = c ~= " " and "HomerosName" or nil } end
+  local i = 0
+  for c in ("h o m e r o s"):gmatch(".") do
+    out[#out + 1] = { c, hl = c ~= " " and hl_for(i) or nil }
+    i = i + 1
+  end
   return { align = "center", padding = 1, text = out }
 end
 require("snacks").setup({ dashboard = { enabled = true,
@@ -89,12 +109,12 @@ def code(ch):
         legend.append(k)
     return chr(ord('a') + legend.index(k))
 
-def shot(cols, rows):
+def shot(cols, rows, frame):
     pid, fd = pty.fork()
     if pid == 0:
         os.environ.update(TERM='xterm-256color', COLORTERM='truecolor')
         fcntl.ioctl(0, termios.TIOCSWINSZ, struct.pack('HHHH', rows, cols, 0, 0))
-        os.execvp('nvim', ['nvim', '-u', init, '-i', 'NONE', '-n'])
+        os.execvp('nvim', ['nvim', '--cmd', 'let g:frame = %d' % frame, '-u', init, '-i', 'NONE', '-n'])
     fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack('HHHH', rows, cols, 0, 0))
     scr = pyte.Screen(cols, rows)
     st = pyte.ByteStream(scr)
@@ -117,6 +137,7 @@ def shot(cols, rows):
     cur = (scr.cursor.y, scr.cursor.x)
     os.write(fd, b'\x1b:qa!\r')
     drain(0.3)
+    os.kill(pid, 9)   # a Neovim waiting for an answer to its colour query does not quit
     os.waitpid(pid, 0)
     return out, cur
 
@@ -125,10 +146,13 @@ def c(s):
 
 cases = [(100, 40), (101, 40), (80, 24), (120, 50), (200, 60), (60, 20), (40, 15), (30, 10),
          (150, 35), (59, 45), (36, 30), (66, 40), (46, 31), (47, 31), (100, 29), (100, 30), (61, 31)]
+# then frames 1 to 12 of the animation at one size: every blink, the
+# twitch (7), the whiskers (4) and the shimmer's first six steps
+cases = [(c, r, 0) for c, r in cases] + [(100, 40, n) for n in range(1, 13)]
 body = []
-for cols, rows in cases:
-    out, cur = shot(cols, rows)
-    body.append('\t{ %d, %d, %d, %d, {' % (cols, rows, cur[0], cur[1]))
+for cols, rows, frame in cases:
+    out, cur = shot(cols, rows, frame)
+    body.append('\t{ %d, %d, %d, %d, %d, {' % (cols, rows, frame, cur[0], cur[1]))
     for text, colours in out:
         body.append('\t\t{ %s, %s },' % (c(text), c(colours)))
     body.append('\t} },')
@@ -136,6 +160,6 @@ print('/* Davy\'s Neovim dashboard on the terminal, by src/tools/conform/dash.py
 print('   per case the size, the cursor, and per row the text and the')
 print('   colour of each cell (a letter of legend[], a blank for none) */')
 print('static const char *const legend[] = { %s };' % ', '.join(c(k) for k in legend))
-print('static const struct { int cols, rows, crow, ccol; struct { const char *text, *colour; } row[60]; } cases[] = {')
+print('static const struct { int cols, rows, frame, crow, ccol; struct { const char *text, *colour; } row[60]; } cases[] = {')
 print('\n'.join(body))
 print('};')

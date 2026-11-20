@@ -7,6 +7,7 @@
 #include <string.h>
 #include "core_int.h"
 #include "git.h"
+#include "kitten.h"
 #include "lsp.h"
 #include "syntax.h"
 #include "uni.h"
@@ -1175,6 +1176,7 @@ int core_write(Editor *e, Buf *b, int force)
 		b->changed = 0;
 		if (b->journal) journal_saved(b->journal);
 		core_msg(e, "\"%s\"%s %zuL, %zuB written", b->path, ff(b, 0), n ? buf_lines(b) : 0, (size_t)b->id.size);
+		kitten_written(e, b);   /* BufWritePost, after the message as in Neovim */
 		return 0;
 	case SAVE_CHANGED:
 		core_msg(e, "E13: \"%s\" changed on disk since it was read (add ! to override)", b->path);
@@ -1184,6 +1186,7 @@ int core_write(Editor *e, Buf *b, int force)
 		b->changed = 0;
 		if (b->journal) journal_saved(b->journal);
 		core_msg(e, "written, but another program replaced the file first; its version is in %s", kept);
+		kitten_written(e, b);   /* BufWritePost */
 		return 0;
 	default:
 		core_msg(e, "E212: Can't open file for writing: %s", b->path);
