@@ -3,7 +3,10 @@
    one with as many stars or fewer), the tree's invariants, and the claim
    that a subtree parses alone to the same nodes.  Input bytes pick org
    fragments, so short inputs make deep structure; tools/org_conform.py
-   checks the positions themselves against Org. */
+   checks the positions themselves against Org.  The colours (orgfx): read
+   in windows of any size and order they are the whole text's, and after
+   edits (an update after some) they are a fresh text's; before an update
+   the bytes an edit did not touch keep their colours. */
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -112,6 +115,54 @@ static void check_edit(const char *s, size_t n, size_t pos, size_t del, size_t q
 	free(f);
 }
 
+/* the colours of all n bytes, asked in windows of w from the end or the start */
+static void painted(OrgFx *x, size_t n, size_t w, int back, unsigned char *f)
+{
+	memset(f, 0, n);
+	for (size_t i = 0; i < n; i += w) {
+		size_t a = back ? (n - i > w ? n - i - w : 0) : i, z = back ? n - i : (i + w < n ? i + w : n);
+		orgfx_faces(x, a, z, f + a);
+	}
+}
+
+static void check_fx(const char *s, size_t n, const uint8_t *d, size_t dn)
+{
+	static unsigned char a[1 << 15], b[1 << 15];
+	static char t[1 << 15];
+	Text *T = text_new(s, n), *U;
+	OrgFx *x = orgfx_new(T), *y;
+	if (!x || orgfx_update(x, NULL) != 1) abort();
+	painted(x, n, n + 1, 0, a);
+	painted(x, n, 1 + d[0] % 200, d[1] & 1, b);
+	if (memcmp(a, b, n)) abort();
+	int fresh = 1;   /* updated since the last edit */
+	for (size_t i = 2; i + 4 <= dn && i < 14; i += 4) {   /* edits, from the input's first bytes */
+		size_t pos = d[i] * (n + 1) / 256, del = d[i + 1] % 16, q = d[i + 2] * (n + 1) / 256, ins = d[i + 3] % 24;
+		if (del > n - pos) del = n - pos;
+		if (ins > n - q) ins = n - q;
+		orgfx_edit(x, T, pos, del, ins);
+		memcpy(t, s + q, ins);   /* s + q may be the text's own bytes: copied first */
+		if (text_delete(T, pos, del) || text_insert(T, pos, t, ins)) abort();
+		n = n - del + ins;
+		painted(x, n, 1 + d[i] % 64, d[i + 1] & 1, b);
+		for (size_t j = 0; fresh && j < n; j++)
+			if (j < pos ? b[j] != a[j] : j >= pos + ins && b[j] != a[j - ins + del]) abort();
+		if ((fresh = d[i + 2] & 1)) {
+			if (orgfx_update(x, NULL) != 1) abort();
+			painted(x, n, n + 1, 0, a);
+		}
+	}
+	if (!fresh && orgfx_update(x, NULL) != 1) abort();
+	painted(x, n, n + 1, 0, a);
+	text_read(T, 0, t, n);
+	U = text_new(t, n);
+	y = orgfx_new(U);
+	if (!y || orgfx_update(y, NULL) != 1) abort();
+	painted(y, n, n + 1, 0, b);
+	if (memcmp(a, b, n)) abort();
+	orgfx_free(x); orgfx_free(y); text_free(T); text_free(U);
+}
+
 int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 {
 	static const char *const frag[] = { "* ", "** ", "*** ", "\n", "\n", "\n", " ", "  ", "\t", "- ", "+ ",
@@ -136,6 +187,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 		if (del > len - pos) del = len - pos;
 		if (ins > len - q) ins = len - q;
 		check_edit(s, len, pos, del, q, ins);
+		check_fx(s, len, d, n);
 	}
 	return 0;
 }

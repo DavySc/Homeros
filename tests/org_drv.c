@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "org.h"
+#include "grid.h"
 
 static const char *const names[] = { "headline", "section", "planning", "property-drawer",
 	"node-property", "drawer", "clock", "comment", "keyword", "babel-call", "paragraph",
@@ -72,9 +73,49 @@ static int dump(FILE *o, const char *b, size_t n)
 }
 
 #ifndef ORG_DRV_LIB
+/* The colours as tools/org_faces.el prints Org's: runs of one face, read
+   through the syntax module's calls in windows of w bytes (the scan goes on
+   from one window to the next, as the core draws) */
+static int colours(FILE *o, const char *b, size_t n, size_t w)
+{
+	static const struct { int f; const char *name; } nm[] = {
+		{ FACE_COMMENT, "comment" }, { FACE_KEYWORD, "keyword" }, { FACE_MARKUP_RAW, "markup.raw" },
+		{ FACE_MARKUP_HEADING, "markup.heading" }, { FACE_MARKUP_HEADING_1, "markup.heading.1" },
+		{ FACE_MARKUP_HEADING_2, "markup.heading.2" }, { FACE_MARKUP_HEADING_3, "markup.heading.3" },
+		{ FACE_MARKUP_HEADING_4, "markup.heading.4" }, { FACE_MARKUP_HEADING_5, "markup.heading.5" },
+		{ FACE_MARKUP_HEADING_6, "markup.heading.6" }, { FACE_ORG_LEVEL_7, "org.level.7" },
+		{ FACE_ORG_LEVEL_8, "org.level.8" }, { FACE_ORG_TODO, "org.todo" }, { FACE_ORG_PRIORITY, "org.priority" },
+		{ FACE_ORG_TAG, "org.tag" }, { FACE_ORG_DATE, "org.date" }, { FACE_ORG_TABLE, "org.table" },
+		{ FACE_ORG_FORMULA, "org.formula" }, { FACE_ORG_DRAWER, "org.drawer" }, { FACE_ORG_CHECKBOX, "org.checkbox" },
+		{ FACE_ORG_INFO, "org.info" }, { FACE_ORG_BLOCK, "org.block" }, { FACE_ORG_BLOCK_LINE, "org.block.line" },
+	};
+	static unsigned char f[1 << 24];
+	Text *t = text_new(b, n);
+	OrgFx *x = t ? orgfx_new(t) : NULL;
+	if (!x) return text_free(t), -1;
+	orgfx_update(x, NULL);
+	for (size_t a = 0; a < n; a += w) {
+		size_t z = a + w < n ? a + w : n;
+		memset(f + a, 0, z - a);
+		orgfx_faces(x, a, z, f + a);
+	}
+	for (size_t a = 0, z; a < n; a = z) {
+		for (z = a + 1; z < n && f[z] == f[a]; z++) ;
+		if (!f[a]) continue;
+		size_t i = 0;
+		while (i < sizeof nm / sizeof *nm && nm[i].f != f[a]) i++;
+		fprintf(o, "%zu %zu %s\n", a, z, i < sizeof nm / sizeof *nm ? nm[i].name : "?");
+	}
+	orgfx_free(x);
+	text_free(t);
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
 	static char b[1 << 24];
+	size_t w = 0;   /* -f W: the colours, in windows of W bytes */
+	if (argc > 2 && !strcmp(argv[1], "-f")) w = strtoul(argv[2], NULL, 10), argv += 2, argc -= 2;
 	for (int i = 1; i < argc; i++) {
 		FILE *f = fopen(argv[i], "rb");
 		if (!f) return 2;
@@ -84,7 +125,11 @@ int main(int argc, char **argv)
 		if (more) { fprintf(stderr, "%s: over %zu bytes\n", argv[i], sizeof b); return 4; }
 		const char *base = strrchr(argv[i], '/');
 		printf("== %s\n", base ? base + 1 : argv[i]);
-		if (dump(stdout, b, n)) return 3;
+		if (w ? colours(stdout, b, n, w) : dump(stdout, b, n)) return 3;
+		for (size_t p = 0; !w && p < n; p++) {   /* org_ts at every character */
+			OrgTs t;
+			if ((b[p] & 0xc0) != 0x80 && org_ts(b, n, p, &t)) ts(stdout, "ts", &t);
+		}
 	}
 	return 0;
 }
