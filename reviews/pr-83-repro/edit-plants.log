@@ -1,0 +1,6 @@
+caught        review: colours: after a pending edit the faces land at the buffer's start (fuzz)   (make fuzz FUZZERS=org FUZZ_SECONDS=60): ==27717== ERROR: libFuzzer: deadly signal
+caught        review: colours: an edit past the pending ones not merged (fuzz)   (make fuzz FUZZERS=org FUZZ_SECONDS=60): ==28052== ERROR: libFuzzer: deadly signal
+caught        review: colours: a scan kept from a later window (fuzz)   (make fuzz FUZZERS=org FUZZ_SECONDS=60): ==28423== ERROR: libFuzzer: deadly signal
+caught        review: colours: the scan starts at the window's line, not the headline before (fuzz)   (make fuzz FUZZERS=org FUZZ_SECONDS=60): ==28764== ERROR: libFuzzer: deadly signal
+caught        review: colours: the old text's colours from the new text's bytes (fuzz)   (make fuzz FUZZERS=org FUZZ_SECONDS=60): ==31685== ERROR: libFuzzer: deadly signal
+exit 0
