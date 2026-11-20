@@ -11,7 +11,7 @@ for t in zig $run; do
 	command -v $t >/dev/null || { echo "src/loop/check.sh: $t is not on PATH"; exit 2; }
 done
 mkdir -p build/win
-[ -n "${XDG_RUNTIME_DIR:-}" ] || { export XDG_RUNTIME_DIR=$PWD/build/win/run; mkdir -p -m 700 "$XDG_RUNTIME_DIR"; }
+[ -z "$run" ] || [ -n "${XDG_RUNTIME_DIR:-}" ] || { export XDG_RUNTIME_DIR=$PWD/build/win/run; mkdir -p -m 700 "$XDG_RUNTIME_DIR"; }
 # a prefix of its own, as package 11's: a Wine server left running without
 # a display would be reused by package 9's window test
 export WINEDEBUG=-all WINEDLLOVERRIDES="mscoree,mshtml=" WINEPREFIX=$PWD/build/win/prefix-loop
