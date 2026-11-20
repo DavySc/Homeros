@@ -47,4 +47,10 @@ int  proc_spawn(char *const argv[], const char *dir, ProcFn fn, void *ctx);
 int  proc_write(int id, const void *b, size_t n);  /* queued, never blocks; 0 ok, -1 no memory or child gone */
 void proc_close(int id);                           /* EOF on stdin once the queue is written */
 void proc_kill(int id);                            /* SIGTERM, SIGKILL 2 s later (jobstop) */
+/* proc_spawn on a pseudo-terminal of rows x cols (Neovim's :terminal, its
+   pty_proc; ConPTY on Windows): stdin and stdout are the terminal, so all
+   output comes as stream 1 (stream 2 never comes), and TERM is
+   xterm-256color.  -1 on failure. */
+int  proc_pty(char *const argv[], const char *dir, int rows, int cols, ProcFn fn, void *ctx);
+void proc_resize(int id, int rows, int cols);       /* SIGWINCH, as a terminal's resize */
 #endif

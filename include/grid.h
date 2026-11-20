@@ -94,12 +94,15 @@ enum {
 /* The theme, once for every backend: a face's colours (FACE_FG, FACE_BG
    say which are set; otherwise the terminal's or window's default) and
    style.  ref/theme.c holds Catppuccin Mocha; no package replaces it.
+   The slots from FACE_COUNT on are free, so every cell's face is one: the
+   terminal (src/tools/term.c) sets them at run time to the colours its
+   programs ask for (Neovim's attr table, get_attr_entry()).
    sp is Neovim's special colour, for an underline or undercurl when
    FACE_SP is set (else the fg, as Neovim). */
 enum { FACE_BOLD = 1, FACE_ITALIC = 2, FACE_UNDERLINE = 4, FACE_STRIKE = 8, FACE_FG = 16, FACE_BG = 32,
        FACE_UNDERCURL = 64, FACE_SP = 128 };
 typedef struct { unsigned char fg[3], bg[3], style, sp[3]; } Face;
-extern const Face faces[FACE_COUNT];
+extern Face faces[256];
 
 /* A cell holds one grapheme cluster of at most GRID_CLUSTER_MAX bytes:
    Neovim's MAX_SCHAR_SIZE (32) less its NUL.  A longer cluster is cut to
@@ -153,7 +156,7 @@ int  grid_puts(Grid *g, int r, int c, int end, const char *s, size_t n, int attr
 /* The cells grid_puts takes for s (Neovim's mb_string2cells()). */
 int  grid_width(const char *s, size_t n);
 int  grid_cell_eq(const Cell *a, const Cell *b);
-/* The face cell x is drawn with (FACE_NONE for an unknown one) and, in *bg,
+/* The face cell x is drawn with and, in *bg,
    the face its background comes from: the layer if set, else the same. */
 const Face *grid_face(const Cell *x, const Face **bg);
 #endif
