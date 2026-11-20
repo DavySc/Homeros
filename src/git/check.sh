@@ -6,7 +6,7 @@
 # for this target, so it runs without.  On Windows itself (CI's windows
 # job) it builds and runs test_git_win alone: the traces need the bridge
 # below, which is Wine's.
-set -eu
+set -euo pipefail
 cd "$(dirname "$0")/../.."
 run=wine; [ "${OS:-}" = Windows_NT ] && run=
 for t in zig $run; do
@@ -36,7 +36,10 @@ for t in test_git_win ${run:+test_git}; do
 	  $(pick core) $(pick text) $(pick undo) $(pick uni) $(pick keys) $(pick loop) $(pick file) $(pick grid) \
 	  $(pick theme) $(pick kitten) $(pick lsp) $(pick sqlfmt) $(pick tools) $(pick shada) $(pick str) src/syntax/tsql.c -lshell32   # str: package 17's, agreed by thread 0
 done
-timeout 300 $run build/win/test_git_win.exe || { echo "FAIL test_git_win"; exit 1; }
+# Wine has reported status 0 for a test that trapped (measured, 1 of 6 runs
+# of the alignment plant): a test passed only once it printed its last line
+pass() { timeout "$1" $run build/win/$2.exe | tee build/win/$2.out && grep -q "^$2: " build/win/$2.out; }
+pass 300 test_git_win || { echo "FAIL test_git_win"; exit 1; }
 [ -n "$run" ] || exit 0
 
 # MinGit, pinned by its hash
@@ -63,4 +66,4 @@ rm -rf "$TEST_BRIDGE" && mkdir -p "$TEST_BRIDGE"
 	else sleep 0.002; fi
 done ) &
 trap 'touch "$TEST_BRIDGE/stop"; rm -rf "$TEST_TMP"' EXIT
-timeout 1800 wine build/win/test_git.exe || { echo "FAIL test_git (Windows)"; exit 1; }
+pass 1800 test_git || { echo "FAIL test_git (Windows)"; exit 1; }
