@@ -1,0 +1,31 @@
+c
+b main
+c
+n
+n
+b twice
+b main
+c
+bt
+f 1
+p pair.a
+f 0
+n
+o
+b twice
+n
+n
+p pair
+x pair
+p pair.a + total * 2
+p nothing
+l
+b nowhere
+si
+what
+b tour.c:14
+c
+b tour.c:14
+c 300
+bt
+c

@@ -1,0 +1,61 @@
+started
+the program's own breakpoint
+breakpoint at 0x_
+breakpoint
+#0 0x_ main  tour.exe tour.c:10
+{
+stepped
+#0 0x_ main  tour.exe tour.c:11
+  Pair pair = {1, 'b', 3.0};
+stepped
+#0 0x_ main  tour.exe tour.c:12
+  int total = twice(pair.a);
+breakpoint at 0x_
+no breakpoint at 0x_
+breakpoint
+#0 0x_ twice  tour.exe tour.c:5
+{
+#0 0x_ twice  tour.exe tour.c:5
+#1 0x_ main  tour.exe tour.c:12
+#1 0x_ main  tour.exe tour.c:12
+  int total = twice(pair.a);
+pair.a = 1  (int)
+#0 0x_ twice  tour.exe tour.c:5
+{
+stepped
+#0 0x_ twice  tour.exe tour.c:6
+  int doubled = n * 2;
+stepped
+#0 0x_ main  tour.exe tour.c:12
+  int total = twice(pair.a);
+no breakpoint at 0x_
+stepped
+#0 0x_ main  tour.exe tour.c:13
+  total += twice(total);
+stepped
+#0 0x_ main  tour.exe tour.c:14
+  while (spin) spin -= 1;
+pair = {1, 'b' (98), 3.0}  (Pair)
+pair = {1, 'b' (98), 3.0}  (Pair)
+  .a = 1  (int)
+  .b = 'b' (98)  (char)
+  .c = 3.0  (double)
+pair.a + total * 2 = 13  (int)
+nothing = no such name  (?)
+pair = {1, 'b' (98), 3.0}  (Pair)
+total = 6  (int)
+no code there
+stepped
+#0 0x_ main  tour.exe tour.c:14
+  while (spin) spin -= 1;
+b <file:line or function>, c [ms], s, n, o, si, ni, bt, f <n>, l, r, p <expression>, x <expression>, q
+breakpoint at 0x_
+breakpoint
+#0 0x_ main  tour.exe tour.c:14
+  while (spin) spin -= 1;
+no breakpoint at 0x_
+halted
+#0 0x_ main  tour.exe tour.c:14
+  while (spin) spin -= 1;
+#0 0x_ main  tour.exe tour.c:14
+ended with 0x_

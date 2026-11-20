@@ -31,6 +31,7 @@ uint64_t view_rows(const View *view, const Engine *e, const EvalFrame *frame, co
    (RAD's d_call_stack_from_unwind). at: what eval and the tables take. name: the function's, empty when the debug information has
    none; line: where it stands in its own source, file 0 when unknown. */
 typedef struct { EvalFrame at; const EngineModule *module; RdiSpan name; RdiLine line; } ViewFrame;
-/* The frames from the innermost, where the thread has these registers, outward: at most `most`; how many. */
-uint32_t view_stack(const Engine *e, TargetRegs regs, ViewFrame *frames, uint32_t most);
+/* The frames from number `first` on (0: the innermost, where the thread has these registers) outward: at most `most`; how many.
+   The stack is walked as far as the last frame given and no further. */
+uint32_t view_stack(const Engine *e, TargetRegs regs, uint32_t first, ViewFrame *frames, uint32_t most);
 #endif

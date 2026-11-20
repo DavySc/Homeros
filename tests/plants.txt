@@ -662,7 +662,7 @@ engine | dbg/engine.c | if (!in_ranges(e, count, hi)) net_add(e, base + hi, END 
 engine | dbg/engine.c | &regs)) net_add(e, regs.rip, END \p IGNORE_SP); | &regs)) net_add(e, regs.rip, END);
 engine | dbg/engine.c | if (unwind_step(target_read, e->target, m ? &m->image : 0, &regs)) | if (false && unwind_step(target_read, e->target, m ? &m->image : 0, &regs))
 engine | dbg/engine.c | if (!e->net_count) return step_one(e, thread); | if (false) return step_one(e, thread);
-engine | dbg/engine.c | && r.rip == e->threads[i].told; k += 1) | ; k += 1)
+engine | dbg/engine.c | && (steps \p\p r.rip == e->threads[i].told); k += 1) | ; k += 1)
 engine | dbg/engine.c | e->threads[i].told = regs.rip; | e->threads[i].told = 0;
 engine | dbg/engine.c | stuck = stuck \p\p breakpoints[k] == r.rip; | stuck = false;
 engine | dbg/engine.c | uint64_t depth = regs.gp[4]; | uint64_t depth = 0;
@@ -679,8 +679,8 @@ engine | dbg/engine.c | if (flags & END) return (TargetEvent) | if (true) return
 # ---- slice 5: the engine thread and halt (tests/test_session.c on a made-up target; the halt phase of tests/stress_engine.c; specs/Halt.tla) ----
 test | dbg/session.c | if (c.kind == SESSION_HALT \p\p s->quit) return true; | if (s->quit) return true;
 test | dbg/session.c | s->quit = c.kind == SESSION_QUIT;\n    if (c.kind == SESSION_HALT | if (c.kind == SESSION_HALT
-test | dbg/session.c | while (!s->quit && queue_pop(&s->commands, s->command, sizeof s->command, false)) { | while (!s->quit && queue_pop(&s->commands, s->command, sizeof s->command, true)) {
-test | dbg/session.c | } else continue; | }
+test | dbg/session.c | (n = queue_pop(&s->commands, s->command, sizeof s->command, false));) { | (n = queue_pop(&s->commands, s->command, sizeof s->command, true));) {
+test | dbg/session.c | continue;\n    }\n    queue_push(&s->events, &ev, sizeof ev, true); | }\n    queue_push(&s->events, &ev, sizeof ev, true);
 test | dbg/session.c | if (ev.stop.kind == TARGET_EXIT) engine_close(&e), open = false; | if (ev.stop.kind == TARGET_EXIT) engine_close(&e);
 test | dbg/session.c | if (ev.stop.kind == TARGET_EXIT) engine_close(&e), open = false; | 
 test | dbg/session.c | if (c.kind == SESSION_OPEN && !open && n > sizeof c) { | if (c.kind == SESSION_OPEN && n > sizeof c) {
@@ -1051,22 +1051,78 @@ test | dbg/eval.c | for (uint32_t i = 0; i < 18; i += 1)   /* a register | for (
 test | dbg/eval.c | return *v = i < 16 ? (EvalValue){EVAL_REGISTER, {NULL, U64, 0}, i} | return *v = i < 15 ? (EvalValue){EVAL_REGISTER, {NULL, U64, 0}, i}
 test | dbg/eval.c | return *v = i < 16 ? (EvalValue){EVAL_REGISTER, {NULL, U64, 0}, i} | return *v = i < 17 ? (EvalValue){EVAL_REGISTER, {NULL, U64, 0}, i}
 test | dbg/eval.c | i} : value(U64, i == 16 ? P->frame->rip : P->frame->rflags), true; | i} : value(U64, i == 16 ? P->frame->rflags : P->frame->rip), true;
-test | dbg/eval.c | if (same(id, registers[i], strlen(registers[i]))) return *v = | if (!memcmp(id.p, registers[i], strlen(registers[i]))) return *v =
+test | dbg/eval.c | if (same(id, eval_registers[i], strlen(eval_registers[i]))) return *v = | if (!memcmp(id.p, eval_registers[i], strlen(eval_registers[i]))) return *v =
 eval | dbg/view.c | for (bool called = false; n < most; called = true) { | for (bool called = false; n < most;) {
 eval | dbg/view.c | uint64_t voff = m ? regs.rip - called - m->image.base : 0;\n    uint32_t innermost | uint64_t voff = m ? regs.rip - m->image.base : 0;\n    uint32_t innermost
-eval | dbg/view.c | if (i) frames[n++] = (ViewFrame){{regs, called, inlined++}, | frames[n++] = (ViewFrame){{regs, called, inlined++},
-eval | dbg/view.c | if (i) frames[n++] = (ViewFrame){{regs, called, inlined++}, | if (false) frames[n++] = (ViewFrame){{regs, called, inlined++},
-eval | dbg/view.c | rdi_row_in(r, site->line_table, voff).line}; | rdi_row(r, voff).line};
-eval | dbg/view.c | hops += 1, s = rdi_at(r, RDI_SCOPES, RdiScope, s)->parent) { | hops += 1, s = 0) {
-eval | dbg/view.c | rdi_at(r, RDI_SCOPES, RdiScope, innermost)->proc)->name) : (RdiSpan){0}, m ? rdi_row(r, voff).line : (RdiLine){0}}; | rdi_at(r, RDI_SCOPES, RdiScope, innermost)->proc)->name) : (RdiSpan){0}, (RdiLine){0}};
+eval | dbg/view.c | if (!i && !function) continue; | if (!function) continue;
+eval | dbg/view.c | if (!i && !function) continue; | 
+eval | dbg/view.c | if (at++ >= first)\n | if (at++ > first)\n
+eval | dbg/view.c | if (at++ >= first)\n | if (at++ + 1 >= first)\n
+eval | dbg/view.c | frames[n++] = (ViewFrame){{regs, called, inlined}, m, | frames[n++] = (ViewFrame){{regs, false, inlined}, m,
+eval | dbg/view.c | frames[n++] = (ViewFrame){{regs, called, inlined}, m, | frames[n++] = (ViewFrame){{regs, called, 0}, m,
+eval | dbg/view.c | inlined += 1;\n      if (function) break; | if (function) break;
+eval | dbg/view.c | inlined += 1;\n      if (function) break; | inlined += 1;\n      if (function \p\p i) break;
+eval | dbg/view.c | : rdi_str(r, site->name),\n | : rdi_str(r, rdi_at(r, RDI_PROCEDURES, RdiSymbol, rdi_at(r, RDI_SCOPES, RdiScope, innermost)->proc)->name),\n
+eval | dbg/view.c | function ? rdi_row(r, voff).line : rdi_row_in(r, site->line_table, voff).line}; | rdi_row(r, voff).line};
+eval | dbg/view.c | function ? rdi_row(r, voff).line : rdi_row_in(r, site->line_table, voff).line}; | rdi_row_in(r, site->line_table, voff).line};
 eval | dbg/view.c | if (!unwind_step(target_read, e->target, m ? &m->image : NULL, &regs) \p\p !regs.rip) break; | if (!unwind_step(target_read, e->target, m ? &m->image : NULL, &regs)) break;
 eval | dbg/view.c | if (!unwind_step(target_read, e->target, m ? &m->image : NULL, &regs) \p\p !regs.rip) break; | if (!unwind_step(target_read, e->target, NULL, &regs) \p\p !regs.rip) break;
-eval | dbg/view.c | frames[n++] = (ViewFrame){{regs, called, inlined}, m, m ? rdi_str( | frames[n++] = (ViewFrame){{regs, false, inlined}, m, m ? rdi_str(
-eval | dbg/view.c | if (i) frames[n++] = (ViewFrame){{regs, called, inlined++}, | if (i) frames[n++] = (ViewFrame){{regs, called, inlined},
-eval | dbg/view.c | frames[n++] = (ViewFrame){{regs, called, inlined}, m, m ? rdi_str( | frames[n++] = (ViewFrame){{regs, called, 0}, m, m ? rdi_str(
 eval | dbg/eval.c | for (uint32_t inside = frame->inlined, hops = 0; | for (uint32_t inside = 0, hops = 0;
 test | dbg/eval.c | inside -= scope->inline_site != 0, P.scope = scope->parent; | inside -= 1, P.scope = scope->parent;
 eval | dbg/eval.c | inside -= scope->inline_site != 0, P.scope = scope->parent; | inside -= scope->inline_site != 0;
 eval | dbg/eval.c | P.scope = P.module ? rdi_vmap(&P.module->rdi, RDI_SCOPE_VMAP, P.voff) : 0; | P.scope = P.module ? rdi_vmap(&P.module->rdi, RDI_SCOPE_VMAP, P.voff + 1) : 0;
 fuzz | dbg/eval.c | inside && P.scope && hops < 256; hops += 1) { | inside && hops < 256; hops += 1) {
 test | dbg/rdi.c | if (!n) return (RdiSpan){zero, 0};   /* a module without | /* a module without
+# slice 8, first part: what the editor asks and is answered (dbg/ask.c), through the engine thread (dbg/session.c)
+test | dbg/session.c | SessionEvent ev = {.asked = true, .stale = !stopped}; | SessionEvent ev = {.asked = true};
+test | dbg/session.c | SessionEvent ev = {.asked = true, .stale = !stopped}; | SessionEvent ev = {.stale = !stopped};
+test | dbg/session.c | if (n >= sizeof(SessionCommand) + sizeof(Ask)) ev.tag = ((const Ask *)ask)->tag; | ev.tag = ((const Ask *)ask)->tag;
+test | dbg/session.c | if (n >= sizeof(SessionCommand) + sizeof(Ask)) ev.tag = ((const Ask *)ask)->tag; | 
+test | dbg/session.c | to, QUEUE_BYTES - 8 - sizeof ev); | to, QUEUE_BYTES - sizeof ev);
+test | dbg/session.c | to, QUEUE_BYTES - 8 - sizeof ev); | to, 16);
+test | dbg/session.c | queue_push(&s->events, s->event, (uint32_t)sizeof ev + ev.answer, true); | queue_push(&s->events, s->event, (uint32_t)sizeof ev, true);
+test | dbg/session.c | uint64_t *to = s->event + sizeof ev / 8; | uint64_t *to = s->event + sizeof ev / 8 + 1;
+test | dbg/session.c | if (c.kind == SESSION_ASK) answer(s, NULL, n); | 
+test | dbg/session.c | if (c.kind == SESSION_ASK) answer(s, open ? &e : NULL, n); | 
+test | dbg/session.c | if (c.kind == SESSION_ASK) answer(s, open ? &e : NULL, n); | if (c.kind == SESSION_ASK && open) answer(s, &e, n);
+eval | dbg/ask.c | uint64_t skip = len < n ? 0 : len - (n - 1); | uint64_t skip = len < n ? 0 : len - n;
+eval | dbg/ask.c | if (n == 0 \p\p n > len \p\p (n < len && path[len - n - 1] != '/' && path[len - n - 1] != '\\')) return false; | if (n == 0 \p\p n > len) return false;
+eval | dbg/ask.c | b = b == '\\' ? '/' : b >= 'A' && b <= 'Z' ? (char)(b + 32) : b; | b = b == '\\' ? '/' : b;
+eval | dbg/ask.c | if (a != b) return false; | 
+eval | dbg/ask.c | if (function && cap - used >= 8) memcpy((char *)out + used, &function, 8), used += 8; | if (cap - used >= 8) memcpy((char *)out + used, &function, 8), used += 8;
+eval | dbg/ask.c | rdi_voffs_from_line(&m->rdi, (uint32_t)f, (uint32_t)line) | rdi_voffs_from_line(&m->rdi, (uint32_t)f, (uint32_t)line + 1)
+eval | dbg/ask.c | &(uint64_t){m->image.base + ((const uint64_t *)voffs.p)[k]}, 8); | &(uint64_t){((const uint64_t *)voffs.p)[k]}, 8);
+eval | dbg/ask.c | if (most > cap / sizeof *to) most = cap / sizeof *to;\n    uint32_t count = view_stack(e, regs, (uint32_t)ask.first, frames, most); | uint32_t count = view_stack(e, regs, 0, frames, most);
+eval | dbg/ask.c | to[i] = (AskFrame){.addr = f->at.regs.rip, .line = f->line.line}; | to[i] = (AskFrame){.addr = f->at.regs.rip};
+eval | dbg/ask.c | to[i] = (AskFrame){.addr = f->at.regs.rip, .line = f->line.line}; | to[i] = (AskFrame){.line = f->line.line};
+eval | dbg/ask.c | if (f->module && f->module->path) tail(to[i].module, | if (false) tail(to[i].module,
+eval | dbg/ask.c | tail(to[i].file, sizeof to[i].file, path, len < sizeof path ? len : sizeof path); | tail(to[i].file, sizeof to[i].file, path, len < sizeof path ? len / 2 : sizeof path);
+eval | dbg/ask.c | (int)(f->name.n < sizeof to[i].name ? f->name.n : sizeof to[i].name - 1), | (int)(f->name.n < sizeof to[i].name ? f->name.n - 1 : sizeof to[i].name - 1),
+eval | dbg/ask.c | view_stack(e, regs, ask.frame, frames, 1) != 1) return 0; | view_stack(e, regs, 0, frames, 1) != 1) return 0;
+eval | dbg/ask.c | memcpy(&view, more, sizeof view), more += sizeof view; | memset(&view, 0, sizeof view), more += sizeof view;
+eval | dbg/ask.c | more += strlen(more) + 1) roots[count++] = more; | more += strlen(more) + 1) roots[count] = more;
+eval | dbg/ask.c | roots[count++] = at, memcpy(at, names[i].p, names[i].n), at[names[i].n] = 0, at += names[i].n + 1; | roots[count++] = at, memcpy(at, names[i].p, names[i].n), at[names[i].n] = 0;
+eval | dbg/ask.c | if (ask.roots == ASK_REGISTERS) memcpy(roots, eval_registers, sizeof eval_registers), count = 18; | if (ask.roots == ASK_REGISTERS) memcpy(roots, eval_registers, sizeof eval_registers), count = 17;
+eval | dbg/ask.c | uint64_t total = view_rows(&view, e, &frames->at, roots, count, ask.first, rows, most, &shown); | uint64_t total = view_rows(&view, e, &frames->at, roots, count, 0, rows, most, &shown);
+eval | dbg/ask.c | memcpy(out, &total, 8); | memcpy(out, &(uint64_t){total + 1}, 8);
+eval | dbg/ask.c | to[i].row = rows[i]; | to[i].row = rows[0];
+eval | dbg/ask.c | view_value(e, &frames->at, rows[i].text, to[i].value, sizeof to[i].value); | view_value(e, &frames->at, rows[i].text, to[i].value, 8);
+eval | dbg/ask.c | view_type(eval(e, &frames->at, rows[i].text, &error).type, to[i].type, sizeof to[i].type); | view_type(eval(e, &frames->at, rows[0].text, &error).type, to[i].type, sizeof to[i].type);
+eval | dbg/ask.c | uint32_t most = ask.most < ASK_MOST ? ask.most : ASK_MOST, used = 0; | uint32_t most = ASK_MOST, used = 0;
+eval | dbg/engine.c | return m->image.base + *rdi_at(&m->rdi, RDI_SCOPE_VOFFS, uint64_t, scope->voff_first);\n}\n\nuint64_t engine_entry | return *rdi_at(&m->rdi, RDI_SCOPE_VOFFS, uint64_t, scope->voff_first);\n}\n\nuint64_t engine_entry
+# the console debugger (cmd/hdbg.c) on tests/tour.c: the engine thread, the queues and the asks as a person meets them; and what it found in the engine
+front | dbg/engine.c | if (e->net[i].addr == regs.rip) start = regs.rip; | if (false) start = regs.rip;
+front | dbg/engine.c | if (ev.thread == thread && ev.addr == start) start = 0; | if (false) start = 0;
+front | cmd/hdbg.c | if (WaitForSingleObject(woke, ms) == WAIT_TIMEOUT) push | if (WaitForSingleObject(woke, ms + 100000) == WAIT_TIMEOUT) push
+front | cmd/hdbg.c | if (ev->stop.thread) thread = ev->stop.thread; | thread = ev->stop.thread;
+front | cmd/hdbg.c | if (open && n) view_toggle(&more.view, &row->row); | if (open && !n) view_toggle(&more.view, &row->row);
+front | cmd/hdbg.c | .thread = thread, .frame = frame, .roots = roots, | .thread = thread, .roots = roots,
+front | cmd/hdbg.c | m.c = (SessionCommand){SESSION_RUN, how, thread, count}, | m.c = (SessionCommand){SESSION_RUN, how, thread, 0},
+front | cmd/hdbg.c | if (k < count) breakpoints[k] = breakpoints[--count]; | if (k < count) breakpoints[k] = breakpoints[count - 1];
+front | cmd/hdbg.c | if (k < count) breakpoints[k] = breakpoints[--count]; | if (k < count) count -= 1;
+front | cmd/hdbg.c | return !started; | return 0;
+front | cmd/hdbg.c | while (source && line < f->line && fgets | while (source && line + 1 < f->line && fgets
+front | dbg/session.c | if (open) e.halt = halt, e.halt_arg = s; | if (!open) e.halt = halt, e.halt_arg = s;
+
+front | dbg/ask.c | uint64_t function = line ? 0 : engine_function(m, more, strlen(more)); | uint64_t function = 0;
+eval | dbg/ask.c | uint64_t function = line ? 0 : engine_function(m, more, strlen(more)); | uint64_t function = engine_function(m, more, 0);

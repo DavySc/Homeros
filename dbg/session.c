@@ -1,18 +1,31 @@
 #include "session.h"
-#include "engine.h"
+#include "ask.h"
 #include <stdlib.h>
 #include <string.h>
 
-/* The engine asks between its waits for the target (engine.h, halt): a halt or a quit stops it. Anything else the
-   editor sends while the target runs is dropped (Halt.tla: it does not). */
+/* An ask's event, with the answer when there is a stopped program to look at. n: the command's bytes. */
+static void answer(Session *s, const Engine *stopped, uint32_t n)
+{
+  SessionEvent ev = {.asked = true, .stale = !stopped};
+  const uint64_t *ask = s->command + sizeof(SessionCommand) / 8;
+  uint64_t *to = s->event + sizeof ev / 8;
+  if (n >= sizeof(SessionCommand) + sizeof(Ask)) ev.tag = ((const Ask *)ask)->tag;
+  if (stopped) ev.answer = ask_answer(stopped, ask, n - (uint32_t)sizeof(SessionCommand), to, QUEUE_BYTES - 8 - sizeof ev);   /* a message has at most QUEUE_BYTES - 4 bytes */
+  memcpy(s->event, &ev, sizeof ev);
+  queue_push(&s->events, s->event, (uint32_t)sizeof ev + ev.answer, true);
+}
+
+/* The engine asks between its waits for the target (engine.h, halt): a halt or a quit stops it, an ask is answered
+   without a look at the target. Anything else the editor sends while the target runs is dropped (Halt.tla: it does not). */
 static bool halt(void *arg)
 {
   Session *s = arg;
   SessionCommand c;
-  while (!s->quit && queue_pop(&s->commands, s->command, sizeof s->command, false)) {
+  for (uint32_t n; !s->quit && (n = queue_pop(&s->commands, s->command, sizeof s->command, false));) {
     memcpy(&c, s->command, sizeof c);
     s->quit = c.kind == SESSION_QUIT;
     if (c.kind == SESSION_HALT || s->quit) return true;
+    if (c.kind == SESSION_ASK) answer(s, NULL, n);
   }
   return s->quit;
 }
@@ -38,7 +51,10 @@ static void *session(void *arg)
       ev.stop = engine_run(&e, (int)c.how, c.thread, more, c.count);
       ev.stop.text = 0;
       if (ev.stop.kind == TARGET_EXIT) engine_close(&e), open = false;
-    } else continue;   /* a halt when nothing runs (the target had stopped by itself), or a command that makes no sense now */
+    } else {   /* an ask; or a halt when nothing runs (the target had stopped by itself), or a command that makes no sense now */
+      if (c.kind == SESSION_ASK) answer(s, open ? &e : NULL, n);
+      continue;
+    }
     queue_push(&s->events, &ev, sizeof ev, true);
   }
   if (open) engine_close(&e);

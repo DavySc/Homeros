@@ -206,22 +206,28 @@ uint64_t view_rows(const View *view, const Engine *e, const EvalFrame *frame, co
 
 /* ---- the stack ---- */
 
-uint32_t view_stack(const Engine *e, TargetRegs regs, ViewFrame *frames, uint32_t most)
+uint32_t view_stack(const Engine *e, TargetRegs regs, uint32_t first, ViewFrame *frames, uint32_t most)
 {
-  uint32_t n = 0;
+  static const Rdi none;   /* of a place outside every module: every lookup finds nothing */
+  uint32_t at = 0, n = 0;
   for (bool called = false; n < most; called = true) {
     const EngineModule *m = engine_module(e, regs.rip - called);
-    const Rdi *r = m ? &m->rdi : NULL;
+    const Rdi *r = m ? &m->rdi : &none;
     uint64_t voff = m ? regs.rip - called - m->image.base : 0;
-    uint32_t innermost = m ? rdi_vmap(r, RDI_SCOPE_VMAP, voff) : 0;
-    /* each inlined call around the instruction, from the innermost (RAD stops at a block between two of them: the calls outside it are not frames there) */
-    uint32_t inlined = 0;
-    for (uint32_t s = innermost, hops = 0; s && n < most && hops < 256; hops += 1, s = rdi_at(r, RDI_SCOPES, RdiScope, s)->parent) {
+    uint32_t innermost = rdi_vmap(r, RDI_SCOPE_VMAP, voff);
+    /* each inlined call around the instruction, from the innermost, then (past the outermost scope) the function itself.
+       (RAD stops at a block between two inlined calls: the calls outside it are not frames there.) */
+    for (uint32_t s = innermost, hops = 0, inlined = 0; n < most; hops += 1, s = rdi_at(r, RDI_SCOPES, RdiScope, s)->parent) {
       uint32_t i = rdi_at(r, RDI_SCOPES, RdiScope, s)->inline_site;
       const RdiInlineSite *site = rdi_at(r, RDI_INLINE_SITES, RdiInlineSite, i);
-      if (i) frames[n++] = (ViewFrame){{regs, called, inlined++}, m, rdi_str(r, site->name), rdi_row_in(r, site->line_table, voff).line};
+      bool function = !s || hops == 256;
+      if (!i && !function) continue;
+      if (at++ >= first)
+        frames[n++] = (ViewFrame){{regs, called, inlined}, m, function ? rdi_str(r, rdi_at(r, RDI_PROCEDURES, RdiSymbol, rdi_at(r, RDI_SCOPES, RdiScope, innermost)->proc)->name) : rdi_str(r, site->name),
+                                  function ? rdi_row(r, voff).line : rdi_row_in(r, site->line_table, voff).line};
+      inlined += 1;
+      if (function) break;
     }
-    if (n < most) frames[n++] = (ViewFrame){{regs, called, inlined}, m, m ? rdi_str(r, rdi_at(r, RDI_PROCEDURES, RdiSymbol, rdi_at(r, RDI_SCOPES, RdiScope, innermost)->proc)->name) : (RdiSpan){0}, m ? rdi_row(r, voff).line : (RdiLine){0}};
     /* on until a step fails or comes to no instruction (RAD's d_unwind_from_thread; its third end, a step that changes nothing, this unwinder cannot make: it pops at least the return address) */
     if (!unwind_step(target_read, e->target, m ? &m->image : NULL, &regs) || !regs.rip) break;
   }

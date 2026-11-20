@@ -327,6 +327,8 @@ static const RdiSymbol *local(const Parse *P, Locals *l)
   return NULL;
 }
 
+const char *const eval_registers[18] = {"rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", "rip", "rflags"};
+
 /* The variable of a name at the frame: in its scopes, then a global or a constant, then a register. False: there is none;
    true with no kind: it has no place at this instruction. */
 static bool name(Parse *P, RdiSpan id, EvalValue *v)
@@ -343,9 +345,8 @@ static bool name(Parse *P, RdiSpan id, EvalValue *v)
     const RdiSymbol *y = idx ? rdi_at(&g->rdi, i % 2 ? RDI_CONSTANTS : RDI_GLOBALS, RdiSymbol, idx) : NULL;
     if (y) return *v = settle(P, place(P->e, g, y->type, y->location, 0, P->frame)), true;
   }
-  static const char *const registers[] = {"rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", "rip", "rflags"};
   for (uint32_t i = 0; i < 18; i += 1)   /* a register of the frame, as RAD has them: a name no variable has */
-    if (same(id, registers[i], strlen(registers[i]))) return *v = i < 16 ? (EvalValue){EVAL_REGISTER, {NULL, U64, 0}, i} : value(U64, i == 16 ? P->frame->rip : P->frame->rflags), true;
+    if (same(id, eval_registers[i], strlen(eval_registers[i]))) return *v = i < 16 ? (EvalValue){EVAL_REGISTER, {NULL, U64, 0}, i} : value(U64, i == 16 ? P->frame->rip : P->frame->rflags), true;
   return false;
 }
 

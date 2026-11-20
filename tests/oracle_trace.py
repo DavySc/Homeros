@@ -15,7 +15,8 @@ known = {}   # trace: (the line up to which it is compared here, the line where 
 for l in (Path(__file__).parent / 'trace_known.txt').read_text().splitlines():
     if l.strip() and l[0] != '#' and l.split()[1] in ('all', 'wine' if wine else 'windows'): known[l.split()[0]] = (int(l.split()[2]), int(l.split()[3]))
 steps = bad = 0
-for t in sorted(traces.glob('*.txt')):
+files = [t for t in sorted(traces.glob('*.txt')) if not t.name.endswith('.eval.txt')]   # those are RAD's values, not steps (tests/zoo_check.c)
+for t in files:
     name, script = t.name.split('.')[:2]
     want = [kind(l) for l in t.read_text().splitlines()]
     got = subprocess.run(wine + [driver, name + '.exe', script, '600'], cwd=programs, capture_output=True, text=True, timeout=120).stdout.splitlines()
@@ -28,5 +29,5 @@ for t in sorted(traces.glob('*.txt')):
     if differ:
         i = differ[0]; bad += 1
         print(f'{t.name}: {len(differ)} of {len(want)} lines differ, first at line {i + 1}:\n  RAD:  {want[i] if i < len(want) else "(no line)"}\n  ours: {got[i] if i < len(got) else "(no line)"}')
-print(f'traces: {steps} steps in {len(list(traces.glob("*.txt")))} traces, {bad} traces differ')
+print(f'traces: {steps} steps in {len(files)} traces, {bad} traces differ')
 sys.exit(1 if bad or not steps else 0)

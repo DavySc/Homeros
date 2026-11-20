@@ -38,4 +38,6 @@ EvalValue eval_load(const Engine *e, const EvalFrame *frame, EvalValue v, const 
 /* The names of the variables around the frame's instruction, the innermost first, each once, as far out as its function
    (an inlined call is one); how many (up to most). */
 uint32_t eval_locals(const Engine *e, const EvalFrame *frame, RdiSpan *names, uint32_t most);
+/* The registers a frame has by name (after its variables), in the order the registers view shows them. */
+extern const char *const eval_registers[18];
 #endif

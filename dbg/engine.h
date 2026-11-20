@@ -35,6 +35,8 @@ enum { ENGINE_RUN, ENGINE_STEP_INTO_INST, ENGINE_STEP_OVER_INST, ENGINE_STEP_INT
 bool engine_open(Engine *e, const char *command_line, uint32_t pid, uint32_t *first_thread);
 /* The module that holds addr, or null. */
 const EngineModule *engine_module(const Engine *e, uint64_t addr);
+/* Where the module's function of that name begins; 0 when it has none. */
+uint64_t engine_function(const EngineModule *m, const char *name, uint64_t n);
 /* Where the program's own code begins: WinMain, wWinMain, main or wmain, the first there is, else the entry its header names. */
 uint64_t engine_entry(const Engine *e);
 /* Lets the target run until it stops, and says why: TARGET_TRAP on a breakpoint (addr), TARGET_STEP when

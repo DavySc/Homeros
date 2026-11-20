@@ -31,7 +31,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
   TargetRegs regs = {.rip = BASE + (size > 8 ? data[size / 2] | (uint64_t)data[size / 2 + 1] << 8 : 0)};
   for (int i = 0; i < 16; i += 1) regs.gp[i] = MEMORY + 16 * (uint64_t)i;
   ViewFrame frames[5];
-  view_stack(&e, regs, frames, 5);
+  view_stack(&e, regs, size % 3, frames, 5);
   for (int called = 0; called < 2; called += 1) {
     EvalFrame frame = {regs, called, 2 * called};   /* the second time as a frame that waits in a call with two inlined calls inside it */
     const char *error = "unset";

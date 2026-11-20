@@ -79,16 +79,22 @@ void engine_close(Engine *e)
   free(e->modules), free(e->threads), free(e->net), free(e->traps), free(e->ranges), free(e->code);
 }
 
+uint64_t engine_function(const EngineModule *m, const char *name, uint64_t n)
+{
+  RdiSpan found = rdi_matches(&m->rdi, RDI_NAMES_PROCEDURES, name, n);
+  if (!found.n) return 0;
+  const RdiScope *scope = rdi_at(&m->rdi, RDI_SCOPES, RdiScope, rdi_at(&m->rdi, RDI_PROCEDURES, RdiSymbol, *(const uint32_t *)found.p)->root_scope);
+  return m->image.base + *rdi_at(&m->rdi, RDI_SCOPE_VOFFS, uint64_t, scope->voff_first);
+}
+
 uint64_t engine_entry(const Engine *e)
 {
   static const char *const names[] = {"WinMain", "wWinMain", "main", "wmain"};
   const EngineModule *m = e->modules;
   uint8_t at[4];
   for (uint32_t i = 0; i < 4; i += 1) {
-    RdiSpan found = rdi_matches(&m->rdi, RDI_NAMES_PROCEDURES, names[i], strlen(names[i]));
-    if (!found.n) continue;
-    const RdiScope *scope = rdi_at(&m->rdi, RDI_SCOPES, RdiScope, rdi_at(&m->rdi, RDI_PROCEDURES, RdiSymbol, *(const uint32_t *)found.p)->root_scope);
-    return m->image.base + *rdi_at(&m->rdi, RDI_SCOPE_VOFFS, uint64_t, scope->voff_first);
+    uint64_t addr = engine_function(m, names[i], strlen(names[i]));
+    if (addr) return addr;
   }
   return target_read(e->target, m->image.base + 0x3c, at, 4) && target_read(e->target, m->image.base + le32(at) + 24 + 16, at, 4) ? m->image.base + le32(at) : 0;
 }
@@ -237,6 +243,7 @@ static TargetEvent run(Engine *e, int how, uint32_t thread, const uint64_t *brea
 {
   TargetRegs regs = {0};
   TargetEvent ev = {0};
+  uint64_t start = 0;   /* where the stepping thread stands, when the net has a trap there */
   e->net_count = 0;
   if (how != ENGINE_RUN) {
     if (!target_regs(e->target, thread, &regs)) return ev;   /* no such thread: nothing runs */
@@ -244,17 +251,21 @@ static TargetEvent run(Engine *e, int how, uint32_t thread, const uint64_t *brea
     else if (how == ENGINE_STEP_INTO_LINE || how == ENGINE_STEP_OVER_LINE) line_net(e, regs.rip, how == ENGINE_STEP_INTO_LINE);
     else if (how == ENGINE_STEP_OUT) out_net(e, regs);
     if (!e->net_count) return step_one(e, thread);
+    for (uint32_t i = 0; i < e->net_count; i += 1) if (e->net[i].addr == regs.rip) start = regs.rip;
   }
   /* A thread that stands on a breakpoint where its stop has been reported would hit it again at once: each such
      thread first runs the instruction there, alone. A thread nobody was told of stands there too (it ran the trap
      during another thread's stop and was put back, or was stopped just before the trap): it is left to hit it now.
-     RAD steps every thread that stands on a breakpoint; specs/Hit.tla shows the hit that loses. */
+     RAD steps every thread that stands on a breakpoint; specs/Hit.tla shows the hit that loses.
+     The stepping thread leaves its place whether told or not, and not by this step when the net has a trap there: that trap
+     says what its instruction does to the step (it moves the stack pointer, or is the call to step over), so the thread
+     is left to run into it (RAD: target_thread_is_on_user_bp_and_trap_net_trap). */
   for (uint32_t i = 0; i < e->thread_count; i += 1) {
     TargetRegs r;
     uint32_t id = e->threads[i].id;
-    bool stuck = false;
-    for (uint32_t k = 0; k < count && target_regs(e->target, id, &r) && r.rip == e->threads[i].told; k += 1) stuck = stuck || breakpoints[k] == r.rip;
-    if (stuck && (ev = step_one(e, id)).kind != TARGET_STEP) return ev;
+    bool stuck = false, steps = how != ENGINE_RUN && id == thread;
+    for (uint32_t k = 0; k < count && target_regs(e->target, id, &r) && (steps || r.rip == e->threads[i].told); k += 1) stuck = stuck || breakpoints[k] == r.rip;
+    if (stuck && !(steps && start) && (ev = step_one(e, id)).kind != TARGET_STEP) return ev;
   }
   for (uint32_t i = 0; i < e->thread_count; i += 1) e->threads[i].told = 0;   /* now all run: one that comes to stand there again has not been told (Hit.tla, "kept") */
   uint64_t depth = regs.gp[4];
@@ -265,7 +276,8 @@ static TargetEvent run(Engine *e, int how, uint32_t thread, const uint64_t *brea
     ev = run_on(e, count + e->net_count, 0);
     if (ev.kind != TARGET_TRAP) return ev;
     uint32_t flags = 0;
-    for (uint32_t i = 0; i < count; i += 1) if (breakpoints[i] == ev.addr) return ev;
+    if (ev.thread == thread && ev.addr == start) start = 0;   /* the step's own first trap, not the breakpoint at the same place */
+    else for (uint32_t i = 0; i < count; i += 1) if (breakpoints[i] == ev.addr) return ev;
     for (uint32_t i = 0; i < e->net_count; i += 1) if (e->net[i].addr == ev.addr) flags |= e->net[i].flags;
     /* another thread in the net, or this one at another depth: over the trap, alone, and on */
     bool reached = ev.thread == thread && target_regs(e->target, thread, &regs) && (flags & IGNORE_SP || regs.gp[4] == depth);

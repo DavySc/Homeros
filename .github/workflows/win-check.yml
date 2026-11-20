@@ -4,7 +4,7 @@ name: win-check
 on:
   push:
     branches: [claude/project-thread-l4spyq]
-    paths: ['dbg/**', 'tests/**', 'traces/**', 'subjects/zoo.c', 'check.sh', '.github/workflows/win-check.yml']
+    paths: ['dbg/**', 'cmd/**', 'tests/**', 'traces/**', 'subjects/zoo.c', 'check.sh', '.github/workflows/win-check.yml']
 concurrency: {group: win-check, cancel-in-progress: true}   # a newer push answers for the older
 jobs:
   stress:
@@ -27,5 +27,7 @@ jobs:
         run: for n in 1 2 3 4 5 6; do ENGINE_ROUNDS=5000 ./check.sh engine || exit 1; done   # the put-back at a stop faulted in 3 of 5 single runs
       - name: The evaluator on a program that says what its variables and expressions are
         run: clang --version && ./check.sh eval
+      - name: The console debugger through its scripted session
+        run: for n in 1 2 3 4 5; do ./check.sh front || exit 1; done
       - name: Every plant is caught
-        run: ./check.sh plants engine && ./check.sh plants win && STRESS_ROUNDS=40000 ./check.sh plants windows   # what these two wait for comes about twice in 10,000 rounds
+        run: ./check.sh plants front && ./check.sh plants engine && ./check.sh plants win && STRESS_ROUNDS=40000 ./check.sh plants windows   # what these two wait for comes about twice in 10,000 rounds

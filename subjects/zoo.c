@@ -194,10 +194,10 @@ int main(void)
   LOCALS("c s u wide f d array pair big pointer colour either alias function nest np pairs pp total");
   int total = params(1, 'p', pair, big, &big, d);
   big = returns(total);
-  total += CALL(main, blocks(3)) + (int)kept(unknown) + CALL(main, statics()) + (int)big.x[2] + (int)shadow(unknown);
+  total += CALL(main, blocks(3)) + (int)kept(unknown); total += CALL(main, statics()) + (int)big.x[2] + (int)shadow(unknown);
   total += far_frame(total, big);
   again_pointer = again;
-  STACK("main"); total += CALL(main, outer(total)) + CALL(main, again(2));
+  STACK("main"); total += CALL(main, outer(total)); total += CALL(main, again(2));
   VALUE(total); VALUE(GREEN);
   return (total + (int)sink) & 0;
 }

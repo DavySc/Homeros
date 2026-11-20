@@ -13,6 +13,7 @@
    and while the program stays in one function with the same variables, the rows stay the same.
    usage: zoo_check <zoo.exe> <number of texts the program shows> <least that must be right> <and of them variables in a register> <least rows looked at> <least frames of a stack that show their own x> [seed of the opening and closing] */
 #include "../dbg/view.c"
+#include "../dbg/ask.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -145,6 +146,56 @@ static int table(const Engine *e, const EvalFrame *r, View *view, ViewRow *rows,
   return 0;
 }
 
+/* What the editor would be answered here (dbg/ask.c) is what the views give: a window of the stack, a window of the table of the variables of the
+   frame above probe with the rows that are open, two of them as a table of their own, the registers; and where probe and this line are. */
+static int asks(const Engine *e, uint32_t thread, const View *view, uint64_t probe, uint32_t line, uint64_t *seed)
+{
+  static uint64_t out[8192];
+  static struct { Ask a; View v; char texts[2 * 64]; } m;
+  static struct { Ask a; char text[64]; } where;
+  static ViewRow rows[ASK_MOST];
+  TargetRegs r;
+  ViewFrame frames[16];
+  RdiSpan names[ROOTS];
+  char texts[ROOTS][64], value[128], type[64];
+  const char *roots[ROOTS], *why;
+  if (!target_regs(e->target, thread, &r)) FAIL("no registers");
+  uint32_t count = view_stack(e, r, 0, frames, 16), first = (uint32_t)random_below(seed, count + 1), most = (uint32_t)random_below(seed, 5), want = count - first < most ? count - first : most;
+  m.a = (Ask){ASK_STACK, thread, 0, 0, most, 0, first};
+  if (ask_answer(e, &m, sizeof m.a, out, sizeof out) != want * sizeof(AskFrame)) FAIL("asked for %u frames from %u of %u, the answer is not %u", most, first, count, want);
+  for (uint32_t i = 0; i < want; i += 1) {
+    const AskFrame *a = (const AskFrame *)out + i;
+    const ViewFrame *f = &frames[first + i];
+    const char *path = f->module ? f->module->path : "";
+    if (a->addr != f->at.regs.rip || a->line != f->line.line || strlen(a->name) != f->name.n || memcmp(a->name, f->name.p, f->name.n) || !*a->module != !f->module || strcmp(path + strlen(path) - strlen(a->module), a->module)
+        || (f->line.file ? strlen(a->file) < 5 || strcmp(a->file + strlen(a->file) - 5, "zoo.c") : *a->file)) FAIL("frame %u is answered as %s in %s at %s:%u", first + i, a->name, a->module, a->file, a->line);
+  }
+  count = eval_locals(e, &frames[1].at, names, ROOTS);
+  for (uint32_t i = 0; i < count; i += 1) snprintf(texts[i], sizeof texts[i], "%.*s", (int)names[i].n, (const char *)names[i].p), roots[i] = texts[i];
+  for (uint32_t what = ASK_TEXTS; what <= ASK_REGISTERS; what += 1) {
+    uint32_t n = what == ASK_LOCALS ? count : what == ASK_REGISTERS ? 18 : count < 2 ? count : 2, shown = 0, more = 0;
+    for (uint32_t i = 0; what == ASK_TEXTS && i < n; i += 1) more += (uint32_t)snprintf(m.texts + more, sizeof m.texts - more, "%s", texts[i]) + 1;
+    uint64_t total = view_rows(view, e, &frames[1].at, what == ASK_REGISTERS ? eval_registers : roots, n, 0, rows, 0, &shown);
+    m.a = (Ask){ASK_ROWS, thread, 1, what, (uint32_t)random_below(seed, 9), 0, random_below(seed, total + 1)}, m.v = *view;
+    view_rows(view, e, &frames[1].at, what == ASK_REGISTERS ? eval_registers : roots, n, m.a.first, rows, m.a.most, &shown);
+    if (ask_answer(e, &m, sizeof m.a + sizeof m.v + more, out, sizeof out) != 8 + shown * sizeof(AskRow) || out[0] != total) FAIL("asked for %u rows from %llu of the %llu of table %u, the answer is not %u", m.a.most, (unsigned long long)m.a.first, (unsigned long long)total, what, shown);
+    for (uint32_t i = 0; i < shown; i += 1) {
+      const AskRow *a = (const AskRow *)(out + 1) + i;
+      view_value(e, &frames[1].at, rows[i].text, value, sizeof value), view_type(eval(e, &frames[1].at, rows[i].text, &why).type, type, sizeof type);
+      if (memcmp(&a->row, &rows[i], sizeof rows[i]) || strcmp(a->value, value) || strcmp(a->type, type)) FAIL("row %u of table %u is answered as %s = %s (%s), not %s = %s (%s)", i, what, a->row.text, a->value, a->type, rows[i].text, value, type);
+    }
+  }
+  /* where code is: probe by its name; this line by the end of its file's path in any case (code of it begins shortly before the call), but not by half a name or under another folder, of whatever name */
+  const struct { const char *text; uint64_t most, has; } places[] = {{"probe", 1, probe}, {"zoo.c:%u", 16, 0}, {"SUBJECTS\\ZOO.C:%u", 16, 0}, {"oo.c:%u", 0, 0}, {"other/zoo.c:%u", 0, 0}, {"subjectz/zoo.c:%u", 0, 0}, {"no_such_function", 0, 0}, {"zoo.c:", 0, 0}};
+  for (uint32_t i = 0; i < sizeof places / sizeof *places; i += 1) {
+    where.a = (Ask){.kind = ASK_PLACES};
+    uint32_t n = ask_answer(e, &where, (uint32_t)sizeof where.a + (uint32_t)snprintf(where.text, sizeof where.text, places[i].text, line) + 1, out, sizeof out) / 8, near = 0;
+    for (uint32_t k = 0; k < n; k += 1) near += places[i].has ? out[k] == places[i].has : out[k] < frames[1].at.regs.rip && frames[1].at.regs.rip - out[k] <= 64;
+    if (n > places[i].most || (line || i == 0 ? (places[i].most != 0) != (near != 0) : false)) FAIL("%s is answered with %u places, %u of them the right one", where.text, n, near);
+  }
+  return 0;
+}
+
 int main(int argc, char **argv)
 {
   Engine e;
@@ -167,9 +218,19 @@ int main(int argc, char **argv)
     if (ev.kind != TARGET_TRAP || !target_regs(e.target, ev.thread, &r)) FAIL("event %d (code %llx), not a stop at probe", ev.kind, (unsigned long long)ev.code);
     uint64_t addr = r.gp[2], size = r.gp[8], value = r.gp[9];
     for (uint32_t i = 0; i < sizeof text - 1 && target_read(e.target, r.gp[1] + i, &text[i], 1) && text[i]; i += 1) {}
+    if (asks(&e, ev.thread, &view, probe, addr == 7 ? (uint32_t)value : 0, &seed)) FAIL("(asked where %s is shown)", text);
     if (addr == 7) {   /* the stack: probe, then the functions the program names, the last of them main */
       ViewFrame frames[16];
-      uint32_t count = view_stack(&e, r, frames, 16), f = 1;
+      uint32_t count = view_stack(&e, r, 0, frames, 16), f = 1;
+      for (uint32_t first = 0; first <= count; first += 1) {   /* any window is that part of the whole */
+        ViewFrame part[3];
+        uint32_t got = view_stack(&e, r, first, part, 3), want = count - first < 3 ? count - first : 3;
+        for (uint32_t i = 0; i < got && i < want; i += 1) {
+          const ViewFrame *a = &part[i], *b = &frames[first + i];
+          if (memcmp(&a->at.regs, &b->at.regs, sizeof a->at.regs) || a->at.called != b->at.called || a->at.inlined != b->at.inlined || a->module != b->module || a->name.p != b->name.p || a->line.file != b->line.file || a->line.line != b->line.line) got = 99;
+        }
+        if (got != want) FAIL("3 frames from %u of the stack of %s are not that part of its %u", first, text, count);
+      }
       char got[128] = {0};
       for (uint32_t at = 0; f < count && !(f > 1 && frames[f - 1].name.n == 4 && !memcmp(frames[f - 1].name.p, "main", 4)); f += 1)
         at += (uint32_t)snprintf(got + at, sizeof got - at, "%s%.*s", f > 1 ? " " : "", (int)frames[f].name.n, (const char *)frames[f].name.p);

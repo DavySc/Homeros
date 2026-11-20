@@ -7,11 +7,11 @@ cd "$(dirname "$0")"
 # a small queue, so the stress test runs with both queues full most of the time
 FLAGS="-std=c17 -D_GNU_SOURCE -pthread -DQUEUE_BYTES=256 -g -O1 -Wall -Wextra -Werror"
 SAN="-fsanitize=address,undefined -fno-sanitize-recover=all"
-run() { # run <dir with the sources> <list|test|specs|oracle|x64|win|windows|engine|eval|fuzz|all>: 0 when the named checks pass, 2 when
+run() { # run <dir with the sources> <list|test|specs|oracle|x64|win|windows|engine|eval|front|fuzz|all>: 0 when the named checks pass, 2 when
         # something does not compile (a planted bug must be caught by a check, not by the compiler), 3 when the
         # test files cannot be made (nor by a full disk)
   local src=$1 what=$2 b t lib; b=$(mktemp -d)
-  lib=$(ls "$src"/dbg/*.c | grep -v '/engine\.c$\|/session\.c$\|/eval\.c$\|/view\.c$')   # the engine, its thread and the evaluator need a target: linked in the engine and eval steps; here compiled, and the thread run on a made-up target (tests/test_session.c)
+  lib=$(ls "$src"/dbg/*.c | grep -v '/engine\.c$\|/session\.c$\|/eval\.c$\|/view\.c$\|/ask\.c$')   # the engine, its thread and the evaluator need a target: linked in the engine and eval steps; here compiled, and the thread run on a made-up target (tests/test_session.c)
   case $what in test|oracle|fuzz|all)
     python3 -I "$src/tests/seed_rdi.py" "$b/seed.rdi" || return 3
     "$src/tests/make_pdbs.sh" "$b/pdb" || return 3;;
@@ -26,7 +26,7 @@ for l in open(sys.argv[1] + "/tests/plants.txt"):
         if open(sys.argv[1] + "/" + file.strip()).read().count(find.replace("\\n", "\n").replace("\\p", "|")) != 1: sys.exit("plants.txt: not found once: " + find)' "$src" || return 1
   fi
   if [ "$what" = test ] || [ "$what" = all ]; then
-    for build in gcc clang; do for t in engine session eval view; do $build $FLAGS -c "$src"/dbg/$t.c -o "$b/$t.o" || return 2; done; done
+    for build in gcc clang; do for t in engine session eval view ask; do $build $FLAGS -c "$src"/dbg/$t.c -o "$b/$t.o" || return 2; done; done
     # only the engine and its thread call the target or the engine: what the editor links beside them shares nothing with a debugged program
     for t in $lib; do gcc $FLAGS -c "$t" -o "$b/o.o" || return 2; if nm -u "$b/o.o" | grep ' \(target\|engine\)_'; then return 1; fi; done
     # each tests/test_*.c is its own program: ASan+UBSan with both compilers, then ThreadSanitizer
@@ -87,7 +87,7 @@ for l in open(sys.argv[1] + "/tests/plants.txt"):
     # names, where their variables are and expressions of them (dbg/eval.c), on a program that says what each is itself: built here with clang, plain and optimised
     # (each with the number of texts the program shows, the least that must be right, the least variables in a register, and the least rows of the tables of variables: dbg/view.c), and as MSVC built it on the recorder
     local link="lld-link -nologo -debug -nodefaultlib -entry:main -subsystem:console -dynamicbase:no -stack:1048576,1048576" o   # with dashes: the shell on Windows takes /nologo for a path
-    ${WINCC:-x86_64-w64-mingw32-gcc} -std=c17 -O1 -g -Wall -Wextra -Werror $(grep -v '/queue\.c$' <<<"$lib") "$src"/dbg/engine.c "$src"/dbg/eval.c "$src"/dbg/win/target.c "$src"/tests/zoo_check.c -o "$b/zoo_check.exe" || return 2
+    ${WINCC:-x86_64-w64-mingw32-gcc} -std=c17 -O1 -g -Wall -Wextra -Werror $(grep -v '/queue\.c$' <<<"$lib") "$src"/dbg/engine.c "$src"/dbg/eval.c "$src"/dbg/ask.c "$src"/dbg/win/target.c "$src"/tests/zoo_check.c -o "$b/zoo_check.exe" || return 2
     echo 'int _fltused;' > "$b/flt.c" && clang --target=x86_64-pc-windows-msvc -ffreestanding -c "$b/flt.c" -o "$b/flt.obj" || return 3
     for o in O0:400:400:0:5000:4 O2:400:250:15:3000:0; do
       clang --target=x86_64-pc-windows-msvc -g -gcodeview -${o%%:*} -funwind-tables -ffreestanding -mno-stack-arg-probe -c "$src/subjects/zoo.c" -o "$b/zoo.obj" && $link "$b/zoo.obj" "$b/flt.obj" -out:"$b/zoo-${o%%:*}.exe" -pdb:"$b/zoo-${o%%:*}.pdb" || return 3
@@ -95,6 +95,16 @@ for l in open(sys.argv[1] + "/tests/plants.txt"):
         (cd "$b" && WINEDEBUG=-all timeout 300 "${WINE:-wine}" ./zoo_check.exe zoo-${o%%:*}.exe $(tr : ' ' <<<"${o#*:}") $seed 2>/dev/null | grep "^zoo_check" | tee zoo.out; grep -q "what the program says" zoo.out) || return 1
       done
     done
+  fi
+  if [ "$what" = front ] || [ "$what" = all ]; then
+    # the whole of it as a person meets it: the console debugger (cmd/hdbg.c: the engine thread, its queues, the asks) taken through tests/hdbg.txt on tests/tour.c
+    # must write tests/hdbg.expect, but for the addresses, where the files are, and the frames outside the program
+    ${WINCC:-x86_64-w64-mingw32-gcc} -std=c17 -O1 -g -Wall -Wextra -Werror -static -pthread $lib "$src"/dbg/engine.c "$src"/dbg/session.c "$src"/dbg/eval.c "$src"/dbg/view.c "$src"/dbg/ask.c "$src"/dbg/win/target.c "$src"/cmd/hdbg.c -o "$b/hdbg.exe" || return 2
+    echo 'int _fltused;' > "$b/flt.c" && clang --target=x86_64-pc-windows-msvc -ffreestanding -c "$b/flt.c" -o "$b/flt.obj" || return 3
+    clang --target=x86_64-pc-windows-msvc -g -gcodeview -O0 -funwind-tables -ffreestanding -mno-stack-arg-probe -c "$src/tests/tour.c" -o "$b/tour.obj" && lld-link -nologo -debug -nodefaultlib -entry:main -subsystem:console -dynamicbase:no "$b/tour.obj" "$b/flt.obj" -out:"$b/tour.exe" -pdb:"$b/tour.pdb" || return 3
+    local here; here=$(cd "$src" && pwd)
+    (cd "$b" && WINEDEBUG=-all timeout 120 "${WINE:-wine}" ./hdbg.exe tour.exe < "$here/tests/hdbg.txt" 2>/dev/null | tr -d '\r' | sed -E 's/0x[0-9a-f]+/0x_/g; s/ [^ ]*[\\/]([^\\/ ]*:[0-9]+)$/ \1/; /^#/{/tour\.c:/!d}' > front.out; diff "$here/tests/hdbg.expect" front.out | head -70; cmp -s "$here/tests/hdbg.expect" front.out) || return 1
+    (cd "$b" && ! WINEDEBUG=-all timeout 120 "${WINE:-wine}" ./hdbg.exe nothing.exe < /dev/null >/dev/null 2>&1) || return 1
   fi
   if [ "$what" = fuzz ] || [ "$what" = all ]; then
     for f in "$src"/tests/fuzz_*.c; do
