@@ -10,7 +10,7 @@ threads, its text shaped by package 7's font.h.
 | Changed cells | of a changed row only the span from the first to the last changed cell is drawn, widened on each side to the start of a word after a blank, so the span shapes as the whole row would and no spill crosses its edges | Neovim's grid_put_linebuf (sends only the changed columns) |
 | Text | the span is shaped as one run (font.h) and coloured per cell: colour does not change the font, so runs are not split by it | kitty |
 | Scroll | the core sends whole grids, not scroll events, so the move is found as the one most changed rows share, by row hashes without the number column (relative numbers change it on every scroll); a row is copied from where it was and then only its changed span drawn (the number), when that span is smaller than in place; copied in the move's direction so no source is drawn over first | Emacs (dispnew.c, scrolling_window, finds the move by row hashes), foot (the copy) |
-| Wide symbols | a glyph wider than its cell (73 of Mathlib's 295 notation symbols at 20 px, reviews/package-7.md) spills into the blank cells after it, up to the next non-blank cell, instead of being cut; in Lean it is mostly followed by a space. A ligature's glyph (`->`, `=>`, ` /\ `) sits on its last cell and reaches back over its word; any glyph that starts left of its cell (↔, ⇔) is cut at its word's start, so it may draw over a character before it in the same word, never over the blank before the word. The part of a glyph over an earlier cell of its word takes that cell's colours, so the cursor there shows its half reversed. A partial redraw shapes the blank before its span too, so ` /\ ` joins as typed. Both keep a partial redraw equal to a whole one | foot's overflowing glyphs; foot and kitty for ligatures; kitty's per-cell colours |
+| Wide symbols | a glyph wider than its cell (73 of Mathlib's 295 notation symbols at 20 px, reviews/package-7.md) spills into the blank cells after it, up to the next non-blank cell, instead of being cut; in Lean it is mostly followed by a space. A ligature's glyph (`->`, `=>`, ` /\ `) sits on its last cell and reaches back over its word; any glyph that starts left of its cell (↔, ⇔) is cut at its word's start, so it may draw over a character before it in the same word, never over the blank before the word. The part of a glyph over an earlier cell of its word takes that cell's colours, the rest the glyph's own cell's (a spill too), each part reversed only where its cell is the cursor: the cursor neither hides nor bares any part. A partial redraw shapes the blank before its span too, so ` /\ ` joins as typed. Both keep a partial redraw equal to a whole one | foot's overflowing glyphs; foot and kitty for ligatures; kitty's per-cell colours |
 | Size | the size xdg_toplevel configures; 800x600 when it leaves the choice to us | foot |
 | Scale | fractional-scale-v1 with a viewport: the buffer is the logical size times scale/120, the font is re-opened at 16 px times the scale | foot |
 | Keys | xkbcommon keysyms and UTF-32 (with the Control transformation, so Ctrl-R is 18); Backspace is 127, as a terminal sends; client-side repeat at the compositor's rate and delay, on a one-shot timerfd that also fires at once while keys wait in the queue (main.c reads only when an fd is readable) | foot, build B |
@@ -41,8 +41,9 @@ wtype, wl-clipboard, grim, adwaita-icon-theme):
   arrive; close; the compositor killed, noticed once; a wide symbol
   (⟹) spills into the blank cell after it and is cut at a character; a
   cluster longer than a cell's 4 bytes (👍🏽) drawn from grid.c's store; a
-  ligature (` /\ `, `->`) drawn back over its first cell, and with the cursor on that cell
-  shown reversed there, not as a bare cursor; rows changed to
+  ligature (` /\ `, `->`) drawn back over its first cell; every cell of `-->` (its
+  first reversed), `⟹ ` and `中` with ink, as much with the cursor on
+  any of them as on none; rows changed to
   and from ` ↔`, ` ⇔ b`, `x ↔` and `x /\ y` drawn as a whole redraw draws
   them; and a
   screenshot check that after 75 frames of random edits (characters, `->`,
@@ -64,7 +65,7 @@ fixed here: the seat's capabilities arrive in the bind's roundtrip, so a
 listener added after it lost the keyboard (3 of 10 runs failed); and a
 keyboard or pointer that goes away must be released and fetched again.
 
-**measured**: `tests/plants/wl.txt` has 34 plants (frame callback, repeat,
+**measured**: `tests/plants/wl.txt` has 40 plants (frame callback, repeat,
 Backspace, seat listener, clipboard short send, clipboard past max, input
 method text, preedit redraw, scale, size, text cursor, mouse cell, wheel,
 touchpad step, close, changed cells, cursor move, damage, scroll source,
@@ -74,7 +75,10 @@ left waiting, clipboard written by the editor itself, lost compositor
 ignored, background layer ignored, guide drawn as the preedit, ligature
 cut at its own cell, glyph cut at the span instead of its word, span shaped
 without the blank before it, ligature in its last cell's colours under
-the cursor); each was run and each fails the test. Copying a scroll against
+the cursor, whole glyph in its first cell's colours, earlier cells in the
+colours of the one before the last, a part ending half a cell late, only
+the cursor's own cell coloured per cell, a spill reversed with its symbol,
+a right half not its left half's cell); each was run and each fails the test. Copying a scroll against
 its direction has no plant: a row is copied only where the cells it shows
 equal the source's, so the screen stays right and only the copy is lost.
 
