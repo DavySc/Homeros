@@ -103,7 +103,7 @@ for l in open(sys.argv[1] + "/tests/plants.txt"):
     echo 'int _fltused;' > "$b/flt.c" && clang --target=x86_64-pc-windows-msvc -ffreestanding -c "$b/flt.c" -o "$b/flt.obj" || return 3
     clang --target=x86_64-pc-windows-msvc -g -gcodeview -O0 -funwind-tables -ffreestanding -mno-stack-arg-probe -c "$src/tests/tour.c" -o "$b/tour.obj" && lld-link -nologo -debug -nodefaultlib -entry:main -subsystem:console -dynamicbase:no "$b/tour.obj" "$b/flt.obj" -out:"$b/tour.exe" -pdb:"$b/tour.pdb" || return 3
     local here; here=$(cd "$src" && pwd)
-    (cd "$b" && WINEDEBUG=-all timeout 120 "${WINE:-wine}" ./hdbg.exe tour.exe < "$here/tests/hdbg.txt" 2>/dev/null | tr -d '\r' | sed -E 's/0x[0-9a-f]+/0x_/g; s/ [^ ]*[\\/]([^\\/ ]*:[0-9]+)$/ \1/; /^#/{/tour\.c:/!d}' > front.out; diff "$here/tests/hdbg.expect" front.out | head -70; cmp -s "$here/tests/hdbg.expect" front.out) || return 1
+    (cd "$b" && WINEDEBUG=-all timeout 120 "${WINE:-wine}" ./hdbg.exe tour.exe < "$here/tests/hdbg.txt" 2>/dev/null | tr -d '\r' | sed -E 's/0x[0-9a-f]+/0x_/g; s/ [^ ]*[\\/]([^\\/ ]*:[0-9]+)$/ \1/; /^#/{/tour\.c:/!d}' > front.out; tr -d '\r' < "$here/tests/hdbg.expect" > expect.out; diff expect.out front.out | head -70; cmp -s expect.out front.out) || return 1   # on Windows git may give the file CR LF ends
     (cd "$b" && ! WINEDEBUG=-all timeout 120 "${WINE:-wine}" ./hdbg.exe nothing.exe < /dev/null >/dev/null 2>&1) || return 1
   fi
   if [ "$what" = fuzz ] || [ "$what" = all ]; then

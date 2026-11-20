@@ -85,7 +85,7 @@ static void rows(uint32_t roots, const char *text, bool open)
 /* What a run or the start ended in, and where the thread that stopped stands. */
 static void report(const SessionEvent *ev)
 {
-  static const char *const why[] = {[TARGET_MODULE] = "started", [TARGET_TRAP] = "breakpoint", [TARGET_BREAK] = "the program's own breakpoint", [TARGET_STEP] = "stepped",
+  static const char *const why[] = {[TARGET_RUNNING] = "nothing ran: the thread is gone", [TARGET_MODULE] = "started", [TARGET_TRAP] = "breakpoint", [TARGET_BREAK] = "the program's own breakpoint", [TARGET_STEP] = "stepped",
                                     [TARGET_HALT] = "halted", [TARGET_EXCEPTION] = "exception", [TARGET_EXIT] = "ended with"};
   alive = ev->stop.kind != TARGET_EXIT, frame = 0;
   if (ev->stop.thread) thread = ev->stop.thread;   /* a halt is no thread's: the one looked at stays */
