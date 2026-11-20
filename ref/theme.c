@@ -9,7 +9,7 @@
    per-language overrides only @markup.heading.1.markdown to 6 are taken
    (rainbow1 to 6), for markup.heading.1 to 6: no other grammar here has
    those captures. */
-Face faces[256] = {
+Face faces[FACES] = {
 	{ {0, 0, 0}, {0, 0, 0}, 0, {0} },                 /* none */
 	{ {205, 214, 244}, {0, 0, 0}, FACE_FG, {0} },     /* variable: text */
 	{ {243, 139, 168}, {0, 0, 0}, FACE_FG, {0} },     /* variable.builtin: red */
