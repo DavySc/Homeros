@@ -116,10 +116,14 @@ static void key(int k, int pending)
 
 /* only those whose targets exist; the SPC g and SPC h ones are git.h's */
 static const char *const maps[] = {
-	" ff", " fg", " fr", " ,", " e", " pv", "-",
+	" ff", " fg", " fr", " ,", " e", " pv", "-", " D",
 	" gg", " gs", " gl", " gL", " gd", " gb", " gB", " hs", " hr", " hS", " hu", " hp", " uk"
 };
 static int lead[3], nlead;   /* the keys typed of a map not yet complete */
+
+/* snacks' :Dashboard, also SPC D: the start screen on a new empty buffer
+   (:enew) (package 5's, agreed) */
+static void dashboard(Editor *e) { if (!core_edit_file(e, "", 0)) tools_dash(e, 0); }
 
 /* A map completed runs; one that may still be
    completed waits (a lone SPC as with which-key, without 'timeoutlen');
@@ -144,6 +148,7 @@ static int map(Editor *e, int k)
 		case 'e': tools_pick(e, PICK_EXPLORER); break;
 		case 'p': tools_oil(e, NULL); break;
 		case 'u': kitten_toggle(e); break;
+		case 'D': dashboard(e); break;
 		default: git_leader(e, m[1], m[2]);
 		}
 		return 1;
@@ -285,10 +290,10 @@ static void ex(void)
 		ex_sub(l1 > 0 ? l1 - 1 : 0, l2 > 0 ? l2 - 1 : 0, *p, p + k + strspn(p + k, " \t"));
 		return;
 	}
-	static const char *const cmds[] = { "", "w", "w!", "q", "q!", "wq", "wq!", "x", "Format", "KittenPaw" };
+	static const char *const cmds[] = { "", "w", "w!", "q", "q!", "wq", "wq!", "x", "Format", "KittenPaw", "Dashboard" };
 	int i = 0;
-	while (i < 10 && strcmp(p, cmds[i])) i++;
-	if (i == 10) { core_msg(E, "E492: Not an editor command: %s", c); return; }
+	while (i < 11 && strcmp(p, cmds[i])) i++;
+	if (i == 11) { core_msg(E, "E492: Not an editor command: %s", c); return; }
 	if (n && i) { core_msg(E, "E481: No range allowed"); return; }
 	switch (i) {
 	case 0:   /* a range alone goes to its last line (do_one_cmd()) */
@@ -304,7 +309,8 @@ static void ex(void)
 	case 7: if (!core_modified(B) || !ex_write(0)) core_close(E, 0); break;
 	/* Davy's :Format (conform.nvim): the whole buffer */
 	case 8: if (is_sql()) sql_format(0, text_len(B->text)); break;
-	default: kitten_paw(E);
+	case 9: kitten_paw(E); break;
+	default: dashboard(E);
 	}
 }
 

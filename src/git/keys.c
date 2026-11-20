@@ -1280,8 +1280,10 @@ static int scnr;                   /* git_sign's cache (below) */
    attached again (another file, a new name) is attached anew. */
 void git_attach(const Buf *b)
 {
-	for (size_t i = 0; i < nofs; i++)
-		if (!git_buf(ofs[i].nr)) { free(ofs[i].rel); ofs[i--] = ofs[--nofs]; }   /* deleted */
+	/* deleted buffers; before git has the editor (files read before the
+	   first key) none can be told from a live one */
+	for (size_t i = 0; git_ed() && i < nofs; i++)
+		if (!git_buf(ofs[i].nr)) { free(ofs[i].rel); ofs[i--] = ofs[--nofs]; }
 	Of *o = find(b);
 	if (o) free(o->rel);
 	else {
