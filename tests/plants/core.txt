@@ -104,7 +104,7 @@ core: the status line cut from its start (no %<) (test_core_status)~test TESTS=c
 core: another window shows the mode and the pills (test_core_status)~test TESTS=core_status~~src/core/draw.c~	if (cur) {¶		stl_add(&t, L, mb[m], 0);~	if (1) {¶		stl_add(&t, L, mb[m], 0);
 core: the file name with its directory (test_core_status)~test TESTS=core_status~~src/core/draw.c~			if (*p == '/') name = p + 1;~			if (0) name = p + 1;
 core: no dot on a modified buffer (test_core_status)~test TESTS=core_status~~src/core/draw.c~core_modified(b) ? " \xe2\x97\x8f " : " "~" "
-core: utf-8 for a buffer not read from a file (test_core_status)~test TESTS=core_status~~src/core/draw.c~if (cur && b->id.exists) stl_add(&t, " utf-8 "~if (cur) stl_add(&t, " utf-8 "
+core: utf-8 for a buffer not read from a file (test_core_status)~test TESTS=core_status~~src/core/draw.c~if (cur && b->id.exists) stl_add(~if (cur) stl_add(
 core: the location pill's left end on surface0 (test_core_status)~test TESTS=core_status~~src/core/draw.c~stl_add(&t, L, FACE_STATUS_INFO, FACE_STATUS_LINE);~stl_add(&t, L, FACE_STATUS_INFO, 0);
 core: the location's column counts bytes (test_core_status)~test TESTS=core_status~~src/core/draw.c~at += k) ch++;~at += k) ch += k;
 core: the location without lualine's widths (test_core_status)~test TESTS=core_status~~src/core/draw.c~" %3zu:%-2zu "~" %zu:%zu "
