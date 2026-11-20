@@ -664,27 +664,33 @@ static void draw_span(uint32_t *px, const Grid *g, int r, int lo, int hi)
 		const Glyph *gl = pl[i].g;
 		int c = col[pl[i].cluster], e = c + 1;
 		while (e < hi && (!x[e].len || blank(&x[e]))) e++;
-		colours(g, r, c, &fg, &bg);
 		int gx = c * cell_w + pl[i].x + gl->left, gy = y0 + cell_b - pl[i].y - gl->top, xe = e * cell_w;
 		int w = c;
 		while (w > 0 && !blank(&x[w - 1])) w--;
 		int ax = gx < w * cell_w ? w * cell_w - gx : 0, zx = gx + gl->w > xe ? xe - gx : gl->w;
 		int ay = gy < y0 ? y0 - gy : 0, zy = gy + gl->h > ye ? ye - gy : gl->h;
-		for (int y = ay; y < zy; y++) {
-			uint32_t *p = px + (gy + y) * bw + gx;
-			if (gl->color) {   /* premultiplied BGRA, the buffer's own byte order */
-				const unsigned char *q = gl->px + (size_t)(y * gl->w) * 4;
-				for (int j = ax; j < zx; j++) {
-					uint32_t v;
-					memcpy(&v, q + 4 * j, 4);   /* the cache does not align it */
-					unsigned a = v >> 24;
-					if (a) p[j] = a == 255 ? v : over(p[j], v, a);
+		/* the part over each earlier cell of its word in that cell's colours,
+		   the cursor's among them, as kitty colours a ligature per cell */
+		for (int j0 = ax, j1; j0 < zx; j0 = j1) {
+			int k = (gx + j0) / cell_w, m = (k + 1) * cell_w - gx;
+			j1 = k < c && m < zx ? m : zx;
+			colours(g, r, k < c ? k : c, &fg, &bg);
+			for (int y = ay; y < zy; y++) {
+				uint32_t *p = px + (gy + y) * bw + gx;
+				if (gl->color) {   /* premultiplied BGRA, the buffer's own byte order */
+					const unsigned char *q = gl->px + (size_t)(y * gl->w) * 4;
+					for (int j = j0; j < j1; j++) {
+						uint32_t v;
+						memcpy(&v, q + 4 * j, 4);   /* the cache does not align it */
+						unsigned a = v >> 24;
+						if (a) p[j] = a == 255 ? v : over(p[j], v, a);
+					}
+					continue;
 				}
-				continue;
+				const unsigned char *a = gl->px + y * gl->w;
+				for (int j = j0; j < j1; j++)
+					if (a[j]) p[j] = a[j] == 255 ? fg : mix(p[j], fg, a[j]);
 			}
-			const unsigned char *a = gl->px + y * gl->w;
-			for (int j = ax; j < zx; j++)
-				if (a[j]) p[j] = a[j] == 255 ? fg : mix(p[j], fg, a[j]);
 		}
 	}
 }
