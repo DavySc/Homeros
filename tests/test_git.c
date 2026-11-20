@@ -15,10 +15,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/inotify.h>
 #include <sys/stat.h>
 #include <time.h>
+#ifdef _WIN32
+/* Windows (src/git/check.sh, under Wine with MinGit): the traces and the
+   checks that need no POSIX call; the process count, the lock watch and
+   the sleepers stay on Linux. */
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#define setenv(k, v, o) _putenv_s(k, v)
+int syntax_open(void) { return 0; }
+void syntax_edit(void) {}
+void syntax_free(void) {}
+void syntax_faces(void) {}
+#else
+#include <sys/inotify.h>
 #include <unistd.h>
+#endif
 #include "check.h"
 #include "core.h"
 #include "git.h"
@@ -27,7 +40,7 @@
 #include "../src/git/gitint.h"
 
 static char tmp[PATH_MAX], repo[PATH_MAX + 8], gitlog[PATH_MAX + 8], realgit[PATH_MAX];
-static int maxproc;
+static int maxproc, skipped;
 static Editor e;
 static int fails;
 
@@ -53,6 +66,14 @@ static char *unesc(char *s)
 	return s;
 }
 
+/* record.py's environment */
+static const char *const ENV[][2] = {
+	{ "GIT_CONFIG_GLOBAL", "/dev/null" }, { "GIT_CONFIG_NOSYSTEM", "1" },
+	{ "GIT_AUTHOR_NAME", "Tester" }, { "GIT_AUTHOR_EMAIL", "t@example.com" },
+	{ "GIT_COMMITTER_NAME", "Tester" }, { "GIT_COMMITTER_EMAIL", "t@example.com" },
+	{ "GIT_AUTHOR_DATE", "2026-01-02T00:00:00Z" }, { "GIT_COMMITTER_DATE", "2026-01-02T00:00:00Z" },
+	{ "LANG", "C.UTF-8" } };
+
 static char *run(const char *fmt, ...)
 {
 	char cmd[8192];
@@ -60,7 +81,27 @@ static char *run(const char *fmt, ...)
 	va_start(ap, fmt);
 	vsnprintf(cmd, sizeof cmd, fmt, ap);
 	va_end(ap);
+#ifdef _WIN32
+	/* src/git/check.sh's bridge runs it in a Unix shell: MinGit's cannot
+	   start a second program under Wine (measured, 3 runs).  Every path
+	   here is on Z:, the Unix root, so the Unix path is it without "Z:". */
+	char req[PATH_MAX + 16], part[PATH_MAX + 16], out[PATH_MAX + 16];
+	snprintf(req, sizeof req, "Z:%s/req.sh", getenv("TEST_BRIDGE"));
+	snprintf(part, sizeof part, "%s.part", req);
+	snprintf(out, sizeof out, "Z:%s/out", getenv("TEST_BRIDGE"));
+	FILE *w = fopen(part, "wb");
+	CHECK(w);
+	for (size_t i = 0; i < sizeof ENV / sizeof *ENV; i++) fprintf(w, "export %s='%s'\n", ENV[i][0], ENV[i][1]);
+	for (const char *c = cmd; *c; c++) if (strncmp(c, "Z:/", 3)) fputc(*c, w); else c++;
+	fclose(w);
+	CHECK(MoveFileA(part, req));
+	while (GetFileAttributesA(out) == INVALID_FILE_ATTRIBUTES) Sleep(1);
+	FILE *p = fopen(out, "rb");
+#undef pclose
+#define pclose(p) (fclose(p), DeleteFileA(out))
+#else
 	FILE *p = popen(cmd, "r");
+#endif
 	CHECK(p);
 	size_t n = 0, cap = 4096;
 	char *s = malloc(cap);
@@ -135,7 +176,7 @@ typedef struct { char *keys; TWin w[MAXW]; int nw; char *echo; } Step;
 static const char *const SKEY[] = { "cached", "head", "log", "refs", "stash", "status", "worktree" };
 static const char *const SCMD[] = { "diff --cached", "symbolic-ref -q HEAD", "log --all --format='%h %p %s'",
 	"for-each-ref --format='%(refname) %(objectname:short) %(upstream:short)'", "stash list",
-	"status --porcelain=v2 --branch --untracked-files=all", "diff" };
+	"status --porcelain=v2 --branch --untracked-files=all", "diff-files -p" };   /* diff-files: git diff would refresh the index */
 
 /* magit's echo where ours says the same in other words (each a divergence) */
 static const char *echo_of(const char *s)
@@ -284,11 +325,15 @@ static void check_step(const char *sc, Step *st, const Step *next, char *state[7
 	}
 }
 
+#ifndef _WIN32
 /* Reads take no index.lock: a refresh of a work tree whose index is out of
-   date (git status would write it) creates no .git/index.lock */
+   date (git status would write it) creates no .git/index.lock; d.txt's
+   stat is out of date and its content is not, where git diff writes the
+   index (git_diff) */
 static void lock_check(void)
 {
-	char *o = run("rm -rf '%s' && sh src/git/mkrepo.sh '%s' 2>&1 && touch '%s/a.txt' '%s/b.txt'", repo, repo, repo, repo);
+	char *o = run("rm -rf '%s' && sh src/git/mkrepo.sh '%s' 2>&1 && cd '%s' && echo d > d.txt && git add d.txt "
+	              "&& git commit -qm d && touch -d 2030-01-01 d.txt && touch a.txt b.txt", repo, repo, repo);
 	free(o);
 	git_free();
 	char d[PATH_MAX + 16];
@@ -315,6 +360,7 @@ static void lock_check(void)
 	free(o);
 	git_free();
 }
+#endif
 
 static int nowatch;                /* inotify off: a write's end alone reads the status again */
 
@@ -329,7 +375,7 @@ static void scenario(const char *name, const char *setup, Step *steps, int n, ch
 	o = run(": > '%s'", gitlog);
 	free(o);
 	CHECK(git_status(&e, repo) == 0);
-	if (nowatch) { loop_unwatch(R()->ifd); close(R()->ifd); R()->ifd = -1; }
+	if (nowatch) R()->watched = 1;   /* never starts watching */
 	settle();
 	/* the refresh that opened it: the git processes the shim saw */
 	int nproc = 0;
@@ -367,11 +413,19 @@ static void scenario(const char *name, const char *setup, Step *steps, int n, ch
 		check_step(name, st, s + 1 < n ? &steps[s + 1] : NULL, states[s], visit_ok, visit_buf, visit_row);
 	}
 	if (!strcmp(name, "discard-untracked")) {
+#ifdef _WIN32
+		/* the Recycle Bin: under Wine, files in TEST_TRASH (src/git/check.sh) */
+		char kept[PATH_MAX + 16];
+		snprintf(kept, sizeof kept, "Z:%s/c.txt", getenv("TEST_TRASH") ? getenv("TEST_TRASH") : "");
+		if (GetFileAttributesA(kept) == INVALID_FILE_ATTRIBUTES) fail(name, "x y", "c.txt is not in the Recycle Bin");
+		DeleteFileA(kept);
+#else
 		/* magit-delete-by-moving-to-trash: the freedesktop.org trash */
 		const char *d = getenv("XDG_DATA_HOME");
 		o = run("cat '%s/Trash/files/c.txt' '%s/Trash/info/c.txt.trashinfo' 2>&1", d, d);
 		if (strncmp(o, "new\n[Trash Info]\nPath=/", 23)) fail(name, "x y", "c.txt is not in the trash: %s", o);
 		free(o);
+#endif
 	}
 	git_free();
 }
@@ -430,6 +484,7 @@ static void gone_check(void)
 	git_free();
 }
 
+#ifndef _WIN32
 /* git_free with git commit waiting: only git's children are killed (a
    child of another package's in loop slot 0 lives on), and their ends,
    arriving after, touch nothing freed (ASan) */
@@ -456,6 +511,7 @@ static void free_check(void)
 	CHECK(git_status(&e, repo) == 0);         /* the rest runs on a fresh repository */
 	git_free();
 }
+#endif
 
 /* a linked work tree reads refs, tags and the stash from the common
    directory (gitrepository-layout's commondir) */
@@ -526,6 +582,44 @@ static void bury_check(void)
 	free(o);
 	git_free();
 }
+/* discarding a staged file while another is unmerged (a merge stopped on
+   a conflict): magit discards it */
+static void unmerged_check(void)
+{
+	free(run("rm -rf '%s' && sh src/git/mkrepo.sh '%s' >/dev/null 2>&1 && cd '%s' && git reset -q --hard && rm -f c.txt "
+	         "&& git checkout -q -b side && sed -i s/one/ONE/ a.txt && git commit -qam side && git checkout -q main "
+	         "&& sed -i s/one/uno/ a.txt && git commit -qam m2 && { git merge side >/dev/null 2>&1 || true; } "
+	         "&& echo delta >> b.txt && git add b.txt", repo, repo, repo));
+	git_free();
+	CHECK(git_status(&e, repo) == 0);
+	settle();
+	const View *v = &R()->st;
+	for (size_t k = 0; k < v->nvis; k++)
+		if (!strncmp(v->pool.s + v->ln[v->vis[k]].off, "modified   b.txt", 16)) R()->cur = k;
+	git_key(&e, 'x'); git_key(&e, 'y');
+	settle();
+	char *o = run("cd '%s' && '%s' --no-optional-locks diff --cached --name-only", repo, realgit);
+	if (strcmp(o, "a.txt\n")) fail("discard-staged-unmerged", "x y", "echo \"%s\", staged: %s", e.msg, o);
+	free(o);
+	git_free();
+}
+#ifndef _WIN32
+
+/* an event on the work tree's own directory (touch .) after one that does
+   not count: the directory's change counts, as any other in the tree */
+static void top_check(void)
+{
+	free(run("rm -rf '%s' && sh src/git/mkrepo.sh '%s' >/dev/null 2>&1 && cd '%s' && echo '*.o' > .gitignore "
+	         "&& git add .gitignore && git commit -qm ign && touch x.o", repo, repo, repo));
+	git_free();
+	CHECK(git_status(&e, repo) == 0);
+	settle();
+	unsigned long v = R()->ver;
+	free(run("cd '%s' && touch x.o && touch .", repo));
+	settle();
+	if (R()->ver == v) fail("touch-top", "", "touch . did not move the version");
+	git_free();
+}
 
 /* reads that cannot start (a full process table) say so, never show a
    clean tree */
@@ -548,6 +642,7 @@ static void full_check(void)
 	while (sleeper_ended < k + 1) CHECK(loop_once(50) == 0);
 	git_free();
 }
+#endif
 
 static void stale_check(void)
 {
@@ -572,8 +667,13 @@ static void stale_check(void)
 
 int main(void)
 {
+#ifdef _WIN32
+	/* on Z:, which the bridge's shell sees too (run) */
+	snprintf(tmp, sizeof tmp, "Z:%s", getenv("TEST_TMP"));
+#else
 	snprintf(tmp, sizeof tmp, "/tmp/homeros-git-XXXXXX");
 	CHECK(mkdtemp(tmp));
+#endif
 	snprintf(repo, sizeof repo, "%s/repo", tmp);
 	char trash[PATH_MAX + 8], scratch[PATH_MAX + 16];
 	snprintf(trash, sizeof trash, "%s/data", tmp);
@@ -582,12 +682,12 @@ int main(void)
 	CHECK(sf);
 	fclose(sf);
 	/* record.py's environment */
-	setenv("GIT_CONFIG_GLOBAL", "/dev/null", 1); setenv("GIT_CONFIG_NOSYSTEM", "1", 1);
-	setenv("GIT_AUTHOR_NAME", "Tester", 1); setenv("GIT_AUTHOR_EMAIL", "t@example.com", 1);
-	setenv("GIT_COMMITTER_NAME", "Tester", 1); setenv("GIT_COMMITTER_EMAIL", "t@example.com", 1);
-	setenv("GIT_AUTHOR_DATE", "2026-01-02T00:00:00Z", 1); setenv("GIT_COMMITTER_DATE", "2026-01-02T00:00:00Z", 1);
-	setenv("LANG", "C.UTF-8", 1);
+	for (size_t i = 0; i < sizeof ENV / sizeof *ENV; i++) setenv(ENV[i][0], ENV[i][1], 1);
 	setenv("XDG_DATA_HOME", trash, 1);
+#ifdef _WIN32
+	snprintf(realgit, sizeof realgit, "git");
+	snprintf(gitlog, sizeof gitlog, "%s/gitlog", tmp);
+#else
 	/* git as the editor runs it, through a shim that logs each run */
 	char *g = run("command -v git");
 	g[strcspn(g, "\n")] = 0;
@@ -605,6 +705,7 @@ int main(void)
 	CHECK(!chmod(shim, 0700));
 	snprintf(path, sizeof path, "%s:%s", bin, getenv("PATH") ? getenv("PATH") : "/usr/bin:/bin");
 	setenv("PATH", path, 1);
+#endif
 	CHECK(core_open(&e, scratch) == 0);
 	e.msg[0] = 0;
 	e.rows = 60; e.cols = 100;
@@ -622,7 +723,16 @@ int main(void)
 		char *l = fgets(line, sizeof line, f);
 		if (l) l[strcspn(l, "\n")] = 0;
 		if (!l || l[0] == '@') {
+#ifdef _WIN32
+			/* not under Wine: MinGit's shell cannot start a second program
+			   there (show_open's and stash_go's scripts; measured, 3 runs),
+			   and Windows has no executable bit (modechange) */
+			static const char *const wine_not[] = { "show-commit", "stash-show", "stash", "stash-msg", "modechange" };
+			for (size_t i = 0; name && i < sizeof wine_not / sizeof *wine_not; i++)
+				if (!strcmp(name, wine_not[i])) { free(name); name = NULL; skipped++; }
+#endif
 			if (name && (!only || !strcmp(only, name))) { scenario(name, setup, steps, n, states); done++; }
+#ifndef _WIN32
 			struct stat a, b;
 			if (name && !only && !strcmp(name, "discard-untracked") && !stat("/dev/shm", &a) && !stat(tmp, &b) && a.st_dev != b.st_dev) {
 				/* the trash on another file system: copied, then deleted (rename-file) */
@@ -633,6 +743,14 @@ int main(void)
 				setenv("XDG_DATA_HOME", old, 1);
 				free(old);
 				free(run("rm -rf '%s'", shm));
+			}
+#endif
+			if (name && !only && !strcmp(name, "discard-staged-hunk")) {
+				/* b.txt's stat out of date in the index, its content not:
+				   apply --index refuses it unless the write refreshes first */
+				char t[4096];
+				snprintf(t, sizeof t, "%s%stouch -d 2030-01-01 b.txt", setup ? setup : "", setup ? "; " : "");
+				scenario(name, t, steps, n, states);
 			}
 			if (name && !only && !strcmp(name, "stage-file")) {
 				/* Git.tla Truthful without the watches (the "nowatch" variant) */
@@ -687,23 +805,33 @@ int main(void)
 	for (int k = 0; k < 7; k++) free(cur[k]);
 	CHECK(done > 0);
 	if (!only) {
+#ifndef _WIN32
 		/* the tags trace needs describe: 5 is reached, never passed */
 		CHECK(maxproc == 5);
 		lock_check();
+#endif
 		stale_check();
 		prompt_check(1);
 		prompt_check(0);
 		gone_check();
+#ifndef _WIN32
 		free_check();
+#endif
 		worktree_check();
 		again_check();
 		bury_check();
+#ifndef _WIN32
 		full_check();
+		top_check();
+#endif
+		unmerged_check();
 	}
 	core_free(&e);
 	char *o = run("rm -rf '%s'", tmp);
 	free(o);
 	if (fails) { fprintf(stderr, "%d differences from magit\n", fails); return 1; }
-	printf("test_git: %d scenarios as magit\n", done);
+	printf("test_git: %d scenarios as magit", done);
+	if (skipped) printf(" (%d not under Wine)", skipped);
+	putchar('\n');
 	return 0;
 }

@@ -9,7 +9,9 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include "git.h"
 #include "k.h"
+#include "tools.h"
 #include "uni.h"
 
 Editor *E;
@@ -107,6 +109,63 @@ static void key(int k, int pending)
 	if (E->mode == MODE_NORMAL && stuff_empty()) curs_columns();
 }
 
+/* ---- Davy's maps (FEATURES.md 4): nnoremap <Space>ff .. and - ---- */
+
+/* only those whose targets exist; the SPC g and SPC h ones are git.h's */
+static const char *const maps[] = {
+	" ff", " fg", " fr", " ,", " e", " pv", "-", " D",
+	" gg", " gs", " gl", " gL", " gd", " gb", " gB", " hs", " hr", " hS", " hu", " hp"
+};
+static int lead[3], nlead;   /* the keys typed of a map not yet complete */
+
+/* snacks' :Dashboard, also SPC D: the start screen on a new empty buffer
+   (:enew) (package 5's, agreed) */
+static void dashboard(Editor *e) { if (!core_edit_file(e, "", 0)) tools_dash(e, 0); }
+
+/* A map completed runs; one that may still be
+   completed waits (a lone SPC as with which-key, without 'timeoutlen');
+   otherwise the first key runs unmapped and the rest are checked again
+   (Neovim's vgetorpeek() when no map matches) */
+static int map(Editor *e, int k)
+{
+	if (!nlead && (e->mode != MODE_NORMAL || e->ks.visual || !normal_mappable(0))) return 0;
+	lead[nlead++] = k;
+	int part = 0;
+	for (size_t i = 0; i < sizeof maps / sizeof *maps; i++) {
+		const char *m = maps[i];
+		int j = 0;
+		while (j < nlead && m[j] == lead[j]) j++;
+		if (j < nlead) continue;
+		if (m[j]) { part = 1; continue; }
+		nlead = e->ks.pending = 0;
+		normal_mappable(1);
+		switch (m[0] == '-' ? 'p' : m[1]) {
+		case 'f': tools_pick(e, m[2] == 'f' ? PICK_SMART : m[2] == 'g' ? PICK_GREP : PICK_REGISTERS); break;
+		case ',': tools_pick(e, PICK_BUFFERS); break;
+		case 'e': tools_pick(e, PICK_EXPLORER); break;
+		case 'p': tools_oil(e, NULL); break;
+		case 'D': dashboard(e); break;
+		default: git_leader(e, m[1], m[2]);
+		}
+		return 1;
+	}
+	if (part) return e->ks.pending = 1;   /* keys_input() sends the next keys here first */
+	int n = nlead, l[3];
+	memcpy(l, lead, sizeof l);
+	nlead = 0;
+	if (n == 1) return 0;
+	keys_feed(e, l[0], 1);
+	/* the rest as typed: a picker, the dashboard or magit may take them
+	   (Neovim checks them against buffer-local maps too) */
+	for (int i = 1; i < n; i++) keys_input(e, l[i], i < n - 1);
+	return 1;
+}
+
+void keys_input(Editor *e, int k, int pending)
+{
+	if (!(e->ks.pending ? map(e, k) : tools_key(e, k) || git_key(e, k) || map(e, k))) keys_feed(e, k, pending);
+}
+
 void keys_feed(Editor *e, int k, int pending)
 {
 	/* the window's close button: :qa, as Neovim's GUIs do (E37 if
@@ -169,6 +228,7 @@ static void ex(void)
 	else if (!strcmp(c, "x")) { if (!core_modified(B) || !ex_write(0)) core_close(E, 0); }
 	/* Davy's :Format (conform.nvim): the whole buffer */
 	else if (!strcmp(c, "Format")) { if (is_sql()) sql_format(0, text_len(B->text)); }
+	else if (!strcmp(c, "Dashboard")) dashboard(E);
 	else if (*c) core_msg(E, "E492: Not an editor command: %s", c);
 }
 

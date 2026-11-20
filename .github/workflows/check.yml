@@ -36,3 +36,17 @@ jobs:
       - run: echo "$PWD/tools-env/bin" >> "$GITHUB_PATH"
       - run: why3 config detect
       - run: make ${{ matrix.target }}
+  # git's Windows half on Windows itself, for what Wine cannot show (a
+  # path's names as stored): test_git_win alone, pull requests only, so it
+  # stays short (package 17's, thread 0's, agreed)
+  windows:
+    if: github.event_name == 'pull_request'
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.17.1
+      - run: bash src/git/check.sh
+        shell: bash

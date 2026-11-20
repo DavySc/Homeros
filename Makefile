@@ -14,7 +14,7 @@ SHELL = /bin/bash
 # value from the command line or make -e never points it at a real one)
 override export XDG_STATE_HOME := $(CURDIR)/build/state
 
-BASE = text undo uni core keys grid tty loop file syntax theme tools git lsp infoview
+BASE = text undo uni core keys grid tty loop file syntax theme tools git lsp infoview kitten
 # src/win/ (package 9) is the Windows build's, cross-compiled on its own
 MODULES = $(BASE) $(filter-out $(BASE) win,$(patsubst src/%/,%,$(wildcard src/*/)))
 pick = $(if $(wildcard src/$(1)/*.c),$(wildcard src/$(1)/*.c),ref/$(1).c)
@@ -68,6 +68,7 @@ test: $(OBJS) | build/san
 	gcc $(WARN) $(CPPFLAGS) $(SAN) -o build/san/homeros $(SRCS) src/main.c $(OBJS) $(LIBS)
 	@python3 tests/paste.py build/san/homeros -t 40000 || { echo "FAIL paste"; exit 1; }
 	@python3 tests/hup.py build/san/homeros || { echo "FAIL hup"; exit 1; }
+	@python3 tests/start.py build/san/homeros || { echo "FAIL start"; exit 1; }
 
 # libFuzzer, each target against a simple model, FUZZ_SECONDS each; an input
 # that runs 20 s is a hang and fails (a planted bug once spun 20 min)
@@ -149,10 +150,10 @@ win: wincc
 # every file of the Windows editor compiles for Windows under our warnings,
 # so a POSIX call in a shared module fails here, not first in a trial build.
 # Not the terminal (no Windows half yet), the fonts (the window draws with
-# GDI), the Wayland window or git (POSIX only so far): the trial build stubs
-# them.  It reads tree-sitter's headers only (not $(CPPFLAGS), which holds
-# Linux paths and -DHOMEROS_WL), so it needs the sources, not $(OBJS)
-WIN_SRCS = $(foreach m,$(filter-out tty font wl git,$(MODULES)),$(call pick,$(m))) $(wildcard src/win/*.c) src/main.c
+# GDI) or the Wayland window (POSIX only): the trial build stubs them.  It
+# reads tree-sitter's headers only (not $(CPPFLAGS), which holds Linux paths
+# and -DHOMEROS_WL), so it needs the sources, not $(OBJS)
+WIN_SRCS = $(foreach m,$(filter-out tty font wl,$(MODULES)),$(call pick,$(m))) $(wildcard src/win/*.c) src/main.c
 wincc: | $(SYN)/src build/win
 	@for f in $(WIN_SRCS); do zig cc -target x86_64-windows-gnu $(WARN) $(CPPFLAGS) -c -o build/win/cc.o $$f || exit 1; done
 	zig rc /fo build/win/homeros.res assets/homeros.rc

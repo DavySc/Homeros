@@ -72,9 +72,9 @@ typedef struct Repo {
 	Run run[NSLOT];
 	Write q[QMAX], w;          /* w: the write running */
 	int qh, qn, wstep;
-	/* inotify */
-	int ifd, watched;
-	char **wdpath; size_t nwd;
+	/* os.c, win.c: the watch on the work tree and the common directory */
+	int watched;
+	struct Watch *wt;
 	Str ignp; size_t *ign, nign;
 	/* the commit message buffer (with-editor) */
 	int editing;               /* 1 waiting for git's editor line, 2 the buffer is open */
@@ -94,12 +94,24 @@ int   git_prompt(void);           /* the prompt being answered: P_*, 0 none */
 
 Repo *git_repo(const char *dir);
 void  git_schedule(Repo *r);
-void  git_drain(Repo *r);
+/* os.c (POSIX) and win.c: watching (Git.tla Outside), paths, the trash.
+   Paths are absolute and '/'-separated on both. */
+void  git_watch(Repo *r);           /* after the first status: needs its ignored paths */
+void  git_unwatch(Repo *r);
+void  git_drain(Repo *r);           /* takes the changes seen: ver++ and dirty for one that counts */
+int   git_counts(Repo *r, const char *path);   /* git.c: a change at path is the repository's */
+int   git_batch(Repo *r, const char *dir, const char *b, unsigned long n);   /* win.c: one ReadDirectoryChangesW batch of n bytes under dir counts */
+void  git_changed(void *r, int fd);   /* git.c: the loop_watch callback of a watch */
+int   git_real(const char *path, char *out);   /* realpath into PATH_MAX bytes; 0 ok */
+int   git_abs(const char *p);       /* "/x" or "C:/x" */
+int   git_trash(const char *path);  /* Emacs's move-file-to-trash; 0 ok */
+extern const char *const git_opener;   /* opens a URL in the browser */
 void  git_editor(Editor *e);
 Editor *git_ed(void);
 void  cmd_add(Cmd *c, const char *a);
 void  cmd_git(Cmd *c, int read);
 void  cmd_editor(Cmd *c);
+void  git_diff(Cmd *c, int dt);    /* adds git diff's subcommand for T_UNSTAGED, T_STAGED or -1 (the work tree) */
 void  cmd_free(Cmd *c);
 int   git_spawn(Repo *r, int slot, Cmd *c);
 int   git_live(const void *ctx);  /* ctx is a Run or Aux not freed (git_free leaves children's ends behind) */

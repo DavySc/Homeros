@@ -4,21 +4,13 @@
    with with-editor's sleeping-editor protocol: git's editor names the
    message file and waits until the message buffer is finished or
    cancelled (with-editor-finish, with-editor-cancel). */
-#include <errno.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <spawn.h>
-#include <sys/stat.h>
-#include <sys/wait.h>
-#include <time.h>
-#include <unistd.h>
 #include "core.h"
 #include "loop.h"
 #include "gitint.h"
-
-extern char **environ;
 
 void git_write_free(Write *w)
 {
@@ -47,53 +39,14 @@ static int run_step(Repo *r)
 	return git_spawn(r, SLOT_WRITE, &r->w.step[r->wstep]);
 }
 
-/* rename-file across file systems: copy, then delete (mv does both, for a
-   directory too); waited for, as Emacs waits */
-static int move(const char *src, const char *dst)
-{
-	char *argv[] = { "mv", "-f", "--", (char *)src, (char *)dst, NULL };
-	pid_t pid;
-	int st;
-	if (posix_spawnp(&pid, "mv", NULL, NULL, argv, environ)) return -1;
-	while (waitpid(pid, &st, 0) < 0) if (errno != EINTR) return -1;
-	return WIFEXITED(st) && !WEXITSTATUS(st) ? 0 : -1;
-}
-
-/* Emacs's move-file-to-trash on GNU/Linux: the freedesktop.org trash */
+/* the untracked file or directory to the trash (os.c, win.c) */
 static int trash(Repo *r, const char *rel)
 {
-	char src[PATH_MAX], dir[PATH_MAX], dst[3 * PATH_MAX], info[4 * PATH_MAX];
-	const char *xdg = getenv("XDG_DATA_HOME"), *home = getenv("HOME");
+	char src[PATH_MAX];
 	snprintf(src, sizeof src, "%s/%s", r->top, rel);
 	size_t n = strlen(src);
 	if (n && src[n - 1] == '/') src[n - 1] = 0;          /* an untracked directory */
-	if (xdg && *xdg) snprintf(dir, sizeof dir, "%s/Trash", xdg);
-	else snprintf(dir, sizeof dir, "%s/.local/share/Trash", home ? home : "");
-	char d2[PATH_MAX + 8];
-	/* make-directory with parents */
-	for (char *s = dir + 1; (s = strchr(s, '/')); s++) { *s = 0; mkdir(dir, 0700); *s = '/'; }
-	snprintf(d2, sizeof d2, "%s/files", dir); mkdir(dir, 0700); mkdir(d2, 0700);
-	snprintf(d2, sizeof d2, "%s/info", dir); mkdir(d2, 0700);
-	const char *base = strrchr(src, '/') + 1;
-	for (int k = 0; k < 1000; k++) {
-		if (k) snprintf(dst, sizeof dst, "%s/files/%s.~%d~", dir, base, k);
-		else snprintf(dst, sizeof dst, "%s/files/%s", dir, base);
-		snprintf(info, sizeof info, "%s/info/%s.trashinfo", dir, strrchr(dst, '/') + 1);
-		FILE *f = fopen(info, "wx");
-		if (!f) { if (errno == EEXIST) continue; return -1; }
-		char when[32];
-		time_t t = time(NULL);
-		strftime(when, sizeof when, "%Y-%m-%dT%H:%M:%S", localtime(&t));
-		fputs("[Trash Info]\nPath=", f);
-		for (const unsigned char *s = (const unsigned char *)src; *s; s++)
-			if ((*s >= 'a' && *s <= 'z') || (*s >= 'A' && *s <= 'Z') || (*s >= '0' && *s <= '9') || strchr("/-_.~", *s)) fputc(*s, f);
-			else fprintf(f, "%%%02X", *s);
-		fprintf(f, "\nDeletionDate=%s\n", when);
-		fclose(f);
-		if (rename(src, dst) && (errno != EXDEV || move(src, dst))) { remove(info); return -1; }
-		return 0;
-	}
-	return -1;
+	return git_trash(src);
 }
 
 static void finish(Repo *r)
@@ -165,7 +118,7 @@ void git_editor_seen(Repo *r)
 	if (!e) return;
 	*e = 0;
 	char path[PATH_MAX];
-	if (p[13] == '/') snprintf(path, sizeof path, "%s", p + 13);
+	if (git_abs(p + 13)) snprintf(path, sizeof path, "%s", p + 13);
 	else snprintf(path, sizeof path, "%s/%s", r->top, p + 13);
 	free(r->editmsg);
 	r->editmsg = strdup(path);

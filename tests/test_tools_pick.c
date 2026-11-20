@@ -155,13 +155,18 @@ int main(void)
 	mkdir(old, 0700);
 	strcat(old, "/oldfiles");
 	fs = fopen(old, "w");
-	CHECK(fs && fputs("9 /tmp/hp/README.md\n8 /tmp/hp/nothere.c\n7 /tmp/hp/src/tools/pick.c\n"
-	                  "6 /tmp/hp/src/core/core.c\n5 /tmp/hp/README.md\n4 /tmp/hp/tests/test_pick.c\n", fs) >= 0 && !fclose(fs));
+	/* and homeros' own file, which the recent source leaves out */
+	CHECK(fs && fprintf(fs, "9 /tmp/hp/README.md\n8 /tmp/hp/nothere.c\n7 /tmp/hp/src/tools/pick.c\n"
+	                    "6 /tmp/hp/src/core/core.c\n5 /tmp/hp/README.md\n4 /tmp/hp/tests/test_pick.c\n3 %s\n", old) > 0 && !fclose(fs));
 	CHECK(!shada_read());
 	CHECK(!core_open(&e, "src/core/core.c"));
 	CHECK(!grid_resize(&g, 40, 140));
 	e.rows = 40; e.cols = 140;
 #include "../src/tools/conform/pick-expect.inc"
+	/* this session's buffers first, the last used first (b_last_used) */
+	CHECK(!core_edit_file(&e, "Makefile", 0) && !core_edit_file(&e, "picker.lua", 0) && !core_edit_file(&e, "src/core/core.c", 0));
+	for (Buf *b = e.bufs; b; b = b->next) b->lastused = b->path && !strcmp(b->path, "Makefile") ? 200 : 100;
+	expect_src(PICK_RECENT, "", "Makefile|picker.lua|README.md|src/tools/pick.c|tests/test_pick.c|");
 	char rm[160];
 	snprintf(rm, sizeof rm, "rm -rf %s %s", dir, data);
 	CHECK(!system(rm));

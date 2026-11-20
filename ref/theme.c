@@ -111,34 +111,42 @@ const Face faces[FACE_COUNT] = {
 	{ {0, 0, 0}, {43, 49, 57}, FACE_BG, {0} },     /* heading 4 background: green 9.5% on base */
 	{ {0, 0, 0}, {38, 46, 64}, FACE_BG, {0} },     /* heading 5 background: sapphire 9.5% on base */
 	{ {0, 0, 0}, {44, 45, 66}, FACE_BG, {0} },     /* heading 6 background: lavender 9.5% on base */
-	/* the UI groups (Neovim, mini.statusline, gitsigns, snacks, which-key)
+	/* the UI groups (Neovim, lualine, gitsigns, snacks, which-key)
 	   as a live Neovim 0.12.6 with catppuccin 05e8787 (my-nvim's pin) shows
 	   them, opaque (measured: project files ui-look/hl-opaque.txt).  The
 	   diagnostic span is an undercurl, Davy's pick, where catppuccin underlines */
 	{ {0, 0, 0}, {42, 43, 60}, FACE_BG, {0} },  /* cursor line: CursorLine */
 	{ {180, 190, 254}, {0, 0, 0}, FACE_FG, {0} },  /* cursor line nr: CursorLineNr */
 	{ {69, 71, 90}, {0, 0, 0}, FACE_FG, {0} },  /* line nr: LineNr */
-	{ {205, 214, 244}, {24, 24, 37}, FACE_FG | FACE_BG, {0} },  /* status line: StatusLine, MiniStatuslineFilename */
-	{ {137, 180, 250}, {24, 24, 37}, FACE_FG | FACE_BG, {0} },  /* status line nc: MiniStatuslineInactive (my-nvim uses mini.statusline) */
+	{ {205, 214, 244}, {24, 24, 37}, FACE_FG | FACE_BG, {0} },  /* status line: StatusLine, lualine_c */
+	{ {108, 112, 134}, {24, 24, 37}, FACE_FG | FACE_BG, {0} },  /* status line nc: lualine_c_inactive */
 	{ {17, 17, 27}, {0, 0, 0}, FACE_FG, {0} },  /* win separator: WinSeparator */
 	{ {69, 71, 90}, {0, 0, 0}, FACE_FG, {0} },  /* end of buffer: EndOfBuffer */
+	{ {108, 112, 134}, {0, 0, 0}, FACE_FG, {0} },  /* non text: NonText, overlay0 (catppuccin editor.lua:34) */
 	{ {0, 0, 0}, {69, 71, 90}, FACE_BOLD | FACE_BG, {0} },  /* visual: Visual */
 	{ {205, 214, 244}, {62, 87, 103}, FACE_FG | FACE_BG, {0} },  /* search: Search */
 	{ {24, 24, 37}, {243, 139, 168}, FACE_FG | FACE_BG, {0} },  /* cur search: CurSearch */
 	{ {250, 179, 135}, {57, 59, 77}, FACE_BOLD | FACE_FG | FACE_BG, {0} },  /* match paren: MatchParen */
 	{ {147, 153, 178}, {24, 24, 37}, FACE_FG | FACE_BG, {0} },  /* pmenu: Pmenu */
 	{ {0, 0, 0}, {49, 50, 68}, FACE_BOLD | FACE_BG, {0} },  /* pmenu sel: PmenuSel */
+	{ {0, 0, 0}, {49, 50, 68}, FACE_BG, {0} },  /* pmenu sbar: PmenuSbar, surface0 (editor.lua:72) */
+	{ {0, 0, 0}, {108, 112, 134}, FACE_BG, {0} },  /* pmenu thumb: PmenuThumb, overlay0 (editor.lua:73) */
 	{ {205, 214, 244}, {24, 24, 37}, FACE_FG | FACE_BG, {0} },  /* normal float: NormalFloat, WhichKey */
 	{ {137, 180, 250}, {24, 24, 37}, FACE_FG | FACE_BG, {0} },  /* float border: FloatBorder, SnacksPickerBorder, WhichKeyBorder */
 	{ {166, 173, 200}, {24, 24, 37}, FACE_FG | FACE_BG, {0} },  /* float title: FloatTitle */
 	{ {30, 30, 46}, {245, 224, 220}, FACE_FG | FACE_BG, {0} },  /* cursor: Cursor */
-	{ {24, 24, 37}, {137, 180, 250}, FACE_BOLD | FACE_FG | FACE_BG, {0} },  /* mode normal: MiniStatuslineModeNormal */
-	{ {30, 30, 46}, {166, 227, 161}, FACE_BOLD | FACE_FG | FACE_BG, {0} },  /* mode insert: MiniStatuslineModeInsert */
-	{ {30, 30, 46}, {203, 166, 247}, FACE_BOLD | FACE_FG | FACE_BG, {0} },  /* mode visual: MiniStatuslineModeVisual */
-	{ {30, 30, 46}, {243, 139, 168}, FACE_BOLD | FACE_FG | FACE_BG, {0} },  /* mode replace: MiniStatuslineModeReplace */
-	{ {30, 30, 46}, {250, 179, 135}, FACE_BOLD | FACE_FG | FACE_BG, {0} },  /* mode command: MiniStatuslineModeCommand */
-	{ {30, 30, 46}, {148, 226, 213}, FACE_BOLD | FACE_FG | FACE_BG, {0} },  /* mode other: MiniStatuslineModeOther (terminal) */
-	{ {186, 194, 222}, {69, 71, 90}, FACE_FG | FACE_BG, {0} },  /* status info: MiniStatuslineDevinfo, Fileinfo */
+	{ {24, 24, 37}, {137, 180, 250}, FACE_BOLD | FACE_FG | FACE_BG, {0} },  /* mode normal: lualine_a_normal */
+	{ {30, 30, 46}, {166, 227, 161}, FACE_BOLD | FACE_FG | FACE_BG, {0} },  /* mode insert: lualine_a_insert */
+	{ {30, 30, 46}, {203, 166, 247}, FACE_BOLD | FACE_FG | FACE_BG, {0} },  /* mode visual: lualine_a_visual */
+	{ {30, 30, 46}, {243, 139, 168}, FACE_BOLD | FACE_FG | FACE_BG, {0} },  /* mode replace: lualine_a_replace */
+	{ {30, 30, 46}, {250, 179, 135}, FACE_BOLD | FACE_FG | FACE_BG, {0} },  /* mode command: lualine_a_command */
+	{ {30, 30, 46}, {148, 226, 213}, FACE_BOLD | FACE_FG | FACE_BG, {0} },  /* mode other: lualine_a_terminal */
+	{ {137, 180, 250}, {24, 24, 37}, FACE_FG | FACE_BG, {0} },  /* mode normal fg: lualine_b_normal's fg on mantle */
+	{ {166, 227, 161}, {24, 24, 37}, FACE_FG | FACE_BG, {0} },  /* mode insert fg */
+	{ {203, 166, 247}, {24, 24, 37}, FACE_FG | FACE_BG, {0} },  /* mode visual fg */
+	{ {243, 139, 168}, {24, 24, 37}, FACE_FG | FACE_BG, {0} },  /* mode replace fg */
+	{ {250, 179, 135}, {24, 24, 37}, FACE_FG | FACE_BG, {0} },  /* mode command fg */
+	{ {49, 50, 68}, {49, 50, 68}, FACE_FG | FACE_BG, {0} },  /* status info: lualine_b's bg, the fg of its rounded end */
 	{ {166, 227, 161}, {0, 0, 0}, FACE_FG, {0} },  /* git add: GitSignsAdd */
 	{ {249, 226, 175}, {0, 0, 0}, FACE_FG, {0} },  /* git change: GitSignsChange */
 	{ {243, 139, 168}, {0, 0, 0}, FACE_FG, {0} },  /* git delete: GitSignsDelete */

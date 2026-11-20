@@ -5,4 +5,4 @@ for k in (32767, 32768):
     open('build/rv/tokens%d.sql' % (2 * k + 2), 'w').write('SELECT ' + ','.join(['a'] * k) + ' FROM t\n')
 for k in (5000, 20000):
     open('build/rv/comments%d.sql' % k, 'w').write("select 1;\n" + "-- a commented-out line of code\n" * k + "select 2;\n")
-open('build/rv/nul.sql', 'wb').write(b'SELECT 1\0SELECT 2\n')
+open('build/rv/nul-byte.sql', 'wb').write(b'SELECT 1\0SELECT 2\n')

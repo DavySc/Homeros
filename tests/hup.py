@@ -3,22 +3,13 @@
 must exit within 2 s (not spin) and keep its crash journal, so the next open
 recovers the text, as Neovim keeps its swap file on SIGHUP (package 8's
 review, finding 4).  usage: hup.py HOMEROS_BINARY; exit 1 on failure"""
-import os, pty, sys, time, tempfile, select, signal
+import os, sys, time, tempfile, signal
+from ptyrun import spawn, drain
 binary = sys.argv[1]
 d = tempfile.mkdtemp(); path = os.path.join(d, "f")
 os.environ["XDG_STATE_HOME"] = os.path.join(d, "state")
 open(path, "w").close()
-def run():
-    pid, fd = pty.fork()
-    if pid == 0: os.execv(binary, [binary, "-t", path])
-    select.select([fd], [], [], 5); time.sleep(0.3)
-    return pid, fd
-def drain(fd, t):
-    end = time.time() + t
-    while time.time() < end:
-        if select.select([fd], [], [], 0.1)[0]:
-            try: os.read(fd, 65536)
-            except OSError: return
+def run(): return spawn([binary, "-t", path])
 pid, fd = run()
 os.write(fd, b"ihello\x1b"); drain(fd, 1.0)
 os.close(fd)                       # the hang-up
