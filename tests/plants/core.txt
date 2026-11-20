@@ -72,7 +72,8 @@ core: a fence's indent not drawn as '█' (test_core_markdown)~test TESTS=core_m
 core: a fence's row not filled with '█' (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~blk, 3, (size_t)w->w,~blk, 3, 0 * (size_t)w->w,
 core: an empty code row's background from the window's start (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~a0 = v + md.mark - i;~a0 = v * 0;
 core: a wrapped line's background below its window (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~k < rows && r + k < w->h; k++~k < rows; k++
-core: an overlay drawn past a grid smaller than its window (fuzz_core)~fuzz FUZZERS=core FUZZ_SECONDS=120~~src/core/draw.c~			if (row >= w->h || !z || ~			if (row >= w->h || 
+core: an overlay's cell past a grid smaller than its window is written (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~	if (z) { z->face = face; z->bg = bg; }~	{ z->face = face; z->bg = bg; }
+core: a heading's background drawn past a grid smaller than its window (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~>= b0 && z && !(k == 0~>= b0 && !(k == 0
 core: a group the keys open saves no marks (test_core_undo)~test TESTS=core_undo~~src/core/core.c~"", 0, "", 0, c, b->flags)) umarks_new(b, seq, snap);~"", 0, "", 0, c, b->flags)) umarks_new(b, seq ? undo_seq(b->undo) : undo_seq(b->undo), snap);
 core: a group an edit opens saves no marks (test_core_undo)~test TESTS=core_undo~~src/core/core.c~				umarks_new(b, seq, snap);~				(void)seq;
 core: a group's marks are saved again at each of its edits (test_core_undo)~test TESTS=core_undo~~src/core/core.c~	if (undo_seq(b->undo) == seq) return;~	if (seq == (unsigned long)-1) return;

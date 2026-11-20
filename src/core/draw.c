@@ -130,8 +130,7 @@ static size_t over(Grid *g, const Win *w, int r, size_t skip, int cover, size_t 
 				size_t x = v + d - skip;
 				if (x / (size_t)tw != x0 / (size_t)tw || (!w->wrap && x >= (size_t)tw)) return v;
 				int row = r + (int)(x / (size_t)tw), c = nw + (int)(x % (size_t)tw);
-				Cell *z = wcell(g, w, row, c);
-				if (row >= w->h || !z || (row == r && c < cover)) continue;
+				if (row >= w->h || (row == r && c < cover)) continue;
 				if (fit) put_cell(g, w, row, c, u + i, k, j, cw, face, bg);
 				else put_cell(g, w, row, c, (const unsigned char *)" ", 1, 0, 1, face, bg);
 			}
