@@ -309,11 +309,11 @@ int main(void)
 	   key, or when the window closes: its answer goes nowhere */
 	char other[] = "/tmp/test_keys_exXXXXXX";
 	fd = mkstemp(other);
-	CHECK(fd >= 0 && write(fd, "xo\n", 3) == 3 && !close(fd));
+	CHECK(fd >= 0 && write(fd, "xo\nxo\nxo\n", 9) == 9 && !close(fd));
 	feed(&e, ":3s/o/0/gc\r");
 	CHECK(e.ks.pending && !core_edit_file(&e, other, 0));
 	feed(&e, "y");
-	l = core_line(&e, 0, &n);
+	l = core_line(&e, 2, &n);
 	CHECK(!e.ks.pending && n == 2 && !memcmp(l, "xo", 2) && !core_edit_file(&e, path, 0));
 	CHECK(!core_split(&e, 0, 0));
 	feed(&e, ":3s/o/0/gc\r");

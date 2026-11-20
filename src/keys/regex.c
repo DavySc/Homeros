@@ -638,8 +638,7 @@ static int chr(long l, long c, long *len)
 	const unsigned char *s = (const unsigned char *)ml_get(l);
 	size_t n = (size_t)ml_len(l);
 	if (c >= (long)n) { *len = 0; return 0; }
-	/* an ASCII character before another is a cluster of its own (no Extend,
-	   ZWJ or SpacingMark is ASCII, and a line holds no LF after a CR) */
+	/* uni_glen()'s ASCII fast path, without decoding */
 	if (s[c] < 0x80 && (c + 1 == (long)n || s[c + 1] < 0x80)) { *len = 1; return s[c]; }
 	*len = (long)uni_glen(s, n, (size_t)c);
 	return (int)uni_cp(s, n, (size_t)c);
@@ -898,8 +897,7 @@ int re_exec(long l, long col, Pos *s, Pos *e, Pos *sub_s, Pos *sub_e)
 			long x = c;
 			while (x < n && t[x] != lit && !(ic && (t[x] >= 0x80 || fold(t[x]) == fold(lit)))) x++;
 			if (x >= n) return 0;
-			if (x > c && t[x - 1] < 0x80) c = x;   /* an ASCII character after an ASCII one starts a cluster */
-			else while (c < x) c += (long)uni_glen(t, (size_t)n, (size_t)c);
+			c = x;   /* an ASCII character always begins a cluster (uni_glen()) */
 		}
 		if (c > n) return 0;
 		int r = m(start, l, c);

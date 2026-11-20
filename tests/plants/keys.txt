@@ -165,6 +165,5 @@ keys: the window's close leaves the c flag's question open (test_keys_ex)~test T
 keys: the c flag's question goes on in another buffer (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~	if (b == asked) { loop(k); return; }~	if (b) { loop(k); return; }
 keys: 'hlsearch' has no 'redrawtime' (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~	re_deadline = fr.end;¶~
 keys: the first-literal skip passes a byte past 0x7f under \c (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~(ic && (t[x] >= 0x80 || fold(t[x]) == fold(lit)))~(ic && fold(t[x]) == fold(lit))
-keys: the first-literal skip lands inside a cluster (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~if (x > c && t[x - 1] < 0x80) c = x;~if (x > c) c = x;
 keys: a bounded leading repeat skips its run too (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~rp1->simple && rp1->c < 0 ?~rp1->simple ?
 keys: an ASCII character before an accent is its own cluster (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~(c + 1 == (long)n || s[c + 1] < 0x80)~(c + 1 == (long)n || 1)
