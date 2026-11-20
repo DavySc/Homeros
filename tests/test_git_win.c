@@ -112,16 +112,19 @@ int main(void)
 	CHECK(!seen(r, 1000));
 	put("a.txt", "b\n");
 	CHECK(seen(r, 5000));
-	/* a batch whose first entries do not count: Wine packs the later
-	   ones unaligned (measured, 1 run).  The first change completes the
-	   pending read; the rest come while none is pending, so they wait
-	   for the next one, together (measured, 5 runs); three rounds, as
-	   one was not enough on CI's machine (1 run) */
-	for (int k = 0; k < 3; k++) {
-		put("build/v.o", "v");
-		Sleep(200);
-		put("build/w.o", "w"); put("build/z.o", "z"); put("a.txt", k & 1 ? "a\n" : "b\n");
-		CHECK(seen(r, 5000));
+	/* a batch as Wine packs it: an entry that does not count, then one
+	   that does at offset 30, not DWORD-aligned (measured, 1 run); made
+	   here, as Wine's batching depends on timing (two CI misses) */
+	{
+		static const WCHAR n1[] = L"build\\x.o", n2[] = L"a.txt";
+		char b[64] = { 0 };
+		DWORD o1 = 12 + sizeof n1 - sizeof(WCHAR), l1 = sizeof n1 - sizeof(WCHAR), l2 = sizeof n2 - sizeof(WCHAR), z = 0;
+		memcpy(b, &o1, 4); memcpy(b + 8, &l1, 4); memcpy(b + 12, n1, l1);
+		memcpy(b + o1, &z, 4); memcpy(b + o1 + 8, &l2, 4); memcpy(b + o1 + 12, n2, l2);
+		CHECK(o1 % 4 && git_batch(r, top, b, o1 + 12 + l2));
+		CHECK(git_batch(r, top, b, 0));        /* empty: too large for the buffer */
+		memcpy(b, &z, 4);
+		CHECK(!git_batch(r, top, b, o1));      /* the ignored entry alone */
 	}
 	put("build/y.o", "y");
 	Sleep(200);

@@ -154,6 +154,26 @@ int main(void)
 	CHECK(!core_split(&e, 0, 0));
 	draw();
 	CHECK(!on_grid("Find File") && !tools_key(&e, 'q'));
+	/* :Dashboard after starting on a file: the start screen on a new empty
+	   buffer, with the time measured at startup's first draw */
+	core_free(&e);
+	CHECK(!core_open(&e, "tests/test_tools_dash.c"));
+	tools_dash(&e, NOW * 1000000000LL - 2000000);
+	draw();
+	CHECK(!on_grid("Find File"));
+	CHECK(!core_edit_file(&e, "", 0));
+	tools_dash(&e, 0);
+	draw();
+	CHECK(on_grid("Find File") && on_grid("loaded in 2.0ms"));
+	/* the file comes back (CTRL-^, SPC ,): gone, q is the editor's */
+	CHECK(!core_buf_alt(&e));
+	draw();
+	CHECK(!on_grid("Find File") && !tools_key(&e, 'q'));
+	/* q is :qa, so a file changed before :Dashboard stops it (E162) */
+	CHECK(!core_edit(&e, 0, 0, "x", 1) && !core_edit_file(&e, "", 0));
+	tools_dash(&e, 0);
+	draw();
+	CHECK(tools_key(&e, 'q') && !e.quit && strstr(e.msg, "E162"));
 	grid_free(&g);
 	core_free(&e);
 	return 0;

@@ -30,6 +30,7 @@ int  tools_write(struct Editor *e, struct Buf *b);
    first window when homeros starts without a file, until that window shows
    another buffer or the buffer changes.  It takes keys through tools_key
    and draws in tools_draw.  start_ns: when main() began (TIME_UTC), for its
-   "loaded in" line. */
+   "loaded in" line; 0 (:Dashboard, SPC D) keeps the time measured at
+   startup (thread 0's, agreed). */
 void tools_dash(struct Editor *e, long long start_ns);
 #endif
