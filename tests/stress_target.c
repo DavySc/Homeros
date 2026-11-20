@@ -100,9 +100,17 @@ int main(int argc, char **argv)
   }
   for (int i = 0; i < 5; i += 1) if (!known || after[i] <= first[i]) FAIL("thread %d of the target got nowhere", i);
   if (!seen[TARGET_TRAP] || !seen[TARGET_STEP] || !halts || !seen[TARGET_MODULE] || !seen[TARGET_THREAD] || !seen[TARGET_THREAD_GONE] || !seen[TARGET_OUTPUT] || !raised) FAIL("a kind of event never came");
-  /* an exception the target stands on is still to be handled; then tell it to quit */
-  long long did;
-  if (!target_read(t, handled, &did, sizeof did) || did - base != raised - (e.kind == TARGET_EXCEPTION)) FAIL("the program handled %lld of its %u exceptions", did - base, raised);
+  /* An exception the target stands on is still to be handled, and so is one whose thread has not run since it was
+     reported (a stop came first, then steps of another thread): the program runs on until none is on its way.
+     One that the program was never given stays missing. Then tell it to quit. */
+  long long did = 0;
+  for (int more = 0; more < 200; more += 1) {
+    if (!target_read(t, handled, &did, sizeof did)) FAIL("cannot read the target");
+    if (did - base == raised - (e.kind == TARGET_EXCEPTION)) break;
+    target_resume(t, NULL, 0, 0);
+    if (target_wait(t, 5, &e)) raised += e.kind == TARGET_EXCEPTION; else target_halt(t), e.kind = TARGET_RUNNING;
+  }
+  if (did - base != raised - (e.kind == TARGET_EXCEPTION)) FAIL("the program handled %lld of its %u exceptions", did - base, raised);
   if (!target_write(t, quit, &(int){1}, sizeof(int))) FAIL("cannot write the target");
   for (DWORD start = GetTickCount(); e.kind != TARGET_EXIT;) {
     target_resume(t, NULL, 0, 0);

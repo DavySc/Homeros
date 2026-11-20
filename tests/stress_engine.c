@@ -33,8 +33,12 @@ int main(int argc, char **argv)
   for (uint32_t round = 0; round < rounds; round += 1) {
     ev = engine_run(&e, ENGINE_RUN, 0, &at[1], 1);
     if (ev.kind == TARGET_BREAK && !round) ev = engine_run(&e, ENGINE_RUN, 0, &at[1], 1);   /* the loader's own */
-    if (ev.kind != TARGET_TRAP || ev.addr != at[1] || !target_regs(e.target, ev.thread, &r) || r.rip != at[1] || !target_read(e.target, r.gp[1], &now, 4))
-      FAIL("round %u: event %d at %llx, not a stop on the breakpoint", round, ev.kind, (unsigned long long)ev.addr);
+    if (ev.kind != TARGET_TRAP || ev.addr != at[1] || !target_regs(e.target, ev.thread, &r) || r.rip != at[1] || !target_read(e.target, r.gp[1], &now, 4)) {
+      for (int i = 0; i < 3; i += 1) if (target_regs(e.target, threads[i], &r)) printf("stress_engine: thread %u (function run %d times) stands at the breakpoint + %lld\n", threads[i], count[i], (long long)(r.rip - at[1]));
+      target_regs(e.target, ev.thread, &r);
+      FAIL("round %u: event %d (code %llx%s) of thread %u at the breakpoint + %lld, standing at + %lld: not a stop on the breakpoint", round, ev.kind, (unsigned long long)ev.code,
+           ev.unhandled ? ", unhandled" : "", ev.thread, (long long)(ev.addr - at[1]), (long long)(r.rip - at[1]));
+    }
     uint32_t t = 0;
     while (t < 3 && threads[t] && threads[t] != ev.thread) t += 1;
     if (t == 3) FAIL("round %u: a fourth thread on the breakpoint", round);
