@@ -133,7 +133,7 @@ static bool eval_read(const Engine *e, const TargetRegs *frame, EvalValue v, voi
 
 /* ---- values ---- */
 
-typedef struct { const Engine *e; const TargetRegs *frame; const EngineModule *module; uint64_t voff;   /* the frame's instruction */
+typedef struct { const Engine *e; const TargetRegs *frame; const EngineModule *module; uint64_t voff; uint32_t scope;   /* the frame's instruction, and the innermost scope around it that is the frame's */
                  const char *p, *error;
                  uint32_t dead,    /* not 0 inside a part whose value C does not work out (the right of a decided && or ||, the side of ? : not chosen, sizeof's): parsed and typed, nothing read */
                           deep; } Parse;
@@ -322,7 +322,7 @@ static const RdiSymbol *local(const Parse *P, Locals *l)
     const RdiScope *scope = rdi_at(&P->module->rdi, RDI_SCOPES, RdiScope, l->scope);
     RdiSpan locals = rdi_run(&P->module->rdi, RDI_LOCALS, scope->local_first, scope->local_count);
     if (l->i < locals.n) return (const RdiSymbol *)locals.p + l->i++;
-    l->scope = scope->parent;
+    l->scope = scope->inline_site ? 0 : scope->parent;   /* an inlined call's variables end with it: what is outside is another function's */
   }
   return NULL;
 }
@@ -332,7 +332,7 @@ static const RdiSymbol *local(const Parse *P, Locals *l)
 static bool name(Parse *P, RdiSpan id, EvalValue *v)
 {
   const EngineModule *m = P->module;
-  Locals l = {m ? rdi_vmap(&m->rdi, RDI_SCOPE_VMAP, P->voff) : 0, 0, 0};
+  Locals l = {P->scope, 0, 0};
   for (const RdiSymbol *y; (y = local(P, &l));) {
     RdiSpan is = rdi_str(&m->rdi, y->name);
     if (same(id, is.p, is.n)) return *v = settle(P, place(P->e, m, y->type, y->location, P->voff, P->frame)), true;
@@ -572,16 +572,21 @@ static EvalValue ternary(Parse *P)
   return convert(P, yes ? a : b, (EvalType){NULL, common(eval_shape(a.type), eval_shape(b.type)), 0});
 }
 
-static Parse parse(const Engine *e, const TargetRegs *frame, bool called, const char *text)
+static Parse parse(const Engine *e, const EvalFrame *frame, const char *text)
 {
-  Parse P = {.e = e, .frame = frame, .module = engine_module(e, frame->rip - called), .p = text};
-  P.voff = P.module ? frame->rip - called - P.module->image.base : 0;
+  Parse P = {.e = e, .frame = &frame->regs, .module = engine_module(e, frame->regs.rip - frame->called), .p = text};
+  P.voff = P.module ? frame->regs.rip - frame->called - P.module->image.base : 0;
+  P.scope = P.module ? rdi_vmap(&P.module->rdi, RDI_SCOPE_VMAP, P.voff) : 0;
+  for (uint32_t inside = frame->inlined, hops = 0; inside && P.scope && hops < 256; hops += 1) {   /* out of the inlined calls that are frames inside this one */
+    const RdiScope *scope = rdi_at(&P.module->rdi, RDI_SCOPES, RdiScope, P.scope);
+    inside -= scope->inline_site != 0, P.scope = scope->parent;
+  }
   return P;
 }
 
-EvalValue eval(const Engine *e, const TargetRegs *frame, bool called, const char *text, const char **error)
+EvalValue eval(const Engine *e, const EvalFrame *frame, const char *text, const char **error)
 {
-  Parse P = parse(e, frame, called, text);
+  Parse P = parse(e, frame, text);
   EvalValue v = ternary(&P);
   eat(&P, "");
   if (*P.p) fail(&P, "what follows is not understood");
@@ -589,17 +594,17 @@ EvalValue eval(const Engine *e, const TargetRegs *frame, bool called, const char
   return P.error ? (EvalValue){0} : v;
 }
 
-EvalValue eval_load(const Engine *e, const TargetRegs *frame, EvalValue v, const char **error)
+EvalValue eval_load(const Engine *e, const EvalFrame *frame, EvalValue v, const char **error)
 {
-  Parse P = {.e = e, .frame = frame};
+  Parse P = {.e = e, .frame = &frame->regs};
   v = load(&P, v);
   return *error = P.error, v;
 }
 
-uint32_t eval_locals(const Engine *e, const TargetRegs *frame, bool called, RdiSpan *names, uint32_t most)
+uint32_t eval_locals(const Engine *e, const EvalFrame *frame, RdiSpan *names, uint32_t most)
 {
-  Parse P = parse(e, frame, called, NULL);
-  Locals l = {P.module ? rdi_vmap(&P.module->rdi, RDI_SCOPE_VMAP, P.voff) : 0, 0, 0};
+  Parse P = parse(e, frame, NULL);
+  Locals l = {P.scope, 0, 0};
   uint32_t n = 0;
   for (const RdiSymbol *y; n < most && (y = local(&P, &l));) {
     uint32_t i = 0;

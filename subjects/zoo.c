@@ -38,7 +38,8 @@ void (*volatile show)(const char *, const void *, unsigned long long, unsigned l
 /* the functions on the stack from here out to main, as the source has them (inlined or not), and this line; the line each of the others stands at is the one its CALL wrote down */
 #define STACK(names) show(names, (const void *)7, 0, __LINE__)
 #define CALL(in, call) (line_in_##in = __LINE__, call)
-volatile int line_in_main, line_in_outer, line_in_middle, line_in_again;
+volatile int line_in_main, line_in_outer, line_in_middle, line_in_again, x_in_outer, x_in_middle;
+#define CALLX(in, call) (x_in_##in = x, CALL(in, call))   /* and the x this function has, which the one it calls has too, with another value */
 #define HERE() show("", (const void *)6, 0, 0)   /* at this line the recorder asks RAD for every expression above it (oracle/rad-trace.ps1) */
 #define REAL(v) show(#v, (const void *)1, sizeof(v), (union { double d; unsigned long long u; }){.d = (v)}.u)
 
@@ -103,14 +104,19 @@ __declspec(noinline) static long long shadow(long long n)
 }
 
 /* a frame so large that its variables are further from the stack pointer than a 16-bit offset reaches */
-static __forceinline int leaf(int x) { STACK("leaf middle outer main"); return x + 1; }
+static __forceinline int leaf(int x)
+{
+  int more = 1;
+  { int in_block = x + more; STACK("leaf middle outer main"); LOCALS("in_block more x"); more = in_block - x; }   /* a block inside an inlined call */
+  return x + more;
+}
 static __forceinline int middle(int x)
 {
-  int y = CALL(middle, leaf(x)) * 2;
-  { int z = CALL(middle, leaf(y)); y += z; }   /* a block between two inlined calls */
+  int y = CALLX(middle, leaf(x + 100)) * 2;
+  { int z = CALLX(middle, leaf(y)); y += z; }   /* a block between two inlined calls */
   return y;
 }
-__declspec(noinline) static int outer(int x) { STACK("outer main"); return CALL(outer, middle(x)) + 1; }
+__declspec(noinline) static int outer(int x) { STACK("outer main"); return CALLX(outer, middle(x + 10)) + 1; }
 static int (*volatile again_pointer)(int);
 __declspec(noinline) static int again(int n)
 {

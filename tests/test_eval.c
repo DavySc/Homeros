@@ -17,7 +17,7 @@ bool target_read(Target *t, uint64_t addr, void *bytes, uint32_t n)
   if (addr < MEMORY || addr - MEMORY > sizeof memory - n) return false;
   return memcpy(bytes, memory + (addr - MEMORY), n), true;
 }
-const EngineModule *engine_module(const Engine *e, uint64_t addr) { return (void)e, (void)addr, NULL; }
+const EngineModule *engine_module(const Engine *e, uint64_t addr) { return e->module_count && addr - e->modules->image.base < e->modules->image.size ? e->modules : NULL; }
 
 #define REG(code) 5, code, 8, 0, 0
 #define U8(v) 11, v
@@ -29,7 +29,9 @@ const EngineModule *engine_module(const Engine *e, uint64_t addr) { return (void
 #define READ(n) 4, n
 #define CODE(...) (const uint8_t[]){__VA_ARGS__}, sizeof((const uint8_t[]){__VA_ARGS__})
 
-static const TargetRegs regs = {.gp = {0x100, 0x200, 0x300, 0x400, MEMORY, 0x600, 0x700, 0x800, 0x900, 0xa00, 0xb00, 0xc00, 0xd00, 0xe00, 0xf00, 0x1000}, .rip = 0x123, .rflags = 0x246};
+#define REGS {.gp = {0x100, 0x200, 0x300, 0x400, MEMORY, 0x600, 0x700, 0x800, 0x900, 0xa00, 0xb00, 0xc00, 0xd00, 0xe00, 0xf00, 0x1000}, .rip = 0x123, .rflags = 0x246}
+static const TargetRegs regs = REGS;
+static const EvalFrame frame = {REGS, false, 0};
 static int failed;
 
 /* The bytecode gives `want`; -1: it must be refused. */
@@ -59,7 +61,7 @@ static void expression(const char *text, uint32_t kind, uint32_t stars, uint64_t
 {
   Engine e = {0};
   const char *error = "unset";
-  EvalValue v = eval(&e, &regs, false, text, &error);
+  EvalValue v = eval(&e, &frame, text, &error);
   uint64_t there = 0;
   if (v.kind == EVAL_MEMORY) v.kind = eval_read(&e, &regs, v, &there, eval_shape(v.type).size) ? EVAL_VALUE : -1, v.at = there;   /* a place: what is there (no test here has a sign to carry) */
   if (why ? v.kind || !error || strcmp(error, why) : v.kind != EVAL_VALUE || error || v.type.module || v.type.idx != kind || v.type.stars != stars || v.at != bits)
@@ -327,24 +329,24 @@ int main(void)
     {"(char *)0x7013", "0x7013 \"............ !\"#$%&'()*+,-./0123456789:;<=>?@\""}, {"*(char *)0x7010", "'h' (104)"}, {"*(int *)0x6fff", "cannot be read"}, {"nothing", "no such name"}, {"*(char **)0x7000", "0x807060504030201"}};
   for (uint32_t i = 0; i < sizeof shown / sizeof *shown; i += 1) {
     char text[96];
-    view_value(&e, &regs, false, shown[i].text, text, sizeof text);
+    view_value(&e, &frame, shown[i].text, text, sizeof text);
     if (strcmp(text, shown[i].want)) printf("test_eval: %s is shown as %s, not %s\n", shown[i].text, text, shown[i].want), failed = 1;
   }
   for (uint32_t n = VIEW_TEXT - 4; n <= VIEW_TEXT + 44; n += n < VIEW_TEXT - 3 ? 1 : 47) {   /* an expression with no room for brackets around it is shown all the same */
     char spaced[VIEW_TEXT + 48], is[8];
     memset(spaced, ' ', n), memcpy(spaced + n - 5, "1 + 1", 6);
-    view_value(&e, &regs, false, spaced, is, sizeof is);
+    view_value(&e, &frame, spaced, is, sizeof is);
     if (strcmp(is, "2")) printf("test_eval: 1 + 1 after spaces, %u characters, is shown as %s\n", n, is), failed = 1;
   }
   char cut[8], full[40];
-  view_value(&e, &regs, false, "(char *)0x7010", cut, sizeof cut);   /* no room: cut off, with its end */
+  view_value(&e, &frame, "(char *)0x7010", cut, sizeof cut);   /* no room: cut off, with its end */
   if (strcmp(cut, "0x7010 ")) printf("test_eval: a value in 8 bytes is shown as \"%s\"\n", cut), failed = 1;
   memset(memory + 20, 'x', 44);   /* a text that does not end within 64 characters, or within memory */
-  view_value(&e, &regs, false, "(char *)0x7028", full, sizeof full);
+  view_value(&e, &frame, "(char *)0x7028", full, sizeof full);
   if (strcmp(full, "0x7028 \"xxxxxxxxxxxxxxxxxxxxxxxx\"")) printf("test_eval: a text up to the end of memory is shown as %s\n", full), failed = 1;
   memset(memory, 'y', 64);   /* 64 characters are shown */
   char all[80];
-  view_value(&e, &regs, false, "(char *)0x7000", all, sizeof all);
+  view_value(&e, &frame, "(char *)0x7000", all, sizeof all);
   if (strcmp(all, "0x7000 \"yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy\"")) printf("test_eval: 64 characters are shown as %s\n", all), failed = 1;
   for (uint32_t i = 0; i < sizeof memory; i += 1) memory[i] = (uint8_t)(i + 1);
   /* the rows a row opens into: of the record its three members that are data, by name; of an array its elements; of a pointer one, unless it leads to nothing */
@@ -367,6 +369,30 @@ int main(void)
     memset(parent, 'p', n), parent[n] = 0;
     ViewRow row = child(parent, eval_shape((EvalType){&types, 4, 0}), 0, 2, 1);   /* adds [2] */
     if (n <= VIEW_TEXT - 5 ? strlen(row.text) != n + 3 || row.label != n : row.text[0] || row.label) printf("test_eval: below a row of %u characters comes one of %u\n", n, (unsigned)strlen(row.text)), failed = 1;
+  }
+
+  /* a frame's own names. Scopes by hand around one instruction, from the innermost: 1 a block, 2 an inlined call, 3 a block, 4 an inlined call, 5 the function.
+     Each has a v (the constant 1 to 5); 3 has a w, 5 a u. Frame 0 is the inner inlined call (scopes 1, 2), frame 1 the outer (3, 4), frame 2 the function. */
+  static const RdiVMap where[] = {{0, 0}, {0x100, 1}, {0x200, 0}};
+  static const RdiScope scopes[] = {{0}, {.parent = 2, .local_first = 1, .local_count = 1}, {.parent = 3, .local_first = 2, .local_count = 1, .inline_site = 1}, {.parent = 4, .local_first = 3, .local_count = 2},
+                                    {.parent = 5, .local_first = 5, .local_count = 1, .inline_site = 2}, {.local_first = 6, .local_count = 2}};
+  static const RdiSymbol variables[] = {{0}, {.name = 1, .type = 1, .location = 8ull << 56 | 8}, {.name = 1, .type = 1, .location = 8ull << 56 | 16}, {.name = 1, .type = 1, .location = 8ull << 56 | 24}, {.name = 2, .type = 1, .location = 8ull << 56 | 48},
+                                        {.name = 1, .type = 1, .location = 8ull << 56 | 32}, {.name = 1, .type = 1, .location = 8ull << 56 | 40}, {.name = 3, .type = 1, .location = 8ull << 56 | 56}};
+  static const uint64_t numbers[] = {0, 1, 2, 3, 4, 5, 6, 7};
+  static const RdiType whole[] = {{0}, {.kind = S32, .byte_size = 4}};
+  static const uint32_t starts[] = {0, 0, 1, 2};
+  EngineModule nested = {.image = {.base = 0x140000000, .size = 0x1000}, .rdi.s = {[RDI_SCOPE_VMAP] = {where, 3}, [RDI_SCOPES] = {scopes, 6}, [RDI_LOCALS] = {variables, 8}, [RDI_LOCATION_CONSTANTS] = {numbers, 8},
+                                                                               [RDI_TYPE_NODES] = {whole, 2}, [RDI_STRING_TABLE] = {starts, 4}, [RDI_STRING_DATA] = {"vwu", 3}}};
+  Engine inlining = {.modules = &nested, .module_count = 1};
+  static const struct { uint32_t inlined; const char *text; int64_t want; uint32_t names; } own[] = {{0, "v", 1, 1}, {0, "w", -1, 1}, {0, "u", -1, 1}, {1, "v", 3, 2}, {1, "w", 6, 2}, {1, "u", -1, 2}, {2, "v", 5, 2}, {2, "u", 7, 2}, {2, "w", -1, 2}, {3, "v", -1, 0}, {9, "u", -1, 0}};
+  for (uint32_t i = 0; i < sizeof own / sizeof *own; i += 1) {
+    EvalFrame in = {{.rip = 0x140000150}, false, own[i].inlined};
+    const char *why = NULL, *unread;
+    RdiSpan names[4];
+    EvalValue v = eval_load(&inlining, &in, eval(&inlining, &in, own[i].text, &why), &unread);
+    uint32_t count = eval_locals(&inlining, &in, names, 4);
+    if ((own[i].want < 0 ? v.kind || strcmp(why, "no such name") : v.kind != EVAL_VALUE || v.at != (uint64_t)own[i].want) || count != own[i].names)
+      printf("test_eval: %s at the frame with %u inlined calls inside it is %lld (%s) among %u names, not %lld among %u\n", own[i].text, own[i].inlined, (long long)v.at, why ? why : "no error", count, (long long)own[i].want, own[i].names), failed = 1;
   }
 
   expressions();

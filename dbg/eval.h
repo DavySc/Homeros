@@ -17,11 +17,13 @@ enum { EVAL_NONE,       /* nothing: the expression has no meaning here (the erro
        EVAL_VALUE };    /* at: the value itself (an integer with its sign carried to 64 bits; a float or double as its bits) */
 typedef struct { int kind; EvalType type; uint64_t at; } EvalValue;
 
-/* called: the frame is not the innermost: it waits in a call, and its instruction is the one that ends at its
-   return address. (RAD looks names up at the return address itself, and adds the scope one byte before: after a
-   call that ends or begins a block it finds the other block's variable of the same name. gdb and lldb do as here.)
-   error: where to put why the kind is EVAL_NONE (null when it is not): a text that lives for ever. */
-EvalValue eval(const Engine *e, const TargetRegs *frame, bool called, const char *text, const char **error);
+/* A frame of a thread's stack: its registers. called: it is not the innermost: it waits in a call, and its instruction is the one that
+   ends at its return address. (RAD looks names up at the return address itself, and adds the scope one byte before: after a call that ends
+   or begins a block it finds the other block's variable of the same name. gdb and lldb do as here.) inlined: so many inlined calls around
+   its instruction are frames of their own inside it (view_stack); their variables are not its own. */
+typedef struct { TargetRegs regs; bool called; uint32_t inlined; } EvalFrame;
+/* error: where to put why the kind is EVAL_NONE (null when it is not): a text that lives for ever. */
+EvalValue eval(const Engine *e, const EvalFrame *frame, const char *text, const char **error);
 enum { EVAL_NOTHING, EVAL_INT, EVAL_REAL, EVAL_ADDRESS, EVAL_REFERENCE, EVAL_ROW, EVAL_RECORD };
 /* What a type is once its names and modifiers are taken off. to: what an address or a reference leads to, a row's element,
    a record's members (idx: its RdiUdt), a bit field's whole number. count: not 0 for a bit field: so many bits from bit `first`.
@@ -32,7 +34,8 @@ EvalShape eval_shape(EvalType type);
 RdiSpan eval_members(EvalShape record);
 /* What C reads at a place: a number or an address, its sign carried to 64 bits; of an array, the address of its first
    element (a bit field of fewer bits than an int as an int). */
-EvalValue eval_load(const Engine *e, const TargetRegs *frame, EvalValue v, const char **error);
-/* The names of the variables around the frame's instruction, the innermost first, each once; how many (up to most). */
-uint32_t eval_locals(const Engine *e, const TargetRegs *frame, bool called, RdiSpan *names, uint32_t most);
+EvalValue eval_load(const Engine *e, const EvalFrame *frame, EvalValue v, const char **error);
+/* The names of the variables around the frame's instruction, the innermost first, each once, as far out as its function
+   (an inlined call is one); how many (up to most). */
+uint32_t eval_locals(const Engine *e, const EvalFrame *frame, RdiSpan *names, uint32_t most);
 #endif

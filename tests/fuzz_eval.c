@@ -33,25 +33,26 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
   ViewFrame frames[5];
   view_stack(&e, regs, frames, 5);
   for (int called = 0; called < 2; called += 1) {
+    EvalFrame frame = {regs, called, 2 * called};   /* the second time as a frame that waits in a call with two inlined calls inside it */
     const char *error = "unset";
     uint64_t bytes = 0;
-    EvalValue v = eval(&e, &regs, called, text, &error);
+    EvalValue v = eval(&e, &frame, text, &error);
     if ((v.kind == EVAL_NONE) != (error != NULL)) abort();
     if (v.kind) eval_read(&e, &regs, v, &bytes, eval_shape(v.type).size < 8 ? eval_shape(v.type).size : 8);
     for (uint32_t room = 1; room <= 81; room += 40) {
       char *shown = malloc(room);
-      view_value(&e, &regs, called, text, shown, room), view_type(v.type, shown, room);
+      view_value(&e, &frame, text, shown, room), view_type(v.type, shown, room);
       free(shown);
     }
     RdiSpan names[7];
     char name[7][VIEW_TEXT];
     const char *roots[8] = {text};
-    uint32_t count = 1 + eval_locals(&e, &regs, called, names, 7), got = 1;
+    uint32_t count = 1 + eval_locals(&e, &frame, names, 7), got = 1;
     for (uint32_t i = 1; i < count; i += 1) memcpy(name[i - 1], names[i - 1].p, names[i - 1].n < VIEW_TEXT ? names[i - 1].n : VIEW_TEXT - 1), name[i - 1][names[i - 1].n < VIEW_TEXT ? names[i - 1].n : VIEW_TEXT - 1] = 0, roots[i] = name[i - 1];
     View view = {.count = 0};
     ViewRow *rows = malloc(24 * sizeof *rows);
     for (uint32_t round = 0; round < 12 && got; round += 1) {   /* open the row in the middle of those seen, look from further down each time */
-      uint64_t total = view_rows(&view, &e, &regs, called, roots, count, round, rows, 24, &got);
+      uint64_t total = view_rows(&view, &e, &frame, roots, count, round, rows, 24, &got);
       if (got > 24 || round + got > total) abort();
       if (got) view_toggle(&view, &rows[got / 2]);
     }

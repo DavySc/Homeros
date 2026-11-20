@@ -68,7 +68,7 @@ bool view_toggle(View *view, const ViewRow *row)
   return true;
 }
 
-typedef struct { const View *view; const Engine *e; const TargetRegs *frame; bool called;
+typedef struct { const View *view; const Engine *e; const EvalFrame *frame;
                  uint64_t at, first; ViewRow *rows; uint32_t most, n; } Walk;
 
 /* The row that the i-th member, element or pointed-at of `text` (a row of this shape) is. */
@@ -99,7 +99,7 @@ static uint64_t children(EvalShape s)
 
 /* ---- a value as text ---- */
 
-typedef struct { const Engine *e; const TargetRegs *frame; bool called; char *text; uint32_t n; } Show;
+typedef struct { const Engine *e; const EvalFrame *frame; char *text; uint32_t n; } Show;
 
 static bool characters(EvalType t)
 {
@@ -113,7 +113,7 @@ static uint32_t show(const Show *w, const char *expression, uint32_t at)
   const char *error = NULL;
   char *text = w->text;
   uint32_t n = w->n, start = at;
-  EvalValue v = eval(w->e, w->frame, w->called, expression, &error);
+  EvalValue v = eval(w->e, w->frame, expression, &error);
   EvalShape s = eval_shape(v.type);
   if (v.kind && (s.form == EVAL_RECORD || (s.form == EVAL_ROW && !characters(s.to)))) {   /* each part is the expression of its row */
     at = put(text, n, at, s.form == EVAL_ROW ? "[" : "{");
@@ -158,11 +158,11 @@ static uint32_t show(const Show *w, const char *expression, uint32_t at)
   return put(text, n, at, c ? "\"..." : "\"");
 }
 
-void view_value(const Engine *e, const TargetRegs *frame, bool called, const char *expression, char *text, uint32_t n)
+void view_value(const Engine *e, const EvalFrame *frame, const char *expression, char *text, uint32_t n)
 {
   /* what the parts add comes after the expression in brackets, as below a root row (of one too long for that no part can be shown) */
   char root[VIEW_TEXT];
-  show(&(Show){e, frame, called, text, n}, put(root, VIEW_TEXT, 0, "(%s)", expression) < VIEW_TEXT - 1 ? root : expression, 0);
+  show(&(Show){e, frame, text, n}, put(root, VIEW_TEXT, 0, "(%s)", expression) < VIEW_TEXT - 1 ? root : expression, 0);
 }
 
 /* The rows below the open row `text` with the key `key`: runs of closed ones are counted, or written where the window is;
@@ -170,7 +170,7 @@ void view_value(const Engine *e, const TargetRegs *frame, bool called, const cha
 static void walk(Walk *w, const char *text, uint64_t key, uint32_t depth)
 {
   const char *error;
-  EvalValue v = eval(w->e, w->frame, w->called, text, &error);
+  EvalValue v = eval(w->e, w->frame, text, &error);
   EvalShape s = eval_shape(v.type);
   uint64_t count = v.kind ? children(s) : 0;
   for (uint64_t i = 0; i < count;) {
@@ -184,10 +184,10 @@ static void walk(Walk *w, const char *text, uint64_t key, uint32_t depth)
   }
 }
 
-uint64_t view_rows(const View *view, const Engine *e, const TargetRegs *frame, bool called, const char *const *roots, uint32_t root_count,
+uint64_t view_rows(const View *view, const Engine *e, const EvalFrame *frame, const char *const *roots, uint32_t root_count,
                    uint64_t first, ViewRow *rows, uint32_t most, uint32_t *shown)
 {
-  Walk w = {view, e, frame, called, 0, first, rows, most, 0};
+  Walk w = {view, e, frame, 0, first, rows, most, 0};
   for (uint32_t r = 0; r < root_count; r += 1) {
     ViewRow row = {0, 0, 0, 0, {0}};
     for (const char *c = roots[r]; *c; c += 1) row.child = mix(row.child, (uint8_t)*c);
@@ -215,12 +215,13 @@ uint32_t view_stack(const Engine *e, TargetRegs regs, ViewFrame *frames, uint32_
     uint64_t voff = m ? regs.rip - called - m->image.base : 0;
     uint32_t innermost = m ? rdi_vmap(r, RDI_SCOPE_VMAP, voff) : 0;
     /* each inlined call around the instruction, from the innermost (RAD stops at a block between two of them: the calls outside it are not frames there) */
+    uint32_t inlined = 0;
     for (uint32_t s = innermost, hops = 0; s && n < most && hops < 256; hops += 1, s = rdi_at(r, RDI_SCOPES, RdiScope, s)->parent) {
-      uint32_t inlined = rdi_at(r, RDI_SCOPES, RdiScope, s)->inline_site;
-      const RdiInlineSite *site = rdi_at(r, RDI_INLINE_SITES, RdiInlineSite, inlined);
-      if (inlined) frames[n++] = (ViewFrame){regs, called, m, rdi_str(r, site->name), rdi_row_in(r, site->line_table, voff).line};
+      uint32_t i = rdi_at(r, RDI_SCOPES, RdiScope, s)->inline_site;
+      const RdiInlineSite *site = rdi_at(r, RDI_INLINE_SITES, RdiInlineSite, i);
+      if (i) frames[n++] = (ViewFrame){{regs, called, inlined++}, m, rdi_str(r, site->name), rdi_row_in(r, site->line_table, voff).line};
     }
-    if (n < most) frames[n++] = (ViewFrame){regs, called, m, m ? rdi_str(r, rdi_at(r, RDI_PROCEDURES, RdiSymbol, rdi_at(r, RDI_SCOPES, RdiScope, innermost)->proc)->name) : (RdiSpan){0}, m ? rdi_row(r, voff).line : (RdiLine){0}};
+    if (n < most) frames[n++] = (ViewFrame){{regs, called, inlined}, m, m ? rdi_str(r, rdi_at(r, RDI_PROCEDURES, RdiSymbol, rdi_at(r, RDI_SCOPES, RdiScope, innermost)->proc)->name) : (RdiSpan){0}, m ? rdi_row(r, voff).line : (RdiLine){0}};
     /* on until a step fails or comes to no instruction (RAD's d_unwind_from_thread; its third end, a step that changes nothing, this unwinder cannot make: it pops at least the return address) */
     if (!unwind_step(target_read, e->target, m ? &m->image : NULL, &regs) || !regs.rip) break;
   }

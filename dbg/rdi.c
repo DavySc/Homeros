@@ -54,6 +54,7 @@ const void *rdi_elem(const Rdi *r, int k, uint64_t i)
 RdiSpan rdi_run(const Rdi *r, int k, uint64_t first, uint64_t count)
 {
   uint64_t n = r->s[k].n;
+  if (!n) return (RdiSpan){zero, 0};   /* a module without debug information has no tables: nothing to point into */
   if (first > n) first = n;
   if (count > n - first) count = n - first;
   return (RdiSpan){(const uint8_t *)r->s[k].p + first * elem_size[k], count};

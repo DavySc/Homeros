@@ -734,8 +734,9 @@ test | dbg/eval.c | if (n > 8 \p\p !eight.n) return false; | if (!eight.n) retur
 test | dbg/eval.c | if (n > 8 \p\p !eight.n) return false; | if (n > 8) return false;
 test | dbg/eval.c | rdi_run(&v.type.module->rdi, RDI_LOCATION_CONSTANTS, v.at / 8, 1) | rdi_run(&v.type.module->rdi, RDI_LOCATION_CONSTANTS, v.at, 1)
 test | dbg/eval.c | if (v.kind == EVAL_MEMORY) return target_read(e->target, v.at, bytes, n); | if (v.kind == EVAL_MEMORY) return target_read(e->target, v.at + 1, bytes, n);
-eval | dbg/eval.c | frame->rip - called), .p = text};\n  P.voff = P.module ? frame->rip - called | frame->rip - 0 * called), .p = text};\n  P.voff = P.module ? frame->rip - 0 * called
-eval | dbg/eval.c | l->scope = scope->parent; | l->scope = 0;
+eval | dbg/eval.c | frame->regs.rip - frame->called), .p = text};\n  P.voff = P.module ? frame->regs.rip - frame->called | frame->regs.rip - 0 * frame->called), .p = text};\n  P.voff = P.module ? frame->regs.rip - 0 * frame->called
+eval | dbg/eval.c | l->scope = scope->inline_site ? 0 : scope->parent; | l->scope = 0;
+eval | dbg/eval.c | l->scope = scope->inline_site ? 0 : scope->parent; | l->scope = scope->parent;
 eval | dbg/eval.c | return a.n == n && !memcmp(a.p, text, n); | return a.n >= n && !memcmp(a.p, text, n);
 eval | dbg/eval.c | y->location, P->voff, P->frame) | y->location, 0, P->frame)
 eval | dbg/eval.c | return (const RdiSymbol *)locals.p + l->i++; | return l->i++, (const RdiSymbol *)locals.p;
@@ -1042,8 +1043,7 @@ eval | dbg/view.c | *shown = w.n;\n  return w.at; | *shown = w.n;\n  return w.n;
 eval | dbg/eval.c | for (; l->scope && l->hops < 256; l->hops += 1, l->i = 0) { | for (; l->scope && l->hops < 256; l->hops += 1) {
 eval | dbg/eval.c | for (; l->scope && l->hops < 256; l->hops += 1, l->i = 0) { | for (; l->scope && l->hops < 1; l->hops += 1, l->i = 0) {
 eval | dbg/eval.c | n += i == n; | n += 1;
-eval | dbg/eval.c | Locals l = {P.module ? rdi_vmap(&P.module->rdi, RDI_SCOPE_VMAP, P.voff) : 0, 0, 0};\n  uint32_t n = 0; | Locals l = {P.module ? rdi_vmap(&P.module->rdi, RDI_SCOPE_VMAP, P.voff + 1) : 0, 0, 0};\n  uint32_t n = 0;
-eval | dbg/eval.c | Parse P = {.e = e, .frame = frame};\n  v = load(&P, v); | Parse P = {.e = e, .frame = frame, .dead = 1};\n  v = load(&P, v);
+eval | dbg/eval.c | Parse P = {.e = e, .frame = &frame->regs};\n  v = load(&P, v); | Parse P = {.e = e, .frame = &frame->regs, .dead = 1};\n  v = load(&P, v);
 # the frame's registers by name (dbg/eval.c); the stack (view_stack in dbg/view.c)
 test | dbg/eval.c | {"rax", "rcx", "rdx", "rbx", | {"rax", "rdx", "rcx", "rbx",
 test | dbg/eval.c | "r14", "r15", "rip", "rflags"}; | "r14", "r15", "rflags", "rip"};
@@ -1054,11 +1054,19 @@ test | dbg/eval.c | i} : value(U64, i == 16 ? P->frame->rip : P->frame->rflags),
 test | dbg/eval.c | if (same(id, registers[i], strlen(registers[i]))) return *v = | if (!memcmp(id.p, registers[i], strlen(registers[i]))) return *v =
 eval | dbg/view.c | for (bool called = false; n < most; called = true) { | for (bool called = false; n < most;) {
 eval | dbg/view.c | uint64_t voff = m ? regs.rip - called - m->image.base : 0;\n    uint32_t innermost | uint64_t voff = m ? regs.rip - m->image.base : 0;\n    uint32_t innermost
-eval | dbg/view.c | if (inlined) frames[n++] = (ViewFrame){regs, called, m, rdi_str(r, site->name), | frames[n++] = (ViewFrame){regs, called, m, rdi_str(r, site->name),
-eval | dbg/view.c | if (inlined) frames[n++] = (ViewFrame){regs, called, m, rdi_str(r, site->name), | if (false) frames[n++] = (ViewFrame){regs, called, m, rdi_str(r, site->name),
+eval | dbg/view.c | if (i) frames[n++] = (ViewFrame){{regs, called, inlined++}, | frames[n++] = (ViewFrame){{regs, called, inlined++},
+eval | dbg/view.c | if (i) frames[n++] = (ViewFrame){{regs, called, inlined++}, | if (false) frames[n++] = (ViewFrame){{regs, called, inlined++},
 eval | dbg/view.c | rdi_row_in(r, site->line_table, voff).line}; | rdi_row(r, voff).line};
 eval | dbg/view.c | hops += 1, s = rdi_at(r, RDI_SCOPES, RdiScope, s)->parent) { | hops += 1, s = 0) {
 eval | dbg/view.c | rdi_at(r, RDI_SCOPES, RdiScope, innermost)->proc)->name) : (RdiSpan){0}, m ? rdi_row(r, voff).line : (RdiLine){0}}; | rdi_at(r, RDI_SCOPES, RdiScope, innermost)->proc)->name) : (RdiSpan){0}, (RdiLine){0}};
 eval | dbg/view.c | if (!unwind_step(target_read, e->target, m ? &m->image : NULL, &regs) \p\p !regs.rip) break; | if (!unwind_step(target_read, e->target, m ? &m->image : NULL, &regs)) break;
 eval | dbg/view.c | if (!unwind_step(target_read, e->target, m ? &m->image : NULL, &regs) \p\p !regs.rip) break; | if (!unwind_step(target_read, e->target, NULL, &regs) \p\p !regs.rip) break;
-eval | dbg/view.c | frames[n++] = (ViewFrame){regs, called, m, m ? rdi_str( | frames[n++] = (ViewFrame){regs, false, m, m ? rdi_str(
+eval | dbg/view.c | frames[n++] = (ViewFrame){{regs, called, inlined}, m, m ? rdi_str( | frames[n++] = (ViewFrame){{regs, false, inlined}, m, m ? rdi_str(
+eval | dbg/view.c | if (i) frames[n++] = (ViewFrame){{regs, called, inlined++}, | if (i) frames[n++] = (ViewFrame){{regs, called, inlined},
+eval | dbg/view.c | frames[n++] = (ViewFrame){{regs, called, inlined}, m, m ? rdi_str( | frames[n++] = (ViewFrame){{regs, called, 0}, m, m ? rdi_str(
+eval | dbg/eval.c | for (uint32_t inside = frame->inlined, hops = 0; | for (uint32_t inside = 0, hops = 0;
+test | dbg/eval.c | inside -= scope->inline_site != 0, P.scope = scope->parent; | inside -= 1, P.scope = scope->parent;
+eval | dbg/eval.c | inside -= scope->inline_site != 0, P.scope = scope->parent; | inside -= scope->inline_site != 0;
+eval | dbg/eval.c | P.scope = P.module ? rdi_vmap(&P.module->rdi, RDI_SCOPE_VMAP, P.voff) : 0; | P.scope = P.module ? rdi_vmap(&P.module->rdi, RDI_SCOPE_VMAP, P.voff + 1) : 0;
+fuzz | dbg/eval.c | inside && P.scope && hops < 256; hops += 1) { | inside && hops < 256; hops += 1) {
+test | dbg/rdi.c | if (!n) return (RdiSpan){zero, 0};   /* a module without | /* a module without
