@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include "git.h"
 #include "k.h"
+#include "kitten.h"
 #include "tools.h"
 #include "uni.h"
 
@@ -88,7 +89,7 @@ static int next(int *k)
 {
 	/* check_end_reg_executing(): a read with none of the register's keys
 	   left in the typeahead ends its execution */
-	if (!tb.n) reg_executing = 0;
+	if (!tb.n) E->ks.executing = 0;
 	Queue *q = rb1.n ? &rb1 : rb2.n ? &rb2 : tb.n ? &tb : NULL;
 	if (!q) return 0;
 	*k = q->k[q->head++];
@@ -116,7 +117,7 @@ static void key(int k, int pending)
 /* only those whose targets exist; the SPC g and SPC h ones are git.h's */
 static const char *const maps[] = {
 	" ff", " fg", " fr", " ,", " e", " pv", "-",
-	" gg", " gs", " gl", " gL", " gd", " gb", " gB", " hs", " hr", " hS", " hu", " hp"
+	" gg", " gs", " gl", " gL", " gd", " gb", " gB", " hs", " hr", " hS", " hu", " hp", " uk"
 };
 static int lead[3], nlead;   /* the keys typed of a map not yet complete */
 
@@ -142,6 +143,7 @@ static int map(Editor *e, int k)
 		case ',': tools_pick(e, PICK_BUFFERS); break;
 		case 'e': tools_pick(e, PICK_EXPLORER); break;
 		case 'p': tools_oil(e, NULL); break;
+		case 'u': kitten_toggle(e); break;
 		default: git_leader(e, m[1], m[2]);
 		}
 		return 1;
@@ -174,7 +176,7 @@ void keys_feed(Editor *e, int k, int pending)
 	if (!sub_asking && ((E->mode != MODE_INSERT && E->mode != MODE_CMDLINE) || arrow_used)) undo_close(B->undo);
 	if (reg_recording) record_key(k);
 	key_stuffed = 0;
-	reg_executing = 0;   /* typed: the typeahead holds no register keys */
+	E->ks.executing = 0;   /* typed: the typeahead holds no register keys */
 	key(k, pending || rb1.n || rb2.n || tb.n);
 	while (next(&k)) key(k, pending || rb1.n || rb2.n || tb.n);
 	E->ks.visual = VIsual_active ? VIsual_mode : 0;
@@ -283,10 +285,10 @@ static void ex(void)
 		ex_sub(l1 > 0 ? l1 - 1 : 0, l2 > 0 ? l2 - 1 : 0, *p, p + k + strspn(p + k, " \t"));
 		return;
 	}
-	static const char *const cmds[] = { "", "w", "w!", "q", "q!", "wq", "wq!", "x", "Format" };
+	static const char *const cmds[] = { "", "w", "w!", "q", "q!", "wq", "wq!", "x", "Format", "KittenPaw" };
 	int i = 0;
-	while (i < 9 && strcmp(p, cmds[i])) i++;
-	if (i == 9) { core_msg(E, "E492: Not an editor command: %s", c); return; }
+	while (i < 10 && strcmp(p, cmds[i])) i++;
+	if (i == 10) { core_msg(E, "E492: Not an editor command: %s", c); return; }
 	if (n && i) { core_msg(E, "E481: No range allowed"); return; }
 	switch (i) {
 	case 0:   /* a range alone goes to its last line (do_one_cmd()) */
@@ -301,7 +303,8 @@ static void ex(void)
 	case 5: case 6: if (!ex_write(i == 6)) core_close(E, 0); break;
 	case 7: if (!core_modified(B) || !ex_write(0)) core_close(E, 0); break;
 	/* Davy's :Format (conform.nvim): the whole buffer */
-	default: if (is_sql()) sql_format(0, text_len(B->text));
+	case 8: if (is_sql()) sql_format(0, text_len(B->text)); break;
+	default: kitten_paw(E);
 	}
 }
 

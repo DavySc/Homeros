@@ -338,7 +338,7 @@ int op_yank(Oparg *oap)
 	set_clipboard(r, reg);
 	/* Davy's vim.highlight.on_yank(): '[ to '] for 150 ms, not while a
 	   register executes */
-	if (!reg_executing) {
+	if (!E->ks.executing) {
 		int t = reg->type == MLINE ? 'V' : reg->type == MBLOCK ? 22 : 'v';
 		E->ks.yank.type = t;
 		E->ks.yank.l1 = (size_t)b_op_start.lnum, E->ks.yank.c1 = (size_t)b_op_start.col;
@@ -1500,7 +1500,7 @@ void op_addsub(Oparg *oap, long Prenum1, int g_cmd)
 
 /* ---- recording and executing registers ---- */
 
-int reg_recording, reg_executing, reg_recorded;
+int reg_recording, reg_recorded;
 static int execreg_lastc;
 
 /* keys as register bytes: specials as Neovim's K_SPECIAL triples */
@@ -1562,7 +1562,7 @@ void ops_reset(void)
 	free(last_cmdline);
 	last_cmdline = NULL;
 	recordbuff.n = recordbuff_last = 0;
-	reg_recording = reg_executing = reg_recorded = execreg_lastc = 0;
+	reg_recording = reg_recorded = execreg_lastc = 0;
 }
 
 void record_key(int k)
@@ -1633,7 +1633,7 @@ int do_execreg(int regname)
 		bput(&b, "\r", 1);
 		stuff_bytes(b.s, b.n, 1, 0);
 		free(b.s);
-		reg_executing = regname;
+		E->ks.executing = regname;
 		return 1;
 	}
 	if (regname == '.') {
@@ -1641,7 +1641,7 @@ int do_execreg(int regname)
 		long n = last_insert_keys(&k);
 		if (n < 0) { core_msg(E, "E29: No inserted text yet"); return 0; }
 		typebuf_ins(k, n);
-		reg_executing = regname;
+		E->ks.executing = regname;
 		return 1;
 	}
 	Reg *reg = get_reg(regname, 0);
@@ -1651,7 +1651,7 @@ int do_execreg(int regname)
 	if (reg->type == MLINE) bput(&b, "\n", 1);
 	stuff_bytes(b.s ? b.s : "", b.n, 1, 0);
 	free(b.s);
-	reg_executing = regname == 0 ? '"' : regname;
+	E->ks.executing = regname == 0 ? '"' : regname;
 	return 1;
 }
 

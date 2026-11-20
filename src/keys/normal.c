@@ -951,7 +951,7 @@ static void nv_record(Cmdarg *cap)
 	if (cap->oap->op_type == OP_FORMAT) { cap->cmdchar = 'g'; cap->nchar = 'q'; nv_operator(cap); return; }
 	if (checkclearop(cap->oap)) return;
 	if (cap->nchar == ':' || cap->nchar == '/' || cap->nchar == '?') { beep(); return; }
-	if (!reg_executing && !do_record(cap->nchar)) clearopbeep(cap->oap);
+	if (!E->ks.executing && !do_record(cap->nchar)) clearopbeep(cap->oap);
 }
 
 static void nv_at(Cmdarg *cap)
@@ -1453,7 +1453,7 @@ static int run(void)
 	} else {
 		int fl = cmd_flags(c), pending_op = oa.op_type != OP_NOP;
 		int need = (fl & NCH) && (((fl & NCH_NOP) == NCH_NOP && !pending_op) || (fl & NCH_ALW) == NCH_ALW
-		                          || (c == 'q' && !pending_op && !reg_recording && !reg_executing)
+		                          || (c == 'q' && !pending_op && !reg_recording && !E->ks.executing)
 		                          || ((c == 'a' || c == 'i') && (pending_op || VIsual_active)));
 		if (need) {
 			GET(ca.nchar);

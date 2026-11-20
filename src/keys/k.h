@@ -165,7 +165,6 @@ extern int no_hlsearch;
 enum { K_PAT = KEY_DEL + 0x100 };   /* the command line of / or ? was entered (normal.c) */
 
 /* typeahead (keys.c) */
-extern int reg_executing;   /* executing a register's keys (@a) */
 void stuff(const int *k, long n);        /* stuffReadbuff(): readbuf1 */
 void stuff_redo(const int *k, long n);   /* readbuf2: "." and an insert's count */
 void stuff_str(const char *s, long n);
@@ -214,7 +213,7 @@ extern int searchc_inclusive;
 /* ops.c: the '[ and '] marks, registers, recording */
 extern Pos b_op_start, b_op_end, b_op_start_orig;
 extern Reg *put_override;
-extern int reg_recording, reg_executing, reg_recorded;
+extern int reg_recording, reg_recorded;
 int  swapchar(int op_type, Pos *pos);
 int  do_record(int c);
 int  do_execreg(int regname);

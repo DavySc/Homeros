@@ -45,6 +45,11 @@ int main(void)
 	CHECK(flash("\"ayy\"Ayiw", 'V', 0, 0, 0, 2));   /* the register's type: an append to a linewise one */
 	CHECK(flash("dd", 0, 0, 0, 0, 0) && flash("u\"_yy", 0, 0, 0, 0, 0));
 	CHECK(flash("qayiwq", 'v', 0, 0, 0, 2) && flash("@a", 0, 0, 0, 0, 0));
+	/* ks.executing is reg_executing(): set however the register runs, and
+	   inside a nested one (TextYankPost logged reg_executing() as a, a, a a,
+	   a, and b then a for these; measured once, 2026-11-20, nvim --headless) */
+	CHECK(flash("@@", 0, 0, 0, 0, 0) && flash("2@a", 0, 0, 0, 0, 0) && flash("Q", 0, 0, 0, 0, 0));
+	CHECK(flash("qbyy@aq", 'V', 0, 0, 0, M) && flash("@b", 0, 0, 0, 0, 0) && !e.ks.executing);
 	/* a block's columns are screen columns: the Tab's last, where the
 	   cursor stood ('virtualedit' block: "\x16" 2, '[ at coladd 7,
 	   measured once in nvim), and the a */

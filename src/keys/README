@@ -47,7 +47,7 @@ Not built (FEATURES.md section 2), part two of package 5:
 - after a t or f that fails, Neovim drops a following & (Neovim's map to
   :&&) typed ahead, where : or g& still run (measured, nvim --headless
   feedkeys, 1 run each; not understood yet); ours runs it.
-- ex commands beyond :w :w! :q :q! :wq :x, ranges, :<line> and :s: :g,
+- ex commands beyond :w :w! :q :q! :wq :x, :Format, :KittenPaw, ranges, :<line> and :s: :g,
   :norm, :d, :y, :e, :sp, :vs, :b; "|" between commands; the ":" motion
   (d:5, which beeps). Visual @ and Q need :norm.
 - :s (sub.c, Neovim's do_sub()): :s/pat/rep/ with the flags & c g e n r
@@ -196,7 +196,8 @@ Choices:
 - Davy's maps (FEATURES.md 4), Normal mode only, as nnoremap: SPC ff
   files, SPC fg grep, SPC fr registers, SPC , buffers, SPC e explorer
   (tools_pick), SPC pv and - oil (tools_oil), SPC g g s l L d b B and
-  SPC h s r S u p (git_leader).  They run in main.c's key chain
+  SPC h s r S u p (git_leader), SPC uk the save kitten on or off
+  (kitten_toggle; :KittenPaw plays it).  They run in main.c's key chain
   (keys_map()), not in keys_feed, so conform.py and the fuzzers, whose
   Neovim has no maps, check the Vim keys alone; test_keys_map checks the
   maps.  Like Neovim's maps they also follow a count or a register, which
