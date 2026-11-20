@@ -15,7 +15,6 @@
 #include "loop.h"
 #include "lsp.h"
 #include "shada.h"
-#include "snip.h"
 #include "syntax.h"
 #include "tools.h"
 
@@ -98,7 +97,7 @@ int main(int argc, char **argv)
 				grid_free(&shown);     /* the terminal was used meanwhile: redraw all */
 			} else {
 				running = 1;
-				if (e.ks.pending || (!tools_key(&e, k) && !git_key(&e, k) && !snip_key(&e, k, qn > 0))) keys_feed(&e, k, qn > 0);
+				keys_input(&e, k, qn > 0);
 				running = 0;
 				lsp_flush(e.buf->lsp);   /* one didChange per command (Helix) */
 				shada_track(&e);

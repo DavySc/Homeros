@@ -26,6 +26,11 @@ than a rule (measured; the generator avoids the first two):
   Neovim's expansion moves (it syncs undo; ins_need_undo then keeps
   Insstart_orig moving, hypothesis), so the two can delete different
   amounts, also after the snippet has ended: 0 to 3 cases in 500.
+- an undo after a jump and more typing: body '${1:a}\nx', keys q <Tab> e
+  <Esc> u: Neovim keeps the e, ours undoes it with the q.  Plain Neovim
+  does the same after any <Cmd> cursor move in Insert mode, no snippet
+  involved (reviews/pr-78-repro/cmd-undo.lua; measured in PR 78's review:
+  q <Tab> w <Tab> e <Esc> u u u <C-r> differs on 12 of Davy's 59 snippets).
 CTRL-W in Normal mode waits for a window command: both sides skip it."""
 import json, os, random, re, subprocess, sys, tempfile
 from concurrent.futures import ThreadPoolExecutor

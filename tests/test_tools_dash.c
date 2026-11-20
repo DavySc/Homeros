@@ -2,6 +2,7 @@
    from Neovim set up as Davy's): every row's text and colours and the
    cursor, at sizes from 30x10 to 200x60, either side of where the picture
    fits; then its keys. */
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include "check.h"
@@ -40,6 +41,22 @@ static void draw(void)
 {
 	core_draw(&e, &g);
 	tools_draw(&e, &g);
+}
+
+/* Is s on the grid, from some cell of some row? */
+static int on_grid(const char *s)
+{
+	for (int r = 0; r < g.rows; r++) {
+		char line[2048];
+		size_t k = 0;
+		for (int c = 0; c < g.cols && k + 4 < sizeof line; c++) {
+			const Cell *x = &g.c[r * g.cols + c];
+			memcpy(line + k, x->ch, x->len); k += x->len;
+		}
+		line[k] = 0;
+		if (strstr(line, s)) return 1;
+	}
+	return 0;
 }
 
 static void open_dash(void)
@@ -114,6 +131,29 @@ int main(void)
 	draw();
 	for (int i = 0; i < g.rows * g.cols; i++) CHECK(!(g.c[i].len == 1 && grid_text(&g.c[i])[0] == 'Q' && i % g.cols > 0));   /* no "Quit" */
 	CHECK(!tools_key(&e, 'q') && !e.quit);
+	/* each key opens its own picker (the title says which), Enter the
+	   selected item's; and a second window closes it */
+	static const struct { int key, down; const char *title; } pk[] = {
+		{ 'f', 0, " Files " }, { 'g', 0, " Grep " }, { 'r', 0, " Recent " },
+		{ KEY_ENTER, 0, " Files " }, { KEY_ENTER, 3, " Recent " },
+	};
+	setenv("XDG_DATA_HOME", "/tmp/homeros-dash-data", 1);   /* the frecency file */
+	for (size_t i = 0; i < sizeof pk / sizeof *pk; i++) {
+		core_free(&e);
+		CHECK(!core_open(&e, NULL));
+		open_dash();
+		for (int k = 0; k < pk[i].down; k++) CHECK(tools_key(&e, 'j'));
+		CHECK(tools_key(&e, pk[i].key));
+		draw();
+		CHECK(on_grid(pk[i].title) && !e.quit);
+		tools_key(&e, KEY_ESC); tools_key(&e, KEY_ESC);
+	}
+	core_free(&e);
+	CHECK(!core_open(&e, NULL));
+	open_dash();
+	CHECK(!core_split(&e, 0, 0));
+	draw();
+	CHECK(!on_grid("Find File") && !tools_key(&e, 'q'));
 	grid_free(&g);
 	core_free(&e);
 	return 0;
