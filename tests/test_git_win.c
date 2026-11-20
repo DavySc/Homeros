@@ -1,21 +1,20 @@
 /* src/git/win.c, the Windows half of package 17:
    1. git_real: an existing path comes back full, '/'-separated, its drive
-      letter upper case; a missing one fails.  (Its names as stored, from
-      GetFinalPathNameByHandleW, are Windows only: Wine returns them as
-      typed, measured 1 run.)
+      letter upper case, its names as stored (on Windows only: Wine returns
+      them as typed, measured 1 run); a missing one fails.
    2. The watch (Git.tla's Outside): a change in the work tree, a directory
       of it or .git counts; one under an ignored directory or in a nested repository's
       .git does not; one git_drain takes every change before it, not only
       the first batch (Git.tla ActsOnSeen: write.c's gate is one git_drain);
       a linked work tree's common directory outside the work tree is
       watched too; after git_unwatch nothing is seen.
-   3. git_trash: the file goes to the Recycle Bin, not away (under Wine the
-      bin is $XDG_DATA_HOME/Trash, which src/git/check.sh points here and
-      names in TEST_TRASH).
-   Runs on Windows or under Wine (src/git/check.sh); elsewhere it says so. */
+   3. git_trash: the file goes to the Recycle Bin, not away.
+   Runs on Windows (CI's windows job) or under Wine (src/git/check.sh);
+   elsewhere it says so. */
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <shellapi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -70,10 +69,17 @@ int main(void)
 	low[0] = (char)(low[0] | 0x20);
 	CHECK(!git_real(low, out));
 	CHECK(out[0] >= 'A' && out[0] <= 'Z' && out[1] == ':' && !strchr(out, '\\'));
-	CHECK(strlen(out) == strlen(top) && out[strlen(out) - 1] != '/');
+	/* the last name only: Windows may give the temporary directory by its
+	   short (8.3) name, which git_real makes long */
+	CHECK(out[strlen(out) - 1] != '/' && !strcmp(strrchr(out, '/') + 1, strrchr(top, '\\') + 1));
 	snprintf(top, sizeof top, "%s", out);
 	snprintf(low, sizeof low, "%s/missing", top);
 	CHECK(git_real(low, out));
+	if (!GetProcAddress(GetModuleHandleA("ntdll.dll"), "wine_get_version")) {
+		dir("MixedCase");
+		snprintf(low, sizeof low, "%s/mixedcase", top);
+		CHECK(!git_real(low, out) && !strcmp(out + strlen(top), "/MixedCase"));
+	}
 
 	/* 2: status listed build/ as ignored */
 	Repo *r = calloc(1, sizeof *r);
@@ -140,21 +146,18 @@ int main(void)
 	CHECK(seen(r, 5000));
 	git_unwatch(r);
 
-	/* 3 */
+	/* 3: the bin of the file's drive holds one more */
+	wchar_t drive[] = { (wchar_t)top[0], L':', L'\\', 0 };
+	SHQUERYRBINFO q0 = { 0 }, q1 = { 0 };
+	q0.cbSize = q1.cbSize = sizeof q0;
+	CHECK(SHQueryRecycleBinW(drive, &q0) == S_OK);
 	char victim[2 * MAX_PATH], name[64];
 	snprintf(name, sizeof name, "trash-%lu.txt", (unsigned long)GetCurrentProcessId());
 	put(name, "t\n");
 	snprintf(victim, sizeof victim, "%s/%s", top, name);
 	CHECK(!git_trash(victim));
 	CHECK(GetFileAttributesA(victim) == INVALID_FILE_ATTRIBUTES);
-	/* the bin's files directory, from src/git/check.sh (Wine keeps the
-	   XDG variables from Windows programs) */
-	const char *bin = getenv("TEST_TRASH");
-	CHECK(bin && *bin);
-	char kept[3 * MAX_PATH];
-	snprintf(kept, sizeof kept, "Z:%s/%s", bin, name);
-	for (char *p = kept; *p; p++) if (*p == '/') *p = '\\';
-	CHECK(GetFileAttributesA(kept) != INVALID_FILE_ATTRIBUTES);
+	CHECK(SHQueryRecycleBinW(drive, &q1) == S_OK && q1.i64NumItems == q0.i64NumItems + 1);
 	puts("test_git_win: paths full and '/'-separated; the watch sees the work tree, .git and a linked work tree's common directory but not ignored or nested repositories, one drain takes all, and it stops; the trash is the Recycle Bin");
 	return 0;
 }
