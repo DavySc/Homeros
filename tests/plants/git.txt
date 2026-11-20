@@ -56,3 +56,5 @@ git: the branch lookup attaches, doing I/O in the redraw path (git_signs)~test T
 git: the sign lookup attaches, doing I/O in the redraw path (git_signs)~test TESTS=git_signs~~src/git/keys.c~		Of *o = find(b);¶		scnr = b->nr;~		Of *o = of(b);¶		scnr = b->nr;
 git: attaching a buffer again keeps git_sign's cached signs (git_signs)~test TESTS=git_signs~~src/git/keys.c~	*o = (Of){ b->nr, NULL, NULL };¶	scnr = 0;~	*o = (Of){ b->nr, NULL, NULL };
 git: attaching a file before the first key drops the files attached before it (git_signs)~test TESTS=git_signs~~src/git/keys.c~	for (size_t i = 0; git_ed() && i < nofs; i++)~	for (size_t i = 0; i < nofs; i++)
+git: a file not made yet has no repository (branch check)~test TESTS=git_signs~~src/git/keys.c~	if (git_real(b->path, abs)) {~	if (git_real(b->path, abs)) { return;
+git: a Windows test that ends early with status 0 passes, as Wine reported a trap (check.sh last line)~win WIN=git~~tests/test_git_win.c~	puts("test_git_win: paths full~	ExitProcess(0);¶	puts("test_git_win: paths full

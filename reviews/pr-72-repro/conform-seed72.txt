@@ -1,0 +1,4 @@
+DIFF text="0x1f x̀́ 'c' \"a b\"\n\"a b\"\n\tx̀́ ა\n\n" keys=["])", "gI", "<Down>", "<Esc>", "gP", "\"", "A", "4", "J", "q", "W", "A", "ა", "<Left>", "<C-r>", ".", "^", "c", "<Esc>", "<CR>", "q", "gv", "<C-v>", "aB", "$", "<Esc>", "s", "(", "é", ",", "<Esc>", "T", "x", "a", ".", "y", "<C-t>", "  ", "<C-d>", "<Esc>", "3", "Q", "~"]
+  nvim  ['0x1f x̀́ \'c\' "a b"', '"a b" x̀́.y   აა^c(é,ა^Cა'] [2, 33]
+  ours  ['0x1f x̀́ \'c\' "a b"', '"a b" x̀́ .y  აა^c(é,ა^Cა'] [2, 33]
+2000 sequences (seed 72): 1 differ from Neovim (1 where Neovim wrote a split character), 3 more are known differences (tests/conform-known.json)
