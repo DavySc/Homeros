@@ -288,9 +288,8 @@ ask:
 answer:
 				if (has_new) show(0);
 				/* scrollup_clamp(), scrolldown_clamp(): only while the cursor
-				   stays 'scrolloff' lines inside the window (at the top the
-				   core's update after each key keeps it, PR 72) */
-				if (typed == 5 && (long)W->top + 1 < nlines()) W->top++;
+				   stays 'scrolloff' lines inside the window */
+				if (typed == 5 && (long)W->top + 1 < nlines() && (long)(W->line - W->top) - 1 >= SCROLLOFF) W->top++;
 				if (typed == 25 && W->top && (long)(W->line - W->top) + 1 < W->h - SCROLLOFF) W->top--;
 				if (!has("ynalq", typed) && typed != KEY_ESC && typed != KEY_CTRL_C) goto ask;
 				sub_asking = 0;
