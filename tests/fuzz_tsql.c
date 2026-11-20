@@ -1,10 +1,10 @@
-/* libFuzzer: T-SQL's and JSON's colours (src/syntax/tsql.c) on text, edits
-   and windows decoded from the input, raw bytes included, so every lexing
-   path meets every byte, and runs of spaces in 1 KB steps, so the text
-   passes the 4,096 bytes between kept token starts.  Each T-SQL token
-   advances and ends inside the text (a JSON one that did not would hang
-   syntax_update, the fuzzer's timeout), and a window read through the
-   kept token starts equals a fresh read from 0. */
+/* libFuzzer: T-SQL's, JSON's and Soufflé's colours (src/syntax/tsql.c) on
+   text, edits and windows decoded from the input, raw bytes included, so
+   every lexing path meets every byte, and runs of spaces in 1 KB steps, so
+   the text passes the 4,096 bytes between kept token starts.  Each T-SQL
+   token advances and ends inside the text (a JSON or Soufflé one that did
+   not would hang syntax_update, the fuzzer's timeout), and a window read
+   through the kept token starts equals a fresh read from 0. */
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,10 +12,10 @@
 #include "text.h"
 #include "tsql.h"
 
-static const char *const tok[40] = {
+static const char *const tok[48] = {
 	"'", "N'", "\"", "[", "]", "/*", "*/", "--", "\n", "<", ">", "=", "@@ERROR", "LEFT(", "sys.", "x ",
 	"1", "0x", "e", "E", "+", "-", ".", "as", "f", "9", " ", "|", "*", "N", "@", "#",
-	"\\", ":", "{", "}", "//", "true", "null", ",",
+	"\\", ":", "{", "}", "//", "true", "null", ",", ".decl ", ":-", "->", "count", "number", "_", "?", "u",
 };
 static const uint8_t *d;
 static size_t n, at;
@@ -27,13 +27,12 @@ static int stop(void) { return byte() & 1; }
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
 	d = data, n = size, at = 0;
-	int json = byte() & 1;
-	const char *path = json ? "f.json" : "f.sql";
+	const char *path = (const char *const[]){ "f.sql", "f.json", "f.dl" }[byte() % 3];
 	static char b[MAX];
 	size_t bn = 0;
 	for (unsigned k = byte() % 64; k--; ) {
 		unsigned c = byte();
-		const char *s = c < 128 ? tok[c % 40] : (const char *)&d[at - 1];
+		const char *s = c < 128 ? tok[c % 48] : (const char *)&d[at - 1];
 		size_t l = c < 128 ? strlen(s) : 1;
 		if (bn + l < sizeof b) memcpy(b + bn, s, l), bn += l;
 	}
@@ -68,7 +67,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 			size_t pos = byte() * len / 256, del = byte() % 8;
 			if (del > len - pos) del = len - pos;
 			unsigned c = byte();
-			const char *ins = c < 128 ? tok[c % 40] : (const char *)&d[at - 1];
+			const char *ins = c < 128 ? tok[c % 48] : (const char *)&d[at - 1];
 			size_t il = c < 128 ? strlen(ins) : 1;
 			static char sp[4096];
 			if (c == 127) ins = memset(sp, ' ', sizeof sp), il = (byte() % 4 + 1) << 10;

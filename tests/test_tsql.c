@@ -2,7 +2,8 @@
    every byte, one per SSMS rule tsql.c copies (the categories are SSMS's;
    which words fall in which is checked against SSMS only for the words of
    ssms-check.sql); tsql_token's kinds where SQL Server's lexing is
-   subtle; then random texts and edits, T-SQL and JSON, where the
+   subtle; Soufflé's lines; then random texts and edits, T-SQL, JSON and
+   Soufflé, where the
    faces read through the kept token starts, in any order and window, must
    equal a fresh read from byte 0. */
 #include <string.h>
@@ -13,21 +14,26 @@
 #include "tsql.h"
 
 /* K keyword, S string, C comment, F system function, T system table, view
-   or schema, P stored procedure, N number, o operator, . plain */
+   or schema, P stored procedure, N number, o operator, . plain; Soufflé's
+   M modifier, Y type, w keyword operator, B boolean, L constant, V
+   directive, E escape, D delimiter, R bracket */
 static char code(unsigned char f)
 {
 	return f == FACE_KEYWORD ? 'K' : f == FACE_STRING ? 'S' : f == FACE_COMMENT ? 'C'
 	     : f == FACE_FUNCTION_BUILTIN ? 'F' : f == FACE_MODULE_BUILTIN ? 'T' : f == FACE_FUNCTION ? 'P'
-	     : f == FACE_NUMBER ? 'N' : f == FACE_OPERATOR ? 'o' : f == FACE_NONE ? '.' : '?';
+	     : f == FACE_NUMBER ? 'N' : f == FACE_OPERATOR ? 'o' : f == FACE_NONE ? '.'
+	     : f == FACE_KEYWORD_MODIFIER ? 'M' : f == FACE_TYPE ? 'Y' : f == FACE_KEYWORD_OPERATOR ? 'w'
+	     : f == FACE_BOOLEAN ? 'B' : f == FACE_CONSTANT_BUILTIN ? 'L' : f == FACE_KEYWORD_DIRECTIVE ? 'V'
+	     : f == FACE_STRING_ESCAPE ? 'E' : f == FACE_PUNCTUATION_DELIMITER ? 'D' : f == FACE_PUNCTUATION_BRACKET ? 'R' : '?';
 }
 
-static void faces_of(const char *src, char *out)
+static void faces_of(const char *path, const char *src, char *out)
 {
 	size_t n = strlen(src);
 	static unsigned char f[256];
 	Text *t = text_new(src, n);
 	CHECK(t);
-	Syntax *s = syntax_open("x.sql", t);
+	Syntax *s = syntax_open(path, t);
 	CHECK(s);
 	syntax_faces(s, 0, n, f);
 	for (size_t i = 0; i < n; i++) out[i] = code(f[i]);
@@ -94,6 +100,26 @@ static const char *const lines[][2] = {
 	{ "CROSS APPLY OPENJSON(N'[1]') j", "ooooo.ooooo.KKKKKKKKoSSSSSSo.." },
 	{ "GROUP BY a.id", "KKKKK.KK....." },
 	{ "OPTION (RECOMPILE);", "KKKKKK.oKKKKKKKKKoo" },
+	/* CONCAT_WS as CONCAT (Davy, 2026-11-19), and the other newer built-ins */
+	{ "SELECT CONCAT(a), CONCAT_WS(',', a), DATEDIFF_BIG(day, a, b)", "KKKKKK.FFFFFFo.oo.FFFFFFFFFoSSSo..oo.FFFFFFFFFFFFoFFFo..o..o" },
+};
+
+/* Soufflé's, by scanner.ll's tokens (hypothesis: the faces, which no
+   reference editor gives); a dot before a directive's word is the
+   directive's, wherever it is */
+static const char *const dlines[][2] = {
+	{ ".decl edge(x:number, y:symbol)", "KKKKK.PPPPR.DYYYYYYD..DYYYYYYR" },
+	{ ".output path // done", "KKKKKKK......CCCCCCC" },
+	{ "path(x, y) :- edge(x, z), !path(z, \"a\\\"b\").", "PPPPR.D..R.oo.PPPPR.D..RD.oPPPPR.D.SSEESSRD" },
+	{ ".decl r(a:unsigned) eqrel btree output brie", "KKKKK.PR.DYYYYYYYYR.MMMMM.MMMMM.MMMMMM.MMMM" },
+	{ "n(c) :- c = count : { e(_, _) }, c >= 0x1F, c != 1.5, 10.0.0.1 < 7u.", "PR.R.oo...o.FFFFF.D.R.PR.D..R.RD...oo.NNNND...oo.NNND.NNNNNNNN.o.NND" },
+	{ "x = cat(to_string(a), \"s\") band 3 bshru 1 as number", "..o.FFFRFFFFFFFFFR.RD.SSSR.wwww.N.wwwww.N.ww.YYYYYY" },
+	{ "#include \"base.dl\"\n.type T <: symbol | Count", "VVVVVVVVVVVVVVVVVV.KKKKK...oo.YYYYYY.o......" },
+	{ "/* a\n b */ true false nil __LINE__ type -> .x x.decl", "CCCCCCCCCC.BBBB.BBBBB.LLL.LLLLLLLL......oo.D...KKKKK" },
+	{ ".comp C<X> { .init c = C<number> }", "KKKKK..o.o.R.KKKKK...o..oYYYYYYo.R" },
+	/* a relation's paren may follow spaces; a string spans lines */
+	{ "a (b) :- c\t(d).", "P.R.R.oo.P.R.RD" },
+	{ "\"a\nb\" x", "SSSSS.." },
 };
 
 /* tsql_token's kinds and ends */
@@ -139,18 +165,23 @@ static const char *const snip[] = {
 }, *const jsnip[] = {
 	"\n", " ", "\"", "\\", "\\\"", "{", "}", "[", "]", ",", ":", "//", "/*", "*/", "-", "1", "2.5", "e", "E",
 	"true", "null", "fals", "\"key\": ", "x", "\xc3\xa9", "0",
+}, *const dsnip[] = {
+	"\n", " ", ".", "decl", ".decl ", ".output ", "output", "(", ")", ",", ":-", ":", "-", ">", "<", "=", "!",
+	"\"", "\\", "\\\"", "//", "/*", "*/", "#", "#include \"x\"\n", "1", "0x1F", "1.5", "u", "edge", "count",
+	"number", "x", "_", "?y", "@", "[", "]", "{", "}", ";", "e", "\xc3\xa9",
 };
-enum { NSNIP = sizeof snip / sizeof *snip, NJSNIP = sizeof jsnip / sizeof *jsnip, MAXT = 1 << 17 };
-/* the random texts' language: a third are JSON, on the same index */
-static int json;
-#define PATH (json ? "x.json" : "x.sql")
+enum { MAXT = 1 << 17 };
+/* the random texts' language, as tsql_new's: half T-SQL, a quarter JSON
+   and a quarter Soufflé, on the same index */
+static int lang;
+#define PATH ((const char *const[]){ "x.sql", "x.json", "x.dl" }[lang])
 
 /* snippets into b until want bytes, and never past cap */
 static size_t gen(char *b, size_t want, size_t cap)
 {
 	size_t n = 0;
 	while (n < want) {
-		const char *s = json ? jsnip[rnd(NJSNIP)] : snip[rnd(NSNIP)];
+		const char *s = lang == 2 ? dsnip[rnd(sizeof dsnip / sizeof *dsnip)] : lang ? jsnip[rnd(sizeof jsnip / sizeof *jsnip)] : snip[rnd(sizeof snip / sizeof *snip)];
 		size_t l = strlen(s);
 		if (n + l > cap) break;
 		memcpy(b + n, s, l);
@@ -203,9 +234,14 @@ int main(void)
 {
 	char got[256];
 	for (size_t i = 0; i < sizeof lines / sizeof *lines; i++) {
-		faces_of(lines[i][0], got);
+		faces_of("x.sql", lines[i][0], got);
 		if (strcmp(got, lines[i][1])) fprintf(stderr, "%s\nwant %s\ngot  %s\n", lines[i][0], lines[i][1], got);
 		CHECK(!strcmp(got, lines[i][1]));
+	}
+	for (size_t i = 0; i < sizeof dlines / sizeof *dlines; i++) {
+		faces_of("x.dl", dlines[i][0], got);
+		if (strcmp(got, dlines[i][1])) fprintf(stderr, "%s\nwant %s\ngot  %s\n", dlines[i][0], dlines[i][1], got);
+		CHECK(!strcmp(got, dlines[i][1]));
 	}
 	for (size_t i = 0; i < sizeof toks / sizeof *toks; i++) {
 		Text *t = text_new(toks[i].src, strlen(toks[i].src));
@@ -231,7 +267,7 @@ int main(void)
 	CHECK(tsql_word("selectx", 7, &id) == 0 && id == 0 && tsql_word("@@rowcount", 10, NULL) == TQ_FUNCTION);
 	/* a formatter's word: known, with no class, so plain */
 	CHECK(tsql_word("LIMIT", 5, &id) == 0 && id);
-	faces_of("LIMIT 1 OFFSET 2", got);
+	faces_of("x.sql", "LIMIT 1 OFFSET 2", got);
 	CHECK(!strcmp(got, "......N........N"));
 	/* whether a token ran to the end unclosed */
 	static const struct { const char *src; int open; } opens[] = {
@@ -250,10 +286,10 @@ int main(void)
 	   fresh read, wherever the windows are asked and the index grows */
 	static char b[MAXT];
 	static unsigned char f[MAXT], g[MAXT];
-	unsigned cases = 600, steps = 0, windows = 0;
+	unsigned cases = 800, steps = 0, windows = 0;
 	size_t bytes = 0;
 	for (unsigned c = 0; c < cases; c++) {
-		json = c % 3 == 2;
+		lang = c % 4 == 3 ? 2 : c % 4 == 2;
 		size_t n = rnd(4) ? rnd(600) : rnd(MAXT / 2 - 64);
 		n = gen(b, n, MAXT);
 		Text *t = text_new(b, n);
@@ -311,7 +347,7 @@ int main(void)
 		syntax_free(s);
 		text_free(t);
 	}
-	printf("test_tsql: %zu lines, %zu tokens, %u random texts (a third JSON), %u edits, %u windows (%zu bytes) equal to fresh reads\n",
-	       sizeof lines / sizeof *lines, sizeof toks / sizeof *toks, cases, steps, windows, bytes);
+	printf("test_tsql: %zu lines, %zu Soufflé lines, %zu tokens, %u random texts (a quarter JSON, a quarter Soufflé), %u edits, %u windows (%zu bytes) equal to fresh reads\n",
+	       sizeof lines / sizeof *lines, sizeof dlines / sizeof *dlines, sizeof toks / sizeof *toks, cases, steps, windows, bytes);
 	return 0;
 }
