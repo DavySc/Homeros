@@ -1,15 +1,16 @@
 /* Vim's patterns, as Neovim 0.12 reads them (regexp.c peekchr(), the magic
    levels \v \m \M \V) and matches them, over the buffer's lines so \n and
    \_x cross line ends (vim_regexec_multi()).  A pattern is compiled to
-   nodes, each naming the node after it.  A node that can match in more than
-   one way recurses for the rest, so a failure backtracks, as Neovim's
-   backtracking engine (regexp_bt.c) does; a multi on one character loops
-   instead (regrepeat()), so ".*" on a long line does not recurse per
-   character.  Neovim picks its NFA engine for most patterns; both give the
-   same matches, which tests/test_keys_regex.c checks against nvim. */
+   nodes, each naming the node after it, and matched by backtracking, as
+   Neovim's backtracking engine (regexp_bt.c) does, its stack on the heap;
+   a multi on one character loops (regrepeat()).  Neovim picks its NFA
+   engine for most patterns; the two give the same matches but for \@> and
+   a \_[] collection under :s g (src/keys/README), where ours is the
+   backtracking one's.  tests/test_keys_regex.c checks against nvim. */
 #include <limits.h>
 #include <stdio.h>
 #include "k.h"
+#include "loop.h"
 #include "uni.h"
 
 enum { END, NOTHING, CHAR, ANY, SET, CLASS, BOL, EOL, BOW, EOW, BOF, EOFILE, NEWLINE,
@@ -130,6 +131,12 @@ static long digits(const char **s, int base, int max)
 	return i ? v : -1;
 }
 
+/* the digits after d o x u U: their base and how many at most (o: omax) */
+static long code(const char **s, int k, int omax)
+{
+	return digits(s, k == 'd' ? 10 : k == 'o' ? 8 : 16, k == 'x' ? 2 : k == 'u' ? 4 : k == 'U' ? 8 : k == 'o' ? omax : 10);
+}
+
 /* ---- compiling (reg(), regbranch(), regpiece(), regatom()) ---- */
 
 typedef struct { int first, last; } Frag;
@@ -193,9 +200,8 @@ static int collection(int *neg, int *nl)
 			int endc = cpat(p);
 			p += cplen(p);
 			if (endc == '\\' && strchr("doxuU", *p)) {
-				int b = *p == 'd' ? 10 : *p == 'o' ? 8 : 16;
 				const char *q = p + 1;
-				long v = digits(&q, b, *p == 'x' ? 2 : *p == 'u' ? 4 : *p == 'U' ? 8 : *p == 'o' ? 4 : 10);
+				long v = code(&q, *p, 4);
 				if (v >= 0) endc = (int)v, p = q;
 			}
 			if (startc > endc) { err = "E944: Reverse range in character class"; return 0; }
@@ -207,7 +213,7 @@ static int collection(int *neg, int *nl)
 			if (d == 'n') { *nl = 1; startc = -1; continue; }
 			if (strchr("doxuU", d)) {
 				const char *q = p;
-				long v = digits(&q, d == 'd' ? 10 : d == 'o' ? 8 : 16, d == 'x' ? 2 : d == 'u' ? 4 : d == 'U' ? 8 : d == 'o' ? 4 : 10);
+				long v = code(&q, d, 4);
 				startc = v < 0 ? d : (int)v;   /* coll_get_char(): no digits is the letter */
 				if (v >= 0) p = q;
 				if (v < 0) { range('\\', '\\'); }
@@ -238,32 +244,17 @@ static Frag atom(int *simple)
 	case MAGIC + '>': return one_node(EOW, 0);
 	case MAGIC + 'n': return one_node(NEWLINE, 0);
 	case MAGIC + '.': *simple = 1; return one_node(ANY, 0);
-	case MAGIC + '_': {
+	case MAGIC + '_':
 		at = rp;
 		c = get();
 		if (c > MAGIC) c -= MAGIC;   /* no_Magic() */
-		Frag f;
 		if (c == '^') return one_node(BOL, 0);
 		if (c == '$') return one_node(EOL, 0);
-		if (c == '.') f = one_node(ANY, 0);
-		else if (c == '[') {
-			rp = at + (*at == '\\');
-			a = nrng;
-			if (!collection(&neg, &nl)) {   /* no "]": "[" is a character */
-				if (err) return NONE_;
-				nrng = a;
-				skip();
-				c = '[';
-				break;
-			}
-			skip();
-			f = one_node(SET, a);
-			prog[f.first].b = nrng, prog[f.first].neg = neg;
-		} else if (isclassletter(c)) f = one_node(CLASS, c);
-		else { err = fmt("E877: (NFA regexp) Invalid character class: %d", c); return NONE_; }
-		prog[f.first].nl = 1;
+		if (c == '[') { nl = 1; goto collection; }
+		if (c != '.' && !isclassletter(c)) { err = fmt("E877: (NFA regexp) Invalid character class: %d", c); return NONE_; }
+		Frag f = one_node(c == '.' ? ANY : CLASS, c);
+		prog[f.first].nl = *simple = 1;
 		return f;
-	}
 	case MAGIC + '(': {
 		if (nparens >= 9) { err = "E872: (NFA regexp) Too many '('"; return NONE_; }
 		int g = ++nparens, o = node(OPEN);
@@ -282,7 +273,7 @@ static Frag atom(int *simple)
 		if (c == '^' || c == MAGIC + '^') return one_node(BOF, 0);
 		if (c == '$' || c == MAGIC + '$') return one_node(EOFILE, 0);
 		if (c && strchr("doxuU", c)) {
-			long v = digits(&rp, c == 'd' ? 10 : c == 'o' ? 8 : 16, c == 'x' ? 2 : c == 'u' ? 4 : c == 'U' ? 8 : 10);
+			long v = code(&rp, c, 10);
 			curchr = -1;
 			if (v < 0) { err = "E678: Invalid character after \\%[dxouU]"; return NONE_; }
 			*simple = 1;
@@ -300,13 +291,14 @@ static Frag atom(int *simple)
 		err = fmt("E867: (NFA) Unknown operator '\\z%c'", c > MAGIC ? c - MAGIC : c);
 		return NONE_;
 	case MAGIC + '[':
+	collection:
 		rp = at + (*at == '\\');
 		a = nrng;
 		if (collection(&neg, &nl)) {
 			skip();
-			Frag f = one_node(SET, a);
+			f = one_node(SET, a);
 			prog[f.first].b = nrng, prog[f.first].neg = neg, prog[f.first].nl = nl;
-			*simple = !nl;
+			*simple = 1;
 			return f;
 		}
 		if (err) return NONE_;
@@ -442,7 +434,7 @@ static Frag alts(int paren)
 	}
 }
 
-static int start;
+static int start, lit;   /* the first node; the character every match starts with (regstart), or -1 */
 
 /* skip_regexp_ex(): where the pattern at p ends, at delim or the NUL; with
    delim '?' each "\\?" in it becomes "?".  *all: \\v was the last of \\v \\V */
@@ -484,7 +476,14 @@ int re_compile(const char *pat, int icase, const char **msg)
 	ic = icase ? 2 : 0;   /* 2: from the option, which \C turns off */
 	int e = node(END);
 	Frag f = alts(0);
-	if (!err) prog[f.last].next = e, start = f.first;
+	if (!err) {
+		prog[f.last].next = e, start = f.first;
+		int n = start;
+		while (prog[n].op == OPEN || prog[n].op == ZS || prog[n].op == ZE || prog[n].op == NOTHING
+		       || prog[n].op == BOL || prog[n].op == BOW || prog[n].op == BOF || (prog[n].op == LOOK && prog[n].b != '>'))
+			n = prog[n].next;   /* the nodes that take no text */
+		lit = prog[n].op == CHAR && prog[n].a < 0x80 ? prog[n].a : -1;
+	}
 	ic = ic != 0;
 	*msg = err;
 	if (!err && strlen(pat) < sizeof last) strcpy(last, pat), last_ic = !!icase;
@@ -499,14 +498,61 @@ int re_hasnl(void)
 
 /* ---- matching (regmatch(), regrepeat()) ---- */
 
+/* The backtracking is on heap stacks, as regexp_bt.c's regstack, so its
+   depth is the text's and not the C stack's: a choice point (bt) says
+   where to go on when what follows it fails, and every write to a match
+   variable is logged (trail) so that going back undoes it.  Only a
+   look-around runs its body as a nested match: depth by the pattern. */
 static Pos gs[10], ge[10], zs, ze, mend, lookend;
 static int look;          /* the innermost look-around's kind: \zs in one, \ze but in \@=, do nothing */
 static Pos behind;        /* where a \@<= body must end (BHPOS), coladd 1 while in one */
-static int *cnt;          /* passes made of each REP */
-static Pos *ist;          /* where each REP's current pass started */
-static long *stack, nstack, capstack;   /* positions of the simple REPs */
-static long steps;
+static Pos *ist;          /* each REP's current pass: where it started, and coladd the passes made */
+enum { B_BRANCH, B_GREEDY, B_LAZY, B_NEXT, B_BODY };
+typedef struct { int kind, n; long l, c, k, base, trail; } Bt;
+typedef struct { Pos *p, v; } Tr;
+static Bt *bt;
+static Tr *tr;
+static Pos *pos;          /* where each step of a greedy one-character repeat ended */
+static long nbt, ntr, npos, capbt, captr, cappos, steps;
+long long re_deadline;    /* loop_now() past which a match gives up; 0: none */
 enum { MAXSTEPS = 20000000 };
+
+/* grows a stack to hold one more; 0 when out of memory */
+static int room(void **a, long n, long *cap, size_t size)
+{
+	if (n < *cap) return 1;
+	void *p = realloc(*a, size * (size_t)(*cap ? *cap * 2 : 256));
+	if (!p) return 0;
+	*a = p, *cap = *cap ? *cap * 2 : 256;
+	return 1;
+}
+
+static int set(Pos *p, Pos v)
+{
+	if (!room((void **)&tr, ntr, &captr, sizeof *tr)) return 0;
+	tr[ntr++] = (Tr){ p, *p };
+	*p = v;
+	return 1;
+}
+
+static void unwind(long to)
+{
+	while (ntr > to) ntr--, *tr[ntr].p = tr[ntr].v;
+}
+
+static int choice(int kind, int n, long l, long c, long k, long base)
+{
+	if (!room((void **)&bt, nbt, &capbt, sizeof *bt)) return 0;
+	bt[nbt++] = (Bt){ kind, n, l, c, k, base, ntr };
+	return 1;
+}
+
+static int gave_up(void)
+{
+	if (++steps > MAXSTEPS) return 1;
+	if (re_deadline && !(steps & 1023) && loop_now() > re_deadline) steps = MAXSTEPS + 1;
+	return steps > MAXSTEPS;
+}
 
 static int fold(int c) { return ic ? map_case(c, 0) : c; }
 static int isdigit_(int c) { return c >= '0' && c <= '9'; }
@@ -592,6 +638,9 @@ static int chr(long l, long c, long *len)
 	const unsigned char *s = (const unsigned char *)ml_get(l);
 	size_t n = (size_t)ml_len(l);
 	if (c >= (long)n) { *len = 0; return 0; }
+	/* an ASCII character before another is a cluster of its own (no Extend,
+	   ZWJ or SpacingMark is ASCII, and a line holds no LF after a CR) */
+	if (s[c] < 0x80 && (c + 1 == (long)n || s[c + 1] < 0x80)) { *len = 1; return s[c]; }
 	*len = (long)uni_glen(s, n, (size_t)c);
 	return (int)uni_cp(s, n, (size_t)c);
 }
@@ -607,7 +656,7 @@ static long one(const Node *n, long l, long c, int rep)
 	/* a composing character after it in the text does not match;
 	   both engines' repeats take the character and leave it */
 	case CHAR: {
-		long cp = (long)uni_len((const unsigned char *)ml_get(l), (size_t)ml_len(l), (size_t)c);
+		long cp = len == 1 ? 1 : (long)uni_len((const unsigned char *)ml_get(l), (size_t)ml_len(l), (size_t)c);
 		return fold(ch) == fold(n->a) && (rep || cp == len) ? cp : -1;
 	}
 	case SET: return inset(n, ch) != n->neg ? len : -1;
@@ -629,181 +678,203 @@ static int cls_before(long l, long c)
 	return cls_of((int)uni_cp(s, n, uni_gprev(s, n, (size_t)c)));
 }
 
-static int push(long v)
+/* one step of a one-character node: past the character, or with \_ past
+   the line's end; 0 when it does not match */
+static int step(const Node *n, long *l, long *c, int rep)
 {
-	if (nstack == capstack) {
-		long *p = realloc(stack, sizeof *stack * (size_t)(capstack ? capstack * 2 : 256));
-		if (!p) return 0;
-		stack = p, capstack = capstack ? capstack * 2 : 256;
-	}
-	stack[nstack++] = v;
+	long len = one(n, *l, *c, rep);
+	if (len >= 0) *c += len;
+	else if (n->nl && *c >= ml_len(*l) && *l < nlines()) ++*l, *c = 0;
+	else return 0;
 	return 1;
 }
 
-static int m(int n, long l, long c);
-
-/* the REP r at (l, c) with cnt[r] passes made */
-static int rep(int r, long l, long c)
+/* the REP r at (l, c), its passes counted in ist[r].coladd: the node to go
+   on at, or -1 to backtrack (-2: out of memory) */
+static int rep(int r, long *l, long *c)
 {
 	Node *p = &prog[r];
-	long max = p->c < 0 ? LONG_MAX : p->c;
+	long max = p->c < 0 ? LONG_MAX : p->c, k = 0;
 	if (p->simple) {
-		const Node *b = &prog[p->a];
-		long k = 0, len, base = nstack;
-		int ok = 0;
 		if (p->lazy) {
-			for (;; c += len, k++) {
-				if (k >= p->b && m(p->next, l, c)) return 1;
-				if (k >= max || (len = one(b, l, c, 1)) < 0 || ++steps > MAXSTEPS) return 0;
-			}
+			for (; k < p->b; k++) if (gave_up() || !step(&prog[p->a], l, c, 1)) return -1;
+			return k < max && !choice(B_LAZY, r, *l, *c, k, 0) ? -2 : p->next;
 		}
 		/* regrepeat(): as many as match, then back off one at a time */
-		for (; k < max && (len = one(b, l, c, 1)) >= 0; k++, c += len)
-			if (!push(c)) return 0;
-		for (; k >= p->b && !ok; k--) {
-			ok = m(p->next, l, c);
-			if (k) c = stack[base + k - 1];
+		long base = npos;
+		for (;; k++) {
+			if (!room((void **)&pos, npos, &cappos, sizeof *pos)) return -2;
+			pos[npos++] = (Pos){ *l, *c, 0 };
+			if (k >= max || gave_up() || !step(&prog[p->a], l, c, 1)) break;
 		}
-		nstack = base;
-		return ok;
+		if (k < p->b) { npos = base; return -1; }
+		return choice(B_GREEDY, r, 0, 0, k, base) ? p->next : -2;
 	}
-	int k = cnt[r], ok = 0;
-	Pos o = ist[r];
-	int more = k < max;
-	if (k < p->b) ist[r] = (Pos){ l, c, 0 }, ok = m(p->a, l, c);
-	else if (!p->lazy) {
-		if (more) ist[r] = (Pos){ l, c, 0 }, ok = m(p->a, l, c);
-		ist[r] = o;
-		if (!ok) ok = m(p->next, l, c);
-	} else if (!(ok = m(p->next, l, c)) && more) ist[r] = (Pos){ l, c, 0 }, ok = m(p->a, l, c);
-	ist[r] = o;
-	return ok;
+	k = ist[r].coladd;
+	Pos at = { *l, *c, k };
+	if (k < p->b) return set(&ist[r], at) ? p->a : -2;
+	if (!p->lazy) {
+		if (k >= max) return p->next;
+		return choice(B_NEXT, p->next, *l, *c, 0, 0) && set(&ist[r], at) ? p->a : -2;
+	}
+	return k < max && !choice(B_BODY, r, *l, *c, 0, 0) ? -2 : p->next;
 }
 
+/* the pattern from node n at (l, c), to its END or LOOKEND: 1 when it
+   matches (its writes kept, its choices dropped: a look-around is
+   atomic), 0 when not (its writes undone); -1 out of memory */
 static int m(int n, long l, long c)
 {
-	for (; n >= 0; n = prog[n].next) {
-		if (++steps > MAXSTEPS) return 0;
+	long b0 = nbt, t0 = ntr, p0 = npos;
+	for (;;) {
+		if (n < 0) goto fail;
+		if (gave_up()) goto stop;
 		Node *p = &prog[n];
-		long len;
 		switch (p->op) {
-		case END: {
+		case END:
 			/* nfa_regmatch(): a match that ends before a composing
 			   character is none */
 			if (c && c < ml_len(l)) {
 				const unsigned char *t = (const unsigned char *)ml_get(l);
 				size_t h = uni_gprev(t, (size_t)ml_len(l), (size_t)c);
-				if (h + uni_glen(t, (size_t)ml_len(l), h) != (size_t)c) return 0;
+				if (h + uni_glen(t, (size_t)ml_len(l), h) != (size_t)c) goto fail;
 			}
 			mend = (Pos){ l, c, 0 };
+			nbt = b0, npos = p0;
 			return 1;
-		}
 		case LOOKEND:
-			if (behind.coladd && (behind.lnum != l || behind.col != c)) return 0;
+			if (behind.coladd && (behind.lnum != l || behind.col != c)) goto fail;
 			lookend = (Pos){ l, c, 0 };
+			nbt = b0, npos = p0;
 			return 1;
 		case NOTHING: break;
 		case ANY: case CHAR: case SET: case CLASS:
-			if ((len = one(p, l, c, 0)) >= 0) c += len;
-			else if (p->nl && c >= ml_len(l) && l < nlines()) l++, c = 0;
-			else return 0;
+			if (!step(p, &l, &c, 0)) goto fail;
 			break;
-		case BOL: if (c) return 0; break;
-		case EOL: if (c < ml_len(l)) return 0; break;
-		case BOF: if (l || c) return 0; break;
-		case EOFILE: if (l + 1 != nlines() || c < ml_len(l)) return 0; break;
+		case BOL: if (c) goto fail; break;
+		case EOL: if (c < ml_len(l)) goto fail; break;
+		case BOF: if (l || c) goto fail; break;
+		case EOFILE: if (l + 1 != nlines() || c < ml_len(l)) goto fail; break;
 		case BOW: {
 			int k = cls_at(l, c);
-			if (k <= 1 || (c && cls_before(l, c) == k)) return 0;
+			if (k <= 1 || (c && cls_before(l, c) == k)) goto fail;
 			break;
 		}
 		case EOW: {
-			if (!c) return 0;
+			if (!c) goto fail;
 			int k = cls_before(l, c);
-			if (k <= 1 || cls_at(l, c) == k) return 0;
+			if (k <= 1 || cls_at(l, c) == k) goto fail;
 			break;
 		}
 		case NEWLINE:
-			if (c < ml_len(l) || l >= nlines()) return 0;
+			if (c < ml_len(l) || l >= nlines()) goto fail;
 			l++, c = 0;
 			break;
-		case OPEN: case CLOSE: case ZS: case ZE: {
+		case OPEN: case CLOSE: case ZS: case ZE:
 			if (look && (p->op == ZS || (p->op == ZE && look != '='))) break;
-			Pos *s = p->op == OPEN ? &gs[p->a] : p->op == CLOSE ? &ge[p->a] : p->op == ZS ? &zs : &ze, o = *s;
-			*s = (Pos){ l, c, 1 };
-			if (m(p->next, l, c)) return 1;
-			*s = o;
-			return 0;
-		}
+			if (!set(p->op == OPEN ? &gs[p->a] : p->op == CLOSE ? &ge[p->a] : p->op == ZS ? &zs : &ze, (Pos){ l, c, 1 })) goto oom;
+			break;
 		case BRANCH:
-			for (int b = n; b >= 0; b = prog[b].b)
-				if (m(prog[b].a, l, c)) return 1;
-			return 0;
+			if (p->b >= 0 && !choice(B_BRANCH, p->b, l, c, 0, 0)) goto oom;
+			n = p->a;
+			continue;
 		case BACKREF: {
 			/* an unset group matches empty */
 			Pos a = gs[p->a], z = ge[p->a];
 			if (!a.coladd || !z.coladd) break;
 			while (lt(a, z)) {
 				if (a.col >= ml_len(a.lnum)) {
-					if (c < ml_len(l) || l >= nlines()) return 0;
+					if (c < ml_len(l) || l >= nlines()) goto fail;
 					a.lnum++, a.col = 0, l++, c = 0;
 					continue;
 				}
 				long la, lb;
 				int x = chr(a.lnum, a.col, &la), y = chr(l, c, &lb);
-				if (!lb || fold(x) != fold(y)) return 0;
+				if (!lb || fold(x) != fold(y)) goto fail;
 				a.col += la, c += lb;
 			}
 			break;
 		}
-		case REP: {
-			int k = cnt[n], ok = (cnt[n] = 0, rep(n, l, c));
-			cnt[n] = k;
-			return ok;
-		}
+		case REP:
+			if (!set(&ist[n], (Pos){ ist[n].lnum, ist[n].col, 0 })) goto oom;
+			if ((n = rep(n, &l, &c)) == -2) goto oom;
+			continue;
 		case REPEND: {
 			int r = p->a;
 			/* an empty pass ends the loop, not the match (BACK) */
-			if (cnt[r] >= prog[r].b && ist[r].lnum == l && ist[r].col == c) { n = r; continue; }
-			cnt[r]++;
-			int ok = rep(r, l, c);
-			cnt[r]--;
-			return ok;
+			if (ist[r].coladd >= prog[r].b && ist[r].lnum == l && ist[r].col == c) { n = prog[r].next; continue; }
+			if (!set(&ist[r], (Pos){ ist[r].lnum, ist[r].col, ist[r].coladd + 1 })) goto oom;
+			if ((n = rep(r, &l, &c)) == -2) goto oom;
+			continue;
 		}
 		case LOOK: {
-			Pos save = mend, ob = behind, oz = ze;
-			int ol = look;
-			int ok = 0;
+			Pos save = mend, ob = behind;
+			int ol = look, ok = 0;
 			behind = (Pos){ l, c, p->b == '<' };
 			look = p->b;
 			if (p->b != '<') ok = m(p->a, l, c);
 			else   /* a match of the body that ends here, from here back */
 				for (long s = c;; s = (long)uni_gprev((const unsigned char *)ml_get(l), (size_t)ml_len(l), (size_t)s)) {
-					if (m(p->a, l, s)) { ok = 1; break; }
-					if (!s) break;
+					if ((ok = m(p->a, l, s)) || !s || steps > MAXSTEPS) break;
 				}
 			mend = save, behind = ob, look = ol;
-			if (ok == p->neg) return ze = oz, 0;
+			if (ok < 0) goto oom;
+			if (steps > MAXSTEPS) goto stop;
+			if (ok == p->neg) goto fail;
 			if (p->b == '>') l = lookend.lnum, c = lookend.col;
-			if (memcmp(&ze, &oz, sizeof ze)) {   /* \ze in it: undone if what follows fails */
-				if (m(p->next, l, c)) return 1;
-				ze = oz;
-				return 0;
-			}
 			break;
 		}
 		}
+		n = p->next;
+		continue;
+	fail:
+		for (;;) {
+			if (nbt == b0) goto stop;
+			Bt *b = &bt[nbt - 1];
+			unwind(b->trail);
+			n = -1;
+			switch (b->kind) {
+			case B_BRANCH:
+				n = prog[b->n].a, l = b->l, c = b->c;
+				if (prog[b->n].b >= 0) b->n = prog[b->n].b;
+				else nbt--;
+				break;
+			case B_GREEDY:
+				if (--b->k < prog[b->n].b) { npos = b->base, nbt--; continue; }
+				l = pos[b->base + b->k].lnum, c = pos[b->base + b->k].col, n = prog[b->n].next;
+				break;
+			case B_LAZY:
+				l = b->l, c = b->c;
+				if (gave_up() || !step(&prog[prog[b->n].a], &l, &c, 1)) { nbt--; continue; }
+				b->l = l, b->c = c, n = prog[b->n].next;
+				if (++b->k >= (prog[b->n].c < 0 ? LONG_MAX : prog[b->n].c)) nbt--;
+				break;
+			case B_NEXT:
+				n = b->n, l = b->l, c = b->c, nbt--;
+				break;
+			default:   /* B_BODY */
+				l = b->l, c = b->c, n = b->n, nbt--;
+				if (!set(&ist[n], (Pos){ l, c, ist[n].coladd })) goto oom;
+				n = prog[n].a;
+			}
+			break;
+		}
 	}
-	return 1;
+stop:
+	nbt = b0, npos = p0;
+	unwind(t0);
+	return 0;
+oom:
+	nbt = b0, npos = p0;
+	unwind(t0);
+	steps = MAXSTEPS + 1;
+	return -1;
 }
 
 static int growth(void)
 {
 	static int capn;
 	if (np <= capn) return 1;
-	int *a = realloc(cnt, sizeof *cnt * (size_t)np);
-	if (!a) return 0;
-	cnt = a;
 	Pos *b = realloc(ist, sizeof *ist * (size_t)np);
 	if (!b) return 0;
 	ist = b, capn = np;
@@ -817,19 +888,36 @@ int re_exec(long l, long col, Pos *s, Pos *e, Pos *sub_s, Pos *sub_e)
 {
 	if (!growth()) return -1;
 	steps = 0;
-	for (long c = col; c <= ml_len(l); c += c < ml_len(l) ? (long)uni_glen((const unsigned char *)ml_get(l), (size_t)ml_len(l), (size_t)c) : 1) {
-		memset(gs, 0, sizeof gs), memset(ge, 0, sizeof ge);
-		zs.coladd = ze.coladd = 0;
-		nstack = 0;
-		if (m(start, l, c)) {
+	memset(gs, 0, sizeof gs), memset(ge, 0, sizeof ge);
+	zs.coladd = ze.coladd = 0;
+	const Node *rp1 = &prog[start], *body = rp1->op == REP && rp1->simple && rp1->c < 0 ? &prog[rp1->a] : NULL;
+	for (long c = col;;) {
+		const unsigned char *t = (const unsigned char *)ml_get(l);
+		long n = ml_len(l);
+		if (lit >= 0) {   /* regstart: to the next byte that can begin a match */
+			long x = c;
+			while (x < n && t[x] != lit && !(ic && (t[x] >= 0x80 || fold(t[x]) == fold(lit)))) x++;
+			if (x >= n) return 0;
+			if (x > c && t[x - 1] < 0x80) c = x;   /* an ASCII character after an ASCII one starts a cluster */
+			else while (c < x) c += (long)uni_glen(t, (size_t)n, (size_t)c);
+		}
+		if (c > n) return 0;
+		int r = m(start, l, c);
+		if (r > 0) {
 			*s = zs.coladd ? zs : (Pos){ l, c, 0 };
 			*e = ze.coladd ? ze : mend;
 			if (lt(*e, *s)) *e = *s;
 			s->coladd = e->coladd = 0;
 			if (sub_s) for (int i = 0; i < 10; i++) sub_s[i] = gs[i], sub_e[i] = ge[i];
+			unwind(0);
 			return 1;
 		}
 		if (steps > MAXSTEPS) return -1;
+		if (c >= n) return 0;
+		/* a leading repeat that failed here fails at each column of the
+		   run it took: what follows it was tried at all of them */
+		long z = c, len;
+		if (body) while ((len = one(body, l, z, 1)) >= 0) z += len;
+		c = z > c ? z : c + (long)uni_glen((const unsigned char *)ml_get(l), (size_t)n, (size_t)c);
 	}
-	return 0;
 }

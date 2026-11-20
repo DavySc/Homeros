@@ -2,6 +2,8 @@
    'ignorecase', 'smartcase' and 'wrapscan' are on (FEATURES.md 1). */
 #include <stdio.h>
 #include "k.h"
+#include "loop.h"
+#include "undo.h"
 #include "uni.h"
 
 /* spats[]: the last search pattern (RE_SEARCH) and the last :s one
@@ -225,25 +227,39 @@ int do_search(Oparg *oap, int dirc, const char *pat, long count, int rev, int *w
 	return ret;
 }
 
+/* One window's lines drawn from the top down are one redraw.  It has
+   'redrawtime' (2 s) for its matches, past which re_exec() gives up at
+   once and the rest are not drawn (Neovim's search_hl tm), and a match that crosses lines is searched for
+   from where the line before left off, not again from the top. */
+typedef struct { const Win *w; Buf *b; size_t top, line; unsigned long seq; long long end; Pos p; } Frame;
+static Frame fr;
+
 /* next_search_hl() from the window's top line on, as prepare_search_hl()
    goes (a match that starts above the window is not drawn) */
 static int hl(size_t line, size_t col, size_t *s, size_t *z)
 {
 	const char *msg;
 	if (no_hlsearch || !spats[last_idx].set || re_compile(spats[last_idx].pat, ic_of(spats[last_idx].pat, spats[last_idx].noscs, -1), &msg)) return 0;
-	if (!col) buf_changed();   /* the text may have changed since the last key */
+	if (!col) {
+		buf_changed();   /* the text may have changed since the last key */
+		if (fr.w != W || fr.b != B || fr.top != W->top || line <= fr.line || fr.seq != undo_seq(B->undo))
+			fr = (Frame){ W, B, W->top, line, undo_seq(B->undo), loop_now() + 2000000000LL, { (long)W->top, 0, 0 } };
+		fr.line = line;
+	}
 	long l = (long)line;
-	Pos p = { !col && line > W->top && re_hasnl() ? (long)W->top : l, (long)col, 0 }, ms, me;
+	Pos p = !col && line > W->top && re_hasnl() && fr.p.lnum <= l ? fr.p : (Pos){ l, (long)col, 0 }, ms, me;
+	re_deadline = fr.end;
 	for (int r;;) {
-		if ((r = re_exec(p.lnum, p.col, &ms, &me, NULL, NULL)) < 0 || (!r && p.lnum == l)) return 0;
+		fr.p = p;
+		if ((r = re_exec(p.lnum, p.col, &ms, &me, NULL, NULL)) < 0 || (!r && p.lnum == l)) return re_deadline = 0;
 		if (!r) p.lnum++, p.col = 0;
 		/* one that \zs starts on a later line belongs to that line, which
 		   draws it unless it is empty: then it searches on from its end */
-		else if (ms.lnum > l) return 0;
+		else if (ms.lnum > l) return re_deadline = 0;
 		else if (ms.lnum > p.lnum && eq(ms, me)) p = me;
 		else if (ms.lnum == l || me.lnum > l || (me.lnum == l && me.col)) {
 			*s = (size_t)(ms.lnum < l ? 0 : ms.col), *z = (size_t)(me.lnum > l ? ml_len(l) + 1 : me.col);
-			return 1;
+			return re_deadline = 0, 1;
 		} else if (!eq(ms, me)) p = me;
 		else if (me.col < ml_len(me.lnum)) p.col = me.col + clen_at(me);
 		else p.lnum = me.lnum + 1, p.col = 0;

@@ -125,6 +125,7 @@ static char *flags(char *p, int *which)
 
 /* do_sub()'s state, kept while the c flag waits for a key */
 int sub_asking;
+static Buf *asked;   /* the buffer the question is in */
 static long first, lnum, line2, nsubs, nlns, nmatch, copycol, matchcol, prev_matchcol, nmatch_tl, sub_firstlnum;
 static long change, l2, c2;   /* the question's: the line's change in length, the match's end */
 static int endcolumn, hasnl, save_all, save_ask, got_match, got_quit, did_save, did_sub, skip_match, do_again, has_new, lastone;
@@ -282,7 +283,7 @@ ask:
 				if (l2 > lnum && !c2) l2--, c2 = ml_len(l2) + 1;
 				E->ks.inc = (KeyArea){ 'v', (size_t)lnum, W->col, (size_t)l2, (size_t)(c2 > (long)W->col || l2 > lnum ? head(ml_get(l2), c2 - 1) : (long)W->col) };
 				core_msg(E, "replace with %s? (y)es/(n)o/(a)ll/(q)uit/(l)ast/scroll up(^E)/down(^Y)", sub);
-				sub_asking = 1;
+				sub_asking = 1, asked = B;
 				return;
 answer:
 				if (has_new) show(0);
@@ -367,5 +368,15 @@ skip:
 	finish();
 }
 
-/* the key answering "replace with ...?" */
-void sub_key(int k) { loop(k); }
+/* the key answering "replace with ...?".  When another buffer came into
+   the window meanwhile, not by a key, the question ends as with Esc, in
+   the buffer it asked in, and the window keeps its cursor. */
+void sub_key(int k)
+{
+	Buf *b = B;
+	if (b == asked) { loop(k); return; }
+	size_t line = W->line, col = W->col, top = W->top;
+	E->buf = asked;
+	loop(KEY_ESC);
+	E->buf = b, W->line = line, W->col = col, W->top = top;
+}

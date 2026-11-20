@@ -25,9 +25,13 @@ Not built (FEATURES.md section 2), part two of package 5:
   look-arounds, 'ignorecase' and \c \C.  tests/test_keys_regex.c checks it
   against substitute() in nvim on random patterns and lines; measured
   2026-11-19, 16 seeds of 10,000: 4 differ, all in the oddity below.  Not
-  built yet: \%[ \%V \%# \%l \%c \%v and the marks, \z( (syntax only), a
-  look-behind that reaches into lines above, and multi-line text in the
-  random test (\n and \_x are built; :s will check them on a buffer).
+  built yet: \%[ \%V \%# \%l \%c \%v and the marks, \%#= (the engine
+  choice), \z( (syntax only), a look-behind that reaches into lines above,
+  and multi-line text in the random test (\n and \_x are built; :s checks
+  them on a buffer).  Ours backtracks, as Neovim's backtracking engine,
+  with its stack on the heap: a pattern that backtracks without end on a
+  line, such as \(a*\)*b, \(a\|b\)*c on a very long one, gives E363 after
+  20 million steps, where Neovim's default NFA engine says E486 at once.
 - operators = ! and gc (comment); the surround, align and other section 3
   extras.
 - gq's 'comments': Neovim formats with 'formatoptions' tcqj, so a comment
@@ -149,6 +153,13 @@ Neovim's own oddities, not copied:
   takes either engine's answer (and none where Neovim loops or gives E363);
   the 4 cases neither gives have a literal e next to the accented letter,
   one listed in the test's KNOWN.
+- where Neovim's two engines differ elsewhere, ours gives the backtracking
+  one's answer: \@> (:%s/\v @>foo// misses "  foo.bar" in the default
+  engine, /z\@>\n\w\{-1,} is E486 there), and a \_[] collection under :s
+  with g (:1s/\_[^z]//g on "ab", "cd", "zz" leaves an empty first line in
+  the default engine, whose program does not say it can match a line
+  break; ours and the other join the lines).  Measured by the review of
+  PR 90 against 'regexpengine' 1.
 - r, then R and CTRL-U or BS back over the replaced character ("  0", r 3 l R
   C-u): Neovim's replace stack still holds what r replaced and puts it back.
 - block I, then Left past the block's start and text ("abcd\nefgh", l C-v j

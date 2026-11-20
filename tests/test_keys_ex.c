@@ -8,6 +8,7 @@
 #include "check.h"
 #include "core.h"
 #include "keys.h"
+#include "loop.h"
 #include "uni.h"
 #include "../src/keys/k.h"
 
@@ -238,12 +239,26 @@ static int check(const char *text, void (*gen)(char *))
 	return bad;
 }
 
+static void feed(Editor *e, const char *s)
+{
+	for (; *s; s++) keys_feed(e, *s == '\r' ? KEY_ENTER : *s, s[1] != 0);
+}
+
+/* a file holding n bytes of s repeated, then t */
+static void text(const char *path, const char *s, size_t n, const char *t)
+{
+	FILE *f = fopen(path, "w");
+	CHECK(f);
+	for (size_t i = 0; i < n; i++) fputc(s[i % strlen(s)], f);
+	CHECK(fputs(t, f) >= 0 && !fclose(f));
+}
+
 int main(void)
 {
 	if (getenv("SEED")) rng += strtoull(getenv("SEED"), NULL, 10);
 	CHECK(__sanitizer_install_malloc_and_free_hooks(on_malloc, on_free));
 	static const char TEXT[] = "abcdef\n  xy\nhello world\n\tq\nlast line\nz\n";
-	int bad = check(TEXT, range);
+	CHECK(!check(TEXT, range));   /* each phase stops the test, so a caught plant does not run the rest */
 	/* past 2^63 Neovim's line numbers wrap (":9223372036854775806+5" goes
 	   to line 3, measured once); ours saturate, without overflow */
 	char path[] = "/tmp/test_keys_exXXXXXX";
@@ -251,11 +266,11 @@ int main(void)
 	CHECK(fd >= 0 && write(fd, TEXT, sizeof TEXT - 1) == sizeof TEXT - 1 && !close(fd));
 	static Editor e;
 	CHECK(!core_open(&e, path));
-	for (const char *s = ":99999999999999999999+99999999999999999999+9999999999999999999\r"; *s; s++) keys_feed(&e, *s == '\r' ? KEY_ENTER : *s, s[1] != 0);
+	feed(&e, ":99999999999999999999+99999999999999999999+9999999999999999999\r");
 	CHECK(e.win->line == 5 && !e.msg[0]);
 	/* 'hlsearch' after the text changed without a key (a reload, a format) */
 	size_t hs, hz;
-	for (const char *s = "/xy\r"; *s; s++) keys_feed(&e, *s == '\r' ? KEY_ENTER : *s, s[1] != 0);
+	feed(&e, "/xy\r");
 	CHECK(keys_hl(&e, e.win, 1, 0, &hs, &hz) && hs == 2 && hz == 4 && !core_edit(&e, 7, 0, "ab", 2));
 	CHECK(keys_hl(&e, e.win, 1, 0, &hs, &hz) && hs == 4 && hz == 6);
 	/* the c flag's question, which the random cases cannot see (Neovim
@@ -281,25 +296,68 @@ int main(void)
 	CHECK(n == 11 && !memcmp(l, "hello world", 11));
 	/* a match that starts above the window is not drawn
 	   (prepare_search_hl(); measured, nvim --headless screenattr()) */
-	for (const char *s = "/d\\n\\s*q\\nl\r"; *s; s++) keys_feed(&e, *s == '\r' ? KEY_ENTER : *s, s[1] != 0);
+	feed(&e, "/d\\n\\s*q\\nl\r");
 	e.win->top = 2;
 	CHECK(keys_hl(&e, e.win, 4, 0, &hs, &hz) && hs == 0 && hz == 1);
 	e.win->top = 3;
 	CHECK(!keys_hl(&e, e.win, 4, 0, &hs, &hz));
 	/* one that \zs starts on the next line is that line's */
-	for (const char *s = "/xy\\n\\zshe\r"; *s; s++) keys_feed(&e, *s == '\r' ? KEY_ENTER : *s, s[1] != 0);
+	feed(&e, "/xy\\n\\zshe\r");
 	e.win->top = 0;
 	CHECK(!keys_hl(&e, e.win, 1, 0, &hs, &hz) && keys_hl(&e, e.win, 2, 0, &hs, &hz) && hs == 0 && hz == 2);
+	/* the question ends when another file comes into the window, not by a
+	   key, or when the window closes: its answer goes nowhere */
+	char other[] = "/tmp/test_keys_exXXXXXX";
+	fd = mkstemp(other);
+	CHECK(fd >= 0 && write(fd, "xo\n", 3) == 3 && !close(fd));
+	feed(&e, ":3s/o/0/gc\r");
+	CHECK(e.ks.pending && !core_edit_file(&e, other, 0));
+	feed(&e, "y");
+	l = core_line(&e, 0, &n);
+	CHECK(!e.ks.pending && n == 2 && !memcmp(l, "xo", 2) && !core_edit_file(&e, path, 0));
+	CHECK(!core_split(&e, 0, 0));
+	feed(&e, ":3s/o/0/gc\r");
+	keys_feed(&e, KEY_CLOSE, 0);
+	CHECK(!e.ks.pending && !strstr(e.msg, "replace with"));
+	feed(&e, "y");
+	l = core_line(&e, 2, &n);
+	CHECK(n == 11 && !memcmp(l, "hello world", 11));
+	core_free(&e);
+	unlink(path), unlink(other);
+	/* a repeat as long as the text grows no C stack (one call per pass
+	   of a group or per character of \_. crashed past 9 KB): a line of
+	   100,000 bytes, 300,000 bytes of lines */
+	text(path, "ab", 100000, "\n");
+	CHECK(!core_open(&e, path));
+	feed(&e, "/\\(a\\|b\\)*$\r");
+	/* as Neovim on 60,000 bytes (it wraps to the match at the cursor; at
+	   100,000 it says E486, measured once) */
+	CHECK(e.win->line == 0 && e.win->col == 0 && !strcmp(e.msg, "search hit BOTTOM, continuing at TOP"));
+	core_free(&e);
+	/* 'redrawtime': a frame of a pattern that takes long on every line ends
+	   after 2 s (each line here takes about 0.1 s under ASan, measured) */
+	text(path, "aaaaaaaaaaaaaaaa\n", 17 * 58, "b\n");
+	CHECK(!core_open(&e, path));
+	feed(&e, "58G/\\(a*\\)*b\r");
+	CHECK(e.win->line == 58);
+	e.win->top = 0;
+	long long t0 = loop_now();
+	for (size_t i = 0; i < 50; i++) CHECK(!keys_hl(&e, e.win, i, 0, &hs, &hz));
+	CHECK(loop_now() - t0 < 3000000000LL);
+	core_free(&e);
+	text(path, "select a from t;\n", 300000, "END\n");
+	CHECK(!core_open(&e, path));
+	feed(&e, "G/select\\_.\\{-}END\r");
+	CHECK(e.win->line == 0 && e.win->col == 0 && !strcmp(e.msg, "search hit BOTTOM, continuing at TOP"));
 	core_free(&e);
 	unlink(path);
-	bad += check("foo bar\nabc Foo x\n  foo.bar(a) 12\nbaz?\n\nx/y?z foo\nfoofoo zz\nq .*[^$~/?\\\n", search);
-	bad += check("foo bar\nabc Foo x\n  foo.bar(a) 12\nbaz?\\\n\nx/y?z foo\nfoofoo zz\n", substitute);
+	CHECK(!check("foo bar\nabc Foo x\n  foo.bar(a) 12\nbaz?\n\nx/y?z foo\nfoofoo zz\nq .*[^$~/?\\\n", search));
+	CHECK(!check("foo bar\nabc Foo x\n  foo.bar(a) 12\nbaz?\\\n\nx/y?z foo\nfoofoo zz\n", substitute));
 	/* four times as long as the window's 22 lines can show: CTRL-E and
 	   CTRL-Y scroll */
 	char t4[256] = "";
 	for (int i = 0; i < 4; i++) strcat(t4, "foo bar\nabc Foo x\n  foo.bar(a) 12\nbaz?\\\n\nx/y?z foo\nfoofoo zz\n");
-	bad += check(t4, confirm);
-	CHECK(!bad);
+	CHECK(!check(t4, confirm));
 	printf("test_keys_ex: %d random ranges, %d searches, %d substitutions and %d answered, each as Neovim (cursor, error, text, 'hlsearch')\n", N, N, N, N);
 	return 0;
 }

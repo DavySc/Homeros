@@ -174,7 +174,11 @@ void keys_feed(Editor *e, int k, int pending)
 {
 	/* the window's close button: :qa, as Neovim's GUIs do (E37 if
 	   modified) */
-	if (k == KEY_CLOSE) { core_close(e, 0); return; }
+	if (k == KEY_CLOSE) {
+		if (sub_asking) E = e, sub_key(KEY_ESC), e->ks.pending = 0;   /* the question ends first, as Esc */
+		core_close(e, 0);
+		return;
+	}
 	E = e;
 	buf_changed();
 	/* :s with the c flag is one undo step, however many keys answer it */

@@ -91,14 +91,14 @@ keys: a yank from an executing register flashes, where Neovim's on_yank skips it
 keys: the yank flash takes the motion's type, not the register's, so "Ayiw after "ayy flashes characters (test_keys_flash)~test TESTS=keys_flash~~src/keys/ops.c~int t = reg->type == MLINE~int t = oap->motion_type == MLINE
 keys: the yank flash is never cleared (test_keys_flash)~test TESTS=keys_flash~~src/keys/ops.c~		loop_timer(unflash, E, 150);~		(void)unflash;
 keys: clearing the yank flash asks for no frame, so it stays on screen until the next key (test_keys_flash)~test TESTS=keys_flash~~src/keys/ops.c~	core_changed = 1;¶}~}
-keys: a look-behind body may end anywhere, so \(\D\|\)\@<! matches (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~			if (behind.coladd && (behind.lnum != l || behind.col != c)) return 0;~			if (0) return 0;
-keys: an empty pass fails the match instead of ending the loop, so .\(\|\k\)\+ takes \k (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~{ n = r; continue; }~return 0;
+keys: a look-behind body may end anywhere, so \(\D\|\)\@<! matches (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~			if (behind.coladd && (behind.lnum != l || behind.col != c)) goto fail;~			if (0) goto fail;
+keys: an empty pass fails the match instead of ending the loop, so .\(\|\k\)\+ takes \k (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~{ n = prog[r].next; continue; }~goto fail;
 keys: a repeated character does not match a letter with a composing character, so e\{3,1}\k misses e + U+0301 (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~(rep || cp == len) ? cp : -1;~(rep > 1 || cp == len) ? cp : -1;
 keys: \& makes what is before it a negative look-ahead (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~prog[n].b = '=';~prog[n].b = '=', prog[n].neg = 1;
 keys: \c forgets that a group just opened, so \(\c* makes * a multi (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~prev = pr, prevprev = pp;~prev = prev + 0 * pr, prevprev = pp;
-keys: a match may end before a composing character (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~!= (size_t)c) return 0;~!= (size_t)c && 0) return 0;
+keys: a match may end before a composing character (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~!= (size_t)c) goto fail;~!= (size_t)c && 0) goto fail;
 keys: \zs in a look-around moves the match start (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~if (look && (p->op == ZS ||~if (look && (0 ||
-keys: \ze in a look-ahead stays when what follows fails (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~				ze = oz;¶				return 0;~				return 0;
+keys: \ze in a look-ahead stays when what follows fails (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~			if (!set(p->op == OPEN~			if (p->op == ZE) ze = (Pos){ l, c, 1 };¶			else if (!set(p->op == OPEN
 keys: a look-behind steps back by code point, into a letter with a composing character (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~s = (long)uni_gprev(~s = (long)uni_prev(
 keys: the next match is looked for a character after the last match's start, not from its end ('cpoptions' c) (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~me.col += eq(me, ms) && ~me.col += 1 + 0 * eq(me, ms) && 
 keys: ? skips the match at the cursor, as / does (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~	if (dir == BACKWARD) extra = 0;¶~
@@ -130,21 +130,21 @@ keys: a backslash the match copies is taken as an escape (test_keys_ex)~test TES
 keys: & is :s, which drops the flags, not Neovim's map to :&& (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~":&&\n" };~":s\n" };
 keys: % is the last line alone, not 1,$ (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~l1 = all ? 1 : n ? l2 : a~l1 = n ? l2 : a
 keys: \_s is E877, its letter read with its magic (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~		if (c > MAGIC) c -= MAGIC;   /* no_Magic() */¶~
-keys: \n does not match the last line's line break (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~			if (c < ml_len(l) || l >= nlines()) return 0;¶			l++, c = 0;~			if (c < ml_len(l) || l + 1 >= nlines()) return 0;¶			l++, c = 0;
+keys: \n does not match the last line's line break (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~			if (c < ml_len(l) || l >= nlines()) goto fail;¶			l++, c = 0;~			if (c < ml_len(l) || l + 1 >= nlines()) goto fail;¶			l++, c = 0;
 keys: beginline stops at a NUL in the line (test_keys_ex)~test TESTS=keys_ex~~src/keys/buf.c~((flags & BL_FIX) && c + 1 >= n)~((flags & BL_FIX) && !s[c + 1] + 0 * n)
 keys: u after :s goes back to an undo step the oracle's text load made (test_keys_ex)~test TESTS=keys_ex~~src/keys/ex_oracle.lua~vim.bo.undolevels = -1¶~
 keys: 'hlsearch' draws while :noh hides it (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~if (no_hlsearch || !spats~if ((no_hlsearch && 0) || !spats
 keys: a new search leaves the matches hidden (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~	int delim = dirc;¶	no_hlsearch = 0;~	int delim = dirc;
 keys: :s with a new pattern leaves the matches hidden (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~no_hlsearch &= i == save;~no_hlsearch &= 1;
 keys: a match from a line above is not drawn (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~!col && line > W->top && re_hasnl()~(!col && 0) && line > W->top && re_hasnl()
-keys: 'hlsearch' starts at the first line, not the window's top (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~(long)W->top : l~0 : l
+keys: 'hlsearch' starts at the first line, not the window's top (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~loop_now() + 2000000000LL, { (long)W->top, 0, 0 } };~loop_now() + 2000000000LL, { 0, 0, 0 } };
 keys: a match's line break is not drawn (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~ml_len(l) + 1 : me.col~ml_len(l) : me.col
-keys: 'hlsearch' reads stale lines after an edit without a key (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~	if (!col) buf_changed();~
+keys: 'hlsearch' reads stale lines after an edit without a key (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~		buf_changed();   /* the text may have changed since the last key */¶~
 keys: the kept regex ignores 'ignorecase' (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~if (last_ic == !!icase && !strcmp~if (last_ic >= 0 && !strcmp
 keys: CTRL-L hides the matches in Visual mode (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~!checkclearop(cap->oap) && !VIsual_active) no_hlsearch~!checkclearop(cap->oap)) no_hlsearch
 keys: CTRL-L hides the matches after an operator (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~if (!checkclearop(cap->oap) && !VIsual_active) no_hlsearch~if (!VIsual_active) no_hlsearch
 keys: :noh takes a range (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~		if (n) core_msg(E, "E481: No range allowed");¶		else no_hlsearch = 1;~		no_hlsearch = 1;
-keys: a match \zs starts on the next line is drawn on this one (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~else if (ms.lnum > l) return 0;~else if (ms.lnum > l) return *s = 0, *z = ml_len(l) + 1, 1;
+keys: a match \zs starts on the next line is drawn on this one (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~else if (ms.lnum > l) return re_deadline = 0;~else if (ms.lnum > l) return re_deadline = 0, *s = 0, *z = ml_len(l) + 1, 1;
 keys: a answers this match but keeps asking (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~if (typed == 'a') fl.ask = 0;~if (typed == 'a') fl.ask = 1;
 keys: l answers this match but goes on to the next lines (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~if (typed == 'l') fl.all = 0, line2 = lnum;~if (typed == 'l') fl.all = 0;
 keys: Esc and CTRL-C answer yes instead of quitting (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~got_quit = typed == 'q' || typed == KEY_ESC || typed == KEY_CTRL_C;~got_quit = typed == 'q';
@@ -160,3 +160,11 @@ keys: Visual : leaves curswant to be set after the command (test_keys_ex)~test T
 keys: <leader>uk does not turn the save kitten off (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~, " uk"¶};~¶};
 keys: :KittenPaw does not play the kitten (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	case 9: kitten_paw(E); break;~	case 9: break;
 keys: a register Q replays is not flagged as executing, so on_yank and the kitten would show (test_keys_flash)~test TESTS=keys_flash~~src/keys/normal.c~if (!do_execreg(reg_recorded))~if (!do_execreg(reg_recorded) || (E->ks.executing = 0))
+keys: a pass through a group's join recurses, so a long group repeat grows the C stack (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~		case NOTHING: break;~		case NOTHING: return m(p->next, l, c);
+keys: the window's close leaves the c flag's question open (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~		if (sub_asking) E = e, sub_key(KEY_ESC), e->ks.pending = 0;   /* the question ends first, as Esc */¶~
+keys: the c flag's question goes on in another buffer (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~	if (b == asked) { loop(k); return; }~	if (b) { loop(k); return; }
+keys: 'hlsearch' has no 'redrawtime' (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~	re_deadline = fr.end;¶~
+keys: the first-literal skip passes a byte past 0x7f under \c (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~(ic && (t[x] >= 0x80 || fold(t[x]) == fold(lit)))~(ic && fold(t[x]) == fold(lit))
+keys: the first-literal skip lands inside a cluster (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~if (x > c && t[x - 1] < 0x80) c = x;~if (x > c) c = x;
+keys: a bounded leading repeat skips its run too (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~rp1->simple && rp1->c < 0 ?~rp1->simple ?
+keys: an ASCII character before an accent is its own cluster (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~(c + 1 == (long)n || s[c + 1] < 0x80)~(c + 1 == (long)n || 1)

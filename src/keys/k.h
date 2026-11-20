@@ -146,6 +146,7 @@ long utf8_put(int c, char *b);   /* utf_char2bytes() */
 int  re_compile(const char *pat, int icase, const char **msg);
 int  re_exec(long l, long col, Pos *s, Pos *e, Pos *sub_s, Pos *sub_e);
 char *re_skip(char *p, int delim, int *all);
+extern long long re_deadline;   /* loop_now() after which re_exec() gives up (-1), as at its step limit; 0: none */
 int  re_hasnl(void);   /* RF_HASNL: the compiled pattern can match a line break */
 
 /* search.c */

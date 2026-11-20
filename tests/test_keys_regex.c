@@ -34,6 +34,8 @@ static const char *const FIXED[][2] = {
 	{ "\\%(b\\ze\\)\\@=x\\|bc", "abcd" },                /* \ze in a look-ahead is undone when what follows fails */
 	{ "e\\{3,1}\\k", "xe\xcc\x81" },                     /* a repeat takes e from e + U+0301 */
 	{ "e*", "e\xcc\x81" "_e" },                             /* but a match does not end before U+0301 */
+	{ "\\ck", "a\xe2\x84\xaa" },                         /* the Kelvin sign folds to k: a match may begin on a byte past 0x7f */
+	{ "x", "\xd8\x80" "x" },                              /* U+0600 and x are one cluster: no match begins inside it */
 };
 enum { NF = sizeof FIXED / sizeof *FIXED };
 static char pat[256];
