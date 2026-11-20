@@ -47,7 +47,7 @@ static void render(void)
 		char num[8];
 		int rel = r - g.crow;
 		snprintf(num, sizeof num, "%3d ", rel < 0 ? -rel : rel ? rel : top + r);
-		c = grid_puts(&g, r, 0, num, ATTR_DIM);
+		c = grid_puts(&g, r, 0, g.cols, num, strlen(num), ATTR_DIM, FACE_NONE);
 		for (int i = xoff; i < ntok[m] && c + rows[m][i].w <= g.cols; i++) {
 			int w = grid_put(&g, r, c, (const unsigned char *)rows[m][i].s, strlen(rows[m][i].s), rows[m][i].w, rows[m][i].attr);
 			if (!w) break;

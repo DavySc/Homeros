@@ -1,0 +1,8 @@
+# The reviewer's plants (format in tools/planted.sh), run by extra-plants.sh.
+x-infoview: the server listens on every address~test TESTS=infoview~~src/infoview/serve/serve.c~htonl(INADDR_LOOPBACK) };~htonl(INADDR_ANY) };
+x-infoview: the token is the same every time~test TESTS=infoview~~src/infoview/serve/serve.c~	if (getrandom(r, sizeof r, 0) != sizeof r) return 1;~	memset(r, 7, sizeof r);
+x-infoview: a body of any length is taken~test TESTS=infoview~~src/infoview/serve/serve.c~		if (len > BODY_MAX) return -1;~
+x-infoview: the outbox is sent again at every reopening~test TESTS=infoview~~src/infoview/serve/serve.c~	p->outbox.n = 0;¶	to_editor("+ ", id, strlen(id));~	to_editor("+ ", id, strlen(id));
+x-infoview: a page's older stream stays open beside its new one~test TESTS=infoview~~src/infoview/serve/serve.c~	if (p->stream) conn_close(p->stream);¶	p->stream = k;~	p->stream = k;
+x-infoview: a line break in a call's body reaches the editor's pipe~test TESTS=infoview~~src/infoview/serve/serve.c~		for (size_t i = 0; i < n; i++) if (body[i] == '\n' || body[i] == '\r') body[i] = ' ';~
+x-infoview: a line break in Lean's JSON reaches the child's pipe~test TESTS=infoview~~src/infoview/infoview.c~	for (size_t i = 0; i < o.n; i++) if (o.b[i] == '\n' || o.b[i] == '\r') o.b[i] = ' ';~

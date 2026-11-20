@@ -1,0 +1,151 @@
+diff --git a/include/lsp.h b/include/lsp.h
+index 46d09e0..ae34e17 100644
+--- a/include/lsp.h
++++ b/include/lsp.h
+@@ -76,6 +76,9 @@ extern void (*lsp_tap)(int out, const char *msg, size_t n);
+ typedef void (*LspRawFn)(void *ctx, const char *msg, size_t n);
+ int  lsp_send(const char *uri, const char *method, const char *params, size_t n, LspRawFn fn, void *ctx);
+ const char *lsp_uri(const LspDoc *d);    /* d's file:// URI */
++/* The answer d's Lean server gave to initialize (n bytes), NULL before it
++   has: what lsp_tap missed when it was set after the server started. */
++const char *lsp_init(const LspDoc *d, size_t *n);
+ 
+ /* The UTF-16 boundary (Lean 4.35 takes no UTF-8 positions): code units in
+    the n bytes of s, and the byte where unit c starts (a unit inside a
+diff --git a/ref/lsp.c b/ref/lsp.c
+index d273a3a..895dbcb 100644
+--- a/ref/lsp.c
++++ b/ref/lsp.c
+@@ -16,3 +16,4 @@ int lsp_send(const char *uri, const char *method, const char *params, size_t n,
+ 	return -1;
+ }
+ const char *lsp_uri(const LspDoc *d) { (void)d; return NULL; }
++const char *lsp_init(const LspDoc *d, size_t *n) { (void)d; *n = 0; return NULL; }
+diff --git a/src/infoview/infoview.c b/src/infoview/infoview.c
+index ccb944f..088fb49 100644
+--- a/src/infoview/infoview.c
++++ b/src/infoview/infoview.c
+@@ -243,8 +243,11 @@ static void tap(int out, const char *m, size_t n)
+ static void seed(void)
+ {
+ 	for (Buf *b = ed->bufs; b; b = b->next) {
+-		const char *u = b->lsp ? lsp_uri(b->lsp) : NULL;
++		const char *u = b->lsp ? lsp_uri(b->lsp) : NULL, *m;
++		size_t mn;
+ 		int nd;
++		/* a server that answered initialize before the bridge listened */
++		if (u && !init && (m = lsp_init(b->lsp, &mn))) tap(0, m, mn);
+ 		const LspDiag *d = u ? lsp_diags(b->lsp, &nd) : NULL;
+ 		Kept *k = d ? kept_for(u, strlen(u)) : NULL;
+ 		if (!k || k->ver) continue;
+@@ -398,7 +401,7 @@ static int edits(const char *s, size_t n, const char *uri, size_t arr)
+ 		v[ne].t = j_str(s, n, j_member(s, n, e, "newText"), &v[ne].n);
+ 		if (!v[ne].t) v[ne].t = j_copy("", 0), v[ne].n = 0;
+ 	}
+-	qsort(v, (size_t)ne, sizeof *v, later);
++	if (ne) qsort(v, (size_t)ne, sizeof *v, later);
+ 	for (int i = 0; i < ne; i++) {
+ 		if (!r && v[i].t) r = core_edit(ed, v[i].a, v[i].z - v[i].a, v[i].t, v[i].n);
+ 		free(v[i].t);
+@@ -446,7 +449,7 @@ static void call(const char *pid, char *s, size_t n)
+ 		Req *r = calloc(1, sizeof *r);
+ 		char *meth = c ? j_copy("$/lean/rpc/connect", 18) : j_str(s, n, a1, NULL);
+ 		Str prm = { 0 };
+-		if (c) { j_puts(&prm, "{\"uri\":"); j_put(&prm, s + a0, j_len(s, n, a0)); j_puts(&prm, "}"); }
++		if (c) { j_puts(&prm, "{\"uri\":"); if (a0 != NONE) j_put(&prm, s + a0, j_len(s, n, a0)); j_puts(&prm, "}"); }
+ 		else if (a2 != NONE) j_put(&prm, s + a2, j_len(s, n, a2));
+ 		if (r && meth && uri && prm.b) {
+ 			snprintf(r->page, sizeof r->page, "%s", pid);
+diff --git a/src/infoview/serve/serve.c b/src/infoview/serve/serve.c
+index 5b20128..024adb3 100644
+--- a/src/infoview/serve/serve.c
++++ b/src/infoview/serve/serve.c
+@@ -334,6 +334,10 @@ static int requests(Conn *k)
+ 		for (char *l = h; l && l < e; l = strstr(l, "\r\n"), l = l ? l + 2 : l)
+ 			if (!strncasecmp(l, "Content-Length:", 15)) len = strtoul(l + 15, NULL, 10);
+ 		if (len > BODY_MAX) return -1;
++		/* a body is waited for (and held) only under the token */
++		size_t t = strlen(token);
++		char *sp = memchr(h, ' ', hn);
++		if (len && !(sp && sp[1] == '/' && !strncmp(sp + 2, token, t) && sp[t + 2] == '/')) return -1;
+ 		if (k->in.n - at < hn + 4 + len) break;
+ 		char *eol = strstr(h, "\r\n");
+ 		*eol = 0;                     /* the request line */
+@@ -372,7 +376,13 @@ static void open_browser(void)
+ 	memcpy(argv, opener, (size_t)n * sizeof *argv);
+ 	snprintf(url, sizeof url, "file://%s", redirect);
+ 	argv[n] = url;
+-	posix_spawnp(&pid, argv[0], NULL, NULL, argv, environ);   /* reaped: SIGCHLD ignored */
++	/* not the editor's pipe: what a browser prints would be read as lines */
++	posix_spawn_file_actions_t fa;
++	posix_spawn_file_actions_init(&fa);
++	posix_spawn_file_actions_addopen(&fa, 0, "/dev/null", O_RDONLY, 0);
++	posix_spawn_file_actions_addopen(&fa, 1, "/dev/null", O_WRONLY, 0);
++	posix_spawnp(&pid, argv[0], &fa, NULL, argv, environ);   /* reaped: SIGCHLD ignored */
++	posix_spawn_file_actions_destroy(&fa);
+ 	free(argv);
+ }
+ 
+@@ -412,7 +422,7 @@ static int listener(int *port)
+ static int write_redirect(int port)
+ {
+ 	const char *dir = getenv("XDG_RUNTIME_DIR");
+-	if (!dir || strlen(dir) > 40) dir = "/tmp";
++	if (!dir || strlen(dir) > 39) dir = "/tmp";
+ 	snprintf(redirect, sizeof redirect, "%s/homeros-infoview-XXXXXX", dir);
+ 	int fd = mkstemp(redirect);
+ 	if (fd < 0) return -1;
+diff --git a/src/lsp/lsp.c b/src/lsp/lsp.c
+index 2cd8119..faf8343 100644
+--- a/src/lsp/lsp.c
++++ b/src/lsp/lsp.c
+@@ -51,6 +51,7 @@ typedef struct Srv {
+ 	int ready;              /* initialize answered: messages may go */
+ 	int closing;            /* its last file closed: freed once it exits */
+ 	Str in, held;           /* bytes read and not yet handled; messages waiting for ready */
++	Str init;               /* a Lean server's answer to initialize, for a bridge opened later */
+ 	long next;              /* request ids; 0 is initialize */
+ 	LspDoc *docs;
+ 	struct Srv *link;
+@@ -328,7 +329,7 @@ void lsp_close(LspDoc *d)
+ 		Srv **q = &srvs;
+ 		while (*q != s) q = &(*q)->link;
+ 		*q = s->link;
+-		free(s->root); free(s->in.b); free(s->held.b); free(s);
++		free(s->root); free(s->in.b); free(s->held.b); free(s->init.b); free(s);
+ 		return;
+ 	}
+ 	o.n = 0;
+@@ -583,6 +584,7 @@ static void handle(Srv *s, const char *m, size_t n)
+ 			return;
+ 		}
+ 	if (rid == 0) {                              /* initialize answered */
++		if (s->def->lean) { s->init.n = 0; str_put(&s->init, m, n); }
+ 		if (lsp_tap && s->def->lean) lsp_tap(0, m, n);
+ 		s->ready = 1;
+ 		begin("initialized");
+@@ -610,6 +612,7 @@ static void handle(Srv *s, const char *m, size_t n)
+ static void dead(Srv *s)
+ {
+ 	s->proc = -1;
++	s->init.n = 0;
+ 	for (Raw **q = &raws, *r; (r = *q); )
+ 		if (r->s == s) { *q = r->link; r->fn(r->ctx, NULL, 0); free(r); }
+ 		else q = &r->link;
+@@ -618,7 +621,7 @@ static void dead(Srv *s)
+ 	Srv **q = &srvs;
+ 	while (*q != s) q = &(*q)->link;
+ 	*q = s->link;
+-	free(s->root); free(s->in.b); free(s->held.b); free(s);
++	free(s->root); free(s->in.b); free(s->held.b); free(s->init.b); free(s);
+ }
+ 
+ static void out(void *ctx, int stream, const char *b, size_t n)
+@@ -643,6 +646,7 @@ static void out(void *ctx, int stream, const char *b, size_t n)
+ }
+ 
+ const char *lsp_uri(const LspDoc *d) { return d ? d->uri : NULL; }
++const char *lsp_init(const LspDoc *d, size_t *n) { *n = d->s->init.n; return *n ? d->s->init.b : NULL; }
+ 
+ int lsp_send(const char *u, const char *method, const char *params, size_t n, LspRawFn fn, void *ctx)
+ {

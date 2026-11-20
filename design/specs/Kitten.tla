@@ -16,6 +16,8 @@
 (*   Finishes  once the window stays visible, a playing kitten ends       *)
 (*             (its last frame passes, or a key sends it away), however   *)
 (*             often other things redraw                                   *)
+(* The start screen's cat (src/tools/dash.c, splash.lua) is the same      *)
+(* mechanism: N frames in its 300 s, Start an opening, Key its closing.   *)
 (* Claims: "newframe" has all four; "everydraw" breaks Finishes (redraws  *)
 (* keep pushing the timer back); "step" breaks Shown and Hidden.          *)
 (***************************************************************************)

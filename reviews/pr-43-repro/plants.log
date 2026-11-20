@@ -1,0 +1,18 @@
+caught        infoview: an event for a page whose stream is down is dropped (Infoview nobox)   (make test TESTS=infoview): tests/test_infoview.c:476: CHECK(wait_for(withp, 3, &P, "{\"id\":7,\"k\":\"val\",\"v\":null}")) failed
+caught        infoview: a forgotten page that comes back is not told to reload (Infoview noreload)   (make test TESTS=infoview): tests/test_infoview.c:499: CHECK(wait_for(withp, 3, &A, "{\"reload\":true}")) failed
+caught        infoview: files outside the page's own are served   (make test TESTS=infoview): tests/test_infoview.c:336: CHECK(http("GET", p, NULL, &b) == 404) failed
+caught        infoview: the page is served without the token   (make test TESTS=infoview): tests/test_infoview.c:343: CHECK(http("GET", p, NULL, &b) == 404) failed
+NOT CAUGHT    infoview: the server fuzzer on a page id longer than its buffer   (make fuzz FUZZERS=infoview_serve FUZZ_SECONDS=60 passed)
+caught        infoview: an answer after the child forgot the page makes it again (Infoview create)   (make test TESTS=infoview): tests/test_infoview.c:505: CHECK(!strstr(lg, "keepAlive")) failed
+caught        infoview: incremental diagnostics replace the list   (make test TESTS=infoview): tests/test_infoview.c:363: CHECK(d && strstr(d, "\"message\":\"two\"") && has(&A, "$/lean/fileProgress")) failed
+caught        infoview: initialize before the cursor (VS Code's initInfoView order)   (make test TESTS=infoview): tests/test_infoview.c:356: CHECK(!strncmp(A.ev.b, "{\"m\":\"changedCursorLocation\",", 29)) failed
+caught        infoview: the hello is sent again after every command   (make test TESTS=infoview): tests/test_infoview.c:438: CHECK(count(A.ev.b, "\"m\":\"initialize\"") == 1) failed
+caught        infoview: Lean's UTF-16 columns taken as bytes   (make test TESTS=infoview): tests/test_infoview.c:468: CHECK(e.win->line == 2 && e.win->col == 8) failed
+caught        infoview: the scanner returns an element it has not checked   (make fuzz FUZZERS=infoview_scan FUZZ_SECONDS=60): ==9979== ERROR: libFuzzer: deadly signal
+NOT CAUGHT    x-infoview: the server listens on every address   (make test TESTS=infoview passed)
+NOT CAUGHT    x-infoview: the token is the same every time   (make test TESTS=infoview passed)
+NOT CAUGHT    x-infoview: a body of any length is taken   (make test TESTS=infoview passed)
+NOT CAUGHT    x-infoview: the outbox is sent again at every reopening   (make test TESTS=infoview passed)
+NOT CAUGHT    x-infoview: a page's older stream stays open beside its new one   (make test TESTS=infoview passed)
+NOT CAUGHT    x-infoview: a line break in a call's body reaches the editor's pipe   (make test TESTS=infoview passed)
+NOT CAUGHT    x-infoview: a line break in Lean's JSON reaches the child's pipe   (make test TESTS=infoview passed)

@@ -13,14 +13,13 @@ How they were found (**measured**, 1 run each, on PR 20 after the third review's
 
 On the fresh seeds, 12 cases differ (0.13 %), and each falls in a class below. Two more cases were regressions from the third review's fixes and are fixed: gen2 seed 7 case 363 and ctl seed 7 case 67. Both are now in the recorded traces. Every case listed here differs on d3212dc too. The cases were cut down by the review's `reduce.py`.
 
-Tokens are those of `tests/test_core_screens.py`: `k:` keys, `w<n>:x` CTRL-W x, `pum:a:n:s` a popup with `n` items from item `a` and `s` CTRL-N. "Neovim" and "core" quote the first row that differs.
+A file opens with the cursor on line 1's first non-blank since PR 62, so the cases whose line 1 starts with blanks begin with `k:0`, which puts it in column 0 where they were reduced (re-recorded with that token, each still differing as before). Tokens are those of `tests/test_core_screens.py`: `k:` keys, `w<n>:x` CTRL-W x, `pum:a:n:s` a popup with `n` items from item `a` and `s` CTRL-N. "Neovim" and "core" quote the first row that differs.
 
 ## Not the core's
 
 | Case | Size | Tokens | Neovim | Core | Cause |
 |---|---|---|---|---|---|
 | `ruler_after_u.txt`, `ruler_after_u2.txt` | 30x80, 6x40 | `30G x u`; `23G ix<Esc> u` | ruler `2,1` | `2,1-8` | Neovim's own stale state: after `u` its ruler shows a virtual column that was not computed again on a tab (**hypothesis**) |
-| `x_last_char.txt`, `x_last_char2.txt` | 10x60, 6x60 | `2 CTRL-F $ x`; `A...<Esc> CTRL-F x` | the view kept | the view scrolls | Package 5: `ref/keys.c` calls `core_edit()` with the cursor still on the deleted character, but Neovim's `del_bytes()` moves it left first (review of PR 20) |
 
 ## The core's, not yet found
 
@@ -62,3 +61,14 @@ Tokens are those of `tests/test_core_screens.py`: `k:` keys, `w<n>:x` CTRL-W x, 
 | `append_cmdheight.txt` | 30x60 | `7$`, `CTRL-W -`, wrap, `A` + 80 y | one row further, a `~` row left | |
 
 `:vs` with wrap on screens under 41 columns, where 'winwidth' squeezes the other window, is the first review's point 10. It has no single case: the review's `scan_vs.py` finds 28 of 288 combinations that differ.
+
+## The Visual area (`test_core_visual`)
+
+Cases in the format of `tests/test_core_visual.txt`; replay one with `build/san/test_core_visual -v src/core/known/<case>.txt`. Found on 3,000 fresh cases of `tests/test_core_visual.py` (1,000 each, seeds 1 to 3, **measured**, 1 run): 6 differ (0.2 %). In five the view differs before any highlight is drawn: each has the cursor moved to the line's end by `$` in Visual mode, where Neovim puts it on the NUL. **hypothesis**: the core's `curs_columns()` and `update_topline()` take a cursor on the NUL in Visual mode differently. The sixth differs in the cell under the cursor only, which the block cursor covers.
+
+| Case | Size | State | Neovim | Core |
+|---|---|---|---|---|
+| `visual_eol_left.txt`, `visual_eol_left2.txt` | 10x20, 24x20 | nowrap, the cursor on a long line, `$` | leftcol 24, 52 | 23, 51 |
+| `visual_eol_jump_left.txt`, `visual_eol_jump_left2.txt` | 5x20, 5x80 | nowrap, VIsual far right on a long line, the cursor on a short one, `$` | leftcol 0 | 12, 9 |
+| `visual_nul_top.txt` | 24x40 | wrap, `V`, `$` on line 12 | top line 10 | line 9 |
+| `visual_cursor_after_filler.txt` | 5x40 | wrap, skipcol 36, the cursor after `>` fillers of double-width characters | the cursor's cell in the area | not |

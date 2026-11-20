@@ -1,0 +1,5 @@
+# Extra plants tried in the review; none is caught by tests/test_wl.c at edc1688, all by cur.c
+wl: whole glyph in its first cell's colours~test TESTS=wl~~src/wl/wl.c~j1 = k < c && m < zx ? m : zx;~j1 = k < c && m < zx ? zx : zx;
+wl: every earlier cell in the colours of the one before the last~test TESTS=wl~~src/wl/wl.c~colours(g, r, k < c ? k : c, &fg, &bg);~colours(g, r, k < c ? c - 1 : c, &fg, &bg);
+wl: a part ends half a cell late~test TESTS=wl~~src/wl/wl.c~m = (k + 1) * cell_w - gx;~m = (k + 1) * cell_w - gx + cell_w / 2;
+wl: only the cursor's own cell coloured per cell~test TESTS=wl~~src/wl/wl.c~colours(g, r, k < c ? k : c, &fg, &bg);~colours(g, r, k < c ? k : c, &fg, &bg); if (k < c && !(r == g->crow && k == g->ccol)) colours(g, r, c, &fg, &bg);

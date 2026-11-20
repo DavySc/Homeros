@@ -1,0 +1,6 @@
+# Review of PR 52, second pass (head 8f615e0): plants against the per-buffer list, and the join plant as it was aimed before.
+# Run: bash reviews/pr-52-repro/own-plants.sh reviews/pr-52-repro/own-plants-2.txt
+review 2: a closed buffer's entry stays in the list~test TESTS="core_undo core_contract core_screens file_core"~~src/core/core.c~		if ((*p)->b == b) { Snapped *s = *p; *p = s->next; free(s); break; }~		;
+review 2: the first buffer's entry is used for every buffer~test TESTS="core_undo core_contract core_screens file_core"~~src/core/core.c~while (s && s->b != b) s = s->next;~while (s && s->next) s = s->next;
+review 2: a buffer's entry is added again at every new group~test TESTS="core_undo core_contract core_screens file_core"~~src/core/core.c~if (!s && (s = malloc(sizeof *s)))~if ((s = malloc(sizeof *s)))
+review 2: the join plant as aimed before (recorded key traces)~test TESTS=~~src/core/core.c~	if (line_amount) join_next = b;~	(void)0;

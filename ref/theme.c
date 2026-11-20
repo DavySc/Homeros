@@ -204,4 +204,6 @@ const Face faces[FACE_COUNT] = {
 	{ {249, 226, 175}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} },  /* dashboard sparkle: yellow */
 	{ {108, 112, 134}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} },  /* dashboard terminal: overlay0 */
 	{ {203, 166, 247}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} },  /* dashboard prompt: mauve */
+	{ {116, 199, 236}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} },  /* shimmer sapphire */
+	{ {148, 226, 213}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} },  /* shimmer teal */
 };
