@@ -12,6 +12,11 @@ int main(void)
   int total = twice(pair.a);
   total += twice(total);
   if (total > 0) total += twice(total);   /* clang writes this line as two records, the call in the second */
+  for (int i = 0; i < 2; i += 1) {   /* clang puts the test and the step apart, and the step jumps to the test */
+    int odd = i & 1;                 /* a block with a variable is a scope to step out of, and `break` jumps out of it */
+    if (odd) break;
+    total += i;
+  }
   while (spin) spin -= 1;
   return total;
 }

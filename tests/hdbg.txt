@@ -25,9 +25,14 @@ si
 what
 s
 o
-b tour.c:15
-c
-b tour.c:15
+n
+n
+n
+n
+n
+n
+p i
+o
 c 50
 bt
 c
