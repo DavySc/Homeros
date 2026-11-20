@@ -1,0 +1,18 @@
+columns 80 window height 22
+^A control char (first look)         row  0 col  1 "^"   other
+^A control char                      row  0 col  1 "^"   SpecialKey
+<80> invalid byte                    row  0 col  1 "<"   SpecialKey
+<9f> C1                              row  0 col  1 "<"   SpecialKey
+'>' wide char does not fit at eol    row  0 col 79 ">"   NonText
+'<' wide char cut by leftcol         row  0 col  0 "<"   NonText
+'@@@' display=lastline               row 21 col 77 "@"   NonText
+'@' display= (line does not fit)     row  1 col  0 "@"   NonText
+'~' past the end                     row  1 col  0 "~"   EndOfBuffer
+showbreak                            row  1 col  0 "+"   NonText
+listchars tab                        row  0 col  0 ">"   Whitespace
+listchars nbsp                       row  0 col  9 "_"   Whitespace
+listchars trail                      row  0 col 11 "."   Whitespace
+listchars eol                        row  0 col 12 "$"   NonText
+listchars extends                    row  0 col 79 "#"   NonText
+listchars precedes                   row  0 col  0 "!"   NonText
+diff filler '-'                      "-" not on screen
