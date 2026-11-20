@@ -78,3 +78,4 @@ terminal: a wide character takes one cell~test TESTS=tools_term~~src/tools/term.
 terminal: the shell's exit leaves it open~test TESTS=tools_term~~src/tools/term.c~		T.id = -1;¶		T.open = 0;~		T.id = -1;
 terminal: xterm's ANSI colours, not Catppuccin's~test TESTS=tools_term~~src/tools/term.c~	memcpy(pal, ansi, sizeof ansi);¶~¶
 terminal: a full slot table recolours a slot in use~test TESTS=tools_term~~src/tools/term.c~		else if (old) k = old;~		else if (1) k = SLOT0;
+tools: the Windows terminal runs sh, not cmd.exe~win WIN=tools~~src/tools/term.c~(char *)(sh ? sh : "cmd.exe")~(char *)"sh"

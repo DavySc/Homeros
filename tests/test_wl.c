@@ -280,7 +280,7 @@ static void test_sway(void)
 		for (int i = 0; i < (phase ? 30 : 20 * g.rows) && phase < 10; i++) {
 			int n = (int)rnd(13), r = phase ? (int)rnd(16) : i / 20;
 			grid_put(&g, r, phase ? (int)rnd(20) : i % 20, (const unsigned char *)ch[n], strlen(ch[n]), n == 10 || n == 11 ? 2 : 1, (int)rnd(3));
-			g.c[r * g.cols + rnd(20)].face = (unsigned char)rnd(FACE_COUNT);
+			g.c[r * g.cols + rnd(20)].face = (unsigned short)rnd(FACE_COUNT);
 			g.c[r * g.cols + rnd(20)].bg = (unsigned char)(rnd(2) ? rnd(FACE_COUNT) : 0);
 		}
 		if (phase >= 15) {         /* a scroll by k rows, either way */

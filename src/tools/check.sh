@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # The Windows half of the pickers' path rules: builds tests/test_tools_win.c
 # with zig cc against the modules wincc compiles (not main.c or the window)
-# and runs it under Wine, as src/shada/check.sh does.
+# and runs it under Wine, as src/shada/check.sh does, with libghostty-vt
+# built for Windows (build.mk).
 set -eu
 cd "$(dirname "$0")/../.."
 for t in zig wine; do
@@ -19,11 +20,11 @@ for g in $(sed -n '/^SYN_GRAMMARS/,/[^\\]$/p' src/syntax/build.mk | tr -d '\\' |
 	[ -f $o ] || zig cc -target x86_64-windows-gnu -O2 -c -I$(dirname $SYN/src/$g) $SYN/src/$g.c -o $o
 	objs="$objs $o"
 done
-inc="-I$SYN/src/tree-sitter/lib/include -I$SYN/src/tree-sitter/lib/src"
-make -s $SYN/queries.c
+inc="-I$SYN/src/tree-sitter/lib/include -I$SYN/src/tree-sitter/lib/src -Ibuild/ghostty/include -DGHOSTTY_STATIC"
+make -s $SYN/queries.c build/ghostty/windows.lib
 zig cc -target x86_64-windows-gnu -O2 -c $SYN/queries.c -o build/win/tools/queries.o
 [ -f build/win/tools/ts.o ] || zig cc -target x86_64-windows-gnu -O2 -c $inc $SYN/src/tree-sitter/lib/src/lib.c -o build/win/tools/ts.o
 exe=build/win/test_tools_win.exe
 zig cc -target x86_64-windows-gnu -std=c17 -D_DEFAULT_SOURCE -Wall -Wextra -Werror -Iinclude $inc -O1 -g \
-  -fsanitize=undefined -fsanitize-trap=undefined -o "$exe" tests/test_tools_win.c $srcs build/win/tools/queries.o build/win/tools/ts.o $objs
+  -fsanitize=undefined -fsanitize-trap=undefined -o "$exe" tests/test_tools_win.c $srcs build/win/tools/queries.o build/win/tools/ts.o $objs build/ghostty/windows.lib
 timeout 600 wine "$exe" || { echo "FAIL test_tools_win"; exit 1; }

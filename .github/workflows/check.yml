@@ -39,13 +39,16 @@ jobs:
       - run: echo "$PWD/tools-env/bin" >> "$GITHUB_PATH"
       - run: why3 config detect
       # libghostty-vt (the terminal, src/tools/ghostty.nix) is 5 minutes of
-      # zig and changes only with its recipe; the cache keeps its mtime, older
-      # than the checkout's, so it is touched or make builds it again
+      # zig per target and changes only with its recipe.  The cache keeps the
+      # files' times, older than the checkout's, so they are touched or make
+      # builds them again; on a miss every job builds both targets, so the
+      # job that saves the cache first saves both
       - id: ghostty
         uses: actions/cache@v4
         with: { path: build/ghostty, key: "ghostty-${{ hashFiles('src/tools/ghostty.nix') }}" }
       - if: steps.ghostty.outputs.cache-hit == 'true'
-        run: touch build/ghostty/libghostty-vt.a
+        run: touch build/ghostty/*
+      - run: make build/ghostty/windows.lib
       - run: make ${{ matrix.target }}
   # git's and the loop's Windows halves on Windows itself, for what Wine
   # cannot show (a path's names as stored, a pseudo-console's resize): pull

@@ -12,7 +12,7 @@
 #include "loop.h"
 #include "term.h"
 
-enum { SLOT0 = FACE_COUNT, SLOTS = 256 };
+enum { SLOT0 = FACE_COUNT, SLOTS = FACES };
 
 static struct {
 	GhosttyTerminal t;
@@ -178,7 +178,7 @@ static int cell(Grid *g, int r, int c, const GhosttyRenderStateColors *col)
 	if (hasfg) rgb(f.fg, fg);
 	if (hasbg) rgb(f.bg, bg);
 	int face = f.style ? face_of(&f) : FACE_NONE;
-	for (int i = 0; i < n; i++) g->c[r * g->cols + c + i].face = (unsigned char)face;
+	for (int i = 0; i < n; i++) g->c[r * g->cols + c + i].face = (unsigned short)face;
 	return n;
 }
 

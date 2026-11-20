@@ -106,7 +106,7 @@ int grid_puts(Grid *g, int r, int c, int end, const char *s, size_t n, int attr,
 		if (w > 2 || u[i] < 0x20 || u[i] == 0x7f)
 			for (int j = 0; j < w; j++) c += grid_put(g, r, c, (const unsigned char *)" ", 1, 1, attr);
 		else c += grid_put(g, r, c, u + i, len, w, attr);
-		for (; k < c; k++) g->c[r * g->cols + k].face = (unsigned char)face;
+		for (; k < c; k++) g->c[r * g->cols + k].face = (unsigned short)face;
 	}
 	return c;
 }
@@ -121,7 +121,7 @@ int grid_width(const char *s, size_t n)
 
 const Face *grid_face(const Cell *x, const Face **bg)
 {
-	const Face *f = &faces[x->face];
+	const Face *f = &faces[x->face < FACES ? x->face : FACE_NONE];
 	*bg = x->bg ? &faces[x->bg] : f;
 	return f;
 }

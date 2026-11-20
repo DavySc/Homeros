@@ -39,12 +39,12 @@ static void settle(void)
    backend skips as unchanged would show the old ones. */
 static void draw(void)
 {
-	static Face was[256];
-	static unsigned char held[256];
+	static Face was[FACES];
+	static unsigned char held[FACES];
 	memcpy(was, faces, sizeof was);
 	core_draw(&e, &g);
 	tools_draw(&e, &g);
-	for (int k = FACE_COUNT; k < 256; k++) CHECK(!held[k] || !memcmp(&was[k], &faces[k], sizeof was[k]));
+	for (int k = FACE_COUNT; k < FACES; k++) CHECK(!held[k] || !memcmp(&was[k], &faces[k], sizeof was[k]));
 	memset(held, 0, sizeof held);
 	for (int i = 0; i < g.rows * g.cols; i++) held[g.c[i].face] = 1;
 }
@@ -128,18 +128,18 @@ int main(void)
 	/* more colours than free slots: none is left in a reused slot's old
 	   colours, every 24-bit cell in a slot holds its own colour */
 	for (int round = 0; round < 3; round++) {
-		char cmd[128];
-		snprintf(cmd, sizeof cmd, "printf '\\033[H\\033[2J'; for i in $(seq %d %d); do printf '\\033[38;2;%%d;9;9m#' $i; done; echo\n",
-		         round * 50, round * 50 + 99);
+		char cmd[160];
+		snprintf(cmd, sizeof cmd, "printf '\\033[H\\033[2J'; for i in $(seq %d %d); do printf '\\033[38;2;%%d;%%d;9m#' $((i/256)) $((i%%256)); done; echo\n",
+		         round * 500, round * 500 + 999);
 		type(cmd);
 		draw();   /* a slot the shown frame holds is free one frame later */
 		int seen = 0;
 		for (int i = 0; i < g.rows * g.cols; i++)
 			if (g.c[i].len == 1 && g.c[i].ch[0] == '#' && g.c[i].face >= FACE_COUNT) {
-				CHECK(faces[g.c[i].face].fg[1] == 9 && faces[g.c[i].face].fg[2] == 9);
+				CHECK(faces[g.c[i].face].fg[2] == 9);
 				seen++;
 			}
-		CHECK(seen == 256 - FACE_COUNT);
+		CHECK(seen == FACES - FACE_COUNT);
 	}
 
 	/* Ctrl+. hides it: keys go to the editor again; it comes back with the
