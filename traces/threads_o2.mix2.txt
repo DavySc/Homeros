@@ -1,0 +1,5 @@
+start -> main threads.c:30 +0x1000 [main_thread stopped at entry point]
+step_into_line -> main threads.c:31 +0x1006 [main_thread completed step]
+step_over_line -> main threads.c:34 +0x1025 [main_thread completed step]
+step_into_inst -> main threads.c:36 +0x102f [main_thread completed step]
+step_into_line -> outside kernel32.dll!

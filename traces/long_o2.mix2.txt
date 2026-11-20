@@ -1,0 +1,6 @@
+start -> main long.cpp:8 +0x1000 [main_thread stopped at entry point]
+step_into_line -> __scrt_common_main_seh exe_common.inl:288 +0x122f [main_thread completed step]
+step_over_line -> __scrt_common_main_seh exe_common.inl:294 +0x1231 [main_thread completed step]
+step_into_inst -> __scrt_is_managed_app utility_desktop.cpp:32 +0x1bb0 [main_thread completed step]
+step_out -> __scrt_common_main_seh exe_common.inl:294 +0x1236 [main_thread completed step]
+step_out -> ended
