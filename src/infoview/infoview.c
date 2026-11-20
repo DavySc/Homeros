@@ -14,6 +14,7 @@
    stream, outbox and timeout are the child's; it says "- P" when it forgets
    a page, and as its lines come in order, no call of a forgotten page ever
    follows (design/specs/Infoview.tla). */
+#ifndef _WIN32   /* the child (serve/serve.c) is POSIX: none on Windows yet */
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -655,3 +656,10 @@ void bridge_free(void)
 	in = o = (Str){ 0 };
 	gen = open_wanted = 0;
 }
+#else
+#include "bridge.h"
+#include "core.h"
+int  bridge_open(struct Editor *e) { core_msg(e, "Infoview: Linux only for now"); return -1; }
+void bridge_update(struct Editor *e) { (void)e; }
+void bridge_free(void) {}
+#endif
