@@ -1,0 +1,3 @@
+# Extra plants for PR 73's review (format of tools/planted.sh)
+y1 file: the swapped-out copy left beside the file (shada)~test TESTS=shada~~src/file/file.c~			if (same(&out, &now)) unlink(tmp);~			if (same(&out, &now)) (void)0;
+y2 file: the swapped-out copy left beside the file (file tests)~test TESTS="file file_save file_core file_journal"~~src/file/file.c~			if (same(&out, &now)) unlink(tmp);~			if (same(&out, &now)) (void)0;

@@ -324,7 +324,6 @@ static void done(Repo *r, int slot)
 	git_schedule(r);
 }
 
-/* Git.tla: a write first, else a refresh when dirty; never two at once */
 /* a watch saw something: a refresh if it counts */
 void git_changed(void *ctx, int fd)
 {
@@ -335,6 +334,7 @@ void git_changed(void *ctx, int fd)
 	if (r->ver != v) git_schedule(r);
 }
 
+/* Git.tla: a write first, else a refresh when dirty; never two at once */
 void git_schedule(Repo *r)
 {
 	if (r->busy) return;

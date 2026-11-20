@@ -55,16 +55,22 @@ enum {
 	FACE_HEADING_5_BG, FACE_HEADING_6_BG,
 	/* Neovim's UI highlight groups, as Davy's catppuccin draws them:
 	   CursorLine (only ever a cell's bg), CursorLineNr, LineNr, StatusLine,
-	   StatusLineNC, WinSeparator, EndOfBuffer, Visual, Search, CurSearch,
-	   MatchParen, Pmenu, PmenuSel, NormalFloat, FloatBorder, FloatTitle, Cursor */
+	   StatusLineNC, WinSeparator, EndOfBuffer, NonText ('@@@', the '<' and
+	   '>' fillers, and SpecialKey's ^X, which catppuccin links to it),
+	   Visual, Search, CurSearch, MatchParen, Pmenu, PmenuSel, PmenuSbar,
+	   PmenuThumb, NormalFloat, FloatBorder, FloatTitle, Cursor */
 	FACE_CURSOR_LINE, FACE_CURSOR_LINE_NR, FACE_LINE_NR, FACE_STATUS_LINE,
-	FACE_STATUS_LINE_NC, FACE_WIN_SEPARATOR, FACE_END_OF_BUFFER, FACE_VISUAL,
-	FACE_SEARCH, FACE_CUR_SEARCH, FACE_MATCH_PAREN, FACE_PMENU, FACE_PMENU_SEL,
+	FACE_STATUS_LINE_NC, FACE_WIN_SEPARATOR, FACE_END_OF_BUFFER, FACE_NON_TEXT,
+	FACE_VISUAL, FACE_SEARCH, FACE_CUR_SEARCH, FACE_MATCH_PAREN, FACE_PMENU,
+	FACE_PMENU_SEL, FACE_PMENU_SBAR, FACE_PMENU_THUMB,
 	FACE_NORMAL_FLOAT, FACE_FLOAT_BORDER, FACE_FLOAT_TITLE, FACE_CURSOR,
-	/* the status line (mini.statusline, as my-nvim): the mode pill, other
-	   being the terminal, and the device and file info sections */
+	/* the status line (lualine, catppuccin theme): the mode pill
+	   (lualine_a_<mode>, other being the terminal), the mode colour on
+	   mantle (lualine_b_<mode>'s fg and the pill's rounded ends), and the b
+	   section (surface0) */
 	FACE_MODE_NORMAL, FACE_MODE_INSERT, FACE_MODE_VISUAL, FACE_MODE_REPLACE,
-	FACE_MODE_COMMAND, FACE_MODE_OTHER, FACE_STATUS_INFO,
+	FACE_MODE_COMMAND, FACE_MODE_OTHER, FACE_MODE_NORMAL_FG, FACE_MODE_INSERT_FG,
+	FACE_MODE_VISUAL_FG, FACE_MODE_REPLACE_FG, FACE_MODE_COMMAND_FG, FACE_STATUS_INFO,
 	/* signs (gitsigns) and diagnostics: Diagnostic{Error,Warn,Info,Hint}
 	   for the sign, DiagnosticUnderline* for the span, DiagnosticVirtualText*
 	   for the message after the line */

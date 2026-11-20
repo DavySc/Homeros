@@ -14,7 +14,7 @@ SHELL = /bin/bash
 # value from the command line or make -e never points it at a real one)
 override export XDG_STATE_HOME := $(CURDIR)/build/state
 
-BASE = text undo uni core keys grid tty loop file syntax theme tools git lsp infoview
+BASE = text undo uni core keys grid tty loop file syntax theme tools git lsp infoview kitten
 # src/win/ (package 9) is the Windows build's, cross-compiled on its own
 MODULES = $(BASE) $(filter-out $(BASE) win,$(patsubst src/%/,%,$(wildcard src/*/)))
 pick = $(if $(wildcard src/$(1)/*.c),$(wildcard src/$(1)/*.c),ref/$(1).c)
@@ -68,6 +68,7 @@ test: $(OBJS) | build/san
 	gcc $(WARN) $(CPPFLAGS) $(SAN) -o build/san/homeros $(SRCS) src/main.c $(OBJS) $(LIBS)
 	@python3 tests/paste.py build/san/homeros -t 40000 || { echo "FAIL paste"; exit 1; }
 	@python3 tests/hup.py build/san/homeros || { echo "FAIL hup"; exit 1; }
+	@python3 tests/start.py build/san/homeros || { echo "FAIL start"; exit 1; }
 
 # libFuzzer, each target against a simple model, FUZZ_SECONDS each; an input
 # that runs 20 s is a hang and fails (a planted bug once spun 20 min)

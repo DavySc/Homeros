@@ -49,6 +49,14 @@ static void settle(void)
 	CHECK(!"the repository never settled");
 }
 
+/* lualine's branch, once git has read the change */
+static void branch_check(const char *want)
+{
+	const char *got = NULL;
+	for (int i = 0; i < 200 && (!(got = git_branch(e.buf)) || strcmp(got, want)); i++) CHECK(loop_once(20) == 0);
+	if (!got || strcmp(got, want)) { fprintf(stderr, "git_branch %s, lualine's %s\n", got ? got : "NULL", want); fails++; }
+}
+
 /* the file's lines, numbered from 1 */
 enum { MAXL = 200 };
 static char *line[MAXL + 1];
@@ -221,14 +229,38 @@ int main(void)
 	free(o);
 	CHECK(core_open(&e, file) == 0);
 	e.rows = 40; e.cols = 100;
+	/* a buffer never attached (the core attaches every file it reads, so
+	   one made here, of a file in another repository): nothing, and that
+	   repository not looked for (the redraw path does no I/O) */
+	o = run("cd '%s' && git init -q other && echo x > other/x.txt", tmp);
+	free(o);
+	char x[sizeof tmp + 16];
+	snprintf(x, sizeof x, "%s/other/x.txt", tmp);
+	Buf never = { 0 };
+	never.nr = 9999;
+	never.path = x;
+	CHECK(!git_branch(&never) && !git_sign(&never, 0));
+	for (Repo *r = git_repos; r; r = r->next) CHECK(!strstr(r->top, "/other"));
+	/* as the core on reading each file of "homeros f.txt g.txt", before
+	   the first key gives git the editor: both stay attached (attached
+	   here too, while the core does not yet) */
+	int fnr = e.buf->nr;
+	git_attach(e.buf);
+	char g[sizeof repo + 8];
+	snprintf(g, sizeof g, "%s/g.txt", repo);
+	o = run("echo g > '%s'", g);
+	free(o);
+	CHECK(core_edit_file(&e, g, 0) == 0);
+	git_attach(e.buf);
 	git_editor(&e);
+	CHECK(core_buf_goto(&e, fnr) == 0);
 	git_headless = 1;
+	CHECK(!git_branch(e.buf));             /* before git has looked */
 	int rounds = 0, checks = 0;
 	for (int round = 0; round < 150; round++, rounds++) {
 		edit(round);
 		if (rnd(2)) edit(round);
 		write_file();
-		git_sign(e.buf, 0);               /* the first sign asks for the status */
 		settle();
 		char when[32];
 		snprintf(when, sizeof when, "round %d", round);
@@ -282,12 +314,33 @@ int main(void)
 	o = run("cat '%s/opened'", tmp);
 	if (strcmp(o, "https://github.com/someone/proj/blob/main/f.txt#L7\n")) { fprintf(stderr, "SPC g B opened %s", o); fails++; }
 	free(o);
+	branch_check("main");
+	o = run("cd '%s' && git checkout -q --detach && git rev-parse HEAD | cut -c1-6 | tr -d '\\n'", repo);
+	branch_check(o);
+	free(o);
+	o = run("cd '%s' && git checkout -q -b feature", repo);
+	free(o);
+	branch_check("feature");
+	o = run("echo x > '%s/out.txt'", tmp);
+	free(o);
+	snprintf(path, sizeof path, "%s/out.txt", tmp);
+	/* the same buffer renamed outside the repository (:saveas) and attached
+	   again: the old repository is gone */
+	int signs = 0;
+	for (int l = 0; l <= nline; l++) signs += git_sign(e.buf, (size_t)l) != 0;
+	CHECK(signs > 0);                      /* so the check below can fail */
+	char *was = e.buf->path;
+	e.buf->path = path;
+	git_attach(e.buf);
+	CHECK(!git_branch(e.buf));
+	for (int l = 0; l <= nline; l++) CHECK(!git_sign(e.buf, (size_t)l));
+	e.buf->path = was;
 	git_free();
 	core_free(&e);
 	for (int i = 1; i <= nline; i++) free(line[i]);
 	o = run("rm -rf '%s'", tmp);
 	free(o);
 	if (fails) { fprintf(stderr, "%d differences from gitsigns\n", fails); return 1; }
-	printf("test_git_signs: %d rounds of random edits: every line's sign and SPC h s, r, u, S as gitsigns; SPC g L, d, B\n", rounds);
+	printf("test_git_signs: %d rounds of random edits: every line's sign and SPC h s, r, u, S as gitsigns; SPC g L, d, B; the branch as lualine\n", rounds);
 	return 0;
 }

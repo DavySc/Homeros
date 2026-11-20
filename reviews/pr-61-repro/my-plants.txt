@@ -1,0 +1,16 @@
+# Extra plants for PR 61's checks (format of tools/planted.sh). Run: reviews/pr-61-repro/my-planted.sh <repo>
+x1 dash: f opens the recent picker~test TESTS=tools_dash~~src/tools/dash.c~	case 'f': tools_pick(e, PICK_FILES); break;~	case 'f': tools_pick(e, PICK_RECENT); break;
+x2 dash: g opens the smart picker~test TESTS=tools_dash~~src/tools/dash.c~	case 'g': tools_pick(e, PICK_GREP); break;~	case 'g': tools_pick(e, PICK_SMART); break;
+x3 dash: stays when a second window opens~test TESTS=tools_dash~~src/tools/dash.c~ || e->wins->next~
+x4 dash: stays over another buffer~test TESTS=tools_dash~~src/tools/dash.c~e->buf != D.buf || ~
+x5 shada: the r items match case~test TESTS=shada~~src/shada/shada.c~(p[k] | 0x20) == r[i][k]~p[k] == r[i][k]
+x6 shada: /private/ kept~test TESTS=shada~~src/shada/shada.c~{ "/tmp/", "/private/" }~{ "/tmp/" }
+x7 main: no dashboard without a file~test~~src/main.c~	if (!file) tools_dash(&e, ~	if (0) tools_dash(&e, 
+x8 main: recent files never written~test~~src/main.c~	shada_write(&e);   /* Neovim~	(void)shada_write;   /* Neovim
+x9 main: buffers left are not tracked~test~~src/main.c~				shada_track(&e);~
+x10 main: v:oldfiles never read~test~~src/main.c~	if (shada_read()) {~	if (0) {
+x11 shada: the other editor's kept copy left behind~test TESTS=shada~~src/shada/shada.c~	if (r == SAVE_KEPT) remove(kept);~	(void)kept;
+x12 recent: files in the state directory listed~test TESTS=tools_pick~~src/tools/pick.c~			want = !(!strncmp(f, skip[k], sn) && (!f[sn] || sep(f[sn])));~			(void)sn;
+x13 recent: this session's buffers oldest first~test TESTS=tools_pick~~src/tools/pick.c~bs[j - 1]->lastused < b->lastused~bs[j - 1]->lastused > b->lastused
+x14 dash: Enter runs the first item~test TESTS=tools_dash~~src/tools/dash.c~	case KEY_ENTER: action(e, D.sel); return 1;~	case KEY_ENTER: action(e, NKEY - 1); return 1;
+x15 main: homeros without a file is a usage error again~test~~src/main.c~	if (argc > 2 + tty) {~	if (argc != 2 + tty) {

@@ -1267,28 +1267,50 @@ typedef struct { int nr; Repo *r; char *rel; } Of;
 static Of *ofs;
 static size_t nofs;
 
-static Of *of(const Buf *b)
+static Of *find(const Buf *b)
 {
-	for (size_t i = 0; i < nofs; i++) {
-		if (ofs[i].nr == b->nr) return &ofs[i];
-		if (!git_buf(ofs[i].nr)) { free(ofs[i].rel); ofs[i--] = ofs[--nofs]; }   /* deleted */
+	for (size_t i = 0; i < nofs; i++) if (ofs[i].nr == b->nr) return &ofs[i];
+	return NULL;
+}
+
+static int scnr;                   /* git_sign's cache (below) */
+
+/* gitsigns' attach on BufRead: the buffer's repository is found here, once
+   per file read, so git_sign and git_branch only look it up.  A buffer
+   attached again (another file, a new name) is attached anew. */
+void git_attach(const Buf *b)
+{
+	/* deleted buffers; before git has the editor (files read before the
+	   first key) none can be told from a live one */
+	for (size_t i = 0; git_ed() && i < nofs; i++)
+		if (!git_buf(ofs[i].nr)) { free(ofs[i].rel); ofs[i--] = ofs[--nofs]; }
+	Of *o = find(b);
+	if (o) free(o->rel);
+	else {
+		Of *n = realloc(ofs, (nofs + 1) * sizeof *n);
+		if (!n) return;
+		ofs = n;
+		o = &ofs[nofs++];
 	}
-	Of *n = realloc(ofs, (nofs + 1) * sizeof *n);
-	if (!n) return NULL;
-	ofs = n;
-	Of *o = &ofs[nofs++];
 	*o = (Of){ b->nr, NULL, NULL };
+	scnr = 0;
 	char abs[PATH_MAX];
-	if (!b->path || git_real(b->path, abs)) return o;
+	if (!b->path || git_real(b->path, abs)) return;
 	char dir[PATH_MAX];
 	snprintf(dir, sizeof dir, "%s", abs);
 	char *s = strrchr(dir, '/');
 	if (s) *s = 0;
-	if (!(o->r = git_repo(dir))) return o;
+	if (!(o->r = git_repo(dir))) return;
 	size_t tl = strlen(o->r->top);
 	o->rel = strdup(abs + tl + (abs[tl] == '/'));
 	git_schedule(o->r);
-	return o;
+}
+
+/* the keys' lookup: a buffer the core has not attached is attached now */
+static Of *of(const Buf *b)
+{
+	if (!find(b)) git_attach(b);
+	return find(b);
 }
 
 /* gitsigns' hunks are the diff's blocks of changed lines, without context:
@@ -1444,14 +1466,14 @@ int git_leader(Editor *e, int prefix, int key)
 }
 
 /* gitsigns' signs from the unstaged diff (block_at) */
-static int scnr;                   /* git_sign's cache: buffer, repository, build, file section */
+/* git_sign's cache: buffer (scnr), repository, build, file section */
 static Repo *scr;
 static unsigned long scgen;
 static int scfs = -1;
 int git_sign(const Buf *b, size_t l)
 {
 	if (b->nr != scnr || !scr || scr->gen != scgen) {
-		Of *o = of(b);
+		Of *o = find(b);
 		scnr = b->nr; scr = o ? o->r : NULL; scfs = -1;
 		if (!scr || !o->rel) return 0;
 		scgen = scr->gen;
@@ -1459,6 +1481,19 @@ int git_sign(const Buf *b, size_t l)
 	}
 	Blk bk;
 	return scfs < 0 ? 0 : block_at(&scr->st, scfs, (long)l + 1, &bk);
+}
+
+/* lualine's branch component (branch/git_branch.lua): the ref name, else
+   HEAD's first 6 characters; from the status's # branch lines */
+const char *git_branch(const Buf *b)
+{
+	static char h[7];
+	Of *o = find(b);
+	const Branch *br = o && o->r ? &o->r->br : NULL;
+	if (!br || !br->oid) return NULL;
+	if (br->head) return br->head;
+	snprintf(h, sizeof h, "%s", br->oid);
+	return h;
 }
 
 /* git_free's part: no prompt, focus or remembered buffer survives */

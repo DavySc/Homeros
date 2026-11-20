@@ -41,10 +41,18 @@ git: a nested repository's .git counts (Windows watch)~win WIN=git~~src/git/git.
 git: the watch is not armed again after a change (Windows watch)~win WIN=git~~src/git/win.c~			if (arm(t)) break;~			break;
 git: the trash deletes instead of using the Recycle Bin (Windows trash)~win WIN=git~~src/git/win.c~	op.fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION~	op.fFlags = FOF_NOCONFIRMATION
 git: git_real keeps a lower-case drive letter (Windows paths)~win WIN=git~~src/git/win.c~	if (out[0] >= 'a' && out[0] <= 'z' && out[1] == ':') out[0] -= 'a' - 'A';~
-git: the change entries are read in place, unaligned under Wine (Windows watch)~win WIN=git~~src/git/win.c~			memcpy(&f, p, at);~			f.NextEntryOffset = ((FILE_NOTIFY_INFORMATION *)p)->NextEntryOffset; f.FileNameLength = ((FILE_NOTIFY_INFORMATION *)p)->FileNameLength;
+git: the change entries are read in place, unaligned under Wine (Windows watch)~win WIN=git~~src/git/win.c~		memcpy(&f, p, at);~		f.NextEntryOffset = ((FILE_NOTIFY_INFORMATION *)p)->NextEntryOffset; f.FileNameLength = ((FILE_NOTIFY_INFORMATION *)p)->FileNameLength;
 git: a drive-letter path read as relative (Windows magit traces)~win WIN=git~~src/git/git.c~int git_abs(const char *p) { return p[0] == '/' || (p[0] && p[1] == ':' && p[2] == '/'); }~int git_abs(const char *p) { return p[0] == '/'; }
 git: one drain takes one batch (Windows watch, Git.tla ActsOnSeen)~win WIN=git~~src/git/win.c~			if (arm(t)) break;~			arm(t); break;
 git: a linked work tree's common directory is not watched (Windows watch)~win WIN=git~~src/git/win.c~ root(r, r->common);~ (void)0;
 git: the work tree diff misses renames (magit traces)~test TESTS=git~~src/git/git.c~cmd_add(c, "-M"); ~
 git: discarding staged changes refuses while a file is unmerged (unmerged check)~test TESTS=git~~src/git/keys.c~"--unmerged", ~
 git: an event on the work tree's own directory reads past the path (top check)~test TESTS=git~~src/git/os.c~"%s/%s", dir, ev->len~"%s%s%s", dir, ev->len ? "/" : "", ev->len~
+git: the branch shows a branch's hash (git_signs, branch)~test TESTS=git_signs~~src/git/keys.c~	if (br->head) return br->head;¶~
+git: a detached HEAD shows 7 characters, not lualine's 6 (git_signs, branch)~test TESTS=git_signs~~src/git/keys.c~	static char h[7];~	static char h[8];
+git: the branch before git has looked is not NULL (git_signs, branch)~test TESTS=git_signs~~src/git/keys.c~	if (!br || !br->oid) return NULL;~	if (!br) return NULL;
+git: attaching a buffer again keeps its old repository (git_signs, branch)~test TESTS=git_signs~~src/git/keys.c~	if (o) free(o->rel);¶	else {~	if (o) return;¶	else {
+git: the branch lookup attaches, doing I/O in the redraw path (git_signs)~test TESTS=git_signs~~src/git/keys.c~	static char h[7];¶	Of *o = find(b);~	static char h[7];¶	Of *o = of(b);
+git: the sign lookup attaches, doing I/O in the redraw path (git_signs)~test TESTS=git_signs~~src/git/keys.c~		Of *o = find(b);¶		scnr = b->nr;~		Of *o = of(b);¶		scnr = b->nr;
+git: attaching a buffer again keeps git_sign's cached signs (git_signs)~test TESTS=git_signs~~src/git/keys.c~	*o = (Of){ b->nr, NULL, NULL };¶	scnr = 0;~	*o = (Of){ b->nr, NULL, NULL };
+git: attaching a file before the first key drops the files attached before it (git_signs)~test TESTS=git_signs~~src/git/keys.c~	for (size_t i = 0; git_ed() && i < nofs; i++)~	for (size_t i = 0; i < nofs; i++)

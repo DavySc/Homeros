@@ -58,21 +58,67 @@ static unsigned char face_of(const char *cap, uint32_t n)
 	return (unsigned char)(best + 1);   /* FACE_NONE when none */
 }
 
-/* Grammars linked in, by file name ending (Neovim's filetype for each). */
+/* Grammars linked in, by Neovim's name for each */
 const TSLanguage *tree_sitter_c(void);
 const TSLanguage *tree_sitter_lua(void);
 const TSLanguage *tree_sitter_markdown(void);
 const TSLanguage *tree_sitter_markdown_inline(void);
+const TSLanguage *tree_sitter_rust(void);
+const TSLanguage *tree_sitter_glsl(void);
 static const struct Lang {
-	const char *name, *ext[3];
+	const char *name;
 	const TSLanguage *(*fn)(void);
 } langs[] = {
-	{ "c", { ".c", ".h" }, tree_sitter_c },
-	{ "lua", { ".lua" }, tree_sitter_lua },
-	{ "markdown", { ".md" }, tree_sitter_markdown },
-	{ "markdown_inline", { NULL }, tree_sitter_markdown_inline },
+	{ "c", tree_sitter_c },
+	{ "lua", tree_sitter_lua },
+	{ "markdown", tree_sitter_markdown },
+	{ "markdown_inline", tree_sitter_markdown_inline },
+	{ "rust", tree_sitter_rust },
+	{ "glsl", tree_sitter_glsl },
 };
 enum { NLANGS = sizeof langs / sizeof *langs };
+
+/* File name endings, or whole names, Neovim's 'filetype' for each (nvim
+   0.12 --clean, vim.filetype.match: a .h is cpp unless g:c_syntax_for_h;
+   a .v is Verilog or V by its content, so it is left out; Neovim also
+   strips backup endings such as ~ and .bak, which these do not; it knows no
+   .dl, which is souffle as the Soufflé plugins for Vim name it), and what
+   colours it: a langs[] index, T-SQL's, JSON's or Soufflé's word lists
+   (tsql.c, in tsql_new's order), or nothing yet (Davy's other languages,
+   FEATURES.md) */
+enum { BY_NONE = -1, BY_SQL = -2, BY_JSON = -3, BY_DL = -4 };
+static const struct { const char *ext, *ft; int lang; } fts[] = {
+	{ ".c", "c", 0 }, { ".h", "cpp", 0 }, { ".lua", "lua", 1 }, { ".md", "markdown", 2 },
+	{ ".sql", "sql", BY_SQL }, { ".json", "json", BY_JSON }, { "CMakeLists.txt", "cmake", BY_NONE },
+	{ ".txt", "text", BY_NONE }, { ".rs", "rust", 4 }, { ".nix", "nix", BY_NONE },
+	{ ".glsl", "glsl", 5 }, { ".vert", "glsl", 5 }, { ".frag", "glsl", 5 },
+	{ ".comp", "glsl", 5 }, { ".geom", "glsl", 5 }, { ".tesc", "glsl", 5 },
+	{ ".tese", "glsl", 5 }, { ".sv", "systemverilog", BY_NONE }, { ".svh", "systemverilog", BY_NONE },
+	{ ".cmake", "cmake", BY_NONE }, { ".lean", "lean", BY_NONE }, { ".cs", "cs", BY_NONE },
+	{ ".org", "org", BY_NONE }, { ".dl", "souffle", BY_DL },
+};
+
+/* fts[]'s entry for path's base name (after its last / or \, as Neovim),
+   -1 for none */
+static int ft_of(const char *path)
+{
+	const char *b = path;
+	for (const char *c = path; *c; c++)
+		if (*c == '/' || *c == '\\') b = c + 1;
+	size_t bl = strlen(b);
+	for (int i = 0; i < (int)(sizeof fts / sizeof *fts); i++) {
+		const char *e = fts[i].ext;
+		size_t el = strlen(e);
+		if (bl >= el && !memcmp(b + bl - el, e, el) && (*e == '.' || bl == el)) return i;
+	}
+	return -1;
+}
+
+const char *syntax_filetype(const char *path)
+{
+	int i = path ? ft_of(path) : -1;
+	return i < 0 ? NULL : fts[i].ft;
+}
 
 /* Neovim's highlights and injections queries per language, in langs' order
    (build.mk compiles them in) */
@@ -80,17 +126,7 @@ extern const char *const syntax_queries[][2];
 int syntax_release(TSTree *t, unsigned n);   /* release.c */
 enum { RELEASE_STEP = 1024 };                /* nodes freed between stop asks */
 
-static int lang_of_path(const char *path, size_t pl)
-{
-	for (int i = 0; i < NLANGS; i++)
-		for (int k = 0; k < 3 && langs[i].ext[k]; k++) {
-			size_t el = strlen(langs[i].ext[k]);
-			if (pl > el && !memcmp(path + pl - el, langs[i].ext[k], el)) return i;
-		}
-	return -1;
-}
-
-enum { P_EQ, P_MATCH, P_ANYOF, P_ANCESTOR, P_PARENT };
+enum { P_EQ, P_MATCH, P_ANYOF, P_ANCESTOR, P_PARENT, P_CONTAINS };
 typedef struct {
 	unsigned char kind, neg;
 	uint32_t cap;
@@ -105,7 +141,7 @@ typedef struct {
 	int prio;                  /* #set! priority N */
 	const char *ilang;         /* #set! injection.language "x" */
 	uint32_t ilen;
-	unsigned char iself;
+	unsigned char iself, incl;  /* injection.self, injection.include-children */
 } Pattern;
 
 typedef struct {
@@ -209,14 +245,35 @@ static void set(Q *Q, uint32_t i, Pattern *P, const TSQueryPredicateStep *st, ui
 	if (EQ(key, l, "priority") && v) P->prio = atoi(v);
 	else if (EQ(key, l, "injection.language") && v) P->ilang = v, P->ilen = vl;
 	else if (EQ(key, l, "injection.self")) P->iself = 1;
-	else if (EQ(key, l, "injection.combined") || EQ(key, l, "injection.include-children"))
-		ts_query_disable_pattern(Q->q, i);
+	else if (EQ(key, l, "injection.include-children")) P->incl = 1;
+	else if (EQ(key, l, "injection.combined")) ts_query_disable_pattern(Q->q, i);
+}
+
+typedef struct Src Src;
+static int resolve(Src *src, const char *s, uint32_t a, uint32_t z);
+
+/* An injection of a language we lack, named in the pattern: like Neovim
+   without that parser, it injects nothing, so the pattern goes before its
+   predicates are read (Rust's re2c pattern uses Vim's match?). */
+static int lacked(const TSQueryPredicateStep *st, uint32_t ns, const TSQuery *q)
+{
+	for (uint32_t a = 0; a + 2 < ns; a++) {
+		uint32_t l, vl;
+		if (st[a].type != TSQueryPredicateStepTypeString || st[a + 1].type != TSQueryPredicateStepTypeString
+		    || st[a + 2].type != TSQueryPredicateStepTypeString) continue;
+		const char *n = ts_query_string_value_for_id(q, st[a].value_id, &l);
+		const char *k = ts_query_string_value_for_id(q, st[a + 1].value_id, &vl);
+		if (!EQ(n, l, "set!") || !EQ(k, vl, "injection.language")) continue;
+		k = ts_query_string_value_for_id(q, st[a + 2].value_id, &vl);
+		return resolve(NULL, k, 0, vl) < 0;
+	}
+	return 0;
 }
 
 /* Turns each pattern's predicate steps into Preds and metadata, as
    query.lua's process_patterns: "not-" negates.  A predicate these
-   languages' queries do not use (contains?, match?, the any- forms, #eq?
-   of two captures) fails the query, as Neovim errors on an unknown one. */
+   languages' queries do not use (match?, the any- forms, #eq? of two
+   captures) fails the query, as Neovim errors on an unknown one. */
 static int compile(Q *Q, int hl)
 {
 	uint32_t np = ts_query_pattern_count(Q->q), nc = ts_query_capture_count(Q->q);
@@ -238,6 +295,10 @@ static int compile(Q *Q, int hl)
 		P->prio = PRIO;
 		P->p = calloc(ns ? ns : 1, sizeof *P->p);
 		if (!P->p) return -1;
+		if (!hl && lacked(st, ns, Q->q)) {
+			ts_query_disable_pattern(Q->q, i);
+			continue;
+		}
 		for (uint32_t a = 0; a < ns; ) {
 			uint32_t b = a;
 			while (st[b].type != TSQueryPredicateStepTypeDone) b++;
@@ -259,6 +320,7 @@ static int compile(Q *Q, int hl)
 				else if (EQ(name, l, "any-of?")) p->kind = P_ANYOF;
 				else if (EQ(name, l, "has-ancestor?")) p->kind = P_ANCESTOR;
 				else if (EQ(name, l, "has-parent?")) p->kind = P_PARENT;
+				else if (EQ(name, l, "contains?")) p->kind = P_CONTAINS;
 				else return -1;
 				if (n < 2 || !ISCAP(a + 1)) return -1;
 				p->cap = st[a + 1].value_id;
@@ -328,15 +390,13 @@ static void free_ltree(Syntax *s, LTree *L)
 
 Syntax *syntax_open(const char *path, const Text *t)
 {
-	size_t pl = strlen(path);
-	int json = pl > 5 && !memcmp(path + pl - 5, ".json", 5);
-	if (json || (pl > 4 && !memcmp(path + pl - 4, ".sql", 4))) {
+	int i = ft_of(path), li = i < 0 ? BY_NONE : fts[i].lang;
+	if (li == BY_NONE) return NULL;
+	if (li < BY_NONE) {
 		Syntax *s = calloc(1, sizeof *s);
-		if (s && !(s->sql = tsql_new(t, json))) free(s), s = NULL;
+		if (s && !(s->sql = tsql_new(t, BY_SQL - li))) free(s), s = NULL;
 		return s;
 	}
-	int li = lang_of_path(path, pl);
-	if (li < 0) return NULL;
 	Syntax *s = calloc(1, sizeof *s);
 	if (!s) return NULL;
 	s->plang = -1;
@@ -443,7 +503,7 @@ void syntax_edit(Syntax *s, const Text *t, size_t pos, size_t ndel, const char *
 
 /* Bytes of the text through a small window, so a predicate can read a node
    of any size without allocating in the redraw path. */
-typedef struct { const Text *t; size_t base, n; char w[256]; } Src;
+typedef struct Src { const Text *t; size_t base, n; char w[256]; } Src;
 
 static int at(void *v, size_t i)
 {
@@ -486,6 +546,14 @@ static int test1(Src *src, const Pred *p, TSNode n)
 		for (uint32_t k = 0; k < p->nstr; k++)
 			if (text_eq(src, a, z, p->str[k], p->len[k])) return 1;
 		return 0;
+	case P_CONTAINS:
+		/* every string, as a plain substring of the node's text */
+		for (uint32_t k = 0; k < p->nstr; k++) {
+			uint32_t i = a;
+			while (i + p->len[k] <= z && !text_eq(src, i, i + p->len[k], p->str[k], p->len[k])) i++;
+			if (i + p->len[k] > z) return 0;
+		}
+		return 1;
 	case P_ANCESTOR:
 		/* down from the root, as Neovim's __has_ancestor: each ts_node_parent
 		   walks from the root again (measured: a fifth of the colouring time) */
@@ -504,7 +572,7 @@ static int test1(Src *src, const Pred *p, TSNode n)
    (query.lua's handlers).  Neovim's any-of?, has-ancestor? and has-parent?
    need one node, not all, but in these languages' queries every predicate
    tests a capture of exactly one node (ts_query_capture_quantifier_for_id:
-   39 of 39), where the two agree. */
+   63 of 63 with Rust), where the two agree. */
 static int test(Src *src, const TSQueryMatch *m, const Pred *p)
 {
 	for (uint16_t i = 0; i < m->capture_count; i++)
@@ -573,8 +641,8 @@ static TSRange mkrange(uint32_t a, TSPoint pa, uint32_t z, TSPoint pz)
 	return (TSRange){ pa, pz, a, z };
 }
 
-/* get_node_ranges: the node's range without its named children (patterns
-   with injection.include-children are disabled) */
+/* get_node_ranges: the node's range without its named children (with
+   injection.include-children inject() takes the whole range instead) */
 static int node_ranges(TSNode n, Ranges *out)
 {
 	TSPoint sp = ts_node_start_point(n), ep = ts_node_end_point(n);
@@ -707,7 +775,9 @@ static int inject(Syntax *s, LTree *L, const Text *t)
 				const TSQueryCapture *c = &m.captures[i];
 				uint32_t a = ts_node_start_byte(c->node), z = ts_node_end_byte(c->node);
 				if (c->index == Q->langcap) lang = resolve(&src, NULL, a, z);
-				else if (c->index == Q->content) rc = node_ranges(c->node, &cr);
+				else if (c->index == Q->content)
+					rc = P->incl ? push(&cr, mkrange(a, ts_node_start_point(c->node), z, ts_node_end_point(c->node)))
+					             : node_ranges(c->node, &cr);
 			}
 			if (rc || lang < 0 || !cr.n) continue;
 			Inj *j = inj_new(&I, lang);
@@ -899,8 +969,10 @@ static void widen(Syntax *s, LTree *L, uint32_t *a, uint32_t *z)
 		ts_query_cursor_set_byte_range(s->qc, sa, sz);
 		ts_query_cursor_exec(s->qc, Q->q, ts_tree_root_node(g->tree));
 		TSQueryMatch m;
-		uint32_t ci;
-		while (ts_query_cursor_next_capture(s->qc, &m, &ci))
+		/* whole matches: next_capture hands out a match before its
+		   captures past the range are found (measured: a Rust macro's
+		   name without its "!") */
+		while (ts_query_cursor_next_match(s->qc, &m))
 			for (uint16_t k = 0; k < m.capture_count; k++) {
 				TSNode n = m.captures[k].node;
 				if (!Q->face[m.captures[k].index]) continue;
@@ -954,4 +1026,80 @@ void syntax_faces(Syntax *s, size_t a, size_t z, unsigned char *face)
 	s->sa = s->sz = 0;
 	faces_tree(s, s->t, s->root, s->ca, s->ca, s->cz);
 	memcpy(face, s->cache + (a - s->ca), z - a);
+}
+
+/* render-markdown 8.14's facts for line l, from the Markdown block tree as
+   it reads them: a list marker with its nesting (node:level_in('list')),
+   its place among its list_item siblings (sibling_count) and checkbox
+   (task_list_marker_*, or the custom [-] after the marker); a heading's
+   atx_hN_marker, alone or after the list marker ("- # x"); a
+   fenced_code_block's delimiters, info_string, language and background
+   rows, unless its range spans 1 row or fewer (Node:height() 2 or less),
+   which render-markdown skips.  The node is the
+   one at the line's first byte past its indent and block quote markers. */
+static size_t blank(const char *b, size_t n, size_t i)
+{
+	while (i < n && (b[i] == ' ' || b[i] == '\t' || b[i] == '>')) i++;
+	return i;
+}
+
+int syntax_md(Syntax *s, const Text *t, size_t l, SyntaxMd *o)
+{
+	memset(o, 0, sizeof *o);
+	if (!s || s->sql || !started(s) || s->root->lang != 2 || !s->root->reg->tree) return 0;
+	TSNode r = ts_tree_root_node(s->root->reg->tree);
+	size_t ls = text_line_start(t, l), len = text_line_start(t, l + 1) - ls - (l < text_lines(t));
+	char b[256];
+	size_t n = text_read(t, ls, b, len < sizeof b ? len : sizeof b), i = blank(b, n, 0);
+	TSNode x = ts_node_descendant_for_byte_range(r, (uint32_t)(ls + i), (uint32_t)(ls + i));
+	const char *ty = ts_node_type(x);
+	/* list markers ("- - x" holds two: the first is the item's), then what
+	   follows them on the line: a heading.  A marker must end past where it
+	   was looked up: an edit not yet parsed can leave it empty there. */
+	for (size_t e = i; !strncmp(ty, "list_marker_", 12) && ts_node_end_byte(x) > ls + e; ty = ts_node_type(x)) {
+		e = ts_node_end_byte(x) - ls;
+		if (!o->list) {
+			for (TSNode a = ts_node_parent(x); !ts_node_is_null(a); a = ts_node_parent(a)) o->list += !strcmp(ts_node_type(a), "list");
+			if ((o->ordered = !strcmp(ty + 12, "dot") || !strcmp(ty + 12, "parenthesis")))
+				for (TSNode a = ts_node_parent(x); !ts_node_is_null(a) && !strcmp(ts_node_type(a), "list_item"); a = ts_node_prev_sibling(a)) o->index++;
+			o->item = ts_node_start_byte(x) - ls, o->iend = e;
+			TSNode k = ts_node_next_named_sibling(x);
+			const char *kt = ts_node_is_null(k) ? "" : ts_node_type(k);
+			if (!strncmp(kt, "task_list_marker_", 17)) o->task = kt[17] == 'c' ? 'x' : ' ', o->task_col = ts_node_start_byte(k) - ls;
+			/* shortcut.lua: a shortcut_link "[-]" right after the marker with
+			   a blank after it (none at the line's end) */
+			else if (e + 4 <= n && !memcmp(b + e, "[-] ", 4)) o->task = '-', o->task_col = e;
+		}
+		e = blank(b, n, e);
+		x = ts_node_descendant_for_byte_range(r, (uint32_t)(ls + e), (uint32_t)(ls + e));
+	}
+	if (!strncmp(ty, "atx_h", 5) && !strcmp(ty + 6, "_marker"))
+		o->head = (unsigned char)(ty[5] - '0'), o->mark = ts_node_start_byte(x) - ls, o->mend = ts_node_end_byte(x) - ls;
+	/* code: from the line's last byte, as its first can be a block quote's
+	   marker that is the code's own text (an unclosed fence takes "> "
+	   lines after it) */
+	x = ts_node_descendant_for_byte_range(r, (uint32_t)(ls + (len ? len - 1 : 0)), (uint32_t)(ls + (len ? len - 1 : 0)));
+	for (; !ts_node_is_null(x) && strcmp(ts_node_type(x), "fenced_code_block"); x = ts_node_parent(x)) ;
+	uint32_t sr = 0, er = 0;
+	if (!ts_node_is_null(x) && (er = ts_node_end_point(x).row) - (sr = ts_node_start_point(x).row) > 1) {
+		/* code.lua: background(start_row + 1, end_row - 2), from the block's
+		   start column on every row */
+		if (l > sr && l + 2 <= er) o->code = 2, o->mark = ts_node_start_point(x).column;
+		for (uint32_t k = 0, d = 0; k < ts_node_child_count(x); k++) {
+			TSNode c = ts_node_child(x, k);
+			const char *ct = ts_node_type(c);
+			int fence = !strcmp(ct, "fenced_code_block_delimiter");
+			d += fence;
+			if (ts_node_start_point(c).row != l) continue;
+			if (fence)
+				o->code = d > 1 ? 3 : 1, o->mark = ts_node_start_byte(c) - ls, o->mend = ts_node_end_byte(c) - ls;
+			else if (!strcmp(ct, "info_string")) {
+				o->info = ts_node_start_byte(c) - ls, o->ninfo = ts_node_end_byte(c) - ts_node_start_byte(c);
+				TSNode g = ts_node_named_child(c, 0);
+				if (!ts_node_is_null(g) && !strcmp(ts_node_type(g), "language"))
+					o->lang = ts_node_start_byte(g) - ls, o->nlang = ts_node_end_byte(g) - ts_node_start_byte(g);
+			}
+		}
+	}
+	return o->head || o->list || o->code;
 }
