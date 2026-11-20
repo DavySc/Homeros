@@ -1,0 +1,14 @@
+# The reviewer's plants for src/lsp/ (PR 27), in tools/planted.sh's format.
+lsp+: a full log never drops its older half (writes past it)~test TESTS=lsp~~src/lsp/lsp.c~	if (d->nlog == LOG) {~	if (0) {
+lsp+: a full log drops its older half but still maps from the old floor~test TESTS=lsp~~src/lsp/lsp.c~		d->floor = d->nlog ? d->log[0].v + 1 : d->ver + 1;~
+lsp+: a reopened file still takes publications for the version before~test TESTS=lsp~~src/lsp/lsp.c~	d->floor = d->ver;¶	d->nlog = 0;~	d->nlog = 0;
+lsp+: a dead server's diagnostics stay on the screen~test TESTS=lsp~~src/lsp/lsp.c~	for (LspDoc *d = s->docs; d; d = d->link) forget(d);¶	if (!s->closing) return;~	if (!s->closing) return;
+lsp+: an insert ending in a new line keeps the start column in the log~test TESTS=lsp~~src/lsp/lsp.c~	e.i.c = (k ? 0 : e.s.c) + lsp_u16(~	e.i.c = e.s.c + lsp_u16(
+lsp+: a reply shown while an edit is not yet sent~test TESTS=lsp~~src/lsp/lsp.c~return ver == d->ver && !d->chg.n;~return ver == d->ver;
+lsp+: incremental diagnostics for a new version keep the old version's~test TESTS=lsp~~src/lsp/lsp.c~	if (!add || ver != v->ver) clear(v);~	if (!add) clear(v);
+lsp+: a mapped range all deleted since is shown~test TESTS=lsp~~src/lsp/lsp.c~		if (!point && g.a >= g.z) continue;     /* all of it deleted since */~
+lsp+: diagnostics without a version are ignored~test TESTS=lsp~~src/lsp/lsp.c~v < 0 ? d->ver : v~v
+lsp+: a live restart does not cancel the pending requests~test TESTS=lsp~~src/lsp/lsp.c~	for (int k = 0; k < LSP_NASK; k++) cancel(d, k);¶	begin("textDocument/didClose");~	begin("textDocument/didClose");
+lsp+: the URI is not percent-encoded~test TESTS=lsp~~src/lsp/lsp.c~		else str_putf(&u, "%%%02X", *p);~		else str_put(&u, p, 1);
+lsp+: the project root is never searched for~test TESTS=lsp~~src/lsp/lsp.c~			int found = !str_putf(&p, "%s/%s", dir, *m) && !access(p.b, F_OK);~			int found = 0; (void)m;
+lsp+: diagnostics are not sorted~test TESTS=lsp~~src/lsp/lsp.c~	if (v->n > 1) qsort(v->v, (size_t)v->n, sizeof *v->v, cmp);~	if (0) qsort(v->v, (size_t)v->n, sizeof *v->v, cmp);
