@@ -15,7 +15,8 @@ jobs:
   # the check and the plants run in parallel, the plants in eight shards:
   # one after the other took 54 minutes on main at 8d08829, and the plants
   # alone 42 on PR 18 (reviews of PRs 18 and 24); with 708 plants four
-  # shards passed CI's 75 minutes (PR 59's review, both heads)
+  # shards passed 75 minutes (PR 59's review, both heads).  On PR 88 the
+  # eight shards took 44 to 63 minutes and the check 69, so 90 leaves room
   check:
     strategy:
       fail-fast: false
@@ -23,7 +24,7 @@ jobs:
         target: [check, planted SHARD=0/8, planted SHARD=1/8, planted SHARD=2/8, planted SHARD=3/8,
                  planted SHARD=4/8, planted SHARD=5/8, planted SHARD=6/8, planted SHARD=7/8]
     runs-on: ubuntu-24.04
-    timeout-minutes: 75
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v31
