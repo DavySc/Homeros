@@ -64,4 +64,4 @@ halted
 #0 0x_ main  tour.exe tour.c:15
   while (spin) spin -= 1;
 #0 0x_ main  tour.exe tour.c:15
-ended with 0x_
+ended with 0x12

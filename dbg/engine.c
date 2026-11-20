@@ -10,8 +10,7 @@
    unless the trap says the depth does not matter. */
 enum { IGNORE_SP = 1,     /* any depth */
        STEP_AFTER = 2,    /* run the instruction there, alone */
-       SAVE_BEFORE = 4,   /* the depth to keep is the one here, before that instruction, */
-       SAVE_AFTER = 8,    /*   or the one after it */
+       SAVE_AFTER = 4,    /* the depth to keep is the one after that instruction */
        END = 16 };        /* the step is done */
 
 static void *room(void *p, uint32_t *cap, uint32_t n, size_t size)
@@ -186,11 +185,12 @@ static void line_net(Engine *e, uint64_t rip, bool into)
       at += x.size;
       uint64_t to = x.known ? x.target : 0;
       if (pass == 0) last_call = x.flow == X64_CALL ? addr : last_call;
-      else if (x.flow == X64_CALL && !into) net_add(e, addr, SAVE_BEFORE | STEP_AFTER);   /* into the call, and on: the trap behind the call waits at this depth */
+      else if (x.flow == X64_CALL && !into) net_add(e, addr, STEP_AFTER);   /* into the call, and on: the trap behind the call waits at this depth */
       else if (x.flow != X64_OTHER) {
         /* A jump, branch or return, and stepping into, a call: the step ends where it goes, when that is known, else
            after the instruction has run. Not when it lands in the line; and a call that is not the line's last is
-           gone into only where its function has lines. */
+           gone into only where its function has lines. The row itself is asked as well as the line's pieces: the
+           source line map has no piece for the code between two blocks of lines (a constructor the compiler made). */
         const EngineModule *tm = engine_module(e, to);
         bool stays = (to - base >= lo && to - base < hi) || in_ranges(e, count, to - base)
                   || (x.flow == X64_CALL && addr != last_call && to && !(tm && rdi_row(&tm->rdi, to - tm->image.base).opl));
@@ -272,7 +272,6 @@ static TargetEvent run(Engine *e, int how, uint32_t thread, const uint64_t *brea
     for (uint32_t i = 0; i < e->net_count; i += 1) if (e->net[i].addr == ev.addr) flags |= e->net[i].flags;
     /* another thread in the net, or this one at another depth: over the trap, alone, and on */
     bool reached = ev.thread == thread && target_regs(e->target, thread, &regs) && (flags & IGNORE_SP || regs.gp[4] == depth);
-    if (reached && flags & SAVE_BEFORE) depth = regs.gp[4];
     if ((!reached || flags & STEP_AFTER) && (ev = step_one(e, ev.thread)).kind != TARGET_STEP) return ev;
     if (!reached) continue;
     if (flags & SAVE_AFTER && target_regs(e->target, thread, &regs)) depth = regs.gp[4];

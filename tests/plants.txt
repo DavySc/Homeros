@@ -638,15 +638,16 @@ engine | dbg/engine.c | if (x.flow == X64_CALL \p\p x.repeats) net_add(e, rip + 
 engine | dbg/engine.c | e->ranges[2 * i + 1] = rdi_row(&m->rdi, e->ranges[2 * i]).opl; | e->ranges[2 * i + 1] = e->ranges[2 * i] + 1;
 engine | dbg/engine.c | if (after.line.line == 0xf00f00 \p\p after.line.line == 0xfeefee) hi = after.opl; | (void)after;
 engine | dbg/engine.c | for (int pass = into ? 0 : 1; pass < 2; pass += 1) | for (int pass = 1; pass < 2; pass += 1)
-engine | dbg/engine.c | net_add(e, addr, SAVE_BEFORE \p STEP_AFTER); | net_add(e, addr, STEP_AFTER);
 engine | dbg/engine.c | else if (x.flow == X64_CALL && !into) net_add( | else if (x.flow == X64_CALL && !into && false) net_add(
-engine | dbg/engine.c | bool stays = (to - base >= lo && to - base < hi) \p\p in_ranges(e, count, to - base) | bool stays = in_ranges(e, count, to - base)
-engine | dbg/engine.c | bool stays = (to - base >= lo && to - base < hi) \p\p in_ranges(e, count, to - base) | bool stays = (to - base >= lo && to - base < hi)
 engine | dbg/engine.c | (x.flow == X64_CALL && addr != last_call && to && | (x.flow == X64_CALL && addr == last_call && to &&
 engine | dbg/engine.c | (x.flow == X64_CALL && addr != last_call && to && | (x.flow == X64_CALL && to &&
 engine | dbg/engine.c | (x.flow == X64_CALL && addr != last_call && to && | (x.flow == X64_CALL && addr != last_call &&
 engine | dbg/engine.c | && !(tm && rdi_row(&tm->rdi, to - tm->image.base).opl)); | && !tm);
+engine | dbg/engine.c | bool stays = (to - base >= lo && to - base < hi) \p\p in_ranges(e, count, to - base) | bool stays = in_ranges(e, count, to - base)
+engine | dbg/engine.c | bool stays = (to - base >= lo && to - base < hi) \p\p in_ranges(e, count, to - base) | bool stays = (to - base >= lo && to - base < hi)
 engine | dbg/engine.c | END \p (into ? IGNORE_SP : 0) \p (to ? 0 : STEP_AFTER)); | END \p (to ? 0 : STEP_AFTER));
+engine | dbg/engine.c | bool stays = (to - base >= lo && to - base < hi) \p\p in_ranges(e, count, to - base) | bool stays = in_ranges(e, count, to - base)
+engine | dbg/engine.c | bool stays = (to - base >= lo && to - base < hi) \p\p in_ranges(e, count, to - base) | bool stays = (to - base >= lo && to - base < hi)
 engine | dbg/engine.c | END \p (into ? IGNORE_SP : 0) \p (to ? 0 : STEP_AFTER)); | END \p (into ? IGNORE_SP : 0));
 engine | dbg/engine.c | if (!stays) net_add(e, to ? to : addr, | if (!stays) net_add(e, addr,
 engine | dbg/engine.c | } else if (x.moves_sp) net_add(e, addr, STEP_AFTER \p SAVE_AFTER); | } else if (x.moves_sp && false) net_add(e, addr, STEP_AFTER \p SAVE_AFTER);
@@ -666,7 +667,6 @@ engine | dbg/engine.c | for (uint32_t i = 0; i < count; i += 1) if (breakpoints[
 engine | dbg/engine.c | bool reached = ev.thread == thread && | bool reached =
 engine | dbg/engine.c | (flags & IGNORE_SP \p\p regs.gp[4] == depth); | (flags & IGNORE_SP \p\p regs.gp[4] <= depth \p\p regs.gp[4] > depth);
 engine | dbg/engine.c | (flags & IGNORE_SP \p\p regs.gp[4] == depth); | (regs.gp[4] == depth);
-engine | dbg/engine.c | if (reached && flags & SAVE_BEFORE) depth = regs.gp[4]; | 
 engine | dbg/engine.c | if ((!reached \p\p flags & STEP_AFTER) && | if (!reached &&
 engine | dbg/engine.c | if ((!reached \p\p flags & STEP_AFTER) && | if ((flags & STEP_AFTER) &&
 engine | dbg/engine.c | if (!reached) continue; | 
