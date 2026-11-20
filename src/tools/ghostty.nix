@@ -21,7 +21,7 @@ let
 in pkgs.stdenvNoCC.mkDerivation {
   name = "libghostty-vt-1.0.1-${target}";
   src = git "https://github.com/ghostty-org/ghostty" "108cacb17ed8990840cd14abfce43d8ed8503ca1";
-  nativeBuildInputs = [ pkgs.zig ];
+  nativeBuildInputs = [ pkgs.zig pkgs.llvmPackages.llvm ];
   dontConfigure = true;
   dontInstall = true;
   dontFixup = true;
@@ -31,5 +31,16 @@ in pkgs.stdenvNoCC.mkDerivation {
     chmod -R u+w $TMPDIR/p
     export ZIG_GLOBAL_CACHE_DIR=$TMPDIR/zc HOME=$TMPDIR
     zig build -Demit-lib-vt --system $TMPDIR/p -Doptimize=ReleaseFast -Dcpu=baseline -Dtarget=${target} --prefix $out
+    # The static library bundles Zig's compiler-rt and UBSan runtime, whose
+    # memcpy, libm and __ubsan_* handlers then replaced glibc's and the
+    # sanitizers' in every binary that links it (a planted overflow in
+    # wl.c's memcpy passed ASan, on CI and here, 1 run each).  Made local to
+    # the library, as Ghostty's own libsystem_override.sh does on macOS.
+    # llvm-objcopy: GNU objcopy cannot write members named with a path.
+    for a in $out/lib/*.a; do   # COFF has no local symbols to make; Windows runs no ASan
+      [ -e "$a" ] || continue
+      llvm-objcopy --wildcard --localize-symbol='__ubsan_*' $(llvm-nm -g --defined-only "$a" \
+        | awk '/:$/ { m = /compiler_rt\.o:$/ } m && NF == 3 && $3 !~ /^__/ { print "--localize-symbol=" $3 }') "$a"
+    done
   '';
 }
