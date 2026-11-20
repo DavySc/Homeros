@@ -83,8 +83,10 @@ RdiSpan rdi_run(const Rdi *r, int k, uint64_t first, uint64_t count); /* [first,
 uint64_t rdi_path(const Rdi *r, uint32_t node, char *buf, uint64_t cap);
 
 uint32_t rdi_vmap(const Rdi *r, int vmap_section, uint64_t voff);   /* table index at voff, 0 if none */
-RdiLine  rdi_line_from_voff(const Rdi *r, uint64_t voff);
-RdiLine  rdi_line_in(const Rdi *r, uint32_t line_table, uint64_t voff);   /* in an inlined call's own table: the line inside the inlined function */
+/* The row of a line table that holds voff: its line and the code it covers; all zero when none does. */
+typedef struct { RdiLine line; uint64_t first, opl; } RdiRow;
+RdiRow   rdi_row(const Rdi *r, uint64_t voff);                              /* in the table of the unit at voff */
+RdiRow   rdi_row_in(const Rdi *r, uint32_t line_table, uint64_t voff);      /* in an inlined call's own table: the line inside the inlined function */
 RdiSpan  rdi_voffs_from_line(const Rdi *r, uint32_t file, uint32_t line);   /* uint64_t voffs */
 RdiSpan  rdi_matches(const Rdi *r, uint32_t names_kind, const char *name, uint64_t len); /* uint32_t table indices */
 #endif

@@ -1,13 +1,13 @@
 /* The unwinder on functions written out by hand, in memory of the test's own: each unwind code, a
-   prologue stopped at every stage, chained entries, the epilogue forms, and tables that make no
-   sense. Every stack slot holds its own number, so the registers after a step say which slots
+   prologue stopped at every stage, chained entries, the epilogue forms of both versions of the unwind
+   info, and tables that make no sense. Every stack slot holds its own number, so the registers after a step say which slots
    were read. The broad comparison, with the system's stack walker, is tests/stress_unwind.c. */
 #include "../dbg/unwind.h"
 #include "../dbg/le.h"
 #include <stdio.h>
 #include <stdlib.h>
 
-enum { SLOTS = 16384, PUSH = 0, LARGE = 1, SMALL = 2, FPREG = 3, SAVE = 4, SAVE_FAR = 5, XMM = 8, XMM_FAR = 9, MACH = 10, RBX = 3, RBP = 5, R12 = 12 };
+enum { SLOTS = 16384, PUSH = 0, LARGE = 1, SMALL = 2, FPREG = 3, SAVE = 4, SAVE_FAR = 5, EPI = 6, SPARE = 7, XMM = 8, XMM_FAR = 9, MACH = 10, RBX = 3, RBP = 5, R12 = 12 };
 #define BASE 0x140000000ull
 #define STACK 0x200000ull
 #define SP(i) (STACK + 8 * (uint64_t)(i))
@@ -74,8 +74,19 @@ static const Case cases[] = {
   {"epilogue: rep ret", {PUSH_SUB}, .in = 0x40, {0xf3, 0xc3}, .ret = 0},
   {"epilogue: pop r12, pop rbx, ret", {PUSH_SUB}, .in = 0x40, {0x41, 0x5c, 0x5b, 0xc3}, .ret = 2, .rbx = 1 + 1, .r12 = 1 + 0},
   {"no epilogue: a pop, then something else", {PUSH_SUB}, .in = 0x40, {0x5b, 0x90, 0xc3}, .ret = 5, .rbx = 1 + 4},
-  {"no epilogue in the prologue", {PUSH_SUB}, .in = 1, {0xc3}, .ret = 1, .rbx = 1 + 0},
+  {"epilogue: looked for in the prologue too", {PUSH_SUB}, .in = 1, {0xc3}, .ret = 0},
+  {"epilogue: add rsp with a byte, pop, ret", {PUSH_SUB}, .in = 0x40, {0x48, 0x83, 0xc4, 0x18, 0x5b, 0xc3}, .ret = 4, .rbx = 1 + 3},
+  {"epilogue: add rsp with a negative byte", {PUSH_SUB}, .in = 0x40, {0x48, 0x83, 0xc4, 0xf8, 0xc3}, .sp = 2, .ret = 1},
+  {"epilogue: add rsp with four bytes", {PUSH_SUB}, .in = 0x40, {0x48, 0x81, 0xc4, 0x18, 0, 0, 0, 0xc3}, .ret = 3},
+  {"epilogue: lea rsp from the frame register, offset in a byte", {FRAMED}, .in = 0x40, {0x48, 0x8d, 0x65, 0x08, 0xc3}, .sp = 40, .rbp = 14, .ret = 19},
+  {"epilogue: lea rsp from the frame register, offset in four bytes", {FRAMED}, .in = 0x40, {0x48, 0x8d, 0xa5, 0x08, 0, 0, 0, 0xc3}, .sp = 40, .rbp = 14, .ret = 19},
+  {"no epilogue: lea rsp from a register that is not the frame's", {FRAMED}, .in = 0x40, {0x48, 0x8d, 0x63, 0x08, 0xc3}, .sp = 40, .rbp = 14, .ret = 21, .rbx = 1 + 16},
+  {"no epilogue: lea rsp where there is no frame register", {PUSH_SUB}, .in = 0x40, {0x48, 0x8d, 0x60, 0x08, 0xc3}, .ret = 5, .rbx = 1 + 4},
+  {"epilogue: lea rsp from r13 as the frame register", {1, 0, 0, 13 | 2 << 4}, .in = 0x40, {0x49, 0x8d, 0x65, 0x08, 0xc3}, .sp = 40, .rbp = 14, .ret = 19},
+  {"epilogue: a prefix before the ret", {PUSH_SUB}, .in = 0x40, {0xf2, 0xc3}, .ret = 0},
   {"epilogue: short jump out of the function", {PUSH_SUB}, .in = 0x40, {0xeb, 0x7f}, .ret = 0},
+  {"epilogue: pop, jump to the function's end", {PUSH_SUB}, .in = 0x40, {0x5b, 0xe9, 0x3a, 0, 0, 0}, .ret = 1, .rbx = 1 + 0},
+  {"no epilogue: short jump back inside", {PUSH_SUB}, .in = 0x70, {0xeb, 0xf0}, .ret = 5, .rbx = 1 + 4},
   {"no epilogue: short jump inside", {PUSH_SUB}, .in = 0x40, {0xeb, 0x02}, .ret = 5, .rbx = 1 + 4},
   {"epilogue: jump to before the function", {PUSH_SUB}, .in = 0x40, {0xe9, 0xb0, 0xff, 0xff, 0xff}, .ret = 0},
   {"epilogue: jump to the function's own start", {PUSH_SUB}, .in = 0x40, {0xe9, 0xbb, 0xff, 0xff, 0xff}, .ret = 0},
@@ -85,7 +96,44 @@ static const Case cases[] = {
   {"epilogue: marked jump through a register", {PUSH_SUB}, .in = 0x40, {0x48, 0xff, 0xe0}, .ret = 0},
   {"no epilogue: unmarked jump through a register (a switch)", {PUSH_SUB}, .in = 0x40, {0xff, 0xe0}, .ret = 5, .rbx = 1 + 4},
   {"no epilogue: marked call through a register", {PUSH_SUB}, .in = 0x40, {0x48, 0xff, 0xd0}, .ret = 5, .rbx = 1 + 4},
-  {"unwind info of a version not known", {3, 0, 0, 0}, .in = 0x10, .fail = true},
+  {"no epilogue: jump into another part of the same function", {1 | 4 << 3, 0, 0, 0, CHAIN}, {PUSH_SUB}, .in = 0x40, {0xe9, 0xcb, 0, 0, 0}, .ret = 5, .rbx = 1 + 4},
+  {"epilogue: jump to the start of the function this is a part of", {1 | 4 << 3, 0, 0, 0, CHAIN}, {PUSH_SUB}, .in = 0x40, {0xe9, 0xbb, 0, 0, 0}, .ret = 0},
+  {"epilogue: jump from a part into another function", {1 | 4 << 3, 0, 0, 0, CHAIN}, {PUSH_SUB}, .in = 0x40, {0xe9, 0xcb, 0x02, 0, 0}, .ret = 0},
+  {"epilogue: jump into the middle of another function", {PUSH_SUB}, .in = 0x40, {0xe9, 0xcb, 0, 0, 0}, .ret = 0},
+  {"no epilogue: a part's jump to its own start", {1 | 4 << 3, 0, 0, 0, CHAIN}, {PUSH_SUB}, .in = 0x40, {0xe9, 0xbb, 0xff, 0xff, 0xff}, .ret = 5, .rbx = 1 + 4},
+  {"an epilogue code and its slot are passed over", {1, 5, 4, 0, OP(0, EPI, 0), OP(0, PUSH, R12), OP(5, SMALL, 3), OP(1, PUSH, RBX)}, .in = 0x10, .ret = 5, .rbx = 1 + 4},
+  {"a spare code and its two slots are passed over", {1, 5, 5, 0, OP(0, SPARE, 0), OP(0, PUSH, R12), OP(0, PUSH, R12), OP(5, SMALL, 3), OP(1, PUSH, RBX)}, .in = 0x10, .ret = 5, .rbx = 1 + 4},
+  /* version 2: push rbx; sub rsp, 0x20 ... add rsp, 0x20; then at the very end: pop rbx; ret */
+#define V2 2, 5, 4, 0, OP(2, EPI, 1), OP(0, EPI, 0), OP(5, SMALL, 3), OP(1, PUSH, RBX)
+  {"version 2: body", {V2}, .in = 0x10, .ret = 5, .rbx = 1 + 4},
+  {"version 2: prologue, the push has run", {V2}, .in = 1, .ret = 1, .rbx = 1 + 0},
+  {"version 2: the instructions are not read", {V2}, .in = 0x40, {0xc3}, .ret = 5, .rbx = 1 + 4},
+  {"version 2: just before the epilogue", {V2}, .in = 0x7d, .ret = 5, .rbx = 1 + 4},
+  {"version 2: at the epilogue's start", {V2}, .in = 0x7e, .ret = 1, .rbx = 1 + 0},
+  {"version 2: in the epilogue, the pop has run", {V2}, .in = 0x7f, .ret = 0},
+#define V2_LIST 2, 5, 6, 0, OP(2, EPI, 0), OP(0x40, EPI, 0), OP(0x20, EPI, 0), OP(0, EPI, 0), OP(5, SMALL, 3), OP(1, PUSH, RBX)
+  {"version 2: an epilogue at the end is not assumed", {V2_LIST}, .in = 0x7e, .ret = 5, .rbx = 1 + 4},
+  {"version 2: the first listed epilogue", {V2_LIST}, .in = 0x40, .ret = 1, .rbx = 1 + 0},
+  {"version 2: past the first listed epilogue", {V2_LIST}, .in = 0x42, .ret = 5, .rbx = 1 + 4},
+  {"version 2: in the second listed epilogue", {V2_LIST}, .in = 0x61, .ret = 0},
+  {"version 2: an epilogue more than 255 bytes before the end", .parent = {2, 2, 3, 0, OP(1, EPI, 0), OP(0, EPI, 1), OP(1, PUSH, RBX)}, .in = 0x100, .ret = 1, .rbx = 1 + 0},
+  /* push rbx; push r12 ... pop r12; pop rbx; ret */
+#define V2_TWO 2, 3, 4, 0, OP(4, EPI, 1), OP(0, EPI, 0), OP(3, PUSH, R12), OP(1, PUSH, RBX)
+  {"version 2: two pops to run", {V2_TWO}, .in = 0x7c, .ret = 2, .rbx = 1 + 1, .r12 = 1 + 0},
+  {"version 2: a pop of r12 is two bytes long", {V2_TWO}, .in = 0x7e, .ret = 1, .rbx = 1 + 0},
+  {"version 2: both pops have run", {V2_TWO}, .in = 0x7f, .ret = 0},
+  /* push rcx (kept by nobody: 8 bytes of frame); push rbx ... pop rbx; pop rcx; ret */
+#define V2_SCRATCH 2, 2, 4, 0, OP(3, EPI, 1), OP(0, EPI, 0), OP(2, PUSH, RBX), OP(1, SMALL, 0)
+  {"version 2: a pop of a register nobody keeps", {V2_SCRATCH}, .in = 0x7d, .ret = 2, .rbx = 1 + 0},
+  {"version 2: that pop still to run", {V2_SCRATCH}, .in = 0x7e, .ret = 1},
+  {"version 2: that pop has run", {V2_SCRATCH}, .in = 0x7f, .ret = 0},
+  {"version 2: no epilogue codes, no epilogue", {2, 5, 2, 0, OP(5, SMALL, 3), OP(1, PUSH, RBX)}, .in = 0x7c, .ret = 5, .rbx = 1 + 4},
+  {"version 2: a code's argument is not taken for a push", {2, 9, 5, 0, OP(2, EPI, 1), OP(0, EPI, 0), OP(8, LARGE, 0), OP(0, PUSH, R12), OP(1, PUSH, RBX)}, .in = 0x7e, .ret = 1, .rbx = 1 + 0},
+  {"version 2: an interrupt's frame under a pop nobody keeps", {2, 2, 5, 0, OP(3, EPI, 1), OP(0, EPI, 0), OP(2, PUSH, RBX), OP(1, SMALL, 0), OP(0, MACH, 0)}, .in = 0x7d, .mach = true, .ret = 2, .rbx = 1 + 0},
+  {"version 2: an epilogue without pops", {2, 4, 3, 0, OP(1, EPI, 1), OP(0, EPI, 0), OP(4, SMALL, 3)}, .in = 0x7f, .ret = 0},
+  {"version 2: an epilogue that ends an interrupt", {2, 0, 3, 0, OP(1, EPI, 1), OP(0, EPI, 0), OP(0, MACH, 0)}, .in = 0x7f, .mach = true, .ret = 0},
+  {"version 2: the pushes are in the entry chained to", {2 | 4 << 3, 0, 2, 0, OP(2, EPI, 1), OP(0, EPI, 0), CHAIN}, {PUSH_SUB}, .in = 0x7e, .ret = 1, .rbx = 1 + 0},
+  {"a code that does not exist", {1, 0, 1, 0, OP(0, 11, 0)}, .in = 0x10, .fail = true},
   {"a code whose argument lies past the codes", {1, 7, 1, 0, OP(7, LARGE, 0)}, .in = 0x10, .fail = true},
   {"a return address that cannot be read", {PUSH_SUB}, .in = 0x10, .sp = SLOTS - 3, .fail = true},
 };
@@ -110,8 +158,8 @@ int main(void)
     const Case *c = &cases[i];
     memcpy(image + 0x2000, c->info, 24), memcpy(image + 0x2100, c->parent, 24);
     memset(image + 0x3000, 0, 0x400), memcpy(image + 0x3000 + c->in, c->code, 8);
-    for (int with = 1; with >= (c->info[0] || c->in == 0x300 || c->in == 0x3ff ? 1 : 0); with -= 1) {   /* what has no entry unwinds the same without the module */
-      TargetRegs r = {.rip = BASE + 0x3000 + c->in, .gp = {[0] = SP(50), [RBX] = 0xb, [4] = SP(c->sp), [RBP] = SP(c->rbp) + 0x20, [R12] = 0xc}};
+    for (int with = 1; with >= (c->info[0] || c->in >= 0x100 ? 1 : 0); with -= 1) {   /* what has no entry unwinds the same without the module */
+      TargetRegs r = {.rip = BASE + 0x3000 + c->in, .gp = {[0] = SP(50), [RBX] = 0xb, [4] = SP(c->sp), [RBP] = SP(c->rbp) + 0x20, [R12] = 0xc, [13] = SP(c->rbp) + 0x20}};
       bool ok = unwind_step(fake_read, 0, with ? &m : 0, &r);
       if (ok == c->fail || (ok && (r.rip != SLOT(c->ret) || r.gp[4] != (c->mach ? SLOT(c->ret + 3) : SP(c->ret + 1))
                                    || r.gp[RBX] != (c->rbx ? SLOT(c->rbx - 1) : 0xb) || r.gp[R12] != (c->r12 ? SLOT(c->r12 - 1) : 0xc))))

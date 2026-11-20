@@ -84,7 +84,7 @@ int main(int argc, char **argv)
   while (scanf(" %c %llu", &op, &a) == 2) {
     RdiSpan s = {0, 0};
     if (op == 'v' && scanf("%llu", &b) == 1) printf("%u", rdi_vmap(&r, (int)a, b));
-    else if (op == 'l') { RdiLine l = rdi_line_from_voff(&r, a); printf("%u %u", l.file, l.line); }
+    else if (op == 'l') { RdiRow w = rdi_row(&r, a); printf("%u %u %llu %llu", w.line.file, w.line.line, (unsigned long long)w.first, (unsigned long long)w.opl); }
     else if (op == 's' && scanf("%llu", &b) == 1) {
       s = rdi_voffs_from_line(&r, (uint32_t)a, (uint32_t)b);
       for (uint64_t i = 0; i < s.n; i += 1) printf(" %llu", (unsigned long long)((const uint64_t *)s.p)[i]);
@@ -137,7 +137,7 @@ int main(int argc, char **argv)
       s = rdi_run(&r, RDI_SCOPE_VOFFS, c->voff_first, c->voff_opl - c->voff_first);
       for (uint64_t i = 0; i < s.n; i += 1) printf(" %llu", (unsigned long long)((const uint64_t *)s.p)[i]);
     } else if (op == 'L') {   /* the line at an offset, by meaning: the file's path, then the line */
-      RdiLine l = rdi_line_from_voff(&r, a);
+      RdiLine l = rdi_row(&r, a).line;
       uint64_t len = rdi_path(&r, rdi_at(&r, RDI_SOURCE_FILES, RdiSourceFile, l.file)->path_node, hex, sizeof hex);
       printf("%.*s %u", (int)len, hex, l.line);
     } else if (op == 'S' && scanf("%65535s", hex) == 1) {   /* S <line> <hex normal path>: offsets of exactly that line */
@@ -185,7 +185,7 @@ int main(int argc, char **argv)
       for (uint64_t i = 0; i < s.n; i += 1) {   /* what its own line table answers at each offset the table names */
         uint64_t voff = ((const uint64_t *)s.p)[i];
         if (i + 1 < s.n && ((const uint64_t *)s.p)[i + 1] == voff) continue;
-        RdiLine l = rdi_line_in(&r, site->line_table, voff);
+        RdiLine l = rdi_row_in(&r, site->line_table, voff).line;
         uint64_t len = rdi_path(&r, rdi_at(&r, RDI_SOURCE_FILES, RdiSourceFile, l.file)->path_node, hex, sizeof hex);
         printf("%llx %.*s %u;", (unsigned long long)voff, (int)len, hex, l.line);
       }

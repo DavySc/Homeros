@@ -16,7 +16,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     volatile uint64_t sum = 0;
     for (int k = 0; k < RDI_SECTIONS; k += 1) sum += *(const uint8_t *)rdi_elem(&r, k, key[0] % 97);
     for (int i = 0; i < 4; i += 1) {
-      RdiLine l = rdi_line_from_voff(&r, key[i]);
+      RdiLine l = rdi_row(&r, key[i]).line;
       RdiSpan v = rdi_voffs_from_line(&r, l.file ? l.file : (uint32_t)key[i], (uint32_t)(key[i] >> 32));
       for (uint64_t j = 0; j < v.n; j += 1) sum += ((const uint64_t *)v.p)[j];
       RdiSpan s = rdi_str(&r, (uint32_t)key[i]);

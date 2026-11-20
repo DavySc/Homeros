@@ -27,14 +27,14 @@ int main(int argc, char **argv)
   CHECK(rdi_str(&r, 1).n == 0);
   table[1] = 0;
   /* lines: 0x1000 -> 10, 0x1010 -> 11 (two entries, 11 then 13: the last is taken), 0x1020 -> 12, 0x1030 ends */
-  CHECK(rdi_line_from_voff(&r, 0x0fff).line == 0);
-  CHECK(rdi_line_from_voff(&r, 0x1000).line == 10 && rdi_line_from_voff(&r, 0x1000).file == 1);
-  CHECK(rdi_line_from_voff(&r, 0x100f).line == 10);
-  CHECK(rdi_line_from_voff(&r, 0x1010).line == 13);
-  CHECK(rdi_line_from_voff(&r, 0x1011).line == 13);
-  CHECK(rdi_line_from_voff(&r, 0x102f).line == 12);
-  CHECK(rdi_line_from_voff(&r, 0x1030).line == 0);
-  CHECK(rdi_line_from_voff(&r, UINT64_MAX).line == 0);
+  CHECK(rdi_row(&r, 0x0fff).line.line == 0);
+  CHECK(rdi_row(&r, 0x1000).line.line == 10 && rdi_row(&r, 0x1000).line.file == 1);
+  CHECK(rdi_row(&r, 0x100f).line.line == 10);
+  CHECK(rdi_row(&r, 0x1010).line.line == 13 && rdi_row(&r, 0x1010).first == 0x1010 && rdi_row(&r, 0x1011).first == 0x1010 && rdi_row(&r, 0x1011).opl == 0x1020);
+  CHECK(rdi_row(&r, 0x1011).line.line == 13);
+  CHECK(rdi_row(&r, 0x102f).line.line == 12);
+  CHECK(rdi_row(&r, 0x1030).line.line == 0);
+  CHECK(rdi_row(&r, UINT64_MAX).line.line == 0);
   /* line -> voffs: exact, the next line when there is none, the last line past the end */
   RdiSpan v = rdi_voffs_from_line(&r, 1, 11);
   CHECK(v.n == 1 && *(const uint64_t *)v.p == 0x1010);

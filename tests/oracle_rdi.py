@@ -19,7 +19,7 @@ for line in gzip.open(dump, 'rt', encoding='utf-8', errors='surrogateescape'):
     elif section == 'line_tables' and (m := re.match(r'    \{ \[0x([0-9a-f]+), 0x([0-9a-f]+)\) file: (\d+), line: (\d+) \}$', line)):
         t = tables.setdefault(sub, []); first = int(m[1], 16)
         if t and t[-1][0] == first: t.pop(); shadowed += 1   # equal offsets: the last entry holds the range
-        t.append((first, int(m[2], 16), f'{m[3]} {m[4]}'))
+        t.append((first, int(m[2], 16), f'{m[3]} {m[4]} {first} {int(m[2], 16)}'))
     elif section == 'source_files' and (m := re.match(r'  \{ file_path_node_idx: +\d+, source_line_map: +(\d+),.*// source_file\[(\d+)\]', line)):
         file_of_map[int(m[1])] = int(m[2])
     elif section == 'source_line_maps' and (m := re.match(r'    (\d+): \((.*)\)$', line)):

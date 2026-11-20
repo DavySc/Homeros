@@ -10,7 +10,8 @@ SAN="-fsanitize=address,undefined -fno-sanitize-recover=all"
 run() { # run <dir with the sources> <list|test|specs|oracle|x64|win|windows|fuzz|all>: 0 when the named checks pass, 2 when
         # something does not compile (a planted bug must be caught by a check, not by the compiler), 3 when the
         # test files cannot be made (nor by a full disk)
-  local src=$1 what=$2 b t; b=$(mktemp -d)
+  local src=$1 what=$2 b t lib; b=$(mktemp -d)
+  lib=$(ls "$src"/dbg/*.c | grep -v '/engine\.c$')   # the engine needs a target to run: it is linked in the win step, and only compiled here
   case $what in test|oracle|fuzz|all)
     python3 -I "$src/tests/seed_rdi.py" "$b/seed.rdi" || return 3
     "$src/tests/make_pdbs.sh" "$b/pdb" || return 3;;
@@ -25,24 +26,25 @@ for l in open(sys.argv[1] + "/tests/plants.txt"):
         if open(sys.argv[1] + "/" + file.strip()).read().count(find.replace("\\n", "\n").replace("\\p", "|")) != 1: sys.exit("plants.txt: not found once: " + find)' "$src" || return 1
   fi
   if [ "$what" = test ] || [ "$what" = all ]; then
+    for build in gcc clang; do $build $FLAGS -c "$src"/dbg/engine.c -o "$b/engine.o" || return 2; done
     # each tests/test_*.c is its own program: ASan+UBSan with both compilers, then ThreadSanitizer
     for t in "$src"/tests/test_*.c; do
       for build in "gcc $SAN" "clang $SAN" "clang -fsanitize=thread"; do
         # a test that includes a module's .c file, to reach its static functions, is not linked with it again
-        $build $FLAGS $(ls "$src"/dbg/*.c | grep -vFx "$src/dbg/$(sed -n 's|^#include "\.\./dbg/\(.*\.c\)"|\1|p' "$t")") "$t" -o "$b/test" || return 2
+        $build $FLAGS $(grep -vFx "$src/dbg/$(sed -n 's|^#include "\.\./dbg/\(.*\.c\)"|\1|p' "$t")" <<<"$lib") "$t" -o "$b/test" || return 2
         timeout 300 "$b/test" "$b/seed.rdi" >"$b/out" 2>&1 || { tail -5 "$b/out"; return 1; }
       done
     done
   fi
   if [ "$what" = specs ] || [ "$what" = all ]; then "$src/specs/check.sh" || return 1; fi
   if [ "$what" = oracle ] || [ "$what" = all ]; then
-    gcc $FLAGS $SAN "$src"/dbg/*.c "$src"/tests/rdiq.c -o "$b/rdiq" || return 2
+    gcc $FLAGS $SAN $lib "$src"/tests/rdiq.c -o "$b/rdiq" || return 2
     for f in "$src"/rdi/*.rdi; do python3 -I "$src/tests/oracle_rdi.py" "$b/rdiq" "$f" "$f.dump.txt.gz" || return 1; done
-    gcc $FLAGS $SAN "$src"/dbg/*.c "$src"/tests/msfq.c -o "$b/msfq" || return 2
+    gcc $FLAGS $SAN $lib "$src"/tests/msfq.c -o "$b/msfq" || return 2
     "$src/tests/oracle_msf.sh" "$b/msfq" "$b"/pdb/*.pdb $(ls "$src"/rdi/*.pdb 2>/dev/null) || return 1
-    gcc $FLAGS $SAN "$src"/dbg/*.c "$src"/tests/pdbq.c -o "$b/pdbq" || return 2
+    gcc $FLAGS $SAN $lib "$src"/tests/pdbq.c -o "$b/pdbq" || return 2
     python3 -I "$src/tests/oracle_pdb.py" "$b/pdbq" "$b"/pdb/*.pdb $(ls "$src"/rdi/*.pdb 2>/dev/null) || return 1
-    gcc $FLAGS $SAN "$src"/dbg/*.c "$src"/cmd/pdb2rdi.c -o "$b/pdb2rdi" || return 2
+    gcc $FLAGS $SAN $lib "$src"/cmd/pdb2rdi.c -o "$b/pdb2rdi" || return 2
     python3 -I "$src/tests/oracle_conv.py" "$b/pdb2rdi" "$b/rdiq" "$b"/pdb/*.pdb $(ls "$src"/rdi/*.pdb 2>/dev/null) || return 1
     # two files llvm-pdbutil cannot read: a pointer to a later record is a pointer to no type, and type ids that do not start at 0x1000 are no types (what is left is "none", the `int` of the locals and the file's two typedefs, names on no type)
     "$b/pdb2rdi" "$b/pdb/bad/later.pdb" "$b/odd.rdi" && [ "$(echo T 8 | "$b/rdiq" "$b/odd.rdi")" = "1001.0[0]:8 none" ] || return 1
@@ -70,7 +72,7 @@ for l in open(sys.argv[1] + "/tests/plants.txt"):
   fi
   if [ "$what" = fuzz ] || [ "$what" = all ]; then
     for f in "$src"/tests/fuzz_*.c; do
-      clang $FLAGS -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all "$src"/dbg/*.c "$f" -o "$b/fuzz" || return 2
+      clang $FLAGS -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all $lib "$f" -o "$b/fuzz" || return 2
       mkdir -p "$b/corpus" && cp "$b/seed.rdi" "$b"/pdb/steps-*.pdb "$b"/pdb/gap-O2.pdb "$b"/pdb/kinds.pdb "$b"/pdb/frames-O0.pdb "$b"/pdb/bad/* "$b/corpus/"
       (cd "$b" && ./fuzz corpus -max_total_time="${FUZZ_SECONDS:-20}" -max_len=131072 -timeout=20 >fuzz.log 2>&1) || { grep -m2 "ERROR\|SUMMARY" "$b/fuzz.log"; return 1; }
     done

@@ -535,41 +535,86 @@ test | dbg/unwind.c | if (le32(m->table + 12 * mid) <= off) lo = mid + 1; | if (
 test | dbg/unwind.c | return lo && off < le32(m->table + 12 * (lo - 1) + 4) ? | return lo ?
 test | dbg/unwind.c | m->count = le32(pe + 24 + 112 + 3 * 8 + 4) / 12; | m->count = le32(pe + 24 + 112 + 3 * 8 + 4) / 24;
 test | dbg/unwind.c | m->size = le32(pe + 24 + 56), | m->size = le32(pe + 24 + 60),
-test | dbg/unwind.c | return op == ALLOC_LARGE ? 1 + (c[1] >> 4) : | return op == ALLOC_LARGE ? 1 :
-test | dbg/unwind.c | op == SAVE_NONVOL \p\p op == SAVE_XMM128 ? 1 : | op == SAVE_NONVOL ? 1 :
-test | dbg/unwind.c | op == SAVE_NONVOL_FAR \p\p op == SAVE_XMM128_FAR ? 2 : 0; | op == SAVE_NONVOL_FAR ? 2 : 0;
 test | dbg/unwind.c | uint32_t rex = (c[at] & 0xf0) == 0x40; | uint32_t rex = 0;
 test | dbg/unwind.c | (c[at + rex] & 0xf8) != 0x58) break; | (c[at + rex] & 0xf8) != 0x58 \p\p true) break;
 test | dbg/unwind.c | &r.gp[(rex ? (c[at] & 1u) << 3 : 0) \p (c[at + rex] & 7u)])) | &r.gp[c[at + rex] & 7u]))
 test | dbg/unwind.c | bool out = c[at] == 0xc3 \p\p c[at] == 0xc2 | bool out = c[at] == 0xc2
 test | dbg/unwind.c | \p\p (c[at] == 0xf3 && c[at + 1] == 0xc3)\n | \n
-test | dbg/unwind.c | && (to < begin \p\p to >= end \p\p to == begin)) | && (to < begin \p\p to >= end))
-test | dbg/unwind.c | && (to < begin \p\p to >= end \p\p to == begin)) | && (to < begin \p\p to >= end \p\p true))
-test | dbg/unwind.c | \p\p ((c[at] == 0xeb \p\p c[at] == 0xe9) && | \p\p (c[at] == 0xeb &&
 test | dbg/unwind.c | \p\p (c[at] == 0xff && c[at + 1] == 0x25) \p\p | \p\p
 test | dbg/unwind.c | \p\p ((c[at] & 0xf8) == 0x48 && c[at + 1] == 0xff && (c[at + 2] & 0x38) == 0x20); | ;
 test | dbg/unwind.c | if (out && at < got) *regs = r; | (void)r;
 test | dbg/unwind.c | const uint8_t *e = m && regs->rip >= m->base ? | const uint8_t *e = m && false ?
-test | dbg/unwind.c | bool body = !first \p\p in >= info[1]; | bool body = true;
-test | dbg/unwind.c | if (first && body && epilogue( | if (first && epilogue(
-test | dbg/unwind.c | uint64_t set = regs->gp[frame_reg] - 16 * (uint64_t)(info[3] >> 4); | uint64_t set = regs->gp[frame_reg];
-test | dbg/unwind.c | bool is_set = body \p\p (flags & CHAINED); | bool is_set = body;
 test | dbg/unwind.c | is_set = (info[4 + 2 * i + 1] & 15) == SET_FPREG && in >= info[4 + 2 * i]; | is_set = false;
-test | dbg/unwind.c | if (first) frame = frame_reg && is_set ? set : regs->gp[RSP]; | frame = frame_reg && is_set ? set : regs->gp[RSP];
-test | dbg/unwind.c | if (first) frame = frame_reg && is_set ? set : regs->gp[RSP]; | if (first) frame = regs->gp[RSP];
-test | dbg/unwind.c | if (!body && in < c[0]) continue; | if (!body && in <= c[0]) continue;
-test | dbg/unwind.c | if (!body && in < c[0]) continue; | (void)in;
 test | dbg/unwind.c | if (!pop(read, t, regs, &regs->gp[x])) return false; } | regs->gp[RSP] += 8; }
 test | dbg/unwind.c | regs->gp[RSP] += n == 2 ? arg : 8 * arg; | regs->gp[RSP] += 8 * arg;
 test | dbg/unwind.c | regs->gp[RSP] += 8 * x + 8; | regs->gp[RSP] += 8 * x;
-test | dbg/unwind.c | else if (op == SET_FPREG) regs->gp[RSP] = set; | else if (op == SET_FPREG) (void)set;
 test | dbg/unwind.c | if (!read(t, frame + (n == 2 ? arg : 8 * arg), &regs->gp[x], 8)) return false; } | (void)frame; }
 test | dbg/unwind.c | if (!read(t, frame + (n == 2 ? arg : 8 * arg), &regs->gp[x], 8)) return false; } | if (!read(t, frame + 8 * arg, &regs->gp[x], 8)) return false; }
-test | dbg/unwind.c | uint64_t sp = regs->gp[RSP] + 8 * x; | uint64_t sp = regs->gp[RSP];
 test | dbg/unwind.c | return read(t, sp, &regs->rip, 8) && read(t, sp + 24, &regs->gp[RSP], 8); | return read(t, sp, &regs->rip, 8);
 test | dbg/unwind.c | if (!(flags & CHAINED)) break; | break;
 test | dbg/unwind.c | memcpy(chain, info + 4 + 2 * slots, 12), | memcpy(chain, info + 4 + 2 * count, 12),
 test | dbg/unwind.c | uint64_t arg = n == 2 ? le32(c + 2) : n == 1 ? le16(c + 2) : 0; | uint64_t arg = n ? le16(c + 2) : 0;
+test | dbg/unwind.c | [ALLOC_LARGE] = 1, | 
+test | dbg/unwind.c | [SAVE_NONVOL] = 1, | 
+test | dbg/unwind.c | [SAVE_NONVOL_FAR] = 2, | [SAVE_NONVOL_FAR] = 1, 
+test | dbg/unwind.c | [EPILOG] = 1, | 
+test | dbg/unwind.c | [SPARE] = 2, | [SPARE] = 1, 
+test | dbg/unwind.c | [SAVE_XMM128] = 1, | 
+test | dbg/unwind.c | [SAVE_XMM128_FAR] = 2} | [SAVE_XMM128_FAR] = 1}
+test | dbg/unwind.c | + ((c[1] & 15) == ALLOC_LARGE && c[1] >> 4); | ;
+test | dbg/unwind.c | for (uint32_t depth = 0; depth < 32; depth += 1, e = chain) { | for (uint32_t depth = 0; depth != 0; depth += 1, e = chain) {
+test | dbg/unwind.c | !(info[0] >> 3 & CHAINED) \p\p !read(t, at + 4 + 2 * (info[2] + (info[2] & 1u)), chain, 12)) break; | !read(t, at + 4 + 2 * (info[2] + (info[2] & 1u)), chain, 12)) break;
+test | dbg/unwind.c | if (c[0] == 0x48 && (c[1] == 0x83 \p\p c[1] == 0x81) && c[2] == 0xc4) | if (c[0] == 0x48 && c[1] == 0x83 && c[2] == 0xc4)
+test | dbg/unwind.c | && c[2] == 0xc4) r.gp[RSP] += n, | && c[2] == 0xc4) 
+test | dbg/unwind.c | : (uint64_t)(int8_t)c[3]; | : c[3];
+test | dbg/unwind.c | bool wide = c[1] == 0x81 \p\p (c[2] & 0xf8) == 0xa0; | bool wide = c[1] == 0x81;
+test | dbg/unwind.c | uint32_t fp = (c[0] & 1u) << 3 \p (c[2] & 7u); | uint32_t fp = c[2] & 7u;
+test | dbg/unwind.c | else if ((c[0] & 0xfe) == 0x48 && | else if (c[0] == 0x48 &&
+test | dbg/unwind.c | fp && fp == frame_reg && | fp == frame_reg &&
+test | dbg/unwind.c | fp && fp == frame_reg && | fp &&
+test | dbg/unwind.c | ((c[2] & 0xf8) == 0x60 \p\p wide)) | wide)
+test | dbg/unwind.c | r.gp[RSP] = r.gp[fp] + n, | r.gp[RSP] += n,
+test | dbg/unwind.c | at += c[at] == 0xf2; | 
+test | dbg/unwind.c | uint64_t next = regs->rip - m->base + at, | uint64_t next = regs->rip - m->base,
+test | dbg/unwind.c | ? next + 2 + (uint64_t)(int8_t)c[at + 1] | ? next + 2 + c[at + 1]
+test | dbg/unwind.c | : next + 5 + (uint64_t)(int32_t)le32(c + at + 1); | : next + 5 + le32(c + at + 1);
+test | dbg/unwind.c | if (!out && (c[at] == 0xeb \p\p c[at] == 0xe9)) { | if (!out && c[at] == 0xeb) {
+test | dbg/unwind.c | if (!out && (c[at] == 0xeb \p\p c[at] == 0xe9)) { | if (!out && c[at] == 0xe9) {
+test | dbg/unwind.c | out = to < le32(e) \p\p to >= le32(e + 4) ? | out = to >= le32(e + 4) ?
+test | dbg/unwind.c | out = to < le32(e) \p\p to >= le32(e + 4) ? | out = to < le32(e) ?
+test | dbg/unwind.c | ? !target \p\p primary(read, t, m, target) != begin \p\p to == begin : | ? true :
+test | dbg/unwind.c | ? !target \p\p primary(read, t, m, target) != begin \p\p to == begin : | ? !target \p\p primary(read, t, m, target) != begin :
+test | dbg/unwind.c | ? !target \p\p primary(read, t, m, target) != begin \p\p to == begin : | ? !target \p\p to == begin :
+test | dbg/unwind.c | : to == le32(e) && !(flags & CHAINED); | : to == le32(e);
+test | dbg/unwind.c | : to == le32(e) && !(flags & CHAINED); | : false;
+test | dbg/unwind.c | bool is_set = in >= info[1] \p\p (flags & CHAINED); | bool is_set = in >= info[1];
+test | dbg/unwind.c | bool is_set = in >= info[1] \p\p (flags & CHAINED); | bool is_set = (flags & CHAINED);
+test | dbg/unwind.c | frame = frame_reg && is_set ? regs->gp[frame_reg] - 16 * (uint64_t)(info[3] >> 4) : regs->gp[RSP]; | frame = regs->gp[RSP];
+test | dbg/unwind.c | frame = frame_reg && is_set ? regs->gp[frame_reg] - 16 * (uint64_t)(info[3] >> 4) : regs->gp[RSP]; | frame = frame_reg && is_set ? regs->gp[frame_reg] : regs->gp[RSP];
+test | dbg/unwind.c | if (!depth) { | {
+test | dbg/unwind.c | if ((info[0] & 7) < 2) { if (epilogue( | if (true) { if (epilogue(
+test | dbg/unwind.c | if ((info[0] & 7) < 2) { if (epilogue( | if (false) { if (epilogue(
+test | dbg/unwind.c | i < count && (info[5 + 2 * i] & 15) == EPILOG; i += 1) { | i < count; i += 1) {
+test | dbg/unwind.c | : size * (info[5] >> 4 & 1u); | : size;
+test | dbg/unwind.c | : size * (info[5] >> 4 & 1u); | : 0;
+test | dbg/unwind.c | info[4 + 2 * i] + 256u * (info[5 + 2 * i] >> 4) | info[4 + 2 * i]
+test | dbg/unwind.c | if (past < size) epi = past; | if (past <= size) epi = past;
+test | dbg/unwind.c | != PUSH_MACHFRAME) i += 1 + slots_after(info + 4 + 2 * i); | != PUSH_MACHFRAME) i += 1;
+test | dbg/unwind.c | && (info[5 + 2 * i] & 15) != PUSH_MACHFRAME) i += | ) i +=
+test | dbg/unwind.c | done += 1 + (info[5 + 2 * i] >> 7), i += 1) | done += 1, i += 1)
+test | dbg/unwind.c | if (done >= epi && !pop( | if (!pop(
+test | dbg/unwind.c | if (done >= epi && !pop( | if (done > epi && !pop(
+test | dbg/unwind.c | regs->gp[RSP] += done >= epi ? 8 : 0, i += 1; | regs->gp[RSP] += 8, i += 1;
+test | dbg/unwind.c | regs->gp[RSP] += done >= epi ? 8 : 0, i += 1; | regs->gp[RSP] += done >= epi ? 8 : 0;
+test | dbg/unwind.c | if (i < count && info[5 + 2 * i] == ALLOC_SMALL) | if (i < count && (info[5 + 2 * i] & 15) == ALLOC_SMALL)
+test | dbg/unwind.c | == PUSH_MACHFRAME) return machine_frame(read, t, regs, regs->gp[RSP]);\n | == PUSH_MACHFRAME) return machine_frame(read, t, regs, regs->gp[RSP] + 8);\n
+test | dbg/unwind.c | \p\p op > PUSH_MACHFRAME) return false; | ) return false;
+test | dbg/unwind.c | if (in < c[0]) continue; | if (in <= c[0]) continue;
+test | dbg/unwind.c | if (in < c[0]) continue; | (void)in;
+test | dbg/unwind.c | else if (op == SET_FPREG) regs->gp[RSP] = regs->gp[frame_reg] - 16 * (uint64_t)(info[3] >> 4); | else if (op == SET_FPREG) regs->gp[RSP] = regs->gp[frame_reg];
+test | dbg/unwind.c | else if (op == SET_FPREG) regs->gp[RSP] = regs->gp[frame_reg] - 16 * (uint64_t)(info[3] >> 4); | else if (op == SET_FPREG) (void)frame_reg;
+test | dbg/unwind.c | regs->gp[RSP] + (x ? 8 : 0))) return false; | regs->gp[RSP])) return false;
+test | dbg/unwind.c | return false; machine = true; } | return false; }
 # ---- slice 4, later: module paths, a step runs its thread alone ----
 win | dbg/win/target.c | text[n < t->text_cap ? n : 0] = 0; | text[0] = 0;
 win | dbg/win/target.c | .addr = (uintptr_t)e.u.CreateProcessInfo.lpBaseOfImage, | .addr = 0,
