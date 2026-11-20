@@ -8,4 +8,14 @@ gap_o2.mix.txt all 6 6
 # system and on what started the program (under Wine none; on Windows 25 rounds less than in RAD's run). From its
 # first branch on that, the two may differ (line 0 below: nothing has to).
 frames.into.txt all 28 0
-frames_o2.into.txt all 22 0
+frames_o2.into.txt all 21 0
+# Clang writes one line as records that touch. RAD, stepping into from the first of them, does not see the call in
+# the second and runs on through it: from `if (n > 0) r += down(n - 1);` it ends a line on, never in `down`
+# (knowledge base 03, "Pieces of one line that touch"; lesson L63). Here such records are one row, and the step goes in.
+recur_clang.into.txt all 7 7
+recur_clang.back.txt all 15 15
+recur_clang.mix2.txt all 9 9
+# RAD's two recordings of this one differ (the recorder then keeps both): the first breaks off at step 338, in the
+# system's code while the program's access violation is being raised once more, with a line that names no place.
+# The second (crash_o2.mix.second-run.txt) goes on for all 600 steps and is what we do.
+crash_o2.mix.txt all 339 339
