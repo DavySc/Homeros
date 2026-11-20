@@ -61222,6 +61222,120 @@ S < 1,49-29        All
 R
 M - - -
 E
+C 10 60
+F 202020200a7820c3a920292e206162e6bca220e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792e585a8e8a792
+T k:0
+T 2C-f
+T k:$
+T k:x
+P
+S 1
+S   1 x é ). ab漢 全角全角全角全角全角全角全角全角全角全角全角
+S ~
+S ~
+S ~
+S ~
+S ~
+S ~
+S f0                                        1,4            All
+S 
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+S f0                                        1,1            All
+R
+M - - -
+P
+S 2   x é ). ab漢 全角全角全角全角全角全角全角全角全角全角全角
+S ~
+R
+R
+R
+R
+R
+R
+S f0                                        2,1            Bot
+R
+M - - -
+P
+S 2   角全角全角全角全角全角全角全角
+R
+R
+R
+R
+R
+R
+R
+S f0                                        2,132-91       Bot
+R
+M - - -
+P
+S 2   角全角全角全角全角全角全角全
+R
+R
+R
+R
+R
+R
+R
+S f0 [+]                                    2,129-89       Bot
+R
+M - - -
+E
+C 6 60
+F 20202020616161616161616161616161616161616161616161616161616161616161206c6f6e676572776f72640a2820616161616161616161616161616161616161616161616161616161616161202c20c3a9202d2d
+T k:0
+T k:Ayyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy<Esc>
+T C-f
+T k:x
+P
+S 1       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa longerword
+S   1 ( aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa , é --
+S ~
+S ~
+S f0                                        1,5            All
+S 
+M - - -
+P
+R
+R
+R
+R
+S f0                                        1,1            All
+R
+M - - -
+P
+S 1   yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+S   1
+R
+R
+S f0 [+]                                    1,131          All
+R
+M - - -
+P
+S 2   aaaaaaaaaaaaaaaaaaaaaa , é --
+S ~
+R
+R
+S f0 [+]                                    2,40-39        Bot
+R
+M - - -
+P
+S 2   aaaaaaaaaaaaaaaaaaaaaa , é -
+R
+R
+R
+S f0 [+]                                    2,39-38        Bot
+R
+M - - -
+E
 C 10 40
 F 202020780a20206162630a20202020790a20207a7a0a
 T k:0
