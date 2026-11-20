@@ -786,6 +786,10 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
       uint32_t file = source_file(&o, &b, folder);
       for (uint32_t j = 0; j < b.count; j += 1) {
         uint64_t voff = b.base + le32(b.lines + 8 * j), line = le32(b.lines + 8 * j + 4) & 0xffffff;
+        /* A record of the line of the one before it adds no line, and clang writes them (one for each column): a
+           line's code that follows without a gap is one row here, so a step and a breakpoint see one piece. RAD
+           keeps them, joins them when it steps over and not when it steps into (its converter has the TODO). */
+        if (j && line == (le32(b.lines + 8 * j - 4) & 0xffffff)) continue;
         rec(&lines, voff, 1ull << 63 | order++, file, line);
         rec(&maps, file, line, voff, 0);
       }

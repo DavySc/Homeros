@@ -172,12 +172,7 @@ static void line_net(Engine *e, uint64_t rip, bool into)
   ROOM(e, ranges, range_cap, 2 * count);
   for (uint32_t i = 0; i < count; i += 1) e->ranges[2 * i] = ((const uint64_t *)starts.p)[i], e->ranges[2 * i + 1] = rdi_row(&m->rdi, e->ranges[2 * i]).opl;
   uint64_t lo = row.first, hi = row.opl;
-  /* over: the code read goes on through pieces of the same line that follow without a gap */
-  for (bool grew = !into; grew;) {
-    grew = false;
-    for (uint32_t i = 0; i < count; i += 1) if (e->ranges[2 * i] <= hi && hi < e->ranges[2 * i + 1]) hi = e->ranges[2 * i + 1], grew = true;
-  }
-  /* and through what MSVC's "just my code" puts behind a line under two made-up line numbers */
+  /* the code read goes on through what MSVC's "just my code" puts behind a line under two made-up line numbers */
   RdiRow after = rdi_row(&m->rdi, hi);
   if (after.line.line == 0xf00f00 || after.line.line == 0xfeefee) hi = after.opl;
   if (hi - lo > CODE_MAX) return;
@@ -202,12 +197,8 @@ static void line_net(Engine *e, uint64_t rip, bool into)
         if (!stays) net_add(e, to ? to : addr, END | (into ? IGNORE_SP : 0) | (to ? 0 : STEP_AFTER));
       } else if (x.moves_sp) net_add(e, addr, STEP_AFTER | SAVE_AFTER);
     }
-  /* running off the end of a piece of the line, unless another piece begins there */
-  for (uint32_t i = 0; i < count; i += 1) {
-    bool joined = false;
-    for (uint32_t k = 0; k < count; k += 1) joined = joined || (k != i && e->ranges[2 * k] == e->ranges[2 * i + 1]);
-    if (!joined) net_add(e, base + e->ranges[2 * i + 1], END);
-  }
+  /* running off the end of a piece of the line (the converter made one piece of pieces that touch) */
+  for (uint32_t i = 0; i < count; i += 1) net_add(e, base + e->ranges[2 * i + 1], END);
 }
 
 /* Step out (d_trap_net_from_thread__step_out_scope): out of the innermost scope the thread is in, which is a block

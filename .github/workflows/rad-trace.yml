@@ -36,6 +36,8 @@ jobs:
           for %%f in (subjects\*.c subjects\*.cpp) do cl /nologo /Zi /O2 /GS- %%f /Fo:bin\%%~nf_o2.obj /Fd:bin\%%~nf_o2.pdb /Fe:bin\%%~nf_o2.exe /link /DEBUG /INCREMENTAL:NO /DYNAMICBASE:NO || exit /b 1
           rem "just my code": a call at each function's start, under line numbers 0xf00f00 and 0xfeefee
           cl /nologo /Zi /Od /Ob0 /GS- /JMC subjects\calls.c /Fo:bin\calls_jmc.obj /Fd:bin\calls_jmc.pdb /Fe:bin\calls_jmc.exe /link /DEBUG /INCREMENTAL:NO /DYNAMICBASE:NO || exit /b 1
+          rem clang's line records: one line as records that touch (the call of a one-line if in the second), which cl never writes
+          clang-cl /nologo /Z7 /Od /GS- subjects\recur.c /Fo:bin\recur_clang.obj /Fe:bin\recur_clang.exe /link /DEBUG /INCREMENTAL:NO /DYNAMICBASE:NO /PDB:bin\recur_clang.pdb || exit /b 1
       - name: Ask RAD for the values and types of the zoo's expressions (the oracle for what a view shows), and commit them at once
         shell: pwsh
         run: |

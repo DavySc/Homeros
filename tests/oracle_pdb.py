@@ -10,10 +10,10 @@ for pdb in sys.argv[2:]:
     for i, line in enumerate(lines):
         if re.match(r' +(Modules|Section Headers|Section Contributions|Original Section Headers|Lines) *$', line): part = line.strip()
         elif part == 'Section Headers' and (m := re.match(r' +SECTION HEADER #(\d+)', line)):
-            f = [lines[i + k].split()[0] for k in range(1, 6)]   # name, virtual size, address, raw size, raw pointer
+            f = [lines[i + k].split()[0] for k in range(1, 6)]   # name (llvm-pdbutil reads on past a name of 8 bytes), virtual size, address, raw size, raw pointer
             flags = lines[i + 10].split()[0]
             va[int(m[1])] = int(f[2], 16)
-            sec.append('section %s %s %s' % (m[1], ' '.join([f[0]] + ['%x' % int(v, 16) for v in f[1:]]), '%x' % int(flags, 16)))
+            sec.append('section %s %s %s' % (m[1], ' '.join([f[0][:8]] + ['%x' % int(v, 16) for v in f[1:]]), '%x' % int(flags, 16)))
     def sc(line):
         m = re.search(r'mod = (\d+), (\d+):(\d+), size = (-?\d+)', line)
         return int(m[1]), int(m[2]), int(m[3]), int(m[4]) & 0xffffffff
@@ -35,13 +35,14 @@ for pdb in sys.argv[2:]:
         elif part == 'Lines' and (m := re.match(r'  ([0-9A-F]{4}):([0-9A-F]{8})-([0-9A-F]{8}), line/(?:column/)?addr entries = (\d+)', line)):
             base, j, entries = va[int(m[1], 16)], i + 1, []
             while len(entries) < int(m[4]):
-                entries += re.findall(r'(\d+) ([0-9A-F]{8})', lines[j]); j += 1
+                # llvm-pdbutil names the two made-up lines of "just my code": never and always step into
+                entries += [({'NSI': 0xf00f00, 'ASI': 0xfeefee}.get(l) or l, o) for l, o in re.findall(r'(\d+|NSI|ASI) ([0-9A-F]{8})', lines[j])]; j += 1
             want.append('lines %d %s %x-%x%s' % (mod, src, base + int(m[2], 16), base + int(m[3], 16), ''.join(' %s@%x' % (l, base + int(o, 16)) for l, o in entries)))
     want += sec
     got = subprocess.run([pdbq, pdb], capture_output=True, text=True, errors='surrogateescape').stdout.split('\n')[:-1]
     if got != want:
         bad = [(g, w) for g, w in zip(got + [''] * len(want), want + [''] * len(got)) if g != w]
-        print(f'oracle_pdb: {pdb}: {len(got)} records read, llvm-pdbutil has {len(want)}; first difference:\n  ours   {bad[0][0]}\n  theirs {bad[0][1]}')
+        print(f'oracle_pdb: {pdb}: {len(got)} records read, llvm-pdbutil has {len(want)}; first difference:\n  ours   {bad[0][0]!r}\n  theirs {bad[0][1]!r}')
         sys.exit(1)
     total += len(want)
 print(f'oracle_pdb: {total} modules, line blocks, contributions and sections of {len(sys.argv) - 2} files agree with llvm-pdbutil')

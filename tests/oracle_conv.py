@@ -163,8 +163,8 @@ for pdb in sys.argv[3:]:
     for i, line in enumerate(lines):
         if m := re.match(r' +(Modules|Section Headers|Section Contributions|Original Section Headers|Lines|Inlinee Lines|Files|Symbols|Global Symbols) *$', line): part = m[1]
         elif part == 'Section Headers' and (m := re.match(r' +SECTION HEADER #(\d+)', line)):
-            f = [lines[i + k].split()[0] for k in range(1, 6)]
-            name, vsize, addr, fsize, foff = f[0], *(int(v, 16) for v in f[1:])
+            f = [lines[i + k].split()[0] for k in range(1, 6)]   # the name: llvm-pdbutil reads on past one of 8 bytes
+            name, vsize, addr, fsize, foff = f[0][:8], *(int(v, 16) for v in f[1:])
             flags = int(lines[i + 10].split()[0], 16)
             va[int(m[1])] = addr
             if flags >> 29 & 1: spans.append((addr, vsize))
@@ -262,9 +262,10 @@ for pdb in sys.argv[3:]:
         elif part == 'Lines' and (m := re.match(r'  ([0-9A-F]{4}):([0-9A-F]{8})-([0-9A-F]{8}), line/(?:column/)?addr entries = (\d+)', line)):
             base, j, entries = va[int(m[1], 16)], i + 1, []
             while len(entries) < int(m[4]):
-                entries += re.findall(r'(\d+) ([0-9A-F]{8})', lines[j]); j += 1
+                entries += [(str({'NSI': 0xf00f00, 'ASI': 0xfeefee}.get(l) or l), o) for l, o in re.findall(r'(\d+|NSI|ASI) ([0-9A-F]{8})', lines[j])]; j += 1
             path = normal(src, folder)
-            for l, o in entries:
+            for k, (l, o) in enumerate(entries):
+                if k and l == entries[k - 1][0]: continue   # a record of the line before it is no row (dbg/conv.c)
                 voff = base + int(o, 16)
                 recs.append((voff, 1, order, f'{path} {l}')); order += 1
                 per_line.setdefault((path, int(l)), []).append(voff)

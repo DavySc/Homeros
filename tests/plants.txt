@@ -636,8 +636,6 @@ engine | dbg/engine.c | if (ev.kind == TARGET_EXCEPTION) target_swallow(e->targe
 engine | dbg/engine.c | if (x.flow == X64_CALL \p\p x.repeats) net_add(e, rip + x.size, END); | if (x.repeats) net_add(e, rip + x.size, END);
 engine | dbg/engine.c | if (x.flow == X64_CALL \p\p x.repeats) net_add(e, rip + x.size, END); | if (x.flow == X64_CALL) net_add(e, rip + x.size, END);
 engine | dbg/engine.c | e->ranges[2 * i + 1] = rdi_row(&m->rdi, e->ranges[2 * i]).opl; | e->ranges[2 * i + 1] = e->ranges[2 * i] + 1;
-engine | dbg/engine.c | for (bool grew = !into; grew;) { | for (bool grew = true; grew;) {
-engine | dbg/engine.c | for (bool grew = !into; grew;) { | for (bool grew = false; grew;) {
 engine | dbg/engine.c | if (after.line.line == 0xf00f00 \p\p after.line.line == 0xfeefee) hi = after.opl; | (void)after;
 engine | dbg/engine.c | for (int pass = into ? 0 : 1; pass < 2; pass += 1) | for (int pass = 1; pass < 2; pass += 1)
 engine | dbg/engine.c | net_add(e, addr, SAVE_BEFORE \p STEP_AFTER); | net_add(e, addr, STEP_AFTER);
@@ -652,8 +650,6 @@ engine | dbg/engine.c | END \p (into ? IGNORE_SP : 0) \p (to ? 0 : STEP_AFTER));
 engine | dbg/engine.c | END \p (into ? IGNORE_SP : 0) \p (to ? 0 : STEP_AFTER)); | END \p (into ? IGNORE_SP : 0));
 engine | dbg/engine.c | if (!stays) net_add(e, to ? to : addr, | if (!stays) net_add(e, addr,
 engine | dbg/engine.c | } else if (x.moves_sp) net_add(e, addr, STEP_AFTER \p SAVE_AFTER); | } else if (x.moves_sp && false) net_add(e, addr, STEP_AFTER \p SAVE_AFTER);
-engine | dbg/engine.c | joined = joined \p\p (k != i && e->ranges[2 * k] == e->ranges[2 * i + 1]); | joined = joined \p\p (k != i && false);
-engine | dbg/engine.c | if (!joined) net_add(e, base + e->ranges[2 * i + 1], END); | if (false) net_add(e, base + e->ranges[2 * i + 1], END);
 engine | dbg/engine.c | uint32_t count = bounds.n ? (uint32_t)bounds.n - 1 : 0; | uint32_t count = bounds.n ? 1 : 0;
 engine | dbg/engine.c | if (x.flow != X64_CALL && x.known && !in_ranges(e, count, x.target - base)) | if (x.known && !in_ranges(e, count, x.target - base))
 engine | dbg/engine.c | if (x.flow != X64_CALL && x.known && !in_ranges(e, count, x.target - base)) | if (x.flow != X64_CALL && !x.known && !in_ranges(e, count, x.target - base))
@@ -1124,6 +1120,8 @@ front | cmd/hdbg.c | while (source && line < f->line && fgets | while (source &&
 front | dbg/session.c | if (open) e.halt = halt, e.halt_arg = s; | if (!open) e.halt = halt, e.halt_arg = s;
 
 front | dbg/ask.c | uint64_t function = line ? 0 : engine_function(m, more, strlen(more)); | uint64_t function = 0;
+front | dbg/conv.c | if (j && line == (le32(b.lines + 8 * j - 4) & 0xffffff)) continue; | if (j && line == 0) continue;
+front | dbg/conv.c | if (j && line == (le32(b.lines + 8 * j - 4) & 0xffffff)) continue; | if (j && line == (le32(b.lines + 8 * j - 4) & 0xffffff)) break;
 eval | dbg/ask.c | uint64_t function = line ? 0 : engine_function(m, more, strlen(more)); | uint64_t function = engine_function(m, more, 0);
 
 eval | dbg/ask.c | b = b == '\\' ? '/' : b >= 'A' && b <= 'Z' ? (char)(b + 32) : b; | b = b >= 'A' && b <= 'Z' ? (char)(b + 32) : b;

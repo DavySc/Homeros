@@ -23,9 +23,11 @@ l
 b nowhere
 si
 what
-b tour.c:14
+s
+o
+b tour.c:15
 c
-b tour.c:14
+b tour.c:15
 c 300
 bt
 c

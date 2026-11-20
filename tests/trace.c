@@ -40,6 +40,15 @@ static bool place(const Engine *e, uint64_t rip, const char *why)
   return true;
 }
 
+/* How deep the thread's frame is: the stack pointer its caller gets back (0: not known). RAD's traces name places, not depths, and a step over
+   a call of the function to itself that ends in the inner call ends at the right place: so the replay says itself when a step over or out ends deeper than it began. */
+static uint64_t depth(const Engine *e, uint32_t thread)
+{
+  TargetRegs r;
+  const EngineModule *m;
+  return target_regs(e->target, thread, &r) && (m = engine_module(e, r.rip)) && unwind_step(target_read, e->target, &m->image, &r) ? r.gp[4] : 0;
+}
+
 int main(int argc, char **argv)
 {
   static const char *const names[] = {[ENGINE_STEP_INTO_INST] = "step_into_inst", "step_over_inst", "step_into_line", "step_over_line", "step_out"};
@@ -59,10 +68,11 @@ int main(int argc, char **argv)
     int how = !strcmp(argv[2], "into") ? ENGINE_STEP_INTO_LINE : !strcmp(argv[2], "over") ? ENGINE_STEP_OVER_LINE
             : !strcmp(argv[2], "back") ? (in_main || ++deep % 2 ? ENGINE_STEP_INTO_LINE : ENGINE_STEP_OUT) : mix[(uint64_t)((seed = fmod(seed * 1103515245.0 + 12345.0, 2147483648.0)) / 65536) % 7];
     if (how == ENGINE_STEP_OUT && in_main && !strcmp(argv[2], "mix2")) how = ENGINE_STEP_INTO_LINE;
+    uint64_t before = how == ENGINE_STEP_INTO_LINE || how == ENGINE_STEP_INTO_INST ? 0 : depth(&e, ev.thread);
     ev = engine_run(&e, how, ev.thread, NULL, 0);   /* the thread that stopped last is the one a command is for */
     printf("%s -> ", names[how]);
     if (ev.kind == TARGET_EXIT) on = false, printf("ended\n");
-    else on = place(&e, ev.addr, ev.kind == TARGET_STEP ? "completed step" : ev.kind == TARGET_EXCEPTION ? "hit an exception" : "?");
+    else on = place(&e, ev.addr, ev.kind == TARGET_STEP ? depth(&e, ev.thread) < before ? "completed step deeper than it began" : "completed step" : ev.kind == TARGET_EXCEPTION ? "hit an exception" : "?");
   }
   fflush(stdout);
   engine_close(&e);

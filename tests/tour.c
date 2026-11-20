@@ -11,6 +11,7 @@ int main(void)
   Pair pair = {1, 'b', 3.0};
   int total = twice(pair.a);
   total += twice(total);
+  if (total > 0) total += twice(total);   /* clang writes this line as two records, the call in the second */
   while (spin) spin -= 1;
   return total;
 }
