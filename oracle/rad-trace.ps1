@@ -54,9 +54,10 @@ function Values() {
     $lines += "LOCALS => $(if ($s -match '(?s)locals:\s*\{(.*?)\}') { ($Matches[1] -split '\s+' | Where-Object { $_ }) -join ' ' })"
     foreach ($t in $asked) {
       $f = "$tmp/ask.txt"
-      Start-Process $rad -ArgumentList "--ipc -- eval $t" -RedirectStandardOutput $f -NoNewWindow -Wait
-      $r = Get-Content $f -Raw
-      $lines += "$t => $(Field $r 'value') | $(Field $r 'type') | $(Field $r 'msgs')"
+      # asked until two answers agree: RAD reads the program's memory behind the scenes and answers a first question with what it has (zeros)
+      $r = ''; $asks = 0
+      do { $was = $r; Start-Process $rad -ArgumentList "--ipc -- eval $t" -RedirectStandardOutput $f -NoNewWindow -Wait; $r = Get-Content $f -Raw; $asks++ } while ($r -ne $was -and $asks -lt 6)
+      $lines += "$t => $(Field $r 'value') | $(Field $r 'type') | $(Field $r 'msgs')$(if ($asks -gt 2) { " | asked $asks times" })"
     }
   }
   Quit $p
