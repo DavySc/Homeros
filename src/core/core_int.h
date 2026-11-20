@@ -67,6 +67,9 @@ size_t win_vcol_end(const Win *w, size_t l);  /* screen width of line l in w (li
 /* The cursor's screen column in window w (getvvcol(): on a tab in normal
    mode, its last cell) and the start and end of the character. */
 size_t win_vcol(Editor *e, Win *w, size_t *start, size_t *end);
+/* getvvcol() of byte col of line l in w: the character's first and last
+   cell (one past the end of the line: one cell); 1 on a tab */
+int win_vcols(const Win *w, size_t l, size_t col, size_t *start, size_t *end);
 
 /* window geometry (move.c) */
 int  win_numw(const Win *w);          /* number column, with its space: win_col_off() */

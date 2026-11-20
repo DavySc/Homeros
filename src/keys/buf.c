@@ -449,13 +449,16 @@ int set_indent(long l, long cols)
 }
 
 /* u_save(a - 1, z): an undo step starts at line a even if nothing
-   changes, saving lines [a, z) as they are, so undo puts the cursor back
+   changes (core_u_save, which also saves the marks as u_savecommon()
+   does), saving lines [a, z) as they are, so undo puts the cursor back
    when it was on them (u_undoredo()).  The core takes a group's lowest
    byte for its first changed line and moves other windows' cursors off the
    lines it replaced, so a line that only gets lines below it must not be
    in it (a == z saves none) */
 void u_save(size_t a, size_t z)
 {
+	core_u_save(E, a);
+	if (a == z) return;
 	UndoCursor c = { W->line, W->col, B->flags };
 	size_t p = core_line_start(E, a), n = core_line_start(E, z) - p;
 	char *s = malloc(n + 1);

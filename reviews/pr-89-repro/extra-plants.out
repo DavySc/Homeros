@@ -1,0 +1,13 @@
+caught        x1 the tick asks for no redraw   (make test TESTS=tools_dash): tests/test_tools_dash.c:97: CHECK(!after(349) && after(1)) failed
+caught        x2 the tick leaves ticking set: one frame only   (make test TESTS=tools_dash): tests/test_tools_dash.c:97: CHECK(!after(349) && after(1)) failed
+caught        x3 the frame number never moves   (make test TESTS=tools_dash): tests/test_tools_dash.c:112: CHECK(0) failed
+caught        x4 the cat blinks a frame early   (make test TESTS=tools_dash): tests/test_tools_dash.c:112: CHECK(0) failed
+caught        x5 a frame every 351 ms   (make test TESTS=tools_dash): tests/test_tools_dash.c:97: CHECK(!after(349) && after(1)) failed
+caught        x6 a frame every 349 ms   (make test TESTS=tools_dash): tests/test_tools_dash.c:97: CHECK(!after(349) && after(1)) failed
+caught        x8 the name all one shimmer colour   (make test TESTS=tools_dash): tests/test_tools_dash.c:112: CHECK(0) failed
+caught        x9 the ear's twitch starts a column late   (make test TESTS=tools_dash): tests/test_tools_dash.c:112: CHECK(0) failed
+caught        x10 the frog never blinks   (make test TESTS=tools_dash): tests/test_tools_dash.c:112: CHECK(0) failed
+caught        x11 :Dashboard keeps the old frame number   (make test TESTS=tools_dash): tests/test_tools_dash.c:112: CHECK(0) failed
+caught        x7 the terminal's rows all one shimmer colour   (make test TESTS=tools_dash): tests/test_tools_dash.c:112: CHECK(0) failed
+caught        x12 the animation never stops   (make test TESTS=tools_dash): tests/test_tools_dash.c:129: CHECK(frames > 800 && frames < 857) failed
+caught        x14 the whiskers never wiggle   (make test TESTS=tools_dash): tests/test_tools_dash.c:112: CHECK(0) failed

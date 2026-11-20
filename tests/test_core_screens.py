@@ -225,4 +225,4 @@ def main():
         p = subprocess.run([a[a.index('--drv') + 1], path])
         sys.exit(p.returncode)
 
-main()
+if __name__ == "__main__": main()

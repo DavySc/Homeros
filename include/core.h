@@ -159,14 +159,22 @@ const unsigned char *core_line(Editor *e, size_t l, size_t *len);
 int  core_edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins);
 /* Delete lines [a, z); deleting all leaves the empty buffer.  0 ok, -1 out of memory. */
 int  core_delete_lines(Editor *e, size_t a, size_t z);
+/* Neovim's u_save(line - 1, line): an undo step starts at line (0-based)
+   even if nothing changes, saving no text.  A new group saves a-z, < and >
+   as they are now, for undo to bring back (u_savecommon()).  Keys call it
+   for u_save_cursor() and u_save_gap(). */
+void core_u_save(Editor *e, size_t line);
 /* A join (J, gJ, Backspace or Delete over a line break, a charwise delete
    across lines) about to be made: marks at or after column mincol of line
    move by line_amount lines and col_amount columns, as Neovim's
    mark_col_adjust(), with spaces_removed as do_join() passes it.  Keys call
    it before the core_edit that joins, with the line numbers before it, as
-   do_join() calls mark_col_adjust() before del_lines(); a call with
-   line_amount != 0 also marks the step a join, so undo and redo count the
-   joined line as changed (do_join's u_save) when placing the cursor. */
+   do_join() calls mark_col_adjust() before del_lines(), after core_u_save;
+   line_amount < 0 also marks the step a join, so undo and redo count the
+   joined line as changed (do_join's u_save) when placing the cursor;
+   line_amount 1 after the core_edit that splits a line moves the marks past
+   mincol to the new line, as open_line()'s OPENLINE_MARKFIX does (thread
+   0's, agreed). */
 void core_mark_join(Editor *e, size_t line, size_t mincol, long line_amount, long col_amount, int spaces_removed);
 /* Neovim's setpcmark(): the cursor becomes the '' mark and the newest jump,
    the oldest falling off a full list; keys call it before a jump (G, gg,
@@ -195,8 +203,10 @@ void core_clamp(Editor *e);                   /* keep the cursor on a character 
    cell, where Vim shows the cursor */
 void core_set_want(Editor *e);
 /* Scroll the current window so the cursor is in view with scrolloff
-   (update_topline() and curs_columns()).  keys_feed calls it after every
-   key, where Neovim's normal_check() and edit() call update_topline(). */
+   (update_topline() and curs_columns()), and outside Insert and
+   Command-line mode look at its view again as win_update() does when it is
+   drawn.  keys_feed calls it after every key, where Neovim's normal_check()
+   and edit() call update_topline() (thread 0's, agreed). */
 void core_update(Editor *e);
 
 /* Buffers.  :e path, with force (:e!) dropping changes; path NULL is :e

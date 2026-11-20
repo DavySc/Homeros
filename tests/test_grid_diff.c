@@ -117,6 +117,19 @@ static const char *const face_sgr[FACE_COUNT] = {
 	";38;2;137;180;250",                  /* tag.builtin: blue */
 	";3;38;2;249;226;175",                /* tag.attribute: yellow, italic */
 	";38;2;148;226;213",                  /* tag.delimiter: teal */
+	";38;2;203;166;247",                  /* org-level-7: mauve */
+	";38;2;235;160;172",                  /* org-level-8: maroon */
+	";38;2;250;179;135",                  /* org-todo: peach */
+	";38;2;249;226;175",                  /* org-priority: yellow */
+	";1;38;2;203;166;247",                /* org-tag: mauve, bold */
+	";38;2;166;173;200",                  /* org-date: subtext0 */
+	";38;2;108;112;134",                  /* org-table: overlay0 */
+	";38;2;245;194;231",                  /* org-formula: pink */
+	";38;2;137;220;235",                  /* org-drawer: sky */
+	";1",                                 /* org-checkbox: bold */
+	";38;2;116;199;236",                  /* org-document-info: sapphire */
+	";38;2;166;227;161;48;2;24;24;37",    /* org-block: green on mantle */
+	";3;38;2;147;153;178;48;2;24;24;37",  /* org-block-begin-line */
 	";48;2;50;40;58",                    /* heading 1 background */
 	";48;2;51;44;54",                    /* heading 2 background */
 	";48;2;51;49;58",                    /* heading 3 background */
@@ -194,6 +207,8 @@ static const char *const face_sgr[FACE_COUNT] = {
 	";1;38;2;249;226;175",                /* dashboard sparkle: yellow */
 	";1;38;2;108;112;134",                /* dashboard terminal: overlay0 */
 	";1;38;2;203;166;247",                /* dashboard prompt: mauve */
+	";1;38;2;116;199;236",                /* shimmer sapphire */
+	";1;38;2;148;226;213",                /* shimmer teal */
 };
 
 /* backend_present's output, through a file: a frame may be larger than a pipe holds */
