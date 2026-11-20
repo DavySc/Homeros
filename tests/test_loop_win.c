@@ -33,7 +33,9 @@
 
 static char self[MAX_PATH];
 
-static long long ms(void) { return (long long)GetTickCount64(); }
+/* the loop's own clock: GetTickCount64 steps by 15.6 ms on Windows (1 ms
+   under Wine), so on Windows a timer due in 200 ms showed under 195 */
+static long long ms(void) { return loop_now() / 1000000; }
 
 /* --- the children --- */
 
@@ -342,9 +344,9 @@ static void timers(void)
 	CHECK(loop_timer(tick, &fired[1], 200) == 0);
 	CHECK(loop_timer(tick, &fired[2], -1) == 0);
 	while (!fired[1]) CHECK(loop_once(-1) == 0);
-	CHECK(!fired[0] && ms() - t0 >= 195);    /* GetTickCount64 steps in ticks */
+	CHECK(!fired[0] && ms() - t0 >= 199);
 	while (!fired[0]) CHECK(loop_once(-1) == 0);
-	CHECK(fired[1] == 1 && !fired[2] && ms() - t0 >= 295 && ms() - t0 < 450);
+	CHECK(fired[1] == 1 && !fired[2] && ms() - t0 >= 299 && ms() - t0 < 450);
 	static char slot[17];
 	for (int i = 0; i < 16; i++) CHECK(loop_timer(tick, &slot[i], 1000) == 0);
 	CHECK(loop_timer(tick, &slot[16], 1000) == -1);
