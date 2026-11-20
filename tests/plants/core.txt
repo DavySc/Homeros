@@ -39,21 +39,18 @@ core: the popup placed before update_screen() (test_core_screens)~test TESTS=cor
 core: entering a buffer keeps the sideways scroll valid (test_core_screens)~test TESTS=core_screens~~src/core/core.c~	w->vc.ok = w->frame->s.sideok = 0;   /* w_valid = 0 */~	w->vc.ok = 0;   /* w_valid = 0 */
 core: a composing character at a cluster start is drawn without its space (test_core_screens)~test TESTS=core_screens~~src/core/draw.c~		if (uni_glen(b, k + 1, 0) > 1) {~		if (uni_glen(b, k + 1, 0) > 9) {
 core: H and L apply scrolloff under an operator (test_core_contract)~test TESTS=core_contract~~src/core/move.c~	if (so) cursor_correct(e, w);~	if (so || 1) cursor_correct(e, w);
-core: undo forgets that a step joined lines (test_core_undo)~test TESTS=core_undo~~src/core/core.c~	if (line_amount) join_next = b;~	(void)0;
+core: undo forgets that a step joined lines (test_core_undo)~test TESTS=core_undo~~src/core/core.c~	if (line_amount < 0) join_next = b;~	(void)0;
 core: a mark on a line deleted from mid-line stays off the joined line (test_core_undo)~test TESTS=core_undo~~src/core/core.c~{ m->line = L; m->col += col; }~{ m->col += col; }
-core: undo saves the marks after a join moved them (test_core_undo)~test TESTS=core_undo~~src/core/core.c~	if (join_snapped == b) memcpy(snap, join_snap, sizeof snap);~	if (join_snapped == b && 0) memcpy(snap, join_snap, sizeof snap);
-core: a group's marks are saved again at each of its edits (test_core_undo)~test TESTS=core_undo~~src/core/core.c~if (s) s->seq = undo_seq(b->undo);~if (s) s->seq = 0;
-core: one buffer's open group taken for new after another buffer's edit (test_core_undo)~test TESTS=core_undo~~src/core/core.c~while (s && s->b != b) s = s->next;~while (0) s = s->next;
 core: '> on a line deleted from mid-line stays off the joined line (test_core_undo)~test TESTS=core_undo~~src/core/core.c~nodel_join(&b->mark[MARK_GT], L, d, col);~(void)0;
-core: the change list on a line deleted from mid-line stays off the joined line (test_core_undo)~test TESTS=core_undo~~src/core/core.c~for (int k = 0; k < b->nchange; k++) nodel_join(&b->change[k], L, d, col);~(void)0;
-core: the jump list on a line deleted from mid-line stays off the joined line (test_core_undo)~test TESTS=core_undo~~src/core/core.c~if (w->jump[k].buf == b) nodel_join(&w->jump[k].m, L, d, col);~if (0) nodel_join(&w->jump[k].m, L, d, col);
-core: each core_mark_join() of one edit saves the marks again (test_core_undo)~test TESTS=core_undo~~src/core/core.c~if (join_snapped != b) { marks_snap~if (1) { marks_snap
-core: the marks saved before a join outlive its edit (test_core_undo)~test TESTS=core_undo~~src/core/core.c~	join_snapped = NULL;~	(void)0;
+core: a list mark on a line deleted from mid-line stays off the joined line (test_core_undo)~test TESTS=core_undo~~src/core/core.c~(m = list_mark(e, b, &i));) nodel_join(m, L, d, col);~(m = list_mark(e, b, &i));) (void)d;
+core: the change list is not a list of marks (test_core_undo)~test TESTS=core_undo~~src/core/core.c~if (k < (size_t)b->nchange) return &b->change[k];~if (k < (size_t)b->nchange) continue;
+core: another buffer's jump list entries move with this one (test_core_undo)~test TESTS=core_undo~~src/core/core.c~if (w->jump[k].buf == b) return &w->jump[k].m;~return &w->jump[k].m;
+core: the jump list is not a list of marks (test_core_undo)~test TESTS=core_undo~~src/core/core.c~if (w->jump[k].buf == b) return &w->jump[k].m;~if (0) return &w->jump[k].m;
 core: a file opens with the cursor in column 0 (test_core_screens)~test TESTS=core_screens~~src/core/core.c~(measured in tmux, 7 texts) */¶	w->col = core_first_nonblank(e, 0);~(measured in tmux, 7 texts) */¶	w->col = 0;
 core: CTRL-W > in a shrunk terminal grows past its row of windows (test_core_contract)~test TESTS=core_contract~~src/core/win.c~full = a == ROWS ? e->cols : e->layout->size[ROWS];~full = a == ROWS ? e->cols : e->rows;
 core: a heading's icon on its first '#' (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~a1 - a0 + md->head - 1, f, hb);~a1 - a0, f, hb);
-core: an overlay keeps the text's colour (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~u + i, k, j, cw, face);~u + i, k, j, cw, 0 * face);
-core: a heading's background not drawn (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~				z->bg = bg;¶			}¶		}¶	return v;~				z->bg = 0 * bg;¶			}¶		}¶	return v;
+core: an overlay keeps the text's colour (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~u + i, k, j, cw, face, bg);~u + i, k, j, cw, 0 * face, bg);
+core: a heading's background not drawn (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~u + i, k, j, cw, face, bg);~u + i, k, j, cw, face, 0 * bg);
 core: an overlay that starts before the view drawn at its column (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~size_t d = skip > s0 ? skip - s0 : 0,~size_t d = 0 * skip,
 core: an overlay drawn over skipcol's <<< (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~(row == r && c < cover)) continue;~(row == r && c < cover * 0)) continue;
 core: a wrapped line's background on its first row only (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~tw = w->w - nw, rows = line_rows(w, l);~tw = w->w - nw, rows = 1 + 0 * (int)l;
@@ -76,6 +73,22 @@ core: a fence's row not filled with '█' (test_core_markdown)~test TESTS=core_m
 core: an empty code row's background from the window's start (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~a0 = v + md.mark - i;~a0 = v * 0;
 core: a wrapped line's background below its window (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~k < rows && r + k < w->h; k++~k < rows; k++
 core: an overlay drawn past a grid smaller than its window (fuzz_core)~fuzz FUZZERS=core FUZZ_SECONDS=120~~src/core/draw.c~			if (row >= w->h || !z || ~			if (row >= w->h || 
+core: a group the keys open saves no marks (test_core_undo)~test TESTS=core_undo~~src/core/core.c~"", 0, "", 0, c, b->flags)) umarks_new(b, seq, snap);~"", 0, "", 0, c, b->flags)) umarks_new(b, seq ? undo_seq(b->undo) : undo_seq(b->undo), snap);
+core: a group an edit opens saves no marks (test_core_undo)~test TESTS=core_undo~~src/core/core.c~				umarks_new(b, seq, snap);~				(void)seq;
+core: a group's marks are saved again at each of its edits (test_core_undo)~test TESTS=core_undo~~src/core/core.c~	if (undo_seq(b->undo) == seq) return;~	if (seq == (unsigned long)-1) return;
+core: the view is looked at again only when drawn (test_core_contract)~test TESTS=core_contract~~src/core/move.c~MODE_CMDLINE) drawn(e, e->win);~MODE_CMDLINE) (void)0;
+core: a block ends at the cursor's column, not the wider end's (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~(b > d ? b : d) + 1;~b + 1;
+core: no blank cell where the area starts at a line's end (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~	if (drawn == 1 && (v > skip ? from == v : from <= skip)~	if (drawn == 1 && (v > skip ? from == v + 1 : from <= skip)
+core: the cursor's cell is in the Visual area (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~	if (w == cw && l == cl) {~	if (w == cw && l == cl + 1) {
+core: a double-width character half in the area is left out (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~(v >= from || (wide && v + 1 == from))~(v >= from || (wide && v + 2 == from))
+core: Visual mode shows the cursor on a tab's last cell before VIsual (test_core_visual)~test TESTS=core_visual~~src/core/core.c~	int first = w == e->win && e->ks.visual && (~	int first = w == e->win && e->ks.visual == 1 && (
+core: "<<<" over a double-width character leaves its second cell out of the area (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~if (wide && j == lead && c + 1 == cover)~if (wide && j == lead && c + 2 == cover)
+core: '<' of a character starting at the area is in it (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~if (z && from < v) z->bg = bg;~if (z) z->bg = bg;
+core: '>' is in the area (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~wputs(g, w, row, c, ">", ATTR_DIM);   /* not in the area (measured) */~{ wputs(g, w, row, c, ">", ATTR_DIM); Cell *z = wcell(g, w, row, c); if (z) z->bg = bg; }
+core: -- VISUAL LINE -- shows as -- VISUAL -- (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~e->ks.visual == 'V' ? 1~e->ks.visual == 'V' ? 0
+core: -- REPLACE -- shows as -- INSERT -- (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~? 3 + !!e->ks.replace :~? 3 :
+core: a window on the same buffer shows no Visual area (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~	if (!e->ks.visual || w->buf != e->buf) return;~	if (!e->ks.visual || w != e->win) return;
+core: a split marks the next edit a join (test_core_undo)~test TESTS=core_undo~~src/core/core.c~	if (line_amount < 0) join_next = b;~	if (line_amount) join_next = b;
 core: a heading drawn in insert mode (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~ ? e->mode != MODE_INSERT && !e->ks.visual~ ? !e->ks.visual
 core: a heading drawn while the window is scrolled sideways (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~ && !e->win->left : !w->left;~ : !w->left;
 core: the cursor line's heading drawn (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~	size_t raw = cur ? e->win->line : (size_t)-1;~	size_t raw = (size_t)-1;
@@ -83,10 +96,9 @@ core: another buffer's window keeps its cursor line raw (test_core_markdown)~tes
 core: another buffer's window drawn while scrolled sideways (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~ && !e->win->left : !w->left;~ && !e->win->left : 1;
 core: another buffer's window follows the current buffer's mode (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~int cur = w->buf == e->buf, rm~int cur = 1, rm
 core: a heading drawn in visual mode (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~e->mode != MODE_INSERT && !e->ks.visual && ~e->mode != MODE_INSERT && 
-core: the '>' of a double-width character that does not fit in the text's colours (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~wputs(g, w, row, c, ">", ATTR_DIM);~put_cell(g, w, row, c, (const unsigned char *)">", 1, 0, 1, face);
 core: a bullet ignores the blanks its marker starts with (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~" ", 1, q - md->item, FACE_MD_BULLET~" ", 1, 0 * q, FACE_MD_BULLET
 core: a bullet over a heading's background takes it (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~k, 1, FACE_MD_BULLET, 0);~k, 1, FACE_MD_BULLET, hb);
-core: the language line puts the file's bytes on the grid as they are, an escape too (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~				if (fit) put_cell(g, w, row, c, u + i, k, j, cw, face);~				if (fit) { if (!j) wput(g, w, row, c, u + i, k, cw, ATTR_NONE); z->face = face; }
+core: the language line puts the file's bytes on the grid as they are, an escape too (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~				if (fit) put_cell(g, w, row, c, u + i, k, j, cw, face, bg);~				if (fit) { if (!j) wput(g, w, row, c, u + i, k, cw, ATTR_NONE); z->face = face; z->bg = bg; }
 core: an overlay at a mark past the window's end draws on the row above it (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~	if (s0 == (size_t)-1) return v;~	if (s0 == (size_t)-2) return v;
 core: an ordered number as wide as its marker is left as typed (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~k <= md->iend - q) over(~k < md->iend - q) over(
 core: a tab in the language line 3 cells wide is drawn 2 (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~			cw -= cw == 3 && u[i] != '\t';~			cw -= cw == 3;
@@ -94,3 +106,6 @@ core: a double-width character past the language line's row end is drawn in part
 core: the info string's text before the language is not drawn (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~b + md->info, md->lang - md->info, 1~b + md->info, 0 * md->info, 1
 core: the language line's fence blanks counted in columns, not characters (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~blk, 3, blanks(b, n, md->mark) - md->mark,~blk, 3, a1 - a0 + 0 * n,
 core: an info string past b's bytes is read past them (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~md->info + md->ninfo < n ? md->info + md->ninfo : n;~md->info + md->ninfo;
+core: the '>' of a double-width character that does not fit in the text's colours (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~wputs(g, w, row, c, ">", ATTR_DIM);~put_cell(g, w, row, c, (const unsigned char *)">", 1, 0, 1, face, 0);
+core: another window's ruler follows the Visual tab rule (test_core_markdown)~test TESTS=core_markdown~~src/core/core.c~	int first = w == e->win && e->ks.visual~	int first = e->ks.visual
+core: the wanted column on a Tab follows the Visual rule while the keys still show Visual mode (recorded traces)~test TESTS=~~src/core/core.c~	w->want = win_vcols(w, w->line, w->col, &s, &w->want) && e->mode != MODE_INSERT ? w->want : s;~	w->want = win_vcol(e, w, NULL, NULL); (void)s;

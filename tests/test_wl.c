@@ -375,6 +375,18 @@ static void test_sway(void)
 	show();
 	CHECK(ink(2 * cellw(), 0, cellw(), cellh(), 0) > cellh() / 2);
 	CHECK(ink(7 * cellw(), 0, cellw(), cellh(), 0) > cellw() / 2);
+	/* the cursor on its first cell shows that cell's part of it reversed,
+	   as kitty colours a ligature per cell: not a bare cursor */
+	g.crow = 0;
+	g.ccol = 7;
+	show();
+	ink(7 * cellw(), 0, cellw(), cellh(), 0);
+	cmd("mv %s/i.ppm %s/c.ppm", dir);
+	g.ccol = 6;
+	show();
+	ink(6 * cellw(), 0, cellw(), cellh(), 0);
+	cmd("! cmp -s %s/i.ppm %s/c.ppm", dir);
+	g.crow = 5;
 
 	/* keys, with the Control transformation and the keys keys.h names */
 	k0 = nkeys;

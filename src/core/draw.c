@@ -51,7 +51,7 @@ static Cell *wcell(Grid *g, const Win *w, int r, int c)
    spaces, a control character ^X, an invalid byte or what cannot be
    printed in hex (transchar_hex()). */
 static void put_cell(Grid *g, const Win *w, int r, int c, const unsigned char *s, size_t k, int j,
-                     int width, unsigned char face)
+                     int width, unsigned char face, unsigned char bg)
 {
 	static const char hex[] = "0123456789abcdef";
 	unsigned char b;
@@ -67,7 +67,7 @@ static void put_cell(Grid *g, const Win *w, int r, int c, const unsigned char *s
 	else { b = 0; wput(g, w, r, c, s, k, width, ATTR_NONE); }
 	if (b) wput(g, w, r, c, &b, 1, 1, ATTR_NONE);
 	Cell *z = wcell(g, w, r, c);
-	if (z) z->face = face;
+	if (z) { z->face = face; z->bg = bg; }
 }
 
 /* The number column of line l (get_line_number_str()): relative to the
@@ -132,9 +132,8 @@ static size_t over(Grid *g, const Win *w, int r, size_t skip, int cover, size_t 
 				int row = r + (int)(x / (size_t)tw), c = nw + (int)(x % (size_t)tw);
 				Cell *z = wcell(g, w, row, c);
 				if (row >= w->h || !z || (row == r && c < cover)) continue;
-				if (fit) put_cell(g, w, row, c, u + i, k, j, cw, face);
-				else put_cell(g, w, row, c, (const unsigned char *)" ", 1, 0, 1, face);
-				z->bg = bg;
+				if (fit) put_cell(g, w, row, c, u + i, k, j, cw, face, bg);
+				else put_cell(g, w, row, c, (const unsigned char *)" ", 1, 0, 1, face, bg);
 			}
 		}
 	return v;
@@ -225,13 +224,55 @@ static void draw_md(Grid *g, const Win *w, size_t l, int r, size_t skip, int cov
 	}
 }
 
+/* win_line()'s Visual area of line l in w ('selection' inclusive): cells
+   [*from, *to), none if *from >= *to, less the cursor's [*xf, *xt], which
+   the block cursor shows (noinvcur: its cell, both of a double-width
+   character's).  Windows on the current buffer show it too. */
+static void visual(Editor *e, Win *w, size_t l, size_t *from, size_t *to, size_t *xf, size_t *xt)
+{
+	const Win *cw = e->win;
+	size_t cl = cw->line, vl = e->ks.vline, a, b, c, d, n;
+	*from = *xf = 1;
+	*to = *xt = 0;
+	if (!e->ks.visual || w->buf != e->buf) return;
+	/* ltoreq(): the cursor is the top end unless VIsual is before it */
+	int vtop = vl < cl || (vl == cl && e->ks.vcol < cw->col);
+	size_t tl = vtop ? vl : cl, tc = vtop ? e->ks.vcol : cw->col, bl = vtop ? cl : vl, bc = vtop ? cw->col : e->ks.vcol;
+	if (l < tl || l > bl) return;
+	if (e->ks.visual == 22) {
+		/* block: w_old_cursor_fcol and _lcol (getvcols()), to the line's
+		   end after $ */
+		win_vcols(w, cl, cw->col, &a, &b);
+		win_vcols(w, vl, e->ks.vcol, &c, &d);
+		*from = a < c ? a : c;
+		*to = cw->want == WANT_EOL ? (size_t)-1 : (b > d ? b : d) + 1;
+	} else {
+		*from = 0;
+		*to = (size_t)-1;
+		if (l == tl && e->ks.visual == 'v') {
+			win_vcols(w, tl, tc, from, &b);
+			core_line(e, tl, &n);
+			if (tc >= n) *to = *from + 1;
+		}
+		if (l == bl && e->ks.visual == 'v') {
+			win_vcols(w, bl, bc, &a, &b);
+			*to = b + 1;
+		}
+	}
+	if (w == cw && l == cl) {
+		*xf = win_vcol(e, w, NULL, xt);
+		const unsigned char *t = core_line(e, cl, &n);
+		if (cw->col >= n || t[cw->col] < 0x80 || uni_width(t, n, cw->col) < 2) *xt = *xf;
+	}
+}
+
 /* Line l from window row r: in rows of the text width with wrap (the top
    line from skipcol), else one row from leftcol.  rm: render-markdown draws
    the line (2), or only what its anti_conceal leaves on the cursor line,
    a code block's background (1; anti_conceal.ignore), or nothing (0; see
    draw_win).  Returns 1 if the line was drawn to its
    end. */
-static int draw_line(Grid *g, Win *w, size_t l, int r, int rm)
+static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 {
 	int nw = win_numw(w), tw = w->w - nw;
 	size_t skip = w->wrap ? (l == w->top ? w->skipcol : 0) : w->left;
@@ -250,6 +291,8 @@ static int draw_line(Grid *g, Win *w, size_t l, int r, int rm)
 	SyntaxMd md = { 0 };
 	int drawn = 1, on = rm && syntax_md(syn, w->buf->text, l, &md);
 	size_t a0 = (size_t)-1, a1 = a0, b1 = a0, t0 = a0;
+	size_t from, to, xf, xt;
+	visual(e, w, l, &from, &to, &xf, &xt);
 	lit_init(&it, w->buf, l);
 	while ((k = lit_next(&it, &s))) {
 		int cw = core_cellw(w, s, k, 0, v);
@@ -273,19 +316,46 @@ static int draw_line(Grid *g, Win *w, size_t l, int r, int rm)
 			if (!w->wrap && d >= (size_t)tw) { drawn = 2; break; }
 			if (row >= w->h) { drawn = 0; break; }
 			int c = nw + (int)(d % (size_t)tw);
-			if (row == r && c < cover) continue;
 			unsigned char face = syn ? fc[i - f0] : 0;
+			/* a double-width character whose second cell starts the area
+			   is in it (win_line()) */
+			unsigned char bg = (v >= from || (wide && v + 1 == from)) && v < to && (v < xf || v > xt) ? FACE_VISUAL : 0;
+			if (row == r && c < cover) {
+				/* "<<<" over a double-width character's first cell leaves a
+				   blank in its second (measured) */
+				if (wide && j == lead && c + 1 == cover) put_cell(g, w, row, c + 1, (const unsigned char *)" ", 1, 0, 1, face, bg);
+				continue;
+			}
 			/* win_line(): '>' where a double-width character does not fit
 			   (the line's end without wrap), '<' where the view starts in
 			   its second half (MB_FILLER_CHAR), both in NonText (HLF_AT,
 			   which the core draws dim, as '~') */
 			if (j < lead || (wide && j == 0 && !w->wrap && d == (size_t)tw - 1))
-				wputs(g, w, row, c, ">", ATTR_DIM);
-			else if (wide && j - lead == 1 && v == skip)
+				wputs(g, w, row, c, ">", ATTR_DIM);   /* not in the area (measured) */
+			else if (wide && j - lead == 1 && v == skip) {
+				/* in the area if its character is (measured) */
 				wputs(g, w, row, c, "<", ATTR_DIM);
-			else put_cell(g, w, row, c, s, k, j - lead, cw - lead, face);
+				Cell *z = wcell(g, w, row, c);
+				if (z && from < v) z->bg = bg;
+			} else put_cell(g, w, row, c, s, k, j - lead, cw - lead, face, bg);
 		}
 		i += k;
+	}
+	/* win_line(): "Invert at least one char" where the area starts at the
+	   line's end (a blank cell; in block mode only on the lines of its two
+	   ends), or the last cell when the end is past the window's edge.  A
+	   line that ends before the view starts has its end at the view's
+	   start, where an area that starts earlier starts too. */
+	size_t vs = v > skip ? v : skip;
+	if (drawn == 1 && (v > skip ? from == v : from <= skip) && vs < to && (vs < xf || vs > xt)
+	    && (e->ks.visual != 22 || l == e->win->line || l == e->ks.vline)) {
+		size_t d = vs - skip;
+		int full = w->wrap ? d && d % (size_t)tw == 0 : d >= (size_t)tw;
+		d -= (size_t)full;
+		int row = w->wrap ? r + (int)(d / (size_t)tw) : r, c = nw + (int)(d % (size_t)tw);
+		if (!full) wput(g, w, row, c, (const unsigned char *)" ", 1, 1, ATTR_NONE);
+		Cell *z = row < w->h ? wcell(g, w, row, c) : NULL;
+		if (z) z->bg = FACE_VISUAL;
 	}
 	/* a code block's empty or short row: its background from the block's
 	   column (padding() pads it) */
@@ -311,7 +381,7 @@ static void draw_win(Editor *e, Grid *g, Win *w)
 	size_t raw = cur ? e->win->line : (size_t)-1;
 	for (; r < w->h && l < n; l++) {
 		int rows = line_rows(w, l);
-		if (!draw_line(g, w, l, r, rm ? 1 + (l != raw) : 0)) {
+		if (!draw_line(e, g, w, l, r, rm ? 1 + (l != raw) : 0)) {
 			/* a double-width character the "@@@" starts in becomes '@' too
 			   (measured: four '@' after one) */
 			int c0 = w->w - 3 < 0 ? 0 : w->w - 3, y = w->y + w->h - 1, x = w->x + c0;
@@ -585,7 +655,9 @@ void core_draw(Editor *e, Grid *g)
 	}
 	/* the mode goes on the screen's last row (msg_pos_mode()), below a
 	   taller command line; a message at the command line's first */
-	if (e->mode == MODE_INSERT) grid_puts(g, e->rows - 1, 0, g->cols, "-- INSERT --", 12, ATTR_NONE, FACE_NONE);
+	static const char *const mode[] = { "-- VISUAL --", "-- VISUAL LINE --", "-- VISUAL BLOCK --", "-- INSERT --", "-- REPLACE --" };
+	int m = e->mode == MODE_INSERT ? 3 + !!e->ks.replace : e->ks.visual == 'v' ? 0 : e->ks.visual == 'V' ? 1 : e->ks.visual ? 2 : -1;
+	if (m >= 0) grid_puts(g, e->rows - 1, 0, g->cols, mode[m], strlen(mode[m]), ATTR_NONE, FACE_NONE);
 	else grid_puts(g, r, 0, g->cols, e->msg, strlen(e->msg), ATTR_NONE, FACE_NONE);
 	draw_pum(e, g);
 	Win *w = e->win;

@@ -11,7 +11,9 @@
 #include <unistd.h>
 #include "check.h"
 #include "core.h"
+#include "syntax.h"
 #include "grid.h"
+#include "../src/core/core_int.h"
 
 static char path[] = "/tmp/core_contractXXXXXX";
 
@@ -71,6 +73,13 @@ int main(void)
 	const Cell *c = &g.c[r * g.cols];
 	CHECK(c[0].len == 1 && c[0].ch[0] == ':' && c[1].ch[0] == 's' && c[2].len == 2 && c[3].ch[0] == 'x');
 	CHECK(g.crow == r && g.ccol == 3);
+	/* showmode() in Replace mode (measured in tmux, 1 run: R shows it) */
+	e.mode = MODE_INSERT;
+	e.ks.replace = 1;
+	core_draw(&e, &g);
+	c = &g.c[(g.rows - 1) * g.cols];
+	CHECK(c[0].ch[0] == '-' && c[3].ch[0] == 'R' && c[9].ch[0] == 'E' && c[11].ch[0] == '-');
+	e.ks.replace = 0;
 	e.mode = MODE_NORMAL;
 
 	/* the popup: the selected item drawn plainly, the others reversed
@@ -151,6 +160,69 @@ int main(void)
 		for (Win *w = e.wins; w; w = w->next, k++) CHECK(k < 5 && w->w == wd[k]);
 		CHECK(k == 5);
 	}
+	core_free(&e);
+	/* the view is drawn after each command, before the next one runs
+	   (normal_check()'s normal_redraw(), typeahead or not): wrap, CTRL-W s,
+	   6G$, CTRL-W w puts the lower window's top at line 3 (measured in tmux,
+	   20x50, line 6 of 60 or 140 characters: tops 3 and 4; render-markdown's
+	   case 738) */
+	{
+		FILE *h = fopen(fn[1], "w");
+		CHECK(h && fprintf(h, "a\na\na\na\na\n%060d\nb\nb\nb\nb\nb\nb\nb\nb\n", 0) > 0 && !fclose(h));
+	}
+	CHECK(!core_open(&e, fn[1]) && !grid_resize(&g, 20, 50));
+	core_set_wrap(&e, 1);
+	core_draw(&e, &g);
+	CHECK(!core_split(&e, 0, 0));
+	core_update(&e);
+	e.win->line = 5;
+	e.win->col = 59;
+	core_set_want(&e);
+	core_update(&e);
+	CHECK(!core_win_goto(&e, 'w', 0));
+	core_update(&e);
+	core_draw(&e, &g);
+	CHECK(e.wins->next && e.wins->next->top == 2);
+	/* the Visual area shows in every window on the buffer (win_line():
+	   wp->w_buffer == curwin->w_buffer) */
+	e.ks.visual = 'V';
+	e.ks.vline = 5;
+	core_draw(&e, &g);
+	for (const Win *w = e.wins; w; w = w->next)
+		CHECK(w->top <= 5 && g.c[(w->y + 5 - (int)w->top) * g.cols + w->x + win_numw(w)].bg == FACE_VISUAL);
+	/* an area that starts on a line's NUL shows one cell there (win_line()'s
+	   "invert at least one char"): v$ojj on "abc" shows the cell after c
+	   (measured in nvim --headless, 3 runs) */
+	e.ks.visual = 'v';
+	e.ks.vline = 2;
+	e.ks.vcol = 1;
+	e.win->line = 4;
+	e.win->col = 0;
+	core_update(&e);
+	core_draw(&e, &g);
+	CHECK(e.win->top <= 2 && g.c[(e.win->y + 2 - (int)e.win->top) * g.cols + e.win->x + win_numw(e.win) + 1].bg == FACE_VISUAL);
+	e.ks.visual = 0;
+
+	/* a heading's background stops at the grid's edge when the windows
+	   reach past a terminal too small for them (fuzz_core's case, which
+	   the fuzzer once missed in 120 s) */
+	char md[] = "/tmp/core_contractXXXXXX.md";
+	CHECK(mkstemps(md, 3) >= 0 && (f = fopen(md, "w")) && fputs("# heading\nx\n", f) >= 0 && !fclose(f));
+	CHECK(!core_edit_file(&e, md, 1) && !grid_resize(&g, 24, 80));
+	e.win->line = 1;
+	do core_draw(&e, &g);
+	while (syntax_update(e.buf->syn, e.buf->text, NULL));
+	CHECK(g.c[win_numw(e.win)].bg == FACE_HEADING_1_BG);   /* not on the cursor line */
+	/* nine windows one above another need 18 rows and the command line;
+	   the grid has 6 */
+	for (int i = 0; i < 8; i++) CHECK(!core_split(&e, 0, 0));
+	for (Win *w = e.wins; w; w = w->next)
+		if (w != e.win) w->line = w->top = 0;   /* the heading in view, not under the cursor */
+	CHECK(!grid_resize(&g, 6, 80));
+	core_draw(&e, &g);
+	CHECK(e.layout->size[ROWS] > g.rows);
+	CHECK(!core_only(&e));
+	unlink(md);
 	core_free(&e);
 	for (int i = 0; i < 4; i++) unlink(fn[i]);
 	grid_free(&g);

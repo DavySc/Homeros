@@ -4,6 +4,7 @@
 #ifndef GIT_SEC_H
 #define GIT_SEC_H
 #include <stddef.h>
+#include "str.h"   /* (package 17's, agreed by thread 0) */
 
 /* Section types, magit's names */
 enum {
@@ -11,8 +12,6 @@ enum {
 	T_UNPUSHED, T_UNPULLED, T_RECENT, T_FILE, T_HUNK, T_COMMIT, T_STASH,
 	T_INFO, T_LOG, T_DIFF, T_MERGING
 };
-
-typedef struct { char *s; size_t n, cap; } Str;
 
 typedef struct {
 	int type, parent;          /* parent: index in View.sec, -1 for the root */
@@ -41,9 +40,6 @@ typedef struct {
 	Str text;
 } View;
 
-int  str_add(Str *s, const char *p, size_t n);
-int  str_addz(Str *s, const char *p);
-void str_free(Str *s);
 
 void view_clear(View *v);      /* keeps the cache */
 void view_free(View *v);

@@ -42,6 +42,13 @@ enum {
 	FACE_MARKUP_LIST, FACE_MARKUP_LIST_CHECKED, FACE_MARKUP_LIST_UNCHECKED, FACE_DIFF_PLUS,
 	FACE_DIFF_MINUS, FACE_DIFF_DELTA, FACE_TAG, FACE_TAG_BUILTIN, FACE_TAG_ATTRIBUTE,
 	FACE_TAG_DELIMITER,
+	/* Org's faces where no face above looks the same (package 16):
+	   org-level-7 and 8, org-todo, org-priority, org-tag, org-date,
+	   org-table, org-formula, org-drawer, org-checkbox, org-document-info,
+	   org-block, org-block-begin-line */
+	FACE_ORG_LEVEL_7, FACE_ORG_LEVEL_8, FACE_ORG_TODO, FACE_ORG_PRIORITY, FACE_ORG_TAG,
+	FACE_ORG_DATE, FACE_ORG_TABLE, FACE_ORG_FORMULA, FACE_ORG_DRAWER, FACE_ORG_CHECKBOX,
+	FACE_ORG_INFO, FACE_ORG_BLOCK, FACE_ORG_BLOCK_LINE,
 	/* render-markdown's heading backgrounds (RenderMarkdownH1Bg to H6Bg):
 	   only ever a cell's bg */
 	FACE_HEADING_1_BG, FACE_HEADING_2_BG, FACE_HEADING_3_BG, FACE_HEADING_4_BG,
@@ -86,6 +93,10 @@ enum {
 	FACE_DASHBOARD_TITLE, FACE_DASHBOARD_FOOTER, FACE_DASHBOARD_CAT, FACE_DASHBOARD_CAT_PATCH,
 	FACE_DASHBOARD_FROG, FACE_DASHBOARD_FROG_CHEEK, FACE_DASHBOARD_FROG_MOUTH, FACE_DASHBOARD_SPARKLE,
 	FACE_DASHBOARD_TERMINAL, FACE_DASHBOARD_PROMPT,
+	/* splash.lua's shimmer, bold: the two of its colours no face above has
+	   (pink, mauve, lavender, blue and green are kitten text, dashboard
+	   prompt, title, footer and frog) */
+	FACE_SHIMMER_SAPPHIRE, FACE_SHIMMER_TEAL,
 	FACE_COUNT
 };
 /* The theme, once for every backend: a face's colours (FACE_FG, FACE_BG

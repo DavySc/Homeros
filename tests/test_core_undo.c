@@ -50,6 +50,17 @@ int main(void)
 	remove_nl(&e, 2, 0);
 	CHECK(core_undo(&e, 0) >= 0 && core_undo(&e, 1) >= 0 && e.win->line == 1);
 	core_free(&e);
+	/* a split moves the marks after it to the new line (open_line()'s
+	   OPENLINE_MARKFIX, after the edit) and is no join: the next group's
+	   dd-like edit still redoes to its first line */
+	load(&e, "xabc\n\n\ny\n");
+	e.buf->mark[0] = (Mark){ 0, 2, 1 };
+	CHECK(!core_edit(&e, 1, 0, "\n", 1));
+	core_mark_join(&e, 0, 1, 1, -1, 0);
+	CHECK(e.buf->mark[0].line == 1 && e.buf->mark[0].col == 1);
+	remove_nl(&e, 3, 0);
+	CHECK(core_undo(&e, 0) >= 0 && core_undo(&e, 1) >= 0 && e.win->line == 2);
+	core_free(&e);
 	/* an insert at a line start undone leaves lo == hi there too, but the
 	   line stays: lines removed only when the count drops (thread 0's
 	   rule, from "𐐀x\n\t(\n" j i é Esc u dd against nvim) */
@@ -140,13 +151,13 @@ int main(void)
 	e.buf->nchange = 1;
 	e.win->jump[0].buf = e.buf;
 	e.win->jump[0].m = (Mark){ 1, 3, 1 };
-	e.win->njump = 1;
+	static Buf elsewhere;                     /* an entry in another buffer stays */
+	e.win->jump[1].buf = &elsewhere;
+	e.win->jump[1].m = (Mark){ 1, 3, 1 };
+	e.win->njump = 2;
 	undo_close(e.buf->undo);
 	e.win->col = 6;
-	{
-		UndoCursor c = { 0, 6, e.buf->flags };   /* the keys' u_save_cursor() */
-		CHECK(!undo_record(e.buf->undo, 0, "", 0, "", 0, c, e.buf->flags));
-	}
+	core_u_save(&e, 0);                       /* the keys' u_save_cursor() */
 	core_mark_join(&e, 2, 0, -2, 6, 0);
 	CHECK(!core_edit(&e, 6, core_line_start(&e, 2) + core_line_len(&e, 2) - 6, "", 0));
 	undo_close(e.buf->undo);
@@ -154,6 +165,7 @@ int main(void)
 	CHECK(e.buf->mark[MARK_GT].line == 0 && e.buf->mark[MARK_GT].col == 12);
 	CHECK(e.buf->change[0].line == 0 && e.buf->change[0].col == 8);
 	CHECK(e.win->jump[0].m.line == 0 && e.win->jump[0].m.col == 9);
+	CHECK(e.win->jump[1].m.line == 1 && e.win->jump[1].m.col == 3);
 	CHECK(core_undo(&e, 0) >= 0 && e.buf->mark[MARK_LT].line == 1 && e.buf->mark[MARK_LT].col == 5);
 	core_free(&e);
 	/* J: undo brings back the '< from before do_join()'s mark_col_adjust().
@@ -161,6 +173,7 @@ int main(void)
 	load(&e, "ab\ncd\nef\n");
 	e.buf->mark[MARK_LT] = e.buf->mark[MARK_GT] = (Mark){ 1, 1, 1 };
 	undo_close(e.buf->undo);
+	core_u_save(&e, 0);                       /* do_join()'s u_save_cursor() */
 	core_mark_join(&e, 1, 0, -1, 3, 0);
 	CHECK(!core_edit(&e, 2, 1, " ", 1));
 	undo_close(e.buf->undo);
@@ -182,6 +195,7 @@ int main(void)
 	e.buf->mark[MARK_LT] = (Mark){ 1, 0, 1 };
 	e.buf->mark[MARK_GT] = (Mark){ 2, 0, 1 };
 	undo_close(e.buf->undo);
+	core_u_save(&e, 0);
 	core_mark_join(&e, 1, 0, -1, 3, 0);
 	core_mark_join(&e, 2, 0, -2, 6, 0);
 	CHECK(!core_edit(&e, 2, 4, " cd ", 4));
@@ -202,8 +216,7 @@ int main(void)
 		CHECK(!core_edit(&e, 0, 0, "w", 1));   /* a's next group gets another number than the other buffer's */
 		undo_close(a->undo);
 		a->mark[0] = (Mark){ 1, 0, 1 };
-		UndoCursor c = { 0, 0, a->flags };     /* the keys' u_save_cursor() */
-		CHECK(!undo_record(a->undo, 0, "", 0, "", 0, c, a->flags));
+		core_u_save(&e, 0);                    /* the keys' u_save_cursor() */
 		CHECK(!core_edit(&e, 0, 0, "new\n", 4));   /* a moves to line 2 */
 		CHECK(!core_edit(&e, 0, 0, "z", 1));        /* the same group */
 		CHECK(!core_edit_file(&e, other, 0) && !core_edit(&e, 0, 0, "y", 1));
