@@ -324,6 +324,24 @@ int main(void)
 	CHECK(n == 11 && !memcmp(l, "hello world", 11));
 	core_free(&e);
 	unlink(path), unlink(other);
+	/* CTRL-E at the question with the window at the file's end: the
+	   cursor stays 'scrolloff' rows from the top (Neovim: top 39 after
+	   three, line 39 at the top, measured once, reviews/pr-90-repro/ctrl-e.sh) */
+	char t60[1024] = "";
+	for (int i = 1; i <= 60; i++) snprintf(t60 + strlen(t60), sizeof t60 - strlen(t60), "%d foo\n", i);
+	text(path, "", 0, t60);
+	CHECK(!core_open(&e, path));
+	/* drawn after each key, as the editor does (the core looks at the
+	   view again when it draws) */
+	static Grid g;
+	CHECK(!grid_resize(&g, 24, 80));
+	keys_feed(&e, KEY_ESC, 0);   /* the y above waits for its motion */
+	for (const char *k = "G:45,60s/foo/x/c\r\x05\x05\x05"; *k; k++) keys_feed(&e, *k == '\r' ? KEY_ENTER : *k, 0), core_draw(&e, &g);
+	CHECK(e.win->line == 44 && e.win->top == 38);
+	keys_feed(&e, 'q', 0), core_draw(&e, &g);
+	CHECK(e.win->top == 38);
+	grid_free(&g);
+	core_free(&e);
 	/* a repeat as long as the text grows no C stack (one call per pass
 	   of a group or per character of \_. crashed past 9 KB): a line of
 	   100,000 bytes, 300,000 bytes of lines */
