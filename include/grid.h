@@ -82,6 +82,10 @@ enum {
 	FACE_DASHBOARD_TITLE, FACE_DASHBOARD_FOOTER, FACE_DASHBOARD_CAT, FACE_DASHBOARD_CAT_PATCH,
 	FACE_DASHBOARD_FROG, FACE_DASHBOARD_FROG_CHEEK, FACE_DASHBOARD_FROG_MOUTH, FACE_DASHBOARD_SPARKLE,
 	FACE_DASHBOARD_TERMINAL, FACE_DASHBOARD_PROMPT,
+	/* splash.lua's shimmer, bold: the two of its colours no face above has
+	   (pink, mauve, lavender, blue and green are kitten text, dashboard
+	   prompt, title, footer and frog) */
+	FACE_SHIMMER_SAPPHIRE, FACE_SHIMMER_TEAL,
 	FACE_COUNT
 };
 /* The theme, once for every backend: a face's colours (FACE_FG, FACE_BG
