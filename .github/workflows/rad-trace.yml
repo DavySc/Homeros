@@ -13,7 +13,7 @@ concurrency:
 jobs:
   trace:
     runs-on: windows-latest
-    timeout-minutes: 90
+    timeout-minutes: 240   # recording took over 86 minutes once the subjects with calls were added, and was cut off at 90
     env:
       RAD_COMMIT: 5b0d5f67a46af5fffa52322e95a116dabf393103
     steps:
