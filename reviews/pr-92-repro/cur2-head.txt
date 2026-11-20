@@ -1,0 +1,256 @@
+cell 10x22; per cell: [ink, commonest ink colour, on background]
+"⟹  b" at column 0
+  cursor -1: [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 1e1e2e] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  0: [ 32 1e1e2e on cdd6f4] [ 57 cdd6f4 on 1e1e2e] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  1: [ 32 cdd6f4 on 1e1e2e] [ 57 1e1e2e on cdd6f4] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  2: [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 1e1e2e] [  0 000000 on cdd6f4] [ 61 7b8098 on 1e1e2e]
+  cursor  3: [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 1e1e2e] [  0 000000 on 1e1e2e] [ 61 70748a on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"⟹  b" with a face per cell at column 0
+  cursor -1: [ 32 cba6f7 on 1e1e2e] [ 57 cba6f7 on 1e1e2e] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  0: [ 32 1e1e2e on cba6f7] [ 57 cba6f7 on 1e1e2e] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  1: [ 32 cba6f7 on 1e1e2e] [ 57 1e1e2e on a6e3a1] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  2: [ 32 cba6f7 on 1e1e2e] [ 57 cba6f7 on 1e1e2e] [  0 000000 on fab387] [ 61 7b8098 on 1e1e2e]
+  cursor  3: [ 32 cba6f7 on 1e1e2e] [ 57 cba6f7 on 1e1e2e] [  0 000000 on 1e1e2e] [ 61 70748a on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"⟹  b" with a face per cell at column 0
+  cursor -1: [ 32 cdd6f4 on 45475a] [ 57 cdd6f4 on 1e1e2e] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  0: [ 32 45475a on cdd6f4] [ 57 cdd6f4 on 1e1e2e] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  1: [ 32 cdd6f4 on 45475a] [ 57 45475a on cdd6f4] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  2: [ 32 cdd6f4 on 45475a] [ 57 cdd6f4 on 1e1e2e] [  0 000000 on cdd6f4] [ 61 7b8098 on 1e1e2e]
+  cursor  3: [ 32 cdd6f4 on 45475a] [ 57 cdd6f4 on 1e1e2e] [  0 000000 on 1e1e2e] [ 61 70748a on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"⟹  b" with a face per cell at column 0
+  cursor -1: [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 45475a] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  0: [ 32 1e1e2e on cdd6f4] [ 57 cdd6f4 on 45475a] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  1: [ 32 cdd6f4 on 1e1e2e] [ 57 1e1e2e on cdd6f4] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  2: [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 45475a] [  0 000000 on cdd6f4] [ 61 7b8098 on 1e1e2e]
+  cursor  3: [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 45475a] [  0 000000 on 1e1e2e] [ 61 70748a on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"a⟹ b" at column 0
+  cursor -1: [ 60 cdd6f4 on 1e1e2e] [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  0: [ 60 1e1e2e on cdd6f4] [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  1: [ 60 cdd6f4 on 1e1e2e] [ 32 1e1e2e on cdd6f4] [ 57 cdd6f4 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  2: [ 60 cdd6f4 on 1e1e2e] [ 32 cdd6f4 on 1e1e2e] [ 57 1e1e2e on cdd6f4] [ 61 7b8098 on 1e1e2e]
+  cursor  3: [ 60 cdd6f4 on 1e1e2e] [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 1e1e2e] [ 61 70748a on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"a⟹ b" with a face per cell at column 0
+  cursor -1: [ 60 cba6f7 on 1e1e2e] [ 32 a6e3a1 on 1e1e2e] [ 57 a6e3a1 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  0: [ 60 1e1e2e on cba6f7] [ 32 a6e3a1 on 1e1e2e] [ 57 a6e3a1 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  1: [ 60 cba6f7 on 1e1e2e] [ 32 1e1e2e on a6e3a1] [ 57 a6e3a1 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  2: [ 60 cba6f7 on 1e1e2e] [ 32 a6e3a1 on 1e1e2e] [ 57 1e1e2e on fab387] [ 61 7b8098 on 1e1e2e]
+  cursor  3: [ 60 cba6f7 on 1e1e2e] [ 32 a6e3a1 on 1e1e2e] [ 57 a6e3a1 on 1e1e2e] [ 61 70748a on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"中中" at column 0
+  cursor -1: [ 63 c3cbe8 on 1e1e2e] [ 18 c3cbe8 on 1e1e2e] [ 63 c3cbe8 on 1e1e2e] [ 18 c3cbe8 on 1e1e2e]
+  cursor  0: [ 63 28293a on cdd6f4] [ 18 28293a on cdd6f4] [ 63 c3cbe8 on 1e1e2e] [ 18 c3cbe8 on 1e1e2e]
+  cursor  1: [ 63 c3cbe8 on 1e1e2e] [ 18 c3cbe8 on 1e1e2e] [ 63 c3cbe8 on 1e1e2e] [ 18 c3cbe8 on 1e1e2e]
+  cursor  2: [ 63 c3cbe8 on 1e1e2e] [ 18 c3cbe8 on 1e1e2e] [ 63 28293a on cdd6f4] [ 18 28293a on cdd6f4]
+  cursor  3: [ 63 c3cbe8 on 1e1e2e] [ 18 c3cbe8 on 1e1e2e] [ 63 c3cbe8 on 1e1e2e] [ 18 c3cbe8 on 1e1e2e]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"中->" at column 0
+  cursor -1: [ 63 c3cbe8 on 1e1e2e] [ 18 c3cbe8 on 1e1e2e] [ 18 c5ceeb on 1e1e2e] [ 46 c5ceeb on 1e1e2e]
+  cursor  0: [ 63 28293a on cdd6f4] [ 18 28293a on cdd6f4] [ 18 c5ceeb on 1e1e2e] [ 46 c5ceeb on 1e1e2e]
+  cursor  1: [ 63 c3cbe8 on 1e1e2e] [ 18 c3cbe8 on 1e1e2e] [ 18 c5ceeb on 1e1e2e] [ 46 c5ceeb on 1e1e2e]
+  cursor  2: [ 63 c3cbe8 on 1e1e2e] [ 18 c3cbe8 on 1e1e2e] [ 18 262637 on cdd6f4] [ 46 c5ceeb on 1e1e2e]
+  cursor  3: [ 63 c3cbe8 on 1e1e2e] [ 18 c3cbe8 on 1e1e2e] [ 18 c5ceeb on 1e1e2e] [ 46 262637 on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"👍  b" at column 0
+  cursor -1: [ 81 ffca28 on 1e1e2e] [106 ffca28 on 1e1e2e] [  0 000000 on 1e1e2e] [  0 000000 on 1e1e2e]
+  cursor  0: [ 81 ffca28 on cdd6f4] [106 ffca28 on cdd6f4] [  0 000000 on 1e1e2e] [  0 000000 on 1e1e2e]
+  cursor  1: [ 81 ffca28 on 1e1e2e] [106 ffca28 on 1e1e2e] [  0 000000 on 1e1e2e] [  0 000000 on 1e1e2e]
+  cursor  2: [ 81 ffca28 on 1e1e2e] [106 ffca28 on 1e1e2e] [  0 000000 on cdd6f4] [  0 000000 on 1e1e2e]
+  cursor  3: [ 81 ffca28 on 1e1e2e] [106 ffca28 on 1e1e2e] [  0 000000 on 1e1e2e] [  0 000000 on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"->⟹ " at column 0
+  cursor -1: [ 18 c5ceeb on 1e1e2e] [ 46 c5ceeb on 1e1e2e] [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 1e1e2e]
+  cursor  0: [ 18 262637 on cdd6f4] [ 46 c5ceeb on 1e1e2e] [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 1e1e2e]
+  cursor  1: [ 18 c5ceeb on 1e1e2e] [ 46 262637 on cdd6f4] [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 1e1e2e]
+  cursor  2: [ 18 c5ceeb on 1e1e2e] [ 46 c5ceeb on 1e1e2e] [ 32 1e1e2e on cdd6f4] [ 57 cdd6f4 on 1e1e2e]
+  cursor  3: [ 18 c5ceeb on 1e1e2e] [ 46 c5ceeb on 1e1e2e] [ 32 cdd6f4 on 1e1e2e] [ 57 1e1e2e on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"a↔⟹ " at column 0
+  cursor -1: [ 64 cdd6f4 on 1e1e2e] [ 68 c5ceeb on 1e1e2e] [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 1e1e2e]
+  cursor  0: [ 64 1e1e2e on cdd6f4] [ 68 c5ceeb on 1e1e2e] [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 1e1e2e]
+  cursor  1: [ 64 cdd6f4 on 1e1e2e] [ 68 262637 on cdd6f4] [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 1e1e2e]
+  cursor  2: [ 64 cdd6f4 on 1e1e2e] [ 68 c5ceeb on 1e1e2e] [ 32 1e1e2e on cdd6f4] [ 57 cdd6f4 on 1e1e2e]
+  cursor  3: [ 64 cdd6f4 on 1e1e2e] [ 68 c5ceeb on 1e1e2e] [ 32 cdd6f4 on 1e1e2e] [ 57 1e1e2e on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"⟹  b" with an attr per cell at column 0
+  cursor -1: [ 32 1e1e2e on cdd6f4] [  0 000000 on 1e1e2e] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  0: [ 32 1e1e2e on cdd6f4] [  0 000000 on 1e1e2e] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  1: [ 32 1e1e2e on cdd6f4] [ 57 1e1e2e on cdd6f4]! [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  2: [ 32 1e1e2e on cdd6f4] [  0 000000 on 1e1e2e] [  0 000000 on cdd6f4] [ 61 7b8098 on 1e1e2e]
+  cursor  3: [ 32 1e1e2e on cdd6f4] [  0 000000 on 1e1e2e] [  0 000000 on 1e1e2e] [ 61 70748a on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"⟹  b" with an attr per cell at column 0
+  cursor -1: [ 32 cdd6f4 on 1e1e2e] [  0 000000 on cdd6f4] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  0: [ 32 1e1e2e on cdd6f4] [  0 000000 on cdd6f4] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  1: [ 32 cdd6f4 on 1e1e2e] [ 57 1e1e2e on cdd6f4]! [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  2: [ 32 cdd6f4 on 1e1e2e] [  0 000000 on cdd6f4] [  0 000000 on cdd6f4] [ 61 7b8098 on 1e1e2e]
+  cursor  3: [ 32 cdd6f4 on 1e1e2e] [  0 000000 on cdd6f4] [  0 000000 on 1e1e2e] [ 61 70748a on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"⟹  b" with an attr per cell at column 0
+  cursor -1: [ 32 1e1e2e on cdd6f4] [ 57 1e1e2e on cdd6f4] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  0: [ 32 1e1e2e on cdd6f4] [ 57 1e1e2e on cdd6f4] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  1: [ 32 1e1e2e on cdd6f4] [ 57 1e1e2e on cdd6f4] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  2: [ 32 1e1e2e on cdd6f4] [ 57 1e1e2e on cdd6f4] [  0 000000 on cdd6f4] [ 61 7b8098 on 1e1e2e]
+  cursor  3: [ 32 1e1e2e on cdd6f4] [ 57 1e1e2e on cdd6f4] [  0 000000 on 1e1e2e] [ 61 70748a on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"⟹  b" with an attr per cell at column 0
+  cursor -1: [ 32 45475a on 1e1e2e] [ 57 45475a on 1e1e2e] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  0: [ 32 1e1e2e on 45475a] [ 57 45475a on 1e1e2e] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  1: [ 32 45475a on 1e1e2e] [ 57 1e1e2e on cdd6f4] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  2: [ 32 45475a on 1e1e2e] [ 57 45475a on 1e1e2e] [  0 000000 on cdd6f4] [ 61 7b8098 on 1e1e2e]
+  cursor  3: [ 32 45475a on 1e1e2e] [ 57 45475a on 1e1e2e] [  0 000000 on 1e1e2e] [ 61 70748a on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"a-->" with an attr per cell at column 0
+  cursor -1: [ 60 1e1e2e on cdd6f4] [ 16 c5ceeb on 1e1e2e] [ 20 c5ceeb on 1e1e2e] [ 46 c5ceeb on 1e1e2e]
+  cursor  0: [ 60 1e1e2e on cdd6f4] [ 16 c5ceeb on 1e1e2e] [ 20 c5ceeb on 1e1e2e] [ 46 c5ceeb on 1e1e2e]
+  cursor  1: [ 60 1e1e2e on cdd6f4] [ 16 262637 on cdd6f4] [ 20 c5ceeb on 1e1e2e] [ 46 c5ceeb on 1e1e2e]
+  cursor  2: [ 60 1e1e2e on cdd6f4] [ 16 c5ceeb on 1e1e2e] [ 20 262637 on cdd6f4] [ 46 c5ceeb on 1e1e2e]
+  cursor  3: [ 60 1e1e2e on cdd6f4] [ 16 c5ceeb on 1e1e2e] [ 20 c5ceeb on 1e1e2e] [ 46 262637 on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"a-->" with an attr per cell at column 0
+  cursor -1: [ 60 cdd6f4 on 1e1e2e] [ 16 262637 on cdd6f4] [ 20 c5ceeb on 1e1e2e] [ 46 c5ceeb on 1e1e2e]
+  cursor  0: [ 60 1e1e2e on cdd6f4] [ 16 262637 on cdd6f4] [ 20 c5ceeb on 1e1e2e] [ 46 c5ceeb on 1e1e2e]
+  cursor  1: [ 60 cdd6f4 on 1e1e2e] [ 16 262637 on cdd6f4] [ 20 c5ceeb on 1e1e2e] [ 46 c5ceeb on 1e1e2e]
+  cursor  2: [ 60 cdd6f4 on 1e1e2e] [ 16 262637 on cdd6f4] [ 20 262637 on cdd6f4] [ 46 c5ceeb on 1e1e2e]
+  cursor  3: [ 60 cdd6f4 on 1e1e2e] [ 16 262637 on cdd6f4] [ 20 c5ceeb on 1e1e2e] [ 46 262637 on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"⟹  b" at column 7
+  cursor -1: [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 1e1e2e] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  0: [ 32 1e1e2e on cdd6f4] [ 57 cdd6f4 on 1e1e2e] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  1: [ 32 cdd6f4 on 1e1e2e] [ 57 1e1e2e on cdd6f4] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  2: [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 1e1e2e] [  0 000000 on cdd6f4] [ 61 7b8098 on 1e1e2e]
+  cursor  3: [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 1e1e2e] [  0 000000 on 1e1e2e] [ 61 70748a on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"⟹  b" with a face per cell at column 7
+  cursor -1: [ 32 cba6f7 on 1e1e2e] [ 57 cba6f7 on 1e1e2e] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  0: [ 32 1e1e2e on cba6f7] [ 57 cba6f7 on 1e1e2e] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  1: [ 32 cba6f7 on 1e1e2e] [ 57 1e1e2e on a6e3a1] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  2: [ 32 cba6f7 on 1e1e2e] [ 57 cba6f7 on 1e1e2e] [  0 000000 on fab387] [ 61 7b8098 on 1e1e2e]
+  cursor  3: [ 32 cba6f7 on 1e1e2e] [ 57 cba6f7 on 1e1e2e] [  0 000000 on 1e1e2e] [ 61 70748a on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"⟹  b" with a face per cell at column 7
+  cursor -1: [ 32 cdd6f4 on 45475a] [ 57 cdd6f4 on 1e1e2e] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  0: [ 32 45475a on cdd6f4] [ 57 cdd6f4 on 1e1e2e] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  1: [ 32 cdd6f4 on 45475a] [ 57 45475a on cdd6f4] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  2: [ 32 cdd6f4 on 45475a] [ 57 cdd6f4 on 1e1e2e] [  0 000000 on cdd6f4] [ 61 7b8098 on 1e1e2e]
+  cursor  3: [ 32 cdd6f4 on 45475a] [ 57 cdd6f4 on 1e1e2e] [  0 000000 on 1e1e2e] [ 61 70748a on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"⟹  b" with a face per cell at column 7
+  cursor -1: [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 45475a] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  0: [ 32 1e1e2e on cdd6f4] [ 57 cdd6f4 on 45475a] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  1: [ 32 cdd6f4 on 1e1e2e] [ 57 1e1e2e on cdd6f4] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  2: [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 45475a] [  0 000000 on cdd6f4] [ 61 7b8098 on 1e1e2e]
+  cursor  3: [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 45475a] [  0 000000 on 1e1e2e] [ 61 70748a on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"a⟹ b" at column 7
+  cursor -1: [ 60 cdd6f4 on 1e1e2e] [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  0: [ 60 1e1e2e on cdd6f4] [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  1: [ 60 cdd6f4 on 1e1e2e] [ 32 1e1e2e on cdd6f4] [ 57 cdd6f4 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  2: [ 60 cdd6f4 on 1e1e2e] [ 32 cdd6f4 on 1e1e2e] [ 57 1e1e2e on cdd6f4] [ 61 7b8098 on 1e1e2e]
+  cursor  3: [ 60 cdd6f4 on 1e1e2e] [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 1e1e2e] [ 61 70748a on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"a⟹ b" with a face per cell at column 7
+  cursor -1: [ 60 cba6f7 on 1e1e2e] [ 32 a6e3a1 on 1e1e2e] [ 57 a6e3a1 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  0: [ 60 1e1e2e on cba6f7] [ 32 a6e3a1 on 1e1e2e] [ 57 a6e3a1 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  1: [ 60 cba6f7 on 1e1e2e] [ 32 1e1e2e on a6e3a1] [ 57 a6e3a1 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  2: [ 60 cba6f7 on 1e1e2e] [ 32 a6e3a1 on 1e1e2e] [ 57 1e1e2e on fab387] [ 61 7b8098 on 1e1e2e]
+  cursor  3: [ 60 cba6f7 on 1e1e2e] [ 32 a6e3a1 on 1e1e2e] [ 57 a6e3a1 on 1e1e2e] [ 61 70748a on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"中中" at column 7
+  cursor -1: [ 63 c3cbe8 on 1e1e2e] [ 18 c3cbe8 on 1e1e2e] [ 63 c3cbe8 on 1e1e2e] [ 18 c3cbe8 on 1e1e2e]
+  cursor  0: [ 63 28293a on cdd6f4] [ 18 28293a on cdd6f4] [ 63 c3cbe8 on 1e1e2e] [ 18 c3cbe8 on 1e1e2e]
+  cursor  1: [ 63 c3cbe8 on 1e1e2e] [ 18 c3cbe8 on 1e1e2e] [ 63 c3cbe8 on 1e1e2e] [ 18 c3cbe8 on 1e1e2e]
+  cursor  2: [ 63 c3cbe8 on 1e1e2e] [ 18 c3cbe8 on 1e1e2e] [ 63 28293a on cdd6f4] [ 18 28293a on cdd6f4]
+  cursor  3: [ 63 c3cbe8 on 1e1e2e] [ 18 c3cbe8 on 1e1e2e] [ 63 c3cbe8 on 1e1e2e] [ 18 c3cbe8 on 1e1e2e]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"中->" at column 7
+  cursor -1: [ 63 c3cbe8 on 1e1e2e] [ 18 c3cbe8 on 1e1e2e] [ 18 c5ceeb on 1e1e2e] [ 46 c5ceeb on 1e1e2e]
+  cursor  0: [ 63 28293a on cdd6f4] [ 18 28293a on cdd6f4] [ 18 c5ceeb on 1e1e2e] [ 46 c5ceeb on 1e1e2e]
+  cursor  1: [ 63 c3cbe8 on 1e1e2e] [ 18 c3cbe8 on 1e1e2e] [ 18 c5ceeb on 1e1e2e] [ 46 c5ceeb on 1e1e2e]
+  cursor  2: [ 63 c3cbe8 on 1e1e2e] [ 18 c3cbe8 on 1e1e2e] [ 18 262637 on cdd6f4] [ 46 c5ceeb on 1e1e2e]
+  cursor  3: [ 63 c3cbe8 on 1e1e2e] [ 18 c3cbe8 on 1e1e2e] [ 18 c5ceeb on 1e1e2e] [ 46 262637 on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"👍  b" at column 7
+  cursor -1: [ 81 ffca28 on 1e1e2e] [106 ffca28 on 1e1e2e] [  0 000000 on 1e1e2e] [  0 000000 on 1e1e2e]
+  cursor  0: [ 81 ffca28 on cdd6f4] [106 ffca28 on cdd6f4] [  0 000000 on 1e1e2e] [  0 000000 on 1e1e2e]
+  cursor  1: [ 81 ffca28 on 1e1e2e] [106 ffca28 on 1e1e2e] [  0 000000 on 1e1e2e] [  0 000000 on 1e1e2e]
+  cursor  2: [ 81 ffca28 on 1e1e2e] [106 ffca28 on 1e1e2e] [  0 000000 on cdd6f4] [  0 000000 on 1e1e2e]
+  cursor  3: [ 81 ffca28 on 1e1e2e] [106 ffca28 on 1e1e2e] [  0 000000 on 1e1e2e] [  0 000000 on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"->⟹ " at column 7
+  cursor -1: [ 18 c5ceeb on 1e1e2e] [ 46 c5ceeb on 1e1e2e] [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 1e1e2e]
+  cursor  0: [ 18 262637 on cdd6f4] [ 46 c5ceeb on 1e1e2e] [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 1e1e2e]
+  cursor  1: [ 18 c5ceeb on 1e1e2e] [ 46 262637 on cdd6f4] [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 1e1e2e]
+  cursor  2: [ 18 c5ceeb on 1e1e2e] [ 46 c5ceeb on 1e1e2e] [ 32 1e1e2e on cdd6f4] [ 57 cdd6f4 on 1e1e2e]
+  cursor  3: [ 18 c5ceeb on 1e1e2e] [ 46 c5ceeb on 1e1e2e] [ 32 cdd6f4 on 1e1e2e] [ 57 1e1e2e on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"a↔⟹ " at column 7
+  cursor -1: [ 64 cdd6f4 on 1e1e2e] [ 68 c5ceeb on 1e1e2e] [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 1e1e2e]
+  cursor  0: [ 64 1e1e2e on cdd6f4] [ 68 c5ceeb on 1e1e2e] [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 1e1e2e]
+  cursor  1: [ 64 cdd6f4 on 1e1e2e] [ 68 262637 on cdd6f4] [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 1e1e2e]
+  cursor  2: [ 64 cdd6f4 on 1e1e2e] [ 68 c5ceeb on 1e1e2e] [ 32 1e1e2e on cdd6f4] [ 57 cdd6f4 on 1e1e2e]
+  cursor  3: [ 64 cdd6f4 on 1e1e2e] [ 68 c5ceeb on 1e1e2e] [ 32 cdd6f4 on 1e1e2e] [ 57 1e1e2e on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"⟹  b" with an attr per cell at column 7
+  cursor -1: [ 32 1e1e2e on cdd6f4] [  0 000000 on 1e1e2e] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  0: [ 32 1e1e2e on cdd6f4] [  0 000000 on 1e1e2e] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  1: [ 32 1e1e2e on cdd6f4] [ 57 1e1e2e on cdd6f4]! [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  2: [ 32 1e1e2e on cdd6f4] [  0 000000 on 1e1e2e] [  0 000000 on cdd6f4] [ 61 7b8098 on 1e1e2e]
+  cursor  3: [ 32 1e1e2e on cdd6f4] [  0 000000 on 1e1e2e] [  0 000000 on 1e1e2e] [ 61 70748a on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"⟹  b" with an attr per cell at column 7
+  cursor -1: [ 32 cdd6f4 on 1e1e2e] [  0 000000 on cdd6f4] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  0: [ 32 1e1e2e on cdd6f4] [  0 000000 on cdd6f4] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  1: [ 32 cdd6f4 on 1e1e2e] [ 57 1e1e2e on cdd6f4]! [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  2: [ 32 cdd6f4 on 1e1e2e] [  0 000000 on cdd6f4] [  0 000000 on cdd6f4] [ 61 7b8098 on 1e1e2e]
+  cursor  3: [ 32 cdd6f4 on 1e1e2e] [  0 000000 on cdd6f4] [  0 000000 on 1e1e2e] [ 61 70748a on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"⟹  b" with an attr per cell at column 7
+  cursor -1: [ 32 1e1e2e on cdd6f4] [ 57 1e1e2e on cdd6f4] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  0: [ 32 1e1e2e on cdd6f4] [ 57 1e1e2e on cdd6f4] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  1: [ 32 1e1e2e on cdd6f4] [ 57 1e1e2e on cdd6f4] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  2: [ 32 1e1e2e on cdd6f4] [ 57 1e1e2e on cdd6f4] [  0 000000 on cdd6f4] [ 61 7b8098 on 1e1e2e]
+  cursor  3: [ 32 1e1e2e on cdd6f4] [ 57 1e1e2e on cdd6f4] [  0 000000 on 1e1e2e] [ 61 70748a on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"⟹  b" with an attr per cell at column 7
+  cursor -1: [ 32 45475a on 1e1e2e] [ 57 45475a on 1e1e2e] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  0: [ 32 1e1e2e on 45475a] [ 57 45475a on 1e1e2e] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  1: [ 32 45475a on 1e1e2e] [ 57 1e1e2e on cdd6f4] [  0 000000 on 1e1e2e] [ 61 7b8098 on 1e1e2e]
+  cursor  2: [ 32 45475a on 1e1e2e] [ 57 45475a on 1e1e2e] [  0 000000 on cdd6f4] [ 61 7b8098 on 1e1e2e]
+  cursor  3: [ 32 45475a on 1e1e2e] [ 57 45475a on 1e1e2e] [  0 000000 on 1e1e2e] [ 61 70748a on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"a-->" with an attr per cell at column 7
+  cursor -1: [ 60 1e1e2e on cdd6f4] [ 16 c5ceeb on 1e1e2e] [ 20 c5ceeb on 1e1e2e] [ 46 c5ceeb on 1e1e2e]
+  cursor  0: [ 60 1e1e2e on cdd6f4] [ 16 c5ceeb on 1e1e2e] [ 20 c5ceeb on 1e1e2e] [ 46 c5ceeb on 1e1e2e]
+  cursor  1: [ 60 1e1e2e on cdd6f4] [ 16 262637 on cdd6f4] [ 20 c5ceeb on 1e1e2e] [ 46 c5ceeb on 1e1e2e]
+  cursor  2: [ 60 1e1e2e on cdd6f4] [ 16 c5ceeb on 1e1e2e] [ 20 262637 on cdd6f4] [ 46 c5ceeb on 1e1e2e]
+  cursor  3: [ 60 1e1e2e on cdd6f4] [ 16 c5ceeb on 1e1e2e] [ 20 c5ceeb on 1e1e2e] [ 46 262637 on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"a-->" with an attr per cell at column 7
+  cursor -1: [ 60 cdd6f4 on 1e1e2e] [ 16 262637 on cdd6f4] [ 20 c5ceeb on 1e1e2e] [ 46 c5ceeb on 1e1e2e]
+  cursor  0: [ 60 1e1e2e on cdd6f4] [ 16 262637 on cdd6f4] [ 20 c5ceeb on 1e1e2e] [ 46 c5ceeb on 1e1e2e]
+  cursor  1: [ 60 cdd6f4 on 1e1e2e] [ 16 262637 on cdd6f4] [ 20 c5ceeb on 1e1e2e] [ 46 c5ceeb on 1e1e2e]
+  cursor  2: [ 60 cdd6f4 on 1e1e2e] [ 16 262637 on cdd6f4] [ 20 262637 on cdd6f4] [ 46 c5ceeb on 1e1e2e]
+  cursor  3: [ 60 cdd6f4 on 1e1e2e] [ 16 262637 on cdd6f4] [ 20 c5ceeb on 1e1e2e] [ 46 262637 on cdd6f4]
+  cursor walked cell by cell: 0 of 4 steps differ from a whole redraw
+"a⟹" at column 126
+  cursor -1: [ 60 cdd6f4 on 1e1e2e] [ 32 cdd6f4 on 1e1e2e]
+  cursor  0: [ 60 1e1e2e on cdd6f4] [ 32 cdd6f4 on 1e1e2e]
+  cursor  1: [ 60 cdd6f4 on 1e1e2e] [ 32 1e1e2e on cdd6f4]
+  cursor walked cell by cell: 0 of 2 steps differ from a whole redraw
+"a⟹ " at column 125
+  cursor -1: [ 60 cdd6f4 on 1e1e2e] [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 1e1e2e]
+  cursor  0: [ 60 1e1e2e on cdd6f4] [ 32 cdd6f4 on 1e1e2e] [ 57 cdd6f4 on 1e1e2e]
+  cursor  1: [ 60 cdd6f4 on 1e1e2e] [ 32 1e1e2e on cdd6f4] [ 57 cdd6f4 on 1e1e2e]
+  cursor  2: [ 60 cdd6f4 on 1e1e2e] [ 32 cdd6f4 on 1e1e2e] [ 57 1e1e2e on cdd6f4]
+  cursor walked cell by cell: 0 of 3 steps differ from a whole redraw
+"中" at column 126
+  cursor -1: [ 63 c3cbe8 on 1e1e2e] [ 18 c3cbe8 on 1e1e2e]
+  cursor  0: [ 63 28293a on cdd6f4] [ 18 28293a on cdd6f4]
+  cursor  1: [ 63 c3cbe8 on 1e1e2e] [ 18 c3cbe8 on 1e1e2e]
+  cursor walked cell by cell: 0 of 2 steps differ from a whole redraw
+4 checks failed

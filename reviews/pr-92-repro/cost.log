@@ -1,0 +1,21 @@
+== main 1
+no blank 36x128: median 2344 us (1975 to 4906) words 36x128: median 2260 us (1718 to 6314) 
+== pr 1
+no blank 36x128: median 2978 us (2110 to 6038) words 36x128: median 2455 us (1829 to 5499) 
+== main 2
+no blank 36x128: median 3027 us (2084 to 10385) words 36x128: median 2448 us (1779 to 8464) 
+== pr 2
+no blank 36x128: median 2708 us (2091 to 6429) words 36x128: median 2607 us (1797 to 5262) 
+== main 3
+no blank 36x128: median 2412 us (2030 to 4739) words 36x128: median 2101 us (1664 to 6061) 
+== pr 3
+no blank 36x128: median 2685 us (1927 to 15069) words 36x128: median 2520 us (1741 to 5148) 
+== main 4
+no blank 36x128: median 2943 us (2113 to 4680) words 36x128: median 2575 us (1741 to 5990) 
+== pr 4
+no blank 36x128: median 2970 us (2054 to 4138) words 36x128: median 2336 us (1744 to 7035) 
+== main 5
+no blank 36x128: median 3069 us (2061 to 4215) words 36x128: median 2493 us (1790 to 5120) 
+== pr 5
+no blank 36x128: median 2704 us (2079 to 5734) words 36x128: median 2641 us (1770 to 6568) 
+done
