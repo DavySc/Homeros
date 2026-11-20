@@ -11,7 +11,7 @@ run() { # run <dir with the sources> <list|test|specs|oracle|x64|win|windows|eng
         # something does not compile (a planted bug must be caught by a check, not by the compiler), 3 when the
         # test files cannot be made (nor by a full disk)
   local src=$1 what=$2 b t lib; b=$(mktemp -d)
-  lib=$(ls "$src"/dbg/*.c | grep -v '/engine\.c$')   # the engine needs a target to run: it is linked in the win step, and only compiled here
+  lib=$(ls "$src"/dbg/*.c | grep -v '/engine\.c$\|/session\.c$')   # the engine and its thread need a target: linked in the engine step; here compiled, and run on a made-up target (tests/test_session.c)
   case $what in test|oracle|fuzz|all)
     python3 -I "$src/tests/seed_rdi.py" "$b/seed.rdi" || return 3
     "$src/tests/make_pdbs.sh" "$b/pdb" || return 3;;
@@ -26,7 +26,9 @@ for l in open(sys.argv[1] + "/tests/plants.txt"):
         if open(sys.argv[1] + "/" + file.strip()).read().count(find.replace("\\n", "\n").replace("\\p", "|")) != 1: sys.exit("plants.txt: not found once: " + find)' "$src" || return 1
   fi
   if [ "$what" = test ] || [ "$what" = all ]; then
-    for build in gcc clang; do $build $FLAGS -c "$src"/dbg/engine.c -o "$b/engine.o" || return 2; done
+    for build in gcc clang; do for t in engine session; do $build $FLAGS -c "$src"/dbg/$t.c -o "$b/$t.o" || return 2; done; done
+    # only the engine and its thread call the target or the engine: what the editor links beside them shares nothing with a debugged program
+    for t in $lib; do gcc $FLAGS -c "$t" -o "$b/o.o" || return 2; if nm -u "$b/o.o" | grep ' \(target\|engine\)_'; then return 1; fi; done
     # each tests/test_*.c is its own program: ASan+UBSan with both compilers, then ThreadSanitizer
     for t in "$src"/tests/test_*.c; do
       for build in "gcc $SAN" "clang $SAN" "clang -fsanitize=thread"; do

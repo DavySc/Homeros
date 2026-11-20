@@ -676,3 +676,22 @@ engine | dbg/engine.c | if ((!reached \p\p flags & STEP_AFTER) && | if ((flags &
 engine | dbg/engine.c | if (!reached) continue; | 
 engine | dbg/engine.c | if (flags & SAVE_AFTER && target_regs(e->target, thread, &regs)) depth = regs.gp[4]; | 
 engine | dbg/engine.c | if (flags & END) return (TargetEvent) | if (true) return (TargetEvent)
+# ---- slice 5: the engine thread and halt (tests/test_session.c on a made-up target; the halt phase of tests/stress_engine.c; specs/Halt.tla) ----
+test | dbg/session.c | if (c.kind == SESSION_HALT \p\p s->quit) return true; | if (s->quit) return true;
+test | dbg/session.c | s->quit = c.kind == SESSION_QUIT;\n    if (c.kind == SESSION_HALT | if (c.kind == SESSION_HALT
+test | dbg/session.c | while (!s->quit && queue_pop(&s->commands, s->command, sizeof s->command, false)) { | while (!s->quit && queue_pop(&s->commands, s->command, sizeof s->command, true)) {
+test | dbg/session.c | } else continue; | }
+test | dbg/session.c | if (ev.stop.kind == TARGET_EXIT) engine_close(&e), open = false; | if (ev.stop.kind == TARGET_EXIT) engine_close(&e);
+test | dbg/session.c | if (ev.stop.kind == TARGET_EXIT) engine_close(&e), open = false; | 
+test | dbg/session.c | if (c.kind == SESSION_OPEN && !open && n > sizeof c) { | if (c.kind == SESSION_OPEN && n > sizeof c) {
+test | dbg/session.c | } else if (c.kind == SESSION_RUN && open && c.count <= (n - sizeof c) / 8) { | } else if (c.kind == SESSION_RUN && c.count <= (n - sizeof c) / 8) {
+test | dbg/session.c | queue_push(&s->events, &(SessionEvent){.gone = true}, sizeof(SessionEvent), true); | queue_push(&s->events, &(SessionEvent){.gone = false}, sizeof(SessionEvent), true);
+test | dbg/session.c | if (open) engine_close(&e);\n  queue_push | queue_push
+test | dbg/session.c | if (open) e.halt = halt, e.halt_arg = s; | 
+test | dbg/session.c | queue_init(&s->commands, 0, 0), queue_init(&s->events, wake, wake_arg); | queue_init(&s->commands, 0, 0), queue_init(&s->events, 0, 0);
+test | dbg/engine.c | if (e->halt && e->halt(e->halt_arg)) return target_halt(e->target), (TargetEvent){.kind = TARGET_HALT}; | if (e->halt && e->halt(e->halt_arg)) return (TargetEvent){.kind = TARGET_HALT};
+test | dbg/engine.c | if (e->halt && e->halt(e->halt_arg)) return target_halt(e->target), (TargetEvent){.kind = TARGET_HALT}; | if (e->halt) return target_halt(e->target), (TargetEvent){.kind = TARGET_HALT};
+test | dbg/engine.c | enum { WAIT_MS = 10 }; | enum { WAIT_MS = 60000 };
+engine | dbg/engine.c | if (e->halt && e->halt(e->halt_arg)) return target_halt(e->target), (TargetEvent){.kind = TARGET_HALT}; | if (e->halt && e->halt(e->halt_arg)) return (TargetEvent){.kind = TARGET_HALT};
+# no call into the engine or the target from what the editor links (the nm line of the test step)
+test | dbg/queue.c | #include "queue.h" | #include "queue.h"\nvoid target_halt(void *t); void queue_cross(void) { target_halt(0); }

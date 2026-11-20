@@ -4,6 +4,8 @@
      thread has run the function exactly once (it was stepped off the breakpoint, alone, and ran no torn instruction);
    - one thread steps over instructions, calls among them, while the others run through the step's traps: every
      step ends with that thread just behind the instruction, at the same depth;
+   - a halt, asked for after 0 to 3 waits, ends a run that has no breakpoint: no thread moves any more, and the
+     next run comes to the breakpoint as before;
    - an exception the program handles is no stop; one nobody handles is, once; a fault is at once, and again
      at every run, for the program is not given it.
    usage: stress_engine <scene.exe> <rounds> <caller> <shared> <handled> <go>   (addresses as the linker gave them) */
@@ -11,6 +13,9 @@
 #include "../dbg/x64.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <windows.h>
+
+static bool soon(void *waits) { return (*(uint32_t *)waits)-- == 0; }
 
 #define FAIL(...) return printf("stress_engine: " __VA_ARGS__), printf("\n"), 1
 
@@ -21,7 +26,7 @@ int main(int argc, char **argv)
   if (argc < 7 || !engine_open(&e, argv[1], 0, &first)) FAIL("cannot start");
   uint64_t at[4];   /* caller, shared, handled, go: the linker counted from the base it asked for */
   for (int i = 0; i < 4; i += 1) at[i] = strtoull(argv[3 + i], 0, 16) - 0x140000000 + e.modules[0].image.base;
-  uint32_t rounds = (uint32_t)atoi(argv[2]), threads[3] = {0}, stepped = 0, calls = 0;
+  uint32_t rounds = (uint32_t)atoi(argv[2]), threads[3] = {0}, stepped = 0, calls = 0, halts = 0, waits;
   int32_t count[3] = {0}, now;
   TargetRegs r;
   TargetEvent ev = {0};
@@ -49,6 +54,18 @@ int main(int argc, char **argv)
     stepped += 1, calls += x.flow == X64_CALL;
   }
   if (rounds && (!threads[2] || !calls)) FAIL("not every thread came to the breakpoint, or no call was stepped over");
+  for (e.halt = soon, e.halt_arg = &waits; halts < rounds / 20; halts += 1) {
+    uint64_t rip[3];
+    waits = halts % 4;
+    ev = engine_run(&e, ENGINE_RUN, 0, NULL, 0);
+    for (int i = 0; i < 3; i += 1) if (ev.kind != TARGET_HALT || !target_regs(e.target, threads[i], &r) || (rip[i] = r.rip) == 0) FAIL("halt %u: event %d, not a halt with every thread stopped", halts, ev.kind);
+    Sleep(2);
+    for (int i = 0; i < 3; i += 1) if (!target_regs(e.target, threads[i], &r) || r.rip != rip[i]) FAIL("halt %u: thread %u moves after the halt", halts, threads[i]);
+    waits = ~0u;
+    ev = engine_run(&e, ENGINE_RUN, 0, &at[1], 1);
+    if (ev.kind != TARGET_TRAP || ev.addr != at[1]) FAIL("halt %u: event %d, not the breakpoint after a halt", halts, ev.kind);
+  }
+  e.halt = 0;
   /* the exceptions */
   if (!target_write(e.target, at[3], &(int32_t){1}, 4)) FAIL("cannot write the target");
   ev = engine_run(&e, ENGINE_RUN, 0, NULL, 0);
@@ -59,6 +76,6 @@ int main(int argc, char **argv)
     if (ev.kind != TARGET_EXCEPTION || ev.code != 0xc0000005 || ev.unhandled) FAIL("event %d code %llx, not the fault, at once (run %d)", ev.kind, (unsigned long long)ev.code, i);
   }
   engine_close(&e);
-  printf("stress_engine: %u stops on a breakpoint in three threads, %u instructions stepped over (%u calls), exceptions as they should be\n", rounds, stepped, calls);
+  printf("stress_engine: %u stops on a breakpoint in three threads, %u instructions stepped over (%u calls), %u halts, exceptions as they should be\n", rounds, stepped, calls, halts);
   return 0;
 }

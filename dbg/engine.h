@@ -23,6 +23,9 @@ typedef struct {
   EngineTrap *net;
   uint64_t *traps, *ranges;
   uint8_t *code;
+  /* asked while the target runs, between the waits for it: true to stop it now (the engine thread looks at its command queue). Null: never. */
+  bool (*halt)(void *arg);
+  void *halt_arg;
   uint32_t module_count, module_cap, thread_count, thread_cap, net_count, net_cap, trap_cap, range_cap, code_cap;
 } Engine;
 
@@ -35,7 +38,7 @@ const EngineModule *engine_module(const Engine *e, uint64_t addr);
 /* Where the program's own code begins: WinMain, wWinMain, main or wmain, the first there is, else the entry its header names. */
 uint64_t engine_entry(const Engine *e);
 /* Lets the target run until it stops, and says why: TARGET_TRAP on a breakpoint (addr), TARGET_STEP when
-   the step of `thread` is done (addr: where it stands), or what else stopped it (target.h). how ENGINE_RUN: thread is not used. */
+   the step of `thread` is done (addr: where it stands), TARGET_HALT when e->halt said so, or what else stopped it (target.h). how ENGINE_RUN: thread is not used. */
 TargetEvent engine_run(Engine *e, int how, uint32_t thread, const uint64_t *breakpoints, uint32_t count);
 void engine_close(Engine *e);
 #endif

@@ -93,11 +93,13 @@ uint64_t engine_entry(const Engine *e)
   return target_read(e->target, m->image.base + 0x3c, at, 4) && target_read(e->target, m->image.base + le32(at) + 24 + 16, at, 4) ? m->image.base + le32(at) : 0;
 }
 
+enum { WAIT_MS = 10 };   /* a halt takes at most this long to be seen (RAD: 100, and 30 while the user waits) */
+
 /* Lets the target run with the first `count` of e->traps, or one thread alone for one instruction, until there is
    something to stop for. An exception is one when the program's handlers have left it, or at once for the few kinds
    that are faults whoever handles them (RAD's defaults, d_exception_code_kind_default_enable_table); the others
    go to the program and it runs on. An exception stopped for is not given to the program: the instruction that
-   raised it runs again. (Here the engine's thread will look at its command queue, to halt.) */
+   raised it runs again. */
 static TargetEvent run_on(Engine *e, uint32_t count, uint32_t step_thread)
 {
   static const uint32_t at_once[] = {0x40010005 /* control-C */, 0x40010008 /* control-break */, 0xc0000005 /* access violation */,
@@ -105,7 +107,10 @@ static TargetEvent run_on(Engine *e, uint32_t count, uint32_t step_thread)
   for (;;) {
     TargetEvent ev;
     target_resume(e->target, e->traps, count, step_thread);
-    while (!target_wait(e->target, 100, &ev)) note(e, &ev);
+    while (!target_wait(e->target, WAIT_MS, &ev)) {
+      note(e, &ev);
+      if (e->halt && e->halt(e->halt_arg)) return target_halt(e->target), (TargetEvent){.kind = TARGET_HALT};
+    }
     bool stop = ev.kind != TARGET_EXCEPTION || ev.unhandled;
     for (uint32_t i = 0; i < sizeof at_once / sizeof *at_once; i += 1) stop = stop || ev.code == at_once[i];
     if (!stop) continue;

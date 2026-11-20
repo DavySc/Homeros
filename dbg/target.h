@@ -17,6 +17,7 @@ enum { TARGET_RUNNING,                                   /* nothing happened in 
        TARGET_LATE,                                      /*   the event of a trap or a step of an earlier run came only now: nothing to stop for
                                                               (code 1: its thread still stood behind the trap byte and was put back) */
        TARGET_TRAP, TARGET_BREAK, TARGET_STEP,           /* stopped: on a trap at addr, after a breakpoint of the program's own before addr, after one instruction, */
+       TARGET_HALT,                                      /*   by target_halt (target_wait never says so: who halts knows; the engine reports it), */
        TARGET_EXCEPTION, TARGET_EXIT };                  /*   by exception `code` at addr (`unhandled`: the program's handlers have seen it and none took it),
                                                               or ended with exit code `code` */
 typedef struct { int kind; uint32_t thread; uint64_t addr, code; const char *text; bool unhandled; } TargetEvent;
