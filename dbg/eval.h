@@ -24,8 +24,9 @@ typedef struct { int kind; EvalType type; uint64_t at; } EvalValue;
 EvalValue eval(const Engine *e, const TargetRegs *frame, bool called, const char *text, const char **error);
 enum { EVAL_NOTHING, EVAL_INT, EVAL_REAL, EVAL_ADDRESS, EVAL_REFERENCE, EVAL_ROW, EVAL_RECORD };
 /* What a type is once its names and modifiers are taken off. to: what an address or a reference leads to, a row's element,
-   a record's members (idx: its RdiUdt), a bit field's whole number. count: not 0 for a bit field: so many bits from bit `first`. */
-typedef struct { int form; uint32_t size; bool sign, truth; uint32_t first, count; EvalType to; } EvalShape;
+   a record's members (idx: its RdiUdt), a bit field's whole number. count: not 0 for a bit field: so many bits from bit `first`.
+   names: not 0 for an enum: the RdiUdt of its names. */
+typedef struct { int form; uint32_t size; bool sign, truth; uint32_t first, count, names; EvalType to; } EvalShape;
 EvalShape eval_shape(EvalType type);
 /* A record's members: RdiMember, of kind 1 those that are data. */
 RdiSpan eval_members(EvalShape record);

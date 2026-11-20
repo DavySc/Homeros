@@ -41,7 +41,8 @@ EvalShape eval_shape(EvalType t)
     s.to = (EvalType){t.module, y->a, 0};
     switch (kind) {
     case 0x1000: t.idx = y->a; break;
-    case 0x2003: case 0x2004: t.idx = y->b; break;
+    case 0x2003: s.names = y->c; /* fallthrough */
+    case 0x2004: t.idx = y->b; break;
     case 0xf000: s.first = y->b, s.count = y->c, t.idx = y->a; break;
     case 0x1001: return s.form = EVAL_ADDRESS, s.size = 8, s;
     case 0x1002: case 0x1003: return s.form = EVAL_REFERENCE, s.size = 8, s;
@@ -326,7 +327,7 @@ static const RdiSymbol *local(const Parse *P, Locals *l)
   return NULL;
 }
 
-/* The variable of a name at the frame: in its scopes, then a global or a constant. False: there is none;
+/* The variable of a name at the frame: in its scopes, then a global or a constant, then a register. False: there is none;
    true with no kind: it has no place at this instruction. */
 static bool name(Parse *P, RdiSpan id, EvalValue *v)
 {
@@ -342,6 +343,9 @@ static bool name(Parse *P, RdiSpan id, EvalValue *v)
     const RdiSymbol *y = idx ? rdi_at(&g->rdi, i % 2 ? RDI_CONSTANTS : RDI_GLOBALS, RdiSymbol, idx) : NULL;
     if (y) return *v = settle(P, place(P->e, g, y->type, y->location, 0, P->frame)), true;
   }
+  static const char *const registers[] = {"rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", "rip", "rflags"};
+  for (uint32_t i = 0; i < 18; i += 1)   /* a register of the frame, as RAD has them: a name no variable has */
+    if (same(id, registers[i], strlen(registers[i]))) return *v = i < 16 ? (EvalValue){EVAL_REGISTER, {NULL, U64, 0}, i} : value(U64, i == 16 ? P->frame->rip : P->frame->rflags), true;
   return false;
 }
 

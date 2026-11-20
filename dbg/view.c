@@ -14,7 +14,7 @@ static uint32_t put(char *text, uint32_t n, uint32_t at, const char *format, ...
   return more < 0 || (uint32_t)more > n - 1 - at ? n - 1 : at + (uint32_t)more;
 }
 
-/* ---- a type and a value as text ---- */
+/* ---- a type as text ---- */
 
 static uint32_t type_text(EvalType t, char *text, uint32_t n, uint32_t at)
 {
@@ -40,38 +40,6 @@ static uint32_t type_text(EvalType t, char *text, uint32_t n, uint32_t at)
 }
 
 void view_type(EvalType type, char *text, uint32_t n) { type_text(type, text, n, 0); }
-
-void view_value(const Engine *e, const TargetRegs *frame, EvalValue v, const char *error, char *text, uint32_t n)
-{
-  if (v.kind && eval_shape(v.type).form != EVAL_RECORD) v = eval_load(e, frame, v, &error);
-  EvalShape s = eval_shape(v.type);
-  uint32_t at = 0;
-  double d = 0;
-  float f;
-  uint8_t c = 1;
-  if (!v.kind || s.form == EVAL_RECORD) at = put(text, n, 0, "%s", v.kind ? "{...}" : error);
-  else if (s.form == EVAL_REAL) {   /* the fewest digits that read back as the same number */
-    if (s.size == 4) memcpy(&f, &v.at, 4), d = (double)f; else memcpy(&d, &v.at, 8);
-    for (int digits = s.size == 4 ? 6 : 15, most = digits + (s.size == 4 ? 3 : 2); digits <= most; digits += 1) {   /* 9 and 17 are always enough */
-      at = put(text, n, 0, "%.*g", digits, d);
-      if ((s.size == 4 ? (double)strtof(text, NULL) : strtod(text, NULL)) == d) break;
-    }
-  }
-  else if (s.form == EVAL_ADDRESS) at = put(text, n, 0, "0x%llx", (unsigned long long)v.at);
-  else if (s.truth) at = put(text, n, 0, v.at ? "true" : "false");
-  else if (s.sign) at = put(text, n, 0, "%lld", (long long)v.at);
-  else at = put(text, n, 0, "%llu", (unsigned long long)v.at);
-  /* a character beside its number; at an address of characters the text there */
-  EvalShape to = v.kind && s.form == EVAL_ADDRESS ? eval_shape(s.to) : (EvalShape){0};
-  if (v.kind && s.form == EVAL_INT && s.size == 1 && !s.truth && v.at >= ' ' && v.at < 127) put(text, n, at, " '%c'", (int)v.at);
-  if (to.form != EVAL_INT || to.size != 1 || to.truth || !target_read(e->target, v.at, &c, 1)) return;
-  at = put(text, n, at, " \"");
-  for (uint64_t i = 1; c && i <= 64; i += 1) {
-    at = put(text, n, at, "%c", c < ' ' ? '.' : c);
-    if (!target_read(e->target, v.at + i, &c, 1)) c = 0;
-  }
-  put(text, n, at, c ? "\"..." : "\"");
-}
 
 /* ---- rows ---- */
 
@@ -129,6 +97,74 @@ static uint64_t children(EvalShape s)
   return count;
 }
 
+/* ---- a value as text ---- */
+
+typedef struct { const Engine *e; const TargetRegs *frame; bool called; char *text; uint32_t n; } Show;
+
+static bool characters(EvalType t)
+{
+  EvalShape s = eval_shape(t);
+  return s.form == EVAL_INT && s.size == 1 && !s.truth;
+}
+
+/* Writes the expression's value from text[at] on; where the text then ends. */
+static uint32_t show(const Show *w, const char *expression, uint32_t at)
+{
+  const char *error = NULL;
+  char *text = w->text;
+  uint32_t n = w->n, start = at;
+  EvalValue v = eval(w->e, w->frame, w->called, expression, &error);
+  EvalShape s = eval_shape(v.type);
+  if (v.kind && (s.form == EVAL_RECORD || (s.form == EVAL_ROW && !characters(s.to)))) {   /* each part is the expression of its row */
+    at = put(text, n, at, s.form == EVAL_ROW ? "[" : "{");
+    for (uint64_t i = 0, count = children(s); i < count && at < n - 1; i += 1) at = show(w, child(expression, s, 0, i, 0).text, put(text, n, at, "%s", i ? ", " : ""));
+    return put(text, n, at, s.form == EVAL_ROW ? "]" : "}");
+  }
+  if (v.kind) v = eval_load(w->e, w->frame, v, &error), s = eval_shape(v.type);
+  double d = 0;
+  float f;
+  uint8_t c = 1;
+  if (!v.kind) return put(text, n, at, "%s", error);
+  if (s.form == EVAL_REAL) {   /* the fewest digits that read back as the same number */
+    if (s.size == 4) memcpy(&f, &v.at, 4), d = (double)f; else memcpy(&d, &v.at, 8);
+    for (int digits = s.size == 4 ? 6 : 15, most = digits + (s.size == 4 ? 3 : 2); digits <= most; digits += 1) {   /* 9 and 17 are always enough */
+      at = put(text, n, start, "%.*g", digits, d);
+      if ((s.size == 4 ? (double)strtof(text + start, NULL) : strtod(text + start, NULL)) == d) break;
+    }
+    return strspn(text + start, "-0123456789") == at - start ? put(text, n, at, ".0") : at;   /* a whole number is still seen to be a real one */
+  }
+  if (s.form == EVAL_ADDRESS) at = put(text, n, at, "0x%llx", (unsigned long long)v.at);
+  else if (s.truth) return put(text, n, at, v.at ? "true" : "false");
+  else {   /* a number; after its name in an enum, or after the character it is */
+    RdiSpan names = {0}, name = {0};
+    const Rdi *r = s.names ? &v.type.module->rdi : NULL;
+    const RdiUdt *u = r ? rdi_at(r, RDI_UDTS, RdiUdt, s.names) : NULL;
+    if (u) names = rdi_run(r, RDI_ENUM_MEMBERS, u->member_first, u->member_count);
+    for (uint64_t i = 0; i < names.n && !name.p; i += 1)
+      if (((const RdiEnumMember *)names.p + i)->val == v.at) name = rdi_str(r, ((const RdiEnumMember *)names.p + i)->name);
+    bool letter = !name.p && s.size == 1 && v.at >= ' ' && v.at < 127;
+    if (name.p) at = put(text, n, at, "%.*s (", (int)name.n, name.p);
+    if (letter) at = put(text, n, at, "'%c' (", (int)v.at);
+    at = put(text, n, at, s.sign ? "%lld" : "%llu", (unsigned long long)v.at);
+    return name.p || letter ? put(text, n, at, ")") : at;
+  }
+  /* at an address of characters (an array of them is one) the text there */
+  if (!characters(s.to) || !target_read(w->e->target, v.at, &c, 1)) return at;
+  at = put(text, n, at, " \"");
+  for (uint64_t i = 1; c && i <= 64; i += 1) {
+    at = put(text, n, at, "%c", c < ' ' ? '.' : c);
+    if (!target_read(w->e->target, v.at + i, &c, 1)) c = 0;
+  }
+  return put(text, n, at, c ? "\"..." : "\"");
+}
+
+void view_value(const Engine *e, const TargetRegs *frame, bool called, const char *expression, char *text, uint32_t n)
+{
+  /* what the parts add comes after the expression in brackets, as below a root row (of one too long for that no part can be shown) */
+  char root[VIEW_TEXT];
+  show(&(Show){e, frame, called, text, n}, put(root, VIEW_TEXT, 0, "(%s)", expression) < VIEW_TEXT - 1 ? root : expression, 0);
+}
+
 /* The rows below the open row `text` with the key `key`: runs of closed ones are counted, or written where the window is;
    the open ones among them are gone into. */
 static void walk(Walk *w, const char *text, uint64_t key, uint32_t depth)
@@ -166,4 +202,27 @@ uint64_t view_rows(const View *view, const Engine *e, const TargetRegs *frame, b
   }
   *shown = w.n;
   return w.at;
+}
+
+/* ---- the stack ---- */
+
+uint32_t view_stack(const Engine *e, TargetRegs regs, ViewFrame *frames, uint32_t most)
+{
+  uint32_t n = 0;
+  for (bool called = false; n < most; called = true) {
+    const EngineModule *m = engine_module(e, regs.rip - called);
+    const Rdi *r = m ? &m->rdi : NULL;
+    uint64_t voff = m ? regs.rip - called - m->image.base : 0;
+    uint32_t innermost = m ? rdi_vmap(r, RDI_SCOPE_VMAP, voff) : 0;
+    /* each inlined call around the instruction, from the innermost (RAD stops at a block between two of them: the calls outside it are not frames there) */
+    for (uint32_t s = innermost, hops = 0; s && n < most && hops < 256; hops += 1, s = rdi_at(r, RDI_SCOPES, RdiScope, s)->parent) {
+      uint32_t inlined = rdi_at(r, RDI_SCOPES, RdiScope, s)->inline_site;
+      const RdiInlineSite *site = rdi_at(r, RDI_INLINE_SITES, RdiInlineSite, inlined);
+      if (inlined) frames[n++] = (ViewFrame){regs, called, m, rdi_str(r, site->name), rdi_row_in(r, site->line_table, voff).line};
+    }
+    if (n < most) frames[n++] = (ViewFrame){regs, called, m, m ? rdi_str(r, rdi_at(r, RDI_PROCEDURES, RdiSymbol, rdi_at(r, RDI_SCOPES, RdiScope, innermost)->proc)->name) : (RdiSpan){0}, m ? rdi_row(r, voff).line : (RdiLine){0}};
+    /* on until a step fails or comes to no instruction (RAD's d_unwind_from_thread; its third end, a step that changes nothing, this unwinder cannot make: it pops at least the return address) */
+    if (!unwind_step(target_read, e->target, m ? &m->image : NULL, &regs) || !regs.rip) break;
+  }
+  return n;
 }

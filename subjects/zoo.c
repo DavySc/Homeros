@@ -8,7 +8,7 @@
 typedef struct { int a; char b; double c; } Pair;
 typedef struct { long long x[3]; } Big;
 typedef int Alias;
-enum Colour { RED, GREEN = 5 };
+enum Colour { RED, GREEN = 5, LIME = 5 };
 union Either { int i; float f; };
 typedef struct { unsigned low : 3; int mid : 5; unsigned long long high : 40; unsigned full : 32; signed char tiny : 2; } Bits;
 typedef struct { Pair pair; Pair *next; int row[2][3]; Bits bits; union Either either; enum Colour colour; } Nest;
@@ -17,6 +17,7 @@ int global_int = 7;
 static long long file_static = -3;
 Pair global_pair = {1, 'x', 2.5};
 const char *global_text = "text";
+char global_word[8] = "zebra";
 const char *long_text = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+/=-";   /* 66 characters */
 volatile unsigned long long sink;
 volatile long long unknown = 2;   /* so that the compiler cannot work the loop out */
@@ -34,6 +35,10 @@ void (*volatile show)(const char *, const void *, unsigned long long, unsigned l
 #define TYPED(v, text) show(#v, (const void *)3, 0, (unsigned long long)(text))
 #define LOCALS(names) show(names, (const void *)4, 0, 0)
 #define REFUSED(text, why) show(text, (const void *)5, 0, (unsigned long long)(why))
+/* the functions on the stack from here out to main, as the source has them (inlined or not), and this line; the line each of the others stands at is the one its CALL wrote down */
+#define STACK(names) show(names, (const void *)7, 0, __LINE__)
+#define CALL(in, call) (line_in_##in = __LINE__, call)
+volatile int line_in_main, line_in_outer, line_in_middle, line_in_again;
 #define HERE() show("", (const void *)6, 0, 0)   /* at this line the recorder asks RAD for every expression above it (oracle/rad-trace.ps1) */
 #define REAL(v) show(#v, (const void *)1, sizeof(v), (union { double d; unsigned long long u; }){.d = (v)}.u)
 
@@ -61,7 +66,7 @@ __declspec(noinline) static int blocks(int n)
     AT(x); AT(inner); AT(inner_most);
     {
       long long x = n + 2;
-      AT(x); AT(inner); LOCALS("x inner_most inner n"); TYPED(x, "long long");
+      STACK("blocks main"); AT(x); AT(inner); LOCALS("x inner_most inner n"); TYPED(x, "long long");
     }
     AT(x); TYPED(x, "int"); LOCALS("x inner_most inner n");   /* the block's last call: what comes after it is outside */
   }
@@ -84,6 +89,7 @@ __declspec(noinline) static int statics(void)
 {
   static int function_static = 11;
   function_static += 1;
+  STACK("statics main");
   AT(function_static); AT(file_static); AT(global_int); AT(global_pair); AT(global_text);
   return function_static;
 }
@@ -97,6 +103,22 @@ __declspec(noinline) static long long shadow(long long n)
 }
 
 /* a frame so large that its variables are further from the stack pointer than a 16-bit offset reaches */
+static __forceinline int leaf(int x) { STACK("leaf middle outer main"); return x + 1; }
+static __forceinline int middle(int x)
+{
+  int y = CALL(middle, leaf(x)) * 2;
+  { int z = CALL(middle, leaf(y)); y += z; }   /* a block between two inlined calls */
+  return y;
+}
+__declspec(noinline) static int outer(int x) { STACK("outer main"); return CALL(outer, middle(x)) + 1; }
+static int (*volatile again_pointer)(int);
+__declspec(noinline) static int again(int n)
+{
+  if (n) return CALL(again, again_pointer(n - 1)) + 1;
+  STACK("again again again main");
+  return 0;
+}
+
 __declspec(noinline) static int far_frame(int n, Big large)
 {
   char block[40000];
@@ -151,9 +173,11 @@ int main(void)
   REAL(f); REAL(d); REAL(f + 1); REAL(f * d); REAL(d / 4); REAL(-d); REAL((float)d); REAL((double)u); REAL(s * 0.5); REAL(f / 0.3f); REAL(f / 0.3); REAL((float)wide); REAL(u / 2.0); REAL(u / 2); REAL((float)0.1); REAL(wide ? d : s); REAL(u ? s : d);
   REAL(nest.pair.c); REAL(pointer->c); REAL(*&d); REAL(np->either.f); REAL(nest.either.f + f); REAL(global_pair.c * 2); REAL(pair.c / array[2]); REAL((int)pair.c / array[1]); REAL(d - (int)d); REAL(f * f * f); REAL(wide * 1.5f); REAL((float)u / 7); REAL(*(float *)&np->either);
   /* as a person is shown them */
-  SHOWN(c, "99 'c'"); SHOWN(s, "-2"); SHOWN(u, "3"); SHOWN(wide, "-4"); SHOWN(f, "1.5"); SHOWN(d, "2.5"); SHOWN(pair, "{...}"); SHOWN(pair.b, "98 'b'"); SHOWN(global_text, "\"text\""); SHOWN(global_text + 1, "\"ext\""); SHOWN(long_text, "\"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+/\"..."); SHOWN(long_text + 2, "\"23456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+/=-\"");
-  SHOWN(colour, "5"); SHOWN(nest.bits.mid, "-3"); SHOWN(nest.bits.high, "78187493530"); SHOWN(nest.bits.tiny, "-2"); SHOWN(nest.either.f, "0.5"); SHOWN(c == 'c', "1"); SHOWN(d / 3, "0.8333333333333334"); SHOWN(f / 3, "0.5");
-  SHOWN(alias, "9"); SHOWN(unknown, "2"); SHOWN(*global_text, "116 't'"); SHOWN(nest.row[1][2], "6"); SHOWN(pairs[1].c, "0.75"); SHOWN((*pp)->b, "98 'b'"); SHOWN(sizeof nest, "80"); SHOWN(wide * 1.5f, "-6"); SHOWN(1 / (d - 2.5), "inf");
+  SHOWN(c, "'c' (99)"); SHOWN(s, "-2"); SHOWN(u, "3"); SHOWN(wide, "-4"); SHOWN(f, "1.5"); SHOWN(d, "2.5"); SHOWN(pair, "{1, 'b' (98), 3.0}"); SHOWN(pair.b, "'b' (98)"); SHOWN(global_text, "\"text\""); SHOWN(global_text + 1, "\"ext\""); SHOWN(long_text, "\"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+/\"..."); SHOWN(long_text + 2, "\"23456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+/=-\"");
+  SHOWN(colour, "GREEN (5)"); SHOWN(nest.bits.mid, "-3"); SHOWN(nest.bits.high, "78187493530"); SHOWN(nest.bits.tiny, "-2"); SHOWN(nest.either.f, "0.5"); SHOWN(c == 'c', "1"); SHOWN(d / 3, "0.8333333333333334"); SHOWN(f / 3, "0.5");
+  SHOWN(alias, "9"); SHOWN(unknown, "2"); SHOWN(*global_text, "'t' (116)"); SHOWN(nest.row[1][2], "6"); SHOWN(pairs[1].c, "0.75"); SHOWN((*pp)->b, "'b' (98)"); SHOWN(sizeof nest, "80"); SHOWN(wide * 1.5f, "-6.0"); SHOWN(1 / (d - 2.5), "inf");
+  SHOWN(array, "[1, 2, 3, 4, 5]"); SHOWN(nest.row, "[[1, 2, 3], [4, 5, 6]]"); SHOWN(big, "{[1, 2, 3]}"); SHOWN(*pointer, "{1, 'b' (98), 3.0}"); SHOWN(nest.bits, "{5, -3, 78187493530, 4294967280, -2}");
+  SHOWN(pairs, "[{7, 'q' (113), 0.25}, {8, 'r' (114), 0.75}]"); SHOWN(np->colour, "GREEN (5)"); SHOWN((enum Colour)3, "3"); SHOWN((enum Colour)0, "RED (0)"); SHOWN(d + 0.5, "3.0"); SHOWN(global_word, "\"zebra\""); SHOWN(global_word[4], "'a' (97)");
   TYPED(c, "char"); TYPED(s, "short"); TYPED(u, "unsigned int"); TYPED(wide, "long long"); TYPED(f, "float"); TYPED(d, "double"); TYPED(array, "int [5]"); TYPED(pair, "Pair"); TYPED(pointer, "Pair *"); TYPED(pp, "Pair **"); TYPED(colour, "Colour");
   TYPED(either, "Either"); TYPED(alias, "int"); TYPED(function, "function *"); TYPED(nest.row, "int [2][3]"); TYPED(nest.row[1], "int [3]"); TYPED(np, "Nest *"); TYPED(&np, "Nest **"); TYPED(nest.bits.mid, "int : 5"); TYPED(nest.bits.high, "unsigned long long : 40");
   TYPED(global_text, "char *"); TYPED(&array, "int [5] *"); TYPED(c + 1, "int"); TYPED(u + wide, "long long"); TYPED(sizeof c, "unsigned long long"); TYPED(f * 2, "float"); TYPED(f * 2.0, "double"); TYPED(&nest.pair.c, "double *"); TYPED(*pp, "Pair *");
@@ -164,8 +188,10 @@ int main(void)
   LOCALS("c s u wide f d array pair big pointer colour either alias function nest np pairs pp total");
   int total = params(1, 'p', pair, big, &big, d);
   big = returns(total);
-  total += blocks(3) + (int)kept(unknown) + statics() + (int)big.x[2] + (int)shadow(unknown);
+  total += CALL(main, blocks(3)) + (int)kept(unknown) + CALL(main, statics()) + (int)big.x[2] + (int)shadow(unknown);
   total += far_frame(total, big);
+  again_pointer = again;
+  STACK("main"); total += CALL(main, outer(total)) + CALL(main, again(2));
   VALUE(total); VALUE(GREEN);
   return (total + (int)sink) & 0;
 }

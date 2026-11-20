@@ -89,8 +89,8 @@ for l in open(sys.argv[1] + "/tests/plants.txt"):
     local link="lld-link -nologo -debug -nodefaultlib -entry:main -subsystem:console -dynamicbase:no -stack:1048576,1048576" o   # with dashes: the shell on Windows takes /nologo for a path
     ${WINCC:-x86_64-w64-mingw32-gcc} -std=c17 -O1 -g -Wall -Wextra -Werror $(grep -v '/queue\.c$' <<<"$lib") "$src"/dbg/engine.c "$src"/dbg/eval.c "$src"/dbg/win/target.c "$src"/tests/zoo_check.c -o "$b/zoo_check.exe" || return 2
     echo 'int _fltused;' > "$b/flt.c" && clang --target=x86_64-pc-windows-msvc -ffreestanding -c "$b/flt.c" -o "$b/flt.obj" || return 3
-    for o in O0:379:379:0:5000 O2:379:250:15:3000; do
-      clang --target=x86_64-pc-windows-msvc -g -gcodeview -${o%%:*} -ffreestanding -mno-stack-arg-probe -c "$src/subjects/zoo.c" -o "$b/zoo.obj" && $link "$b/zoo.obj" "$b/flt.obj" -out:"$b/zoo-${o%%:*}.exe" -pdb:"$b/zoo-${o%%:*}.pdb" || return 3
+    for o in O0:398:398:0:5000 O2:398:250:15:3000; do
+      clang --target=x86_64-pc-windows-msvc -g -gcodeview -${o%%:*} -funwind-tables -ffreestanding -mno-stack-arg-probe -c "$src/subjects/zoo.c" -o "$b/zoo.obj" && $link "$b/zoo.obj" "$b/flt.obj" -out:"$b/zoo-${o%%:*}.exe" -pdb:"$b/zoo-${o%%:*}.pdb" || return 3
       for seed in 1 2 3; do   # of the rows opened and closed in the tables
         (cd "$b" && WINEDEBUG=-all timeout 300 "${WINE:-wine}" ./zoo_check.exe zoo-${o%%:*}.exe $(tr : ' ' <<<"${o#*:}") $seed 2>/dev/null | grep "^zoo_check" | tee zoo.out; grep -q "what the program says" zoo.out) || return 1
       done

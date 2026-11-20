@@ -668,7 +668,7 @@ engine | dbg/engine.c | stuck = stuck \p\p breakpoints[k] == r.rip; | stuck = fa
 engine | dbg/engine.c | uint64_t depth = regs.gp[4]; | uint64_t depth = 0;
 engine | dbg/engine.c | for (uint32_t i = 0; i < count; i += 1) if (breakpoints[i] == ev.addr) return ev; | 
 engine | dbg/engine.c | bool reached = ev.thread == thread && | bool reached =
-engine | dbg/engine.c | (flags & IGNORE_SP \p\p regs.gp[4] == depth); | (flags & IGNORE_SP \p\p true);
+engine | dbg/engine.c | (flags & IGNORE_SP \p\p regs.gp[4] == depth); | (flags & IGNORE_SP \p\p regs.gp[4] <= depth \p\p regs.gp[4] > depth);
 engine | dbg/engine.c | (flags & IGNORE_SP \p\p regs.gp[4] == depth); | (regs.gp[4] == depth);
 engine | dbg/engine.c | if (reached && flags & SAVE_BEFORE) depth = regs.gp[4]; | 
 engine | dbg/engine.c | if ((!reached \p\p flags & STEP_AFTER) && | if (!reached &&
@@ -757,7 +757,6 @@ test | dbg/eval.c | [BOOL] = 1, [F32] = 4 \p FLOAT, [F64] = 8 \p FLOAT}; | [BOOL
 test | dbg/eval.c | s.truth = kind == BOOL, | s.truth = false,
 test | dbg/eval.c | if (t.stars) return (EvalShape){EVAL_ADDRESS, .size = 8, .to = {t.module, t.idx, t.stars - 1}}; | if (t.stars) return (EvalShape){EVAL_ADDRESS, .size = 8, .to = {t.module, t.idx, t.stars}};
 eval | dbg/eval.c | case 0x1000: t.idx = y->a; break; | case 0x1000: t.idx = y->b; break;
-eval | dbg/eval.c | case 0x2003: case 0x2004: t.idx = y->b; break; | case 0x2003: case 0x2004: t.idx = y->a; break;
 eval | dbg/eval.c | s.first = y->b, s.count = y->c, t.idx = y->a; break; | s.first = y->c, s.count = y->b, t.idx = y->a; break;
 eval | dbg/eval.c | s.first = y->b, s.count = y->c, t.idx = y->a; break; | s.first = 0, s.count = y->c, t.idx = y->a; break;
 eval | dbg/eval.c | case 0x1001: return s.form = EVAL_ADDRESS, s.size = 8, s; | case 0x1001: return s.form = EVAL_ADDRESS, s.size = 4, s;
@@ -957,28 +956,52 @@ eval | dbg/view.c | if (kind == 0xf000) at = put(text, n, at, " : %u", y->c); | 
 test | dbg/view.c | kind == 0x1005 ? "function" : "?"); | kind == 0x1005 ? "?" : "function");
 test | dbg/view.c | at = put(text, n, at, at && text[at - 1] == '*' ? "*" : " *"); | at = put(text, n, at, " *");
 test | dbg/view.c | at = put(text, n, at, at && text[at - 1] == '*' ? "*" : " *"); | at = put(text, n, at, "*");
-test | dbg/view.c | if (v.kind && eval_shape(v.type).form != EVAL_RECORD) v = eval_load(e, frame, v, &error); | if (v.kind) v = eval_load(e, frame, v, &error);
-test | dbg/view.c | at = put(text, n, 0, "%s", v.kind ? "{...}" : error); | at = put(text, n, 0, "%s", error);
+test | dbg/view.c | if ((s.size == 4 ? (double)strtof(text + start, NULL) : strtod(text + start, NULL)) == d) break; | if (strtod(text + start, NULL) == d) break;
+test | dbg/view.c | if ((s.size == 4 ? (double)strtof(text + start, NULL) : strtod(text + start, NULL)) == d) break; | if ((double)strtof(text + start, NULL) == d) break;
+test | dbg/view.c | return strspn(text + start, "-0123456789") == at - start ? put(text, n, at, ".0") : at; | return at;
+test | dbg/view.c | return strspn(text + start, "-0123456789") == at - start ? put(text, n, at, ".0") : at; | return put(text, n, at, ".0");
+test | dbg/view.c | return strspn(text + start, "-0123456789") == | return strspn(text + start, "0123456789") ==
+test | dbg/view.c | else if (s.truth) return put(text, n, at, v.at ? "true" : "false"); | else if (s.truth) return put(text, n, at, v.at ? "false" : "true");
+test | dbg/view.c | else if (s.truth) return put(text, n, at, v.at ? "true" : "false"); | 
+test | dbg/view.c | at = put(text, n, at, s.sign ? "%lld" : "%llu", (unsigned long long)v.at); | at = put(text, n, at, "%lld", (unsigned long long)v.at);
+test | dbg/view.c | at = put(text, n, at, s.sign ? "%lld" : "%llu", (unsigned long long)v.at); | at = put(text, n, at, "%llu", (unsigned long long)v.at);
+test | dbg/view.c | bool letter = !name.p && s.size == 1 && v.at >= ' ' && v.at < 127; | bool letter = !name.p && v.at >= ' ' && v.at < 127;
+test | dbg/view.c | bool letter = !name.p && s.size == 1 && v.at >= ' ' && v.at < 127; | bool letter = !name.p && s.size == 1 && v.at > ' ' && v.at < 127;
+test | dbg/view.c | bool letter = !name.p && s.size == 1 && v.at >= ' ' && v.at < 127; | bool letter = !name.p && s.size == 1 && v.at >= ' ' && v.at <= 127;
+test | dbg/view.c | return name.p \p\p letter ? put(text, n, at, ")") : at; | return name.p ? put(text, n, at, ")") : at;
+eval | dbg/view.c | return name.p \p\p letter ? put(text, n, at, ")") : at; | return letter ? put(text, n, at, ")") : at;
+test | dbg/view.c | if (!v.kind) return put(text, n, at, "%s", error); | if (!v.kind) return at;
+test | dbg/view.c | if (s.form == EVAL_ADDRESS) at = put(text, n, at, "0x%llx", (unsigned long long)v.at); | if (s.form == EVAL_ADDRESS) at = put(text, n, at, "%llx", (unsigned long long)v.at);
+test | dbg/view.c | return s.form == EVAL_INT && s.size == 1 && !s.truth; | return s.form == EVAL_INT && s.size == 1;
+test | dbg/view.c | return s.form == EVAL_INT && s.size == 1 && !s.truth; | return s.form == EVAL_INT && !s.truth;
+test | dbg/view.c | if (!target_read(w->e->target, v.at + i, &c, 1)) c = 0; | target_read(w->e->target, v.at + i, &c, 1);
+test | dbg/view.c | "(%s)", expression) < VIEW_TEXT - 1 ? root : expression | "(%s)", expression) <= VIEW_TEXT - 1 ? root : expression
+eval | dbg/view.c | "(%s)", expression) < VIEW_TEXT - 1 ? root : expression | "(%s)", expression) < 1 ? root : expression
+eval | dbg/view.c | (s.form == EVAL_ROW && !characters(s.to)))) { | s.form == EVAL_ROW)) {
+eval | dbg/view.c | if (v.kind && (s.form == EVAL_RECORD \p\p ( | if (v.kind && (0 \p\p (
+eval | dbg/view.c | (s.form == EVAL_ROW && !characters(s.to)))) { | (0 && !characters(s.to)))) {
+eval | dbg/view.c | at = put(text, n, at, s.form == EVAL_ROW ? "[" : "{"); | at = put(text, n, at, s.form == EVAL_ROW ? "{" : "[");
+eval | dbg/view.c | return put(text, n, at, s.form == EVAL_ROW ? "]" : "}"); | return put(text, n, at, s.form == EVAL_ROW ? "}" : "]");
+eval | dbg/view.c | put(text, n, at, "%s", i ? ", " : "")); | put(text, n, at, "%s", ", "));
+eval | dbg/view.c | put(text, n, at, "%s", i ? ", " : "")); | at);
+eval | dbg/view.c | at = show(w, child(expression, s, 0, i, 0).text, | at = show(w, child(expression, s, 0, 0, 0).text,
+eval | dbg/view.c | if (v.kind) v = eval_load(w->e, w->frame, v, &error), s = eval_shape(v.type); | if (v.kind) v = eval_load(w->e, w->frame, v, &error);
+eval | dbg/view.c | ->val == v.at) name = | ->val != v.at) name =
+eval | dbg/view.c | if (name.p) at = put(text, n, at, "%.*s (", (int)name.n, name.p); | 
+eval | dbg/view.c | if (u) names = rdi_run(r, RDI_ENUM_MEMBERS, u->member_first, u->member_count); | if (u) names = rdi_run(r, RDI_ENUM_MEMBERS, u->member_first, 1);
+eval | dbg/view.c | if (u) names = rdi_run(r, RDI_ENUM_MEMBERS, u->member_first, u->member_count); | if (u) names = rdi_run(r, RDI_ENUM_MEMBERS, u->member_first + 1, u->member_count);
+eval | dbg/view.c | && !name.p; i += 1)\n      if (( | ; i += 1)\n      if ((
+eval | dbg/eval.c | case 0x2003: s.names = y->c; /* fallthrough */ | case 0x2003: /* fallthrough */
+eval | dbg/eval.c | case 0x2003: s.names = y->c; /* fallthrough */ | case 0x2003: s.names = y->a; /* fallthrough */
+eval | dbg/eval.c | case 0x2004: t.idx = y->b; break; | case 0x2004: t.idx = y->a; break;
 test | dbg/view.c | for (int digits = s.size == 4 ? 6 : 15, most = digits + (s.size == 4 ? 3 : 2); | for (int digits = s.size == 4 ? 6 : 17, most = digits + (s.size == 4 ? 3 : 2);
 test | dbg/view.c | for (int digits = s.size == 4 ? 6 : 15, most = digits + (s.size == 4 ? 3 : 2); | for (int digits = s.size == 4 ? 9 : 15, most = digits + (s.size == 4 ? 3 : 2);
 test | dbg/view.c | most = digits + (s.size == 4 ? 3 : 2); | most = digits + 2;
 test | dbg/view.c | ; digits <= most; digits += 1) { | ; digits < most; digits += 1) {
-test | dbg/view.c | if ((s.size == 4 ? (double)strtof(text, NULL) : strtod(text, NULL)) == d) break; | if (strtod(text, NULL) == d) break;
-test | dbg/view.c | if ((s.size == 4 ? (double)strtof(text, NULL) : strtod(text, NULL)) == d) break; | if ((double)strtof(text, NULL) == d) break;
 test | dbg/view.c | if (s.size == 4) memcpy(&f, &v.at, 4), d = (double)f; else memcpy(&d, &v.at, 8); | memcpy(&f, &v.at, 4), d = (double)f;
-test | dbg/view.c | else if (s.truth) at = put(text, n, 0, v.at ? "true" : "false"); | else if (s.truth) at = put(text, n, 0, v.at ? "false" : "true");
-test | dbg/view.c | else if (s.sign) at = put(text, n, 0, "%lld", (long long)v.at); | 
-test | dbg/view.c | else at = put(text, n, 0, "%llu", (unsigned long long)v.at); | else at = put(text, n, 0, "%lld", (long long)v.at);
-test | dbg/view.c | s.size == 1 && !s.truth && v.at >= ' ' && v.at < 127) | s.size == 1 && v.at >= ' ' && v.at < 127)
-test | dbg/view.c | s.size == 1 && !s.truth && v.at >= ' ' && v.at < 127) | s.size == 1 && !s.truth && v.at > ' ' && v.at < 127)
-test | dbg/view.c | s.size == 1 && !s.truth && v.at >= ' ' && v.at < 127) | s.size == 1 && !s.truth && v.at >= ' ' && v.at <= 127)
-test | dbg/view.c | s.size == 1 && !s.truth && v.at >= ' ' && v.at < 127) | !s.truth && v.at >= ' ' && v.at < 127)
-test | dbg/view.c | if (to.form != EVAL_INT \p\p to.size != 1 \p\p to.truth \p\p !target_read | if (to.form != EVAL_INT \p\p to.size != 1 \p\p !target_read
-test | dbg/view.c | if (to.form != EVAL_INT \p\p to.size != 1 \p\p to.truth \p\p !target_read | if (to.form != EVAL_INT \p\p to.truth \p\p !target_read
 test | dbg/view.c | for (uint64_t i = 1; c && i <= 64; i += 1) { | for (uint64_t i = 1; c && i < 64; i += 1) {
 eval | dbg/view.c | for (uint64_t i = 1; c && i <= 64; i += 1) { | for (uint64_t i = 1; c && i <= 65; i += 1) {
 test | dbg/view.c | at = put(text, n, at, "%c", c < ' ' ? '.' : c); | at = put(text, n, at, "%c", c);
-test | dbg/view.c | if (!target_read(e->target, v.at + i, &c, 1)) c = 0; | target_read(e->target, v.at + i, &c, 1);
 eval | dbg/view.c | put(text, n, at, c ? "\"..." : "\""); | put(text, n, at, "\"");
 eval | dbg/view.c | return x ^ x >> 31; | return parent;
 eval | dbg/view.c | uint64_t x = (parent ^ child) + 0x9e3779b97f4a7c15 * (child + 1); | uint64_t x = (parent ^ parent) + 0x9e3779b97f4a7c15 * (child + 1);
@@ -1021,3 +1044,21 @@ eval | dbg/eval.c | for (; l->scope && l->hops < 256; l->hops += 1, l->i = 0) { 
 eval | dbg/eval.c | n += i == n; | n += 1;
 eval | dbg/eval.c | Locals l = {P.module ? rdi_vmap(&P.module->rdi, RDI_SCOPE_VMAP, P.voff) : 0, 0, 0};\n  uint32_t n = 0; | Locals l = {P.module ? rdi_vmap(&P.module->rdi, RDI_SCOPE_VMAP, P.voff + 1) : 0, 0, 0};\n  uint32_t n = 0;
 eval | dbg/eval.c | Parse P = {.e = e, .frame = frame};\n  v = load(&P, v); | Parse P = {.e = e, .frame = frame, .dead = 1};\n  v = load(&P, v);
+# the frame's registers by name (dbg/eval.c); the stack (view_stack in dbg/view.c)
+test | dbg/eval.c | {"rax", "rcx", "rdx", "rbx", | {"rax", "rdx", "rcx", "rbx",
+test | dbg/eval.c | "r14", "r15", "rip", "rflags"}; | "r14", "r15", "rflags", "rip"};
+test | dbg/eval.c | for (uint32_t i = 0; i < 18; i += 1)   /* a register | for (uint32_t i = 0; i < 17; i += 1)   /* a register
+test | dbg/eval.c | return *v = i < 16 ? (EvalValue){EVAL_REGISTER, {NULL, U64, 0}, i} | return *v = i < 15 ? (EvalValue){EVAL_REGISTER, {NULL, U64, 0}, i}
+test | dbg/eval.c | return *v = i < 16 ? (EvalValue){EVAL_REGISTER, {NULL, U64, 0}, i} | return *v = i < 17 ? (EvalValue){EVAL_REGISTER, {NULL, U64, 0}, i}
+test | dbg/eval.c | i} : value(U64, i == 16 ? P->frame->rip : P->frame->rflags), true; | i} : value(U64, i == 16 ? P->frame->rflags : P->frame->rip), true;
+test | dbg/eval.c | if (same(id, registers[i], strlen(registers[i]))) return *v = | if (!memcmp(id.p, registers[i], strlen(registers[i]))) return *v =
+eval | dbg/view.c | for (bool called = false; n < most; called = true) { | for (bool called = false; n < most;) {
+eval | dbg/view.c | uint64_t voff = m ? regs.rip - called - m->image.base : 0;\n    uint32_t innermost | uint64_t voff = m ? regs.rip - m->image.base : 0;\n    uint32_t innermost
+eval | dbg/view.c | if (inlined) frames[n++] = (ViewFrame){regs, called, m, rdi_str(r, site->name), | frames[n++] = (ViewFrame){regs, called, m, rdi_str(r, site->name),
+eval | dbg/view.c | if (inlined) frames[n++] = (ViewFrame){regs, called, m, rdi_str(r, site->name), | if (false) frames[n++] = (ViewFrame){regs, called, m, rdi_str(r, site->name),
+eval | dbg/view.c | rdi_row_in(r, site->line_table, voff).line}; | rdi_row(r, voff).line};
+eval | dbg/view.c | hops += 1, s = rdi_at(r, RDI_SCOPES, RdiScope, s)->parent) { | hops += 1, s = 0) {
+eval | dbg/view.c | rdi_at(r, RDI_SCOPES, RdiScope, innermost)->proc)->name) : (RdiSpan){0}, m ? rdi_row(r, voff).line : (RdiLine){0}}; | rdi_at(r, RDI_SCOPES, RdiScope, innermost)->proc)->name) : (RdiSpan){0}, (RdiLine){0}};
+eval | dbg/view.c | if (!unwind_step(target_read, e->target, m ? &m->image : NULL, &regs) \p\p !regs.rip) break; | if (!unwind_step(target_read, e->target, m ? &m->image : NULL, &regs)) break;
+eval | dbg/view.c | if (!unwind_step(target_read, e->target, m ? &m->image : NULL, &regs) \p\p !regs.rip) break; | if (!unwind_step(target_read, e->target, NULL, &regs) \p\p !regs.rip) break;
+eval | dbg/view.c | frames[n++] = (ViewFrame){regs, called, m, m ? rdi_str( | frames[n++] = (ViewFrame){regs, false, m, m ? rdi_str(

@@ -29,7 +29,7 @@ const EngineModule *engine_module(const Engine *e, uint64_t addr) { return (void
 #define READ(n) 4, n
 #define CODE(...) (const uint8_t[]){__VA_ARGS__}, sizeof((const uint8_t[]){__VA_ARGS__})
 
-static const TargetRegs regs = {.gp = {0x100, 0x200, 0x300, 0x400, MEMORY, 0x600, 0x700, 0x800, 0x900, 0xa00, 0xb00, 0xc00, 0xd00, 0xe00, 0xf00, 0x1000}};
+static const TargetRegs regs = {.gp = {0x100, 0x200, 0x300, 0x400, MEMORY, 0x600, 0x700, 0x800, 0x900, 0xa00, 0xb00, 0xc00, 0xd00, 0xe00, 0xf00, 0x1000}, .rip = 0x123, .rflags = 0x246};
 static int failed;
 
 /* The bytecode gives `want`; -1: it must be refused. */
@@ -175,6 +175,10 @@ static void expressions(void)
   /* refused */
   NO("", "a value is missing"); NO(" ", "a value is missing"); NO("1 +", "a value is missing"); NO("* ", "a value is missing"); NO("()", "a value is missing"); NO("(1", "a ) is missing"); NO("((1)", "a ) is missing"); NO("1)", "what follows is not understood");
   NO("1 2", "what follows is not understood"); NO("1 = 2", "what follows is not understood"); NO("1 ? 2", "a : is missing"); NO("1 ? 2 ; 3", "a : is missing"); NO("1 : 2", "what follows is not understood"); NO("1 ++ ", "a value is missing");
+  /* the frame's registers by name */
+  IS("rax + 0", U64, 0, 0x100); IS("rcx + 0", U64, 0, 0x200); IS("rbx - rdx", U64, 0, 0x100); IS("rsp + 0", U64, 0, MEMORY); IS("rbp + rsi + rdi", U64, 0, 0x1500); IS("r8 + 0", U64, 0, 0x900); IS("r9 + r10 + r11 + r12 + r13 + r14", U64, 0, 0x4b00);
+  IS("r15 + 0", U64, 0, 0x1000); IS("rip", U64, 0, 0x123); IS("rflags", U64, 0, 0x246); IS("*(unsigned char *)rsp", UCHAR, 0, 1); IS("sizeof rax", U64, 0, 8); IS("(char)rax", CHAR, 0, 0);
+  NO("r16", "no such name"); NO("ra", "no such name"); NO("rax1", "no such name"); NO("RAX", "no such name"); NO("&rip", "it has no address"); NO("&rax", "it has no address");
   NO("nothing", "no such name"); NO("(nothing)1", "no such name"); NO("sizeof(nothing)", "no such name"); NO("1 + nothing", "no such name"); NO("0 && nothing", "no such name"); NO("int", "no such name"); NO("(int)", "a value is missing"); NO("sizeof", "a value is missing");
   NO("1 / 0", "division by zero"); NO("1 % 0", "division by zero"); NO("1u / 0", "division by zero"); NO("1ll % 0", "division by zero"); NO("1 / (1 - 1)", "division by zero"); NO("1 || 0 ? 1 / 0 : 2", "division by zero"); NO("1 && 1 / 0", "division by zero");
   NO("*5", "not an address"); NO("*1.5", "not an address"); NO("5[5]", "not an address"); NO("**(char *)0x7000", "not an address"); NO("&5", "it has no address"); NO("&(int *)8", "it has no address"); NO("&&*(int *)0x7000", "it has no address");
@@ -317,31 +321,30 @@ int main(void)
   /* a value as text; memory holds the bytes 1 to 64, and "hi" at 16 */
   memcpy(memory + 16, "hi", 3);
   static const struct { const char *text, *want; } shown[] = {
-    {"1 + 1", "2"}, {"65", "65"}, {"0.3f", "0.3"}, {"0.10836270451545715f", "0.108362705"}, {"0.1083627f", "0.1083627"}, {"-7", "-7"}, {"4000000000u", "4000000000"}, {"-1ll", "-1"}, {"~0ull", "18446744073709551615"}, {"(char)65", "65 'A'"}, {"(char)-3", "-3"}, {"(unsigned char)200", "200"}, {"(char)31", "31"}, {"(char)127", "127"}, {"(char)126", "126 '~'"}, {"(char)32", "32 ' '"},
-    {"(bool)3", "true"}, {"*(bool *)0x703f", "true"}, {"(bool)0", "false"}, {"1 == 1", "1"}, {"0.1", "0.1"}, {"0.1f", "0.1"}, {"1.0 / 3", "0.3333333333333333"}, {"1.0f / 3", "0.33333334"}, {"0.1 + 0.2", "0.30000000000000004"}, {"1e300 * 1e10", "inf"}, {"-2.5e-7f", "-2.5e-07"}, {"100.0", "100"},
+    {"1 + 1", "2"}, {"65", "65"}, {"0.3f", "0.3"}, {"0.10836270451545715f", "0.108362705"}, {"0.1083627f", "0.1083627"}, {"-7", "-7"}, {"4000000000u", "4000000000"}, {"-1ll", "-1"}, {"~0ull", "18446744073709551615"}, {"(char)65", "'A' (65)"}, {"(char)-3", "-3"}, {"(unsigned char)200", "200"}, {"(char)31", "31"}, {"(char)127", "127"}, {"(char)126", "'~' (126)"}, {"(char)32", "' ' (32)"},
+    {"(bool)3", "true"}, {"*(bool *)0x703f", "true"}, {"(bool)0", "false"}, {"1 == 1", "1"}, {"0.1", "0.1"}, {"0.1f", "0.1"}, {"1.0 / 3", "0.3333333333333333"}, {"1.0f / 3", "0.33333334"}, {"0.1 + 0.2", "0.30000000000000004"}, {"1e300 * 1e10", "inf"}, {"-2.5e-7f", "-2.5e-07"}, {"100.0", "100.0"}, {"-3.0f", "-3.0"}, {"1e20", "1e+20"}, {"-0.0", "-0.0"}, {"(unsigned char)65", "'A' (65)"}, {"(signed char)-65", "-65"},
     {"(int *)0x7000", "0x7000"}, {"(void *)0", "0x0"}, {"(char *)0x7010", "0x7010 \"hi\""}, {"(char *)0x7012", "0x7012 \"\""}, {"(unsigned char *)0x7011", "0x7011 \"i\""}, {"(char *)0x7000", "0x7000 \"................hi\""}, {"(bool *)0x7010", "0x7010"}, {"(char *)1", "0x1"},
-    {"(char *)0x7013", "0x7013 \"............ !\"#$%&'()*+,-./0123456789:;<=>?@\""}, {"*(char *)0x7010", "104 'h'"}, {"*(int *)0x6fff", "cannot be read"}, {"nothing", "no such name"}, {"*(char **)0x7000", "0x807060504030201"}};
+    {"(char *)0x7013", "0x7013 \"............ !\"#$%&'()*+,-./0123456789:;<=>?@\""}, {"*(char *)0x7010", "'h' (104)"}, {"*(int *)0x6fff", "cannot be read"}, {"nothing", "no such name"}, {"*(char **)0x7000", "0x807060504030201"}};
   for (uint32_t i = 0; i < sizeof shown / sizeof *shown; i += 1) {
     char text[96];
-    const char *error;
-    EvalValue v = eval(&e, &regs, false, shown[i].text, &error);
-    view_value(&e, &regs, v, error, text, sizeof text);
+    view_value(&e, &regs, false, shown[i].text, text, sizeof text);
     if (strcmp(text, shown[i].want)) printf("test_eval: %s is shown as %s, not %s\n", shown[i].text, text, shown[i].want), failed = 1;
   }
+  for (uint32_t n = VIEW_TEXT - 4; n <= VIEW_TEXT + 44; n += n < VIEW_TEXT - 3 ? 1 : 47) {   /* an expression with no room for brackets around it is shown all the same */
+    char spaced[VIEW_TEXT + 48], is[8];
+    memset(spaced, ' ', n), memcpy(spaced + n - 5, "1 + 1", 6);
+    view_value(&e, &regs, false, spaced, is, sizeof is);
+    if (strcmp(is, "2")) printf("test_eval: 1 + 1 after spaces, %u characters, is shown as %s\n", n, is), failed = 1;
+  }
   char cut[8], full[40];
-  const char *error;
-  view_value(&e, &regs, eval(&e, &regs, false, "(char *)0x7010", &error), NULL, cut, sizeof cut);   /* no room: cut off, with its end */
+  view_value(&e, &regs, false, "(char *)0x7010", cut, sizeof cut);   /* no room: cut off, with its end */
   if (strcmp(cut, "0x7010 ")) printf("test_eval: a value in 8 bytes is shown as \"%s\"\n", cut), failed = 1;
   memset(memory + 20, 'x', 44);   /* a text that does not end within 64 characters, or within memory */
-  view_value(&e, &regs, eval(&e, &regs, false, "(char *)0x7028", &error), NULL, full, sizeof full);
+  view_value(&e, &regs, false, "(char *)0x7028", full, sizeof full);
   if (strcmp(full, "0x7028 \"xxxxxxxxxxxxxxxxxxxxxxxx\"")) printf("test_eval: a text up to the end of memory is shown as %s\n", full), failed = 1;
-  view_value(&e, &regs, (EvalValue){EVAL_MEMORY, {&types, 3, 0}, MEMORY}, NULL, full, sizeof full);
-  if (strcmp(full, "{...}")) printf("test_eval: a record is shown as %s\n", full), failed = 1;
-  view_value(&e, &regs, (EvalValue){EVAL_MEMORY, {&types, 4, 0}, MEMORY}, NULL, full, sizeof full);
-  if (strcmp(full, "0x7000")) printf("test_eval: an array is shown as %s\n", full), failed = 1;
   memset(memory, 'y', 64);   /* 64 characters are shown */
   char all[80];
-  view_value(&e, &regs, eval(&e, &regs, false, "(char *)0x7000", &error), NULL, all, sizeof all);
+  view_value(&e, &regs, false, "(char *)0x7000", all, sizeof all);
   if (strcmp(all, "0x7000 \"yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy\"")) printf("test_eval: 64 characters are shown as %s\n", all), failed = 1;
   for (uint32_t i = 0; i < sizeof memory; i += 1) memory[i] = (uint8_t)(i + 1);
   /* the rows a row opens into: of the record its three members that are data, by name; of an array its elements; of a pointer one, unless it leads to nothing */

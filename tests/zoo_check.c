@@ -124,7 +124,7 @@ static int table(const Engine *e, const TargetRegs *r, View *view, ViewRow *rows
       char value[64], type[64];
       const char *why = NULL;
       EvalValue v = eval(e, r, true, window[i].text, &why);
-      view_value(e, r, v, why, value, sizeof value), view_type(v.type, type, sizeof type);
+      view_value(e, r, true, window[i].text, value, sizeof value), view_type(v.type, type, sizeof type);
       if (!value[0] || (v.kind && !type[0])) FAIL("%s has no value or no type to show", window[i].text);
     }
   }
@@ -167,6 +167,23 @@ int main(int argc, char **argv)
     if (ev.kind != TARGET_TRAP || !target_regs(e.target, ev.thread, &r)) FAIL("event %d (code %llx), not a stop at probe", ev.kind, (unsigned long long)ev.code);
     uint64_t addr = r.gp[2], size = r.gp[8], value = r.gp[9];
     for (uint32_t i = 0; i < sizeof text - 1 && target_read(e.target, r.gp[1] + i, &text[i], 1) && text[i]; i += 1) {}
+    if (addr == 7) {   /* the stack: probe, then the functions the program names, the last of them main */
+      ViewFrame frames[16];
+      uint32_t count = view_stack(&e, r, frames, 16), f = 1;
+      char got[128] = {0};
+      for (uint32_t at = 0; f < count && !(f > 1 && frames[f - 1].name.n == 4 && !memcmp(frames[f - 1].name.p, "main", 4)); f += 1)
+        at += (uint32_t)snprintf(got + at, sizeof got - at, "%s%.*s", f > 1 ? " " : "", (int)frames[f].name.n, (const char *)frames[f].name.p);
+      if (count == 16 || !frames[count - 1].regs.rip || frames[0].name.n != 5 || memcmp(frames[0].name.p, "probe", 5) || frames[0].called || !frames[1].called || strcmp(got, text)) FAIL("the stack of %u frames is %s, the program says %s", count, got, text);
+      for (uint32_t i = 1; i < f; i += 1) {   /* each stands at the line the program says: the innermost at this report's, the others where they call */
+        char line_in[64];
+        uint64_t line = value;
+        snprintf(line_in, sizeof line_in, "line_in_%.*s", (int)frames[i].name.n, (const char *)frames[i].name.p);
+        if (i > 1) line = eval_load(&e, &r, eval(&e, &r, false, line_in, &why), &why).at;
+        if (frames[i].module != m || frames[i].line.line != line || frames[i].line.file != frames[0].line.file) FAIL("frame %u of %s stands at line %u, the program says %llu", i, text, frames[i].line.line, (unsigned long long)line);
+      }
+      shown += 1;
+      continue;
+    }
     if (!unwind_step(target_read, e.target, &engine_module(&e, r.rip)->image, &r)) FAIL("%s: no frame above probe", text);
     unsigned long long voff = r.rip - m->image.base;
     if (table(&e, &r, &view, rows, &seed, looked, before)) FAIL("(the table at +0x%llx, where %s is shown)", voff, text);
@@ -196,7 +213,7 @@ int main(int argc, char **argv)
     if (addr == 2 || addr == 3) {   /* as a person is shown it, or its type */
       char want[96] = {0}, got[128];
       for (uint32_t i = 0; i < sizeof want - 1 && target_read(e.target, value + i, &want[i], 1) && want[i]; i += 1) {}
-      if (addr == 2) view_value(&e, &r, v, NULL, got, sizeof got); else view_type(v.type, got, sizeof got);
+      if (addr == 2) view_value(&e, &r, true, text, got, sizeof got); else view_type(v.type, got, sizeof got);
       const char *part = want[0] == '"' && strchr(got, ' ') ? strchr(got, ' ') + 1 : got;
       if (strcmp(part, want)) FAIL("%s (at +0x%llx) %s %s, the program says %s", text, voff, addr == 2 ? "is shown as" : "has the type", got, want);
       shown += 1;

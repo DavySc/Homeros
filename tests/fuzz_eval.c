@@ -30,6 +30,8 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
   Engine e = {.modules = &m, .module_count = rdi_open(&m.rdi, buf, size)};
   TargetRegs regs = {.rip = BASE + (size > 8 ? data[size / 2] | (uint64_t)data[size / 2 + 1] << 8 : 0)};
   for (int i = 0; i < 16; i += 1) regs.gp[i] = MEMORY + 16 * (uint64_t)i;
+  ViewFrame frames[5];
+  view_stack(&e, regs, frames, 5);
   for (int called = 0; called < 2; called += 1) {
     const char *error = "unset";
     uint64_t bytes = 0;
@@ -38,7 +40,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     if (v.kind) eval_read(&e, &regs, v, &bytes, eval_shape(v.type).size < 8 ? eval_shape(v.type).size : 8);
     for (uint32_t room = 1; room <= 81; room += 40) {
       char *shown = malloc(room);
-      view_value(&e, &regs, v, error, shown, room), view_type(v.type, shown, room);
+      view_value(&e, &regs, called, text, shown, room), view_type(v.type, shown, room);
       free(shown);
     }
     RdiSpan names[7];
