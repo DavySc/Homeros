@@ -52,8 +52,8 @@ core: the marks saved before a join outlive its edit (test_core_undo)~test TESTS
 core: a file opens with the cursor in column 0 (test_core_screens)~test TESTS=core_screens~~src/core/core.c~(measured in tmux, 7 texts) */¶	w->col = core_first_nonblank(e, 0);~(measured in tmux, 7 texts) */¶	w->col = 0;
 core: CTRL-W > in a shrunk terminal grows past its row of windows (test_core_contract)~test TESTS=core_contract~~src/core/win.c~full = a == ROWS ? e->cols : e->layout->size[ROWS];~full = a == ROWS ? e->cols : e->rows;
 core: a heading's icon on its first '#' (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~a1 - a0 + md->head - 1, f, hb);~a1 - a0, f, hb);
-core: an overlay keeps the text's colour (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~			z->face = face;¶~			z->face = 0 * face;¶
-core: a heading's background not drawn (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~				z->bg = bg;¶~				z->bg = 0 * bg;¶
+core: an overlay keeps the text's colour (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~u + i, k, j, cw, face);~u + i, k, j, cw, 0 * face);
+core: a heading's background not drawn (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~				z->bg = bg;¶			}¶		}¶	return v;~				z->bg = 0 * bg;¶			}¶		}¶	return v;
 core: an overlay that starts before the view drawn at its column (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~size_t d = skip > s0 ? skip - s0 : 0,~size_t d = 0 * skip,
 core: an overlay drawn over skipcol's <<< (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~(row == r && c < cover)) continue;~(row == r && c < cover * 0)) continue;
 core: a wrapped line's background on its first row only (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~tw = w->w - nw, rows = line_rows(w, l);~tw = w->w - nw, rows = 1 + 0 * (int)l;
@@ -86,7 +86,7 @@ core: a heading drawn in visual mode (test_core_markdown)~test TESTS=core_markdo
 core: the '>' of a double-width character that does not fit in the text's colours (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~wputs(g, w, row, c, ">", ATTR_DIM);~put_cell(g, w, row, c, (const unsigned char *)">", 1, 0, 1, face);
 core: a bullet ignores the blanks its marker starts with (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~" ", 1, q - md->item, FACE_MD_BULLET~" ", 1, 0 * q, FACE_MD_BULLET
 core: a bullet over a heading's background takes it (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~k, 1, FACE_MD_BULLET, 0);~k, 1, FACE_MD_BULLET, hb);
-core: the language line puts the file's bytes on the grid as they are, an escape too (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~				put_cell(g, w, row, c, u + i, k, j, cw, face);~				if (!j) wput(g, w, row, c, u + i, k, cw, ATTR_NONE), z->face = face;
+core: the language line puts the file's bytes on the grid as they are, an escape too (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~				if (fit) put_cell(g, w, row, c, u + i, k, j, cw, face);~				if (fit) { if (!j) wput(g, w, row, c, u + i, k, cw, ATTR_NONE); z->face = face; }
 core: an overlay at a mark past the window's end draws on the row above it (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~	if (s0 == (size_t)-1) return v;~	if (s0 == (size_t)-2) return v;
 core: an ordered number as wide as its marker is left as typed (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~k <= md->iend - q) over(~k < md->iend - q) over(
 core: a tab in the language line 3 cells wide is drawn 2 (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~			cw -= cw == 3 && u[i] != '\t';~			cw -= cw == 3;
