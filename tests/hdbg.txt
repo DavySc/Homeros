@@ -28,6 +28,6 @@ o
 b tour.c:15
 c
 b tour.c:15
-c 300
+c 50
 bt
 c
