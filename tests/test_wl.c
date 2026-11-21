@@ -2,11 +2,11 @@
    with the pixman renderer; like Hyprland it has a seat, text-input-v3,
    cursor-shape, fractional scale and data-control): configure size, scale,
    keys, key repeat, clipboard both ways, input method, pointer shape, frame
-   callbacks while shown and hidden.  Under headless weston 16 (its kiosk
-   shell configures the output's size; it has no seat): configure size and
-   frame callbacks.  Keys come from wtype (a virtual keyboard), the
-   clipboard's other side is wl-copy and wl-paste, the input method is this
-   test (input-method-v2). */
+   callbacks while shown and hidden, an image's cells.  Under headless weston
+   16 (its kiosk shell configures the output's size; it has no seat):
+   configure size and frame callbacks.  Keys come from wtype (a virtual
+   keyboard), the clipboard's other side is wl-copy and wl-paste, the input
+   method is this test (input-method-v2). */
 #define _GNU_SOURCE
 #include <dirent.h>
 #include <fcntl.h>
@@ -22,6 +22,7 @@
 #include "backend.h"
 #include "keys.h"
 #include "font.h"
+#include "image.h"
 enum { BTN_LEFT = 0x110 };   /* linux/input-event-codes.h clashes with keys.h */
 /* the backend's cell, from its font */
 static int cellw(void) { int w, h, b; font_cell(&w, &h, &b); return w; }
@@ -363,6 +364,21 @@ static void test_sway(void)
 	grid_put(&g, 0, 3, (const unsigned char *)" ", 1, 1, ATTR_GUIDE);
 	show();
 	CHECK(!ink(3 * cellw(), 0, cellw(), cellh(), 0));
+	/* an image (package 21, thread 0's, agreed): Backend.cell is the font's
+	   cell; the JPEG (grey 200, 16 x 16) fills its pixels from row 2, the
+	   background is past it, and its cells redrawn as text take it away */
+	{
+		int w, h, n;
+		backend_wl.cell(&w, &h);
+		CHECK(w == cellw() && h == cellh() && 3 * w > 16 && 3 * h > 16);
+		CHECK((n = image_load("tests/test_image.jpg", 3, 3, w, h, 0x1e1e2e)) > 0);
+		image_put(&g, 2, 0, n, 0);
+		show();
+		CHECK(ink(0, 2 * h, 16, 16, 0) == 256 && !ink(0, 2 * h, 16, 16, 2) && !ink(16, 2 * h, 3 * w - 16, 3 * h, 0));
+		for (int r = 2; r < 5; r++) grid_puts(&g, r, 0, 3, "   ", 3, ATTR_NONE, FACE_NONE);
+		show();
+		CHECK(!ink(0, 2 * h, 3 * w, 3 * h, 0));
+	}
 
 	/* a cluster longer than a cell's 4 bytes is drawn from grid.c's store:
 	   a thumbs up with a skin tone (8 bytes) is one brown glyph */
