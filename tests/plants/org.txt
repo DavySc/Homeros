@@ -78,7 +78,7 @@ org: show: a #+ line keeps hidden markers (against Org)~org-conform ORG_N=2000 S
 org: show: a quoting block's lines keep hidden markers (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		return !c->quoting ? 0 : l < c->end~		return 1 ? 0 : l < c->end
 org: show: a fixed-width line keeps hidden markers (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~(ateol(b + 1) || S[b + 1] == ' ') ? N : meta(&c);~(ateol(b + 1) || S[b + 1] == ' ') ? 0 : meta(&c);
 org: show: a quoting block's end headline keeps hidden stars (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~? nl : stars(l) + 1;~? nl : 0;
-org: show: a headline ending a block read without the line above (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	if (CL) meta(&c);~	if (CL) c = scan_at(f, CL);
+org: show: a headline ending a block read without the line above (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	if (CL) meta(&c);~	if (CL) c = scan_at(f, &f->cs, CL);
 org: show: a marker two matches hide given twice (driver: spans in order)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~if (!k || C[i].a >= C[k - 1].z + CL) C[k++]~if (1) C[k++]
 org: show: a script given part of its spans when out of room~test TESTS=org~~src/org/org.c~CN + (size_t)n + 2 <= CCAP)~CN + (size_t)n <= CCAP)
 org: show: the line start found from each emphasis marker (frame gate)~test TESTS=org~~src/org/org.c~size_t l = p < CL ? from : CL,~size_t l = bol(p),
