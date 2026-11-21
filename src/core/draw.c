@@ -378,10 +378,11 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	   character */
 	mh = hl_at(e, w, l, i, mh, &ms, &mz);
 	/* (one that takes the line break at the view's start when the line
-	   ends before it, as the Visual area; an empty one only where the end
-	   is in view, and without wrap not where 'leftcol' passes the line's
-	   length in bytes, though its end is in view after a Tab: measured) */
-	if (mh && ms <= i && drawn == 1 && (mz > ms || (v >= skip && (w->wrap || w->left <= i)))) {
+	   ends before it, as the Visual area; an empty one with wrap only
+	   where the end is in view, without wrap where 'leftcol' does not
+	   pass the line's length in bytes, also when its end, in columns, is
+	   before the view (a wide character) or in it (a Tab): measured) */
+	if (mh && ms <= i && drawn == 1 && (mz > ms || (w->wrap ? v >= skip : w->left <= i))) {
 		Cell *z = eol_cell(g, w, r, vs - skip, tw, nw);
 		/* never CurSearch on an empty line (get_search_match_hl():
 		   measured) */
