@@ -14,11 +14,16 @@ function Place($dte) {
 }
 foreach ($script in 'into', 'over') {
   # Visual Studio's automation object is not made by its class: start the program and take the object it registers
-  $devenv = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property productPath
+  $where = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+  $devenv = & $where -latest -property productPath
+  $id = "VisualStudio.DTE.$((& $where -latest -property installationVersion).Split('.')[0]).0"   # the name carries the version
   $vs = Start-Process $devenv -PassThru
   $dte = $null
-  for ($i = 0; $i -lt 180 -and -not $dte; $i++) { Start-Sleep -Seconds 1; try { $dte = [Runtime.InteropServices.Marshal]::GetActiveObject('VisualStudio.DTE') } catch {} }
-  if (-not $dte) { "VS $name.${script}: no automation object from $devenv after 180 s"; try { $vs.Kill() } catch {}; exit 1 }
+  for ($i = 0; $i -lt 90 -and -not $dte; $i++) { Start-Sleep -Seconds 1; try { $dte = [Runtime.InteropServices.Marshal]::GetActiveObject($id) } catch {} }
+  if (-not $dte) {
+    "VS $name.${script}: no automation object $id from $devenv after 90 s (running: $(-not $vs.HasExited); known: $((Get-ChildItem Registry::HKEY_CLASSES_ROOT -Name | Where-Object { $_ -like 'VisualStudio.DTE*' }) -join ' '))"
+    try { $vs.Kill() } catch {}; exit 1
+  }
   $lines = @()
   try {
     Again { $dte.SuppressUI = $true }
