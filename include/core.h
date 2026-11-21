@@ -211,6 +211,11 @@ void core_set_want(Editor *e);
    drawn.  keys_feed calls it after every key, where Neovim's normal_check()
    and edit() call update_topline() (thread 0's, agreed). */
 void core_update(Editor *e);
+/* The cursor to line, byte col (0-based; past the end clamped to the last
+   line and its end, as check_cursor()), the wanted column set from it, then
+   core_update: the one way a picker, git, the infoview or :make jump to a
+   position. */
+void core_goto(Editor *e, size_t line, size_t col);
 
 /* Buffers.  :e path, with force (:e!) dropping changes; path NULL is :e
    (load the file again) and "" is :enew.  The window's cursor goes back
