@@ -30,8 +30,10 @@ extern const LspServer *lsp_servers;
    the deletion, when the last is, the end goes to the one before it; a
    range left with nothing is dropped (an empty one stays, as a point).
    Diagnostics are sorted by a; sev is 1 error .. 4 hint.  Lean's file
-   progress is the ranges still being elaborated. */
-typedef struct { size_t a, z; int sev; char *msg; } LspDiag;
+   progress is the ranges still being elaborated.  fz: where Lean's
+   fullRange ends (the range z is clipped from, lean.nvim's infoview shows
+   it); z for other servers.  It follows the edits as z does. */
+typedef struct { size_t a, z, fz; int sev; char *msg; } LspDiag;
 
 /* NULL: no server for path's type, or it could not start. */
 LspDoc *lsp_open(const char *path, const Text *t);
