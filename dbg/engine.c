@@ -171,10 +171,6 @@ static void line_net(Engine *e, uint64_t rip, bool into)
   ROOM(e, ranges, range_cap, 2 * count);
   for (uint32_t i = 0; i < count; i += 1) e->ranges[2 * i] = ((const uint64_t *)starts.p)[i], e->ranges[2 * i + 1] = rdi_row(&m->rdi, e->ranges[2 * i]).opl;
   uint64_t lo = row.first, hi = row.opl;
-  /* the code read goes on through what MSVC's "just my code" puts behind a line under two made-up line numbers */
-  RdiRow after = rdi_row(&m->rdi, hi);
-  if (after.line.line == 0xf00f00 || after.line.line == 0xfeefee) hi = after.opl;
-  if (hi - lo > CODE_MAX) return;
   uint32_t n = code_at(e, base + lo, (uint32_t)(hi - lo));
   uint64_t last_call = 0;
   for (int pass = into ? 0 : 1; pass < 2; pass += 1)   /* into: first find the line's last call */

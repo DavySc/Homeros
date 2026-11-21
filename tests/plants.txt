@@ -636,7 +636,6 @@ engine | dbg/engine.c | if (ev.kind == TARGET_EXCEPTION) target_swallow(e->targe
 engine | dbg/engine.c | if (x.flow == X64_CALL \p\p x.repeats) net_add(e, rip + x.size, END); | if (x.repeats) net_add(e, rip + x.size, END);
 engine | dbg/engine.c | if (x.flow == X64_CALL \p\p x.repeats) net_add(e, rip + x.size, END); | if (x.flow == X64_CALL) net_add(e, rip + x.size, END);
 engine | dbg/engine.c | e->ranges[2 * i + 1] = rdi_row(&m->rdi, e->ranges[2 * i]).opl; | e->ranges[2 * i + 1] = e->ranges[2 * i] + 1;
-engine | dbg/engine.c | if (after.line.line == 0xf00f00 \p\p after.line.line == 0xfeefee) hi = after.opl; | (void)after;
 engine | dbg/engine.c | for (int pass = into ? 0 : 1; pass < 2; pass += 1) | for (int pass = 1; pass < 2; pass += 1)
 engine | dbg/engine.c | else if (x.flow == X64_CALL && !into) net_add( | else if (x.flow == X64_CALL && !into && false) net_add(
 engine | dbg/engine.c | (x.flow == X64_CALL && addr != last_call && to && | (x.flow == X64_CALL && addr == last_call && to &&
