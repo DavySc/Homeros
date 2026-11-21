@@ -43,7 +43,7 @@ static size_t cur_get(Editor *e, const Foc *f)
 static void cur_set(Editor *e, const Foc *f, size_t vis)
 {
 	if (f->v->nvis && vis >= f->v->nvis) vis = f->v->nvis - 1;
-	if (f->b) { e->win->line = vis; e->win->col = 0; e->win->want = 0; core_update(e); }
+	if (f->b) core_goto(e, vis, 0);
 	else if (f->a) f->a->cur = vis;
 	else f->r->cur = vis;
 	core_changed = 1;
@@ -911,11 +911,7 @@ static void visit(Editor *e, const Foc *f)
 		return;
 	}
 	snprintf(path, sizeof path, "%s/%s", f->r->top, rel);
-	if (core_edit_file(e, path, 0)) return;
-	e->win->line = line < core_lines(e) ? line : core_lines(e) - 1;
-	e->win->col = 0;
-	core_set_want(e);
-	core_update(e);
+	if (!core_edit_file(e, path, 0)) core_goto(e, line, 0);
 }
 
 /* --- branches ------------------------------------------------------------------- */
