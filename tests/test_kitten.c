@@ -161,8 +161,9 @@ static int quiet(int t)
 {
 	long long t0 = ms();
 	core_changed = 0;
-	CHECK(!loop_once(t));
-	return !core_changed && ms() - t0 >= t - 5;
+	/* waits it out: a save's own file-watch event wakes the loop */
+	for (long long left; (left = t - (ms() - t0)) > 0; ) CHECK(!loop_once((int)left));
+	return !core_changed;
 }
 
 static void rules(void)

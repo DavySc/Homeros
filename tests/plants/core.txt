@@ -164,3 +164,4 @@ core: 'conceallevel' 2 scrolls as without it (test_core_conceal)~test TESTS=core
 core: 'conceallevel' 2 scrolls the fold way in every filetype (test_core_visual)~test TESTS=core_visual~~src/core/move.c~return ft && !strcmp(ft, "org");~return w->conceal >= 2 || (ft && !strcmp(ft, "org"));
 core: a new window starts without conceal (test_core_conceal)~test TESTS=core_conceal~~src/core/core.c~	w->conceal = 2;   /* Davy's 'conceallevel' */~	w->conceal = 0;
 core: a split forgets 'conceallevel' (test_core_contract)~test TESTS=core_contract~~src/core/win.c~	n->conceal = o->conceal;~	(void)0;
+core: buf_load watches no file, so an outside change while idle goes unseen (watch.py)~test TESTS=shada~~src/core/core.c~			loop_watch(b->watch, on_watch, e);~			(void)on_watch;
