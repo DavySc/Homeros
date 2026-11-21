@@ -38,7 +38,7 @@ keys: gqq is not gqgq (test_keys_gq)~test TESTS=keys_gq~~src/keys/normal.c~	if (
 keys: v $ gq takes the next line too, as if gq did not work on lines (test_keys_gq)~test TESTS=keys_gq~~src/keys/normal.c~ && oap->op_type != OP_FORMAT && oap->end.lnum~ && oap->end.lnum
 keys: the save looks for sqldiff.toml only in the file's own directory (test_keys_gq)~test TESTS=keys_gq~~src/keys/keys.c~				if (n <= 1 || (n == 3 && d[1] == ':')) break;~				break;
 keys: a relative path looks for sqldiff.toml from the root, not the working directory (test_keys_gq)~test TESTS=keys_gq~~src/keys/keys.c~		if (B->path[0] != '/' && B->path[0] != '\\' && B->path[1] != ':') {~		if (0) {
-keys: :Format does nothing on a .sql buffer (test_keys_gq)~test TESTS=keys_gq~~src/keys/keys.c~case 8: if (is_sql()) sql_format(0, text_len(B->text));~case 8: ;
+keys: :Format does nothing on a .sql buffer (test_keys_gq)~test TESTS=keys_gq~~src/keys/keys.c~case 8: if (is_ft(".sql")) sql_format(0, text_len(B->text));~case 8: ;
 keys: gq breaks before the blank at textwidth, not at it (recorded traces)~test TESTS=~~src/keys/ops.c~				if (i > wantcol) {~				if (i >= wantcol) {
 keys: gq leaves the cursor on the last paragraph line, not the last line it went over (recorded traces)~test TESTS=~~src/keys/ops.c~	}¶	W->line = (size_t)l;¶}~	}¶}
 keys: gq keeps a Tab in a paragraph's indent instead of making it spaces (recorded traces)~test TESTS=~~src/keys/ops.c~if (need_set_indent) set_indent(~if (need_set_indent && 0) set_indent(
@@ -167,3 +167,6 @@ keys: 'hlsearch' has no 'redrawtime' (test_keys_ex)~test TESTS=keys_ex~~src/keys
 keys: the first-literal skip passes a byte past 0x7f under \c (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~(ic && (t[x] >= 0x80 || fold(t[x]) == fold(lit)))~(ic && fold(t[x]) == fold(lit))
 keys: a bounded leading repeat skips its run too (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~rp1->simple && rp1->c < 0 ?~rp1->simple ?
 keys: an ASCII character before an accent is its own cluster (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~(c + 1 == (long)n || s[c + 1] < 0x80)~(c + 1 == (long)n || 1)
+keys: cit and ciT wait for their keys in every buffer, not only .org (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		if (*m == 'c' && !is_ft(".org")) continue;~
+keys: a map's edit joins the next command's undo step (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		undo_close(e->buf->undo);   /* a map is one command: keys_feed() closes after each */~
+keys: ciT steps forward as cit does (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~org_cycle(m[2] == 't' ? 1 : -1)~org_cycle(1)

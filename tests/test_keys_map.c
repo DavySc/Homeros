@@ -111,6 +111,29 @@ int main(void)
 	CHECK(d.quit);
 	core_free(&d);
 	unlink(path);
+
+	/* nvim-orgmode's cit and ciT, in .org buffers only: each one undoable
+	   change; elsewhere c is Vim's at once, and in Org c then w is cw */
+	char org[] = "/tmp/keys_mapXXXXXX.org";
+	fd = mkstemps(org, 4);
+	CHECK(fd >= 0 && write(fd, "* a b\n", 6) == 6 && !close(fd));
+	CHECK(!core_open(&d, org));
+	feed(&d, "cit");
+	CHECK(at(&d, "* TODO a b\n", 0));
+	feed(&d, "$cit");
+	CHECK(at(&d, "* NEXT a b\n", 9));
+	feed(&d, "ciT");
+	CHECK(at(&d, "* TODO a b\n", 9));
+	feed(&d, "u");
+	CHECK(at(&d, "* NEXT a b\n", 9));
+	feed(&d, "0wwcwc\x1b");
+	CHECK(at(&d, "* NEXT c b\n", 7));
+	core_free(&d);
+	unlink(org);
+	CHECK(!core_open(&d, NULL));
+	feed(&d, "c");
+	CHECK(!d.ks.pending);
+	core_free(&d);
 	puts("test_keys_map: ok");
 	return 0;
 }

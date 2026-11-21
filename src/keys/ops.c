@@ -3,9 +3,12 @@
    op_replace(), op_insert(), do_addsub()), with FEATURES.md's settings
    ('expandtab', 'shiftwidth' 4, 'nrformats' bin,hex, 'virtualedit' block). */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include "k.h"
 #include "loop.h"
+#include "org.h"
 #include "sqlfmt.h"
 #include "uni.h"
 
@@ -1715,34 +1718,60 @@ int insert_reg(int regname, int literally)
 
 /* ---- gq and :Format ---- */
 
-int is_sql(void)
+int is_ft(const char *ext)
 {
-	size_t n = B->path ? strlen(B->path) : 0;
-	return n > 4 && !memcmp(B->path + n - 4, ".sql", 4);
+	size_t n = B->path ? strlen(B->path) : 0, k = strlen(ext);
+	return n > k && !memcmp(B->path + n - k, ext, k);
 }
 
 /* conform.nvim with sqldiff, Davy's formatter for .sql: the whole text goes
    to the formatter and only the changes in bytes [a, z) are applied, as
    sqlfmt's range does */
+/* [a, z) becomes the n bytes of res as one change; the cursor stays on its
+   text: after the edit it moves with it, inside it keeps its offset into
+   the new text (as near as fits) */
+static void replace(size_t a, size_t z, const char *res, size_t n)
+{
+	if (z == a && !n) return;
+	size_t p = core_line_start(E, W->line) + W->col;
+	p = p >= z ? p - (z - a) + n : p > a ? a + (p - a < n ? p - a : n) : p;
+	core_edit(E, a, z - a, res, n);
+	buf_changed();
+	W->line = text_line_of(B->text, p);
+	W->col = p - core_line_start(E, W->line);
+	check_cursor();
+	W->col = (size_t)head(ml_get((long)W->line), (long)W->col);
+}
+static int oom(void) { core_msg(E, "E342: Out of memory!"); return -1; }
+
 int sql_format(size_t a, size_t z)
 {
 	const char *res;
 	size_t n;
 	int kept = sqlfmt(B->text, &a, &z, &res, &n);
-	if (kept < 0) { core_msg(E, "E342: Out of memory!"); return -1; }
-	if (z > a || n) {
-		/* the cursor stays on its text: after the edit it moves with it,
-		   inside it keeps its offset into the new text (as near as fits) */
-		size_t p = core_line_start(E, W->line) + W->col;
-		p = p >= z ? p - (z - a) + n : p > a ? a + (p - a < n ? p - a : n) : p;
-		core_edit(E, a, z - a, res, n);
-		buf_changed();
-		W->line = text_line_of(B->text, p);
-		W->col = p - core_line_start(E, W->line);
-		check_cursor();
-		W->col = (size_t)head(ml_get((long)W->line), (long)W->col);
-	}
+	if (kept < 0) return oom();
+	replace(a, z, res, n);
 	if (kept) core_msg(E, "%d statement%s kept as written", kept, kept == 1 ? "" : "s");
+	return 0;
+}
+
+/* nvim-orgmode's cit and ciT (org_todo, org_todo_prev), kittymax's
+   org-todo 'right and 'left: the entry's next or previous TODO keyword */
+int org_cycle(int dir)
+{
+	size_t n = text_len(B->text), a, z, len;
+	char *s = malloc(n + 1);
+	if (!s) return oom();
+	text_read(B->text, 0, s, n);
+	/* local time without the platform's timegm or tm_gmtoff: the local
+	   clock read as if it were UTC, less now, is the offset */
+	time_t t = time(NULL);
+	struct tm g = *gmtime(&t);
+	g.tm_isdst = -1;
+	const char *r = org_todo_step(s, n, core_line_start(E, W->line) + W->col, dir, (long)((t + (t - mktime(&g))) / 60), &a, &z, &len);
+	free(s);
+	if (!r) return oom();
+	replace(a, z, r, len);
 	return 0;
 }
 
@@ -1840,7 +1869,7 @@ static void format_lines(long line_count)
    the operator's lines; other buffers op_format() */
 void op_format(Oparg *oap)
 {
-	if (is_sql()) {
+	if (is_ft(".sql")) {
 		sql_format(core_line_start(E, (size_t)oap->start.lnum), core_line_start(E, (size_t)oap->end.lnum + 1));
 		return;
 	}

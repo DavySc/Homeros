@@ -117,7 +117,8 @@ static void key(int k, int pending)
 /* only those whose targets exist; the SPC g and SPC h ones are git.h's */
 static const char *const maps[] = {
 	" ff", " fg", " fr", " ,", " e", " pv", "-", " D",
-	" gg", " gs", " gl", " gL", " gd", " gb", " gB", " hs", " hr", " hS", " hu", " hp", " uk"
+	" gg", " gs", " gl", " gL", " gd", " gb", " gB", " hs", " hr", " hS", " hu", " hp", " uk",
+	"cit", "ciT"   /* nvim-orgmode's, buffer-local to .org */
 };
 static int lead[3], nlead;   /* the keys typed of a map not yet complete */
 
@@ -132,10 +133,12 @@ static void dashboard(Editor *e) { if (!core_edit_file(e, "", 0)) tools_dash(e, 
 static int map(Editor *e, int k)
 {
 	if (!nlead && (e->mode != MODE_NORMAL || e->ks.visual || !normal_mappable(0))) return 0;
+	E = e;   /* for is_ft() and the maps that edit */
 	lead[nlead++] = k;
 	int part = 0;
 	for (size_t i = 0; i < sizeof maps / sizeof *maps; i++) {
 		const char *m = maps[i];
+		if (*m == 'c' && !is_ft(".org")) continue;
 		int j = 0;
 		while (j < nlead && m[j] == lead[j]) j++;
 		if (j < nlead) continue;
@@ -148,9 +151,11 @@ static int map(Editor *e, int k)
 		case 'e': tools_pick(e, PICK_EXPLORER); break;
 		case 'p': tools_oil(e, NULL); break;
 		case 'u': kitten_toggle(e); break;
+		case 'i': org_cycle(m[2] == 't' ? 1 : -1); break;
 		case 'D': dashboard(e); break;
 		default: git_leader(e, m[1], m[2]);
 		}
+		undo_close(e->buf->undo);   /* a map is one command: keys_feed() closes after each */
 		return 1;
 	}
 	if (part) return e->ks.pending = 1;   /* keys_input() sends the next keys here first */
@@ -203,7 +208,7 @@ static int ex_write(int force)
 {
 	char d[4096];
 	size_t n = 0;
-	if (is_sql()) {
+	if (is_ft(".sql")) {
 		if (B->path[0] != '/' && B->path[0] != '\\' && B->path[1] != ':') {
 			if (!getcwd(d, sizeof d - 1)) d[0] = 0;
 			n = strlen(d);
@@ -312,7 +317,7 @@ static void ex(void)
 	case 5: case 6: if (!ex_write(i == 6)) core_close(E, 0); break;
 	case 7: if (!core_modified(B) || !ex_write(0)) core_close(E, 0); break;
 	/* Davy's :Format (conform.nvim): the whole buffer */
-	case 8: if (is_sql()) sql_format(0, text_len(B->text)); break;
+	case 8: if (is_ft(".sql")) sql_format(0, text_len(B->text)); break;
 	case 9: kitten_paw(E); break;
 	default: dashboard(E);
 	}
