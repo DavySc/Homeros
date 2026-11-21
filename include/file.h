@@ -23,6 +23,10 @@ typedef struct {
 /* Reads the whole file into *data (malloc'd; free it).  A missing file gives
    0 bytes and id->exists = 0.  0 ok, -1 error (errno set). */
 int file_load(const char *path, char **data, size_t *n, FileId *id);
+/* path's FileId without reading it (the image cache looks on every
+   lookup; on Windows only this module turns UTF-8 paths into wide ones).
+   A missing file gives id->exists = 0.  0 ok, -1 error (errno set). */
+int file_id(const char *path, FileId *id);
 
 /* Neovim's 'fileformats' "unix,dos" ("dos,unix" on Windows), as readfile()
    decides: dos when the data has a LF and every LF follows a CR; data with
