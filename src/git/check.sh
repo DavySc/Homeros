@@ -8,6 +8,7 @@
 # below, which is Wine's.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+. tools/winpass.sh
 run=wine; [ "${OS:-}" = Windows_NT ] && run=
 for t in zig $run; do
 	command -v $t >/dev/null || { echo "src/git/check.sh: $t is not on PATH"; exit 2; }
@@ -34,12 +35,9 @@ for t in test_git_win ${run:+test_git}; do
 	zig cc -target x86_64-windows-gnu -std=c17 -Wall -Wextra -Werror -D_DEFAULT_SOURCE -Iinclude -O1 -g \
 	  -fsanitize=undefined -fsanitize-trap=undefined -o build/win/$t.exe tests/$t.c src/git/*.c \
 	  $(pick core) $(pick text) $(pick undo) $(pick uni) $(pick keys) $(pick loop) $(pick file) $(pick grid) \
-	  $(pick theme) $(pick kitten) $(pick lsp) $(pick sqlfmt) $(pick tools) $(pick shada) $(pick str) src/syntax/tsql.c -lshell32   # str: package 17's, agreed by thread 0
+	  $(pick theme) $(pick kitten) $(pick lsp) $(pick sqlfmt) $(pick tools) $(pick shada) $(pick str) $(pick org) src/syntax/tsql.c -lshell32   # str: package 17's, agreed by thread 0; org: keys calls org_todo_step
 done
-# Wine has reported status 0 for a test that trapped (measured, 1 of 6 runs
-# of the alignment plant): a test passed only once it printed its last line
-pass() { timeout "$1" $run build/win/$2.exe | tee build/win/$2.out && grep -q "^$2: " build/win/$2.out; }
-pass 300 test_git_win || { echo "FAIL test_git_win"; exit 1; }
+pass 300 build/win/test_git_win.exe $run || { echo "FAIL test_git_win"; exit 1; }
 [ -n "$run" ] || exit 0
 
 # MinGit, pinned by its hash
@@ -66,4 +64,4 @@ rm -rf "$TEST_BRIDGE" && mkdir -p "$TEST_BRIDGE"
 	else sleep 0.002; fi
 done ) &
 trap 'touch "$TEST_BRIDGE/stop"; rm -rf "$TEST_TMP"' EXIT
-pass 1800 test_git || { echo "FAIL test_git (Windows)"; exit 1; }
+pass 1800 build/win/test_git.exe wine || { echo "FAIL test_git (Windows)"; exit 1; }
