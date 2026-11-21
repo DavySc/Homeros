@@ -12,6 +12,7 @@
 #include "check.h"
 #include "core.h"
 #include "keys.h"
+#include "loop.h"
 #include "syntax.h"
 #include "grid.h"
 #include "../src/core/core_int.h"
@@ -289,6 +290,22 @@ int main(void)
 	for (int i = 0; i < 4; i++) unlink(fn[i]);
 	grid_free(&g);
 	unlink(path);
+	/* a file opened after start-up is watched for outside changes (W11),
+	   also one in another directory (on Windows each directory has its
+	   own handle); the editor started on the dashboard, with no file */
+	char dir[2][32] = { "/tmp/core_wAXXXXXX", "/tmp/core_wBXXXXXX" }, wf[2][48];
+	CHECK(!core_open(&e, NULL));
+	for (int i = 0; i < 2; i++) {
+		CHECK(mkdtemp(dir[i]));
+		snprintf(wf[i], sizeof wf[i], "%s/w", dir[i]);
+		CHECK((f = fopen(wf[i], "w")) && fputs("a\n", f) >= 0 && !fclose(f));
+		CHECK(!core_edit_file(&e, wf[i], 0));
+		CHECK((f = fopen(wf[i], "w")) && fputs("bb\n", f) >= 0 && !fclose(f));
+		for (int k = 0; k < 100 && !e.buf->changed; k++) loop_once(10);
+		CHECK(e.buf->changed);
+	}
+	core_free(&e);
+	for (int i = 0; i < 2; i++) unlink(wf[i]), rmdir(dir[i]);
 	printf("test_core_contract: ok\n");
 	return 0;
 }

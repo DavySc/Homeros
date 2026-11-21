@@ -272,6 +272,14 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	   character at ms; CurSearch for the one under w's cursor */
 	size_t ms = 0, mz = 0;
 	int mh = keys_hl(e, w, l, 0, &ms, &mz);
+	/* conceal (win_line(): conceallevel=2, concealcursor=""): spans drawn
+	   as one character or none, but not on the current window's cursor
+	   line nor in the Visual area; off counts the cells they freed on row
+	   orow, which a Tab gives back (fix_for_boguscols()) */
+	Conceal cs[64];
+	size_t nc = syn && !(w == e->win && l == w->line) && area != FACE_VISUAL ? syntax_conceal(syn, l, cs, 64) : 0,
+	       ci = 0, off = 0;
+	int orow = r;
 	/* 'cursorline' (Davy's pick of the UI proposals): CursorLine under the
 	   text area of the cursor line's rows, below syntax and render-markdown
 	   (low priority: it has no fg), not in the current window in Visual
@@ -315,17 +323,33 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 		int lead = cw == 3 && *s != '\t', wide = *s >= 0x80 && cw - lead == 2;
 		while (mh && (mz > ms ? i >= mz : i > ms)) mh = keys_hl(e, w, l, mz > ms ? mz : i, &ms, &mz);
 		unsigned char sb = !mh || i < ms ? cl : search(w, l, ms, mz);
+		while (ci < nc && i >= cs[ci].z) ci++;
+		const Conceal *cc = ci < nc && i >= cs[ci].a ? &cs[ci] : NULL;
 		for (int j = 0; j < cw; j++, v++) {
 			if (v < skip) continue;
 			size_t d = v - skip;
 			int row = w->wrap ? r + (int)(d / (size_t)tw) : r;
-			if (!w->wrap && d >= (size_t)tw) { drawn = 2; break; }
+			if (row != orow) orow = row, off = 0;
+			if (!w->wrap && d - off >= (size_t)tw) { drawn = 2; break; }
 			if (row >= w->h) { drawn = 0; break; }
-			int c = nw + (int)(d % (size_t)tw);
+			int c = nw + (int)(w->wrap ? d % (size_t)tw : d) - (int)off;
 			unsigned char face = syn ? fc[i - f0] : 0;
 			/* a double-width character whose second cell starts the area
 			   is in it (win_line()) */
 			unsigned char vis = (v >= from || (wide && v + 1 == from)) && v < to && (v < xf || v > xt) ? area : 0;
+			/* the '<' where the view starts in a character's second half
+			   is drawn even when the character is concealed, unless it
+			   starts a span that has a character: then neither is
+			   (measured) */
+			if (cc && (!(wide && j - lead == 1 && v == skip) || (i == cc->a && *cc->s))) {
+				/* the span's character in its first byte's first cell,
+				   and in the '>' before it where a double-width one wraps
+				   (win_line() reads that character twice: measured) */
+				if (i == cc->a && j <= lead && *cc->s) put_cell(g, w, row, c, (const unsigned char *)cc->s, strlen(cc->s), 0, 1, face, vis ? vis : sb);
+				else off++;
+				continue;
+			}
+			for (; *s == '\t' && off; off--) put_cell(g, w, row, c++, s, k, 0, cw, face, vis ? vis : sb);
 			if (row == r && c < cover) {
 				/* "<<<" over a double-width character's first cell leaves a
 				   blank in its second (measured) */
@@ -338,7 +362,7 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 			   which the core draws dim, as '~') */
 			/* '>' is NonText alone, off CursorLine; '<' on it (multi_attr;
 			   measured) */
-			if (j < lead || (wide && j == 0 && !w->wrap && d == (size_t)tw - 1))
+			if (j < lead || (wide && j == 0 && !w->wrap && d - off == (size_t)tw - 1))
 				wputs(g, w, row, c, ">", FACE_NON_TEXT);   /* not in the area (measured) */
 			else if (wide && j - lead == 1 && v == skip) {
 				/* in the area if its character is (measured) */
