@@ -106,6 +106,7 @@ int main(int argc, char **argv)
 				lsp_flush(e.buf->lsp);   /* one didChange per command (Helix) */
 				shada_track(&e);
 				bridge_update(&e);
+				lsp_goals(&e);
 			}
 			loop_int = 0;
 		}

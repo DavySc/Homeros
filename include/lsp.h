@@ -57,15 +57,29 @@ const LspDiag *lsp_progress(const LspDoc *d, int *n);
    mark).  No allocation: asked every frame. */
 const char    *lsp_name(const LspDoc *d, int *work);
 
-/* Requests about byte pos: hover (K) and Lean's goal ($/lean/plainGoal).
+/* Requests about byte pos: hover (K).
    A new one cancels the last of its kind ($/cancelRequest).  lsp_answer is
    the reply's text (Markdown) while the text is unchanged, else NULL. */
-enum { LSP_HOVER, LSP_GOAL, LSP_NASK };
+enum { LSP_HOVER, LSP_NASK };
 void        lsp_ask(LspDoc *d, int kind, size_t pos);
 const char *lsp_answer(const LspDoc *d, int kind);
 
 /* When something shown changes (a reply comes in, the server dies) it
    sets core_changed (core.h). */
+
+/* lean.nvim's infoview as text: the goals at the cursor
+   (Lean.Widget.getInteractiveGoals over Lean's RPC, with Lean's diff marks
+   coloured as lean.nvim does), then the cursor line's messages, in a
+   window of its own.  lean.nvim's defaults: it opens when a window shows a
+   Lean buffer (autoopen), on the right at a third of the width, or at the
+   bottom at a third of the height when the screen is less than 2.5 times
+   wider than tall.  It shows what is at the cursor of the last current
+   window whose buffer has a Lean LspDoc, so an Org note whose b->lsp is a
+   Lean shadow document gets it too.  At most one question to Lean at a
+   time.  main.c calls it after each command. */
+struct Editor;
+void lsp_goals(struct Editor *e);
+void lsp_goals_toggle(struct Editor *e);   /* \i: close it, or open it again */
 
 /* The infoview bridge (package 14) relays Lean's JSON as it passes,
    unparsed.  lsp_tap, when set, is given each message a Lean server
