@@ -1,0 +1,24 @@
+STEP start main : 5368713264
+STEP into main : 5368713288
+STEP into main : 5368713300
+STEP into __scrt_common_main_seh : 5368713855
+STEP into __scrt_common_main_seh : 5368713857
+STEP into __scrt_is_managed_app : 5368716304
+STEP into __scrt_is_managed_app : 5368716308
+STEP into __scrt_is_managed_app : 5368716316
+STEP into __scrt_is_managed_app : 5368716321
+STEP into __scrt_is_managed_app : 5368716328
+STEP into __scrt_is_managed_app : 5368716332
+STEP into __scrt_is_managed_app : 5368716341
+STEP into __scrt_is_managed_app : 5368716350
+STEP into __scrt_is_managed_app : 5368716360
+STEP into __scrt_is_managed_app : 5368716371
+STEP into __scrt_common_main_seh : 5368713862
+STEP into __scrt_common_main_seh : 5368713951
+STEP into exit : 5368839636
+STEP into common_exit : 5368838996
+STEP into common_exit : 5368839028
+STEP into common_exit : 5368839107
+STEP into common_exit : 5368839111
+STEP into __crt_seh_guarded_call<void>::operator()<void <lambda>(void),void <lambda>(void) &,void <lambda>(void)> : 5368838452
+STEP into ended

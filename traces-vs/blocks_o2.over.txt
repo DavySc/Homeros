@@ -1,0 +1,7 @@
+STEP start main : 5368713264
+STEP over main : 5368713288
+STEP over main : 5368713300
+STEP over __scrt_common_main_seh : 5368713855
+STEP over __scrt_common_main_seh : 5368713857
+STEP over __scrt_common_main_seh : 5368713951
+STEP over ended
