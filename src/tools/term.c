@@ -28,6 +28,8 @@ static struct {
 	int nslots;               /* slots from SLOT0 taken so far */
 } T = { .id = -1 };
 
+int tools_term(void) { return T.open; }
+
 /* Catppuccin Mocha's terminal colours (catppuccin/ghostty), so a shell
    looks as in Davy's Ghostty; colours 16 to 255 stay xterm's */
 static const GhosttyColorRgb ansi[16] = {
