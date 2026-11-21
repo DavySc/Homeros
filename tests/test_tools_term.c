@@ -1,10 +1,13 @@
 /* The terminal end to end: the real loop, sh on a pseudo-terminal,
    libghostty-vt, keys through tools_key and the screen read back from the
    drawn grid.  Ctrl+. opens, hides and shows it again with the same shell;
-   colours (palette, Catppuccin's ANSI, 24-bit, inverse) become faces;
-   cursor keys follow DECCKM; a wide character takes two cells; the screen
-   follows the editor's size; more colours than slots fall back without
-   leaving a cell in a reused slot's old colours; exit closes it. */
+   colours (palette, Catppuccin's ANSI, 24-bit, inverse) and styles become
+   faces; the title, the cursor's shape and COLORTERM reach the screen;
+   cursor keys follow DECCKM, Delete is xterm's; the wheel scrolls back and
+   a key returns; a wide character takes two cells; the screen follows the
+   editor's size; more colours than slots fall back without leaving a cell
+   in a reused slot's old colours; a hidden shell redraws nothing; exit
+   closes it. */
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -77,18 +80,35 @@ static int fg(const Cell *x, int r, int gr, int b)
 	return (f->style & FACE_FG) && f->fg[0] == r && f->fg[1] == gr && f->fg[2] == b;
 }
 
+/* x's face has the style bits s and none of the bits not */
+static int style(const Cell *x, int s, int not)
+{
+	const Face *bg, *f = grid_face(x, &bg);
+	return (f->style & (s | not)) == s;
+}
+
+/* the number n of the topmost "Ln" line on the screen; 0 none */
+static int top(void)
+{
+	int i = 0, n = 0, end = g.rows * g.cols - 1;
+	while (i < end && !(g.c[i].ch[0] == 'L' && g.c[i + 1].ch[0] >= '0' && g.c[i + 1].ch[0] <= '9')) i++;
+	while (++i <= end && g.c[i].ch[0] >= '0' && g.c[i].ch[0] <= '9') n = n * 10 + g.c[i].ch[0] - '0';
+	return n;
+}
+
 int main(void)
 {
 	setenv("SHELL", "/bin/sh", 1);
 	setenv("PS1", "$ ", 1);
 	setenv("ENV", "/dev/null", 1);
+	setenv("COLORTERM", "no", 1);   /* the pty's own must win */
 	CHECK(!core_open(&e, NULL));
 	CHECK(!grid_resize(&g, 30, 100));
 	draw();
 	CHECK(tools_key(&e, KEY_CTRL_DOT));
 	settle();
 	draw();
-	CHECK(find("Terminal") || find("$ "));
+	CHECK(find(" Terminal "));
 	/* the float: snacks' 90%, a rounded border */
 	CHECK(g.c[(29 - 27) / 2 * g.cols + 5].len == 3 && !memcmp(g.c[(29 - 27) / 2 * g.cols + 5].ch, "\xe2\x95\xad", 3));
 
@@ -105,6 +125,36 @@ int main(void)
 	/* a wide character takes two cells */
 	type("printf '\\346\\274\\242Z\\n'\n");
 	CHECK((x = find("Z")) && x[-2].len == 3 && x[-1].len == 0);
+	/* styles: bold, strikethrough, undercurl apart from underline, and
+	   invisible as the background (SGR 8) */
+	type("printf '\\033[1mBO\\033[0m \\033[9mST\\033[0m \\033[4:3mUC\\033[0m \\033[4mUL\\033[0m \\033[8mIV\\033[0m\\n'\n");
+	CHECK((x = find("BO")) && style(x, FACE_BOLD, 0));
+	CHECK((x = find("ST")) && style(x, FACE_STRIKE, 0));
+	CHECK((x = find("UC")) && style(x, FACE_UNDERCURL, FACE_UNDERLINE));
+	CHECK((x = find("UL")) && style(x, FACE_UNDERLINE, FACE_UNDERCURL));
+	CHECK((x = find("IV")) && fg(x, 30, 30, 46));
+	/* the OSC title on the border (octal, so the command line does not
+	   show it), the cursor's shape (DECSCUSR), true colour advertised */
+	type("printf '\\033]2;t\\164l\\007\\033[5 q'; echo $COLORTERM\n");
+	CHECK(find(" ttl ") && find("truecolor") && g.cshape == CURSOR_BAR);
+	type("printf '\\033[4 q'\n");
+	CHECK(g.cshape == CURSOR_UNDER);
+	/* Delete is xterm's */
+	type("cat -v\n");
+	CHECK(tools_key(&e, KEY_DEL));
+	type("\n");
+	CHECK(find("^[[3~"));
+	CHECK(tools_key(&e, 4));
+	/* the wheel scrolls back 3 lines a notch; a key goes back to the end */
+	type("for i in $(seq 100); do echo L$i; done\n");
+	int t0 = top();
+	CHECK(t0 > 1 && tools_key(&e, KEY_WHEEL_UP));
+	draw();
+	CHECK(top() == t0 - 3);
+	type(" ");
+	CHECK(top() == t0);
+	CHECK(tools_key(&e, 21));   /* CTRL-U drops the space */
+	settle();
 
 	/* cursor keys: CSI normally, SS3 in application mode (DECCKM) */
 	type("printf '\\033[?1h'; cat -v\n");
@@ -148,6 +198,13 @@ int main(void)
 	CHECK(tools_key(&e, KEY_CTRL_DOT));
 	draw();
 	CHECK(!find("kept") && !tools_key(&e, 'x'));
+	/* a hidden shell's output does not redraw the editor */
+	CHECK(tools_key(&e, KEY_CTRL_DOT));
+	type("sleep 0.6; echo late\n");
+	CHECK(tools_key(&e, KEY_CTRL_DOT));
+	core_changed = 0;
+	for (long long t = ms(); ms() - t < 1000;) CHECK(!loop_once(100));
+	CHECK(!core_changed);
 	CHECK(tools_key(&e, KEY_CTRL_DOT));
 	draw();
 	CHECK(find("kept"));

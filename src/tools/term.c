@@ -26,6 +26,7 @@ static struct {
 	unsigned frame;           /* term_draw's count */
 	unsigned used[SLOTS];     /* the frame a slot was last drawn in */
 	int nslots;               /* slots from SLOT0 taken so far */
+	unsigned short memo[4096];   /* a Face's hash to its slot, as Neovim's get_attr_entry hashes */
 } T = { .id = -1 };
 
 /* Catppuccin Mocha's terminal colours (catppuccin/ghostty), so a shell
@@ -131,14 +132,20 @@ int term_key(Editor *e, int k)
    redrawn instead).  FACE_NONE when every slot is in use. */
 static int face_of(const Face *f)
 {
-	int k = SLOT0, old = 0;
-	for (; k < SLOT0 + T.nslots && memcmp(&faces[k], f, sizeof *f); k++)
-		if (!old && T.used[k] + 1 < T.frame) old = k;
-	if (k == SLOT0 + T.nslots) {
-		if (k < SLOTS) T.nslots++;
-		else if (old) k = old;
-		else return FACE_NONE;
-		faces[k] = *f;
+	unsigned h = 0;
+	for (size_t i = 0; i < sizeof *f; i++) h = h * 31 + ((const unsigned char *)f)[i];
+	unsigned short *m = &T.memo[h % 4096];
+	int k = *m, old = 0;
+	if (k < SLOT0 || memcmp(&faces[k], f, sizeof *f)) {   /* a face is in one slot at most */
+		for (k = SLOT0; k < SLOT0 + T.nslots && memcmp(&faces[k], f, sizeof *f); k++)
+			if (!old && T.used[k] + 1 < T.frame) old = k;
+		if (k == SLOT0 + T.nslots) {
+			if (k < SLOTS) T.nslots++;
+			else if (old) k = old;
+			else return FACE_NONE;
+			faces[k] = *f;
+		}
+		*m = (unsigned short)k;
 	}
 	T.used[k] = T.frame;
 	return k;

@@ -89,3 +89,16 @@ dashboard animation: the whiskers wiggle a frame late (recorded frames)~test TES
 dashboard animation: the shimmer moves a step every frame (recorded frames)~test TESTS=tools_dash~~src/tools/dash.c~(i + D.n / 2) % 12~(i + D.n) % 12
 dashboard animation: the gradient skips teal (recorded frames)~test TESTS=tools_dash~~src/tools/dash.c~FACE_SHIMMER_SAPPHIRE, FACE_SHIMMER_TEAL, FACE_DASHBOARD_FROG~FACE_SHIMMER_SAPPHIRE, FACE_SHIMMER_SAPPHIRE, FACE_DASHBOARD_FROG
 dashboard animation: the twitched ear keeps its old role (recorded frames)~test TESTS=tools_dash~~src/tools/dash.c~art[y].role[x + j - i]~art[y].role[x]
+terminal: pty: COLORTERM not truecolor~test TESTS="loop tools_term"~~src/loop/loop.c~		env[n++] = "COLORTERM=truecolor";¶~¶
+terminal: pty: the environment copy leaks~test TESTS="loop tools_term"~~src/loop/loop.c~	if (env != environ) free(env);~
+terminal: invisible text shown~test TESTS=tools_term~~src/tools/term.c~	if (st.flags & GHOSTTY_STYLE_FLAG_INVISIBLE) { fg = hasbg ? bg : col->background; hasfg = 1; }~
+terminal: strikethrough dropped~test TESTS=tools_term~~src/tools/term.c~st.flags & GHOSTTY_STYLE_FLAG_STRIKETHROUGH ? FACE_STRIKE : 0~0
+terminal: undercurl drawn as an underline~test TESTS=tools_term~~src/tools/term.c~ul == GHOSTTY_SGR_UNDERLINE_CURLY ? FACE_UNDERCURL~ul == 99 ? FACE_UNDERCURL
+terminal: wheel scrolls the wrong way~test TESTS=tools_term~~src/tools/term.c~k == KEY_WHEEL_UP ? -3 : 3~k == KEY_WHEEL_UP ? 3 : -3
+terminal: Delete sends nothing~test TESTS=tools_term~~src/tools/term.c~} else if (k == KEY_DEL) {~} else if (k == KEY_DEL + 99) {
+terminal: a key leaves the view in the scrollback~test TESTS=tools_term~~src/tools/term.c~	ghostty_terminal_scroll_viewport(T.t, (GhosttyTerminalScrollViewport){ .tag = GHOSTTY_TERMINAL_SCROLL_VIEWPORT_BOTTOM });~
+terminal: the OSC title is not shown~test TESTS=tools_term~~src/tools/term.c~&& title.len && title.len < sizeof tl - 2~&& title.len && 0
+terminal: hidden output redraws the editor~test TESTS=tools_term~~src/tools/term.c~if (T.open || !stream) core_changed = 1;~core_changed = 1;
+terminal: bold dropped~test TESTS=tools_term~~src/tools/term.c~st.flags & GHOSTTY_STYLE_FLAG_BOLD ? FACE_BOLD : 0~0
+terminal: cursor shape ignored~test TESTS=tools_term~~src/tools/term.c~cur.visual_style == GHOSTTY_CURSOR_STYLE_BAR ? CURSOR_BAR~0 ? CURSOR_BAR
+terminal: the slot memo trusted without comparing the slot's face~test TESTS=tools_term~~src/tools/term.c~if (k < SLOT0 || memcmp(&faces[k], f, sizeof *f)) {~if (k < SLOT0) {

@@ -9,6 +9,7 @@
 { pkgs ? import (builtins.fetchTarball "https://channels.nixos.org/nixpkgs-unstable/nixexprs.tar.xz") {},
   target ? "x86_64-linux-gnu.2.17" }:
 let
+  flags = "-Demit-lib-vt -Doptimize=ReleaseFast -Dcpu=baseline";   # the windows job (check.yml) reads this line
   git = url: rev: builtins.fetchGit { inherit url rev; shallow = true; };
   zip = name: url: hash: pkgs.fetchzip { inherit name url hash; };   # turbo-unwrapped's names, so the cache's copies match
   deps = {
@@ -30,7 +31,7 @@ in pkgs.stdenvNoCC.mkDerivation {
     ${pkgs.lib.concatStrings (pkgs.lib.mapAttrsToList (k: v: "cp -r ${v} $TMPDIR/p/${k}\n") deps)}
     chmod -R u+w $TMPDIR/p
     export ZIG_GLOBAL_CACHE_DIR=$TMPDIR/zc HOME=$TMPDIR
-    zig build -Demit-lib-vt --system $TMPDIR/p -Doptimize=ReleaseFast -Dcpu=baseline -Dtarget=${target} --prefix $out
+    zig build ${flags} --system $TMPDIR/p -Dtarget=${target} --prefix $out
     # The static library bundles Zig's compiler-rt and UBSan runtime, whose
     # memcpy, libm and __ubsan_* handlers then replaced glibc's and the
     # sanitizers' in every binary that links it (a planted overflow in

@@ -74,9 +74,10 @@ jobs:
           # zig cannot run the runner's pkg-config (Strawberry Perl's .BAT)
           PATH=$(printf %s "$PATH" | tr : '\n' | grep -vi strawberry | paste -sd: -)
           rev=$(sed -n 's|.*github.com/ghostty-org/ghostty" "\([0-9a-f]*\)".*|\1|p' src/tools/ghostty.nix)
+          flags=$(sed -n 's|^ *flags = "\(.*\)";.*|\1|p' src/tools/ghostty.nix)
           git init -q build/ghostty-src && cd build/ghostty-src
           git fetch -q --depth 1 https://github.com/ghostty-org/ghostty "$rev" && git checkout -q FETCH_HEAD
-          zig build -Demit-lib-vt -Doptimize=ReleaseFast -Dcpu=baseline -Dtarget=x86_64-windows-gnu --prefix ../ghostty-out
+          zig build $flags -Dtarget=x86_64-windows-gnu --prefix ../ghostty-out
           mkdir -p ../ghostty && cp -r ../ghostty-out/include ../ghostty/ && cp ../ghostty-out/lib/ghostty-vt-static.lib ../ghostty/windows.lib
           test -s ../ghostty/windows.lib
       - run: bash src/git/check.sh
