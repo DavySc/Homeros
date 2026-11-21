@@ -63,7 +63,8 @@ core: bullets do not cycle with the nesting level (test_core_markdown)~test TEST
 core: an ordered item keeps its number 1 or 0 (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~x > 1 ? x : md->index~x
 core: a [-] box gets the checked icon (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~md->task == 'x' ? 1 : 2~md->task == 'x' ? 1 : 1
 core: a checkbox item gets a bullet, not a box (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~	if (md->task) {~	if (0) {
-core: a box's right_pad not drawn (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~ " ", 1, 1, FACE_NONE, 0);~ " ", 0, 1, FACE_NONE, 0);
+core: a box's right_pad not drawn (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~ " ", 1, 1, FACE_NONE, cl);~ " ", 0, 1, FACE_NONE, cl);
+core: a box on the cursor line without its background (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~&md, a0, a1, b1, t0, cl);~&md, a0, a1, b1, t0, 0);
 core: a code block's background not drawn (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~	if (md->code == 2) bar(~	if (md->code == 9) bar(
 core: the cursor line drops a code block's background (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~md.code = md.code == 2 ? 2 : 0;~md.code = 0;
 core: the cursor line drawn rendered (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~	if (rm == 1) md.head~	if (0) md.head

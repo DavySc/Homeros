@@ -178,7 +178,7 @@ static size_t blanks(const char *b, size_t n, size_t i)
    columns: a0 of byte md->mark, a1 of the first non-blank from it, b1 of
    md->item, t0 of md->task_col. */
 static void draw_md(Grid *g, const Win *w, size_t l, int r, size_t skip, int cover, const SyntaxMd *md,
-                    size_t a0, size_t a1, size_t b1, size_t t0)
+                    size_t a0, size_t a1, size_t b1, size_t t0, unsigned char cl)
 {
 	char b[256];
 	size_t n = text_read(w->buf->text, text_line_start(w->buf->text, l), b, sizeof b), v;
@@ -187,12 +187,13 @@ static void draw_md(Grid *g, const Win *w, size_t l, int r, size_t skip, int cov
 	if (md->head) bar(g, w, l, r, skip, cover, a0, hb);
 	if (md->code == 2) bar(g, w, l, r, skip, cover, a0, FACE_MD_CODE_BG);
 	if (md->task) {
-		/* checkbox.lua: the icon and its blank, right_pad 1 */
+		/* checkbox.lua: the icon and its blank, right_pad 1, hl_mode
+		   'combine': on the cursor line's background (measured) */
 		static const char *const icon[] = { "\xf3\xb0\x84\xb1 ", "\xf3\xb0\xb1\x92 ", "\xf3\xb0\xa5\x94 " };
 		int k = md->task == ' ' ? 0 : md->task == 'x' ? 1 : 2;
 		over(g, w, r, skip, cover, t0, over(g, w, r, skip, cover, t0, t0, icon[k], 5, 1,
-		     k == 0 ? FACE_MARKUP_LIST_UNCHECKED : k == 1 ? FACE_MARKUP_LIST_CHECKED : FACE_MARKUP_RAW, 0),
-		     " ", 1, 1, FACE_NONE, 0);
+		     k == 0 ? FACE_MARKUP_LIST_UNCHECKED : k == 1 ? FACE_MARKUP_LIST_CHECKED : FACE_MARKUP_RAW, cl),
+		     " ", 1, 1, FACE_NONE, cl);
 	} else if (md->list) {
 		/* bullet.lua: from the marker on, a blank per blank character it
 		   starts with (a tab too: str.spaces), then the icon by nesting
@@ -385,7 +386,7 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	   column (padding() pads it) */
 	if (a0 == (size_t)-1) a0 = v + md.mark - i;
 	if (rm == 1) md.head = md.list = md.task = 0, md.code = md.code == 2 ? 2 : 0;
-	if (on) draw_md(g, w, l, r, skip, cover, &md, a0, a1, b1, t0);
+	if (on) draw_md(g, w, l, r, skip, cover, &md, a0, a1, b1, t0, cl);
 	return drawn != 0;
 }
 

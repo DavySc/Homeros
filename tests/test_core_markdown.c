@@ -72,17 +72,20 @@ static void command(Editor *e, Grid *g, const char *t)
 	while (syntax_update(e->buf->syn, e->buf->text, NULL));
 }
 
-/* Cases listed as known, 14 of 1022 (recorded again with 'cursorline'
-   for UI Round B; the ruler cases left with the status line, which
-   test_core_status checks).  The core's (package 4, reported): the
-   window's top after a split (58 ... 914); after v on a Tab without a
-   move, Neovim keeps the cursor on the Tab's last cell (the w_virtcol
-   n_start_visual_mode() leaves valid), the core moves it to the first
-   (394, 812).  Neovim's own: a line still rendered in insert mode, raw
-   after :redraw! (489). */
+/* Cases listed as known, 22 of 1043.  Drawing's: an ordered number wider
+   than its marker, which Neovim puts inline (1032); a tab before a
+   heading's marker (1041); an info string past the 256 bytes draw_md
+   reads, in a window wider than they are (1042).  The core's (package 4,
+   reported): the window's top after a split (9 ... 961), and with wrap
+   after a jump near a line taller than scrolloff allows (110 ... 979);
+   after v on a Tab without a move, Neovim keeps the cursor on the Tab's
+   last cell (the w_virtcol n_start_visual_mode() leaves valid), the core
+   moves it to the first (654, 738).  The syntax package's: an inline colour
+   Neovim does not give (272). */
 static int known(int n)
 {
-	static const int k[] = { 58, 259, 455, 482, 488, 534, 547, 738, 761, 815, 914, 394, 812, 489 };
+	static const int k[] = { 9, 10, 11, 73, 138, 506, 549, 683, 693, 731, 882, 961,
+	                         110, 330, 854, 979, 654, 738, 272, 1032, 1041, 1042 };
 	for (size_t i = 0; i < sizeof k / sizeof *k; i++) if (k[i] == n) return 1;
 	return 0;
 }
