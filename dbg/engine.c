@@ -11,7 +11,7 @@
 enum { IGNORE_SP = 1,     /* any depth */
        STEP_AFTER = 2,    /* run the instruction there, alone */
        SAVE_AFTER = 4,    /* the depth to keep is the one after that instruction */
-       LINES = 8,         /* with END: only where that instruction leads to code with lines */
+       LINES = 8,         /* with END: only where that instruction, a call, leads to code a step goes into */
        END = 16 };        /* the step is done */
 
 static void *room(void *p, uint32_t *cap, uint32_t n, size_t size)
@@ -158,10 +158,15 @@ static void inst_net(Engine *e, uint64_t rip)
   if (x.flow == X64_CALL || x.repeats) net_add(e, rip + x.size, END);
 }
 
-static bool has_line(const Engine *e, uint64_t addr)
+/* Whether a line step goes into a call that leads to addr: where there are lines (the row behind a block of lines
+   has none), and not into the stack probe every large frame calls first, which Visual Studio's list of functions
+   not to step into names (default.natstepfilter; the rest of that list is not recorded). */
+static bool goes_into(const Engine *e, uint64_t addr)
 {
   const EngineModule *m = engine_module(e, addr);
-  return m && rdi_row(&m->rdi, addr - m->image.base).line.line;   /* the row behind a block of lines has none */
+  if (!m || !rdi_row(&m->rdi, addr - m->image.base).line.line) return false;
+  RdiSpan name = rdi_str(&m->rdi, rdi_at(&m->rdi, RDI_PROCEDURES, RdiSymbol, rdi_at(&m->rdi, RDI_SCOPES, RdiScope, rdi_vmap(&m->rdi, RDI_SCOPE_VMAP, addr - m->image.base))->proc)->name);
+  return !(name.n == 8 && !memcmp(name.p, "__chkstk", 8));
 }
 
 /* Where a piece of a line ends: behind what MSVC's "just my code" puts after it under the made-up
@@ -196,13 +201,14 @@ static void line_net(Engine *e, uint64_t rip, bool into)
     uint64_t to = x.known ? x.target : 0;
     if (x.flow == X64_CALL && (!into || addr >= base + row.opl)) net_add(e, addr, STEP_AFTER);   /* into the call, and on: the trap behind the call waits at this depth */
     else if (x.flow != X64_OTHER) {
-      /* A jump, branch or return, and stepping into, a call: the step ends where it goes, when that is known, else
-         after the instruction has run. Not when it lands in the line; and a call is gone into only where its
-         function has lines (as Visual Studio; RAD goes into the line's last call wherever it leads: knowledge base
-         03, "A second reference"). The row itself is asked as well as the line's pieces: the source line map has
-         no piece for the code between two blocks of lines (a constructor the compiler made). */
-      bool stays = (to - base >= lo && to - base < hi) || in_ranges(e, count, to - base) || (x.flow == X64_CALL && to && !has_line(e, to));
-      if (!stays) net_add(e, to ? to : addr, END | (into ? IGNORE_SP : 0) | (to ? 0 : STEP_AFTER) | (x.flow == X64_CALL ? LINES : 0));
+      /* A jump, branch or return: the step ends where it goes, when that is known, else after the instruction has
+         run; not when it lands in the line. Stepping into, a call: it is run, and the step ends where it led if a
+         step goes into that (as Visual Studio; RAD goes into the line's last call wherever it leads: knowledge base
+         03, "The reference that decides"). The row itself is asked as well as the line's pieces: the source line
+         map has no piece for the code between two blocks of lines (a constructor the compiler made). */
+      bool call = x.flow == X64_CALL, stays = (to - base >= lo && to - base < hi) || in_ranges(e, count, to - base);
+      if (call) to = 0;   /* a trap where the function begins would also end the step when another call's code came there */
+      if (!stays) net_add(e, to ? to : addr, END | (to ? 0 : STEP_AFTER) | (call ? LINES : 0));
     } else if (x.moves_sp) net_add(e, addr, STEP_AFTER | SAVE_AFTER);
   }
   /* running off the end of a piece of the line (the converter made one piece of pieces that touch) */
@@ -283,8 +289,8 @@ static TargetEvent run(Engine *e, int how, uint32_t thread, const uint64_t *brea
     if ((!reached || flags & STEP_AFTER) && (ev = step_one(e, ev.thread)).kind != TARGET_STEP) return ev;
     if (!reached) continue;
     if (flags & SAVE_AFTER && target_regs(e->target, thread, &regs)) depth = regs.gp[4];
-    /* where a call leads that names no place is known when it has run: into code without lines, the thread runs on, the net as it is */
-    if (flags & END && !(flags & LINES && !has_line(e, ev.addr))) return (TargetEvent){.kind = TARGET_STEP, .thread = thread, .addr = ev.addr};
+    /* where a call leads is known when it has run: into code no step goes into, the thread runs on, the net as it is */
+    if (flags & END && !(flags & LINES && !goes_into(e, ev.addr))) return (TargetEvent){.kind = TARGET_STEP, .thread = thread, .addr = ev.addr};
   }
 }
 

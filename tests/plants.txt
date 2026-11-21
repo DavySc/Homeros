@@ -635,16 +635,16 @@ engine | dbg/engine.c | stop = stop \p\p ev.code == at_once[i]; | stop = stop \p
 engine | dbg/engine.c | if (ev.kind == TARGET_EXCEPTION) target_swallow(e->target); | 
 engine | dbg/engine.c | if (x.flow == X64_CALL \p\p x.repeats) net_add(e, rip + x.size, END); | if (x.repeats) net_add(e, rip + x.size, END);
 engine | dbg/engine.c | if (x.flow == X64_CALL \p\p x.repeats) net_add(e, rip + x.size, END); | if (x.flow == X64_CALL) net_add(e, rip + x.size, END);
-engine | dbg/engine.c | e->ranges[2 * i + 1] = rdi_row(&m->rdi, e->ranges[2 * i]).opl; | e->ranges[2 * i + 1] = e->ranges[2 * i] + 1;
-engine | dbg/engine.c | (x.flow == X64_CALL && to && !has_line(e, to)); | (false && to && !has_line(e, to));
-engine | dbg/engine.c | (x.flow == X64_CALL && to && !has_line(e, to)); | (x.flow == X64_CALL && !has_line(e, to));
-engine | dbg/engine.c | return m && rdi_row(&m->rdi, addr - m->image.base).line.line; | return m && rdi_row(&m->rdi, addr - m->image.base).opl;
-engine | dbg/engine.c | if (flags & END && !(flags & LINES && !has_line(e, ev.addr))) | if (flags & END)
-engine | dbg/engine.c | (x.flow == X64_CALL ? LINES : 0) | LINES
-engine | dbg/engine.c | else if (x.flow == X64_CALL && !into) net_add( | else if (x.flow == X64_CALL && !into && false) net_add(
-engine | dbg/engine.c | bool stays = (to - base >= lo && to - base < hi) \p\p in_ranges(e, count, to - base) | bool stays = in_ranges(e, count, to - base)
-engine | dbg/engine.c | END \p (into ? IGNORE_SP : 0) \p (to ? 0 : STEP_AFTER)); | END \p (to ? 0 : STEP_AFTER));
-engine | dbg/engine.c | END \p (into ? IGNORE_SP : 0) \p (to ? 0 : STEP_AFTER)); | END \p (into ? IGNORE_SP : 0));
+engine | dbg/engine.c | e->ranges[2 * i + 1] = line_end(&m->rdi, rdi_row(&m->rdi, e->ranges[2 * i])); | e->ranges[2 * i + 1] = e->ranges[2 * i] + 1;
+engine | dbg/engine.c | if (!m \p\p !rdi_row(&m->rdi, addr - m->image.base).line.line) return false; | if (!m \p\p !rdi_row(&m->rdi, addr - m->image.base).opl) return false;
+engine | dbg/engine.c | return !(name.n == 8 && !memcmp(name.p, "__chkstk", 8)); | return name.n \p\p true;
+engine | dbg/engine.c | if (call) to = 0; | 
+engine | dbg/engine.c | if (flags & END && !(flags & LINES && !goes_into(e, ev.addr))) | if (flags & END && !(flags & LINES && !goes_into(e, ev.addr) && false))
+engine | dbg/engine.c | END \p (to ? 0 : STEP_AFTER) \p (call ? LINES : 0)); | END \p (to ? 0 : STEP_AFTER) \p LINES);
+engine | dbg/engine.c | if (x.flow == X64_CALL && (!into \p\p addr >= base + row.opl)) net_add( | if (x.flow == X64_CALL && into && addr >= base + row.opl) net_add(
+# OWED: a line step begun in code between two blocks of lines (reached by instruction steps), where a jump inside that code must not end it: no script does that since line steps no longer end there
+# engine | dbg/engine.c | stays = (to - base >= lo && to - base < hi) \p\p in_ranges(e, count, to - base) | stays = in_ranges(e, count, to - base)
+engine | dbg/engine.c | END \p (to ? 0 : STEP_AFTER) \p (call ? LINES : 0)); | END \p (call ? LINES : 0));
 engine | dbg/engine.c | if (!stays) net_add(e, to ? to : addr, | if (!stays) net_add(e, addr,
 engine | dbg/engine.c | } else if (x.moves_sp) net_add(e, addr, STEP_AFTER \p SAVE_AFTER); | } else if (x.moves_sp && false) net_add(e, addr, STEP_AFTER \p SAVE_AFTER);
 engine | dbg/engine.c | uint32_t count = bounds.n ? (uint32_t)bounds.n - 1 : 0; | uint32_t count = bounds.n ? 1 : 0;
@@ -668,7 +668,7 @@ engine | dbg/engine.c | if ((!reached \p\p flags & STEP_AFTER) && | if (!reached
 engine | dbg/engine.c | if ((!reached \p\p flags & STEP_AFTER) && | if ((flags & STEP_AFTER) &&
 engine | dbg/engine.c | if (!reached) continue; | 
 engine | dbg/engine.c | if (flags & SAVE_AFTER && target_regs(e->target, thread, &regs)) depth = regs.gp[4]; | 
-engine | dbg/engine.c | if (flags & END) return (TargetEvent) | if (true) return (TargetEvent)
+engine | dbg/engine.c | if (flags & END && !(flags & LINES && !goes_into(e, ev.addr))) | if (!(flags & LINES && !goes_into(e, ev.addr)))
 # ---- slice 5: the engine thread and halt (tests/test_session.c on a made-up target; the halt phase of tests/stress_engine.c; specs/Halt.tla) ----
 test | dbg/session.c | if (c.kind == SESSION_HALT \p\p s->quit) return true; | if (s->quit) return true;
 test | dbg/session.c | s->quit = c.kind == SESSION_QUIT;\n    if (c.kind == SESSION_HALT | if (c.kind == SESSION_HALT
@@ -1119,7 +1119,7 @@ front | dbg/session.c | if (open) e.halt = halt, e.halt_arg = s; | if (!open) e.
 front | dbg/ask.c | uint64_t function = line ? 0 : engine_function(m, more, strlen(more)); | uint64_t function = 0;
 front | dbg/conv.c | if (j && line == (le32(b.lines + 8 * j - 4) & 0xffffff)) continue; | if (j && line == 0) continue;
 front | dbg/conv.c | if (j && line == (le32(b.lines + 8 * j - 4) & 0xffffff)) continue; | if (j && line == (le32(b.lines + 8 * j - 4) & 0xffffff)) break;
-front | dbg/engine.c | bool stays = (to - base >= lo && to - base < hi) \p\p in_ranges(e, count, to - base) | bool stays = (to - base >= lo && to - base < hi)
+front | dbg/engine.c | stays = (to - base >= lo && to - base < hi) \p\p in_ranges(e, count, to - base) | stays = (to - base >= lo && to - base < hi)
 front | dbg/engine.c | if (x.flow != X64_CALL && x.known && !in_ranges(e, count, x.target - base)) | if (x.flow != X64_CALL && !x.known && !in_ranges(e, count, x.target - base))
 front | dbg/engine.c | if (!in_ranges(e, count, hi)) net_add(e, base + hi, END \p IGNORE_SP); | if (false) net_add(e, base + hi, END \p IGNORE_SP);
 front | cmd/hdbg.c | printf("%c0x%x ", ids[i] == thread ? '*' : ' ', | printf("%c0x%x ", ids[i] != thread ? '*' : ' ',

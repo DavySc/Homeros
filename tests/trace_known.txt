@@ -4,11 +4,12 @@
 # inline_pieces; knowledge base, lesson L26), so the step ends at the first instruction behind the call, where RAD goes one further.
 deep_o2.mix.txt all 6 6
 gap_o2.mix.txt all 6 6
-# __chkstk touches the stack's pages down to the new frame, as many as are not yet there: how many depends on the
-# system and on what started the program (under Wine none; on Windows 25 rounds less than in RAD's run). From its
-# first branch on that, the two may differ (line 0 below: nothing has to).
-frames.into.txt all 28 0
-frames_o2.into.txt all 21 0
+# RAD steps into __chkstk, the stack probe a large frame calls first; Visual Studio never does, and we do not
+# (dbg/engine.c, goes_into).
+frames.into.txt all 18 18
+frames_o2.into.txt all 11 11
+frames.back.txt all 14 14
+frames_o2.back.txt all 11 11
 # Clang writes one line as records that touch. RAD, stepping into from the first of them, does not see the call in
 # the second and runs on through it: from `if (n > 0) r += down(n - 1);` it ends a line on, never in `down`
 # (knowledge base 03, "Pieces of one line that touch"; lesson L63). Here such records are one row, and the step goes in.
