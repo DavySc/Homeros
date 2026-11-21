@@ -7,7 +7,15 @@ test_core_conceal --spans, at most 64 a line, so build it first) made
 Conceal matches (matchaddpos() with a 'conceal' character, or none:
 hidden), the cursor at a random place, and sometimes Visual mode from
 another line.  Records each text row's
-characters (screenstring())."""
+characters (screenstring()).
+
+Known difference: win_line() draws a line taller than its height when a
+concealed double-width character ends a wrapped row (Neovim's bug, not
+copied: the core keeps the line's height).  Reduced case: rows 7, cols 14,
+wrap, "top\n012345678角全角全\nnext\nlast\n", matchaddpos() span line 1
+bytes 6..12 with "x".  The Org syntax conceals no wide character (measured:
+markers only, for x^{漢} a_{全} *漢* =全= [[漢][全]] ~漢~ +漢+), so no
+recorded case has one."""
 import concurrent.futures, json, os, random, subprocess, sys, tempfile
 from test_core_screens import SETUP
 
@@ -38,19 +46,8 @@ for r = 1, info.height do
   for col = info.textoff + 1, info.width do s[#s + 1] = vim.fn.screenstring(r, col) end
   rows[#rows + 1] = table.concat(s)
 end
-local function filler()
-  for r = 1, info.height do if vim.fn.screenstring(r, 1) == '~' then return r end end
-  return 0
-end
-local v, bot, fl = vim.fn.winsaveview(), vim.fn.line('w$'), filler()
--- win_line() can draw a line taller than its height when a concealed
--- double-width character wraps (Neovim's bug): the view or the last line
--- shown or the first '~' row then differ from those without conceal
-vim.o.conceallevel = 0
-vim.cmd('redraw!')
-local v0 = vim.fn.winsaveview()
-local bug = bot ~= vim.fn.line('w$') or fl ~= filler() or v.topline ~= v0.topline or v.skipcol ~= v0.skipcol
-io.open(OUT, 'w'):write(vim.json.encode({rows = rows, view = {v.topline - 1, v.leftcol, v.skipcol}, pos = pos, vp = vp, bug = bug}))
+local v = vim.fn.winsaveview()
+io.open(OUT, 'w'):write(vim.json.encode({rows = rows, view = {v.topline - 1, v.leftcol, v.skipcol}, pos = pos, vp = vp}))
 vim.cmd('qa!')
 '''
 
@@ -102,14 +99,12 @@ def main():
     cases = [gen_case(r) for _ in range(n)]
     with concurrent.futures.ThreadPoolExecutor(os.cpu_count()) as ex:
         out = list(ex.map(run_nvim, cases))
-    # C rows cols wrap line col (the cursor), X if Neovim drew a line
-    # taller than its height (not compared), V line col (Visual's start,
+    # C rows cols wrap line col (the cursor), V line col (Visual's start,
     # if any), K line a z s-in-hex (a span), W the view (top line,
     # leftcol, skipcol), F the text in hex, R each text row in hex, E
     with open(a[a.index('--record') + 1], 'w') as f:
         for c, o in zip(cases, out):
             f.write('C %d %d %d %d %d\n' % ((c['rows'], c['cols'], c['wrap']) + tuple(o['pos'])))
-            if o['bug']: f.write('X\n')
             if o.get('vp'): f.write('V %d %d\n' % tuple(o['vp']))
             for k in c['spans']: f.write('K %d %d %d %s\n' % (k[0], k[1], k[2], k[3].encode().hex() or '-'))
             f.write('W %d %d %d\n' % tuple(o['view']))

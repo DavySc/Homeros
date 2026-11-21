@@ -96,11 +96,17 @@ int main(int argc, char **argv)
 			core_set_wrap(&e, wrap);
 			layout_resize(&e, rows, cols);
 			if (vis) {
-				/* the .py went there first: the view follows it; Visual
-				   mode as the core reads it (the keys keep their own) */
+				/* the .py went there first and ran `normal! v`: exec_normal()
+				   calls update_topline_cursor() before it, with no redraw,
+				   so the core updates as in Insert mode (no drawn() pass;
+				   case 64 of seed 1 differs with it).  Visual mode as the
+				   core reads it (the keys keep their own) */
 				e.ks.visual = 'v', e.ks.vline = e.win->line = vl, e.ks.vcol = e.win->col = vc;
 				core_set_want(&e);
+				int m = e.mode;
+				e.mode = MODE_INSERT;
 				core_update(&e);
+				e.mode = m;
 			}
 			e.win->line = cl;
 			e.win->col = cc;
