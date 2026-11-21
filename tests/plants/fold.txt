@@ -18,3 +18,4 @@ fold: an empty buffer asks the foldexpr for line -1 (fuzz)~fuzz FUZZERS=fold FUZ
 fold: merging two folds drops the lower one's nested folds~test TESTS=fold~~src/fold/fold.c~	if (a2->n) {~	if (0) {
 fold: a fold shortened from below keeps nested folds past its new end~test TESTS=fold~~src/fold/fold.c~						adjust(&fp->nested, fp->len, MAXL, MAXL, 0, 0);¶~
 fold: a fold that grows into the next one at its level is not merged with it~test TESTS=fold~~src/fold/fold.c~			if (lvl >= lvl0) merge(fp, a, fp2);¶~
+fold: the first update does only the lines it is given~test TESTS=fold~~src/fold/fold.c~	if (f->invalid) { top = 1; bot = n; f->invalid = 0; }¶~

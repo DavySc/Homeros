@@ -108,7 +108,7 @@ int main(int argc, char **argv)
 			CHECK((f = fold_new(lvl, fe, atoi(strtok(NULL, " \n")) ? NULL : tall, NULL)));
 			n = 0;
 			for (char *t; (t = strtok(NULL, " \n"));) put(n, t);
-			fold_update(f, 0, n, n);
+			fold_update(f, n / 2, n / 2, n);   /* the first call does every line */
 			scen++;
 		} else if (!strcmp(s, "E")) {   /* nvim_buf_set_lines() */
 			size_t a = strtoul(strtok(NULL, " \n"), NULL, 10), b = strtoul(strtok(NULL, " \n"), NULL, 10);
