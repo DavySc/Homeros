@@ -175,3 +175,4 @@ keys: @. counts as an executing register, so its yank does not flash (test_keys_
 keys: Ctrl-C does not stop a search or a :s (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~	if (!growth() || (!re_deadline && loop_breakcheck())) return -1;~	if (!growth()) return -1;
 keys: an interrupted search says E363, not Interrupted (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~core_msg(E, loop_int ? "Interrupted" : ~core_msg(E, 0 ? "Interrupted" : 
 keys: the regex stacks stay grown after a search (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~	if (!re_deadline) drop(~	if (0) drop(
+keys: a yank's flash ends on the last character's last byte (test_keys_flash)~test TESTS=keys_flash~~src/keys/ops.c~		if (t == 'v') E->ks.yank.c2 = (size_t)head(ml_get(b_op_end.lnum), b_op_end.col);¶~
