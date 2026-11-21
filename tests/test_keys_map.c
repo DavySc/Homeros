@@ -10,6 +10,7 @@
 #include "check.h"
 #include "core.h"
 #include "keys.h"
+#include "kitten.h"
 #include "tools.h"
 
 static void feed(Editor *e, const char *s)
@@ -56,6 +57,20 @@ int main(void)
 	CHECK(!strcmp(e.msg, "Not in a Git repository"));
 	feed(&e, "-");
 	CHECK(!strcmp(e.msg, "tools: file manager not built yet"));
+	/* the save kitten's (my-nvim): <leader>uk turns it off and on, and
+	   :KittenPaw plays it */
+	feed(&e, " uk");
+	CHECK(!strcmp(e.msg, "Kitten on save: off"));
+	feed(&e, " uk");
+	CHECK(!strcmp(e.msg, "Kitten on save: on"));
+	static Grid g;
+	CHECK(!grid_resize(&g, 24, 80));
+	feed(&e, ":KittenPaw\r");
+	kitten_draw(&e, &g);
+	int drawn = 0;
+	for (int i = 0; i < 24 * 80; i++) drawn |= *grid_text(&g.c[i]) != ' ';
+	CHECK(drawn);
+	grid_free(&g);
 
 	/* after a count or a register the map runs and takes them, as a <Cmd>
 	   map does; an operator, Visual and Insert keep Space (Neovim, measured

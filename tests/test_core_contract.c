@@ -82,8 +82,7 @@ int main(void)
 	e.ks.replace = 0;
 	e.mode = MODE_NORMAL;
 
-	/* the popup: the selected item drawn plainly, the others reversed
-	   (PmenuSel against Pmenu) */
+	/* the popup: the selected item in PmenuSel, the others in Pmenu */
 	static const PumItem items[] = { { "foo", NULL, NULL }, { "foobar", NULL, NULL }, { "fop", NULL, NULL } };
 	at(&e, 10);
 	core_pum(&e, items, 3, 1, 0);
@@ -93,8 +92,8 @@ int main(void)
 		for (int x = 0; x + 2 < g.cols; x++) {
 			const Cell *p = &g.c[y * g.cols + x];
 			if (p[0].ch[0] != 'f' || p[1].ch[0] != 'o') continue;
-			if (p[2].ch[0] == 'o' && p[3].ch[0] == 'b') { CHECK(p->attr == ATTR_NONE); seen |= 1; }
-			else if (p[2].ch[0] == 'o' || p[2].ch[0] == 'p') { CHECK(p->attr == ATTR_REV); seen |= 2; }
+			if (p[2].ch[0] == 'o' && p[3].ch[0] == 'b') { CHECK(p->face == FACE_PMENU_SEL); seen |= 1; }
+			else if (p[2].ch[0] == 'o' || p[2].ch[0] == 'p') { CHECK(p->face == FACE_PMENU); seen |= 2; }
 		}
 	CHECK(seen == 3);
 	core_pum(&e, NULL, 0, -1, 0);
@@ -103,6 +102,20 @@ int main(void)
 	   package 5 measured nvim on "x" U+0301: the composing byte is at 0) */
 	CHECK(!core_edit(&e, 0, 0, "x\xcc\x81\t", 4));
 	CHECK(core_vcol(&e, 0, 1) == 0 && core_vcol(&e, 0, 2) == 0 && core_vcol(&e, 0, 3) == 1 && core_vcol(&e, 0, 4) == 8);
+
+	/* Visual mode's Tab rule is the current window's: another window on the
+	   buffer keeps its cursor on a Tab's last cell (its w_virtcol stays;
+	   measured: its old ruler "1,1-8" after v and :redraw!, 3 runs) */
+	CHECK(!core_split(&e, 0, 0));
+	e.ks.visual = 'v';
+	e.ks.vline = e.win->line = 0;
+	e.ks.vcol = e.win->col = 3;             /* the Tab after "x\xcc\x81" */
+	Win *o = e.wins == e.win ? e.win->next : e.wins;
+	o->line = 0;
+	o->col = 3;
+	CHECK(win_vcol(&e, e.win, NULL, NULL) == 1 && win_vcol(&e, o, NULL, NULL) == 7);
+	e.ks.visual = 0;
+	CHECK(!core_close(&e, 0));
 
 	/* the last window closes only without unsaved changes (E37), or with ! */
 	CHECK(!core_edit(&e, 0, 0, "z", 1));
@@ -123,6 +136,10 @@ int main(void)
 	}
 	CHECK(!core_open(&e, fn[0]));
 	for (int i = 1; i < 4; i++) CHECK(!core_edit_file(&e, fn[i], 0));
+	/* buflist_findname(): a file's name as typed and its full name are one
+	   buffer */
+	Buf *same = e.buf;
+	CHECK(!chdir("/tmp") && !core_edit_file(&e, strrchr(fn[3], '/') + 1, 0) && e.buf == same);
 	Buf *alt = e.win->alt;
 	CHECK(alt && !strcmp(alt->path, fn[2]) && !core_split(&e, 0, 0) && e.win->alt == alt);
 	CHECK(!core_close(&e, 0));

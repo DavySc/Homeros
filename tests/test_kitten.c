@@ -245,7 +245,7 @@ static void small(void)
 	core_resize(&e, 0, -2, 0);
 	kitten_paw(&e);
 	draw();
-	CHECK(strstr(row(4), "( o.o )") && strstr(row(6), "notes.org"));
+	CHECK(strstr(row(4), "( o.o )") && strstr(row(5), " > ^ < "));
 	for (int i = 0; i < 6; i++) { tick(); draw(); }
 	CHECK(face_at(7, 0) == FACE_KITTEN_CAT && face_at(9, 0) == FACE_NONE);
 	core_free(&e);
