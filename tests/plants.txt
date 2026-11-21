@@ -1122,6 +1122,9 @@ front | dbg/conv.c | if (j && line == (le32(b.lines + 8 * j - 4) & 0xffffff)) co
 front | dbg/engine.c | bool stays = (to - base >= lo && to - base < hi) \p\p in_ranges(e, count, to - base) | bool stays = (to - base >= lo && to - base < hi)
 front | dbg/engine.c | if (x.flow != X64_CALL && x.known && !in_ranges(e, count, x.target - base)) | if (x.flow != X64_CALL && !x.known && !in_ranges(e, count, x.target - base))
 front | dbg/engine.c | if (!in_ranges(e, count, hi)) net_add(e, base + hi, END \p IGNORE_SP); | if (false) net_add(e, base + hi, END \p IGNORE_SP);
+front | cmd/hdbg.c | printf("%c0x%x ", ids[i] == thread ? '*' : ' ', | printf("%c0x%x ", ids[i] != thread ? '*' : ' ',
+front | cmd/hdbg.c | frames(ids[i], 0, 1); | frames(ids[i], 1, 1);
+front | dbg/ask.c | if (ask.kind == ASK_THREADS) return 4 * target_threads( | if (ask.kind == ASK_THREADS) return target_threads(
 eval | dbg/ask.c | uint64_t function = line ? 0 : engine_function(m, more, strlen(more)); | uint64_t function = engine_function(m, more, 0);
 
 eval | dbg/ask.c | b = b == '\\' ? '/' : b >= 'A' && b <= 'Z' ? (char)(b + 32) : b; | b = b >= 'A' && b <= 'Z' ? (char)(b + 32) : b;

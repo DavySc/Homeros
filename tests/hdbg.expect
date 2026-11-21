@@ -17,6 +17,8 @@ breakpoint
 {
 #0 0x_ twice  tour.exe tour.c:5
 #1 0x_ main  tour.exe tour.c:12
+*0x_ #0 0x_ twice  tour.exe tour.c:5
+{
 #1 0x_ main  tour.exe tour.c:12
   int total = twice(pair.a);
 pair.a = 1  (int)
@@ -48,7 +50,7 @@ no code there
 stepped
 #0 0x_ main  tour.exe tour.c:14
   if (total > 0) total += twice(total);   /* clang writes this line as two records, the call in the second */
-b <file:line or function>, c [ms], s, n, o, si, ni, bt, f <n>, l, r, p <expression>, x <expression>, q
+b <file:line or function>, c [ms], s, n, o, si, ni, bt, f <n>, t, l, r, p <expression>, x <expression>, q
 stepped
 #0 0x_ twice  tour.exe tour.c:5
 {

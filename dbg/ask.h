@@ -9,6 +9,7 @@
 enum { ASK_STACK,    /* the frames of `thread` from number `first` on, at most `most`. Answer: an AskFrame each. */
        ASK_ROWS,     /* a table at frame `frame` of `thread`: its rows from `first`, at most `most`. A View follows (the open rows), then
                         for `roots` ASK_TEXTS the expressions, each with its 0. Answer: the number of all rows (8 bytes), then an AskRow each. */
+       ASK_THREADS,  /* the program's threads. Answer: their ids, 4 bytes each (as many as a message holds). */
        ASK_PLACES }; /* where code is: the text follows, with its 0: `file:line` (the file by the end of its path) or a function's
                         name. Answer: its addresses, 8 bytes each (a line's code can be in several places). */
 enum { ASK_TEXTS, ASK_LOCALS, ASK_REGISTERS };   /* a table's roots: what the ask brings, the variables in scope, the registers */

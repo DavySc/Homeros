@@ -48,6 +48,7 @@ void target_halt(Target *t) { own(t, true), t->running = false; }
 void target_swallow(Target *t) { own(t, false); }
 bool target_read(Target *t, uint64_t addr, void *bytes, uint32_t n) { return own(t, false), (void)addr, (void)bytes, (void)n, false; }
 bool target_regs(Target *t, uint32_t thread, TargetRegs *regs) { return own(t, false), *regs = (TargetRegs){.rip = t->rip}, thread == 1; }
+uint32_t target_threads(const Target *t, uint32_t *ids, uint32_t room) { return (void)t, (void)ids, (void)room, 0; }
 void target_close(Target *t) { own(t, false), free(t); }
 /* A made-up answer: the ask's own bytes after its head (at most 16; for "full" as many f as there is room for), read from the target's side: only between two runs. */
 uint32_t ask_answer(const Engine *e, const void *ask, uint32_t n, void *out, uint32_t cap)

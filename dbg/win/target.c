@@ -75,6 +75,13 @@ bool target_write(Target *t, uint64_t addr, const void *bytes, uint32_t n)
   return WriteProcessMemory(t->process, (LPVOID)(uintptr_t)addr, bytes, n, &put) && put == n && FlushInstructionCache(t->process, (LPCVOID)(uintptr_t)addr, n);
 }
 
+uint32_t target_threads(const Target *t, uint32_t *ids, uint32_t room)
+{
+  uint32_t n = 0;
+  for (; n < room && n < t->thread_count; n += 1) ids[n] = t->threads[n].id;
+  return n;
+}
+
 bool target_regs(Target *t, uint32_t thread, TargetRegs *regs)
 {
   CONTEXT c = {.ContextFlags = CONTEXT_CONTROL | CONTEXT_INTEGER};

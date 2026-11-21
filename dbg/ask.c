@@ -48,6 +48,7 @@ uint32_t ask_answer(const Engine *e, const void *bytes, uint32_t n, void *out, u
     }
     return used;
   }
+  if (ask.kind == ASK_THREADS) return 4 * target_threads(e->target, out, cap / 4);
   if (ask.kind > ASK_ROWS || !target_regs(e->target, ask.thread, &regs)) return 0;
 
   if (ask.kind == ASK_STACK) {
