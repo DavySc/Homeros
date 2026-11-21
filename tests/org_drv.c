@@ -127,11 +127,40 @@ static int colours(FILE *o, const char *b, size_t n, size_t w)
 	return 0;
 }
 
+/* What Org shows on each line, the spans of orgfx_conceal applied, as
+   tools/org_conform.py -s builds Org's own from tools/org_show.el */
+static int show(FILE *o, const char *b, size_t n)
+{
+	Text *t = text_new(b, n);
+	OrgFx *x = t ? orgfx_new(t) : NULL;
+	if (!x) return 1;
+	for (size_t l = 0; l <= text_lines(t); l++) {
+		Conceal c[64];
+		size_t k = orgfx_conceal(x, l, c, 64), p = text_line_start(t, l), e = p;
+		while (e < n && b[e] != '\n') e++;
+		for (size_t i = 0; i < k; p = c[i].z, i++) {
+			if (c[i].a < p || c[i].z > e || c[i].a >= c[i].z) {   /* syntax.h: in order, on the line */
+				fprintf(stderr, "error: line %zu: span %zu %zu out of order\n", l, c[i].a, c[i].z);
+				orgfx_free(x);
+				text_free(t);
+				return 1;
+			}
+			fprintf(o, "%.*s%s", (int)(c[i].a - p), b + p, c[i].s);
+		}
+		fprintf(o, "%.*s\n", (int)(e - p), b + p);
+	}
+	orgfx_free(x);
+	text_free(t);
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
 	static char b[1 << 24];
 	size_t w = 0;   /* -f W: the colours, in windows of W bytes */
 	int todo = argc > 1 && !strcmp(argv[1], "-t");   /* -t: org_todo_step as FILE.cmd says, as tools/org_todo.el */
+	int conceal = argc > 1 && !strcmp(argv[1], "-s");   /* -s: what each line shows */
+	argv += conceal, argc -= conceal;
 	if (argc > 2 && !strcmp(argv[1], "-f")) w = strtoul(argv[2], NULL, 10), argv += 2, argc -= 2;
 	argv += todo, argc -= todo;
 	for (int i = 1; i < argc; i++) {
@@ -153,6 +182,7 @@ int main(int argc, char **argv)
 			if (steps(stdout, b, n, sizeof b, pos, c) < 0) return 3;
 			continue;
 		}
+		if (conceal) { if (show(stdout, b, n)) return 3; continue; }
 		if (w ? colours(stdout, b, n, w) : dump(stdout, b, n)) return 3;
 		for (size_t p = 0; !w && p < n; p++) {   /* org_ts at every character */
 			OrgTs t;

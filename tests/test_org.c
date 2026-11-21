@@ -1036,6 +1036,54 @@ static const struct { size_t pos; const char *dirs, *text, *want; } todos[] = {
 	  ":LAST_REPEAT: [2026-11-19 Thu 17:30]\n"
 	  ":END:\n"
 	  "--\n" },
+	/* a property drawer's new :END: at the drawer's column (PR 98 review, note 1) */
+	{ 0, "r",
+	  "** NEXT \n"
+	  "    :PROPERTIES:\n"
+	  "   :LOGBOOK:",
+	  "** WAIT \n"
+	  "    :PROPERTIES:\n"
+	  "   :LOGBOOK:\n"
+	  "   :LOGBOOK:\n"
+	  "   - State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  "    :END:--\n" },
+	/* the sibling before is one with the same parent (note 3) */
+	{ 0, "rr",
+	  "* TODO a\n"
+	  ":NOTES:\n"
+	  "  - item\n"
+	  "    :logbook:",
+	  "* NEXT a\n"
+	  ":NOTES:\n"
+	  "  - item\n"
+	  "    :logbook:--\n"
+	  "* WAIT a\n"
+	  ":NOTES:\n"
+	  "  - item\n"
+	  "    :logbook:\n"
+	  "  :LOGBOOK:\n"
+	  "  - State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:--\n" },
+	/* an unclosed repeating stamp on a planning line is no stamp: no repeat (note 2) */
+	{ 0, "rrr",
+	  "* TODO a\n"
+	  "SCHEDULED: <2026-11-12 Thu +1d\n",
+	  "* NEXT a\n"
+	  "SCHEDULED: <2026-11-12 Thu +1d\n"
+	  "--\n"
+	  "* WAIT a\n"
+	  "SCHEDULED: <2026-11-12 Thu +1d\n"
+	  ":LOGBOOK:\n"
+	  "- State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "--\n"
+	  "* DONE a\n"
+	  "CLOSED: [2026-11-19 Thu 17:30] SCHEDULED: <2026-11-12 Thu +1d\n"
+	  ":LOGBOOK:\n"
+	  "- State \"DONE\"       from \"WAIT\"       [2026-11-19 Thu 17:30]\n"
+	  "- State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "--\n" },
 };
 
 int main(void)
@@ -1088,13 +1136,17 @@ int main(void)
 	   each line coloured once (not once a piece), and no date or diary
 	   sexp scan to the line's end from every opener (measured under the
 	   sanitizers, best of 5: 21 ms each; with one of the three undone at
-	   least 360 ms) */
-	static const char *const units[] = { "word ", "<2026-01-01 x ", "<%%(x) " };
+	   least 360 ms); then what the line shows (orgfx_conceal), with no
+	   scan to the line's end from every emphasis marker, rule check or
+	   script (measured, 5 runs, colours and conceal: 21 to 48 ms, median
+	   23; with the line start found from each marker, 1572 ms on *a /b) */
+	static const char *const units[] = { "word ", "<2026-01-01 x ", "<%%(x) ", "*a /b ", "=a ", "+-", "x^{a} \\alpha ", "x^{é} " };
 	static char line[65536];
 	static unsigned char lf[sizeof line];
 	for (size_t i = 0; i < sizeof units / sizeof *units; i++) {
 		size_t m = 0, ul = strlen(units[i]);
 		while (m + ul < sizeof line) memcpy(line + m, units[i], ul), m += ul;
+		if (*units[i] == '=') line[m - 1] = '=';   /* every marker's closer at the end */
 		line[m++] = '\n';
 		struct timespec t0, t1;
 		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t0);
@@ -1102,11 +1154,21 @@ int main(void)
 		x = t ? orgfx_new(t) : NULL;
 		CHECK(x && orgfx_update(x, NULL));
 		for (size_t a = 0; a < m; a += 256) orgfx_faces(x, a, a + 256 < m ? a + 256 : m, lf + a);
+		Conceal c[64];
+		CHECK(orgfx_conceal(x, 0, c, 64) == (i == 4 || i == 6 ? 64 : 0));
 		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t1);
 		CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000 < 100);
 		orgfx_free(x);
 		text_free(t);
 	}
+	/* a script takes all its spans or none: with room for two, x^{2}
+	   stays as typed beside \leq's one */
+	Conceal two[2];
+	t = text_new("x^{2} \\leq", 10);
+	x = t ? orgfx_new(t) : NULL;
+	CHECK(x && orgfx_conceal(x, 0, two, 2) == 1 && two[0].a == 6 && !strcmp(two[0].s, "≤"));
+	orgfx_free(x);
+	text_free(t);
 	printf("test_org: %zu texts and %zu TODO steps agree with Org\n", sizeof cases / sizeof *cases, sizeof todos / sizeof *todos);
 	return 0;
 }
