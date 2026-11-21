@@ -1636,7 +1636,6 @@ int do_execreg(int regname)
 		bput(&b, "\r", 1);
 		stuff_bytes(b.s, b.n, 1, 0);
 		free(b.s);
-		E->ks.executing = regname;
 		return 1;
 	}
 	if (regname == '.') {
@@ -1644,7 +1643,6 @@ int do_execreg(int regname)
 		long n = last_insert_keys(&k);
 		if (n < 0) { core_msg(E, "E29: No inserted text yet"); return 0; }
 		typebuf_ins(k, n);
-		E->ks.executing = regname;
 		return 1;
 	}
 	Reg *reg = get_reg(regname, 0);
@@ -1654,7 +1652,7 @@ int do_execreg(int regname)
 	if (reg->type == MLINE) bput(&b, "\n", 1);
 	stuff_bytes(b.s ? b.s : "", b.n, 1, 0);
 	free(b.s);
-	E->ks.executing = regname == 0 ? '"' : regname;
+	E->ks.executing = regname == 0 ? '"' : regname;   /* only here, as do_execreg(): not for @: and @. */
 	return 1;
 }
 
