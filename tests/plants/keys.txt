@@ -32,13 +32,13 @@ keys: CTRL-W w to a window on the same buffer leaves the Visual cursor behind (r
 keys: CTRL-D and CTRL-U that cannot scroll do not beep, so a macro goes on (recorded traces)~test TESTS=~~src/keys/normal.c~core_scroll_half(E, cap->cmdchar == 4 ? 1 : -1, cap->count0) < 0) beep();~core_scroll_half(E, cap->cmdchar == 4 ? 1 : -1, cap->count0) < -1) beep();
 keys: o's undo step starts on the cursor line, so undo moves another window's cursor on it to column 0 (recorded traces)~test TESTS=~~src/keys/edit.c~	u_save(W->line + (dir == FORWARD), W->line + (dir == FORWARD));~	u_save(W->line, W->line);
 keys: a linewise put's undo step starts on the cursor line, so undo moves another window's cursor on it to column 0 (recorded traces)~test TESTS=~~src/keys/ops.c~if (reg->type == MLINE && !(flags & PUT_LINE_SPLIT) && !is_empty_buf())~if (0)
-keys: gq on a .sql buffer is not recognised as SQL (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	return n > 4 && !memcmp(B->path + n - 4, ".sql", 4);~	return n > 4 && 0;
+keys: gq on a .sql buffer is not recognised as SQL (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~!strcmp(x, ".sql") ? 1~0 ? 1
 keys: gq formats one line less than the operator covers (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~(size_t)oap->end.lnum + 1));~(size_t)oap->end.lnum));
 keys: gqq is not gqgq (test_keys_gq)~test TESTS=keys_gq~~src/keys/normal.c~	if (cap->oap->op_type == OP_FORMAT) { cap->cmdchar~	if (0) { cap->cmdchar
 keys: v $ gq takes the next line too, as if gq did not work on lines (test_keys_gq)~test TESTS=keys_gq~~src/keys/normal.c~ && oap->op_type != OP_FORMAT && oap->end.lnum~ && oap->end.lnum
 keys: the save looks for sqldiff.toml only in the file's own directory (test_keys_gq)~test TESTS=keys_gq~~src/keys/keys.c~				if (n <= 1 || (n == 3 && d[1] == ':')) break;~				break;
 keys: a relative path looks for sqldiff.toml from the root, not the working directory (test_keys_gq)~test TESTS=keys_gq~~src/keys/keys.c~		if (B->path[0] != '/' && B->path[0] != '\\' && B->path[1] != ':') {~		if (0) {
-keys: :Format does nothing on a .sql buffer (test_keys_gq)~test TESTS=keys_gq~~src/keys/keys.c~case 8: if (is_sql()) sql_format(0, text_len(B->text));~case 8: ;
+keys: :Format does nothing on a .sql buffer (test_keys_gq)~test TESTS=keys_gq~~src/keys/keys.c~case 8: if (fmt_kind()) buf_format(0, text_len(B->text));~case 8: ;
 keys: gq breaks before the blank at textwidth, not at it (recorded traces)~test TESTS=~~src/keys/ops.c~				if (i > wantcol) {~				if (i >= wantcol) {
 keys: gq leaves the cursor on the last paragraph line, not the last line it went over (recorded traces)~test TESTS=~~src/keys/ops.c~	}¶	W->line = (size_t)l;¶}~	}¶}
 keys: gq keeps a Tab in a paragraph's indent instead of making it spaces (recorded traces)~test TESTS=~~src/keys/ops.c~if (need_set_indent) set_indent(~if (need_set_indent && 0) set_indent(
@@ -167,3 +167,10 @@ keys: 'hlsearch' has no 'redrawtime' (test_keys_ex)~test TESTS=keys_ex~~src/keys
 keys: the first-literal skip passes a byte past 0x7f under \c (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~(ic && (t[x] >= 0x80 || fold(t[x]) == fold(lit)))~(ic && fold(t[x]) == fold(lit))
 keys: a bounded leading repeat skips its run too (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~rp1->simple && rp1->c < 0 ?~rp1->simple ?
 keys: an ASCII character before an accent is its own cluster (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~(c + 1 == (long)n || s[c + 1] < 0x80)~(c + 1 == (long)n || 1)
+keys: verible without Davy's 4-space indent (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~"verible-verilog-format", "--indentation_spaces=4", "-"~"verible-verilog-format", "-", NULL
+keys: gq sends verible the whole text, not its lines (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	if (*a || *z < len) argv[2] = lines, argv[3] = "-";~
+keys: :Format sends verible --lines (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	if (*a || *z < len) argv[2] = lines, argv[3] = "-";~	argv[2] = lines, argv[3] = "-";
+keys: :w formats a .sv buffer with no .slang above it (test_keys_gq)~test TESTS=keys_gq~~src/keys/keys.c~: ".slang";~: ".";
+keys: a failed verible's output is applied, emptying the buffer (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	if (id < 0 || bad) {~	if (id < 0) {
+keys: verible's edit runs to the end of the text, so the cursor below it moves onto other text (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~		while (q < len - p && q < vout.n - p && in[len - 1 - q] == vout.s[vout.n - 1 - q]) q++;¶~
+keys: a hanging verible is never killed (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~proc_wait(id, 1000)~proc_wait(id, 1 << 30)

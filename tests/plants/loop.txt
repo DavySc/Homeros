@@ -1,7 +1,7 @@
 # Plants for src/loop/ (format in tools/planted.sh).  IDLE_SECONDS=2 keeps
 # each short; only the idle plant needs the full 20 s.
 loop: blocking writes to a child (Pipe_block)~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	fcntl(fd[1], F_SETFL, O_NONBLOCK);¶~¶
-loop: the exit waits for the pipes' end (Exit_waiteof)~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~			if (p[i].pid && waitpid(~			if (p[i].pid && p[i].fd[1] < 0 && p[i].fd[2] < 0 && waitpid(
+loop: the exit waits for the pipes' end (Exit_waiteof)~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~			if (p[i].pid && (only < 0 || i == only) && waitpid(~			if (p[i].pid && (only < 0 || i == only) && p[i].fd[1] < 0 && p[i].fd[2] < 0 && waitpid(
 loop: output pending at the exit dropped (Exit_early)~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~		ioctl(c->fd[s], FIONREAD, &left);~
 loop: kill reaches the child but not its group~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	kill(-c->pid, SIGTERM);~	kill(c->pid, SIGTERM);
 loop: no SIGKILL after an ignored SIGTERM~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	c->killat = loop_now() + KILL_MS * 1000000LL;~
@@ -27,7 +27,8 @@ loop: stdin stays open after the exit~test TESTS=loop IDLE_SECONDS=2~~src/loop/l
 loop: SIGKILL reaches the child but not its group~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~kill(-p[i].pid, SIGKILL)~kill(p[i].pid, SIGKILL)
 
 loop: proc_wait runs the other children (Wait_others)~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~for (int s = 0; s < 3 && p[i].pid && (only < 0 || i == only); s++)~for (int s = 0; s < 3 && p[i].pid; s++)
-loop: proc_wait runs the timers~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	if (only < 0) timeout_ms = timer_wait(first, timeout_ms);~	timeout_ms = timer_wait(first, timeout_ms);
+loop: proc_wait runs the timers~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~only < 0 ? timer_run() : loop_now()~timer_run()
+loop: proc_wait spins on a due timer it does not run~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	if (only < 0) timeout_ms = timer_wait(first, timeout_ms);~	timeout_ms = timer_wait(first, timeout_ms);
 loop: proc_wait loses another child's exit (Wait_drain)~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	on_chld(0);¶	return r;~	return r;
 loop: proc_wait ignores Ctrl-C~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~(d <= 0 || loop_int)~(d <= 0)
 loop: proc_wait returns before the killed child is reported~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~{ proc_kill(id); r = -1; continue; }~{ proc_kill(id); r = -1; break; }

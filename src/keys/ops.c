@@ -1733,7 +1733,11 @@ static int verible(size_t *a, size_t *z, const char **res, size_t *n)
 	if (!in) { core_msg(E, "E342: Out of memory!"); return -1; }
 	text_read(B->text, 0, in, len);
 	snprintf(lines, sizeof lines, "--lines=%zu-%zu", text_line_of(B->text, *a) + 1, text_line_of(B->text, *z > *a ? *z - 1 : *z) + 1);
-	char *argv[] = { "verible-verilog-format", "--indentation_spaces=4", lines, "-", NULL };
+	/* the whole text without --lines, as conform.nvim: verible's lines
+	   mode skips its convergence check and formats 2 of Ibex's 33 files
+	   otherwise (measured) */
+	char *argv[] = { "verible-verilog-format", "--indentation_spaces=4", "-", NULL, NULL };
+	if (*a || *z < len) argv[2] = lines, argv[3] = "-";
 	int bad = 0, id = proc_spawn(argv, NULL, on_verible, &bad);
 	if (id >= 0) {
 		vout.n = 0;

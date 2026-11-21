@@ -492,7 +492,9 @@ static void waits(void)
 	CHECK(id >= 0 && proc_write(id, "hello", 5) == 0);
 	proc_close(id);
 	long long t0 = ms();
+	clock_t c0 = clock();
 	CHECK(proc_wait(id, 2000) == 0);
+	CHECK(clock() - c0 < CLOCKS_PER_SEC / 20);   /* the due timer does not spin it */
 	CHECK(b.ended[0] && b.order && b.code == 0 && b.nout == 5 && !memcmp(b.out, "hello", 5));
 	CHECK(!a.nout && !a.ended[0] && !fired[4]);   /* deferred */
 	run(&a, 2000);                                  /* its exit was not lost */
