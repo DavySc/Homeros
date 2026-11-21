@@ -47,6 +47,18 @@ def refactored(name, typ, text):
         except pymssql.Error as e:
             after = 'error %s' % (e.args,)
         con.rollback()
+        if after != before and 'natively compiled' in str(after):
+            # no ALTER of a natively compiled procedure in a transaction
+            # (12331): compile a copy under another name, then drop it
+            copy = name + '_refq'
+            con.autocommit(True)
+            try:
+                cur.execute(re.sub(r'(?i)\bcreate(\s+procedure\s+)\S+', lambda m: 'create' + m.group(1) + copy, p.stdout.decode(), count=1))
+                after = seen(copy, typ)
+            except pymssql.Error as e:
+                after = 'error %s' % (e.args,)
+            cur.execute('drop procedure if exists ' + copy)
+            con.autocommit(False)
         if after != before: return '%s broke it: %s -> %s' % (op, before, after)
     return None
 
@@ -66,13 +78,20 @@ for oid, name, typ, text in mods:
     if errs: why = 'O5 resolver errors in valid code: %s' % errs[:5]
     else: why = refactored(name, typ, text)
     if why: pass
-    elif typ in ('V', 'IF'):
+    else:
         checked += 1
-        cur.execute("select concat(object_schema_name(referenced_id), '.', referenced_entity_name, '.', referenced_minor_name) from sys.dm_sql_referenced_entities(%s, 'OBJECT') where referenced_minor_id <> 0", name)
+        # a trigger's inserted.c and deleted.c the server lists as columns of
+        # tables named inserted and deleted: they are its table's (KB 05)
+        cur.execute("select concat(coalesce(object_schema_name(referenced_id), object_schema_name(parent_object_id), referenced_schema_name), '.', case when referenced_entity_name in ('inserted', 'deleted') and parent_object_id is not null then object_name(parent_object_id) else referenced_entity_name end, '.', referenced_minor_name) from sys.dm_sql_referenced_entities(%s, 'OBJECT') r cross join (select parent_object_id from sys.objects where object_id = object_id(%s)) t where referenced_minor_id <> 0 or referenced_entity_name in ('inserted', 'deleted') and referenced_minor_name is not null", (name, name))
         srv = set(r[0].lower() for r in cur.fetchall())
+        # allowances (KB 05): the server lists nothing a temp table's statement
+        # uses (it binds them when they run), and CONTAINSTABLE(t, *) as the
+        # full-text columns, which the snapshot does not hold
+        if '#' in text: cols &= srv
+        if re.search(r'(?i)containstable\s*\([^,]*,\s*\*', text): srv &= cols
         if srv != cols: why = 'O2 server only %s; resolver only %s' % (sorted(srv - cols), sorted(cols - srv))
     if why:
         bad += 1
         print('DIFF', name, typ, why)
-print('%s: %d modules (%d views and inline functions compared), %d differ%s' % (db, len(mods), checked, bad, ''.join('; %s %d' % kv for kv in sorted(stats.items()))))
+print('%s: %d modules (%d compared with the server references), %d differ%s' % (db, len(mods), checked, bad, ''.join('; %s %d' % kv for kv in sorted(stats.items()))))
 sys.exit(1 if bad else 0)

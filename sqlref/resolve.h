@@ -9,8 +9,8 @@
 enum {
 	RF_OBJECT,      /* a table, view or function name in FROM (span: the whole multi-part name) */
 	RF_ALIAS,       /* an alias defined in FROM, or a derived table's name */
-	RF_CTE_DEF,     /* a CTE's name where WITH defines it */
-	RF_CTE,         /* a CTE used in FROM */
+	RF_CTE_DEF,     /* a CTE's name where WITH defines it; a temp table's or table variable's where it is made */
+	RF_CTE,         /* a CTE, temp table or table variable used */
 	RF_QUAL,        /* the x of x.c, or s.t of s.t.c: names a source */
 	RF_COLUMN,      /* a column */
 	RF_STAR,        /* * or x.* in a select list */
@@ -26,6 +26,7 @@ typedef struct {
 	uint16_t status;
 	int32_t src;         /* the source it names or belongs to, or -1 */
 	int32_t col;         /* RF_COLUMN: column index in the source; RF_OUT: output index */
+	uint8_t wr;          /* RF_COLUMN: written (SET, INSERT's column list, OUTPUT INTO's) */
 } Ref;
 
 enum { SRC_TABLE, SRC_DERIVED, SRC_CTE, SRC_UNKNOWN };
@@ -39,7 +40,7 @@ typedef struct {
 	uint32_t cols, ncols;/* a column list (t(a, b), OPENJSON WITH): Res.names[cols .. cols+ncols) */
 	uint8_t list;        /* it has one (else the columns are inner's outputs) */
 	uint8_t hidden;      /* replaced by a PIVOT/UNPIVOT after it */
-	uint8_t aliased;     /* its exposed name is an alias */
+	uint8_t aliased;     /* its exposed name is an alias (2: inserted or deleted, no reference to the table) */
 	uint16_t grp;        /* which comma-separated item of the FROM list */
 } Src;
 

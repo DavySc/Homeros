@@ -154,8 +154,8 @@ go
 -- qualify: REFUSED
 select (select count(*) from Sales.Customers x0 where x0.CustomerID = OrderID) from Sales.Orders x0
 go
--- OPENJSON with no alias cannot be named
--- qualify: REFUSED
+-- OPENJSON with no alias cannot be named: its columns are left as they are
+-- qualify: select v from openjson(N'[{"v":1}]') with (v int)
 select v from openjson(N'[{"v":1}]') with (v int)
 go
 -- info: a column through a derived table, with its foreign keys; a table
@@ -171,4 +171,66 @@ go
 -- PIVOT's columns are not known yet: its * stays
 -- star: REFUSED
 select * from (select CityID, StateProvinceID, LastEditedBy from Application.Cities) s pivot (count(CityID) for StateProvinceID in ([1], [2])) p
+go
+-- slice 4: DML.  The target named by the table when FROM has it once with an alias
+update Sales.Orders set Comments = c.CustomerName from Sales.Orders o join Sales.Customers c on c.CustomerID = o.CustomerID where 1 = 0
+go
+-- the target not in FROM is a source of its own; a bare column on the left is the target's
+-- qualify: update Sales.Orders set Comments = Customers.CustomerName from Sales.Customers where Orders.CustomerID = Customers.CustomerID and 1 = 0
+update Sales.Orders set Comments = CustomerName from Sales.Customers where Orders.CustomerID = Customers.CustomerID and 1 = 0
+go
+-- two aliased references and none bare: Msg 8154
+update Sales.Orders set Comments = 'x' from Sales.Orders a, Sales.Orders b where 1 = 0
+go
+-- the same with a bare reference: that one is the target, no error
+update Sales.Orders set Comments = 'x' from Sales.Orders a, Sales.Orders b, Sales.Orders where 1 = 0
+go
+-- a column set twice: Msg 264
+update Sales.Orders set Comments = 'x', comments = 'y' where 1 = 0
+go
+-- INSERT's query does not see the target
+insert Application.Cities (CityID, CityName) select CityID, StateProvinceName from Application.StateProvinces where 1 = 0
+go
+insert Application.Cities (CityID, CityName) select CityID, CityName from Application.StateProvinces where 1 = 0
+go
+-- OUTPUT: inserted and deleted are the target's; FROM's sources too
+update o set Comments = 'x' output inserted.Comments, deleted.OrderID, c.CustomerName from Sales.Orders o join Sales.Customers c on c.CustomerID = o.CustomerID where 1 = 0
+go
+-- MERGE: NOT MATCHED sees the source only, BY SOURCE the target only
+merge Sales.Orders t using Sales.Customers s on t.CustomerID = s.CustomerID when not matched by source and t.OrderID < 0 then delete when matched and 1 = 0 then update set Comments = s.CustomerName;
+go
+merge Sales.Orders t using Sales.Customers s on t.CustomerID = s.CustomerID when not matched by source and CustomerName = 'x' then delete;
+go
+-- a temp table and a table variable made in the text; star and qualify through them
+-- star: create table #t (k int, v nvarchar(10)); insert #t (k) select CityID from Application.Cities where 1 = 0; select #t.k, #t.v from #t
+-- qualify: create table #t (k int, v nvarchar(10)); insert #t (k) select Cities.CityID from Application.Cities where 1 = 0; select * from #t
+create table #t (k int, v nvarchar(10)); insert #t (k) select CityID from Application.Cities where 1 = 0; select * from #t
+go
+-- a table variable with no alias has no name a qualifier can use: left as it is
+-- qualify: declare @t table (k int primary key, v int); select k from @t
+declare @t table (k int primary key, v int); select k from @t
+go
+-- qualify: declare @t table (k int primary key, v int); select x.k from @t x
+declare @t table (k int primary key, v int); select k from @t x
+go
+-- SELECT INTO a temp table: its columns are the select list's
+-- star: select CityID, CityName into #c from Application.Cities where 1 = 0; select #c.CityID, #c.CityName from #c
+select CityID, CityName into #c from Application.Cities where 1 = 0; select * from #c
+go
+select CityID into #c from Application.Cities where 1 = 0; select CityName from #c
+go
+-- a MERGE search condition naming what its clause cannot see: 5333, 5334
+merge Sales.Orders t using Sales.Customers s on t.CustomerID = s.CustomerID when not matched and t.OrderID = 1 then insert (CustomerID) values (s.CustomerID);
+go
+merge Sales.Orders t using Sales.Customers s on t.CustomerID = s.CustomerID when not matched by source and zz = 1 then delete;
+go
+-- $action and the target's columns in OUTPUT
+merge Sales.Orders t using Sales.Customers s on t.CustomerID = s.CustomerID when matched and 1 = 0 then update set Comments = s.CustomerName output $action, inserted.OrderID, s.CustomerName;
+go
+-- a table variable's columns cannot be named through @t (Msg 137)
+declare @t table (k int); select @t.k from @t
+go
+-- a table-level constraint is no column; CURRENT_USER is no column
+-- star: declare @t table (k int, v int, primary key (k), unique (v)); select x.k, x.v, current_user from @t x
+declare @t table (k int, v int, primary key (k), unique (v)); select *, current_user from @t x
 go

@@ -49,3 +49,25 @@ sqlref/refactor.c	|| res_origin(&x, o->src, o->col) != res_origin(&y, u->src, u-
 sqlref/refactor.c	(m.s && !snap_eq(s, m, n))	0	the meaning check ignores output names
 sqlref/resolve.c	qsort(res->r, res->nr, sizeof *res->r, by_start);	if (0) qsort(res->r, res->nr, sizeof *res->r, by_start);	references left in walk order, edits out of order
 sqlref/resolve.c	if (!call || o >= 0) r->src[sc].ns	r->src[sc].ns	OPENJSON(..) named OPENJSON
+# ---- slice 4: DML, temp tables, table variables, triggers ----
+sqlref/resolve.c	if (x->blk != blk || x->aliased == 2) continue;	if (x->blk != blk) continue;	a trigger's inserted taken for the UPDATE target
+sqlref/resolve.c	if (!x->aliased) { if (!bare++) sc = (int)s, n = 1; }	if (0) { if (!bare++) sc = (int)s, n = 1; }	the bare reference not preferred as the target
+sqlref/resolve.c	n > 1 ? 8154 : RS_OK	RS_OK	Msg 8154 missed
+sqlref/resolve.c	if (not) r->src[by_src ? ss : sc].hidden = 1;	if (0) r->src[by_src ? ss : sc].hidden = 1;	MERGE's WHEN NOT MATCHED sees both sides
+sqlref/resolve.c	x->status = by_src ? 5334 : 5333	x->status = by_src ? 5334 : 5334	5333 and 5334 confused
+sqlref/resolve.c	if (p->res->r[m].wr && p->res->r[m].src == w->src && p->res->r[m].col == w->col) w->status = 264;	if (0) w->status = 264;	Msg 264 missed
+sqlref/resolve.c	if (pseudo) o = r->src[p->trig].obj;	if (0) o = r->src[p->trig].obj;	a trigger's inserted unknown
+sqlref/resolve.c	static const char *const not_col[] = {"constraint", "primary",	static const char *const not_col[] = {"constraint",	a table-level PRIMARY KEY read as a column
+sqlref/resolve.c	if (snap_eq(r->snap, nm_span(p, r->src[p->loc[k].src].ns), p->t[i].nm)) d = p->loc[k].src;	if (0) d = p->loc[k].src;	temp tables and table variables never found
+sqlref/resolve.c	if (at[4] != SIZE_MAX && p->t[at[4] + 1].k == TQ_VAR) local(p, at[4] + 1, b);		SELECT INTO #t makes no table
+sqlref/resolve.c	if (j > e && nq == 2 && punct(p, j, '(') && p->t[j].m > 0) {	if (0) {	SET c.modify(..) read as an expression
+sqlref/resolve.c	(stmts && starts_statement(p, i))	starts_statement(p, i)	MERGE's WHEN .. THEN UPDATE ends the clause
+sqlref/resolve.c	if (t->k == TQ_VAR && p->res->text[t->s] == '@' && punct(p, i + 1, '.')	if (0	Msg 137 missed
+sqlref/resolve.c	if (p->res->text[t->s] == '$' && t->e - t->s > 1) { i++; continue; }		$action read as a column
+sqlref/resolve.c	"current_user", "session_user",	"session_user",	CURRENT_USER read as a column
+sqlref/resolve.c	if (is(p, i, "update") && punct(p, i + 1, '(') && p->trig >= 0 && word_or_ident(p, i + 2)) col_of(p, i + 2, p->trig);		a trigger's UPDATE(c) not a reference
+sqlref/resolve.c	if (f >= 0 && i && punct(p, i, '(') && is(p, i - 1, "exists")) p->res->b[f].nout = 0;		EXISTS's * counted as use
+sqlref/resolve.c	int call = !p->target && punct(p, j, '(');	int call = punct(p, j, '(');	INSERT t (cols) read as a function call
+sqlref/resolve.c	for (a += punct(p, a, '('); ts >= 0 && a < e; a++) if (word_or_ident(p, a)) col_of(p, a, ts);		CONTAINSTABLE's columns not references
+sqlref/refactor.c	|| x->wr ||	||	qualify writes a qualifier on SET's left side
+sqlref/resolve.c	col_of(p, k, sc);	(void)sc;	INSERT's column list not read (only O2 on DML sees it)

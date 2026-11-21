@@ -10,7 +10,7 @@ against SQL Server (KB 05-oracles.md):
 Test server only (database gen, rebuilt each run).
 
 python3 oracle/gen_oracle.py [SEED] [N] [COLLATION]"""
-import os, random, subprocess, sys, pymssql
+import json, os, random, re, subprocess, sys, pymssql
 
 FILE = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].isdigit() else None   # statements to check, on WWI
 seed = int(sys.argv[1]) if len(sys.argv) > 1 and not FILE else 1
@@ -19,7 +19,7 @@ rnd = random.Random(seed)
 SA = ('localhost', 'sa', 'Homeros_Test1')
 
 COLL = sys.argv[3] if len(sys.argv) > 3 else 'Latin1_General_CI_AS'
-DB = 'WWI' if FILE else 'gen'
+DB = os.environ.get('DB', 'WWI') if FILE else 'gen'
 m = pymssql.connect(*SA, 'master', autocommit=True); mk = m.cursor()
 if not FILE:
     mk.execute("if db_id('gen') is not null begin alter database gen set single_user with rollback immediate; drop database gen end")
@@ -39,6 +39,7 @@ for i in range(1, 6 if not FILE else 1):
 snap = '/tmp/claude-0/%s.snap' % DB
 subprocess.run(['oracle/snap.sh', DB, snap], check=True)
 
+DML = float(os.environ.get('DML', '.35'))   # the share of DML statements and batches
 UPPER = .3 if '_CI' in COLL else .01   # under a _CS_ collation most changes are errors
 def case(s): return ''.join(ch.upper() if rnd.random() < UPPER else ch for ch in s)
 def q(s): return '[%s]' % s if rnd.random() < .2 else case(s)
@@ -70,10 +71,10 @@ class Gen:
         name = (q(sch) + '.' if sch != 'dbo' or rnd.random() < .3 else '') + q(t)
         if rnd.random() < .6: return '%s %s%s' % (name, 'as ' if rnd.random() < .3 else '', alias), (alias, cols)
         return name, (t, cols)
-    def expr(self, srcs):
+    def expr(self, srcs, window=True):
         e = self.colref(srcs)
         t = rnd.choice(['%s'] * 6 + ['cast(%s as int)', 'convert(int, %s)', 'datediff(day, 0, %s)', 'coalesce(%s, 0)',
-            'case when %s = 1 then 0 else 1 end', 'row_number() over (partition by %s order by (select null))'])
+            'case when %s = 1 then 0 else 1 end'] + ['row_number() over (partition by %s order by (select null))'] * window)
         return t % e, t == '%s'
     def select(self, ctes, star_ok=True, named=False, nitems=None):
         srcs, parts = [], []
@@ -109,7 +110,73 @@ class Gen:
         if rnd.random() < .5: sql += ' where %s = %s' % (self.colref(srcs), self.colref(srcs))
         return sql, outs
 
+def table():
+    t = rnd.choice(sorted(tables)); sch, cols = tables[t]
+    return (q(sch) + '.' if sch != 'dbo' or rnd.random() < .3 else '') + q(t), t, cols
+
+def dml():
+    """slice 4: UPDATE, DELETE, INSERT, MERGE, and batches over a temp
+    table or table variable, with the same kinds of names as queries"""
+    g = Gen(0, [])
+    name, t, cols = table()
+    kind = rnd.choice(['update', 'update', 'delete', 'insert', 'merge', 'temp'])
+    wcol = lambda: q(rnd.choice(cols)) if rnd.random() > .03 else q('zz')
+    if kind in ('update', 'delete'):
+        srcs, frm = [], ''
+        tgt = name
+        if rnd.random() < .5:   # a FROM: the target by its alias, by its table name, or not in it
+            fsql, fsrc = g.source(0, [], False, [])
+            r = rnd.random()
+            if r < .4: fsql, fsrc = '%s x0' % name, ('x0', cols); tgt = 'x0'
+            elif r < .6: fsql, fsrc = name, (t, cols)
+            else: srcs.append((t, cols))
+            frm = ' from ' + fsql
+            srcs.append(fsrc)
+            if rnd.random() < .5:
+                jsql, jsrc = g.source(1, srcs, False, [])
+                frm += ' join %s on %s = %s' % (jsql, g.colref(srcs + [jsrc], .02), g.colref([jsrc], .02)); srcs.append(jsrc)
+        else: srcs.append((t, cols))
+        if kind == 'update':
+            sets = ', '.join('%s = %s' % (wcol(), g.expr(srcs, window=False)[0]) for _ in range(rnd.randint(1, 2)))
+            head = 'update %s set %s' % (tgt, sets)
+        else: head = 'delete %s%s' % ('from ' if rnd.random() < .5 and not frm else '', tgt)
+        out = ' output %s.%s' % ('inserted' if kind == 'update' and rnd.random() < .5 else 'deleted', wcol()) if rnd.random() < .2 else ''
+        where = ' where %s = %s' % (g.colref(srcs), g.colref(srcs)) if rnd.random() < .6 else ''
+        return head + out + frm + where
+    if kind == 'insert':
+        k = rnd.randint(1, len(cols))
+        lst = ', '.join(wcol() for _ in range(k))
+        if rnd.random() < .4: body = 'values (%s)' % ', '.join(rnd.choice(['1', g.colref([], .3)]) for _ in range(k))
+        else: body = Gen(0, []).select([], star_ok=False, nitems=k)[0]
+        return 'insert %s%s (%s) %s' % ('into ' if rnd.random() < .5 else '', name, lst, body)
+    if kind == 'merge':
+        sname, st, scols = table()
+        T, S = ('t', cols), ('s', scols)
+        ref = lambda srcs: g.colref(srcs, .03)
+        whens = []
+        if rnd.random() < .7: whens.append('when matched%s then update set %s = %s' % (' and %s = 1' % ref([T, S]) if rnd.random() < .3 else '', wcol(), ref([T, S])))
+        cond = lambda side: ' and %s = 1' % ref(side if rnd.random() < .8 else [T, S]) if rnd.random() < .3 else ''   # sometimes the side it cannot see: 5334
+        if rnd.random() < .5: whens.append('when not matched%s then insert (%s) values (%s)' % (cond([S]), wcol(), ref([S])))
+        if rnd.random() < .4: whens.append('when not matched by source%s then %s' % (cond([T]), rnd.choice(['delete', 'update set %s = %s' % (wcol(), ref([T]))])))
+        if not whens: whens.append('when matched then delete')
+        return 'merge %s %st using %s s on %s = %s %s;' % (name, 'as ' if rnd.random() < .5 else '', sname, ref([T]), ref([S]), ' '.join(whens))
+    # a temp table or table variable, made then used
+    tn = rnd.choice(['#t', '@t'])
+    k = rnd.randint(1, 3)
+    tcols = ['k%d' % j for j in range(k)]
+    if tn == '#t' and rnd.random() < .4:
+        sql, outs = Gen(0, []).select([], star_ok=False, named=True, nitems=k)
+        sql = sql.replace(' from ', ' into #t from ', 1); tcols = outs
+    else:
+        sql = '%s %s %s(%s)' % ('create table' if tn == '#t' else 'declare', tn, 'table ' if tn == '@t' else '', ', '.join('%s int' % c for c in tcols))
+        sql += '; insert %s (%s) values (%s)' % (tn, ', '.join(tcols), ', '.join('1' for _ in tcols))
+    al = rnd.choice(['', ' x9'])
+    use = Gen(0, [((al.strip() or (tn if tn == '#t' else None)), tcols)])
+    cols_used = ', '.join(use.colref([], .05) for _ in range(rnd.randint(1, 2)))
+    return sql + '; select %s from %s%s' % (cols_used, tn, al)
+
 def statement():
+    if rnd.random() < DML: return dml()
     ctes, pre = [], ''
     if rnd.random() < .3:
         defs = []
@@ -146,21 +213,41 @@ def server(sql):
                 for r in cur.fetchall() if not r[ix['is_hidden']]]
     except pymssql.Error as e:
         # CREATE PROCEDURE defers a statement naming a missing table (deferred
-        # name resolution); describing it binds it: its error is the answer
-        return e.args[0], None, None
+        # name resolution); describing it binds it: its error is the answer.
+        # Describe cannot bind a temp table (11525): running it can, in a
+        # transaction rolled back
+        if e.args[0] != 11525: return e.args[0], None, None
+        try: cur.execute('begin tran; exec dbo.p; rollback')
+        except pymssql.Error as e2:
+            cur.execute('if @@trancount > 0 rollback')
+            return e2.args[0], None, None
+        desc = None
     try:
-        cur.execute("select concat(object_schema_name(referenced_id), '.', referenced_entity_name, '.', referenced_minor_name) from sys.dm_sql_referenced_entities('dbo.p', 'OBJECT') where referenced_minor_id <> 0")
-        cols = sorted(set(r[0].lower() for r in cur.fetchall()))
+        # a written column (SET, INSERT's list) also as name!
+        cur.execute("select concat(object_schema_name(referenced_id), '.', referenced_entity_name, '.', referenced_minor_name), is_updated from sys.dm_sql_referenced_entities('dbo.p', 'OBJECT') where referenced_minor_id <> 0")
+        cols = sorted(set(x for r in cur.fetchall() for x in [r[0].lower()] + [r[0].lower() + '!'] * r[1]))
     except pymssql.Error as e:   # 2020: the server could not bind every column itself; no O2 for this one
         cols = None
     return 0, desc, cols
 
 def rows(sql):
-    """O3: the result as a sorted list of rows, or the error number"""
+    """O3: every result set's rows, sorted, or the error number.  Run as a
+    procedure in a transaction rolled back: its temp tables end with it
+    and its writes are undone"""
     try:
-        cur.execute(sql)
-        return sorted(cur.fetchall(), key=repr)
+        cur.execute('create or alter procedure dbo.r as ' + sql)
+        cur.execute('begin tran; exec dbo.r')
+        sets = []
+        while True:
+            try: sets.append(sorted(cur.fetchall(), key=repr))
+            except pymssql.Error: pass
+            if not cur.nextset(): break
+        for t, (sch, cols) in sorted(tables.items()):   # and what it wrote
+            cur.execute('select * from %s.%s' % (sch, t)); sets.append(sorted(cur.fetchall(), key=repr))
+        cur.execute('rollback')
+        return sets
     except pymssql.Error as e:
+        cur.execute('if @@trancount > 0 rollback')
         return 'error %s' % e.args[0]
 
 def refactor(op, sql, sdesc, scols):
@@ -186,6 +273,10 @@ def refactor(op, sql, sdesc, scols):
         return 'broke', 'O3 rows differ: %s' % new
     return 'ok', None
 
+def is_query(sql):
+    """a SELECT, with or without WITH, not WITH .. UPDATE and the like"""
+    return re.match(r'\s*(select|with)\b', sql, re.I) and not re.search(r'\)\s*(update|delete|insert|merge)\b', sql, re.I)
+
 def ours(sql):
     out = subprocess.run(['build/resq', snap], input=sql, capture_output=True, text=True).stdout.splitlines()
     errs, cols, desc, top = set(), set(), [], None
@@ -195,7 +286,7 @@ def ours(sql):
         if f[0] == 'R':
             st = int(f[2])
             if st not in (0, 1): errs.add(st)
-            if f[1] == 'column' and f[5] != '-': cols.add(f[5].lower())
+            if f[1] == 'column' and f[5] != '-': cols.add(f[5].lower()); f[7] == '1' and cols.add(f[5].lower() + '!')
             if f[1] == 'star' and st == 1: desc = None   # a * over unknown columns: no outputs to compare
         elif f[0] == 'O' and desc is not None:
             if f[3] != '-': cols.add(f[3].lower())
@@ -216,6 +307,9 @@ def o1_same(sql, sdesc, odesc):
 
 stats = {}
 bad = valid = 0
+# DUMP=<file>: every statement with both verdicts, one JSON line each, for
+# the comparison with other tools (compare/three_way.py)
+dump = open(os.environ['DUMP'], 'w') if os.environ.get('DUMP') else None
 stmts = [x.strip() for x in open(FILE).read().split('\ngo\n') if x.strip()] if FILE else None
 # a case's comment lines: "-- star: <text>" is what star must give (or
 # REFUSED), likewise qualify; other comment lines say why the case is there
@@ -228,17 +322,26 @@ for n in range(N):
     oerr, ocols, odesc = ours(sql)
     why = None
     if bool(err) != bool(oerr) or (err and err not in oerr): why = 'O5 server %s, resolver %s' % (err or 'ok', sorted(oerr) or 'ok')
-    elif not err and not sql.lower().startswith(('select', 'with')):
-        valid += 1   # DML: the verdict only, until slice 4
+    elif not err and not is_query(sql):
+        valid += 1   # DML and batches: the verdict and O2 (columns read, columns written)
+        # the server lists no columns of a statement on a temp table (it is
+        # bound when it runs), and marks no column written through a CTE or a
+        # derived table (KB 05)
+        if scols is not None and not any(c.endswith('!') for c in scols): ocols = [c for c in ocols if not c.endswith('!')]
+        # nor MERGE's INSERT column list (read or written)
+        if scols is not None and sql.lower().startswith('merge'):
+            ins = {n.strip(' []').lower() for m in re.findall(r'(?i)then\s+insert\s*\(([^)]*)\)', sql) for n in m.split(',')}
+            ocols = [c for c in ocols if c in scols or c.rstrip('!').split('.')[-1] not in ins]
+        if scols is not None and scols != ocols and '#' not in sql: why = 'O2 server %s resolver %s' % (scols, ocols)
     elif not err:
         valid += 1
         # the server keeps no column dependencies for FOR SYSTEM_TIME, and
         # FOR XML/JSON makes one column of the result (KB 05)
-        # nor for the select list of EXISTS (..)
-        if scols is not None and scols != ocols and 'for system_time' not in sql and 'exists (select *' not in sql: why = 'O2 server %s resolver %s' % (scols, ocols)
-        elif odesc is not None and not o1_same(sql, sdesc, odesc) and not any(w in sql for w in (' for json', ' for xml', ' for system_time')):
+        if scols is not None and scols != ocols and 'for system_time' not in sql: why = 'O2 server %s resolver %s' % (scols, ocols)
+        elif odesc is not None and sdesc is not None and not o1_same(sql, sdesc, odesc) and not any(w in sql for w in (' for json', ' for xml', ' for system_time')):
             why = 'O1 server %s resolver %s' % (sdesc, odesc)
-    if not why and not err and sql.lower().startswith(('select', 'with')):
+    if dump: dump.write(json.dumps({'sql': sql, 'err': err, 'cols': scols, 'ours': sorted(oerr), 'ocols': ocols}) + '\n')
+    if not why and not err:
         for op in ('star', 'qualify'):
             res, detail = refactor(op, sql, sdesc, scols)
             stats[op + ' ' + res] = stats.get(op + ' ' + res, 0) + 1
@@ -252,6 +355,6 @@ for n in range(N):
     if why:
         bad += 1
         if bad <= 8: print('DIFF', why, '\n    ', sql)
-cur.execute('drop procedure if exists dbo.p')   # the sample database stays as restored
+cur.execute('drop procedure if exists dbo.p; drop procedure if exists dbo.r')   # the sample database stays as restored
 print('%s: %d statements (%d valid), %d differ%s' % (FILE or 'gen seed %d' % seed, N, valid, bad, ''.join('; %s %d' % kv for kv in sorted(stats.items()))))
 sys.exit(1 if bad else 0)

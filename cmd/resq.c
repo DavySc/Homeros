@@ -56,7 +56,7 @@ int main(int argc, char **argv)
 		printf("R\t%s\t%d\t%u\t%u\t", kinds[x->kind], x->status, x->s, x->e);
 		if (x->kind == RF_COLUMN && x->status == RS_OK) origin(&r, x->src, x->col);
 		else printf("-");
-		printf("\t%.*s\n", (int)(x->e - x->s), sql + x->s);
+		printf("\t%.*s\t%d\n", (int)(x->e - x->s), sql + x->s, x->wr);
 	}
 	resolve_free(&r);
 	snap_free(s);

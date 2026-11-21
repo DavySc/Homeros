@@ -54,8 +54,6 @@ static int edit(Edits *ed, uint32_t a, uint32_t z, size_t mark)
 }
 static int refuse(Edits *ed, const char *why) { ed->why = why; return -2; }
 
-/* a source a qualifier cannot name: OPENJSON(..) with no alias */
-static int nameless(Edits *ed, const Res *r, int sc) { return !r->src[sc].ne && refuse(ed, "a source without a name (OPENJSON with no alias)"); }
 
 /* the exposed name of source sc, as written */
 static int put_exposed(Edits *ed, const Res *r, int sc)
@@ -78,7 +76,7 @@ static int put_cols(Edits *ed, const Res *r, int sc, int *first)
 {
 	size_t n = src_ncols(r, (size_t)sc);
 	if (n == SIZE_MAX) return refuse(ed, "a source's columns are not known (temp table, table variable, rowset function)");
-	if (nameless(ed, r, sc)) return -2;
+	if (!r->src[sc].ne) return refuse(ed, "a source no qualifier can name (OPENJSON or a table variable, with no alias)");
 	for (size_t i = 0; i < n; i++) {
 		long k;
 		Name nm = src_col(r, (size_t)sc, i, &k);
@@ -128,9 +126,8 @@ int refactor_qualify(const Res *r, size_t a, size_t z, Edits *ed)
 	for (size_t i = 0; i < r->nr; i++) {
 		const Ref *x = &r->r[i];
 		if (x->kind != RF_COLUMN || x->s < a || x->s >= z) continue;
-		if ((x->s && r->text[x->s - 1] == '.') || x->status == RS_UNSURE) continue;   /* qualified already; or not known, so left as it is */
+		if ((x->s && r->text[x->s - 1] == '.') || x->status == RS_UNSURE || x->wr || (x->status == RS_OK && !r->src[x->src].ne)) continue;   /* left as it is: qualified already; not known; written (SET c =, INSERT t (c)), where a qualifier is mostly not allowed; from a source with no name (OPENJSON, @t, a trigger's UPDATE(c)) */
 		if (x->status != RS_OK) return refuse(ed, x->status == RS_AMBIG ? "an ambiguous column" : "a column that does not resolve");
-		if (nameless(ed, r, x->src)) return -2;
 		size_t mark = ed->nbuf;
 		if (put_exposed(ed, r, x->src) || put(ed, ".", 1) || edit(ed, x->s, x->s, mark)) return -1;
 	}

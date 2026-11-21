@@ -33,9 +33,10 @@ typedef struct {
 	int on_blk, on_grp;              /* an ON or APPLY being read: in on_blk
 	                                    only comma group on_grp is seen */
 	int grp;                         /* the FROM item being read */
-	int blind;                       /* inside a statement not read yet
-	                                    (UPDATE, DELETE, MERGE, slice 4): a
-	                                    name nothing explains may be its */
+	Cte *loc; size_t nloc, loccap;   /* temp tables and table variables made so far */
+	int trig;                        /* a trigger's table, a source no block sees:
+	                                    inserted, deleted, UPDATE(c) */
+	int target;                      /* reading a DML target: no alias, no column list */
 	size_t tcap;
 	Out *pend; size_t npend, pcap;   /* select lists being read: a block's
 	                                    outputs go to Res.out together when
@@ -156,7 +157,7 @@ static void ref(P *p, uint32_t s, uint32_t e, int kind, int status, int src, int
 {
 	Res *r = p->res;
 	if (!GROW(r->r, r->nr, p->rcap)) return;
-	r->r[r->nr++] = (Ref){s, e, (uint8_t)kind, (uint16_t)status, src, col};
+	r->r[r->nr++] = (Ref){s, e, (uint8_t)kind, (uint16_t)status, src, col, 0};
 }
 static int new_src(P *p, int kind, int blk)
 {
@@ -264,6 +265,8 @@ static int find_col(const P *p, int blk, Name c, int *src, long *col)
 
 static size_t query(P *p, size_t i, int parent, int *first, int cte);
 static void expr(P *p, size_t a, size_t z, int blk);
+static int dml_at(const P *p, size_t i);
+static size_t dml(P *p, size_t i, int parent);
 
 /* the end of a dotted name starting at i: parts into q (at most 4) */
 static size_t chain(const P *p, size_t i, Name *q, int *nq, size_t *last)
@@ -282,7 +285,8 @@ static size_t chain(const P *p, size_t i, Name *q, int *nq, size_t *last)
    (OVER (PARTITION BY .. ROWS BETWEEN UNBOUNDED PRECEDING ..), AT TIME
    ZONE, WITHIN GROUP, IGNORE NULLS ..) */
 static const char *const soft[] = {"partition", "rows", "range", "unbounded", "preceding", "following", "row", "first",
-	"last", "next", "only", "ties", "zone", "time", "at", "within", "ignore", "respect", "nulls", "asc", "desc", NULL};
+	"last", "next", "only", "ties", "zone", "time", "at", "within", "ignore", "respect", "nulls", "asc", "desc",
+	"current_user", "session_user", "system_user", "user", "current_timestamp", NULL};
 
 /* a column reference: parts q[0..nq), tokens a..last */
 static void colref(P *p, size_t a, size_t last, const Name *q, int nq, int blk, int *osrc, long *ocol)
@@ -298,9 +302,8 @@ static void colref(P *p, size_t a, size_t last, const Name *q, int nq, int blk, 
 		src = find_src(p, blk, q, nq - 1);
 		size_t qe = last - 2;   /* the qualifier's last token */
 		if (src < 0) {
-			int un = p->blind ? RS_UNSURE : RS_UNBOUND;
-			ref(p, p->t[a].s, p->t[qe].e, RF_QUAL, un, -1, -1);
-			ref(p, p->t[last].s, p->t[last].e, RF_COLUMN, un, -1, -1);
+			ref(p, p->t[a].s, p->t[qe].e, RF_QUAL, RS_UNBOUND, -1, -1);
+			ref(p, p->t[last].s, p->t[last].e, RF_COLUMN, RS_UNBOUND, -1, -1);
 			return;
 		}
 		ref(p, p->t[a].s, p->t[qe].e, RF_QUAL, RS_OK, src, -1);
@@ -308,9 +311,15 @@ static void colref(P *p, size_t a, size_t last, const Name *q, int nq, int blk, 
 		st = col >= 0 ? RS_OK : col == -2 ? RS_UNSURE : col == -3 ? RS_AMBIG : RS_NOCOL;
 		if (col < 0) col = -1;
 	}
-	if (p->blind && st == RS_NOCOL) st = RS_UNSURE;
 	ref(p, p->t[last].s, p->t[last].e, RF_COLUMN, st, src, (int)col);
 	if (osrc && st == RS_OK) *osrc = src, *ocol = col;
+}
+
+/* the column named by token k, in source sc only */
+static void col_of(P *p, size_t k, int sc)
+{
+	long c = col_in(p, sc, p->t[k].nm);
+	ref(p, p->t[k].s, p->t[k].e, RF_COLUMN, c >= 0 ? RS_OK : c == -2 ? RS_UNSURE : RS_NOCOL, sc, c >= 0 ? (int)c : -1);
 }
 
 static const char *const type_first[] = {"convert", "try_convert", "dateadd", "datediff", "datediff_big", "datepart",
@@ -320,6 +329,13 @@ static const char *const xml_methods[] = {"value", "query", "exist", "nodes", "m
 static const char *const rowset_tables[] = {"containstable", "freetexttable", "semantickeyphrasetable", "semanticsimilaritytable",
 	"semanticsimilaritydetailstable", "changetable", "openquery", "openrowset", "opendatasource", NULL};
 
+/* the query f opened by ( at i is EXISTS's operand: its select list
+   uses nothing (the server lists no column of its *) */
+static void exists_operand(P *p, size_t i, int f)
+{
+	if (f >= 0 && i && punct(p, i, '(') && is(p, i - 1, "exists")) p->res->b[f].nout = 0;
+}
+
 /* scans [a, z) for names: subqueries become blocks seeing blk */
 static void expr(P *p, size_t a, size_t z, int blk)
 {
@@ -328,7 +344,14 @@ static void expr(P *p, size_t a, size_t z, int blk)
 		if (punct(p, i, '(') && (is(p, i + 1, "select") || cte_start(p, i + 1))) {
 			int f;
 			query(p, i + 1, blk, &f, -1);
+			exists_operand(p, i, f);
 			i = t->m > 0 ? (size_t)t->m + 1 : z;
+			continue;
+		}
+		if (p->res->text[t->s] == '$' && t->e - t->s > 1) { i++; continue; }   /* $action, $identity */
+		if (t->k == TQ_VAR && p->res->text[t->s] == '@' && punct(p, i + 1, '.') && word_or_ident(p, i + 2) && !punct(p, i + 3, '(')) {   /* @t.c: Msg 137; @x.value(..) is a method */
+			ref(p, p->t[i + 2].s, p->t[i + 2].e, RF_COLUMN, 137, -1, -1);
+			i += 3;
 			continue;
 		}
 		if (is(p, i, "collate") || (punct(p, i, '$')) || (t->k == TQ_OP && t->e - t->s == 2 && p->res->text[t->s] == ':')) { i += 2; continue; }
@@ -337,7 +360,7 @@ static void expr(P *p, size_t a, size_t z, int blk)
 			i = word_or_ident(p, i + 3) ? chain(p, i + 3, q, &nq, &last) : i + 3;
 			continue;
 		}
-		if (word_or_ident(p, i) && (t->k == TQ_IDENT || !t->rsv)) {
+		if ((word_or_ident(p, i) && (t->k == TQ_IDENT || !t->rsv)) || (t->k == TQ_VAR && p->res->text[t->s] == '#' && punct(p, i + 1, '.'))) {   /* #t.c */
 			Name q[4]; int nq; size_t last, j = chain(p, i, q, &nq, &last);
 			if (punct(p, j, '(')) {
 				/* a call: a type or date part first is no column */
@@ -373,11 +396,12 @@ static void expr(P *p, size_t a, size_t z, int blk)
 static size_t from(P *p, size_t i, size_t z, int blk);
 static const char *const join_words[] = {"join", "inner", "left", "right", "full", "cross", "outer", "on", "apply", "where",
 	"group", "having", "order", "union", "except", "intersect", "option", "for", "window", "pivot", "unpivot", "with",
-	"tablesample", "into", "go", NULL};
+	"tablesample", "into", "go", "output", "using", "when", NULL};
 
 /* an alias after a source at i: [AS] name; returns the token after it */
 static size_t alias(P *p, size_t i, int sc)
 {
+	if (p->target) return i;
 	if (is(p, i, "as")) i++;
 	else if (!name_tok(p, i) || any(p, i, join_words) || starts_statement(p, i)) return i;
 	if (!word_or_ident(p, i) && p->t[i].k != TQ_STRING) return i;
@@ -465,11 +489,20 @@ static size_t source(P *p, size_t i, size_t z, int blk, int lateral)
 		return i;
 	}
 	if (p->t[i].k == TQ_VAR) {
-		/* @table variable, #temp table: slice 4 */
-		sc = new_src(p, SRC_UNKNOWN, blk);
+		/* a temp table or table variable this text made, else one made
+		   elsewhere (a caller's #t): unknown columns.  A table variable
+		   has no name a qualifier can use (Msg 137) until aliased */
+		int d = -1;
+		for (size_t k = p->nloc; k-- > 0 && d < 0;)
+			if (snap_eq(r->snap, nm_span(p, r->src[p->loc[k].src].ns), p->t[i].nm)) d = p->loc[k].src;
+		sc = new_src(p, d >= 0 ? SRC_CTE : SRC_UNKNOWN, blk);
 		if (sc < 0) return z;
-		r->src[sc].s = p->t[i].s, r->src[sc].ns = p->t[i].s, r->src[sc].ne = p->t[i].e;
+		r->src[sc].s = p->t[i].s;
+		if (r->text[p->t[i].s] == '#') r->src[sc].ns = p->t[i].s, r->src[sc].ne = p->t[i].e;
+		if (d >= 0) r->src[sc].inner = r->src[d].inner;
+		ref(p, p->t[i].s, p->t[i].e, RF_CTE, d >= 0 ? RS_OK : RS_UNSURE, sc, d);
 		i = alias(p, i + 1, sc);
+		if (is(p, i, "with") && punct(p, i + 1, '(') && p->t[i + 1].m > 0) i = (size_t)p->t[i + 1].m + 1;   /* hints */
 		r->src[sc].e = p->t[i - 1].e;
 		return i;
 	}
@@ -477,13 +510,17 @@ static size_t source(P *p, size_t i, size_t z, int blk, int lateral)
 	Name q[4];
 	int nq;
 	size_t last, j = chain(p, i, q, &nq, &last);
-	int call = punct(p, j, '(');
+	int call = !p->target && punct(p, j, '(');   /* INSERT t (cols): no call */
 	long o = -1;
 	int cte = -1;
 	if (nq == 1 && !call)
 		for (size_t k = p->ncte; k-- > 0;)
 			if (snap_eq(r->snap, nm_span(p, r->src[p->cte[k].src].ns), q[0])) { cte = p->cte[k].src; break; }
 	if (cte < 0) o = object(p, q, nq);
+	/* a trigger's inserted and deleted: its table's columns; the name is
+	   no object's, so it is marked as an alias */
+	int pseudo = o < 0 && cte < 0 && nq == 1 && !call && p->trig >= 0 && (is(p, i, "inserted") || is(p, i, "deleted"));
+	if (pseudo) o = r->src[p->trig].obj;
 	sc = new_src(p, cte >= 0 ? SRC_CTE : o >= 0 ? SRC_TABLE : SRC_UNKNOWN, blk);
 	if (sc < 0) return z;
 	if (cte >= 0) {
@@ -497,15 +534,26 @@ static size_t source(P *p, size_t i, size_t z, int blk, int lateral)
 		   deleted (slice 4): unknown columns */
 		int outside = call || nq > 3 || (nq >= 2 && (snap_eq(r->snap, q[nq - 2], (Name){"sys", 3, 0}) || snap_eq(r->snap, q[nq - 2], (Name){"information_schema", 18, 0})))
 			|| (nq == 1 && (is(p, i, "inserted") || is(p, i, "deleted")));
-		ref(p, p->t[i].s, p->t[last].e, RF_OBJECT, o >= 0 ? RS_OK : outside ? RS_UNSURE : RS_NOOBJ, sc, -1);
+		ref(p, p->t[i].s, p->t[last].e, pseudo ? RF_ALIAS : RF_OBJECT, o >= 0 ? RS_OK : outside ? RS_UNSURE : RS_NOOBJ, sc, -1);
 		if (o >= 0 && !strchr("UVSI", r->snap->o[o].type[0]) && strcmp(r->snap->o[o].type, "TF")) r->src[sc].kind = SRC_UNKNOWN;
 	}
 	r->src[sc].s = p->t[i].s;
 	if (!call || o >= 0) r->src[sc].ns = p->t[last].s, r->src[sc].ne = p->t[last].e;   /* OPENJSON(..) has no name until aliased */
+	if (pseudo) r->src[sc].aliased = 2;
 	if (call) {
 		size_t close = p->t[j].m > 0 ? (size_t)p->t[j].m : z;
 		if (nq >= 2 && any(p, last, xml_methods)) colref(p, i, last - 2, q, nq - 1, sees, NULL, NULL);   /* x.col.nodes('..') */
 		if (!(nq == 1 && any(p, i, rowset_tables))) expr(p, j + 1, close, sees);
+		else if ((is(p, i, "containstable") || is(p, i, "freetexttable")) && word_or_ident(p, j + 1)) {
+			/* (table, column | (columns) | *, ..): the columns are the table's */
+			Name t[4]; int nt; size_t tl, k = chain(p, j + 1, t, &nt, &tl);
+			long to = object(p, t, nt);
+			int ts = to >= 0 ? new_src(p, SRC_TABLE, -1) : -1;
+			ref(p, p->t[j + 1].s, p->t[tl].e, RF_OBJECT, to >= 0 ? RS_OK : RS_NOOBJ, ts, -1);
+			if (ts >= 0) r->src[ts].obj = (int32_t)to;
+			size_t a = k + 1, e = punct(p, a, '(') && p->t[a].m > 0 ? (size_t)p->t[a].m : a + 1;
+			for (a += punct(p, a, '('); ts >= 0 && a < e; a++) if (word_or_ident(p, a)) col_of(p, a, ts);
+		}
 		j = close + 1;
 		if (is(p, j, "with") && punct(p, j + 1, '(') && p->t[j + 1].m > 0) {   /* OPENJSON .. WITH (cols) */
 			r->src[sc].kind = SRC_DERIVED;
@@ -520,7 +568,7 @@ static size_t source(P *p, size_t i, size_t z, int blk, int lateral)
 		else if (is(p, j, "all")) j++;
 	}
 	i = alias(p, j, sc);
-	if (punct(p, i, '(') && p->t[i].m > 0 && r->src[sc].kind != SRC_TABLE) i = col_list(p, i, sc);
+	if (punct(p, i, '(') && p->t[i].m > 0 && r->src[sc].kind != SRC_TABLE && !p->target) i = col_list(p, i, sc);
 	if (is(p, i, "with") && punct(p, i + 1, '(') && p->t[i + 1].m > 0) i = (size_t)p->t[i + 1].m + 1;   /* hints */
 	if (is(p, i, "tablesample") && punct(p, i + 1, '(') && p->t[i + 1].m > 0) {
 		i = (size_t)p->t[i + 1].m + 1;
@@ -649,6 +697,35 @@ static void item(P *p, size_t a, size_t z, int blk)
 
 static const char *const clauses[] = {"from", "where", "group", "having", "into", "window", NULL};
 
+/* column definitions ( name type .., CONSTRAINT .., PRIMARY KEY (..),
+   INDEX .. ) at i: a block whose outputs are the column names */
+static int col_defs(P *p, size_t i)
+{
+	static const char *const not_col[] = {"constraint", "primary", "unique", "check", "index", "foreign", "period", NULL};
+	size_t z = (size_t)p->t[i].m, base = p->npend;
+	int b = new_blk(p, -1, i);
+	if (b < 0) return -1;
+	for (size_t k = i + 1; k < z; k++) {
+		if (word_or_ident(p, k) && !any(p, k, not_col)) out(p, b, (Out){p->t[k].s, p->t[k].e, NULL, -1, -1});
+		while (k < z && !(punct(p, k, ',') && p->t[k].d == p->t[i].d + 1)) k++;
+	}
+	p->res->b[b].e = p->t[z].e;
+	commit(p, b, base);
+	return b;
+}
+
+/* a temp table or table variable named at token i, its columns block
+   blk's outputs; later names see it (rule 14) */
+static void local(P *p, size_t i, int blk)
+{
+	int sc = new_src(p, SRC_CTE, -1);
+	if (sc < 0 || !GROW(p->loc, p->nloc, p->loccap)) return;
+	Src *s = &p->res->src[sc];
+	s->ns = s->s = p->t[i].s, s->ne = s->e = p->t[i].e, s->inner = blk;
+	ref(p, p->t[i].s, p->t[i].e, RF_CTE_DEF, RS_OK, sc, -1);
+	p->loc[p->nloc++] = (Cte){sc};
+}
+
 /* SELECT at i: one block seeing parent; returns where it ends */
 static size_t select_(P *p, size_t i, int parent, int *blk)
 {
@@ -689,6 +766,7 @@ static size_t select_(P *p, size_t i, int parent, int *blk)
 	if (at[1] != SIZE_MAX) expr(p, at[1] + 1, end[1], b);
 	if (at[2] != SIZE_MAX) expr(p, at[2] + 1, end[2], b);
 	if (at[3] != SIZE_MAX) expr(p, at[3] + 1, end[3], b);
+	if (at[4] != SIZE_MAX && p->t[at[4] + 1].k == TQ_VAR) local(p, at[4] + 1, b);   /* SELECT .. INTO #t */
 	commit(p, b, base);
 	return z;
 }
@@ -752,6 +830,8 @@ static size_t query(P *p, size_t i, int parent, int *first, int cte)
 			i++;
 		}
 	}
+	if (cte >= 0 || !dml_at(p, i)) ;
+	else return i = dml(p, i, parent), p->ncte = ncte, i;
 	int setop = 0;
 	for (;;) {
 		int b;
@@ -788,6 +868,264 @@ static size_t query(P *p, size_t i, int parent, int *first, int cte)
 	if (is(p, i, "option") && punct(p, i + 1, '(') && p->t[i + 1].m > 0) i = (size_t)p->t[i + 1].m + 1;
 	p->ncte = ncte;
 	return i;
+}
+
+
+/* ---- INSERT, UPDATE, DELETE, MERGE (rules 15 to 19) ---- */
+
+static const char *const dml_words[] = {"insert", "update", "delete", "merge", NULL};
+/* a DML statement starts at i: not GRANT UPDATE, ON DELETE CASCADE, AFTER
+   INSERT, FOR UPDATE, IF UPDATE(c), INNER MERGE JOIN */
+static int dml_at(const P *p, size_t i)
+{
+	static const char *const not_after[] = {"on", "for", "after", "of", "grant", "deny", "revoke", "inner", "left", "right",
+		"full", "outer", "cross", NULL};
+	return any(p, i, dml_words) && !punct(p, i + 1, '(') && !punct(p, i + 1, ',') && !(i && (any(p, i - 1, not_after) || punct(p, i - 1, ',')));
+}
+
+/* where a clause starting at i ends: at depth d, a word of stop, a ; or
+   (stmts) a statement; MERGE's clauses hold UPDATE SET and INSERT */
+static size_t clause_end(const P *p, size_t i, int32_t d, const char *const *stop, int stmts)
+{
+	for (; i < p->nt && p->t[i].d >= d; i++)
+		if (p->t[i].d == d && (any(p, i, stop) || punct(p, i, ';') || (stmts && starts_statement(p, i)))) break;
+	return i;
+}
+
+/* TOP (n) [PERCENT] at i, its expression seeing blk */
+static size_t top(P *p, size_t i, int blk)
+{
+	if (!is(p, i, "top") || !punct(p, i + 1, '(') || p->t[i + 1].m < 0) return i;
+	expr(p, i + 2, (size_t)p->t[i + 1].m, blk);
+	return (size_t)p->t[i + 1].m + 1 + is(p, (size_t)p->t[i + 1].m + 1, "percent");
+}
+
+/* the last reference is a column written; one written twice since
+   reference from is Msg 264 */
+static void wrote(P *p, size_t from)
+{
+	Ref *w = &p->res->r[p->res->nr - 1];
+	w->wr = 1;
+	for (size_t m = from; w->status == RS_OK && m + 1 < p->res->nr; m++)
+		if (p->res->r[m].wr && p->res->r[m].src == w->src && p->res->r[m].col == w->col) w->status = 264;
+}
+
+/* column names (c, ..) at i, written, in source sc */
+static size_t written(P *p, size_t i, int sc)
+{
+	size_t z = (size_t)p->t[i].m, n0 = p->res->nr;
+	for (size_t k = i + 1; k < z; k++) {
+		if (!word_or_ident(p, k)) continue;
+		col_of(p, k, sc);
+		wrote(p, n0);
+	}
+	return z + 1;
+}
+
+/* the target named at i, a source of blk: with a FROM (from), a name its
+   sources expose, or the one reference to that table there (Msg 8154
+   when two have aliases and none is bare); else a source of its own.
+   *z: the token after it */
+static int target(P *p, size_t i, int blk, int from, size_t *z)
+{
+	Res *r = p->res;
+	Name q[4];
+	int nq, sc = -1, n = 0, bare = 0;
+	size_t last = i;
+	*z = p->t[i].k == TQ_VAR ? i + 1 : chain(p, i, q, &nq, &last);
+	if (from && p->t[i].k == TQ_VAR) q[0] = p->t[i].nm, nq = 1;
+	if (from) {
+		long o = nq == 1 ? -1 : object(p, q, nq);
+		for (size_t s = 0; s < r->nsrc; s++) {
+			const Src *x = &r->src[s];
+			if (x->blk != blk || x->aliased == 2) continue;
+			if (nq == 1 && x->ne && snap_eq(r->snap, nm_span(p, x->ns), q[0])) { sc = (int)s, n = 1; break; }
+			if (nq == 1 && x->kind == SRC_TABLE && !x->ne) continue;
+			if (x->kind == SRC_TABLE && (nq == 1 ? snap_eq(r->snap, (Name){r->snap->o[x->obj].name, strlen(r->snap->o[x->obj].name), 1}, q[0]) : x->obj == o)) {
+				if (!x->aliased) { if (!bare++) sc = (int)s, n = 1; }
+				else if (!bare) sc = (int)s, n++;
+			}
+		}
+		if (sc >= 0) {
+			ref(p, p->t[i].s, p->t[last].e, r->src[sc].aliased && nq == 1 && !bare ? RF_QUAL : RF_OBJECT, n > 1 ? 8154 : RS_OK, sc, -1);
+			if (is(p, *z, "with") && punct(p, *z + 1, '(') && p->t[*z + 1].m > 0) *z = (size_t)p->t[*z + 1].m + 1;
+			return sc;
+		}
+	}
+	p->target = 1;
+	*z = source(p, i, p->nt, blk, 0);
+	p->target = 0;
+	return (int)r->nsrc - 1;
+}
+
+/* OUTPUT items [INTO t [(c, ..)]], at most twice, from i: inserted and
+   deleted are target sc's columns, the statement's sources blk visible */
+static size_t output(P *p, size_t i, int blk, int sc, int32_t d)
+{
+	Res *r = p->res;
+	while (is(p, i, "output")) {
+		static const char *const stop[] = {"into", "output", "from", "where", "option", "when", NULL};
+		size_t z = clause_end(p, i + 1, d, stop, 1);
+		int ob = new_blk(p, blk, i);
+		if (ob < 0) return p->nt;
+		/* the pseudo tables, named by their first mention */
+		for (size_t k = i + 1; k < z; k++) {
+			if (!(is(p, k, "inserted") || is(p, k, "deleted")) || !punct(p, k + 1, '.')) continue;
+			int seen_it = 0;
+			for (size_t s = 0; s < r->nsrc; s++) if (r->src[s].blk == ob && snap_eq(r->snap, nm_span(p, r->src[s].ns), p->t[k].nm)) seen_it = 1;
+			if (seen_it) continue;
+			int ps = new_src(p, r->src[sc].kind, ob);
+			if (ps < 0) return p->nt;
+			Src *x = &r->src[ps];
+			x->obj = r->src[sc].obj, x->inner = r->src[sc].inner, x->list = r->src[sc].list, x->cols = r->src[sc].cols, x->ncols = r->src[sc].ncols;
+			x->ns = x->s = p->t[k].s, x->ne = x->e = p->t[k].e, x->aliased = 2;
+		}
+		for (size_t a = i + 1, k = a; k <= z; k++)
+			if (k == z || (punct(p, k, ',') && p->t[k].d == d)) expr(p, a, k, ob), a = k + 1;
+		r->b[ob].e = p->t[z - 1].e;
+		i = z;
+		if (is(p, i, "into")) {
+			int t = target(p, i + 1, ob, 0, &i);
+			if (punct(p, i, '(') && p->t[i].m > 0) i = written(p, i, t);
+		}
+	}
+	return i;
+}
+
+/* SET items [i, z): col = expr, col += expr, @v = expr, @v = col = expr,
+   col.method(..); a bare column is the target's (rule 16) */
+static void set_list(P *p, size_t i, size_t z, int blk, int sc)
+{
+	size_t set0 = p->res->nr;
+	for (size_t a = i, k = i; k <= z; k++) {
+		if (k < z && !(punct(p, k, ',') && p->t[k].d == p->t[i].d)) continue;
+		size_t e = a;
+		while (e + 1 < k && p->t[e].k == TQ_VAR && punct(p, e + 1, '=')) e += 2;
+		Name q[4]; int nq; size_t last, j = e < k && word_or_ident(p, e) ? chain(p, e, q, &nq, &last) : e;
+		if (j > e && nq == 2 && punct(p, j, '(') && p->t[j].m > 0) {   /* c.modify(..), c.WRITE(..): c is written */
+			col_of(p, e, sc);
+			wrote(p, set0);
+			e = j;
+		} else if (j > e && j < k && p->t[j].k == TQ_OP && !punct(p, j, '(')) {
+			size_t n0 = p->res->nr;
+			if (nq == 1) col_of(p, e, sc);
+			else colref(p, e, last, q, nq, blk, NULL, NULL);
+			if (p->res->nr > n0) wrote(p, set0);
+			e = j;
+		}
+		expr(p, e, k, blk);
+		a = k + 1;
+	}
+}
+
+/* the statement at i (dml_at), its subqueries seeing parent */
+static size_t dml(P *p, size_t i, int parent)
+{
+	Res *r = p->res;
+	int32_t d = p->t[i].d;
+	int b = new_blk(p, parent, i), sc;
+	if (b < 0) return p->nt;
+	size_t j, z;
+	if (is(p, i, "update") || is(p, i, "delete")) {
+		static const char *const stop[] = {"set", "output", "from", "where", "option", NULL};
+		int upd = is(p, i, "update");
+		size_t tg = top(p, i + 1, parent);
+		if (!upd && is(p, tg, "from")) tg++;
+		if (!(name_tok(p, tg) || p->t[tg].k == TQ_VAR)) return i + 1;
+		size_t at[5];   /* set, output, from, where, option */
+		for (int k = 0; k < 5; k++) at[k] = SIZE_MAX;
+		for (j = tg + 1; j < p->nt && p->t[j].d >= d; j++) {
+			if (p->t[j].d != d) continue;
+			int k = 0;
+			while (stop[k] && !is(p, j, stop[k])) k++;
+			if (stop[k] && at[k] == SIZE_MAX && (k || upd)) { at[k] = j; continue; }
+			if (starts_statement(p, j)) break;
+		}
+		z = j;
+		if (upd && at[0] == SIZE_MAX) return i + 1;   /* UPDATE STATISTICS and the like */
+		size_t end[5];
+		for (int k = 0; k < 5; k++) {
+			end[k] = z;
+			for (int m = 0; m < 5; m++) if (at[m] != SIZE_MAX && at[k] != SIZE_MAX && at[m] > at[k] && at[m] < end[k]) end[k] = at[m];
+		}
+		if (at[2] != SIZE_MAX) from(p, at[2] + 1, end[2], b);
+		sc = target(p, tg, b, at[2] != SIZE_MAX, &j);
+		if (at[0] != SIZE_MAX) set_list(p, at[0] + 1, end[0], b, sc);
+		if (at[1] != SIZE_MAX) output(p, at[1], b, sc, d);
+		if (at[3] != SIZE_MAX) expr(p, at[3] + 1, end[3], b);
+	} else if (is(p, i, "insert")) {
+		j = top(p, i + 1, parent);
+		j += is(p, j, "into");
+		if (!(name_tok(p, j) || p->t[j].k == TQ_VAR)) return i + 1;
+		sc = target(p, j, b, 0, &j);
+		if (punct(p, j, '(') && p->t[j].m > 0) j = written(p, j, sc);
+		j = output(p, j, b, sc, d);
+		/* VALUES and the query see the blocks outside, not the target */
+		if (is(p, j, "values")) {
+			for (j++; punct(p, j, '(') && p->t[j].m > 0; j += 1 + punct(p, (size_t)p->t[j].m + 1, ',')) {
+				expr(p, j + 1, (size_t)p->t[j].m, parent);
+				j = (size_t)p->t[j].m;
+			}
+		} else if (is(p, j, "select") || cte_start(p, j) || punct(p, j, '(')) {
+			int f;
+			j = query(p, j, parent, &f, -1);
+			if (f >= 0 && GROW(r->top, r->ntop, p->tcap)) r->top[r->ntop++] = f;
+		}
+		z = clause_end(p, j, d, (const char *const[]){NULL}, 1);
+	} else {   /* MERGE */
+		j = top(p, i + 1, parent);
+		j += is(p, j, "into");
+		if (!(name_tok(p, j) || p->t[j].k == TQ_VAR)) return i + 1;
+		sc = target(p, j, b, 0, &j);
+		if (is(p, j, "as")) j++;
+		if (name_tok(p, j) && !is(p, j, "using")) {   /* its alias: after the hints, unlike a FROM's */
+			r->src[sc].ns = p->t[j].s, r->src[sc].ne = p->t[j].e, r->src[sc].aliased = 1;
+			ref(p, p->t[j].s, p->t[j].e, RF_ALIAS, RS_OK, sc, -1);
+			r->src[sc].e = p->t[j++].e;
+		}
+		if (!is(p, j, "using")) return i + 1;
+		j = source(p, j + 1, p->nt, b, 0);   /* sees the blocks outside, not the target */
+		int ss = (int)r->nsrc - 1;
+		static const char *const stop[] = {"when", "output", "option", NULL};
+		size_t k = clause_end(p, j + 1, d, stop, 0);
+		if (is(p, j, "on")) expr(p, j + 1, k, b);
+		/* WHEN MATCHED sees both; NOT MATCHED [BY TARGET] the source only;
+		   NOT MATCHED BY SOURCE the target only */
+		for (j = k; is(p, j, "when"); j = k) {
+			int not = is(p, j + 1, "not"), by_src = not && is(p, j + 3, "by") && is(p, j + 4, "source");
+			size_t then = j;
+			while (then < p->nt && !is(p, then, "then")) then++;
+			k = clause_end(p, then + 1, d, stop, 0);
+			if (not) r->src[by_src ? ss : sc].hidden = 1;
+			size_t and = j;
+			while (and < then && !is(p, and, "and")) and++;
+			size_t n0 = r->nr;
+			if (and < then) expr(p, and + 1, then, b);
+			/* the search condition naming the side it cannot see, or any
+			   name it cannot bind: Msg 5333 (NOT MATCHED), 5334 (BY SOURCE) */
+			int hid = by_src ? ss : sc;
+			for (size_t m = n0; not && m < r->nr; m++) {
+				Ref *x = &r->r[m];
+				if (x->status == RS_NOCOL   /* even a name no source has */
+				    || (x->kind == RF_QUAL && x->status == RS_UNBOUND && r->src[hid].ne && snap_eq(r->snap, nm_span(p, r->src[hid].ns), nm_span(p, x->s))))
+					x->status = by_src ? 5334 : 5333, m += x->kind == RF_QUAL && m + 1 < r->nr ? (r->r[m + 1].status = x->status, 1) : 0;
+			}
+			size_t a = then + 1;
+			if (is(p, a, "update") && is(p, a + 1, "set")) set_list(p, a + 2, k, b, sc);
+			else if (is(p, a, "insert")) {
+				r->src[sc].hidden = 0;
+				a++;
+				if (punct(p, a, '(') && p->t[a].m > 0) a = written(p, a, sc);
+				if (not) r->src[sc].hidden = 1;
+				if (is(p, a, "values") && punct(p, a + 1, '(') && p->t[a + 1].m > 0) expr(p, a + 2, (size_t)p->t[a + 1].m, b);
+			}
+			r->src[ss].hidden = r->src[sc].hidden = 0;
+		}
+		j = output(p, j, b, sc, d);
+		z = clause_end(p, j, d, (const char *const[]){NULL}, 1);
+	}
+	r->b[b].e = p->t[z - 1].e;
+	return z;
 }
 
 /* ---- the text ---- */
@@ -842,19 +1180,31 @@ int resolve(Res *res, const Snap *snap, const char *text, size_t n)
 	memset(res, 0, sizeof *res);
 	if (!p) return -1;
 	res->snap = snap, res->text = text, res->n = n, res->priv = p;
-	p->on_blk = -1;
+	p->on_blk = -1, p->trig = -1;
 	p->res = res;
 	if (lex(p) < 0) return -1;
 	/* queries start wherever they start: SELECT, WITH, ( SELECT inside IF
 	   EXISTS, SET @x = ( .. ) and the like */
 	for (size_t i = 0; i < p->nt && !p->oom;) {
 		int f;
-		/* blind from UPDATE, DELETE or MERGE to a ; or a statement that
-		   cannot be part of one (their SET, INSERT, SELECT can) */
-		if (is(p, i, "update") || is(p, i, "delete") || is(p, i, "merge")) p->blind = 1;
-		else if (p->t[i].d == 0 && starts_statement(p, i) && !any(p, i, (const char *const[]){"set", "insert", "select", NULL})) p->blind = 0;
+		/* DECLARE @t TABLE (..), CREATE TABLE #t (..): a block of its column names */
+		size_t v = i + 1 + is(p, i + 1, "table"), o = v + 1 + is(p, v + 1, "as") + is(p, v + 1, "table") + (is(p, v + 1, "as") && is(p, v + 2, "table"));
+		if (((is(p, i, "declare") && is(p, o - 1, "table")) || (is(p, i, "create") && v == i + 2)) && p->t[v].k == TQ_VAR && punct(p, o, '(') && p->t[o].m > 0) {
+			local(p, v, col_defs(p, o));
+			i = (size_t)p->t[o].m + 1;
+			continue;
+		}
+		/* CREATE [OR ALTER] TRIGGER x ON t: inserted and deleted are t's */
+		if (is(p, i, "trigger") && i && (is(p, i - 1, "create") || is(p, i - 1, "alter"))) {
+			Name q[4]; int nq; size_t last, j = word_or_ident(p, i + 1) ? chain(p, i + 1, q, &nq, &last) : i + 1;
+			long o = is(p, j, "on") && word_or_ident(p, j + 1) ? (chain(p, j + 1, q, &nq, &last), object(p, q, nq)) : -1;
+			if (o >= 0 && (p->trig = new_src(p, SRC_TABLE, -1)) >= 0) res->src[p->trig].obj = (int32_t)o;
+		}
+		if (is(p, i, "update") && punct(p, i + 1, '(') && p->trig >= 0 && word_or_ident(p, i + 2)) col_of(p, i + 2, p->trig);   /* a trigger's IF UPDATE(c) */
+		if (dml_at(p, i)) { size_t z = dml(p, i, -1); i = z > i ? z : i + 1; continue; }
 		if (is(p, i, "select") || cte_start(p, i)) {
 			size_t z = query(p, i, -1, &f, -1);
+			if (i) exists_operand(p, i - 1, f);   /* IF EXISTS (SELECT ..) */
 			if (f >= 0 && GROW(res->top, res->ntop, p->tcap)) res->top[res->ntop++] = f;
 			i = z > i ? z : i + 1;
 		} else i++;
@@ -868,7 +1218,7 @@ int resolve(Res *res, const Snap *snap, const char *text, size_t n)
 void resolve_free(Res *res)
 {
 	P *p = res->priv;
-	if (p) free(p->t), free(p->low), free(p->unq), free(p->cte), free(p->pend), free(p);
+	if (p) free(p->t), free(p->low), free(p->unq), free(p->cte), free(p->loc), free(p->pend), free(p);
 	free(res->r), free(res->src), free(res->b), free(res->out), free(res->names), free(res->top);
 	memset(res, 0, sizeof *res);
 }
