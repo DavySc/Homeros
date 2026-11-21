@@ -130,7 +130,7 @@ for l in open(sys.argv[1] + "/tests/plants.txt"):
 }
 if [ "${1:-}" != plants ]; then run . "${1:-all}" && echo "check ok"; exit; fi   # or one step by name
 # `./check.sh plants [step]`: every plant, or those of one step. A plant only shows something if the unplanted tree passes.
-run . "${2:-all}" >/dev/null 2>&1 || { echo "plants: the check fails without any plant"; exit 1; }
+log=$(mktemp); run . "${2:-all}" >"$log" 2>&1 || { tail -n 30 "$log"; echo "plants: the check fails without any plant"; exit 1; }; rm -f "$log"   # what it said: on the Windows runner a step now and then fails for no reason of ours
 missed=0; total=0
 while IFS='|' read -r what file find repl; do
   what=$(echo $what); file=$(echo $file); find=${find# }; find=${find% }; repl=${repl# }
