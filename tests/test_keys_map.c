@@ -5,7 +5,9 @@
    gives "acb" at column 1: a key that completes no map runs Space's own
    motion, then the keys, each checked for a map again.  (Here SPC ff opens
    a picker, which would take the x, so x comes after it closes.) */
+#include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 #include "check.h"
 #include "core.h"
@@ -128,6 +130,18 @@ int main(void)
 	CHECK(at(&d, "* NEXT a b\n", 9));
 	feed(&d, "0wwcwc\x1b");
 	CHECK(at(&d, "* NEXT c b\n", 7));
+	/* DONE stamps CLOSED with the local clock (a zone 5:45 east, named as
+	   POSIX TZ does, so no zone files are needed); a minute may turn */
+	setenv("TZ", "XST-5:45", 1);
+	tzset();
+	char want[2][32], got[32] = "";
+	time_t t = time(NULL);
+	strftime(want[0], sizeof want[0], "CLOSED: [%Y-%m-%d %a %H:%M]", localtime(&t));
+	feed(&d, "citcit");
+	t = time(NULL);
+	strftime(want[1], sizeof want[1], "CLOSED: [%Y-%m-%d %a %H:%M]", localtime(&t));
+	text_read(d.buf->text, core_line_start(&d, 1), got, 31);
+	CHECK(!strncmp(got, want[0], strlen(want[0])) || !strncmp(got, want[1], strlen(want[1])));
 	core_free(&d);
 	unlink(org);
 	CHECK(!core_open(&d, NULL));
