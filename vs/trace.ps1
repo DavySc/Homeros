@@ -13,7 +13,12 @@ function Place($dte) {
   "$(Again { $f.FunctionName }) $([IO.Path]::GetFileName((Again { $f.FileName }))):$(Again { $f.LineNumber }) $rip"
 }
 foreach ($script in 'into', 'over') {
-  $dte = New-Object -ComObject VisualStudio.DTE.17.0
+  # Visual Studio's automation object is not made by its class: start the program and take the object it registers
+  $devenv = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property productPath
+  $vs = Start-Process $devenv -PassThru
+  $dte = $null
+  for ($i = 0; $i -lt 180 -and -not $dte; $i++) { Start-Sleep -Seconds 1; try { $dte = [Runtime.InteropServices.Marshal]::GetActiveObject('VisualStudio.DTE') } catch {} }
+  if (-not $dte) { "VS $name.$script: no automation object from $devenv after 180 s"; try { $vs.Kill() } catch {}; exit 1 }
   $lines = @()
   try {
     Again { $dte.SuppressUI = $true }
@@ -28,6 +33,7 @@ foreach ($script in 'into', 'over') {
   } catch { $lines += "FAILED: $_" }
   try { $dte.Debugger.Stop($true) } catch {}
   try { $dte.Quit() } catch {}
+  if (-not $vs.WaitForExit(20000)) { try { $vs.Kill() } catch {} }
   Start-Sleep -Seconds 3
   $lines | Set-Content "$out/$name.$script.txt"
   "VS $name.$script steps=$($lines.Count) last=[$($lines[-1])]"
