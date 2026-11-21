@@ -11,11 +11,12 @@
   outputs = { nixpkgs, ... }:
     let
       forAll = f: nixpkgs.lib.genAttrs [ "x86_64-linux" "aarch64-linux" ] (s: f nixpkgs.legacyPackages.${s});
-      # slang-server is not in nixpkgs: built from its tag, with nixpkgs'
-      # libraries in place of the ones its CMake would download
+      # slang-server is not in nixpkgs: built from main as of 2026-11-19
+      # (v0.3.1 and 38 commits), with nixpkgs' libraries in place of the
+      # ones its CMake would download
       slang-server = pkgs: pkgs.stdenv.mkDerivation {
         pname = "slang-server";
-        version = "0.3.1";
+        version = "0.3.1-unstable-2026-11-19";
         src = pkgs.fetchgit {
           url = "https://github.com/hudson-trading/slang-server";
           rev = "4349e86487d3766b77f156a01fbc695e4854007f";

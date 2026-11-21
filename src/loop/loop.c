@@ -38,6 +38,7 @@ static int chld[2] = { -1, -1 };
 /* proc_wait's child: no other child and no timer runs, the watches do, as
    in loop_breakcheck */
 static int only = -1;
+static int waited;   /* only was reported: a child its fn starts may get its slot */
 static char buf[1 << 16];
 
 long long loop_now(void)
@@ -226,6 +227,7 @@ void proc_kill(int id)
    bounds the read: such a process may keep writing. */
 static void report(struct Proc *c, int code)
 {
+	waited |= c - p == only;
 	for (int s = 1; s < 3; s++) {
 		if (c->fd[s] < 0) continue;
 		int left = 0;
@@ -249,7 +251,7 @@ int proc_wait(int id, int ms)
 	long long end = loop_now() + ms * 1000000LL;
 	int r = 0;
 	only = id;
-	while (proc(id)) {
+	for (waited = !proc(id); !waited; ) {
 		long long due = r ? p[id].killat : end, d = due - loop_now();
 		if (!r && (d <= 0 || loop_int)) { proc_kill(id); r = -1; continue; }
 		loop_once(!due ? -1 : d <= 0 ? 0 : (int)(d / 1000000) + 1);

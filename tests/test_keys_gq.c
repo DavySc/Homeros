@@ -82,13 +82,14 @@ static char *disk(const char *path)
 static const char SV[] = "module m;\n  wire a;\n  wire b;\nendmodule\n";
 static char fake[200], args[200];
 
-/* MODE ok: indents the wires in lines a-b (all without --lines) by 4;
-   fail: exits 1; hang: sleeps */
+/* MODE ok: indents the wires in lines a-b (all without --lines) by 4 and
+   writes to stderr, as Verible does with exit 0; fail: exits 1; hang:
+   sleeps */
 static void fake_as(const char *mode)
 {
 	FILE *f = fopen(fake, "w");
 	CHECK(f && fprintf(f, "#!/bin/sh\necho \"$*\" > %s\ncase %s in fail) exit 1;; hang) exec sleep 10;; esac\n"
-	                     "r=${2#--lines=}; [ \"$r\" = - ] && r=1-999999\n"
+	                     "echo \"verible's notes\" >&2\nr=${2#--lines=}; [ \"$r\" = - ] && r=1-999999\n"
 	                     "awk -v a=${r%%-*} -v b=${r#*-} 'NR>=a&&NR<=b{sub(/^  wire/,\"    wire\")}1'\n", args, mode) > 0 && !fclose(f));
 	CHECK(!chmod(fake, 0700));
 }

@@ -479,6 +479,15 @@ static void many(void)
 	for (int i = 0; i < 32; i++) { CHECK(g[i].code == 0 && g[i].nout == sizeof kb); free(g[i].out); }
 }
 
+/* told of its exit, a child starts another, which gets its slot */
+static Got next;
+static int next_id = -1;
+static void respawn(void *ctx, int s, const char *b, size_t n)
+{
+	on_proc(ctx, s, b, n);
+	if (!s) next_id = spawn(&next, "sleep 3");
+}
+
 static void waits(void)
 {
 	Got a, b;
@@ -520,7 +529,16 @@ static void waits(void)
 	ka = proc_wait(id, 5000);
 	CHECK(ka == -1 && loop_int && b.ended[0] && ms() - t0 < 600);
 	waitpid(w, NULL, 0);
-	fprintf(stderr, "test_loop: proc_wait: others deferred and reported after; killed at 200 ms, SIGKILL after 2 s, Ctrl-C after %lld ms\n", ms() - t0);
+	loop_int = 0;
+	fprintf(stderr, "test_loop: proc_wait: others deferred and reported after; killed at 200 ms, SIGKILL after 2 s, Ctrl-C after %lld ms; it ends at its child's report\n", ms() - t0);
+	/* the wait ends at its child's report, not at the slot's next child */
+	char *argv[] = { "true", NULL };
+	memset(&b, 0, sizeof b);
+	id = proc_spawn(argv, NULL, respawn, &b);
+	t0 = ms();
+	CHECK(proc_wait(id, 1000) == 0 && b.ended[0] && next_id == id && ms() - t0 < 500);
+	proc_kill(next_id);
+	run(&next, 2000);
 	loop_int = 0;
 	loop_unwatch(input[0]);
 	close(input[0]); close(input[1]);

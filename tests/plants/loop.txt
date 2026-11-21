@@ -32,6 +32,7 @@ loop: proc_wait spins on a due timer it does not run~test TESTS=loop IDLE_SECOND
 loop: proc_wait loses another child's exit (Wait_drain)~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	on_chld(0);¶	return r;~	return r;
 loop: proc_wait ignores Ctrl-C~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~(d <= 0 || loop_int)~(d <= 0)
 loop: proc_wait returns before the killed child is reported~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~{ proc_kill(id); r = -1; continue; }~{ proc_kill(id); r = -1; break; }
+loop: proc_wait follows the slot, not its child~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	for (waited = !proc(id); !waited; ) {~	while (proc(id)) {
 # Windows (src/loop/win.c, run under Wine by make win WIN=loop)
 loop: win: the exit drops what the pipes still hold~win WIN=loop~~src/loop/win.c~		for (; left && (got = take(c, s, left)); left -= got) {}¶~		(void)got;¶
 loop: win: a completion routine re-arms its read, so a flood holds loop_once (review of PR 41, 1)~win WIN=loop~~src/loop/win.c~&& left) take(c, s, left);¶}~&& left) take(c, s, left);¶	read_next(c, s);¶}
@@ -54,3 +55,4 @@ loop: win: proc_write blocks until the pipe takes it all~win WIN=loop~~src/loop/
 loop: win: proc_wait runs the other children's completions (Wait_others)~win WIN=loop~~src/loop/win.c~if (c->reaping || (only >= 0 && c != &p[only])) return;~if (c->reaping) return;
 loop: win: proc_wait waits on the other children~win WIN=loop~~src/loop/win.c~if (!p[i].ph || (only >= 0 && i != only)) continue;~if (!p[i].ph) continue;
 loop: win: proc_wait runs the timers~win WIN=loop~~src/loop/win.c~	if (only < 0) timer_run();~	timer_run();
+loop: win: proc_wait follows the slot, not its child~win WIN=loop~~src/loop/win.c~	for (waited = !proc(id); !waited; ) {~	while (proc(id)) {

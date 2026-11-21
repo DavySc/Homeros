@@ -479,6 +479,15 @@ static void stale(void)
 	if (h) { TerminateProcess(h, 0); CloseHandle(h); }
 }
 
+/* told of its exit, a child starts another, which gets its slot */
+static Got next;
+static int next_id = -1;
+static void respawn(void *ctx, int s, const char *b, size_t n)
+{
+	on_proc(ctx, s, b, n);
+	if (!s) next_id = spawn(&next, "sleep", NULL);
+}
+
 /* proc_wait (Wait.tla "ok"): only its child runs, even with another
    child's reads armed and its output there; the others come after it */
 static void waits(void)
@@ -502,6 +511,16 @@ static void waits(void)
 	CHECK(proc_wait(id, 200) == -1 && g.ended[0] && g.code == 128 + 15);
 	CHECK(ms() - t0 >= 190 && ms() - t0 < 700);
 	free(g.out);
+	/* the wait ends at its child's report, not at the slot's next child */
+	char *argv[] = { self, "say", NULL };
+	memset(&g, 0, sizeof g);
+	id = proc_spawn(argv, NULL, respawn, &g);
+	t0 = ms();
+	CHECK(proc_wait(id, 1000) == 0 && g.ended[0] && next_id == id && ms() - t0 < 500);
+	free(g.out);
+	proc_kill(next_id);
+	run(&next, 2000);
+	free(next.out);
 }
 
 static void idle(void)

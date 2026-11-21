@@ -24,6 +24,7 @@
 #include "loop.h"
 #include "lsp.h"
 #include "text.h"
+#include "bench.h"
 
 int core_changed;                     /* core.h's, which this program does not link */
 
@@ -34,19 +35,11 @@ static long long now(void)
 	return ts.tv_sec * 1000000LL + ts.tv_nsec / 1000;
 }
 
-static Text *t;
 static const char *path;
-static long bad;                      /* errors shown off "@" while one is typed */
+static long bad;                      /* errors shown off the typed text */
 static const char *typo = "@@@ ";     /* what is typed */
 static size_t at, len;                /* where it is, or (size_t)-1 */
 
-static void edit(LspDoc *d, size_t pos, size_t ndel, const char *ins, size_t nins)
-{
-	lsp_edit(d, t, pos, ndel, ins, nins);
-	text_delete(t, pos, ndel);
-	text_insert(t, pos, ins, nins);
-	lsp_flush(d);
-}
 
 static void save(LspDoc *d)
 {
@@ -100,7 +93,6 @@ static long hwm(void)
 	return kb;
 }
 
-static int cmpl(const void *a, const void *b) { long long x = *(const long long *)a, y = *(const long long *)b; return (x > y) - (x < y); }
 static void show(const char *what, long long *v, int n)
 {
 	qsort(v, (size_t)n, sizeof *v, cmpl);

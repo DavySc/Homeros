@@ -42,6 +42,7 @@ static char buf[1 << 16];
 /* proc_wait's child: no other child and no timer runs, the watches do, as
    in loop_breakcheck */
 static int only = -1;
+static int waited;   /* only was reported: a child its fn starts may get its slot */
 
 #define H(fd) ((HANDLE)(INT_PTR)(fd))   /* sign-extended, as LongToHandle */
 
@@ -342,6 +343,7 @@ void proc_kill(int id)
    since a process left behind may keep writing (Exit.tla "ok"). */
 static void report(struct Proc *c)
 {
+	waited |= c - p == only;
 	DWORD code = 0;
 	GetExitCodeProcess(c->ph, &code);
 	c->reaping = 1;
@@ -369,7 +371,7 @@ int proc_wait(int id, int ms)
 	long long end = loop_now() + ms * 1000000LL;
 	int r = 0;
 	only = id;
-	while (proc(id)) {
+	for (waited = !proc(id); !waited; ) {
 		long long d = end - loop_now();
 		if (!r && (d <= 0 || loop_int)) { proc_kill(id); r = -1; }
 		loop_once(r ? -1 : (int)(d / 1000000) + 1);
