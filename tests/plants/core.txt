@@ -149,7 +149,7 @@ core: the c flag's match (ks.inc) not drawn (test_core_contract)~test TESTS=core
 core: 'hlsearch' not drawn (test_core_search)~test TESTS=core_search~~src/core/draw.c~	int mh = keys_hl(e, w, l, 0, &ms, &mz);~	int mh = 0;
 core: no CurSearch (test_core_search)~test TESTS=core_search~~src/core/draw.c~im ? mh == 2 ? FACE_CUR_SEARCH : FACE_SEARCH : cl;~im ? FACE_SEARCH : cl;
 core: an empty match draws no character (test_core_search)~test TESTS=core_search~~src/core/draw.c~	int im = mh && i >= ms;~	int im = mh && i >= ms && mz > ms;
-core: a match that takes the line break not drawn where the line ends before the view (test_core_search)~test TESTS=core_search~~src/core/draw.c~(mz > ms || (w->wrap ? v >= skip~(0 || (w->wrap ? v >= skip
+core: a match that takes the line break not drawn where the line ends before the view (test_core_search)~test TESTS=core_search~~src/core/draw.c~(mz > ms || (w->wrap~(0 || (w->wrap
 core: an empty match at the end drawn where 'leftcol' passes the line's bytes (test_core_search)~test TESTS=core_search~~src/core/draw.c~(w->wrap ? v >= skip : w->left <= i)~(w->wrap ? v >= skip : 1)
 core: the end-of-line cell past the window's edge dropped, not on its last cell (test_core_search)~test TESTS=core_search~~src/core/draw.c~	int full = w->wrap ? d && d % (size_t)tw == 0 : d >= (size_t)tw;~	int full = w->wrap ? d && d % (size_t)tw == 0 : 0;
 core: the yank flash drawn over 'hlsearch' matches (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~	int flash = area && e->ks.yank.type;~	int flash = 0 && area && e->ks.yank.type;
