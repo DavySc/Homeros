@@ -32,6 +32,16 @@ int     syntax_update(Syntax *s, const Text *t, int (*stop)(void));
 /* One face (grid.h FACE_*) per byte of [a, z), z - a at most 8,192 (core_draw
    asks for at most 1,024), into face; no allocation. */
 void    syntax_faces(Syntax *s, size_t a, size_t z, unsigned char *face);
+/* Neovim's conceal (conceallevel=2, concealcursor="": the core draws the
+   cursor's line as typed, as org-appear and render-markdown's
+   anti_conceal do): what line l shows in place of some of its bytes, up
+   to cap spans in byte order, [a, z) drawn as the UTF-8 s ("" hides
+   them).  Org: org-pretty-entities (\leq as ≤), sub- and superscripts in
+   {} where every character has a Unicode one, org-hide-emphasis-markers
+   (orgfx_conceal).  The one conceal mechanism for every file type.  No
+   allocation; returns the count. */
+typedef struct { size_t a, z; const char *s; } Conceal;
+size_t  syntax_conceal(Syntax *s, size_t line, Conceal *out, size_t cap);
 /* What render-markdown draws on line l, from the tree, without allocating:
    0 for a non-Markdown buffer or a line with none of these, else 1 */
 typedef struct {
