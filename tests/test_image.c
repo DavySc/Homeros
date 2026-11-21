@@ -1,7 +1,7 @@
 /* Inline images (src/image/): random PNGs (written by stb_image_write)
    against a model of what a window must show, the cache's keys and reuse,
-   a JPEG (tests/test_image.jpg), and the LaTeX jobs with stand-in latex and dvipng on PATH that log
-   their arguments. */
+   a JPEG (tests/test_image.jpg), and the LaTeX jobs with stand-in latex
+   and dvipng on PATH that log their arguments. */
 #define _GNU_SOURCE
 #include <fcntl.h>
 #include <stdint.h>
@@ -312,6 +312,13 @@ static void latex(void)
 	CHECK(lines() == 7);
 	snprintf(d, sizeof d, "ls %s | wc -l | grep -qx 3", out);
 	CHECK(system(d) == 0);
+	/* a dir relative to the working directory (Org's ltximg/ next to the note) */
+	char cwd[600];
+	CHECK(getcwd(cwd, sizeof cwd) && chdir(dir) == 0);
+	CHECK(image_latex(tex, strlen(tex), 1, 140, "ltx/rel") == NULL);
+	wait_done();
+	CHECK((s = (char *)image_latex(tex, strlen(tex), 1, 140, "ltx/rel")) && image_load(s, 9, 9, 2, 2, 0) > 0);
+	CHECK(chdir(cwd) == 0);
 	/* the fragment's own bytes: n, not up to a NUL */
 	CHECK(image_latex("$x$ and more", 3, 0, 140, out) == NULL);
 	wait_done();

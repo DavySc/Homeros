@@ -26,6 +26,7 @@ latex: a failed render is tried again~test TESTS=image~~src/image/latex.c~	for (
 latex: a render under way is started again~test TESTS=image~~src/image/latex.c~		if (job[i].h == k.h) return NULL;   /* rendering */~
 latex: what latex leaves stays~test TESTS=image~~src/image/latex.c~	for (int i = 0; i < 5; i++) remove~	for (int i = 0; i < 1; i++) remove
 latex: the fragment read to its NUL~test TESTS=image~~src/image/latex.c~"\\begin{document}\n%.*s\n\\end{document}\n", (int)n, tex);~"\\begin{document}\n%s\n\\end{document}\n", tex);
+latex: dvipng given names from where it does not run~test TESTS=image~~src/image/latex.c~"-o", strrchr(name(f, j, 1, "png"), '/') + 1, strrchr(name(g, j, 1, "dvi"), '/') + 1, NULL };~"-o", name(f, j, 1, "png"), name(g, j, 1, "dvi"), NULL };
 latex: done without a redraw~test TESTS=image~~src/image/latex.c~	core_changed = 1;~
 latex: TeX's input left open~test TESTS=image~~src/image/latex.c~	else proc_close(p);~
 latex: dvipng without the text's colour~test TESTS=image~~src/image/latex.c~"-bg", "Transparent", "-fg", fg,~"-bg", "Transparent",

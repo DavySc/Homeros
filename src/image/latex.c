@@ -45,7 +45,7 @@ static void step(void *ctx, int stream, const char *b, size_t n)
 		snprintf(fg, sizeof fg, "rgb %.3f %.3f %.3f", (j->fg >> 16) / 255., (j->fg >> 8 & 0xff) / 255., (j->fg & 0xff) / 255.);
 		snprintf(dpi, sizeof dpi, "%d", j->dpi);
 		char *argv[] = { "dvipng", "-q", "-D", dpi, "-T", "tight", "-bg", "Transparent", "-fg", fg,
-			"-o", name(f, j, 1, "png"), name(g, j, 1, "dvi"), NULL };
+			"-o", strrchr(name(f, j, 1, "png"), '/') + 1, strrchr(name(g, j, 1, "dvi"), '/') + 1, NULL };   /* run in dir */
 		j->dpi = -j->dpi;
 		int id = proc_spawn(argv, j->dir, step, j);
 		if (id >= 0) { proc_close(id); return; }
