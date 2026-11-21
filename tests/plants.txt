@@ -1130,3 +1130,5 @@ eval | dbg/ask.c | uint64_t function = line ? 0 : engine_function(m, more, strle
 eval | dbg/ask.c | b = b == '\\' ? '/' : b >= 'A' && b <= 'Z' ? (char)(b + 32) : b; | b = b >= 'A' && b <= 'Z' ? (char)(b + 32) : b;
 
 eval | dbg/ask.c | if (n == 0 \p\p n > len \p\p (n < len && path[len - n - 1] != '/')) return false; | if (n == 0 \p\p n > len) return false;
+engine | dbg/engine.c | return after.line.line == 0xf00f00 ? after.opl : row.opl; | return row.opl;
+engine | dbg/engine.c | (!into \p\p addr >= base + row.opl) | !into

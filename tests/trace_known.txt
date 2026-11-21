@@ -19,3 +19,8 @@ recur_clang.mix2.txt all 9 9
 # system's code while the program's access violation is being raised once more, with a line that names no place.
 # The second (crash_o2.mix.second-run.txt) goes on for all 600 steps and is what we do.
 crash_o2.mix.txt all 339 339
+# MSVC's "just my code" rows: RAD stops on them and goes into their call, we do neither (as cdb; dbg/engine.c, line_end).
+# The two traces of one kind of step are compared in full without those stops (tests/oracle_trace.py); in these the
+# kinds alternate, so from the first such row on the steps fall on different places.
+calls_jmc.back.txt all 2 2
+calls_jmc.mix2.txt all 2 2

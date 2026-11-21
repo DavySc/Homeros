@@ -19,6 +19,9 @@ files = [t for t in sorted(traces.glob('*.txt')) if not t.name.endswith('.eval.t
 for t in files:
     name, script = t.name.split('.')[:2]
     want = [kind(l) for l in t.read_text().splitlines()]
+    # RAD stops on the "never step into" rows of MSVC's "just my code" and goes into their call; cdb and we do neither
+    # (knowledge base 03, "A second reference"). Where every step is of one kind, the trace less those stops is ours.
+    if script in ('into', 'over'): want = [l for l in want if ':15732480 ' not in l and '__CheckForDebuggerJustMyCode' not in l]
     got = subprocess.run(wine + [driver, name + '.exe', script, '600'], cwd=programs, capture_output=True, text=True, timeout=120).stdout.splitlines()
     if t.name in known:   # past that line the two are in different places
         at, differs = known[t.name]

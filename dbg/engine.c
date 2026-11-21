@@ -157,6 +157,15 @@ static void inst_net(Engine *e, uint64_t rip)
   if (x.flow == X64_CALL || x.repeats) net_add(e, rip + x.size, END);
 }
 
+/* Where a piece of a line ends: behind what MSVC's "just my code" puts after it under the made-up
+   line number 0xf00f00, "never step into": a call of a function that has lines. As cdb, a step neither ends on it nor
+   goes into its call; RAD does both (knowledge base 03, "A second reference"). */
+static uint64_t line_end(const Rdi *rdi, RdiRow row)
+{
+  RdiRow after = rdi_row(rdi, row.opl);
+  return after.line.line == 0xf00f00 ? after.opl : row.opl;
+}
+
 /* Step over or into a line (d_trap_net_from_thread__step_over_line, __step_into_line): a trap wherever the thread
    can leave the line's code. With no line at rip the net stays empty, and the step is one instruction. */
 static void line_net(Engine *e, uint64_t rip, bool into)
@@ -169,8 +178,8 @@ static void line_net(Engine *e, uint64_t rip, bool into)
   RdiSpan starts = rdi_voffs_from_line(&m->rdi, row.line.file, row.line.line);
   uint32_t count = (uint32_t)starts.n;
   ROOM(e, ranges, range_cap, 2 * count);
-  for (uint32_t i = 0; i < count; i += 1) e->ranges[2 * i] = ((const uint64_t *)starts.p)[i], e->ranges[2 * i + 1] = rdi_row(&m->rdi, e->ranges[2 * i]).opl;
-  uint64_t lo = row.first, hi = row.opl;
+  for (uint32_t i = 0; i < count; i += 1) e->ranges[2 * i] = ((const uint64_t *)starts.p)[i], e->ranges[2 * i + 1] = line_end(&m->rdi, rdi_row(&m->rdi, e->ranges[2 * i]));
+  uint64_t lo = row.first, hi = line_end(&m->rdi, row);
   uint32_t n = code_at(e, base + lo, (uint32_t)(hi - lo));
   uint64_t last_call = 0;
   for (int pass = into ? 0 : 1; pass < 2; pass += 1)   /* into: first find the line's last call */
@@ -181,7 +190,7 @@ static void line_net(Engine *e, uint64_t rip, bool into)
       at += x.size;
       uint64_t to = x.known ? x.target : 0;
       if (pass == 0) last_call = x.flow == X64_CALL ? addr : last_call;
-      else if (x.flow == X64_CALL && !into) net_add(e, addr, STEP_AFTER);   /* into the call, and on: the trap behind the call waits at this depth */
+      else if (x.flow == X64_CALL && (!into || addr >= base + row.opl)) net_add(e, addr, STEP_AFTER);   /* into the call, and on: the trap behind the call waits at this depth */
       else if (x.flow != X64_OTHER) {
         /* A jump, branch or return, and stepping into, a call: the step ends where it goes, when that is known, else
            after the instruction has run. Not when it lands in the line; and a call that is not the line's last is
