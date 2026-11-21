@@ -94,8 +94,8 @@ def esc(t): return t.replace('\\', '\\\\').replace('\t', '\\t').replace('\n', '\
 
 bad = total = 0
 def run(sql):
-    p = subprocess.run([tdsq, '127.0.0.1', '1433', 'sa', 'Homeros_Test1', 'master'], input=sql.encode(), capture_output=True, timeout=120)   # a client that hangs fails the run (a null-bitmap plant hung it for 3 h)
-    if p.returncode: print('tdsq failed:', p.stderr.decode()[:300], sql[:200]); return None
+    p = subprocess.run([tdsq, '-t', '127.0.0.1', '1433', 'sa', 'Homeros_Test1', 'master'], input=sql.encode(), capture_output=True, timeout=120)   # a client that hangs fails the run (a null-bitmap plant hung it for 3 h)
+    if p.returncode: print('tdsq failed:', p.stderr.decode()[:300], sql[:200]); sys.exit(1)   # one failed run fails the check (a hang would cost 120 s per type)
     return p.stdout.decode()
 
 for name, make, want in TYPES:

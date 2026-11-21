@@ -5,32 +5,16 @@
    which keeps a large value linear. */
 #define _POSIX_C_SOURCE 200809L
 #include "tds.h"
-#include <errno.h>
 #include <stdarg.h>
-#include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <fcntl.h>
-#include <sys/socket.h>
 
-static int put(TdsBuf *b, const void *s, size_t n)
-{
-	if (b->n + n > b->cap) {
-		size_t cap = b->cap ? b->cap : 4096;
-		while (cap < b->n + n) cap *= 2;
-		uint8_t *p = realloc(b->p, cap);
-		if (!p) return -1;
-		b->p = p, b->cap = cap;
-	}
-	if (n) memcpy(b->p + b->n, s, n);
-	b->n += n;
-	return 0;
-}
-static int putc8(TdsBuf *b, int c) { uint8_t x = (uint8_t)c; return put(b, &x, 1); }
-static int fmt(TdsBuf *b, const char *f, ...) __attribute__((format(printf, 2, 3)));
-static int fmt(TdsBuf *b, const char *f, ...)
+#define put buf_put
+#define putc8 buf_c
+static int fmt(Buf *b, const char *f, ...) __attribute__((format(printf, 2, 3)));
+static int fmt(Buf *b, const char *f, ...)
 {
 	char s[160];
 	va_list a;
@@ -57,25 +41,14 @@ static uint64_t le(const uint8_t *b, size_t n)
 static uint64_t num(Cur *c, size_t n) { const uint8_t *b = take(c, n); return b ? le(b, n) : 0; }
 
 /* text out: code points as UTF-8, escaping what would break a row line */
-static int put_cp(TdsBuf *b, uint32_t u)
-{
-	uint8_t s[4];
-	if (u == '\t' || u == '\n' || u == '\r' || u == '\\')
-		return putc8(b, '\\') || putc8(b, u == '\t' ? 't' : u == '\n' ? 'n' : u == '\r' ? 'r' : '\\');
-	if (u < 0x80) return putc8(b, (int)u);
-	if (u < 0x800) { s[0] = 0xC0 | u >> 6; s[1] = 0x80 | (u & 63); return put(b, s, 2); }
-	if (u < 0x10000) { s[0] = 0xE0 | u >> 12; s[1] = 0x80 | (u >> 6 & 63); s[2] = 0x80 | (u & 63); return put(b, s, 3); }
-	s[0] = 0xF0 | u >> 18; s[1] = 0x80 | (u >> 12 & 63); s[2] = 0x80 | (u >> 6 & 63); s[3] = 0x80 | (u & 63);
-	return put(b, s, 4);
-}
-static int put_u16(TdsBuf *b, const uint8_t *s, size_t n)   /* n bytes of UTF-16LE */
+static int put_u16(Buf *b, const uint8_t *s, size_t n)   /* n bytes of UTF-16LE */
 {
 	for (size_t i = 0; i + 1 < n; i += 2) {
 		uint32_t u = (uint32_t)le(s + i, 2);
 		if (u >= 0xD800 && u < 0xDC00 && i + 3 < n && le(s + i + 2, 2) >= 0xDC00 && le(s + i + 2, 2) < 0xE000)
 			u = 0x10000 + (u - 0xD800) * 1024 + ((uint32_t)le(s + i + 2, 2) - 0xDC00), i += 2;
 		else if (u >= 0xD800 && u < 0xE000) u = 0xFFFD;
-		if (put_cp(b, u)) return -1;
+		if (buf_cp(b, u)) return -1;
 	}
 	return 0;
 }
@@ -84,14 +57,20 @@ static const uint16_t cp1252[32] = {
 	0xFFFD, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014, 0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0xFFFD, 0x017E, 0x0178};
 /* a varchar under collation co: UTF-8 collations as they are; every other
    one read as code page 1252 (WWI's and AW's; other code pages: KB 11 gap) */
-static int put_char(TdsBuf *b, const uint8_t *co, const uint8_t *s, size_t n)
+/* single-byte text: the server converts UTF-8 collations to the client's
+   code page, since the login does not ask for UTF-8 (measured: the utf8
+   branch this replaced never ran) */
+static int put_char(Buf *b, const uint8_t *s, size_t n)
 {
-	int utf8 = (co[3] & 4) != 0;
+	size_t a = 0;
 	for (size_t i = 0; i < n; i++)
-		if (put_cp(b, utf8 || s[i] < 0x80 ? s[i] : s[i] < 0xA0 ? cp1252[s[i] - 0x80] : s[i])) return -1;
-	return 0;
+		if (s[i] >= 0x80) {
+			if (buf_esc(b, s + a, i - a) || buf_cp(b, s[i] < 0xA0 ? cp1252[s[i] - 0x80] : s[i])) return -1;
+			a = i + 1;
+		}
+	return buf_esc(b, s + a, n - a);
 }
-static int put_hex(TdsBuf *b, const uint8_t *s, size_t n)
+static int put_hex(Buf *b, const uint8_t *s, size_t n)
 {
 	if (put(b, "0x", 2)) return -1;
 	for (size_t i = 0; i < n; i++)
@@ -99,7 +78,7 @@ static int put_hex(TdsBuf *b, const uint8_t *s, size_t n)
 	return 0;
 }
 /* an exact decimal: magnitude m (n bytes, little-endian), scale digits after the point */
-static int put_dec(TdsBuf *b, int neg, const uint8_t *m, size_t n, unsigned scale)
+static int put_dec(Buf *b, int neg, const uint8_t *m, size_t n, unsigned scale)
 {
 	uint32_t l[4] = {0};
 	char d[48];
@@ -119,7 +98,7 @@ static int put_dec(TdsBuf *b, int neg, const uint8_t *m, size_t n, unsigned scal
 		if (putc8(b, d[i]) || (i == scale && scale && putc8(b, '.'))) return -1;
 	return 0;
 }
-static int put_dbl(TdsBuf *b, double v, int single)   /* the shortest text that reads back the same */
+static int put_dbl(Buf *b, double v, int single)   /* the shortest text that reads back the same */
 {
 	char s[40];
 	for (int p = single ? 6 : 15; p <= 17; p++) {
@@ -129,7 +108,7 @@ static int put_dbl(TdsBuf *b, double v, int single)   /* the shortest text that 
 	return put(b, s, strlen(s));
 }
 /* days since 0001-01-01 as y-m-d (H. Hinnant's civil_from_days) */
-static int put_date(TdsBuf *b, int64_t days)
+static int put_date(Buf *b, int64_t days)
 {
 	int64_t z = days - 719162 + 719468, era = (z >= 0 ? z : z - 146096) / 146097, doe = z - era * 146097;
 	int64_t yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365, doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
@@ -137,7 +116,7 @@ static int put_date(TdsBuf *b, int64_t days)
 	return fmt(b, "%04lld-%02lld-%02lld", (long long)(yoe + era * 400 + (m <= 2)), (long long)m, (long long)d);
 }
 static uint64_t pow10u(unsigned s) { uint64_t p = 1; while (s--) p *= 10; return p; }
-static int put_time(TdsBuf *b, uint64_t u, unsigned scale)   /* u: 10^-scale seconds since midnight */
+static int put_time(Buf *b, uint64_t u, unsigned scale)   /* u: 10^-scale seconds since midnight */
 {
 	uint64_t p = pow10u(scale), s = u / p;
 	if (fmt(b, "%02u:%02u:%02u", (unsigned)(s / 3600), (unsigned)(s / 60 % 60), (unsigned)(s % 60))) return -1;
@@ -163,8 +142,16 @@ static int fixed(uint8_t t)   /* a fixed-length type's size, or -1 */
 }
 
 /* one value of type ty, n bytes (not NULL) */
-static int put_val(TdsBuf *b, const TdsCol *c, uint8_t ty, const uint8_t *s, size_t n)
+static int put_val(Buf *b, const TdsCol *c, uint8_t ty, const uint8_t *s, size_t n)
 {
+	/* the length must fit the type: a broken stream must not read past it (the fuzzer) */
+	int f = fixed(ty);
+	if (f >= 0 ? n != (size_t)f : ty == INTN ? n != 1 && n != 2 && n != 4 && n != 8
+		: ty == FLTN || ty == MONEYN || ty == DATETIMN ? n != 4 && n != 8
+		: ty == BITN ? n != 1 : ty == GUID ? n != 16 : ty == DATEN ? n != 3
+		: ty == TIMEN ? n < 3 || n > 5 : ty == DATETIME2N ? n < 6 || n > 8 : ty == DATETIMEOFFSETN ? n < 8 || n > 10
+		: ty == DECIMALN || ty == NUMERICN ? n < 1 || n > 17 : ty == SSVARIANT ? n < 2 || n < 2u + s[1] : 0) return -1;
+	if (c->scale > (ty == DECIMALN || ty == NUMERICN ? 38 : ty == TIMEN || ty == DATETIME2N || ty == DATETIMEOFFSETN ? 7 : 255)) return -1;
 	switch (ty) {
 	case INT1: case INT2: case INT4: case INT8: case INTN: {
 		uint64_t v = le(s, n);
@@ -188,7 +175,7 @@ static int put_val(TdsBuf *b, const TdsCol *c, uint8_t ty, const uint8_t *s, siz
 		if (n == 4) return put_date(b, (int64_t)le(s, 2) + 693595) || putc8(b, ' ') || put_time(b, le(s + 2, 2) * 60, 0);
 		{
 			uint64_t ms = (le(s + 4, 4) * 10 + 1) / 3;   /* 1/300 s to the nearest ms, as the server shows it */
-			return put_date(b, (int32_t)(uint32_t)le(s, 4) + 693595) || putc8(b, ' ') || put_time(b, ms, 3);
+			return put_date(b, (int64_t)(int32_t)(uint32_t)le(s, 4) + 693595) || putc8(b, ' ') || put_time(b, ms, 3);
 		}
 	case DATEN: return put_date(b, (int64_t)le(s, 3));
 	case TIMEN: return put_time(b, le(s, n), c->scale);
@@ -203,23 +190,22 @@ static int put_val(TdsBuf *b, const TdsCol *c, uint8_t ty, const uint8_t *s, siz
 	case GUID:
 		return fmt(b, "%08X-%04X-%04X-", (unsigned)le(s, 4), (unsigned)le(s + 4, 2), (unsigned)le(s + 6, 2))
 			|| fmt(b, "%02X%02X-%02X%02X%02X%02X%02X%02X", s[8], s[9], s[10], s[11], s[12], s[13], s[14], s[15]);
-	case BIGVARCHR: case BIGCHAR: case TEXT: return put_char(b, c->coll, s, n);
+	case BIGVARCHR: case BIGCHAR: case TEXT: return put_char(b, s, n);
 	case NVARCHAR: case NCHAR: case NTEXT: case XML: return put_u16(b, s, n);
 	case BIGVARBIN: case BIGBINARY: case IMAGE: case UDT: return put_hex(b, s, n);
 	case SSVARIANT: {   /* base type, property bytes, properties, value */
 		TdsCol v = {0};
 		uint8_t pb = s[1];
-		if (n < 2 || n < 2u + pb) return -1;
-		if (s[0] == DECIMALN || s[0] == NUMERICN) v.scale = s[3];
-		if (s[0] == TIMEN || s[0] == DATETIME2N || s[0] == DATETIMEOFFSETN) v.scale = s[2];
-		if (s[0] == BIGVARCHR || s[0] == BIGCHAR) memcpy(v.coll, s + 2, 5);
+		if ((s[0] == DECIMALN || s[0] == NUMERICN) && pb >= 2) v.scale = s[3];
+		if ((s[0] == TIMEN || s[0] == DATETIME2N || s[0] == DATETIMEOFFSETN) && pb >= 1) v.scale = s[2];
+		if ((s[0] == BIGVARCHR || s[0] == BIGCHAR) && pb >= 5) memcpy(v.coll, s + 2, 5);
 		return put_val(b, &v, s[0], s + 2 + pb, n - 2 - pb);
 	}
 	}
 	return -1;
 }
 
-static void name(Cur *c, int wide, TdsBuf *out)   /* B_VARCHAR (wide 0) or US_VARCHAR (1), to out if given */
+static void name(Cur *c, int wide, Buf *out)   /* B_VARCHAR (wide 0) or US_VARCHAR (1), to out if given */
 {
 	size_t n = (size_t)num(c, wide ? 2 : 1) * 2;
 	const uint8_t *s = take(c, n);
@@ -258,11 +244,11 @@ static int typeinfo(Cur *c, TdsCol *k)
 	}
 	case SSVARIANT: k->len = (uint32_t)num(c, 4); return 0;
 	}
-	return -1;
+	return c->bad ? 0 : -1;   /* no type byte yet is a short token, not an unknown type (found by the fuzzer) */
 }
 
 /* one column value of a row: its bytes, or s = NULL for NULL */
-static int value(Tds *t, Cur *c, const TdsCol *k, TdsBuf *tmp, const uint8_t **s, size_t *n)
+static int value(Tds *t, Cur *c, const TdsCol *k, Buf *tmp, const uint8_t **s, size_t *n)
 {
 	int f = fixed(k->type);
 	*s = NULL;
@@ -301,7 +287,7 @@ static int value(Tds *t, Cur *c, const TdsCol *k, TdsBuf *tmp, const uint8_t **s
 static int row(Tds *t, Cur *c, int nbc)
 {
 	const uint8_t *bits = nbc ? take(c, (t->ncol + 7) / 8) : NULL;
-	TdsBuf tmp = {0};
+	Buf tmp = {0};
 	int r = 0;
 	for (size_t i = 0; i < t->ncol && !c->bad && !r; i++) {
 		const uint8_t *s = NULL;
@@ -311,7 +297,7 @@ static int row(Tds *t, Cur *c, int nbc)
 		else if (value(t, c, &t->col[i], &tmp, &s, &n)) r = -1;
 		if (r || c->bad || t->quiet) continue;
 		r = s ? put_val(&t->out, &t->col[i], t->col[i].type, s, n) : put(&t->out, "NULL", 4);
-		if (r) snprintf(t->err, sizeof t->err, "cannot show column %zu (type 0x%02X)", i + 1, t->col[i].type);
+		if (r) snprintf(t->net.err, sizeof t->net.err, "cannot show column %zu (type 0x%02X)", i + 1, t->col[i].type);
 	}
 	free(tmp.p);
 	if (!r && !c->bad) t->rows++;
@@ -330,7 +316,7 @@ static int token(Tds *t, Cur *c)
 		free(t->col), t->col = col, t->ncol = n;
 		for (size_t i = 0; i < n && !c->bad; i++) {
 			take(c, 6);   /* user type, flags */
-			if (typeinfo(c, &col[i])) { snprintf(t->err, sizeof t->err, "unknown type 0x%02X", col[i].type); return -1; }
+			if (typeinfo(c, &col[i])) { snprintf(t->net.err, sizeof t->net.err, "unknown type 0x%02X", col[i].type); return -1; }
 			if (i && !t->quiet) putc8(&t->out, '\t');
 			name(c, 0, t->quiet ? NULL : &t->out);
 		}
@@ -346,7 +332,7 @@ static int token(Tds *t, Cur *c)
 		if (c->bad) return 0;
 		if (st & 0x10 && !t->quiet) fmt(&t->out, "(%llu row%s affected)\n", (unsigned long long)cnt, cnt == 1 ? "" : "s");
 		if (k == 0xFD && !(st & 1) && (t->state == TDS_BUSY || (t->state == TDS_CANCEL && st & 0x20))) t->state = TDS_READY, t->quiet = 0;
-		if (k == 0xFD && !(st & 1) && t->state == TDS_LOGIN) t->state = t->err[0] ? TDS_DEAD : TDS_READY;
+		if (k == 0xFD && !(st & 1) && t->state == TDS_LOGIN) t->state = t->net.err[0] ? TDS_DEAD : TDS_READY;
 		return 0;
 	}
 	case 0xAA: case 0xAB: {   /* ERROR, INFO */
@@ -370,7 +356,7 @@ static int token(Tds *t, Cur *c)
 			memcpy(t->out.p + head, head_line, (size_t)hn);
 		}
 		if (t->state == TDS_LOGIN && k == 0xAA)
-			snprintf(t->err, sizeof t->err, "%.*s", (int)(t->out.n - mark), (const char *)t->out.p + mark);
+			snprintf(t->net.err, sizeof t->net.err, "%.*s", (int)(t->out.n - mark), (const char *)t->out.p + mark);
 		return putc8(&t->out, '\n');
 	}
 	case 0xE3: {   /* ENVCHANGE: packet size, transaction begin/commit/rollback */
@@ -380,7 +366,7 @@ static int token(Tds *t, Cur *c)
 		e.e = e.p + len;
 		uint8_t ty = (uint8_t)num(&e, 1);
 		if (ty == 4) {
-			TdsBuf v = {0};
+			Buf v = {0};
 			name(&e, 0, &v);
 			if (!putc8(&v, 0)) t->pkt = (uint32_t)strtoul((char *)v.p, NULL, 10);   /* digits, then the old value's length byte */
 			free(v.p);
@@ -398,7 +384,7 @@ static int token(Tds *t, Cur *c)
 		while (!c->bad && num(c, 1) != 0xFF) take(c, (size_t)num(c, 4));
 		return 0;
 	}
-	snprintf(t->err, sizeof t->err, "unknown token 0x%02X", k);
+	snprintf(t->net.err, sizeof t->net.err, "unknown token 0x%02X", k);
 	return -1;
 }
 
@@ -414,7 +400,7 @@ static int parse(Tds *t)
 	}
 	/* the whole reply is here: a short token or a missing last DONE is a
 	   broken stream, not a wait (a misread null bitmap hung tdsq for 3 h) */
-	if (t->eom && (t->at < t->msg.n || t->state == TDS_BUSY)) { snprintf(t->err, sizeof t->err, "the reply ends inside a token or before its last DONE"); return -1; }
+	if (t->eom && (t->at < t->msg.n || t->state == TDS_BUSY)) { snprintf(t->net.err, sizeof t->net.err, "the reply ends inside a token or before its last DONE"); return -1; }
 	if (t->at == t->msg.n) t->msg.n = t->at = 0;
 	else if (t->at > 65536) memmove(t->msg.p, t->msg.p + t->at, t->msg.n - t->at), t->msg.n -= t->at, t->at = 0;
 	return 0;
@@ -427,21 +413,22 @@ static int send_msg(Tds *t, uint8_t type, const uint8_t *s, size_t n)
 	uint8_t id = 1;
 	do {
 		size_t k = n < room ? n : room;
-		uint8_t h[8] = {type, k == n, (uint8_t)((k + 8) >> 8), (uint8_t)(k + 8), 0, 0, id++, 0};
-		if (put(&t->snd, h, 8) || put(&t->snd, s, k)) return -1;
+		uint8_t p[65536], h[8] = {type, k == n, (uint8_t)((k + 8) >> 8), (uint8_t)(k + 8), 0, 0, id++, 0};
+		memcpy(p, h, 8), memcpy(p + 8, s, k);   /* one TLS record per packet: SQL Server closes the connection on a header sealed alone (measured) */
+		if (net_send(&t->net, p, k + 8)) return -1;
 		s += k, n -= k;
 	} while (n);
 	t->eom = 0;
 	return 0;
 }
 
-static int put_le(TdsBuf *b, uint64_t v, size_t n)
+static int put_le(Buf *b, uint64_t v, size_t n)
 {
 	uint8_t s[8];
 	for (size_t i = 0; i < n; i++) s[i] = (uint8_t)(v >> (8 * i));
 	return put(b, s, n);
 }
-static int put_utf16(TdsBuf *b, const char *s)   /* UTF-8 in, UTF-16LE out */
+static int put_utf16(Buf *b, const char *s)   /* UTF-8 in, UTF-16LE out */
 {
 	const uint8_t *p = (const uint8_t *)s;
 	while (*p) {
@@ -455,24 +442,17 @@ static int put_utf16(TdsBuf *b, const char *s)   /* UTF-8 in, UTF-16LE out */
 	return 0;
 }
 
-int tds_open(Tds *t, const char *host, int port, const char *user, const char *pass, const char *db)
+int tds_open(Tds *t, const char *host, int port, const char *user, const char *pass, const char *db, int trust)
 {
 	memset(t, 0, sizeof *t);
-	t->fd = -1, t->pkt = 4096, t->state = TDS_PRELOGIN;
-	struct addrinfo hint = {.ai_socktype = SOCK_STREAM}, *ai;
-	char ps[16];
-	snprintf(ps, sizeof ps, "%d", port);
-	if (getaddrinfo(host, ps, &hint, &ai)) { snprintf(t->err, sizeof t->err, "unknown host %s", host); return -1; }
-	t->fd = socket(ai->ai_family, SOCK_STREAM, 0);
-	int r = t->fd < 0 || fcntl(t->fd, F_SETFL, O_NONBLOCK) || (connect(t->fd, ai->ai_addr, ai->ai_addrlen) && errno != EINPROGRESS);
-	freeaddrinfo(ai);
-	if (r) { snprintf(t->err, sizeof t->err, "connect: %s", strerror(errno)); return -1; }
-	/* PRELOGIN: version, encryption "not supported" (no TLS yet) */
-	static const uint8_t pre[] = {0, 0, 11, 0, 6, 1, 0, 17, 0, 1, 0xFF, 16, 0, 0, 0, 0, 0, 2};
+	t->pkt = 4096, t->state = TDS_PRELOGIN;
+	if (net_open(&t->net, host, port, trust)) return -1;
+	/* PRELOGIN: version, encryption ON (always TLS) */
+	static const uint8_t pre[] = {0, 0, 11, 0, 6, 1, 0, 17, 0, 1, 0xFF, 16, 0, 0, 0, 0, 0, 1};
 	if (send_msg(t, 0x12, pre, sizeof pre)) return -1;
 	/* LOGIN7, sent when the prelogin reply arrives */
 	const char *str[9] = {"homeros", user, pass, "homeros", host, "", "homeros", "", db};
-	TdsBuf v = {0}, *l = &t->login;
+	Buf v = {0}, *l = &t->login;
 	uint16_t off = 94, len[9];
 	for (int i = 0; i < 9; i++) {
 		size_t at = v.n;
@@ -481,7 +461,7 @@ int tds_open(Tds *t, const char *host, int port, const char *user, const char *p
 		if (i == 2)
 			for (size_t j = at; j < v.n; j++) v.p[j] = (uint8_t)((v.p[j] << 4 | v.p[j] >> 4) ^ 0xA5);
 	}
-	r = put_le(l, 94 + v.n, 4) || put_le(l, 0x74000004, 4) || put_le(l, 4096, 4) || put_le(l, 7, 4) || put_le(l, (uint64_t)getpid(), 4)
+	int r = put_le(l, 94 + v.n, 4) || put_le(l, 0x74000004, 4) || put_le(l, 4096, 4) || put_le(l, 7, 4) || put_le(l, (uint64_t)getpid(), 4)
 		|| put_le(l, 0, 4) || put_le(l, 0x0003E0, 4) /* USE_DB, INIT_DB_FATAL, SET_LANG; INIT_LANG_FATAL, ODBC (SSMS's ANSI settings) */
 		|| put_le(l, 0, 4) || put_le(l, 0x409, 4);
 	for (int i = 0; i < 9 && !r; i++) r = put_le(l, off, 2) || put_le(l, len[i], 2), off = (uint16_t)(off + 2 * len[i]);
@@ -493,7 +473,7 @@ int tds_open(Tds *t, const char *host, int port, const char *user, const char *p
 int tds_batch(Tds *t, const char *sql)
 {
 	if (t->state != TDS_READY) return -1;
-	TdsBuf b = {0};
+	Buf b = {0};
 	int r = put_le(&b, 22, 4) || put_le(&b, 18, 4) || put_le(&b, 2, 2) || put_le(&b, t->txn, 8) || put_le(&b, 1, 4)
 		|| put_utf16(&b, sql) || send_msg(t, 0x01, b.p, b.n);
 	free(b.p);
@@ -506,29 +486,20 @@ int tds_cancel(Tds *t)   /* an attention packet; the server ends with a DONE tha
 	if (t->state != TDS_BUSY) return 0;
 	static const uint8_t h[8] = {6, 1, 0, 8, 0, 0, 1, 0};
 	t->state = TDS_CANCEL, t->quiet = 1;
-	return put(&t->snd, h, 8);
+	return net_send(&t->net, h, 8);
 }
 
-int tds_pending(const Tds *t) { return t->snd.n > 0; }
+int tds_pending(const Tds *t) { return t->net.snd.n > 0; }
 
 int tds_io(Tds *t, int readable)
 {
-	while (t->snd.n) {
-		ssize_t k = write(t->fd, t->snd.p, t->snd.n);
-		if (k < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == ENOTCONN)) break;
-		if (k <= 0) { snprintf(t->err, sizeof t->err, "write: %s", strerror(errno)); t->state = TDS_DEAD; return -1; }
-		memmove(t->snd.p, t->snd.p + k, t->snd.n - (size_t)k), t->snd.n -= (size_t)k;
-	}
+	if (net_flush(&t->net)) { t->state = TDS_DEAD; return -1; }
 	if (!readable) return 0;
-	uint8_t s[65536];
-	ssize_t k = read(t->fd, s, sizeof s);
-	if (k < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) return 0;
-	if (k <= 0) { snprintf(t->err, sizeof t->err, "the server closed the connection%s%s", k ? ": " : "", k ? strerror(errno) : ""); t->state = TDS_DEAD; return -1; }
-	if (put(&t->raw, s, (size_t)k)) return -1;
+	if (net_read(&t->net, &t->raw)) { t->state = TDS_DEAD; return -1; }
 	size_t at = 0;
 	while (t->raw.n - at >= 8) {   /* whole packets into the message stream */
 		size_t n = (size_t)t->raw.p[at + 2] * 256 + t->raw.p[at + 3];
-		if (n < 8) { snprintf(t->err, sizeof t->err, "bad packet"); t->state = TDS_DEAD; return -1; }
+		if (n < 8) { snprintf(t->net.err, sizeof t->net.err, "bad packet"); t->state = TDS_DEAD; return -1; }
 		if (t->raw.n - at < n) break;
 		if (put(&t->msg, t->raw.p + at + 8, n - 8)) return -1;
 		t->eom |= t->raw.p[at + 1] & 1;
@@ -544,9 +515,18 @@ int tds_io(Tds *t, int readable)
 			size_t at2 = e ? (size_t)e[0] * 256 + e[1] : 0;
 			if (e && o == 1 && at2 < t->msg.n) enc = t->msg.p[at2];
 		}
-		if (enc != 2) { snprintf(t->err, sizeof t->err, "the server wants TLS (encryption %d): not built yet", enc); t->state = TDS_DEAD; return -1; }
-		t->msg.n = 0, t->state = TDS_LOGIN;
-		return send_msg(t, 0x10, t->login.p, t->login.n) || tds_io(t, 0) ? -1 : 0;
+		if (enc != 1 && enc != 3) { snprintf(t->net.err, sizeof t->net.err, "the server cannot encrypt (encryption %d)", enc); t->state = TDS_DEAD; return -1; }
+		t->state = TDS_TLS, t->msg.n = 0;
+	}
+	if (t->state == TDS_TLS) {   /* handshake bytes in, our reply out as one PRELOGIN message */
+		Buf b = {0};
+		int r = net_shake(&t->net, t->msg.p, t->msg.n, &b);
+		t->msg.n = 0;
+		r = r < 0 || (b.n && send_msg(t, 0x12, b.p, b.n)) ? -1 : r;
+		free(b.p);
+		if (r < 0) { t->state = TDS_DEAD; return -1; }
+		if (r) t->net.tls = 1, t->state = TDS_LOGIN, r = send_msg(t, 0x10, t->login.p, t->login.n);
+		return r || tds_io(t, 0) ? -1 : 0;
 	}
 	if (t->eom || t->msg.n - t->at >= 2 * t->tried)
 		if (parse(t)) { t->state = TDS_DEAD; return -1; }
@@ -555,8 +535,8 @@ int tds_io(Tds *t, int readable)
 
 void tds_close(Tds *t)
 {
-	if (t->fd >= 0) close(t->fd);
-	free(t->raw.p), free(t->msg.p), free(t->snd.p), free(t->out.p), free(t->login.p), free(t->col);
+	net_close(&t->net);
+	free(t->raw.p), free(t->msg.p), free(t->out.p), free(t->login.p), free(t->col);
 	memset(t, 0, sizeof *t);
-	t->fd = -1;
+	t->net.fd = -1;
 }

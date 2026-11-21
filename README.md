@@ -8,8 +8,9 @@ Davy, 2026-11-19: SQL refactors that use a database connection, ready when the t
 | Path | What |
 |---|---|
 | `sqlref/` | the C code that would move into Homeros: `snap.[ch]` (catalog snapshot), `resolve.[ch]` (what every name refers to), `refactor.[ch]` (expand `*`, qualify, object info, and the one meaning check every refactor passes) |
-| `client/` | the bake-off's own TDS 7.4 client (`tds.[ch]`): one non-blocking socket for the editor's event loop, every reply as text in server order; plain TCP and SQL logins so far |
-| `cmd/` | small drivers the oracles talk to (`snapq`, `resq`, `refq`, `tdsq`) |
+| `client/` | the bake-off's own clients for the editor's event loop: `net.[ch]` (socket, TLS on OpenSSL memory buffers, certificate check, escaping), `tds.[ch]` (SQL Server, TDS 7.4), `pg.[ch]` (PostgreSQL v3, SCRAM); every reply as text in server order |
+| `fuzz/` | libFuzzer targets for both readers: parsed whole or split, the same |
+| `cmd/` | small drivers the oracles talk to (`snapq`, `resq`, `refq`; `sqlq.c` built as `tdsq` and `pgq`) |
 | `oracle/` | the snapshot query per dialect (`snap-tsql.sql`), `snap.sh` (takes a snapshot from the test server), the oracles that check each slice against the server, test databases (`tricky.sql`) |
 | `tests/queries.sql` | hand-written cases, with the exact refactor results some must give |
 | `tests/plants.txt` | planted bugs: each must make `./check.sh` fail |
@@ -20,6 +21,7 @@ Main's lexer (`src/syntax/tsql.c`) and text (`src/text/text.c`) are compiled fro
 ## Test servers (local only; never Davy's work laptop or work databases)
 ```
 nohup dockerd >/tmp/dockerd.log 2>&1 &
+docker run -d --name pg -e POSTGRES_PASSWORD=Homeros_Test1 -e POSTGRES_HOST_AUTH_METHOD=scram-sha-256 -p 5432:5432 postgres:17   # then ssl = on with a self-signed certificate (ALTER SYSTEM)
 docker run -d --name mssql -e ACCEPT_EULA=Y -e MSSQL_SA_PASSWORD=Homeros_Test1 -p 1433:1433 mcr.microsoft.com/mssql/server:2022-latest
 # Microsoft's samples, restored as AW and WWI:
 #   github.com/Microsoft/sql-server-samples/releases/download/adventureworks/AdventureWorks2022.bak
@@ -29,4 +31,4 @@ pip install pymssql
 ```
 Restore: `RESTORE DATABASE AW FROM DISK='/tmp/aw.bak' WITH MOVE 'AdventureWorks2022' TO '/var/opt/mssql/data/aw.mdf', MOVE 'AdventureWorks2022_log' TO '/var/opt/mssql/data/aw.ldf'` (WWI: `WWI_Primary`, `WWI_UserData`, `WWI_Log`, `WWI_InMemory_Data_1`). clang's sanitizers need `libclang-rt-18-dev`.
 
-`./check.sh` (about 3.5 min, measured once), then `./plants.sh` (each plant reruns the check until it fails; about 20 min).
+`./check.sh` (about 5.5 min, measured once), then `./plants.sh` (each plant reruns the check until it fails; about 20 min).

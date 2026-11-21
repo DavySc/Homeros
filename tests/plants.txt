@@ -108,10 +108,29 @@ client/tds.c	uint64_t ms = (le(s + 4, 4) * 10 + 1) / 3;	uint64_t ms = le(s + 4, 
 client/tds.c	int off = (int16_t)(uint16_t)le(s + n - 2, 2);	int off = 0;	datetimeoffset is UTC plus its offset
 client/tds.c	u = 0x10000 + (u - 0xD800) * 1024 + ((uint32_t)le(s + i + 2, 2) - 0xDC00), i += 2;	u = 0xFFFD;	UTF-16 surrogate pairs
 client/tds.c	0x20AC, 0xFFFD, 0x201A,	0x0080, 0xFFFD, 0x201A,	code page 1252's 0x80 is the euro sign
-client/tds.c	int utf8 = (co[3] & 4) != 0;	int utf8 = 0;	a _UTF8 collation's varchar is UTF-8
 client/tds.c	while (nd <= scale) d[nd++] = '0';	while (nd < scale) d[nd++] = '0';	a decimal below 1 keeps its leading 0
 client/tds.c	if (bits && bits[i / 8] >> (i % 8) & 1) s = NULL;	if (bits && bits[i / 8] >> (7 - i % 8) & 1) s = NULL;	NBCROW's null bitmap is least significant bit first
 client/tds.c	if (c.bad) { t->out.n = mark, t->rows = rows,	if (c.bad) { t->rows = rows,	a token cut by a packet edge is redone from its start
 client/tds.c	int neg = n > 1 && s[n - 1] >= 0x80;   /* tinyint is unsigned */	int neg = s[n - 1] >= 0x80;   /* tinyint is unsigned */	tinyint is unsigned
-client/tds.c	if (s[0] == TIMEN || s[0] == DATETIME2N || s[0] == DATETIMEOFFSETN) v.scale = s[2];	if (s[0] == TIMEN || s[0] == DATETIME2N || s[0] == DATETIMEOFFSETN) v.scale = 7;	sql_variant carries the time scale
+client/tds.c	if ((s[0] == TIMEN || s[0] == DATETIME2N || s[0] == DATETIMEOFFSETN) && pb >= 1) v.scale = s[2];	if ((s[0] == TIMEN || s[0] == DATETIME2N || s[0] == DATETIMEOFFSETN) && pb >= 1) v.scale = 7;	sql_variant carries the time scale
 client/tds.c	for (int p = single ? 6 : 15; p <= 17; p++) {	for (int p = single ? 6 : 15; p <= 15; p++) {	floats need up to 17 digits to read back
+# SQL client bake-off, round 2 (TLS, the token fuzzer)
+client/tds.c	if (t->eom && (t->at < t->msg.n || t->state == TDS_BUSY))	if (0)	a whole reply that ends mid-token waits forever
+client/tds.c	return c->bad ? 0 : -1;   /* no type	return -1;   /* no type	a type byte not yet arrived is an unknown type
+client/tds.c	: ty == SSVARIANT ? n < 2 || n < 2u + s[1] : 0) return -1;	: 0) return -1;	sql_variant's lengths not checked
+client/tds.c	: ty == TIMEN ? n < 3 || n > 5 : ty == DATETIME2N	: ty == DATETIME2N	time's length not checked
+client/tds.c	if (c->scale > (ty == DECIMALN	if (0 && c->scale > (ty == DECIMALN	a decimal scale past 38
+client/tds.c	put_date(b, (int64_t)(int32_t)(uint32_t)le(s, 4) + 693595)	put_date(b, (int32_t)(uint32_t)le(s, 4) + 693595)	datetime's day count overflows an int
+client/tds.c	memcpy(p, h, 8), memcpy(p + 8, s, k);	memcpy(p, h, 8), memcpy(p + 8, s, k); if (t->net.tls && net_send(&t->net, p, 8)) return -1; else	a header sealed alone before its packet
+client/net.c	SSL_set_verify(c->ssl, trust ? SSL_VERIFY_NONE : SSL_VERIFY_PEER, NULL);	SSL_set_verify(c->ssl, SSL_VERIFY_NONE, NULL);	the certificate never checked
+# PostgreSQL reader (client/pg.c) and the shared connection (client/net.c)
+client/pg.c	while (q < e && *q && !(e - q >= 14 && !memcmp(q, "SCRAM-SHA-256", 14)))	while (q < e && *q && strcmp((const char *)q, "SCRAM-SHA-256"))	the mechanism list read past its message
+client/pg.c	#define field buf_esc	#define field buf_put	tabs and newlines in values not escaped
+client/pg.c	(l == 0xFFFFFFFF ? buf_put(o, "NULL", 4) : field(o, s, l))	(l == 0xFFFFFFFF ? 0 : field(o, s, l))	NULL shown as empty
+client/pg.c	if (l != 0xFFFFFFFF && (size_t)(e - s) < l) return dead(p, "bad DataRow");		a value longer than its message
+client/pg.c	field(o, s, n ? n - 1 : 0)	field(o, s, n)	the tag's NUL shown
+client/pg.c	case 'E': case 'N': {	case 'E': if (0) case 'N': return 0; {	notices dropped
+client/pg.c	if (p->quiet && f['C'] && !strcmp(f['C'], "57014")) return 0;		our own cancel shown as an error
+client/pg.c	s[8 + i] = (uint8_t)(p->key >> (24 - 8 * i));	s[8 + i] = (uint8_t)(p->pid >> (24 - 8 * i));	the cancel carries the wrong key
+client/net.c	if (buf_put(b, s + a, i - a) || buf_cp(b, s[i])) return -1;	if (buf_put(b, s + a, i - a + 1)) return -1;	a run's special byte copied raw
+client/net.c	if (r == 1) return 1;	if (r == 1) return 0;	the handshake never ends
