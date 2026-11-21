@@ -21,7 +21,7 @@ org: colours: checkbox [x] (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/
 org: colours: a description term after two blanks missed (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		else if (v >= b + 3 && dcolon(v, e)) set(v - 1, v + 2, FACE_ORG_CHECKBOX);~
 org: colours: special keywords inside a word (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		if (p > l && word(uni_prev(S, N, p))) continue;¶~
 org: colours: the export snippet's backend without its colon (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~set(p + 2, x + 1, FACE_ORG_TAG);~set(p + 2, x, FACE_ORG_TAG);
-org: colours: a stale scan kept across an update~test TESTS=org~~src/org/org.c~	f->dirty = 0;¶	f->c.at = ORG_NONE;~	f->dirty = 0;
+org: colours: a stale scan kept across an update~test TESTS=org~~src/org/org.c~	f->dirty = 0;¶	f->c.at = f->cs.at = ORG_NONE;~	f->dirty = 0;¶	f->cs.at = ORG_NONE;
 org: colours: an edit before the pending ones not merged (fuzz)~fuzz FUZZERS=org FUZZ_SECONDS=60~~src/org/org.c~	if (pos < f->lo) f->lo = pos;¶~
 org: colours: the text after an edit not moved (fuzz)~fuzz FUZZERS=org FUZZ_SECONDS=60~~src/org/org.c~	memmove(f->s + f->hc, f->s + f->ho, f->n - f->ho);¶~
 org: org_ts reads case-sensitively, as planning does (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	return ts(p, 1, t);~	return ts(p, 0, t);
@@ -69,11 +69,11 @@ org: show: Davy's \top missing (against Org with org-entities-user)~org-conform 
 org: show: a line's first marker checks its own line for a table rule (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~m = p == l && p ? bol(p - 1) : l,~m = l,
 org: show: paragraph separators after the newline inside emphasis missed (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		if (nl < c && separate(nl + 1, c + 1)) continue;~		if (nl < c && separate(nl + 1, c + 1) && 0) continue;
 org: show: verbatim keeps earlier hidden markers inside it (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~if (C[i].a >= p && C[i].z <= c + 1) C[i] = C[--CN];~;
-org: show: a script inside emphasis raised (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		for (i = 0; i < ek; i++) ok &= m < ea[i] || m >= ez[i];~		for (i = 0; i < ek; i++) ok &= m < ea[i] || m >= ez[i] || 1;
-org: show: a script in a property's key raised (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		if (ok && m >= kz && (n~		if (ok && (m >= kz || 1) && (n
+org: show: a script inside emphasis raised (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		if (ok && m >= ez && m >= kz~		if (ok && m >= kz
+org: show: a script in a property's key raised (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~m >= ez && m >= kz && (n~m >= ez && (m >= kz || 1) && (n
 org: show: a script without a Unicode form for each character shown in part (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		if (!s) return -1;~		if (!s) continue;
 org: show: script braces stop at the line's end (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~(S[p] == '\n' && nl++)) return 0;~(S[p] == '\n' && nl++ >= 0)) return 0;
-org: show: a script starting on the line above not looked for (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	scripts(pl, CL, ea, ez, ek);~	scripts(CL, CL, ea, ez, ek);
+org: show: a script starting on the line above not looked for (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	scripts(pl, CL, f->em, ek);~	scripts(CL, CL, f->em, ek);
 org: show: a #+ line keeps hidden markers (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	return S[g3] == '+' ? nl : 0;~	return 0;
 org: show: a quoting block's lines keep hidden markers (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		return !c->quoting ? 0 : l < c->end~		return 1 ? 0 : l < c->end
 org: show: a fixed-width line keeps hidden markers (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~(ateol(b + 1) || S[b + 1] == ' ') ? N : meta(&c);~(ateol(b + 1) || S[b + 1] == ' ') ? 0 : meta(&c);
@@ -88,3 +88,9 @@ org: show: a table rule checked at each + marker (frame gate)~test TESTS=org~~sr
 org: todo: any element before taken as the sibling (PR 98 review, note 3)~test TESTS=org~~src/org/org.c~for (j = i; j-- > 0 && e[j].parent != e[i].parent; ) ;~j = i - 1;
 org: todo: a planning line's repeater read without a whole stamp (PR 98 review, note 2)~test TESTS=org~~src/org/org.c~	if (!org_ts((const char *)S, N, a, &x) || x.end < q) return 0;~	if (!org_ts((const char *)S, N, a, &x) || x.end < q) if (0) return 0;
 org: show: spans as offsets in the text, not columns of the line (syntax.h)~test TESTS=org~~src/org/org.c~(Conceal){ C[i].a - CL, C[i].z - CL, C[i].s }~(Conceal){ C[i].a, C[i].z, C[i].s }
+org: show: each line's scan walked from the headline above (frame gate on many lines)~test TESTS=org~~src/org/org.c~scan_at(f, &f->cs, pl)~scan_at(f, &(Scan){ ORG_NONE, 0, 0, 0 }, pl)
+org: show: only the first 64 emphasis matches kept for scripts~test TESTS=org~~src/org/org.c~		if (2 * *ek < f->emcap) f->em~		if (2 * *ek < f->emcap && *ek < 64) f->em
+org: show: '[' not a character after emphasis (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~one(p, "-.,:!?;'\")}\\[")~one(p, "-.,:!?;'\")}\\")
+org: show: a diary sexp line not a paragraph separator (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	if (is(q, "%%(") || b >= z~	if (b >= z
+org: show: a table rule of two characters (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	return S[b] == '+' && x >= b + 3 &&~	return S[b] == '+' && x >= b + 2 &&
+org: show: conceal's scan kept across an update~test TESTS=org~~src/org/org.c~	f->dirty = 0;¶	f->c.at = f->cs.at = ORG_NONE;~	f->dirty = 0;¶	f->c.at = ORG_NONE;
