@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Records conceal as Neovim draws it (conceallevel=2, concealcursor=""),
 for test_core_conceal.c.  usage: test_core_conceal.py N [SEED] --record FILE
-Each case: a random text, a window of random size with or without wrap,
-random spans on random lines made Conceal matches (matchaddpos() with a
-'conceal' character, or none: hidden), the cursor at a random place, and
-sometimes Visual mode from another line.  Records each text row's
+Each case: a random Org text of math notes, a window of random size with
+or without wrap, the spans syntax_conceal gives it (from
+test_core_conceal --spans, at most 64 a line, so build it first) made
+Conceal matches (matchaddpos() with a 'conceal' character, or none:
+hidden), the cursor at a random place, and sometimes Visual mode from
+another line.  Records each text row's
 characters (screenstring())."""
 import concurrent.futures, json, os, random, subprocess, sys, tempfile
-from test_core_screens import SETUP, gen_text
+from test_core_screens import SETUP
 
 LUA = r'''
 local c = vim.json.decode(io.open(IN):read('*a'))
@@ -62,27 +64,34 @@ def run_nvim(c):
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60)
     return json.load(open(d + '/out.json'))
 
-def gen_spans(r, lines):
-    # line-relative byte spans on character boundaries, in byte order
-    spans = []
-    for l, s in enumerate(lines):
-        if not s or r.random() < .5: continue
-        b, i = s.encode(), 0
-        while i < len(s):
-            i += r.randint(0, 6)
-            if i >= len(s): break
-            j = min(len(s), i + r.choice([1, 1, 2, 3, 5]))
-            a, z = len(s[:i].encode()), len(s[:j].encode())
-            spans.append([l, a, z, r.choice(['', '', '≤', 'x', '²', '→', '∧'])])
-            i = j + r.randint(0, 3)
-    return spans
+# Davy's math notes: org-pretty-entities, sub- and superscripts, emphasis
+WORDS = ['\\leq', '\\geq', '\\alpha', '\\to', '\\sqcup', '\\wedge', '\\vee', '\\neg', '\\infty', '\\subseteq',
+         '\\top', '\\bot', 'x^{2}', 'a_{i}', 'x^{n+1}', 'y_{0}^{2}', '*bold*', '/it/', '_under_', '=verb=', '~code~',
+         '+gone+', 'lattice', 'order', 'a', 'x', '\t', '漢', 'λx', '😀', '(', ')', ',', '--', 'é']
+
+def gen_text(r):
+    lines = []
+    for _ in range(r.choice([1, 3, 8, 20, 40])):
+        k = r.random()
+        n = r.choice([0, 1, 3, 6, 12, 30]) if k > .02 else 80   # sometimes more than 64 spans
+        ws = [r.choice(WORDS) if k > .02 else '\\alpha' for _ in range(n)]
+        lines.append(r.choice(['', '', '* ', '- ', '  ']) + ''.join(w + r.choice([' ', ' ', '', '\t']) for w in ws))
+    return '\n'.join(lines) + '\n'
+
+BIN = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'build', 'san', 'test_core_conceal')
+
+def get_spans(text):
+    d = tempfile.mkdtemp()
+    open(d + '/f.org', 'w').write(text)
+    out = subprocess.run([BIN, '--spans', d + '/f.org'], capture_output=True, text=True, check=True).stdout
+    return [[int(k[1]), int(k[2]), int(k[3]), '' if k[4] == '-' else bytes.fromhex(k[4]).decode()]
+            for k in (x.split() for x in out.splitlines())]
 
 def gen_case(r):
-    text = ''.join(gen_text(r).splitlines(True)[:25])
-    lines = text.split('\n')
-    n = len(lines)
+    text = gen_text(r)
+    n = text.count('\n')
     c = {'rows': r.choice([5, 10, 24]), 'cols': r.choice([20, 40, 80]), 'wrap': r.random() < .5,
-         'text': text, 'spans': gen_spans(r, lines), 'cur': [r.randint(1, n), r.choice([0, 1, 2, 5, 9, 20, 60])]}
+         'text': text, 'spans': get_spans(text), 'cur': [r.randint(1, n), r.choice([0, 1, 2, 5, 9, 20, 60])]}
     if r.random() < .15: c['vis'] = [r.randint(1, n), r.choice([0, 3, 9])]
     return c
 
