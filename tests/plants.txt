@@ -71,3 +71,20 @@ sqlref/resolve.c	int call = !p->target && punct(p, j, '(');	int call = punct(p, 
 sqlref/resolve.c	for (a += punct(p, a, '('); ts >= 0 && a < e; a++) if (word_or_ident(p, a)) col_of(p, a, ts);		CONTAINSTABLE's columns not references
 sqlref/refactor.c	|| x->wr ||	||	qualify writes a qualifier on SET's left side
 sqlref/resolve.c	col_of(p, k, sc);	(void)sc;	INSERT's column list not read (only O2 on DML sees it)
+# slice 5: rename a column across code, the rename script, sp_rename's blockers
+sqlref/refactor.c	if (o < r->nout && named_out(r, o) &&	if (o < r->nout && 0 &&	rename drops the output name a lone column gave
+sqlref/refactor.c	for (size_t t = 0; t < r->ntop; t++) if ((size_t)r->top[t] == b) return 1;	return 1;	rename names a subquery's one value
+sqlref/refactor.c	&& star_has(r, x, col, twin)) return refuse(	&& 0) return refuse(	a * over the table not refused
+sqlref/refactor.c	x->status == RS_OK && !in_exists(r, r->b[block_at(r, x->s)].s) && star_has	x->status == RS_OK && star_has	EXISTS (SELECT *) refused by rename
+sqlref/refactor.c	if (k < 0 || (k != col && k != twin)) continue;	if (k < 0 || k != col) continue;	a history table's column left as it was
+sqlref/refactor.c	if (s->o[o].hist == s->c[col].obj + 1) return "a history	if (0) return "a history	a history table's column renamed alone
+sqlref/snap.c	else if (later[i].kind == 'X' && c >= 0)	else if (later[i].kind == 'Y' && c >= 0)	X records not read (sp_rename blockers)
+sqlref/snap.c	if (t >= 0) snap_rename(s, (size_t)t, name);	(void)t;	the snapshot after a rename keeps the history column's name
+oracle/snap-tsql.sql	where x.type in (3, 4)	where x.type in (99)	the clustered key under an XML index not a blocker (5074)
+oracle/snap-tsql.sql	from sys.columns where is_computed = 1 or is_rowguidcol = 1 or is_column_set = 1	from sys.columns where is_computed = 1 or is_column_set = 1	ROWGUIDCOL not a blocker (4928)
+oracle/snap-tsql.sql	from sys.columns where is_computed = 1 or is_rowguidcol = 1 or is_column_set = 1	from sys.columns where 1 = 1	every column a blocker (the oracle must see sp_rename work)
+sqlref/resolve.c	long o = is(p, j, "readonly") ? object(p, q, nq) : -1;	long o = -1;	a table-type parameter's columns unknown
+sqlref/refactor.c	if (put(ed, s + i, 1) || (s[i] == '\'' && put(ed, "'", 1))) return -1;	if (put(ed, s + i, 1)) return -1;	the script's strings not escaped
+sqlref/refactor.c	(PUTS(&m, "ALTER") || edit(&m, a, z, 0)	(PUTS(&m, "CREATE") || edit(&m, a, z, 0)	the script CREATEs modules that exist
+sqlref/refactor.c	if (resolve(&y, t, b, nb) < 0) { resolve_free(&x); return 0; }	if (resolve(&y, s, b, nb) < 0) { resolve_free(&x); return 0; }	the meaning check reads the new text under the old snapshot
+sqlref/refactor.c	return rc ? rc : PUTS(ed, "COMMIT;\n");	return rc;	the script never commits

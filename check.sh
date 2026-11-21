@@ -17,6 +17,8 @@ python3 oracle/gen_oracle.py tests/queries.sql
 python3 oracle/gen_oracle.py ${SEED:-1} ${GEN_N:-250}
 python3 oracle/gen_oracle.py $((${SEED:-1} + 1)) ${GEN_N:-250} Latin1_General_CS_AS
 for db in WWI AW; do python3 oracle/module_oracle.py $db; done
-# slice 3: the meaning check on changes no refactor makes (needs WWI.snap, taken above)
-oracle/same.sh
+# slice 5: rename scripts run on the server (all but their COMMIT)
+for db in WWI AW; do python3 oracle/rename_oracle.py $db ${RENAME_N:-}; done
+# slices 3 and 5: hand cases (the meaning check alone; renames) on WWI.snap, taken above
+oracle/cases.sh
 echo "check: ok"

@@ -100,9 +100,9 @@ Snap *snap_load(const char *src, size_t n, int dialect, size_t *bad)
 	s->c = malloc(lines * sizeof *s->c);
 	s->k = malloc(lines * sizeof *s->k);
 	/* ids as the server gave them, until the objects are sorted */
-	int64_t *cobj = malloc(lines * sizeof *cobj), (*kid)[6] = malloc(lines * sizeof *kid), *mid = malloc(lines * sizeof *mid);
-	char **mtext = malloc(lines * sizeof *mtext);
-	if (!s->mem || !s->o || !s->c || !s->k || !cobj || !kid || !mid || !mtext) goto fail;
+	int64_t *cobj = malloc(lines * sizeof *cobj), (*kid)[6] = malloc(lines * sizeof *kid);
+	struct { char kind; int64_t a, b; char *t; } *later = malloc(lines * sizeof *later);   /* M X H: after the sort */
+	if (!s->mem || !s->o || !s->c || !s->k || !cobj || !kid || !later) goto fail;
 	memcpy(s->mem, src, n);
 	s->mem[n] = 0;
 	for (char *p = s->mem, *end = s->mem + n; p < end;) {
@@ -111,17 +111,17 @@ Snap *snap_load(const char *src, size_t n, int dialect, size_t *bad)
 		char *le = e > p && e[-1] == '\r' ? e - 1 : e;   /* sqlcmd on Windows */
 		int nf = le - p >= 2 && p[1] == '\t' ? fields(p, le, f, 8) : 0;
 		if (nf == 5 && !strcmp(f[0], "O"))
-			s->o[s->no++] = (SnapObj){f[2], f[3], f[4], NULL, strtoll(f[1], 0, 10), 0, 0};
+			s->o[s->no++] = (SnapObj){f[2], f[3], f[4], NULL, strtoll(f[1], 0, 10), 0, 0, 0};
 		else if (nf == 7 && !strcmp(f[0], "C")) {
 			cobj[s->nc] = strtoll(f[1], 0, 10);
-			s->c[s->nc++] = (SnapCol){f[3], f[4], 0, (int32_t)strtol(f[2], 0, 10), (int32_t)strtol(f[5], 0, 10), (uint8_t)(*f[6] == '1')};
+			s->c[s->nc++] = (SnapCol){f[3], f[4], NULL, 0, (int32_t)strtol(f[2], 0, 10), (int32_t)strtol(f[5], 0, 10), (uint8_t)(*f[6] == '1')};
 		} else if (nf == 7 && !strcmp(f[0], "K")) {
 			for (int j = 0; j < 6; j++) kid[s->nk][j] = strtoll(f[1 + j], 0, 10);
 			s->nk++;
 		} else if (nf == 3 && !strcmp(f[0], "D"))
 			s->ci = dialect == D_TSQL && strstr(f[1], "_CI") != NULL, s->dflt = f[2];
-		else if (nf == 3 && !strcmp(f[0], "M"))
-			mid[nm] = strtoll(f[1], 0, 10), mtext[nm++] = f[2];
+		else if ((nf == 3 && (!strcmp(f[0], "M") || !strcmp(f[0], "H"))) || (nf == 4 && !strcmp(f[0], "X")))
+			later[nm].kind = *f[0], later[nm].a = strtoll(f[1], 0, 10), later[nm].b = *f[0] == 'M' ? 0 : strtoll(f[2], 0, 10), later[nm++].t = f[nf - 1];
 		else if (nf) nbad++;
 		p = e + 1;
 	}
@@ -136,8 +136,11 @@ Snap *snap_load(const char *src, size_t n, int dialect, size_t *bad)
 	qsort(s->c, s->nc, sizeof *s->c, cmp_c);
 	for (size_t i = s->nc; i-- > 0;) s->o[s->c[i].obj].col = (uint32_t)i, s->o[s->c[i].obj].ncol++;
 	for (size_t i = 0; i < nm; i++) {
-		long o = by_id(s, mid[i]);
-		if (o < 0) nbad++; else s->o[o].text = mtext[i];
+		long o = by_id(s, later[i].a), h = by_id(s, later[i].b), c = col_id(s, o, later[i].b);
+		if (later[i].kind == 'M' && o >= 0) s->o[o].text = later[i].t;
+		else if (later[i].kind == 'H' && o >= 0 && h >= 0) s->o[o].hist = (uint32_t)h + 1;
+		else if (later[i].kind == 'X' && c >= 0) s->c[c].block = later[i].t;
+		else nbad++;
 	}
 	w = 0;
 	for (size_t i = 0; i < s->nk; i++) {
@@ -151,11 +154,11 @@ Snap *snap_load(const char *src, size_t n, int dialect, size_t *bad)
 	if (!s->h) goto fail;
 	for (size_t i = 0; i < s->no; i++) put(s, key_o(mode(s), cat(s->o[i].name)), (uint32_t)(i + 1));
 	for (size_t i = 0; i < s->nc; i++) put(s, key_c(mode(s), s->c[i].obj, cat(s->c[i].name)), (uint32_t)(s->no + i + 1));
-	free(cobj), free(kid), free(mid), free(mtext);
+	free(cobj), free(kid), free(later);
 	if (bad) *bad = nbad;
 	return s;
 fail:
-	free(cobj), free(kid), free(mid), free(mtext);
+	free(cobj), free(kid), free(later);
 	snap_free(s);
 	return NULL;
 }
@@ -190,6 +193,20 @@ long snap_column(const Snap *s, size_t o, Name col)
 		if (v >= s->no && s->c[v - s->no].obj == o && same(d, s->c[v - s->no].name, col)) return (long)(v - s->no);
 	}
 	return -1;
+}
+
+long snap_twin(const Snap *s, size_t col)
+{
+	uint32_t h = s->o[s->c[col].obj].hist;
+	return h ? snap_column(s, h - 1, cat(s->c[col].name)) : -1;
+}
+
+void snap_rename(Snap *s, size_t col, const char *name)
+{
+	long t = snap_twin(s, col);
+	if (t >= 0) snap_rename(s, (size_t)t, name);
+	s->c[col].name = name;   /* the old key's slot stays: its name no longer matches */
+	put(s, key_c(mode(s), s->c[col].obj, cat(name)), (uint32_t)(s->no + col + 1));
 }
 
 Name snap_name(const char *s, size_t n, char *buf)

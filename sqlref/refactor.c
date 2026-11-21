@@ -29,6 +29,7 @@ static int put(Edits *ed, const char *s, size_t n)
 	ed->buf[ed->nbuf] = 0;
 	return 0;
 }
+#define PUTS(ed, lit) put(ed, lit, sizeof lit - 1)
 /* a name as T-SQL needs it written: bare when it is a regular identifier
    and no reserved word, else [..] with ] doubled */
 static int put_name(Edits *ed, Name nm)
@@ -134,6 +135,110 @@ int refactor_qualify(const Res *r, size_t a, size_t z, Edits *ed)
 	return 0;
 }
 
+/* x is a * over a table holding snapshot column col or its twin (a
+   derived table's or CTE's columns keep their names: see below) */
+static int star_has(const Res *r, const Ref *x, long col, long twin)
+{
+	for (size_t s = 0; s < r->nsrc; s++) {
+		const Src *c = &r->src[s];
+		if (c->kind != SRC_TABLE || (x->src >= 0 ? (int)s != x->src : c->blk != block_at(r, x->s))) continue;
+		long k = (long)r->snap->o[c->obj].col;
+		if ((col >= k && col < k + r->snap->o[c->obj].ncol) || (twin >= k && twin < k + r->snap->o[c->obj].ncol)) return 1;
+	}
+	return 0;
+}
+
+/* why the server would not rename column col, or NULL */
+static const char *blocked(const Snap *s, long col)
+{
+	for (size_t o = 0; o < s->no; o++)
+		if (s->o[o].hist == s->c[col].obj + 1) return "a history table's column: rename the current table's";
+	return s->c[col].block;
+}
+
+/* output o's name is seen: a statement's result, a view's or function's
+   columns, or a derived table's or CTE's columns (not a subquery's under
+   IN, EXISTS or a comparison, whose one value has no name) */
+static int named_out(const Res *r, size_t o)
+{
+	size_t b = 0;
+	while (b < r->nb && !(r->b[b].out <= o && o < r->b[b].out + r->b[b].nout)) b++;
+	for (size_t t = 0; t < r->ntop; t++) if ((size_t)r->top[t] == b) return 1;
+	for (size_t s = 0; s < r->nsrc; s++) if (r->src[s].inner == (int32_t)b && !r->src[s].list) return 1;
+	return 0;
+}
+
+int refactor_rename_col(const Res *r, long col, Name to, Edits *ed)
+{
+	const Snap *sn = r->snap;
+	const SnapCol *c = &sn->c[col];
+	long twin = snap_twin(sn, (size_t)col);
+	char buf[512];
+	if (blocked(sn, col)) return refuse(ed, blocked(sn, col));
+	for (size_t i = 0; i < r->nr; i++) {
+		const Ref *x = &r->r[i];
+		if (x->kind == RF_STAR && x->status == RS_OK && !in_exists(r, r->b[block_at(r, x->s)].s) && star_has(r, x, col, twin)) return refuse(ed, "a * includes the column (its output name would change): expand it first");
+		if (x->kind != RF_COLUMN) continue;
+		if (x->status != RS_OK) {
+			if (x->e - x->s < sizeof buf && snap_eq(sn, snap_name(r->text + x->s, x->e - x->s, buf), (Name){c->name, strlen(c->name), 1})) return refuse(ed, "a name that may be the column does not resolve (a temp table made elsewhere, dynamic SQL)");
+			continue;
+		}
+		const Src *s = &r->src[x->src];
+		long k = s->kind == SRC_TABLE ? (long)sn->o[s->obj].col + x->col : -1;
+		if (k < 0 || (k != col && k != twin)) continue;
+		size_t mark = ed->nbuf;
+		if (put_name(ed, to)) return -1;
+		size_t o = 0;   /* a lone column naming an output someone sees (a * over it copies the name: the first is its own) */
+		while (o < r->nout && !(r->out[o].ns == x->s && r->out[o].ne == x->e)) o++;
+		if (o < r->nout && named_out(r, o) && (PUTS(ed, " AS ") || put(ed, r->text + x->s, x->e - x->s))) return -1;
+		if (edit(ed, x->s, x->e, mark)) return -1;
+	}
+	return 0;
+}
+
+/* s as a T-SQL N'..' string */
+static int put_str(Edits *ed, const char *s, size_t n)
+{
+	if (put(ed, "N'", 2)) return -1;
+	for (size_t i = 0; i < n; i++)
+		if (put(ed, s + i, 1) || (s[i] == '\'' && put(ed, "'", 1))) return -1;
+	return put(ed, "'", 1);
+}
+
+int refactor_rename_script(const Snap *s, const Snap *after, long col, Name to, Edits *ed)
+{
+	const SnapCol *c = &s->c[col];
+	const SnapObj *t = &s->o[c->obj];
+	Edits q = {0};
+	if (blocked(s, col)) return refuse(ed, blocked(s, col));
+	if (PUTS(&q, "")) return -1;   /* q.buf: [schema].[table].[column] */
+	if (put_name(&q, (Name){t->schema, strlen(t->schema), 1}) || PUTS(&q, ".") || put_name(&q, (Name){t->name, strlen(t->name), 1}) || PUTS(&q, ".") || put_name(&q, (Name){c->name, strlen(c->name), 1})) { edits_free(&q); return -1; }
+	int rc = PUTS(ed, "SET XACT_ABORT ON;\nBEGIN TRANSACTION;\nEXEC sp_rename ") || put_str(ed, q.buf, q.nbuf) || PUTS(ed, ", ") || put_str(ed, to.s, to.n) || PUTS(ed, ", 'COLUMN';\n") ? -1 : 0;
+	edits_free(&q);
+	for (size_t o = 0; o < s->no && !rc; o++) {
+		const char *text = s->o[o].text;
+		if (!text) continue;
+		size_t n = strlen(text), len;
+		Res r;
+		Edits m = {0};
+		uint32_t a, z;
+		if (resolve(&r, s, text, n) < 0) return -1;
+		rc = res_first(&r, &a, &z) && z - a == 6 && !strncasecmp(text + a, "create", 6) ? (PUTS(&m, "ALTER") || edit(&m, a, z, 0) ? -1 : refactor_rename_col(&r, col, to, &m)) : refuse(&m, "a module that does not start with CREATE");
+		resolve_free(&r);
+		char *u = !rc && m.ne > 1 ? edits_apply(&m, text, n, &len) : NULL;
+		if (rc == -2) {   /* the module's name, then why, kept in ed->buf */
+			snprintf(ed->msg, sizeof ed->msg, "%s.%s: %s", s->o[o].schema, s->o[o].name, m.why);
+			rc = refuse(ed, ed->msg);
+		} else if (u && !refactor_same(s, text, n, after, u, len)) {
+			snprintf(ed->msg, sizeof ed->msg, "%s.%s: the meaning would change", s->o[o].schema, s->o[o].name);
+			rc = refuse(ed, ed->msg);
+		} else if (u && (PUTS(ed, "EXEC (") || put_str(ed, u, len) || PUTS(ed, ");\n"))) rc = -1;
+		free(u);
+		edits_free(&m);
+	}
+	return rc ? rc : PUTS(ed, "COMMIT;\n");
+}
+
 int refactor_info(const Res *r, size_t pos, Edits *ed)
 {
 	const Ref *x = NULL;
@@ -194,12 +299,12 @@ char *edits_apply(const Edits *ed, const char *text, size_t n, size_t *len)
 /* what each column reference and each statement's output is */
 static long origin_of(const Res *r, const Ref *x) { return x->status == RS_OK ? res_origin(r, x->src, x->col) : -1; }
 
-int refactor_same(const Snap *s, const char *a, size_t na, const char *b, size_t nb)
+int refactor_same(const Snap *s, const char *a, size_t na, const Snap *t, const char *b, size_t nb)
 {
 	Res x, y;
 	int same = 0;
 	if (resolve(&x, s, a, na) < 0) return 0;
-	if (resolve(&y, s, b, nb) < 0) { resolve_free(&x); return 0; }
+	if (resolve(&y, t, b, nb) < 0) { resolve_free(&x); return 0; }
 	if (x.ntop != y.ntop || x.nb != y.nb) goto done;
 	/* every statement: the same output names, from the same columns */
 	for (size_t t = 0; t < x.ntop; t++) {

@@ -13,9 +13,11 @@ typedef struct {
 	const char *text;                   /* module text, NULL for none */
 	int64_t id;
 	uint32_t col, ncol;                 /* its columns: c[col .. col+ncol) */
+	uint32_t hist;                      /* a system-versioned table's history table: o[hist - 1]; 0: none */
 } SnapObj;
 typedef struct {
 	const char *name, *type;
+	const char *block;                  /* why sp_rename refuses it (X record), or NULL */
 	uint32_t obj;                       /* index into o */
 	int32_t id, maxlen;                 /* id: the server's column number (gaps after a drop) */
 	uint8_t nullable;
@@ -50,6 +52,12 @@ long  snap_object(const Snap *s, Name schema, Name name);
 int   snap_eq(const Snap *s, Name a, Name b);
 /* index into c of object o's column, or -1 */
 long  snap_column(const Snap *s, size_t o, Name col);
+/* the column of col's history table that col's rename renames too (SQL
+   Server carries it: measured, KB 03), or -1 */
+long  snap_twin(const Snap *s, size_t col);
+/* column col is now called name (kept by the caller), with its twin: the
+   snapshot as it will be after a rename, for the meaning check */
+void  snap_rename(Snap *s, size_t col, const char *name);
 /* Name of a token [s, s+n): strips [..], ".." or '..' (a column alias may
    be a string) and undoubles ]], "" or '' into buf (size n), sets quoted */
 Name  snap_name(const char *s, size_t n, char *buf);

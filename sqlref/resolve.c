@@ -140,6 +140,14 @@ Name src_col(const Res *res, size_t sc, size_t i, long *cat)
 	return out_name(res, src_out(res, sc, i));
 }
 
+int res_first(const Res *r, uint32_t *s, uint32_t *e)
+{
+	const P *p = r->priv;
+	if (!p->nt) return 0;
+	*s = p->t[0].s, *e = p->t[0].e;
+	return 1;
+}
+
 long res_origin(const Res *r, int sc, int col)
 {
 	for (int guard = 0; sc >= 0 && col >= 0 && guard < 256; guard++) {
@@ -495,11 +503,11 @@ static size_t source(P *p, size_t i, size_t z, int blk, int lateral)
 		int d = -1;
 		for (size_t k = p->nloc; k-- > 0 && d < 0;)
 			if (snap_eq(r->snap, nm_span(p, r->src[p->loc[k].src].ns), p->t[i].nm)) d = p->loc[k].src;
-		sc = new_src(p, d >= 0 ? SRC_CTE : SRC_UNKNOWN, blk);
+		sc = new_src(p, d >= 0 ? r->src[d].kind : SRC_UNKNOWN, blk);
 		if (sc < 0) return z;
 		r->src[sc].s = p->t[i].s;
 		if (r->text[p->t[i].s] == '#') r->src[sc].ns = p->t[i].s, r->src[sc].ne = p->t[i].e;
-		if (d >= 0) r->src[sc].inner = r->src[d].inner;
+		if (d >= 0) r->src[sc].inner = r->src[d].inner, r->src[sc].obj = r->src[d].obj;
 		ref(p, p->t[i].s, p->t[i].e, RF_CTE, d >= 0 ? RS_OK : RS_UNSURE, sc, d);
 		i = alias(p, i + 1, sc);
 		if (is(p, i, "with") && punct(p, i + 1, '(') && p->t[i + 1].m > 0) i = (size_t)p->t[i + 1].m + 1;   /* hints */
@@ -716,12 +724,12 @@ static int col_defs(P *p, size_t i)
 
 /* a temp table or table variable named at token i, its columns block
    blk's outputs; later names see it (rule 14) */
-static void local(P *p, size_t i, int blk)
+static void local(P *p, size_t i, int blk, long obj)
 {
-	int sc = new_src(p, SRC_CTE, -1);
+	int sc = new_src(p, obj >= 0 ? SRC_TABLE : SRC_CTE, -1);
 	if (sc < 0 || !GROW(p->loc, p->nloc, p->loccap)) return;
 	Src *s = &p->res->src[sc];
-	s->ns = s->s = p->t[i].s, s->ne = s->e = p->t[i].e, s->inner = blk;
+	s->ns = s->s = p->t[i].s, s->ne = s->e = p->t[i].e, s->inner = blk, s->obj = (int32_t)obj;
 	ref(p, p->t[i].s, p->t[i].e, RF_CTE_DEF, RS_OK, sc, -1);
 	p->loc[p->nloc++] = (Cte){sc};
 }
@@ -766,7 +774,7 @@ static size_t select_(P *p, size_t i, int parent, int *blk)
 	if (at[1] != SIZE_MAX) expr(p, at[1] + 1, end[1], b);
 	if (at[2] != SIZE_MAX) expr(p, at[2] + 1, end[2], b);
 	if (at[3] != SIZE_MAX) expr(p, at[3] + 1, end[3], b);
-	if (at[4] != SIZE_MAX && p->t[at[4] + 1].k == TQ_VAR) local(p, at[4] + 1, b);   /* SELECT .. INTO #t */
+	if (at[4] != SIZE_MAX && p->t[at[4] + 1].k == TQ_VAR) local(p, at[4] + 1, b, -1);   /* SELECT .. INTO #t */
 	commit(p, b, base);
 	return z;
 }
@@ -1190,9 +1198,15 @@ int resolve(Res *res, const Snap *snap, const char *text, size_t n)
 		/* DECLARE @t TABLE (..), CREATE TABLE #t (..): a block of its column names */
 		size_t v = i + 1 + is(p, i + 1, "table"), o = v + 1 + is(p, v + 1, "as") + is(p, v + 1, "table") + (is(p, v + 1, "as") && is(p, v + 2, "table"));
 		if (((is(p, i, "declare") && is(p, o - 1, "table")) || (is(p, i, "create") && v == i + 2)) && p->t[v].k == TQ_VAR && punct(p, o, '(') && p->t[o].m > 0) {
-			local(p, v, col_defs(p, o));
+			local(p, v, col_defs(p, o), -1);
 			i = (size_t)p->t[o].m + 1;
 			continue;
+		}
+		/* a parameter @x schema.type READONLY: the table type's columns */
+		if (p->t[i].k == TQ_VAR && word_or_ident(p, i + 1)) {
+			Name q[4]; int nq; size_t last, j = chain(p, i + 1, q, &nq, &last);
+			long o = is(p, j, "readonly") ? object(p, q, nq) : -1;
+			if (o >= 0) { local(p, i, -1, o); i = j + 1; continue; }
 		}
 		/* CREATE [OR ALTER] TRIGGER x ON t: inserted and deleted are t's */
 		if (is(p, i, "trigger") && i && (is(p, i - 1, "create") || is(p, i - 1, "alter"))) {
@@ -1211,7 +1225,7 @@ int resolve(Res *res, const Snap *snap, const char *text, size_t n)
 	}
 	/* in text order, which the walk is not (a block's outputs come after
 	   its FROM): refactors edit front to back and compare texts in order */
-	qsort(res->r, res->nr, sizeof *res->r, by_start);
+	if (res->nr) qsort(res->r, res->nr, sizeof *res->r, by_start);
 	return p->oom ? -1 : 0;
 }
 

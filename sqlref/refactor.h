@@ -10,6 +10,7 @@ typedef struct {
 	Edit *e; size_t ne, ecap;
 	char *buf; size_t nbuf, bcap;
 	const char *why;     /* set when a refactor refuses */
+	char msg[512];       /* why, when it is made up */
 } Edits;
 
 /* R2: every * and x.* starting in [a, z) becomes its column list,
@@ -21,11 +22,27 @@ int refactor_qualify(const Res *r, size_t a, size_t z, Edits *out);
 /* R7: what the name at byte pos is, as lines of text into out->buf */
 int refactor_info(const Res *r, size_t pos, Edits *out);
 
+/* R1 across code: every reference to snapshot column col, straight to
+   its table (not through a derived table or CTE, whose own column keeps
+   its name), becomes to; a lone select-list column keeps the output name
+   it gave (to AS old).  Refuses where the result would differ: a * that
+   includes the column, a name that may be the column but is not known */
+int refactor_rename_col(const Res *r, long col, Name to, Edits *out);
+
+/* the script renaming column col to `to` (into ed->buf): sp_rename, then
+   an ALTER of every module of the snapshot whose text changes, in one
+   transaction; every module passes the meaning check against after (s
+   with the rename).  Refuses as the server would (a blocker the snapshot
+   names) or as refactor_rename_col does for some module (the reason
+   names it). */
+int refactor_rename_script(const Snap *s, const Snap *after, long col, Name to, Edits *ed);
+
 /* the text with the edits applied (malloc'd, *n its length); NULL out of memory */
 char *edits_apply(const Edits *ed, const char *text, size_t n, size_t *len);
-/* the edited text resolves to the same thing everywhere: every column the
-   same catalog column (or derived output), every statement the same output
-   names and sources (the check every refactor passes before it is offered) */
-int  refactor_same(const Snap *s, const char *a, size_t na, const char *b, size_t nb);
+/* text b under snapshot t resolves to what text a means under s (the
+   same snapshot, or s after a rename): every column the same catalog
+   column (or derived output), every statement the same output names and
+   sources (the check every refactor passes before it is offered) */
+int  refactor_same(const Snap *s, const char *a, size_t na, const Snap *t, const char *b, size_t nb);
 void edits_free(Edits *ed);
 #endif

@@ -82,6 +82,8 @@ Name   src_col(const Res *res, size_t sc, size_t i, long *cat);
    CTEs: a snapshot column index (>= 0), or for a computed output of a
    block, -2 - (block << 16 | output); -1 unknown */
 long   res_origin(const Res *res, int sc, int col);
+/* the first token (a module's CREATE): its bytes [*s, *e); 0 when none */
+int    res_first(const Res *res, uint32_t *s, uint32_t *e);
 /* the name of an output column, NULL s when it has none */
 Name   out_name(const Res *res, const Out *o);
 #endif

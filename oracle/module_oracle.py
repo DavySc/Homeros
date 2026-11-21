@@ -18,6 +18,8 @@ snap = '/tmp/claude-0/%s.snap' % db
 subprocess.run(['oracle/snap.sh', db, snap], check=True)
 cur.execute("select o.object_id, schema_name(o.schema_id) + '.' + o.name, rtrim(o.type), m.definition from sys.sql_modules m join sys.objects o on o.object_id = m.object_id where o.type in ('V','IF','TF','FN','P','TR') order by 2")
 mods = cur.fetchall()
+cur.execute("select lower(concat(schema_name(schema_id), '.', name)) from sys.table_types")
+types = set(r[0] for r in cur.fetchall())
 def seen(name, typ):
     """what the server says about a module: its referenced columns, and
     for a view its result columns and a checksum of its rows"""
@@ -86,8 +88,10 @@ for oid, name, typ, text in mods:
         srv = set(r[0].lower() for r in cur.fetchall())
         # allowances (KB 05): the server lists nothing a temp table's statement
         # uses (it binds them when they run), and CONTAINSTABLE(t, *) as the
-        # full-text columns, which the snapshot does not hold
+        # full-text columns, which the snapshot does not hold; it lists no
+        # column of a table-type parameter (measured: 3 WWI modules)
         if '#' in text: cols &= srv
+        cols = set(c for c in cols if c.rsplit('.', 1)[0] not in types)   # nor a table-type parameter's columns
         if re.search(r'(?i)containstable\s*\([^,]*,\s*\*', text): srv &= cols
         if srv != cols: why = 'O2 server only %s; resolver only %s' % (sorted(srv - cols), sorted(cols - srv))
     if why:
