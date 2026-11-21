@@ -1,7 +1,7 @@
 /* Syntax colours against Neovim 0.12 (nvim --headless on PATH, running
    tests/test_syntax.lua): random windows of real C, Lua, Markdown, Rust
-   (ripgrep's printer), GLSL (glslang's test shaders) and Nix (nixpkgs'
-   writers) files, then random
+   (ripgrep's printer), GLSL (glslang's test shaders), Nix (nixpkgs'
+   writers), CMake (its modules) and SystemVerilog (Verilator's tests) files, then random
    edits applied incrementally with parses in between.  Neovim replays the same edits and parses, and its highlighter's captures, with
    its predicates, injections and #set! priority, must give the same face
    for every byte (per byte the highest priority wins, the later capture on
@@ -25,8 +25,8 @@
 #include "text.h"
 #include "../src/syntax/lmatch.h"
 
-enum { NL = 6, MAXCASES = 300, EDITS = 25, MAXT = 1 << 15 };
-static const char *const ext[NL] = { "c", "lua", "md", "rs", "frag", "nix" };
+enum { NL = 8, MAXCASES = 300, EDITS = 25, MAXT = 1 << 15 };
+static const char *const ext[NL] = { "c", "lua", "md", "rs", "frag", "nix", "cmake", "sv" };
 static int CASES = 40;   /* per language; CASES and SEED in the environment */
 
 static char dir[] = "/tmp/test_syntax_XXXXXX";
@@ -85,6 +85,8 @@ static const char *const snip[NL][16] = {
 	{ "\n", "//", "/*", "*/", "\"", "'", "{", "}", "(", ")", "!", "x", "\xc3\xa9", "println!(\"{}\", a);", "fn f<T>(", "r#\"" },
 	{ "\n", "//", "/*", "*/", "{", "}", "(", ")", ".", "x", "\xc3\xa9", "#version 450\n", "uniform vec4 c;", "layout(location = 0) ", "gl_FragColor", "#define A 1\n" },
 	{ "\n", "#", "/*", "*/", "''", "\"", "{", "}", "=", ";", "x", "${", "let ", "# lua\n", "/* lua */ ''", "pkgs.writeRust \"a\" {} ''" },
+	{ "\n", "#", "#[[", "]]", "\"", "${", "}", "(", ")", "x", " ", "\xc3\xa9", "set(", "if(ON)", "endif()", "[=[" },
+	{ "\n", "//", "/*", "*/", "\"", "(", ")", ";", "x", " ", "\xc3\xa9", "module m;", "endmodule", "always_ff @(posedge clk)", "`define A 1\n", "logic [7:0] " },
 };
 
 static int stops_left;
@@ -510,6 +512,8 @@ int main(void)
 	add_dir(3, "build/syntax/src/corpus/rust", ".rs");
 	add_dir(4, "build/syntax/src/corpus/glsl", ".frag");   /* the first 64 by name */
 	add_dir(5, "build/syntax/src/corpus/nix", ".nix");
+	add_dir(6, "build/syntax/src/corpus/cmake", ".cmake");      /* the first 64 by name */
+	add_dir(7, "build/syntax/src/corpus/systemverilog", ".v");  /* SystemVerilog, read as .sv */
 	for (int l = 0; l < NL; l++) CHECK(ncorpus[l]);
 
 	static unsigned char fa[MAXT], fb[MAXT], fs[MAXT], ff[MAXT];
@@ -529,7 +533,9 @@ int main(void)
 		   (injection.include-children) and whose name contains? "assert";
 		   case 5, Nix's combined injections: Lua named by a comment
 		   (#gsub!) in two strings parsed as one tree, and writeRust's;
-		   case 11, a Nix string Neovim does not inject, as its injection
+		   case 6, Vim's match? in CMake's query: words ignoring case, a
+		   suffix after ".*", one word alone (set's variable);
+		   case 13, a Nix string Neovim does not inject, as its injection
 		   query's patterns of languages we lack still count toward the 256
 		   in-progress matches.
 		   The others: up to 80 lines of the corpus from a random line */
@@ -537,7 +543,8 @@ int main(void)
 		               : c == 3 ? "fn f() {\n    assert_eq!(v.len(), 3);\n    println!(\"{}\", g(x).y);\n}\n"
 		               : c == 5 ? "{\n  a = /* lua */ ''\n    local t = {\n  '';\n  b = /* lua */ ''\n    }\n  '';\n"
 		                          "  c = pkgs.writeRust \"r\" {} ''\n    fn main() { let x = 1; }\n  '';\n}\n"
-		               : c == 11 ? "  m (a // { i = \"${l.e p.b}\"; }) na/* lua */ ''  else\n    L b the ${f l is a s t b\n"
+		               : c == 6 ? "if(A-NOTFOUND AND x-notfound)\n  SET(v ON)\nendif()\nreturn()\n"
+		               : c == 13 ? "  m (a // { i = \"${l.e p.b}\"; }) na/* lua */ ''  else\n    L b the ${f l is a s t b\n"
 		                           "    C b c w${ or w e a.\n:::{.example}\n    }\n    ''\n" : NULL;
 		const char *src = fx ? fx : corpus[lang][rnd((unsigned)ncorpus[lang])];
 		size_t sn = strlen(src), a = fx ? 0 : rnd((unsigned)sn), z;

@@ -67,6 +67,8 @@ const TSLanguage *tree_sitter_markdown_inline(void);
 const TSLanguage *tree_sitter_rust(void);
 const TSLanguage *tree_sitter_glsl(void);
 const TSLanguage *tree_sitter_nix(void);
+const TSLanguage *tree_sitter_cmake(void);
+const TSLanguage *tree_sitter_systemverilog(void);
 static const struct Lang {
 	const char *name;
 	const TSLanguage *(*fn)(void);
@@ -78,6 +80,8 @@ static const struct Lang {
 	{ "rust", tree_sitter_rust },
 	{ "glsl", tree_sitter_glsl },
 	{ "nix", tree_sitter_nix },
+	{ "cmake", tree_sitter_cmake },
+	{ "systemverilog", tree_sitter_systemverilog },
 };
 enum { NLANGS = sizeof langs / sizeof *langs };
 
@@ -92,12 +96,12 @@ enum { NLANGS = sizeof langs / sizeof *langs };
 enum { BY_NONE = -1, BY_SQL = -2, BY_JSON = -3, BY_DL = -4, BY_ORG = -5 };
 static const struct { const char *ext, *ft; int lang; } fts[] = {
 	{ ".c", "c", 0 }, { ".h", "cpp", 0 }, { ".lua", "lua", 1 }, { ".md", "markdown", 2 },
-	{ ".sql", "sql", BY_SQL }, { ".json", "json", BY_JSON }, { "CMakeLists.txt", "cmake", BY_NONE },
+	{ ".sql", "sql", BY_SQL }, { ".json", "json", BY_JSON }, { "CMakeLists.txt", "cmake", 7 },
 	{ ".txt", "text", BY_NONE }, { ".rs", "rust", 4 }, { ".nix", "nix", 6 },
 	{ ".glsl", "glsl", 5 }, { ".vert", "glsl", 5 }, { ".frag", "glsl", 5 },
 	{ ".comp", "glsl", 5 }, { ".geom", "glsl", 5 }, { ".tesc", "glsl", 5 },
-	{ ".tese", "glsl", 5 }, { ".sv", "systemverilog", BY_NONE }, { ".svh", "systemverilog", BY_NONE },
-	{ ".cmake", "cmake", BY_NONE }, { ".lean", "lean", BY_NONE }, { ".cs", "cs", BY_NONE },
+	{ ".tese", "glsl", 5 }, { ".sv", "systemverilog", 8 }, { ".svh", "systemverilog", 8 },
+	{ ".cmake", "cmake", 7 }, { ".lean", "lean", BY_NONE }, { ".cs", "cs", BY_NONE },
 	{ ".org", "org", BY_ORG }, { ".dl", "souffle", BY_DL },
 };
 
@@ -129,7 +133,7 @@ extern const char *const syntax_queries[][2];
 int syntax_release(TSTree *t, unsigned n);   /* release.c */
 enum { RELEASE_STEP = 1024 };                /* nodes freed between stop asks */
 
-enum { P_EQ, P_MATCH, P_ANYOF, P_ANCESTOR, P_PARENT, P_CONTAINS };
+enum { P_EQ, P_MATCH, P_VIM, P_ANYOF, P_ANCESTOR, P_PARENT, P_CONTAINS };
 typedef struct {
 	unsigned char kind, neg;
 	uint32_t cap;
@@ -275,10 +279,44 @@ static int lacked(const TSQueryPredicateStep *st, uint32_t ns, const TSQuery *q)
 	return 0;
 }
 
+/* Vim's match? in the one form these queries use, \c^(a|b|.*c)$ or
+   \c^a$: one of the words ignoring case, ".*" before a word making it a
+   suffix (CMake's commands and booleans).  1 for another form: the
+   pattern is skipped, which the check against Neovim would show. */
+static int vim_words(Pred *p)
+{
+	const char *s = p->str[0];
+	uint32_t n = p->len[0], k = 1, i = 3;
+	if (p->nstr != 1 || n < 5 || memcmp(s, "\\c^", 3) || s[n - 1] != '$') return 1;
+	int par = s[3] == '(';
+	i += (uint32_t)par;
+	n -= 1 + (uint32_t)par;    /* the words end at s[n] */
+	if (par && s[n] != ')') return 1;
+	for (uint32_t j = i; j < n; j++) k += s[j] == '|';
+	const char **str = calloc(k, sizeof *str);
+	uint32_t *len = calloc(k, sizeof *len);
+	if (!str || !len) return free(str), free(len), -1;
+	for (uint32_t j = 0; j < k; j++, i++) {
+		uint32_t b = i;
+		if (s[i] == '.' && s[i + 1] == '*') i += 2;
+		while (isalnum((unsigned char)s[i]) || s[i] == '_' || s[i] == '-') i++;
+		str[j] = s + b;
+		len[j] = i - b;
+		if (len[j] == 0 || (j + 1 < k ? s[i] != '|' : i != n))
+			return free(str), free(len), 1;
+	}
+	free(p->str);
+	free(p->len);
+	p->str = str;
+	p->len = len;
+	p->nstr = k;
+	return 0;
+}
+
 /* Turns each pattern's predicate steps into Preds and metadata, as
    query.lua's process_patterns: "not-" negates.  A predicate these
-   languages' queries do not use (match?, the any- forms, #eq? of two
-   captures) fails the query, as Neovim errors on an unknown one. */
+   languages' queries do not use (the any- forms, #eq? of two captures)
+   fails the query, as Neovim errors on an unknown one. */
 static int compile(Q *Q, int hl)
 {
 	uint32_t np = ts_query_pattern_count(Q->q), nc = ts_query_capture_count(Q->q);
@@ -329,6 +367,7 @@ static int compile(Q *Q, int hl)
 				if (l > 4 && !memcmp(name, "not-", 4)) p->neg = 1, name += 4, l -= 4;
 				if (EQ(name, l, "eq?")) p->kind = P_EQ;
 				else if (EQ(name, l, "lua-match?")) p->kind = P_MATCH;
+				else if (EQ(name, l, "match?")) p->kind = P_VIM;
 				else if (EQ(name, l, "any-of?")) p->kind = P_ANYOF;
 				else if (EQ(name, l, "has-ancestor?")) p->kind = P_ANCESTOR;
 				else if (EQ(name, l, "has-parent?")) p->kind = P_PARENT;
@@ -344,6 +383,9 @@ static int compile(Q *Q, int hl)
 					if (!ISSTR(a + 2 + k)) return -1;
 					p->str[k] = STR(a + 2 + k, p->len[k]);
 				}
+				int w = p->kind == P_VIM ? vim_words(p) : 0;
+				if (w < 0) return -1;
+				P->skip |= (unsigned char)w;
 				P->n++;
 			}
 			a = b + 1;
@@ -534,11 +576,14 @@ static int at(void *v, size_t i)
 	return (unsigned char)s->w[i - s->base];
 }
 
-static int text_eq(Src *src, uint32_t a, uint32_t z, const char *str, uint32_t len)
+/* ci: ignoring ASCII case, as Vim's \c */
+static int text_eq(Src *src, uint32_t a, uint32_t z, const char *str, uint32_t len, int ci)
 {
 	if (z - a != len) return 0;
-	for (uint32_t i = 0; i < len; i++)
-		if (at(src, a + i) != (unsigned char)str[i]) return 0;
+	for (uint32_t i = 0; i < len; i++) {
+		int c = at(src, a + i);
+		if (ci ? tolower(c) != tolower((unsigned char)str[i]) : c != (unsigned char)str[i]) return 0;
+	}
 	return 1;
 }
 
@@ -557,18 +602,25 @@ static int test1(Src *src, const Pred *p, TSNode n)
 	uint32_t a = ts_node_start_byte(n), z = ts_node_end_byte(n);
 	switch (p->kind) {
 	case P_EQ:
-		return p->nstr && text_eq(src, a, z, p->str[0], p->len[0]);
+		return p->nstr && text_eq(src, a, z, p->str[0], p->len[0], 0);
 	case P_MATCH:
 		return p->nstr && lmatch_find(at, src, a, z, p->str[0], p->len[0]);
 	case P_ANYOF:
 		for (uint32_t k = 0; k < p->nstr; k++)
-			if (text_eq(src, a, z, p->str[k], p->len[k])) return 1;
+			if (text_eq(src, a, z, p->str[k], p->len[k], 0)) return 1;
+		return 0;
+	case P_VIM:
+		for (uint32_t k = 0; k < p->nstr; k++) {
+			uint32_t m = p->len[k], suf = p->str[k][0] == '.';
+			if (z - a >= m - 2 * suf && text_eq(src, suf ? z - (m - 2) : a, z, p->str[k] + 2 * suf, m - 2 * suf, 1))
+				return 1;
+		}
 		return 0;
 	case P_CONTAINS:
 		/* every string, as a plain substring of the node's text */
 		for (uint32_t k = 0; k < p->nstr; k++) {
 			uint32_t i = a;
-			while (i + p->len[k] <= z && !text_eq(src, i, i + p->len[k], p->str[k], p->len[k])) i++;
+			while (i + p->len[k] <= z && !text_eq(src, i, i + p->len[k], p->str[k], p->len[k], 0)) i++;
 			if (i + p->len[k] > z) return 0;
 		}
 		return 1;

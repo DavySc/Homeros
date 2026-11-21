@@ -4,7 +4,7 @@
 -- of the winning capture, and whether any tree has a syntax error; at each
 -- "f" the faces of the edited, not yet parsed trees go to DIR/out.snap.
 -- usage: nvim --headless --clean -l test_syntax.lua OUT DIR CASE...
-local ours = { c = true, lua = true, markdown = true, markdown_inline = true, rust = true, glsl = true, nix = true }
+local ours = { c = true, lua = true, markdown = true, markdown_inline = true, rust = true, glsl = true, nix = true, cmake = true, systemverilog = true }
 -- the grammars and queries Neovim does not bundle (src/syntax/sources.nix)
 vim.opt.rtp:prepend('build/syntax/src/nvim')
 

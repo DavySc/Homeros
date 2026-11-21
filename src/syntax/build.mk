@@ -6,7 +6,8 @@ SYN = build/syntax
 SYN_GRAMMARS = c/src/parser lua/src/parser lua/src/scanner \
   markdown/tree-sitter-markdown/src/parser markdown/tree-sitter-markdown/src/scanner \
   markdown/tree-sitter-markdown-inline/src/parser markdown/tree-sitter-markdown-inline/src/scanner \
-  rust/parser rust/scanner glsl/parser nix/parser nix/scanner
+  rust/parser rust/scanner glsl/parser nix/parser nix/scanner \
+  cmake/parser cmake/scanner systemverilog/parser
 CPPFLAGS += -I$(SYN)/src/tree-sitter/lib/include -I$(SYN)/src/tree-sitter/lib/src
 OBJS += $(SYN)/tree-sitter.o $(SYN_GRAMMARS:%=$(SYN)/g/%.o) $(SYN)/queries.o
 
@@ -28,7 +29,7 @@ $(SYN)/g/%.o: | $(SYN)/src
 # A file starting "; inherits: x" follows x's file, as query.lua reads it.
 $(SYN)/queries.c: src/syntax/build.mk | $(SYN)/src
 	{ echo 'const char *const syntax_queries[][2] = {'; \
-	  for l in c lua markdown markdown_inline rust glsl nix; do for f in highlights injections; do \
+	  for l in c lua markdown markdown_inline rust glsl nix cmake systemverilog; do for f in highlights injections; do \
 	    q=$(SYN)/src/queries/$$l/$$f.scm; b=$$(sed -n '1s/^; inherits: *//p' $$q); \
 	    printf '"'; cat $${b:+$(SYN)/src/queries/$$b/$$f.scm} $$q | od -An -v -to1 | tr -d '\n' | sed 's/ /\\/g'; echo '",'; \
 	  done; done; echo '};'; } > $@
