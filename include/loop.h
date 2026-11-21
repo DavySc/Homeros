@@ -48,8 +48,9 @@ int  proc_write(int id, const void *b, size_t n);  /* queued, never blocks; 0 ok
 void proc_close(int id);                           /* EOF on stdin once the queue is written */
 void proc_kill(int id);                            /* SIGTERM, SIGKILL 2 s later (jobstop) */
 /* Neovim's system() (formatprg, conform's sync format): runs only child
-   id's pipes (its fn is called as usual) until it is reported, deferring
-   every watch, timer and other child; Ctrl-C or ms passing kills it as
+   id's pipes (its fn is called as usual) and the watches, as
+   loop_breakcheck does (so Ctrl-C arrives), until it is reported,
+   deferring every timer and other child; Ctrl-C or ms passing kills it as
    proc_kill does, and it is still reported before the return.  0 reported
    in time, -1 killed (thread 0's, agreed, for the Verilog formatter). */
 int  proc_wait(int id, int ms);
