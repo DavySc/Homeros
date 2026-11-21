@@ -269,7 +269,7 @@ static int vim_words(Pred *p)
 {
 	const char *s = p->str[0];
 	uint32_t n = p->len[0], k = 1, i = 3;
-	if (p->nstr != 1 || n < 5 || memcmp(s, "\\c^", 3) || s[n - 1] != '$') return 1;
+	if (p->nstr != 1 || n < 5 || memcmp(s, "\\c^", 3)) return 1;
 	int par = s[3] == '(';
 	i += (uint32_t)par;
 	n -= 1 + (uint32_t)par;    /* the words end at s[n] */
@@ -284,7 +284,7 @@ static int vim_words(Pred *p)
 		while (isalnum((unsigned char)s[i]) || s[i] == '_' || s[i] == '-') i++;
 		str[j] = s + b;
 		len[j] = i - b;
-		if (len[j] == 0 || (j + 1 < k ? s[i] != '|' : i != n))
+		if (j + 1 < k ? s[i] != '|' : i != n)
 			return free(str), free(len), 1;
 	}
 	free(p->str);
@@ -575,7 +575,7 @@ static int verilog(const Text *t)
 	size_t n = text_lines(t);
 	int com = 0, f[10];
 	for (size_t l = 0; l < 500 && l <= n; l++) {
-		size_t a = text_line_start(t, l), z = text_line_start(t, l + 1) - (l < n);
+		size_t a = text_line_start(t, l), z = text_line_start(t, l + 1);   /* %s takes the '\n' */
 		for (int k = 0; k < 10; k++) f[k] = lmatch_find(at, &src, a, z, pat[k], strlen(pat[k]));
 		com |= f[0];
 		if (com) com = !f[1];
@@ -715,7 +715,9 @@ static int resolve(Src *src, const char *s, uint32_t a, uint32_t z)
 	}
 	for (int i = 0; i < NLANGS; i++)
 		if (strlen(langs[i].name) == n && !memcmp(langs[i].name, b, n)) return i;
-	return -1;
+	/* nvim-treesitter's plugin/filetypes.lua: systemverilog = { 'verilog' }
+	   (SystemVerilog's `define bodies, a verilog fence) */
+	return n == 7 && !memcmp(b, "verilog", 7) ? 8 : -1;
 }
 
 static TSRange mkrange(uint32_t a, TSPoint pa, uint32_t z, TSPoint pz)
@@ -1139,7 +1141,7 @@ void syntax_faces(Syntax *s, size_t a, size_t z, unsigned char *face)
    every tree, in for_each_tree's order, each a fold from its first row to
    its last (one fewer when it ends at column 0) if it spans more than
    'foldminlines' (1) and is not the one just counted */
-static void fold_tree(Syntax *s, LTree *L, Src *src, int *in, int *out, int64_t *prev)
+static void fold_tree(Syntax *s, LTree *L, int *in, int *out, int64_t *prev)
 {
 	Q *Q = &queries[L->lang].fold;
 	for (uint32_t i = 0; Q->q && i < L->nreg; i++) {
@@ -1148,7 +1150,6 @@ static void fold_tree(Syntax *s, LTree *L, Src *src, int *in, int *out, int64_t 
 		ts_query_cursor_exec(s->qc, Q->q, ts_tree_root_node(L->reg[i].tree));
 		TSQueryMatch m;
 		while (ts_query_cursor_next_match(s->qc, &m)) {
-			if (!passes(src, &m, &Q->pat[m.pattern_index])) continue;
 			const TSNode *a = NULL, *z = NULL;   /* a quantified capture's first and last */
 			for (uint16_t k = 0; k < m.capture_count; k++)
 				if (m.captures[k].index == Q->content) z = &m.captures[k].node, a = a ? a : z;
@@ -1156,11 +1157,11 @@ static void fold_tree(Syntax *s, LTree *L, Src *src, int *in, int *out, int64_t 
 			int64_t sr = ts_node_start_point(*a).row;
 			TSPoint e = ts_node_end_point(*z);
 			int64_t er = (int64_t)e.row - (e.column == 0);
-			if (er - sr + 1 > 1 && (sr != prev[0] || er != prev[1]) && er < (int64_t)s->nfold)
+			if (er - sr + 1 > 1 && (sr != prev[0] || er != prev[1]))
 				in[sr]++, out[er]++, prev[0] = sr, prev[1] = er;
 		}
 	}
-	for (uint32_t k = 0; k < L->nkid; k++) fold_tree(s, L->kid[k], src, in, out, prev);
+	for (uint32_t k = 0; k < L->nkid; k++) fold_tree(s, L->kid[k], in, out, prev);
 }
 
 /* Markdown's ftplugin (g:markdown_folding): MarkdownFold() starts a fold of
@@ -1171,23 +1172,30 @@ static void fold_tree(Syntax *s, LTree *L, Src *src, int *in, int *out, int64_t 
 static int md_fold(Src *src, const Text *t, size_t l, int prev)
 {
 	size_t a = text_line_start(t, l), z = text_line_start(t, l + 1) - 1, h = a;
-	while (h < z && at(src, h) == '#') h++;
-	if (h > a && h < z && at(src, h) == ' ') return 2 * (int)(h - a) + 1;
+	while (at(src, h) == '#') h++;
+	if (h > a && at(src, h) == ' ') return 2 * (int)(h - a) + 1;
 	size_t b = z + 1, y = text_line_start(t, l + 2) - 1;
-	if (a < z && l + 1 < text_lines(t) && b < y && (at(src, b) == '=' || at(src, b) == '-')) {
+	if (a < z && l + 1 < text_lines(t) && (at(src, b) == '=' || at(src, b) == '-')) {
 		int c = at(src, b);
-		while (b < y && at(src, b) == c) b++;
+		while (at(src, b) == c) b++;
 		if (b == y) return c == '=' ? 3 : 5;
 	}
 	return prev & ~1;
 }
 
+/* The first call after a parse runs the folds query over every tree from
+   byte 0; Neovim's _fold.lua recomputes only the changed rows, after an
+   asynchronous parse.  Measured (PR 110's review, then here, 5 runs of 60
+   one-byte edits, -O2): tree-sitter's stack.c, 29 KB, 1.26 to 1.28 ms per
+   edit against a 0.31 ms reparse; its lib/src/*.c, 489 KB, 17.2 to 17.9 ms
+   against 1.9 to 2.0 ms.  To settle with fold_update's wiring (package 20,
+   thread 0): changed rows only, or the levels of the last finished parse. */
 int syntax_foldexpr(Syntax *s, size_t line, int *start)
 {
 	*start = 0;
 	if (!s || s->sql) return 0;
 	if (s->org) return orgfx_foldexpr(s->org, line, start);
-	while (syntax_update(s, s->t, NULL) == 2) ;
+	syntax_update(s, s->t, NULL);   /* NULL stop: never 2 */
 	const Text *t = s->t;
 	size_t n = text_lines(t);
 	if (!started(s) || line >= n) return 0;
@@ -1206,7 +1214,7 @@ int syntax_foldexpr(Syntax *s, size_t line, int *start)
 			   'foldnestmax' (20) a level is 20 and starts nothing */
 			int *in = f + n + 1, *out = f;
 			int64_t prev[2] = { -1, -1 };
-			fold_tree(s, s->root, &src, in, out, prev);
+			fold_tree(s, s->root, in, out, prev);
 			for (size_t l = 0, lv = 0, left = 0; l < n; l++) {
 				size_t e = (size_t)in[l], o = (size_t)out[l], v = lv - left + e;
 				if (e && o) v -= o, o = 0;

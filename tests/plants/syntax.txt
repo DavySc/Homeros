@@ -58,7 +58,6 @@ syntax: Nix's combined injections parse each string apart (test_syntax, case 5: 
 syntax: #gsub! on the injection's language is ignored (test_syntax, case 5: /* lua */)~test TESTS=syntax~~src/syntax/syntax.c~if (c->index == Q->langcap && P->gp) {~if (c->index == Q->langcap && 0) {
 syntax: Lua's gsub stops after its first match (test_syntax, Lua patterns)~test TESTS=syntax~~src/syntax/lmatch.c~		if (anchor) break;¶	}¶	return add~		break;¶	}¶	return add
 syntax: Lua's gsub %0 gives the first capture (test_syntax, Lua patterns)~test TESTS=syntax~~src/syntax/lmatch.c~if (c == '0' || (l == 0 && !ms.level)) ca = s~if (l == 0 && !ms.level) ca = s
-syntax: injection patterns of languages we lack are dropped from the query, so fewer in-progress matches hit Neovim's limit (test_syntax, case 13)~test TESTS=syntax~~src/syntax/syntax.c~if (!hl && (P->skip = (unsigned char)lacked(st, ns, Q->q))) continue;~if (!hl && lacked(st, ns, Q->q)) { ts_query_disable_pattern(Q->q, i); continue; }
 syntax: a .org file gets no colours (test_syntax_org)~test TESTS=syntax_org~~src/syntax/syntax.c~{ ".org", "org", BY_ORG }~{ ".org", "org", BY_NONE }
 syntax: an edit to a .org file is not passed to Org (test_syntax_org)~test TESTS=syntax_org~~src/syntax/syntax.c~		orgfx_edit(s->org, t, pos, ndel, nins);¶		return;~		return;
 syntax: an update of a .org file does not reach Org (test_syntax_org)~test TESTS=syntax_org~~src/syntax/syntax.c~	if (s->org) return orgfx_update(s->org, stop);~	if (s->org) return 0;
@@ -82,3 +81,8 @@ syntax: a .v's line ending in '.' before a comment is Coq (test_syntax, .v files
 syntax: a .v's module header is not Verilog (test_syntax, .v files)~test TESTS=syntax~~src/syntax/syntax.c~if (f[7] || f[8] || f[9]) return 1;~if (f[7] || f[8]) return 1;
 syntax: a .v that ends a line in ';' is not Verilog (test_syntax, .v files)~test TESTS=syntax~~src/syntax/syntax.c~if (f[7] || f[8] || f[9]) return 1;~if (f[8] || f[9]) return 1;
 syntax: a .v gets no colours (test_syntax, .v files)~test TESTS=syntax~~src/syntax/syntax.c~if (li == BY_V) li = verilog(t) ? 8 : BY_NONE;~if (li == BY_V) li = verilog(t) ? BY_NONE : BY_NONE;
+syntax: patterns injecting a language we lack are dropped from the query, so fewer in-progress matches hit Neovim's limit (test_syntax, case 13)~test TESTS=syntax~~src/syntax/syntax.c~			a = b + 1;¶		}¶	}¶	return 0;~			a = b + 1;¶		}¶		for (int j = 0; !hl && P->ilang && j <= NLANGS; j++)¶			if (j == NLANGS) ts_query_disable_pattern(Q->q, i);¶			else if (strlen(langs[j].name) == P->ilen && !memcmp(langs[j].name, P->ilang, P->ilen)) break;¶	}¶	return 0;
+syntax: 'foldnestmax' is 21 (test_syntax, case 8)~test TESTS=syntax~~src/syntax/syntax.c~v > 20 ? 20 : v~v > 21 ? 21 : v
+syntax: a fold past 'foldnestmax' still starts (test_syntax, case 8)~test TESTS=syntax~~src/syntax/syntax.c~(e && v <= 20)~(e > 0)
+syntax: a setext underline under an empty line is a heading (test_syntax, case 10)~test TESTS=syntax~~src/syntax/syntax.c~if (a < z && l + 1 < text_lines(t)~if (l + 1 < text_lines(t)
+syntax: an injection named verilog is not SystemVerilog (test_syntax, the corpus's `define bodies)~test TESTS=syntax~~src/syntax/syntax.c~n == 7 && !memcmp(b, "verilog", 7) ? 8 : -1~-1

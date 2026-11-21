@@ -31,8 +31,8 @@ $(SYN)/g/%.o: | $(SYN)/src
 $(SYN)/queries.c: src/syntax/build.mk | $(SYN)/src
 	{ echo 'const char *const syntax_queries[][3] = {'; \
 	  for l in c lua markdown markdown_inline rust glsl nix cmake systemverilog; do for f in highlights injections folds; do \
-	    q=$(SYN)/src/queries/$$l/$$f.scm; b=$$(sed -n '1s/^; inherits: *//p' $$q); \
-	    printf '"'; [ ! -f $$q ] || cat $${b:+$(SYN)/src/queries/$$b/$$f.scm} $$q | od -An -v -to1 | tr -d '\n' | sed 's/ /\\/g'; echo '",'; \
+	    q=$(SYN)/src/queries/$$l/$$f.scm; printf '"'; \
+	    [ ! -f $$q ] || { b=$$(sed -n '1s/^; inherits: *//p' $$q); cat $${b:+$(SYN)/src/queries/$$b/$$f.scm} $$q | od -An -v -to1 | tr -d '\n' | sed 's/ /\\/g'; }; echo '",'; \
 	  done; done; echo '};'; } > $@
 
 $(SYN)/queries.o: $(SYN)/queries.c

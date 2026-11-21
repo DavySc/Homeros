@@ -606,18 +606,28 @@ int main(void)
 		   (#gsub!) in two strings parsed as one tree, and writeRust's;
 		   case 6, Vim's match? in CMake's query: words ignoring case, a
 		   suffix after ".*", one word alone (set's variable);
-		   case 10, Markdown's folds: setext headings, and a '#' line in a
-		   code block, which MarkdownFold() folds with tree-sitter on;
+		   case 8, 24 nested C blocks, past 'foldnestmax' (20);
+		   case 10, Markdown's folds: setext headings (not under an empty
+		   line), and a '#' line in a code block, which MarkdownFold()
+		   folds with tree-sitter on;
 		   case 13, a Nix string Neovim does not inject, as its injection
 		   query's patterns of languages we lack still count toward the 256
 		   in-progress matches.
 		   The others: up to 80 lines of the corpus from a random line */
+		static char deep[300];
+		if (!deep[0]) {
+			strcpy(deep, "void f() {\n");
+			for (int k = 0; k < 24; k++) strcat(deep, "if (a) {\n");
+			strcat(deep, "x;\n");
+			for (int k = 0; k < 25; k++) strcat(deep, "}\n");
+		}
 		const char *fx = c == 2 ? "> *a\n> b* `c\n> d` [e\n> f](g)\n"
 		               : c == 3 ? "fn f() {\n    assert_eq!(v.len(), 3);\n    println!(\"{}\", g(x).y);\n}\n"
 		               : c == 5 ? "{\n  a = /* lua */ ''\n    local t = {\n  '';\n  b = /* lua */ ''\n    }\n  '';\n"
 		                          "  c = pkgs.writeRust \"r\" {} ''\n    fn main() { let x = 1; }\n  '';\n}\n"
 		               : c == 6 ? "if(A-NOTFOUND AND x-notfound)\n  SET(v ON)\nendif()\nreturn()\n"
-		               : c == 10 ? "Title\n=====\ntext\nSub\n---\n# h\n```\n# not\n```\n## b\n"
+		               : c == 8 ? deep
+		               : c == 10 ? "\n===\nTitle\n=====\ntext\nSub\n---\n# h\n```\n# not\n```\n## b\n"
 		               : c == 13 ? "  m (a // { i = \"${l.e p.b}\"; }) na/* lua */ ''  else\n    L b the ${f l is a s t b\n"
 		                           "    C b c w${ or w e a.\n:::{.example}\n    }\n    ''\n" : NULL;
 		const char *src = fx ? fx : corpus[lang][rnd((unsigned)ncorpus[lang])];

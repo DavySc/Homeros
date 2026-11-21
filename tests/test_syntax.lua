@@ -8,6 +8,8 @@
 local ours = { c = true, lua = true, markdown = true, markdown_inline = true, rust = true, glsl = true, nix = true, cmake = true, systemverilog = true }
 -- the grammars and queries Neovim does not bundle (src/syntax/sources.nix)
 vim.opt.rtp:prepend('build/syntax/src/nvim')
+-- nvim-treesitter's plugin/filetypes.lua, which Davy's Neovim loads
+vim.treesitter.language.register('systemverilog', 'verilog')
 
 -- grid.h's faces: FACE_NONE 0, then Neovim's standard captures in order
 local groups = {}
