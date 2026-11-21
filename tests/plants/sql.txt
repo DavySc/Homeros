@@ -1,29 +1,30 @@
 # Plants for package 22, src/sql/ (format in tools/planted.sh).  The test
 # needs the SQL Server of src/sql/README.md (CI's service container).
-sql: decimal point one digit early~test TESTS=sql_tds~~src/sql/tds.c~(i == scale && scale && ch(b, '.'))~(i == scale + 1 && scale && ch(b, '.'))
-sql: dates a day late~test TESTS=sql_tds~~src/sql/tds.c~	date_civil(days - 719162, &y, &m, &d);~	date_civil(days - 719161, &y, &m, &d);
-sql: datetime's 1/300 s truncated, not rounded~test TESTS=sql_tds~~src/sql/tds.c~(le(s + 4, 4) * 10 + 1) / 3~le(s + 4, 4) * 10 / 3
-sql: code page 1252's euro sign wrong~test TESTS=sql_tds~~src/sql/tds.c~	0x20AC, 0xFFFD, 0x201A,~	0x20AD, 0xFFFD, 0x201A,
-sql: surrogate pairs from the server combined wrong~test TESTS=sql_tds~~src/sql/tds.c~u = 0x10000 + (u - 0xD800) * 1024 + (v - 0xDC00)~u = 0x10000 + (u - 0xD800) * 1023 + (v - 0xDC00)
-sql: surrogate pairs to the server split wrong~test TESTS=sql_tds~~src/sql/tds.c~0xDC00 + (u - 0x10000) % 1024~0xDC00 + (u - 0x10000) % 1023
-sql: floats at 15 digits, not the shortest that reads back~test TESTS=sql_tds~~src/sql/tds.c~	for (int p = single ? 6 : 15; p <= 17; p++) {~	for (int p = single ? 6 : 15; p <= 15; p++) {
-sql: datetimeoffset's sign swapped~test TESTS=sql_tds~~src/sql/tds.c~" %c%02d:%02d", off < 0 ? '-' : '+'~" %c%02d:%02d", off > 0 ? '-' : '+'
-sql: NBCROW's null bits read from the top~test TESTS=sql_tds~~src/sql/tds.c~bits[i / 8] >> (i % 8) & 1~bits[i / 8] >> (7 - i % 8) & 1
-sql: negative money shown as its two's complement~test TESTS=sql_tds~~src/sql/tds.c~m[i] = (uint8_t)((neg ? 0 - v : v) >> (8 * i));~m[i] = (uint8_t)(v >> (8 * i));
-sql: tinyint read as signed~test TESTS=sql_tds~~src/sql/tds.c~int neg = n > 1 && s[n - 1] >= 128;~int neg = s[n - 1] >= 128;
-sql: a (max) value keeps the previous row's chunks~test TESTS=sql_tds~~src/sql/tds.c~		plp->n = 0;¶~
-sql: sql_variant's scale from the wrong property byte~test TESTS=sql_tds~~src/sql/tds.c~&& pb >= 2 ? s[3]~&& pb >= 2 ? s[2]
-sql: an error's head without its line~test TESTS=sql_tds~~src/sql/tds.c~"Msg %u, Level %u, State %u, Line %u\n", no, cls, state, line~"Msg %u, Level %u, State %u\n", no, cls, state + 0 * line
-sql: a rollback keeps the transaction's descriptor~test TESTS=sql_tds~~src/sql/tds.c~		if (ty == 9 || ty == 10) t->txn = 0;¶~
-sql: a cancelled run ends at the first final DONE (SqlRun firstdone)~test TESTS=sql_tds~~src/sql/tds.c~(t->state == TDS_CANCEL && st & 0x20)~t->state == TDS_CANCEL
-sql: a cancel while no batch runs (SqlRun noguard)~test TESTS=sql_tds~~src/sql/tds.c~	if (t->state != TDS_BUSY) return 0;¶	static const char h[8]~	static const char h[8]
-sql: a refused login's reason lost~test TESTS=sql_tds~~src/sql/tds.c~		if (t->state == TDS_LOGIN && k == 0xAA)¶~		if (0)¶
-sql: the certificate never checked~test TESTS=sql_tds~~src/sql/net.c~SSL_set_verify(c->ssl, trust ? SSL_VERIFY_NONE : SSL_VERIFY_PEER, NULL);~SSL_set_verify(c->ssl, SSL_VERIFY_NONE, NULL);
-sql: a packet's header sealed apart from its body~test TESTS=sql_tds~~src/sql/tds.c~		if (net_send(&t->net, p, k + 8)) return -1;~		if (net_send(&t->net, p, 8) || net_send(&t->net, p + 8, k)) return -1;
-sql: every packet of a long batch marked last~test TESTS=sql_tds~~src/sql/tds.c~{(char)type, k == n,~{(char)type, 1,
-sql: tab not escaped in a value~test TESTS=sql_tds~~src/sql/net.c~u == '\t' ? 't' : ~
+sql: decimal point one digit early~test TESTS=sql~~src/sql/tds.c~(i == scale && scale && ch(b, '.'))~(i == scale + 1 && scale && ch(b, '.'))
+sql: dates a day late~test TESTS=sql~~src/sql/tds.c~	date_civil(days - 719162, &y, &m, &d);~	date_civil(days - 719161, &y, &m, &d);
+sql: datetime's 1/300 s truncated, not rounded~test TESTS=sql~~src/sql/tds.c~(le(s + 4, 4) * 10 + 1) / 3~le(s + 4, 4) * 10 / 3
+sql: code page 1252's euro sign wrong~test TESTS=sql~~src/sql/tds.c~	0x20AC, 0xFFFD, 0x201A,~	0x20AD, 0xFFFD, 0x201A,
+sql: surrogate pairs from the server combined wrong~test TESTS=sql~~src/sql/tds.c~u = 0x10000 + (u - 0xD800) * 1024 + (v - 0xDC00)~u = 0x10000 + (u - 0xD800) * 1023 + (v - 0xDC00)
+sql: surrogate pairs to the server split wrong~test TESTS=sql~~src/sql/tds.c~0xDC00 + (u - 0x10000) % 1024~0xDC00 + (u - 0x10000) % 1023
+sql: floats at 15 digits, not the shortest that reads back~test TESTS=sql~~src/sql/tds.c~	for (int p = single ? 6 : 15; p <= 17; p++) {~	for (int p = single ? 6 : 15; p <= 15; p++) {
+sql: datetimeoffset's sign swapped~test TESTS=sql~~src/sql/tds.c~" %c%02d:%02d", off < 0 ? '-' : '+'~" %c%02d:%02d", off > 0 ? '-' : '+'
+sql: NBCROW's null bits read from the top~test TESTS=sql~~src/sql/tds.c~bits[i / 8] >> (i % 8) & 1~bits[i / 8] >> (7 - i % 8) & 1
+sql: negative money shown as its two's complement~test TESTS=sql~~src/sql/tds.c~m[i] = (uint8_t)((neg ? 0 - v : v) >> (8 * i));~m[i] = (uint8_t)(v >> (8 * i));
+sql: tinyint read as signed~test TESTS=sql~~src/sql/tds.c~int neg = n > 1 && s[n - 1] >= 128;~int neg = s[n - 1] >= 128;
+sql: a (max) value keeps the previous row's chunks~test TESTS=sql~~src/sql/tds.c~		plp->n = 0;¶~
+sql: sql_variant's scale from the wrong property byte~test TESTS=sql~~src/sql/tds.c~&& pb >= 2 ? s[3]~&& pb >= 2 ? s[2]
+sql: an error's head without its line~test TESTS=sql~~src/sql/tds.c~"Msg %u, Level %u, State %u, Line %u\n", no, cls, state, line~"Msg %u, Level %u, State %u\n", no, cls, state + 0 * line
+sql: a rollback keeps the transaction's descriptor~test TESTS=sql~~src/sql/tds.c~		if (ty == 9 || ty == 10) t->txn = 0;¶~
+sql: a cancelled run ends at the first final DONE (SqlRun firstdone)~test TESTS=sql~~src/sql/tds.c~(t->state == TDS_CANCEL && st & 0x20)~t->state == TDS_CANCEL
+sql: a cancel while no batch runs (SqlRun noguard)~test TESTS=sql~~src/sql/tds.c~	if (t->state != TDS_BUSY) return 0;¶	static const char h[8]~	static const char h[8]
+sql: a refused login's reason lost~test TESTS=sql~~src/sql/tds.c~		if (t->state == TDS_LOGIN && k == 0xAA)¶~		if (0)¶
+sql: the certificate never checked~test TESTS=sql~~src/sql/net.c~SSL_set_verify(c->ssl, trust ? SSL_VERIFY_NONE : SSL_VERIFY_PEER, NULL);~SSL_set_verify(c->ssl, SSL_VERIFY_NONE, NULL);
+sql: a packet's header sealed apart from its body~test TESTS=sql~~src/sql/tds.c~		if (net_send(&t->net, p, k + 8)) return -1;~		if (net_send(&t->net, p, 8) || net_send(&t->net, p + 8, k)) return -1;
+sql: every packet of a long batch marked last~test TESTS=sql~~src/sql/tds.c~{(char)type, k == n,~{(char)type, 1,
+sql: tab not escaped in a value~test TESTS=sql~~src/sql/net.c~u == '\t' ? 't' : ~
 sql: a short token's text kept when it restarts (fuzz)~fuzz FUZZERS=sql_tds FUZZ_SECONDS=60~~src/sql/tds.c~		if (c.bad) { t->out.n = mark, t->rows = rows,~		if (c.bad) { t->out.n += 0 * mark, t->rows = rows,
 sql: a column type cut at the packet's end is unknown (fuzz)~fuzz FUZZERS=sql_tds FUZZ_SECONDS=60~~src/sql/tds.c~	return c->bad ? 0 : -1;   /* no type byte yet~	return -1;   /* no type byte yet
 sql: any packet size the server names (fuzz)~fuzz FUZZERS=sql_tds FUZZ_SECONDS=60~~src/sql/tds.c~if (z >= 512 && z <= 32767) t->pkt~if (z > 0) t->pkt
 sql: a whole reply without its last DONE waits (fuzz)~fuzz FUZZERS=sql_tds FUZZ_SECONDS=60~~src/sql/tds.c~if (t->eom && (t->at < t->msg.n || t->state == TDS_BUSY)) {~if (t->eom && t->at < t->msg.n) {
 specs: SqlRun ending a cancelled run at its first DONE~specs~find design/specs -name '*.cfg' ! -name SqlRun_ok.cfg -delete~design/specs/SqlRun_ok.cfg~Variant = "ok"~Variant = "firstdone"
+sql: a message's tab and newline escaped~test TESTS=sql~~src/sql/net.c~	unsigned char s[4] = {'\\', raw ? 0 : (unsigned char)esc(u)};~	unsigned char s[4] = {'\\', (unsigned char)esc(u)};

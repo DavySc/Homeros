@@ -27,7 +27,7 @@ void net_close(Net *c);
 
 /* Text of a value, one value per cell and one row per line: code point u
    (< 0x110000) or n bytes of UTF-8, with tab, newline, CR and backslash
-   escaped as \t \n \r \\. */
-int  net_cp(Str *b, unsigned u);
+   escaped as \t \n \r \\ (net_cp: unless raw, a message's text). */
+int  net_cp(Str *b, unsigned u, int raw);
 int  net_esc(Str *b, const char *s, size_t n);
 #endif

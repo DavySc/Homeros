@@ -13,9 +13,9 @@
 
 static int esc(unsigned u) { return u == '\t' ? 't' : u == '\n' ? 'n' : u == '\r' ? 'r' : u == '\\' ? '\\' : 0; }
 
-int net_cp(Str *b, unsigned u)
+int net_cp(Str *b, unsigned u, int raw)
 {
-	unsigned char s[4] = {'\\', (unsigned char)esc(u)};
+	unsigned char s[4] = {'\\', raw ? 0 : (unsigned char)esc(u)};
 	return s[1] ? str_add(b, (char *)s, 2) : str_add(b, (char *)s, (size_t)uni_put(s, u));
 }
 
@@ -24,7 +24,7 @@ int net_esc(Str *b, const char *s, size_t n)
 	size_t a = 0;
 	for (size_t i = 0; i < n; i++)
 		if (esc((unsigned char)s[i])) {
-			if (str_add(b, s + a, i - a) || net_cp(b, (unsigned char)s[i])) return -1;
+			if (str_add(b, s + a, i - a) || net_cp(b, (unsigned char)s[i], 0)) return -1;
 			a = i + 1;
 		}
 	return str_add(b, s + a, n - a);

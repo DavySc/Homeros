@@ -29,14 +29,14 @@ static uint64_t le(const uint8_t *b, size_t n)
 }
 static uint64_t num(Cur *c, size_t n) { const uint8_t *b = take(c, n); return b ? le(b, n) : 0; }
 
-/* n bytes of UTF-16LE as text; a lone surrogate is U+FFFD */
-static int put_u16(Str *b, const uint8_t *s, size_t n)
+/* n bytes of UTF-16LE as text (net_cp's raw); a lone surrogate is U+FFFD */
+static int put_u16(Str *b, const uint8_t *s, size_t n, int raw)
 {
 	for (size_t i = 0; i + 1 < n; i += 2) {
 		unsigned u = (unsigned)le(s + i, 2), v = i + 3 < n ? (unsigned)le(s + i + 2, 2) : 0;
 		if (u >= 0xD800 && u < 0xDC00 && v >= 0xDC00 && v < 0xE000) u = 0x10000 + (u - 0xD800) * 1024 + (v - 0xDC00), i += 2;
 		else if (u >= 0xD800 && u < 0xE000) u = 0xFFFD;
-		if (net_cp(b, u)) return -1;
+		if (net_cp(b, u, raw)) return -1;
 	}
 	return 0;
 }
@@ -51,7 +51,7 @@ static int put_char(Str *b, const uint8_t *s, size_t n)
 	size_t a = 0;
 	for (size_t i = 0; i < n; i++)
 		if (s[i] >= 128) {
-			if (net_esc(b, (const char *)s + a, i - a) || net_cp(b, s[i] < 160 ? cp1252[s[i] - 128] : s[i])) return -1;
+			if (net_esc(b, (const char *)s + a, i - a) || net_cp(b, s[i] < 160 ? cp1252[s[i] - 128] : s[i], 0)) return -1;
 			a = i + 1;
 		}
 	return net_esc(b, (const char *)s + a, n - a);
@@ -180,7 +180,7 @@ static int put_val(Str *b, unsigned scale, uint8_t ty, const uint8_t *s, size_t 
 		return str_addf(b, "%08X-%04X-%04X-", (unsigned)le(s, 4), (unsigned)le(s + 4, 2), (unsigned)le(s + 6, 2))
 			|| str_addf(b, "%02X%02X-%02X%02X%02X%02X%02X%02X", s[8], s[9], s[10], s[11], s[12], s[13], s[14], s[15]);
 	case BIGVARCHR: case BIGCHAR: case TEXT: return put_char(b, s, n);
-	case NVARCHAR: case NCHAR: case NTEXT: case XML: return put_u16(b, s, n);
+	case NVARCHAR: case NCHAR: case NTEXT: case XML: return put_u16(b, s, n, 0);
 	case BIGVARBIN: case BIGBINARY: case IMAGE: case UDT: return put_hex(b, s, n);
 	case SSVARIANT: {   /* base type, property bytes, properties, value */
 		uint8_t pb = s[1];
@@ -196,7 +196,7 @@ static void name(Cur *c, int wide, Str *out)   /* B_VARCHAR (wide 0) or US_VARCH
 {
 	size_t n = (size_t)num(c, wide ? 2 : 1) * 2;
 	const uint8_t *s = take(c, n);
-	if (s && out) put_u16(out, s, n);
+	if (s && out) put_u16(out, s, n, 0);
 }
 
 static int typeinfo(Cur *c, TdsCol *k)
@@ -328,7 +328,7 @@ static int token(Tds *t, Cur *c)
 		if (m.bad) { snprintf(t->net.err, sizeof t->net.err, "a message token shorter than its fields"); return -1; }
 		size_t mark = t->out.n;
 		if ((k == 0xAA && str_addf(&t->out, "Msg %u, Level %u, State %u, Line %u\n", no, cls, state, line))
-			|| put_u16(&t->out, tx, tn) || ch(&t->out, '\n')) return -1;
+			|| put_u16(&t->out, tx, tn, 1) || ch(&t->out, '\n')) return -1;
 		if (t->state == TDS_LOGIN && k == 0xAA)
 			snprintf(t->net.err, sizeof t->net.err, "%.*s", (int)(t->out.n - mark - 1), t->out.s + mark);
 		return 0;

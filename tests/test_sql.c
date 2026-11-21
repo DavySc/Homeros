@@ -1,5 +1,5 @@
 /* Package 22's SQL Server client against a live server (src/sql/README.md
-   starts one; CI has it as a service): cancel, certificate refusal, then
+   starts one; CI has it as a service): cancel, transactions, refusals, then
    tests/test_sql_tds.py, which checks every type's text against the
    server's own, through this program's driver mode:
      test_sql_tds run [-t] [-q] [-c ROWS] < batch
@@ -93,6 +93,9 @@ int main(int argc, char **argv)
 	CHECK(t.pkt == 4096);
 	/* text in both directions: outside the BMP, and Latin-1 */
 	CHECK(!batch(&t, "select N'\U0001F600\u00E9' x", 0) && !strcmp(t.out.s, "x\n\U0001F600\u00E9\n(1 row affected)\n"));
+	/* a message's text as it is; a value's escaped, one per cell */
+	CHECK(!batch(&t, "print 'a' + char(9) + 'b' + char(10) + 'c'; select 'a' + char(9) + 'b' + char(10) + 'c' x", 0));
+	CHECK(!strcmp(t.out.s, "a\tb\nc\nx\na\\tb\\nc\n(1 row affected)\n"));
 	/* a cancel while no batch runs sends nothing */
 	CHECK(!tds_cancel(&t) && t.state == TDS_READY && !tds_pending(&t));
 	/* a cancel after the batch's last DONE was sent: the server still sends
