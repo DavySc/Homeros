@@ -1128,6 +1128,46 @@ int main(void)
 	CHECK(!text_delete(t, 2, 1) && !text_insert(t, 2, "x", 1) && orgfx_conceal(x, 3, cc, 4) == 3);
 	orgfx_free(x);
 	text_free(t);
+	/* links and footnotes, each as Org colours it (tools/org_conform.py -f
+	   and -s agree on each text): the byte at, and whether its face is */
+	static const struct { const char *text; size_t at; unsigned char face; int is; } fx[] = {
+		{ "[[a\n#+b]]c: d\n", 0, FACE_MARKUP_LINK_URL, 1 },   /* "]]" ends no separator there */
+		{ "[fn:1] b\n\\cite{[fn:1]} x\n", 9, FACE_MARKUP_LINK_LABEL, 0 },   /* a LaTeX fragment */
+		{ "[fn:1] b\n$\\cite{[fn:1]}$ x\n", 9, FACE_MARKUP_LINK_LABEL, 0 },
+		{ "[fn:1] b\n$\\cite{[fn:1]}$x\n", 9, FACE_MARKUP_LINK_LABEL, 1 },   /* no fragment: x after $ */
+		{ "[fn:1] b\n\\alpha \\cite{[fn:1]}\n", 9, FACE_MARKUP_LINK_LABEL, 1 },   /* an entity */
+		{ "[fn:1] b\nx [fn:2:{\n* h\ny}] z\n", 19, FACE_MARKUP_HEADING_1, 1 },   /* a span stops at a headline */
+		{ "[fn:1] b\nx [fn:2:{\n* h\ny}] z\n", 23, FACE_MARKUP_LINK_LABEL, 0 },
+	};
+	for (size_t i = 0; i < sizeof fx / sizeof *fx; i++) {
+		unsigned char f1[64];
+		size_t n1 = strlen(fx[i].text);
+		t = text_new(fx[i].text, n1);
+		x = t ? orgfx_new(t) : NULL;
+		CHECK(x && orgfx_update(x, NULL));
+		orgfx_faces(x, 0, n1, f1);
+		CHECK((f1[fx[i].at] == fx[i].face) == fx[i].is);
+		orgfx_free(x);
+		text_free(t);
+	}
+	t = text_new("[fn:1] a\nx^{2}[[a]][fn:2:b]\n", 28);   /* a link ending at a reference holds none */
+	x = t ? orgfx_new(t) : NULL;
+	Conceal c5[5];
+	CHECK(x && orgfx_conceal(x, 1, c5, 5) == 5 && c5[1].a == 3 && !strcmp(c5[1].s, "²"));
+	orgfx_free(x);
+	text_free(t);
+	{   /* the walk's checkpoints after an edit above them: x^{2} sits in the block it makes */
+		static char cp[9000 * 2 + 32];
+		for (size_t i = 0; i < 9000; i++) memcpy(cp + 2 * i, "a\n", 2);
+		memcpy(cp + 18000, "x^{2}\n#+end_example\n", 20);
+		t = text_new(cp, 18020);
+		x = t ? orgfx_new(t) : NULL;
+		CHECK(x && orgfx_conceal(x, 9000, cc, 4) == 3);
+		orgfx_edit(x, t, 0, 0, 16);
+		CHECK(!text_insert(t, 0, "#+begin_example\n", 16) && orgfx_conceal(x, 9001, cc, 4) == 0);
+		orgfx_free(x);
+		text_free(t);
+	}
 	for (size_t i = 0; i < sizeof todos / sizeof *todos; i++) {
 		static char b[1024];
 		char *got = NULL;
@@ -1146,8 +1186,8 @@ int main(void)
 	   sanitizers, best of 5: 21 ms each; with one of the three undone at
 	   least 360 ms); then what the line shows (orgfx_conceal), with no
 	   scan to the line's end from every emphasis marker, rule check or
-	   script (measured, 5 runs, colours and conceal: 21 to 48 ms, median
-	   23; with the line start found from each marker, 1572 ms on *a /b) */
+	   script (measured, 5 runs, colours and conceal: 17 to 43 ms, median
+	   25; with the line start found from each marker, 1572 ms on *a /b) */
 	static const char *const units[] = { "word ", "<2026-01-01 x ", "<%%(x) ", "*a /b ", "=a ", "+-", "x^{a} \\alpha ", "x^{é} " };
 	static char line[65536];
 	static unsigned char lf[sizeof line];
@@ -1170,22 +1210,29 @@ int main(void)
 		text_free(t);
 	}
 	/* the frame gate on many lines: the last 50 of 100,000 without a
-	   headline, shown one after another, take one walk from the top of
-	   the text, not one each (measured under the sanitizers, 5 runs:
-	   2.5 to 2.7 ms; walking for each line, 120 ms) */
-	{
-		static char many[100000 * 12];
-		size_t m = 0;
-		while (m < sizeof many) memcpy(many + m, "a *b* x^{2}\n", 12), m += 12;
+	   headline, shown one after another and then coloured, take one walk
+	   from the top of the text, not one each (measured under the
+	   sanitizers, 5 runs: plain lines median 10.7 ms, 10.6 to 16.0 (2.5
+	   to 2.7 before links and footnotes); a footnote and a link on every
+	   line median 27.8, 27.6 to 28.1, against 64 to 75 ms for the parse
+	   before it; plain lines walked for each line, 120 ms) */
+	for (int k = 0; k < 2; k++) {
+		static const char *const ln[] = { "a *b* x^{2}\n", "[fn:1] [[a][b]] *b* x^{2}\n" };
+		static char many[100000 * 26];
+		static unsigned char fc[50 * 26];
+		size_t m = 0, w = strlen(ln[k]);
+		while (m < 100000 * w) memcpy(many + m, ln[k], w), m += w;
 		struct timespec t0, t1;
 		t = text_new(many, m);
 		x = t ? orgfx_new(t) : NULL;
 		CHECK(x && orgfx_update(x, NULL));
 		Conceal c[64];
 		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t0);
-		for (size_t l = 100000 - 50; l < 100000; l++) CHECK(orgfx_conceal(x, l, c, 64) == 5);
+		for (size_t l = 100000 - 50; l < 100000; l++) CHECK(orgfx_conceal(x, l, c, 64) == (k ? 7u : 5u));
+		orgfx_faces(x, m - 50 * w, m, fc);
 		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t1);
-		CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000 < 20);
+		CHECK(!k || (fc[0] == FACE_MARKUP_LINK_LABEL && fc[7] == FACE_MARKUP_LINK_URL));
+		CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000 < (k ? 40 : 20));
 		orgfx_free(x);
 		text_free(t);
 	}

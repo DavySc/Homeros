@@ -2,14 +2,30 @@
 ;; Org's own font-lock as the oracle for src/org's colours (package 16): for
 ;; each file, "== name" and then "begin end face" for every run of one top
 ;; face after fontifying the whole buffer at once.  Positions are bytes from
-;; 0.  Off until src/org colours them: the objects (links, footnotes,
-;; emphasis, targets, macros, inline source blocks, citations); inside a source block
-;; the language's own colours (org-src-fontify-natively) count as org-block.
+;; 0.  Off until src/org colours them: the objects (emphasis, targets,
+;; macros, inline source blocks, citations); inside a source block the
+;; language's own colours (org-src-fontify-natively) count as org-block.
 ;; emacs -Q --batch -l tools/org_faces.el FILE...
 (require 'org)
 (setq org-todo-keywords '((sequence "TODO" "NEXT" "WAIT" "|" "DONE" "CANCELLED"))
-      org-highlight-links '(tag date)
+      org-highlight-links '(bracket angle plain tag date footnote)
       org-fontify-emphasized-text nil)
+;; org-activate-footnote-links returns add-text-properties' value: nil for a
+;; reference inside an earlier one's span, and font-lock stops looking for
+;; footnotes in the whole buffer there (a live Emacs only in its chunk);
+;; src/org goes on, as for dates, so this does too
+(advice-add 'org-activate-footnote-links :around
+            (lambda (f lim) (let ((p (point))) (funcall f lim) (/= p (point)))))
+;; a reference's span stops at the next headline, as in src/org (a scan
+;; starts at a headline; a live Emacs drops a span's part in a later chunk)
+(advice-add 'org-footnote-next-reference-or-definition :filter-return
+            (lambda (r)
+              (when (nth 2 r)
+                (save-excursion
+                  (goto-char (nth 1 r))
+                  (when (re-search-forward org-outline-regexp-bol (nth 2 r) t)
+                    (setf (nth 2 r) (match-beginning 0)))))
+              r))
 (defun org-faces-top (p)
   (let ((f (get-text-property p 'face)))
     (while (and (consp f) (not (keywordp (car f)))) (setq f (car f)))

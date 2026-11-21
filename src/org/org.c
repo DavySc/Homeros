@@ -80,6 +80,7 @@ static size_t key(size_t b, size_t e)
 static int in(const unsigned (*t)[2], size_t k, unsigned c)
 {
 	size_t lo = 0, hi = k;
+	if (c < 0x80) { while (lo < k && c > t[lo][1]) lo++; hi = lo; }   /* ASCII: the first few ranges */
 	while (lo < hi) { size_t m = lo + (hi - lo) / 2; if (c > t[m][1]) lo = m + 1; else hi = m; }
 	return lo < k && c >= t[lo][0];
 }
@@ -88,8 +89,8 @@ static int in(const unsigned (*t)[2], size_t k, unsigned c)
 static size_t namec(size_t p)
 {
 	if (p >= N) return 0;
-	unsigned c = uni_cp(S, N, p);
-	return c == '-' || c == '_' || IN(WORD, c) ? uni_len(S, N, p) : 0;
+	unsigned c = S[p] < 0x80 ? S[p] : uni_cp(S, N, p);
+	return c == '-' || c == '_' || IN(WORD, c) ? (c < 0x80 ? 1 : uni_len(S, N, p)) : 0;
 }
 static size_t names(size_t p) { size_t k; while ((k = namec(p))) p += k; return p; }
 static int digit(size_t p) { return p < N && S[p] >= '0' && S[p] <= '9'; }
@@ -1084,7 +1085,362 @@ static int one(size_t p, const char *k) { return p < N && S[p] && strchr(k, S[p]
    outside, 1 in a block whose end line (or line of stars) begins at end
    (quoting: its content is org-block), 2 stopped (a block without an end:
    the keyword's matcher returned nil) */
-typedef struct { size_t at, end; int st, quoting; } Scan;
+typedef struct {
+	size_t at, end; int st, quoting;
+	size_t lk, la, lz, lv, lw;   /* links: where the search goes on; the last link and its shown part */
+	size_t fl, fz, fd, fq; int fm;   /* footnotes: the line taken, where a reference's span goes on to,
+	                                    the last definition, the line the look ahead stopped at and what it found */
+} Scan;
+
+/* org-element-paragraph-separate at q, in a string ending at z ($ there);
+   its CLOCK line is left out */
+static int separate(size_t q, size_t z)
+{
+	size_t b = blanks(q), x;
+	if ((x = stars(q)) > q && x < z && S[x] == ' ') return 1;
+	if (is(q, "[fn:") && (x = names(q + 4)) > q + 4 && x < z && S[x] == ']') return 1;
+	if (is(q, "%%(") || b >= z || ateol(b) || S[b] == '|' || is(b, "\\begin{")) return 1;
+	x = b + 1;
+	if (S[b] == '#') {
+		if (x >= z || ateol(x) || S[x] == ' ') return 1;
+		if (S[x] != '+') return 0;
+		if (is(x + 1, "BEGIN_") && x + 7 < z && !sp(x + 7)) return 1;
+		for (x++; x < z && !sp(x) && S[x] != ':' && S[x] != '['; x++) ;
+		if (x < z && S[x] == '[') while (x < z && !ateol(x) && S[x] != ']') x++;
+		return x < z && S[x] == ']' ? x + 1 < z && S[x + 1] == ':' : x < z && S[x] == ':' && x > b + 2;
+	}
+	if (S[b] == ':') return x >= z || ateol(x) || S[x] == ' ' || ((x = names(x)) > b + 1 && x < z && S[x] == ':' && ((x = blanks(x + 1)) >= z || ateol(x)));
+	if (S[b] == '+' && is(x, "-")) {   /* \+\(?:-+\+\)+[ \t]*$ */
+		while (x < z && S[x] == '-') { while (x < z && S[x] == '-') x++; if (x >= z || S[x] != '+') return 0; x++; }
+		return (x = blanks(x)) >= z || ateol(x);
+	}
+	for (x = b; x < z && S[x] == '-'; x++) ;
+	if (x - b >= 5 && ((x = blanks(x)) >= z || ateol(x))) return 1;
+	x = one(b, "-+*") ? b + 1 : digit(b) && one(digits(b, z), ".)") ? digits(b, z) + 1 : 0;
+	return x && (x >= z || blank(x) || ateol(x));
+}
+/* org-emphasis-regexp-components' post */
+static int post(size_t p) { return ateol(p) || sp(p) || one(p, "-.,:!?;'\")}\\["); }
+
+/* ---- links: org-activate-links, for org-highlight-links' bracket, angle
+   and plain links (Org's default, all of them), as whole-buffer font-lock
+   finds them.  Known differences: a bracket link past 32 choices of a
+   backslash run is no link (Emacs backtracks on); the newline a
+   description hides stays (a cell grid keeps its lines) ---- */
+
+/* org-link-types: Org 9.8.7's with the modules it loads by default */
+static const char *const ltypes[] = { "bbdb", "bibtex", "docview", "doi", "elisp", "eww", "file", "file+emacs",
+	"file+sys", "ftp", "gnus", "help", "http", "https", "id", "info", "irc", "mailto", "mhe", "news", "rmail",
+	"shell", "shortdoc", "w3m" };
+static int tc(size_t p) { return p < N && ((S[p] >= 'a' && S[p] <= 'z') || S[p] == '+' || S[p] == '3'); }   /* a type's letters */
+static size_t ltype(size_t p)   /* TYPE: at p: its end, or 0 (case matters: font-lock folds no case) */
+{
+	size_t x = p;
+	while (tc(x)) x++;
+	if (x >= N || S[x] != ':') return 0;
+	for (size_t i = 0; i < sizeof ltypes / sizeof *ltypes; i++)
+		if (*ltypes[i] == S[p] && !strncmp(ltypes[i], (const char *)S + p, x - p) && !ltypes[i][x - p]) return x + 1;
+	return 0;
+}
+static int nsb(size_t p) { return p < N && !one(p, "[] \t\n()<>"); }   /* [^][ \t\n()<>] */
+/* [<([]\([^][ \t\n()<>]\|[<([][^][ \t\n()<>]*[])>]\)*[])>] at p: its end, or 0 */
+static size_t paren(size_t p)
+{
+	if (!one(p, "<([")) return 0;
+	for (p++; ; p++) {
+		if (one(p, "<([")) {   /* a group inside: no group in it */
+			for (p++; nsb(p); p++) ;
+			if (!one(p, "])>")) return 0;
+		} else if (!nsb(p)) break;
+	}
+	return one(p, "])>") ? p + 1 : 0;
+}
+/* org-link-plain-re's last character: [^[:punct:][:space:]\n], -, /
+   ([:punct:] is any non-word character above ASCII) */
+static int fin(size_t p)
+{
+	unsigned c = S[p];
+	if (c >= 0x80) return word(p);
+	return c == '-' || c == '/' || c == 127 || digit(p) || alpha(p) || (c < 32 && c != '\t' && c != '\n' && c != '\f' && c != '\r');
+}
+/* org-link-plain-re at p, where a word starts: the longest path whose last
+   item may end it, or 0 */
+static size_t plain(size_t p)
+{
+	size_t q = ltype(p), z = 0, x;
+	for (int n = 0; q && (x = nsb(q) ? q + uni_len(S, N, q) : paren(q)); n++, q = x)
+		if (n && (!nsb(q) || fin(q))) z = x;
+	return z;
+}
+/* org-link-angle-re at p (a '<'): its end, or 0 */
+static size_t angle(size_t p)
+{
+	size_t q = ltype(p + 1);
+	for (; q && q < N; q++) {
+		if (S[q] == '>') return q + 1;
+		if (S[q] == '\n' && ((q = blanks(q + 1)) >= N || one(q, ">\n"))) return 0;
+	}
+	return 0;
+}
+/* no link holds the start of the line q, whatever the regexp makes of it:
+   paragraph-separate takes the line up to any end a link can have there
+   (after a ] or a >, or past the line) */
+static int inside(size_t q)
+{
+	size_t e = eol(q);
+	for (size_t y = q; y < e; y++) if ((S[y] == ']' || S[y] == '>') && !separate(q, y + 1)) return 0;
+	return separate(q, e);
+}
+/* org-link-bracket-re after its [[ (at u), from i, in Emacs's backtracking
+   order: only a run of backslashes gives a choice, to go on at the run's
+   end or one past it (\ and pairs before a bracket, or backslashes before
+   another character), tried in the order Emacs reaches them.  The match's
+   end and its description (else the URI) in [*va, *vz), or 0 */
+static size_t uri(size_t i, size_t u, size_t *va, size_t *vz, int d)
+{
+	for (; i < N && S[i] != '[' && S[i] != ']'; i++) {
+		if (S[i] == '\n' && inside(i + 1)) return 0;
+		if (S[i] != '\\') continue;
+		size_t k = i, a, b = 0, z;
+		while (k < N && S[k] == '\\') k++;
+		if (k >= N) return 0;
+		if (one(k, "[]") && (k - i) % 2 == 0) a = k, b = k - i >= 4 ? k + 1 : 0;
+		else a = k + 1, b = k - i >= 2 ? k : 0;
+		if (b && d >= 32) return 0;   /* known difference: past 32 choices, no link */
+		if (b && (z = uri(a, u, va, vz, d + 1))) return z;
+		i = (b ? b : a) - 1;
+	}
+	if (i == u || i >= N || S[i] != ']') return 0;
+	*va = u; *vz = i;
+	if (is(i + 1, "["))   /* the description: \[\(.+?\)\] */
+		for (size_t q = i + 3; q + 1 < N; q++) {
+			if (S[q] == ']' && S[q + 1] == ']') { *va = i + 2; *vz = q; return q + 2; }
+			if (S[q] == '\n' && inside(q + 1)) return 0;
+		}
+	return is(i + 1, "]") ? i + 2 : 0;
+}
+/* org-activate-links' next link from c->lk starting before lim: [la, lz),
+   shown [lv, lw) (lv = la unless a bracket link hides its brackets); 0
+   when none */
+static int link_next(Scan *c, size_t lim)
+{
+	/* a match starts at a [ or <, or at a plain link's type, found from
+	   the : after it (a type: at most 10 bytes of [a-z3+], no : [ <) */
+	for (size_t p = c->lk, a, z, v, w, q, e = lim + 11 < N ? lim + 11 : N; ; p++) {
+		for (const unsigned char *s = S; p < e && s[p] != '[' && s[p] != '<' && s[p] != ':'; p++) ;
+		if (p >= e) break;
+		for (a = p; S[p] == ':' && a > c->lk && p - a < 10 && tc(a - 1); a--) ;
+		for (; a < p && !((!a || !word(uni_prev(S, N, a))) && ltype(a) == p + 1); a++) ;
+		if (a >= lim) break;
+		v = a; w = 0;
+		z = a < p ? plain(a) : S[p] == '<' ? angle(p) : S[p] == '[' && is(p + 1, "[") ? uri(p + 2, p + 2, &v, &w, 0) : 0;
+		if (!z) continue;
+		/* "Do not span over paragraph boundaries": ^ at the start and after each newline */
+		for (q = a; q < z && !separate(q, z < eol(q) ? z : eol(q)); q = nextl(q)) ;
+		if (q < z) continue;
+		/* a plain link after a tag is no link: org-activate-tags runs
+		   later, so whole-buffer font-lock never sees one */
+		c->la = a; c->lz = c->lk = z; c->lv = v; c->lw = w ? w : z;
+		return 1;
+	}
+	if (c->lk < lim) c->lk = lim;
+	return 0;
+}
+
+/* ---- footnotes: org-activate-footnote-links, as whole-buffer font-lock
+   finds them.  Known differences: after a reference inside an earlier
+   one's span the search goes on (Org's matcher returns nil there, and
+   font-lock stops looking for footnotes; a live Emacs only in its chunk);
+   a reference's span stops at a headline (a scan may start there) ---- */
+
+/* scan-sexps over the [ at p in Org's syntax table: parentheses of any
+   pair count, " quotes; the end, or 0 for its scan-error */
+static size_t sexp(size_t p)
+{
+	for (size_t d = 0, k; p < N; p += k) {
+		unsigned c = uni_cp(S, N, p);
+		k = uni_len(S, N, p);
+		if (c == '"') {
+			const unsigned char *q = memchr(S + p + 1, '"', N - p - 1);
+			if (!q) return 0;
+			k = (size_t)(q - S) + 1 - p;
+		} else if (IN(OPENS, c)) d++;
+		else if (IN(CLOSES, c) && !--d) return p + k;
+	}
+	return 0;
+}
+/* org-footnote-re at p: \[fn:\(?:\(LABEL\)?\(:\)\|\(LABEL\)\]\): its end, or 0 */
+static size_t fnre(size_t p)
+{
+	if (!is(p, "[fn:")) return 0;
+	size_t x = names(p + 4);
+	return x < N && (S[x] == ':' || (S[x] == ']' && x > p + 4)) ? x + 1 : 0;
+}
+static int defl(size_t l) { size_t x = fnre(l); return x && S[x - 1] == ']'; }   /* org-footnote-definition-re */
+/* org-in-regexp's search, of the lines [a, b), for a match of re (its end,
+   from p) that holds pos: its end, or ORG_NONE */
+static size_t holds(size_t a, size_t b, size_t pos, size_t (*re)(size_t p, size_t *z))
+{
+	size_t n = N, m = ORG_NONE, x, z = 0;
+	N = b;   /* a bounded search sees nothing past b */
+	for (size_t q = a; q <= pos && (x = re(q, &z)) != ORG_NONE && x <= pos; q = z)
+		if (z >= pos) { m = z; break; }
+	N = n;
+	return m;
+}
+static size_t link_re(size_t q, size_t *z)   /* org-link-bracket-re's next match */
+{
+	size_t v, w;
+	for (; q < N; q++) if (S[q] == '[' && is(q + 1, "[") && (*z = uri(q + 2, q + 2, &v, &w, 0))) return q;
+	return ORG_NONE;
+}
+static size_t macro_re(size_t q, size_t *z)   /* \\[a-zA-Z]+\*?\(\(\[[^][\n{}]*\]\)\|\({[^{}\n]*}\)\)* */
+{
+	for (; q < N; q++) {
+		if (S[q] != '\\' || !alpha(q + 1)) continue;
+		size_t x = letters(q + 1), y;
+		x += is(x, "*");
+		for (;; x = y + 1) {
+			char c = x < N && S[x] == '[' ? ']' : x < N && S[x] == '{' ? '}' : 0;
+			for (y = x + 1; c && y < N && !one(y, c == '}' ? "{}\n" : "[]{}\n"); y++) ;
+			if (!c || y >= N || S[y] != c) break;
+		}
+		*z = x;
+		return q;
+	}
+	return ORG_NONE;
+}
+/* org-verbatim-re's next match: marker m, then its body to the closer, in
+   the order Emacs tries them ([^[:space:]] alone, then lazily over up to
+   one newline, the newline first) */
+static int vend(size_t k, size_t c) { return k + 1 < N && !sp(k) && S[k + 1] == c && post(k + 2); }
+static size_t vclose(size_t m)
+{
+	size_t x, y;
+	if (m + 1 >= N || sp(m + 1)) return 0;
+	if (vend(m + 1, S[m])) return m + 2;
+	for (x = m + 2; x < N; x++) {
+		if (S[x] == '\n') {
+			for (y = x + 1; y < N && S[y] != '\n'; y++) if (vend(y, S[m])) return y + 1;
+			return vend(x, S[m]) ? x + 1 : 0;
+		}
+		if (vend(x, S[m])) return x + 1;
+	}
+	return 0;
+}
+static size_t VM, VC;   /* the last match's marker and closer */
+static size_t verb_re(size_t q, size_t *z)
+{
+	for (; q < N; q++) {
+		size_t m = q < N && (sp(q) || one(q, "-('\"{")) && one(q + 1, "=~") ? q + 1 :
+		           (!q || S[q - 1] == '\n') && one(q, "=~") ? q : ORG_NONE, c;
+		if (m != ORG_NONE && (c = vclose(m))) { VM = m; VC = c; *z = c + 1 + (c + 1 < N); return q; }
+	}
+	return ORG_NONE;
+}
+/* the headlines and #+begin_ and #+end_ lines, in order (they grow, then
+   stay; built when first asked after an update): *n of them, or NULL out of
+   memory */
+static const size_t *blines(size_t *n);
+/* org-in-block-p of org-footnote-forbidden-blocks at the line l
+   (org-between-regexps-p between the headlines around it) */
+static int forbidden(size_t l)
+{
+	static const char *const k[] = { "#+begin_comment", "#+begin_example", "#+begin_export", "#+begin_src" };
+	size_t n, j, lo = 0, hi;
+	const size_t *L = blines(&n);
+	if (!L) return 0;
+	for (hi = n; lo < hi; ) { size_t m = (lo + hi) / 2; if (L[m] <= l) lo = m + 1; else hi = m; }
+	for (int i = 0; i < 4; i++) {
+		for (j = lo; j-- > 0 && !(headline(L[j]) && L[j] < l) && !lit(blanks(L[j]), k[i]); ) ;
+		if (j == ORG_NONE || headline(L[j])) continue;   /* no begin since the headline above */
+		while (++j < n && !lit(blanks(L[j]), k[i]) && !(headline(L[j]) && L[j] > l) &&
+		       !(lit(blanks(L[j]), "#+end_") && lit(blanks(L[j]) + 6, k[i] + 8))) ;
+		if (j < n && L[j] >= l && !headline(L[j]) && !lit(blanks(L[j]), k[i])) return 1;
+	}
+	return 0;
+}
+/* the text the scan reads: its parse, and its OrgFx */
+static const OrgNode *PE;
+static size_t PK;
+static OrgFx *X;
+static size_t ent(size_t p, size_t *x);
+static const char *entity(size_t a, size_t z);
+static int within(size_t p, size_t z, const char *k) { for (; p < z; p++) if (is(p, k)) return p + strlen(k) <= z; return 0; }
+/* a LaTeX fragment starts at the line l, in a paragraph ending at z: what
+   org-element-context finds there (org-element-latex-fragment-parser,
+   after the entity parser, in the paragraph) */
+static int frag(size_t l, size_t z)
+{
+	size_t x, m = l + 1;
+	const unsigned char *q;
+	if (S[l] == '\\' && one(m, "([")) return within(l + 2, z, S[m] == '(' ? "\\)" : "\\]");
+	if (S[l] == '\\') return alpha(m) && !(ent(l, &x) && entity(m, x));   /* \\[a-zA-Z]+ matches */
+	if (S[l] != '$' || m >= z) return 0;
+	if (S[m] == '$') return within(l + 2, z, "$$");
+	if (one(m, " \t\n,.;") || !(q = memchr(S + m, '$', z - m))) return 0;
+	m = (size_t)(q - S) + 1;   /* after the closing $ */
+	return !one(m - 2, " \t\n,.") && (m >= z || ateol(m) || IN(DPOST, uni_cp(S, N, m)));
+}
+/* org-footnote-in-valid-context-p at the line l; known difference: an
+   object other than a LaTeX fragment starting there that holds l (a link,
+   a fragment from a line above) is not looked for */
+static int valid(size_t l)
+{
+	size_t b = blanks(l), up = prevl(prevl(l)), m, i = PK ? first(PE, PK, l + 1) : 0;
+	while (i-- > 0 && PE[i].end <= l) i = PE[i].parent + 1;   /* the element at l (org-element-context) */
+	if (i != ORG_NONE && (PE[i].type == ORG_LATEX_ENVIRONMENT || (PE[i].type == ORG_PARAGRAPH && frag(l, PE[i].cend)))) return 0;
+	if (comment(l) || (b < N && S[b] == ':' && blank(b + 1)) || forbidden(l)) return 0;
+	m = holds(up, eol(nextl(nextl(l))), l, verb_re);
+	return m == ORG_NONE || l < VM || l > VC;
+}
+/* org-footnote-next-reference-or-definition's span for the match at p,
+   ending at x, on the line l: [*a, *z), or 0 when it throws nothing */
+static int fn_span(Scan *c, size_t p, size_t x, size_t l, size_t *a, size_t *z, int b)
+{
+	size_t e, d = c->fd, y, k;   /* a link holding p, ending there, does not count */
+	if (p > l && (y = sexp(p)) && ((k = holds(l, e = eol(l), p, link_re)) == ORG_NONE || k == p) &&
+	    holds(l, e, x - 1, macro_re) == ORG_NONE)
+		return *a = p, *z = y, 1;
+	if (!b || d == ORG_NONE || !valid(l)) return 0;   /* b: a definition's span is asked for */
+	*a = d; *z = S[x - 1] == ']' ? x : x + 1;
+	return 1;
+}
+static size_t fn_next(size_t p, size_t e)   /* the next [ in [p, e), else e */
+{
+	const unsigned char *q = p < e ? memchr(S + p, '[', e - p) : NULL;
+	return q ? (size_t)(q - S) : e;
+}
+/* the separators org-footnote-next-reference-or-definition looks back to:
+   ^\*+ and ^\([ \t]*\n\)\{2,\} */
+static int fn_sep(size_t l) { return l < N && (S[l] == '*' ? headline(l) : emptyl(l) && eol(l) < N && emptyl(nextl(l))); }
+/* the footnotes of the line l, ending at e: put each span (a reference's, from the
+   line above, a later one's from the definition above); its state on */
+static void fn_line(Scan *c, size_t l, size_t e, void (*put)(size_t, size_t))
+{
+	size_t a, z, x;
+	if (c->fl == l + 1) return;
+	c->fl = l + 1;
+	if (fn_sep(l)) c->fd = ORG_NONE, c->fz = S[l] == '*' ? 0 : c->fz;   /* a headline: as a scan starting there */
+	if (defl(l)) c->fd = l;
+	if (put && c->fz > l) put(l, c->fz);
+	if (put && c->fd != ORG_NONE) {   /* a reference below that throws its definition's span */
+		if (c->fq <= l) {
+			for (c->fq = nextl(l), c->fm = 0; c->fq < N && !fn_sep(c->fq) && !defl(c->fq); c->fq = nextl(c->fq)) {
+				for (size_t p = c->fq, q = eol(p); (p = fn_next(p, q)) < q && !c->fm; p++)
+					if ((x = fnre(p)) && fn_span(c, p, x, c->fq, &a, &z, 1) && a < c->fq) c->fm = 1;
+				if (c->fm) break;
+			}
+		}
+		if (c->fm) put(l, nextl(l));
+	}
+	for (size_t p = l; (p = fn_next(p, e)) < e; p++)
+		if ((x = fnre(p)) && (put || p > l) && fn_span(c, p, x, l, &a, &z, put != NULL)) {
+			if (z > c->fz && a >= l) c->fz = z;
+			if (put) put(a, z);   /* the search goes on at the match's end less one: no [ before it */
+		}
+}
+
 
 /* ^[ \t]*#\+end_NAME\> or ^\*+[[:space:]] at m, NAME at [g, g + len) */
 static int block_end(size_t m, size_t g, size_t len)
@@ -1102,7 +1458,8 @@ static int block_end(size_t m, size_t g, size_t len)
    info) */
 static size_t meta(Scan *c)
 {
-	size_t l = c->at, e = eol(l), nl = nextl(l), q = blanks(l);
+	size_t l = c->at, e = eol(l), nl = e < N ? e + 1 : e, q = blanks(l);
+	fn_line(c, l, e, NULL);   /* the footnotes the line's caller did not take */
 	c->at = nl;
 	if (c->st == 2) return 0;
 	if (c->st == 1) {
@@ -1180,6 +1537,24 @@ static int todo(size_t p, size_t e, size_t *k)
 static int dcolon(size_t x, size_t e) { return x + 2 <= e && S[x] == ':' && S[x + 1] == ':' && (x + 2 == e || blank(x + 2)); }
 
 /* The line l's faces, keyword by keyword in org-font-lock-keywords' order */
+/* org-activate-dates on the line [l, e): put(a, z) for each date it
+   gives org-date and mouse-face */
+static void dates(size_t l, size_t e, void (*put)(size_t, size_t))
+{
+	size_t lc = e, x, z;   /* after the line's last ] or >: a date needs one at p + 11 or later */
+	while (lc > l && S[lc - 1] != ']' && S[lc - 1] != '>') lc--;
+	for (size_t p = l; p + 12 <= lc; p++) {   /* org-tsr-regexp-both */
+		if ((S[p] != '<' && S[p] != '[') || (x = ts_both(p)) == ORG_NONE) continue;
+		for (z = x + 1; z < e && z < x + 4 && S[z] == '-'; z++) ;
+		if (z > x + 1 && (z = ts_both(z)) != ORG_NONE) x = z;
+		/* Org stops dating the whole buffer at one preceded by "[", a
+		   live Emacs only the chunk it fontifies: this goes on */
+		if (!p || S[p - 1] != '[') put(p, x + 1);
+		p = x;
+	}
+}
+static void date_face(size_t a, size_t z) { set(a, z, FACE_ORG_DATE); }
+static void fn_face(size_t a, size_t z) { set(a, z, FACE_MARKUP_LINK_LABEL); }
 static void fontify(Scan *c)
 {
 	size_t l = c->at, e = eol(l), nl = e < N ? e + 1 : e, b = blanks(l), q = stars(l), p, x, z;
@@ -1226,18 +1601,10 @@ static void fontify(Scan *c)
 			if (x == e) break;   /* none closes later ones either */
 			set(p, x + 1, FACE_ORG_DATE), p = x;
 		}
+	for (int k = c->lz > l; k || link_next(c, nl); k = 0) set(c->la, c->lz, FACE_MARKUP_LINK_URL);   /* org-activate-links */
 	if (hl && (x = tags(l, e, &z)) != ORG_NONE) set(x, z, FACE_ORG_TAG);   /* org-activate-tags */
-	size_t lc = e;   /* after the line's last ] or >: a date needs one at p + 11 or later */
-	while (lc > l && S[lc - 1] != ']' && S[lc - 1] != '>') lc--;
-	for (p = l; p + 12 <= lc; p++) {   /* org-activate-dates: org-tsr-regexp-both */
-		if ((S[p] != '<' && S[p] != '[') || (x = ts_both(p)) == ORG_NONE) continue;
-		for (z = x + 1; z < e && z < x + 4 && S[z] == '-'; z++) ;
-		if (z > x + 1 && (z = ts_both(z)) != ORG_NONE) x = z;
-		/* Org stops dating the whole buffer at one preceded by "[", a
-		   live Emacs only the chunk it fontifies: this goes on */
-		if (!p || S[p - 1] != '[') set(p, x + 1, FACE_ORG_DATE);
-		p = x;
-	}
+	dates(l, e, date_face);
+	fn_line(c, l, e, fn_face);   /* org-activate-footnote-links */
 	if (q > l && (p = spaces(q)) > q) {   /* org-heading-keyword-regexp-format */
 		int i = todo(p, e, &x);
 		if (i >= 0) set(p, x, i < org_done ? FACE_ORG_TODO : FACE_COMMENT);
@@ -1319,23 +1686,26 @@ struct OrgFx {
 	OrgNode *e;
 	int dirty;             /* edited since: [lo, ho) of s is [lo, hc) of t */
 	size_t lo, ho, hc;
-	Scan c;                /* the scan's state at the last line it coloured */
+	Scan c, cn;            /* the scan's state at the last line it coloured, and after it */
 	unsigned char *lf;     /* that line's faces (the core asks a long line in pieces) */
 	size_t lcap;           /* as long as the longest line, unless out of memory */
 	Scan cs;               /* conceal's: the scan's state at the last line it showed */
 	size_t *em, emcap;     /* conceal's emphasis matches, begin and end (they grow, then stay) */
+	size_t *bl, bn, bcap;  /* blines(), bn ORG_NONE until built */
+	Scan *ck;              /* the scan's state every 4096 lines it walked, in order */
+	size_t kn, kcap;
 };
 
 OrgFx *orgfx_new(const Text *t)
 {
 	OrgFx *f = calloc(1, sizeof *f);
-	if (f) f->t = t, f->dirty = 1, f->hc = text_len(t), f->c.at = f->cs.at = ORG_NONE;
+	if (f) f->t = t, f->dirty = 1, f->hc = text_len(t), f->c.at = f->cs.at = f->bn = ORG_NONE;
 	return f;
 }
 
 void orgfx_free(OrgFx *f)
 {
-	if (f) free(f->s), free(f->e), free(f->lf), free(f->em);
+	if (f) free(f->s), free(f->e), free(f->lf), free(f->em), free(f->bl), free(f->ck);
 	free(f);
 }
 
@@ -1363,7 +1733,7 @@ int orgfx_update(OrgFx *f, int (*stop)(void))
 	f->n = n;
 	org_edit(&f->e, &f->k, f->s, n, f->lo, f->ho - f->lo, f->hc - f->lo);   /* out of memory: no parse, scans from the start */
 	f->dirty = 0;
-	f->c.at = f->cs.at = ORG_NONE;
+	f->c.at = f->cs.at = f->bn = ORG_NONE, f->kn = 0;
 	S = (const unsigned char *)f->s; N = n;
 	for (size_t l = bol(f->lo), m; l < n && l <= f->hc; l = nextl(l))   /* the lines the edits touched */
 		if ((m = nextl(l) - l) > f->lcap) {
@@ -1383,27 +1753,47 @@ static size_t head_at(const OrgFx *f, size_t p)
 }
 
 /* the faces of [a, z) of the text at the last update into out */
-/* the scan's state at the line L, from k when it is on the way (meta's
-   set must write nowhere) */
-static Scan scan_at(OrgFx *f, const Scan *k, size_t L)
+/* the links of c up to L: from a line no link holds, when one is near */
+static void links_to(Scan *c, size_t L)
 {
-	size_t R = head_at(f, L);   /* a headline's line is outside any block */
+	size_t P = L;
+	for (int n = 0; n < 64 && P > c->lk && !inside(P); n++) P = prevl(P);
+	if (P > c->lk && inside(P)) c->lk = P;
+	while (link_next(c, L)) ;
+}
+/* the scan's state at the line L (meta's set must write nowhere), from the
+   nearest state on the way: the last coloured or shown line's, or a
+   checkpoint; a walk leaves one every 4096 lines, so a text is walked
+   once after an update */
+static Scan scan_at(OrgFx *f, size_t L)
+{
+	size_t R = head_at(f, L), i = f->kn;   /* a headline's line is outside any block */
 	if (R == ORG_NONE) R = 0;
-	Scan c = k->at <= L && k->at >= R ? *k : (Scan){ R, 0, 0, 0 };
-	while (c.at < L) meta(&c);
+	while (i > 0 && f->ck[i - 1].at > L) i--;
+	const Scan *k[] = { &f->c, &f->cs, i ? &f->ck[i - 1] : &f->c };
+	Scan c = { .at = R, .lk = R, .fd = ORG_NONE };
+	for (int j = 0; j < 3; j++) if (k[j]->at <= L && k[j]->at > c.at) c = *k[j];
+	for (size_t n = 1; c.at < L; n++) {
+		meta(&c);
+		if (n % 4096 == 0 && (!f->kn || c.at > f->ck[f->kn - 1].at) && grow((void **)&f->ck, &f->kcap, f->kn, sizeof *f->ck)) {
+			links_to(&c, c.at);
+			f->ck[f->kn++] = c;
+		}
+	}
+	links_to(&c, L);
 	return c;
 }
 static void paint(OrgFx *f, size_t a, size_t z, unsigned char *out)
 {
-	S = (const unsigned char *)f->s; N = f->n; F = out; FA = a; FZ = z;
+	S = (const unsigned char *)f->s; N = f->n; F = out; FA = a; FZ = z; PE = f->e; PK = f->k; X = f;
 	if (a >= z || a >= N) return;
 	size_t L = bol(a);
-	Scan c = scan_at(f, &f->c, L);
+	Scan c = scan_at(f, L);
 	while (c.at < z && c.at < N) {
 		size_t l = c.at, nl = nextl(l), u = a > l ? a : l, v = z < nl ? z : nl;
-		if (f->c.at == l) { FZ = 0; c = f->c; meta(&c); }   /* coloured: the scan steps over it */
+		if (f->c.at == l) c = f->cn;   /* coloured: the scan steps over it */
 		else if (nl - l > f->lcap) { F = out; FA = a; FZ = z; f->c.at = ORG_NONE; fontify(&c); continue; }   /* out of memory */
-		else { F = f->lf; FA = l; FZ = nl; memset(F, 0, nl - l); f->c = c; fontify(&c); }
+		else { F = f->lf; FA = l; FZ = nl; memset(F, 0, nl - l); f->c = c; fontify(&c); f->cn = c; }
 		memcpy(out + (u - a), f->lf + (u - l), v - u);
 	}
 }
@@ -1438,8 +1828,8 @@ int orgfx_foldexpr(OrgFx *f, size_t line, int *start)
    Known differences: a script shows as typed unless every character it
    shows has a Unicode superscript or subscript (a cell grid cannot raise
    text), or when its braces span lines, and its braces stop at the second
-   newline (Org's [^{}]*? does not); emphasis never ends on a CLOCK line;
-   a script in a link is raised (no links yet) ---- */
+   newline (Org's [^{}]*? does not); emphasis never ends on a CLOCK line.
+   A link (org-link-descriptive) hides its brackets and target ---- */
 
 #include "entities.h"
 #include "scripts.h"
@@ -1451,33 +1841,23 @@ static void hide(size_t a, size_t z, const char *s)
 {
 	if (a >= CL && z <= CE && CN < CCAP && (*s || a >= Prot)) C[CN++] = (Conceal){ a, z, s };
 }
-/* org-element-paragraph-separate at q, in a string ending at z ($ there);
-   its CLOCK line is left out */
-static int separate(size_t q, size_t z)
+/* remove-text-properties invisible on [a, z): what is hidden there shows */
+static void unhide(size_t a, size_t z)
 {
-	size_t b = blanks(q), x;
-	if ((x = stars(q)) > q && x < z && S[x] == ' ') return 1;
-	if (is(q, "[fn:") && (x = names(q + 4)) > q + 4 && x < z && S[x] == ']') return 1;
-	if (is(q, "%%(") || b >= z || ateol(b) || S[b] == '|' || is(b, "\\begin{")) return 1;
-	x = b + 1;
-	if (S[b] == '#') {
-		if (x >= z || ateol(x) || S[x] == ' ') return 1;
-		if (S[x] != '+') return 0;
-		if (is(x + 1, "BEGIN_") && x + 7 < z && !sp(x + 7)) return 1;
-		for (x++; x < z && !sp(x) && S[x] != ':' && S[x] != '['; x++) ;
-		if (x < z && S[x] == '[') while (x < z && !ateol(x) && S[x] != ']') x++;
-		return x < z && S[x] == ']' ? x + 1 < z && S[x + 1] == ':' : x < z && S[x] == ':' && x > b + 2;
+	for (size_t i = CN; i-- > 0; ) {
+		Conceal *x = &C[i];
+		if (*x->s || x->z <= a || x->a >= z) continue;
+		if (x->a < a && x->z > z && CN < CCAP) C[CN++] = (Conceal){ z, x->z, "" };
+		if (x->a < a) x->z = a;
+		else if (x->z > z) x->a = z;
+		else *x = C[--CN];
 	}
-	if (S[b] == ':') return x >= z || ateol(x) || S[x] == ' ' || ((x = names(x)) > b + 1 && x < z && S[x] == ':' && ((x = blanks(x + 1)) >= z || ateol(x)));
-	if (S[b] == '+' && is(x, "-")) {   /* \+\(?:-+\+\)+[ \t]*$ */
-		while (x < z && S[x] == '-') { while (x < z && S[x] == '-') x++; if (x >= z || S[x] != '+') return 0; x++; }
-		return (x = blanks(x)) >= z || ateol(x);
-	}
-	for (x = b; x < z && S[x] == '-'; x++) ;
-	if (x - b >= 5 && ((x = blanks(x)) >= z || ateol(x))) return 1;
-	x = one(b, "-+*") ? b + 1 : digit(b) && one(digits(b, z), ".)") ? digits(b, z) + 1 : 0;
-	return x && (x >= z || blank(x) || ateol(x));
 }
+/* the ranges where a script shows as typed (org-emphasis or mouse-face at
+   its start), XK of them in X's em: they grow, then stay; out of memory,
+   later ones are left out */
+static size_t XK;
+static void rec(size_t a, size_t z);
 /* [ \t]*\(|[-+]+|?\|\+[-+]+\+\)[ \t]*$ at the line l: a table rule */
 static int rule(size_t l)
 {
@@ -1486,7 +1866,6 @@ static int rule(size_t l)
 	if (S[b] == '|') return x > b + 1 && ateol(blanks(x + is(x, "|")));
 	return S[b] == '+' && x >= b + 3 && S[x - 1] == '+' && ateol(blanks(x));
 }
-static int post(size_t p) { return ateol(p) || sp(p) || one(p, "-.,:!?;'\")}\\["); }
 /* org-emph-re or org-verbatim-re's match with its marker at p, before
    lim (the second newline after p): the closing marker, or 0.  The first
    closer that fits does not depend on p, so each marker's last one (up
@@ -1502,7 +1881,7 @@ static size_t emph_close(size_t p, size_t lim)
 	return (Cx[k] = c) < lim ? c : 0;
 }
 /* from the line before CL: emphasis there may end on CL */
-static void emphasis(OrgFx *f, size_t from, size_t *ek)
+static void emphasis(size_t from)
 {
 	size_t bar = 0, rm = ORG_NONE;   /* the next | after p; the line rule() saw */
 	int rv = 0;
@@ -1519,13 +1898,8 @@ static void emphasis(OrgFx *f, size_t from, size_t *ek)
 		if (nl < c && separate(nl + 1, c + 1)) continue;   /* string-match-p: ^ after the newline too */
 		if (bar <= p) for (bar = p + 1; bar < E2 && S[bar] != '|'; bar++) ;
 		if (S[b] == '|' && bar < c) continue;
-		if (S[p] == '=' || S[p] == '~')   /* verbatim: no earlier markup inside shows hidden */
-			for (size_t i = CN; i-- > 0; ) if (C[i].a >= p && C[i].z <= c + 1) C[i] = C[--CN];
-		if (2 * *ek == f->emcap) {   /* out of memory: later scripts inside emphasis are raised */
-			size_t *g = realloc(f->em, (2 * f->emcap + 64) * sizeof *g);
-			if (g) f->em = g, f->emcap = 2 * f->emcap + 64;
-		}
-		if (2 * *ek < f->emcap) f->em[2 * *ek] = p, f->em[2 * *ek + 1] = c + 1, ++*ek;
+		if (S[p] == '=' || S[p] == '~') unhide(p, c + 1);   /* verbatim: no earlier markup inside shows hidden */
+		rec(p, c + 1);
 		if (!comment(l)) hide(p, p + 1, ""), hide(c, c + 1, "");
 	}
 }
@@ -1542,20 +1916,25 @@ static const char *entity(size_t a, size_t z)
 	return NULL;
 }
 static int ent_alpha(size_t p) { return p < N && (alpha(p) || (S[p] >= 0x80 && IN(ALNUM, uni_cp(S, N, p)))); }
+/* org-element-entity-parser's regexp at the \\ at p: the match's end, the
+   name's at *x; 0 when none */
+static size_t ent(size_t p, size_t *x)
+{
+	*x = 0;
+	if (is(p + 1, "there4")) *x = p + 7;
+	else if (is(p + 1, "sup") && one(p + 4, "123")) *x = p + 5;
+	else if (is(p + 1, "frac") && one(p + 5, "13") && one(p + 6, "24")) *x = p + 7;
+	if (*x && ent_alpha(*x) && S[*x] != '\n') *x = 0;   /* the next alternative */
+	if (!*x && (*x = letters(p + 1)) == p + 1) return 0;
+	if (ateol(*x)) return *x;
+	if (is(*x, "{}")) return *x + 2;
+	return ent_alpha(*x) ? 0 : *x + uni_len(S, N, *x);
+}
 static void entities_at(size_t l)
 {
 	for (size_t p = l; p < CE; p++) {
-		if (S[p] != '\\') continue;
-		size_t x = 0, e;
-		if (is(p + 1, "there4")) x = p + 7;
-		else if (is(p + 1, "sup") && one(p + 4, "123")) x = p + 5;
-		else if (is(p + 1, "frac") && one(p + 5, "13") && one(p + 6, "24")) x = p + 7;
-		if (x && ent_alpha(x) && S[x] != '\n') x = 0;   /* the next alternative */
-		if (!x && (x = letters(p + 1)) == p + 1) continue;
-		if (ateol(x)) e = x;
-		else if (is(x, "{}")) e = x + 2;
-		else if (!ent_alpha(x)) e = x + uni_len(S, N, x);
-		else continue;
+		size_t x, e;
+		if (S[p] != '\\' || !(e = ent(p, &x))) continue;
 		const char *u = comment(l) ? NULL : entity(p + 1, x);
 		/* one character of one cell, or as typed (\zwj takes none) */
 		if (u && uni_width((const unsigned char *)u, strlen(u), 0) == 1) hide(p, is(x, "{}") ? x + 2 : x, u);
@@ -1629,23 +2008,61 @@ static int by_start(const void *a, const void *b)
 	size_t x = ((const Conceal *)a)->a, y = ((const Conceal *)b)->a;
 	return x < y ? -1 : x > y;
 }
+static void rec(size_t a, size_t z)
+{
+	if (grow((void **)&X->em, &X->emcap, 2 * XK + 1, sizeof *X->em)) X->em[2 * XK] = a, X->em[2 * XK + 1] = z, ++XK;
+}
+static const size_t *blines(size_t *n)
+{
+	if (X->bn == ORG_NONE) {
+		X->bn = 0;
+		for (size_t l = 0; l < N; l = nextl(l)) {
+			if (!headline(l) && !lit(blanks(l), "#+begin_") && !lit(blanks(l), "#+end_")) continue;
+			if (!grow((void **)&X->bl, &X->bcap, X->bn, sizeof *X->bl)) { X->bn = ORG_NONE; return NULL; }
+			X->bl[X->bn++] = l;
+		}
+	}
+	*n = X->bn;
+	return X->bl;
+}
+static int by_first(const void *a, const void *b)
+{
+	size_t x = *(const size_t *)a, y = *(const size_t *)b;
+	return x < y ? -1 : x > y;
+}
+/* a hidden part of a link, on the line: the newline stays (a cell grid
+   keeps its lines) */
+static void hidel(size_t a, size_t z)
+{
+	if (a < CL) a = CL;
+	if (z > CE) z = CE;
+	if (a < z) hide(a, z, "");
+}
 size_t orgfx_conceal(OrgFx *f, size_t line, Conceal *out, size_t cap)
 {
-	size_t ek = 0;
 	orgfx_update(f, NULL);
-	S = (const unsigned char *)f->s; N = f->n;
+	S = (const unsigned char *)f->s; N = f->n; PE = f->e; PK = f->k;
 	CL = text_line_start(f->t, line); CE = eol(CL);
 	C = out; CN = 0; CCAP = cap;
 	if (CL >= N && N) return 0;
 	size_t pl = CL ? prevl(CL) : 0, b = blanks(CL);
-	Scan c = (FZ = 0, scan_at(f, &f->cs, pl));   /* a headline may end a block: from the line above */
+	Scan c = (FZ = 0, scan_at(f, pl));   /* a headline may end a block: from the line above */
+	if (CL) while (link_next(&c, CL)) ;
 	if (CL) meta(&c);
 	f->cs = c;
-	/* org-activate-code: ^[ \t]*:\(?: .*\|$\) */
-	Prot = b < N && S[b] == ':' && (ateol(b + 1) || S[b + 1] == ' ') ? N : meta(&c);
-	emphasis(f, pl, &ek);
+	Scan d = c;   /* org-activate-code: ^[ \t]*:\(?: .*\|$\) */
+	Prot = b < N && S[b] == ':' && (ateol(b + 1) || S[b + 1] == ' ') ? N : meta(&d);
+	X = f; XK = 0;
+	for (int k = c.lz > CL; k || link_next(&c, nextl(CL)); k = 0) {   /* org-activate-links: org-link-descriptive */
+		if (c.lv > c.la) hidel(c.la, c.lv), hidel(c.lw, c.lz);
+		rec(c.la, c.lz);
+	}
+	dates(CL, CE, rec);
+	fn_line(&c, CL, CE, rec);
+	emphasis(pl);
 	entities_at(CL);
-	scripts(pl, CL, f->em, ek);
+	if (XK) qsort(f->em, XK, 2 * sizeof *f->em, by_first);
+	scripts(pl, CL, f->em, XK);
 	qsort(C, CN, sizeof *C, by_start);
 	size_t k = 0;   /* a marker two matches hide is hidden once; columns of the line */
 	for (size_t i = 0; i < CN; i++) if (!k || C[i].a >= C[k - 1].z + CL) C[k++] = (Conceal){ C[i].a - CL, C[i].z - CL, C[i].s };

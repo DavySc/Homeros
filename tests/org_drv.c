@@ -104,6 +104,7 @@ static int colours(FILE *o, const char *b, size_t n, size_t w)
 		{ FACE_ORG_TAG, "org.tag" }, { FACE_ORG_DATE, "org.date" }, { FACE_ORG_TABLE, "org.table" },
 		{ FACE_ORG_FORMULA, "org.formula" }, { FACE_ORG_DRAWER, "org.drawer" }, { FACE_ORG_CHECKBOX, "org.checkbox" },
 		{ FACE_ORG_INFO, "org.info" }, { FACE_ORG_BLOCK, "org.block" }, { FACE_ORG_BLOCK_LINE, "org.block.line" },
+		{ FACE_MARKUP_LINK_URL, "markup.link.url" }, { FACE_MARKUP_LINK_LABEL, "markup.link.label" },
 	};
 	static unsigned char f[1 << 24];
 	Text *t = text_new(b, n);
