@@ -51,4 +51,7 @@ CASES += [
  # PR 72's Visual tab rule: the window left on a Tab keeps the Normal
  # ruler while the other one is in Visual mode
  ('another window on a tab', 10, 50, ['\tx', 'y', '# h'], ['k:0', 'vs', 'k:2G', 'visual']),
+ # PR 95's cursor line under a '<' filler (the view starts inside a
+ # double-width character)
+ ('a filler on the cursor line', 6, 50, ['漢字' * 30 + 'x' * 60, 'end'], ['k:141|']),
 ]
