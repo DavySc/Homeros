@@ -8,7 +8,7 @@
 ;; at 2026-11-19 17:30; run with TZ=UTC.
 ;; emacs -Q --batch -l tools/org_todo.el FILE...
 (require 'org)
-(advice-add 'y-or-n-p :override (lambda (&rest _) t))   ; "Continue?" after ten repeats: yes, as Davy chose
+(advice-add 'y-or-n-p :override (lambda (&rest _) t))   ; "Continue?" after ten repeats: yes (the coordinator's call while Davy's card is open)
 (setq org-todo-keywords '((sequence "TODO(t)" "NEXT(n)" "WAIT(w@)" "|" "DONE(d!)" "CANCELLED(c@)"))
       org-log-done 'time org-log-into-drawer t org-enforce-todo-dependencies t
       org-auto-align-tags nil org-tags-column 0)
@@ -27,19 +27,21 @@
   (when (memq 'org-add-log-note post-command-hook)
     (let ((this-command org-log-note-this-command)) (org-add-log-note))
     (when (get-buffer "*Org Note*") (with-current-buffer "*Org Note*" (org-store-log-note)))))
+(defvar buf nil)   ; the text's buffer: an error in the note leaves *Org Note* current
 (dolist (f command-line-args-left)
   (let ((cmd (with-temp-buffer (insert-file-contents (concat f ".cmd")) (split-string (buffer-string)))))
     (with-temp-buffer
+      (setq buf (current-buffer))
       (let ((coding-system-for-read 'utf-8-unix)) (insert-file-contents f))
       (let ((org-inhibit-startup t)) (delay-mode-hooks (org-mode)))
       (princ (format "== %s\n" (file-name-nondirectory f)))
       (cl-letf (((symbol-function 'current-time) (lambda () org-todo-now))
                 ((symbol-function 'message) #'ignore))
-        (catch 'stop   ; Org stops at an error: no more steps
+        (catch 'stop   ; Org stops at an error: no more steps, the text as it left it
           (dolist (d (string-to-list (cadr cmd)))
             (goto-char (or (byte-to-position (1+ (string-to-number (car cmd)))) (point-max)))
             (condition-case err
                 (progn (org-todo-step (if (eq d ?r) 'right 'left))
                        (princ (buffer-string)) (princ "--\n"))
-              (error (princ (format "!error %S\n" err)) (throw 'stop nil)))))))))
+              (error (princ (with-current-buffer buf (buffer-string))) (princ (format "--\n!error %S\n" err)) (throw 'stop nil)))))))))
 (setq command-line-args-left nil)
