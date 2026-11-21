@@ -142,6 +142,7 @@ static unsigned long allocs;
 static void on_malloc(const volatile void *p, size_t n) { (void)p, (void)n, allocs++; }
 static void on_free(const volatile void *p) { (void)p; }
 int __sanitizer_install_malloc_and_free_hooks(void (*)(const volatile void *, size_t), void (*)(const volatile void *));
+size_t __sanitizer_get_current_allocated_bytes(void);
 
 static void hlsearch(Editor *e, char *b, size_t cap)
 {
@@ -351,6 +352,14 @@ int main(void)
 	/* as Neovim on 60,000 bytes (it wraps to the match at the cursor; at
 	   100,000 it says E486, measured once) */
 	CHECK(e.win->line == 0 && e.win->col == 0 && !strcmp(e.msg, "search hit BOTTOM, continuing at TOP"));
+	core_free(&e);
+	/* the stacks a* grows on 4 MB of a are not kept: 7.8 MB stays, not
+	   108 MB (measured once each; E486, as Neovim) */
+	text(path, "a", 4000000, "\n");
+	CHECK(!core_open(&e, path));
+	size_t held = __sanitizer_get_current_allocated_bytes();
+	feed(&e, "/a*b\r");
+	CHECK(!strncmp(e.msg, "E486", 4) && __sanitizer_get_current_allocated_bytes() < held + (32 << 20));
 	core_free(&e);
 	/* 'redrawtime': a frame of a pattern that takes long on every line ends
 	   after 2 s.  Each line here gives up after MAXSTEPS: without the budget

@@ -515,15 +515,15 @@ static Tr *tr;
 static Pos *pos;          /* where each step of a greedy one-character repeat ended */
 static long nbt, ntr, npos, capbt, captr, cappos, steps;
 long long re_deadline;    /* loop_now() past which a match gives up; 0: none */
-enum { MAXSTEPS = 20000000 };
+enum { MAXSTEPS = 20000000, INITIAL = 256 };
 
 /* grows a stack to hold one more; 0 when out of memory */
 static int room(void **a, long n, long *cap, size_t size)
 {
 	if (n < *cap) return 1;
-	void *p = realloc(*a, size * (size_t)(*cap ? *cap * 2 : 256));
+	void *p = realloc(*a, size * (size_t)(*cap ? *cap * 2 : INITIAL));
 	if (!p) return 0;
-	*a = p, *cap = *cap ? *cap * 2 : 256;
+	*a = p, *cap = *cap ? *cap * 2 : INITIAL;
 	return 1;
 }
 
@@ -883,7 +883,7 @@ static int growth(void)
 /* vim_regexec_multi(): the first match that starts in line l at or after
    column col; its start and end (\zs \ze applied) and the groups.  1, 0 for
    none, -1 when the match took too long (Neovim's E363) or Ctrl-C came. */
-int re_exec(long l, long col, Pos *s, Pos *e, Pos *sub_s, Pos *sub_e)
+static int exec(long l, long col, Pos *s, Pos *e, Pos *sub_s, Pos *sub_e)
 {
 	/* each line looks for Ctrl-C, as searchit() and do_sub() call
 	   line_breakcheck(); within a line MAXSTEPS bounds the wait */
@@ -920,6 +920,19 @@ int re_exec(long l, long col, Pos *s, Pos *e, Pos *sub_s, Pos *sub_e)
 		if (body) while ((len = one(body, l, z, 1)) >= 0) z += len;
 		c = z > c ? z : c + (long)uni_glen((const unsigned char *)ml_get(l), (size_t)n, (size_t)c);
 	}
+}
+
+/* a stack grown past its first size goes after a command's match, as
+   bt_regexec_both() clears regstack past REGSTACK_INITIAL: kept, an 8 MB
+   line held 631 MB (PR 90's review).  A frame's (re_deadline set) stay
+   grown: the redraw path allocates only on first use */
+static void drop(void **a, long *cap) { if (*cap > INITIAL) free(*a), *a = NULL, *cap = 0; }
+
+int re_exec(long l, long col, Pos *s, Pos *e, Pos *sub_s, Pos *sub_e)
+{
+	int r = exec(l, col, s, e, sub_s, sub_e);
+	if (!re_deadline) drop((void **)&bt, &capbt), drop((void **)&tr, &captr), drop((void **)&pos, &cappos);
+	return r;
 }
 
 /* -1 from re_exec(): Neovim's e_interr after Ctrl-C, else E363 */
