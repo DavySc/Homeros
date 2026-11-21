@@ -35,7 +35,8 @@ void    syntax_faces(Syntax *s, size_t a, size_t z, unsigned char *face);
 /* Neovim's conceal (conceallevel=2, concealcursor="": the core draws the
    cursor's line as typed, as org-appear and render-markdown's
    anti_conceal do): what line l shows in place of some of its bytes, up
-   to cap spans in byte order, [a, z) drawn as s, one character of one
+   to cap spans in byte order, bytes [a, z) of the line (columns, not
+   buffer offsets, as SyntaxMd's) drawn as s, one character of one
    cell or "" (hidden): Neovim's conceal char (matchadd's 'conceal'), so
    x^{2} is three spans, "^{" hidden, "2" as "²", "}" hidden.  Org: org-pretty-entities (\leq as ≤), sub- and superscripts in
    {} where every character has a Unicode one, org-hide-emphasis-markers
