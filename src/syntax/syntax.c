@@ -1020,12 +1020,10 @@ static void widen(Syntax *s, LTree *L, uint32_t *a, uint32_t *z)
 	for (uint32_t i = 0; i < L->nkid; i++) widen(s, L->kid[i], a, z);
 }
 
-/* Nothing conceals yet: Org's spans come with orgfx_conceal (package
-   16), whose PR makes this ask it for an Org buffer (thread 0's, agreed) */
+/* Only Org conceals so far (orgfx_conceal, package 16) */
 size_t syntax_conceal(Syntax *s, size_t line, Conceal *out, size_t cap)
 {
-	(void)s, (void)line, (void)out, (void)cap;
-	return 0;
+	return s->org ? orgfx_conceal(s->org, line, out, cap) : 0;
 }
 
 void syntax_faces(Syntax *s, size_t a, size_t z, unsigned char *face)
