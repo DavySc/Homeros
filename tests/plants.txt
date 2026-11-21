@@ -641,7 +641,7 @@ engine | dbg/engine.c | return !(name.n == 8 && !memcmp(name.p, "__chkstk", 8));
 engine | dbg/engine.c | if (call) to = 0; | 
 engine | dbg/engine.c | if (!(flags & LINES && !goes_into(e, ev.addr)) && | if (!(flags & LINES && !goes_into(e, ev.addr) && false) &&
 engine | dbg/engine.c | END \p (to ? 0 : STEP_AFTER) \p (call ? LINES : 0)); | END \p (to ? 0 : STEP_AFTER) \p LINES);
-engine | dbg/engine.c | if (x.flow == X64_CALL && (!into \p\p addr >= base + row.opl)) net_add( | if (x.flow == X64_CALL && into && addr >= base + row.opl) net_add(
+engine | dbg/engine.c | if (x.flow == X64_CALL && !into) net_add( | if (x.flow == X64_CALL && into) net_add(
 # OWED: a line step begun in code between two blocks of lines (reached by instruction steps), where a jump inside that code must not end it: no script does that since line steps no longer end there
 # engine | dbg/engine.c | stays = (to - base >= lo && to - base < hi) \p\p in_ranges(e, count, to - base) | stays = in_ranges(e, count, to - base)
 engine | dbg/engine.c | END \p (to ? 0 : STEP_AFTER) \p (call ? LINES : 0)); | END \p (call ? LINES : 0));
@@ -1131,7 +1131,6 @@ eval | dbg/ask.c | b = b == '\\' ? '/' : b >= 'A' && b <= 'Z' ? (char)(b + 32) :
 
 eval | dbg/ask.c | if (n == 0 \p\p n > len \p\p (n < len && path[len - n - 1] != '/')) return false; | if (n == 0 \p\p n > len) return false;
 engine | dbg/engine.c | return after.line.line == 0xf00f00 ? | return after.line.line == 0xf00f01 ?
-engine | dbg/engine.c | (!into \p\p addr >= base + row.opl) | !into
 # "just my code" (calls_jmc against Visual Studio's recording and RAD's known differences)
 engine | dbg/engine.c | && !(user && !mine(e, ev.addr))) return | && !(false && !mine(e, ev.addr))) return
 engine | dbg/engine.c | if (user) watch(e, thread); | if (user) watch(e, 0);

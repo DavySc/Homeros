@@ -233,7 +233,7 @@ static void line_net(Engine *e, uint64_t rip, bool into)
     if (!x.size) break;
     at += x.size;
     uint64_t to = x.known ? x.target : 0;
-    if (x.flow == X64_CALL && (!into || addr >= base + row.opl)) net_add(e, addr, STEP_AFTER);   /* into the call, and on: the trap behind the call waits at this depth */
+    if (x.flow == X64_CALL && !into) net_add(e, addr, STEP_AFTER);   /* into the call, and on: the trap behind the call waits at this depth */
     else if (x.flow != X64_OTHER) {
       /* A jump, branch or return: the step ends where it goes, when that is known, else after the instruction has
          run; not when it lands in the line. Stepping into, a call: it is run, and the step ends where it led if a
