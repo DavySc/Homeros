@@ -1495,7 +1495,7 @@ static size_t emph_close(size_t p, size_t lim)
 	size_t k = (size_t)(strchr("*/_+=~", S[p]) - "*/_+=~"), c = Cx[k];
 	if (ateol(p + 1) || sp(p + 1)) return 0;
 	if (c < p + 2)
-		for (c = p + 2; c < E2 && !(S[c] == S[p] && !sp(c - 1) && S[c - 1] != '\n' && post(c + 1)); c++) ;
+		for (c = p + 2; c < E2 && !(S[c] == S[p] && !sp(c - 1) && post(c + 1)); c++) ;
 	return (Cx[k] = c) < lim ? c : 0;
 }
 /* from the line before CL: emphasis there may end on CL */

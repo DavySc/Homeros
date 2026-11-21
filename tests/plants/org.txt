@@ -68,7 +68,6 @@ org: show: after an entity the next one is looked for past its end (against Org)
 org: show: Davy's \top missing (against Org with org-entities-user)~org-conform ORG_N=2000 SEED=1~~src/org/entities.h~{ "top", "⊤" }, ~
 org: show: a line's first marker checks its own line for a table rule (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~m = p == l && p ? bol(p - 1) : l,~m = l,
 org: show: paragraph separators after the newline inside emphasis missed (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		if (nl < c && separate(nl + 1, c + 1)) continue;~		if (nl < c && separate(nl + 1, c + 1) && 0) continue;
-org: show: an emphasis closer right after a newline (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~!sp(c - 1) && S[c - 1] != '\n' && post(c + 1)~!sp(c - 1) && post(c + 1)
 org: show: verbatim keeps earlier hidden markers inside it (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~if (C[i].a >= p && C[i].z <= c + 1) C[i] = C[--CN];~;
 org: show: a script inside emphasis raised (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		for (i = 0; i < ek; i++) ok &= m < ea[i] || m >= ez[i];~		for (i = 0; i < ek; i++) ok &= m < ea[i] || m >= ez[i] || 1;
 org: show: a script in a property's key raised (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		if (ok && m >= kz && (n~		if (ok && (m >= kz || 1) && (n
