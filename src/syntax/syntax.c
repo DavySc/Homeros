@@ -87,13 +87,14 @@ enum { NLANGS = sizeof langs / sizeof *langs };
 
 /* File name endings, or whole names, Neovim's 'filetype' for each (nvim
    0.12 --clean, vim.filetype.match: a .h is cpp unless g:c_syntax_for_h;
-   a .v is Verilog or V by its content, so it is left out; Neovim also
+   a .v is Verilog, Coq or V by its content, as verilog() reads it, and
+   has no 'filetype' here; Neovim also
    strips backup endings such as ~ and .bak, which these do not; it knows no
    .dl, which is souffle as the Soufflé plugins for Vim name it), and what
    colours it: a langs[] index, T-SQL's, JSON's or Soufflé's word lists
    (tsql.c, in tsql_new's order), Org's (package 16, org.h), or nothing yet
    (Davy's other languages, FEATURES.md) */
-enum { BY_NONE = -1, BY_SQL = -2, BY_JSON = -3, BY_DL = -4, BY_ORG = -5 };
+enum { BY_NONE = -1, BY_SQL = -2, BY_JSON = -3, BY_DL = -4, BY_ORG = -5, BY_V = -6 };
 static const struct { const char *ext, *ft; int lang; } fts[] = {
 	{ ".c", "c", 0 }, { ".h", "cpp", 0 }, { ".lua", "lua", 1 }, { ".md", "markdown", 2 },
 	{ ".sql", "sql", BY_SQL }, { ".json", "json", BY_JSON }, { "CMakeLists.txt", "cmake", 7 },
@@ -102,7 +103,7 @@ static const struct { const char *ext, *ft; int lang; } fts[] = {
 	{ ".comp", "glsl", 5 }, { ".geom", "glsl", 5 }, { ".tesc", "glsl", 5 },
 	{ ".tese", "glsl", 5 }, { ".sv", "systemverilog", 8 }, { ".svh", "systemverilog", 8 },
 	{ ".cmake", "cmake", 7 }, { ".lean", "lean", BY_NONE }, { ".cs", "cs", BY_NONE },
-	{ ".org", "org", BY_ORG }, { ".dl", "souffle", BY_DL },
+	{ ".org", "org", BY_ORG }, { ".dl", "souffle", BY_DL }, { ".v", NULL, BY_V },
 };
 
 /* fts[]'s entry for path's base name (after its last / or \, as Neovim),
@@ -446,9 +447,12 @@ static void free_ltree(Syntax *s, LTree *L)
 	free(L);
 }
 
+static int verilog(const Text *t);
+
 Syntax *syntax_open(const char *path, const Text *t)
 {
 	int i = ft_of(path), li = i < 0 ? BY_NONE : fts[i].lang;
+	if (li == BY_V) li = verilog(t) ? 8 : BY_NONE;
 	if (li == BY_NONE) return NULL;
 	if (li < BY_NONE) {
 		Syntax *s = calloc(1, sizeof *s);
@@ -579,6 +583,30 @@ static int at(void *v, size_t i)
 		if (!s->n) return -1;
 	}
 	return (unsigned char)s->w[i - s->base];
+}
+
+/* Neovim's detect.lua M.v: in the first 500 lines, outside block comments
+   and // lines, the first line that ends in '.' or holds "(*" (outside a
+   comment) makes it Coq, one that ends in ';' (before a comment) or
+   opens a module's ports Verilog; neither is V */
+static int verilog(const Text *t)
+{
+	static const char *const pat[] = { "^%s*/%*", "%*/", "^%s*//", "%.%s*$", "/[/*]", "%(%*",
+		"/[/*].*%(%*", ";%s*$", ";%s*/[/*]", "^%s*module%s+%w+%s*%(" };
+	Src src = { t, 0, 0, { 0 } };
+	size_t n = text_lines(t);
+	int com = 0, f[10];
+	for (size_t l = 0; l < 500 && l <= n; l++) {
+		size_t a = text_line_start(t, l), z = text_line_start(t, l + 1) - (l < n);
+		for (int k = 0; k < 10; k++) f[k] = lmatch_find(at, &src, a, z, pat[k], strlen(pat[k]));
+		com |= f[0];
+		if (com) com = !f[1];
+		else if (!f[2]) {
+			if ((f[3] && !f[4]) || (f[5] && !f[6])) return 0;
+			if (f[7] || f[8] || f[9]) return 1;
+		}
+	}
+	return 0;
 }
 
 /* ci: ignoring ASCII case, as Vim's \c */

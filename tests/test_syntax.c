@@ -510,6 +510,51 @@ static void filetypes(void)
 	printf("test_syntax: %zu file names' filetypes as Neovim's\n", sizeof names / sizeof *names);
 }
 
+/* A .v gets SystemVerilog's colours where Neovim says verilog by its
+   content (Coq and V get none): tricky cases and the Verilator corpus */
+static void v_files(const char *dir)
+{
+	static const char *const tricky[] = {
+		"module m(input a);\nendmodule\n", "Theorem x : True.\n", "fn main() {\n}\n", "",
+		"/* a.\n*/\nmodule m (\n", "// x.\nwire a;\n", "x = 1; // y.\n", "(* keep *) wire a;\n",
+		"  /* c */ x;\n", "Module M.\n", "a;\r\n", "module foo_1 (\n", "x // (* y\nw;", "a.  \n",
+		"/* x\n (* y *)\n*/\nwire b;\n", "// a;\nTheorem x.\n",
+	};
+	enum { NT = sizeof tricky / sizeof *tricky };
+	char path[2048], *cmd = malloc(1 << 16), ft[64];
+	CHECK(cmd);
+	int n = 0, nv = NT + (int)ncorpus[7], len = snprintf(cmd, 1 << 16, "cd %s && nvim --headless --clean -l /dev/stdin <<'E'\nfor i = 0, %d do vim.cmd.edit(i .. '.v') io.write(vim.bo.filetype, '\\n') end\nE", dir, nv);
+	CHECK(len < 1 << 16);
+	for (int i = 0; i <= nv; i++) {
+		static char late[500 * 2 + 4];   /* line 501 */
+		for (int k = 0; i == NT && k < 501; k++) memcpy(late + 2 * k, k < 500 ? "x\n" : "a;\n", k < 500 ? 2 : 3);
+		const char *c = i < NT ? tricky[i] : i == NT ? late : corpus[7][i - NT - 1];
+		snprintf(path, sizeof path, "%s/%d.v", dir, i);
+		FILE *f = fopen(path, "w");
+		CHECK(f && fwrite(c, 1, strlen(c), f) == strlen(c) && !fclose(f));
+	}
+	FILE *p = popen(cmd, "r");
+	CHECK(p);
+	for (int i = 0; i <= nv; i++) {
+		CHECK(fgets(ft, sizeof ft, p));
+		snprintf(path, sizeof path, "%s/%d.v", dir, i);
+		size_t l;
+		char *c = slurp(path, &l);
+		Text *t = text_new(c, l);
+		Syntax *s = syntax_open(path, t);
+		if (!s != !!strcmp(ft, "verilog\n")) fprintf(stderr, "%d.v: Neovim %s", i, ft);
+		CHECK(!s == !!strcmp(ft, "verilog\n"));
+		n += !!s;
+		syntax_free(s);
+		text_free(t);
+		free(c);
+	}
+	CHECK(!pclose(p));
+	CHECK(!syntax_filetype("a.v"));
+	free(cmd);
+	printf("test_syntax: %d .v files, %d of them Verilog, as Neovim's\n", nv + 1, n);
+}
+
 int main(void)
 {
 	if (getenv("SEED")) rng = 2 * strtoull(getenv("SEED"), NULL, 10) + 1;   /* distinct seeds stay distinct */
@@ -540,6 +585,7 @@ int main(void)
 	add_dir(6, "build/syntax/src/corpus/cmake", ".cmake");      /* the first 64 by name */
 	add_dir(7, "build/syntax/src/corpus/systemverilog", ".v");  /* SystemVerilog, read as .sv */
 	for (int l = 0; l < NL; l++) CHECK(ncorpus[l]);
+	v_files(dir);
 
 	static unsigned char fa[MAXT], fb[MAXT], fs[MAXT], ff[MAXT];
 	static char buf[MAXT], sbuf[MAXT + 1], cmd[1 << 16];
