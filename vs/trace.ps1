@@ -24,7 +24,9 @@ foreach ($script in 'into', 'over') {
     $lines += "STEP start $(Place $dte)"
     for ($n = 0; $n -lt $most; $n++) {
       if ($script -eq 'into') { Again { $dte.Debugger.StepInto($true) } } else { Again { $dte.Debugger.StepOver($true) } }
-      if ((Again { $dte.Debugger.CurrentMode }) -ne 2) { $lines += "STEP $script ended"; break }   # 2: stopped in the debugger
+      # 2: stopped in the debugger. A step that is not there at once gets five seconds (the first recording of `calls` "ended" at its first step)
+      for ($w = 0; $w -lt 50 -and (Again { $dte.Debugger.CurrentMode }) -ne 2; $w++) { Start-Sleep -Milliseconds 100 }
+      if ((Again { $dte.Debugger.CurrentMode }) -ne 2) { $lines += "STEP $script ended"; break }
       $lines += "STEP $script $(Place $dte)"
     }
   } catch { $lines += "FAILED: $_" }

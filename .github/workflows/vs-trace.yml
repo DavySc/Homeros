@@ -13,13 +13,14 @@ concurrency:
 jobs:
   trace:
     runs-on: windows-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
       - name: Record
         shell: powershell   # Windows PowerShell: the newer one cannot take a running program's automation object
         run: |
-          foreach ($n in 'calls', 'calls_jmc', 'recur_clang', 'blocks_o2', 'kinds', 'gap_o2', 'recur') { ./vs/trace.ps1 (Resolve-Path "rdi/$n.exe") (Join-Path $PWD traces-vs) 150; if ($LASTEXITCODE) { exit 1 } }
+          foreach ($f in Get-ChildItem rdi/*.exe -Exclude crash*) {   # an exception stops Visual Studio on a dialog
+          ./vs/trace.ps1 $f.FullName (Join-Path $PWD traces-vs) 150; if ($LASTEXITCODE) { exit 1 } }
           foreach ($f in Get-ChildItem traces-vs/*.txt) { "===== $($f.Name) (first 25 lines)"; Get-Content $f -TotalCount 25 }
       - name: Commit what Visual Studio did to this branch
         shell: bash
