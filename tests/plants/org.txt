@@ -79,7 +79,7 @@ org: show: a quoting block's lines keep hidden markers (against Org)~org-conform
 org: show: a fixed-width line keeps hidden markers (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~(ateol(b + 1) || S[b + 1] == ' ') ? N : meta(&c);~(ateol(b + 1) || S[b + 1] == ' ') ? 0 : meta(&c);
 org: show: a quoting block's end headline keeps hidden stars (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~? nl : stars(l) + 1;~? nl : 0;
 org: show: a headline ending a block read without the line above (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	if (CL) meta(&c);~	if (CL) c = scan_at(f, CL);
-org: show: a marker two matches hide given twice (driver: spans in order)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~if (!k || C[i].a >= C[k - 1].z) C[k++] = C[i];~C[k++] = C[i];
+org: show: a marker two matches hide given twice (driver: spans in order)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~if (!k || C[i].a >= C[k - 1].z + CL) C[k++]~if (1) C[k++]
 org: show: a script given part of its spans when out of room~test TESTS=org~~src/org/org.c~CN + (size_t)n + 2 <= CCAP)~CN + (size_t)n <= CCAP)
 org: show: the line start found from each emphasis marker (frame gate)~test TESTS=org~~src/org/org.c~size_t l = p < CL ? from : CL,~size_t l = bol(p),
 org: show: each emphasis marker looks for its closer from itself (frame gate)~test TESTS=org~~src/org/org.c~	if (c < p + 2)¶~	if (1)¶
@@ -87,3 +87,4 @@ org: show: each emphasis marker looks for a table bar from itself (frame gate)~t
 org: show: a table rule checked at each + marker (frame gate)~test TESTS=org~~src/org/org.c~if (S[p] == '+' && m != rm) rm = m~if (S[p] == '+' && (m != rm || 1)) rm = m
 org: todo: any element before taken as the sibling (PR 98 review, note 3)~test TESTS=org~~src/org/org.c~for (j = i; j-- > 0 && e[j].parent != e[i].parent; ) ;~j = i - 1;
 org: todo: a planning line's repeater read without a whole stamp (PR 98 review, note 2)~test TESTS=org~~src/org/org.c~	if (!org_ts((const char *)S, N, a, &x) || x.end < q) return 0;~	if (!org_ts((const char *)S, N, a, &x) || x.end < q) if (0) return 0;
+org: show: spans as offsets in the text, not columns of the line (syntax.h)~test TESTS=org~~src/org/org.c~(Conceal){ C[i].a - CL, C[i].z - CL, C[i].s }~(Conceal){ C[i].a, C[i].z, C[i].s }

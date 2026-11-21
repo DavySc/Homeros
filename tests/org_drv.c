@@ -136,10 +136,11 @@ static int show(FILE *o, const char *b, size_t n)
 	if (!x) return 1;
 	for (size_t l = 0; l <= text_lines(t); l++) {
 		Conceal c[64];
-		size_t k = orgfx_conceal(x, l, c, 64), p = text_line_start(t, l), e = p;
+		size_t k = orgfx_conceal(x, l, c, 64), L = text_line_start(t, l), p = L, e = p;
 		while (e < n && b[e] != '\n') e++;
 		for (size_t i = 0; i < k; p = c[i].z, i++) {
-			if (c[i].a < p || c[i].z > e || c[i].a >= c[i].z) {   /* syntax.h: in order, on the line */
+			c[i].a += L, c[i].z += L;   /* syntax.h: columns of the line */
+			if (c[i].a < p || c[i].z > e || c[i].a >= c[i].z) {   /* in order, on the line */
 				fprintf(stderr, "error: line %zu: span %zu %zu out of order\n", l, c[i].a, c[i].z);
 				orgfx_free(x);
 				text_free(t);
