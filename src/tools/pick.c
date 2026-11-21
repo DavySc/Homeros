@@ -17,6 +17,7 @@
 #include "core.h"
 #include "dash.h"
 #include "loop.h"
+#include "make.h"
 #include "match.h"
 #include "shada.h"
 #include "str.h"
@@ -569,7 +570,7 @@ static int key(Editor *e, int k);
 
 int tools_key(Editor *e, int k)
 {
-	if (!P.open) return dash_key(e, k);
+	if (!P.open) return make_key(e, k) || dash_key(e, k);
 	key(e, k);
 	if (P.open) preview();
 	return 1;

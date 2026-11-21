@@ -1,0 +1,11 @@
+# Plants for src/tools/make.c (package 15's :make; format in tools/planted.sh).
+make: dotnet's path(line,col) is not an error~test TESTS=tools_make~~src/tools/make.c~		} else if (fz > f && i < n && s[i] == '(') {~		} else if (0) {
+make: a drive letter ends the path~test TESTS=tools_make~~src/tools/make.c~		if (i + 2 < n && s[i + 1] == ':' && (s[i + 2] == '\\' || s[i + 2] == '/')) i += 2;~
+make: a missing file is an error~test TESTS=tools_make~~src/tools/make.c~			if (!stat(path, &st) && S_ISREG(st.st_mode)) {~			if (!stat(path, &st) || 1) {
+make: a write does not run it again~test TESTS=tools_make~~src/tools/make.c~	if (M.cmd && M.e == e && b->nr != M.nr && buf() && shown()) run();~	(void)e; (void)b;
+make: a write runs it with its buffer in no window~test TESTS=tools_make~~src/tools/make.c~ && buf() && shown()) run();~ && buf()) run();
+make: Enter in its buffer opens nothing~test TESTS=tools_make~~src/tools/pick.c~	if (!P.open) return make_key(e, k) || dash_key(e, k);~	if (!P.open) return dash_key(e, k);
+make: ]q is not :cnext~test TESTS=tools_make~~src/keys/normal.c~	if (cap->nchar == 'q') {~	if (0) {
+make: [q goes forward~test TESTS=tools_make~~src/keys/normal.c~tools_qf(E, cap->arg == FORWARD ? cap->count1 : -cap->count1)~tools_qf(E, cap->count1)
+make: an old run's output reaches the new one's buffer~test TESTS=tools_make~~src/tools/make.c~	if ((intptr_t)ctx != M.gen) return;~	(void)ctx;
+make on Windows: run without cmd.exe's /c~win WIN=tools~~src/tools/make.c~"/s", "/c", M.cmd~"/s", M.cmd
