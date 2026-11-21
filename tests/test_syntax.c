@@ -439,6 +439,25 @@ static void folds_follow_edits(const char *dir)
    that deletes 2,000 lines frees about 10,000 nodes, so the update
    after it must stop more than once before it is done. */
 static int always(void) { return 1; }
+/* A `define whose macro_text is empty and ends the text injects a region
+   with no ranges, which is the whole text, in SystemVerilog again:
+   without a stop the parse recurses until the stack overflows (Neovim's
+   Lua stack does, so there is no Neovim answer to compare) */
+static void self_injection(const char *dir)
+{
+	char path[2048];
+	const char *src = "`define A`define A`define A`define A\n";
+	snprintf(path, sizeof path, "%s/self.sv", dir);
+	Text *t = text_new(src, strlen(src));
+	Syntax *s = t ? syntax_open(path, t) : NULL;
+	CHECK(s);
+	unsigned char f[64];
+	syntax_faces(s, 0, strlen(src), f);   /* injections are found in the window */
+	while (syntax_update(s, t, NULL) == 2) ;
+	syntax_free(s);
+	text_free(t);
+}
+
 static void release_in_steps(const char *dir)
 {
 	static char b[MAXT];
@@ -567,6 +586,7 @@ int main(void)
 	edit_before_region(dir);
 	cache_grows(dir);
 	release_in_steps(dir);
+	self_injection(dir);
 	folds_follow_edits(dir);
 	filetypes();
 	char path[2048], vrt[1024] = "";

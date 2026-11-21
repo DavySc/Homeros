@@ -886,6 +886,14 @@ static int inject(Syntax *s, LTree *L, const Text *t)
 			rc = j ? clip(&cr, &L->reg[ti], &j->r) : -1;
 		}
 	}
+	/* no ranges is the whole text: in the tree's own language it would
+	   inject itself without end (Neovim overflows its Lua stack on a
+	   SystemVerilog `define whose empty macro_text ends the text) */
+	uint32_t m = 0;
+	for (uint32_t i = 0; i < I.n; i++)
+		if (I.v[i].r.n || I.v[i].lang != L->lang) I.v[m++] = I.v[i];
+		else free(I.v[i].r.r);
+	I.n = m;
 	/* children in the order their languages first appear; unused ones go */
 	uint32_t keep = 0;
 	for (uint32_t i = 0; i < I.n && !rc; i++) {

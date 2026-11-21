@@ -68,9 +68,9 @@ syntax: Vim's match? reads ".*" as part of the word, so CMake's A-NOTFOUND is no
 syntax: Vim's match? of one word without parentheses is skipped, so set's variable is plain (test_syntax, case 6)~test TESTS=syntax~~src/syntax/syntax.c~	if (par && s[n] != ')') return 1;~	if (!par || s[n] != ')') return 1;
 syntax: a fold ending at column 0 keeps that line (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~	int64_t er = (int64_t)e.row - (e.column == 0);~	int64_t er = (int64_t)e.row;
 syntax: a line that ends one fold and starts another keeps the first (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~				if (e && o) v -= o, o = 0;~				if (0) v -= o, o = 0;
-syntax: the same fold counted twice (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~(sr != prev[0] || er != prev[1]) && ~
-syntax: folds only of the root tree, not injected ones (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~	for (uint32_t k = 0; k < L->nkid; k++) fold_tree(s, L->kid[k], src, in, out, prev);~
-syntax: Markdown's setext heading starts no fold (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~		if (b == y) return c == '=' ? 3 : 5;~		if (0) return c == '=' ? 3 : 5;
+syntax: the same fold counted twice (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~ && (sr != prev[0] || er != prev[1]))~)
+syntax: folds only of the root tree, not injected ones (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~	for (uint32_t k = 0; k < L->nkid; k++) fold_tree(s, L->kid[k], in, out, prev);~
+syntax: Markdown's setext heading starts no fold (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~		if (b == y) return c == '=' ? 3 : 5;~		if (b == y) return 0;
 syntax: Markdown's heading level is one less (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~return 2 * (int)(h - a) + 1;~return 2 * (int)(h - a) - 1;
 syntax: the fold levels are not computed again after a parse (test_syntax, folds after an edit)~test TESTS=syntax~~src/syntax/syntax.c~	s->nfold = 0;              /* the folds follow the trees */~
 syntax: a .org file has no folds (test_syntax_org)~test TESTS=syntax_org~~src/syntax/syntax.c~	if (s->org) return orgfx_foldexpr(s->org, line, start);~
@@ -86,3 +86,4 @@ syntax: 'foldnestmax' is 21 (test_syntax, case 8)~test TESTS=syntax~~src/syntax/
 syntax: a fold past 'foldnestmax' still starts (test_syntax, case 8)~test TESTS=syntax~~src/syntax/syntax.c~(e && v <= 20)~(e > 0)
 syntax: a setext underline under an empty line is a heading (test_syntax, case 10)~test TESTS=syntax~~src/syntax/syntax.c~if (a < z && l + 1 < text_lines(t)~if (l + 1 < text_lines(t)
 syntax: an injection named verilog is not SystemVerilog (test_syntax, the corpus's `define bodies)~test TESTS=syntax~~src/syntax/syntax.c~n == 7 && !memcmp(b, "verilog", 7) ? 8 : -1~-1
+syntax: an empty injected region in the tree's own language is parsed as the whole text, again and again (test_syntax, self injection)~test TESTS=syntax~~src/syntax/syntax.c~if (I.v[i].r.n || I.v[i].lang != L->lang) I.v[m++] = I.v[i];~if (1) I.v[m++] = I.v[i];
