@@ -18,7 +18,7 @@ foreach ($script in 'into', 'over') {
   $vs = Start-Process $devenv -PassThru
   $dte = $null
   for ($i = 0; $i -lt 180 -and -not $dte; $i++) { Start-Sleep -Seconds 1; try { $dte = [Runtime.InteropServices.Marshal]::GetActiveObject('VisualStudio.DTE') } catch {} }
-  if (-not $dte) { "VS $name.$script: no automation object from $devenv after 180 s"; try { $vs.Kill() } catch {}; exit 1 }
+  if (-not $dte) { "VS $name.${script}: no automation object from $devenv after 180 s"; try { $vs.Kill() } catch {}; exit 1 }
   $lines = @()
   try {
     Again { $dte.SuppressUI = $true }
