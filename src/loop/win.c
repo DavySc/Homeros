@@ -39,6 +39,9 @@ static struct Proc {
 	size_t qlen, qcap, outoff, outlen, outcap;
 } p[MAXP];
 static char buf[1 << 16];
+/* proc_wait's child: no other child and no timer runs, the watches do, as
+   in loop_breakcheck */
+static int only = -1;
 
 #define H(fd) ((HANDLE)(INT_PTR)(fd))   /* sign-extended, as LongToHandle */
 
@@ -212,7 +215,9 @@ static void CALLBACK on_read(DWORD e, DWORD n, OVERLAPPED *ov)
 	DWORD left = 0;
 	(void)n;
 	c->busy[s] = 0;
-	if (c->reaping) return;   /* report reads what is left */
+	/* report reads what is left; another child's bytes wait in its pipe
+	   for the read after proc_wait */
+	if (c->reaping || (only >= 0 && c != &p[only])) return;
 	if (e) { ended(c, s); return; }
 	if (PeekNamedPipe(c->h[s], NULL, 0, NULL, &left, NULL) && left) take(c, s, left);
 }
@@ -358,6 +363,21 @@ static void report(struct Proc *c)
 	fn(ctx, 0, NULL, code);
 }
 
+/* Ctrl-C reaches loop_int through the watches */
+int proc_wait(int id, int ms)
+{
+	long long end = loop_now() + ms * 1000000LL;
+	int r = 0;
+	only = id;
+	while (proc(id)) {
+		long long d = end - loop_now();
+		if (!r && (d <= 0 || loop_int)) { proc_kill(id); r = -1; }
+		loop_once(r ? -1 : (int)(d / 1000000) + 1);
+	}
+	only = -1;
+	return r;
+}
+
 int loop_once(int timeout_ms)
 {
 	HANDLE h[MAXW + MAXP];
@@ -370,19 +390,19 @@ int loop_once(int timeout_ms)
 		else { h[n] = H(w[i].fd); who[n++] = i; }
 	}
 	for (int i = 0; i < MAXP; i++) {
-		if (!p[i].ph) continue;
+		if (!p[i].ph || (only >= 0 && i != only)) continue;
 		h[n] = p[i].ph; who[n++] = -1;
 		for (int s = 1; s < 3; s++)
 			if (p[i].h[s] && !p[i].busy[s] && !read_next(&p[i], s)) timeout_ms = 0;   /* its end was reported: the caller may have work */
 	}
-	timeout_ms = timer_wait(-1, timeout_ms);
+	if (only < 0) timeout_ms = timer_wait(-1, timeout_ms);
 	DWORD r = MsgWaitForMultipleObjectsEx((DWORD)n, h, timeout_ms < 0 ? INFINITE : (DWORD)timeout_ms, mask, MWMO_ALERTABLE | MWMO_INPUTAVAILABLE);
 	if (r == WAIT_FAILED) return -1;
 	if (r < WAIT_OBJECT_0 + (DWORD)n && who[r - WAIT_OBJECT_0] >= 0) w[who[r - WAIT_OBJECT_0]].pend = 1;   /* the wait took its signal */
 	run_ready();   /* as poll, every ready watch, not only the one the wait names */
-	timer_run();
+	if (only < 0) timer_run();
 	for (int i = 0; i < MAXP; i++)
-		if (p[i].ph && WaitForSingleObject(p[i].ph, 0) == WAIT_OBJECT_0) report(&p[i]);
+		if (p[i].ph && (only < 0 || i == only) && WaitForSingleObject(p[i].ph, 0) == WAIT_OBJECT_0) report(&p[i]);
 	return 0;
 }
 #endif

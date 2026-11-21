@@ -7,7 +7,9 @@
    reported when the child exits, not when what it left behind closes the
    pipes (Neovim's on_exit); SIGKILL comes for every killed child; a failed
    write stops the polling; the queue stays as large as its backlog; a
-   watch removed by another watch's function does not run. */
+   watch removed by another watch's function does not run.  proc_wait
+   (Neovim's system(), Wait.tla "ok"): only its child runs, another child's
+   exit during the wait is still reported after it, ms or Ctrl-C kill. */
 #include <dirent.h>
 #include <signal.h>
 #include <string.h>
@@ -224,7 +226,7 @@ static void big_pipe(void)
 	free(g.out);
 }
 
-static int fired[4];
+static int fired[5];
 static void tick(void *ctx) { fired[(int *)ctx - fired]++; }
 
 static void timers(void)
@@ -477,6 +479,51 @@ static void many(void)
 	for (int i = 0; i < 32; i++) { CHECK(g[i].code == 0 && g[i].nout == sizeof kb); free(g[i].out); }
 }
 
+static void waits(void)
+{
+	Got a, b;
+	int ka;
+	CHECK(pipe(input) == 0);
+	CHECK(loop_watch(input[0], on_input, NULL) == 0);
+	/* a exits at once and says something; b is a filter */
+	CHECK(spawn(&a, "echo a") >= 0);
+	CHECK(loop_timer(tick, &fired[4], 0) == 0);
+	int id = spawn(&b, "sleep 0.2; cat");
+	CHECK(id >= 0 && proc_write(id, "hello", 5) == 0);
+	proc_close(id);
+	long long t0 = ms();
+	CHECK(proc_wait(id, 2000) == 0);
+	CHECK(b.ended[0] && b.order && b.code == 0 && b.nout == 5 && !memcmp(b.out, "hello", 5));
+	CHECK(!a.nout && !a.ended[0] && !fired[4]);   /* deferred */
+	run(&a, 2000);                                  /* its exit was not lost */
+	CHECK(a.nout == 2 && fired[4] == 1);
+	free(a.out); free(b.out);
+	/* ms passing kills it */
+	id = spawn(&b, "sleep 10");
+	t0 = ms();
+	CHECK(proc_wait(id, 200) == -1 && b.ended[0] && b.code == 128 + SIGTERM);
+	CHECK(ms() - t0 >= 200 && ms() - t0 < 600);
+	/* an ignored SIGTERM: SIGKILL 2 s later, still reported before it returns */
+	id = spawn(&b, "trap '' TERM; echo; sleep 10");
+	while (!b.nout) CHECK(loop_once(100) == 0);   /* the trap is set */
+	t0 = ms();
+	CHECK(proc_wait(id, 100) == -1 && b.ended[0] && b.code == 128 + SIGKILL);
+	CHECK(ms() - t0 >= 2000 && ms() - t0 < 2600);
+	free(b.out);
+	/* Ctrl-C kills it */
+	id = spawn(&b, "sleep 10");
+	pid_t w = fork();
+	if (!w) { usleep(100000); if (write(input[1], "\3", 1)) {} _exit(0); }
+	t0 = ms();
+	ka = proc_wait(id, 5000);
+	CHECK(ka == -1 && loop_int && b.ended[0] && ms() - t0 < 600);
+	waitpid(w, NULL, 0);
+	fprintf(stderr, "test_loop: proc_wait: others deferred and reported after; killed at 200 ms, SIGKILL after 2 s, Ctrl-C after %lld ms\n", ms() - t0);
+	loop_int = 0;
+	loop_unwatch(input[0]);
+	close(input[0]); close(input[1]);
+}
+
 static void watchdog(int sig)
 {
 	(void)sig;
@@ -506,6 +553,7 @@ int main(void)
 	backlog();
 	unwatch_in_callback();
 	many();
+	waits();
 	alarm(0);
 	idle();
 	return 0;
