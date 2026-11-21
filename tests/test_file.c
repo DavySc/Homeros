@@ -56,6 +56,18 @@ int main(void)
 	CHECK(mkdtemp(dir));
 	snprintf(path, sizeof path, "%s/f.txt", dir);
 
+	/* stdpath(): the XDG variable, else its default under $HOME (package 11's, agreed by thread 0) */
+	char f[256], *x = getenv("XDG_CONFIG_HOME"), *h = getenv("HOME");
+	setenv("XDG_CONFIG_HOME", "/c", 1);
+	file_stdpath(f, sizeof f, 2, "/s.md");
+	CHECK(!strcmp(f, "/c/homeros/s.md"));
+	setenv("XDG_CONFIG_HOME", "", 1);
+	setenv("HOME", "/h", 1);
+	file_stdpath(f, sizeof f, 2, "/s.md");
+	CHECK(!strcmp(f, "/h/.config/homeros/s.md"));
+	if (x) setenv("XDG_CONFIG_HOME", x, 1); else unsetenv("XDG_CONFIG_HOME");
+	if (h) setenv("HOME", h, 1);
+
 	roundtrip("a\nb\n", 4);
 	roundtrip("a\nb", 3);                              /* no final newline */
 	roundtrip("a\r\nb\r\n", 6);                        /* CRLF */
