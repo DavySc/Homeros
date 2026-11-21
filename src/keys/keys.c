@@ -13,6 +13,7 @@
 #include "git.h"
 #include "k.h"
 #include "kitten.h"
+#include "snip.h"
 #include "tools.h"
 #include "uni.h"
 
@@ -167,7 +168,7 @@ static int map(Editor *e, int k)
 
 void keys_input(Editor *e, int k, int pending)
 {
-	if (!(e->ks.pending ? map(e, k) : tools_key(e, k) || git_key(e, k) || map(e, k))) keys_feed(e, k, pending);
+	if (!(e->ks.pending ? map(e, k) : tools_key(e, k) || git_key(e, k) || snip_key(e, k, pending) || map(e, k))) keys_feed(e, k, pending);
 }
 
 void keys_feed(Editor *e, int k, int pending)

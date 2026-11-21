@@ -145,6 +145,13 @@ int main(void)
 	PostMessageW(win, WM_CHAR, 8, 0);
 	CHECK(input(k, 4) == 1 && k[0] == 8);   /* Ctrl-H */
 	ks[VK_CONTROL] = 0;
+	PostMessageW(win, WM_CHAR, 9, 0);
+	CHECK(input(k, 4) == 1 && k[0] == KEY_TAB);
+	ks[VK_SHIFT] = 0x80;
+	SetKeyboardState(ks);
+	PostMessageW(win, WM_CHAR, 9, 0);
+	CHECK(input(k, 4) == 1 && k[0] == KEY_S_TAB);
+	ks[VK_SHIFT] = 0;
 	SetKeyboardState(ks);
 	for (int i = 0; i < 600; i++) PostMessageW(win, WM_CHAR, 'x', 0);
 	CHECK(input(k, 7) == 600);

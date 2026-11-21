@@ -175,12 +175,14 @@ int file_watch_read(int fd, const char *path, const FileId *id)
 
 /* The journal's calls (state.h) */
 
-void file_stdpath(char *f, size_t n, int state, const char *name)
+void file_stdpath(char *f, size_t n, int which, const char *name)
 {
-	/* stdpath("state") and ("data") are both %LOCALAPPDATA%\\nvim-data */
-	const char *d = getenv(state ? "XDG_STATE_HOME" : "XDG_DATA_HOME");
+	/* stdpath("state") and ("data") are both %LOCALAPPDATA%\\nvim-data,
+	   ("config") is %LOCALAPPDATA%\\nvim */
+	static const char *const var[] = { "XDG_DATA_HOME", "XDG_STATE_HOME", "XDG_CONFIG_HOME" };
+	const char *d = getenv(var[which]);
 	if (!d || !*d) d = getenv("LOCALAPPDATA");
-	snprintf(f, n, "%s\\homeros-data%s", d ? d : "", name);
+	snprintf(f, n, "%s\\homeros%s%s", d ? d : "", which < 2 ? "-data" : "", name);
 }
 
 void file_mkdirs(char *f)
