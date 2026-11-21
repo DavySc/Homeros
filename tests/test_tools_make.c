@@ -68,6 +68,12 @@ int main(void)
 	Buf *b = until("Compilation exited abnormally with code 2");
 	CHECK(e.buf->path && !strcmp(e.buf->path, "other.txt"));    /* the cursor stays in its window */
 	CHECK(lines_of(b) == 11);
+	/* its window followed the output to the end, and it is read-only */
+	CHECK(e.wins->next && e.wins->next->buf == b && e.wins->next->line == 10);
+	CHECK(!core_win_goto(&e, 'j', 1));
+	keys_input(&e, 'd', 0);
+	keys_input(&e, 'd', 0);
+	CHECK(strstr(e.msg, "E21") && lines_of(b) == 11 && !core_modified(b) && !core_win_goto(&e, 'p', 1));
 
 	/* ]q from the start: the first error, "(1 of 4)" */
 	keys_input(&e, ']', 0);
@@ -79,6 +85,14 @@ int main(void)
 	CHECK(tools_qf(&e, 1) == -1 && strstr(e.msg, "E553"));
 	for (const char *k = "3[q"; *k; k++) keys_input(&e, *k, 0);
 	CHECK(!strcmp(e.buf->path, "a.c") && e.win->line == 1 && strstr(e.msg, "(1 of 4)"));
+	/* the next error in the same file, changed and not saved: no reload,
+	   no E37 (:cnext's buflist_getfile) */
+	CHECK(!core_edit(&e, 0, 0, "int z;\n", 7) && !tools_qf(&e, 1));
+	CHECK(strstr(e.msg, "(2 of 4)") && core_modified(e.buf) && core_lines(&e) == 4);
+	CHECK(core_undo(&e, 0) >= 0 && !core_modified(e.buf));
+	/* a count past the end goes as far as it can (qf_get_nth_entry) */
+	CHECK(!tools_qf(&e, 5) && strstr(e.msg, "(4 of 4)"));
+	CHECK(!tools_qf(&e, -1) && strstr(e.msg, "(3 of 4)"));
 
 	/* Enter on the dotnet line of the make buffer opens it in the other window */
 	CHECK(!core_win_goto(&e, 'j', 1) && e.buf == b);
@@ -107,16 +121,35 @@ int main(void)
 	for (int i = 0; i < 30; i++) loop_once(10);
 	CHECK(runs() == 2);
 
+	/* a CR LF's CR is not the message's, and an unended last line counts */
+	CHECK(!tools_make(&e, "printf 'a.c:1:1: crlf\\r\\na.c:2:1: tail'"));
+	b = until("Compilation finished");
+	CHECK(!tools_qf(&e, 1) && strstr(e.msg, "(1 of 2): crlf") && e.msg[strlen(e.msg) - 1] == 'f');
+	CHECK(!tools_qf(&e, 1) && strstr(e.msg, "(2 of 2): tail"));
+
 	/* stderr shows too */
 	CHECK(!tools_make(&e, "echo out; echo err >&2"));
 	b = until("Compilation finished");
 	CHECK(lines_of(b) == 6);
 
-	/* :make alone runs the last command again, through the keys */
+	/* :mak alone runs the last command again, through the keys; with a
+	   range it is E481 */
 	CHECK(!core_win_goto(&e, 'j', 1) && e.buf == b && !core_close(&e, 0));
-	for (const char *k = ":make\r"; *k; k++) keys_input(&e, *k, 0);
+	for (const char *k = ":mak\r"; *k; k++) keys_input(&e, *k, 0);
 	b = until("Compilation finished");
 	CHECK(lines_of(b) == 6 && e.wins->next);
+	CHECK(!tools_make(&e, "echo x >> runs; wc -l < runs"));
+	b = until("Compilation finished");
+	for (const char *k = ":1make\r"; *k; k++) keys_input(&e, *k, 0);
+	CHECK(strstr(e.msg, "E481") && runs() == 3);
+	/* SPC cC runs it again; SPC cc offers it to edit (Emacs's compile) */
+	for (const char *k = " cC"; *k; k++) keys_input(&e, *k, 0);
+	b = until("Compilation finished");
+	CHECK(runs() == 4);
+	for (const char *k = " cc"; *k; k++) keys_input(&e, *k, 0);
+	const char *last = "make echo x >> runs; wc -l < runs";
+	CHECK(e.mode == MODE_CMDLINE && e.cmdlen == strlen(last) && !memcmp(e.cmd, last, e.cmdlen));
+	keys_input(&e, KEY_ESC, 0);
 
 	char rm[64];
 	snprintf(rm, sizeof rm, "rm -rf %s", dir);

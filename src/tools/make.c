@@ -29,11 +29,7 @@ static struct {
 	long cur;                  /* the entry ]q and [q left, -1 none yet */
 } M = { .proc = -1, .cur = -1 };
 
-static Buf *buf(void)
-{
-	for (Buf *b = M.e && M.nr ? M.e->bufs : NULL; b; b = b->next) if (b->nr == M.nr) return b;
-	return NULL;
-}
+static Buf *buf(void) { return M.nr ? core_buf_find(M.e, M.nr) : NULL; }
 
 /* n bytes at the end of the buffer; a window whose cursor was on its last
    line follows it (Emacs's compilation-scroll-output, focus's tail) */
@@ -42,8 +38,6 @@ static void put(const char *s, size_t n)
 	Buf *b = buf();
 	if (!b) return;
 	size_t last = text_lines(b->text) ? text_lines(b->text) - 1 : 0;
-	if (b->flags & CORE_EMPTY) text_delete(b->text, 0, text_len(b->text));
-	b->flags &= ~(unsigned)CORE_EMPTY;
 	text_insert(b->text, text_len(b->text), s, n);
 	for (Win *w = M.e->wins; w; w = w->next)
 		if (w->buf == b && w->line >= last) { w->line = text_lines(b->text) - 1; w->col = 0; }
@@ -93,6 +87,7 @@ static int scan(const char *s, size_t n, Err *r)
 static void line(void *ctx, char *s, size_t n)
 {
 	(void)ctx;
+	if (n && s[n - 1] == '\r') s[--n] = 0;    /* Windows' CR LF (quickfix.c's USE_CRNL) */
 	Buf *b = buf();
 	Err r;
 	if (b && scan(s, n, &r)) {
@@ -138,20 +133,12 @@ static int run(void)
 	M.nq = 0;
 	M.cur = -1;
 	text_delete(b->text, 0, text_len(b->text));
-	b->flags |= CORE_EMPTY;
+	b->flags &= ~(unsigned)CORE_EMPTY;
 	for (Win *w = M.e->wins; w; w = w->next) if (w->buf == b) w->line = w->col = 0;
 	put(M.cmd, strlen(M.cmd));
 	put("\n\n", 2);
-	/* 'shell' and 'shellcmdflag' as Neovim sets them */
-#ifdef _WIN32
-	const char *sh = getenv("COMSPEC");
-	char *argv[] = { (char *)(sh && *sh ? sh : "cmd.exe"), "/s", "/c", M.cmd, NULL };
-#else
-	const char *sh = getenv("SHELL");
-	char *argv[] = { (char *)(sh && *sh ? sh : "sh"), "-c", M.cmd, NULL };
-#endif
-	if ((M.proc = proc_spawn(argv, NULL, out, (void *)(intptr_t)M.gen)) >= 0) return 0;
-	core_msg(M.e, "make: cannot run %s", argv[0]);
+	if ((M.proc = proc_shell(M.cmd, NULL, out, (void *)(intptr_t)M.gen)) >= 0) return 0;
+	core_msg(M.e, "make: cannot run the shell");
 	return -1;
 }
 
@@ -171,11 +158,13 @@ int tools_make(Editor *e, const char *cmd)
 		if (core_split(e, 0, 0)) return -1;
 		if (buf() ? core_buf_goto(e, M.nr) : core_edit_file(e, "", 0)) { core_close(e, 1); return -1; }
 		M.nr = e->buf->nr;
-		e->buf->nonumber = 1;
+		e->buf->nonumber = e->buf->nomodifiable = 1;
 		core_win_goto(e, 'p', 1);
 	}
 	return run();
 }
+
+const char *tools_make_last(void) { return M.cmd; }
 
 void tools_written(Editor *e, Buf *b)
 {
@@ -189,7 +178,10 @@ static int jump(Editor *e, size_t i)
 	if (e->buf->nr == M.nr && core_win_goto(e, 'p', 1) && core_split(e, 0, 0)) return -1;
 	Err r = M.q[i];
 	M.cur = (long)i;
-	if (core_edit_file(e, M.a.s + r.file, 0)) return -1;
+	/* :e on the current buffer's own name reloads it (E37 with changes);
+	   :cnext's buflist_getfile() never reloads a loaded buffer */
+	const char *f = M.a.s + r.file;
+	if ((!e->buf->path || strcmp(e->buf->path, f)) && core_edit_file(e, f, 0)) return -1;
 	core_goto(e, (size_t)r.line - 1, (size_t)r.col - 1);
 	core_msg(e, "(%zu of %zu): %s", i + 1, M.nq, M.a.s + r.msg);
 	return 0;

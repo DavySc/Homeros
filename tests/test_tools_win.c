@@ -117,9 +117,15 @@ int main(void)
 	CHECK(!tools_make(&e, f));
 	for (int i = 0; i < 500 && tools_qf(&e, 1); i++) loop_once(10);
 	if (!strstr(e.buf->path, "zqc.txt") || e.win->line || e.win->col || !strstr(e.msg, "(1 of 1): error CS1002")) { fprintf(stderr, "make: %s / %s\n", e.buf->path, e.msg); CHECK(0); }
+	/* a quoted path reaches cmd.exe as typed (not the CRT's \"), and the
+	   CR of each CR LF is not the message's */
+	put("sp ace.txt", "sub\\zqd.txt(1,1): error CS3: quoted\r\n");
+	CHECK(!tools_make(&e, "type \"sp ace.txt\""));
+	for (int i = 0; i < 500 && tools_qf(&e, 1); i++) loop_once(10);
+	if (!strstr(e.buf->path, "zqd.txt") || strcmp(strstr(e.msg, "(1 of 1)"), "(1 of 1): error CS3: quoted")) { fprintf(stderr, "make quoted: %s / %s\n", e.buf->path, e.msg); CHECK(0); }
 	grid_free(&g);
 	core_free(&e);
-	printf("test_tools_win: recent files relative to C:\\..., listed once, frecency written and read; no find.exe; :make's C:\\ errors\n");
+	printf("test_tools_win: recent files relative to C:\\..., listed once, frecency written and read; no find.exe; :make's C:\\ errors, quoted paths\n");
 	return 0;
 }
 #else
