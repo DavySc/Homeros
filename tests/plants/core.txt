@@ -146,3 +146,10 @@ core: a yanked block cuts a character it touches (test_core_visual)~test TESTS=c
 core: a yanked block one column narrower (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~		*to = cc + 1;~		*to = cc;
 core: the yank flash takes a cell at an empty line's end (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~	if (area == FACE_VISUAL && drawn == 1~	if (area && drawn == 1
 core: the c flag's match (ks.inc) not drawn (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~e->ks.inc.type ? &e->ks.inc : NULL;~NULL;
+core: 'hlsearch' not drawn (test_core_search)~test TESTS=core_search~~src/core/draw.c~	int mh = keys_hl(e, w, l, 0, &ms, &mz);~	int mh = 0;
+core: no CurSearch (test_core_search)~test TESTS=core_search~~src/core/draw.c~ ? FACE_CUR_SEARCH : FACE_SEARCH;~ ? FACE_SEARCH : FACE_SEARCH;
+core: an empty match under the cursor in CurSearch (test_core_search)~test TESTS=core_search~~src/core/draw.c~w->col >= ms && w->col < mz ?~w->col >= ms && (w->col < mz || w->col == ms) ?
+core: an empty match draws no character (test_core_search)~test TESTS=core_search~~src/core/draw.c~!mh || i < ms ? cl~!mh || i < ms || mz == ms ? cl
+core: a match that takes the line break not drawn where the line ends before the view (test_core_search)~test TESTS=core_search~~src/core/draw.c~(mz > ms || (v >= skip~(0 || (v >= skip
+core: an empty match at the end drawn where 'leftcol' passes the line's bytes (test_core_search)~test TESTS=core_search~~src/core/draw.c~(w->wrap || w->left <= i)~(1)
+core: the end-of-line cell past the window's edge dropped, not on its last cell (test_core_search)~test TESTS=core_search~~src/core/draw.c~	int full = w->wrap ? d && d % (size_t)tw == 0 : d >= (size_t)tw;~	int full = w->wrap ? d && d % (size_t)tw == 0 : 0;

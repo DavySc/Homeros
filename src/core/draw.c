@@ -149,6 +149,25 @@ static void draw_heading(Grid *g, const Win *w, size_t l, int r, size_t skip, in
 		}
 }
 
+/* win_line()'s cell after a line's end, d columns into the view from
+   row r: a blank there, or the last cell of the row the line ends on when
+   the end is past the window's edge */
+static Cell *eol_cell(Grid *g, const Win *w, int r, size_t d, int tw, int nw)
+{
+	int full = w->wrap ? d && d % (size_t)tw == 0 : d >= (size_t)tw;
+	d -= (size_t)full;
+	int row = w->wrap ? r + (int)(d / (size_t)tw) : r, c = nw + (int)(d % (size_t)tw);
+	if (!full) wput(g, w, row, c, (const unsigned char *)" ", 1, 1);
+	return row < w->h ? wcell(g, w, row, c) : NULL;
+}
+
+/* Search, or CurSearch for the match [ms, mz) of line l that holds w's
+   cursor (never an empty one: measured, tests/test_core_search.py) */
+static unsigned char search(const Win *w, size_t l, size_t ms, size_t mz)
+{
+	return w->line == l && w->col >= ms && w->col < mz ? FACE_CUR_SEARCH : FACE_SEARCH;
+}
+
 /* win_line()'s Visual area of line l in w ('selection' inclusive), or
    vim.hl.on_yank()'s flash (Davy's my-nvim): vim.hl.range() from '[ to ']
    inclusive (a block: its screen columns) in IncSearch, over the text only
@@ -248,6 +267,11 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	int drawn = 1, hl = 0, hn = rm && syn ? 0 : HN_NO;
 	size_t hb = 0, hm = 0, from, to, xf, xt;
 	unsigned char area = visual(e, w, l, &from, &to, &xf, &xt);
+	/* 'hlsearch' (win_line()'s search_attr, under the Visual area):
+	   the keys' matches [ms, mz) from col 0 on, an empty one over the
+	   character at ms; CurSearch for the one under w's cursor */
+	size_t ms = 0, mz = 0;
+	int mh = keys_hl(e, w, l, 0, &ms, &mz);
 	/* 'cursorline' (Davy's pick of the UI proposals): CursorLine under the
 	   text area of the cursor line's rows, below syntax and render-markdown
 	   (low priority: it has no fg), not in the current window in Visual
@@ -289,6 +313,8 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 		/* a double-width character: after the '>' of a wrapping row's
 		   last cell (core_cellw's 3), the two cells of the character */
 		int lead = cw == 3 && *s != '\t', wide = *s >= 0x80 && cw - lead == 2;
+		while (mh && (mz > ms ? i >= mz : i > ms)) mh = keys_hl(e, w, l, mz > ms ? mz : i, &ms, &mz);
+		unsigned char sb = !mh || i < ms ? cl : search(w, l, ms, mz);
 		for (int j = 0; j < cw; j++, v++) {
 			if (v < skip) continue;
 			size_t d = v - skip;
@@ -303,7 +329,7 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 			if (row == r && c < cover) {
 				/* "<<<" over a double-width character's first cell leaves a
 				   blank in its second (measured) */
-				if (wide && j == lead && c + 1 == cover) put_cell(g, w, row, c + 1, (const unsigned char *)" ", 1, 0, 1, face, vis ? vis : cl);
+				if (wide && j == lead && c + 1 == cover) put_cell(g, w, row, c + 1, (const unsigned char *)" ", 1, 0, 1, face, vis ? vis : sb);
 				continue;
 			}
 			/* win_line(): '>' where a double-width character does not fit
@@ -318,8 +344,8 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 				/* in the area if its character is (measured) */
 				wputs(g, w, row, c, "<", FACE_NON_TEXT);
 				Cell *z = wcell(g, w, row, c);
-				if (z) z->bg = from < v && vis ? vis : cl;
-			} else put_cell(g, w, row, c, s, k, j - lead, cw - lead, face, vis ? vis : cl);
+				if (z) z->bg = from < v && vis ? vis : sb;
+			} else put_cell(g, w, row, c, s, k, j - lead, cw - lead, face, vis ? vis : sb);
 		}
 		i += k;
 	}
@@ -331,13 +357,19 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	size_t vs = v > skip ? v : skip;
 	if (area == FACE_VISUAL && drawn == 1 && (v > skip ? from == v : from <= skip) && vs < to && (vs < xf || vs > xt)
 	    && (e->ks.visual != 22 || l == e->win->line || l == e->ks.vline)) {
-		size_t d = vs - skip;
-		int full = w->wrap ? d && d % (size_t)tw == 0 : d >= (size_t)tw;
-		d -= (size_t)full;
-		int row = w->wrap ? r + (int)(d / (size_t)tw) : r, c = nw + (int)(d % (size_t)tw);
-		if (!full) wput(g, w, row, c, (const unsigned char *)" ", 1, 1);
-		Cell *z = row < w->h ? wcell(g, w, row, c) : NULL;
+		Cell *z = eol_cell(g, w, r, vs - skip, tw, nw);
 		if (z) z->bg = FACE_VISUAL;
+	}
+	/* a match that takes the line break: the cell after the last
+	   character */
+	while (mh && (mz > ms ? i >= mz : i > ms)) mh = keys_hl(e, w, l, mz > ms ? mz : i, &ms, &mz);
+	/* (one that takes the line break at the view's start when the line
+	   ends before it, as the Visual area; an empty one only where the end
+	   is in view, and without wrap not where 'leftcol' passes the line's
+	   length in bytes, though its end is in view after a Tab: measured) */
+	if (mh && ms <= i && drawn == 1 && (mz > ms || (v >= skip && (w->wrap || w->left <= i)))) {
+		Cell *z = eol_cell(g, w, r, vs - skip, tw, nw);
+		if (z && z->bg != FACE_VISUAL) z->bg = search(w, l, ms, mz);
 	}
 	if (hl && (hn == hl || hn == HN_YES)) draw_heading(g, w, l, r, skip, cover, hb, hm, hl);
 	return drawn != 0;

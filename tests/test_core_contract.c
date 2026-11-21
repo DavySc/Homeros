@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include "check.h"
 #include "core.h"
+#include "keys.h"
 #include "syntax.h"
 #include "grid.h"
 #include "../src/core/core_int.h"
@@ -272,6 +273,17 @@ int main(void)
 	core_draw(&e, &g);
 	CHECK(g.c[2 * g.cols + win_numw(e.win)].bg == FACE_INC_SEARCH && g.c[2 * g.cols + win_numw(e.win) + 1].bg != FACE_INC_SEARCH);
 	e.ks.inc.type = 0;
+	/* the flash as the keys set it: vly over "é漢x" covers é and both
+	   cells of 漢, not x (vim.hl.on_yank's '[ to ']) */
+	CHECK((f = fopen(ey, "w")) && fputs("\xc3\xa9\xe6\xbc\xa2x\n", f) >= 0 && !fclose(f));
+	CHECK(!core_edit_file(&e, ey, 1));
+	keys_feed(&e, 'v', 0);
+	keys_feed(&e, 'l', 0);
+	keys_feed(&e, 'y', 0);
+	core_draw(&e, &g);
+	/* cell 2 is 漢's second half, drawn with its first */
+	for (int c = 0; c < 4; c++) if (c != 2) CHECK((g.c[win_numw(e.win) + c].bg == FACE_INC_SEARCH) == (c < 3));
+	e.ks.yank.type = 0;
 	unlink(ey);
 	core_free(&e);
 	for (int i = 0; i < 4; i++) unlink(fn[i]);
