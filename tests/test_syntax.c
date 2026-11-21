@@ -10,7 +10,9 @@
    A second copy of each case parses in slices, stopped at random points and
    resumed; resuming can also change the tree inside errors (measured, plain
    tree-sitter 0.27), so it must match only where Neovim's trees are free of
-   errors.  Lua patterns are compared with LuaJIT's string.find.  Not
+   errors.  At the end each line's fold must be Neovim's foldexpr's
+   (vim.treesitter.foldexpr(), for Markdown MarkdownFold()).  Lua patterns
+   are compared with LuaJIT's string.find.  Not
    tested: combined injections are gathered from the window, Neovim's from
    the whole tree (syntax.c, Inj), which differs only for an injected
    language whose text is unbalanced inside one string and closed in another
@@ -165,7 +167,7 @@ static void show(const char *dir, int c)
 	free(b);
 }
 
-static char want[MAXCASES * NL][MAXT + 1];
+static char want[MAXCASES * NL][MAXT + 1], wfold[MAXCASES * NL][4096];
 static int sliced_same[MAXCASES * NL];
 
 static int tat(void *v, size_t i)
@@ -411,6 +413,28 @@ static void cache_grows(const char *dir)
 	text_free(t);
 }
 
+/* Folds follow an edit: a C function's body folds, and after the edit that
+   makes it one line, nothing does. */
+static void folds_follow_edits(const char *dir)
+{
+	char path[2048];
+	snprintf(path, sizeof path, "%s/f.c", dir);
+	Text *t = text_new("int f() {\n\ta;\n}\n", 16);
+	CHECK(t);
+	Syntax *s = syntax_open(path, t);
+	CHECK(s);
+	int st;
+	CHECK(syntax_foldexpr(s, 0, &st) == 1 && st && syntax_foldexpr(s, 2, &st) == 1 && !st);
+	for (int i = 0; i < 2; i++) {     /* its two line breaks */
+		size_t at = i ? 12 : 9;
+		syntax_edit(s, t, at, 1, "", 0);
+		CHECK(!text_delete(t, at, 1));
+	}
+	CHECK(syntax_foldexpr(s, 0, &st) == 0 && !st);
+	syntax_free(s);
+	text_free(t);
+}
+
 /* The trees a reparse replaces are freed in steps that ask stop: an edit
    that deletes 2,000 lines frees about 10,000 nodes, so the update
    after it must stop more than once before it is done. */
@@ -498,6 +522,7 @@ int main(void)
 	edit_before_region(dir);
 	cache_grows(dir);
 	release_in_steps(dir);
+	folds_follow_edits(dir);
 	filetypes();
 	char path[2048], vrt[1024] = "";
 	FILE *p = popen("nvim --headless --clean -l /dev/stdin <<'E'\nio.write(vim.env.VIMRUNTIME)\nE", "r");
@@ -535,6 +560,8 @@ int main(void)
 		   (#gsub!) in two strings parsed as one tree, and writeRust's;
 		   case 6, Vim's match? in CMake's query: words ignoring case, a
 		   suffix after ".*", one word alone (set's variable);
+		   case 10, Markdown's folds: setext headings, and a '#' line in a
+		   code block, which MarkdownFold() folds with tree-sitter on;
 		   case 13, a Nix string Neovim does not inject, as its injection
 		   query's patterns of languages we lack still count toward the 256
 		   in-progress matches.
@@ -544,6 +571,7 @@ int main(void)
 		               : c == 5 ? "{\n  a = /* lua */ ''\n    local t = {\n  '';\n  b = /* lua */ ''\n    }\n  '';\n"
 		                          "  c = pkgs.writeRust \"r\" {} ''\n    fn main() { let x = 1; }\n  '';\n}\n"
 		               : c == 6 ? "if(A-NOTFOUND AND x-notfound)\n  SET(v ON)\nendif()\nreturn()\n"
+		               : c == 10 ? "Title\n=====\ntext\nSub\n---\n# h\n```\n# not\n```\n## b\n"
 		               : c == 13 ? "  m (a // { i = \"${l.e p.b}\"; }) na/* lua */ ''  else\n    L b the ${f l is a s t b\n"
 		                           "    C b c w${ or w e a.\n:::{.example}\n    }\n    ''\n" : NULL;
 		const char *src = fx ? fx : corpus[lang][rnd((unsigned)ncorpus[lang])];
@@ -618,6 +646,10 @@ int main(void)
 		sliced_same[c] = (!memcmp(fa, fb, text_len(t)) || !memcmp(ff, fb, text_len(t)))
 		                 + 2 * !memcmp(fb, fs, text_len(t));
 		render(t, fa, want[c]);
+		for (size_t l = 0, k = 0, nl = text_lines(t); l < nl && k < sizeof wfold[c] - 8; l++) {
+			int st, v = syntax_foldexpr(A, l, &st);
+			k += (size_t)snprintf(wfold[c] + k, sizeof wfold[c] - k, "%s%s%d", l ? " " : "", st ? ">" : "", v);
+		}
 		bytes += text_len(t);
 		len += snprintf(cmd + len, sizeof cmd - (size_t)len, " %d.%s", c, ext[lang]);
 		syntax_free(A);
@@ -642,7 +674,10 @@ int main(void)
 	snprintf(path, sizeof path, "%s/out.err", dir);
 	char *err = slurp(path, &en);
 	CHECK(en == (size_t)n);
-	int differ = 0, slice_differ = 0, with_err = 0, slice_err = 0, md_history = 0;
+	int differ = 0, slice_differ = 0, with_err = 0, slice_err = 0, md_history = 0, fdiffer = 0;
+	snprintf(path, sizeof path, "%s/out.fold", dir);
+	FILE *fo = fopen(path, "r");
+	CHECK(fo);
 	for (int c = 0; c < n; c++) {
 		size_t wl = strlen(want[c]);
 		CHECK((size_t)(q - o) + wl <= on);
@@ -657,6 +692,13 @@ int main(void)
 					break;
 				}
 			}
+		}
+		static char fl[1 << 16];
+		CHECK(fgets(fl, sizeof fl, fo));
+		fl[strcspn(fl, "\n")] = 0;
+		if (strcmp(fl, wfold[c]) && ++fdiffer <= 3) {
+			fprintf(stderr, "%s/%d.%s: folds differ\n  Neovim %s\n  here   %s\n", dir, c, ext[c % NL], fl, wfold[c]);
+			show(dir, c);
 		}
 		with_err += err[c] == '1';
 		if (sliced_same[c] != 3) {
@@ -703,14 +745,15 @@ int main(void)
 	for (char *x = po, *y = pgot; x < po + pn && y < pgot + npg; x = strchr(x, '\n') + 1, y = strchr(y, '\n') + 1, plines++)
 		if (strncmp(x, y, (size_t)(strchr(x, '\n') - x + 1)) && ++pdiff == 1)
 			fprintf(stderr, "Lua pattern case: LuaJIT %.*s here %.*s\n", (int)(strchr(x, '\n') - x), x, (int)(strchr(y, '\n') - y), y);
-	printf("test_syntax: %d of %d cases (%zu bytes) differ from Neovim, and %d of %d frames between an edit "
+	fclose(fo);
+	printf("test_syntax: %d of %d cases (%zu bytes) differ from Neovim (folds in %d), and %d of %d frames between an edit "
 	       "and its parse; sliced parses or other windows differ in %d of %d cases without syntax errors "
 	       "(and %d of %d with; Markdown's history-dependent trees in %d more); %d of 4000 Lua patterns (find, gsub) differ "
 	       "from LuaJIT\n",
-	       differ, n, bytes, snap_differ, snaps, slice_differ, n - with_err, slice_err, with_err, md_history,
+	       differ, n, bytes, fdiffer, snap_differ, snaps, slice_differ, n - with_err, slice_err, with_err, md_history,
 	       pdiff);
 	CHECK(plines == 4000);
-	CHECK(!differ && !snap_differ && !slice_differ && !pdiff);
+	CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff);
 	free(ws);
 	free(ns);
 	free(o);

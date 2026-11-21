@@ -3,7 +3,7 @@
    and nested comments, macros), Nix (its scanner's strings, Lua and
    Rust injected into several strings as one tree), CMake (its scanner's
    bracket arguments) and SystemVerilog, with parses stopped and resumed at
-   input-chosen points and faces and syntax_md read at any moment, stale
+   input-chosen points and faces, syntax_md and folds read at any moment, stale
    trees included.
    Sanitizers catch the memory errors; the faces must be grid.h's. */
 #include <stdint.h>
@@ -59,6 +59,8 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 			for (size_t i = 0; i < z - a; i++) if (f[i] >= FACE_COUNT) abort();
 			SyntaxMd m;   /* render-markdown's facts, stale trees included */
 			syntax_md(s, t, byte() % (text_lines(t) + 1), &m);
+			int st;   /* folds, which parse first */
+			if (byte() % 4 == 0 && syntax_foldexpr(s, byte() % (text_lines(t) + 1), &st) > 20) abort();
 		} else {                           /* an edit, keeping the final '\n' */
 			size_t pos = byte() * len / 256, del = byte() % 8;
 			if (del > len - 1 - pos) del = len - 1 - pos;

@@ -23,15 +23,16 @@ $(SYN)/g/%.o: | $(SYN)/src
 	@mkdir -p $(@D)
 	$(CC) -O2 -c -I$(dir $(SYN)/src/$*) $(SYN)/src/$*.c -o $@
 
-# Neovim's highlights and injections queries, compiled in, so the editor needs
-# no files at run time: syntax_queries[lang][0 highlights, 1 injections], the
-# languages in syntax.c's order, each file as one string of octal escapes.
+# Neovim's highlights, injections and folds queries, compiled in, so the
+# editor needs no files at run time: syntax_queries[lang][0 highlights,
+# 1 injections, 2 folds], the languages in syntax.c's order, each file as
+# one string of octal escapes ("" for a file the language does not have).
 # A file starting "; inherits: x" follows x's file, as query.lua reads it.
 $(SYN)/queries.c: src/syntax/build.mk | $(SYN)/src
-	{ echo 'const char *const syntax_queries[][2] = {'; \
-	  for l in c lua markdown markdown_inline rust glsl nix cmake systemverilog; do for f in highlights injections; do \
+	{ echo 'const char *const syntax_queries[][3] = {'; \
+	  for l in c lua markdown markdown_inline rust glsl nix cmake systemverilog; do for f in highlights injections folds; do \
 	    q=$(SYN)/src/queries/$$l/$$f.scm; b=$$(sed -n '1s/^; inherits: *//p' $$q); \
-	    printf '"'; cat $${b:+$(SYN)/src/queries/$$b/$$f.scm} $$q | od -An -v -to1 | tr -d '\n' | sed 's/ /\\/g'; echo '",'; \
+	    printf '"'; [ ! -f $$q ] || cat $${b:+$(SYN)/src/queries/$$b/$$f.scm} $$q | od -An -v -to1 | tr -d '\n' | sed 's/ /\\/g'; echo '",'; \
 	  done; done; echo '};'; } > $@
 
 $(SYN)/queries.o: $(SYN)/queries.c

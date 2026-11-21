@@ -129,7 +129,7 @@ const char *syntax_filetype(const char *path)
 
 /* Neovim's highlights and injections queries per language, in langs' order
    (build.mk compiles them in) */
-extern const char *const syntax_queries[][2];
+extern const char *const syntax_queries[][3];
 int syntax_release(TSTree *t, unsigned n);   /* release.c */
 enum { RELEASE_STEP = 1024 };                /* nodes freed between stop asks */
 
@@ -161,9 +161,9 @@ typedef struct {
 	uint32_t content, langcap; /* injections: capture ids, or NONE */
 } Q;
 
-/* Both queries of each language, compiled on first use and kept for the
+/* The queries of each language, compiled on first use and kept for the
    life of the editor (Neovim caches queries the same way). */
-static struct { Q hl, inj; int loaded; } queries[NLANGS];
+static struct { Q hl, inj, fold; int loaded; } queries[NLANGS];
 
 typedef struct {
 	TSRange *r;                /* n == 0: the whole text */
@@ -199,6 +199,8 @@ struct Syntax {
 	const Text *t;
 	int (*stop)(void);
 	char buf[4096];            /* the chunk tree-sitter is reading */
+	int *fold;                 /* syntax_foldexpr's per line, 2 * level + start */
+	size_t nfold;              /* 0: to be computed after the next update */
 	/* The faces of [ca, cz), kept until the trees change: the core asks line
 	   by line, and one query over the window costs a third to a tenth of one
 	   per line (measured, 48 lines, best of 50: 0.165 vs 0.424 ms in
@@ -328,7 +330,7 @@ static int compile(Q *Q, int hl)
 		uint32_t l;
 		const char *s = ts_query_capture_name_for_id(Q->q, c, &l);
 		if (hl) Q->face[c] = s[0] == '_' ? 0 : face_of(s, l);
-		else if (EQ(s, l, "injection.content")) Q->content = c;
+		else if (EQ(s, l, "injection.content") || EQ(s, l, "fold")) Q->content = c;
 		else if (EQ(s, l, "injection.language")) Q->langcap = c;
 	}
 	for (uint32_t i = 0; i < np; i++) {
@@ -394,11 +396,12 @@ static int compile(Q *Q, int hl)
 	return 0;
 }
 
-static void load1(Q *Q, int li, int hl)
+static void load1(Q *Q, int li, int f)
 {
+	int hl = !f;
 	uint32_t off;
 	TSQueryError err;
-	const char *src = syntax_queries[li][!hl];
+	const char *src = syntax_queries[li][f];
 	Q->q = ts_query_new(langs[li].fn(), src, (uint32_t)strlen(src), &off, &err);
 	if (Q->q && compile(Q, hl)) {
 		ts_query_delete(Q->q);   /* the Preds stay: a few bytes, once */
@@ -410,8 +413,9 @@ static void load(int li)
 {
 	if (queries[li].loaded) return;
 	queries[li].loaded = 1;
-	load1(&queries[li].hl, li, 1);
-	load1(&queries[li].inj, li, 0);
+	load1(&queries[li].hl, li, 0);
+	load1(&queries[li].inj, li, 1);
+	load1(&queries[li].fold, li, 2);
 }
 
 static LTree *ltree(int lang)
@@ -480,6 +484,7 @@ void syntax_free(Syntax *s)
 	if (s->p) ts_parser_delete(s->p);
 	syntax_release(NULL, UINT32_MAX);
 	free(s->cache);
+	free(s->fold);
 	free(s);
 }
 
@@ -998,6 +1003,7 @@ int syntax_update(Syntax *s, const Text *t, int (*stop)(void))
 	int r = parse(s, s->root, t);
 	if (r == 2) return 2;
 	s->dirty = 0;
+	s->nfold = 0;              /* the folds follow the trees */
 	return r == 1;
 }
 
@@ -1119,6 +1125,92 @@ void syntax_faces(Syntax *s, size_t a, size_t z, unsigned char *face)
 	s->sa = s->sz = 0;
 	faces_tree(s, s->t, s->root, s->ca, s->ca, s->cz);
 	memcpy(face, s->cache + (a - s->ca), z - a);
+}
+
+/* ---- folds ---- */
+
+/* _fold.lua's compute_folds_levels, its first half: the @fold captures of
+   every tree, in for_each_tree's order, each a fold from its first row to
+   its last (one fewer when it ends at column 0) if it spans more than
+   'foldminlines' (1) and is not the one just counted */
+static void fold_tree(Syntax *s, LTree *L, Src *src, int *in, int *out, int64_t *prev)
+{
+	Q *Q = &queries[L->lang].fold;
+	for (uint32_t i = 0; Q->q && i < L->nreg; i++) {
+		if (!L->reg[i].tree) continue;
+		ts_query_cursor_set_byte_range(s->qc, 0, UINT32_MAX);
+		ts_query_cursor_exec(s->qc, Q->q, ts_tree_root_node(L->reg[i].tree));
+		TSQueryMatch m;
+		while (ts_query_cursor_next_match(s->qc, &m)) {
+			if (!passes(src, &m, &Q->pat[m.pattern_index])) continue;
+			const TSNode *a = NULL, *z = NULL;   /* a quantified capture's first and last */
+			for (uint16_t k = 0; k < m.capture_count; k++)
+				if (m.captures[k].index == Q->content) z = &m.captures[k].node, a = a ? a : z;
+			if (!a) continue;
+			int64_t sr = ts_node_start_point(*a).row;
+			TSPoint e = ts_node_end_point(*z);
+			int64_t er = (int64_t)e.row - (e.column == 0);
+			if (er - sr + 1 > 1 && (sr != prev[0] || er != prev[1]) && er < (int64_t)s->nfold)
+				in[sr]++, out[er]++, prev[0] = sr, prev[1] = er;
+		}
+	}
+	for (uint32_t k = 0; k < L->nkid; k++) fold_tree(s, L->kid[k], src, in, out, prev);
+}
+
+/* Markdown's ftplugin (g:markdown_folding): MarkdownFold() starts a fold of
+   level n at a line of n '#' and a space, of 1 and 2 above a line of '='
+   or '-' only, and each other line keeps the level above ("=").  Its
+   code-block test reads Vim's syntax items, which tree-sitter highlighting
+   turns off, so it always passes (measured: test_syntax's cases). */
+static int md_fold(Src *src, const Text *t, size_t l, int prev)
+{
+	size_t a = text_line_start(t, l), z = text_line_start(t, l + 1) - 1, h = a;
+	while (h < z && at(src, h) == '#') h++;
+	if (h > a && h < z && at(src, h) == ' ') return 2 * (int)(h - a) + 1;
+	size_t b = z + 1, y = text_line_start(t, l + 2) - 1;
+	if (a < z && l + 1 < text_lines(t) && b < y && (at(src, b) == '=' || at(src, b) == '-')) {
+		int c = at(src, b);
+		while (b < y && at(src, b) == c) b++;
+		if (b == y) return c == '=' ? 3 : 5;
+	}
+	return prev & ~1;
+}
+
+int syntax_foldexpr(Syntax *s, size_t line, int *start)
+{
+	*start = 0;
+	if (!s || s->sql) return 0;
+	if (s->org) return orgfx_foldexpr(s->org, line, start);
+	while (syntax_update(s, s->t, NULL) == 2) ;
+	const Text *t = s->t;
+	size_t n = text_lines(t);
+	if (!started(s) || line >= n) return 0;
+	if (!s->nfold) {
+		int *f = realloc(s->fold, 2 * (n + 1) * sizeof *f);
+		if (!f) return 0;
+		s->fold = f;
+		s->nfold = n;
+		memset(f, 0, 2 * (n + 1) * sizeof *f);
+		Src src = { t, 0, 0, { 0 } };
+		if (s->root->lang == 2) {
+			for (size_t l = 0, p = 0; l < n; l++) p = f[l] = md_fold(&src, t, l, p);
+		} else {
+			/* the second half: the levels, a line that ends one fold and
+			   starts another ending the first on the line above; past
+			   'foldnestmax' (20) a level is 20 and starts nothing */
+			int *in = f + n + 1, *out = f;
+			int64_t prev[2] = { -1, -1 };
+			fold_tree(s, s->root, &src, in, out, prev);
+			for (size_t l = 0, lv = 0, left = 0; l < n; l++) {
+				size_t e = (size_t)in[l], o = (size_t)out[l], v = lv - left + e;
+				if (e && o) v -= o, o = 0;
+				f[l] = 2 * (int)(v > 20 ? 20 : v) + (e && v <= 20);
+				lv = v, left = o;
+			}
+		}
+	}
+	*start = s->fold[line] & 1;
+	return s->fold[line] >> 1;
 }
 
 /* render-markdown 8.14's facts for line l, from the Markdown block tree as

@@ -1,7 +1,7 @@
 /* A .org file's colours are Org's (org.h's orgfx, package 16, which tests
    them against Emacs): through syntax_open, syntax_edit, syntax_update and
    syntax_faces, after random edits, every byte must carry the face an
-   OrgFx of its own gives the same text. */
+   OrgFx of its own gives the same text, and every line the same fold. */
 #include <string.h>
 #include "check.h"
 #include "grid.h"
@@ -46,6 +46,10 @@ int main(void)
 		syntax_faces(s, 0, n, f);
 		orgfx_faces(x, 0, n, g);
 		CHECK(!memcmp(f, g, n));
+		for (size_t l = 0; l <= text_lines(t); l++) {   /* Org's subtrees fold */
+			int a, b;
+			CHECK(syntax_foldexpr(s, l, &a) == orgfx_foldexpr(x, l, &b) && a == b);
+		}
 	}
 	syntax_free(s);
 	orgfx_free(x);
