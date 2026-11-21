@@ -9,9 +9,29 @@ text, with an example that must still differ).  Measured 2026-11-18, seed 1,
 (3 inside them); with ref/core.c 38 differ, from what it stubs.
 
 Not built (FEATURES.md section 2), part two of package 5:
-- search: / ? n N * # and search as a motion (d/x). / and ? read their line
-  and drop it with a beep, so the pattern does not run as commands; n N * #
-  beep.
+- search (search.c, Neovim's search.c): / ? n N * # g* g# with their
+  offsets (e s b and a line), as motions, after operators, in Visual mode
+  and with . to repeat; 'ignorecase', 'smartcase' and 'wrapscan' on.
+  tests/test_keys_ex.c checks them against nvim on random keys (cursor,
+  error, text); measured 2026-11-19, seed 1, 3,000 searches: 0 differ.
+  Not built yet: ";" between searches (/x/;/y), 'incsearch', the search
+  history, Visual-mode * and #, register "/.
+  'hlsearch' (keys_hl(), next_search_hl() from the window's top line),
+  :noh[lsearch] and CTRL-L (Neovim's default map, Normal mode): the same
+  test compares the cells 'hlsearch' changes on Neovim's screen (80
+  columns, the lines the window shows) after every random case.
+  The pattern engine (regex.c, Neovim's regexp.c): magic levels, classes,
+  collections, multis, groups and back references, \zs \ze, \& and the
+  look-arounds, 'ignorecase' and \c \C.  tests/test_keys_regex.c checks it
+  against substitute() in nvim on random patterns and lines; measured
+  2026-11-19, 16 seeds of 10,000: 4 differ, all in the oddity below.  Not
+  built yet: \%[ \%V \%# \%l \%c \%v and the marks, \%#= (the engine
+  choice), \z( (syntax only), a look-behind that reaches into lines above,
+  and multi-line text in the random test (\n and \_x are built; :s checks
+  them on a buffer).  Ours backtracks, as Neovim's backtracking engine,
+  with its stack on the heap: a pattern that backtracks without end on a
+  line, such as \(a*\)*b, \(a\|b\)*c on a very long one, gives E363 after
+  20 million steps, where Neovim's default NFA engine says E486 at once.
 - operators = ! and gc (comment); the surround, align and other section 3
   extras.
 - gq's 'comments': Neovim formats with 'formatoptions' tcqj, so a comment
@@ -27,9 +47,32 @@ Not built (FEATURES.md section 2), part two of package 5:
   The same holds for the '> mark of a Visual gq, so gv after it differs
   (H2).
 - tag objects it at.
-- register "/ (search).
-- ex commands beyond :w :w! :q :q! :wq :x: ranges, :5, :s, :g, :norm, :d,
-  :y, :e, :sp, :vs, :b. Visual @ and Q need :norm.
+- Insert mode's CTRL-E and CTRL-Y (the character below or above).
+- after a t or f that fails, Neovim drops a following & (Neovim's map to
+  :&&) typed ahead, where : or g& still run (measured, nvim --headless
+  feedkeys, 1 run each; not understood yet); ours runs it.
+- ex commands beyond :w :w! :q :q! :wq :x, :Format, :KittenPaw, ranges, :<line> and :s: :g,
+  :norm, :d, :y, :e, :sp, :vs, :b; "|" between commands; the ":" motion
+  (d:5, which beeps). Visual @ and Q need :norm.
+- :s (sub.c, Neovim's do_sub()): :s/pat/rep/ with the flags & c g e n r
+  i I, a count, :& :&& :~, the keys & (Neovim's map to :&&) and g&; in the
+  replacement & \0-\9 ~ \u \l \U \L \e \E \r \n \t; matches over
+  line breaks.  tests/test_keys_ex.c checks it against nvim on random
+  command lines (cursor, error, text); measured 2026-11-19, seeds 1-9,
+  3,000 each: 0 differ.  The c flag's question (y n a q l CTRL-E CTRL-Y,
+  the line shown with its substitutions so far, the match in IncSearch) is
+  checked on random answers; a question still open at the end is not
+  compared, since Neovim's feedkeys() waits for its key.  Not built yet:
+  \= (an expression), 'inccommand' (the preview), the p # l flags'
+  printing, a backwards range (ours E493; Neovim asks to swap), the names
+  :sg :si :sI :sr :sc (s with flags and no blank).
+- ranges (checked by tests/test_keys_ex.c against nvim on random command
+  lines): a range before :w :q :wq :x gives E481, where Neovim writes part
+  of the buffer (E140 without !) or closes window N; a line number past
+  LONG_MAX / 4 saturates, where Neovim's wraps; a ":" typed after "'<,'>"
+  (blanks between) is left out, since Neovim takes it differently from one
+  after "1,2" (measured, 3 runs, not understood yet).  The marks a-z and ''
+  fail with E20 until the keys set them.
 - Insert CTRL-K digraphs, gi.
 - marks m ' `, the jump list (CTRL-O, CTRL-I in Normal mode) and the change
   list (g; g,): the core keeps and moves them (core.h Mark); keys set and
@@ -38,7 +81,7 @@ Not built (FEATURES.md section 2), part two of package 5:
 - folds, spell, snippet jumps, CTRL-S: with their packages.
 - U (undo line) is not in FEATURES.md, so not built; Visual gUU reaches it
   (gU on the selection, then U).
-- CTRL-W Tab (CTRL-W CTRL-I) needs search and windows; a C whose motion
+- CTRL-W Tab (CTRL-W CTRL-I) needs windows; a C whose motion
   fails sends the insert's C-w and Tab to Normal mode.
 
 Waits for package 4's core (src/core, PR 20), passing with it (measured):
@@ -100,6 +143,23 @@ after $ keeping curswant MAXCOL):
   C-v - y C-v r ,): Neovim replaces at the Tab's first cell, ours after it.
 
 Neovim's own oddities, not copied:
+- patterns over a letter with a separate combining accent (e + U+0301):
+  Neovim's two engines disagree with each other there, and each with its own
+  rules (\(e\|\)\. on it: the NFA engine finds no match, the backtracking
+  one matches e and leaves the accent).  Ours follows the NFA engine, which
+  Neovim uses unless a pattern needs the other: a class or collection
+  matches the letter by its base, a repeated character takes the e and
+  leaves the accent, a match never ends before an accent.  The random test
+  takes either engine's answer (and none where Neovim loops or gives E363);
+  the 4 cases neither gives have a literal e next to the accented letter,
+  one listed in the test's KNOWN.
+- where Neovim's two engines differ elsewhere, ours gives the backtracking
+  one's answer: \@> (:%s/\v @>foo// misses "  foo.bar" in the default
+  engine, /z\@>\n\w\{-1,} is E486 there), and a \_[] collection under :s
+  with g (:1s/\_[^z]//g on "ab", "cd", "zz" leaves an empty first line in
+  the default engine, whose program does not say it can match a line
+  break; ours and the other join the lines).  Measured by the review of
+  PR 90 against 'regexpengine' 1.
 - r, then R and CTRL-U or BS back over the replaced character ("  0", r 3 l R
   C-u): Neovim's replace stack still holds what r replaced and puts it back.
 - block I, then Left past the block's start and text ("abcd\nefgh", l C-v j
@@ -147,7 +207,8 @@ Choices:
 - Davy's maps (FEATURES.md 4), Normal mode only, as nnoremap: SPC ff
   files, SPC fg grep, SPC fr registers, SPC , buffers, SPC e explorer
   (tools_pick), SPC pv and - oil (tools_oil), SPC g g s l L d b B and
-  SPC h s r S u p (git_leader).  They run in main.c's key chain
+  SPC h s r S u p (git_leader), SPC uk the save kitten on or off
+  (kitten_toggle; :KittenPaw plays it).  They run in main.c's key chain
   (keys_map()), not in keys_feed, so conform.py and the fuzzers, whose
   Neovim has no maps, check the Vim keys alone; test_keys_map checks the
   maps.  Like Neovim's maps they also follow a count or a register, which

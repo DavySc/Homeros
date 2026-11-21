@@ -1,0 +1,38 @@
+DIFF 'c/b\\{2}a\\+[^o ]\\=/e+1\rQ\x1b' ours 1 0 E486 nvim 1 0 E354 
+DIFF '3j$/\\%(o\\|a\\)\\@<!\\n\\@>X\\{,2}/s-1\r*' ours 7 7 - nvim 4 9 - 
+DIFF 'G:%s/\\_[^z]\\w\\=/\\U&/g\r' ours 9 0 - nvim 8 0 - (text differs)
+DIFF 'j:.,$s/\\_[^z]\\{-1,}/[&]/ge\r' ours 9 0 - nvim 8 0 - (text differs)
+DIFF ':s/\\_s\\@<! \\{2}/~/n\rn' ours 3 0 - nvim 1 0 E486 
+DIFF 'c/.\\@!\\<\\@>.\\?/e+1\rQ\x1b' ours 1 0 E486 nvim 1 0 E354 
+DIFF 'G/\\v\\n@>/+1\r' ours 8 0 - nvim 6 0 - 
+DIFF 'G?\\>\\+.*\\_[^z]\\@>?e+1\r&' ours 7 0 E33 nvim 7 7 E33 
+DIFF '/\\d\\@<!\\_s\\@>/e+1\rnn' ours 2 0 - nvim 2 4 - 
+DIFF 'c?\\v(o)@>>?s-1\rQ\x1b.' ours 1 0 - nvim 1 0 E354 (text differs)
+DIFF 'G:%s/\\d\\{-}$*\\_.\\@<!/-/gi\rg&' ours 8 0 - nvim 1 0 - (text differs)
+DIFF 'c?\\v\\1{-}\\zs@=a?e\rQ\x1b.' ours 1 0 E65 nvim 1 0 E354 
+DIFF '3j$/\\v\\n@>\\_s@<!x{-}/e+1\r2n' ours 6 0 - nvim 4 11 E486 
+DIFF 'd/\\%^\\?\\%$\\=\\_[^z]\\@<!\r2n' ours 3 0 - nvim 4 8 - (text differs)
+DIFF 'G:s/\\_.\\@<=/\\r/gi\r2n' ours 1 2 - nvim 1 2 - (text differs)
+DIFF 'c/\\1*\\a/e+1\rQ\x1b' ours 1 0 E65 nvim 1 0 E354 
+DIFF ':2,5s/\\_[^z]\\=/~/g\r*' ours 2 0 - nvim 5 0 - (text differs)
+DIFF 'c/\\v\\_s@<=a@<=\\n?/e+1\rQ\x1b.' ours 1 0 E486 nvim 1 0 E354 
+DIFF 'c?\\vo@<=\\_s@<!\\zs{2}?e+1\rQ\x1b' ours 1 0 E888 nvim 1 0 E354 
+DIFF 'j:%s/\\(.\\)\\=x\\@<!\\1\\@>/\\r/g\r&' ours 69 0 - nvim 59 0 - (text differs)
+DIFF 'j:%s/\\_[^z]\\{-1,}/&/g\r2n' ours 1 1 - nvim 8 2 - (text differs)
+DIFF ':s/\\a\\{-1,}\\n\\@>\\</\\r/gi\r' ours 2 0 - nvim 1 0 E486 (text differs)
+DIFF 'c/\\%^\\(.\\)\\=\\u/e+1\rQ\x1b.' ours 1 0 E486 nvim 1 0 E354 
+DIFF 'j:.,$s/\\_s\\{2}\\_.\\@<!/X/g\r' ours 4 0 - nvim 2 0 E486 (text differs)
+DIFF '2/\\vfoo(a|b)?\\_s@>/s-1\rn' ours 6 5 - nvim 1 0 - 
+DIFF 'c/\\u\\@<!\\w\\@!\\&\\{-1,}/e\rQ\x1b' ours 1 0 E383 nvim 1 0 E354 
+DIFF 'y/\\v\\_s@<=[ab]@=/e+1\rnn' ours 4 6 - nvim 2 1 - 
+DIFF 'jjw/\\_.\\@<!\\(.\\)\\{-1,}\\_.\\@=/e+1\rnn' ours 7 1 - nvim 1 1 - 
+DIFF 'j:s/\\n\\@<=\\a\\{-1,}/\\U&/n\rN' ours 2 0 E486 nvim 8 0 - 
+DIFF 'y/\\_.\\@>\\n\\@>\rg&' ours 2 0 - nvim 5 0 - (text differs)
+DIFF '/\\(a\\|b\\)\\@<!\\_[^z]\\@<!\\<\\?/e\r#' ours 2 0 - nvim 4 5 - 
+DIFF ':3s/\\v>@<!\\n@<=(a|b)@!/-/g\rnn' ours 1 0 E486 nvim 6 0 - (text differs)
+DIFF ':3s/\\n\\@<=/\\r/\rnn' ours 1 0 E486 nvim 6 0 - (text differs)
+DIFF 'G:%s/\\_[^z]\\@<!/X/g\r#' ours 8 0 - nvim 7 0 - (text differs)
+DIFF 'c?\\v\\n@<=\rQ\x1b' ours 1 0 E486 nvim 1 0 - (text differs)
+DIFF ':.,$s/\\v\\_s@>[ab]>?/\\U&/g\r.' ours 4 0 - nvim 4 0 - (text differs)
+DIFF '3j$/\\_.\\@<=z\\{-}\rn' ours 6 2 - nvim 6 0 - 
+1500 cases: 37 differ, 0 crash or hang, 0 without a Neovim answer

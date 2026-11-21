@@ -18,6 +18,8 @@
 #include "grid.h"
 #include "keys.h"
 
+enum { SCROLLOFF = 6 };   /* FEATURES.md 1; keys' :s c flag scrolls by it too */
+
 enum { MODE_NORMAL, MODE_INSERT, MODE_CMDLINE };
 /* state flags kept with undo: the buffer has no lines (Neovim's ML_EMPTY: a
    new or empty file, or after deleting every line; shown as one empty line) */

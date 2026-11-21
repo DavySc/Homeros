@@ -1,0 +1,13 @@
+DIFF 'c?\\w \\@=X\\{-1,}?e\rQ\x1b' ours 1 0 E486 nvim 1 0 E354 
+DIFF 'j:.,$s/\\(.\\)\\@>[^o ]\\@<!/X/ge\rg&' ours 1 0 - nvim 8 0 - (text differs)
+DIFF 'G:2,5s/\\v\\_s@<=<@>/\\r/gi\r*' ours 11 0 - nvim 13 0 - (text differs)
+DIFF 'G:s/\\n\\@<=/-/g\r*' ours 8 0 - nvim 8 1 - (text differs)
+DIFF 'c?\\&\\{,2}.x\\{-}?+1\rQ\x1b' ours 1 0 E383 nvim 1 0 E354 
+DIFF 'G?\\v @>foo?e\rg&' ours 6 0 - nvim 6 0 - (text differs)
+DIFF '2/\\_.\\@<=\\(fo\\|foo\\)\\=a/e\ru' ours 3 7 - nvim 2 0 - 
+DIFF 'G:%s/z\\@>\\n\\w\\{-1,}/&/ge\rn' ours 7 8 - nvim 8 0 E486 
+DIFF 'G:2,5s/\\_[^z]\\?/\\1/g\rnn' ours 2 2 - nvim 5 2 - (text differs)
+DIFF 'j:2,5s/\\v\\n@<=>@<!%(fo|foo)?/\\u\\1/gi\r2n' ours 2 0 E486 nvim 7 0 - 
+DIFF 'y?\\v\\n@<=?e\rN' ours 1 0 E486 nvim 2 0 - 
+DIFF ':2,5s/\\1\\{,2}\\_.\\@<=/[&]/\r*' ours 4 0 - nvim 2 0 - (text differs)
+600 cases: 12 differ, 0 crash or hang, 0 without a Neovim answer
