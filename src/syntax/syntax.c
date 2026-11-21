@@ -780,8 +780,8 @@ static int set_regions(Syntax *s, LTree *K, Injs *I, int lang)
    The query does not ask stop: tree-sitter's halt drops the matches in
    progress, so a halted scan starts again and never ends while keys come
    (measured: sliced parses looped).  Its worst case, a Lua string cut on
-   each of 250 lines, costs about 50 ms a key; Neovim 0.12.6 takes 834 ms
-   (measured, 5 runs each; PR 91's review). */
+   each of 250 lines, costs about 40 ms a key; Neovim 0.12.6 takes 562 ms
+   (measured, 5 alternating runs; reviews/pr-97.md). */
 static int inject(Syntax *s, LTree *L, const Text *t)
 {
 	uint32_t a = s->ra, z = s->rz;

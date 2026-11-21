@@ -26,8 +26,7 @@ int main(void)
 	Syntax *s = syntax_open("a/b.org", t);
 	OrgFx *x = orgfx_new(u);
 	CHECK(s && x);
-	syntax_update(s, t, NULL);
-	orgfx_update(x, NULL);
+	CHECK(syntax_update(s, t, NULL) == orgfx_update(x, NULL));
 	syntax_faces(s, 0, 2, f);
 	CHECK(f[0] != FACE_NONE);  /* the headline's star */
 	for (int e = 0; e < EDITS; e++) {
@@ -40,8 +39,8 @@ int main(void)
 		CHECK(!text_delete(t, pos, del) && !text_insert(t, pos, ins, ni));
 		CHECK(!text_delete(u, pos, del) && !text_insert(u, pos, ins, ni));
 		if (rnd(4)) continue;
-		syntax_update(s, t, NULL);
-		orgfx_update(x, NULL);
+		/* main.c redraws on 1 */
+		CHECK(syntax_update(s, t, NULL) == orgfx_update(x, NULL));
 		n = text_len(t);
 		memset(g, 0, n);
 		syntax_faces(s, 0, n, f);
