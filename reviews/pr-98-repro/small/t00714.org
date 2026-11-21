@@ -1,0 +1,4 @@
+** WAIT 
+  \begin{a}
+         :LOGBOOK:
+   \end{a}

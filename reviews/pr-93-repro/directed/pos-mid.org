@@ -1,0 +1,5 @@
+* a
+text
+** NEXT b
+text here
+* c
