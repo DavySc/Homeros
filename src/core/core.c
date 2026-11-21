@@ -7,6 +7,7 @@
 #include <string.h>
 #include "core_int.h"
 #include "git.h"
+#include "keys.h"
 #include "kitten.h"
 #include "lsp.h"
 #include "snip.h"
@@ -1178,6 +1179,7 @@ int core_write(Editor *e, Buf *b, int force)
 {
 	char kept[4096];
 	if (!b->path) { core_msg(e, "E32: No file name"); return -1; }
+	keys_write_pre(e, b);
 	/* an empty buffer (ML_EMPTY) writes no bytes, not one empty line */
 	size_t n = b->flags & CORE_EMPTY ? 0 : text_len(b->text) - (b->noeol ? 1 : 0);
 	switch (file_save(b->path, b->text, n, b->dos, &b->id, force, kept, sizeof kept)) {
@@ -1187,6 +1189,7 @@ int core_write(Editor *e, Buf *b, int force)
 		if (b->journal) journal_saved(b->journal);
 		core_msg(e, "\"%s\"%s %zuL, %zuB written", b->path, ff(b, 0), n ? buf_lines(b) : 0, (size_t)b->id.size);
 		kitten_written(e, b);   /* BufWritePost, after the message as in Neovim */
+		lsp_saved(b->lsp);
 		return 0;
 	case SAVE_CHANGED:
 		core_msg(e, "E13: \"%s\" changed on disk since it was read (add ! to override)", b->path);
@@ -1197,6 +1200,7 @@ int core_write(Editor *e, Buf *b, int force)
 		if (b->journal) journal_saved(b->journal);
 		core_msg(e, "written, but another program replaced the file first; its version is in %s", kept);
 		kitten_written(e, b);   /* BufWritePost */
+		lsp_saved(b->lsp);
 		return 0;
 	default:
 		core_msg(e, "E212: Can't open file for writing: %s", b->path);
@@ -1268,6 +1272,15 @@ void core_clamp(Editor *e)
 		for (size_t k; p + (k = uni_glen(s, len, p)) <= w->col; p += k) {}
 		w->col = p;
 	}
+}
+
+void core_goto(Editor *e, size_t line, size_t col)
+{
+	e->win->line = line;
+	e->win->col = col;
+	core_clamp(e);
+	core_set_want(e);
+	core_update(e);
 }
 
 void core_set_want(Editor *e)

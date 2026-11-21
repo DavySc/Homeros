@@ -45,3 +45,15 @@ int str_addf(Str *s, const char *fmt, ...)
 	s->n += (size_t)n;
 	return 0;
 }
+
+int str_lines(Str *part, const char *b, size_t n, void (*fn)(void *ctx, char *line, size_t n), void *ctx)
+{
+	for (const char *e = b + n, *nl; b < e; b = nl + 1) {
+		if (!(nl = memchr(b, '\n', (size_t)(e - b)))) return str_add(part, b, (size_t)(e - b));
+		if (str_add(part, b, (size_t)(nl - b))) return -1;
+		size_t k = part->n;
+		part->n = 0;
+		fn(ctx, part->s, k);
+	}
+	return 0;
+}

@@ -361,11 +361,7 @@ static size_t byte(const char *s, size_t n, size_t pos, size_t *line)
 static void moved(size_t at)
 {
 	size_t l = text_line_of(ed->buf->text, at);
-	ed->win->line = l;
-	ed->win->col = at - core_line_start(ed, l);
-	core_clamp(ed);
-	core_set_want(ed);
-	core_update(ed);
+	core_goto(ed, l, at - core_line_start(ed, l));
 }
 
 /* An edit from the page is a group of its own (DESIGN.md: a server edit),
@@ -541,8 +537,9 @@ out:
 
 /* --- the child ------------------------------------------------------------ */
 
-static void from_child(char *l, size_t n)
+static void from_child(void *ctx, char *l, size_t n)
 {
+	(void)ctx;
 	if (!redirect) {
 		redirect = j_copy(l, n);
 		if (open_wanted) proc_write(proc, "!\n", 2);
@@ -569,12 +566,7 @@ static void out(void *ctx, int stream, const char *b, size_t n)
 		in.n = 0;
 		return;
 	}
-	if (stream != 1) return;
-	for (size_t i = 0; i < n; i++) {
-		if (b[i] != '\n') { str_add(&in, b + i, 1); continue; }
-		if (in.s) from_child(in.s, in.n);
-		in.n = 0;
-	}
+	if (stream == 1) str_lines(&in, b, n, from_child, NULL);
 }
 
 /* The child's ROOT: $HOMEROS_INFOVIEW, else $XDG_DATA_HOME/homeros/infoview

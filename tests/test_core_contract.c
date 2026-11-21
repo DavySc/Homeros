@@ -19,9 +19,7 @@ static char path[] = "/tmp/core_contractXXXXXX";
 
 static void at(Editor *e, size_t l)
 {
-	e->win->line = l;
-	e->win->col = 0;
-	core_set_want(e);
+	core_goto(e, l, 0);
 	core_scroll_cursor(e, 'z');
 	core_update(e);
 }
@@ -37,6 +35,9 @@ int main(void)
 	CHECK(!fclose(f));
 	CHECK(!core_open(&e, path) && !grid_resize(&g, 24, 80));
 	core_update(&e);
+	/* core_goto past the end: the last line's last character, wanted there */
+	core_goto(&e, 1000, 1000);
+	CHECK(e.win->line == 99 && e.win->col == 2 && e.win->want == 2);
 
 	/* scrolling and gj/gk: 0 moved, -1 a beep */
 	struct { size_t from; int r[6]; } want[] = {   /* CTRL-D, CTRL-U, CTRL-F, CTRL-B, gj, gk */
