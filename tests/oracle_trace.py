@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
-"""The engine's stepping against RAD's recorded traces: oracle_trace.py <trace.exe> <traces dir> <programs dir> [wine]
+"""The engine's stepping against RAD's recorded traces, and Visual Studio's: oracle_trace.py <trace.exe> <traces dir> <programs dir> [wine]
 
 Each trace is replayed by tests/trace.c on the same program and compared line by line. Of a stop's reason only the
 kind is compared: the thread's name and an exception's details are the frontend's words. tests/trace_known.txt
-lists the reviewed differences: such a trace is compared up to the line named there.
+lists the reviewed differences: such a trace is compared up to the line named there. Where RAD and Visual Studio part,
+Visual Studio is followed (knowledge base 03, "A second reference"): each of its recordings beside the traces
+(<traces dir>-vs, steps into and over, by address) must be ours to the end of the shorter, or part from it at the
+step the list names.
 """
 import re, subprocess, sys
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))   # -I leaves it out
+import compare_cdb
 
 driver, traces, programs, wine = sys.argv[1], Path(sys.argv[2]), sys.argv[3], sys.argv[4:]
 if not wine: driver = str((Path(programs) / driver).resolve())   # Windows looks for a program from where the caller stands
@@ -14,6 +19,7 @@ def kind(line): return re.sub(r'\[main_thread\s+(completed step|stopped at entry
 known = {}   # trace: (the line up to which it is compared here, the line where it must differ or 0)
 for l in (Path(__file__).parent / 'trace_known.txt').read_text().splitlines():
     if l.strip() and l[0] != '#' and l.split()[1] in ('all', 'wine' if wine else 'windows'): known[l.split()[0]] = (int(l.split()[2]), int(l.split()[3]))
+    if l.strip() and l.split()[1] == 'vs': known['vs ' + l.split()[0]] = int(l.split()[2])
 steps = bad = 0
 files = [t for t in sorted(traces.glob('*.txt')) if not t.name.endswith('.eval.txt')]   # those are RAD's values, not steps (tests/zoo_check.c)
 for t in files:
@@ -22,7 +28,13 @@ for t in files:
     # RAD stops on the "never step into" rows of MSVC's "just my code" and goes into their call; cdb and we do neither
     # (knowledge base 03, "A second reference"). Where every step is of one kind, the trace less those stops is ours.
     if script in ('into', 'over'): want = [l for l in want if ':15732480 ' not in l and '__CheckForDebuggerJustMyCode' not in l]
-    got = subprocess.run(wine + [driver, name + '.exe', script, '600'], cwd=programs, capture_output=True, text=True, timeout=120).stdout.splitlines()
+    text = subprocess.run(wine + [driver, name + '.exe', script, '600'], cwd=programs, capture_output=True, text=True, timeout=120).stdout
+    got = text.splitlines()
+    other = traces.parent / (traces.name + '-vs') / t.name
+    if other.exists():
+        a, b = compare_cdb.rad(text), compare_cdb.vs(other)
+        part = next((i for i in range(min(len(a), len(b))) if b[i][0] is not None and (not a[i][1].startswith('outside') if b[i][0] == 'outside' else a[i][0] != b[i][0])), None)
+        if part != known.get('vs ' + t.name): bad += 1; print(f'{t.name}: parts from Visual Studio at step {part}, not {known.get("vs " + t.name)}')
     if t.name in known:   # past that line the two are in different places
         at, differs = known[t.name]
         if differs and got[differs - 1:differs] == want[differs - 1:differs]: bad += 1; print(f'{t.name}: the known difference at line {differs} is gone')

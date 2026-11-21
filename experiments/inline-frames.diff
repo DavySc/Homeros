@@ -1,0 +1,140 @@
+A line step by the lines of the frame the thread is in, an inlined call before the function (as cdb and lldb step).
+Not applied: Visual Studio, like RAD, steps the function's lines only, and Visual Studio is the reference
+(knowledge base 03, "A second reference"). Measured 2026-11-21 against cdb's 52 recordings: 43 agree to the end
+(35 without it); against RAD's 131 traces 41 then part. Applies to dbg/engine.[ch] at c3c520e.
+
+diff --git a/dbg/engine.c b/dbg/engine.c
+index 4d618f2..8639632 100644
+--- a/dbg/engine.c
++++ b/dbg/engine.c
+@@ -166,20 +166,50 @@ static uint64_t line_end(const Rdi *rdi, RdiRow row)
+   return after.line.line == 0xf00f00 ? after.opl : row.opl;
+ }
+ 
++/* The frame a scope is in: the nearest scope at or around it that is an inlined call, or else its function's first. */
++static uint32_t frame_of(const Rdi *rdi, uint32_t s)
++{
++  for (const RdiScope *x; x = rdi_at(rdi, RDI_SCOPES, RdiScope, s), !x->inline_site && x->parent;) s = x->parent;
++  return s;
++}
++
++static uint32_t frame_at(const Rdi *rdi, uint64_t off) { return frame_of(rdi, rdi_vmap(rdi, RDI_SCOPE_VMAP, off)); }
++static uint32_t frame_around(const Rdi *rdi, uint32_t f) { return frame_of(rdi, rdi_at(rdi, RDI_SCOPES, RdiScope, f)->parent); }
++
++/* The frame directly inside `in` on the way to the frame s; 0 when `in` is not around s. */
++static uint32_t frame_below(const Rdi *rdi, uint32_t in, uint32_t s)
++{
++  for (uint32_t up; s && (up = frame_around(rdi, s)) != in;) s = up;
++  return s;
++}
++
+ /* Step over or into a line (d_trap_net_from_thread__step_over_line, __step_into_line): a trap wherever the thread
+    can leave the line's code. With no line at rip the net stays empty, and the step is one instruction. */
+-static void line_net(Engine *e, uint64_t rip, bool into)
++static bool line_net(Engine *e, uint32_t thread, uint64_t rip, bool into)
+ {
+   const EngineModule *m = engine_module(e, rip);
+   uint64_t base = m ? m->image.base : 0;
+-  RdiRow row = m ? rdi_row(&m->rdi, rip - base) : (RdiRow){0};
+-  if (!row.opl || row.opl - row.first > CODE_MAX) return;
+-  /* every piece of code of the same source line: to jump into one of them is not to leave the line */
+-  RdiSpan starts = rdi_voffs_from_line(&m->rdi, row.line.file, row.line.line);
++  /* The lines stepped are those of the frame the thread is in, which is an inlined call before it is the function.
++     A step over passes the inlined calls in its line and stays in its frame where the next line begins inside one; a
++     step into ends where it comes into an inlined call's code, one call in, and goes in further without running
++     anything (as cdb was measured to; RAD steps the function's lines only, where an inlined call is part of one
++     line: knowledge base 03, "A second reference"). */
++  uint32_t inner = m ? frame_at(&m->rdi, rip - base) : 0;
++  uint32_t in = e->at_call.thread == thread && e->at_call.rip == rip && e->at_call.base == base ? e->at_call.frame : inner;
++  e->at_call = (EngineCall){.base = base, .frame = in};   /* run() names the thread and the place when the step ends at a call */
++  if (!m) return false;
++  if (into && in != inner) return e->at_call.frame = frame_below(&m->rdi, in, inner), true;
++  uint32_t site = rdi_at(&m->rdi, RDI_SCOPES, RdiScope, in)->inline_site;
++  RdiRow row = site ? rdi_row_in(&m->rdi, rdi_at(&m->rdi, RDI_INLINE_SITES, RdiInlineSite, site)->line_table, rip - base) : rdi_row(&m->rdi, rip - base);
++  if (!row.opl || row.opl - row.first > CODE_MAX) return false;
++  /* every piece of code of the same source line: to jump into one of them is not to leave the line. An inlined
++     call's line is taken as the one piece the thread is in. */
++  RdiSpan starts = site ? (RdiSpan){&row.first, 1} : rdi_voffs_from_line(&m->rdi, row.line.file, row.line.line);
+   uint32_t count = (uint32_t)starts.n;
+   ROOM(e, ranges, range_cap, 2 * count);
+-  for (uint32_t i = 0; i < count; i += 1) e->ranges[2 * i] = ((const uint64_t *)starts.p)[i], e->ranges[2 * i + 1] = line_end(&m->rdi, rdi_row(&m->rdi, e->ranges[2 * i]));
+-  uint64_t lo = row.first, hi = line_end(&m->rdi, row);
++  for (uint32_t i = 0; i < count; i += 1) e->ranges[2 * i] = ((const uint64_t *)starts.p)[i], e->ranges[2 * i + 1] = site ? row.opl : line_end(&m->rdi, rdi_row(&m->rdi, e->ranges[2 * i]));
++  uint64_t lo = row.first, hi = site ? row.opl : line_end(&m->rdi, row);
++  uint32_t was = in;
+   uint32_t n = code_at(e, base + lo, (uint32_t)(hi - lo));
+   uint64_t last_call = 0;
+   for (int pass = into ? 0 : 1; pass < 2; pass += 1)   /* into: first find the line's last call */
+@@ -189,6 +219,9 @@ static void line_net(Engine *e, uint64_t rip, bool into)
+       if (!x.size) break;
+       at += x.size;
+       uint64_t to = x.known ? x.target : 0;
++      uint32_t now = frame_at(&m->rdi, addr - base);
++      if (pass && into && now != in && was == in && addr != rip) net_add(e, addr, END);   /* code of an inlined call in the line begins here */
++      was = now;
+       if (pass == 0) last_call = x.flow == X64_CALL ? addr : last_call;
+       else if (x.flow == X64_CALL && (!into || addr >= base + row.opl)) net_add(e, addr, STEP_AFTER);   /* into the call, and on: the trap behind the call waits at this depth */
+       else if (x.flow != X64_OTHER) {
+@@ -204,6 +237,7 @@ static void line_net(Engine *e, uint64_t rip, bool into)
+     }
+   /* running off the end of a piece of the line (the converter made one piece of pieces that touch) */
+   for (uint32_t i = 0; i < count; i += 1) net_add(e, base + e->ranges[2 * i + 1], END);
++  return false;
+ }
+ 
+ /* Step out (d_trap_net_from_thread__step_out_scope): out of the innermost scope the thread is in, which is a block
+@@ -240,11 +274,13 @@ static TargetEvent run(Engine *e, int how, uint32_t thread, const uint64_t *brea
+   TargetRegs regs = {0};
+   TargetEvent ev = {0};
+   uint64_t start = 0;   /* where the stepping thread stands, when the net has a trap there */
++  bool line = how == ENGINE_STEP_INTO_LINE || how == ENGINE_STEP_OVER_LINE;
+   e->net_count = 0;
++  if (!line) e->at_call.thread = 0;
+   if (how != ENGINE_RUN) {
+     if (!target_regs(e->target, thread, &regs)) return ev;   /* no such thread: nothing runs */
+     if (how == ENGINE_STEP_OVER_INST) inst_net(e, regs.rip);
+-    else if (how == ENGINE_STEP_INTO_LINE || how == ENGINE_STEP_OVER_LINE) line_net(e, regs.rip, how == ENGINE_STEP_INTO_LINE);
++    else if (line && line_net(e, thread, regs.rip, how == ENGINE_STEP_INTO_LINE)) return e->at_call.thread = thread, e->at_call.rip = regs.rip, (TargetEvent){.kind = TARGET_STEP, .thread = thread, .addr = regs.rip};
+     else if (how == ENGINE_STEP_OUT) out_net(e, regs);
+     if (!e->net_count) return step_one(e, thread);
+     for (uint32_t i = 0; i < e->net_count; i += 1) if (e->net[i].addr == regs.rip) start = regs.rip;
+@@ -280,7 +316,15 @@ static TargetEvent run(Engine *e, int how, uint32_t thread, const uint64_t *brea
+     if ((!reached || flags & STEP_AFTER) && (ev = step_one(e, ev.thread)).kind != TARGET_STEP) return ev;
+     if (!reached) continue;
+     if (flags & SAVE_AFTER && target_regs(e->target, thread, &regs)) depth = regs.gp[4];
+-    if (flags & END) return (TargetEvent){.kind = TARGET_STEP, .thread = thread, .addr = ev.addr};
++    if (!(flags & END)) continue;
++    /* In an inlined call the thread was not in: a step over leaves it in the frame around that call; a step into has
++       gone one call in, which may hold further ones at the same place. */
++    const EngineModule *m = engine_module(e, ev.addr);
++    if (!line || !m || m->image.base != e->at_call.base) return ev.kind = TARGET_STEP, ev;
++    uint32_t inner = frame_at(&m->rdi, ev.addr - m->image.base), f = e->at_call.frame, call = 0;
++    while (f && f != inner && !(call = frame_below(&m->rdi, f, inner))) f = frame_around(&m->rdi, f);
++    if (call) e->at_call = (EngineCall){ev.addr, m->image.base, thread, how == ENGINE_STEP_OVER_LINE ? f : call};
++    return ev.kind = TARGET_STEP, ev;
+   }
+ }
+ 
+diff --git a/dbg/engine.h b/dbg/engine.h
+index 289c1e2..cd2af9c 100644
+--- a/dbg/engine.h
++++ b/dbg/engine.h
+@@ -15,6 +15,7 @@ typedef struct { UnwindModule image; char *path; Rdi rdi; void *rdi_bytes; } Eng
+ typedef struct { uint64_t addr; uint32_t flags; } EngineTrap;
+ /* told: where the thread stood when a stop of its own was last reported, until it runs (specs/Hit.tla). */
+ typedef struct { uint32_t id; uint64_t told; } EngineThread;
++typedef struct { uint64_t rip, base; uint32_t thread, frame; } EngineCall;
+ typedef struct {
+   Target *target;
+   EngineModule *modules;   /* the first is the program */
+@@ -26,6 +27,10 @@ typedef struct {
+   /* asked while the target runs, between the waits for it: true to stop it now (the engine thread looks at its command queue). Null: never. */
+   bool (*halt)(void *arg);
+   void *halt_arg;
++  /* The frame a line step left its thread in, when that is not the innermost at rip: the step ended on the first
++     instruction of an inlined call, and the thread stands at the call, not yet in it. `base` names the frame's module.
++     thread 0: none. */
++  EngineCall at_call;
+   uint32_t module_count, module_cap, thread_count, thread_cap, net_count, net_cap, trap_cap, range_cap, code_cap;
+ } Engine;
+ 

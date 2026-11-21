@@ -24,3 +24,40 @@ crash_o2.mix.txt all 339 339
 # kinds alternate, so from the first such row on the steps fall on different places.
 calls_jmc.back.txt all 2 2
 calls_jmc.mix2.txt all 2 2
+# Code without lines: a line step neither goes into it nor ends in it (as Visual Studio; dbg/engine.c, line_net and
+# LINES), where RAD goes into a line's last call wherever it leads, and so into the system's code, where its trace
+# ends ("outside kernel32.dll!"; most of these part at that last line) (knowledge base 03, "A second reference").
+blocks.into.txt all 32 32
+blocks_o2.into.txt all 8 8
+blocks_o2.mix.txt all 17 17
+calls.back.txt all 11 11
+calls.into.txt all 13 13
+calls.mix2.txt all 11 11
+calls_jmc.into.txt all 13 13
+calls_o2.back.txt all 4 4
+calls_o2.into.txt all 4 4
+calls_o2.mix2.txt all 5 5
+frames_o2.mix2.txt all 15 15
+gap.into.txt all 26 26
+gap.mix.txt all 17 17
+gap_o2.into.txt all 7 7
+kinds.back.txt all 3 3
+kinds.into.txt all 3 3
+kinds_o2.into.txt all 12 12
+long.into.txt all 6 6
+long_o2.into.txt all 6 6
+recur.into.txt all 462 462
+recur_o2.into.txt all 155 155
+steps.into.txt all 236 236
+steps.mix2.txt all 96 96
+steps_o2.into.txt all 55 55
+threads.back.txt all 3 3
+threads.into.txt all 3 3
+threads.mix2.txt all 15 15
+threads_o2.back.txt all 3 3
+threads_o2.into.txt all 3 3
+threads_o2.mix2.txt all 5 5
+# Where we part from Visual Studio's recordings (<traces>-vs), by step, counted from 0.
+# Code without lines that jumps into a function with lines, in a program built with "just my code": Visual Studio
+# stops in that function behind its call of the helper, we pass the call (**hypothesis**: it is the helper that tells it)
+calls_jmc.into.txt vs 24

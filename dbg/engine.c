@@ -11,6 +11,7 @@
 enum { IGNORE_SP = 1,     /* any depth */
        STEP_AFTER = 2,    /* run the instruction there, alone */
        SAVE_AFTER = 4,    /* the depth to keep is the one after that instruction */
+       LINES = 8,         /* with END: only where that instruction leads to code with lines */
        END = 16 };        /* the step is done */
 
 static void *room(void *p, uint32_t *cap, uint32_t n, size_t size)
@@ -157,6 +158,12 @@ static void inst_net(Engine *e, uint64_t rip)
   if (x.flow == X64_CALL || x.repeats) net_add(e, rip + x.size, END);
 }
 
+static bool has_line(const Engine *e, uint64_t addr)
+{
+  const EngineModule *m = engine_module(e, addr);
+  return m && rdi_row(&m->rdi, addr - m->image.base).line.line;   /* the row behind a block of lines has none */
+}
+
 /* Where a piece of a line ends: behind what MSVC's "just my code" puts after it under the made-up
    line number 0xf00f00, "never step into": a call of a function that has lines. As cdb, a step neither ends on it nor
    goes into its call; RAD does both (knowledge base 03, "A second reference"). */
@@ -181,27 +188,23 @@ static void line_net(Engine *e, uint64_t rip, bool into)
   for (uint32_t i = 0; i < count; i += 1) e->ranges[2 * i] = ((const uint64_t *)starts.p)[i], e->ranges[2 * i + 1] = line_end(&m->rdi, rdi_row(&m->rdi, e->ranges[2 * i]));
   uint64_t lo = row.first, hi = line_end(&m->rdi, row);
   uint32_t n = code_at(e, base + lo, (uint32_t)(hi - lo));
-  uint64_t last_call = 0;
-  for (int pass = into ? 0 : 1; pass < 2; pass += 1)   /* into: first find the line's last call */
-    for (uint32_t at = 0; at < n;) {
-      uint64_t addr = base + lo + at;
-      X64Inst x = x64_decode(e->code + at, n - at, addr);
-      if (!x.size) break;
-      at += x.size;
-      uint64_t to = x.known ? x.target : 0;
-      if (pass == 0) last_call = x.flow == X64_CALL ? addr : last_call;
-      else if (x.flow == X64_CALL && (!into || addr >= base + row.opl)) net_add(e, addr, STEP_AFTER);   /* into the call, and on: the trap behind the call waits at this depth */
-      else if (x.flow != X64_OTHER) {
-        /* A jump, branch or return, and stepping into, a call: the step ends where it goes, when that is known, else
-           after the instruction has run. Not when it lands in the line; and a call that is not the line's last is
-           gone into only where its function has lines. The row itself is asked as well as the line's pieces: the
-           source line map has no piece for the code between two blocks of lines (a constructor the compiler made). */
-        const EngineModule *tm = engine_module(e, to);
-        bool stays = (to - base >= lo && to - base < hi) || in_ranges(e, count, to - base)
-                  || (x.flow == X64_CALL && addr != last_call && to && !(tm && rdi_row(&tm->rdi, to - tm->image.base).opl));
-        if (!stays) net_add(e, to ? to : addr, END | (into ? IGNORE_SP : 0) | (to ? 0 : STEP_AFTER));
-      } else if (x.moves_sp) net_add(e, addr, STEP_AFTER | SAVE_AFTER);
-    }
+  for (uint32_t at = 0; at < n;) {
+    uint64_t addr = base + lo + at;
+    X64Inst x = x64_decode(e->code + at, n - at, addr);
+    if (!x.size) break;
+    at += x.size;
+    uint64_t to = x.known ? x.target : 0;
+    if (x.flow == X64_CALL && (!into || addr >= base + row.opl)) net_add(e, addr, STEP_AFTER);   /* into the call, and on: the trap behind the call waits at this depth */
+    else if (x.flow != X64_OTHER) {
+      /* A jump, branch or return, and stepping into, a call: the step ends where it goes, when that is known, else
+         after the instruction has run. Not when it lands in the line; and a call is gone into only where its
+         function has lines (as Visual Studio; RAD goes into the line's last call wherever it leads: knowledge base
+         03, "A second reference"). The row itself is asked as well as the line's pieces: the source line map has
+         no piece for the code between two blocks of lines (a constructor the compiler made). */
+      bool stays = (to - base >= lo && to - base < hi) || in_ranges(e, count, to - base) || (x.flow == X64_CALL && to && !has_line(e, to));
+      if (!stays) net_add(e, to ? to : addr, END | (into ? IGNORE_SP : 0) | (to ? 0 : STEP_AFTER) | (x.flow == X64_CALL ? LINES : 0));
+    } else if (x.moves_sp) net_add(e, addr, STEP_AFTER | SAVE_AFTER);
+  }
   /* running off the end of a piece of the line (the converter made one piece of pieces that touch) */
   for (uint32_t i = 0; i < count; i += 1) net_add(e, base + e->ranges[2 * i + 1], END);
 }
@@ -280,7 +283,8 @@ static TargetEvent run(Engine *e, int how, uint32_t thread, const uint64_t *brea
     if ((!reached || flags & STEP_AFTER) && (ev = step_one(e, ev.thread)).kind != TARGET_STEP) return ev;
     if (!reached) continue;
     if (flags & SAVE_AFTER && target_regs(e->target, thread, &regs)) depth = regs.gp[4];
-    if (flags & END) return (TargetEvent){.kind = TARGET_STEP, .thread = thread, .addr = ev.addr};
+    /* where a call leads that names no place is known when it has run: into code without lines, the thread runs on, the net as it is */
+    if (flags & END && !(flags & LINES && !has_line(e, ev.addr))) return (TargetEvent){.kind = TARGET_STEP, .thread = thread, .addr = ev.addr};
   }
 }
 
