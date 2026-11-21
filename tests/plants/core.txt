@@ -154,3 +154,4 @@ core: an empty match at the end drawn where 'leftcol' passes the line's bytes (t
 core: the end-of-line cell past the window's edge dropped, not on its last cell (test_core_search)~test TESTS=core_search~~src/core/draw.c~	int full = w->wrap ? d && d % (size_t)tw == 0 : d >= (size_t)tw;~	int full = w->wrap ? d && d % (size_t)tw == 0 : 0;
 core: the yank flash drawn over 'hlsearch' matches (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~	int flash = area && e->ks.yank.type;~	int flash = 0 && area && e->ks.yank.type;
 core: an empty line's end-of-line cell drawn CurSearch (test_core_search)~test TESTS=core_search~~src/core/draw.c~z->bg = mh == 2 && ms < i ? FACE_CUR_SEARCH : FACE_SEARCH;~z->bg = mh == 2 ? FACE_CUR_SEARCH : FACE_SEARCH;
+core: a file opened after start-up is not watched (test_core_contract)~test TESTS=core_contract~~src/core/core.c~			loop_watch(b->watch, on_watch, e);~			(void)on_watch;
