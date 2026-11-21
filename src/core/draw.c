@@ -162,10 +162,21 @@ static Cell *eol_cell(Grid *g, const Win *w, int r, size_t d, int tw, int nw)
 }
 
 /* Search, or CurSearch for the match [ms, mz) of line l that holds w's
-   cursor (never an empty one: measured, tests/test_core_search.py) */
+   cursor (never an empty one: measured, tests/test_core_search.py).  Known
+   difference: Neovim draws a match over several lines CurSearch on all of
+   them when the cursor is anywhere in it, this only on the cursor's line
+   (reviews/pr-106.md, finding 3); it waits for keys_hl to say so. */
 static unsigned char search(const Win *w, size_t l, size_t ms, size_t mz)
 {
 	return w->line == l && w->col >= ms && w->col < mz ? FACE_CUR_SEARCH : FACE_SEARCH;
+}
+
+/* keys_hl's match of line l that holds byte i or comes after it (an empty
+   one at i), from the match [*ms, *mz) found before; 0 when none */
+static int hl_at(Editor *e, const Win *w, size_t l, size_t i, int mh, size_t *ms, size_t *mz)
+{
+	while (mh && (*mz > *ms ? i >= *mz : i > *ms)) mh = keys_hl(e, w, l, *mz > *ms ? *mz : i, ms, mz);
+	return mh;
 }
 
 /* win_line()'s Visual area of line l in w ('selection' inclusive), or
@@ -202,7 +213,7 @@ static unsigned char visual(Editor *e, Win *w, size_t l, size_t *from, size_t *t
 		win_vcols(w, cl, cc, &a, &b);
 		win_vcols(w, vl, vc, &c, &d);
 		*from = a < c ? a : c;
-		*to = !y && cw->want == WANT_EOL ? (size_t)-1 : (b > d ? b : d) + 1;
+		*to = cw->want == WANT_EOL ? (size_t)-1 : (b > d ? b : d) + 1;
 	} else {
 		*from = 0;
 		*to = (size_t)-1;
@@ -267,9 +278,11 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	int drawn = 1, hl = 0, hn = rm && syn ? 0 : HN_NO;
 	size_t hb = 0, hm = 0, from, to, xf, xt;
 	unsigned char area = visual(e, w, l, &from, &to, &xf, &xt);
-	/* 'hlsearch' (win_line()'s search_attr, under the Visual area):
+	/* 'hlsearch' (win_line()'s search_attr, under the Visual area and
+	   :s's c-flag match but over the yank flash, an extmark: measured):
 	   the keys' matches [ms, mz) from col 0 on, an empty one over the
 	   character at ms; CurSearch for the one under w's cursor */
+	int flash = area && e->ks.yank.type;
 	size_t ms = 0, mz = 0;
 	int mh = keys_hl(e, w, l, 0, &ms, &mz);
 	/* conceal (win_line(): conceallevel=2, concealcursor=""): spans drawn
@@ -321,8 +334,9 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 		/* a double-width character: after the '>' of a wrapping row's
 		   last cell (core_cellw's 3), the two cells of the character */
 		int lead = cw == 3 && *s != '\t', wide = *s >= 0x80 && cw - lead == 2;
-		while (mh && (mz > ms ? i >= mz : i > ms)) mh = keys_hl(e, w, l, mz > ms ? mz : i, &ms, &mz);
-		unsigned char sb = !mh || i < ms ? cl : search(w, l, ms, mz);
+		mh = hl_at(e, w, l, i, mh, &ms, &mz);
+		int im = mh && i >= ms;
+		unsigned char sb = im ? search(w, l, ms, mz) : cl;
 		while (ci < nc && i >= cs[ci].z) ci++;
 		const Conceal *cc = ci < nc && i >= cs[ci].a ? &cs[ci] : NULL;
 		for (int j = 0; j < cw; j++, v++) {
@@ -336,7 +350,7 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 			unsigned char face = syn ? fc[i - f0] : 0;
 			/* a double-width character whose second cell starts the area
 			   is in it (win_line()) */
-			unsigned char vis = (v >= from || (wide && v + 1 == from)) && v < to && (v < xf || v > xt) ? area : 0;
+			unsigned char vis = (v >= from || (wide && v + 1 == from)) && v < to && (v < xf || v > xt) && !(flash && im) ? area : 0;
 			/* the '<' where the view starts in a character's second half
 			   is drawn even when the character is concealed, unless it
 			   starts a span that has a character: then neither is
@@ -386,14 +400,17 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	}
 	/* a match that takes the line break: the cell after the last
 	   character */
-	while (mh && (mz > ms ? i >= mz : i > ms)) mh = keys_hl(e, w, l, mz > ms ? mz : i, &ms, &mz);
+	mh = hl_at(e, w, l, i, mh, &ms, &mz);
 	/* (one that takes the line break at the view's start when the line
-	   ends before it, as the Visual area; an empty one only where the end
-	   is in view, and without wrap not where 'leftcol' passes the line's
-	   length in bytes, though its end is in view after a Tab: measured) */
-	if (mh && ms <= i && drawn == 1 && (mz > ms || (v >= skip && (w->wrap || w->left <= i)))) {
+	   ends before it, as the Visual area; an empty one with wrap only
+	   where the end is in view, without wrap where 'leftcol' does not
+	   pass the line's length in bytes, also when its end, in columns, is
+	   before the view (a wide character) or in it (a Tab): measured) */
+	if (mh && ms <= i && drawn == 1 && (mz > ms || (w->wrap ? v >= skip : w->left <= i))) {
 		Cell *z = eol_cell(g, w, r, vs - skip, tw, nw);
-		if (z && z->bg != FACE_VISUAL) z->bg = search(w, l, ms, mz);
+		/* never CurSearch on an empty line (get_search_match_hl():
+		   measured) */
+		if (z && z->bg != FACE_VISUAL) z->bg = i ? search(w, l, ms, mz) : FACE_SEARCH;
 	}
 	if (hl && (hn == hl || hn == HN_YES)) draw_heading(g, w, l, r, skip, cover, hb, hm, hl);
 	return drawn != 0;
