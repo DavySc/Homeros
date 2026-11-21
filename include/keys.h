@@ -56,7 +56,8 @@ void keys_feed(struct Editor *e, int key, int pending);
    goes to the map, if one is incomplete, or straight to keys_feed */
 void keys_input(struct Editor *e, int key, int pending);
 /* BufWritePre, Davy's after/ftplugin/sql.lua: a .sql buffer is formatted
-   when a sqldiff.toml is in its directory or one above.  core_write calls
+   when a sqldiff.toml is in its directory or one above, a SystemVerilog
+   or Verilog buffer (Verible) when a .slang is.  core_write calls
    it first, so every write of the current buffer formats, whoever writes
    (:w can write no other; a later :wa needs the buffer made current). */
 struct Buf;
