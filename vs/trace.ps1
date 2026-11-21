@@ -13,17 +13,9 @@ function Place($dte) {
   "$(Again { $f.FunctionName }) $([IO.Path]::GetFileName((Again { $f.FileName }))):$(Again { $f.LineNumber }) $rip"
 }
 foreach ($script in 'into', 'over') {
-  # Visual Studio's automation object is not made by its class: start the program and take the object it registers
   $where = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-  $devenv = & $where -latest -property productPath
-  $id = "VisualStudio.DTE.$((& $where -latest -property installationVersion).Split('.')[0]).0"   # the name carries the version
-  $vs = Start-Process $devenv -PassThru
-  $dte = $null
-  for ($i = 0; $i -lt 90 -and -not $dte; $i++) { Start-Sleep -Seconds 1; try { $dte = [Runtime.InteropServices.Marshal]::GetActiveObject($id) } catch {} }
-  if (-not $dte) {
-    "VS $name.${script}: no automation object $id from $devenv after 90 s (running: $(-not $vs.HasExited); known: $((Get-ChildItem Registry::HKEY_CLASSES_ROOT -Name | Where-Object { $_ -like 'VisualStudio.DTE*' }) -join ' '))"
-    try { $vs.Kill() } catch {}; exit 1
-  }
+  $id = "VisualStudio.DTE.$((& $where -latest -property installationVersion).Split('.')[0]).0"   # the class's name carries the version
+  try { $dte = New-Object -ComObject $id } catch { "VS $name.${script}: no $id ($_)"; exit 1 }
   $lines = @()
   try {
     Again { $dte.SuppressUI = $true }
@@ -38,8 +30,7 @@ foreach ($script in 'into', 'over') {
   } catch { $lines += "FAILED: $_" }
   try { $dte.Debugger.Stop($true) } catch {}
   try { $dte.Quit() } catch {}
-  if (-not $vs.WaitForExit(20000)) { try { $vs.Kill() } catch {} }
-  Start-Sleep -Seconds 3
+  Start-Sleep -Seconds 5
   $lines | Set-Content "$out/$name.$script.txt"
   "VS $name.$script steps=$($lines.Count) last=[$($lines[-1])]"
 }
