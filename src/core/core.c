@@ -480,6 +480,7 @@ int core_open(Editor *e, const char *path)
 	if (!w || !(e->buf = buf_new(e, path))) { free(w); e->win = NULL; return -1; }
 	e->wins = w;
 	w->buf = e->buf;
+	w->conceal = 2;   /* Davy's 'conceallevel' */
 	layout_init(e, w);
 	if (!e->layout) { core_msg(e, "out of memory"); return -1; }
 	/* readfile(): line 1's first non-blank (measured in tmux, 7 texts) */

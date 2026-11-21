@@ -161,16 +161,6 @@ static Cell *eol_cell(Grid *g, const Win *w, int r, size_t d, int tw, int nw)
 	return row < w->h ? wcell(g, w, row, c) : NULL;
 }
 
-/* Search, or CurSearch for the match [ms, mz) of line l that holds w's
-   cursor (never an empty one: measured, tests/test_core_search.py).  Known
-   difference: Neovim draws a match over several lines CurSearch on all of
-   them when the cursor is anywhere in it, this only on the cursor's line
-   (reviews/pr-106.md, finding 3); it waits for keys_hl to say so. */
-static unsigned char search(const Win *w, size_t l, size_t ms, size_t mz)
-{
-	return w->line == l && w->col >= ms && w->col < mz ? FACE_CUR_SEARCH : FACE_SEARCH;
-}
-
 /* keys_hl's match of line l that holds byte i or comes after it (an empty
    one at i), from the match [*ms, *mz) found before; 0 when none */
 static int hl_at(Editor *e, const Win *w, size_t l, size_t i, int mh, size_t *ms, size_t *mz)
@@ -281,7 +271,7 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	/* 'hlsearch' (win_line()'s search_attr, under the Visual area and
 	   :s's c-flag match but over the yank flash, an extmark: measured):
 	   the keys' matches [ms, mz) from col 0 on, an empty one over the
-	   character at ms; CurSearch for the one under w's cursor */
+	   character at ms; CurSearch for one that holds w's cursor (keys_hl's 2) */
 	int flash = area && e->ks.yank.type;
 	size_t ms = 0, mz = 0;
 	int mh = keys_hl(e, w, l, 0, &ms, &mz);
@@ -290,7 +280,7 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	   line nor in the Visual area; off counts the cells they freed on row
 	   orow, which a Tab gives back (fix_for_boguscols()) */
 	Conceal cs[64];
-	size_t nc = syn && !(w == e->win && l == w->line) && area != FACE_VISUAL ? syntax_conceal(syn, l, cs, 64) : 0,
+	size_t nc = syn && w->conceal && !(w == e->win && l == w->line) && area != FACE_VISUAL ? syntax_conceal(syn, l, cs, 64) : 0,
 	       ci = 0, off = 0;
 	int orow = r;
 	/* 'cursorline' (Davy's pick of the UI proposals): CursorLine under the
@@ -336,7 +326,7 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 		int lead = cw == 3 && *s != '\t', wide = *s >= 0x80 && cw - lead == 2;
 		mh = hl_at(e, w, l, i, mh, &ms, &mz);
 		int im = mh && i >= ms;
-		unsigned char sb = im ? search(w, l, ms, mz) : cl;
+		unsigned char sb = im ? mh == 2 ? FACE_CUR_SEARCH : FACE_SEARCH : cl;
 		while (ci < nc && i >= cs[ci].z) ci++;
 		const Conceal *cc = ci < nc && i >= cs[ci].a ? &cs[ci] : NULL;
 		for (int j = 0; j < cw; j++, v++) {
@@ -408,9 +398,9 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	   before the view (a wide character) or in it (a Tab): measured) */
 	if (mh && ms <= i && drawn == 1 && (mz > ms || (w->wrap ? v >= skip : w->left <= i))) {
 		Cell *z = eol_cell(g, w, r, vs - skip, tw, nw);
-		/* never CurSearch on an empty line (get_search_match_hl():
-		   measured) */
-		if (z && z->bg != FACE_VISUAL) z->bg = i ? search(w, l, ms, mz) : FACE_SEARCH;
+		/* CurSearch only for a match with a character on this line, so
+		   never on an empty one (get_search_match_hl(): measured) */
+		if (z && z->bg != FACE_VISUAL) z->bg = mh == 2 && ms < i ? FACE_CUR_SEARCH : FACE_SEARCH;
 	}
 	if (hl && (hn == hl || hn == HN_YES)) draw_heading(g, w, l, r, skip, cover, hb, hm, hl);
 	return drawn != 0;
