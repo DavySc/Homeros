@@ -149,46 +149,76 @@ static void draw_heading(Grid *g, const Win *w, size_t l, int r, size_t skip, in
 		}
 }
 
-/* win_line()'s Visual area of line l in w ('selection' inclusive): cells
-   [*from, *to), none if *from >= *to, less the cursor's [*xf, *xt], which
-   the block cursor shows (noinvcur: its cell, both of a double-width
-   character's).  Windows on the current buffer show it too. */
-static void visual(Editor *e, Win *w, size_t l, size_t *from, size_t *to, size_t *xf, size_t *xt)
+/* win_line()'s Visual area of line l in w ('selection' inclusive), or
+   vim.hl.on_yank()'s flash (Davy's my-nvim): vim.hl.range() from '[ to ']
+   inclusive (a block: its screen columns) in IncSearch, over the text only
+   (no hl_eol) and only in the current window (the one it was yanked in:
+   the flash is gone before another can be entered).  :s's c flag shows
+   its match (ks.inc) the same way.  Cells [*from, *to),
+   none if *from >= *to, less the cursor's [*xf, *xt], which Visual's block
+   cursor shows (noinvcur: its cell, both of a double-width character's).
+   Windows on the current buffer show the Visual area too.  Returns the
+   area's face. */
+static unsigned char visual(Editor *e, Win *w, size_t l, size_t *from, size_t *to, size_t *xf, size_t *xt)
 {
 	const Win *cw = e->win;
-	size_t cl = cw->line, vl = e->ks.vline, a, b, c, d, n;
+	const KeyArea *ka = e->ks.yank.type ? &e->ks.yank : e->ks.inc.type ? &e->ks.inc : NULL;
+	int y = ka != NULL, type = y ? ka->type : e->ks.visual;
+	size_t cl = y ? ka->l2 : cw->line, cc = y ? ka->c2 : cw->col, vl = y ? ka->l1 : e->ks.vline,
+	       vc = y ? ka->c1 : e->ks.vcol, a, b, c, d, n;
 	*from = *xf = 1;
 	*to = *xt = 0;
-	if (!e->ks.visual || w->buf != e->buf) return;
+	if (!type || (y ? w != cw : w->buf != e->buf)) return 0;
 	/* ltoreq(): the cursor is the top end unless VIsual is before it */
-	int vtop = vl < cl || (vl == cl && e->ks.vcol < cw->col);
-	size_t tl = vtop ? vl : cl, tc = vtop ? e->ks.vcol : cw->col, bl = vtop ? cl : vl, bc = vtop ? cw->col : e->ks.vcol;
-	if (l < tl || l > bl) return;
-	if (e->ks.visual == 22) {
+	int vtop = vl < cl || (vl == cl && vc < cc);
+	size_t tl = vtop ? vl : cl, tc = vtop ? vc : cc, bl = vtop ? cl : vl, bc = vtop ? cc : vc;
+	if (l < tl || l > bl) return 0;
+	if (type == 22 && y) {
+		/* a yanked block: its screen columns (the register's width) */
+		*from = vc;
+		*to = cc + 1;
+	} else if (type == 22) {
 		/* block: w_old_cursor_fcol and _lcol (getvcols()), to the line's
 		   end after $ */
-		win_vcols(w, cl, cw->col, &a, &b);
-		win_vcols(w, vl, e->ks.vcol, &c, &d);
+		win_vcols(w, cl, cc, &a, &b);
+		win_vcols(w, vl, vc, &c, &d);
 		*from = a < c ? a : c;
-		*to = cw->want == WANT_EOL ? (size_t)-1 : (b > d ? b : d) + 1;
+		*to = !y && cw->want == WANT_EOL ? (size_t)-1 : (b > d ? b : d) + 1;
 	} else {
 		*from = 0;
 		*to = (size_t)-1;
-		if (l == tl && e->ks.visual == 'v') {
+		if (l == tl && type == 'v') {
 			win_vcols(w, tl, tc, from, &b);
 			core_line(e, tl, &n);
 			if (tc >= n) *to = *from + 1;
 		}
-		if (l == bl && e->ks.visual == 'v') {
+		if (l == bl && type == 'v') {
 			win_vcols(w, bl, bc, &a, &b);
 			*to = b + 1;
 		}
 	}
-	if (w == cw && l == cl) {
+	if (y) {
+		/* a block's extmarks cover whole characters (getregionpos()
+		   bytes): every character its columns touch */
+		LineIt it;
+		const unsigned char *s;
+		size_t f = *from, t = *to, v = 0, k, n2;
+		lit_init(&it, w->buf, l);
+		for (; type == 22 && (k = lit_next(&it, &s)); v += n2) {
+			n2 = (size_t)core_cellw(w, s, k, 0, v);
+			if (v < t && v + n2 > f) {
+				if (v < *from) *from = v;
+				if (v + n2 > *to) *to = v + n2;
+			}
+		}
+		return FACE_INC_SEARCH;
+	}
+	if (w == cw && l == cw->line) {
 		*xf = win_vcol(e, w, NULL, xt);
-		const unsigned char *t = core_line(e, cl, &n);
+		const unsigned char *t = core_line(e, cw->line, &n);
 		if (cw->col >= n || t[cw->col] < 0x80 || uni_width(t, n, cw->col) < 2) *xt = *xf;
 	}
+	return FACE_VISUAL;
 }
 
 /* Line l from window row r: in rows of the text width with wrap (the top
@@ -217,7 +247,7 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	enum { HN_NO = -1, HN_YES = 7 };
 	int drawn = 1, hl = 0, hn = rm && syn ? 0 : HN_NO;
 	size_t hb = 0, hm = 0, from, to, xf, xt;
-	visual(e, w, l, &from, &to, &xf, &xt);
+	unsigned char area = visual(e, w, l, &from, &to, &xf, &xt);
 	/* 'cursorline' (Davy's pick of the UI proposals): CursorLine under the
 	   text area of the cursor line's rows, below syntax and render-markdown
 	   (low priority: it has no fg), not in the current window in Visual
@@ -269,7 +299,7 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 			unsigned char face = syn ? fc[i - f0] : 0;
 			/* a double-width character whose second cell starts the area
 			   is in it (win_line()) */
-			unsigned char vis = (v >= from || (wide && v + 1 == from)) && v < to && (v < xf || v > xt) ? FACE_VISUAL : 0;
+			unsigned char vis = (v >= from || (wide && v + 1 == from)) && v < to && (v < xf || v > xt) ? area : 0;
 			if (row == r && c < cover) {
 				/* "<<<" over a double-width character's first cell leaves a
 				   blank in its second (measured) */
@@ -299,7 +329,7 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	   line that ends before the view starts has its end at the view's
 	   start, where an area that starts earlier starts too. */
 	size_t vs = v > skip ? v : skip;
-	if (drawn == 1 && (v > skip ? from == v : from <= skip) && vs < to && (vs < xf || vs > xt)
+	if (area == FACE_VISUAL && drawn == 1 && (v > skip ? from == v : from <= skip) && vs < to && (vs < xf || vs > xt)
 	    && (e->ks.visual != 22 || l == e->win->line || l == e->ks.vline)) {
 		size_t d = vs - skip;
 		int full = w->wrap ? d && d % (size_t)tw == 0 : d >= (size_t)tw;
