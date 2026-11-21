@@ -185,8 +185,10 @@ int file_save(const char *path, const Text *t, size_t n, int dos, FileId *id,
 	off_t w;
 	char real[PATH_MAX], dir[PATH_MAX], base[PATH_MAX], tmp[PATH_MAX + 32];
 	struct stat st;
-	FileId now, mine;
-	if (target(path, real) || file_id(real, &now)) return SAVE_ERR;
+	FileId now = { 0 }, mine;
+	if (target(path, real)) return SAVE_ERR;
+	if (!stat(real, &st)) ident(&st, &now);   /* st: the mode and owner kept below */
+	else if (errno != ENOENT) return SAVE_ERR;
 	/* Check: an outside change since load is never overwritten unasked */
 	if (!force && id->exists && !file_same(id, &now)) return SAVE_CHANGED;
 	if (!force && !id->exists && now.exists) return SAVE_CHANGED;
