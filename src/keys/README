@@ -207,7 +207,7 @@ Choices:
 - Davy's maps (FEATURES.md 4), Normal mode only, as nnoremap: SPC ff
   files, SPC fg grep, SPC fr registers, SPC , buffers, SPC e explorer
   (tools_pick), SPC pv and - oil (tools_oil), SPC g g s l L d b B and
-  SPC h s r S u p (git_leader), SPC uk the save kitten on or off
+  SPC h s r S u p (git_leader), SPC uk the save kitten on or off, SPC up 'conceallevel' 2 or 0
   (kitten_toggle; :KittenPaw plays it).  They run in main.c's key chain
   (keys_map()), not in keys_feed, so conform.py and the fuzzers, whose
   Neovim has no maps, check the Vim keys alone; test_keys_map checks the

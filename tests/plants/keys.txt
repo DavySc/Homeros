@@ -167,3 +167,5 @@ keys: 'hlsearch' has no 'redrawtime' (test_keys_ex)~test TESTS=keys_ex~~src/keys
 keys: the first-literal skip passes a byte past 0x7f under \c (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~(ic && (t[x] >= 0x80 || fold(t[x]) == fold(lit)))~(ic && fold(t[x]) == fold(lit))
 keys: a bounded leading repeat skips its run too (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~rp1->simple && rp1->c < 0 ?~rp1->simple ?
 keys: an ASCII character before an accent is its own cluster (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~(c + 1 == (long)n || s[c + 1] < 0x80)~(c + 1 == (long)n || 1)
+keys: CurSearch only when the cursor is on the match's first line (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~1 + (!lt(c, ms) && lt(c, me))~1 + (c.lnum == ms.lnum && !lt(c, ms) && lt(c, me))
+keys: SPC u p only turns conceal off (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~e->win->conceal = e->win->conceal ? 0 : 2;~e->win->conceal = 0;
