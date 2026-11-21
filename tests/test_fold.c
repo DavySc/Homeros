@@ -89,7 +89,9 @@ int main(int argc, char **argv)
 				if (c) snprintf(got + k, sizeof got - (size_t)k, "/%zu/%zu", l1 + 1, l2 + 1);
 				char *want = strtok(NULL, " \n");
 				if (!want || strcmp(got, want)) {
-					fprintf(stderr, "scenario %d, %s: line %zu: %s, nvim %s\n", scen, step, l + 1, got, want ? want : "none");
+					fprintf(stderr, "FAIL scenario %d, %s: line %zu: %s, nvim %s\n", scen, step, l + 1, got, want ? want : "none");
+					fold_free(f);
+					fclose(in);
 					return 1;
 				}
 			}
