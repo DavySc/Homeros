@@ -882,10 +882,12 @@ static int growth(void)
 
 /* vim_regexec_multi(): the first match that starts in line l at or after
    column col; its start and end (\zs \ze applied) and the groups.  1, 0 for
-   none, -1 when the match took too long (Neovim's E363). */
+   none, -1 when the match took too long (Neovim's E363) or Ctrl-C came. */
 int re_exec(long l, long col, Pos *s, Pos *e, Pos *sub_s, Pos *sub_e)
 {
-	if (!growth()) return -1;
+	/* each line looks for Ctrl-C, as searchit() and do_sub() call
+	   line_breakcheck(); within a line MAXSTEPS bounds the wait */
+	if (!growth() || (!re_deadline && loop_breakcheck())) return -1;
 	steps = 0;
 	memset(gs, 0, sizeof gs), memset(ge, 0, sizeof ge);
 	zs.coladd = ze.coladd = 0;
@@ -919,3 +921,6 @@ int re_exec(long l, long col, Pos *s, Pos *e, Pos *sub_s, Pos *sub_e)
 		c = z > c ? z : c + (long)uni_glen((const unsigned char *)ml_get(l), (size_t)n, (size_t)c);
 	}
 }
+
+/* -1 from re_exec(): Neovim's e_interr after Ctrl-C, else E363 */
+void re_error(void) { core_msg(E, loop_int ? "Interrupted" : "E363: Pattern uses more memory than 'maxmempattern'"); }

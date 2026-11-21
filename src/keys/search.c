@@ -153,7 +153,7 @@ static int searchit(Pos *pos, int dir, long count, int end, int *wrapped)
 	if (pos->lnum >= n) pos->lnum = n - 1, pos->col = ml_len(n - 1) ? ml_len(n - 1) - 1 : 0;
 	return 1;
 timeout:
-	core_msg(E, "E363: Pattern uses more memory than 'maxmempattern'");
+	re_error();
 	return 0;
 }
 

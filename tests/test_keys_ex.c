@@ -365,6 +365,16 @@ int main(void)
 	long long t0 = loop_now();
 	for (size_t i = 0; i < 400; i++) CHECK(!keys_hl(&e, e.win, i, 0, &hs, &hz));
 	CHECK(loop_now() - t0 < 8000000000LL);
+	/* Ctrl-C (main.c sets loop_int) stops a search and a :s at the next
+	   line, as Neovim's line_breakcheck(): "Interrupted", nothing changed */
+	loop_int = 1;
+	feed(&e, "gg/b\r");
+	CHECK(e.win->line == 0 && !strcmp(e.msg, "Interrupted"));
+	feed(&e, ":%s/a/x/\r");
+	CHECK(!strcmp(e.msg, "Interrupted") && *core_line(&e, 0, &(size_t){ 0 }) == 'a');
+	loop_int = 0;
+	feed(&e, "/b\r");
+	CHECK(e.win->line == 400);
 	core_free(&e);
 	text(path, "select a from t;\n", 300000, "END\n");
 	CHECK(!core_open(&e, path));

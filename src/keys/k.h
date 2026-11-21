@@ -145,6 +145,7 @@ int  map_case(int c, int up);   /* utf_toupper() (up) or utf_tolower() */
 /* Vim's patterns (regex.c) */
 int  re_compile(const char *pat, int icase, const char **msg);
 int  re_exec(long l, long col, Pos *s, Pos *e, Pos *sub_s, Pos *sub_e);
+void re_error(void);   /* the message for re_exec()'s -1: Interrupted after Ctrl-C, else E363 */
 char *re_skip(char *p, int delim, int *all);
 extern long long re_deadline;   /* loop_now() after which re_exec() gives up (-1), as at its step limit; 0: none */
 int  re_hasnl(void);   /* RF_HASNL: the compiled pattern can match a line break */

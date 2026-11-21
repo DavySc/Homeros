@@ -172,3 +172,5 @@ keys: a map's edit joins the previous command's undo step (test_keys_map)~test T
 keys: ciT steps forward as cit does (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~org_cycle(m[2] == 't' ? 1 : -1)~org_cycle(1)
 keys: cit stamps CLOSED in UTC, not the local clock (test_keys_map)~test TESTS=keys_map~~src/keys/ops.c~		+ (l.tm_hour - g.tm_hour) * 60 + l.tm_min - g.tm_min;~		;
 keys: @. counts as an executing register, so its yank does not flash (test_keys_flash)~test TESTS=keys_flash~~src/keys/ops.c~		typebuf_ins(k, n);¶		return 1;~		typebuf_ins(k, n);¶		E->ks.executing = regname;¶		return 1;
+keys: Ctrl-C does not stop a search or a :s (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~	if (!growth() || (!re_deadline && loop_breakcheck())) return -1;~	if (!growth()) return -1;
+keys: an interrupted search says E363, not Interrupted (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~core_msg(E, loop_int ? "Interrupted" : ~core_msg(E, 0 ? "Interrupted" : 

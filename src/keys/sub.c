@@ -209,7 +209,7 @@ static void finish(void)
 	int ask = fl.ask;
 	fl.all = save_all, fl.ask = save_ask;
 	if (fl.count) setcur(old);
-	if (timed_out) core_msg(E, "E363: Pattern uses more memory than 'maxmempattern'");
+	if (timed_out) re_error();
 	else if (nsubs) {
 		b_op_start = (Pos){ first, 0, 0 }, b_op_end = (Pos){ line2, 0, 0 };
 		/* asked: the cursor stays on the last match */
