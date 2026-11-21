@@ -50,7 +50,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t len)
 {
 	size_t i = 0;
 #define NEXT (i < len ? d[i++] : 0)
-	n = 1 + NEXT % 20;
+	n = NEXT % 21;
 	for (size_t l = 0; l < n; l++) lv[l] = NEXT % 56;
 	int level = NEXT % 4;
 	Fold *f = fold_new(level, expr, NEXT & 1 ? tall : NULL, NULL);
@@ -63,9 +63,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t len)
 		if (op == 0) {   /* nvim_buf_set_lines(a, b): k new lines */
 			size_t a = NEXT % (n + 1), b = a + NEXT % 4, k = NEXT % 5;
 			if (b > n) b = n;
-			if (n - (b - a) + k < 1) k = 1;
 			if (n - (b - a) + k > MAXN) k = 0;
-			if (n - (b - a) + k < 1) continue;
 			memmove(lv + a + k, lv + b, n - b);
 			for (size_t j = 0; j < k; j++) lv[a + j] = NEXT % 56;
 			long extra = (long)k - (long)(b - a);
@@ -81,7 +79,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t len)
 		} else if (op == 2) {
 			int c = NEXT % (FOLD_LEVEL + 1);
 			if (c == FOLD_RESET) fold_update(f, 0, n, n);
-			size_t at = NEXT % n;
+			size_t at = NEXT % (n ? n : 1);
 			fold_cmd(f, c, at, NEXT % 4);
 		} else {         /* a split: the copy goes on in f's place */
 			Fold *g = fold_dup(f, NULL);

@@ -21,7 +21,7 @@ typedef struct Nd {
 
 struct Fold {
 	Arr folds;         /* w_folds */
-	int level, manual, invalid;  /* w_p_fdl, w_fold_manual, w_foldinvalid */
+	int level, invalid;  /* w_p_fdl, w_foldinvalid */
 	long n;            /* lines in the buffer, for a fold left past the end */
 	FoldExpr *expr;
 	FoldTall *tall;
@@ -269,9 +269,7 @@ static long recurse(Fold *f, Arr *a, int lvl0, long startlnum, Line *l, long bot
 					fp->len = bot - firstlnum + 1;
 					/* open in an open fold, else as the fold above it or the
 					   one holding it */
-					if (topflags == FD_OPEN) { f->manual = 1; fp->flags = FD_OPEN; }
-					else if (i <= 0) { fp->flags = topflags; if (topflags != FD_LEVEL) f->manual = 1; }
-					else fp->flags = fp[-1].flags;
+					fp->flags = topflags == FD_OPEN || i <= 0 ? topflags : fp[-1].flags;
 					finish = 1;
 					break;
 				}
@@ -282,9 +280,7 @@ static long recurse(Fold *f, Arr *a, int lvl0, long startlnum, Line *l, long bot
 			if (bot < l->lnum) bot = l->lnum;
 			l->lnum = l->lnum_save - fp->top;
 			l->off += fp->top;
-			int i = (int)(fp - a->d);
 			bot = recurse(f, &fp->nested, lvl0 + 1, startlnum2 - fp->top, l, bot - fp->top, fp->flags);
-			fp = a->d + i;
 			l->lnum += fp->top;
 			l->lnum_save += fp->top;
 			l->off -= fp->top;
@@ -297,7 +293,6 @@ static long recurse(Fold *f, Arr *a, int lvl0, long startlnum, Line *l, long bot
 			l->lnum_save = l->lnum;
 		}
 	}
-	if (!fp) return bot;
 	if (fp->len < l->lnum - fp->top) fp->len = l->lnum - fp->top;
 	else if (fp->top + fp->len > linecount) fp->len = linecount - fp->top + 1;
 	remove_(&fp->nested, startlnum2 - fp->top, l->lnum - 1 - fp->top);
@@ -376,7 +371,6 @@ Fold *fold_dup(const Fold *f, void *ctx)
 {
 	Fold *g = fold_new(f->level, f->expr, f->tall, ctx);
 	if (!g) return NULL;
-	g->manual = f->manual;
 	g->invalid = f->invalid;
 	g->n = f->n;
 	copy(&g->folds, &f->folds);
@@ -408,7 +402,8 @@ void fold_adjust(Fold *f, size_t l1, size_t l2, long amount, long after, int ins
 void fold_update(Fold *f, size_t top, size_t bot, size_t n)
 {
 	f->n = (long)n;
-	update(f, (long)top + 1, (long)bot, (long)n);
+	if (n)   /* an empty buffer has no folds: Neovim's never has no lines */
+		update(f, (long)top + 1, (long)bot, (long)n);
 }
 
 /* check_closed() with checkSmall() for 'foldminlines' 1: a fold of one
@@ -464,18 +459,15 @@ enum { DONE_ACTION = 1, DONE_FOLD = 2 };
 static int manual(Fold *f, long lnum, int opening, int recurse)
 {
 	Nd *fp, *found = NULL;
-	int lvl = 0, use_level = 0, done = 0;
+	int lvl = 0, done = 0;
 	for (Arr *a = &f->folds; find(a, lnum, &fp); a = &fp->nested, lnum -= fp->top, lvl++) {
 		done = DONE_FOLD;
 		/* from 'foldlevel' to manual */
-		if (use_level || fp->flags == FD_LEVEL) {
-			use_level = 1;
+		if (fp->flags == FD_LEVEL) {
 			fp->flags = lvl >= f->level ? FD_CLOSED : FD_OPEN;
 			for (int j = 0; j < fp->nested.n; j++) fp->nested.d[j].flags = FD_LEVEL;
 		}
-		if (!opening && recurse) {
-			if (fp->flags != FD_CLOSED) { done |= DONE_ACTION; fp->flags = FD_CLOSED; }
-		} else if (fp->flags == FD_CLOSED) {   /* opening opens the topmost closed one */
+		if (fp->flags == FD_CLOSED) {   /* opening opens the topmost closed one */
 			if (opening) {
 				fp->flags = FD_OPEN;
 				done |= DONE_ACTION;
@@ -485,11 +477,8 @@ static int manual(Fold *f, long lnum, int opening, int recurse)
 		}
 		found = fp;
 	}
-	if (done) {
-		/* closing closes the deepest open one */
-		if (!opening && found) { found->flags = FD_CLOSED; done |= DONE_ACTION; }
-		f->manual = 1;
-	}
+	/* closing closes the deepest open one */
+	if (!opening && found) { found->flags = FD_CLOSED; done |= DONE_ACTION; }
 	return done;
 }
 
@@ -529,8 +518,6 @@ int fold_cmd(Fold *f, int op, size_t line, long count)
 	}
 	/* newFoldLevelWin() */
 	f->level = (int)count;
-	if (f->manual)
-		for (int i = 0; i < f->folds.n; i++) f->folds.d[i].flags = FD_LEVEL;
-	f->manual = 0;
+	for (int i = 0; i < f->folds.n; i++) f->folds.d[i].flags = FD_LEVEL;
 	return 0;
 }

@@ -11,7 +11,13 @@
 -- module asks each time.  So scenarios with edits run with foldminlines 0
 -- (no fold is small, test_fold.c says every line is tall), and those with
 -- 'foldminlines' 1 have fold commands only, where the cache stays right.
--- usage: nvim --headless --clean -l tests/test_fold.lua N SEED > trace
+-- usage: nvim --headless --clean -l tests/test_fold.lua N SEED [ONLY] > trace
+-- prints N scenarios, or with ONLY only the one numbered ONLY (from 0; run
+-- N = ONLY + 1, so that Neovim gets to it in the same state).  The recorded
+-- tests/test_fold.txt is N 300 SEED 1, then these scenarios (SEED:ONLY),
+-- which reach the merges and truncations seed 1 does not (the review of
+-- PR 107 found them by deleting those lines): 60:106 47:24 104:31 103:137
+-- 98:145 47:245
 -- Trace lines (lines from 0, a token per buffer line, '.' an empty one):
 --   S level fml tok...        a new buffer, 'foldlevel', 'foldminlines'
 --   E a b tok...              nvim_buf_set_lines(0, a, b, true, toks)
@@ -20,7 +26,7 @@
 --   R rc lvl[/fc/fce] ...     after it: rc -1 for "E490: No fold found",
 --                             foldlevel() and, in a closed fold, foldclosed()
 --                             and foldclosedend()
-local N, seed = tonumber(arg[1] or 300), tonumber(arg[2] or 1)
+local N, seed, only = tonumber(arg[1] or 300), tonumber(arg[2] or 1), tonumber(arg[3])
 math.randomseed(seed)
 
 function _G.FE()
@@ -37,7 +43,7 @@ end
 local toks = { '*', '*', '*', '**', '**', '***', '****', '0', '1', '2', '3', 'x', 'x', 'x', 'x', 'x', 'y', '.' }
 local function tok() return toks[math.random(#toks)] end
 local function text(t) return t == '.' and '' or t end
-local out = io.stdout
+local out, null = io.stdout, { write = function() end }
 
 local function result(rc)
   local r = { 'R', tostring(rc) }
@@ -49,7 +55,8 @@ local function result(rc)
 end
 
 local cmds = { 'za', 'za', 'za', 'zc', 'zc', 'zo', 'zo', 'zO', 'zR', 'zM', 'zv', 'zX', 'L' }
-for _ = 1, N do
+for s = 0, N - 1 do
+  out = (not only or s == only) and io.stdout or null
   vim.cmd('enew!')
   vim.wo.foldmethod = 'expr'
   vim.wo.foldexpr = 'v:lua.FE()'
