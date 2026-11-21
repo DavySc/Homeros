@@ -363,6 +363,13 @@ static void test_sway(void)
 	grid_put(&g, 0, 3, (const unsigned char *)" ", 1, 1, ATTR_GUIDE);
 	show();
 	CHECK(!ink(3 * cellw(), 0, cellw(), cellh(), 0));
+	/* a diagnostic's undercurl under a blank: one red pixel a column, a wave
+	   (not all on the last row) */
+	grid_put(&g, 0, 4, (const unsigned char *)" ", 1, 1, ATTR_NONE);
+	g.c[4].ul = FACE_DIAG_UNDER_ERROR;
+	show();
+	CHECK(ink(4 * cellw(), 0, cellw(), cellh(), 0) == cellw() && ink(4 * cellw(), 0, cellw(), cellh(), 1) == cellw());
+	CHECK(ink(4 * cellw(), cellh() - 1, cellw(), 1, 0) < cellw());
 
 	/* a cluster longer than a cell's 4 bytes is drawn from grid.c's store:
 	   a thumbs up with a skin tone (8 bytes) is one brown glyph */
