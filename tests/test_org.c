@@ -952,6 +952,90 @@ static const struct { size_t pos; const char *dirs, *text, *want; } todos[] = {
 	  "- State \"DONE\"       from \"WAIT\"       [2026-11-19 Thu 17:30]\n"
 	  ":END:\n"
 	  "--\n" },
+	{ 0, "r",   /* a stray :LOGBOOK: line opens the new drawer: its parent drawer's column */
+	  "* NEXT a\n"
+	  "  :LOGBOOK:\n",
+	  "* WAIT a\n"
+	  "  :LOGBOOK:\n"
+	  "  :LOGBOOK:\n"
+	  "  - State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  "  :END:\n"
+	  "--\n" },
+	{ 0, "r",   /* a new LOGBOOK inside a drawer is a paragraph's line: the line above's column */
+	  "* NEXT a\n"
+	  ":NOTES:\n"
+	  "  :LOGBOOK:\n"
+	  ":END:\n",
+	  "* WAIT a\n"
+	  ":NOTES:\n"
+	  "  :LOGBOOK:\n"
+	  "  :LOGBOOK:\n"
+	  "  - State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  ":END:\n"
+	  "--\n" },
+	{ 0, "r",   /* and its :END: closes the outer drawer: that drawer's column */
+	  "* NEXT a\n"
+	  "    :NOTES:\n"
+	  ":LOGBOOK:\n"
+	  "    :END:\n",
+	  "* WAIT a\n"
+	  "    :NOTES:\n"
+	  ":LOGBOOK:\n"
+	  ":LOGBOOK:\n"
+	  "- State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  "    :END:\n"
+	  "    :END:\n"
+	  "--\n" },
+	{ 0, "r",   /* LAST_REPEAT, not a property it starts */
+	  "* WAIT a\n"
+	  "SCHEDULED: <2026-11-12 Thu +1d>\n"
+	  ":PROPERTIES:\n"
+	  ":LAST_REPEAT:x: 1\n"
+	  ":END:\n",
+	  "* TODO a\n"
+	  "SCHEDULED: <2026-11-13 Fri +1d>\n"
+	  ":PROPERTIES:\n"
+	  ":LAST_REPEAT:x: 1\n"
+	  ":LAST_REPEAT: [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  ":LOGBOOK:\n"
+	  "- State \"DONE\"       from \"WAIT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "--\n" },
+	{ 0, "l",   /* xCLOSED: is no CLOSED: */
+	  "* DONE a\n"
+	  "SCHEDULED: <2026-11-12 Thu> xCLOSED: [2026-11-10 Tue 09:00]\n",
+	  "* WAIT a\n"
+	  "SCHEDULED: <2026-11-12 Thu> xCLOSED: [2026-11-10 Tue 09:00]\n"
+	  ":LOGBOOK:\n"
+	  "- State \"WAIT\"       from \"DONE\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "--\n" },
+	{ 0, "r",   /* the line above's column, not its paragraph's */
+	  "* NEXT a\n"
+	  "  :NOTES:\n"
+	  "    x\n"
+	  "  :LOGBOOK:\n"
+	  "  :END:\n",
+	  "* WAIT a\n"
+	  "  :NOTES:\n"
+	  "    x\n"
+	  "  :LOGBOOK:\n"
+	  "  :LOGBOOK:\n"
+	  "  - State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  "  :END:\n"
+	  "  :END:\n"
+	  "--\n" },
+	{ 0, "r",   /* Org cannot read the stamp back ("Not at a timestamp"): it stops there */
+	  "* WAIT a\n"
+	  "SCHEDULED: <2026-11-12 Thu 10:00 +1d abcdefghijkl>\n",
+	  "* TODO a\n"
+	  "SCHEDULED: <2026-11-12 Thu 10:00 +1d abcdefghijkl>\n"
+	  ":PROPERTIES:\n"
+	  ":LAST_REPEAT: [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "--\n" },
 };
 
 int main(void)
