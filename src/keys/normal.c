@@ -453,6 +453,7 @@ static void nv_goto(Cmdarg *cap)
 	if (cap->count0) l = cap->count0;
 	if (l < 1) l = 1;
 	if (l > nlines()) l = nlines();
+	setpcmark();
 	W->line = (size_t)(l - 1);
 	beginline(BL_SOL | BL_FIX);
 }
@@ -523,6 +524,7 @@ static void nv_percent(Cmdarg *cap)
 		long n = nlines(), l = (n * cap->count0 + 99) / 100;
 		if (l < 1) l = 1;
 		if (l > n) l = n;
+		setpcmark();
 		W->line = (size_t)(l - 1);
 		beginline(BL_SOL | BL_FIX);
 		return;
@@ -531,7 +533,7 @@ static void nv_percent(Cmdarg *cap)
 	cap->oap->motion_type = MCHAR;
 	cap->oap->use_reg_one = 1;
 	if (!findmatch(&p, 0)) clearopbeep(cap->oap);
-	else { setcur(p); set_curswant = 1; }
+	else { setpcmark(); setcur(p); set_curswant = 1; }
 }
 
 static void coladd_reset(void) { Pos p = cur(); p.coladd = 0; setcur(p); }
@@ -606,6 +608,7 @@ static void nv_brackets(Cmdarg *cap)
 			}
 			p = found;
 		}
+		setpcmark();
 		setcur(p);
 		set_curswant = 1;
 		return;
@@ -993,13 +996,13 @@ static void nv_colon(Cmdarg *cap)
 }
 
 /* normal_search(): 0 not found, 1 found, 2 with a line offset */
-static int normal_search(Cmdarg *cap, int dir, const char *pat, int rev, int *wrapped)
+static int normal_search(Cmdarg *cap, int dir, const char *pat, int rev, int mark, int *wrapped)
 {
 	cap->oap->motion_type = MCHAR;
 	cap->oap->inclusive = 0;
 	cap->oap->use_reg_one = 1;
 	set_curswant = 1;
-	int i = do_search(cap->oap, dir, pat, cap->count1, rev, wrapped);
+	int i = do_search(cap->oap, dir, pat, cap->count1, rev, mark, wrapped);
 	if (!i) clearop(cap->oap);
 	else if (i == 2) cap->oap->motion_type = MLINE;
 	check_cursor();
@@ -1013,7 +1016,7 @@ static void nv_search(Cmdarg *cap)
 	memcpy(buf, E->cmd, E->cmdlen);
 	buf[E->cmdlen] = 0;
 	cap->searchbuf = buf;
-	normal_search(cap, cap->cmdchar, buf, 0, NULL);
+	normal_search(cap, cap->cmdchar, buf, 0, 1, NULL);
 }
 
 static void nv_next(Cmdarg *cap)
@@ -1021,9 +1024,9 @@ static void nv_next(Cmdarg *cap)
 	Pos old = cur();
 	int wrapped = 0;
 	/* an offset can leave the cursor where it was: one match further */
-	if (normal_search(cap, 0, NULL, cap->arg, &wrapped) == 1 && !wrapped && eq(old, cur())) {
+	if (normal_search(cap, 0, NULL, cap->arg, 1, &wrapped) == 1 && !wrapped && eq(old, cur())) {
 		cap->count1++;
-		normal_search(cap, 0, NULL, cap->arg, NULL);
+		normal_search(cap, 0, NULL, cap->arg, 1, NULL);
 		cap->count1--;
 	}
 }
@@ -1051,6 +1054,7 @@ static void nv_ident(Cmdarg *cap)
 	long z = col;
 	int first = cls_of(gchar((Pos){ l, col, 0 }));
 	while (z < n && (i == 0 ? cls_of(gchar((Pos){ l, z, 0 })) == first : cls_of(gchar((Pos){ l, z, 0 })) != 0)) z += clen(s, n, z);
+	setpcmark();   /* first, so "*``" puts the cursor back */
 	W->col = (size_t)col;
 	char buf[sizeof E->cmd * 2 + 8], *p = buf;
 	if (!g && first >= 2) p += sprintf(p, "\\<");
@@ -1061,7 +1065,7 @@ static void nv_ident(Cmdarg *cap)
 	if (!g && cls_of(gchar((Pos){ l, head(s, z - 1), 0 })) >= 2) p += sprintf(p, "\\>");
 	*p = 0;
 	no_smartcase = 1;
-	normal_search(cap, c == '*' ? '/' : '?', buf, 0, NULL);
+	normal_search(cap, c == '*' ? '/' : '?', buf, 0, 0, NULL);
 }
 
 /* ---- operators ---- */
@@ -1122,6 +1126,8 @@ static void nv_operator(Cmdarg *cap)
 	}
 }
 
+static void nv_gomark(Cmdarg *cap), nv_pcmark(Cmdarg *cap);
+
 static void nv_g_cmd(Cmdarg *cap)
 {
 	Oparg *oap = cap->oap;
@@ -1135,6 +1141,9 @@ static void nv_g_cmd(Cmdarg *cap)
 		} else clearopbeep(oap);
 		break;
 	case 'v': nv_gv_cmd(cap); break;
+	case '\'': case '`': cap->arg = cap->nchar == '\''; nv_gomark(cap); break;   /* without '' */
+	case ';': cap->count1 = -cap->count1; /* fall through */
+	case ',': nv_pcmark(cap); break;
 	case 'j': case KEY_DOWN: case 'k': case KEY_UP: {
 		int up = cap->nchar == 'k' || cap->nchar == KEY_UP;
 		if (W->wrap) {          /* nv_screengo(): the core moves by screen lines */
@@ -1217,6 +1226,7 @@ static void nv_scroll_line(Cmdarg *cap)
 static void nv_scroll(Cmdarg *cap)
 {
 	cap->oap->motion_type = MLINE;
+	setpcmark();
 	/* nv_scroll(): no cursor_correct() while an operator is pending, so
 	   d L deletes to the last line shown */
 	W->line = core_screen_line(E, cap->cmdchar, cap->count1, cap->oap->op_type == OP_NOP);
@@ -1290,6 +1300,168 @@ static void nv_window(Cmdarg *cap)
 	if (r < 0) beep();
 }
 
+/* ---- marks and the jump list (mark.c) ---- */
+
+/* w_prev_pcmark lives one command, so the keys keep it; keepjumps is
+   listcmd_busy while '{ '} '( ') look for their place */
+static Mark prev_pcmark;
+static int keepjumps;
+void setpcmark(void)
+{
+	if (keepjumps) return;
+	prev_pcmark = W->pcmark;
+	core_setpcmark(E);
+}
+/* checkpcmark(): '' only moves when the cursor did */
+void checkpcmark(void)
+{
+	if (prev_pcmark.set && (!W->pcmark.set || (W->pcmark.line == W->line && W->pcmark.col == W->col))) W->pcmark = prev_pcmark;
+	prev_pcmark.set = 0;
+}
+
+/* setmark_pos() at the cursor: 0 for a name it does not know.  A-Z and
+   0-9 are file marks, not built: set, they stay unset (E20) */
+static int setmark(int c)
+{
+	Mark m = { W->line, W->col, 1 };
+	if (c == '\'' || c == '`') setpcmark(), prev_pcmark = W->pcmark;   /* kept though the cursor stays */
+	else if (c == '"') B->mark[MARK_QUOTE] = m;
+	else if (c == '[') b_op_start = cur();
+	else if (c == ']') b_op_end = cur();
+	else if (c == '<' || c == '>') {
+		vis_set(c == '>', cur());
+		if (!b_visual.mode) b_visual.mode = 'v';
+	} else if (c >= 'a' && c <= 'z') B->mark[c - 'a'] = m;
+	else return (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
+	return 1;
+}
+
+/* '[ and '] are the buffer's (curbuf->b_op_start), kept in the core so
+   that undo and a load set them too; the operators work on b_op_start and
+   b_op_end, which carry coladd, so the two meet here, at
+   the start of each command: what changed since the last meeting wins */
+static Mark seen[2];
+static Pos had[2] = { { -1, 0, 0 }, { -1, 0, 0 } };   /* b_op_start's start */
+void opmarks(void)
+{
+	for (int i = 0; i < 2; i++) {
+		Mark *m = &B->mark[MARK_LBRACKET + i];
+		Pos *p = i ? &b_op_end : &b_op_start;
+		if (m->line != seen[i].line || m->col != seen[i].col || m->set != seen[i].set) *p = (Pos){ m->set ? (long)m->line : -1, (long)m->col, 0 };
+		else if (lt(*p, had[i]) || lt(had[i], *p)) *m = (Mark){ (size_t)p->lnum, (size_t)p->col, 1 };
+		seen[i] = *m, had[i] = *p;
+	}
+}
+
+/* mark_get_local() and mark_check(): 1 and the mark in *p, or 0 after
+   E78, E20 or E19 */
+int getmark(int c, Pos *p)
+{
+	Mark m = { 0 };
+	*p = (Pos){ 0 };
+	if (c >= 'a' && c <= 'z') m = B->mark[c - 'a'];
+	else if (c == '[' || c == ']') m = B->mark[c == '[' ? MARK_LBRACKET : MARK_RBRACKET];
+	else if (c == '<' || c == '>') {
+		/* mark_get_visual(): ordered, and linewise from column 0 to the end */
+		int s = B->mark[MARK_LT].set, e = B->mark[MARK_GT].set;   /* one alone: m< or m> */
+		if (s || e) {
+			*p = s && (!e || (c == '<') == lt(vis(0), vis(1))) ? vis(0) : vis(1), m.set = 1;
+			if (b_visual.mode == 'V') p->col = c == '<' ? 0 : MAXCOL, p->coladd = 0;
+		}
+	} else if (c == '\'' || c == '`') m = W->pcmark;
+	else if (c == '"') m = B->mark[MARK_QUOTE], m.set = 1;   /* b_last_cursor starts at the first line */
+	else if (c == '^' || c == '.') m = B->mark[c == '^' ? MARK_CARET : MARK_DOT];
+	else if (has("{}()", c)) {
+		/* mark_get_motion(): where the motion would go */
+		Pos o = cur();
+		int incl;
+		keepjumps = 1;
+		if (c == '{' || c == '}' ? findpar(&incl, c == '}' ? FORWARD : BACKWARD, 1, 0, 0) : findsent(c == ')' ? FORWARD : BACKWARD, 1))
+			*p = cur(), m.set = 1;
+		keepjumps = 0;
+		setcur(o);
+		if (!m.set) { core_msg(E, "E78: Unknown mark"); return 0; }
+	} else if (!(c >= 'A' && c <= 'Z') && !(c >= '0' && c <= '9')) { core_msg(E, "E78: Unknown mark"); return 0; }
+	if (!m.set) { core_msg(E, "E20: Mark not set"); return 0; }
+	if (m.line || m.col) *p = (Pos){ (long)m.line, (long)m.col, 0 };
+	if (p->lnum >= nlines()) { core_msg(E, "E19: Mark has invalid line number"); return 0; }
+	return 1;
+}
+
+/* nv_gomark(): ' and g' go to the line's first non-blank (cap->arg),
+   ` and g` to the mark; g' and g` leave '' as it is */
+static void nv_gomark(Cmdarg *cap)
+{
+	Pos p;
+	if (!getmark(cap->cmdchar == 'g' ? cap->extra_char : cap->nchar, &p)) clearop(cap->oap);
+	else {
+		if (cap->cmdchar != 'g') setpcmark();
+		p.coladd = 0;
+		setcur(p);
+		if (cap->arg) beginline(BL_WHITE | BL_FIX);
+		check_cursor();
+	}
+	cap->oap->motion_type = cap->arg ? MLINE : MCHAR;
+	if (cap->cmdchar == '`') cap->oap->use_reg_one = 1;
+	cap->oap->inclusive = 0;
+	set_curswant = 1;
+}
+
+/* cleanup_jumplist() (loadfiles): an entry goes when a later one is on
+   its line (jumpoptions "clean"), and the newest when it is the cursor's
+   line and CTRL-O has not been used since */
+static void cleanup_jumplist(void)
+{
+	Win *w = W;
+	int to = 0;
+	for (int from = 0; from < w->njump; from++) {
+		if (w->jumpidx == from) w->jumpidx = to;
+		int i = from + 1;
+		while (i < w->njump && (w->jump[i].buf != w->jump[from].buf || w->jump[i].m.line != w->jump[from].m.line)) i++;
+		if (i == w->njump) w->jump[to++] = w->jump[from];
+	}
+	if (w->jumpidx == w->njump) w->jumpidx = to;
+	w->njump = to;
+	if (to && w->jumpidx == to && w->jump[to - 1].buf == B && w->jump[to - 1].m.line == W->line) w->njump--, w->jumpidx--;
+}
+
+/* nv_pcmark(): CTRL-O and CTRL-I (Tab) through the jump list
+   (get_jumplist()), g; and g, through the change list (get_changelist()) */
+static void nv_pcmark(Cmdarg *cap)
+{
+	if (checkclearopq(cap->oap)) return;
+	long n = cap->count1;
+	Mark m;
+	if (cap->cmdchar == 'g') {
+		long i = W->changeidx, len = B->nchange;
+		if (!len) { core_msg(E, "E664: Changelist is empty"); return; }
+		if (i + n < 0) { if (!i) { core_msg(E, "E662: At start of changelist"); return; } i = 0; }
+		else if (i + n >= len) { if (i == len - 1) { core_msg(E, "E663: At end of changelist"); return; } i = len - 1; }
+		else i += n;
+		W->changeidx = (int)i;
+		m = B->change[i];
+	} else {
+		Win *w = W;
+		cleanup_jumplist();
+		if (!w->njump || w->jumpidx + n < 0 || w->jumpidx + n >= w->njump) { clearopbeep(cap->oap); return; }
+		/* the first CTRL-O after a jump adds the cursor */
+		if (w->jumpidx == w->njump) {
+			setpcmark();
+			if (--w->jumpidx + n < 0) { clearopbeep(cap->oap); return; }
+		}
+		w->jumpidx += (int)n;
+		/* another buffer's entry needs the core to switch without a jump:
+		   not built, it beeps */
+		if (w->jump[w->jumpidx].buf != B) { clearopbeep(cap->oap); return; }
+		m = w->jump[w->jumpidx].m;
+	}
+	if (m.line >= (size_t)nlines()) { core_msg(E, "E19: Mark has invalid line number"); clearop(cap->oap); }
+	else setcur((Pos){ (long)m.line, (long)m.col, 0 }), check_cursor();
+	cap->oap->motion_type = MCHAR;
+	cap->oap->inclusive = 0;
+	set_curswant = 1;
+}
+
 static int cmd_flags(int c)
 {
 	switch (c) {
@@ -1304,7 +1476,7 @@ static int cmd_flags(int c)
 
 static int known(int c)
 {
-	return has(" \"#$%&'()*+,-./0:;<>?@ABCDEFGHIJLMNOPQRSTUWXYV[]^_`abcdefghijklmnopqrstuvwxyz{|}~", c) || c == 1 || c == 3
+	return has(" \"#$%&'()*+,-./0:;<>?@ABCDEFGHIJLMNOPQRSTUWXYV[]^_`abcdefghijklmnopqrstuvwxyz{|}~", c) || c == 1 || c == 3 || c == 9 || c == 15
 	       || c == 8 || c == 10 || c == 13 || c == 14 || c == 16 || c == 22 || c == 24 || c == KEY_CTRL_R
 	       || c == 4 || c == 12 || c == 21 || c == 6 || c == 2 || c == 5 || c == 25 || c == 23
 	       || c == KEY_ESC || c == KEY_BS || c == KEY_UP || c == KEY_DOWN || c == KEY_LEFT || c == KEY_RIGHT || c == KEY_DEL;
@@ -1375,13 +1547,11 @@ static void execute(Cmdarg *cap)
 	case 23: nv_window(cap); break;
 	/* nv_clear(), and Neovim's default map: CTRL-L is :nohlsearch first */
 	case 12: if (!checkclearop(cap->oap) && !VIsual_active) no_hlsearch = 1; break;
-	/* marks come with the core's mark table (include/core.h, after
-	   package 4): until then m sets nothing and every mark is unset (E20) */
-	case 'm':   /* nv_mark(): setmark_pos() knows these names */
-		if (!checkclearop(cap->oap) && !has("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'`\"[]<>", cap->nchar))
-			clearopbeep(cap->oap);
-		break;
-	case '\'': case '`': clearopbeep(cap->oap); break;
+	case 'm': if (!checkclearop(cap->oap) && !setmark(cap->nchar)) clearopbeep(cap->oap); break;   /* nv_mark() */
+	case '\'': cap->arg = 1; nv_gomark(cap); break;
+	case '`': cap->arg = 0; nv_gomark(cap); break;
+	case 9: nv_pcmark(cap); break;
+	case 15: cap->count1 = -cap->count1; nv_pcmark(cap); break;   /* nv_ctrlo() */
 	}
 }
 
@@ -1399,6 +1569,7 @@ static int run(void)
 {
 	int rd = 0, c;
 #define GET(v) do { if (rd >= npend) return 0; v = pend[rd++]; } while (0)
+	opmarks();
 	memset(&ca, 0, sizeof ca);
 	ca.oap = &oa;
 	ca.opcount = opcount;
@@ -1475,6 +1646,7 @@ static int run(void)
 	}
 	if (oa.op_type == OP_NOP) finish_op = 0;
 	opcount = ca.opcount;
+	checkpcmark();
 	/* mb_check_adjust_col(): ^ on a blank a combining mark is on lands
 	   inside the character */
 	if (E->mode == MODE_NORMAL && W->col) W->col = (size_t)head(ml_get((long)W->line), (long)W->col);
@@ -1508,7 +1680,7 @@ int normal_mappable(int drop)
 	if (drop) { npend = 0; opcount = 0; clearop(&oa); }
 	return 1;
 }
-void normal_reset(void) { search_reset(); sub_reset(); clearop(&oa); opcount = 0; VIsual_active = 0; redo_n = old_redo_n = 0; npend = 0; memset(&b_visual, 0, sizeof b_visual); }
+void normal_reset(void) { memset(seen, 0, sizeof seen), b_op_start = b_op_end = had[0] = had[1] = (Pos){ -1, 0, 0 }; search_reset(); sub_reset(); clearop(&oa); opcount = 0; VIsual_active = 0; redo_n = old_redo_n = 0; npend = 0; memset(&b_visual, 0, sizeof b_visual); }
 
 void normal_key(int k)
 {

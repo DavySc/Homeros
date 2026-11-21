@@ -83,7 +83,7 @@ keys: a missing address before a separator is no address, so :,4 is not a range 
 keys: a number after an address is not added to it, so :.5 and :2 3 fail (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~(*p < '0' || *p > '9')) break;~1) break;
 keys: a range alone past the last line or below 0 goes there instead of the last line or E16 (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~		if (l2 < 0 && n) core_msg(E, "E16: Invalid range");~		if (0) core_msg(E, "E16: Invalid range");
 keys: :<line> goes to the first non-blank, as with 'startofline' (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~			beginline(BL_SOL | BL_FIX);~			beginline(BL_WHITE | BL_FIX);
-keys: the marks < and > are swapped in a range (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~"[]<>.^\""~"[]><.^\""
+keys: the marks < and > are swapped in a range (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~(!e || (c == '<') == lt(vis(0), vis(1)))~(!e || (c == '>') == lt(vis(0), vis(1)))
 keys: a line number past 2^63 overflows (test_keys_ex, UBSan)~test TESTS=keys_ex~~src/keys/keys.c~static long sat(long v) { return v > BIG ? BIG : v < -BIG ? -BIG : v; }~static long sat(long v) { return BIG ? v : v; }
 keys: Visual : leaves the cursor at its end, not the start, before the command runs (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	if (VIsual_active) cap->oap->op_type = OP_COLON;~	if (VIsual_active) end_visual_mode(), cmdline(':', "'<,'>");
 keys: N: puts .,.+N on the line, one line too many (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~".,.+%ld", cap->count0 - 1)~".,.+%ld", cap->count0)
@@ -176,3 +176,28 @@ keys: Ctrl-C does not stop a search or a :s (test_keys_ex)~test TESTS=keys_ex~~s
 keys: an interrupted search says E363, not Interrupted (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~core_msg(E, loop_int ? "Interrupted" : ~core_msg(E, 0 ? "Interrupted" : 
 keys: the regex stacks stay grown after a search (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~	if (!re_deadline) drop(~	if (0) drop(
 keys: a yank's flash ends on the last character's last byte (test_keys_flash)~test TESTS=keys_flash~~src/keys/ops.c~		if (t == 'v') E->ks.yank.c2 = (size_t)head(ml_get(b_op_end.lnum), b_op_end.col);¶~
+keys: a mark set alone with m> does not stand for '< (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~*p = s && (!e || (c == '<')~*p = (!e || (c == '<')
+keys: an ex command leaves '' unsettled, so the next command's checkpcmark() moves it (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~else if (entered) ex(), checkpcmark();~else if (entered) ex();
+keys: Enter at column 0 moves the marks on its line down (one edit inserting the break there) (test_keys_ex)~test TESTS=keys_ex~~src/keys/edit.c~} else if (rest || ind) {~} else if (1) {
+keys: * and # are not jumps (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	setpcmark();   /* first, so "*``" puts the cursor back */~	(void)0;   /* first, so "*``" puts the cursor back */
+keys: CTRL-O keeps an entry on the cursor's line at the end of the jump list (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~if (to && w->jumpidx == to && w->jump[to - 1].buf == B~if (0 && w->jumpidx == to && w->jump[to - 1].buf == B
+keys: the first CTRL-O after a jump does not add the cursor (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~		if (w->jumpidx == w->njump) {¶			setpcmark();~		if (w->jumpidx == w->njump) {¶			(void)0;
+keys: CTRL-O and Tab go the wrong way (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~w->jumpidx += (int)n;~w->jumpidx -= (int)n;
+keys: m' where '' already is loses it to checkpcmark() (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~setpcmark(), prev_pcmark = W->pcmark;~setpcmark();
+keys: '{ and '( set '' while they look for their place (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~		keepjumps = 1;~		keepjumps = 0;
+keys: '^ is the column after Esc moved left (test_keys_ex)~test TESTS=keys_ex~~src/keys/edit.c~(Mark){ W->line, W->col, 1 };   /* the '^ mark */~(Mark){ W->line, W->col ? W->col - 1 : 0, 1 };   /* the '^ mark */
+keys: an operator's '[ and '] never reach the buffer (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~else if (lt(*p, had[i]) || lt(had[i], *p)) *m~else if (0) *m
+keys: '' moves though the cursor stayed (checkpcmark()) (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~))) W->pcmark = prev_pcmark;~))) (void)0;
+keys: g' and g` set '' (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~if (cap->cmdchar != 'g') setpcmark();~setpcmark();
+keys: / ? n N are not jumps (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~if (mark) setpcmark();   /* SEARCH_MARK */~(void)mark;   /* SEARCH_MARK */
+keys: :s is not a jump (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~if (!got_match) setpcmark();~(void)got_match;
+keys: ' goes to the mark's column, not the first non-blank (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~		if (cap->arg) beginline(BL_WHITE | BL_FIX);¶		check_cursor();~		if (0) beginline(BL_WHITE | BL_FIX);¶		check_cursor();
+keys: { and } are not jumps (test_keys_ex)~test TESTS=keys_ex~~src/keys/motion.c~	setpcmark();¶	if (both && *ml_get(curr) == '}') curr++;~	if (both && *ml_get(curr) == '}') curr++;
+keys: ( and ) are not jumps (test_keys_ex)~test TESTS=keys_ex~~src/keys/motion.c~	setpcmark();¶	setcur(pos);~	setcur(pos);
+keys: a( and i( are not jumps (test_keys_ex)~test TESTS=keys_ex~~src/keys/motion.c~		setpcmark();¶		if (what ==~		if (what ==
+keys: % is not a jump (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~else { setpcmark(); setcur(p); set_curswant = 1; }~else { setcur(p); set_curswant = 1; }
+keys: H M L are not jumps (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	cap->oap->motion_type = MLINE;¶	setpcmark();¶	/* nv_scroll()~	cap->oap->motion_type = MLINE;¶	/* nv_scroll()
+keys: G and gg are not jumps (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	if (l > nlines()) l = nlines();¶	setpcmark();~	if (l > nlines()) l = nlines();
+keys: N% is not a jump (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~		if (l > n) l = n;¶		setpcmark();~		if (l > n) l = n;
+keys: [( and ]) are not jumps (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~			p = found;¶		}¶		setpcmark();~			p = found;¶		}
+keys: '" is unset before it is set, where Neovim has line 1 (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~m = B->mark[MARK_QUOTE], m.set = 1;~m = B->mark[MARK_QUOTE];

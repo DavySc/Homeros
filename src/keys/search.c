@@ -158,9 +158,10 @@ timeout:
 }
 
 /* do_search(): dirc '/' or '?' with the command line pat (pattern, then
-   an offset after the delimiter), or 0 and NULL for n (rev: N).  1 found,
+   an offset after the delimiter), or 0 and NULL for n (rev: N); mark:
+   the match sets '' (SEARCH_MARK).  1 found,
    2 found with a line offset added (linewise), 0 not. */
-int do_search(Oparg *oap, int dirc, const char *pat, long count, int rev, int *wrapped)
+int do_search(Oparg *oap, int dirc, const char *pat, long count, int rev, int mark, int *wrapped)
 {
 	Pos pos = cur();
 	int delim = dirc;
@@ -222,6 +223,7 @@ int do_search(Oparg *oap, int dirc, const char *pat, long count, int rev, int *w
 		for (long c = off.off; c > 0 && incl(&pos) != -1; c--) {}
 		for (long c = off.off; c < 0 && decl(&pos) != -1; c++) {}
 	}
+	if (mark) setpcmark();   /* SEARCH_MARK */
 	setcur(pos);
 	set_curswant = 1;
 	return ret;

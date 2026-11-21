@@ -134,6 +134,31 @@ static void confirm(char *k)
 	strcat(k, "\x1b\x1b");
 }
 
+/* marks and the jump list: marks set, jumps (each sets '' and joins the
+   jump list), the marks gone to with ' ` g' g` and as motions, CTRL-O and
+   Tab, among edits that move the marks; '[ and '] right after what sets
+   them.  Not yet: '[ '] before that and '. (the core sets them on a read
+   and a change), A-Z, an undo's jump, an operator
+   whose jump deletes the line of '' (w_prev_pcmark), and J, which moves ''
+   (mark_col_adjust()): they wait for the core (package 4) */
+static const char *const MPRE[] = { "", "j", "G", "3j", "w", "jjw", "Vj\x1b", "v3l\x1b", "m'" };
+static const char *const MTOK[] = { "ma", "mb", "m'", "m`", "m<", "m>", "m\"", "mz", "'a", "`a", "'b", "`b", "''", "``", "'`",
+                                    "`'", "'<", "`>", "'\"", "`^", "'^", "g'a", "g`b", "g''", "g``", "'{", "`}", "'(", "`)",
+                                    "'z", "'x", "'A", "'1", "'!", "y'a", "y`b", "gu'a", "gU`a", "\x0f", "\x0f", "\t", "2\x0f",
+                                    "3\t", "\x0f\x0f", "G", "gg", "3G", "%", "}", "{", ")", "(", "*", "#", "n", "N", "H",
+                                    "M", "L", "/o\r", "?a\r", ":3\r", ":s/o/0/\r", ":'a,'bs/^/-/\r", "[(", "])",
+                                    "x", "O\x1b", "oxy\x1b", "ix\x1b", "Ay\x1b", "yyP", "p", "i\r\x1b", "r\r", "j", "k",
+                                    "w", "b", "$", "0", "l", "yj`]", "yw`[", "cwX\x1b`]", "gUiw']", "x`[", "yi(", "va(\x1b", "50%0", "2G$%" };
+
+/* "50%0": N% keeps the wanted column, which Neovim under -l has as the
+   column after j (measured: "Ay Esc j 50%" ends in column 7 there, 12 in
+   nvim --headless with a file); the 0 leaves that aside */
+static void marks(char *k)
+{
+	strcpy(k, MPRE[rnd(sizeof MPRE / sizeof *MPRE)]);
+	for (unsigned t = 1 + rnd(8); t--;) strcat(k, MTOK[rnd(sizeof MTOK / sizeof *MTOK)]);
+}
+
 /* the cells 'hlsearch' draws, as ex_oracle.lua writes them: the core's
    use of keys_hl() (include/keys.h).  Drawn five times: after the first,
    only the line copies may grow (src/keys/buf.c, slot()), toward the
@@ -174,7 +199,7 @@ static void hlsearch(Editor *e, char *b, size_t cap)
 /* n random cases of gen on text: how many differ from Neovim */
 static int check(const char *text, void (*gen)(char *))
 {
-	char dir[] = "/tmp/test_keys_exXXXXXX", tf[64], cases[64], out[64], cmd[512], k[128];
+	char dir[] = "/tmp/test_keys_exXXXXXX", tf[64], cases[64], out[64], cmd[512], k[256];
 	CHECK(mkdtemp(dir));
 	snprintf(tf, sizeof tf, "%s/text", dir);
 	snprintf(cases, sizeof cases, "%s/cases", dir);
@@ -260,6 +285,7 @@ int main(void)
 	CHECK(__sanitizer_install_malloc_and_free_hooks(on_malloc, on_free));
 	static const char TEXT[] = "abcdef\n  xy\nhello world\n\tq\nlast line\nz\n";
 	CHECK(!check(TEXT, range));   /* each phase stops the test, so a caught plant does not run the rest */
+	CHECK(!check("abc. def foo\n  xy (o)\n\nhello world. Two\n\tq a\nlast line\n\n  z o\n", marks));
 	/* past 2^63 Neovim's line numbers wrap (":9223372036854775806+5" goes
 	   to line 3, measured once); ours saturate, without overflow */
 	char path[] = "/tmp/test_keys_exXXXXXX";
@@ -398,6 +424,6 @@ int main(void)
 	char t4[256] = "";
 	for (int i = 0; i < 4; i++) strcat(t4, "foo bar\nabc Foo x\n  foo.bar(a) 12\nbaz?\\\n\nx/y?z foo\nfoofoo zz\n");
 	CHECK(!check(t4, confirm));
-	printf("test_keys_ex: %d random ranges, %d searches, %d substitutions and %d answered, each as Neovim (cursor, error, text, 'hlsearch')\n", N, N, N, N);
+	printf("test_keys_ex: %d random ranges, %d mark and jump sequences, %d searches, %d substitutions and %d answered, each as Neovim (cursor, error, text, 'hlsearch')\n", N, N, N, N, N);
 	return 0;
 }

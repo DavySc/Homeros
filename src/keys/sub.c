@@ -247,6 +247,7 @@ static void loop(int typed)
 		copycol = 0, matchcol = 0, prev_matchcol = MAXCOL, nmatch_tl = 0, sub_firstlnum = lnum;
 		did_sub = skip_match = has_new = 0;
 		line.n = -1;   /* none yet */
+		if (!got_match) setpcmark();   /* the cursor before the first match */
 		got_match = 1;
 		for (;;) {
 			if (gs[0].lnum > 0) {

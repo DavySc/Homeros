@@ -14,7 +14,7 @@
 
 enum { SW = 4 };
 
-Pos b_op_start, b_op_end;      /* the '[ and '] marks */
+Pos b_op_start = { -1, 0, 0 }, b_op_end = { -1, 0, 0 };   /* the '[ and '] marks; -1 unset */
 Pos b_op_start_orig;          /* Insstart_orig of the last insert, for a block I or A */
 Reg *put_override;             /* nv_put()'s copy of the register (Visual p) */
 

@@ -242,11 +242,9 @@ static long address(char **pp, long cur)
 	if (*p >= '0' && *p <= '9') l = sat(strtol(p, &p, 10));
 	else if (*p == '.' || *p == '$') l = *p++ == '.' ? cur : nlines();
 	else if (*p == '\'') {
-		static const char sp[] = "[]<>.^\"";
-		const char *q = p[1] ? strchr(sp, p[1]) : NULL;
-		Mark m = p[1] == '\'' ? W->pcmark : p[1] >= 'a' && p[1] <= 'z' ? B->mark[p[1] - 'a'] : q ? B->mark[MARK_LBRACKET + (q - sp)] : (Mark){ 0 };
-		if (!m.set) { core_msg(E, "E20: Mark not set"); return FAIL; }
-		l = (long)m.line + 1;
+		Pos m;
+		if (!getmark((unsigned char)p[1], &m)) return FAIL;
+		l = m.lnum + 1;
 		p += 2;
 	}
 	for (;;) {
@@ -329,7 +327,7 @@ static void cmdline_end(int entered)
 {
 	E->mode = MODE_NORMAL;
 	if (E->cmdtype != ':') normal_key(entered ? K_PAT : KEY_ESC);
-	else if (entered) ex();
+	else if (entered) ex(), checkpcmark();
 	restart_insert();
 }
 

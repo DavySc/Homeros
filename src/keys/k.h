@@ -151,7 +151,11 @@ extern long long re_deadline;   /* loop_now() after which re_exec() gives up (-1
 int  re_hasnl(void);   /* RF_HASNL: the compiled pattern can match a line break */
 
 /* search.c */
-int  do_search(Oparg *oap, int dirc, const char *pat, long count, int rev, int *wrapped);
+int  do_search(Oparg *oap, int dirc, const char *pat, long count, int rev, int mark, int *wrapped);
+int  getmark(int c, Pos *p);   /* getmark(): the mark's place, else 0 after E20, E78 or E19 */
+void opmarks(void);            /* '[ and '] between the buffer and b_op_start, b_op_end */
+void setpcmark(void);   /* setpcmark(): before a jump */
+void checkpcmark(void); /* checkpcmark(): after each command, an ex command too (nv_colon()) */
 void search_reset(void);
 enum { RE_SEARCH, RE_SUBST, RE_LAST };
 int  search_regcomp(const char *pat, int save, int use, int ic, const char **msg);
