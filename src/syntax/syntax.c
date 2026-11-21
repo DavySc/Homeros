@@ -1187,7 +1187,7 @@ static int md_fold(Src *src, const Text *t, size_t l, int prev)
    byte 0; Neovim's _fold.lua recomputes only the changed rows, after an
    asynchronous parse.  Measured (PR 110's review, then here, 5 runs of 60
    one-byte edits, -O2): tree-sitter's stack.c, 29 KB, 1.26 to 1.28 ms per
-   edit against a 0.31 ms reparse; its lib/src/*.c, 489 KB, 17.2 to 17.9 ms
+   edit against a 0.31 ms reparse; its lib/src C files together, 489 KB, 17.2 to 17.9 ms
    against 1.9 to 2.0 ms.  To settle with fold_update's wiring (package 20,
    thread 0): changed rows only, or the levels of the last finished parse. */
 int syntax_foldexpr(Syntax *s, size_t line, int *start)
