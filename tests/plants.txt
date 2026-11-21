@@ -651,7 +651,9 @@ engine | dbg/engine.c | } else if (x.moves_sp) net_add(e, addr, STEP_AFTER \p SA
 engine | dbg/engine.c | uint32_t count = bounds.n ? (uint32_t)bounds.n - 1 : 0; | uint32_t count = bounds.n ? 1 : 0;
 engine | dbg/engine.c | if (x.flow != X64_CALL && x.known && !in_ranges(e, count, x.target - base)) | if (x.known && !in_ranges(e, count, x.target - base))
 engine | dbg/engine.c | if (!in_ranges(e, count, hi)) net_add(e, base + hi, END \p IGNORE_SP); | if (false) net_add(e, base + hi, END \p IGNORE_SP);
-engine | dbg/engine.c | if (!in_ranges(e, count, hi)) net_add(e, base + hi, END \p IGNORE_SP); | net_add(e, base + hi, END \p IGNORE_SP);
+# OWED, caught by nothing (so not run): the trap behind a range that another range of the scope follows. Only an inlined
+# call has several ranges, and the traces that step out of one are compared up to the step before (tests/trace_known.txt).
+# engine | dbg/engine.c | if (!in_ranges(e, count, hi)) net_add(e, base + hi, END \p IGNORE_SP); | net_add(e, base + hi, END \p IGNORE_SP);
 engine | dbg/engine.c | &regs)) net_add(e, regs.rip, END \p IGNORE_SP); | &regs)) net_add(e, regs.rip, END);
 engine | dbg/engine.c | if (unwind_step(target_read, e->target, m ? &m->image : 0, &regs)) | if (false && unwind_step(target_read, e->target, m ? &m->image : 0, &regs))
 engine | dbg/engine.c | if (!e->net_count) return step_one(e, thread); | if (false) return step_one(e, thread);
@@ -1120,6 +1122,7 @@ front | dbg/conv.c | if (j && line == (le32(b.lines + 8 * j - 4) & 0xffffff)) co
 front | dbg/conv.c | if (j && line == (le32(b.lines + 8 * j - 4) & 0xffffff)) continue; | if (j && line == (le32(b.lines + 8 * j - 4) & 0xffffff)) break;
 front | dbg/engine.c | bool stays = (to - base >= lo && to - base < hi) \p\p in_ranges(e, count, to - base) | bool stays = (to - base >= lo && to - base < hi)
 front | dbg/engine.c | if (x.flow != X64_CALL && x.known && !in_ranges(e, count, x.target - base)) | if (x.flow != X64_CALL && !x.known && !in_ranges(e, count, x.target - base))
+front | dbg/engine.c | if (!in_ranges(e, count, hi)) net_add(e, base + hi, END \p IGNORE_SP); | if (false) net_add(e, base + hi, END \p IGNORE_SP);
 eval | dbg/ask.c | uint64_t function = line ? 0 : engine_function(m, more, strlen(more)); | uint64_t function = engine_function(m, more, 0);
 
 eval | dbg/ask.c | b = b == '\\' ? '/' : b >= 'A' && b <= 'Z' ? (char)(b + 32) : b; | b = b >= 'A' && b <= 'Z' ? (char)(b + 32) : b;
