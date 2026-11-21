@@ -140,3 +140,6 @@ core: no separator between the file type and the encoding (test_core_status)~tes
 core: the branch in other windows too (test_core_status)~test TESTS=core_status~~src/core/draw.c~const char *br = cur ? git_branch(b) : NULL;~const char *br = git_branch(b);
 core: buffers found by the name as typed, so a relative and a full name are two (test_core_contract)~test TESTS=core_contract~~src/core/core.c~if (b->path && !strcmp(b->full, full)) return b;~if (b->path && !strcmp(b->path, path)) return b;
 core: the modified flag wrong after a save (test_core_screens)~test TESTS=core_screens~~src/core/core.c~undo_seq(b->undo) != b->saved_seq~undo_seq(b->undo) > b->saved_seq
+core: core_goto leaves a cursor past the end (test_core_contract)~test TESTS=core_contract~~src/core/core.c~	e->win->col = col;¶	core_clamp(e);¶	core_set_want(e);~	e->win->col = col;¶	core_set_want(e);
+core: a write skips the BufWritePre (test_keys_gq's format on :w)~test TESTS=keys_gq~~src/core/core.c~	keys_write_pre(e, b);¶~
+core: a write sends no didSave (test_infoview)~test TESTS=infoview~~src/core/core.c~		kitten_written(e, b);   /* BufWritePost, after the message as in Neovim */¶		lsp_saved(b->lsp);~		kitten_written(e, b);   /* BufWritePost, after the message as in Neovim */

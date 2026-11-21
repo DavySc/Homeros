@@ -19,8 +19,8 @@ oil: a move keeps the entry's link target~test TESTS=tools_oil~~src/tools/oil.c~
 oil: an open directory's buffer does not follow its move~test TESTS=tools_oil~~src/tools/oil.c~	if (a->type != OIL_MOVE || strncmp(path, a->src, n)~	if (1 || strncmp(path, a->src, n)
 oil: errors in strerror's words~test TESTS=tools_oil~~src/tools/oil.c~	for (size_t i = 0; i < sizeof t / sizeof *t; i++) if (t[i].e == e) return t[i].s;~	(void)t;
 oil: a move that cannot rename fails instead of copying~test TESTS=tools_oil~~src/tools/oil.c~	case OIL_MOVE: return rename(a->src, a->dst) && (cp_r(a->etype, a->src, a->dst) || rm_r(a->etype, a->src)) ? -1 : 0;~	case OIL_MOVE: return rename(a->src, a->dst) ? fail(a->src, a->dst) : 0;
-matcher: a long line number overflows (fuzz_tools_match)~fuzz FUZZERS=tools_match FUZZ_SECONDS=60~~src/tools/match.c~v = v > (LONG_MAX - 9) / 10 ? LONG_MAX : v * 10 + (s[i] - '0');~v = v * 10 + (s[i] - '0');
-oil: a long id overflows (fuzz_tools_oil)~fuzz FUZZERS=tools_oil FUZZ_SECONDS=60~~src/tools/oil.c~v = v > (LONG_MAX - 9) / 10 ? LONG_MAX : v * 10 + (l[i] - '0');~v = v * 10 + (l[i] - '0');
+matcher: a long line number overflows (fuzz_tools_match)~fuzz FUZZERS=tools_match FUZZ_SECONDS=60~~src/tools/match.c~v = v > (LONG_MAX - 9) / 10 ? LONG_MAX : v * 10 + (*s - '0');~v = v * 10 + (*s - '0');
+oil: a long id overflows (fuzz_tools_oil)~fuzz FUZZERS=tools_oil FUZZ_SECONDS=60~~src/tools/match.c~v = v > (LONG_MAX - 9) / 10 ? LONG_MAX : v * 10 + (*s - '0');~v = v * 10 + (*s - '0');
 oil: "/" alone is a name~test TESTS=tools_oil~~src/tools/oil.c~			isdir = parsedir(name);¶			int noname = !name[0];~			int noname = !name[0];¶			isdir = parsedir(name);
 oil: a link target ending in / gets another~test TESTS=tools_oil~~src/tools/oil.c~e->linkdir && k && e->link[k - 1] != '/' ? "/" : ""~e->linkdir && k ? "/" : ""
 oil: an empty path part is no trie child~test TESTS=tools_oil~~src/tools/oil.c~	return !strchr(c + n + 1, '/');~	return c[n + 1] && !strchr(c + n + 1, '/');

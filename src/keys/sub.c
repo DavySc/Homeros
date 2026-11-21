@@ -26,7 +26,7 @@ static void putc_(Sbuf *b, int c)
 	int f = one ? one : all;
 	one = 0;
 	char u[4];
-	bput(b, u, utf8_put(f ? map_case(c, f == 'u') : c, u));
+	bput(b, u, uni_put((unsigned char *)u, (unsigned)(f ? map_case(c, f == 'u') : c)));
 }
 
 /* vim_regexec_multi(): the match's lines (0 none) */

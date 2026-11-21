@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "uni.h"
 #include "json.h"
 #include "lsp.h"
 
@@ -159,16 +160,6 @@ int json_true(const char *s, const Jtok *t, int i)
 
 static unsigned u4(const char *s) { return (unsigned)(hex(s[0]) << 12 | hex(s[1]) << 8 | hex(s[2]) << 4 | hex(s[3])); }
 
-static size_t utf8(char *o, unsigned c)
-{
-	if (c < 0x80) { o[0] = (char)c; return 1; }
-	if (c < 0x800) { o[0] = (char)(0xC0 | c >> 6); o[1] = (char)(0x80 | (c & 0x3F)); return 2; }
-	if (c < 0x10000) { o[0] = (char)(0xE0 | c >> 12); o[1] = (char)(0x80 | (c >> 6 & 0x3F)); o[2] = (char)(0x80 | (c & 0x3F)); return 3; }
-	o[0] = (char)(0xF0 | c >> 18); o[1] = (char)(0x80 | (c >> 12 & 0x3F));
-	o[2] = (char)(0x80 | (c >> 6 & 0x3F)); o[3] = (char)(0x80 | (c & 0x3F));
-	return 4;
-}
-
 size_t json_str(const char *s, const Jtok *t, int i, char *out)
 {
 	size_t o = 0;
@@ -182,7 +173,7 @@ size_t json_str(const char *s, const Jtok *t, int i, char *out)
 			unsigned l = u4(s + j + 3);
 			if (l >= 0xDC00 && l < 0xE000) { u = 0x10000 + ((u - 0xD800) << 10) + (l - 0xDC00); j += 6; }
 		}
-		o += utf8(out + o, u >= 0xD800 && u < 0xE000 ? 0xFFFD : u);
+		o += (size_t)uni_put((unsigned char *)out + o, u >= 0xD800 && u < 0xE000 ? 0xFFFD : u);
 	}
 	out[o] = 0;
 	return o;

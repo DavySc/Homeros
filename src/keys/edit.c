@@ -133,21 +133,10 @@ void ins_char_bytes(const char *s, long n)
 	W->col += (size_t)n;
 }
 
-static long utf8(int k, char *b)
-{
-	unsigned c = (unsigned)k;
-	if (c < 0x80) { b[0] = (char)c; return 1; }
-	if (c < 0x800) { b[0] = (char)(0xC0 + c / 64); b[1] = (char)(0x80 + c % 64); return 2; }
-	if (c < 0x10000) { b[0] = (char)(0xE0 + c / 4096); b[1] = (char)(0x80 + c / 64 % 64); b[2] = (char)(0x80 + c % 64); return 3; }
-	b[0] = (char)(0xF0 + c / 262144); b[1] = (char)(0x80 + c / 4096 % 64);
-	b[2] = (char)(0x80 + c / 64 % 64); b[3] = (char)(0x80 + c % 64);
-	return 4;
-}
-
 static void ins_char(int c)
 {
 	char b[4];
-	ins_char_bytes(b, utf8(c, b));
+	ins_char_bytes(b, uni_put((unsigned char *)b, (unsigned)c));
 }
 
 static int inindent(void)
