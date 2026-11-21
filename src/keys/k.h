@@ -104,7 +104,7 @@ typedef struct {
 } Oparg;
 enum { OP_NOP, OP_DELETE, OP_YANK, OP_CHANGE, OP_LSHIFT, OP_RSHIFT, OP_TILDE,
 	OP_UPPER, OP_LOWER, OP_JOIN, OP_JOIN_NS, OP_REPLACE, OP_INSERT, OP_APPEND,
-	OP_NR_ADD, OP_NR_SUB, OP_FORMAT };
+	OP_NR_ADD, OP_NR_SUB, OP_FORMAT, OP_COLON };
 
 /* text objects (textobject.c); the Visual state they extend */
 extern int VIsual_active, VIsual_mode;
@@ -136,6 +136,34 @@ enum { PUT_FIXINDENT = 1, PUT_CURSEND = 2, PUT_LINE = 4, PUT_LINE_SPLIT = 8, PUT
 void block_prep(Oparg *oap, long l, int is_del, long *textcol, long *textlen,
                 long *startspaces, long *endspaces, int *is_short, long *start_vcol, long *end_vcol);
 void set_reg(int r, const char *s, long n, int type);
+/* a growing byte buffer, kept NUL-terminated (ops.c) */
+typedef struct { char *s; long n, cap; } Sbuf;
+void bput(Sbuf *b, const char *s, long n);
+int  map_case(int c, int up);   /* utf_toupper() (up) or utf_tolower() */
+long utf8_put(int c, char *b);   /* utf_char2bytes() */
+
+/* Vim's patterns (regex.c) */
+int  re_compile(const char *pat, int icase, const char **msg);
+int  re_exec(long l, long col, Pos *s, Pos *e, Pos *sub_s, Pos *sub_e);
+char *re_skip(char *p, int delim, int *all);
+extern long long re_deadline;   /* loop_now() after which re_exec() gives up (-1), as at its step limit; 0: none */
+int  re_hasnl(void);   /* RF_HASNL: the compiled pattern can match a line break */
+
+/* search.c */
+int  do_search(Oparg *oap, int dirc, const char *pat, long count, int rev, int *wrapped);
+void search_reset(void);
+enum { RE_SEARCH, RE_SUBST, RE_LAST };
+int  search_regcomp(const char *pat, int save, int use, int ic, const char **msg);
+const char *get_search_pat(void);
+/* sub.c */
+void ex_sub(long l1, long l2, int cmd, char *arg);
+void sub_reset(void);
+extern int sub_asking;    /* the c flag waits for sub_key()'s key */
+void sub_key(int k);
+void search_recompile(void);
+extern int no_smartcase;
+extern int no_hlsearch;
+enum { K_PAT = KEY_DEL + 0x100 };   /* the command line of / or ? was entered (normal.c) */
 
 /* typeahead (keys.c) */
 void stuff(const int *k, long n);        /* stuffReadbuff(): readbuf1 */
@@ -186,7 +214,7 @@ extern int searchc_inclusive;
 /* ops.c: the '[ and '] marks, registers, recording */
 extern Pos b_op_start, b_op_end, b_op_start_orig;
 extern Reg *put_override;
-extern int reg_recording, reg_executing, reg_recorded;
+extern int reg_recording, reg_recorded;
 int  swapchar(int op_type, Pos *pos);
 int  do_record(int c);
 int  do_execreg(int regname);

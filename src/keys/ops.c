@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "k.h"
+#include "loop.h"
 #include "sqlfmt.h"
 #include "uni.h"
 
@@ -94,9 +95,7 @@ static const char *reg_line(const Reg *r, long i, long *len)
 	return p;
 }
 
-/* growing byte buffer */
-typedef struct { char *s; long n, cap; } Sbuf;
-static void bput(Sbuf *b, const char *s, long n)
+void bput(Sbuf *b, const char *s, long n)
 {
 	if (b->n + n + 1 > b->cap) {
 		long c = (b->n + n + 1) * 2;
@@ -323,6 +322,12 @@ static void yank_into(Oparg *oap, Reg *reg, int append)
 	if (type != MLINE && !oap->inclusive && b_op_end.col > 0) b_op_end.col--;
 }
 
+static void unflash(void *e)
+{
+	((Editor *)e)->ks.yank.type = 0;
+	core_changed = 1;
+}
+
 int op_yank(Oparg *oap)
 {
 	if (oap->regname == '_') return 1;
@@ -331,6 +336,20 @@ int op_yank(Oparg *oap)
 	Reg *reg = get_reg(r, 1);
 	yank_into(oap, reg, r >= 'A' && r <= 'Z');
 	set_clipboard(r, reg);
+	/* Davy's vim.highlight.on_yank(): '[ to '] for 150 ms, not while a
+	   register executes */
+	if (!E->ks.executing) {
+		int t = reg->type == MLINE ? 'V' : reg->type == MBLOCK ? 22 : 'v';
+		E->ks.yank.type = t;
+		E->ks.yank.l1 = (size_t)b_op_start.lnum, E->ks.yank.c1 = (size_t)b_op_start.col;
+		E->ks.yank.l2 = (size_t)b_op_end.lnum, E->ks.yank.c2 = (size_t)b_op_end.col;
+		if (t == 22) {   /* screen columns: the register's width from the left one (the core's contract) */
+			long a, b;   /* getregionpos(): with coladd, so on a Tab where the cursor shows */
+			getvvcol(b_op_start, &a, NULL), getvvcol(b_op_end, &b, NULL);
+			E->ks.yank.c1 = (size_t)(a < b ? a : b), E->ks.yank.c2 = E->ks.yank.c1 + (size_t)reg->width;
+		}
+		loop_timer(unflash, E, 150);
+	}
 	return 1;
 }
 
@@ -634,7 +653,7 @@ static const struct { unsigned first, last; int stride, delta; } upper_tab[] = {
 #include "lower.inc"
 };
 
-static int map_case(int c, int up)
+int map_case(int c, int up)
 {
 	if (c < 0x80) {
 		if (up && c >= 'a' && c <= 'z') return c - 32;
@@ -651,7 +670,7 @@ static int map_case(int c, int up)
 	return c;
 }
 
-static long utf8_put(int c, char *b)
+long utf8_put(int c, char *b)
 {
 	unsigned k = (unsigned)c;
 	if (k < 0x80) { b[0] = (char)k; return 1; }
@@ -1481,7 +1500,7 @@ void op_addsub(Oparg *oap, long Prenum1, int g_cmd)
 
 /* ---- recording and executing registers ---- */
 
-int reg_recording, reg_executing, reg_recorded;
+int reg_recording, reg_recorded;
 static int execreg_lastc;
 
 /* keys as register bytes: specials as Neovim's K_SPECIAL triples */
@@ -1543,7 +1562,7 @@ void ops_reset(void)
 	free(last_cmdline);
 	last_cmdline = NULL;
 	recordbuff.n = recordbuff_last = 0;
-	reg_recording = reg_executing = reg_recorded = execreg_lastc = 0;
+	reg_recording = reg_recorded = execreg_lastc = 0;
 }
 
 void record_key(int k)
@@ -1614,7 +1633,7 @@ int do_execreg(int regname)
 		bput(&b, "\r", 1);
 		stuff_bytes(b.s, b.n, 1, 0);
 		free(b.s);
-		reg_executing = regname;
+		E->ks.executing = regname;
 		return 1;
 	}
 	if (regname == '.') {
@@ -1622,7 +1641,7 @@ int do_execreg(int regname)
 		long n = last_insert_keys(&k);
 		if (n < 0) { core_msg(E, "E29: No inserted text yet"); return 0; }
 		typebuf_ins(k, n);
-		reg_executing = regname;
+		E->ks.executing = regname;
 		return 1;
 	}
 	Reg *reg = get_reg(regname, 0);
@@ -1632,7 +1651,7 @@ int do_execreg(int regname)
 	if (reg->type == MLINE) bput(&b, "\n", 1);
 	stuff_bytes(b.s ? b.s : "", b.n, 1, 0);
 	free(b.s);
-	reg_executing = regname == 0 ? '"' : regname;
+	E->ks.executing = regname == 0 ? '"' : regname;
 	return 1;
 }
 
