@@ -365,19 +365,21 @@ static void test_sway(void)
 	show();
 	CHECK(!ink(3 * cellw(), 0, cellw(), cellh(), 0));
 	/* an image (package 21, thread 0's, agreed): Backend.cell is the font's
-	   cell; the JPEG (grey 200, 16 x 16) fills its pixels from row 2, the
-	   background is past it, and its cells redrawn as text take it away */
+	   cell; tests/test_image.png (32 x 16, red then blue) fills its pixels
+	   from row 2, each tile its own columns, the background past it; its
+	   cells redrawn as text take it away */
 	{
 		int w, h, n;
 		backend_wl.cell(&w, &h);
-		CHECK(w == cellw() && h == cellh() && 3 * w > 16 && 3 * h > 16);
-		CHECK((n = image_load("tests/test_image.jpg", 3, 3, w, h, 0x1e1e2e)) > 0);
+		CHECK(w == cellw() && h == cellh() && 4 * w > 32 && h > 16);
+		CHECK((n = image_load("tests/test_image.png", 4, 1, w, h, 0x1e1e2e)) > 0);
 		image_put(&g, 2, 0, n, 0);
 		show();
-		CHECK(ink(0, 2 * h, 16, 16, 0) == 256 && !ink(0, 2 * h, 16, 16, 2) && !ink(16, 2 * h, 3 * w - 16, 3 * h, 0));
-		for (int r = 2; r < 5; r++) grid_puts(&g, r, 0, 3, "   ", 3, ATTR_NONE, FACE_NONE);
+		CHECK(ink(0, 2 * h, 32, 16, 0) == 512 && ink(0, 2 * h, 16, 16, 1) == 256 && !ink(16, 2 * h, 16, 16, 1));
+		CHECK(!ink(32, 2 * h, 4 * w - 32, h, 0) && !ink(0, 2 * h + 16, 4 * w, h - 16, 0));
+		grid_puts(&g, 2, 0, 4, "    ", 4, ATTR_NONE, FACE_NONE);
 		show();
-		CHECK(!ink(0, 2 * h, 3 * w, 3 * h, 0));
+		CHECK(!ink(0, 2 * h, 4 * w, h, 0));
 	}
 
 	/* a cluster longer than a cell's 4 bytes is drawn from grid.c's store:

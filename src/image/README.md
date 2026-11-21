@@ -22,6 +22,9 @@ package 4 PR: Markdown and Org image links, LaTeX fragments, the rows under the 
   colour>`, through the loop (`proc_spawn`); the PNG is named by a hash of fragment, colour and
   dpi, so it is never rendered twice nor shown stale, and a failed fragment is not retried.
   Each job writes under its own names (with the pid) and renames its PNG into place last.
+  Every failed fragment is remembered for the session (a screen of them, with no latex
+  installed, would otherwise start one job after another for ever), and each tool is killed
+  after 10 s (a fragment TeX never finishes would hold its job and a core).
 - **Terminal:** `Backend.cell` is 0 x 0, so the core places no images and the link text stays,
   as Emacs does in a terminal.
 
@@ -53,6 +56,10 @@ package 4 PR: Markdown and Org image links, LaTeX fragments, the rows under the 
   granularity) is not reread; edits in a drawing program change both in practice.
 - **hypothesis:** stb_image is less hardened than libpng against hostile files; images here are
   Davy's own notes.
-- Decoding is on the loop: a 1200x900 noisy PNG takes about 55 ms once, on first sight.
+- Decoding is on the loop: a 1200x900 noisy PNG takes about 55 ms once, on first sight; a 4K
+  screenshot scaled into its box took 127-153 ms to decode plus 166-177 ms to resize (PR 102's
+  review), again for each new box, since the box is part of the key.
+- A latex or dvipng still running when the editor exits is not killed (the timeout ends with
+  the editor); one that never finishes then runs on.
 - `GdiFlush` before writing the DIB's bits follows CreateDIBSection's documented rule; Wine
   draws at once, so no test sees it.

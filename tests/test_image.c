@@ -4,6 +4,7 @@
    and dvipng on PATH that log their arguments. */
 #define _GNU_SOURCE
 #include <fcntl.h>
+#include <signal.h>
 #include <stdint.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -126,7 +127,23 @@ static void keys(void)
 	CHECK(win[0] == before && rgba[0] == keep);
 	CHECK(image_load(path, 5, 4, 2, 2, 0) == 0);     /* another box: read, no longer decodes */
 	CHECK(image_load(path, 4, 4, 2, 2, 1) == 0);     /* another bg */
-	CHECK(image_load(path, 4, 4, 2, 3, 0) == 0);     /* another cell */
+	CHECK(image_load(path, 4, 4, 2, 3, 0) == 0);     /* another cell height */
+	CHECK(image_load(path, 4, 4, 3, 2, 0) == 0);     /* another cell width */
+	CHECK(image_load(path, 4, 5, 2, 2, 0) == 0);     /* another box height */
+	char twin[700];                                  /* another path, same bytes and mtime as before */
+	snprintf(twin, sizeof twin, "%s/twin.png", dir);
+	png(twin, 8, 8);
+	CHECK(utimensat(AT_FDCWD, twin, ts, 0) == 0 && truncate(twin, size) == 0);
+	CHECK(stat(twin, &st) == 0 && st.st_size == size);
+	CHECK(utimensat(AT_FDCWD, twin, ts, 0) == 0);
+	int t2 = image_load(twin, 4, 4, 2, 2, 0);
+	CHECK(t2 != n);
+	/* the same mtime, another size: read again (no longer decodes) */
+	f = fopen(path, "a");
+	fputc('x', f);
+	fclose(f);
+	CHECK(utimensat(AT_FDCWD, path, ts, 0) == 0);
+	CHECK(image_load(path, 4, 4, 2, 2, 0) == 0);
 	png(path, 8, 8);                                 /* a new PNG, new mtime */
 	ts[1].tv_nsec = (ts[1].tv_nsec + 1) % 1000000000;
 	CHECK(utimensat(AT_FDCWD, path, ts, 0) == 0);
@@ -224,10 +241,35 @@ static void reuse(void)
 	CHECK(seen && !draws(&old));
 }
 
+/* The budget: four 4000 x 4000 images (64 MB of pixels each, one file
+   under four backgrounds) are kept; a fifth makes room by dropping the
+   least recently used, though slots are left */
+static void budget(void)
+{
+	static unsigned char red[4000 * 4 * 4000];
+	for (size_t i = 0; i < sizeof red; i += 4) memcpy(red + i, "\xff\0\0\xff", 4);
+	snprintf(path, sizeof path, "%s/huge.png", dir);
+	CHECK(stbi_write_png(path, 4000, 4000, 4, red, 4000 * 4));
+	Cell first = { 0 };
+	for (unsigned bg = 1; bg <= 5; bg++) {
+		int n = image_load(path, 250, 250, 16, 16, bg);
+		CHECK(n > 0);
+		if (bg == 1) {
+			CHECK(grid_resize(&g, 1, 1) == 0);
+			image_put(&g, 0, 0, n, 0);
+			first = g.c[0];
+		}
+		uint32_t px[16 * 16] = { 1 };
+		image_draw(px, 16, &first);
+		CHECK((px[0] == 0xff0000) == (bg < 5));
+	}
+}
+
 /* latex and dvipng stand-ins: each logs its arguments; latex reads its
    input to the end (TeX asks there on an error), keeps the .tex as
-   last.tex, fails on a fragment with "FAIL" and makes the .dvi; dvipng
-   writes the PNG at -o */
+   last.tex, fails on a fragment with "FAIL", never ends on one with
+   "SPIN" (its pid in spin.pid) and makes the .dvi; dvipng writes the PNG
+   at -o */
 static void stand_ins(void)
 {
 	char f[700];
@@ -236,7 +278,8 @@ static void stand_ins(void)
 	FILE *o = fopen(f, "w");
 	fprintf(o, "#!/bin/sh\ncat >/dev/null\necho latex \"$@\" >> %s/log\n"
 		"for a; do t=$a; done\ncp \"$t\" %s/last.tex\ngrep -q FAIL \"$t\" && exit 1\n"
-		"cp \"$t\" \"${t%%.tex}.dvi\"\ntouch \"${t%%.tex}.aux\" \"${t%%.tex}.log\"\n", dir, dir);
+		"grep -q SPIN \"$t\" && echo $$ > %s/spin.pid && exec sleep 1000\n"
+		"cp \"$t\" \"${t%%.tex}.dvi\"\ntouch \"${t%%.tex}.aux\" \"${t%%.tex}.log\"\n", dir, dir, dir);
 	fclose(o);
 	chmod(f, 0700);
 	snprintf(f, sizeof f, "%s/bin/dvipng", dir);
@@ -260,7 +303,7 @@ static long long ms(void)
 /* Runs the loop until core_changed */
 static void wait_done(void)
 {
-	long long end = ms() + 10000;
+	long long end = ms() + 15000;   /* past latex.c's TIMEOUT */
 	for (core_changed = 0; !core_changed;) { CHECK(ms() < end); CHECK(loop_once(100) == 0); }
 }
 
@@ -324,6 +367,33 @@ static void latex(void)
 	wait_done();
 	snprintf(d, sizeof d, "grep -q '^\\$x\\$$' %s/last.tex", dir);
 	CHECK(system(d) == 0);
+	/* a screen of failing fragments (no latex): each tried once, however
+	   many, then no more jobs however often they are asked for */
+	int before = lines();
+	char frag[100][24];
+	for (int i = 0; i < 100; i++) snprintf(frag[i], sizeof frag[i], "FAIL %d", i);
+	for (int round = 0; round < 1000 && lines() < before + 100; round++) {
+		for (int i = 0; i < 100; i++) CHECK(image_latex(frag[i], strlen(frag[i]), 0, 140, out) == NULL);
+		CHECK(loop_once(100) == 0);
+	}
+	CHECK(lines() == before + 100);
+	for (int round = 0; round < 20; round++) {
+		for (int i = 0; i < 100; i++) CHECK(image_latex(frag[i], strlen(frag[i]), 0, 140, out) == NULL);
+		CHECK(loop_once(10) == 0);
+	}
+	CHECK(lines() == before + 100);
+	/* a fragment TeX never finishes is killed and not tried again */
+	CHECK(image_latex("SPIN", 4, 0, 140, out) == NULL);
+	long long t0 = ms();
+	wait_done();
+	CHECK(ms() - t0 >= 9000);
+	snprintf(d, sizeof d, "%s/spin.pid", dir);
+	FILE *sp = fopen(d, "r");
+	int pid = 0;
+	CHECK(sp && fscanf(sp, "%d", &pid) == 1 && pid > 0);
+	fclose(sp);
+	for (long long end = ms() + 3000; kill(pid, 0) == 0;) { CHECK(ms() < end); CHECK(loop_once(100) == 0); }
+	CHECK(image_latex("SPIN", 4, 0, 140, out) == NULL && lines() == before + 101);
 }
 
 int main(void)
@@ -335,6 +405,7 @@ int main(void)
 	bad();
 	scale_and_jpeg();
 	reuse();
+	budget();
 	latex();
 	char rm[700];
 	snprintf(rm, sizeof rm, "rm -rf %s", dir);

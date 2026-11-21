@@ -174,23 +174,21 @@ int main(void)
 		DeleteObject(f);
 	}
 	{   /* an image (package 21, thread 0's, agreed): Backend.cell is the cell
-	       measured above, and the JPEG's grey 200 (16 x 16) shows from row 3,
-	       the background past it; then text again */
+	       measured above; tests/test_image.png (32 x 16, red then blue) shows
+	       from row 3, each tile its own columns, the background past it;
+	       then text again */
 		int w, h, n;
 		b->cell(&w, &h);
-		CHECK(w == cw && h == ch);
-		CHECK((n = image_load("tests/test_image.jpg", 3, 3, cw, ch, 0x1e1e2e)) > 0);
+		CHECK(w == cw && h == ch && 4 * cw > 32 && ch > 16);
+		CHECK((n = image_load("tests/test_image.png", 4, 1, cw, ch, 0x1e1e2e)) > 0);
 		image_put(&g, 3, 0, n, 0);
 		present(&g, &shown);
 		for (int y = 3 * ch; y < 3 * ch + 16; y++)
-			for (int x = 0; x < 16; x++) {
-				COLORREF p = px(x, y);
-				CHECK(abs(GetRValue(p) - 200) <= 4 && abs(GetGValue(p) - 200) <= 4 && abs(GetBValue(p) - 200) <= 4);
-			}
-		CHECK(px(16, 3 * ch) == BG && px(0, 3 * ch + 16) == BG);
-		for (int c = 0; c < 3; c++) for (int r = 3; r < 6; r++) put(&g, r, c, " ", 1, ATTR_NONE);
+			for (int x = 0; x < 32; x++) CHECK(px(x, y) == (x < 16 ? RGB(255, 0, 0) : RGB(0, 0, 255)));
+		CHECK(px(32, 3 * ch) == BG && px(0, 3 * ch + 16) == BG);
+		for (int c = 0; c < 4; c++) put(&g, 3, c, " ", 1, ATTR_NONE);
 		present(&g, &shown);
-		CHECK(px(1, 3 * ch + 1) == BG);
+		CHECK(px(1, 3 * ch + 1) == BG && px(20, 3 * ch + 1) == BG);
 	}
 
 	/* the mouse and the wheel, at their cells */
