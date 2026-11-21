@@ -59,7 +59,7 @@ int main(int argc, char **argv)
     if (x.repeats && r.rip != next) FAIL("step %u: a repeated instruction was stepped into", round);
     stepped += 1, calls += x.flow == X64_CALL, repeats += x.repeats;
   }
-  if (rounds && (!threads[2] || !calls || !repeats)) FAIL("not every thread came to the breakpoint, or no call or no repeated instruction was stepped over");
+  if (rounds && (!threads[2] || !calls || !repeats)) FAIL("not every thread came to the breakpoint (the third: %u), or no call (%u) or no repeated instruction (%u) was stepped over", threads[2], calls, repeats);
   for (e.halt = soon, e.halt_arg = &waits; halts < rounds / 20; halts += 1) {
     uint64_t rip[3];
     waits = halts % 4;

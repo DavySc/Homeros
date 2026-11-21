@@ -30,4 +30,4 @@ jobs:
       - name: The console debugger through its scripted session
         run: for n in 1 2 3 4 5; do ./check.sh front || exit 1; done
       - name: Every plant is caught
-        run: ./check.sh plants front && ./check.sh plants engine && ./check.sh plants win && STRESS_ROUNDS=40000 ./check.sh plants windows   # what these two wait for comes about twice in 10,000 rounds
+        run: ./check.sh plants front && ENGINE_ROUNDS=2000 ./check.sh plants engine && ./check.sh plants win && STRESS_ROUNDS=40000 ./check.sh plants windows   # what these two wait for comes about twice in 10,000 rounds

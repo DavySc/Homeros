@@ -639,7 +639,7 @@ engine | dbg/engine.c | e->ranges[2 * i + 1] = line_end(&m->rdi, rdi_row(&m->rdi
 engine | dbg/engine.c | if (!m \p\p !rdi_row(&m->rdi, addr - m->image.base).line.line) return false; | if (!m \p\p !rdi_row(&m->rdi, addr - m->image.base).opl) return false;
 engine | dbg/engine.c | return !(name.n == 8 && !memcmp(name.p, "__chkstk", 8)); | return name.n \p\p true;
 engine | dbg/engine.c | if (call) to = 0; | 
-engine | dbg/engine.c | if (flags & END && !(flags & LINES && !goes_into(e, ev.addr))) | if (flags & END && !(flags & LINES && !goes_into(e, ev.addr) && false))
+engine | dbg/engine.c | if (!(flags & LINES && !goes_into(e, ev.addr)) && | if (!(flags & LINES && !goes_into(e, ev.addr) && false) &&
 engine | dbg/engine.c | END \p (to ? 0 : STEP_AFTER) \p (call ? LINES : 0)); | END \p (to ? 0 : STEP_AFTER) \p LINES);
 engine | dbg/engine.c | if (x.flow == X64_CALL && (!into \p\p addr >= base + row.opl)) net_add( | if (x.flow == X64_CALL && into && addr >= base + row.opl) net_add(
 # OWED: a line step begun in code between two blocks of lines (reached by instruction steps), where a jump inside that code must not end it: no script does that since line steps no longer end there
@@ -668,7 +668,7 @@ engine | dbg/engine.c | if ((!reached \p\p flags & STEP_AFTER) && | if (!reached
 engine | dbg/engine.c | if ((!reached \p\p flags & STEP_AFTER) && | if ((flags & STEP_AFTER) &&
 engine | dbg/engine.c | if (!reached) continue; | 
 engine | dbg/engine.c | if (flags & SAVE_AFTER && target_regs(e->target, thread, &regs)) depth = regs.gp[4]; | 
-engine | dbg/engine.c | if (flags & END && !(flags & LINES && !goes_into(e, ev.addr))) | if (!(flags & LINES && !goes_into(e, ev.addr)))
+engine | dbg/engine.c | if (!(flags & END)) continue; |
 # ---- slice 5: the engine thread and halt (tests/test_session.c on a made-up target; the halt phase of tests/stress_engine.c; specs/Halt.tla) ----
 test | dbg/session.c | if (c.kind == SESSION_HALT \p\p s->quit) return true; | if (s->quit) return true;
 test | dbg/session.c | s->quit = c.kind == SESSION_QUIT;\n    if (c.kind == SESSION_HALT | if (c.kind == SESSION_HALT
@@ -1132,3 +1132,14 @@ eval | dbg/ask.c | b = b == '\\' ? '/' : b >= 'A' && b <= 'Z' ? (char)(b + 32) :
 eval | dbg/ask.c | if (n == 0 \p\p n > len \p\p (n < len && path[len - n - 1] != '/')) return false; | if (n == 0 \p\p n > len) return false;
 engine | dbg/engine.c | return after.line.line == 0xf00f00 ? | return after.line.line == 0xf00f01 ?
 engine | dbg/engine.c | (!into \p\p addr >= base + row.opl) | !into
+# "just my code" (calls_jmc against Visual Studio's recording and RAD's known differences)
+engine | dbg/engine.c | && !(user && !mine(e, ev.addr))) return | && !(false && !mine(e, ev.addr))) return
+engine | dbg/engine.c | if (user) watch(e, thread); | if (user) watch(e, 0);
+engine | dbg/engine.c | if (at >> 56 == 6) target_write | if (at >> 56 == 7) target_write
+engine | dbg/engine.c | if (e->code[at] == 0x90) { | if (e->code[at] == 0x91) {
+engine | dbg/engine.c | while (ev.kind == TARGET_STEP && !mine(e, ev.addr)); | while (false);
+engine | dbg/engine.c | net_add(e, helper + at, HELPER \p END \p IGNORE_SP) | net_add(e, helper + at, HELPER \p END)
+engine | dbg/engine.c | net_add(e, helper + at, HELPER \p END \p IGNORE_SP) | net_add(e, helper + at, END \p IGNORE_SP)
+engine | dbg/engine.c | if (!(flags & STEP_AFTER) && (ev = step_one(e, thread)).kind != TARGET_STEP) return ev;   /* off the trap it stands on */ |
+engine | dbg/engine.c | .opl).line.line == 0xf00f00; | .first).line.line == 0xf00f00;
+engine | dbg/engine.c | ROOM(e, traps, trap_cap, count + e->net_count);\n    for (; planted | for (; planted

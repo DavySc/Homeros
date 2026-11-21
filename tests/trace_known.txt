@@ -58,7 +58,7 @@ threads.mix2.txt all 15 15
 threads_o2.back.txt all 3 3
 threads_o2.into.txt all 3 3
 threads_o2.mix2.txt all 5 5
-# Where we part from Visual Studio's recordings (<traces>-vs), by step, counted from 0.
-# Code without lines that jumps into a function with lines, in a program built with "just my code": Visual Studio
-# stops in that function behind its call of the helper, we pass the call (**hypothesis**: it is the helper that tells it)
-calls_jmc.into.txt vs 24
+# A program built with "just my code": a step from the user's code does not end in code that is not (the runtime behind
+# main), where RAD stops (as Visual Studio, whose recordings end there; dbg/engine.c, mine).
+calls_jmc.mix.txt all 6 6
+calls_jmc.over.txt all 16 16

@@ -12,7 +12,8 @@ enum { IGNORE_SP = 1,     /* any depth */
        STEP_AFTER = 2,    /* run the instruction there, alone */
        SAVE_AFTER = 4,    /* the depth to keep is the one after that instruction */
        LINES = 8,         /* with END: only where that instruction, a call, leads to code a step goes into */
-       END = 16 };        /* the step is done */
+       END = 16,          /* the step is done */
+       HELPER = 32 };     /* in the "just my code" helper: first run out of it */
 
 static void *room(void *p, uint32_t *cap, uint32_t n, size_t size)
 {
@@ -169,6 +170,39 @@ static bool goes_into(const Engine *e, uint64_t addr)
   return !(name.n == 8 && !memcmp(name.p, "__chkstk", 8));
 }
 
+/* Whether addr is in a function built with MSVC's "just my code" (/JMC): the row behind its first is the call of the
+   helper, under the made-up line number 0xf00f00. Code that is not, the program's start and end and the helper among it,
+   is not the user's: a step from the user's code does not end there (Visual Studio, calls_jmc; knowledge base 03). */
+static bool mine(const Engine *e, uint64_t addr)
+{
+  const EngineModule *m = engine_module(e, addr);
+  if (!m) return false;
+  const RdiScope *scope = rdi_at(&m->rdi, RDI_SCOPES, RdiScope, rdi_at(&m->rdi, RDI_PROCEDURES, RdiSymbol, rdi_at(&m->rdi, RDI_SCOPES, RdiScope, rdi_vmap(&m->rdi, RDI_SCOPE_VMAP, addr - m->image.base))->proc)->root_scope);
+  return rdi_row(&m->rdi, rdi_row(&m->rdi, *rdi_at(&m->rdi, RDI_SCOPE_VOFFS, uint64_t, scope->voff_first)).opl).line.line == 0xf00f00;
+}
+
+/* The helper tells the debugger that a thread came into one of the user's functions: it reaches its nop only on the
+   thread whose id the debugger wrote into __DebuggerCurrentSteppingThreadId. Writes it in every module that has one,
+   and adds the nops to the net. It stays written: outside a step no trap is on a nop. */
+static void watch(Engine *e, uint32_t thread)
+{
+  for (uint32_t i = 0; i < e->module_count; i += 1) {
+    const EngineModule *m = &e->modules[i];
+    RdiSpan found = rdi_matches(&m->rdi, RDI_NAMES_GLOBALS, "__DebuggerCurrentSteppingThreadId", 33);
+    for (uint64_t k = 0; k < found.n; k += 1) {
+      uint64_t at = rdi_at(&m->rdi, RDI_GLOBALS, RdiSymbol, ((const uint32_t *)found.p)[k])->location;
+      if (at >> 56 == 6) target_write(e->target, m->image.base + (at & 0xffffffffffffff), &thread, 4);   /* the linker's name for it has no place */
+    }
+    uint64_t helper = engine_function(m, "__CheckForDebuggerJustMyCode", 28);
+    for (uint32_t n = helper ? code_at(e, helper, 256) : 0, at = 0; at < n;) {
+      X64Inst x = x64_decode(e->code + at, n - at, helper + at);
+      if (!x.size) break;
+      if (e->code[at] == 0x90) { net_add(e, helper + at, HELPER | END | IGNORE_SP); break; }
+      at += x.size;
+    }
+  }
+}
+
 /* Where a piece of a line ends: behind what MSVC's "just my code" puts after it under the made-up
    line number 0xf00f00, "never step into": a call of a function that has lines. As cdb, a step neither ends on it nor
    goes into its call; RAD does both (knowledge base 03, "A second reference"). */
@@ -274,10 +308,10 @@ static TargetEvent run(Engine *e, int how, uint32_t thread, const uint64_t *brea
   }
   for (uint32_t i = 0; i < e->thread_count; i += 1) e->threads[i].told = 0;   /* now all run: one that comes to stand there again has not been told (Hit.tla, "kept") */
   uint64_t depth = regs.gp[4];
-  ROOM(e, traps, trap_cap, count + e->net_count);
-  for (uint32_t i = 0; i < count; i += 1) e->traps[i] = breakpoints[i];
-  for (uint32_t i = 0; i < e->net_count; i += 1) e->traps[count + i] = e->net[i].addr;
-  for (;;) {
+  bool user = mine(e, regs.rip);
+  for (uint32_t planted = 0;;) {   /* the net can grow on the way (watch) */
+    ROOM(e, traps, trap_cap, count + e->net_count);
+    for (; planted < count + e->net_count; planted += 1) e->traps[planted] = planted < count ? breakpoints[planted] : e->net[planted - count].addr;
     ev = run_on(e, count + e->net_count, 0);
     if (ev.kind != TARGET_TRAP) return ev;
     uint32_t flags = 0;
@@ -289,8 +323,16 @@ static TargetEvent run(Engine *e, int how, uint32_t thread, const uint64_t *brea
     if ((!reached || flags & STEP_AFTER) && (ev = step_one(e, ev.thread)).kind != TARGET_STEP) return ev;
     if (!reached) continue;
     if (flags & SAVE_AFTER && target_regs(e->target, thread, &regs)) depth = regs.gp[4];
-    /* where a call leads is known when it has run: into code no step goes into, the thread runs on, the net as it is */
-    if (flags & END && !(flags & LINES && !goes_into(e, ev.addr))) return (TargetEvent){.kind = TARGET_STEP, .thread = thread, .addr = ev.addr};
+    if (flags & HELPER) {   /* to the function that called it */
+      do ev = step_one(e, thread); while (ev.kind == TARGET_STEP && !mine(e, ev.addr));
+      if (ev.kind != TARGET_STEP) return ev;
+    }
+    if (!(flags & END)) continue;
+    /* where a call leads is known when it has run: into code no step goes into, the thread runs on, the net as it is;
+       so it does from the user's code into code that is not, until it comes to a function of the user's */
+    if (!(flags & LINES && !goes_into(e, ev.addr)) && !(user && !mine(e, ev.addr))) return (TargetEvent){.kind = TARGET_STEP, .thread = thread, .addr = ev.addr};
+    if (user) watch(e, thread);
+    if (!(flags & STEP_AFTER) && (ev = step_one(e, thread)).kind != TARGET_STEP) return ev;   /* off the trap it stands on */
   }
 }
 
