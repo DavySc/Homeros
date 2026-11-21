@@ -7,7 +7,6 @@
 typedef struct { int y, x, h, w; } Box;
 void box_fill(Grid *g, Box b);                         /* blanks */
 void box_border(Grid *g, Box b, const char *title);   /* rounded, the title centred */
-int  utf8_put(char u[4], int k);                       /* k's UTF-8 in u; its length */
 
 /* Ctrl+. opens and closes it; while open it takes every key but a resize.
    1 taken. */

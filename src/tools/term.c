@@ -11,6 +11,7 @@
 #include "keys.h"
 #include "loop.h"
 #include "term.h"
+#include "uni.h"
 
 enum { SLOT0 = FACE_COUNT, SLOTS = FACES };
 
@@ -103,7 +104,7 @@ static void send(int k)
 		u[0] = 27; u[1] = m.value ? 'O' : '['; u[2] = k == KEY_UP ? 'A' : k == KEY_DOWN ? 'B' : k == KEY_RIGHT ? 'C' : 'D';
 		n = 3;
 	} else if (k == KEY_DEL) { memcpy(u, "\x1b[3~", 4); n = 4; }
-	else if (k < 0x110000) n = utf8_put(u, k);
+	else if (k < 0x110000) n = uni_put((unsigned char *)u, (unsigned)k);
 	else return;
 	proc_write(T.id, u, (size_t)n);
 	ghostty_terminal_scroll_viewport(T.t, (GhosttyTerminalScrollViewport){ .tag = GHOSTTY_TERMINAL_SCROLL_VIEWPORT_BOTTOM });

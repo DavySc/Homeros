@@ -558,24 +558,12 @@ static int edit(int k)
 	if (k == KEY_RIGHT) { if (P.pcur < P.plen) P.pcur += uni_len((const unsigned char *)P.prompt, P.plen, P.pcur); return 0; }
 	if (k < ' ' || k == 127 || k >= 0x110000) return 0;
 	char u[4];
-	size_t n = (size_t)utf8_put(u, k);
+	size_t n = (size_t)uni_put((unsigned char *)u, (unsigned)k);
 	if (P.plen + n > PROMPT) return 0;
 	memmove(P.prompt + P.pcur + n, P.prompt + P.pcur, P.plen - P.pcur);
 	memcpy(P.prompt + P.pcur, u, n);
 	P.plen += n; P.pcur += n;
 	return 1;
-}
-
-int utf8_put(char u[4], int k)
-{
-	int n = k < 0x80 ? 1 : k < 0x800 ? 2 : k < 0x10000 ? 3 : 4;
-	if (n == 1) u[0] = (char)k;
-	else {
-		int lead = n == 2 ? 0xC0 : n == 3 ? 0xE0 : 0xF0;
-		for (int i = n; i-- > 1; k /= 64) u[i] = (char)(0x80 + k % 64);
-		u[0] = (char)(lead + k);
-	}
-	return n;
 }
 
 static int list_height(Editor *e);
