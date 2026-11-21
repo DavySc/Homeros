@@ -1,0 +1,14 @@
+diff --git a/tools/winpass.sh b/tools/winpass.sh
+index e15d44e..da77948 100644
+--- a/tools/winpass.sh
++++ b/tools/winpass.sh
+@@ -8,6 +8,7 @@
+ pass() {
+ 	local s=$1 exe=$2
+ 	shift 2
+-	timeout "$s" "$@" "$exe" 2>&1 | tee "${exe%.exe}.out"
+-	[ "${PIPESTATUS[0]}" = 0 ] && [ "$(tail -n 1 "${exe%.exe}.out" | cut -d: -f1)" = "$(basename "$exe" .exe)" ]
++	timeout "$s" "$@" "$exe" > "${exe%.exe}.out" 2>&1 && s=0
++	cat "${exe%.exe}.out"
++	[ "$s" = 0 ] && [ "$(tail -n 1 "${exe%.exe}.out" | cut -d: -f1)" = "$(basename "$exe" .exe)" ]
+ }
