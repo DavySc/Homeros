@@ -1,0 +1,28 @@
+# A third reference for stepping: Visual Studio's own debugger, on the programs RAD and cdb were recorded on.
+# An experiment: it commits what Visual Studio did under traces-vs/; nothing compares with it yet but a person.
+name: vs-trace
+on:
+  push:
+    branches: [claude/project-thread-l4spyq]
+    paths: ['vs/**', '.github/workflows/vs-trace.yml']
+permissions:
+  contents: write
+concurrency:
+  group: vs-trace
+  cancel-in-progress: true
+jobs:
+  trace:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Record
+        shell: pwsh
+        run: |
+          foreach ($n in 'calls', 'calls_jmc', 'recur_clang', 'blocks_o2', 'kinds', 'gap_o2', 'recur') { ./vs/trace.ps1 (Resolve-Path "rdi/$n.exe") (Join-Path $PWD traces-vs) 150 }
+          foreach ($f in Get-ChildItem traces-vs/*.txt) { "===== $($f.Name) (first 25 lines)"; Get-Content $f -TotalCount 25 }
+      - name: Commit what Visual Studio did to this branch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add traces-vs && git diff --cached --quiet || { git commit -qm "What Visual Studio does on the recorded programs [skip ci]" && git pull -q --rebase && git push -q; }
