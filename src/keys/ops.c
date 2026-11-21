@@ -670,7 +670,6 @@ int map_case(int c, int up)
 	return c;
 }
 
-
 int swapchar(int op_type, Pos *pos)
 {
 	int c = gchar(*pos), nc = c;

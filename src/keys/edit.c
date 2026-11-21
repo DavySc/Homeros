@@ -133,7 +133,6 @@ void ins_char_bytes(const char *s, long n)
 	W->col += (size_t)n;
 }
 
-
 static void ins_char(int c)
 {
 	char b[4];

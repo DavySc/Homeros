@@ -160,7 +160,6 @@ int json_true(const char *s, const Jtok *t, int i)
 
 static unsigned u4(const char *s) { return (unsigned)(hex(s[0]) << 12 | hex(s[1]) << 8 | hex(s[2]) << 4 | hex(s[3])); }
 
-
 size_t json_str(const char *s, const Jtok *t, int i, char *out)
 {
 	size_t o = 0;
