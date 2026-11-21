@@ -28,6 +28,7 @@ int syntax_open(void) { return 0; }
 void syntax_edit(void) {}
 void syntax_free(void) {}
 void syntax_faces(void) {}
+const char *syntax_filetype(const char *p) { (void)p; return 0; }
 #else
 #include <sys/inotify.h>
 #include <unistd.h>

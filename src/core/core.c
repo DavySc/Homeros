@@ -1,10 +1,12 @@
 /* Buffers: their text, undo, saving, and moving between them. */
 #include <errno.h>
+#include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "core_int.h"
+#include "git.h"
 #include "kitten.h"
 #include "lsp.h"
 #include "syntax.h"
@@ -224,15 +226,26 @@ static Buf *buf_find(Editor *e, int nr)
 
 /* Loads path into b, a buffer without text (path NULL: empty, no name).
    -1 on error, msg set, b as it was. */
+/* Neovim's full name (fix_fname()), or the name as typed when it has none */
+static void full_name(const char *path, char *full)
+{
+	if (file_full(path, full)) snprintf(full, PATH_MAX, "%s", path);
+}
+
 static int buf_load(Editor *e, Buf *b, const char *path)
 {
-	char *data = NULL, *name = NULL;
-	size_t n = 0, bytes;
+	char *data = NULL, *name = NULL, full[PATH_MAX];
+	size_t n = 0, bytes, pl = path ? strlen(path) + 1 : 0;
 	FileId id = { 0 };
 	Text *t;
 	Undo *u;
 	if (path) {
-		if (!(name = strdup(path))) goto oom;
+		/* the name as typed and Neovim's full name (b_sfname, b_ffname) in
+		   one block, freed with b->path */
+		full_name(path, full);
+		if (!(name = malloc(pl + strlen(full) + 1))) goto oom;
+		memcpy(name, path, pl);
+		strcpy(name + pl, full);
 		if (file_load(path, &data, &n, &id)) {
 			core_msg(e, "\"%s\": cannot read", path);
 			free(name);
@@ -253,6 +266,7 @@ static int buf_load(Editor *e, Buf *b, const char *path)
 	b->text = t;
 	b->undo = u;
 	b->path = name;
+	b->full = name ? name + pl : NULL;
 	b->id = id;
 	b->noeol = noeol;
 	b->dos = dos;
@@ -281,6 +295,8 @@ static int buf_load(Editor *e, Buf *b, const char *path)
 	b->lsp = path ? lsp_open(path, b->text) : NULL;
 	undo_hook(u, undo_seen, b);
 	if (!path) return 0;
+	/* gitsigns attaches on BufRead */
+	git_attach(b);
 	if (j < 0) core_msg(e, "E303: Unable to open journal for \"%s\", recovery impossible%s", path,
 	                    busy ? " (another editor has it open)" : "");
 	else if (core_modified(b))
@@ -301,9 +317,11 @@ static Buf *buf_new(Editor *e, const char *path)
 {
 	Buf *b = calloc(1, sizeof *b), **p = &e->bufs;
 	if (!b) { core_msg(e, "out of memory"); return NULL; }
+	/* numbered before the load, which hands b to git by its number */
+	b->nr = top_file_num + 1;
 	if (buf_load(e, b, path)) { free(b); return NULL; }
 	while (*p) p = &(*p)->next;
-	b->nr = ++top_file_num;
+	top_file_num++;
 	*p = b;
 	wininfo_reset(b, e->win);
 	return b;
@@ -609,9 +627,12 @@ static int buf_switch(Editor *e, Buf *b, int how)
 
 static Buf *buf_by_path(Editor *e, const char *path)
 {
+	/* buflist_findname(): by full name, so "a" and its full path are one */
+	char full[PATH_MAX];
+	full_name(path, full);
 	for (int k = 0; k < 2; k++)
 		for (Buf *b = k ? unlisted : e->bufs; b; b = b->next)
-			if (b->path && !strcmp(b->path, path)) return b;
+			if (b->path && !strcmp(b->full, full)) return b;
 	return NULL;
 }
 

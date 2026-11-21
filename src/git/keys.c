@@ -1294,9 +1294,18 @@ void git_attach(const Buf *b)
 	}
 	*o = (Of){ b->nr, NULL, NULL };
 	scnr = 0;
-	char abs[PATH_MAX];
-	if (!b->path || git_real(b->path, abs)) return;
-	char dir[PATH_MAX];
+	char abs[PATH_MAX], dir[PATH_MAX];
+	if (!b->path) return;
+	if (git_real(b->path, abs)) {
+		/* a file not made yet (:e new): its directory resolved, the name as
+		   typed, as file_full; lualine's branch looks from there too */
+		const char *n = b->path + strlen(b->path);
+		while (n > b->path && n[-1] != '/' && n[-1] != '\\') n--;
+		snprintf(dir, sizeof dir, "%.*s", (int)(n - b->path), b->path);
+		size_t k;
+		if (git_real(*dir ? dir : ".", abs) || (k = strlen(abs)) + 1 + strlen(n) >= sizeof abs) return;
+		snprintf(abs + k, sizeof abs - k, "/%s", n);
+	}
 	snprintf(dir, sizeof dir, "%s", abs);
 	char *s = strrchr(dir, '/');
 	if (s) *s = 0;
