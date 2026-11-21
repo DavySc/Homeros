@@ -39,3 +39,4 @@ wl: a part ends half a cell late~test TESTS=wl~~src/wl/wl.c~m = (k + 1) * cell_w
 wl: only the cursor's own cell coloured per cell~test TESTS=wl~~src/wl/wl.c~colours(g, r, k < c ? k : c, r == g->crow && k == g->ccol, &fg, &bg);~colours(g, r, k < c && r == g->crow && k == g->ccol ? k : c, r == g->crow && k == g->ccol, &fg, &bg);
 wl: a spill reversed with its symbol, not its cell~test TESTS=wl~~src/wl/wl.c~r == g->crow && k == g->ccol, &fg~r == g->crow && (k < c ? k : c) == g->ccol, &fg
 wl: a right half not its left half's cell~test TESTS=wl~~src/wl/wl.c~k -= !x[k].len;~k -= 0;
+wl: Ctrl+. comes as a plain dot~test TESTS=wl~~src/wl/wl.c~XKB_STATE_MODS_EFFECTIVE) > 0) return KEY_CTRL_DOT;~XKB_STATE_MODS_EFFECTIVE) > 1) return KEY_CTRL_DOT;

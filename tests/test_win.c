@@ -143,9 +143,12 @@ int main(void)
 	ks[VK_CONTROL] = 0x80;
 	SetKeyboardState(ks);
 	PostMessageW(win, WM_CHAR, 8, 0);
-	CHECK(input(k, 4) == 1 && k[0] == 8);   /* Ctrl-H */
+	PostMessageW(win, WM_KEYDOWN, VK_OEM_PERIOD, 0);
+	CHECK(input(k, 4) == 2 && k[0] == 8 && k[1] == KEY_CTRL_DOT);   /* Ctrl-H, Ctrl+. */
 	ks[VK_CONTROL] = 0;
 	SetKeyboardState(ks);
+	PostMessageW(win, WM_KEYDOWN, VK_OEM_PERIOD, 0);   /* a plain '.' is WM_CHAR's */
+	CHECK(input(k, 4) == 1 && k[0] == '.');
 	for (int i = 0; i < 600; i++) PostMessageW(win, WM_CHAR, 'x', 0);
 	CHECK(input(k, 7) == 600);
 

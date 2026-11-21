@@ -282,7 +282,7 @@ static void test_sway(void)
 		for (int i = 0; i < (phase ? 30 : 20 * g.rows) && phase < 10; i++) {
 			int n = (int)rnd(13), r = phase ? (int)rnd(16) : i / 20;
 			grid_put(&g, r, phase ? (int)rnd(20) : i % 20, (const unsigned char *)ch[n], strlen(ch[n]), n == 10 || n == 11 ? 2 : 1, (int)rnd(3));
-			g.c[r * g.cols + rnd(20)].face = (unsigned char)rnd(FACE_COUNT);
+			g.c[r * g.cols + rnd(20)].face = (unsigned short)rnd(FACE_COUNT);
 			g.c[r * g.cols + rnd(20)].bg = (unsigned char)(rnd(2) ? rnd(FACE_COUNT) : 0);
 		}
 		if (phase >= 15) {         /* a scroll by k rows, either way */
@@ -402,13 +402,13 @@ static void test_sway(void)
 
 	/* keys, with the Control transformation and the keys keys.h names */
 	k0 = nkeys;
-	run("LC_ALL=C.UTF-8 wtype aé -k Escape -k BackSpace -M ctrl r -m ctrl -k Up -k Return -k Tab");
+	run("LC_ALL=C.UTF-8 wtype aé -k Escape -k BackSpace -M ctrl r -m ctrl -k Up -k Return -k Tab -M ctrl -k period -m ctrl -k period");
 	pump(50);
-	int want[] = { 'a', 0xE9, KEY_ESC, KEY_BS, KEY_CTRL_R, KEY_UP, KEY_ENTER, KEY_TAB };
-	if (nkeys - k0 != 8)
+	int want[] = { 'a', 0xE9, KEY_ESC, KEY_BS, KEY_CTRL_R, KEY_UP, KEY_ENTER, KEY_TAB, KEY_CTRL_DOT, '.' };
+	if (nkeys - k0 != 10)
 		for (int i = k0; i < nkeys; i++) fprintf(stderr, "key %d: %#x\n", i - k0, (unsigned)keys[i]);
-	CHECK(nkeys - k0 == 8);
-	for (int i = 0; i < 8; i++) CHECK(keys[k0 + i] == want[i]);
+	CHECK(nkeys - k0 == 10);
+	for (int i = 0; i < 10; i++) CHECK(keys[k0 + i] == want[i]);
 
 	/* keys that arrive together but are taken 4 at a time: those left in the
 	   backend's queue make an fd readable, as main.c reads only then */

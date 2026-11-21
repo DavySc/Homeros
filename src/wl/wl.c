@@ -132,6 +132,9 @@ static int key_of(uint32_t key)
 	case XKB_KEY_Left: return KEY_LEFT;
 	case XKB_KEY_Right: return KEY_RIGHT;
 	case XKB_KEY_BackSpace: return KEY_BS;     /* what a terminal sends */
+	/* Control leaves '.' as it is: no control character has a dot */
+	case XKB_KEY_period:
+		if (xkb_state_mod_name_is_active(xst, XKB_MOD_NAME_CTRL, XKB_STATE_MODS_EFFECTIVE) > 0) return KEY_CTRL_DOT;
 	}
 	/* includes the Control transformation, so Ctrl-R is 18 */
 	return (int)xkb_state_key_get_utf32(xst, key + 8);
