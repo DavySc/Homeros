@@ -97,7 +97,7 @@ static int starts_statement(const P *p, size_t i)
 	return any(p, i, starters) || cte_start(p, i);
 }
 
-/* the token starting at byte s */
+/* the token starting at byte s (or the first after it) */
 static size_t tok_at(const P *p, uint32_t s)
 {
 	size_t a = 0, z = p->nt;
@@ -140,12 +140,31 @@ Name src_col(const Res *res, size_t sc, size_t i, long *cat)
 	return out_name(res, src_out(res, sc, i));
 }
 
-int res_first(const Res *r, uint32_t *s, uint32_t *e)
+int res_tok(const Res *r, uint32_t pos, int dir, uint32_t *s, uint32_t *e)
 {
 	const P *p = r->priv;
-	if (!p->nt) return 0;
-	*s = p->t[0].s, *e = p->t[0].e;
+	size_t i = tok_at(p, pos);
+	if (dir < 0) {   /* the last one ending at or before pos */
+		while (i > 0 && p->t[i - 1].e > pos) i--;
+		if (!i) return 0;
+		i--;
+	} else if (i >= p->nt) return 0;
+	*s = p->t[i].s, *e = p->t[i].e;
 	return 1;
+}
+uint32_t res_starter(const Res *r, uint32_t pos)
+{
+	const P *p = r->priv;
+	size_t i = tok_at(p, pos), k = i;
+	int32_t d = i < p->nt ? p->t[i].d : 0;
+	while (k-- > 0 && (p->t[k].d != d || !starts_statement(p, k)));
+	return k < i ? p->t[k].s : UINT32_MAX;
+}
+uint32_t res_match(const Res *r, uint32_t pos)
+{
+	const P *p = r->priv;
+	size_t i = tok_at(p, pos);
+	return i < p->nt && p->t[i].s == pos && p->t[i].m >= 0 ? p->t[p->t[i].m].s : UINT32_MAX;
 }
 
 long res_origin(const Res *r, int sc, int col)
@@ -373,7 +392,10 @@ static void expr(P *p, size_t a, size_t z, int blk)
 			if (punct(p, j, '(')) {
 				/* a call: a type or date part first is no column */
 				size_t close = p->t[j].m > 0 ? (size_t)p->t[j].m : z;
-				if (nq >= 2 && any(p, last, xml_methods)) colref(p, i, last - 2, q, nq - 1, blk, NULL, NULL);
+				/* a method on a column: XML's by name; any other (hierarchyid's
+				   GetAncestor, geometry's STAsText) when a source names the
+				   column's qualifier, so x.c.m() is no schema x's function c.m */
+				if (nq >= 2 && (any(p, last, xml_methods) || (nq >= 3 && find_src(p, blk, q, nq - 2) >= 0))) colref(p, i, last - 2, q, nq - 1, blk, NULL, NULL);
 				if (nq == 1 && any(p, i, type_first)) {
 					size_t k = j + 1;
 					while (k < close && !(punct(p, k, ',') && p->t[k].d == p->t[j].d + 1)) k++;
@@ -821,7 +843,9 @@ static size_t query(P *p, size_t i, int parent, int *first, int cte)
 			int sc = new_src(p, SRC_CTE, -1);
 			if (sc < 0 || !GROW(p->cte, p->ncte, p->ctecap)) return p->nt;
 			r->src[sc].ns = p->t[i].s, r->src[sc].ne = p->t[i].e, r->src[sc].s = p->t[i].s;
-			ref(p, p->t[i].s, p->t[i].e, RF_CTE_DEF, RS_OK, sc, -1);
+			int twice = 0;   /* a name this WITH defined already: Msg 239 */
+			for (size_t k = ncte; k < p->ncte; k++) twice |= snap_eq(r->snap, nm_span(p, r->src[p->cte[k].src].ns), p->t[i].nm);
+			ref(p, p->t[i].s, p->t[i].e, RF_CTE_DEF, twice ? RS_SAMECTE : RS_OK, sc, -1);
 			p->cte[p->ncte++] = (Cte){sc};
 			i++;
 			if (punct(p, i, '(') && p->t[i].m > 0) i = col_list(p, i, sc);

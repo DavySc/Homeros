@@ -19,11 +19,11 @@ rnd = random.Random(seed)
 SA = ('localhost', 'sa', 'Homeros_Test1')
 
 COLL = sys.argv[3] if len(sys.argv) > 3 else 'Latin1_General_CI_AS'
-DB = os.environ.get('DB', 'WWI') if FILE else 'gen'
+DB = os.environ.get('DB', 'WWI' if FILE else 'gen')   # another name lets two runs share the server
 m = pymssql.connect(*SA, 'master', autocommit=True); mk = m.cursor()
 if not FILE:
-    mk.execute("if db_id('gen') is not null begin alter database gen set single_user with rollback immediate; drop database gen end")
-    mk.execute("create database gen collate " + COLL)
+    mk.execute("if db_id('%s') is not null begin alter database %s set single_user with rollback immediate; drop database %s end" % (DB, DB, DB))
+    mk.execute("create database %s collate %s" % (DB, COLL))
 con = pymssql.connect(*SA, DB, autocommit=True); cur = con.cursor()
 if not FILE: cur.execute("create schema s")
 POOL = ['a', 'b', 'c', 'd', 'id', 'Name']
@@ -36,7 +36,7 @@ for i in range(1, 6 if not FILE else 1):
     # rows, so O3 can compare results: few values, so joins match
     cur.execute('insert %s.t%d values %s' % (sch, i, ', '.join('(%s)' % ', '.join(str(rnd.randint(0, 3)) for _ in cols) for _ in range(6))))
 
-snap = '/tmp/claude-0/%s.snap' % DB
+snap = os.environ.get('SNAPS', '/tmp/claude-0') + '/%s.snap' % DB
 subprocess.run(['oracle/snap.sh', DB, snap], check=True)
 
 DML = float(os.environ.get('DML', '.35'))   # the share of DML statements and batches
@@ -250,15 +250,15 @@ def rows(sql):
         cur.execute('if @@trancount > 0 rollback')
         return 'error %s' % e.args[0]
 
-def refactor(op, sql, sdesc, scols):
+def refactor(op, sql, sdesc, scols, args=()):
     """a refactor of a valid statement: refused, or the server sees the same
     statement (O5 valid, O1 same columns, O2 same references, O3 same rows)"""
-    p = subprocess.run(['build/refq', snap, op], input=sql, capture_output=True, text=True)
+    p = subprocess.run(['build/refq', snap, op, *args], input=sql, capture_output=True, text=True)
     want = expect.get(op)
     if p.returncode == 3:
-        if os.environ.get('SHOW'): print('REFUSED', op, p.stdout.strip(), sql)
-        if want and not want.startswith('REFUSED'): return 'broke', 'refused, expected %s' % want
-        return 'refused', None
+        if os.environ.get('SHOW'): print('REFUSED', op, *args, p.stdout.strip(), sql)
+        if want and not p.stdout.startswith(want): return 'broke', 'refused (%s), expected %s' % (p.stdout.strip(), want)
+        return 'n/a' if p.stdout.startswith('REFUSED: no ') else 'refused', None
     if p.returncode: return 'crash', p.stderr[-300:]
     new = p.stdout
     if want and want != new: return 'broke', 'expected %s, got %s' % (want, new)
@@ -280,8 +280,10 @@ def is_query(sql):
 def ours(sql):
     out = subprocess.run(['build/resq', snap], input=sql, capture_output=True, text=True).stdout.splitlines()
     errs, cols, desc, top = set(), set(), [], None
+    names.clear()
     for l in out:
         f = l.split('\t')
+        if f[0] == 'R' and f[1] in ('alias', 'cte-def'): names.append((int(f[3]), f[6]))
         if f[0] == 'Q' and top is None: top = f[1]
         if f[0] == 'R':
             st = int(f[2])
@@ -305,6 +307,7 @@ def o1_same(sql, sdesc, odesc):
         if ss == '-' and os != '-' and not any(w in sql for w in (' union ', ' except ', ' intersect ')): return False
     return True
 
+names = []   # the statement's aliases and CTE names: (byte, name), for R1
 stats = {}
 bad = valid = 0
 # DUMP=<file>: every statement with both verdicts, one JSON line each, for
@@ -346,6 +349,23 @@ for n in range(N):
             res, detail = refactor(op, sql, sdesc, scols)
             stats[op + ' ' + res] = stats.get(op + ' ' + res, 0) + 1
             if detail: why = '%s %s: %s' % (op, res, detail); break
+        # R1: each alias or CTE name to a fresh name, and to another one the
+        # statement has (a capture the meaning check must refuse or allow)
+        for k, (at, nm) in enumerate(names[:4] if not why else ()):
+            other = [m for _, m in names if m.lower() != nm.lower()]
+            for to in ['zz%d' % k] + other[:1]:
+                res, detail = refactor('alias', sql, sdesc, scols, (str(at), to))
+                key = 'alias %s %s' % ('fresh' if to.startswith('zz') else 'taken', res)
+                stats[key] = stats.get(key, 0) + 1
+                if detail: why = 'alias %s at %d -> %s: %s' % (res, at, to, detail); break
+            if why: break
+        # R9: each CTE inlined, each derived table made a CTE
+        for at, nm in names if not why else ():
+            for op in ('inline', 'extract'):
+                res, detail = refactor(op, sql, sdesc, scols, (str(at),))
+                if res != 'n/a': stats[op + ' ' + res] = stats.get(op + ' ' + res, 0) + 1
+                if detail: why = '%s %s at %d: %s' % (op, res, at, detail); break
+            if why: break
     # "-- info <word>: <line>": info on the first <word> gives <line> first
     for l in cases[n][0] if FILE else ():
         if l.startswith('-- info ') and not why:

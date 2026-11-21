@@ -15,7 +15,7 @@ from collections import Counter
 db, limit = sys.argv[1], int(sys.argv[2]) if len(sys.argv) > 2 else 10**9
 con = pymssql.connect('localhost', 'sa', 'Homeros_Test1', db)
 cur = con.cursor()
-snap = '/tmp/claude-0/%s.snap' % db
+snap = os.environ.get('SNAPS', '/tmp/claude-0') + '/%s.snap' % db
 subprocess.run(['oracle/snap.sh', db, snap], check=True)
 cur.execute("select o.object_id, schema_name(o.schema_id) + '.' + o.name, rtrim(o.type), m.definition, m.uses_native_compilation, m.is_schema_bound from sys.sql_modules m join sys.objects o on o.object_id = m.object_id where o.type in ('V','IF','TF','FN','P','TR') order by 2")
 mods = cur.fetchall()

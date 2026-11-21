@@ -158,6 +158,10 @@ go
 -- qualify: select v from openjson(N'[{"v":1}]') with (v int)
 select v from openjson(N'[{"v":1}]') with (v int)
 go
+-- its * cannot be written out either (a refusal that names why)
+-- star: REFUSED: a source no qualifier can name
+select * from openjson(N'[{"v":1}]') with (v int)
+go
 -- info: a column through a derived table, with its foreign keys; a table
 -- info CustomerID: Sales.Orders.CustomerID int not null
 -- info Orders: Sales.Orders (U)
@@ -233,4 +237,7 @@ go
 -- a table-level constraint is no column; CURRENT_USER is no column
 -- star: declare @t table (k int, v int, primary key (k), unique (v)); select x.k, x.v, current_user from @t x
 declare @t table (k int, v int, primary key (k), unique (v)); select *, current_user from @t x
+go
+-- two CTEs of one name: Msg 239
+with c as (select 1 a), C as (select 2 a) select * from c
 go

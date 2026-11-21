@@ -15,7 +15,7 @@ sqlref/resolve.c	if (hits > 1) return RS_AMBIG;	if (hits > 1) return RS_OK;	two 
 sqlref/resolve.c	int sees = lateral ? blk : r->b[blk].parent, sc;	int sees = blk, sc;	a derived table sees its siblings
 sqlref/resolve.c	return s->blk == blk && !s->hidden && (blk != p->on_blk || s->grp == p->on_grp);	return s->blk == blk && !s->hidden;	ON sees other comma items
 sqlref/resolve.c	if (n) { ref(p, p->t[s].s, p->t[s].e, RF_OUT,	if (0) { ref(p, p->t[s].s, p->t[s].e, RF_OUT,	ORDER BY ignores output names
-sqlref/resolve.c	for (size_t s = 0; s < r->nsrc; s++) {	for (size_t s = r->nsrc; s-- > 0;) {	* expands sources in reverse
+sqlref/resolve.c	if (r->src[s].blk != blk || r->src[s].hidden) continue;	if (r->src[s].blk != blk || r->src[s].hidden || s == 0) continue;	* leaves out the first source
 sqlref/resolve.c	p->res->src[sc].ns = p->t[i].s, p->res->src[sc].ne = p->t[i].e, p->res->src[sc].aliased = 1;	p->res->src[sc].aliased = 1;	an alias does not hide the table name
 sqlref/resolve.c	? RS_SAMENAME : RS_SAMEALIAS;	? RS_SAMENAME : RS_OK;	a correlation name twice
 sqlref/resolve.c	if (snap_eq(r->snap, a, b)) { r->r[ref_at].status = 8156; return; }	if (0) { r->r[ref_at].status = 8156; return; }	a derived table with two columns of one name
@@ -24,12 +24,10 @@ sqlref/resolve.c	if (*first < 0 && (*first = b, cte >= 0)) r->src[cte].inner = b
 sqlref/resolve.c	"convert", "try_convert", "dateadd",	"try_convert", "dateadd",	CONVERT's type read as a column
 sqlref/resolve.c	while (k < close && !(is(p, k, "as") && p->t[k].d == p->t[j].d + 1)) k++;	k = close;	CAST's type read as a column
 sqlref/resolve.c	{"partition", "rows",	{"rows",	PARTITION read as a column
-sqlref/resolve.c	if (is(p, i, "update") || is(p, i, "delete") || is(p, i, "merge")) p->blind = 1;	if (0) p->blind = 1;	SELECT inside UPDATE/DELETE judged without its outer names
 sqlref/resolve.c	|| (nq == 1 && (is(p, i, "inserted") || is(p, i, "deleted")));	;	a trigger's inserted read as a missing table
 sqlref/resolve.c	if (is(p, i, "pivot")) expr(p, i + 2, in, blk);	if (is(p, i, "pivot")) expr(p, i + 2, close, blk);	PIVOT's IN list read as columns
 sqlref/resolve.c	|| (is(p, i, "for") && any(p, i + 1, for_clause));	|| is(p, i, "for");	NEXT VALUE FOR ends the query
 sqlref/resolve.c	if (nq >= 2 && any(p, last, xml_methods)) colref(p, i, last - 2, q, nq - 1, sees, NULL, NULL);   /* x.col.nodes('..') */		an XML method's column in FROM not read
-sqlref/resolve.c	if (p->blind && st == RS_NOCOL) st = RS_UNSURE;		an unread outer name reported as missing
 sqlref/resolve.c	&& (k != 2 || is(p, z + 1, "by"))) at[k] = z;	) at[k] = z;	WITHIN GROUP read as GROUP BY
 sqlref/resolve.c	if (is(p, j, "as") && is(p, j + 1, "of")) expr(p, j + 2, j + 3, sees), j += 3;		FOR SYSTEM_TIME AS OF read as an alias
 sqlref/resolve.c	if (r->src[i].blk == s->blk && !r->src[i].hidden && r->src[i].ne && snap_eq(	if (0 && snap_eq(	duplicate exposed names not found
@@ -40,12 +38,12 @@ sqlref/refactor.c	(i && ((c >= '0'	(((c >= '0'	a leading digit written bare
 sqlref/refactor.c	r->src[s].blk == b && 		* writes out sources of other blocks
 sqlref/refactor.c	|| in_exists(r, r->b[b].s)		EXISTS's * written out
 sqlref/refactor.c	from = r->r[i - 1].s;	from = x->s;	x.* keeps its qualifier: x.x.a
-sqlref/refactor.c	if ((x->s && r->text[x->s - 1] == '.') || x->status == RS_UNSURE) continue;	if (x->status == RS_UNSURE) continue;	a qualified column qualified again
-sqlref/refactor.c	if ((x->s && r->text[x->s - 1] == '.') || x->status == RS_UNSURE) continue;	if (x->s && r->text[x->s - 1] == '.') continue;	an unsure column refuses the whole text
-sqlref/refactor.c	return !r->src[sc].ne && refuse(	return 0 && refuse(	OPENJSON with no alias qualified as OPENJSON.
-sqlref/refactor.c	|| origin_of(&y, &y.r[j]) != origin_of(&x, &x.r[i]) 		the meaning check ignores what a column refers to (capture)
+sqlref/refactor.c	if ((x->s && r->text[x->s - 1] == '.') || x->status == RS_UNSURE || x->wr || (x->status == RS_OK && !r->src[x->src].ne)) continue;	if (x->status == RS_UNSURE || x->wr || (x->status == RS_OK && !r->src[x->src].ne)) continue;	a qualified column qualified again
+sqlref/refactor.c	if ((x->s && r->text[x->s - 1] == '.') || x->status == RS_UNSURE || x->wr || (x->status == RS_OK && !r->src[x->src].ne)) continue;	if ((x->s && r->text[x->s - 1] == '.') || x->wr || (x->status == RS_OK && !r->src[x->src].ne)) continue;	an unsure column refuses the whole text
+sqlref/refactor.c	if (!r->src[sc].ne) return refuse(ed, "a source no qualifier	if (0) return refuse(ed, "a source no qualifier	OPENJSON with no alias qualified as OPENJSON.
+sqlref/refactor.c	&& same_origin(&blk, origin_of(&x, p), origin_of(&y, q))) break;	) break;	the meaning check ignores what a column refers to (capture)
 sqlref/refactor.c	for (size_t i = 0; i < y.nr; i++) if (y.r[i].status > RS_UNSURE) goto done;		the meaning check accepts new errors
-sqlref/refactor.c	|| res_origin(&x, o->src, o->col) != res_origin(&y, u->src, u->col)) goto done;	) goto done;	the meaning check ignores where outputs come from
+sqlref/refactor.c	|| !same_origin(&blk, g, h)) goto done;	) goto done;	the meaning check ignores where outputs come from
 sqlref/refactor.c	(m.s && !snap_eq(s, m, n))	0	the meaning check ignores output names
 sqlref/resolve.c	qsort(res->r, res->nr, sizeof *res->r, by_start);	if (0) qsort(res->r, res->nr, sizeof *res->r, by_start);	references left in walk order, edits out of order
 sqlref/resolve.c	if (!call || o >= 0) r->src[sc].ns	r->src[sc].ns	OPENJSON(..) named OPENJSON
@@ -59,7 +57,7 @@ sqlref/resolve.c	if (p->res->r[m].wr && p->res->r[m].src == w->src && p->res->r[
 sqlref/resolve.c	if (pseudo) o = r->src[p->trig].obj;	if (0) o = r->src[p->trig].obj;	a trigger's inserted unknown
 sqlref/resolve.c	static const char *const not_col[] = {"constraint", "primary",	static const char *const not_col[] = {"constraint",	a table-level PRIMARY KEY read as a column
 sqlref/resolve.c	if (snap_eq(r->snap, nm_span(p, r->src[p->loc[k].src].ns), p->t[i].nm)) d = p->loc[k].src;	if (0) d = p->loc[k].src;	temp tables and table variables never found
-sqlref/resolve.c	if (at[4] != SIZE_MAX && p->t[at[4] + 1].k == TQ_VAR) local(p, at[4] + 1, b);		SELECT INTO #t makes no table
+sqlref/resolve.c	if (at[4] != SIZE_MAX && p->t[at[4] + 1].k == TQ_VAR) local(p, at[4] + 1, b, -1);		SELECT INTO #t makes no table
 sqlref/resolve.c	if (j > e && nq == 2 && punct(p, j, '(') && p->t[j].m > 0) {	if (0) {	SET c.modify(..) read as an expression
 sqlref/resolve.c	(stmts && starts_statement(p, i))	starts_statement(p, i)	MERGE's WHEN .. THEN UPDATE ends the clause
 sqlref/resolve.c	if (t->k == TQ_VAR && p->res->text[t->s] == '@' && punct(p, i + 1, '.')	if (0	Msg 137 missed
@@ -88,3 +86,32 @@ sqlref/refactor.c	if (put(ed, s + i, 1) || (s[i] == '\'' && put(ed, "'", 1))) re
 sqlref/refactor.c	(PUTS(&m, "ALTER") || edit(&m, a, z, 0)	(PUTS(&m, "CREATE") || edit(&m, a, z, 0)	the script CREATEs modules that exist
 sqlref/refactor.c	if (resolve(&y, t, b, nb) < 0) { resolve_free(&x); return 0; }	if (resolve(&y, s, b, nb) < 0) { resolve_free(&x); return 0; }	the meaning check reads the new text under the old snapshot
 sqlref/refactor.c	return rc ? rc : PUTS(ed, "COMMIT;\n");	return rc;	the script never commits
+# slice 6: rename an alias or CTE, CTE to subquery and back, the meaning check's pairing
+sqlref/refactor.c	total = total + ed->e[i].n - (ed->e[i].z - ed->e[i].a);	total += ed->e[i].n - (ed->e[i].z - ed->e[i].a);	an edit that shortens the text wraps the length (uint32_t)
+sqlref/resolve.c	twice ? RS_SAMECTE : RS_OK	RS_OK	two CTEs of one name not Msg 239
+sqlref/refactor.c	&& paired(src, a, b) && paired(blk, p->blk, q->blk);	&& paired(src, a, b);	the meaning check pairs sources across blocks (an inner alias captures an outer one)
+sqlref/refactor.c	if (x->e - x->s < sizeof buf && unread(r, snap_name(r->text + x->s, x->e - x->s, buf))) return refuse(ed, UNREAD);	(void)buf;	alias rename edits around names it cannot read
+sqlref/refactor.c	if (unread(r, (Name){c->name, strlen(c->name), 1})) return refuse(ed, UNREAD);		column rename edits around names it cannot read
+sqlref/resolve.c	|| (nq >= 3 && find_src(p, blk, q, nq - 2) >= 0))) colref	))) colref	x.c.Method() read as a function, not column c
+sqlref/refactor.c	if (word(r, a, "else") || (k != UINT32_MAX && (word(r, k, "if") || word(r, k, "while")))) return refuse(	if (0) return refuse(	extract puts WITH right after IF
+sqlref/refactor.c	if (k != UINT32_MAX && word(r, k, "insert")) at = k;		extract puts WITH between INSERT and its query
+sqlref/refactor.c	if (!res_tok(r, s->s + 1, 1, &a, &z) || !word(r, a, "select")) return	if (0) return	extract makes a VALUES list a CTE
+sqlref/refactor.c	if (y->s > open && y->s < close) return refuse(ed, "a recursive CTE");		inline of a recursive CTE
+sqlref/refactor.c	if (al && ce > cs) return refuse(	if (0) return refuse(	inline drops a column list under an alias
+sqlref/refactor.c	|| (y->kind == RF_QUAL && y->src >= 0 && r->src[y->src].aliased != 1 && cte_of(r, y->src) == d);	;	a CTE's name as a qualifier not renamed
+sqlref/refactor.c	if (PUTS(ed, ";")) return -1;		extract's WITH without the ; a statement before it needs
+sqlref/refactor.c	if (d >= 0 && strchr("#@", r->text[r->src[d].s])) return refuse(ed, "a temp table	if (0) return refuse(ed, "a temp table	a temp table renamed inside one statement
+sqlref/refactor.c	if (res_tok(r, de, 1, &a, &z) && r->text[a] == ',') de =	if (0) de =	inline of the first CTE leaves its comma
+# SQL client bake-off: the own TDS client (oracle/tds_oracle.py: every type against the server's own text)
+client/tds.c	int64_t v = n == 4 ? (int32_t)(uint32_t)le(s, 4) : (int64_t)(le(s, 4) << 32 | le(s + 4, 4));	int64_t v = n == 4 ? (int32_t)(uint32_t)le(s, 4) : (int64_t)(le(s + 4, 4) << 32 | le(s, 4));	money's high half comes first
+client/tds.c	uint64_t ms = (le(s + 4, 4) * 10 + 1) / 3;	uint64_t ms = le(s + 4, 4) * 10 / 3;	datetime ticks round to the nearest ms
+client/tds.c	int off = (int16_t)(uint16_t)le(s + n - 2, 2);	int off = 0;	datetimeoffset is UTC plus its offset
+client/tds.c	u = 0x10000 + (u - 0xD800) * 1024 + ((uint32_t)le(s + i + 2, 2) - 0xDC00), i += 2;	u = 0xFFFD;	UTF-16 surrogate pairs
+client/tds.c	0x20AC, 0xFFFD, 0x201A,	0x0080, 0xFFFD, 0x201A,	code page 1252's 0x80 is the euro sign
+client/tds.c	int utf8 = (co[3] & 4) != 0;	int utf8 = 0;	a _UTF8 collation's varchar is UTF-8
+client/tds.c	while (nd <= scale) d[nd++] = '0';	while (nd < scale) d[nd++] = '0';	a decimal below 1 keeps its leading 0
+client/tds.c	if (bits && bits[i / 8] >> (i % 8) & 1) s = NULL;	if (bits && bits[i / 8] >> (7 - i % 8) & 1) s = NULL;	NBCROW's null bitmap is least significant bit first
+client/tds.c	if (c.bad) { t->out.n = mark, t->rows = rows,	if (c.bad) { t->rows = rows,	a token cut by a packet edge is redone from its start
+client/tds.c	int neg = n > 1 && s[n - 1] >= 0x80;   /* tinyint is unsigned */	int neg = s[n - 1] >= 0x80;   /* tinyint is unsigned */	tinyint is unsigned
+client/tds.c	if (s[0] == TIMEN || s[0] == DATETIME2N || s[0] == DATETIMEOFFSETN) v.scale = s[2];	if (s[0] == TIMEN || s[0] == DATETIME2N || s[0] == DATETIMEOFFSETN) v.scale = 7;	sql_variant carries the time scale
+client/tds.c	for (int p = single ? 6 : 15; p <= 17; p++) {	for (int p = single ? 6 : 15; p <= 15; p++) {	floats need up to 17 digits to read back

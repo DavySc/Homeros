@@ -8,11 +8,16 @@ CPPFLAGS += -Isqlref -I$(HOMEROS)/include -I$(HOMEROS)/src/syntax
 MAIN = $(HOMEROS)/src/text/text.c $(HOMEROS)/src/syntax/tsql.c
 LIB = $(wildcard sqlref/*.c)
 
-all: build/snapq build/resq build/refq
+all: build/snapq build/resq build/refq build/tdsq
 
 build/%: cmd/%.c $(LIB) $(MAIN) sqlref/*.h
 	@mkdir -p build
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ $< $(LIB) $(MAIN)
+
+# the SQL client bake-off: the own TDS client needs nothing of main's
+build/tdsq: cmd/tdsq.c client/tds.c client/tds.h
+	@mkdir -p build
+	$(CC) -Iclient $(CFLAGS) -o $@ cmd/tdsq.c client/tds.c
 
 clean:
 	rm -rf build

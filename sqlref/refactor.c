@@ -46,6 +46,14 @@ static int put_name(Edits *ed, Name nm)
 		if (put(ed, nm.s + i, 1) || (nm.s[i] == ']' && put(ed, "]", 1))) return -1;
 	return put(ed, "]", 1);
 }
+/* the token at byte a is the word w */
+static int word(const Res *r, uint32_t a, const char *w)
+{
+	uint32_t s, z;
+	size_t n = strlen(w);
+	return res_tok(r, a, 1, &s, &z) && s == a && z - s == n && !strncasecmp(r->text + a, w, n);
+}
+
 /* replace [a, z) by what was put since mark */
 static int edit(Edits *ed, uint32_t a, uint32_t z, size_t mark)
 {
@@ -148,6 +156,25 @@ static int star_has(const Res *r, const Ref *x, long col, long twin)
 	return 0;
 }
 
+/* a name a rename would change appears where the resolver did not read
+   it as a known name: a reference that does not resolve (a temp table
+   made elsewhere), a call it took for a function (c.ToString()), a string
+   (dynamic SQL).  The rename must not guess. */
+#define UNREAD "the name appears where it is not known (a temp table made elsewhere, a method call, a string): rename it by hand"
+static int unread(const Res *r, Name nm)
+{
+	char buf[512];
+	size_t k = 0;   /* refs are in text order: k walks along */
+	for (uint32_t a, z, pos = 0; res_tok(r, pos, 1, &a, &z); pos = z) {
+		if (z - a >= sizeof buf || !snap_eq(r->snap, snap_name(r->text + a, z - a, buf), nm)) continue;
+		while (k < r->nr && r->r[k].e <= a) k++;
+		int known = 0;
+		for (size_t i = k; i < r->nr && r->r[i].s <= a; i++) known |= r->r[i].status == RS_OK && r->r[i].e >= z;
+		if (!known) return 1;
+	}
+	return 0;
+}
+
 /* why the server would not rename column col, or NULL */
 static const char *blocked(const Snap *s, long col)
 {
@@ -173,16 +200,12 @@ int refactor_rename_col(const Res *r, long col, Name to, Edits *ed)
 	const Snap *sn = r->snap;
 	const SnapCol *c = &sn->c[col];
 	long twin = snap_twin(sn, (size_t)col);
-	char buf[512];
 	if (blocked(sn, col)) return refuse(ed, blocked(sn, col));
+	if (unread(r, (Name){c->name, strlen(c->name), 1})) return refuse(ed, UNREAD);
 	for (size_t i = 0; i < r->nr; i++) {
 		const Ref *x = &r->r[i];
 		if (x->kind == RF_STAR && x->status == RS_OK && !in_exists(r, r->b[block_at(r, x->s)].s) && star_has(r, x, col, twin)) return refuse(ed, "a * includes the column (its output name would change): expand it first");
-		if (x->kind != RF_COLUMN) continue;
-		if (x->status != RS_OK) {
-			if (x->e - x->s < sizeof buf && snap_eq(sn, snap_name(r->text + x->s, x->e - x->s, buf), (Name){c->name, strlen(c->name), 1})) return refuse(ed, "a name that may be the column does not resolve (a temp table made elsewhere, dynamic SQL)");
-			continue;
-		}
+		if (x->kind != RF_COLUMN || x->status != RS_OK) continue;
 		const Src *s = &r->src[x->src];
 		long k = s->kind == SRC_TABLE ? (long)sn->o[s->obj].col + x->col : -1;
 		if (k < 0 || (k != col && k != twin)) continue;
@@ -223,7 +246,7 @@ int refactor_rename_script(const Snap *s, const Snap *after, long col, Name to, 
 		Edits m = {0};
 		uint32_t a, z;
 		if (resolve(&r, s, text, n) < 0) return -1;
-		rc = res_first(&r, &a, &z) && z - a == 6 && !strncasecmp(text + a, "create", 6) ? (PUTS(&m, "ALTER") || edit(&m, a, z, 0) ? -1 : refactor_rename_col(&r, col, to, &m)) : refuse(&m, "a module that does not start with CREATE");
+		rc = res_tok(&r, 0, 1, &a, &z) && word(&r, a, "create") ? (PUTS(&m, "ALTER") || edit(&m, a, z, 0) ? -1 : refactor_rename_col(&r, col, to, &m)) : refuse(&m, "a module that does not start with CREATE");
 		resolve_free(&r);
 		char *u = !rc && m.ne > 1 ? edits_apply(&m, text, n, &len) : NULL;
 		if (rc == -2) {   /* the module's name, then why, kept in ed->buf */
@@ -239,11 +262,142 @@ int refactor_rename_script(const Snap *s, const Snap *after, long col, Name to, 
 	return rc ? rc : PUTS(ed, "COMMIT;\n");
 }
 
-int refactor_info(const Res *r, size_t pos, Edits *ed)
+/* the CTE definition a source uses, or -1 */
+static int cte_of(const Res *r, int sc)
+{
+	for (size_t i = 0; i < r->nr; i++) if (r->r[i].kind == RF_CTE && r->r[i].src == sc) return r->r[i].col;
+	return -1;
+}
+
+/* the reference whose bytes hold pos (the innermost: the last) */
+static const Ref *ref_at(const Res *r, size_t pos)
 {
 	const Ref *x = NULL;
 	for (size_t i = 0; i < r->nr; i++)
 		if (r->r[i].s <= pos && pos < r->r[i].e) x = &r->r[i];
+	return x;
+}
+
+/* the CTE a reference names (its definition, a use, or a use's name as a
+   qualifier), or -1 */
+static int cte_named(const Res *r, const Ref *x)
+{
+	return x->kind == RF_CTE_DEF ? x->src : x->kind == RF_CTE ? x->col
+	     : x->kind == RF_QUAL && r->src[x->src].aliased != 1 ? cte_of(r, x->src) : -1;
+}
+
+/* CTE d's text: its column list [*cs, *ce) (empty when none) and its body's
+   parentheses *open, *close; 0 when it is not name [(cols)] AS (..) */
+static int cte_text(const Res *r, int d, uint32_t *cs, uint32_t *ce, uint32_t *open, uint32_t *close)
+{
+	uint32_t a, z;
+	*cs = *ce = r->src[d].ne;
+	if (!res_tok(r, *ce, 1, &a, &z)) return 0;
+	if (r->text[a] == '(') {
+		if ((*ce = res_match(r, a)) == UINT32_MAX || !res_tok(r, ++*ce, 1, &a, &z)) return 0;
+		*cs = r->src[d].ne;
+	}
+	return word(r, a, "as") && res_tok(r, z, 1, open, &z) && r->text[*open] == '(' && (*close = res_match(r, *open)) != UINT32_MAX;
+}
+
+/* put what bytes [a, z) of the text are */
+static int put_text(Edits *ed, const Res *r, uint32_t a, uint32_t z) { return put(ed, r->text + a, z - a); }
+
+int refactor_inline_cte(const Res *r, size_t pos, Edits *ed)
+{
+	const Ref *x = ref_at(r, pos);
+	int d = x && x->src >= 0 && x->status == RS_OK ? cte_named(r, x) : -1;
+	uint32_t cs, ce, open, close, a, z, ds, de;
+	if (d < 0 || strchr("#@", r->text[r->src[d].s])) return refuse(ed, "no CTE here");
+	if (!cte_text(r, d, &cs, &ce, &open, &close)) return refuse(ed, "a CTE this cannot read");
+	/* the definition goes with the comma after it, or (the last) before it,
+	   or (the only one) with WITH */
+	ds = r->src[d].ns, de = close + 1;
+	if (res_tok(r, de, 1, &a, &z) && r->text[a] == ',') de = res_tok(r, z, 1, &a, &z) ? a : z;
+	else if (res_tok(r, ds, -1, &a, &z) && (r->text[a] == ',' || word(r, a, "with"))) {
+		ds = a;
+		if (r->text[a] != ',' && res_tok(r, de, 1, &a, &z)) de = a;
+	}
+	size_t mark = ed->nbuf;
+	if (edit(ed, ds, de, mark)) return -1;
+	for (size_t i = 0; i < r->nr; i++) {
+		const Ref *y = &r->r[i];
+		if (y->kind != RF_CTE || y->col != d) continue;
+		if (y->s > open && y->s < close) return refuse(ed, "a recursive CTE");
+		int al = r->src[y->src].aliased == 1;
+		if (al && ce > cs) return refuse(ed, "a CTE with a column list, used with an alias");
+		mark = ed->nbuf;
+		if (PUTS(ed, "(") || put_text(ed, r, open + 1, close) || PUTS(ed, ")") || (!al && (PUTS(ed, " ") || put_text(ed, r, r->src[d].ns, r->src[d].ne) || put_text(ed, r, cs, ce))) || edit(ed, y->s, y->e, mark)) return -1;
+	}
+	return 0;
+}
+
+int refactor_extract_cte(const Res *r, size_t pos, Edits *ed)
+{
+	const Ref *x = ref_at(r, pos);
+	const Src *s = x && (x->kind == RF_ALIAS || x->kind == RF_QUAL) && x->src >= 0 ? &r->src[x->src] : NULL;
+	uint32_t close = s ? res_match(r, s->s) : UINT32_MAX, at = UINT32_MAX, cs, ce, open, cl, a, z;
+	if (!s || s->kind != SRC_DERIVED || close == UINT32_MAX) return refuse(ed, "no derived table's name here");
+	if (!res_tok(r, s->s + 1, 1, &a, &z) || !word(r, a, "select")) return refuse(ed, "a CTE's body is a SELECT (not VALUES, not a nested WITH)");
+	/* where the CTE goes: before the CTE whose body holds it, else after
+	   the statement's last CTE, else as a new WITH before the statement */
+	int before = 0, root = s->blk;
+	for (size_t i = 0; i < r->nr && at == UINT32_MAX; i++) {
+		const Ref *y = &r->r[i];
+		if (y->kind != RF_CTE_DEF || y->s > pos || strchr("#@", r->text[y->s]) || !cte_text(r, y->src, &cs, &ce, &open, &cl)) continue;
+		if (pos < cl) at = y->s, before = 1;
+		else if (res_tok(r, cl + 1, 1, &a, &z) && r->text[a] != ',' && pos > cl) {   /* the WITH list ends: is this its statement? */
+			while (r->b[root].parent >= 0) root = r->b[root].parent;
+			if (r->b[root].s > cl) at = cl + 1;
+		}
+	}
+	while (r->b[root].parent >= 0) root = r->b[root].parent;
+	int top = 0;
+	for (size_t t = 0; t < r->ntop; t++) top |= r->top[t] == root;
+	if (at == UINT32_MAX && !top) return refuse(ed, "a derived table outside a query statement");
+	int upper = isupper((unsigned char)r->text[r->b[root].s]);
+	size_t mark = ed->nbuf;
+	int with = at == UINT32_MAX;
+	if (with) {   /* before the statement (an INSERT's, if the query is its source) */
+		uint32_t k = res_starter(r, at = r->b[root].s);
+		if (k != UINT32_MAX && word(r, k, "insert")) at = k;
+		/* WITH follows a ; unless it starts a body (AS, BEGIN); IF, WHILE
+		   and ELSE take one statement, which WITH cannot be (Msg 319) */
+		if (res_tok(r, at, -1, &a, &z) && r->text[a] != ';' && !word(r, a, "as") && !word(r, a, "begin")) {
+			k = res_starter(r, at);
+			if (word(r, a, "else") || (k != UINT32_MAX && (word(r, k, "if") || word(r, k, "while")))) return refuse(ed, "a WITH cannot follow IF, WHILE or ELSE without BEGIN");
+			if (PUTS(ed, ";")) return -1;
+		}
+		if (put(ed, upper ? "WITH " : "with ", 5)) return -1;
+	} else if (!before && PUTS(ed, ", ")) return -1;
+	if (put_text(ed, r, s->ns, s->ne) || put_text(ed, r, s->ne, s->e) || put(ed, upper ? " AS " : " as ", 4) || put_text(ed, r, s->s, close + 1) || (before ? PUTS(ed, ", ") : !with ? 0 : PUTS(ed, " ")) || edit(ed, at, at, mark)) return -1;
+	mark = ed->nbuf;
+	return put_text(ed, r, s->ns, s->ne) || edit(ed, s->s, s->e, mark) ? -1 : 0;
+}
+
+int refactor_rename_at(const Res *r, size_t pos, Name to, Edits *ed)
+{
+	const Ref *x = ref_at(r, pos);
+	if (!x || x->src < 0 || x->status != RS_OK) return refuse(ed, "no alias or CTE name here");
+	int al = (x->kind == RF_ALIAS || x->kind == RF_QUAL) && r->src[x->src].aliased == 1 ? x->src : -1, d = al < 0 ? cte_named(r, x) : -1;   /* the aliased source, or the CTE definition */
+	if (al < 0 && d < 0) return refuse(ed, "renames here: an alias or a CTE name");
+	char buf[512];
+	if (x->e - x->s < sizeof buf && unread(r, snap_name(r->text + x->s, x->e - x->s, buf))) return refuse(ed, UNREAD);
+	if (d >= 0 && strchr("#@", r->text[r->src[d].s])) return refuse(ed, "a temp table or table variable outlives the statement");
+	for (size_t i = 0; i < r->nr; i++) {
+		const Ref *y = &r->r[i];
+		int hit = al >= 0 ? (y->kind == RF_ALIAS || y->kind == RF_QUAL) && y->src == al
+		        : (y->kind == RF_CTE_DEF && y->src == d) || (y->kind == RF_CTE && y->col == d)
+		          || (y->kind == RF_QUAL && y->src >= 0 && r->src[y->src].aliased != 1 && cte_of(r, y->src) == d);
+		size_t mark = ed->nbuf;
+		if (hit && (put_name(ed, to) || edit(ed, y->s, y->e, mark))) return -1;
+	}
+	return 0;
+}
+
+int refactor_info(const Res *r, size_t pos, Edits *ed)
+{
+	const Ref *x = ref_at(r, pos);
 	if (!x || x->src < 0) return refuse(ed, "no known name here");
 	const Snap *s = r->snap;
 	char line[1024];
@@ -281,7 +435,7 @@ int refactor_info(const Res *r, size_t pos, Edits *ed)
 char *edits_apply(const Edits *ed, const char *text, size_t n, size_t *len)
 {
 	size_t total = n;
-	for (size_t i = 0; i < ed->ne; i++) total += ed->e[i].n - (ed->e[i].z - ed->e[i].a);
+	for (size_t i = 0; i < ed->ne; i++) total = total + ed->e[i].n - (ed->e[i].z - ed->e[i].a);   /* in size_t: an edit may shorten (uint32_t would wrap) */
 	char *o = malloc(total + 1);
 	if (!o) return NULL;
 	size_t w = 0, at = 0;
@@ -299,34 +453,76 @@ char *edits_apply(const Edits *ed, const char *text, size_t n, size_t *len)
 /* what each column reference and each statement's output is */
 static long origin_of(const Res *r, const Ref *x) { return x->status == RS_OK ? res_origin(r, x->src, x->col) : -1; }
 
+/* sources and blocks of the old text paired with the new's, one to one:
+   a refactor may renumber them (inline a CTE, write out a *), never merge
+   two (a capture) */
+typedef struct { int *x, *y; } Pairs;
+static int paired(const Pairs *m, int a, int b) { return a < 0 || b < 0 ? a == b : m->x[a] < 0 ? m->y[b] < 0 : m->x[a] == b; }
+static void pair(Pairs *m, int a, int b) { if (a >= 0 && b >= 0) m->x[a] = b, m->y[b] = a; }
+/* a column's origin: a catalog column, or a block's computed output */
+static int same_origin(const Pairs *blk, long a, long b)
+{
+	if (a > -2 || b > -2) return a == b;
+	return ((-2 - a) & 0xffff) == ((-2 - b) & 0xffff) && paired(blk, (int)((-2 - a) >> 16), (int)((-2 - b) >> 16));
+}
+static void pair_origin(Pairs *blk, long a, long b) { if (a <= -2 && b <= -2) pair(blk, (int)((-2 - a) >> 16), (int)((-2 - b) >> 16)); }
+/* source a of x may be source b of y: the same table (or both derived,
+   a CTE's use and a derived table alike), in paired blocks */
+static int same_src(const Res *x, const Res *y, const Pairs *src, const Pairs *blk, int a, int b)
+{
+	if (a < 0 || b < 0) return a == b;
+	const Src *p = &x->src[a], *q = &y->src[b];
+	return (p->kind == SRC_TABLE) == (q->kind == SRC_TABLE) && (p->kind != SRC_TABLE || p->obj == q->obj) && paired(src, a, b) && paired(blk, p->blk, q->blk);
+}
+
 int refactor_same(const Snap *s, const char *a, size_t na, const Snap *t, const char *b, size_t nb)
 {
 	Res x, y;
 	int same = 0;
 	if (resolve(&x, s, a, na) < 0) return 0;
 	if (resolve(&y, t, b, nb) < 0) { resolve_free(&x); return 0; }
-	if (x.ntop != y.ntop || x.nb != y.nb) goto done;
+	size_t n = x.nsrc + y.nsrc + x.nb + y.nb;
+	int *mem = malloc((n + y.nr + 1) * sizeof *mem), *used = mem + n;   /* used: y's references matched */
+	Pairs src = {mem, mem + x.nsrc}, blk = {mem + x.nsrc + y.nsrc, mem + x.nsrc + y.nsrc + x.nb};
+	if (!mem || x.ntop != y.ntop) goto done;
+	for (size_t i = 0; i < n + y.nr; i++) mem[i] = i < n ? -1 : 0;
 	/* every statement: the same output names, from the same columns */
 	for (size_t t = 0; t < x.ntop; t++) {
 		const Blk *p = &x.b[x.top[t]], *q = &y.b[y.top[t]];
-		if (p->nout != q->nout) goto done;
+		if (p->nout != q->nout || !paired(&blk, x.top[t], y.top[t])) goto done;
+		pair(&blk, x.top[t], y.top[t]);
 		for (uint32_t i = 0; i < p->nout; i++) {
 			const Out *o = &x.out[p->out + i], *u = &y.out[q->out + i];
 			Name m = out_name(&x, o), n = out_name(&y, u);
-			if (!m.s != !n.s || (m.s && !snap_eq(s, m, n)) || res_origin(&x, o->src, o->col) != res_origin(&y, u->src, u->col)) goto done;
+			long g = res_origin(&x, o->src, o->col), h = res_origin(&y, u->src, u->col);
+			if (!m.s != !n.s || (m.s && !snap_eq(s, m, n)) || !same_origin(&blk, g, h)) goto done;
+			pair_origin(&blk, g, h);
 		}
 	}
-	/* every column reference of the old text, in order, means the same in
-	   the new; the new may have more (a * written out) but no errors */
+	/* every column reference of the old text means the same in the new:
+	   the same column of the paired source (two sources may be one table,
+	   and a renamed alias may capture).  Text may move (a CTE inlined), so
+	   the search starts after the last match and wraps; any match is a
+	   witness, so a wrong pairing can only refuse.  The new text may have
+	   more references (a * written out) but no errors. */
 	size_t j = 0;
 	for (size_t i = 0; i < y.nr; i++) if (y.r[i].status > RS_UNSURE) goto done;
 	for (size_t i = 0; i < x.nr; i++) {
-		if (x.r[i].kind != RF_COLUMN) continue;
-		while (j < y.nr && (y.r[j].kind != RF_COLUMN || origin_of(&y, &y.r[j]) != origin_of(&x, &x.r[i]) || y.r[j].status != x.r[i].status)) j++;
-		if (j++ >= y.nr) goto done;
+		const Ref *p = &x.r[i];
+		if (p->kind != RF_COLUMN) continue;
+		size_t k = 0;
+		for (; k < y.nr; k++, j = (j + 1) % y.nr) {
+			const Ref *q = &y.r[j];
+			if (!used[j] && q->kind == RF_COLUMN && q->status == p->status && same_src(&x, &y, &src, &blk, p->src, q->src) && same_origin(&blk, origin_of(&x, p), origin_of(&y, q))) break;
+		}
+		if (k == y.nr) goto done;
+		used[j] = 1;
+		pair(&src, p->src, y.r[j].src), pair_origin(&blk, origin_of(&x, p), origin_of(&y, &y.r[j]));
+		if (p->src >= 0) pair(&blk, x.src[p->src].blk, y.src[y.r[j].src].blk);
 	}
 	same = 1;
 done:
+	free(mem);
 	resolve_free(&x), resolve_free(&y);
 	return same;
 }

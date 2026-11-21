@@ -1,0 +1,64 @@
+# Hand cases for refq on WWI: op, argument, second argument (- for none),
+# text, expected text (or REFUSED: and the reason's start).  rename: a
+# column and its new name; alias, inline, extract: the first occurrence of
+# the argument marks the byte the refactor is aimed at.
+# Slice 5: renaming a column across code (refactor_rename_col) on WWI
+# a lone column keeps the output name it gave
+rename	Sales.Customers.CustomerName	N2	select CustomerName from Sales.Customers	select N2 AS CustomerName from Sales.Customers
+rename	Sales.Customers.CustomerName	N2	select c.CustomerName, CustomerName x from Sales.Customers c where CustomerName > '' order by c.CustomerName	select c.N2 AS CustomerName, N2 x from Sales.Customers c where N2 > '' order by c.N2
+# a derived table's and a CTE's columns keep their names, so a * over them stays
+rename	Sales.Customers.CustomerName	N2	select * from (select CustomerName from Sales.Customers) d	select * from (select N2 AS CustomerName from Sales.Customers) d
+rename	Sales.Customers.CustomerName	N2	with c as (select CustomerName from Sales.Customers) select * from c	with c as (select N2 AS CustomerName from Sales.Customers) select * from c
+# a subquery's one value and a UNION's later branch have no name to keep
+rename	Sales.Customers.CustomerName	N2	select 1 where 'x' in (select CustomerName from Sales.Customers) union select CustomerName from Sales.Customers	select 1 where 'x' in (select N2 from Sales.Customers) union select N2 from Sales.Customers
+# a * over the table itself would change its output: refused; under EXISTS it means nothing
+rename	Sales.Customers.CustomerName	N2	select * from Sales.Customers	REFUSED: a * includes the column
+rename	Sales.Customers.CustomerName	N2	select 1 where exists (select * from Sales.Customers)	select 1 where exists (select * from Sales.Customers)
+# written columns, brackets where the new name needs them
+rename	Sales.Customers.CustomerName	new name]	update Sales.Customers set CustomerName = CustomerName + 'x' where 1 = 0	update Sales.Customers set [new name]]] = [new name]]] + 'x' where 1 = 0
+rename	Sales.Customers.CustomerName	select	insert Sales.Customers (CustomerName) select 'x' where 1 = 0	insert Sales.Customers ([select]) select 'x' where 1 = 0
+# a name that may be the column but is not read as a known name: refused
+rename	Sales.Customers.CustomerName	N2	select CustomerName from #t	REFUSED: the name appears where it is not known
+# a table-type parameter's column of the same name is another column
+rename	Sales.Orders.Comments	N2	create procedure p @o Website.OrderList readonly as select Comments from @o	create procedure p @o Website.OrderList readonly as select Comments from @o
+# a system-versioned table: its history table's column is renamed with it
+rename	Application.Cities.CityName	N2	select a.CityName from Application.Cities_Archive a union all select CityName from Application.Cities	select a.N2 AS CityName from Application.Cities_Archive a union all select N2 from Application.Cities
+rename	Application.Cities_Archive.CityName	N2	select 1	REFUSED: a history table's column
+# the server would refuse: computed (4928), used by a schema-bound function (15336)
+rename	Application.People.SearchName	N2	select 1	REFUSED: computed (4928)
+rename	Application.Cities.CityID	N2	select 1	REFUSED: sql inline table valued function Application.DetermineCustomerAccess (15336)
+# Slice 6, R1: an alias or CTE name, inside its statement
+alias	c 	cust	select c.CustomerName from Sales.Customers c where c.CustomerID = 1	select cust.CustomerName from Sales.Customers cust where cust.CustomerID = 1
+alias	x as	k	with x as (select CustomerID from Sales.Customers) select x.CustomerID from x join x y on y.CustomerID = x.CustomerID	with k as (select CustomerID from Sales.Customers) select k.CustomerID from k join k y on y.CustomerID = k.CustomerID
+alias	o.	ord	select o.OrderID from Sales.Orders o where exists (select 1 from Sales.Customers c where c.CustomerID = o.CustomerID)	select ord.OrderID from Sales.Orders ord where exists (select 1 from Sales.Customers c where c.CustomerID = ord.CustomerID)
+# a capture: two sources of one name (1011), or an inner alias hiding an outer one
+alias	o.	c	select o.OrderID from Sales.Orders o join Sales.Customers c on c.CustomerID = o.CustomerID	REFUSED: the meaning would change
+alias	x2	x0	select (select count(*) from Sales.Customers x2 join Sales.Customers x1 on x0.CustomerID = x1.CustomerID) from Sales.Customers x0	REFUSED: the meaning would change
+alias	Customers.	c	select Customers.CustomerName from Sales.Customers	REFUSED: renames here: an alias or a CTE name
+alias	#t	u	create table #t (a int) select a from #t	REFUSED: a temp table or table variable outlives the statement
+# a spelling of the name the resolver did not read (here a string: maybe dynamic SQL)
+alias	x.	zz	select x.CustomerName, 'x' from Sales.Customers x	REFUSED: the name appears where it is not known
+# a shorter name: edits that shorten the text
+alias	[x0]	v	select [x0].CustomerID from Sales.Customers [x0]	select v.CustomerID from Sales.Customers v
+# Slice 6, R9: a CTE inlined, a derived table made a CTE
+inline	c(k)	-	with a as (select 1 x), c(k) as (select CustomerID from Sales.Customers) select c.k, a.x from c, a	with a as (select 1 x) select c.k, a.x from (select CustomerID from Sales.Customers) c(k), a
+inline	c as	-	with c as (select CustomerID from Sales.Customers) select * from c x join c y on x.CustomerID = y.CustomerID	select * from (select CustomerID from Sales.Customers) x join (select CustomerID from Sales.Customers) y on x.CustomerID = y.CustomerID
+inline	r as	-	with r as (select 1 n union all select n + 1 from r where n < 3) select n from r	REFUSED: a recursive CTE
+extract	d.Cu	-	select d.CustomerID from (select CustomerID from Sales.Customers) d	with d as (select CustomerID from Sales.Customers) select d.CustomerID from d
+extract	d.k	-	SELECT d.k FROM (SELECT CustomerID FROM Sales.Customers) d(k)	WITH d(k) AS (SELECT CustomerID FROM Sales.Customers) SELECT d.k FROM d
+extract	d.Cu	-	with a as (select d.CustomerID from (select CustomerID from Sales.Customers) d) select * from a	with d as (select CustomerID from Sales.Customers), a as (select d.CustomerID from d) select * from a
+extract	d.Cu	-	select 1 select d.CustomerID from (select CustomerID from Sales.Customers) d	select 1 ;with d as (select CustomerID from Sales.Customers) select d.CustomerID from d
+extract	d(n)	-	select c.CustomerID from Sales.Customers c cross apply (select c.CustomerName) d(n)	REFUSED: the meaning would change
+extract	v.	-	select v.a from (values (1)) v(a)	REFUSED: a CTE's body is a SELECT
+# where the WITH goes: before an INSERT whose source the query is; after AS and BEGIN; never right after IF (Msg 319)
+extract	d.Cu	-	insert into Sales.Orders (Comments) select d.CustomerName from (select CustomerName from Sales.Customers) d	with d as (select CustomerName from Sales.Customers) insert into Sales.Orders (Comments) select d.CustomerName from d
+extract	d.Cu	-	create view v as select d.CustomerID from (select CustomerID from Sales.Customers) d	create view v as with d as (select CustomerID from Sales.Customers) select d.CustomerID from d
+extract	d.Cu	-	if 1 = 1 begin select d.CustomerID from (select CustomerID from Sales.Customers) d end	if 1 = 1 begin with d as (select CustomerID from Sales.Customers) select d.CustomerID from d end
+extract	d.Cu	-	if 1 = 1 select d.CustomerID from (select CustomerID from Sales.Customers) d	REFUSED: a WITH cannot follow IF
+# a method on a column names the column (x.c.STAsText()); a name a rename cannot read (c.m(): a schema c's function?) refuses
+alias	c.Loc	x	select c.Location.STAsText() from Application.Cities c	select x.Location.STAsText() from Application.Cities x
+rename	Application.Cities.Location	L2	select Location.STAsText() from Application.Cities	REFUSED: the name appears where it is not known
+# inline: the first CTE goes with its comma; a use in a later CTE's body; a column list and an alias together are refused
+inline	a as	-	with a as (select 1 x), c as (select CustomerID from Sales.Customers) select c.CustomerID, a.x from c, a	with c as (select CustomerID from Sales.Customers) select c.CustomerID, a.x from c, (select 1 x) a
+inline	a as	-	with a as (select 1 x), c as (select a.x from a) select c.x from c	with c as (select a.x from (select 1 x) a) select c.x from c
+inline	c(k)	-	with c(k) as (select CustomerID from Sales.Customers) select x.k from c x	REFUSED: a CTE with a column list, used with an alias

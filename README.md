@@ -2,13 +2,14 @@
 
 **Never merged to main.** An orphan branch (no history shared with main) so it cannot be merged by accident, like the debugger prototype. It exists to learn; what it teaches goes into the knowledge base at `/mnt/project-files/sql-refactor-kb/` (start at `INDEX.md`; slice status in `07-plan.md`, lessons in `08-lessons.md`), which the real build in Homeros starts from.
 
-Davy, 2026-11-19: SQL refactors that use a database connection, ready when the text editing is done; T-SQL first, then PostgreSQL and Db2.
+Davy, 2026-11-19: SQL refactors that use a database connection, ready when the text editing is done; T-SQL first, then PostgreSQL and Db2 (2026-11-21: Db2 for i). 2026-11-21: build several prototypes, compare them by measurement, keep the best; prefer vendored, tuned library code in-process over client/server tools.
 
 ## Layout
 | Path | What |
 |---|---|
 | `sqlref/` | the C code that would move into Homeros: `snap.[ch]` (catalog snapshot), `resolve.[ch]` (what every name refers to), `refactor.[ch]` (expand `*`, qualify, object info, and the one meaning check every refactor passes) |
-| `cmd/` | small drivers the oracles talk to (`snapq`, `resq`, `refq`) |
+| `client/` | the bake-off's own TDS 7.4 client (`tds.[ch]`): one non-blocking socket for the editor's event loop, every reply as text in server order; plain TCP and SQL logins so far |
+| `cmd/` | small drivers the oracles talk to (`snapq`, `resq`, `refq`, `tdsq`) |
 | `oracle/` | the snapshot query per dialect (`snap-tsql.sql`), `snap.sh` (takes a snapshot from the test server), the oracles that check each slice against the server, test databases (`tricky.sql`) |
 | `tests/queries.sql` | hand-written cases, with the exact refactor results some must give |
 | `tests/plants.txt` | planted bugs: each must make `./check.sh` fail |
@@ -28,4 +29,4 @@ pip install pymssql
 ```
 Restore: `RESTORE DATABASE AW FROM DISK='/tmp/aw.bak' WITH MOVE 'AdventureWorks2022' TO '/var/opt/mssql/data/aw.mdf', MOVE 'AdventureWorks2022_log' TO '/var/opt/mssql/data/aw.ldf'` (WWI: `WWI_Primary`, `WWI_UserData`, `WWI_Log`, `WWI_InMemory_Data_1`). clang's sanitizers need `libclang-rt-18-dev`.
 
-`./check.sh` (about 1.5 min), then `./plants.sh` (each plant reruns the check until it fails; about 20 min).
+`./check.sh` (about 3.5 min, measured once), then `./plants.sh` (each plant reruns the check until it fails; about 20 min).

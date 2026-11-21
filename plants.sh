@@ -6,7 +6,7 @@
 cd "$(dirname "$0")"
 here=$(pwd) main=$(cd "${HOMEROS:-../main}" && pwd) caught=0 total=0
 list=$(cd "$(dirname "${PLANTS:-tests/plants.txt}")" && pwd)/$(basename "${PLANTS:-tests/plants.txt}")
-copy() { d=$(mktemp -d) && cp -r "$here"/sqlref "$here"/cmd "$here"/oracle "$here"/tests "$here"/Makefile "$here"/check.sh "$d"/; }
+copy() { d=$(mktemp -d) && cp -r "$here"/sqlref "$here"/client "$here"/cmd "$here"/oracle "$here"/tests "$here"/Makefile "$here"/check.sh "$d"/; }
 # a scratch copy with no plant must pass, or every "caught" is void
 # (the debugger prototype's lesson L33)
 copy && HOMEROS="$main" "$d"/check.sh >/dev/null 2>&1 </dev/null || { echo "plants: the unplanted copy fails; nothing counted"; rm -rf "$d"; exit 1; }

@@ -6,6 +6,9 @@
 # (README.md, "Test servers"); python3 with pymssql.
 set -e
 cd "$(dirname "$0")"
+# snapshots in a directory of this run's: two runs at once (plants, an
+# oracle by hand) must not read each other's (KB lesson L27)
+SNAPS=$(mktemp -d); export SNAPS; trap 'rm -rf "$SNAPS"' EXIT
 make -s clean
 make -s CC=clang
 make -s clean
@@ -21,4 +24,6 @@ for db in WWI AW; do python3 oracle/module_oracle.py $db; done
 for db in WWI AW; do python3 oracle/rename_oracle.py $db ${RENAME_N:-}; done
 # slices 3 and 5: hand cases (the meaning check alone; renames) on WWI.snap, taken above
 oracle/cases.sh
+# the SQL client bake-off: every type through the own TDS client against the server's own text
+python3 oracle/tds_oracle.py build/tdsq ${SEED:-1} ${TDS_N:-20}
 echo "check: ok"

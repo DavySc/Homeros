@@ -18,7 +18,7 @@ enum {
 	RF_OUT,         /* ORDER BY naming an output column */
 };
 /* how it resolved: RS_OK, or the SQL Server error it would give */
-enum { RS_OK, RS_UNSURE, RS_NOCOL = 207, RS_AMBIG = 209, RS_NOOBJ = 208, RS_SAMENAME = 1013, RS_SAMEALIAS = 1011, RS_UNBOUND = 4104 };
+enum { RS_OK, RS_UNSURE, RS_NOCOL = 207, RS_AMBIG = 209, RS_NOOBJ = 208, RS_SAMENAME = 1013, RS_SAMEALIAS = 1011, RS_SAMECTE = 239, RS_UNBOUND = 4104 };
 
 typedef struct {
 	uint32_t s, e;       /* bytes of the name in the text */
@@ -82,8 +82,15 @@ Name   src_col(const Res *res, size_t sc, size_t i, long *cat);
    CTEs: a snapshot column index (>= 0), or for a computed output of a
    block, -2 - (block << 16 | output); -1 unknown */
 long   res_origin(const Res *res, int sc, int col);
-/* the first token (a module's CREATE): its bytes [*s, *e); 0 when none */
-int    res_first(const Res *res, uint32_t *s, uint32_t *e);
+/* the token starting at or after byte pos (dir > 0), or ending at or
+   before it (dir < 0): its bytes [*s, *e); 0 when none.  Comments and
+   spaces are no tokens. */
+int    res_tok(const Res *res, uint32_t pos, int dir, uint32_t *s, uint32_t *e);
+/* the byte of the nearest token before byte pos, at its depth, that
+   starts a statement (SELECT, INSERT, IF ..), or UINT32_MAX */
+uint32_t res_starter(const Res *res, uint32_t pos);
+/* the byte of the parenthesis matching the one at byte pos, or UINT32_MAX */
+uint32_t res_match(const Res *res, uint32_t pos);
 /* the name of an output column, NULL s when it has none */
 Name   out_name(const Res *res, const Out *o);
 #endif

@@ -6,3 +6,5 @@ differ	select CityID from Application.Cities	select CityID from Application.Citi
 differ	select CityID x from Application.Cities	select CityID y from Application.Cities
 differ	select CityID, StateProvinceID from Application.Cities where StateProvinceID = CityID	select StateProvinceID CityID, CityID StateProvinceID from Application.Cities where CityID = StateProvinceID and StateProvinceID = CityID
 differ	select (select count(*) from Sales.Customers x0 where x0.CustomerID = OrderID) from Sales.Orders x0	select (select count(*) from Sales.Customers x0 where x0.CustomerID = x0.OrderID) from Sales.Orders x0
+differ	select (select count(*) from Sales.Customers x0 join Sales.Customers x1 on x0.CustomerID = x1.CustomerID) from Sales.Customers x0	select (select count(*) from Sales.Customers x2 join Sales.Customers x1 on x0.CustomerID = x1.CustomerID) from Sales.Customers x0
+differ	select 1 x from (select CustomerID a, BillToCustomerID b from Sales.Customers) d where d.a = 1	select 1 x from (select CustomerID a, BillToCustomerID b from Sales.Customers) d where d.b = 1

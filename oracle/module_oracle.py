@@ -9,12 +9,12 @@ transaction that is rolled back, and must compile (O5), reference the
 same columns (O2) and, for a view, give the same columns (O1) and rows
 (O3, as a checksum).
 Test server only.  python3 oracle/module_oracle.py DB"""
-import re, subprocess, sys, pymssql
+import os, re, subprocess, sys, pymssql
 
 db = sys.argv[1]
 con = pymssql.connect('localhost', 'sa', 'Homeros_Test1', db)
 cur = con.cursor()
-snap = '/tmp/claude-0/%s.snap' % db
+snap = os.environ.get('SNAPS', '/tmp/claude-0') + '/%s.snap' % db
 subprocess.run(['oracle/snap.sh', db, snap], check=True)
 cur.execute("select o.object_id, schema_name(o.schema_id) + '.' + o.name, rtrim(o.type), m.definition from sys.sql_modules m join sys.objects o on o.object_id = m.object_id where o.type in ('V','IF','TF','FN','P','TR') order by 2")
 mods = cur.fetchall()
@@ -35,9 +35,14 @@ def seen(name, typ):
 stats = {}
 def refactored(name, typ, text):
     """None, or why a refactor of the module broke it"""
-    for op in ('star', 'qualify'):
-        p = subprocess.run(['build/refq', snap, op], input=text.encode(), capture_output=True)
+    # slice 6: every alias and CTE name renamed, every CTE inlined, every
+    # derived table made a CTE (positions from the resolver)
+    out = subprocess.run(['build/resq', snap], input=text.encode(), capture_output=True).stdout.decode('utf-8', 'replace').splitlines()
+    at = [f.split('\t')[3] for f in out if f.split('\t')[:2] in (['R', 'alias'], ['R', 'cte-def'])]
+    for op, *args in [('star',), ('qualify',)] + [(o, a, *n) for a in at for o, *n in (('alias', 'zz_r'), ('inline',), ('extract',))]:
+        p = subprocess.run(['build/refq', snap, op, *args], input=text.encode(), capture_output=True)
         res = {0: 'ok', 3: 'refused'}.get(p.returncode, 'crash')
+        if res == 'refused' and p.stdout.startswith(b'REFUSED: no '): continue
         if res == 'ok' and p.stdout == text.encode(): res = 'same'
         stats[op + ' ' + res] = stats.get(op + ' ' + res, 0) + 1
         if res == 'crash': return '%s crash %s' % (op, p.stderr[-300:].decode())
@@ -49,17 +54,18 @@ def refactored(name, typ, text):
         except pymssql.Error as e:
             after = 'error %s' % (e.args,)
         con.rollback()
-        if after != before and 'natively compiled' in str(after):
+        if after != before and ('natively compiled' in str(after) or '(3729,' in str(after)):
             # no ALTER of a natively compiled procedure in a transaction
-            # (12331): compile a copy under another name, then drop it
+            # (12331), nor of a function a security policy uses (3729):
+            # compile a copy under another name, then drop it
             copy = name + '_refq'
             con.autocommit(True)
             try:
-                cur.execute(re.sub(r'(?i)\bcreate(\s+procedure\s+)\S+', lambda m: 'create' + m.group(1) + copy, p.stdout.decode(), count=1))
+                cur.execute(re.sub(r'(?i)\bcreate(\s+(?:procedure|function)\s+)[\w.\[\]]+', lambda m: 'create' + m.group(1) + copy, p.stdout.decode(), count=1))
                 after = seen(copy, typ)
             except pymssql.Error as e:
                 after = 'error %s' % (e.args,)
-            cur.execute('drop procedure if exists ' + copy)
+            cur.execute('drop %s if exists %s' % ('procedure' if typ == 'P' else 'function', copy))
             con.autocommit(False)
         if after != before: return '%s broke it: %s -> %s' % (op, before, after)
     return None

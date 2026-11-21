@@ -5,7 +5,7 @@ changed where the collation ignores case, [..] or ".." quoting), and
 mutated names must not be found.  Test servers only.
 
 python3 oracle/snap_oracle.py DB [SEED] [ROUNDS]"""
-import random, subprocess, sys, pymssql
+import os, random, subprocess, sys, pymssql
 
 db, seed, rounds = sys.argv[1], int(sys.argv[2]) if len(sys.argv) > 2 else 1, int(sys.argv[3]) if len(sys.argv) > 3 else 3
 rnd = random.Random(seed)
@@ -55,7 +55,7 @@ for s, n, d in mods:
 cur.execute("select concat(schema_name(a.schema_id), '.', a.name, '.', ca.name, char(9), schema_name(b.schema_id), '.', b.name, '.', cb.name) from sys.foreign_key_columns f join sys.objects a on a.object_id = f.parent_object_id join sys.columns ca on ca.object_id = a.object_id and ca.column_id = f.parent_column_id join sys.objects b on b.object_id = f.referenced_object_id join sys.columns cb on cb.object_id = b.object_id and cb.column_id = f.referenced_column_id")
 fks = sorted(r[0] for r in cur.fetchall())
 
-snap = '/tmp/claude-0/%s.snap' % db
+snap = os.environ.get('SNAPS', '/tmp/claude-0') + '/%s.snap' % db
 subprocess.run(['oracle/snap.sh', db, snap], check=True)
 if len(sys.argv) > 4 and sys.argv[4] == 'crlf':   # as sqlcmd writes on Windows
     b = open(snap, 'rb').read().replace(b'\n', b'\r\n'); snap += '.crlf'; open(snap, 'wb').write(b)

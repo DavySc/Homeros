@@ -37,6 +37,19 @@ int refactor_rename_col(const Res *r, long col, Name to, Edits *out);
    names it). */
 int refactor_rename_script(const Snap *s, const Snap *after, long col, Name to, Edits *ed);
 
+/* R1 inside one statement: the alias or CTE name at byte pos, and every
+   reference to it, become to.  Refuses elsewhere (a temp table or table
+   variable outlives the statement; a table's own name is no alias); a
+   capture shows in the meaning check the caller runs. */
+int refactor_rename_at(const Res *r, size_t pos, Name to, Edits *ed);
+
+/* R9: the CTE named at byte pos becomes a derived table at each use, and
+   its definition goes; refuses a recursive one.  The reverse: the derived
+   table named at pos becomes a CTE of its statement (before the CTE whose
+   body holds it, else after the last one, else a new WITH). */
+int refactor_inline_cte(const Res *r, size_t pos, Edits *ed);
+int refactor_extract_cte(const Res *r, size_t pos, Edits *ed);
+
 /* the text with the edits applied (malloc'd, *n its length); NULL out of memory */
 char *edits_apply(const Edits *ed, const char *text, size_t n, size_t *len);
 /* text b under snapshot t resolves to what text a means under s (the
