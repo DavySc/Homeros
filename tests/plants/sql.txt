@@ -27,6 +27,12 @@ sql: a column type cut at the packet's end is unknown (fuzz)~fuzz FUZZERS=sql_td
 sql: any packet size the server names (fuzz)~fuzz FUZZERS=sql_tds FUZZ_SECONDS=60~~src/sql/tds.c~if (z >= 512 && z <= 32767) t->pkt~if (z > 0) t->pkt
 sql: a whole reply without its last DONE waits (fuzz)~fuzz FUZZERS=sql_tds FUZZ_SECONDS=60~~src/sql/tds.c~if (t->eom && (t->at < t->msg.n || t->state == TDS_BUSY)) {~if (t->eom && t->at < t->msg.n) {
 specs: SqlRun ending a cancelled run at its first DONE~specs~find design/specs -name '*.cfg' ! -name SqlRun_ok.cfg -delete~design/specs/SqlRun_ok.cfg~Variant = "ok"~Variant = "firstdone"
+sql: GO anywhere on a line splits~test TESTS=sql_run~~src/sql/run.c~		if (lead && k == TQ_WORD~		if ((lead || 1) && k == TQ_WORD
+sql: blanks before GO sent with the batch~test TESTS=sql_run~~src/sql/run.c~			while (end > start && blank(tsql_byte(&r, end - 1))) end--;¶~
+sql: GO( taken as SQL, not refused~test TESTS=sql_run~~src/sql/run.c~		const char *bad = "$![\"'(:/";~		const char *bad = "$![\"':/";
+sql: lower-case go is no separator~test TESTS=sql_run~~src/sql/run.c~&& lower(tsql_byte(&r, p)) == 'g' && lower(tsql_byte(&r, p + 1)) == 'o'~&& tsql_byte(&r, p) == 'G' && lower(tsql_byte(&r, p + 1)) == 'o'
+sql: a refused GO line's number one short~test TESTS=sql_run~~src/sql/run.c~	size_t start = a, line = 1;~	size_t start = a, line = 0;
+sql: a comment before GO ends its line's lead~test TESTS=sql_run~~src/sql/run.c~		} else if (k != TQ_SPACE && !comment) lead = 0;~		} else if (k != TQ_SPACE && !(comment && 0)) lead = 0;
 sql: a message's tab and newline escaped~test TESTS=sql~~src/sql/net.c~	unsigned char s[4] = {'\\', raw ? 0 : (unsigned char)esc(u)};~	unsigned char s[4] = {'\\', (unsigned char)(esc(u) + 0 * raw)};
 sql: no ARITHABORT, unlike SSMS~test TESTS=sql~~src/sql/tds.c~tds_batch(t, "set arithabort on")~tds_batch(t, "set ansi_nulls on")
 sql: the mechanism list read past its message (fuzz)~fuzz FUZZERS=sql_pg FUZZ_SECONDS=60~~src/sql/pg.c~while (q < e && *q && !(e - q >= 14 && !memcmp(q, "SCRAM-SHA-256", 14)))~while (q < e && *q && strcmp(q, "SCRAM-SHA-256"))
