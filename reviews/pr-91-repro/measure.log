@@ -1,0 +1,81 @@
+run 1
+pr   all.nix 6000:   frame after parse med 5.458 max 7.284 | open 74.02 | frame med 10.889 max 14.377 | update med 12.503 max 16.776 | longest stretch med 8.760 max 13.340
+pr   big.c 6000:     frame after parse med 0.360 max 0.646 | open 182.92 | frame med 0.151 max 0.278 | update med 3.080 max 9.044 | longest stretch med 0.282 max 3.226
+main big.c 6000:     frame after parse med 0.362 max 0.609 | open 261.71 | frame med 0.182 max 0.397 | update med 3.274 max 5.058 | longest stretch med 0.293 max 1.630
+pr   big3.rs 6000:   frame after parse med 0.165 max 0.230 | open 148.91 | frame med 0.137 max 0.198 | update med 1.422 max 3.518 | longest stretch med 0.143 max 0.471
+main big3.rs 6000:   frame after parse med 0.170 max 0.522 | open 157.97 | frame med 0.139 max 0.217 | update med 1.441 max 3.875 | longest stretch med 0.141 max 0.515
+pr   wide.lua 6000:  frame after parse med 14.882 max 28.068 | open 101.48 | frame med 29.148 max 54.622 | update med 8.713 max 34.070 | longest stretch med 1.678 max 4.048
+main wide.lua 6000:  frame after parse med 14.374 max 26.127 | open 102.84 | frame med 28.052 max 54.264 | update med 7.894 max 36.355 | longest stretch med 1.396 max 3.986
+pr   design.md 150:  frame after parse med 0.926 max 1.350 | open 56.06 | frame med 0.241 max 1.521 | update med 1.941 max 16.763 | longest stretch med 0.514 max 1.058
+main design.md 150:  frame after parse med 0.561 max 1.586 | open 36.80 | frame med 0.152 max 1.230 | update med 1.308 max 11.285 | longest stretch med 0.335 max 1.037
+pr   lualong250 100: frame after parse med 0.295 max 0.577 | open 102.46 | frame med 0.391 max 0.725 | update med 43.954 max 81.437 | longest stretch med 43.743 max 81.032
+pr   luareal.nix 100:frame after parse med 0.656 max 0.752 | open 17.99 | frame med 0.647 max 0.814 | update med 1.431 max 2.577 | longest stretch med 0.400 max 0.705
+pr   luareal.lua 100:frame after parse med 0.755 max 2.903 | open 10.17 | frame med 0.405 max 0.498 | update med 1.392 max 2.730 | longest stretch med 0.509 max 1.927
+main souffle: lang 2 gap 1000000: frame median 1.835 ms (min 1.643 max 2.364) face0=0
+pr   souffle: lang 2 gap 1000000: frame median 0.844 ms (min 0.794 max 0.957) face0=0
+pr   tsql:    lang 0 gap 1000000: frame median 0.888 ms (min 0.788 max 1.037) face0=0
+run 2
+pr   all.nix 6000:   frame after parse med 6.275 max 7.919 | open 69.33 | frame med 12.580 max 14.810 | update med 14.103 max 16.847 | longest stretch med 10.296 max 12.714
+pr   big.c 6000:     frame after parse med 0.350 max 1.009 | open 185.03 | frame med 0.159 max 0.312 | update med 2.958 max 10.777 | longest stretch med 0.230 max 5.007
+main big.c 6000:     frame after parse med 0.357 max 0.657 | open 202.84 | frame med 0.174 max 0.235 | update med 3.278 max 4.553 | longest stretch med 0.269 max 0.984
+pr   big3.rs 6000:   frame after parse med 0.185 max 0.278 | open 165.02 | frame med 0.143 max 0.265 | update med 1.582 max 4.104 | longest stretch med 0.162 max 0.237
+main big3.rs 6000:   frame after parse med 0.167 max 0.376 | open 155.29 | frame med 0.138 max 0.264 | update med 1.455 max 4.002 | longest stretch med 0.146 max 0.834
+pr   wide.lua 6000:  frame after parse med 15.135 max 27.264 | open 105.36 | frame med 29.656 max 55.673 | update med 9.058 max 40.829 | longest stretch med 1.779 max 4.132
+main wide.lua 6000:  frame after parse med 16.202 max 26.641 | open 110.73 | frame med 32.079 max 58.292 | update med 9.586 max 32.072 | longest stretch med 1.913 max 3.976
+pr   design.md 150:  frame after parse med 0.847 max 1.142 | open 52.82 | frame med 0.222 max 1.644 | update med 1.945 max 16.363 | longest stretch med 0.495 max 1.091
+main design.md 150:  frame after parse med 0.645 max 0.953 | open 38.19 | frame med 0.164 max 1.042 | update med 1.363 max 12.374 | longest stretch med 0.360 max 0.819
+pr   lualong250 100: frame after parse med 0.294 max 0.432 | open 55.30 | frame med 0.387 max 0.987 | update med 42.397 max 73.594 | longest stretch med 42.171 max 73.225
+pr   luareal.nix 100:frame after parse med 0.942 max 1.308 | open 24.48 | frame med 0.944 max 1.164 | update med 2.028 max 3.179 | longest stretch med 0.592 max 1.096
+pr   luareal.lua 100:frame after parse med 0.509 max 0.759 | open 10.41 | frame med 0.270 max 0.343 | update med 0.930 max 2.218 | longest stretch med 0.348 max 0.896
+main souffle: lang 2 gap 1000000: frame median 1.918 ms (min 1.679 max 2.237) face0=0
+pr   souffle: lang 2 gap 1000000: frame median 0.532 ms (min 0.507 max 0.554) face0=0
+pr   tsql:    lang 0 gap 1000000: frame median 0.922 ms (min 0.779 max 1.003) face0=0
+run 3
+pr   all.nix 6000:   frame after parse med 3.935 max 6.459 | open 46.42 | frame med 7.777 max 13.894 | update med 8.557 max 14.364 | longest stretch med 6.153 max 11.267
+pr   big.c 6000:     frame after parse med 0.327 max 0.507 | open 257.76 | frame med 0.152 max 0.242 | update med 2.880 max 4.999 | longest stretch med 0.220 max 0.696
+main big.c 6000:     frame after parse med 0.363 max 1.227 | open 268.05 | frame med 0.185 max 0.739 | update med 3.986 max 8.482 | longest stretch med 0.349 max 2.673
+pr   big3.rs 6000:   frame after parse med 0.163 max 0.262 | open 155.22 | frame med 0.137 max 0.187 | update med 1.350 max 3.925 | longest stretch med 0.137 max 0.294
+main big3.rs 6000:   frame after parse med 0.163 max 0.321 | open 150.34 | frame med 0.138 max 0.379 | update med 1.395 max 3.788 | longest stretch med 0.136 max 0.385
+pr   wide.lua 6000:  frame after parse med 14.038 max 25.888 | open 112.99 | frame med 27.567 max 54.447 | update med 8.094 max 41.301 | longest stretch med 1.489 max 4.606
+main wide.lua 6000:  frame after parse med 14.433 max 29.691 | open 67.06 | frame med 28.109 max 58.952 | update med 7.957 max 23.383 | longest stretch med 1.453 max 4.148
+pr   design.md 150:  frame after parse med 0.653 max 2.936 | open 47.21 | frame med 0.166 max 1.054 | update med 1.741 max 12.354 | longest stretch med 0.434 max 1.903
+main design.md 150:  frame after parse med 0.562 max 1.638 | open 50.82 | frame med 0.153 max 1.512 | update med 1.341 max 15.919 | longest stretch med 0.303 max 1.422
+pr   lualong250 100: frame after parse med 0.278 max 0.470 | open 57.27 | frame med 0.369 max 0.713 | update med 41.571 max 76.142 | longest stretch med 41.358 max 75.806
+pr   luareal.nix 100:frame after parse med 0.599 max 1.085 | open 17.11 | frame med 0.595 max 1.045 | update med 1.345 max 2.341 | longest stretch med 0.377 max 0.722
+pr   luareal.lua 100:frame after parse med 0.500 max 1.005 | open 16.19 | frame med 0.270 max 0.591 | update med 0.936 max 3.873 | longest stretch med 0.371 max 1.130
+main souffle: lang 2 gap 1000000: frame median 2.074 ms (min 1.659 max 2.312) face0=0
+pr   souffle: lang 2 gap 1000000: frame median 0.522 ms (min 0.512 max 0.558) face0=0
+pr   tsql:    lang 0 gap 1000000: frame median 1.047 ms (min 0.868 max 1.132) face0=0
+run 4
+pr   all.nix 6000:   frame after parse med 4.001 max 7.064 | open 45.32 | frame med 7.930 max 13.879 | update med 9.038 max 15.424 | longest stretch med 6.364 max 11.024
+pr   big.c 6000:     frame after parse med 0.338 max 1.715 | open 185.34 | frame med 0.170 max 0.327 | update med 3.103 max 5.622 | longest stretch med 0.271 max 1.551
+main big.c 6000:     frame after parse med 0.333 max 0.500 | open 181.48 | frame med 0.157 max 0.274 | update med 3.045 max 4.478 | longest stretch med 0.244 max 0.476
+pr   big3.rs 6000:   frame after parse med 0.166 max 0.236 | open 154.38 | frame med 0.135 max 0.234 | update med 1.345 max 3.928 | longest stretch med 0.135 max 0.469
+main big3.rs 6000:   frame after parse med 0.163 max 1.418 | open 160.88 | frame med 0.136 max 0.208 | update med 1.348 max 3.846 | longest stretch med 0.138 max 1.431
+pr   wide.lua 6000:  frame after parse med 14.247 max 28.488 | open 70.18 | frame med 28.203 max 53.352 | update med 8.342 max 27.261 | longest stretch med 1.547 max 4.161
+main wide.lua 6000:  frame after parse med 14.709 max 25.501 | open 91.52 | frame med 28.609 max 75.533 | update med 8.221 max 25.307 | longest stretch med 1.491 max 3.736
+pr   design.md 150:  frame after parse med 0.579 max 1.245 | open 52.21 | frame med 0.168 max 1.785 | update med 1.933 max 17.069 | longest stretch med 0.461 max 0.871
+main design.md 150:  frame after parse med 0.618 max 1.229 | open 45.98 | frame med 0.155 max 1.706 | update med 1.872 max 16.607 | longest stretch med 0.460 max 0.976
+pr   lualong250 100: frame after parse med 0.263 max 0.317 | open 53.55 | frame med 0.367 max 0.424 | update med 40.868 max 46.146 | longest stretch med 40.660 max 45.944
+pr   luareal.nix 100:frame after parse med 0.576 max 0.707 | open 16.94 | frame med 0.581 max 0.671 | update med 1.296 max 2.225 | longest stretch med 0.372 max 0.692
+pr   luareal.lua 100:frame after parse med 0.508 max 0.918 | open 10.18 | frame med 0.276 max 0.317 | update med 0.899 max 2.424 | longest stretch med 0.333 max 0.524
+main souffle: lang 2 gap 1000000: frame median 1.046 ms (min 1.028 max 1.146) face0=0
+pr   souffle: lang 2 gap 1000000: frame median 0.546 ms (min 0.516 max 4.200) face0=0
+pr   tsql:    lang 0 gap 1000000: frame median 0.536 ms (min 0.505 max 0.633) face0=0
+run 5
+pr   all.nix 6000:   frame after parse med 3.969 max 7.214 | open 47.04 | frame med 7.767 max 13.395 | update med 8.752 max 15.631 | longest stretch med 6.374 max 13.092
+pr   big.c 6000:     frame after parse med 0.334 max 0.597 | open 256.88 | frame med 0.153 max 0.276 | update med 2.983 max 3.998 | longest stretch med 0.238 max 0.840
+main big.c 6000:     frame after parse med 0.425 max 0.632 | open 185.06 | frame med 0.206 max 0.399 | update med 4.430 max 6.779 | longest stretch med 0.362 max 2.000
+pr   big3.rs 6000:   frame after parse med 0.164 max 0.334 | open 194.21 | frame med 0.139 max 0.380 | update med 1.403 max 4.486 | longest stretch med 0.141 max 0.379
+main big3.rs 6000:   frame after parse med 0.166 max 0.242 | open 170.70 | frame med 0.137 max 0.190 | update med 1.357 max 3.454 | longest stretch med 0.139 max 0.208
+pr   wide.lua 6000:  frame after parse med 13.858 max 26.430 | open 85.54 | frame med 27.181 max 47.587 | update med 7.601 max 24.418 | longest stretch med 1.290 max 3.812
+main wide.lua 6000:  frame after parse med 14.647 max 26.916 | open 74.66 | frame med 29.118 max 56.927 | update med 8.043 max 22.769 | longest stretch med 1.465 max 3.300
+pr   design.md 150:  frame after parse med 0.592 max 1.443 | open 37.02 | frame med 0.156 max 1.089 | update med 1.326 max 11.741 | longest stretch med 0.333 max 1.164
+main design.md 150:  frame after parse med 0.764 max 1.066 | open 41.12 | frame med 0.207 max 1.166 | update med 1.900 max 12.290 | longest stretch med 0.501 max 1.047
+pr   lualong250 100: frame after parse med 0.259 max 0.669 | open 93.33 | frame med 0.369 max 0.638 | update med 40.844 max 76.720 | longest stretch med 40.661 max 76.400
+pr   luareal.nix 100:frame after parse med 0.605 max 0.691 | open 16.92 | frame med 0.587 max 0.729 | update med 1.343 max 2.798 | longest stretch med 0.379 max 0.700
+pr   luareal.lua 100:frame after parse med 0.789 max 0.872 | open 15.86 | frame med 0.419 max 0.480 | update med 1.454 max 3.488 | longest stretch med 0.553 max 0.962
+main souffle: lang 2 gap 1000000: frame median 1.392 ms (min 1.046 max 1.627) face0=0
+pr   souffle: lang 2 gap 1000000: frame median 0.986 ms (min 0.856 max 1.040) face0=0
+pr   tsql:    lang 0 gap 1000000: frame median 0.525 ms (min 0.510 max 0.619) face0=0
+ 11:42:57 up 37 min,  0 user,  load average: 2.08, 2.03, 1.80

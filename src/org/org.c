@@ -1666,7 +1666,8 @@ static int agenda_ts(size_t h, size_t a, size_t q)
 	       org_ts((const char *)S, N, a, &x) && x.end >= q;
 }
 /* org-repeat-re from p on, bounded by lim: the stamp's start, the repeater
-   [*r, *re) ([.+]?\+N[hdwmy]); ORG_NONE */
+   [*r, *re) ([.+]?\+N[hdwmy], without a habit's /N, which nothing after
+   reads); ORG_NONE */
 static size_t repeat_re(size_t p, size_t lim, size_t *r, size_t *re)
 {
 	for (; p + 12 < lim; p++) {
@@ -1676,7 +1677,6 @@ static size_t repeat_re(size_t p, size_t lim, size_t *r, size_t *re)
 			if (S[u] != '+') u = q;   /* [.+]? backtracks to nothing */
 			if (S[u] != '+' || (v = digits(u + 1, lim)) == u + 1 || v >= lim || !one(v, "hdwmy")) continue;
 			*r = q, *re = v + 1;
-			if (S[*re] == '/' && (v = digits(*re + 1, lim)) > *re + 1 && v < lim && one(v, "hdwmy")) *re = v + 1;
 			return p;
 		}
 	}
@@ -1738,8 +1738,10 @@ static size_t indent(size_t p, size_t c)
 	return p + k;
 }
 
-/* org-indent-line's column for the element at line l of the entry at h:
-   its sibling before's first line, else its parent drawer's, else 0 */
+/* org-indent-line's column for line l of the entry at h: on an element's
+   first line, its sibling before's first line, else its parent drawer's
+   (a stray :LOGBOOK: line above opens the drawer), else 0; on a drawer's :END:, the drawer's; inside an element (a stray
+   :LOGBOOK: in a drawer is a paragraph), the line above's */
 static size_t sibling_ind(size_t h, size_t l)
 {
 	size_t k, i, j, c = 0;
@@ -1748,8 +1750,11 @@ static size_t sibling_ind(size_t h, size_t l)
 	for (i = k; i-- > 0 && e[i].aff + h != l; ) ;
 	if (i < k) {
 		for (j = i; j-- > 0 && e[j].parent != e[i].parent; ) ;
-		if (j < k && e[j].parent == e[i].parent) c = col(e[j].begin + h);
+		if (j < k) c = col(e[j].begin + h);
 		else if (e[i].parent != ORG_NONE && e[e[i].parent].type == ORG_DRAWER) c = col(e[e[i].parent].begin + h);
+	} else {
+		for (i = k; i-- > 0 && !(e[i].aff + h < l && l < e[i].end + h); ) ;
+		if (i < k) c = col(e[i].type == ORG_DRAWER && lit(blanks(l), ":END:") ? e[i].begin + h : prevl(l));
 	}
 	free(e);
 	return c;
@@ -1779,13 +1784,13 @@ static void note(size_t h, int to, int from, const char *now)
 	free(e);
 	size_t c = at != ORG_NONE ? col(prevl(at)) : 0;
 	if (at == ORG_NONE) {
-		if (p < N && p == bol(p) && headline(p)) p--;
 		int blank_line = p == bol(p) && ateol(blanks(p)), text_line = p == bol(p) && !ateol(p);
 		if (p != bol(p)) wins(p++, "\n");
 		wins(p, ":LOGBOOK:\n:END:");
 		if (blank_line || text_line) wins(p + 15, "\n");
 		c = sibling_ind(h, p);
-		indent(at = indent(p, c) + 10, c);   /* org-indent-region */
+		at = indent(p, c) + 10;
+		indent(at, sibling_ind(h, at));   /* org-indent-region, a line at a time */
 	}
 	if (at != bol(at)) wins(at++, "\n");
 	else if (!ateol(blanks(at))) wins(at, "\n");
@@ -1897,7 +1902,7 @@ static void repeat(size_t h, int from, const char *nows, long now)
 		tsbody(ts + 1, &t);
 		if (type == '.') tschange(ts, what == 'h' ? now - t : fdiv(now, 1440) - fdiv(t, 1440), what == 'h' ? 'm' : 'd', 0);
 		if (type == '+') {
-			do {   /* Org asks "Continue?" at the tenth shift; Davy's answer is yes */
+			do {   /* Org asks "Continue?" at the tenth shift; yes is the coordinator's call while Davy's card is open */
 				tschange(ts, n, what, 0);
 				tsbody(ts + 1, &t);
 			} while (what == 'h' ? !(now < t) : fdiv(now, 1440) >= fdiv(t, 1440));

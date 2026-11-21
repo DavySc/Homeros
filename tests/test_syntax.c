@@ -10,7 +10,11 @@
    A second copy of each case parses in slices, stopped at random points and
    resumed; resuming can also change the tree inside errors (measured, plain
    tree-sitter 0.27), so it must match only where Neovim's trees are free of
-   errors.  Lua patterns are compared with LuaJIT's string.find. */
+   errors.  Lua patterns are compared with LuaJIT's string.find.  Not
+   tested: combined injections are gathered from the window, Neovim's from
+   the whole tree (syntax.c, Inj), which differs only for an injected
+   language whose text is unbalanced inside one string and closed in another
+   outside the window. */
 #include <dirent.h>
 #include <stdint.h>
 #include <string.h>
@@ -527,7 +531,7 @@ int main(void)
 		   (#gsub!) in two strings parsed as one tree, and writeRust's;
 		   case 11, a Nix string Neovim does not inject, as its injection
 		   query's patterns of languages we lack still count toward the 256
-		   in-progress matches. 
+		   in-progress matches.
 		   The others: up to 80 lines of the corpus from a random line */
 		const char *fx = c == 2 ? "> *a\n> b* `c\n> d` [e\n> f](g)\n"
 		               : c == 3 ? "fn f() {\n    assert_eq!(v.len(), 3);\n    println!(\"{}\", g(x).y);\n}\n"
