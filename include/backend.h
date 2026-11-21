@@ -35,6 +35,10 @@ typedef struct {
 	/* The cell of the last mouse key (KEY_MOUSE_LEFT, KEY_WHEEL_*), as
 	   Neovim keeps mouse_row and mouse_col. */
 	void (*mouse)(int *row, int *col);
+	/* A cell's size in pixels, for inline images (image.h); the terminal
+	   says 0 x 0, so the core places no image there and the link text
+	   stays, as Emacs in a terminal shows it. */
+	void (*cell)(int *w, int *h);
 } Backend;
 
 extern const Backend backend_tty;    /* src/tty, package 6 */
