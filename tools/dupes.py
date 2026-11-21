@@ -10,7 +10,8 @@
    the same job written differently, which no token comparison can see.
   tools/dupes.py [MIN] [files...]   default: every .c and .h under src/ ref/ include/
 The last two read only the editor's modules (src/*/, ref/, include/): the
-programs in src/*/*/ (benches, probes, the infoview server) link none of them.
+programs in src/*/*/ (benches, probes, the infoview server) are separate
+programs, like tests/, not the editor.
 Findings listed in tests/dupes-known.txt (a copy its owner has yet to fold)
 pass; exit 1 on any other, or on a listed one that is gone, so the list only
 shrinks."""
@@ -25,15 +26,15 @@ SHAPE = 15
 
 
 def clean(path):
-	"""the source with comments and preprocessor lines blanked, newlines kept
-	so lines stay right"""
+	"""the source's lines with comments and preprocessor lines blanked, so
+	line numbers stay right"""
 	src = open(path, encoding='utf-8', errors='replace').read()
-	return GAP.sub(lambda m: m.group(1) or '\n' * m.group().count('\n'), src)
+	return GAP.sub(lambda m: m.group(1) or '\n' * m.group().count('\n'), src).split('\n')
 
 
-def tokens(path):
+def tokens(lines):
 	out, depth, prev, body = [], 0, '', False
-	for n, line in enumerate(clean(path).split('\n'), 1):
+	for n, line in enumerate(lines, 1):
 		for t in TOK.findall(line):
 			# only function bodies: tables and declarations repeat by design
 			if t == '{' and not depth: body = prev == ')'
@@ -69,7 +70,8 @@ def main(argv):
 		f for d in ('src', 'ref', 'include') for f in glob.glob(d + '/**/*.[ch]', recursive=True))
 	mods = [f for f in files if f.count('/') <= 2 - f.startswith(('ref/', 'include/'))]
 	hits = []   # (known-list key, message)
-	seen, toks = {}, {f: tokens(f) for f in files}
+	src = {f: clean(f) for f in files}
+	seen, toks = {}, {f: tokens(src[f]) for f in files}
 	for f in files:
 		t = toks[f]
 		run = False   # inside a copy already reported: report each copy once, by its start
@@ -90,7 +92,7 @@ def main(argv):
 	for name, rx, own in (l.rstrip('\n').split(' | ') for l in open('tests/owners.txt') if l.strip() and l[0] != '#'):
 		for f in mods:
 			if f.startswith('include/') or any(fnmatch.fnmatch(f, o) for o in own.split()): continue
-			for n, line in enumerate(clean(f).split('\n'), 1):
+			for n, line in enumerate(src[f], 1):
 				if re.search(rx, line):
 					hits.append((f'{name} {f}', f'{name} outside {own}: {f}:{n}'))
 	# a list, not a set: a window copied three times is listed twice

@@ -7,7 +7,7 @@
 # list: project files research/duplicate-mechanisms.md.
 
 # UTF-8 encoding of a code point (uni_put): writing a continuation byte
-utf8-encode | 0x80 *(\+|\|(?!\|)) | src/uni/*
+utf8-encode | 0x80 *(\+|\|(?!\|))|(?<!\|)\| *0x80\b | src/uni/*
 # a child's output cut into lines (str_lines): a byte at a time to a newline
 line-split | if \(\w+\[\w+\] *!= *'\\n'\) | src/str/*
 # putting the cursor at a line and column (core_goto); keys' motions set
