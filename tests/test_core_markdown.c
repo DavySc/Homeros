@@ -22,7 +22,7 @@ static char letter(const unsigned char *c, const char *const *hex, const char *s
 	for (int i = 0; set[i]; i++) if (!strcmp(h, hex[i])) return set[i];
 	return '.';
 }
-static const char *const BG[] = { "32283a", "332c36", "33313a", "2b3139", "262e40", "2c2d42", "181825" };
+static const char *const BG[] = { "32283a", "332c36", "33313a", "2b3139", "262e40", "2c2d42", "2a2b3c", "181825" };
 static const char *const FG[] = { "f38ba8", "fab387", "f9e2af", "a6e3a1", "74c7ec", "b4befe", "89dceb", "7f849c", "181825" };
 
 /* row r of g as the .py writes it: 'S' text, 'B' backgrounds, 'F'
@@ -37,11 +37,17 @@ static const char *row(const Grid *g, int r, char what)
 		if (!x->len && c) x--;
 		const Face *bg, *f = grid_face(x, &bg);
 		if (what == 'S') { if (x == &g->c[r * g->cols + c]) { memcpy(b + n, grid_text(x), x->len); n += x->len; } }
-		else if (what == 'B') b[n++] = bg->style & FACE_BG ? letter(bg->bg, BG, "RPYGSLC") : '.';
+		else if (what == 'B') b[n++] = bg->style & FACE_BG ? letter(bg->bg, BG, "RPYGSLCM") : '.';
 		else b[n++] = f->style & FACE_FG && !(x->len == 1 && x->ch[0] == ' ') ? letter(f->fg, FG, "rpygslbuc") : '.';
 	}
 	b[n] = 0;
 	return b;
+}
+
+static int status_row(const Editor *e, int r)
+{
+	for (const Win *w = e->wins; w; w = w->next) if (r == w->y + w->h) return 1;
+	return 0;
 }
 
 /* a command as the .py's nvkeys(), then the frames and the parse main.c
@@ -58,28 +64,25 @@ static void command(Editor *e, Grid *g, const char *t)
 		keys_feed(e, t[0] == 'w' ? t[2] : t[0] == 'v' ? 'v' : 's', 0);
 	}
 	else if (!strncmp(t, "e:", 2)) CHECK(!core_edit_file(e, t + 2, 0));
-	/* the flag 'v' sets: src/keys keeps visual mode in globals, which
-	   would outlive the editor into the next case */
-	else if (!strcmp(t, "visual")) e->ks.visual = 'v';
+	/* 'v': the area from the cursor */
+	else if (!strcmp(t, "visual")) e->ks.visual = 'v', e->ks.vline = e->win->line, e->ks.vcol = e->win->col;
 	else if (!strcmp(t, "redraw")) {}   /* CTRL-L: the core draws whole frames */
 	else CHECK(!"command");
 	do core_draw(e, g);
 	while (syntax_update(e->buf->syn, e->buf->text, NULL));
 }
 
-/* Cases listed as known, 23 of 1043.  Drawing's: an ordered number wider
-   than its marker, which Neovim puts inline (1032); a tab before a
-   heading's marker (1041); an info string past the 256 bytes draw_md
-   reads, in a window wider than they are (1042).  The core's
-   (package 4, reported): the window's top after a split (9 ... 961), and
-   with wrap after a jump near a line taller than scrolloff allows (110 ...
-   979); the ruler of a window that is not the current one in insert mode
-   (84).  The syntax package's: inline colours Neovim does not give (332,
-   384, 407). */
+/* Cases listed as known, 14 of 1022 (recorded again with 'cursorline'
+   for UI Round B; the ruler cases left with the status line, which
+   test_core_status checks).  The core's (package 4, reported): the
+   window's top after a split (58 ... 914); after v on a Tab without a
+   move, Neovim keeps the cursor on the Tab's last cell (the w_virtcol
+   n_start_visual_mode() leaves valid), the core moves it to the first
+   (394, 812).  Neovim's own: a line still rendered in insert mode, raw
+   after :redraw! (489). */
 static int known(int n)
 {
-	static const int k[] = { 9, 10, 11, 73, 138, 506, 549, 683, 693, 731, 882, 961,
-	                         110, 330, 854, 979, 84, 332, 384, 407, 1032, 1041, 1042 };
+	static const int k[] = { 58, 259, 455, 482, 488, 534, 547, 738, 761, 815, 914, 394, 812, 489 };
 	for (size_t i = 0; i < sizeof k / sizeof *k; i++) if (k[i] == n) return 1;
 	return 0;
 }
@@ -123,8 +126,9 @@ int main(int argc, char **argv)
 			int diff = !known(ncase) && e.mode != MODE_CMDLINE && (g.crow != xr || g.ccol != xc);
 			if (diff && (!bad || verbose))
 				fprintf(stderr, "case %d cursor: nvim %d,%d core %d,%d\n", ncase, xr, xc, g.crow, g.ccol);
+			/* every row but the status lines (mini.statusline's, test_core_status) */
 			for (int r = 0; r < nrow && !diff && !known(ncase); r++)
-				for (int k = 0; k < 3 && !diff; k++)
+				for (int k = 0; k < 3 && !diff && !status_row(&e, r); k++)
 					if (strcmp(row(&g, r, "SBF"[k]), want[r][k])) {
 						diff = 1;
 						if (!bad || verbose)

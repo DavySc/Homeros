@@ -18,12 +18,12 @@ core: CTRL-D and CTRL-F never report that they could not move (no beep) (test_co
 core: gj and gk never fail at the first or last screen line (test_core_contract)~test TESTS=core_contract~~src/core/move.c~	} else r = screengo(e, w, n < 0 ? -1 : 1, n < 0 ? -n : n) ? 0 : -1;~	} else r = (screengo(e, w, n < 0 ? -1 : 1, n < 0 ? -n : n), 0);
 core: closing the last window quits with unsaved changes (test_core_contract)~test TESTS=core_contract~~src/core/win.c~		if (quit_check(e, force)) return -1;~		if (0 && quit_check(e, force)) return -1;
 core: the command line is drawn one cell to the right (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~		int cc = grid_puts(g, r, 1, g->cols, e->cmd, e->cmdpos,~		int cc = grid_puts(g, r, 2, g->cols, e->cmd, e->cmdpos,
-core: the selected popup item is not highlighted (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~		int attr = idx == e->pumsel ? ATTR_NONE : ATTR_REV;~		int attr = ATTR_REV;
+core: the selected popup item is not highlighted (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~idx == e->pumsel ? FACE_PMENU_SEL : FACE_PMENU~FACE_PMENU
 core: entering a window does not look at its view again (finding 6) (test_core_screens)~test TESTS=core_screens~~src/core/win.c~	w->frame->s.topvalid = 0;¶	/* (Neovim's~	/* (Neovim's
 core: a taller command line keeps the wanted column (finding 2) (test_core_screens)~test TESTS=core_screens~~src/core/win.c~		if (e->win->want != WANT_EOL) core_set_want(e);~		(void)0;
 core: a new buffer does not get the window's :set wrap (finding 4) (test_core_screens)~test TESTS=core_screens~~src/core/core.c~	else w->wrap = w->frame->s.allwrap;~	else (void)0;
 core: a double-width character never takes the border cell (finding 1) (test_core_screens)~test TESTS=core_screens~~src/core/core.c~== (size_t)tw - 1 ? 3 : 2;~== (size_t)tw - 1 ? 2 : 2;
-core: no '<' where the view starts inside a double-width character (test_core_screens)~test TESTS=core_screens~~src/core/draw.c~wputs(g, w, row, c, "<", ATTR_DIM);~wputs(g, w, row, c, " ", ATTR_DIM);
+core: no '<' where the view starts inside a double-width character (test_core_screens)~test TESTS=core_screens~~src/core/draw.c~wputs(g, w, row, c, "<", FACE_NON_TEXT);~wputs(g, w, row, c, " ", FACE_NON_TEXT);
 core: plines_col counts bytes again (finding 5) (test_core_screens)~test TESTS=core_screens~~src/core/move.c~		i++;~		i += k;
 core: a reused buffer keeps the old undo marks (finding 7) (test_core_undo)~test TESTS=core_undo~~src/core/core.c~			umarks_drop(b);            /* by address~			(void)0;                  /* by address
 core: an undo group takes its neighbour's marks (test_core_undo)~test TESTS=core_undo~~src/core/core.c~	if (u && (u->b != b || u->seq != seq)) u = NULL;~	(void)0;
@@ -54,7 +54,7 @@ core: a heading's background not drawn (test_core_markdown)~test TESTS=core_mark
 core: an overlay that starts before the view drawn at its column (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~size_t d = skip > s0 ? skip - s0 : 0,~size_t d = 0 * skip,
 core: an overlay drawn over skipcol's <<< (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~(row == r && c < cover)) continue;~(row == r && c < cover * 0)) continue;
 core: a wrapped line's background on its first row only (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~tw = w->w - nw, rows = line_rows(w, l);~tw = w->w - nw, rows = 1 + 0 * (int)l;
-core: a '>' filler cell takes the background (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~ && !(z->attr == ATTR_DIM && z->ch[0] == '>'))~)
+core: a '>' filler cell takes the background (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~ && !(z->face == FACE_NON_TEXT && z->ch[0] == '>'))~)
 core: a '<' filler cell keeps its colours under a code block (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~ && z->ch[0] == '>'))~))
 core: a background's column from the line's start, not the view's (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~if (skip + (size_t)k * (size_t)tw~if (skip * 0 + (size_t)k * (size_t)tw
 core: an overlay wraps to the next row (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~if (x / (size_t)tw != x0 / (size_t)tw || (!w->wrap~if (x / (size_t)tw > x0 / (size_t)tw + 1 || (!w->wrap
@@ -84,8 +84,8 @@ core: the cursor's cell is in the Visual area (test_core_visual)~test TESTS=core
 core: a double-width character half in the area is left out (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~(v >= from || (wide && v + 1 == from))~(v >= from || (wide && v + 2 == from))
 core: Visual mode shows the cursor on a tab's last cell before VIsual (test_core_visual)~test TESTS=core_visual~~src/core/core.c~	int first = w == e->win && e->ks.visual && (~	int first = w == e->win && e->ks.visual == 1 && (
 core: "<<<" over a double-width character leaves its second cell out of the area (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~if (wide && j == lead && c + 1 == cover)~if (wide && j == lead && c + 2 == cover)
-core: '<' of a character starting at the area is in it (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~if (z && from < v) z->bg = bg;~if (z) z->bg = bg;
-core: '>' is in the area (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~wputs(g, w, row, c, ">", ATTR_DIM);   /* not in the area (measured) */~{ wputs(g, w, row, c, ">", ATTR_DIM); Cell *z = wcell(g, w, row, c); if (z) z->bg = bg; }
+core: '<' of a character starting at the area is in it (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~if (z) z->bg = from < v && vis ? vis : cl;~if (z) z->bg = vis ? vis : cl;
+core: '>' is in the area (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~wputs(g, w, row, c, ">", FACE_NON_TEXT);   /* not in the area (measured) */~{ wputs(g, w, row, c, ">", FACE_NON_TEXT); Cell *z = wcell(g, w, row, c); if (z) z->bg = vis; }
 core: -- VISUAL LINE -- shows as -- VISUAL -- (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~e->ks.visual == 'V' ? 1~e->ks.visual == 'V' ? 0
 core: -- REPLACE -- shows as -- INSERT -- (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~? 3 + !!e->ks.replace :~? 3 :
 core: a window on the same buffer shows no Visual area (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~	if (!e->ks.visual || w->buf != e->buf) return;~	if (!e->ks.visual || w != e->win) return;
@@ -107,6 +107,54 @@ core: a double-width character past the language line's row end is drawn in part
 core: the info string's text before the language is not drawn (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~b + md->info, md->lang - md->info, 1~b + md->info, 0 * md->info, 1
 core: the language line's fence blanks counted in columns, not characters (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~blk, 3, blanks(b, n, md->mark) - md->mark,~blk, 3, a1 - a0 + 0 * n,
 core: an info string past b's bytes is read past them (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~md->info + md->ninfo < n ? md->info + md->ninfo : n;~md->info + md->ninfo;
-core: the '>' of a double-width character that does not fit in the text's colours (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~wputs(g, w, row, c, ">", ATTR_DIM);~put_cell(g, w, row, c, (const unsigned char *)">", 1, 0, 1, face, 0);
-core: another window's ruler follows the Visual tab rule (test_core_markdown)~test TESTS=core_markdown~~src/core/core.c~	int first = w == e->win && e->ks.visual~	int first = e->ks.visual
+core: the '>' of a double-width character that does not fit in the text's colours (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~wputs(g, w, row, c, ">", FACE_NON_TEXT);~put_cell(g, w, row, c, (const unsigned char *)">", 1, 0, 1, face, 0);
+core: another window follows the Visual tab rule (test_core_contract)~test TESTS=core_contract~~src/core/core.c~	int first = w == e->win && e->ks.visual~	int first = e->ks.visual
 core: the wanted column on a Tab follows the Visual rule while the keys still show Visual mode (recorded traces)~test TESTS=~~src/core/core.c~	w->want = win_vcols(w, w->line, w->col, &s, &w->want) && e->mode != MODE_INSERT ? w->want : s;~	w->want = win_vcol(e, w, NULL, NULL); (void)s;
+core: line-wise Visual mode named VISUAL (test_core_status)~test TESTS=core_status~~src/core/draw.c~" VISUAL ", " V-LINE ",~" VISUAL ", " VISUAL ",
+core: the replace pill in insert's colour (test_core_status)~test TESTS=core_status~~src/core/draw.c~FACE_MODE_INSERT, FACE_MODE_REPLACE, FACE_MODE_COMMAND },~FACE_MODE_INSERT, FACE_MODE_INSERT, FACE_MODE_COMMAND },
+core: the replace pill's ends and location in insert's colour (test_core_status)~test TESTS=core_status~~src/core/draw.c~FACE_MODE_INSERT_FG, FACE_MODE_REPLACE_FG, FACE_MODE_COMMAND_FG };~FACE_MODE_INSERT_FG, FACE_MODE_INSERT_FG, FACE_MODE_COMMAND_FG };
+core: the replace mode's pill shows insert (test_core_status)~test TESTS=core_status~~src/core/draw.c~e->mode == MODE_INSERT ? 4 + !!e->ks.replace~e->mode == MODE_INSERT ? 4
+core: the visual modes share one name (test_core_status)~test TESTS=core_status~~src/core/draw.c~: e->ks.visual == 'V' ? 2 : e->ks.visual ? 3 : 0;~: e->ks.visual ? 1 : 0;
+core: the command-line mode's pill shows normal (test_core_status)~test TESTS=core_status~~src/core/draw.c~e->mode == MODE_CMDLINE ? 6 :~e->mode == MODE_CMDLINE ? 0 :
+core: the mode pill without its left end (test_core_status)~test TESTS=core_status~~src/core/draw.c~		stl_add(&t, L, mb[m], 0);¶		stl_add(&t, mode[m], ma[m], 0);~		stl_add(&t, mode[m], ma[m], 0);
+core: %< before the mode pill's right end (test_core_status)~test TESTS=core_status~~src/core/draw.c~		stl_add(&t, R, mb[m], 0);¶		cut = t.n;~		cut = t.n;¶		stl_add(&t, R, mb[m], 0);
+core: the status line cut from its start (no %<) (test_core_status)~test TESTS=core_status~~src/core/draw.c~		cut = t.n;¶~
+core: another window shows the mode and the pills (test_core_status)~test TESTS=core_status~~src/core/draw.c~	if (cur) {¶		stl_add(&t, L, mb[m], 0);~	if (1) {¶		stl_add(&t, L, mb[m], 0);
+core: the file name with its directory (test_core_status)~test TESTS=core_status~~src/core/draw.c~			if (*p == '/') name = p + 1;~			if (0) name = p + 1;
+core: no dot on a modified buffer (test_core_status)~test TESTS=core_status~~src/core/draw.c~core_modified(b) ? " \xe2\x97\x8f " : " "~" "
+core: utf-8 for a buffer not read from a file (test_core_status)~test TESTS=core_status~~src/core/draw.c~if (cur && b->id.exists) stl_add(~if (cur) stl_add(
+core: the location pill's left end on surface0 (test_core_status)~test TESTS=core_status~~src/core/draw.c~stl_add(&t, L, FACE_STATUS_INFO, FACE_STATUS_LINE);~stl_add(&t, L, FACE_STATUS_INFO, 0);
+core: the location's column counts bytes (test_core_status)~test TESTS=core_status~~src/core/draw.c~at += k) ch++;~at += k) ch += k;
+core: the location without lualine's widths (test_core_status)~test TESTS=core_status~~src/core/draw.c~" %3zu:%-2zu "~" %zu:%zu "
+core: the location on mantle (test_core_status)~test TESTS=core_status~~src/core/draw.c~cur ? mb[m] : c, cur ? FACE_STATUS_INFO : 0);~cur ? mb[m] : c, 0);
+core: the progress pill's left end on mantle (test_core_status)~test TESTS=core_status~~src/core/draw.c~		stl_add(&t, L, mb[m], FACE_STATUS_INFO);~		stl_add(&t, L, mb[m], 0);
+core: no Top on the first line (test_core_status)~test TESTS=core_status~~src/core/draw.c~if (l == 1) stl_add(&t, " Top "~if (l == 0) stl_add(&t, " Top "
+core: no Bot on the last line (test_core_status)~test TESTS=core_status~~src/core/draw.c~else if (l == lines) stl_add~else if (0) stl_add
+core: the progress in integers (test_core_status)~test TESTS=core_status~~src/core/draw.c~(int)((double)l / (double)lines * 100)~(int)(l * 100 / lines)
+core: another window's status line in the current one's face (test_core_status)~test TESTS=core_status~~src/core/draw.c~unsigned char c = cur ? FACE_STATUS_LINE : FACE_STATUS_LINE_NC;~unsigned char c = FACE_STATUS_LINE;
+core: '<' in the face of the first character dropped (test_core_status)~test TESTS=core_status~~src/core/draw.c~unsigned char fc = f[cut + k - 1], lc = bl[cut + k - 1];~unsigned char fc = f[cut], lc = bl[cut];
+core: the backgrounds not moved with the text after '<' (test_core_status)~test TESTS=core_status~~src/core/draw.c~			memmove(bl + cut + 1, bl + cut + k, n - cut - k);¶~
+core: '>' one cell late (test_core_status)~test TESTS=core_status~~src/core/draw.c~for (int x = uni_width(u, n, p); x < maxw;~for (int x = uni_width(u, n, p); x <= maxw && p + 1 < n;
+core: the fill in the face after it (test_core_status)~test TESTS=core_status~~src/core/draw.c~paint(g, r, w->x + x, fill, f[i - 1]);~paint(g, r, w->x + x, fill, f[i]);
+core: the sections' backgrounds not drawn (test_core_status)~test TESTS=core_status~~src/core/draw.c~				if (z) z->bg = bl[i];~				(void)z;
+core: the cell under a separator always the separator (test_core_status)~test TESTS=core_status~~src/core/draw.c~int on = stl_connected(w);~int on = !stl_connected(w);
+core: the cursor line's number in LineNr (test_core_status)~test TESTS=core_status~~src/core/draw.c~unsigned char face = rel ? FACE_LINE_NR : FACE_CURSOR_LINE_NR;~unsigned char face = FACE_LINE_NR;
+core: the cursor line drawn in Visual mode (test_core_status)~test TESTS=core_status~~src/core/draw.c~!(w == e->win && e->ks.visual) ? FACE_CURSOR_LINE : 0;~1 ? FACE_CURSOR_LINE : 0;
+core: the cursor line only in the current window (test_core_status)~test TESTS=core_status~~src/core/draw.c~unsigned char cl = l == w->line && ~unsigned char cl = w == e->win && l == w->line && 
+core: the cursor line only under its text (test_core_status)~test TESTS=core_status~~src/core/draw.c~for (int k = 0; cl && k < line_rows(w, l)~for (int k = 0; cl && k < 0
+core: the end-of-buffer filler in NonText (test_core_status)~test TESTS=core_status~~src/core/draw.c~FACE_END_OF_BUFFER);~FACE_NON_TEXT);
+core: '@' in EndOfBuffer (test_core_status)~test TESTS=core_status~~src/core/draw.c~wputs(g, w, w->h - 1, c, "@", FACE_NON_TEXT);~wputs(g, w, w->h - 1, c, "@", FACE_END_OF_BUFFER);
+core: "<<<" in the number's face (test_core_status)~test TESTS=core_status~~src/core/draw.c~wputs(g, w, r, d, "<<<", FACE_NON_TEXT);~wputs(g, w, r, d, "<<<", face);
+core: the separator without its face (test_core_status)~test TESTS=core_status~~src/core/draw.c~paint(g, w->y + r, w->x + w->w, 1, FACE_WIN_SEPARATOR);~paint(g, w->y + r, w->x + w->w, 1, FACE_NONE);
+core: the popup's scrollbar all thumb (test_core_status)~test TESTS=core_status~~src/core/draw.c~? FACE_PMENU_THUMB : FACE_PMENU_SBAR~? FACE_PMENU_THUMB : FACE_PMENU_THUMB
+core: the '>' filler on the cursor line's background (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~wputs(g, w, row, c, ">", FACE_NON_TEXT);   /* not in the area (measured) */~{ wputs(g, w, row, c, ">", FACE_NON_TEXT); Cell *z = wcell(g, w, row, c); if (z) z->bg = cl; }
+core: the '<' filler off the cursor line's background (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~if (z) z->bg = from < v && vis ? vis : cl;~if (z) z->bg = from < v && vis ? vis : 0;
+core: the cursor line's background under skipcol's "<<<" (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~for (int c = k || cover < nw ? nw : cover;~for (int c = nw;
+core: the status line's backgrounds written past a shrunk grid (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~Cell *z = wcell(g, w, w->h, x + k);~Cell *z = &g->c[r * g->cols + w->x + x + k];
+core: a read file not handed to git, so no branch (test_core_status)~test TESTS=core_status~~src/core/core.c~	git_attach(b);¶~
+core: a new buffer numbered after its load, so git looks up the wrong one (test_core_status)~test TESTS=core_status~~src/core/core.c~	b->nr = top_file_num + 1;¶	if (buf_load(e, b, path)) { free(b); return NULL; }¶	while (*p) p = &(*p)->next;¶	top_file_num++;~	if (buf_load(e, b, path)) { free(b); return NULL; }¶	while (*p) p = &(*p)->next;¶	b->nr = ++top_file_num;
+core: the file type not drawn (test_core_status)~test TESTS=core_status~~src/core/draw.c~	if (ft) {¶		stl_add(&t, " ", c, 0);~	if (ft && 0) {¶		stl_add(&t, " ", c, 0);
+core: no separator between the file type and the encoding (test_core_status)~test TESTS=core_status~~src/core/draw.c~ft ? "\xc2\xb7 utf-8 " : " utf-8 "~" utf-8 "
+core: the branch in other windows too (test_core_status)~test TESTS=core_status~~src/core/draw.c~const char *br = cur ? git_branch(b) : NULL;~const char *br = git_branch(b);
+core: buffers found by the name as typed, so a relative and a full name are two (test_core_contract)~test TESTS=core_contract~~src/core/core.c~if (b->path && !strcmp(b->full, full)) return b;~if (b->path && !strcmp(b->path, path)) return b;
+core: the modified flag wrong after a save (test_core_screens)~test TESTS=core_screens~~src/core/core.c~undo_seq(b->undo) != b->saved_seq~undo_seq(b->undo) > b->saved_seq

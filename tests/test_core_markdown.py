@@ -9,7 +9,7 @@ runs each in a 50x20 tmux in Neovim with tests/test_core_markdown.lua
 (render-markdown has no headless output: what it draws is only on a screen)
 and writes, per case, the files' lines (L, M), the commands, the cursor (X)
 and the rows but the command line: their text, their background (a letter
-per heading level, C for code's mantle; '.' otherwise)
+per heading level, C for the cursor line, M for code's mantle; '.' otherwise)
 and their foreground (the rainbow colours of headings, b the bullets'
 sky, u an unchecked box's overlay1, c mantle; blanks '.').  Needs nvim 0.12, tmux and python's pyte."""
 import os, random, runpy, subprocess, sys, time, pyte, concurrent.futures
@@ -17,8 +17,8 @@ N, SEED = int(sys.argv[1]), int(sys.argv[2])
 W, H = 50, 20
 CASES = runpy.run_path(sys.argv[3])['CASES'] if len(sys.argv) > 3 else []
 INIT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'test_core_markdown.lua')
-# catppuccin's RenderMarkdownH1Bg..H6Bg and rainbow1..6, as ref/theme.c
-BG = {'32283a': 'R', '332c36': 'P', '33313a': 'Y', '2b3139': 'G', '262e40': 'S', '2c2d42': 'L', '181825': 'C'}
+# catppuccin's RenderMarkdownH1Bg..H6Bg, CursorLine, mantle, rainbow1..6, as ref/theme.c
+BG = {'32283a': 'R', '332c36': 'P', '33313a': 'Y', '2b3139': 'G', '262e40': 'S', '2c2d42': 'L', '2a2b3c': 'C', '181825': 'M'}
 FG = {'f38ba8': 'r', 'fab387': 'p', 'f9e2af': 'y', 'a6e3a1': 'g', '74c7ec': 's', 'b4befe': 'l',
       '89dceb': 'b', '7f849c': 'u', '181825': 'c'}
 WORDS = ['foo', 'bar', '`code`', '[link](u)', '*em*', '**strong**', '漢字', 'x' * 60, '#', '##', '\t', 'é', '<b>', '\\#']
