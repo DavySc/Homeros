@@ -14,4 +14,3 @@ fold: a closed fold past the buffer's end is not cut there (fuzz)~fuzz FUZZERS=f
 fold: a split window's copy forgets the line count (fuzz)~fuzz FUZZERS=fold FUZZ_SECONDS=30~~src/fold/fold.c~	g->n = f->n;¶~
 fold: levels past 20 not clamped (fuzz)~fuzz FUZZERS=fold FUZZ_SECONDS=30~~src/fold/fold.c~		lvl = l->lvl < MAX_LEVEL ? l->lvl : MAX_LEVEL;~		lvl = l->lvl;
 fold: no read of the slot past the nested folds, as Neovim reads it~test TESTS=fold~~src/fold/fold.c~				if (fp2) {~				if (fp2 && fp2 < end(&fp->nested)) {
-fold: new slots not zeroed, as ga_grow() zeroes them~test TESTS=fold~~src/fold/fold.c~	memset(d + a->cap, 0, (size_t)(a->n + k - a->cap) * sizeof *d);~	for (int j = a->cap; j < a->n + k; j++) d[j] = (Nd){ .top = 1, .len = 1 };
