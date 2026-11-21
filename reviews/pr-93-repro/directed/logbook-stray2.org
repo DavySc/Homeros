@@ -1,0 +1,6 @@
+* NEXT a
+   :LOGBOOK:
+   x
+:LOGBOOK:
+- old
+:END:

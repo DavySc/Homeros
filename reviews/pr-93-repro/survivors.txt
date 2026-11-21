@@ -1,0 +1,16 @@
+a property name's prefix counts~ || S[q + 1 + k] != ':') continue;~) continue;
+a stamp may be 15 after the time, not 16~	for (c = q; c < N && c - q <= 16 &&~	for (c = q; c < N && c - q <= 15 &&
+range end minutes below 0 not carried~		if (mi < 0) mi += 60, h--;~
+indent never uses tabs~	for (; c >= 8 && k < 48; c -= 8) b[k++] = '\t';~
+a note in a drawer not indented as it~		else if (e[i].parent != ORG_NONE && e[e[i].parent].type == ORG_DRAWER) c = ind(e[e[i].parent].begin + h);~
+new LOGBOOK before a headline not moved up~		if (p < N && p == bol(p) && headline(p)) p--;~
+COMMENT goes before the priority~ (S[q + 4] == ' ' || ateol(blanks(q + 4)))) p = q + 4;~ (S[q + 4] == ' ' || ateol(blanks(q + 4)))) p = p;
+hour repeater without a time allowed~		if (what == 'h' && !hm) { err = 1; break; }~
+COMMENT back after an error~		if (hd.commented && !err) toggle_comment(h, 1);~		if (hd.commented) toggle_comment(h, 1);
+repeater /N not part of it~			if (S[*re] == '/' && (v = digits(*re + 1, lim)) > *re + 1 && v < lim && one(v, "hdwmy")) *re = v + 1;~
+CLOSED: inside a word counts~		if (!is(q, k[i]) || (q && alnum(q - 1))) continue;~		if (!is(q, k[i])) continue;
+a stamp in a table row is no agenda stamp~t == ORG_TABLE_ROW || ~
+planning read case-folded by org-todo~	return (fold ? planningl(p) : is(q, "CLOSED:")~	return (1 ? planningl(p) : is(q, "CLOSED:")
+LAST_REPEAT matched by prefix~ && (ateol(c + 13) || blank(c + 13))) { wrep(q, eol(q), "", 0); break; }~) { wrep(q, eol(q), "", 0); break; }
+ten shifts are eleven~				if (++shift == 10) { err = 1; return; }~				if (++shift == 11) { err = 1; return; }
+

@@ -1,0 +1,8 @@
+a headline every 50 lines    899942 bytes, 26262 lines: foldexpr on every line 3.137 ms (2.970 to 4.847); one TODO step in the middle 0.716 ms (0.632 to 1.069), at the end 0.509 ms (0.505 to 0.576)
+one headline, long body      899947 bytes, 25088 lines: foldexpr on every line 2.447 ms (2.411 to 2.494); one TODO step in the middle 0.978 ms (0.959 to 1.190), at the end 1.241 ms (1.110 to 2.027)
+one entry of 100 repeating stamps (2311 bytes), WAIT to DONE: 0.9 ms (0.8 to 0.9)
+one entry of 200 repeating stamps (4611 bytes), WAIT to DONE: 2.9 ms (2.8 to 4.3)
+one entry of 400 repeating stamps (9211 bytes), WAIT to DONE: 10.7 ms (10.5 to 12.7)
+one entry of 800 repeating stamps (18411 bytes), WAIT to DONE: 41.5 ms (41.2 to 43.9)
+one entry of 1600 repeating stamps (36811 bytes), WAIT to DONE: 162.4 ms (160.6 to 166.2)
+one entry of 3200 repeating stamps (73611 bytes), WAIT to DONE: 676.0 ms (630.8 to 696.1)
