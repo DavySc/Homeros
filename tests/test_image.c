@@ -318,6 +318,8 @@ static int lines(void)
 	return n;
 }
 
+static void nothing(void *ctx) { (void)ctx; }
+
 static void latex(void)
 {
 	char out[64], d[400], *s;
@@ -382,6 +384,10 @@ static void latex(void)
 		CHECK(loop_once(10) == 0);
 	}
 	CHECK(lines() == before + 100);
+	/* every job's timeout cancelled when it ends: the loop's 16 timers free */
+	static char slot[16];
+	for (int i = 0; i < 16; i++) CHECK(loop_timer(nothing, &slot[i], 1000) == 0);
+	for (int i = 0; i < 16; i++) loop_timer(nothing, &slot[i], -1);
 	/* a fragment TeX never finishes is killed and not tried again */
 	CHECK(image_latex("SPIN", 4, 0, 140, out) == NULL);
 	long long t0 = ms();
