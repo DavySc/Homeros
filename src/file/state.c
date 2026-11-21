@@ -12,11 +12,13 @@
 #include <unistd.h>
 #include "state.h"
 
-void file_stdpath(char *f, size_t n, int state, const char *name)
+void file_stdpath(char *f, size_t n, int which, const char *name)
 {
-	const char *d = getenv(state ? "XDG_STATE_HOME" : "XDG_DATA_HOME"), *h = getenv("HOME");
+	static const char *const var[] = { "XDG_DATA_HOME", "XDG_STATE_HOME", "XDG_CONFIG_HOME" };
+	static const char *const dir[] = { ".local/share", ".local/state", ".config" };
+	const char *d = getenv(var[which]), *h = getenv("HOME");
 	if (d && *d) snprintf(f, n, "%s/homeros%s", d, name);
-	else snprintf(f, n, "%s/%s/homeros%s", h ? h : "", state ? ".local/state" : ".local/share", name);
+	else snprintf(f, n, "%s/%s/homeros%s", h ? h : "", dir[which], name);
 }
 
 void file_mkdirs(char *f)

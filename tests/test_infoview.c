@@ -316,6 +316,11 @@ int main(int argc, char **argv)
 	while ((o = slurp(logpath)), !strstr(o, "\ninitialized ") && ms() < end) { free(o); loop_once(10); }
 	CHECK(strstr(o, "\ninitialized "));
 	free(o);
+	/* every write tells the server (didSave, after BufWritePost in core_write) */
+	CHECK(!core_write(&e, e.buf, 0));
+	while ((o = slurp(logpath)), !strstr(o, "\ntextDocument/didSave ") && ms() < end) { free(o); loop_once(10); }
+	CHECK(strstr(o, "\ntextDocument/didSave "));
+	free(o);
 	CHECK(!bridge_open(&e));
 	snprintf(opened, sizeof opened, "%s/opened", dir);
 	end = ms() + 5000;

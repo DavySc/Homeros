@@ -133,21 +133,10 @@ void ins_char_bytes(const char *s, long n)
 	W->col += (size_t)n;
 }
 
-static long utf8(int k, char *b)
-{
-	unsigned c = (unsigned)k;
-	if (c < 0x80) { b[0] = (char)c; return 1; }
-	if (c < 0x800) { b[0] = (char)(0xC0 + c / 64); b[1] = (char)(0x80 + c % 64); return 2; }
-	if (c < 0x10000) { b[0] = (char)(0xE0 + c / 4096); b[1] = (char)(0x80 + c / 64 % 64); b[2] = (char)(0x80 + c % 64); return 3; }
-	b[0] = (char)(0xF0 + c / 262144); b[1] = (char)(0x80 + c / 4096 % 64);
-	b[2] = (char)(0x80 + c / 64 % 64); b[3] = (char)(0x80 + c % 64);
-	return 4;
-}
-
 static void ins_char(int c)
 {
 	char b[4];
-	ins_char_bytes(b, utf8(c, b));
+	ins_char_bytes(b, uni_put((unsigned char *)b, (unsigned)c));
 }
 
 static int inindent(void)
@@ -301,9 +290,13 @@ static int open_line(int dir)
 				core_edit(E, core_line_start(E, (size_t)l + 1), 0, b, (size_t)nl_len + 1);
 				buf_changed();
 			} else {
+				/* only the white space after the break goes, and the
+				   break and indent come in: what follows keeps its marks,
+				   as Neovim's open_line() splices extmarks (a snippet's
+				   stops; package 5's, agreed) */
 				b[0] = '\n';
-				memcpy(b + 1, nl, (size_t)nl_len);
-				replace_bytes(l, rest, len - rest, b, nl_len + 1);
+				memcpy(b + 1, nl, (size_t)ind);
+				replace_bytes(l, rest, extra - rest, b, ind + 1);
 			}
 			free(b);
 		}
@@ -797,6 +790,7 @@ void insert_key(int k, int pending)
 		if (c == KEY_UP ? cursor_up(1) : cursor_down(1)) start_arrow(t);
 		break;
 	}
+	case KEY_S_TAB:   /* an unmapped <S-Tab> is a Tab (insert_handle_key's K_S_TAB) */
 	case KEY_TAB: inserted_space = 0; ins_tab(); break;
 	case 10: case 13: ins_eol(); inserted_space = 0; break;
 	default:
