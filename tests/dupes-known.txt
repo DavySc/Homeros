@@ -14,7 +14,6 @@ src/tty/tty.c src/win/backend.c 452e7412
 src/keys/motion.c src/keys/motion.c 21791400
 src/keys/motion.c src/keys/motion.c 912b305b
 src/keys/ops.c src/keys/ops.c ca17786b
-src/git/keys.c src/git/keys.c 6007b6c5
 src/git/keys.c src/git/keys.c 4ad9ff27
 src/git/keys.c src/git/keys.c 6f94d5ca
 src/git/keys.c src/git/keys.c 6f94d5ca
