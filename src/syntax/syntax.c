@@ -150,7 +150,7 @@ typedef struct {
 	const char *ilang;         /* #set! injection.language "x" */
 	uint32_t ilen;
 	unsigned char iself, incl, comb; /* injection.self, .include-children, .combined */
-	unsigned char skip;        /* never passes (see lacked) */
+	unsigned char skip;        /* never passes (offset!, a match? form we lack) */
 	const char *gp, *gr;       /* #gsub! @injection.language pattern replacement */
 	uint32_t gpl, grl;
 } Pattern;
@@ -261,27 +261,6 @@ static void set(Q *Q, Pattern *P, const TSQueryPredicateStep *st, uint32_t a, ui
 	else if (EQ(key, l, "injection.combined")) P->comb = 1;
 }
 
-typedef struct Src Src;
-static int resolve(Src *src, const char *s, uint32_t a, uint32_t z);
-
-/* An injection of a language we lack, named in the pattern: like Neovim
-   without that parser, it injects nothing, so the pattern is skipped before
-   its predicates are read (Rust's re2c pattern uses Vim's match?). */
-static int lacked(const TSQueryPredicateStep *st, uint32_t ns, const TSQuery *q)
-{
-	for (uint32_t a = 0; a + 2 < ns; a++) {
-		uint32_t l, vl;
-		if (st[a].type != TSQueryPredicateStepTypeString || st[a + 1].type != TSQueryPredicateStepTypeString
-		    || st[a + 2].type != TSQueryPredicateStepTypeString) continue;
-		const char *n = ts_query_string_value_for_id(q, st[a].value_id, &l);
-		const char *k = ts_query_string_value_for_id(q, st[a + 1].value_id, &vl);
-		if (!EQ(n, l, "set!") || !EQ(k, vl, "injection.language")) continue;
-		k = ts_query_string_value_for_id(q, st[a + 2].value_id, &vl);
-		return resolve(NULL, k, 0, vl) < 0;
-	}
-	return 0;
-}
-
 /* Vim's match? in the one form these queries use, \c^(a|b|.*c)$ or
    \c^a$: one of the words ignoring case, ".*" before a word making it a
    suffix (CMake's commands and booleans).  1 for another form: the
@@ -345,7 +324,6 @@ static int compile(Q *Q, int hl)
 		   in-progress matches Neovim's iter_matches allows, so dropping
 		   them keeps matches Neovim loses (measured: a Nix string after
 		   Lua's comment) */
-		if (!hl && (P->skip = (unsigned char)lacked(st, ns, Q->q))) continue;
 		for (uint32_t a = 0; a < ns; ) {
 			uint32_t b = a;
 			while (st[b].type != TSQueryPredicateStepTypeDone) b++;
