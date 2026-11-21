@@ -1164,9 +1164,11 @@ int main(void)
 	/* a script takes all its spans or none: with room for two, x^{2}
 	   stays as typed beside \leq's one */
 	Conceal two[2];
-	t = text_new("x^{2} \\leq", 10);
+	t = text_new("x^{2} \\leq\nb \\leq c", 19);
 	x = t ? orgfx_new(t) : NULL;
 	CHECK(x && orgfx_conceal(x, 0, two, 2) == 1 && two[0].a == 6 && !strcmp(two[0].s, "≤"));
+	/* columns of the line, not offsets in the text (syntax.h) */
+	CHECK(orgfx_conceal(x, 1, two, 2) == 1 && two[0].a == 2 && two[0].z == 6);
 	orgfx_free(x);
 	text_free(t);
 	printf("test_org: %zu texts and %zu TODO steps agree with Org\n", sizeof cases / sizeof *cases, sizeof todos / sizeof *todos);

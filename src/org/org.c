@@ -1638,8 +1638,8 @@ size_t orgfx_conceal(OrgFx *f, size_t line, Conceal *out, size_t cap)
 	entities_at(CL);
 	scripts(pl, CL, ea, ez, ek);
 	qsort(C, CN, sizeof *C, by_start);
-	size_t k = 0;   /* a marker two matches hide is hidden once */
-	for (size_t i = 0; i < CN; i++) if (!k || C[i].a >= C[k - 1].z) C[k++] = C[i];
+	size_t k = 0;   /* a marker two matches hide is hidden once; columns of the line */
+	for (size_t i = 0; i < CN; i++) if (!k || C[i].a >= C[k - 1].z + CL) C[k++] = (Conceal){ C[i].a - CL, C[i].z - CL, C[i].s };
 	return k;
 }
 
