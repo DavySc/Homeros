@@ -1,4 +1,4 @@
-# Record what Visual Studio's debugger does on the programs RAD and cdb were recorded on (rdi/*.exe): the reference
+# Record what Visual Studio's debugger does on the programs RAD and cdb were recorded on (rdi/*.exe, the crashing ones left out): the reference
 # the user of this debugger knows. Driven through Visual Studio's automation object (EnvDTE), with its settings as installed.
 # usage: trace.ps1 <subject.exe> <out dir> <most steps>
 # Two scripts per subject, as RAD's `into` and `over`. A line per step: STEP <kind> <function> <file>:<line> <rip>.
