@@ -72,7 +72,8 @@ size_t win_vcol(Editor *e, Win *w, size_t *start, size_t *end);
 int win_vcols(const Win *w, size_t l, size_t col, size_t *start, size_t *end);
 
 /* window geometry (move.c) */
-int  win_numw(const Win *w);          /* number column, with its space: win_col_off() */
+int  win_numw(const Win *w);          /* sign and number columns, with its space: win_col_off() */
+int  win_signw(const Win *w);         /* the sign column: 0 or 2 */
 int  win_plines(const Win *w, size_t l);   /* plines_win_nofill(.., true) */
 size_t win_botline(Editor *e, Win *w, int *empty_rows);
 void win_update(Editor *e, Win *w);   /* update_topline(), curs_columns() */

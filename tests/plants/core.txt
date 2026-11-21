@@ -165,3 +165,20 @@ core: 'conceallevel' 2 scrolls the fold way in every filetype (test_core_visual)
 core: a new window starts without conceal (test_core_conceal)~test TESTS=core_conceal~~src/core/core.c~	w->conceal = 2;   /* Davy's 'conceallevel' */~	w->conceal = 0;
 core: a split forgets 'conceallevel' (test_core_contract)~test TESTS=core_contract~~src/core/win.c~	n->conceal = o->conceal;~	(void)0;
 core: buf_load watches no file, so an outside change while idle goes unseen (watch.py)~test TESTS=shada~~src/core/core.c~			loop_watch(b->watch, on_watch, e);~			(void)on_watch;
+core: no sign column for diagnostics (test_core_diag)~test TESTS=core_diag~~src/core/move.c~	return n ? 2 : 0;~	return 0;
+core: the number column does not make room for signs (test_core_diag)~test TESTS=core_diag~~src/core/move.c~	return win_signw(w) + (d < 3~	return (d < 3
+core: the sign of the line's first diagnostic (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~"EWIH"[sev(&v[hi - 1])]~"EWIH"[sev(&v[lo])]
+core: skipcol's "<<<" stays right of the sign column (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~	if (sg) d = -sg;~	if (0) d = -sg;
+core: no underline (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~unsigned char ul = u < 0 ? 0 : us[u].f;~unsigned char ul = u < 0 || 1 ? 0 : us[u].f;
+core: of overlapping underlines the first wins (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~(u < 0 || us[j].a > us[u].a)~(u < 0 || us[j].a < us[u].a)
+core: an underline at the line's end is not moved onto its last character (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~ca < n ? ca : n ? n - 1 : 0~ca < n ? ca : n
+core: an underline whose end comes first is not swapped (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~	if (*z < *a) { size_t x = *a; *a = *z; *z = x; }~	if (*z < *a) {}
+core: an empty diagnostic underlines nothing (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~	else if (*z == *a) (*z)++;~	else if (0) (*z)++;
+core: a diagnostic at the end of the text is not on the last line (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~le = l + 1 < text_lines(t) ? text_line_start(t, l + 1) : (size_t)-1;~le = text_line_start(t, l + 1);
+core: no message on the cursor line (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~if (drawn == 1 && hi > lo && l ==~if (0 && drawn == 1 && hi > lo && l ==
+core: the message on every line (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~ && l == (w->buf == e->win->buf ? e->win->line : w->line)) {~) {
+core: the first diagnostic's message (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~v[hi - 1].msg~v[lo].msg
+core: a message's Tab counts from the window's edge (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~(size_t)(8 - (x - w->x - nw) % 8)~(size_t)(8 - (x - w->x) % 8)
+core: a message's line break is one blank (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~x = vt_puts(g, y, x, end, "  ", 2, f);~x = vt_puts(g, y, x, end, " ", 1, f);
+core: a double-width character cut at the window's edge leaves no blank (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~	return z < end && x + grid_width(s, n) > end ? grid_puts(g, y, z, end, " ", 1, ATTR_NONE, f) : z;~	return z;
+core: the message is drawn below a cut line (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~if (row < r + line_rows(w, l) && row < w->h) draw_vt~if (row < w->h) draw_vt

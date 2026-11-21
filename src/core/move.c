@@ -6,6 +6,7 @@
    its w_botline (the line below the window) is bot, at most the line count. */
 #include <string.h>
 #include "core_int.h"
+#include "lsp.h"
 #include "syntax.h"
 #include "uni.h"
 
@@ -19,11 +20,21 @@ static int p_sms;
 
 static size_t digits(size_t n) { size_t d = 1; while (n >= 10) { n /= 10; d++; } return d; }
 
-/* number_width() + 1 with number and relativenumber: numberwidth 4 */
+/* 'signcolumn' auto, Neovim's default: two cells while the buffer has a
+   sign, a diagnostic's (vim.diagnostic's signs) */
+int win_signw(const Win *w)
+{
+	int n;
+	lsp_diags(w->buf->lsp, &n);
+	return n ? 2 : 0;
+}
+
+/* win_col_off(): the sign column, then number_width() + 1 with number and
+   relativenumber (numberwidth 4) */
 int win_numw(const Win *w)
 {
 	size_t d = digits(buf_lines(w->buf));
-	return (d < 3 ? 3 : (int)d) + 1;
+	return win_signw(w) + (d < 3 ? 3 : (int)d) + 1;
 }
 
 static int width1(const Win *w) { return w->w - win_numw(w); }
