@@ -8,6 +8,11 @@
 pass() {
 	local s=$1 exe=$2
 	shift 2
-	timeout "$s" "$@" "$exe" 2>&1 | tee "${exe%.exe}.out"
-	[ "${PIPESTATUS[0]}" = 0 ] && [ "$(tail -n 1 "${exe%.exe}.out" | cut -d: -f1)" = "$(basename "$exe" .exe)" ]
+	# a file, not a pipe: a child a failed test leaves alive would hold a
+	# pipe open, and the check would wait on it (PR 96's review measured
+	# 104 min on the plant "win: journal without the lock")
+	local r=0
+	timeout "$s" "$@" "$exe" > "${exe%.exe}.out" 2>&1 || r=$?
+	cat "${exe%.exe}.out"
+	[ $r = 0 ] && [ "$(tail -n 1 "${exe%.exe}.out" | cut -d: -f1)" = "$(basename "$exe" .exe)" ]
 }

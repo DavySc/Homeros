@@ -114,7 +114,7 @@ static void put(Grid *g, int r, int c, const char *s, int width, int attr)
    would otherwise start its debugger and wait */
 static LONG WINAPI crashed(EXCEPTION_POINTERS *e)
 {
-	fprintf(stderr, "test_win: FAIL, exception 0x%lx\n", (unsigned long)e->ExceptionRecord->ExceptionCode);
+	fprintf(stderr, "test_win FAIL: exception 0x%lx\n", (unsigned long)e->ExceptionRecord->ExceptionCode);
 	ExitProcess(3);
 }
 
