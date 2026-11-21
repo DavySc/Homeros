@@ -40,3 +40,22 @@ lsp: the status line counts no work ended~test TESTS=lsp~~src/lsp/lsp.c~ && s->w
 lsp: a new server shows the old one's work~test TESTS=lsp~~src/lsp/lsp.c~	s->work = -1;¶~
 lsp: the status line names the server by its whole path~test TESTS=lsp~~src/lsp/lsp.c~	return b ? b + 1 : a;~	return b ? a : a;
 lsp: a formatted message cut at 512 bytes (a long path's URI lost)~test TESTS=lsp~~src/str/str.c~	if (n < 0 || grow(s, (size_t)n)) return -1;~	if (n < 0 || n >= 512 || grow(s, (size_t)n)) return -1;
+lsp: goals: a second question before the first is answered~test TESTS=lsp~~src/lsp/lsp.c~	if (!G.d || !G.want || G.busy || !gbuf()) return;~	if (!G.d || !G.want || !gbuf()) return;
+lsp: goals: an outdated RPC session asked again~test TESTS=lsp~~src/lsp/lsp.c~	if (!m || is(m, json_get(m, tk, e, "code"), "-32900")) { G.sess.n = 0; G.want = 1; }~	if (!m || is(m, json_get(m, tk, e, "code"), "-32900")) G.want = 1;
+lsp: goals: an answer for where the cursor was is shown~test TESTS=lsp~~src/lsp/lsp.c~	if (G.want || !G.d) { gask(); return 1; }~	if (!G.d) { gask(); return 1; }
+lsp: goals: Lean's diff marks drawn plain~test TESTS=lsp~~src/lsp/lsp.c~		for (int k = 0; k < 6; k++) if (is(m, s, tag[k])) f = face[k];~		for (int k = 0; k < 6; k++) if (is(m, s, tag[k])) f = face[0] * 0 + f;
+lsp: goals: a hypothesis Lean marks inserted drawn plain~test TESTS=lsp~~src/lsp/lsp.c~	return json_true(m, tk, json_get(m, tk, g, "isInserted")) ? FACE_DIFF_PLUS~	return json_true(m, tk, json_get(m, tk, g, "isInserted")) ? f
+lsp: goals: two goals without lean.nvim's header~test TESTS=lsp~~src/lsp/lsp.c~	if (G.ng > 1) {~	if (G.ng > 9) {
+lsp: goals: no "No goals." where Lean says there are none~test TESTS=lsp~~src/lsp/lsp.c~		else if (!G.ng) putz~		else if (G.ng < 0) putz
+lsp: goals: no "Goals accomplished" (Lean's silent diagnostics ignored)~test TESTS=lsp~~src/lsp/lsp.c~		if (over(&G.d->done)) putz~		if (0) putz
+lsp: goals: Lean's silent diagnostics shown as messages~test TESTS=lsp~~src/lsp/lsp.c~		if (json_true(m, tk, json_get(m, tk, e, "isSilent")) != (v == &d->done)) continue;~		if (v == &d->done) continue;
+lsp: goals: the expected type left out~test TESTS=lsp~~src/lsp/lsp.c~	G.term.t.n = G.term.f.n = 0;¶	if (x >= 0) {~	G.term.t.n = G.term.f.n = 0;¶	if (x < 0) {
+lsp: goals: a message's clipped range shown, not its full range~test TESTS=lsp~~src/lsp/lsp.c~			range(o, g->a, g->fz, ~			range(o, g->a, g->z, 
+lsp: goals: messages from other lines shown~test TESTS=lsp~~src/lsp/lsp.c~			if (text_line_of(G.d->t, g->a) != line) continue;~			if (text_line_of(G.d->t, g->a) > line) continue;
+lsp: goals: a dead server not shown~test TESTS=lsp~~src/lsp/lsp.c~	if (G.d->s->proc < 0) putz(o, ~	if (0) putz(o, 
+lsp: goals: nothing said while Lean has said nothing yet~test TESTS=lsp~~src/lsp/lsp.c~	else if (!G.shown) putz(o, "Processing file...", FACE_NONE);~	else if (!G.shown) putz(o, "", FACE_NONE);
+lsp: goals: a restarted file shows what the old elaboration said~test TESTS=lsp~~src/lsp/lsp.c~	if (d == G.d) G.shown = 0;~	(void)0;
+lsp: goals: the window keeps the cursor~test TESTS=lsp~~src/lsp/lsp.c~		core_win_goto(e, 'p', 1);~		(void)0;
+lsp: goals: the window at half the width~test TESTS=lsp~~src/lsp/lsp.c~		core_resize(e, v, v ? e->cols / 3 : e->rows / 3, 1);~		(void)0;
+lsp: goals: \i does not close it~test TESTS=lsp~~src/lsp/lsp.c~	if (b) core_buf_delete(e, b->nr, 1);~	(void)0;
+lsp: goals: the question about another position~test TESTS=lsp~~src/lsp/lsp.c~	size_t pos = core_line_start(e, e->win->line) + e->win->col;~	size_t pos = core_line_start(e, e->win->line);
