@@ -116,7 +116,7 @@ static void key(int k, int pending)
 
 /* only those whose targets exist; the SPC g and SPC h ones are git.h's */
 static const char *const maps[] = {
-	" ff", " fg", " fr", " ,", " e", " pv", "-", " D",
+	" ff", " fg", " fr", " ,", " e", " pv", "-", " D", " cc", " cC",
 	" gg", " gs", " gl", " gL", " gd", " gb", " gB", " hs", " hr", " hS", " hu", " hp", " uk"
 };
 static int lead[3], nlead;   /* the keys typed of a map not yet complete */
@@ -149,6 +149,8 @@ static int map(Editor *e, int k)
 		case 'p': tools_oil(e, NULL); break;
 		case 'u': kitten_toggle(e); break;
 		case 'D': dashboard(e); break;
+		/* Davy's emacs SPC cc compile (prompts) and cC recompile */
+		case 'c': if (m[2] == 'c') E = e, cmdline(':', "make "); else tools_make(e, NULL); break;
 		default: git_leader(e, m[1], m[2]);
 		}
 		return 1;
@@ -291,6 +293,12 @@ static void ex(void)
 		if (l1 > l2) { core_msg(E, "E493: Backwards range given"); return; }
 		if (l1 < 0 || l2 > nlines()) { core_msg(E, "E16: Invalid range"); return; }
 		ex_sub(l1 > 0 ? l1 - 1 : 0, l2 > 0 ? l2 - 1 : 0, *p, p + k + strspn(p + k, " \t"));
+		return;
+	}
+	/* :mak[e] {cmd} (tools.h), the rest of the line its argument */
+	if (k >= 3 && k <= 4 && !strncmp(p, "make", k) && (!p[k] || p[k] == ' ' || p[k] == '\t')) {
+		if (n) core_msg(E, "E481: No range allowed");
+		else tools_make(E, p + k + strspn(p + k, " \t"));
 		return;
 	}
 	static const char *const cmds[] = { "", "w", "w!", "q", "q!", "wq", "wq!", "x", "Format", "KittenPaw", "Dashboard" };

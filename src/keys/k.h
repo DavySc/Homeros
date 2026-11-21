@@ -109,6 +109,7 @@ enum { OP_NOP, OP_DELETE, OP_YANK, OP_CHANGE, OP_LSHIFT, OP_RSHIFT, OP_TILDE,
 /* text objects (textobject.c); the Visual state they extend */
 extern int VIsual_active, VIsual_mode;
 extern Pos VIsual;
+void cmdline(int type, const char *range);   /* opens the command line holding range */
 int  current_word(Oparg *oap, long count, int include, int bigword);
 int  current_sent(Oparg *oap, long count, int include);
 int  current_par(Oparg *oap, long count, int include);
