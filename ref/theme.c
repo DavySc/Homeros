@@ -142,6 +142,7 @@ const Face faces[FACE_COUNT] = {
 	{ {0, 0, 0}, {69, 71, 90}, FACE_BOLD | FACE_BG, {0} },  /* visual: Visual */
 	{ {205, 214, 244}, {62, 87, 103}, FACE_FG | FACE_BG, {0} },  /* search: Search */
 	{ {24, 24, 37}, {243, 139, 168}, FACE_FG | FACE_BG, {0} },  /* cur search: CurSearch */
+	{ {24, 24, 37}, {126, 201, 216}, FACE_FG | FACE_BG, {0} },  /* inc search: IncSearch, mantle on sky darkened 0.90 toward base */
 	{ {250, 179, 135}, {57, 59, 77}, FACE_BOLD | FACE_FG | FACE_BG, {0} },  /* match paren: MatchParen */
 	{ {147, 153, 178}, {24, 24, 37}, FACE_FG | FACE_BG, {0} },  /* pmenu: Pmenu */
 	{ {0, 0, 0}, {49, 50, 68}, FACE_BOLD | FACE_BG, {0} },  /* pmenu sel: PmenuSel */

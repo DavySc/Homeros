@@ -4,7 +4,7 @@
 -- of the winning capture, and whether any tree has a syntax error; at each
 -- "f" the faces of the edited, not yet parsed trees go to DIR/out.snap.
 -- usage: nvim --headless --clean -l test_syntax.lua OUT DIR CASE...
-local ours = { c = true, lua = true, markdown = true, markdown_inline = true, rust = true, glsl = true }
+local ours = { c = true, lua = true, markdown = true, markdown_inline = true, rust = true, glsl = true, nix = true }
 -- the grammars and queries Neovim does not bundle (src/syntax/sources.nix)
 vim.opt.rtp:prepend('build/syntax/src/nvim')
 
@@ -136,14 +136,16 @@ out:close()
 snap:close()
 errs:close()
 
--- Lua patterns: string.find on each "pattern<TAB>subject" line of OUT.pat
+-- Lua patterns: string.find, then string.gsub, on each
+-- "replacement<TAB>pattern<TAB>subject" line of OUT.pat
 local pf = io.open(arg[1] .. '.pat', 'rb')
 if pf then
   local r = assert(io.open(arg[1] .. '.patout', 'wb'))
   for l in pf:lines() do
-    local p, s = l:match('^(.-)\t(.*)$')
+    local rep, p, s = l:match('^(.-)\t(.-)\t(.*)$')
     local ok, res = pcall(string.find, s, p)
-    r:write((ok and res) and '1' or '0')
+    local gok, g = pcall(string.gsub, s, p, rep)
+    r:write((ok and res) and '1' or '0', gok and g:gsub('.', function(c) return ('%02x'):format(c:byte()) end) or '!', '\n')
   end
   r:close()
 end

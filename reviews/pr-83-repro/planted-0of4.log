@@ -1,0 +1,184 @@
+SHARD=0/4 bash tools/planted.sh
+caught        core: undo loses deleted text (fuzz_keys)   (make fuzz FUZZERS=keys FUZZ_SECONDS=60): ==1648== ERROR: libFuzzer: deadly signal
+caught        core: :bd searches the jump list from its oldest entry (test_core_contract)   (make test TESTS=core_contract): tests/test_core_contract.c:120: CHECK(!core_buf_delete(&e, 0, 0) && !strcmp(e.buf->path, fn[2])) failed
+caught        core: a split forgets the alternate buffer (test_core_contract)   (make test TESTS=core_contract): tests/test_core_contract.c:118: CHECK(alt && !strcmp(alt->path, fn[2]) && !core_split(&e, 0, 0) && e.win->alt == alt) failed
+caught        core: CTRL-D and CTRL-F never report that they could not move (no beep) (test_core_contract)   (make test TESTS=core_contract): tests/test_core_contract.c:45: CHECK(core_scroll_half(&e, -1, 0) == want[i].r[1]) failed
+caught        core: the selected popup item is not highlighted (test_core_contract)   (make test TESTS=core_contract): tests/test_core_contract.c:87: CHECK(p->attr == ATTR_NONE) failed
+caught        core: a double-width character never takes the border cell (finding 1) (test_core_screens)   (make test TESTS=core_screens): test_core_screens: 59 of 3046 screens differ from Neovim (15 of 323 cases)
+caught        core: an undo group takes its neighbour's marks (test_core_undo)   (make test TESTS=core_undo): tests/test_core_undo.c:111: CHECK(e.buf->mark[0].set && e.buf->mark[0].line == 0 && e.buf->mark[0].col == 0) failed
+caught        core: scroll_cursor_halfway() drops skipcol without smoothscroll (test_core_screens)   (make test TESTS=core_screens): test_core_screens: 2 of 3046 screens differ from Neovim (2 of 323 cases)
+caught        core: an insertion drops w_botline (test_core_screens)   (make test TESTS=core_screens): test_core_screens: 3 of 3046 screens differ from Neovim (3 of 323 cases)
+caught        core: H and L apply scrolloff under an operator (test_core_contract)   (make test TESTS=core_contract): tests/test_core_contract.c:59: CHECK(core_screen_line(&e, 'H', 1, 0) == e.win->top && core_screen_line(&e, 'H', 1, 1) == e.win->top + 6) failed
+caught        core: a group's marks are saved again at each of its edits (test_core_undo)   (make test TESTS=core_undo): tests/test_core_undo.c:213: CHECK(core_undo(&e, 0) >= 0 && core_lines(&e) == 3 && a->mark[0].line == 1) failed
+caught        core: the jump list on a line deleted from mid-line stays off the joined line (test_core_undo)   (make test TESTS=core_undo): tests/test_core_undo.c:156: CHECK(e.win->jump[0].m.line == 0 && e.win->jump[0].m.col == 9) failed
+caught        core: CTRL-W > in a shrunk terminal grows past its row of windows (test_core_contract)   (make test TESTS=core_contract): tests/test_core_contract.c:151: CHECK(k < 5 && w->w == wd[k]) failed
+caught        core: a heading's icon on its first '#' (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 1022 render-markdown screens: 553 differ (24 known, not compared)
+caught        core: a heading drawn while the window is scrolled sideways (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 1022 render-markdown screens: 25 differ (24 known, not compared)
+caught        core: a setext heading's text indented 4 columns drawn as a marker (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 1022 render-markdown screens: 1 differ (24 known, not compared)
+caught        core: a wrapped heading's bar below its window (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 1022 render-markdown screens: 18 differ (24 known, not compared)
+caught        core: a heading drawn in visual mode (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 1022 render-markdown screens: 110 differ (24 known, not compared)
+caught        core: a heading's icon wraps to the next row (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 1022 render-markdown screens: 7 differ (24 known, not compared)
+caught        file: rename without fsync (Save2_nofsync)   (make test TESTS=file_save): tests/test_file_save.c:268: CHECK(sy > ws && x > sy && first('s', -1, x, n) > x) failed
+caught        file: in place without the recheck after the copy   (make test TESTS=file_save): tests/test_file_save.c:446: CHECK(lost[k] - 1 > check2 && lost[k] - 1 <= fin) failed
+caught        file: read-only directory refused   (make test TESTS=file_save): tests/test_file_save.c:336: CHECK(!load(&id) && save(s2, &id, kept) == SAVE_OK && is(path, OLD)) failed
+caught        journal: torn tail left before appending   (make test TESTS=file_journal): tests/test_file_journal.c:249: CHECK(journal_open(path, &j, &t, &st, &id) == 1 && equal(t, &m) && st == 5 && same_id(&id, &m.id)) failed
+caught        journal: sync without fdatasync   (make test TESTS=file_journal): tests/test_file_journal.c:383: CHECK(datasyncs == 1 && fsyncs == 1 && journal_due(j) == -1) failed
+caught        core wiring: journal kept after a save   (make test TESTS=file_core): tests/test_file_core.c:171: CHECK(!stat(jname, &sb) && sb.st_size == 0) failed
+caught        journal: no new base after a failed append (review of PR 16, 2)   (make test TESTS=file_journal): tests/test_file_journal.c:402: CHECK(journal_edit(j, 0, 0, "h", 1, 7) == -1) failed
+caught        file: backup's directory not fsynced (review of PR 16, 6)   (make test TESTS=file_save): tests/test_file_save.c:279: CHECK(ds) failed
+caught        journal: an edit appended without a base (review of PR 16, 2)   (make test TESTS=file_journal): tests/test_file_journal.c:402: CHECK(journal_edit(j, 0, 0, "h", 1, 7) == -1) failed
+caught        win: watch never reports   (make win WIN=file): tests/test_file_win.c:249: CHECK(file_watch_read(fd, path, &id) == 1) failed
+caught        win: journal name by the path's case   (make win WIN=file): tests/test_file_win.c:380: CHECK(journal_open(up, &j, &t, &st, &id) == 1 && text_len(t) == 5) failed
+caught        eol: every CR dropped in a dos file, not only the one before a LF   (make test TESTS=file_eol): tests/test_file_eol.c:118: CHECK(na == nb && !memcmp(a, b, na)) failed
+caught        eol: the in-place save cut to the text's length, not the bytes written   (make test TESTS=file_eol): tests/test_file_eol.c:129: CHECK(na == nb && !memcmp(a, b, na) && na == len[i] && !memcmp(a, data[i], na)) failed
+caught        core wiring: the journal's base without the format   (make test TESTS=file_eol): tests/test_file_eol.c:156: CHECK(!core_open(&e, path) && core_modified(e.buf) && e.buf->dos) failed
+caught        win: data with no LF unix on Windows   (make win WIN=file): tests/test_file_win.c:77: CHECK(eol("", "") == 1 && eol("a", "a") == 1 && eol("a\r", "a\r") == 1) failed
+caught        font: fallback takes a font without the character (Mathlib symbols)   (make test TESTS=font): tests/test_font.c:89: CHECK(ink(o[j].g)) failed
+caught        font: cache key ignores the font   (make test TESTS=font): tests/test_font.c:141: CHECK(hash(shape(s)) == sig[i]) failed
+caught        font: right-to-left runs reversed   (make test TESTS=font): tests/test_font.c:193: CHECK(shape("\xd7\x90\xd7\x91") == 2 && o[0].cluster == 0 && o[1].cluster == 2) failed
+caught        git: j skips a section's first child (magit traces)   (make test TESTS=git): 154 differences from magit
+caught        git: a write acts on a repository it did not show (Git.tla ActsOnSeen)   (make test TESTS=git): 2 differences from magit
+caught        git: discard deletes instead of trashing (trash check)   (make test TESTS=git): 2 differences from magit
+caught        git: a deleted message buffer leaves git commit waiting (gone check)   (make test TESTS=git): 1 differences from magit
+caught        git: a diff read twice shows the first (again check)   (make test TESTS=git): 1 differences from magit
+caught        git: the revision buffer without Parent lines (magit traces)   (make test TESTS=git): 1 differences from magit
+caught        git: SPC h s and r take the rest of the 3-line-context hunk (git_signs)   (make test TESTS=git_signs): 35 differences from gitsigns
+caught        git: SPC g L logs every file (git_signs)   (make test TESTS=git_signs): 1 differences from gitsigns
+caught        git: the unstaged diff read with git diff, which writes the index (lock check)   (make test TESTS=git): tests/test_git.c:810: CHECK(maxproc == 5) failed
+caught        git: the watch is not armed again after a change (Windows watch)   (make win WIN=git): tests/test_git_win.c:97: CHECK(seen(r, 5000)) failed
+caught        git: a drive-letter path read as relative (Windows magit traces)   (make win WIN=git): tests/test_git.c:222: CHECK(f) failed
+caught        git: discarding staged changes refuses while a file is unmerged (unmerged check)   (make test TESTS=git): 1 differences from magit
+caught        grid: a size that overflows is accepted   (make test TESTS=grid_diff): ==10997==ERROR: AddressSanitizer: out of memory: allocator is trying to allocate 0x800000000 bytes
+caught        grid: resize keeps the cursor   (make test TESTS=grid_diff): tests/test_grid_diff.c:360: CHECK(!grid_resize(&g, 2, 2) && !g.crow && !g.ccol) failed
+caught        grid: a long cluster cut inside a code point   (make test TESTS=grid_diff): tests/test_grid_diff.c:376: CHECK(g.c[3].len == 28 && !memcmp(grid_text(&g.c[3]), chain, 28) && !g.c[4].len) failed
+caught        grid: a full store reuses a slot   (make test TESTS=grid_diff): tests/test_grid_diff.c:407: CHECK(g.c[6].len == 3 && !memcmp(g.c[6].ch, "\xef\xbf\xbd", 3)) failed
+caught        grid: the '>' loses the background layer of the half it replaces   (make test TESTS=grid_diff): tests/test_grid_diff.c:345: CHECK(g.c[1].len == 1 && g.c[1].ch[0] == '>' && g.c[1].attr == ATTR_REV && g.c[1].face == FACE_STRING && g.c[1].bg == FACE_CURSOR_LINE && g.c[2].ch[0] == 'x') failed
+caught        grid: grid_face reads past faces[] for an unknown layer   (make test TESTS=grid_diff): tests/test_grid_diff.c:332: CHECK(grid_face(&q, &b) == &faces[FACE_NONE] && b == &faces[FACE_NONE]) failed
+caught        grid: grid_puts leaves the face off   (make test TESTS=grid): tests/test_grid.c:69: CHECK(g.c[i].face == FACE_KITTEN_TEXT) failed
+caught        undo tree oracle: Ctrl-R to the first child   (make undo-diff UNDO_N=2000): sequences 2000, length 30: 537 differ from the model; first differing op: {'r': 537}; nvim same-number-different-text: 0
+caught        main loop: input read past a full queue between commands   (make test TESTS=): FAIL paste
+caught        main loop: a hang-up loses the unsaved text (journal not on disk)   (make test TESTS=): FAIL hup
+caught        dupes: a folded copy left on the known list   (make dupes): FAIL no longer copied, delete from tests/dupes-known.txt: src/loop/timer.c src/loop/timer.c 00000000
+caught        json: a window is lexed as T-SQL (test_json)   (make test TESTS=json): tests/test_json.c:155: CHECK(!strcmp(got, want)) failed
+caught        json: a closed string leaves its closing quote out (test_json)   (make test TESTS=json): tests/test_json.c:155: CHECK(!strcmp(got, want)) failed
+caught        json: a minus starts no number (test_json)   (make test TESTS=json): tests/test_json.c:155: CHECK(!strcmp(got, want)) failed
+caught        json: a key is a plain string (test_json)   (make test TESTS=json): tests/test_json.c:155: CHECK(!strcmp(got, want)) failed
+caught        json: false is plain (test_json)   (make test TESTS=json): tests/test_json.c:155: CHECK(!strcmp(got, want)) failed
+caught        json: escapes are looked for from the window, not its run of backslashes (test_json, long strings)   (make test TESTS=json): tests/test_json.c:155: CHECK(!strcmp(got, want)) failed
+caught        keys: Lean symbols are word characters again (recorded traces)   (make test TESTS=): 1274 sequences: 1 differ from Neovim
+caught        keys: Delete at the end of the last line keeps redo (recorded traces)   (make test TESTS=): 1274 sequences: 9 differ from Neovim
+caught        keys: BS in Replace mode puts back one byte, not the whole cluster (recorded traces)   (make test TESTS=): 1274 sequences: 2 differ from Neovim
+caught        keys: aw at the end of the buffer does not leave the cursor on the NUL it reached (recorded traces)   (make test TESTS=): 1274 sequences: 1 differ from Neovim
+caught        keys: a linewise change deletes its lines with the cursor on the first, so undo after 3S puts the cursor a line too high (recorded traces)   (make test TESTS=): 1274 sequences: 4 differ from Neovim
+caught        keys: a block change that starts past a short line's end leaves that line without its spaces (recorded traces)   (make test TESTS=): 1274 sequences: 3 differ from Neovim
+caught        keys: undo in a CTRL-O command takes a Tab's last cell as the wanted column, so the insert restarts past the Tab (recorded traces)   (make test TESTS=): 1274 sequences: 5 differ from Neovim
+caught        keys: CTRL-W w to a window on the same buffer leaves the Visual cursor behind (recorded traces)   (make test TESTS=): 1274 sequences: 1 differ from Neovim
+caught        keys: gq on a .sql buffer is not recognised as SQL (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:95: CHECK(!strcmp(text(&e), want(c[i].a, c[i].z))) failed
+caught        keys: the save looks for sqldiff.toml only in the file's own directory (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:130: CHECK(!strcmp(disk(file), want(0, sizeof SRC - 1))) failed
+caught        keys: gq leaves the cursor on the last paragraph line, not the last line it went over (recorded traces)   (make test TESTS=): 1274 sequences: 7 differ from Neovim
+caught        keys: a blank with a combining mark on it is a break for gq (recorded traces)   (make test TESTS=): 1274 sequences: 4 differ from Neovim
+caught        keys: gq gives every later break the indent from ^ CTRL-D (recorded traces)   (make test TESTS=): 1274 sequences: 1 differ from Neovim
+caught        keys: u after a gq that changed nothing puts the cursor on the first line, not back where gq was typed (recorded traces)   (make test TESTS=): 1274 sequences: 1 differ from Neovim
+caught        keys: CTRL-W g leaves the next key to run on its own, so CTRL-W g x deletes a character (recorded traces)   (make test TESTS=): 1274 sequences: 2 differ from Neovim
+caught        keys: the clipboard forgets the type it was set with, so a yanked block is put as lines (test_keys_clip)   (make test TESTS=keys_clip): tests/test_keys_clip.c:100: CHECK(is(&e, "aba\ncdc\n")) failed
+caught        keys: Visual g_ starts its step back at the last character, not the last byte, so it stops before a blank under a combining mark (recorded traces)   (make test TESTS=): 1274 sequences: 1 differ from Neovim
+caught        keys: i) and a) look for the closing bracket with quotes not special, as for the opening one (recorded traces)   (make test TESTS=): 1274 sequences: 2 differ from Neovim
+caught        loop: kill reaches the child but not its group   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:177: CHECK(dead(grandchild)) failed
+caught        loop: children inherit the ignored SIGPIPE   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:147: CHECK(g.code == 0 && !g.nerr) failed
+caught        loop: processes and timers run inside a command   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:278: CHECK(!fired[3] && !g.nout && !g.ended[1]) failed
+caught        loop: the queue is never compacted   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:437: CHECK(grew < 64 * 1024) failed
+caught        loop: a watch removed by a callback still runs (loop_breakcheck)   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:455: CHECK(!ran_b) failed
+caught        loop: stdin stays open after the exit   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:364: CHECK(open_fds() == fds) failed
+caught        loop: win: a write begun while reaping completes on the slot's next child (review of PR 41, 2)   (make win WIN=loop): tests/test_loop_win.c:467: CHECK(done && answer == -1) failed
+caught        loop: win: the wait is not alertable, so no pipe I/O completes   (make win WIN=loop): tests/test_loop_win.c:149: CHECK(ms() < end) failed
+caught        loop: win: the exit comes before the output's end (Exit.tla early)   (make win WIN=loop): tests/test_loop_win.c:132: CHECK(!g->ended[0]) failed
+caught        loop: win: the pipe is read only when it ends, so a full pipe hangs the child   (make win WIN=loop): 4 errors generated.
+caught        org: table row contents start at the bar   (make test TESTS=org): tests/test_org.c:669: CHECK(!strcmp(got, cases[i].want)) failed
+caught        org: drawer and footnote names take any non-ASCII byte (against Org)   (make org-conform ORG_N=2000 SEED=1): 39 of 2000 differ (no answer from Org on 1)
+caught        org: a timestamp's repeater is looked for only before its range (against Org)   (make org-conform ORG_N=2000 SEED=1): 525 of 2000 differ (no answer from Org on 1)
+caught        org: colours: tags without their outer colons (against Org)   (make org-conform ORG_N=2000 SEED=1): 258 of 2000 differ (no answer from Org on 135)
+caught        org: colours: export blocks not quoting (against Org)   (make org-conform ORG_N=2000 SEED=1): 22 of 2000 differ (no answer from Org on 135)
+caught        org: colours: special keywords inside a word (against Org)   (make org-conform ORG_N=2000 SEED=1): 323 of 2000 differ (no answer from Org on 135)
+caught        org: colours: the text after an edit not moved (fuzz)   (make fuzz FUZZERS=org FUZZ_SECONDS=60): ==6349== ERROR: libFuzzer: deadly signal
+caught        shada: a buffer left by a window not stamped   (make test TESTS=shada): tests/test_shada.c:142: CHECK(0) failed
+caught        shada: more than 100 kept   (make test TESTS=shada): tests/test_shada.c:106: CHECK(n == 100 && !strcmp(first[0], "f150") && !strcmp(first[1], "f149")) failed
+caught        shada: a Windows name not made full   (make win WIN=shada): tests/test_shada_win.c:42: CHECK(0) failed
+caught        sqlfmt: ELSE IF's IF goes on a line of its own (test_sqlfmt, recorded)   (make test TESTS=sqlfmt): tests/test_sqlfmt.c:82: CHECK(0) failed
+caught        sqlfmt: every keyword is recased, NOCOUNT too (test_sqlfmt, recorded)   (make test TESTS=sqlfmt): tests/test_sqlfmt.c:82: CHECK(0) failed
+caught        sqlfmt: the output is not checked (test_sqlfmt, recorded)   (make test TESTS=sqlfmt): tests/test_sqlfmt.c:82: CHECK(0) failed
+caught        sqlfmt: keywords keep their case (test_sqlfmt, recorded)   (make test TESTS=sqlfmt): tests/test_sqlfmt.c:82: CHECK(0) failed
+caught        sqlfmt: an empty text formats into no buffer (fuzz_sqlfmt, UBSan)   (make fuzz FUZZERS=sqlfmt FUZZ_SECONDS=60): src/sqlfmt/sqlfmt.c:784:13: runtime error: applying zero offset to null pointer
+caught        sqlfmt: nesting limit 2,000 (test_sqlfmt, recorded)   (make test TESTS=sqlfmt): tests/test_sqlfmt.c:82: CHECK(0) failed
+caught        sqlfmt: a sqlcmd statement ignores line breaks (test_sqlfmt, recorded)   (make test TESTS=sqlfmt): having RAISERROR
+caught        sqlfmt: a statement with a parse problem is laid out (test_sqlfmt, recorded)   (make test TESTS=sqlfmt): tests/test_sqlfmt.c:82: CHECK(0) failed
+caught        sqlfmt: nesting limit 999 (test_sqlfmt, 999 levels)   (make test TESTS=sqlfmt): tests/test_sqlfmt.c:104: CHECK(!kept && !memcmp(gb, "begin\n    begin\n", 16)) failed
+caught        syntax: Lua's lazy - takes one character at least (test_syntax, LuaJIT)   (make test TESTS=syntax): tests/test_syntax.c:634: CHECK(!differ && !snap_differ && !slice_differ && !pdiff) failed
+caught        syntax: captures are not clipped to the tree's included ranges (test_syntax, case 2: the block quote)   (make test TESTS=syntax): tests/test_syntax.c:634: CHECK(!differ && !snap_differ && !slice_differ && !pdiff) failed
+caught        syntax: the frame after a key recomputes only the captures over the edit, not the rest of their matches (test_syntax, edits then frame: far.lua)   (make test TESTS=syntax): tests/test_syntax.c:300: CHECK(!memcmp(f, g, n)) failed
+caught        syntax: the recomputed bytes leave out the byte after the edit (test_syntax, frames before a parse)   (make test TESTS=syntax): tests/test_syntax.c:634: CHECK(!differ && !snap_differ && !slice_differ && !pdiff) failed
+caught        syntax: a grown cache keeps the old one's window, over memory never filled (test_syntax, cache grows)   (make test TESTS=syntax): tests/test_syntax.c:382: CHECK(!memcmp(f, g, 64)) failed
+caught        text: no rollback when a chunk cannot get its nodes   (make test TESTS=text_rope): tests/test_text_rope.c:57: CHECK(r_len(t) == mn) failed
+caught        text: insert drops the leaf's last byte (fuzz_text)   (make fuzz FUZZERS=text FUZZ_SECONDS=60): ==25006== ERROR: libFuzzer: deadly signal
+caught        matcher: OR terms of equal entropy tried in their typed order (not LuaJIT's sort)   (make test TESTS=tools_match): tests/test_tools_match.c:58: CHECK(cases > 0 && !bad) failed
+caught        picker: grep keeps rg's ./ prefix   (make test TESTS=tools_pick): FAIL test_tools_pick
+caught        oil: a link line without " -> " kept as its entry   (make test TESTS=tools_oil): tests/test_tools_oil.c:241: CHECK(cases > 0 && !bad) failed
+caught        oil: no icon by exact file name   (make test TESTS=tools_oil): tests/test_tools_oil.c:241: CHECK(cases > 0 && !bad) failed
+caught        oil: an open directory's buffer does not follow its move   (make test TESTS=tools_oil): tests/test_tools_oil.c:241: CHECK(cases > 0 && !bad) failed
+caught        oil: a long id overflows (fuzz_tools_oil)   (make fuzz FUZZERS=tools_oil FUZZ_SECONDS=60): src/tools/oil.c:259:59: runtime error: signed integer overflow: 6333333333333333333 * 10 cannot be represented in type 'long'
+caught        oil: only the first brace group takes the alternative   (make test TESTS=tools_oil): ==10920==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x5020000b349a at pc 0x55be630ca827 bp 0x7ffc8aaeba20 sp 0x7ffc8aaeba10
+caught        picker: grep drops the rg arguments after --   (make test TESTS=tools_pick): FAIL test_tools_pick
+caught        dashboard: an odd width's half column goes left   (make test TESTS=tools_dash): tests/test_tools_dash.c:72: CHECK(0) failed
+caught        dashboard: stays over a file opened into the start buffer   (make test TESTS=tools_dash): tests/test_tools_dash.c:115: CHECK(!(g.c[i].len == 1 && grid_text(&g.c[i])[0] == 'Q' && i % g.cols > 0)) failed
+caught        dashboard: the cheeks in the frog's face   (make test TESTS=tools_dash): tests/test_tools_dash.c:72: CHECK(0) failed
+caught        recent: a file listed twice   (make test TESTS=tools_pick): FAIL test_tools_pick
+caught        recent on Windows: '/' and '\' spellings of one file listed twice   (make win WIN=tools): tests/test_tools_win.c:87: CHECK(0) failed
+caught        tsql: an edit keeps the token start two bytes before it (test_tsql, edit near a kept start)   (make test TESTS=tsql): tests/test_tsql.c:197: CHECK(!memcmp(f + 4096, g + 4096, n + il - 4096)) failed
+caught        tsql: comments do not nest (test_tsql, tokens)   (make test TESTS=tsql): tests/test_tsql.c:208: CHECK(!strcmp(got, lines[i][1])) failed
+caught        tsql: a function word beats an operator word, so LEFT JOIN is a function (test_tsql, lines)   (make test TESTS=tsql): tests/test_tsql.c:208: CHECK(!strcmp(got, lines[i][1])) failed
+caught        tsql: sp_ procedures are plain (test_tsql, lines)   (make test TESTS=tsql): tests/test_tsql.c:208: CHECK(!strcmp(got, lines[i][1])) failed
+caught        tsql: a word longer than the lookup buffer is copied into it (fuzz_tsql, ASan)   (make fuzz FUZZERS=tsql FUZZ_SECONDS=60): FAIL fuzz_tsql
+caught        tsql: a number takes the letters after it (test_tsql, tokens and lines)   (make test TESTS=tsql): tests/test_tsql.c:208: CHECK(!strcmp(got, lines[i][1])) failed
+caught        tsql: numbers are plain (test_tsql, lines)   (make test TESTS=tsql): tests/test_tsql.c:208: CHECK(!strcmp(got, lines[i][1])) failed
+caught        tsql: ( is an operator token, not punctuation (test_tsql, tokens)   (make test TESTS=tsql): tests/test_tsql.c:216: CHECK(e == toks[i].end && k == toks[i].kind) failed
+caught        tsql: an edit two bytes past the last token keeps its end (test_tsql, edit near a kept start)   (make test TESTS=tsql): tests/test_tsql.c:197: CHECK(!memcmp(f + 4096, g + 4096, n + il - 4096)) failed
+caught        tsql: an edit among moved starts keeps those after it (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:308: CHECK(!memcmp(f + wa, g + wa, z - wa)) failed
+caught        tsql: the index is filled from past a token start (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:308: CHECK(!memcmp(f + wa, g + wa, z - wa)) failed
+caught        tsql: the filled index does not mark the text's end (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:308: CHECK(!memcmp(f + wa, g + wa, z - wa)) failed
+caught        tsql: a word it lacks still gets an id (test_tsql)   (make test TESTS=tsql): tests/test_tsql.c:231: CHECK(tsql_word("selectx", 7, &id) == 0 && id == 0 && tsql_word("@@rowcount", 10, NULL) == TQ_FUNCTION) failed
+caught        tty: no blanks before a non-ASCII wide character   (make test TESTS=grid_diff): tests/test_grid_diff.c:305: CHECK(t.prints - before == want) failed
+caught        tty: a key cut by a read is not kept   (make test TESTS=tty_input): tests/test_tty_input.c:131: CHECK(0) failed
+caught        tty: a resize while suspended is not seen   (make test TESTS=tty_render): tests/test_tty_render.c:106: CHECK(0) failed
+caught        tty: the read ignores the slot count   (make test TESTS=tty_input): tests/test_tty_input.c:131: CHECK(0) failed
+caught        tty: the cursor shown while drawing   (make test TESTS=grid_diff): tests/test_grid_diff.c:301: CHECK(0) failed
+caught        tty: a face's background not sent   (make test TESTS=grid_diff): tests/test_grid_diff.c:301: CHECK(0) failed
+caught        tty: Delete dropped as an unknown sequence   (make test TESTS=tty_input): tests/test_tty_input.c:131: CHECK(0) failed
+caught        tty: a wrong colour for a UI face (the status line's)   (make test TESTS=grid_diff): tests/test_grid_diff.c:301: CHECK(0) failed
+caught        undo: undo leaves the group open (Undo_noclose)   (make test TESTS=undo): tests/test_undo.c:66: CHECK(undo_seq(u) == 2) failed
+caught        undo tree: :earlier Nf does not count changes since the last write   (make undo-diff UNDO_N=1000): undo_conform: 1000 sequences of 60 ops, undolevels 1000, seed 1: 222 differ from Neovim
+caught        undo file: SHA-256 with a wrong round constant   (make test TESTS=undo_file): tests/test_undo_file.c:77: CHECK(sscanf(hex + 2 * i, "%2x", &v) == 1 && b[8 + i] == v) failed
+caught        undo file: numbers from the file taken as they are   (make test TESTS=undo_file): tests/test_undo_file.c:200: CHECK(!undo_read(t, path)) failed
+caught        undo: the span ends too early after a redo   (make test TESTS=undo_span): tests/test_undo_span.c:25: CHECK(tail <= bn - w->lo && !memcmp(A + w->hi, B + bn - tail, tail)) failed
+caught        undo: Windows' rename() over an existing undo file (the Windows check)   (make compilers): tests/test_undo_win.c:19: CHECK(!undo_write(u, t, path)) failed
+caught        frama-c: GB9a forgotten (SpacingMark breaks)   (make frama): [wp] Proved goals:  226 / 227
+caught        uni: table read one code point off   (make test TESTS=uni_nvim): tests/test_uni_nvim.c:157: CHECK(uni_glen(lines[0], 3, 0) == 3 && uni_glen(lines[1], 18, 0) == 18 && uni_glen(lines[2], 8, 0) == 8) failed
+caught        uni: uni_gprev starts on a continuation byte (fuzz_uni)   (make fuzz FUZZERS=uni FUZZ_SECONDS=60): ==14877== ERROR: libFuzzer: deadly signal
+caught        win: the cell the cursor left is not restored   (make win WIN=win): tests/test_win.c:212: CHECK(at(3, 5) == REV && at(1, 1) == REV && at(2, 2) == BG) failed
+caught        win: Ctrl-H sent as Backspace   (make win WIN=win): tests/test_win.c:146: CHECK(input(k, 4) == 1 && k[0] == 8) failed
+caught        win: keys dropped when the ring is full   (make win WIN=win): tests/test_win.c:150: CHECK(input(k, 7) == 600) failed
+caught        win: Down sent as Up   (make win WIN=win): tests/test_win.c:141: CHECK(k[0] == 'a' && k[1] == 0x1D4DD && k[2] == KEY_BS && k[3] == KEY_ESC && k[4] == 0xE9 && k[5] == KEY_ENTER && k[6] == KEY_LEFT && k[7] == KEY_RIGHT && k[8] == KEY_UP && k[9] == KEY_DOWN && k[10] == KEY_DEL) failed
+caught        win: clipboard set without CRLF   (make win WIN=win): tests/test_win.c:196: CHECK(u && !wcscmp(u, L"a\r\n\xe9\xd835\xdcdd")) failed
+caught        win: dim text in the normal colour   (make win WIN=win): tests/test_win.c:236: CHECK(inked(5, 1) > 0 && lum(d) < lum(m)) failed
+caught        win: the right half of a wide character not sent to the window   (make win WIN=win): tests/test_win.c:239: CHECK(count(7, 2, REV) > cw * ch / 2 && count(7, 3, REV) == 0) failed
+caught        win: one column too many reported   (make win WIN=win): tests/test_win.c:206: CHECK(at(0, 0) == RED && at(2, 2) == RED && at(rows - 1, cols - 1) == RED) failed
+caught        win: pacing timer fires at once (busy wake-ups)   (make win WIN=win): tests/test_win.c:99: CHECK(wakes <= 2 && b->ready()) failed
+caught        win: resize sends no KEY_RESIZE   (make win WIN=win): tests/test_win.c:299: CHECK(resized) failed
+caught        win: GDI's substitute for a missing family kept   (make win WIN=win): tests/test_win.c:171: CHECK(ch == tm.tmHeight && cw == tm.tmAveCharWidth) failed
+caught        wl: seat not listened to   (make test TESTS=wl): tests/test_wl.c:386: CHECK(nkeys - k0 == 8) failed
+caught        wl: preedit not redrawn   (make test TESTS=wl): tests/test_wl.c:445: CHECK(count(KEY_RESIZE, k0) == 1) failed
+caught        wl: mouse row from x   (make test TESTS=wl): tests/test_wl.c:495: CHECK(mr == 300 / cellh() && mc == 500 / cellw()) failed
+caught        wl: changed cells not drawn   (make test TESTS=wl): tests/test_wl.c:105: CHECK(WIFEXITED(st) && !WEXITSTATUS(st)) failed
+caught        wl: glyph cut at its cell   (make test TESTS=wl): tests/test_wl.c:342: CHECK(ink(cellw(), 0, cellw(), cellh(), 0)) failed
+caught        wl: long cluster read from the cell   (make test TESTS=wl): tests/test_wl.c:369: CHECK(ink(0, 0, 2 * cellw(), cellh(), 1) > cellw() * cellh() / 4) failed
+caught        wl: lost compositor ignored   (make test TESTS=wl): tests/test_wl.c:548: CHECK(backend_wl.input(keys + nkeys, 64) == -1) failed
+caught        wl: glyph cut at the span, not its word   (make test TESTS=wl): tests/test_wl.c:105: CHECK(WIFEXITED(st) && !WEXITSTATUS(st)) failed
+planted exit 0

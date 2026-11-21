@@ -2,8 +2,9 @@
 ;; Org's own parser, org-element, as the oracle for src/org (package 16):
 ;; for each file, "== name", every element in document order as
 ;; tests/org_drv.c prints it, then org-element-timestamp-parser at every
-;; character, as in a paragraph (case-fold-search t).  Positions are bytes
-;; from 0; "-" is none.
+;; character, as in a paragraph (case-fold-search t), then each line's
+;; org-current-level and org-at-heading-p (orgfx_foldexpr's answer).
+;; Positions are bytes from 0; "-" is none.
 ;; emacs -Q --batch -l tools/org_dump.el FILE...
 (require 'org-element)
 (setq org-todo-keywords '((sequence "TODO" "NEXT" "WAIT" "|" "DONE" "CANCELLED")))
@@ -56,6 +57,12 @@
           (goto-char (point-min))
           (while (not (eobp))
             (org-dump-ts "ts" (org-element-timestamp-parser))
-            (forward-char 1)))
+            (forward-char 1))
+          (goto-char (point-min))
+          (let ((l 0))
+            (while (progn (princ (format "fold %d %d %d\n" l (or (org-current-level) 0) (if (org-at-heading-p) 1 0)))
+                          (setq l (1+ l))
+                          (end-of-line)
+                          (unless (eobp) (forward-char 1) t)))))
       (error (princ (format "!error %S\n" err))))))
 (setq command-line-args-left nil)

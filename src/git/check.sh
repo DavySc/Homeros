@@ -6,7 +6,7 @@
 # for this target, so it runs without.  On Windows itself (CI's windows
 # job) it builds and runs test_git_win alone: the traces need the bridge
 # below, which is Wine's.
-set -eu
+set -euo pipefail
 cd "$(dirname "$0")/../.."
 . tools/winpass.sh
 run=wine; [ "${OS:-}" = Windows_NT ] && run=
@@ -52,8 +52,10 @@ export WINEPATH="Z:$(pwd -P)/$mg/cmd"
 # The bridge: MinGit's shell cannot start a second program under Wine
 # (measured, 3 runs), so test_git's scripts run in this shell instead
 # (its run()): it writes req.sh, this runs it and writes out
-export TEST_BRIDGE=$PWD/build/win/git-bridge TEST_TMP=$PWD/build/win/git-tmp
-rm -rf "$TEST_BRIDGE" "$TEST_TMP" && mkdir -p "$TEST_BRIDGE" "$TEST_TMP"
+# The scratch files live outside any repository, as on Linux: the core
+# attaches each file it opens to its repository
+export TEST_BRIDGE=$PWD/build/win/git-bridge TEST_TMP=$(mktemp -d /tmp/homeros-git-XXXXXX)
+rm -rf "$TEST_BRIDGE" && mkdir -p "$TEST_BRIDGE"
 ( while [ ! -e "$TEST_BRIDGE/stop" ]; do
 	if [ -e "$TEST_BRIDGE/req.sh" ]; then
 		sh "$TEST_BRIDGE/req.sh" > "$TEST_BRIDGE/out.part" 2>&1 || true
@@ -61,5 +63,5 @@ rm -rf "$TEST_BRIDGE" "$TEST_TMP" && mkdir -p "$TEST_BRIDGE" "$TEST_TMP"
 		mv "$TEST_BRIDGE/out.part" "$TEST_BRIDGE/out"
 	else sleep 0.002; fi
 done ) &
-trap 'touch "$TEST_BRIDGE/stop"' EXIT
+trap 'touch "$TEST_BRIDGE/stop"; rm -rf "$TEST_TMP"' EXIT
 pass 1800 build/win/test_git.exe wine || { echo "FAIL test_git (Windows)"; exit 1; }

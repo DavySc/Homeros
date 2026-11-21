@@ -5,12 +5,14 @@
    (vgetorpeek()).  Typed keys alone sync undo and are recorded (gotchars(),
    may_sync_undo()); a beep drops the stuffed and executed keys
    (beep_flush()). */
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include "git.h"
 #include "k.h"
+#include "kitten.h"
 #include "tools.h"
 #include "uni.h"
 
@@ -87,7 +89,7 @@ static int next(int *k)
 {
 	/* check_end_reg_executing(): a read with none of the register's keys
 	   left in the typeahead ends its execution */
-	if (!tb.n) reg_executing = 0;
+	if (!tb.n) E->ks.executing = 0;
 	Queue *q = rb1.n ? &rb1 : rb2.n ? &rb2 : tb.n ? &tb : NULL;
 	if (!q) return 0;
 	*k = q->k[q->head++];
@@ -100,6 +102,7 @@ static void cmdline_key(int k);
 
 static void key(int k, int pending)
 {
+	if (sub_asking) { sub_key(k); return; }
 	switch (E->mode) {
 	case MODE_INSERT: insert_key(k, pending); break;
 	case MODE_CMDLINE: cmdline_key(k); break;
@@ -114,7 +117,7 @@ static void key(int k, int pending)
 /* only those whose targets exist; the SPC g and SPC h ones are git.h's */
 static const char *const maps[] = {
 	" ff", " fg", " fr", " ,", " e", " pv", "-", " D",
-	" gg", " gs", " gl", " gL", " gd", " gb", " gB", " hs", " hr", " hS", " hu", " hp"
+	" gg", " gs", " gl", " gL", " gd", " gb", " gB", " hs", " hr", " hS", " hu", " hp", " uk"
 };
 static int lead[3], nlead;   /* the keys typed of a map not yet complete */
 
@@ -144,6 +147,7 @@ static int map(Editor *e, int k)
 		case ',': tools_pick(e, PICK_BUFFERS); break;
 		case 'e': tools_pick(e, PICK_EXPLORER); break;
 		case 'p': tools_oil(e, NULL); break;
+		case 'u': kitten_toggle(e); break;
 		case 'D': dashboard(e); break;
 		default: git_leader(e, m[1], m[2]);
 		}
@@ -170,23 +174,28 @@ void keys_feed(Editor *e, int k, int pending)
 {
 	/* the window's close button: :qa, as Neovim's GUIs do (E37 if
 	   modified) */
-	if (k == KEY_CLOSE) { core_close(e, 0); return; }
+	if (k == KEY_CLOSE) {
+		if (sub_asking) E = e, sub_key(KEY_ESC), e->ks.pending = 0;   /* the question ends first, as Esc */
+		core_close(e, 0);
+		return;
+	}
 	E = e;
 	buf_changed();
-	if ((E->mode != MODE_INSERT && E->mode != MODE_CMDLINE) || arrow_used) undo_close(B->undo);
+	/* :s with the c flag is one undo step, however many keys answer it */
+	if (!sub_asking && ((E->mode != MODE_INSERT && E->mode != MODE_CMDLINE) || arrow_used)) undo_close(B->undo);
 	if (reg_recording) record_key(k);
 	key_stuffed = 0;
-	reg_executing = 0;   /* typed: the typeahead holds no register keys */
+	E->ks.executing = 0;   /* typed: the typeahead holds no register keys */
 	key(k, pending || rb1.n || rb2.n || tb.n);
 	while (next(&k)) key(k, pending || rb1.n || rb2.n || tb.n);
 	E->ks.visual = VIsual_active ? VIsual_mode : 0;
 	E->ks.vline = (size_t)VIsual.lnum;
 	E->ks.vcol = (size_t)VIsual.col;
-	E->ks.pending = E->mode == MODE_CMDLINE || (E->mode != MODE_INSERT && normal_pending());
+	E->ks.pending = E->mode == MODE_CMDLINE || sub_asking || (E->mode != MODE_INSERT && normal_pending());
 	core_update(e);
 }
 
-/* ---- the command line: :w :q :wq :x :Format ---- */
+/* ---- the command line: ranges, :w :q :wq :x :Format ---- */
 
 /* Davy's BufWritePre for .sql (after/ftplugin/sql.lua): format first when
    a sqldiff.toml is in the file's directory or one above it */
@@ -216,28 +225,115 @@ static int ex_write(int force)
 	return core_write(E, B, force);
 }
 
+/* one address and its offsets, 1-based, from line cur (Neovim's
+   get_address()); NONE when there is none, FAIL after E20.  Past BIG a number
+   saturates, where Neovim's overflows. */
+static const long BIG = LONG_MAX / 4, NONE = LONG_MIN, FAIL = LONG_MIN + 1;
+static long sat(long v) { return v > BIG ? BIG : v < -BIG ? -BIG : v; }
+static long address(char **pp, long cur)
+{
+	char *p = *pp;
+	long l = NONE;
+	if (*p >= '0' && *p <= '9') l = sat(strtol(p, &p, 10));
+	else if (*p == '.' || *p == '$') l = *p++ == '.' ? cur : nlines();
+	else if (*p == '\'') {
+		static const char sp[] = "[]<>.^\"";
+		const char *q = p[1] ? strchr(sp, p[1]) : NULL;
+		Mark m = p[1] == '\'' ? W->pcmark : p[1] >= 'a' && p[1] <= 'z' ? B->mark[p[1] - 'a'] : q ? B->mark[MARK_LBRACKET + (q - sp)] : (Mark){ 0 };
+		if (!m.set) { core_msg(E, "E20: Mark not set"); return FAIL; }
+		l = (long)m.line + 1;
+		p += 2;
+	}
+	for (;;) {
+		while (*p == ' ' || *p == '\t') p++;
+		if (*p != '-' && *p != '+' && (*p < '0' || *p > '9')) break;
+		int sign = *p == '-' ? -1 : 1;
+		if (l == NONE) l = cur;
+		p += *p == '-' || *p == '+';
+		l = sat(l + sign * (*p >= '0' && *p <= '9' ? sat(strtol(p, &p, 10)) : 1));
+	}
+	*pp = p;
+	return l;
+}
+
 static void ex(void)
 {
-	char *c = E->cmd;
+	char *c = E->cmd, *p;
 	E->cmd[E->cmdlen] = 0;
 	set_last_cmdline(c);
 	while (*c == ' ' || *c == ':') c++;
-	if (!strcmp(c, "w") || !strcmp(c, "w!")) ex_write(c[1] == '!');
-	else if (!strcmp(c, "q") || !strcmp(c, "q!")) core_close(E, c[1] == '!');
-	else if (!strcmp(c, "wq") || !strcmp(c, "wq!")) { if (!ex_write(c[2] == '!')) core_close(E, 0); }
-	else if (!strcmp(c, "x")) { if (!core_modified(B) || !ex_write(0)) core_close(E, 0); }
+	/* the range (Neovim's parse_cmd_range()): % is 1,$; a missing address
+	   next to a separator is the cursor's line; ";" moves the cursor to its
+	   address, which the next one counts from */
+	long cur = (long)W->line + 1, l1 = NONE, l2 = NONE, n = 0;
+	for (p = c;; p++) {
+		p += strspn(p, " \t");
+		int all = *p == '%';
+		long a = all ? (p++, nlines()) : address(&p, cur);
+		if (a == FAIL) return;
+		if (a == NONE && (n || *p == ',' || *p == ';')) a = cur;
+		if (a == NONE) break;
+		l1 = all ? 1 : n ? l2 : a, l2 = a;
+		n++;
+		if (*p == ';') W->line = (size_t)((cur = a > nlines() ? nlines() : a) < 1 ? 1 : cur) - 1, check_cursor_col();
+		else if (*p != ',') break;
+	}
+	while (*p == ' ' || *p == '\t' || *p == ':') p++;
+	/* :s[ubstitute] :& :~ (:&& is :& with the flag &), on the cursor's
+	   line by default; line 0 is line 1 (no EX_ZEROR) */
+	size_t k = strspn(p, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
+	if (k >= 3 && k <= 10 && !strncmp(p, "nohlsearch", k) && !p[k]) {
+		if (n) core_msg(E, "E481: No range allowed");
+		else no_hlsearch = 1;
+		return;
+	}
+	if (k ? k <= 10 && !strncmp(p, "substitute", k) : (k = *p == '&' || *p == '~')) {
+		if (!n) l1 = l2 = cur;
+		if (l1 > l2) { core_msg(E, "E493: Backwards range given"); return; }
+		if (l1 < 0 || l2 > nlines()) { core_msg(E, "E16: Invalid range"); return; }
+		ex_sub(l1 > 0 ? l1 - 1 : 0, l2 > 0 ? l2 - 1 : 0, *p, p + k + strspn(p + k, " \t"));
+		return;
+	}
+	static const char *const cmds[] = { "", "w", "w!", "q", "q!", "wq", "wq!", "x", "Format", "KittenPaw", "Dashboard" };
+	int i = 0;
+	while (i < 11 && strcmp(p, cmds[i])) i++;
+	if (i == 11) { core_msg(E, "E492: Not an editor command: %s", c); return; }
+	if (n && i) { core_msg(E, "E481: No range allowed"); return; }
+	switch (i) {
+	case 0:   /* a range alone goes to its last line (do_one_cmd()) */
+		if (l2 < 0 && n) core_msg(E, "E16: Invalid range");
+		else if (n) {
+			W->line = (size_t)(l2 < 1 ? 1 : l2 > nlines() ? nlines() : l2) - 1;
+			beginline(BL_SOL | BL_FIX);
+		}
+		break;
+	case 1: case 2: ex_write(i == 2); break;
+	case 3: case 4: core_close(E, i == 4); break;
+	case 5: case 6: if (!ex_write(i == 6)) core_close(E, 0); break;
+	case 7: if (!core_modified(B) || !ex_write(0)) core_close(E, 0); break;
 	/* Davy's :Format (conform.nvim): the whole buffer */
-	else if (!strcmp(c, "Format")) { if (is_sql()) sql_format(0, text_len(B->text)); }
-	else if (!strcmp(c, "Dashboard")) dashboard(E);
-	else if (*c) core_msg(E, "E492: Not an editor command: %s", c);
+	case 8: if (is_sql()) sql_format(0, text_len(B->text)); break;
+	case 9: kitten_paw(E); break;
+	default: dashboard(E);
+	}
+}
+
+/* leaving the command line: / and ? wait in normal.c for K_PAT (entered)
+   or another key (left) */
+static void cmdline_end(int entered)
+{
+	E->mode = MODE_NORMAL;
+	if (E->cmdtype != ':') normal_key(entered ? K_PAT : KEY_ESC);
+	else if (entered) ex();
+	restart_insert();
 }
 
 static void cmdline_key(int k)
 {
-	if (k == KEY_ESC || k == KEY_CTRL_C) { E->mode = MODE_NORMAL; restart_insert(); return; }
-	if (k == KEY_ENTER || k == '\n') { E->mode = MODE_NORMAL; core_msg(E, ""); if (E->cmdtype == ':') ex(); restart_insert(); return; }
+	if (k == KEY_ESC || k == KEY_CTRL_C) { cmdline_end(0); return; }
+	if (k == KEY_ENTER || k == '\n') { core_msg(E, ""); cmdline_end(1); return; }
 	if (k == KEY_BS || k == 8) {
-		if (!E->cmdlen) { E->mode = MODE_NORMAL; restart_insert(); return; }
+		if (!E->cmdlen) { cmdline_end(0); return; }
 		E->cmdlen = E->cmdpos = uni_gprev((unsigned char *)E->cmd, E->cmdlen, E->cmdlen);
 		return;
 	}

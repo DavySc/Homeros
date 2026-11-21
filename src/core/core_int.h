@@ -4,7 +4,7 @@
 #define CORE_INT_H
 #include "core.h"
 
-enum { SCROLLOFF = 6, TABSTOP = 8, MAXH = 1 << 30 };   /* FEATURES.md 1; Vim's tabstop */
+enum { TABSTOP = 8, MAXH = 1 << 30 };   /* Vim's tabstop */
 enum { FR_LEAF, FR_ROW, FR_COL };
 enum { ROWS, COLS };                  /* an axis: Frame.size[ROWS] is the height */
 

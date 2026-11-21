@@ -65,6 +65,7 @@ const TSLanguage *tree_sitter_markdown(void);
 const TSLanguage *tree_sitter_markdown_inline(void);
 const TSLanguage *tree_sitter_rust(void);
 const TSLanguage *tree_sitter_glsl(void);
+const TSLanguage *tree_sitter_nix(void);
 static const struct Lang {
 	const char *name;
 	const TSLanguage *(*fn)(void);
@@ -75,6 +76,7 @@ static const struct Lang {
 	{ "markdown_inline", tree_sitter_markdown_inline },
 	{ "rust", tree_sitter_rust },
 	{ "glsl", tree_sitter_glsl },
+	{ "nix", tree_sitter_nix },
 };
 enum { NLANGS = sizeof langs / sizeof *langs };
 
@@ -90,7 +92,7 @@ enum { BY_NONE = -1, BY_SQL = -2, BY_JSON = -3, BY_DL = -4 };
 static const struct { const char *ext, *ft; int lang; } fts[] = {
 	{ ".c", "c", 0 }, { ".h", "cpp", 0 }, { ".lua", "lua", 1 }, { ".md", "markdown", 2 },
 	{ ".sql", "sql", BY_SQL }, { ".json", "json", BY_JSON }, { "CMakeLists.txt", "cmake", BY_NONE },
-	{ ".txt", "text", BY_NONE }, { ".rs", "rust", 4 }, { ".nix", "nix", BY_NONE },
+	{ ".txt", "text", BY_NONE }, { ".rs", "rust", 4 }, { ".nix", "nix", 6 },
 	{ ".glsl", "glsl", 5 }, { ".vert", "glsl", 5 }, { ".frag", "glsl", 5 },
 	{ ".comp", "glsl", 5 }, { ".geom", "glsl", 5 }, { ".tesc", "glsl", 5 },
 	{ ".tese", "glsl", 5 }, { ".sv", "systemverilog", BY_NONE }, { ".svh", "systemverilog", BY_NONE },
@@ -141,7 +143,10 @@ typedef struct {
 	int prio;                  /* #set! priority N */
 	const char *ilang;         /* #set! injection.language "x" */
 	uint32_t ilen;
-	unsigned char iself, incl;  /* injection.self, injection.include-children */
+	unsigned char iself, incl, comb; /* injection.self, .include-children, .combined */
+	unsigned char skip;        /* never passes (see lacked) */
+	const char *gp, *gr;       /* #gsub! @injection.language pattern replacement */
+	uint32_t gpl, grl;
 } Pattern;
 
 typedef struct {
@@ -233,11 +238,9 @@ static uint32_t moved(uint32_t x, uint32_t p, uint32_t d, uint32_t i)
 #define EQ(s, l, lit) ((l) == sizeof lit - 1 && !memcmp(s, lit, l))
 
 /* #set! key [value], as query.lua's set!.  Of its keys, these languages'
-   queries use only these (grep); injection.combined and include-children
-   appear only in injections of languages we lack (HTML, LaTeX, YAML, TOML),
-   which inject nothing, so those patterns are disabled.  #set! @capture
-   key value sets nothing that colours or injects here. */
-static void set(Q *Q, uint32_t i, Pattern *P, const TSQueryPredicateStep *st, uint32_t a, uint32_t n)
+   queries use only these (grep).  #set! @capture key value sets nothing
+   that colours or injects here. */
+static void set(Q *Q, Pattern *P, const TSQueryPredicateStep *st, uint32_t a, uint32_t n)
 {
 	uint32_t l, vl = 0;
 	if (n < 2 || !ISSTR(a + 1)) return;
@@ -246,15 +249,15 @@ static void set(Q *Q, uint32_t i, Pattern *P, const TSQueryPredicateStep *st, ui
 	else if (EQ(key, l, "injection.language") && v) P->ilang = v, P->ilen = vl;
 	else if (EQ(key, l, "injection.self")) P->iself = 1;
 	else if (EQ(key, l, "injection.include-children")) P->incl = 1;
-	else if (EQ(key, l, "injection.combined")) ts_query_disable_pattern(Q->q, i);
+	else if (EQ(key, l, "injection.combined")) P->comb = 1;
 }
 
 typedef struct Src Src;
 static int resolve(Src *src, const char *s, uint32_t a, uint32_t z);
 
 /* An injection of a language we lack, named in the pattern: like Neovim
-   without that parser, it injects nothing, so the pattern goes before its
-   predicates are read (Rust's re2c pattern uses Vim's match?). */
+   without that parser, it injects nothing, so the pattern is skipped before
+   its predicates are read (Rust's re2c pattern uses Vim's match?). */
 static int lacked(const TSQueryPredicateStep *st, uint32_t ns, const TSQuery *q)
 {
 	for (uint32_t a = 0; a + 2 < ns; a++) {
@@ -295,24 +298,31 @@ static int compile(Q *Q, int hl)
 		P->prio = PRIO;
 		P->p = calloc(ns ? ns : 1, sizeof *P->p);
 		if (!P->p) return -1;
-		if (!hl && lacked(st, ns, Q->q)) {
-			ts_query_disable_pattern(Q->q, i);
-			continue;
-		}
+		/* skipped patterns stay in the query: they count toward the 256
+		   in-progress matches Neovim's iter_matches allows, so dropping
+		   them keeps matches Neovim loses (measured: a Nix string after
+		   Lua's comment) */
+		if (!hl && (P->skip = (unsigned char)lacked(st, ns, Q->q))) continue;
 		for (uint32_t a = 0; a < ns; ) {
 			uint32_t b = a;
 			while (st[b].type != TSQueryPredicateStepTypeDone) b++;
 			uint32_t l, n = b - a;
 			const char *name = STR(a, l);
-			if (EQ(name, l, "set!")) set(Q, i, P, st, a, n);
+			if (EQ(name, l, "set!")) set(Q, P, st, a, n);
+			else if (EQ(name, l, "gsub!")) {
+				/* only the language's text matters here (Nix's "lua" in
+				   a comment before a string) */
+				if (n == 4 && ISCAP(a + 1) && st[a + 1].value_id == Q->langcap && ISSTR(a + 2) && ISSTR(a + 3))
+					P->gp = STR(a + 2, P->gpl), P->gr = STR(a + 3, P->grl);
+			}
 			else if (EQ(name, l, "offset!"))
 				/* In these languages' queries only injections of languages
 				   we lack (YAML, TOML) and a capture with no colour (@_url)
 				   use it, so it is left out; a query that needs it loses
 				   the pattern, which the check against Neovim shows. */
-				ts_query_disable_pattern(Q->q, i);
+				P->skip = 1;
 			else if (name[l - 1] != '!') {
-				/* other directives (gsub!, trim!) do not colour or inject */
+				/* other directives (trim!) do not colour or inject */
 				Pred *p = &P->p[P->n];
 				if (l > 4 && !memcmp(name, "not-", 4)) p->neg = 1, name += 4, l -= 4;
 				if (EQ(name, l, "eq?")) p->kind = P_EQ;
@@ -582,6 +592,7 @@ static int test(Src *src, const TSQueryMatch *m, const Pred *p)
 
 static int passes(Src *src, const TSQueryMatch *m, const Pattern *P)
 {
+	if (P->skip) return 0;
 	for (uint32_t i = 0; i < P->n; i++)
 		if (test(src, m, &P->p[i]) == P->p[i].neg) return 0;
 	return 1;
@@ -684,8 +695,9 @@ static int clip(const Ranges *a, const Region *p, Ranges *out)
 	return 0;
 }
 
-/* One injected region found by the scan of a tree. */
-typedef struct { int lang; Ranges r; } Inj;
+/* One injected region found by the scan of a tree; a combined one gathers
+   every match of its pattern in that tree (add_injection), else pat < 0. */
+typedef struct { int lang; Ranges r; int64_t pat; } Inj;
 typedef struct { Inj *v; uint32_t n, cap; } Injs;
 
 static Inj *inj_new(Injs *I, int lang)
@@ -698,7 +710,7 @@ static Inj *inj_new(Injs *I, int lang)
 		I->cap = c;
 	}
 	Inj *j = &I->v[I->n++];
-	*j = (Inj){ lang, { NULL, 0, 0 } };
+	*j = (Inj){ lang, { NULL, 0, 0 }, -1 };
 	return j;
 }
 
@@ -774,15 +786,22 @@ static int inject(Syntax *s, LTree *L, const Text *t)
 			for (uint16_t i = 0; i < m.capture_count && !rc; i++) {
 				const TSQueryCapture *c = &m.captures[i];
 				uint32_t a = ts_node_start_byte(c->node), z = ts_node_end_byte(c->node);
-				if (c->index == Q->langcap) lang = resolve(&src, NULL, a, z);
+				if (c->index == Q->langcap && P->gp) {
+					char g[32];
+					long gn = lmatch_gsub(at, &src, a, z, P->gp, P->gpl, P->gr, P->grl, g, sizeof g);
+					lang = gn < 0 ? -1 : resolve(NULL, g, 0, (uint32_t)gn);
+				} else if (c->index == Q->langcap) lang = resolve(&src, NULL, a, z);
 				else if (c->index == Q->content)
 					rc = P->incl ? push(&cr, mkrange(a, ts_node_start_point(c->node), z, ts_node_end_point(c->node)))
 					             : node_ranges(c->node, &cr);
 			}
 			if (rc || lang < 0 || !cr.n) continue;
-			Inj *j = inj_new(&I, lang);
-			if (!j) rc = -1;
-			else rc = clip(&cr, &L->reg[ti], &j->r);
+			int64_t pat = P->comb ? (int64_t)ti << 32 | m.pattern_index : -1;
+			Inj *j = NULL;
+			for (uint32_t k = 0; pat >= 0 && k < I.n && !j; k++)
+				if (I.v[k].pat == pat && I.v[k].lang == lang) j = &I.v[k];
+			if (!j && (j = inj_new(&I, lang))) j->pat = pat;
+			rc = j ? clip(&cr, &L->reg[ti], &j->r) : -1;
 		}
 	}
 	/* children in the order their languages first appear; unused ones go */

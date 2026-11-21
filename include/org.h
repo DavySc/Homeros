@@ -93,4 +93,16 @@ int    orgfx_update(OrgFx *f, int (*stop)(void));
    allocation.  Before an update, the bytes an edit did not touch keep the
    colours they had. */
 void   orgfx_faces(OrgFx *f, size_t a, size_t z, unsigned char *face);
+/* the fold level of line, as nvim-orgmode's foldexpr: the stars of the
+   headline whose subtree holds it (org-current-level), 0 before the first;
+   *start is 1 on the headline itself.  It sees edits made since the last
+   update (it updates first). */
+int    orgfx_foldexpr(OrgFx *f, size_t line, int *start);
+/* org-todo 'right (dir 1) or 'left (dir -1) on the entry holding pos,
+   with Davy's keywords and logging (kitty-org.el): blocking by children
+   and ORDERED, COMMENT, CLOSED, repeaters, LAST_REPEAT, the LOGBOOK note.
+   now is local minutes since 1970.  The new text is s with [*a, *b)
+   replaced by the *len bytes returned (valid until the next call);
+   *a == *b and *len == 0 when nothing changes; NULL when out of memory. */
+const char *org_todo_step(const char *s, size_t n, size_t pos, int dir, long now, size_t *a, size_t *b, size_t *len);
 #endif

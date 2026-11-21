@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
 """Differential test of src/org (package 16) against Org's own parser.
 
-    org_conform.py [-f] DRIVER N SEED     N random org texts, fed to both
-    org_conform.py [-f] DRIVER FILE...    given files
+    org_conform.py [-f|-t] DRIVER N SEED     N random org texts, fed to both
+    org_conform.py [-f|-t] DRIVER FILE...    given files
 
 DRIVER is tests/org_drv.c built; Org runs as emacs -Q --batch with
 tools/org_dump.el, or with -f, the colours: tools/org_faces.el, its faces
-named as src/org shows them (FACES).  Prints the first difference of each
+named as src/org shows them (FACES), or with -t, org-todo as cit and ciT
+run it: tools/org_todo.el, on FILE.cmd's position and directions.  Prints the first difference of each
 failing text (the text is kept in build/org-fail-*.org) and "N differ"."""
 import os, random, re, subprocess, sys, tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 WORDS = ['a', 'b', 'x', 'TODO', 'DONE', 'NEXT', 'WAIT', 'CANCELLED', 'todo', 'COMMENT', '[#A]', '[#a]',
          '[#1]', '[#12]', '[#65]', ':a:', ':b:c:', '::', ':@x_1:', '[fn:1]', '*', '-', '+', '1.', 'a)',
-         '|', '#', '#+', ':', '[', ']', '<2026-11-22 Sun>', '[2026-11-22 Sun 09:00]', 'é', 'λ', '→', '\u00a0', '\u3000', '\f', '\r']
+         '|', '#', '#+', ':', '[', ']', '<2026-11-22 Sun>', '[2026-11-22 Sun 09:00]', 'é', 'λ', '→', '\u00a0', '\u3000', '\f', '\r',
+         '[150%]', '[050%]', '@@a:b@@c:d@@', 'COMMENTx']
 # above ASCII, Emacs's [[:word:]] and [[:alnum:]] differ: é both, ² and · word only, º alnum only, → € neither
 U = ['é', '²', '·', 'º', '→', '€']
 
@@ -69,7 +71,7 @@ def line_k(r, k):
     if k == 2:
         return i + r.choice([':PROPERTIES:', ':properties:', ':END:', ':end:', ':LOGBOOK:', ':a-b_c:', ':é:', ':x:y:', ':' + uni(r) + ':'])
     if k == 3:
-        return i + r.choice([':EFFORT: 0:12', ':STYLE: habit', ':ID:', ':a:b', ':x+: 1', ': x', ':', ':A:\tb'])
+        return i + r.choice([':EFFORT: 0:12', ':STYLE: habit', ':ID:', ':a:b', ':x+: 1', ': x', ':', ':A:\tb', ':k: |<5>| x'])
     if k == 4:
         return i + r.choice(['CLOCK: ', 'clock: ', 'CLOCK:\t']) + r.choice([
             ts(r) + '--' + ts(r) + ' =>  1:30', ts(r), ts(r) + ' x', '=> 0:10', ts(r) + '--' + ts(r), ts(r) + '--' + ts(r) + ' => 1:3',
@@ -78,7 +80,7 @@ def line_k(r, k):
         return i + r.choice(['# ', '#', '#x ']) + text(r)
     if k == 6:
         return i + '#+' + r.choice(['NAME', 'name', 'CAPTION', 'CAPTION[x y]', 'RESULTS', 'RESULTS[ab]', 'ATTR_HTML',
-                                    'attr_latex', 'HEADER', 'TBLNAME', 'TITLE', 'a:b', 'x[y]', 'CALL', 'TBLFM', 'STARTUP']) + r.choice([':', ': ', '', ' :']) + text(r)
+                                    'attr_latex', 'HEADER', 'TBLNAME', 'TITLE', 'a:b', 'x[y]', 'CALL', 'TBLFM', 'STARTUP', 'caption[a]: b]']) + r.choice([':', ': ', '', ' :']) + text(r)
     if k in (7, 8):
         b = r.choice(BLOCKS)
         return i + r.choice(['#+begin_', '#+BEGIN_', '#+end_', '#+END_']) + b + r.choice(['', ' ', ' python -n 3 :var x=1'])
@@ -87,7 +89,7 @@ def line_k(r, k):
     if k in (10, 11, 12):
         return i + r.choice(['-', '+', '*', '1.', '2)', '10.', 'a.', '-', '-']) + r.choice([' ', ' ', '  ', '\t', '']) + r.choice(['', '', '[ ] ', '[X] ', '[x] ', '[-] ', '[@3] ', '[@start:2] ']) + text(r) + r.choice(['', '', ' :: ' + text(r), ' ::', ':: x'])
     if k == 13:
-        return i + r.choice(['|', '| a | b |', '|-', '|---+---|', '| x', '+--+--+', '+--+', '| a |\t'])
+        return i + r.choice(['|', '| a | b |', '|-', '|---+---|', '| x', '+--+--+', '+--+', '| a |\t', '| <c> |'])
     if k == 14:
         return i + r.choice(['#+TBLFM: $2=$1', '#+tblfm: x', '#+TBLFM:'])
     if k == 15:
@@ -167,10 +169,53 @@ def gen(r):
     return '\n'.join(line(r) for _ in range(r.randint(1, 30))) + r.choice(['\n', '\n', '', '\n\n', '\n  '])
 
 
+def ts_todo(r, open_='<'):
+    day = r.randint(12, 28)
+    hm = r.random() < .4
+    t = '%s2026-11-%02d' % (open_, day) + r.choice([' ' + 'ThuFriSatSunMonTueWed'[3 * ((day - 19) % 7):][:3], ' Thu', '', '  Mon'])
+    if hm:
+        t += r.choice([' 10:00', ' 9:30', ' 17:30', ' 18:00-19:15', ' 23:50'])
+    rep = r.choice(['', '+1d', '++1w', '.+2d', '+1m', '+1y', '+0d', '.+1d/3d', '+2w', '++2d', '.+1m'] +
+                   (['+2h', '.+1h'] + (['++3h'] if day == 19 else []) if hm else []))
+    if day < 13 and rep.startswith('++'):
+        rep = '+1d'
+    t += (' ' + rep if rep else '') + r.choice(['', '', ' -2d', ' --1d'])
+    return t + {'<': '>', '[': ']'}[open_]
+
+
+def gen_todo(r):
+    """entries for org-todo: keywords, planning, drawers, children, repeaters.
+    No source blocks: when a new LOGBOOK lands inside one (after a stray
+    :LOGBOOK: line there), org-indent-region re-indents the block's code in
+    its language's mode and escapes it, which src/org does not copy (seed 5,
+    1 of 10,000 texts)"""
+    out = []
+    for _ in range(r.randint(1, 5)):
+        h = '*' * r.choice([1, 1, 2, 2, 3]) + r.choice([' ', ' ', '  '])
+        h += r.choice(['', '', 'TODO ', 'NEXT ', 'WAIT ', 'DONE ', 'CANCELLED ', 'todo ', 'TODO  ', 'DONE\t', 'TODOx '])
+        h += r.choice(['a', 'task b', '', 'x :tag:', '[#A] y', 'COMMENT z', '<2026-11-20 Fri +1w> c'])
+        out.append(h.replace('\\t', '\t').rstrip(' ') if r.random() < .8 else h)
+        if r.random() < .5:
+            k = r.sample(['SCHEDULED: ' + ts_todo(r), 'DEADLINE: ' + ts_todo(r), 'CLOSED: ' + ts_todo(r, '[')], r.randint(1, 3))
+            out.append(r.choice(['', ' ', '  ']) + ' '.join(k) + r.choice(['', ' ']))
+        if r.random() < .4:
+            props = r.sample([':ORDERED: t', ':ORDERED: nil', ':LAST_REPEAT: [2026-11-01 Sun 10:00]', ':CUSTOM_ID: x',
+                              ':ordered: t', ':Effort: 1:00'], r.randint(0, 3))
+            out += [':PROPERTIES:'] + props + [':END:']
+        if r.random() < .3:
+            out += [r.choice([':LOGBOOK:', ':logbook:']), '- State "DONE"       from "TODO"       [2026-11-10 Tue 09:00]', ':END:']
+        for _ in range(r.randint(0, 3)):
+            out.append(r.choice(['text', '', '- item', 'see ' + ts_todo(r), ts_todo(r), '  ' + ts_todo(r, '['),
+                                 ':NOTES:', ':END:', '#+begin_quote', '#+end_quote', 'SCHEDULED: ' + ts_todo(r)]))
+    return '\n'.join(out) + r.choice(['\n', '\n', ''])
+
+
 def run(driver, files, w):
-    el = subprocess.run(['emacs', '-Q', '--batch', '-l', os.path.join(HERE, 'org_faces.el' if w else 'org_dump.el')] + files,
-                        capture_output=True)
-    c = subprocess.run([driver] + (['-f', str(w)] if w else []) + files, capture_output=True)
+    el = subprocess.run(['emacs', '-Q', '--batch', '-l', os.path.join(HERE, {'t': 'org_todo.el', 0: 'org_dump.el'}.get(w, 'org_faces.el'))] + files,
+                        capture_output=True, env=dict(os.environ, TZ='UTC'))
+    if el.returncode:
+        sys.exit('emacs failed: ' + el.stderr[-2000:].decode('utf-8', 'replace'))
+    c = subprocess.run([driver] + (['-t'] if w == 't' else ['-f', str(w)] if w else []) + files, capture_output=True)
     if c.returncode:
         sys.exit('driver failed: ' + c.stderr[-2000:].decode('utf-8', 'replace'))
 
@@ -182,7 +227,7 @@ def run(driver, files, w):
             if l.startswith('== '):
                 cur = l[3:]
                 d[cur] = []
-            elif l:
+            elif l or w == 't':   # the texts org-todo leaves, blank lines and all
                 d[cur].append(l)
         return d
     # bytes: a title may hold \r or \f, which text mode would take for line ends
@@ -191,7 +236,8 @@ def run(driver, files, w):
 
 def main():
     faces = sys.argv[1] == '-f'
-    if faces:
+    todo = sys.argv[1] == '-t'
+    if faces or todo:
         del sys.argv[1]
     driver = sys.argv[1]
     os.makedirs('build', exist_ok=True)
@@ -203,7 +249,11 @@ def main():
         for i in range(n):
             p = os.path.join(tmp, 't%05d.org' % i)
             with open(p, 'w', encoding='utf-8', newline='') as g:
-                g.write((gen_faces if faces else gen)(r))
+                t = (gen_faces if faces else gen_todo if todo else gen)(r)
+                g.write(t)
+            if todo:   # org-todo at a random character, 1 to 4 times right or left
+                with open(p + '.cmd', 'w') as g:
+                    g.write('%d %s\n' % (len(t[:r.randint(0, len(t))].encode()), ''.join(r.choice('rrl') for _ in range(r.randint(1, 4)))))
             files.append(p)
         print('org_conform: %d texts, seed %d' % (n, seed))
     else:
@@ -212,11 +262,11 @@ def main():
     for k in range(0, len(files), 400):
         part = files[k:k + 400]
         # the colours are read in windows of w bytes, as the editor draws
-        el, c = run(driver, part, random.Random(k).choice([7, 64, 1024, 8192]) if faces else 0)
+        el, c = run(driver, part, random.Random(k).choice([7, 64, 1024, 8192]) if faces else 't' if todo else 0)
         for p in part:
             name = os.path.basename(p)
             a, b = el.get(name), c.get(name)
-            if a and a[-1].startswith('!error'):
+            if a and any(l.startswith('!error') for l in a):
                 errors += 1   # no answer from Org to compare with
                 continue
             if faces:
@@ -232,8 +282,9 @@ def main():
             bad += 1
             if bad <= 5:
                 keep = os.path.join('build', 'org-fail-' + name)
-                with open(p, 'rb') as f, open(keep, 'wb') as g:
-                    g.write(f.read())
+                for x in ['', '.cmd'] if todo else ['']:
+                    with open(p + x, 'rb') as f, open(keep + x, 'wb') as g:
+                        g.write(f.read())
                 a, b = a or ['(no output)'], b or ['(no output)']
                 j = next((j for j in range(max(len(a), len(b))) if j >= len(a) or j >= len(b) or a[j] != b[j]), 0)
                 print('%s (kept as %s): line %d\n  org: %s\n  ours: %s' % (
