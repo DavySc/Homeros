@@ -6,6 +6,7 @@
    may_sync_undo()); a beep drops the stuffed and executed keys
    (beep_flush()). */
 #include <limits.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -150,7 +151,14 @@ static int map(Editor *e, int k)
 		case 'u': kitten_toggle(e); break;
 		case 'D': dashboard(e); break;
 		/* Davy's emacs SPC cc compile (prompts) and cC recompile */
-		case 'c': if (m[2] == 'c') E = e, cmdline(':', "make "); else tools_make(e, NULL); break;
+		case 'c':
+			if (m[2] == 'C') { tools_make(e, NULL); break; }
+			/* Emacs's compile: the last command, to edit */
+			char c[sizeof e->cmd];
+			const char *l = tools_make_last();
+			snprintf(c, sizeof c, "make %s", l ? l : "");
+			E = e, cmdline(':', c);
+			break;
 		default: git_leader(e, m[1], m[2]);
 		}
 		return 1;
@@ -283,9 +291,12 @@ static void ex(void)
 	/* :s[ubstitute] :& :~ (:&& is :& with the flag &), on the cursor's
 	   line by default; line 0 is line 1 (no EX_ZEROR) */
 	size_t k = strspn(p, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
-	if (k >= 3 && k <= 10 && !strncmp(p, "nohlsearch", k) && !p[k]) {
+	/* :noh[lsearch], and :mak[e] {cmd} (tools.h) with the rest of the line its argument */
+	int nohl = k >= 3 && k <= 10 && !strncmp(p, "nohlsearch", k) && !p[k];
+	if (nohl || (k >= 3 && k <= 4 && !strncmp(p, "make", k) && (!p[k] || p[k] == ' ' || p[k] == '\t'))) {
 		if (n) core_msg(E, "E481: No range allowed");
-		else no_hlsearch = 1;
+		else if (nohl) no_hlsearch = 1;
+		else tools_make(E, p + k + strspn(p + k, " \t"));
 		return;
 	}
 	if (k ? k <= 10 && !strncmp(p, "substitute", k) : (k = *p == '&' || *p == '~')) {
@@ -293,12 +304,6 @@ static void ex(void)
 		if (l1 > l2) { core_msg(E, "E493: Backwards range given"); return; }
 		if (l1 < 0 || l2 > nlines()) { core_msg(E, "E16: Invalid range"); return; }
 		ex_sub(l1 > 0 ? l1 - 1 : 0, l2 > 0 ? l2 - 1 : 0, *p, p + k + strspn(p + k, " \t"));
-		return;
-	}
-	/* :mak[e] {cmd} (tools.h), the rest of the line its argument */
-	if (k >= 3 && k <= 4 && !strncmp(p, "make", k) && (!p[k] || p[k] == ' ' || p[k] == '\t')) {
-		if (n) core_msg(E, "E481: No range allowed");
-		else tools_make(E, p + k + strspn(p + k, " \t"));
 		return;
 	}
 	static const char *const cmds[] = { "", "w", "w!", "q", "q!", "wq", "wq!", "x", "Format", "KittenPaw", "Dashboard" };
