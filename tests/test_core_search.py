@@ -3,7 +3,7 @@
 usage: test_core_search.py N [SEED] --record FILE
 Each case: a random text, a window of random size with or without wrap,
 a search typed with / for a piece of the text (sometimes anchored with ^
-or $, or across a line break with \\n), then the cursor at a random place.
+or $, or across a line break with \\n, or \\n alone), then the cursor at a random place.
 The cells whose screenattr() changes under 'nohlsearch' are the matches;
 of those, the ones that change when CurSearch is redefined are CurSearch."""
 import concurrent.futures, json, os, random, subprocess, sys, tempfile
@@ -70,6 +70,7 @@ def gen_pat(r, lines):
     if k < .4: return esc + '\\n' if a + len(piece) == len(s) else esc
     if k < .45: return '$'
     if k < .5: return '^'
+    if k < .55: return '\\n'
     return esc
 
 def gen_case(r):

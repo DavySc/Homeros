@@ -3,7 +3,10 @@
    cursor moved) and compares the cells of each text row drawn in
    FACE_SEARCH and FACE_CUR_SEARCH (a double-width character's right half
    as its left).  usage: test_core_search [FILE] (default the .txt); with
-   -v, prints every difference. */
+   -v, prints every difference.  The recorder makes no match over several
+   lines with the cursor off its first one: there Neovim draws CurSearch
+   on all its lines and the core only on the cursor's (a known
+   difference, reviews/pr-106.md finding 3). */
 #include <string.h>
 #include <unistd.h>
 #include "check.h"

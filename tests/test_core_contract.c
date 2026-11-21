@@ -284,6 +284,16 @@ int main(void)
 	/* cell 2 is 漢's second half, drawn with its first */
 	for (int c = 0; c < 4; c++) if (c != 2) CHECK((g.c[win_numw(e.win) + c].bg == FACE_INC_SEARCH) == (c < 3));
 	e.ks.yank.type = 0;
+	/* 'hlsearch' over the flash (an extmark under win_line()'s
+	   search_attr): "ab ab ab ab", /ab, gg0ly3l shows C C I S S
+	   (measured, reviews/pr-106-repro/flash_search.lua) */
+	CHECK((f = fopen(ey, "w")) && fputs("ab ab ab ab\n", f) >= 0 && !fclose(f));
+	CHECK(!core_edit_file(&e, ey, 1));
+	for (const char *k = "/ab\rgg0ly3l"; *k; k++) keys_feed(&e, *k == '\r' ? KEY_ENTER : *k, 0);
+	core_draw(&e, &g);
+	const unsigned char fs[] = { FACE_CUR_SEARCH, FACE_CUR_SEARCH, FACE_INC_SEARCH, FACE_SEARCH, FACE_SEARCH };
+	for (int c = 0; c < 5; c++) CHECK(g.c[win_numw(e.win) + c].bg == fs[c]);
+	e.ks.yank.type = 0;
 	unlink(ey);
 	core_free(&e);
 	for (int i = 0; i < 4; i++) unlink(fn[i]);
