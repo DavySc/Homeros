@@ -1757,11 +1757,11 @@ int sql_format(size_t a, size_t z)
 
 /* nvim-orgmode's cit and ciT (org_todo, org_todo_prev), kittymax's
    org-todo 'right and 'left: the entry's next or previous TODO keyword */
-int org_cycle(int dir)
+void org_cycle(int dir)
 {
 	size_t n = text_len(B->text), a, z, len;
 	char *s = malloc(n + 1);
-	if (!s) return oom();
+	if (!s) { oom(); return; }
 	text_read(B->text, 0, s, n);
 	/* local minutes, timegm(localtime()) / 60 without timegm or
 	   tm_gmtoff (not on Windows): the fields' difference is the offset.
@@ -1774,9 +1774,8 @@ int org_cycle(int dir)
 		+ (l.tm_hour - g.tm_hour) * 60 + l.tm_min - g.tm_min;
 	const char *r = org_todo_step(s, n, core_line_start(E, W->line) + W->col, dir, now, &a, &z, &len);
 	free(s);
-	if (!r) return oom();
-	replace(a, z, r, len);
-	return 0;
+	if (r) replace(a, z, r, len);
+	else oom();
 }
 
 /* fmt_check_par() without 'comments' (see do_join()): a blank line, or a

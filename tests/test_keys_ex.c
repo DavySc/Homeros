@@ -355,7 +355,8 @@ int main(void)
 	/* 'redrawtime': a frame of a pattern that takes long on every line ends
 	   after 2 s.  Each line here gives up after MAXSTEPS: without the budget
 	   50 lines took about 3 s under ASan, so a fast runner passed; 400 take
-	   28 to 31 s, with it 2.02 to 2.03 s (measured, 3 runs each) */
+	   28 to 35 s, with it 2.02 to 2.88 s, the most with 64 busy processes
+	   on 4 cores (measured, 3 to 5 runs each): 8 s lies between */
 	text(path, "aaaaaaaaaaaaaaaa\n", 17 * 400, "b\n");
 	CHECK(!core_open(&e, path));
 	feed(&e, "400G/\\(a*\\)*b\r");
@@ -363,7 +364,7 @@ int main(void)
 	e.win->top = 0;
 	long long t0 = loop_now();
 	for (size_t i = 0; i < 400; i++) CHECK(!keys_hl(&e, e.win, i, 0, &hs, &hz));
-	CHECK(loop_now() - t0 < 3000000000LL);
+	CHECK(loop_now() - t0 < 8000000000LL);
 	core_free(&e);
 	text(path, "select a from t;\n", 300000, "END\n");
 	CHECK(!core_open(&e, path));

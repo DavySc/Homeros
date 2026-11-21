@@ -145,6 +145,7 @@ static int map(Editor *e, int k)
 		if (m[j]) { part = 1; continue; }
 		nlead = e->ks.pending = 0;
 		normal_mappable(1);
+		undo_close(e->buf->undo);   /* a map is a command of its own: keys_feed() closes before each */
 		switch (m[0] == '-' ? 'p' : m[1]) {
 		case 'f': tools_pick(e, m[2] == 'f' ? PICK_SMART : m[2] == 'g' ? PICK_GREP : PICK_REGISTERS); break;
 		case ',': tools_pick(e, PICK_BUFFERS); break;
@@ -155,7 +156,6 @@ static int map(Editor *e, int k)
 		case 'D': dashboard(e); break;
 		default: git_leader(e, m[1], m[2]);
 		}
-		undo_close(e->buf->undo);   /* a map is one command: keys_feed() closes after each */
 		return 1;
 	}
 	if (part) return e->ks.pending = 1;   /* keys_input() sends the next keys here first */

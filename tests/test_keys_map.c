@@ -128,6 +128,10 @@ int main(void)
 	CHECK(at(&d, "* TODO a b\n", 9));
 	feed(&d, "u");
 	CHECK(at(&d, "* NEXT a b\n", 9));
+	feed(&d, "xcitu");                         /* not the x before it */
+	CHECK(at(&d, "* NEXT a \n", 8));
+	feed(&d, "u");
+	CHECK(at(&d, "* NEXT a b\n", 9));
 	feed(&d, "0wwcwc\x1b");
 	CHECK(at(&d, "* NEXT c b\n", 7));
 	/* DONE stamps CLOSED with the local clock (a zone 5:45 east, named as
