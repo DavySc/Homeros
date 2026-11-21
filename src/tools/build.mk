@@ -17,3 +17,5 @@ build/ghostty/windows.lib: src/tools/ghostty.nix build/ghostty/libghostty-vt.a
 	nix build -f $< --argstr target x86_64-windows-gnu -o build/ghostty-nix-win
 	cp build/ghostty-nix-win/lib/ghostty-vt-static.lib $@
 	chmod u+w $@
+# wincc compiles term.c against its headers (a fresh copy, as planted.sh makes)
+wincc: build/ghostty/libghostty-vt.a
