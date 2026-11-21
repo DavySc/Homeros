@@ -1,0 +1,38 @@
+# A second reference for stepping: cdb, Microsoft's debugger engine, on the very programs RAD was recorded on
+# (rdi/*.exe). It commits what cdb did under traces-cdb/; nothing compares with it yet but a person.
+name: cdb-trace
+on:
+  push:
+    branches: [claude/project-thread-l4spyq]
+    paths: ['cdb/**', '.github/workflows/cdb-trace.yml']
+permissions:
+  contents: write
+concurrency:
+  group: cdb-trace
+  cancel-in-progress: true
+jobs:
+  trace:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Find cdb, or install the Windows SDK's debuggers
+        shell: pwsh
+        run: |
+          $cdb = 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe'
+          if (-not (Test-Path $cdb)) {
+            Invoke-WebRequest 'https://go.microsoft.com/fwlink/?linkid=2272610' -OutFile "$env:RUNNER_TEMP\winsdksetup.exe"
+            Start-Process "$env:RUNNER_TEMP\winsdksetup.exe" -ArgumentList '/features', 'OptionId.WindowsDesktopDebuggers', '/quiet', '/norestart' -Wait
+          }
+          if (-not (Test-Path $cdb)) { Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10' | ForEach-Object { $_.FullName }; exit 1 }
+          & $cdb -version
+      - name: Record
+        shell: pwsh
+        run: |
+          foreach ($exe in Get-ChildItem rdi/*.exe) { ./cdb/trace.ps1 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe' $exe.FullName (Join-Path $PWD traces-cdb) }
+          foreach ($f in Get-ChildItem traces-cdb/recur*.txt, traces-cdb/calls_jmc*.txt) { "===== $($f.Name) (first 30 lines)"; Get-Content $f -TotalCount 30 }
+      - name: Commit what cdb did to this branch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add traces-cdb && git diff --cached --quiet || { git commit -qm "What cdb does on the recorded programs [skip ci]" && git pull -q --rebase && git push -q; }
