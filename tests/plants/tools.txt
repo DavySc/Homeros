@@ -102,3 +102,4 @@ terminal: hidden output redraws the editor~test TESTS=tools_term~~src/tools/term
 terminal: bold dropped~test TESTS=tools_term~~src/tools/term.c~st.flags & GHOSTTY_STYLE_FLAG_BOLD ? FACE_BOLD : 0~0
 terminal: cursor shape ignored~test TESTS=tools_term~~src/tools/term.c~cur.visual_style == GHOSTTY_CURSOR_STYLE_BAR ? CURSOR_BAR~0 ? CURSOR_BAR
 terminal: the slot memo trusted without comparing the slot's face~test TESTS=tools_term~~src/tools/term.c~if (k < SLOT0 || memcmp(&faces[k], f, sizeof *f)) {~if (k < SLOT0) {
+main: Ctrl+Z suspends the editor while the terminal is open (ctrlz.py)~test TESTS=tools_term~~src/main.c~ && !tools_term()) {~) {
