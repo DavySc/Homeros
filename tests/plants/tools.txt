@@ -63,7 +63,7 @@ main: homeros without a file is a usage error~test TESTS=shada~~src/main.c~	if (
 main: a file session never measures "loaded in", so :Dashboard shows 0.0ms (start.py)~test TESTS=shada~~src/main.c~	tools_dash(&e, (long long)t0~	if (!file) tools_dash(&e, (long long)t0
 dashboard: a second tools_dash forgets the startup time~test TESTS=tools_dash~~src/tools/dash.c~	D.ms = ms;~	D.ms = 0 * ms;
 dashboard: "loaded in" measured only when the first draw shows it~test TESTS=tools_dash~~src/tools/dash.c~	if (D.start) {~	if (D.start && shown(e)) {
-keys: :Dashboard is not a command (start.py)~test TESTS=shada~~src/keys/keys.c~	else if (!strcmp(c, "Dashboard")) dashboard(E);¶~
+keys: :Dashboard is not a command (start.py)~test TESTS=shada~~src/keys/keys.c~	default: dashboard(E);~	default: break;
 keys: SPC D is not mapped (start.py)~test TESTS=shada~~src/keys/keys.c~ "-", " D",~ "-",
 keys: :Dashboard opens over the file, so it closes at once (start.py)~test TESTS=shada~~src/keys/keys.c~if (!core_edit_file(e, "", 0)) tools_dash(e, 0);~tools_dash(e, 0);
 dashboard: stays over the file brought back after :Dashboard (CTRL-^, SPC ,)~test TESTS=tools_dash~~src/tools/dash.c~e->buf != D.buf || ~

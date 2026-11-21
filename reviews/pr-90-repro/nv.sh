@@ -1,0 +1,2 @@
+# nv.sh FILE KEYS: the same keys in nvim --headless (keys in Vim's notation, \<CR>), prints cursor, v:errmsg and the time
+d=$(mktemp -d); cd $d && timeout ${T:-120} nvim --headless --clean -n -c 'set ic scs nowrap noincsearch' -c 'let g:t=reltime()' -c "silent! exe \"normal $2\"" -c 'call writefile([printf("line %d col %d err [%s] %.3f s", line("."), col(".")-1, v:errmsg, reltimefloat(reltime(g:t)))] + (line("$") < 30 ? map(getline(1, "$"), "\"|\" . v:val . \"|\"") : []), "out")' -c 'qa!' "$1"; echo "rc=$?"; cat out; rm -rf $d

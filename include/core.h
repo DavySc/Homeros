@@ -18,6 +18,8 @@
 #include "grid.h"
 #include "keys.h"
 
+enum { SCROLLOFF = 6 };   /* FEATURES.md 1; keys' :s c flag scrolls by it too */
+
 enum { MODE_NORMAL, MODE_INSERT, MODE_CMDLINE };
 /* state flags kept with undo: the buffer has no lines (Neovim's ML_EMPTY: a
    new or empty file, or after deleting every line; shown as one empty line) */
@@ -52,6 +54,9 @@ typedef struct Buf {
 	Text *text;
 	Undo *undo;
 	char *path;                /* NULL for a buffer without a name */
+	char *full;                /* Neovim's b_ffname: path through file_full() (the path
+	                              as typed when that fails); buffers are found by it
+	                              (buflist_findname()); set and freed with path */
 	FileId id;
 	Journal *journal;          /* crash journal; NULL if it could not be opened (msg said why) */
 	int watch;                 /* file_watch fd for the loop, -1 if none */

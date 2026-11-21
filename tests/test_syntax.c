@@ -1,6 +1,7 @@
 /* Syntax colours against Neovim 0.12 (nvim --headless on PATH, running
    tests/test_syntax.lua): random windows of real C, Lua, Markdown, Rust
-   (ripgrep's printer) and GLSL (glslang's test shaders) files, then random
+   (ripgrep's printer), GLSL (glslang's test shaders) and Nix (nixpkgs'
+   writers) files, then random
    edits applied incrementally with parses in between.  Neovim replays the same edits and parses, and its highlighter's captures, with
    its predicates, injections and #set! priority, must give the same face
    for every byte (per byte the highest priority wins, the later capture on
@@ -20,8 +21,8 @@
 #include "text.h"
 #include "../src/syntax/lmatch.h"
 
-enum { NL = 5, MAXCASES = 300, EDITS = 25, MAXT = 1 << 15 };
-static const char *const ext[NL] = { "c", "lua", "md", "rs", "frag" };
+enum { NL = 6, MAXCASES = 300, EDITS = 25, MAXT = 1 << 15 };
+static const char *const ext[NL] = { "c", "lua", "md", "rs", "frag", "nix" };
 static int CASES = 40;   /* per language; CASES and SEED in the environment */
 
 static char dir[] = "/tmp/test_syntax_XXXXXX";
@@ -79,6 +80,7 @@ static const char *const snip[NL][16] = {
 	{ "\n", "#", "```", "```c\n", "```lua\n", "*", "_", "`", "[", "](", ")", "- ", "| a |", "\n\n", "\xc3\xa9", "> " },
 	{ "\n", "//", "/*", "*/", "\"", "'", "{", "}", "(", ")", "!", "x", "\xc3\xa9", "println!(\"{}\", a);", "fn f<T>(", "r#\"" },
 	{ "\n", "//", "/*", "*/", "{", "}", "(", ")", ".", "x", "\xc3\xa9", "#version 450\n", "uniform vec4 c;", "layout(location = 0) ", "gl_FragColor", "#define A 1\n" },
+	{ "\n", "#", "/*", "*/", "''", "\"", "{", "}", "=", ";", "x", "${", "let ", "# lua\n", "/* lua */ ''", "pkgs.writeRust \"a\" {} ''" },
 };
 
 static int stops_left;
@@ -166,6 +168,7 @@ static int tat(void *v, size_t i)
 	return text_read(v, i, &c, 1) ? (unsigned char)c : -1;
 }
 
+/* each case's line: find's 0 or 1, then gsub's result in hex or "!" */
 static size_t lpat_cases(FILE *pf, char *got)
 {
 	static const char *const pats[] = {
@@ -173,18 +176,27 @@ static size_t lpat_cases(FILE *pf, char *got)
 		"^[-][-][-]", "^[-][-](%s?)@", "^[%d]+(%.[%d]+)?$", "^;+%s*format%-ignore%s*$",
 		"%a+", "%W", "[^%s]-x", "a.-b", "%bxy", "%f[%w]%w+", "(a)%1", "()b", "[a-c%]]+",
 		"x?y*z+", "%", "[a", "%g%G", "$^", "^$", "%u%l%d%p%c%x%s%z",
+		"/%*%s*([%w%p]+)%s*%*/", "#%s*([%w%p]+)%s*", "^(a)(b?)",
 	};
-	static const char alpha[] = "aAbxyzZ_9 -*/.;@%[]()\t\xc3\xa9";
+	static const char alpha[] = "aAbxyzZ_9 -*/.;@%[]()#\t\xc3\xa9";
+	/* #gsub!'s replacements, as Nix's injections use "%1" */
+	static const char *const reps[] = { "%1", "%0", "<%1>", "%%", "%2", "x", "", "%", "%a" };
 	size_t n = 0;
 	for (int k = 0; k < 4000; k++) {
 		const char *p = pats[rnd(sizeof pats / sizeof *pats)];
 		char s[24];
 		size_t sn = rnd(sizeof s);
 		for (size_t i = 0; i < sn; i++) s[i] = alpha[rnd(sizeof alpha - 1)];
-		fprintf(pf, "%s\t%.*s\n", p, (int)sn, s);
+		const char *r = reps[rnd(sizeof reps / sizeof *reps)];
+		fprintf(pf, "%s\t%s\t%.*s\n", r, p, (int)sn, s);
 		Text *t = text_new(s, sn);
 		CHECK(t);
-		got[n++] = (char)('0' + lmatch_find(tat, t, 0, text_len(t), p, strlen(p)));
+		char g[256];
+		long gn = lmatch_gsub(tat, t, 0, text_len(t), p, strlen(p), r, strlen(r), g, sizeof g);
+		n += (size_t)sprintf(got + n, "%d", lmatch_find(tat, t, 0, text_len(t), p, strlen(p)));
+		if (gn < 0) n += (size_t)sprintf(got + n, "!");
+		for (long i = 0; i < gn; i++) n += (size_t)sprintf(got + n, "%02x", (unsigned char)g[i]);
+		got[n++] = '\n';
 		text_free(t);
 	}
 	return n;
@@ -493,6 +505,7 @@ int main(void)
 	add_dir(2, ".", ".md");
 	add_dir(3, "build/syntax/src/corpus/rust", ".rs");
 	add_dir(4, "build/syntax/src/corpus/glsl", ".frag");   /* the first 64 by name */
+	add_dir(5, "build/syntax/src/corpus/nix", ".nix");
 	for (int l = 0; l < NL; l++) CHECK(ncorpus[l]);
 
 	static unsigned char fa[MAXT], fb[MAXT], fs[MAXT], ff[MAXT];
@@ -509,10 +522,19 @@ int main(void)
 		   captures across block quote markers, which the highlighter colours
 		   only inside the inline tree's ranges, so the second "> " stays
 		   plain; case 3, Rust macros, whose bodies Neovim parses as Rust
-		   (injection.include-children) and whose name contains? "assert".
+		   (injection.include-children) and whose name contains? "assert";
+		   case 5, Nix's combined injections: Lua named by a comment
+		   (#gsub!) in two strings parsed as one tree, and writeRust's;
+		   case 11, a Nix string Neovim does not inject, as its injection
+		   query's patterns of languages we lack still count toward the 256
+		   in-progress matches. 
 		   The others: up to 80 lines of the corpus from a random line */
 		const char *fx = c == 2 ? "> *a\n> b* `c\n> d` [e\n> f](g)\n"
-		               : c == 3 ? "fn f() {\n    assert_eq!(v.len(), 3);\n    println!(\"{}\", g(x).y);\n}\n" : NULL;
+		               : c == 3 ? "fn f() {\n    assert_eq!(v.len(), 3);\n    println!(\"{}\", g(x).y);\n}\n"
+		               : c == 5 ? "{\n  a = /* lua */ ''\n    local t = {\n  '';\n  b = /* lua */ ''\n    }\n  '';\n"
+		                          "  c = pkgs.writeRust \"r\" {} ''\n    fn main() { let x = 1; }\n  '';\n}\n"
+		               : c == 11 ? "  m (a // { i = \"${l.e p.b}\"; }) na/* lua */ ''  else\n    L b the ${f l is a s t b\n"
+		                           "    C b c w${ or w e a.\n:::{.example}\n    }\n    ''\n" : NULL;
 		const char *src = fx ? fx : corpus[lang][rnd((unsigned)ncorpus[lang])];
 		size_t sn = strlen(src), a = fx ? 0 : rnd((unsigned)sn), z;
 		while (a && src[a - 1] != '\n') a--;
@@ -594,7 +616,7 @@ int main(void)
 	CHECK((size_t)len < sizeof cmd - 1);
 	fclose(snap);
 
-	static char pgot[8192];
+	static char pgot[1 << 20];
 	snprintf(path, sizeof path, "%s/out.pat", dir);
 	FILE *pf = fopen(path, "w");
 	CHECK(pf);
@@ -665,15 +687,18 @@ int main(void)
 	}
 	snprintf(path, sizeof path, "%s/out.patout", dir);
 	char *po = slurp(path, &pn);
-	CHECK(pn == npg);
-	int pdiff = 0;
-	for (size_t i = 0; i < npg; i++) pdiff += po[i] != pgot[i];
+	int pdiff = 0, plines = 0;
+	CHECK(pn && po[pn - 1] == '\n');
+	for (char *x = po, *y = pgot; x < po + pn && y < pgot + npg; x = strchr(x, '\n') + 1, y = strchr(y, '\n') + 1, plines++)
+		if (strncmp(x, y, (size_t)(strchr(x, '\n') - x + 1)) && ++pdiff == 1)
+			fprintf(stderr, "Lua pattern case: LuaJIT %.*s here %.*s\n", (int)(strchr(x, '\n') - x), x, (int)(strchr(y, '\n') - y), y);
 	printf("test_syntax: %d of %d cases (%zu bytes) differ from Neovim, and %d of %d frames between an edit "
 	       "and its parse; sliced parses or other windows differ in %d of %d cases without syntax errors "
-	       "(and %d of %d with; Markdown's history-dependent trees in %d more); %d of %zu Lua patterns differ "
+	       "(and %d of %d with; Markdown's history-dependent trees in %d more); %d of 4000 Lua patterns (find, gsub) differ "
 	       "from LuaJIT\n",
 	       differ, n, bytes, snap_differ, snaps, slice_differ, n - with_err, slice_err, with_err, md_history,
-	       pdiff, npg);
+	       pdiff);
+	CHECK(plines == 4000);
 	CHECK(!differ && !snap_differ && !slice_differ && !pdiff);
 	free(ws);
 	free(ns);

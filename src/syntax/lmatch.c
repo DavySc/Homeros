@@ -245,3 +245,61 @@ int lmatch_find(int (*at)(void *, size_t), void *ctx, size_t a, size_t z, const 
 	} while (s++ < z && !anchor);
 	return 0;
 }
+
+/* the subject's [a, z) into out[*o..cap), 0 when it does not fit */
+static int add(MS *ms, char *out, size_t cap, size_t *o, size_t a, size_t z)
+{
+	if (z - a > cap - *o) return 0;
+	while (a < z) out[(*o)++] = (char)S(ms, a++);
+	return 1;
+}
+
+/* LuaJIT's str_gsub with a string replacement (add_s: %0 the match, %1 to
+   %9 its captures, % before anything else that character), as Neovim's
+   #gsub! directive runs it; -1 for a pattern Lua rejects or a result past
+   cap. */
+long lmatch_gsub(int (*at)(void *, size_t), void *ctx, size_t a, size_t z, const char *p, size_t n,
+                 const char *r, size_t rn, char *out, size_t cap)
+{
+	MS ms = { at, ctx, a, z, p + n, 0, 0, 0, { { 0, 0 } } };
+	int anchor = n && *p == '^';
+	size_t o = 0, s = a;
+	if (anchor) p++;
+	for (;;) {
+		ms.level = ms.depth = 0;
+		long e = match(&ms, s, p);
+		if (ms.bad) return -1;
+		for (size_t i = 0; e >= 0 && i < rn; i++) {
+			size_t ca = 0, cz = 0;
+			int c = (unsigned char)r[i];
+			if (c == '%') {
+				c = ++i < rn ? (unsigned char)r[i] : 0;   /* Lua reads its NUL */
+				if (c >= '0' && c <= '9') {
+					int l = c - '1';
+					if (c == '0' || (l == 0 && !ms.level)) ca = s, cz = (size_t)e;
+					else if (l >= ms.level || ms.cap[l].len == UNFINISHED) return -1;
+					else if (ms.cap[l].len == POSITION) {
+						/* a position capture: its number, from 1 */
+						char d[24];
+						int k = 0;
+						for (size_t v = ms.cap[l].init - a + 1; v; v /= 10) d[k++] = (char)('0' + v % 10);
+						if ((size_t)k > cap - o) return -1;
+						while (k) out[o++] = d[--k];
+						continue;
+					} else ca = ms.cap[l].init, cz = ca + (size_t)ms.cap[l].len;
+					if (!add(&ms, out, cap, &o, ca, cz)) return -1;
+					continue;
+				}
+			}
+			if (o == cap) return -1;
+			out[o++] = (char)c;
+		}
+		if (e > (long)s) s = (size_t)e;
+		else if (s < z) {
+			if (o == cap) return -1;
+			out[o++] = (char)S(&ms, s++);
+		} else break;
+		if (anchor) break;
+	}
+	return add(&ms, out, cap, &o, s, z) ? (long)o : -1;
+}

@@ -4,10 +4,11 @@
    reductions), the start of design/org/synthetic-agenda.org, and the cases
    tools/org_conform.py once found differing, and Emacs's [[:word:]] and
    [[:alnum:]] above ASCII in drawer names, footnote labels and tags, and
-   the timestamps of planning and clock lines.  Each text also passes the
+   the timestamps of planning and clock lines, and org-todo's steps (tools/org_todo.el).  Each text also passes the
    fuzzer's checks (outline model, invariants, subtree reparse). */
 #define _GNU_SOURCE
 #define ORG_DRV_LIB
+#include <time.h>
 #include "check.h"
 #include "org_drv.c"
 #define LLVMFuzzerTestOneInput fuzz_org_unused
@@ -657,6 +658,302 @@ static const struct { const char *name, *text, *want; } cases[] = {
 	  "paragraph 4 4 4 6 6\n" },
 };
 
+/* org-todo's steps (tools/org_todo.el, kittymax's settings, at its clock):
+   the last ORDERED value counts, a repeat from no keyword returns to none
+   and moves a week, an undone child blocks, CLOSED goes when undone, a
+   COMMENT headline's notes indent as its drawer */
+static const struct { size_t pos; const char *dirs, *text, *want; } todos[] = {
+	{ 64, "rrr",
+	  "* TODO p\n"
+	  ":PROPERTIES:\n"
+	  ":ORDERED: t\n"
+	  ":ORDERED: nil\n"
+	  ":END:\n"
+	  "** TODO a\n"
+	  "** TODO b\n",
+	  "* TODO p\n"
+	  ":PROPERTIES:\n"
+	  ":ORDERED: t\n"
+	  ":ORDERED: nil\n"
+	  ":END:\n"
+	  "** TODO a\n"
+	  "** NEXT b\n"
+	  "--\n"
+	  "* TODO p\n"
+	  ":PROPERTIES:\n"
+	  ":ORDERED: t\n"
+	  ":ORDERED: nil\n"
+	  ":END:\n"
+	  "** TODO a\n"
+	  "** WAIT b\n"
+	  ":LOGBOOK:\n"
+	  "- State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "--\n"
+	  "* TODO p\n"
+	  ":PROPERTIES:\n"
+	  ":ORDERED: t\n"
+	  ":ORDERED: nil\n"
+	  ":END:\n"
+	  "** TODO a\n"
+	  "** DONE b\n"
+	  "CLOSED: [2026-11-19 Thu 17:30]\n"
+	  ":LOGBOOK:\n"
+	  "- State \"DONE\"       from \"WAIT\"       [2026-11-19 Thu 17:30]\n"
+	  "- State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "--\n" },
+	{ 0, "l",
+	  "* a\n"
+	  "SCHEDULED: <2026-11-12 Thu +1w>\n",
+	  "* a\n"
+	  "SCHEDULED: <2026-11-19 Thu +1w>\n"
+	  ":PROPERTIES:\n"
+	  ":LAST_REPEAT: [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  ":LOGBOOK:\n"
+	  "- State \"CANCELLED\"  from              [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "--\n" },
+	{ 0, "rrrr",
+	  "* TODO p\n"
+	  "** NEXT c\n",
+	  "* NEXT p\n"
+	  "** NEXT c\n"
+	  "--\n"
+	  "* WAIT p\n"
+	  ":LOGBOOK:\n"
+	  "- State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "** NEXT c\n"
+	  "--\n"
+	  "* WAIT p\n"
+	  ":LOGBOOK:\n"
+	  "- State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "** NEXT c\n"
+	  "--\n"
+	  "* WAIT p\n"
+	  ":LOGBOOK:\n"
+	  "- State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "** NEXT c\n"
+	  "--\n" },
+	{ 0, "l",
+	  "* DONE a\n"
+	  "CLOSED: [2026-11-18 Wed 10:00] DEADLINE: <2026-11-20 Fri>\n",
+	  "* WAIT a\n"
+	  "DEADLINE: <2026-11-20 Fri>\n"
+	  ":LOGBOOK:\n"
+	  "- State \"WAIT\"       from \"DONE\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "--\n" },
+	{ 0, "lll",
+	  "* COMMENT x\n"
+	  "  :PROPERTIES:\n"
+	  "  :ID: 1\n"
+	  "  :END:\n",
+	  "* CANCELLED COMMENT x\n"
+	  "CLOSED: [2026-11-19 Thu 17:30]\n"
+	  "  :PROPERTIES:\n"
+	  "  :ID: 1\n"
+	  "  :END:\n"
+	  "  :LOGBOOK:\n"
+	  "  - State \"CANCELLED\"  from              [2026-11-19 Thu 17:30]\n"
+	  "  :END:\n"
+	  "--\n"
+	  "* DONE COMMENT x\n"
+	  "CLOSED: [2026-11-19 Thu 17:30]\n"
+	  "  :PROPERTIES:\n"
+	  "  :ID: 1\n"
+	  "  :END:\n"
+	  "  :LOGBOOK:\n"
+	  "  - State \"DONE\"       from \"CANCELLED\"  [2026-11-19 Thu 17:30]\n"
+	  "  - State \"CANCELLED\"  from              [2026-11-19 Thu 17:30]\n"
+	  "  :END:\n"
+	  "--\n"
+	  "* WAIT COMMENT x\n"
+	  "  :PROPERTIES:\n"
+	  "  :ID: 1\n"
+	  "  :END:\n"
+	  "  :LOGBOOK:\n"
+	  "  - State \"WAIT\"       from \"DONE\"       [2026-11-19 Thu 17:30]\n"
+	  "  - State \"DONE\"       from \"CANCELLED\"  [2026-11-19 Thu 17:30]\n"
+	  "  - State \"CANCELLED\"  from              [2026-11-19 Thu 17:30]\n"
+	  "  :END:\n"
+	  "--\n" },
+	{ 58, "r",
+	  "* TODO p\n"
+	  ":PROPERTIES:\n"
+	  ":ORDEREDX: t\n"
+	  ":END:\n"
+	  "** TODO a\n"
+	  "** WAIT b\n",
+	  "* TODO p\n"
+	  ":PROPERTIES:\n"
+	  ":ORDEREDX: t\n"
+	  ":END:\n"
+	  "** TODO a\n"
+	  "** DONE b\n"
+	  "CLOSED: [2026-11-19 Thu 17:30]\n"
+	  ":LOGBOOK:\n"
+	  "- State \"DONE\"       from \"WAIT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "--\n" },
+	{ 0, "r",
+	  "* WAIT a\n"
+	  "SCHEDULED: <2026-11-19 Thu 18:00-19:15 .+1h>\n",
+	  "* TODO a\n"
+	  "SCHEDULED: <2026-11-19 Thu 18:30-19:45 .+1h>\n"
+	  ":PROPERTIES:\n"
+	  ":LAST_REPEAT: [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  ":LOGBOOK:\n"
+	  "- State \"DONE\"       from \"WAIT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "--\n" },
+	{ 0, "rr",
+	  "* NEXT a\n"
+	  "         :PROPERTIES:\n"
+	  "         :ID: 1\n"
+	  "         :END:\n",
+	  "* WAIT a\n"
+	  "         :PROPERTIES:\n"
+	  "         :ID: 1\n"
+	  "         :END:\n"
+	  "\t :LOGBOOK:\n"
+	  "\t - State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  "\t :END:\n"
+	  "--\n"
+	  "* DONE a\n"
+	  "CLOSED: [2026-11-19 Thu 17:30]\n"
+	  "         :PROPERTIES:\n"
+	  "         :ID: 1\n"
+	  "         :END:\n"
+	  "\t :LOGBOOK:\n"
+	  "\t - State \"DONE\"       from \"WAIT\"       [2026-11-19 Thu 17:30]\n"
+	  "\t - State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  "\t :END:\n"
+	  "--\n" },
+	{ 0, "rrrr",
+	  "* TODO [#A] COMMENT x\n",
+	  "* NEXT [#A] COMMENT x\n"
+	  "--\n"
+	  "* WAIT [#A] COMMENT x\n"
+	  ":LOGBOOK:\n"
+	  "- State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "--\n"
+	  "* DONE [#A] COMMENT x\n"
+	  "CLOSED: [2026-11-19 Thu 17:30]\n"
+	  ":LOGBOOK:\n"
+	  "- State \"DONE\"       from \"WAIT\"       [2026-11-19 Thu 17:30]\n"
+	  "- State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "--\n"
+	  "* CANCELLED [#A] COMMENT x\n"
+	  "CLOSED: [2026-11-19 Thu 17:30]\n"
+	  ":LOGBOOK:\n"
+	  "- State \"CANCELLED\"  from \"DONE\"       [2026-11-19 Thu 17:30]\n"
+	  "- State \"DONE\"       from \"WAIT\"       [2026-11-19 Thu 17:30]\n"
+	  "- State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "--\n" },
+	{ 0, "r",
+	  "* WAIT a\n"
+	  "| <2026-11-12 Thu +1d> |\n",
+	  "* TODO a\n"
+	  ":PROPERTIES:\n"
+	  ":LAST_REPEAT: [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  ":LOGBOOK:\n"
+	  "- State \"DONE\"       from \"WAIT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "| <2026-11-13 Fri +1d> |\n"
+	  "--\n" },
+	{ 0, "r",
+	  "* WAIT a\n"
+	  "scheduled: <2026-11-12 Thu +1d>\n",
+	  "* TODO a\n"
+	  ":PROPERTIES:\n"
+	  ":LAST_REPEAT: [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  ":LOGBOOK:\n"
+	  "- State \"DONE\"       from \"WAIT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "scheduled: <2026-11-13 Fri +1d>\n"
+	  "--\n" },
+	{ 0, "rrr",
+	  "* TODO a\n"
+	  " \tSCHEDULED: <2026-11-12 Thu +1w>\n",
+	  "* NEXT a\n"
+	  " \tSCHEDULED: <2026-11-12 Thu +1w>\n"
+	  "--\n"
+	  "* WAIT a\n"
+	  " \tSCHEDULED: <2026-11-12 Thu +1w>\n"
+	  "\t:LOGBOOK:\n"
+	  "\t- State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  "\t:END:\n"
+	  "--\n"
+	  "* TODO a\n"
+	  " \tSCHEDULED: <2026-11-19 Thu +1w>\n"
+	  "\t:PROPERTIES:\n"
+	  "\t:LAST_REPEAT: [2026-11-19 Thu 17:30]\n"
+	  "\t:END:\n"
+	  "\t:LOGBOOK:\n"
+	  "\t- State \"DONE\"       from \"WAIT\"       [2026-11-19 Thu 17:30]\n"
+	  "\t- State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  "\t:END:\n"
+	  "--\n" },
+	{ 0, "r",
+	  "* NEXT a\n"
+	  " \t:PROPERTIES:\n"
+	  " \t:ID: 1\n"
+	  " \t:END:\n",
+	  "* WAIT a\n"
+	  " \t:PROPERTIES:\n"
+	  " \t:ID: 1\n"
+	  " \t:END:\n"
+	  "\t:LOGBOOK:\n"
+	  "\t- State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  "\t:END:\n"
+	  "--\n" },
+	{ 0, "rrr",
+	  "* TODO a\n"
+	  "SCHEDULED: <2026-02-30 Mon +1m>\n",
+	  "* NEXT a\n"
+	  "SCHEDULED: <2026-02-30 Mon +1m>\n"
+	  "--\n"
+	  "* WAIT a\n"
+	  "SCHEDULED: <2026-02-30 Mon +1m>\n"
+	  ":LOGBOOK:\n"
+	  "- State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "--\n"
+	  "* TODO a\n"
+	  "SCHEDULED: <2026-03-30 Mon +1m>\n"
+	  ":PROPERTIES:\n"
+	  ":LAST_REPEAT: [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  ":LOGBOOK:\n"
+	  "- State \"DONE\"       from \"WAIT\"       [2026-11-19 Thu 17:30]\n"
+	  "- State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "--\n" },
+	{ 0, "r",   /* overdue past Org's tenth shift: "Continue?" answered yes */
+	  "* WAIT water the plants\n"
+	  "SCHEDULED: <2026-11-01 Sun ++1d>\n",
+	  "* TODO water the plants\n"
+	  "SCHEDULED: <2026-11-20 Fri ++1d>\n"
+	  ":PROPERTIES:\n"
+	  ":LAST_REPEAT: [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  ":LOGBOOK:\n"
+	  "- State \"DONE\"       from \"WAIT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "--\n" },
+};
+
 int main(void)
 {
 	for (size_t i = 0; i < sizeof cases / sizeof *cases; i++) {
@@ -691,6 +988,41 @@ int main(void)
 	CHECK(!memcmp(f + 20, g + 20, n - 20));
 	orgfx_free(x);
 	text_free(t);
-	printf("test_org: %zu texts agree with Org\n", sizeof cases / sizeof *cases);
+	for (size_t i = 0; i < sizeof todos / sizeof *todos; i++) {
+		static char b[1024];
+		char *got = NULL;
+		size_t len = 0, m = strlen(todos[i].text);
+		memcpy(b, todos[i].text, m);
+		FILE *o = open_memstream(&got, &len);
+		CHECK(o && steps(o, b, m, sizeof b, todos[i].pos, todos[i].dirs) >= 0);
+		fclose(o);
+		if (strcmp(got, todos[i].want)) fprintf(stderr, "todo %zu:\n%s--- Org says:\n%s", i, got, todos[i].want);
+		CHECK(!strcmp(got, todos[i].want));
+		free(got);
+	}
+	/* the frame gate on one 64 KB line asked in the core's 256-byte pieces:
+	   each line coloured once (not once a piece), and no date or diary
+	   sexp scan to the line's end from every opener (measured under the
+	   sanitizers, best of 5: 21 ms each; with one of the three undone at
+	   least 360 ms) */
+	static const char *const units[] = { "word ", "<2026-01-01 x ", "<%%(x) " };
+	static char line[65536];
+	static unsigned char lf[sizeof line];
+	for (size_t i = 0; i < sizeof units / sizeof *units; i++) {
+		size_t m = 0, ul = strlen(units[i]);
+		while (m + ul < sizeof line) memcpy(line + m, units[i], ul), m += ul;
+		line[m++] = '\n';
+		struct timespec t0, t1;
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t0);
+		t = text_new(line, m);
+		x = t ? orgfx_new(t) : NULL;
+		CHECK(x && orgfx_update(x, NULL));
+		for (size_t a = 0; a < m; a += 256) orgfx_faces(x, a, a + 256 < m ? a + 256 : m, lf + a);
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t1);
+		CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000 < 100);
+		orgfx_free(x);
+		text_free(t);
+	}
+	printf("test_org: %zu texts and %zu TODO steps agree with Org\n", sizeof cases / sizeof *cases, sizeof todos / sizeof *todos);
 	return 0;
 }

@@ -1,0 +1,28 @@
+NOT CAUGHT  block content clipped to the block's end (redundant?)
+caught      a stars line ending a block takes the end line's face   (272 of 2000 differ (no answer from Org on 135))
+NOT CAUGHT  a property's value keeps the earlier face
+caught      a drawer line without its last colon   (476 of 2000 differ (no answer from Org on 135))
+NOT CAUGHT  after a sexp line, <%%( is searched again
+NOT CAUGHT  a date range's dashes may be followed by a dash
+NOT CAUGHT  a done headline without the space after its keyword
+NOT CAUGHT  [100x%] any three characters count as done
+caught      [/] counts as done   (101 of 2000 differ (no answer from Org on 135))
+caught      a description term after * at the line's start   (24 of 2000 differ (no answer from Org on 135))
+NOT CAUGHT  :ARCHIVE: searched from the stars' end
+NOT CAUGHT  COMMENT followed by anything
+caught      a table rule from +- alone   (6 of 2000 differ (no answer from Org on 135))
+NOT CAUGHT  a column width cookie <c> missed
+caught      a document info value from the keyword's end   (241 of 2000 differ (no answer from Org on 135))
+caught      [@start:N] not read   (101 of 2000 differ (no answer from Org on 135))
+NOT CAUGHT  after an export snippet, the scan goes on inside it
+caught      a tags group of two characters   (13 of 2000 differ (no answer from Org on 135))
+caught      a meta keyword without its colon   (312 of 2000 differ (no answer from Org on 135))
+caught      a block ends at stars and a space only   (43 of 2000 differ (no answer from Org on 135))
+caught      CLOCK: not a special keyword   (344 of 2000 differ (no answer from Org on 135))
+caught      a fixed-width line without its newline   (577 of 2000 differ (no answer from Org on 135))
+NOT CAUGHT  a formula's colon not skipped
+NOT CAUGHT  the caption's bracket closed by the first ]: (not the last)
+NOT CAUGHT  a statistics cookie: the scan goes on inside it
+caught      todo keyword followed by a tab   (92 of 2000 differ (no answer from Org on 135))
+caught      a marking row's formula face to the last bar   (196 of 2000 differ (no answer from Org on 135))
+caught      a property key of one character missed   (194 of 2000 differ (no answer from Org on 135))
