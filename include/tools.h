@@ -43,6 +43,9 @@ void tools_dash(struct Editor *e, long long start_ns);
    buffer is in a window every write does too (focus's runner).  0 ok, -1
    msg set. */
 int  tools_make(struct Editor *e, const char *cmd);
+/* the command :make last ran, NULL if none: SPC cc offers it for editing,
+   as Emacs's compile offers compile-command */
+const char *tools_make_last(void);
 /* ]q (n > 0), [q (n < 0): the quickfix error n entries on, as :cnext and
    :cprevious; E42 without errors, E553 past the end.  0 ok, -1 msg set. */
 int  tools_qf(struct Editor *e, long n);
