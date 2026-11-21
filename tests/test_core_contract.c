@@ -143,7 +143,9 @@ int main(void)
 	Buf *same = e.buf;
 	CHECK(!chdir("/tmp") && !core_edit_file(&e, strrchr(fn[3], '/') + 1, 0) && e.buf == same);
 	Buf *alt = e.win->alt;
-	CHECK(alt && !strcmp(alt->path, fn[2]) && !core_split(&e, 0, 0) && e.win->alt == alt);
+	/* and 'conceallevel' as SPC u p left it (win_copy_options()) */
+	e.win->conceal = 0;
+	CHECK(alt && !strcmp(alt->path, fn[2]) && !core_split(&e, 0, 0) && e.win->alt == alt && !e.win->conceal);
 	CHECK(!core_close(&e, 0));
 	CHECK(!core_buf_delete(&e, 0, 0) && !strcmp(e.buf->path, fn[2]));
 	core_free(&e);

@@ -341,15 +341,12 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 			/* a double-width character whose second cell starts the area
 			   is in it (win_line()) */
 			unsigned char vis = (v >= from || (wide && v + 1 == from)) && v < to && (v < xf || v > xt) && !(flash && im) ? area : 0;
-			/* the '<' where the view starts in a character's second half
-			   is drawn even when the character is concealed, unless it
-			   starts a span that has a character: then neither is
-			   (measured) */
-			if (cc && (!(wide && j - lead == 1 && v == skip) || (i == cc->a && *cc->s))) {
-				/* the span's character in its first byte's first cell,
-				   and in the '>' before it where a double-width one wraps
-				   (win_line() reads that character twice: measured) */
-				if (i == cc->a && j <= lead && *cc->s) put_cell(g, w, row, c, (const unsigned char *)cc->s, strlen(cc->s), 0, 1, face, vis ? vis : sb);
+			/* the span's character in its first byte's first cell.  The
+			   Org syntax conceals no double-width character (measured:
+			   test_core_conceal.py), so Neovim's fillers around a
+			   concealed one are not copied */
+			if (cc) {
+				if (i == cc->a && !j && *cc->s) put_cell(g, w, row, c, (const unsigned char *)cc->s, strlen(cc->s), 0, 1, face, vis ? vis : sb);
 				else off++;
 				continue;
 			}

@@ -9,13 +9,13 @@ hidden), the cursor at a random place, and sometimes Visual mode from
 another line.  Records each text row's
 characters (screenstring()).
 
-Known difference: win_line() draws a line taller than its height when a
-concealed double-width character ends a wrapped row (Neovim's bug, not
-copied: the core keeps the line's height).  Reduced case: rows 7, cols 14,
-wrap, "top\n012345678角全角全\nnext\nlast\n", matchaddpos() span line 1
-bytes 6..12 with "x".  The Org syntax conceals no wide character (measured:
-markers only, for x^{漢} a_{全} *漢* =全= [[漢][全]] ~漢~ +漢+), so no
-recorded case has one."""
+Known difference: a concealed double-width character.  The Org syntax
+conceals none (measured: markers only, for x^{漢} a_{全} *漢* =全= [[漢][全]]
+~漢~ +漢+), so the core does not copy how Neovim draws one: the '<' and '>'
+fillers around it, and win_line() drawing a line taller than its height
+when one ends a wrapped row (Neovim's bug).  Reduced case of the bug: rows
+7, cols 14, wrap, "top\n012345678角全角全\nnext\nlast\n", matchaddpos() span
+line 1 bytes 6..12 with "x"."""
 import concurrent.futures, json, os, random, subprocess, sys, tempfile
 from test_core_screens import SETUP
 
