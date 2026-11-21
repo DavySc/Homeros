@@ -534,15 +534,15 @@ static Pos after(Pos p, const Ed *e, int end)
 }
 
 /* Byte in d's text of position p of version v. */
-static size_t byte(const LspDoc *d, Pos p, long v, int end)
+static size_t byte(const LspDoc *d, Pos *p, long v, int end)
 {
-	for (int k = 0; k < d->nlog; k++) if (d->log[k].v >= v) p = after(p, &d->log[k], end);
+	for (int k = 0; k < d->nlog; k++) if (d->log[k].v >= v) *p = after(*p, &d->log[k], end);
 	const Text *t = d->t;
-	if (p.l > text_lines(t)) return text_len(t);
-	size_t a = text_line_start(t, p.l);
-	size_t n = (p.l < text_lines(t) ? text_line_start(t, p.l + 1) - 1 : text_len(t)) - a;
+	if (p->l > text_lines(t)) return text_len(t);
+	size_t a = text_line_start(t, p->l);
+	size_t n = (p->l < text_lines(t) ? text_line_start(t, p->l + 1) - 1 : text_len(t)) - a;
 	const unsigned char *b = bytes(t, a, &n);
-	return a + lsp_u16_byte(b, n, p.c);
+	return a + lsp_u16_byte(b, n, p->c);
 }
 
 static int cmp(const void *x, const void *y)
@@ -576,11 +576,14 @@ static void ranges(LspDoc *d, Set *v, long ver, const char *m, int arr, int add)
 		}
 		Pos a = pos(m, json_get(m, tk, r, "start")), z = pos(m, json_get(m, tk, r, "end"));
 		int point = !before(a, z), f = json_get(m, tk, json_get(m, tk, e, "fullRange"), "end");
-		LspDiag g = { byte(d, a, ver, 0), byte(d, point ? a : z, ver, !point), 0,
-		              (int)json_int(m, tk, json_get(m, tk, e, "severity")), NULL };
-		g.fz = f < 0 ? g.z : byte(d, pos(m, f), ver, 1);
+		LspDiag g = { byte(d, &a, ver, 0), 0, 0, (int)json_int(m, tk, json_get(m, tk, e, "severity")), NULL };
+		g.z = point ? g.a : byte(d, &z, ver, 1);
+		/* all of it deleted since; a range past its line's end only
+		   becomes a point there (LSP: a column past the end is the end) */
+		if (!point && !before(a, z)) continue;
+		Pos fp = pos(m, f);
+		g.fz = f < 0 ? g.z : byte(d, &fp, ver, 1);
 		if (g.fz < g.z) g.fz = g.z;
-		if (!point && g.a >= g.z) continue;     /* all of it deleted since */
 		if (g.sev < 1) g.sev = 1;
 		g.msg = str(m, json_get(m, tk, e, "message"));
 		v->v[v->n++] = g;

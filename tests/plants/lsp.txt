@@ -59,3 +59,10 @@ lsp: goals: the window keeps the cursor~test TESTS=lsp~~src/lsp/lsp.c~		core_win
 lsp: goals: the window at half the width~test TESTS=lsp~~src/lsp/lsp.c~		core_resize(e, v, v ? e->cols / 3 : e->rows / 3, 1);~		(void)0;
 lsp: goals: \i does not close it~test TESTS=lsp~~src/lsp/lsp.c~	if (b) core_buf_delete(e, b->nr, 1);~	(void)0;
 lsp: goals: the question about another position~test TESTS=lsp~~src/lsp/lsp.c~	size_t pos = core_line_start(e, e->win->line) + e->win->col;~	size_t pos = core_line_start(e, e->win->line);
+lsp: a range wholly past its line's end dropped~test TESTS=lsp~~src/lsp/lsp.c~		if (!point && !before(a, z)) continue;~		if (!point && g.a >= g.z) continue;
+lsp: a dead server's diagnostics stay~test TESTS=lsp~~src/lsp/lsp.c~	for (LspDoc *d = s->docs; d; d = d->link) forget(d);~	for (LspDoc *d = s->docs; d; d = d->link) (void)d;
+lsp: a reply shown while an edit is not yet sent~test TESTS=lsp~~src/lsp/lsp.c~{ return ver == d->ver && !d->chg.n; }~{ return ver == d->ver; }
+lsp: incremental diagnostics for a new version keep the old version's~test TESTS=lsp~~src/lsp/lsp.c~	if (!add || ver != v->ver) clear(v);~	if (!add) clear(v);
+lsp: diagnostics without a version ignored~test TESTS=lsp~~src/lsp/lsp.c~v < 0 ? d->ver : v, m,~v, m,
+lsp: the URI not percent-encoded~test TESTS=lsp~~src/lsp/lsp.c~		else str_addf(&u, "%%%02X", *p);~		else str_add(&u, (const char *)p, 1);
+lsp: the project root never searched for~test TESTS=lsp~~src/lsp/lsp.c~			if (found) { free(own); return dir; }~			if (found && 0) { free(own); return dir; }

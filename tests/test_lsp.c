@@ -306,8 +306,11 @@ static size_t fbehind;   /* bytes read behind the message being handled */
    non-empty line (two where it holds λ), an expected type T<character> on odd lines,
    and for each version a warning at each '!' (its fullRange to the next
    line) and goals accomplished (a silent diagnostic) on lines starting
-   "done".  It says nothing else unasked. */
+   "done", and a message wholly past the end of a line holding '?'.  It says
+   nothing else unasked. */
 static int gmode;
+#define GROOT "/tmp/homeros goals \xC3\xBC"
+#define GROOT_URI "/tmp/homeros%20goals%20%C3%BC"
 static long fsess;                    /* the RPC session; an older one is outdated */
 static struct { long id, sess, l, c; int term; } rpc;   /* the question out about goals, id 0 none */
 
@@ -322,7 +325,9 @@ static void fline(long l, const char **b, size_t *n)
 static void fsay(void)
 {
 	Str m = { 0 };
-	str_addf(&m, "{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{\"uri\":\"%s\",\"version\":%ld,\"diagnostics\":[", suri, sver);
+	/* each version's first publication incremental, as Lean's can be */
+	str_addf(&m, "{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{\"uri\":\"%s\",\"isIncremental\":true,\"version\":%ld,", suri, sver);
+	str_lit(&m, "\"diagnostics\":[");
 	int k = 0;
 	for (long l = 0;; l++) {
 		const char *b;
@@ -335,6 +340,11 @@ static void fsay(void)
 			str_addf(&m, "%s{\"range\":{\"start\":{\"line\":%ld,\"character\":%zu},\"end\":{\"line\":%ld,\"character\":%zu}},"
 			         "\"fullRange\":{\"start\":{\"line\":%ld,\"character\":%zu},\"end\":{\"line\":%ld,\"character\":0}},\"severity\":2,\"message\":\"bang\"}",
 			         k++ ? "," : "", l, c, l, c + 1, l, c, l + 1);
+		}
+		if (memchr(b, '?', n)) {               /* wholly past the line's end: LSP says at its end */
+			size_t c = lsp_u16((const unsigned char *)b, n);
+			str_addf(&m, "%s{\"range\":{\"start\":{\"line\":%ld,\"character\":%zu},\"end\":{\"line\":%ld,\"character\":%zu}},"
+			         "\"severity\":3,\"message\":\"far\"}", k++ ? "," : "", l, c + 2, l, c + 5);
 		}
 		if (n >= 4 && !memcmp(b, "done", 4))
 			str_addf(&m, "%s{\"range\":{\"start\":{\"line\":%ld,\"character\":0},\"end\":{\"line\":%ld,\"character\":4}},"
@@ -397,6 +407,13 @@ static void fhandle(const char *m, size_t n)
 			wrong("no incremental diagnostics capability");
 		if (json_get(m, ft, json_get(m, ft, json_get(m, ft, p, "capabilities"), "lean"), "silentDiagnosticSupport") < 0)
 			wrong("no silent diagnostics capability: goals accomplished would show as a message");
+		/* the goals test's file is in a subdirectory of its project, whose
+		   name needs percent-encoding */
+		char ru[256] = "", cwd[256];
+		int x = json_get(m, ft, p, "rootUri");
+		if (x >= 0 && ft[x].z - ft[x].a < sizeof ru) json_str(m, ft, x, ru);
+		if (gmode && (strcmp(ru, "file://" GROOT_URI) || !getcwd(cwd, sizeof cwd) || strcmp(cwd, GROOT)))
+			wrong("the project is %s, not %s", ru, GROOT_URI);
 		if (rnd(2)) usleep(rnd(30000));               /* messages pile up behind it */
 		int behind = 0;            /* bytes waiting (not an end: the editor may close a server it just started) */
 		if (fbehind || (ioctl(0, FIONREAD, &behind) == 0 && behind > 0)) wrong("a message sent before the initialize reply");
@@ -518,6 +535,11 @@ static void fhandle(const char *m, size_t n)
 		fbyte(rpc.l, rpc.c);   /* a position in the text */
 	} else if (!strcmp(meth, "$/test/die")) {
 		exit(0);
+	} else if (!strcmp(meth, "$/test/plain")) {      /* no diagnostics, no version: Neovim takes the latest */
+		Str d = { 0 };
+		str_addf(&d, "{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{\"uri\":\"%s\",\"diagnostics\":[]}}", suri);
+		fsend(&d);
+		free(d.s);
 	} else wrong("unknown %s", meth);
 }
 
@@ -894,6 +916,7 @@ static void scenario(int seed, const char *log)
 			CHECK(seed % 3 != 2 || n);
 			for (int i = 0; i < n && seed % 3 == 0; i++) CHECK(atol(strchr(g[i].msg, ' ') + 1) != said);
 			edit(d, len, 0, "!", 1);   /* typed after the answer: the fake's request must be answered by now */
+			CHECK(!lsp_answer(d, 0));  /* the answer was for the text before it, though the edit is not sent yet */
 			lsp_flush(d);
 			cur++;
 			snapshot();
@@ -1006,6 +1029,8 @@ static void gwant(Editor *e, Str *w)
 	                    lsp_u16((const unsigned char *)b, e->win->col));
 	if (x) str_addf(w, "%s\xE2\x96\xBC %zu:%zu-%zu:1: warning:\nbang", w->n ? "\n\n" : "", l + 1,
 	                lsp_u16((const unsigned char *)b, (size_t)(x - b)) + 1, l + 2);
+	size_t c = lsp_u16((const unsigned char *)b, n) + 1;
+	if (memchr(b, '?', n)) str_addf(w, "%s\xE2\x96\xBC %zu:%zu-%zu:%zu: information:\nfar", w->n ? "\n\n" : "", l + 1, c, l + 1, c);
 }
 
 /* Waits until the window holds what w says (1), or 3 s pass (0). */
@@ -1041,8 +1066,9 @@ static void gcheck(Editor *e, Str *w, char *got)
 
 static void goals(const char *log)
 {
-	static char exe[4096], *const roots[] = { NULL };
+	static char exe[4096], *const roots[] = { "root.mark", NULL };
 	static const char *argv[] = { exe, "--fake", "goals", NULL, NULL };
+	CHECK(!system("rm -rf '" GROOT "' && mkdir -p '" GROOT "/sub' && touch '" GROOT "/root.mark'"));
 	static LspServer table[2];
 	static char got[1 << 15];
 	argv[3] = log;
@@ -1053,9 +1079,9 @@ static void goals(const char *log)
 	lsp_servers = table;
 	lsp_tap = NULL;
 	Editor e;
-	CHECK(!core_open(&e, "/tmp/homeros-goals.fake") && e.buf->lsp);
+	CHECK(!core_open(&e, GROOT "/sub/x.fake") && e.buf->lsp);
 	e.rows = 40; e.cols = 160;
-	const char *init = "one\n\n\xCE\xBB x \xF0\x9D\x93\x9D\ndone it!\nfin\n";
+	const char *init = "one\n\n\xCE\xBB x \xF0\x9D\x93\x9D\ndone it!\nfin?\n";
 	CHECK(!core_edit(&e, 0, 0, init, strlen(init)));
 	lsp_flush(e.buf->lsp);
 	Win *lean = e.win;
@@ -1075,7 +1101,17 @@ static void goals(const char *log)
 		e.win->col = e.win->line == 3 ? 2 : 0;
 		gcheck(&e, &w, got);
 	}
-	static const char *const ins[] = { "a", "\xCE\xBB", "!", "\n", "done ", "\xF0\x9D\x93\x9D", "" };
+	/* "fin?" said nothing, without a version: its message goes */
+	e.win->line = 4;
+	ng = text_read(gwin_buf(&e, &nwin)->text, 0, got, 1 << 15);
+	CHECK(memmem(got, ng, "far", 3));
+	CHECK(!lsp_send(lsp_uri(e.buf->lsp), "$/test/plain", "{}", 2, NULL, NULL));
+	for (long long t0 = ms(); ms() - t0 < 3000 && memmem(got, ng, "far", 3); loop_once(10)) {
+		lsp_goals(&e);
+		ng = text_read(gwin_buf(&e, &nwin)->text, 0, got, 1 << 15);
+	}
+	CHECK(!memmem(got, ng, "far", 3));
+	static const char *const ins[] = { "a", "\xCE\xBB", "!", "\n", "done ", "\xF0\x9D\x93\x9D", "?", "" };
 	for (int step = 0; step < 300; step++) {
 		unsigned a = rnd(100);
 		size_t lines = core_lines(&e) - 1;          /* the last line stays empty: the text ends in a newline */
@@ -1085,7 +1121,7 @@ static void goals(const char *log)
 			const unsigned char *l = core_line(&e, e.win->line, &n);
 			for (e.win->col = 0; c-- && e.win->col < n; ) e.win->col += cplen(l[e.win->col]);
 		} else if (a < 60) {
-			const char *s = ins[rnd(7)];
+			const char *s = ins[rnd(8)];
 			size_t at = core_line_start(&e, e.win->line) + e.win->col;
 			if (!*s && at + 1 < text_len(e.buf->text)) {
 				size_t n;
@@ -1123,6 +1159,7 @@ static void goals(const char *log)
 	gcheck(&e, &w, got);
 	free(w.s);
 	core_free(&e);
+	CHECK(!system("rm -rf '" GROOT "'"));
 	for (long long t1 = ms(); ms() - t1 < 300; ) loop_once(20);
 }
 
