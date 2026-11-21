@@ -117,8 +117,9 @@ static const char *const dlines[][2] = {
 	{ "#include \"base.dl\"\n.type T <: symbol | Count", "VVVVVVVVVVVVVVVVVV.KKKKK...oo.YYYYYY.o......" },
 	{ "/* a\n b */ true false nil __LINE__ type -> .x x.decl", "CCCCCCCCCC.BBBB.BBBBB.LLL.LLLLLLLL......oo.D...KKKKK" },
 	{ ".comp C<X> { .init c = C<number> }", "KKKKK..o.o.R.KKKKK...o..oYYYYYYo.R" },
-	/* a relation's paren may follow spaces; a string spans lines */
+	/* a relation's paren may follow blanks on its line; a string spans lines */
 	{ "a (b) :- c\t(d).", "P.R.R.oo.P.R.RD" },
+	{ "a\n(b).", "..R.RD" },
 	{ "\"a\nb\" x", "SSSSS.." },
 };
 

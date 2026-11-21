@@ -6,7 +6,11 @@
    checks the positions themselves against Org.  The colours (orgfx): read
    in windows of any size and order they are the whole text's, and after
    edits (an update after some) they are a fresh text's; before an update
-   the bytes an edit did not touch keep their colours. */
+   the bytes an edit did not touch keep their colours.  The fold levels
+   (orgfx_foldexpr) after edits are a fresh text's.  A TODO step
+   (org_todo_step) edits inside the text and leaves the heading at its
+   level with the next keyword, its old one (blocked), or the one a repeat
+   returns to (the title's first word when it is a keyword). */
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -152,15 +156,47 @@ static void check_fx(const char *s, size_t n, const uint8_t *d, size_t dn)
 			painted(x, n, n + 1, 0, a);
 		}
 	}
-	if (!fresh && orgfx_update(x, NULL) != 1) abort();
-	painted(x, n, n + 1, 0, a);
 	text_read(T, 0, t, n);
 	U = text_new(t, n);
 	y = orgfx_new(U);
 	if (!y || orgfx_update(y, NULL) != 1) abort();
+	for (size_t l = 0; l <= text_lines(T); l++) {   /* fold levels see the edits without an update */
+		int p, q;
+		if (orgfx_foldexpr(x, l, &p) != orgfx_foldexpr(y, l, &q) || p != q) abort();
+	}
+	painted(x, n, n + 1, 0, a);
 	painted(y, n, n + 1, 0, b);
 	if (memcmp(a, b, n)) abort();
 	orgfx_free(x); orgfx_free(y); text_free(T); text_free(U);
+}
+
+static void check_todo(const char *s, size_t n, size_t pos, int dir)
+{
+	static char t[1 << 15];
+	size_t a, b, len, k, h = ORG_NONE;
+	const char *r = org_todo_step(s, n, pos, dir, 29918490, &a, &b, &len);
+	if (!r || a > b || b > n || n - (b - a) + len > sizeof t) abort();
+	memcpy(t, s, a);
+	memcpy(t + a, r, len);
+	memcpy(t + a + len, s + b, n - b);
+	OrgNode *e = org_parse(s, n, &k);
+	if (!e) abort();
+	for (size_t i = 0; i < k; i++)   /* the innermost headline holding pos */
+		if (e[i].type == ORG_HEADLINE && e[i].begin <= pos && (pos < e[i].end || e[i].end == n)) h = e[i].begin;
+	free(e);
+	if (h == ORG_NONE) { if (a != b || len) abort(); return; }
+	OrgHead x, y;
+	org_head(s, n, h, &x);
+	org_head(t, n - (b - a) + len, h, &y);
+	int to = dir > 0 ? (x.todo + 1 < 5 ? x.todo + 1 : -1) : x.todo == 0 ? -1 : x.todo < 0 ? 4 : x.todo - 1;
+	const char *eol = memchr(s + h, '\n', n - h);
+	if (x.commented || memchr(s + h, '\t', (eol ? (size_t)(eol - s) : n) - h)) return;   /* org-todo reads the keyword with
+		COMMENT out ("COMMENT TODO a" holds TODO), and takes no tab around it where org-element does */
+	k = h + x.level;   /* after the old keyword: x.ta is past a later "[#A]" */
+	while (k < n && s[k] == ' ') k++;
+	for (k += x.todo >= 0 ? strlen(org_todo[x.todo]) : 0; k < n && s[k] == ' '; k++) ;
+	if (to < 0 && y.todo >= 0 && !strncmp(s + k, org_todo[y.todo], strlen(org_todo[y.todo]))) y.todo = -1;   /* "TODO DONE a" */
+	if (y.level != x.level || (y.todo != to && y.todo != x.todo && !(to >= org_done && y.todo == (x.todo < 0 ? -1 : 0)))) abort();
 }
 
 int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
@@ -188,6 +224,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 		if (ins > len - q) ins = len - q;
 		check_edit(s, len, pos, del, q, ins);
 		check_fx(s, len, d, n);
+		check_todo(s, len, pos, d[1] & 1 ? 1 : -1);
 	}
 	return 0;
 }
