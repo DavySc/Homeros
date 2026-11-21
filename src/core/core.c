@@ -11,6 +11,7 @@
 #include "kitten.h"
 #include "lsp.h"
 #include "syntax.h"
+#include "tools.h"
 #include "uni.h"
 
 enum { DEL = -1 };                 /* mark_adjust()'s MAXLNUM: the lines are deleted */
@@ -1178,30 +1179,25 @@ int core_write(Editor *e, Buf *b, int force)
 	keys_write_pre(e, b);
 	/* an empty buffer (ML_EMPTY) writes no bytes, not one empty line */
 	size_t n = b->flags & CORE_EMPTY ? 0 : text_len(b->text) - (b->noeol ? 1 : 0);
-	switch (file_save(b->path, b->text, n, b->dos, &b->id, force, kept, sizeof kept)) {
-	case SAVE_OK:
-		b->saved_seq = undo_seq(b->undo);
-		b->changed = 0;
-		if (b->journal) journal_saved(b->journal);
-		core_msg(e, "\"%s\"%s %zuL, %zuB written", b->path, ff(b, 0), n ? buf_lines(b) : 0, (size_t)b->id.size);
-		kitten_written(e, b);   /* BufWritePost, after the message as in Neovim */
-		lsp_saved(b->lsp);
-		return 0;
-	case SAVE_CHANGED:
+	int r = file_save(b->path, b->text, n, b->dos, &b->id, force, kept, sizeof kept);
+	if (r == SAVE_CHANGED) {
 		core_msg(e, "E13: \"%s\" changed on disk since it was read (add ! to override)", b->path);
 		return -1;
-	case SAVE_KEPT:
-		b->saved_seq = undo_seq(b->undo);
-		b->changed = 0;
-		if (b->journal) journal_saved(b->journal);
-		core_msg(e, "written, but another program replaced the file first; its version is in %s", kept);
-		kitten_written(e, b);   /* BufWritePost */
-		lsp_saved(b->lsp);
-		return 0;
-	default:
+	}
+	if (r != SAVE_OK && r != SAVE_KEPT) {
 		core_msg(e, "E212: Can't open file for writing: %s", b->path);
 		return -1;
 	}
+	b->saved_seq = undo_seq(b->undo);
+	b->changed = 0;
+	if (b->journal) journal_saved(b->journal);
+	if (r == SAVE_OK) core_msg(e, "\"%s\"%s %zuL, %zuB written", b->path, ff(b, 0), n ? buf_lines(b) : 0, (size_t)b->id.size);
+	else core_msg(e, "written, but another program replaced the file first; its version is in %s", kept);
+	/* BufWritePost, after the message as in Neovim */
+	kitten_written(e, b);
+	lsp_saved(b->lsp);
+	tools_written(e, b);
+	return 0;
 }
 
 void core_watch(Editor *e, int fd)
