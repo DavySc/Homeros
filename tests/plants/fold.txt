@@ -8,7 +8,7 @@ fold: from 'foldlevel' to manual, a fold at the level stays open~test TESTS=fold
 fold: zR leaves the deepest folds closed~test TESTS=fold~~src/fold/fold.c~	case FOLD_OPEN_ALL: count = deepest(&f->folds); break;~	case FOLD_OPEN_ALL: count = deepest(&f->folds) - 1; break;
 fold: a new 'foldlevel' keeps the manual opens and closes~test TESTS=fold~~src/fold/fold.c~	for (int i = 0; i < f->folds.n; i++) f->folds.d[i].flags = FD_LEVEL;~	{}
 fold: a split fold's lower half takes 'foldlevel'~test TESTS=fold~~src/fold/fold.c~	fp[1].flags = fp->flags;~	fp[1].flags = FD_LEVEL;
-fold: zv opens one fold only~test TESTS=fold~~src/fold/fold.c~		while (manual(f, lnum, 1, 0) & DONE_ACTION) {}~		manual(f, lnum, 1, 0);
+fold: zv opens one fold only~test TESTS=fold~~src/fold/fold.c~		while (manual(f, lnum, 1, 0) & DONE_ACTION) done = 1;~		if (manual(f, lnum, 1, 0) & DONE_ACTION) done = 1;
 fold: an update starts at the changed line, not the one above~test TESTS=fold~~src/fold/fold.c~	Line l = { .lnum = top > 1 ? top - 1 : top, .n = n };~	Line l = { .lnum = top, .n = n };
 fold: a closed fold past the buffer's end is not cut there (fuzz)~fuzz FUZZERS=fold FUZZ_SECONDS=30~~src/fold/fold.c~			*l2 = (size_t)(last < f->n ? last : f->n) - 1;~			*l2 = (size_t)last - 1;
 fold: a split window's copy forgets the line count (fuzz)~fuzz FUZZERS=fold FUZZ_SECONDS=30~~src/fold/fold.c~	g->n = f->n;¶~
@@ -29,3 +29,4 @@ fold: a count that changed a fold before running out says it changed nothing (fu
 fold: zv that opened a fold says it changed nothing (fuzz)~fuzz FUZZERS=fold FUZZ_SECONDS=30~~src/fold/fold.c~		while (manual(f, lnum, 1, 0) & DONE_ACTION) done = 1;~		while (manual(f, lnum, 1, 0) & DONE_ACTION) done = 0;
 fold: a new 'foldlevel' says it changed nothing (fuzz)~fuzz FUZZERS=fold FUZZ_SECONDS=30~~src/fold/fold.c~	return 1;   /* newFoldLevel() always calls changed_window_setting() */~	return 0;   /* newFoldLevel() always calls changed_window_setting() */
 fold: zO opens only the outer fold~test TESTS=fold~~src/fold/fold.c~op != FOLD_CLOSE, op == FOLD_OPEN_REC);~op != FOLD_CLOSE, 0);
+fold: a fold found with nothing changed says it changed one (fuzz)~fuzz FUZZERS=fold FUZZ_SECONDS=30~~src/fold/fold.c~return n ? 1 : done ? 0 : -1;~return n || done ? 1 : -1;
