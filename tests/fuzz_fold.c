@@ -1,7 +1,9 @@
 /* libFuzzer: the fold module on any mix of edits (as Neovim's
    nvim_buf_set_lines() and Insert mode's new lines call it), fold commands
    and splits.  Every fold found lies around its line and inside the
-   buffer, a split window's copy answers as the original, and folds built
+   buffer, a split window's copy answers as the original, a command that
+   changes what fold_closed() answers returns 1, zO or zv run twice
+   answers "no change" the second time, and folds built
    fresh without "-1" lines have each line's level from the foldexpr
    (clamped at 20, Neovim's MAX_LEVEL); tests/test_fold.c holds the rest
    against Neovim.  Edits leave Neovim's tree out of shape at times (a
@@ -36,14 +38,15 @@ static void check(Fold *f)
 		if (fold_closed(f, l, &l1, &l2) && (l1 > l || l2 < l || l2 >= n)) abort();
 }
 
-static void same(Fold *f, Fold *g)
+static int differs(Fold *f, Fold *g)
 {
 	size_t a1, a2, b1, b2;
 	for (size_t l = 0; l < n; l++) {
 		int c = fold_closed(f, l, &a1, &a2);
-		if (c != fold_closed(g, l, &b1, &b2) || (c && (a1 != b1 || a2 != b2))) abort();
-		if (fold_level(f, l) != fold_level(g, l)) abort();
+		if (c != fold_closed(g, l, &b1, &b2) || (c && (a1 != b1 || a2 != b2))) return 1;
+		if (fold_level(f, l) != fold_level(g, l)) return 1;
 	}
+	return 0;
 }
 
 int LLVMFuzzerTestOneInput(const uint8_t *d, size_t len)
@@ -84,11 +87,18 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t len)
 			int c = NEXT % (FOLD_LEVEL + 1);
 			if (c == FOLD_RESET) fold_update(f, 0, n, n);
 			size_t at = NEXT % (n ? n : 1);
-			fold_cmd(f, c, at, NEXT % 4);
+			Fold *g = fold_dup(f, NULL);
+			if (!g) abort();
+			/* a command that changed a fold says so: the core redoes the view on 1 */
+			long k = NEXT % 4;
+			if (fold_cmd(f, c, at, k) != 1 && differs(f, g)) abort();
+			fold_free(g);
+			/* and zO or zv again finds nothing left to change */
+			if (k && (c == FOLD_OPEN_REC || c == FOLD_VIEW) && fold_cmd(f, c, at, 1) == 1) abort();
 		} else {         /* a split: the copy goes on in f's place */
 			Fold *g = fold_dup(f, NULL);
 			if (!g) abort();
-			same(f, g);
+			if (differs(f, g)) abort();
 			fold_free(f);
 			f = g;
 		}
