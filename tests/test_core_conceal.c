@@ -26,7 +26,8 @@ static void hex(const char *h, FILE *o, char *s)
 /* each line's spans as K lines (line a z s-in-hex, "-" for hidden) */
 static void spans(Editor *e, FILE *o)
 {
-	while (syntax_update(e->buf->syn, e->buf->text, NULL));
+	size_t r1, r2;
+	while (syntax_update(e->buf->syn, e->buf->text, NULL, &r1, &r2));
 	Conceal cs[64];
 	for (size_t l = 0; l < text_lines(e->buf->text); l++)
 		for (size_t k = 0, n = syntax_conceal(e->buf->syn, l, cs, 64); k < n; k++) {
