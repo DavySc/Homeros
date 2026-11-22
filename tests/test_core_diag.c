@@ -61,7 +61,11 @@ int main(int argc, char **argv)
 	CHECK(realpath("tests/test_core_diag.py", py) && realpath(path, txt) && mkdtemp(dir));
 	static const char *const roots[] = { NULL };
 	const char *sargv[] = { "python3", py, "--serve", txt, NULL };
-	LspServer table[2] = { { ".diag", "diag", sargv, roots, 0 }, { 0 } };
+	/* .dbig: the frame-time case below, its own server */
+	static char big[PATH_MAX + 32];
+	snprintf(big, sizeof big, "%s/big.txt", dir);
+	const char *bargv[] = { "python3", py, "--serve", big, NULL };
+	LspServer table[3] = { { ".diag", "diag", sargv, roots, 0 }, { ".dbig", "dbig", bargv, roots, 0 }, { 0 } };
 	lsp_servers = table;
 	/* one server for all cases: a file of none stays open */
 	snprintf(file, sizeof file, "%s/keep.diag", dir);
@@ -147,6 +151,52 @@ int main(int argc, char **argv)
 		}
 	}
 	fclose(f);
+	/* the frame gate (DESIGN.md: 2 ms): a line's underlines cost its own
+	   diagnostics, not every one before it.  2000 lines "ab", one
+	   diagnostic each: a window at the end draws within a small factor of
+	   one at the top (review of PR 120, finding 1) */
+	{
+		enum { NL = 2000 };
+		FILE *o = fopen(big, "w");
+		CHECK(o);
+		for (int i = 0; i < NL; i++) fprintf(o, "D %d %d 1 78\n", 3 * i, 3 * i + 1);
+		fputs("F ", o);
+		for (int i = 0; i < NL; i++) fputs("61620a", o);
+		CHECK(fputs("\nE\n", o) >= 0 && !fclose(o));
+		snprintf(file, sizeof file, "%s/0.dbig", dir);
+		CHECK((o = fopen(file, "w")));
+		for (int i = 0; i < NL; i++) fputs("ab\n", o);
+		CHECK(!fclose(o));
+		Grid g = { 0 };
+		int have = 0;
+		CHECK(!core_open(&e, file) && !grid_resize(&g, 40, 120));
+		for (int t = 0; t < 500 && have < NL; t++) {
+			loop_once(10);
+			lsp_diags(e.buf->lsp, &have);
+		}
+		CHECK(have == NL);
+		layout_resize(&e, 40, 120);
+		long long best[2];
+		for (int at = 0; at < 2; at++) {
+			e.win->line = at ? NL - 1 : 0;
+			core_update(&e);
+			best[at] = -1;
+			for (int k = 0; k < 20; k++) {
+				long long t0 = loop_now();
+				core_draw(&e, &g);
+				long long d = loop_now() - t0;
+				if (best[at] < 0 || d < best[at]) best[at] = d;
+			}
+		}
+		/* measured, ASan, 3 runs each: top 0.18 to 0.30 ms; end 1.2 to 1.6
+		   ms, 0.56 to 1.0 ms with no underlines at all, 490 to 530 ms
+		   without the skip */
+		CHECK(best[1] < 20 * best[0] + 1000000);
+		core_free(&e);
+		grid_free(&g);
+		unlink(file);
+		unlink(big);
+	}
 	lsp_close(keep);
 	text_free(kt);
 	snprintf(file, sizeof file, "%s/keep.diag", dir);

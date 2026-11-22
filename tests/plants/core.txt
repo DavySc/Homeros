@@ -108,7 +108,7 @@ core: a double-width character past the language line's row end is drawn in part
 core: the info string's text before the language is not drawn (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~b + md->info, md->lang - md->info, 1~b + md->info, 0 * md->info, 1
 core: the language line's fence blanks counted in columns, not characters (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~blk, 3, blanks(b, n, md->mark) - md->mark,~blk, 3, a1 - a0 + 0 * n,
 core: an info string past b's bytes is read past them (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~md->info + md->ninfo < n ? md->info + md->ninfo : n;~md->info + md->ninfo;
-core: the '>' of a double-width character that does not fit in the text's colours (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~wputs(g, w, row, c, ">", FACE_NON_TEXT);~put_cell(g, w, row, c, (const unsigned char *)">", 1, 0, 1, face, 0);
+core: the '>' of a double-width character that does not fit in the text's colours (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~wputs(g, w, row, c, ">", FACE_NON_TEXT);~put_cell(g, w, row, c, (const unsigned char *)">", 1, 0, 1, face, 0, 0);
 core: another window follows the Visual tab rule (test_core_contract)~test TESTS=core_contract~~src/core/core.c~	int first = w == e->win && e->ks.visual~	int first = e->ks.visual
 core: the wanted column on a Tab follows the Visual rule while the keys still show Visual mode (recorded traces)~test TESTS=~~src/core/core.c~	w->want = win_vcols(w, w->line, w->col, &s, &w->want) && e->mode != MODE_INSERT ? w->want : s;~	w->want = win_vcol(e, w, NULL, NULL); (void)s;
 core: line-wise Visual mode named VISUAL (test_core_status)~test TESTS=core_status~~src/core/draw.c~" VISUAL ", " V-LINE ",~" VISUAL ", " VISUAL ",
@@ -207,3 +207,4 @@ core: core_goto leaves a cursor past the end (test_core_contract)~test TESTS=cor
 core: a write skips the BufWritePre (test_keys_gq's format on :w)~test TESTS=keys_gq~~src/core/core.c~	keys_write_pre(e, b);¶~
 core: a write sends no didSave (test_infoview)~test TESTS=infoview~~src/core/core.c~		kitten_written(e, b);   /* BufWritePost, after the message as in Neovim */¶		lsp_saved(b->lsp);~		kitten_written(e, b);   /* BufWritePost, after the message as in Neovim */
 core: :bd leaves the closed language server document on the buffer (test_core_contract)~test TESTS=core_contract~~src/core/core.c~	b->lsp = NULL;¶~
+core: a line's underlines walk every diagnostic before it (test_core_diag frame time)~test TESTS=core_diag~~src/core/draw.c~		if (dv[k].z < ls) continue;	/* ends before this line: skip without diag_span's walk */¶~

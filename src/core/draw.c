@@ -475,6 +475,7 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	size_t le = text_line_start(t, l + 1), lim = l + 1 < text_lines(t) ? le : (size_t)-1;
 	for (size_t k = 0; k < (size_t)nd && dv[k].a < lim; k++) {
 		size_t a, z;
+		if (dv[k].z < ls) continue;	/* ends before this line: skip without diag_span's walk */
 		diag_span(t, &dv[k], &a, &z);
 		if (a + 1 >= le || z <= ls || z <= a) continue;
 		if (nu == 64) memmove(us, us + 1, --nu * sizeof *us);

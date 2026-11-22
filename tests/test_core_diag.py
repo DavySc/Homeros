@@ -22,7 +22,17 @@ Known difference (measured: seed 2, 500 cases, 1 differs): a Tab after a
 double-width character that wrapped with a '>' in a row that skipcol
 hides (not diagnostics: the core's wrap).  Neovim measures the Tab as if
 the '>' were not there, one cell wider than when the row shows.  Reduced:
-seed 2 case 299."""
+seed 2 case 299.
+Known differences the generator does not make (review of PR 120, repro in
+the shared reviews/pr-120-repro/, measured once each):
+- Insert mode: the message follows the cursor; Neovim leaves it on the line
+  of the last Normal-mode CursorMoved (current_line hooks CursorMoved only).
+- Sign and message take the last diagnostic by position; Neovim takes the
+  last one the server sent (lsp.h keeps them sorted by start, so the order
+  is lost there: package 13's and thread 0's to change).
+- One line's underlines: the core keeps the 64 that start last (a fixed
+  array: no allocation while drawing), Neovim draws them all (100
+  one-character diagnostics: 100 cells underlined, the core 64)."""
 import concurrent.futures, json, os, random, subprocess, sys, tempfile
 from test_core_screens import SETUP
 

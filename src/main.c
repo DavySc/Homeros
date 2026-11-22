@@ -26,7 +26,6 @@ static int q[QMAX], qh, qn;     /* keys read but not yet run */
 static int resized, running;   /* running: inside a command */
 static int lost;               /* the backend's input is gone for good */
 
-static void on_watch(void *ctx, int fd) { core_watch(ctx, fd); }
 
 static void on_input(void *ctx, int fd)
 {
@@ -77,7 +76,6 @@ int main(int argc, char **argv)
 	e.clip_set = b->clip_set;
 	e.clip_get = b->clip_get;
 	for (int i = 0, n = b->fds(fds); i < n; i++) loop_watch(fds[i], on_input, NULL);
-	if (e.buf->watch >= 0) loop_watch(e.buf->watch, on_watch, &e);
 	b->size(&rows, &cols);
 	if (grid_resize(&g, rows, cols)) goto out;
 	/* also with a file: the first draw measures "loaded in" for a later
