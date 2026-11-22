@@ -20,12 +20,15 @@ LINKS = ['[[a]]', '[[https://orgmode.org][Org *site*]]', '[[id:x-1][a note]]', '
          '[[x\\\\]]', '[[a][]]]', '[[a][b]', '[[]]', '[[a]', '[[file:a.org::*h][h]]', 'https://example.com/a_(b)', 'http://x.',
          'mailto:me@x.org', 'xhttps://a', 'file:a.org', 'doi:10.1/x', 'HTTP://x', '<https://x y>', '<mailto:a\n b>', '<id:',
          '[[a\n\nb]]', '[[a][x^{2}]]', '[[a][\\alpha]]', '=[[a]]=', '[[a][=b=]]', 'https://x.org/(a(b)c)', 'http://é', 'shell:ls|x',
-         '[[a\\\\\\]b]]', '[[a\\\\\\\\]]', 'id:', '[[a][b\n- c]]', '<http://a\n\nb>', 'https://a.b/c-', 'http://a(b', 'https://a.b/c/']
+         '[[a\\\\\\]b]]', '[[a\\\\\\\\]]', 'id:', '[[a][b\n- c]]', '<http://a\n\nb>', 'https://a.b/c-', 'http://a(b', 'https://a.b/c/',
+         '<id:a\n >x>', 'http://ab\x7f', '[[a =b= c][d]]', '[[a ~b~ c][d]]', '[[a\\\\\\\\]b]]', '[[a\\\\\\\\]b][c]]', '[[a][\nCLOCK: [2026-11-22 ]]'] + [
+         t + ':ab' for t in ('bbdb bibtex docview doi elisp eww file file+emacs file+sys ftp gnus help http https id info irc mailto '
+                             'mhe news rmail shell shortdoc w3m').split()]
 # footnotes (org-activate-footnote-links): references, inline ones over lines, in links, LaTeX macros and fragments
 FNS = ['[fn:1]', '[fn:a-b]', '[fn::inline (x)]', '[fn:n:inline [a] text]', '[fn:x: (open', '[fn:1:\n x]', '[fn:é]', '[FN:1]', '[fn:]',
        '[[fn:1]]', '[[a][[fn:1]]]', '\\cite{[fn:1]}', '\\cite[x]{[fn:2]}', '"[fn:1]"', '[fn:1:"a]"]', '[fn:1: ⟨x]⟩', '=a [fn:1: b=',
        '[fn:2:\n\n]', '[fn:x:<a]>', '[fn:1:{]', '"', '[fn:1:"]', '\\(x [fn:1]\\)', '\\[[fn:1]\\]', '$[fn:1]$', '$$[fn:1]$$',
-       '$[fn:1] $', '$ [fn:1]$', '$[fn:1]$x', '\\alpha [fn:1]', '\\alpha{}[fn:1]']
+       '$[fn:1] $', '$ [fn:1]$', '$[fn:1]$x', '\\alpha [fn:1]', '\\alpha{}[fn:1]', '[fn:1] a\n$\\cite{[fn:1]}.$ x', '$x.$', '=x y=\n[fn:1] c']
 WORDS = ['a', 'b', 'x', 'TODO', 'DONE', 'NEXT', 'WAIT', 'CANCELLED', 'todo', 'COMMENT', '[#A]', '[#a]',
          '[#1]', '[#12]', '[#65]', ':a:', ':b:c:', '::', ':@x_1:', '[fn:1]', '*', '-', '+', '1.', 'a)',
          '|', '#', '#+', ':', '[', ']', '<2026-11-22 Sun>', '[2026-11-22 Sun 09:00]', 'é', 'λ', '→', '\u00a0', '\u3000', '\f', '\r',

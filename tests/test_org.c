@@ -1138,6 +1138,8 @@ int main(void)
 		{ "[fn:1] b\n\\alpha \\cite{[fn:1]}\n", 9, FACE_MARKUP_LINK_LABEL, 1 },   /* an entity */
 		{ "[fn:1] b\nx [fn:2:{\n* h\ny}] z\n", 19, FACE_MARKUP_HEADING_1, 1 },   /* a span stops at a headline */
 		{ "[fn:1] b\nx [fn:2:{\n* h\ny}] z\n", 23, FACE_MARKUP_LINK_LABEL, 0 },
+		{ "* COMMENTx\n", 5, FACE_MARKUP_HEADING_1, 1 },   /* COMMENT then a word is no comment */
+		{ "[fn:1]\n# [fn::\n", 6, FACE_MARKUP_LINK_LABEL, 0 },   /* a comment line ends a definition's span */
 	};
 	for (size_t i = 0; i < sizeof fx / sizeof *fx; i++) {
 		unsigned char f1[64];
@@ -1154,6 +1156,11 @@ int main(void)
 	x = t ? orgfx_new(t) : NULL;
 	Conceal c5[5];
 	CHECK(x && orgfx_conceal(x, 1, c5, 5) == 5 && c5[1].a == 3 && !strcmp(c5[1].s, "²"));
+	orgfx_free(x);
+	text_free(t);
+	t = text_new("x_{a^{c}\n}\n", 11);   /* a script's braces over one newline hold the ^{c} (Org leaves it as typed) */
+	x = t ? orgfx_new(t) : NULL;
+	CHECK(x && orgfx_conceal(x, 0, c5, 5) == 0);
 	orgfx_free(x);
 	text_free(t);
 	{   /* the walk's checkpoints after an edit above them: x^{2} sits in the block it makes */
@@ -1209,30 +1216,40 @@ int main(void)
 		orgfx_free(x);
 		text_free(t);
 	}
-	/* the frame gate on many lines: the last 50 of 100,000 without a
-	   headline, shown one after another and then coloured, take one walk
-	   from the top of the text, not one each (measured under the
-	   sanitizers, 5 runs: plain lines median 10.7 ms, 10.6 to 16.0 (2.5
-	   to 2.7 before links and footnotes); a footnote and a link on every
-	   line median 27.8, 27.6 to 28.1, against 64 to 75 ms for the parse
-	   before it; plain lines walked for each line, 120 ms) */
-	for (int k = 0; k < 2; k++) {
-		static const char *const ln[] = { "a *b* x^{2}\n", "[fn:1] [[a][b]] *b* x^{2}\n" };
+	/* the frame gate on many lines: the last 50 lines of a paragraph
+	   without a headline, shown one after another and then coloured, take
+	   one walk from the top of the text, not one each, and a link search
+	   that failed is not done again on every line (measured under the
+	   sanitizers, 5 runs each, median and range: plain lines 10.5 ms, 10.5
+	   to 10.7; a footnote and a link on every line 23.6, 22.6 to 24.5,
+	   against 64 to 75 ms for the parse before it; openers that never
+	   close 9.6 (9.1 to 10.2) and 9.1 (8.6 to 9.1), against 7 s and 32 s
+	   when each search ran to the end; the same past blank lines 8.6 (8.5
+	   to 8.9) and 12.4 (12.1 to 12.5); plain lines walked for each line,
+	   120 ms) */
+	static const struct { const char *ln; size_t n, shown; long ms; const char *end; } gate[] = {
+		{ "a *b* x^{2}\n", 100000, 5, 20, "" }, { "[fn:1] [[a][b]] *b* x^{2}\n", 100000, 7, 40, "" },
+		/* openers that never close, then one closer at the end, past the blank lines */
+		{ "<http:a\n", 20000, 0, 20, "" }, { "[[a][x\n", 20000, 0, 20, "" },
+		{ "<http:a\n\n", 50000, 0, 20, "a>" }, { "[[a][x\n\n", 50000, 0, 20, "]]" },
+	};
+	for (size_t k = 0; k < sizeof gate / sizeof *gate; k++) {
 		static char many[100000 * 26];
 		static unsigned char fc[50 * 26];
-		size_t m = 0, w = strlen(ln[k]);
-		while (m < 100000 * w) memcpy(many + m, ln[k], w), m += w;
+		size_t m = 0, w = strlen(gate[k].ln), n = gate[k].n;
+		while (m < n * w) memcpy(many + m, gate[k].ln, w), m += w;
+		memcpy(many + m - strlen(gate[k].end), gate[k].end, strlen(gate[k].end));
 		struct timespec t0, t1;
 		t = text_new(many, m);
 		x = t ? orgfx_new(t) : NULL;
 		CHECK(x && orgfx_update(x, NULL));
 		Conceal c[64];
 		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t0);
-		for (size_t l = 100000 - 50; l < 100000; l++) CHECK(orgfx_conceal(x, l, c, 64) == (k ? 7u : 5u));
+		for (size_t l = n - 50; l < n; l++) CHECK(orgfx_conceal(x, l, c, 64) == gate[k].shown);
 		orgfx_faces(x, m - 50 * w, m, fc);
 		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t1);
-		CHECK(!k || (fc[0] == FACE_MARKUP_LINK_LABEL && fc[7] == FACE_MARKUP_LINK_URL));
-		CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000 < (k ? 40 : 20));
+		CHECK(k != 1 || (fc[0] == FACE_MARKUP_LINK_LABEL && fc[7] == FACE_MARKUP_LINK_URL));
+		CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000 < gate[k].ms);
 		orgfx_free(x);
 		text_free(t);
 	}

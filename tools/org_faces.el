@@ -10,22 +10,7 @@
 (setq org-todo-keywords '((sequence "TODO" "NEXT" "WAIT" "|" "DONE" "CANCELLED"))
       org-highlight-links '(bracket angle plain tag date footnote)
       org-fontify-emphasized-text nil)
-;; org-activate-footnote-links returns add-text-properties' value: nil for a
-;; reference inside an earlier one's span, and font-lock stops looking for
-;; footnotes in the whole buffer there (a live Emacs only in its chunk);
-;; src/org goes on, as for dates, so this does too
-(advice-add 'org-activate-footnote-links :around
-            (lambda (f lim) (let ((p (point))) (funcall f lim) (/= p (point)))))
-;; a reference's span stops at the next headline, as in src/org (a scan
-;; starts at a headline; a live Emacs drops a span's part in a later chunk)
-(advice-add 'org-footnote-next-reference-or-definition :filter-return
-            (lambda (r)
-              (when (nth 2 r)
-                (save-excursion
-                  (goto-char (nth 1 r))
-                  (when (re-search-forward org-outline-regexp-bol (nth 2 r) t)
-                    (setf (nth 2 r) (match-beginning 0)))))
-              r))
+(load (expand-file-name "org_footnote.el" (file-name-directory load-file-name)) nil t)
 (defun org-faces-top (p)
   (let ((f (get-text-property p 'face)))
     (while (and (consp f) (not (keywordp (car f)))) (setq f (car f)))

@@ -17,22 +17,7 @@
                 ("sqsupset" . "⊐") ("sqcup" . "⊔") ("sqcap" . "⊓") ("bigvee" . "⋁") ("bigwedge" . "⋀")
                 ("subseteq" . "⊆") ("supseteq" . "⊇") ("mapsto" . "↦") ("models" . "⊨") ("vdash" . "⊢")
                 ("implies" . "⟹") ("iff" . "⟺") ("mid" . "∣"))))
-;; org-activate-footnote-links returns add-text-properties' value: nil for a
-;; reference inside an earlier one's span, and font-lock stops looking for
-;; footnotes in the whole buffer there (a live Emacs only in its chunk);
-;; src/org goes on, as for dates, so this does too
-(advice-add 'org-activate-footnote-links :around
-            (lambda (f lim) (let ((p (point))) (funcall f lim) (/= p (point)))))
-;; a reference's span stops at the next headline, as in src/org (a scan
-;; starts at a headline; a live Emacs drops a span's part in a later chunk)
-(advice-add 'org-footnote-next-reference-or-definition :filter-return
-            (lambda (r)
-              (when (nth 2 r)
-                (save-excursion
-                  (goto-char (nth 1 r))
-                  (when (re-search-forward org-outline-regexp-bol (nth 2 r) t)
-                    (setf (nth 2 r) (match-beginning 0)))))
-              r))
+(load (expand-file-name "org_footnote.el" (file-name-directory load-file-name)) nil t)
 ;; batch Emacs has no display to compose on: keep what Org asks for, one
 ;; cons a call, so that \Alpha\Alpha is two runs
 (advice-add 'compose-region :before
