@@ -30,11 +30,11 @@ int win_signw(const Win *w)
 }
 
 /* win_col_off(): the sign column, then number_width() + 1 with number and
-   relativenumber (numberwidth 4) */
+   relativenumber (numberwidth 4), unless the buffer has nonumber */
 int win_numw(const Win *w)
 {
 	size_t d = digits(buf_lines(w->buf));
-	return win_signw(w) + (d < 3 ? 3 : (int)d) + 1;
+	return win_signw(w) + (w->buf->nonumber ? 0 : (d < 3 ? 3 : (int)d) + 1);
 }
 
 static int width1(const Win *w) { return w->w - win_numw(w); }

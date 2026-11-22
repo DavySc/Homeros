@@ -182,3 +182,5 @@ core: a message's Tab counts from the window's edge (test_core_diag)~test TESTS=
 core: a message's line break is one blank (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~x = vt_puts(g, y, x, end, "  ", 2, f);~x = vt_puts(g, y, x, end, " ", 1, f);
 core: a double-width character cut at the window's edge leaves no blank (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~	return z < end && x + grid_width(s, n) > end ? grid_puts(g, y, z, end, " ", 1, ATTR_NONE, f) : z;~	return z;
 core: the message is drawn below a cut line (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~if (row < r + line_rows(w, l) && row < w->h) draw_vt~if (row < w->h) draw_vt
+core: a nonumber buffer keeps its number column (test_core_contract)~test TESTS=core_contract~~src/core/move.c~(w->buf->nonumber ? 0 :~(0 ? 0 :
+core: a nonumber buffer draws its numbers over its text (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~	if (nw > 0) {~	if (1) {

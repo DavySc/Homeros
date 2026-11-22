@@ -182,6 +182,14 @@ int main(void)
 		CHECK(k == 5);
 	}
 	core_free(&e);
+	/* a buffer with nonumber (the Lean goals window; neogit's buffers in
+	   Neovim): no number column, its text from the window's first column */
+	CHECK(!core_open(&e, fn[1]));
+	e.buf->nonumber = 1;
+	CHECK(!core_edit(&e, 2, 0, "\n", 1));
+	core_draw(&e, &g);
+	CHECK(win_numw(e.win) == 0 && g.c[0].len == 1 && *grid_text(&g.c[0]) == 'x' && *grid_text(&g.c[g.cols]) == ' ');
+	core_free(&e);
 	/* the view is drawn after each command, before the next one runs
 	   (normal_check()'s normal_redraw(), typeahead or not): wrap, CTRL-W s,
 	   6G$, CTRL-W w puts the lower window's top at line 3 (measured in tmux,

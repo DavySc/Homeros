@@ -135,8 +135,11 @@ static int put_number(Grid *g, const Win *w, int r, size_t l, int top_skipped)
 	int sg = win_signw(w), nw = win_numw(w) - sg - 1;
 	size_t rel = l > w->line ? l - w->line : w->line - l;
 	unsigned char face = rel ? FACE_LINE_NR : FACE_CURSOR_LINE_NR;
-	snprintf(b, sizeof b, rel ? "%*zu " : "%-*zu ", nw, rel ? rel : l + 1);
-	wputs(g, w, r, sg, b, face);
+	*b = 0;
+	if (nw > 0) {
+		snprintf(b, sizeof b, rel ? "%*zu " : "%-*zu ", nw, rel ? rel : l + 1);
+		wputs(g, w, r, sg, b, face);
+	}
 	/* the sign column: the last diagnostic's sign of those that start on
 	   the line (equal priorities: the newest extmark; measured) */
 	int lo, hi;
@@ -153,7 +156,7 @@ static int put_number(Grid *g, const Win *w, int r, size_t l, int top_skipped)
 	for (; b[d] == ' '; d++) wputs(g, w, r, sg + d, "-", face);
 	while (b[d] >= '0' && b[d] <= '9') d++;
 	/* after the row's first digits: none where a sign column starts it,
-	   so over it (measured) */
+	   so over it, nor with nonumber: over the text's first cells (measured) */
 	if (sg) d = -sg;
 	wputs(g, w, r, sg + d, "<<<", FACE_NON_TEXT);
 	return sg + d + 3;
