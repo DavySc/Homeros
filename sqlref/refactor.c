@@ -441,7 +441,7 @@ char *edits_apply(const Edits *ed, const char *text, size_t n, size_t *len)
 	size_t w = 0, at = 0;
 	for (size_t i = 0; i < ed->ne; i++) {   /* edits come in text order */
 		memcpy(o + w, text + at, ed->e[i].a - at), w += ed->e[i].a - at;
-		memcpy(o + w, ed->buf + ed->e[i].s, ed->e[i].n), w += ed->e[i].n;
+		if (ed->e[i].n) memcpy(o + w, ed->buf + ed->e[i].s, ed->e[i].n), w += ed->e[i].n;   /* a pure deletion may have no buffer (memcpy from NULL is undefined) */
 		at = ed->e[i].z;
 	}
 	memcpy(o + w, text + at, n - at), w += n - at;

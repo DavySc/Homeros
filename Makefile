@@ -3,7 +3,7 @@
 # main, copying none of it: make HOMEROS=<path to main>.
 HOMEROS ?= ../main
 CC ?= cc
-CFLAGS ?= -std=c17 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer
+CFLAGS ?= -std=c17 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer
 CPPFLAGS += -Isqlref -I$(HOMEROS)/include -I$(HOMEROS)/src/syntax
 MAIN = $(HOMEROS)/src/text/text.c $(HOMEROS)/src/syntax/tsql.c
 LIB = $(wildcard sqlref/*.c)
@@ -29,8 +29,8 @@ clean:
 
 build/fuzz_tds: fuzz/fuzz_tds.c client/tds.c client/tds.h client/net.c client/net.h
 	@mkdir -p build
-	clang -Iclient -std=c17 -O1 -g -Wall -Wextra -Werror -fsanitize=fuzzer,address,undefined -o $@ fuzz/fuzz_tds.c -lssl -lcrypto
+	clang -Iclient -std=c17 -O1 -g -Wall -Wextra -Werror -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all -o $@ fuzz/fuzz_tds.c -lssl -lcrypto
 
 build/fuzz_pg: fuzz/fuzz_pg.c client/pg.c client/pg.h client/net.c client/net.h
 	@mkdir -p build
-	clang -Iclient -std=c17 -O1 -g -Wall -Wextra -Werror -fsanitize=fuzzer,address,undefined -o $@ fuzz/fuzz_pg.c -lssl -lcrypto
+	clang -Iclient -std=c17 -O1 -g -Wall -Wextra -Werror -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all -o $@ fuzz/fuzz_pg.c -lssl -lcrypto

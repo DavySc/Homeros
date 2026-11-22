@@ -65,6 +65,7 @@ for name, make in TYPES:
     lines = out.split('\n')
     rows = [l.split('\t') for l in lines[1:-2]]
     if lines[-2:] != ['(SELECT %d)' % len(vals), ''] or len(rows) != len(vals): print('DIFF %s: %d rows, want %d' % (name, len(rows), len(vals))); bad += 1
+    if rows and rows[-1] != ['NULL', 'NULL']: print('DIFF %s: NULL shown as %r' % (name, rows[-1])); bad += 1   # VALUES keeps its order
     for r in rows:
         total += 1
         ok = len(r) == 2 and (r == ['NULL', 'NULL'] or (r[1] != 'NULL' and r[0] == esc(bytes.fromhex(r[1]).decode('utf-8'))))
