@@ -127,6 +127,9 @@ Face faces[FACES] = {
 	{ {0, 0, 0}, {43, 49, 57}, FACE_BG, {0} },     /* heading 4 background: green 9.5% on base */
 	{ {0, 0, 0}, {38, 46, 64}, FACE_BG, {0} },     /* heading 5 background: sapphire 9.5% on base */
 	{ {0, 0, 0}, {44, 45, 66}, FACE_BG, {0} },     /* heading 6 background: lavender 9.5% on base */
+	{ {0, 0, 0}, {24, 24, 37}, FACE_BG, {0} },     /* md code bg: RenderMarkdownCode, mantle */
+	{ {24, 24, 37}, {0, 0, 0}, FACE_FG, {0} },     /* md code border: its bg as fg */
+	{ {137, 220, 235}, {0, 0, 0}, FACE_FG, {0} },  /* md bullet: RenderMarkdownBullet, sky */
 	/* the UI groups (Neovim, lualine, gitsigns, snacks, which-key)
 	   as a live Neovim 0.12.6 with catppuccin 05e8787 (my-nvim's pin) shows
 	   them, opaque (measured: project files ui-look/hl-opaque.txt).  The

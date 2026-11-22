@@ -32,4 +32,8 @@ int match_init(Match *m, const char *q, size_t n);
 /* The score of text (with file the item's file, or NULL), as M:match: 0
    if it does not match; the picker shows only scores above 0 (M:update). */
 int match_score(const Match *m, const char *text, size_t n, const char *file, size_t fn);
+/* The number the decimal digits at *p (before e) spell, saturating at
+   LONG_MAX, with *p moved past them; -1 if there are none.  The prompt's
+   file:line:col, rg's line:col and :make's errors read their numbers with it. */
+long match_num(const char **p, const char *e);
 #endif

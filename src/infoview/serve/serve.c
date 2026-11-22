@@ -352,8 +352,9 @@ static void open_browser(void)
 	free(argv);
 }
 
-static void from_editor(char *l, size_t n)
+static void from_editor(void *ctx, char *l, size_t n)
 {
+	(void)ctx;
 	if (n == 1 && *l == '!') { open_browser(); return; }
 	char *sp = memchr(l, ' ', n);
 	if (!sp) return;
@@ -439,11 +440,7 @@ int main(int argc, char **argv)
 			char b[65536];
 			ssize_t n = read(0, b, sizeof b);
 			if (n == 0 || (n < 0 && errno != EAGAIN && errno != EINTR)) break;   /* the editor is gone */
-			for (ssize_t i = 0; i < n; i++) {
-				if (b[i] != '\n') { str_add(&line, b + i, 1); continue; }
-				from_editor(line.s ? line.s : "", line.n);
-				line.n = 0;
-			}
+			if (n > 0) str_lines(&line, b, (size_t)n, from_editor, NULL);
 		}
 		if (f[1].revents && toed.n) {
 			ssize_t n = write(1, toed.s, toed.n);

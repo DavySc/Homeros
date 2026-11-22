@@ -1,0 +1,84 @@
+== cases1
+case 20 [wide] row 2 S:
+  nvim [  2  󰲣 é combining ạ̈                              ]
+  core [  2  󰲣 é combining ạ̈                              ]
+case 56 [crlf-ish/ctrl] row 1 F:
+  nvim [....r.r..r........................................]
+  core [....r.rrrr........................................]
+mdcmp: 59 screens: 2 differ
+== cases2
+case 18 [other buffer current] row 2 S:
+  nvim [3   ### Three                │~                             ]
+  core [3     󰲥 Three                │~                             ]
+case 19 [other buffer insert] row 2 S:
+  nvim [3   ### Three                │~                             ]
+  core [3     󰲥 Three                │~                             ]
+case 21 [two md buffers] row 2 S:
+  nvim [3   ### Three                │~                             ]
+  core [3     󰲥 Three                │~                             ]
+case 32 [open line under heading] row 0 S:
+  nvim [  1 # One                                         ]
+  core [  1 󰲡 One                                         ]
+mdcmp: 37 screens: 4 differ
+== cases3
+case 2 [leave by :e in a split] row 2 S:
+  nvim [3   ### Three                │~                             ]
+  core [3     󰲥 Three                │~                             ]
+case 3 [o Esc in one send] row 0 S:
+  nvim [  1 # One                                         ]
+  core [  1 󰲡 One                                         ]
+case 5 [o text Esc] row 0 S:
+  nvim [  1 # One                                         ]
+  core [  1 󰲡 One                                         ]
+case 7 [O Esc above] row 0 S:
+  nvim [  1 # One                                         ]
+  core [  1 󰲡 One                                         ]
+mdcmp: 18 screens: 4 differ
+== cases4
+case 4 [setext emphasis start] row 2 S:
+  nvim [  2 *1* # b                                       ]
+  core [  2 *1* 󰲡 b                                       ]
+mdcmp: 5 screens: 1 differ
+== cases5
+mdcmp: 6 screens: 0 differ
+== cases6
+mdcmp: 4 screens: 0 differ
+== cases7
+case 3 [skipcol same buffer cursor line] row 1 S:
+  nvim [  1  󰲣 word word word word wo│    rd word word word word wor]
+  core [  1 ## word word word word wo│    rd word word word word wor]
+mdcmp: 4 screens: 1 differ
+== cases8
+case 13 [other buffer current + CTRL-L] row 2 S:
+  nvim [3   ### Three                │~                             ]
+  core [3     󰲥 Three                │~                             ]
+case 14 [other buffer insert + CTRL-L] row 0 S:
+  nvim [  2 󰲡 One                    │1   hello^L                   ]
+  core [  2 󰲡 One                    │1   hello                     ]
+case 15 [two md buffers + CTRL-L] row 2 S:
+  nvim [3   ### Three                │~                             ]
+  core [3     󰲥 Three                │~                             ]
+case 16 [open line under heading + CTRL-L] row 0 S:
+  nvim [  1 # One                                         ]
+  core [  1 󰲡 One                                         ]
+case 18 [leave by :e in a split + CTRL-L] row 2 S:
+  nvim [3   ### Three                │~                             ]
+  core [3     󰲥 Three                │~                             ]
+case 19 [o Esc in one send + CTRL-L] row 0 S:
+  nvim [  1 # One                                         ]
+  core [  1 󰲡 One                                         ]
+case 20 [O Esc above + CTRL-L] row 0 S:
+  nvim [  1 # One                                         ]
+  core [  1 󰲡 One                                         ]
+case 23 [setext emphasis start + CTRL-L] row 2 S:
+  nvim [  2 *1* # b                                       ]
+  core [  2 *1* 󰲡 b                                       ]
+mdcmp: 27 screens: 8 differ
+== cases9
+case 23 [C: after :e] row 1 S:
+  nvim [2      ### abcdefghijklmnop  │~                             ]
+  core [2        󰲥 abcdefghijklmnop  │~                             ]
+case 24 [E: setext inline start] row 8 S:
+  nvim [  8 *1* # d                                       ]
+  core [  8 *1* 󰲡 d                                       ]
+mdcmp: 24 screens: 2 differ

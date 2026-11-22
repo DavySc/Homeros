@@ -20,6 +20,7 @@
 #include "match.h"
 #include "term.h"
 #include "shada.h"
+#include "str.h"
 #include "uni.h"
 
 /* An item: its text (what the matcher sees) and file in the arena, the
@@ -48,7 +49,7 @@ static struct {
 	size_t sel, top;           /* the cursor in the list, the first row shown */
 	Match m;
 	int proc, gen, done;       /* the running finder, its generation, finished */
-	char part[4096]; size_t npart;   /* a line not yet ended */
+	Str part;                  /* a line not yet ended */
 	/* the preview: lines of the selected item's file around its line */
 	char pv[PREVIEW][256]; int pvn, pvfirst;
 	long pvfor;                /* the item index it shows, -1 none */
@@ -254,11 +255,11 @@ static void finder_stop(void)
 	if (P.proc >= 0) proc_kill(P.proc);
 	P.proc = -1;
 	P.gen++;
-	P.npart = 0;
+	P.part.n = 0;
 }
 
 /* One line of a finder's output (source/files.lua, source/grep.lua). */
-static void line(const char *s, size_t n)
+static void item(const char *s, size_t n)
 {
 	if (P.what != PICK_GREP) { add(s, n, s, n, 0, 0, 0, 0); return; }
 	/* rg -0: file NUL line:col:text.  The search names "." because rg
@@ -269,16 +270,24 @@ static void line(const char *s, size_t n)
 	if (!z) return;
 	size_t fn = (size_t)(z - s);
 	const char *r = z + 1, *e = s + n;
-	long ln = 0, col = 0;
-	for (; r < e && *r >= '0' && *r <= '9'; r++) ln = ln > (LONG_MAX - 9) / 10 ? LONG_MAX : ln * 10 + (*r - '0');
-	if (r == e || *r++ != ':') return;
-	for (; r < e && *r >= '0' && *r <= '9'; r++) col = col > (LONG_MAX - 9) / 10 ? LONG_MAX : col * 10 + (*r - '0');
-	if (r == e || *r != ':') return;
+	long ln = match_num(&r, e);
+	if (ln < 0 || r == e || *r++ != ':') return;
+	long col = match_num(&r, e);
+	if (col < 0 || r == e || *r != ':') return;
 	/* the text is "file:line:col:text" */
 	char t[4096];
 	size_t tn = (size_t)snprintf(t, sizeof t, "%.*s:%.*s", (int)fn, s, (int)(e - z - 1), z + 1);
 	if (tn >= sizeof t) tn = sizeof t - 1;
 	add(t, tn, s, fn, ln, col - 1, 0, 0);
+}
+
+/* the live grep stops at LIMIT_LIVE items */
+static void line(void *ctx, char *s, size_t n)
+{
+	(void)ctx;
+	if (P.done) return;
+	item(s, n);
+	if (P.what == PICK_GREP && P.nit >= LIMIT_LIVE) { finder_stop(); P.done = 1; }
 }
 
 static void on_out(void *ctx, int stream, const char *b, size_t n)
@@ -287,15 +296,7 @@ static void on_out(void *ctx, int stream, const char *b, size_t n)
 	if (stream == 0) { P.proc = -1; P.done = 1; core_changed = 1; return; }
 	if (stream != 1) return;
 	size_t before = P.nshown;
-	for (size_t i = 0; i < n; i++) {
-		if (b[i] != '\n') {
-			if (P.npart < sizeof P.part) P.part[P.npart++] = b[i];
-			continue;
-		}
-		line(P.part, P.npart);
-		P.npart = 0;
-		if (P.what == PICK_GREP && P.nit >= LIMIT_LIVE) { finder_stop(); P.done = 1; break; }
-	}
+	str_lines(&P.part, b, n, line, NULL);
 	if (P.nshown != before) {
 		if (sorting()) qsort(P.shown, P.nshown, sizeof *P.shown, cmp);
 		preview();
@@ -514,12 +515,7 @@ static void confirm(Editor *e)
 	char abs[2 * PATH_MAX];
 	fr_visit(abs, full(f, abs, sizeof abs));
 	if (line) {
-		size_t l = (size_t)line - 1, n = core_lines(e);
-		e->win->line = l < n ? l : n - 1;
-		size_t len = core_line_len(e, e->win->line);
-		e->win->col = (size_t)col < len ? (size_t)col : len;
-		core_clamp(e);
-		core_set_want(e);
+		core_goto(e, (size_t)line - 1, (size_t)col);
 		core_scroll_cursor(e, 'z');    /* norm! zzzv */
 	}
 }

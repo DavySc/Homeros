@@ -136,6 +136,9 @@ static const char *const face_sgr[FACE_COUNT] = {
 	";48;2;43;49;57",                    /* heading 4 background */
 	";48;2;38;46;64",                    /* heading 5 background */
 	";48;2;44;45;66",                    /* heading 6 background */
+	";48;2;24;24;37",                    /* md code bg */
+	";38;2;24;24;37",                    /* md code border */
+	";38;2;137;220;235",                 /* md bullet */
 	";48;2;42;43;60",                     /* cursor line */
 	";38;2;180;190;254",                  /* cursor line nr */
 	";38;2;69;71;90",                     /* line nr */
