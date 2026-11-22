@@ -966,12 +966,11 @@ static void cursor_correct_sms(Editor *e, Win *w)
 	}
 }
 
-/* cursor_down_inner() and cursor_up_inner(): with folds (concealed()) a
-   closed fold counts as one line; going up the cursor goes to a fold's
-   first line, except in Insert mode for the last line, which it opens */
-static void cursor_move_lines(Editor *e, Win *w, long n)
+/* cursor_down_inner() and cursor_up_inner() (core.h) */
+size_t core_line_step(Editor *e, size_t line, long n)
 {
-	lnr l = (lnr)w->line, last = nlines(w) - 1;
+	const Win *w = e->win;
+	lnr l = (lnr)line, last = nlines(w) - 1;
 	if (n > 0) {
 		if (l + n >= last) l = last;
 		else if (concealed(w))
@@ -992,7 +991,7 @@ static void cursor_move_lines(Editor *e, Win *w, long n)
 			if (l < 0) l = 0;
 		} else l -= n;
 	}
-	w->line = (size_t)(l > last ? last : l);
+	return (size_t)(l > last ? last : l);
 }
 
 /* scroll_redraw(): scroll, keep scrolloff, and move the cursor at least a
@@ -1012,7 +1011,7 @@ static void scroll_redraw(Editor *e, Win *w, int up, long count)
 		if (up) {
 			if (w->line > pline || z + 1 >= nlines(w)) break;
 		} else if (w->line < pline || ptop == 0 || w->line == 0) break;
-		cursor_move_lines(e, w, up ? 1 : -1);
+		w->line = core_line_step(e, w->line, up ? 1 : -1);
 		coladvance(e, w);      /* cursor_down(), cursor_up() */
 		set_valid(w);
 	}
@@ -1085,7 +1084,7 @@ static int pagescroll(Editor *e, int dir, long count, int half)
 			w->want = pwant;
 		}
 		if (w->wrap) screengo(e, w, dir, curscount);
-		else cursor_move_lines(e, w, dir > 0 ? curscount : -curscount);
+		else w->line = core_line_step(e, w->line, dir > 0 ? curscount : -curscount);
 	} else {
 		/* get_scroll_overlap() */
 		validate_botline(w);
@@ -1218,7 +1217,7 @@ static int screengo(Editor *e, Win *w, int dir, long dist)
 				if (want >= w1 && !folded(w, (lnr)w->line, NULL, NULL)) want -= w2;
 				else {
 					if (w->line == 0) { ok = 0; break; }
-					cursor_move_lines(e, w, -1);
+					w->line = core_line_step(e, w->line, -1);
 					linelen = linesize(w, (lnr)w->line);
 					if (linelen > w1) want += (((linelen - w1 - 1) / w2) + 1) * w2;
 				}
@@ -1227,7 +1226,7 @@ static int screengo(Editor *e, Win *w, int dir, long dist)
 				if (want + w2 < n && !folded(w, (lnr)w->line, NULL, NULL)) want += w2;
 				else {
 					if ((lnr)w->line >= nlines(w) - 1) { ok = 0; break; }
-					cursor_move_lines(e, w, 1);
+					w->line = core_line_step(e, w->line, 1);
 					want %= w2;
 					if (want >= w1) want -= w2;
 					linelen = linesize(w, (lnr)w->line);
@@ -1260,7 +1259,7 @@ int core_screen_move(Editor *e, long n)
 		lnr z = (lnr)w->line;
 		folded(w, z, NULL, &z);
 		if ((n < 0 && w->line == 0) || (n > 0 && z >= nlines(w) - 1)) return -1;
-		cursor_move_lines(e, w, n);
+		w->line = core_line_step(e, w->line, n);
 		coladvance(e, w);
 		r = 0;
 	} else r = screengo(e, w, n < 0 ? -1 : 1, n < 0 ? -n : n) ? 0 : -1;
