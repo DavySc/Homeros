@@ -1,0 +1,2 @@
+** task b
+ CLOSED: [2026-11-19 Thu 18:00-19:15 +1d/ --1d] SCHEDULED: <2026-11-16  Mon ++2d/> DEADLINE: <2026-11-14 9:30 +1m/3d

@@ -1,0 +1,9 @@
+inner line: end bound inclusive  =>  unit test: caught; check's texts: caught
+inner line: the outermost element, not the innermost  =>  unit test: caught; check's texts: caught
+inner line: any line of a drawer as its :END:  =>  unit test: SURVIVES; check's texts: SURVIVES
+inner line: :END: of any element as a drawer's  =>  unit test: SURVIVES; check's texts: SURVIVES
+new drawer: its :END: at the first line's column  =>  unit test: caught; check's texts: caught
+new drawer: first line at column 0  =>  unit test: caught; check's texts: caught
+sibling: any element before, not one with the same parent  =>  unit test: SURVIVES; check's texts: SURVIVES
+habit /N read again  =>  unit test: SURVIVES; check's texts: SURVIVES
+LOGBOOK moved before a headline again  =>  unit test: SURVIVES; check's texts: SURVIVES
