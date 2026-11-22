@@ -360,9 +360,7 @@ out:
 Buf *git_buf(int nr)
 {
 	Editor *e = git_ed();
-	if (!e || !nr) return NULL;
-	for (Buf *x = e->bufs; x; x = x->next) if (x->nr == nr) return x;
-	return NULL;
+	return e && nr ? core_buf_find(e, nr) : NULL;
 }
 
 int git_on(int nr)

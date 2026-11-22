@@ -17,6 +17,7 @@
 #include "core.h"
 #include "dash.h"
 #include "loop.h"
+#include "make.h"
 #include "match.h"
 #include "shada.h"
 #include "str.h"
@@ -339,23 +340,22 @@ static void files(void)
    quote of the other kind inside one ends it, as in snacks).  s is
    rewritten in place. */
 enum { GREP_ARGS = 32 };
-static int blank(char c) { return c == ' ' || (c >= '\t' && c <= '\r'); }
 static int parse(char *s, char **pat, char **args)
 {
 	char *d = NULL;
 	for (char *q = s; (q = strstr(q, "--")); q++)
-		if (q > s && blank(q[-1])) { d = q; break; }
+		if (q > s && match_space(q[-1])) { d = q; break; }
 	*pat = s;
 	if (!d) return 0;
 	char *e = d;
-	while (e > s && blank(e[-1])) e--;
+	while (e > s && match_space(e[-1])) e--;
 	*e = 0;
-	while (blank(**pat)) ++*pat;                     /* vim.trim */
+	while (match_space(**pat)) ++*pat;                     /* vim.trim */
 	/* squeeze and trim the args into d */
 	char *w = d;
 	for (const char *r = d + 2; *r; r++)
-		if (!blank(*r)) *w++ = *r;
-		else if (w > d && !blank(r[1]) && r[1]) *w++ = ' ';
+		if (!match_space(*r)) *w++ = *r;
+		else if (w > d && !match_space(r[1]) && r[1]) *w++ = ' ';
 	*w = 0;
 	int n = 0;
 	char quote = 0, *a = d;
@@ -569,7 +569,7 @@ static int key(Editor *e, int k);
 
 int tools_key(Editor *e, int k)
 {
-	if (!P.open) return dash_key(e, k);
+	if (!P.open) return make_key(e, k) || dash_key(e, k);
 	key(e, k);
 	if (P.open) preview();
 	return 1;
