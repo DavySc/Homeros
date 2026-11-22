@@ -109,8 +109,8 @@ org: colours: a footnote reference in a LaTeX macro (against Org)~org-conform OR
 org: colours: a LaTeX fragment at a line's start not looked for~test TESTS=org~~src/org/org.c~(PE[i].type == ORG_PARAGRAPH && frag(l, PE[i].cend))~(PE[i].type == ORG_PARAGRAPH && frag(l, PE[i].cend) && 0)
 org: colours: an entity at a line's start taken for a LaTeX fragment~test TESTS=org~~src/org/org.c~return alpha(m) && !(ent(l, &x) && entity(m, x));~return alpha(m) && !(ent(l, &x) && entity(m, x) && 0);
 org: colours: any character after a $ fragment's closing $~test TESTS=org~~src/org/org.c~ || IN(DPOST, uni_cp(S, N, m)));~ || 1);
-org: colours: no definition span thrown by a reference below (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		if (c->fm) put(l, nextl(l));~		if (0) put(l, nextl(l));
-org: colours: a footnote reference's span not carried to the next lines (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	if (put && c->fz > l) put(l, c->fz);~	if (0) put(l, c->fz);
+org: colours: no definition span thrown by a reference below (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		if (c->fm) cover(r, l, nextl(l), put);~		if (0) cover(r, l, nextl(l), put);
+org: colours: a footnote reference's span not carried to the next lines (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	if (put && c->fz > l) cover(r, l, c->fz, put);~	if (0) cover(r, l, c->fz, put);
 org: colours: a footnote reference inside a link (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~((k = holds(h, e = eol(l), p, link_re)) == ORG_NONE || k == p) &&~((k = holds(h, e = eol(l), p, link_re)) || 1) &&
 org: colours: a footnote definition span from a comment line (against Org, directed)~test TESTS=org~~src/org/org.c~	if (comment(l) || (b < N && S[b] == ':'~	if ((b < N && S[b] == ':'
 org: colours: a string not skipped in a footnote's brackets (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		if (t == 1) {~		if (t == 9) {

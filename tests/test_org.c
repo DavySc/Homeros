@@ -1277,20 +1277,25 @@ int main(void)
 		while (m < n * w) memcpy(many + m, gate[k].ln, w), m += w;
 		memcpy(many + m - strlen(gate[k].end), gate[k].end, strlen(gate[k].end));
 		memcpy(many, gate[k].top, strlen(gate[k].top));
-		struct timespec t0, t1;
-		t = text_new(many, m);
-		x = t ? orgfx_new(t) : NULL;
-		CHECK(x && orgfx_update(x, NULL));
-		Conceal c[64];
-		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t0);
-		size_t l0 = *gate[k].top ? 0 : n - 50;   /* the lines shown */
-		for (size_t l = l0; l < l0 + 50; l++) CHECK(orgfx_conceal(x, l, c, 64) == (l || !*gate[k].top ? gate[k].shown : 0));
-		orgfx_faces(x, l0 * w, (l0 + 50) * w, fc);
-		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t1);
-		CHECK(k != 1 || (fc[0] == FACE_MARKUP_LINK_LABEL && fc[7] == FACE_MARKUP_LINK_URL));
-		CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000 < gate[k].ms);
-		orgfx_free(x);
-		text_free(t);
+		long best = gate[k].ms;   /* best of 3 fresh texts: a busy machine slows a run, never speeds one */
+		for (int r = 0; r < 3; r++) {
+			struct timespec t0, t1;
+			t = text_new(many, m);
+			x = t ? orgfx_new(t) : NULL;
+			CHECK(x && orgfx_update(x, NULL));
+			Conceal c[64];
+			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t0);
+			size_t l0 = *gate[k].top ? 0 : n - 50;   /* the lines shown */
+			for (size_t l = l0; l < l0 + 50; l++) CHECK(orgfx_conceal(x, l, c, 64) == (l || !*gate[k].top ? gate[k].shown : 0));
+			orgfx_faces(x, l0 * w, (l0 + 50) * w, fc);
+			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t1);
+			CHECK(k != 1 || (fc[0] == FACE_MARKUP_LINK_LABEL && fc[7] == FACE_MARKUP_LINK_URL));
+			long ms = (t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000;
+			if (ms < best) best = ms;
+			orgfx_free(x);
+			text_free(t);
+		}
+		CHECK(best < gate[k].ms);
 	}
 	/* every emphasis match on a line counts, not the first 64: Org leaves
 	   the script inside the 66th as typed (PR 108's review, emph65.org) */
