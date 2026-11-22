@@ -66,17 +66,10 @@ static void on_output(void *ctx, int stream, const char *b, size_t n)
 	if (T.open || !stream) core_changed = 1;
 }
 
-/* Starts the shell: 'shell' as Neovim sets it, $SHELL or sh; cmd.exe on
-   Windows.  0 ok. */
+/* Starts the user's shell.  0 ok. */
 static int start(Box b)
 {
-#ifdef _WIN32
-	const char *sh = getenv("COMSPEC");
-	char *argv[] = { (char *)(sh ? sh : "cmd.exe"), NULL };
-#else
-	const char *sh = getenv("SHELL");
-	char *argv[] = { (char *)(sh && *sh ? sh : "sh"), NULL };
-#endif
+	char *argv[] = { (char *)proc_shell_path(), NULL };
 	GhosttyColorRgb pal[256];
 	T.rows = b.h - 2; T.cols = b.w - 2;
 	if (T.rows < 1 || T.cols < 1) return -1;

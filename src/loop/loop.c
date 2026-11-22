@@ -185,6 +185,20 @@ void proc_resize(int id, int rows, int cols)
 	if (id >= 0 && id < MAXP && p[id].pid && p[id].fd[1] >= 0) ioctl(p[id].fd[1], TIOCSWINSZ, &ws);
 }
 
+/* 'shell' as Neovim sets it */
+const char *proc_shell_path(void)
+{
+	const char *sh = getenv("SHELL");
+	return sh && *sh ? sh : "sh";
+}
+
+/* and 'shellcmdflag' */
+int proc_shell(const char *cmd, const char *dir, ProcFn fn, void *ctx)
+{
+	char *argv[] = { (char *)proc_shell_path(), "-c", (char *)cmd, NULL };
+	return proc_spawn(argv, dir, fn, ctx);
+}
+
 static void close_in(struct Proc *c)
 {
 	close(c->fd[0]);

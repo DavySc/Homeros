@@ -1,0 +1,54 @@
+diff --git a/src/infoview/serve/serve.c b/src/infoview/serve/serve.c
+index 6f21daf..995cd67 100644
+--- a/src/infoview/serve/serve.c
++++ b/src/infoview/serve/serve.c
+@@ -352,8 +352,9 @@ static void open_browser(void)
+ 	free(argv);
+ }
+ 
+-static void from_editor(char *l, size_t n)
++static void from_editor(void *ctx, char *l, size_t n)
+ {
++	(void)ctx;
+ 	if (n == 1 && *l == '!') { open_browser(); return; }
+ 	char *sp = memchr(l, ' ', n);
+ 	if (!sp) return;
+@@ -439,11 +440,7 @@ int main(int argc, char **argv)
+ 			char b[65536];
+ 			ssize_t n = read(0, b, sizeof b);
+ 			if (n == 0 || (n < 0 && errno != EAGAIN && errno != EINTR)) break;   /* the editor is gone */
+-			for (ssize_t i = 0; i < n; i++) {
+-				if (b[i] != '\n') { str_add(&line, b + i, 1); continue; }
+-				from_editor(line.s ? line.s : "", line.n);
+-				line.n = 0;
+-			}
++			str_lines(&line, b, (size_t)n, from_editor, NULL);
+ 		}
+ 		if (f[1].revents && toed.n) {
+ 			ssize_t n = write(1, toed.s, toed.n);
+diff --git a/src/tools/oil.c b/src/tools/oil.c
+index 2e1c57d..239242b 100644
+--- a/src/tools/oil.c
++++ b/src/tools/oil.c
+@@ -12,6 +12,7 @@
+ #include <string.h>
+ #include <sys/stat.h>
+ #include <unistd.h>
++#include "match.h"
+ #include "oil.h"
+ 
+ /* cache.lua: entries by id; dir NULL once forgotten.  old marks the
+@@ -253,10 +254,10 @@ static int parse(Out *o, int buf, const char *dir, const char *text, size_t len)
+ 		int etype, id = -1, isdir;
+ 		if (n >= 2 && l[0] == '/' && l[1] >= '0' && l[1] <= '9') {
+ 			/* parse_line: ^/(%d+) (.+)$, then the icon column ^(%S+)%s+(.*)$ */
+-			size_t i = 1;
+-			long v = 0;
+ 			/* Lua's tonumber of a long id is a float no entry has: saturate */
+-			for (; i < n && l[i] >= '0' && l[i] <= '9'; i++) v = v > (LONG_MAX - 9) / 10 ? LONG_MAX : v * 10 + (l[i] - '0');
++			const char *d = l + 1;
++			long v = match_num(&d, l + n);
++			size_t i = (size_t)(d - l);
+ 			if (i + 1 >= n || l[i] != ' ') { push_err(o, "Malformed ID at start of line", buf, ln); continue; }
+ 			i++;
+ 			size_t r = i;
