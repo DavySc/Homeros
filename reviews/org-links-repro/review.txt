@@ -1,0 +1,19 @@
+review: description crosses a paragraph boundary~org-conform ORG_N=2000 SEED=1~~src/org/org.c~			if (S[q] == '\n' && inside(q + 1)) return 0;¶		}~		}
+review: angle link stops only at a blank line, not at blank then >~org-conform ORG_N=2000 SEED=1~~src/org/org.c~((q = blanks(q + 1)) >= N || one(q, ">\n"))) return 0;~((q = blanks(q + 1)) >= N || one(q, "\n"))) return 0;
+review: w3m type letters (3 dropped from a type)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~ || S[p] == '+' || S[p] == '3'); }~ || S[p] == '+'); }
+review: shell type missing~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	"shell", "shortdoc", "w3m" };~	"shortdoc", "w3m" };
+review: bibtex type missing~org-conform ORG_N=2000 SEED=1~~src/org/org.c~"bbdb", "bibtex", "docview",~"bbdb", "docview",
+review: DEL not a plain link's last character~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	return c == '-' || c == '/' || c == 127 ||~	return c == '-' || c == '/' ||
+review: one blank line ends a footnote's look-back~org-conform ORG_N=2000 SEED=1~~src/org/org.c~emptyl(l) && eol(l) < N && emptyl(nextl(l))); }~emptyl(l)); }
+review: example block not forbidden~org-conform ORG_N=2000 SEED=1~~src/org/org.c~"#+begin_comment", "#+begin_example", "#+begin_export"~"#+begin_comment", "#+begin_xexample", "#+begin_export"
+review: verbatim after the line ignored~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	return m == ORG_NONE || l < VM || l > VC;~	return m == ORG_NONE || l < VM;
+review: $ fragment may end after a period~test TESTS=org~~src/org/org.c~	return !one(m - 2, " \t\n,.") && (m >= z~	return !one(m - 2, " \t\n,") && (m >= z
+review: checkpoint saved without its links~test TESTS=org~~src/org/org.c~			links_to(&c, c.at);¶			f->ck[f->kn++] = c;~			f->ck[f->kn++] = c;
+review: unhide keeps a span's tail~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		if (x->a < a && x->z > z && CN < CCAP) C[CN++] = (Conceal){ z, x->z, "" };¶~
+review: dates keep scripts raised~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	dates(CL, CE, rec);¶~
+review: ASCII fast path one range late~test TESTS=org~~src/org/org.c~	if (c < 0x80) { while (lo < k && c > t[lo][1]) lo++; hi = lo; }~	if (c < 0x80) { while (lo < k && c >= t[lo][1]) lo++; hi = lo; }
+review: a link's last character may be a period~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		if (n && (!nsb(q) || fin(q))) z = x;~		if (n && (!nsb(q) || fin(q) || S[q] == '.')) z = x;
+review: a quote in a footnote not skipped to its pair~org-conform ORG_N=2000 SEED=1~~src/org/org.c~			const unsigned char *q = memchr(S + p + 1, '"', N - p - 1);~			const unsigned char *q = S + p;
+review: a description's second ] required on the same line~org-conform ORG_N=2000 SEED=1~~src/org/org.c~			if (S[q] == ']' && S[q + 1] == ']') { *va = i + 2;~			if (S[q] == ']' && S[q + 1] == ']' && memchr(S + i, '\n', q - i) == NULL) { *va = i + 2;
+review: a backslash pair before ] not a choice~org-conform ORG_N=2000 SEED=1~~src/org/org.c~a = k, b = k - i >= 4 ? k + 1 : 0;~a = k, b = 0;
+review: an empty footnote label taken~org-conform ORG_N=2000 SEED=1~~src/org/org.c~(S[x] == ']' && x > p + 4)) ? x + 1 : 0;~(S[x] == ']' && x >= p + 4)) ? x + 1 : 0;

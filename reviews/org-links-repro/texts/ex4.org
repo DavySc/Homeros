@@ -1,0 +1,4 @@
+[fn:1] a
+#+begin_example
+x [fn:1] y
+#+end_example

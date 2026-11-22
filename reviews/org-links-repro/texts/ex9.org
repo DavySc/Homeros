@@ -1,0 +1,4 @@
+[fn:1] a
+#+begin_example
+[fn:1] x^{2}
+#+end_example
