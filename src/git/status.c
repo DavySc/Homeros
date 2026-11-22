@@ -395,7 +395,7 @@ void git_show(Repo *r, View *v)
 }
 
 /* magit-refresh-buffer deactivates the mark after a command: Visual mode
-   ends when a write ends in one of r's buffers (headless: any) */
+   ends when a write is queued from one of r's buffers (headless: any) */
 void git_unmark(Repo *r)
 {
 	Editor *e = git_ed();
