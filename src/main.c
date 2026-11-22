@@ -26,7 +26,6 @@ static int q[QMAX], qh, qn;     /* keys read but not yet run */
 static int resized, running;   /* running: inside a command */
 static int lost;               /* the backend's input is gone for good */
 
-
 static void on_input(void *ctx, int fd)
 {
 	(void)ctx; (void)fd;

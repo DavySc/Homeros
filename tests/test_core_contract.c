@@ -350,7 +350,21 @@ int main(void)
 		for (int k = 0; k < 100 && !e.buf->changed; k++) loop_once(10);
 		CHECK(e.buf->changed);
 	}
+	/* every file shares the watch fd, which the loop watches once: twenty
+	   loaded files leave the loop's 16 slots free for more (review of PR
+	   120: without buf_load's loop_unwatch each file takes one) */
+	char many[48];
+	for (int i = 0; i < 20; i++) {
+		snprintf(many, sizeof many, "%s/m%d", dir[0], i);
+		CHECK((f = fopen(many, "w")) && fputs("a\n", f) >= 0 && !fclose(f));
+		CHECK(!core_edit_file(&e, many, 0));
+	}
+	int pp[2];
+	CHECK(!pipe(pp) && !loop_watch(pp[0], NULL, NULL));
+	loop_unwatch(pp[0]);
+	close(pp[0]), close(pp[1]);
 	core_free(&e);
+	for (int i = 0; i < 20; i++) snprintf(many, sizeof many, "%s/m%d", dir[0], i), unlink(many);
 	for (int i = 0; i < 2; i++) unlink(wf[i]), rmdir(dir[i]);
 	printf("test_core_contract: ok\n");
 	return 0;
