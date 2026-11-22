@@ -13,6 +13,7 @@
 #include "core.h"
 #include "fold.h"
 #include "keys.h"
+#include "syntax.h"
 #include "../src/core/core_int.h"
 
 /* known differences, cursor column only: Neovim updates curswant lazily
@@ -27,7 +28,7 @@ static int lv[4096], st[4096], nlv;
 
 static int fe(void *ctx, size_t l, int *start)
 {
-	(void)ctx;
+	CHECK(((const Win *)ctx)->buf);   /* the window is alive (ASan) */
 	*start = l < (size_t)nlv && st[l];
 	return l < (size_t)nlv ? lv[l] : 0;
 }
@@ -98,6 +99,84 @@ static void wiring(const char *file)
 	feed(&e, "\x1b");
 	core_update(&e);
 	CHECK(fold_closed(w1->fold, 0, &a, &z) && a == 0 && z == 1);
+	/* rows wait in Insert mode; a line split there moves every line under
+	   it, so the rows reach the last line: at Esc a fold made far below is
+	   seen */
+	feed(&e, "ggi");
+	core_folds(&e, e.buf, 0, 1);
+	feed(&e, "\r");
+	nlv = 6;
+	for (int i = 0; i < nlv; i++) lv[i] = i >= 4, st[i] = i == 4;
+	feed(&e, "\x1b");
+	core_update(&e);
+	for (Win *w = e.wins; w; w = w->next) CHECK(fold_level(w->fold, 3) == 0 && fold_level(w->fold, 5) == 1);
+	/* cursor_up_inner(): a step up into a closed fold goes to its first
+	   line, except the last step in Insert mode (the fold opens) */
+	CHECK(fold_closed(w1->fold, 5, &a, &z) && e.wins == w1 && (e.win = w1));
+	nlv = 7;   /* a line under the fold to step up from */
+	lv[6] = st[6] = 0;
+	feed(&e, "Go\x1b");
+	core_update(&e);
+	CHECK(core_line_step(&e, 6, -1) == 4);
+	e.mode = MODE_INSERT;
+	CHECK(core_line_step(&e, 6, -1) == 5 && core_line_step(&e, 6, -2) == 3);
+	e.mode = MODE_NORMAL;
+	/* the split's folds ask the split, not the window split from: with
+	   that one closed, a read of it is a use after free under ASan */
+	CHECK(!core_close(&e, 1) && e.win != w1);
+	core_folds(&e, e.buf, 0, buf_lines(e.buf));
+	CHECK(core_fold(&e, FOLD_CLOSE_ALL, 0, 1) == 0 && fold_closed(e.win->fold, 5, &a, &z));
+	core_free(&e);
+}
+
+/* main.c's idle step: the parse, then its rows to the folds */
+static void parse(Editor *e)
+{
+	size_t r1, r2;
+	while (e->buf->syn) {
+		int r = syntax_update(e->buf->syn, e->buf->text, NULL, &r1, &r2);
+		if (r1 < r2) core_folds(e, e->buf, r1, r2);
+		if (r != 2) break;
+	}
+}
+
+/* which files get folds (win_folds()): an Org file's start closed below
+   level 1, a Markdown file's open, a text file has none; a buffer left and
+   entered again keeps its open and closed folds, and a new window takes
+   those of the window that shows it (get_winopts()'s cloneFoldGrowArray();
+   measured in nvim: a zo kept across :e and :b, and across :new and :b) */
+static void filetypes(const char *dir)
+{
+	static Editor e;
+	char org[64], md[64], txt[64];
+	size_t a = 0, z = 0;
+	snprintf(org, sizeof org, "%s/a.org", dir);
+	snprintf(md, sizeof md, "%s/b.md", dir);
+	snprintf(txt, sizeof txt, "%s/c.txt", dir);
+	const char *const f[][2] = { { org, "* a\n** b\nx\n* c\n** d\ny\n" }, { md, "# a\n## b\nx\n" }, { txt, "# a\n## b\nx\n" } };
+	for (int i = 0; i < 3; i++) {
+		FILE *o = fopen(f[i][0], "w");
+		CHECK(o && fputs(f[i][1], o) >= 0 && !fclose(o));
+	}
+	/* :e from the empty first buffer loads into it (do_ecmd()'s reuse) */
+	CHECK(!core_open(&e, NULL) && !e.win->fold && !core_edit_file(&e, org, 0) && e.win->fold);
+	parse(&e);
+	CHECK(!fold_closed(e.win->fold, 0, &a, &z) && fold_closed(e.win->fold, 1, &a, &z) && a == 1 && z == 2);
+	CHECK(fold_closed(e.win->fold, 4, &a, &z) && a == 4 && z == 5);
+	CHECK(core_fold(&e, FOLD_OPEN, 1, 1) == 0 && !fold_closed(e.win->fold, 1, &a, &z));
+	CHECK(!core_edit_file(&e, md, 0));
+	parse(&e);
+	CHECK(e.win->fold && fold_level(e.win->fold, 2) == 2 && !fold_closed(e.win->fold, 1, &a, &z));
+	CHECK(!core_edit_file(&e, txt, 0));
+	CHECK(!e.win->fold);
+	CHECK(!core_buf_goto(&e, 1));
+	CHECK(e.win->fold && !fold_closed(e.win->fold, 1, &a, &z) && fold_closed(e.win->fold, 4, &a, &z));
+	/* and again: the copy saved before is replaced (a leak under ASan if not freed) */
+	CHECK(!core_buf_alt(&e) && !core_buf_alt(&e));
+	CHECK(e.win->fold && !fold_closed(e.win->fold, 1, &a, &z) && fold_closed(e.win->fold, 4, &a, &z));
+	/* a new window takes them from the window that shows the buffer (measured) */
+	CHECK(!core_new(&e, 0) && !core_buf_goto(&e, 1));
+	CHECK(e.win->fold && !fold_closed(e.win->fold, 1, &a, &z) && fold_closed(e.win->fold, 4, &a, &z));
 	core_free(&e);
 }
 
@@ -111,6 +190,7 @@ int main(int argc, char **argv)
 	CHECK(mkdtemp(dir));
 	snprintf(file, sizeof file, "%s/f", dir);
 	wiring(file);
+	filetypes(dir);
 	FILE *f = fopen(path, "r");
 	CHECK(f);
 	int rows = 0, cols = 0, wrap = 0, level = 0, ncase = 0, bad = 0, differ = 0, r = 0, iskn = 0;

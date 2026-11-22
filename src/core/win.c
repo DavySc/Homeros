@@ -555,6 +555,7 @@ static void win_forget(Editor *e, Win *w)
 		if (null) {
 			WinInfo **d = km > kn ? mine : null, *x = *d;
 			*d = x->next;
+			fold_free(x->fold);   /* free_wininfo() */
 			free(x);
 		}
 	}
