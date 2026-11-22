@@ -41,14 +41,26 @@ static int cls(void)
 
 static int cursor_lineempty(void) { return W->col == 0 && lineempty((long)W->line); }
 
-int fwd_word(long count, int bigword, int eol)
+/* the word motions start without coladd */
+static void words(int bigword)
 {
 	cls_bigword = bigword;
 	setcur((Pos){ (long)W->line, (long)W->col, 0 });
+}
+
+/* fwd_word() and end_word() in a closed fold: from its last line's last
+   character */
+static void fold_last(void)
+{
+	long l = (long)W->line;
+	if (has_folding(l, NULL, &l)) W->line = (size_t)l, coladvance(MAXCOL);
+}
+
+int fwd_word(long count, int bigword, int eol)
+{
+	words(bigword);
 	while (--count >= 0) {
-		/* in closed folds: from their last line's last character */
-		long l = (long)W->line;
-		if (has_folding(l, NULL, &l)) W->line = (size_t)l, coladvance(MAXCOL);
+		fold_last();
 		int sclass = cls(), last_line = (long)W->line + 1 == nlines();
 		int i = inc_cursor();
 		if (i == -1 || (i >= 1 && last_line)) return 0;
@@ -76,8 +88,7 @@ static int skip_chars(int cclass, int dir)
 
 int bck_word(long count, int bigword, int stop)
 {
-	cls_bigword = bigword;
-	setcur((Pos){ (long)W->line, (long)W->col, 0 });
+	words(bigword);
 	while (--count >= 0) {
 		/* in closed folds: from their first line's start */
 		long l = (long)W->line;
@@ -100,11 +111,9 @@ finished:
 
 int end_word(long count, int bigword, int stop, int empty)
 {
-	cls_bigword = bigword;
-	setcur((Pos){ (long)W->line, (long)W->col, 0 });
+	words(bigword);
 	while (--count >= 0) {
-		long l = (long)W->line;
-		if (has_folding(l, NULL, &l)) W->line = (size_t)l, coladvance(MAXCOL);
+		fold_last();
 		int sclass = cls();
 		if (inc_cursor() == -1) return 0;
 		if (cls() == sclass && sclass != 0) {
@@ -125,8 +134,7 @@ finished:
 
 int bckend_word(long count, int bigword, int eol)
 {
-	cls_bigword = bigword;
-	setcur((Pos){ (long)W->line, (long)W->col, 0 });
+	words(bigword);
 	while (--count >= 0) {
 		int i, sclass = cls();
 		if ((i = dec_cursor()) == -1) return 0;
