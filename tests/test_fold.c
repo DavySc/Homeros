@@ -137,7 +137,7 @@ int main(int argc, char **argv)
 		} else if (!strcmp(s, "Z")) {
 			char *cmd = strtok(NULL, " \n");
 			size_t c = strtoul(strtok(NULL, " \n"), NULL, 10);
-			rc = zcmd(f, cmd, c, atol(strtok(NULL, " \n")));
+			rc = zcmd(f, cmd, c, atol(strtok(NULL, " \n"))) < 0 ? -1 : 0;   /* nvim shows E490 only */
 		} else {
 			size_t c = strtoul(strtok(NULL, " \n"), NULL, 10);
 			open_line(f, *s, c, strtok(NULL, " \n"));
