@@ -1,0 +1,4 @@
+* WAIT a
+#+begin_verse
+<2026-11-12 Thu +1d>
+#+end_verse

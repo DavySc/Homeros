@@ -60,3 +60,7 @@ syntax: #gsub! on the injection's language is ignored (test_syntax, case 5: /* l
 syntax: Lua's gsub stops after its first match (test_syntax, Lua patterns)~test TESTS=syntax~~src/syntax/lmatch.c~		if (anchor) break;¶	}¶	return add~		break;¶	}¶	return add
 syntax: Lua's gsub %0 gives the first capture (test_syntax, Lua patterns)~test TESTS=syntax~~src/syntax/lmatch.c~if (c == '0' || (l == 0 && !ms.level)) ca = s~if (l == 0 && !ms.level) ca = s
 syntax: injection patterns of languages we lack are dropped from the query, so fewer in-progress matches hit Neovim's limit (test_syntax, case 11)~test TESTS=syntax~~src/syntax/syntax.c~if (!hl && (P->skip = (unsigned char)lacked(st, ns, Q->q))) continue;~if (!hl && lacked(st, ns, Q->q)) { ts_query_disable_pattern(Q->q, i); continue; }
+syntax: a .org file gets no colours (test_syntax_org)~test TESTS=syntax_org~~src/syntax/syntax.c~{ ".org", "org", BY_ORG }~{ ".org", "org", BY_NONE }
+syntax: an edit to a .org file is not passed to Org (test_syntax_org)~test TESTS=syntax_org~~src/syntax/syntax.c~		orgfx_edit(s->org, t, pos, ndel, nins);¶		return;~		return;
+syntax: an update of a .org file does not reach Org (test_syntax_org)~test TESTS=syntax_org~~src/syntax/syntax.c~	if (s->org) return orgfx_update(s->org, stop);~	if (s->org) return 0;
+syntax: a .org file's colours are not freed (test_syntax_org, LeakSanitizer)~test TESTS=syntax_org~~src/syntax/syntax.c~	orgfx_free(s->org);¶~
