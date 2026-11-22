@@ -172,12 +172,6 @@ static int line_rows(const Win *w, size_t l)
 	return v <= skip ? 1 : (int)((v - skip + (size_t)tw - 1) / (size_t)tw);
 }
 
-/* virtual_text after a line's end and the blank there (eol virt_text),
-   as _get_virt_text_chunks() lays out the diagnostics [lo, hi) of v: 4
-   blanks, a '■' in each one's colour, a blank and the last one's message,
-   its "\r" dropped, each "\n" two blanks, each Tab blanks to the row's
-   next multiple of 8 (measured); cut at the window's edge.
-   The blanks have no colour of their own (hl_mode combine: on CursorLine) */
 /* grid_puts() for virtual text: a double-width character cut at the edge
    leaves a blank in its colour (measured) */
 static int vt_puts(Grid *g, int y, int x, int end, const char *s, size_t n, int f)
@@ -186,6 +180,12 @@ static int vt_puts(Grid *g, int y, int x, int end, const char *s, size_t n, int 
 	return z < end && x + grid_width(s, n) > end ? grid_puts(g, y, z, end, " ", 1, ATTR_NONE, f) : z;
 }
 
+/* virtual_text after a line's end and the blank there (eol virt_text),
+   as _get_virt_text_chunks() lays out the diagnostics [lo, hi) of v: 4
+   blanks, a '■' in each one's colour, a blank and the last one's message,
+   its "\r" dropped, each "\n" two blanks, each Tab blanks to the row's
+   next multiple of 8 (measured); cut at the window's edge.
+   The blanks have no colour of their own (hl_mode combine: on CursorLine) */
 static void draw_vt(Grid *g, const Win *w, int row, int nw, int c, const LspDiag *v, int lo, int hi, unsigned char cl)
 {
 	int y = w->y + row, end = w->x + w->w < g->cols ? w->x + w->w : g->cols, x = w->x + nw + c;

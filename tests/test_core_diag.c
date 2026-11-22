@@ -162,8 +162,9 @@ int main(int argc, char **argv)
 		for (int i = 0; i < NL; i++) fprintf(o, "D %d %d 1 78\n", 3 * i, 3 * i + 1);
 		fputs("F ", o);
 		for (int i = 0; i < NL; i++) fputs("61620a", o);
-		/* case 1: the two windows below */
-		CHECK(fputs("\nE\nD 0 1 1 6d30\nD 6 7 1 6d32\nF 61620a63640a65660a\nE\n", o) >= 0 && !fclose(o));
+		/* case 1: the two windows below; case 2: a severity over 4 */
+		CHECK(fputs("\nE\nD 0 1 1 6d30\nD 6 7 1 6d32\nF 61620a63640a65660a\nE\nD 0 1 5 6d35\nF 61620a\nE\n", o) >= 0
+		      && !fclose(o));
 		snprintf(file, sizeof file, "%s/0.dbig", dir);
 		CHECK((o = fopen(file, "w")));
 		for (int i = 0; i < NL; i++) fputs("ab\n", o);
@@ -233,6 +234,42 @@ int main(int argc, char **argv)
 				row[k] = 0;
 				CHECK(!strstr(row, "m0") == (r != 0) && !strstr(row, "m2"));
 			}
+		/* the message's four blanks take the cursor line's CursorLine
+		   (hl_mode combine) */
+		int sq = -1;
+		for (int c = 4; c < e.win->w && sq < 0; c++)
+			if (!memcmp(grid_text(&g.c[e.win->y * g.cols + e.win->x + c]), "\xe2\x96\xa0", 3)) sq = c;
+		CHECK(sq >= 4);
+		for (int c = sq - 4; c < sq; c++) CHECK(g.c[e.win->y * g.cols + e.win->x + c].bg == FACE_CURSOR_LINE);
+		core_free(&e);
+		grid_free(&g);
+		unlink(file);
+	}
+	/* a severity over 4 (no server should send one) is a hint, as
+	   vim.diagnostic clamps it, not a face past the four */
+	{
+		snprintf(file, sizeof file, "%s/2.dbig", dir);
+		FILE *o = fopen(file, "w");
+		CHECK(o && fputs("ab\n", o) >= 0 && !fclose(o));
+		Grid g = { 0 };
+		int have = 0;
+		CHECK(!core_open(&e, file) && !grid_resize(&g, 10, 40));
+		for (int t = 0; t < 500 && have < 1; t++) {
+			loop_once(10);
+			lsp_diags(e.buf->lsp, &have);
+		}
+		CHECK(have == 1);
+		layout_resize(&e, 10, 40);
+		core_update(&e);
+		core_draw(&e, &g);
+		int hint = 0;
+		for (int c = 0; c < e.win->w; c++) {
+			int f = g.c[e.win->y * g.cols + e.win->x + c].face;
+			CHECK(f < FACE_DIAG_ERROR || f > FACE_DIAG_VT_HINT || f == FACE_DIAG_HINT || f == FACE_DIAG_UNDER_HINT
+			      || f == FACE_DIAG_VT_HINT);
+			hint |= f == FACE_DIAG_HINT;
+		}
+		CHECK(hint);
 		core_free(&e);
 		grid_free(&g);
 		unlink(file);
