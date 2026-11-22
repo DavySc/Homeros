@@ -3,9 +3,12 @@
    op_replace(), op_insert(), do_addsub()), with FEATURES.md's settings
    ('expandtab', 'shiftwidth' 4, 'nrformats' bin,hex, 'virtualedit' block). */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include "k.h"
 #include "loop.h"
+#include "org.h"
 #include "sqlfmt.h"
 #include "uni.h"
 
@@ -670,16 +673,6 @@ int map_case(int c, int up)
 	return c;
 }
 
-long utf8_put(int c, char *b)
-{
-	unsigned k = (unsigned)c;
-	if (k < 0x80) { b[0] = (char)k; return 1; }
-	if (k < 0x800) { b[0] = (char)(0xC0 + k / 64); b[1] = (char)(0x80 + k % 64); return 2; }
-	if (k < 0x10000) { b[0] = (char)(0xE0 + k / 4096); b[1] = (char)(0x80 + k / 64 % 64); b[2] = (char)(0x80 + k % 64); return 3; }
-	b[0] = (char)(0xF0 + k / 262144); b[1] = (char)(0x80 + k / 4096 % 64); b[2] = (char)(0x80 + k / 64 % 64); b[3] = (char)(0x80 + k % 64);
-	return 4;
-}
-
 int swapchar(int op_type, Pos *pos)
 {
 	int c = gchar(*pos), nc = c;
@@ -688,7 +681,7 @@ int swapchar(int op_type, Pos *pos)
 	else if (lo != c) { if (op_type != OP_UPPER) nc = lo; }   /* mb_isupper() */
 	if (nc == c) return 0;
 	char b[4];
-	long n = utf8_put(nc, b);
+	long n = uni_put((unsigned char *)b, (unsigned)nc);
 	/* the first code point only: its combining marks stay (swapchar()
 	   puts utf_char2bytes() over utf_ptr2len() bytes) */
 	const unsigned char *s = (const unsigned char *)ml_get(pos->lnum);
@@ -744,7 +737,7 @@ int op_replace(Oparg *oap, int c)
 	if (is_empty_buf() || oap->empty) return 1;
 	u_save_cursor();
 	char cb[4];
-	long cn = utf8_put(c, cb);
+	long cn = uni_put((unsigned char *)cb, (unsigned)c);
 	if (oap->motion_type == MBLOCK) {
 		int is_MAX = W->want == WANT_EOL;
 		for (; (long)W->line <= oap->end.lnum; W->line++) {
@@ -1513,7 +1506,7 @@ long key_to_bytes(int k, char *b)
 	for (unsigned i = 0; i < sizeof special / sizeof *special; i++)
 		if (special[i].key == k) { b[0] = (char)0x80; b[1] = special[i].a; b[2] = special[i].b; return 3; }
 	if (k >= 0x110000) return 0;
-	return utf8_put(k, b);
+	return uni_put((unsigned char *)b, (unsigned)k);
 }
 
 /* the keys a register's bytes stand for, to the stuff buffer (CTRL-R) or
@@ -1633,7 +1626,6 @@ int do_execreg(int regname)
 		bput(&b, "\r", 1);
 		stuff_bytes(b.s, b.n, 1, 0);
 		free(b.s);
-		E->ks.executing = regname;
 		return 1;
 	}
 	if (regname == '.') {
@@ -1641,7 +1633,6 @@ int do_execreg(int regname)
 		long n = last_insert_keys(&k);
 		if (n < 0) { core_msg(E, "E29: No inserted text yet"); return 0; }
 		typebuf_ins(k, n);
-		E->ks.executing = regname;
 		return 1;
 	}
 	Reg *reg = get_reg(regname, 0);
@@ -1651,7 +1642,7 @@ int do_execreg(int regname)
 	if (reg->type == MLINE) bput(&b, "\n", 1);
 	stuff_bytes(b.s ? b.s : "", b.n, 1, 0);
 	free(b.s);
-	E->ks.executing = regname == 0 ? '"' : regname;
+	E->ks.executing = regname == 0 ? '"' : regname;   /* only here, as do_execreg(): not for @: and @. */
 	return 1;
 }
 
@@ -1715,35 +1706,64 @@ int insert_reg(int regname, int literally)
 
 /* ---- gq and :Format ---- */
 
-int is_sql(void)
+int is_ft(const char *ext)
 {
-	size_t n = B->path ? strlen(B->path) : 0;
-	return n > 4 && !memcmp(B->path + n - 4, ".sql", 4);
+	size_t n = B->path ? strlen(B->path) : 0, k = strlen(ext);
+	return n > k && !memcmp(B->path + n - k, ext, k);
 }
 
 /* conform.nvim with sqldiff, Davy's formatter for .sql: the whole text goes
    to the formatter and only the changes in bytes [a, z) are applied, as
    sqlfmt's range does */
+/* [a, z) becomes the n bytes of res as one change; the cursor stays on its
+   text: after the edit it moves with it, inside it keeps its offset into
+   the new text (as near as fits) */
+static void replace(size_t a, size_t z, const char *res, size_t n)
+{
+	if (z == a && !n) return;
+	size_t p = core_line_start(E, W->line) + W->col;
+	p = p >= z ? p - (z - a) + n : p > a ? a + (p - a < n ? p - a : n) : p;
+	core_edit(E, a, z - a, res, n);
+	buf_changed();
+	W->line = text_line_of(B->text, p);
+	W->col = p - core_line_start(E, W->line);
+	check_cursor();
+	W->col = (size_t)head(ml_get((long)W->line), (long)W->col);
+}
+static int oom(void) { core_msg(E, "E342: Out of memory!"); return -1; }
+
 int sql_format(size_t a, size_t z)
 {
 	const char *res;
 	size_t n;
 	int kept = sqlfmt(B->text, &a, &z, &res, &n);
-	if (kept < 0) { core_msg(E, "E342: Out of memory!"); return -1; }
-	if (z > a || n) {
-		/* the cursor stays on its text: after the edit it moves with it,
-		   inside it keeps its offset into the new text (as near as fits) */
-		size_t p = core_line_start(E, W->line) + W->col;
-		p = p >= z ? p - (z - a) + n : p > a ? a + (p - a < n ? p - a : n) : p;
-		core_edit(E, a, z - a, res, n);
-		buf_changed();
-		W->line = text_line_of(B->text, p);
-		W->col = p - core_line_start(E, W->line);
-		check_cursor();
-		W->col = (size_t)head(ml_get((long)W->line), (long)W->col);
-	}
+	if (kept < 0) return oom();
+	replace(a, z, res, n);
 	if (kept) core_msg(E, "%d statement%s kept as written", kept, kept == 1 ? "" : "s");
 	return 0;
+}
+
+/* nvim-orgmode's cit and ciT (org_todo, org_todo_prev), kittymax's
+   org-todo 'right and 'left: the entry's next or previous TODO keyword */
+void org_cycle(int dir)
+{
+	size_t n = text_len(B->text), a, z, len;
+	char *s = malloc(n + 1);
+	if (!s) { oom(); return; }
+	text_read(B->text, 0, s, n);
+	/* local minutes, timegm(localtime()) / 60 without timegm or
+	   tm_gmtoff (not on Windows): the fields' difference is the offset.
+	   mktime() of gmtime()'s fields is an hour off near a DST change
+	   (measured); this matched timegm in 7 zones over 8 years, every
+	   601 s (419,781 times each) */
+	time_t t = time(NULL);
+	struct tm l = *localtime(&t), g = *gmtime(&t);
+	long now = (long)(t / 60) + (l.tm_year != g.tm_year ? l.tm_year - g.tm_year : l.tm_yday - g.tm_yday) * 1440L
+		+ (l.tm_hour - g.tm_hour) * 60 + l.tm_min - g.tm_min;
+	const char *r = org_todo_step(s, n, core_line_start(E, W->line) + W->col, dir, now, &a, &z, &len);
+	free(s);
+	if (r) replace(a, z, r, len);
+	else oom();
 }
 
 /* fmt_check_par() without 'comments' (see do_join()): a blank line, or a
@@ -1840,7 +1860,7 @@ static void format_lines(long line_count)
    the operator's lines; other buffers op_format() */
 void op_format(Oparg *oap)
 {
-	if (is_sql()) {
+	if (is_ft(".sql")) {
 		sql_format(core_line_start(E, (size_t)oap->start.lnum), core_line_start(E, (size_t)oap->end.lnum + 1));
 		return;
 	}

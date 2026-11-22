@@ -111,7 +111,8 @@ static int key(const unsigned char *s, int n, int force, int *k)
 		while (j < n && (s[j] < 0x40 || s[j] > 0x7e)) j++;
 		if (j == n) return force;
 		*k = s[2] == 'A' ? KEY_UP : s[2] == 'B' ? KEY_DOWN : s[2] == 'C' ? KEY_RIGHT : s[2] == 'D' ? KEY_LEFT
-		   : s[2] == '3' && s[3] == '~' ? KEY_DEL : -1;   /* Delete: termkey's CSI 3 ~ */
+		   : s[2] == '3' && s[3] == '~' ? KEY_DEL      /* Delete: termkey's CSI 3 ~ */
+		   : s[2] == 'Z' ? KEY_S_TAB : -1;             /* Shift-Tab: termkey's CSI Z */
 		return j + 1;
 	}
 	if (s[0] < 0xC2 || s[0] > 0xF4) return 1;      /* ASCII, or no UTF-8 lead */
@@ -230,12 +231,12 @@ static void tty_suspend(void)
 }
 
 /* the terminal has no clipboard or mouse here; OSC 52 and SGR mouse reports
-   are for later */
+   are for later; and no pixels, so no images (Backend.cell, thread 0's, agreed) */
 static int  tty_clip_set(const char *s, size_t n) { (void)s; (void)n; return -1; }
 static long tty_clip_get(char *buf, size_t max) { (void)buf; (void)max; return -1; }
-static void tty_mouse(int *row, int *col) { *row = *col = 0; }
+static void tty_none(int *a, int *b) { *a = *b = 0; }
 
 const Backend backend_tty = {
 	tty_open, tty_close, tty_fds, tty_input, tty_size, tty_ready,
-	tty_present, tty_suspend, tty_clip_set, tty_clip_get, tty_mouse
+	tty_present, tty_suspend, tty_clip_set, tty_clip_get, tty_none, tty_none
 };

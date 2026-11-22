@@ -10,8 +10,12 @@
    line); they go once the core draws the UI faces below.  ATTR_GUIDE: an
    indent guide, a 1 px line at the cell's left edge in its face's fg (the
    cell's text stays a space, so screen traces do not change; snacks.indent
-   draws the same with a character). */
-enum { ATTR_NONE, ATTR_DIM, ATTR_REV, ATTR_GUIDE };
+   draws the same with a character).  ATTR_IMAGE: the cell shows a
+   cell-sized tile of an inline image (image.h), not text; ch (len 4, set
+   only by image_put) holds the image's number, the tile's column and row
+   and its cache slot's generation, so grid_cell_eq and the backends' row
+   hashes see a changed or reused tile with no code of their own. */
+enum { ATTR_NONE, ATTR_DIM, ATTR_REV, ATTR_GUIDE, ATTR_IMAGE };
 /* Syntax faces (package 12): Neovim's standard tree-sitter captures
    (:help treesitter-highlight-groups), in its order, "." as "_"; a capture
    with a longer name takes its longest listed prefix, as Neovim's highlight
@@ -53,6 +57,10 @@ enum {
 	   only ever a cell's bg */
 	FACE_HEADING_1_BG, FACE_HEADING_2_BG, FACE_HEADING_3_BG, FACE_HEADING_4_BG,
 	FACE_HEADING_5_BG, FACE_HEADING_6_BG,
+	/* render-markdown's code background (RenderMarkdownCode, only ever a
+	   cell's bg), its fence fill (bg_as_fg of it) and its bullets
+	   (RenderMarkdownBullet) */
+	FACE_MD_CODE_BG, FACE_MD_CODE_BORDER, FACE_MD_BULLET,
 	/* Neovim's UI highlight groups, as Davy's catppuccin draws them:
 	   CursorLine (only ever a cell's bg), CursorLineNr, LineNr, StatusLine,
 	   StatusLineNC, WinSeparator, EndOfBuffer, NonText ('@@@', the '<' and

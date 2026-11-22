@@ -1,0 +1,17 @@
+34c34
+< def tokens(path):
+---
+> def tokens(src):
+36c36
+< 	for n, line in enumerate(clean(path).split('\n'), 1):
+---
+> 	for n, line in enumerate(src, 1):
+72c72,73
+< 	seen, toks = {}, {f: tokens(f) for f in files}
+---
+> 	src = {f: clean(f).split('\n') for f in files}
+> 	seen, toks = {}, {f: tokens(src[f]) for f in files}
+93c94
+< 			for n, line in enumerate(clean(f).split('\n'), 1):
+---
+> 			for n, line in enumerate(src[f], 1):

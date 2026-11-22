@@ -2,11 +2,11 @@
    with the pixman renderer; like Hyprland it has a seat, text-input-v3,
    cursor-shape, fractional scale and data-control): configure size, scale,
    keys, key repeat, clipboard both ways, input method, pointer shape, frame
-   callbacks while shown and hidden.  Under headless weston 16 (its kiosk
-   shell configures the output's size; it has no seat): configure size and
-   frame callbacks.  Keys come from wtype (a virtual keyboard), the
-   clipboard's other side is wl-copy and wl-paste, the input method is this
-   test (input-method-v2). */
+   callbacks while shown and hidden, an image's cells.  Under headless weston
+   16 (its kiosk shell configures the output's size; it has no seat):
+   configure size and frame callbacks.  Keys come from wtype (a virtual
+   keyboard), the clipboard's other side is wl-copy and wl-paste, the input
+   method is this test (input-method-v2). */
 #define _GNU_SOURCE
 #include <dirent.h>
 #include <fcntl.h>
@@ -22,6 +22,7 @@
 #include "backend.h"
 #include "keys.h"
 #include "font.h"
+#include "image.h"
 enum { BTN_LEFT = 0x110 };   /* linux/input-event-codes.h clashes with keys.h */
 /* the backend's cell, from its font */
 static int cellw(void) { int w, h, b; font_cell(&w, &h, &b); return w; }
@@ -363,6 +364,23 @@ static void test_sway(void)
 	grid_put(&g, 0, 3, (const unsigned char *)" ", 1, 1, ATTR_GUIDE);
 	show();
 	CHECK(!ink(3 * cellw(), 0, cellw(), cellh(), 0));
+	/* an image (package 21, thread 0's, agreed): Backend.cell is the font's
+	   cell; tests/test_image.png (32 x 16, red then blue) fills its pixels
+	   from row 2, each tile its own columns, the background past it; its
+	   cells redrawn as text take it away */
+	{
+		int w, h, n;
+		backend_wl.cell(&w, &h);
+		CHECK(w == cellw() && h == cellh() && 4 * w > 32 && h > 16);
+		CHECK((n = image_load("tests/test_image.png", 4, 1, w, h, 0x1e1e2e)) > 0);
+		image_put(&g, 2, 0, n, 0);
+		show();
+		CHECK(ink(0, 2 * h, 32, 16, 0) == 512 && ink(0, 2 * h, 16, 16, 1) == 256 && !ink(16, 2 * h, 16, 16, 1));
+		CHECK(!ink(32, 2 * h, 4 * w - 32, h, 0) && !ink(0, 2 * h + 16, 4 * w, h - 16, 0));
+		grid_puts(&g, 2, 0, 4, "    ", 4, ATTR_NONE, FACE_NONE);
+		show();
+		CHECK(!ink(0, 2 * h, 4 * w, h, 0));
+	}
 
 	/* a cluster longer than a cell's 4 bytes is drawn from grid.c's store:
 	   a thumbs up with a skin tone (8 bytes) is one brown glyph */
@@ -402,13 +420,13 @@ static void test_sway(void)
 
 	/* keys, with the Control transformation and the keys keys.h names */
 	k0 = nkeys;
-	run("LC_ALL=C.UTF-8 wtype aé -k Escape -k BackSpace -M ctrl r -m ctrl -k Up -k Return -k Tab");
+	run("LC_ALL=C.UTF-8 wtype aé -k Escape -k BackSpace -M ctrl r -m ctrl -k Up -k Return -k Tab -M shift -k Tab -m shift -k ISO_Left_Tab");
 	pump(50);
-	int want[] = { 'a', 0xE9, KEY_ESC, KEY_BS, KEY_CTRL_R, KEY_UP, KEY_ENTER, KEY_TAB };
-	if (nkeys - k0 != 8)
+	int want[] = { 'a', 0xE9, KEY_ESC, KEY_BS, KEY_CTRL_R, KEY_UP, KEY_ENTER, KEY_TAB, KEY_S_TAB, KEY_S_TAB };
+	if (nkeys - k0 != 10)
 		for (int i = k0; i < nkeys; i++) fprintf(stderr, "key %d: %#x\n", i - k0, (unsigned)keys[i]);
-	CHECK(nkeys - k0 == 8);
-	for (int i = 0; i < 8; i++) CHECK(keys[k0 + i] == want[i]);
+	CHECK(nkeys - k0 == 10);
+	for (int i = 0; i < 10; i++) CHECK(keys[k0 + i] == want[i]);
 
 	/* keys that arrive together but are taken 4 at a time: those left in the
 	   backend's queue make an fd readable, as main.c reads only then */
