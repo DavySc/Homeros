@@ -595,7 +595,7 @@ static int enter_buffer(Editor *e, Buf *b, int how)
 	return 0;
 }
 
-int core_changed;
+int core_changed, core_pixw, core_pixh;
 
 /* setpcmark(): the cursor becomes the '' mark and joins the window's jump
    list (jumpoptions "clean", not "stack": nothing after the current entry
