@@ -231,12 +231,12 @@ static void tty_suspend(void)
 }
 
 /* the terminal has no clipboard or mouse here; OSC 52 and SGR mouse reports
-   are for later */
+   are for later; and no pixels, so no images (Backend.cell, thread 0's, agreed) */
 static int  tty_clip_set(const char *s, size_t n) { (void)s; (void)n; return -1; }
 static long tty_clip_get(char *buf, size_t max) { (void)buf; (void)max; return -1; }
-static void tty_mouse(int *row, int *col) { *row = *col = 0; }
+static void tty_none(int *a, int *b) { *a = *b = 0; }
 
 const Backend backend_tty = {
 	tty_open, tty_close, tty_fds, tty_input, tty_size, tty_ready,
-	tty_present, tty_suspend, tty_clip_set, tty_clip_get, tty_mouse
+	tty_present, tty_suspend, tty_clip_set, tty_clip_get, tty_none, tty_none
 };
