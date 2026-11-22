@@ -12,6 +12,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include "match.h"
 #include "oil.h"
 
 /* cache.lua: entries by id; dir NULL once forgotten.  old marks the
@@ -253,10 +254,10 @@ static int parse(Out *o, int buf, const char *dir, const char *text, size_t len)
 		int etype, id = -1, isdir;
 		if (n >= 2 && l[0] == '/' && l[1] >= '0' && l[1] <= '9') {
 			/* parse_line: ^/(%d+) (.+)$, then the icon column ^(%S+)%s+(.*)$ */
-			size_t i = 1;
-			long v = 0;
 			/* Lua's tonumber of a long id is a float no entry has: saturate */
-			for (; i < n && l[i] >= '0' && l[i] <= '9'; i++) v = v > (LONG_MAX - 9) / 10 ? LONG_MAX : v * 10 + (l[i] - '0');
+			const char *d = l + 1;
+			long v = match_num(&d, l + n);
+			size_t i = (size_t)(d - l);
 			if (i + 1 >= n || l[i] != ' ') { push_err(o, "Malformed ID at start of line", buf, ln); continue; }
 			i++;
 			size_t r = i;

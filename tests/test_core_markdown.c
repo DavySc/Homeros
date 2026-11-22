@@ -1,9 +1,9 @@
-/* render-markdown's headings against Neovim: replays the cases that
-   tests/test_core_markdown.py recorded from Neovim with render-markdown
-   (tests/test_core_markdown.txt; its last 22 the review of PR 56 recorded,
-   reviews/pr-56-repro/cases9.py: sideways scroll, skipcol, fillers) and
-   compares every row's text, background and heading colours, and the
-   cursor.  usage: test_core_markdown [FILE] [-v] */
+/* render-markdown (headings, bullets, checkboxes, fenced code) against
+   Neovim: replays the cases that tests/test_core_markdown.py recorded from
+   Neovim with render-markdown (tests/test_core_markdown.txt: 1000 random,
+   then tests/test_core_markdown_cases.py's 44: sideways scroll, skipcol,
+   fillers, Visual mode) and compares every row's text, the colours the .py
+   names, and the cursor.  usage: test_core_markdown [FILE] [-v] */
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -14,8 +14,7 @@
 
 static char line[4096];
 
-/* one letter per heading background (and the cursor line's) and per
-   rainbow foreground, as the .py */
+/* a letter per colour the .py names */
 static char letter(const unsigned char *c, const char *const *hex, const char *set)
 {
 	char h[8];
@@ -23,8 +22,8 @@ static char letter(const unsigned char *c, const char *const *hex, const char *s
 	for (int i = 0; set[i]; i++) if (!strcmp(h, hex[i])) return set[i];
 	return '.';
 }
-static const char *const BG[] = { "32283a", "332c36", "33313a", "2b3139", "262e40", "2c2d42", "2a2b3c" };
-static const char *const FG[] = { "f38ba8", "fab387", "f9e2af", "a6e3a1", "74c7ec", "b4befe" };
+static const char *const BG[] = { "32283a", "332c36", "33313a", "2b3139", "262e40", "2c2d42", "2a2b3c", "181825" };
+static const char *const FG[] = { "f38ba8", "fab387", "f9e2af", "a6e3a1", "74c7ec", "b4befe", "89dceb", "7f849c", "181825" };
 
 /* row r of g as the .py writes it: 'S' text, 'B' backgrounds, 'F'
    foregrounds (none on a blank) */
@@ -38,8 +37,8 @@ static const char *row(const Grid *g, int r, char what)
 		if (!x->len && c) x--;
 		const Face *bg, *f = grid_face(x, &bg);
 		if (what == 'S') { if (x == &g->c[r * g->cols + c]) { memcpy(b + n, grid_text(x), x->len); n += x->len; } }
-		else if (what == 'B') b[n++] = bg->style & FACE_BG ? letter(bg->bg, BG, "RPYGSLC") : '.';
-		else b[n++] = f->style & FACE_FG && !(x->len == 1 && x->ch[0] == ' ') ? letter(f->fg, FG, "rpygsl") : '.';
+		else if (what == 'B') b[n++] = bg->style & FACE_BG ? letter(bg->bg, BG, "RPYGSLCM") : '.';
+		else b[n++] = f->style & FACE_FG && !(x->len == 1 && x->ch[0] == ' ') ? letter(f->fg, FG, "rpygslbuc") : '.';
 	}
 	b[n] = 0;
 	return b;
@@ -73,17 +72,20 @@ static void command(Editor *e, Grid *g, const char *t)
 	while (syntax_update(e->buf->syn, e->buf->text, NULL));
 }
 
-/* Cases listed as known, 14 of 1022 (recorded again with 'cursorline'
-   for UI Round B; the ruler cases left with the status line, which
-   test_core_status checks).  The core's (package 4, reported): the
-   window's top after a split (58 ... 914); after v on a Tab without a
-   move, Neovim keeps the cursor on the Tab's last cell (the w_virtcol
-   n_start_visual_mode() leaves valid), the core moves it to the first
-   (394, 812).  Neovim's own: a line still rendered in insert mode, raw
-   after :redraw! (489). */
+/* Cases listed as known, 22 of 1044.  Drawing's: an ordered number wider
+   than its marker, which Neovim puts inline (1032); a tab before a
+   heading's marker (1041); an info string past the 256 bytes draw_md
+   reads, in a window wider than they are (1042).  The core's (package 4,
+   reported): the window's top after a split (9 ... 961), and with wrap
+   after a jump near a line taller than scrolloff allows (110 ... 979);
+   after v on a Tab without a move, Neovim keeps the cursor on the Tab's
+   last cell (the w_virtcol n_start_visual_mode() leaves valid), the core
+   moves it to the first (654, 738).  The syntax package's: an inline colour
+   Neovim does not give (272). */
 static int known(int n)
 {
-	static const int k[] = { 58, 259, 455, 482, 488, 534, 547, 738, 761, 815, 914, 394, 812, 489 };
+	static const int k[] = { 9, 10, 11, 73, 138, 506, 549, 683, 693, 731, 882, 961,
+	                         110, 330, 854, 979, 654, 738, 272, 1032, 1041, 1042 };
 	for (size_t i = 0; i < sizeof k / sizeof *k; i++) if (k[i] == n) return 1;
 	return 0;
 }

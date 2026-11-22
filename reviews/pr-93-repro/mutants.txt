@@ -1,0 +1,34 @@
+kw at eol with blanks~			if (ateol(blanks(r))) return blanks(r);~
+a parent that is done stops the ORDERED search~		if (!notdone(q)) return 0;~
+blocked from a done state too~	if (from >= org_done || to < org_done) return 0;~	if (to < org_done) return 0;
+up_heading takes a sibling~hlevel(h) < l) return h;~hlevel(h) <= l) return h;
+a property name's prefix counts~ || S[q + 1 + k] != ':') continue;~) continue;
+ORDERED nil counts as set~ && !(z - a == 3 && is(a, "nil"));~;
+no century rule in days~	return era * 146097 + yoe * 365 + yoe / 4 - yoe / 100 + doy - 719468;~	return era * 146097 + yoe * 365 + yoe / 4 + doy - 719468;
+a stamp may be 15 after the time, not 16~	for (c = q; c < N && c - q <= 16 &&~	for (c = q; c < N && c - q <= 15 &&
+range end minutes below 0 not carried~		if (mi < 0) mi += 60, h--;~
+range end hour not wrapped~		h -= 24 * fdiv(h, 24);~
+no space after a new CLOSED~	if (!ateol(p + 8 + strlen(now))) wins(p + 8 + strlen(now), " ");~
+indent never uses tabs~	for (; c >= 8 && k < 48; c -= 8) b[k++] = '\t';~
+a note in a drawer not indented as it~		else if (e[i].parent != ORG_NONE && e[e[i].parent].type == ORG_DRAWER) c = ind(e[e[i].parent].begin + h);~
+new LOGBOOK before a headline not moved up~		if (p < N && p == bol(p) && headline(p)) p--;~
+no newline after a property drawer at the end~		if (q + 5 == N || bob) wins(q + 5, "\n");~		if (bob) wins(q + 5, "\n");
+unschedule leaves the space before~		if (blanks(l) < q && S[q - 1] == ' ') wrep(q - 1, q, "", 0);¶		else if~		if (0) ;¶		else if
+COMMENT goes before the priority~ (S[q + 4] == ' ' || ateol(blanks(q + 4)))) p = q + 4;~ (S[q + 4] == ' ' || ateol(blanks(q + 4)))) p = p;
+hour repeater without a time allowed~		if (what == 'h' && !hm) { err = 1; break; }~
+.+ in hours moves by days~		if (type == '.') tschange(ts, what == 'h' ? now - t : fdiv(now, 1440) - fdiv(t, 1440), what == 'h' ? 'm' : 'd', 0);~		if (type == '.') tschange(ts, fdiv(now, 1440) - fdiv(t, 1440), 'd', 0);
+++ not stepped back~			tschange(ts, -n, what, 0);~
+COMMENT back after an error~		if (hd.commented && !err) toggle_comment(h, 1);~		if (hd.commented) toggle_comment(h, 1);
+repeater /N not part of it~			if (S[*re] == '/' && (v = digits(*re + 1, lim)) > *re + 1 && v < lim && one(v, "hdwmy")) *re = v + 1;~
+CLOSED: inside a word counts~		if (!is(q, k[i]) || (q && alnum(q - 1))) continue;~		if (!is(q, k[i])) continue;
+a stamp in a table row is no agenda stamp~t == ORG_TABLE_ROW || ~
+planning read case-folded by org-todo~	return (fold ? planningl(p) : is(q, "CLOSED:")~	return (1 ? planningl(p) : is(q, "CLOSED:")
+range end minute tens above 5~	    S[p + 4] >= '0' && S[p + 4] <= '5' && digit(p + 5)) p += 6;~	    S[p + 4] >= '0' && digit(p + 5)) p += 6;
+a time needs two hour digits~		size_t c = digit(q + 2) ? q + 3 : q + 2;~		size_t c = q + 3;
++0 repeats~	if (a == ORG_NONE || !num(u, digits(u, N))) return;~	if (a == ORG_NONE) return;
+no blank kept before text after the note~	else if (!ateol(blanks(at))) wins(at, "\n");~
+LAST_REPEAT matched by prefix~ && (ateol(c + 13) || blank(c + 13))) { wrep(q, eol(q), "", 0); break; }~) { wrep(q, eol(q), "", 0); break; }
+ten shifts are eleven~				if (++shift == 10) { err = 1; return; }~				if (++shift == 11) { err = 1; return; }
+note of the last :LOGBOOK: line, not the first drawer~	for (size_t q = m; q < ee && at == ORG_NONE; q = nextl(q))~	for (size_t q = m; q < ee; q = nextl(q))
+months do not roll over into years~	y += fdiv(m - 1, 12), m -= 12 * fdiv(m - 1, 12);~	m -= 12 * fdiv(m - 1, 12);
+a week is a week of months~		what = S[x] == 'w' ? (n *= 7, 'd') : S[x] == 'm' ? 'M' : (char)S[x];~		what = S[x] == 'w' ? (n *= 7, 'd') : (char)S[x];

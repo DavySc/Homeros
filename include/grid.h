@@ -57,6 +57,10 @@ enum {
 	   only ever a cell's bg */
 	FACE_HEADING_1_BG, FACE_HEADING_2_BG, FACE_HEADING_3_BG, FACE_HEADING_4_BG,
 	FACE_HEADING_5_BG, FACE_HEADING_6_BG,
+	/* render-markdown's code background (RenderMarkdownCode, only ever a
+	   cell's bg), its fence fill (bg_as_fg of it) and its bullets
+	   (RenderMarkdownBullet) */
+	FACE_MD_CODE_BG, FACE_MD_CODE_BORDER, FACE_MD_BULLET,
 	/* Neovim's UI highlight groups, as Davy's catppuccin draws them:
 	   CursorLine (only ever a cell's bg), CursorLineNr, LineNr, StatusLine,
 	   StatusLineNC, WinSeparator, EndOfBuffer, NonText ('@@@', the '<' and

@@ -1,0 +1,20 @@
+--- a/tests/test_fold.lua
++++ b/fml1.lua
+@@ -54,7 +54,7 @@
+   vim.wo.foldmethod = 'expr'
+   vim.wo.foldexpr = 'v:lua.FE()'
+   vim.wo.wrap = false
+-  local lvl, fml = ({ 0, 1, 2, 3, 99 })[math.random(5)], math.random(10) <= 3 and 1 or 0
++  local lvl, fml = ({ 0, 1, 2, 3, 99 })[math.random(5)], 1
+   vim.wo.foldlevel = lvl
+   vim.wo.foldminlines = fml
+   local t = { 'S', tostring(lvl), tostring(fml) }
+@@ -70,7 +70,7 @@
+   for _ = 1, 40 do
+     local n = vim.api.nvim_buf_line_count(0)
+     local r, rc = math.random(100), 0
+-    if fml == 1 then r = 100 end
++    -- review: edits with foldminlines 1 too
+     if r <= 35 then
+       local a = math.random(0, n)
+       local b = math.min(n, a + math.random(0, 3))

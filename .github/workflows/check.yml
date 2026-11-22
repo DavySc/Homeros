@@ -12,19 +12,24 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
-  # the check and the plants run in parallel, the plants in eight shards:
-  # one after the other took 54 minutes on main at 8d08829, and the plants
-  # alone 42 on PR 18 (reviews of PRs 18 and 24); with 708 plants (775 by PR 88) four
-  # shards passed 75 minutes (PR 59's review, both heads).  On PR 88 the
-  # eight shards took 44 to 63 minutes and the check 69, so 90 leaves room
+  # the check and the plants run in parallel, the plants in shards: one
+  # after the other took 54 minutes on main at 8d08829, and the plants alone
+  # 42 on PR 18 (reviews of PRs 18 and 24).  The plants run only on the
+  # merge train's PR (CLAUDE.md): the account runs 20 jobs at once, and at
+  # 18:46 UTC on 2026-11-21 per-PR shards had kept train 15's run waiting
+  # 2 h with 1 of 8 shards done
   check:
     strategy:
       fail-fast: false
       matrix:
-        target: [check, planted SHARD=0/8, planted SHARD=1/8, planted SHARD=2/8, planted SHARD=3/8,
-                 planted SHARD=4/8, planted SHARD=5/8, planted SHARD=6/8, planted SHARD=7/8]
+        target: ${{ fromJSON(github.head_ref == 'claude/project-thread-clivv8'
+                  && '["check", "planted SHARD=0/12", "planted SHARD=1/12", "planted SHARD=2/12", "planted SHARD=3/12",
+                       "planted SHARD=4/12", "planted SHARD=5/12", "planted SHARD=6/12", "planted SHARD=7/12",
+                       "planted SHARD=8/12", "planted SHARD=9/12", "planted SHARD=10/12", "planted SHARD=11/12"]'
+                  || '["check"]') }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    # 8 shards of train 14's 1,121 plants took 81 to 90 min, two cut at 90
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v31

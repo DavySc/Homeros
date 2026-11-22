@@ -15,6 +15,7 @@
 #include "grid.h"
 #include "syntax.h"
 #include "lmatch.h"
+#include "org.h"
 #include "tsql.h"
 
 /* Neovim's standard capture names (:h treesitter-highlight-groups), in
@@ -86,9 +87,9 @@ enum { NLANGS = sizeof langs / sizeof *langs };
    strips backup endings such as ~ and .bak, which these do not; it knows no
    .dl, which is souffle as the Soufflé plugins for Vim name it), and what
    colours it: a langs[] index, T-SQL's, JSON's or Soufflé's word lists
-   (tsql.c, in tsql_new's order), or nothing yet (Davy's other languages,
-   FEATURES.md) */
-enum { BY_NONE = -1, BY_SQL = -2, BY_JSON = -3, BY_DL = -4 };
+   (tsql.c, in tsql_new's order), Org's (package 16, org.h), or nothing yet
+   (Davy's other languages, FEATURES.md) */
+enum { BY_NONE = -1, BY_SQL = -2, BY_JSON = -3, BY_DL = -4, BY_ORG = -5 };
 static const struct { const char *ext, *ft; int lang; } fts[] = {
 	{ ".c", "c", 0 }, { ".h", "cpp", 0 }, { ".lua", "lua", 1 }, { ".md", "markdown", 2 },
 	{ ".sql", "sql", BY_SQL }, { ".json", "json", BY_JSON }, { "CMakeLists.txt", "cmake", BY_NONE },
@@ -97,7 +98,7 @@ static const struct { const char *ext, *ft; int lang; } fts[] = {
 	{ ".comp", "glsl", 5 }, { ".geom", "glsl", 5 }, { ".tesc", "glsl", 5 },
 	{ ".tese", "glsl", 5 }, { ".sv", "systemverilog", BY_NONE }, { ".svh", "systemverilog", BY_NONE },
 	{ ".cmake", "cmake", BY_NONE }, { ".lean", "lean", BY_NONE }, { ".cs", "cs", BY_NONE },
-	{ ".org", "org", BY_NONE }, { ".dl", "souffle", BY_DL },
+	{ ".org", "org", BY_ORG }, { ".dl", "souffle", BY_DL },
 };
 
 /* fts[]'s entry for path's base name (after its last / or \, as Neovim),
@@ -180,6 +181,7 @@ typedef struct LTree {
 
 struct Syntax {
 	Tsql *sql;                 /* T-SQL by word lists, or JSON, instead (tsql.c) */
+	OrgFx *org;                /* or Org's */
 	LTree *root;
 	TSParser *p;
 	TSQueryCursor *qc;
@@ -404,7 +406,8 @@ Syntax *syntax_open(const char *path, const Text *t)
 	if (li == BY_NONE) return NULL;
 	if (li < BY_NONE) {
 		Syntax *s = calloc(1, sizeof *s);
-		if (s && !(s->sql = tsql_new(t, BY_SQL - li))) free(s), s = NULL;
+		if (s && (li == BY_ORG ? !(s->org = orgfx_new(t)) : !(s->sql = tsql_new(t, BY_SQL - li))))
+			free(s), s = NULL;
 		return s;
 	}
 	Syntax *s = calloc(1, sizeof *s);
@@ -429,6 +432,7 @@ void syntax_free(Syntax *s)
 {
 	if (!s) return;
 	tsql_free(s->sql);
+	orgfx_free(s->org);
 	if (started(s)) free_ltree(s, s->root);
 	if (s->qc) ts_query_cursor_delete(s->qc);
 	if (s->p) ts_parser_delete(s->p);
@@ -471,6 +475,10 @@ void syntax_edit(Syntax *s, const Text *t, size_t pos, size_t ndel, const char *
 	if (!s) return;
 	if (s->sql) {
 		tsql_edit(s->sql, t, pos, ndel, nins);
+		return;
+	}
+	if (s->org) {
+		orgfx_edit(s->org, t, pos, ndel, nins);
 		return;
 	}
 	s->dirty = 1;
@@ -696,7 +704,11 @@ static int clip(const Ranges *a, const Region *p, Ranges *out)
 }
 
 /* One injected region found by the scan of a tree; a combined one gathers
-   every match of its pattern in that tree (add_injection), else pat < 0. */
+   every match of its pattern in that tree (add_injection's keying), else
+   pat < 0.  Known difference: Neovim scans the whole tree when a query has
+   combined injections, we scan the window, so Lua opened in one string and
+   closed in another far away can colour differently; scanning the whole
+   tree is not worth its cost (PR 91's review). */
 typedef struct { int lang; Ranges r; int64_t pat; } Inj;
 typedef struct { Inj *v; uint32_t n, cap; } Injs;
 
@@ -764,7 +776,12 @@ static int set_regions(Syntax *s, LTree *K, Injs *I, int lang)
 	return 0;
 }
 
-/* LanguageTree:_get_injections and _add_injections, over every tree of L */
+/* LanguageTree:_get_injections and _add_injections, over every tree of L.
+   The query does not ask stop: tree-sitter's halt drops the matches in
+   progress, so a halted scan starts again and never ends while keys come
+   (measured: sliced parses looped).  Its worst case, a Lua string cut on
+   each of 250 lines, costs about 50 ms a key; Neovim 0.12.6 takes 834 ms
+   (measured, 5 runs each; PR 91's review). */
 static int inject(Syntax *s, LTree *L, const Text *t)
 {
 	uint32_t a = s->ra, z = s->rz;
@@ -890,6 +907,7 @@ int syntax_update(Syntax *s, const Text *t, int (*stop)(void))
 {
 	if (!s) return 0;
 	if (s->sql) return tsql_update(s->sql, stop);
+	if (s->org) return orgfx_update(s->org, stop);
 	/* the trees the last parse replaced, freed in steps (release.c) */
 	while (syntax_release(NULL, stop ? RELEASE_STEP : UINT32_MAX))
 		if (stop()) return 2;
@@ -1008,6 +1026,10 @@ void syntax_faces(Syntax *s, size_t a, size_t z, unsigned char *face)
 	if (!s || a >= z) return;
 	if (s->sql) {
 		tsql_faces(s->sql, a, z, face);
+		return;
+	}
+	if (s->org) {
+		orgfx_faces(s->org, a, z, face);
 		return;
 	}
 	if (a < s->va) s->va = (uint32_t)a;
