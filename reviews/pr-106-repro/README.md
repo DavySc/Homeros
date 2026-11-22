@@ -13,3 +13,8 @@ Probes for the review of PR 106 (reviews/pr-106.md). Run from the repo root with
   `build/san/test_core_visual yank106-case332.txt -v`.
 - Fresh seeds that matched are not kept: `tests/test_core_search.py 400 106` and `107`,
   `tests/test_core_visual.py 400 106 --yank`.
+- `reduce.py CASEFILE` (PYTHONPATH=tests): shrinks a single recorded search case while the
+  cells drawn as matches differ; `wide2-case425.txt` is its input from the re-review
+  (search_wide.py 600, seed 2).
+- `bd_lsp.c`, `md_search.c` (third pass): `:bd` and the language server document under ASan;
+  'hlsearch' on a `.md` file. Build like `flash_search.c`.
