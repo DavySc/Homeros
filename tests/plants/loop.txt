@@ -1,7 +1,7 @@
 # Plants for src/loop/ (format in tools/planted.sh).  IDLE_SECONDS=2 keeps
 # each short; only the idle plant needs the full 20 s.
 loop: blocking writes to a child (Pipe_block)~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	fcntl(fd[1], F_SETFL, O_NONBLOCK);¶~¶
-loop: the exit waits for the pipes' end (Exit_waiteof)~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~			if (p[i].pid && waitpid(~			if (p[i].pid && p[i].fd[1] < 0 && p[i].fd[2] < 0 && waitpid(
+loop: the exit waits for the pipes' end (Exit_waiteof)~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~			if (p[i].pid && (only < 0 || i == only) && waitpid(~			if (p[i].pid && (only < 0 || i == only) && p[i].fd[1] < 0 && p[i].fd[2] < 0 && waitpid(
 loop: output pending at the exit dropped (Exit_early)~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~		ioctl(c->fd[s], FIONREAD, &left);~
 loop: kill reaches the child but not its group~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	kill(-c->pid, SIGTERM);~	kill(c->pid, SIGTERM);
 loop: no SIGKILL after an ignored SIGTERM~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	c->killat = loop_now() + KILL_MS * 1000000LL;~
@@ -26,6 +26,13 @@ loop: the pipes stay open after the exit~test TESTS=loop IDLE_SECONDS=2~~src/loo
 loop: stdin stays open after the exit~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	if (c->fd[0] >= 0) close_in(c);¶	c->killat = 0;~	c->killat = 0;
 loop: SIGKILL reaches the child but not its group~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~kill(-p[i].pid, SIGKILL)~kill(p[i].pid, SIGKILL)
 
+loop: proc_wait runs the other children (Wait_others)~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~for (int s = 0; s < 3 && p[i].pid && (only < 0 || i == only); s++)~for (int s = 0; s < 3 && p[i].pid; s++)
+loop: proc_wait runs the timers~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~only < 0 ? timer_run() : loop_now()~timer_run()
+loop: proc_wait spins on a due timer it does not run~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	if (only < 0) timeout_ms = timer_wait(first, timeout_ms);~	timeout_ms = timer_wait(first, timeout_ms);
+loop: proc_wait loses another child's exit (Wait_drain)~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	on_chld(0);¶	return r;~	return r;
+loop: proc_wait ignores Ctrl-C~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~(d <= 0 || loop_int)~(d <= 0)
+loop: proc_wait returns before the killed child is reported~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~{ proc_kill(id); r = -1; continue; }~{ proc_kill(id); r = -1; break; }
+loop: proc_wait follows the slot, not its child~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	for (waited = !proc(id); !waited; ) {~	while (proc(id)) {
 # Windows (src/loop/win.c, run under Wine by make win WIN=loop)
 loop: win: the exit drops what the pipes still hold~win WIN=loop~~src/loop/win.c~		for (; left && (got = take(c, s, left)); left -= got) {}¶~		(void)got;¶
 loop: win: a completion routine re-arms its read, so a flood holds loop_once (review of PR 41, 1)~win WIN=loop~~src/loop/win.c~&& left) take(c, s, left);¶}~&& left) take(c, s, left);¶	read_next(c, s);¶}
@@ -45,3 +52,7 @@ loop: win: the pipe is read only when it ends, so a full pipe hangs the child~wi
 loop: win: loop_breakcheck never looks at input~win WIN=loop~~src/loop/win.c~if (loop_int || ++count < 32) return loop_int;~if (loop_int || ++count < 1 << 30) return loop_int;
 loop: win: an idle loop wakes every 100 ms~win WIN=loop~~src/loop/win.c~timeout_ms < 0 ? INFINITE : (DWORD)timeout_ms,~timeout_ms < 0 || timeout_ms > 100 ? 100 : (DWORD)timeout_ms,
 loop: win: proc_write blocks until the pipe takes it all~win WIN=loop~~src/loop/win.c~	if (!c->busy[0]) write_next(c);¶	return~	if (!c->busy[0]) write_next(c);¶	while (c->busy[0]) SleepEx(INFINITE, TRUE);¶	return
+loop: win: proc_wait runs the other children's completions (Wait_others)~win WIN=loop~~src/loop/win.c~if (c->reaping || (only >= 0 && c != &p[only])) return;~if (c->reaping) return;
+loop: win: proc_wait waits on the other children~win WIN=loop~~src/loop/win.c~if (!p[i].ph || (only >= 0 && i != only)) continue;~if (!p[i].ph) continue;
+loop: win: proc_wait runs the timers~win WIN=loop~~src/loop/win.c~	if (only < 0) timer_run();~	timer_run();
+loop: win: proc_wait follows the slot, not its child~win WIN=loop~~src/loop/win.c~	for (waited = !proc(id); !waited; ) {~	while (proc(id)) {

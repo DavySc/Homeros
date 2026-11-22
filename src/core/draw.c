@@ -237,46 +237,106 @@ static void draw_md(Grid *g, const Win *w, size_t l, int r, size_t skip, int cov
 	}
 }
 
-/* win_line()'s Visual area of line l in w ('selection' inclusive): cells
-   [*from, *to), none if *from >= *to, less the cursor's [*xf, *xt], which
-   the block cursor shows (noinvcur: its cell, both of a double-width
-   character's).  Windows on the current buffer show it too. */
-static void visual(Editor *e, Win *w, size_t l, size_t *from, size_t *to, size_t *xf, size_t *xt)
+/* win_line()'s cell after a line's end, d columns into the view from
+   row r: a blank there, or the last cell of the row the line ends on when
+   the end is past the window's edge */
+static Cell *eol_cell(Grid *g, const Win *w, int r, size_t d, int tw, int nw)
+{
+	int full = w->wrap ? d && d % (size_t)tw == 0 : d >= (size_t)tw;
+	d -= (size_t)full;
+	int row = w->wrap ? r + (int)(d / (size_t)tw) : r, c = nw + (int)(d % (size_t)tw);
+	if (!full) wput(g, w, row, c, (const unsigned char *)" ", 1, 1);
+	return row < w->h ? wcell(g, w, row, c) : NULL;
+}
+
+/* Search, or CurSearch for the match [ms, mz) of line l that holds w's
+   cursor (never an empty one: measured, tests/test_core_search.py).  Known
+   difference: Neovim draws a match over several lines CurSearch on all of
+   them when the cursor is anywhere in it, this only on the cursor's line
+   (reviews/pr-106.md, finding 3); it waits for keys_hl to say so. */
+static unsigned char search(const Win *w, size_t l, size_t ms, size_t mz)
+{
+	return w->line == l && w->col >= ms && w->col < mz ? FACE_CUR_SEARCH : FACE_SEARCH;
+}
+
+/* keys_hl's match of line l that holds byte i or comes after it (an empty
+   one at i), from the match [*ms, *mz) found before; 0 when none */
+static int hl_at(Editor *e, const Win *w, size_t l, size_t i, int mh, size_t *ms, size_t *mz)
+{
+	while (mh && (*mz > *ms ? i >= *mz : i > *ms)) mh = keys_hl(e, w, l, *mz > *ms ? *mz : i, ms, mz);
+	return mh;
+}
+
+/* win_line()'s Visual area of line l in w ('selection' inclusive), or
+   vim.hl.on_yank()'s flash (Davy's my-nvim): vim.hl.range() from '[ to ']
+   inclusive (a block: its screen columns) in IncSearch, over the text only
+   (no hl_eol) and only in the current window (the one it was yanked in:
+   the flash is gone before another can be entered).  :s's c flag shows
+   its match (ks.inc) the same way.  Cells [*from, *to),
+   none if *from >= *to, less the cursor's [*xf, *xt], which Visual's block
+   cursor shows (noinvcur: its cell, both of a double-width character's).
+   Windows on the current buffer show the Visual area too.  Returns the
+   area's face. */
+static unsigned char visual(Editor *e, Win *w, size_t l, size_t *from, size_t *to, size_t *xf, size_t *xt)
 {
 	const Win *cw = e->win;
-	size_t cl = cw->line, vl = e->ks.vline, a, b, c, d, n;
+	const KeyArea *ka = e->ks.yank.type ? &e->ks.yank : e->ks.inc.type ? &e->ks.inc : NULL;
+	int y = ka != NULL, type = y ? ka->type : e->ks.visual;
+	size_t cl = y ? ka->l2 : cw->line, cc = y ? ka->c2 : cw->col, vl = y ? ka->l1 : e->ks.vline,
+	       vc = y ? ka->c1 : e->ks.vcol, a, b, c, d, n;
 	*from = *xf = 1;
 	*to = *xt = 0;
-	if (!e->ks.visual || w->buf != e->buf) return;
+	if (!type || (y ? w != cw : w->buf != e->buf)) return 0;
 	/* ltoreq(): the cursor is the top end unless VIsual is before it */
-	int vtop = vl < cl || (vl == cl && e->ks.vcol < cw->col);
-	size_t tl = vtop ? vl : cl, tc = vtop ? e->ks.vcol : cw->col, bl = vtop ? cl : vl, bc = vtop ? cw->col : e->ks.vcol;
-	if (l < tl || l > bl) return;
-	if (e->ks.visual == 22) {
+	int vtop = vl < cl || (vl == cl && vc < cc);
+	size_t tl = vtop ? vl : cl, tc = vtop ? vc : cc, bl = vtop ? cl : vl, bc = vtop ? cc : vc;
+	if (l < tl || l > bl) return 0;
+	if (type == 22 && y) {
+		/* a yanked block: its screen columns (the register's width) */
+		*from = vc;
+		*to = cc + 1;
+	} else if (type == 22) {
 		/* block: w_old_cursor_fcol and _lcol (getvcols()), to the line's
 		   end after $ */
-		win_vcols(w, cl, cw->col, &a, &b);
-		win_vcols(w, vl, e->ks.vcol, &c, &d);
+		win_vcols(w, cl, cc, &a, &b);
+		win_vcols(w, vl, vc, &c, &d);
 		*from = a < c ? a : c;
 		*to = cw->want == WANT_EOL ? (size_t)-1 : (b > d ? b : d) + 1;
 	} else {
 		*from = 0;
 		*to = (size_t)-1;
-		if (l == tl && e->ks.visual == 'v') {
+		if (l == tl && type == 'v') {
 			win_vcols(w, tl, tc, from, &b);
 			core_line(e, tl, &n);
 			if (tc >= n) *to = *from + 1;
 		}
-		if (l == bl && e->ks.visual == 'v') {
+		if (l == bl && type == 'v') {
 			win_vcols(w, bl, bc, &a, &b);
 			*to = b + 1;
 		}
 	}
-	if (w == cw && l == cl) {
+	if (y) {
+		/* a block's extmarks cover whole characters (getregionpos()
+		   bytes): every character its columns touch */
+		LineIt it;
+		const unsigned char *s;
+		size_t f = *from, t = *to, v = 0, k, n2;
+		lit_init(&it, w->buf, l);
+		for (; type == 22 && (k = lit_next(&it, &s)); v += n2) {
+			n2 = (size_t)core_cellw(w, s, k, 0, v);
+			if (v < t && v + n2 > f) {
+				if (v < *from) *from = v;
+				if (v + n2 > *to) *to = v + n2;
+			}
+		}
+		return FACE_INC_SEARCH;
+	}
+	if (w == cw && l == cw->line) {
 		*xf = win_vcol(e, w, NULL, xt);
-		const unsigned char *t = core_line(e, cl, &n);
+		const unsigned char *t = core_line(e, cw->line, &n);
 		if (cw->col >= n || t[cw->col] < 0x80 || uni_width(t, n, cw->col) < 2) *xt = *xf;
 	}
+	return FACE_VISUAL;
 }
 
 /* Line l from window row r: in rows of the text width with wrap (the top
@@ -305,7 +365,14 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	int drawn = 1, on = rm && syntax_md(syn, w->buf->text, l, &md);
 	size_t a0 = (size_t)-1, a1 = a0, b1 = a0, t0 = a0;
 	size_t from, to, xf, xt;
-	visual(e, w, l, &from, &to, &xf, &xt);
+	unsigned char area = visual(e, w, l, &from, &to, &xf, &xt);
+	/* 'hlsearch' (win_line()'s search_attr, under the Visual area and
+	   :s's c-flag match but over the yank flash, an extmark: measured):
+	   the keys' matches [ms, mz) from col 0 on, an empty one over the
+	   character at ms; CurSearch for the one under w's cursor */
+	int flash = area && e->ks.yank.type;
+	size_t ms = 0, mz = 0;
+	int mh = keys_hl(e, w, l, 0, &ms, &mz);
 	/* 'cursorline' (Davy's pick of the UI proposals): CursorLine under the
 	   text area of the cursor line's rows, below syntax and render-markdown
 	   (low priority: it has no fg), not in the current window in Visual
@@ -332,6 +399,9 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 		/* a double-width character: after the '>' of a wrapping row's
 		   last cell (core_cellw's 3), the two cells of the character */
 		int lead = cw == 3 && *s != '\t', wide = *s >= 0x80 && cw - lead == 2;
+		mh = hl_at(e, w, l, i, mh, &ms, &mz);
+		int im = mh && i >= ms;
+		unsigned char sb = im ? search(w, l, ms, mz) : cl;
 		for (int j = 0; j < cw; j++, v++) {
 			if (v < skip) continue;
 			size_t d = v - skip;
@@ -342,11 +412,11 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 			unsigned char face = syn ? fc[i - f0] : 0;
 			/* a double-width character whose second cell starts the area
 			   is in it (win_line()) */
-			unsigned char vis = (v >= from || (wide && v + 1 == from)) && v < to && (v < xf || v > xt) ? FACE_VISUAL : 0;
+			unsigned char vis = (v >= from || (wide && v + 1 == from)) && v < to && (v < xf || v > xt) && !(flash && im) ? area : 0;
 			if (row == r && c < cover) {
 				/* "<<<" over a double-width character's first cell leaves a
 				   blank in its second (measured) */
-				if (wide && j == lead && c + 1 == cover) put_cell(g, w, row, c + 1, (const unsigned char *)" ", 1, 0, 1, face, vis ? vis : cl);
+				if (wide && j == lead && c + 1 == cover) put_cell(g, w, row, c + 1, (const unsigned char *)" ", 1, 0, 1, face, vis ? vis : sb);
 				continue;
 			}
 			/* win_line(): '>' where a double-width character does not fit
@@ -361,8 +431,8 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 				/* in the area if its character is (measured) */
 				wputs(g, w, row, c, "<", FACE_NON_TEXT);
 				Cell *z = wcell(g, w, row, c);
-				if (z) z->bg = from < v && vis ? vis : cl;
-			} else put_cell(g, w, row, c, s, k, j - lead, cw - lead, face, vis ? vis : cl);
+				if (z) z->bg = from < v && vis ? vis : sb;
+			} else put_cell(g, w, row, c, s, k, j - lead, cw - lead, face, vis ? vis : sb);
 		}
 		i += k;
 	}
@@ -372,15 +442,24 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	   line that ends before the view starts has its end at the view's
 	   start, where an area that starts earlier starts too. */
 	size_t vs = v > skip ? v : skip;
-	if (drawn == 1 && (v > skip ? from == v : from <= skip) && vs < to && (vs < xf || vs > xt)
+	if (area == FACE_VISUAL && drawn == 1 && (v > skip ? from == v : from <= skip) && vs < to && (vs < xf || vs > xt)
 	    && (e->ks.visual != 22 || l == e->win->line || l == e->ks.vline)) {
-		size_t d = vs - skip;
-		int full = w->wrap ? d && d % (size_t)tw == 0 : d >= (size_t)tw;
-		d -= (size_t)full;
-		int row = w->wrap ? r + (int)(d / (size_t)tw) : r, c = nw + (int)(d % (size_t)tw);
-		if (!full) wput(g, w, row, c, (const unsigned char *)" ", 1, 1);
-		Cell *z = row < w->h ? wcell(g, w, row, c) : NULL;
+		Cell *z = eol_cell(g, w, r, vs - skip, tw, nw);
 		if (z) z->bg = FACE_VISUAL;
+	}
+	/* a match that takes the line break: the cell after the last
+	   character */
+	mh = hl_at(e, w, l, i, mh, &ms, &mz);
+	/* (one that takes the line break at the view's start when the line
+	   ends before it, as the Visual area; an empty one with wrap only
+	   where the end is in view, without wrap where 'leftcol' does not
+	   pass the line's length in bytes, also when its end, in columns, is
+	   before the view (a wide character) or in it (a Tab): measured) */
+	if (mh && ms <= i && drawn == 1 && (mz > ms || (w->wrap ? v >= skip : w->left <= i))) {
+		Cell *z = eol_cell(g, w, r, vs - skip, tw, nw);
+		/* never CurSearch on an empty line (get_search_match_hl():
+		   measured) */
+		if (z && z->bg != FACE_VISUAL) z->bg = i ? search(w, l, ms, mz) : FACE_SEARCH;
 	}
 	/* a code block's empty or short row: its background from the block's
 	   column (padding() pads it) */

@@ -1,0 +1,23 @@
+# Review of PR 110: the reviewer's own plants, in tests/plants' format (run by run-plants.sh)
+review: 'foldnestmax' is 21, not 20~test TESTS=syntax~~src/syntax/syntax.c~				f[l] = 2 * (int)(v > 20 ? 20 : v) + (e && v <= 20);~				f[l] = 2 * (int)(v > 21 ? 21 : v) + (e && v <= 21);
+review: a level past 'foldnestmax' still starts a fold~test TESTS=syntax~~src/syntax/syntax.c~+ (e && v <= 20);~+ (e > 0);
+review: a quantified @fold ends at its first node~test TESTS=syntax~~src/syntax/syntax.c~TSPoint e = ts_node_end_point(*z);~TSPoint e = ts_node_end_point(*a);
+review: a fold of one line counts ('foldminlines' 0)~test TESTS=syntax~~src/syntax/syntax.c~if (er - sr + 1 > 1 &&~if (er - sr + 1 > 0 &&
+review: a fold ending past the last line is counted~test TESTS=syntax~~src/syntax/syntax.c~ && er < (int64_t)s->nfold)~)
+review: fold patterns' predicates are not read~test TESTS=syntax~~src/syntax/syntax.c~			if (!passes(src, &m, &Q->pat[m.pattern_index])) continue;¶			const TSNode *a = NULL~			const TSNode *a = NULL
+review: Markdown: an empty line above === is a heading~test TESTS=syntax~~src/syntax/syntax.c~	if (a < z && l + 1 < text_lines(t)~	if (l + 1 < text_lines(t)
+review: Markdown: '#'s need no space after them~test TESTS=syntax~~src/syntax/syntax.c~ && at(src, h) == ' ') return~) return
+review: shorter 1: md_fold without h < z~test TESTS=syntax~~src/syntax/syntax.c~	if (h > a && h < z && at(src, h) == ' ')~	if (h > a && at(src, h) == ' ')
+review: shorter 2: md_fold without b < y, twice~test TESTS=syntax~~src/syntax/syntax.c~ && b < y && (at(src, b) == '=' || at(src, b) == '-')) {¶		int c = at(src, b);¶		while (b < y && at(src, b) == c) b++;~ && (at(src, b) == '=' || at(src, b) == '-')) {¶		int c = at(src, b);¶		while (at(src, b) == c) b++;
+review: shorter 3: verilog() lines keep their newline~test TESTS=syntax~~src/syntax/syntax.c~z = text_line_start(t, l + 1) - (l < n);~z = text_line_start(t, l + 1);
+review: shorter 4: syntax_foldexpr updates once, no loop~test TESTS=syntax~~src/syntax/syntax.c~	while (syntax_update(s, s->t, NULL) == 2) ;~	syntax_update(s, s->t, NULL);
+review: a .v's last line without a newline is not read~test TESTS=syntax~~src/syntax/syntax.c~l < 500 && l <= n; l++~l < 500 && l < n; l++
+review: a .v's block comment never ends~test TESTS=syntax~~src/syntax/syntax.c~		if (com) com = !f[1];~		if (com) com = 1;
+review: a .v's (* after a comment start is Coq~test TESTS=syntax~~src/syntax/syntax.c~(f[5] && !f[6])) return 0;~(f[5])) return 0;
+review: Vim's match? accepts an empty word~test TESTS=syntax~~src/syntax/syntax.c~		if (len[j] == 0 || (j~		if ((j
+review: Vim's match? without the trailing $ is read~test TESTS=syntax~~src/syntax/syntax.c~ || s[n - 1] != '$') return 1;~) return 1;
+review: Vim's match? suffix matches a longer word's tail only when as long~test TESTS=syntax~~src/syntax/syntax.c~if (z - a >= m - 2 * suf && text_eq~if (z - a == m - 2 * suf && text_eq
+review: an unknown match? form is not skipped~test TESTS=syntax~~src/syntax/syntax.c~				P->skip |= (unsigned char)w;~
+review: the folds are not freed~test TESTS=syntax~~src/syntax/syntax.c~	free(s->fold);¶~
+review: folds of a buffer not yet parsed are read~fuzz FUZZERS=syntax~~src/syntax/syntax.c~	if (!started(s) || line >= n) return 0;~	if (line >= n) return 0;
+review: folds of a line past the end are read~fuzz FUZZERS=syntax~~src/syntax/syntax.c~	if (!started(s) || line >= n) return 0;~	if (!started(s)) return 0;
