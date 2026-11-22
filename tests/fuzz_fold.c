@@ -3,9 +3,9 @@
    and splits.  Every fold found lies around its line and inside the
    buffer, a split window's copy answers as the original, and folds built
    fresh without "-1" lines have each line's level from the foldexpr
-   (clamped at 20, Neovim's MAX_LEVEL); tests/test_fold.c holds the rest against Neovim.  Edits leave
-   Neovim's tree out of shape at times (a nested fold past its parent), so
-   that is not checked. */
+   (clamped at 20, Neovim's MAX_LEVEL); tests/test_fold.c holds the rest
+   against Neovim.  Edits leave Neovim's tree out of shape at times (a
+   nested fold past its parent), so that is not checked. */
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>

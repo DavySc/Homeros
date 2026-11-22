@@ -186,15 +186,15 @@ static void merge(Nd *fp1, Arr *a, Nd *fp2)
 	del(a, (int)(fp2 - a->d));
 }
 
-/* foldlevelExpr() */
 /* foldlevelExpr() for "n", ">n" and "-1" (undefined: the folds take the
    level of the next defined line; 0 on the first line) */
-static void level(const Fold *f, Line *l)
+static int level(const Fold *f, Line *l)
 {
 	long lnum = l->lnum + l->off;
 	l->start = 0;
 	l->lvl = f->expr(f->ctx, (size_t)(lnum - 1), &l->start);
 	if (l->lvl < 0 && lnum <= 1) l->lvl = 0;
+	return l->lvl;
 }
 
 /* foldUpdateIEMSRecurse(): the fold at level that starts at l->lnum */
@@ -293,11 +293,7 @@ static long recurse(Fold *f, Arr *a, int lvl0, long startlnum, Line *l, long bot
 		} else {
 			/* past undefined lines to the level after them */
 			long ll = l->lnum_save + 1;
-			l->lnum = l->lnum_save;
-			do {
-				if (++l->lnum > linecount) break;
-				level(f, l);
-			} while (l->lvl < 0);
+			for (l->lnum = ll; l->lnum <= linecount && level(f, l) < 0; l->lnum++);
 			if (l->lnum > linecount) break;
 			l->lnum_save = l->lnum;
 			l->lnum = ll;
@@ -337,7 +333,7 @@ static void update(Fold *f, long top, long bot, long n)
 	if (top > n) top = n;
 	/* back to a line with a defined level, from the one above top */
 	Line l = { .lnum = top > 1 ? top - 1 : top, .n = n };
-	for (level(f, &l); l.lvl < 0; level(f, &l)) l.lnum--;
+	while (level(f, &l) < 0) l.lnum--;
 	long start = l.lnum, stop = bot;
 	if (start > stop && stop < n) stop = start;
 	Nd *fp;
