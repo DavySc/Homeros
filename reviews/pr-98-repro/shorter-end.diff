@@ -1,0 +1,4 @@
+1757c1757
+< 		if (i < k) c = col(e[i].type == ORG_DRAWER && lit(blanks(l), ":END:") ? e[i].begin + h : prevl(l));
+---
+> 		if (i < k) c = col(e[i].type == ORG_DRAWER || e[i].type == ORG_PROPERTY_DRAWER ? e[i].begin + h : prevl(l));

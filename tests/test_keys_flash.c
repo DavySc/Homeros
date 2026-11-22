@@ -50,6 +50,10 @@ int main(void)
 	   a, and b then a for these; measured once, 2026-11-20, nvim --headless) */
 	CHECK(flash("@@", 0, 0, 0, 0, 0) && flash("2@a", 0, 0, 0, 0, 0) && flash("Q", 0, 0, 0, 0, 0));
 	CHECK(flash("qbyy@aq", 'V', 0, 0, 0, M) && flash("@b", 0, 0, 0, 0, 0) && !e.ks.executing);
+	/* but not for @: and @. (do_execreg(): TextYankPost logged "" and '[
+	   at column 2 for "iyl" Esc "@.", measured once, nvim --headless) */
+	CHECK(flash("iyl\x1b@.", 'v', 0, 1, 0, 1));
+	feed("u");
 	/* a block's columns are screen columns: the Tab's last, where the
 	   cursor stood ('virtualedit' block: "\x16" 2, '[ at coladd 7,
 	   measured once in nvim), and the a */
