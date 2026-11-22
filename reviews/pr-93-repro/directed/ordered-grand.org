@@ -1,0 +1,7 @@
+* DONE g
+:PROPERTIES:
+:ORDERED: t
+:END:
+** TODO a
+** TODO p
+*** WAIT b

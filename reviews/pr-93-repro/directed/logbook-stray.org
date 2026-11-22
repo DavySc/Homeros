@@ -1,0 +1,5 @@
+* NEXT a
+:NOTES:
+:LOGBOOK:
+:END:
+text

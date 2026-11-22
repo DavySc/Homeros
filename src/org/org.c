@@ -9,6 +9,7 @@
    case folding is ASCII-only, a block name inside a list is compared
    literally where Org uses it unquoted as a regexp, and the TODO keywords
    are Davy's (org_todo) whatever a file's #+TODO: lines say. */
+#include "date.h"
 #include "org.h"
 #include "uni.h"
 #include "class.h"
@@ -1512,30 +1513,15 @@ static int blocked(size_t h, int from, int to)
 
 /* ---- dates, as Emacs's encode-time normalises them ---- */
 
-static long fdiv(long a, long b) { return a >= 0 ? a / b : -((-a + b - 1) / b); }
-static long days(long y, long m, long d)   /* since 1970-01-01; months past 12 roll over */
-{
-	y += fdiv(m - 1, 12), m -= 12 * fdiv(m - 1, 12);
-	y -= m <= 2;
-	long era = fdiv(y, 400), yoe = y - era * 400, doy = (153 * (m > 2 ? m - 3 : m + 9) + 2) / 5 + d - 1;
-	return era * 146097 + yoe * 365 + yoe / 4 - yoe / 100 + doy - 719468;
-}
-static void civil(long z, int *y, int *m, int *d)
-{
-	z += 719468;
-	long era = fdiv(z, 146097), doe = z - era * 146097, yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
-	long doy = doe - (365 * yoe + yoe / 4 - yoe / 100), mp = (5 * doy + 2) / 153;
-	*d = (int)(doy - (153 * mp + 2) / 5 + 1), *m = (int)(mp < 10 ? mp + 3 : mp - 9), *y = (int)(yoe + era * 400 + (*m <= 2));
-}
 /* "<2026-11-19 Thu 17:30>" for minute t (since the epoch), with the time
    when hm, extra x[0, k) before the closing bracket */
 static size_t stamp(char *o, long t, int hm, int inactive, const char *x, size_t k)
 {
 	static const char *const wd[] = { "Thu", "Fri", "Sat", "Sun", "Mon", "Tue", "Wed" };
-	long z = fdiv(t, 1440), mi = t - z * 1440;
+	long z = date_fdiv(t, 1440), mi = t - z * 1440;
 	int y, m, d;
-	civil(z, &y, &m, &d);
-	size_t n = (size_t)sprintf(o, "%c%04d-%02d-%02d %s", inactive ? '[' : '<', y, m, d, wd[z - 7 * fdiv(z, 7)]);
+	date_civil(z, &y, &m, &d);
+	size_t n = (size_t)sprintf(o, "%c%04d-%02d-%02d %s", inactive ? '[' : '<', y, m, d, wd[z - 7 * date_fdiv(z, 7)]);
 	if (hm) n += (size_t)sprintf(o + n, " %02ld:%02ld", mi / 60, mi % 60);
 	memcpy(o + n, x, k);
 	o[n + k] = inactive ? ']' : '>';
@@ -1556,7 +1542,7 @@ static size_t tsbody(size_t p, long *t)
 		if (c + 3 <= N && S[c] == ':' && digit(c + 1) && digit(c + 2))
 			h = num(q + 1, c), mi = num(c + 1, c + 3), q = c + 3;
 	}
-	*t = days(num(p, p + 4), num(p + 5, p + 7), num(p + 8, p + 10)) * 1440 + h * 60 + mi;
+	*t = date_days(num(p, p + 4), num(p + 5, p + 7), num(p + 8, p + 10)) * 1440 + h * 60 + mi;
 	return q;
 }
 /* the stamp org-ts-regexp3 matches at a ([<...]>, at most 16 bytes after
@@ -1621,12 +1607,12 @@ static size_t tschange(size_t a, long n, char what, int nodelay)
 		long h = (x[1] - '0') * 10 + x[2] - '0' + (what == 'h' ? n : 0), mi = (x[4] - '0') * 10 + x[5] - '0' + (what == 'm' ? n : 0);
 		if (mi < 0) mi += 60, h--;
 		if (mi > 59) mi -= 60, h++;
-		h -= 24 * fdiv(h, 24);
+		h -= 24 * date_fdiv(h, 24);
 		x[1] = (char)('0' + h / 10), x[2] = (char)('0' + h % 10), x[4] = (char)('0' + mi / 10), x[5] = (char)('0' + mi % 10);
 	}
-	long day = fdiv(t, 1440), mi = t - day * 1440;
+	long day = date_fdiv(t, 1440), mi = t - day * 1440;
 	if (what == 'M' || what == 'y')   /* from the digits, as Org: 2026-02-30 +1m is 03-30 */
-		day = days(num(a + 1, a + 5) + (what == 'y' ? n : 0), num(a + 6, a + 8) + (what == 'M' ? n : 0), num(a + 9, a + 11));
+		day = date_days(num(a + 1, a + 5) + (what == 'y' ? n : 0), num(a + 6, a + 8) + (what == 'M' ? n : 0), num(a + 9, a + 11));
 	t = day * 1440 + mi + (what == 'd' ? n * 1440 : what == 'h' ? n * 60 : what == 'm' ? n : 0);
 	size_t len = stamp(o, t, hm, S[a] == '[', x, k);
 	wrep(a, z, o, len);
@@ -1666,7 +1652,8 @@ static int agenda_ts(size_t h, size_t a, size_t q)
 	       org_ts((const char *)S, N, a, &x) && x.end >= q;
 }
 /* org-repeat-re from p on, bounded by lim: the stamp's start, the repeater
-   [*r, *re) ([.+]?\+N[hdwmy]); ORG_NONE */
+   [*r, *re) ([.+]?\+N[hdwmy], without a habit's /N, which nothing after
+   reads); ORG_NONE */
 static size_t repeat_re(size_t p, size_t lim, size_t *r, size_t *re)
 {
 	for (; p + 12 < lim; p++) {
@@ -1676,7 +1663,6 @@ static size_t repeat_re(size_t p, size_t lim, size_t *r, size_t *re)
 			if (S[u] != '+') u = q;   /* [.+]? backtracks to nothing */
 			if (S[u] != '+' || (v = digits(u + 1, lim)) == u + 1 || v >= lim || !one(v, "hdwmy")) continue;
 			*r = q, *re = v + 1;
-			if (S[*re] == '/' && (v = digits(*re + 1, lim)) > *re + 1 && v < lim && one(v, "hdwmy")) *re = v + 1;
 			return p;
 		}
 	}
@@ -1738,8 +1724,10 @@ static size_t indent(size_t p, size_t c)
 	return p + k;
 }
 
-/* org-indent-line's column for the element at line l of the entry at h:
-   its sibling before's first line, else its parent drawer's, else 0 */
+/* org-indent-line's column for line l of the entry at h: on an element's
+   first line, its sibling before's first line, else its parent drawer's
+   (a stray :LOGBOOK: line above opens the drawer), else 0; on a drawer's :END:, the drawer's; inside an element (a stray
+   :LOGBOOK: in a drawer is a paragraph), the line above's */
 static size_t sibling_ind(size_t h, size_t l)
 {
 	size_t k, i, j, c = 0;
@@ -1748,8 +1736,11 @@ static size_t sibling_ind(size_t h, size_t l)
 	for (i = k; i-- > 0 && e[i].aff + h != l; ) ;
 	if (i < k) {
 		for (j = i; j-- > 0 && e[j].parent != e[i].parent; ) ;
-		if (j < k && e[j].parent == e[i].parent) c = col(e[j].begin + h);
+		if (j < k) c = col(e[j].begin + h);
 		else if (e[i].parent != ORG_NONE && e[e[i].parent].type == ORG_DRAWER) c = col(e[e[i].parent].begin + h);
+	} else {
+		for (i = k; i-- > 0 && !(e[i].aff + h < l && l < e[i].end + h); ) ;
+		if (i < k) c = col(e[i].type == ORG_DRAWER && lit(blanks(l), ":END:") ? e[i].begin + h : prevl(l));
 	}
 	free(e);
 	return c;
@@ -1779,13 +1770,13 @@ static void note(size_t h, int to, int from, const char *now)
 	free(e);
 	size_t c = at != ORG_NONE ? col(prevl(at)) : 0;
 	if (at == ORG_NONE) {
-		if (p < N && p == bol(p) && headline(p)) p--;
 		int blank_line = p == bol(p) && ateol(blanks(p)), text_line = p == bol(p) && !ateol(p);
 		if (p != bol(p)) wins(p++, "\n");
 		wins(p, ":LOGBOOK:\n:END:");
 		if (blank_line || text_line) wins(p + 15, "\n");
 		c = sibling_ind(h, p);
-		indent(at = indent(p, c) + 10, c);   /* org-indent-region */
+		at = indent(p, c) + 10;
+		indent(at, sibling_ind(h, at));   /* org-indent-region, a line at a time */
 	}
 	if (at != bol(at)) wins(at++, "\n");
 	else if (!ateol(blanks(at))) wins(at, "\n");
@@ -1895,12 +1886,12 @@ static void repeat(size_t h, int from, const char *nows, long now)
 		if ((ts = ts_around(re)) == ORG_NONE) { err = 1; break; }   /* "Not at a timestamp" */
 		long t;
 		tsbody(ts + 1, &t);
-		if (type == '.') tschange(ts, what == 'h' ? now - t : fdiv(now, 1440) - fdiv(t, 1440), what == 'h' ? 'm' : 'd', 0);
+		if (type == '.') tschange(ts, what == 'h' ? now - t : date_fdiv(now, 1440) - date_fdiv(t, 1440), what == 'h' ? 'm' : 'd', 0);
 		if (type == '+') {
-			do {   /* Org asks "Continue?" at the tenth shift; Davy's answer is yes */
+			do {   /* Org asks "Continue?" at the tenth shift; yes is the coordinator's call while Davy's card is open */
 				tschange(ts, n, what, 0);
 				tsbody(ts + 1, &t);
-			} while (what == 'h' ? !(now < t) : fdiv(now, 1440) >= fdiv(t, 1440));
+			} while (what == 'h' ? !(now < t) : date_fdiv(now, 1440) >= date_fdiv(t, 1440));
 			tschange(ts, -n, what, 0);
 		}
 		p = tschange(ts, n, what, 1);

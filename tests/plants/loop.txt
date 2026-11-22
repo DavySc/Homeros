@@ -45,3 +45,7 @@ loop: win: the pipe is read only when it ends, so a full pipe hangs the child~wi
 loop: win: loop_breakcheck never looks at input~win WIN=loop~~src/loop/win.c~if (loop_int || ++count < 32) return loop_int;~if (loop_int || ++count < 1 << 30) return loop_int;
 loop: win: an idle loop wakes every 100 ms~win WIN=loop~~src/loop/win.c~timeout_ms < 0 ? INFINITE : (DWORD)timeout_ms,~timeout_ms < 0 || timeout_ms > 100 ? 100 : (DWORD)timeout_ms,
 loop: win: proc_write blocks until the pipe takes it all~win WIN=loop~~src/loop/win.c~	if (!c->busy[0]) write_next(c);¶	return~	if (!c->busy[0]) write_next(c);¶	while (c->busy[0]) SleepEx(INFINITE, TRUE);¶	return
+loop: a socket's write wake never asked of poll~test TESTS=loop~~src/loop/loop.c~.events = w[i].ev }; who[n]~.events = POLLIN }; who[n]
+loop: loop_write(fd, 0) leaves the write wake on~test TESTS=loop~~src/loop/loop.c~w[i].ev = on ? POLLIN | POLLOUT : POLLIN;~w[i].ev = on || 1 ? POLLIN | POLLOUT : POLLIN;
+loop: a writable socket counts as input waiting~test TESTS=loop~~src/loop/loop.c~(struct pollfd){ .fd = w[i].fd - 1, .events = POLLIN }; slot[n++] = i;~(struct pollfd){ .fd = w[i].fd - 1, .events = w[i].ev }; slot[n++] = i;
+loop: a new watch keeps the old slot's write wake~test TESTS=loop~~src/loop/loop.c~w[i].fd = fd + 1; w[i].ev = POLLIN;~w[i].fd = fd + 1;

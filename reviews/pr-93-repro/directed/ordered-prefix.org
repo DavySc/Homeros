@@ -1,0 +1,6 @@
+* TODO p
+:PROPERTIES:
+:ORDEREDX: t
+:END:
+** TODO a
+** WAIT b
