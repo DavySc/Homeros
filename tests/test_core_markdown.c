@@ -12,6 +12,8 @@
 #include "syntax.h"
 #include "../src/core/core_int.h"
 
+static size_t r1, r2;   /* syntax_update's changed fold rows, unused here */
+
 static char line[4096];
 
 /* a letter per colour the .py names */
@@ -69,7 +71,7 @@ static void command(Editor *e, Grid *g, const char *t)
 	else if (!strcmp(t, "redraw")) {}   /* CTRL-L: the core draws whole frames */
 	else CHECK(!"command");
 	do core_draw(e, g);
-	while (syntax_update(e->buf->syn, e->buf->text, NULL));
+	while (syntax_update(e->buf->syn, e->buf->text, NULL, &r1, &r2));
 }
 
 /* Cases listed as known, 22 of 1044.  Drawing's: an ordered number wider
