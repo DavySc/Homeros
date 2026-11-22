@@ -10,7 +10,7 @@ N=${N:-20} LOAD=${LOAD:-0} RUN=${RUN:-}
 d=${OUT:-build/pr123}
 py=python3; [ "${OS:-}" = Windows_NT ] && py=python
 mkdir -p "$d/clean" "$d/plant"
-cp src/loop/*.c "$d/clean/"; cp src/loop/*.c "$d/plant/"
+cp src/loop/*.[ch] "$d/clean/"; cp src/loop/*.[ch] "$d/plant/"
 $py - "$d/plant/win.c" <<'PY'
 import sys
 p = sys.argv[1]; s = open(p).read()
