@@ -37,6 +37,7 @@ typedef struct WinInfo {
 	struct Win *win;
 	size_t line, col;
 	int wrap;
+	struct Fold *fold;         /* the window's folds as it left (wi_folds), or NULL */
 	struct WinInfo *next;      /* most recent first */
 } WinInfo;
 
