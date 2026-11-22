@@ -100,6 +100,9 @@ typedef struct Win {
 	size_t top, left, skipcol;
 	size_t scroll;             /* lines for CTRL-D and CTRL-U ('scroll'); 0 = half the height */
 	int wrap;                  /* 'wrap': off (FEATURES.md); set through core_set_wrap */
+	int conceal;               /* 'conceallevel': 2, or 0 (SPC u p, Davy's
+	                              org-toggle-pretty-entities): the core asks
+	                              syntax_conceal only when it is not 0 */
 	int y, x, h, w;
 	struct Frame *frame;       /* its leaf in the layout */
 	/* CTRL-O CTRL-I, oldest first.  :bd forgets the buffer's entries in the

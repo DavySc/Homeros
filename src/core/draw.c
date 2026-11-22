@@ -6,6 +6,7 @@
 #include <string.h>
 #include "core_int.h"
 #include "git.h"
+#include "lsp.h"
 #include "syntax.h"
 #include "uni.h"
 
@@ -62,7 +63,7 @@ static void paint(Grid *g, int r, int c, int n, unsigned char face)
    spaces, a control character ^X, an invalid byte or what cannot be
    printed in hex (transchar_hex()). */
 static void put_cell(Grid *g, const Win *w, int r, int c, const unsigned char *s, size_t k, int j,
-                     int width, unsigned char face, unsigned char bg)
+                     int width, unsigned char face, unsigned char bg, unsigned char ul)
 {
 	static const char hex[] = "0123456789abcdef";
 	unsigned char b;
@@ -78,8 +79,51 @@ static void put_cell(Grid *g, const Win *w, int r, int c, const unsigned char *s
 	else { b = 0; wput(g, w, r, c, s, k, width); }
 	if (b) wput(g, w, r, c, &b, 1, 1);
 	Cell *z = wcell(g, w, r, c);
-	if (z) { z->face = face; z->bg = bg; }
+	if (z) { z->face = face; z->bg = bg; z->ul = ul; }
 }
+
+/* vim.diagnostic with Neovim 0.12's defaults (signs, underline) and
+   virtual_text = {current_line = true} (Davy's pick).  The diagnostics
+   that start on line l, [*lo, *hi) of the array returned: lsp.h keeps
+   them sorted by start, diagnostic_lines() groups them by lnum */
+static const LspDiag *diags_on(const Win *w, size_t l, int *lo, int *hi)
+{
+	int n, a = 0, z;
+	const LspDiag *v = lsp_diags(w->buf->lsp, &n);
+	const Text *t = w->buf->text;
+	/* past the last line: on it (vim.diagnostic.set() clamps the row) */
+	size_t ls = text_line_start(t, l), le = l + 1 < text_lines(t) ? text_line_start(t, l + 1) : (size_t)-1;
+	for (z = n; a < z; ) {
+		int m = (a + z) / 2;
+		if (v[m].a < ls) a = m + 1;
+		else z = m;
+	}
+	for (z = a; z < n && v[z].a < le; z++) {}
+	*lo = a, *hi = z;
+	return v;
+}
+
+/* The bytes [*a, *z) d underlines: vim.hl.range() from (lnum, min(col,
+   #line - 1)) to (end_lnum, end_col), each row clamped to the last line
+   and each column to its line's end, the two swapped if the end comes
+   first (an end past the last line can: measured), one character where
+   they meet (getregionpos()) */
+static void diag_span(const Text *t, const LspDiag *d, size_t *a, size_t *z)
+{
+	size_t nl = text_lines(t), al = text_line_of(t, d->a), zl = text_line_of(t, d->z);
+	size_t ca = d->a - text_line_start(t, al), cz = d->z - text_line_start(t, zl);
+	if (al >= nl) al = nl - 1;
+	if (zl >= nl) zl = nl - 1;
+	size_t s = text_line_start(t, al), n = text_line_start(t, al + 1) - 1 - s;
+	size_t es = text_line_start(t, zl), en = text_line_start(t, zl + 1) - 1 - es;
+	*a = s + (ca < n ? ca : n ? n - 1 : 0);
+	*z = es + (cz < en ? cz : en);
+	if (*z < *a) { size_t x = *a; *a = *z; *z = x; }
+	else if (*z == *a) (*z)++;
+}
+
+/* 0 error .. 3 hint, for the FACE_DIAG_* of each kind */
+static int sev(const LspDiag *d) { return d->sev < 4 ? d->sev - 1 : 3; }
 
 /* The number column of line l (get_line_number_str()): relative to the
    cursor line, which shows its own number left-aligned, in CursorLineNr
@@ -88,20 +132,34 @@ static void put_cell(Grid *g, const Win *w, int r, int c, const unsigned char *s
 static int put_number(Grid *g, const Win *w, int r, size_t l, int top_skipped)
 {
 	char b[40];
-	int nw = win_numw(w) - 1;
+	int sg = win_signw(w), nw = win_numw(w) - sg - 1;
 	size_t rel = l > w->line ? l - w->line : w->line - l;
 	unsigned char face = rel ? FACE_LINE_NR : FACE_CURSOR_LINE_NR;
-	snprintf(b, sizeof b, rel ? "%*zu " : "%-*zu ", nw, rel ? rel : l + 1);
-	wputs(g, w, r, 0, b, face);
+	*b = 0;
+	if (nw > 0) {
+		snprintf(b, sizeof b, rel ? "%*zu " : "%-*zu ", nw, rel ? rel : l + 1);
+		wputs(g, w, r, sg, b, face);
+	}
+	/* the sign column: the last diagnostic's sign of those that start on
+	   the line (equal priorities: the newest extmark; measured) */
+	int lo, hi;
+	const LspDiag *v = sg ? diags_on(w, l, &lo, &hi) : NULL;
+	if (v && hi > lo) {
+		char sign[3] = { "EWIH"[sev(&v[hi - 1])], ' ', 0 };
+		wputs(g, w, r, 0, sign, (unsigned char)(FACE_DIAG_ERROR + sev(&v[hi - 1])));
+	}
 	if (!top_skipped) return 0;
 	/* skipcol hides the line's start: "  5" becomes "--5" and three '<'
 	   follow the digits, over the text's first cells when the digits fill
 	   the column (win_line(), draw_lnum_col(); measured on lines 9, 10, 100) */
 	int d = 0;
-	for (; b[d] == ' '; d++) wputs(g, w, r, d, "-", face);
+	for (; b[d] == ' '; d++) wputs(g, w, r, sg + d, "-", face);
 	while (b[d] >= '0' && b[d] <= '9') d++;
-	wputs(g, w, r, d, "<<<", FACE_NON_TEXT);
-	return d + 3;
+	/* after the row's first digits: none where a sign column starts it,
+	   so over it, nor with nonumber: over the text's first cells (measured) */
+	if (sg) d = -sg;
+	wputs(g, w, r, sg + d, "<<<", FACE_NON_TEXT);
+	return sg + d + 3;
 }
 
 static int line_rows(const Win *w, size_t l)
@@ -110,6 +168,37 @@ static int line_rows(const Win *w, size_t l)
 	if (!w->wrap || tw <= 0) return 1;
 	size_t v = win_vcol_end(w, l), skip = l == w->top ? w->skipcol : 0;
 	return v <= skip ? 1 : (int)((v - skip + (size_t)tw - 1) / (size_t)tw);
+}
+
+/* virtual_text after a line's end and the blank there (eol virt_text),
+   as _get_virt_text_chunks() lays out the diagnostics [lo, hi) of v: 4
+   blanks, a '■' in each one's colour, a blank and the last one's message,
+   its "\r" dropped, each "\n" two blanks, each Tab blanks to the row's
+   next multiple of 8 (measured); cut at the window's edge.
+   The blanks have no colour of their own (hl_mode combine: on CursorLine) */
+/* grid_puts() for virtual text: a double-width character cut at the edge
+   leaves a blank in its colour (measured) */
+static int vt_puts(Grid *g, int y, int x, int end, const char *s, size_t n, int f)
+{
+	int z = grid_puts(g, y, x, end, s, n, ATTR_NONE, f);
+	return z < end && x + grid_width(s, n) > end ? grid_puts(g, y, z, end, " ", 1, ATTR_NONE, f) : z;
+}
+
+static void draw_vt(Grid *g, const Win *w, int row, int nw, int c, const LspDiag *v, int lo, int hi, unsigned char cl)
+{
+	int y = w->y + row, end = w->x + w->w < g->cols ? w->x + w->w : g->cols, x = w->x + nw + c;
+	if (y >= g->rows || x >= end) return;
+	for (int z = grid_puts(g, y, x, end, "    ", 4, ATTR_NONE, FACE_NONE); x < z; x++) g->c[y * g->cols + x].bg = cl;
+	for (int k = lo; k < hi; k++) x = vt_puts(g, y, x, end, "\xe2\x96\xa0", 3, FACE_DIAG_VT_ERROR + sev(&v[k]));
+	int f = FACE_DIAG_VT_ERROR + sev(&v[hi - 1]);
+	x = vt_puts(g, y, x, end, " ", 1, f);
+	for (const char *m = v[hi - 1].msg; m && *m; ) {
+		size_t n = strcspn(m, "\r\n\t");
+		x = vt_puts(g, y, x, end, m, n, f);
+		if (m[n] == '\n') x = vt_puts(g, y, x, end, "  ", 2, f);
+		if (m[n] == '\t') x = vt_puts(g, y, x, end, "        ", (size_t)(8 - (x - w->x - nw) % 8), f);
+		m += n + (m[n] != 0);
+	}
 }
 
 /* An overlay (virt_text_pos 'overlay', win_line()) of the clusters s[0, n),
@@ -144,8 +233,8 @@ static size_t over(Grid *g, const Win *w, int r, size_t skip, int cover, size_t 
 				if (x / (size_t)tw != x0 / (size_t)tw || (!w->wrap && x >= (size_t)tw)) return v;
 				int row = r + (int)(x / (size_t)tw), c = nw + (int)(x % (size_t)tw);
 				if (row >= w->h || (row == r && c < cover)) continue;
-				if (fit) put_cell(g, w, row, c, u + i, k, j, cw, face, bg);
-				else put_cell(g, w, row, c, (const unsigned char *)" ", 1, 0, 1, face, bg);
+				if (fit) put_cell(g, w, row, c, u + i, k, j, cw, face, bg, 0);
+				else put_cell(g, w, row, c, (const unsigned char *)" ", 1, 0, 1, face, bg, 0);
 			}
 		}
 	return v;
@@ -247,16 +336,6 @@ static Cell *eol_cell(Grid *g, const Win *w, int r, size_t d, int tw, int nw)
 	int row = w->wrap ? r + (int)(d / (size_t)tw) : r, c = nw + (int)(d % (size_t)tw);
 	if (!full) wput(g, w, row, c, (const unsigned char *)" ", 1, 1);
 	return row < w->h ? wcell(g, w, row, c) : NULL;
-}
-
-/* Search, or CurSearch for the match [ms, mz) of line l that holds w's
-   cursor (never an empty one: measured, tests/test_core_search.py).  Known
-   difference: Neovim draws a match over several lines CurSearch on all of
-   them when the cursor is anywhere in it, this only on the cursor's line
-   (reviews/pr-106.md, finding 3); it waits for keys_hl to say so. */
-static unsigned char search(const Win *w, size_t l, size_t ms, size_t mz)
-{
-	return w->line == l && w->col >= ms && w->col < mz ? FACE_CUR_SEARCH : FACE_SEARCH;
 }
 
 /* keys_hl's match of line l that holds byte i or comes after it (an empty
@@ -369,10 +448,39 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	/* 'hlsearch' (win_line()'s search_attr, under the Visual area and
 	   :s's c-flag match but over the yank flash, an extmark: measured):
 	   the keys' matches [ms, mz) from col 0 on, an empty one over the
-	   character at ms; CurSearch for the one under w's cursor */
+	   character at ms; CurSearch for one that holds w's cursor (keys_hl's 2) */
 	int flash = area && e->ks.yank.type;
 	size_t ms = 0, mz = 0;
 	int mh = keys_hl(e, w, l, 0, &ms, &mz);
+	/* conceal (win_line(): conceallevel=2, concealcursor=""): spans drawn
+	   as one character or none, but not on the current window's cursor
+	   line nor in the Visual area; off counts the cells they freed on row
+	   orow, which a Tab gives back (fix_for_boguscols()) */
+	Conceal cs[64];
+	size_t nc = syn && w->conceal && !(w == e->win && l == w->line) && area != FACE_VISUAL ? syntax_conceal(syn, l, cs, 64) : 0,
+	       ci = 0, off = 0;
+	int orow = r;
+	/* the diagnostics' underline: [a, z) of those over the line
+	   (diag_span()).  Of those over a byte the one that starts last wins,
+	   of two that start together the earlier: equal extmark priorities,
+	   so the order decor_redraw_line() meets them in (the marktree puts
+	   a newer mark before an older one at its position; measured: with
+	   more at one place its B-tree's order, not copied, see
+	   tests/test_core_diag.py).  Kept: the last 64 */
+	struct { size_t a, z; unsigned char f; } us[64];
+	int nu = 0, nd;
+	const LspDiag *dv = lsp_diags(w->buf->lsp, &nd);
+	const Text *t = w->buf->text;
+	/* (one past the last line is on it: diag_span()) */
+	size_t le = text_line_start(t, l + 1), lim = l + 1 < text_lines(t) ? le : (size_t)-1;
+	for (size_t k = 0; k < (size_t)nd && dv[k].a < lim; k++) {
+		size_t a, z;
+		if (dv[k].z < ls) continue;	/* ends before this line: skip without diag_span's walk */
+		diag_span(t, &dv[k], &a, &z);
+		if (a + 1 >= le || z <= ls || z <= a) continue;
+		if (nu == 64) memmove(us, us + 1, --nu * sizeof *us);
+		us[nu].a = a, us[nu].z = z, us[nu++].f = (unsigned char)(FACE_DIAG_UNDER_ERROR + sev(&dv[k]));
+	}
 	/* 'cursorline' (Davy's pick of the UI proposals): CursorLine under the
 	   text area of the cursor line's rows, below syntax and render-markdown
 	   (low priority: it has no fg), not in the current window in Visual
@@ -401,22 +509,39 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 		int lead = cw == 3 && *s != '\t', wide = *s >= 0x80 && cw - lead == 2;
 		mh = hl_at(e, w, l, i, mh, &ms, &mz);
 		int im = mh && i >= ms;
-		unsigned char sb = im ? search(w, l, ms, mz) : cl;
+		unsigned char sb = im ? mh == 2 ? FACE_CUR_SEARCH : FACE_SEARCH : cl;
+		while (ci < nc && i >= cs[ci].z) ci++;
+		const Conceal *cc = ci < nc && i >= cs[ci].a ? &cs[ci] : NULL;
+		int u = -1;
+		for (int j = 0; j < nu; j++)
+			if (us[j].a <= ls + i && ls + i < us[j].z && (u < 0 || us[j].a > us[u].a)) u = j;
+		unsigned char ul = u < 0 ? 0 : us[u].f;
 		for (int j = 0; j < cw; j++, v++) {
 			if (v < skip) continue;
 			size_t d = v - skip;
 			int row = w->wrap ? r + (int)(d / (size_t)tw) : r;
-			if (!w->wrap && d >= (size_t)tw) { drawn = 2; break; }
+			if (row != orow) orow = row, off = 0;
+			if (!w->wrap && d - off >= (size_t)tw) { drawn = 2; break; }
 			if (row >= w->h) { drawn = 0; break; }
-			int c = nw + (int)(d % (size_t)tw);
+			int c = nw + (int)(w->wrap ? d % (size_t)tw : d) - (int)off;
 			unsigned char face = syn ? fc[i - f0] : 0;
 			/* a double-width character whose second cell starts the area
 			   is in it (win_line()) */
 			unsigned char vis = (v >= from || (wide && v + 1 == from)) && v < to && (v < xf || v > xt) && !(flash && im) ? area : 0;
+			/* the span's character in its first byte's first cell.  The
+			   Org syntax conceals no double-width character (measured:
+			   test_core_conceal.py), so Neovim's fillers around a
+			   concealed one are not copied */
+			if (cc) {
+				if (i == cc->a && !j && *cc->s) put_cell(g, w, row, c, (const unsigned char *)cc->s, strlen(cc->s), 0, 1, face, vis ? vis : sb, ul);
+				else off++;
+				continue;
+			}
+			for (; *s == '\t' && off; off--) put_cell(g, w, row, c++, s, k, 0, cw, face, vis ? vis : sb, ul);
 			if (row == r && c < cover) {
 				/* "<<<" over a double-width character's first cell leaves a
 				   blank in its second (measured) */
-				if (wide && j == lead && c + 1 == cover) put_cell(g, w, row, c + 1, (const unsigned char *)" ", 1, 0, 1, face, vis ? vis : sb);
+				if (wide && j == lead && c + 1 == cover) put_cell(g, w, row, c + 1, (const unsigned char *)" ", 1, 0, 1, face, vis ? vis : sb, ul);
 				continue;
 			}
 			/* win_line(): '>' where a double-width character does not fit
@@ -425,14 +550,14 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 			   which the core draws dim, as '~') */
 			/* '>' is NonText alone, off CursorLine; '<' on it (multi_attr;
 			   measured) */
-			if (j < lead || (wide && j == 0 && !w->wrap && d == (size_t)tw - 1))
+			if (j < lead || (wide && j == 0 && !w->wrap && d - off == (size_t)tw - 1))
 				wputs(g, w, row, c, ">", FACE_NON_TEXT);   /* not in the area (measured) */
 			else if (wide && j - lead == 1 && v == skip) {
 				/* in the area if its character is (measured) */
 				wputs(g, w, row, c, "<", FACE_NON_TEXT);
 				Cell *z = wcell(g, w, row, c);
 				if (z) z->bg = from < v && vis ? vis : sb;
-			} else put_cell(g, w, row, c, s, k, j - lead, cw - lead, face, vis ? vis : sb);
+			} else put_cell(g, w, row, c, s, k, j - lead, cw - lead, face, vis ? vis : sb, ul);
 		}
 		i += k;
 	}
@@ -457,15 +582,24 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	   before the view (a wide character) or in it (a Tab): measured) */
 	if (mh && ms <= i && drawn == 1 && (mz > ms || (w->wrap ? v >= skip : w->left <= i))) {
 		Cell *z = eol_cell(g, w, r, vs - skip, tw, nw);
-		/* never CurSearch on an empty line (get_search_match_hl():
-		   measured) */
-		if (z && z->bg != FACE_VISUAL) z->bg = i ? search(w, l, ms, mz) : FACE_SEARCH;
+		/* CurSearch only for a match with a character on this line, so
+		   never on an empty one (get_search_match_hl(): measured) */
+		if (z && z->bg != FACE_VISUAL) z->bg = mh == 2 && ms < i ? FACE_CUR_SEARCH : FACE_SEARCH;
 	}
 	/* a code block's empty or short row: its background from the block's
 	   column (padding() pads it) */
 	if (a0 == (size_t)-1) a0 = v + md.mark - i;
 	if (rm == 1) md.head = md.list = md.task = 0, md.code = md.code == 2 ? 2 : 0;
 	if (on) draw_md(g, w, l, r, skip, cover, &md, a0, a1, b1, t0, cl);
+	/* the diagnostics' virtual text on the cursor line (CursorMoved
+	   renders it there; in another buffer's window, its cursor line) */
+	int lo, hi;
+	dv = diags_on(w, l, &lo, &hi);
+	if (drawn == 1 && hi > lo && l == (w->buf == e->win->buf ? e->win->line : w->line)) {
+		size_t d = vs - skip;
+		int row = w->wrap ? r + (int)(d / (size_t)tw) : r;
+		if (row < r + line_rows(w, l) && row < w->h) draw_vt(g, w, row, nw, (int)(w->wrap ? d % (size_t)tw : d) + 1, dv, lo, hi, cl);
+	}
 	return drawn != 0;
 }
 

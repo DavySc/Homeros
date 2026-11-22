@@ -76,6 +76,12 @@ int main(void)
 	feed(&e, "\0330v x");
 	CHECK(at(&e, "b\n", 0));
 	feed(&e, "u");
+	/* SPC u p: 'conceallevel' 2 or 0 (Davy's org-toggle-pretty-entities) */
+	e.win->conceal = 2;
+	feed(&e, " up");
+	CHECK(!e.win->conceal);
+	feed(&e, " up");
+	CHECK(e.win->conceal == 2);
 	static Grid g;
 	CHECK(!grid_resize(&g, 24, 80));
 	feed(&e, ":KittenPaw\r");

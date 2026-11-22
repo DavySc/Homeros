@@ -119,7 +119,7 @@ static void key(int k, int pending)
 /* only those whose targets exist; the SPC g and SPC h ones are git.h's */
 static const char *const maps[] = {
 	" ff", " fg", " fr", " ,", " e", " pv", "-", " D",
-	" gg", " gs", " gl", " gL", " gd", " gb", " gB", " hs", " hr", " hS", " hu", " hp", " is", " uk",
+	" gg", " gs", " gl", " gL", " gd", " gb", " gB", " hs", " hr", " hS", " hu", " hp", " is", " uk", " up",
 	"cit", "ciT",  /* nvim-orgmode's, buffer-local to .org */
 	" cc", " cC"
 };
@@ -156,7 +156,9 @@ static int map(Editor *e, int k)
 		case ',': tools_pick(e, PICK_BUFFERS); break;
 		case 'e': tools_pick(e, PICK_EXPLORER); break;
 		case 'p': tools_oil(e, NULL); break;
-		case 'u': kitten_toggle(e); break;
+		case 'u': if (m[2] == 'k') kitten_toggle(e);
+		          else e->win->conceal = e->win->conceal ? 0 : 2;   /* Davy's org-toggle-pretty-entities */
+		          break;
 		case 'i': org_cycle(m[2] == 't' ? 1 : -1); break;
 		case 'D': dashboard(e); break;
 		case 's': tools_pick(e, PICK_SNIPPETS); break;

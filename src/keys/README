@@ -207,7 +207,7 @@ Choices:
 - Davy's maps (FEATURES.md 4), Normal mode only, as nnoremap: SPC ff
   files, SPC fg grep, SPC fr registers, SPC , buffers, SPC e explorer
   (tools_pick), SPC pv and - oil (tools_oil), SPC g g s l L d b B and
-  SPC h s r S u p (git_leader), SPC uk the save kitten on or off
+  SPC h s r S u p (git_leader), SPC uk the save kitten on or off, SPC up 'conceallevel' 2 or 0
   (kitten_toggle; :KittenPaw plays it); in .org buffers only,
   nvim-orgmode's cit and ciT (org_todo, org_todo_prev: org_todo_step's
   next or previous keyword, one undo step), so there c waits for its next
