@@ -924,6 +924,16 @@ static void gpoke(const LspDoc *d)
 	if (d == G.d) { commit(); gask(); }
 }
 
+/* Lean gave no answer here: what was shown is for elsewhere, so it goes */
+static void none(void)
+{
+	if (G.want || !G.d) return;
+	G.goals.t.n = G.goals.f.n = G.term.t.n = G.term.f.n = 0;
+	G.ng = -1;
+	G.shown = 1;
+	commit();
+}
+
 /* An answer that came too late (the cursor or the text moved, the server
    died) or from an outdated session (Lean's -32900, after it elaborated the
    file anew): ask again, after -32900 once a question, so a server that
@@ -933,6 +943,7 @@ static int late(const char *m)
 	G.busy = 0;
 	int e = m ? json_get(m, tk, 0, "error") : -1;
 	if (!m || is(m, json_get(m, tk, e, "code"), "-32900")) { G.sess.n = 0; G.want |= !G.again; G.again = 1; }
+	if (e >= 0) none();
 	if (G.want || !G.d || e >= 0) { gask(); return 1; }
 	return 0;
 }
@@ -944,6 +955,7 @@ static void on_sess(void *ctx, const char *m, size_t n)
 	G.busy = 0;
 	/* refused: asked again only once the cursor or the text moves */
 	if (x >= 0 && ctx == G.d) { G.sess.n = 0; putraw(&G.sess, m, x); G.want = 1; }
+	else if (m && ctx == G.d) none();
 	gask();
 }
 

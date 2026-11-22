@@ -321,7 +321,9 @@ static void gpaths(const char *id)
 }
 static long fsess, fsess0;            /* the RPC session (an older one is outdated); this process's first */
 static int hush;                      /* $/test/hush: say nothing of new versions */
-static int refuse, nconn, ncall;      /* $/test/refuse 1: connects fail, 2: calls outdated; what came since */
+static int refuse, nconn, ncall;      /* $/test/refuse 1: connects fail, 2: calls outdated, 3: a connect
+                                         answered only with the next message; what came since */
+static Str parked;
 static struct { long id, sess, l, c; int term; } rpc;   /* the question out about goals, id 0 none */
 
 static void fline(long l, const char **b, size_t *n)
@@ -389,13 +391,16 @@ static void frpc(void)
 		                       "\"hyps\":[],\"type\":{\"text\":\"T%ld\"}}}", rpc.l, rpc.l, rpc.c);
 		else str_lit(&m, "\"result\":null}");
 	} else {
-		str_lit(&m, "\"result\":{\"goals\":[");
+		if (memchr(b, '#', n)) n = 0, str_lit(&m, "\"result\":{\"goals\":{\"#\":1},\"x\":[");   /* not an array */
+		else str_lit(&m, "\"result\":{\"goals\":[");
 		for (int k = 0; n && k < 1 + (memmem(b, n, "\xCE\xBB", 2) != NULL); k++) {
 			str_addz(&m, k ? ",{" : "{");
 			str_lit(&m, "\"userName\":\"c\",\"hyps\":[{\"names\":[\"h\",\"\xE2\x9C\x9Di\"],\"isInserted\":true,\"type\":{\"text\":\"x\"}},"
 			        "{\"names\":[\"r\"],\"isRemoved\":true,\"type\":{\"tag\":[{\"diffStatus\":\"willInsert\"},{\"text\":\"y\"}]},\"val\":{\"text\":\"v\"}},"
 			        "{\"names\":[\"\xE2\x9C\x9Dk\"],\"type\":{\"text\":\"z\"}}],"
-			        "\"goalPrefix\":\"\xE2\x8A\xA2 \",\"type\":{\"tag\":[{\"diffStatus\":\"wasChanged\"},{\"append\":[{\"text\":\"");
+			        "\"goalPrefix\":\"\xE2\x8A\xA2 \",\"type\":{\"tag\":[{\"diffStatus\":\"");
+			str_addz(&m, rpc.c % 2 ? "willDelete" : "wasChanged");   /* the same text, other faces */
+			str_lit(&m, "\"},{\"append\":[{\"text\":\"");
 			str_addq(&m, b, n);
 			str_lit(&m, "\"}]}]}}");
 		}
@@ -408,6 +413,7 @@ static void frpc(void)
 
 static void fhandle(const char *m, size_t n)
 {
+	if (parked.n) { fsend(&parked); parked.n = 0; }
 	for (size_t i = 0, k; i < n; i += k)                  /* clangd and Lean refuse it */
 		if (!mutf8((const unsigned char *)m + i, k = mstep((const unsigned char *)m, n, i))) wrong("a message that is not UTF-8");
 	if (json_parse(m, n, &ft, &fcap) < 0) wrong("not JSON: %.*s", (int)n, m);
@@ -537,6 +543,7 @@ static void fhandle(const char *m, size_t n)
 		Str r = { 0 };
 		if (!fsess0) fsess = fsess0 = 1000L * getpid();   /* another server's sessions are not ours */
 		if (refuse && ++nconn > refuse) wrong("connect asked %d times, nothing changed (refuse %d)", nconn, refuse);
+		if (refuse == 3) { str_addf(&parked, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"result\":{\"sessionId\":\"%ld\"}}", json_int(m, ft, id), ++fsess); return; }
 		if (refuse == 1) str_addf(&r, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"error\":{\"code\":-32603,\"message\":\"no\"}}", json_int(m, ft, id));
 		else str_addf(&r, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"result\":{\"sessionId\":\"%ld\"}}", json_int(m, ft, id), ++fsess);
 		fsend(&r);
@@ -565,6 +572,7 @@ static void fhandle(const char *m, size_t n)
 		exit(0);
 	} else if (!strcmp(meth, "$/test/hush") || !strcmp(meth, "$/test/talk")) {
 		refuse = nconn = ncall = 0;
+		fsess++;                              /* and the editor's session is outdated */
 		int was = hush;                       /* what it said unhushed needs no repeating */
 		if ((hush = meth[7] == 'h') || !was) return;
 		static char now[sizeof sdoc];         /* lag: what it says is of the version before */
@@ -1056,11 +1064,11 @@ static void gwant(Editor *e, Str *w)
 	size_t l = e->win->line, n;
 	const char *b = (const char *)core_line(e, l, &n);
 	const char *x = memchr(b, '!', n);
-	int done = n >= 4 && !memcmp(b, "done", 4), two = memmem(b, n, "\xCE\xBB", 2) != NULL;
+	int done = n >= 4 && !memcmp(b, "done", 4), two = memmem(b, n, "\xCE\xBB", 2) != NULL, odd = memchr(b, '#', n) != NULL;
 	w->n = 0;
 	if (done) str_lit(w, "Goals accomplished \xF0\x9F\x8E\x89");
 	else if (!n) str_lit(w, "No goals.");
-	if (n) {
+	if (n && !odd) {                      /* '#': Lean's goals not an array, so none */
 		if (w->n) str_lit(w, "\n\n");
 		if (two) str_lit(w, "\xE2\x96\xBC 2 goals\n");
 		for (int k = 0; k < 1 + two; k++) {
@@ -1078,16 +1086,23 @@ static void gwant(Editor *e, Str *w)
 	str_lit(w, "\n");                    /* the last line ends as the others: it is drawn */
 }
 
-/* Waits until the window holds what w says (1), or 3 s pass (0). */
-static int gsettle(Editor *e, Str *w, char *got, size_t *ng)
+/* Waits until the window holds what w says, the goal's type in the fake's
+   mark for the cursor's column (1), or 3 s pass (0). */
+static int gsettle(Editor *e, Str *w, char *got, size_t *ng, unsigned char *f)
 {
 	int nwin;
+	size_t n;
+	const unsigned char *l = core_line(e, e->win->line, &n);
+	unsigned char mark = lsp_u16(l, e->win->col) % 2 ? FACE_DIFF_MINUS : FACE_DIFF_DELTA;   /* willDelete, wasChanged */
 	for (long long t0 = ms(); ms() - t0 < 3000; loop_once(10)) {
 		lsp_goals(e);
 		gwant(e, w);
 		Buf *b = gwin_buf(e, &nwin);
 		*ng = b ? text_read(b->text, 0, got, 1 << 15) : 0;
-		if (*ng == w->n && !memcmp(got, w->s, w->n)) return 1;
+		if (*ng != w->n || memcmp(got, w->s, w->n)) continue;
+		b->faces(b, 0, *ng, f);
+		char *t = memmem(got, *ng, "case c\nh", 8) ? memmem(got, *ng, "\xE2\x8A\xA2 ", 4) : NULL;
+		if (!t || t[4] == '\n' || t + 4 == got + *ng || f[t - got + 4] == mark) return 1;
 	}
 	return 0;
 }
@@ -1099,17 +1114,16 @@ static int gsettle(Editor *e, Str *w, char *got, size_t *ng)
 static void gcheck(Editor *e, Str *w, char *got)
 {
 	size_t ng;
-	int ok = gsettle(e, w, got, &ng), nwin;
+	static unsigned char f[1 << 15];
+	int ok = gsettle(e, w, got, &ng, f), nwin;
 	if (!ok) fprintf(stderr, "goals window:\n%.*s\n--- wanted:\n%.*s\n", (int)ng, got, (int)w->n, w->s);
 	CHECK(ok);
 	Buf *b = gwin_buf(e, &nwin);
-	static unsigned char f[1 << 15];
-	b->faces(b, 0, ng, f);
 	char *h = memmem(got, ng, "case c\nh", 8), *t = memmem(got, ng, "\xE2\x8A\xA2 ", 4);
 	if (h) CHECK(f[h - got + 7] == FACE_DIFF_PLUS && f[h - got + 9] == FACE_DIFF_PLUS && f[h - got] == FACE_KEYWORD &&
 	             f[h - got + 18] == FACE_DIFF_MINUS && f[h - got + 22] == FACE_DIFF_PLUS && f[h - got + 29] == FACE_COMMENT);
 	for (Win *v = e->wins; v; v = v->next) if (v->buf == b) CHECK(v->line < text_lines(b->text));
-	if (h && t) CHECK(f[t - got] == FACE_OPERATOR && (t[4] == '\n' || t + 4 == got + ng || f[t - got + 4] == FACE_DIFF_DELTA));
+	if (h && t) CHECK(f[t - got] == FACE_OPERATOR);
 }
 
 static void goals(const char *log)
@@ -1135,7 +1149,7 @@ static void goals(const char *log)
 	snprintf(path, sizeof path, "%s/sub/x.fake", groot);
 	CHECK(!core_open(&e, path) && e.buf->lsp);
 	e.rows = 40; e.cols = 160;
-	const char *init = "one\n\n\xCE\xBB x \xF0\x9D\x93\x9D\ndone it!\nfin?\n%\n";
+	const char *init = "one\n\n\xCE\xBB x \xF0\x9D\x93\x9D\ndone it!\nfin?\n%\n#\n";
 	CHECK(!core_edit(&e, 0, 0, init, strlen(init)));
 	lsp_flush(e.buf->lsp);
 	Win *lean = e.win;
@@ -1155,6 +1169,12 @@ static void goals(const char *log)
 		e.win->col = e.win->line == 3 ? 2 : 0;
 		gcheck(&e, &w, got);
 	}
+	e.win->line = 6;                          /* '#': Lean's goals not an array */
+	gcheck(&e, &w, got);
+	e.win->line = e.win->col = 0;             /* the same text, other faces */
+	gcheck(&e, &w, got);
+	e.win->col = 1;
+	gcheck(&e, &w, got);
 	/* Lean quiet: what it said follows the edits (the silent "done", a
 	   message's full range) */
 	const char *u = lsp_uri(e.buf->lsp);
@@ -1186,12 +1206,18 @@ static void goals(const char *log)
 	for (long long t0 = ms(); ms() - t0 < 200; ) loop_once(10);
 	/* Lean refusing: asked once more, not in a loop (the fake counts) */
 	for (int how = 1; how <= 2; how++) {
+		CHECK(!lsp_send(u, "$/test/talk", "{}", 2, NULL, NULL));
+		e.win->line = 12;                     /* line 12's goals shown first */
+		gcheck(&e, &w, got);
 		e.win->line = 1;
 		CHECK(!lsp_send(u, "$/test/refuse", how == 1 ? "{\"how\":1}" : "{\"how\":2}", 9, NULL, NULL));
 		CHECK(!core_edit(&e, core_line_start(&e, 1), 0, "a", 1));
 		lsp_flush(e.buf->lsp);
 		lsp_goals(&e);
 		for (long long t0 = ms(); ms() - t0 < 300; ) { loop_once(10); lsp_goals(&e); }
+		/* no answer: line 12's goals do not stay beside line 1 */
+		ng = text_read(gwin_buf(&e, &nwin)->text, 0, got, 1 << 15);
+		CHECK(!memmem(got, ng, "fin?", 4));
 	}
 	CHECK(!lsp_send(u, "$/test/talk", "{}", 2, NULL, NULL));
 	/* "fin?" said nothing, without a version: its message goes */
@@ -1235,7 +1261,8 @@ static void goals(const char *log)
 		} else loop_once((int)rnd(20));
 		if (e.win->line >= core_lines(&e) - 1 && e.win->line) e.win->line--, e.win->col = 0;
 		size_t n;
-		if (memchr(core_line(&e, e.win->line, &n), '%', n)) e.win->line = e.win->col = 0;   /* still elaborated */
+		/* still elaborated (one line at most: edits add no '%'), maybe line 0 since edits deleted the lines above */
+		if (memchr(core_line(&e, e.win->line, &n), '%', n)) e.win->line = !e.win->line, e.win->col = 0;
 		lsp_flush(e.buf->lsp);
 		lsp_goals(&e);
 		CHECK(e.win == lean);
@@ -1246,10 +1273,24 @@ static void goals(const char *log)
 	/* another file, in another project: its own server, its own RPC
 	   session (the fake knows its own); closed with a question out */
 	int nr1 = e.buf->nr;
+	/* a connect for this file answered only once the cursor is in the
+	   other: not taken as the other's session */
+	CHECK(!lsp_send(u, "$/test/refuse", "{\"how\":3}", 9, NULL, NULL));
+	CHECK(!core_edit(&e, core_line_start(&e, e.win->line) + e.win->col, 0, "a", 1));
+	lsp_flush(e.buf->lsp);
+	lsp_goals(&e);
+	for (long long t0 = ms(); ms() - t0 < 300; ) loop_once(10);
 	snprintf(path, sizeof path, "%s/y.fake", gother);
 	CHECK(!core_edit_file(&e, path, 1) && e.buf->lsp);
+	lsp_goals(&e);
+	CHECK(!lsp_send(u, "$/test/talk", "{}", 2, NULL, NULL));
 	gcheck(&e, &w, got);
 	int nr2 = e.buf->nr;
+	/* back and forth: each file asked in its own server's session */
+	CHECK(!core_buf_goto(&e, nr1));
+	gcheck(&e, &w, got);
+	CHECK(!core_buf_goto(&e, nr2));
+	gcheck(&e, &w, got);
 	CHECK(!core_edit(&e, 0, 0, "a", 1));
 	lsp_flush(e.buf->lsp);
 	lsp_goals(&e);

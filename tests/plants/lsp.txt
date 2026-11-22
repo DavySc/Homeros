@@ -69,7 +69,7 @@ lsp: the project root never searched for~test TESTS=lsp~~src/lsp/lsp.c~			if (fo
 lsp: goals: a new server asked in the old one's RPC session~test TESTS=lsp~~src/lsp/lsp.c~	if (d == G.d) G.shown = 0, G.sess.n = 0;~	if (d == G.d) G.shown = 0;
 lsp: goals: an error answer read as goals~test TESTS=lsp~~src/lsp/lsp.c~	if (G.want || !G.d || e >= 0) { gask(); return 1; }~	if (G.want || !G.d) { gask(); return 1; }
 lsp: goals: an outdated session renewed without end~test TESTS=lsp~~src/lsp/lsp.c~G.want |= !G.again;~G.want = 1;
-lsp: goals: a refused connect asked again at once~test TESTS=lsp~~src/lsp/lsp.c~	if (x >= 0 && ctx == G.d) { G.sess.n = 0; putraw(&G.sess, m, x); G.want = 1; }~	if (x >= 0 && ctx == G.d) { G.sess.n = 0; putraw(&G.sess, m, x); }¶	G.want = 1;
+lsp: goals: a refused connect asked again at once~test TESTS=lsp~~src/lsp/lsp.c~ G.want = 1; }¶	else if (m && ctx == G.d) none();~ }¶	else if (m && ctx == G.d) none();¶	G.want = 1;
 lsp: goals: the last line has no newline, so it is not drawn~test TESTS=lsp~~src/lsp/lsp.c~	put(o, "\n", 1, FACE_NONE);              /* core's~	(void)0;              /* core's
 lsp: goals: a cursor in the goals window left past their new end~test TESTS=lsp~~src/lsp/lsp.c~	core_buf_fill(G.e, b, G.all.t.s, G.all.t.n, SIZE_MAX);~	text_delete(b->text, 0, text_len(b->text));¶	text_insert(b->text, 0, G.all.t.s, G.all.t.n);
 lsp: goals: a reopened window empty until Lean says something new~test TESTS=lsp~~src/lsp/lsp.c~	if (fresh) { G.all.t.n = 0; commit(); }~	if (fresh) G.all.t.n = 0;
@@ -87,3 +87,9 @@ lsp: goals: goals accomplished do not follow edits~test TESTS=lsp~~src/lsp/lsp.c
 lsp: goals: inaccessible names not dimmed~test TESTS=lsp~~src/lsp/lsp.c~? FACE_COMMENT : FACE_TYPE~? FACE_TYPE : FACE_TYPE
 lsp: goals: a let's value left out~test TESTS=lsp~~src/lsp/lsp.c~{ putz(o, " := ", FACE_NONE); tagged(o, m, x, FACE_NONE); }~{ }
 lsp: goals: every message called an error~test TESTS=lsp~~src/lsp/lsp.c~putz(o, sev[g->sev - 1], f);~putz(o, sev[0], f);
+lsp: goals: a refused question leaves goals for another line shown~test TESTS=lsp~~src/lsp/lsp.c~	if (e >= 0) none();~	(void)0;
+lsp: goals: a refused connect leaves goals for another line shown~test TESTS=lsp~~src/lsp/lsp.c~	else if (m && ctx == G.d) none();~	(void)0;
+lsp: goals: a change of colours only not drawn~test TESTS=lsp~~src/lsp/lsp.c~ && !memcmp(o->f.s, G.all.f.s, o->f.n)) return;~) return;
+lsp: goals: another file's late session taken~test TESTS=lsp~~src/lsp/lsp.c~	if (x >= 0 && ctx == G.d) {~	if (x >= 0) {
+lsp: goals: an outdated session renewed only once per file~test TESTS=lsp~~src/lsp/lsp.c~ G.want = 1; G.again = 0; }~ G.want = 1; }
+lsp: goals: goals that are not a list read as one~test TESTS=lsp~~src/lsp/lsp.c~gs >= 0 && tk[gs].type == 'a' ? tk[gs].n : -1;~gs >= 0 ? tk[gs].n : -1;
