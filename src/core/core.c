@@ -532,8 +532,8 @@ int core_fold(Editor *e, int op, size_t line, long count)
 {
 	if (!e->win->fold) return -1;
 	int r = fold_cmd(e->win->fold, op, line, count);
-	win_invalidate(e->win);   /* setManualFoldWin(): changed_window_setting_win() */
-	return r;
+	if (r > 0) win_invalidate(e->win);   /* changed_window_setting() after DONE_ACTION */
+	return r < 0 ? -1 : 0;
 }
 
 int core_open(Editor *e, const char *path)

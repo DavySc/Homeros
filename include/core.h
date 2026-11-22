@@ -226,6 +226,13 @@ void core_update(Editor *e);
    skips Insert mode for expr folds; vim.treesitter.foldexpr() catches up on
    InsertLeave), when core_update runs them. */
 void core_folds(Editor *e, Buf *b, size_t r1, size_t r2);
+
+/* A z fold command: fold_cmd() on the current window's folds at line,
+   count times; when it changed a fold the view is redone, as Neovim's
+   fold commands call changed_window_setting().  0, or -1 for "E490: No
+   fold found" (also when the window has no folds).  Keys calls this, not
+   fold_cmd(). */
+int  core_fold(Editor *e, int op, size_t line, long count);
 /* The cursor to line, byte col (0-based; past the end clamped to the last
    line and its end, as check_cursor()), the wanted column set from it, then
    core_update: the one way a picker, git, the infoview or :make jump to a
