@@ -355,14 +355,10 @@ out:
 
 /* --- into the core buffer ---------------------------------------------------- */
 
-/* by number, not address: a buffer deleted and another allocated in its
-   place is not the one remembered */
 Buf *git_buf(int nr)
 {
 	Editor *e = git_ed();
-	if (!e || !nr) return NULL;
-	for (Buf *x = e->bufs; x; x = x->next) if (x->nr == nr) return x;
-	return NULL;
+	return e && nr ? core_buf_nr(e, nr) : NULL;
 }
 
 int git_on(int nr)
@@ -371,19 +367,11 @@ int git_on(int nr)
 	return e && nr && e->buf && e->buf->nr == nr;
 }
 
-/* The view's text replaces the buffer's (no undo: nobody edits it), and
-   every window on it gets the cursor line cur. */
+/* every window on it gets the cursor line cur */
 void git_fill(int nr, View *v, size_t cur)
 {
-	Editor *e = git_ed();
 	Buf *b = git_buf(nr);
-	if (!b) return;
-	text_delete(b->text, 0, text_len(b->text));
-	text_insert(b->text, 0, v->text.s, v->text.n);
-	b->flags &= ~(unsigned)CORE_EMPTY;
-	for (Win *w = e->wins; w; w = w->next)
-		if (w->buf == b) { w->line = cur < v->nvis ? cur : v->nvis ? v->nvis - 1 : 0; w->col = 0; w->want = 0; }
-	core_changed = 1;
+	if (b) core_buf_fill(git_ed(), b, v->text.s, v->text.n, cur);
 }
 
 void git_show(Repo *r, View *v)
