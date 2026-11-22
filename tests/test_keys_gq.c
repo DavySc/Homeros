@@ -6,7 +6,12 @@
    The expected text is sqlfmt's own edit applied by hand, so this checks
    the wiring; test_sqlfmt checks the formatting against SQLDiff.  gq on
    other buffers is Neovim's, checked by the recorded traces; here only
-   that a long paragraph's undo stays linear in its size. */
+   that a long paragraph's undo stays linear in its size.  SystemVerilog
+   and Verilog go through verible-verilog-format the same way (Davy's
+   4-space indent; --lines for gq, the whole text for :Format and :w,
+   which formats under a .slang directory); a fake on PATH indents the
+   lines it is given and records its arguments.  A formatter that fails,
+   hangs or is missing changes nothing. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -72,6 +77,71 @@ static char *disk(const char *path)
 	b[n] = 0;
 	fclose(f);
 	return b;
+}
+
+static const char SV[] = "module m;\n  wire a;\n  wire b;\nendmodule\n";
+static char fake[200], args[200];
+
+/* MODE ok: indents the wires in lines a-b (all without --lines) by 4 and
+   writes to stderr, as Verible does with exit 0; fail: exits 1; hang:
+   sleeps */
+static void fake_as(const char *mode)
+{
+	FILE *f = fopen(fake, "w");
+	CHECK(f && fprintf(f, "#!/bin/sh\necho \"$*\" > %s\ncase %s in fail) exit 1;; hang) exec sleep 10;; esac\n"
+	                     "echo \"verible's notes\" >&2\nr=${2#--lines=}; [ \"$r\" = - ] && r=1-999999\n"
+	                     "awk -v a=${r%%-*} -v b=${r#*-} 'NR>=a&&NR<=b{sub(/^  wire/,\"    wire\")}1'\n", args, mode) > 0 && !fclose(f));
+	CHECK(!chmod(fake, 0700));
+}
+
+static void verilog(void)
+{
+	char bin[160], sv[176], slang[160], path[4096];
+	Editor e;
+	snprintf(bin, sizeof bin, "%s/bin", dir);
+	snprintf(fake, sizeof fake, "%s/verible-verilog-format", bin);
+	snprintf(args, sizeof args, "%s/args", dir);
+	snprintf(sv, sizeof sv, "%s/m.sv", sub);
+	snprintf(slang, sizeof slang, "%s/.slang", dir);
+	snprintf(path, sizeof path, "%s:%s", bin, getenv("PATH"));
+	CHECK(!mkdir(bin, 0700) && !setenv("PATH", path, 1));
+	fake_as("ok");
+	FILE *f = fopen(sv, "w");
+	CHECK(f && fputs(SV, f) >= 0 && !fclose(f));
+	/* gq on line 3: only it, --lines=3-3; u gives the text back */
+	CHECK(!core_open(&e, sv));
+	keys(&e, "jjgqq");
+	CHECK(!strcmp(text(&e), "module m;\n  wire a;\n    wire b;\nendmodule\n"));
+	CHECK(!strcmp(disk(args), "--indentation_spaces=4 --lines=3-3 -\n"));
+	keys(&e, "u");
+	CHECK(!strcmp(text(&e), SV));
+	/* :Format: the whole text, no --lines; the cursor below the edit stays
+	   on its character */
+	keys(&e, "G$:Format\n");
+	CHECK(!strcmp(text(&e), "module m;\n    wire a;\n    wire b;\nendmodule\n"));
+	CHECK(e.win->line == 3 && e.win->col == 8);
+	CHECK(!strcmp(disk(args), "--indentation_spaces=4 -\n"));
+	core_free(&e);
+	/* :w formats only under a .slang directory */
+	CHECK(!core_open(&e, sv));
+	keys(&e, "ix\033x:w\n");
+	CHECK(!strcmp(disk(sv), SV));
+	CHECK(!mkdir(slang, 0700));
+	keys(&e, "ix\033x:w\n");
+	CHECK(!strcmp(disk(sv), "module m;\n    wire a;\n    wire b;\nendmodule\n"));
+	core_free(&e);
+	/* failing, hanging (killed after 1 s) and missing: nothing changes */
+	f = fopen(sv, "w");
+	CHECK(f && fputs(SV, f) >= 0 && !fclose(f));
+	const char *bad[] = { "fail", "hang" };
+	for (int i = 0; i < 3; i++) {
+		if (i < 2) fake_as(bad[i]); else unlink(fake);
+		CHECK(!core_open(&e, sv));
+		keys(&e, ":Format\n");
+		CHECK(!strcmp(text(&e), SV) && strstr(e.msg, "verible-verilog-format"));
+		core_free(&e);
+	}
+	unlink(sv); unlink(args); rmdir(slang); rmdir(bin);
 }
 
 int main(void)
@@ -196,6 +266,7 @@ int main(void)
 	CHECK(text_len(e.buf->text) == size && undone < 10 * size);
 	core_free(&e);
 
+	verilog();
 	unlink(file); unlink(txt); unlink(toml); rmdir(sub); rmdir(dir);
 	puts("test_keys_gq: ok");
 	return 0;

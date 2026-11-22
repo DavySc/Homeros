@@ -6,6 +6,7 @@
    may_sync_undo()); a beep drops the stuffed and executed keys
    (beep_flush()). */
 #include <limits.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -119,7 +120,8 @@ static void key(int k, int pending)
 static const char *const maps[] = {
 	" ff", " fg", " fr", " ,", " e", " pv", "-", " D",
 	" gg", " gs", " gl", " gL", " gd", " gb", " gB", " hs", " hr", " hS", " hu", " hp", " is", " uk",
-	"cit", "ciT"   /* nvim-orgmode's, buffer-local to .org */
+	"cit", "ciT",  /* nvim-orgmode's, buffer-local to .org */
+	" cc", " cC"
 };
 static int lead[3], nlead;   /* the keys typed of a map not yet complete */
 
@@ -158,6 +160,15 @@ static int map(Editor *e, int k)
 		case 'i': org_cycle(m[2] == 't' ? 1 : -1); break;
 		case 'D': dashboard(e); break;
 		case 's': tools_pick(e, PICK_SNIPPETS); break;
+		/* Davy's emacs SPC cc compile (prompts) and cC recompile */
+		case 'c':
+			if (m[2] == 'C') { tools_make(e, NULL); break; }
+			/* Emacs's compile: the last command, to edit */
+			char c[sizeof e->cmd];
+			const char *l = tools_make_last();
+			snprintf(c, sizeof c, "make %s", l ? l : "");
+			cmdline(':', c);
+			break;
 		default: git_leader(e, m[1], m[2]);
 		}
 		return 1;
@@ -212,7 +223,9 @@ void keys_write_pre(Editor *e, Buf *b)
 	char d[4096];
 	size_t n = 0;
 	E = e;
-	if (b == e->buf && is_ft(".sql")) {
+	int k = b == e->buf ? fmt_kind() : 0;
+	const char *mark = k == 1 ? "sqldiff.toml" : ".slang";
+	if (k) {
 		if (B->path[0] != '/' && B->path[0] != '\\' && B->path[1] != ':') {
 			if (!getcwd(d, sizeof d - 1)) d[0] = 0;
 			n = strlen(d);
@@ -224,8 +237,8 @@ void keys_write_pre(Editor *e, Buf *b)
 			n += p;
 			for (struct stat st;;) {
 				while (n && d[n - 1] != '/' && d[n - 1] != '\\') n--;
-				memcpy(d + n, "sqldiff.toml", 13);
-				if (!stat(d, &st)) { sql_format(0, text_len(B->text)); break; }
+				memcpy(d + n, mark, strlen(mark) + 1);
+				if (!stat(d, &st)) { buf_format(0, text_len(B->text)); break; }
 				if (n <= 1 || (n == 3 && d[1] == ':')) break;
 				n--;
 			}
@@ -290,9 +303,12 @@ static void ex(void)
 	/* :s[ubstitute] :& :~ (:&& is :& with the flag &), on the cursor's
 	   line by default; line 0 is line 1 (no EX_ZEROR) */
 	size_t k = strspn(p, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
-	if (k >= 3 && k <= 10 && !strncmp(p, "nohlsearch", k) && !p[k]) {
+	/* :noh[lsearch], and :mak[e] {cmd} (tools.h) with the rest of the line its argument */
+	int nohl = k >= 3 && k <= 10 && !strncmp(p, "nohlsearch", k) && !p[k];
+	if (nohl || (k >= 3 && k <= 4 && !strncmp(p, "make", k) && (!p[k] || p[k] == ' ' || p[k] == '\t'))) {
 		if (n) core_msg(E, "E481: No range allowed");
-		else no_hlsearch = 1;
+		else if (nohl) no_hlsearch = 1;
+		else tools_make(E, p + k + strspn(p + k, " \t"));
 		return;
 	}
 	if (k ? k <= 10 && !strncmp(p, "substitute", k) : (k = *p == '&' || *p == '~')) {
@@ -320,7 +336,7 @@ static void ex(void)
 	case 5: case 6: if (!core_write(E, B, i == 6)) core_close(E, 0); break;
 	case 7: if (!core_modified(B) || !core_write(E, B, 0)) core_close(E, 0); break;
 	/* Davy's :Format (conform.nvim): the whole buffer */
-	case 8: if (is_ft(".sql")) sql_format(0, text_len(B->text)); break;
+	case 8: if (fmt_kind()) buf_format(0, text_len(B->text)); break;
 	case 9: kitten_paw(E); break;
 	default: dashboard(E);
 	}

@@ -29,3 +29,7 @@ clock | \b(clock_gettime|QueryPerformanceCounter|gettimeofday|GetTickCount64|tim
 abs-path | \b(realpath|_fullpath|GetFullPathName\w*)\s*\( | src/file/* src/git/os.c src/lsp/lsp.c
 # percent-encoding a path (RFC 3986), lsp's file URI
 percent | %%%02X | src/lsp/lsp.c
+# running a command line through the user's shell (proc_shell, proc_shell_path)
+shell | getenv\("(SHELL|COMSPEC)"\) | src/loop/*
+# the buffer with a number (core_buf_find): a loop over the buffers testing nr
+buf-by-nr | bufs;[^\n]*->nr *== | src/core/*

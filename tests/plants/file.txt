@@ -20,7 +20,7 @@ journal: sync without fdatasync~test TESTS=file_journal~~src/file/journal.c~	fda
 journal: directory never fsynced~test TESTS=file_journal~~src/file/journal.c~	if (!j->dir_synced) j->dir_synced = !state_sync_dir(j->name);~	if (0) j->dir_synced = !state_sync_dir(j->name);
 journal: readable by others~test TESTS=file_journal~~src/file/state.c~mkdir(f, 0700)~mkdir(f, 0755)
 journal: record length not bounded (fuzzer)~fuzz FUZZERS=file_journal FUZZ_SECONDS=60~~src/file/journal.c~		if (!r.ok || e[2] > r.n) return 0;~		if (!r.ok) return 0;
-core wiring: journal kept after a save~test TESTS=file_core~~src/core/core.c~	case SAVE_OK:¶		b->saved_seq = undo_seq(b->undo);¶		b->changed = 0;¶		if (b->journal) journal_saved(b->journal);~	case SAVE_OK:¶		b->saved_seq = undo_seq(b->undo);¶		b->changed = 0;
+core wiring: journal kept after a save~test TESTS=file_core~~src/core/core.c~	b->changed = 0;¶	if (b->journal) journal_saved(b->journal);~	b->changed = 0;
 core wiring: flags not journalled~test TESTS=file_core~~src/core/core.c~	if (b->journal && jstate(b) != before && journal_edit~	if (0 && b->journal && jstate(b) != before && journal_edit
 core wiring: outside change never noted~test TESTS=file_core~~src/core/core.c~file_watch_read(fd, b->path, &b->id) == 1 && !b->changed) b->changed = 1;~file_watch_read(fd, b->path, &b->id) == 1 && !b->changed) b->changed = 0;
 core wiring: recovered identity replaced by the file's~test TESTS=file_core~~src/core/core.c~	b->changed = !same_id(id, &b->id);¶	b->id = *id;~	b->changed = !same_id(id, &b->id);

@@ -1,0 +1,30 @@
+ts_stack.c: 28636 bytes, 912 lines: here   per edit: reparse median 0.291 p99 0.444 max 0.444 ms, foldexpr median 1.272 p99 2.126 max 2.126 ms
+                                   Neovim per edit: held by the edit median 0.190 p99 0.301 max 0.301 ms; CPU for the edit, the reparse and the folds median 1.006 p99 1.739 max 1.739 ms
+ts_stack.c: 28636 bytes, 912 lines: here   per edit: reparse median 0.363 p99 0.940 max 0.940 ms, foldexpr median 1.544 p99 4.218 max 4.218 ms
+                                   Neovim per edit: held by the edit median 0.187 p99 0.355 max 0.355 ms; CPU for the edit, the reparse and the folds median 0.969 p99 1.503 max 1.503 ms
+ts_stack.c: 28636 bytes, 912 lines: here   per edit: reparse median 0.353 p99 0.640 max 0.640 ms, foldexpr median 1.530 p99 1.903 max 1.903 ms
+                                   Neovim per edit: held by the edit median 0.179 p99 0.396 max 0.396 ms; CPU for the edit, the reparse and the folds median 0.999 p99 1.388 max 1.388 ms
+ts_stack.c: 28636 bytes, 912 lines: here   per edit: reparse median 0.370 p99 0.575 max 0.575 ms, foldexpr median 1.540 p99 1.695 max 1.695 ms
+                                   Neovim per edit: held by the edit median 0.198 p99 0.347 max 0.347 ms; CPU for the edit, the reparse and the folds median 0.991 p99 1.645 max 1.645 ms
+ts_stack.c: 28636 bytes, 912 lines: here   per edit: reparse median 0.374 p99 1.310 max 1.310 ms, foldexpr median 1.535 p99 1.989 max 1.989 ms
+                                   Neovim per edit: held by the edit median 0.189 p99 0.359 max 0.359 ms; CPU for the edit, the reparse and the folds median 1.072 p99 1.854 max 1.854 ms
+cat.c: 489088 bytes, 14700 lines: here   per edit: reparse median 2.242 p99 4.458 max 4.458 ms, foldexpr median 22.612 p99 32.386 max 32.386 ms
+                                   Neovim per edit: held by the edit median 0.259 p99 2.302 max 2.302 ms; CPU for the edit, the reparse and the folds median 5.108 p99 8.685 max 8.685 ms
+cat.c: 489088 bytes, 14700 lines: here   per edit: reparse median 2.647 p99 6.972 max 6.972 ms, foldexpr median 24.435 p99 34.205 max 34.205 ms
+                                   Neovim per edit: held by the edit median 0.251 p99 1.942 max 1.942 ms; CPU for the edit, the reparse and the folds median 4.426 p99 9.747 max 9.747 ms
+cat.c: 489088 bytes, 14700 lines: here   per edit: reparse median 2.393 p99 3.943 max 3.943 ms, foldexpr median 23.375 p99 31.087 max 31.087 ms
+                                   Neovim per edit: held by the edit median 0.259 p99 2.986 max 2.986 ms; CPU for the edit, the reparse and the folds median 4.761 p99 10.103 max 10.103 ms
+cat.c: 489088 bytes, 14700 lines: here   per edit: reparse median 2.448 p99 3.887 max 3.887 ms, foldexpr median 23.676 p99 31.307 max 31.307 ms
+                                   Neovim per edit: held by the edit median 0.255 p99 2.942 max 2.942 ms; CPU for the edit, the reparse and the folds median 4.908 p99 9.129 max 9.129 ms
+cat.c: 489088 bytes, 14700 lines: here   per edit: reparse median 2.871 p99 5.316 max 5.316 ms, foldexpr median 25.058 p99 33.783 max 33.783 ms
+                                   Neovim per edit: held by the edit median 0.261 p99 2.123 max 2.123 ms; CPU for the edit, the reparse and the folds median 4.331 p99 7.333 max 7.333 ms
+big.sv: 330162 bytes, 3005 lines: here   per edit: reparse median 44.839 p99 66.007 max 66.007 ms, foldexpr median 50.193 p99 79.099 max 79.099 ms
+                                   Neovim per edit: held by the edit median 0.143 p99 0.208 max 0.208 ms; CPU for the edit, the reparse and the folds median 63.533 p99 97.851 max 97.851 ms
+big.sv: 330162 bytes, 3005 lines: here   per edit: reparse median 40.660 p99 72.401 max 72.401 ms, foldexpr median 43.700 p99 67.380 max 67.380 ms
+                                   Neovim per edit: held by the edit median 0.150 p99 2.168 max 2.168 ms; CPU for the edit, the reparse and the folds median 64.864 p99 90.903 max 90.903 ms
+big.sv: 330162 bytes, 3005 lines: here   per edit: reparse median 42.658 p99 58.386 max 58.386 ms, foldexpr median 48.114 p99 77.522 max 77.522 ms
+                                   Neovim per edit: held by the edit median 0.136 p99 2.293 max 2.293 ms; CPU for the edit, the reparse and the folds median 65.531 p99 94.921 max 94.921 ms
+big.sv: 330162 bytes, 3005 lines: here   per edit: reparse median 42.249 p99 68.109 max 68.109 ms, foldexpr median 44.417 p99 70.446 max 70.446 ms
+                                   Neovim per edit: held by the edit median 0.139 p99 0.210 max 0.210 ms; CPU for the edit, the reparse and the folds median 63.294 p99 99.320 max 99.320 ms
+big.sv: 330162 bytes, 3005 lines: here   per edit: reparse median 39.876 p99 60.499 max 60.499 ms, foldexpr median 45.256 p99 61.331 max 61.331 ms
+                                   Neovim per edit: held by the edit median 0.140 p99 0.216 max 0.216 ms; CPU for the edit, the reparse and the folds median 62.833 p99 89.361 max 89.361 ms
