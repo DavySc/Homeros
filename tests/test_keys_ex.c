@@ -443,6 +443,16 @@ int main(void)
 	CHECK(!core_edit_file(&e, a, 1));
 	feed(&e, "G`[");
 	CHECK(e.win->line == 2);
+	core_free(&e);
+	/* and when the key itself goes to the other buffer (two windows,
+	   CTRL-W w; :q and :Dashboard alike) */
+	CHECK(!core_open(&e, a));
+	feed(&e, "\x17s");
+	CHECK(!core_edit_file(&e, b2, 0));
+	feed(&e, "x\x17wjjyy\x17wG`[");
+	CHECK(e.win->line == 0);
+	feed(&e, "\x17wG`[");
+	CHECK(e.win->line == 2);
 	unlink(a), unlink(b2);
 	core_free(&e);
 	text(path, "select a from t;\n", 300000, "END\n");

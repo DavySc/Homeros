@@ -195,7 +195,7 @@ void keys_feed(Editor *e, int k, int pending)
 	E->ks.executing = 0;   /* typed: the typeahead holds no register keys */
 	key(k, pending || rb1.n || rb2.n || tb.n);
 	while (next(&k)) key(k, pending || rb1.n || rb2.n || tb.n);
-	opmarks(0);
+	if (B == op_buf) opmarks(0);   /* not into a buffer the key went to */
 	E->ks.visual = VIsual_active ? VIsual_mode : 0;
 	E->ks.vline = (size_t)VIsual.lnum;
 	E->ks.vcol = (size_t)VIsual.col;

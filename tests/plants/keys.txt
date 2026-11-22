@@ -223,3 +223,4 @@ keys: a hanging verible is never killed (test_keys_gq)~test TESTS=keys_gq~~src/k
 keys: verible's stderr goes into the buffer (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	if (stream == 1 && b)~	if (stream && b)
 keys: a jump past the last line is gone to, with no E19 (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	if (m.line >= (size_t)nlines()) { core_msg(E, "E19: Mark has invalid line number"); clearop(cap->oap); }¶	else setcur(~	setcur(
 keys: '[ and '] go with the keys into another buffer (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~	if (B != op_buf) opmarks(1);¶~
+keys: a key that goes to another buffer puts the last one's '[ and '] there (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~	if (B == op_buf) opmarks(0);~	opmarks(0);
