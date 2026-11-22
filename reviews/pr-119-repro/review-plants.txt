@@ -1,0 +1,17 @@
+rv: selection leaves out its first line~test TESTS=git~~src/git/keys.c~(l < rb || l > re)~(l <= rb || l > re)
+rv: selection from the hunk heading is a region~test TESTS=git~~src/git/keys.c~&& b > v->sec[x].start) { rb~&& b >= v->sec[x].start) { rb
+rv: hunks of two files taken as siblings~test TESTS=git~~src/git/keys.c~ && v->sec[x].parent == v->sec[y].parent¶~¶
+rv: selection ending in a body counts as ending on a heading~test TESTS=git~~src/git/keys.c~b == v->sec[x].start && l == v->sec[y].start~b == v->sec[x].start
+rv: selection starting in a body counts as starting on a heading~test TESTS=git~~src/git/keys.c~b == v->sec[x].start && l == v->sec[y].start~l == v->sec[y].start
+rv: two hunks discard asks about one~test TESTS=git~~src/git/keys.c~else if (n > 1) confirm~else if (n > 2) confirm
+rv: intent-to-add test inverted~test TESTS=git~~src/git/keys.c~p.s + k) >= 0) str_add(&in~p.s + k) < 0) str_add(&in
+rv: diff buffer refresh keeps Visual~test TESTS=git~~src/git/keys.c~	git_unmark(a->bufnr, ha == a);¶~
+rv: stale selection kept for the next whole-hunk command~test TESTS=git~~src/git/keys.c~*z = v->sec[i].after; re = 0;~*z = v->sec[i].after;
+rv: upward selection not ordered~test TESTS=git~~src/git/keys.c~size_t b = v->vis[a < c ? a : c], l = v->vis[a < c ? c : a];~size_t b = v->vis[a], l = v->vis[c];
+rv: staged hunks discard (index) acts on the hunk at point~test TESTS=git~~src/git/keys.c~	} else apply(v, s, z, "--reverse", "--index");~	} else apply(v, i, v->sec[i].after, "--reverse", "--index");
+rv: staged hunks discard (cached, reject) acts on the hunk at point~test TESTS=git~~src/git/keys.c~		apply(v, s, z, "--reverse", "--cached");¶		apply(v, s, z, "--reverse", "--reject");~		apply(v, i, v->sec[i].after, "--reverse", "--cached");¶		apply(v, i, v->sec[i].after, "--reverse", "--reject");
+rv: old view leaked when a diff buffer is read again~test TESTS=git~~src/git/keys.c~	view_free(&old);¶	a->cur = cur;~	a->cur = cur;
+rv: any refresh ends Visual in the headless focus~test TESTS=git~~src/git/status.c~(git_headless && focused)~git_headless
+rv: unselected line of the other sign kept~test TESTS=git~~src/git/keys.c~				if (*s == op && (str_add(p, " ", 1) || str_add(p, s + 1, n - 1) || str_add(p, "\n", 1))) return -1;~				if (*s == op ? (str_add(p, " ", 1) || str_add(p, s + 1, n - 1) || str_add(p, "\n", 1)) : (str_add(p, s, n) || str_add(p, "\n", 1))) return -1;
+rv: file selection unstages only the file at point~test TESTS=git~~src/git/keys.c~wpaths(un ? unstage_cmd(f->r) : wgit("add", "-u", "--", NULL), &p);~{ if (un) unstage_paths(e, f->r, sec_value(v, s)); else wpaths(wgit("add", "-u", "--", NULL), &p); goto out; }
+rv: untracked selection stages every untracked file shown~test TESTS=git~~src/git/keys.c~	if (p) values(f->v, *s, *z, p);~	if (p) values(f->v, *d == T_UNTRACKED && *t == T_FILE ? f->v->sec[*s].parent + 1 : *s, *d == T_UNTRACKED && *t == T_FILE ? f->v->sec[f->v->sec[*s].parent].after : *z, p);
