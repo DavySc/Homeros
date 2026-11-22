@@ -10,7 +10,7 @@ file: foreign owner lost (temp kept though fchown failed)~test TESTS=file_save~~
 file: hard link split by the swap~test TESTS=file_save~~src/file/file.c~	if (now.exists && st.st_nlink > 1) return~	if (now.exists && st.st_nlink > 1 && 0) return
 file: read-only directory refused~test TESTS=file_save~~src/file/file.c~(errno == EACCES || errno == EPERM) && !access(real, W_OK))~(errno == EACCES || errno == EPERM) && !access(real, W_OK) && 0)
 file: watch on the file, not its directory~test TESTS=file_save~~src/file/file.c~	if (inotify_add_watch(fd, dirname(dir),~	if (dirname(dir) && inotify_add_watch(fd, real,
-file: watch never reports~test TESTS=file_save~~src/file/file.c~	return !file_same(id, &now);~	return 0 && !file_same(id, &now);
+file: watch never reports~test TESTS=file_save~~src/file/file.c~	return file_id(path, &now) ? -1 : !file_same(id, &now);~	return file_id(path, &now) ? -1 : 0 && !file_same(id, &now);
 journal: record sum not checked~test TESTS=file_journal~~src/file/journal.c~		if (!r.ok || s != sum(SUM0, at, (size_t)(r.p - 4 - at))) return 0;~		if (!r.ok || (s != sum(SUM0, at, (size_t)(r.p - 4 - at)) && 0)) return 0;
 journal: torn tail left before appending~test TESTS=file_journal~~src/file/journal.c~	if (ftruncate(j->fd, (off_t)end)) {}~
 journal: no lock~test TESTS=file_journal~~src/file/state.c~	if (flock(fd, LOCK_EX | LOCK_NB)) return -1;~
