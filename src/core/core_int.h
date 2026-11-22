@@ -31,6 +31,9 @@ typedef struct {
 	   and width it was done for (check_cursor_moved(), win_new_width()) */
 	int sideok, sw;
 	size_t sline, scol, sleft;
+	/* core_folds' rows waiting for Insert mode to end; fend (size_t)-1:
+	   to the last line, after lines were added or deleted meanwhile */
+	size_t ftop, fend;
 } WinState;
 
 enum { BOT_EXACT = 1, BOT_AP = 2 };   /* WinState.bv */
@@ -74,7 +77,12 @@ int win_vcols(const Win *w, size_t l, size_t col, size_t *start, size_t *end);
 /* window geometry (move.c) */
 int  win_numw(const Win *w);          /* sign and number columns, with its space: win_col_off() */
 int  win_signw(const Win *w);         /* the sign column: 0 or 2 */
-int  win_plines(const Win *w, size_t l);   /* plines_win_nofill(.., true) */
+int  win_tall(void *w, size_t l);
+/* until thread 0 moves it to core.h: fold_cmd() on the current window's
+   folds, then the view is redone as Neovim's fold commands do; 0, or -1 for
+   E490 (no folds is E490 too) */
+int  core_fold(Editor *e, int op, size_t line, long count);
+size_t win_rel(const Win *w, size_t l);   /* get_cursor_rel_lnum(), as a distance */
 size_t win_botline(Editor *e, Win *w, int *empty_rows);
 void win_update(Editor *e, Win *w);   /* update_topline(), curs_columns() */
 void win_drawn(Editor *e);            /* after drawing: w_botline as drawn */

@@ -220,6 +220,12 @@ void core_set_want(Editor *e);
    drawn.  keys_feed calls it after every key, where Neovim's normal_check()
    and edit() call update_topline() (thread 0's, agreed). */
 void core_update(Editor *e);
+/* The rows [r1, r2) whose foldexpr may have changed (syntax_update's):
+   fold_update on each window of b, as Neovim's foldUpdate() after
+   changed_lines().  In Insert mode the rows wait until it ends (foldUpdate
+   skips Insert mode for expr folds; vim.treesitter.foldexpr() catches up on
+   InsertLeave), when core_update runs them. */
+void core_folds(Editor *e, Buf *b, size_t r1, size_t r2);
 /* The cursor to line, byte col (0-based; past the end clamped to the last
    line and its end, as check_cursor()), the wanted column set from it, then
    core_update: the one way a picker, git, the infoview or :make jump to a
