@@ -1,0 +1,26 @@
+--- a/src/syntax/syntax.c
++++ b/src/syntax/syntax.c
+@@ fold_changed
+-/* on_changedtree's rows: the root's changed ranges (all of it without an
+-   old tree), each to the row past its end where that has columns; out of
+-   memory, the table goes and is built again */
++/* on_changedtree's rows: the root's changed ranges, each to the row past
++   its end where that has columns; out of memory, the table goes and is
++   built again */
+ static void fold_changed(Syntax *s, const TSTree *old, const TSTree *n)
+ {
+-	uint32_t k = 1;
+-	TSRange all = { { 0, 0 }, { UINT32_MAX, UINT32_MAX }, 0, UINT32_MAX };
+-	TSRange *r = old ? ts_tree_get_changed_ranges(old, n, &k) : &all;
++	uint32_t k;
++	TSRange *r = ts_tree_get_changed_ranges(old, n, &k);
+ 	size_t *c = s->chg;
+ ...
+ 			TSPoint e = r[i].end_point;
+ 			c[2 * s->nchg] = r[i].start_point.row;
+-			c[2 * s->nchg + 1] = e.row == UINT32_MAX ? SIZE_MAX : (size_t)e.row + (e.column > 0);
++			c[2 * s->nchg + 1] = (size_t)e.row + (e.column > 0);
+ 		}
+-	if (r != &all) free(r);
++	free(r);
+ }
