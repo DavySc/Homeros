@@ -389,15 +389,23 @@ static int parse(Out *o, const char **p, const char *ind, size_t nind, int brace
 	return 0;
 }
 
+/* the blanks that start line l (core_first_nonblank() backs up onto the
+   last of a blank line's outside Insert mode) */
+static size_t indent(Editor *e, size_t l)
+{
+	size_t n, i = 0;
+	const unsigned char *s = core_line(e, l, &n);
+	while (i < n && memchr(" \t", s[i], 2)) i++;
+	return i;
+}
+
 /* M.expand(): the snippet replaces bytes [a, z) (the word typed, or the
    selection sel that goes to $0). */
 static int expand(Editor *e, const char *body, size_t a, size_t z, const char *sel, size_t nsel)
 {
 	stop();
-	Out o = { .sel = sel, .nsel = nsel };
-	size_t len;
-	const unsigned char *l = core_line(e, e->win->line, &len);
-	while (o.base < len && memchr(" \t", l[o.base], 2)) o.base++;
+	Out o = { .sel = sel, .nsel = nsel, .base = indent(e, e->win->line) };
+	const unsigned char *l = core_line(e, e->win->line, &(size_t){ 0 });
 	size_t nind = o.base;
 	char ind[256];
 	if (nind > sizeof ind) nind = sizeof ind;
@@ -507,15 +515,16 @@ static void popup(Editor *e)
 
 static const char *body_of(const char *name)
 {
+	if (!loaded) load();
 	for (int i = 0; i < nsn; i++) if (!strcmp(sn[i].name, name)) return sn[i].body;
 	return NULL;
 }
 
-const char *snip_get(Editor *e, int i, const char **desc, const char **body)
+const char *snip_get(Editor *e, const char *q, size_t nq, int i, const char **desc, const char **body)
 {
 	static int n;
 	if (!loaded) load();
-	if (!i) n = rank(e, NULL, 0);
+	if (!i) n = rank(e, nq ? q : NULL, nq);
 	if (i >= n) return NULL;
 	*desc = items[i].menu;
 	*body = body_of(items[i].word);
@@ -529,14 +538,15 @@ int snip_insert(Editor *e, const char *name)
 	if (!body) { core_msg(e, "no snippet %s", name); return -1; }
 	if (e->ks.visual) {
 		/* the Visual area: characters from one end to the other, whole,
-		   or the lines without the last one's break */
+		   or the lines (also for a block) from the first one's indent to
+		   the last one's break; never the text's last break, as v$c */
 		size_t l1 = e->ks.vline, c1 = e->ks.vcol, l2 = e->win->line, c2 = e->win->col;
 		if (l1 > l2 || (l1 == l2 && c1 > c2)) l1 = l2, c1 = c2, l2 = e->ks.vline, c2 = e->ks.vcol;
 		const unsigned char *l = core_line(e, l2, &len);
 		a = core_line_start(e, l1) + c1;
 		z = core_line_start(e, l2) + (c2 < len ? c2 + uni_glen(l, len, c2) : len + 1);
-		if (e->ks.visual == 'V') a = core_line_start(e, l1) + core_first_nonblank(e, l1), z = core_line_start(e, l2) + len;
-		if (z > text_len(e->buf->text)) z = text_len(e->buf->text);
+		if (e->ks.visual != 'v') a = core_line_start(e, l1) + indent(e, l1), z = core_line_start(e, l2) + len;
+		if (z >= text_len(e->buf->text)) z = text_len(e->buf->text) - 1;
 		keys_feed(e, KEY_ESC, 0);
 	}
 	char *sel = malloc(z - a + 1);

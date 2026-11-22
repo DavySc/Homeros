@@ -117,7 +117,7 @@ static int cmp(const void *x, const void *y)
 
 /* Is it sorted?  Live grep is not, and an empty prompt sorts only for
    smart (matcher.sort_empty). */
-static int sorting(void) { return P.what != PICK_GREP && (P.m.ng || P.what == PICK_SMART); }
+static int sorting(void) { return P.what != PICK_GREP && P.what != PICK_SNIPPETS && (P.m.ng || P.what == PICK_SMART); }
 
 /* core/frecency.lua: visits decay with a 30-day half-life; a score is kept
    as the time it decays to 1 (its "deadline"), in a file of
@@ -449,6 +449,21 @@ static void recent(Editor *e)
 	}
 }
 
+/* SPC i s (package 19's, agreed by thread 0): the snippets that match the
+   prompt in the completion popup's order (snip_get, one order for both);
+   each item's name is followed in the arena by a 0, its description and
+   its body, each ended by a 0 */
+static void snippets(void)
+{
+	const char *d, *b, *n;
+	size_t at;
+	P.nit = P.nshown = P.an = 0;
+	P.sel = P.top = 0;
+	P.pvfor = -1;
+	while ((n = snip_get(P.e, P.prompt, P.plen, (int)P.nit, &d, &b)) && !add(n, strlen(n), NULL, 0, 0, 0, 0, 0)
+	       && !put("", 1, &at) && !put(d, strlen(d) + 1, &at) && !put(b, strlen(b) + 1, &at)) {}
+}
+
 int tools_pick(Editor *e, int what)
 {
 	if (what == PICK_REGISTERS || what == PICK_EXPLORER) {
@@ -480,10 +495,7 @@ int tools_pick(Editor *e, int what)
 		}
 	}
 	if (what == PICK_GREP) return 0;
-	/* SPC i s (package 19's, agreed by thread 0): the snippets, the file's
-	   group first */
-	const char *d, *b, *n;
-	while (what == PICK_SNIPPETS && (n = snip_get(e, (int)P.nit, &d, &b)) && !add(n, strlen(n), NULL, 0, 0, 0, 0, 0)) {}
+	if (what == PICK_SNIPPETS) snippets();
 	if (what == PICK_SMART || what == PICK_BUFFERS) buffers(e);
 	if (what == PICK_SMART || what == PICK_RECENT) recent(e);
 	if (what == PICK_SMART || what == PICK_FILES) files();
@@ -502,7 +514,8 @@ static void changed(void)
 {
 	if (P.what == PICK_GREP) { grep(); return; }
 	match_init(&P.m, P.prompt, P.plen);
-	rematch();
+	if (P.what == PICK_SNIPPETS) snippets();
+	else rematch();
 }
 
 /* actions.lua's jump: open the item's file (or buffer) at its position */
@@ -511,9 +524,8 @@ static void confirm(Editor *e)
 	if (!P.nshown) { close_picker(); return; }
 	Item it = P.it[P.shown[P.sel]];
 	if (P.what == PICK_SNIPPETS) {
-		const char *d, *b;
 		close_picker();
-		snip_insert(e, snip_get(e, (int)it.idx - 1, &d, &b));
+		snip_insert(e, P.a + it.text);
 		return;
 	}
 	char f[PATH_MAX];
@@ -698,9 +710,9 @@ static void preview(void)
 	if (want < 0) return;
 	Item *it = &P.it[want];
 	if (P.what == PICK_SNIPPETS) {
-		/* a snippet: its body */
-		const char *d, *b;
-		snip_get(e, (int)it->idx - 1, &d, &b);
+		/* a snippet: its body, after its name and description */
+		const char *b = P.a + it->text + it->tlen + 1;
+		b += strlen(b) + 1;
 		for (int k; *b && P.pvn < PREVIEW && P.pvn < h; b += k + (b[k] == '\n')) {
 			k = (int)strcspn(b, "\n");
 			snprintf(P.pv[P.pvn++], sizeof P.pv[0], "%.*s", k, b);
@@ -776,8 +788,7 @@ void tools_draw(Editor *e, Grid *g)
 		c = grid_puts(g, row, c, end, f + d, fn - d, a, FACE_NONE);
 		if (P.what == PICK_SNIPPETS) {
 			/* and its description, dimmed */
-			const char *d, *b;
-			snip_get(e, (int)it->idx - 1, &d, &b);
+			const char *d = P.a + it->text + it->tlen + 1;
 			grid_puts(g, row, c + 1, end, d, strlen(d), a ? a : ATTR_DIM, FACE_NONE);
 		}
 		if (it->line) {
