@@ -21,7 +21,7 @@ def sh(*a, **k):
 def tmux_key(k):
     names = {'<Tab>': 'Tab', '<CR>': 'Enter', '<Esc>': 'Escape', '<BS>': 'BSpace',
              '<C-j>': 'C-j', '<C-k>': 'C-k', '<C-c>': 'C-c', '<C-d>': 'C-d', '<C-u>': 'C-u',
-             '<Space>': 'Space', '<M-j>': 'M-j', '<M-k>': 'M-k'}
+             '<Space>': 'Space'}
     if k in names: sh('tmux', 'send-keys', '-t', 'rec', names[k])
     else: sh('tmux', 'send-keys', '-t', 'rec', '-l', k)
 

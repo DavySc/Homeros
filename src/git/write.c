@@ -54,6 +54,7 @@ static void finish(Repo *r)
 	git_write_free(&r->w);
 	r->busy = 0;
 	r->editing = 0;
+	git_unmark(r);
 	r->ver++;                      /* Git.tla Finish */
 	r->dirty = 1;
 	git_schedule(r);

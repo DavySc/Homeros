@@ -392,26 +392,25 @@ static void values(const View *v, int i, int z, Str *out)
 }
 
 /* What s, u and x act on: the section at point i, else the Visual
-   selection as magit takes it.  1 (magit-diff-scope's region) when the
-   selection's lines lie in the body of one hunk: rb and re are set to them.
-   Else the siblings [*s, *z): the hunks or files from the one whose heading
+   selection as magit takes it.  When the selection's lines lie in the body
+   of one hunk (magit-diff-scope's region), rb and re are set to them (re
+   is 0 otherwise).  Else the siblings [*s, *z): the hunks or files from the one whose heading
    the selection starts on to the one whose heading it ends on
    (magit-region-sections), or i alone (a top-level section: its children).
    Only lines count: magit's region ends after the selection's last
    character, on its last line. */
-static int region(Editor *e, const Foc *f, int i, int *s, int *z)
+static void region(Editor *e, const Foc *f, int i, int *s, int *z)
 {
 	const View *v = f->v;
 	size_t c = cur_get(e, f), a = e->ks.vline;
 	int top = v->sec[i].parent == 0 && v->sec[i].type != T_HUNK && v->sec[i].type != T_FILE;
 	*s = i + top; *z = v->sec[i].after; re = 0;
-	if (!e->ks.visual || a >= v->nvis || c >= v->nvis) return 0;
+	if (!e->ks.visual || a >= v->nvis || c >= v->nvis) return;
 	size_t b = v->vis[a < c ? a : c], l = v->vis[a < c ? c : a];
 	int x = sec_at(v, b), y = sec_at(v, l);
-	if (x == y && v->sec[x].type == T_HUNK && b > v->sec[x].start) { rb = b; re = l; return 1; }
+	if (x == y && v->sec[x].type == T_HUNK && b > v->sec[x].start) { rb = b; re = l; return; }
 	if (x < y && b == v->sec[x].start && l == v->sec[y].start && v->sec[x].parent == v->sec[y].parent
 	    && (v->sec[x].type == T_HUNK || v->sec[x].type == T_FILE)) { *s = x; *z = v->sec[y].after; }
-	return 0;
 }
 
 /* one porcelain v2 entry for path: X and Y (' ' for '.'), and a rename's source */
@@ -749,10 +748,10 @@ static void aux_done(Aux *a)
 	if (rc || sec_render(v)) { view_clear(v); view_free(&old); return; }
 	size_t cur = git_on(a->bufnr) ? e->win->line : a->cur;
 	cur = old.nvis ? git_successor(&old, cur, v) : 0;
+	git_remark(a->bufnr, ha == a, &old, v);
 	view_free(&old);
 	a->cur = cur;
 	git_fill(a->bufnr, v, cur);
-	git_unmark(a->bufnr, ha == a);
 	core_changed = 1;
 }
 
@@ -1203,8 +1202,10 @@ static int vim_key(int k)
 		|| k == KEY_ESC || k >= KEY_UP;
 }
 
+/* magit-refresh (g r) */
 static void refresh(const Foc *f)
 {
+	git_unmark(f->r);
 	if (f->a) git_aux_fill(f->a);
 	f->r->dirty = 1;
 	git_schedule(f->r);

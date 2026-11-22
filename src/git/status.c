@@ -345,7 +345,10 @@ body:
 		/* magit-status-goto-initial-section: the section after the first */
 		int i = sec_at(v, 0), p = i >= 0 ? v->sec[i].parent : -1;
 		r->cur = p >= 0 && v->sec[i].after < v->sec[p].after ? sec_vis_of(v, v->sec[v->sec[i].after].start) : 0;
-	} else r->cur = git_successor(&r->old, was, v);
+	} else {
+		r->cur = git_successor(&r->old, was, v);
+		git_remark(r->bufnr, !git_ha, &r->old, v);
+	}
 	r->gen++;
 	rc = 0;
 out:
@@ -389,13 +392,24 @@ void git_fill(int nr, View *v, size_t cur)
 void git_show(Repo *r, View *v)
 {
 	git_fill(r->bufnr, v, r->cur);
-	git_unmark(r->bufnr, !git_ha);
 }
 
-/* magit-refresh-buffer deactivates the mark: Visual mode ends when the
-   current buffer is read again (headless: the view keys go to, focused) */
-void git_unmark(int nr, int focused)
+/* magit-refresh-buffer deactivates the mark after a command: Visual mode
+   ends when a write ends in one of r's buffers (headless: any) */
+void git_unmark(Repo *r)
 {
 	Editor *e = git_ed();
-	if (e && (git_on(nr) || (git_headless && focused))) e->ks.visual = 0;
+	int on = git_headless || git_on(r->bufnr);
+	for (Aux *a = r->aux; a; a = a->next) on |= git_on(a->bufnr);
+	if (e && on) e->ks.visual = 0;
+}
+
+/* A view read again for another reason (a change outside, magit leaves
+   the buffer as it is): the selection's other end goes where the cursor
+   goes (git_successor), so it still selects the same lines */
+void git_remark(int nr, int focused, const View *old, const View *v)
+{
+	Editor *e = git_ed();
+	if (e && e->ks.visual && old->nvis && (git_on(nr) || (git_headless && focused)))
+		e->ks.vline = git_successor(old, e->ks.vline, v);
 }

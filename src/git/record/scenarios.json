@@ -691,5 +691,44 @@
    "n",
    "s"
   ]
+ },
+ "region-two-files": {
+  "setup": "printf 'gamma2\\n' >> b.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "V",
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "s"
+  ]
+ },
+ "region-outside-change": {
+  "setup": "sed -i 's/^three$/THREE/; s/^four$/FOUR/' a.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jj",
+   "V",
+   "j",
+   "$ printf 'zz\\n' > zz.txt",
+   "s"
+  ]
+ },
+ "region-outside-shift": {
+  "setup": "printf 'z\\n' > 0.txt && git add 0.txt && git commit -qm zero && sed -i 's/^three$/THREE/; s/^four$/FOUR/' a.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jjj",
+   "V",
+   "k",
+   "$ printf 'zz\\n' >> 0.txt",
+   "s"
+  ]
  }
 }

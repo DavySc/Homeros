@@ -129,7 +129,8 @@ void  git_show(Repo *r, View *v);
 Buf  *git_buf(int nr);            /* the live buffer numbered nr, or NULL */
 int   git_on(int nr);             /* the current buffer is numbered nr */
 void  git_fill(int nr, View *v, size_t cur);
-void  git_unmark(int nr, int focused);
+void  git_unmark(Repo *r);
+void  git_remark(int nr, int focused, const View *old, const View *v);
 /* magit-section-goto-successor: the visible line of b for line vis of a */
 size_t git_successor(const View *a, size_t vis, const View *b);
 /* write.c */
