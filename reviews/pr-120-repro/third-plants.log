@@ -1,0 +1,6 @@
+caught        core: a file opened after start-up is not watched (test_core_contract)   (make test TESTS=core_contract): tests/test_core_contract.c:351: CHECK(e.buf->changed) failed
+caught        core: a line's underlines walk every diagnostic before it (test_core_diag frame time)   (make test TESTS=core_diag): tests/test_core_diag.c:195: CHECK(best[1] < 20 * best[0] + 1000000) failed
+caught        core: buf_load watches the shared fd again for every file (test_core_contract)   (make test TESTS=core_contract): tests/test_core_contract.c:363: CHECK(!pipe(pp) && !loop_watch(pp[0], NULL, NULL)) failed
+caught        core: buf_load watches no file, so an outside change while idle goes unseen (watch.py)   (make test TESTS=shada): FAIL watch
+caught        core: a second window on the buffer puts the message on its own cursor line (test_core_diag two windows)   (make test TESTS=core_diag): tests/test_core_diag.c:234: CHECK(!strstr(row, "m0") == (r != 0) && !strstr(row, "m2")) failed
+caught        core: the message's "\r" is drawn, not dropped (test_core_diag)   (make test TESTS=core_diag): test_core_diag: 38 of 500 cases differ from Neovim
