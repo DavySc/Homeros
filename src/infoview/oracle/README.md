@@ -31,6 +31,8 @@ the file. Kill stray `lake serve` processes afterwards.
 | 2 | 18 of 18 | | yes | none |
 | 3 | 28 of 28 | 108 ms (2 to 146) | yes | none |
 | 4 (after the hello fix) | 28 of 28 | 112 ms (2 to 165) | yes | none |
+| 5 (drive asks plainGoal through lsp_send, PR 111's lsp.h) | 28 of 28 | 107 ms (1 to 382) | yes | none |
+| 6 (the same) | 28 of 28 | 108 ms (2 to 157) | yes | none |
 
 The page is up and the infoview ready in about 0.4 s (measured, 2 runs:
 396 ms in run 4).
