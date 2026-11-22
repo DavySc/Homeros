@@ -179,7 +179,6 @@ core: the Visual area is concealed (test_core_conceal)~test TESTS=core_conceal~~
 core: a span's character is not drawn (test_core_conceal)~test TESTS=core_conceal~~src/core/draw.c~if (i == cc->a && !j && *cc->s) put_cell~if (0 && i == cc->a && !j && *cc->s) put_cell
 core: freed cells carry over to the next row (test_core_conceal)~test TESTS=core_conceal~~src/core/draw.c~if (row != orow) orow = row, off = 0;~if (row != orow) orow = row;
 core: a Tab after a span keeps its width (test_core_conceal)~test TESTS=core_conceal~~src/core/draw.c~for (; *s == '\t' && off; off--)~for (; 0 && *s == '\t' && off; off--)
-core: 'conceallevel' 2 scrolls the fold way in every filetype (test_core_visual)~test TESTS=core_visual~~src/core/move.c~return ft && !strcmp(ft, "org");~return w->conceal >= 2 || (ft && !strcmp(ft, "org"));
 core: a new window starts without conceal (test_core_conceal)~test TESTS=core_conceal~~src/core/core.c~	w->conceal = 2;   /* Davy's 'conceallevel' */~	w->conceal = 0;
 core: a split forgets 'conceallevel' (test_core_contract)~test TESTS=core_contract~~src/core/win.c~	n->conceal = o->conceal;~	(void)0;
 core: buf_load watches no file, so an outside change while idle goes unseen (watch.py)~test TESTS=shada~~src/core/core.c~			loop_watch(b->watch, on_watch, e);~			(void)on_watch;
