@@ -558,7 +558,7 @@ int main(int argc, char **argv)
 	drain();
 	stale();
 	waits();
-	fprintf(stderr, "test_loop_win: proc_wait; flood, drain and a write refused while reaping; 4 MB through cat; dead.py; streams, codes, arguments, directory, closed stdin; 32 children; kill takes the tree; exit with a holder, its pipes closed; timers; every ready watch, a taken signal kept, unwatch in a pass; message queue; Ctrl-C; idle\n");
+	fprintf(stderr, "test_loop_win: flood, drain and a write refused while reaping; 4 MB through cat; dead.py; streams, codes, arguments, directory, closed stdin; 32 children; kill takes the tree; exit with a holder, its pipes closed; timers; every ready watch, a taken signal kept, unwatch in a pass; message queue; Ctrl-C; idle; proc_wait\n");
 	return 0;
 }
 #else
