@@ -1298,7 +1298,14 @@ static int link_next(Scan *c, size_t lim)
    finds them.  Known differences: after a reference inside an earlier
    one's span the search goes on (Org's matcher returns nil there, and
    font-lock stops looking for footnotes; a live Emacs only in its chunk);
-   a reference's span stops at a headline (a scan may start there) ---- */
+   a reference's span stops at a headline (a scan may start there).
+   Known cost: sexp() remembers one failed scan, so a paragraph whose lines
+   each open an inline footnote that never closes, with a pair or a quote
+   after it, scans to the paragraph's end from every line shown (PR 118's
+   review, -O2, 20,000 lines: x [fn:: ( [fn:1] 3.6 s, x [fn::a (b) 2.8 s,
+   x [fn:: " 1.3 s, measured); scan-sexps in Emacs does the same scan for
+   each (hypothesis), and bounding it needs the depth after every opener
+   kept, which a text in normal use never asks for ---- */
 
 /* scan-sexps over the [ at p in Org's syntax table: parentheses of any
    pair count, " quotes; the end, or 0 for its scan-error */
@@ -1440,46 +1447,59 @@ static int valid(size_t l)
 	return m == ORG_NONE || l < VM || l > VC;
 }
 /* org-footnote-next-reference-or-definition's span for the match at p,
-   ending at x, on the line l: [*a, *z), or 0 when it throws nothing */
-static int fn_span(Scan *c, size_t p, size_t x, size_t l, Hit *h, size_t *a, size_t *z, int b)
+   ending at x, on the line l: [*a, *z), or 0 when it throws nothing; v:
+   NULL when no definition's span is asked for, else valid(l) once known
+   (-1 before), as it depends on the line only */
+static int fn_span(Scan *c, size_t p, size_t x, size_t l, Hit *h, size_t *a, size_t *z, int *v)
 {
 	size_t e, d = c->fd, y, k;   /* a link holding p, ending there, does not count */
 	if (p > l && (y = sexp(p)) && ((k = holds(h, e = eol(l), p, link_re)) == ORG_NONE || k == p) &&
 	    holds(h + 1, e, x - 1, macro_re) == ORG_NONE)
 		return *a = p, *z = y, 1;
-	if (!b || d == ORG_NONE || !valid(l)) return 0;   /* b: a definition's span is asked for */
+	if (!v || d == ORG_NONE || !(*v < 0 ? (*v = valid(l)) : *v)) return 0;
 	*a = d; *z = S[x - 1] == ']' ? x : x + 1;
 	return 1;
 }
 /* the separators org-footnote-next-reference-or-definition looks back to:
    ^\*+ and ^\([ \t]*\n\)\{2,\} */
 static int fn_sep(size_t l) { return l < N && (S[l] == '*' ? headline(l) : emptyl(l) && eol(l) < N && emptyl(nextl(l))); }
+/* put [a, z) less what r, the span put last, holds: references below a
+   definition each throw its span again, and putting it whole each time is
+   quadratic on a long line */
+static void cover(size_t r[2], size_t a, size_t z, void (*put)(size_t, size_t))
+{
+	if (z < r[0] || a > r[1]) r[0] = r[1] = a;
+	if (a < r[0]) put(a, r[0]), r[0] = a;
+	if (z > r[1]) put(r[1], z), r[1] = z;
+}
 /* the footnotes of the line l, ending at e: put each span (a reference's, from the
    line above, a later one's from the definition above); its state on */
 static void fn_line(Scan *c, size_t l, size_t e, void (*put)(size_t, size_t))
 {
-	size_t a, z, x;
+	size_t a, z, x, r[2] = { l, l };
 	if (c->fl == l + 1) return;
 	c->fl = l + 1;
 	if (fn_sep(l)) c->fd = ORG_NONE, c->fz = S[l] == '*' ? 0 : c->fz;   /* a headline: as a scan starting there */
 	if (defl(l)) c->fd = l;
-	if (put && c->fz > l) put(l, c->fz);
+	if (put && c->fz > l) cover(r, l, c->fz, put);
 	if (put && c->fd != ORG_NONE) {   /* a reference below that throws its definition's span */
 		if (c->fq <= l) {
 			for (c->fq = nextl(l), c->fm = 0; c->fq < N && !fn_sep(c->fq) && !defl(c->fq); c->fq = nextl(c->fq)) {
 				Hit h[2] = { { c->fq, c->fq }, { c->fq, c->fq } };
+				int v = -1;
 				for (size_t p = c->fq, q = eol(p); (p = upto(p, q, '[')) < q && !c->fm; p++)
-					if ((x = fnre(p)) && fn_span(c, p, x, c->fq, h, &a, &z, 1) && a < c->fq) c->fm = 1;
+					if ((x = fnre(p)) && fn_span(c, p, x, c->fq, h, &a, &z, &v) && a < c->fq) c->fm = 1;
 				if (c->fm) break;
 			}
 		}
-		if (c->fm) put(l, nextl(l));
+		if (c->fm) cover(r, l, nextl(l), put);
 	}
 	Hit h[2] = { { l, l }, { l, l } };   /* link_re's, macro_re's */
+	int v = -1;
 	for (size_t p = l; (p = upto(p, e, '[')) < e; p++)
-		if ((put || p > l) && (x = fnre(p)) && fn_span(c, p, x, l, h, &a, &z, put != NULL)) {
+		if ((put || p > l) && (x = fnre(p)) && fn_span(c, p, x, l, h, &a, &z, put ? &v : NULL)) {
 			if (z > c->fz) c->fz = z;
-			if (put) put(a, z);   /* the search goes on at the match's end less one: no [ before it */
+			if (put) cover(r, a, z, put);   /* the search goes on at the match's end less one: no [ before it */
 		}
 }
 

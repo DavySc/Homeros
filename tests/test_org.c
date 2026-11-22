@@ -1220,13 +1220,16 @@ int main(void)
 	   25; with the line start found from each marker, 1572 ms on *a /b);
 	   links and footnotes: each reference's link and macro search goes on
 	   along the line, not from its start (5 runs, median 51 ms, 42 to 66,
-	   on a[fn:1], against 5.8 to 6.0 s; the other units 21 to 39) */
+	   on a[fn:1], against 5.8 to 6.0 s; the other units 21 to 39); under a
+	   definition, valid() asked once a line, not once a reference */
 	static const char *const units[] = { "word ", "<2026-01-01 x ", "<%%(x) ", "*a /b ", "=a ", "+-", "x^{a} \\alpha ", "x^{é} ",
-		"a[fn:1] ", "a [fn::b c] ", "a [fn:: (", "[[a][b]] ", "http://b.c ", "<http:b c> ", "[[a][b ", "<http:b " };
+		"a[fn:1] ", "a [fn::b c] ", "a [fn:: (", "[[a][b]] ", "http://b.c ", "<http:b c> ", "[[a][b ", "<http:b ",
+		"a \\cite{[fn:1]} ", "a [[b][[fn:1]]] " };
 	static char line[65536];
 	static unsigned char lf[sizeof line];
 	for (size_t i = 0; i < sizeof units / sizeof *units; i++) {
-		size_t m = 0, ul = strlen(units[i]);
+		size_t m = 9, ul = strlen(units[i]);   /* under a definition, so references throw its span */
+		memcpy(line, "[fn:1] d\n", m);
 		while (m + ul < sizeof line) memcpy(line + m, units[i], ul), m += ul;
 		if (*units[i] == '=') line[m - 1] = '=';   /* every marker's closer at the end */
 		line[m++] = '\n';
@@ -1237,7 +1240,7 @@ int main(void)
 		CHECK(x && orgfx_update(x, NULL));
 		for (size_t a = 0; a < m; a += 256) orgfx_faces(x, a, a + 256 < m ? a + 256 : m, lf + a);
 		Conceal c[64];
-		CHECK(orgfx_conceal(x, 0, c, 64) == (i == 4 || i == 6 || i == 11 ? 64 : 0));
+		CHECK(orgfx_conceal(x, 1, c, 64) == (i == 4 || i == 6 || i == 11 || i == 17 ? 64 : 0));
 		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t1);
 		CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000 < 100);
 		orgfx_free(x);
