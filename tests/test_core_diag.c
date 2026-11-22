@@ -164,8 +164,12 @@ int main(int argc, char **argv)
 		fputs("F ", o);
 		for (int i = 0; i < NL; i++) fputs("61620a", o);
 		/* case 1: the two windows below; case 2: a severity over 4 */
-		CHECK(fputs("\nE\nD 0 1 1 6d30\nD 6 7 1 6d32\nF 61620a63640a65660a\nE\nD 0 1 5 6d35\nF 61620a\nE\nD 0 10 1 6d\nF 61205c616c7068612062\nE\n", o) >= 0
+		CHECK(fputs("\nE\nD 0 1 1 6d30\nD 6 7 1 6d32\nF 61620a63640a65660a\nE\nD 0 1 5 6d35\nF 61620a\nE\nD 0 10 1 6d\nF 61205c616c7068612062\nE\nD 0 300 1 6d\nF ", o) >= 0
 		      && !fclose(o));
+		/* case 4: a hundred double-width characters (the "<<<" case) */
+		CHECK((o = fopen(big, "a")));
+		for (int i = 0; i < 100; i++) fputs("e6bca2", o);
+		CHECK(fputs("0a790a\nE\n", o) >= 0 && !fclose(o));
 		snprintf(file, sizeof file, "%s/0.dbig", dir);
 		CHECK((o = fopen(file, "w")));
 		for (int i = 0; i < NL; i++) fputs("ab\n", o);
@@ -302,6 +306,35 @@ int main(int argc, char **argv)
 		}
 		CHECK(a >= 0 && alpha > a);
 		CHECK(g.c[e.win->y * g.cols + e.win->x + a].ul && !g.c[e.win->y * g.cols + e.win->x + alpha].ul);
+		core_free(&e);
+		grid_free(&g);
+		unlink(file);
+	}
+	/* the blank that "<<<" leaves of a double-width character keeps the
+	   character's underline (measured: wrap, nonumber, the sign column,
+	   20 columns, the cursor at the end of a line of a hundred: "<<<" covers
+	   the sign column and the first cell of a character) */
+	{
+		snprintf(file, sizeof file, "%s/4.dbig", dir);
+		FILE *o = fopen(file, "w");
+		CHECK(o);
+		for (int i = 0; i < 100; i++) fputs("\xe6\xbc\xa2", o);
+		CHECK(fputs("\ny\n", o) >= 0 && !fclose(o));
+		Grid g = { 0 };
+		int have = 0;
+		CHECK(!core_open(&e, file) && !grid_resize(&g, 6, 20));
+		for (int t = 0; t < 500 && have < 1; t++) {
+			loop_once(10);
+			lsp_diags(e.buf->lsp, &have);
+		}
+		CHECK(have == 1);
+		e.buf->nonumber = 1;
+		layout_resize(&e, 6, 20);
+		core_set_wrap(&e, 1);
+		core_goto(&e, 0, 297);
+		core_draw(&e, &g);
+		const Cell *x = &g.c[e.win->y * g.cols + e.win->x];
+		CHECK(e.win->skipcol > 0 && *grid_text(&x[2]) == '<' && *grid_text(&x[3]) == ' ' && x[3].ul && !x[2].ul);
 		core_free(&e);
 		grid_free(&g);
 		unlink(file);
