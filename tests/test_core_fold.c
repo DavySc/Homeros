@@ -4,6 +4,10 @@
    which cells are Folded, the top line and the cursor.  The folds are
    fold.h's, from the recorded levels, as the core makes them from
    syntax_foldexpr; the scrolling keys go through keys_feed as typed.
+   The .txt is seed 1's 500 cases, then cases 155, 774, 1373 and 2172 of
+   "test_core_fold.py 3000 9100", which plants need that no seed-1 case
+   catches (a scrolldown cursor in a fold, a comment start on a fold's
+   last line but one, update_topline's count to the last line).
    usage: test_core_fold [FILE] (default the .txt), -v prints every
    difference */
 #include <stdlib.h>
@@ -16,13 +20,14 @@
 #include "syntax.h"
 #include "../src/core/core_int.h"
 
-/* known differences, cursor column only: Neovim updates curswant lazily
-   (w_set_curswant, VALID_VIRTCOL), and in a closed fold its gk that fails
-   on the first line (310, 481) and a CTRL-F after a fold toggled under the
-   cursor (325) keep a column that the core, which sets it as the cursor
-   lands, does not */
-static const int known[] = { 310, 325, 481 };
-
+/* A known difference, cursor column only: Neovim updates curswant
+   lazily (w_set_curswant, VALID_VIRTCOL; validate_virtcol() is not fold
+   aware where curs_columns() is), so once the cursor has been in a closed
+   fold the column a later command lands on can differ from the core's,
+   which sets it as the cursor lands.  The test allows it from the first
+   time the cursor is in a closed fold until cursor() sets the column
+   again; rows, Folded cells, the top line and the cursor line are still
+   compared (measured: 3 of seed 1's 500 cases, 21 of seed 9100's 3000) */
 static char line[1 << 16];
 static int lv[4096], st[4096], nlv;
 
@@ -129,6 +134,35 @@ static void wiring(const char *file)
 	core_free(&e);
 }
 
+/* scroll_to_fraction() puts a window's top line back by rows; with the
+   lines above in a closed fold the top is the fold's first line
+   (set_topline()), in a window that is not the current one too */
+static void fraction(const char *file)
+{
+	static Editor e;
+	size_t a = 0, z = 0;
+	FILE *o = fopen(file, "w");
+	CHECK(o);
+	for (int i = 0; i < 40; i++) fputs("x\n", o);
+	CHECK(!fclose(o) && !core_open(&e, file));
+	nlv = 40;
+	for (int i = 0; i < nlv; i++) lv[i] = i >= 5 && i < 30, st[i] = i == 5;
+	layout_resize(&e, 40, 80);
+	CHECK((e.win->fold = fold_new(0, fe, win_tall, e.win)));
+	fold_update(e.win->fold, 0, 40, 40);
+	CHECK(fold_closed(e.win->fold, 10, &a, &z) && a == 5 && z == 29);
+	core_goto(&e, 35, 0);
+	core_update(&e);
+	Win *w1 = e.win;
+	CHECK(!core_split(&e, 0, 0) && e.win != w1);
+	core_goto(&e, 0, 0);
+	core_update(&e);
+	core_resize(&e, 0, 3, 1);   /* the current window 3 rows: w1 grows */
+	core_update(&e);
+	CHECK(w1->h > 18 && w1->top == 5);
+	core_free(&e);
+}
+
 /* main.c's idle step: the parse, then its rows to the folds */
 static void parse(Editor *e)
 {
@@ -190,10 +224,11 @@ int main(int argc, char **argv)
 	CHECK(mkdtemp(dir));
 	snprintf(file, sizeof file, "%s/f", dir);
 	wiring(file);
+	fraction(file);
 	filetypes(dir);
 	FILE *f = fopen(path, "r");
 	CHECK(f);
-	int rows = 0, cols = 0, wrap = 0, level = 0, ncase = 0, bad = 0, differ = 0, r = 0, iskn = 0;
+	int rows = 0, cols = 0, wrap = 0, level = 0, ncase = 0, bad = 0, differ = 0, r = 0, infold = 0, nkn = 0;
 	size_t top = 0, cl = 0, cc = 0;
 	static char want[4096], got[4096];
 	Grid g = { 0 };
@@ -203,8 +238,7 @@ int main(int argc, char **argv)
 		line[strcspn(line, "\n")] = 0;
 		if (line[0] == 'C') {
 			CHECK(sscanf(line, "C %d %d %d %d", &rows, &cols, &wrap, &level) == 4);
-			differ = iskn = 0;
-			for (size_t k = 0; k < sizeof known / sizeof *known; k++) iskn |= known[k] == ncase;
+			differ = infold = 0;
 		} else if (line[0] == 'L') {
 			nlv = 0;
 			for (char *p = strtok(line + 2, " "); p; p = strtok(NULL, " ")) {
@@ -230,13 +264,17 @@ int main(int argc, char **argv)
 		} else if (line[0] == 'T') {
 			snprintf(tbuf, sizeof tbuf, "%s", line + 2);
 			tok = tbuf;
+			if (tok[0] == 'g' && tok[1] == ' ') infold = 0;
 			run(&e, tok);
 		} else if (line[0] == 'W') {
 			CHECK(sscanf(line, "W %zu %zu %zu", &top, &cl, &cc) == 3);
 			core_draw(&e, &g);
 			r = 0;
 			const Win *w = e.win;
-			if (w->top != top || w->line != cl || (w->col != cc && !iskn)) {
+			size_t a, z;
+			infold |= fold_closed(w->fold, w->line, &a, &z) != 0;
+			nkn += w->top == top && w->line == cl && w->col != cc && infold;
+			if (w->top != top || w->line != cl || (w->col != cc && !infold)) {
 				if (!differ++ || verbose)
 					fprintf(stderr, "case %d after %s: top %zu cursor %zu,%zu, nvim top %zu cursor %zu,%zu\n",
 					        ncase, tok, w->top, w->line, w->col, top, cl, cc);
@@ -284,6 +322,6 @@ int main(int argc, char **argv)
 	grid_free(&g);
 	unlink(file);
 	rmdir(dir);
-	printf("test_core_fold: %d cases, %d differ from Neovim (%d known)\n", ncase, bad, (int)(sizeof known / sizeof *known));
+	printf("test_core_fold: %d cases, %d differ from Neovim (%d screens with the known column difference)\n", ncase, bad, nkn);
 	return bad != 0;
 }

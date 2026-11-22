@@ -495,7 +495,7 @@ static void update_topline(Editor *e, Win *w)
 		if (concealed(w)) {
 			d = 0;
 			for (lnr l = (lnr)w->line; l < (lnr)w->top + so; l++) {
-				if (++d, l >= n - 1 || d >= half) break;
+				if (l >= n - 1 || ++d >= half) break;
 				folded(w, l, NULL, &l);
 			}
 		}
@@ -574,7 +574,7 @@ static void curs_columns(Editor *e, Win *w, int may_scroll)
 			wcol -= k * w2;
 			wrow += k;
 		}
-	} else if (may_scroll && !b.folded) {
+	} else if (may_scroll) {
 		long off_left = (long)start - (long)w->left;
 		long off_right = endcol - (long)w->left - w->w + 1;
 		/* validate_cursor() scrolls only for a cursor or view that moved:
@@ -836,7 +836,6 @@ static int scrolldown(Editor *e, Win *w, long count)
 	long w1 = width1(w), w2 = w1;
 	int done = 0;
 	int sms = p_sms && w->wrap;
-	w->top = fold_first(w, w->top);
 	curs_columns(e, w, 1);         /* validate_cursor(): w_wrow */
 	for (long todo = count; todo > 0; todo--) {
 		if (w->top == 0 && (!sms || (long)w->skipcol < w1)) break;
@@ -851,7 +850,6 @@ static int scrolldown(Editor *e, Win *w, long count)
 			if (folded(w, (lnr)w->top, &first, NULL)) {
 				/* a closed fold counts as one line (byfold) */
 				done++;
-				w->frame->s.bot -= w->top - (size_t)first;
 				w->top = (size_t)first;
 			} else if (sms) {
 				long size = linesize(w, (lnr)w->top);
@@ -920,7 +918,6 @@ static int scrollup(Editor *e, Win *w, long count)
 		}
 	} else w->top += (size_t)count;
 	if ((lnr)w->top > n - 1) w->top = (size_t)(n - 1);
-	w->top = fold_first(w, w->top);
 	WinState *s = &w->frame->s;
 	s->bot += w->top - top0;       /* approximate w_botline */
 	if (s->bot > (size_t)n) s->bot = (size_t)n;
