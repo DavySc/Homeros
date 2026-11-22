@@ -67,12 +67,13 @@ enum {
 	   '>' fillers, and SpecialKey's ^X, which catppuccin links to it),
 	   Visual, Search, CurSearch, IncSearch (also on_yank's flash),
 	   MatchParen, Pmenu, PmenuSel, PmenuSbar, PmenuThumb, NormalFloat,
-	   FloatBorder, FloatTitle, Cursor */
+	   FloatBorder, FloatTitle, Cursor, Folded (a closed fold's text and
+	   its '·' fill) */
 	FACE_CURSOR_LINE, FACE_CURSOR_LINE_NR, FACE_LINE_NR, FACE_STATUS_LINE,
 	FACE_STATUS_LINE_NC, FACE_WIN_SEPARATOR, FACE_END_OF_BUFFER, FACE_NON_TEXT,
 	FACE_VISUAL, FACE_SEARCH, FACE_CUR_SEARCH, FACE_INC_SEARCH, FACE_MATCH_PAREN,
 	FACE_PMENU, FACE_PMENU_SEL, FACE_PMENU_SBAR, FACE_PMENU_THUMB,
-	FACE_NORMAL_FLOAT, FACE_FLOAT_BORDER, FACE_FLOAT_TITLE, FACE_CURSOR,
+	FACE_NORMAL_FLOAT, FACE_FLOAT_BORDER, FACE_FLOAT_TITLE, FACE_CURSOR, FACE_FOLDED,
 	/* the status line (lualine, catppuccin theme): the mode pill
 	   (lualine_a_<mode>, other being the terminal), the mode colour on
 	   mantle (lualine_b_<mode>'s fg and the pill's rounded ends), and the b
