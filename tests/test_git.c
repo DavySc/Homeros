@@ -28,6 +28,7 @@ int syntax_open(void) { return 0; }
 void syntax_edit(void) {}
 void syntax_free(void) {}
 void syntax_faces(void) {}
+int syntax_md(void) { return 0; }
 const char *syntax_filetype(const char *p) { (void)p; return 0; }
 #else
 #include <sys/inotify.h>
@@ -36,6 +37,7 @@ const char *syntax_filetype(const char *p) { (void)p; return 0; }
 #include "check.h"
 #include "core.h"
 #include "git.h"
+#include "keyname.h"
 #include "keys.h"
 #include "loop.h"
 #include "../src/git/gitint.h"
@@ -193,16 +195,6 @@ static const char *echo_of(const char *s)
 	return s;
 }
 
-static int keyof(const char **p)
-{
-	static const struct { const char *n; int k; } names[] = {
-		{ "<Tab>", KEY_TAB }, { "<CR>", KEY_ENTER }, { "<Esc>", KEY_ESC }, { "<BS>", KEY_BS },
-		{ "<C-j>", 10 }, { "<C-k>", 11 }, { "<C-c>", 3 }, { "<C-d>", 4 }, { "<C-u>", 21 }, { "<Space>", ' ' } };
-	if (**p == '<')
-		for (size_t i = 0; i < sizeof names / sizeof *names; i++)
-			if (!strncmp(*p, names[i].n, strlen(names[i].n))) { *p += strlen(names[i].n); return names[i].k; }
-	return *(*p)++;
-}
 
 /* the commit message buffer, typed by hand: i text Esc, then ZZ or ZQ */
 static struct { int insert, z; char text[256]; size_t n; } msg;
@@ -398,7 +390,7 @@ static void scenario(const char *name, const char *setup, Step *steps, int n, ch
 			free(o);
 		} else
 			for (const char *p = st->keys; *p; ) {
-				int k = keyof(&p);
+				int k = test_key(&p);   /* (package 17's, agreed by thread 0) */
 				Repo *r = R();
 				if (!git_prompt()) e.msg[0] = 0;   /* Emacs clears the echo area on a key */
 				if (r->editing == 2) { message_key(r, k); settle(); continue; }

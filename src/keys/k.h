@@ -140,7 +140,6 @@ void set_reg(int r, const char *s, long n, int type);
 typedef struct { char *s; long n, cap; } Sbuf;
 void bput(Sbuf *b, const char *s, long n);
 int  map_case(int c, int up);   /* utf_toupper() (up) or utf_tolower() */
-long utf8_put(int c, char *b);   /* utf_char2bytes() */
 
 /* Vim's patterns (regex.c) */
 int  re_compile(const char *pat, int icase, const char **msg);

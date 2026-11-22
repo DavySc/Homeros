@@ -1,0 +1,3 @@
+# Plants for src/str/ (thread 0's; format in tools/planted.sh).
+str_lines: the unfinished tail is dropped (test_str)~test TESTS=str~~src/str/str.c~		if (!(nl = memchr(b, '\n', (size_t)(e - b)))) return str_add(part, b, (size_t)(e - b));~		if (!(nl = memchr(b, '\n', (size_t)(e - b)))) return 0;
+str_lines: a line's earlier pieces are lost (test_str)~test TESTS=str~~src/str/str.c~		if (str_add(part, b, (size_t)(nl - b))) return -1;¶		size_t k = part->n;~		part->n = 0;¶		if (str_add(part, b, (size_t)(nl - b))) return -1;¶		size_t k = part->n;
