@@ -102,3 +102,4 @@ syntax: the rows reported changed leave out the last (test_syntax, folds after a
 syntax: Markdown's folds miss an edit that adds no line (test_syntax, folds after edits)~test TESTS=syntax~~src/syntax/syntax.c~(nrow == orow && s->root->lang != 2)~(nrow == orow)
 syntax: Markdown's folds stop at the edited rows, not where a level is as before (test_syntax, folds after edits)~test TESTS=syntax~~src/syntax/syntax.c~			if (r >= z && v == s->lv[r]) break;~			if (r >= z) break;
 syntax: syntax_foldexpr answers past the rows (fuzz_syntax)~test TESTS=syntax~~src/syntax/syntax.c~	if (line >= s->nlv) return 0;¶~
+syntax: the rows reported changed start one late (fuzz_syntax)~fuzz FUZZERS=syntax FUZZ_SECONDS=60~~src/syntax/syntax.c~	if (a < *r1) *r1 = a;~	if (a < *r1) *r1 = a + 1;

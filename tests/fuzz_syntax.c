@@ -5,7 +5,8 @@
    bracket arguments) and SystemVerilog, with parses stopped and resumed at
    input-chosen points and faces, syntax_md and folds read at any moment, stale
    trees included.
-   Sanitizers catch the memory errors; the faces must be grid.h's. */
+   Sanitizers catch the memory errors; the faces must be grid.h's, and a
+   finished parse changes no fold outside the rows it reports. */
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -52,7 +53,14 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 		size_t len = text_len(t);
 		if (op % 4 == 0) {                 /* parse, stopped after some checks */
 			left = (int)(byte() % 8);
-			syntax_update(s, t, left ? stop : NULL, &r1, &r2);
+			static int lv[1 << 13], st[1 << 13];   /* a row outside [r1, r2) keeps its fold */
+			size_t nl = text_lines(t);
+			for (size_t l = 0; l < nl; l++) lv[l] = syntax_foldexpr(s, l, &st[l]);
+			if (syntax_update(s, t, left ? stop : NULL, &r1, &r2) != 2)
+				for (size_t l = 0; l < nl; l++) {
+					int a, v = syntax_foldexpr(s, l, &a);
+					if ((v != lv[l] || a != st[l]) && (l < r1 || l >= r2)) abort();
+				}
 		} else if (op % 4 == 1) {          /* faces of a range */
 			size_t a = byte() * len / 256, z = a + byte() * 8;
 			if (z > len) z = len;
