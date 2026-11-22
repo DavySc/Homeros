@@ -136,12 +136,13 @@ static int fixed(uint8_t t)   /* a fixed-length type's size, or -1 */
 /* one value of type ty, n bytes (not NULL), with the column's scale */
 static int put_val(Str *b, unsigned scale, uint8_t ty, const uint8_t *s, size_t n)
 {
-	/* the length and scale must fit the type: a broken stream must not read past it (the fuzzer) */
+	/* the lengths that would read past the value (the fuzzer); a wrong but
+	   in-bounds length only shows a wrong value of a broken stream */
 	int f = fixed(ty);
 	if (f >= 0 ? n != (size_t)f : ty == INTN ? n != 1 && n != 2 && n != 4 && n != 8
 		: ty == FLTN || ty == MONEYN || ty == DATETIMN ? n != 4 && n != 8
 		: ty == BITN ? n != 1 : ty == GUID ? n != 16 : ty == DATEN ? n != 3
-		: ty == TIMEN ? n < 3 || n > 5 : ty == DATETIME2N ? n < 6 || n > 8 : ty == DATETIMEOFFSETN ? n < 8 || n > 10
+		: ty == DATETIME2N ? n < 3 : ty == DATETIMEOFFSETN ? n < 5
 		: ty == DECIMALN || ty == NUMERICN ? n < 1 || n > 17 : ty == SSVARIANT ? n < 2 || n < 2u + s[1] : 0) return -1;
 	if (scale > (ty == DECIMALN || ty == NUMERICN ? 38u : ty == TIMEN || ty == DATETIME2N || ty == DATETIMEOFFSETN ? 7u : 255u)) return -1;
 	switch (ty) {
