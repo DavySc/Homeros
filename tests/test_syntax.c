@@ -414,8 +414,6 @@ static void cache_grows(const char *dir)
 	text_free(t);
 }
 
-/* Folds follow an edit: a C function's body folds, and after the edit that
-   makes it one line, nothing does. */
 /* every row of s answers as a table built fresh from t */
 static void same_as_fresh(Syntax *s, const Text *t, const char *path)
 {
@@ -428,6 +426,9 @@ static void same_as_fresh(Syntax *s, const Text *t, const char *path)
 	}
 	syntax_free(f);
 }
+
+/* Folds follow an edit: a C function's body folds, and after the edit that
+   makes it one line, nothing does. */
 
 static void folds_follow_edits(const char *dir)
 {
@@ -491,9 +492,9 @@ static void folds_follow_edits(const char *dir)
 	text_free(t);
 	/* the rows a parse stopped in an injection named move with an edit
 	   above them before it finishes (a fold typed, the #define's region
-	   made invalid, a line opened at the top) */
+	   made invalid, then a line opened at the top or two deleted) */
 	const char *src = "#define A(x) x + 1\n\n\n\n\nint f() ;\n\ta;\n\tb;\n}\n";
-	for (int k = 1; k < 60; k++) {
+	for (int k = 2; k < 120; k++) {
 		CHECK((t = text_new(src, strlen(src))) && (s = syntax_open(path, t)));
 		unsigned char fc[64];
 		syntax_faces(s, 0, sizeof fc, fc);
@@ -502,16 +503,57 @@ static void folds_follow_edits(const char *dir)
 		CHECK(!text_delete(t, 31, 1) && !text_insert(t, 31, "{", 1));
 		syntax_edit(s, t, 13, 1, "y", 1);
 		CHECK(!text_delete(t, 13, 1) && !text_insert(t, 13, "y", 1));
-		stops_left = k;
+		stops_left = k / 2;
 		syntax_update(s, t, stop_after, &r1, &r2);
-		syntax_edit(s, t, 0, 0, "\n", 1);
-		CHECK(!text_insert(t, 0, "\n", 1));
+		size_t pos = k % 2 ? 0 : 19, del = k % 2 ? 0 : 2;   /* rows 1 and 2 go */
+		syntax_edit(s, t, pos, del, "\n", k % 2);
+		CHECK(!text_delete(t, pos, del) && !text_insert(t, pos, "\n", k % 2));
 		while (syntax_update(s, t, NULL, &r1, &r2) == 2) ;
 		same_as_fresh(s, t, path);
 		syntax_free(s);
 		text_free(t);
 	}
-	/* Markdown: an edit inside a line inside a line changes the level of the line
+	/* a level below 0 (_fold.lua's base is the row above as last
+	   computed, so folds that left before the rows recomputed count):
+	   Neovim answers ">-1" (measured, 4 runs of test_syntax.lua) */
+	snprintf(path, sizeof path, "%s/f.lua", dir);
+	const char *lua =
+		"  termcap = function(_path, _bufnr)\n"
+		"  end,\n"
+		"  ['/etc/protocols'] = 'protocols',\n"
+		"  INDEX = detect.psf,\n"
+		"  ['.pythonstartup'] = 'python',\n"
+		"  ['requirements.in'] = 'requirements',\n"
+		"  ['resolv.conf'] = 'resolv',\n"
+		"  ['robots.txt'] = 'robots',\n"
+		"  Brewfile = 'ruby',\n"
+		"  Gemfile = 'ruby',\n";
+	CHECK((t = text_new(lua, strlen(lua))) && (s = syntax_open(path, t)));
+	static unsigned char fl[512];
+	syntax_faces(s, 0, text_len(t), fl);
+	while (syntax_update(s, t, NULL, &r1, &r2) == 2) ;
+	static const struct { size_t pos, del; const char *ins; } le[] = {
+		{ 118, 5, "end" }, { 230, 4, "--- @param" }, { 0, 0, NULL }, { 271, 0, "'" }, { 75, 6, "]]" },
+	};
+	for (size_t i = 0; i < sizeof le / sizeof *le; i++) {
+		if (!le[i].ins) {
+			syntax_faces(s, 0, text_len(t), fl);
+			while (syntax_update(s, t, NULL, &r1, &r2) == 2) ;
+			continue;
+		}
+		syntax_edit(s, t, le[i].pos, le[i].del, le[i].ins, strlen(le[i].ins));
+		CHECK(!text_delete(t, le[i].pos, le[i].del) && !text_insert(t, le[i].pos, le[i].ins, strlen(le[i].ins)));
+	}
+	syntax_faces(s, 0, text_len(t), fl);
+	while (syntax_update(s, t, NULL, &r1, &r2) == 2) ;
+	static const int want[] = { 3, 2, 0, 3, 3, 1, -1, -2 };   /* >1 1 0 >1 >1 >0 >-1 -1 */
+	for (size_t l = 0; l < sizeof want / sizeof *want; l++) {
+		int v = syntax_foldexpr(s, l, &st);
+		CHECK(2 * v + st == want[l]);
+	}
+	syntax_free(s);
+	text_free(t);
+	/* Markdown: an edit inside a line changes the level of the line
 	   above (an underline typed), and of the lines below until one keeps
 	   its own */
 	snprintf(path, sizeof path, "%s/f.md", dir);
