@@ -4,8 +4,8 @@ other buffer: its window's cursor line raw~src/core/draw.c~size_t raw = cur ? e-
 other buffer: rendered though scrolled sideways~src/core/draw.c~ && !e->win->left : !w->left;~ && !e->win->left : 1;
 other buffer: follows the current buffer's mode~src/core/draw.c~int cur = w->buf == e->buf, rm~int cur = 1, rm
 visual mode rendered~src/core/draw.c~e->mode != MODE_INSERT && !e->ks.visual && ~e->mode != MODE_INSERT && 
-a NonText cell takes the bar (was: cover dropped)~src/core/draw.c~ || z->attr == ATTR_DIM) continue;~) continue;
-the cell after the marker kept~src/core/draw.c~v - o <= (size_t)n && v~v - o < (size_t)n && v
+a NonText cell outside the overlay takes the bar~src/core/draw.c~			else if (z->attr == ATTR_DIM) continue;¶~
+the cell after the marker kept~src/core/draw.c~v >= s0 && v <= e0 &&~v >= s0 && v < e0 &&
 a tab after the marker is no heading~src/core/draw.c~(*s == ' ' || *s == '\t') ? HN_YES~(*s == ' ') ? HN_YES
 a multi-byte character before the heading allowed~src/core/draw.c~if (k != 1 || !memchr(~if (!memchr(
 digits not list markers~src/core/draw.c~" \t>-+*.)0123456789", *s, 18)~" \t>-+*.)", *s, 8)
@@ -15,7 +15,11 @@ more '#' than the level~src/core/draw.c~*s == '#' && k == 1 && hn < hl)~*s == '#
 the syn test dropped~src/core/draw.c~hn = rm && syn ? 0 : HN_NO;~hn = rm ? 0 : HN_NO;
 cut line reads on to the end~src/core/draw.c~			if (!hl || hn == HN_NO || hn == HN_YES) break;~
 the '<' of a wide character's second half in the text's colours~src/core/draw.c~wputs(g, w, row, c, "<", ATTR_DIM);~put_cell(g, w, row, c, (const unsigned char *)"<", 1, 0, 1, face);
-the overlay not cut at its row's end~src/core/draw.c~ && v - (size_t)(c - nw) <= o) {~) {
-the overlay at the marker though the view starts past it~src/core/draw.c~o = v > m0 ? v : m0;~o = m0;
+the overlay not cut at its row's end~src/core/draw.c~ && v - (size_t)(c - nw) <= s0) {~) {
+the overlay at the marker though the view starts past it~src/core/draw.c~size_t d = skip > b0 ? skip - b0 : 0,~size_t d = 0,
 a 4-column indent is still a heading~src/core/draw.c~hn = v - hb > 3 ? HN_NO : hn;~hn = hn;
-the overlay's start found after NonText cells too (o before the DIM test)~src/core/draw.c~			if (v < b0 || !z || z->attr == ATTR_DIM) continue;¶			if (o == (size_t)-1) o = v > m0 ? v : m0;~			if (v < b0 || !z) continue;¶			if (o == (size_t)-1) o = v > m0 ? v : m0;¶			if (z->attr == ATTR_DIM) continue;
+the overlay drawn over skipcol's <<<~src/core/draw.c~ || (k == 0 && c < cover)) continue;~ || (k == 0 && c < cover * 0)) continue;
+the overlay moved by the whole skip, not from the heading's start~src/core/draw.c~size_t d = skip > b0 ? skip - b0 : 0,~size_t d = skip > b0 ? skip : 0,
+the overlay moved from the marker, not the heading's start~src/core/draw.c~size_t d = skip > b0 ? skip - b0 : 0,~size_t d = skip > m0 ? skip - m0 : 0,
+a filler cell inside the overlay keeps its text~src/core/draw.c~ || (k == 0 && c < cover)) continue;~ || (k == 0 && c < cover) || z->attr == ATTR_DIM) continue;
+the overlay's blanks start at the marker, not the heading's start~src/core/draw.c~s0 = b0 + d, e0~s0 = m0 + d, e0

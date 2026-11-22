@@ -48,7 +48,7 @@ loop: win: the exit comes before the output's end (Exit.tla early)~win WIN=loop~
 loop: win: the pipes stay open after the exit~win WIN=loop~~src/loop/win.c~		ended(c, s);¶	}¶	if (c->h[0]) close_in(c);~		c->fn(c->ctx, s, NULL, 0);¶	}¶	if (c->h[0]) close_in(c);
 loop: win: a finished write is written again~win WIN=loop~~src/loop/win.c~	c->outoff += n;¶~	(void)n;¶
 loop: win: backslashes before a quote are not doubled~win WIN=loop~~src/loop/win.c~bs = 2 * bs + (*a == '"');~bs = bs + (*a == '"');
-loop: win: the pipe is read only when it ends, so a full pipe hangs the child~win WIN=loop~~src/loop/win.c~	if (PeekNamedPipe(c->h[s], NULL, 0, NULL, &left, NULL) && left) take(c, s, left);~&& left) {}
+loop: win: the pipe is read only when it ends, so a full pipe hangs the child~win WIN=loop~~src/loop/win.c~	if (PeekNamedPipe(c->h[s], NULL, 0, NULL, &left, NULL) && left) take(c, s, left);~	if (PeekNamedPipe(c->h[s], NULL, 0, NULL, &left, NULL) && left) {}
 loop: win: loop_breakcheck never looks at input~win WIN=loop~~src/loop/win.c~if (loop_int || ++count < 32) return loop_int;~if (loop_int || ++count < 1 << 30) return loop_int;
 loop: win: an idle loop wakes every 100 ms~win WIN=loop~~src/loop/win.c~timeout_ms < 0 ? INFINITE : (DWORD)timeout_ms,~timeout_ms < 0 || timeout_ms > 100 ? 100 : (DWORD)timeout_ms,
 loop: win: proc_write blocks until the pipe takes it all~win WIN=loop~~src/loop/win.c~	if (!c->busy[0]) write_next(c);¶	return~	if (!c->busy[0]) write_next(c);¶	while (c->busy[0]) SleepEx(INFINITE, TRUE);¶	return

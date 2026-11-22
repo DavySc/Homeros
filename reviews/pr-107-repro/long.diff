@@ -1,0 +1,29 @@
+--- a/tests/test_fold.lua
++++ b/long.lua
+@@ -59,7 +59,7 @@
+   vim.wo.foldminlines = fml
+   local t = { 'S', tostring(lvl), tostring(fml) }
+   local lines = {}
+-  for i = 1, math.random(1, 25) do
++  for i = 1, math.random(1, 150) do
+     local k = tok()
+     t[#t + 1] = k
+     lines[i] = text(k)
+@@ -67,14 +67,14 @@
+   vim.api.nvim_buf_set_lines(0, 0, -1, true, lines)
+   out:write(table.concat(t, ' '), '\n')
+   result(0)
+-  for _ = 1, 40 do
++  for _ = 1, 300 do
+     local n = vim.api.nvim_buf_line_count(0)
+     local r, rc = math.random(100), 0
+     if fml == 1 then r = 100 end
+     if r <= 35 then
+       local a = math.random(0, n)
+-      local b = math.min(n, a + math.random(0, 3))
+-      local k = math.random(0, 4)
++      local b = math.min(n, a + math.random(0, 12))
++      local k = math.random(0, 12)
+       if n - (b - a) + k < 1 then k = 1 end
+       local e, ts = { 'E', tostring(a), tostring(b) }, {}
+       for i = 1, k do
