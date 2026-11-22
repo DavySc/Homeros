@@ -191,7 +191,7 @@ static int related(const View *a, int i, const View *b)
 	return related(a, p, b);
 }
 
-static size_t successor(const View *a, size_t vis, const View *b)
+size_t git_successor(const View *a, size_t vis, const View *b)
 {
 	if (!a->nvis || !b->nvis) return 0;
 	if (vis >= a->nvis) vis = a->nvis - 1;
@@ -345,7 +345,7 @@ body:
 		/* magit-status-goto-initial-section: the section after the first */
 		int i = sec_at(v, 0), p = i >= 0 ? v->sec[i].parent : -1;
 		r->cur = p >= 0 && v->sec[i].after < v->sec[p].after ? sec_vis_of(v, v->sec[v->sec[i].after].start) : 0;
-	} else r->cur = successor(&r->old, was, v);
+	} else r->cur = git_successor(&r->old, was, v);
 	r->gen++;
 	rc = 0;
 out:
@@ -389,4 +389,13 @@ void git_fill(int nr, View *v, size_t cur)
 void git_show(Repo *r, View *v)
 {
 	git_fill(r->bufnr, v, r->cur);
+	git_unmark(r->bufnr, !git_ha);
+}
+
+/* magit-refresh-buffer deactivates the mark: Visual mode ends when the
+   current buffer is read again (headless: the view keys go to, focused) */
+void git_unmark(int nr, int focused)
+{
+	Editor *e = git_ed();
+	if (e && (git_on(nr) || (git_headless && focused))) e->ks.visual = 0;
 }

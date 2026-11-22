@@ -58,3 +58,10 @@ git: attaching a buffer again keeps git_sign's cached signs (git_signs)~test TES
 git: attaching a file before the first key drops the files attached before it (git_signs)~test TESTS=git_signs~~src/git/keys.c~	for (size_t i = 0; git_ed() && i < nofs; i++)~	for (size_t i = 0; i < nofs; i++)
 git: a file not made yet has no repository (branch check)~test TESTS=git_signs~~src/git/keys.c~	if (git_real(b->path, abs)) {~	if (git_real(b->path, abs)) { return;
 git: a Windows test that ends early with status 0 passes, as Wine reported a trap (check.sh last line)~win WIN=git~~tests/test_git_win.c~	puts("test_git_win: paths full~	ExitProcess(0);¶	puts("test_git_win: paths full
+git: a line selection stages the unselected lines' other side (region check, magit traces)~test TESTS=git~~src/git/keys.c~a1 && !strcmp(a1, "--reverse") ? '+' : '-'~a1 && !strcmp(a1, "--reverse") ? '-' : '+'
+git: a line selection's patch keeps the hunk's counts (magit traces)~test TESTS=git~~src/git/keys.c~cmd_add(c, "--recount"); ~
+git: a line selection acts on the whole hunk (magit traces)~test TESTS=git~~src/git/keys.c~{ rb = b; re = l; return 1; }~{ return 0; }
+git: a line selection leaves out its last line (region check)~test TESTS=git~~src/git/keys.c~(l < rb || l > re)~(l < rb || l >= re)
+git: a selection over several hunks or files acts on the one at point (magit traces)~test TESTS=git~~src/git/keys.c~{ *s = x; *z = v->sec[y].after; }~{ }
+git: Visual mode stays on after the refresh (region check, magit traces)~test TESTS=git~~src/git/status.c~	git_unmark(r->bufnr, !git_ha);¶~
+git: a diff buffer read again keeps the cursor's line (magit traces)~test TESTS=git~~src/git/keys.c~cur = old.nvis ? git_successor(&old, cur, v) : 0;~cur = cur < v->nvis ? cur : 0;
