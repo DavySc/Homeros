@@ -14,8 +14,8 @@ bad = 0
 # each case its own file and state: a killed editor's crash journal would
 # make the next one's recovery warn W11 with no outside write (review of PR 120)
 for how, name, args, keys in (("given at start", "a.txt", ["a.txt"], []), ("opened from the start screen", "b.txt", [], [b"f", b"b.txt", b"\r"])):
-    os.environ["XDG_STATE_HOME"] = os.path.join(d, name, "state")
-    os.environ["XDG_DATA_HOME"] = os.path.join(d, name, "data")
+    os.environ["XDG_STATE_HOME"] = os.path.join(d, name + ".state")
+    os.environ["XDG_DATA_HOME"] = os.path.join(d, name + ".data")
     open(name, "w").write("hello\n")
     pid, fd = spawn([binary, "-t"] + args)
     for k in keys + [b"j"]:   # the picker opens, lists, then takes the name

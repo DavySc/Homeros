@@ -162,7 +162,8 @@ int main(int argc, char **argv)
 		for (int i = 0; i < NL; i++) fprintf(o, "D %d %d 1 78\n", 3 * i, 3 * i + 1);
 		fputs("F ", o);
 		for (int i = 0; i < NL; i++) fputs("61620a", o);
-		CHECK(fputs("\nE\n", o) >= 0 && !fclose(o));
+		/* case 1: the two windows below */
+		CHECK(fputs("\nE\nD 0 1 1 6d30\nD 6 7 1 6d32\nF 61620a63640a65660a\nE\n", o) >= 0 && !fclose(o));
 		snprintf(file, sizeof file, "%s/0.dbig", dir);
 		CHECK((o = fopen(file, "w")));
 		for (int i = 0; i < NL; i++) fputs("ab\n", o);
@@ -192,6 +193,46 @@ int main(int argc, char **argv)
 		   ms, 0.56 to 1.0 ms with no underlines at all, 490 to 530 ms
 		   without the skip */
 		CHECK(best[1] < 20 * best[0] + 1000000);
+		core_free(&e);
+		grid_free(&g);
+		unlink(file);
+	}
+	/* two windows on one buffer: both show the message on the current
+	   window's cursor line, where the buffer's CursorMoved put it, as
+	   Neovim does (measured by the review of PR 120) */
+	{
+		snprintf(file, sizeof file, "%s/1.dbig", dir);
+		FILE *o = fopen(file, "w");
+		CHECK(o && fputs("ab\ncd\nef\n", o) >= 0 && !fclose(o));
+		Grid g = { 0 };
+		int have = 0;
+		CHECK(!core_open(&e, file) && !grid_resize(&g, 20, 40));
+		for (int t = 0; t < 500 && have < 2; t++) {
+			loop_once(10);
+			lsp_diags(e.buf->lsp, &have);
+		}
+		CHECK(have == 2);
+		layout_resize(&e, 20, 40);
+		CHECK(!core_split(&e, 0, 0));
+		Win *other = e.wins == e.win ? e.wins->next : e.wins;
+		CHECK(other && other != e.win);
+		e.win->line = 0;
+		other->line = 2;
+		core_update(&e);
+		core_draw(&e, &g);
+		/* each window's rows 0 and 2: the message on row 0 only */
+		const Win *ws[2] = { e.win, other };
+		for (int i = 0; i < 2; i++)
+			for (int r = 0; r < 3; r += 2) {
+				char row[256];
+				size_t k = 0;
+				for (int c = 0; c < ws[i]->w; c++) {
+					const Cell *x = &g.c[(ws[i]->y + r) * g.cols + ws[i]->x + c];
+					if (x->len == 1) row[k++] = *grid_text(x);
+				}
+				row[k] = 0;
+				CHECK(!strstr(row, "m0") == (r != 0) && !strstr(row, "m2"));
+			}
 		core_free(&e);
 		grid_free(&g);
 		unlink(file);

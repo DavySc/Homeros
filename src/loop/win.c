@@ -263,17 +263,17 @@ static void CALLBACK on_write(DWORD e, DWORD n, OVERLAPPED *ov)
 	write_next(c);
 }
 
-int proc_spawn(char *const argv[], const char *dir, ProcFn fn, void *ctx)
+/* line: the command line, allocated (NULL: out of memory), freed here */
+static int spawn(char *line, const char *dir, ProcFn fn, void *ctx)
 {
 	int id = 0, ok = 0;
 	while (id < MAXP && p[id].ph) id++;
-	if (id == MAXP) return -1;
+	if (id == MAXP) { free(line); return -1; }
 	HANDLE mine[3] = { 0 }, theirs[3] = { 0 };
 	/* the child's group (loop.c's setpgroup): proc_kill ends what it
 	   started too, as Neovim's os_proc_tree_kill walks the tree on Windows,
 	   but a job also holds a grandchild whose parent has exited */
 	HANDLE job = CreateJobObjectW(NULL, NULL);
-	char *line = cmdline(argv);
 	wchar_t *wl = line ? wide(line) : NULL, *wd = dir ? wide(dir) : NULL;
 	for (int s = 0; s < 3; s++) if (!(mine[s] = pipe_pair(s, &theirs[s]))) goto out;
 	if (!job || !wl || (dir && !wd)) goto out;
@@ -300,6 +300,29 @@ out:
 	if (!ok && job) CloseHandle(job);
 	free(line); free(wl); free(wd);
 	return ok ? id : -1;
+}
+
+int proc_spawn(char *const argv[], const char *dir, ProcFn fn, void *ctx)
+{
+	return spawn(cmdline(argv), dir, fn, ctx);
+}
+
+/* cmd.exe splits its line itself, not as the CRT does: the command goes
+   in as typed, inside the quotes /s strips (Neovim's shellxquote '"' and
+   libuv's UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS) */
+const char *proc_shell_path(void)
+{
+	const char *sh = getenv("COMSPEC");
+	return sh && *sh ? sh : "cmd.exe";
+}
+
+int proc_shell(const char *cmd, const char *dir, ProcFn fn, void *ctx)
+{
+	const char *sh = proc_shell_path();
+	size_t n = strlen(sh) + strlen(cmd) + 16;
+	char *line = malloc(n);
+	if (line) snprintf(line, n, "\"%s\" /s /c \"%s\"", sh, cmd);
+	return spawn(line, dir, fn, ctx);
 }
 
 int proc_write(int id, const void *b, size_t n)

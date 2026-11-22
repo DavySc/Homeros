@@ -32,7 +32,10 @@ the shared reviews/pr-120-repro/, measured once each):
   is lost there: package 13's and thread 0's to change).
 - One line's underlines: the core keeps the 64 that start last (a fixed
   array: no allocation while drawing), Neovim draws them all (100
-  one-character diagnostics: 100 cells underlined, the core 64)."""
+  one-character diagnostics: 100 cells underlined, the core 64).
+- A window on a buffer that is not the current one: Neovim keeps the
+  message where that buffer's last CursorMoved put it, the core puts it on
+  that window's cursor line."""
 import concurrent.futures, json, os, random, subprocess, sys, tempfile
 from test_core_screens import SETUP
 
@@ -123,7 +126,7 @@ vim.cmd('qa!')
 '''
 
 WORDS = ['int', 'x', '=', '1;', 'foo', 'bar(', ')', 'return', '\t', '漢字', 'é', '😀', 'lattice', '--', 'a_b']
-MSGS = ['expected ;', 'unused variable', 'no such name', 'type mismatch:\nint vs bool', 'consider a\tTab', '未定义', 'x']
+MSGS = ['expected ;', 'unused variable', 'no such name', 'type mismatch:\nint vs bool', 'consider a\tTab', '未定义', 'x', 'a\rb', 'crlf\r\nend']
 
 def gen_case(r):
     lines = [' '.join(r.choice(WORDS) for _ in range(r.choice([0, 1, 3, 6, 12, 30])))

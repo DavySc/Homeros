@@ -6,6 +6,7 @@
    may_sync_undo()); a beep drops the stuffed and executed keys
    (beep_flush()). */
 #include <limits.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -119,7 +120,8 @@ static void key(int k, int pending)
 static const char *const maps[] = {
 	" ff", " fg", " fr", " ,", " e", " pv", "-", " D",
 	" gg", " gs", " gl", " gL", " gd", " gb", " gB", " hs", " hr", " hS", " hu", " hp", " uk", " up",
-	"cit", "ciT"   /* nvim-orgmode's, buffer-local to .org */
+	"cit", "ciT",  /* nvim-orgmode's, buffer-local to .org */
+	" cc", " cC"
 };
 static int lead[3], nlead;   /* the keys typed of a map not yet complete */
 
@@ -157,6 +159,15 @@ static int map(Editor *e, int k)
 		          break;
 		case 'i': org_cycle(m[2] == 't' ? 1 : -1); break;
 		case 'D': dashboard(e); break;
+		/* Davy's emacs SPC cc compile (prompts) and cC recompile */
+		case 'c':
+			if (m[2] == 'C') { tools_make(e, NULL); break; }
+			/* Emacs's compile: the last command, to edit */
+			char c[sizeof e->cmd];
+			const char *l = tools_make_last();
+			snprintf(c, sizeof c, "make %s", l ? l : "");
+			cmdline(':', c);
+			break;
 		default: git_leader(e, m[1], m[2]);
 		}
 		return 1;
@@ -291,9 +302,12 @@ static void ex(void)
 	/* :s[ubstitute] :& :~ (:&& is :& with the flag &), on the cursor's
 	   line by default; line 0 is line 1 (no EX_ZEROR) */
 	size_t k = strspn(p, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
-	if (k >= 3 && k <= 10 && !strncmp(p, "nohlsearch", k) && !p[k]) {
+	/* :noh[lsearch], and :mak[e] {cmd} (tools.h) with the rest of the line its argument */
+	int nohl = k >= 3 && k <= 10 && !strncmp(p, "nohlsearch", k) && !p[k];
+	if (nohl || (k >= 3 && k <= 4 && !strncmp(p, "make", k) && (!p[k] || p[k] == ' ' || p[k] == '\t'))) {
 		if (n) core_msg(E, "E481: No range allowed");
-		else no_hlsearch = 1;
+		else if (nohl) no_hlsearch = 1;
+		else tools_make(E, p + k + strspn(p + k, " \t"));
 		return;
 	}
 	if (k ? k <= 10 && !strncmp(p, "substitute", k) : (k = *p == '&' || *p == '~')) {

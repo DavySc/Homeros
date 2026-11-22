@@ -36,4 +36,9 @@ int match_score(const Match *m, const char *text, size_t n, const char *file, si
    LONG_MAX, with *p moved past them; -1 if there are none.  The prompt's
    file:line:col, rg's line:col and :make's errors read their numbers with it. */
 long match_num(const char **p, const char *e);
+/* Lua's %s: the picker's, oil's and the prompt's one blank */
+int match_space(int c);
+/* vim.trim: moves *s past leading blanks; the length left without the
+   trailing ones */
+size_t match_trim(const char **s, size_t n);
 #endif
