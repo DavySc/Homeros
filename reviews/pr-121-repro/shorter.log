@@ -1,0 +1,3 @@
+NOT CAUGHT    shorter: fold_changed never sees a missing old tree (test_syntax)   (make test TESTS=syntax passed)
+NOT CAUGHT    shorter: fold_changed never sees a missing old tree (fuzz_syntax, 120 s)   (make fuzz FUZZERS=syntax FUZZ_SECONDS=120 passed)
+NOT CAUGHT    shorter: a changed range never ends at row UINT32_MAX (fuzz_syntax, 120 s)   (make fuzz FUZZERS=syntax FUZZ_SECONDS=120 passed)

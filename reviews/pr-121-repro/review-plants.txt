@@ -1,0 +1,17 @@
+# PR 121 review's own plants (reviews/pr-110-repro/run-plants.sh FILE)
+review: the fold table is built whole after every parse, not row by row (test_syntax)~test TESTS=syntax~~src/syntax/syntax.c~	if (!s->nlv) {¶		int *v = realloc(s->lv, (n + 1)~	if (1) {¶		int *v = realloc(s->lv, (n + 1)
+review: the edited rows do not grow upwards with a later edit (test_syntax)~test TESTS=syntax~~src/syntax/syntax.c~		if (sr < s->ea) s->ea = sr;¶~
+review: the edited rows do not grow downwards with a later edit (test_syntax)~test TESTS=syntax~~src/syntax/syntax.c~		if (en > s->ez) s->ez = en;¶~
+review: the folds ending on the row above are not taken off (test_syntax)~test TESTS=syntax~~src/syntax/syntax.c~left = a ? out[0] : 0;~left = 0;
+review: the base level is the clamped one, not levels0 (test_syntax)~test TESTS=syntax~~src/syntax/syntax.c~int lv = a ? s->lv0[a - 1] : 0,~int lv = a ? s->lv[a - 1] / 2 : 0,
+review: an added row's levels0 is 0, not -1 (test_syntax)~test TESTS=syntax~~src/syntax/syntax.c~s->lv[r] = -2, s->lv0[r] = -1;~s->lv[r] = -2, s->lv0[r] = 0;
+review: Markdown's rows reported changed have no start (fuzz_syntax)~fuzz FUZZERS=syntax FUZZ_SECONDS=60~~src/syntax/syntax.c~		if (r < *r1) *r1 = r;¶~
+review: fold rows changed but colours not: syntax_update returns 0 (test_syntax)~test TESTS=syntax~~src/syntax/syntax.c~	return r == 1 || *r1 < *r2;~	return r == 1;
+review: Org reports no fold rows (test_syntax_org)~test TESTS=syntax_org~~src/syntax/syntax.c~		if (r == 1) *r2 = text_lines(t) + 1;¶~
+review: Org reports one row fewer (test_syntax_org)~test TESTS=syntax_org~~src/syntax/syntax.c~		if (r == 1) *r2 = text_lines(t) + 1;~		if (r == 1) *r2 = text_lines(t);
+review: the edited rows are never forgotten (test_syntax)~test TESTS=syntax~~src/syntax/syntax.c~	s->ea = s->ez = 0;¶	for (size_t k = 0; k < s->nchg; k++) {~	for (size_t k = 0; k < s->nchg; k++) {
+review: the changed ranges are never forgotten (test_syntax)~test TESTS=syntax~~src/syntax/syntax.c~	s->nchg = 0;¶	if (*r1 > *r2) *r1 = *r2;~	if (*r1 > *r2) *r1 = *r2;
+review: Markdown ignores the tree's changed ranges (test_syntax)~test TESTS=syntax~~src/syntax/syntax.c~		if (L == s->root && s->nlv) fold_changed(s, g->tree, n);~		if (L == s->root && s->nlv && L->lang != 2) fold_changed(s, g->tree, n);
+review: the fold query's row range starts at the first row asked, not the one above (test_syntax)~test TESTS=syntax~~src/syntax/syntax.c~(TSPoint){ (uint32_t)lo, 0 }, (TSPoint){ (uint32_t)z, 0 }~(TSPoint){ (uint32_t)lo + 1, 0 }, (TSPoint){ (uint32_t)z, 0 }
+review: a changed range to the end of the tree stops at row 0 (test_syntax)~test TESTS=syntax~~src/syntax/syntax.c~e.row == UINT32_MAX ? SIZE_MAX : ~
+review: Markdown's rows are computed from the edited row, where the callers start a row above (test_syntax)~test TESTS=syntax~~src/syntax/syntax.c~			if (r >= z && v == s->lv[r]) break;~			if (r >= z - 1 && v == s->lv[r]) break;
