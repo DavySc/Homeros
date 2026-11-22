@@ -2,8 +2,8 @@
    nvim_buf_set_lines() and Insert mode's new lines call it), fold commands
    and splits.  Every fold found lies around its line and inside the
    buffer, a split window's copy answers as the original, and folds built
-   fresh have each line's level from the foldexpr (clamped at 20, Neovim's
-   MAX_LEVEL); tests/test_fold.c holds the rest against Neovim.  Edits leave
+   fresh without "-1" lines have each line's level from the foldexpr
+   (clamped at 20, Neovim's MAX_LEVEL); tests/test_fold.c holds the rest against Neovim.  Edits leave
    Neovim's tree out of shape at times (a nested fold past its parent), so
    that is not checked. */
 #include <stdint.h>
@@ -20,7 +20,7 @@ static int expr(void *ctx, size_t l, int *start)
 	(void)ctx;
 	if (l >= n) abort();
 	*start = lv[l] >= 32;
-	return lv[l] % 32;
+	return lv[l] % 32 == 31 ? -1 : lv[l] % 32;   /* 31: "-1", undefined */
 }
 
 static int tall(void *ctx, size_t l)
@@ -56,7 +56,11 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t len)
 	Fold *f = fold_new(level, expr, NEXT & 1 ? tall : NULL, NULL);
 	if (!f) abort();
 	fold_update(f, 0, n, n);
-	for (size_t l = 0; l < n; l++)
+	/* with "-1" lines Neovim's levels need not be the foldexpr's (a "3"
+	   then a "-1" on the last line is level 2), test_fold.c checks those */
+	size_t u = 0;
+	while (u < n && lv[u] % 32 != 31) u++;
+	for (size_t l = 0; u == n && l < n; l++)
 		if (fold_level(f, l) != (lv[l] % 32 < 20 ? lv[l] % 32 : 20)) abort();
 	while (i < len) {
 		unsigned op = NEXT % 4;

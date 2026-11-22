@@ -21,6 +21,7 @@ static int fe(void *ctx, size_t l, int *start)
 	size_t k = strspn(line[l], "*");
 	if (k && !line[l][k]) { *start = 1; return (int)k; }
 	if (line[l][0] >= '0' && line[l][0] <= '9' && !line[l][1]) return line[l][0] - '0';
+	if (!strcmp(line[l], "y")) return -1;
 	while (l--)
 		if ((k = strspn(line[l], "*")) && !line[l][k]) return (int)k;
 	return 0;
@@ -108,7 +109,7 @@ int main(int argc, char **argv)
 			CHECK((f = fold_new(lvl, fe, atoi(strtok(NULL, " \n")) ? NULL : tall, NULL)));
 			n = 0;
 			for (char *t; (t = strtok(NULL, " \n"));) put(n, t);
-			fold_update(f, 0, n, n);
+			fold_update(f, n / 2, n / 2, n);   /* the first call does every line */
 			scen++;
 		} else if (!strcmp(s, "E")) {   /* nvim_buf_set_lines() */
 			size_t a = strtoul(strtok(NULL, " \n"), NULL, 10), b = strtoul(strtok(NULL, " \n"), NULL, 10);
