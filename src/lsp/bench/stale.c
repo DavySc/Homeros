@@ -32,6 +32,7 @@
 #include "lsp.h"
 #include "../json.h"
 #include "text.h"
+#include "bench.h"
 
 int core_changed;                     /* core.h's, which this program does not link */
 
@@ -117,16 +118,6 @@ static int proxy(const char *log, char **argv)
 
 /* --- the client ------------------------------------------------------------ */
 
-static Text *t;
-
-static void edit(LspDoc *d, size_t pos, size_t ndel, const char *ins, size_t nins)
-{
-	lsp_edit(d, t, pos, ndel, ins, nins);
-	text_delete(t, pos, ndel);
-	text_insert(t, pos, ins, nins);
-	lsp_flush(d);
-}
-
 /* Real Lean as an oracle for the mapping: its "declaration uses 'sorry'"
    warning covers the theorem's name, so wherever the client shows one,
    mapped or not, the text there must be a name tNNN. */
@@ -157,7 +148,6 @@ static void run_for(long long ms)
 	}
 }
 
-static int cmpl(const void *a, const void *b) { long long x = *(const long long *)a, y = *(const long long *)b; return (x > y) - (x < y); }
 
 /* The proxy's log replayed under both of LspSync's rules: "simple" shows
    a publication only for the version the client is at, "ok" (the edit

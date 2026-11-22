@@ -26,6 +26,9 @@ static const char *const clangd_argv[] = { "clangd", NULL };
 static const char *const clangd_roots[] = { "compile_commands.json", "compile_flags.txt", ".git", NULL };
 static const char *const ra_argv[] = { "rust-analyzer", NULL };
 static const char *const ra_roots[] = { "Cargo.toml", NULL };
+/* nvim-lspconfig's slang_server: .git and .slang have equal priority */
+static const char *const slang_argv[] = { "slang-server", NULL };
+static const char *const slang_roots[] = { ".git", ".slang", NULL };
 static const LspServer table[] = {
 	{ ".lean", "lean4", lean_argv, lean_roots, 1 },
 	{ ".c", "c", clangd_argv, clangd_roots, 0 },
@@ -33,6 +36,10 @@ static const LspServer table[] = {
 	{ ".cpp", "cpp", clangd_argv, clangd_roots, 0 },
 	{ ".hpp", "cpp", clangd_argv, clangd_roots, 0 },
 	{ ".rs", "rust", ra_argv, ra_roots, 0 },
+	{ ".sv", "systemverilog", slang_argv, slang_roots, 0 },
+	{ ".svh", "systemverilog", slang_argv, slang_roots, 0 },
+	{ ".v", "verilog", slang_argv, slang_roots, 0 },
+	{ ".vh", "verilog", slang_argv, slang_roots, 0 },
 	{ NULL, NULL, NULL, NULL, 0 },
 };
 const LspServer *lsp_servers = table;
