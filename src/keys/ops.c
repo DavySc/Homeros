@@ -347,6 +347,9 @@ int op_yank(Oparg *oap)
 		E->ks.yank.type = t;
 		E->ks.yank.l1 = (size_t)b_op_start.lnum, E->ks.yank.c1 = (size_t)b_op_start.col;
 		E->ks.yank.l2 = (size_t)b_op_end.lnum, E->ks.yank.c2 = (size_t)b_op_end.col;
+		/* '] is on the last character's last byte (do_pending_operator()
+		   adds its length); KeyArea wants its first */
+		if (t == 'v') E->ks.yank.c2 = (size_t)head(ml_get(b_op_end.lnum), b_op_end.col);
 		if (t == 22) {   /* screen columns: the register's width from the left one (the core's contract) */
 			long a, b;   /* getregionpos(): with coladd, so on a Tab where the cursor shows */
 			getvvcol(b_op_start, &a, NULL), getvvcol(b_op_end, &b, NULL);
