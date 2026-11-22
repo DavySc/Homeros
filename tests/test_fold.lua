@@ -1,8 +1,10 @@
 -- The oracle for tests/test_fold.c: random buffers and edits in Neovim with
 -- foldmethod=expr and a foldexpr that gives ">n" and "n" as the tree-sitter,
 -- Markdown and Org foldexprs do: a line of n stars starts a fold at level
--- n, a digit d is level d, anything else has the level of the nearest
--- star line above it (0 if none).  Each scenario starts at some
+-- n, a digit d is level d, y is "-1" (undefined: a neighbour's level, as
+-- vim.treesitter.foldexpr() answers for a line added since the last
+-- parse), anything else has the level of the nearest star line above it
+-- (0 if none).  Each scenario starts at some
 -- 'foldlevel', then mixes nvim_buf_set_lines(), o, O, A<CR> (Insert mode)
 -- and the fold commands; after each step it prints foldclosed(),
 -- foldclosedend() and foldlevel() of every line.
@@ -16,8 +18,8 @@
 -- N = ONLY + 1, so that Neovim gets to it in the same state).  The recorded
 -- tests/test_fold.txt is N 300 SEED 1, then these scenarios (SEED:ONLY),
 -- which reach the merges and truncations seed 1 does not (the review of
--- PR 107 found them by deleting those lines): 60:106 47:24 104:31 103:137
--- 98:145 47:245
+-- PR 107 found them by deleting those lines): 2:64 37:96 60:106 11:239
+-- 71:5
 -- Trace lines (lines from 0, a token per buffer line, '.' an empty one):
 --   S level fml tok...        a new buffer, 'foldlevel', 'foldminlines'
 --   E a b tok...              nvim_buf_set_lines(0, a, b, true, toks)
@@ -33,6 +35,7 @@ function _G.FE()
   local l = vim.fn.getline(vim.v.lnum)
   if l:match('^%*+$') then return '>' .. #l end
   if l:match('^%d$') then return l end
+  if l == 'y' then return '-1' end
   for i = vim.v.lnum - 1, 1, -1 do
     local s = vim.fn.getline(i)
     if s:match('^%*+$') then return tostring(#s) end

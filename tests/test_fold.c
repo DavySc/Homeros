@@ -21,6 +21,7 @@ static int fe(void *ctx, size_t l, int *start)
 	size_t k = strspn(line[l], "*");
 	if (k && !line[l][k]) { *start = 1; return (int)k; }
 	if (line[l][0] >= '0' && line[l][0] <= '9' && !line[l][1]) return line[l][0] - '0';
+	if (!strcmp(line[l], "y")) return -1;
 	while (l--)
 		if ((k = strspn(line[l], "*")) && !line[l][k]) return (int)k;
 	return 0;
