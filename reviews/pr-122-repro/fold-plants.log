@@ -1,0 +1,34 @@
+Sun Nov 22 15:38:12 UTC 2026
+caught        fold: a one-line fold shows closed ('foldminlines' 1)   (make test TESTS=fold): FAIL scenario 1, S 1 1 *** * * ** x . **** 3 y 0 2 . x * 3 1 2 x 3 * x ** 3: line 1: 3/1/1/2, nvim 3
+caught        fold: a line opened in Insert mode stays out of the fold above it   (make test TESTS=fold): FAIL scenario 2, A 15 *: line 17: 0, nvim 3
+caught        fold: deleting lines leaves one more line in the fold above them   (make test TESTS=fold): FAIL scenario 10, E 26 29: line 25: 4/25/28/2, nvim 4/25/27/2
+caught        fold: touching folds are never joined   (make test TESTS=fold): FAIL scenario 22, E 10 13 x x 3: line 13: 3, nvim 3/13/13/2
+caught        fold: a new fold takes its parent's state, not its neighbour's   (make test TESTS=fold): FAIL scenario 2, O 2 ****: line 4: 4/4/4/4, nvim 4
+caught        fold: from 'foldlevel' to manual, a fold at the level stays open   (make test TESTS=fold): FAIL scenario 4, Z zo 4 3: line 4: 4, nvim 4/4/5/4
+caught        fold: zR leaves the deepest folds closed   (make test TESTS=fold): FAIL scenario 1, Z zR 4 3: line 12: 4/12/13/4, nvim 4
+caught        fold: a new 'foldlevel' keeps the manual opens and closes   (make test TESTS=fold): FAIL scenario 1, Z zM 21 2: line 3: 1, nvim 1/3/8/1
+caught        fold: a split fold's lower half takes 'foldlevel'   (make test TESTS=fold): FAIL scenario 22, E 10 13 x x 3: line 10: 1/10/13/1, nvim 1
+caught        fold: zv opens one fold only   (make test TESTS=fold): FAIL scenario 1, Z zv 11 2: line 11: 2/11/13/2, nvim 2
+caught        fold: an update starts at the changed line, not the one above   (make test TESTS=fold): FAIL scenario 2, o 4 x: line 5: 1, nvim 2
+caught        fold: a closed fold past the buffer's end is not cut there (fuzz)   (make fuzz FUZZERS=fold FUZZ_SECONDS=30): ==23095== ERROR: libFuzzer: deadly signal
+caught        fold: a split window's copy forgets the line count (fuzz)   (make fuzz FUZZERS=fold FUZZ_SECONDS=30): ==31300== ERROR: libFuzzer: deadly signal
+caught        fold: levels past 20 not clamped (fuzz)   (make fuzz FUZZERS=fold FUZZ_SECONDS=30): ==1607== ERROR: libFuzzer: deadly signal
+caught        fold: no read of the slot past the nested folds, as Neovim reads it   (make test TESTS=fold): FAIL scenario 159, E 1 1 x: line 3: 0, nvim 1/3/3/1
+caught        fold: an empty buffer asks the foldexpr for line -1 (fuzz)   (make fuzz FUZZERS=fold FUZZ_SECONDS=30): ==16378== ERROR: libFuzzer: deadly signal
+caught        fold: merging two folds drops the lower one's nested folds   (make test TESTS=fold): FAIL scenario 301, o 11 3: line 14: 1, nvim 4
+caught        fold: a fold shortened from below keeps nested folds past its new end   (make test TESTS=fold): FAIL scenario 11, E 6 8 y * * x: line 4: 3/4/6/3, nvim 3/4/5/3
+caught        fold: a fold that grows into the next one at its level is not merged with it   (make test TESTS=fold): FAIL scenario 305, E 8 11 **** **** x: line 20: 3, nvim 2
+caught        fold: the first update does only the lines it is given   (make test TESTS=fold): FAIL scenario 1, S 1 1 *** * * ** x . **** 3 y 0 2 . x * 3 1 2 x 3 * x ** 3: line 1: 0, nvim 3
+caught        fold: "-1" on the first line stays undefined   (make test TESTS=fold): tests/test_fold.c:21:24: runtime error: index 18446744073709551615 out of bounds for type 'char [512][8]'
+caught        fold: an undefined line ends the fold above it   (make test TESTS=fold): FAIL scenario 3, E 6 7 y: line 7: 0, nvim 1
+caught        fold: an update starts at an undefined line   (make test TESTS=fold): FAIL scenario 5, E 3 3: line 2: 0, nvim 1
+caught        fold: undefined lines to the end leave no fold to finish   (make test TESTS=fold): src/fold/fold.c:302:8: runtime error: member access within null pointer of type 'struct Nd'
+caught        fold: an edit inside one line still adjusts the folds   (make test TESTS=fold): FAIL scenario 308, T 8 8 1: line 13: 0, nvim 3/13/13/3
+caught        fold: a closed fold reports its level, not 1   (make test TESTS=fold): FAIL scenario 1, S 1 1 *** * * ** x . **** 3 y 0 2 . x * 3 1 2 x 3 * x ** 3: line 4: 2/4/8/1, nvim 2/4/8/2
+caught        fold: a count that changed a fold before running out says it changed nothing (fuzz)   (make fuzz FUZZERS=fold FUZZ_SECONDS=30): ==24373== ERROR: libFuzzer: deadly signal
+caught        fold: zv that opened a fold says it changed nothing (fuzz)   (make fuzz FUZZERS=fold FUZZ_SECONDS=30): ==26942== ERROR: libFuzzer: deadly signal
+caught        fold: a new 'foldlevel' says it changed nothing (fuzz)   (make fuzz FUZZERS=fold FUZZ_SECONDS=30): ==27612== ERROR: libFuzzer: deadly signal
+caught        fold: zO opens only the outer fold   (make test TESTS=fold): FAIL scenario 5, Z zO 12 2: line 14: 4/14/14/2, nvim 4
+caught        fold: a fold found with nothing changed says it changed one (fuzz)   (make fuzz FUZZERS=fold FUZZ_SECONDS=30): ==29026== ERROR: libFuzzer: deadly signal
+EXIT 0
+Sun Nov 22 16:10:33 UTC 2026
