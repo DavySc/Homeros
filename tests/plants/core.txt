@@ -179,7 +179,6 @@ core: the Visual area is concealed (test_core_conceal)~test TESTS=core_conceal~~
 core: a span's character is not drawn (test_core_conceal)~test TESTS=core_conceal~~src/core/draw.c~if (i == cc->a && !j && *cc->s) put_cell~if (0 && i == cc->a && !j && *cc->s) put_cell
 core: freed cells carry over to the next row (test_core_conceal)~test TESTS=core_conceal~~src/core/draw.c~if (row != orow) orow = row, off = 0;~if (row != orow) orow = row;
 core: a Tab after a span keeps its width (test_core_conceal)~test TESTS=core_conceal~~src/core/draw.c~for (; *s == '\t' && off; off--)~for (; 0 && *s == '\t' && off; off--)
-core: 'conceallevel' 2 scrolls as without it (test_core_conceal)~test TESTS=core_conceal~~src/core/move.c~return ft && !strcmp(ft, "org");~return 0 && ft && !strcmp(ft, "org");
 core: 'conceallevel' 2 scrolls the fold way in every filetype (test_core_visual)~test TESTS=core_visual~~src/core/move.c~return ft && !strcmp(ft, "org");~return w->conceal >= 2 || (ft && !strcmp(ft, "org"));
 core: a new window starts without conceal (test_core_conceal)~test TESTS=core_conceal~~src/core/core.c~	w->conceal = 2;   /* Davy's 'conceallevel' */~	w->conceal = 0;
 core: a split forgets 'conceallevel' (test_core_contract)~test TESTS=core_contract~~src/core/win.c~	n->conceal = o->conceal;~	(void)0;
@@ -231,7 +230,7 @@ core: a split starts without folds (test_core_fold)~test TESTS=core_fold~~src/co
 core: an edit leaves the folds where they were (test_core_fold)~test TESTS=core_fold~~src/core/core.c~			fold_adjust(w->fold, l1, l2, amount, after, e->mode == MODE_INSERT);~			(void)0;
 core: new fold levels apply in Insert mode (test_core_fold)~test TESTS=core_fold~~src/core/core.c~		if (e->mode == MODE_INSERT) continue;~		if (0) continue;
 core: a diagnostic with a severity over 4 takes a face past the hint's (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~return d->sev < 4 ? d->sev - 1 : 3;~return d->sev - 1;
-core: the message's four blanks lose the cursor line's CursorLine (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~	for (int z = grid_puts(g, y, x, end, "    ", 4, ATTR_NONE, FACE_NONE); x < z; x++) g->c[y * g->cols + x].bg = cl;~	x = grid_puts(g, y, x, end, "    ", 4, ATTR_NONE, FACE_NONE);
+core: the message's four blanks lose the cursor line's CursorLine (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~	for (int z = grid_puts(g, y, x, end, "    ", 4, ATTR_NONE, FACE_NONE); x < z; x++) g->c[y * g->cols + x].bg = cl;~	(void)cl;¶	x = grid_puts(g, y, x, end, "    ", 4, ATTR_NONE, FACE_NONE);
 core: a concealed character takes the diagnostic's underline (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~strlen(cc->s), 0, 1, face, vis ? vis : sb, 0);~strlen(cc->s), 0, 1, face, vis ? vis : sb, ul);
 core: the blank "<<<" leaves of a double-width character loses its underline (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~(const unsigned char *)" ", 1, 0, 1, face, vis ? vis : sb, ul);~(const unsigned char *)" ", 1, 0, 1, face, vis ? vis : sb, 0);
 core: a closed fold counts as its lines when stepping down (test_core_fold)~test TESTS=core_fold~~src/core/move.c~				folded(w, l, NULL, &l);¶				if (++l >= last) break;~				if (++l >= last) break;
@@ -252,3 +251,4 @@ core: update_topline counts the last line before testing for it (test_core_fold)
 core: foldtext() reads past a comment start on a fold's last line but one (test_core_fold)~test TESTS=core_fold~~src/core/draw.c~		if (!n && l + 1 < z) {~		if (!n && l + 1 <= z) {
 core: a scrolldown leaves the cursor inside a closed fold (test_core_fold)~test TESTS=core_fold~~src/core/move.c~		w->line = fold_first(w, w->line);¶		coladvance(e, w);~		coladvance(e, w);
 core: scroll_to_fraction leaves a top line inside a closed fold (test_core_fold)~test TESTS=core_fold~~src/core/move.c~	folded(w, l, &l, NULL);        /* the first of a closed fold */¶~
+core: a buffer entered again keeps the levels it was left with (test_core_fold)~test TESTS=core_fold~~src/core/core.c~if ((w->fold = fold_dup(f, w))) fold_update(w->fold, 0, n, n);~w->fold = fold_dup(f, w);¶		(void)n;
