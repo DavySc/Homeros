@@ -309,9 +309,19 @@ static size_t fbehind;   /* bytes read behind the message being handled */
    "done", and a message wholly past the end of a line holding '?'.  It says
    nothing else unasked. */
 static int gmode;
-#define GROOT "/tmp/homeros goals \xC3\xBC"
-#define GROOT_URI "/tmp/homeros%20goals%20%C3%BC"
-static long fsess;                    /* the RPC session; an older one is outdated */
+/* the goals test's project, whose name needs percent-encoding, and
+   another; per test process ($GOALS_ID), so runs side by side keep apart */
+static char groot[64], guri[80], gother[64], gouri[80];
+static void gpaths(const char *id)
+{
+	snprintf(groot, sizeof groot, "/tmp/homeros goals \xC3\xBC-%s", id);
+	snprintf(guri, sizeof guri, "file:///tmp/homeros%%20goals%%20%%C3%%BC-%s", id);
+	snprintf(gother, sizeof gother, "/tmp/homeros-goals2-%s", id);
+	snprintf(gouri, sizeof gouri, "file://%s", gother);
+}
+static long fsess, fsess0;            /* the RPC session (an older one is outdated); this process's first */
+static int hush;                      /* $/test/hush: say nothing of new versions */
+static int refuse, nconn, ncall;      /* $/test/refuse 1: connects fail, 2: calls outdated; what came since */
 static struct { long id, sess, l, c; int term; } rpc;   /* the question out about goals, id 0 none */
 
 static void fline(long l, const char **b, size_t *n)
@@ -329,6 +339,7 @@ static void fsay(void)
 	str_addf(&m, "{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{\"uri\":\"%s\",\"isIncremental\":true,\"version\":%ld,", suri, sver);
 	str_lit(&m, "\"diagnostics\":[");
 	int k = 0;
+	Str pr = { 0 };                        /* still elaborating: lines holding '%' */
 	for (long l = 0;; l++) {
 		const char *b;
 		size_t n;
@@ -341,10 +352,13 @@ static void fsay(void)
 			         "\"fullRange\":{\"start\":{\"line\":%ld,\"character\":%zu},\"end\":{\"line\":%ld,\"character\":0}},\"severity\":2,\"message\":\"bang\"}",
 			         k++ ? "," : "", l, c, l, c + 1, l, c, l + 1);
 		}
+		if (memchr(b, '%', n))
+			str_addf(&pr, "%s{\"range\":{\"start\":{\"line\":%ld,\"character\":0},\"end\":{\"line\":%ld,\"character\":%zu}}}",
+			         pr.n ? "," : "", l, l, lsp_u16((const unsigned char *)b, n));
 		if (memchr(b, '?', n)) {               /* wholly past the line's end: LSP says at its end */
 			size_t c = lsp_u16((const unsigned char *)b, n);
 			str_addf(&m, "%s{\"range\":{\"start\":{\"line\":%ld,\"character\":%zu},\"end\":{\"line\":%ld,\"character\":%zu}},"
-			         "\"severity\":3,\"message\":\"far\"}", k++ ? "," : "", l, c + 2, l, c + 5);
+			         "\"severity\":7,\"message\":\"far\"}", k++ ? "," : "", l, c + 2, l, c + 5);
 		}
 		if (n >= 4 && !memcmp(b, "done", 4))
 			str_addf(&m, "%s{\"range\":{\"start\":{\"line\":%ld,\"character\":0},\"end\":{\"line\":%ld,\"character\":4}},"
@@ -353,9 +367,12 @@ static void fsay(void)
 	str_lit(&m, "]}}");
 	fsend(&m);
 	m.n = 0;
-	str_addf(&m, "{\"jsonrpc\":\"2.0\",\"method\":\"$/lean/fileProgress\",\"params\":{\"textDocument\":{\"uri\":\"%s\",\"version\":%ld},\"processing\":[]}}", suri, sver);
+	str_addf(&m, "{\"jsonrpc\":\"2.0\",\"method\":\"$/lean/fileProgress\",\"params\":{\"textDocument\":{\"uri\":\"%s\",\"version\":%ld},\"processing\":[", suri, sver);
+	str_add(&m, pr.s, pr.n);
+	str_lit(&m, "]}}");
 	fsend(&m);
 	free(m.s);
+	free(pr.s);
 }
 
 static void frpc(void)
@@ -365,8 +382,7 @@ static void frpc(void)
 	const char *b;
 	size_t n;
 	fline(rpc.l, &b, &n);
-	if (rpc.sess != fsess || rnd(6) == 0) {             /* Lean elaborated anew */
-		fsess++;
+	if (rpc.sess != fsess || refuse == 2) {             /* Lean elaborated anew since */
 		str_lit(&m, "\"error\":{\"code\":-32900,\"message\":\"Outdated RPC session\"}}");
 	} else if (rpc.term) {
 		if (rpc.l % 2) str_addf(&m, "\"result\":{\"range\":{\"start\":{\"line\":%ld,\"character\":0},\"end\":{\"line\":%ld,\"character\":1}},"
@@ -376,7 +392,9 @@ static void frpc(void)
 		str_lit(&m, "\"result\":{\"goals\":[");
 		for (int k = 0; n && k < 1 + (memmem(b, n, "\xCE\xBB", 2) != NULL); k++) {
 			str_addz(&m, k ? ",{" : "{");
-			str_lit(&m, "\"userName\":\"c\",\"hyps\":[{\"names\":[\"h\",\"\xE2\x9C\x9Di\"],\"isInserted\":true,\"type\":{\"text\":\"x\"}}],"
+			str_lit(&m, "\"userName\":\"c\",\"hyps\":[{\"names\":[\"h\",\"\xE2\x9C\x9Di\"],\"isInserted\":true,\"type\":{\"text\":\"x\"}},"
+			        "{\"names\":[\"r\"],\"isRemoved\":true,\"type\":{\"tag\":[{\"diffStatus\":\"willInsert\"},{\"text\":\"y\"}]},\"val\":{\"text\":\"v\"}},"
+			        "{\"names\":[\"\xE2\x9C\x9Dk\"],\"type\":{\"text\":\"z\"}}],"
 			        "\"goalPrefix\":\"\xE2\x8A\xA2 \",\"type\":{\"tag\":[{\"diffStatus\":\"wasChanged\"},{\"append\":[{\"text\":\"");
 			str_addq(&m, b, n);
 			str_lit(&m, "\"}]}]}}");
@@ -412,8 +430,8 @@ static void fhandle(const char *m, size_t n)
 		char ru[256] = "", cwd[256];
 		int x = json_get(m, ft, p, "rootUri");
 		if (x >= 0 && ft[x].z - ft[x].a < sizeof ru) json_str(m, ft, x, ru);
-		if (gmode && (strcmp(ru, "file://" GROOT_URI) || !getcwd(cwd, sizeof cwd) || strcmp(cwd, GROOT)))
-			wrong("the project is %s, not %s", ru, GROOT_URI);
+		if (gmode && (strcmp(ru, guri) || !getcwd(cwd, sizeof cwd) || strcmp(cwd, groot)) && strcmp(ru, gouri))
+			wrong("the project is %s, not %s", ru, guri);
 		if (rnd(2)) usleep(rnd(30000));               /* messages pile up behind it */
 		int behind = 0;            /* bytes waiting (not an end: the editor may close a server it just started) */
 		if (fbehind || (ioctl(0, FIONREAD, &behind) == 0 && behind > 0)) wrong("a message sent before the initialize reply");
@@ -446,7 +464,7 @@ static void fhandle(const char *m, size_t n)
 		sver = json_int(m, ft, json_get(m, ft, td, "version"));
 		opened = 1; incr = 0;
 		fkeep();
-		if (gmode) fsay();
+		if (gmode && !hush) fsay();
 	} else if (!strcmp(meth, "textDocument/didClose")) {
 		if (!opened) wrong("didClose before didOpen");
 		opened = 0;
@@ -461,7 +479,8 @@ static void fhandle(const char *m, size_t n)
 		fapply(m, json_get(m, ft, p, "contentChanges"));
 		sver = v; incr = 0;
 		fkeep();
-		if (gmode) fsay();
+		if (gmode && rnd(2)) fsess++;            /* Lean elaborated anew: its sessions are outdated */
+		if (gmode && !hush) fsay();
 		/* a typed '@' (the test's marker): one diagnostic over the whole
 		   text, at once, then silence until a request is answered, so the
 		   test knows it is the last thing said before the answer */
@@ -516,11 +535,15 @@ static void fhandle(const char *m, size_t n)
 		}
 	} else if (!strcmp(meth, "$/lean/rpc/connect")) {
 		Str r = { 0 };
-		str_addf(&r, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"result\":{\"sessionId\":\"%ld\"}}", json_int(m, ft, id), ++fsess);
+		if (!fsess0) fsess = fsess0 = 1000L * getpid();   /* another server's sessions are not ours */
+		if (refuse && ++nconn > refuse) wrong("connect asked %d times, nothing changed (refuse %d)", nconn, refuse);
+		if (refuse == 1) str_addf(&r, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"error\":{\"code\":-32603,\"message\":\"no\"}}", json_int(m, ft, id));
+		else str_addf(&r, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"result\":{\"sessionId\":\"%ld\"}}", json_int(m, ft, id), ++fsess);
 		fsend(&r);
 		free(r.s);
 	} else if (!strcmp(meth, "$/lean/rpc/call")) {
 		if (rpc.id) wrong("a question about goals before the last was answered");
+		if (refuse && ++ncall > 2) wrong("asked %d times in outdated sessions, nothing changed", ncall);
 		char sid[32] = "", mm[64] = "";
 		int x = json_get(m, ft, p, "sessionId"), y = json_get(m, ft, p, "method");
 		if (x >= 0 && ft[x].z - ft[x].a < sizeof sid) json_str(m, ft, x, sid);
@@ -528,13 +551,33 @@ static void fhandle(const char *m, size_t n)
 		int q = json_get(m, ft, json_get(m, ft, p, "params"), "position");
 		rpc.id = json_int(m, ft, id);
 		rpc.sess = atol(sid);
+		if (!fsess0 || rpc.sess <= fsess0 || rpc.sess > fsess) wrong("a session %s this server never gave", sid);
 		rpc.term = !strcmp(mm, "Lean.Widget.getInteractiveTermGoal");
 		if (!rpc.term && strcmp(mm, "Lean.Widget.getInteractiveGoals")) wrong("rpc %s", mm);
 		rpc.l = json_int(m, ft, json_get(m, ft, q, "line"));
 		rpc.c = json_int(m, ft, json_get(m, ft, q, "character"));
 		fbyte(rpc.l, rpc.c);   /* a position in the text */
+		const char *b;
+		size_t n;
+		fline(rpc.l, &b, &n);
+		if (memchr(b, '%', n)) wrong("asked about line %ld, which Lean is still elaborating", rpc.l);
 	} else if (!strcmp(meth, "$/test/die")) {
 		exit(0);
+	} else if (!strcmp(meth, "$/test/hush") || !strcmp(meth, "$/test/talk")) {
+		refuse = nconn = ncall = 0;
+		int was = hush;                       /* what it said unhushed needs no repeating */
+		if ((hush = meth[7] == 'h') || !was) return;
+		static char now[sizeof sdoc];         /* lag: what it says is of the version before */
+		size_t n0 = sn, k = (size_t)(sver - 1) % 16;
+		int lag = json_get(m, ft, p, "lag") >= 0;
+		if (lag && old[k].v != sver - 1) wrong("no version %ld kept", sver - 1);
+		if (lag) { memcpy(now, sdoc, sn); memcpy(sdoc, old[k].text, sn = old[k].n); sver--; }
+		fsay();
+		if (lag) { memcpy(sdoc, now, sn = n0); sver++; }
+	} else if (!strcmp(meth, "$/test/refuse")) {
+		refuse = (int)json_int(m, ft, json_get(m, ft, p, "how"));
+		fsess++;                                  /* the editor's session is outdated */
+		nconn = ncall = 0;
 	} else if (!strcmp(meth, "$/test/plain")) {      /* no diagnostics, no version: Neovim takes the latest */
 		Str d = { 0 };
 		str_addf(&d, "{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{\"uri\":\"%s\",\"diagnostics\":[]}}", suri);
@@ -549,6 +592,7 @@ static int fake(const char *seed, const char *log)
 	size_t n = 0;
 	rng ^= strtoull(seed, NULL, 10) * 0x9E3779B97F4A7C15ULL;
 	gmode = !strcmp(seed, "goals");
+	if (gmode) gpaths(getenv("GOALS_ID") ? getenv("GOALS_ID") : "");
 	viol = fopen(log, "a");
 	if (!viol) return 2;
 	for (;;) {
@@ -1021,7 +1065,7 @@ static void gwant(Editor *e, Str *w)
 		if (two) str_lit(w, "\xE2\x96\xBC 2 goals\n");
 		for (int k = 0; k < 1 + two; k++) {
 			if (k) str_lit(w, "\n\n");
-			str_lit(w, "case c\nh \xE2\x9C\x9Di : x\n\xE2\x8A\xA2 ");
+			str_lit(w, "case c\nh \xE2\x9C\x9Di : x\nr : y := v\n\xE2\x9C\x9Dk : z\n\xE2\x8A\xA2 ");
 			str_add(w, b, n);
 		}
 	}
@@ -1030,7 +1074,8 @@ static void gwant(Editor *e, Str *w)
 	if (x) str_addf(w, "%s\xE2\x96\xBC %zu:%zu-%zu:1: warning:\nbang", w->n ? "\n\n" : "", l + 1,
 	                lsp_u16((const unsigned char *)b, (size_t)(x - b)) + 1, l + 2);
 	size_t c = lsp_u16((const unsigned char *)b, n) + 1;
-	if (memchr(b, '?', n)) str_addf(w, "%s\xE2\x96\xBC %zu:%zu-%zu:%zu: information:\nfar", w->n ? "\n\n" : "", l + 1, c, l + 1, c);
+	if (memchr(b, '?', n)) str_addf(w, "%s\xE2\x96\xBC %zu:%zu-%zu:%zu: error:\nfar", w->n ? "\n\n" : "", l + 1, c, l + 1, c);   /* severity 7: as 1 */
+	str_lit(w, "\n");                    /* the last line ends as the others: it is drawn */
 }
 
 /* Waits until the window holds what w says (1), or 3 s pass (0). */
@@ -1048,8 +1093,9 @@ static int gsettle(Editor *e, Str *w, char *got, size_t *ng)
 }
 
 /* Waits for the window to show lean.nvim's text for the cursor, then checks
-   lean.nvim's colours: hypothesis names Lean marked inserted, its diff mark
-   on the goal, the goal prefix. */
+   lean.nvim's colours (hypothesis names Lean marked inserted or removed, an
+   inaccessible one, its diff marks, the goal prefix) and that every window
+   on it has its cursor on a line it holds. */
 static void gcheck(Editor *e, Str *w, char *got)
 {
 	size_t ng;
@@ -1060,7 +1106,9 @@ static void gcheck(Editor *e, Str *w, char *got)
 	static unsigned char f[1 << 15];
 	b->faces(b, 0, ng, f);
 	char *h = memmem(got, ng, "case c\nh", 8), *t = memmem(got, ng, "\xE2\x8A\xA2 ", 4);
-	if (h) CHECK(f[h - got + 7] == FACE_DIFF_PLUS && f[h - got + 9] == FACE_DIFF_PLUS && f[h - got] == FACE_KEYWORD);
+	if (h) CHECK(f[h - got + 7] == FACE_DIFF_PLUS && f[h - got + 9] == FACE_DIFF_PLUS && f[h - got] == FACE_KEYWORD &&
+	             f[h - got + 18] == FACE_DIFF_MINUS && f[h - got + 22] == FACE_DIFF_PLUS && f[h - got + 29] == FACE_COMMENT);
+	for (Win *v = e->wins; v; v = v->next) if (v->buf == b) CHECK(v->line < text_lines(b->text));
 	if (h && t) CHECK(f[t - got] == FACE_OPERATOR && (t[4] == '\n' || t + 4 == got + ng || f[t - got + 4] == FACE_DIFF_DELTA));
 }
 
@@ -1068,7 +1116,12 @@ static void goals(const char *log)
 {
 	static char exe[4096], *const roots[] = { "root.mark", NULL };
 	static const char *argv[] = { exe, "--fake", "goals", NULL, NULL };
-	CHECK(!system("rm -rf '" GROOT "' && mkdir -p '" GROOT "/sub' && touch '" GROOT "/root.mark'"));
+	char id[16], sh[512], path[128];
+	snprintf(id, sizeof id, "%d", (int)getpid());
+	gpaths(id);
+	CHECK(!setenv("GOALS_ID", id, 1));
+	snprintf(sh, sizeof sh, "rm -rf '%s' %s && mkdir -p '%s/sub' %s && touch '%s/root.mark'", groot, gother, groot, gother, groot);
+	CHECK(!system(sh));
 	static LspServer table[2];
 	static char got[1 << 15];
 	argv[3] = log;
@@ -1079,9 +1132,10 @@ static void goals(const char *log)
 	lsp_servers = table;
 	lsp_tap = NULL;
 	Editor e;
-	CHECK(!core_open(&e, GROOT "/sub/x.fake") && e.buf->lsp);
+	snprintf(path, sizeof path, "%s/sub/x.fake", groot);
+	CHECK(!core_open(&e, path) && e.buf->lsp);
 	e.rows = 40; e.cols = 160;
-	const char *init = "one\n\n\xCE\xBB x \xF0\x9D\x93\x9D\ndone it!\nfin?\n";
+	const char *init = "one\n\n\xCE\xBB x \xF0\x9D\x93\x9D\ndone it!\nfin?\n%\n";
 	CHECK(!core_edit(&e, 0, 0, init, strlen(init)));
 	lsp_flush(e.buf->lsp);
 	Win *lean = e.win;
@@ -1090,7 +1144,7 @@ static void goals(const char *log)
 	Buf *b = gwin_buf(&e, &nwin);
 	/* nothing known yet: lean.nvim's on_processing */
 	CHECK(b && nwin == 2 && e.win == lean && e.buf == lean->buf && b->nonumber);
-	CHECK(text_len(b->text) == 18 && text_read(b->text, 0, got, 18) == 18 && !memcmp(got, "Processing file...", 18));
+	CHECK(text_len(b->text) == 19 && text_read(b->text, 0, got, 19) == 19 && !memcmp(got, "Processing file...\n", 19));
 	Str w = { 0 };
 	size_t ng = 0;
 	Win *iv = lean->next ? lean->next : e.wins;
@@ -1101,8 +1155,48 @@ static void goals(const char *log)
 		e.win->col = e.win->line == 3 ? 2 : 0;
 		gcheck(&e, &w, got);
 	}
+	/* Lean quiet: what it said follows the edits (the silent "done", a
+	   message's full range) */
+	const char *u = lsp_uri(e.buf->lsp);
+	CHECK(!lsp_send(u, "$/test/hush", "{}", 2, NULL, NULL));
+	CHECK(!core_edit(&e, 0, 0, "\n\n\n\n\n\n\n\n", 8));   /* past the old lines: kept bytes would miss */
+	lsp_flush(e.buf->lsp);
+	e.win->line = 11, e.win->col = 0;         /* "done it!" */
+	gcheck(&e, &w, got);
+	/* its '!' deleted, then Lean speaks of the text before: that range,
+	   all of it deleted since, goes */
+	CHECK(!core_edit(&e, core_line_start(&e, 11) + 7, 1, "", 0));
+	lsp_flush(e.buf->lsp);
+	CHECK(!lsp_send(u, "$/test/talk", "{\"lag\":1}", 9, NULL, NULL));
+	gcheck(&e, &w, got);
+	/* an answer about where the cursor was is not shown with what is
+	   asked where it is now: line 10's goals never beside line 12's message */
+	e.win->line = 10;
+	lsp_goals(&e);
+	e.win->line = 12;
+	for (long long t0 = ms(); ms() - t0 < 1000; loop_once(10)) {
+		lsp_goals(&e);
+		ng = text_read(gwin_buf(&e, &nwin)->text, 0, got, 1 << 15);
+		CHECK(!(memmem(got, ng, "\xCE\xBB", 2) && memmem(got, ng, "far", 3)));
+	}
+	gcheck(&e, &w, got);
+	/* not asked about a line Lean is still elaborating (the fake checks) */
+	e.win->line = 13;
+	lsp_goals(&e);
+	for (long long t0 = ms(); ms() - t0 < 200; ) loop_once(10);
+	/* Lean refusing: asked once more, not in a loop (the fake counts) */
+	for (int how = 1; how <= 2; how++) {
+		e.win->line = 1;
+		CHECK(!lsp_send(u, "$/test/refuse", how == 1 ? "{\"how\":1}" : "{\"how\":2}", 9, NULL, NULL));
+		CHECK(!core_edit(&e, core_line_start(&e, 1), 0, "a", 1));
+		lsp_flush(e.buf->lsp);
+		lsp_goals(&e);
+		for (long long t0 = ms(); ms() - t0 < 300; ) { loop_once(10); lsp_goals(&e); }
+	}
+	CHECK(!lsp_send(u, "$/test/talk", "{}", 2, NULL, NULL));
 	/* "fin?" said nothing, without a version: its message goes */
-	e.win->line = 4;
+	e.win->line = 12;
+	gcheck(&e, &w, got);
 	ng = text_read(gwin_buf(&e, &nwin)->text, 0, got, 1 << 15);
 	CHECK(memmem(got, ng, "far", 3));
 	CHECK(!lsp_send(lsp_uri(e.buf->lsp), "$/test/plain", "{}", 2, NULL, NULL));
@@ -1113,6 +1207,7 @@ static void goals(const char *log)
 	CHECK(!memmem(got, ng, "far", 3));
 	static const char *const ins[] = { "a", "\xCE\xBB", "!", "\n", "done ", "\xF0\x9D\x93\x9D", "?", "" };
 	for (int step = 0; step < 300; step++) {
+		Win *gw = e.wins;
 		unsigned a = rnd(100);
 		size_t lines = core_lines(&e) - 1;          /* the last line stays empty: the text ends in a newline */
 		if (a < 40) {
@@ -1129,13 +1224,18 @@ static void goals(const char *log)
 				CHECK(!core_edit(&e, at, e.win->col < n ? cplen(l[e.win->col]) : 1, "", 0));
 			} else CHECK(!core_edit(&e, at, 0, s, strlen(s)));
 			core_clamp(&e);
-		} else if (a < 62) {
+		} else if (a < 64) {                       /* G in the goals window */
+			while (gw->buf != gwin_buf(&e, &nwin)) gw = gw->next;
+			gw->line = text_lines(gw->buf->text) - 1;
+		} else if (a < 66) {
 			lsp_goals_toggle(&e);
 			CHECK(gwin_buf(&e, &nwin) == NULL && nwin == 1 && e.win == lean);
 			lsp_goals_toggle(&e);
 			CHECK(gwin_buf(&e, &nwin) && nwin == 2 && e.win == lean);
 		} else loop_once((int)rnd(20));
 		if (e.win->line >= core_lines(&e) - 1 && e.win->line) e.win->line--, e.win->col = 0;
+		size_t n;
+		if (memchr(core_line(&e, e.win->line, &n), '%', n)) e.win->line = e.win->col = 0;   /* still elaborated */
 		lsp_flush(e.buf->lsp);
 		lsp_goals(&e);
 		CHECK(e.win == lean);
@@ -1143,9 +1243,33 @@ static void goals(const char *log)
 			gcheck(&e, &w, got);
 		}
 	}
+	/* another file, in another project: its own server, its own RPC
+	   session (the fake knows its own); closed with a question out */
+	int nr1 = e.buf->nr;
+	snprintf(path, sizeof path, "%s/y.fake", gother);
+	CHECK(!core_edit_file(&e, path, 1) && e.buf->lsp);
+	gcheck(&e, &w, got);
+	int nr2 = e.buf->nr;
+	CHECK(!core_edit(&e, 0, 0, "a", 1));
+	lsp_flush(e.buf->lsp);
+	lsp_goals(&e);
+	CHECK(!core_buf_goto(&e, nr1) && !core_buf_delete(&e, nr2, 1));
+	for (long long t0 = ms(); ms() - t0 < 300; ) loop_once(10);
+	gcheck(&e, &w, got);
+	/* closed by \i: it stays closed; opened on a tall screen: below, a
+	   third of the height */
+	lsp_goals_toggle(&e);
+	lsp_goals(&e);
+	CHECK(gwin_buf(&e, &nwin) == NULL && nwin == 1);
+	e.cols = 60;
+	lsp_goals_toggle(&e);
+	b = gwin_buf(&e, &nwin);
+	iv = lean->next ? lean->next : e.wins;
+	CHECK(b && nwin == 2 && e.win == lean && iv->buf == b && iv->y > lean->y && iv->h == 40 / 3);
+	gcheck(&e, &w, got);
 	/* the server dies: lean.nvim's tombstone; started again, goals again */
 	CHECK(!lsp_send(lsp_uri(e.buf->lsp), "$/test/die", "{}", 2, NULL, NULL));
-	const char *dead = "\xF0\x9F\xAA\xA6 The Lean language server is dead.";
+	const char *dead = "\xF0\x9F\xAA\xA6 The Lean language server is dead.\n";
 	for (long long t0 = ms(); ms() - t0 < 1000; loop_once(10)) {
 		lsp_goals(&e);
 		ng = text_read(gwin_buf(&e, &nwin)->text, 0, got, 1 << 15);
@@ -1155,11 +1279,12 @@ static void goals(const char *log)
 	/* nothing from the new server yet: nothing from the old one shows */
 	lsp_restart(e.buf->lsp);
 	lsp_goals(&e);
-	CHECK(text_read(gwin_buf(&e, &nwin)->text, 0, got, 1 << 15) == 18 && !memcmp(got, "Processing file...", 18));
+	CHECK(text_read(gwin_buf(&e, &nwin)->text, 0, got, 1 << 15) == 19 && !memcmp(got, "Processing file...\n", 19));
 	gcheck(&e, &w, got);
 	free(w.s);
 	core_free(&e);
-	CHECK(!system("rm -rf '" GROOT "'"));
+	snprintf(sh, sizeof sh, "rm -rf '%s' %s", groot, gother);
+	CHECK(!system(sh));
 	for (long long t1 = ms(); ms() - t1 < 300; ) loop_once(20);
 }
 

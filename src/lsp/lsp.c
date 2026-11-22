@@ -9,6 +9,7 @@
    went on, at a key every 250 ms (src/lsp/bench/stale.c), against the
    design's 2 s limit.  Replies are not mapped (LspSync "mapreply" fails):
    one is shown only while the text is as it was when asked. */
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -91,15 +92,16 @@ typedef struct { Str t, f; } Out;
    want: what is shown is owed a new one.  sess is Lean's RPC session for d
    (lean.nvim's rpc.open), its JSON token as Lean sent it.  The last
    answers: ng goals (-1: none at all), drawn in goals, and the expected
-   type in term; all is what the window holds. */
+   type in term; all is what the window holds, next the text that may
+   replace it.  again: the session was renewed once for this question. */
 static struct {
 	Editor *e;
-	int nr, off, busy, want, shown, ng;
+	int nr, off, busy, want, again, shown, ng;
 	LspDoc *d;
 	size_t pos;
 	long ver;
 	Str sess;
-	Out goals, term, all;
+	Out goals, term, all, next;
 } G;
 static Str q;                   /* a question's params */
 
@@ -167,11 +169,17 @@ static void where(const Text *t, size_t pos, size_t *l, size_t *c)
 	*c = lsp_u16(b, n);
 }
 
-static void putpos(const Text *t, size_t pos)
+static void putpos(Str *s, const Text *t, size_t pos)
 {
 	size_t l, c;
 	where(t, pos, &l, &c);
-	str_addf(&o, "{\"line\":%zu,\"character\":%zu}", l, c);
+	str_addf(s, "{\"line\":%zu,\"character\":%zu}", l, c);
+}
+
+/* JSON token x of m as it stands, quotes too */
+static void putraw(Str *s, const char *m, int x)
+{
+	str_add(s, m + tk[x].a - (tk[x].type == 's'), tk[x].z - tk[x].a + 2 * (tk[x].type == 's'));
 }
 
 /* The whole text as a JSON string; whether it holds what is not UTF-8.
@@ -243,7 +251,7 @@ static void forget(LspDoc *d)
 	clear(&d->prog);
 	clear(&d->done);
 	d->prog.ver = -1;                   /* elaborated anew: no word on it yet */
-	if (d == G.d) G.shown = 0;
+	if (d == G.d) G.shown = 0, G.sess.n = 0;    /* a new server: its own RPC sessions */
 	for (int k = 0; k < LSP_NASK; k++) { free(d->ask[k].ans); d->ask[k].ans = NULL; d->ask[k].id = 0; }
 	core_changed = 1;
 	gpoke(d);
@@ -486,7 +494,7 @@ void lsp_ask(LspDoc *d, int kind, size_t pos)
 	o.n = 0;
 	str_addf(&o, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"method\":\"textDocument/hover\",\"params\":{\"textDocument\":{\"uri\":\"%s\"},\"position\":",
 	         d->ask[kind].id, d->uri);
-	putpos(d->t, pos);
+	putpos(&o, d->t, pos);
 	str_lit(&o, "}}");
 	send(d->s);
 }
@@ -584,13 +592,12 @@ static void ranges(LspDoc *d, Set *v, long ver, const char *m, int arr, int add)
 		Pos fp = pos(m, f);
 		g.fz = f < 0 ? g.z : byte(d, &fp, ver, 1);
 		if (g.fz < g.z) g.fz = g.z;
-		if (g.sev < 1) g.sev = 1;
+		if (g.sev < 1 || g.sev > 4) g.sev = 1;
 		g.msg = str(m, json_get(m, tk, e, "message"));
 		v->v[v->n++] = g;
 	}
 	if (v->n > 1) qsort(v->v, (size_t)v->n, sizeof *v->v, cmp);
 	core_changed = 1;
-	gpoke(d);
 }
 
 static LspDoc *doc(Srv *s, const char *m, int uri)
@@ -609,7 +616,7 @@ static void handle(Srv *s, const char *m, size_t n)
 	if (meth >= 0 && id >= 0) {                 /* a request from the server */
 		o.n = 0;
 		str_lit(&o, "{\"jsonrpc\":\"2.0\",\"id\":");
-		str_add(&o, m + tk[id].a - (tk[id].type == 's'), tk[id].z - tk[id].a + 2 * (tk[id].type == 's'));
+		putraw(&o, m, id);
 		str_lit(&o, ",\"result\":null}");
 		send(s);
 		return;
@@ -627,11 +634,12 @@ static void handle(Srv *s, const char *m, size_t n)
 			for (int k = 0; d && k < 2; k++)
 				ranges(d, k ? &d->done : &d->diag, v < 0 ? d->ver : v, m, json_get(m, tk, p, "diagnostics"),
 				       json_true(m, tk, json_get(m, tk, p, "isIncremental")));
+			if (d) gpoke(d);
 		} else if (!strcmp(name, "$/lean/fileProgress")) {
 			int td = json_get(m, tk, p, "textDocument");
 			LspDoc *d = doc(s, m, json_get(m, tk, td, "uri"));
 			long v = json_int(m, tk, json_get(m, tk, td, "version"));
-			if (d && v >= 0) ranges(d, &d->prog, v, m, json_get(m, tk, p, "processing"), 0);
+			if (d && v >= 0) { ranges(d, &d->prog, v, m, json_get(m, tk, p, "processing"), 0); gpoke(d); }
 		} else if (!strcmp(name, "$/progress")) {        /* lualine's lsp_status counts the tokens */
 			int k = json_get(m, tk, json_get(m, tk, p, "value"), "kind");
 			if (is(m, k, "begin")) s->work = (s->work < 0 ? 0 : s->work) + 1;
@@ -642,9 +650,9 @@ static void handle(Srv *s, const char *m, size_t n)
 		return;
 	}
 	long rid = json_int(m, tk, id);
-	for (Raw **q = &raws, *r; (r = *q); q = &r->link)
+	for (Raw **at = &raws, *r; (r = *at); at = &r->link)
 		if (r->s == s && r->id == rid) {
-			*q = r->link;
+			*at = r->link;
 			r->fn(r->ctx, m, n);
 			free(r);
 			return;
@@ -679,9 +687,9 @@ static void dead(Srv *s)
 {
 	s->proc = -1;
 	s->init.n = 0;
-	for (Raw **q = &raws, *r; (r = *q); )
-		if (r->s == s) { *q = r->link; r->fn(r->ctx, NULL, 0); free(r); }
-		else q = &r->link;
+	for (Raw **at = &raws, *r; (r = *at); )
+		if (r->s == s) { *at = r->link; r->fn(r->ctx, NULL, 0); free(r); }
+		else at = &r->link;
 	for (LspDoc *d = s->docs; d; d = d->link) forget(d);
 	if (s->closing) drop(s);
 }
@@ -819,11 +827,7 @@ static void goal(Out *o, const char *m, int g)
 	tagged(o, m, json_get(m, tk, g, "type"), FACE_NONE);
 }
 
-static Buf *gbuf(void)
-{
-	for (Buf *b = G.e && G.nr ? G.e->bufs : NULL; b; b = b->next) if (b->nr == G.nr) return b;
-	return NULL;
-}
+static Buf *gbuf(void) { return G.e && G.nr ? core_buf_nr(G.e, G.nr) : NULL; }
 
 static void gfaces(const Buf *b, size_t a, size_t z, unsigned char *f)
 {
@@ -852,7 +856,7 @@ static void commit(void)
 	static const char *const sev[] = { "error", "warning", "information", "hint" };
 	Buf *b = gbuf();
 	if (!b || !G.d) return;
-	Out *o = &G.all;
+	Out *o = &G.next;
 	o->t.n = o->f.n = 0;
 	if (G.d->s->proc < 0) putz(o, "\xF0\x9F\xAA\xA6 The Lean language server is dead.", FACE_NONE);   /* 🪦 */
 	else if (!G.shown) putz(o, "Processing file...", FACE_NONE);
@@ -874,10 +878,12 @@ static void commit(void)
 			if (g->msg) putz(o, g->msg, FACE_NONE);
 		}
 	}
-	text_delete(b->text, 0, text_len(b->text));
-	text_insert(b->text, 0, o->t.s ? o->t.s : "", o->t.n);
-	b->flags &= ~(unsigned)CORE_EMPTY;
-	core_changed = 1;
+	put(o, "\n", 1, FACE_NONE);              /* core's lines end in one: the last is drawn */
+	if (o->t.n == G.all.t.n && !memcmp(o->t.s, G.all.t.s, o->t.n) && !memcmp(o->f.s, G.all.f.s, o->f.n)) return;
+	Out t = G.all;
+	G.all = *o;
+	*o = t;
+	core_buf_fill(G.e, b, G.all.t.s, G.all.t.n, SIZE_MAX);
 }
 
 static void on_sess(void *ctx, const char *m, size_t n);
@@ -887,18 +893,19 @@ static void on_term(void *ctx, const char *m, size_t n);
 /* Asks fn's question about the cursor: Lean's RPC session, or a call in it */
 static void gsend(const char *method, LspRawFn fn)
 {
-	size_t l, c;
-	where(G.d->t, G.pos, &l, &c);
 	q.n = 0;
 	if (fn == on_sess) str_addf(&q, "{\"uri\":\"%s\"}", G.d->uri);
 	else {
 		str_lit(&q, "{\"sessionId\":");
 		str_add(&q, G.sess.s, G.sess.n);
-		str_addf(&q, ",\"method\":\"%s\",\"textDocument\":{\"uri\":\"%s\"},\"position\":{\"line\":%zu,\"character\":%zu},"
-		         "\"params\":{\"textDocument\":{\"uri\":\"%s\"},\"position\":{\"line\":%zu,\"character\":%zu}}}",
-		         method, G.d->uri, l, c, G.d->uri, l, c);
+		str_addf(&q, ",\"method\":\"%s\",", method);
+		for (int k = 0; k < 2; k++) {       /* Lean wants both: the call's and its method's */
+			str_addf(&q, "\"textDocument\":{\"uri\":\"%s\"},\"position\":", G.d->uri);
+			putpos(&q, G.d->t, G.pos);
+			str_addz(&q, k ? "}}" : ",\"params\":{");
+		}
 	}
-	G.busy = !lsp_send(G.d->uri, fn == on_sess ? "$/lean/rpc/connect" : "$/lean/rpc/call", q.s, q.n, fn, NULL);
+	G.busy = !lsp_send(G.d->uri, fn == on_sess ? "$/lean/rpc/connect" : "$/lean/rpc/call", q.s, q.n, fn, G.d);
 }
 
 static void gask(void)
@@ -919,24 +926,25 @@ static void gpoke(const LspDoc *d)
 
 /* An answer that came too late (the cursor or the text moved, the server
    died) or from an outdated session (Lean's -32900, after it elaborated the
-   file anew): ask again. */
+   file anew): ask again, after -32900 once a question, so a server that
+   keeps refusing is not asked in a loop. */
 static int late(const char *m)
 {
 	G.busy = 0;
 	int e = m ? json_get(m, tk, 0, "error") : -1;
-	if (!m || is(m, json_get(m, tk, e, "code"), "-32900")) { G.sess.n = 0; G.want = 1; }
-	if (G.want || !G.d) { gask(); return 1; }
+	if (!m || is(m, json_get(m, tk, e, "code"), "-32900")) { G.sess.n = 0; G.want |= !G.again; G.again = 1; }
+	if (G.want || !G.d || e >= 0) { gask(); return 1; }
 	return 0;
 }
 
 static void on_sess(void *ctx, const char *m, size_t n)
 {
-	(void)ctx; (void)n;
+	(void)n;
 	int x = m ? json_get(m, tk, json_get(m, tk, 0, "result"), "sessionId") : -1;
 	G.busy = 0;
-	if (x >= 0) { G.sess.n = 0; str_add(&G.sess, m + tk[x].a - (tk[x].type == 's'), tk[x].z - tk[x].a + 2 * (tk[x].type == 's')); }
-	G.want = 1;
-	if (m) gask();
+	/* refused: asked again only once the cursor or the text moves */
+	if (x >= 0 && ctx == G.d) { G.sess.n = 0; putraw(&G.sess, m, x); G.want = 1; }
+	gask();
 }
 
 /* lean.nvim's components.goal_at and its wrap_goals */
@@ -947,7 +955,7 @@ static void on_goals(void *ctx, const char *m, size_t n)
 	int gs = json_get(m, tk, json_get(m, tk, 0, "result"), "goals");
 	Out *o = &G.goals;
 	o->t.n = o->f.n = 0;
-	G.ng = gs >= 0 ? tk[gs].n : -1;
+	G.ng = gs >= 0 && tk[gs].type == 'a' ? tk[gs].n : -1;
 	if (G.ng > 1) { q.n = 0; str_addf(&q, "\xE2\x96\xBC %d goals\n", G.ng); put(o, q.s, q.n, FACE_DIAG_HINT); }
 	for (int k = 0; k < G.ng; k++) { if (k) put(o, "\n\n", 2, FACE_NONE); goal(o, m, json_at(tk, gs, k)); }
 	gsend("Lean.Widget.getInteractiveTermGoal", on_term);
@@ -976,7 +984,8 @@ void lsp_goals(Editor *e)
 	G.e = e;
 	LspDoc *d = e->buf->lsp;
 	if (!d || !d->s->def->lean) return;
-	if (!G.off && !gbuf()) {
+	int fresh = !G.off && !gbuf();
+	if (fresh) {
 		int v = 2 * e->cols > 5 * e->rows;      /* lean.nvim: wider than 2.5 times as tall */
 		if (core_new(e, v)) return;
 		core_resize(e, v, v ? e->cols / 3 : e->rows / 3, 1);
@@ -987,7 +996,8 @@ void lsp_goals(Editor *e)
 	}
 	size_t pos = core_line_start(e, e->win->line) + e->win->col;
 	if (d != G.d) G.sess.n = G.shown = 0;
-	if (d != G.d || pos != G.pos || d->ver != G.ver) { G.d = d; G.pos = pos; G.ver = d->ver; G.want = 1; }
+	if (d != G.d || pos != G.pos || d->ver != G.ver) { G.d = d; G.pos = pos; G.ver = d->ver; G.want = 1; G.again = 0; }
+	if (fresh) { G.all.t.n = 0; commit(); }   /* the new buffer holds nothing yet */
 	gask();
 }
 

@@ -1,12 +1,12 @@
 # Plants for src/lsp/ (format in tools/planted.sh).  LspSync.tla's broken
 # variants (nomap, prunesend, mapreply) are here as code.
 lsp: diagnostics shown at their raw positions (LspSync nomap)~test TESTS=lsp~~src/lsp/lsp.c~	shift_set(&d->diag, pos, ndel, nins);~
-lsp: older diagnostics not mapped through the edits since~test TESTS=lsp~~src/lsp/lsp.c~	for (int k = 0; k < d->nlog; k++) if (d->log[k].v >= v) p = after(p, &d->log[k], end);~	for (int k = 0; k < d->nlog; k++) if (d->log[k].v >= v && 0) p = after(p, &d->log[k], end);
+lsp: older diagnostics not mapped through the edits since~test TESTS=lsp~~src/lsp/lsp.c~	for (int k = 0; k < d->nlog; k++) if (d->log[k].v >= v) *p = after(*p, &d->log[k], end);~	for (int k = 0; k < d->nlog; k++) if (d->log[k].v >= v && 0) *p = after(*p, &d->log[k], end);
 lsp: the edit log dropped once didChange is sent (LspSync prunesend)~test TESTS=lsp~~src/lsp/lsp.c~	d->chg.n = 0;¶	end(d->s);~	d->chg.n = 0;¶	d->nlog = 0;¶	end(d->s);
 lsp: an older publication replaces a newer one~test TESTS=lsp~~src/lsp/lsp.c~	if (ver < d->floor) return;~
 lsp: a mapped end inside the deletion goes after the insertion~test TESTS=lsp~~src/lsp/lsp.c~	if (end ? !before(e->e, p) : before(p, e->e)) return end ? e->s : e->i;~	if (end ? !before(e->e, p) : before(p, e->e)) return e->i;
 lsp: a reply shown after the text changed (LspSync mapreply)~test TESTS=lsp~~src/lsp/lsp.c~	return d && current(d, d->ask[kind].ver) ? d->ask[kind].ans : NULL;~	return d && (current(d, d->ask[kind].ver) || 1) ? d->ask[kind].ans : NULL;
-lsp: the end of a range does not follow a deleted last character~test TESTS=lsp~~src/lsp/lsp.c~g->z <= pos + ndel ? pos~g->z <= pos + ndel ? g->z
+lsp: the end of a range does not follow a deleted last character~test TESTS=lsp~~src/lsp/lsp.c~z <= pos + ndel ? pos :~z <= pos + ndel ? z :
 lsp: the start of a range does not follow a deleted first character~test TESTS=lsp~~src/lsp/lsp.c~(g->a > pos + ndel ? g->a : pos + ndel)~g->a
 lsp: incremental diagnostics replace the earlier ones~test TESTS=lsp~~src/lsp/lsp.c~json_true(m, tk, json_get(m, tk, p, "isIncremental"))~0
 lsp: versions jump by 2~test TESTS=lsp~~src/lsp/lsp.c~	if (!d || !d->chg.n) return;¶	d->ver++;~	if (!d || !d->chg.n) return;¶	d->ver += 2;
@@ -33,7 +33,7 @@ lsp: the infoview hears every answer, not only initialize's~test TESTS=lsp~~src/
 lsp: the answer to initialize not kept for a bridge opened later~test TESTS=lsp~~src/lsp/lsp.c~		if (s->def->lean) { s->init.n = 0; str_add(&s->init, m, n); }~		if (s->def->lean) s->init.n = 0;
 lsp: a raw request goes before the edits not yet sent~test TESTS=lsp~~src/lsp/lsp.c~	lsp_flush(d);¶	o.n = 0;¶	str_lit(&o, "{\"jsonrpc\":\"2.0\",");~	o.n = 0;¶	str_lit(&o, "{\"jsonrpc\":\"2.0\",");
 lsp: a raw request's answer not given to its caller~test TESTS=lsp~~src/lsp/lsp.c~		if (r->s == s && r->id == rid) {~		if (r->s == s && r->id == rid + 1) {
-lsp: a raw request left waiting when its server dies~test TESTS=lsp~~src/lsp/lsp.c~		if (r->s == s) { *q = r->link; r->fn(r->ctx, NULL, 0); free(r); }~		if (r->s == s) { *q = r->link; free(r); }
+lsp: a raw request left waiting when its server dies~test TESTS=lsp~~src/lsp/lsp.c~		if (r->s == s) { *at = r->link; r->fn(r->ctx, NULL, 0); free(r); }~		if (r->s == s) { *at = r->link; free(r); }
 lsp: a raw message for a file no server has open is sent anyway~test TESTS=lsp~~src/lsp/lsp.c~	if (!d || d->s->proc < 0 || (fn && !r)) { free(r); return -1; }~	if (!d) d = srvs ? srvs->docs : NULL;¶	if (!d || d->s->proc < 0 || (fn && !r)) { free(r); return -1; }
 lsp: the status line counts no work begun~test TESTS=lsp~~src/lsp/lsp.c~s->work = (s->work < 0 ? 0 : s->work) + 1;~s->work = s->work < 0 ? 0 : s->work;
 lsp: the status line counts no work ended~test TESTS=lsp~~src/lsp/lsp.c~ && s->work > 0) s->work--;~ && s->work > 0) s->work += 0;
@@ -41,8 +41,8 @@ lsp: a new server shows the old one's work~test TESTS=lsp~~src/lsp/lsp.c~	s->wor
 lsp: the status line names the server by its whole path~test TESTS=lsp~~src/lsp/lsp.c~	return b ? b + 1 : a;~	return b ? a : a;
 lsp: a formatted message cut at 512 bytes (a long path's URI lost)~test TESTS=lsp~~src/str/str.c~	if (n < 0 || grow(s, (size_t)n)) return -1;~	if (n < 0 || n >= 512 || grow(s, (size_t)n)) return -1;
 lsp: goals: a second question before the first is answered~test TESTS=lsp~~src/lsp/lsp.c~	if (!G.d || !G.want || G.busy || !gbuf()) return;~	if (!G.d || !G.want || !gbuf()) return;
-lsp: goals: an outdated RPC session asked again~test TESTS=lsp~~src/lsp/lsp.c~	if (!m || is(m, json_get(m, tk, e, "code"), "-32900")) { G.sess.n = 0; G.want = 1; }~	if (!m || is(m, json_get(m, tk, e, "code"), "-32900")) G.want = 1;
-lsp: goals: an answer for where the cursor was is shown~test TESTS=lsp~~src/lsp/lsp.c~	if (G.want || !G.d) { gask(); return 1; }~	if (!G.d) { gask(); return 1; }
+lsp: goals: an outdated RPC session asked again~test TESTS=lsp~~src/lsp/lsp.c~"-32900")) { G.sess.n = 0; G.want |= !G.again;~"-32900")) { G.want |= !G.again;
+lsp: goals: an answer for where the cursor was is shown~test TESTS=lsp~~src/lsp/lsp.c~	if (G.want || !G.d || e >= 0) { gask(); return 1; }~	if (!G.d || e >= 0) { gask(); return 1; }
 lsp: goals: Lean's diff marks drawn plain~test TESTS=lsp~~src/lsp/lsp.c~		for (int k = 0; k < 6; k++) if (is(m, s, tag[k])) f = face[k];~		for (int k = 0; k < 6; k++) if (is(m, s, tag[k])) f = face[0] * 0 + f;
 lsp: goals: a hypothesis Lean marks inserted drawn plain~test TESTS=lsp~~src/lsp/lsp.c~	return json_true(m, tk, json_get(m, tk, g, "isInserted")) ? FACE_DIFF_PLUS~	return json_true(m, tk, json_get(m, tk, g, "isInserted")) ? f
 lsp: goals: two goals without lean.nvim's header~test TESTS=lsp~~src/lsp/lsp.c~	if (G.ng > 1) {~	if (G.ng > 9) {
@@ -54,7 +54,7 @@ lsp: goals: a message's clipped range shown, not its full range~test TESTS=lsp~~
 lsp: goals: messages from other lines shown~test TESTS=lsp~~src/lsp/lsp.c~			if (text_line_of(G.d->t, g->a) != line) continue;~			if (text_line_of(G.d->t, g->a) > line) continue;
 lsp: goals: a dead server not shown~test TESTS=lsp~~src/lsp/lsp.c~	if (G.d->s->proc < 0) putz(o, ~	if (0) putz(o, 
 lsp: goals: nothing said while Lean has said nothing yet~test TESTS=lsp~~src/lsp/lsp.c~	else if (!G.shown) putz(o, "Processing file...", FACE_NONE);~	else if (!G.shown) putz(o, "", FACE_NONE);
-lsp: goals: a restarted file shows what the old elaboration said~test TESTS=lsp~~src/lsp/lsp.c~	if (d == G.d) G.shown = 0;~	(void)0;
+lsp: goals: a restarted file shows what the old elaboration said~test TESTS=lsp~~src/lsp/lsp.c~	if (d == G.d) G.shown = 0, G.sess.n = 0;~	if (d == G.d) G.sess.n = 0;
 lsp: goals: the window keeps the cursor~test TESTS=lsp~~src/lsp/lsp.c~		core_win_goto(e, 'p', 1);~		(void)0;
 lsp: goals: the window at half the width~test TESTS=lsp~~src/lsp/lsp.c~		core_resize(e, v, v ? e->cols / 3 : e->rows / 3, 1);~		(void)0;
 lsp: goals: \i does not close it~test TESTS=lsp~~src/lsp/lsp.c~	if (b) core_buf_delete(e, b->nr, 1);~	(void)0;
@@ -66,3 +66,24 @@ lsp: incremental diagnostics for a new version keep the old version's~test TESTS
 lsp: diagnostics without a version ignored~test TESTS=lsp~~src/lsp/lsp.c~v < 0 ? d->ver : v, m,~v, m,
 lsp: the URI not percent-encoded~test TESTS=lsp~~src/lsp/lsp.c~		else str_addf(&u, "%%%02X", *p);~		else str_add(&u, (const char *)p, 1);
 lsp: the project root never searched for~test TESTS=lsp~~src/lsp/lsp.c~			if (found) { free(own); return dir; }~			if (found && 0) { free(own); return dir; }
+lsp: goals: a new server asked in the old one's RPC session~test TESTS=lsp~~src/lsp/lsp.c~	if (d == G.d) G.shown = 0, G.sess.n = 0;~	if (d == G.d) G.shown = 0;
+lsp: goals: an error answer read as goals~test TESTS=lsp~~src/lsp/lsp.c~	if (G.want || !G.d || e >= 0) { gask(); return 1; }~	if (G.want || !G.d) { gask(); return 1; }
+lsp: goals: an outdated session renewed without end~test TESTS=lsp~~src/lsp/lsp.c~G.want |= !G.again;~G.want = 1;
+lsp: goals: a refused connect asked again at once~test TESTS=lsp~~src/lsp/lsp.c~	if (x >= 0 && ctx == G.d) { G.sess.n = 0; putraw(&G.sess, m, x); G.want = 1; }~	if (x >= 0 && ctx == G.d) { G.sess.n = 0; putraw(&G.sess, m, x); }¶	G.want = 1;
+lsp: goals: the last line has no newline, so it is not drawn~test TESTS=lsp~~src/lsp/lsp.c~	put(o, "\n", 1, FACE_NONE);              /* core's~	(void)0;              /* core's
+lsp: goals: a cursor in the goals window left past their new end~test TESTS=lsp~~src/lsp/lsp.c~	core_buf_fill(G.e, b, G.all.t.s, G.all.t.n, SIZE_MAX);~	text_delete(b->text, 0, text_len(b->text));¶	text_insert(b->text, 0, G.all.t.s, G.all.t.n);
+lsp: goals: a reopened window empty until Lean says something new~test TESTS=lsp~~src/lsp/lsp.c~	if (fresh) { G.all.t.n = 0; commit(); }~	if (fresh) G.all.t.n = 0;
+lsp: a severity above 4 read past the words~test TESTS=lsp~~src/lsp/lsp.c~		if (g.sev < 1 || g.sev > 4) g.sev = 1;~		if (g.sev < 1) g.sev = 1;
+lsp: goals: fullRange does not follow edits~test TESTS=lsp~~src/lsp/lsp.c~fz = shift_end(g->fz, pos, ndel, nins);~fz = g->fz;
+lsp: goals: another file asked in the old file's RPC session~test TESTS=lsp~~src/lsp/lsp.c~if (d != G.d) G.sess.n = G.shown = 0;~if (d != G.d) G.shown = 0;
+lsp: a range wholly deleted since is kept~test TESTS=lsp~~src/lsp/lsp.c~		if (!point && !before(a, z)) continue;~		if (0) continue;
+lsp: goals: a closed document stays the goals window's~test TESTS=lsp~~src/lsp/lsp.c~	if (G.d == d) G.d = NULL;~	(void)0;
+lsp: goals: asked while Lean elaborates the cursor's line~test TESTS=lsp~~src/lsp/lsp.c~if (over(&G.d->prog) || G.d->prog.ver < 0)~if (G.d->prog.ver < 0)
+lsp: goals: a removed hypothesis drawn plain~test TESTS=lsp~~src/lsp/lsp.c~? FACE_DIFF_MINUS : f;~? f : f;
+lsp: goals: willInsert drawn as deleted~test TESTS=lsp~~src/lsp/lsp.c~FACE_DIFF_DELTA, FACE_DIFF_MINUS, FACE_DIFF_PLUS, FACE_DIFF_PLUS,~FACE_DIFF_DELTA, FACE_DIFF_MINUS, FACE_DIFF_PLUS, FACE_DIFF_MINUS,
+lsp: goals: never the bottom split on a tall screen~test TESTS=lsp~~src/lsp/lsp.c~int v = 2 * e->cols > 5 * e->rows;~int v = 1;
+lsp: goals: the window closed with \i opens again at the next key~test TESTS=lsp~~src/lsp/lsp.c~	int fresh = !G.off && !gbuf();~	int fresh = !gbuf();
+lsp: goals: goals accomplished do not follow edits~test TESTS=lsp~~src/lsp/lsp.c~	shift_set(&d->done, pos, ndel, nins);~	(void)0;
+lsp: goals: inaccessible names not dimmed~test TESTS=lsp~~src/lsp/lsp.c~? FACE_COMMENT : FACE_TYPE~? FACE_TYPE : FACE_TYPE
+lsp: goals: a let's value left out~test TESTS=lsp~~src/lsp/lsp.c~{ putz(o, " := ", FACE_NONE); tagged(o, m, x, FACE_NONE); }~{ }
+lsp: goals: every message called an error~test TESTS=lsp~~src/lsp/lsp.c~putz(o, sev[g->sev - 1], f);~putz(o, sev[0], f);
