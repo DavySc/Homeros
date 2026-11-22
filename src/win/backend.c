@@ -286,7 +286,7 @@ static void draw_cell(const Grid *g, int r, int c, int cursor)
 		} else u[n++] = (WCHAR)cp;
 	}
 	int wide = c + 1 < g->cols && !x[1].len;
-	const Face *fb, *fa = grid_face(x, &fb);
+	const Face *fb, *fu, *fa = grid_face(x, &fb, &fu);
 	COLORREF f = x->attr == ATTR_DIM ? DIMC : fa->style & FACE_FG ? RGB(fa->fg[0], fa->fg[1], fa->fg[2]) : TEXT;
 	COLORREF b = fb->style & FACE_BG ? RGB(fb->bg[0], fb->bg[1], fb->bg[2]) : BASE;
 	RECT rc = { c * cw, r * ch, (c + 1 + wide) * cw, (r + 1) * ch };
@@ -302,6 +302,15 @@ static void draw_cell(const Grid *g, int r, int c, int cursor)
 	SetTextColor(mem, rev ? b : f);
 	SetBkColor(mem, rev ? f : b);
 	ExtTextOutW(mem, rc.left, rc.top, ETO_OPAQUE | ETO_CLIPPED, &rc, u, n, NULL);
+	/* an underline or undercurl in sp, else the text's colour (Neovim's GUIs) */
+	if (!(fu->style & (FACE_UNDERLINE | FACE_UNDERCURL))) return;
+	SetBkColor(mem, fu->style & FACE_SP ? RGB(fu->sp[0], fu->sp[1], fu->sp[2]) : f);
+	int curl = fu->style & FACE_UNDERCURL;
+	for (int i = rc.left; i < rc.right; i = curl ? i + 1 : rc.right) {   /* a curl pixel by pixel, a line at once */
+		int y = rc.bottom - 1 - (curl ? grid_curl(i, ch) : 0);
+		RECT p = { i, y, curl ? i + 1 : rc.right, y + 1 };
+		ExtTextOutW(mem, 0, 0, ETO_OPAQUE, &p, NULL, 0, NULL);
+	}
 }
 
 static void win_present(const Grid *g, Grid *shown)

@@ -165,16 +165,19 @@ static int tty_input(int *k, int max)
 }
 
 /* SGR 0, the attribute, then the face's style and colours from the shared
-   table (ref/theme.c), in that order */
+   table (ref/theme.c), in that order; an undercurl and its colour are
+   kitty's SGR 4:3 and 58, which Ghostty and WezTerm take (Neovim's
+   default Smulx and Setulc) */
 static void style(const Cell *x)
 {
-	char s[64];
-	const Face *b, *f = grid_face(x, &b);
+	char s[96];
+	const Face *b, *u, *f = grid_face(x, &b, &u);
 	int n = snprintf(s, sizeof s, "\x1b[0%s%s%s%s%s", x->attr == ATTR_REV ? ";7" : x->attr == ATTR_DIM ? ";2" : "",
 	                 f->style & FACE_BOLD ? ";1" : "", f->style & FACE_ITALIC ? ";3" : "",
-	                 f->style & FACE_UNDERLINE ? ";4" : "", f->style & FACE_STRIKE ? ";9" : "");
+	                 u->style & FACE_UNDERCURL ? ";4:3" : u->style & FACE_UNDERLINE ? ";4" : "", f->style & FACE_STRIKE ? ";9" : "");
 	if (f->style & FACE_FG) n += snprintf(s + n, sizeof s - (size_t)n, ";38;2;%d;%d;%d", f->fg[0], f->fg[1], f->fg[2]);
 	if (b->style & FACE_BG) n += snprintf(s + n, sizeof s - (size_t)n, ";48;2;%d;%d;%d", b->bg[0], b->bg[1], b->bg[2]);
+	if (u->style & FACE_SP) n += snprintf(s + n, sizeof s - (size_t)n, ";58:2::%d:%d:%d", u->sp[0], u->sp[1], u->sp[2]);
 	s[n] = 'm'; s[n + 1] = 0;
 	outs(s);
 }
@@ -187,7 +190,7 @@ static void tty_present(const Grid *g, Grid *shown)
 		if (grid_resize(shown, g->rows, g->cols)) { outs("\x1b[?25h\x1b[?2026l"); flush(); return; }
 		outs("\x1b[0m\x1b[H\x1b[2J");
 	}
-	long a = -1;                    /* the style sent last: bg, face and attr */
+	unsigned long a = -1;           /* the style sent last: ul, bg, face and attr */
 	int pr = -1, pc = -1;
 	for (int r = 0; r < g->rows; r++)
 		for (int c = 0; c < g->cols; c++) {
@@ -197,7 +200,7 @@ static void tty_present(const Grid *g, Grid *shown)
 			*y = *x;
 			if (!x->len) continue;
 			int wide = c + 1 < g->cols && !x[1].len;
-			long k = (long)x->bg << 16 | x->face << 8 | x->attr;
+			unsigned long k = (unsigned long)x->ul << 24 | (unsigned long)x->bg << 16 | x->face << 8 | x->attr;
 			if (k != a) { a = k; style(x); }
 			/* The terminal may give a non-ASCII character another width
 			   than the grid does (East Asian ambiguous, newer emoji), so

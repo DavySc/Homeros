@@ -364,6 +364,13 @@ static void test_sway(void)
 	grid_put(&g, 0, 3, (const unsigned char *)" ", 1, 1, ATTR_GUIDE);
 	show();
 	CHECK(!ink(3 * cellw(), 0, cellw(), cellh(), 0));
+	/* a diagnostic's undercurl under a blank: one red pixel a column, a wave
+	   (not all on the last row) */
+	grid_put(&g, 0, 4, (const unsigned char *)" ", 1, 1, ATTR_NONE);
+	g.c[4].ul = FACE_DIAG_UNDER_ERROR;
+	show();
+	CHECK(ink(4 * cellw(), 0, cellw(), cellh(), 0) == cellw() && ink(4 * cellw(), 0, cellw(), cellh(), 1) == cellw());
+	CHECK(ink(4 * cellw(), cellh() - 1, cellw(), 1, 0) < cellw());
 	/* an image (package 21, thread 0's, agreed): Backend.cell is the font's
 	   cell; tests/test_image.png (32 x 16, red then blue) fills its pixels
 	   from row 2, each tile its own columns, the background past it; its

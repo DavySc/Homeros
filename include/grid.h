@@ -143,6 +143,14 @@ typedef struct {
 	                              a Cell 8 bytes (was 7): one face per cell
 	                              cannot put a heading's bar under the
 	                              other faces in the heading */
+	unsigned char ul;          /* 0, or a face whose underline (FACE_UNDERLINE
+	                              or FACE_UNDERCURL) and sp replace the face's
+	                              own under the cell's text: a diagnostic's
+	                              undercurl over a token's colour (Neovim
+	                              combines an extmark's underline over
+	                              syntax), set by the core after grid_put,
+	                              which clears it.  the Cell stays 10 bytes (it fills
+	                              face's padding) */
 } Cell;
 
 typedef struct {
@@ -176,7 +184,12 @@ int  grid_puts(Grid *g, int r, int c, int end, const char *s, size_t n, int attr
 /* The cells grid_puts takes for s (Neovim's mb_string2cells()). */
 int  grid_width(const char *s, size_t n);
 int  grid_cell_eq(const Cell *a, const Cell *b);
-/* The face cell x is drawn with (FACE_NONE for an unknown one) and, in *bg,
-   the face its background comes from: the layer if set, else the same. */
-const Face *grid_face(const Cell *x, const Face **bg);
+/* The face cell x is drawn with (FACE_NONE for an unknown one); in *bg the
+   face its background comes from and in *ul the face its underline style and
+   sp come from: each layer if set, else the same. */
+const Face *grid_face(const Cell *x, const Face **bg, const Face **ul);
+/* An undercurl's height above a cell's last pixel row at pixel column x, in
+   a cell h pixels tall: a triangle wave (kitty's undercurl), for the
+   backends that draw pixels. */
+int  grid_curl(int x, int h);
 #endif

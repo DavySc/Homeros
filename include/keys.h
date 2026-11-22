@@ -66,13 +66,14 @@ struct Buf;
 void keys_write_pre(struct Editor *e, struct Buf *b);
 /* 'hlsearch' (FEATURES.md 1): the next match of the last search pattern
    that covers line `line` of window w at or after byte col there: 1 and
-   its bytes [*s, *z) on this line (a match from an earlier line starts at
+   its bytes [*s, *z) on this line, 2 when the whole match (on any of its
+   lines) holds w's cursor, Neovim's CurSearch (a match from an earlier line starts at
    0; one that takes the line break ends at the line's length + 1, its cell
    after the last character; an empty match draws one character, the line
    break's cell at the end), or 0 for none and while :noh or CTRL-L hides
    them until the next search.  The core calls it for each line of w it
    draws, from col 0 and then from *z (one character on after an empty
-   match), and draws Search, and CurSearch for the match at the cursor.  It
+   match), and draws Search for 1, CurSearch for 2.  It
    runs in the redraw path: after the pattern's compile, only the keys'
    line copies grow, to the longest line drawn, then stay
    (tests/test_keys_ex.c). */

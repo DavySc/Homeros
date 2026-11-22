@@ -75,15 +75,14 @@ static const Cell *find(const char *s)
 
 static int fg(const Cell *x, int r, int gr, int b)
 {
-	const Face *f, *bg;
-	f = grid_face(x, &bg);
+	const Face *bg, *ul, *f = grid_face(x, &bg, &ul);
 	return (f->style & FACE_FG) && f->fg[0] == r && f->fg[1] == gr && f->fg[2] == b;
 }
 
 /* x's face has the style bits s and none of the bits not */
 static int style(const Cell *x, int s, int not)
 {
-	const Face *bg, *f = grid_face(x, &bg);
+	const Face *bg, *ul, *f = grid_face(x, &bg, &ul);
 	return (f->style & (s | not)) == s;
 }
 
@@ -119,8 +118,8 @@ int main(void)
 	CHECK(x && fg(x, 243, 139, 168) && fg(x + 2, 243, 139, 168));
 	CHECK((x = find("true")) && fg(x, 1, 2, 3));
 	CHECK((x = find("inv")) && fg(x, 30, 30, 46));
-	const Face *b;
-	grid_face(x, &b);
+	const Face *b, *u;
+	grid_face(x, &b, &u);
 	CHECK((b->style & FACE_BG) && b->bg[0] == 205 && b->bg[1] == 214 && b->bg[2] == 244);
 	/* a wide character takes two cells */
 	type("printf '\\346\\274\\242Z\\n'\n");
