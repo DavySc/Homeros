@@ -20,11 +20,13 @@ static Editor e;
 static char in[65536];
 static size_t nin;
 
-/* the answer's result.rendered, as lsp.c showed it for LSP_GOAL */
+/* the answer's result.rendered: the goal text Lean renders for the cursor */
 static void goal(void *ctx, const char *m, size_t n)
 {
 	(void)ctx;
-	char *g = j_str(m, n, j_member(m, n, j_member(m, n, 0, "result"), "rendered"), NULL);
+	size_t r = m ? j_member(m, n, 0, "result") : NONE;
+	if (r == NONE) return;   /* an error or a dead server: no goal, as lsp_answer gave none */
+	char *g = j_str(m, n, j_member(m, n, r, "rendered"), NULL);
 	printf("goal\n%s\n\x04\n", g ? g : "");
 	fflush(stdout);
 	free(g);
@@ -39,10 +41,11 @@ static void line(char *l)
 	} else if (sscanf(l, "g %zu %zu", &L, &C) == 2) {
 		size_t n;
 		const unsigned char *t = core_line(&e, L, &n);
-		char p[160];
-		int k = snprintf(p, sizeof p, "{\"textDocument\":{\"uri\":\"%s\"},\"position\":{\"line\":%zu,\"character\":%zu}}",
+		Str p = { 0 };
+		str_addf(&p, "{\"textDocument\":{\"uri\":\"%s\"},\"position\":{\"line\":%zu,\"character\":%zu}}",
 		                 lsp_uri(e.buf->lsp), L, lsp_u16(t, C < n ? C : n));
-		lsp_send(lsp_uri(e.buf->lsp), "$/lean/plainGoal", p, (size_t)k, goal, NULL);
+		lsp_send(lsp_uri(e.buf->lsp), "$/lean/plainGoal", p.s, p.n, goal, NULL);
+		free(p.s);
 	} else if (!strcmp(l, "p")) {
 		for (size_t i = 0, n; i < core_lines(&e); i++) {
 			const unsigned char *s = core_line(&e, i, &n);
