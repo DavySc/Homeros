@@ -191,6 +191,11 @@ static void rules(void)
 	Buf other = *e.buf;
 	kitten_written(&e, &other);
 	CHECK(gone());
+	/* a save from a macro (@q running :w): nothing */
+	e.ks.executing = 1;
+	CHECK(!core_write(&e, e.buf, 0));
+	e.ks.executing = 0;
+	CHECK(gone());
 	/* <leader>uk: off, then on */
 	kitten_toggle(&e);
 	CHECK(!strcmp(e.msg, "Kitten on save: off"));

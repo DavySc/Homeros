@@ -31,11 +31,12 @@
 #include "keys.h"
 #include "uni.h"
 #include "font.h"
+#include "image.h"
 
 /* FONT_PX: pixels per em at scale 1 (hypothesis: Davy's size is not recorded);
    ATTR_PRE: the preedit, underlined (backend-private, after grid.h's attrs);
    ROW: the most bytes and glyphs one row shapes (4 bytes a cell) */
-enum { FONT_PX = 16, NBUF = 2, KQ = 1024, PRE = 256, ATTR_PRE = ATTR_GUIDE + 1, ROW = 4096 };
+enum { FONT_PX = 16, NBUF = 2, KQ = 1024, PRE = 256, ATTR_PRE = ATTR_IMAGE + 1, ROW = 4096 };
 static const char FAMILY[] = "JetBrains Mono";
 /* linux/input-event-codes.h's, whose KEY_* names clash with keys.h's */
 enum { BTN_LEFT = 0x110 };
@@ -132,6 +133,10 @@ static int key_of(uint32_t key)
 	case XKB_KEY_Left: return KEY_LEFT;
 	case XKB_KEY_Right: return KEY_RIGHT;
 	case XKB_KEY_BackSpace: return KEY_BS;     /* what a terminal sends */
+	case XKB_KEY_ISO_Left_Tab: return KEY_S_TAB;   /* Shift-Tab in most layouts */
+	case XKB_KEY_Tab:   /* and in a keymap whose Tab has one level (wtype's) */
+		if (xkb_state_mod_name_is_active(xst, XKB_MOD_NAME_SHIFT, XKB_STATE_MODS_EFFECTIVE) > 0) return KEY_S_TAB;
+		break;
 	}
 	/* includes the Control transformation, so Ctrl-R is 18 */
 	return (int)xkb_state_key_get_utf32(xst, key + 8);
@@ -656,6 +661,7 @@ static void draw_span(uint32_t *px, const Grid *g, int r, int lo, int hi)
 		const Face *u, *f = colours(g, r, c, r == g->crow && c == g->ccol, &fg, &bg, &u);
 		uint32_t sp = u->style & FACE_SP ? rgb(u->sp) : fg;
 		fill(px, c * cell_w, y0, w * cell_w, cell_h, bg);
+		if (x[c].attr == ATTR_IMAGE) { image_draw(px + y0 * bw + c * cell_w, bw, &x[c]); continue; }   /* thread 0's, agreed */
 		if (u->style & FACE_UNDERCURL)
 			for (int i = c * cell_w; i < (c + w) * cell_w; i++) fill(px, i, ye - 1 - grid_curl(i, cell_h), 1, 1, sp);
 		else if (x[c].attr == ATTR_PRE || u->style & FACE_UNDERLINE) fill(px, c * cell_w, ye - 1, w * cell_w, 1, sp);
@@ -983,8 +989,9 @@ static void wl_present(const Grid *cur, Grid *shown)
 static void wl_suspend(void) {}      /* a window has no terminal to give back */
 
 static void wl_mouse(int *row, int *col) { *row = mrow; *col = mcol; }
+static void wl_cell(int *w, int *h) { *w = cell_w; *h = cell_h; }   /* thread 0's, agreed */
 
 const Backend backend_wl = {
 	wl_open, wl_close, wl_fds, wl_input, wl_size, wl_ready,
-	wl_present, wl_suspend, wl_clip_set, wl_clip_get, wl_mouse
+	wl_present, wl_suspend, wl_clip_set, wl_clip_get, wl_mouse, wl_cell
 };

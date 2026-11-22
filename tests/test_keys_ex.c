@@ -353,15 +353,18 @@ int main(void)
 	CHECK(e.win->line == 0 && e.win->col == 0 && !strcmp(e.msg, "search hit BOTTOM, continuing at TOP"));
 	core_free(&e);
 	/* 'redrawtime': a frame of a pattern that takes long on every line ends
-	   after 2 s (each line here takes about 0.1 s under ASan, measured) */
-	text(path, "aaaaaaaaaaaaaaaa\n", 17 * 58, "b\n");
+	   after 2 s.  Each line here gives up after MAXSTEPS: without the budget
+	   50 lines took about 3 s under ASan, so a fast runner passed; 400 take
+	   28 to 35 s, with it 2.02 to 2.88 s, the most with 64 busy processes
+	   on 4 cores (measured, 3 to 5 runs each): 8 s lies between */
+	text(path, "aaaaaaaaaaaaaaaa\n", 17 * 400, "b\n");
 	CHECK(!core_open(&e, path));
-	feed(&e, "58G/\\(a*\\)*b\r");
-	CHECK(e.win->line == 58);
+	feed(&e, "400G/\\(a*\\)*b\r");
+	CHECK(e.win->line == 400);
 	e.win->top = 0;
 	long long t0 = loop_now();
-	for (size_t i = 0; i < 50; i++) CHECK(!keys_hl(&e, e.win, i, 0, &hs, &hz));
-	CHECK(loop_now() - t0 < 3000000000LL);
+	for (size_t i = 0; i < 400; i++) CHECK(!keys_hl(&e, e.win, i, 0, &hs, &hz));
+	CHECK(loop_now() - t0 < 8000000000LL);
 	core_free(&e);
 	text(path, "select a from t;\n", 300000, "END\n");
 	CHECK(!core_open(&e, path));

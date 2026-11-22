@@ -3,6 +3,7 @@
 
     org_conform.py [-f|-t|-s] DRIVER N SEED     N random org texts, fed to both
     org_conform.py [-f|-t|-s] DRIVER FILE...    given files
+    org_conform.py -g                          writes src/org/entities.h and scripts.h
 
 DRIVER is tests/org_drv.c built; Org runs as emacs -Q --batch with
 tools/org_dump.el, or with -f, the colours: tools/org_faces.el, its faces
@@ -11,7 +12,7 @@ run it: tools/org_todo.el, on FILE.cmd's position and directions, or with
 -s, what each line shows (orgfx_conceal): tools/org_show.el's runs, drawn
 on a cell grid (shown).  Prints the first difference of each
 failing text (the text is kept in build/org-fail-*.org) and "N differ"."""
-import os, random, re, subprocess, sys, tempfile, unicodedata
+import os, random, re, shutil, subprocess, sys, tempfile, unicodedata
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 WORDS = ['a', 'b', 'x', 'TODO', 'DONE', 'NEXT', 'WAIT', 'CANCELLED', 'todo', 'COMMENT', '[#A]', '[#a]',
@@ -302,13 +303,20 @@ def brace_re():
 SCRIPT = brace_re()
 
 
-def long_script(t):
+def long_script(t, runs):
     """org-raise-scripts takes a script over two newlines or more; src/org
-    stops its braces at the second (known difference)"""
+    stops its braces at the second (known difference).  Or Org shows part
+    of a script over one newline raised, where a block's lines took the
+    first part's off: src/org shows a script over lines as typed"""
     p = 0
     while m := SCRIPT.search(t, p):
-        if m.group(3).count('\n') > 1:
+        n = m.group(3).count('\n')
+        if n > 1:
             return True
+        if n:
+            nl, z = len(t[:m.group(3).index('\n') + m.start(3)].encode()), len(t[:m.end()].encode())
+            if any(l[0] in 'ud' and nl < int(l.split()[1]) < z for l in runs if l):
+                return True
         p = m.end() - (t[m.end():m.end() + 1] in ('_', '^'))
     return False
 
@@ -317,7 +325,7 @@ MATH = [r'\leq', r'\geq', r'\wedge', r'\vee', r'\top', r'\bot', r'\sqsubseteq', 
         r'\there4', r'\sup2', r'\frac12', r'\frac34x', r'\zwj', r'\nbsp', r'\foo', r'\leqx', r'\le', r'\_ ', '\\', r'\iff', r'\mid',
         'x^{2}', 'a_{i}', 'a_{b}^{c}', 'x^{n+1}', r'x^{\alpha}', r'x^{\alpha{}}', 'x^{{a}{b}}', 'x^{a{b}}', 'x^{}', 'x^{*b*}', 'x^2',
         'x_{i', 'x^{{{a}}}', 'x^{a}_{b}', 'é^{é}', ' ^{2}', 'x^{ab c}', 'x^{(1)}', '{}', '*b*', '/i/', '_u_', '+s+', '=v=', '~c~', '*a =b* c=', '/x ~y/ z~',
-        '*', '/', '_', '+', '=', '~', '^', '{', '}', '(', '-', '|', 'é', '²', '\t', ':']
+        '*', '/', '_', '+', '=', '~', '^', '{', '}', '(', '-', '|', 'é', '²', '\t', ':', '[x]', '[']
 
 
 def gen_show(r):
@@ -325,7 +333,7 @@ def gen_show(r):
     for _ in range(r.randint(1, 6)):
         body = ''.join(r.choice(MATH) + r.choice(['', '', ' ', ' ', '{}']) for _ in range(r.randint(0, 8)))
         out.append(r.choice(['', '', '', '* ', '** TODO ', '# ', '#+TITLE: ', '#+begin_src c\n', '| ', ':PROP: ', '- ', '  ',
-                             'CLOCK: ', '-----\n', '|---+---|\n', '#+begin_quote\n', ':x^{2}: ', ':a\\alpha{}x_{i}: ', ':*b*^{c}: ', '#+caption: ', '#+name: ', '*', '/', '**', '/ ', '= ']) + body + r.choice(['', '', ' |', ' :a:']))
+                             'CLOCK: ', '-----\n', '|---+---|\n', '#+begin_quote\n', ':x^{2}: ', ':a\\alpha{}x_{i}: ', ':*b*^{c}: ', '#+caption: ', '#+name: ', '*', '/', '**', '/ ', '= ', '%%(x) ', '++\n', '++']) + body + r.choice(['', '', ' |', ' :a:']))
     return '\n'.join(out) + r.choice(['\n', ''])
 
 
@@ -355,7 +363,51 @@ def run(driver, files, w):
     return split(el.stdout.decode('utf-8', 'replace')), split(c.stdout.decode('utf-8', 'replace'))
 
 
+def cells(rows, fmt):
+    """the C initialisers of rows, as many to a line as fit in 100 columns"""
+    out, line = [], '\t'
+    for r in rows:
+        item = fmt(r) + ', '
+        if len(line.expandtabs(8)) + len(item.rstrip()) > 100:
+            out.append(line.rstrip())
+            line = '\t'
+        line += item
+    return out + [line.rstrip()]
+
+
+def tables():
+    """src/org's two generated tables (-g)"""
+    el = ('(progn (load (expand-file-name "tools/org_show.el")) (let (l) (dolist (e (append org-entities-user org-entities))'
+          ' (when (and (consp e) (= (length (nth 6 e)) 1) (not (assoc (car e) l))) (push (cons (car e) (nth 6 e)) l)))'
+          ' (dolist (x l) (princ (format "%s %s\n" (car x) (cdr x))))))')
+    got = subprocess.run(['emacs', '-Q', '--batch', '--eval', el], capture_output=True, check=True).stdout.decode('utf-8')
+    ents = sorted((l.split(' ', 1) for l in got.split('\n') if l), key=lambda r: r[0].encode())
+    ents = [r for r in ents if re.fullmatch(r'[a-zA-Z]+|there4|sup[123]|frac[13][24]', r[0]) and len(r[1]) == 1]
+    esc = lambda u: u.replace('\\', '\\\\').replace('"', '\\"')
+    with open('src/org/entities.h', 'w') as g:
+        g.write('\n'.join(['/* What org-pretty-entities shows for \\NAME: the entries of (append',
+                            '   org-entities-user org-entities) (Org 9.8.7, with Davy\'s lattice symbols',
+                            '   from tools/org_show.el) whose UTF-8 form is one character and whose name',
+                            '   org-fontify-entities can match, the first of each name, sorted in byte',
+                            '   order.  Generated by tools/org_conform.py -g. */',
+                            'static const char *const entities[][2] = {']
+                           + cells(ents, lambda r: '{ "%s", "%s" }' % (r[0], esc(r[1]))) + ['};', '']))
+    with open('src/org/scripts.h', 'w') as g:
+        g.write('\n'.join(['/* Unicode\'s superscript and subscript forms (decomposition <super> or',
+                            '   <sub> of one character; SUPERSCRIPT/SUBSCRIPT names first, then',
+                            '   MODIFIER LETTER, then the lowest code point), sorted by the character',
+                            '   they stand for: how a cell grid shows what Org raises.  Generated by',
+                            '   tools/org_conform.py -g, from the table its -s draws Org with. */',
+                            'typedef struct { unsigned c; const char *s; } Script;']))
+        for name, tag in (('sup', '<super>'), ('sub', '<sub>')):
+            t = sorted(script_table(tag).items())
+            g.write('\n'.join(['', 'static const Script %s[] = {' % name] + cells(t, lambda r: '{ 0x%X, "%s" }' % (ord(r[0]), r[1])) + ['};']))
+        g.write('\n')
+
+
 def main():
+    if sys.argv[1] == '-g':
+        return tables()
     faces = sys.argv[1] == '-f'
     todo = sys.argv[1] == '-t'
     show = sys.argv[1] == '-s'
@@ -408,7 +460,7 @@ def main():
             if show:
                 with open(p, 'rb') as t:
                     t = t.read()
-                if long_script(t.decode('utf-8', 'replace')):
+                if long_script(t.decode('utf-8', 'replace'), a):
                     errors += 1
                     continue
                 a = shown(t, a)
@@ -429,6 +481,7 @@ def main():
                 print('%s (kept as %s): line %d\n  org: %s\n  ours: %s' % (
                     name, keep, j + 1, a[j] if j < len(a) else '(end)', b[j] if j < len(b) else '(end)'))
     print('%d of %d differ (no answer from Org on %d)' % (bad, len(files), errors))
+    shutil.rmtree(tmp)   # the failing texts are kept in build/
     sys.exit(1 if bad else 0)
 
 

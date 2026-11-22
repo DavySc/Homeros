@@ -1322,18 +1322,20 @@ struct OrgFx {
 	Scan c;                /* the scan's state at the last line it coloured */
 	unsigned char *lf;     /* that line's faces (the core asks a long line in pieces) */
 	size_t lcap;           /* as long as the longest line, unless out of memory */
+	Scan cs;               /* conceal's: the scan's state at the last line it showed */
+	size_t *em, emcap;     /* conceal's emphasis matches, begin and end (they grow, then stay) */
 };
 
 OrgFx *orgfx_new(const Text *t)
 {
 	OrgFx *f = calloc(1, sizeof *f);
-	if (f) f->t = t, f->dirty = 1, f->hc = text_len(t), f->c.at = ORG_NONE;
+	if (f) f->t = t, f->dirty = 1, f->hc = text_len(t), f->c.at = f->cs.at = ORG_NONE;
 	return f;
 }
 
 void orgfx_free(OrgFx *f)
 {
-	if (f) free(f->s), free(f->e), free(f->lf);
+	if (f) free(f->s), free(f->e), free(f->lf), free(f->em);
 	free(f);
 }
 
@@ -1361,7 +1363,7 @@ int orgfx_update(OrgFx *f, int (*stop)(void))
 	f->n = n;
 	org_edit(&f->e, &f->k, f->s, n, f->lo, f->ho - f->lo, f->hc - f->lo);   /* out of memory: no parse, scans from the start */
 	f->dirty = 0;
-	f->c.at = ORG_NONE;
+	f->c.at = f->cs.at = ORG_NONE;
 	S = (const unsigned char *)f->s; N = n;
 	for (size_t l = bol(f->lo), m; l < n && l <= f->hc; l = nextl(l))   /* the lines the edits touched */
 		if ((m = nextl(l) - l) > f->lcap) {
@@ -1381,12 +1383,13 @@ static size_t head_at(const OrgFx *f, size_t p)
 }
 
 /* the faces of [a, z) of the text at the last update into out */
-/* the scan's state at the line L (meta's set must write nowhere) */
-static Scan scan_at(OrgFx *f, size_t L)
+/* the scan's state at the line L, from k when it is on the way (meta's
+   set must write nowhere) */
+static Scan scan_at(OrgFx *f, const Scan *k, size_t L)
 {
 	size_t R = head_at(f, L);   /* a headline's line is outside any block */
 	if (R == ORG_NONE) R = 0;
-	Scan c = f->c.at <= L && f->c.at >= R ? f->c : (Scan){ R, 0, 0, 0 };
+	Scan c = k->at <= L && k->at >= R ? *k : (Scan){ R, 0, 0, 0 };
 	while (c.at < L) meta(&c);
 	return c;
 }
@@ -1395,7 +1398,7 @@ static void paint(OrgFx *f, size_t a, size_t z, unsigned char *out)
 	S = (const unsigned char *)f->s; N = f->n; F = out; FA = a; FZ = z;
 	if (a >= z || a >= N) return;
 	size_t L = bol(a);
-	Scan c = scan_at(f, L);
+	Scan c = scan_at(f, &f->c, L);
 	while (c.at < z && c.at < N) {
 		size_t l = c.at, nl = nextl(l), u = a > l ? a : l, v = z < nl ? z : nl;
 		if (f->c.at == l) { FZ = 0; c = f->c; meta(&c); }   /* coloured: the scan steps over it */
@@ -1499,7 +1502,7 @@ static size_t emph_close(size_t p, size_t lim)
 	return (Cx[k] = c) < lim ? c : 0;
 }
 /* from the line before CL: emphasis there may end on CL */
-static void emphasis(size_t from, size_t *ea, size_t *ez, size_t *ek)
+static void emphasis(OrgFx *f, size_t from, size_t *ek)
 {
 	size_t bar = 0, rm = ORG_NONE;   /* the next | after p; the line rule() saw */
 	int rv = 0;
@@ -1518,7 +1521,11 @@ static void emphasis(size_t from, size_t *ea, size_t *ez, size_t *ek)
 		if (S[b] == '|' && bar < c) continue;
 		if (S[p] == '=' || S[p] == '~')   /* verbatim: no earlier markup inside shows hidden */
 			for (size_t i = CN; i-- > 0; ) if (C[i].a >= p && C[i].z <= c + 1) C[i] = C[--CN];
-		if (*ek < 64) ea[*ek] = p, ez[*ek] = c + 1, ++*ek;
+		if (2 * *ek == f->emcap) {   /* out of memory: later scripts inside emphasis are raised */
+			size_t *g = realloc(f->em, (2 * f->emcap + 64) * sizeof *g);
+			if (g) f->em = g, f->emcap = 2 * f->emcap + 64;
+		}
+		if (2 * *ek < f->emcap) f->em[2 * *ek] = p, f->em[2 * *ek + 1] = c + 1, ++*ek;
 		if (!comment(l)) hide(p, p + 1, ""), hide(c, c + 1, "");
 	}
 }
@@ -1556,15 +1563,16 @@ static void entities_at(size_t l)
 		else p = e - 1;
 	}
 }
-static const char *script(unsigned c, int up_)
+static int by_cp(const void *k, const void *e)
 {
-	size_t lo = 0, hi = up_ ? sizeof sup / sizeof *sup : sizeof sub / sizeof *sub;
-	while (lo < hi) {
-		size_t m = (lo + hi) / 2, v = up_ ? sup[m].c : sub[m].c;
-		if (v == c) return up_ ? sup[m].s : sub[m].s;
-		if (v < c) lo = m + 1; else hi = m;
-	}
-	return NULL;
+	unsigned a = *(const unsigned *)k, b = ((const Script *)e)->c;
+	return a < b ? -1 : a > b;
+}
+static const char *script(unsigned c, int up)
+{
+	const Script *x = up ? bsearch(&c, sup, sizeof sup / sizeof *sup, sizeof *sup, by_cp)
+	                     : bsearch(&c, sub, sizeof sub / sizeof *sub, sizeof *sub, by_cp);
+	return x ? x->s : NULL;
 }
 /* org-create-multibrace-regexp "{" "}" 3 at q: the closing brace, 0 when
    none: groups inside are all flat, or all hold flat groups only.  Its
@@ -1601,17 +1609,17 @@ static int raised(size_t a, size_t z, int up, int put)
 }
 /* from the line before: a script there may end on this line and cover a
    start here */
-static void scripts(size_t from, size_t l, const size_t *ea, const size_t *ez, size_t ek)
+static void scripts(size_t from, size_t l, const size_t *em, size_t ek)
 {
-	size_t kz = key(blanks(l), CE);   /* a property's key is org-special-keyword */
+	size_t kz = key(blanks(l), CE), i = 0, ez = 0;   /* a property's key is org-special-keyword; the emphasis seen, its furthest end */
 	for (size_t p = from; p + 2 < CE; p++) {
 		if (sp(p) || !one(p + 1, "_^") || S[p + 2] != '{') continue;
-		size_t z = braces(p + 2), m = p + 2, i;
+		size_t z = braces(p + 2), m = p + 2;
 		if (!z) continue;
 		/* ^[ \t]*#[ +] as comment-p; a script over lines shows as typed */
 		int ok = p >= l && p >= Prot && z < CE && !(S[blanks(l)] == '#' && one(blanks(l) + 1, " +")), up = S[p + 1] == '^', n;
-		for (i = 0; i < ek; i++) ok &= m < ea[i] || m >= ez[i];
-		if (ok && m >= kz && (n = raised(m + 1, z, up, 0)) >= 0 && CN + (size_t)n + 2 <= CCAP)
+		for (; i < ek && em[2 * i] <= m; i++) if (em[2 * i + 1] > ez) ez = em[2 * i + 1];
+		if (ok && m >= ez && m >= kz && (n = raised(m + 1, z, up, 0)) >= 0 && CN + (size_t)n + 2 <= CCAP)
 			hide(p + 1, m + 1, ""), raised(m + 1, z, up, 1), hide(z, z + 1, "");
 		p = z + 1 < CE && one(z + 1, "_^") ? z - 1 : z;
 	}
@@ -1623,20 +1631,21 @@ static int by_start(const void *a, const void *b)
 }
 size_t orgfx_conceal(OrgFx *f, size_t line, Conceal *out, size_t cap)
 {
-	size_t ea[64], ez[64], ek = 0;
+	size_t ek = 0;
 	orgfx_update(f, NULL);
 	S = (const unsigned char *)f->s; N = f->n;
 	CL = text_line_start(f->t, line); CE = eol(CL);
 	C = out; CN = 0; CCAP = cap;
 	if (CL >= N && N) return 0;
 	size_t pl = CL ? prevl(CL) : 0, b = blanks(CL);
-	Scan c = (FZ = 0, scan_at(f, pl));   /* a headline may end a block: from the line above */
+	Scan c = (FZ = 0, scan_at(f, &f->cs, pl));   /* a headline may end a block: from the line above */
 	if (CL) meta(&c);
+	f->cs = c;
 	/* org-activate-code: ^[ \t]*:\(?: .*\|$\) */
 	Prot = b < N && S[b] == ':' && (ateol(b + 1) || S[b + 1] == ' ') ? N : meta(&c);
-	emphasis(pl, ea, ez, &ek);
+	emphasis(f, pl, &ek);
 	entities_at(CL);
-	scripts(pl, CL, ea, ez, ek);
+	scripts(pl, CL, f->em, ek);
 	qsort(C, CN, sizeof *C, by_start);
 	size_t k = 0;   /* a marker two matches hide is hidden once; columns of the line */
 	for (size_t i = 0; i < CN; i++) if (!k || C[i].a >= C[k - 1].z + CL) C[k++] = (Conceal){ C[i].a - CL, C[i].z - CL, C[i].s };

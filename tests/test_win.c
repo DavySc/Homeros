@@ -20,6 +20,7 @@
 #include <string.h>
 #include "check.h"
 #include "backend.h"
+#include "image.h"
 #include "keys.h"
 #include "loop.h"
 
@@ -114,7 +115,7 @@ static void put(Grid *g, int r, int c, const char *s, int width, int attr)
    would otherwise start its debugger and wait */
 static LONG WINAPI crashed(EXCEPTION_POINTERS *e)
 {
-	fprintf(stderr, "test_win: FAIL, exception 0x%lx\n", (unsigned long)e->ExceptionRecord->ExceptionCode);
+	fprintf(stderr, "test_win FAIL: exception 0x%lx\n", (unsigned long)e->ExceptionRecord->ExceptionCode);
 	ExitProcess(3);
 }
 
@@ -145,6 +146,13 @@ int main(void)
 	PostMessageW(win, WM_CHAR, 8, 0);
 	CHECK(input(k, 4) == 1 && k[0] == 8);   /* Ctrl-H */
 	ks[VK_CONTROL] = 0;
+	PostMessageW(win, WM_CHAR, 9, 0);
+	CHECK(input(k, 4) == 1 && k[0] == KEY_TAB);
+	ks[VK_SHIFT] = 0x80;
+	SetKeyboardState(ks);
+	PostMessageW(win, WM_CHAR, 9, 0);
+	CHECK(input(k, 4) == 1 && k[0] == KEY_S_TAB);
+	ks[VK_SHIFT] = 0;
 	SetKeyboardState(ks);
 	for (int i = 0; i < 600; i++) PostMessageW(win, WM_CHAR, 'x', 0);
 	CHECK(input(k, 7) == 600);
@@ -171,6 +179,23 @@ int main(void)
 		CHECK(ch == tm.tmHeight && cw == tm.tmAveCharWidth);
 		DeleteDC(dc);
 		DeleteObject(f);
+	}
+	{   /* an image (package 21, thread 0's, agreed): Backend.cell is the cell
+	       measured above; tests/test_image.png (32 x 16, red then blue) shows
+	       from row 3, each tile its own columns, the background past it;
+	       then text again */
+		int w, h, n;
+		b->cell(&w, &h);
+		CHECK(w == cw && h == ch && 4 * cw > 32 && ch > 16);
+		CHECK((n = image_load("tests/test_image.png", 4, 1, cw, ch, 0x1e1e2e)) > 0);
+		image_put(&g, 3, 0, n, 0);
+		present(&g, &shown);
+		for (int y = 3 * ch; y < 3 * ch + 16; y++)
+			for (int x = 0; x < 32; x++) CHECK(px(x, y) == (x < 16 ? RGB(255, 0, 0) : RGB(0, 0, 255)));
+		CHECK(px(32, 3 * ch) == BG && px(0, 3 * ch + 16) == BG);
+		for (int c = 0; c < 4; c++) put(&g, 3, c, " ", 1, ATTR_NONE);
+		present(&g, &shown);
+		CHECK(px(1, 3 * ch + 1) == BG && px(20, 3 * ch + 1) == BG);
 	}
 
 	/* the mouse and the wheel, at their cells */
@@ -277,7 +302,7 @@ int main(void)
 	CHECK(!b->ready());
 	do QueryPerformanceCounter(&t1); while (!b->ready());
 	CHECK(p > 0 && t1.QuadPart - t0.QuadPart >= p + p / 8);
-	printf("test_win: next frame allowed after %.2f ms, refresh period %.2f ms\n",
+	printf("test_win (measured): next frame allowed after %.2f ms, refresh period %.2f ms\n",
 	       (double)(t1.QuadPart - t0.QuadPart) * 1000 / (double)f.QuadPart, (double)p * 1000 / (double)f.QuadPart);
 	present(&g, &shown);
 	/* idle: after a frame with nothing left to draw the timer stays quiet */
@@ -340,7 +365,7 @@ int main(void)
 	grid_free(&g);
 	grid_free(&shown);
 	puts("test_win: keys, mouse and clipboard; identical frame draws nothing; one change draws one cell; "
-	     "text, dim, face, face background, long cluster and wide cells; cursor drawn, restored and at (0,0) after a whole redraw; WM_PAINT; "
+	     "text, dim, face, face background, long cluster, wide and image cells; cursor drawn, restored and at (0,0) after a whole redraw; WM_PAINT; "
 	     "resize and DPI redraw whole; close is a key; paced; idle quiet; minimised draws nothing");
 	return 0;
 }

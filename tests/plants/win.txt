@@ -12,7 +12,7 @@ win: every cell drawn every frame~win WIN=win~~src/win/backend.c~			if (grid_cel
 win: the cell the cursor left is not restored~win WIN=win~~src/win/backend.c~int pr = all ? -1 : shown->crow, pc = shown->ccol;~int pr = all ? -1 : g->crow, pc = g->ccol;
 win: no cursor at (0, 0) after a whole redraw~win WIN=win~~src/win/backend.c~int pr = all ? -1 : shown->crow,~int pr = shown->crow,
 win: the cursor is not drawn reversed~win WIN=win~~src/win/backend.c~int rev = cursor || x->attr == ATTR_REV;~int rev = (cursor && 0) || x->attr == ATTR_REV;
-win: Backspace sent as 8~win WIN=win~~src/win/backend.c~put(w == 8 && GetKeyState(VK_CONTROL) >= 0 ? KEY_BS : (int)w);~put((int)w);
+win: Backspace sent as 8~win WIN=win~~src/win/backend.c~put(w == 8 && GetKeyState(VK_CONTROL) >= 0 ? KEY_BS : w == 9~put(w == 9
 win: Ctrl-H sent as Backspace~win WIN=win~~src/win/backend.c~w == 8 && GetKeyState(VK_CONTROL) >= 0 ? KEY_BS~w == 8 ? KEY_BS
 win: surrogate pair joined wrong~win WIN=win~~src/win/backend.c~((surr - 0xD800) << 10)~((surr - 0xD801) << 10)
 win: only a cluster's first code point drawn~win WIN=win~~src/win/backend.c~i < x->len; i += uni_len~i < 1; i += uni_len
@@ -54,3 +54,4 @@ win: no underline or undercurl~win WIN=win~~src/win/backend.c~	if (!(fu->style &
 win: a flat undercurl~win WIN=win~~src/win/backend.c~(curl ? grid_curl(i, ch) : 0)~0
 win: an underline one pixel wide~win WIN=win~~src/win/backend.c~curl ? i + 1 : rc.right, y + 1~i + 1, y + 1
 win: the undercurl in the text's colour~win WIN=win~~src/win/backend.c~fu->style & FACE_SP ? RGB(fu->sp[0], fu->sp[1], fu->sp[2]) : f~f
+win: Shift-Tab sends Tab~win WIN=win~~src/win/backend.c~w == 9 && GetKeyState(VK_SHIFT) < 0~w == 9 && GetKeyState(VK_SHIFT) > 0

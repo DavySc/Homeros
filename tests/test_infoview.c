@@ -316,6 +316,11 @@ int main(int argc, char **argv)
 	while ((o = slurp(logpath)), !strstr(o, "\ninitialized ") && ms() < end) { free(o); loop_once(10); }
 	CHECK(strstr(o, "\ninitialized "));
 	free(o);
+	/* every write tells the server (didSave, after BufWritePost in core_write) */
+	CHECK(!core_write(&e, e.buf, 0));
+	while ((o = slurp(logpath)), !strstr(o, "\ntextDocument/didSave ") && ms() < end) { free(o); loop_once(10); }
+	CHECK(strstr(o, "\ntextDocument/didSave "));
+	free(o);
 	CHECK(!bridge_open(&e));
 	snprintf(opened, sizeof opened, "%s/opened", dir);
 	end = ms() + 5000;
@@ -569,19 +574,27 @@ int main(int argc, char **argv)
 	CHECK(count(B.ev.s, "serverRestarted") == hellos);
 
 	bridge_free();
-	/* the child deletes its file when the editor lets it go */
-	end = ms() + 3000;
-	while (!access(redirect, F_OK) && ms() < end) loop_once(10);
-	CHECK(access(redirect, F_OK));
-	/* \w again: a new child, a new token */
+	/* \w again at once, while the child let go still ends: a new child, a new token */
 	CHECK(!bridge_open(&e));
 	end = ms() + 5000;
 	while ((o = slurp(opened)), count(o, "\n") < 3 && ms() < end) { free(o); loop_once(10); }
 	CHECK(count(o, "\n") == 3);
 	*strrchr(o, '\n') = 0;
-	html = slurp(strrchr(o, '\n') + 8);
+	char *third = strrchr(o, '\n') + 1;
+	html = slurp(third + 7);
 	CHECK(strstr(html, "url=http://127.0.0.1:") && !strstr(html, token1));
-	free(html); free(o);
+	free(html);
+	/* the child let go deletes its file and ends; its end is not its successor's */
+	end = ms() + 3000;
+	while (!access(redirect, F_OK) && ms() < end) loop_once(10);
+	CHECK(access(redirect, F_OK));
+	for (end = ms() + 1000; ms() < end; ) loop_once(10);
+	CHECK(!bridge_open(&e));                 /* the same child: the same page again */
+	char *o4;
+	end = ms() + 5000;
+	while ((o4 = slurp(opened)), count(o4, "\n") < 4 && ms() < end) { free(o4); loop_once(10); }
+	CHECK(count(o4, "\n") == 4 && !strncmp(o4 + strlen(o4) - strlen(third) - 1, third, strlen(third)));
+	free(o); free(o4);
 	bridge_free();
 	core_free(&e);
 	free(uri); free(b.s);

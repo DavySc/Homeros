@@ -13,6 +13,7 @@
 #include "core.h"
 #include "keys.h"
 #include "loop.h"
+#include "lsp.h"
 #include "syntax.h"
 #include "grid.h"
 #include "../src/core/core_int.h"
@@ -21,9 +22,7 @@ static char path[] = "/tmp/core_contractXXXXXX";
 
 static void at(Editor *e, size_t l)
 {
-	e->win->line = l;
-	e->win->col = 0;
-	core_set_want(e);
+	core_goto(e, l, 0);
 	core_scroll_cursor(e, 'z');
 	core_update(e);
 }
@@ -39,6 +38,9 @@ int main(void)
 	CHECK(!fclose(f));
 	CHECK(!core_open(&e, path) && !grid_resize(&g, 24, 80));
 	core_update(&e);
+	/* core_goto past the end: the last line's last character, wanted there */
+	core_goto(&e, 1000, 1000);
+	CHECK(e.win->line == 99 && e.win->col == 2 && e.win->want == 2);
 
 	/* scrolling and gj/gk: 0 moved, -1 a beep */
 	struct { size_t from; int r[6]; } want[] = {   /* CTRL-D, CTRL-U, CTRL-F, CTRL-B, gj, gk */
@@ -149,6 +151,22 @@ int main(void)
 	CHECK(!core_close(&e, 0));
 	CHECK(!core_buf_delete(&e, 0, 0) && !strcmp(e.buf->path, fn[2]));
 	core_free(&e);
+	/* :bd closes the buffer's language server document once: core_free
+	   after it does not close it again (ASan; review of PR 111) */
+	{
+		static const char *const cat[] = { "sh", "-c", "cat >/dev/null", NULL }, *const none[] = { NULL };
+		const LspServer srv[] = { { ".lspt", "lspt", cat, none, 0 }, { 0 } }, *was = lsp_servers;
+		char f[128];
+		snprintf(f, sizeof f, "%s.lspt", path);
+		FILE *h = fopen(f, "w");
+		CHECK(h && fputs("x\n", h) >= 0 && !fclose(h));
+		lsp_servers = srv;
+		CHECK(!core_open(&e, fn[0]) && !core_edit_file(&e, f, 0) && e.buf->lsp);
+		CHECK(!core_buf_delete(&e, 0, 0) && !strcmp(e.buf->path, fn[0]));
+		core_free(&e);
+		lsp_servers = was;
+		unlink(f);
+	}
 	/* an outside change not yet warned is forgotten by a save over it:
 	   the next edit gives no W11 */
 	CHECK(!core_open(&e, fn[0]));

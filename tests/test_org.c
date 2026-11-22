@@ -1120,6 +1120,14 @@ int main(void)
 	CHECK(!memcmp(f + 20, g + 20, n - 20));
 	orgfx_free(x);
 	text_free(t);
+	Conceal cc[4];   /* and conceal's scan too: x^{2} is raised once no block holds it */
+	t = text_new("a\n#+begin_example\nx^{2}\nx^{2}\n#+end_example\n", 44);
+	x = t ? orgfx_new(t) : NULL;
+	CHECK(x && orgfx_conceal(x, 2, cc, 4) == 0);   /* keeps the scan at line 2 */
+	orgfx_edit(x, t, 2, 1, 1);
+	CHECK(!text_delete(t, 2, 1) && !text_insert(t, 2, "x", 1) && orgfx_conceal(x, 3, cc, 4) == 3);
+	orgfx_free(x);
+	text_free(t);
 	for (size_t i = 0; i < sizeof todos / sizeof *todos; i++) {
 		static char b[1024];
 		char *got = NULL;
@@ -1158,6 +1166,39 @@ int main(void)
 		CHECK(orgfx_conceal(x, 0, c, 64) == (i == 4 || i == 6 ? 64 : 0));
 		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t1);
 		CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000 < 100);
+		orgfx_free(x);
+		text_free(t);
+	}
+	/* the frame gate on many lines: the last 50 of 100,000 without a
+	   headline, shown one after another, take one walk from the top of
+	   the text, not one each (measured under the sanitizers, 5 runs:
+	   2.5 to 2.7 ms; walking for each line, 120 ms) */
+	{
+		static char many[100000 * 12];
+		size_t m = 0;
+		while (m < sizeof many) memcpy(many + m, "a *b* x^{2}\n", 12), m += 12;
+		struct timespec t0, t1;
+		t = text_new(many, m);
+		x = t ? orgfx_new(t) : NULL;
+		CHECK(x && orgfx_update(x, NULL));
+		Conceal c[64];
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t0);
+		for (size_t l = 100000 - 50; l < 100000; l++) CHECK(orgfx_conceal(x, l, c, 64) == 5);
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t1);
+		CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000 < 20);
+		orgfx_free(x);
+		text_free(t);
+	}
+	/* every emphasis match on a line counts, not the first 64: Org leaves
+	   the script inside the 66th as typed (PR 108's review, emph65.org) */
+	{
+		static char e65[65 * 4 + 8];
+		static Conceal c[256];
+		for (int i = 0; i < 65; i++) memcpy(e65 + 4 * i, "*a* ", 4);
+		memcpy(e65 + 260, "=x^{2}=", 7);
+		t = text_new(e65, 267);
+		x = t ? orgfx_new(t) : NULL;
+		CHECK(x && orgfx_conceal(x, 0, c, 256) == 132);
 		orgfx_free(x);
 		text_free(t);
 	}

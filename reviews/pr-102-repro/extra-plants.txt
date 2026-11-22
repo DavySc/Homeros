@@ -1,0 +1,11 @@
+# Reviewer's plants for PR 102 (format in tools/planted.sh): parts of the
+# cache's key, the pixel budget, a tile's column in each backend, and
+# dvipng after a failed latex.  Run: reviews/pr-102-repro/extra-plants.sh
+image: the cache ignores the cell's width~test TESTS=image~~src/image/image.c~ && s->cw == cw~
+image: the cache ignores the file's size~test TESTS=image~~src/image/image.c~ && s->id.size == id.size~
+image: the cache ignores the box's rows~test TESTS=image~~src/image/image.c~		    && s->mrows == rows && ~		    && 
+image: the cache ignores the path~test TESTS=image~~src/image/image.c~ && !strcmp(s->path, path)~
+image: no budget of pixels~test TESTS=image~~src/image/image.c~	for (struct slot *o; held + bytes > BUDGET && (o = oldest(1));) drop(o);~
+latex: dvipng runs after a failed latex~test TESTS=image~~src/image/latex.c~	if (!n && j->dpi > 0) {~	if (j->dpi > 0) {
+wl: every tile drawn at column 0~test TESTS=wl~~src/wl/wl.c~image_draw(px + y0 * bw + c * cell_w, bw, &x[c])~image_draw(px + y0 * bw, bw, &x[c])
+win: every tile drawn at column 0~win WIN=win~~src/win/backend.c~		image_draw(bits + r * ch * dw + c * cw, dw, x);~		image_draw(bits + r * ch * dw, dw, x);

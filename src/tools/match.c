@@ -194,14 +194,17 @@ static int digits(const char *s, size_t n)
 	for (size_t i = 0; i < n; i++) if (s[i] < '0' || s[i] > '9') return 0;
 	return 1;
 }
-static long num(const char *s, size_t n, long none)
+/* tonumber gives a float past long's range; the line is clamped later */
+long match_num(const char **p, const char *e)
 {
+	const char *s = *p;
 	long v = 0;
-	if (!n) return none;
-	/* tonumber gives a float past long's range; the line is clamped later */
-	for (size_t i = 0; i < n; i++) v = v > (LONG_MAX - 9) / 10 ? LONG_MAX : v * 10 + (s[i] - '0');
+	for (; s < e && *s >= '0' && *s <= '9'; s++) v = v > (LONG_MAX - 9) / 10 ? LONG_MAX : v * 10 + (*s - '0');
+	if (s == *p) return -1;
+	*p = s;
 	return v;
 }
+static long num(const char *s, size_t n, long none) { return n ? match_num(&s, s + n) : none; }
 
 /* Does p end in .[a-z_]+ with at least one byte before the dot? (.+%.[a-z_]+) */
 static int has_ext(const char *p, size_t n)

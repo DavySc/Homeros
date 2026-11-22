@@ -1,7 +1,7 @@
 /* Syntax colours against Neovim 0.12 (nvim --headless on PATH, running
    tests/test_syntax.lua): random windows of real C, Lua, Markdown, Rust
-   (ripgrep's printer), GLSL (glslang's test shaders) and Nix (nixpkgs'
-   writers) files, then random
+   (ripgrep's printer), GLSL (glslang's test shaders), Nix (nixpkgs'
+   writers), CMake (its modules) and SystemVerilog (Verilator's tests) files, then random
    edits applied incrementally with parses in between.  Neovim replays the same edits and parses, and its highlighter's captures, with
    its predicates, injections and #set! priority, must give the same face
    for every byte (per byte the highest priority wins, the later capture on
@@ -10,7 +10,9 @@
    A second copy of each case parses in slices, stopped at random points and
    resumed; resuming can also change the tree inside errors (measured, plain
    tree-sitter 0.27), so it must match only where Neovim's trees are free of
-   errors.  Lua patterns are compared with LuaJIT's string.find.  Not
+   errors.  At the end each line's fold must be Neovim's foldexpr's
+   (vim.treesitter.foldexpr(), for Markdown MarkdownFold()).  Lua patterns
+   are compared with LuaJIT's string.find.  Not
    tested: combined injections are gathered from the window, Neovim's from
    the whole tree (syntax.c, Inj), which differs only for an injected
    language whose text is unbalanced inside one string and closed in another
@@ -25,8 +27,8 @@
 #include "text.h"
 #include "../src/syntax/lmatch.h"
 
-enum { NL = 6, MAXCASES = 300, EDITS = 25, MAXT = 1 << 15 };
-static const char *const ext[NL] = { "c", "lua", "md", "rs", "frag", "nix" };
+enum { NL = 8, MAXCASES = 300, EDITS = 25, MAXT = 1 << 15 };
+static const char *const ext[NL] = { "c", "lua", "md", "rs", "frag", "nix", "cmake", "sv" };
 static int CASES = 40;   /* per language; CASES and SEED in the environment */
 
 static char dir[] = "/tmp/test_syntax_XXXXXX";
@@ -85,6 +87,8 @@ static const char *const snip[NL][16] = {
 	{ "\n", "//", "/*", "*/", "\"", "'", "{", "}", "(", ")", "!", "x", "\xc3\xa9", "println!(\"{}\", a);", "fn f<T>(", "r#\"" },
 	{ "\n", "//", "/*", "*/", "{", "}", "(", ")", ".", "x", "\xc3\xa9", "#version 450\n", "uniform vec4 c;", "layout(location = 0) ", "gl_FragColor", "#define A 1\n" },
 	{ "\n", "#", "/*", "*/", "''", "\"", "{", "}", "=", ";", "x", "${", "let ", "# lua\n", "/* lua */ ''", "pkgs.writeRust \"a\" {} ''" },
+	{ "\n", "#", "#[[", "]]", "\"", "${", "}", "(", ")", "x", " ", "\xc3\xa9", "set(", "if(ON)", "endif()", "[=[" },
+	{ "\n", "//", "/*", "*/", "\"", "(", ")", ";", "x", " ", "\xc3\xa9", "module m;", "endmodule", "always_ff @(posedge clk)", "`define A 1\n", "logic [7:0] " },
 };
 
 static int stops_left;
@@ -163,7 +167,7 @@ static void show(const char *dir, int c)
 	free(b);
 }
 
-static char want[MAXCASES * NL][MAXT + 1];
+static char want[MAXCASES * NL][MAXT + 1], wfold[MAXCASES * NL][4096];
 static int sliced_same[MAXCASES * NL];
 
 static int tat(void *v, size_t i)
@@ -409,10 +413,51 @@ static void cache_grows(const char *dir)
 	text_free(t);
 }
 
+/* Folds follow an edit: a C function's body folds, and after the edit that
+   makes it one line, nothing does. */
+static void folds_follow_edits(const char *dir)
+{
+	char path[2048];
+	snprintf(path, sizeof path, "%s/f.c", dir);
+	Text *t = text_new("int f() {\n\ta;\n}\n", 16);
+	CHECK(t);
+	Syntax *s = syntax_open(path, t);
+	CHECK(s);
+	int st;
+	CHECK(syntax_foldexpr(s, 0, &st) == 1 && st && syntax_foldexpr(s, 2, &st) == 1 && !st);
+	for (int i = 0; i < 2; i++) {     /* its two line breaks */
+		size_t at = i ? 12 : 9;
+		syntax_edit(s, t, at, 1, "", 0);
+		CHECK(!text_delete(t, at, 1));
+	}
+	CHECK(syntax_foldexpr(s, 0, &st) == 0 && !st);
+	syntax_free(s);
+	text_free(t);
+}
+
 /* The trees a reparse replaces are freed in steps that ask stop: an edit
    that deletes 2,000 lines frees about 10,000 nodes, so the update
    after it must stop more than once before it is done. */
 static int always(void) { return 1; }
+/* A `define whose macro_text is empty and ends the text injects a region
+   with no ranges, which is the whole text, in SystemVerilog again:
+   without a stop the parse recurses until the stack overflows (Neovim's
+   Lua stack does, so there is no Neovim answer to compare) */
+static void self_injection(const char *dir)
+{
+	char path[2048];
+	const char *src = "`define A`define A`define A`define A\n";
+	snprintf(path, sizeof path, "%s/self.sv", dir);
+	Text *t = text_new(src, strlen(src));
+	Syntax *s = t ? syntax_open(path, t) : NULL;
+	CHECK(s);
+	unsigned char f[64];
+	syntax_faces(s, 0, strlen(src), f);   /* injections are found in the window */
+	while (syntax_update(s, t, NULL) == 2) ;
+	syntax_free(s);
+	text_free(t);
+}
+
 static void release_in_steps(const char *dir)
 {
 	static char b[MAXT];
@@ -484,6 +529,51 @@ static void filetypes(void)
 	printf("test_syntax: %zu file names' filetypes as Neovim's\n", sizeof names / sizeof *names);
 }
 
+/* A .v gets SystemVerilog's colours where Neovim says verilog by its
+   content (Coq and V get none): tricky cases and the Verilator corpus */
+static void v_files(const char *dir)
+{
+	static const char *const tricky[] = {
+		"module m(input a);\nendmodule\n", "Theorem x : True.\n", "fn main() {\n}\n", "",
+		"/* a.\n*/\nmodule m (\n", "// x.\nwire a;\n", "x = 1; // y.\n", "(* keep *) wire a;\n",
+		"  /* c */ x;\n", "Module M.\n", "a;\r\n", "module foo_1 (\n", "x // (* y\nw;", "a.  \n",
+		"/* x\n (* y *)\n*/\nwire b;\n", "// a;\nTheorem x.\n",
+	};
+	enum { NT = sizeof tricky / sizeof *tricky };
+	char path[2048], *cmd = malloc(1 << 16), ft[64];
+	CHECK(cmd);
+	int n = 0, nv = NT + (int)ncorpus[7], len = snprintf(cmd, 1 << 16, "cd %s && nvim --headless --clean -l /dev/stdin <<'E'\nfor i = 0, %d do vim.cmd.edit(i .. '.v') io.write(vim.bo.filetype, '\\n') end\nE", dir, nv);
+	CHECK(len < 1 << 16);
+	for (int i = 0; i <= nv; i++) {
+		static char late[500 * 2 + 4];   /* line 501 */
+		for (int k = 0; i == NT && k < 501; k++) memcpy(late + 2 * k, k < 500 ? "x\n" : "a;\n", k < 500 ? 2 : 3);
+		const char *c = i < NT ? tricky[i] : i == NT ? late : corpus[7][i - NT - 1];
+		snprintf(path, sizeof path, "%s/%d.v", dir, i);
+		FILE *f = fopen(path, "w");
+		CHECK(f && fwrite(c, 1, strlen(c), f) == strlen(c) && !fclose(f));
+	}
+	FILE *p = popen(cmd, "r");
+	CHECK(p);
+	for (int i = 0; i <= nv; i++) {
+		CHECK(fgets(ft, sizeof ft, p));
+		snprintf(path, sizeof path, "%s/%d.v", dir, i);
+		size_t l;
+		char *c = slurp(path, &l);
+		Text *t = text_new(c, l);
+		Syntax *s = syntax_open(path, t);
+		if (!s != !!strcmp(ft, "verilog\n")) fprintf(stderr, "%d.v: Neovim %s", i, ft);
+		CHECK(!s == !!strcmp(ft, "verilog\n"));
+		n += !!s;
+		syntax_free(s);
+		text_free(t);
+		free(c);
+	}
+	CHECK(!pclose(p));
+	CHECK(!syntax_filetype("a.v"));
+	free(cmd);
+	printf("test_syntax: %d .v files, %d of them Verilog, as Neovim's\n", nv + 1, n);
+}
+
 int main(void)
 {
 	if (getenv("SEED")) rng = 2 * strtoull(getenv("SEED"), NULL, 10) + 1;   /* distinct seeds stay distinct */
@@ -496,6 +586,8 @@ int main(void)
 	edit_before_region(dir);
 	cache_grows(dir);
 	release_in_steps(dir);
+	self_injection(dir);
+	folds_follow_edits(dir);
 	filetypes();
 	char path[2048], vrt[1024] = "";
 	FILE *p = popen("nvim --headless --clean -l /dev/stdin <<'E'\nio.write(vim.env.VIMRUNTIME)\nE", "r");
@@ -510,7 +602,10 @@ int main(void)
 	add_dir(3, "build/syntax/src/corpus/rust", ".rs");
 	add_dir(4, "build/syntax/src/corpus/glsl", ".frag");   /* the first 64 by name */
 	add_dir(5, "build/syntax/src/corpus/nix", ".nix");
+	add_dir(6, "build/syntax/src/corpus/cmake", ".cmake");      /* the first 64 by name */
+	add_dir(7, "build/syntax/src/corpus/systemverilog", ".v");  /* SystemVerilog, read as .sv */
 	for (int l = 0; l < NL; l++) CHECK(ncorpus[l]);
+	v_files(dir);
 
 	static unsigned char fa[MAXT], fb[MAXT], fs[MAXT], ff[MAXT];
 	static char buf[MAXT], sbuf[MAXT + 1], cmd[1 << 16];
@@ -529,15 +624,31 @@ int main(void)
 		   (injection.include-children) and whose name contains? "assert";
 		   case 5, Nix's combined injections: Lua named by a comment
 		   (#gsub!) in two strings parsed as one tree, and writeRust's;
-		   case 11, a Nix string Neovim does not inject, as its injection
+		   case 6, Vim's match? in CMake's query: words ignoring case, a
+		   suffix after ".*", one word alone (set's variable);
+		   case 8, 24 nested C blocks, past 'foldnestmax' (20);
+		   case 10, Markdown's folds: setext headings (not under an empty
+		   line), and a '#' line in a code block, which MarkdownFold()
+		   folds with tree-sitter on;
+		   case 13, a Nix string Neovim does not inject, as its injection
 		   query's patterns of languages we lack still count toward the 256
 		   in-progress matches.
 		   The others: up to 80 lines of the corpus from a random line */
+		static char deep[300];
+		if (!deep[0]) {
+			strcpy(deep, "void f() {\n");
+			for (int k = 0; k < 24; k++) strcat(deep, "if (a) {\n");
+			strcat(deep, "x;\n");
+			for (int k = 0; k < 25; k++) strcat(deep, "}\n");
+		}
 		const char *fx = c == 2 ? "> *a\n> b* `c\n> d` [e\n> f](g)\n"
 		               : c == 3 ? "fn f() {\n    assert_eq!(v.len(), 3);\n    println!(\"{}\", g(x).y);\n}\n"
 		               : c == 5 ? "{\n  a = /* lua */ ''\n    local t = {\n  '';\n  b = /* lua */ ''\n    }\n  '';\n"
 		                          "  c = pkgs.writeRust \"r\" {} ''\n    fn main() { let x = 1; }\n  '';\n}\n"
-		               : c == 11 ? "  m (a // { i = \"${l.e p.b}\"; }) na/* lua */ ''  else\n    L b the ${f l is a s t b\n"
+		               : c == 6 ? "if(A-NOTFOUND AND x-notfound)\n  SET(v ON)\nendif()\nreturn()\n"
+		               : c == 8 ? deep
+		               : c == 10 ? "\n===\nTitle\n=====\ntext\nSub\n---\n# h\n```\n# not\n```\n## b\n"
+		               : c == 13 ? "  m (a // { i = \"${l.e p.b}\"; }) na/* lua */ ''  else\n    L b the ${f l is a s t b\n"
 		                           "    C b c w${ or w e a.\n:::{.example}\n    }\n    ''\n" : NULL;
 		const char *src = fx ? fx : corpus[lang][rnd((unsigned)ncorpus[lang])];
 		size_t sn = strlen(src), a = fx ? 0 : rnd((unsigned)sn), z;
@@ -611,6 +722,10 @@ int main(void)
 		sliced_same[c] = (!memcmp(fa, fb, text_len(t)) || !memcmp(ff, fb, text_len(t)))
 		                 + 2 * !memcmp(fb, fs, text_len(t));
 		render(t, fa, want[c]);
+		for (size_t l = 0, k = 0, nl = text_lines(t); l < nl && k < sizeof wfold[c] - 8; l++) {
+			int st, v = syntax_foldexpr(A, l, &st);
+			k += (size_t)snprintf(wfold[c] + k, sizeof wfold[c] - k, "%s%s%d", l ? " " : "", st ? ">" : "", v);
+		}
 		bytes += text_len(t);
 		len += snprintf(cmd + len, sizeof cmd - (size_t)len, " %d.%s", c, ext[lang]);
 		syntax_free(A);
@@ -635,7 +750,10 @@ int main(void)
 	snprintf(path, sizeof path, "%s/out.err", dir);
 	char *err = slurp(path, &en);
 	CHECK(en == (size_t)n);
-	int differ = 0, slice_differ = 0, with_err = 0, slice_err = 0, md_history = 0;
+	int differ = 0, slice_differ = 0, with_err = 0, slice_err = 0, md_history = 0, fdiffer = 0;
+	snprintf(path, sizeof path, "%s/out.fold", dir);
+	FILE *fo = fopen(path, "r");
+	CHECK(fo);
 	for (int c = 0; c < n; c++) {
 		size_t wl = strlen(want[c]);
 		CHECK((size_t)(q - o) + wl <= on);
@@ -650,6 +768,13 @@ int main(void)
 					break;
 				}
 			}
+		}
+		static char fl[1 << 16];
+		CHECK(fgets(fl, sizeof fl, fo));
+		fl[strcspn(fl, "\n")] = 0;
+		if (strcmp(fl, wfold[c]) && ++fdiffer <= 3) {
+			fprintf(stderr, "%s/%d.%s: folds differ\n  Neovim %s\n  here   %s\n", dir, c, ext[c % NL], fl, wfold[c]);
+			show(dir, c);
 		}
 		with_err += err[c] == '1';
 		if (sliced_same[c] != 3) {
@@ -696,14 +821,15 @@ int main(void)
 	for (char *x = po, *y = pgot; x < po + pn && y < pgot + npg; x = strchr(x, '\n') + 1, y = strchr(y, '\n') + 1, plines++)
 		if (strncmp(x, y, (size_t)(strchr(x, '\n') - x + 1)) && ++pdiff == 1)
 			fprintf(stderr, "Lua pattern case: LuaJIT %.*s here %.*s\n", (int)(strchr(x, '\n') - x), x, (int)(strchr(y, '\n') - y), y);
-	printf("test_syntax: %d of %d cases (%zu bytes) differ from Neovim, and %d of %d frames between an edit "
+	fclose(fo);
+	printf("test_syntax: %d of %d cases (%zu bytes) differ from Neovim (folds in %d), and %d of %d frames between an edit "
 	       "and its parse; sliced parses or other windows differ in %d of %d cases without syntax errors "
 	       "(and %d of %d with; Markdown's history-dependent trees in %d more); %d of 4000 Lua patterns (find, gsub) differ "
 	       "from LuaJIT\n",
-	       differ, n, bytes, snap_differ, snaps, slice_differ, n - with_err, slice_err, with_err, md_history,
+	       differ, n, bytes, fdiffer, snap_differ, snaps, slice_differ, n - with_err, slice_err, with_err, md_history,
 	       pdiff);
 	CHECK(plines == 4000);
-	CHECK(!differ && !snap_differ && !slice_differ && !pdiff);
+	CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff);
 	free(ws);
 	free(ns);
 	free(o);
