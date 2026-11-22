@@ -23,12 +23,15 @@ jobs:
       fail-fast: false
       matrix:
         target: ${{ fromJSON(github.head_ref == 'claude/project-thread-clivv8'
-                  && '["check", "planted SHARD=0/12", "planted SHARD=1/12", "planted SHARD=2/12", "planted SHARD=3/12",
-                       "planted SHARD=4/12", "planted SHARD=5/12", "planted SHARD=6/12", "planted SHARD=7/12",
-                       "planted SHARD=8/12", "planted SHARD=9/12", "planted SHARD=10/12", "planted SHARD=11/12"]'
+                  && '["check", "planted SHARD=0/16", "planted SHARD=1/16", "planted SHARD=2/16", "planted SHARD=3/16",
+                       "planted SHARD=4/16", "planted SHARD=5/16", "planted SHARD=6/16", "planted SHARD=7/16",
+                       "planted SHARD=8/16", "planted SHARD=9/16", "planted SHARD=10/16", "planted SHARD=11/16",
+                       "planted SHARD=12/16", "planted SHARD=13/16", "planted SHARD=14/16", "planted SHARD=15/16"]'
                   || '["check"]') }}
     runs-on: ubuntu-24.04
-    # 8 shards of train 14's 1,121 plants took 81 to 90 min, two cut at 90
+    # 8 shards of train 14's 1,121 plants took 81 to 90 min, two cut at 90;
+    # 12 shards of train 21's 1,467 hit 120 on three: 16 now (expected about 90 min each;
+    # 17 jobs plus windows stay under the account's 20)
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
