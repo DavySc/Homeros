@@ -10,6 +10,7 @@
 #include "loop.h"
 #include "org.h"
 #include "sqlfmt.h"
+#include "str.h"
 #include "uni.h"
 
 enum { SW = 4 };
@@ -1715,9 +1716,6 @@ int is_ft(const char *ext)
 	return n > k && !memcmp(B->path + n - k, ext, k);
 }
 
-/* conform.nvim with sqldiff, Davy's formatter for .sql: the whole text goes
-   to the formatter and only the changes in bytes [a, z) are applied, as
-   sqlfmt's range does */
 /* [a, z) becomes the n bytes of res as one change; the cursor stays on its
    text: after the edit it moves with it, inside it keeps its offset into
    the new text (as near as fits) */
@@ -1735,12 +1733,61 @@ static void replace(size_t a, size_t z, const char *res, size_t n)
 }
 static int oom(void) { core_msg(E, "E342: Out of memory!"); return -1; }
 
-int sql_format(size_t a, size_t z)
+/* Davy's conform.nvim formatters_by_ft: 1 sql (sqldiff), 2 systemverilog
+   and verilog (verible), 0 none */
+int fmt_kind(void)
+{
+	return is_ft(".sql") ? 1 : is_ft(".sv") || is_ft(".svh") || is_ft(".v") || is_ft(".vh") ? 2 : 0;
+}
+
+static Str vout;   /* verible's stdout */
+static void on_verible(void *ctx, int stream, const char *b, size_t n)
+{
+	if (stream == 1 && b) *(int *)ctx |= str_add(&vout, b, n);
+	if (!stream) *(int *)ctx |= n != 0;
+}
+
+/* conform.nvim's verible (its range_args, --lines), with Davy's 4-space
+   indent: the whole text goes through verible-verilog-format, as
+   'formatprg' through system() (proc_wait); the edit is where its output
+   differs.  0 ok, -1 with the message set. */
+static int verible(size_t *a, size_t *z, const char **res, size_t *n)
+{
+	char lines[48];
+	size_t len = text_len(B->text), p = 0, q = 0;
+	char *in = malloc(len + 1);
+	if (!in) return oom();
+	text_read(B->text, 0, in, len);
+	snprintf(lines, sizeof lines, "--lines=%zu-%zu", text_line_of(B->text, *a) + 1, text_line_of(B->text, *z > *a ? *z - 1 : *z) + 1);
+	/* the whole text without --lines, as conform.nvim: verible's lines
+	   mode skips its convergence check and formats 2 of Ibex's 33 files
+	   otherwise (measured) */
+	char *argv[] = { "verible-verilog-format", "--indentation_spaces=4", "-", NULL, NULL };
+	if (*a || *z < len) argv[2] = lines, argv[3] = "-";
+	int bad = 0, id = proc_spawn(argv, NULL, on_verible, &bad);
+	if (id >= 0) {
+		vout.n = 0;
+		bad |= proc_write(id, in, len);
+		proc_close(id);
+		bad |= proc_wait(id, 1000);
+		while (p < len && p < vout.n && in[p] == vout.s[p]) p++;
+		while (q < len - p && q < vout.n - p && in[len - 1 - q] == vout.s[vout.n - 1 - q]) q++;
+	}
+	free(in);
+	if (id < 0 || bad) { core_msg(E, id < 0 ? "Cannot run verible-verilog-format" : "verible-verilog-format failed"); return -1; }
+	*a = p; *z = len - q; *res = vout.s ? vout.s + p : ""; *n = vout.n - p - q;
+	return 0;
+}
+
+/* The buffer's formatter over bytes [a, z) (sqlfmt's range; verible's
+   lines): only the changes are applied */
+int buf_format(size_t a, size_t z)
 {
 	const char *res;
 	size_t n;
-	int kept = sqlfmt(B->text, &a, &z, &res, &n);
-	if (kept < 0) return oom();
+	int kept = 0;
+	if (fmt_kind() == 2 ? verible(&a, &z, &res, &n) : (kept = sqlfmt(B->text, &a, &z, &res, &n)) < 0)
+		return kept < 0 ? oom() : -1;
 	replace(a, z, res, n);
 	if (kept) core_msg(E, "%d statement%s kept as written", kept, kept == 1 ? "" : "s");
 	return 0;
@@ -1859,12 +1906,12 @@ static void format_lines(long line_count)
 	W->line = (size_t)l;
 }
 
-/* OP_FORMAT: a .sql buffer has Davy's 'formatexpr' (op_formatexpr()) over
-   the operator's lines; other buffers op_format() */
+/* OP_FORMAT: a buffer with a formatter has Davy's 'formatexpr'
+   (op_formatexpr()) over the operator's lines; other buffers op_format() */
 void op_format(Oparg *oap)
 {
-	if (is_ft(".sql")) {
-		sql_format(core_line_start(E, (size_t)oap->start.lnum), core_line_start(E, (size_t)oap->end.lnum + 1));
+	if (fmt_kind()) {
+		buf_format(core_line_start(E, (size_t)oap->start.lnum), core_line_start(E, (size_t)oap->end.lnum + 1));
 		return;
 	}
 	/* the cursor where gq was typed, so u puts it back there */

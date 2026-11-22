@@ -67,6 +67,8 @@ const TSLanguage *tree_sitter_markdown_inline(void);
 const TSLanguage *tree_sitter_rust(void);
 const TSLanguage *tree_sitter_glsl(void);
 const TSLanguage *tree_sitter_nix(void);
+const TSLanguage *tree_sitter_cmake(void);
+const TSLanguage *tree_sitter_systemverilog(void);
 static const struct Lang {
 	const char *name;
 	const TSLanguage *(*fn)(void);
@@ -78,27 +80,30 @@ static const struct Lang {
 	{ "rust", tree_sitter_rust },
 	{ "glsl", tree_sitter_glsl },
 	{ "nix", tree_sitter_nix },
+	{ "cmake", tree_sitter_cmake },
+	{ "systemverilog", tree_sitter_systemverilog },
 };
 enum { NLANGS = sizeof langs / sizeof *langs };
 
 /* File name endings, or whole names, Neovim's 'filetype' for each (nvim
    0.12 --clean, vim.filetype.match: a .h is cpp unless g:c_syntax_for_h;
-   a .v is Verilog or V by its content, so it is left out; Neovim also
+   a .v is Verilog, Coq or V by its content, as verilog() reads it, and
+   has no 'filetype' here; Neovim also
    strips backup endings such as ~ and .bak, which these do not; it knows no
    .dl, which is souffle as the Soufflé plugins for Vim name it), and what
    colours it: a langs[] index, T-SQL's, JSON's or Soufflé's word lists
    (tsql.c, in tsql_new's order), Org's (package 16, org.h), or nothing yet
    (Davy's other languages, FEATURES.md) */
-enum { BY_NONE = -1, BY_SQL = -2, BY_JSON = -3, BY_DL = -4, BY_ORG = -5 };
+enum { BY_NONE = -1, BY_SQL = -2, BY_JSON = -3, BY_DL = -4, BY_ORG = -5, BY_V = -6 };
 static const struct { const char *ext, *ft; int lang; } fts[] = {
 	{ ".c", "c", 0 }, { ".h", "cpp", 0 }, { ".lua", "lua", 1 }, { ".md", "markdown", 2 },
-	{ ".sql", "sql", BY_SQL }, { ".json", "json", BY_JSON }, { "CMakeLists.txt", "cmake", BY_NONE },
+	{ ".sql", "sql", BY_SQL }, { ".json", "json", BY_JSON }, { "CMakeLists.txt", "cmake", 7 },
 	{ ".txt", "text", BY_NONE }, { ".rs", "rust", 4 }, { ".nix", "nix", 6 },
 	{ ".glsl", "glsl", 5 }, { ".vert", "glsl", 5 }, { ".frag", "glsl", 5 },
 	{ ".comp", "glsl", 5 }, { ".geom", "glsl", 5 }, { ".tesc", "glsl", 5 },
-	{ ".tese", "glsl", 5 }, { ".sv", "systemverilog", BY_NONE }, { ".svh", "systemverilog", BY_NONE },
-	{ ".cmake", "cmake", BY_NONE }, { ".lean", "lean", BY_NONE }, { ".cs", "cs", BY_NONE },
-	{ ".org", "org", BY_ORG }, { ".dl", "souffle", BY_DL },
+	{ ".tese", "glsl", 5 }, { ".sv", "systemverilog", 8 }, { ".svh", "systemverilog", 8 },
+	{ ".cmake", "cmake", 7 }, { ".lean", "lean", BY_NONE }, { ".cs", "cs", BY_NONE },
+	{ ".org", "org", BY_ORG }, { ".dl", "souffle", BY_DL }, { ".v", NULL, BY_V },
 };
 
 /* fts[]'s entry for path's base name (after its last / or \, as Neovim),
@@ -125,11 +130,11 @@ const char *syntax_filetype(const char *path)
 
 /* Neovim's highlights and injections queries per language, in langs' order
    (build.mk compiles them in) */
-extern const char *const syntax_queries[][2];
+extern const char *const syntax_queries[][3];
 int syntax_release(TSTree *t, unsigned n);   /* release.c */
 enum { RELEASE_STEP = 1024 };                /* nodes freed between stop asks */
 
-enum { P_EQ, P_MATCH, P_ANYOF, P_ANCESTOR, P_PARENT, P_CONTAINS };
+enum { P_EQ, P_MATCH, P_VIM, P_ANYOF, P_ANCESTOR, P_PARENT, P_CONTAINS };
 typedef struct {
 	unsigned char kind, neg;
 	uint32_t cap;
@@ -145,7 +150,7 @@ typedef struct {
 	const char *ilang;         /* #set! injection.language "x" */
 	uint32_t ilen;
 	unsigned char iself, incl, comb; /* injection.self, .include-children, .combined */
-	unsigned char skip;        /* never passes (see lacked) */
+	unsigned char skip;        /* never passes (offset!, a match? form we lack) */
 	const char *gp, *gr;       /* #gsub! @injection.language pattern replacement */
 	uint32_t gpl, grl;
 } Pattern;
@@ -157,9 +162,9 @@ typedef struct {
 	uint32_t content, langcap; /* injections: capture ids, or NONE */
 } Q;
 
-/* Both queries of each language, compiled on first use and kept for the
+/* The queries of each language, compiled on first use and kept for the
    life of the editor (Neovim caches queries the same way). */
-static struct { Q hl, inj; int loaded; } queries[NLANGS];
+static struct { Q hl, inj, fold; int loaded; } queries[NLANGS];
 
 typedef struct {
 	TSRange *r;                /* n == 0: the whole text */
@@ -195,6 +200,8 @@ struct Syntax {
 	const Text *t;
 	int (*stop)(void);
 	char buf[4096];            /* the chunk tree-sitter is reading */
+	int *fold;                 /* syntax_foldexpr's per line, 2 * level + start */
+	size_t nfold;              /* 0: to be computed after the next update */
 	/* The faces of [ca, cz), kept until the trees change: the core asks line
 	   by line, and one query over the window costs a third to a tenth of one
 	   per line (measured, 48 lines, best of 50: 0.165 vs 0.424 ms in
@@ -254,31 +261,44 @@ static void set(Q *Q, Pattern *P, const TSQueryPredicateStep *st, uint32_t a, ui
 	else if (EQ(key, l, "injection.combined")) P->comb = 1;
 }
 
-typedef struct Src Src;
-static int resolve(Src *src, const char *s, uint32_t a, uint32_t z);
-
-/* An injection of a language we lack, named in the pattern: like Neovim
-   without that parser, it injects nothing, so the pattern is skipped before
-   its predicates are read (Rust's re2c pattern uses Vim's match?). */
-static int lacked(const TSQueryPredicateStep *st, uint32_t ns, const TSQuery *q)
+/* Vim's match? in the one form these queries use, \c^(a|b|.*c)$ or
+   \c^a$: one of the words ignoring case, ".*" before a word making it a
+   suffix (CMake's commands and booleans).  1 for another form: the
+   pattern is skipped, which the check against Neovim would show. */
+static int vim_words(Pred *p)
 {
-	for (uint32_t a = 0; a + 2 < ns; a++) {
-		uint32_t l, vl;
-		if (st[a].type != TSQueryPredicateStepTypeString || st[a + 1].type != TSQueryPredicateStepTypeString
-		    || st[a + 2].type != TSQueryPredicateStepTypeString) continue;
-		const char *n = ts_query_string_value_for_id(q, st[a].value_id, &l);
-		const char *k = ts_query_string_value_for_id(q, st[a + 1].value_id, &vl);
-		if (!EQ(n, l, "set!") || !EQ(k, vl, "injection.language")) continue;
-		k = ts_query_string_value_for_id(q, st[a + 2].value_id, &vl);
-		return resolve(NULL, k, 0, vl) < 0;
+	const char *s = p->str[0];
+	uint32_t n = p->len[0], k = 1, i = 3;
+	if (p->nstr != 1 || n < 5 || memcmp(s, "\\c^", 3)) return 1;
+	int par = s[3] == '(';
+	i += (uint32_t)par;
+	n -= 1 + (uint32_t)par;    /* the words end at s[n] */
+	if (par && s[n] != ')') return 1;
+	for (uint32_t j = i; j < n; j++) k += s[j] == '|';
+	const char **str = calloc(k, sizeof *str);
+	uint32_t *len = calloc(k, sizeof *len);
+	if (!str || !len) return free(str), free(len), -1;
+	for (uint32_t j = 0; j < k; j++, i++) {
+		uint32_t b = i;
+		if (s[i] == '.' && s[i + 1] == '*') i += 2;
+		while (isalnum((unsigned char)s[i]) || s[i] == '_' || s[i] == '-') i++;
+		str[j] = s + b;
+		len[j] = i - b;
+		if (j + 1 < k ? s[i] != '|' : i != n)
+			return free(str), free(len), 1;
 	}
+	free(p->str);
+	free(p->len);
+	p->str = str;
+	p->len = len;
+	p->nstr = k;
 	return 0;
 }
 
 /* Turns each pattern's predicate steps into Preds and metadata, as
    query.lua's process_patterns: "not-" negates.  A predicate these
-   languages' queries do not use (match?, the any- forms, #eq? of two
-   captures) fails the query, as Neovim errors on an unknown one. */
+   languages' queries do not use (the any- forms, #eq? of two captures)
+   fails the query, as Neovim errors on an unknown one. */
 static int compile(Q *Q, int hl)
 {
 	uint32_t np = ts_query_pattern_count(Q->q), nc = ts_query_capture_count(Q->q);
@@ -290,7 +310,7 @@ static int compile(Q *Q, int hl)
 		uint32_t l;
 		const char *s = ts_query_capture_name_for_id(Q->q, c, &l);
 		if (hl) Q->face[c] = s[0] == '_' ? 0 : face_of(s, l);
-		else if (EQ(s, l, "injection.content")) Q->content = c;
+		else if (EQ(s, l, "injection.content") || EQ(s, l, "fold")) Q->content = c;
 		else if (EQ(s, l, "injection.language")) Q->langcap = c;
 	}
 	for (uint32_t i = 0; i < np; i++) {
@@ -304,7 +324,6 @@ static int compile(Q *Q, int hl)
 		   in-progress matches Neovim's iter_matches allows, so dropping
 		   them keeps matches Neovim loses (measured: a Nix string after
 		   Lua's comment) */
-		if (!hl && (P->skip = (unsigned char)lacked(st, ns, Q->q))) continue;
 		for (uint32_t a = 0; a < ns; ) {
 			uint32_t b = a;
 			while (st[b].type != TSQueryPredicateStepTypeDone) b++;
@@ -329,6 +348,7 @@ static int compile(Q *Q, int hl)
 				if (l > 4 && !memcmp(name, "not-", 4)) p->neg = 1, name += 4, l -= 4;
 				if (EQ(name, l, "eq?")) p->kind = P_EQ;
 				else if (EQ(name, l, "lua-match?")) p->kind = P_MATCH;
+				else if (EQ(name, l, "match?")) p->kind = P_VIM;
 				else if (EQ(name, l, "any-of?")) p->kind = P_ANYOF;
 				else if (EQ(name, l, "has-ancestor?")) p->kind = P_ANCESTOR;
 				else if (EQ(name, l, "has-parent?")) p->kind = P_PARENT;
@@ -344,6 +364,9 @@ static int compile(Q *Q, int hl)
 					if (!ISSTR(a + 2 + k)) return -1;
 					p->str[k] = STR(a + 2 + k, p->len[k]);
 				}
+				int w = p->kind == P_VIM ? vim_words(p) : 0;
+				if (w < 0) return -1;
+				P->skip |= (unsigned char)w;
 				P->n++;
 			}
 			a = b + 1;
@@ -352,11 +375,12 @@ static int compile(Q *Q, int hl)
 	return 0;
 }
 
-static void load1(Q *Q, int li, int hl)
+static void load1(Q *Q, int li, int f)
 {
+	int hl = !f;
 	uint32_t off;
 	TSQueryError err;
-	const char *src = syntax_queries[li][!hl];
+	const char *src = syntax_queries[li][f];
 	Q->q = ts_query_new(langs[li].fn(), src, (uint32_t)strlen(src), &off, &err);
 	if (Q->q && compile(Q, hl)) {
 		ts_query_delete(Q->q);   /* the Preds stay: a few bytes, once */
@@ -368,8 +392,9 @@ static void load(int li)
 {
 	if (queries[li].loaded) return;
 	queries[li].loaded = 1;
-	load1(&queries[li].hl, li, 1);
-	load1(&queries[li].inj, li, 0);
+	load1(&queries[li].hl, li, 0);
+	load1(&queries[li].inj, li, 1);
+	load1(&queries[li].fold, li, 2);
 }
 
 static LTree *ltree(int lang)
@@ -400,9 +425,12 @@ static void free_ltree(Syntax *s, LTree *L)
 	free(L);
 }
 
+static int verilog(const Text *t);
+
 Syntax *syntax_open(const char *path, const Text *t)
 {
 	int i = ft_of(path), li = i < 0 ? BY_NONE : fts[i].lang;
+	if (li == BY_V) li = verilog(t) ? 8 : BY_NONE;
 	if (li == BY_NONE) return NULL;
 	if (li < BY_NONE) {
 		Syntax *s = calloc(1, sizeof *s);
@@ -438,6 +466,7 @@ void syntax_free(Syntax *s)
 	if (s->p) ts_parser_delete(s->p);
 	syntax_release(NULL, UINT32_MAX);
 	free(s->cache);
+	free(s->fold);
 	free(s);
 }
 
@@ -534,11 +563,38 @@ static int at(void *v, size_t i)
 	return (unsigned char)s->w[i - s->base];
 }
 
-static int text_eq(Src *src, uint32_t a, uint32_t z, const char *str, uint32_t len)
+/* Neovim's detect.lua M.v: in the first 500 lines, outside block comments
+   and // lines, the first line that ends in '.' or holds "(*" (outside a
+   comment) makes it Coq, one that ends in ';' (before a comment) or
+   opens a module's ports Verilog; neither is V */
+static int verilog(const Text *t)
+{
+	static const char *const pat[] = { "^%s*/%*", "%*/", "^%s*//", "%.%s*$", "/[/*]", "%(%*",
+		"/[/*].*%(%*", ";%s*$", ";%s*/[/*]", "^%s*module%s+%w+%s*%(" };
+	Src src = { t, 0, 0, { 0 } };
+	size_t n = text_lines(t);
+	int com = 0, f[10];
+	for (size_t l = 0; l < 500 && l <= n; l++) {
+		size_t a = text_line_start(t, l), z = text_line_start(t, l + 1);   /* %s takes the '\n' */
+		for (int k = 0; k < 10; k++) f[k] = lmatch_find(at, &src, a, z, pat[k], strlen(pat[k]));
+		com |= f[0];
+		if (com) com = !f[1];
+		else if (!f[2]) {
+			if ((f[3] && !f[4]) || (f[5] && !f[6])) return 0;
+			if (f[7] || f[8] || f[9]) return 1;
+		}
+	}
+	return 0;
+}
+
+/* ci: ignoring ASCII case, as Vim's \c */
+static int text_eq(Src *src, uint32_t a, uint32_t z, const char *str, uint32_t len, int ci)
 {
 	if (z - a != len) return 0;
-	for (uint32_t i = 0; i < len; i++)
-		if (at(src, a + i) != (unsigned char)str[i]) return 0;
+	for (uint32_t i = 0; i < len; i++) {
+		int c = at(src, a + i);
+		if (ci ? tolower(c) != tolower((unsigned char)str[i]) : c != (unsigned char)str[i]) return 0;
+	}
 	return 1;
 }
 
@@ -557,18 +613,25 @@ static int test1(Src *src, const Pred *p, TSNode n)
 	uint32_t a = ts_node_start_byte(n), z = ts_node_end_byte(n);
 	switch (p->kind) {
 	case P_EQ:
-		return p->nstr && text_eq(src, a, z, p->str[0], p->len[0]);
+		return p->nstr && text_eq(src, a, z, p->str[0], p->len[0], 0);
 	case P_MATCH:
 		return p->nstr && lmatch_find(at, src, a, z, p->str[0], p->len[0]);
 	case P_ANYOF:
 		for (uint32_t k = 0; k < p->nstr; k++)
-			if (text_eq(src, a, z, p->str[k], p->len[k])) return 1;
+			if (text_eq(src, a, z, p->str[k], p->len[k], 0)) return 1;
+		return 0;
+	case P_VIM:
+		for (uint32_t k = 0; k < p->nstr; k++) {
+			uint32_t m = p->len[k], suf = p->str[k][0] == '.';
+			if (z - a >= m - 2 * suf && text_eq(src, suf ? z - (m - 2) : a, z, p->str[k] + 2 * suf, m - 2 * suf, 1))
+				return 1;
+		}
 		return 0;
 	case P_CONTAINS:
 		/* every string, as a plain substring of the node's text */
 		for (uint32_t k = 0; k < p->nstr; k++) {
 			uint32_t i = a;
-			while (i + p->len[k] <= z && !text_eq(src, i, i + p->len[k], p->str[k], p->len[k])) i++;
+			while (i + p->len[k] <= z && !text_eq(src, i, i + p->len[k], p->str[k], p->len[k], 0)) i++;
 			if (i + p->len[k] > z) return 0;
 		}
 		return 1;
@@ -652,7 +715,9 @@ static int resolve(Src *src, const char *s, uint32_t a, uint32_t z)
 	}
 	for (int i = 0; i < NLANGS; i++)
 		if (strlen(langs[i].name) == n && !memcmp(langs[i].name, b, n)) return i;
-	return -1;
+	/* nvim-treesitter's plugin/filetypes.lua: systemverilog = { 'verilog' }
+	   (SystemVerilog's `define bodies, a verilog fence) */
+	return n == 7 && !memcmp(b, "verilog", 7) ? 8 : -1;
 }
 
 static TSRange mkrange(uint32_t a, TSPoint pa, uint32_t z, TSPoint pz)
@@ -780,8 +845,8 @@ static int set_regions(Syntax *s, LTree *K, Injs *I, int lang)
    The query does not ask stop: tree-sitter's halt drops the matches in
    progress, so a halted scan starts again and never ends while keys come
    (measured: sliced parses looped).  Its worst case, a Lua string cut on
-   each of 250 lines, costs about 50 ms a key; Neovim 0.12.6 takes 834 ms
-   (measured, 5 runs each; PR 91's review). */
+   each of 250 lines, costs about 40 ms a key; Neovim 0.12.6 takes 562 ms
+   (measured, 5 alternating runs; reviews/pr-97.md). */
 static int inject(Syntax *s, LTree *L, const Text *t)
 {
 	uint32_t a = s->ra, z = s->rz;
@@ -821,6 +886,14 @@ static int inject(Syntax *s, LTree *L, const Text *t)
 			rc = j ? clip(&cr, &L->reg[ti], &j->r) : -1;
 		}
 	}
+	/* no ranges is the whole text: in the tree's own language it would
+	   inject itself without end (Neovim overflows its Lua stack on a
+	   SystemVerilog `define whose empty macro_text ends the text) */
+	uint32_t m = 0;
+	for (uint32_t i = 0; i < I.n; i++)
+		if (I.v[i].r.n || I.v[i].lang != L->lang) I.v[m++] = I.v[i];
+		else free(I.v[i].r.r);
+	I.n = m;
 	/* children in the order their languages first appear; unused ones go */
 	uint32_t keep = 0;
 	for (uint32_t i = 0; i < I.n && !rc; i++) {
@@ -946,6 +1019,7 @@ int syntax_update(Syntax *s, const Text *t, int (*stop)(void))
 	int r = parse(s, s->root, t);
 	if (r == 2) return 2;
 	s->dirty = 0;
+	s->nfold = 0;              /* the folds follow the trees */
 	return r == 1;
 }
 
@@ -1073,6 +1147,98 @@ void syntax_faces(Syntax *s, size_t a, size_t z, unsigned char *face)
 	s->sa = s->sz = 0;
 	faces_tree(s, s->t, s->root, s->ca, s->ca, s->cz);
 	memcpy(face, s->cache + (a - s->ca), z - a);
+}
+
+/* ---- folds ---- */
+
+/* _fold.lua's compute_folds_levels, its first half: the @fold captures of
+   every tree, in for_each_tree's order, each a fold from its first row to
+   its last (one fewer when it ends at column 0) if it spans more than
+   'foldminlines' (1) and is not the one just counted */
+static void fold_tree(Syntax *s, LTree *L, int *in, int *out, int64_t *prev)
+{
+	Q *Q = &queries[L->lang].fold;
+	for (uint32_t i = 0; Q->q && i < L->nreg; i++) {
+		if (!L->reg[i].tree) continue;
+		ts_query_cursor_set_byte_range(s->qc, 0, UINT32_MAX);
+		ts_query_cursor_exec(s->qc, Q->q, ts_tree_root_node(L->reg[i].tree));
+		TSQueryMatch m;
+		while (ts_query_cursor_next_match(s->qc, &m)) {
+			const TSNode *a = NULL, *z = NULL;   /* a quantified capture's first and last */
+			for (uint16_t k = 0; k < m.capture_count; k++)
+				if (m.captures[k].index == Q->content) z = &m.captures[k].node, a = a ? a : z;
+			if (!a) continue;
+			int64_t sr = ts_node_start_point(*a).row;
+			TSPoint e = ts_node_end_point(*z);
+			int64_t er = (int64_t)e.row - (e.column == 0);
+			if (er - sr + 1 > 1 && (sr != prev[0] || er != prev[1]))
+				in[sr]++, out[er]++, prev[0] = sr, prev[1] = er;
+		}
+	}
+	for (uint32_t k = 0; k < L->nkid; k++) fold_tree(s, L->kid[k], in, out, prev);
+}
+
+/* Markdown's ftplugin (g:markdown_folding): MarkdownFold() starts a fold of
+   level n at a line of n '#' and a space, of 1 and 2 above a line of '='
+   or '-' only, and each other line keeps the level above ("=").  Its
+   code-block test reads Vim's syntax items, which tree-sitter highlighting
+   turns off, so it always passes (measured: test_syntax's cases). */
+static int md_fold(Src *src, const Text *t, size_t l, int prev)
+{
+	size_t a = text_line_start(t, l), z = text_line_start(t, l + 1) - 1, h = a;
+	while (at(src, h) == '#') h++;
+	if (h > a && at(src, h) == ' ') return 2 * (int)(h - a) + 1;
+	size_t b = z + 1, y = text_line_start(t, l + 2) - 1;
+	if (a < z && l + 1 < text_lines(t) && (at(src, b) == '=' || at(src, b) == '-')) {
+		int c = at(src, b);
+		while (at(src, b) == c) b++;
+		if (b == y) return c == '=' ? 3 : 5;
+	}
+	return prev & ~1;
+}
+
+/* The first call after a parse runs the folds query over every tree from
+   byte 0; Neovim's _fold.lua recomputes only the changed rows, after an
+   asynchronous parse.  Measured (PR 110's review, then here, 5 runs of 60
+   one-byte edits, -O2): tree-sitter's stack.c, 29 KB, 1.26 to 1.28 ms per
+   edit against a 0.31 ms reparse; its lib/src C files together, 489 KB, 17.2 to 17.9 ms
+   against 1.9 to 2.0 ms.  To settle with fold_update's wiring (package 20,
+   thread 0): changed rows only, or the levels of the last finished parse. */
+int syntax_foldexpr(Syntax *s, size_t line, int *start)
+{
+	*start = 0;
+	if (!s || s->sql) return 0;
+	if (s->org) return orgfx_foldexpr(s->org, line, start);
+	syntax_update(s, s->t, NULL);   /* NULL stop: never 2 */
+	const Text *t = s->t;
+	size_t n = text_lines(t);
+	if (!started(s) || line >= n) return 0;
+	if (!s->nfold) {
+		int *f = realloc(s->fold, 2 * (n + 1) * sizeof *f);
+		if (!f) return 0;
+		s->fold = f;
+		s->nfold = n;
+		memset(f, 0, 2 * (n + 1) * sizeof *f);
+		Src src = { t, 0, 0, { 0 } };
+		if (s->root->lang == 2) {
+			for (size_t l = 0, p = 0; l < n; l++) p = f[l] = md_fold(&src, t, l, p);
+		} else {
+			/* the second half: the levels, a line that ends one fold and
+			   starts another ending the first on the line above; past
+			   'foldnestmax' (20) a level is 20 and starts nothing */
+			int *in = f + n + 1, *out = f;
+			int64_t prev[2] = { -1, -1 };
+			fold_tree(s, s->root, in, out, prev);
+			for (size_t l = 0, lv = 0, left = 0; l < n; l++) {
+				size_t e = (size_t)in[l], o = (size_t)out[l], v = lv - left + e;
+				if (e && o) v -= o, o = 0;
+				f[l] = 2 * (int)(v > 20 ? 20 : v) + (e && v <= 20);
+				lv = v, left = o;
+			}
+		}
+	}
+	*start = s->fold[line] & 1;
+	return s->fold[line] >> 1;
 }
 
 /* render-markdown 8.14's facts for line l, from the Markdown block tree as

@@ -1385,7 +1385,6 @@ int getmark(int c, Pos *p)
 			*p = cur(), m.set = 1;
 		keepjumps = 0;
 		setcur(o);
-		if (!m.set) { core_msg(E, "E78: Unknown mark"); return 0; }
 	} else if (!(c >= 'A' && c <= 'Z') && !(c >= '0' && c <= '9')) { core_msg(E, "E78: Unknown mark"); return 0; }
 	if (!m.set) { core_msg(E, "E20: Mark not set"); return 0; }
 	if (m.line || m.col) *p = (Pos){ (long)m.line, (long)m.col, 0 };
@@ -1451,8 +1450,8 @@ static void nv_pcmark(Cmdarg *cap)
 	   not built, it beeps */
 	if (w->jump[w->jumpidx].buf != B) { clearopbeep(cap->oap); return; }
 	Mark m = w->jump[w->jumpidx].m;
-	if (m.line >= (size_t)nlines()) { core_msg(E, "E19: Mark has invalid line number"); clearop(cap->oap); }
-	else setcur((Pos){ (long)m.line, (long)m.col, 0 }), check_cursor();
+	/* nv_cursormark(): no E19, check_cursor() puts it back in the buffer */
+	setcur((Pos){ (long)m.line, (long)m.col, 0 }), check_cursor();
 	cap->oap->motion_type = MCHAR;
 	cap->oap->inclusive = 0;
 	set_curswant = 1;

@@ -126,7 +126,8 @@ void op_shift(Oparg *oap, long amount);
 void op_tilde(Oparg *oap);
 void op_format(Oparg *oap);
 int  is_ft(const char *ext);   /* the buffer's name ends in ext (".sql"): its file type */
-int  sql_format(size_t a, size_t z);   /* the edit for bytes [a, z), -1 out of memory */
+int  fmt_kind(void);
+int  buf_format(size_t a, size_t z);   /* the edit for bytes [a, z), -1 with the message set */
 void org_cycle(int dir);   /* cit (1), ciT (-1) on the entry under the cursor */
 int  op_replace(Oparg *oap, int c);
 void op_insert(Oparg *oap, long count1);

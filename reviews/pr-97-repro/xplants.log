@@ -1,0 +1,6 @@
+NOT CAUGHT update's result dropped (no redraw after an edit's colours change) | start: with no file the start screen shows; its recent picker lists alpha.txt
+caught     faces of a .org file never asked | make: *** [Makefile:63: test] Error 1
+caught     edit passes nins for ndel | make: *** [Makefile:63: test] Error 1
+caught     edit passes pos + 1 | make: *** [Makefile:63: test] Error 1
+caught     faces asked one byte late | make: *** [Makefile:63: test] Error 1
+clean: 0 start: with no file the start screen shows; its recent picker lists alpha.txt

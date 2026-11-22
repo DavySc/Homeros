@@ -159,7 +159,7 @@ static const char *const MTOK[] = { "ma", "mb", "m'", "m`", "m<", "m>", "m\"", "
    ~ and r, gv with one end or none, a bare ',
    '{ '( at the ends, m[ m], Enter at column 0 of an indented line, [( and ]) as jumps */
 static const char *const MFIX[] = { "Gicd\x0fuef\x1b`]", "jvjy`]", "jy0`]", "jjyl`]", "yjrx`]", "jm<gvd", "jm>gvd", "m<jm>gvd",
-                                    ":'\r", ":'\rx", "'{", "`(", "G'}", "G`)", "jwm[gg`[", "jjm]gg`]", "jwma0i\r\x1b`a", "jjixy\x1bggyyu`[",
+                                    ":'\r", ":'\rx", "'{", "`(", "G'}", "G`)", "jwm[gg`[", "jjm]gg`]", "jwma0i\r\x1b`a", "jwma0li\r\x1b`a", "jjixy\x1bggyyu`[",
                                     "j6l[(``", "j6l])``" };
 static void marks(char *k)
 {

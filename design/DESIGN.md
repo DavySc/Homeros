@@ -292,7 +292,7 @@ You will run development as a Claude project, with a coordinator and one thread 
 | 7. Fonts and shaping | src/font/ | font.h | every Lean symbol in Mathlib's notation files draws; combining marks and ZWJ emoji shaped; glyph cache hit rate | 0 | 3 |
 | 8. Wayland backend | src/wl/ | backend.h; Present.tla | frame callbacks; performance gates on Hyprland; configure size, scale, pointer, IME, clipboard, key repeat tested under weston | 0 | 6, 7, 10 |
 | 9. Win32 backend | src/win/ | backend.h | the same gates on Windows | 0 | 6, 7, 10 |
-| 10. Loop and processes | src/loop/ | loop.h | non-blocking pipe tests, Ctrl-C test, 0 idle wake-ups | 0 | 0 |
+| 10. Loop and processes | src/loop/ | loop.h; Wait.tla (proc\_wait, Neovim's system()) | non-blocking pipe tests, Ctrl-C test, 0 idle wake-ups | 0 | 0 |
 | 11. Files and crash journal | src/file/ | file.h; Save.tla, Save2.tla | crash and outside-writer tests on Linux and Windows; journal replay | 0 | 1, 2 |
 | 12. Syntax | src/syntax/ | syntax.h | frame budget held with tree-sitter on | 0 | 1, 6 |
 | 13. LSP and Lean | src/lsp/ | lsp.h; LspSync.tla | fake-server tests; the 2 s stale-diagnostics limit | 10 | 1, 4 |
