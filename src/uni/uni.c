@@ -142,3 +142,12 @@ int uni_width(const unsigned char *s, size_t n, size_t i)
 		return 2;
 	return w == 0 ? 1 : w == 1 ? 2 : w == 2 ? 4 : 6;
 }
+
+int uni_put(unsigned char *b, unsigned c)
+{
+	if (c < 0x80) { b[0] = (unsigned char)c; return 1; }
+	if (c < 0x800) { b[0] = (unsigned char)(0xC0 + c / 64); b[1] = (unsigned char)(0x80 + c % 64); return 2; }
+	if (c < 0x10000) { b[0] = (unsigned char)(0xE0 + c / 4096); b[1] = (unsigned char)(0x80 + c / 64 % 64); b[2] = (unsigned char)(0x80 + c % 64); return 3; }
+	b[0] = (unsigned char)(0xF0 + c / 262144); b[1] = (unsigned char)(0x80 + c / 4096 % 64); b[2] = (unsigned char)(0x80 + c / 64 % 64); b[3] = (unsigned char)(0x80 + c % 64);
+	return 4;
+}

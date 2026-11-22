@@ -1,0 +1,6 @@
+11,12c11,12
+< kitten: a second save restarts it~test TESTS=kitten~~src/kitten/kitten.c~if (!off && b == e->buf && !(frame >= 0 && for_buf == b)) kitten_paw(e);~if (!off && b == e->buf) kitten_paw(e);
+< kitten: plays for another buffer's save~test TESTS=kitten~~src/kitten/kitten.c~if (!off && b == e->buf && !(frame >= 0 && for_buf == b)) kitten_paw(e);~if (!off && !(frame >= 0 && for_buf == b)) kitten_paw(e);
+---
+> kitten: a second save restarts it~test TESTS=kitten~~src/kitten/kitten.c~ && !(frame >= 0 && for_buf == b)) kitten_paw(e);~) kitten_paw(e);
+> kitten: plays for another buffer's save~test TESTS=kitten~~src/kitten/kitten.c~ && b == e->buf && !(frame~ && !(frame

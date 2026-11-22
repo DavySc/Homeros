@@ -4,6 +4,7 @@
 # and runs it under Wine, as src/shada/check.sh does.
 set -eu
 cd "$(dirname "$0")/../.."
+. tools/winpass.sh
 for t in zig wine; do
 	command -v $t >/dev/null || { echo "src/tools/check.sh: $t is not on PATH"; exit 2; }
 done
@@ -26,4 +27,4 @@ zig cc -target x86_64-windows-gnu -O2 -c $SYN/queries.c -o build/win/tools/queri
 exe=build/win/test_tools_win.exe
 zig cc -target x86_64-windows-gnu -std=c17 -D_DEFAULT_SOURCE -Wall -Wextra -Werror -Iinclude $inc -O1 -g \
   -fsanitize=undefined -fsanitize-trap=undefined -o "$exe" tests/test_tools_win.c $srcs build/win/tools/queries.o build/win/tools/ts.o $objs
-timeout 600 wine "$exe" || { echo "FAIL test_tools_win"; exit 1; }
+pass 600 "$exe" wine || { echo "FAIL test_tools_win"; exit 1; }
