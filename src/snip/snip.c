@@ -10,13 +10,15 @@
    follows Davy's nvim-cmp setup (my-nvim lua/config/core/completion.lua). */
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include "core.h"
 #include "file.h"
 #include "match.h"
 #include "snip.h"
 #include "uni.h"
 
-typedef struct { char *name, *desc, *body; } Snip;
+/* head: the catalogue's "## " heading above it, the snippet's group */
+typedef struct { char *name, *desc, *body; const char *head; } Snip;
 static char *cat;              /* the catalogue's bytes, cut into Snips in place */
 static Snip *sn;
 static PumItem *items;         /* the popup's, in score order */
@@ -67,9 +69,12 @@ static void load(void)
 	if (!(sn = malloc(k * (sizeof *sn + sizeof *items + sizeof *score)))) return;
 	items = (PumItem *)(sn + k);
 	score = (int *)(items + k);
-	for (char *p = cat; (p = strstr(p, "```sql\n-- "));) {
+	const char *head = "";
+	for (char *p = cat, *q; (q = strstr(p, "```sql\n-- ")); ) {
+		for (char *h = p; (h = strstr(h, "\n## ")) && h < q; h++) head = h + 4;
 		Snip *s = &sn[nsn];
-		s->name = p += 10;
+		s->head = head;
+		s->name = p = q + 10;
 		char *nl = strchr(p, '\n'), *end = nl ? strstr(nl, "\n```") : NULL;
 		if (!end) break;
 		char *colon = strstr(p, " : ");
@@ -412,10 +417,37 @@ static int expand(Editor *e, const char *body, size_t a, size_t z)
 	return 0;
 }
 
+/* Davy's file names, <prefix>_<group>_<name>.sql: the first word that
+   names a group, as a word of the catalogue's headings ("proc" files get
+   the shared helpers); NULL for none */
+static const char *group(const Buf *b)
+{
+	static const char *const g[] = { "layout", "default", "context", "badge", "task", "trigger", "handler", "process", "proc" };
+	const char *p = b->path ? b->path : "", *w;
+	for (const char *q = p; *q; q++) if (*q == '/' || *q == '\\') p = q + 1;
+	for (w = p; *w; w += *w == '_') {
+		size_t n = strcspn(w, "_.");
+		for (size_t i = 0; i < sizeof g / sizeof *g; i++)
+			if (n == strlen(g[i]) && !strncmp(w, g[i], n)) return i == 8 ? "helpers" : g[i];
+		w += n;
+		if (*w == '.') break;
+	}
+	return NULL;
+}
+
+/* 1 when heading h, up to its '(' or line end, has the word w */
+static int heading_has(const char *h, const char *w)
+{
+	size_t n = strlen(w);
+	for (const char *p = h; *p && *p != '(' && *p != '\n'; p++)
+		if ((p == h || !alpha(p[-1])) && !strncasecmp(p, w, n) && !alpha(p[n])) return 1;
+	return 0;
+}
+
 static int word(int c) { return alpha((char)c) || digit((char)c) || c == '-'; }
 
 /* The popup for the word before the cursor (cmp's keyword pattern
-   \h\w*\%(-\w*\)*), best score first, catalogue order between equals; it
+   \h\w*\%(-\w*\)*), the file's group first, then best score, catalogue order between equals; it
    closes when there is none or nothing matches. */
 static void popup(Editor *e)
 {
@@ -424,10 +456,14 @@ static void popup(Editor *e)
 	while (a && word(l[a - 1])) a--;
 	while (a < col && !alpha((char)l[a])) a++;
 	int n = 0;
+	const char *g = group(e->buf);
 	if (a < col && !match_init(&m, (const char *)l + a, col - a))
 		for (int i = 0; i < nsn; i++) {
+			/* the file's group first; task snippets only in a task file */
+			if (heading_has(sn[i].head, "task") && !(g && !strcmp(g, "task"))) continue;
 			int s = match_score(&m, sn[i].name, strlen(sn[i].name), NULL, 0), j = n;
 			if (s <= 0) continue;
+			if (g && heading_has(sn[i].head, g)) s += 1 << 24;
 			for (; j && score[j - 1] < s; j--) items[j] = items[j - 1], score[j] = score[j - 1];
 			items[j] = (PumItem){ sn[i].name, "Snippet", sn[i].desc };
 			score[j] = s;

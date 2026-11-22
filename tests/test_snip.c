@@ -137,6 +137,24 @@ static void popup(void)
 	puts("test_snip: the catalogue's odd blocks and the popup's keys");
 }
 
+/* The group from the file name (Davy's <prefix>_<group>_<name>.sql) comes
+   first; task snippets show in a task file only */
+static void groups(void)
+{
+	static const struct { const char *file, *first; int n; } c[] = {
+		{ "x_default_a_default_b.sql", "gdef", 2 }, { "x_y_task_z.sql", "gtsk", 3 },
+		{ "x_proc_default.sql", "ghlp", 2 }, { "x_process_z.sql", "gdef", 2 }, { "tasks.sql", "gdef", 2 },
+	};
+	for (size_t i = 0; i < sizeof c / sizeof *c; i++) {
+		Editor *e = typed(c[i].file, "g");
+		CHECK(e->npum == c[i].n && !strcmp(e->pum[0].word, c[i].first));
+		for (int j = 0; j < e->npum; j++) CHECK(strcmp(e->pum[j].word, "gtsk") || c[i].n == 3);
+		feed(e, KEY_ESC);
+		core_free(e);
+	}
+	puts("test_snip: the file's group first, task snippets in task files only");
+}
+
 int main(int argc, char **argv)
 {
 	FILE *f = fopen(argc > 1 ? argv[1] : "src/snip/conform/recorded.txt", "r");
@@ -163,7 +181,9 @@ int main(int argc, char **argv)
 	for (int i = 0; i <= n; i++) {
 		static char b[1 << 17];
 		if (i < n) snprintf(b, sizeof b, "```sql\n-- s%04d : case %d\n%s\n```\n", i, i, body[i]);
-		else strcpy(b, "```sql\n-- pure\nSELECT 1\n```\n```sql\nno name\n```\n```text\n-- notsql : x\nY\n```\n");
+		else strcpy(b, "```sql\n-- pure\nSELECT 1\n```\n```sql\nno name\n```\n```text\n-- notsql : x\nY\n```\n"
+		               "## 6. Task (default)\n```sql\n-- gtsk : t\nT\n```\n## 2. Default\n```sql\n-- gdef : d\nD\n```\n"
+		               "## 11. Shared helpers\n```sql\n-- ghlp : h\nH\n```\n");
 		for (char *p = b; *p; p++) fputs(*p == '\n' ? "\r\n" : (char[]){ *p, 0 }, c);
 	}
 	CHECK(!fclose(c));
@@ -180,6 +200,7 @@ int main(int argc, char **argv)
 		printf("test_snip: %d of %d recorded vim.snippet cases differ\n", bad, n);
 		CHECK(!bad);
 		popup();
+		groups();
 	}
 	return 0;
 }
