@@ -28,10 +28,14 @@ tty: a long cluster printed from the cell's number~test TESTS=grid_diff~~src/tty
 tty: a cluster's ambiguity read from the cell's number~test TESTS=grid_diff~~src/tty/tty.c~if (wide && x->len > 1) {~if (wide && x->ch[0] >= 0x80) {
 tty: Delete dropped as an unknown sequence~test TESTS=tty_input~~src/tty/tty.c~s[2] == '3' && s[3] ==~s[2] == '9' && s[3] ==
 tty: Insert (CSI 2 tilde) taken for Delete~test TESTS=tty_input~~src/tty/tty.c~s[2] == '3' && s[3] ==~s[3] ==
-tty: a new background layer sends no new style~test TESTS=grid_diff~~src/tty/tty.c~long k = (long)x->bg << 16 | x->face << 8 | x->attr;~long k = x->face << 8 | x->attr;
+tty: a new background layer sends no new style~test TESTS=grid_diff~~src/tty/tty.c~(unsigned long)x->bg << 16 | x->face~x->face
 tty: the background layer is not drawn~test TESTS=grid_diff~~src/tty/tty.c~b->bg[0], b->bg[1], b->bg[2]);~f->bg[0], f->bg[1], f->bg[2]);
 tty: a wrong colour for a UI face (the status line's)~test TESTS=grid_diff~~ref/theme.c~{ {205, 214, 244}, {24, 24, 37}, FACE_FG | FACE_BG, {0} },  /* status line:~{ {205, 214, 244}, {24, 24, 38}, FACE_FG | FACE_BG, {0} },  /* status line:
 tty: the cursor line's colour wrong in the shared face table~test TESTS=grid_diff~~ref/theme.c~{ {0, 0, 0}, {42, 43, 60}, FACE_BG, {0} },~{ {0, 0, 0}, {42, 43, 61}, FACE_BG, {0} },
 tty: a heading bar's colour wrong in the shared face table~test TESTS=grid_diff~~ref/theme.c~{ {0, 0, 0}, {50, 40, 58}, FACE_BG, {0} },~{ {0, 0, 0}, {90, 61, 80}, FACE_BG, {0} },
 tty: the layer's foreground drawn too~test TESTS=grid_diff~~src/tty/tty.c~	if (f->style & FACE_FG) n +=~	if (x->bg) f = b;¶	if (f->style & FACE_FG) n +=
+tty: the underline layer left out of the style sent last~test TESTS=grid_diff~~src/tty/tty.c~(unsigned long)x->ul << 24 | ~
+tty: an undercurl sent as an underline~test TESTS=grid_diff~~src/tty/tty.c~";4:3" : u->style~";4" : u->style
+tty: no undercurl colour~test TESTS=grid_diff~~src/tty/tty.c~	if (u->style & FACE_SP) n +=~	if (0) n +=
+tty: the face's own undercurl, not the underline layer's~test TESTS=grid_diff~~src/tty/tty.c~u->style & FACE_UNDERCURL ? ";4:3"~f->style & FACE_UNDERCURL ? ";4:3"
 tty: Shift-Tab dropped as an unknown sequence~test TESTS=tty_input~~src/tty/tty.c~: s[2] == 'Z' ? KEY_S_TAB : -1;~: -1;

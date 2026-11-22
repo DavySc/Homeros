@@ -37,7 +37,7 @@ static const char *row(const Grid *g, int r, char what)
 		const Cell *x = &g->c[r * g->cols + c];
 		/* a right half shows its left half's colours */
 		if (!x->len && c) x--;
-		const Face *bg, *f = grid_face(x, &bg);
+		const Face *bg, *ul, *f = grid_face(x, &bg, &ul);
 		if (what == 'S') { if (x == &g->c[r * g->cols + c]) { memcpy(b + n, grid_text(x), x->len); n += x->len; } }
 		else if (what == 'B') b[n++] = bg->style & FACE_BG ? letter(bg->bg, BG, "RPYGSLCM") : '.';
 		else b[n++] = f->style & FACE_FG && !(x->len == 1 && x->ch[0] == ' ') ? letter(f->fg, FG, "rpygslbuc") : '.';
