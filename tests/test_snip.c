@@ -229,6 +229,11 @@ static void insert(int total)
 	grid_free(&g);
 	CHECK(tools_key(&pe, KEY_ENTER));
 	is(&pe, "begin\n    1\nend\n");
+	/* Enter at once takes the first: the file's group's */
+	snprintf(path, sizeof path, "%s/x_proc_b.sql", dir);
+	CHECK(!core_open(&pe, path));
+	CHECK(!tools_pick(&pe, PICK_SNIPPETS) && tools_key(&pe, KEY_ENTER));
+	is(&pe, "H\n");
 	/* the popup's order with a prompt too: the group first, though dtz
 	   is shorter */
 	snprintf(path, sizeof path, "%s/x_task_b.sql", dir);

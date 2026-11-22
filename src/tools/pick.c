@@ -117,7 +117,7 @@ static int cmp(const void *x, const void *y)
 
 /* Is it sorted?  Live grep is not, and an empty prompt sorts only for
    smart (matcher.sort_empty). */
-static int sorting(void) { return P.what != PICK_GREP && P.what != PICK_SNIPPETS && (P.m.ng || P.what == PICK_SMART); }
+static int sorting(void) { return P.what != PICK_GREP && (P.m.ng || P.what == PICK_SMART); }
 
 /* core/frecency.lua: visits decay with a 30-day half-life; a score is kept
    as the time it decays to 1 (its "deadline"), in a file of

@@ -35,7 +35,7 @@ snip: no $0, the area is lost~test TESTS=snip~~src/snip/snip.c~		r = k < 0 || (s
 snip: a line area includes its indent~test TESTS=snip~~src/snip/snip.c~a = core_line_start(e, l1) + indent(e, l1), ~a = core_line_start(e, l1), 
 snip: a character area misses its last character~test TESTS=snip~~src/snip/snip.c~c2 + uni_glen(l, len, c2) : len + 1~c2 + uni_glen(l, len, c2) - 1 : len + 1
 snip: the picker lists no snippets~test TESTS=snip~~src/tools/pick.c~	if (what == PICK_SNIPPETS) snippets();¶~¶
-snip: the picker shows no description~test TESTS=snip~~src/tools/pick.c~			grid_puts(g, row, c + 1, end, d, strlen(d), a ? a : ATTR_DIM, FACE_NONE);¶~¶
+snip: the picker shows no description~test TESTS=snip~~src/tools/pick.c~end, d, strlen(d), a ? a : ATTR_DIM~end, d, 0, a ? a : ATTR_DIM
 snip: the picker previews no body~test TESTS=snip~~src/tools/pick.c~			snprintf(P.pv[P.pvn++], sizeof P.pv[0], "%.*s", k, b);~			P.pvn++;
 snip: the picker opens a file on Enter~test TESTS=snip~~src/tools/pick.c~	if (P.what == PICK_SNIPPETS) {¶		close_picker();¶		snip_insert~	if (0) {¶		close_picker();¶		snip_insert
 snip: SPC i s not in Visual mode~test TESTS=keys_map~~src/keys/keys.c~(e->mode != MODE_NORMAL || !normal_mappable(0))~(e->mode != MODE_NORMAL || e->ks.visual || !normal_mappable(0))
@@ -46,7 +46,6 @@ snip: a blank first line's indent counted one short~test TESTS=snip~~src/snip/sn
 snip: the list is not ranked again for a new buffer or prompt~test TESTS=snip~~src/snip/snip.c~	if (!i) n = rank(e, nq ? q : NULL, nq);~	if (!n) n = rank(e, nq ? q : NULL, nq);
 snip: a heading's words after its '(' count~test TESTS=snip~~src/snip/snip.c~*p && *p != '(' && *p != '\n'; p++)~*p && *p != '\n'; p++)
 snip: later lines of the area are not indented as the $0 line~test TESTS=snip~~src/snip/snip.c~(put(o, "\n", 1) || put(o, ind, w))~put(o, "\n", 1)
-snip: the picker sorts snippets by its own score~test TESTS=snip~~src/tools/pick.c~P.what != PICK_SNIPPETS && (P.m.ng~(P.m.ng
 snip: the picker's prompt filters the first list, not the popup's order~test TESTS=snip~~src/tools/pick.c~	if (P.what == PICK_SNIPPETS) snippets();¶	else rematch();~	rematch();
 snip: the preview shows the description~test TESTS=snip~~src/tools/pick.c~		b += strlen(b) + 1;¶~¶
 snip: SPC i s runs git's leader~test TESTS=keys_map~~src/keys/keys.c~		case 's': tools_pick(e, PICK_SNIPPETS); break;¶~¶
