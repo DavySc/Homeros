@@ -1,6 +1,7 @@
 # Plants for src/snip/ and the hooks it needs in other packages (format in
 # tools/planted.sh).  test_snip replays the cases recorded from Neovim's
-# vim.snippet, then checks the popup's keys and the catalogue's odd blocks.
+# vim.snippet, then checks the popup's keys, the catalogue's odd blocks, the
+# groups from the file name and SPC i s (the picker, surround with).
 snip: the core never tells the stops of an edit~test TESTS=snip~~src/core/core.c~	snip_edit(b, t, pos, ndel, ins, nins);~
 snip: a mark at an edge of the change ignores its gravity~test TESTS=snip~~src/snip/snip.c~	else if (k->at >= pos) k->at = k->right ? pos + nins : pos;~	else if (k->at >= pos) k->at = pos;
 snip: the stops jumped to do not grow at their start~test TESTS=snip~~src/snip/snip.c~{ t->a.right = 0; t->z.right = 1; continue; }~{ t->a.right = 1; t->z.right = 1; continue; }
@@ -17,7 +18,7 @@ snip: CTRL-W in select mode a window command~test TESTS=snip~~src/snip/snip.c~		
 snip: Enter with nothing picked takes the first item~test TESTS=snip~~src/snip/snip.c~	case KEY_ENTER: if (s >= 0) break; core_pum(e, NULL, 0, -1, 0); return 0;~	case KEY_ENTER: if (s < 0) s = 0; break;
 snip: the popup's Tab does not pick~test TESTS=snip~~src/snip/snip.c~	case 14: case KEY_DOWN: case KEY_TAB:~	case 14: case KEY_DOWN:
 snip: the popup opens in any buffer~test TESTS=snip~~src/snip/snip.c~	if (!S.b && (e->mode != MODE_INSERT || !is_sql(e->buf))) return 0;~	if (!S.b && (e->mode != MODE_INSERT || (!is_sql(e->buf) && 0))) return 0;
-snip: a block with no name line taken as a snippet~test TESTS=snip~~src/snip/snip.c~	for (char *p = cat; (p = strstr(p, "```sql\n-- "));) {~	for (char *p = cat; (p = strstr(p, "```sql\n"));) {
+snip: a block with no name line taken as a snippet~test TESTS=snip~~src/snip/snip.c~(q = strstr(p, "```sql\n-- "))~(q = strstr(p, "```sql\n"))
 snip: a bare stop left empty~test TESTS=snip~~src/snip/snip.c~			if (ph->idx != t->idx) continue;~			if (ph->idx != t->idx || 1) continue;
 snip: unmapped S-Tab does nothing in Insert mode~test TESTS=snip~~src/keys/edit.c~	case KEY_S_TAB:   /* an unmapped <S-Tab> is a Tab (insert_handle_key's K_S_TAB) */¶~
 snip: an unnamed buffer asks for its .sql ending~test TESTS=snip~~src/snip/snip.c~	size_t n = b->path ? strlen(b->path) : 0;~	size_t n = strlen(b->path);
@@ -25,3 +26,17 @@ snip: a cursor inside a rewritten mirror stays past its text~test TESTS=snip~~sr
 snip: a jump's mirror write comes after its keys (its own undo step)~test TESTS=snip~~src/snip/snip.c~	if (*seen != S.tick) sync(e), *seen = S.tick;~	(void)seen;
 snip: a change on the cursor's line does not rerun CursorMoved~test TESTS=snip~~src/snip/snip.c~> cl) S.line = (size_t)-1;~> cl) (void)0;
 snip: a stop ending at a line start selects up to its last byte~test TESTS=snip~~src/snip/snip.c~b[k - 1] == '\n' ? t->z.at : ~
+snip: the file's group not ranked first~test TESTS=snip~~src/snip/snip.c~		if (g && heading_has(sn[i].head, g)) s += 1 << 24;¶~¶
+snip: task snippets outside task files~test TESTS=snip~~src/snip/snip.c~		if (heading_has(sn[i].head, "task") && !(g && !strcmp(g, "task"))) continue;¶~¶
+snip: proc files ranked by the word proc, not the helpers~test TESTS=snip~~src/snip/snip.c~return i == 8 ? "helpers" : g[i];~return g[i];
+snip: a later word of the file name wins~test TESTS=snip~~src/snip/snip.c~			if (n == strlen(g[i]) && !strncmp(w, g[i], n)) return i == 8 ? "helpers" : g[i];~			if (n == strlen(g[i]) && !strncmp(w, g[i], n) && strchr(w, '.') - w > 12) return i == 8 ? "helpers" : g[i];
+snip: a surrounded line keeps the first line's indent~test TESTS=snip~~src/snip/snip.c~		for (size_t b = 0; j && b < o->base && j < o->nsel && memchr(" \t", o->sel[j], 2); b++) j++;¶~¶
+snip: no $0, the area is lost~test TESTS=snip~~src/snip/snip.c~		r = k < 0 || (sel && put_sel(&o, k));~		r = k < 0;
+snip: a line area includes its indent~test TESTS=snip~~src/snip/snip.c~a = core_line_start(e, l1) + core_first_nonblank(e, l1), ~a = core_line_start(e, l1), 
+snip: a character area misses its last character~test TESTS=snip~~src/snip/snip.c~c2 + uni_glen(l, len, c2) : len + 1~c2 : len + 1
+snip: the picker lists no snippets~test TESTS=snip~~src/tools/pick.c~	while (what == PICK_SNIPPETS && ~	while (what == PICK_RECENT && 
+snip: the picker shows no description~test TESTS=snip~~src/tools/pick.c~			grid_puts(g, row, c + 1, end, d, strlen(d), a ? a : ATTR_DIM, FACE_NONE);¶~¶
+snip: the picker previews no body~test TESTS=snip~~src/tools/pick.c~			snprintf(P.pv[P.pvn++], sizeof P.pv[0], "%.*s", k, b);~			P.pvn++;
+snip: the picker opens a file on Enter~test TESTS=snip~~src/tools/pick.c~	if (P.what == PICK_SNIPPETS) {¶		const char *d, *b;¶		close_picker();~	if (0) {¶		const char *d, *b;¶		close_picker();
+snip: SPC i s not in Visual mode~test TESTS=keys_map~~src/keys/keys.c~(e->mode != MODE_NORMAL || !normal_mappable(0))~(e->mode != MODE_NORMAL || e->ks.visual || !normal_mappable(0))
+snip: no SPC i s map~test TESTS=keys_map~~src/keys/keys.c~, " is"¶};~¶};

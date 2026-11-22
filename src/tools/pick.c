@@ -19,6 +19,7 @@
 #include "loop.h"
 #include "match.h"
 #include "shada.h"
+#include "snip.h"
 #include "str.h"
 #include "uni.h"
 
@@ -479,6 +480,10 @@ int tools_pick(Editor *e, int what)
 		}
 	}
 	if (what == PICK_GREP) return 0;
+	/* SPC i s (package 19's, agreed by thread 0): the snippets, the file's
+	   group first */
+	const char *d, *b, *n;
+	while (what == PICK_SNIPPETS && (n = snip_get(e, (int)P.nit, &d, &b)) && !add(n, strlen(n), NULL, 0, 0, 0, 0, 0)) {}
 	if (what == PICK_SMART || what == PICK_BUFFERS) buffers(e);
 	if (what == PICK_SMART || what == PICK_RECENT) recent(e);
 	if (what == PICK_SMART || what == PICK_FILES) files();
@@ -505,6 +510,12 @@ static void confirm(Editor *e)
 {
 	if (!P.nshown) { close_picker(); return; }
 	Item it = P.it[P.shown[P.sel]];
+	if (P.what == PICK_SNIPPETS) {
+		const char *d, *b;
+		close_picker();
+		snip_insert(e, snip_get(e, (int)it.idx - 1, &d, &b));
+		return;
+	}
 	char f[PATH_MAX];
 	snprintf(f, sizeof f, "%.*s", (int)it.flen, P.a + it.file);
 	long line = it.line, col = it.col;
@@ -686,6 +697,16 @@ static void preview(void)
 	P.pvfor = want; P.pvn = 0; P.pvfirst = 1;
 	if (want < 0) return;
 	Item *it = &P.it[want];
+	if (P.what == PICK_SNIPPETS) {
+		/* a snippet: its body */
+		const char *d, *b;
+		snip_get(e, (int)it->idx - 1, &d, &b);
+		for (int k; *b && P.pvn < PREVIEW && P.pvn < h; b += k + (b[k] == '\n')) {
+			k = (int)strcspn(b, "\n");
+			snprintf(P.pv[P.pvn++], sizeof P.pv[0], "%.*s", k, b);
+		}
+		return;
+	}
 	if (it->buf) {
 		/* a buffer: its own text */
 		Buf *b = e->bufs;
@@ -718,7 +739,7 @@ void tools_draw(Editor *e, Grid *g)
 {
 	dash_draw(e, g);
 	if (!P.open) return;
-	static const char *title[] = { " Smart ", " Grep ", " Buffers ", "", "", " Files ", " Recent " };
+	static const char *title[] = { " Smart ", " Grep ", " Buffers ", "", "", " Files ", " Recent ", " Snippets " };
 	Box o, l, p;
 	int wide, h = list_height(e);
 	layout(e, &o, &l, &p, &wide);
@@ -753,6 +774,12 @@ void tools_draw(Editor *e, Grid *g)
 		while (d && f[d - 1] != '/') d--;
 		c = grid_puts(g, row, c + 1, end, f, d, a ? a : ATTR_DIM, FACE_NONE);
 		c = grid_puts(g, row, c, end, f + d, fn - d, a, FACE_NONE);
+		if (P.what == PICK_SNIPPETS) {
+			/* and its description, dimmed */
+			const char *d, *b;
+			snip_get(e, (int)it->idx - 1, &d, &b);
+			grid_puts(g, row, c + 1, end, d, strlen(d), a ? a : ATTR_DIM, FACE_NONE);
+		}
 		if (it->line) {
 			/* grep: :line:col: and the line */
 			const char *t = P.a + it->text + it->flen + 1;

@@ -118,7 +118,7 @@ static void key(int k, int pending)
 /* only those whose targets exist; the SPC g and SPC h ones are git.h's */
 static const char *const maps[] = {
 	" ff", " fg", " fr", " ,", " e", " pv", "-", " D",
-	" gg", " gs", " gl", " gL", " gd", " gb", " gB", " hs", " hr", " hS", " hu", " hp", " uk"
+	" gg", " gs", " gl", " gL", " gd", " gb", " gB", " hs", " hr", " hS", " hu", " hp", " uk", " is"
 };
 static int lead[3], nlead;   /* the keys typed of a map not yet complete */
 
@@ -132,24 +132,27 @@ static void dashboard(Editor *e) { if (!core_edit_file(e, "", 0)) tools_dash(e, 
    (Neovim's vgetorpeek() when no map matches) */
 static int map(Editor *e, int k)
 {
-	if (!nlead && (e->mode != MODE_NORMAL || e->ks.visual || !normal_mappable(0))) return 0;
+	if (!nlead && (e->mode != MODE_NORMAL || !normal_mappable(0))) return 0;
 	lead[nlead++] = k;
 	int part = 0;
 	for (size_t i = 0; i < sizeof maps / sizeof *maps; i++) {
 		const char *m = maps[i];
 		int j = 0;
+		/* in Visual mode only SPC i s, a snippet around the area (package 19's, agreed) */
+		if (e->ks.visual && strcmp(m, " is")) continue;
 		while (j < nlead && m[j] == lead[j]) j++;
 		if (j < nlead) continue;
 		if (m[j]) { part = 1; continue; }
 		nlead = e->ks.pending = 0;
 		normal_mappable(1);
-		switch (m[0] == '-' ? 'p' : m[1]) {
+		switch (m[0] == '-' ? 'p' : !strcmp(m, " is") ? 's' : m[1]) {
 		case 'f': tools_pick(e, m[2] == 'f' ? PICK_SMART : m[2] == 'g' ? PICK_GREP : PICK_REGISTERS); break;
 		case ',': tools_pick(e, PICK_BUFFERS); break;
 		case 'e': tools_pick(e, PICK_EXPLORER); break;
 		case 'p': tools_oil(e, NULL); break;
 		case 'u': kitten_toggle(e); break;
 		case 'D': dashboard(e); break;
+		case 's': tools_pick(e, PICK_SNIPPETS); break;
 		default: git_leader(e, m[1], m[2]);
 		}
 		return 1;

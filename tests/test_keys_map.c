@@ -63,6 +63,17 @@ int main(void)
 	CHECK(!strcmp(e.msg, "Kitten on save: off"));
 	feed(&e, " uk");
 	CHECK(!strcmp(e.msg, "Kitten on save: on"));
+	/* SPC i s, the snippet picker, also in Visual mode (around the area);
+	   no other map there: Space is its motion */
+	feed(&e, " is");
+	CHECK(picked(&e));
+	feed(&e, "0v is");
+	CHECK(picked(&e) && e.ks.visual);
+	feed(&e, "\0330v ff");
+	CHECK(!tools_key(&e, KEY_ESC));
+	feed(&e, "\0330v x");
+	CHECK(at(&e, "b\n", 0));
+	feed(&e, "u");
 	static Grid g;
 	CHECK(!grid_resize(&g, 24, 80));
 	feed(&e, ":KittenPaw\r");

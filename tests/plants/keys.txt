@@ -71,7 +71,7 @@ keys: i) and a) look for the unclosed bracket with quotes special, so from insid
 keys: i) and a) look for the closing bracket with quotes not special, as for the opening one (recorded traces)~test TESTS=~~src/keys/motion.c~	cpo_match = 0;¶~
 keys: a SPC that completes no map drops Space's own motion (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	keys_feed(e, l[0], 1);¶~
 keys: the keys after a failed map skip the pickers, git and the maps, so SPC SPC ff moves and the dashboard's q records a macro (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	for (int i = 1; i < n; i++) keys_input(e, l[i], i < n - 1);~	for (int i = 1; i < n; i++) keys_feed(e, l[i], i < n - 1);
-keys: SPC maps also run in Visual mode, where Davy has none (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~e->mode != MODE_NORMAL || e->ks.visual || ~e->mode != MODE_NORMAL || 
+keys: SPC maps other than SPC i s also run in Visual mode (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		if (e->ks.visual && strcmp(m, " is")) continue;¶~¶
 keys: a map that runs leaves the count typed before it for the next command (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~	if (drop) { npend = 0; opcount = 0; clearop(&oa); }~	if (drop) npend = 0;
 keys: SPC after an operator starts a map instead of being its motion (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~	if (oa.op_type != OP_NOP) return 0;¶~
 keys: an incomplete map does not keep the next key, so a picker or git can take it (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (part) return e->ks.pending = 1;~	if (part) return 1;
@@ -157,7 +157,7 @@ keys: :s goes on with 'hlsearch''s program after a redraw (test_keys_ex)~test TE
 keys: CTRL-E scrolls the cursor into 'scrolloff' (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~(long)(W->line - W->top) - 1 >= SCROLLOFF) W->top++;~(long)(W->line - W->top) - 1 >= 0) W->top++;
 keys: CTRL-Y does not scroll (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~if (typed == 25 && W->top &&~if (typed == 25 && (W->top && 0) &&
 keys: Visual : leaves curswant to be set after the command (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~		update_curswant();¶		cmdline(':', "'<,'>");~		cmdline(':', "'<,'>");
-keys: <leader>uk does not turn the save kitten off (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~, " uk"¶};~¶};
+keys: <leader>uk does not turn the save kitten off (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~ " uk", " is"¶};~ " is"¶};
 keys: :KittenPaw does not play the kitten (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	case 9: kitten_paw(E); break;~	case 9: break;
 keys: a register Q replays is not flagged as executing, so on_yank and the kitten would show (test_keys_flash)~test TESTS=keys_flash~~src/keys/normal.c~if (!do_execreg(reg_recorded))~if (!do_execreg(reg_recorded) || (E->ks.executing = 0))
 keys: a pass through a group's join recurses, so a long group repeat grows the C stack (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~		case NOTHING: break;~		case NOTHING: return m(p->next, l, c);

@@ -12,8 +12,7 @@
 #include "core.h"
 #include "keyname.h"
 #include "snip.h"
-const char *snip_get(Editor *e, int i, const char **desc, const char **body);   /* until thread 0's header */
-int snip_insert(Editor *e, const char *name);
+#include "tools.h"
 
 enum { MAXC = 4096 };
 static char *body[MAXC], *pre[MAXC], *keys[MAXC], *want[MAXC];
@@ -188,8 +187,30 @@ static void insert(int total)
 	is(e, "SELECT 1q\n");
 	e = inserted("i.sql", "x = 1", "$v", "wrp");
 	is(e, "x = begin\n    1\nend\n");
+	e = inserted("i.sql", "x", "v", "pure");   /* no $0: the area goes at the end */
+	is(e, "SELECT 1x\n");
 	e = inserted("i.sql", "    a\n    b\nc", "Vj", "wrp");
 	is(e, "    begin\n        a\n        b\n    end\nc\n");
+	/* through the picker: the name typed, its description and body shown,
+	   Enter puts it around the Visual area */
+	static Editor pe;
+	char path[64];
+	snprintf(path, sizeof path, "%s/pick.sql", dir);
+	CHECK(!core_open(&pe, path) && !core_edit(&pe, 0, 0, "1", 1));
+	feed(&pe, 'v');
+	CHECK(!tools_pick(&pe, PICK_SNIPPETS));
+	for (const char *k = "wrp"; *k; k++) CHECK(tools_key(&pe, *k));
+	static Grid g;
+	CHECK(!grid_resize(&g, 30, 100));
+	tools_draw(&pe, &g);
+	static char screen[30 * 401];
+	screen[0] = 0;
+	for (int r = 0; r < 30; r++, strcat(screen, "\n"))
+		for (int c = 0; c < 100; c++) strcat(screen, (const char *)grid_text(&g.c[r * 100 + c]));
+	CHECK(strstr(screen, "wrp w") && strstr(screen, "begin"));
+	grid_free(&g);
+	CHECK(tools_key(&pe, KEY_ENTER));
+	is(&pe, "begin\n    1\nend\n");
 	puts("test_snip: SPC i s lists, inserts and surrounds");
 }
 

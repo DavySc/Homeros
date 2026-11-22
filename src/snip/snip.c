@@ -313,8 +313,6 @@ static int add(Out *o, int idx, size_t a, int top)
 	return o->nst++;
 }
 
-static int blank(char c) { return c == ' ' || c == '\t'; }
-
 /* The selection as stop k's text ($0, VS Code's TM_SELECTED_TEXT, SSMS's
    surround with): each line after the first loses the first line's indent
    and is indented as the line the stop is on (VS Code's adjustWhitespace) */
@@ -323,9 +321,9 @@ static int put_sel(Out *o, int k)
 	size_t i = o->n, w = 0;
 	while (i && o->s[i - 1] != '\n') i--;
 	char ind[256];
-	while (i + w < o->n && w < sizeof ind && blank(o->s[i + w])) ind[w] = o->s[i + w], w++;
+	while (i + w < o->n && w < sizeof ind && memchr(" \t", o->s[i + w], 2)) ind[w] = o->s[i + w], w++;
 	for (size_t j = 0; j < o->nsel; j++) {
-		for (size_t b = 0; j && b < o->base && j < o->nsel && blank(o->sel[j]); b++) j++;
+		for (size_t b = 0; j && b < o->base && j < o->nsel && memchr(" \t", o->sel[j], 2); b++) j++;
 		size_t z = j;
 		while (z < o->nsel && o->sel[z] != '\n') z++;
 		if (put(o, o->sel + j, z - j) || (z < o->nsel && (put(o, "\n", 1) || put(o, ind, w)))) return -1;
@@ -399,7 +397,7 @@ static int expand(Editor *e, const char *body, size_t a, size_t z, const char *s
 	Out o = { .sel = sel, .nsel = nsel };
 	size_t len;
 	const unsigned char *l = core_line(e, e->win->line, &len);
-	while (o.base < len && blank((char)l[o.base])) o.base++;
+	while (o.base < len && memchr(" \t", l[o.base], 2)) o.base++;
 	size_t nind = o.base;
 	char ind[256];
 	if (nind > sizeof ind) nind = sizeof ind;
@@ -537,12 +535,7 @@ int snip_insert(Editor *e, const char *name)
 		const unsigned char *l = core_line(e, l2, &len);
 		a = core_line_start(e, l1) + c1;
 		z = core_line_start(e, l2) + (c2 < len ? c2 + uni_glen(l, len, c2) : len + 1);
-		if (e->ks.visual == 'V') {
-			size_t n1;
-			const unsigned char *f = core_line(e, l1, &n1);
-			for (a = 0; a < n1 && blank((char)f[a]); a++) {}
-			a += core_line_start(e, l1), z = core_line_start(e, l2) + len;
-		}
+		if (e->ks.visual == 'V') a = core_line_start(e, l1) + core_first_nonblank(e, l1), z = core_line_start(e, l2) + len;
 		if (z > text_len(e->buf->text)) z = text_len(e->buf->text);
 		keys_feed(e, KEY_ESC, 0);
 	}
