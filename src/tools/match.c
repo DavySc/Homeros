@@ -15,14 +15,14 @@ enum {
 enum { NONE = INT_MIN };   /* nil: Lua counts a score of 0 as a match */
 enum { C_WHITE, C_NONWORD, C_DELIMITER, C_LOWER, C_UPPER, C_LETTER, C_NUMBER };
 
-static int lspace(int c) { return c == ' ' || (c >= '\t' && c <= '\r'); }   /* Lua's %s */
+int match_space(int c) { return c == ' ' || (c >= '\t' && c <= '\r'); }
 static int lalnum(int c) { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'); }
 static int llower(int c) { return c >= 'A' && c <= 'Z' ? c + 32 : c; }
 
 /* CHAR_CLASS */
 static int cls(unsigned char b)
 {
-	if (lspace(b)) return C_WHITE;
+	if (match_space(b)) return C_WHITE;
 	if (b == '/' || b == '\\' || b == ',' || b == ':' || b == ';' || b == '|') return C_DELIMITER;
 	if (b >= '0' && b <= '9') return C_NUMBER;
 	if (b >= 'A' && b <= 'Z') return C_UPPER;
@@ -265,7 +265,7 @@ static int prepare(Match *m, Term *t, const char *p, size_t n, size_t *used)
 	} else if (qn && s[0] == '^') { t->fuzzy = 0; t->prefix = 1; s++; qn--; t->entropy += 20; }
 	if (qn && s[qn - 1] == '$') { t->fuzzy = 0; t->suffix = 1; qn--; t->entropy += 20; }
 	int rare = 0;
-	for (size_t i = 0; i < qn; i++) rare += !lalnum((unsigned char)s[i]) && !lspace((unsigned char)s[i]);
+	for (size_t i = 0; i < qn; i++) rare += !lalnum((unsigned char)s[i]) && !match_space((unsigned char)s[i]);
 	t->entropy += (qn < 20 ? (int)qn : 20) + rare * 2;
 	if (!t->icase) t->entropy *= 2;     /* not ignorecase and not is_lower */
 	if (t->icase) for (size_t i = 0; i < qn; i++) s[i] = (char)llower((unsigned char)s[i]);
@@ -304,14 +304,20 @@ static void sort(Term *t, int l, int u)
 }
 #undef LT
 
+size_t match_trim(const char **s, size_t n)
+{
+	while (n && match_space((unsigned char)**s)) ++*s, n--;
+	while (n && match_space((unsigned char)(*s)[n - 1])) n--;
+	return n;
+}
+
 int match_init(Match *m, const char *q, size_t n)
 {
 	size_t used = 0;
 	int fb = m->filename_bonus;
 	memset(m, 0, sizeof *m);
 	m->filename_bonus = fb;
-	while (n && lspace((unsigned char)*q)) q++, n--;            /* vim.trim */
-	while (n && lspace((unsigned char)q[n - 1])) n--;
+	n = match_trim(&q, n);
 	int is_or = 0;
 	for (size_t i = 0; i < n;) {
 		size_t j = i;
