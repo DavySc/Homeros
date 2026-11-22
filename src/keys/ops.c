@@ -450,7 +450,7 @@ int op_delete(Oparg *oap)
 			if (n > c) replace_bytes(l, c, n - c, "", 0);
 		} else {
 			del_lines((long)W->line, oap->line_count);
-			if ((long)W->line >= nlines()) W->line = (size_t)nlines() - 1;
+			check_cursor_lnum();   /* del_lines() */
 			beginline(BL_WHITE | BL_FIX);
 		}
 	} else {
@@ -1090,7 +1090,10 @@ void do_put(int regname, int dir, long count, int flags)
 		tmp.type = MCHAR;
 		reg = &tmp;
 	} else reg = put_override ? put_override : get_reg(regname, 0);
-	/* do_put(): linewise, u_save(lnum - 1, lnum) at the line put before */
+	long a, b;
+	/* do_put(): linewise, after or before a closed fold whole, and
+	   u_save(lnum - 1, lnum) at the line put before */
+	if (reg->type == MLINE && !(flags & PUT_LINE_SPLIT) && has_folding((long)W->line, &a, &b)) W->line = (size_t)(dir == FORWARD ? b : a);
 	if (reg->type == MLINE && !(flags & PUT_LINE_SPLIT) && !is_empty_buf()) u_save(W->line + (dir == FORWARD), W->line + (dir == FORWARD));
 	else u_save_cursor();
 	y_type = reg->type;

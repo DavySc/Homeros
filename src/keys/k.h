@@ -64,12 +64,14 @@ int  has_folding(long l, long *a, long *b);
 void fold_open_cursor(void);
 int  cursor_down(long n);
 int  cursor_up(long n);
+void check_cursor_lnum(void);
 void check_cursor(void);
 void check_cursor_col(void);
 void adjust_cursor_eol(void);
 void update_curswant(void);
 void validate_virtcol(void);
 void curs_columns(void);
+void changed_window_setting(void);
 extern int set_curswant;
 int  replace_bytes(long l, long col, long ndel, const char *ins, long nins);
 int  append_lines(long after, const char *s, long n);   /* lines s (joined by '\n') below line after (-1: at the top) */

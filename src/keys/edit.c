@@ -594,6 +594,7 @@ void edit_start(int cmdchar, long count)
 		ins_at_eol = 0;
 	} else arrow_used = 0;
 	ins_need_undo = 1;
+	if (!did_restart_edit) fold_open_cursor();   /* edit(): the cursor line is not in a closed fold */
 	const int *k;
 	new_insert_skip = redo_get(&k);
 	inserted_space = 0;

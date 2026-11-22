@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include "check.h"
 #include "core.h"
+#include "fold.h"
 #include "keys.h"
 #include "loop.h"
 #include "uni.h"
@@ -207,6 +208,35 @@ static void hlsearch(Editor *e, char *b, size_t cap)
 }
 
 /* n random cases of gen on text: how many differ from Neovim */
+/* folds: the z keys, moves over closed folds, linewise operators and
+   Visual taking them whole, and what opens them ('foldopen'); an edit
+   only last, since the core updates folds after edits (package 4); no
+   Visual * (Neovim's default mapping, not built yet) */
+static const char *const FTOK[] = { "zo", "zc", "za", "zR", "zM", "2zc", "2zo", "2za", "j", "k", "2j", "3k", "gg", "G", "3G",
+                                    "yy", "yj", "yk", "y2j", "l", "h", "w", "b", "$", "0", "e", "fz", "%", "{", "}", "''",
+                                    "ma", "'a", "`a", "\x0f", "/z\r", "n", "N", "V", "v", "\x1b", "Vjy", "vjy",
+                                    "Vy", "u", "jzc", "kzc", "4Gzc", "9Gzc" };
+/* Esc first: a Visual left on would make the edit a Visual one */
+static const char *const FEND[] = { "", "\033dd", "\033dj", "\033dk", "\033x", "\033o\033", "\033O\033", "\033ix\033", "\033Vd", "\033p", "\033J" };
+static void foldkeys(char *k)
+{
+	strcpy(k, "m'");   /* the '' mark Neovim's startup sets (ex_oracle.lua) */
+	for (unsigned t = 1 + rnd(8); t--;) strcat(k, FTOK[rnd(sizeof FTOK / sizeof *FTOK)]);
+	strcat(k, FEND[rnd(sizeof FEND / sizeof *FEND)]);
+}
+
+/* the fold phase's foldexpr, one value a line as Neovim's ("0", ">1"),
+   given to the oracle as $FOLDS; NULL: no folds */
+static const char *folds;
+static int fold_expr(void *ctx, size_t line, int *start)
+{
+	(void)ctx;
+	const char *v = folds;
+	for (size_t i = 0; i < line && v; i++) v = strchr(v, ','), v = v ? v + 1 : NULL;
+	if (!v) return 0;
+	*start = *v == '>';
+	return atoi(v + *start);
+}
 static int check(const char *text, void (*gen)(char *))
 {
 	char dir[] = "/tmp/test_keys_exXXXXXX", tf[64], cases[64], out[64], cmd[512], k[256];
@@ -219,8 +249,11 @@ static int check(const char *text, void (*gen)(char *))
 	CHECK((f = fopen(cases, "w")));
 	for (int i = 0; i < N; i++) gen(k), fprintf(f, "%s\n", k);
 	CHECK(!fclose(f));
-	/* one Neovim a case, four at a time (src/keys/ex_oracle.lua) */
-	snprintf(cmd, sizeof cmd, "seq %d | xargs -P 4 -I{} timeout 10 nvim --headless --clean -l src/keys/ex_oracle.lua %s %s %s.{} {} 2>/dev/null", N, tf, cases, out);
+	/* one Neovim a case, four at a time (src/keys/ex_oracle.lua); % is
+	   Neovim's own, as tools/conform.py's */
+	snprintf(cmd, sizeof cmd, "seq %d | FOLDS='%s' xargs -P 4 -I{} timeout 10 nvim --headless --clean --cmd \"let g:loaded_matchit=1\" %s%s %s %s.{} {}%s 2>/dev/null",
+	         N, folds ? folds : "", folds ? "-c \"lua _G.arg = vim.split('" : "-l src/keys/ex_oracle.lua ", tf, cases, out,
+	         folds ? "', ' ')\" -c \"luafile src/keys/ex_oracle.lua\"" : "");
 	CHECK(system(cmd) >= 0);
 	FILE *c = fopen(cases, "r");
 	CHECK(c);
@@ -240,6 +273,10 @@ static int check(const char *text, void (*gen)(char *))
 		want[strcspn(want, "\n")] = 0;
 		static Editor e;
 		CHECK(!core_open(&e, tf));
+		if (folds) {
+			CHECK((e.win->fold = fold_new(99, fold_expr, NULL, NULL)));
+			fold_update(e.win->fold, 0, core_lines(&e), core_lines(&e));
+		}
 		normal_reset();
 		ops_reset(), edit_reset(), motion_reset();   /* each case is a fresh Neovim (a recording, registers) */
 		/* v:errmsg: the last error, though later messages replace it */
@@ -266,6 +303,7 @@ static int check(const char *text, void (*gen)(char *))
 				                      !strchr(hw, '?') && strcmp(hg, hw) ? " (hlsearch differs)" : "");
 			if (bad <= 10 && !strchr(hw, '?') && strcmp(hg, hw)) fprintf(stderr, "  %s\n  Neovim %s\n", hg, hw);
 		}
+		if (folds) fold_free(e.win->fold), e.win->fold = NULL;   /* the core's to free once it makes them */
 		core_free(&e);
 	}
 	fclose(c);
@@ -296,6 +334,9 @@ int main(void)
 	static const char TEXT[] = "abcdef\n  xy\nhello world\n\tq\nlast line\nz\n";
 	CHECK(!check(TEXT, range));   /* each phase stops the test, so a caught plant does not run the rest */
 	CHECK(!check("abc. def foo\n  xy (o)\n\nhello world. Two\n\tq a\nlast line\n\n  z o\n", marks));
+	folds = "0,>1,1,>2,2,2,1,0,>1,1";
+	CHECK(!check("a x\nb {\n c y\n d {\n  e z\n  f\n g z\n}\ni {\n j\n", foldkeys));
+	folds = NULL;
 	/* past 2^63 Neovim's line numbers wrap (":9223372036854775806+5" goes
 	   to line 3, measured once); ours saturate, without overflow */
 	char path[] = "/tmp/test_keys_exXXXXXX";
@@ -468,6 +509,6 @@ int main(void)
 	char t4[256] = "";
 	for (int i = 0; i < 4; i++) strcat(t4, "foo bar\nabc Foo x\n  foo.bar(a) 12\nbaz?\\\n\nx/y?z foo\nfoofoo zz\n");
 	CHECK(!check(t4, confirm));
-	printf("test_keys_ex: %d random ranges, %d mark and jump sequences, %d searches, %d substitutions and %d answered, each as Neovim (cursor, error, text, 'hlsearch')\n", N, N, N, N, N);
+	printf("test_keys_ex: %d random ranges, %d mark and jump sequences, %d searches, %d substitutions, %d answered and %d over folds, each as Neovim (cursor, error, text, 'hlsearch')\n", N, N, N, N, N, N);
 	return 0;
 }
