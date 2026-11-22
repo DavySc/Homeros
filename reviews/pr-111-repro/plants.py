@@ -22,6 +22,10 @@ P = [
  ("another file's connect answer taken as this one's session", "if (x >= 0 && ctx == G.d) {", "if (x >= 0 && (ctx == G.d || 1)) {"),
  ("after one outdated session, never renewed again", "G.want = 1; G.again = 0; }", "G.want = 1; }"),
  ("new diagnostics do not reach the goals window", "			if (d) gpoke(d);\n", ""),
+ # third review (head e6d8fcf)
+ ("a pending retry's window emptied meanwhile", "	if (G.want || !G.d) return;\n	G.goals.t.n", "	if (!G.d) return;\n	G.goals.t.n"),
+ ("a refused first question leaves 'Processing file...'", "	G.ng = -1;\n	G.shown = 1;\n", "	G.ng = -1;\n"),
+ ("a refused question keeps the old 'No goals.'", "	G.ng = -1;\n	G.shown = 1;\n", "	G.shown = 1;\n"),
  ("goals that are not an array counted", "G.ng = gs >= 0 && tk[gs].type == 'a' ? tk[gs].n : -1;", "G.ng = gs >= 0 ? tk[gs].n : -1;"),
 ]
 src = "src/lsp/lsp.c"
