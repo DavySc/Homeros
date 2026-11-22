@@ -32,6 +32,18 @@ int     syntax_update(Syntax *s, const Text *t, int (*stop)(void));
 /* One face (grid.h FACE_*) per byte of [a, z), z - a at most 8,192 (core_draw
    asks for at most 1,024), into face; no allocation. */
 void    syntax_faces(Syntax *s, size_t a, size_t z, unsigned char *face);
+/* Neovim's conceal (conceallevel=2, concealcursor="": the core draws the
+   cursor's line as typed, as org-appear and render-markdown's
+   anti_conceal do): what line l shows in place of some of its bytes, up
+   to cap spans in byte order, bytes [a, z) of the line (columns, not
+   buffer offsets, as SyntaxMd's) drawn as s, one character of one
+   cell or "" (hidden): Neovim's conceal char (matchadd's 'conceal'), so
+   x^{2} is three spans, "^{" hidden, "2" as "²", "}" hidden.  Org: org-pretty-entities (\leq as ≤), sub- and superscripts in
+   {} where every character has a Unicode one, org-hide-emphasis-markers
+   (orgfx_conceal).  The one conceal mechanism for every file type.  No
+   allocation; returns the count. */
+typedef struct { size_t a, z; const char *s; } Conceal;
+size_t  syntax_conceal(Syntax *s, size_t line, Conceal *out, size_t cap);
 /* foldexpr's value for line (from 0), as Neovim reads it: the fold level,
    and *start 1 for ">n" (a fold starts here).  Tree-sitter's
    vim.treesitter.foldexpr() (folds.scm), Markdown's ftplugin

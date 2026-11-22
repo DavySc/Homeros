@@ -87,3 +87,4 @@ syntax: a fold past 'foldnestmax' still starts (test_syntax, case 8)~test TESTS=
 syntax: a setext underline under an empty line is a heading (test_syntax, case 10)~test TESTS=syntax~~src/syntax/syntax.c~if (a < z && l + 1 < text_lines(t)~if (l + 1 < text_lines(t)
 syntax: an injection named verilog is not SystemVerilog (test_syntax, the corpus's `define bodies)~test TESTS=syntax~~src/syntax/syntax.c~n == 7 && !memcmp(b, "verilog", 7) ? 8 : -1~-1
 syntax: an empty injected region in the tree's own language is parsed as the whole text, again and again (test_syntax, self injection)~test TESTS=syntax~~src/syntax/syntax.c~if (I.v[i].r.n || I.v[i].lang != L->lang) I.v[m++] = I.v[i];~if (1) I.v[m++] = I.v[i];
+syntax: a .org file conceals nothing (test_syntax_org)~test TESTS=syntax_org~~src/syntax/syntax.c~	return s->org ? orgfx_conceal(s->org, line, out, cap) : 0;~	return s->org && 0 ? orgfx_conceal(s->org, line, out, cap) : 0;
