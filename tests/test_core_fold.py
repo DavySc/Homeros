@@ -126,7 +126,8 @@ def main():
     # C rows cols wrap foldlevel, L the levels, F the text in hex, then per
     # screen (the first, then one after each command) T the command (none
     # before the first), W top line cursor line col, R a row in hex, A
-    # its cells (F Folded, . not); E ends the case
+    # its cells (F Folded, . not), both without what ends them blank; E
+    # ends the case
     with open(a[a.index('--record') + 1], 'w') as f:
         for c, o in zip(cases, out):
             f.write('C %d %d %d %d\nL %s\nF %s\n' % (c['rows'], c['cols'], c['wrap'], c['foldlevel'],
@@ -134,7 +135,7 @@ def main():
             for i, s in enumerate(o):
                 if i: f.write('T %s\n' % ' '.join(map(str, c['tokens'][i - 1])))
                 f.write('W %d %d %d\n' % (s['top'], s['line'], s['col']))
-                for row, at in zip(s['rows'], s['attrs']): f.write('R %s\nA %s\n' % (row.encode().hex(), at))
+                for row, at in zip(s['rows'], s['attrs']): f.write('R %s\nA %s\n' % (row.rstrip(' ').encode().hex(), at.rstrip('.')))
             f.write('E\n')
 
 if __name__ == '__main__':

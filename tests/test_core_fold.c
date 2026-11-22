@@ -182,13 +182,15 @@ int main(int argc, char **argv)
 			int c = 0;
 			for (; c < w->w && c < (int)sizeof a - 1 && r < w->h; c++)
 				a[c] = g.c[(w->y + r) * g.cols + w->x + c].face == FACE_FOLDED ? 'F' : '.';
-			a[c] = 0;
 			/* known difference: the '>' of a double-width character cut at
 			   a fold row's end is NonText, which Neovim draws Folded on some
 			   screens (measured: folds on the first lines before the cursor
 			   moves) and NonText on the rest */
 			const Cell *x = c ? &g.c[(w->y + r) * g.cols + w->x + c - 1] : NULL;
-			if (x && x->face == FACE_NON_TEXT && x->len == 1 && *grid_text(x) == '>') a[c - 1] = line[2 + c - 1];
+			if (x && x->face == FACE_NON_TEXT && x->len == 1 && *grid_text(x) == '>')
+				a[c - 1] = (int)strlen(line + 2) >= c ? line[2 + c - 1] : '.';
+			while (c && a[c - 1] == '.') c--;
+			a[c] = 0;
 			if (strcmp(a, line + 2) && (!differ++ || verbose))
 				fprintf(stderr, "case %d after %s row %d Folded:\n  nvim %s\n  core %s\n", ncase, tok, r, line + 2, a);
 			r++;
