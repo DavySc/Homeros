@@ -9,6 +9,7 @@
 #include "git.h"
 #include "keys.h"
 #include "kitten.h"
+#include "loop.h"
 #include "lsp.h"
 #include "snip.h"
 #include "syntax.h"
@@ -245,6 +246,8 @@ static void full_name(const char *path, char *full)
 	if (file_full(path, full)) snprintf(full, PATH_MAX, "%s", path);
 }
 
+static void on_watch(void *e, int fd) { core_watch(e, fd); }
+
 static int buf_load(Editor *e, Buf *b, const char *path)
 {
 	char *data = NULL, *name = NULL, full[PATH_MAX];
@@ -301,6 +304,11 @@ static int buf_load(Editor *e, Buf *b, const char *path)
 		if ((b->watch = file_watch(path)) >= 0) {
 			if (file_watch_read(b->watch, path, &b->id) == 1 && !b->changed) b->changed = 1;
 			core_watch(e, b->watch);
+			/* the loop calls core_watch when it is readable: once per fd
+			   (loop_watch would add it twice), which every file or, on
+			   Windows, every file of a directory shares */
+			loop_unwatch(b->watch);
+			loop_watch(b->watch, on_watch, e);
 		}
 	}
 	free(data);
@@ -485,6 +493,7 @@ int core_open(Editor *e, const char *path)
 	if (!w || !(e->buf = buf_new(e, path))) { free(w); e->win = NULL; return -1; }
 	e->wins = w;
 	w->buf = e->buf;
+	w->conceal = 2;   /* Davy's 'conceallevel' */
 	layout_init(e, w);
 	if (!e->layout) { core_msg(e, "out of memory"); return -1; }
 	/* readfile(): line 1's first non-blank (measured in tmux, 7 texts) */

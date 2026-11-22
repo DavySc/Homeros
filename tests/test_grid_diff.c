@@ -179,10 +179,10 @@ static const char *const face_sgr[FACE_COUNT] = {
 	";3;38;2;249;226;175",                /* diag warn */
 	";3;38;2;137;220;235",                /* diag info */
 	";3;38;2;148;226;213",                /* diag hint */
-	"",                                   /* diag under error (the terminal draws no undercurl yet) */
-	"",                                   /* diag under warn (the terminal draws no undercurl yet) */
-	"",                                   /* diag under info (the terminal draws no undercurl yet) */
-	"",                                   /* diag under hint (the terminal draws no undercurl yet) */
+	";4:3;58:2::243:139:168",             /* diag under error: undercurl in its colour */
+	";4:3;58:2::249:226:175",             /* diag under warn: undercurl in its colour */
+	";4:3;58:2::137:220:235",             /* diag under info: undercurl in its colour */
+	";4:3;58:2::148:226:213",             /* diag under hint: undercurl in its colour */
 	";3;38;2;243;139;168;48;2;50;40;58",  /* diag vt error */
 	";3;38;2;249;226;175;48;2;51;49;58",  /* diag vt warn */
 	";3;38;2;137;220;235;48;2;40;48;64",  /* diag vt info */
@@ -296,6 +296,11 @@ static void run(int (*width)(const unsigned char *, int), int frames)
 				g.c[r * cols + c].bg = b;
 				if (w == 2) g.c[r * cols + c + 1].bg = b;
 			}
+			if (w && rnd(2)) {        /* and an underline layer */
+				unsigned char u = rnd(2) ? 0 : (unsigned char)(FACE_DIAG_UNDER_ERROR + rnd(4));
+				g.c[r * cols + c].ul = u;
+				if (w == 2) g.c[r * cols + c + 1].ul = u;
+			}
 			invariant(&g);
 		}
 		g.crow = (int)rnd((unsigned)rows);
@@ -324,6 +329,28 @@ static void run(int (*width)(const unsigned char *, int), int frames)
 	grid_free(&prev);
 }
 
+/* Whether the first n bytes of an SGR, its styles, have style t (one digit) */
+static int has(const char *s, size_t n, char t)
+{
+	for (size_t i = 0; i + 2 <= n; i++)
+		if (s[i] == ';' && s[i + 1] == t && (i + 2 == n || s[i + 2] == ';')) return 1;
+	return 0;
+}
+
+/* SGR s under underline layer u: s's underline and sp give way to u's
+   (face_sgr[u]: ";4:3", then ";58:2::r:g:b"), in tty.c's order: bold,
+   italic, underline, strike, then fg, bg, sp */
+static int under(const char *s, int u)
+{
+	char o[96];
+	size_t k = 0;
+	while (s[k] && strncmp(s + k, ";38", 3) && strncmp(s + k, ";48", 3) && strncmp(s + k, ";58:", 4)) k++;
+	const char *c = s + k, *e = strstr(c, ";58:"), *sp = strstr(face_sgr[u], ";58:");   /* ":": a colour can hold ";58" */
+	snprintf(o, sizeof o, "%s%s%.*s%s%.*s%s", has(s, k, '1') ? ";1" : "", has(s, k, '3') ? ";3" : "",
+	         (int)(sp - face_sgr[u]), face_sgr[u], has(s, k, '9') ? ";9" : "", e ? (int)(e - c) : (int)strlen(c), c, sp);
+	return vt_style_id(o);
+}
+
 int main(void)
 {
 	/* the model numbers each face's SGR; the backend must send exactly that */
@@ -332,36 +359,52 @@ int main(void)
 	   layer's (which is a background only) */
 	for (int b = FACE_HEADING_1_BG; b <= FACE_HEADING_6_BG; b++)
 		for (int f = 0; f < FACE_COUNT; f++) {
-			char s[64];
-			const char *bg = strstr(face_sgr[f], ";48;");
-			snprintf(s, sizeof s, "%.*s%s", bg ? (int)(bg - face_sgr[f]) : (int)strlen(face_sgr[f]), face_sgr[f], face_sgr[b]);
+			char s[96];
+			const char *sp = strstr(face_sgr[f], ";58:"), *bg = strstr(face_sgr[f], ";48;");
+			sp = sp ? sp : face_sgr[f] + strlen(face_sgr[f]);   /* the sp stays last */
+			snprintf(s, sizeof s, "%.*s%s%s", (int)((bg ? bg : sp) - face_sgr[f]), face_sgr[f], face_sgr[b], sp);
 			vt_layer[b][f] = vt_style_id(s);
+		}
+	for (int u = 0; u < 4; u++)
+		for (int f = 0; f < FACE_COUNT; f++) {
+			vt_ul[u][0][f] = under(face_sgr[f], FACE_DIAG_UNDER_ERROR + u);
+			for (int b = FACE_HEADING_1_BG; b <= FACE_HEADING_6_BG; b++)
+				vt_ul[u][b][f] = under(vt_style[vt_layer[b][f]], FACE_DIAG_UNDER_ERROR + u);
 		}
 
 	/* grid_put's rules, one case each */
 	Grid g = { 0 };
 	/* grid_face: an unknown face or layer falls back, never reads past faces[] */
-	const Face *b;
-	Cell q = { " ", 1, ATTR_NONE, FACE_COUNT, FACE_COUNT };
-	CHECK(grid_face(&q, &b) == &faces[FACE_NONE] && b == &faces[FACE_NONE]);
-	q.face = FACE_STRING; q.bg = 0;
-	CHECK(grid_face(&q, &b) == &faces[FACE_STRING] && b == &faces[FACE_STRING]);
-	q.bg = FACE_CURSOR_LINE;
-	CHECK(grid_face(&q, &b) == &faces[FACE_STRING] && b == &faces[FACE_CURSOR_LINE]);
+	const Face *b, *u;
+	Cell q = { " ", 1, ATTR_NONE, FACE_COUNT, FACE_COUNT, FACE_COUNT };
+	CHECK(grid_face(&q, &b, &u) == &faces[FACE_NONE] && b == &faces[FACE_NONE] && u == &faces[FACE_NONE]);
+	q.face = FACE_STRING; q.bg = q.ul = 0;
+	CHECK(grid_face(&q, &b, &u) == &faces[FACE_STRING] && b == &faces[FACE_STRING] && u == &faces[FACE_STRING]);
+	q.bg = FACE_CURSOR_LINE; q.ul = FACE_DIAG_UNDER_WARN;
+	CHECK(grid_face(&q, &b, &u) == &faces[FACE_STRING] && b == &faces[FACE_CURSOR_LINE] && u == &faces[FACE_DIAG_UNDER_WARN]);
+	/* grid_curl: a triangle wave from 0 to h / 12 + 1 and back */
+	for (int h = 1; h < 64; h++)
+		for (int x = 0, a = h / 12 + 1; x < 200; x++) {
+			int d = grid_curl(x, h);
+			CHECK(d >= 0 && d <= a && (x % (2 * a) ? (d == grid_curl(x - 1, h) + 1 || d == grid_curl(x - 1, h) - 1) : d == 0));
+		}
 	CHECK(!grid_resize(&g, 1, 6));
 	const unsigned char *wide = (const unsigned char *)"\xe6\xbc\xa2";
-	/* the '>' and the blank keep the attribute, face and background layer
-	   of the half they replace */
+	/* the '>' and the blank keep the attribute, face, background and
+	   underline layers of the half they replace; a put clears the layers */
 	CHECK(grid_put(&g, 0, 1, wide, 3, 2, ATTR_REV) == 2);
 	g.c[1].face = g.c[2].face = FACE_STRING;
 	g.c[1].bg = g.c[2].bg = FACE_CURSOR_LINE;
+	g.c[1].ul = g.c[2].ul = FACE_DIAG_UNDER_INFO;
 	CHECK(grid_put(&g, 0, 2, (const unsigned char *)"x", 1, 1, ATTR_NONE) == 1);   /* right half */
-	CHECK(g.c[1].len == 1 && g.c[1].ch[0] == '>' && g.c[1].attr == ATTR_REV && g.c[1].face == FACE_STRING && g.c[1].bg == FACE_CURSOR_LINE && g.c[2].ch[0] == 'x');
+	CHECK(g.c[1].len == 1 && g.c[1].ch[0] == '>' && g.c[1].attr == ATTR_REV && g.c[1].face == FACE_STRING && g.c[1].bg == FACE_CURSOR_LINE && g.c[1].ul == FACE_DIAG_UNDER_INFO
+	      && g.c[2].ch[0] == 'x' && !g.c[2].bg && !g.c[2].ul);
 	CHECK(grid_put(&g, 0, 3, wide, 3, 2, ATTR_DIM) == 2);
 	g.c[3].face = g.c[4].face = FACE_COMMENT;
 	g.c[3].bg = g.c[4].bg = FACE_HEADING_1_BG;
+	g.c[3].ul = g.c[4].ul = FACE_DIAG_UNDER_HINT;
 	CHECK(grid_put(&g, 0, 3, (const unsigned char *)"y", 1, 1, ATTR_NONE) == 1);   /* left half */
-	CHECK(g.c[4].len == 1 && g.c[4].ch[0] == ' ' && g.c[4].attr == ATTR_DIM && g.c[4].face == FACE_COMMENT && g.c[4].bg == FACE_HEADING_1_BG);
+	CHECK(g.c[4].len == 1 && g.c[4].ch[0] == ' ' && g.c[4].attr == ATTR_DIM && g.c[4].face == FACE_COMMENT && g.c[4].bg == FACE_HEADING_1_BG && g.c[4].ul == FACE_DIAG_UNDER_HINT);
 	CHECK(grid_put(&g, 0, 4, wide, 3, 2, ATTR_NONE) == 2);
 	CHECK(grid_put(&g, 0, 3, wide, 3, 2, ATTR_DIM) == 2);                           /* overlapping wide */
 	CHECK(g.c[3].len == 3 && !g.c[4].len && g.c[5].len == 1 && g.c[5].ch[0] == ' ');

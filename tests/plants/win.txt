@@ -50,4 +50,8 @@ win: the DIB keeps its old size~win WIN=win~~src/win/backend.c~if (all && (grid_
 specs: Pace with frames only P + D apart~specs~find design/specs -name '*.cfg' ! -name Pace_ok.cfg -delete~design/specs/Pace_ok.cfg~ Gap = 5~ Gap = 4
 win: the background layer ignored~win WIN=win~~src/win/backend.c~	COLORREF b = fb->style & FACE_BG ? RGB(fb->bg[0], fb->bg[1], fb->bg[2]) : BASE;~	COLORREF b = fa->style & FACE_BG ? RGB(fa->bg[0], fa->bg[1], fa->bg[2]) : BASE;
 win: GDI's substitute for a missing family kept~win WIN=win~~src/win/backend.c~if (!lstrcmpiW(face, family[i])) break;~break;
+win: no underline or undercurl~win WIN=win~~src/win/backend.c~	if (!(fu->style & (FACE_UNDERLINE | FACE_UNDERCURL))) return;~	return;
+win: a flat undercurl~win WIN=win~~src/win/backend.c~(curl ? grid_curl(i, ch) : 0)~0
+win: an underline one pixel wide~win WIN=win~~src/win/backend.c~curl ? i + 1 : rc.right, y + 1~i + 1, y + 1
+win: the undercurl in the text's colour~win WIN=win~~src/win/backend.c~fu->style & FACE_SP ? RGB(fu->sp[0], fu->sp[1], fu->sp[2]) : f~f
 win: Shift-Tab sends Tab~win WIN=win~~src/win/backend.c~w == 9 && GetKeyState(VK_SHIFT) < 0~w == 9 && GetKeyState(VK_SHIFT) > 0
