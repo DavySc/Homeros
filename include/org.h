@@ -8,6 +8,7 @@
 #define ORG_H
 #include <stddef.h>
 #include "text.h"
+#include "syntax.h"
 
 /* org-element-all-elements without inlinetask (org-inlinetask is not loaded
    by default, so 15 stars make a headline) */
@@ -98,6 +99,9 @@ void   orgfx_faces(OrgFx *f, size_t a, size_t z, unsigned char *face);
    *start is 1 on the headline itself.  It sees edits made since the last
    update (it updates first). */
 int    orgfx_foldexpr(OrgFx *f, size_t line, int *start);
+/* syntax_conceal for an Org buffer, from Emacs Org's own org-entities and
+   its sub/superscript and emphasis regexps */
+size_t orgfx_conceal(OrgFx *f, size_t line, Conceal *out, size_t cap);
 /* org-todo 'right (dir 1) or 'left (dir -1) on the entry holding pos,
    with Davy's keywords and logging (kitty-org.el): blocking by children
    and ORDERED, COMMENT, CLOSED, repeaters, LAST_REPEAT, the LOGBOOK note.

@@ -95,7 +95,8 @@ conform: $(OBJS) | build/san
 
 # Org's parser and colours against Org itself (package 16): fresh random org
 # texts fed to src/org and to emacs -Q --batch (org-element in
-# tools/org_dump.el, font-lock in tools/org_faces.el)
+# tools/org_dump.el, font-lock in tools/org_faces.el, org-todo in
+# tools/org_todo.el, what each line shows in tools/org_show.el)
 ORG_N ?= 2000
 org-conform: $(OBJS) | build/san
 ifneq ($(wildcard src/org/*.c),)
@@ -103,6 +104,7 @@ ifneq ($(wildcard src/org/*.c),)
 	python3 tools/org_conform.py build/san/org_drv $(ORG_N) $${SEED:-1}
 	python3 tools/org_conform.py -f build/san/org_drv $(ORG_N) $${SEED:-1}
 	python3 tools/org_conform.py -t build/san/org_drv $$(($(ORG_N) / 4)) $${SEED:-1}
+	python3 tools/org_conform.py -s build/san/org_drv $(ORG_N) $${SEED:-1}
 endif
 
 # Neovim's undo tree against UndoTree.tla's rules (package 2's oracle);

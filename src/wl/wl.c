@@ -31,11 +31,12 @@
 #include "keys.h"
 #include "uni.h"
 #include "font.h"
+#include "image.h"
 
 /* FONT_PX: pixels per em at scale 1 (hypothesis: Davy's size is not recorded);
    ATTR_PRE: the preedit, underlined (backend-private, after grid.h's attrs);
    ROW: the most bytes and glyphs one row shapes (4 bytes a cell) */
-enum { FONT_PX = 16, NBUF = 2, KQ = 1024, PRE = 256, ATTR_PRE = ATTR_GUIDE + 1, ROW = 4096 };
+enum { FONT_PX = 16, NBUF = 2, KQ = 1024, PRE = 256, ATTR_PRE = ATTR_IMAGE + 1, ROW = 4096 };
 static const char FAMILY[] = "JetBrains Mono";
 /* linux/input-event-codes.h's, whose KEY_* names clash with keys.h's */
 enum { BTN_LEFT = 0x110 };
@@ -662,6 +663,7 @@ static void draw_span(uint32_t *px, const Grid *g, int r, int lo, int hi)
 		int w = c + 1 < g->cols && !x[c + 1].len ? 2 : 1;
 		const Face *f = colours(g, r, c, r == g->crow && c == g->ccol, &fg, &bg);
 		fill(px, c * cell_w, y0, w * cell_w, cell_h, bg);
+		if (x[c].attr == ATTR_IMAGE) { image_draw(px + y0 * bw + c * cell_w, bw, &x[c]); continue; }   /* thread 0's, agreed */
 		if (x[c].attr == ATTR_PRE || f->style & FACE_UNDERLINE) fill(px, c * cell_w, y0 + cell_h - 1, w * cell_w, 1, fg);
 		if (f->style & FACE_STRIKE) fill(px, c * cell_w, y0 + cell_h / 2, w * cell_w, 1, fg);
 		const unsigned char *t = grid_text(&x[c]);
@@ -986,8 +988,9 @@ static void wl_present(const Grid *cur, Grid *shown)
 static void wl_suspend(void) {}      /* a window has no terminal to give back */
 
 static void wl_mouse(int *row, int *col) { *row = mrow; *col = mcol; }
+static void wl_cell(int *w, int *h) { *w = cell_w; *h = cell_h; }   /* thread 0's, agreed */
 
 const Backend backend_wl = {
 	wl_open, wl_close, wl_fds, wl_input, wl_size, wl_ready,
-	wl_present, wl_suspend, wl_clip_set, wl_clip_get, wl_mouse
+	wl_present, wl_suspend, wl_clip_set, wl_clip_get, wl_mouse, wl_cell
 };

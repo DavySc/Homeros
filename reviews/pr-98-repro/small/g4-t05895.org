@@ -1,0 +1,6 @@
+* DONE a
+ 	:PROPERTIES:
+ 	:END:
+  :LOGBOOK:
+    
+	:LOGBOOK:

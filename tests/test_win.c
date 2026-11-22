@@ -20,6 +20,7 @@
 #include <string.h>
 #include "check.h"
 #include "backend.h"
+#include "image.h"
 #include "keys.h"
 #include "loop.h"
 
@@ -182,6 +183,23 @@ int main(void)
 		DeleteDC(dc);
 		DeleteObject(f);
 	}
+	{   /* an image (package 21, thread 0's, agreed): Backend.cell is the cell
+	       measured above; tests/test_image.png (32 x 16, red then blue) shows
+	       from row 3, each tile its own columns, the background past it;
+	       then text again */
+		int w, h, n;
+		b->cell(&w, &h);
+		CHECK(w == cw && h == ch && 4 * cw > 32 && ch > 16);
+		CHECK((n = image_load("tests/test_image.png", 4, 1, cw, ch, 0x1e1e2e)) > 0);
+		image_put(&g, 3, 0, n, 0);
+		present(&g, &shown);
+		for (int y = 3 * ch; y < 3 * ch + 16; y++)
+			for (int x = 0; x < 32; x++) CHECK(px(x, y) == (x < 16 ? RGB(255, 0, 0) : RGB(0, 0, 255)));
+		CHECK(px(32, 3 * ch) == BG && px(0, 3 * ch + 16) == BG);
+		for (int c = 0; c < 4; c++) put(&g, 3, c, " ", 1, ATTR_NONE);
+		present(&g, &shown);
+		CHECK(px(1, 3 * ch + 1) == BG && px(20, 3 * ch + 1) == BG);
+	}
 
 	/* the mouse and the wheel, at their cells */
 	PostMessageW(win, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(3 * cw + 1, 2 * ch + 1));
@@ -338,7 +356,7 @@ int main(void)
 	grid_free(&g);
 	grid_free(&shown);
 	puts("test_win: keys, mouse and clipboard; identical frame draws nothing; one change draws one cell; "
-	     "text, dim, face, face background, long cluster and wide cells; cursor drawn, restored and at (0,0) after a whole redraw; WM_PAINT; "
+	     "text, dim, face, face background, long cluster, wide and image cells; cursor drawn, restored and at (0,0) after a whole redraw; WM_PAINT; "
 	     "resize and DPI redraw whole; close is a key; paced; idle quiet; minimised draws nothing");
 	return 0;
 }

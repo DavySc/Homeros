@@ -1,0 +1,9 @@
+inner line: end bound inclusive~ && l < e[i].end + h); ) ;~ && l <= e[i].end + h); ) ;
+inner line: the outermost element, not the innermost~		for (i = k; i-- > 0 && !(e[i].aff + h < l && l < e[i].end + h); ) ;~		for (i = 0; i < k && !(e[i].aff + h < l && l < e[i].end + h); i++) ;
+inner line: any line of a drawer as its :END:~e[i].type == ORG_DRAWER && lit(blanks(l), ":END:") ? e[i].begin~e[i].type == ORG_DRAWER ? e[i].begin
+inner line: :END: of any element as a drawer's~e[i].type == ORG_DRAWER && lit(blanks(l), ":END:") ? e[i].begin~lit(blanks(l), ":END:") ? e[i].begin
+new drawer: its :END: at the first line's column~		indent(at, sibling_ind(h, at));~		indent(at, c);
+new drawer: first line at column 0~		c = sibling_ind(h, p);¶~		c = 0;¶
+sibling: any element before, not one with the same parent~		for (j = i; j-- > 0 && e[j].parent != e[i].parent; ) ;~		j = i - 1;
+habit /N read again~			*r = q, *re = v + 1;¶~			*r = q, *re = v + 1;¶			if (S[*re] == '/' && (v = digits(*re + 1, lim)) > *re + 1 && v < lim && one(v, "hdwmy")) *re = v + 1;¶
+LOGBOOK moved before a headline again~		int blank_line = p == bol(p)~		if (p < N && p == bol(p) && headline(p)) p--;¶		int blank_line = p == bol(p)
