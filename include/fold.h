@@ -9,7 +9,8 @@
 #include <stddef.h>
 
 typedef struct Fold Fold;
-/* foldexpr's value for line: the level, *start 1 for ">n" */
+/* foldexpr's value for line: the level, or -1: undefined, the level of the
+   next defined line (0 on the first line); *start 1 for ">n" */
 typedef int FoldExpr(void *ctx, size_t line, int *start);
 /* the line takes more than one screen row ('wrap'): a one-line fold shows
    closed only then (checkSmall()) */
