@@ -31,7 +31,7 @@ picker: the frecency store read as all zeros~test TESTS=tools_pick~~src/shada/sh
 picker: grep drops the rg arguments after --~test TESTS=tools_pick~~src/tools/pick.c~	for (int i = 0; i < na; i++) argv[k++] = pa[i];~	for (int i = 0; i < na - na; i++) argv[k++] = pa[i];
 oil: a link target's icon ignores the trailing /~test TESTS=tools_oil~~src/tools/icons.c~if (!slash && (r = GET(ft_icons~if ((r = GET(ft_icons
 oil: a relisted name gets a new id~test TESTS=tools_oil~~src/tools/oil.c~	int i = find(dir, name, strlen(name));¶	if (i < 0) {~	int i = find(dir, name, strlen(name));¶	if (1) {
-matcher: at most 16 terms~test TESTS=tools_match~~src/tools/match.h~MATCH_TERMS = MATCH_MAX / 2,~MATCH_TERMS = 16,
+matcher: at most 16 terms~test TESTS=tools_match~~include/match.h~MATCH_TERMS = MATCH_MAX / 2,~MATCH_TERMS = 16,
 dashboard: an odd width's half column goes left~test TESTS=tools_dash~~src/tools/dash.c~	int col = (e->cols - WIDTH) / 2, r = top;~	int col = (e->cols - WIDTH + 1) / 2, r = top;
 dashboard: the footer centred on bytes, not cells~test TESTS=tools_dash~~src/tools/dash.c~(WIDTH - grid_width(foot, strlen(foot)))~(WIDTH - (int)strlen(foot))
 dashboard: k goes above the first item~test TESTS=tools_dash~~src/tools/dash.c~if (D.sel > 0) D.sel--;~D.sel -= D.sel > -1;
