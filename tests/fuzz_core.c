@@ -4,7 +4,7 @@
    every cursor on a line of its buffer, the current one on the first
    byte of a character, the current window showing its cursor line, every
    set mark a-z on a line of its buffer until a :e or :bd, and nothing ASan or UBSan objects to.
-   f0 is Markdown, parsed before most frames, so its headings are drawn. */
+   f0 is Markdown, parsed before most frames, so render-markdown's marks are drawn. */
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,11 +16,12 @@
 
 static char dir[64], files[3][80];   /* absolute: libFuzzer writes its findings to the working directory */
 static const char *texts[] = {
-	"ab \xce\xbbx \xe1\x83\x90\xf0\x90\x90\x80\n\tef\n\n  gh\n# One\n## Two \xe6\xbc\xa2\xe5\xad\x97 two two two two two two two two two two\n> ### q\n7. #### li\n   ##### ind\n> > > > > > > > > > > > > > > > > > ###### edge\n",
+	("ab \xce\xbbx \xe1\x83\x90\xf0\x90\x90\x80\n\tef\n\n  gh\n# One\n## Two \xe6\xbc\xa2\xe5\xad\x97 two two two two two two two two two two\n> ### q\n7. #### li\n   ##### ind\n> > > > > > > > > > > > > > > > > > ###### edge\n"
+	"- a\n  - [ ] b\n    1. [x] c\n12) [-] d\n```c x\n\tint \xe6\xbc\xa2;\n\n```\n> ~~~\n> q\n"),
 	"",
 	"x\ny\nz\n\tw\nlong line long line long line long line long line long line\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n",
 };
-static const char *ins[] = { "# ", "#", "a", "\n", "\xce\xbb", "\t", "word ", "\xe1\x83\x90\n\n", "\xf0\x90\x90\x80", "  ", "0123456789012345678901234567890123456789" };
+static const char *ins[] = { "# ", "#", "- ", "[ ] ", "```", "1. ", "a", "\n", "\xce\xbb", "\t", "word ", "\xe1\x83\x90\n\n", "\xf0\x90\x90\x80", "  ", "0123456789012345678901234567890123456789" };
 static const PumItem pum[] = { { "foo", "v", NULL }, { "foobar", "f", "module.c" }, { "\xce\xbbx", NULL, "menu" } };
 
 /* the byte at or before p that starts a character of line l */

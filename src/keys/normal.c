@@ -725,14 +725,7 @@ static void nv_replace(Cmdarg *cap)
 	prep_redo(cap->oap->regname, cap->count1, 0, 'r', 0, 0, 0);
 	redo_append(cap->nchar);
 	char b[4];
-	long nb = 0;
-	{
-		unsigned k = (unsigned)cap->nchar;
-		if (k < 0x80) b[nb++] = (char)k;
-		else if (k < 0x800) { b[nb++] = (char)(0xC0 + k / 64); b[nb++] = (char)(0x80 + k % 64); }
-		else if (k < 0x10000) { b[nb++] = (char)(0xE0 + k / 4096); b[nb++] = (char)(0x80 + k / 64 % 64); b[nb++] = (char)(0x80 + k % 64); }
-		else { b[nb++] = (char)(0xF0 + k / 262144); b[nb++] = (char)(0x80 + k / 4096 % 64); b[nb++] = (char)(0x80 + k / 64 % 64); b[nb++] = (char)(0x80 + k % 64); }
-	}
+	long nb = uni_put((unsigned char *)b, (unsigned)cap->nchar);
 	long z = c;
 	for (long i = 0; i < cap->count1; i++) z += clen(s, len, z);
 	char *r = malloc((size_t)nb * (size_t)cap->count1);

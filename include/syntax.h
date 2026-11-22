@@ -44,6 +44,14 @@ void    syntax_faces(Syntax *s, size_t a, size_t z, unsigned char *face);
    allocation; returns the count. */
 typedef struct { size_t a, z; const char *s; } Conceal;
 size_t  syntax_conceal(Syntax *s, size_t line, Conceal *out, size_t cap);
+/* foldexpr's value for line (from 0), as Neovim reads it: the fold level,
+   and *start 1 for ">n" (a fold starts here).  Tree-sitter's
+   vim.treesitter.foldexpr() (folds.scm), Markdown's ftplugin
+   (g:markdown_folding: heading levels), Org's subtrees (orgfx_foldexpr);
+   0 for a buffer without folds.  It brings the parse up to date first, as
+   vim.treesitter.foldexpr() parses, so it is called from fold_update
+   (fold.h) after a change, never while drawing. */
+int     syntax_foldexpr(Syntax *s, size_t line, int *start);
 /* What render-markdown draws on line l, from the tree, without allocating:
    0 for a non-Markdown buffer or a line with none of these, else 1 */
 typedef struct {

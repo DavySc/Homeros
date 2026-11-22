@@ -42,7 +42,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t n)
 		else if (data[i] == '\n' || data[i] == 0) str_add(&s, " ", 1);   /* a line holds neither */
 		else str_add(&s, (const char *)data + i, 1);
 	str_add(&s, "", 0);
-	from_child(s.s, s.n);
+	from_child(NULL, s.s, s.n);
 	free(s.s);
 	/* afresh: no pages, the buffer as it was, the first buffer current */
 	while (pages) drop(pages);
