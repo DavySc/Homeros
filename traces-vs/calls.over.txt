@@ -13,7 +13,7 @@ STEP over main : 5368713595
 STEP over main : 5368713645
 STEP over main : 5368713676
 STEP over main : 5368713689
-STEP over  : 5368714239
+STEP over __scrt_common_main_seh : 5368714239
 STEP over __scrt_common_main_seh : 5368714241
 STEP over __scrt_common_main_seh : 5368714335
 STEP over ended
