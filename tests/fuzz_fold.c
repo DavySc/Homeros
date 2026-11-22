@@ -2,7 +2,8 @@
    nvim_buf_set_lines() and Insert mode's new lines call it), fold commands
    and splits.  Every fold found lies around its line and inside the
    buffer, a split window's copy answers as the original, a command that
-   changes what fold_closed() answers returns 1, and folds built
+   changes what fold_closed() answers returns 1, zO or zv run twice
+   answers "no change" the second time, and folds built
    fresh without "-1" lines have each line's level from the foldexpr
    (clamped at 20, Neovim's MAX_LEVEL); tests/test_fold.c holds the rest
    against Neovim.  Edits leave Neovim's tree out of shape at times (a
@@ -89,8 +90,11 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t len)
 			Fold *g = fold_dup(f, NULL);
 			if (!g) abort();
 			/* a command that changed a fold says so: the core redoes the view on 1 */
-			if (fold_cmd(f, c, at, NEXT % 4) != 1 && differs(f, g)) abort();
+			long k = NEXT % 4;
+			if (fold_cmd(f, c, at, k) != 1 && differs(f, g)) abort();
 			fold_free(g);
+			/* and zO or zv again finds nothing left to change */
+			if (k && (c == FOLD_OPEN_REC || c == FOLD_VIEW) && fold_cmd(f, c, at, 1) == 1) abort();
 		} else {         /* a split: the copy goes on in f's place */
 			Fold *g = fold_dup(f, NULL);
 			if (!g) abort();

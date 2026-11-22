@@ -29,3 +29,4 @@ fold: a count that changed a fold before running out says it changed nothing (fu
 fold: zv that opened a fold says it changed nothing (fuzz)~fuzz FUZZERS=fold FUZZ_SECONDS=30~~src/fold/fold.c~		while (manual(f, lnum, 1, 0) & DONE_ACTION) done = 1;~		while (manual(f, lnum, 1, 0) & DONE_ACTION) done = 0;
 fold: a new 'foldlevel' says it changed nothing (fuzz)~fuzz FUZZERS=fold FUZZ_SECONDS=30~~src/fold/fold.c~	return 1;   /* newFoldLevel() always calls changed_window_setting() */~	return 0;   /* newFoldLevel() always calls changed_window_setting() */
 fold: zO opens only the outer fold~test TESTS=fold~~src/fold/fold.c~op != FOLD_CLOSE, op == FOLD_OPEN_REC);~op != FOLD_CLOSE, 0);
+fold: a fold found with nothing changed says it changed one (fuzz)~fuzz FUZZERS=fold FUZZ_SECONDS=30~~src/fold/fold.c~return n ? 1 : done ? 0 : -1;~return n || done ? 1 : -1;

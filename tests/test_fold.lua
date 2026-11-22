@@ -7,7 +7,7 @@
 -- (0 if none).  Each scenario starts at some
 -- 'foldlevel', then mixes nvim_buf_set_lines(), o, O, A<CR> (Insert mode)
 -- and the fold commands; after each step it prints foldclosed(),
--- foldclosedend() and foldlevel() of every line.
+-- foldclosedend(), foldlevel() and the closed fold's level of every line.
 -- Neovim caches whether a fold is 'foldminlines' or smaller (fd_small) and
 -- some edits leave that stale, depending on when it last drew; the fold
 -- module asks each time.  So scenarios with edits run with foldminlines 0
