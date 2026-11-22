@@ -263,7 +263,11 @@ static int hl(size_t line, size_t col, size_t *s, size_t *z)
 		else if (ms.lnum > p.lnum && eq(ms, me)) p = me;
 		else if (ms.lnum == l || me.lnum > l || (me.lnum == l && me.col)) {
 			*s = (size_t)(ms.lnum < l ? 0 : ms.col), *z = (size_t)(me.lnum > l ? ml_len(l) + 1 : me.col);
-			return re_deadline = 0, 1;
+			/* CurSearch on every line of the match the cursor is in, from
+			   its start to before its end (prepare_search_hl_line()'s
+			   has_cursor) */
+			Pos c = { (long)W->line, (long)W->col, 0 };
+			return re_deadline = 0, 1 + (!lt(c, ms) && lt(c, me));
 		} else if (!eq(ms, me)) p = me;
 		else if (me.col < ml_len(me.lnum)) p.col = me.col + clen_at(me);
 		else p.lnum = me.lnum + 1, p.col = 0;

@@ -1,9 +1,14 @@
-/* Scrolling, as Neovim's move.c, without folds, filler lines, concealing
-   or 'smoothscroll' (none is on), except where CTRL-D, CTRL-U, CTRL-F and
+/* Scrolling, as Neovim's move.c, with closed folds (fold.h), without
+   filler lines or 'smoothscroll' (none is on; a window with folds and
+   'conceallevel' take the fold paths, see concealed()), except where CTRL-D, CTRL-U, CTRL-F and
    CTRL-B switch 'smoothscroll' on for the moment as Neovim does.  Lines are
    counted from 0 here and from 1 in Neovim: Neovim's "lnum == 1" is "l == 0",
    its w_botline (the line below the window) is bot, at most the line count. */
+#include <string.h>
 #include "core_int.h"
+#include "fold.h"
+#include "lsp.h"
+#include "syntax.h"
 #include "uni.h"
 
 typedef long lnr;
@@ -16,24 +21,68 @@ static int p_sms;
 
 static size_t digits(size_t n) { size_t d = 1; while (n >= 10) { n /= 10; d++; } return d; }
 
-/* number_width() + 1 with number and relativenumber: numberwidth 4 */
+/* 'signcolumn' auto, Neovim's default: two cells while the buffer has a
+   sign, a diagnostic's (vim.diagnostic's signs) */
+int win_signw(const Win *w)
+{
+	int n;
+	lsp_diags(w->buf->lsp, &n);
+	return n ? 2 : 0;
+}
+
+/* win_col_off(): the sign column, then number_width() + 1 with number and
+   relativenumber (numberwidth 4), unless the buffer has nonumber */
 int win_numw(const Win *w)
 {
 	size_t d = digits(buf_lines(w->buf));
-	return (d < 3 ? 3 : (int)d) + 1;
+	return win_signw(w) + (w->buf->nonumber ? 0 : (d < 3 ? 3 : (int)d) + 1);
 }
 
 static int width1(const Win *w) { return w->w - win_numw(w); }
 
 static lnr nlines(const Win *w) { return (lnr)buf_lines(w->buf); }
 
+/* hasFolding(): line l is in a closed fold, its lines [*a, *z] */
+static int folded(const Win *w, lnr l, lnr *a, lnr *z)
+{
+	size_t x, y;
+	if (!w->fold || l < 0 || l >= nlines(w) || !fold_closed(w->fold, (size_t)l, &x, &y)) return 0;
+	if (a) *a = (lnr)x;
+	if (z) *z = (lnr)y;
+	return 1;
+}
+
+/* win_lines_concealed(): a window with folds (hasAnyFolding(): any with
+   foldmethod=expr, closed fold or not) and 'conceallevel' 2 take the
+   paths Neovim takes for folds (measured: a 4-row window keeps its top
+   where it otherwise scrolls).  Only an Org window has 'conceallevel', as
+   Davy's orgmode sets it there; elsewhere Neovim's default 0 */
+static int concealed(const Win *w)
+{
+	if (w->fold) return 1;
+	const char *ft = w->conceal >= 2 && w->buf->path ? syntax_filetype(w->buf->path) : NULL;
+	return ft && !strcmp(ft, "org");
+}
+
+/* get_cursor_rel_lnum(): the relative number of line l, a closed fold
+   counting as one line where there are folds */
+size_t win_rel(const Win *w, size_t l)
+{
+	lnr cur = (lnr)w->line, from = (lnr)l < cur ? (lnr)l : cur, to = (lnr)l < cur ? cur : (lnr)l;
+	if ((lnr)l == cur || !concealed(w)) return (size_t)(to - from);
+	size_t n = 0;
+	for (; from < to; from++, n++) folded(w, from, NULL, &from);
+	return n - (from > to);   /* to in a closed fold: one too many */
+}
+
 /* the line's width, linetabsize() */
 static long linesize(const Win *w, lnr l) { return (long)win_vcol_end(w, (size_t)l); }
 
-/* plines_win_nofill(): screen lines of line l */
+/* plines_win_nofill(): screen lines of line l, 1 in a closed fold
+   (lineFolded()) */
 static int plines_lim(const Win *w, lnr l, int limit)
 {
-	if (!w->wrap || w->w == 0) return 1;
+	if (!w->wrap || w->w == 0 || folded(w, l, NULL, NULL)) return 1;
 	long col = linesize(w, l);
 	if (col == 0) return 1;
 	long width = width1(w);
@@ -44,7 +93,22 @@ static int plines_lim(const Win *w, lnr l, int limit)
 	return n > HUGE ? HUGE : (int)n;
 }
 
-int win_plines(const Win *w, size_t l) { return plines_lim(w, (lnr)l, 1); }
+/* FoldTall: checkSmall()'s plines_win_nofold() > 1, which ignores 'wrap':
+   a long line can be a closed fold of one line in a 'nowrap' window
+   (measured: :1foldclose on a 62-column line, 40 columns, nowrap) */
+int win_tall(void *w, size_t l)
+{
+	long c = linesize(w, (lnr)l);
+	return c > 0 && c > width1(w);
+}
+
+/* plines_win_full(): a closed fold is one row; *last its last line */
+static int plines_full(const Win *w, lnr l, lnr *last, int limit)
+{
+	if (last) *last = l;
+	folded(w, l, NULL, last);
+	return plines_lim(w, l, limit);
+}
 
 /* plines_win_col(): screen lines up to col of line l, a tab under the
    cursor in normal mode counted to its end.  Its callers pass a byte
@@ -70,11 +134,11 @@ static int plines_col(Editor *e, Win *w, lnr l, size_t col)
 	return lines;
 }
 
-/* screen lines of l, less those skipcol hides when it is the top line
-   (plines_correct_topline()) */
-static int plines_top(const Win *w, lnr l, int limit)
+/* screen lines of l (a closed fold: 1, *last its last line), less those
+   skipcol hides when it is the top line (plines_correct_topline()) */
+static int plines_top(const Win *w, lnr l, lnr *last, int limit)
 {
-	int n = plines_lim(w, l, 0);
+	int n = plines_full(w, l, last, 0);
 	if (l == (lnr)w->top && w->skipcol) {
 		long wd = width1(w);
 		if ((long)w->skipcol >= wd && wd > 0) n -= (int)(((long)w->skipcol - wd) / wd + 1);
@@ -85,20 +149,26 @@ static int plines_top(const Win *w, lnr l, int limit)
 
 /* comp_botline(): the line below the window; also the cursor line's row
    and height and the empty rows below the text */
-typedef struct { lnr bot; int empty, crow, cheight; } Bot;
+typedef struct { lnr bot; int empty, crow, cheight, folded; } Bot;
 
 static Bot comp_botline(const Win *w)
 {
-	Bot b = { 0, 0, 0, 0 };
-	lnr l = (lnr)w->top, n = nlines(w);
+	Bot b = { 0, 0, 0, 0, 0 };
+	lnr l = (lnr)w->top, n = nlines(w), cur = (lnr)w->line;
 	int done = 0;
 	for (; l < n; l++) {
-		int k = plines_top(w, l, 1);
+		lnr last;
+		int k = plines_top(w, l, &last, 1);
 		/* curs_rows(): a changed line's height is plines_win_full(),
-		   which skipcol does not shorten */
-		if (l == (lnr)w->line) { b.crow = done; b.cheight = plines_lim(w, l, 1); }
+		   which skipcol does not shorten; a closed fold's is 1 */
+		if (l <= cur && last >= cur) {
+			b.crow = done;
+			b.folded = folded(w, l, NULL, NULL);
+			b.cheight = plines_full(w, cur, NULL, 1);
+		}
 		if (done + k > w->h) break;
 		done += k;
+		l = last;
 	}
 	b.bot = l;
 	b.empty = done == 0 ? 0 : w->h - done;
@@ -140,24 +210,27 @@ void win_check_cursor(Win *w)
 	w->col = k ? p : last;
 }
 
-/* the cursor's line without folds, in the top line's coordinates */
+/* lineoff_T: a line, or a closed fold as one, and its height */
 typedef struct { lnr l; int height; } Loff;
 
+/* topline_back_winheight(): the line above, a closed fold at its first line */
 static void topline_back(const Win *w, Loff *lp, int limit)
 {
 	lp->l--;
-	lp->height = lp->l < 0 ? HUGE : plines_lim(w, lp->l, limit);
+	lp->height = lp->l < 0 ? HUGE : folded(w, lp->l, &lp->l, NULL) ? 1 : plines_lim(w, lp->l, limit);
 }
 
+/* botline_forw(): the line below, a closed fold at its last line */
 static void botline_forw(const Win *w, Loff *lp)
 {
 	lp->l++;
-	lp->height = lp->l >= nlines(w) ? HUGE : plines_lim(w, lp->l, 1);
+	lp->height = lp->l >= nlines(w) ? HUGE : folded(w, lp->l, NULL, &lp->l) ? 1 : plines_lim(w, lp->l, 1);
 }
 
 static void set_topline(Win *w, lnr l)
 {
 	WinState *s = &w->frame->s;
+	folded(w, l, &l, NULL);        /* the first of a closed fold */
 	s->bot += (size_t)l - w->top;  /* approximate w_botline */
 	if (s->bot > buf_lines(w->buf)) s->bot = buf_lines(w->buf);
 	w->top = (size_t)l;
@@ -166,7 +239,7 @@ static void set_topline(Win *w, lnr l)
 }
 
 /* changed_line_abv_curs_win() with invalidate_botline_win() (changed_lines()) */
-void win_invalidate(Win *w) { w->frame->s.topvalid = 0; w->frame->s.bv = 0; w->frame->s.sideok = 0; }
+void win_invalidate(Win *w) { w->vc.ok = 0; w->frame->s.topvalid = 0; w->frame->s.bv = 0; w->frame->s.sideok = 0; }
 
 /* check_cursor_moved(): the view is looked at again once the cursor
    leaves its line or 'wrap' changes; w_botline once skipcol changes */
@@ -195,8 +268,9 @@ void scroll_halfway(Editor *e, Win *w, int atend, int prefer_above)
 {
 	(void)e;
 	Loff lo = { (lnr)w->line, 0 }, bo = { (lnr)w->line, 0 };
-	int used = plines_lim(w, (lnr)w->line, 1);
-	lnr top = (lnr)w->line;
+	folded(w, lo.l, &lo.l, &bo.l);
+	int used = plines_lim(w, lo.l, 1);
+	lnr top = lo.l;
 	while (top > 0) {
 		int done = 0, above = 0, below = 0;
 		for (int round = 1; round <= 2; round++) {
@@ -234,16 +308,20 @@ static void scroll_cursor_top(Editor *e, Win *w, int min_scroll, int always)
 {
 	lnr old = (lnr)w->top;
 	long off = so_value();
-	int scrolled = 0, used = plines_lim(w, (lnr)w->line, 1);
+	int scrolled = 0, used = plines_full(w, (lnr)w->line, NULL, 1);   /* w_cline_height */
 	if ((lnr)w->line < old) scrolled = used;
-	lnr top = (lnr)w->line - 1, bot = (lnr)w->line + 1, new_top = top + 1;
+	lnr top, bot;
+	if (folded(w, (lnr)w->line, &top, &bot)) top--, bot++;
+	else top = (lnr)w->line - 1, bot = (lnr)w->line + 1;
+	lnr new_top = top + 1;
 	int extra = 0;
 	while (top >= 0) {
 		int i = plines_lim(w, top, 1);
+		folded(w, top, &top, NULL);
 		if (top < (lnr)w->top) scrolled += i;
 		if ((new_top >= (lnr)w->top || scrolled > min_scroll) && extra >= off) break;
 		used += i;
-		if (extra + i <= off && bot + 1 < nlines(w)) used += plines_lim(w, bot, 1);
+		if (extra + i <= off && bot + 1 < nlines(w)) used += plines_full(w, bot, &bot, 1);
 		if (used > w->h) break;
 		extra += i;
 		new_top = top;
@@ -274,14 +352,16 @@ static void scroll_cursor_bot(Editor *e, Win *w, int min_scroll, int set_topbot)
 	Bot b;
 	if (set_topbot) {
 		int used = 0;
-		Loff lo = { cln + 1, 0 };
+		lnr last = cln;
+		folded(w, cln, NULL, &last);
+		Loff lo = { last + 1, 0 };
 		for (;;) {
 			topline_back(w, &lo, 0);
 			if (lo.height == HUGE || used + lo.height > w->h) break;
 			w->top = (size_t)lo.l;
 			used += lo.height;
 		}
-		b.bot = cln + 1;
+		b.bot = last + 1;
 		b.empty = used == 0 ? 0 : w->h - used;
 		s->bot = (size_t)b.bot;
 		s->empty = b.empty;
@@ -298,6 +378,7 @@ static void scroll_cursor_bot(Editor *e, Win *w, int min_scroll, int set_topbot)
 		if (cln == b.bot) scrolled -= b.empty;
 	}
 	Loff lo = { cln, 0 }, bo = { cln, 0 };
+	folded(w, cln, &lo.l, &bo.l);
 	long so = so_value();
 	while (lo.l > 0) {
 		if ((((scrolled <= 0 || scrolled >= min_scroll) && extra >= so) || bo.l + 1 >= n) && lo.l <= b.bot)
@@ -348,11 +429,12 @@ static void scroll_cursor_bot(Editor *e, Win *w, int min_scroll, int set_topbot)
 	s->topvalid = 1;
 }
 
+
 /* check_top_offset(): fewer than scrolloff screen lines above the cursor */
 static int check_top_offset(const Win *w)
 {
 	long so = so_value();
-	if ((lnr)w->line < (lnr)w->top + so) {
+	if ((lnr)w->line < (lnr)w->top + so || concealed(w)) {
 		Loff lo = { (lnr)w->line, 0 };
 		int n = 0;
 		while (n < so) {
@@ -400,18 +482,33 @@ static void update_topline(Editor *e, Win *w)
 		int half = w->h / 2 - 1;
 		if (half < 2) half = 2;
 		long d = (lnr)w->top + so - (lnr)w->line;
+		/* logical lines from the cursor to topline + so, to the last
+		   line or half */
+		if (concealed(w)) {
+			d = 0;
+			for (lnr l = (lnr)w->line; l < (lnr)w->top + so; l++) {
+				if (++d, l >= n - 1 || d >= half) break;
+				folded(w, l, NULL, &l);
+			}
+		}
 		if (d >= half) scroll_halfway(e, w, 0, 0);
 		else { scroll_cursor_top(e, w, 0, 0); check_botline = 1; }
-	} else check_botline = 1;
+	} else {
+		/* the top line is the first of a closed fold */
+		lnr t = (lnr)w->top;
+		if (folded(w, t, &t, NULL)) w->top = (size_t)t;
+		check_botline = 1;
+	}
 	if (check_botline) {
 		/* an approximate w_botline is used as it is */
 		if (!(w->frame->s.bv & BOT_AP)) validate_botline(w);
-		Bot b = { (lnr)w->frame->s.bot, w->frame->s.empty, 0, 0 };
+		Bot b = { (lnr)w->frame->s.bot, w->frame->s.empty, 0, 0, 0 };
 		if (b.bot < n) {
 			if ((lnr)w->line < b.bot) {
-				if ((lnr)w->line >= b.bot - so) {
+				if ((lnr)w->line >= b.bot - so || concealed(w)) {
 					int k = b.empty;
 					Loff lo = { (lnr)w->line, 0 };
+					folded(w, lo.l, NULL, &lo.l);   /* in a fold: its last line */
 					while (lo.l < b.bot) {
 						k += lo.height;
 						if (k >= so) break;
@@ -422,6 +519,14 @@ static void update_topline(Editor *e, Win *w)
 			}
 			if (check_botline) {
 				long d = (lnr)w->line - b.bot + 1 + so;
+				/* logical lines from the cursor back to botline - so */
+				if (concealed(w)) {
+					d = 0;
+					for (lnr l = (lnr)w->line; l >= b.bot - so; l--) {
+						if (l < 0 || ++d > w->h + 1) break;
+						folded(w, l, &l, NULL);
+					}
+				}
 				if (d <= w->h + 1) scroll_cursor_bot(e, w, 1, 0);   /* 'scrolljump' 1 */
 				else scroll_halfway(e, w, 0, 0);
 			}
@@ -437,7 +542,12 @@ static void curs_columns(Editor *e, Win *w, int may_scroll)
 	update_topline(e, w);
 	Bot b = comp_botline(w);
 	size_t start, end;
-	size_t vcol = win_vcol(e, w, &start, &end);
+	/* in a closed fold the cursor is in the first column */
+	size_t vcol = b.folded ? (start = end = w->left) : win_vcol(e, w, &start, &end);
+	if (b.folded) {   /* VALID_VIRTCOL, which keys' validate_virtcol() reads */
+		w->vc.line = w->line, w->vc.col = w->col, w->vc.v = vcol;
+		w->vc.mode = e->mode, w->vc.ok = 1;
+	}
 	int extra = win_numw(w);
 	long wcol = (long)vcol + extra, endcol = (long)end + extra;
 	long wrow = b.crow;
@@ -458,7 +568,7 @@ static void curs_columns(Editor *e, Win *w, int may_scroll)
 			wcol -= k * w2;
 			wrow += k;
 		}
-	} else if (may_scroll) {
+	} else if (may_scroll && !b.folded) {
 		long off_left = (long)start - (long)w->left;
 		long off_right = endcol - (long)w->left - w->w + 1;
 		/* validate_cursor() scrolls only for a cursor or view that moved:
@@ -568,6 +678,10 @@ static void drawn(Editor *e, Win *w)
    win_update() of the current window comes before the next command */
 void core_update(Editor *e)
 {
+	/* the fold rows that waited for Insert mode to end (core_folds) */
+	if (e->mode != MODE_INSERT)
+		for (Win *w = e->wins; w; w = w->next)
+			if (w->frame->s.fend > w->frame->s.ftop) core_folds(e, w->buf, (size_t)-1, 0);
 	curs_columns(e, e->win, 1);
 	if (e->mode != MODE_INSERT && e->mode != MODE_CMDLINE) drawn(e, e->win);
 }
@@ -683,18 +797,20 @@ static void cursor_correct(Editor *e, Win *w)
 		if (above_wanted > (w->h - 1) / 2) above_wanted = (w->h - 1) / 2;
 	}
 	lnr cln = (lnr)w->line;
-	if (cln >= (lnr)w->top + above_wanted && cln < b.bot - below_wanted) return;
+	if (cln >= (lnr)w->top + above_wanted && cln < b.bot - below_wanted && !concealed(w)) return;
 	/* 'smoothscroll' without wrap: a cursor line as high as the window stays */
 	if (p_sms && !w->wrap && w->frame->s.cheight == w->h) { w->skipcol = 0; return; }
 	lnr top = (lnr)w->top, bot = b.bot - 1;
 	int above = 0, below = 0;
 	while ((above < above_wanted || below < below_wanted) && top < bot) {
 		if (below < below_wanted && (below <= above || above >= above_wanted)) {
-			below += plines_lim(w, bot, 1);
+			below += plines_full(w, bot, NULL, 1);
+			folded(w, bot, &bot, NULL);
 			bot--;
 		}
 		if (above < above_wanted && (above < below || below >= below_wanted)) {
 			above += plines_lim(w, top, 1);
+			folded(w, top, NULL, &top);
 			top++;
 		}
 	}
@@ -714,6 +830,8 @@ static int scrolldown(Editor *e, Win *w, long count)
 	long w1 = width1(w), w2 = w1;
 	int done = 0;
 	int sms = p_sms && w->wrap;
+	lnr t = (lnr)w->top;
+	if (folded(w, t, &t, NULL)) w->top = (size_t)t;   /* the first of a closed fold */
 	curs_columns(e, w, 1);         /* validate_cursor(): w_wrow */
 	for (long todo = count; todo > 0; todo--) {
 		if (w->top == 0 && (!sms || (long)w->skipcol < w1)) break;
@@ -724,7 +842,13 @@ static int scrolldown(Editor *e, Win *w, long count)
 		} else {
 			w->top--;
 			w->skipcol = 0;
-			if (sms) {
+			lnr first;
+			if (folded(w, (lnr)w->top, &first, NULL)) {
+				/* a closed fold counts as one line (byfold) */
+				done++;
+				w->frame->s.bot -= w->top - (size_t)first;
+				w->top = (size_t)first;
+			} else if (sms) {
 				long size = linesize(w, (lnr)w->top);
 				if (size > w1) { w->skipcol = (size_t)w1; size -= w1; }
 				while (size > w2) { w->skipcol += (size_t)w2; size -= w2; }
@@ -737,17 +861,25 @@ static int scrolldown(Editor *e, Win *w, long count)
 	/* the cursor's last screen row, from w_wrow kept up to date; moved up
 	   into the window */
 	int wrow = w->frame->s.wrow + done;
-	if (w->wrap && w->w) {
+	/* a closed fold's height is 1, its cursor column the left one */
+	if (w->wrap && w->w && !folded(w, (lnr)w->line, NULL, NULL)) {
 		check_moved(w);        /* validate_cheight(): a skipcol change drops w_botline */
 		wrow += plines_lim(w, (lnr)w->line, 1) - 1 - (int)(win_vcol(e, w, NULL, NULL) / (size_t)w->w);
 	}
 	int moved = 0;
 	while (wrow >= w->h && w->line > 0) {
-		wrow -= plines_lim(w, (lnr)w->line, 1);
-		w->line--;
+		lnr first;
+		if (folded(w, (lnr)w->line, &first, NULL)) {
+			wrow--;
+			w->line = first > 0 ? (size_t)first - 1 : 0;
+		} else wrow -= plines_lim(w, (lnr)w->line--, 1);
 		moved = 1;
 	}
-	if (moved) coladvance(e, w);
+	if (moved) {
+		lnr l = (lnr)w->line;
+		if (folded(w, l, &l, NULL)) w->line = (size_t)l;   /* foldAdjustCursor() */
+		coladvance(e, w);
+	}
 	if (w->line < w->top) w->line = w->top;
 	return moved;
 }
@@ -758,25 +890,34 @@ static int scrollup(Editor *e, Win *w, long count)
 	lnr n = nlines(w);
 	size_t top0 = w->top;
 	int sms = p_sms && w->wrap;
-	if (sms) {
+	if (sms || concealed(w)) {
+		/* line by line, a closed fold as one (byfold) */
 		long w1 = width1(w), w2 = w1;
-		long size = linesize(w, (lnr)w->top);
+		long size = sms ? linesize(w, (lnr)w->top) : 0;
 		for (long todo = count; todo > 0; todo--) {
 			lnr l = (lnr)w->top;
-			long add = w->skipcol > 0 ? w2 : w1;
-			w->skipcol += (size_t)add;
-			if ((long)w->skipcol >= size) {
-				if (l == n - 1) { w->skipcol -= (size_t)add; break; }
+			folded(w, l, NULL, &l);
+			if (l == (lnr)w->top && sms) {
+				long add = w->skipcol > 0 ? w2 : w1;
+				w->skipcol += (size_t)add;
+				if ((long)w->skipcol >= size) {
+					if (l == n - 1) { w->skipcol -= (size_t)add; break; }
+					l++;
+				}
+			} else {
+				if (l >= n - 1) break;
 				l++;
 			}
 			if (l > (lnr)w->top) {
 				w->top = (size_t)l;
 				w->skipcol = 0;
-				if (todo > 1) size = linesize(w, l);
+				if (todo > 1 && sms) size = linesize(w, l);
 			}
 		}
 	} else w->top += (size_t)count;
 	if ((lnr)w->top > n - 1) w->top = (size_t)(n - 1);
+	lnr t = (lnr)w->top;
+	if (folded(w, t, &t, NULL)) w->top = (size_t)t;   /* the first of a closed fold */
 	WinState *s = &w->frame->s;
 	s->bot += w->top - top0;       /* approximate w_botline */
 	if (s->bot > (size_t)n) s->bot = (size_t)n;
@@ -825,6 +966,34 @@ static void cursor_correct_sms(Editor *e, Win *w)
 	}
 }
 
+/* cursor_down_inner() and cursor_up_inner() (core.h) */
+size_t core_line_step(Editor *e, size_t line, long n)
+{
+	const Win *w = e->win;
+	lnr l = (lnr)line, last = nlines(w) - 1;
+	if (n > 0) {
+		if (l + n >= last) l = last;
+		else if (concealed(w))
+			while (n--) {
+				folded(w, l, NULL, &l);
+				if (++l >= last) break;
+			}
+		else l += n;
+	} else if (n < 0) {
+		n = -n;
+		if (n > l) l = 0;
+		else if (concealed(w)) {
+			folded(w, l, &l, NULL);
+			while (n--) {
+				if (--l <= 0) break;
+				if (n > 0 || e->mode != MODE_INSERT) folded(w, l, &l, NULL);
+			}
+			if (l < 0) l = 0;
+		} else l -= n;
+	}
+	return (size_t)(l > last ? last : l);
+}
+
 /* scroll_redraw(): scroll, keep scrolloff, and move the cursor at least a
    line if the view could not move; the view then stays (VALID_TOPLINE) */
 static void scroll_redraw(Editor *e, Win *w, int up, long count)
@@ -835,13 +1004,14 @@ static void scroll_redraw(Editor *e, Win *w, int up, long count)
 	cursor_correct(e, w);
 	set_valid(w);
 	while (w->top == ptop && w->skipcol == pskip) {
+		/* cursor_down(1), which fails in a closed fold that ends the
+		   buffer, and cursor_up(1) */
+		lnr z = (lnr)w->line;
+		folded(w, z, NULL, &z);
 		if (up) {
-			if (w->line > pline || w->line + 1 >= buf_lines(w->buf)) break;
-			w->line++;
-		} else {
-			if (w->line < pline || ptop == 0 || w->line == 0) break;
-			w->line--;
-		}
+			if (w->line > pline || z + 1 >= nlines(w)) break;
+		} else if (w->line < pline || ptop == 0 || w->line == 0) break;
+		w->line = core_line_step(e, w->line, up ? 1 : -1);
 		coladvance(e, w);      /* cursor_down(), cursor_up() */
 		set_valid(w);
 	}
@@ -882,15 +1052,6 @@ static int scroll_sms(Editor *e, Win *w, int dir, long count, long *curscount)
 
 static int screengo(Editor *e, Win *w, int dir, long dist);
 
-/* cursor_down_inner() and cursor_up_inner() */
-static void cursor_move_lines(Win *w, long n)
-{
-	lnr l = (lnr)w->line + n, last = nlines(w) - 1;
-	if (l < 0) l = 0;
-	if (l > last) l = last;
-	w->line = (size_t)l;
-}
-
 /* pagescroll() */
 /* -1 when neither the view nor the cursor moved: Neovim beeps (measured:
    a mapping stops after CTRL-D or CTRL-F at the end, CTRL-U or CTRL-B at
@@ -906,13 +1067,13 @@ static int pagescroll(Editor *e, int dir, long count, int half)
 		long sc = w->scroll ? (long)w->scroll : (w->h / 2 > 1 ? w->h / 2 : 1);
 		count = sc < w->h ? sc : w->h;
 		long curscount = count;
-		if (dir > 0 && (lnr)w->top + w->h + count > n) {
-			long k = plines_top(w, (lnr)w->top, 0);
+		if (dir > 0 && ((lnr)w->top + w->h + count > n || concealed(w))) {
+			long k = plines_top(w, (lnr)w->top, NULL, 0);
 			if (k - count < w->h && (lnr)w->top < n - 1) {
-				long max = w->h + count;
-				for (lnr l = (lnr)w->top + 1; l < n && k - plines_top(w, (lnr)w->top, 0) < max; l++)
-					k += plines_lim(w, l, 0);
-				if (k - plines_top(w, (lnr)w->top, 0) > max) k = plines_top(w, (lnr)w->top, 0) + max;
+				/* plines_m_win(): a closed fold is one row */
+				long max = w->h + count, c = 0;
+				for (lnr l = (lnr)w->top + 1; l < n && c < max; l++) c += plines_full(w, l, &l, 0);
+				k += c < max ? c : max;
 			}
 			if (k < w->h + count) count = k - w->h;
 		}
@@ -923,7 +1084,7 @@ static int pagescroll(Editor *e, int dir, long count, int half)
 			w->want = pwant;
 		}
 		if (w->wrap) screengo(e, w, dir, curscount);
-		else cursor_move_lines(w, dir > 0 ? curscount : -curscount);
+		else w->line = core_line_step(e, w->line, dir > 0 ? curscount : -curscount);
 	} else {
 		/* get_scroll_overlap() */
 		validate_botline(w);
@@ -961,6 +1122,8 @@ static int pagescroll(Editor *e, int dir, long count, int half)
 		}
 	}
 	cursor_correct(e, w);
+	lnr l = (lnr)w->line;
+	if (folded(w, l, &l, NULL)) w->line = (size_t)l;   /* foldAdjustCursor() */
 	moved = moved || pcol != w->col || pline != w->line;
 	/* beginline(BL_SOL | BL_FIX) with nostartofline: back to curswant */
 	if (moved) coladvance(e, w);
@@ -992,16 +1155,32 @@ size_t core_screen_line(Editor *e, int how, long count, int so)
 	Bot b = comp_botline(w);
 	lnr n = nlines(w), l;
 	if (count < 1) count = 1;
-	if (how == 'L') l = count - 1 >= b.bot ? 0 : b.bot - 1 - (count - 1);
-	else {
+	if (how == 'L') {
+		l = b.bot - 1;
+		if (count - 1 >= b.bot) l = 0;
+		else if (concealed(w))   /* a closed fold counts as one screen line */
+			for (long k = count - 1; k > 0 && l > (lnr)w->top; k--) {
+				folded(w, l, &l, NULL);
+				if (l > (lnr)w->top) l--;
+			}
+		else l -= count - 1;
+	} else {
 		long k = 0;
 		if (how == 'M') {
 			int used = 0, half = (w->h - b.empty + 1) / 2;
+			lnr z;
 			for (; (lnr)w->top + k < n - 1; k++) {
 				used += plines_lim(w, (lnr)w->top + k, 1);
 				if (used >= half) break;
+				if (folded(w, (lnr)w->top + k, NULL, &z)) k = z - (lnr)w->top;
 			}
 			if (k > 0 && used > w->h) k--;
+		} else if (concealed(w)) {
+			/* a closed fold counts as one screen line, up to the last
+			   line in view */
+			lnr z = (lnr)w->top;
+			for (k = count - 1; k-- > 0 && z < b.bot - 1; z++) folded(w, z, NULL, &z);
+			k = z - (lnr)w->top;
 		} else k = count - 1;
 		l = (lnr)w->top + k < n - 1 ? (lnr)w->top + k : n - 1;
 	}
@@ -1035,19 +1214,19 @@ static int screengo(Editor *e, Win *w, int dir, long dist)
 		}
 		while (dist--) {
 			if (dir < 0) {
-				if (want >= w1) want -= w2;
+				if (want >= w1 && !folded(w, (lnr)w->line, NULL, NULL)) want -= w2;
 				else {
 					if (w->line == 0) { ok = 0; break; }
-					w->line--;
+					w->line = core_line_step(e, w->line, -1);
 					linelen = linesize(w, (lnr)w->line);
 					if (linelen > w1) want += (((linelen - w1 - 1) / w2) + 1) * w2;
 				}
 			} else {
 				long n = linelen > w1 ? ((linelen - w1 - 1) / w2 + 1) * w2 + w1 : w1;
-				if (want + w2 < n) want += w2;
+				if (want + w2 < n && !folded(w, (lnr)w->line, NULL, NULL)) want += w2;
 				else {
 					if ((lnr)w->line >= nlines(w) - 1) { ok = 0; break; }
-					w->line++;
+					w->line = core_line_step(e, w->line, 1);
 					want %= w2;
 					if (want >= w1) want -= w2;
 					linelen = linesize(w, (lnr)w->line);
@@ -1075,11 +1254,12 @@ int core_screen_move(Editor *e, long n)
 	Win *w = e->win;
 	int r;
 	if (!w->wrap) {
-		lnr l = (lnr)w->line + n;
-		if (l < 0 || l >= nlines(w)) {
-			if ((n < 0 && w->line == 0) || (n > 0 && (lnr)w->line == nlines(w) - 1)) return -1;
-		}
-		cursor_move_lines(w, n);
+		/* cursor_down() and cursor_up(): they fail only at the first line
+		   or in the last line, or a closed fold that ends the buffer */
+		lnr z = (lnr)w->line;
+		folded(w, z, NULL, &z);
+		if ((n < 0 && w->line == 0) || (n > 0 && z >= nlines(w) - 1)) return -1;
+		w->line = core_line_step(e, w->line, n);
 		coladvance(e, w);
 		r = 0;
 	} else r = screengo(e, w, n < 0 ? -1 : 1, n < 0 ? -n : n) ? 0 : -1;

@@ -439,7 +439,7 @@ int fold_closed(const Fold *f, size_t line, size_t *l1, size_t *l2)
 			*l1 = (size_t)first - 1;
 			long last = first + fp->len - 1;
 			*l2 = (size_t)(last < f->n ? last : f->n) - 1;
-			return 1;
+			return lvl + 1;   /* fold_info()'s fi_level, for foldtext's dashes */
 		}
 	}
 	return 0;
@@ -510,17 +510,18 @@ int fold_cmd(Fold *f, int op, size_t line, long count)
 		op = fold_closed(f, line, &l1, &l2) ? FOLD_OPEN : FOLD_CLOSE;
 		/* fall through */
 	case FOLD_OPEN:
-	case FOLD_CLOSE:   /* setFoldRepeat() */
-		for (long n = 0; n < count; n++) {
-			int done = manual(f, lnum, op == FOLD_OPEN, 0);
-			if (!(done & DONE_ACTION)) return n == 0 && !done ? -1 : 0;
-		}
-		return 0;
+	case FOLD_CLOSE:   /* setFoldRepeat(); zO's second round finds nothing closed */
 	case FOLD_OPEN_REC:
-		return manual(f, lnum, 1, 1) ? 0 : -1;
-	case FOLD_VIEW:   /* foldOpenCursor() */
-		while (manual(f, lnum, 1, 0) & DONE_ACTION) {}
-		return 0;
+		for (long n = 0; n < count; n++) {
+			int done = manual(f, lnum, op != FOLD_CLOSE, op == FOLD_OPEN_REC);
+			if (!(done & DONE_ACTION)) return n ? 1 : done ? 0 : -1;
+		}
+		return count > 0;
+	case FOLD_VIEW: {   /* foldOpenCursor() */
+		int done = 0;
+		while (manual(f, lnum, 1, 0) & DONE_ACTION) done = 1;
+		return done;
+	}
 	case FOLD_OPEN_ALL: count = deepest(&f->folds); break;
 	case FOLD_CLOSE_ALL: count = 0; break;
 	case FOLD_RESET: count = f->level; break;
@@ -528,5 +529,5 @@ int fold_cmd(Fold *f, int op, size_t line, long count)
 	/* newFoldLevelWin() */
 	f->level = (int)count;
 	for (int i = 0; i < f->folds.n; i++) f->folds.d[i].flags = FD_LEVEL;
-	return 0;
+	return 1;   /* newFoldLevel() always calls changed_window_setting() */
 }

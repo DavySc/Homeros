@@ -100,6 +100,9 @@ typedef struct Win {
 	size_t top, left, skipcol;
 	size_t scroll;             /* lines for CTRL-D and CTRL-U ('scroll'); 0 = half the height */
 	int wrap;                  /* 'wrap': off (FEATURES.md); set through core_set_wrap */
+	int conceal;               /* 'conceallevel': 2, or 0 (SPC u p, Davy's
+	                              org-toggle-pretty-entities): the core asks
+	                              syntax_conceal only when it is not 0 */
 	int y, x, h, w;
 	struct Frame *frame;       /* its leaf in the layout */
 	/* CTRL-O CTRL-I, oldest first.  :bd forgets the buffer's entries in the
@@ -208,6 +211,11 @@ size_t core_vcol(Editor *e, size_t l, size_t col);
 size_t core_col_at(Editor *e, size_t l, size_t v, int past_end);
 size_t core_first_nonblank(Editor *e, size_t l);
 void core_clamp(Editor *e);                   /* keep the cursor on a character in normal mode */
+/* cursor_down_inner() and cursor_up_inner() in the current window (n < 0
+   up): the line n lines from line, a closed fold counting as one line;
+   going up a fold is entered at its first line, except in Insert mode for
+   the last step, which opens it.  Keys' j and k use it too. */
+size_t core_line_step(Editor *e, size_t line, long n);
 /* want = the cursor's screen column; on a tab in normal mode the tab's last
    cell, where Vim shows the cursor */
 void core_set_want(Editor *e);
@@ -217,6 +225,18 @@ void core_set_want(Editor *e);
    drawn.  keys_feed calls it after every key, where Neovim's normal_check()
    and edit() call update_topline() (thread 0's, agreed). */
 void core_update(Editor *e);
+/* The rows [r1, r2) whose foldexpr may have changed (syntax_update's):
+   fold_update on each window of b, as Neovim's foldUpdate() after
+   changed_lines().  In Insert mode the rows wait until it ends (foldUpdate
+   skips Insert mode for expr folds; vim.treesitter.foldexpr() catches up on
+   InsertLeave), when core_update runs them. */
+void core_folds(Editor *e, Buf *b, size_t r1, size_t r2);
+/* A z fold command: fold_cmd() on the current window's folds at line,
+   count times; when it changed a fold the view is redone, as Neovim's
+   fold commands call changed_window_setting().  0, or -1 for "E490: No
+   fold found" (also when the window has no folds).  Keys calls this, not
+   fold_cmd(). */
+int  core_fold(Editor *e, int op, size_t line, long count);
 /* The cursor to line, byte col (0-based; past the end clamped to the last
    line and its end, as check_cursor()), the wanted column set from it, then
    core_update: the one way a picker, git, the infoview or :make jump to a

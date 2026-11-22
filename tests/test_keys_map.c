@@ -65,6 +65,12 @@ int main(void)
 	CHECK(!strcmp(e.msg, "Kitten on save: off"));
 	feed(&e, " uk");
 	CHECK(!strcmp(e.msg, "Kitten on save: on"));
+	/* SPC u p: 'conceallevel' 2 or 0 (Davy's org-toggle-pretty-entities) */
+	e.win->conceal = 2;
+	feed(&e, " up");
+	CHECK(!e.win->conceal);
+	feed(&e, " up");
+	CHECK(e.win->conceal == 2);
 	static Grid g;
 	CHECK(!grid_resize(&g, 24, 80));
 	feed(&e, ":KittenPaw\r");
