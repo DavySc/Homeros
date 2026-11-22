@@ -48,3 +48,13 @@ win: image cells drawn as text~win WIN=win~~src/win/backend.c~	if (x->attr == AT
 win: the cell's size is the window's~win WIN=win~~src/win/backend.c~{ *w = cw; *h = ch; }~{ *w = cw; *h = cw; }
 file: file_id calls a missing file an error~test TESTS="file file_save image"~~src/file/file.c~	if (stat(path, &st)) return errno == ENOENT ? 0 : -1;~	if (stat(path, &st)) return -1;
 file: file_id says a file exists that does not~test TESTS="file file_save image"~~src/file/file.c~	memset(id, 0, sizeof *id);¶	if (stat(path, &st))~	memset(id, 1, sizeof *id);¶	if (stat(path, &st))
+image_line: the line is not part of the cache key (an edit to its link keeps the image)~test TESTS=image~~src/image/line.c~image_fnv(14695981039346656037ULL, b, n);~image_fnv(14695981039346656037ULL, b, 0);
+image_line: the box is not part of the cache key~test TESTS=image~~src/image/line.c~	key = image_fnv(key, box, sizeof box);~(void)box;
+image_line: the note's directory is not part of the cache key~test TESTS=image~~src/image/line.c~	key = image_fnv(key, path, dl);~
+image_line: a hit ignores that the image's slot was reused~test TESTS=image~~src/image/line.c~image_gen(cache[i].n) == cache[i].gen~1
+image_line: a LaTeX fragment still rendering is never looked at again~test TESTS=image~~src/image/line.c~cache[i].ends == image_latex_ends~1
+image_line: Markdown code blocks show images~test TESTS=image~~src/image/line.c~syntax_md(s, t, l, &md) && md.code~syntax_md(s, t, l, &md) && 0
+image_line: Org fuzzy links taken as files~test TESTS=image~~src/image/line.c~	else if (*p != '/' && *p != '.') p = NULL;~
+image_line: the terminal renders LaTeX~test TESTS=image~~src/image/line.c~path && cw > 0 ? syntax_filetype~path ? syntax_filetype
+image_line: an absolute path taken as relative~test TESTS=image~~src/image/line.c~	} else if (*p == '/') {~	} else if (0) {
+image_line: a note with no directory looks in /~test TESTS=image~~src/image/line.c~	memcpy(f, slash ? path : ".", dn);~	memcpy(f, slash ? path : "/", dn);

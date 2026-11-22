@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "core_int.h"
+#include "image.h"
 #include "git.h"
 #include "syntax.h"
 #include "uni.h"
@@ -289,7 +290,8 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 {
 	int nw = win_numw(w), tw = w->w - nw;
 	size_t skip = w->wrap ? (l == w->top ? w->skipcol : 0) : w->left;
-	int cover = put_number(g, w, r, l, w->wrap && skip && l == w->top);
+	/* "<<<" also without wrap, where skipcol can stay (win_line()) */
+	int cover = put_number(g, w, r, l, w->skipcol && l == w->top && r == 0);
 	/* no room for text: with wrap, win_line() wraps the number column itself
 	   and the line takes the rest of the window */
 	if (tw <= 0) return !w->wrap;
@@ -390,6 +392,20 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	return drawn != 0;
 }
 
+/* f filler rows from window row r, above line l: the last f rows of the
+   image below line l - 1, after the number column (virt_lines), cut at
+   the window's bottom */
+static void filler(Grid *g, const Win *w, size_t l, int r, int f)
+{
+	if (f <= 0) return;
+	Grid v = *g;
+	v.rows = w->y + w->h < g->rows ? w->y + w->h : g->rows;
+	if (w->w > win_numw(w)) image_put(&v, w->y + r, w->x + win_numw(w), win_image(w, l - 1), win_fill(w, l) - f);
+	/* skipcol's "<<<" goes on the window's first row, a filler row too
+	   (wlv_put_linebuf()) */
+	if (r == 0 && w->skipcol) wputs(g, w, 0, 0, "<<<", FACE_NON_TEXT);
+}
+
 /* win_update(): the lines from the top, "@@@" where the last one does not
    fit (display=lastline), "~" below the end of the buffer */
 static void draw_win(Editor *e, Grid *g, Win *w)
@@ -404,7 +420,13 @@ static void draw_win(Editor *e, Grid *g, Win *w)
 	   current: rendered unless its window is scrolled sideways. */
 	int cur = w->buf == e->buf, rm = cur ? e->mode != MODE_INSERT && !e->ks.visual && !e->win->left : !w->left;
 	size_t raw = cur ? e->win->line : (size_t)-1;
-	for (; r < w->h && l < n; l++) {
+	for (; r < w->h && l <= n; l++) {
+		/* win_line(): the filler rows first, w_topfill's on the top line,
+		   the last rows of the image of the line before; past the last
+		   line only those */
+		int f = l == w->top ? w->frame->s.topfill : win_fill(w, l);
+		filler(g, w, l, r, f);
+		if ((r += f) >= w->h || l == n) break;   /* the window ends in filler rows */
 		int rows = line_rows(w, l);
 		if (!draw_line(e, g, w, l, r, rm ? 1 + (l != raw) : 0)) {
 			/* a double-width character the "@@@" starts in becomes '@' too

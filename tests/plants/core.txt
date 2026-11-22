@@ -162,3 +162,40 @@ core: the modified flag wrong after a save (test_core_screens)~test TESTS=core_s
 core: core_goto leaves a cursor past the end (test_core_contract)~test TESTS=core_contract~~src/core/core.c~	e->win->col = col;¶	core_clamp(e);¶	core_set_want(e);~	e->win->col = col;¶	core_set_want(e);
 core: a write skips the BufWritePre (test_keys_gq's format on :w)~test TESTS=keys_gq~~src/core/core.c~	keys_write_pre(e, b);¶~
 core: a write sends no didSave (test_infoview)~test TESTS=infoview~~src/core/core.c~		kitten_written(e, b);   /* BufWritePost, after the message as in Neovim */¶		lsp_saved(b->lsp);~		kitten_written(e, b);   /* BufWritePost, after the message as in Neovim */
+# images as filler rows (package 21's core hooks, agreed with package 4)
+core: plines_win_full() leaves out the filler (virt trace)~test TESTS=core_screens~~src/core/move.c~	return plines_lim(w, l, limit) + (l == (lnr)w->top ? w->frame->s.topfill : fill(w, l));~	return plines_lim(w, l, limit) + (l == (lnr)w->top ? w->frame->s.topfill : 0);
+core: plines_win_col() leaves out the filler (virt trace)~test TESTS=core_screens~~src/core/move.c~	int lines = 1 + fill(w, l);~	int lines = 1;
+core: topline_back() skips the filler rows (virt trace)~test TESTS=core_screens~~src/core/move.c~	if (lp->fill < fill(w, lp->l)) { lp->fill++; lp->height = 1; return; }~	(void)0;
+core: botline_forw() skips the filler rows (virt trace)~test TESTS=core_screens~~src/core/move.c~	if (lp->fill < fill(w, lp->l + 1)) { lp->fill++; lp->height = 1; return; }~	(void)0;
+core: set_empty_rows() counts the filler below the window as empty (virt trace)~test TESTS=core_screens~~src/core/move.c~		b->filler = fill(w, b->bot);~		b->filler = 0;
+core: check_topfill() lets the filler push the top line out (virt trace)~test TESTS=core_screens~~src/core/move.c~	if (s->topfill + n <= w->h) return;~	return;
+core: CTRL-Y never scrolls into the filler (virt trace)~test TESTS=core_screens~~src/core/move.c~		int can_fill = *tf < w->h - 1 && *tf < fill(w, (lnr)w->top);~		int can_fill = 0;
+core: CTRL-E skips the top filler rows (virt trace)~test TESTS=core_screens~~src/core/move.c~		if (s->topfill > 0) { s->topfill--; continue; }~		s->topfill = 0;
+core: CTRL-E onto a line shows none of its filler (virt trace)~test TESTS=core_screens~~src/core/move.c~			s->topfill = fill(w, l);~			s->topfill = 0;
+core: cursor_correct() leaves out the filler above the top line (virt trace)~test TESTS=core_screens~~src/core/move.c~	int above = w->frame->s.topfill, below = b.filler;~	int above = 0, below = b.filler;
+core: cursor_correct() leaves out the filler between lines (virt trace)~test TESTS=core_screens~~src/core/move.c~			if (top < bot) above += fill(w, top + 1);~			(void)0;
+core: the cursor row leaves out its line's filler (virt trace)~test TESTS=core_screens~~src/core/move.c~	wrow += w->line == w->top ? w->frame->s.topfill : fill(w, (lnr)w->line);~	wrow += w->line == w->top ? w->frame->s.topfill : 0;
+core: the filler below the last line counts as empty (virt trace)~test TESTS=core_screens~~src/core/move.c~		b.empty -= f < b.empty ? f : b.empty;~		(void)f;
+core: M counts the filler above the window (virt trace)~test TESTS=core_screens~~src/core/move.c~			int used = w->frame->s.topfill - fill(w, (lnr)w->top), half~			int used = 0, half
+core: M puts the middle filler's line below (virt trace)~test TESTS=core_screens~~src/core/move.c~				if (k > 0 && used + fill(w, (lnr)w->top + k) / 2 >= half) { k--; break; }~				(void)0;
+core: zt shows all the filler above the line (virt trace)~test TESTS=core_screens~~src/core/move.c~		if (*tf > 0 && extra > off) *tf = *tf - (extra - off) > 0 ? *tf - (int)(extra - off) : 0;~		(void)0;
+core: zb shows filler below the window it cannot fit (virt trace)~test TESTS=core_screens~~src/core/move.c~	int below = fill(w, b.bot) - b.filler;~	int below = 0;
+core: CTRL-F overlaps without the filler (virt trace)~test TESTS=core_screens~~src/core/move.c~			lo.height = lo.fill > 0 ? 1 : plines_lim(w, lo.l, 1);~			lo.height = plines_lim(w, lo.l, 1);
+core: CTRL-D counts no filler below the last line (virt trace)~test TESTS=core_screens~~src/core/move.c~				if (l == n) c += fill(w, n);~				(void)0;
+core: scrolloff counts no filler above the cursor (virt trace)~test TESTS=core_screens~~src/core/move.c~		int n = w->frame->s.topfill;   /* always this context */~		int n = 0;
+core: more filler than the top line has stays (test_core_contract)~test TESTS=core_contract~~src/core/move.c~	if (!check_topline && w->frame->s.topfill > fill(w, (lnr)w->top)) check_topline = 1;~	(void)0;
+core: the window size change keeps the cursor row without filler (virt trace)~test TESTS=core_screens~~src/core/move.c~				line_size = plines_lim(w, l, 1) + (l == (lnr)w->top ? w->frame->s.topfill : fill(w, l));~				line_size = plines_lim(w, l, 1);
+core: CTRL-Y w_cline_row not kept (virt trace)~test TESTS=core_screens~~src/core/move.c~	s->pcrow = w->line == w->top ? 1 : s->crow + done + 1;~	s->pcrow = 0;
+core: CTRL-Y into the filler keeps w_botline valid (virt trace)~test TESTS=core_screens~~src/core/move.c~		}¶		w->frame->s.bot -= w->frame->s.bot > 0;   /* approximate w_botline, then invalidate_botline_win() */¶		w->frame->s.bv = 0;~			w->frame->s.bv = 0;¶		}¶		w->frame->s.bot -= w->frame->s.bot > 0;
+core: an edit drops the current window's top filler (virt trace)~test TESTS=core_screens~~src/core/core.c~			w->top += (size_t)after;¶			w->frame->s.topfill = 0;~			w->top += (size_t)after;
+core: a filler change is not redrawn (virt trace)~test TESTS=core_screens~~src/core/move.c~&& s->topfill == tf) break;   /* no redraw */~&& (tf || 1)) break;   /* no redraw */
+core: cursor_correct() recomputes w_botline (virt trace)~test TESTS=core_screens~~src/core/move.c~	validate_botline(w);¶	Bot b = stored(w);~	validate_botline(w);¶	Bot b = comp_botline(w);
+core: "@@@" counts the filler of the new w_botline (virt trace)~test TESTS=core_screens~~src/core/move.c~of = s->fbot < (size_t)n ? fill(w, (lnr)s->fbot) : 0;~of = fill(w, b.bot);
+core: a count redraws before its command (virt trace)~test TESTS=core_screens~~src/core/move.c~MODE_CMDLINE && !e->ks.pending) drawn~MODE_CMDLINE) drawn
+core: a split forgets the top filler (virt trace)~test TESTS=core_screens~~src/core/win.c~	n->frame->s.topfill = o->frame->s.topfill;~	(void)0;
+core: a window without text room counts no filler (virt trace)~test TESTS=core_screens~~src/core/move.c~l, cols > 1 ? cols : 1, 255,~l, cols, 255,
+core: the filler is drawn over the next window (virt trace)~test TESTS=core_screens~~src/core/draw.c~	if (w->w > win_numw(w)) image_put(~	image_put(
+core: no "<<<" on a filler row (virt trace)~test TESTS=core_screens~~src/core/draw.c~	if (r == 0 && w->skipcol) wputs(g, w, 0, 0, "<<<", FACE_NON_TEXT);~	(void)0;
+core: the filler rows are not drawn (virt trace)~test TESTS=core_screens~~src/core/draw.c~	if (w->w > win_numw(w)) image_put(~	if (0) image_put(
+core: no "<<<" without wrap (test_core_screens)~test TESTS=core_screens~~src/core/draw.c~put_number(g, w, r, l, w->skipcol && l == w->top && r == 0);~put_number(g, w, r, l, w->wrap && w->skipcol && l == w->top && r == 0);
+core: an edit keeps a skipcol past the top line's end (test_core_screens)~test TESTS=core_screens~~src/core/move.c~		w->skipcol = 0;¶}¶¶/* update_topline() */~		(void)0;¶}¶¶/* update_topline() */

@@ -30,6 +30,9 @@ void syntax_free(void) {}
 void syntax_faces(void) {}
 int syntax_md(void) { return 0; }
 const char *syntax_filetype(const char *p) { (void)p; return 0; }
+int image_line(void) { return 0; }   /* the core's images (package 21's) */
+void image_size(void) {}
+void image_put(void) {}
 #else
 #include <sys/inotify.h>
 #include <unistd.h>

@@ -7,6 +7,7 @@
    the first beep; from line 50 none does. */
 #include <poll.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include "check.h"
@@ -28,7 +29,8 @@ int main(void)
 {
 	static Editor e;
 	static Grid g;
-	CHECK(mkstemp(path) >= 0);
+	static char img[4096];   /* before the chdir below */
+	CHECK(realpath("tests/test_image.png", img) && mkstemp(path) >= 0);
 	FILE *f = fopen(path, "w");
 	CHECK(f);
 	for (int i = 1; i <= 100; i++) fprintf(f, "%d\n", i);
@@ -241,6 +243,33 @@ int main(void)
 	CHECK(e.layout->size[ROWS] > g.rows);
 	CHECK(!core_only(&e));
 	unlink(md);
+
+	/* an edit that shrinks the image above the top line, made in another
+	   window, leaves no more filler than the line has: Neovim 0.12, a 4-row
+	   virt_lines mark on line 1, view top 2 + 3 filler rows, cursor 8,
+	   20 x 40, vsplit, the mark set to 0 (and 1) rows, wincmd p: top 2 +
+	   0 (1) filler rows, cursor 8 (1 run each) */
+	char org[] = "/tmp/core_contractXXXXXX.org";
+	CHECK(mkstemps(org, 4) >= 0 && (f = fopen(org, "w")));
+	fprintf(f, "[[file:%s]]\n", img);   /* 32 x 16 pixels: 4 rows of 4-pixel cells */
+	for (int i = 2; i <= 40; i++) fprintf(f, "%d\n", i);
+	CHECK(!fclose(f) && !core_edit_file(&e, org, 1) && !grid_resize(&g, 20, 40));
+	core_pixw = 8, core_pixh = 4;
+	core_draw(&e, &g);
+	CHECK(win_fill(e.win, 1) == 4);
+	Win *a = e.win;
+	a->top = 1, a->frame->s.topfill = 3, a->line = 7;
+	core_update(&e);
+	core_draw(&e, &g);
+	CHECK(a->top == 1 && a->frame->s.topfill == 3 && a->line == 7);
+	CHECK(!core_split(&e, 1, 0));
+	core_draw(&e, &g);
+	CHECK(!core_edit(&e, 0, core_line_len(&e, 0), "x", 1) && !core_win_goto(&e, 'p', 0));
+	core_update(&e);
+	core_draw(&e, &g);
+	CHECK(e.win == a && a->top == 1 && a->frame->s.topfill == 0 && a->line == 7);
+	core_pixw = core_pixh = 0;
+	unlink(org);
 	core_free(&e);
 	for (int i = 0; i < 4; i++) unlink(fn[i]);
 	grid_free(&g);

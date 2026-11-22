@@ -26,6 +26,17 @@ typedef struct {
 	   looks at the view again when the drawn one differs */
 	size_t bot;
 	int empty, bv;
+	int topfill, filler;          /* w_topfill: filler rows shown above the top line; w_filler_rows */
+	/* scrolldown()'s w_cline_row + 1, 0 when none: it adds the rows
+	   scrolled, the top line's filler too, and comp_botline() starts
+	   there while VALID_CROW lasts: until the cursor line is drawn or
+	   the top, its filler or the cursor line changes (pfill, ptop, pline) */
+	int pcrow, pfill;
+	size_t ptop, pline;
+	/* w_botline when the frame (win_drawn()) began: the core looks at the
+	   view after each command and again when drawing, Neovim once */
+	unsigned frame;
+	size_t fbot;
 	int allwrap;                  /* w_allbuf_opt's 'wrap': what :set gave the window */
 	/* w_valid's VALID_WCOL for the sideways scroll: the cursor, leftcol
 	   and width it was done for (check_cursor_moved(), win_new_width()) */
@@ -74,6 +85,8 @@ int win_vcols(const Win *w, size_t l, size_t col, size_t *start, size_t *end);
 /* window geometry (move.c) */
 int  win_numw(const Win *w);          /* number column, with its space: win_col_off() */
 int  win_plines(const Win *w, size_t l);   /* plines_win_nofill(.., true) */
+int  win_image(const Win *w, size_t l);   /* the image shown below line l (image.h), 0 if none */
+int  win_fill(const Win *w, size_t l);    /* win_get_fill(): its rows, above line l + 1 */
 size_t win_botline(Editor *e, Win *w, int *empty_rows);
 void win_update(Editor *e, Win *w);   /* update_topline(), curs_columns() */
 void win_drawn(Editor *e);            /* after drawing: w_botline as drawn */
@@ -85,6 +98,7 @@ void win_new_width(Editor *e, Win *w, int wd);
 void win_cursor_pos(Editor *e, Win *w, int *wrow, int *wcol);
 void scroll_halfway(Editor *e, Win *w, int atend, int prefer_above);
 void win_invalidate(Win *w);          /* changed_line_abv_curs_win(): update_topline() looks again */
+void win_changed(Win *w, size_t l1, size_t l2, long xtra);   /* changed_common()'s skipcol */
 
 /* layout (win.c) */
 void layout_init(Editor *e, Win *w);

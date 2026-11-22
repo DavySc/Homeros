@@ -3,7 +3,11 @@
    every screen row above the command line.  Each token becomes the core
    call the keys make for it (package 5 binds the keys); "k:" tokens go
    through keys_feed.  usage: test_core_screens [FILE] (default
-   tests/test_core_screens.txt); with -v, prints each differing screen. */
+   tests/test_core_screens.txt, then tests/test_core_virt.txt); with -v,
+   prints each differing screen.
+   A case marked V (the .py's --virt) has Org files whose image links
+   [[file:pK.png]] show K filler rows: a 1 x K pixel PNG in 1 x 1 pixel
+   cells, an image cell read as '#'. */
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -12,6 +16,8 @@
 #include "keyname.h"
 #include "uni.h"
 #include "../src/core/core_int.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
 
 static char line[1 << 20];   /* a file is one line of hex: up to 512 KiB */
 
@@ -85,6 +91,7 @@ static const char *row_text(const Grid *g, int r)
 	size_t k = 0;
 	for (int c = 0; c < g->cols; c++) {
 		const Cell *x = &g->c[r * g->cols + c];
+		if (x->attr == ATTR_IMAGE) { got[k++] = '#'; continue; }
 		memcpy(got + k, grid_text(x), x->len);   /* a long cluster is in the store */
 		k += x->len;
 	}
@@ -187,19 +194,20 @@ upd:
 	core_update(e);
 }
 
-int main(int argc, char **argv)
+static int replay(const char *path)
 {
-	const char *path = "tests/test_core_screens.txt";
-	for (int i = 1; i < argc; i++) if (!strcmp(argv[i], "-v")) verbose = 1; else path = argv[i];
-	for (int i = 0; i < 30; i++) {
-		pum_items[i] = PUM1[i % 10];
-		snprintf(pum_words[i], sizeof pum_words[i], "%s%s", PUM1[i % 10].word, (const char *[]){ "", "2", "3" }[i / 10]);
-		pum_items[i].word = pum_words[i];
-	}
 	FILE *f = fopen(path, "r");
 	CHECK(f);
 	char cwd[4096], dir[] = "/tmp/core_screensXXXXXX";
 	CHECK(getcwd(cwd, sizeof cwd) && mkdtemp(dir));
+	static unsigned char px[12 * 4];
+	memset(px, 255, sizeof px);
+	for (int k = 1; k <= 12; k++) {
+		char name[64];
+		snprintf(name, sizeof name, "%s/p%d.png", dir, k);
+		CHECK(stbi_write_png(name, 1, k, 4, px, 4));
+	}
+	int virt = 0;
 	static char *tokens[64], *screens[65][121], *marks[65];
 	int srow = 0;
 	int ntok = 0, nscr = 0, nfile = 0, rows = 0, cols = 0, ncase = 0, bad = 0, total = 0, badcases = 0;
@@ -208,10 +216,11 @@ int main(int argc, char **argv)
 		CHECK(line[ll] == '\n');                  /* a longer line would be read as two */
 		while (ll > 2 && line[ll - 1] == ' ') ll--;
 		line[ll] = 0;
-		if (line[0] == 'C') { CHECK(sscanf(line, "C %d %d", &rows, &cols) == 2); ntok = nscr = nfile = 0; }
+		if (line[0] == 'C') { CHECK(sscanf(line, "C %d %d", &rows, &cols) == 2); ntok = nscr = nfile = virt = 0; }
+		else if (line[0] == 'V') virt = 1;
 		else if (line[0] == 'F') {
 			char name[64];
-			snprintf(name, sizeof name, "%s/f%d", dir, nfile++);
+			snprintf(name, sizeof name, "%s/f%d%s", dir, nfile++, virt ? ".org" : "");
 			FILE *o = fopen(name, "w");
 			CHECK(o);
 			for (const char *h = line + 2; h[0] && h[1]; h += 2) {
@@ -233,7 +242,8 @@ int main(int argc, char **argv)
 			static Editor e;
 			Grid g = { 0 };
 			int differ = 0;
-			CHECK(!chdir(dir) && !core_open(&e, "f0") && !grid_resize(&g, rows, cols));
+			core_pixw = core_pixh = virt;
+			CHECK(!chdir(dir) && !core_open(&e, virt ? "f0.org" : "f0") && !grid_resize(&g, rows, cols));
 			in_pum = 0;
 			for (int s = 0; s < nscr; s++) {
 				if (s) token(&e, &g, tokens[s - 1]);
@@ -274,7 +284,7 @@ int main(int argc, char **argv)
 			CHECK(!chdir(cwd));
 			for (int i = 0; i < nfile; i++) {
 				char name[64];
-				snprintf(name, sizeof name, "%s/f%d", dir, i);
+				snprintf(name, sizeof name, "%s/f%d%s", dir, i, virt ? ".org" : "");
 				unlink(name);
 			}
 			for (int i = 0; i < ntok; i++) free(tokens[i]);
@@ -288,8 +298,26 @@ int main(int argc, char **argv)
 		}
 	}
 	fclose(f);
+	for (int k = 1; k <= 12; k++) {
+		char name[64];
+		snprintf(name, sizeof name, "%s/p%d.png", dir, k);
+		unlink(name);
+	}
 	rmdir(dir);
-	if (bad) { printf("test_core_screens: %d of %d screens differ from Neovim (%d of %d cases)\n", bad, total, badcases, ncase); return 1; }
-	printf("test_core_screens: %d screens of %d cases match Neovim\n", total, ncase);
+	if (bad) { printf("%s: %d of %d screens differ from Neovim (%d of %d cases)\n", path, bad, total, badcases, ncase); return 1; }
+	printf("%s: %d screens of %d cases match Neovim\n", path, total, ncase);
 	return 0;
+}
+
+int main(int argc, char **argv)
+{
+	const char *path = NULL;
+	for (int i = 1; i < argc; i++) if (!strcmp(argv[i], "-v")) verbose = 1; else path = argv[i];
+	for (int i = 0; i < 30; i++) {
+		pum_items[i] = PUM1[i % 10];
+		snprintf(pum_words[i], sizeof pum_words[i], "%s%s", PUM1[i % 10].word, (const char *[]){ "", "2", "3" }[i / 10]);
+		pum_items[i].word = pum_words[i];
+	}
+	/* the traces without and with images (test_core_screens.py --virt) */
+	return path ? replay(path) : replay("tests/test_core_screens.txt") | replay("tests/test_core_virt.txt");
 }

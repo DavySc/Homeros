@@ -1,9 +1,12 @@
-/* Scrolling, as Neovim's move.c, without folds, filler lines, concealing
-   or 'smoothscroll' (none is on), except where CTRL-D, CTRL-U, CTRL-F and
-   CTRL-B switch 'smoothscroll' on for the moment as Neovim does.  Lines are
+/* Scrolling, as Neovim's move.c, without folds, concealing or
+   'smoothscroll' (none is on), except where CTRL-D, CTRL-U, CTRL-F and
+   CTRL-B switch 'smoothscroll' on for the moment as Neovim does.  Filler
+   lines are an image's rows below its line (image.h), as Neovim's
+   virt_lines: the filler of the line after it.  Lines are
    counted from 0 here and from 1 in Neovim: Neovim's "lnum == 1" is "l == 0",
    its w_botline (the line below the window) is bot, at most the line count. */
 #include "core_int.h"
+#include "image.h"
 #include "uni.h"
 
 typedef long lnr;
@@ -46,13 +49,44 @@ static int plines_lim(const Win *w, lnr l, int limit)
 
 int win_plines(const Win *w, size_t l) { return plines_lim(w, (lnr)l, 1); }
 
+/* The image below line l (image.h), as wide as the text, over Mocha's
+   base with its text colour for LaTeX, as the windows draw */
+int win_image(const Win *w, size_t l)
+{
+	/* a new window has no width while its height is set (win_split_ins()),
+	   where Neovim's virt_lines count all the same: the screen's then */
+	const struct Frame *f = w->frame;
+	while (f->parent) f = f->parent;
+	int cols = w->w > 0 ? width1(w) : f->size[COLS] - win_numw(w);
+	/* a window narrower than its number column counts the rows too, as
+	   virt_lines do, and shows none of them (draw.c's filler()) */
+	return image_line(w->buf->text, w->buf->syn, w->buf->path, l, cols > 1 ? cols : 1, 255, core_pixw, core_pixh, 0xcdd6f4, 0x1e1e2e);
+}
+
+/* win_get_fill(): the filler rows above line l, decor_virt_lines() of the
+   image below line l - 1 (also below the last line, l = the line count) */
+int win_fill(const Win *w, size_t l)
+{
+	int c, r = 0;
+	if (l >= 1 && l <= buf_lines(w->buf)) image_size(win_image(w, l - 1), &c, &r);
+	return r;
+}
+static int fill(const Win *w, lnr l) { return win_fill(w, (size_t)l); }
+
+/* plines_win_full(): line l's rows with its filler, w_topfill's for the
+   top line */
+static int plines_full(const Win *w, lnr l, int limit)
+{
+	return plines_lim(w, l, limit) + (l == (lnr)w->top ? w->frame->s.topfill : fill(w, l));
+}
+
 /* plines_win_col(): screen lines up to col of line l, a tab under the
    cursor in normal mode counted to its end.  Its callers pass a byte
    column but it counts that many characters, which reaches further on a
    line with multi-byte characters: copied (measured, review of PR 20, 5) */
 static int plines_col(Editor *e, Win *w, lnr l, size_t col)
 {
-	if (!w->wrap || w->w == 0) return 1;
+	if (!w->wrap || w->w == 0) return 1 + fill(w, l);   /* with the filler above */
 	LineIt it;
 	const unsigned char *s = NULL;
 	size_t v = 0, i = 0, k;
@@ -65,7 +99,7 @@ static int plines_col(Editor *e, Win *w, lnr l, size_t col)
 	if (k && *s == '\t' && e->mode != MODE_INSERT) v += (size_t)core_cellw(w, s, k, 0, v) - 1;
 	long width = width1(w);
 	if (width <= 0) return 9999;
-	int lines = 1;
+	int lines = 1 + fill(w, l);
 	if ((long)v > width) lines += (int)(((long)v - width) / width) + 1;
 	return lines;
 }
@@ -74,7 +108,7 @@ static int plines_col(Editor *e, Win *w, lnr l, size_t col)
    (plines_correct_topline()) */
 static int plines_top(const Win *w, lnr l, int limit)
 {
-	int n = plines_lim(w, l, 0);
+	int n = plines_full(w, l, 0);
 	if (l == (lnr)w->top && w->skipcol) {
 		long wd = width1(w);
 		if ((long)w->skipcol >= wd && wd > 0) n -= (int)(((long)w->skipcol - wd) / wd + 1);
@@ -84,24 +118,45 @@ static int plines_top(const Win *w, lnr l, int limit)
 }
 
 /* comp_botline(): the line below the window; also the cursor line's row
-   and height and the empty rows below the text */
-typedef struct { lnr bot; int empty, crow, cheight; } Bot;
+   and height, the empty rows below the text and the filler rows of the
+   line below the window that fit */
+typedef struct { lnr bot; int empty, crow, cheight, filler; } Bot;
+
+/* w_botline, w_empty_rows and w_filler_rows as they are */
+static Bot stored(const Win *w) { const WinState *s = &w->frame->s; return (Bot){ (lnr)s->bot, s->empty, 0, 0, s->filler }; }
+
+/* set_empty_rows() */
+static void set_empty_rows(const Win *w, Bot *b, int used)
+{
+	b->filler = 0;
+	b->empty = used == 0 ? 0 : w->h - used;
+	if (used && b->bot < nlines(w)) {
+		b->filler = fill(w, b->bot);
+		if (b->empty > b->filler) b->empty -= b->filler;
+		else { b->filler = b->empty; b->empty = 0; }
+	}
+}
 
 static Bot comp_botline(const Win *w)
 {
-	Bot b = { 0, 0, 0, 0 };
+	Bot b = { 0, 0, 0, 0, 0 };
+	const WinState *s = &w->frame->s;
 	lnr l = (lnr)w->top, n = nlines(w);
 	int done = 0;
+	if (s->pcrow && s->ptop == w->top && s->pfill == s->topfill && s->pline == w->line) {
+		l = (lnr)w->line;
+		done = s->pcrow - 1;
+	}
 	for (; l < n; l++) {
 		int k = plines_top(w, l, 1);
 		/* curs_rows(): a changed line's height is plines_win_full(),
 		   which skipcol does not shorten */
-		if (l == (lnr)w->line) { b.crow = done; b.cheight = plines_lim(w, l, 1); }
+		if (l == (lnr)w->line) { b.crow = done; b.cheight = plines_full(w, l, 1); }
 		if (done + k > w->h) break;
 		done += k;
 	}
 	b.bot = l;
-	b.empty = done == 0 ? 0 : w->h - done;
+	set_empty_rows(w, &b, done);
 	return b;
 }
 
@@ -113,6 +168,7 @@ static void validate_botline(Win *w)
 	Bot b = comp_botline(w);
 	s->bot = (size_t)b.bot;
 	s->empty = b.empty;
+	s->filler = b.filler;
 	s->bv = BOT_EXACT | BOT_AP;
 }
 
@@ -140,18 +196,24 @@ void win_check_cursor(Win *w)
 	w->col = k ? p : last;
 }
 
-/* the cursor's line without folds, in the top line's coordinates */
-typedef struct { lnr l; int height; } Loff;
+/* lineoff_T: a line, or its fill-th filler row, and its height */
+typedef struct { lnr l; int fill, height; } Loff;
 
+/* topline_back_winheight(): one filler row up, else the line above */
 static void topline_back(const Win *w, Loff *lp, int limit)
 {
+	if (lp->fill < fill(w, lp->l)) { lp->fill++; lp->height = 1; return; }
 	lp->l--;
+	lp->fill = 0;
 	lp->height = lp->l < 0 ? HUGE : plines_lim(w, lp->l, limit);
 }
 
+/* botline_forw(): one filler row down, else the line below */
 static void botline_forw(const Win *w, Loff *lp)
 {
+	if (lp->fill < fill(w, lp->l + 1)) { lp->fill++; lp->height = 1; return; }
 	lp->l++;
+	lp->fill = 0;
 	lp->height = lp->l >= nlines(w) ? HUGE : plines_lim(w, lp->l, 1);
 }
 
@@ -160,6 +222,7 @@ static void set_topline(Win *w, lnr l)
 	WinState *s = &w->frame->s;
 	s->bot += (size_t)l - w->top;  /* approximate w_botline */
 	if (s->bot > buf_lines(w->buf)) s->bot = buf_lines(w->buf);
+	if ((size_t)l != w->top) s->topfill = 0;   /* the filler stays on the same top line */
 	w->top = (size_t)l;
 	s->topvalid = 0;      /* scrolloff is still to be checked */
 	s->bv &= ~BOT_EXACT;
@@ -190,12 +253,23 @@ static void set_valid(Win *w)
 	w->frame->s.topvalid = 1;
 }
 
+/* check_topfill(): no more filler rows than leave the top line room */
+static void check_topfill(Win *w, int down)
+{
+	WinState *s = &w->frame->s;
+	if (s->topfill <= 0) return;
+	int n = plines_lim(w, (lnr)w->top, 1);
+	if (s->topfill + n <= w->h) return;
+	if (down && w->top > 0) { w->top--; s->topfill = 0; }
+	else s->topfill = w->h - n > 0 ? w->h - n : 0;
+}
+
 /* scroll_cursor_halfway() */
 void scroll_halfway(Editor *e, Win *w, int atend, int prefer_above)
 {
 	(void)e;
-	Loff lo = { (lnr)w->line, 0 }, bo = { (lnr)w->line, 0 };
-	int used = plines_lim(w, (lnr)w->line, 1);
+	Loff lo = { (lnr)w->line, 0, 0 }, bo = { (lnr)w->line, 0, 0 };
+	int used = plines_lim(w, (lnr)w->line, 1), topfill = 0;
 	lnr top = (lnr)w->line;
 	while (top > 0) {
 		int done = 0, above = 0, below = 0;
@@ -217,6 +291,7 @@ void scroll_halfway(Editor *e, Win *w, int atend, int prefer_above)
 				if (used > w->h) { done = 1; break; }
 				above += lo.height;
 				top = lo.l;
+				topfill = lo.fill;
 			}
 		}
 		if (done) break;
@@ -225,6 +300,8 @@ void scroll_halfway(Editor *e, Win *w, int atend, int prefer_above)
 	/* only with 'smoothscroll' (reset_skipcol()): without it a line taller
 	   than the window keeps its view (second review of PR 20, B3) */
 	if (p_sms && w->wrap) w->skipcol = 0;
+	w->frame->s.topfill = topfill;
+	check_topfill(w, 0);
 	w->frame->s.topvalid = 1;
 	w->frame->s.bv = 0;
 }
@@ -233,17 +310,18 @@ void scroll_halfway(Editor *e, Win *w, int atend, int prefer_above)
 static void scroll_cursor_top(Editor *e, Win *w, int min_scroll, int always)
 {
 	lnr old = (lnr)w->top;
+	int old_fill = w->frame->s.topfill;
 	long off = so_value();
-	int scrolled = 0, used = plines_lim(w, (lnr)w->line, 1);
+	int scrolled = 0, used = plines_full(w, (lnr)w->line, 1);   /* with the filler above */
 	if ((lnr)w->line < old) scrolled = used;
 	lnr top = (lnr)w->line - 1, bot = (lnr)w->line + 1, new_top = top + 1;
-	int extra = 0;
+	int extra = fill(w, (lnr)w->line);
 	while (top >= 0) {
 		int i = plines_lim(w, top, 1);
 		if (top < (lnr)w->top) scrolled += i;
 		if ((new_top >= (lnr)w->top || scrolled > min_scroll) && extra >= off) break;
 		used += i;
-		if (extra + i <= off && bot + 1 < nlines(w)) used += plines_lim(w, bot, 1);
+		if (extra + i <= off && bot + 1 < nlines(w)) used += plines_full(w, bot, 1);
 		if (used > w->h) break;
 		extra += i;
 		new_top = top;
@@ -255,9 +333,13 @@ static void scroll_cursor_top(Editor *e, Win *w, int min_scroll, int always)
 		size_t oskip = w->skipcol;
 		if (new_top < (lnr)w->top || always) w->top = (size_t)new_top;
 		if (w->top > w->line) w->top = w->line;
+		int *tf = &w->frame->s.topfill;
+		*tf = fill(w, (lnr)w->top);
+		if (*tf > 0 && extra > off) *tf = *tf - (extra - off) > 0 ? *tf - (int)(extra - off) : 0;
+		check_topfill(w, 0);
 		if ((lnr)w->top != old) w->skipcol = 0;
 		else if (w->top == w->line && w->skipcol >= win_vcol(e, w, NULL, NULL)) w->skipcol = 0;
-		if ((lnr)w->top != old || w->skipcol != oskip) w->frame->s.bv = 0;
+		if ((lnr)w->top != old || w->skipcol != oskip || *tf != old_fill) w->frame->s.bv = 0;
 		w->frame->s.topvalid = 1;
 	}
 }
@@ -271,55 +353,60 @@ static void scroll_cursor_bot(Editor *e, Win *w, int min_scroll, int set_topbot)
 	lnr cln = (lnr)w->line, n = nlines(w);
 	WinState *s = &w->frame->s, old = *s;
 	size_t old_top = w->top, old_skip = w->skipcol;
+	int old_fill = s->topfill;
 	Bot b;
 	if (set_topbot) {
 		int used = 0;
-		Loff lo = { cln + 1, 0 };
+		Loff lo = { cln + 1, 0, 0 };
 		for (;;) {
 			topline_back(w, &lo, 0);
 			if (lo.height == HUGE || used + lo.height > w->h) break;
+			s->topfill = lo.fill;
 			w->top = (size_t)lo.l;
 			used += lo.height;
 		}
 		b.bot = cln + 1;
-		b.empty = used == 0 ? 0 : w->h - used;
+		set_empty_rows(w, &b, used);
 		s->bot = (size_t)b.bot;
 		s->empty = b.empty;
+		s->filler = b.filler;
 		s->bv = BOT_EXACT | BOT_AP;
-		if (w->top != old_top || w->skipcol) w->skipcol = 0;
+		if (w->top != old_top || s->topfill != old_fill || w->skipcol) w->skipcol = 0;
 	} else {
 		validate_botline(w);
 		b.bot = (lnr)s->bot;
 		b.empty = s->empty;
+		b.filler = s->filler;
 	}
 	int used = plines_lim(w, cln, 1), scrolled = 0, extra = 0;
 	if (cln >= b.bot) {
 		scrolled = used;
 		if (cln == b.bot) scrolled -= b.empty;
 	}
-	Loff lo = { cln, 0 }, bo = { cln, 0 };
+	Loff lo = { cln, 0, 0 }, bo = { cln, 0, 0 };
+	/* the filler rows of the line below the window that do not fit */
+	int below = fill(w, b.bot) - b.filler;
 	long so = so_value();
 	while (lo.l > 0) {
-		if ((((scrolled <= 0 || scrolled >= min_scroll) && extra >= so) || bo.l + 1 >= n) && lo.l <= b.bot)
+		if ((((scrolled <= 0 || scrolled >= min_scroll) && extra >= so) || bo.l + 1 >= n)
+		    && lo.l <= b.bot && (lo.l < b.bot || lo.fill >= below))
 			break;
-		lnr before = lo.l;
 		topline_back(w, &lo, 1);
 		used = lo.height == HUGE ? HUGE : used + lo.height;
 		if (used > w->h) break;
-		if (lo.l >= b.bot) {
+		if (lo.l >= b.bot && (lo.l > b.bot || lo.fill <= below)) {
 			scrolled += lo.height;
-			if (lo.l == b.bot && before > b.bot) scrolled -= b.empty;
+			if (lo.l == b.bot && lo.fill == 0) scrolled -= b.empty;
 		}
 		if (bo.l + 1 < n) {
-			lnr bbefore = bo.l;
 			botline_forw(w, &bo);
 			used += bo.height;
 			if (used > w->h) break;
 			if (extra < so || scrolled < min_scroll) {
 				extra += bo.height;
-				if (bo.l >= b.bot) {
+				if (bo.l >= b.bot || (bo.l + 1 == b.bot && bo.fill > b.filler)) {
 					scrolled += bo.height;
-					if (bbefore < b.bot) scrolled -= b.empty;
+					if (bo.l == b.bot && bo.fill == 0) scrolled -= b.empty;
 				}
 			}
 		}
@@ -328,7 +415,7 @@ static void scroll_cursor_bot(Editor *e, Win *w, int min_scroll, int set_topbot)
 	if (scrolled <= 0) line_count = 0;
 	else if (used > w->h) line_count = used;
 	else {
-		Loff f = { (lnr)w->top - 1, 0 };
+		Loff f = { (lnr)w->top - 1, s->topfill, 0 };
 		int i;
 		for (i = 0; i < scrolled && f.l < b.bot;) {
 			botline_forw(w, &f);
@@ -343,6 +430,7 @@ static void scroll_cursor_bot(Editor *e, Win *w, int min_scroll, int set_topbot)
 	if (set_topbot && w->top == old_top && w->skipcol == old_skip) {
 		s->bot = old.bot;
 		s->empty = old.empty;
+		s->filler = old.filler;
 		s->bv = old.bv;
 	}
 	s->topvalid = 1;
@@ -353,16 +441,29 @@ static int check_top_offset(const Win *w)
 {
 	long so = so_value();
 	if ((lnr)w->line < (lnr)w->top + so) {
-		Loff lo = { (lnr)w->line, 0 };
-		int n = 0;
+		Loff lo = { (lnr)w->line, 0, 0 };
+		int n = w->frame->s.topfill;   /* always this context */
 		while (n < so) {
 			topline_back(w, &lo, 1);
-			if (lo.l < (lnr)w->top) break;
+			if (lo.l < (lnr)w->top || (lo.l == (lnr)w->top && lo.fill > 0)) break;
 			n += lo.height;
 		}
 		if (n < so) return 1;
 	}
 	return 0;
+}
+
+/* sms_marker_overlap(): the cells of the "<<<" marker past the number
+   column */
+static long overlap(const Win *w) { int nw = win_numw(w); return nw > 3 ? 0 : 3 - nw; }
+
+/* changed_common(): lines [l1, l2) became xtra more; skipcol goes when the
+   top line ends before its "<<<" or the change ends above the top */
+void win_changed(Win *w, size_t l1, size_t l2, long xtra)
+{
+	if (w->skipcol && ((long)l2 + xtra - 1 < (long)w->top
+	                   || (w->top >= l1 && w->top < l2 && linesize(w, (lnr)w->top) <= (long)w->skipcol + overlap(w))))
+		w->skipcol = 0;
 }
 
 /* update_topline() */
@@ -383,19 +484,19 @@ static void update_topline(Editor *e, Win *w)
 		return;
 	}
 	lnr old_top = (lnr)w->top;
-	int check_topline = 0;
+	int old_fill = w->frame->s.topfill, check_topline = 0;
 	if (w->top > 0 || w->skipcol > 0) {
 		if (w->line < w->top) check_topline = 1;
 		else if (check_top_offset(w)) check_topline = 1;
 		else if (w->skipcol > 0 && w->line == w->top) {
-			/* the cursor's first cell against skipcol and the "<<<" marker
-			   (sms_marker_overlap(): 3 cells less the number column) */
+			/* the cursor's first cell against skipcol and the "<<<" marker */
 			size_t v;
 			win_vcol(e, w, &v, NULL);
-			int nw = win_numw(w);
-			if ((long)w->skipcol + (nw > 3 ? 0 : 3 - nw) > (long)v) check_topline = 1;
+			if ((long)w->skipcol + overlap(w) > (long)v) check_topline = 1;
 		}
 	}
+	/* more filler rows than the top line has */
+	if (!check_topline && w->frame->s.topfill > fill(w, (lnr)w->top)) check_topline = 1;
 	if (check_topline) {
 		int half = w->h / 2 - 1;
 		if (half < 2) half = 2;
@@ -406,13 +507,13 @@ static void update_topline(Editor *e, Win *w)
 	if (check_botline) {
 		/* an approximate w_botline is used as it is */
 		if (!(w->frame->s.bv & BOT_AP)) validate_botline(w);
-		Bot b = { (lnr)w->frame->s.bot, w->frame->s.empty, 0, 0 };
+		Bot b = stored(w);
 		if (b.bot < n) {
 			if ((lnr)w->line < b.bot) {
 				if ((lnr)w->line >= b.bot - so) {
-					int k = b.empty;
-					Loff lo = { (lnr)w->line, 0 };
-					while (lo.l < b.bot) {
+					int k = b.empty + b.filler;
+					Loff lo = { (lnr)w->line, 0, 0 };
+					while (lo.l < b.bot && (lo.l + 1 < b.bot || lo.fill == 0)) {
 						k += lo.height;
 						if (k >= so) break;
 						botline_forw(w, &lo);
@@ -427,7 +528,7 @@ static void update_topline(Editor *e, Win *w)
 			}
 		}
 	}
-	if ((lnr)w->top != old_top) w->skipcol = 0;
+	if ((lnr)w->top != old_top || w->frame->s.topfill != old_fill) w->skipcol = 0;
 }
 
 /* curs_columns(): the cursor's row and column in the window; scrolls
@@ -480,6 +581,8 @@ static void curs_columns(Editor *e, Win *w, int may_scroll)
 		wcol -= (long)w->left;
 	} else if (wcol > (long)w->left) wcol -= (long)w->left;
 	else wcol = 0;
+	/* past the filler rows, w_topfill's at the top */
+	wrow += w->line == w->top ? w->frame->s.topfill : fill(w, (lnr)w->line);
 	long so = so_value();
 	size_t prev_skip = w->skipcol;
 	long plines = 0;
@@ -488,7 +591,7 @@ static void curs_columns(Editor *e, Win *w, int may_scroll)
 	    && w->h && w->line == w->top && w2 > 0 && w->w) {
 		long ex = 0, n;
 		if ((long)w->skipcol + so * w2 > (long)vcol) ex = 1;
-		if (!plines) plines = plines_lim(w, (lnr)w->line, 0);
+		if (!plines) plines = plines_lim(w, (lnr)w->line, 0) + fill(w, (lnr)w->line);   /* plines_win() */
 		plines--;
 		n = plines > wrow + so ? wrow + so : plines;
 		if (n >= w->h + (long)w->skipcol / w2 - so) ex += 2;
@@ -530,6 +633,7 @@ void win_ecmd_topline(Editor *e, Win *w)
 {
 	w->top = 0;
 	w->skipcol = 0;
+	w->frame->s.topfill = 0;
 	w->frame->s.topvalid = 0;
 	w->frame->s.bot = 1;           /* curwin_init(): w_botline 2, w_valid 0 */
 	w->frame->s.bv = 0;
@@ -537,6 +641,8 @@ void win_ecmd_topline(Editor *e, Win *w)
 	update_topline(e, w);
 	p_so = SCROLLOFF;
 }
+static unsigned frames;   /* frames drawn (win_drawn()) */
+
 /* win_update(): skipcol made valid, then w_botline as drawn.
    update_topline() may have used an approximate one, so for the current
    window a drawn value that differs looks at the view again, once
@@ -549,30 +655,48 @@ static void drawn(Editor *e, Win *w)
 	if (w->skipcol > 0 && w1 > 0)
 		w->skipcol = (long)w->skipcol < w1 ? 0 : (size_t)(w1 + ((long)w->skipcol - w1) / w1 * w1);
 	WinState *s = &w->frame->s;
+	s->pcrow = 0;                  /* the drawn cursor line's row (win_line()) */
 	size_t old = s->bot, top = w->top, skip = w->skipcol;
+	if (s->frame != frames) { s->frame = frames; s->fbot = old; }
+	int tf = s->topfill;
 	for (int again = w == e->win; ; again = 0) {
 		Bot b = comp_botline(w);
+		lnr n = nlines(w);
+		/* the filler rows below the last line are drawn, not empty */
+		int f = b.bot == n ? fill(w, b.bot) : 0;
+		b.empty -= f < b.empty ? f : b.empty;
+		/* a last line cut off ("@@@"): set_empty_rows() before w_botline
+		   is set, so with the filler of the line below the one before
+		   this frame (measured: Neovim draws once per command, with or
+		   without typeahead) */
+		if (b.bot < n && b.empty > 0) {
+			int rows = b.empty + b.filler, of = s->fbot < (size_t)n ? fill(w, (lnr)s->fbot) : 0;
+			b.filler = rows > of ? of : rows;
+			b.empty = rows - b.filler;
+		}
 		s->bot = (size_t)b.bot;
 		s->empty = b.empty;
+		s->filler = b.filler;
 		s->bv |= BOT_EXACT;
 		if (!again || s->bot == old) break;
 		s->topvalid = 0;
 		update_topline(e, w);
-		if (w->top == top && w->skipcol == skip) break;   /* no redraw */
+		if (w->top == top && w->skipcol == skip && s->topfill == tf) break;   /* no redraw */
 		curs_columns(e, w, 1);
 	}
 }
 
 /* normal_check() runs normal_redraw() after each command in Normal and
    Visual mode, typeahead or not ('lazyredraw' off): update_screen()'s
-   win_update() of the current window comes before the next command */
+   win_update() of the current window comes before the next command, not
+   inside one (a count or an operator pending) */
 void core_update(Editor *e)
 {
 	curs_columns(e, e->win, 1);
-	if (e->mode != MODE_INSERT && e->mode != MODE_CMDLINE) drawn(e, e->win);
+	if (e->mode != MODE_INSERT && e->mode != MODE_CMDLINE && !e->ks.pending) drawn(e, e->win);
 }
 
-void win_drawn(Editor *e) { for (Win *w = e->wins; w; w = w->next) drawn(e, w); }
+void win_drawn(Editor *e) { for (Win *w = e->wins; w; w = w->next) drawn(e, w); frames++; }
 
 void win_set_fraction(Win *w)
 {
@@ -590,7 +714,7 @@ static void scroll_to_fraction(Editor *e, Win *w, int prev_height)
 		int line_size = plines_col(e, w, l, w->col) - 1;
 		int sline = wrow - line_size;
 		if (sline >= 0) {
-			int rows = plines_lim(w, l, 0);
+			int rows = plines_lim(w, l, 0) + fill(w, l);   /* plines_win() */
 			if (sline > height - rows) {
 				sline = height - rows;
 				wrow -= rows - line_size;
@@ -609,7 +733,7 @@ static void scroll_to_fraction(Editor *e, Win *w, int prev_height)
 		} else if (sline > 0) {
 			while (sline > 0 && l > 0) {
 				l--;
-				line_size = plines_lim(w, l, 1);
+				line_size = plines_lim(w, l, 1) + (l == (lnr)w->top ? w->frame->s.topfill : fill(w, l));
 				sline -= line_size;
 			}
 			if (sline < 0) {
@@ -677,7 +801,7 @@ static void cursor_correct(Editor *e, Win *w)
 		if (below_wanted > w->h / 2) below_wanted = w->h / 2;
 	}
 	validate_botline(w);
-	Bot b = comp_botline(w);
+	Bot b = stored(w);
 	if (b.bot == nlines(w)) {
 		below_wanted = 0;
 		if (above_wanted > (w->h - 1) / 2) above_wanted = (w->h - 1) / 2;
@@ -687,14 +811,15 @@ static void cursor_correct(Editor *e, Win *w)
 	/* 'smoothscroll' without wrap: a cursor line as high as the window stays */
 	if (p_sms && !w->wrap && w->frame->s.cheight == w->h) { w->skipcol = 0; return; }
 	lnr top = (lnr)w->top, bot = b.bot - 1;
-	int above = 0, below = 0;
+	int above = w->frame->s.topfill, below = b.filler;   /* rows above the top line, below the last */
 	while ((above < above_wanted || below < below_wanted) && top < bot) {
 		if (below < below_wanted && (below <= above || above >= above_wanted)) {
-			below += plines_lim(w, bot, 1);
+			below += plines_full(w, bot, 1);
 			bot--;
 		}
 		if (above < above_wanted && (above < below || below >= below_wanted)) {
 			above += plines_lim(w, top, 1);
+			if (top < bot) above += fill(w, top + 1);
 			top++;
 		}
 	}
@@ -715,35 +840,48 @@ static int scrolldown(Editor *e, Win *w, long count)
 	int done = 0;
 	int sms = p_sms && w->wrap;
 	curs_columns(e, w, 1);         /* validate_cursor(): w_wrow */
+	int *tf = &w->frame->s.topfill;
 	for (long todo = count; todo > 0; todo--) {
-		if (w->top == 0 && (!sms || (long)w->skipcol < w1)) break;
+		int can_fill = *tf < w->h - 1 && *tf < fill(w, (lnr)w->top);
+		if (w->top == 0 && !can_fill && (!sms || (long)w->skipcol < w1)) break;
 		if (sms && (long)w->skipcol >= w1) {
 			if ((long)w->skipcol >= w1 + w2) w->skipcol -= (size_t)w2;
 			else w->skipcol -= (size_t)w1;
 			done++;
+		} else if (can_fill) {
+			++*tf;
+			done++;
 		} else {
 			w->top--;
 			w->skipcol = 0;
+			*tf = 0;
 			if (sms) {
 				long size = linesize(w, (lnr)w->top);
 				if (size > w1) { w->skipcol = (size_t)w1; size -= w1; }
 				while (size > w2) { w->skipcol += (size_t)w2; size -= w2; }
 				done++;
 			} else done += plines_lim(w, (lnr)w->top, 1);
-			w->frame->s.bot--;     /* approximate w_botline, then invalidate_botline_win() */
-			w->frame->s.bv = 0;
 		}
+		w->frame->s.bot -= w->frame->s.bot > 0;   /* approximate w_botline, then invalidate_botline_win() */
+		w->frame->s.bv = 0;
 	}
+	check_topfill(w, 1);
 	/* the cursor's last screen row, from w_wrow kept up to date; moved up
-	   into the window */
-	int wrow = w->frame->s.wrow + done;
+	   into the window.  w_wrow is past the cursor line's filler and
+	   w_cline_height counts it again: copied */
+	WinState *s = &w->frame->s;
+	int wrow = s->wrow + done;
+	s->pcrow = w->line == w->top ? 1 : s->crow + done + 1;
+	s->pfill = s->topfill;
+	s->ptop = w->top;
+	s->pline = w->line;
 	if (w->wrap && w->w) {
 		check_moved(w);        /* validate_cheight(): a skipcol change drops w_botline */
-		wrow += plines_lim(w, (lnr)w->line, 1) - 1 - (int)(win_vcol(e, w, NULL, NULL) / (size_t)w->w);
+		wrow += s->cheight - 1 - (int)(win_vcol(e, w, NULL, NULL) / (size_t)w->w);
 	}
 	int moved = 0;
 	while (wrow >= w->h && w->line > 0) {
-		wrow -= plines_lim(w, (lnr)w->line, 1);
+		wrow -= plines_lim(w, (lnr)w->line, 1) + fill(w, (lnr)w->line);   /* plines_win() */
 		w->line--;
 		moved = 1;
 	}
@@ -758,26 +896,31 @@ static int scrollup(Editor *e, Win *w, long count)
 	lnr n = nlines(w);
 	size_t top0 = w->top;
 	int sms = p_sms && w->wrap;
-	if (sms) {
-		long w1 = width1(w), w2 = w1;
-		long size = linesize(w, (lnr)w->top);
-		for (long todo = count; todo > 0; todo--) {
-			lnr l = (lnr)w->top;
+	WinState *s = &w->frame->s;
+	/* line by line, the filler rows first (win_may_fill()) */
+	long w1 = width1(w), w2 = w1, size = sms ? linesize(w, (lnr)w->top) : 0;
+	for (long todo = count; todo > 0; todo--) {
+		if (s->topfill > 0) { s->topfill--; continue; }
+		lnr l = (lnr)w->top;
+		if (sms) {
 			long add = w->skipcol > 0 ? w2 : w1;
 			w->skipcol += (size_t)add;
 			if ((long)w->skipcol >= size) {
 				if (l == n - 1) { w->skipcol -= (size_t)add; break; }
 				l++;
 			}
-			if (l > (lnr)w->top) {
-				w->top = (size_t)l;
-				w->skipcol = 0;
-				if (todo > 1) size = linesize(w, l);
-			}
+		} else {
+			if (l >= n - 1) break;
+			l++;
 		}
-	} else w->top += (size_t)count;
-	if ((lnr)w->top > n - 1) w->top = (size_t)(n - 1);
-	WinState *s = &w->frame->s;
+		if (l > (lnr)w->top) {
+			w->top = (size_t)l;
+			s->topfill = fill(w, l);
+			w->skipcol = 0;
+			if (todo > 1 && sms) size = linesize(w, l);
+		}
+	}
+	check_topfill(w, 0);
 	s->bot += w->top - top0;       /* approximate w_botline */
 	if (s->bot > (size_t)n) s->bot = (size_t)n;
 	s->bv &= ~BOT_EXACT;
@@ -830,11 +973,12 @@ static void cursor_correct_sms(Editor *e, Win *w)
 static void scroll_redraw(Editor *e, Win *w, int up, long count)
 {
 	size_t ptop = w->top, pskip = w->skipcol, pline = w->line;
+	int pfill = w->frame->s.topfill;
 	if (up) scrollup(e, w, count);
 	else scrolldown(e, w, count);
 	cursor_correct(e, w);
 	set_valid(w);
-	while (w->top == ptop && w->skipcol == pskip) {
+	while (w->top == ptop && w->skipcol == pskip && w->frame->s.topfill == pfill) {
 		if (up) {
 			if (w->line > pline || w->line + 1 >= buf_lines(w->buf)) break;
 			w->line++;
@@ -861,6 +1005,7 @@ void core_scroll(Editor *e, long n)
 static int scroll_sms(Editor *e, Win *w, int dir, long count, long *curscount)
 {
 	size_t pskip = w->skipcol, ptop = w->top;
+	int pfill = w->frame->s.topfill;
 	p_sms = 1;
 	scroll_redraw(e, w, dir > 0, count);
 	/* a window narrower than its number column has no text width, where
@@ -877,7 +1022,7 @@ static int scroll_sms(Editor *e, Win *w, int dir, long count, long *curscount)
 		*curscount += c * (fix == dir ? 1 : -1);
 	}
 	p_sms = 0;
-	return w->top != ptop || w->skipcol != pskip;
+	return w->top != ptop || w->skipcol != pskip || w->frame->s.topfill != pfill;
 }
 
 static int screengo(Editor *e, Win *w, int dir, long dist);
@@ -908,11 +1053,12 @@ static int pagescroll(Editor *e, int dir, long count, int half)
 		long curscount = count;
 		if (dir > 0 && (lnr)w->top + w->h + count > n) {
 			long k = plines_top(w, (lnr)w->top, 0);
-			if (k - count < w->h && (lnr)w->top < n - 1) {
-				long max = w->h + count;
-				for (lnr l = (lnr)w->top + 1; l < n && k - plines_top(w, (lnr)w->top, 0) < max; l++)
-					k += plines_lim(w, l, 0);
-				if (k - plines_top(w, (lnr)w->top, 0) > max) k = plines_top(w, (lnr)w->top, 0) + max;
+			if (k - count < w->h && (lnr)w->top < n - 1) {   /* plines_m_win() */
+				long max = w->h + count, c = 0;
+				lnr l = (lnr)w->top + 1;
+				for (; l < n && c < max; l++) c += plines_full(w, l, 0);
+				if (l == n) c += fill(w, n);
+				k += c < max ? c : max;
 			}
 			if (k < w->h + count) count = k - w->h;
 		}
@@ -931,8 +1077,9 @@ static int pagescroll(Editor *e, int dir, long count, int half)
 		int minh = w->h - 2, ov;
 		if ((dir < 0 && w->top == 0) || (dir > 0 && b.bot >= n)) ov = minh + 2;
 		else {
-			Loff lo = { dir > 0 ? b.bot : (lnr)w->top - 1, 0 };
-			lo.height = plines_lim(w, lo.l, 1);
+			Loff lo = { dir > 0 ? b.bot : (lnr)w->top - 1, 0, 0 };
+			lo.fill = fill(w, dir > 0 ? b.bot : (lnr)w->top) - (dir > 0 ? b.filler : w->frame->s.topfill);
+			lo.height = lo.fill > 0 ? 1 : plines_lim(w, lo.l, 1);
 			int h1 = lo.height, h2, h3, h4;
 			if (h1 > minh) ov = minh + 2;
 			else {
@@ -971,7 +1118,8 @@ static int pagescroll(Editor *e, int dir, long count, int half)
 int core_scroll_half(Editor *e, int dir, long count) { return pagescroll(e, dir, count, 1); }
 int core_scroll_page(Editor *e, int dir, long count) { return pagescroll(e, dir, count ? count : 1, 0); }
 
-/* nv_zet(): zt zz zb, then set_fraction() */
+/* nv_zet(): zt zz zb, then set_fraction() from w_wrow as it was: the
+   scroll leaves it for the redraw */
 void core_scroll_cursor(Editor *e, int how)
 {
 	Win *w = e->win;
@@ -988,17 +1136,20 @@ size_t core_screen_line(Editor *e, int how, long count, int so)
 {
 	Win *w = e->win;
 	core_update(e);
-	validate_botline(w);
-	Bot b = comp_botline(w);
+	validate_botline(w);   /* w_empty_rows as win_update() left it, or comp_botline()'s */
+	Bot b = stored(w);
 	lnr n = nlines(w), l;
 	if (count < 1) count = 1;
 	if (how == 'L') l = count - 1 >= b.bot ? 0 : b.bot - 1 - (count - 1);
 	else {
 		long k = 0;
 		if (how == 'M') {
-			int used = 0, half = (w->h - b.empty + 1) / 2;
+			/* the filler rows above the window do not count */
+			int used = w->frame->s.topfill - fill(w, (lnr)w->top), half = (w->h - b.empty + 1) / 2;
 			for (; (lnr)w->top + k < n - 1; k++) {
-				used += plines_lim(w, (lnr)w->top + k, 1);
+				/* half a line's filler rows past the middle: the line before */
+				if (k > 0 && used + fill(w, (lnr)w->top + k) / 2 >= half) { k--; break; }
+				used += plines_lim(w, (lnr)w->top + k, 1) + fill(w, (lnr)w->top + k);
 				if (used >= half) break;
 			}
 			if (k > 0 && used > w->h) k--;

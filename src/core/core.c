@@ -589,6 +589,7 @@ static int enter_buffer(Editor *e, Buf *b, int how)
 	else core_set_want(e);
 	if (how != ENTER_B) { win_ecmd_topline(e, w); return 0; }
 	w->top = 0;
+	w->frame->s.topfill = 0;
 	w->frame->s.topvalid = 0;          /* w_valid = 0, w_valid_cursor kept */
 	w->frame->s.bv = 0;
 	scroll_halfway(e, w, 0, 0);
@@ -732,6 +733,7 @@ static int edit_file(Editor *e, const char *path, int force, int split)
 			wininfo_reset(b, w);
 			buf_unload(&old);
 			w->line = w->col = w->top = w->skipcol = w->left = 0;
+			w->frame->s.topfill = 0;
 			w->vc.ok = w->frame->s.sideok = 0;   /* w_valid = 0: the cached column was the empty buffer's */
 		}
 		w->alt = prev_alt ? prev_alt : b;
@@ -909,10 +911,15 @@ static void adjust(Editor *e, Buf *b, size_t l1, size_t l2, long amount, long af
 {
 	for (Win *w = e->wins; w; w = w->next) {
 		if (w->buf != b || w == e->win) continue;
+		/* a moved top line loses its filler */
 		if (w->top >= l1 && w->top < l2) {
 			if (amount == DEL) w->top = l1 ? l1 - 1 : 0;
 			else if (w->top > l1) w->top += (size_t)amount;
-		} else if (after && w->top >= l2) w->top += (size_t)after;
+			w->frame->s.topfill = 0;
+		} else if (after && w->top >= l2) {
+			w->top += (size_t)after;
+			w->frame->s.topfill = 0;
+		}
 		if (w->line >= l1 && w->line < l2) {
 			if (amount == DEL) { w->line = l1 ? l1 - 1 : 0; w->col = 0; }
 			else w->line += (size_t)amount;
@@ -1058,8 +1065,11 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 			   others below it); measured, c_open_below */
 			ws->bv = ws->bot < L ? bv : newlines(del, ndel) > newlines(ins, nins) ? 0 : bv & ~BOT_EXACT;
 		}
-	if (!r) adjust_edit(e, L, pos - text_line_start(b->text, L), at_start, ndel && del[ndel - 1] == '\n', nins && ins[nins - 1] == '\n',
-	                    newlines(del, ndel), newlines(ins, nins));
+	if (!r) {
+		size_t d = newlines(del, ndel), i = newlines(ins, nins);
+		adjust_edit(e, L, pos - text_line_start(b->text, L), at_start, ndel && del[ndel - 1] == '\n', nins && ins[nins - 1] == '\n', d, i);
+		for (Win *w = e->wins; w; w = w->next) if (w->buf == b) win_changed(w, L, L + d + 1, (long)i - (long)d);
+	}
 	free(del);
 	if (r) core_msg(e, "out of memory");
 	else {

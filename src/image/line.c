@@ -42,7 +42,7 @@ static const char *find(const char *s, size_t n, const char *a, size_t *len)
 }
 
 /* The link target or the fragment in line b[0, n): *tex set for a LaTeX
-   fragment.  Markdown: ![alt](target), a path not a URL.  Org
+   fragment.  Markdown: ![alt](target).  Org
    (org-display-inline-images, its default: links without a description):
    [[file:x.png]] or [[./x.png]], and display math \[...\] or $$...$$ on
    one line; inline math stays text, since the image goes below the line,
@@ -57,13 +57,13 @@ static const char *target(const char *b, size_t n, int org, size_t *len, int *te
 		p = q + 2;
 		for (q = p; q < b + n && *q != ')' && *q != ' '; q++) {}
 		*len = (size_t)(q - p);
-		return q < b + n && *len && !find(p, *len, "://", &k) && image_ext(p, *len) ? p : NULL;
+		return q < b + n && *len && image_ext(p, *len) ? p : NULL;
 	}
 	if ((p = find(b, n, "[[", &k))) {
 		p += 2;
 		if ((size_t)(b + n - p) > 5 && !memcmp(p, "file:", 5)) p += 5;
 		else if (*p != '/' && *p != '.') p = NULL;
-		if (p && (q = find(p, (size_t)(b + n - p), "]]", &k)) && image_ext(p, (size_t)(q - p)) && !memchr(p, ']', (size_t)(q - p))) {
+		if (p && (q = find(p, (size_t)(b + n - p), "]]", &k)) && image_ext(p, (size_t)(q - p))) {
 			*len = (size_t)(q - p);
 			return p;
 		}
@@ -80,12 +80,16 @@ static const char *target(const char *b, size_t n, int org, size_t *len, int *te
 
 int image_line(const Text *t, struct Syntax *s, const char *path, size_t l, int cols, int rows, int cw, int ch, uint32_t fg, uint32_t bg)
 {
-	const char *ft = path && cw > 0 ? syntax_filetype(path) : NULL;
-	int org = ft && !strcmp(ft, "org");
-	if (!ft || (!org && strcmp(ft, "markdown"))) return 0;
+	if (!path || cw <= 0) return 0;
 	char b[LINE];
 	size_t a = text_line_start(t, l), n = text_line_start(t, l + 1) - a, len;
 	n = text_read(t, a, b, n < LINE ? n : LINE);
+	/* every link and fragment has a '[' or a '$': most lines end here,
+	   before the filetype and the scans (measured: 264 calls a frame) */
+	if (!memchr(b, '[', n) && !memchr(b, '$', n)) return 0;
+	const char *ft = syntax_filetype(path);
+	int org = ft && !strcmp(ft, "org");
+	if (!ft || (!org && strcmp(ft, "markdown"))) return 0;
 	int tex;
 	const char *p = target(b, n, org, &len, &tex);
 	SyntaxMd md;

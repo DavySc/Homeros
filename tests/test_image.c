@@ -432,7 +432,6 @@ static void notes(void)
 	CHECK(at("x\n![a Hasse diagram](pic.png)\n", md, 0, 4) == 0);
 	CHECK(at("![a](pic.png)\n", md, 0, 0) == 0);                  /* the terminal */
 	CHECK(at("![a](pic.png)\n", "/x/a.txt", 0, 4) == 0);          /* not a note */
-	CHECK(at("![a](https://x.org/pic.png)\n", md, 0, 4) == 0);    /* a URL */
 	CHECK(at("![a](none.png)\n", md, 0, 4) == 0);
 	CHECK(at("```\n![a](pic.png)\n```\n", md, 1, 4) == 0);        /* code */
 	/* cached by the line: no stat once seen, so a removed file still shows */
@@ -445,8 +444,9 @@ static void notes(void)
 	/* an edit to the link is another image */
 	int p = at("![a](pic.png)\n", md, 0, 4), q = at("![a](two.png)\n", md, 0, 4);
 	CHECK(p > 0 && q > 0 && p != q);
-	/* the box is part of the key */
-	CHECK(at("![a](pic.png)\n", md, 0, 4) == p);
+	/* the box and the note's directory are part of the key */
+	CHECK(at("![a](pic.png)\n", md, 0, 4) == p && at("![a](pic.png)\n", md, 0, 2) != p);
+	CHECK(at("![a](pic.png)\n", "/x/a.md", 0, 4) == 0);
 	/* Org: file links without a description, absolute paths, a note with
 	   no directory (the working directory) */
 	CHECK(at("[[file:pic.png]]\n", org, 0, 4) == p);
@@ -463,12 +463,18 @@ static void notes(void)
 	CHECK(at("A lattice: \\[x \\wedge (x \\vee y) = x\\]\n", org, 0, 4) == 0);
 	wait_done();
 	CHECK(at("A lattice: \\[x \\wedge (x \\vee y) = x\\]\n", org, 0, 4) > 0);
+	CHECK(at("\\[z\\]\n", org, 0, 0) == 0);   /* the terminal renders nothing */
 	CHECK(at("$$a \\le b$$\n", org, 0, 4) == 0);
 	wait_done();
 	CHECK(at("$$a \\le b$$\n", org, 0, 4) > 0);
 	snprintf(rel, sizeof rel, "ls %s/ltximg | wc -l | grep -qx 2", d);
 	CHECK(system(rel) == 0);
 	CHECK(at("$a \\le b$\n", org, 0, 4) == 0);
+	/* the line's slot reused for other images: the line loads it again */
+	snprintf(path, sizeof path, "%s/pic.png", d);
+	for (int k = 1; k <= 255; k++) image_load(path, k, 4, 1, 4, 0);
+	image_size(at("![a](pic.png)\n", md, 0, 4), &cols, &rows);
+	CHECK(cols == 8 && rows == 4);
 }
 
 int main(void)

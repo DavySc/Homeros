@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 """Screen traces of the editor core against Neovim (package 4).
-usage: test_core_screens.py N [seed] [--record FILE] [--drv DRIVER]
+usage: test_core_screens.py N [seed] [--virt] [--pick s:i,...] [--record FILE] [--drv DRIVER]
 Makes N random cases (files, a screen size, a sequence of window, buffer,
 scrolling and editing commands), runs each in nvim --headless with
 FEATURES.md's settings and reads Neovim's whole screen with screenstring()
 and marks a, b and c after every command.  --record writes the cases with Neovim's
 screens for tests/test_core_screens.c, which replays them without Neovim;
 --drv runs that program on the fresh cases and compares at once.
+--virt: Org files (f0.org ...) with image links [[file:pK.png]], which the
+C side shows as K filler rows below their line (a 1 x K pixel PNG in
+1 x 1 pixel cells) and Neovim as K virt_lines of "#", set again before
+every screen from the lines as they are then; scrolling weighs more.
 
 A token is one command.  The C side (test_core_screens.c) turns each into
 the core call keys will make for it; here each becomes Neovim's keys."""
@@ -28,11 +32,15 @@ PUM = [(w + ('', '2', '3')[i], k, m) for i in range(3) for w, k, m in PUM]
 WORDS = ['foo', 'bar_1', 'x', '(', ').', ',', 'é', 'λx', 'ა', '--', 'longerword', 'a' * 30, '\t', '',
          '漢', 'ab漢', '😀', '全角' * 20, '\x01', '\x7f', 'z' * 300]
 
+VIRT = False
+
 def gen_text(r):
     lines = []
     for _ in range(r.choice([0, 1, 3, 8, 20, 40, 120])):
         ind = r.choice(['', '', '    ', '\t'])
         lines.append(ind + ' '.join(r.choice(WORDS) for _ in range(r.randint(0, r.choice([3, 12])))))
+        # an image link, often, of 1 to 12 rows (more than a small window)
+        if VIRT and r.random() < .3: lines[-1] = r.choice(['', 'x ']) + '[[file:p%d.png]]' % r.randint(1, 12)
     return '\n'.join(lines) + ('\n' if lines and r.random() < .9 else '')
 
 def gen_tokens(r, nfiles):
@@ -48,11 +56,12 @@ def gen_tokens(r, nfiles):
             # CTRL-W c, o and q with a count name a window: not used here
             if toks[-1].startswith('w:') and cnt and toks[-1][2] not in 'coq': toks[-1] = 'w' + cnt + toks[-1][1:]
         elif c < .35:
-            toks.append(r.choice(['e:f%d' % r.randrange(nfiles), 'b:%d' % r.randint(1, nfiles + 1),
+            toks.append(r.choice(['e:f%d%s' % (r.randrange(nfiles), '.org' * VIRT), 'b:%d' % r.randint(1, nfiles + 1),
                                   'bn', 'bp', 'alt', 'enew', 'bd']))
-        elif c < .5:
+        elif c < .5 or (VIRT and r.random() < .5):
+            # with images CTRL-E and CTRL-Y land inside the filler rows
             toks.append(r.choice(['C-e', 'C-y', 'C-d', 'C-u', 'C-f', 'C-b', 'zt', 'zz', 'zb',
-                                  'H', 'M', 'L', 'gj', 'gk']))
+                                  'H', 'M', 'L', 'gj', 'gk'] + ['C-e', 'C-y'] * 4 * VIRT))
             if cnt and toks[-1][0] != 'z': toks[-1] = cnt + toks[-1]
         elif c < .55:
             toks.append(r.choice(['wrap', 'nowrap']))
@@ -120,7 +129,39 @@ local c = vim.json.decode(io.open(IN):read('*a'))
 vim.api.nvim_create_autocmd('InsertCharPre', {callback = function() end})
 vim.o.lines = c.rows
 vim.o.columns = c.cols
+-- image.h's image_line on [[file:pK.png]]: the first "[[" of the line,
+-- "file:", the target up to the first "]]", with no ']' in it
+-- Marks are set again only where they differ from the wanted ones (an
+-- unloaded buffer loses them): setting a mark makes Neovim look at the
+-- view again (measured: a CTRL-E into the filler undone)
+local ns = vim.api.nvim_create_namespace('virt')
+local function virt()
+  if not c.virt then return end
+  for _, b in ipairs(vim.api.nvim_list_bufs()) do
+    if vim.api.nvim_buf_is_loaded(b) then
+      local want, key, have = {}, {}, {}
+      for i, l in ipairs(vim.api.nvim_buf_get_lines(b, 0, -1, false)) do
+        local a = l:find('[[', 1, true)
+        local z = a and l:sub(a + 2, a + 6) == 'file:' and l:find(']]', a + 7, true)
+        local k = tonumber(z and l:sub(a + 7, z - 1):match('^p(%d+)%.png$') or 0)
+        if k >= 1 and k <= 12 then want[#want + 1] = {i - 1, k}; key[#key + 1] = (i - 1) .. ':' .. k end
+      end
+      for _, m in ipairs(vim.api.nvim_buf_get_extmarks(b, ns, 0, -1, {details = true})) do
+        have[#have + 1] = m[2] .. ':' .. #m[4].virt_lines
+      end
+      if table.concat(have, ' ') ~= table.concat(key, ' ') then
+        vim.api.nvim_buf_clear_namespace(b, ns, 0, -1)
+        for _, m in ipairs(want) do
+          local v = {}
+          for j = 1, m[2] do v[j] = {{'#'}} end
+          vim.api.nvim_buf_set_extmark(b, ns, m[1], 0, {virt_lines = v})
+        end
+      end
+    end
+  end
+end
 local function screen(bang)
+  virt()
   vim.cmd(bang == false and 'redraw' or 'redraw!')
   local rows = {}
   for r = 1, vim.o.lines do
@@ -175,12 +216,12 @@ vim.cmd('qa!')
 def run_nvim(case):
     d = tempfile.mkdtemp()
     for i, t in enumerate(case['files']):
-        with open(os.path.join(d, 'f%d' % i), 'w') as f: f.write(t)
+        with open(os.path.join(d, 'f%d%s' % (i, '.org' * VIRT)), 'w') as f: f.write(t)
     fi, fo, fl = d + '/in.json', d + '/out.json', d + '/t.lua'
-    json.dump({'rows': case['rows'], 'cols': case['cols'],
+    json.dump({'rows': case['rows'], 'cols': case['cols'], 'virt': VIRT,
                'keys': [k if isinstance(k, list) else [k] for k in map(nvim_keys, case['tokens'])]}, open(fi, 'w'))
     open(fl, 'w').write('local IN, OUT = %r, %r\n' % (fi, fo) + LUA)
-    subprocess.run(['nvim', '--clean', '--headless', '-c', SETUP, '-c', 'luafile ' + fl, 'f0'], cwd=d,
+    subprocess.run(['nvim', '--clean', '--headless', '-c', SETUP, '-c', 'luafile ' + fl, 'f0' + '.org' * VIRT], cwd=d,
                    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=120)
     return json.load(open(fo))
 
@@ -198,6 +239,7 @@ def write_cases(path, cases):
     with open(path, 'w', encoding='utf-8') as f:
         for c in cases:
             f.write('C %d %d\n' % (c['rows'], c['cols']))
+            if VIRT: f.write('V\n')
             for t in c['files']: f.write('F %s\n' % t.encode().hex())
             for t in c['tokens']: f.write('T %s\n' % t)
             prev = []
@@ -211,9 +253,16 @@ def write_cases(path, cases):
 
 def main():
     a = sys.argv[1:]
+    global VIRT
+    VIRT = '--virt' in a
     n = int(a[0]); seed = int(a[1]) if len(a) > 1 and a[1][0] != '-' else 1
     r = random.Random(seed)
     cases = [gen_case(r) for _ in range(n)]
+    # --pick s:i,...: then case i of seed s each (a case does not depend on N)
+    for p in (a[a.index('--pick') + 1].split(',') if '--pick' in a else []):
+        s, i = map(int, p.split(':'))
+        r = random.Random(s)
+        cases.append([gen_case(r) for _ in range(i + 1)][i])
     with concurrent.futures.ThreadPoolExecutor(8) as ex:
         for c, s in zip(cases, ex.map(run_nvim, cases)):
             c['screens'], c['marks'] = s['screens'], s['marks']
