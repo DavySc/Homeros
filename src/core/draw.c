@@ -690,7 +690,7 @@ static void draw_fold(Grid *g, Win *w, size_t a, size_t z, int lv, int r)
 			break;
 		}
 		for (int j = 0; j < width && c + j < w->w; j++)
-			if (*u == '\t') wput(g, w, r, c + j, (const unsigned char *)(raw ? "^I" + j : " "), 1, 1);
+			if (*u == '\t') wput(g, w, r, c + j, (const unsigned char *)(raw ? &"^I"[j] : " "), 1, 1);
 			else put_cell(g, w, r, c + j, u, len, j, width, FACE_FOLDED, 0, 0);
 		raw |= len == 1 && width > 1 && *u != '\t';
 		c += width, i += len;
