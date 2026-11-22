@@ -1124,7 +1124,7 @@ static int separate(size_t q, size_t z)
 	size_t b = blanks(q), x;
 	if ((x = stars(q)) > q && x < z && S[x] == ' ') return 1;
 	if (is(q, "[fn:") && (x = names(q + 4)) > q + 4 && x < z && S[x] == ']') return 1;
-	if (is(q, "%%(") || b >= z || ateol(b) || S[b] == '|' || is(b, "\\begin{") || clockl(q, upto(q, z, '\n'))) return 1;
+	if (is(q, "%%(") || b >= z || ateol(b) || S[b] == '|' || is(b, "\\begin{") || (is(b, "CLOCK:") && clockl(q, upto(q, z, '\n')))) return 1;   /* font-lock folds no case */
 	x = b + 1;
 	if (S[b] == '#') {
 		if (x >= z || ateol(x) || S[x] == ' ') return 1;

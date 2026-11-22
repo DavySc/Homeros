@@ -1132,6 +1132,8 @@ int main(void)
 	   and -s agree on each text): the byte at, and whether its face is */
 	static const struct { const char *text; size_t at; unsigned char face; int is; } fx[] = {
 		{ "[[a\n#+b]]c: d\n", 0, FACE_MARKUP_LINK_URL, 1 },   /* "]]" ends no separator there */
+		{ "[[a][x\n#+b]]c: d\n", 0, FACE_MARKUP_LINK_URL, 1 },   /* nor in a description */
+		{ "<id:\nclock: [2345-07-18]\nh>\n", 0, FACE_MARKUP_LINK_URL, 1 },   /* clock: is no clock line to font-lock */
 		{ "[fn:1] b\n\\cite{[fn:1]} x\n", 9, FACE_MARKUP_LINK_LABEL, 0 },   /* a LaTeX fragment */
 		{ "[fn:1] b\n$\\cite{[fn:1]}$ x\n", 9, FACE_MARKUP_LINK_LABEL, 0 },
 		{ "[fn:1] b\n$\\cite{[fn:1]}$x\n", 9, FACE_MARKUP_LINK_LABEL, 1 },   /* no fragment: x after $ */

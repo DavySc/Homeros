@@ -126,7 +126,7 @@ org: show: a hidden span around verbatim keeps its tail (against Org)~org-confor
 org: colours: a backslash pair before ] gives no choice (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~a = k, b = k - i >= 4 ? k + 1 : 0;~a = k, b = 0;
 org: colours: a failed description search starts again on every line (frame gate on many lines)~test TESTS=org~~src/org/org.c~	if (is(i + 1, "[") && i + 3 < *f) return 0;~	if (is(i + 1, "[") && i + 3 < *f && 0) return 0;
 org: colours: a failed angle search starts again on every line (frame gate on many lines)~test TESTS=org~~src/org/org.c~	if (!q || p < *f) return 0;~	if (!q) return 0;
-org: colours: a link over a clock line cut at the link's end (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~ || clockl(q, upto(q, z, '\n'))) return 1;~) return 1;
+org: colours: a link over a clock line cut at the link's end (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~ || (is(b, "CLOCK:") && clockl(q, upto(q, z, '\n')))) return 1;~) return 1;
 org: colours: a keyword's name stops at its first [ (directed)~test TESTS=org~~src/org/org.c~			if (S[r] == ':' && r > x + 1) return 1;~			if (S[r] == '[') break;¶			if (S[r] == ':' && r > x + 1) return 1;
 org: colours: each footnote reference searches its line for links and macros from the start (long-line gate)~test TESTS=org~~src/org/org.c~	if (p > l && (y = sexp(p)) && ((k = holds(h, e = eol(l)~	if (p > l && (y = sexp(p)) && (h[0] = h[1] = (Hit){ l, l }, 1) && ((k = holds(h, e = eol(l)
 org: colours: sexp() forgets that it failed (frame gate on many lines)~test TESTS=org~~src/org/org.c~	if (p == X->sp || (p > X->sf && p < X->sg)) return 0;~	if (0) return 0;
@@ -143,3 +143,4 @@ org: colours: a $ fragment may start before ; (against Org)~org-conform ORG_N=20
 org: colours: a fixed-width line is a valid footnote context (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	if (comment(l) || (b < N && S[b] == ':' && blank(b + 1)) || forbidden(l)) return 0;~	if (comment(l) || (b < N && 0) || forbidden(l)) return 0;
 org: colours: a macro's star not taken (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		x += is(x, "*");¶~
 org: colours: a form feed ends a plain link (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~ && c != '\f' && c != '\r');~ && c != '\r');
+org: colours: a link over a clock: line in lower case (directed)~test TESTS=org~~src/org/org.c~|| (is(b, "CLOCK:") && clockl(~|| (lit(b, "CLOCK:") && clockl(
