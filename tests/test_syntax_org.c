@@ -9,6 +9,7 @@
 #include "org.h"
 #include "syntax.h"
 #include "text.h"
+static size_t r1, r2;   /* syntax_update's fold rows, read where a test needs them */
 
 enum { EDITS = 2000, MAXT = 1 << 14 };
 
@@ -28,7 +29,7 @@ int main(void)
 	Syntax *s = syntax_open("a/b.org", t);
 	OrgFx *x = orgfx_new(u);
 	CHECK(s && x);
-	CHECK(syntax_update(s, t, NULL) == orgfx_update(x, NULL));
+	CHECK(syntax_update(s, t, NULL, &r1, &r2) == orgfx_update(x, NULL));
 	syntax_faces(s, 0, 2, f);
 	CHECK(f[0] != FACE_NONE);  /* the headline's star */
 	for (int e = 0; e < EDITS; e++) {
@@ -42,7 +43,7 @@ int main(void)
 		CHECK(!text_delete(u, pos, del) && !text_insert(u, pos, ins, ni));
 		if (rnd(4)) continue;
 		/* main.c redraws on 1 */
-		CHECK(syntax_update(s, t, NULL) == orgfx_update(x, NULL));
+		CHECK(syntax_update(s, t, NULL, &r1, &r2) == orgfx_update(x, NULL));
 		n = text_len(t);
 		memset(g, 0, n);
 		syntax_faces(s, 0, n, f);

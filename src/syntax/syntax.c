@@ -200,8 +200,14 @@ struct Syntax {
 	const Text *t;
 	int (*stop)(void);
 	char buf[4096];            /* the chunk tree-sitter is reading */
-	int *fold;                 /* syntax_foldexpr's per line, 2 * level + start */
-	size_t nfold;              /* 0: to be computed after the next update */
+	/* _fold.lua's FoldInfo: per row foldexpr's answer (2 * level + start;
+	   -2 for "-1", a row an edit added that no compute has reached) and
+	   the level before 'foldnestmax' (levels0); nlv rows, 0 until the
+	   first parse is done.  [ea, ez): on_bytes_range.  chg: the rows
+	   on_changedtree got from the root's parses, nchg pairs. */
+	int *lv, *lv0;
+	size_t nlv, lvcap, ea, ez;
+	size_t *chg, nchg, chgcap;
 	/* The faces of [ca, cz), kept until the trees change: the core asks line
 	   by line, and one query over the window costs a third to a tenth of one
 	   per line (measured, 48 lines, best of 50: 0.165 vs 0.424 ms in
@@ -232,6 +238,9 @@ struct Syntax {
 	   identifier, with only the newline's bytes reported). */
 	uint32_t sa, sz;
 };
+static void fold_edit(Syntax *s, size_t sr, size_t sc, size_t orow, size_t oc, size_t nrow, size_t nc);
+static void fold_update(Syntax *s, size_t *r1, size_t *r2);
+
 
 static int prio_rank(int p) { return p < 0 ? 0 : p > 254 ? 254 : p; }
 
@@ -466,7 +475,9 @@ void syntax_free(Syntax *s)
 	if (s->p) ts_parser_delete(s->p);
 	syntax_release(NULL, UINT32_MAX);
 	free(s->cache);
-	free(s->fold);
+	free(s->lv);
+	free(s->lv0);
+	free(s->chg);
 	free(s);
 }
 
@@ -546,6 +557,10 @@ void syntax_edit(Syntax *s, const Text *t, size_t pos, size_t ndel, const char *
 		if (ins[i] == '\n') e.new_end_point.row++, e.new_end_point.column = 0;
 		else e.new_end_point.column++;
 	edit_ltree(s->root, &e);
+	fold_edit(s, e.start_point.row, e.start_point.column, e.old_end_point.row - e.start_point.row,
+	          e.old_end_point.row > e.start_point.row ? e.old_end_point.column : ndel,
+	          e.new_end_point.row - e.start_point.row,
+	          e.new_end_point.row > e.start_point.row ? e.new_end_point.column : nins);
 }
 
 /* Bytes of the text through a small window, so a predicate can read a node
@@ -926,6 +941,27 @@ static int inject(Syntax *s, LTree *L, const Text *t)
 	return rc;
 }
 
+/* on_changedtree's rows: the root's changed ranges (all of it without an
+   old tree), each to the row past its end where that has columns; out of
+   memory, the table goes and is built again */
+static void fold_changed(Syntax *s, const TSTree *old, const TSTree *n)
+{
+	uint32_t k = 1;
+	TSRange all = { { 0, 0 }, { UINT32_MAX, UINT32_MAX }, 0, UINT32_MAX };
+	TSRange *r = old ? ts_tree_get_changed_ranges(old, n, &k) : &all;
+	size_t *c = s->chg;
+	if (s->nchg + k > s->chgcap && (c = realloc(s->chg, 2 * (s->nchg + k) * 2 * sizeof *c)))
+		s->chg = c, s->chgcap = 2 * (s->nchg + k);
+	if (k && (!c || !r)) s->nlv = 0;
+	else
+		for (uint32_t i = 0; i < k; i++, s->nchg++) {
+			TSPoint e = r[i].end_point;
+			c[2 * s->nchg] = r[i].start_point.row;
+			c[2 * s->nchg + 1] = e.row == UINT32_MAX ? SIZE_MAX : (size_t)e.row + (e.column > 0);
+		}
+	if (r != &all) free(r);
+}
+
 /* LanguageTree:_parse: parse the invalid regions, find the injections, then
    the children.  2 if stopped (call again), 1 if a tree changed, 0 if not,
    -1 out of memory. */
@@ -958,6 +994,7 @@ static int parse(Syntax *s, LTree *L, const Text *t)
 			return 2;
 		}
 		s->susp = NULL;
+		if (L == s->root && s->nlv) fold_changed(s, g->tree, n);
 		if (g->tree) syntax_release(g->tree, 0);
 		g->tree = n;
 		s->cz = 0;
@@ -976,11 +1013,17 @@ static int parse(Syntax *s, LTree *L, const Text *t)
 	return changed;
 }
 
-int syntax_update(Syntax *s, const Text *t, int (*stop)(void))
+int syntax_update(Syntax *s, const Text *t, int (*stop)(void), size_t *r1, size_t *r2)
 {
+	*r1 = *r2 = 0;
 	if (!s) return 0;
 	if (s->sql) return tsql_update(s->sql, stop);
-	if (s->org) return orgfx_update(s->org, stop);
+	if (s->org) {
+		/* Org's folds may move with any change */
+		int r = orgfx_update(s->org, stop);
+		if (r == 1) *r2 = text_lines(t) + 1;
+		return r;
+	}
 	/* the trees the last parse replaced, freed in steps (release.c) */
 	while (syntax_release(NULL, stop ? RELEASE_STEP : UINT32_MAX))
 		if (stop()) return 2;
@@ -1019,8 +1062,8 @@ int syntax_update(Syntax *s, const Text *t, int (*stop)(void))
 	int r = parse(s, s->root, t);
 	if (r == 2) return 2;
 	s->dirty = 0;
-	s->nfold = 0;              /* the folds follow the trees */
-	return r == 1;
+	fold_update(s, r1, r2);
+	return r == 1 || *r1 < *r2;
 }
 
 /* ---- colours (the redraw path: no allocation) ---- */
@@ -1151,31 +1194,89 @@ void syntax_faces(Syntax *s, size_t a, size_t z, unsigned char *face)
 
 /* ---- folds ---- */
 
-/* _fold.lua's compute_folds_levels, its first half: the @fold captures of
-   every tree, in for_each_tree's order, each a fold from its first row to
-   its last (one fewer when it ends at column 0) if it spans more than
-   'foldminlines' (1) and is not the one just counted */
-static void fold_tree(Syntax *s, LTree *L, int *in, int *out, int64_t *prev)
+/* _fold.lua's FoldInfo:remove_range and add_range: rows [a, z) leave the
+   table, or come in as "-1" until a compute reaches them */
+static int fold_rows(Syntax *s, size_t a, size_t z, int add)
+{
+	if (a > s->nlv) a = s->nlv;
+	if (!add) {
+		if (z > s->nlv) z = s->nlv;
+		if (a >= z) return 0;
+		memmove(s->lv + a, s->lv + z, (s->nlv - z) * sizeof *s->lv);
+		memmove(s->lv0 + a, s->lv0 + z, (s->nlv - z) * sizeof *s->lv0);
+		s->nlv -= z - a;
+		return 0;
+	}
+	size_t k = z - a;
+	if (s->nlv + k > s->lvcap) {
+		size_t c = 2 * (s->nlv + k);
+		int *v = realloc(s->lv, c * sizeof *v), *w = v ? realloc(s->lv0, c * sizeof *w) : NULL;
+		if (v) s->lv = v;
+		if (!w) return -1;
+		s->lv0 = w;
+		s->lvcap = c;
+	}
+	memmove(s->lv + a + k, s->lv + a, (s->nlv - a) * sizeof *s->lv);
+	memmove(s->lv0 + a + k, s->lv0 + a, (s->nlv - a) * sizeof *s->lv0);
+	for (size_t r = a; r < z; r++) s->lv[r] = -2, s->lv0[r] = -1;
+	s->nlv += k;
+	return 0;
+}
+
+/* _fold.lua's on_bytes, for an edit of rows [sr, sr + orow] (ending at
+   column oc of the last) to [sr, sr + nrow] (nc), starting at column sc:
+   the rows shift where whole lines went or came, and the rows edited join
+   on_bytes_range (edit_range); tree-sitter's only when the row count
+   changes, Markdown's always, as fold.c asks foldexpr of every changed
+   line */
+static void fold_edit(Syntax *s, size_t sr, size_t sc, size_t orow, size_t oc, size_t nrow, size_t nc)
+{
+	size_t eo = sr + orow + 1, en = sr + nrow + 1;
+	if (!s->nlv || (nrow == orow && s->root->lang != 2)) return;
+	int bad = 0;
+	if (nrow < orow) bad = sc == 0 && nrow == 0 && nc == 0 ? fold_rows(s, sr, sr + eo - en, 0) : fold_rows(s, en, eo, 0);
+	else if (nrow > orow) bad = sc == 0 && orow == 0 && oc == 0 ? fold_rows(s, sr, sr + en - eo, 1) : fold_rows(s, eo, en, 1);
+	if (bad) {
+		s->nlv = 0;           /* out of memory: built again after the parse */
+		return;
+	}
+	if (s->ea >= s->ez) s->ea = sr, s->ez = en;
+	else {
+		if (sr < s->ea) s->ea = sr;
+		if (eo <= s->ez) s->ez = s->ez + en - eo;
+		if (en > s->ez) s->ez = en;
+	}
+}
+
+/* compute_folds_levels(srow, erow): the @fold captures of every tree in
+   for_each_tree's order, matched over rows [srow - 1, erow), each a fold
+   from its first row to its last (one fewer when it ends at column 0) if
+   it spans more than 'foldminlines' (1) and is not the one just counted */
+static void fold_tree(Syntax *s, LTree *L, size_t lo, size_t z, int *in, int *out, int64_t *prev)
 {
 	Q *Q = &queries[L->lang].fold;
 	for (uint32_t i = 0; Q->q && i < L->nreg; i++) {
 		if (!L->reg[i].tree) continue;
 		ts_query_cursor_set_byte_range(s->qc, 0, UINT32_MAX);
+		ts_query_cursor_set_point_range(s->qc, (TSPoint){ (uint32_t)lo, 0 }, (TSPoint){ (uint32_t)z, 0 });
 		ts_query_cursor_exec(s->qc, Q->q, ts_tree_root_node(L->reg[i].tree));
 		TSQueryMatch m;
 		while (ts_query_cursor_next_match(s->qc, &m)) {
-			const TSNode *a = NULL, *z = NULL;   /* a quantified capture's first and last */
+			const TSNode *a = NULL, *b = NULL;   /* a quantified capture's first and last */
 			for (uint16_t k = 0; k < m.capture_count; k++)
-				if (m.captures[k].index == Q->content) z = &m.captures[k].node, a = a ? a : z;
+				if (m.captures[k].index == Q->content) b = &m.captures[k].node, a = a ? a : b;
 			if (!a) continue;
 			int64_t sr = ts_node_start_point(*a).row;
-			TSPoint e = ts_node_end_point(*z);
+			TSPoint e = ts_node_end_point(*b);
 			int64_t er = (int64_t)e.row - (e.column == 0);
-			if (er - sr + 1 > 1 && (sr != prev[0] || er != prev[1]))
-				in[sr]++, out[er]++, prev[0] = sr, prev[1] = er;
+			if (er - sr + 1 > 1 && (sr != prev[0] || er != prev[1])) {
+				if (sr >= (int64_t)lo && sr < (int64_t)z) in[sr - (int64_t)lo]++;
+				if (er >= (int64_t)lo && er < (int64_t)z) out[er - (int64_t)lo]++;
+				prev[0] = sr, prev[1] = er;
+			}
 		}
 	}
-	for (uint32_t k = 0; k < L->nkid; k++) fold_tree(s, L->kid[k], in, out, prev);
+	for (uint32_t k = 0; k < L->nkid; k++) fold_tree(s, L->kid[k], lo, z, in, out, prev);
 }
 
 /* Markdown's ftplugin (g:markdown_folding): MarkdownFold() starts a fold of
@@ -1194,51 +1295,90 @@ static int md_fold(Src *src, const Text *t, size_t l, int prev)
 		while (at(src, b) == c) b++;
 		if (b == y) return c == '=' ? 3 : 5;
 	}
-	return prev & ~1;
+	return 2 * (prev / 2);
 }
 
-/* The first call after a parse runs the folds query over every tree from
-   byte 0; Neovim's _fold.lua recomputes only the changed rows, after an
-   asynchronous parse.  Measured (PR 110's review, then here, 5 runs of 60
-   one-byte edits, -O2): tree-sitter's stack.c, 29 KB, 1.26 to 1.28 ms per
-   edit against a 0.31 ms reparse; its lib/src C files together, 489 KB, 17.2 to 17.9 ms
-   against 1.9 to 2.0 ms.  To settle with fold_update's wiring (package 20,
-   thread 0): changed rows only, or the levels of the last finished parse. */
+/* The levels of rows [a, z) (compute_folds_levels' second half): a line
+   that ends one fold and starts another ends the first on the line above;
+   past 'foldnestmax' (20) a level is 20 and starts nothing.  Markdown's
+   from a (the callers start a row above: MarkdownFold() reads the next
+   line too) until a row past z keeps its level.  Widens [*r1, *r2), the rows that changed. */
+static void fold_levels(Syntax *s, size_t a, size_t z, size_t *r1, size_t *r2)
+{
+	if (z > s->nlv) z = s->nlv;
+	if (a >= z) return;
+	Src src = { s->t, 0, 0, { 0 } };
+	if (s->root->lang == 2) {
+		size_t r = a;
+		if (r < *r1) *r1 = r;
+		for (int v; r < s->nlv; r++) {
+			v = md_fold(&src, s->t, r, r ? s->lv[r - 1] : 0);
+			if (r >= z && v == s->lv[r]) break;
+			s->lv[r] = v;
+		}
+		if (r > *r2) *r2 = r;
+		return;
+	}
+	size_t lo = a ? a - 1 : 0;
+	int *in = calloc(2 * (z - lo), sizeof *in), *out = in + (z - lo);
+	if (!in) {
+		s->nlv = 0;           /* out of memory: built again after the parse */
+		return;
+	}
+	int64_t prev[2] = { -1, -1 };
+	fold_tree(s, s->root, lo, z, in, out, prev);
+	ts_query_cursor_set_point_range(s->qc, (TSPoint){ 0, 0 }, (TSPoint){ UINT32_MAX, UINT32_MAX });
+	int lv = a ? s->lv0[a - 1] : 0, left = a ? out[0] : 0;
+	for (size_t r = a; r < z; r++) {
+		int e = in[r - lo], o = out[r - lo], v = lv - left + e;
+		if (e && o) v -= o, o = 0;
+		s->lv0[r] = v;
+		s->lv[r] = v > 20 ? 40 : 2 * v + (e > 0);
+		lv = v, left = o;
+	}
+	free(in);
+	if (a < *r1) *r1 = a;
+	if (z > *r2) *r2 = z;
+}
+
+/* After a parse: a table of every row the first time (compute_folds_levels
+   on the first foldexpr), then on_bytes' rows, then on_changedtree's: each
+   of the root's changed ranges from a row above ('foldminlines'), to the
+   row past it where its end has columns, clipped to the buffer */
+static void fold_update(Syntax *s, size_t *r1, size_t *r2)
+{
+	size_t n = text_lines(s->t);
+	*r1 = SIZE_MAX, *r2 = 0;
+	if (!s->nlv) {
+		int *v = realloc(s->lv, (n + 1) * sizeof *v), *w = v ? realloc(s->lv0, (n + 1) * sizeof *w) : NULL;
+		if (v) s->lv = v;
+		if (!w) return;
+		s->lv0 = w;
+		s->lvcap = n + 1;
+		memset(s->lv, 0, n * sizeof *s->lv);
+		memset(s->lv0, 0, n * sizeof *s->lv0);
+		s->nlv = n;
+		s->ea = 0, s->ez = n;
+		s->nchg = 0;
+	}
+	if (s->ea < s->ez) fold_levels(s, s->ea ? s->ea - 1 : 0, s->ez, r1, r2);
+	s->ea = s->ez = 0;
+	for (size_t k = 0; k < s->nchg; k++) {
+		size_t a = s->chg[2 * k], z = s->chg[2 * k + 1];
+		fold_levels(s, a ? a - 1 : 0, z, r1, r2);
+	}
+	s->nchg = 0;
+	if (*r1 > *r2) *r1 = *r2;
+}
+
 int syntax_foldexpr(Syntax *s, size_t line, int *start)
 {
 	*start = 0;
 	if (!s || s->sql) return 0;
 	if (s->org) return orgfx_foldexpr(s->org, line, start);
-	syntax_update(s, s->t, NULL);   /* NULL stop: never 2 */
-	const Text *t = s->t;
-	size_t n = text_lines(t);
-	if (!started(s) || line >= n) return 0;
-	if (!s->nfold) {
-		int *f = realloc(s->fold, 2 * (n + 1) * sizeof *f);
-		if (!f) return 0;
-		s->fold = f;
-		s->nfold = n;
-		memset(f, 0, 2 * (n + 1) * sizeof *f);
-		Src src = { t, 0, 0, { 0 } };
-		if (s->root->lang == 2) {
-			for (size_t l = 0, p = 0; l < n; l++) p = f[l] = md_fold(&src, t, l, p);
-		} else {
-			/* the second half: the levels, a line that ends one fold and
-			   starts another ending the first on the line above; past
-			   'foldnestmax' (20) a level is 20 and starts nothing */
-			int *in = f + n + 1, *out = f;
-			int64_t prev[2] = { -1, -1 };
-			fold_tree(s, s->root, in, out, prev);
-			for (size_t l = 0, lv = 0, left = 0; l < n; l++) {
-				size_t e = (size_t)in[l], o = (size_t)out[l], v = lv - left + e;
-				if (e && o) v -= o, o = 0;
-				f[l] = 2 * (int)(v > 20 ? 20 : v) + (e && v <= 20);
-				lv = v, left = o;
-			}
-		}
-	}
-	*start = s->fold[line] & 1;
-	return s->fold[line] >> 1;
+	if (line >= s->nlv) return 0;
+	*start = s->lv[line] % 2 != 0;
+	return s->lv[line] / 2;
 }
 
 /* render-markdown 8.14's facts for line l, from the Markdown block tree as

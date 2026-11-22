@@ -26,6 +26,7 @@
 #include "syntax.h"
 #include "text.h"
 #include "../src/syntax/lmatch.h"
+static size_t r1, r2;   /* syntax_update's fold rows, read where a test needs them */
 
 enum { NL = 8, MAXCASES = 300, EDITS = 25, MAXT = 1 << 15 };
 static const char *const ext[NL] = { "c", "lua", "md", "rs", "frag", "nix", "cmake", "sv" };
@@ -112,7 +113,7 @@ static void update(Syntax *s, const Text *t, int how)
 	}
 	syntax_faces(s, a, z, f);
 	do stops_left = 1 + (int)rnd(40);
-	while (syntax_update(s, t, how ? stop_after : NULL) == 2 && (how == SLICE_END || rnd(2)));
+	while (syntax_update(s, t, how ? stop_after : NULL, &r1, &r2) == 2 && (how == SLICE_END || rnd(2)));
 }
 
 /* as core_draw asks: line by line from the first, so the colours come from
@@ -233,16 +234,16 @@ static void scroll_while_stopped(const char *dir)
 	Syntax *F = syntax_open(path, t);
 	CHECK(F);
 	syntax_faces(F, 0, end, g);
-	while (syntax_update(F, t, NULL) == 2) ;
+	while (syntax_update(F, t, NULL, &r1, &r2) == 2) ;
 	syntax_faces(F, 0, end, g);
 	for (int k = 1; k < 400; k++) {
 		Syntax *s = syntax_open(path, t);
 		CHECK(s);
 		syntax_faces(s, p1, end, f);                 /* the 2nd and 3rd paragraphs */
 		stops_left = k;
-		if (syntax_update(s, t, stop_after) == 2) {
+		if (syntax_update(s, t, stop_after, &r1, &r2) == 2) {
 			syntax_faces(s, 0, p2, f);               /* scrolled up one */
-			while (syntax_update(s, t, NULL) == 2) ;
+			while (syntax_update(s, t, NULL, &r1, &r2) == 2) ;
 			syntax_faces(s, 0, p2, f);
 			CHECK(!memcmp(f, g, p2));
 		}
@@ -273,16 +274,16 @@ static void edit_while_stopped(const char *dir)
 		CHECK(s);
 		syntax_faces(s, 0, n, f);
 		stops_left = k;
-		if (syntax_update(s, t, stop_after) == 2) {
+		if (syntax_update(s, t, stop_after, &r1, &r2) == 2) {
 			stopped++;
 			syntax_edit(s, t, 4, 0, "x", 1);         /* v0 becomes xv0 */
 			CHECK(!text_insert(t, 4, "x", 1));
-			while (syntax_update(s, t, NULL) == 2) ;
+			while (syntax_update(s, t, NULL, &r1, &r2) == 2) ;
 			syntax_faces(s, 0, n + 1, f);
 			Syntax *F = syntax_open(path, t);
 			CHECK(F);
 			syntax_faces(F, 0, n + 1, g);
-			while (syntax_update(F, t, NULL) == 2) ;
+			while (syntax_update(F, t, NULL, &r1, &r2) == 2) ;
 			syntax_faces(F, 0, n + 1, g);
 			CHECK(!memcmp(f, g, n + 1));
 			syntax_free(F);
@@ -310,8 +311,8 @@ static void edit_then_frame(const char *dir, const char *name, const char *b, in
 	CHECK(A && B);
 	syntax_faces(A, 0, n, f);
 	syntax_faces(B, 0, n, g);
-	while (syntax_update(A, t, NULL) == 2) ;
-	while (syntax_update(B, t, NULL) == 2) ;
+	while (syntax_update(A, t, NULL, &r1, &r2) == 2) ;
+	while (syntax_update(B, t, NULL, &r1, &r2) == 2) ;
 	syntax_faces(A, 0, n, f);
 	for (int e = 0; e < ne; e++) {
 		syntax_edit(A, t, pos[e], del[e], ins[e], strlen(ins[e]));
@@ -364,17 +365,17 @@ static void edit_before_region(const char *dir)
 	Syntax *A = syntax_open(path, t);
 	CHECK(A);
 	syntax_faces(A, 0, strlen(b), f);
-	while (syntax_update(A, t, NULL) == 2) ;
+	while (syntax_update(A, t, NULL, &r1, &r2) == 2) ;
 	syntax_edit(A, t, 2, 4, "- ", 2);
 	CHECK(!text_delete(t, 2, 4) && !text_insert(t, 2, "- ", 2));
 	size_t n = text_len(t);
 	syntax_faces(A, 0, n, f);
-	while (syntax_update(A, t, NULL) == 2) ;
+	while (syntax_update(A, t, NULL, &r1, &r2) == 2) ;
 	syntax_faces(A, 0, n, f);
 	Syntax *F = syntax_open(path, t);
 	CHECK(F);
 	syntax_faces(F, 0, n, g);
-	while (syntax_update(F, t, NULL) == 2) ;
+	while (syntax_update(F, t, NULL, &r1, &r2) == 2) ;
 	syntax_faces(F, 0, n, g);
 	CHECK(!memcmp(f, g, n));
 	syntax_free(A);
@@ -399,13 +400,13 @@ static void cache_grows(const char *dir)
 	Syntax *s = syntax_open(path, t), *F = syntax_open(path, t);
 	CHECK(s && F);
 	syntax_faces(s, 0, 64, f);
-	while (syntax_update(s, t, NULL) == 2) ;
+	while (syntax_update(s, t, NULL, &r1, &r2) == 2) ;
 	syntax_faces(s, 0, 64, f);                   /* cached for a small window */
 	syntax_faces(s, 0, sizeof w, w);             /* past the cache */
-	while (syntax_update(s, t, NULL) == 2) ;     /* grows the cache */
+	while (syntax_update(s, t, NULL, &r1, &r2) == 2) ;     /* grows the cache */
 	syntax_faces(s, 0, 64, f);
 	syntax_faces(F, 0, 64, g);
-	while (syntax_update(F, t, NULL) == 2) ;
+	while (syntax_update(F, t, NULL, &r1, &r2) == 2) ;
 	syntax_faces(F, 0, 64, g);
 	CHECK(!memcmp(f, g, 64));
 	syntax_free(s);
@@ -424,13 +425,66 @@ static void folds_follow_edits(const char *dir)
 	Syntax *s = syntax_open(path, t);
 	CHECK(s);
 	int st;
+	CHECK(!syntax_foldexpr(s, 0, &st) && !st);   /* nothing before the first parse */
+	CHECK(syntax_update(s, t, NULL, &r1, &r2) == 1 && r1 == 0 && r2 == 3);
 	CHECK(syntax_foldexpr(s, 0, &st) == 1 && st && syntax_foldexpr(s, 2, &st) == 1 && !st);
 	for (int i = 0; i < 2; i++) {     /* its two line breaks */
 		size_t at = i ? 12 : 9;
 		syntax_edit(s, t, at, 1, "", 0);
 		CHECK(!text_delete(t, at, 1));
 	}
+	/* the rows went with the line breaks; the level stays until the parse */
+	CHECK(syntax_foldexpr(s, 0, &st) == 1 && st && !syntax_foldexpr(s, 1, &st));
+	CHECK(syntax_update(s, t, NULL, &r1, &r2) == 1 && r1 == 0 && r2 == 1);
 	CHECK(syntax_foldexpr(s, 0, &st) == 0 && !st);
+	/* a line opened above another: "-1" until the parse, and the edited
+	   rows move with a later edit above them (the tree is the same, so
+	   only they are computed again) */
+	syntax_edit(s, t, 0, 0, "int a;\nint b;\n", 14);
+	CHECK(!text_insert(t, 0, "int a;\nint b;\n", 14));
+	while (syntax_update(s, t, NULL, &r1, &r2) == 2) ;
+	for (size_t at = 7; ; at = 0) {
+		syntax_edit(s, t, at, 0, "\n", 1);
+		CHECK(!text_insert(t, at, "\n", 1));
+		if (!at) break;
+	}
+	CHECK(syntax_foldexpr(s, 0, &st) == -1 && syntax_foldexpr(s, 2, &st) == -1);
+	CHECK(syntax_update(s, t, NULL, &r1, &r2) == 1 && r1 == 0 && r2 == 4);
+	for (size_t l = 0; l < 4; l++) CHECK(syntax_foldexpr(s, l, &st) == 0);
+	syntax_free(s);
+	text_free(t);
+	/* a whole line deleted takes its own row, not the one below */
+	CHECK((t = text_new("x;\nint f() {\n\ta;\n}\n", 19)) && (s = syntax_open(path, t)));
+	while (syntax_update(s, t, NULL, &r1, &r2) == 2) ;
+	syntax_edit(s, t, 0, 3, "", 0);
+	CHECK(!text_delete(t, 0, 3));
+	CHECK(syntax_foldexpr(s, 0, &st) == 1 && st);
+	syntax_free(s);
+	text_free(t);
+	/* Markdown: an edit inside a line changes the level of the line
+	   above (an underline typed), and of the lines below until one keeps
+	   its own */
+	snprintf(path, sizeof path, "%s/f.md", dir);
+	CHECK((t = text_new("```\na\nb\n## h\nx\ny\n```\n", 21)) && (s = syntax_open(path, t)));
+	while (syntax_update(s, t, NULL, &r1, &r2) == 2) ;
+	CHECK(!syntax_foldexpr(s, 1, &st) && syntax_foldexpr(s, 5, &st) == 2);
+	syntax_edit(s, t, 6, 1, "=", 1);
+	CHECK(!text_delete(t, 6, 1) && !text_insert(t, 6, "=", 1));
+	syntax_edit(s, t, 8, 3, "", 0);
+	CHECK(!text_delete(t, 8, 3));
+	while (syntax_update(s, t, NULL, &r1, &r2) == 2) ;
+	CHECK(syntax_foldexpr(s, 1, &st) == 1 && st && syntax_foldexpr(s, 5, &st) == 1);
+	syntax_free(s);
+	text_free(t);
+	/* an underline's trailing space deleted: the tree is the same (a
+	   setext heading either way), MarkdownFold() is not */
+	CHECK((t = text_new("a\n=== \nx\n", 9)) && (s = syntax_open(path, t)));
+	while (syntax_update(s, t, NULL, &r1, &r2) == 2) ;
+	CHECK(!syntax_foldexpr(s, 0, &st));
+	syntax_edit(s, t, 5, 1, "", 0);
+	CHECK(!text_delete(t, 5, 1));
+	while (syntax_update(s, t, NULL, &r1, &r2) == 2) ;
+	CHECK(syntax_foldexpr(s, 0, &st) == 1 && st && syntax_foldexpr(s, 2, &st) == 1);
 	syntax_free(s);
 	text_free(t);
 }
@@ -453,7 +507,7 @@ static void self_injection(const char *dir)
 	CHECK(s);
 	unsigned char f[64];
 	syntax_faces(s, 0, strlen(src), f);   /* injections are found in the window */
-	while (syntax_update(s, t, NULL) == 2) ;
+	while (syntax_update(s, t, NULL, &r1, &r2) == 2) ;
 	syntax_free(s);
 	text_free(t);
 }
@@ -472,12 +526,12 @@ static void release_in_steps(const char *dir)
 	CHECK(s);
 	static unsigned char f[MAXT];
 	syntax_faces(s, 0, 100, f);
-	CHECK(syntax_update(s, t, NULL) == 1);
+	CHECK(syntax_update(s, t, NULL, &r1, &r2) == 1);
 	syntax_edit(s, t, 0, n - 1, "", 0);
 	CHECK(!text_delete(t, 0, n - 1));
-	CHECK(syntax_update(s, t, NULL) == 1);
+	CHECK(syntax_update(s, t, NULL, &r1, &r2) == 1);
 	int steps = 0;
-	while (syntax_update(s, t, always) == 2) steps++;
+	while (syntax_update(s, t, always, &r1, &r2) == 2) steps++;
 	CHECK(steps > 1);
 	syntax_free(s);
 	text_free(t);
@@ -492,10 +546,10 @@ static void release_in_steps(const char *dir)
 	snprintf(path, sizeof path, "%s/quotes.md", dir);
 	CHECK((t = text_new(b, n)) && (s = syntax_open(path, t)));
 	syntax_faces(s, 0, n, f);
-	while (syntax_update(s, t, NULL)) ;
+	while (syntax_update(s, t, NULL, &r1, &r2)) ;
 	syntax_edit(s, t, 0, n - 1, "", 0);
 	CHECK(!text_delete(t, 0, n - 1));
-	while (syntax_update(s, t, NULL)) ;
+	while (syntax_update(s, t, NULL, &r1, &r2)) ;
 	syntax_free(s);
 	text_free(t);
 }
@@ -702,7 +756,7 @@ int main(void)
 		fclose(ops);
 		update(A, t, SLICE_NONE);
 		update(B, t, SLICE_END);
-		CHECK(syntax_update(A, t, NULL) == 0);     /* nothing left to do */
+		CHECK(syntax_update(A, t, NULL, &r1, &r2) == 0);     /* nothing left to do */
 		faces_lines(A, t, fa);
 		faces_lines(B, t, fb);
 		faces_split(B, text_len(t), fs);
