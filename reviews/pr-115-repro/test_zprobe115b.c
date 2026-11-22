@@ -34,7 +34,7 @@ int main(void)
 	CHECK(!core_open(&e, path)); CHECK(!core_edit(&e, 0, 0, "ab", 2));
 	keys(&e, "v$cX<Esc>:w<CR>"); show("v$cX", &e, path); core_free(&e);
 	CHECK(!core_open(&e, path)); CHECK(!core_edit(&e, 0, text_len(e.buf->text), "ab\n", 3));
-	snip_get(&e, 0, &d, &b);
+	snip_get(&e, NULL, 0, 0, &d, &b);
 	keys(&e, "v$"); CHECK(!snip_insert(&e, "wrp"));
 	keys(&e, "<Esc>"); show("surround v$ (before :w)", &e, path);
 	keys(&e, ":w<CR>"); show("surround v$ :w", &e, path);
