@@ -14,6 +14,7 @@
 #include "core.h"
 #include "image.h"
 #include "loop.h"
+#include "syntax.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
@@ -402,6 +403,74 @@ static void latex(void)
 	CHECK(image_latex("SPIN", 4, 0, 140, out) == NULL && lines() == before + 101);
 }
 
+/* image_line: the image a note's line shows below it */
+static int at(const char *text, const char *file, size_t l, int cw)
+{
+	Text *t = text_new(text, strlen(text));
+	Syntax *sy = syntax_open(file, t);
+	if (sy) syntax_update(sy, t, NULL);
+	int n = image_line(t, sy, file, l, 8, 4, cw, 4, 0xcdd6f4, 0x1e1e2e);
+	syntax_free(sy);
+	text_free(t);
+	return n;
+}
+
+static void notes(void)
+{
+	char md[200], org[200], d[64], rel[700], cwd[600];
+	snprintf(d, sizeof d, "%s/notes", dir);
+	CHECK(mkdir(d, 0700) == 0);
+	snprintf(md, sizeof md, "%s/a.md", d);
+	snprintf(org, sizeof org, "%s/a.org", d);
+	snprintf(path, sizeof path, "cp tests/test_image.png %s/pic.png && cp tests/test_image.png %s/two.png", d, d);
+	CHECK(system(path) == 0);
+	int cols, rows;
+	/* Markdown: relative to the note, rows as image_size gives them */
+	int n = at("x\n![a Hasse diagram](pic.png)\n", md, 1, 4);
+	image_size(n, &cols, &rows);
+	CHECK(n > 0 && cols == 8 && rows == 4);   /* 32 x 16 pixels in 4 x 4 cells */
+	CHECK(at("x\n![a Hasse diagram](pic.png)\n", md, 0, 4) == 0);
+	CHECK(at("![a](pic.png)\n", md, 0, 0) == 0);                  /* the terminal */
+	CHECK(at("![a](pic.png)\n", "/x/a.txt", 0, 4) == 0);          /* not a note */
+	CHECK(at("![a](https://x.org/pic.png)\n", md, 0, 4) == 0);    /* a URL */
+	CHECK(at("![a](none.png)\n", md, 0, 4) == 0);
+	CHECK(at("```\n![a](pic.png)\n```\n", md, 1, 4) == 0);        /* code */
+	/* cached by the line: no stat once seen, so a removed file still shows */
+	snprintf(path, sizeof path, "%s/gone.png", d);
+	snprintf(rel, sizeof rel, "cp tests/test_image.png %s", path);
+	CHECK(system(rel) == 0);
+	CHECK((n = at("![a](gone.png)\n", md, 0, 4)) > 0);
+	CHECK(unlink(path) == 0);
+	CHECK(at("![a](gone.png)\n", md, 0, 4) == n);
+	/* an edit to the link is another image */
+	int p = at("![a](pic.png)\n", md, 0, 4), q = at("![a](two.png)\n", md, 0, 4);
+	CHECK(p > 0 && q > 0 && p != q);
+	/* the box is part of the key */
+	CHECK(at("![a](pic.png)\n", md, 0, 4) == p);
+	/* Org: file links without a description, absolute paths, a note with
+	   no directory (the working directory) */
+	CHECK(at("[[file:pic.png]]\n", org, 0, 4) == p);
+	CHECK(at("[[./pic.png]]\n", org, 0, 4) > 0);
+	CHECK(at("[[file:pic.png][a picture]]\n", org, 0, 4) == 0);
+	CHECK(at("[[pic.png]]\n", org, 0, 4) == 0);   /* a fuzzy link, not a file */
+	snprintf(rel, sizeof rel, "[[%s/pic.png]]\n", d);
+	CHECK(at(rel, org, 0, 4) > 0);
+	CHECK(getcwd(cwd, sizeof cwd) && chdir(d) == 0);
+	CHECK(at("[[file:pic.png]]\n", "a.org", 0, 4) > 0);
+	CHECK(chdir(cwd) == 0);
+	/* display math: rendered into ltximg/ beside the note, shown once done;
+	   inline math stays text */
+	CHECK(at("A lattice: \\[x \\wedge (x \\vee y) = x\\]\n", org, 0, 4) == 0);
+	wait_done();
+	CHECK(at("A lattice: \\[x \\wedge (x \\vee y) = x\\]\n", org, 0, 4) > 0);
+	CHECK(at("$$a \\le b$$\n", org, 0, 4) == 0);
+	wait_done();
+	CHECK(at("$$a \\le b$$\n", org, 0, 4) > 0);
+	snprintf(rel, sizeof rel, "ls %s/ltximg | wc -l | grep -qx 2", d);
+	CHECK(system(rel) == 0);
+	CHECK(at("$a \\le b$\n", org, 0, 4) == 0);
+}
+
 int main(void)
 {
 	CHECK(mkdtemp(dir));
@@ -413,6 +482,7 @@ int main(void)
 	reuse();
 	budget();
 	latex();
+	notes();
 	char rm[700];
 	snprintf(rm, sizeof rm, "rm -rf %s", dir);
 	CHECK(system(rm) == 0);

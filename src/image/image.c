@@ -111,6 +111,8 @@ int image_load(const char *path, int cols, int rows, int cw, int ch, uint32_t bg
 	return px ? (int)(s - slot) : 0;
 }
 
+unsigned char image_gen(int n) { return n > 0 && n <= SLOTS ? slot[n].gen : 0; }
+
 void image_size(int n, int *cols, int *rows)
 {
 	int ok = n > 0 && n <= SLOTS && slot[n].px;

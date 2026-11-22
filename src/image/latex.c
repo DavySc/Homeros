@@ -31,6 +31,7 @@ static struct job {
    for ever, each failure asking for the frame that starts the next */
 static unsigned long long *failed;
 static size_t nfailed;
+unsigned image_latex_ends;   /* jobs ended: line.c tries its misses again */
 
 /* dir/ltximg-<hash>[-<pid>].ext into f */
 static char *name(char *f, const struct job *j, int own, const char *ext)
@@ -77,14 +78,21 @@ static void step(void *ctx, int stream, const char *b, size_t n)
 	for (int i = 0; i < 5; i++) remove(name(f, j, 1, ext[i]));
 	j->h = 0;
 	core_changed = 1;
+	image_latex_ends++;
+}
+
+unsigned long long image_fnv(unsigned long long h, const void *p, size_t n)
+{
+	for (size_t i = 0; i < n; i++) h = (h ^ ((const unsigned char *)p)[i]) * 1099511628211ULL;
+	return h;
 }
 
 const char *image_latex(const char *tex, size_t n, uint32_t fg, int dpi, const char *dir)
 {
 	static char png[PATH_MAX];
 	struct job k = { 14695981039346656037ULL, dpi, 0, fg, "" }, *j = NULL;   /* FNV-1a */
-	for (size_t i = 0; i < n; i++) k.h = (k.h ^ (unsigned char)tex[i]) * 1099511628211ULL;
-	for (int i = 0; i < 64; i += 8) k.h = (k.h ^ (((unsigned long long)fg << 32 | (unsigned)dpi) >> i & 0xff)) * 1099511628211ULL;
+	unsigned long long fd = (unsigned long long)fg << 32 | (unsigned)dpi;
+	k.h = image_fnv(image_fnv(k.h, tex, n), &fd, sizeof fd);
 	k.h += !k.h;
 	if ((size_t)snprintf(k.dir, sizeof k.dir, "%s", dir) >= sizeof k.dir) return NULL;
 	FileId id;
