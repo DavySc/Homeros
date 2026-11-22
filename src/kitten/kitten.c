@@ -79,9 +79,10 @@ void kitten_toggle(Editor *e)
 
 void kitten_written(Editor *e, Buf *b)
 {
-	/* M.should_play: the buffer in front of you; a formatter that saves
-	   again right after gets one paw */
-	if (!off && b == e->buf && !(frame >= 0 && for_buf == b)) kitten_paw(e);
+	/* M.should_play: the buffer in front of you, not from a macro
+	   (reg_executing()); a formatter that saves again right after gets one
+	   paw */
+	if (!off && !e->ks.executing && b == e->buf && !(frame >= 0 && for_buf == b)) kitten_paw(e);
 }
 
 void kitten_key(void)

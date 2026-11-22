@@ -380,7 +380,7 @@ static void ctrl_c(void)
 	long long took = ms() - t0;
 	CHECK(took >= 290 && took < 400);
 	CHECK(!fired[3] && !g.nout && !g.ended[1]);   /* nothing ran inside the command */
-	fprintf(stderr, "test_loop_win: Ctrl-C stopped the command %lld ms after the start (key due at 300 ms), %lld breakchecks\n", took, calls);
+	fprintf(stderr, "test_loop_win (measured): Ctrl-C stopped the command %lld ms after the start (key due at 300 ms), %lld breakchecks\n", took, calls);
 	loop_int = 0;
 	run(&g, 5000);
 	CHECK(fired[3] == 1 && g.code == 3);
@@ -416,7 +416,7 @@ static void flood(void)
 		if (ms() - a > worst) worst = ms() - a;
 		if (flooded - b0 > most) most = flooded - b0;
 	}
-	fprintf(stderr, "test_loop_win: flood: longest loop_once(0) %lld ms, at most %lld bytes in one, key due at 300 ms ran at %lld ms\n", worst, most, key_at - t0);
+	fprintf(stderr, "test_loop_win (measured): flood: longest loop_once(0) %lld ms, at most %lld bytes in one, key due at 300 ms ran at %lld ms\n", worst, most, key_at - t0);
 	CHECK(worst < 100 && most <= 1 << 16 && key_at && key_at - t0 < 400);
 	proc_kill(id);
 	while (!done) CHECK(loop_once(100) == 0);
@@ -489,7 +489,7 @@ static void idle(void)
 	long long t0 = ms();
 	CHECK(loop_once(2000) == 0);
 	long long took = ms() - t0;
-	fprintf(stderr, "test_loop_win: idle loop_once(2000) returned after %lld ms\n", took);
+	fprintf(stderr, "test_loop_win (measured): idle loop_once(2000) returned after %lld ms\n", took);
 	CHECK(took >= 1990 && ran[0] == r0 && !g.ended[0]);
 	proc_kill(id);
 	run(&g, 2000);

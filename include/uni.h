@@ -147,4 +147,14 @@ size_t uni_gprev(const unsigned char *s, size_t n, size_t i);
        i + ulen(s, n, i) < n && cpx(s, n, i + ulen(s, n, i)) == 0xFE0F ? 2 : cells(cellc(cpx(s, n, i))));
 */
 int uni_width(const unsigned char *s, size_t n, size_t i);
+
+/* Writes code point c as UTF-8 into b and returns its length: the one
+   encoder (Neovim's utf_char2bytes()), for the keys, the pickers, the LSP's
+   JSON and the terminal. */
+/*@ requires c < 0x110000 && \valid(b + (0 .. 3));
+    assigns b[0 .. 3];
+    ensures \result == (c < 0x80 ? 1 : c < 0x800 ? 2 : c < 0x10000 ? 3 : 4);
+    ensures wellformed(b, \result, 0, \result) && cpx(b, \result, 0) == c;
+*/
+int uni_put(unsigned char *b, unsigned c);
 #endif

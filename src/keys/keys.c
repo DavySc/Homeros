@@ -13,6 +13,7 @@
 #include "git.h"
 #include "k.h"
 #include "kitten.h"
+#include "snip.h"
 #include "tools.h"
 #include "uni.h"
 
@@ -172,7 +173,7 @@ static int map(Editor *e, int k)
 
 void keys_input(Editor *e, int k, int pending)
 {
-	if (!(e->ks.pending ? map(e, k) : tools_key(e, k) || git_key(e, k) || map(e, k))) keys_feed(e, k, pending);
+	if (!(e->ks.pending ? map(e, k) : tools_key(e, k) || git_key(e, k) || snip_key(e, k, pending) || map(e, k))) keys_feed(e, k, pending);
 }
 
 void keys_feed(Editor *e, int k, int pending)
@@ -202,13 +203,13 @@ void keys_feed(Editor *e, int k, int pending)
 
 /* ---- the command line: ranges, :w :q :wq :x :Format ---- */
 
-/* Davy's BufWritePre for .sql (after/ftplugin/sql.lua): format first when
-   a sqldiff.toml is in the file's directory or one above it */
-static int ex_write(int force)
+/* keys.h; only the current buffer, the one :w writes */
+void keys_write_pre(Editor *e, Buf *b)
 {
 	char d[4096];
 	size_t n = 0;
-	if (is_ft(".sql")) {
+	E = e;
+	if (b == e->buf && is_ft(".sql")) {
 		if (B->path[0] != '/' && B->path[0] != '\\' && B->path[1] != ':') {
 			if (!getcwd(d, sizeof d - 1)) d[0] = 0;
 			n = strlen(d);
@@ -227,7 +228,6 @@ static int ex_write(int force)
 			}
 		}
 	}
-	return core_write(E, B, force);
 }
 
 /* one address and its offsets, 1-based, from line cur (Neovim's
@@ -312,10 +312,10 @@ static void ex(void)
 			beginline(BL_SOL | BL_FIX);
 		}
 		break;
-	case 1: case 2: ex_write(i == 2); break;
+	case 1: case 2: core_write(E, B, i == 2); break;
 	case 3: case 4: core_close(E, i == 4); break;
-	case 5: case 6: if (!ex_write(i == 6)) core_close(E, 0); break;
-	case 7: if (!core_modified(B) || !ex_write(0)) core_close(E, 0); break;
+	case 5: case 6: if (!core_write(E, B, i == 6)) core_close(E, 0); break;
+	case 7: if (!core_modified(B) || !core_write(E, B, 0)) core_close(E, 0); break;
 	/* Davy's :Format (conform.nvim): the whole buffer */
 	case 8: if (is_ft(".sql")) sql_format(0, text_len(B->text)); break;
 	case 9: kitten_paw(E); break;

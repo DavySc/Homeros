@@ -673,16 +673,6 @@ int map_case(int c, int up)
 	return c;
 }
 
-long utf8_put(int c, char *b)
-{
-	unsigned k = (unsigned)c;
-	if (k < 0x80) { b[0] = (char)k; return 1; }
-	if (k < 0x800) { b[0] = (char)(0xC0 + k / 64); b[1] = (char)(0x80 + k % 64); return 2; }
-	if (k < 0x10000) { b[0] = (char)(0xE0 + k / 4096); b[1] = (char)(0x80 + k / 64 % 64); b[2] = (char)(0x80 + k % 64); return 3; }
-	b[0] = (char)(0xF0 + k / 262144); b[1] = (char)(0x80 + k / 4096 % 64); b[2] = (char)(0x80 + k / 64 % 64); b[3] = (char)(0x80 + k % 64);
-	return 4;
-}
-
 int swapchar(int op_type, Pos *pos)
 {
 	int c = gchar(*pos), nc = c;
@@ -691,7 +681,7 @@ int swapchar(int op_type, Pos *pos)
 	else if (lo != c) { if (op_type != OP_UPPER) nc = lo; }   /* mb_isupper() */
 	if (nc == c) return 0;
 	char b[4];
-	long n = utf8_put(nc, b);
+	long n = uni_put((unsigned char *)b, (unsigned)nc);
 	/* the first code point only: its combining marks stay (swapchar()
 	   puts utf_char2bytes() over utf_ptr2len() bytes) */
 	const unsigned char *s = (const unsigned char *)ml_get(pos->lnum);
@@ -747,7 +737,7 @@ int op_replace(Oparg *oap, int c)
 	if (is_empty_buf() || oap->empty) return 1;
 	u_save_cursor();
 	char cb[4];
-	long cn = utf8_put(c, cb);
+	long cn = uni_put((unsigned char *)cb, (unsigned)c);
 	if (oap->motion_type == MBLOCK) {
 		int is_MAX = W->want == WANT_EOL;
 		for (; (long)W->line <= oap->end.lnum; W->line++) {
@@ -1516,7 +1506,7 @@ long key_to_bytes(int k, char *b)
 	for (unsigned i = 0; i < sizeof special / sizeof *special; i++)
 		if (special[i].key == k) { b[0] = (char)0x80; b[1] = special[i].a; b[2] = special[i].b; return 3; }
 	if (k >= 0x110000) return 0;
-	return utf8_put(k, b);
+	return uni_put((unsigned char *)b, (unsigned)k);
 }
 
 /* the keys a register's bytes stand for, to the stuff buffer (CTRL-R) or

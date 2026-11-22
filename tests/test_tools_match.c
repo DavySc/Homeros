@@ -4,7 +4,7 @@
    cases on stdin, scored cases on stdout. */
 #include <string.h>
 #include "check.h"
-#include "../src/tools/match.h"
+#include "match.h"
 
 #define REC "src/tools/conform/match-recorded.txt"
 enum { LINE = 4096, ITEMS = 64 };
