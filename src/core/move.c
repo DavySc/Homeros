@@ -239,7 +239,7 @@ static void set_topline(Win *w, lnr l)
 }
 
 /* changed_line_abv_curs_win() with invalidate_botline_win() (changed_lines()) */
-void win_invalidate(Win *w) { w->vc.ok = 0; w->frame->s.topvalid = 0; w->frame->s.bv = 0; w->frame->s.sideok = 0; }
+void win_invalidate(Win *w) { w->frame->s.topvalid = 0; w->frame->s.bv = 0; w->frame->s.sideok = 0; }
 
 /* check_cursor_moved(): the view is looked at again once the cursor
    leaves its line or 'wrap' changes; w_botline once skipcol changes */
