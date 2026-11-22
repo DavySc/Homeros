@@ -68,3 +68,5 @@ git: a change outside ends a line selection (magit traces)~test TESTS=git~~src/g
 git: a refresh keeps the selection's other end on its old line (magit traces)~test TESTS=git~~src/git/status.c~		git_remark(r->bufnr, !git_ha, &r->old, v);¶~
 git: hunks of two files taken as siblings (magit traces)~test TESTS=git~~src/git/keys.c~ && v->sec[x].parent == v->sec[y].parent~
 git: a diff buffer read again keeps the cursor's line (magit traces)~test TESTS=git~~src/git/keys.c~cur = old.nvis ? git_successor(&old, cur, v) : 0;~cur = cur < v->nvis ? cur : 0;
+git: a write ends Visual in keys' copy only, keys turns it back on at the next key (traces' Visual rule, region check)~test TESTS=git~~src/git/status.c~	if (e && on) keys_visual(e, 0, 0);~	if (e && on) e->ks.visual = 0;
+git: a re-read moves the selection's other end in keys' copy only (magit traces)~test TESTS=git~~src/git/status.c~		keys_visual(e, e->ks.visual, git_successor(old, e->ks.vline, v));~		e->ks.vline = git_successor(old, e->ks.vline, v);

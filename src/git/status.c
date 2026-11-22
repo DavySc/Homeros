@@ -10,6 +10,7 @@
 #include "core.h"
 #include "git.h"
 #include "gitint.h"
+#include "keys.h"
 #include "text.h"
 
 static int linef(View *v, const char *a, const char *b, const char *c)
@@ -401,7 +402,7 @@ void git_unmark(Repo *r)
 	Editor *e = git_ed();
 	int on = git_headless || git_on(r->bufnr);
 	for (Aux *a = r->aux; a; a = a->next) on |= git_on(a->bufnr);
-	if (e && on) e->ks.visual = 0;
+	if (e && on) keys_visual(e, 0, 0);
 }
 
 /* A view read again for another reason (a change outside, magit leaves
@@ -411,5 +412,5 @@ void git_remark(int nr, int focused, const View *old, const View *v)
 {
 	Editor *e = git_ed();
 	if (e && e->ks.visual && old->nvis && (git_on(nr) || (git_headless && focused)))
-		e->ks.vline = git_successor(old, e->ks.vline, v);
+		keys_visual(e, e->ks.visual, git_successor(old, e->ks.vline, v));
 }

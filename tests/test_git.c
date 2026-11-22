@@ -228,15 +228,15 @@ static void message_key(Repo *r, int k)
 	else if (k == 'Z') msg.z = 1;
 }
 
-/* the Vim motions git passes to keys, on the headless cursor, and Visual
-   mode (v, V, Esc) as keys sets it */
+/* the Vim motions git passes to keys, on the headless cursor; keys runs
+   them too (on the scratch buffer), so Visual mode is keys' own: v, V and
+   Esc set it and every key reads it back, as in the editor */
 static void motion(size_t *cur, const View *v, int k)
 {
-	if (k == 'v' || k == 'V') {
-		if (!e.ks.visual) e.ks.vline = *cur;
-		e.ks.visual = e.ks.visual == k ? 0 : k;
-	} else if (k == KEY_ESC) e.ks.visual = 0;
-	else if (k == 'j' && *cur + 1 < v->nvis) ++*cur;
+	int was = e.ks.visual;
+	if (k == 'v' || k == 'V' || k == 'j' || k == 'k' || k == 'G' || k == KEY_ESC) keys_feed(&e, k, 0);
+	if (!was && e.ks.visual) keys_visual(&e, e.ks.visual, *cur);   /* its other end on the view's line */
+	if (k == 'j' && *cur + 1 < v->nvis) ++*cur;
 	else if (k == 'k' && *cur) --*cur;
 	else if (k == 'G' && v->nvis) *cur = v->nvis - 1;
 }
@@ -389,7 +389,7 @@ static void scenario(const char *name, const char *setup, Step *steps, int n, ch
 	if (nproc > maxproc) maxproc = nproc;
 	top_row[0] = top_row[1] = 0;
 	memset(&msg, 0, sizeof msg);
-	e.ks.visual = 0;
+	keys_visual(&e, 0, 0);
 	for (int s = 0; s < n; s++) {
 		Step *st = &steps[s];
 		int visit_ok = 0;
@@ -415,6 +415,11 @@ static void scenario(const char *name, const char *setup, Step *steps, int n, ch
 			}
 		settle();
 		check_step(name, st, s + 1 < n ? &steps[s + 1] : NULL, states[s], visit_ok, visit_buf, visit_row);
+		/* magit-refresh-buffer deactivates the mark after magit's own
+		   command: a key that changed the repository ends Visual mode */
+		int wrote = 0;
+		for (int i = 0; s && i < 7; i++) wrote |= strcmp(states[s - 1][i], states[s][i]) != 0;
+		if (wrote && e.ks.visual && strncmp(st->keys, "$ ", 2)) fail(name, st->keys, "Visual mode is still on after a write");
 	}
 	if (!strcmp(name, "discard-untracked")) {
 #ifdef _WIN32
@@ -720,7 +725,7 @@ static void region_case(int mode)
 	if (staged) free(run("cd '%s' && git add f.txt", repo));
 	git_free();
 	git_headless = 1;
-	e.ks.visual = 0;
+	keys_visual(&e, 0, 0);
 	CHECK(git_status(&e, repo) == 0);
 	settle();
 	Repo *r = R();
@@ -766,11 +771,11 @@ static void region_case(int mode)
 	str_add(&want, "", 1);
 	unsigned down = rnd(2);
 	r->cur = sec_vis_of(v, down ? z : b);
-	e.ks.vline = sec_vis_of(v, down ? b : z);
-	e.ks.visual = rnd(2) ? 'V' : 'v';
+	keys_visual(&e, rnd(2) ? 'V' : 'v', sec_vis_of(v, down ? b : z));
 	git_key(&e, mode == 0 ? 's' : mode == 1 ? 'u' : 'x');
 	if (mode >= 2) git_key(&e, 'y');
 	settle();
+	keys_feed(&e, 'j', 0);                   /* keys' next key reads Visual back */
 	char *idx = run("cd '%s' && git show :f.txt", repo), *now = run("cat '%s/f.txt'", repo);
 	const char *wi = mode == 2 ? was : want.s, *ww = mode == 3 || mode == 2 ? want.s : wt;
 	static const char *const name[] = { "stage", "unstage", "discard", "discard staged" };
