@@ -1,0 +1,31 @@
+# One solution per problem (Davy, 2026-11-21): each mechanism has one owner,
+# and tools/dupes.py fails when the mechanism's telltale (a Python regex over
+# the code, comments blanked) shows up in any other module file.  A line is
+#   name | regex | owner path patterns
+# An owner after the first is an exception with its reason above it; a copy
+# still to fold goes on tests/dupes-known.txt instead.  The audit behind this
+# list: project files research/duplicate-mechanisms.md.
+
+# UTF-8 encoding of a code point (uni_put): writing a continuation byte
+utf8-encode | 0x80 *(\+|\|(?!\|))|(?<!\|)\| *0x80\b | src/uni/*
+# a child's output cut into lines (str_lines): a byte at a time to a newline
+line-split | if \(\w+\[\w+\] *!= *'\\n'\) | src/str/*
+# putting the cursor at a line and column (core_goto); keys' motions set
+# curswant themselves, as Neovim's normal.c does
+cursor-goto | \bcore_set_want\s*\( | src/core/* src/keys/*
+# a run of digits to a number (match_num); keys counts a typed count key by key
+number-parse | \* *10 *\+ *\(?\*?\w+(\[[^]]*\])? *- *'0' | src/tools/match.c src/keys/normal.c
+# starting a process (proc_spawn).  wl.c: the clipboard's double fork, so a
+# stalled reader never blocks the editor; git/os.c: git's blocking mv, as
+# Emacs waits too
+process | \b(fork|vfork|posix_spawnp?|exec[lv]p?e?|CreateProcess\w*|popen|system)\s*\( | src/loop/* src/wl/wl.c src/git/os.c
+# a timer (loop_timer).  Key repeat (wl.c) and frame pacing (win/backend.c)
+# are latency paths: moving them needs measurements first
+timer | \b(timerfd_create|CreateWaitableTimer\w*|SetTimer|timer_create)\s*\( | src/loop/* src/wl/wl.c src/win/backend.c
+# the monotonic clock (loop_now)
+clock | \b(clock_gettime|QueryPerformanceCounter|gettimeofday|GetTickCount64|timeGetTime)\s*\( | src/loop/*
+# a path made absolute (file_full).  git and lsp need the resolved path, the
+# one git and the server see; file_full keeps the last name as typed
+abs-path | \b(realpath|_fullpath|GetFullPathName\w*)\s*\( | src/file/* src/git/os.c src/lsp/lsp.c
+# percent-encoding a path (RFC 3986), lsp's file URI
+percent | %%%02X | src/lsp/lsp.c

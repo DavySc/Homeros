@@ -3,6 +3,7 @@
 # with zig cc and runs it under Wine, as src/file/check.sh does.
 set -eu
 cd "$(dirname "$0")/../.."
+. tools/winpass.sh
 for t in zig wine; do
 	command -v $t >/dev/null || { echo "src/shada/check.sh: $t is not on PATH"; exit 2; }
 done
@@ -13,4 +14,4 @@ export WINEDEBUG=-all WINEDLLOVERRIDES="mscoree,mshtml=" WINEPREFIX=$PWD/build/w
 exe=build/win/test_shada_win.exe
 zig cc -target x86_64-windows-gnu -std=c17 -Wall -Wextra -Werror -D_FILE_OFFSET_BITS=64 -Iinclude -O1 -g \
   -fsanitize=undefined -fsanitize-trap=undefined -o "$exe" tests/test_shada_win.c src/shada/*.c src/file/*.c src/loop/*.c $(pick text) -lshell32
-timeout 600 wine "$exe" || { echo "FAIL test_shada_win"; exit 1; }
+pass 600 "$exe" wine || { echo "FAIL test_shada_win"; exit 1; }

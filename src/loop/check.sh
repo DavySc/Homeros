@@ -4,6 +4,7 @@
 # 11.  UBSan traps; ASan has no runtime for this target, so it runs without.
 set -eu
 cd "$(dirname "$0")/../.."
+. tools/winpass.sh
 for t in zig wine; do
 	command -v $t >/dev/null || { echo "src/loop/check.sh: $t is not on PATH"; exit 2; }
 done
@@ -16,4 +17,4 @@ exe=build/win/test_loop_win.exe
 zig cc -target x86_64-windows-gnu -std=c17 -Wall -Wextra -Werror -Iinclude -O1 -g \
   -fsanitize=undefined -fsanitize-trap=undefined -o "$exe" tests/test_loop_win.c src/loop/*.c -lshell32
 # about 12 s; a planted spin must not cost CI 5 minutes
-timeout 120 wine "$exe" || { echo "FAIL test_loop_win"; exit 1; }
+pass 120 "$exe" wine || { echo "FAIL test_loop_win"; exit 1; }
