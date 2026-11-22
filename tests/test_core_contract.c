@@ -12,6 +12,7 @@
 #include "check.h"
 #include "core.h"
 #include "keys.h"
+#include "lsp.h"
 #include "syntax.h"
 #include "grid.h"
 #include "../src/core/core_int.h"
@@ -147,6 +148,22 @@ int main(void)
 	CHECK(!core_close(&e, 0));
 	CHECK(!core_buf_delete(&e, 0, 0) && !strcmp(e.buf->path, fn[2]));
 	core_free(&e);
+	/* :bd closes the buffer's language server document once: core_free
+	   after it does not close it again (ASan; review of PR 111) */
+	{
+		static const char *const cat[] = { "sh", "-c", "cat >/dev/null", NULL }, *const none[] = { NULL };
+		const LspServer srv[] = { { ".lspt", "lspt", cat, none, 0 }, { 0 } }, *was = lsp_servers;
+		char f[128];
+		snprintf(f, sizeof f, "%s.lspt", path);
+		FILE *h = fopen(f, "w");
+		CHECK(h && fputs("x\n", h) >= 0 && !fclose(h));
+		lsp_servers = srv;
+		CHECK(!core_open(&e, fn[0]) && !core_edit_file(&e, f, 0) && e.buf->lsp);
+		CHECK(!core_buf_delete(&e, 0, 0) && !strcmp(e.buf->path, fn[0]));
+		core_free(&e);
+		lsp_servers = was;
+		unlink(f);
+	}
 	/* an outside change not yet warned is forgotten by a save over it:
 	   the next edit gives no W11 */
 	CHECK(!core_open(&e, fn[0]));

@@ -177,3 +177,4 @@ core: an empty line's end-of-line cell drawn CurSearch (test_core_search)~test T
 core: core_goto leaves a cursor past the end (test_core_contract)~test TESTS=core_contract~~src/core/core.c~	e->win->col = col;¶	core_clamp(e);¶	core_set_want(e);~	e->win->col = col;¶	core_set_want(e);
 core: a write skips the BufWritePre (test_keys_gq's format on :w)~test TESTS=keys_gq~~src/core/core.c~	keys_write_pre(e, b);¶~
 core: a write sends no didSave (test_infoview)~test TESTS=infoview~~src/core/core.c~		kitten_written(e, b);   /* BufWritePost, after the message as in Neovim */¶		lsp_saved(b->lsp);~		kitten_written(e, b);   /* BufWritePost, after the message as in Neovim */
+core: :bd leaves the closed language server document on the buffer (test_core_contract)~test TESTS=core_contract~~src/core/core.c~	b->lsp = NULL;¶~
