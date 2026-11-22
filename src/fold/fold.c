@@ -439,7 +439,7 @@ int fold_closed(const Fold *f, size_t line, size_t *l1, size_t *l2)
 			*l1 = (size_t)first - 1;
 			long last = first + fp->len - 1;
 			*l2 = (size_t)(last < f->n ? last : f->n) - 1;
-			return 1;
+			return lvl + 1;   /* fold_info()'s fi_level, for foldtext's dashes */
 		}
 	}
 	return 0;

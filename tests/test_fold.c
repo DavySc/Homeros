@@ -2,7 +2,7 @@
    named by argv[1]), which tests/test_fold.lua recorded from nvim --headless
    (random scenarios of 40 steps; its comment gives the format),
    calling the fold module as Neovim's change.c, normal.c and edit.c call
-   fold.c, and compares foldclosed(), foldclosedend() and foldlevel() of
+   fold.c, and compares foldclosed(), foldclosedend(), the closed fold's level and foldlevel() of
    every line after every step. */
 #include <stdio.h>
 #include <stdlib.h>
@@ -87,7 +87,7 @@ int main(int argc, char **argv)
 				int c = fold_closed(f, l, &l1, &l2);
 				char got[64];
 				int k = snprintf(got, sizeof got, "%d", fold_level(f, l));
-				if (c) snprintf(got + k, sizeof got - (size_t)k, "/%zu/%zu", l1 + 1, l2 + 1);
+				if (c) snprintf(got + k, sizeof got - (size_t)k, "/%zu/%zu/%d", l1 + 1, l2 + 1, c);
 				char *want = strtok(NULL, " \n");
 				if (!want || strcmp(got, want)) {
 					fprintf(stderr, "FAIL scenario %d, %s: line %zu: %s, nvim %s\n", scen, step, l + 1, got, want ? want : "none");

@@ -33,9 +33,9 @@
 --                             and the last ones go (_fold.lua's on_bytes)
 --   U r1 r2 tok...            (INC) a parse gave lines [r1, r2) new values,
 --                             then vim._foldupdate(r1, r2) (on_changedtree)
---   R rc lvl[/fc/fce] ...     after it: rc -1 for "E490: No fold found",
---                             foldlevel() and, in a closed fold, foldclosed()
---                             and foldclosedend()
+--   R rc lvl[/fc/fce/fl] ...  after it: rc -1 for "E490: No fold found",
+--                             foldlevel() and, in a closed fold, foldclosed(),
+--                             foldclosedend() and that fold's level
 local N, seed, only = tonumber(arg[1] or 300), tonumber(arg[2] or 1), tonumber(arg[3])
 -- INC: syntax_foldexpr's incremental flow, FE answering from V
 local inc = arg[4] == 'inc'
@@ -71,7 +71,8 @@ local function result(rc)
   local r = { 'R', tostring(rc) }
   for l = 1, vim.api.nvim_buf_line_count(0) do
     local a = vim.fn.foldclosed(l)
-    r[#r + 1] = vim.fn.foldlevel(l) .. (a < 0 and '' or '/' .. a .. '/' .. vim.fn.foldclosedend(l))
+    r[#r + 1] = vim.fn.foldlevel(l) .. (a < 0 and '' or '/' .. a .. '/' .. vim.fn.foldclosedend(l)
+      .. '/' .. vim.fn.foldtextresult(l))
   end
   out:write(table.concat(r, ' '), '\n')
 end
@@ -83,6 +84,7 @@ for s = 0, N - 1 do
   vim.wo.foldmethod = 'expr'
   vim.wo.foldexpr = 'v:lua.FE()'
   vim.wo.wrap = false
+  vim.wo.foldtext = 'v:foldlevel'   -- the closed fold's level
   local lvl, fml = ({ 0, 1, 2, 3, 99 })[math.random(5)], math.random(10) <= 3 and 1 or 0
   if inc then fml = 0 end
   vim.wo.foldlevel = lvl
