@@ -1,0 +1,23 @@
+caught        keys: '{ and '( set '' while they look for their place (test_keys_ex)   (make test TESTS=keys_ex): 1 of 3000 differ; cases in /tmp/test_keys_exBFvGo5 (| is Enter, ~ Esc)
+caught        keys: :s keeps the g flag it cleared after a match over the last line, so g& after it changes one match a line (test_keys_ex)   (make test TESTS=keys_ex): 2 of 3000 differ; cases in /tmp/test_keys_ex81mvFi (| is Enter, ~ Esc)
+caught        keys: :s/\n// on the last line leaves the cursor where it was (test_keys_ex)   (make test TESTS=keys_ex): 2 of 3000 differ; cases in /tmp/test_keys_exMIXZSj (| is Enter, ~ Esc)
+caught        keys: a jump past the last line is gone to, with no E19 (test_keys_ex)   (make test TESTS=keys_ex): 2 of 3000 differ; cases in /tmp/test_keys_exzJdc1z (| is Enter, ~ Esc)
+caught        keys: an ex command leaves '' unsettled, so the next command's checkpcmark() moves it (test_keys_ex)   (make test TESTS=keys_ex): 3 of 3000 differ; cases in /tmp/test_keys_expCfqnj (| is Enter, ~ Esc)
+caught        keys: gv with only '< set selects (test_keys_ex)   (make test TESTS=keys_ex): 1 of 3000 differ; cases in /tmp/test_keys_exsbP2tP (| is Enter, ~ Esc)
+caught        keys: n after /x/s-1 stays where it is (test_keys_ex)   (make test TESTS=keys_ex): 1 of 3000 differ; cases in /tmp/test_keys_exjXorDg (| is Enter, ~ Esc)
+caught        keys: CurSearch only when the cursor is on the match's first line (test_keys_ex)   (make test TESTS=keys_ex): tests/test_keys_ex.c:469: CHECK(keys_hl(&e, e.win, 0, 0, &hs, &hz) == 2 && hs == 1 && hz == 3) failed
+caught        keys: * keeps 'smartcase', so * on Foo misses foo (test_keys_ex)   (make test TESTS=keys_ex): 1 of 3000 differ; cases in /tmp/test_keys_ex1FWQIw (| is Enter, ~ Esc)
+caught        keys: :s takes a NUL in a line (\n in a replacement) for the line's end (test_keys_ex)   (make test TESTS=keys_ex): 1 of 3000 differ; cases in /tmp/test_keys_ex5FQc4l (| is Enter, ~ Esc)
+caught        keys: [( and ]) are not jumps (test_keys_ex)   (make test TESTS=keys_ex): 2 of 3000 differ; cases in /tmp/test_keys_exr3ZuPc (| is Enter, ~ Esc)
+caught        keys: a mark past the last line is gone to (test_keys_ex)   (make test TESTS=keys_ex): 1 of 3000 differ; cases in /tmp/test_keys_ex0rpjQ5 (| is Enter, ~ Esc)
+caught        keys: an exclusive yank's '] stays at column 0 of the next line (test_keys_ex)   (make test TESTS=keys_ex): 3 of 3000 differ; cases in /tmp/test_keys_exFZNTuG (| is Enter, ~ Esc)
+caught        keys: m< alone leaves gv no mode (test_keys_ex)   (make test TESTS=keys_ex): 1 of 3000 differ; cases in /tmp/test_keys_ex3r2Suo (| is Enter, ~ Esc)
+caught        keys: a backslash the match copies is taken as an escape (test_keys_ex)   (make test TESTS=keys_ex): 1 of 3000 differ; cases in /tmp/test_keys_exSDHSfR (| is Enter, ~ Esc)
+caught        keys: SPC u p only turns conceal off (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:73: CHECK(e.win->conceal == 2) failed
+caught        keys: :s is not a jump (test_keys_ex)   (make test TESTS=keys_ex): 1 of 3000 differ; cases in /tmp/test_keys_ex4hAvGt (| is Enter, ~ Esc)
+caught        keys: :s with a new pattern leaves the matches hidden (test_keys_ex)   (make test TESTS=keys_ex): 2 of 3000 differ; cases in /tmp/test_keys_exfRtRqU (| is Enter, ~ Esc)
+caught        keys: a bare ' in a range is E78 (test_keys_ex)   (make test TESTS=keys_ex): 2 of 3000 differ; cases in /tmp/test_keys_exfxxOxq (| is Enter, ~ Esc)
+caught        keys: a mark set alone with m> does not stand for '< (test_keys_ex)   (make test TESTS=keys_ex): 1 of 3000 differ; cases in /tmp/test_keys_exMg9SFE (| is Enter, ~ Esc)
+caught        keys: beginline stops at a NUL in the line (test_keys_ex)   (make test TESTS=keys_ex): 2 of 3000 differ; cases in /tmp/test_keys_exGHPf6F (| is Enter, ~ Esc)
+caught        keys: m[ does not set '[ (test_keys_ex)   (make test TESTS=keys_ex): 1 of 3000 differ; cases in /tmp/test_keys_ex0aUmnD (| is Enter, ~ Esc)
+caught        keys: <leader>uk does not turn the save kitten off (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:65: CHECK(!strcmp(e.msg, "Kitten on save: off")) failed
