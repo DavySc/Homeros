@@ -125,6 +125,21 @@ uint8_t *pdb_leaves(const Pdb *p, uint32_t number, PdbSpan *records, uint32_t *f
   return stream;
 }
 
+uint8_t *pdb_type_firsts(const Pdb *p, PdbSpan *pairs)
+{
+  uint32_t n, hn = 0;
+  uint8_t *types = msf_stream(&p->msf, PDB_TYPES, &n);
+  /* PDB_TpiHeader: the hash stream's number at 20; where its adjustments are, and their size, at 48. They are a
+     table: how many pairs, how many slots, two sets of bits (each a count of words, then the words), the pairs. */
+  uint8_t *hash = n >= 56 ? msf_stream(&p->msf, le16(types + 20), &hn) : 0;
+  PdbSpan adj = n >= 56 ? part((PdbSpan){hash, hn}, le32(types + 48), le32(types + 52)) : (PdbSpan){0};
+  uint64_t at = 8;
+  for (int i = 0; i < 2; i += 1) at += 4 + 4 * (uint64_t)(at + 4 <= adj.n ? le32(adj.p + at) : adj.n);
+  *pairs = part(adj, at, 8 * (uint64_t)(adj.n >= 4 ? le32(adj.p) : 0));
+  free(types);
+  return hash;
+}
+
 bool pdb_symbol(PdbSpan syms, uint32_t *at, uint16_t *kind, PdbSpan *data)
 {
   if (syms.n - *at < 4) return false;                    /* *at <= syms.n always */

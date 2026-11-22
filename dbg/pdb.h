@@ -41,6 +41,10 @@ uint8_t *pdb_globals(const Pdb *p, PdbSpan *syms);
    which the caller frees. Record i, counted from 0, has id *first + i. */
 enum { PDB_TYPES = 2, PDB_IDS = 4 };
 uint8_t *pdb_leaves(const Pdb *p, uint32_t number, PdbSpan *records, uint32_t *first);
+/* The linker's say on which definition of a type's name is the first, where a name has several: pairs of
+   a name (its offset in the string table) and a type id, 8 bytes each (the type hash stream's adjustments).
+   Returns the stream, which the caller frees. */
+uint8_t *pdb_type_firsts(const Pdb *p, PdbSpan *pairs);
 /* The symbol or id record at *at of a run of records (start at 0): its kind and the bytes after
    the kind. Moves *at to the next record. False at the end. */
 bool pdb_symbol(PdbSpan syms, uint32_t *at, uint16_t *kind, PdbSpan *data);

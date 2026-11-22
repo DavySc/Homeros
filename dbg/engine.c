@@ -170,18 +170,22 @@ static bool goes_into(const Engine *e, uint64_t addr)
   return !(name.n == 8 && !memcmp(name.p, "__chkstk", 8));
 }
 
-/* Whether addr is in a function built with MSVC's "just my code" (/JMC): the row behind its first is the call of the
-   helper, under the made-up line number 0xf00f00. Code that is not, the program's start and end and the helper among it,
-   is not the user's: a step from the user's code does not end there (Visual Studio, calls_jmc; knowledge base 03). */
-static bool mine(const Engine *e, uint64_t addr)
+/* Whether addr is in code that is not the user's: the compiler's own runtime, by where its source was (Visual Studio's
+   list, default.natjmc: "*\vctools\crt\*"; its other entries, the C++ library's headers among them, have no subject yet). In a program built with MSVC's "just my code" (/JMC) a step from the user's code does not end
+   there; the C library, whose source is elsewhere, is stepped as the user's (Visual Studio on mine_jmc and calls_jmc;
+   knowledge base 03, "Just my code: the mechanism"). */
+static bool theirs(const Engine *e, uint64_t addr)
 {
   const EngineModule *m = engine_module(e, addr);
+  char path[1024];
   if (!m) return false;
-  const RdiScope *scope = rdi_at(&m->rdi, RDI_SCOPES, RdiScope, rdi_at(&m->rdi, RDI_PROCEDURES, RdiSymbol, rdi_at(&m->rdi, RDI_SCOPES, RdiScope, rdi_vmap(&m->rdi, RDI_SCOPE_VMAP, addr - m->image.base))->proc)->root_scope);
-  return rdi_row(&m->rdi, rdi_row(&m->rdi, *rdi_at(&m->rdi, RDI_SCOPE_VOFFS, uint64_t, scope->voff_first)).opl).line.line == 0xf00f00;
+  uint64_t n = rdi_path(&m->rdi, rdi_at(&m->rdi, RDI_SOURCE_FILES, RdiSourceFile, rdi_row(&m->rdi, addr - m->image.base).line.file)->path_node, path, sizeof path);
+  path[n < sizeof path ? n : sizeof path - 1] = 0;
+  return strstr(path, "/vctools/crt/");
 }
 
-/* The helper tells the debugger that a thread came into one of the user's functions: it reaches its nop only on the
+/* /JMC puts a call of a helper behind the first line of each function, under the made-up line number 0xf00f00. The
+   helper tells the debugger that a thread came into one of the user's functions: it reaches its nop only on the
    thread whose id the debugger wrote into __DebuggerCurrentSteppingThreadId. Writes it in every module that has one,
    and adds the nops to the net. It stays written: outside a step no trap is on a nop. */
 static void watch(Engine *e, uint32_t thread)
@@ -220,33 +224,38 @@ static void line_net(Engine *e, uint64_t rip, bool into)
   uint64_t base = m ? m->image.base : 0;
   RdiRow row = m ? rdi_row(&m->rdi, rip - base) : (RdiRow){0};
   if (!row.opl || row.opl - row.first > CODE_MAX) return;
-  /* every piece of code of the same source line: to jump into one of them is not to leave the line */
+  /* Every piece of code of the same source line: to jump into one of them is not to leave the line, and the thread
+     can leave the line from each (RAD looks only at the piece the thread is in, and a step that leaves by another
+     runs to the program's end: mine_jmc.into, the C library's parse_integer; Visual Studio stops). The row itself is
+     one more where the source line map has none for it: the code between two blocks of lines (a constructor the
+     compiler made). */
   RdiSpan starts = rdi_voffs_from_line(&m->rdi, row.line.file, row.line.line);
   uint32_t count = (uint32_t)starts.n;
-  ROOM(e, ranges, range_cap, 2 * count);
+  ROOM(e, ranges, range_cap, 2 * count + 2);
   for (uint32_t i = 0; i < count; i += 1) e->ranges[2 * i] = ((const uint64_t *)starts.p)[i], e->ranges[2 * i + 1] = line_end(&m->rdi, rdi_row(&m->rdi, e->ranges[2 * i]));
-  uint64_t lo = row.first, hi = line_end(&m->rdi, row);
-  uint32_t n = code_at(e, base + lo, (uint32_t)(hi - lo));
-  for (uint32_t at = 0; at < n;) {
-    uint64_t addr = base + lo + at;
-    X64Inst x = x64_decode(e->code + at, n - at, addr);
-    if (!x.size) break;
-    at += x.size;
-    uint64_t to = x.known ? x.target : 0;
-    if (x.flow == X64_CALL && !into) net_add(e, addr, STEP_AFTER);   /* into the call, and on: the trap behind the call waits at this depth */
-    else if (x.flow != X64_OTHER) {
-      /* A jump, branch or return: the step ends where it goes, when that is known, else after the instruction has
-         run; not when it lands in the line. Stepping into, a call: it is run, and the step ends where it led if a
-         step goes into that (as Visual Studio; RAD goes into the line's last call wherever it leads: knowledge base
-         03, "The reference that decides"). The row itself is asked as well as the line's pieces: the source line
-         map has no piece for the code between two blocks of lines (a constructor the compiler made). */
-      bool call = x.flow == X64_CALL, stays = (to - base >= lo && to - base < hi) || in_ranges(e, count, to - base);
-      if (call) to = 0;   /* a trap where the function begins would also end the step when another call's code came there */
-      if (!stays) net_add(e, to ? to : addr, END | (to ? 0 : STEP_AFTER) | (call ? LINES : 0));
-    } else if (x.moves_sp) net_add(e, addr, STEP_AFTER | SAVE_AFTER);
+  if (!in_ranges(e, count, row.first)) e->ranges[2 * count] = row.first, e->ranges[2 * count + 1] = line_end(&m->rdi, row), count += 1;
+  for (uint32_t i = 0; i < count; i += 1) {
+    uint64_t lo = e->ranges[2 * i], hi = e->ranges[2 * i + 1];
+    uint32_t n = hi - lo > CODE_MAX ? 0 : code_at(e, base + lo, (uint32_t)(hi - lo));
+    for (uint32_t at = 0; at < n;) {
+      uint64_t addr = base + lo + at;
+      X64Inst x = x64_decode(e->code + at, n - at, addr);
+      if (!x.size) break;
+      at += x.size;
+      uint64_t to = x.known ? x.target : 0;
+      if (x.flow == X64_CALL && !into) net_add(e, addr, STEP_AFTER);   /* into the call, and on: the trap behind the call waits at this depth */
+      else if (x.flow != X64_OTHER) {
+        /* A jump, branch or return: the step ends where it goes, when that is known, else after the instruction has
+           run; not when it lands in the line. Stepping into, a call: it is run, and the step ends where it led if a
+           step goes into that (as Visual Studio; RAD goes into the line's last call wherever it leads: knowledge base
+           03, "The reference that decides"). */
+        bool call = x.flow == X64_CALL;
+        if (call) to = 0;   /* a trap where the function begins would also end the step when another call's code came there */
+        if (!in_ranges(e, count, to - base)) net_add(e, to ? to : addr, END | (to ? 0 : STEP_AFTER) | (call ? LINES : 0));
+      } else if (x.moves_sp) net_add(e, addr, STEP_AFTER | SAVE_AFTER);
+    }
+    net_add(e, base + hi, END);   /* running off the end of the piece (the converter made one piece of pieces that touch) */
   }
-  /* running off the end of a piece of the line (the converter made one piece of pieces that touch) */
-  for (uint32_t i = 0; i < count; i += 1) net_add(e, base + e->ranges[2 * i + 1], END);
 }
 
 /* Step out (d_trap_net_from_thread__step_out_scope): out of the innermost scope the thread is in, which is a block
@@ -308,7 +317,8 @@ static TargetEvent run(Engine *e, int how, uint32_t thread, const uint64_t *brea
   }
   for (uint32_t i = 0; i < e->thread_count; i += 1) e->threads[i].told = 0;   /* now all run: one that comes to stand there again has not been told (Hit.tla, "kept") */
   uint64_t depth = regs.gp[4];
-  bool user = mine(e, regs.rip);
+  const EngineModule *m = engine_module(e, regs.rip);
+  bool user = m && engine_function(m, "__CheckForDebuggerJustMyCode", 28) && !theirs(e, regs.rip);   /* built with /JMC, and begun in the user's code */
   for (uint32_t planted = 0;;) {   /* the net can grow on the way (watch) */
     ROOM(e, traps, trap_cap, count + e->net_count);
     for (; planted < count + e->net_count; planted += 1) e->traps[planted] = planted < count ? breakpoints[planted] : e->net[planted - count].addr;
@@ -324,13 +334,13 @@ static TargetEvent run(Engine *e, int how, uint32_t thread, const uint64_t *brea
     if (!reached) continue;
     if (flags & SAVE_AFTER && target_regs(e->target, thread, &regs)) depth = regs.gp[4];
     if (flags & HELPER) {   /* to the function that called it */
-      do ev = step_one(e, thread); while (ev.kind == TARGET_STEP && !mine(e, ev.addr));
+      do ev = step_one(e, thread); while (ev.kind == TARGET_STEP && theirs(e, ev.addr));
       if (ev.kind != TARGET_STEP) return ev;
     }
     if (!(flags & END)) continue;
     /* where a call leads is known when it has run: into code no step goes into, the thread runs on, the net as it is;
        so it does from the user's code into code that is not, until it comes to a function of the user's */
-    if (!(flags & LINES && !goes_into(e, ev.addr)) && !(user && !mine(e, ev.addr))) return (TargetEvent){.kind = TARGET_STEP, .thread = thread, .addr = ev.addr};
+    if (!(flags & LINES && !goes_into(e, ev.addr)) && !(user && theirs(e, ev.addr))) return (TargetEvent){.kind = TARGET_STEP, .thread = thread, .addr = ev.addr};
     if (user) watch(e, thread);
     if (!(flags & STEP_AFTER) && (ev = step_one(e, thread)).kind != TARGET_STEP) return ev;   /* off the trap it stands on */
   }

@@ -67,11 +67,16 @@ BASIC = {0x10: ('signed char', 'Char8', 1), 0x11: ('short', 'S16', 2), 0x12: ('l
 def meanings(pdb):
     """each type id's meaning, as rdiq prints a type, and its size, from llvm-pdbutil's reading of the type records (64-bit files),
     taken in order: a record that names itself or a later one has no type there. A forward reference is the definition
-    llvm-pdbutil found for it, wherever that is. No types when the ids do not start at 0x1000."""
+    the linker names for its name ("hash adjusters"), else the last of that name, wherever it is: the one RAD finds, by Microsoft's
+    order of a name's chain (new records go to its head). llvm-pdbutil says the first, which is another where a name is defined
+    twice and the linker names none (recur_clang, linked by lld: _TEB, from two versions of a header). No types when the ids do not start at 0x1000."""
     recs, memo, forward, funcs = {}, {}, [], {}
     for line in subprocess.run(['llvm-pdbutil', 'dump', '--types', pdb], capture_output=True, text=True, errors='surrogateescape').stdout.split('\n'):
         if m := re.match(r' +(0x[0-9A-F]+) \| (LF_\w+) \[size = \d+\](?: `(.*)`)?$', line): rec = recs[int(m[1], 16)] = [m[2], m[3] or '', '']
         elif recs: rec[2] += line + '\n'
+    last = {r[1]: i for i, r in recs.items() if r[0] in ('LF_STRUCTURE', 'LF_CLASS', 'LF_UNION', 'LF_ENUM') and 'forward ref' not in r[2]}
+    extras = subprocess.run(['llvm-pdbutil', 'dump', '--type-extras', pdb], capture_output=True, text=True, errors='surrogateescape').stdout
+    last.update((m[1], int(m[2], 16)) for m in re.finditer(r'^ +`(.*)` -> (0x[0-9A-F]+)$', extras.split('Hash Adjusters:')[-1], re.M))
     def of(i):
         if i not in memo and (i < 0x1000 or forward): memo[i] = make(i)
         return memo.get(i, ('none', 0))
@@ -98,8 +103,8 @@ def meanings(pdb):
             on, size = of(field('element type:')), field('size:')
             return f'1004.0[{size // on[1] if on[1] else 0}]:{size} {on[0]}', size
         if kind not in ('LF_STRUCTURE', 'LF_CLASS', 'LF_UNION', 'LF_ENUM'): return 'none', 0
-        if m := re.search(r'forward ref \(\S+ (0x[0-9A-F]+)\)', body):
-            if int(m[1], 16) != i: forward.append(i); full = of(int(m[1], 16)); forward.pop(); return full
+        if 'forward ref' in body:
+            if name in last: forward.append(i); full = of(last[name]); forward.pop(); return full
             return f"{ {'LF_STRUCTURE': 2005, 'LF_UNION': 2006, 'LF_CLASS': 2007, 'LF_ENUM': 2008}[kind]} {name}:0", 0
         on = of(field('underlying type:')) if kind == 'LF_ENUM' else ('none', field('sizeof'))
         return f"{ {'LF_STRUCTURE': 2000, 'LF_CLASS': 2001, 'LF_UNION': 2002, 'LF_ENUM': 2003}[kind]} {name}:{on[1]}" + (f' on {on[0]}' if on[0] != 'none' else ''), on[1]

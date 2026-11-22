@@ -279,12 +279,19 @@ static bool named_leaf(uint16_t kind, PdbSpan d, uint16_t *props, uint64_t *size
   return true;
 }
 
-/* The id of the first full definition filed under a name; 0 when there is none. With `id`,
-   files that definition unless one is there. RAD looks a scoped type up by its unique name,
-   which follows the name in the record; in no test file does that find another definition. */
+/* The id of the full definition last filed under a name; 0 when there is none. With `id`,
+   files that definition. A name defined twice (_TEB, from two versions of a header, in every
+   test file) means the definition the linker names (MSVC's does), else the last, as RAD finds it
+   and as Microsoft orders a name's chain: a new record goes to its head (recur_clang, linked by
+   lld, which names none; llvm-pdbutil says the first there). RAD looks a scoped type up by its unique name, which follows the name in the
+   record; in no test file does that find another definition. */
 static uint32_t defined(Out *o, PdbSpan name, uint32_t id)
 {
-  if (id && intern(&o->defined, name.p, name.n) == COUNT(o->defined_id, uint32_t)) *(uint32_t *)add(&o->defined_id, 4) = id;
+  if (id) {
+    uint32_t at = intern(&o->defined, name.p, name.n);
+    if (at == COUNT(o->defined_id, uint32_t)) add(&o->defined_id, 4);
+    ((uint32_t *)o->defined_id.p)[at] = id;
+  }
   uint32_t slot = o->defined.slots.n ? *names_slot(&o->defined, name.p, name.n) : 0;
   return slot ? ((uint32_t *)o->defined_id.p)[slot - 1] : 0;
 }
@@ -762,6 +769,16 @@ uint8_t *rdi_from_pdb(const void *data, uint64_t size, uint64_t *out_size)
     if (!named_leaf(kind, d, &props, &size, &name) || props >> 7 & 1) continue;
     defined(&o, name, FIRST_RECORD + COUNT(o.leaf_at, uint32_t) - 1);
   }
+  /* then the definitions the linker says are the first of their name (pdb_tpi_hash_from_data, "hash adjustments") */
+  PdbSpan firsts, name;
+  uint16_t props;
+  uint8_t *hash_stream = pdb_type_firsts(&pdb, &firsts);
+  for (uint32_t at = 0; at + 8 <= firsts.n; at += 8) {
+    uint32_t id = le32(firsts.p + at + 4) - FIRST_RECORD;
+    if (id < COUNT(o.leaf_at, uint32_t) && pdb_symbol(o.leaves, &(uint32_t){((uint32_t *)o.leaf_at.p)[id]}, &kind, &d) && named_leaf(kind, d, &props, &(uint64_t){0}, &name) && !(props >> 7 & 1))
+      defined(&o, name, id + FIRST_RECORD);
+  }
+  free(hash_stream);
   add(&o.made, 4 * (FIRST_RECORD + (uint64_t)COUNT(o.leaf_at, uint32_t)));
   for (uint32_t id = FIRST_RECORD; id < COUNT(o.made, uint32_t); id += 1)
     if (!type_of(&o, id)) record_type(&o, id);

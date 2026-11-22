@@ -18,13 +18,16 @@ recur_clang.back.txt all 15 15
 recur_clang.mix2.txt all 9 9
 # RAD's two recordings of this one differ (the recorder then keeps both): the first breaks off at step 338, in the
 # system's code while the program's access violation is being raised once more, with a line that names no place.
-# The second (crash_o2.mix.second-run.txt) goes on for all 600 steps and is what we do.
-crash_o2.mix.txt all 339 339
+# The second (crash_o2.mix.second-run.txt) goes on for all 600 steps and is what we do. Where the first breaks off
+# changes from recording to recording (line 339, then 356), so no line is named where it must differ.
+crash_o2.mix.txt all 339 0
 # MSVC's "just my code" rows: RAD stops on them and goes into their call, we do neither (as cdb; dbg/engine.c, line_end).
 # The two traces of one kind of step are compared in full without those stops (tests/oracle_trace.py); in these the
 # kinds alternate, so from the first such row on the steps fall on different places.
 calls_jmc.back.txt all 2 2
 calls_jmc.mix2.txt all 2 2
+mine_jmc.back.txt all 2 2
+mine_jmc.mix2.txt all 2 2
 # Code without lines: a line step neither goes into it nor ends in it (as Visual Studio; dbg/engine.c, line_net and
 # LINES), where RAD goes into a line's last call wherever it leads, and so into the system's code, where its trace
 # ends ("outside kernel32.dll!"; most of these part at that last line) (knowledge base 03, "A second reference").
@@ -38,6 +41,8 @@ calls_jmc.into.txt all 13 13
 calls_o2.back.txt all 4 4
 calls_o2.into.txt all 4 4
 calls_o2.mix2.txt all 5 5
+mine.mix2.txt all 9 9
+mine_o2.mix2.txt all 9 9
 frames_o2.mix2.txt all 15 15
 gap.into.txt all 26 26
 gap.mix.txt all 17 17
@@ -62,3 +67,16 @@ threads_o2.mix2.txt all 5 5
 # main), where RAD stops (as Visual Studio, whose recordings end there; dbg/engine.c, mine).
 calls_jmc.mix.txt all 6 6
 calls_jmc.over.txt all 16 16
+mine_jmc.mix.txt all 6 6
+mine_jmc.over.txt all 11 11
+# The same build: RAD goes into the compiler's runtime from the C library (qsort's check of the call, memset), which
+# Visual Studio passes as not the user's code (dbg/engine.c, theirs).
+mine_jmc.into.txt all 12 12
+# The C library has lines, so a step goes into it. RAD writes a function's name without its namespace
+# (parse_integer<...> for __crt_strtox::parse_integer<...>; Visual Studio writes it as we do), and from that function's
+# line 333 its step runs to the program's end, where ours and Visual Studio's stop at the next line: the line is left
+# from a piece the thread was not in when the step began (dbg/engine.c, line_net).
+mine.back.txt all 11 11
+mine.into.txt all 164 164
+mine_o2.back.txt all 11 11
+mine_o2.into.txt all 158 158

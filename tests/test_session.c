@@ -47,6 +47,7 @@ bool target_wait(Target *t, uint32_t ms, TargetEvent *e)
 void target_halt(Target *t) { own(t, true), t->running = false; }
 void target_swallow(Target *t) { own(t, false); }
 bool target_read(Target *t, uint64_t addr, void *bytes, uint32_t n) { return own(t, false), (void)addr, (void)bytes, (void)n, false; }
+bool target_write(Target *t, uint64_t addr, const void *bytes, uint32_t n) { return own(t, false), (void)addr, (void)bytes, (void)n, false; }
 bool target_regs(Target *t, uint32_t thread, TargetRegs *regs) { return own(t, false), *regs = (TargetRegs){.rip = t->rip}, thread == 1; }
 uint32_t target_threads(const Target *t, uint32_t *ids, uint32_t room) { return (void)t, (void)ids, (void)room, 0; }
 void target_close(Target *t) { own(t, false), free(t); }
