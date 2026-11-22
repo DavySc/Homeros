@@ -39,7 +39,7 @@ int main(void)
 	file_mkdirs(md);
 	snprintf(cmd, sizeof cmd, "cp %s %s && cat >> %s <<'X'\n## 99. Probe\n```sql\n-- wrp : w\nbegin\n\t$0\nend\n```\n```sql\n-- wrp2 : two $0\n($0) ($0)\n```\n```sql\n-- wrp3 : no 0\na ${1:x} b\n```\nX\n", getenv("SNIPCAT"), md, md);
 	CHECK(!system(cmd));
-	{ static Editor e0; const char *d, *b; CHECK(!core_open(&e0, NULL)); snip_get(&e0, 0, &d, &b); core_free(&e0); }
+	{ static Editor e0; const char *d, *b; CHECK(!core_open(&e0, NULL)); snip_get(&e0, NULL, 0, 0, &d, &b); core_free(&e0); }
 	/* surround edge cases */
 	surround("CTRL-V narrow block", "abc\ndef", "<C-v>j", "wrp");
 	surround("V from a blank-only line", "    \n    b", "Vj", "wrp");
@@ -61,8 +61,8 @@ int main(void)
 		static Editor e; char path[96];
 		snprintf(path, sizeof path, "%s/%s", dir, files[f]);
 		CHECK(!core_open(&e, path));
-		const char *d, *b, *n0 = snip_get(&e, 0, &d, &b);
-		int i = 0; while (snip_get(&e, i, &d, &b)) i++;
+		const char *d, *b, *n0 = snip_get(&e, NULL, 0, 0, &d, &b);
+		int i = 0; while (snip_get(&e, NULL, 0, i, &d, &b)) i++;
 		printf("%s: %d snippets, first %s\n", files[f], i, n0);
 		for (size_t q = 0; q < sizeof qs / sizeof *qs; q++) {
 			keys_feed(&e, 'S', 0);

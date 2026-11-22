@@ -1,0 +1,5 @@
+review2: a new prompt keeps the old preview~test TESTS=snip~~src/tools/pick.c~	P.pvfor = -1;¶	while ((n = snip_get~	while ((n = snip_get
+review2: Enter inserts the first snippet, not the selected one~test TESTS=snip~~src/tools/pick.c~		snip_insert(e, P.a + it.text);~		snip_insert(e, P.a + P.it[0].text);
+review2: the picker sorts by score again~test TESTS=snip~~src/tools/pick.c~	if (P.what == PICK_SNIPPETS) snippets();¶	else rematch();~	if (P.what == PICK_SNIPPETS) snippets(), rematch();¶	else rematch();
+review2: the area takes the text's last byte on a V area too~test TESTS=snip~~src/snip/snip.c~z = core_line_start(e, l2) + len;~z = core_line_start(e, l2) + len + 1;
+review2: a new prompt keeps the old selection~test TESTS=snip~~src/tools/pick.c~	P.sel = P.top = 0;¶	P.pvfor = -1;¶	while ((n = snip_get~	P.pvfor = -1;¶	while ((n = snip_get
