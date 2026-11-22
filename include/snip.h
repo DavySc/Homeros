@@ -21,4 +21,12 @@ struct Text;
    extmark_splice): bytes [pos, pos + ndel) of t became the nins bytes ins,
    and the active snippet's stops move with it. */
 void snip_edit(const struct Buf *b, const struct Text *t, size_t pos, size_t ndel, const char *ins, size_t nins);
+/* The i-th snippet (from 0) in the order offered for e's buffer: its file's
+   group first, task snippets only in task files (snippets.md's groups);
+   its name, with *desc and *body; NULL past the end.  Loads the catalogue
+   on first use.  For SPC i s (tools.h PICK_SNIPPETS). */
+const char *snip_get(struct Editor *e, int i, const char **desc, const char **body);
+/* Expands snippet name at the cursor; in Visual mode the selection becomes
+   its $0 (surround-with).  0, or -1 with a message set. */
+int snip_insert(struct Editor *e, const char *name);
 #endif
