@@ -4,6 +4,7 @@
    normal_cmd() would have with all its keys read. */
 #include <string.h>
 #include <stdio.h>
+#include "fold.h"
 #include "k.h"
 #include "tools.h"
 #include "uni.h"
@@ -1246,11 +1247,16 @@ static void nv_scroll(Cmdarg *cap)
 	beginline(BL_SOL | BL_FIX);
 }
 
-/* zt zz zb only (FEATURES.md); nv_zet() beeps for what it does not know */
+/* zt zz zb and the folds' zo zc za zR zM (FEATURES.md); nv_zet() beeps
+   for what it does not know */
 static void nv_zet(Cmdarg *cap)
 {
+	int c = cap->nchar, i = (int)(strchr("ocaRM", c) ? strchr("ocaRM", c) - "ocaRM" : -1);
+	static const int op[] = { FOLD_OPEN, FOLD_CLOSE, FOLD_TOGGLE, FOLD_OPEN_ALL, FOLD_CLOSE_ALL };
 	if (checkclearop(cap->oap)) return;
-	if (cap->nchar == 't' || cap->nchar == 'z' || cap->nchar == 'b') core_scroll_cursor(E, cap->nchar);
+	if (c == 't' || c == 'z' || c == 'b') core_scroll_cursor(E, c);
+	/* openFold() and closeFold() with no fold there: E490, as with no folds */
+	else if (c && i >= 0) { if (W->fold ? fold_cmd(W->fold, op[i], W->line, cap->count1) < 0 : i < 3) core_msg(E, "E490: No fold found"); }
 	else clearopbeep(cap->oap);
 }
 
@@ -1787,10 +1793,23 @@ static void do_pending_operator(Cmdarg *cap, long old_col)
 		oap->start = VIsual;
 		if (VIsual_mode == 'V') oap->start.col = 0;
 	}
+	/* closed folds whole, as do_pending_operator() includes them */
 	if (lt(oap->start, cur())) {
+		if (!VIsual_active) {
+			Pos c = cur();
+			if (has_folding(oap->start.lnum, &oap->start.lnum, NULL)) oap->start.col = 0;
+			if ((c.col > 0 || oap->inclusive || oap->motion_type == MLINE) && has_folding(c.lnum, NULL, &c.lnum)) c.col = ml_len(c.lnum);
+			setcur(c);
+		}
 		oap->end = cur();
 		setcur(oap->start);
 	} else {
+		if (!VIsual_active && oap->motion_type == MLINE) {
+			Pos c = cur();
+			if (has_folding(c.lnum, &c.lnum, NULL)) c.col = 0;
+			if (has_folding(oap->start.lnum, NULL, &oap->start.lnum)) oap->start.col = ml_len(oap->start.lnum);
+			setcur(c);
+		}
 		oap->end = oap->start;
 		oap->start = cur();
 	}

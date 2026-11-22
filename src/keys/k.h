@@ -60,6 +60,8 @@ int  linewhite(long l);
 int  lineempty(long l);
 int  oneright(void);
 int  oneleft(void);
+int  has_folding(long l, long *a, long *b);
+void fold_open_cursor(void);
 int  cursor_down(long n);
 int  cursor_up(long n);
 void check_cursor(void);
