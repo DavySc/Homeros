@@ -460,6 +460,17 @@ int main(void)
 	feed(&e, "G/select\\_.\\{-}END\r");
 	CHECK(e.win->line == 0 && e.win->col == 0 && !strcmp(e.msg, "search hit BOTTOM, continuing at TOP"));
 	core_free(&e);
+	/* CurSearch (2) on each line of the match the cursor is in, up to
+	   before its end (Neovim on "ab\ncd", /b\nc, cursor 1,0: ".CC" "C",
+	   package 4's measure) */
+	text(path, "", 0, "ab\ncd\n");
+	CHECK(!core_open(&e, path));
+	feed(&e, "/b\\nc\rj0");
+	CHECK(keys_hl(&e, e.win, 0, 0, &hs, &hz) == 2 && hs == 1 && hz == 3);
+	CHECK(keys_hl(&e, e.win, 1, 0, &hs, &hz) == 2 && hs == 0 && hz == 1);
+	feed(&e, "l");
+	CHECK(keys_hl(&e, e.win, 0, 0, &hs, &hz) == 1 && keys_hl(&e, e.win, 1, 0, &hs, &hz) == 1);
+	core_free(&e);
 	unlink(path);
 	CHECK(!check("foo bar\nabc Foo x\n  foo.bar(a) 12\nbaz?\n\nx/y?z foo\nfoofoo zz\nq .*[^$~/?\\\n", search));
 	CHECK(!check("foo bar\nabc Foo x\n  foo.bar(a) 12\nbaz?\\\n\nx/y?z foo\nfoofoo zz\n", substitute));

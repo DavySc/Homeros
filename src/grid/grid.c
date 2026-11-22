@@ -67,7 +67,7 @@ void grid_free(Grid *g) { free(g->c); g->c = NULL; g->rows = g->cols = 0; }
 
 void grid_clear(Grid *g)
 {
-	for (int i = 0; i < g->rows * g->cols; i++) g->c[i] = (Cell){ " ", 1, ATTR_NONE, FACE_NONE, 0 };
+	for (int i = 0; i < g->rows * g->cols; i++) g->c[i] = (Cell){ " ", 1, ATTR_NONE, FACE_NONE, 0, 0 };
 }
 
 int grid_put(Grid *g, int r, int c, const unsigned char *s, size_t n, int width, int attr)
@@ -83,16 +83,16 @@ int grid_put(Grid *g, int r, int c, const unsigned char *s, size_t n, int width,
 	Cell *x = &g->c[r * g->cols + c];
 	/* landing on the right half of a two-cell character: Neovim truncates
 	   its left half into '>' (grid_put_linebuf) */
-	if (c > 0 && !x->len) x[-1] = (Cell){ ">", 1, x[-1].attr, x[-1].face, x[-1].bg };
+	if (c > 0 && !x->len) x[-1] = (Cell){ ">", 1, x[-1].attr, x[-1].face, x[-1].bg, x[-1].ul };
 	/* covering only the left half of one: its right half becomes a space */
-	if (c + width < g->cols && !x[width].len) x[width] = (Cell){ " ", 1, x[width].attr, x[width].face, x[width].bg };
+	if (c + width < g->cols && !x[width].len) x[width] = (Cell){ " ", 1, x[width].attr, x[width].face, x[width].bg, x[width].ul };
 	if (n > 4) { unsigned u = (unsigned)h; memcpy(x->ch, &u, sizeof u); }
 	else memcpy(x->ch, s, n);
 	x->len = (unsigned char)n;
 	x->attr = (unsigned char)attr;
 	x->face = FACE_NONE;
-	x->bg = 0;
-	if (width == 2) x[1] = (Cell){ "", 0, (unsigned char)attr, FACE_NONE, 0 };
+	x->bg = x->ul = 0;
+	if (width == 2) x[1] = (Cell){ "", 0, (unsigned char)attr, FACE_NONE, 0, 0 };
 	return width;
 }
 
@@ -119,14 +119,21 @@ int grid_width(const char *s, size_t n)
 	return c;
 }
 
-const Face *grid_face(const Cell *x, const Face **bg)
+const Face *grid_face(const Cell *x, const Face **bg, const Face **ul)
 {
 	const Face *f = &faces[x->face < FACE_COUNT ? x->face : FACE_NONE];
 	*bg = x->bg && x->bg < FACE_COUNT ? &faces[x->bg] : f;
+	*ul = x->ul && x->ul < FACE_COUNT ? &faces[x->ul] : f;
 	return f;
+}
+
+int grid_curl(int x, int h)
+{
+	int a = h / 12 + 1, p = x % (2 * a);
+	return p < a ? p : 2 * a - p;
 }
 
 int grid_cell_eq(const Cell *a, const Cell *b)
 {
-	return a->len == b->len && a->attr == b->attr && a->face == b->face && a->bg == b->bg && !memcmp(a->ch, b->ch, a->len < 4 ? a->len : 4);
+	return a->len == b->len && a->attr == b->attr && a->face == b->face && a->bg == b->bg && a->ul == b->ul && !memcmp(a->ch, b->ch, a->len < 4 ? a->len : 4);
 }

@@ -1,9 +1,13 @@
-/* Scrolling, as Neovim's move.c, without folds, filler lines, concealing
-   or 'smoothscroll' (none is on), except where CTRL-D, CTRL-U, CTRL-F and
+/* Scrolling, as Neovim's move.c, without folds, filler lines or
+   'smoothscroll' (none is on; 'conceallevel' takes the fold paths, see
+   concealed()), except where CTRL-D, CTRL-U, CTRL-F and
    CTRL-B switch 'smoothscroll' on for the moment as Neovim does.  Lines are
    counted from 0 here and from 1 in Neovim: Neovim's "lnum == 1" is "l == 0",
    its w_botline (the line below the window) is bot, at most the line count. */
+#include <string.h>
 #include "core_int.h"
+#include "lsp.h"
+#include "syntax.h"
 #include "uni.h"
 
 typedef long lnr;
@@ -16,11 +20,21 @@ static int p_sms;
 
 static size_t digits(size_t n) { size_t d = 1; while (n >= 10) { n /= 10; d++; } return d; }
 
-/* number_width() + 1 with number and relativenumber: numberwidth 4 */
+/* 'signcolumn' auto, Neovim's default: two cells while the buffer has a
+   sign, a diagnostic's (vim.diagnostic's signs) */
+int win_signw(const Win *w)
+{
+	int n;
+	lsp_diags(w->buf->lsp, &n);
+	return n ? 2 : 0;
+}
+
+/* win_col_off(): the sign column, then number_width() + 1 with number and
+   relativenumber (numberwidth 4), unless the buffer has nonumber */
 int win_numw(const Win *w)
 {
 	size_t d = digits(buf_lines(w->buf));
-	return (d < 3 ? 3 : (int)d) + 1;
+	return win_signw(w) + (w->buf->nonumber ? 0 : (d < 3 ? 3 : (int)d) + 1);
 }
 
 static int width1(const Win *w) { return w->w - win_numw(w); }
@@ -348,11 +362,21 @@ static void scroll_cursor_bot(Editor *e, Win *w, int min_scroll, int set_topbot)
 	s->topvalid = 1;
 }
 
+/* win_lines_concealed(): 'conceallevel' 2 takes the paths Neovim takes
+   for folds (measured: a 4-row window keeps its top where it otherwise
+   scrolls).  Only an Org window has it, as Davy's orgmode sets it there;
+   elsewhere Neovim's default 0 */
+static int concealed(const Win *w)
+{
+	const char *ft = w->conceal >= 2 && w->buf->path ? syntax_filetype(w->buf->path) : NULL;
+	return ft && !strcmp(ft, "org");
+}
+
 /* check_top_offset(): fewer than scrolloff screen lines above the cursor */
 static int check_top_offset(const Win *w)
 {
 	long so = so_value();
-	if ((lnr)w->line < (lnr)w->top + so) {
+	if ((lnr)w->line < (lnr)w->top + so || concealed(w)) {
 		Loff lo = { (lnr)w->line, 0 };
 		int n = 0;
 		while (n < so) {
@@ -400,6 +424,12 @@ static void update_topline(Editor *e, Win *w)
 		int half = w->h / 2 - 1;
 		if (half < 2) half = 2;
 		long d = (lnr)w->top + so - (lnr)w->line;
+		/* logical lines from the cursor to topline + so, to the last
+		   line or half */
+		if (concealed(w)) {
+			d = 0;
+			for (lnr l = (lnr)w->line; l < (lnr)w->top + so; l++) if (l >= n - 1 || ++d >= half) break;
+		}
 		if (d >= half) scroll_halfway(e, w, 0, 0);
 		else { scroll_cursor_top(e, w, 0, 0); check_botline = 1; }
 	} else check_botline = 1;
@@ -409,7 +439,7 @@ static void update_topline(Editor *e, Win *w)
 		Bot b = { (lnr)w->frame->s.bot, w->frame->s.empty, 0, 0 };
 		if (b.bot < n) {
 			if ((lnr)w->line < b.bot) {
-				if ((lnr)w->line >= b.bot - so) {
+				if ((lnr)w->line >= b.bot - so || concealed(w)) {
 					int k = b.empty;
 					Loff lo = { (lnr)w->line, 0 };
 					while (lo.l < b.bot) {
@@ -422,6 +452,11 @@ static void update_topline(Editor *e, Win *w)
 			}
 			if (check_botline) {
 				long d = (lnr)w->line - b.bot + 1 + so;
+				/* logical lines from the cursor back to botline - so */
+				if (concealed(w)) {
+					d = 0;
+					for (lnr l = (lnr)w->line; l >= b.bot - so; l--) if (l < 0 || ++d > w->h + 1) break;
+				}
 				if (d <= w->h + 1) scroll_cursor_bot(e, w, 1, 0);   /* 'scrolljump' 1 */
 				else scroll_halfway(e, w, 0, 0);
 			}
@@ -683,7 +718,7 @@ static void cursor_correct(Editor *e, Win *w)
 		if (above_wanted > (w->h - 1) / 2) above_wanted = (w->h - 1) / 2;
 	}
 	lnr cln = (lnr)w->line;
-	if (cln >= (lnr)w->top + above_wanted && cln < b.bot - below_wanted) return;
+	if (cln >= (lnr)w->top + above_wanted && cln < b.bot - below_wanted && !concealed(w)) return;
 	/* 'smoothscroll' without wrap: a cursor line as high as the window stays */
 	if (p_sms && !w->wrap && w->frame->s.cheight == w->h) { w->skipcol = 0; return; }
 	lnr top = (lnr)w->top, bot = b.bot - 1;

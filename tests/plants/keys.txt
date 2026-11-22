@@ -157,7 +157,7 @@ keys: :s goes on with 'hlsearch''s program after a redraw (test_keys_ex)~test TE
 keys: CTRL-E scrolls the cursor into 'scrolloff' (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~(long)(W->line - W->top) - 1 >= SCROLLOFF) W->top++;~(long)(W->line - W->top) - 1 >= 0) W->top++;
 keys: CTRL-Y does not scroll (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~if (typed == 25 && W->top &&~if (typed == 25 && (W->top && 0) &&
 keys: Visual : leaves curswant to be set after the command (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~		update_curswant();¶		cmdline(':', "'<,'>");~		cmdline(':', "'<,'>");
-keys: <leader>uk does not turn the save kitten off (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~, " uk",¶~,¶
+keys: <leader>uk does not turn the save kitten off (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~" uk", " up"~" up"
 keys: :KittenPaw does not play the kitten (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	case 9: kitten_paw(E); break;~	case 9: break;
 keys: a register Q replays is not flagged as executing, so on_yank and the kitten would show (test_keys_flash)~test TESTS=keys_flash~~src/keys/normal.c~if (!do_execreg(reg_recorded))~if (!do_execreg(reg_recorded) || (E->ks.executing = 0))
 keys: a pass through a group's join recurses, so a long group repeat grows the C stack (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~		case NOTHING: break;~		case NOTHING: return m(p->next, l, c);
@@ -168,6 +168,8 @@ keys: the first-literal skip passes a byte past 0x7f under \c (test_keys_regex)~
 keys: a bounded leading repeat skips its run too (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~rp1->simple && rp1->c < 0 ?~rp1->simple ?
 keys: an ASCII character before an accent is its own cluster (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~(c + 1 == (long)n || s[c + 1] < 0x80)~(c + 1 == (long)n || 1)
 keys: a yank's flash ends on the last character's last byte (test_keys_flash)~test TESTS=keys_flash~~src/keys/ops.c~		if (t == 'v') E->ks.yank.c2 = (size_t)head(ml_get(b_op_end.lnum), b_op_end.col);¶~
+keys: CurSearch only when the cursor is on the match's first line (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~1 + (!lt(c, ms) && lt(c, me))~1 + (c.lnum == ms.lnum && !lt(c, ms) && lt(c, me))
+keys: SPC u p only turns conceal off (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~e->win->conceal = e->win->conceal ? 0 : 2;~e->win->conceal = 0;
 keys: cit and ciT wait for their keys in every buffer, not only .org (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		if (*m == 'c' && !is_ft(".org")) continue;~
 keys: a map's edit joins the previous command's undo step (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		undo_close(e->buf->undo);   /* a map is a command of its own: keys_feed() closes before each */~
 keys: ciT steps forward as cit does (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~org_cycle(m[2] == 't' ? 1 : -1)~org_cycle(1)

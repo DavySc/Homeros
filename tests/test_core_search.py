@@ -57,9 +57,20 @@ def run_nvim(c):
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60)
     return json.load(open(d + '/out.json'))
 
+# wider patterns (reviews/pr-106-repro/search_wide.py): empty matches,
+# classes, matches over several lines, \\n runs
+WIDE = ['*', '\\zs', '\\ze', '.', '\\s\\+', '\\s*', '\\_.\\{-}', '\\n\\n', '\\n', '\\n.', '\\_s\\+', '.$', '^.',
+        '\\<', '\\>', '\\w\\+', '\\_.*', '\\n\\zs', '$\\n^', '[^a]', '\\%$', '\\%^', '^$', '\\t', '..']
+
 def gen_pat(r, lines):
     s = r.choice([x for x in lines if x] or ['a'])
     a = r.randrange(len(s))
+    if r.random() < .3:
+        ch = s[a]
+        if ord(ch) < 32 or ord(ch) == 127 or ch in '\\^$.*[]~/': ch = 'a'
+        w = r.choice(WIDE)
+        return {'*': ch + '*', '\\zs': '\\zs' + ch, '\\ze': ch + '\\ze', '\\_.\\{-}': ch + '\\_.\\{-}' + ch,
+                '\\n.': ch + '\\n.', '\\_.*': ch + '\\_.*'}.get(w, w)
     piece = s[a:a + r.randint(1, 3)]
     # typed: a control character is a command on the command line
     if any(ord(ch) < 32 or ord(ch) == 127 for ch in piece): piece = 'a'
