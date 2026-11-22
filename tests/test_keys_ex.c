@@ -77,7 +77,7 @@ static const char *const XAFTER[] = { "n", "N", "u", "&", "g&", "x", "u", ".", "
 
 /* cases the random ones reached only with other seeds: a NUL in a line,
    :s/\n// on the last line, a NUL after the indent */
-static const char *const XFIXED[] = { "/o\r:s+\\c+&\\n+gi\r.&", ":$s+\\n+\r", "G:3,4su/ \\zs/\\n/\r" };
+static const char *const XFIXED[] = { "/o\r:s+\\c+&\\n+gi\r.&", ":$s+\\n+\r", "G:3,4su/ \\zs/\\n/\r", "3j:s/?\\\\/&\\r/\r" };
 
 static void substitute(char *k)
 {
