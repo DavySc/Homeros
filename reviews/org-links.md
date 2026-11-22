@@ -19,7 +19,7 @@ I generated, and with a one-pass walk whatever order the lines are asked in.
 | `org_conform.py -f` and `-s`, fresh seeds 101 to 104, 4,000 texts each | 8 | **0 of 32,000 differ** (Org gave no answer on 195 to 239 texts with -f, mostly the date skip, and 6 to 16 with -s) |
 | random-access probe (`order.c`): faces of 300 random windows and conceal of 300 random lines, each in random order with the other call in between, against one walk from the top | 3 random 12,000-line texts (`gen.py` seeds 1 to 3) + `long.org`, `cross.org` (links of 100 lines, an inline footnote over 4,100 lines, across the 4096-line checkpoints) | 0 differ. Planting a bug in the 64-line look-back (`if (P > c->lk) c->lk = P;`) makes it report 3 differences on `long.org`, so the probe can fail |
 | my plants (`review.txt`, run by `run.sh`, the body of `tools/planted.sh`) | 19 | 8 caught, 11 not caught (below) |
-| the package's own plants, `tests/plants/org.txt` | 116 | (running; added when done) |
+| the package's own plants, `tests/plants/org.txt` (2 at a time, then the misses alone) | 116 | 114 caught; 1 not caught, 1 broken (finding 4) |
 | frame-gate probe (`perf.c`), sanitizers on, CPU time | see finding 1 | |
 
 ## Required
@@ -97,6 +97,17 @@ and add these as plants.
 - **`tools/org_faces.el` and `tools/org_show.el`** carry the same 16 lines (the two
   `advice-add` forms and their comments; `diff` finds them identical). Put
   them in one file that both load.
+
+### 4. Two of the package's own plants no longer work (run)
+
+- `org: show: script braces stop at the line's end` is **not caught** on 648bb8d (also when run alone).
+  The same plant at aa20bbc is caught: 3 of 2000 differ. The longer `MATH` list (`+ LINKS + FNS`)
+  changes what seed 1 generates, and the texts that showed it are gone. Point it at a seed that
+  catches it (as done for `SEED=3` elsewhere), or better, give it a directed text.
+- `org: show: a headline ending a block read without the line above` is **broken**: its
+  replacement `c = scan_at(f, &f->cs, CL)` still calls the old three-argument `scan_at`, so
+  the copy does not compile ("FAILED OTHERWISE", Makefile:102). It needs a replacement that
+  compiles, for example `c = scan_at(f, CL)`.
 
 ## Questions and notes
 
