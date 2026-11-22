@@ -26,11 +26,12 @@ enum { M_NIL, M_FIRST, M_SECTION, M_TOP, M_PLANNING, M_PROPS, M_NODEPROP, M_ITEM
 
 /* ---- lines and characters ---- */
 
-static size_t eol(size_t p)
+static size_t upto(size_t p, size_t e, int c)   /* the first c in [p, e), else e */
 {
-	const unsigned char *e = p < N ? memchr(S + p, '\n', N - p) : NULL;
-	return e ? (size_t)(e - S) : N;
+	const unsigned char *q = p < e ? memchr(S + p, c, e - p) : NULL;
+	return q ? (size_t)(q - S) : e;
 }
+static size_t eol(size_t p) { return upto(p, N, '\n'); }
 static size_t nextl(size_t p) { p = eol(p); return p < N ? p + 1 : N; }
 static size_t bol(size_t p) { while (p > 0 && S[p - 1] != '\n') p--; return p; }
 static size_t prevl(size_t p) { p = bol(p); return p > 0 ? bol(p - 1) : 0; }   /* forward-line -1 */
@@ -1098,15 +1099,32 @@ typedef struct {
 	size_t fl, fz, fd, fq; int fm;   /* footnotes: the line taken, where a reference's span goes on to,
 	                                    the last definition, the line the look ahead stopped at and what it found */
 } Scan;
+struct OrgFx {
+	const Text *t;
+	char *s;               /* the text at the last update, and its parse */
+	size_t n, cap, k;
+	OrgNode *e;
+	int dirty;             /* edited since: [lo, ho) of s is [lo, hc) of t */
+	size_t lo, ho, hc;
+	Scan c, cn;            /* the scan's state at the last line it coloured, and after it */
+	unsigned char *lf;     /* that line's faces (the core asks a long line in pieces) */
+	size_t lcap;           /* as long as the longest line, unless out of memory */
+	Scan cs;               /* conceal's: the scan's state at the last line it showed */
+	size_t *em, emcap;     /* conceal's emphasis matches, begin and end (they grow, then stay) */
+	size_t *bl, bn, bcap;  /* blines(), bn ORG_NONE until built */
+	Scan *ck;              /* the scan's state every 4096 lines it walked, in order */
+	size_t kn, kcap;
+	size_t sp, sf, sg;     /* sexp() fails at sp and for an opener in (sf, sg) (0: a reference is past a line's start) */
+};
+static OrgFx *X;
 
-/* org-element-paragraph-separate at q, in a string ending at z ($ there);
-   its CLOCK line is left out */
+/* org-element-paragraph-separate at q, in a string ending at z ($ there) */
 static int separate(size_t q, size_t z)
 {
 	size_t b = blanks(q), x;
 	if ((x = stars(q)) > q && x < z && S[x] == ' ') return 1;
 	if (is(q, "[fn:") && (x = names(q + 4)) > q + 4 && x < z && S[x] == ']') return 1;
-	if (is(q, "%%(") || b >= z || ateol(b) || S[b] == '|' || is(b, "\\begin{") || clockl(q, z < eol(q) ? z : eol(q))) return 1;
+	if (is(q, "%%(") || b >= z || ateol(b) || S[b] == '|' || is(b, "\\begin{") || clockl(q, upto(q, z, '\n'))) return 1;
 	x = b + 1;
 	if (S[b] == '#') {
 		if (x >= z || ateol(x) || S[x] == ' ') return 1;
@@ -1117,9 +1135,9 @@ static int separate(size_t q, size_t z)
 		size_t o = 0, r;
 		for (r = x + 1; r < z && !sp(r); r++) {
 			if (S[r] == ':' && r > x + 1) return 1;
-			if (S[r] == '[' && r > x + 1 && !o) o = r;
+			if (S[r] == '[' && r > x + 1) o = 1;
 		}
-		for (; o && r < z; r++) if (S[r] == ':' && S[r - 1] == ']' && r - 1 > o) return 1;
+		for (; o && r < z; r++) if (S[r] == ':' && S[r - 1] == ']') return 1;
 		return 0;
 	}
 	if (S[b] == ':') return x >= z || ateol(x) || S[x] == ' ' || ((x = names(x)) > b + 1 && x < z && S[x] == ':' && ((x = blanks(x + 1)) >= z || ateol(x)));
@@ -1226,7 +1244,6 @@ static int inside(size_t q)
 static size_t uri(size_t i, size_t u, size_t *va, size_t *vz, int d, size_t *f)
 {
 	for (; i < N && S[i] != '[' && S[i] != ']'; i++) {
-		if (S[i] == '\n' && inside(i + 1)) return 0;
 		if (S[i] != '\\') continue;
 		size_t k = i, a, b = 0, z;
 		while (k < N && S[k] == '\\') k++;
@@ -1256,9 +1273,9 @@ static int link_next(Scan *c, size_t lim)
 {
 	/* a match starts at a [ or <, or at a plain link's type, found from
 	   the : after it (a type: at most 10 bytes of [a-z3+], no : [ <) */
-	for (size_t p = c->lk, a, z, v, w, q, e = lim + 11 < N ? lim + 11 : N; ; p++) {
-		for (const unsigned char *s = S; p < e && s[p] != '[' && s[p] != '<' && s[p] != ':'; p++) ;
-		if (p >= e) break;
+	for (size_t p = c->lk, a, z, v, w, q; ; p++) {   /* lim is a line's start: a type holds no newline */
+		for (const unsigned char *s = S; p < lim && s[p] != '[' && s[p] != '<' && s[p] != ':'; p++) ;
+		if (p >= lim) break;
 		for (a = p; S[p] == ':' && a > c->lk && p - a < 10 && tc(a - 1); a--) ;
 		for (; a < p && !((!a || !word(uni_prev(S, N, a))) && ltype(a) == p + 1); a++) ;
 		if (a >= lim) break;
@@ -1266,9 +1283,9 @@ static int link_next(Scan *c, size_t lim)
 		z = a < p ? plain(a) : S[p] == '<' ? angle(p, &c->af) : S[p] == '[' && is(p + 1, "[") ? uri(p + 2, p + 2, &v, &w, 0, &c->df) : 0;
 		if (!z) continue;
 		/* "Do not span over paragraph boundaries": ^ at the start and after each newline */
-		for (q = a; q < z && !separate(q, z < eol(q) ? z : eol(q)); q = nextl(q)) ;
+		for (q = a; q < z && !separate(q, upto(q, z, '\n')); q = nextl(q)) ;
 		if (q < z) continue;
-		/* a plain link after a tag is no link: org-activate-tags runs
+		/* no test for a plain link after a tag: org-activate-tags runs
 		   later, so whole-buffer font-lock never sees one */
 		c->la = a; c->lz = c->lk = z; c->lv = v; c->lw = w ? w : z;
 		return 1;
@@ -1287,16 +1304,25 @@ static int link_next(Scan *c, size_t lim)
    pair count, " quotes; the end, or 0 for its scan-error */
 static size_t sexp(size_t p)
 {
-	for (size_t d = 0, k; p < N; p += k) {
-		unsigned c = uni_cp(S, N, p);
-		k = uni_len(S, N, p);
-		if (c == '"') {
-			const unsigned char *q = memchr(S + p + 1, '"', N - p - 1);
-			if (!q) return 0;
-			k = (size_t)(q - S) + 1 - p;
-		} else if (IN(OPENS, c)) d++;
-		else if (IN(CLOSES, c) && !--d) return p + k;
+	static unsigned char sx[128];   /* ASCII in Org's syntax table: 1 ", 2 an opener, 3 a closer */
+	if (!sx['"']) for (unsigned c = 0; c < 128; c++) sx[c] = c == '"' ? 1 : IN(OPENS, c) ? 2 : IN(CLOSES, c) ? 3 : 0;
+	if (p == X->sp || (p > X->sf && p < X->sg)) return 0;
+	size_t q = p, w = p, d = 0, k;   /* w: the last closer or quote seen */
+	for (; q < N; q += k) {
+		unsigned c = S[q], t;
+		k = 1;
+		if (c < 0x80) t = sx[c];
+		else c = uni_cp(S, N, q), k = uni_len(S, N, q), t = IN(OPENS, c) ? 2 : IN(CLOSES, c) ? 3 : 0;
+		if (t == 1) {
+			const unsigned char *r = memchr(S + q + 1, '"', N - q - 1);
+			if (!r) break;
+			w = (size_t)(r - S); k = w + 1 - q;
+		} else if (t == 2) d++;
+		else if (t == 3 && (w = q, !--d)) return q + k;
 	}
+	/* from an opener after w, only openers come before q (the end, or a
+	   quote with no pair): it fails too.  Typing [fn:: asks it each frame */
+	X->sp = p; X->sf = w; X->sg = q;
 	return 0;
 }
 /* org-footnote-re at p: \[fn:\(?:\(LABEL\)?\(:\)\|\(LABEL\)\]\): its end, or 0 */
@@ -1307,16 +1333,18 @@ static size_t fnre(size_t p)
 	return x < N && (S[x] == ':' || (S[x] == ']' && x > p + 4)) ? x + 1 : 0;
 }
 static int defl(size_t l) { size_t x = fnre(l); return x && S[x - 1] == ']'; }   /* org-footnote-definition-re */
-/* org-in-regexp's search, of the lines [a, b), for a match of re (its end,
-   from p) that holds pos: its end, or ORG_NONE */
-static size_t holds(size_t a, size_t b, size_t pos, size_t (*re)(size_t p, size_t *z))
+/* org-in-regexp's search, of the lines [h's start, b), for a match of re
+   (its start, its end in *z, from p) that holds pos: its end, or ORG_NONE.
+   h keeps the matches' chain, so a line's references, asked in order,
+   search it once: x the match found from z, x == z before the first */
+typedef struct { size_t x, z; } Hit;
+static size_t holds(Hit *h, size_t b, size_t pos, size_t (*re)(size_t p, size_t *z))
 {
-	size_t n = N, m = ORG_NONE, x, z = 0;
+	size_t n = N;
 	N = b;   /* a bounded search sees nothing past b */
-	for (size_t q = a; q <= pos && (x = re(q, &z)) != ORG_NONE && x <= pos; q = z)
-		if (z >= pos) { m = z; break; }
+	while (h->x != ORG_NONE && h->x <= pos && (h->z < pos || h->x == h->z)) h->x = re(h->z, &h->z);
 	N = n;
-	return m;
+	return h->x != ORG_NONE && h->x <= pos && h->z >= pos ? h->z : ORG_NONE;
 }
 static size_t link_re(size_t q, size_t *z)   /* org-link-bracket-re's next match */
 {
@@ -1381,7 +1409,6 @@ static int forbidden(size_t l)
 /* the text the scan reads: its parse, and its OrgFx */
 static const OrgNode *PE;
 static size_t PK;
-static OrgFx *X;
 static size_t ent(size_t p, size_t *x);
 static const char *entity(size_t a, size_t z);
 static int within(size_t p, size_t z, const char *k) { for (; p < z; p++) if (is(p, k)) return p + strlen(k) <= z; return 0; }
@@ -1409,25 +1436,20 @@ static int valid(size_t l)
 	while (i-- > 0 && PE[i].end <= l) i = PE[i].parent + 1;   /* the element at l (org-element-context) */
 	if (i != ORG_NONE && (PE[i].type == ORG_LATEX_ENVIRONMENT || (PE[i].type == ORG_PARAGRAPH && frag(l, PE[i].cend)))) return 0;
 	if (comment(l) || (b < N && S[b] == ':' && blank(b + 1)) || forbidden(l)) return 0;
-	m = holds(up, eol(nextl(nextl(l))), l, verb_re);
+	m = holds(&(Hit){ up, up }, eol(nextl(nextl(l))), l, verb_re);
 	return m == ORG_NONE || l < VM || l > VC;
 }
 /* org-footnote-next-reference-or-definition's span for the match at p,
    ending at x, on the line l: [*a, *z), or 0 when it throws nothing */
-static int fn_span(Scan *c, size_t p, size_t x, size_t l, size_t *a, size_t *z, int b)
+static int fn_span(Scan *c, size_t p, size_t x, size_t l, Hit *h, size_t *a, size_t *z, int b)
 {
 	size_t e, d = c->fd, y, k;   /* a link holding p, ending there, does not count */
-	if (p > l && (y = sexp(p)) && ((k = holds(l, e = eol(l), p, link_re)) == ORG_NONE || k == p) &&
-	    holds(l, e, x - 1, macro_re) == ORG_NONE)
+	if (p > l && (y = sexp(p)) && ((k = holds(h, e = eol(l), p, link_re)) == ORG_NONE || k == p) &&
+	    holds(h + 1, e, x - 1, macro_re) == ORG_NONE)
 		return *a = p, *z = y, 1;
 	if (!b || d == ORG_NONE || !valid(l)) return 0;   /* b: a definition's span is asked for */
 	*a = d; *z = S[x - 1] == ']' ? x : x + 1;
 	return 1;
-}
-static size_t fn_next(size_t p, size_t e)   /* the next [ in [p, e), else e */
-{
-	const unsigned char *q = p < e ? memchr(S + p, '[', e - p) : NULL;
-	return q ? (size_t)(q - S) : e;
 }
 /* the separators org-footnote-next-reference-or-definition looks back to:
    ^\*+ and ^\([ \t]*\n\)\{2,\} */
@@ -1445,16 +1467,18 @@ static void fn_line(Scan *c, size_t l, size_t e, void (*put)(size_t, size_t))
 	if (put && c->fd != ORG_NONE) {   /* a reference below that throws its definition's span */
 		if (c->fq <= l) {
 			for (c->fq = nextl(l), c->fm = 0; c->fq < N && !fn_sep(c->fq) && !defl(c->fq); c->fq = nextl(c->fq)) {
-				for (size_t p = c->fq, q = eol(p); (p = fn_next(p, q)) < q && !c->fm; p++)
-					if ((x = fnre(p)) && fn_span(c, p, x, c->fq, &a, &z, 1) && a < c->fq) c->fm = 1;
+				Hit h[2] = { { c->fq, c->fq }, { c->fq, c->fq } };
+				for (size_t p = c->fq, q = eol(p); (p = upto(p, q, '[')) < q && !c->fm; p++)
+					if ((x = fnre(p)) && fn_span(c, p, x, c->fq, h, &a, &z, 1) && a < c->fq) c->fm = 1;
 				if (c->fm) break;
 			}
 		}
 		if (c->fm) put(l, nextl(l));
 	}
-	for (size_t p = l; (p = fn_next(p, e)) < e; p++)
-		if ((put || p > l) && (x = fnre(p)) && fn_span(c, p, x, l, &a, &z, put != NULL)) {
-			if (z > c->fz && a >= l) c->fz = z;
+	Hit h[2] = { { l, l }, { l, l } };   /* link_re's, macro_re's */
+	for (size_t p = l; (p = upto(p, e, '[')) < e; p++)
+		if ((put || p > l) && (x = fnre(p)) && fn_span(c, p, x, l, h, &a, &z, put != NULL)) {
+			if (z > c->fz) c->fz = z;
 			if (put) put(a, z);   /* the search goes on at the match's end less one: no [ before it */
 		}
 }
@@ -1697,22 +1721,6 @@ static void fontify(Scan *c)
 	}
 }
 
-struct OrgFx {
-	const Text *t;
-	char *s;               /* the text at the last update, and its parse */
-	size_t n, cap, k;
-	OrgNode *e;
-	int dirty;             /* edited since: [lo, ho) of s is [lo, hc) of t */
-	size_t lo, ho, hc;
-	Scan c, cn;            /* the scan's state at the last line it coloured, and after it */
-	unsigned char *lf;     /* that line's faces (the core asks a long line in pieces) */
-	size_t lcap;           /* as long as the longest line, unless out of memory */
-	Scan cs;               /* conceal's: the scan's state at the last line it showed */
-	size_t *em, emcap;     /* conceal's emphasis matches, begin and end (they grow, then stay) */
-	size_t *bl, bn, bcap;  /* blines(), bn ORG_NONE until built */
-	Scan *ck;              /* the scan's state every 4096 lines it walked, in order */
-	size_t kn, kcap;
-};
 
 OrgFx *orgfx_new(const Text *t)
 {
@@ -1751,7 +1759,7 @@ int orgfx_update(OrgFx *f, int (*stop)(void))
 	f->n = n;
 	org_edit(&f->e, &f->k, f->s, n, f->lo, f->ho - f->lo, f->hc - f->lo);   /* out of memory: no parse, scans from the start */
 	f->dirty = 0;
-	f->c.at = f->cs.at = f->bn = ORG_NONE, f->kn = 0;
+	f->c.at = f->cs.at = f->bn = ORG_NONE, f->kn = f->sp = f->sg = 0;
 	S = (const unsigned char *)f->s; N = n;
 	for (size_t l = bol(f->lo), m; l < n && l <= f->hc; l = nextl(l))   /* the lines the edits touched */
 		if ((m = nextl(l) - l) > f->lcap) {
@@ -2053,7 +2061,7 @@ static void hidel(size_t a, size_t z)
 size_t orgfx_conceal(OrgFx *f, size_t line, Conceal *out, size_t cap)
 {
 	orgfx_update(f, NULL);
-	S = (const unsigned char *)f->s; N = f->n; PE = f->e; PK = f->k;
+	S = (const unsigned char *)f->s; N = f->n; PE = f->e; PK = f->k; X = f;
 	CL = text_line_start(f->t, line); CE = eol(CL);
 	C = out; CN = 0; CCAP = cap;
 	if (CL >= N && N) return 0;
@@ -2064,7 +2072,7 @@ size_t orgfx_conceal(OrgFx *f, size_t line, Conceal *out, size_t cap)
 	f->cs = c;
 	Scan d = c;   /* org-activate-code: ^[ \t]*:\(?: .*\|$\) */
 	Prot = b < N && S[b] == ':' && (ateol(b + 1) || S[b + 1] == ' ') ? N : meta(&d);
-	X = f; XK = 0;
+	XK = 0;
 	for (int k = c.lz > CL; k || link_next(&c, nextl(CL)); k = 0) {   /* org-activate-links: org-link-descriptive */
 		if (c.lv > c.la) hidel(c.la, c.lv), hidel(c.lw, c.lz);
 		rec(c.la, c.lz);
