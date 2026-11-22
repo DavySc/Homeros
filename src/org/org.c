@@ -71,6 +71,12 @@ static int sp(size_t p)
 	return c == 0xE3 && d == 0x80 && e == 0x80;
 }
 static size_t run(size_t p) { while (p < N && !sp(p)) p++; return p; }   /* \S-* */
+/* org-property-re's :KEY: at b, on a line ending at e: its end, or 0 */
+static size_t key(size_t b, size_t e)
+{
+	size_t z;
+	return b < e && S[b] == ':' && (z = run(b + 1)) >= b + 3 && S[z - 1] == ':' && (z == e || blank(z)) ? z : 0;
+}
 /* is c in a class.h table (sorted, disjoint ranges)? */
 static int in(const unsigned (*t)[2], size_t k, unsigned c)
 {
@@ -1089,45 +1095,50 @@ static int block_end(size_t m, size_t g, size_t len)
 	       (lit(b, "#+END") && b + 5 + len <= N && same(b + 5, g, len) && !word(b + 5 + len));
 }
 
-/* org-fontify-meta-lines-and-blocks-1 at the line c->at; on to the next */
-static void meta(Scan *c)
+/* org-fontify-meta-lines-and-blocks-1 at the line c->at; on to the next.
+   Returns where Org's taking display and invisible off the line ends, 0
+   when it does not (org-fontify-meta-lines-and-blocks-1's
+   remove-text-properties: a quoting block's lines up to its end line's
+   match, a #+ line other than a block's begin, a comment and the document
+   info) */
+static size_t meta(Scan *c)
 {
 	size_t l = c->at, e = eol(l), nl = nextl(l), q = blanks(l);
 	c->at = nl;
-	if (c->st == 2) return;
+	if (c->st == 2) return 0;
 	if (c->st == 1) {
 		if (l < c->end) { if (c->quoting) set(l, nl, FACE_ORG_BLOCK); }
 		else {
 			if (S[l] != '*') set(l, e < N ? e + 1 : e, FACE_ORG_BLOCK_LINE);
 			c->st = 0;
 		}
-		return;
+		return !c->quoting ? 0 : l < c->end || S[l] != '*' ? nl : stars(l) + 1;
 	}
 	/* ^[ \t]*#\(\(+[a-zA-Z]+:?\|[ \t]\|$\)\(_[a-zA-Z]+\)?\)[ \t]*... */
-	if (q >= e || S[q] != '#') return;
+	if (q >= e || S[q] != '#') return 0;
 	size_t g3 = q + 1, z3 = g3, z4;
 	if (g3 < e && S[g3] == '+' && alpha(g3 + 1)) z3 = letters(g3 + 1), z3 += z3 < e && S[z3] == ':';
 	else if (blank(g3)) z3 = g3 + 1;
-	else if (g3 < e) return;
+	else if (g3 < e) return 0;
 	z4 = z3 < e && S[z3] == '_' && alpha(z3 + 1) ? letters(z3 + 1) : z3;
 	if (z4 > z3 && z3 - g3 == 6 && lit(g3, "+begin")) {
 		size_t m;
 		for (m = nl; m < N && !block_end(m, z3, z4 - z3); m = nextl(m)) ;
-		if (m >= N) { c->st = 2; return; }
+		if (m >= N) { c->st = 2; return 0; }
 		static const char *const quoting[] = { "src", "example", "export" };
 		c->quoting = 0;
 		for (int i = 0; i < 3; i++)
 			c->quoting |= z4 - z3 - 1 == strlen(quoting[i]) && lit(z3 + 1, quoting[i]);
 		set(l, nl, FACE_ORG_BLOCK_LINE);
 		c->st = 1; c->end = m;
-		return;
+		return c->quoting ? nl : 0;
 	}
 	static const char *const info[] = { "+title:", "+subtitle:", "+author:", "+email:", "+date:" };
 	for (int i = 0; i < 5; i++)
 		if (z4 == z3 && z3 - g3 == strlen(info[i]) && lit(g3, info[i])) {
 			set(l, z3, FACE_COMMENT);
 			set(blanks(z3), e < N ? e + 1 : e, i ? FACE_ORG_INFO : FACE_MARKUP_HEADING);
-			return;
+			return 0;
 		}
 	if (z3 - g3 >= 8 && lit(g3, "+caption")) {
 		/* [ \t]*#\+caption\(\[.*\]\)?:[ \t]* : when it fails, the match
@@ -1136,12 +1147,13 @@ static void meta(Scan *c)
 		if (k < e && S[k] == '[')
 			for (size_t j = e; j > k + 1 && x == ORG_NONE; j--) if (S[j - 1] == ']' && j < e && S[j] == ':') x = j + 1;
 		if (x == ORG_NONE && k < e && S[k] == ':') x = k + 1;
-		if (x == ORG_NONE) { set(l, e, FACE_COMMENT); return; }
+		if (x == ORG_NONE) { set(l, e, FACE_COMMENT); return nl; }
 		set(l, x, FACE_COMMENT);
 		set(blanks(x), e, FACE_ORG_BLOCK);
-		return;
+		return nl;
 	}
 	set(l, e, FACE_COMMENT);   /* a comment, or any other #+ line */
+	return S[g3] == '+' ? nl : 0;
 }
 
 static int level(size_t n)   /* org-get-level-face, org-cycle-level-faces */
@@ -1201,7 +1213,7 @@ static void fontify(Scan *c)
 		}
 	/* org-property-re: :KEY: as org-special-keyword, the value as
 	   org-property-value (no colour) */
-	if (b < e && S[b] == ':' && (z = run(b + 1)) >= b + 3 && S[z - 1] == ':' && (z == e || blank(z))) {
+	if ((z = key(b, e))) {
 		set(b, z, FACE_KEYWORD);
 		for (x = e, p = blanks(z); x > p && blank(x - 1); x--) ;
 		set(p, x, FACE_NONE);
@@ -1311,18 +1323,20 @@ struct OrgFx {
 	Scan c;                /* the scan's state at the last line it coloured */
 	unsigned char *lf;     /* that line's faces (the core asks a long line in pieces) */
 	size_t lcap;           /* as long as the longest line, unless out of memory */
+	Scan cs;               /* conceal's: the scan's state at the last line it showed */
+	size_t *em, emcap;     /* conceal's emphasis matches, begin and end (they grow, then stay) */
 };
 
 OrgFx *orgfx_new(const Text *t)
 {
 	OrgFx *f = calloc(1, sizeof *f);
-	if (f) f->t = t, f->dirty = 1, f->hc = text_len(t), f->c.at = ORG_NONE;
+	if (f) f->t = t, f->dirty = 1, f->hc = text_len(t), f->c.at = f->cs.at = ORG_NONE;
 	return f;
 }
 
 void orgfx_free(OrgFx *f)
 {
-	if (f) free(f->s), free(f->e), free(f->lf);
+	if (f) free(f->s), free(f->e), free(f->lf), free(f->em);
 	free(f);
 }
 
@@ -1350,7 +1364,7 @@ int orgfx_update(OrgFx *f, int (*stop)(void))
 	f->n = n;
 	org_edit(&f->e, &f->k, f->s, n, f->lo, f->ho - f->lo, f->hc - f->lo);   /* out of memory: no parse, scans from the start */
 	f->dirty = 0;
-	f->c.at = ORG_NONE;
+	f->c.at = f->cs.at = ORG_NONE;
 	S = (const unsigned char *)f->s; N = n;
 	for (size_t l = bol(f->lo), m; l < n && l <= f->hc; l = nextl(l))   /* the lines the edits touched */
 		if ((m = nextl(l) - l) > f->lcap) {
@@ -1370,14 +1384,22 @@ static size_t head_at(const OrgFx *f, size_t p)
 }
 
 /* the faces of [a, z) of the text at the last update into out */
+/* the scan's state at the line L, from k when it is on the way (meta's
+   set must write nowhere) */
+static Scan scan_at(OrgFx *f, const Scan *k, size_t L)
+{
+	size_t R = head_at(f, L);   /* a headline's line is outside any block */
+	if (R == ORG_NONE) R = 0;
+	Scan c = k->at <= L && k->at >= R ? *k : (Scan){ R, 0, 0, 0 };
+	while (c.at < L) meta(&c);
+	return c;
+}
 static void paint(OrgFx *f, size_t a, size_t z, unsigned char *out)
 {
 	S = (const unsigned char *)f->s; N = f->n; F = out; FA = a; FZ = z;
 	if (a >= z || a >= N) return;
-	size_t L = bol(a), R = head_at(f, L);   /* a headline's line is outside any block */
-	if (R == ORG_NONE) R = 0;
-	Scan c = f->c.at <= L && f->c.at >= R ? f->c : (Scan){ R, 0, 0, 0 };
-	while (c.at < L) meta(&c);
+	size_t L = bol(a);
+	Scan c = scan_at(f, &f->c, L);
 	while (c.at < z && c.at < N) {
 		size_t l = c.at, nl = nextl(l), u = a > l ? a : l, v = z < nl ? z : nl;
 		if (f->c.at == l) { FZ = 0; c = f->c; meta(&c); }   /* coloured: the scan steps over it */
@@ -1407,6 +1429,228 @@ int orgfx_foldexpr(OrgFx *f, size_t line, int *start)
 	S = (const unsigned char *)f->s; N = f->n;
 	*start = h == p;
 	return h == ORG_NONE ? 0 : (int)(stars(h) - h);
+}
+
+/* ---- conceal: what Org shows in place of bytes (org-pretty-entities,
+   org-hide-emphasis-markers, org-use-sub-superscripts '{}, Davy's
+   kittymax), from org-do-emphasis-faces, org-fontify-entities and
+   org-raise-scripts in font-lock's order, then what
+   org-fontify-meta-lines-and-blocks and org-activate-code take off again.
+   Known differences: a script shows as typed unless every character it
+   shows has a Unicode superscript or subscript (a cell grid cannot raise
+   text), or when its braces span lines, and its braces stop at the second
+   newline (Org's [^{}]*? does not); emphasis never ends on a CLOCK line;
+   a script in a link is raised (no links yet) ---- */
+
+#include "entities.h"
+#include "scripts.h"
+
+static Conceal *C;
+static size_t CN, CCAP, CL, CE;   /* the spans so far, their room, the line [CL, CE) */
+static size_t Prot;   /* Org takes display and invisible off the line before it: only compositions show */
+static void hide(size_t a, size_t z, const char *s)
+{
+	if (a >= CL && z <= CE && CN < CCAP && (*s || a >= Prot)) C[CN++] = (Conceal){ a, z, s };
+}
+/* org-element-paragraph-separate at q, in a string ending at z ($ there);
+   its CLOCK line is left out */
+static int separate(size_t q, size_t z)
+{
+	size_t b = blanks(q), x;
+	if ((x = stars(q)) > q && x < z && S[x] == ' ') return 1;
+	if (is(q, "[fn:") && (x = names(q + 4)) > q + 4 && x < z && S[x] == ']') return 1;
+	if (is(q, "%%(") || b >= z || ateol(b) || S[b] == '|' || is(b, "\\begin{")) return 1;
+	x = b + 1;
+	if (S[b] == '#') {
+		if (x >= z || ateol(x) || S[x] == ' ') return 1;
+		if (S[x] != '+') return 0;
+		if (is(x + 1, "BEGIN_") && x + 7 < z && !sp(x + 7)) return 1;
+		for (x++; x < z && !sp(x) && S[x] != ':' && S[x] != '['; x++) ;
+		if (x < z && S[x] == '[') while (x < z && !ateol(x) && S[x] != ']') x++;
+		return x < z && S[x] == ']' ? x + 1 < z && S[x + 1] == ':' : x < z && S[x] == ':' && x > b + 2;
+	}
+	if (S[b] == ':') return x >= z || ateol(x) || S[x] == ' ' || ((x = names(x)) > b + 1 && x < z && S[x] == ':' && ((x = blanks(x + 1)) >= z || ateol(x)));
+	if (S[b] == '+' && is(x, "-")) {   /* \+\(?:-+\+\)+[ \t]*$ */
+		while (x < z && S[x] == '-') { while (x < z && S[x] == '-') x++; if (x >= z || S[x] != '+') return 0; x++; }
+		return (x = blanks(x)) >= z || ateol(x);
+	}
+	for (x = b; x < z && S[x] == '-'; x++) ;
+	if (x - b >= 5 && ((x = blanks(x)) >= z || ateol(x))) return 1;
+	x = one(b, "-+*") ? b + 1 : digit(b) && one(digits(b, z), ".)") ? digits(b, z) + 1 : 0;
+	return x && (x >= z || blank(x) || ateol(x));
+}
+/* [ \t]*\(|[-+]+|?\|\+[-+]+\+\)[ \t]*$ at the line l: a table rule */
+static int rule(size_t l)
+{
+	size_t b = blanks(l), x;
+	for (x = b + 1; one(x, "-+"); x++) ;
+	if (S[b] == '|') return x > b + 1 && ateol(blanks(x + is(x, "|")));
+	return S[b] == '+' && x >= b + 3 && S[x - 1] == '+' && ateol(blanks(x));
+}
+static int post(size_t p) { return ateol(p) || sp(p) || one(p, "-.,:!?;'\")}\\["); }
+/* org-emph-re or org-verbatim-re's match with its marker at p, before
+   lim (the second newline after p): the closing marker, or 0.  The first
+   closer that fits does not depend on p, so each marker's last one (up
+   to E2, the end of the line after CL) is kept for the openers after it:
+   one pass over the lines for all of them */
+static size_t Cx[6], E2;
+static size_t emph_close(size_t p, size_t lim)
+{
+	size_t k = (size_t)(strchr("*/_+=~", S[p]) - "*/_+=~"), c = Cx[k];
+	if (ateol(p + 1) || sp(p + 1)) return 0;
+	if (c < p + 2)
+		for (c = p + 2; c < E2 && !(S[c] == S[p] && !sp(c - 1) && post(c + 1)); c++) ;
+	return (Cx[k] = c) < lim ? c : 0;
+}
+/* from the line before CL: emphasis there may end on CL */
+static void emphasis(OrgFx *f, size_t from, size_t *ek)
+{
+	size_t bar = 0, rm = ORG_NONE;   /* the next | after p; the line rule() saw */
+	int rv = 0;
+	E2 = CE < N ? eol(CE + 1) : N;
+	memset(Cx, 0, sizeof Cx);
+	for (size_t p = from; p < CE; p++) {
+		if (!one(p, "*/_+=~") || (p > 0 && S[p - 1] != '\n' && !sp(p - 1) && !one(p - 1, "-('\"{"))) continue;
+		/* the match starts at the newline before a line's first marker,
+		   so the line above is the one org-match-line looks at */
+		size_t l = p < CL ? from : CL, m = p == l && p ? bol(p - 1) : l, b = blanks(m), nl = p < CL ? CL - 1 : CE, c;
+		if (S[p] == '+' && m != rm) rm = m, rv = rule(m);
+		if ((S[p] == '+' && rv) || (S[p] == '*' && p == l && headline(l))) continue;
+		if (!(c = emph_close(p, p < CL ? CE : E2)) || separate(p, c + 1)) continue;
+		if (nl < c && separate(nl + 1, c + 1)) continue;   /* string-match-p: ^ after the newline too */
+		if (bar <= p) for (bar = p + 1; bar < E2 && S[bar] != '|'; bar++) ;
+		if (S[b] == '|' && bar < c) continue;
+		if (S[p] == '=' || S[p] == '~')   /* verbatim: no earlier markup inside shows hidden */
+			for (size_t i = CN; i-- > 0; ) if (C[i].a >= p && C[i].z <= c + 1) C[i] = C[--CN];
+		if (2 * *ek == f->emcap) {   /* out of memory: later scripts inside emphasis are raised */
+			size_t *g = realloc(f->em, (2 * f->emcap + 64) * sizeof *g);
+			if (g) f->em = g, f->emcap = 2 * f->emcap + 64;
+		}
+		if (2 * *ek < f->emcap) f->em[2 * *ek] = p, f->em[2 * *ek + 1] = c + 1, ++*ek;
+		if (!comment(l)) hide(p, p + 1, ""), hide(c, c + 1, "");
+	}
+}
+static const char *entity(size_t a, size_t z)
+{
+	size_t lo = 0, hi = sizeof entities / sizeof *entities;
+	while (lo < hi) {
+		size_t m = (lo + hi) / 2;
+		int d = strncmp(entities[m][0], (const char *)S + a, z - a);
+		if (!d && entities[m][0][z - a]) d = 1;
+		if (!d) return entities[m][1];
+		if (d < 0) lo = m + 1; else hi = m;
+	}
+	return NULL;
+}
+static int ent_alpha(size_t p) { return p < N && (alpha(p) || (S[p] >= 0x80 && IN(ALNUM, uni_cp(S, N, p)))); }
+static void entities_at(size_t l)
+{
+	for (size_t p = l; p < CE; p++) {
+		if (S[p] != '\\') continue;
+		size_t x = 0, e;
+		if (is(p + 1, "there4")) x = p + 7;
+		else if (is(p + 1, "sup") && one(p + 4, "123")) x = p + 5;
+		else if (is(p + 1, "frac") && one(p + 5, "13") && one(p + 6, "24")) x = p + 7;
+		if (x && ent_alpha(x) && S[x] != '\n') x = 0;   /* the next alternative */
+		if (!x && (x = letters(p + 1)) == p + 1) continue;
+		if (ateol(x)) e = x;
+		else if (is(x, "{}")) e = x + 2;
+		else if (!ent_alpha(x)) e = x + uni_len(S, N, x);
+		else continue;
+		const char *u = comment(l) ? NULL : entity(p + 1, x);
+		/* one character of one cell, or as typed (\zwj takes none) */
+		if (u && uni_width((const unsigned char *)u, strlen(u), 0) == 1) hide(p, is(x, "{}") ? x + 2 : x, u);
+		if (u) p = e - 2;
+		else p = e - 1;
+	}
+}
+static int by_cp(const void *k, const void *e)
+{
+	unsigned a = *(const unsigned *)k, b = ((const Script *)e)->c;
+	return a < b ? -1 : a > b;
+}
+static const char *script(unsigned c, int up)
+{
+	const Script *x = up ? bsearch(&c, sup, sizeof sup / sizeof *sup, sizeof *sup, by_cp)
+	                     : bsearch(&c, sub, sizeof sub / sizeof *sub, sizeof *sub, by_cp);
+	return x ? x->s : NULL;
+}
+/* org-create-multibrace-regexp "{" "}" 3 at q: the closing brace, 0 when
+   none: groups inside are all flat, or all hold flat groups only.  Its
+   [^{}]*? crosses lines; here at most one newline */
+static size_t braces(size_t q)
+{
+	int d = 0, kind = 0, g = 0, nl = 0;   /* kind: 1 flat groups, 2 nested */
+	for (size_t p = q; p < N; p++) {
+		if ((S[p] == '{' && ++d > 3) || (S[p] == '\n' && nl++)) return 0;
+		if (S[p] == '{' && d == 3) g = 1;
+		if (S[p] != '}') continue;
+		if (--d == 0) return p;
+		if (d == 1) { if (kind && kind != 1 + g) return 0; kind = 1 + g; g = 0; }
+	}
+	return 0;
+}
+/* [a, z) raised (up) or lowered: each character it shows as its Unicode
+   form, one span each (put), or the spans it adds; -1 when a character
+   has none, as a cell grid cannot raise text */
+static int raised(size_t a, size_t z, int up, int put)
+{
+	int n = 0;
+	for (size_t q = a, k, j; q < z; q = k) {
+		for (j = CN; j-- > 0 && !(C[j].a <= q && q < C[j].z); ) ;
+		k = j < CN ? C[j].z : q + uni_len(S, N, q);
+		if (j < CN && !*C[j].s) continue;   /* a hidden emphasis marker */
+		const char *s = script(j < CN ? uni_cp((const unsigned char *)C[j].s, strlen(C[j].s), 0) : uni_cp(S, N, q), up);
+		if (!s) return -1;
+		if (!put) n += j >= CN;
+		else if (j < CN) C[j].s = s;   /* an entity: its script form */
+		else hide(q, k, s);
+	}
+	return n;
+}
+/* from the line before: a script there may end on this line and cover a
+   start here */
+static void scripts(size_t from, size_t l, const size_t *em, size_t ek)
+{
+	size_t kz = key(blanks(l), CE), i = 0, ez = 0;   /* a property's key is org-special-keyword; the emphasis seen, its furthest end */
+	for (size_t p = from; p + 2 < CE; p++) {
+		if (sp(p) || !one(p + 1, "_^") || S[p + 2] != '{') continue;
+		size_t z = braces(p + 2), m = p + 2;
+		if (!z) continue;
+		/* ^[ \t]*#[ +] as comment-p; a script over lines shows as typed */
+		int ok = p >= l && p >= Prot && z < CE && !(S[blanks(l)] == '#' && one(blanks(l) + 1, " +")), up = S[p + 1] == '^', n;
+		for (; i < ek && em[2 * i] <= m; i++) if (em[2 * i + 1] > ez) ez = em[2 * i + 1];
+		if (ok && m >= ez && m >= kz && (n = raised(m + 1, z, up, 0)) >= 0 && CN + (size_t)n + 2 <= CCAP)
+			hide(p + 1, m + 1, ""), raised(m + 1, z, up, 1), hide(z, z + 1, "");
+		p = z + 1 < CE && one(z + 1, "_^") ? z - 1 : z;
+	}
+}
+static int by_start(const void *a, const void *b)
+{
+	size_t x = ((const Conceal *)a)->a, y = ((const Conceal *)b)->a;
+	return x < y ? -1 : x > y;
+}
+size_t orgfx_conceal(OrgFx *f, size_t line, Conceal *out, size_t cap)
+{
+	size_t ek = 0;
+	orgfx_update(f, NULL);
+	S = (const unsigned char *)f->s; N = f->n;
+	CL = text_line_start(f->t, line); CE = eol(CL);
+	C = out; CN = 0; CCAP = cap;
+	if (CL >= N && N) return 0;
+	size_t pl = CL ? prevl(CL) : 0, b = blanks(CL);
+	Scan c = (FZ = 0, scan_at(f, &f->cs, pl));   /* a headline may end a block: from the line above */
+	if (CL) meta(&c);
+	f->cs = c;
+	/* org-activate-code: ^[ \t]*:\(?: .*\|$\) */
+	Prot = b < N && S[b] == ':' && (ateol(b + 1) || S[b + 1] == ' ') ? N : meta(&c);
+	emphasis(f, pl, &ek);
+	entities_at(CL);
+	scripts(pl, CL, f->em, ek);
+	qsort(C, CN, sizeof *C, by_start);
+	size_t k = 0;   /* a marker two matches hide is hidden once; columns of the line */
+	for (size_t i = 0; i < CN; i++) if (!k || C[i].a >= C[k - 1].z + CL) C[k++] = (Conceal){ C[i].a - CL, C[i].z - CL, C[i].s };
+	return k;
 }
 
 /* ---- TODO states: org-todo as Davy's Emacs runs it (kittymax's
@@ -1642,14 +1886,14 @@ static int at_type(const OrgNode *e, size_t k, size_t h, size_t q)
 static int agenda_ts(size_t h, size_t a, size_t q)
 {
 	size_t k;
+	OrgTs x;
+	if (!org_ts((const char *)S, N, a, &x) || x.end < q) return 0;   /* a whole stamp first, then the line's kind */
 	OrgNode *e = entry(h, &k);
 	if (!e) return 0;
 	int t = at_type(e, k, h, q);
 	free(e);
-	OrgTs x;
-	if (t == ORG_PLANNING || t == ORG_NODE_PROPERTY) return 1;
-	return (t == ORG_PARAGRAPH || t == ORG_HEADLINE || t == ORG_TABLE_ROW || t == ORG_VERSE_BLOCK) &&
-	       org_ts((const char *)S, N, a, &x) && x.end >= q;
+	return t == ORG_PLANNING || t == ORG_NODE_PROPERTY || t == ORG_PARAGRAPH || t == ORG_HEADLINE ||
+	       t == ORG_TABLE_ROW || t == ORG_VERSE_BLOCK;
 }
 /* org-repeat-re from p on, bounded by lim: the stamp's start, the repeater
    [*r, *re) ([.+]?\+N[hdwmy], without a habit's /N, which nothing after
@@ -1726,8 +1970,10 @@ static size_t indent(size_t p, size_t c)
 
 /* org-indent-line's column for line l of the entry at h: on an element's
    first line, its sibling before's first line, else its parent drawer's
-   (a stray :LOGBOOK: line above opens the drawer), else 0; on a drawer's :END:, the drawer's; inside an element (a stray
-   :LOGBOOK: in a drawer is a paragraph), the line above's */
+   (a stray :LOGBOOK: line above opens the drawer), else 0; on a drawer's
+   :END: (the only line of a drawer outside its contents), the drawer's;
+   inside an element (a stray :LOGBOOK: in a drawer is a paragraph), the
+   line above's */
 static size_t sibling_ind(size_t h, size_t l)
 {
 	size_t k, i, j, c = 0;
@@ -1740,7 +1986,7 @@ static size_t sibling_ind(size_t h, size_t l)
 		else if (e[i].parent != ORG_NONE && e[e[i].parent].type == ORG_DRAWER) c = col(e[e[i].parent].begin + h);
 	} else {
 		for (i = k; i-- > 0 && !(e[i].aff + h < l && l < e[i].end + h); ) ;
-		if (i < k) c = col(e[i].type == ORG_DRAWER && lit(blanks(l), ":END:") ? e[i].begin + h : prevl(l));
+		if (i < k) c = col(e[i].type == ORG_DRAWER || e[i].type == ORG_PROPERTY_DRAWER ? e[i].begin + h : prevl(l));
 	}
 	free(e);
 	return c;

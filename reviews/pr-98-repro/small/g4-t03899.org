@@ -1,0 +1,4 @@
+* DONE b :t:
+ 	:LOGBOOK:
+[fn:1] f
+  :LOGBOOK:

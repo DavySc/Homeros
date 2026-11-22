@@ -64,3 +64,4 @@ syntax: a .org file gets no colours (test_syntax_org)~test TESTS=syntax_org~~src
 syntax: an edit to a .org file is not passed to Org (test_syntax_org)~test TESTS=syntax_org~~src/syntax/syntax.c~		orgfx_edit(s->org, t, pos, ndel, nins);¶		return;~		return;
 syntax: an update of a .org file does not reach Org (test_syntax_org)~test TESTS=syntax_org~~src/syntax/syntax.c~	if (s->org) return orgfx_update(s->org, stop);~	if (s->org) return 0;
 syntax: a .org file's colours are not freed (test_syntax_org, LeakSanitizer)~test TESTS=syntax_org~~src/syntax/syntax.c~	orgfx_free(s->org);¶~
+syntax: a .org file conceals nothing (test_syntax_org)~test TESTS=syntax_org~~src/syntax/syntax.c~	return s->org ? orgfx_conceal(s->org, line, out, cap) : 0;~	return s->org && 0 ? orgfx_conceal(s->org, line, out, cap) : 0;
