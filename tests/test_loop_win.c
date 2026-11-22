@@ -17,9 +17,12 @@
    7. From the review of PR 41: a child that never stops writing does not
       hold loop_once; output still in the pipe at the exit is read first; a
       write begun inside the exit's drain is refused.
+   8. loop.h's write wake: a socket's WSAEventSelect event wakes its watch
+      once the peer reads after a send would block, and not while it is full.
    Runs on Windows or under Wine (src/loop/check.sh); elsewhere it says so. */
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
+#include <winsock2.h>
 #include <windows.h>
 #include <shellapi.h>
 #include <stdio.h>
@@ -498,6 +501,50 @@ static void idle(void)
 	CloseHandle(e);
 }
 
+static SOCKET sa;
+static long woke;
+static void on_sock(void *ctx, int fd)
+{
+	WSANETWORKEVENTS ne;
+	(void)ctx;
+	CHECK(WSAEnumNetworkEvents(sa, (HANDLE)(INT_PTR)fd, &ne) == 0);   /* resets the event */
+	woke |= ne.lNetworkEvents;
+}
+
+static void sockets(void)
+{
+	static char buf[1 << 16];
+	WSADATA wd;
+	struct sockaddr_in a = { .sin_family = AF_INET, .sin_addr.s_addr = htonl(INADDR_LOOPBACK) };
+	int n = sizeof a;
+	CHECK(WSAStartup(MAKEWORD(2, 2), &wd) == 0);
+	SOCKET l = socket(AF_INET, SOCK_STREAM, 0), b;
+	CHECK(!bind(l, (struct sockaddr *)&a, sizeof a) && !listen(l, 1) && !getsockname(l, (struct sockaddr *)&a, &n));
+	sa = socket(AF_INET, SOCK_STREAM, 0);
+	CHECK(!connect(sa, (struct sockaddr *)&a, sizeof a) && (b = accept(l, NULL, NULL)) != INVALID_SOCKET);
+	WSAEVENT ev = WSACreateEvent();
+	int fd = (int)(INT_PTR)ev;
+	CHECK(!WSAEventSelect(sa, ev, FD_READ | FD_WRITE | FD_CLOSE));   /* also makes sa non-blocking */
+	CHECK(loop_watch(fd, on_sock, NULL) == 0);
+	loop_write(fd, 1);
+	loop_once(0);                      /* the FD_WRITE Winsock posts at once */
+	while (send(sa, buf, sizeof buf, 0) > 0) {}
+	CHECK(WSAGetLastError() == WSAEWOULDBLOCK);
+	woke = 0;
+	CHECK(loop_once(0) == 0 && !(woke & FD_WRITE));   /* full: no wake */
+	u_long nb = 1;
+	CHECK(!ioctlsocket(b, FIONBIO, &nb));
+	for (int i = 0; i < 50 && !(woke & FD_WRITE); i++) {
+		while (recv(b, buf, sizeof buf, 0) > 0) {}
+		loop_once(100);
+	}
+	CHECK(woke & FD_WRITE);            /* room again: the watch ran */
+	loop_unwatch(fd);
+	closesocket(sa); closesocket(b); closesocket(l);
+	WSACloseEvent(ev);
+	WSACleanup();
+}
+
 int main(int argc, char **argv)
 {
 	GetModuleFileNameA(NULL, self, sizeof self);
@@ -512,7 +559,8 @@ int main(int argc, char **argv)
 	flood();
 	drain();
 	stale();
-	fprintf(stderr, "test_loop_win: flood, drain and a write refused while reaping; 4 MB through cat; dead.py; streams, codes, arguments, directory, closed stdin; 32 children; kill takes the tree; exit with a holder, its pipes closed; timers; every ready watch, a taken signal kept, unwatch in a pass; message queue; Ctrl-C; idle\n");
+	sockets();
+	fprintf(stderr, "test_loop_win: socket write wake; flood, drain and a write refused while reaping; 4 MB through cat; dead.py; streams, codes, arguments, directory, closed stdin; 32 children; kill takes the tree; exit with a holder, its pipes closed; timers; every ready watch, a taken signal kept, unwatch in a pass; message queue; Ctrl-C; idle\n");
 	return 0;
 }
 #else

@@ -1,0 +1,5 @@
+# Plants for src/date/ (format in tools/planted.sh).
+date: floor division rounds a negative toward zero~test TESTS=date~~src/date/date.c~return a >= 0 ? a / b : -((-a + b - 1) / b);~return a / b;
+date: March first, not January, starts the year~test TESTS=date~~src/date/date.c~*y = (int)(yoe + era * 400 + (*m <= 2));~*y = (int)(yoe + era * 400);
+date: every 100th year a leap year~test TESTS=date~~src/date/date.c~return era * 146097 + yoe * 365 + yoe / 4 - yoe / 100 + doy - 719468;~return era * 146097 + yoe * 365 + yoe / 4 + doy - 719468;
+date: months past 12 do not roll over~test TESTS=date~~src/date/date.c~	y += date_fdiv(m - 1, 12), m -= 12 * date_fdiv(m - 1, 12);¶~

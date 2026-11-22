@@ -71,14 +71,18 @@ test: $(OBJS) | build/san
 	@python3 tests/start.py build/san/homeros || { echo "FAIL start"; exit 1; }
 
 # libFuzzer, each target against a simple model, FUZZ_SECONDS each; an input
-# that runs 20 s is a hang and fails (a planted bug once spun 20 min)
+# that runs 20 s is a hang and fails (a planted bug once spun 20 min).  A
+# directory tests/fuzz_<name>/ holds seed inputs, copied so a run never
+# changes them: a resumable wire reader's plant survived 8.0 million runs
+# from empty in 300 s (package 22, measured)
 FUZZERS = $(patsubst tests/fuzz_%.c,%,$(wildcard tests/fuzz_*.c))
 fuzz: $(OBJS) | build/fuzz
 	@rm -rf build/state
 	@for f in $(FUZZERS); do \
 	  clang $(WARN) -O1 -g -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all \
 	    $(CPPFLAGS) -o build/fuzz/fuzz_$$f tests/fuzz_$$f.c $(LIB_SRCS) $(OBJS) $(LIBS) || exit 1; \
-	  ./build/fuzz/fuzz_$$f -max_total_time=$(FUZZ_SECONDS) -max_len=256 -timeout=20 -artifact_prefix=build/fuzz/ 2>build/fuzz/$$f.log \
+	  c=; if [ -d tests/fuzz_$$f ]; then c=build/fuzz/$$f.seeds; rm -rf $$c; cp -r tests/fuzz_$$f $$c; fi; \
+	  ./build/fuzz/fuzz_$$f -max_total_time=$(FUZZ_SECONDS) -max_len=256 -timeout=20 -artifact_prefix=build/fuzz/ $$c 2>build/fuzz/$$f.log \
 	    || { tail -40 build/fuzz/$$f.log; echo "FAIL fuzz_$$f"; exit 1; }; \
 	  echo "fuzz_$$f: $$(grep -m1 -o 'Done [0-9]* runs in [0-9]* second(s)' build/fuzz/$$f.log)"; done
 
@@ -156,7 +160,7 @@ win: wincc
 # GDI) or the Wayland window (POSIX only): the trial build stubs them.  It
 # reads tree-sitter's headers only (not $(CPPFLAGS), which holds Linux paths
 # and -DHOMEROS_WL), so it needs the sources, not $(OBJS)
-WIN_SRCS = $(foreach m,$(filter-out tty font wl,$(MODULES)),$(call pick,$(m))) $(wildcard src/win/*.c) src/main.c
+WIN_SRCS = $(foreach m,$(filter-out tty font wl sql,$(MODULES)),$(call pick,$(m))) $(wildcard src/win/*.c) src/main.c
 wincc: | $(SYN)/src build/win
 	@for f in $(WIN_SRCS); do zig cc -target x86_64-windows-gnu $(WARN) $(CPPFLAGS) -c -o build/win/cc.o $$f || exit 1; done
 	zig rc /fo build/win/homeros.res assets/homeros.rc
