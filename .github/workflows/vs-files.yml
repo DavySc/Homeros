@@ -1,0 +1,16 @@
+# Prints the two lists Visual Studio's stepping reads as installed on the runner: the functions it does not step
+# into (default.natstepfilter) and the code that is not the user's (default.natjmc). Read from the log; not committed.
+name: vs-files
+on:
+  push:
+    branches: [claude/project-thread-l4spyq]
+    paths: ['.github/workflows/vs-files.yml']
+jobs:
+  print:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+          foreach ($f in Get-ChildItem "$vs\Common7\Packages\Debugger\Visualizers\*" -Include *.natjmc, *.natstepfilter) { "===== $($f.Name)"; Get-Content $f }
