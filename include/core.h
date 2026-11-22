@@ -228,6 +228,13 @@ int  core_buf_next(Editor *e, long n);        /* :bn ]b (n > 0), :bp [b (n < 0) 
    then do_ecmd's beginline(BL_WHITE)), where :b puts the cursor at 1,0. */
 int  core_buf_alt(Editor *e);
 int  core_buf_delete(Editor *e, int nr, int force);   /* :bd */
+/* The listed buffer numbered nr, or NULL: by number, as a deleted buffer's
+   address can be reused */
+Buf *core_buf_nr(Editor *e, int nr);
+/* A buffer nobody edits (git status, Lean goals): its text becomes s[0, n)
+   with no undo, and every window on it gets line (SIZE_MAX: its own line),
+   clamped to the text, at column 0, with top no further down. */
+void core_buf_fill(Editor *e, Buf *b, const char *s, size_t n, size_t line);
 
 /* Windows.  :sp and CTRL-W s (vertical 0), :vs and CTRL-W v (1); size 0
    leaves it to equalalways.  The new window shows the same buffer and
