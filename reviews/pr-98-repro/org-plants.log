@@ -1,0 +1,62 @@
+caught        org: table row contents start at the bar   (make test TESTS=org): tests/test_org.c:1050: CHECK(!strcmp(got, cases[i].want)) failed
+caught        org: drawer and footnote names take any non-ASCII byte (against Org)   (make org-conform ORG_N=2000 SEED=1): 42 of 2000 differ (no answer from Org on 0)
+caught        org: a timestamp's repeater is looked for only before its range (against Org)   (make org-conform ORG_N=2000 SEED=1): 463 of 2000 differ (no answer from Org on 0)
+caught        org: colours: tags without their outer colons (against Org)   (make org-conform ORG_N=2000 SEED=1): 260 of 2000 differ (no answer from Org on 128)
+caught        org: colours: export blocks not quoting (against Org)   (make org-conform ORG_N=2000 SEED=1): 21 of 2000 differ (no answer from Org on 128)
+caught        org: colours: special keywords inside a word (against Org)   (make org-conform ORG_N=2000 SEED=1): 349 of 2000 differ (no answer from Org on 128)
+caught        org: colours: the text after an edit not moved (fuzz)   (make fuzz FUZZERS=org FUZZ_SECONDS=60): ==16348== ERROR: libFuzzer: deadly signal
+caught        org: folds: levels read from the parse before the edits (fuzz)   (make fuzz FUZZERS=org FUZZ_SECONDS=30): ==17624== ERROR: libFuzzer: deadly signal
+caught        org: todo: a week repeats as a day (against Org)   (make test TESTS=org): tests/test_org.c:1084: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: colours: a long line coloured again for every piece (frame gate)   (make test TESTS=org): tests/test_org.c:1106: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000 < 100) failed
+caught        org: colours: a property's value keeps the earlier face (against Org; PR 83 review)   (make org-conform ORG_N=2000 SEED=1): 63 of 2000 differ (no answer from Org on 128)
+caught        org: colours: after an export snippet, the scan goes on inside it (against Org; PR 83 review)   (make org-conform ORG_N=2000 SEED=1): 194 of 2000 differ (no answer from Org on 128)
+caught        org: todo: indent never uses tabs (PR 93 review)   (make test TESTS=org): tests/test_org.c:1084: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: a tab counts 8, not to the tab stop (PR 93 review)   (make test TESTS=org): tests/test_org.c:1084: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: LAST_REPEAT matched by prefix (PR 93 review)   (make test TESTS=org): tests/test_org.c:1084: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: an hour repeater without a time goes on where Org stops (against Org)   (make org-conform ORG_N=2000 SEED=1): 12 of 500 differ (no answer from Org on 1)
+caught        org: a headline ends only at a shallower one (fuzz)   (make fuzz FUZZERS=org FUZZ_SECONDS=30): ==9345== ERROR: libFuzzer: deadly signal
+caught        org: org_edit stops its span before a new shallower headline's subtree ends (fuzz)   (make fuzz FUZZERS=org FUZZ_SECONDS=30): ==10528== ERROR: libFuzzer: deadly signal
+caught        org: colours: levels past 6 cycle over 6 faces, not Org's 8 (against Org)   (make org-conform ORG_N=2000 SEED=1): 267 of 2000 differ (no answer from Org on 128)
+caught        org: colours: a date range takes four dashes (against Org)   (make org-conform ORG_N=2000 SEED=1): 100 of 2000 differ (no answer from Org on 128)
+caught        org: colours: a failed caption line left plain (against Org)   (make org-conform ORG_N=2000 SEED=1): 196 of 2000 differ (no answer from Org on 128)
+caught        org: colours: the export snippet's backend without its colon (against Org)   (make org-conform ORG_N=2000 SEED=1): 342 of 2000 differ (no answer from Org on 128)
+caught        org: org_ts reads case-sensitively, as planning does (against Org)   (make org-conform ORG_N=2000 SEED=1): 610 of 2000 differ (no answer from Org on 0)
+caught        org: todo: the first ORDERED value wins, not the last (against Org)   (make test TESTS=org): tests/test_org.c:1084: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: a parent ignores undone children (against Org)   (make test TESTS=org): tests/test_org.c:1084: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: colours: a date scan from every opener to the line's end (frame gate)   (make test TESTS=org): tests/test_org.c:1106: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000 < 100) failed
+caught        org: colours: [100x%] any three characters count as done (against Org; PR 83 review)   (make org-conform ORG_N=2000 SEED=1): 353 of 2000 differ (no answer from Org on 128)
+caught        org: colours: the caption's bracket closed by the first ]: (not the last) (against Org; PR 83 review)   (make org-conform ORG_N=2000 SEED=1): 19 of 2000 differ (no answer from Org on 128)
+caught        org: todo: COMMENT goes before the priority (PR 93 review)   (make test TESTS=org): tests/test_org.c:1084: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: +1m from the normalised date, not its digits (PR 93 review)   (make test TESTS=org): tests/test_org.c:1084: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: a new drawer's first line not indented as the drawer it is in (PR 93 review)   (make test TESTS=org): tests/test_org.c:1084: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: a stamp Org cannot read back goes on where Org stops   (make test TESTS=org): tests/test_org.c:1084: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: checkbox [x] not folded to [X] (against Org)   (make org-conform ORG_N=2000 SEED=1): 142 of 2000 differ (no answer from Org on 0)
+caught        org: org_edit starts its span at a headline whose line the edit touches (fuzz)   (make fuzz FUZZERS=org FUZZ_SECONDS=30): ==10501== ERROR: libFuzzer: deadly signal
+caught        org: colours: DONE as a todo keyword (against Org)   (make org-conform ORG_N=2000 SEED=1): 159 of 2000 differ (no answer from Org on 128)
+caught        org: colours: a table row without its newline (against Org)   (make org-conform ORG_N=2000 SEED=1): 972 of 2000 differ (no answer from Org on 128)
+caught        org: colours: checkbox [x] (against Org)   (make org-conform ORG_N=2000 SEED=1): 128 of 2000 differ (no answer from Org on 128)
+caught        org: colours: a stale scan kept across an update   (make test TESTS=org): tests/test_org.c:1072: CHECK(!memcmp(f + 20, g + 20, n - 20)) failed
+caught        org: a two-digit hour above 29 (against Org)   (make org-conform ORG_N=2000 SEED=1): 143 of 2000 differ (no answer from Org on 0)
+caught        org: todo: a repeat from no keyword goes to TODO (against Org)   (make test TESTS=org): tests/test_org.c:1084: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: CLOSED kept when going back to not done (against Org)   (make test TESTS=org): tests/test_org.c:1084: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: colours: a diary sexp scan from every opener to the line's end (frame gate)   (make test TESTS=org): tests/test_org.c:1106: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000 < 100) failed
+caught        org: colours: COMMENT followed by anything (against Org; PR 83 review)   (make org-conform ORG_N=2000 SEED=1): 5 of 2000 differ (no answer from Org on 128)
+caught        org: todo: a property name's prefix counts (PR 93 review)   (make test TESTS=org): tests/test_org.c:1084: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: a stamp in a table row is no agenda stamp (PR 93 review)   (make test TESTS=org): tests/test_org.c:1084: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: an overdue ++ repeater stops at ten shifts (PR 93 review)   (make test TESTS=org): tests/test_org.c:1084: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: a line inside an element indented as the element, not the line above   (make test TESTS=org): tests/test_org.c:1084: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: tags take [[:word:]] for [[:alnum:]] above ASCII   (make test TESTS=org): tests/test_org.c:1050: CHECK(!strcmp(got, cases[i].want)) failed
+caught        org: planning reads a repeater's unit case-folded (against Org)   (make org-conform ORG_N=2000 SEED=1): 147 of 2000 differ (no answer from Org on 0)
+caught        org: colours: font-lock's priority folds case (against Org)   (make org-conform ORG_N=2000 SEED=1): 15 of 2000 differ (no answer from Org on 128)
+caught        org: colours: a block's word end not checked (against Org)   (make org-conform ORG_N=2000 SEED=1): 6 of 2000 differ (no answer from Org on 128)
+caught        org: colours: a description term after two blanks missed (against Org)   (make org-conform ORG_N=2000 SEED=1): 114 of 2000 differ (no answer from Org on 128)
+caught        org: colours: an edit before the pending ones not merged (fuzz)   (make fuzz FUZZERS=org FUZZ_SECONDS=60): ==16256== ERROR: libFuzzer: deadly signal
+caught        org: folds: a headline's line takes the subtree before it (against Org)   (make org-conform ORG_N=2000 SEED=1): 846 of 2000 differ (no answer from Org on 0)
+caught        org: todo: the note's state padded to 11 (against Org)   (make test TESTS=org): tests/test_org.c:1084: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: an edit one byte past its change (fuzz)   (make fuzz FUZZERS=org FUZZ_SECONDS=30): ==20191== ERROR: libFuzzer: deadly signal
+caught        org: colours: a line's faces not cleared before it is coloured (against Org)   (make org-conform ORG_N=2000 SEED=1): 1849 of 2000 differ (no answer from Org on 128)
+caught        org: colours: a column width cookie <c> missed (against Org; PR 83 review)   (make org-conform ORG_N=2000 SEED=1): 67 of 2000 differ (no answer from Org on 128)
+caught        org: todo: range end minutes below 0 not carried (PR 93 review)   (make test TESTS=org): tests/test_org.c:1084: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: planning read case-folded by org-todo (PR 93 review)   (make test TESTS=org): tests/test_org.c:1084: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: CLOSED: inside a word counts (PR 93 review)   (make test TESTS=org): tests/test_org.c:1084: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: an outer drawer's :END: indented as the line above   (make test TESTS=org): tests/test_org.c:1084: CHECK(!strcmp(got, todos[i].want)) failed

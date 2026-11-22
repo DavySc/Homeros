@@ -1,7 +1,8 @@
 /* A .org file's colours are Org's (org.h's orgfx, package 16, which tests
    them against Emacs): through syntax_open, syntax_edit, syntax_update and
    syntax_faces, after random edits, every byte must carry the face an
-   OrgFx of its own gives the same text, and every line the same fold. */
+   OrgFx of its own gives the same text, and every line the same fold and
+   the same conceal spans (syntax_conceal). */
 #include <string.h>
 #include "check.h"
 #include "grid.h"
@@ -15,6 +16,7 @@ static const char *const bits[] = {
 	"* ", "** ", "TODO ", "DONE ", "[#A] ", "heading", ":tag:", "\n", "text ",
 	"#+TITLE: x\n", "- item\n", "1. one\n", "#+begin_src c\n", "#+end_src\n",
 	"SCHEDULED: <2026-11-20 Fri>\n", ":PROPERTIES:\n", ":END:\n", "# note\n", "|a|b|\n",
+	"\\leq ", "x^{2} ", "*b* ",
 };
 
 int main(void)
@@ -49,12 +51,16 @@ int main(void)
 		for (size_t l = 0; l <= text_lines(t); l++) {   /* Org's subtrees fold */
 			int a, b;
 			CHECK(syntax_foldexpr(s, l, &a) == orgfx_foldexpr(x, l, &b) && a == b);
+			Conceal c[64], d[64];
+			size_t k = syntax_conceal(s, l, c, 64);
+			CHECK(k == orgfx_conceal(x, l, d, 64));
+			for (size_t i = 0; i < k; i++) CHECK(c[i].a == d[i].a && c[i].z == d[i].z && !strcmp(c[i].s, d[i].s));
 		}
 	}
 	syntax_free(s);
 	orgfx_free(x);
 	text_free(t);
 	text_free(u);
-	printf("test_syntax_org: %d edits, a .org file's faces equal Org's\n", EDITS);
+	printf("test_syntax_org: %d edits, a .org file's faces, folds and conceal equal Org's\n", EDITS);
 	return 0;
 }
