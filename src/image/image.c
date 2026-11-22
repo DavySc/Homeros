@@ -126,7 +126,7 @@ void image_put(Grid *g, int r, int c, int n, int skip)
 		for (int x = 0; x < cols && c + x < g->cols; x++)
 			if (r + y - skip >= 0 && c + x >= 0)
 				g->c[(r + y - skip) * g->cols + c + x] = (Cell){ { (unsigned char)n, (unsigned char)x,
-					(unsigned char)y, slot[n].gen }, 4, ATTR_IMAGE, FACE_NONE, 0 };
+					(unsigned char)y, slot[n].gen }, 4, ATTR_IMAGE, FACE_NONE, 0, 0 };
 }
 
 void image_draw(uint32_t *px, int stride, const Cell *x)
