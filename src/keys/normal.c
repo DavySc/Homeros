@@ -1345,15 +1345,17 @@ static int setmark(int c)
 
 /* '[ and '] are the buffer's (curbuf->b_op_start), kept in the core for
    whoever reads the buffer's marks.  The keys write them, on b_op_start and
-   b_op_end, which carry coladd: opmarks(0) copies them to the core at the
-   start of each command.  Undo is the core's, so it sets them there and
-   opmarks(1) reads them back right after it */
+   b_op_end, which carry coladd: opmarks(0) copies them to the core after
+   each key.  The core sets them too, in undo and in another buffer, so
+   opmarks(1) reads them back right after an undo and when a key comes in
+   a buffer other than the last one's */
+Buf *op_buf;   /* the buffer b_op_start and b_op_end are of */
 void opmarks(int get)
 {
 	for (int i = 0; i < 2; i++) {
 		Mark *m = &B->mark[MARK_LBRACKET + i];
 		Pos *p = i ? &b_op_end : &b_op_start;
-		if (get) *p = (Pos){ m->set ? (long)m->line : -1, (long)m->col, 0 };
+		if (get) *p = (Pos){ m->set ? (long)m->line : -1, (long)m->col, 0 }, op_buf = B;
 		else *m = (Mark){ (size_t)(p->lnum < 0 ? 0 : p->lnum), (size_t)p->col, p->lnum >= 0 };
 	}
 }
@@ -1450,8 +1452,9 @@ static void nv_pcmark(Cmdarg *cap)
 	   not built, it beeps */
 	if (w->jump[w->jumpidx].buf != B) { clearopbeep(cap->oap); return; }
 	Mark m = w->jump[w->jumpidx].m;
-	/* nv_cursormark(): no E19, check_cursor() puts it back in the buffer */
-	setcur((Pos){ (long)m.line, (long)m.col, 0 }), check_cursor();
+	/* mark_check() on the way (nv_mark_move_to(), mark_move_to()) */
+	if (m.line >= (size_t)nlines()) { core_msg(E, "E19: Mark has invalid line number"); clearop(cap->oap); }
+	else setcur((Pos){ (long)m.line, (long)m.col, 0 }), check_cursor();
 	cap->oap->motion_type = MCHAR;
 	cap->oap->inclusive = 0;
 	set_curswant = 1;
@@ -1564,7 +1567,6 @@ static int run(void)
 {
 	int rd = 0, c;
 #define GET(v) do { if (rd >= npend) return 0; v = pend[rd++]; } while (0)
-	opmarks(0);
 	memset(&ca, 0, sizeof ca);
 	ca.oap = &oa;
 	ca.opcount = opcount;
@@ -1675,7 +1677,7 @@ int normal_mappable(int drop)
 	if (drop) { npend = 0; opcount = 0; clearop(&oa); }
 	return 1;
 }
-void normal_reset(void) { b_op_start = b_op_end = (Pos){ -1, 0, 0 }; search_reset(); sub_reset(); clearop(&oa); opcount = 0; VIsual_active = 0; redo_n = old_redo_n = 0; npend = 0; memset(&b_visual, 0, sizeof b_visual); }
+void normal_reset(void) { op_buf = NULL; search_reset(); sub_reset(); clearop(&oa); opcount = 0; VIsual_active = 0; redo_n = old_redo_n = 0; npend = 0; memset(&b_visual, 0, sizeof b_visual); }
 
 void normal_key(int k)
 {

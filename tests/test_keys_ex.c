@@ -159,7 +159,7 @@ static const char *const MTOK[] = { "ma", "mb", "m'", "m`", "m<", "m>", "m\"", "
    ~ and r, gv with one end or none, a bare ',
    '{ '( at the ends, m[ m], Enter at column 0 of an indented line, [( and ]) as jumps */
 static const char *const MFIX[] = { "Gicd\x0fuef\x1b`]", "jvjy`]", "jy0`]", "jjyl`]", "yjrx`]", "jm<gvd", "jm>gvd", "m<jm>gvd",
-                                    ":'\r", ":'\rx", "'{", "`(", "G'}", "G`)", "jwm[gg`[", "jjm]gg`]", "jwma0i\r\x1b`a", "jwma0li\r\x1b`a", "jjixy\x1bggyyu`[",
+                                    ":'\r", ":'\rx", "'{", "`(", "G'}", "G`)", "jwm[gg`[", "jjm]gg`]", "jwma0i\r\x1b`a", "jwma0li\r\x1b`a", "jjixy\x1bggyyu`[", "Ggg7jdd\x0f", "Ggg6jdj\x0f",
                                     "j6l[(``", "j6l])``" };
 static void marks(char *k)
 {
@@ -426,6 +426,24 @@ int main(void)
 	   none (nvim --headless on a file: E664, measured once) */
 	feed(&e, "g;");
 	CHECK(!strcmp(e.msg, "E664: Changelist is empty"));
+	core_free(&e);
+	/* '[ and '] are each buffer's: a yank in one sets none in another,
+	   and they are there when the first comes back (PR 116's review,
+	   twobuf.vim: Neovim has B's own from its read, which the core does
+	   not set yet, so here B's is unset) */
+	char a[] = "/tmp/keys_exAXXXXXX", b2[] = "/tmp/keys_exBXXXXXX";
+	int fa = mkstemp(a), fb = mkstemp(b2);
+	CHECK(write(fa, "a1\na2\na3\na4\n", 12) == 12 && !close(fa) && write(fb, "b1\nb2\nb3\nb4\n", 12) == 12 && !close(fb));
+	CHECK(!core_open(&e, a));
+	feed(&e, "jjyy");
+	CHECK(!core_edit_file(&e, b2, 0));
+	feed(&e, "`[");
+	CHECK(!strncmp(e.msg, "E20", 3));
+	feed(&e, "ggx");
+	CHECK(!core_edit_file(&e, a, 1));
+	feed(&e, "G`[");
+	CHECK(e.win->line == 2);
+	unlink(a), unlink(b2);
 	core_free(&e);
 	text(path, "select a from t;\n", 300000, "END\n");
 	CHECK(!core_open(&e, path));
