@@ -33,7 +33,7 @@ snip: a later word of the file name wins~test TESTS=snip~~src/snip/snip.c~			if 
 snip: a surrounded line keeps the first line's indent~test TESTS=snip~~src/snip/snip.c~		for (size_t b = 0; j && b < o->base && j < o->nsel && memchr(" \t", o->sel[j], 2); b++) j++;¶~¶
 snip: no $0, the area is lost~test TESTS=snip~~src/snip/snip.c~		r = k < 0 || (sel && put_sel(&o, k));~		r = k < 0;
 snip: a line area includes its indent~test TESTS=snip~~src/snip/snip.c~a = core_line_start(e, l1) + core_first_nonblank(e, l1), ~a = core_line_start(e, l1), 
-snip: a character area misses its last character~test TESTS=snip~~src/snip/snip.c~c2 + uni_glen(l, len, c2) : len + 1~c2 : len + 1
+snip: a character area misses its last character~test TESTS=snip~~src/snip/snip.c~c2 + uni_glen(l, len, c2) : len + 1~c2 + uni_glen(l, len, c2) - 1 : len + 1
 snip: the picker lists no snippets~test TESTS=snip~~src/tools/pick.c~	while (what == PICK_SNIPPETS && ~	while (what == PICK_RECENT && 
 snip: the picker shows no description~test TESTS=snip~~src/tools/pick.c~			grid_puts(g, row, c + 1, end, d, strlen(d), a ? a : ATTR_DIM, FACE_NONE);¶~¶
 snip: the picker previews no body~test TESTS=snip~~src/tools/pick.c~			snprintf(P.pv[P.pvn++], sizeof P.pv[0], "%.*s", k, b);~			P.pvn++;
