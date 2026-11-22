@@ -37,7 +37,8 @@ PY
 	pass=0 caught=0 why=
 	for ((i = 0; i < N; i++)); do   # alternating
 		timeout 60 $RUN "$d/$b-clean.exe" > "$d/out" 2>&1 && pass=$((pass + 1)) || why="$why $(grep -m1 CHECK "$d/out")"
-		timeout 60 $RUN "$d/$b-plant.exe" > "$d/out" 2>&1 || { grep -q 'proc_wait(id, 3000)' "$d/out" && caught=$((caught + 1)); }
+		r=0; timeout 60 $RUN "$d/$b-plant.exe" > "$d/out" 2>&1 || r=$?
+		if grep -q 'proc_wait(id, 3000)' "$d/out"; then caught=$((caught + 1)); else why="$why [plant run $i: exit $r: $(grep -m1 CHECK "$d/out")]"; fi
 	done
 	echo "$t: clean passed $pass of $N; plant caught $caught of $N (load $LOAD)$why"
 done

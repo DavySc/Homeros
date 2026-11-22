@@ -12,12 +12,10 @@ jobs:
       - uses: mlugg/setup-zig@v2
         with:
           version: 0.17.1
-      - run: N=20 LOAD=0 bash reviews/pr-123-repro/win.sh
-        shell: bash
-      - run: N=20 LOAD=4 bash reviews/pr-123-repro/win.sh
+      - run: N=20 LOAD=0 bash reviews/pr-123-repro/win.sh tests/test_loop_win.c reviews/pr-123-repro/old_test_loop_win.c reviews/pr-123-repro/owned_test_loop_win.c reviews/pr-123-repro/pid_test_loop_win.c
         shell: bash
       # the whole test, as src/loop/check.sh builds it
       - run: |
           zig cc -target x86_64-windows-gnu -std=c17 -Wall -Wextra -Werror -Iinclude -O1 -g -fsanitize=undefined -fsanitize-trap=undefined -o full.exe tests/test_loop_win.c src/loop/*.c -lshell32 -lws2_32
-          for i in 1 2 3; do ./full.exe; echo "full run $i: exit $?"; done
+          for i in 1 2 3 4 5; do ./full.exe || true; done 2>&1 | sort | uniq -c
         shell: bash
