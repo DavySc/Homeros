@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 """Differential test of src/org (package 16) against Org's own parser.
 
-    org_conform.py [-f|-t] DRIVER N SEED     N random org texts, fed to both
-    org_conform.py [-f|-t] DRIVER FILE...    given files
+    org_conform.py [-f|-t|-s] DRIVER N SEED     N random org texts, fed to both
+    org_conform.py [-f|-t|-s] DRIVER FILE...    given files
+    org_conform.py -g                          writes src/org/entities.h and scripts.h
 
 DRIVER is tests/org_drv.c built; Org runs as emacs -Q --batch with
 tools/org_dump.el, or with -f, the colours: tools/org_faces.el, its faces
 named as src/org shows them (FACES), or with -t, org-todo as cit and ciT
-run it: tools/org_todo.el, on FILE.cmd's position and directions.  Prints the first difference of each
+run it: tools/org_todo.el, on FILE.cmd's position and directions, or with
+-s, what each line shows (orgfx_conceal): tools/org_show.el's runs, drawn
+on a cell grid (shown).  Prints the first difference of each
 failing text (the text is kept in build/org-fail-*.org) and "N differ"."""
-import os, random, re, subprocess, sys, tempfile
+import os, random, re, shutil, subprocess, sys, tempfile, unicodedata
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 WORDS = ['a', 'b', 'x', 'TODO', 'DONE', 'NEXT', 'WAIT', 'CANCELLED', 'todo', 'COMMENT', '[#A]', '[#a]',
@@ -213,38 +216,202 @@ def gen_todo(r):
             out.append(r.choice(['text', '', '- item', 'see ' + ts_todo(r), ts_todo(r), '  ' + ts_todo(r, '['),
                                  ':NOTES:', ':END:', '#+begin_quote', '#+end_quote', 'SCHEDULED: ' + ts_todo(r),
                                  '| ' + ts_todo(r) + ' |', 'scheduled: ' + ts_todo(r), '  :LOGBOOK:', 'xCLOSED: ' + ts_todo(r, '['),
-                                 'SCHEDULED: <2026-11-19 Thu 18:00-19:15 .+1h>']))
+                                 'SCHEDULED: <2026-11-19 Thu 18:00-19:15 .+1h>', 'SCHEDULED: <2026-11-12 Thu +1d',
+                                 'DEADLINE: <2026-11-12 Thu .+1w x', '  :LAST: <2026-11-12 Thu ++1d']))
     return '\n'.join(out) + r.choice(['\n', '\n', ''])
 
 
+def script_table(tag):
+    """Unicode's <super> or <sub> form of each character, as src/org/scripts.h:
+    SUPERSCRIPT/SUBSCRIPT names first, then MODIFIER LETTER, then the lowest"""
+    best = {}
+    for c in range(0x80, 0x30000):
+        d = unicodedata.decomposition(chr(c)).split()
+        if len(d) == 2 and d[0] == tag:
+            name = unicodedata.name(chr(c), '')
+            rank = (0 if name.startswith(('SUPERSCRIPT', 'SUBSCRIPT')) else 1 if 'MODIFIER LETTER' in name or 'SUBSCRIPT' in name else 2, c)
+            b = chr(int(d[1], 16))
+            if b not in best or rank < best[b][0]:
+                best[b] = (rank, chr(c))
+    return {b: v[1] for b, v in best.items()}
+
+
+SCRIPTS = {}
+
+
+def one_cell(c):
+    return len(c) == 1 and unicodedata.category(c) != 'Cf' and unicodedata.east_asian_width(c) not in 'WF'
+
+
+def shown(t, runs):
+    """the lines of t as a cell grid shows Org's runs: a composition as its
+    one-cell character, invisible text hidden, a raised or lowered script as
+    its characters' Unicode forms, as typed when one has none"""
+    if not SCRIPTS:
+        SCRIPTS.update(u=script_table('<super>'), d=script_table('<sub>'))
+    hid, comp = bytearray(len(t)), {}
+    runs = [l for l in runs if l]
+    for l in runs:
+        k, a, z, *c = l.split(' ', 3)
+        a, z = int(a), int(z)
+        if k == 'h':
+            hid[a:z] = b'\1' * (z - a)
+        elif k == 'c' and one_cell(c[0]):
+            comp[a] = (z, c[0])
+    for l in runs:
+        k, a, z = l.split(' ', 3)[:3]
+        a, z = int(a), int(z)
+        if k not in 'ud':
+            continue
+        q, new = a, {}
+        while q < z:
+            if hid[q]:
+                q += 1
+                continue
+            k2, ch = comp.get(q) or (q + len(t[q:q + 4].decode('utf-8', 'replace')[0].encode()), t[q:q + 4].decode('utf-8', 'replace')[0])
+            if ch not in SCRIPTS[k]:
+                break
+            new[q] = (k2, SCRIPTS[k][ch])
+            q = k2
+        if q < z:
+            for x in (a - 1, a, z - 1):   # the ^ or _ and the braces
+                hid[x] = 0
+        else:
+            comp.update(new)
+    out, p = bytearray(), 0
+    while p < len(t):
+        if hid[p]:
+            p += 1
+        elif p in comp:
+            out += comp[p][1].encode()
+            p = comp[p][0]
+        else:
+            out.append(t[p])
+            p += 1
+    return out.decode('utf-8', 'replace').split('\n')
+
+
+def brace_re():
+    """org-create-multibrace-regexp "{" "}" 3 inside org-match-substring-with-braces-regexp"""
+    nothing = r'[^{}]*?'
+    r, nxt = nothing, r'(?:' + nothing + '{' + nothing + '})+' + nothing
+    for _ in range(2):
+        r, nxt = r + '|' + nxt, r'(?:' + nothing + '{' + nxt + '})+' + nothing
+    return re.compile(r'(\S)([_^])(\{(?:' + r + r')\})')
+
+
+SCRIPT = brace_re()
+
+
+def long_script(t, runs):
+    """org-raise-scripts takes a script over two newlines or more; src/org
+    stops its braces at the second (known difference).  Or Org shows part
+    of a script over one newline raised, where a block's lines took the
+    first part's off: src/org shows a script over lines as typed"""
+    p = 0
+    while m := SCRIPT.search(t, p):
+        n = m.group(3).count('\n')
+        if n > 1:
+            return True
+        if n:
+            nl, z = len(t[:m.group(3).index('\n') + m.start(3)].encode()), len(t[:m.end()].encode())
+            if any(l[0] in 'ud' and nl < int(l.split()[1]) < z for l in runs if l):
+                return True
+        p = m.end() - (t[m.end():m.end() + 1] in ('_', '^'))
+    return False
+
+
+MATH = [r'\leq', r'\geq', r'\wedge', r'\vee', r'\top', r'\bot', r'\sqsubseteq', r'\sqcup', r'\bigvee', r'\alpha', r'\Alpha',
+        r'\there4', r'\sup2', r'\frac12', r'\frac34x', r'\zwj', r'\nbsp', r'\foo', r'\leqx', r'\le', r'\_ ', '\\', r'\iff', r'\mid',
+        'x^{2}', 'a_{i}', 'a_{b}^{c}', 'x^{n+1}', r'x^{\alpha}', r'x^{\alpha{}}', 'x^{{a}{b}}', 'x^{a{b}}', 'x^{}', 'x^{*b*}', 'x^2',
+        'x_{i', 'x^{{{a}}}', 'x^{a}_{b}', 'é^{é}', ' ^{2}', 'x^{ab c}', 'x^{(1)}', '{}', '*b*', '/i/', '_u_', '+s+', '=v=', '~c~', '*a =b* c=', '/x ~y/ z~',
+        '*', '/', '_', '+', '=', '~', '^', '{', '}', '(', '-', '|', 'é', '²', '\t', ':', '[x]', '[']
+
+
+def gen_show(r):
+    out = []
+    for _ in range(r.randint(1, 6)):
+        body = ''.join(r.choice(MATH) + r.choice(['', '', ' ', ' ', '{}']) for _ in range(r.randint(0, 8)))
+        out.append(r.choice(['', '', '', '* ', '** TODO ', '# ', '#+TITLE: ', '#+begin_src c\n', '| ', ':PROP: ', '- ', '  ',
+                             'CLOCK: ', '-----\n', '|---+---|\n', '#+begin_quote\n', ':x^{2}: ', ':a\\alpha{}x_{i}: ', ':*b*^{c}: ', '#+caption: ', '#+name: ', '*', '/', '**', '/ ', '= ', '%%(x) ', '++\n', '++']) + body + r.choice(['', '', ' |', ' :a:']))
+    return '\n'.join(out) + r.choice(['\n', ''])
+
+
 def run(driver, files, w):
-    el = subprocess.run(['emacs', '-Q', '--batch', '-l', os.path.join(HERE, {'t': 'org_todo.el', 0: 'org_dump.el'}.get(w, 'org_faces.el'))] + files,
+    el = subprocess.run(['emacs', '-Q', '--batch', '-l', os.path.join(HERE, {'t': 'org_todo.el', 's': 'org_show.el', 0: 'org_dump.el'}.get(w, 'org_faces.el'))] + files,
                         capture_output=True, env=dict(os.environ, TZ='UTC'))
     if el.returncode:
         sys.exit('emacs failed: ' + el.stderr[-2000:].decode('utf-8', 'replace'))
-    c = subprocess.run([driver] + (['-t'] if w == 't' else ['-f', str(w)] if w else []) + files, capture_output=True)
+    c = subprocess.run([driver] + (['-' + w] if w in ('t', 's') else ['-f', str(w)] if w else []) + files, capture_output=True)
     if c.returncode:
         sys.exit('driver failed: ' + c.stderr[-2000:].decode('utf-8', 'replace'))
+
+    names = {os.path.basename(f) for f in files}
 
     def split(out):
         d, cur = {}, None
         for l in out.split('\n'):
             if not l and cur is None:
                 continue
-            if l.startswith('== '):
+            if l.startswith('== ') and l[3:] in names:   # a text's own line may start "== "
                 cur = l[3:]
                 d[cur] = []
-            elif l or w == 't':   # the texts org-todo leaves, blank lines and all
+            elif l or w in ('t', 's'):   # the texts org-todo leaves, blank lines and all
                 d[cur].append(l)
         return d
     # bytes: a title may hold \r or \f, which text mode would take for line ends
     return split(el.stdout.decode('utf-8', 'replace')), split(c.stdout.decode('utf-8', 'replace'))
 
 
+def cells(rows, fmt):
+    """the C initialisers of rows, as many to a line as fit in 100 columns"""
+    out, line = [], '\t'
+    for r in rows:
+        item = fmt(r) + ', '
+        if len(line.expandtabs(8)) + len(item.rstrip()) > 100:
+            out.append(line.rstrip())
+            line = '\t'
+        line += item
+    return out + [line.rstrip()]
+
+
+def tables():
+    """src/org's two generated tables (-g)"""
+    el = ('(progn (load (expand-file-name "tools/org_show.el")) (let (l) (dolist (e (append org-entities-user org-entities))'
+          ' (when (and (consp e) (= (length (nth 6 e)) 1) (not (assoc (car e) l))) (push (cons (car e) (nth 6 e)) l)))'
+          ' (dolist (x l) (princ (format "%s %s\n" (car x) (cdr x))))))')
+    got = subprocess.run(['emacs', '-Q', '--batch', '--eval', el], capture_output=True, check=True).stdout.decode('utf-8')
+    ents = sorted((l.split(' ', 1) for l in got.split('\n') if l), key=lambda r: r[0].encode())
+    ents = [r for r in ents if re.fullmatch(r'[a-zA-Z]+|there4|sup[123]|frac[13][24]', r[0]) and len(r[1]) == 1]
+    esc = lambda u: u.replace('\\', '\\\\').replace('"', '\\"')
+    with open('src/org/entities.h', 'w') as g:
+        g.write('\n'.join(['/* What org-pretty-entities shows for \\NAME: the entries of (append',
+                            '   org-entities-user org-entities) (Org 9.8.7, with Davy\'s lattice symbols',
+                            '   from tools/org_show.el) whose UTF-8 form is one character and whose name',
+                            '   org-fontify-entities can match, the first of each name, sorted in byte',
+                            '   order.  Generated by tools/org_conform.py -g. */',
+                            'static const char *const entities[][2] = {']
+                           + cells(ents, lambda r: '{ "%s", "%s" }' % (r[0], esc(r[1]))) + ['};', '']))
+    with open('src/org/scripts.h', 'w') as g:
+        g.write('\n'.join(['/* Unicode\'s superscript and subscript forms (decomposition <super> or',
+                            '   <sub> of one character; SUPERSCRIPT/SUBSCRIPT names first, then',
+                            '   MODIFIER LETTER, then the lowest code point), sorted by the character',
+                            '   they stand for: how a cell grid shows what Org raises.  Generated by',
+                            '   tools/org_conform.py -g, from the table its -s draws Org with. */',
+                            'typedef struct { unsigned c; const char *s; } Script;']))
+        for name, tag in (('sup', '<super>'), ('sub', '<sub>')):
+            t = sorted(script_table(tag).items())
+            g.write('\n'.join(['', 'static const Script %s[] = {' % name] + cells(t, lambda r: '{ 0x%X, "%s" }' % (ord(r[0]), r[1])) + ['};']))
+        g.write('\n')
+
+
 def main():
+    if sys.argv[1] == '-g':
+        return tables()
     faces = sys.argv[1] == '-f'
     todo = sys.argv[1] == '-t'
-    if faces or todo:
+    show = sys.argv[1] == '-s'
+    if faces or todo or show:
         del sys.argv[1]
     driver = sys.argv[1]
     os.makedirs('build', exist_ok=True)
@@ -256,7 +423,7 @@ def main():
         for i in range(n):
             p = os.path.join(tmp, 't%05d.org' % i)
             with open(p, 'w', encoding='utf-8', newline='') as g:
-                t = (gen_faces if faces else gen_todo if todo else gen)(r)
+                t = (gen_faces if faces else gen_todo if todo else gen_show if show else gen)(r)
                 g.write(t)
             if todo:   # org-todo at a random character, 1 to 4 times right or left
                 with open(p + '.cmd', 'w') as g:
@@ -269,7 +436,7 @@ def main():
     for k in range(0, len(files), 400):
         part = files[k:k + 400]
         # the colours are read in windows of w bytes, as the editor draws
-        el, c = run(driver, part, random.Random(k).choice([7, 64, 1024, 8192]) if faces else 't' if todo else 0)
+        el, c = run(driver, part, random.Random(k).choice([7, 64, 1024, 8192]) if faces else 't' if todo else 's' if show else 0)
         for p in part:
             name = os.path.basename(p)
             a, b = el.get(name), c.get(name)
@@ -290,6 +457,17 @@ def main():
                         errors += 1
                         continue
                 a, b = runs(a or [], FACES), runs(b or [], None)
+            if show:
+                with open(p, 'rb') as t:
+                    t = t.read()
+                if long_script(t.decode('utf-8', 'replace'), a):
+                    errors += 1
+                    continue
+                a = shown(t, a)
+                while a and not a[-1]:
+                    a.pop()
+                while b and not b[-1]:
+                    b.pop()
             if a == b:
                 continue
             bad += 1
@@ -303,6 +481,7 @@ def main():
                 print('%s (kept as %s): line %d\n  org: %s\n  ours: %s' % (
                     name, keep, j + 1, a[j] if j < len(a) else '(end)', b[j] if j < len(b) else '(end)'))
     print('%d of %d differ (no answer from Org on %d)' % (bad, len(files), errors))
+    shutil.rmtree(tmp)   # the failing texts are kept in build/
     sys.exit(1 if bad else 0)
 
 

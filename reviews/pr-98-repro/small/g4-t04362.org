@@ -1,0 +1,6 @@
+* NEXT b :t:
+ 	:PROPERTIES:
+ 	:END:
+#+begin_src c
+         :LOGBOOK:
+	  #+end_src

@@ -1,0 +1,18 @@
+diff --git a/src/tools/check.sh b/src/tools/check.sh
+index c85086d..46061f7 100644
+--- a/src/tools/check.sh
++++ b/src/tools/check.sh
+@@ -20,10 +20,10 @@ for g in $(sed -n '/^SYN_GRAMMARS/,/[^\\]$/p' src/syntax/build.mk | tr -d '\\' |
+ 	objs="$objs $o"
+ done
+ inc="-I$SYN/src/tree-sitter/lib/include -I$SYN/src/tree-sitter/lib/src"
+-make -s $SYN/queries.c
++make -s $SYN/queries.c build/win/stb.o
+ zig cc -target x86_64-windows-gnu -O2 -c $SYN/queries.c -o build/win/tools/queries.o
+ [ -f build/win/tools/ts.o ] || zig cc -target x86_64-windows-gnu -O2 -c $inc $SYN/src/tree-sitter/lib/src/lib.c -o build/win/tools/ts.o
+ exe=build/win/test_tools_win.exe
+-zig cc -target x86_64-windows-gnu -std=c17 -D_DEFAULT_SOURCE -Wall -Wextra -Werror -Iinclude $inc -O1 -g \
+-  -fsanitize=undefined -fsanitize-trap=undefined -o "$exe" tests/test_tools_win.c $srcs build/win/tools/queries.o build/win/tools/ts.o $objs
++zig cc -target x86_64-windows-gnu -std=c17 -D_DEFAULT_SOURCE -Wall -Wextra -Werror -Iinclude -I/usr/include/stb $inc -O1 -g \
++  -fsanitize=undefined -fsanitize-trap=undefined -o "$exe" tests/test_tools_win.c $srcs build/win/stb.o build/win/tools/queries.o build/win/tools/ts.o $objs
+ timeout 600 wine "$exe" || { echo "FAIL test_tools_win"; exit 1; }
