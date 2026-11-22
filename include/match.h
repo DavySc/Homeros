@@ -1,4 +1,5 @@
-/* The picker's matcher: snacks.picker's (core/matcher.lua and score.lua at
+/* The matcher of the pickers and the snippet popup (package 15,
+   src/tools/match.c): snacks.picker's (core/matcher.lua and score.lua at
    my-nvim's pinned 882c996), which ports fzf's scoring.  Bytes, as Lua's
    string functions: lower case and character classes are ASCII only. */
 #ifndef TOOLS_MATCH_H
@@ -31,4 +32,8 @@ int match_init(Match *m, const char *q, size_t n);
 /* The score of text (with file the item's file, or NULL), as M:match: 0
    if it does not match; the picker shows only scores above 0 (M:update). */
 int match_score(const Match *m, const char *text, size_t n, const char *file, size_t fn);
+/* The number the decimal digits at *p (before e) spell, saturating at
+   LONG_MAX, with *p moved past them; -1 if there are none.  The prompt's
+   file:line:col, rg's line:col and :make's errors read their numbers with it. */
+long match_num(const char **p, const char *e);
 #endif

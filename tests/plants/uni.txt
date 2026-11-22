@@ -16,3 +16,4 @@ uni: an invalid lead byte joins what follows (fuzz_uni)~fuzz FUZZERS=uni FUZZ_SE
 uni: uni_gprev starts on a continuation byte (fuzz_uni)~fuzz FUZZERS=uni FUZZ_SECONDS=60~~src/uni/uni.c~while (j > 0 && s[j] >= 0x80) j--;~while (j > 0 && s[j] >= 0xC0) j--;
 uni: lam and alef with hamza above do not join~test TESTS=uni_nvim~~src/uni/uni.c~c == 0x623 || ~
 uni: CR and an overlong LF split (GB3)~test TESTS=uni_nvim~~src/uni/uni.c~ && !(p == 0x0D && c == 0x0A) &&~ &&
+frama-c: uni_put writes a wrong last byte for a 4-byte code point~frama~~src/uni/uni.c~(unsigned char)(0x80 + c / 64 % 64); b[3] = (unsigned char)(0x80 + c % 64);~(unsigned char)(0x80 + c / 64 % 64); b[3] = (unsigned char)(0x80 + c % 63);

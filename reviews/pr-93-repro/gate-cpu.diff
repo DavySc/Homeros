@@ -1,0 +1,17 @@
+--- tests/test_org.c	2026-11-20 14:22:40.119831246 +0000
++++ reviews/pr-93-repro/test_org_cpu.c	2026-11-20 14:50:07.150820529 +0000
+@@ -843,12 +843,12 @@
+ 		while (m + ul < sizeof line) memcpy(line + m, units[i], ul), m += ul;
+ 		line[m++] = '\n';
+ 		struct timespec t0, t1;
+-		clock_gettime(CLOCK_MONOTONIC, &t0);
++		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t0);
+ 		t = text_new(line, m);
+ 		x = t ? orgfx_new(t) : NULL;
+ 		CHECK(x && orgfx_update(x, NULL));
+ 		for (size_t a = 0; a < m; a += 256) orgfx_faces(x, a, a + 256 < m ? a + 256 : m, lf + a);
+-		clock_gettime(CLOCK_MONOTONIC, &t1);
++		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t1);
+ 		CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000 < 100);
+ 		orgfx_free(x);
+ 		text_free(t);

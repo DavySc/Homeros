@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
-#include "../src/tools/match.h"
+#include "match.h"
 int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 {
 	const uint8_t *z = memchr(d, 0, n);

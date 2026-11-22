@@ -1,22 +1,26 @@
 #!/usr/bin/env python3
-"""Records render-markdown's headings for tests/test_core_markdown.c.
-usage: RM_RTP=render-markdown.nvim:catppuccin-nvim test_core_markdown.py N SEED > FILE
-(the checked-in file: N 1000, SEED 1)
+"""Records render-markdown for tests/test_core_markdown.c.
+usage: RM_RTP=render-markdown.nvim:catppuccin-nvim test_core_markdown.py N SEED [CASES.py] > FILE
+(the checked-in file: N 1000, SEED 1, tests/test_core_markdown_cases.py:
+the review of PR 56's cases and more: CASES = [(name, rows, cols, [lines], [commands])])
 Makes N random Markdown files (f.md, and g.md for a second buffer) and
 commands (T: k:keys, wrap, sp, vs, w:<c> for CTRL-W <c>, e:file, visual),
 runs each in a 50x20 tmux in Neovim with tests/test_core_markdown.lua
 (render-markdown has no headless output: what it draws is only on a screen)
 and writes, per case, the files' lines (L, M), the commands, the cursor (X)
 and the rows but the command line: their text, their background (a letter
-per heading level, C for the cursor line, '.' otherwise) and their foreground (the same for the
-rainbow colours of headings; blanks '.').  Needs nvim 0.12, tmux and python's pyte."""
-import os, random, subprocess, sys, time, pyte, concurrent.futures
+per heading level, C for the cursor line, M for code's mantle; '.' otherwise)
+and their foreground (the rainbow colours of headings, b the bullets'
+sky, u an unchecked box's overlay1, c mantle; blanks '.').  Needs nvim 0.12, tmux and python's pyte."""
+import os, random, runpy, subprocess, sys, time, pyte, concurrent.futures
 N, SEED = int(sys.argv[1]), int(sys.argv[2])
 W, H = 50, 20
+CASES = runpy.run_path(sys.argv[3])['CASES'] if len(sys.argv) > 3 else []
 INIT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'test_core_markdown.lua')
-# catppuccin's RenderMarkdownH1Bg..H6Bg and CursorLine, rainbow1..6, as ref/theme.c
-BG = {'32283a': 'R', '332c36': 'P', '33313a': 'Y', '2b3139': 'G', '262e40': 'S', '2c2d42': 'L', '2a2b3c': 'C'}
-FG = {'f38ba8': 'r', 'fab387': 'p', 'f9e2af': 'y', 'a6e3a1': 'g', '74c7ec': 's', 'b4befe': 'l'}
+# catppuccin's RenderMarkdownH1Bg..H6Bg, CursorLine, mantle, rainbow1..6, as ref/theme.c
+BG = {'32283a': 'R', '332c36': 'P', '33313a': 'Y', '2b3139': 'G', '262e40': 'S', '2c2d42': 'L', '2a2b3c': 'C', '181825': 'M'}
+FG = {'f38ba8': 'r', 'fab387': 'p', 'f9e2af': 'y', 'a6e3a1': 'g', '74c7ec': 's', 'b4befe': 'l',
+      '89dceb': 'b', '7f849c': 'u', '181825': 'c'}
 WORDS = ['foo', 'bar', '`code`', '[link](u)', '*em*', '**strong**', '漢字', 'x' * 60, '#', '##', '\t', 'é', '<b>', '\\#']
 
 def line(r):
@@ -27,9 +31,19 @@ def line(r):
         after = r.choice([' ', ' ', ' ', '\t', '', 'x', '  '])
         tail = ' '.join(r.choice(WORDS) for _ in range(r.randint(0, 4)))
         return ind + '#' * r.choice([1, 1, 2, 2, 3, 4, 5, 6, 7]) + after + tail + r.choice(['', '', ' #', ' ###', '#'])
-    if k < 0.75: return ' '.join(r.choice(WORDS) for _ in range(r.randint(1, 6)))
+    if k < 0.6:    # list items: nesting, ordered numbers, checkboxes and near misses
+        ind = r.choice(['', '', '  ', '    ', '      ', '> ', '\t'])
+        mark = r.choice(['-', '*', '+', '-', '1.', '2.', '0.', '7)', '%d.' % r.randint(1, 120), '1.'])
+        box = r.choice(['', '', '', '[ ] ', '[x] ', '[X] ', '[-] ', '[-]', '[ ]x ', '[?] '])
+        return ind + mark + r.choice([' ', ' ', '  ', '']) + box + ' '.join(r.choice(WORDS) for _ in range(r.randint(0, 3)))
+    if k < 0.7:    # fenced code blocks: info strings, indent, containers, empty and unclosed
+        ind = r.choice(['', '', '', '  ', '> ', '- ', '   '])
+        f = r.choice(['```', '```', '~~~', '````'])
+        info = r.choice(['', 'c', 'lua', 'sql', 'c {.x}', ' python', 'x' * 45, 'a`b', '漢字'])
+        body = [ind + r.choice(WORDS + ['', 'int x;', '\tx']) for _ in range(r.choice([0, 1, 2, 3, 20]))]
+        return '\n'.join([ind + f + info] + body + ([ind + f] if r.random() < 0.85 else []))
+    if k < 0.78: return ' '.join(r.choice(WORDS) for _ in range(r.randint(1, 6)))
     if k < 0.85: return ''
-    if k < 0.9: return r.choice(['```', '```c', '~~~'])
     # a setext heading whose text starts with an inline face, then '#'
     if k < 0.94: return '## ' + ' '.join(['x' * 60] * 10)   # taller than a window: skipcol
     if k < 0.97: return r.choice(['\\#', '`c`', '*em*']) + ' # ' + r.choice(WORDS) + '\n' + r.choice(['===', '---'])
@@ -42,6 +56,7 @@ def nvkeys(t):
     if t in ('wrap', 'sp', 'vs'): return ':set wrap\r' if t == 'wrap' else ':%s\r' % t
     if t.startswith('w:'): return '\x17' + t[2]
     if t.startswith('e:'): return ':e %s\r' % t[2:]
+    if t == 'redraw': return '\x0c'
     return 'v'   # visual
 
 def case(i):
@@ -66,13 +81,16 @@ def case(i):
     toks += ['k:%dG' % r.randint(1, n)] if toks[-1] != 'w:w' or r.random() < 0.5 else []
     mode = r.choice(['', '', '', 'k:i', 'k::', 'k:$', 'visual'])
     toks += [mode] if mode else []
+    return record(i, H, W, lines, other, toks)
+
+def record(i, H, W, lines, other, toks, name=''):
     d = '/tmp/rm%d_%d' % (os.getpid(), i)
     os.makedirs(d, exist_ok=True)
     open(d + '/f.md', 'w').write('\n'.join(lines) + '\n')
     open(d + '/g.md', 'w').write('\n'.join(other) + '\n')
     tm = lambda *a: subprocess.run(['tmux', '-L', 'rm%d' % i, *a], capture_output=True, text=True).stdout
     tm('kill-server')
-    tm('new-session', '-d', '-x', str(W), '-y', str(H), '-c', d, 'nvim -u %s f.md' % INIT)
+    tm('new-session', '-d', '-x', str(W), '-y', str(H), '-c', d, 'nvim -u %s --listen %s/s f.md' % (INIT, d))
     time.sleep(1.2)
     # a command at a time, once render-markdown has drawn after the last:
     # it redraws on a mode change but not on entering the command line, so
@@ -81,24 +99,28 @@ def case(i):
         tm('send-keys', '-l', nvkeys(t))
         time.sleep(0.5)
     time.sleep(1.0)   # Neovim parses the inline grammar of the lines in view late
-    # CTRL-L where it only redraws: Neovim leaves windows it has no reason
-    # to redraw stale (an extmark visual mode took away still shows)
-    if mode not in ('k:i', 'k::'):
-        tm('send-keys', '-l', '\x0c')
-        time.sleep(0.5)
+    # :redraw! over RPC, which leaves the mode as it is: Neovim leaves windows
+    # it has no reason to redraw stale (an extmark visual mode or insert mode
+    # took away still shows)
+    subprocess.run(['nvim', '--server', d + '/s', '--remote-expr', 'execute("redraw!")'], capture_output=True)
+    time.sleep(0.5)
     raw = tm('capture-pane', '-e', '-p', '-N')
     cur = tm('display-message', '-p', '#{cursor_y} #{cursor_x}').strip()
     tm('kill-server')
     scr = pyte.Screen(W, H)
     pyte.Stream(scr).feed(raw.rstrip('\n').replace('\n', '\r\n'))
-    out = ['C %d %d' % (H, W)] + ['L ' + l for l in lines] + ['M ' + l for l in other] + ['T ' + t for t in toks] + ['X ' + cur]
+    out = [('C %d %d %s' % (H, W, name)).rstrip()] + ['L ' + l for l in lines] + ['M ' + l for l in other] + ['T ' + t for t in toks] + ['X ' + cur]
     for y in range(H - 1):   # not the command line
         row = scr.buffer[y]
         out.append('S ' + ''.join(row[x].data for x in range(W)))
-        out.append('B ' + ''.join(BG.get(row[x].bg, '.') for x in range(W)))
+        # a status line (mantle from column 0, where a window's text is
+        # after its number column) is not compared: the core styles it as Davy chose
+        stl = row[0].bg == '181825'
+        out.append('B ' + ''.join('.' if stl else BG.get(row[x].bg, '.') for x in range(W)))
         # a blank's foreground does not show (and Neovim may not send one)
         out.append('F ' + ''.join('.' if row[x].data == ' ' else FG.get(row[x].fg, '.') for x in range(W)))
     return '\n'.join(out + ['E'])
 
 with concurrent.futures.ThreadPoolExecutor(4) as ex:
     for c in ex.map(case, range(N)): print(c)
+    for c in ex.map(lambda ic: record(N + ic[0], ic[1][1], ic[1][2], ic[1][3], ['x'], ic[1][4], ic[1][0]), enumerate(CASES)): print(c)

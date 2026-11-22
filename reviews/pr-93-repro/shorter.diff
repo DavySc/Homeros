@@ -1,0 +1,57 @@
+--- src/org/org.c	2026-11-20 14:22:40.078862830 +0000
++++ reviews/pr-93-repro/short/org.c	2026-11-20 14:39:11.311329698 +0000
+@@ -1444,14 +1444,8 @@
+    else " *"; its end, *k the keyword (-1 for none) */
+ static size_t kwmatch(size_t p, int *k)
+ {
+-	size_t q = p, r;
+-	while (q < N && S[q] == ' ') q++;
+-	for (*k = 0; q > p && org_todo[*k]; ++*k)
+-		if (is(q, org_todo[*k])) {
+-			r = q + strlen(org_todo[*k]);
+-			if (r < N && S[r] == ' ') { while (r < N && S[r] == ' ') r++; return r; }
+-			if (ateol(blanks(r))) return blanks(r);
+-		}
++	size_t q = spaces(p), r;
++	if (q > p && (*k = todo(q, eol(q), &r)) >= 0) return S[r] == ' ' ? spaces(r) : blanks(r);
+ 	*k = -1;
+ 	return q;
+ }
+@@ -1553,9 +1547,7 @@
+ static size_t tsbody(size_t p, long *t)
+ {
+ 	if (!date(p)) return 0;
+-	size_t q = p + 10, r = q;
+-	while (r < N && S[r] == ' ') r++;
+-	size_t u = r;
++	size_t q = p + 10, r = spaces(q), u = r;
+ 	while (u < N && !strchr("]+0123456789>\r\n -", S[u])) u++;
+ 	if (u > r) q = u;
+ 	long h = 0, mi = 0;
+@@ -1827,10 +1819,8 @@
+ static void unschedule(size_t h)
+ {
+ 	for (size_t q = next_head(h); q-- > h; ) {
+-		size_t p = q + 10, z;
+-		if (!is(q, "SCHEDULED:") || (q && alnum(q - 1)) || p >= N || S[p] != ' ') continue;
+-		while (p < N && S[p] == ' ') p++;
+-		if (p >= N || S[p] != '<') continue;
++		size_t p = spaces(q + 10), z;
++		if (!is(q, "SCHEDULED:") || (q && alnum(q - 1)) || p == q + 10 || p >= N || S[p] != '<') continue;
+ 		for (z = p + 1; z < N && S[z] != '>' && S[z] != '\n'; z++) ;
+ 		if (z == p + 1 || z >= N || S[z] != '>') continue;
+ 		wrep(q, blanks(z + 1), "", 0);
+@@ -1848,11 +1838,8 @@
+ {
+ 	size_t p = stars(h), q, r;
+ 	int k;
+-	if (kwmatch(p, &k), k >= 0) {
+-		while (S[p] == ' ') p++;
+-		p += strlen(org_todo[k]);
+-	}
+-	for (q = p; q < N && S[q] == ' '; q++) ;
++	if (kwmatch(p, &k), k >= 0) p = spaces(p) + strlen(org_todo[k]);
++	q = spaces(p);
+ 	if (q > p && is(q, "[#") && q + 3 < N && S[q + 3] == ']' && (S[q + 4] == ' ' || ateol(blanks(q + 4)))) p = q + 4;
+ 	p = blanks(p);
+ 	if (!blank(p - 1)) wins(p++, " ");
