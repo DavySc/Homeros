@@ -36,6 +36,10 @@ static struct Proc {
 	size_t qoff, qlen, qcap;
 } p[MAXP];
 static int chld[2] = { -1, -1 };
+/* proc_wait's child: no other child and no timer runs, the watches do, as
+   in loop_breakcheck */
+static int only = -1;
+static int waited;   /* only was reported: a child its fn starts may get its slot */
 static char buf[1 << 16];
 
 long long loop_now(void)
@@ -257,6 +261,7 @@ void proc_kill(int id)
    bounds the read: such a process may keep writing. */
 static void report(struct Proc *c, int code)
 {
+	waited |= c - p == only;
 	for (int s = 1; s < 3; s++) {
 		if (c->fd[s] < 0) continue;
 		int left = 0;
@@ -273,6 +278,23 @@ static void report(struct Proc *c, int code)
 	c->fn(c->ctx, 0, NULL, (size_t)code);
 }
 
+/* Ctrl-C reaches loop_int through the watches.  The others' exits wait for
+   the next loop_once: the wake-up the wait drained is written again. */
+int proc_wait(int id, int ms)
+{
+	long long end = loop_now() + ms * 1000000LL;
+	int r = 0;
+	only = id;
+	for (waited = !proc(id); !waited; ) {
+		long long due = r ? p[id].killat : end, d = due - loop_now();
+		if (!r && (d <= 0 || loop_int)) { proc_kill(id); r = -1; continue; }
+		loop_once(!due ? -1 : d <= 0 ? 0 : (int)(d / 1000000) + 1);
+	}
+	only = -1;
+	on_chld(0);
+	return r;
+}
+
 int loop_once(int timeout_ms)
 {
 	static struct pollfd pf[MAXF];
@@ -282,14 +304,14 @@ int loop_once(int timeout_ms)
 		if (w[i].fd) { pf[n] = (struct pollfd){ .fd = w[i].fd - 1, .events = POLLIN }; who[n] = (short)i; what[n++] = -1; }
 	if (chld[0] >= 0) { pf[n] = (struct pollfd){ .fd = chld[0], .events = POLLIN }; who[n] = -1; what[n++] = -2; }
 	for (int i = 0; i < MAXP; i++)
-		for (int s = 0; s < 3 && p[i].pid; s++)
+		for (int s = 0; s < 3 && p[i].pid && (only < 0 || i == only); s++)
 			if (p[i].fd[s] >= 0 && (s || p[i].qoff < p[i].qlen)) {
 				pf[n] = (struct pollfd){ .fd = p[i].fd[s], .events = s ? POLLIN : POLLOUT };
 				who[n] = (short)i; what[n++] = (short)s;
 			}
 	long long first = -1;
 	for (int i = 0; i < MAXP; i++) if (p[i].killat && (first < 0 || p[i].killat < first)) first = p[i].killat;
-	timeout_ms = timer_wait(first, timeout_ms);
+	if (only < 0) timeout_ms = timer_wait(first, timeout_ms);
 	int r = poll(pf, (nfds_t)n, timeout_ms), sig = 0;
 	if (r < 0 && errno != EINTR) return -1;
 	for (int k = 0; k < n && r > 0; k++) {
@@ -310,7 +332,7 @@ int loop_once(int timeout_ms)
 		c->fd[s] = -1;
 		c->fn(c->ctx, s, NULL, 0);
 	}
-	long long tn = timer_run();
+	long long tn = only < 0 ? timer_run() : loop_now();
 	for (int i = 0; i < MAXP; i++)
 		if (p[i].killat && p[i].killat <= tn) { p[i].killat = 0; kill(-p[i].pid, SIGKILL); }
 	if (sig) {
@@ -318,7 +340,7 @@ int loop_once(int timeout_ms)
 		while (read(chld[0], drain, sizeof drain) > 0) {}
 		for (int i = 0; i < MAXP; i++) {
 			int st;
-			if (p[i].pid && waitpid(p[i].pid, &st, WNOHANG) == p[i].pid)
+			if (p[i].pid && (only < 0 || i == only) && waitpid(p[i].pid, &st, WNOHANG) == p[i].pid)
 				report(&p[i], WIFSIGNALED(st) ? 128 + WTERMSIG(st) : WEXITSTATUS(st));
 		}
 	}
