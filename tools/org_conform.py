@@ -175,7 +175,7 @@ def ts_todo(r, open_='<'):
     t = '%s2026-11-%02d' % (open_, day) + r.choice([' ' + 'ThuFriSatSunMonTueWed'[3 * ((day - 19) % 7):][:3], ' Thu', '', '  Mon'])
     if hm:
         t += r.choice([' 10:00', ' 9:30', ' 17:30', ' 18:00-19:15', ' 23:50'])
-    rep = r.choice(['', '+1d', '++1w', '.+2d', '+1m', '+1y', '+0d', '.+1d/3d', '+2w', '++2d', '.+1m'] +
+    rep = r.choice(['', '+1d', '++1w', '.+2d', '+1m', '+1y', '+0d', '.+1d/3d', '+2w', '++2d', '.+1m', '+3h'] +
                    (['+2h', '.+1h'] + (['++3h'] if day == 19 else []) if hm else []))
     if day < 13 and rep.startswith('++'):
         rep = '+1d'
@@ -192,21 +192,28 @@ def gen_todo(r):
     out = []
     for _ in range(r.randint(1, 5)):
         h = '*' * r.choice([1, 1, 2, 2, 3]) + r.choice([' ', ' ', '  '])
-        h += r.choice(['', '', 'TODO ', 'NEXT ', 'WAIT ', 'DONE ', 'CANCELLED ', 'todo ', 'TODO  ', 'DONE\t', 'TODOx '])
-        h += r.choice(['a', 'task b', '', 'x :tag:', '[#A] y', 'COMMENT z', '<2026-11-20 Fri +1w> c'])
+        k = r.choice(['', '', 'TODO ', 'NEXT ', 'WAIT ', 'DONE ', 'CANCELLED ', 'todo ', 'TODO  ', 'DONE\t', 'TODOx '])
+        # "[#A] COMMENT" only where org-todo's regexps find the cookie too: after
+        # anything else org-element calls the headline commented, they do not,
+        # and Org drops text ("* TODOx [#A] COMMENT x", left: "* [#A] x")
+        h += k + r.choice(['a', 'task b', '', 'x :tag:', '[#A] y', 'COMMENT z', '<2026-11-20 Fri +1w> c'] +
+                          (['[#A] COMMENT x'] if k.strip() in ('', 'TODO', 'NEXT', 'WAIT', 'DONE', 'CANCELLED') and '\t' not in k else []))
         out.append(h.replace('\\t', '\t').rstrip(' ') if r.random() < .8 else h)
         if r.random() < .5:
             k = r.sample(['SCHEDULED: ' + ts_todo(r), 'DEADLINE: ' + ts_todo(r), 'CLOSED: ' + ts_todo(r, '[')], r.randint(1, 3))
             out.append(r.choice(['', ' ', '  ']) + ' '.join(k) + r.choice(['', ' ']))
         if r.random() < .4:
             props = r.sample([':ORDERED: t', ':ORDERED: nil', ':LAST_REPEAT: [2026-11-01 Sun 10:00]', ':CUSTOM_ID: x',
-                              ':ordered: t', ':Effort: 1:00'], r.randint(0, 3))
-            out += [':PROPERTIES:'] + props + [':END:']
+                              ':ordered: t', ':Effort: 1:00', ':ORDEREDX: t', ':LAST_REPEAT:x: 1'], r.randint(0, 3))
+            i = r.choice(['', '', '         ', ' \t'])
+            out += [i + l for l in [':PROPERTIES:'] + props + [':END:']]
         if r.random() < .3:
             out += [r.choice([':LOGBOOK:', ':logbook:']), '- State "DONE"       from "TODO"       [2026-11-10 Tue 09:00]', ':END:']
         for _ in range(r.randint(0, 3)):
             out.append(r.choice(['text', '', '- item', 'see ' + ts_todo(r), ts_todo(r), '  ' + ts_todo(r, '['),
-                                 ':NOTES:', ':END:', '#+begin_quote', '#+end_quote', 'SCHEDULED: ' + ts_todo(r)]))
+                                 ':NOTES:', ':END:', '#+begin_quote', '#+end_quote', 'SCHEDULED: ' + ts_todo(r),
+                                 '| ' + ts_todo(r) + ' |', 'scheduled: ' + ts_todo(r), '  :LOGBOOK:', 'xCLOSED: ' + ts_todo(r, '['),
+                                 'SCHEDULED: <2026-11-19 Thu 18:00-19:15 .+1h>']))
     return '\n'.join(out) + r.choice(['\n', '\n', ''])
 
 
@@ -266,7 +273,13 @@ def main():
         for p in part:
             name = os.path.basename(p)
             a, b = el.get(name), c.get(name)
-            if a and any(l.startswith('!error') for l in a):
+            i = next((i for i, l in enumerate(a or []) if l.startswith('!error')), None)
+            if i is not None and todo and any(re.search(r'[0-9]:(-|[0-9]{3})', l) for l in a[:i]):
+                errors += 1   # Org's org-modify-ts-extra carries a range end's minutes once only, writes
+                continue      # "18:-1395" for .+1h on a range with a delay, then fails to read it back
+            if i is not None and todo:   # Org stopped: the text as it left it, then no more steps
+                a, b = a[:i], (b or [])[:i]
+            elif i is not None:
                 errors += 1   # no answer from Org to compare with
                 continue
             if faces:

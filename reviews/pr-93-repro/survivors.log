@@ -1,0 +1,15 @@
+a property name's prefix counts                         unit test: SURVIVES; directed: caught (1 of 42)
+a stamp may be 15 after the time, not 16                unit test: SURVIVES; directed: SURVIVES
+range end minutes below 0 not carried                   unit test: SURVIVES; directed: caught (1 of 42)
+indent never uses tabs                                  unit test: SURVIVES; directed: caught (3 of 42)
+a note in a drawer not indented as it                   unit test: SURVIVES; directed: SURVIVES
+new LOGBOOK before a headline not moved up              unit test: SURVIVES; directed: SURVIVES
+COMMENT goes before the priority                        unit test: SURVIVES; directed: caught (2 of 42)
+hour repeater without a time allowed                    unit test: SURVIVES; directed: SURVIVES
+COMMENT back after an error                             unit test: SURVIVES; directed: SURVIVES
+repeater /N not part of it                              unit test: SURVIVES; directed: SURVIVES
+CLOSED: inside a word counts                            unit test: SURVIVES; directed: SURVIVES
+a stamp in a table row is no agenda stamp               unit test: SURVIVES; directed: caught (1 of 42)
+planning read case-folded by org-todo                   unit test: SURVIVES; directed: caught (1 of 42)
+LAST_REPEAT matched by prefix                           unit test: SURVIVES; directed: SURVIVES
+ten shifts are eleven                                   unit test: SURVIVES; directed: SURVIVES
