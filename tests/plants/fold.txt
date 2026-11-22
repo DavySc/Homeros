@@ -23,3 +23,4 @@ fold: "-1" on the first line stays undefined~test TESTS=fold~~src/fold/fold.c~	i
 fold: an undefined line ends the fold above it~test TESTS=fold~~src/fold/fold.c~			for (l->lnum = ll; l->lnum <= linecount && level(f, l) < 0; l->lnum++);~			for (l->lnum = ll; l->lnum <= linecount && level(f, l) < 0 && 0; l->lnum++);
 fold: an update starts at an undefined line~test TESTS=fold~~src/fold/fold.c~	while (level(f, &l) < 0) l.lnum--;~	level(f, &l);
 fold: undefined lines to the end leave no fold to finish~test TESTS=fold~~src/fold/fold.c~	if (!fp) return bot;   /* only undefined lines ("-1") followed, to the end */¶~
+fold: an edit inside one line still adjusts the folds~test TESTS=fold~~src/fold/fold.c~	if (line2 < line1 && !after) return;   /* mark_adjust_buf(): nothing to do */¶~

@@ -395,6 +395,7 @@ void fold_free(Fold *f)
 void fold_adjust(Fold *f, size_t l1, size_t l2, long amount, long after, int insert)
 {
 	long line1 = (long)l1 + 1, line2 = l2 == (size_t)-1 ? MAXL : (long)l2;
+	if (line2 < line1 && !after) return;   /* mark_adjust_buf(): nothing to do */
 	/* lines after the range move by after, so the count changes by it;
 	   with no lines after it, by what the range moved */
 	f->n += l2 == (size_t)-1 ? amount : after;

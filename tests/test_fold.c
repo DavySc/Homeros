@@ -1,6 +1,6 @@
 /* Folds against Neovim 0.12.6: replays tests/test_fold.txt (or the trace
    named by argv[1]), which tests/test_fold.lua recorded from nvim --headless
-   (300 random scenarios of 40 steps, seed 1; its comment gives the format),
+   (random scenarios of 40 steps; its comment gives the format),
    calling the fold module as Neovim's change.c, normal.c and edit.c call
    fold.c, and compares foldclosed(), foldclosedend() and foldlevel() of
    every line after every step. */
@@ -120,6 +120,20 @@ int main(int argc, char **argv)
 			long extra = (long)k - (long)(b - a);
 			fold_adjust(f, a, b, b > a ? FOLD_DEL : 0, extra, 0);
 			fold_update(f, a, (size_t)((long)b + extra), n);
+		} else if (!strcmp(s, "T")) {   /* nvim_buf_set_text() of whole lines */
+			size_t a = strtoul(strtok(NULL, " \n"), NULL, 10), b = strtoul(strtok(NULL, " \n"), NULL, 10);
+			size_t k = strtoul(strtok(NULL, " \n"), NULL, 10);
+			long extra = (long)k - (long)(b - a + 1);
+			/* lines a to b keep their values, as many as stay; added ones are "-1" */
+			for (long i = 0; i < extra; i++) put(b + 1, "y");
+			if (extra < 0) memmove(line[a + k], line[b + 1], (n - b - 1) * sizeof line[0]);
+			if (extra < 0) n -= (size_t)-extra;
+			fold_adjust(f, a, b, FOLD_DEL, extra, 0);
+			fold_update(f, a, (size_t)((long)b + 1 + extra), n);
+		} else if (!strcmp(s, "U")) {   /* a parse, then vim._foldupdate() */
+			size_t r1 = strtoul(strtok(NULL, " \n"), NULL, 10), r2 = strtoul(strtok(NULL, " \n"), NULL, 10);
+			for (size_t l = r1; l < r2; l++) strcpy(line[l], strtok(NULL, " \n"));
+			fold_update(f, r1, r2, n);
 		} else if (!strcmp(s, "Z")) {
 			char *cmd = strtok(NULL, " \n");
 			size_t c = strtoul(strtok(NULL, " \n"), NULL, 10);
