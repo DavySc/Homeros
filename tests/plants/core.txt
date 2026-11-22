@@ -28,7 +28,7 @@ core: plines_col counts bytes again (finding 5) (test_core_screens)~test TESTS=c
 core: a reused buffer keeps the old undo marks (finding 7) (test_core_undo)~test TESTS=core_undo~~src/core/core.c~			umarks_drop(b);            /* by address~			(void)0;                  /* by address
 core: an undo group takes its neighbour's marks (test_core_undo)~test TESTS=core_undo~~src/core/core.c~	if (u && (u->b != b || u->seq != seq)) u = NULL;~	(void)0;
 core: marks kept for 3 undo groups only (test_core_undo)~test TESTS=core_undo~~src/core/core.c~enum { UMARKS_MAX = 2000, UMARKS_TRIM = 64 };~enum { UMARKS_MAX = 3, UMARKS_TRIM = 64 };
-core: a save leaves the outside-change flag set (test_core_contract)~test TESTS=core_contract~~src/core/core.c~		b->saved_seq = undo_seq(b->undo);¶		b->changed = 0;¶		if (b->journal) journal_saved(b->journal);¶		core_msg(e, "\"%s\"%s %zuL~		b->saved_seq = undo_seq(b->undo);¶		if (b->journal) journal_saved(b->journal);¶		core_msg(e, "\"%s\"%s %zuL
+core: a save leaves the outside-change flag set (test_core_contract)~test TESTS=core_contract~~src/core/core.c~	b->saved_seq = undo_seq(b->undo);¶	b->changed = 0;¶~	b->saved_seq = undo_seq(b->undo);¶
 core: CTRL-^ onto column 0 wants column 0 even without a position (test_core_screens)~test TESTS=core_screens~~src/core/core.c~	if (how == ENTER_ALT && !w->col && pos) w->want = 0;~	if (how == ENTER_ALT && !w->col) w->want = 0;
 core: scroll_cursor_halfway() drops skipcol without smoothscroll (test_core_screens)~test TESTS=core_screens~~src/core/move.c~	if (p_sms && w->wrap) w->skipcol = 0;¶	w->frame->s.topvalid = 1;~	w->skipcol = 0;¶	w->frame->s.topvalid = 1;
 core: core_vcol counts a byte inside a cluster to its end (test_core_contract)~test TESTS=core_contract~~src/core/core.c~i < n && i + (k = uni_glen(s, n, i)) <= col; i += k)~i < col && i < n && (k = uni_glen(s, n, i)); i += k)
@@ -80,16 +80,16 @@ core: a group an edit opens saves no marks (test_core_undo)~test TESTS=core_undo
 core: a group's marks are saved again at each of its edits (test_core_undo)~test TESTS=core_undo~~src/core/core.c~	if (undo_seq(b->undo) == seq) return;~	if (seq == (unsigned long)-1) return;
 core: the view is looked at again only when drawn (test_core_contract)~test TESTS=core_contract~~src/core/move.c~MODE_CMDLINE) drawn(e, e->win);~MODE_CMDLINE) (void)0;
 core: a block ends at the cursor's column, not the wider end's (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~(b > d ? b : d) + 1;~b + 1;
-core: no blank cell where the area starts at a line's end (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~	if (drawn == 1 && (v > skip ? from == v : from <= skip)~	if (drawn == 1 && (v > skip ? from == v + 1 : from <= skip)
-core: the cursor's cell is in the Visual area (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~	if (w == cw && l == cl) {~	if (w == cw && l == cl + 1) {
+core: no blank cell where the area starts at a line's end (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~drawn == 1 && (v > skip ? from == v : from <= skip)~drawn == 1 && (v > skip ? from == v + 1 : from <= skip)
+core: the cursor's cell is in the Visual area (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~	if (w == cw && l == cw->line) {~	if (w == cw && l == cw->line + 1) {
 core: a double-width character half in the area is left out (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~(v >= from || (wide && v + 1 == from))~(v >= from || (wide && v + 2 == from))
 core: Visual mode shows the cursor on a tab's last cell before VIsual (test_core_visual)~test TESTS=core_visual~~src/core/core.c~	int first = w == e->win && e->ks.visual && (~	int first = w == e->win && e->ks.visual == 1 && (
 core: "<<<" over a double-width character leaves its second cell out of the area (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~if (wide && j == lead && c + 1 == cover)~if (wide && j == lead && c + 2 == cover)
-core: '<' of a character starting at the area is in it (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~if (z) z->bg = from < v && vis ? vis : cl;~if (z) z->bg = vis ? vis : cl;
+core: '<' of a character starting at the area is in it (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~if (z) z->bg = from < v && vis ? vis : sb;~if (z) z->bg = vis ? vis : sb;
 core: '>' is in the area (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~wputs(g, w, row, c, ">", FACE_NON_TEXT);   /* not in the area (measured) */~{ wputs(g, w, row, c, ">", FACE_NON_TEXT); Cell *z = wcell(g, w, row, c); if (z) z->bg = vis; }
 core: -- VISUAL LINE -- shows as -- VISUAL -- (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~e->ks.visual == 'V' ? 1~e->ks.visual == 'V' ? 0
 core: -- REPLACE -- shows as -- INSERT -- (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~? 3 + !!e->ks.replace :~? 3 :
-core: a window on the same buffer shows no Visual area (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~	if (!e->ks.visual || w->buf != e->buf) return;~	if (!e->ks.visual || w != e->win) return;
+core: a window on the same buffer shows no Visual area (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~(y ? w != cw : w->buf != e->buf)) return 0;~(y ? w != cw : w != cw)) return 0;
 core: a split marks the next edit a join (test_core_undo)~test TESTS=core_undo~~src/core/core.c~	if (line_amount < 0) join_next = b;~	if (line_amount) join_next = b;
 core: a heading drawn in insert mode (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~ ? e->mode != MODE_INSERT && !e->ks.visual~ ? !e->ks.visual
 core: a heading drawn while the window is scrolled sideways (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~ && !e->win->left : !w->left;~ : !w->left;
@@ -149,7 +149,7 @@ core: "<<<" in the number's face (test_core_status)~test TESTS=core_status~~src/
 core: the separator without its face (test_core_status)~test TESTS=core_status~~src/core/draw.c~paint(g, w->y + r, w->x + w->w, 1, FACE_WIN_SEPARATOR);~paint(g, w->y + r, w->x + w->w, 1, FACE_NONE);
 core: the popup's scrollbar all thumb (test_core_status)~test TESTS=core_status~~src/core/draw.c~? FACE_PMENU_THUMB : FACE_PMENU_SBAR~? FACE_PMENU_THUMB : FACE_PMENU_THUMB
 core: the '>' filler on the cursor line's background (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~wputs(g, w, row, c, ">", FACE_NON_TEXT);   /* not in the area (measured) */~{ wputs(g, w, row, c, ">", FACE_NON_TEXT); Cell *z = wcell(g, w, row, c); if (z) z->bg = cl; }
-core: the '<' filler off the cursor line's background (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~if (z) z->bg = from < v && vis ? vis : cl;~if (z) z->bg = from < v && vis ? vis : 0;
+core: the '<' filler off the cursor line's background (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~if (z) z->bg = from < v && vis ? vis : sb;~if (z) z->bg = from < v && vis ? vis : 0;
 core: the cursor line's background under skipcol's "<<<" (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~for (int c = k || cover < nw ? nw : cover;~for (int c = nw;
 core: the status line's backgrounds written past a shrunk grid (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~Cell *z = wcell(g, w, w->h, x + k);~Cell *z = &g->c[r * g->cols + w->x + x + k];
 core: a read file not handed to git, so no branch (test_core_status)~test TESTS=core_status~~src/core/core.c~	git_attach(b);¶~
@@ -159,6 +159,25 @@ core: no separator between the file type and the encoding (test_core_status)~tes
 core: the branch in other windows too (test_core_status)~test TESTS=core_status~~src/core/draw.c~const char *br = cur ? git_branch(b) : NULL;~const char *br = git_branch(b);
 core: buffers found by the name as typed, so a relative and a full name are two (test_core_contract)~test TESTS=core_contract~~src/core/core.c~if (b->path && !strcmp(b->full, full)) return b;~if (b->path && !strcmp(b->path, path)) return b;
 core: the modified flag wrong after a save (test_core_screens)~test TESTS=core_screens~~src/core/core.c~undo_seq(b->undo) != b->saved_seq~undo_seq(b->undo) > b->saved_seq
+core: the yank flash in Visual's colour (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~		return FACE_INC_SEARCH;~		return FACE_VISUAL;
+core: the yank flash in every window on the buffer (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~(y ? w != cw : w->buf != e->buf)~(y ? w->buf != e->buf : w->buf != e->buf)
+core: a yanked block cuts a character it touches (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~				if (v < *from) *from = v;¶~
+core: a yanked block one column narrower (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~		*to = cc + 1;~		*to = cc;
+core: the yank flash takes a cell at an empty line's end (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~	if (area == FACE_VISUAL && drawn == 1~	if (area && drawn == 1
+core: the c flag's match (ks.inc) not drawn (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~e->ks.inc.type ? &e->ks.inc : NULL;~NULL;
+core: 'hlsearch' not drawn (test_core_search)~test TESTS=core_search~~src/core/draw.c~	int mh = keys_hl(e, w, l, 0, &ms, &mz);~	int mh = 0;
+core: no CurSearch (test_core_search)~test TESTS=core_search~~src/core/draw.c~ ? FACE_CUR_SEARCH : FACE_SEARCH;~ ? FACE_SEARCH : FACE_SEARCH;
+core: an empty match under the cursor in CurSearch (test_core_search)~test TESTS=core_search~~src/core/draw.c~w->col >= ms && w->col < mz ?~w->col >= ms && (w->col < mz || w->col == ms) ?
+core: an empty match draws no character (test_core_search)~test TESTS=core_search~~src/core/draw.c~	int im = mh && i >= ms;~	int im = mh && i >= ms && mz > ms;
+core: a match that takes the line break not drawn where the line ends before the view (test_core_search)~test TESTS=core_search~~src/core/draw.c~(mz > ms || (w->wrap~(0 || (w->wrap
+core: an empty match at the end drawn where 'leftcol' passes the line's bytes (test_core_search)~test TESTS=core_search~~src/core/draw.c~(w->wrap ? v >= skip : w->left <= i)~(w->wrap ? v >= skip : 1)
+core: the end-of-line cell past the window's edge dropped, not on its last cell (test_core_search)~test TESTS=core_search~~src/core/draw.c~	int full = w->wrap ? d && d % (size_t)tw == 0 : d >= (size_t)tw;~	int full = w->wrap ? d && d % (size_t)tw == 0 : 0;
+core: the yank flash drawn over 'hlsearch' matches (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~	int flash = area && e->ks.yank.type;~	int flash = 0 && area && e->ks.yank.type;
+core: an empty line's end-of-line cell drawn CurSearch (test_core_search)~test TESTS=core_search~~src/core/draw.c~z->bg = i ? search(w, l, ms, mz) : FACE_SEARCH;~z->bg = search(w, l, ms, mz);
 core: core_goto leaves a cursor past the end (test_core_contract)~test TESTS=core_contract~~src/core/core.c~	e->win->col = col;¶	core_clamp(e);¶	core_set_want(e);~	e->win->col = col;¶	core_set_want(e);
 core: a write skips the BufWritePre (test_keys_gq's format on :w)~test TESTS=keys_gq~~src/core/core.c~	keys_write_pre(e, b);¶~
-core: a write sends no didSave (test_infoview)~test TESTS=infoview~~src/core/core.c~		kitten_written(e, b);   /* BufWritePost, after the message as in Neovim */¶		lsp_saved(b->lsp);~		kitten_written(e, b);   /* BufWritePost, after the message as in Neovim */
+core: a write sends no didSave (test_infoview)~test TESTS=infoview~~src/core/core.c~	lsp_saved(b->lsp);¶~
+core: a change in a nomodifiable buffer (test_core_contract)~test TESTS=core_contract~~src/core/core.c~	if (!ndel && !nins && after == b->flags) return 0;¶	if (!modifiable(e)) return -1;~	if (!ndel && !nins && after == b->flags) return 0;
+core: undo in a nomodifiable buffer (test_core_contract)~test TESTS=core_contract~~src/core/core.c~	if (!modifiable(e)) return -1;¶	unsigned long seq = undo_seq(b->undo);~	unsigned long seq = undo_seq(b->undo);
+core: :e! refused in a nomodifiable buffer (test_core_contract)~test TESTS=core_contract~~src/core/core.c~	if (!e->buf->nomodifiable || reloading) return 1;~	if (!e->buf->nomodifiable) return 1;
+core: :bd leaves the closed language server document on the buffer (test_core_contract)~test TESTS=core_contract~~src/core/core.c~	b->lsp = NULL;¶~

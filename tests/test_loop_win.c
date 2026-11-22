@@ -88,6 +88,7 @@ static int child(char **argv)
 		Sleep(1000);
 		return !(WriteFile(out, "x", 1, &n, NULL) | WriteFile(err, "x", 1, &n, NULL));
 	}
+	if (!strcmp(r, "slowcat")) { Sleep(200); argv[1] = "cat"; return child(argv); }
 	if (!strcmp(r, "sleep")) { Sleep(30000); return 0; }
 	if (!strcmp(r, "flood")) { memset(b, 'f', sizeof b); while (WriteFile(out, b, sizeof b, &n, NULL)) {} return 0; }
 	if (!strcmp(r, "say")) { put(out, "hello\n"); return 7; }
@@ -289,7 +290,7 @@ static void holder(void)
 	free(g.out);
 }
 
-static int fired[4];
+static int fired[5];
 static void tick(void *ctx) { fired[(int *)ctx - fired]++; }
 
 static void timers(void)
@@ -478,6 +479,50 @@ static void stale(void)
 	if (h) { TerminateProcess(h, 0); CloseHandle(h); }
 }
 
+/* told of its exit, a child starts another, which gets its slot */
+static Got next;
+static int next_id = -1;
+static void respawn(void *ctx, int s, const char *b, size_t n)
+{
+	on_proc(ctx, s, b, n);
+	if (!s) next_id = spawn(&next, "sleep", NULL);
+}
+
+/* proc_wait (Wait.tla "ok"): only its child runs, even with another
+   child's reads armed and its output there; the others come after it */
+static void waits(void)
+{
+	static Got a;
+	CHECK(spawn(&a, "say", NULL) >= 0);
+	int id = spawn(&g, "slowcat", NULL);
+	CHECK(id >= 0 && loop_once(0) == 0);     /* a's reads are armed */
+	CHECK(loop_timer(tick, &fired[4], 0) == 0);
+	Sleep(100);                              /* a has written and exited */
+	CHECK(proc_write(id, "hello", 5) == 0);
+	proc_close(id);
+	CHECK(proc_wait(id, 3000) == 0);
+	CHECK(g.ended[0] && g.order && g.code == 0 && g.nout == 5 && !memcmp(g.out, "hello", 5));
+	CHECK(!a.nout && !a.ended[1] && !a.ended[0] && !fired[4]);
+	run(&a, 2000);
+	CHECK(a.nout == 6 && a.code == 7 && fired[4] == 1);
+	free(a.out); free(g.out);
+	id = spawn(&g, "sleep", NULL);
+	long long t0 = ms();
+	CHECK(proc_wait(id, 200) == -1 && g.ended[0] && g.code == 128 + 15);
+	CHECK(ms() - t0 >= 190 && ms() - t0 < 700);
+	free(g.out);
+	/* the wait ends at its child's report, not at the slot's next child */
+	char *argv[] = { self, "say", NULL };
+	memset(&g, 0, sizeof g);
+	id = proc_spawn(argv, NULL, respawn, &g);
+	t0 = ms();
+	CHECK(proc_wait(id, 1000) == 0 && g.ended[0] && next_id == id && ms() - t0 < 500);
+	free(g.out);
+	proc_kill(next_id);
+	run(&next, 2000);
+	free(next.out);
+}
+
 static void idle(void)
 {
 	HANDLE e = CreateEventW(NULL, FALSE, FALSE, NULL);
@@ -512,7 +557,8 @@ int main(int argc, char **argv)
 	flood();
 	drain();
 	stale();
-	fprintf(stderr, "test_loop_win: flood, drain and a write refused while reaping; 4 MB through cat; dead.py; streams, codes, arguments, directory, closed stdin; 32 children; kill takes the tree; exit with a holder, its pipes closed; timers; every ready watch, a taken signal kept, unwatch in a pass; message queue; Ctrl-C; idle\n");
+	waits();
+	fprintf(stderr, "test_loop_win: flood, drain and a write refused while reaping; 4 MB through cat; dead.py; streams, codes, arguments, directory, closed stdin; 32 children; kill takes the tree; exit with a holder, its pipes closed; timers; every ready watch, a taken signal kept, unwatch in a pass; message queue; Ctrl-C; idle; proc_wait\n");
 	return 0;
 }
 #else
