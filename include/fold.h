@@ -34,8 +34,8 @@ void  fold_adjust(Fold *f, size_t l1, size_t l2, long amount, long after, int in
    never from the draw path.  Neovim skips it in Insert mode and
    vim.treesitter.foldexpr() catches up on InsertLeave. */
 void  fold_update(Fold *f, size_t top, size_t end, size_t n);
-/* hasFolding(): 1 and the closed fold [*l1, *l2] holding line, else 0;
-   no allocation */
+/* hasFolding(): the closed fold's level (fold_info()'s fi_level) and
+   [*l1, *l2] holding line, else 0; no allocation */
 int   fold_closed(const Fold *f, size_t line, size_t *l1, size_t *l2);
 /* foldlevel(): how many folds hold line */
 int   fold_level(const Fold *f, size_t line);
