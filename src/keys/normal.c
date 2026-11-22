@@ -267,7 +267,7 @@ static void nv_visual(Cmdarg *cap)
 static void nv_gv_cmd(Cmdarg *cap)
 {
 	(void)cap;
-	if (!B->mark[MARK_LT].set || vis(0).lnum >= nlines()) { beep(); return; }
+	if (!B->mark[MARK_LT].set || vis(0).lnum >= nlines() || !B->mark[MARK_GT].set) { beep(); return; }
 	Pos tpos;
 	if (VIsual_active) {
 		int i = VIsual_mode;
@@ -737,6 +737,7 @@ static void nv_replace(Cmdarg *cap)
 	replace_bytes((long)W->line, c, z - c, r, nb * cap->count1);
 	free(r);
 	W->col = (size_t)(c + nb * (cap->count1 - 1));
+	b_op_start = (Pos){ (long)W->line, c, 0 }, b_op_end = cur();
 	set_curswant = 1;
 	set_last_insert(cap->nchar);
 }
@@ -748,14 +749,20 @@ static void n_swapchar(Cmdarg *cap)
 	if (lineempty((long)W->line)) { clearopbeep(cap->oap); return; }
 	prep_redo_cmd(cap);
 	u_save_cursor();
+	Pos start = cur();
+	int did = 0;
 	for (long n = cap->count1; n > 0; n--) {
 		Pos p = cur();
-		swapchar(cap->oap->op_type, &p);
+		did |= swapchar(cap->oap->op_type, &p);
 		inc_cursor();
 		if (gchar_cursor() == 0) break;
 	}
 	check_cursor();
 	set_curswant = 1;
+	if (did) {   /* n_swapchar(): '] one before the cursor */
+		b_op_start = start, b_op_end = cur();
+		if (b_op_end.col > 0) b_op_end.col--;
+	}
 }
 
 static void nv_tilde(Cmdarg *cap)
@@ -779,7 +786,6 @@ static void nv_join(Cmdarg *cap)
 
 static void nv_put(Cmdarg *cap, int fix_indent)
 {
-	extern Pos b_op_start, b_op_end;
 	int dir, flags = 0, was_visual = 0, empty = 0;
 	if (cap->oap->op_type != OP_NOP) { clearopbeep(cap->oap); return; }
 	if (fix_indent) {
@@ -916,6 +922,7 @@ static void nv_undo(Cmdarg *cap)
 	   which core_clamp() allows in Insert mode */
 	for (long n = cap->count1; n--;)
 		if (core_undo(E, cap->cmdchar == KEY_CTRL_R) < 0) { beep(); break; }
+	opmarks(1);
 	buf_changed();
 	core_set_want(E);
 	E->mode = mode;
@@ -1336,20 +1343,18 @@ static int setmark(int c)
 	return 1;
 }
 
-/* '[ and '] are the buffer's (curbuf->b_op_start), kept in the core so
-   that undo and a load set them too; the operators work on b_op_start and
-   b_op_end, which carry coladd, so the two meet here, at
-   the start of each command: what changed since the last meeting wins */
-static Mark seen[2];
-static Pos had[2] = { { -1, 0, 0 }, { -1, 0, 0 } };   /* b_op_start's start */
-void opmarks(void)
+/* '[ and '] are the buffer's (curbuf->b_op_start), kept in the core for
+   whoever reads the buffer's marks.  The keys write them, on b_op_start and
+   b_op_end, which carry coladd: opmarks(0) copies them to the core at the
+   start of each command.  Undo is the core's, so it sets them there and
+   opmarks(1) reads them back right after it */
+void opmarks(int get)
 {
 	for (int i = 0; i < 2; i++) {
 		Mark *m = &B->mark[MARK_LBRACKET + i];
 		Pos *p = i ? &b_op_end : &b_op_start;
-		if (m->line != seen[i].line || m->col != seen[i].col || m->set != seen[i].set) *p = (Pos){ m->set ? (long)m->line : -1, (long)m->col, 0 };
-		else if (lt(*p, had[i]) || lt(had[i], *p)) *m = (Mark){ (size_t)p->lnum, (size_t)p->col, 1 };
-		seen[i] = *m, had[i] = *p;
+		if (get) *p = (Pos){ m->set ? (long)m->line : -1, (long)m->col, 0 };
+		else *m = (Mark){ (size_t)(p->lnum < 0 ? 0 : p->lnum), (size_t)p->col, p->lnum >= 0 };
 	}
 }
 
@@ -1430,31 +1435,22 @@ static void cleanup_jumplist(void)
 static void nv_pcmark(Cmdarg *cap)
 {
 	if (checkclearopq(cap->oap)) return;
+	/* g; g,: the core keeps no change list yet (package 4), so it is empty */
+	if (cap->cmdchar == 'g') { core_msg(E, "E664: Changelist is empty"); return; }
 	long n = cap->count1;
-	Mark m;
-	if (cap->cmdchar == 'g') {
-		long i = W->changeidx, len = B->nchange;
-		if (!len) { core_msg(E, "E664: Changelist is empty"); return; }
-		if (i + n < 0) { if (!i) { core_msg(E, "E662: At start of changelist"); return; } i = 0; }
-		else if (i + n >= len) { if (i == len - 1) { core_msg(E, "E663: At end of changelist"); return; } i = len - 1; }
-		else i += n;
-		W->changeidx = (int)i;
-		m = B->change[i];
-	} else {
-		Win *w = W;
-		cleanup_jumplist();
-		if (!w->njump || w->jumpidx + n < 0 || w->jumpidx + n >= w->njump) { clearopbeep(cap->oap); return; }
-		/* the first CTRL-O after a jump adds the cursor */
-		if (w->jumpidx == w->njump) {
-			setpcmark();
-			if (--w->jumpidx + n < 0) { clearopbeep(cap->oap); return; }
-		}
-		w->jumpidx += (int)n;
-		/* another buffer's entry needs the core to switch without a jump:
-		   not built, it beeps */
-		if (w->jump[w->jumpidx].buf != B) { clearopbeep(cap->oap); return; }
-		m = w->jump[w->jumpidx].m;
+	Win *w = W;
+	cleanup_jumplist();
+	if (!w->njump || w->jumpidx + n < 0 || w->jumpidx + n >= w->njump) { clearopbeep(cap->oap); return; }
+	/* the first CTRL-O after a jump adds the cursor */
+	if (w->jumpidx == w->njump) {
+		setpcmark();
+		if (--w->jumpidx + n < 0) { clearopbeep(cap->oap); return; }
 	}
+	w->jumpidx += (int)n;
+	/* another buffer's entry needs the core to switch without a jump:
+	   not built, it beeps */
+	if (w->jump[w->jumpidx].buf != B) { clearopbeep(cap->oap); return; }
+	Mark m = w->jump[w->jumpidx].m;
 	if (m.line >= (size_t)nlines()) { core_msg(E, "E19: Mark has invalid line number"); clearop(cap->oap); }
 	else setcur((Pos){ (long)m.line, (long)m.col, 0 }), check_cursor();
 	cap->oap->motion_type = MCHAR;
@@ -1569,7 +1565,7 @@ static int run(void)
 {
 	int rd = 0, c;
 #define GET(v) do { if (rd >= npend) return 0; v = pend[rd++]; } while (0)
-	opmarks();
+	opmarks(0);
 	memset(&ca, 0, sizeof ca);
 	ca.oap = &oa;
 	ca.opcount = opcount;
@@ -1680,7 +1676,7 @@ int normal_mappable(int drop)
 	if (drop) { npend = 0; opcount = 0; clearop(&oa); }
 	return 1;
 }
-void normal_reset(void) { memset(seen, 0, sizeof seen), b_op_start = b_op_end = had[0] = had[1] = (Pos){ -1, 0, 0 }; search_reset(); sub_reset(); clearop(&oa); opcount = 0; VIsual_active = 0; redo_n = old_redo_n = 0; npend = 0; memset(&b_visual, 0, sizeof b_visual); }
+void normal_reset(void) { b_op_start = b_op_end = (Pos){ -1, 0, 0 }; search_reset(); sub_reset(); clearop(&oa); opcount = 0; VIsual_active = 0; redo_n = old_redo_n = 0; npend = 0; memset(&b_visual, 0, sizeof b_visual); }
 
 void normal_key(int k)
 {

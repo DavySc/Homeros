@@ -231,7 +231,7 @@ void keys_write_pre(Editor *e, Buf *b)
 }
 
 /* one address and its offsets, 1-based, from line cur (Neovim's
-   get_address()); NONE when there is none, FAIL after E20.  Past BIG a number
+   get_address()); NONE when there is none, FAIL after E20 (or a bare ', silent).  Past BIG a number
    saturates, where Neovim's overflows. */
 static const long BIG = LONG_MAX / 4, NONE = LONG_MIN, FAIL = LONG_MIN + 1;
 static long sat(long v) { return v > BIG ? BIG : v < -BIG ? -BIG : v; }
@@ -243,7 +243,7 @@ static long address(char **pp, long cur)
 	else if (*p == '.' || *p == '$') l = *p++ == '.' ? cur : nlines();
 	else if (*p == '\'') {
 		Pos m;
-		if (!getmark((unsigned char)p[1], &m)) return FAIL;
+		if (!p[1] || !getmark((unsigned char)p[1], &m)) return FAIL;   /* get_address(): ' alone fails silently */
 		l = m.lnum + 1;
 		p += 2;
 	}

@@ -148,13 +148,23 @@ static const char *const MTOK[] = { "ma", "mb", "m'", "m`", "m<", "m>", "m\"", "
                                     "3\t", "\x0f\x0f", "G", "gg", "3G", "%", "}", "{", ")", "(", "*", "#", "n", "N", "H",
                                     "M", "L", "/o\r", "?a\r", ":3\r", ":s/o/0/\r", ":'a,'bs/^/-/\r", "[(", "])",
                                     "x", "O\x1b", "oxy\x1b", "ix\x1b", "Ay\x1b", "yyP", "p", "i\r\x1b", "r\r", "j", "k",
-                                    "w", "b", "$", "0", "l", "yj`]", "yw`[", "cwX\x1b`]", "gUiw']", "x`[", "yi(", "va(\x1b", "50%0", "2G$%" };
+                                    "w", "b", "$", "0", "l", "yj`]", "yw`[", "cwX\x1b`]", "gUiw']", "x`[", "yi(", "va(\x1b", "50%0", "2G$%",
+                                    "~`[", "~`]", "rx`[", "3rx`]", "dd", "dj" };
 
 /* "50%0": N% keeps the wanted column, which Neovim under -l has as the
    column after j (measured: "Ay Esc j 50%" ends in column 7 there, 12 in
    nvim --headless with a file); the 0 leaves that aside */
+/* first these, each once: what random sequences reach too rarely (PR 116's
+   review): an undo's '[ and one inside Insert, '] of an exclusive yank from column 0,
+   ~ and r, gv with one end or none, a bare ',
+   '{ '( at the ends, m[ m], Enter at column 0 of an indented line, [( and ]) as jumps */
+static const char *const MFIX[] = { "Gicd\x0fuef\x1b`]", "jvjy`]", "jy0`]", "jjyl`]", "yjrx`]", "jm<gvd", "jm>gvd", "m<jm>gvd",
+                                    ":'\r", ":'\rx", "'{", "`(", "G'}", "G`)", "jwm[gg`[", "jjm]gg`]", "jwma0i\r\x1b`a", "jjixy\x1bggyyu`[",
+                                    "j6l[(``", "j6l])``" };
 static void marks(char *k)
 {
+	static unsigned fixed;
+	if (fixed < sizeof MFIX / sizeof *MFIX) { strcpy(k, MFIX[fixed++]); return; }
 	strcpy(k, MPRE[rnd(sizeof MPRE / sizeof *MPRE)]);
 	for (unsigned t = 1 + rnd(8); t--;) strcat(k, MTOK[rnd(sizeof MTOK / sizeof *MTOK)]);
 }
@@ -403,6 +413,8 @@ int main(void)
 	/* Ctrl-C (main.c sets loop_int) stops a search and a :s at the next
 	   line, as Neovim's line_breakcheck(): "Interrupted", nothing changed */
 	loop_int = 1;
+	/* drawing has its own budget: it finds the match and leaves Ctrl-C to the search */
+	CHECK(keys_hl(&e, e.win, 400, 0, &hs, &hz) && loop_int);
 	feed(&e, "gg/b\r");
 	CHECK(e.win->line == 0 && !strcmp(e.msg, "Interrupted"));
 	feed(&e, ":%s/a/x/\r");
@@ -410,6 +422,10 @@ int main(void)
 	loop_int = 0;
 	feed(&e, "/b\r");
 	CHECK(e.win->line == 400);
+	/* the oracle's set_lines() fills the change list; a file just read has
+	   none (nvim --headless on a file: E664, measured once) */
+	feed(&e, "g;");
+	CHECK(!strcmp(e.msg, "E664: Changelist is empty"));
 	core_free(&e);
 	text(path, "select a from t;\n", 300000, "END\n");
 	CHECK(!core_open(&e, path));
