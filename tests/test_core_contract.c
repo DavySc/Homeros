@@ -11,6 +11,8 @@
 #include <unistd.h>
 #include "check.h"
 #include "core.h"
+#include "keys.h"
+#include "lsp.h"
 #include "syntax.h"
 #include "grid.h"
 #include "text.h"
@@ -154,6 +156,22 @@ int main(void)
 	CHECK(!core_close(&e, 0));
 	CHECK(!core_buf_delete(&e, 0, 0) && !strcmp(e.buf->path, fn[2]));
 	core_free(&e);
+	/* :bd closes the buffer's language server document once: core_free
+	   after it does not close it again (ASan; review of PR 111) */
+	{
+		static const char *const cat[] = { "sh", "-c", "cat >/dev/null", NULL }, *const none[] = { NULL };
+		const LspServer srv[] = { { ".lspt", "lspt", cat, none, 0 }, { 0 } }, *was = lsp_servers;
+		char f[128];
+		snprintf(f, sizeof f, "%s.lspt", path);
+		FILE *h = fopen(f, "w");
+		CHECK(h && fputs("x\n", h) >= 0 && !fclose(h));
+		lsp_servers = srv;
+		CHECK(!core_open(&e, fn[0]) && !core_edit_file(&e, f, 0) && e.buf->lsp);
+		CHECK(!core_buf_delete(&e, 0, 0) && !strcmp(e.buf->path, fn[0]));
+		core_free(&e);
+		lsp_servers = was;
+		unlink(f);
+	}
 	/* an outside change not yet warned is forgotten by a save over it:
 	   the next edit gives no W11 */
 	CHECK(!core_open(&e, fn[0]));
@@ -249,6 +267,60 @@ int main(void)
 	CHECK(e.layout->size[ROWS] > g.rows);
 	CHECK(!core_only(&e));
 	unlink(md);
+	/* on_yank's flash shows only in the window it was yanked in (the
+	   namespace is scoped to it: nvim__ns_set()) */
+	e.ks.yank.type = 'V';
+	e.ks.yank.l1 = e.ks.yank.l2 = e.win->line;
+	CHECK(!core_split(&e, 1, 0));
+	core_draw(&e, &g);
+	for (const Win *w = e.wins; w; w = w->next) {
+		const Cell *z = &g.c[(w->y + (int)(w->line - w->top)) * g.cols + w->x + win_numw(w)];
+		CHECK((z->bg == FACE_INC_SEARCH) == (w == e.win));
+	}
+	CHECK(!core_only(&e));
+	/* and only on text: none on an empty line, where Visual shows a cell
+	   ("a", "", "bc", 2Gvjy: measured in nvim --headless, 3 runs) */
+	char ey[] = "/tmp/core_contractXXXXXX";
+	CHECK(mkstemp(ey) >= 0 && (f = fopen(ey, "w")) && fputs("a\n\nbc\n", f) >= 0 && !fclose(f));
+	CHECK(!core_edit_file(&e, ey, 1));
+	e.ks.yank.type = 'v';
+	e.ks.yank.l1 = 1;
+	e.ks.yank.l2 = 2;
+	e.ks.yank.c1 = e.ks.yank.c2 = 0;
+	e.win->line = 1;
+	e.win->col = 0;
+	core_draw(&e, &g);
+	CHECK(e.win->top == 0 && g.c[g.cols + win_numw(e.win)].bg == FACE_CURSOR_LINE);
+	CHECK(g.c[2 * g.cols + win_numw(e.win)].bg == FACE_INC_SEARCH);
+	e.ks.yank.type = 0;
+	/* :s's c flag shows its match the same way: "b" of "bc", not "c" */
+	e.ks.inc = (KeyArea){ 'v', 2, 0, 2, 0 };
+	e.win->line = 0;
+	core_draw(&e, &g);
+	CHECK(g.c[2 * g.cols + win_numw(e.win)].bg == FACE_INC_SEARCH && g.c[2 * g.cols + win_numw(e.win) + 1].bg != FACE_INC_SEARCH);
+	e.ks.inc.type = 0;
+	/* the flash as the keys set it: vly over "é漢x" covers é and both
+	   cells of 漢, not x (vim.hl.on_yank's '[ to ']) */
+	CHECK((f = fopen(ey, "w")) && fputs("\xc3\xa9\xe6\xbc\xa2x\n", f) >= 0 && !fclose(f));
+	CHECK(!core_edit_file(&e, ey, 1));
+	keys_feed(&e, 'v', 0);
+	keys_feed(&e, 'l', 0);
+	keys_feed(&e, 'y', 0);
+	core_draw(&e, &g);
+	/* cell 2 is 漢's second half, drawn with its first */
+	for (int c = 0; c < 4; c++) if (c != 2) CHECK((g.c[win_numw(e.win) + c].bg == FACE_INC_SEARCH) == (c < 3));
+	e.ks.yank.type = 0;
+	/* 'hlsearch' over the flash (an extmark under win_line()'s
+	   search_attr): "ab ab ab ab", /ab, gg0ly3l shows C C I S S
+	   (measured, reviews/pr-106-repro/flash_search.lua) */
+	CHECK((f = fopen(ey, "w")) && fputs("ab ab ab ab\n", f) >= 0 && !fclose(f));
+	CHECK(!core_edit_file(&e, ey, 1));
+	for (const char *k = "/ab\rgg0ly3l"; *k; k++) keys_feed(&e, *k == '\r' ? KEY_ENTER : *k, 0);
+	core_draw(&e, &g);
+	const unsigned char fs[] = { FACE_CUR_SEARCH, FACE_CUR_SEARCH, FACE_INC_SEARCH, FACE_SEARCH, FACE_SEARCH };
+	for (int c = 0; c < 5; c++) CHECK(g.c[win_numw(e.win) + c].bg == fs[c]);
+	e.ks.yank.type = 0;
+	unlink(ey);
 	core_free(&e);
 	for (int i = 0; i < 4; i++) unlink(fn[i]);
 	grid_free(&g);

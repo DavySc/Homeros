@@ -167,6 +167,7 @@ keys: 'hlsearch' has no 'redrawtime' (test_keys_ex)~test TESTS=keys_ex~~src/keys
 keys: the first-literal skip passes a byte past 0x7f under \c (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~(ic && (t[x] >= 0x80 || fold(t[x]) == fold(lit)))~(ic && fold(t[x]) == fold(lit))
 keys: a bounded leading repeat skips its run too (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~rp1->simple && rp1->c < 0 ?~rp1->simple ?
 keys: an ASCII character before an accent is its own cluster (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~(c + 1 == (long)n || s[c + 1] < 0x80)~(c + 1 == (long)n || 1)
+keys: a yank's flash ends on the last character's last byte (test_keys_flash)~test TESTS=keys_flash~~src/keys/ops.c~		if (t == 'v') E->ks.yank.c2 = (size_t)head(ml_get(b_op_end.lnum), b_op_end.col);¶~
 keys: cit and ciT wait for their keys in every buffer, not only .org (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		if (*m == 'c' && !is_ft(".org")) continue;~
 keys: a map's edit joins the previous command's undo step (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		undo_close(e->buf->undo);   /* a map is a command of its own: keys_feed() closes before each */~
 keys: ciT steps forward as cit does (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~org_cycle(m[2] == 't' ? 1 : -1)~org_cycle(1)

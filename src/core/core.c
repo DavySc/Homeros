@@ -803,6 +803,7 @@ static void buf_unlist(Editor *e, Buf *b)
 	journal_close(b->journal);
 	b->journal = NULL;
 	b->syn = NULL;
+	b->lsp = NULL;
 	b->text = NULL;
 	b->undo = NULL;
 	wininfo_clear(b);
