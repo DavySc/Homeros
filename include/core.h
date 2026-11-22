@@ -226,7 +226,6 @@ void core_update(Editor *e);
    skips Insert mode for expr folds; vim.treesitter.foldexpr() catches up on
    InsertLeave), when core_update runs them. */
 void core_folds(Editor *e, Buf *b, size_t r1, size_t r2);
-
 /* A z fold command: fold_cmd() on the current window's folds at line,
    count times; when it changed a fold the view is redone, as Neovim's
    fold commands call changed_window_setting().  0, or -1 for "E490: No
