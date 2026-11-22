@@ -28,3 +28,4 @@ sql: any packet size the server names (fuzz)~fuzz FUZZERS=sql_tds FUZZ_SECONDS=6
 sql: a whole reply without its last DONE waits (fuzz)~fuzz FUZZERS=sql_tds FUZZ_SECONDS=60~~src/sql/tds.c~if (t->eom && (t->at < t->msg.n || t->state == TDS_BUSY)) {~if (t->eom && t->at < t->msg.n) {
 specs: SqlRun ending a cancelled run at its first DONE~specs~find design/specs -name '*.cfg' ! -name SqlRun_ok.cfg -delete~design/specs/SqlRun_ok.cfg~Variant = "ok"~Variant = "firstdone"
 sql: a message's tab and newline escaped~test TESTS=sql~~src/sql/net.c~	unsigned char s[4] = {'\\', raw ? 0 : (unsigned char)esc(u)};~	unsigned char s[4] = {'\\', (unsigned char)(esc(u) + 0 * raw)};
+sql: no ARITHABORT, unlike SSMS~test TESTS=sql~~src/sql/tds.c~tds_batch(t, "set arithabort on")~tds_batch(t, "set ansi_nulls on")

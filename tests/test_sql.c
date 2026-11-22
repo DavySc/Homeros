@@ -91,6 +91,8 @@ int main(int argc, char **argv)
 		return 1;
 	}
 	CHECK(t.pkt == 4096);
+	/* SSMS's session options */
+	CHECK(!batch(&t, "select @@options o", 0) && !strcmp(t.out.s, "o\n5496\n(1 row affected)\n"));
 	/* text in both directions: outside the BMP, and Latin-1 */
 	CHECK(!batch(&t, "select N'\U0001F600\u00E9' x", 0) && !strcmp(t.out.s, "x\n\U0001F600\u00E9\n(1 row affected)\n"));
 	/* a message's text as it is; a value's escaped, one per cell */

@@ -506,7 +506,11 @@ static int io(Tds *t, int readable)
 		if (r > 0) t->net.tls = 1, t->state = TDS_LOGIN, r = send_msg(t, 0x10, t->login.s, t->login.n);
 		return r || net_flush(&t->net);
 	}
-	return tds_parse(t);
+	int was = t->state;
+	if (tds_parse(t)) return -1;
+	/* SSMS's session: ARITHABORT on as well as the login's ANSI options
+	   (@@options 5496, read in SSMS's defaults; the login alone gives 5432, measured) */
+	return was == TDS_LOGIN && t->state == TDS_READY ? tds_batch(t, "set arithabort on") : 0;
 }
 
 int tds_io(Tds *t, int readable)
