@@ -1015,5 +1015,18 @@
    "j",
    "u"
   ]
+ },
+ "region-outside-shift-j": {
+  "setup": "printf 'z\\n' > 0.txt && git add 0.txt && git commit -qm zero && sed -i 's/^three$/THREE/; s/^four$/FOUR/' a.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jjj",
+   "V",
+   "k",
+   "$ printf 'zz\\n' >> 0.txt",
+   "js"
+  ]
  }
 }
