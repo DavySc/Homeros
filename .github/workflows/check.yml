@@ -36,10 +36,23 @@ jobs:
       # C libraries come from the distribution, not nix: nix's need a newer
       # glibc than the system compiler links against (package 12, measured)
       - run: >
-          sudo apt-get update && sudo apt-get install -y clang libclang-rt-18-dev pkg-config
+          sudo apt-get update && sudo apt-get install -y clang libclang-rt-18-dev pkg-config libssl-dev
           libfreetype-dev libharfbuzz-dev libfontconfig-dev ripgrep
           libwayland-dev wayland-protocols libxkbcommon-dev weston sway xvfb wtype wl-clipboard grim adwaita-icon-theme
           fonts-jetbrains-mono fonts-noto-core fonts-noto-cjk fonts-noto-color-emoji fonts-dejavu-core
+      # the SQL client's tests talk to real servers and fail without them
+      # (package 22, agreed): passwords made per run, kept in the
+      # environment, never in a file; Postgres with SSL (Debian's snake-oil
+      # certificate), as the client always asks for it
+      - run: |
+          echo "SQL_SA_PASSWORD=Aa1-$(openssl rand -hex 16)" >> "$GITHUB_ENV"
+          echo "SQL_PG_PASSWORD=$(openssl rand -hex 16)" >> "$GITHUB_ENV"
+      - run: >
+          docker run -d -p 1433:1433 -e ACCEPT_EULA=Y -e MSSQL_SA_PASSWORD="$SQL_SA_PASSWORD"
+          mcr.microsoft.com/mssql/server:2022-latest &&
+          docker run -d -p 5432:5432 -e POSTGRES_PASSWORD="$SQL_PG_PASSWORD" postgres:17
+          -c ssl=on -c ssl_cert_file=/etc/ssl/certs/ssl-cert-snakeoil.pem
+          -c ssl_key_file=/etc/ssl/private/ssl-cert-snakeoil.key
       - run: nix build -f tools.nix tools -o tools-env
       - run: echo "$PWD/tools-env/bin" >> "$GITHUB_PATH"
       - run: why3 config detect
