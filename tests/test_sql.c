@@ -88,6 +88,7 @@ int main(int argc, char **argv)
 	Tds t;
 	if (login(&t, 1)) {
 		fprintf(stderr, "test_sql_tds: no SQL Server on 127.0.0.1:1433 (%s): start the container as src/sql/README.md says\n", t.net.err);
+		tds_close(&t);
 		return 1;
 	}
 	CHECK(t.pkt == 4096);

@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "date.h"
 #include "match.h"
 #include "uni.h"
 
@@ -91,15 +92,6 @@ static int put_dbl(Str *b, double v, int single)   /* the shortest text that rea
 		if (single ? strtof(s, NULL) == (float)v : strtod(s, NULL) == v) break;
 	}
 	return str_addz(b, s);
-}
-/* TODO(package 22): delete with PR 1 (include/date.h) */
-static long fdiv(long a, long b) { return a >= 0 ? a / b : -((-a + b - 1) / b); }
-static void date_civil(long z, int *y, int *m, int *d)
-{
-	z += 719468;
-	long era = fdiv(z, 146097), doe = z - era * 146097, yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
-	long doy = doe - (365 * yoe + yoe / 4 - yoe / 100), mp = (5 * doy + 2) / 153;
-	*d = (int)(doy - (153 * mp + 2) / 5 + 1), *m = (int)(mp < 10 ? mp + 3 : mp - 9), *y = (int)(yoe + era * 400 + (*m <= 2));
 }
 static int put_date(Str *b, long days)   /* days since 0001-01-01 */
 {
