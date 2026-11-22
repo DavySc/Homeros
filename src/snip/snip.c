@@ -275,7 +275,9 @@ static void after(Editor *e, int ins)
 	if (!now && !vis) stop();
 }
 
-typedef struct { char *s; size_t n, cap; Stop *st; int nst, cap_st, max, place; } Out;
+/* sel: the Visual selection a surround puts at $0, its first line's
+   indent base blanks wide */
+typedef struct { char *s; size_t n, cap; Stop *st; int nst, cap_st, max, place; const char *sel; size_t nsel, base; } Out;
 
 /* n bytes of s at byte at of o's text */
 static int put_at(Out *o, size_t at, const char *s, size_t n)
@@ -311,6 +313,28 @@ static int add(Out *o, int idx, size_t a, int top)
 	return o->nst++;
 }
 
+static int blank(char c) { return c == ' ' || c == '\t'; }
+
+/* The selection as stop k's text ($0, VS Code's TM_SELECTED_TEXT, SSMS's
+   surround with): each line after the first loses the first line's indent
+   and is indented as the line the stop is on (VS Code's adjustWhitespace) */
+static int put_sel(Out *o, int k)
+{
+	size_t i = o->n, w = 0;
+	while (i && o->s[i - 1] != '\n') i--;
+	char ind[256];
+	while (i + w < o->n && w < sizeof ind && blank(o->s[i + w])) ind[w] = o->s[i + w], w++;
+	for (size_t j = 0; j < o->nsel; j++) {
+		for (size_t b = 0; j && b < o->base && j < o->nsel && blank(o->sel[j]); b++) j++;
+		size_t z = j;
+		while (z < o->nsel && o->sel[z] != '\n') z++;
+		if (put(o, o->sel + j, z - j) || (z < o->nsel && (put(o, "\n", 1) || put(o, ind, w)))) return -1;
+		j = z;
+	}
+	o->st[k].z.at = o->n;
+	return 0;
+}
+
 static int digit(char c) { return c >= '0' && c <= '9'; }
 static int alpha(char c) { return c == '_' || ((c | 32) >= 'a' && (c | 32) <= 'z'); }
 
@@ -338,7 +362,7 @@ static int parse(Out *o, const char **p, const char *ind, size_t nind, int brace
 				if (*q == '{' && *d++ == ':') {
 					if (parse(o, &d, ind, nind, 1)) return -1;
 					o->st[k].z.at = o->n;
-				}
+				} else if (!idx && o->sel && put_sel(o, k)) return -1;
 				s = d;
 				text = 0;
 				continue;
@@ -367,14 +391,16 @@ static int parse(Out *o, const char **p, const char *ind, size_t nind, int brace
 	return 0;
 }
 
-/* M.expand(): the snippet replaces bytes [a, z) (the word typed). */
-static int expand(Editor *e, const char *body, size_t a, size_t z)
+/* M.expand(): the snippet replaces bytes [a, z) (the word typed, or the
+   selection sel that goes to $0). */
+static int expand(Editor *e, const char *body, size_t a, size_t z, const char *sel, size_t nsel)
 {
 	stop();
-	Out o = { 0 };
-	size_t nind = 0;
-	const unsigned char *l = core_line(e, e->win->line, &(size_t){ 0 });
-	while (l[nind] == ' ' || l[nind] == '\t') nind++;
+	Out o = { .sel = sel, .nsel = nsel };
+	size_t len;
+	const unsigned char *l = core_line(e, e->win->line, &len);
+	while (o.base < len && blank((char)l[o.base])) o.base++;
+	size_t nind = o.base;
 	char ind[256];
 	if (nind > sizeof ind) nind = sizeof ind;
 	memcpy(ind, l, nind);
@@ -400,7 +426,10 @@ static int expand(Editor *e, const char *body, size_t a, size_t z)
 			}
 		}
 	}
-	if (!r && !has0) r = add(&o, 0, o.n, 1) < 0;
+	if (!r && !has0) {
+		int k = add(&o, 0, o.n, 1);
+		r = k < 0 || (sel && put_sel(&o, k));
+	}
 	if (r || core_edit(e, a, z - a, o.s, o.n)) { free(o.s); free(o.st); return -1; }
 	free(o.s);
 	for (int j = 0; j < o.nst; j++) o.st[j].a.at += a, o.st[j].z.at += a;
@@ -446,36 +475,84 @@ static int heading_has(const char *h, const char *w)
 
 static int word(int c) { return alpha((char)c) || digit((char)c) || c == '-'; }
 
+/* items: the snippets for e's buffer that match the n bytes of q (q NULL:
+   all), its file's group first, then best score, catalogue order between
+   equals; task snippets only in a task file.  Returns how many. */
+static int rank(Editor *e, const char *q, size_t nq)
+{
+	int n = 0;
+	const char *g = group(e->buf);
+	if (q && match_init(&m, q, nq)) return 0;
+	for (int i = 0; i < nsn; i++) {
+		if (heading_has(sn[i].head, "task") && !(g && !strcmp(g, "task"))) continue;
+		int s = q ? match_score(&m, sn[i].name, strlen(sn[i].name), NULL, 0) : 1, j = n;
+		if (s <= 0) continue;
+		if (g && heading_has(sn[i].head, g)) s += 1 << 24;
+		for (; j && score[j - 1] < s; j--) items[j] = items[j - 1], score[j] = score[j - 1];
+		items[j] = (PumItem){ sn[i].name, "Snippet", sn[i].desc };
+		score[j] = s;
+		n++;
+	}
+	return n;
+}
+
 /* The popup for the word before the cursor (cmp's keyword pattern
-   \h\w*\%(-\w*\)*), the file's group first, then best score, catalogue order between equals; it
-   closes when there is none or nothing matches. */
+   \h\w*\%(-\w*\)*); it closes when there is none or nothing matches. */
 static void popup(Editor *e)
 {
 	size_t len, col = e->win->col, a = col;
 	const unsigned char *l = core_line(e, e->win->line, &len);
 	while (a && word(l[a - 1])) a--;
 	while (a < col && !alpha((char)l[a])) a++;
-	int n = 0;
-	const char *g = group(e->buf);
-	if (a < col && !match_init(&m, (const char *)l + a, col - a))
-		for (int i = 0; i < nsn; i++) {
-			/* the file's group first; task snippets only in a task file */
-			if (heading_has(sn[i].head, "task") && !(g && !strcmp(g, "task"))) continue;
-			int s = match_score(&m, sn[i].name, strlen(sn[i].name), NULL, 0), j = n;
-			if (s <= 0) continue;
-			if (g && heading_has(sn[i].head, g)) s += 1 << 24;
-			for (; j && score[j - 1] < s; j--) items[j] = items[j - 1], score[j] = score[j - 1];
-			items[j] = (PumItem){ sn[i].name, "Snippet", sn[i].desc };
-			score[j] = s;
-			n++;
-		}
-	core_pum(e, items, n, -1, a);
+	core_pum(e, items, a < col ? rank(e, (const char *)l + a, col - a) : 0, -1, a);
 }
 
 static const char *body_of(const char *name)
 {
-	for (int i = 0; i < nsn; i++) if (sn[i].name == name) return sn[i].body;
+	for (int i = 0; i < nsn; i++) if (!strcmp(sn[i].name, name)) return sn[i].body;
 	return NULL;
+}
+
+const char *snip_get(Editor *e, int i, const char **desc, const char **body)
+{
+	static int n;
+	if (!loaded) load();
+	if (!i) n = rank(e, NULL, 0);
+	if (i >= n) return NULL;
+	*desc = items[i].menu;
+	*body = body_of(items[i].word);
+	return items[i].word;
+}
+
+int snip_insert(Editor *e, const char *name)
+{
+	const char *body = body_of(name);
+	size_t a = cursor(e), z = a, len;
+	if (!body) { core_msg(e, "no snippet %s", name); return -1; }
+	if (e->ks.visual) {
+		/* the Visual area: characters from one end to the other, whole,
+		   or the lines without the last one's break */
+		size_t l1 = e->ks.vline, c1 = e->ks.vcol, l2 = e->win->line, c2 = e->win->col;
+		if (l1 > l2 || (l1 == l2 && c1 > c2)) l1 = l2, c1 = c2, l2 = e->ks.vline, c2 = e->ks.vcol;
+		const unsigned char *l = core_line(e, l2, &len);
+		a = core_line_start(e, l1) + c1;
+		z = core_line_start(e, l2) + (c2 < len ? c2 + uni_glen(l, len, c2) : len + 1);
+		if (e->ks.visual == 'V') {
+			size_t n1;
+			const unsigned char *f = core_line(e, l1, &n1);
+			for (a = 0; a < n1 && blank((char)f[a]); a++) {}
+			a += core_line_start(e, l1), z = core_line_start(e, l2) + len;
+		}
+		if (z > text_len(e->buf->text)) z = text_len(e->buf->text);
+		keys_feed(e, KEY_ESC, 0);
+	}
+	char *sel = malloc(z - a + 1);
+	if (!sel) return -1;
+	text_read(e->buf->text, a, sel, z - a);
+	set_cursor(e, a);
+	int r = expand(e, body, a, z, a < z ? sel : NULL, z - a);
+	free(sel);
+	return r;
 }
 
 /* The popup's keys (cmp's preset.insert and Davy's Tab, S-Tab and Enter):
@@ -493,7 +570,7 @@ static int pum_key(Editor *e, int k)
 	}
 	size_t a = core_line_start(e, e->win->line) + e->pumcol;
 	core_pum(e, NULL, 0, -1, 0);
-	expand(e, body_of(items[s].word), a, cursor(e));
+	expand(e, body_of(items[s].word), a, cursor(e), NULL, 0);
 	return 1;
 }
 

@@ -12,6 +12,8 @@
 #include "core.h"
 #include "keyname.h"
 #include "snip.h"
+const char *snip_get(Editor *e, int i, const char **desc, const char **body);   /* until thread 0's header */
+int snip_insert(Editor *e, const char *name);
 
 enum { MAXC = 4096 };
 static char *body[MAXC], *pre[MAXC], *keys[MAXC], *want[MAXC];
@@ -155,6 +157,42 @@ static void groups(void)
 	puts("test_snip: the file's group first, task snippets in task files only");
 }
 
+/* text t in a new buffer called name, then keys k in Normal mode, then
+   snippet s inserted as SPC i s does */
+static Editor *inserted(const char *name, const char *t, const char *k, const char *s)
+{
+	static Editor e;
+	char path[64];
+	snprintf(path, sizeof path, "%s/%s", dir, name);
+	CHECK(!core_open(&e, path));
+	CHECK(!core_edit(&e, 0, 0, t, strlen(t)));
+	while (*k) feed(&e, test_key(&k));
+	CHECK(!snip_insert(&e, s));
+	return &e;
+}
+
+/* SPC i s: the list in the popup's order, a snippet at the cursor, and
+   around the Visual area at its $0 (surround with) */
+static void insert(int total)
+{
+	Editor *e = typed("x_proc_a.sql", "");
+	const char *d, *b, *nm = snip_get(e, 0, &d, &b);
+	CHECK(nm && !strcmp(nm, "ghlp") && !strcmp(d, "h") && !strcmp(b, "H"));
+	int i = 1;
+	while (snip_get(e, i, &d, &b)) i++;
+	CHECK(i == total);
+	CHECK(snip_insert(e, "nosuch") == -1);
+	is(e, "\n");
+	e = inserted("i.sql", "q", "", "pure");
+	CHECK(e->mode == MODE_INSERT && e->win->col == 8);
+	is(e, "SELECT 1q\n");
+	e = inserted("i.sql", "x = 1", "$v", "wrp");
+	is(e, "x = begin\n    1\nend\n");
+	e = inserted("i.sql", "    a\n    b\nc", "Vj", "wrp");
+	is(e, "    begin\n        a\n        b\n    end\nc\n");
+	puts("test_snip: SPC i s lists, inserts and surrounds");
+}
+
 int main(int argc, char **argv)
 {
 	FILE *f = fopen(argc > 1 ? argv[1] : "src/snip/conform/recorded.txt", "r");
@@ -183,7 +221,7 @@ int main(int argc, char **argv)
 		if (i < n) snprintf(b, sizeof b, "```sql\n-- s%04d : case %d\n%s\n```\n", i, i, body[i]);
 		else strcpy(b, "```sql\n-- pure\nSELECT 1\n```\n```sql\nno name\n```\n```text\n-- notsql : x\nY\n```\n"
 		               "## 6. Task (default)\n```sql\n-- gtsk : t\nT\n```\n## 2. Default\n```sql\n-- gdef : d\nD\n```\n"
-		               "## 11. Shared helpers\n```sql\n-- ghlp : h\nH\n```\n");
+		               "## 11. Shared helpers\n```sql\n-- ghlp : h\nH\n```\n```sql\n-- wrp : w\nbegin\n\t$0\nend\n```\n");
 		for (char *p = b; *p; p++) fputs(*p == '\n' ? "\r\n" : (char[]){ *p, 0 }, c);
 	}
 	CHECK(!fclose(c));
@@ -201,6 +239,7 @@ int main(int argc, char **argv)
 		CHECK(!bad);
 		popup();
 		groups();
+		insert(n + 4);
 	}
 	return 0;
 }
