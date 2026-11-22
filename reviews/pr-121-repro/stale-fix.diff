@@ -1,0 +1,13 @@
+diff --git a/src/syntax/syntax.c b/src/syntax/syntax.c
+index 4a2f1230..c94887f4 100644
+--- a/src/syntax/syntax.c
++++ b/src/syntax/syntax.c
+@@ -1240,6 +1240,8 @@ static void fold_edit(Syntax *s, size_t sr, size_t sc, size_t orow, size_t oc, s
+ 		s->nlv = 0;           /* out of memory: built again after the parse */
+ 		return;
+ 	}
++	/* rows a stopped parse named moved: all of them after the next */
++	if (s->nchg) s->chg[0] = 0, s->chg[1] = SIZE_MAX, s->nchg = 1;
+ 	if (s->ea >= s->ez) s->ea = sr, s->ez = en;
+ 	else {
+ 		if (sr < s->ea) s->ea = sr;

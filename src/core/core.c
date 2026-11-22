@@ -27,7 +27,7 @@ static const size_t UNSET = (size_t)-1;
    lnum 0, no options (wrap -1) */
 static void wininfo_clear(Buf *b)
 {
-	for (WinInfo *i = b->wi, *nx; i; i = nx) { nx = i->next; free(i); }
+	for (WinInfo *i = b->wi, *nx; i; i = nx) { nx = i->next; fold_free(i->fold); free(i); }
 	b->wi = NULL;
 }
 
@@ -492,13 +492,18 @@ static void buf_free(Buf *b)
 static int fexpr(void *ctx, size_t l, int *start) { const Win *w = ctx; return syntax_foldexpr(w->buf->syn, l, start); }
 /* the window's folds for its buffer, from the first line, closed as
    'foldlevel' says: 1 in Org (org_startup_folded 'content'), else 99 */
-static void win_folds(Win *w)
+static void win_folds(Win *w, const Fold *f)
 {
 	static const char *const expr[] = { "cpp", "glsl", "nix", "verilog", "systemverilog", "markdown", "org" };
 	const char *ft = w->buf->syn && w->buf->path ? syntax_filetype(w->buf->path) : NULL;
 	fold_free(w->fold);
 	w->fold = NULL;
 	w->frame->s.ftop = w->frame->s.fend = 0;
+	if (f) {   /* w_foldinvalid: the levels again, the open and closed kept */
+		size_t n = buf_lines(w->buf);
+		if ((w->fold = fold_dup(f, w))) fold_update(w->fold, 0, n, n);
+		return;
+	}
 	for (size_t i = 0; ft && i < sizeof expr / sizeof *expr; i++)
 		if (!strcmp(ft, expr[i])) {
 			size_t n = buf_lines(w->buf);
@@ -549,7 +554,7 @@ int core_open(Editor *e, const char *path)
 	w->conceal = 2;   /* Davy's 'conceallevel' */
 	layout_init(e, w);
 	if (!e->layout) { core_msg(e, "out of memory"); return -1; }
-	win_folds(w);
+	win_folds(w, NULL);
 	/* readfile(): line 1's first non-blank (measured in tmux, 7 texts) */
 	w->col = core_first_nonblank(e, 0);
 	core_set_want(e);
@@ -581,6 +586,8 @@ void core_wininfo_set(Buf *b, Win *w, int close)
 	i->win = w;
 	if (!close || w->line) { i->line = w->line; i->col = w->col; }
 	i->wrap = w->wrap;
+	fold_free(i->fold);
+	i->fold = w->fold ? fold_dup(w->fold, w) : NULL;   /* cloneFoldGrowArray(); out of memory: the folds start over */
 	i->next = b->wi;
 	b->wi = i;
 }
@@ -628,15 +635,17 @@ static int enter_buffer(Editor *e, Buf *b, int how)
 		w->alt = w->buf;
 	}
 	w->buf = e->buf = b;
-	win_folds(w);
 	w->vc.ok = w->frame->s.sideok = 0;   /* w_valid = 0 */
-	/* get_winopts(): from the window that shows b now, else as b was
-	   left; with neither, w_allbuf_opt: the window's own :set value (a
-	   :bp in between does not change it: review of PR 20, 4) */
+	/* get_winopts(): wrap and the folds from the window that shows b now,
+	   else as b was left; with neither, w_allbuf_opt: the window's own
+	   :set value (a :bp in between does not change it: review of PR 20, 4)
+	   and new folds */
 	WinInfo *i = wininfo_find(b, w, 1);
-	if (i && i->win && i->win != w && i->win->buf == b) w->wrap = i->win->wrap;
-	else if (i && i->wrap >= 0) w->wrap = i->wrap;
+	const Fold *f = NULL;
+	if (i && i->win && i->win != w && i->win->buf == b) w->wrap = i->win->wrap, f = i->win->fold;
+	else if (i && i->wrap >= 0) w->wrap = i->wrap, f = i->fold;
 	else w->wrap = w->frame->s.allwrap;
+	win_folds(w, f);
 	i = wininfo_find(b, w, 0);
 	w->line = w->col = 0;
 	/* didset_window_options(): one of leftcol and skipcol goes, as for :set wrap */
@@ -803,7 +812,7 @@ static int edit_file(Editor *e, const char *path, int force, int split)
 			b->wi = old.wi;
 			wininfo_reset(b, w);
 			buf_unload(&old);
-			win_folds(w);
+			win_folds(w, NULL);
 			w->line = w->col = w->top = w->skipcol = w->left = 0;
 			w->vc.ok = w->frame->s.sideok = 0;   /* w_valid = 0: the cached column was the empty buffer's */
 		}

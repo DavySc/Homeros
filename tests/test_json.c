@@ -13,6 +13,8 @@
 #include "syntax.h"
 #include "text.h"
 
+static size_t r1, r2;   /* syntax_update's changed fold rows, unused here */
+
 enum { DOCS = 300, MAXT = 1 << 15 };
 
 /* test_json.lua's letters */
@@ -32,7 +34,7 @@ static void ours(const char *b, size_t n, char *out, int up)
 	Text *t = text_new(b, n);
 	Syntax *s = t ? syntax_open("x.json", t) : NULL;
 	CHECK(s);
-	syntax_update(s, t, NULL);
+	syntax_update(s, t, NULL, &r1, &r2);
 	for (size_t i = 0, nl = text_lines(t); i <= nl; i++) {
 		size_t l = up ? nl - i : i, a = text_line_start(t, l), z = text_line_start(t, l + 1);
 		/* in pieces of 256 bytes, as draw_line asks */
