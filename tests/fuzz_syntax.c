@@ -60,7 +60,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 			SyntaxMd m;   /* render-markdown's facts, stale trees included */
 			syntax_md(s, t, byte() % (text_lines(t) + 1), &m);
 			int st;   /* folds, which parse first */
-			if (byte() % 4 == 0 && syntax_foldexpr(s, byte() % (text_lines(t) + 1), &st) > 20) abort();
+			if (byte() % 4 == 0 && syntax_foldexpr(s, byte() % (text_lines(t) + 1), &st) > 20 && lang != 2) abort();   /* Markdown: the '#' count */
 		} else {                           /* an edit, keeping the final '\n' */
 			size_t pos = byte() * len / 256, del = byte() % 8;
 			if (del > len - 1 - pos) del = len - 1 - pos;

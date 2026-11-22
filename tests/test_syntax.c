@@ -439,6 +439,25 @@ static void folds_follow_edits(const char *dir)
    that deletes 2,000 lines frees about 10,000 nodes, so the update
    after it must stop more than once before it is done. */
 static int always(void) { return 1; }
+/* A `define whose macro_text is empty and ends the text injects a region
+   with no ranges, which is the whole text, in SystemVerilog again:
+   without a stop the parse recurses until the stack overflows (Neovim's
+   Lua stack does, so there is no Neovim answer to compare) */
+static void self_injection(const char *dir)
+{
+	char path[2048];
+	const char *src = "`define A`define A`define A`define A\n";
+	snprintf(path, sizeof path, "%s/self.sv", dir);
+	Text *t = text_new(src, strlen(src));
+	Syntax *s = t ? syntax_open(path, t) : NULL;
+	CHECK(s);
+	unsigned char f[64];
+	syntax_faces(s, 0, strlen(src), f);   /* injections are found in the window */
+	while (syntax_update(s, t, NULL) == 2) ;
+	syntax_free(s);
+	text_free(t);
+}
+
 static void release_in_steps(const char *dir)
 {
 	static char b[MAXT];
@@ -567,6 +586,7 @@ int main(void)
 	edit_before_region(dir);
 	cache_grows(dir);
 	release_in_steps(dir);
+	self_injection(dir);
 	folds_follow_edits(dir);
 	filetypes();
 	char path[2048], vrt[1024] = "";
@@ -606,18 +626,28 @@ int main(void)
 		   (#gsub!) in two strings parsed as one tree, and writeRust's;
 		   case 6, Vim's match? in CMake's query: words ignoring case, a
 		   suffix after ".*", one word alone (set's variable);
-		   case 10, Markdown's folds: setext headings, and a '#' line in a
-		   code block, which MarkdownFold() folds with tree-sitter on;
+		   case 8, 24 nested C blocks, past 'foldnestmax' (20);
+		   case 10, Markdown's folds: setext headings (not under an empty
+		   line), and a '#' line in a code block, which MarkdownFold()
+		   folds with tree-sitter on;
 		   case 13, a Nix string Neovim does not inject, as its injection
 		   query's patterns of languages we lack still count toward the 256
 		   in-progress matches.
 		   The others: up to 80 lines of the corpus from a random line */
+		static char deep[300];
+		if (!deep[0]) {
+			strcpy(deep, "void f() {\n");
+			for (int k = 0; k < 24; k++) strcat(deep, "if (a) {\n");
+			strcat(deep, "x;\n");
+			for (int k = 0; k < 25; k++) strcat(deep, "}\n");
+		}
 		const char *fx = c == 2 ? "> *a\n> b* `c\n> d` [e\n> f](g)\n"
 		               : c == 3 ? "fn f() {\n    assert_eq!(v.len(), 3);\n    println!(\"{}\", g(x).y);\n}\n"
 		               : c == 5 ? "{\n  a = /* lua */ ''\n    local t = {\n  '';\n  b = /* lua */ ''\n    }\n  '';\n"
 		                          "  c = pkgs.writeRust \"r\" {} ''\n    fn main() { let x = 1; }\n  '';\n}\n"
 		               : c == 6 ? "if(A-NOTFOUND AND x-notfound)\n  SET(v ON)\nendif()\nreturn()\n"
-		               : c == 10 ? "Title\n=====\ntext\nSub\n---\n# h\n```\n# not\n```\n## b\n"
+		               : c == 8 ? deep
+		               : c == 10 ? "\n===\nTitle\n=====\ntext\nSub\n---\n# h\n```\n# not\n```\n## b\n"
 		               : c == 13 ? "  m (a // { i = \"${l.e p.b}\"; }) na/* lua */ ''  else\n    L b the ${f l is a s t b\n"
 		                           "    C b c w${ or w e a.\n:::{.example}\n    }\n    ''\n" : NULL;
 		const char *src = fx ? fx : corpus[lang][rnd((unsigned)ncorpus[lang])];
