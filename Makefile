@@ -74,15 +74,17 @@ test: $(OBJS) | build/san
 # that runs 20 s is a hang and fails (a planted bug once spun 20 min).  A
 # directory tests/fuzz_<name>/ holds seed inputs, copied so a run never
 # changes them: a resumable wire reader's plant survived 8.0 million runs
-# from empty in 300 s (package 22, measured)
+# from empty in 300 s (package 22, measured).  Seeded runs take any length:
+# -max_len=256 cut a 400-byte seed and its bug at byte 300 went unfound in
+# 19.4 million runs (PR 114 review)
 FUZZERS = $(patsubst tests/fuzz_%.c,%,$(wildcard tests/fuzz_*.c))
 fuzz: $(OBJS) | build/fuzz
 	@rm -rf build/state
 	@for f in $(FUZZERS); do \
 	  clang $(WARN) -O1 -g -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all \
 	    $(CPPFLAGS) -o build/fuzz/fuzz_$$f tests/fuzz_$$f.c $(LIB_SRCS) $(OBJS) $(LIBS) || exit 1; \
-	  c=; if [ -d tests/fuzz_$$f ]; then c=build/fuzz/$$f.seeds; rm -rf $$c; cp -r tests/fuzz_$$f $$c; fi; \
-	  ./build/fuzz/fuzz_$$f -max_total_time=$(FUZZ_SECONDS) -max_len=256 -timeout=20 -artifact_prefix=build/fuzz/ $$c 2>build/fuzz/$$f.log \
+	  c=-max_len=256; if [ -d tests/fuzz_$$f ]; then c=build/fuzz/$$f.seeds; rm -rf $$c; cp -r tests/fuzz_$$f $$c; fi; \
+	  ./build/fuzz/fuzz_$$f -max_total_time=$(FUZZ_SECONDS) -timeout=20 -artifact_prefix=build/fuzz/ $$c 2>build/fuzz/$$f.log \
 	    || { tail -40 build/fuzz/$$f.log; echo "FAIL fuzz_$$f"; exit 1; }; \
 	  echo "fuzz_$$f: $$(grep -m1 -o 'Done [0-9]* runs in [0-9]* second(s)' build/fuzz/$$f.log)"; done
 

@@ -49,3 +49,5 @@ loop: a socket's write wake never asked of poll~test TESTS=loop~~src/loop/loop.c
 loop: loop_write(fd, 0) leaves the write wake on~test TESTS=loop~~src/loop/loop.c~w[i].ev = on ? POLLIN | POLLOUT : POLLIN;~w[i].ev = on || 1 ? POLLIN | POLLOUT : POLLIN;
 loop: a writable socket counts as input waiting~test TESTS=loop~~src/loop/loop.c~(struct pollfd){ .fd = w[i].fd - 1, .events = POLLIN }; slot[n++] = i;~(struct pollfd){ .fd = w[i].fd - 1, .events = w[i].ev }; slot[n++] = i;
 loop: a new watch keeps the old slot's write wake~test TESTS=loop~~src/loop/loop.c~w[i].fd = fd + 1; w[i].ev = POLLIN;~w[i].fd = fd + 1;
+loop: the write wake drops the read wake~test TESTS=loop~~src/loop/loop.c~w[i].ev = on ? POLLIN | POLLOUT : POLLIN;~w[i].ev = on ? POLLOUT : POLLIN;
+loop: loop_write looks at the first slot only~test TESTS=loop~~src/loop/loop.c~	for (int i = 0; i < MAXW; i++) if (w[i].fd == fd + 1) w[i].ev~	for (int i = 0; i < 1; i++) if (w[i].fd == fd + 1) w[i].ev

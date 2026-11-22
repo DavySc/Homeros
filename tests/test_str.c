@@ -1,6 +1,5 @@
 /* str.h's str_lines against splitting the whole output at once: the same
-   lines however the output is cut, the tail kept until its '
-' comes,
+   lines however the output is cut, the tail kept until its newline comes,
    lines of any length (pick.c once cut them at 4 KB).  str_addf formats
    into the room there is, and grows and formats again when the text does
    not fit (from empty, at the edge of the room, far past it); str_add
@@ -62,6 +61,10 @@ int main(void)
 	CHECK(!str_add(&s, "a\0b", 3) && s.n == n + 3 && !memcmp(s.s + n, "a\0b", 3) && s.s[n + 3] == 0);
 	str_free(&s);
 	CHECK(!s.s && !s.n && !s.cap);
-	puts("test_str: str_lines over 2000 random cuts; str_addf from empty and on each side of the room's edge, up to 3000 bytes at once; str_add keeps NULs");
+	/* glibc writes "abcdef" before the bad wide character fails it: -1,
+	   and the text stays as it was */
+	CHECK(!str_addz(&s, "keep") && str_addf(&s, "abcdef%ls", L"\xD800") == -1 && s.n == 4 && !strcmp(s.s, "keep"));
+	str_free(&s);
+	puts("test_str: str_lines over 2000 random cuts; str_addf from empty and on each side of the room's edge, up to 3000 bytes at once; a failed str_addf leaves the text; str_add keeps NULs");
 	return 0;
 }

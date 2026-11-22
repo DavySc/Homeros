@@ -470,8 +470,9 @@ static void on_wake(void *ctx, int fd) { (void)ctx; (void)fd; wakes++; }
 
 static void write_wake(void)
 {
-	int sv[2];
+	int sv[2], p[2];
 	static char b[1 << 16];
+	CHECK(pipe(p) == 0 && loop_watch(p[0], on_wake, NULL) == 0);   /* the socket in a later slot */
 	CHECK(socketpair(AF_UNIX, SOCK_STREAM, 0, sv) == 0);
 	fcntl(sv[0], F_SETFL, O_NONBLOCK);
 	fcntl(sv[1], F_SETFL, O_NONBLOCK);
@@ -481,17 +482,21 @@ static void write_wake(void)
 	loop_write(sv[0], 1);
 	wakes = 0;
 	CHECK(loop_once(0) == 0 && wakes == 0);     /* full: no wake */
+	CHECK(write(sv[1], "x", 1) == 1);
+	CHECK(loop_once(1000) == 0 && wakes == 1);  /* still full, but readable: the read wake stays */
+	CHECK(read(sv[0], b, 1) == 1);
 	while (read(sv[1], b, sizeof b) > 0) {}
-	CHECK(loop_once(1000) == 0 && wakes == 1);  /* room again: one wake */
+	CHECK(loop_once(1000) == 0 && wakes == 2);  /* room again: one wake */
 	CHECK(!loop_waiting());
 	loop_write(sv[0], 0);
-	CHECK(loop_once(0) == 0 && wakes == 1);     /* off: writable is no wake */
+	CHECK(loop_once(0) == 0 && wakes == 2);     /* off: writable is no wake */
 	loop_write(sv[0], 1);
 	loop_unwatch(sv[0]);                         /* unwatched with the wake on */
 	CHECK(loop_watch(sv[1], on_wake, NULL) == 0);   /* takes its slot */
-	CHECK(loop_once(0) == 0 && wakes == 1);     /* writable, not readable: no wake */
+	CHECK(loop_once(0) == 0 && wakes == 2);     /* writable, not readable: no wake */
 	loop_unwatch(sv[1]);
-	close(sv[0]); close(sv[1]);
+	loop_unwatch(p[0]);
+	close(sv[0]); close(sv[1]); close(p[0]); close(p[1]);
 }
 
 static void many(void)
