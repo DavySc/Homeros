@@ -234,6 +234,17 @@ static void insert(int total)
 	CHECK(!core_open(&pe, path));
 	CHECK(!tools_pick(&pe, PICK_SNIPPETS) && tools_key(&pe, KEY_ENTER));
 	is(&pe, "H\n");
+	/* Enter takes the selected item, and a narrower prompt selects its
+	   first again */
+	snprintf(path, sizeof path, "%s/p.sql", dir);
+	CHECK(!core_open(&pe, path));
+	CHECK(!tools_pick(&pe, PICK_SNIPPETS) && tools_key(&pe, 'g') && tools_key(&pe, KEY_DOWN) && tools_key(&pe, KEY_ENTER));
+	is(&pe, "H\n");
+	CHECK(!core_open(&pe, path) && !tools_pick(&pe, PICK_SNIPPETS));
+	for (int k = 0; k < 3; k++) CHECK(tools_key(&pe, KEY_DOWN));
+	for (const char *k = "pure"; *k; k++) CHECK(tools_key(&pe, *k));
+	CHECK(tools_key(&pe, KEY_ENTER));
+	is(&pe, "SELECT 1\n");
 	/* the popup's order with a prompt too: the group first, though dtz
 	   is shorter */
 	snprintf(path, sizeof path, "%s/x_task_b.sql", dir);

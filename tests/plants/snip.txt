@@ -51,3 +51,8 @@ snip: the preview shows the description~test TESTS=snip~~src/tools/pick.c~		b +=
 snip: SPC i s runs git's leader~test TESTS=keys_map~~src/keys/keys.c~		case 's': tools_pick(e, PICK_SNIPPETS); break;¶~¶
 snip: group() takes the last word, not the first~test TESTS=snip~~src/snip/snip.c~if (n == strlen(g[i]) && !strncmp(w, g[i], n)) return i == 8 ? "helpers" : g[i];~if (n == strlen(g[i]) && !strncmp(w, g[i], n) && !strchr(w + n, '_')) return i == 8 ? "helpers" : g[i];
 snip: a task file ranks no group first~test TESTS=snip~~src/snip/snip.c~"badge", "task", "trigger"~"badge", "tsk", "trigger"
+snip: a new prompt keeps the old preview~test TESTS=snip~~src/tools/pick.c~	P.pvfor = -1;¶	while ((n = snip_get~	while ((n = snip_get
+snip: Enter inserts the first snippet, not the selected one~test TESTS=snip~~src/tools/pick.c~		snip_insert(e, P.a + it.text);~		snip_insert(e, P.a + P.it[0].text);
+snip: the picker sorts by score again~test TESTS=snip~~src/tools/pick.c~	if (P.what == PICK_SNIPPETS) snippets();¶	else rematch();~	if (P.what == PICK_SNIPPETS) snippets(), rematch();¶	else rematch();
+snip: the area takes the text's last byte on a V area too~test TESTS=snip~~src/snip/snip.c~z = core_line_start(e, l2) + len;~z = core_line_start(e, l2) + len + 1;
+snip: a new prompt keeps the old selection~test TESTS=snip~~src/tools/pick.c~	P.sel = P.top = 0;¶	P.pvfor = -1;¶	while ((n = snip_get~	P.pvfor = -1;¶	while ((n = snip_get
