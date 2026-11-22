@@ -24,3 +24,4 @@ fold: an undefined line ends the fold above it~test TESTS=fold~~src/fold/fold.c~
 fold: an update starts at an undefined line~test TESTS=fold~~src/fold/fold.c~	while (level(f, &l) < 0) l.lnum--;~	level(f, &l);
 fold: undefined lines to the end leave no fold to finish~test TESTS=fold~~src/fold/fold.c~	if (!fp) return bot;   /* only undefined lines ("-1") followed, to the end */¶~
 fold: an edit inside one line still adjusts the folds~test TESTS=fold~~src/fold/fold.c~	if (line2 < line1 && !after) return;   /* mark_adjust_buf(): nothing to do */¶~
+fold: a closed fold reports its level, not 1~test TESTS=fold~~src/fold/fold.c~			return lvl + 1;   /* fold_info()'s fi_level, for foldtext's dashes */~			return 1;
