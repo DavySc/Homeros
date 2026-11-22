@@ -367,7 +367,7 @@
   ]
  },
  "spaces": {
-  "setup": "printf 'x\\n' > 'my file.txt'; git add 'my file.txt'; printf 'y\\n' > '\u00e9.txt'",
+  "setup": "printf 'x\\n' > 'my file.txt'; git add 'my file.txt'; printf 'y\\n' > 'é.txt'",
   "keys": [
    "<Tab>",
    "<C-j><C-j><C-j><C-j><C-j>",
@@ -974,6 +974,46 @@
    "V",
    "jjj",
    "s"
+  ]
+ },
+ "region-discard-staged-hunks": {
+  "setup": "git checkout -- a.txt && seq 1 30 > d.txt && git add d.txt && git commit -qm d && sed -i 's/^5$/F/; s/^15$/FF/; s/^25$/FFF/' d.txt && git add d.txt",
+  "keys": [
+   "<C-j>",
+   "j",
+   "<Tab>",
+   "j",
+   "V",
+   "<C-j>",
+   "x",
+   "y"
+  ]
+ },
+ "region-discard-staged-hunks-mixed": {
+  "setup": "git checkout -- a.txt && seq 1 30 > d.txt && git add d.txt && git commit -qm d && sed -i 's/^5$/F/; s/^15$/FF/; s/^25$/FFF/' d.txt && git add d.txt && sed -i 's/^30$/END/' d.txt",
+  "keys": [
+   "<C-j><C-j><C-j><C-j>",
+   "<Tab>",
+   "j",
+   "V",
+   "<C-j>",
+   "x",
+   "y"
+  ]
+ },
+ "unstage-unstaged-file": {
+  "setup": "true",
+  "keys": [
+   "<C-j><C-j>",
+   "u"
+  ]
+ },
+ "unstage-intent": {
+  "setup": "echo new > n.txt && git add -N n.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "j",
+   "u"
   ]
  }
 }
