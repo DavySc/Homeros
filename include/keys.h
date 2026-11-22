@@ -76,4 +76,10 @@ void keys_write_pre(struct Editor *e, struct Buf *b);
    line copies grow, to the longest line drawn, then stay
    (tests/test_keys_ex.c). */
 int  keys_hl(struct Editor *e, const struct Win *w, size_t line, size_t col, size_t *s, size_t *z);
+/* Visual mode set from outside keys (git's views, magit's region): mode 0
+   ends it as Esc does (end_visual_mode), with no key recorded; 'v', 'V'
+   or 22 keeps or starts that mode with its other end at line `line`,
+   column 0, the cursor where it is.  e->ks is updated.  Not e->ks.visual
+   directly: keys rewrites it from its own state after every key. */
+void keys_visual(struct Editor *e, int mode, size_t line);
 #endif
