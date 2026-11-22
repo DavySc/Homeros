@@ -1,0 +1,94 @@
+--- a/src/fold/fold.c
++++ b/src/fold/fold.c
+@@ -21,7 +21,7 @@
+ 
+ struct Fold {
+ 	Arr folds;         /* w_folds */
+-	int level, manual, invalid;  /* w_p_fdl, w_fold_manual, w_foldinvalid */
++	int level, invalid;  /* w_p_fdl, w_foldinvalid */
+ 	long n;            /* lines in the buffer, for a fold left past the end */
+ 	FoldExpr *expr;
+ 	FoldTall *tall;
+@@ -269,9 +269,7 @@
+ 					fp->len = bot - firstlnum + 1;
+ 					/* open in an open fold, else as the fold above it or the
+ 					   one holding it */
+-					if (topflags == FD_OPEN) { f->manual = 1; fp->flags = FD_OPEN; }
+-					else if (i <= 0) { fp->flags = topflags; if (topflags != FD_LEVEL) f->manual = 1; }
+-					else fp->flags = fp[-1].flags;
++					fp->flags = topflags == FD_OPEN || i <= 0 ? topflags : fp[-1].flags;
+ 					finish = 1;
+ 					break;
+ 				}
+@@ -282,9 +280,7 @@
+ 			if (bot < l->lnum) bot = l->lnum;
+ 			l->lnum = l->lnum_save - fp->top;
+ 			l->off += fp->top;
+-			int i = (int)(fp - a->d);
+ 			bot = recurse(f, &fp->nested, lvl0 + 1, startlnum2 - fp->top, l, bot - fp->top, fp->flags);
+-			fp = a->d + i;
+ 			l->lnum += fp->top;
+ 			l->lnum_save += fp->top;
+ 			l->off -= fp->top;
+@@ -297,7 +293,6 @@
+ 			l->lnum_save = l->lnum;
+ 		}
+ 	}
+-	if (!fp) return bot;
+ 	if (fp->len < l->lnum - fp->top) fp->len = l->lnum - fp->top;
+ 	else if (fp->top + fp->len > linecount) fp->len = linecount - fp->top + 1;
+ 	remove_(&fp->nested, startlnum2 - fp->top, l->lnum - 1 - fp->top);
+@@ -376,7 +371,6 @@
+ {
+ 	Fold *g = fold_new(f->level, f->expr, f->tall, ctx);
+ 	if (!g) return NULL;
+-	g->manual = f->manual;
+ 	g->invalid = f->invalid;
+ 	g->n = f->n;
+ 	copy(&g->folds, &f->folds);
+@@ -464,18 +458,15 @@
+ static int manual(Fold *f, long lnum, int opening, int recurse)
+ {
+ 	Nd *fp, *found = NULL;
+-	int lvl = 0, use_level = 0, done = 0;
++	int lvl = 0, done = 0;
+ 	for (Arr *a = &f->folds; find(a, lnum, &fp); a = &fp->nested, lnum -= fp->top, lvl++) {
+ 		done = DONE_FOLD;
+ 		/* from 'foldlevel' to manual */
+-		if (use_level || fp->flags == FD_LEVEL) {
+-			use_level = 1;
++		if (fp->flags == FD_LEVEL) {
+ 			fp->flags = lvl >= f->level ? FD_CLOSED : FD_OPEN;
+ 			for (int j = 0; j < fp->nested.n; j++) fp->nested.d[j].flags = FD_LEVEL;
+ 		}
+-		if (!opening && recurse) {
+-			if (fp->flags != FD_CLOSED) { done |= DONE_ACTION; fp->flags = FD_CLOSED; }
+-		} else if (fp->flags == FD_CLOSED) {   /* opening opens the topmost closed one */
++		if (fp->flags == FD_CLOSED) {   /* opening opens the topmost closed one */
+ 			if (opening) {
+ 				fp->flags = FD_OPEN;
+ 				done |= DONE_ACTION;
+@@ -485,11 +476,8 @@
+ 		}
+ 		found = fp;
+ 	}
+-	if (done) {
+-		/* closing closes the deepest open one */
+-		if (!opening && found) { found->flags = FD_CLOSED; done |= DONE_ACTION; }
+-		f->manual = 1;
+-	}
++	/* closing closes the deepest open one */
++	if (!opening && found) { found->flags = FD_CLOSED; done |= DONE_ACTION; }
+ 	return done;
+ }
+ 
+@@ -529,8 +517,6 @@
+ 	}
+ 	/* newFoldLevelWin() */
+ 	f->level = (int)count;
+-	if (f->manual)
+-		for (int i = 0; i < f->folds.n; i++) f->folds.d[i].flags = FD_LEVEL;
+-	f->manual = 0;
++	for (int i = 0; i < f->folds.n; i++) f->folds.d[i].flags = FD_LEVEL;
+ 	return 0;
+ }

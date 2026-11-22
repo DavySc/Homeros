@@ -464,6 +464,11 @@ int main(int argc, char **argv)
 	if (argc > 2 && !strcmp(argv[1], "writer")) writer(atoi(argv[2]));
 	if (argc > 2 && !strcmp(argv[1], "journaller")) journaller(strtoull(argv[2], NULL, 10));
 	if (argc > 1) return 2;
+	/* stdpath("config") is %LOCALAPPDATA%\\homeros, without -data (package 11's, agreed by thread 0) */
+	char cf[MAX_PATH + 32];
+	CHECK(!_putenv_s("XDG_CONFIG_HOME", "") && !_putenv_s("LOCALAPPDATA", "C:\\L"));
+	file_stdpath(cf, sizeof cf, 2, "\\s.md");
+	CHECK(!strcmp(cf, "C:\\L\\homeros\\s.md"));
 	saves();
 	killed_saves();
 	watch();
