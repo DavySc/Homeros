@@ -122,8 +122,9 @@ static LRESULT CALLBACK proc(HWND h, UINT m, WPARAM w, LPARAM l)
 			return 0;
 		}
 		surr = 0;
-		/* the Backspace key gives 8 like Ctrl-H; a terminal sends 127 for it */
-		put(w == 8 && GetKeyState(VK_CONTROL) >= 0 ? KEY_BS : (int)w);
+		/* the Backspace key gives 8 like Ctrl-H, a terminal sends 127 for it;
+		   Tab gives 9 with Shift too */
+		put(w == 8 && GetKeyState(VK_CONTROL) >= 0 ? KEY_BS : w == 9 && GetKeyState(VK_SHIFT) < 0 ? KEY_S_TAB : (int)w);
 		return 0;
 	case WM_KEYDOWN:
 		switch (w) {

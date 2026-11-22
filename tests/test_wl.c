@@ -402,13 +402,13 @@ static void test_sway(void)
 
 	/* keys, with the Control transformation and the keys keys.h names */
 	k0 = nkeys;
-	run("LC_ALL=C.UTF-8 wtype aé -k Escape -k BackSpace -M ctrl r -m ctrl -k Up -k Return -k Tab -M ctrl -k period -m ctrl -k period");
+	run("LC_ALL=C.UTF-8 wtype aé -k Escape -k BackSpace -M ctrl r -m ctrl -k Up -k Return -k Tab -M shift -k Tab -m shift -k ISO_Left_Tab -M ctrl -k period -m ctrl -k period");
 	pump(50);
-	int want[] = { 'a', 0xE9, KEY_ESC, KEY_BS, KEY_CTRL_R, KEY_UP, KEY_ENTER, KEY_TAB, KEY_CTRL_DOT, '.' };
-	if (nkeys - k0 != 10)
+	int want[] = { 'a', 0xE9, KEY_ESC, KEY_BS, KEY_CTRL_R, KEY_UP, KEY_ENTER, KEY_TAB, KEY_S_TAB, KEY_S_TAB, KEY_CTRL_DOT, '.' };
+	if (nkeys - k0 != 12)
 		for (int i = k0; i < nkeys; i++) fprintf(stderr, "key %d: %#x\n", i - k0, (unsigned)keys[i]);
-	CHECK(nkeys - k0 == 10);
-	for (int i = 0; i < 10; i++) CHECK(keys[k0 + i] == want[i]);
+	CHECK(nkeys - k0 == 12);
+	for (int i = 0; i < 12; i++) CHECK(keys[k0 + i] == want[i]);
 
 	/* keys that arrive together but are taken 4 at a time: those left in the
 	   backend's queue make an fd readable, as main.c reads only then */

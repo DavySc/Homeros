@@ -9,6 +9,7 @@
 #include "git.h"
 #include "kitten.h"
 #include "lsp.h"
+#include "snip.h"
 #include "syntax.h"
 #include "uni.h"
 
@@ -137,6 +138,9 @@ static void undo_seen(void *ctx, const Text *t, size_t pos, size_t ndel, const c
 	Buf *b = ctx;
 	if (b->syn) syntax_edit(b->syn, t, pos, ndel, ins, nins);
 	lsp_edit(b->lsp, t, pos, ndel, ins, nins);
+	/* a snippet's stops move as Neovim's extmark_splice() moves extmarks,
+	   each with its gravity (package 4's, agreed by thread 0) */
+	snip_edit(b, t, pos, ndel, ins, nins);
 	if (b->journal && (journal_base(b->journal, t, jstate(b), &b->id)
 	                   || journal_edit(b->journal, pos, ndel, ins, nins, jnext != (unsigned)-1 ? jnext : jstate(b)))) b->jerr = 1;
 }
