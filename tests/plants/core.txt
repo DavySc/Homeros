@@ -28,7 +28,7 @@ core: plines_col counts bytes again (finding 5) (test_core_screens)~test TESTS=c
 core: a reused buffer keeps the old undo marks (finding 7) (test_core_undo)~test TESTS=core_undo~~src/core/core.c~			umarks_drop(b);            /* by address~			(void)0;                  /* by address
 core: an undo group takes its neighbour's marks (test_core_undo)~test TESTS=core_undo~~src/core/core.c~	if (u && (u->b != b || u->seq != seq)) u = NULL;~	(void)0;
 core: marks kept for 3 undo groups only (test_core_undo)~test TESTS=core_undo~~src/core/core.c~enum { UMARKS_MAX = 2000, UMARKS_TRIM = 64 };~enum { UMARKS_MAX = 3, UMARKS_TRIM = 64 };
-core: a save leaves the outside-change flag set (test_core_contract)~test TESTS=core_contract~~src/core/core.c~		b->saved_seq = undo_seq(b->undo);¶		b->changed = 0;¶		if (b->journal) journal_saved(b->journal);¶		core_msg(e, "\"%s\"%s %zuL~		b->saved_seq = undo_seq(b->undo);¶		if (b->journal) journal_saved(b->journal);¶		core_msg(e, "\"%s\"%s %zuL
+core: a save leaves the outside-change flag set (test_core_contract)~test TESTS=core_contract~~src/core/core.c~	b->saved_seq = undo_seq(b->undo);¶	b->changed = 0;¶~	b->saved_seq = undo_seq(b->undo);¶
 core: CTRL-^ onto column 0 wants column 0 even without a position (test_core_screens)~test TESTS=core_screens~~src/core/core.c~	if (how == ENTER_ALT && !w->col && pos) w->want = 0;~	if (how == ENTER_ALT && !w->col) w->want = 0;
 core: scroll_cursor_halfway() drops skipcol without smoothscroll (test_core_screens)~test TESTS=core_screens~~src/core/move.c~	if (p_sms && w->wrap) w->skipcol = 0;¶	w->frame->s.topvalid = 1;~	w->skipcol = 0;¶	w->frame->s.topvalid = 1;
 core: core_vcol counts a byte inside a cluster to its end (test_core_contract)~test TESTS=core_contract~~src/core/core.c~i < n && i + (k = uni_glen(s, n, i)) <= col; i += k)~i < col && i < n && (k = uni_glen(s, n, i)); i += k)
@@ -176,5 +176,8 @@ core: the yank flash drawn over 'hlsearch' matches (test_core_contract)~test TES
 core: an empty line's end-of-line cell drawn CurSearch (test_core_search)~test TESTS=core_search~~src/core/draw.c~z->bg = i ? search(w, l, ms, mz) : FACE_SEARCH;~z->bg = search(w, l, ms, mz);
 core: core_goto leaves a cursor past the end (test_core_contract)~test TESTS=core_contract~~src/core/core.c~	e->win->col = col;¶	core_clamp(e);¶	core_set_want(e);~	e->win->col = col;¶	core_set_want(e);
 core: a write skips the BufWritePre (test_keys_gq's format on :w)~test TESTS=keys_gq~~src/core/core.c~	keys_write_pre(e, b);¶~
-core: a write sends no didSave (test_infoview)~test TESTS=infoview~~src/core/core.c~		kitten_written(e, b);   /* BufWritePost, after the message as in Neovim */¶		lsp_saved(b->lsp);~		kitten_written(e, b);   /* BufWritePost, after the message as in Neovim */
+core: a write sends no didSave (test_infoview)~test TESTS=infoview~~src/core/core.c~	lsp_saved(b->lsp);¶~
+core: a change in a nomodifiable buffer (test_core_contract)~test TESTS=core_contract~~src/core/core.c~	if (!ndel && !nins && after == b->flags) return 0;¶	if (!modifiable(e)) return -1;~	if (!ndel && !nins && after == b->flags) return 0;
+core: undo in a nomodifiable buffer (test_core_contract)~test TESTS=core_contract~~src/core/core.c~	if (!modifiable(e)) return -1;¶	unsigned long seq = undo_seq(b->undo);~	unsigned long seq = undo_seq(b->undo);
+core: :e! refused in a nomodifiable buffer (test_core_contract)~test TESTS=core_contract~~src/core/core.c~	if (!e->buf->nomodifiable || reloading) return 1;~	if (!e->buf->nomodifiable) return 1;
 core: :bd leaves the closed language server document on the buffer (test_core_contract)~test TESTS=core_contract~~src/core/core.c~	b->lsp = NULL;¶~

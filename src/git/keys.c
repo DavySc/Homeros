@@ -14,6 +14,7 @@
 #include "git.h"
 #include "keys.h"
 #include "loop.h"
+#include "uni.h"
 #include "gitint.h"
 
 int git_headless;
@@ -242,18 +243,8 @@ static void prompt_key(Editor *e, int k)
 	if (k == KEY_BS || k == 8) {
 		while (P.n && ((unsigned char)P.in[P.n - 1] & 0xc0) == 0x80) P.n--;
 		if (P.n) P.n--;
-	} else if (k >= 32 && k < 0x110000 && P.n + 4 < sizeof P.in) {
-		/* UTF-8 */
-		if (k < 0x80) P.in[P.n++] = (char)k;
-		else if (k < 0x800) { P.in[P.n++] = (char)(0xc0 | k >> 6); P.in[P.n++] = (char)(0x80 | (k & 63)); }
-		else if (k < 0x10000) {
-			P.in[P.n++] = (char)(0xe0 | k >> 12); P.in[P.n++] = (char)(0x80 | (k >> 6 & 63));
-			P.in[P.n++] = (char)(0x80 | (k & 63));
-		} else {
-			P.in[P.n++] = (char)(0xf0 | k >> 18); P.in[P.n++] = (char)(0x80 | (k >> 12 & 63));
-			P.in[P.n++] = (char)(0x80 | (k >> 6 & 63)); P.in[P.n++] = (char)(0x80 | (k & 63));
-		}
-	}
+	} else if (k >= 32 && k < 0x110000 && P.n + 4 < sizeof P.in)
+		P.n += (size_t)uni_put((unsigned char *)P.in + P.n, (unsigned)k);
 	P.in[P.n] = 0;
 	core_msg(e, "%s%s", P.q, P.in);
 }
