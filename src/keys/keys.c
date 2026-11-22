@@ -209,7 +209,9 @@ void keys_write_pre(Editor *e, Buf *b)
 	char d[4096];
 	size_t n = 0;
 	E = e;
-	if (b == e->buf && is_ft(".sql")) {
+	int k = b == e->buf ? fmt_kind() : 0;
+	const char *mark = k == 1 ? "sqldiff.toml" : ".slang";
+	if (k) {
 		if (B->path[0] != '/' && B->path[0] != '\\' && B->path[1] != ':') {
 			if (!getcwd(d, sizeof d - 1)) d[0] = 0;
 			n = strlen(d);
@@ -221,8 +223,8 @@ void keys_write_pre(Editor *e, Buf *b)
 			n += p;
 			for (struct stat st;;) {
 				while (n && d[n - 1] != '/' && d[n - 1] != '\\') n--;
-				memcpy(d + n, "sqldiff.toml", 13);
-				if (!stat(d, &st)) { sql_format(0, text_len(B->text)); break; }
+				memcpy(d + n, mark, strlen(mark) + 1);
+				if (!stat(d, &st)) { buf_format(0, text_len(B->text)); break; }
 				if (n <= 1 || (n == 3 && d[1] == ':')) break;
 				n--;
 			}
@@ -317,7 +319,7 @@ static void ex(void)
 	case 5: case 6: if (!core_write(E, B, i == 6)) core_close(E, 0); break;
 	case 7: if (!core_modified(B) || !core_write(E, B, 0)) core_close(E, 0); break;
 	/* Davy's :Format (conform.nvim): the whole buffer */
-	case 8: if (is_ft(".sql")) sql_format(0, text_len(B->text)); break;
+	case 8: if (fmt_kind()) buf_format(0, text_len(B->text)); break;
 	case 9: kitten_paw(E); break;
 	default: dashboard(E);
 	}
