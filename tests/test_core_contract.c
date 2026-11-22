@@ -15,6 +15,7 @@
 #include "lsp.h"
 #include "syntax.h"
 #include "grid.h"
+#include "text.h"
 #include "../src/core/core_int.h"
 
 static char path[] = "/tmp/core_contractXXXXXX";
@@ -40,6 +41,13 @@ int main(void)
 	/* core_goto past the end: the last line's last character, wanted there */
 	core_goto(&e, 1000, 1000);
 	CHECK(e.win->line == 99 && e.win->col == 2 && e.win->want == 2);
+	/* 'nomodifiable': changes, undo and redo refuse with E21; :e! still loads */
+	CHECK(!core_edit(&e, 0, 1, "x", 1) && core_undo(&e, 0) > 0);
+	e.buf->nomodifiable = 1;
+	CHECK(core_edit(&e, 0, 1, "y", 1) == -1 && strstr(e.msg, "E21") && core_undo(&e, 1) == -1);
+	char c0;
+	CHECK(text_read(e.buf->text, 0, &c0, 1) == 1 && c0 == '1' && !core_edit_file(&e, NULL, 1));
+	e.buf->nomodifiable = 0;
 
 	/* scrolling and gj/gk: 0 moved, -1 a beep */
 	struct { size_t from; int r[6]; } want[] = {   /* CTRL-D, CTRL-U, CTRL-F, CTRL-B, gj, gk */

@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "k.h"
+#include "tools.h"
 #include "uni.h"
 
 typedef struct {
@@ -622,6 +623,11 @@ static void nv_brackets(Cmdarg *cap)
 		else if (oap->op_type == OP_NOP) beginline(BL_WHITE | BL_FIX);
 		return;
 	}
+	if (cap->nchar == 'q') {
+		/* Neovim 0.12's default mappings "[q" and "]q": :cprevious, :cnext */
+		if (!checkclearopq(oap)) tools_qf(E, cap->arg == FORWARD ? cap->count1 : -cap->count1);
+		return;
+	}
 	if (cap->nchar == ' ') {
 		/* Neovim 0.12's default mappings "[<Space>" and "]<Space>": count
 		   empty lines above or below; the cursor stays on its text */
@@ -983,7 +989,7 @@ static void nv_esc(Cmdarg *cap)
 	clearop(cap->oap);
 }
 
-static void cmdline(int type, const char *range)
+void cmdline(int type, const char *range)
 {
 	E->mode = MODE_CMDLINE;
 	E->cmdtype = type;
