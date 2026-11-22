@@ -1,0 +1,9 @@
+caught        core: core_goto leaves a cursor past the end (test_core_contract)   (make test TESTS=core_contract): tests/test_core_contract.c:40: CHECK(e.win->line == 99 && e.win->col == 2 && e.win->want == 2) failed
+caught        core: a write skips the BufWritePre (test_keys_gq's format on :w)   (make test TESTS=keys_gq): tests/test_keys_gq.c:130: CHECK(!strcmp(disk(file), want(0, sizeof SRC - 1))) failed
+caught        core: a write sends no didSave (test_infoview)   (make test TESTS=infoview): tests/test_infoview.c:322: CHECK(strstr(o, "\ntextDocument/didSave ")) failed
+caught        str_lines: the unfinished tail is dropped (test_str)   (make test TESTS=str): tests/test_str.c:35: CHECK(got.n == want.n && (!want.n || !memcmp(got.s, want.s, want.n))) failed
+caught        str_lines: a line's earlier pieces are lost (test_str)   (make test TESTS=str): tests/test_str.c:35: CHECK(got.n == want.n && (!want.n || !memcmp(got.s, want.s, want.n))) failed
+caught        matcher: a long line number overflows (fuzz_tools_match)   (make fuzz FUZZERS=tools_match FUZZ_SECONDS=60): src/tools/match.c:202:53: runtime error: signed integer overflow: 2222222222222222222 * 10 cannot be represented in type 'long'
+caught        oil: a long id overflows (fuzz_tools_oil)   (make fuzz FUZZERS=tools_oil FUZZ_SECONDS=60): src/tools/match.c:202:53: runtime error: signed integer overflow: 7777777777777777777 * 10 cannot be represented in type 'long'
+caught        frama-c: uni_put writes a wrong last byte for a 4-byte code point   (make frama): [wp] Proved goals:  256 / 257
+RC=0

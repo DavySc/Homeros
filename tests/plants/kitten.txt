@@ -3,7 +3,7 @@
 # Windows twin under Wine), and the save hook in core_write.
 kitten: every draw arms the timer (redraws hold it back)~test TESTS=kitten~~src/kitten/kitten.c~	if (armed != frame) {~	if (frame >= 0) {
 kitten: the timer arms the next frame itself (wakes a hidden window)~test TESTS=kitten~~src/kitten/kitten.c~	if (++frame < NFRAMES) return;~	if (++frame < NFRAMES) { loop_timer(step, ed, MS); return; }
-kitten: core_write does not tell it~test TESTS=kitten~~src/core/core.c~		kitten_written(e, b);   /* BufWritePost, after the message as in Neovim */~
+kitten: core_write does not tell it~test TESTS=kitten~~src/core/core.c~	kitten_written(e, b);¶~
 kitten: the blink as long as a frame~test TESTS=kitten~~src/kitten/kitten.c~	{ "-.-", "", "", MS * 7 / 10 },~	{ "-.-", "", "", MS },
 kitten: wide eyes~test TESTS=kitten~~src/kitten/kitten.c~	{ "o.o", "_", "", MS },~	{ "O.O", "_", "", MS },
 kitten: one column too far right~test TESTS=kitten~~src/kitten/kitten.c~c = g->cols - w - 2, end;~c = g->cols - w - 1, end;

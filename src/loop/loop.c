@@ -151,6 +151,20 @@ out:
 	return ok ? id : -1;
 }
 
+/* 'shell' as Neovim sets it */
+const char *proc_shell_path(void)
+{
+	const char *sh = getenv("SHELL");
+	return sh && *sh ? sh : "sh";
+}
+
+/* and 'shellcmdflag' */
+int proc_shell(const char *cmd, const char *dir, ProcFn fn, void *ctx)
+{
+	char *argv[] = { (char *)proc_shell_path(), "-c", (char *)cmd, NULL };
+	return proc_spawn(argv, dir, fn, ctx);
+}
+
 static void close_in(struct Proc *c)
 {
 	close(c->fd[0]);

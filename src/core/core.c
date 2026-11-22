@@ -12,6 +12,7 @@
 #include "lsp.h"
 #include "snip.h"
 #include "syntax.h"
+#include "tools.h"
 #include "uni.h"
 
 enum { DEL = -1 };                 /* mark_adjust()'s MAXLNUM: the lines are deleted */
@@ -221,12 +222,19 @@ static int buf_listed(const Editor *e, const Buf *b)
 	return 0;
 }
 
+static Buf *find(Buf *b, int nr)
+{
+	while (b && b->nr != nr) b = b->next;
+	return b;
+}
+
+Buf *core_buf_find(Editor *e, int nr) { return find(e->bufs, nr); }
+
 /* buflist_findnr(): listed or not */
 static Buf *buf_find(Editor *e, int nr)
 {
-	for (int k = 0; k < 2; k++)
-		for (Buf *b = k ? unlisted : e->bufs; b; b = b->next) if (b->nr == nr) return b;
-	return NULL;
+	Buf *b = find(e->bufs, nr);
+	return b ? b : find(unlisted, nr);
 }
 
 /* Loads path into b, a buffer without text (path NULL: empty, no name).
@@ -1008,12 +1016,22 @@ static void adjust_edit(Editor *e, size_t L, size_t col, int at_start, int whole
 	if (i) adjust(e, e->buf, at_start && whole_ins ? L : L + 1, (size_t)-1, (long)i, 0);
 }
 
+/* Neovim's undo_allowed(), which every change asks (u_savecommon()) and
+   undo and redo too (u_doit()); :e reloads it all the same */
+static int modifiable(Editor *e)
+{
+	if (!e->buf->nomodifiable || reloading) return 1;
+	core_msg(e, "E21: Cannot make changes, 'modifiable' is off");
+	return 0;
+}
+
 static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins, unsigned after)
 {
 	Buf *b = e->buf;
 	/* nothing changes, so nothing is recorded: x on an empty line and dd
 	   in an empty buffer leave the buffer unmodified, as in Neovim */
 	if (!ndel && !nins && after == b->flags) return 0;
+	if (!modifiable(e)) return -1;
 	char *del = malloc(ndel ? ndel : 1);
 	UndoCursor c = { e->win->line, e->win->col, b->flags };
 	/* the state after: an empty file saves empty until it gets a line of
@@ -1112,6 +1130,7 @@ int core_undo(Editor *e, int redo)
 	Mark namedm[28];
 	marks_snap(b, namedm);
 	unsigned js = jstate(b);
+	if (!modifiable(e)) return -1;
 	unsigned long seq = undo_seq(b->undo);             /* the group undone */
 	int r = redo ? undo_redo(b->undo, b->text, &w) : undo_undo(b->undo, b->text, &w);
 	if (redo) seq = undo_seq(b->undo);                 /* the group redone */
@@ -1183,30 +1202,25 @@ int core_write(Editor *e, Buf *b, int force)
 	keys_write_pre(e, b);
 	/* an empty buffer (ML_EMPTY) writes no bytes, not one empty line */
 	size_t n = b->flags & CORE_EMPTY ? 0 : text_len(b->text) - (b->noeol ? 1 : 0);
-	switch (file_save(b->path, b->text, n, b->dos, &b->id, force, kept, sizeof kept)) {
-	case SAVE_OK:
-		b->saved_seq = undo_seq(b->undo);
-		b->changed = 0;
-		if (b->journal) journal_saved(b->journal);
-		core_msg(e, "\"%s\"%s %zuL, %zuB written", b->path, ff(b, 0), n ? buf_lines(b) : 0, (size_t)b->id.size);
-		kitten_written(e, b);   /* BufWritePost, after the message as in Neovim */
-		lsp_saved(b->lsp);
-		return 0;
-	case SAVE_CHANGED:
+	int r = file_save(b->path, b->text, n, b->dos, &b->id, force, kept, sizeof kept);
+	if (r == SAVE_CHANGED) {
 		core_msg(e, "E13: \"%s\" changed on disk since it was read (add ! to override)", b->path);
 		return -1;
-	case SAVE_KEPT:
-		b->saved_seq = undo_seq(b->undo);
-		b->changed = 0;
-		if (b->journal) journal_saved(b->journal);
-		core_msg(e, "written, but another program replaced the file first; its version is in %s", kept);
-		kitten_written(e, b);   /* BufWritePost */
-		lsp_saved(b->lsp);
-		return 0;
-	default:
+	}
+	if (r != SAVE_OK && r != SAVE_KEPT) {
 		core_msg(e, "E212: Can't open file for writing: %s", b->path);
 		return -1;
 	}
+	b->saved_seq = undo_seq(b->undo);
+	b->changed = 0;
+	if (b->journal) journal_saved(b->journal);
+	if (r == SAVE_OK) core_msg(e, "\"%s\"%s %zuL, %zuB written", b->path, ff(b, 0), n ? buf_lines(b) : 0, (size_t)b->id.size);
+	else core_msg(e, "written, but another program replaced the file first; its version is in %s", kept);
+	/* BufWritePost, after the message as in Neovim */
+	kitten_written(e, b);
+	lsp_saved(b->lsp);
+	tools_written(e, b);
+	return 0;
 }
 
 void core_watch(Editor *e, int fd)
