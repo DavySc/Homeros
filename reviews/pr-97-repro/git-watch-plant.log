@@ -1,0 +1,7 @@
+caught        git: the change entries are read in place, unaligned under Wine (Windows watch)   (make win WIN=git): FAIL test_git_win
+caught        git: the change entries are read in place, unaligned under Wine (Windows watch)   (make win WIN=git): FAIL test_git_win
+caught        git: the change entries are read in place, unaligned under Wine (Windows watch)   (make win WIN=git): FAIL test_git_win
+caught        git: the change entries are read in place, unaligned under Wine (Windows watch)   (make win WIN=git): FAIL test_git_win
+caught        git: the change entries are read in place, unaligned under Wine (Windows watch)   (make win WIN=git): FAIL test_git_win
+rm: cannot remove '/tmp/tmp.DslpDwRzjQ/build/win/prefix-git': Directory not empty
+EXIT

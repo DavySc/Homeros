@@ -50,7 +50,11 @@ size_t  syntax_conceal(Syntax *s, size_t line, Conceal *out, size_t cap);
    (g:markdown_folding: heading levels), Org's subtrees (orgfx_foldexpr);
    0 for a buffer without folds.  It brings the parse up to date first, as
    vim.treesitter.foldexpr() parses, so it is called from fold_update
-   (fold.h) after a change, never while drawing. */
+   (fold.h) after a change, never while drawing.  The first call after a
+   parse runs the folds query over every tree (measured, 5 runs: 1.3 ms per
+   edit on a 29 KB C file, 17 to 18 ms on 489 KB, against a 0.3 / 2 ms
+   reparse); Neovim recomputes only the changed rows, so settle that before
+   fold_update calls it from the edit path. */
 int     syntax_foldexpr(Syntax *s, size_t line, int *start);
 /* What render-markdown draws on line l, from the tree, without allocating:
    0 for a non-Markdown buffer or a line with none of these, else 1 */
