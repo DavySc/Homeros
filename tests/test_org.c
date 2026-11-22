@@ -1255,7 +1255,7 @@ int main(void)
 	   ran to the end; the same past blank lines 8.0 (7.9 to 10.3) and 10.6
 	   (10.2 to 16.7); plain lines walked for each line, 120 ms) */
 	static const struct { const char *ln; size_t n, shown; long ms; const char *end, *top; } gate[] = {
-		{ "a *b* x^{2}\n", 100000, 5, 20, "", "" }, { "[fn:1] [[a][b]] *b* x^{2}\n", 100000, 7, 40, "", "" },
+		{ "a *b* x^{2}\n", 100000, 5, 15, "", "" }, { "[fn:1] [[a][b]] *b* x^{2}\n", 100000, 7, 40, "", "" },
 		/* openers that never close, then one closer at the end, past the blank lines */
 		{ "<http:a\n", 20000, 0, 20, "", "" }, { "[[a][x\n", 20000, 0, 20, "", "" },
 		{ "<http:a\n\n", 50000, 0, 20, "a>", "" }, { "[[a][x\n\n", 50000, 0, 20, "]]", "" },
