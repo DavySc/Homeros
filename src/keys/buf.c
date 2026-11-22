@@ -373,43 +373,24 @@ int has_folding(long l, long *a, long *b)
 
 /* foldOpenCursor(): what 'foldopen' (Neovim's default) names opens the
    folds the cursor is in */
-void fold_open_cursor(void) { if (has_folding((long)W->line, NULL, NULL)) fold_cmd(W->fold, FOLD_VIEW, W->line, 0), changed_window_setting(); }
+void fold_open_cursor(void) { if (has_folding((long)W->line, NULL, NULL)) core_fold(E, FOLD_VIEW, W->line, 0), changed_window_setting(); }
 
-/* cursor_down() and cursor_down_inner(): a closed fold counts as one line,
-   and the last one fails */
+/* cursor_down() and cursor_up(): fail on the last line (a closed fold's
+   too) or the first; the steps are the core's (cursor_down_inner()) */
 int cursor_down(long n)
 {
-	long l = (long)W->line, nl = nlines(), e = l;
-	has_folding(l, NULL, &e);
-	if (n > 0 && e + 1 >= nl) return 0;
-	if (l + n >= nl - 1) l = nl - 1;
-	else if (W->fold)
-		for (long last; n-- > 0;) {
-			l = has_folding(l, NULL, &last) ? last + 1 : l + 1;
-			if (l >= nl - 1) break;
-		}
-	else l += n;
-	W->line = (size_t)(l < nl - 1 ? l : nl - 1);
+	long e = (long)W->line;
+	has_folding(e, NULL, &e);
+	if (n > 0 && e + 1 >= nlines()) return 0;
+	W->line = core_line_step(E, W->line, n);
 	coladvance(curswant());
 	return 1;
 }
 
-/* cursor_up() and cursor_up_inner(): to a closed fold's first line, but
-   the last step in Insert mode, where it opens */
 int cursor_up(long n)
 {
-	long l = (long)W->line;
-	if (n > 0 && l <= 0) return 0;
-	if (n >= l + 1) l = 0;
-	else if (W->fold) {
-		has_folding(l, &l, NULL);
-		while (n-- > 0) {
-			if (--l <= 0) break;
-			if (n > 0 || E->mode != MODE_INSERT) has_folding(l, &l, NULL);
-		}
-		if (l < 0) l = 0;
-	} else l -= n;
-	W->line = (size_t)l;
+	if (n > 0 && !W->line) return 0;
+	W->line = core_line_step(E, W->line, -n);
 	coladvance(curswant());
 	return 1;
 }

@@ -1308,7 +1308,7 @@ static void nv_zet(Cmdarg *cap)
 		for (long l = a.lnum, next; W->fold && l <= b.lnum; l = next + 1) {
 			next = l;
 			if (c == 'o') has_folding(l, NULL, &next);
-			found |= fold_cmd(W->fold, c == 'o' ? FOLD_OPEN : FOLD_CLOSE, (size_t)l, 1) == 0;
+			found |= core_fold(E, c == 'o' ? FOLD_OPEN : FOLD_CLOSE, (size_t)l, 1) == 0;
 			if (c == 'c') has_folding(l, NULL, &next);
 		}
 		if (!found) core_msg(E, "E490: No fold found");
@@ -1319,7 +1319,7 @@ static void nv_zet(Cmdarg *cap)
 	if (c == 't' || c == 'z' || c == 'b') core_scroll_cursor(E, c);
 	/* openFold() and closeFold() with no fold there: E490, as with no folds */
 	else if (c && i >= 0) {
-		if (W->fold ? fold_cmd(W->fold, op[i], W->line, cap->count1) < 0 : i < 3) core_msg(E, "E490: No fold found");
+		if (core_fold(E, op[i], W->line, cap->count1) < 0 && (W->fold || i < 3)) core_msg(E, "E490: No fold found");
 		changed_window_setting();
 	} else clearopbeep(cap->oap);
 }

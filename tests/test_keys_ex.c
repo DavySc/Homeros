@@ -218,9 +218,14 @@ static const char *const FTOK[] = { "zo", "zc", "za", "zR", "zM", "2zc", "2zo", 
                                     "Vy", "u", "jzc", "kzc", "4Gzc", "9Gzc" };
 /* Esc first: a Visual left on would make the edit a Visual one */
 static const char *const FEND[] = { "", "\033dd", "\033dj", "\033dk", "\033x", "\033o\033", "\033O\033", "\033ix\033", "\033Vd", "\033p", "\033J" };
+/* what opens a fold shows only in the next move: Insert, u, and { } over
+   the blank line inside one */
+static const char *const FFIX[] = { "3Gzcix\033j", "3Gzcxuj", "5Gzc}", "5Gzc{", "8G{", "2G2zc}" };
 static void foldkeys(char *k)
 {
+	static unsigned fixed;
 	strcpy(k, "m'");   /* the '' mark Neovim's startup sets (ex_oracle.lua) */
+	if (fixed < sizeof FFIX / sizeof *FFIX) { strcat(k, FFIX[fixed++]); return; }
 	for (unsigned t = 1 + rnd(8); t--;) strcat(k, FTOK[rnd(sizeof FTOK / sizeof *FTOK)]);
 	strcat(k, FEND[rnd(sizeof FEND / sizeof *FEND)]);
 }
@@ -274,7 +279,7 @@ static int check(const char *text, void (*gen)(char *))
 		static Editor e;
 		CHECK(!core_open(&e, tf));
 		if (folds) {
-			CHECK((e.win->fold = fold_new(99, fold_expr, NULL, NULL)));
+			CHECK(!e.win->fold && (e.win->fold = fold_new(99, fold_expr, NULL, NULL)));   /* the core frees it */
 			fold_update(e.win->fold, 0, core_lines(&e), core_lines(&e));
 		}
 		normal_reset();
@@ -303,7 +308,6 @@ static int check(const char *text, void (*gen)(char *))
 				                      !strchr(hw, '?') && strcmp(hg, hw) ? " (hlsearch differs)" : "");
 			if (bad <= 10 && !strchr(hw, '?') && strcmp(hg, hw)) fprintf(stderr, "  %s\n  Neovim %s\n", hg, hw);
 		}
-		if (folds) fold_free(e.win->fold), e.win->fold = NULL;   /* the core's to free once it makes them */
 		core_free(&e);
 	}
 	fclose(c);
@@ -335,7 +339,7 @@ int main(void)
 	CHECK(!check(TEXT, range));   /* each phase stops the test, so a caught plant does not run the rest */
 	CHECK(!check("abc. def foo\n  xy (o)\n\nhello world. Two\n\tq a\nlast line\n\n  z o\n", marks));
 	folds = "0,>1,1,>2,2,2,1,0,>1,1";
-	CHECK(!check("a x\nb {\n c y\n d {\n  e z\n  f\n g z\n}\ni {\n j\n", foldkeys));
+	CHECK(!check("a x\nb {\n c y\n d {\n  e z\n\n g z\n}\ni {\n j\n", foldkeys));
 	folds = NULL;
 	/* past 2^63 Neovim's line numbers wrap (":9223372036854775806+5" goes
 	   to line 3, measured once); ours saturate, without overflow */
