@@ -110,6 +110,10 @@ typedef struct Win {
 	int njump, jumpidx;
 	Mark pcmark;                /* the '' and `` mark (w_pcmark) */
 	int changeidx;             /* where g; and g, are in buf's change list (w_changelistidx) */
+	/* the window's folds (fold.h): the core makes, splits (fold_dup),
+	   updates and frees them; keys reads them with fold_closed() and runs
+	   fold_cmd() for the z keys */
+	struct Fold *fold;
 	struct Win *next;          /* window order: top left to bottom right (CTRL-W w) */
 } Win;
 
