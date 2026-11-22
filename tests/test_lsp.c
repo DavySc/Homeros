@@ -322,7 +322,8 @@ static void gpaths(const char *id)
 static long fsess, fsess0;            /* the RPC session (an older one is outdated); this process's first */
 static int hush;                      /* $/test/hush: say nothing of new versions */
 static int refuse, nconn, ncall;      /* $/test/refuse 1: connects fail, 2: calls outdated, 3: a connect
-                                         answered only with the next message; what came since */
+                                         answered only at the test's next word, 4: calls in the current
+                                         session never answered; what came since */
 static Str parked;
 static struct { long id, sess, l, c; int term; } rpc;   /* the question out about goals, id 0 none */
 
@@ -386,6 +387,8 @@ static void frpc(void)
 	fline(rpc.l, &b, &n);
 	if (rpc.sess != fsess || refuse == 2) {             /* Lean elaborated anew since */
 		str_lit(&m, "\"error\":{\"code\":-32900,\"message\":\"Outdated RPC session\"}}");
+	} else if (rpc.term && memchr(b, '&', n)) {          /* Lean failing on the expected type alone */
+		str_lit(&m, "\"error\":{\"code\":-32603,\"message\":\"no\"}}");
 	} else if (rpc.term) {
 		if (rpc.l % 2) str_addf(&m, "\"result\":{\"range\":{\"start\":{\"line\":%ld,\"character\":0},\"end\":{\"line\":%ld,\"character\":1}},"
 		                       "\"hyps\":[],\"type\":{\"text\":\"T%ld\"}}}", rpc.l, rpc.l, rpc.c);
@@ -413,13 +416,15 @@ static void frpc(void)
 
 static void fhandle(const char *m, size_t n)
 {
-	if (parked.n) { fsend(&parked); parked.n = 0; }
 	for (size_t i = 0, k; i < n; i += k)                  /* clangd and Lean refuse it */
 		if (!mutf8((const unsigned char *)m + i, k = mstep((const unsigned char *)m, n, i))) wrong("a message that is not UTF-8");
 	if (json_parse(m, n, &ft, &fcap) < 0) wrong("not JSON: %.*s", (int)n, m);
 	int id = json_get(m, ft, 0, "id"), me = json_get(m, ft, 0, "method"), p = json_get(m, ft, 0, "params");
 	char meth[64] = "";
 	if (me >= 0 && ft[me].z - ft[me].a < sizeof meth) json_str(m, ft, me, meth);
+	/* a parked connect answered at the test's word only, not the editor's
+	   next message, which depends on what the random walk left */
+	if (parked.n && !strncmp(meth, "$/test/", 7)) { fsend(&parked); parked.n = 0; }
 	if (me < 0) {                                         /* a reply to us */
 		if (id < 0 || json_get(m, ft, 0, "result") < 0) wrong("bad reply");
 		sreq--;
@@ -550,7 +555,7 @@ static void fhandle(const char *m, size_t n)
 		free(r.s);
 	} else if (!strcmp(meth, "$/lean/rpc/call")) {
 		if (rpc.id) wrong("a question about goals before the last was answered");
-		if (refuse && ++ncall > 2) wrong("asked %d times in outdated sessions, nothing changed", ncall);
+		if (refuse == 2 && ++ncall > 2) wrong("asked %d times in outdated sessions, nothing changed", ncall);
 		char sid[32] = "", mm[64] = "";
 		int x = json_get(m, ft, p, "sessionId"), y = json_get(m, ft, p, "method");
 		if (x >= 0 && ft[x].z - ft[x].a < sizeof sid) json_str(m, ft, x, sid);
@@ -623,7 +628,8 @@ static int fake(const char *seed, const char *log)
 			continue;
 		}
 		if (!inited || !opened) continue;
-		if (gmode) { if (rpc.id && rnd(3) == 0) frpc(); continue; }
+		/* refuse 4: a question in the current session never answered */
+		if (gmode) { if (rpc.id && rnd(3) == 0 && !(refuse == 4 && rpc.sess == fsess)) frpc(); continue; }
 		/* idle: do something the editor must cope with */
 		unsigned a = rnd(100);
 		if (a < 40 && !quiet) fpublish();
@@ -1077,7 +1083,7 @@ static void gwant(Editor *e, Str *w)
 			str_add(w, b, n);
 		}
 	}
-	if (l % 2) str_addf(w, "%s\xE2\x96\xBC expected type (%zu:1-%zu:2)\n\xE2\x8A\xA2 T%zu", w->n ? "\n\n" : "", l + 1, l + 1,
+	if (l % 2 && !memchr(b, '&', n)) str_addf(w, "%s\xE2\x96\xBC expected type (%zu:1-%zu:2)\n\xE2\x8A\xA2 T%zu", w->n ? "\n\n" : "", l + 1, l + 1,
 	                    lsp_u16((const unsigned char *)b, e->win->col));
 	if (x) str_addf(w, "%s\xE2\x96\xBC %zu:%zu-%zu:1: warning:\nbang", w->n ? "\n\n" : "", l + 1,
 	                lsp_u16((const unsigned char *)b, (size_t)(x - b)) + 1, l + 2);
@@ -1149,7 +1155,7 @@ static void goals(const char *log)
 	snprintf(path, sizeof path, "%s/sub/x.fake", groot);
 	CHECK(!core_open(&e, path) && e.buf->lsp);
 	e.rows = 40; e.cols = 160;
-	const char *init = "one\n\n\xCE\xBB x \xF0\x9D\x93\x9D\ndone it!\nfin?\n%\n#\n";
+	const char *init = "one\n\n\xCE\xBB x \xF0\x9D\x93\x9D\ndone it!\nfin?\n%\n#\n&\n";
 	CHECK(!core_edit(&e, 0, 0, init, strlen(init)));
 	lsp_flush(e.buf->lsp);
 	Win *lean = e.win;
@@ -1170,6 +1176,8 @@ static void goals(const char *log)
 		gcheck(&e, &w, got);
 	}
 	e.win->line = 6;                          /* '#': Lean's goals not an array */
+	gcheck(&e, &w, got);
+	e.win->line = 7;                          /* '&': the expected type refused, the goals kept */
 	gcheck(&e, &w, got);
 	e.win->line = e.win->col = 0;             /* the same text, other faces */
 	gcheck(&e, &w, got);
@@ -1207,7 +1215,7 @@ static void goals(const char *log)
 	/* Lean refusing: asked once more, not in a loop (the fake counts) */
 	for (int how = 1; how <= 2; how++) {
 		CHECK(!lsp_send(u, "$/test/talk", "{}", 2, NULL, NULL));
-		e.win->line = 12;                     /* line 12's goals shown first */
+		e.win->line = how == 1 ? 12 : 0;      /* line 12's goals shown first, or No goals. */
 		gcheck(&e, &w, got);
 		e.win->line = 1;
 		CHECK(!lsp_send(u, "$/test/refuse", how == 1 ? "{\"how\":1}" : "{\"how\":2}", 9, NULL, NULL));
@@ -1215,9 +1223,9 @@ static void goals(const char *log)
 		lsp_flush(e.buf->lsp);
 		lsp_goals(&e);
 		for (long long t0 = ms(); ms() - t0 < 300; ) { loop_once(10); lsp_goals(&e); }
-		/* no answer: line 12's goals do not stay beside line 1 */
+		/* no answer: what was shown elsewhere does not stay beside line 1 */
 		ng = text_read(gwin_buf(&e, &nwin)->text, 0, got, 1 << 15);
-		CHECK(!memmem(got, ng, "fin?", 4));
+		CHECK(!memmem(got, ng, "fin?", 4) && !memmem(got, ng, "No goals.", 9));
 	}
 	CHECK(!lsp_send(u, "$/test/talk", "{}", 2, NULL, NULL));
 	/* "fin?" said nothing, without a version: its message goes */
@@ -1231,6 +1239,17 @@ static void goals(const char *log)
 		ng = text_read(gwin_buf(&e, &nwin)->text, 0, got, 1 << 15);
 	}
 	CHECK(!memmem(got, ng, "far", 3));
+	/* Lean elaborated anew, its connect slow: what was shown stays meanwhile */
+	e.win->line = 10;
+	gcheck(&e, &w, got);
+	CHECK(!lsp_send(u, "$/test/refuse", "{\"how\":3}", 9, NULL, NULL));
+	e.win->line = 0;
+	for (long long t0 = ms(); ms() - t0 < 300; ) { loop_once(10); lsp_goals(&e); }
+	ng = text_read(gwin_buf(&e, &nwin)->text, 0, got, 1 << 15);
+	CHECK(memmem(got, ng, "\xCE\xBB", 2));
+	CHECK(!lsp_send(u, "$/test/note", "{}", 2, NULL, NULL));   /* the parked answer comes */
+	gcheck(&e, &w, got);
+	CHECK(!lsp_send(u, "$/test/talk", "{}", 2, NULL, NULL));
 	static const char *const ins[] = { "a", "\xCE\xBB", "!", "\n", "done ", "\xF0\x9D\x93\x9D", "?", "" };
 	for (int step = 0; step < 300; step++) {
 		Win *gw = e.wins;
@@ -1286,7 +1305,16 @@ static void goals(const char *log)
 	CHECK(!lsp_send(u, "$/test/talk", "{}", 2, NULL, NULL));
 	gcheck(&e, &w, got);
 	int nr2 = e.buf->nr;
-	/* back and forth: each file asked in its own server's session */
+	/* back and forth: each file asked in its own server's session; its
+	   first question refused: not "Processing file..." forever */
+	CHECK(!lsp_send(u, "$/test/refuse", "{\"how\":1}", 9, NULL, NULL));
+	CHECK(!core_buf_goto(&e, nr1));
+	for (long long t0 = ms(); ms() - t0 < 300; ) { loop_once(10); lsp_goals(&e); }
+	ng = text_read(gwin_buf(&e, &nwin)->text, 0, got, 1 << 15);
+	CHECK(!memmem(got, ng, "Processing", 10));
+	CHECK(!lsp_send(u, "$/test/talk", "{}", 2, NULL, NULL));
+	CHECK(!core_buf_goto(&e, nr2));
+	gcheck(&e, &w, got);
 	CHECK(!core_buf_goto(&e, nr1));
 	gcheck(&e, &w, got);
 	CHECK(!core_buf_goto(&e, nr2));
@@ -1308,20 +1336,29 @@ static void goals(const char *log)
 	iv = lean->next ? lean->next : e.wins;
 	CHECK(b && nwin == 2 && e.win == lean && iv->buf == b && iv->y > lean->y && iv->h == 40 / 3);
 	gcheck(&e, &w, got);
-	/* the server dies: lean.nvim's tombstone; started again, goals again */
-	CHECK(!lsp_send(lsp_uri(e.buf->lsp), "$/test/die", "{}", 2, NULL, NULL));
+	/* the server dies: lean.nvim's tombstone; started again, goals again;
+	   then it dies with a question out, after an outdated session's */
 	const char *dead = "\xF0\x9F\xAA\xA6 The Lean language server is dead.\n";
-	for (long long t0 = ms(); ms() - t0 < 1000; loop_once(10)) {
+	for (int round = 0; round < 2; round++) {
+		if (round) {
+			CHECK(!lsp_send(lsp_uri(e.buf->lsp), "$/test/refuse", "{\"how\":4}", 9, NULL, NULL));
+			CHECK(!core_edit(&e, core_line_start(&e, e.win->line) + e.win->col, 0, "a", 1));
+			lsp_flush(e.buf->lsp);
+			for (long long t0 = ms(); ms() - t0 < 300; ) { loop_once(10); lsp_goals(&e); }
+		}
+		CHECK(!lsp_send(lsp_uri(e.buf->lsp), "$/test/die", "{}", 2, NULL, NULL));
+		for (long long t0 = ms(); ms() - t0 < 1000; loop_once(10)) {
+			lsp_goals(&e);
+			ng = text_read(gwin_buf(&e, &nwin)->text, 0, got, 1 << 15);
+			if (ng == strlen(dead) && !memcmp(got, dead, ng)) break;
+		}
+		CHECK(ng == strlen(dead) && !memcmp(got, dead, ng));
+		/* nothing from the new server yet: nothing from the old one shows */
+		lsp_restart(e.buf->lsp);
 		lsp_goals(&e);
-		ng = text_read(gwin_buf(&e, &nwin)->text, 0, got, 1 << 15);
-		if (ng == strlen(dead) && !memcmp(got, dead, ng)) break;
+		CHECK(text_read(gwin_buf(&e, &nwin)->text, 0, got, 1 << 15) == 19 && !memcmp(got, "Processing file...\n", 19));
+		gcheck(&e, &w, got);
 	}
-	CHECK(ng == strlen(dead) && !memcmp(got, dead, ng));
-	/* nothing from the new server yet: nothing from the old one shows */
-	lsp_restart(e.buf->lsp);
-	lsp_goals(&e);
-	CHECK(text_read(gwin_buf(&e, &nwin)->text, 0, got, 1 << 15) == 19 && !memcmp(got, "Processing file...\n", 19));
-	gcheck(&e, &w, got);
 	free(w.s);
 	core_free(&e);
 	snprintf(sh, sizeof sh, "rm -rf '%s' %s", groot, gother);

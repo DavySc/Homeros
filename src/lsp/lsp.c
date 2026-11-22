@@ -924,12 +924,13 @@ static void gpoke(const LspDoc *d)
 	if (d == G.d) { commit(); gask(); }
 }
 
-/* Lean gave no answer here: what was shown is for elsewhere, so it goes */
-static void none(void)
+/* Lean gave no answer here: what was shown for elsewhere goes (the
+   expected type alone when the goals here were answered) */
+static void none(int term)
 {
 	if (G.want || !G.d) return;
-	G.goals.t.n = G.goals.f.n = G.term.t.n = G.term.f.n = 0;
-	G.ng = -1;
+	G.term.t.n = G.term.f.n = 0;
+	if (!term) G.goals.t.n = G.goals.f.n = 0, G.ng = -1;
 	G.shown = 1;
 	commit();
 }
@@ -938,12 +939,12 @@ static void none(void)
    died) or from an outdated session (Lean's -32900, after it elaborated the
    file anew): ask again, after -32900 once a question, so a server that
    keeps refusing is not asked in a loop. */
-static int late(const char *m)
+static int late(const char *m, int term)
 {
 	G.busy = 0;
-	int e = m ? json_get(m, tk, 0, "error") : -1;
+	int e = m ? json_get(m, tk, 0, "error") : 0;   /* no answer at all: none */
 	if (!m || is(m, json_get(m, tk, e, "code"), "-32900")) { G.sess.n = 0; G.want |= !G.again; G.again = 1; }
-	if (e >= 0) none();
+	if (e >= 0) none(term);
 	if (G.want || !G.d || e >= 0) { gask(); return 1; }
 	return 0;
 }
@@ -955,7 +956,7 @@ static void on_sess(void *ctx, const char *m, size_t n)
 	G.busy = 0;
 	/* refused: asked again only once the cursor or the text moves */
 	if (x >= 0 && ctx == G.d) { G.sess.n = 0; putraw(&G.sess, m, x); G.want = 1; }
-	else if (m && ctx == G.d) none();
+	else if (m && ctx == G.d) none(0);
 	gask();
 }
 
@@ -963,7 +964,7 @@ static void on_sess(void *ctx, const char *m, size_t n)
 static void on_goals(void *ctx, const char *m, size_t n)
 {
 	(void)ctx; (void)n;
-	if (late(m)) return;
+	if (late(m, 0)) return;
 	int gs = json_get(m, tk, json_get(m, tk, 0, "result"), "goals");
 	Out *o = &G.goals;
 	o->t.n = o->f.n = 0;
@@ -977,7 +978,7 @@ static void on_goals(void *ctx, const char *m, size_t n)
 static void on_term(void *ctx, const char *m, size_t n)
 {
 	(void)ctx; (void)n;
-	if (late(m)) return;
+	if (late(m, 1)) return;
 	int r = json_get(m, tk, 0, "result"), x = json_get(m, tk, r, "range");
 	G.term.t.n = G.term.f.n = 0;
 	if (x >= 0) {
