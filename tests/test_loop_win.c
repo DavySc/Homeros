@@ -91,7 +91,11 @@ static int child(char **argv)
 	if (!strcmp(r, "slowcat")) { Sleep(200); argv[1] = "cat"; return child(argv); }
 	if (!strcmp(r, "sleep")) { Sleep(30000); return 0; }
 	if (!strcmp(r, "flood")) { memset(b, 'f', sizeof b); while (WriteFile(out, b, sizeof b, &n, NULL)) {} return 0; }
-	if (!strcmp(r, "say")) { put(out, "hello\n"); return 7; }
+	if (!strcmp(r, "say")) {   /* holds waits()'s mutex, if there is one, until it exits */
+		WaitForSingleObject(OpenMutexA(SYNCHRONIZE, FALSE, getenv("HOMEROS_SAY")), INFINITE);
+		put(out, "hello\n");
+		return 7;
+	}
 	if (!strcmp(r, "holdin")) {   /* a grandchild holds all its pipes, stdin too; asks with its pid */
 		snprintf(b, sizeof b, "%lu\n", start("sleep", 1));
 		put(out, b);
@@ -493,11 +497,18 @@ static void respawn(void *ctx, int s, const char *b, size_t n)
 static void waits(void)
 {
 	static Got a;
-	CHECK(spawn(&a, "say", NULL) >= 0);
+	char name[32];   /* this run's own: two runs may share a session */
+	snprintf(name, sizeof name, "homeros-say-%lu", GetCurrentProcessId());
+	SetEnvironmentVariableA("HOMEROS_SAY", name);
+	HANDLE m = CreateMutexA(NULL, TRUE, name);   /* a says nothing before its reads are armed */
+	CHECK(m && spawn(&a, "say", NULL) >= 0);
 	int id = spawn(&g, "slowcat", NULL);
 	CHECK(id >= 0 && loop_once(0) == 0);     /* a's reads are armed */
 	CHECK(loop_timer(tick, &fired[4], 0) == 0);
-	Sleep(100);                              /* a has written and exited */
+	/* a has written and exited: its mutex is abandoned (a Sleep was
+	   too short under a loaded Wine, PR 114's review) */
+	do { ReleaseMutex(m); Sleep(1); } while (WaitForSingleObject(m, INFINITE) != WAIT_ABANDONED);
+	CloseHandle(m);
 	CHECK(proc_write(id, "hello", 5) == 0);
 	proc_close(id);
 	CHECK(proc_wait(id, 3000) == 0);
