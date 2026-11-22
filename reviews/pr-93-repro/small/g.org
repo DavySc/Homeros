@@ -1,0 +1,2 @@
+* WAIT water the plants
+SCHEDULED: <2026-11-01 Sun +1d>

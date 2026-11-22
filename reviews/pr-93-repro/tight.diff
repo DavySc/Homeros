@@ -1,0 +1,31 @@
+--- src/org/org.c	2026-11-20 14:22:40.078862830 +0000
++++ reviews/pr-93-repro/tight/org.c	2026-11-20 14:43:01.580364957 +0000
+@@ -1422,12 +1422,13 @@
+ 	size_t m = N - (b - a) + k;
+ 	if (oom) return;
+ 	if (m > WC) {
+-		char *w = realloc(W, m + m / 2 + 64);
++		char *w = realloc(W, m);
+ 		if (!w) { oom = 1; return; }
+-		W = w, WC = m + m / 2 + 64;
++		W = w, WC = m;
+ 	}
+ 	memmove(W + a + k, W + b, N - b);
+ 	memcpy(W + a, x, k);
++	if (m < WC) { W = realloc(W, m ? m : 1); WC = m; }   /* review: no slack, so a read at S[N] is out of bounds */
+ 	N = m, S = (const unsigned char *)W;
+ }
+ static void wins(size_t a, const char *x) { wrep(a, a, x, strlen(x)); }
+@@ -1921,11 +1922,7 @@
+ {
+ 	char nows[32], kw[16];
+ 	size_t h, i, j;
+-	if (n + 64 > WC) {
+-		char *w = realloc(W, n + 64);
+-		if (!w) return NULL;
+-		W = w, WC = n + 64;
+-	}
++	free(W); W = malloc(n ? n : 1); WC = n;   /* review: no slack */
+ 	memcpy(W, s, n);
+ 	S = (const unsigned char *)W, N = n, oom = err = 0;
+ 	if (pos > n || (h = heading(pos)) == ORG_NONE) return *a = *b = *len = 0, W;

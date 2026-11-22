@@ -1,4 +1,5 @@
-/* The picker's matcher: snacks.picker's (core/matcher.lua and score.lua at
+/* The matcher of the pickers and the snippet popup (package 15,
+   src/tools/match.c): snacks.picker's (core/matcher.lua and score.lua at
    my-nvim's pinned 882c996), which ports fzf's scoring.  Bytes, as Lua's
    string functions: lower case and character classes are ASCII only. */
 #ifndef TOOLS_MATCH_H

@@ -20,3 +20,25 @@ src/git/keys.c src/git/keys.c 6f94d5ca
 src/git/keys.c src/git/keys.c c72bdd04
 src/git/sec.c src/git/sec.c 5086807d
 src/git/status.c src/git/status.c 29f7bf54
+# Renamed copies and mechanisms outside their owner (tests/owners.txt), on
+# main when that check landed (2026-11-21); the same rule: only shrinks.
+src/git/sec.c src/infoview/scan.c 448912cf
+src/keys/buf.c src/keys/normal.c 9d8a1570
+src/syntax/tsql.c src/tools/match.c ec24b41b
+src/tools/match.c src/tools/oil.c e1ee0bd4
+src/tools/match.c src/tools/pick.c e1ee0bd4
+src/tools/pick.c src/tools/pick.c 6f32eeba
+src/wl/wl.c src/wl/wl.c 2ac041d0
+utf8-encode src/git/keys.c
+utf8-encode src/git/keys.c
+utf8-encode src/git/keys.c
+utf8-encode src/git/keys.c
+utf8-encode src/git/keys.c
+utf8-encode src/infoview/scan.c
+number-parse src/lsp/json.c
+number-parse src/org/org.c
+number-parse src/org/org.c
+number-parse src/org/org.c
+clock src/win/backend.c
+clock src/win/backend.c
+percent src/git/os.c
