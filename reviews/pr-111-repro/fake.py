@@ -34,6 +34,8 @@ while True:
         else: send({"jsonrpc": "2.0", "id": i, "result": {"sessionId": "7"}})
     elif meth == "$/lean/rpc/call":
         line = p["position"]["line"]
+        if scen == "err" or (scen == "stale" and line >= 1):   # second review
+            send({"jsonrpc": "2.0", "id": i, "error": {"code": -32603 if scen == "err" else -32900, "message": "no"}}); continue
         if p["method"].endswith("TermGoal"): send({"jsonrpc": "2.0", "id": i, "result": None})
         elif scen == "strgoals": send({"jsonrpc": "2.0", "id": i, "result": {"goals": {"a": 1, "b": 2, "c": 3}}})
         elif scen == "deep":

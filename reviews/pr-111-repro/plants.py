@@ -12,11 +12,17 @@ P = [
  ("a removed hypothesis drawn plain", "? FACE_DIFF_MINUS : f;", "? f : f;"),
  ("willInsert drawn as deleted", "FACE_DIFF_DELTA, FACE_DIFF_MINUS, FACE_DIFF_PLUS, FACE_DIFF_PLUS,", "FACE_DIFF_DELTA, FACE_DIFF_MINUS, FACE_DIFF_PLUS, FACE_DIFF_MINUS,"),
  ("never the bottom split on a tall screen", "int v = 2 * e->cols > 5 * e->rows;", "int v = 1;"),
- ("the window closed with \\i opens again at the next key", "if (!G.off && !gbuf()) {", "if (!gbuf()) {"),
+ ("the window closed with \\i opens again at the next key", "int fresh = !G.off && !gbuf();", "int fresh = !gbuf();"),
  ("goals accomplished do not follow edits", "	shift_set(&d->done, pos, ndel, nins);\n", ""),
  ("inaccessible names not dimmed", "? FACE_COMMENT : FACE_TYPE", "? FACE_TYPE : FACE_TYPE"),
  ("a let's value left out", "{ putz(o, \" := \", FACE_NONE); tagged(o, m, x, FACE_NONE); }", "{ }"),
  ("message severity word always 'error'", "putz(o, sev[g->sev - 1], f);", "putz(o, sev[0], f);"),
+ # second review (head 018df26)
+ ("a change of colours alone is not shown", " && !memcmp(o->f.s, G.all.f.s, o->f.n)) return;", ") return;"),
+ ("another file's connect answer taken as this one's session", "if (x >= 0 && ctx == G.d) {", "if (x >= 0 && (ctx == G.d || 1)) {"),
+ ("after one outdated session, never renewed again", "G.want = 1; G.again = 0; }", "G.want = 1; }"),
+ ("new diagnostics do not reach the goals window", "			if (d) gpoke(d);\n", ""),
+ ("goals that are not an array counted", "G.ng = gs >= 0 && tk[gs].type == 'a' ? tk[gs].n : -1;", "G.ng = gs >= 0 ? tk[gs].n : -1;"),
 ]
 src = "src/lsp/lsp.c"
 orig = open(src).read()

@@ -37,7 +37,7 @@ int main(int argc, char **argv)
 	if (argc < 3) return 2;
 	setvbuf(stdout, NULL, _IONBF, 0);
 	const char *scen = argv[1];
-	static char fake[4096], log[4096], cmd[8192];
+	static char fake[4096], log[256], cmd[8192];
 	snprintf(fake, sizeof fake, "%s/fake.py", argv[2]);
 	snprintf(log, sizeof log, "/tmp/rv111-%s.log", scen);
 	remove(log);
@@ -67,7 +67,7 @@ int main(int argc, char **argv)
 	}
 	spin(1500);
 	show("settled on line 1");
-	if (!strcmp(scen, "flood")) {
+	if (!strcmp(scen, "flood") || !strcmp(scen, "err")) {
 		snprintf(cmd, sizeof cmd, "echo -n 'connect requests in 1.5 s without a key: '; grep -c connect %s", log);
 		return system(cmd) != 0;
 	}
@@ -80,6 +80,14 @@ int main(int argc, char **argv)
 		printf("after Az<Esc>: text_len %zu, msg \"%s\"\n", text_len(e.buf->text), e.msg);
 		keys_input(&e, 'u', 0);
 		printf("after u: text_len %zu\n", text_len(e.buf->text));
+	}
+	if (!strcmp(scen, "stale")) {                  /* second review: line 2 always answers -32900 */
+		keys_input(&e, 'j', 0); lsp_goals(&e);
+		spin(1500);
+		printf("cursor now on line %zu\n", e.win->line + 1);
+		show("after j");
+		snprintf(cmd, sizeof cmd, "echo -n 'connects: '; grep -c connect %s; echo -n 'calls: '; grep -c rpc/call %s", log, log);
+		if (system(cmd)) return 1;
 	}
 	if (!strncmp(scen, "draw", 4)) {   /* what reaches the screen */
 		Grid g = { 0 };
