@@ -65,7 +65,8 @@ int main(int argc, char **argv)
 	static char big[PATH_MAX + 32];
 	snprintf(big, sizeof big, "%s/big.txt", dir);
 	const char *bargv[] = { "python3", py, "--serve", big, NULL };
-	LspServer table[3] = { { ".diag", "diag", sargv, roots, 0 }, { ".dbig", "dbig", bargv, roots, 0 }, { 0 } };
+	LspServer table[4] = { { ".diag", "diag", sargv, roots, 0 }, { ".dbig", "dbig", bargv, roots, 0 },
+	                      { ".org", "org", bargv, roots, 0 }, { 0 } };
 	lsp_servers = table;
 	/* one server for all cases: a file of none stays open */
 	snprintf(file, sizeof file, "%s/keep.diag", dir);
@@ -163,7 +164,7 @@ int main(int argc, char **argv)
 		fputs("F ", o);
 		for (int i = 0; i < NL; i++) fputs("61620a", o);
 		/* case 1: the two windows below; case 2: a severity over 4 */
-		CHECK(fputs("\nE\nD 0 1 1 6d30\nD 6 7 1 6d32\nF 61620a63640a65660a\nE\nD 0 1 5 6d35\nF 61620a\nE\n", o) >= 0
+		CHECK(fputs("\nE\nD 0 1 1 6d30\nD 6 7 1 6d32\nF 61620a63640a65660a\nE\nD 0 1 5 6d35\nF 61620a\nE\nD 0 10 1 6d\nF 61205c616c7068612062\nE\n", o) >= 0
 		      && !fclose(o));
 		snprintf(file, sizeof file, "%s/0.dbig", dir);
 		CHECK((o = fopen(file, "w")));
@@ -270,6 +271,37 @@ int main(int argc, char **argv)
 			hint |= f == FACE_DIAG_HINT;
 		}
 		CHECK(hint);
+		core_free(&e);
+		grid_free(&g);
+		unlink(file);
+	}
+	/* a diagnostic over an Org entity: its concealed character is not
+	   underlined, the rest is (Neovim: the cchar keeps Conceal's attribute,
+	   measured on an extmark's conceal) */
+	{
+		snprintf(file, sizeof file, "%s/3.org", dir);
+		FILE *o = fopen(file, "w");
+		CHECK(o && fputs("a \\alpha b\ny\n", o) >= 0 && !fclose(o));
+		Grid g = { 0 };
+		int have = 0;
+		CHECK(!core_open(&e, file) && !grid_resize(&g, 10, 40));
+		for (int t = 0; t < 500 && have < 1; t++) {
+			loop_once(10);
+			lsp_diags(e.buf->lsp, &have);
+		}
+		CHECK(have == 1);
+		layout_resize(&e, 10, 40);
+		e.win->line = 1;
+		core_update(&e);
+		core_draw(&e, &g);
+		int alpha = -1, a = -1;
+		for (int c = 0; c < e.win->w; c++) {
+			const Cell *x = &g.c[e.win->y * g.cols + e.win->x + c];
+			if (x->len == 2 && !memcmp(grid_text(x), "\xce\xb1", 2)) alpha = c;
+			if (x->len == 1 && *grid_text(x) == 'a' && a < 0) a = c;
+		}
+		CHECK(a >= 0 && alpha > a);
+		CHECK(g.c[e.win->y * g.cols + e.win->x + a].ul && !g.c[e.win->y * g.cols + e.win->x + alpha].ul);
 		core_free(&e);
 		grid_free(&g);
 		unlink(file);

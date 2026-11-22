@@ -535,7 +535,10 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 			   test_core_conceal.py), so Neovim's fillers around a
 			   concealed one are not copied */
 			if (cc) {
-				if (i == cc->a && !j && *cc->s) put_cell(g, w, row, c, (const unsigned char *)cc->s, strlen(cc->s), 0, 1, face, vis ? vis : sb, ul);
+				/* no underline: the cell takes Conceal (measured: a
+				   diagnostic over an extmark's conceal leaves its cchar's
+				   attribute as it is) */
+				if (i == cc->a && !j && *cc->s) put_cell(g, w, row, c, (const unsigned char *)cc->s, strlen(cc->s), 0, 1, face, vis ? vis : sb, 0);
 				else off++;
 				continue;
 			}
