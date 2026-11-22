@@ -145,6 +145,9 @@ typedef struct Editor {
    list, a git refresh, a language server's reply): main.c redraws after the
    loop and clears it.  One flag for every package, defined in the core. */
 extern int core_changed;
+/* The backend's cell in pixels (Backend.cell), set by main.c after open and
+   after each resize; 0 x 0 in the terminal, where no image is placed. */
+extern int core_pixw, core_pixh;
 
 /* The first buffer, on path, in the first window.  0 ok, -1 error (msg set). */
 int  core_open(Editor *e, const char *path);

@@ -79,6 +79,7 @@ int main(int argc, char **argv)
 	for (int i = 0, n = b->fds(fds); i < n; i++) loop_watch(fds[i], on_input, NULL);
 	if (e.buf->watch >= 0) loop_watch(e.buf->watch, on_watch, &e);
 	b->size(&rows, &cols);
+	b->cell(&core_pixw, &core_pixh);
 	if (grid_resize(&g, rows, cols)) goto out;
 	/* also with a file: the first draw measures "loaded in" for a later
 	   :Dashboard (thread 0's, agreed) */
@@ -88,6 +89,7 @@ int main(int argc, char **argv)
 		if (resized) {
 			resized = 0;
 			b->size(&rows, &cols);
+			b->cell(&core_pixw, &core_pixh);
 			if (grid_resize(&g, rows, cols)) break;
 			dirty = 1;
 		}
