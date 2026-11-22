@@ -30,6 +30,10 @@ int main(void)
 	OrgFx *x = orgfx_new(u);
 	CHECK(s && x);
 	CHECK(syntax_update(s, t, NULL, &r1, &r2) == orgfx_update(x, NULL));
+	/* each row's fold at the last update: Org answers the text as it is,
+	   so one outside the rows an update reports keeps it */
+	static int lv[MAXT], st[MAXT];
+	for (size_t l = 0; l < text_lines(t); l++) lv[l] = syntax_foldexpr(s, l, &st[l]);
 	syntax_faces(s, 0, 2, f);
 	CHECK(f[0] != FACE_NONE);  /* the headline's star */
 	for (int e = 0; e < EDITS; e++) {
@@ -51,7 +55,10 @@ int main(void)
 		CHECK(!memcmp(f, g, n));
 		for (size_t l = 0; l <= text_lines(t); l++) {   /* Org's subtrees fold */
 			int a, b;
-			CHECK(syntax_foldexpr(s, l, &a) == orgfx_foldexpr(x, l, &b) && a == b);
+			int v = syntax_foldexpr(s, l, &a);
+			CHECK(v == orgfx_foldexpr(x, l, &b) && a == b);
+			CHECK((l >= r1 && l < r2) || l == text_lines(t) || (v == lv[l] && a == st[l]));
+			lv[l] = v, st[l] = a;
 			Conceal c[64], d[64];
 			size_t k = syntax_conceal(s, l, c, 64);
 			CHECK(k == orgfx_conceal(x, l, d, 64));

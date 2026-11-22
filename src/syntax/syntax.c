@@ -941,14 +941,13 @@ static int inject(Syntax *s, LTree *L, const Text *t)
 	return rc;
 }
 
-/* on_changedtree's rows: the root's changed ranges (all of it without an
-   old tree), each to the row past its end where that has columns; out of
-   memory, the table goes and is built again */
+/* on_changedtree's rows: the root's changed ranges, each to the row past
+   its end where that has columns; out of memory, the table goes and is
+   built again */
 static void fold_changed(Syntax *s, const TSTree *old, const TSTree *n)
 {
-	uint32_t k = 1;
-	TSRange all = { { 0, 0 }, { UINT32_MAX, UINT32_MAX }, 0, UINT32_MAX };
-	TSRange *r = old ? ts_tree_get_changed_ranges(old, n, &k) : &all;
+	uint32_t k;
+	TSRange *r = ts_tree_get_changed_ranges(old, n, &k);
 	size_t *c = s->chg;
 	if (s->nchg + k > s->chgcap && (c = realloc(s->chg, 2 * (s->nchg + k) * 2 * sizeof *c)))
 		s->chg = c, s->chgcap = 2 * (s->nchg + k);
@@ -957,9 +956,9 @@ static void fold_changed(Syntax *s, const TSTree *old, const TSTree *n)
 		for (uint32_t i = 0; i < k; i++, s->nchg++) {
 			TSPoint e = r[i].end_point;
 			c[2 * s->nchg] = r[i].start_point.row;
-			c[2 * s->nchg + 1] = e.row == UINT32_MAX ? SIZE_MAX : (size_t)e.row + (e.column > 0);
+			c[2 * s->nchg + 1] = (size_t)e.row + (e.column > 0);
 		}
-	if (r != &all) free(r);
+	free(r);
 }
 
 /* LanguageTree:_parse: parse the invalid regions, find the injections, then
@@ -994,7 +993,7 @@ static int parse(Syntax *s, LTree *L, const Text *t)
 			return 2;
 		}
 		s->susp = NULL;
-		if (L == s->root && s->nlv) fold_changed(s, g->tree, n);
+		if (L == s->root && s->nlv && L->lang != 2) fold_changed(s, g->tree, n);   /* Markdown's edited rows hold every change */
 		if (g->tree) syntax_release(g->tree, 0);
 		g->tree = n;
 		s->cz = 0;
@@ -1021,7 +1020,7 @@ int syntax_update(Syntax *s, const Text *t, int (*stop)(void), size_t *r1, size_
 	if (s->org) {
 		/* Org's folds may move with any change */
 		int r = orgfx_update(s->org, stop);
-		if (r == 1) *r2 = text_lines(t) + 1;
+		if (r == 1) *r2 = text_lines(t);
 		return r;
 	}
 	/* the trees the last parse replaced, freed in steps (release.c) */
@@ -1063,7 +1062,7 @@ int syntax_update(Syntax *s, const Text *t, int (*stop)(void), size_t *r1, size_
 	if (r == 2) return 2;
 	s->dirty = 0;
 	fold_update(s, r1, r2);
-	return r == 1 || *r1 < *r2;
+	return r == 1;
 }
 
 /* ---- colours (the redraw path: no allocation) ---- */
@@ -1240,6 +1239,8 @@ static void fold_edit(Syntax *s, size_t sr, size_t sc, size_t orow, size_t oc, s
 		s->nlv = 0;           /* out of memory: built again after the parse */
 		return;
 	}
+	/* rows a stopped parse named moved: all of them after the next */
+	if (s->nchg) s->chg[0] = 0, s->chg[1] = SIZE_MAX, s->nchg = 1;
 	if (s->ea >= s->ez) s->ea = sr, s->ez = en;
 	else {
 		if (sr < s->ea) s->ea = sr;

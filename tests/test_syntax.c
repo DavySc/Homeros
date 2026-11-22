@@ -416,6 +416,19 @@ static void cache_grows(const char *dir)
 
 /* Folds follow an edit: a C function's body folds, and after the edit that
    makes it one line, nothing does. */
+/* every row of s answers as a table built fresh from t */
+static void same_as_fresh(Syntax *s, const Text *t, const char *path)
+{
+	Syntax *f = syntax_open(path, t);
+	CHECK(f);
+	while (syntax_update(f, t, NULL, &r1, &r2) == 2) ;
+	for (size_t l = 0; l < text_lines(t); l++) {
+		int a, b;
+		CHECK(syntax_foldexpr(s, l, &a) == syntax_foldexpr(f, l, &b) && a == b);
+	}
+	syntax_free(f);
+}
+
 static void folds_follow_edits(const char *dir)
 {
 	char path[2048];
@@ -461,7 +474,44 @@ static void folds_follow_edits(const char *dir)
 	CHECK(syntax_foldexpr(s, 0, &st) == 1 && st);
 	syntax_free(s);
 	text_free(t);
-	/* Markdown: an edit inside a line changes the level of the line
+	/* a line added among the closing braces 21 deep: its rows count from
+	   the level past 'foldnestmax', not from the 20 shown */
+	static char deep[256];
+	size_t dn = 0;
+	for (int i = 0; i < 24; i++) dn += (size_t)snprintf(deep + dn, sizeof deep - dn, "%s{\n", i ? "" : "void f() ");
+	for (int i = 0; i < 24; i++) deep[dn++] = '}', deep[dn++] = '\n';
+	CHECK((t = text_new(deep, dn)) && (s = syntax_open(path, t)));
+	while (syntax_update(s, t, NULL, &r1, &r2) == 2) ;
+	size_t at = text_line_start(t, 27);
+	syntax_edit(s, t, at, 0, "a;\n", 3);
+	CHECK(!text_insert(t, at, "a;\n", 3));
+	while (syntax_update(s, t, NULL, &r1, &r2) == 2) ;
+	same_as_fresh(s, t, path);
+	syntax_free(s);
+	text_free(t);
+	/* the rows a parse stopped in an injection named move with an edit
+	   above them before it finishes (a fold typed, the #define's region
+	   made invalid, a line opened at the top) */
+	const char *src = "#define A(x) x + 1\n\n\n\n\nint f() ;\n\ta;\n\tb;\n}\n";
+	for (int k = 1; k < 60; k++) {
+		CHECK((t = text_new(src, strlen(src))) && (s = syntax_open(path, t)));
+		unsigned char fc[64];
+		syntax_faces(s, 0, sizeof fc, fc);
+		while (syntax_update(s, t, NULL, &r1, &r2) == 2) ;
+		syntax_edit(s, t, 31, 1, "{", 1);
+		CHECK(!text_delete(t, 31, 1) && !text_insert(t, 31, "{", 1));
+		syntax_edit(s, t, 13, 1, "y", 1);
+		CHECK(!text_delete(t, 13, 1) && !text_insert(t, 13, "y", 1));
+		stops_left = k;
+		syntax_update(s, t, stop_after, &r1, &r2);
+		syntax_edit(s, t, 0, 0, "\n", 1);
+		CHECK(!text_insert(t, 0, "\n", 1));
+		while (syntax_update(s, t, NULL, &r1, &r2) == 2) ;
+		same_as_fresh(s, t, path);
+		syntax_free(s);
+		text_free(t);
+	}
+	/* Markdown: an edit inside a line inside a line changes the level of the line
 	   above (an underline typed), and of the lines below until one keeps
 	   its own */
 	snprintf(path, sizeof path, "%s/f.md", dir);
@@ -485,6 +535,16 @@ static void folds_follow_edits(const char *dir)
 	CHECK(!text_delete(t, 5, 1));
 	while (syntax_update(s, t, NULL, &r1, &r2) == 2) ;
 	CHECK(syntax_foldexpr(s, 0, &st) == 1 && st && syntax_foldexpr(s, 2, &st) == 1);
+	syntax_free(s);
+	text_free(t);
+	/* a fence typed changes the tree to the end, but MarkdownFold() only
+	   its own row: the rows reported stop where a level is as before */
+	CHECK((t = text_new("a\n\nb\nc\nd\n", 10)) && (s = syntax_open(path, t)));
+	while (syntax_update(s, t, NULL, &r1, &r2) == 2) ;
+	syntax_edit(s, t, 0, 0, "```", 3);
+	CHECK(!text_insert(t, 0, "```", 3));
+	while (syntax_update(s, t, NULL, &r1, &r2) == 2) ;
+	CHECK(r1 == 0 && r2 <= 2);
 	syntax_free(s);
 	text_free(t);
 }
