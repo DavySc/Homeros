@@ -39,4 +39,4 @@ snip: the picker shows no description~test TESTS=snip~~src/tools/pick.c~			grid_
 snip: the picker previews no body~test TESTS=snip~~src/tools/pick.c~			snprintf(P.pv[P.pvn++], sizeof P.pv[0], "%.*s", k, b);~			P.pvn++;
 snip: the picker opens a file on Enter~test TESTS=snip~~src/tools/pick.c~	if (P.what == PICK_SNIPPETS) {¶		const char *d, *b;¶		close_picker();~	if (0) {¶		const char *d, *b;¶		close_picker();
 snip: SPC i s not in Visual mode~test TESTS=keys_map~~src/keys/keys.c~(e->mode != MODE_NORMAL || !normal_mappable(0))~(e->mode != MODE_NORMAL || e->ks.visual || !normal_mappable(0))
-snip: no SPC i s map~test TESTS=keys_map~~src/keys/keys.c~, " is"¶};~¶};
+snip: no SPC i s map~test TESTS=keys_map~~src/keys/keys.c~, " is", " uk"~, " uk"
