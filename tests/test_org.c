@@ -1138,6 +1138,7 @@ int main(void)
 		{ "[fn:1] b\n\\alpha \\cite{[fn:1]}\n", 9, FACE_MARKUP_LINK_LABEL, 1 },   /* an entity */
 		{ "[fn:1] b\nx [fn:2:{\n* h\ny}] z\n", 19, FACE_MARKUP_HEADING_1, 1 },   /* a span stops at a headline */
 		{ "[fn:1] b\nx [fn:2:{\n* h\ny}] z\n", 23, FACE_MARKUP_LINK_LABEL, 0 },
+		{ "<id:\n#+[:>\n", 0, FACE_MARKUP_LINK_URL, 0 },   /* #+[: is a keyword: \S-+ backtracks to [ */
 		{ "* COMMENTx\n", 5, FACE_MARKUP_HEADING_1, 1 },   /* COMMENT then a word is no comment */
 		{ "[fn:1]\n# [fn::\n", 6, FACE_MARKUP_LINK_LABEL, 0 },   /* a comment line ends a definition's span */
 	};
@@ -1158,6 +1159,16 @@ int main(void)
 	CHECK(x && orgfx_conceal(x, 1, c5, 5) == 5 && c5[1].a == 3 && !strcmp(c5[1].s, "²"));
 	orgfx_free(x);
 	text_free(t);
+	/* a script from the line above holds x^{}; a headline under an
+	   unclosed block shows its stars (Org: a block needs its end) */
+	static const char *const sh[] = { "x_{\nx^{}}\n", "#+begin_src *e\n** \n" };
+	for (size_t i = 0; i < 2; i++) {
+		t = text_new(sh[i], strlen(sh[i]));
+		x = t ? orgfx_new(t) : NULL;
+		CHECK(x && orgfx_conceal(x, 1, c5, 5) == 0);
+		orgfx_free(x);
+		text_free(t);
+	}
 	t = text_new("x_{a^{c}\n}\n", 11);   /* a script's braces over one newline hold the ^{c} (Org leaves it as typed) */
 	x = t ? orgfx_new(t) : NULL;
 	CHECK(x && orgfx_conceal(x, 0, c5, 5) == 0);
@@ -1220,13 +1231,13 @@ int main(void)
 	   without a headline, shown one after another and then coloured, take
 	   one walk from the top of the text, not one each, and a link search
 	   that failed is not done again on every line (measured under the
-	   sanitizers, 5 runs each, median and range: plain lines 10.5 ms, 10.5
-	   to 10.7; a footnote and a link on every line 23.6, 22.6 to 24.5,
-	   against 64 to 75 ms for the parse before it; openers that never
-	   close 9.6 (9.1 to 10.2) and 9.1 (8.6 to 9.1), against 7 s and 32 s
-	   when each search ran to the end; the same past blank lines 8.6 (8.5
-	   to 8.9) and 12.4 (12.1 to 12.5); plain lines walked for each line,
-	   120 ms) */
+	   sanitizers, 8 runs each, median and range: plain lines 10.4 ms, 9.5
+	   to 15.1; a footnote and a link on every line 20.7, 18.8 to 24.3
+	   (32.0, 26.9 to 45.9 with is() as strlen and memcmp), against 64 to
+	   75 ms for the parse before it; openers that never close 11.4 (11.1
+	   to 12.3) and 6.2 (5.9 to 6.6), against 7 s and 32 s when each search
+	   ran to the end; the same past blank lines 8.0 (7.9 to 10.3) and 10.6
+	   (10.2 to 16.7); plain lines walked for each line, 120 ms) */
 	static const struct { const char *ln; size_t n, shown; long ms; const char *end; } gate[] = {
 		{ "a *b* x^{2}\n", 100000, 5, 20, "" }, { "[fn:1] [[a][b]] *b* x^{2}\n", 100000, 7, 40, "" },
 		/* openers that never close, then one closer at the end, past the blank lines */

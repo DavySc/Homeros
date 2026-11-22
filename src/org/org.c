@@ -468,6 +468,14 @@ static void paragraph(OrgNode *e, size_t begin, size_t cb, size_t lim)
 
 /* the element at q (org-element--current-element); st/stn the list
    structure in force; a plain list may append a new one to it[] */
+/* a planning or clock line: it ends where the blank lines after it end */
+static void oneline(OrgNode *e, size_t q, size_t lim, int type)
+{
+	size_t p = fwd(nextl(q), lim);
+	while (p > 0 && blank(p - 1)) p--;
+	if (p != bol(p)) p = blanks(p);
+	*e = (OrgNode){ q, q, ORG_NONE, ORG_NONE, p, 0, type };
+}
 static void element(OrgNode *e, size_t q, size_t lim, int mode, size_t *st, size_t *stn)
 {
 	size_t f, r, name;
@@ -535,10 +543,7 @@ static void element(OrgNode *e, size_t q, size_t lim, int mode, size_t *st, size
 	}
 	int star = mode == M_PLANNING && S[prevl(q)] == '*';   /* right under the headline */
 	if (star && planningl(q)) {   /* org-element-planning-parser */
-		size_t p = fwd(nextl(q), lim);
-		while (p > 0 && blank(p - 1)) p--;
-		if (p != bol(p)) p = blanks(p);
-		*e = (OrgNode){ q, q, ORG_NONE, ORG_NONE, p, 0, ORG_PLANNING };
+		oneline(e, q, lim, ORG_PLANNING);
 		return;
 	}
 	if ((star || mode == M_PROPS || mode == M_TOP) && propdrawer(q)) {
@@ -549,10 +554,7 @@ static void element(OrgNode *e, size_t q, size_t lim, int mode, size_t *st, size
 	}
 	if (!bl) { paragraph(e, q, q, lim); return; }
 	if (clockl(q, eol(q))) {                    /* org-element-clock-parser */
-		size_t p = fwd(nextl(q), lim);
-		while (p > 0 && blank(p - 1)) p--;
-		if (p != bol(p)) p = blanks(p);
-		*e = (OrgNode){ q, q, ORG_NONE, ORG_NONE, p, 0, ORG_CLOCK };
+		oneline(e, q, lim, ORG_CLOCK);
 		return;
 	}
 	/* org-element--collect-affiliated-keywords */
@@ -1078,7 +1080,11 @@ static void set(size_t a, size_t b, int f)
 static int alpha(size_t p) { return p < N && up(S[p]) >= 'A' && up(S[p]) <= 'Z'; }
 static size_t letters(size_t p) { while (alpha(p)) p++; return p; }
 static int word(size_t p) { return p < N && IN(WORD, uni_cp(S, N, p)); }
-static int is(size_t p, const char *k) { return p + strlen(k) <= N && !memcmp(S + p, k, strlen(k)); }
+static int is(size_t p, const char *k)   /* a loop, not strlen and memcmp: most calls fail at once */
+{
+	for (; *k; k++, p++) if (p >= N || S[p] != (unsigned char)*k) return 0;
+	return 1;
+}
 static int one(size_t p, const char *k) { return p < N && S[p] && strchr(k, S[p]); }
 
 /* org-fontify-meta-lines-and-blocks-1's state at the line at: st 0
@@ -1106,9 +1112,15 @@ static int separate(size_t q, size_t z)
 		if (x >= z || ateol(x) || S[x] == ' ') return 1;
 		if (S[x] != '+') return 0;
 		if (is(x + 1, "BEGIN_") && x + 7 < z && !sp(x + 7)) return 1;
-		for (x++; x < z && !sp(x) && S[x] != ':' && S[x] != '['; x++) ;
-		if (x < z && S[x] == '[') while (x < z && !ateol(x) && S[x] != ']') x++;
-		return x < z && S[x] == ']' ? x + 1 < z && S[x + 1] == ':' : x < z && S[x] == ':' && x > b + 2;
+		/* \S-+\(?:\[.*\]\)?: with Emacs's backtracking: a : after one
+		   character of the run, or ]: past a [ after one */
+		size_t o = 0, r;
+		for (r = x + 1; r < z && !sp(r); r++) {
+			if (S[r] == ':' && r > x + 1) return 1;
+			if (S[r] == '[' && r > x + 1 && !o) o = r;
+		}
+		for (; o && r < z; r++) if (S[r] == ':' && S[r - 1] == ']' && r - 1 > o) return 1;
+		return 0;
 	}
 	if (S[b] == ':') return x >= z || ateol(x) || S[x] == ' ' || ((x = names(x)) > b + 1 && x < z && S[x] == ':' && ((x = blanks(x + 1)) >= z || ateol(x)));
 	if (S[b] == '+' && is(x, "-")) {   /* \+\(?:-+\+\)+[ \t]*$ */

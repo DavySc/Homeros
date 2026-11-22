@@ -73,12 +73,12 @@ org: show: a script inside emphasis raised (against Org)~org-conform ORG_N=2000 
 org: show: a script in a property's key raised (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~m >= ez && m >= kz && (n~m >= ez && (m >= kz || 1) && (n
 org: show: a script without a Unicode form for each character shown in part (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		if (!s) return -1;~		if (!s) continue;
 org: show: script braces stop at the line's end~test TESTS=org~~src/org/org.c~(S[p] == '\n' && nl++)) return 0;~(S[p] == '\n' && nl++ >= 0)) return 0;
-org: show: a script starting on the line above not looked for (against Org)~org-conform ORG_N=2000 SEED=3~~src/org/org.c~	scripts(pl, CL, f->em, XK);~	scripts(CL, CL, f->em, XK);
+org: show: a script starting on the line above not looked for (directed)~test TESTS=org~~src/org/org.c~	scripts(pl, CL, f->em, XK);~	scripts(CL, CL, f->em, XK);
 org: show: a #+ line keeps hidden markers (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	return S[g3] == '+' ? nl : 0;~	return 0;
 org: show: a quoting block's lines keep hidden markers (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		return !c->quoting ? 0 : l < c->end~		return 1 ? 0 : l < c->end
 org: show: a fixed-width line keeps hidden markers (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~(ateol(b + 1) || S[b + 1] == ' ') ? N : meta(&d);~(ateol(b + 1) || S[b + 1] == ' ') ? 0 : meta(&d);
-org: show: a quoting block's end headline keeps hidden stars (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~? nl : stars(l) + 1;~? nl : 0;
-org: show: a headline ending a block read without the line above (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	if (CL) meta(&c);~	if (CL) c = scan_at(f, CL);
+org: show: a quoting block's end headline keeps hidden stars (directed)~test TESTS=org~~src/org/org.c~? nl : stars(l) + 1;~? nl : 0;
+org: show: a headline ending a block read without the line above (directed)~test TESTS=org~~src/org/org.c~	if (CL) meta(&c);~	if (CL) c = scan_at(f, CL);
 org: show: a marker two matches hide given twice (driver: spans in order)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~if (!k || C[i].a >= C[k - 1].z + CL) C[k++]~if (1) C[k++]
 org: show: a script given part of its spans when out of room~test TESTS=org~~src/org/org.c~CN + (size_t)n + 2 <= CCAP)~CN + (size_t)n <= CCAP)
 org: show: the line start found from each emphasis marker (frame gate)~test TESTS=org~~src/org/org.c~size_t l = p < CL ? from : CL,~size_t l = bol(p),
@@ -127,3 +127,4 @@ org: colours: a backslash pair before ] gives no choice (against Org)~org-confor
 org: colours: a failed description search starts again on every line (frame gate on many lines)~test TESTS=org~~src/org/org.c~	if (is(i + 1, "[") && i + 3 < *f) return 0;~	if (is(i + 1, "[") && i + 3 < *f && 0) return 0;
 org: colours: a failed angle search starts again on every line (frame gate on many lines)~test TESTS=org~~src/org/org.c~	if (!q || p < *f) return 0;~	if (!q) return 0;
 org: colours: a link over a clock line cut at the link's end (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~ || clockl(q, z < eol(q) ? z : eol(q))) return 1;~) return 1;
+org: colours: a keyword's name stops at its first [ (directed)~test TESTS=org~~src/org/org.c~			if (S[r] == ':' && r > x + 1) return 1;~			if (S[r] == '[') break;¶			if (S[r] == ':' && r > x + 1) return 1;
