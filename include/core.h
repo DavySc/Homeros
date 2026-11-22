@@ -211,6 +211,11 @@ size_t core_vcol(Editor *e, size_t l, size_t col);
 size_t core_col_at(Editor *e, size_t l, size_t v, int past_end);
 size_t core_first_nonblank(Editor *e, size_t l);
 void core_clamp(Editor *e);                   /* keep the cursor on a character in normal mode */
+/* cursor_down_inner() and cursor_up_inner() in the current window (n < 0
+   up): the line n lines from line, a closed fold counting as one line;
+   going up a fold is entered at its first line, except in Insert mode for
+   the last step, which opens it.  Keys' j and k use it too. */
+size_t core_line_step(Editor *e, size_t line, long n);
 /* want = the cursor's screen column; on a tab in normal mode the tab's last
    cell, where Vim shows the cursor */
 void core_set_want(Editor *e);
