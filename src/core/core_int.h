@@ -78,11 +78,6 @@ int win_vcols(const Win *w, size_t l, size_t col, size_t *start, size_t *end);
 int  win_numw(const Win *w);          /* sign and number columns, with its space: win_col_off() */
 int  win_signw(const Win *w);         /* the sign column: 0 or 2 */
 int  win_tall(void *w, size_t l);
-/* until thread 0 puts it in core.h: cursor_down_inner() and
-   cursor_up_inner() in the current window (n < 0 up): a closed fold counts
-   as one line; going up a fold is entered at its first line, except in
-   Insert mode for the last step, which opens it */
-size_t core_line_step(Editor *e, size_t line, long n);
 size_t win_rel(const Win *w, size_t l);   /* get_cursor_rel_lnum(), as a distance */
 size_t win_botline(Editor *e, Win *w, int *empty_rows);
 void win_update(Editor *e, Win *w);   /* update_topline(), curs_columns() */
