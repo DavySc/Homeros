@@ -1,0 +1,7 @@
+--- a/src/core/core.c
++++ b/src/core/core.c
+@@
+ void core_watch(Editor *e, int fd)
+ {
++	{ FILE *f = getenv("CW_LOG") ? fopen(getenv("CW_LOG"), "a") : NULL; if (f) { fprintf(f, "core_watch fd %d\n", fd); fclose(f); } }
+ 	for (Buf *b = e->bufs; b; b = b->next)
