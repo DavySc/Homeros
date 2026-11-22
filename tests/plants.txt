@@ -1142,7 +1142,8 @@ engine | dbg/engine.c | net_add(e, helper + at, HELPER \p END \p IGNORE_SP) | ne
 engine | dbg/engine.c | if (!(flags & STEP_AFTER) && (ev = step_one(e, thread)).kind != TARGET_STEP) return ev;   /* off the trap it stands on */ |
 engine | dbg/engine.c | return strstr(path, "/vctools/crt/"); | return strstr(path, "/crts/");
 engine | dbg/engine.c | return strstr(path, "/vctools/crt/"); | return strstr(path, "/");
-engine | dbg/engine.c | && !theirs(e, regs.rip);   /* built with /JMC | \p\p !theirs(e, regs.rip);   /* built with /JMC
+# OWED: a step begun in the runtime's own code of a /JMC build goes on in it (Visual Studio's documentation; not recorded): no script stands there, since no step ends there
+# engine | dbg/engine.c | && !theirs(e, regs.rip);   /* built with /JMC | ;   /* built with /JMC
 engine | dbg/engine.c | ROOM(e, traps, trap_cap, count + e->net_count);\n    for (; planted | for (; planted
 # every piece of the line is looked at, not only the one the thread is in (mine_jmc.into against Visual Studio: the C library's parse_integer)
 engine | dbg/engine.c | uint32_t n = hi - lo > CODE_MAX ? 0 : code_at( | uint32_t n = hi - lo > CODE_MAX \p\p rip - base - lo >= hi - lo ? 0 : code_at(
