@@ -176,6 +176,23 @@ void keys_input(Editor *e, int k, int pending)
 	if (!(e->ks.pending ? map(e, k) : tools_key(e, k) || git_key(e, k) || snip_key(e, k, pending) || map(e, k))) keys_feed(e, k, pending);
 }
 
+/* what the core draws of Visual mode */
+static void visual_sync(void)
+{
+	E->ks.visual = VIsual_active ? VIsual_mode : 0;
+	E->ks.vline = (size_t)VIsual.lnum;
+	E->ks.vcol = (size_t)VIsual.col;
+}
+
+void keys_visual(Editor *e, int mode, size_t line)
+{
+	E = e;
+	buf_changed();
+	if (!mode) { if (VIsual_active) end_visual_mode(); }
+	else VIsual_active = 1, VIsual_mode = mode, VIsual = (Pos){ (long)line, 0, 0 };
+	visual_sync();
+}
+
 void keys_feed(Editor *e, int k, int pending)
 {
 	/* the window's close button: :qa, as Neovim's GUIs do (E37 if
@@ -194,9 +211,7 @@ void keys_feed(Editor *e, int k, int pending)
 	E->ks.executing = 0;   /* typed: the typeahead holds no register keys */
 	key(k, pending || rb1.n || rb2.n || tb.n);
 	while (next(&k)) key(k, pending || rb1.n || rb2.n || tb.n);
-	E->ks.visual = VIsual_active ? VIsual_mode : 0;
-	E->ks.vline = (size_t)VIsual.lnum;
-	E->ks.vcol = (size_t)VIsual.col;
+	visual_sync();
 	E->ks.pending = E->mode == MODE_CMDLINE || sub_asking || (E->mode != MODE_INSERT && normal_pending());
 	core_update(e);
 }
