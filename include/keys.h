@@ -56,6 +56,12 @@ void keys_feed(struct Editor *e, int key, int pending);
    keys_feed.  While a command or a map is half typed (ks.pending) the key
    goes to the map, if one is incomplete, or straight to keys_feed */
 void keys_input(struct Editor *e, int key, int pending);
+/* BufWritePre, Davy's after/ftplugin/sql.lua: a .sql buffer is formatted
+   when a sqldiff.toml is in its directory or one above.  core_write calls
+   it first, so every write of the current buffer formats, whoever writes
+   (:w can write no other; a later :wa needs the buffer made current). */
+struct Buf;
+void keys_write_pre(struct Editor *e, struct Buf *b);
 /* 'hlsearch' (FEATURES.md 1): the next match of the last search pattern
    that covers line `line` of window w at or after byte col there: 1 and
    its bytes [*s, *z) on this line (a match from an earlier line starts at

@@ -6,6 +6,7 @@
 # is said in words it does not count as a caught plant.
 set -eu
 cd "$(dirname "$0")/../.."
+. tools/winpass.sh
 for t in zig wine; do
 	command -v $t >/dev/null || { echo "src/undo/win.sh: $t is not on PATH"; exit 2; }
 done
@@ -18,4 +19,4 @@ zig cc -target x86_64-windows-gnu -std=c17 -D_DEFAULT_SOURCE -Wall -Wextra -Werr
   -fsanitize=undefined -fsanitize-trap=undefined \
   -o build/win/test_undo_win.exe tests/test_undo_win.c src/undo/undo.c src/text/*.c
 cd build/win
-timeout 300 wine test_undo_win.exe || { echo "FAIL test_undo_win (Windows, under Wine)"; exit 1; }
+pass 300 test_undo_win.exe wine || { echo "FAIL test_undo_win (Windows, under Wine)"; exit 1; }
