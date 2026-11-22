@@ -1,0 +1,116 @@
+caught        syntax: an edit keeps a stopped parse going on the changed text (test_syntax, edit while stopped)   (make test TESTS=syntax): tests/test_syntax.c:287: CHECK(!memcmp(f, g, n + 1)) failed
+caught        syntax: not- predicates are not negated (test_syntax)   (make test TESTS=syntax): tests/test_syntax.c:832: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        syntax: a priority tie goes to the earlier capture (test_syntax)   (make test TESTS=syntax): tests/test_syntax.c:832: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        syntax: Lua's lazy - takes one character at least (test_syntax, LuaJIT)   (make test TESTS=syntax): tests/test_syntax.c:832: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        syntax: a dropped region's tree leaks (fuzz_syntax)   (make fuzz FUZZERS=syntax FUZZ_SECONDS=60): ==3424==ERROR: LeakSanitizer: detected memory leaks
+caught        syntax: an edit leaves injected regions where they were (test_syntax, frames before a parse)   (make test TESTS=syntax): tests/test_syntax.c:379: CHECK(!memcmp(f, g, n)) failed
+caught        syntax: a region's ranges change while its parse is stopped, and the parse resumes on the old ones (test_syntax, scrolling while stopped)   (make test TESTS=syntax): tests/test_syntax.c:247: CHECK(!memcmp(f, g, p2)) failed
+caught        syntax: the old tree is freed in one go, without asking stop (test_syntax, release in steps)   (make test TESTS=syntax): tests/test_syntax.c:481: CHECK(steps > 1) failed
+caught        syntax: captures are not clipped to the tree's included ranges (test_syntax, case 2: the block quote)   (make test TESTS=syntax): tests/test_syntax.c:832: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        syntax: a released tree's children are never freed (test_syntax, LeakSanitizer)   (make test TESTS=syntax): tests/test_syntax.c:481: CHECK(steps > 1) failed
+caught        syntax: the frame after a key recomputes only the captures over the edit, not the rest of their matches (test_syntax, edits then frame: far.lua)   (make test TESTS=syntax): tests/test_syntax.c:324: CHECK(!memcmp(f, g, n)) failed
+caught        syntax: a released leaf's scanner state over 24 bytes leaks (test_syntax, 40 nested block quotes, LeakSanitizer)   (make test TESTS=syntax): ==6158==ERROR: LeakSanitizer: detected memory leaks
+caught        syntax: the frame after a key recomputes only the edited bytes (test_syntax, frames before a parse)   (make test TESTS=syntax): tests/test_syntax.c:324: CHECK(!memcmp(f, g, n)) failed
+caught        syntax: the recomputed bytes leave out the byte before the edit (test_syntax, frames before a parse)   (make test TESTS=syntax): tests/test_syntax.c:324: CHECK(!memcmp(f, g, n)) failed
+caught        syntax: an edit leaves the cached faces where they were (test_syntax, frames before a parse)   (make test TESTS=syntax): tests/test_syntax.c:324: CHECK(!memcmp(f, g, n)) failed
+caught        syntax: the recomputed bytes leave out the byte after the edit (test_syntax, frames before a parse)   (make test TESTS=syntax): tests/test_syntax.c:832: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        syntax: a new tree keeps the cached faces (test_syntax, scrolling while stopped)   (make test TESTS=syntax): tests/test_syntax.c:247: CHECK(!memcmp(f, g, p2)) failed
+caught        syntax: two edits before one frame, the later at byte 0, leave byte 0 out of the recompute (test_syntax, edits then frame: zero.c)   (make test TESTS=syntax): tests/test_syntax.c:324: CHECK(!memcmp(f, g, n)) failed
+caught        syntax: the recompute after a key queries from the edit, not from where the fill started (test_syntax, edits then frame: order.c)   (make test TESTS=syntax): tests/test_syntax.c:324: CHECK(!memcmp(f, g, n)) failed
+caught        syntax: a grown cache keeps the old one's window, over memory never filled (test_syntax, cache grows)   (make test TESTS=syntax): tests/test_syntax.c:410: CHECK(!memcmp(f, g, 64)) failed
+caught        syntax: an edit that ends where a region now starts makes it parse again, which Neovim does not (test_syntax, edit before a region)   (make test TESTS=syntax): tests/test_syntax.c:379: CHECK(!memcmp(f, g, n)) failed
+caught        syntax: the recompute after a key widens over captures, so a match's later captures past the edit are left out (test_syntax, edits then frame: macro.rs)   (make test TESTS=syntax): tests/test_syntax.c:324: CHECK(!memcmp(f, g, n)) failed
+caught        syntax: contains? passes when any string, not every one, is missing (test_syntax, Rust's assert macros)   (make test TESTS=syntax): tests/test_syntax.c:832: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        syntax: injection.include-children is ignored, so a Rust macro's tokens lose their colours (test_syntax)   (make test TESTS=syntax): tests/test_syntax.c:832: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        syntax: a .h file is C, not Neovim's cpp (test_syntax, filetypes)   (make test TESTS=syntax): tests/test_syntax.c:522: CHECK(!strcmp(ft ? ft : "-", want)) failed
+caught        syntax: a file name's ending is matched at its start (test_syntax, filetypes)   (make test TESTS=syntax): tests/test_syntax.c:234: CHECK(F) failed
+caught        syntax: a whole name matches as an ending, so fooCMakeLists.txt is cmake (test_syntax, filetypes)   (make test TESTS=syntax): tests/test_syntax.c:522: CHECK(!strcmp(ft ? ft : "-", want)) failed
+caught        syntax: the directory is not cut off, so x/CMakeLists.txt is text (test_syntax, filetypes)   (make test TESTS=syntax): tests/test_syntax.c:522: CHECK(!strcmp(ft ? ft : "-", want)) failed
+caught        syntax: a backslash does not end the directory, so a\CMakeLists.txt is text (test_syntax, filetypes)   (make test TESTS=syntax): tests/test_syntax.c:522: CHECK(!strcmp(ft ? ft : "-", want)) failed
+caught        syntax: a name that is only the ending, .sql, has no filetype (test_syntax, filetypes)   (make test TESTS=syntax): tests/test_syntax.c:522: CHECK(!strcmp(ft ? ft : "-", want)) failed
+caught        syntax: CMakeLists.txt is text, after .txt in the table (test_syntax, filetypes)   (make test TESTS=syntax): tests/test_syntax.c:522: CHECK(!strcmp(ft ? ft : "-", want)) failed
+caught        syntax: a .txt file has no filetype (test_syntax, filetypes)   (make test TESTS=syntax): tests/test_syntax.c:522: CHECK(!strcmp(ft ? ft : "-", want)) failed
+caught        syntax: an unnamed buffer's NULL path is read (test_syntax, filetypes)   (make test TESTS=syntax): src/syntax/syntax.c:114:29: runtime error: load of null pointer of type 'const char'
+caught        syntax_md: a heading's level is always 1 (test_syntax_md)   (make test TESTS=syntax_md): tests/test_syntax_md.c:69: CHECK(!strcmp(got, want)) failed
+caught        syntax_md: n) is not an ordered marker (test_syntax_md)   (make test TESTS=syntax_md): tests/test_syntax_md.c:69: CHECK(!strcmp(got, want)) failed
+caught        syntax_md: a checked box reads as unchecked (test_syntax_md)   (make test TESTS=syntax_md): tests/test_syntax_md.c:69: CHECK(!strcmp(got, want)) failed
+caught        syntax_md: the custom [-] is not a checkbox (test_syntax_md)   (make test TESTS=syntax_md): tests/test_syntax_md.c:69: CHECK(!strcmp(got, want)) failed
+caught        syntax_md: a list's nesting counts only the innermost list (test_syntax_md)   (make test TESTS=syntax_md): tests/test_syntax_md.c:69: CHECK(!strcmp(got, want)) failed
+caught        syntax_md: a closing fence reads as an opening one (test_syntax_md)   (make test TESTS=syntax_md): tests/test_syntax_md.c:69: CHECK(!strcmp(got, want)) failed
+caught        syntax_md: the info string is not found (test_syntax_md)   (make test TESTS=syntax_md): tests/test_syntax_md.c:69: CHECK(!strcmp(got, want)) failed
+caught        syntax_md: code is found from the line's first byte, so a "> " line in an unclosed fence is not code (test_syntax_md)   (make test TESTS=syntax_md): tests/test_syntax_md.c:69: CHECK(!strcmp(got, want)) failed
+caught        syntax_md: an ordered item's index counts the items after it (test_syntax_md)   (make test TESTS=syntax_md): tests/test_syntax_md.c:69: CHECK(!strcmp(got, want)) failed
+caught        syntax_md: the list marker's columns are the heading's (test_syntax_md)   (make test TESTS=syntax_md): tests/test_syntax_md.c:69: CHECK(!strcmp(got, want)) failed
+caught        syntax_md: a heading after a list marker is not found (test_syntax_md)   (make test TESTS=syntax_md): tests/test_syntax_md.c:69: CHECK(!strcmp(got, want)) failed
+caught        syntax_md: a nested list marker counts again as the item's (test_syntax_md)   (make test TESTS=syntax_md): tests/test_syntax_md.c:69: CHECK(!strcmp(got, want)) failed
+caught        syntax_md: a block spanning 2 rows is skipped (test_syntax_md)   (make test TESTS=syntax_md): tests/test_syntax_md.c:69: CHECK(!strcmp(got, want)) failed
+caught        syntax_md: the body's column is the line's (test_syntax_md)   (make test TESTS=syntax_md): tests/test_syntax_md.c:69: CHECK(!strcmp(got, want)) failed
+caught        syntax_md: the language is not found (test_syntax_md)   (make test TESTS=syntax_md): tests/test_syntax_md.c:69: CHECK(!strcmp(got, want)) failed
+caught        syntax_md: a delimiter on another row counts for the close (test_syntax_md)   (make test TESTS=syntax_md): tests/test_syntax_md.c:69: CHECK(!strcmp(got, want)) failed
+caught        syntax_md: the background takes the last row before the close (test_syntax_md)   (make test TESTS=syntax_md): tests/test_syntax_md.c:69: CHECK(!strcmp(got, want)) failed
+caught        syntax_md: the custom [-] counts at the line's end (test_syntax_md)   (make test TESTS=syntax_md): tests/test_syntax_md.c:69: CHECK(!strcmp(got, want)) failed
+caught        syntax: a query that inherits another lacks the other's patterns (test_syntax, GLSL inherits C)   (make test TESTS=syntax): tests/test_syntax.c:832: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        syntax: Nix's combined injections parse each string apart (test_syntax, case 5: Lua across two strings)   (make test TESTS=syntax): tests/test_syntax.c:832: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        syntax_md: an empty list marker left by an unparsed edit loops forever (fuzz_syntax)   (make fuzz FUZZERS=syntax FUZZ_SECONDS=60): ==3625== ERROR: libFuzzer: timeout after 20 seconds
+caught        syntax: #gsub! on the injection's language is ignored (test_syntax, case 5: /* lua */)   (make test TESTS=syntax): tests/test_syntax.c:832: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        syntax: Lua's gsub stops after its first match (test_syntax, Lua patterns)   (make test TESTS=syntax): tests/test_syntax.c:832: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        syntax: Lua's gsub %0 gives the first capture (test_syntax, Lua patterns)   (make test TESTS=syntax): src/syntax/lmatch.c:280:38: runtime error: index -1 out of bounds for type '<unknown> [32]'
+caught        syntax: a .org file gets no colours (test_syntax_org)   (make test TESTS=syntax_org): tests/test_syntax_org.c:28: CHECK(s && x) failed
+caught        syntax: an edit to a .org file is not passed to Org (test_syntax_org)   (make test TESTS=syntax_org): tests/test_syntax_org.c:43: CHECK(syntax_update(s, t, NULL) == orgfx_update(x, NULL)) failed
+caught        syntax: an update of a .org file does not reach Org (test_syntax_org)   (make test TESTS=syntax_org): tests/test_syntax_org.c:29: CHECK(syntax_update(s, t, NULL) == orgfx_update(x, NULL)) failed
+caught        syntax: a .org file's colours are not freed (test_syntax_org, LeakSanitizer)   (make test TESTS=syntax_org): ==9648==ERROR: LeakSanitizer: detected memory leaks
+caught        syntax: a .org file's update says nothing changed, so the editor does not redraw (test_syntax_org)   (make test TESTS=syntax_org): tests/test_syntax_org.c:29: CHECK(syntax_update(s, t, NULL) == orgfx_update(x, NULL)) failed
+caught        syntax: Vim's match? keeps case, so CMake's SET is not set (test_syntax, case 6)   (make test TESTS=syntax): tests/test_syntax.c:832: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        syntax: Vim's match? reads ".*" as part of the word, so CMake's A-NOTFOUND is no boolean (test_syntax, case 6)   (make test TESTS=syntax): tests/test_syntax.c:832: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        syntax: Vim's match? of one word without parentheses is skipped, so set's variable is plain (test_syntax, case 6)   (make test TESTS=syntax): tests/test_syntax.c:832: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        syntax: a fold ending at column 0 keeps that line (test_syntax, folds)   (make test TESTS=syntax): tests/test_syntax.c:832: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        syntax: a line that ends one fold and starts another keeps the first (test_syntax, folds)   (make test TESTS=syntax): tests/test_syntax.c:832: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        syntax: the same fold counted twice (test_syntax, folds)   (make test TESTS=syntax): tests/test_syntax.c:832: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        syntax: folds only of the root tree, not injected ones (test_syntax, folds)   (make test TESTS=syntax): tests/test_syntax.c:832: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        syntax: Markdown's setext heading starts no fold (test_syntax, folds)   (make test TESTS=syntax): tests/test_syntax.c:832: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        syntax: Markdown's heading level is one less (test_syntax, folds)   (make test TESTS=syntax): tests/test_syntax.c:832: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        syntax: the fold levels are not computed again after a parse (test_syntax, folds after an edit)   (make test TESTS=syntax): tests/test_syntax.c:433: CHECK(syntax_foldexpr(s, 0, &st) == 0 && !st) failed
+caught        syntax: a .org file has no folds (test_syntax_org)   (make test TESTS=syntax_org): src/text/text.c:189:47: runtime error: member access within null pointer of type 'const struct Text'
+caught        syntax: a .v reads past its 500th line (test_syntax, .v files)   (make test TESTS=syntax): tests/test_syntax.c:565: CHECK(!s == !!strcmp(ft, "verilog\n")) failed
+caught        syntax: a .v's block comments are read (test_syntax, .v files)   (make test TESTS=syntax): tests/test_syntax.c:565: CHECK(!s == !!strcmp(ft, "verilog\n")) failed
+caught        syntax: a .v's // lines are read (test_syntax, .v files)   (make test TESTS=syntax): tests/test_syntax.c:565: CHECK(!s == !!strcmp(ft, "verilog\n")) failed
+caught        syntax: a .v's line ending in '.' before a comment is Coq (test_syntax, .v files)   (make test TESTS=syntax): tests/test_syntax.c:565: CHECK(!s == !!strcmp(ft, "verilog\n")) failed
+caught        syntax: a .v's module header is not Verilog (test_syntax, .v files)   (make test TESTS=syntax): tests/test_syntax.c:565: CHECK(!s == !!strcmp(ft, "verilog\n")) failed
+caught        syntax: a .v that ends a line in ';' is not Verilog (test_syntax, .v files)   (make test TESTS=syntax): tests/test_syntax.c:565: CHECK(!s == !!strcmp(ft, "verilog\n")) failed
+caught        syntax: a .v gets no colours (test_syntax, .v files)   (make test TESTS=syntax): tests/test_syntax.c:565: CHECK(!s == !!strcmp(ft, "verilog\n")) failed
+caught        syntax: patterns injecting a language we lack are dropped from the query, so fewer in-progress matches hit Neovim's limit (test_syntax, case 13)   (make test TESTS=syntax): tests/test_syntax.c:832: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        syntax: 'foldnestmax' is 21 (test_syntax, case 8)   (make test TESTS=syntax): tests/test_syntax.c:832: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        syntax: a fold past 'foldnestmax' still starts (test_syntax, case 8)   (make test TESTS=syntax): tests/test_syntax.c:832: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        syntax: a setext underline under an empty line is a heading (test_syntax, case 10)   (make test TESTS=syntax): tests/test_syntax.c:832: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        syntax: an injection named verilog is not SystemVerilog (test_syntax, the corpus's `define bodies)   (make test TESTS=syntax): tests/test_syntax.c:832: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        syntax: an empty injected region in the tree's own language is parsed as the whole text, again and again (test_syntax, self injection)   (make test TESTS=syntax): ==28366==ERROR: AddressSanitizer: stack-overflow on address 0x7ffc787f0fa8 (pc 0x7effc0e7d804 bp 0x7ffc787f1820 sp 0x7ffc787f0fb0 T0)
+caught        review: 'foldnestmax' is 21, not 20   (make test TESTS=syntax): tests/test_syntax.c:832: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        review: a level past 'foldnestmax' still starts a fold   (make test TESTS=syntax): tests/test_syntax.c:832: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+plant does not apply: ' && er < (int64_t)s->nfold)'
+BROKEN PLANT  review: a fold ending past the last line is counted
+plant does not apply: '\t\t\tif (!passes(src, &m, &Q->pat[m.pattern_index])) continue;\n\t\t\tconst TSNode *a = NULL'
+BROKEN PLANT  review: fold patterns' predicates are not read
+caught        review: a quantified @fold ends at its first node   (make test TESTS=syntax): tests/test_syntax.c:832: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        review: a fold of one line counts ('foldminlines' 0)   (make test TESTS=syntax): tests/test_syntax.c:433: CHECK(syntax_foldexpr(s, 0, &st) == 0 && !st) failed
+plant does not apply: "\tif (h > a && h < z && at(src, h) == ' ')"
+BROKEN PLANT  review: shorter 1: md_fold without h < z
+plant does not apply: " && b < y && (at(src, b) == '=' || at(src, b) == '-')) {\n\t\tint c = at(src, b);\n\t\twhile (b < y && at(src, b) == c) b++;"
+BROKEN PLANT  review: shorter 2: md_fold without b < y, twice
+plant does not apply: 'z = text_line_start(t, l + 1) - (l < n);'
+BROKEN PLANT  review: shorter 3: verilog() lines keep their newline
+plant does not apply: '\twhile (syntax_update(s, s->t, NULL) == 2) ;'
+BROKEN PLANT  review: shorter 4: syntax_foldexpr updates once, no loop
+caught        review: Markdown: an empty line above === is a heading   (make test TESTS=syntax): tests/test_syntax.c:832: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        review: Markdown: '#'s need no space after them   (make test TESTS=syntax): tests/test_syntax.c:832: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        review: a .v's last line without a newline is not read   (make test TESTS=syntax): tests/test_syntax.c:565: CHECK(!s == !!strcmp(ft, "verilog\n")) failed
+plant does not apply: '\t\tif (len[j] == 0 || (j'
+BROKEN PLANT  review: Vim's match? accepts an empty word
+plant does not apply: " || s[n - 1] != '$') return 1;"
+BROKEN PLANT  review: Vim's match? without the trailing $ is read
+caught        review: a .v's block comment never ends   (make test TESTS=syntax): tests/test_syntax.c:565: CHECK(!s == !!strcmp(ft, "verilog\n")) failed
+caught        review: a .v's (* after a comment start is Coq   (make test TESTS=syntax): tests/test_syntax.c:565: CHECK(!s == !!strcmp(ft, "verilog\n")) failed
+caught        review: Vim's match? suffix matches a longer word's tail only when as long   (make test TESTS=syntax): tests/test_syntax.c:832: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        review: the folds are not freed   (make test TESTS=syntax): ==31819==ERROR: LeakSanitizer: detected memory leaks
+NOT CAUGHT    review: folds of a buffer not yet parsed are read   (make fuzz FUZZERS=syntax passed)
+NOT CAUGHT    review: folds of a line past the end are read   (make fuzz FUZZERS=syntax passed)
+NOT CAUGHT    review: an unknown match? form is not skipped   (make test TESTS=syntax passed)
