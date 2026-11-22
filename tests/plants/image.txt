@@ -1,0 +1,50 @@
+# Plants for src/image (format in tools/planted.sh): the pixels a window
+# shows against tests/test_image.c's model, the cache's keys, slot reuse,
+# no allocation in a frame, the LaTeX jobs, the backends' image cells
+# (Wayland under sway, Win32 under Wine), and file_id (thread 0's, agreed).
+image: laid over bg without rounding~test TESTS=image~~src/image/image.c~* (255 - q[3]) + 127) / 255)~* (255 - q[3])) / 255)
+image: the padding past the image is black, not bg~test TESTS=image~~src/image/image.c~				uint32_t v = bg;~				uint32_t v = 0;
+image: red and blue swapped~test TESTS=image~~src/image/image.c~<< (16 - 8 * c);~<< (8 * c);
+image: the cache ignores bg~test TESTS=image~~src/image/image.c~ && s->bg == bg~
+image: the cache ignores mtime~test TESTS=image~~src/image/image.c~s->id.mtime_ns == id.mtime_ns && ~
+image: the cache ignores the box~test TESTS=image~~src/image/image.c~ && s->mcols == cols~
+image: the cache ignores the cell's height~test TESTS=image~~src/image/image.c~ && s->ch == ch~
+image: the cache ignores the cell's width~test TESTS=image~~src/image/image.c~ && s->cw == cw~
+image: the cache ignores the box's height~test TESTS=image~~src/image/image.c~    && s->mrows == rows && s->cw~    && s->cw
+image: the cache ignores the file's size~test TESTS=image~~src/image/image.c~ && s->id.size == id.size~
+image: the cache ignores the path~test TESTS=image~~src/image/image.c~ && !strcmp(s->path, path)~
+image: a file that does not decode is read again at every lookup~test TESTS=image~~src/image/image.c~	if (!p || (rgba && !px)) {~	if (!p || !px) {
+image: a reused slot keeps its generation~test TESTS=image~~src/image/image.c~(unsigned char)(s->gen + 1)~s->gen
+image: draw ignores the generation~test TESTS=image~~src/image/image.c~s->gen != x->ch[3] || ~
+image: stretched to the box, not fitted~test TESTS=image~~src/image/image.c~		if (W * mh > H * mw) { H = H * mw / W; W = mw; }~		if (W * mh > H * mw) { H = mh; W = mw; }
+image: scaled up to the box~test TESTS=image~~src/image/image.c~	if (W > mw || H > mh) {~	if (1) {
+image: put ignores skip~test TESTS=image~~src/image/image.c~	for (int y = skip > 0 ? skip : 0; y < rows~	for (int y = 0; y < rows
+image: put past the grid's right edge~test TESTS=image~~src/image/image.c~ && c + x < g->cols; x++)~; x++)
+image: draw copies a cell too wide~test TESTS=image~~src/image/image.c~(size_t)s->cw * sizeof *px);~(size_t)(s->cw + 1) * sizeof *px);
+image: a frame allocates~test TESTS=image~~src/image/image.c~	const struct slot *s = &slot[x->ch[0]];~	const struct slot *s = &slot[x->ch[0]];¶	free(strdup(""));
+image: a lookup that hits allocates~test TESTS=image~~src/image/image.c~			s->used = ++tick;¶			return~			s->used = ++tick;¶			free(strdup(""));¶			return
+image: the least recently used slot is never reused~test TESTS=image~~src/image/image.c~		if ((s->path || !held_only) && (!o || s->used < o->used)) o = s;~		if ((s->path || !held_only) && !o) o = s;
+image: no budget: every image kept~test TESTS=image~~src/image/image.c~	for (struct slot *o; held + bytes > BUDGET && (o = oldest(1));) drop(o);~
+latex: the colour is not part of the name~test TESTS=image~~src/image/latex.c~	for (int i = 0; i < 64; i += 8)~	for (int i = 32; i < 64; i += 8)
+latex: the dpi is not part of the name~test TESTS=image~~src/image/latex.c~	for (int i = 0; i < 64; i += 8)~	for (int i = 0; i < 32; i += 8)
+latex: a failed render is tried again~test TESTS=image~~src/image/latex.c~	for (size_t i = 0; i < nfailed; i++) if (failed[i] == k.h) return NULL;~
+latex: a render under way is started again~test TESTS=image~~src/image/latex.c~		if (job[i].h == k.h) return NULL;   /* rendering */~
+latex: what latex leaves stays~test TESTS=image~~src/image/latex.c~	for (int i = 0; i < 5; i++) remove~	for (int i = 0; i < 1; i++) remove
+latex: the fragment read to its NUL~test TESTS=image~~src/image/latex.c~"\\begin{document}\n%.*s\n\\end{document}\n", (int)n, tex);~"\\begin{document}\n%s\n\\end{document}\n", tex);
+latex: dvipng given names from where it does not run~test TESTS=image~~src/image/latex.c~"-o", strrchr(name(f, j, 1, "png"), '/') + 1, strrchr(name(g, j, 1, "dvi"), '/') + 1, NULL };~"-o", name(f, j, 1, "png"), name(g, j, 1, "dvi"), NULL };
+latex: only the last 64 failures remembered~test TESTS=image~~src/image/latex.c~	for (size_t i = 0; i < nfailed; i++) if~	for (size_t i = nfailed > 64 ? nfailed - 64 : 0; i < nfailed; i++) if
+latex: a fragment TeX never finishes runs for ever~test TESTS=image~~src/image/latex.c~	loop_timer(stop, j, TIMEOUT);~
+latex: the timeout left armed after the job~test TESTS=image~~src/image/latex.c~	loop_timer(stop, j, -1);~
+latex: done without a redraw~test TESTS=image~~src/image/latex.c~	core_changed = 1;~
+latex: TeX's input left open~test TESTS=image~~src/image/latex.c~	proc_close(j->id);   /* TeX reads its input on an error: end it */~
+latex: dvipng without the text's colour~test TESTS=image~~src/image/latex.c~"-bg", "Transparent", "-fg", fg,~"-bg", "Transparent",
+latex: the PNG left under its job's name~test TESTS=image~~src/image/latex.c~	if ((n || rename(name(f, j, 1, "png"), name(g, j, 0, "png")))~	if ((n)
+wl: image cells drawn as text~test TESTS=wl~~src/wl/wl.c~		if (x[c].attr == ATTR_IMAGE) { image_draw(px + y0 * bw + c * cell_w, bw, &x[c]); continue; }~
+wl: every tile drawn from the image's first column~test TESTS=wl~~src/image/image.c~ + (size_t)x->ch[1] * (size_t)s->cw;~;
+wl: image cells drawn a cell to the right~test TESTS=wl~~src/wl/wl.c~image_draw(px + y0 * bw + c * cell_w, bw, &x[c]);~image_draw(px + y0 * bw + (c + 1) * cell_w, bw, &x[c]);
+win: image cells drawn a cell to the right~win WIN=win~~src/win/backend.c~image_draw(bits + r * ch * dw + c * cw, dw, x);~image_draw(bits + r * ch * dw + (c + 1) * cw, dw, x);
+wl: the cell's size is the window's~test TESTS=wl~~src/wl/wl.c~{ *w = cell_w; *h = cell_h; }~{ *w = cell_w; *h = cell_w; }
+win: image cells drawn as text~win WIN=win~~src/win/backend.c~	if (x->attr == ATTR_IMAGE) {~	if (0) {
+win: the cell's size is the window's~win WIN=win~~src/win/backend.c~{ *w = cw; *h = ch; }~{ *w = cw; *h = cw; }
+file: file_id calls a missing file an error~test TESTS="file file_save image"~~src/file/file.c~	if (stat(path, &st)) return errno == ENOENT ? 0 : -1;~	if (stat(path, &st)) return -1;
+file: file_id says a file exists that does not~test TESTS="file file_save image"~~src/file/file.c~	memset(id, 0, sizeof *id);¶	if (stat(path, &st))~	memset(id, 1, sizeof *id);¶	if (stat(path, &st))

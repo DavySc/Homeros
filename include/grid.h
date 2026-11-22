@@ -10,8 +10,12 @@
    line); they go once the core draws the UI faces below.  ATTR_GUIDE: an
    indent guide, a 1 px line at the cell's left edge in its face's fg (the
    cell's text stays a space, so screen traces do not change; snacks.indent
-   draws the same with a character). */
-enum { ATTR_NONE, ATTR_DIM, ATTR_REV, ATTR_GUIDE };
+   draws the same with a character).  ATTR_IMAGE: the cell shows a
+   cell-sized tile of an inline image (image.h), not text; ch (len 4, set
+   only by image_put) holds the image's number, the tile's column and row
+   and its cache slot's generation, so grid_cell_eq and the backends' row
+   hashes see a changed or reused tile with no code of their own. */
+enum { ATTR_NONE, ATTR_DIM, ATTR_REV, ATTR_GUIDE, ATTR_IMAGE };
 /* Syntax faces (package 12): Neovim's standard tree-sitter captures
    (:help treesitter-highlight-groups), in its order, "." as "_"; a capture
    with a longer name takes its longest listed prefix, as Neovim's highlight
