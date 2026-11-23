@@ -14,9 +14,9 @@ import concurrent.futures, json, os, random, subprocess, sys, tempfile
 
 SETUP = ('set noswapfile nomore shortmess+=I expandtab shiftwidth=4 softtabstop=4 autoindent '
          'smarttab nostartofline backspace=indent,eol,start number relativenumber '
-         'scrolloff=6 splitright splitbelow nowrap showtabline=0')
-# showtabline=0: each tab page is its own OS window (frames), whose screen
-# is the tab page's alone; the terminal's tabline is the tty's (package 6)
+         'scrolloff=6 splitright splitbelow nowrap')
+# 'showtabline' 1: the terminal's tabline (Editor.tabline); an OS window
+# per tab page draws the same rows below none
 
 # completion items for the popup token, the same table as the C side's:
 # ten, then the ten again with 2 and with 3 after the word (complete()
@@ -205,7 +205,9 @@ def run_nvim(case):
     json.dump({'rows': case['rows'], 'cols': case['cols'],
                'keys': [k if isinstance(k, list) else [k] for k in map(nvim_keys, case['tokens'])]}, open(fi, 'w'))
     open(fl, 'w').write('local IN, OUT = %r, %r\n' % (fi, fo) + LUA)
-    subprocess.run(['nvim', '--clean', '--headless', '-c', SETUP, '-c', 'luafile ' + fl, 'f0'], cwd=d,
+    # after startup: inside -c, Neovim is 'starting' and leaves a hidden tab
+    # page's widths for later (enter_tabpage()), which a running editor never does
+    subprocess.run(['nvim', '--clean', '--headless', '-c', SETUP, '-c', 'autocmd VimEnter * ++once luafile ' + fl, 'f0'], cwd=d,
                    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=120)
     return json.load(open(fo))
 

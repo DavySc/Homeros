@@ -3,6 +3,7 @@
    default 'statusline'), the command line and the completion popup
    (popupmenu.c).  Allocates nothing. */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "core_int.h"
 #include "git.h"
@@ -841,7 +842,7 @@ void core_pum(Editor *e, const PumItem *items, int n, int sel, size_t col)
 	if (w->wrap && c >= w->w && width > 0) c -= ((c - w->w) / width + 1) * width;
 	c = c > (long)w->left ? c - (long)w->left : 0;
 	int prow = w->y + w->frame->s.wrow, cursor_col = w->x + (int)c;
-	int above_row = 0, below_row = e->layout->size[ROWS];
+	int above_row = 0, below_row = e->layout->top + e->layout->size[ROWS];   /* cmdline_row */
 	if (below_row < w->y + w->h) below_row = w->y + w->h;
 	/* pum_compute_vertical_placement() */
 	pum.height = n < PUM_DEF_HEIGHT ? n : PUM_DEF_HEIGHT;
@@ -975,6 +976,58 @@ static void draw_pum(Editor *e, Grid *g)
 	}
 }
 
+/* draw_tabline() without 'tabline' (use_sep_chars off), the terminal's:
+   per tab page its window count when over 1, + when a buffer shown there
+   is changed, its current window's buffer name with shortened
+   directories, and an X closing the current one */
+static void draw_tabline(Editor *e, Grid *g)
+{
+	int n = 0, col = 0, cols = g->cols;
+	for (Tab *t = e->tabs; t; t = t->next) n++;
+	int tabwidth = (cols - 1 + n / 2) / n;
+	if (tabwidth < 6) tabwidth = 6;
+	for (Tab *t = e->tabs; t && col < cols - 4; t = t->next) {
+		int scol = col, face = t == e->tab ? FACE_TABLINE_SEL : FACE_TABLINE, wins = 0, mod = 0;
+		for (Win *w = tab_firstwin(e, t); w; w = w->next, wins++) mod |= core_modified(w->buf);
+		char s[4200];
+		col = grid_puts(g, 0, col, cols, " ", 1, ATTR_NONE, face);
+		if (mod || wins > 1) {
+			int k = wins > 1 ? snprintf(s, sizeof s, "%d", wins) : 0;
+			if (col + k >= cols - 3) break;
+			col = grid_puts(g, 0, col, cols, s, (size_t)k, ATTR_NONE, face);
+			if (mod) col = grid_puts(g, 0, col, cols, "+", 1, ATTR_NONE, face);
+			col = grid_puts(g, 0, col, cols, " ", 1, ATTR_NONE, face);
+		}
+		int room = scol - col + tabwidth - 1;
+		if (room > 0) {
+			/* get_trans_bufname() with home_replace(), then shorten_dir():
+			   each directory to its first character, a leading ~ or . kept */
+			const Buf *b = (t == e->tab ? e->win : t->win)->buf;
+			const char *p = b->path ? b->path : "[No Name]", *home = getenv("HOME");
+			size_t hn = home && *home ? strlen(home) : 0, d = 0;
+			if (b->path && hn && !strncmp(p, home, hn) && (p[hn] == '/' || !p[hn])) s[d++] = '~', p += hn;
+			const char *tail = strrchr(p, '/');
+			for (int keep = 1, last = 0; *p && d < sizeof s - 1; p++) {
+				int cont = (*p & 0xC0) == 0x80;   /* the rest of a character */
+				if (tail && p < tail && *p != '/' && !(cont ? last : keep)) { last = 0; continue; }
+				s[d++] = *p;
+				last = 1;
+				if (!cont) keep = *p == '/' || ((*p == '~' || *p == '.') && keep);
+			}
+			s[d] = 0;
+			const unsigned char *u = (const unsigned char *)s;
+			size_t at = 0;
+			int len = grid_width(s, d);
+			while (len > room) { len -= uni_width(u, d, at); at += uni_glen(u, d, at); }
+			grid_puts(g, 0, col, cols, s + at, d - at, ATTR_NONE, face);
+			col += len < cols - col - 1 ? len : cols - col - 1;
+		}
+		col = grid_puts(g, 0, col, cols, " ", 1, ATTR_NONE, face);
+	}
+	paint(g, 0, col, cols - col, FACE_TABLINE_FILL);
+	grid_puts(g, 0, cols - 1, cols, "X", 1, ATTR_NONE, FACE_TABLINE);
+}
+
 static void draw(Editor *e, Grid *g, int cur);
 /* A tab page that is not current is drawn as its own OS window shows it:
    its windows, and no command line, message or popup: those belong to the
@@ -1002,8 +1055,9 @@ static void draw(Editor *e, Grid *g, int cur)
 					paint(g, w->y + r, w->x + w->w, 1, FACE_WIN_SEPARATOR);
 		draw_status(e, g, w);
 	}
+	if (cur && tabline_height(e)) draw_tabline(e, g);
 	/* the command line, or the mode and the last message (showmode) */
-	int r = e->layout->size[ROWS];
+	int r = e->layout->top + e->layout->size[ROWS];
 	Win *w = e->win;
 	g->crow = w->y + w->frame->s.wrow;
 	g->ccol = w->x + w->frame->s.wcol;

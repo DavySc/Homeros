@@ -242,6 +242,7 @@ int main(int argc, char **argv)
 			Grid g = { 0 };
 			int differ = 0;
 			CHECK(!chdir(dir) && !core_open(&e, "f0") && !grid_resize(&g, rows, cols));
+			e.tabline = 1;   /* the terminal's, as Neovim's screen */
 			in_pum = 0;
 			for (int s = 0; s < nscr; s++) {
 				if (s) token(&e, &g, tokens[s - 1]);

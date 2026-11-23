@@ -42,7 +42,10 @@ static int has_win(Frame *f, Win *w)
 	return 0;
 }
 
-static int cmdheight(Editor *e) { return e->rows - e->layout->size[ROWS]; }
+static int cmdheight(Editor *e) { return e->rows - e->layout->size[ROWS] - e->layout->top; }
+/* tabline_height() with 'showtabline' 1: the terminal shows a tabline
+   while there are two tab pages; an OS window per tab page shows none */
+int tabline_height(const Editor *e) { return e->tabline && e->tabs->next; }
 
 /* the layout whose children lie one after another on axis a */
 static int along(int a) { return a == COLS ? FR_ROW : FR_COL; }
@@ -153,7 +156,7 @@ static void comp_pos(Frame *f, int *row, int *col)
 	else *col = c0 + f->size[COLS];
 }
 
-static void win_comp_pos(Editor *e) { int r = 0, c = 0; comp_pos(e->layout, &r, &c); }
+static void win_comp_pos(Editor *e) { int r = e->layout->top, c = 0; comp_pos(e->layout, &r, &c); }
 
 /* get_maximum_wincount() */
 static int max_wincount(Frame *f, int height)
@@ -235,7 +238,7 @@ static void equal_rec(Editor *e, Win *next, int current, Frame *top, int dir, co
 
 static void win_equal(Editor *e, Win *next, int current, int dir)
 {
-	equal_rec(e, next ? next : e->win, current, e->layout, dir, (int[2]){ 0, 0 },
+	equal_rec(e, next ? next : e->win, current, e->layout, dir, (int[2]){ e->layout->top, 0 },
 	          (int[2]){ e->layout->size[ROWS], e->cols });
 }
 
@@ -296,21 +299,25 @@ void layout_init(Editor *e, Win *w, int ch)
 	f->s.vline = (size_t)-1;
 	f->s.bot = 1;                       /* win_init_empty(): w_botline 2 */
 	e->layout = f;
-	f->size[ROWS] = e->rows - ch;       /* win_alloc_firstwin(): Rows - p_ch */
+	f->top = tabline_height(e);
+	f->size[ROWS] = e->rows - ch - f->top;   /* win_alloc_firstwin(): ROWS_AVAIL */
 	f->size[COLS] = e->cols;
 	w->h = f->size[ROWS] - STATUS;
 	w->w = f->size[COLS];
+	w->y = f->top;
 }
 
-/* win_new_screensize(): the top frame takes the screen, the command line keeps its height */
+/* win_new_screensize(), and win_new_screen_rows() when the tabline comes
+   or goes: the top frame takes the screen, the command line keeps its height */
 void layout_resize(Editor *e, int rows, int cols)
 {
-	int ch = cmdheight(e);
-	if (rows == e->rows && cols == e->cols) return;
+	int ch = cmdheight(e), top = tabline_height(e);
+	if (rows == e->rows && cols == e->cols && top == e->layout->top) return;
 	e->rows = rows;
 	e->cols = cols;
-	if (rows - ch < 2) ch = rows > 2 ? rows - 2 : 1;
-	new_size(e, e->layout, rows - ch, 0, ROWS);
+	e->layout->top = top;
+	if (rows - ch - top < 2) ch = rows - top > 2 ? rows - top - 2 : 1;
+	new_size(e, e->layout, rows - ch - top, 0, ROWS);
 	new_size(e, e->layout, cols, 0, COLS);
 	win_comp_pos(e);
 }
@@ -832,7 +839,7 @@ static void top_new_height(Editor *e, int height)
 		   5l j CTRL-W - k, review of PR 20, 2) */
 		if (e->win->want != WANT_EOL) core_set_want(e);
 	}
-	if (height > e->rows - ch) height = e->rows - ch;   /* ROWS_AVAIL */
+	if (height > e->rows - ch - e->layout->top) height = e->rows - ch - e->layout->top;   /* ROWS_AVAIL */
 	new_size(e, t, height, 0, ROWS);
 }
 
@@ -940,12 +947,16 @@ void tab_free_all(Editor *e)
    WEE_CURWIN_INVALID, its previous window kept */
 void core_tab_enter(Editor *e, Tab *t)
 {
+	int rows = e->rows, cols = e->cols;
 	if (t == e->tab) return;
 	tab_use(e, t);
 	Win *w = e->win, *pw = e->prev;
 	e->win = NULL;
 	win_enter(e, w);
 	e->prev = pw;
+	/* then the terminal's one screen keeps its size, and the tabline may
+	   have come or gone (win_new_screen_rows(), win_new_screen_cols()) */
+	if (e->tabline) layout_resize(e, rows, cols);
 }
 
 /* alt_tabpage(): the next tab page, or the one before the last */
@@ -971,6 +982,7 @@ static void tab_close_last(Editor *e, Tab *to, int enter)
 	*p = t->next;
 	win_forget(e, w);                  /* its frame is the tab page's layout */
 	free(t);
+	layout_resize(e, e->rows, e->cols);   /* win_close_othertab(): the tabline may go */
 }
 
 /* win_new_tabpage() after the current one: one window copied from the
@@ -998,21 +1010,16 @@ static int tab_new(Editor *e)
 	e->buf = w->buf;
 	w->h += STATUS;
 	win_new_height(e, w, w->h - STATUS);
-	e->win = NULL;
-	win_enter(e, w);
+	/* curwin is set, not entered: no win_enter_ext(), so no 'winheight' */
 	e->prev = NULL;
 	return 0;
 }
 
+/* ex_splitview() gives the window left the new buffer as its alternate
+   only when win_valid(), which looks in the current tab page: never here */
 int core_tabnew(Editor *e, const char *path)
 {
-	Win *ow = e->win;
-	if (tab_new(e)) return -1;
-	if (!path) return 0;
-	if (edit_split(e, path)) return -1;
-	/* ex_splitview(): the window left gets the new buffer as its alternate */
-	if (ow->buf != e->buf) ow->alt = e->buf;
-	return 0;
+	return tab_new(e) ? -1 : path ? edit_split(e, path) : 0;
 }
 
 int core_tabclose(Editor *e, Tab *t)

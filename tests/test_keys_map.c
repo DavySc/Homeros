@@ -202,10 +202,21 @@ int main(void)
 	CHECK(d.tab == d.tabs->next && d.wins->next);
 	feed(&d, "\x17T");                         /* CTRL-W T: a third frame */
 	CHECK(d.tab == d.tabs->next->next && !d.wins->next && !d.tabs->next->wins->next);
+	feed(&d, "yy2pgT");                        /* back one frame */
+	CHECK(d.tab == d.tabs->next);
+	feed(&d, "gTGgt");                         /* and again; the first frame's cursor on line 3 */
+	CHECK(d.tab == d.tabs->next && d.tabs->wins->line == 2);
+	feed(&d, "ggdd");                          /* mark_adjust() moves it in every frame */
+	CHECK(d.tabs->wins->line == 1);
+	feed(&d, "uu");
 	feed(&d, " 51");                           /* delete-other-frames */
 	CHECK(!d.tabs->next && d.tab == d.tabs);
 	feed(&d, " 50");
 	CHECK(!strcmp(d.msg, "E784: Cannot close last tab page"));
+	CHECK(!core_tabnew(&d, ""));               /* :tabnew, gt, :bd N: the frame showing N goes */
+	int nr = d.buf->nr;
+	feed(&d, "gt");
+	CHECK(!core_buf_delete(&d, nr, 0) && !d.tabs->next);
 	feed(&d, " 5f");                           /* the picker, in a new frame */
 	CHECK(picked(&d) && d.tabs->next && d.tab == d.tabs->next);
 	/* the system focused another frame: what is half typed ends */
@@ -220,6 +231,10 @@ int main(void)
 	keys_input(&d, KEY_FOCUS, 0);
 	feed(&d, "2x");                            /* a count, not a frame */
 	CHECK(!d.ks.pending && at(&d, "cb\n", 0));
+	/* the new frame's window takes its status line through win_new_height():
+	   the cursor keeps its fraction (nvim 0.12, 3 runs: topline 44) */
+	feed(&d, "yy99p\x17s50Gzb 52");
+	CHECK(d.win->top == 43 && d.win->line == 49);
 	core_free(&d);
 	unlink(path);
 	puts("test_keys_map: ok");

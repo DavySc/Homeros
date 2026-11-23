@@ -42,6 +42,7 @@ struct Frame {
 	struct Frame *parent, *child, *next, *prev;
 	Win *win;
 	int vsep;                     /* leaf: w_vsep_width */
+	int top;                      /* the top frame: its first row (firstwin's w_winrow), below the tabline */
 	WinState s;
 };
 
@@ -89,6 +90,7 @@ void win_invalidate(Win *w);          /* changed_line_abv_curs_win(): update_top
 
 /* layout (win.c) */
 void layout_init(Editor *e, Win *w, int ch);
+int  tabline_height(const Editor *e);
 void layout_resize(Editor *e, int rows, int cols);
 void layout_free(struct Frame *f);
 /* make w current (win_enter()) */

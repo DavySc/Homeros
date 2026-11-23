@@ -208,7 +208,7 @@ R
 R
 R
 R
-S Already only one window
+S :only
 M - - -
 P
 R
@@ -1361,8 +1361,8 @@ R
 R
 R
 R
-S Error in command lin
-S e:
+S Error in VimEnter Au
+S tocommands for "*":
 S E23: No alternate fi
 S le
 R
@@ -2167,10 +2167,10 @@ S f0 [+]           1,4            All f0 [+]           1,4            All
 S 
 M - - 0:3
 P
+S  + f0  + f0                                                           X
 S 1      x
 S   1         ). 漢 (
 S   2 ab漢 全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全
-S ~
 S ~
 S ~
 S ~
@@ -2198,6 +2198,7 @@ S f0 [+]                                               1,4            All
 R
 M - - 0:3
 P
+R
 S 1      x é2
 S   1      é2                                          λx menu
 S   2 ab漢 longerword_completion2                    m
@@ -2209,7 +2210,6 @@ S ~        yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy2
 S ~        z2                                        v zz
 S ~        foo3                                      v
 S ~        foobar3                                   f module.c
-R
 R
 R
 R
@@ -2557,7 +2557,7 @@ R
 R
 R
 R
-S Al...dow
+R
 M - - -
 P
 R
@@ -3278,7 +3278,7 @@ R
 R
 R
 R
-S Alread...window
+R
 M - - -
 P
 R
@@ -4082,10 +4082,10 @@ R
 R
 M - - -
 P
+S  + f0  + f0        X
 S 1       new line
 S   1
 S   2         foo ^? )
-S   3     bar_1 ab漢 a
 S < 1,5            Top
 S :tabnew f0
 M - - -
@@ -4114,7 +4114,7 @@ R
 R
 M - - -
 P
-S   3 全角全角全角全角
+R
 S   2
 S   1 zzzzzzzzzzzzzzzz
 S 9           😀 bar_1
@@ -4606,8 +4606,8 @@ R
 R
 M - - -
 P
+S  f0  f0                                                                        X
 S 1
-S ~
 S ~
 S ~
 S ~
@@ -4667,7 +4667,7 @@ R
 R
 R
 R
-S Already only one window
+R
 M - - -
 P
 R
@@ -4699,7 +4699,7 @@ R
 R
 R
 R
-R
+S :only
 M - - -
 P
 R
@@ -4830,6 +4830,7 @@ R
 R
 M 0:0 - -
 P
+S  + f0  + f0                                                                    X
 S 1   z
 S ~   foo                                      v
 S ~   foobar                                   f module.c
@@ -4841,7 +4842,6 @@ S ~   bar_1                                    v m
 S ~   λx                                       f
 S ~   yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
 S ~   z                                        v zz
-R
 R
 R
 R
@@ -4893,8 +4893,8 @@ S f0 [+]                4,1            All
 R
 M - - -
 P
+S  + f0  [No Name]                       X
 S 1
-S ~
 S ~
 S ~
 S ~
@@ -5834,7 +5834,7 @@ R
 R
 R
 R
-S Already only one window
+R
 M - - -
 P
 S 2
@@ -7238,8 +7238,8 @@ S f0                                        1,2            Top
 S 
 M - - -
 P
+S  f0  [No Name]                                             X
 S 1
-S ~
 S ~
 S ~
 S ~
@@ -7340,8 +7340,8 @@ R
 R
 M 0:0 - -
 P
+S  f0  [No Name]                  X
 S 1
-S ~
 S ~
 S ~
 S ~
@@ -7357,8 +7357,8 @@ S [No Name]      0,0-1          All
 S 
 M 0:0 - -
 P
+S  f0  2 [No Name]                X
 S 1           │1
-S ~           │~
 S ~           │~
 S ~           │~
 S ~           │~
@@ -7408,8 +7408,8 @@ R
 R
 M - - -
 P
+S  f0  [No Name]                  X
 S 1
-S ~
 S ~
 S ~
 S ~
@@ -7476,6 +7476,7 @@ R
 R
 M - - -
 P
+S  f0  + [No Name]                X
 S 1   longerword_completion
 S ~   longerword_completion
 S ~   x
@@ -7488,7 +7489,6 @@ S ~   foo2
 S ~   foobar2
 S ~   é2
 S ~   longerword_completion2
-R
 S [No Name] [+]  1,22           All
 S -- INSERT --
 M - - -
@@ -8788,8 +8788,8 @@ S f0                                                            0,0-1          A
 S 
 M - - -
 P
-R
-R
+S  f0  f0                                                                        X
+S 1
 R
 R
 R
@@ -10375,8 +10375,8 @@ R
 R
 M - - -
 P
-R
-R
+S  f0  f0                                                                        X
+S 1
 R
 R
 R
@@ -10401,7 +10401,7 @@ R
 R
 M - - -
 P
-R
+S  f0  2 f0                                                                      X
 R
 R
 R
@@ -10531,7 +10531,7 @@ R
 R
 M - - -
 P
-R
+S  + f0  2+ f0                                                                   X
 R
 R
 R
@@ -11040,10 +11040,10 @@ R
 S 
 M - - -
 P
+S  [No Name]  [No Name]                                                             X
 S 1
 S ~
-S [No Name]                                                        0,0-1          All
-R
+S E36: Not enough room
 M - - -
 E
 C 15 20
@@ -11178,8 +11178,8 @@ S f0                                        1,2-16         All
 S 
 M - - -
 P
-R
-R
+S  f0  [No Name]                                             X
+S 1
 R
 R
 R
@@ -11274,6 +11274,7 @@ R
 R
 M - - -
 P
+S  f0  + [No Name]                                           X
 S 1   yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy2
 S ~   x2                                        k a menu that>
 S ~   ა_b2
@@ -11284,7 +11285,6 @@ S ~   z2                                        v zz
 S ~   foo3                                      v
 S ~   foobar3                                   f module.c
 S ~   é3                                          λx menu
-R
 R
 R
 R
@@ -11533,7 +11533,7 @@ R
 R
 R
 R
-S Already only one window
+S :only
 M - 0:0 -
 P
 R
@@ -11668,8 +11668,8 @@ S < 4,5            Top
 S :bn
 M - - -
 P
+S  f0  No Name]      X
 S 1
-S ~
 S ~
 S ~
 S ~
@@ -11702,8 +11702,8 @@ R
 R
 M - - -
 P
+S  f0  +  Name]      X
 S 1   ა_b3
-R
 R
 R
 R
@@ -13033,6 +13033,10 @@ S < 0,0-1          All
 S :new
 M - - -
 P
+S  2  Name]  f0      X
+S 1
+S   1      ^A é --
+S   2 -- zzzzzzzzzzzzz
 R
 R
 R
@@ -13041,10 +13045,7 @@ R
 R
 R
 R
-R
-R
-R
-R
+S     zzzzzzzzzzzzzzzz
 S     zzzzzzzzzzzzzzzz
 S     zzzzzzzzzzzzzzzz
 S     zzzzzzzzzzzzzzzz
@@ -13055,7 +13056,6 @@ S     zzzzzzzzzzzzzzzz
 S     zzzzzzzzzzzzzzzz
 S     zzzzzzzzzzzzzzz
 S 
-R
 R
 R
 R
@@ -13097,6 +13097,7 @@ R
 R
 M - - 0:1
 P
+S  2+ Name]  + f0    X
 R
 S     new line
 S   1
@@ -13121,7 +13122,6 @@ S     zzzzzzzzzzzzzzzz
 S     zzzzzzzzzzzzzzzz
 S     zzzzzzzzzzzzzzz
 S 
-R
 R
 R
 R
@@ -14785,7 +14785,7 @@ R
 R
 R
 R
-S Al...dow
+S :only
 M - 3:0 -
 P
 S  │1
@@ -15584,6 +15584,7 @@ R
 R
 M - - -
 P
+S  2 f0  f2                              X
 S 1
 S   1     漢
 S   2
@@ -15591,7 +15592,6 @@ S   3
 S   4
 S   5
 S   6         longerword x bar_1
-S   7 漢 全角全角全角全角全角全角全角全@@@
 S f2                    1,0-1          Top
 S :tabnew f2
 M - - -
@@ -15861,7 +15861,7 @@ R
 R
 R
 R
-S Al...dow
+R
 M - - -
 P
 R
@@ -17186,8 +17186,8 @@ S f0                                        1,5            Top
 R
 M - - -
 P
+S  f0  [No Name]                                             X
 S 1
-S ~
 S ~
 S ~
 S ~
@@ -19486,27 +19486,27 @@ R
 R
 M - - -
 P
+S  + f0  + f0                                                                    X
 S 1   ). bar_1 longerword ^A 漢 -- ab漢 漢 ^? ). yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
 S   1     bar_1 ). ,
 S   2     漢 , longerword -- λx zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
 S   3 é ( ^A λx ^A foo λx
 S   4 全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角
 S   5 λx
-R
+S   6
 S   7 漢 bar_1 ab漢
 S   8      é -- ^A aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa ). ab漢 全角全角全角全角全角全角
 S   9     ab漢 ). ,
 S  10 漢 é
-R
+S  11
 S  12 😀
 S  13     😀 😀 bar_1 ab漢 λx ab漢  longerword foo ა longerword zzzzzzzzzzzzzzzzzz
 S  14 < 漢 zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
-R
-R
+S  15
+S  16
 S  17 全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角
 S  18 漢 全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角>
 S  19  é λx foo    x 漢 --
-R
 R
 R
 R
@@ -19550,6 +19550,7 @@ R
 S 
 M - - -
 P
+R
 S 1   . yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyybar_12
 S   1                                                             ა_b2
 S   2 zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz bar_12 v m
@@ -19570,7 +19571,6 @@ R
 S  17 <角全角全角全角全角全角全角全角全角 -- ^?
 S  18 角全角全角全角全角全角全角全角全角全角全角
 S  19
-R
 R
 R
 R
@@ -19797,7 +19797,7 @@ R
 R
 R
 R
-S Al...dow
+S :only
 M - - -
 P
 R
@@ -21362,8 +21362,8 @@ S f0 [+]                14,19-26       Bot
 R
 M - - -
 P
+S  + f0  [No Name]                       X
 S 1
-S ~
 S ~
 S ~
 S ~
@@ -21414,7 +21414,7 @@ R
 R
 M - - -
 P
-R
+S  + f0  [No Name]  [No Name]            X
 R
 R
 R
@@ -21440,8 +21440,8 @@ R
 S :tab split
 M - - -
 P
+S  + f0  + [No Name]  + [No Name]        X
 S 1   yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
-R
 R
 R
 R
@@ -21538,10 +21538,10 @@ S < 2,5-9          All
 R
 M - - -
 P
-R
-R
-R
-R
+S  + f0  + f0        X
+S   1  漢  ,yyyyyyyyyy
+S 2         foo
+S   1
 R
 R
 R
@@ -21550,10 +21550,10 @@ R
 S :tab split
 M - - -
 P
+R
 S   2     漢  ,yyyyyyy
 S   1 ).       foo
 S 3
-R
 R
 R
 R
@@ -21603,8 +21603,8 @@ R
 R
 M - - -
 P
+S  f0  [No Name]                                             X
 S 1
-S ~
 S ~
 S ~
 S [No Name]                                 0,0-1          All
@@ -21659,18 +21659,18 @@ R
 R
 M - - -
 P
+R
 S 1           é ( longerword ). é
 S   1 ( 漢 bar_1
 S   2 zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
-S   3 longerword ab漢 zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
 S f0                                        1,2-9          Top
 R
 M - - -
 P
+R
 S   1         é ( longerword ). é
 S 2   ( 漢 bar_1
 S   1 zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
-S   2 longerword ab漢 zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
 S f0                                        2,11-10        Top
 R
 M - - -
@@ -21978,7 +21978,7 @@ R
 R
 R
 R
-S Already only one window
+S :only
 M - - 0:0
 P
 R
@@ -24393,14 +24393,15 @@ R
 R
 M - - -
 P
+S  f0  f1                                                    X
 S 1            😀 λx
 S   1
 S   2         é aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa ( ა 全角全角全>
-S   3 foo bar_1 ა bar_1 全角全角全角全角全角全角全角全角全角全
 S f1                                        1,3-10         Top
 S :tabnew f1
 M - - -
 P
+S  f0  f1                                  X
 S 1            😀 λx
 S   1
 S   2         é aaaaaaaaaaaaaaaaaaaaaaaaaaaa
@@ -24433,11 +24434,11 @@ S ~
 S ~
 S ~
 S ~
-S ~
 S f1                      1,3-10         All
 S 
 M - - -
 P
+R
 S  11          😀 λx
 S  10
 S   9         é aaaaaaaaaaaaaaaaaaaaaaaaaaaa
@@ -24470,11 +24471,11 @@ R
 R
 R
 R
-R
 S f1                      12,1           All
 R
 M - - -
 P
+R
 S 1            😀 λx
 S   1
 S   2         é aaaaaaaaaaaaaaaaaaaaaaaaaaaa
@@ -24495,7 +24496,6 @@ S  16
 S  17 ). 全角全角全角全角全角全角全角全角全>
 S  18     😀
 S  19 漢 foo longerword λx (  , ). , ( zzzzz
-R
 R
 R
 R
@@ -27661,7 +27661,7 @@ R
 R
 R
 R
-S Already only one window
+S :only
 M - - -
 P
 R
@@ -28098,7 +28098,7 @@ R
 R
 R
 R
-S Already only one window
+R
 M - - -
 E
 C 6 20
@@ -28128,14 +28128,15 @@ S < 1,5            Top
 S 
 M - - -
 P
-R
-R
-R
-R
+S  f0  f0            X
+S 1       é
+S   1 x é ( ,  , 全角>
+S   2         foo foo
 R
 S :tabnew f0
 M - - -
 P
+S  f0  f0                                                                                    X
 S 1       é
 S   1 x é ( ,  , 全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角>
 S   2         foo foo , longerword
@@ -28150,7 +28151,6 @@ S  10 -- -- 漢 漢 zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
 S  11 漢  ab漢
 S  12 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa x  , ( é (
 S  13 (
-S  14 λx ). x
 S f0                                                                        1,5            Top
 S 
 M - - -
@@ -28269,22 +28269,22 @@ S f0                                                                        1,4 
 R
 M - - -
 P
-S   7     é
-S   6 x é ( ,  , 全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角>
-S   5         foo foo , longerword
-S   4     ab漢  ^A ( 全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角>
-S   3 漢 longerword
-S   2         ^?
-S   1
-S 8   x ab漢 ^A
-S   1         é 😀 ). ). ა  全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全
-S   2         ab漢 foo
-S   3 -- -- 漢 漢 zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
-S   4 漢  ab漢
-S   5 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa x  , ( é (
-S   6 (
-S   7 λx ). x
-S f0                                                                        8,4            Top
+R
+S   6     é
+S   5 x é ( ,  , 全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角>
+S   4         foo foo , longerword
+R
+S   2 漢 longerword
+S   1         ^?
+S 7
+S   1 x ab漢 ^A
+S   2         é 😀 ). ). ა  全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全
+S   3         ab漢 foo
+S   4 -- -- 漢 漢 zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S   5 漢  ab漢
+S   6 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa x  , ( é (
+S   7 (
+S f0                                                                        7,1-8          Top
 R
 M - - -
 P
@@ -28341,45 +28341,45 @@ R
 R
 R
 R
-S f0                                                                        8,1            Top
+R
 R
 M - - -
 P
-S   3 漢 longerword
-S   2         ^?
-S   1
-S 8   x ab漢 ^A
-S   1         é 😀 ). ). ა  全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全
-S   2         ab漢 foo
-S   3 -- -- 漢 漢 zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
-S f0                                                                        8,1            30%
-S   3 漢 longerword
-S   2         ^?
-S   1
-S 8   x ab漢 ^A
-S   1         é 😀 ). ). ა  全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全
-S   2         ab漢 foo
-S   3 -- -- 漢 漢 zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
-S f0                                                                        8,1            30%
+S  f0  2 f0                                                                                  X
+S   2 漢 longerword
+S   1         ^?
+S 7
+S   1 x ab漢 ^A
+S   2         é 😀 ). ). ა  全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全
+S   3         ab漢 foo
+S f0                                                                        7,1-8          28%
+S   3     ab漢  ^A ( 全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角>
+S   2 漢 longerword
+S   1         ^?
+S 7
+S   1 x ab漢 ^A
+S   2         é 😀 ). ). ა  全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全
+S   3         ab漢 foo
+S f0                                                                        7,1-8          23%
 S :sp
 M - - -
 P
+S  + f0  2+ f0                                                                               X
+R
+R
+S 7           bar_1
 R
 R
 R
-S 8   x ab漢 ^Abar_1
+S f0 [+]                                                                    7,1-8          28%
 R
 R
 R
-S f0 [+]                                                                    8,1            30%
+S 7           bar_1
 R
 R
 R
-S 8   x ab漢 ^Abar_1
-R
-R
-R
-S f0 [+]                                                                    8,15           30%
+S f0 [+]                                                                    7,7-14         23%
 R
 M - - -
 E
@@ -28558,8 +28558,8 @@ R
 S :bn
 M - - -
 P
+S  + f0  [No Name]                       X
 S 1
-S ~
 S ~
 S ~
 S ~
@@ -28584,9 +28584,9 @@ S [No Name]             0,0-1          All
 S :tabnew
 M - - -
 P
+S  + f0  + [No Name]                     X
 S 1   new line
 S   1
-R
 R
 R
 R
@@ -28636,9 +28636,9 @@ R
 R
 M - - -
 P
+S  + f0  + [No Name]                                             X
 S 1   new line
 S   1
-S ~
 S ~
 S ~
 S ~
@@ -28655,6 +28655,7 @@ S [No Name] [+]                                 1,8            All
 S 
 M - - -
 P
+S  + f0  + [No Name]                   X
 S 1   new line
 S   1
 S ~
@@ -28686,7 +28687,6 @@ S ~
 S ~
 S ~
 S ~
-S ~
 S [No Name] [+]       1,8            All
 S 
 M - - -
@@ -28727,6 +28727,7 @@ S
 R
 M - - -
 P
+R
 S 1   new linxe
 R
 R
@@ -28760,7 +28761,6 @@ R
 R
 R
 R
-R
 M - - -
 P
 R
@@ -28795,13 +28795,13 @@ R
 R
 R
 R
-S Already only one window
+R
 R
 M - - -
 P
+S  + f0  2+ [No Name]                  X
 S 1   new linxe    │1   new linxe
 S   1              │  1
-S ~                │~
 S ~                │~
 S ~                │~
 S ~                │~
@@ -28871,9 +28871,9 @@ R
 R
 M - - -
 P
+R
 S 1   new linxe           │1   new linxe
 S   1                     │  1
-S ~                       │~
 S ~                       │~
 S ~                       │~
 S ~                       │~
@@ -28975,6 +28975,7 @@ S < 0,0-1          All
 S 
 M - - -
 P
+S  f0  f1            X
 S 1   😀 全角全角全角>
 S   1         x aaaaaa
 S   2     bar_1 , x
@@ -28982,11 +28983,11 @@ S   3
 S   4 λx ^? x
 S   5 -- ).
 S   6         λx
-S   7     全角全角全角
-S < 1,1            All
+S < 1,1            Top
 S :tabnew f1
 M - - -
 P
+S  f0  + f1          X
 S 1   <角 foo foo2
 S   1 foo2    v
 S   2 foobar2 f modul>
@@ -28994,8 +28995,7 @@ S   3 é2        λx me>
 S   4
 S   5
 S   6
-S   7 全角 ab漢 😀
-S < 1,135-93       All
+S < 1,135-93       Top
 S -- INSERT --
 M - - -
 E
@@ -29294,7 +29294,7 @@ R
 R
 R
 R
-S Already only one window
+S :only
 M - - -
 P
 R
@@ -29554,32 +29554,6 @@ R
 R
 R
 R
-S Already only one window
-M - - -
-P
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
 R
 M - - -
 P
@@ -29607,6 +29581,32 @@ R
 R
 R
 R
+M - - -
+P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+S :only
 M - - -
 E
 C 24 80
@@ -30406,32 +30406,33 @@ R
 R
 M - - -
 P
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
+S  f0  f0                                                                        X
+S 1   ab漢 全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全>
+S   1
+S   2 , zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S   3     λx x ).
+S   4         λx --
+S   5
+S   6 ^? zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S   7
+S   8 --       ^A 漢 --
+S   9     ( 全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全
+S  10
+S  11
+S  12 ^? ( λx λx 漢 , 全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角
+S  13 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa ა longerword x ^? ( foo 漢 漢 ^? 漢
+S  14         全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角
+S  15     foo aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+S  16         --
+S  17         ა
+S  18 全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角
+S  19     x ^A ა longerword foo longerword 漢
+S  20         漢
 R
 S :tabnew f0
 M - - -
 P
+S  f0  2 f0                                                                      X
 S 1   ab漢 全角全角全角全角全角全角全角全│1   ab漢 全角全角全角全角全角全角全角全>
 S   1                                    │  1
 S   2 , zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz│  2 , zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
@@ -30453,7 +30454,6 @@ S  17         ა                          │ 17         ა
 S  18 全角全角全角全角全角全角全角全角全>│ 18 全角全角全角全角全角全角全角全角全角
 S  19     x ^A ა longerword foo longerwor│ 19     x ^A ა longerword foo longerword
 S  20         漢                         │ 20         漢
-S  21 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa foo │ 21 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa foo ა
 S f0                   1,1            Top f0                    1,1            Top
 S :vs
 M - - -
@@ -30484,6 +30484,7 @@ R
 R
 M - - -
 P
+R
 S 1   ab漢 全角全角全角全角全角全角全角全│  1 ab漢 全角全角全角全角全角全角全角全>
 S   1                                    │2
 S   2 , zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz│  1 , zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
@@ -30505,11 +30506,11 @@ S  17         ა                          │ 16         ა
 S  18 全角全角全角全角全角全角全角全角全>│ 17 全角全角全角全角全角全角全角全角全角
 S  19     x ^A ა longerword foo longerwor│ 18     x ^A ა longerword foo longerword
 S  20         漢                         │ 19         漢
-S  21 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa foo │ 20 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa foo ა
 S f0                   1,1            Top f0                    2,0-1          Top
 R
 M - - -
 P
+S  f0  f0                                                                        X
 S 1   ab漢 全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全>
 S   1
 S   2 , zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
@@ -30531,13 +30532,12 @@ S  17         ა
 S  18 全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角
 S  19     x ^A ა longerword foo longerword 漢
 S  20         漢
-S  21 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa foo ა 漢 漢 zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
 S f0                                                            1,1            Top
 S :q
 M - - -
 P
+S  + f0  + f0                                                                    X
 S 1   b漢 全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角
-R
 R
 R
 R
@@ -30562,6 +30562,7 @@ S f0 [+]                                                        1,1            T
 R
 M - - -
 P
+R
 S 1
 S   1 , zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
 S   2     λx x ).
@@ -30583,11 +30584,11 @@ S  17 全角全角全角全角全角全角全角全角全角全角全角全角�
 S  18     x ^A ა longerword foo longerword 漢
 S  19         漢
 S  20 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa foo ა 漢 漢 zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
-S  21     é , zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
 S f0 [+]                                                        1,0-1          Top
 R
 M - - -
 P
+R
 S   7
 S   6 , zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
 S   5     λx x ).
@@ -30609,7 +30610,6 @@ S  10 全角全角全角全角全角全角全角全角全角全角全角全角�
 S  11     x ^A ა longerword foo longerword 漢
 S  12         漢
 S  13 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa foo ა 漢 漢 zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
-S  14     é , zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
 S f0 [+]                                                        8,1            Top
 R
 M - - -
@@ -30663,7 +30663,7 @@ R
 R
 R
 R
-S Already only one window
+R
 M - - -
 P
 R
@@ -31244,22 +31244,23 @@ R
 S :sp
 M - - -
 P
-R
-R
-R
-R
-R
+S  f0  f0                                      X
+S 1       ^? longerword ა 😀 ^? bar_1 全角全角全
+S   1 全角全角全角全角全角全角全角全角全角全角全
+S   2     ^? ^A  😀 😀 , bar_1 ^? -- λx x
+S   3     漢
+S   4
 S   5  foo bar_1 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 S   6
 S   7 ,
 S   8 ). -- bar_1 -- -- -- ab漢 ^A aaaaaaaaaaaaa
 S   9     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
 S  10         ab漢     , λx
-S  11         漢 longerword            😀 foo zz
 R
 R
 M - - -
 P
+R
 S   5     ^? longerword ა 😀 ^? bar_1 全角全角全
 S   4 全角全角全角全角全角全角全角全角全角全角全
 S   3     ^? ^A  😀 😀 , bar_1 ^? -- λx x
@@ -31271,7 +31272,6 @@ S   2 ,
 S   3 ). -- bar_1 -- -- -- ab漢 ^A aaaaaaaaaaaaa
 S   4     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
 S   5         ab漢     , λx
-S   6         漢 longerword            😀 foo zz
 S f0                          6,1            Top
 R
 M - - -
@@ -31770,19 +31770,19 @@ S < 4,1            All <4,1            All
 R
 M - 3:0 -
 P
+S  2+ f0  + f0                           X
 S 1   foo
 S   1 a
 S   2 b
-S   3 c
-S f0 [+]                1,1            All
+S f0 [+]                1,1            Top
 S :tabnew f0
 M - 3:0 -
 P
+S  2+ f0  + f0                                                                                   X
 S 1   foo
 S   1 a
 S   2 b
 S   3 c
-S ~
 S ~
 S ~
 S ~
@@ -31841,8 +31841,8 @@ S f0 [+]                                                                        
 R
 M - 3:0 -
 P
-S 1   fo
 R
+S 1   fo
 R
 R
 R
@@ -31883,11 +31883,11 @@ R
 R
 M - 3:0 -
 P
+R
 S 1   a
 S   1 b
 S   2 c
 S ~
-R
 R
 R
 R
@@ -32129,10 +32129,10 @@ S f0                                                            1,1            A
 S 
 M - - -
 P
-R
-R
-R
-R
+S  f0  f0                                                                        X
+S 1
+S   1 ^A  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa ( ^? aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa λx ა
+S   2     λx foo λx bar_1 , ა
 R
 R
 R
@@ -32163,8 +32163,8 @@ R
 R
 M - 0:0 -
 P
+S  + f0  + f0                                                                    X
 S 1    yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
-R
 R
 R
 R
@@ -32180,6 +32180,7 @@ S f0 [+]                                                        1,65           A
 S 
 M - 0:0 -
 P
+R
 S   3  yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
 S   2  a
 S   1  b
@@ -32192,18 +32193,17 @@ R
 R
 R
 R
-R
 S f0 [+]                                                        4,2            All
 R
 M - 0:0 -
 P
+R
 S   5  yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
 S   4  a
 S   3  b
 S   2  c
 R
 S 6       λx foo λx bar_1 , ა
-R
 R
 R
 R
@@ -32248,13 +32248,13 @@ R
 R
 M 5:1 0:0 -
 P
+R
 S   1  yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
 S 2    a
 S   1  b
 R
 S   3 ^A  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa ( ^? aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa λx ა
 S   4     λx foo λx bar_1 , ა
-R
 R
 R
 R
@@ -32270,9 +32270,9 @@ R
 R
 R
 R
+R
 S     é foo bar_1 ა
 S   4     λx foo λx bar_1 , ა
-R
 R
 R
 R
@@ -32289,7 +32289,7 @@ S   3  c
 S   4 ^A  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa ( ^? aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa λx ა
 S   5     λx foo λx bar_1 , ა
 S ~
-R
+S ~
 R
 R
 R
@@ -33299,27 +33299,27 @@ S f0 [+]                8,19-18        36%
 R
 M - - -
 P
-R
-R
-R
+S  + f0  + f0                            X
+S 8       é longerword ^?
+S   1         foo zzzzzzzzzzzzzzzzzzzzzzzz
 R
 R
 S :tab split
 M - - -
 P
+R
 S 8       é longerword ^?yyyyyyyyyyyyyyyyy
 S     yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
-S   1         foo zzzzzzzzzzzzzzzzzzzzzzzz
-R
+S   1         foo zzzzzzzzzzzzzzzzzzzzz@@@
 S f0 [+]                8,72           36%
 S 
 M - - -
 P
 R
 R
+R
 S     λx
-S   1 bar_1
-S f0  λx
+R
 S -- INSERT --
 M - - -
 E
@@ -35583,34 +35583,34 @@ R
 R
 M 0:0 - -
 P
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
+S  f0  f0                                                                        X
+S 1   é (
+S   1     longerword  é ^A     , aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa é ). ^A -- foo
+S   2 x foo 漢
+S   3 foo ( aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+S   4     λx  全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角
+S   5 x
+S   6         aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --
+S   7     ა longerword ^? ^? -- x zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S   8     ). aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa ). 漢 漢  ^?
+S   9 foo ^A
+S  10 ა x aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+S  11
+S  12 longerword é
+S  13         é        --
+S  14         λx
+S  15
+S  16
+S  17 ^A longerword
+S  18          é 全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角>
+S  19         x λx zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S  20     😀 é ). foo
+S  21         bar_1 longerword x
+S  22
+S  23     (
+S  24 ab漢 ( -- é 漢 foo       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+S  25         zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S  26         λx longerword 漢
 R
 S :tabnew f0
 M 0:0 - -
@@ -35711,16 +35711,16 @@ R
 R
 M - - -
 P
-R
-R
+S  [No Name]  [No Name]                                                          X
+S 1
 R
 R
 R
 S :tab split
 M - - -
 P
-R
-R
+S 1
+S ~
 R
 R
 R
@@ -36005,7 +36005,7 @@ R
 R
 R
 R
-S Already only one window
+R
 M - - -
 P
 S 1       new line
@@ -36013,13 +36013,13 @@ S   1     longerword
 S   2
 S   3     x    😀 ab漢 bar_1 ( ^?
 S f0 [+]                                    1,12           Top
-S 
+R
 M - - -
 P
-R
-R
-R
-R
+S  + f0  + f0                                                X
+S 1       new line
+S   1     longerword
+S   2
 S f0 [+]                                    1,5            Top
 S :tabnew f0
 M - - -
@@ -36072,34 +36072,34 @@ R
 S Already only one window
 M - - -
 P
+S  + f0  2+ f0                                               X
 S 1       new line             │1       new line
 S   1     longerword           │  1     longerword
 S   2                          │  2
-S   3     x    😀 ab漢 bar_1 ( │  3     x    😀 ab漢 bar_1 ( ^
 S f0 [+]     1,5            Top f0 [+]      1,5            Top
 R
 M - - -
 P
+R
 S 1       longerword           │1       longerword
 S   1                          │  1
 S   2     x    😀 ab漢 bar_1 ( │  2     x    😀 ab漢 bar_1 ( ^
-S   3                          │  3
 S f0 [+]     1,1            Top f0 [+]      1,5            Top
 R
 M - - -
 P
+R
 S 1       longerword           │  1     longerword
 S   1                          │2
 S   2     x    😀 ab漢 bar_1 ( │  1     x    😀 ab漢 bar_1 ( ^
-S   3                          │  2
 S f0 [+]     1,1            Top f0 [+]      2,1-8          Top
 R
 M - - -
 P
+R
 S 2       longerword           │1       new line
 S   1                          │  1     longerword
 S   2     x    😀 ab漢 bar_1 ( │  2
-S   3                          │  3     x    😀 ab漢 bar_1 ( ^
 S f0 [+]     2,1             2% f0 [+]      1,5            Top
 S 1 more line; before #2  0 seconds ago
 M - - -
@@ -36112,10 +36112,10 @@ R
 R
 M - - -
 P
+S  + f0  + f0                                                X
 S   1     new line
 S 2       longerword
 S   1
-S   2     x    😀 ab漢 bar_1 ( ^?
 S f0 [+]                                    2,1            Top
 R
 M - - -
@@ -36381,10 +36381,10 @@ R
 R
 M - - -
 P
-R
-R
-R
-R
+S  + f0  + f0                            X
+S 1   yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+S   1
+S   2 zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
 R
 R
 R
@@ -36405,10 +36405,10 @@ R
 S :set nowrap
 M - - -
 P
+R
 S   1 yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
 S 2   o
 S   1 zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
-R
 R
 R
 R
@@ -36417,12 +36417,12 @@ S f0 [+]                2,34           All
 R
 M - - -
 P
+R
 S   1         foo ^A 漢yyyyyyyyyyyyyyyyyyy
 S     yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
 S     yyyyyyyyyy
 S 2   aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa foo
 S   1 ). zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
-S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
 S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
 S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz@@@
 S f0 [+]                2,34           Top
@@ -38494,7 +38494,7 @@ R
 R
 R
 R
-S Already only one window
+S :only
 M - - 0:0
 P
 S   3
@@ -40247,8 +40247,8 @@ S < 3,1            All
 R
 M - - 0:0
 P
+S  f0  No Name]      X
 S 1
-S ~
 S ~
 R
 R
@@ -40268,28 +40268,28 @@ R
 R
 R
 R
-S Al...dow
-M - - -
-P
-R
-R
-R
-R
-R
-R
-R
-R
-R
 R
 M - - -
 P
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+M - - -
+P
+S  f0  +  Name]      X
 R
 S ~ foo3
 S ~ foobar3
 S ~ é3
 S ~ longerword_comple>
 S ~ x3
-R
 R
 S < 1,3            All
 S -- INSERT --
@@ -41057,7 +41057,7 @@ R
 R
 R
 R
-S Al...dow
+S :only
 M - - -
 P
 R
@@ -42111,6 +42111,7 @@ S f0                    23,1-8         58%
 R
 M - - -
 P
+S  2 f0  f2                              X
 S 1   (
 S   1         x ab漢           x aaaaaaaaa
 S   2         longerword  foo ). 全角全角>
@@ -42118,11 +42119,11 @@ S   3
 S   4         ). 😀 ab漢 aaaaaaaaaaaaaaaaa
 S   5         -- --
 S   6 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa λx ba
-S   7
 S f2                    1,1            Top
 S :tabnew f2
 M - - -
 P
+R
 S   2 (
 R
 S 3           longerword  foo ). 全角全角>
@@ -42130,20 +42131,19 @@ S   1
 S   2         ). 😀 ab漢 aaaaaaaaaaaaaaaaa
 S   3         -- --
 S   4 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa λx ba
-S   5
 S f2                    3,1-8          Top
 R
 M - - -
 P
-S   3         ). 😀 ab漢 aaaaaaaaaaaaaaaaa
-S   2         -- --
-S   1 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa λx ba
-S 8
-S   1          foo ( ). aaaaaaaaaaaaaaaaaa
-S   2
+R
 S   3
-S   4 ა ^A x ^A ( 全角全角全角全角全角全角
-S f2                    8,1-8          12%
+S   2         ). 😀 ab漢 aaaaaaaaaaaaaaaaa
+S   1         -- --
+S 7   aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa λx ba
+S   1
+S   2          foo ( ). aaaaaaaaaaaaaaaaaa
+S   3
+S f2                    7,1             9%
 R
 M - - -
 P
@@ -42157,7 +42157,7 @@ R
 R
 R
 R
-M - - 7:0
+M - - 6:0
 P
 R
 R
@@ -42169,7 +42169,7 @@ R
 R
 R
 R
-M - 7:0 7:0
+M - 6:0 6:0
 P
 R
 R
@@ -42181,19 +42181,19 @@ R
 R
 R
 R
-M - 7:0 7:0
+M - 6:0 6:0
 P
+S  2 f0  + f2                            X
 R
+S   2  ). , foo
+S   1
+S 7    ). bar_1 λx -- λxfoo3
+S   1                   foo3    v
+S   2 ^A ( ა foo zzzzzz foobar3 f module.c
 R
-R
-S 8           foo3
-S   1         foo3    v          aaaaaaaaa
-S   2         foobar3 f module.c
-R
-R
-S f2 [+]                8,6-13         12%
+S f2 [+]                7,77-72         9%
 S -- INSERT --
-M - 7:0 7:0
+M - 6:0 6:0
 E
 C 10 80
 F 
@@ -42253,7 +42253,7 @@ R
 R
 R
 R
-S Already only one window
+R
 M - - -
 P
 S 1                                      │1
@@ -42268,6 +42268,7 @@ S f0                   0,0-1          All f0                    0,0-1          A
 R
 M - - -
 P
+S  2 f0  f1                                                                      X
 S 1
 S   1 ა 漢
 S   2  x , bar_1 λx ^? , 全角全角全角全角全角全角全角全角全角全角全角全角全角全角>
@@ -42275,7 +42276,6 @@ S   3
 S   4 全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角
 S   5     λx 全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角>
 S   6
-S   7         é
 S f1                                                            1,0-1          Top
 S :tabnew f1
 M - - -
@@ -42304,6 +42304,7 @@ R
 R
 M - 0:0 -
 P
+R
 S   3         é ab漢 ).
 S   2 -- bar_1 bar_1 λx zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
 S   1         ). ა x é ab漢 (
@@ -42311,8 +42312,7 @@ S 15      λx  ^A ა
 S   1 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa longerword , ^? 😀 ( zzzzzzzzzzzzzzzzzzzzzzzz
 S   2     λx
 S   3         λx -- 全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全
-S   4 x -- (
-S f1                                                            15,1           34%
+S f1                                                            15,1           33%
 R
 M - 0:0 -
 E
@@ -42453,7 +42453,7 @@ R
 R
 R
 R
-S Already only one window
+R
 M - - -
 P
 R
@@ -43170,15 +43170,15 @@ S < 4,1            All
 R
 M - - -
 P
+S  + f0  No Name]    X
 S 1
-S ~
 S ~
 S ~
 S < 0,0-1          All
 S :tabnew
 M - - -
 P
-R
+S  + f0  +  Name]    X
 R
 R
 R
@@ -43926,6 +43926,7 @@ R
 R
 M - - -
 P
+S  + f0  f1                              X
 S 1
 S   1 longerword ა
 S   2     ( ).
@@ -43933,7 +43934,6 @@ S   3 ა zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
 S   4
 S   5     ა  ^A foo x ab漢 -- 😀 bar_1  (
 S   6
-S   7          x ^? λx longerword é , aaaa
 S f1                    1,1-8          Top
 S :tabnew f1
 M - - -
@@ -43947,7 +43947,7 @@ R
 R
 R
 R
-S Already only one window
+R
 M - - -
 P
 S   1 λx é é ^? foo ^A ab漢 λx ა 全角全角>
@@ -46866,15 +46866,15 @@ S f0                                        1,4            All
 S 
 M - - -
 P
-R
-R
-R
-R
-R
-R
-R
-R
-R
+S  f0  f0                                                    X
+S 1
+S   1     😀
+S   2         ab漢 λx ^? -- ( 漢 ^?
+S   3 longerword ).
+S   4
+S   5     bar_1
+S   6
+S   7 é
 R
 R
 R
@@ -47002,6 +47002,7 @@ R
 S :set wrap
 M 0:0 - -
 P
+S  + f0  + f0                                                X
 S   3
 S   2     a
 S   1     b
@@ -47014,7 +47015,6 @@ S   5     bar_1
 S   6
 S   7 é
 R
-R
 S f0 [+]                                    4,5            All
 S 
 M 0:0 - -
@@ -47036,6 +47036,7 @@ S
 R
 M 0:0 - -
 P
+S  2+ f0  + f0                                               X
 S   3                          │  3
 S   2     a                    │  2     a
 S   1     b                    │  1     b
@@ -47047,8 +47048,7 @@ S   3 longerword ).            │  3 longerword ).
 S   4                          │  4
 S   5     bar_1                │  5     bar_1
 S   6                          │  6
-S   7 é                        │  7 é
-S f0 [+]     4,5            All f0 [+]      4,5            All
+S f0 [+]     4,5            Top f0 [+]      4,5            Top
 S :vs
 R
 M 0:0 - -
@@ -47070,6 +47070,7 @@ R
 R
 M 0:0 - -
 P
+R
 S   3                          │  4
 S   2     a                    │  3     a
 S   1     b                    │  2     b
@@ -47081,12 +47082,12 @@ S   3 longerword ).            │  2 longerword ).
 S   4                          │  3
 S   5     bar_1                │  4     bar_1
 S   6                          │  5
-S   7 é                        │  6 é
-S f0 [+]     4,5            All f0 [+]      5,5            All
+S f0 [+]     4,5            Top f0 [+]      5,5            Top
 R
 R
 M 0:0 - -
 P
+R
 S   3                          │  5     a
 S   2     a                    │  4     b
 S   1     b                    │  3     c
@@ -47098,20 +47099,19 @@ S   3 longerword ).            │  1
 S   4                          │  2     bar_1
 S   5     bar_1                │  3
 S   6                          │  4 é
-S   7 é                        │~
-S f0 [+]     4,5            All f0 [+]      7,5            Bot
+S f0 [+]     4,5            Top f0 [+]      7,5            Bot
 R
 R
 M 0:0 - -
 P
-S   2     a                    │7   long
-S   1     b                    │    erwo
-S 4       c                    │    rd )
-S   1     😀                   │    .
-S   2         ab漢 λx ^? -- ( >│  1
-S     漢 ^?                    │
-S   3 longerword ).            │  2  @@@
-S f0 [+]     4,5            20% <    66%
+S  2+ f0  + f0                         X
+S   1     b                    │7   long
+S 4       c                    │    erwo
+S   1     😀                   │    rd )
+S   2         ab漢 λx ^? -- ( >│    .
+S     漢 ^?                    │  1
+S   3 longerword ).            │
+S f0 [+]     4,5            33% <    66%
 S 
 S 
 M 0:0 - -
@@ -48890,7 +48890,7 @@ R
 R
 R
 R
-S Already only one window
+S :only
 M - - -
 P
 S  21 --
@@ -49445,8 +49445,8 @@ R
 R
 M - - -
 P
+S  f0  No Name]      X
 S 1
-R
 R
 R
 R
@@ -49457,12 +49457,12 @@ S < 0,0-1          All
 S :tabnew
 M - - -
 P
+S  f0  2  Name]      X
 R
 R
 R
 S < 0,0-1          All
 S 1
-R
 R
 R
 R
@@ -49575,10 +49575,10 @@ S f0                                       1,4-3          All
 S 
 M - - -
 P
+S  f0  f2                                                   X
 S 1       zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
 S   1         ^A ( , 全角全角全角全角全角全角全角全角全角全角
 S   2 ^A λx x 全角全角全角全角全角全角全角全角全角全角全角全>
-R
 R
 S f2                                       1,5            All
 S :tabnew f2
@@ -49593,10 +49593,10 @@ R
 R
 M - - 0:4
 P
+R
 S   2     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
 R
 S 3   ^A λx x 全角全角全角全角全角全角全角全角全角全角全角全>
-R
 R
 S f2                                       3,5            All
 R
@@ -49674,10 +49674,10 @@ R
 R
 M - - 0:4
 P
+R
 S   1     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
 S 2           ^A ( , 全角全角全角全角全角全角全角全角全角全角
 S   1 ^A λx x 全角全角全角全角全角全角全角全角全角全角全角全>
-R
 R
 S f2                                       2,2-9          All
 R
@@ -49692,11 +49692,11 @@ R
 R
 M - - 0:4
 P
+S  f0  + f2                                                 X
 S   1 zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
 S 2   <全角 x ab漢 漢 ab漢 ab漢 éა_b
 S   1  全角全角全角全角全角全角全 x   k a menu that is longer>
 S ~                              ა_b
-R
 S f2 [+]                                   2,156-119      All
 S -- INSERT --
 M - - 0:4
@@ -49863,14 +49863,14 @@ S f0 [+]                12,1-8          7%
 R
 M - - -
 P
-R
-R
-R
-R
-R
-R
-R
-R
+S  + f0  + f0                            X
+S   3 --
+S   2 -- ^? λx x ab漢 , -- ,
+S   1
+S 12
+S   1 longerword       ^? ა
+S   2
+S   3 ). é
 R
 S :tab split
 M - - -
@@ -49890,12 +49890,12 @@ P
 R
 R
 R
+R
 S 12          x2
 S   1 longerw é2
 S   2         longerword_completion2
 S   3 ). é    x2
-S   4     ( 全 ა_b2
-S f0 [+]      bar_12
+S f0 [+]      ა_b2
 S -- INSERT --
 M - - -
 E
@@ -50190,6 +50190,7 @@ S f0         7,0-1           9% f0          8,1-8          12%
 R
 M - - -
 P
+S  f0  f0                                                    X
 S   3 foo ( 漢
 S   2         ა
 S   1
@@ -50197,7 +50198,6 @@ S 8           ( , λx zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
 S   1 zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
 S   2     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
 S   3 ^? 😀 é
-S   4     foo ^A bar_1 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaaaaaaa
 S f0                                        8,1-8          12%
 R
 M - - -
@@ -50840,8 +50840,8 @@ S < 1,81           All
 S 
 M - - -
 P
+S  2+ Name]  +  Name]X
 S 1   yyyyyyyyyyyyyyy
-R
 R
 R
 R
@@ -50857,8 +50857,8 @@ R
 S :tab split
 M - - -
 P
-S 1   yyyyyyyyyyyyyyxy
 R
+S 1   yyyyyyyyyyyyyyxy
 R
 R
 R
@@ -50891,8 +50891,8 @@ S
 R
 M - - -
 P
-S 1   yyyyyyyyyxyfoo2
 R
+S 1   yyyyyyyyyxyfoo2
 R
 R
 R
@@ -51239,8 +51239,8 @@ R
 R
 M 0:4 - 0:4
 P
-R
-R
+S  f0  f0                                X
+S 1       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 R
 R
 R
@@ -51463,9 +51463,9 @@ R
 R
 M 0:4 0:4 0:4
 P
+S  + f0  + f0                            X
 S 1       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaა_
 S     b3
-R
 R
 R
 R
@@ -53537,7 +53537,7 @@ R
 R
 R
 R
-S Al...dow
+S :only
 M - - -
 P
 R
@@ -53856,10 +53856,10 @@ R
 R
 M - - -
 P
-R
-R
-R
-R
+S  f0  f0                                X
+S 1   é
+S   1         ^? ^? -- --
+S   2 ^A ( aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 R
 R
 R
@@ -53873,10 +53873,10 @@ S :tab split
 R
 M - - -
 P
+R
 S   1 é
 S 2           ^? ^? -- --
 S   1 ^A ( aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-R
 R
 R
 R
@@ -54087,10 +54087,10 @@ R
 R
 M - 0:0 -
 P
+S  f0  f1                                                                        X
 S 1    aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa ^A ა -- 全角全角全角全角全角全角全角全角全角
 S   1         é ab漢 , aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa bar_1 --
 S   2 zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
-R
 R
 R
 R
@@ -54119,9 +54119,9 @@ S f1                                                            1,2            A
 S :tabnew f1
 M - - -
 P
+S  f0  + f1                                                                      X
 S 1   角全角全角全角全角全角全角 漢 x foo ^?
 S   1
-R
 R
 R
 R
@@ -57720,6 +57720,7 @@ S f0                   1,1            All f0                    8,1            A
 R
 M - - -
 P
+S  3 f0  f0                                                                      X
 S   7 ^? aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa ^A
 S   6         longerword
 S   5 全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角
@@ -57741,11 +57742,11 @@ S ~
 S ~
 S ~
 S ~
-S ~
 S f0                                                            8,1            All
 S :tab split
 M - - -
 P
+R
 S   2 ^? aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa ^A
 S   1         longerword
 S 3   全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角
@@ -57754,7 +57755,6 @@ S   2 x x ა ).         ა longerword ^?
 S   3
 S   4 é ).     bar_1 ^? bar_1 , é λx é
 S   5
-R
 R
 R
 R
@@ -57798,6 +57798,7 @@ R
 R
 M - - -
 P
+R
 S 1   ^? aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa ^A
 R
 S   2 全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角全角
@@ -57806,7 +57807,6 @@ S   4 x x ა ).         ა longerword ^?
 S   5
 S   6 é ).     bar_1 ^? bar_1 , é λx é
 S   7
-R
 R
 R
 R
@@ -60539,8 +60539,8 @@ R
 R
 M - - 0:0
 P
+S  2+ [No Name]  [No Name]                                                       X
 S 1
-S ~
 S ~
 S ~
 S ~
@@ -62373,8 +62373,8 @@ R
 R
 M - - -
 P
+S  f0  [No Name]                         X
 S 1
-S ~
 S ~
 S ~
 S ~
@@ -62405,8 +62405,8 @@ S [No Name]             0,0-1          All
 S :tabnew
 M - - -
 P
+S  f0  ame]   X
 S 1
-S ~
 S ~
 S ~
 S ~
@@ -63028,8 +63028,8 @@ R
 R
 M - - -
 P
-R
-R
+S  f0  f0                                                                        X
+S 1
 R
 R
 R
@@ -63417,38 +63417,39 @@ S f0                    1,1            Top
 R
 M - - -
 P
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
-R
+S  f0  f0                                X
+S 1       --
+S   1     x 全角全角全角全角全角全角全角全
+S   2         ). ).
+S   3 ^?
+S   4     foo ). ა ა ( ( ^? longerword foo
+S   5 , 漢 x
+S   6
+S   7     漢 ab漢
+S   8         foo
+S   9         , ^A 😀 bar_1 ა (        ა a
+S  10         😀
+S  11         -- longerword
+S  12 漢 ,
+S  13 longerword bar_1 ა
+S  14     (    ^?
+S  15 bar_1 -- zzzzzzzzzzzzzzzzzzzzzzzzzzz
+S  16 ^A
+S  17 zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S  18         ^A bar_1 ^? ). bar_1 漢 ab漢
+S  19     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+S  20 😀 ^A é 漢 foo é zzzzzzzzzzzzzzzzzzz
+S  21         x foo ab漢
+S  22 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaaaa
+S  23         bar_1 漢 foo λx foo ა longer
+S  24 ^?
+S  25
+S  26 😀 λx
 R
 S :tab split
 M - - -
 P
+R
 R
 R
 S     角全角全角全角全角全角全角全角全角全
@@ -63475,8 +63476,7 @@ S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
 S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
 S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
 S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
-S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
-S     zzzzzzzzzzzzzzzzzzzzz ^A ა -- ა @@@@
+S     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz@@@
 R
 S :set wrap
 M - - -
@@ -63542,9 +63542,10 @@ R
 R
 R
 R
-S Already only one window
+S :only
 M - - -
 P
+S  f0  2 f0                              X
 S 1       --         │1       --
 S   1     x 全角全角>│  1     x 全角全角全
 S     全角全角全角全>│    角全角全角全角全
@@ -63571,15 +63572,15 @@ S  10         😀     │ 11         -- longe
 S  11         -- long│    rword
 S     erword         │ 12 漢 ,
 S  12 漢 ,           │ 13 longerword bar_1
-S  13 longerword bar_│     ა
-S     1 ა            │ 14     (    ^?
+S  13 longerword b@@@│     ა
 S <1,1            Top < 1,1            Top
 S :vs
 M - - -
 P
-S 1       --         │  2     λx
-S   1     x 全角全角>│  1          ^?
-S     全角全角全角全>│40          ). zzzzz
+R
+S 1       --         │  1          ^?
+S   1     x 全角全角>│40          ). zzzzz
+S     全角全角全角全>│    zzzzzzzzzzzzzzzz
 S     角全角全角全角>│    zzzzzzzzzzzzzzzz
 S     全角全角全角全>│    zzzzzzzzzzzzzzzz
 S     角全角全角全角>│    zzzzzzzzzzzzzzzz
@@ -63597,14 +63598,13 @@ S   8         foo    │    zzzzzzzzzzzzzzzz
 S   9         , ^A 😀│    zzzzzzzzzzzzzzzz
 S      bar_1 ა (     │    zzzzzzzzzzzzzzzz
 S        ა aaaaaaaaaa│    zzzzzzzzzzzzzzzz
-S     aaaaaaaaaaaaaaa│    zzzzzzzzzzzzzzzz
-S     aaaaa é bar_1  │    zzzzzzz , λx
-S  10         😀     │     全角全角全角全>
+S     aaaaaaaaaaaaaaa│    zzzzzzz , λx
+S     aaaaa é bar_1  │     全角全角全角全>
+S  10         😀     │    角全角全角全角全
 S  11         -- long│    角全角全角全角全
 S     erword         │    角全角全角全角全
 S  12 漢 ,           │    角全角全角全角全
-S  13 longerword bar_│    角全角全角全角全
-S     1 ა            │    角 ). ab漢
+S  13 longerword b@@@│    角 ). ab漢
 S <1,1            Top < 40,1-8         Bot
 R
 M - - -
@@ -63747,7 +63747,7 @@ R
 R
 R
 R
-S Al...dow
+R
 M - - -
 P
 R
@@ -63755,7 +63755,7 @@ R
 R
 R
 R
-S Al...nge
+R
 M - - -
 P
 R
@@ -65550,7 +65550,7 @@ R
 R
 R
 R
-S Already only one window
+R
 M - - -
 P
 S 1
@@ -65735,7 +65735,7 @@ R
 R
 R
 R
-S Already only one window
+S :only
 M - - -
 E
 C 6 20
@@ -68194,7 +68194,7 @@ R
 R
 R
 R
-S Already only one window
+R
 M - - -
 P
 R
