@@ -4,7 +4,6 @@
 #include "tsql.h"
 
 static int blank(int c) { return c == ' ' || c == '\t' || c == '\r'; }
-static int lower(int c) { return c >= 'A' && c <= 'Z' ? c + 32 : c; }
 
 static int add(SqlBatches *o, TsqlRd *r, size_t a, size_t z, long count)   /* GO 0's too: run 0 times */
 {
@@ -60,7 +59,8 @@ long sql_split(const Text *t, size_t a, size_t z, SqlBatches *out)
 		if (e > z) e = z;
 		size_t go = 0;
 		long count = 0;
-		if (lead && k == TQ_WORD && e - p >= 2 && lower(tsql_byte(&r, p)) == 'g' && lower(tsql_byte(&r, p + 1)) == 'o'
+		int g = e - p >= 2 ? tsql_byte(&r, p) : 0, o = g ? tsql_byte(&r, p + 1) : 0;
+		if (lead && k == TQ_WORD && (g == 'g' || g == 'G') && (o == 'o' || o == 'O')
 			&& (e - p == 2 || tsql_byte(&r, p + 2) == '$'))
 			count = go_line(&r, p + 2, z, &go);
 		if (count < 0) return (long)line;
