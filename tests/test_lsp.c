@@ -1406,8 +1406,9 @@ static void goals(const char *log)
 		} else loop_once((int)rnd(20));
 		if (e.win->line >= core_lines(&e) - 1 && e.win->line) e.win->line--, e.win->col = 0;
 		size_t n;
+		const unsigned char *cl = core_line(&e, e.win->line, &n);   /* n set before memchr reads it */
 		/* still elaborated (one line at most: edits add no '%'), maybe line 0 since edits deleted the lines above */
-		if (memchr(core_line(&e, e.win->line, &n), '%', n)) e.win->line = !e.win->line, e.win->col = 0;
+		if (memchr(cl, '%', n)) e.win->line = !e.win->line, e.win->col = 0;
 		lsp_flush(e.buf->lsp);
 		lsp_goals(&e);
 		CHECK(e.win == lean);
