@@ -1085,9 +1085,9 @@ size_t sqlfmt_units(const Text *t, size_t (**u)[2])
 				if (a == len) a = p.t[p.ev[j].tok].s;
 				z = p.t[p.ev[j].tok].e;
 			}
-		if (a < z && GROW(v, n, cap)) v[n][0] = a, v[n][1] = z, n++;
+		if (a < z) { if (!GROW(v, n, cap)) oom = 1; else v[n][0] = a, v[n][1] = z, n++; }
 	}
 	free(s), free(p.t), free(p.ev), free(p.diag), free(p.tops);
 	*u = v;
-	return n;
+	return oom ? 0 : n;
 }
