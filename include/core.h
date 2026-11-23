@@ -142,6 +142,11 @@ typedef struct Editor {
 	struct Frame *layout;
 	Tab *tab;                  /* the current tab page (curtab) */
 	Tab *tabs;                 /* every tab page, in order (first_tabpage) */
+	/* the terminal: one screen for every tab page, which shows Neovim's
+	   tabline ('showtabline' 1) and takes the screen's size on entering
+	   (enter_tabpage()); 0 for the window backends, where each tab page is
+	   its own OS window of its own size */
+	int tabline;
 	int rows, cols;            /* screen size: 24 x 80 (Neovim's default) until a draw sets it */
 	int mode;
 	KeyState ks;

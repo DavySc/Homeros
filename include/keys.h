@@ -20,6 +20,11 @@ enum {
 	   (leave_tabpage() resets Visual; insert state belongs to the window
 	   left); main.c then calls core_tab_enter for that window's tab page */
 	KEY_FOCUS,
+	/* from window -1: the system answered the oldest raise still asked
+	   (Wayland's sync done after the activate; on Windows right after
+	   SetForegroundWindow); main.c then knows a KEY_FOCUS left is the user's
+	   (Focus.tla) */
+	KEY_RAISED,
 	KEY_CTRL_C = 3, KEY_TAB = 9, KEY_ENTER = 13, KEY_CTRL_R = 18,
 	KEY_CTRL_Z = 26, KEY_ESC = 27, KEY_BS = 127
 };

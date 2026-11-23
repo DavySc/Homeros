@@ -74,6 +74,7 @@ int main(int argc, char **argv)
 	if (b->open() || b->win_open(0)) { fprintf(stderr, "homeros: no terminal or window\n"); core_free(&e); return 1; }
 	e.clip_set = b->clip_set;
 	e.clip_get = b->clip_get;
+	e.tabline = b == &backend_tty;
 	for (int i = 0, n = b->fds(fds); i < n; i++) loop_watch(fds[i], on_input, NULL);
 	b->size(0, &rows, &cols);
 	if (grid_resize(&g, rows, cols)) goto out;
