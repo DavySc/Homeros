@@ -42,9 +42,9 @@ latex: the PNG left under its job's name~test TESTS=image~~src/image/latex.c~	if
 wl: image cells drawn as text~test TESTS=wl~~src/wl/wl.c~		if (x[c].attr == ATTR_IMAGE) { image_draw(px + y0 * stride + c * cell_w, stride, &x[c]); continue; }~
 wl: every tile drawn from the image's first column~test TESTS=wl~~src/image/image.c~ + (size_t)x->ch[1] * (size_t)s->cw;~;
 wl: image cells drawn a cell to the right~test TESTS=wl~~src/wl/wl.c~image_draw(px + y0 * stride + c * cell_w, stride, &x[c]);~image_draw(px + y0 * stride + (c + 1) * cell_w, stride, &x[c]);
-win: image cells drawn a cell to the right~win WIN=win~~src/win/backend.c~image_draw(bits + r * ch * dw + c * cw, dw, x);~image_draw(bits + r * ch * dw + (c + 1) * cw, dw, x);
+win: image cells drawn a cell to the right~win WIN=win~~src/win/backend.c~image_draw(w->bits + r * w->ch * w->dw + c * w->cw, w->dw, x);~image_draw(w->bits + r * w->ch * w->dw + (c + 1) * w->cw, w->dw, x);
 wl: the cell's size is the window's~test TESTS=wl~~src/wl/wl.c~	*h = x ? x->ch : 0;~	*h = x ? x->cw : 0;
 win: image cells drawn as text~win WIN=win~~src/win/backend.c~	if (x->attr == ATTR_IMAGE) {~	if (0) {
-win: the cell's size is the window's~win WIN=win~~src/win/backend.c~*w = cw; *h = ch; }~*w = cw; *h = cw; }
+win: the cell's size is the window's~win WIN=win~~src/win/backend.c~*h = x ? x->ch : 0;¶}¶¶const Backend backend_win~*h = x ? x->cw : 0;¶}¶¶const Backend backend_win
 file: file_id calls a missing file an error~test TESTS="file file_save image"~~src/file/file.c~	if (stat(path, &st)) return errno == ENOENT ? 0 : -1;~	if (stat(path, &st)) return -1;
 file: file_id says a file exists that does not~test TESTS="file file_save image"~~src/file/file.c~	memset(id, 0, sizeof *id);¶	if (stat(path, &st))~	memset(id, 1, sizeof *id);¶	if (stat(path, &st))

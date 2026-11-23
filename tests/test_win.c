@@ -12,7 +12,9 @@
    idle; nothing is drawn while minimised.
    Not tested here, with the reason: an astral character's glyph (Wine has
    no font with one, so right and wrong surrogates both draw a box), and
-   WM_DISPLAYCHANGE (Wine's DWM period never changes).
+   WM_DISPLAYCHANGE (Wine's DWM period never changes), and a window's period
+   on a second monitor of another rate (Wine shows one monitor): a gate on
+   Davy's laptop.
    Runs on Windows or under Wine (make win); elsewhere it says so. */
 #ifdef _WIN32
 #include <windows.h>
@@ -29,10 +31,10 @@ static HWND win;
 static int cw, ch;
 static const COLORREF BG = RGB(30, 30, 46), REV = RGB(205, 214, 244), RED = RGB(255, 0, 0);
 
+static int from[1024];   /* the window each key came from */
 static int input(int *k, int max)
 {
 	int got = 0, r;
-	static int from[1024];   /* the window each key came from */
 	while ((r = b->input(k + got, from, max)) > 0) got += r;
 	return got;
 }
@@ -364,13 +366,69 @@ int main(void)
 	while (px(w2, 0) == REV) w2++;
 	CHECK(w2 >= 2 * cw - 2 && w2 <= 2 * cw + 2 && px(w2, 0) == BG && px(c2 * cw - 1, r2 * ch - 1) != RED);
 
+	/* frames: a second window (tab page 1) gets the keyboard, a focus
+	   change from it; its keys and its pacing are its own */
+	input(k, 1024);
+	wait_ready();
+	CHECK(!b->win_open(1));
+	HWND w1 = NULL;
+	while ((w1 = FindWindowExW(NULL, w1, L"homeros", NULL)) == win) {}
+	CHECK(w1);
+	n = input(k, 1024);
+	int f1 = -1, nf = 0;
+	for (int i = 0; i < n; i++) if (k[i] == KEY_FOCUS) { f1 = from[i]; nf++; }
+	CHECK(nf == 1 && f1 == 1);
+	PostMessageW(w1, WM_CHAR, 'x', 0);
+	n = input(k, 1024);
+	CHECK(n >= 1 && k[n - 1] == 'x' && from[n - 1] == 1);
+	Grid g1 = { 0 }, shown1 = { 0 };
+	b->size(1, &r2, &c2);
+	CHECK(!grid_resize(&g1, r2, c2) && b->ready(1) && b->ready(0));
+	b->present(1, &g1, &shown1);
+	CHECK(!b->ready(1) && b->ready(0));
+	/* one timer for both, set for the sooner frame: window 0's, drawn 8 ms
+	   before window 1's, though window 1 asked last */
+	while (!b->ready(1)) Sleep(1);
+	Sleep(2);
+	WaitForSingleObject((HANDLE)(INT_PTR)fds[1], 0);   /* the wake that timer gave, which the loop takes */
+	QueryPerformanceCounter(&t0);
+	b->present(0, &g, &shown);
+	Sleep(8);
+	b->present(1, &g1, &shown1);
+	CHECK(!b->ready(0) && !b->ready(1));
+	CHECK(WaitForSingleObject((HANDLE)(INT_PTR)fds[1], 1000) == WAIT_OBJECT_0);
+	QueryPerformanceCounter(&t1);
+	CHECK(t1.QuadPart - t0.QuadPart < p + p / 8 + f.QuadPart * 4 / 1000 && b->ready(0));
+	/* SPC 5 o: window 0 raised; its focus comes before KEY_RAISED (Focus.tla) */
+	b->raise(0);
+	n = input(k, 1024);
+	int f0 = -1, r0 = -1;
+	for (int i = 0; i < n; i++) {
+		if (k[i] == KEY_FOCUS && from[i] == 0 && f0 < 0) f0 = i;
+		if (k[i] == KEY_RAISED && from[i] == -1) r0 = i;
+	}
+	CHECK(f0 >= 0 && r0 > f0 && GetForegroundWindow() == win);
+	/* another program in front and back: no focus change */
+	HWND other = CreateWindowExW(0, L"STATIC", L"other", WS_OVERLAPPEDWINDOW | WS_VISIBLE, 0, 0, 100, 100, NULL, NULL, NULL, NULL);
+	CHECK(other && SetForegroundWindow(other));
+	input(k, 1024);
+	CHECK(SetForegroundWindow(win));
+	n = input(k, 1024);
+	for (int i = 0; i < n; i++) CHECK(k[i] != KEY_FOCUS);
+	DestroyWindow(other);
+	b->win_close(1);
+	CHECK(!IsWindow(w1) && IsWindow(win));
+	grid_free(&g1);
+	grid_free(&shown1);
+
 	b->close();
 	CHECK(!FindWindowW(L"homeros", NULL));
 	grid_free(&g);
 	grid_free(&shown);
 	puts("test_win: keys, mouse and clipboard; identical frame draws nothing; one change draws one cell; "
 	     "text, dim, face, face background, long cluster, wide and image cells; cursor drawn, restored and at (0,0) after a whole redraw; WM_PAINT; "
-	     "resize and DPI redraw whole; close is a key; paced; idle quiet; minimised draws nothing");
+	     "resize and DPI redraw whole; close is a key; paced; idle quiet; minimised draws nothing; "
+	     "a second window: its focus, keys and pacing, raised back with KEY_RAISED after the focus");
 	return 0;
 }
 #else
