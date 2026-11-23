@@ -15,14 +15,17 @@
 #include "file.h"
 #include "match.h"
 #include "snip.h"
+#include "sqlfmt.h"
+#include "str.h"
+#include "tsql.h"
 #include "uni.h"
 
 /* head: the catalogue's "## " heading above it, the snippet's group */
 typedef struct { char *name, *desc, *body; const char *head; } Snip;
 static char *cat;              /* the catalogue's bytes, cut into Snips in place */
 static Snip *sn;
-static PumItem *items;         /* the popup's, in score order */
-static int *score, nsn, loaded;
+static PumItem *items;         /* the popup's, best first */
+static int nsn, loaded;
 static Match m;
 
 /* An extmark: a position and its gravity (right: text inserted at it goes
@@ -65,10 +68,7 @@ static void load(void)
 	cat[n] = 0;
 	int k = 0;
 	for (char *p = cat; (p = strstr(p, "```sql\n")); p++) k++;
-	/* one block: Snips, then the popup's items and scores */
-	if (!(sn = malloc(k * (sizeof *sn + sizeof *items + sizeof *score)))) return;
-	items = (PumItem *)(sn + k);
-	score = (int *)(items + k);
+	if (!(sn = malloc(k * sizeof *sn))) return;
 	const char *head = "";
 	for (char *p = cat, *q; (q = strstr(p, "```sql\n-- ")); ) {
 		for (char *h = p; (h = strstr(h, "\n## ")) && h < q; h++) head = h + 4;
@@ -479,38 +479,106 @@ static int heading_has(const char *h, const char *w)
 	return 0;
 }
 
-static int word(int c) { return alpha((char)c) || digit((char)c) || c == '-'; }
+/* A candidate of the popup, its word and the table it belongs to (a
+   column's, an alias's; -1 none) as offsets into pool.  pri: the lower
+   first, before the score: in the popup snippets after the rest (2), as
+   blink.cmp's score_offset puts them after the server's items, and a
+   snippet of the file's group (Davy's file names) before the others. */
+typedef struct { size_t w, of; const char *kind, *menu; int pri; } Cand;
+static Str pool, cands, facts;   /* facts: the file's names, as Cands */
+static int *pick, *score, npick, pickcap;
+static struct { Buf *b; int nr; size_t line, col; } W;   /* the word cands are for */
+#define CAND(v, i) (((Cand *)(v).s)[i])
+#define NCAND(v) ((int)((v).n / sizeof(Cand)))
 
-/* items: the snippets for e's buffer that match the n bytes of q (q NULL:
-   all), its file's group first, then best score, catalogue order between
-   equals; task snippets only in a task file.  Returns how many. */
-static int rank(Editor *e, const char *q, size_t nq)
+static int word(int c) { return alpha((char)c) || digit((char)c) || c == '-' || c == '@' || c == '#'; }
+
+/* n bytes of w into the pool, NUL-terminated: their offset, or -1 */
+static size_t intern(const char *w, size_t n)
 {
-	int n = 0;
-	const char *g = group(e->buf);
-	if (q && match_init(&m, q, nq)) return 0;
-	for (int i = 0; i < nsn; i++) {
-		if (heading_has(sn[i].head, "task") && !(g && !strcmp(g, "task"))) continue;
-		int s = q ? match_score(&m, sn[i].name, strlen(sn[i].name), NULL, 0) : 1, j = n;
-		if (s <= 0) continue;
-		if (g && heading_has(sn[i].head, g)) s += 1 << 24;
-		for (; j && score[j - 1] < s; j--) items[j] = items[j - 1], score[j] = score[j - 1];
-		items[j] = (PumItem){ sn[i].name, "Snippet", sn[i].desc };
-		score[j] = s;
-		n++;
-	}
-	return n;
+	size_t at = pool.n;
+	return str_add(&pool, w, n) || str_add(&pool, "", 1) ? (size_t)-1 : at;
 }
 
-/* The popup for the word before the cursor (cmp's keyword pattern
-   \h\w*\%(-\w*\)*); it closes when there is none or nothing matches. */
-static void popup(Editor *e)
+static void cand(Str *to, const char *w, size_t n, size_t of, const char *kind, const char *menu, int pri)
 {
-	size_t len, col = e->win->col, a = col;
-	const unsigned char *l = core_line(e, e->win->line, &len);
-	while (a && word(l[a - 1])) a--;
-	while (a < col && !alpha((char)l[a])) a++;
-	core_pum(e, items, a < col ? rank(e, (const char *)l + a, col - a) : 0, -1, a);
+	Cand c = { intern(w, n), of, kind, menu, pri };
+	if (c.w != (size_t)-1) str_add(to, (const char *)&c, sizeof c);
+}
+
+/* nvim-cmp's matcher (matcher.lua, disallow_partial_fuzzy_matching on):
+   the query is runs of w's characters, each starting a word part (after a
+   character that is no letter or digit, or a capital after a small one).
+   The score is the pickers' (match.c). */
+static int parts(const char *q, size_t n, const char *w)
+{
+	size_t j = 0;
+	for (const char *p = w; *p && j < n; p++) {
+		int start = p == w || !(alpha(p[-1]) || digit(p[-1])) || (p[-1] != '_' && (*p | 32) != *p && (p[-1] | 32) == p[-1]);
+		if (!start || (*p | 32) != (q[j] | 32)) continue;
+		while (*p && j < n && (*p | 32) == (q[j] | 32)) p++, j++;
+		p--;
+	}
+	return j == n;
+}
+
+static const char *qs;           /* the query rank() sorts for */
+static size_t nqs;
+
+/* nvim-cmp's comparators (exact, score, length, order), pri before the
+   score */
+static int by_rank(const void *x, const void *y)
+{
+	int i = *(const int *)x, j = *(const int *)y;
+	const Cand *a = &CAND(cands, i), *b = &CAND(cands, j);
+	int ea = nqs && !strncasecmp(pool.s + a->w, qs, nqs) && !pool.s[a->w + nqs], eb = nqs && !strncasecmp(pool.s + b->w, qs, nqs) && !pool.s[b->w + nqs];
+	if (ea != eb) return eb - ea;
+	if (a->pri != b->pri) return a->pri - b->pri;
+	if (score[i] != score[j]) return score[j] > score[i] ? 1 : -1;
+	size_t la = strlen(pool.s + a->w), lb = strlen(pool.s + b->w);
+	return la != lb ? la < lb ? -1 : 1 : i - j;
+}
+
+/* items: the cands that match the n bytes of q (n 0: all), best first;
+   cmp: by nvim-cmp's word parts (the popup), else as snacks' picker */
+static int rank(const char *q, size_t nq, int cmp)
+{
+	int n = NCAND(cands);
+	if (n > pickcap) {
+		int *p = realloc(pick, n * (sizeof *pick + sizeof *score + sizeof *items));
+		if (!p) return 0;
+		pick = p, score = p + n, items = (PumItem *)(score + n), pickcap = n;
+	}
+	char low[MATCH_MAX];
+	if (cmp && nq < sizeof low) {   /* nvim-cmp ignores case, snacks' smartcase would not */
+		for (size_t i = 0; i < nq; i++) low[i] = (char)(q[i] >= 'A' && q[i] <= 'Z' ? q[i] + 32 : q[i]);
+		q = low;
+	}
+	if (nq && match_init(&m, q, nq)) return 0;
+	npick = 0;
+	for (int i = 0; i < n; i++) {
+		const char *w = pool.s + CAND(cands, i).w;
+		score[i] = nq ? !cmp || parts(q, nq, w) ? match_score(&m, w, strlen(w), NULL, 0) : 0 : 1;
+		if (score[i] > 0) pick[npick++] = i;
+	}
+	qs = q, nqs = nq;
+	if (npick) qsort(pick, npick, sizeof *pick, by_rank);
+	for (int i = 0; i < npick; i++) {
+		const Cand *c = &CAND(cands, pick[i]);
+		items[i] = (PumItem){ pool.s + c->w, c->kind, c->menu };
+	}
+	return npick;
+}
+
+/* the catalogue's snippets as cands, the file's group's at pri - 1 and the
+   rest at pri; task snippets only in a task file */
+static void snippets(Editor *e, int pri)
+{
+	const char *g = group(e->buf);
+	if (!loaded) load();
+	for (int i = 0; i < nsn; i++)
+		if (!heading_has(sn[i].head, "task") || (g && !strcmp(g, "task")))
+			cand(&cands, sn[i].name, strlen(sn[i].name), (size_t)-1, "Snippet", sn[i].desc, pri - (g && heading_has(sn[i].head, g)));
 }
 
 static const char *body_of(const char *name)
@@ -523,12 +591,209 @@ static const char *body_of(const char *name)
 const char *snip_get(Editor *e, const char *q, size_t nq, int i, const char **desc, const char **body)
 {
 	static int n;
-	if (!loaded) load();
-	if (!i) n = rank(e, nq ? q : NULL, nq);
+	if (!i) {
+		W.b = NULL, pool.n = cands.n = 0;
+		snippets(e, 0);
+		n = rank(q, nq, 0);
+	}
 	if (i >= n) return NULL;
 	*desc = items[i].menu;
 	*body = body_of(items[i].word);
 	return items[i].word;
+}
+
+/* ---- the file's names, by the formatter's statements (sqlfmt_units) ---- */
+
+/* a token of the walk: kind, what it is to the walk (f), start, and its
+   text without [] or "" */
+enum { NAME = 1, FROM = 2, JOIN = 4, AS = 8, TABLE = 16, TABLES = 32 };
+typedef struct { int k, f; size_t s; char b[128]; } Tok;
+static int sym(const Tok *t, char c) { return t->k == TQ_PUNCT && *t->b == c; }
+static int is_of(const Cand *c, const char *w) { return c->of != (size_t)-1 && !strcasecmp(pool.s + c->of, w); }
+
+/* the facts so far, each once: a set of their numbers + 1 by a hash of
+   kind, word and table, any case (FNV-1a) */
+static unsigned *set;
+static size_t nset;
+static unsigned long hash(const char *s, unsigned long h)
+{
+	for (; *s; s++) h = (h ^ (unsigned char)(*s >= 'A' && *s <= 'Z' ? *s + 32 : *s)) * 1099511628211UL;
+	return h * 1099511628211UL;
+}
+static unsigned *slot(const char *kind, const char *w, const char *of)
+{
+	unsigned *x = set + (hash(of, hash(w, hash(kind, 14695981039346656037UL))) & (nset - 1));
+	for (; *x; x = x + 1 < set + nset ? x + 1 : set) {
+		const Cand *c = &CAND(facts, *x - 1);
+		if (c->kind == kind && !strcasecmp(pool.s + c->w, w) && !strcasecmp(c->of == (size_t)-1 ? "" : pool.s + c->of, of)) break;
+	}
+	return x;
+}
+static void fact(const char *w, const char *of, const char *kind)
+{
+	if ((size_t)NCAND(facts) * 2 >= nset) {   /* grow, and put each fact again */
+		unsigned *g = calloc(nset ? nset * 2 : 1024, sizeof *g);
+		if (!g) return;
+		free(set), set = g, nset = nset ? nset * 2 : 1024;
+		for (int i = 0; i < NCAND(facts); i++) {
+			const Cand *c = &CAND(facts, i);
+			*slot(c->kind, pool.s + c->w, c->of == (size_t)-1 ? "" : pool.s + c->of) = (unsigned)i + 1;
+		}
+	}
+	unsigned *x = slot(kind, w, of);
+	if (*x) return;
+	size_t o = *of ? intern(of, strlen(of)) : (size_t)-1;
+	if (o == (size_t)-1 && *of) return;
+	cand(&facts, w, strlen(w), o, kind, NULL, 0);
+	*x = (unsigned)NCAND(facts);
+}
+
+/* statement u's end: each Q.name of it (pairs: name, then Q) becomes a
+   column of Q's table (Q an alias in refs) or of Q; its refs go to here
+   when it holds the word at a */
+static void flush(Str *refs, Str *pairs, Str *here, const size_t u[2], size_t a)
+{
+	if (u[0] <= a && a <= u[1] && refs->n) str_add(here, refs->s, refs->n);
+	for (int i = 0; i < NCAND(*pairs); i++) {
+		const char *q = pool.s + CAND(*pairs, i).of;
+		for (int j = 0; j < NCAND(*refs); j++)
+			if (!strcasecmp(pool.s + CAND(*refs, j).w, q)) q = pool.s + CAND(*refs, j).of;
+		fact(pool.s + CAND(*pairs, i).w, q, "Column");
+	}
+	refs->n = pairs->n = 0;
+}
+
+static int by_name(const void *x, const void *y)
+{
+	const Cand *a = x, *b = y;
+	return strcasecmp(pool.s + a->w, pool.s + b->w);
+}
+
+/* The cands for the word at [a, z) of e's buffer, by where it is in its
+   statement (SSMS's IntelliSense): after Q. the columns of Q's table;
+   after FROM, JOIN, INTO, UPDATE, DELETE, MERGE or TABLE the file's
+   tables; @ the variables; elsewhere T-SQL's words, the statement's tables
+   and aliases and their columns, and the snippets after them.  The file's
+   names come from one walk over its tokens: a table after those words or
+   a FROM list's comma, or a CTE (x AS (); its alias after it (or AS
+   alias); a column list after it (CREATE TABLE, DECLARE @t TABLE,
+   INSERT INTO t (...)) gives columns, as Q.name does.  0: no popup (in a
+   comment or a string). */
+static int collect(Editor *e, size_t a, size_t z)
+{
+	/* the words the walk looks for, by tsql_word's id; the rest of
+	   tables[] are the words a table follows */
+	static const char *const w[] = { "from", "join", "as", "table", "into", "update", "delete", "merge" };
+	static size_t id[8];
+	if (!id[0])
+		for (int i = 0; i < 8; i++) tsql_word(w[i], strlen(w[i]), &id[i]);
+	Text *t = e->buf->text;
+	size_t (*u)[2], nu = sqlfmt_units(t, &u), len = text_len(t), ui = 0, p, n, tab = (size_t)-1, d;
+	Tok r[3] = { 0 }, ctx[2] = { 0 };   /* the last three tokens (a ring); the two before the word */
+	Str refs = { 0 }, pairs = { 0 }, here = { 0 };
+	int k, from = 0, list = 0, got = 0, i = 0;
+	pool.n = cands.n = facts.n = 0;
+	if (nset) memset(set, 0, nset * sizeof *set);
+	TsqlRd rd = { .t = t };
+	for (p = 0; p < len; p += n) {
+		size_t end = tsql_token(&rd, p, &k);
+		if (end <= p) break;
+		n = end - p;
+		if ((k == TQ_COMMENT || k == TQ_STRING) && p < a && a < end) break;
+		if (k == TQ_SPACE || k == TQ_COMMENT || (p >= a && p < z)) continue;
+		if (p >= a && !got) got = 1, ctx[0] = r[i], ctx[1] = r[(i + 2) % 3];
+		for (; ui < nu && u[ui][1] <= p; ui++) flush(&refs, &pairs, &here, u[ui], a), from = list = 0, tab = (size_t)-1;
+		i = (i + 1) % 3;
+		Tok *h0 = &r[i], *h1 = &r[(i + 2) % 3], *h2 = &r[(i + 1) % 3];
+		char *b = h0->b;
+		d = n < 127 ? n : 127;
+		text_read(t, p, b, d);
+		if (d >= 2 && (*b == '[' || *b == '"')) memmove(b, b + 1, d -= 2);
+		b[d] = 0;
+		size_t wid = 0;
+		int c = k == TQ_WORD ? tsql_word(b, d, &wid) : 0;
+		h0->k = k, h0->s = p, h0->f = k == TQ_IDENT || k == TQ_VAR || (k == TQ_WORD && !(c & TQ_RECASE));
+		for (int j = 0; wid && j < 8; j++) if (wid == id[j]) h0->f |= j < 4 ? FROM << j : TABLES;
+		if (h0->f & TABLE) h0->f |= TABLES;
+		if (k == TQ_VAR && b[1] != '@') fact(b, "", *b == '@' ? "Variable" : "Table");
+		if (list) {   /* a column list: a name after its '(' or a ',' */
+			list += sym(h0, '(') - sym(h0, ')');
+			if (list == 1 && (h0->f & NAME) && (sym(h1, '(') || sym(h1, ','))) fact(b, pool.s + tab, "Column");
+			continue;
+		}
+		if (h0->f & FROM) from = 1;
+		else if (k == TQ_WORD && !(h0->f & (NAME | JOIN | AS))) from = 0;
+		int isname = h0->f & NAME, attab = tab != (size_t)-1;
+		if (isname && ((h1->f & (TABLES | FROM | JOIN)) || (from && sym(h1, ',')) || (attab && sym(h1, '.') && !strcasecmp(h2->b, pool.s + tab)))) {
+			tab = intern(b, d);   /* a table; schema.table: the table */
+			Cand c2 = { tab, tab, "Table", NULL, 0 };
+			str_add(&refs, (const char *)&c2, sizeof c2);
+			fact(b, "", "Table");
+		} else if (isname && attab && (!strcasecmp(h1->b, pool.s + tab) || ((h1->f & AS) && !strcasecmp(h2->b, pool.s + tab)))) {
+			Cand c2 = { intern(b, d), tab, "Alias", NULL, 0 };   /* its alias */
+			str_add(&refs, (const char *)&c2, sizeof c2);
+		} else if (sym(h0, '(') && (h1->f & AS) && (h2->f & NAME)) {
+			fact(h2->b, "", "Table");   /* a CTE */
+		} else if (sym(h0, '(') && attab && !strcasecmp(h1->b, pool.s + tab)) {
+			list = 1;
+		} else if ((h0->f & TABLE) && h1->k == TQ_VAR) {
+			tab = intern(h1->b, strlen(h1->b));   /* DECLARE @t TABLE */
+		} else if (isname && sym(h1, '.') && (h2->f & NAME)) {
+			Cand c2 = { intern(b, d), intern(h2->b, strlen(h2->b)), "Column", NULL, 0 };
+			str_add(&pairs, (const char *)&c2, sizeof c2);
+		}
+		if (!isname && !sym(h0, '.') && !(h0->f & (AS | TABLE)) && !sym(h0, '(')) tab = (size_t)-1;
+	}
+	int quiet = p < len;
+	if (!got) ctx[0] = r[i], ctx[1] = r[(i + 2) % 3];
+	for (; ui < nu; ui++) flush(&refs, &pairs, &here, u[ui], a);
+	str_free(&refs), str_free(&pairs);
+	if (quiet) { str_free(&here); return 0; }
+	char c0 = 0;
+	text_read(t, a, &c0, a < z);
+	int dot = sym(&ctx[0], '.') && ctx[0].s + 1 == a, at = c0 == '@', tabs = !dot && (ctx[0].f & (TABLES | FROM | JOIN));
+	const char *q = ctx[1].b;   /* the qualifier */
+	for (int j = 0; dot && j < NCAND(here); j++)
+		if (!strcasecmp(pool.s + CAND(here, j).w, ctx[1].b)) q = pool.s + CAND(here, j).of;
+	if (facts.n) qsort(facts.s, NCAND(facts), sizeof(Cand), by_name);
+	for (int f = 0; f < NCAND(facts); f++) {
+		Cand c = CAND(facts, f);
+		int scope = 0;
+		for (int j = 0; j < NCAND(here); j++) scope |= is_of(&c, pool.s + CAND(here, j).of);
+		if (dot ? c.kind[0] == 'C' && is_of(&c, q) : tabs ? c.kind[0] == 'T' : at ? c.kind[0] == 'V' : scope)
+			str_add(&cands, (const char *)&c, sizeof c);
+	}
+	if (!dot && !tabs) {
+		if (here.n) str_add(&cands, here.s, here.n);
+		for (size_t j = 1; j <= tsql_nwords; j++) {
+			const char *kwd = tsql_name(j);
+			int c = tsql_word(kwd, strlen(kwd), NULL);
+			if (c && (*kwd == '@') == at) cand(&cands, kwd, strlen(kwd), (size_t)-1, c & TQ_FUNCTION ? "Function" : "Keyword", NULL, 0);
+		}
+		if (!at) snippets(e, 2);
+	}
+	str_free(&here);
+	return 1;
+}
+
+/* The popup for the word before the cursor (cmp's keyword pattern
+   \h\w*\%(-\w*\)*, and @ and # names), or after a dot; it closes when there
+   is none or nothing matches.  The cands are collected when the word
+   starts, and filtered as it grows (DESIGN.md: lists filtered locally). */
+static void popup(Editor *e)
+{
+	size_t len, col = e->win->col, a = col;
+	const unsigned char *l = core_line(e, e->win->line, &len);
+	while (a && word(l[a - 1])) a--;
+	while (a < col && !alpha((char)l[a]) && l[a] != '@' && l[a] != '#') a++;
+	int n = 0;
+	if (a < col || (a && l[a - 1] == '.')) {
+		size_t ls = core_line_start(e, e->win->line);
+		if (W.b != e->buf || W.nr != e->buf->nr || W.line != e->win->line || W.col != a)
+			W.b = collect(e, ls + a, ls + col) ? e->buf : NULL, W.nr = e->buf->nr, W.line = e->win->line, W.col = a;
+		if (W.b) n = rank((const char *)l + a, col - a, 1);
+	}
+	core_pum(e, items, n, -1, a);
 }
 
 int snip_insert(Editor *e, const char *name)
@@ -555,7 +820,33 @@ int snip_insert(Editor *e, const char *name)
 	set_cursor(e, a);
 	int r = expand(e, body, a, z, a < z ? sel : NULL, z - a);
 	free(sel);
+	if (!r && e->mode == MODE_INSERT) after(e, 1);   /* as snip_key after a key */
 	return r;
+}
+
+static void close_pum(Editor *e)
+{
+	if (e->pum == items) core_pum(e, NULL, 0, -1, 0);
+	W.b = NULL;
+}
+
+/* A picked item replaces the word: a snippet expands, a T-SQL word comes
+   in capitals when the word typed has capitals only */
+static int accept(Editor *e, int s)
+{
+	Cand c = CAND(cands, pick[s]);
+	size_t a = core_line_start(e, e->win->line) + e->pumcol, z = cursor(e), n = strlen(pool.s + c.w);
+	char *w = pool.s + c.w, t[MATCH_MAX];
+	int big = 0, small = 0;
+	close_pum(e);
+	if (!strcmp(c.kind, "Snippet")) return expand(e, body_of(w), a, z, NULL, 0);
+	for (size_t i = 0; i < text_read(e->buf->text, a, t, z - a < sizeof t ? z - a : sizeof t); i++)
+		big |= t[i] >= 'A' && t[i] <= 'Z', small |= t[i] >= 'a' && t[i] <= 'z';
+	if (big && !small && (*c.kind == 'K' || *c.kind == 'F'))
+		for (char *p = w; *p; p++) if (*p >= 'a' && *p <= 'z') *p -= 32;
+	if (core_edit(e, a, z - a, w, n)) return -1;
+	set_cursor(e, a + n);
+	return 0;
 }
 
 /* The popup's keys (cmp's preset.insert and Davy's Tab, S-Tab and Enter):
@@ -566,22 +857,25 @@ static int pum_key(Editor *e, int k)
 	switch (k) {
 	case 14: case KEY_DOWN: case KEY_TAB: core_pum(e, items, n, s + 1 < n ? s + 1 : -1, e->pumcol); return 1;
 	case 16: case KEY_UP: case KEY_S_TAB: core_pum(e, items, n, s < 0 ? n - 1 : s - 1, e->pumcol); return 1;
-	case 5: core_pum(e, NULL, 0, -1, 0); return 1;             /* CTRL-E */
+	case 5: close_pum(e); return 1;                          /* CTRL-E */
 	case 25: if (s < 0) s = 0; break;                          /* CTRL-Y */
-	case KEY_ENTER: if (s >= 0) break; core_pum(e, NULL, 0, -1, 0); return 0;   /* only a picked item */
+	case KEY_ENTER: if (s >= 0) break; close_pum(e); return 0;   /* only a picked item */
 	default: return 0;
 	}
-	size_t a = core_line_start(e, e->win->line) + e->pumcol;
-	core_pum(e, NULL, 0, -1, 0);
-	expand(e, body_of(items[s].word), a, cursor(e), NULL, 0);
+	accept(e, s);
 	return 1;
 }
 
 int snip_key(Editor *e, int k, int pending)
 {
 	if (S.b && (S.b != e->buf || S.nr != e->buf->nr)) stop();   /* BufLeave */
+	/* in a snippet Tab and S-Tab jump, or are themselves, popup or not
+	   (blink.cmp's default keys, snippet_forward and fallback): a word
+	   typed into a placeholder opens the popup */
+	int tab = S.b && (k == KEY_TAB || k == KEY_S_TAB);
+	if (tab) close_pum(e);
+	if (tab && jump(e, k == KEY_TAB ? 1 : -1, S.s[S.cur].idx)) return 1;
 	if (e->pum && e->pum == items && pum_key(e, k)) return 1;
-	if (S.b && (k == KEY_TAB || k == KEY_S_TAB) && jump(e, k == KEY_TAB ? 1 : -1, S.s[S.cur].idx)) return 1;
 	int ins = e->mode == MODE_INSERT;
 	if (sel && e->ks.visual) {
 		/* select mode: a character or Enter replaces the selection,
@@ -600,7 +894,7 @@ int snip_key(Editor *e, int k, int pending)
 	if (!loaded) load();
 	keys_feed(e, k, pending);
 	if (S.b && !pending) after(e, ins);
-	if (e->mode == MODE_INSERT && !pending && (word(k) || k == KEY_BS)) popup(e);
-	else if (e->pum == items) core_pum(e, NULL, 0, -1, 0);
+	if (e->mode == MODE_INSERT && !pending && is_sql(e->buf) && (word(k) || k == '.' || k == KEY_BS)) popup(e);
+	else close_pum(e);
 	return 1;
 }

@@ -2,9 +2,9 @@
    recorded from Neovim 0.12's vim.snippet (src/snip/conform/recorded.txt):
    a body expanded after a line's text, then keys; the lines, the cursor
    and the mode must match.  With a FILE of cases it prints its own results
-   instead, for snip.py to compare with a live Neovim.  Each body is reached
-   as Davy reaches it: a catalogue in the config folder, its name typed in
-   a .sql buffer, CTRL-Y in the popup. */
+   instead, for snip.py to compare with a live Neovim.  Each body comes from
+   a catalogue in the config folder, inserted as SPC i s does, in a buffer
+   with no popup, as Neovim's. */
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -47,13 +47,12 @@ static void run(int i, char *out, size_t cap)
 {
 	static Editor e;
 	char path[64], name[16];
-	snprintf(path, sizeof path, "%s/c%d.sql", dir, i);
+	snprintf(path, sizeof path, "%s/c%d.txt", dir, i);   /* no popup: Neovim's has none */
 	CHECK(!core_open(&e, path));
 	CHECK(!core_edit(&e, 0, 0, pre[i], strlen(pre[i])));
 	keys_feed(&e, 'A', 0);
 	snprintf(name, sizeof name, "s%04d", i);
-	for (const char *s = name; *s; s++) feed(&e, *s);
-	feed(&e, 25);
+	CHECK(!snip_insert(&e, name));
 	for (const char *s = keys[i]; *s; ) {
 		if (*s == ' ') { s++; continue; }
 		int k = test_key(&s);
@@ -105,10 +104,15 @@ static void popup(void)
 	e = typed("p.sql", "notsql");
 	CHECK(!e->npum);
 	is(e, "notsql\n");
-	e = typed("p.txt", "pure");   /* only in .sql buffers */
+	e = typed("p.txt", "pure ");   /* only in .sql buffers */
+	CHECK(!e->pum);
+	CHECK(!snip_insert(e, "two"));   /* a snippet there too */
+	feed(e, 's');
 	CHECK(!e->pum);
 	feed(e, 25);
-	is(e, "pure\n");   /* CTRL-Y: the character above, none */
+	while (e->mode != MODE_INSERT) feed(e, KEY_ESC), feed(e, 'A');
+	feed(e, 25);
+	is(e, "pure s = b\n");   /* CTRL-Y: the character above, none */
 	e = typed(NULL, "pure");
 	CHECK(!e->pum);
 	is(e, "pure\n");
@@ -148,8 +152,11 @@ static void groups(void)
 	};
 	for (size_t i = 0; i < sizeof c / sizeof *c; i++) {
 		Editor *e = typed(c[i].file, "g");
-		CHECK(e->npum == c[i].n && !strcmp(e->pum[0].word, c[i].first));
-		for (int j = 0; j < e->npum; j++) CHECK(strcmp(e->pum[j].word, "gtsk") || c[i].n == 3);
+		int j = 0, n = 0;
+		while (j < e->npum && strcmp(e->pum[j].kind, "Snippet")) j++;   /* T-SQL's words come first */
+		CHECK(j < e->npum && !strcmp(e->pum[j].word, c[i].first));
+		for (; j < e->npum; j++, n++) CHECK(strcmp(e->pum[j].word, "gtsk") || c[i].n == 3);
+		CHECK(n == c[i].n);
 		feed(e, KEY_ESC);
 		core_free(e);
 	}
@@ -158,6 +165,135 @@ static void groups(void)
 	CHECK(e->npum == 1);
 	is(e, "dtz\n");
 	puts("test_snip: the file's group first, task snippets in task files only");
+}
+
+/* text t with the cursor at its '|' (never a line's first byte) in a new
+   .sql buffer, Insert mode there, then the keys of k typed */
+static Editor *at(const char *t, const char *k)
+{
+	static Editor e;
+	char path[64];
+	const char *bar = strchr(t, '|');
+	snprintf(path, sizeof path, "%s/c.sql", dir);
+	CHECK(!core_open(&e, path));
+	CHECK(!core_edit(&e, 0, 0, t, (size_t)(bar - t)) && !core_edit(&e, (size_t)(bar - t), 0, bar + 1, strlen(bar + 1)));
+	e.win->line = text_line_of(e.buf->text, (size_t)(bar - t));
+	e.win->col = (size_t)(bar - t) - core_line_start(&e, e.win->line) - 1;
+	keys_feed(&e, 'a', 0);   /* 'i' at a line's end would go before its last byte */
+	for (; *k; k++) feed(&e, *k);
+	return &e;
+}
+
+/* the popup's words, space-separated, in its order */
+static const char *shown(Editor *e)
+{
+	static char b[4096];
+	b[0] = 0;
+	for (int i = 0; i < e->npum && strlen(b) + strlen(e->pum[i].word) + 2 < sizeof b; i++)
+		strcat(strcat(b, i ? " " : ""), e->pum[i].word);
+	return b;
+}
+
+/* What the popup offers by where the cursor is in its statement (the
+   formatter's statement tree), as SSMS's IntelliSense does, matched by
+   word parts as nvim-cmp does */
+static void complete(void)
+{
+	static const char *const file =
+		"create table #t (id int, name varchar(10), primary key (id))\n"
+		"insert into log (at, msg) values (1, 'a')\n"
+		"select c.city from dbo.customers c join orders as o on o.cust = c.id\n"
+		"declare @count int, @w table (a int)\n";
+	char t[1024];
+	/* after Q. the columns of Q's table, wherever the alias is given */
+	snprintf(t, sizeof t, "%sselect c|, o.cust from customers c join orders o on 1 = 1", file);
+	Editor *e = at(t, ".");
+	CHECK(!strcmp(shown(e), "id city"));
+	feed(e, KEY_ESC), core_free(e);
+	snprintf(t, sizeof t, "%sselect #t|", file);
+	e = at(t, ".");
+	CHECK(!strcmp(shown(e), "id name"));
+	feed(e, KEY_ESC), core_free(e);
+	snprintf(t, sizeof t, "%sselect l| from log l", file);
+	e = at(t, ".m");
+	CHECK(!strcmp(shown(e), "msg"));
+	feed(e, KEY_ESC), core_free(e);
+	/* in an IF's condition (a leaf of the statement tree too) */
+	snprintf(t, sizeof t, "%sif exists (select 1 from log l where l| = 1) print 1", file);
+	e = at(t, ".");
+	CHECK(!strcmp(shown(e), "at msg"));
+	feed(e, KEY_ESC), core_free(e);
+	/* an alias of no table: nothing */
+	snprintf(t, sizeof t, "%sselect x|", file);
+	e = at(t, ".");
+	CHECK(!e->pum);
+	feed(e, KEY_ESC), core_free(e);
+	/* after FROM the file's tables only, a CTE too */
+	snprintf(t, sizeof t, "%swith recent as (select 1 x) select * from |", file);
+	e = at(t, "r");
+	CHECK(!strcmp(shown(e), "recent"));
+	feed(e, KEY_ESC), core_free(e);
+	snprintf(t, sizeof t, "%sselect * from |", file);
+	e = at(t, "o");
+	CHECK(!strcmp(shown(e), "orders"));
+	feed(e, 25);
+	size_t len;
+	const unsigned char *l = core_line(e, e->win->line, &len);
+	CHECK(len == 20 && !memcmp(l, "select * from orders", 20) && e->win->col == 20 && !e->pum);
+	feed(e, KEY_ESC), core_free(e);
+	/* @: the variables */
+	snprintf(t, sizeof t, "%sset |", file);
+	e = at(t, "@c");
+	CHECK(!strcmp(e->pum[0].word, "@count") && !strcmp(e->pum[0].kind, "Variable") && !strstr(shown(e), " c"));
+	feed(e, KEY_ESC), core_free(e);
+	/* elsewhere: T-SQL's words, the exact one first, and the statement's
+	   tables, aliases and their columns; snippets after them */
+	snprintf(t, sizeof t, "%sselect | from orders o", file);
+	e = at(t, "c");
+	CHECK(strstr(shown(e), "cust") && !strstr(shown(e), "city"));
+	feed(e, 'a'), feed(e, 's');
+	CHECK(!strcmp(shown(e), "case cast cascade"));
+	feed(e, KEY_ESC), core_free(e);
+	e = typed("p.sql", "a");   /* the shorter first */
+	CHECK(!strncmp(shown(e), "as at abs ", 10));
+	feed(e, KEY_ESC), core_free(e);
+	e = typed("p.sql", "in");
+	CHECK(!strcmp(e->pum[0].word, "in") && !strcmp(e->pum[0].kind, "Keyword"));
+	feed(e, 'n');
+	CHECK(!strcmp(e->pum[0].word, "inner"));
+	feed(e, KEY_ESC), core_free(e);
+	e = typed("p.sql", "pu");
+	CHECK(!strcmp(e->pum[e->npum - 1].word, "pure"));
+	feed(e, KEY_ESC), core_free(e);
+	/* a keyword in the case typed: capitals stay capitals */
+	e = typed("p.sql", "SELE");
+	feed(e, 25);
+	is(e, "SELECT\n");
+	e = typed("p.sql", "Sele");
+	feed(e, 25);
+	is(e, "select\n");
+	/* a word part, never a letter inside one (nvim-cmp) */
+	e = typed("p.sql", "set");
+	CHECK(!strstr(shown(e), "-"));
+	feed(e, KEY_ESC), core_free(e);
+	/* in a snippet Tab jumps, though a word typed in a placeholder opens
+	   the popup */
+	e = typed("p.sql", "two");
+	feed(e, 25);
+	feed(e, 's'), feed(e, 'e');
+	CHECK(e->pum);
+	feed(e, KEY_TAB);
+	CHECK(!e->pum);
+	feed(e, 'x');
+	is(e, "se = x\n");
+	/* none in a comment or a string */
+	e = typed("p.sql", "-- sel");
+	CHECK(!e->pum);
+	feed(e, KEY_ESC), core_free(e);
+	e = typed("p.sql", "'sel");
+	CHECK(!e->pum);
+	feed(e, KEY_ESC), core_free(e);
+	puts("test_snip: the popup offers by the statement: columns, tables, variables, words, snippets");
 }
 
 /* text t in a new buffer called name, then keys k in Normal mode, then
@@ -241,7 +377,7 @@ static void insert(int total)
 	CHECK(!tools_pick(&pe, PICK_SNIPPETS) && tools_key(&pe, 'g') && tools_key(&pe, KEY_DOWN) && tools_key(&pe, KEY_ENTER));
 	is(&pe, "H\n");
 	CHECK(!core_open(&pe, path) && !tools_pick(&pe, PICK_SNIPPETS));
-	for (int k = 0; k < 3; k++) CHECK(tools_key(&pe, KEY_DOWN));
+	for (int k = 0; k < 4; k++) CHECK(tools_key(&pe, KEY_DOWN));
 	for (const char *k = "pure"; *k; k++) CHECK(tools_key(&pe, *k));
 	CHECK(tools_key(&pe, KEY_ENTER));
 	is(&pe, "SELECT 1\n");
@@ -286,9 +422,10 @@ int main(int argc, char **argv)
 		static char b[1 << 17];
 		if (i < n) snprintf(b, sizeof b, "```sql\n-- s%04d : case %d\n%s\n```\n", i, i, body[i]);
 		else strcpy(b, "```sql\n-- pure\nSELECT 1\n```\n```sql\nno name\n```\n```text\n-- notsql : x\nY\n```\n"
+		               "```sql\n-- two : t\n${1:a} = ${2:b}\n```\n```sql\n-- wrp : w\nbegin\n\t$0\nend\n```\n"
 		               "## 6. Task (default)\n```sql\n-- gtsk : t\nT\n```\n## 2. Default\n```sql\n-- gdef : d\nD\n```\n"
 		               "## 3. Context (`@<task>_type`)\n```sql\n-- dtz : c\nC\n```\n"
-		               "## 11. Shared helpers\n```sql\n-- ghlp : h\nH\n```\n```sql\n-- wrp : w\nbegin\n\t$0\nend\n```\n");
+		               "## 11. Shared helpers\n```sql\n-- ghlp : h\nH\n```\n");
 		for (char *p = b; *p; p++) fputs(*p == '\n' ? "\r\n" : (char[]){ *p, 0 }, c);
 	}
 	CHECK(!fclose(c));
@@ -306,7 +443,8 @@ int main(int argc, char **argv)
 		CHECK(!bad);
 		popup();
 		groups();
-		insert(n + 5);
+		insert(n + 6);
+		complete();
 	}
 	return 0;
 }
