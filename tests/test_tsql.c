@@ -13,6 +13,8 @@
 #include "text.h"
 #include "tsql.h"
 
+static size_t r1, r2;   /* syntax_update's changed fold rows, unused here */
+
 /* K keyword, S string, C comment, F system function, T system table, view
    or schema, P stored procedure, N number, o operator, . plain; Soufflé's
    M modifier, Y type, w keyword operator, B boolean, L constant, V
@@ -198,7 +200,7 @@ static void fresh(const Text *t, unsigned char *f)
 {
 	Syntax *s = syntax_open(PATH, t);
 	CHECK(s);
-	syntax_update(s, t, NULL);
+	syntax_update(s, t, NULL, &r1, &r2);
 	size_t n = text_len(t);
 	for (size_t a = 0; a < n; a += 8192) syntax_faces(s, a, a + 8192 < n ? a + 8192 : n, f + a);
 	syntax_free(s);
@@ -220,7 +222,7 @@ static void edit_near_start(const char *mid, size_t z0, size_t at, const char *i
 	Text *t = text_new(b, n);
 	Syntax *s = syntax_open("x.sql", t);
 	CHECK(t && s);
-	syntax_update(s, t, NULL);
+	syntax_update(s, t, NULL, &r1, &r2);
 	syntax_faces(s, 0, z0, f);
 	syntax_edit(s, t, at, 0, ins, il);
 	CHECK(!text_insert(t, at, ins, il));
@@ -312,7 +314,7 @@ int main(void)
 				n = text_len(t);
 			}
 			/* the index filled partly, or not, and edits that pile up */
-			if (rnd(2)) syntax_update(s, t, stop_rnd);
+			if (rnd(2)) syntax_update(s, t, stop_rnd, &r1, &r2);
 			if (!rnd(3)) continue;
 			/* a window line by line from somewhere, as the core asks; drawn
 			   again when syntax_update says, as the main loop does */
@@ -327,7 +329,7 @@ int main(void)
 					a = e2;
 				}
 				int r;
-				while ((r = syntax_update(s, t, stop_rnd)) == 2) ;
+				while ((r = syntax_update(s, t, stop_rnd, &r1, &r2)) == 2) ;
 				if (r != 1) break;
 			}
 			fresh(t, g);

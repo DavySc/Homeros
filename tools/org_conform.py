@@ -15,10 +15,27 @@ failing text (the text is kept in build/org-fail-*.org) and "N differ"."""
 import os, random, re, shutil, subprocess, sys, tempfile, unicodedata
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+# links (org-activate-links): bracket, angle and plain ones, over lines, with backslashes
+LINKS = ['[[a]]', '[[https://orgmode.org][Org *site*]]', '[[id:x-1][a note]]', '[[a][b\nc]]', '[[a\nb]]', '[[x\\]y]]',
+         '[[x\\\\]]', '[[a][]]]', '[[a][b]', '[[]]', '[[a]', '[[file:a.org::*h][h]]', 'https://example.com/a_(b)', 'http://x.',
+         'mailto:me@x.org', 'xhttps://a', 'file:a.org', 'doi:10.1/x', 'HTTP://x', '<https://x y>', '<mailto:a\n b>', '<id:',
+         '[[a\n\nb]]', '[[a][x^{2}]]', '[[a][\\alpha]]', '=[[a]]=', '[[a][=b=]]', 'https://x.org/(a(b)c)', 'http://é', 'shell:ls|x',
+         '[[a\\\\\\]b]]', '[[a\\\\\\\\]]', 'id:', '[[a][b\n- c]]', '<http://a\n\nb>', 'https://a.b/c-', 'http://a(b', 'https://a.b/c/',
+         '<id:a\n >x>', 'http://ab\x7f', '[[a =b= c][d]]', '[[a ~b~ c][d]]', '[[a\\\\\\\\]b]]', '[[a\\\\\\\\]b][c]]', '[[a][\nCLOCK: [2026-11-22 ]]',
+         '[[a\nb][c]]', '<id:x\n#+ab[ c]:>', 'x http://ab\f y'] + [
+         t + ':ab' for t in ('bbdb bibtex docview doi elisp eww file file+emacs file+sys ftp gnus help http https id info irc mailto '
+                             'mhe news rmail shell shortdoc w3m').split()]
+# footnotes (org-activate-footnote-links): references, inline ones over lines, in links, LaTeX macros and fragments
+FNS = ['[fn:1]', '[fn:a-b]', '[fn::inline (x)]', '[fn:n:inline [a] text]', '[fn:x: (open', '[fn:1:\n x]', '[fn:é]', '[FN:1]', '[fn:]',
+       '[[fn:1]]', '[[a][[fn:1]]]', '\\cite{[fn:1]}', '\\cite[x]{[fn:2]}', '"[fn:1]"', '[fn:1:"a]"]', '[fn:1: ⟨x]⟩', '=a [fn:1: b=',
+       '[fn:2:\n\n]', '[fn:x:<a]>', '[fn:1:{]', '"', '[fn:1:"]', '\\(x [fn:1]\\)', '\\[[fn:1]\\]', '$[fn:1]$', '$$[fn:1]$$',
+       '$[fn:1] $', '$ [fn:1]$', '$[fn:1]$x', '\\alpha [fn:1]', '\\alpha{}[fn:1]', '[fn:1] a\n$\\cite{[fn:1]}.$ x', '$x.$', '=x y=\n[fn:1] c',
+       '[fn:1] a\n== [[fn:1]] b', '[fn:1] a\n=c= =d\n[fn:1] y= z', '[fn:1] a\n$$x$$ [[fn:1]]', '[fn:1] a\n$;x$ [[fn:1]]',
+       '[fn:1] a\n: [[fn:1]]', '[fn:1] a\nx \\cite*{[fn:1]}', '[fn:1][[a][\n)[fn::]]']
 WORDS = ['a', 'b', 'x', 'TODO', 'DONE', 'NEXT', 'WAIT', 'CANCELLED', 'todo', 'COMMENT', '[#A]', '[#a]',
          '[#1]', '[#12]', '[#65]', ':a:', ':b:c:', '::', ':@x_1:', '[fn:1]', '*', '-', '+', '1.', 'a)',
          '|', '#', '#+', ':', '[', ']', '<2026-11-22 Sun>', '[2026-11-22 Sun 09:00]', 'é', 'λ', '→', '\u00a0', '\u3000', '\f', '\r',
-         '[150%]', '[050%]', '@@a:b@@c:d@@', 'COMMENTx']
+         '[150%]', '[050%]', '@@a:b@@c:d@@', 'COMMENTx'] + LINKS + FNS
 # above ASCII, Emacs's [[:word:]] and [[:alnum:]] differ: é both, ² and · word only, º alnum only, → € neither
 U = ['é', '²', '·', 'º', '→', '€']
 
@@ -144,7 +161,8 @@ FACES = dict({'org-level-%d' % i: 'markup.heading.%d' % i for i in range(1, 7)},
     'org-sexp-date': 'org.date', 'org-drawer': 'org.drawer', 'org-table': 'org.table', 'org-table-row': 'org.table',
     'org-formula': 'org.formula', 'org-checkbox': 'org.checkbox', 'org-list-dt': 'org.checkbox',
     'org-code': 'markup.raw', 'org-document-title': 'markup.heading', 'org-document-info': 'org.info',
-    'org-block': 'org.block', 'org-block-begin-line': 'org.block.line', 'org-block-end-line': 'org.block.line'})
+    'org-block': 'org.block', 'org-block-begin-line': 'org.block.line', 'org-block-end-line': 'org.block.line',
+    'org-link': 'markup.link.url', 'org-footnote': 'markup.link.label'})
 
 
 def runs(lines, names):
@@ -280,7 +298,7 @@ def shown(t, runs):
             comp.update(new)
     out, p = bytearray(), 0
     while p < len(t):
-        if hid[p]:
+        if hid[p] and t[p] != 10:   # a hidden newline stays: a cell grid keeps its lines (known difference)
             p += 1
         elif p in comp:
             out += comp[p][1].encode()
@@ -325,7 +343,7 @@ MATH = [r'\leq', r'\geq', r'\wedge', r'\vee', r'\top', r'\bot', r'\sqsubseteq', 
         r'\there4', r'\sup2', r'\frac12', r'\frac34x', r'\zwj', r'\nbsp', r'\foo', r'\leqx', r'\le', r'\_ ', '\\', r'\iff', r'\mid',
         'x^{2}', 'a_{i}', 'a_{b}^{c}', 'x^{n+1}', r'x^{\alpha}', r'x^{\alpha{}}', 'x^{{a}{b}}', 'x^{a{b}}', 'x^{}', 'x^{*b*}', 'x^2',
         'x_{i', 'x^{{{a}}}', 'x^{a}_{b}', 'é^{é}', ' ^{2}', 'x^{ab c}', 'x^{(1)}', '{}', '*b*', '/i/', '_u_', '+s+', '=v=', '~c~', '*a =b* c=', '/x ~y/ z~',
-        '*', '/', '_', '+', '=', '~', '^', '{', '}', '(', '-', '|', 'é', '²', '\t', ':', '[x]', '[']
+        '*', '/', '_', '+', '=', '~', '^', '{', '}', '(', '-', '|', 'é', '²', '\t', ':', '[x]', '[', '<2026-01-01 x^{2}>'] + LINKS + FNS
 
 
 def gen_show(r):
@@ -449,13 +467,14 @@ def main():
             elif i is not None:
                 errors += 1   # no answer from Org to compare with
                 continue
-            if faces:
+            if faces or show:
                 with open(p, 'rb') as t:
                     # Org stops dating the whole buffer at a date after "[";
                     # a live Emacs, which fontifies in chunks, does not
                     if re.search(rb'\[[<\[][0-9]{4}-[0-9]{2}-[0-9]{2}[] >]', t.read()):
                         errors += 1
                         continue
+            if faces:
                 a, b = runs(a or [], FACES), runs(b or [], None)
             if show:
                 with open(p, 'rb') as t:

@@ -1,0 +1,54 @@
+=== review 118: verbatim may be empty 
+   -f ['0 of 31 differ (no answer from Org on 0)'] 
+   -s ['0 of 31 differ (no answer from Org on 0)'] 
+=== review 118: verbatim's match ends at its closer 
+   -f ['1 of 31 differ (no answer from Org on 0)'] ve8.org
+   -s ['0 of 31 differ (no answer from Org on 0)'] 
+=== review 118: a match ending at the position does not hold it 
+   -f ['0 of 31 differ (no answer from Org on 0)'] 
+   -s ['0 of 31 differ (no answer from Org on 0)'] 
+=== review 118: a span that starts above the line carries on 
+   -f ['0 of 31 differ (no answer from Org on 0)'] 
+   -s ['0 of 31 differ (no answer from Org on 0)'] 
+=== review 118: the type search stops at the limit (no 11 bytes past it) 
+   -f ['0 of 31 differ (no answer from Org on 0)'] 
+   -s ['0 of 31 differ (no answer from Org on 0)'] 
+=== review 118: a link's hidden end not cut at the line 
+   -f ['0 of 31 differ (no answer from Org on 0)'] 
+   -s ['2 of 31 differ (no answer from Org on 0)'] ml1.org ml2.org
+=== review 118: a link's hidden start not cut at the line 
+   -f ['0 of 31 differ (no answer from Org on 0)'] 
+   -s ['2 of 31 differ (no answer from Org on 0)'] ml1.org ml2.org
+=== review 118: no $$ fragment at a line's start 
+   -f ['0 of 31 differ (no answer from Org on 0)'] 
+   -s ['0 of 31 differ (no answer from Org on 0)'] 
+=== review 118: a $ fragment may start before ; 
+   -f ['0 of 31 differ (no answer from Org on 0)'] 
+   -s ['0 of 31 differ (no answer from Org on 0)'] 
+=== review 118: a macro's star not taken 
+   -f ['2 of 31 differ (no answer from Org on 0)'] st1.org st2.org
+   -s ['0 of 31 differ (no answer from Org on 0)'] 
+=== review 118: a form feed ends a plain link 
+   -f ['2 of 31 differ (no answer from Org on 0)'] ff1.org ff2.org
+   -s ['0 of 31 differ (no answer from Org on 0)'] 
+=== review 118: verbatim may be empty 
+   -f ['2 of 38 differ (no answer from Org on 0)'] ve10.org ve9.org
+   -s ['0 of 38 differ (no answer from Org on 0)'] 
+=== review 118: a match ending at the position does not hold it 
+   -f ['0 of 38 differ (no answer from Org on 0)'] 
+   -s ['0 of 38 differ (no answer from Org on 0)'] 
+=== review 118: no $$ fragment at a line's start 
+   -f ['2 of 38 differ (no answer from Org on 0)'] dd4.org dd5.org
+   -s ['0 of 38 differ (no answer from Org on 0)'] 
+=== review 118: a $ fragment may start before ; 
+   -f ['2 of 38 differ (no answer from Org on 0)'] sc3.org sc4.org
+   -s ['0 of 38 differ (no answer from Org on 0)'] 
+=== review 118: a keyword's ]: past a blank not looked for 
+   -f ['1 of 42 differ (no answer from Org on 0)'] kw2.org
+   -s ['0 of 42 differ (no answer from Org on 0)'] 
+=== review 118: a keyword's last [ taken, not its first 
+   -f ['0 of 42 differ (no answer from Org on 0)'] 
+   -s ['0 of 42 differ (no answer from Org on 0)'] 
+=== review 118: a fixed-width line is a valid footnote context 
+   -f ['2 of 42 differ (no answer from Org on 0)'] fw1.org fw2.org
+   -s ['0 of 42 differ (no answer from Org on 0)'] 

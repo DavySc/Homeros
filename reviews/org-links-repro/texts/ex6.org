@@ -1,0 +1,4 @@
+[fn:1] a
+#+begin_comment
+[fn:1]
+#+end_comment

@@ -1,0 +1,4 @@
+# not plants: a trap on fold_changed without an old tree, which every check must pass (NOT CAUGHT is the good answer)
+shorter: fold_changed never sees a missing old tree (test_syntax)~test TESTS=syntax~~src/syntax/syntax.c~	TSRange *r = old ? ts_tree_get_changed_ranges(old, n, &k) : &all;~	if (!old) __builtin_trap();¶	TSRange *r = old ? ts_tree_get_changed_ranges(old, n, &k) : &all;
+shorter: fold_changed never sees a missing old tree (fuzz_syntax, 120 s)~fuzz FUZZERS=syntax FUZZ_SECONDS=120~~src/syntax/syntax.c~	TSRange *r = old ? ts_tree_get_changed_ranges(old, n, &k) : &all;~	if (!old) __builtin_trap();¶	TSRange *r = old ? ts_tree_get_changed_ranges(old, n, &k) : &all;
+shorter: a changed range never ends at row UINT32_MAX (fuzz_syntax, 120 s)~fuzz FUZZERS=syntax FUZZ_SECONDS=120~~src/syntax/syntax.c~			TSPoint e = r[i].end_point;~			TSPoint e = r[i].end_point;¶			if (e.row == UINT32_MAX) __builtin_trap();

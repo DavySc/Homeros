@@ -26,9 +26,14 @@ void    syntax_edit(Syntax *s, const Text *t, size_t pos, size_t ndel, const cha
    460 keys, reviews/pr-30.md: longest stretch per key median 0.29 to 0.41
    ms, p99 1.9 to 3.1, max 3.2 to 11.3 inside one parse step;
    the first update of a language also compiles its queries, 9 to 23 ms
-   without asking) and returns nonzero when input is waiting.  0 nothing changed, 1 colours changed (draw again), 2 stopped
-   early (call again once the input is handled). */
-int     syntax_update(Syntax *s, const Text *t, int (*stop)(void));
+   without asking) and returns nonzero when input is waiting.  Once a parse is done it recomputes
+   the fold levels of the rows the edits and the parse changed, as _fold.lua's
+   on_bytes and on_changedtree do.  [*r1, *r2) are the rows whose
+   syntax_foldexpr answers may have changed, for fold_update (r1 == r2: none;
+   set on every call, whatever it returns).  0 no colour changed, 1
+   colours changed (draw again), 2 stopped early (call again once the
+   input is handled). */
+int     syntax_update(Syntax *s, const Text *t, int (*stop)(void), size_t *r1, size_t *r2);
 /* One face (grid.h FACE_*) per byte of [a, z), z - a at most 8,192 (core_draw
    asks for at most 1,024), into face; no allocation. */
 void    syntax_faces(Syntax *s, size_t a, size_t z, unsigned char *face);
@@ -48,13 +53,10 @@ size_t  syntax_conceal(Syntax *s, size_t line, Conceal *out, size_t cap);
    and *start 1 for ">n" (a fold starts here).  Tree-sitter's
    vim.treesitter.foldexpr() (folds.scm), Markdown's ftplugin
    (g:markdown_folding: heading levels), Org's subtrees (orgfx_foldexpr);
-   0 for a buffer without folds.  It brings the parse up to date first, as
-   vim.treesitter.foldexpr() parses, so it is called from fold_update
-   (fold.h) after a change, never while drawing.  The first call after a
-   parse runs the folds query over every tree (measured, 5 runs: 1.3 ms per
-   edit on a 29 KB C file, 17 to 18 ms on 489 KB, against a 0.3 / 2 ms
-   reparse); Neovim recomputes only the changed rows, so settle that before
-   fold_update calls it from the edit path. */
+   0 for a buffer without folds.  It answers from the levels the last
+   finished parse left, never parsing, as vim.treesitter.foldexpr() reads
+   foldinfo.levels.  A row an edit added answers -1 (Neovim's "-1":
+   undefined, take a neighbour's level) until the next parse. */
 int     syntax_foldexpr(Syntax *s, size_t line, int *start);
 /* What render-markdown draws on line l, from the tree, without allocating:
    0 for a non-Markdown buffer or a line with none of these, else 1 */

@@ -1,0 +1,4 @@
+x [fn:1:a
+b] c [fn:2:d
+e] f
+g

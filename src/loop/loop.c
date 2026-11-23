@@ -24,7 +24,7 @@ enum { MAXW = 16, MAXP = 32, MAXF = MAXW + 1 + 3 * MAXP, KILL_MS = 2000 };
 
 int loop_int;
 
-static struct { int fd; LoopFn fn; void *ctx; } w[MAXW];   /* fd 0 marks a free slot as fd + 1 */
+static struct { int fd; short ev; LoopFn fn; void *ctx; } w[MAXW];   /* fd 0 marks a free slot as fd + 1; ev: poll's events */
 static struct Proc {
 	pid_t pid;              /* 0: free slot */
 	int fd[3];              /* stdin, stdout, stderr; -1 once closed */
@@ -52,13 +52,18 @@ long long loop_now(void)
 int loop_watch(int fd, LoopFn fn, void *ctx)
 {
 	for (int i = 0; i < MAXW; i++)
-		if (!w[i].fd) { w[i].fd = fd + 1; w[i].fn = fn; w[i].ctx = ctx; return 0; }
+		if (!w[i].fd) { w[i].fd = fd + 1; w[i].ev = POLLIN; w[i].fn = fn; w[i].ctx = ctx; return 0; }
 	return -1;
 }
 
 void loop_unwatch(int fd)
 {
 	for (int i = 0; i < MAXW; i++) if (w[i].fd == fd + 1) w[i].fd = 0;
+}
+
+void loop_write(int fd, int on)
+{
+	for (int i = 0; i < MAXW; i++) if (w[i].fd == fd + 1) w[i].ev = on ? POLLIN | POLLOUT : POLLIN;
 }
 
 /* Polls the watched fds without waiting; their slots go to slot. */
@@ -315,7 +320,7 @@ int loop_once(int timeout_ms)
 	static short who[MAXF], what[MAXF];   /* slot, and -1 for a watch or the stream */
 	int n = 0;
 	for (int i = 0; i < MAXW; i++)
-		if (w[i].fd) { pf[n] = (struct pollfd){ .fd = w[i].fd - 1, .events = POLLIN }; who[n] = (short)i; what[n++] = -1; }
+		if (w[i].fd) { pf[n] = (struct pollfd){ .fd = w[i].fd - 1, .events = w[i].ev }; who[n] = (short)i; what[n++] = -1; }
 	if (chld[0] >= 0) { pf[n] = (struct pollfd){ .fd = chld[0], .events = POLLIN }; who[n] = -1; what[n++] = -2; }
 	for (int i = 0; i < MAXP; i++)
 		for (int s = 0; s < 3 && p[i].pid && (only < 0 || i == only); s++)

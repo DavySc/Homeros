@@ -1,0 +1,33 @@
+diff --git a/src/org/org.c b/src/org/org.c
+index 91718c3..2e29e9e 100644
+--- a/src/org/org.c
++++ b/src/org/org.c
+@@ -1857,6 +1857,7 @@ static void unhide(size_t a, size_t z)
+    its start), XK of them in X's em: they grow, then stay; out of memory,
+    later ones are left out */
+ static size_t XK;
++static int by_first(const void *a, const void *b);
+ static void rec(size_t a, size_t z);
+ /* [ \t]*\(|[-+]+|?\|\+[-+]+\+\)[ \t]*$ at the line l: a table rule */
+ static int rule(size_t l)
+@@ -2003,11 +2004,6 @@ static void scripts(size_t from, size_t l, const size_t *em, size_t ek)
+ 		p = z + 1 < CE && one(z + 1, "_^") ? z - 1 : z;
+ 	}
+ }
+-static int by_start(const void *a, const void *b)
+-{
+-	size_t x = ((const Conceal *)a)->a, y = ((const Conceal *)b)->a;
+-	return x < y ? -1 : x > y;
+-}
+ static void rec(size_t a, size_t z)
+ {
+ 	if (grow((void **)&X->em, &X->emcap, 2 * XK + 1, sizeof *X->em)) X->em[2 * XK] = a, X->em[2 * XK + 1] = z, ++XK;
+@@ -2063,7 +2059,7 @@ size_t orgfx_conceal(OrgFx *f, size_t line, Conceal *out, size_t cap)
+ 	entities_at(CL);
+ 	if (XK) qsort(f->em, XK, 2 * sizeof *f->em, by_first);
+ 	scripts(pl, CL, f->em, XK);
+-	qsort(C, CN, sizeof *C, by_start);
++	qsort(C, CN, sizeof *C, by_first);   /* a Conceal starts with its a */
+ 	size_t k = 0;   /* a marker two matches hide is hidden once; columns of the line */
+ 	for (size_t i = 0; i < CN; i++) if (!k || C[i].a >= C[k - 1].z + CL) C[k++] = (Conceal){ C[i].a - CL, C[i].z - CL, C[i].s };
+ 	return k;

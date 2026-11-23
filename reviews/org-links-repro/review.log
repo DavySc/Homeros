@@ -1,0 +1,21 @@
+NOT CAUGHT    review: angle link stops only at a blank line, not at blank then >   (make org-conform ORG_N=2000 SEED=1 passed)
+NOT CAUGHT    review: description crosses a paragraph boundary   (make org-conform ORG_N=2000 SEED=1 passed)
+caught        review: shell type missing   (make org-conform ORG_N=2000 SEED=1): 74 of 2000 differ (no answer from Org on 129)
+NOT CAUGHT    review: w3m type letters (3 dropped from a type)   (make org-conform ORG_N=2000 SEED=1 passed)
+NOT CAUGHT    review: bibtex type missing   (make org-conform ORG_N=2000 SEED=1 passed)
+NOT CAUGHT    review: DEL not a plain link's last character   (make org-conform ORG_N=2000 SEED=1 passed)
+caught        review: one blank line ends a footnote's look-back   (make org-conform ORG_N=2000 SEED=1): 22 of 2000 differ (no answer from Org on 129)
+NOT CAUGHT    review: example block not forbidden   (make org-conform ORG_N=2000 SEED=1 passed)
+NOT CAUGHT    review: verbatim after the line ignored   (make org-conform ORG_N=2000 SEED=1 passed)
+NOT CAUGHT    review: $ fragment may end after a period   (make test TESTS=org passed)
+NOT CAUGHT    review: checkpoint saved without its links   (make test TESTS=org passed)
+NOT CAUGHT    review: unhide keeps a span's tail   (make org-conform ORG_N=2000 SEED=1 passed)
+FAILED OTHERWISE  review: verbatim at a line start not a match   (make org-conform ORG_N=2000 SEED=1): make: *** [Makefile:102: org-conform] Error 1
+caught        review: ASCII fast path one range late   (make test TESTS=org): tests/test_org.c:1156: CHECK(x && orgfx_conceal(x, 1, c5, 5) == 5 && c5[1].a == 3 && !strcmp(c5[1].s, "²")) failed
+caught        review: dates keep scripts raised   (make org-conform ORG_N=2000 SEED=1): 140 of 2000 differ (no answer from Org on 4)
+caught        review: a link's last character may be a period   (make org-conform ORG_N=2000 SEED=1): 85 of 2000 differ (no answer from Org on 129)
+caught        review: a quote in a footnote not skipped to its pair   (make org-conform ORG_N=2000 SEED=1): 150 of 2000 differ (no answer from Org on 129)
+caught        review: a description's second ] required on the same line   (make org-conform ORG_N=2000 SEED=1): 101 of 2000 differ (no answer from Org on 129)
+NOT CAUGHT    review: a backslash pair before ] not a choice   (make org-conform ORG_N=2000 SEED=1 passed)
+caught        review: an empty footnote label taken   (make org-conform ORG_N=2000 SEED=1): 155 of 2000 differ (no answer from Org on 129)
+DONE
