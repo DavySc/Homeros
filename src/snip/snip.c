@@ -779,7 +779,7 @@ static void idle(void *ctx)
 {
 	Editor *e = E;
 	(void)ctx;
-	if (e->pum == items) loop_timer(idle, NULL, HOLD);   /* the popup's words are in the pool */
+	if (e->pum && e->pum == items) loop_timer(idle, NULL, HOLD);   /* the popup's words are in the pool */
 	else if (is_sql(e->buf) && (I.stale || I.b != e->buf || I.nr != e->buf->nr || I.len != text_len(e->buf->text)))
 		scan(e, (size_t)-1, (size_t)-1), W.b = NULL;
 }

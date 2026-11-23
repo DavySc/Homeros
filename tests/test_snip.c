@@ -192,6 +192,20 @@ static void typing_pause(void)
 	while (loop_now() - t0 < 1200000000LL) loop_once(100);
 }
 
+/* Before any popup the index is built on the pause and the timer stays
+   off: an idle editor is not woken (DESIGN.md: 0 idle wake-ups) */
+static void quiet(void)
+{
+	Editor *e = at("select o.x from dbo.orders o|", " 1");
+	CHECK(!e->pum);
+	typing_pause();
+	long long t0 = loop_now();
+	loop_once(1500);
+	CHECK(loop_now() - t0 > 1400000000LL);
+	feed(e, KEY_ESC);
+	core_free(e);
+}
+
 /* the popup's words, space-separated, in its order */
 static const char *shown(Editor *e)
 {
@@ -581,6 +595,7 @@ int main(int argc, char **argv)
 	if (argc == 1) {
 		printf("test_snip: %d of %d recorded vim.snippet cases differ\n", bad, n);
 		CHECK(!bad);
+		quiet();
 		popup();
 		groups();
 		insert(n + 6);

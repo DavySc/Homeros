@@ -77,7 +77,8 @@ snip: an exact match not first~test TESTS=snip~~src/snip/snip.c~	if (ea != eb) r
 snip: fact() keeps pointers into the pool it grows~test TESTS=snip~~src/snip/snip.c~	char w[128], of[128];   /* w0 and of0 may be in the pool, which intern moves */¶	strncpy(w, w0, sizeof w - 1)[sizeof w - 1] = 0, strncpy(of, of0, sizeof of - 1)[sizeof of - 1] = 0;~	const char *w = w0, *of = of0;
 snip: the list kept for an empty word~test TESTS=snip~~src/snip/snip.c~	} else W.b = NULL;~	}
 snip: the file walked at every word start~test TESTS=snip~~src/snip/snip.c~	if (I.b != e->buf || I.nr != e->buf->nr || I.len != text_len(t)) scan(e, a, z);~	scan(e, a, z);
-snip: the index made again under an open popup~test TESTS=snip~~src/snip/snip.c~	if (e->pum == items) loop_timer(idle, NULL, HOLD);   /* the popup's words are in the pool */¶	else if~	if
+snip: the index made again under an open popup~test TESTS=snip~~src/snip/snip.c~	if (e->pum && e->pum == items) loop_timer(idle, NULL, HOLD);   /* the popup's words are in the pool */¶	else if~	if
+snip: no popup yet taken for an open one: the timer wakes every second~test TESTS=snip~~src/snip/snip.c~	if (e->pum && e->pum == items) loop_timer(idle, NULL, HOLD);~	if (e->pum == items) loop_timer(idle, NULL, HOLD);
 snip: the index's statements stay where an edit moved the text~test TESTS=snip~~src/snip/snip.c~		for (size_t i = 0; i < NU; i++) splice(&u[i][0], pos, ndel, nins), splice(&u[i][1], pos, ndel, nins);~		(void)u;
 snip: no timer after an edit~test TESTS=snip~~src/snip/snip.c~	if (E && is_sql(b)) loop_timer(idle, NULL, b == I.b ? HOLD : 0);~	if (0) loop_timer(idle, NULL, b == I.b ? HOLD : 0);
 snip: schema.table: the schema a table~test TESTS=snip~~src/snip/snip.c~		if (isname && attab && sym(h1, '.') && !strcasecmp(h2->b, pool.s + tab)) {~		if (0) {
