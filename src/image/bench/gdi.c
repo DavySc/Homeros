@@ -103,6 +103,40 @@ int main(void)
 			}
 			snprintf(what, sizeof what, "new size, source kept: 1920x1080 to %dx%d, %s", win[s][0], win[s][1], m ? "COLORONCOLOR" : "HALFTONE");
 			report(what, u);
+			/* StretchDIBits straight from the pixels: no source bitmap at all */
+			BITMAPINFO bi = { .bmiHeader = { .biSize = sizeof bi.bmiHeader, .biWidth = iw, .biHeight = -ih, .biPlanes = 1, .biBitCount = 32 } };
+			for (int r = 0; r < RUNS; r++) {
+				double a = now();
+				HBITMAP b = dibsec(mem, win[s][0], win[s][1], NULL);
+				HGDIOBJ o = SelectObject(wdc, b);
+				SetStretchBltMode(wdc, m ? COLORONCOLOR : HALFTONE);
+				SetBrushOrgEx(wdc, 0, 0, NULL);
+				StretchDIBits(wdc, 0, 0, win[s][0], win[s][1], 0, 0, iw, ih, px, &bi, DIB_RGB_COLORS, SRCCOPY);
+				GdiFlush();
+				u[r] = now() - a;
+				SelectObject(wdc, o);
+				DeleteObject(b);
+			}
+			snprintf(what, sizeof what, "new size, StretchDIBits: 1920x1080 to %dx%d, %s", win[s][0], win[s][1], m ? "COLORONCOLOR" : "HALFTONE");
+			report(what, u);
 		}
+	/* StretchDIBits' source origin for a top-down DIB: 4 rows, 1 to 3 of
+	   them asked for; the top row drawn says which row it took */
+	{
+		uint32_t four[4] = { 0x000001, 0x000002, 0x000003, 0x000004 };
+		BITMAPINFO bi = { .bmiHeader = { .biSize = sizeof bi.bmiHeader, .biWidth = 1, .biHeight = -4, .biPlanes = 1, .biBitCount = 32 } };
+		void *q;
+		HBITMAP b = dibsec(mem, 1, 3, &q);
+		HGDIOBJ o = SelectObject(wdc, b);
+		for (int m = 0; m < 2; m++) {
+			SetStretchBltMode(wdc, m ? COLORONCOLOR : HALFTONE);
+			StretchDIBits(wdc, 0, 0, 1, 3, 0, 1, 1, 3, four, &bi, DIB_RGB_COLORS, SRCCOPY);
+			GdiFlush();
+			printf("StretchDIBits rows 1-3 of a top-down DIB, %s: drew %u %u %u (2 3 4: counted from the top)\n", m ? "COLORONCOLOR" : "HALFTONE",
+			       ((uint32_t *)q)[0] & 0xff, ((uint32_t *)q)[1] & 0xff, ((uint32_t *)q)[2] & 0xff);
+		}
+		SelectObject(wdc, o);
+		DeleteObject(b);
+	}
 	return 0;
 }
