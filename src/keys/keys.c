@@ -211,7 +211,7 @@ void keys_draw(Editor *e, Grid *g)
 		top = g->crow + 2 < g->rows - 4 ? g->crow + 2 : g->rows - 4;
 		h = last - top - 2;
 	}
-	if (h < 1) return;
+	if (h < 1 || top < 0) return;   /* a screen under 4 rows: no room */
 	w = g->cols / cols;
 	grid_blank(g, top, 0, h + 3, g->cols);
 	for (int k = 0, prev = -1; k < n && k / h < cols; k++) {

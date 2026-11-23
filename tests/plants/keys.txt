@@ -213,3 +213,4 @@ keys: which-key's panel covers the cursor (test_keys_map)~test TESTS=keys_map~~s
 keys: which-key's panel moves for a cursor on the row above it too late (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~g->crow >= top - 1 &&~g->crow >= top &&
 keys: which-key's panel moved for the cursor starts on the row under it (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~top = g->crow + 2 < g->rows - 4 ? g->crow + 2 :~top = g->crow + 1 < g->rows - 4 ? g->crow + 1 :
 keys: which-key's columns 10 wide, not its 20 (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	int n = 0, w = 20;~	int n = 0, w = 10;
+keys: which-key's panel on a screen under 4 rows writes before the grid (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (h < 1 || top < 0) return;~	if (h < 1) return;

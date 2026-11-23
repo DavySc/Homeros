@@ -186,6 +186,12 @@ int main(void)
 	grid_clear(&small);
 	keys_draw(&e, &small);
 	CHECK(row_has(&small, 5, "<esc> close") && row_has(&small, 3, "D \xe2\x9e\x9c") && !row_has(&small, 4, "\xe2\x9e\x9c"));
+	for (int rows = 1; rows < 4; rows++) {     /* no room: nothing, no write outside */
+		CHECK(!grid_resize(&small, rows, 30));
+		small.crow = 0;
+		keys_draw(&e, &small);
+		CHECK(!row_has(&small, 0, "\xe2\x9e\x9c") && !row_has(&small, rows - 1, "<esc>"));
+	}
 	feed(&e, "\033");
 	grid_free(&small);
 	grid_free(&g);
