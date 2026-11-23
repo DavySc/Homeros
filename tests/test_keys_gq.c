@@ -11,7 +11,10 @@
    4-space indent; --lines for gq, the whole text for :Format and :w,
    which formats under a .slang directory); a fake on PATH indents the
    lines it is given and records its arguments.  A formatter that fails,
-   hangs or is missing changes nothing. */
+   hangs or is missing changes nothing.  Zig goes through zig fmt in-process
+   (syntax_zig_fmt; test_syntax_zig checks it against zig fmt) on every :w
+   and :Format; a file that does not parse is written as it is (the
+   write's message is the one shown, so :Format says why). */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -144,6 +147,40 @@ static void verilog(void)
 	unlink(sv); unlink(args); rmdir(slang); rmdir(bin);
 }
 
+static void zig(void)
+{
+	static const char Z[] = "const a=1;\nfn f() void {\nreturn;\n}\n", F[] = "const a = 1;\nfn f() void {\n    return;\n}\n";
+	char zf[160];
+	snprintf(zf, sizeof zf, "%s/a.zig", sub);
+	FILE *f = fopen(zf, "w");
+	CHECK(f && fputs(Z, f) >= 0 && !fclose(f));
+	Editor e;
+	/* :w formats, with no marker file; the cursor stays on its character;
+	   u gives the text back; a mark on a line the format leaves stays (the
+	   edit is only the bytes that differ) */
+	CHECK(!core_open(&e, zf));
+	keys(&e, "Gkix\033x:w\n");
+	CHECK(!strcmp(disk(zf), F) && !strcmp(text(&e), F));
+	CHECK(e.win->line == 2 && e.win->col == 4);
+	keys(&e, "u");
+	CHECK(!strcmp(text(&e), Z));
+	keys(&e, ":Format\njjI  \033");
+	e.buf->mark[0] = (Mark){ 1, 0, 1 };
+	keys(&e, ":w\n");
+	CHECK(!strcmp(text(&e), F) && e.buf->mark[0].set && e.buf->mark[0].line == 1);
+	core_free(&e);
+	/* a text that does not parse is written as it is; :Format says why */
+	f = fopen(zf, "w");
+	CHECK(f && fputs("fn f( {\n", f) >= 0 && !fclose(f));
+	CHECK(!core_open(&e, zf));
+	keys(&e, "ix\033x:w\n");
+	CHECK(!strcmp(disk(zf), "fn f( {\n"));
+	keys(&e, ":Format\n");
+	CHECK(!strcmp(text(&e), "fn f( {\n") && strstr(e.msg, "zig fmt"));
+	core_free(&e);
+	unlink(zf);
+}
+
 int main(void)
 {
 	CHECK(mkdtemp(dir));
@@ -267,6 +304,7 @@ int main(void)
 	core_free(&e);
 
 	verilog();
+	zig();
 	unlink(file); unlink(txt); unlink(toml); rmdir(sub); rmdir(dir);
 	puts("test_keys_gq: ok");
 	return 0;

@@ -24,9 +24,10 @@ for g in $(sed -n '/^SYN_GRAMMARS/,/[^\\]$/p' src/syntax/build.mk | tr -d '\\' |
 done
 inc="-I$SYN/src/tree-sitter/lib/include -I$SYN/src/tree-sitter/lib/src"
 make -s $SYN/queries.c build/win/stb.o build/ghostty/windows.lib   # stb: src/image/build.mk; thread 0's, agreed
+make -s build/zig-win/libzig17.a   # Zig's parser, every release's at once (src/syntax/build.mk)
 zig cc -target x86_64-windows-gnu -O2 -c $SYN/queries.c -o build/win/tools/queries.o
 [ -f build/win/tools/ts.o ] || zig cc -target x86_64-windows-gnu -O2 -c $inc $SYN/src/tree-sitter/lib/src/lib.c -o build/win/tools/ts.o
 exe=build/win/test_tools_win.exe
 zig cc -target x86_64-windows-gnu -std=c17 -D_DEFAULT_SOURCE -Wall -Wextra -Werror -Iinclude -I/usr/include/stb $inc -O1 -g \
-  -fsanitize=undefined -fsanitize-trap=undefined -o "$exe" tests/test_tools_win.c $srcs build/win/tools/queries.o build/win/tools/ts.o $objs build/win/stb.o $GHOSTTY_WIN
+  -fsanitize=undefined -fsanitize-trap=undefined -o "$exe" tests/test_tools_win.c $srcs build/win/tools/queries.o build/win/tools/ts.o $objs build/win/stb.o $GHOSTTY_WIN build/zig-win/*.a
 pass 600 "$exe" wine || { echo "FAIL test_tools_win"; exit 1; }

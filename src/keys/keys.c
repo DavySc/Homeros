@@ -242,7 +242,9 @@ void keys_write_pre(Editor *e, Buf *b)
 	E = e;
 	int k = b == e->buf ? fmt_kind() : 0;
 	const char *mark = k == 1 ? "sqldiff.toml" : ".slang";
-	if (k) {
+	/* Davy, 2026-11-23: "zig should format on every :w" */
+	if (k == 3) buf_format(0, text_len(B->text));
+	else if (k) {
 		if (B->path[0] != '/' && B->path[0] != '\\' && B->path[1] != ':') {
 			if (!getcwd(d, sizeof d - 1)) d[0] = 0;
 			n = strlen(d);

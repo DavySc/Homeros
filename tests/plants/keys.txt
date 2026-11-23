@@ -176,13 +176,16 @@ keys: ciT steps forward as cit does (test_keys_map)~test TESTS=keys_map~~src/key
 keys: cit stamps CLOSED in UTC, not the local clock (test_keys_map)~test TESTS=keys_map~~src/keys/ops.c~		+ (l.tm_hour - g.tm_hour) * 60 + l.tm_min - g.tm_min;~		;
 keys: @. counts as an executing register, so its yank does not flash (test_keys_flash)~test TESTS=keys_flash~~src/keys/ops.c~		typebuf_ins(k, n);¶		return 1;~		typebuf_ins(k, n);¶		E->ks.executing = regname;¶		return 1;
 keys: verible without Davy's 4-space indent (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~"verible-verilog-format", "--indentation_spaces=4", "-"~"verible-verilog-format", "-", NULL
-keys: gq sends verible the whole text, not its lines (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	if (*a || *z < len) argv[2] = lines, argv[3] = "-";~
-keys: :Format sends verible --lines (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	if (*a || *z < len) argv[2] = lines, argv[3] = "-";~	argv[2] = lines, argv[3] = "-";
+keys: gq sends verible the whole text, not its lines (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	if (a || z < len) argv[2] = lines, argv[3] = "-";~
+keys: :Format sends verible --lines (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	if (a || z < len) argv[2] = lines, argv[3] = "-";~	argv[2] = lines, argv[3] = "-";
 keys: :w formats a .sv buffer with no .slang above it (test_keys_gq)~test TESTS=keys_gq~~src/keys/keys.c~: ".slang";~: ".";
 keys: a failed verible's output is applied, emptying the buffer (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	if (id < 0 || bad) {~	if (id < 0) {
-keys: verible's edit runs to the end of the text, so the cursor below it moves onto other text (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~		while (q < len - p && q < vout.n - p && in[len - 1 - q] == vout.s[vout.n - 1 - q]) q++;¶~
+keys: verible's edit runs to the end of the text, so the cursor below it moves onto other text (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~			while (q < len - p && q < n - p && in[len - 1 - q] == res[n - 1 - q]) q++;¶~
 keys: a hanging verible is never killed (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~proc_wait(id, 1000)~proc_wait(id, 1 << 30)
 keys: verible's stderr goes into the buffer (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	if (stream == 1 && b)~	if (stream && b)
 keys: keys_visual(e, 0) leaves Visual mode on (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (!mode) { if (VIsual_active) end_visual_mode(); }~	if (!mode) { if (VIsual_active) (void)0; }
 keys: keys_visual() keeps the other end's column (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~VIsual = (Pos){ (long)line, 0, 0 };~VIsual.lnum = (long)line;
 keys: keys_visual() leaves e->ks as it was (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~(Pos){ (long)line, 0, 0 };¶	visual_sync();~(Pos){ (long)line, 0, 0 };
+keys: :w leaves a Zig file as typed (test_keys_gq, zig)~test TESTS=keys_gq~~src/keys/keys.c~	if (k == 3) buf_format(0, text_len(B->text));¶	else if (k) {~	if (k == 3) ;¶	else if (k) {
+keys: a whole-text format replaces the whole text, so a mark on a line it leaves is lost (test_keys_gq, zig)~test TESTS=keys_gq~~src/keys/ops.c~			while (p < len && p < n && in[p] == res[p]) p++;¶~¶
+keys: :Format on a Zig file that does not parse says nothing (test_keys_gq, zig)~test TESTS=keys_gq~~src/keys/ops.c~		if (r == -1 && k == 3) core_msg(E, "zig fmt: the file does not parse");¶~¶

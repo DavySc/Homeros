@@ -5,7 +5,7 @@
 -- "f" the faces of the edited, not yet parsed trees go to DIR/out.snap;
 -- then each line's foldexpr to OUT.fold.
 -- usage: nvim --headless --clean -l test_syntax.lua OUT DIR CASE...
-local ours = { c = true, lua = true, markdown = true, markdown_inline = true, rust = true, glsl = true, nix = true, cmake = true, systemverilog = true }
+local ours = { c = true, lua = true, markdown = true, markdown_inline = true, rust = true, glsl = true, nix = true, cmake = true, systemverilog = true, zig = true }
 -- the grammars and queries Neovim does not bundle (src/syntax/sources.nix)
 vim.opt.rtp:prepend('build/syntax/src/nvim')
 -- nvim-treesitter's plugin/filetypes.lua: Davy's my-nvim colours Verilog with tree-sitter (design/FEATURES.md), which needs this registration
