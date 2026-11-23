@@ -3,7 +3,7 @@ org: table row contents start at the bar~test TESTS=org~~src/org/org.c~			while 
 org: a headline ends only at a shallower one (fuzz)~fuzz FUZZERS=org FUZZ_SECONDS=30~~src/org/org.c~			if (j && j <= k && p + j < N && S[p + j] == ' ') { end = p; break; }~			if (j && j < k && p + j < N && S[p + j] == ' ') { end = p; break; }
 org: checkbox [x] not folded to [X] (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~(S[u + 1] == ' ' || up(S[u + 1]) == 'X' || S[u + 1] == '-')~(S[u + 1] == ' ' || S[u + 1] == 'X' || S[u + 1] == '-')
 org: tags take [[:word:]] for [[:alnum:]] above ASCII~test TESTS=org~~src/org/org.c~IN(ALNUM, uni_cp(S, N, x))~IN(WORD, uni_cp(S, N, x))
-org: drawer and footnote names take any non-ASCII byte (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	return c == '-' || c == '_' || IN(WORD, c) ? uni_len(S, N, p) : 0;~	return c == '-' || c == '_' || c >= 0x80 || IN(WORD, c) ? uni_len(S, N, p) : 0;
+org: drawer and footnote names take any non-ASCII byte (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~IN(WORD, c) ? (c < 0x80 ? 1 : uni_len(S, N, p)) : 0;~c >= 0x80 || IN(WORD, c) ? (c < 0x80 ? 1 : uni_len(S, N, p)) : 0;
 org: org_edit stops its span before a new shallower headline's subtree ends (fuzz)~fuzz FUZZERS=org FUZZ_SECONDS=30~~src/org/org.c~	if (t && f[t - 1].end > R - del + ins) R = f[t - 1].end + del - ins;~	;
 org: org_edit starts its span at a headline whose line the edit touches (fuzz)~fuzz FUZZERS=org FUZZ_SECONDS=30~~src/org/org.c~		c = top(e, c - 1);   /* the edit touches its headline line */~		;
 org: planning reads a repeater's unit case-folded (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~if (ts(p, 0, &t[j])) got~if (ts(p, 1, &t[j])) got
@@ -21,7 +21,7 @@ org: colours: checkbox [x] (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/
 org: colours: a description term after two blanks missed (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		else if (v >= b + 3 && dcolon(v, e)) set(v - 1, v + 2, FACE_ORG_CHECKBOX);~
 org: colours: special keywords inside a word (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		if (p > l && word(uni_prev(S, N, p))) continue;¶~
 org: colours: the export snippet's backend without its colon (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~set(p + 2, x + 1, FACE_ORG_TAG);~set(p + 2, x, FACE_ORG_TAG);
-org: colours: a stale scan kept across an update~test TESTS=org~~src/org/org.c~	f->dirty = 0;¶	f->c.at = f->cs.at = ORG_NONE;~	f->dirty = 0;¶	f->cs.at = ORG_NONE;
+org: colours: a stale scan kept across an update~test TESTS=org~~src/org/org.c~	f->dirty = 0;¶	f->c.at = f->cs.at = f->bn = ORG_NONE, f->kn = f->sp = f->sg = 0;~	f->dirty = 0;¶	f->cs.at = f->bn = ORG_NONE, f->kn = f->sp = f->sg = 0;
 org: colours: an edit before the pending ones not merged (fuzz)~fuzz FUZZERS=org FUZZ_SECONDS=60~~src/org/org.c~	if (pos < f->lo) f->lo = pos;¶~
 org: colours: the text after an edit not moved (fuzz)~fuzz FUZZERS=org FUZZ_SECONDS=60~~src/org/org.c~	memmove(f->s + f->hc, f->s + f->ho, f->n - f->ho);¶~
 org: org_ts reads case-sensitively, as planning does (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	return ts(p, 1, t);~	return ts(p, 0, t);
@@ -35,13 +35,13 @@ org: todo: a week repeats as a day (against Org)~test TESTS=org~~src/org/org.c~(
 org: todo: a parent ignores undone children (against Org)~test TESTS=org~~src/org/org.c~ q = next_head(q)) if (notdone(q)) return 1;~ q = next_head(q)) if (notdone(q)) return 0;
 org: todo: CLOSED kept when going back to not done (against Org)~test TESTS=org~~src/org/org.c~		if (to < 0 || (to < org_done && !(from >= 0 && from < org_done))) closed(h, 0, nows);¶~
 org: todo: an edit one byte past its change (fuzz)~fuzz FUZZERS=org FUZZ_SECONDS=30~~src/org/org.c~	*a = i, *b = n - j,~	*a = i, *b = n - j + 1,
-org: colours: a long line coloured again for every piece (frame gate)~test TESTS=org~~src/org/org.c~		if (f->c.at == l) {~		if (0) {
-org: colours: a date scan from every opener to the line's end (frame gate)~test TESTS=org~~src/org/org.c~	for (p = l; p + 12 <= lc; p++) {~	for (p = l; p < e; p++) {
+org: colours: a long line coloured again for every piece (frame gate)~test TESTS=org~~src/org/org.c~		if (f->c.at == l) c = f->cn;~		if (0) c = f->cn;
+org: colours: a date scan from every opener to the line's end (frame gate)~test TESTS=org~~src/org/org.c~	for (size_t p = l; p + 12 <= lc; p++) {~	for (size_t p = l; p < e; p++) {
 org: colours: a diary sexp scan from every opener to the line's end (frame gate)~test TESTS=org~~src/org/org.c~			if (x == e) break;   /* none closes later ones either */~			if (x == e) continue;
 org: colours: a line's faces not cleared before it is coloured (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~ memset(F, 0, nl - l);~
 org: colours: a property's value keeps the earlier face (against Org; PR 83 review)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		set(p, x, FACE_NONE);~
 org: colours: [100x%] any three characters count as done (against Org; PR 83 review)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~x == p + 4 && !memcmp(S + p + 1, "100", 3)~x == p + 4
-org: colours: COMMENT followed by anything (against Org; PR 83 review)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~is(x, "COMMENT") && (x + 7 == e || S[x + 7] == ' ')~is(x, "COMMENT")
+org: colours: COMMENT followed by anything (PR 83 review, directed)~test TESTS=org~~src/org/org.c~is(x, "COMMENT") && (x + 7 == e || S[x + 7] == ' ')~is(x, "COMMENT")
 org: colours: a column width cookie <c> missed (against Org; PR 83 review)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~one(x + 1, "lrc")~one(x + 1, "lr")
 org: colours: after an export snippet, the scan goes on inside it (against Org; PR 83 review)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~			p = z + 1;¶		}¶	if (hl)~		}¶	if (hl)
 org: colours: the caption's bracket closed by the first ]: (not the last) (against Org; PR 83 review)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~for (size_t j = e; j > k + 1 && x == ORG_NONE; j--) if (S[j - 1] == ']' && j < e && S[j] == ':') x = j + 1;~for (size_t j = k + 2; j < e && x == ORG_NONE; j++) if (S[j - 1] == ']' && S[j] == ':') x = j + 1;
@@ -68,29 +68,79 @@ org: show: after an entity the next one is looked for past its end (against Org)
 org: show: Davy's \top missing (against Org with org-entities-user)~org-conform ORG_N=2000 SEED=1~~src/org/entities.h~{ "top", "⊤" }, ~
 org: show: a line's first marker checks its own line for a table rule (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~m = p == l && p ? bol(p - 1) : l,~m = l,
 org: show: paragraph separators after the newline inside emphasis missed (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		if (nl < c && separate(nl + 1, c + 1)) continue;~		if (nl < c && separate(nl + 1, c + 1) && 0) continue;
-org: show: verbatim keeps earlier hidden markers inside it (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~if (C[i].a >= p && C[i].z <= c + 1) C[i] = C[--CN];~;
+org: show: verbatim keeps earlier hidden markers inside it (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~unhide(p, c + 1);   /* verbatim~unhide(p, p);   /* verbatim
 org: show: a script inside emphasis raised (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		if (ok && m >= ez && m >= kz~		if (ok && m >= kz
 org: show: a script in a property's key raised (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~m >= ez && m >= kz && (n~m >= ez && (m >= kz || 1) && (n
 org: show: a script without a Unicode form for each character shown in part (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		if (!s) return -1;~		if (!s) continue;
-org: show: script braces stop at the line's end (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~(S[p] == '\n' && nl++)) return 0;~(S[p] == '\n' && nl++ >= 0)) return 0;
-org: show: a script starting on the line above not looked for (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	scripts(pl, CL, f->em, ek);~	scripts(CL, CL, f->em, ek);
+org: show: script braces stop at the line's end~test TESTS=org~~src/org/org.c~(S[p] == '\n' && nl++)) return 0;~(S[p] == '\n' && nl++ >= 0)) return 0;
+org: show: a script starting on the line above not looked for (directed)~test TESTS=org~~src/org/org.c~	scripts(pl, CL, f->em, XK);~	scripts(CL, CL, f->em, XK);
 org: show: a #+ line keeps hidden markers (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	return S[g3] == '+' ? nl : 0;~	return 0;
 org: show: a quoting block's lines keep hidden markers (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		return !c->quoting ? 0 : l < c->end~		return 1 ? 0 : l < c->end
-org: show: a fixed-width line keeps hidden markers (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~(ateol(b + 1) || S[b + 1] == ' ') ? N : meta(&c);~(ateol(b + 1) || S[b + 1] == ' ') ? 0 : meta(&c);
-org: show: a quoting block's end headline keeps hidden stars (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~? nl : stars(l) + 1;~? nl : 0;
-org: show: a headline ending a block read without the line above (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	if (CL) meta(&c);~	if (CL) c = scan_at(f, &f->cs, CL);
+org: show: a fixed-width line keeps hidden markers (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~(ateol(b + 1) || S[b + 1] == ' ') ? N : meta(&d);~(ateol(b + 1) || S[b + 1] == ' ') ? 0 : meta(&d);
+org: show: a quoting block's end headline keeps hidden stars (directed)~test TESTS=org~~src/org/org.c~? nl : stars(l) + 1;~? nl : 0;
+org: show: a headline ending a block read without the line above (directed)~test TESTS=org~~src/org/org.c~	if (CL) meta(&c);~	if (CL) c = scan_at(f, CL);
 org: show: a marker two matches hide given twice (driver: spans in order)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~if (!k || C[i].a >= C[k - 1].z + CL) C[k++]~if (1) C[k++]
 org: show: a script given part of its spans when out of room~test TESTS=org~~src/org/org.c~CN + (size_t)n + 2 <= CCAP)~CN + (size_t)n <= CCAP)
 org: show: the line start found from each emphasis marker (frame gate)~test TESTS=org~~src/org/org.c~size_t l = p < CL ? from : CL,~size_t l = bol(p),
-org: show: each emphasis marker looks for its closer from itself (frame gate)~test TESTS=org~~src/org/org.c~	if (c < p + 2)¶~	if (1)¶
+org: show: each emphasis marker looks for its closer from itself (frame gate)~test TESTS=org~~src/org/org.c~	if (c < p + 2) c = fits~	if (1) c = fits
 org: show: each emphasis marker looks for a table bar from itself (frame gate)~test TESTS=org~~src/org/org.c~		if (bar <= p) for~		if (1) for
 org: show: a table rule checked at each + marker (frame gate)~test TESTS=org~~src/org/org.c~if (S[p] == '+' && m != rm) rm = m~if (S[p] == '+' && (m != rm || 1)) rm = m
 org: todo: any element before taken as the sibling (PR 98 review, note 3)~test TESTS=org~~src/org/org.c~for (j = i; j-- > 0 && e[j].parent != e[i].parent; ) ;~j = i - 1;
 org: todo: a planning line's repeater read without a whole stamp (PR 98 review, note 2)~test TESTS=org~~src/org/org.c~	if (!org_ts((const char *)S, N, a, &x) || x.end < q) return 0;~	if (!org_ts((const char *)S, N, a, &x) || x.end < q) if (0) return 0;
 org: show: spans as offsets in the text, not columns of the line (syntax.h)~test TESTS=org~~src/org/org.c~(Conceal){ C[i].a - CL, C[i].z - CL, C[i].s }~(Conceal){ C[i].a, C[i].z, C[i].s }
-org: show: each line's scan walked from the headline above (frame gate on many lines)~test TESTS=org~~src/org/org.c~scan_at(f, &f->cs, pl)~scan_at(f, &(Scan){ ORG_NONE, 0, 0, 0 }, pl)
-org: show: only the first 64 emphasis matches kept for scripts~test TESTS=org~~src/org/org.c~		if (2 * *ek < f->emcap) f->em~		if (2 * *ek < f->emcap && *ek < 64) f->em
+org: show: each line's scan walked from the headline above (frame gate on many lines)~test TESTS=org~~src/org/org.c~for (int j = 0; j < 3; j++) if (k[j]->at <= L~for (int j = 0; j < 0; j++) if (k[j]->at <= L
+org: show: only the first 64 emphasis matches kept for scripts~test TESTS=org~~src/org/org.c~	if (grow((void **)&X->em,~	if (XK < 64 && grow((void **)&X->em,
 org: show: '[' not a character after emphasis (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~one(p, "-.,:!?;'\")}\\[")~one(p, "-.,:!?;'\")}\\")
 org: show: a diary sexp line not a paragraph separator (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	if (is(q, "%%(") || b >= z~	if (b >= z
 org: show: a table rule of two characters (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	return S[b] == '+' && x >= b + 3 &&~	return S[b] == '+' && x >= b + 2 &&
-org: show: conceal's scan kept across an update~test TESTS=org~~src/org/org.c~	f->dirty = 0;¶	f->c.at = f->cs.at = ORG_NONE;~	f->dirty = 0;¶	f->c.at = ORG_NONE;
+org: show: conceal's scan kept across an update~test TESTS=org~~src/org/org.c~	f->dirty = 0;¶	f->c.at = f->cs.at = f->bn = ORG_NONE, f->kn = f->sp = f->sg = 0;~	f->dirty = 0;¶	f->c.at = f->bn = ORG_NONE, f->kn = f->sp = f->sg = 0;
+org: colours: a link over a paragraph boundary (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		if (q < z) continue;~		(void)q;
+org: colours: a plain link after a word character (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~!((!a || !word(uni_prev(S, N, a))) && ltype(a) == p + 1)~!(ltype(a) == p + 1)
+org: colours: a plain link never ends at / (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	return c == '-' || c == '/' || c == 127~	return c == '-' || c == 127
+org: colours: link types of at most three letters (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~p - a < 10 && tc(a - 1)~p - a < 3 && tc(a - 1)
+org: show: a descriptive link shows its closing brackets (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~hidel(c.la, c.lv), hidel(c.lw, c.lz);~hidel(c.la, c.lv);
+org: colours: a ] or > that ends no separator not looked for~test TESTS=org~~src/org/org.c~	for (size_t y = q; y < e; y++) if ((S[y] == ']'~	for (size_t y = q; y < e && 0; y++) if ((S[y] == ']'
+org: colours: links searched from the scan's start (frame gate on many lines)~test TESTS=org~~src/org/org.c~	if (P > c->lk && inside(P)) c->lk = P;~	if (0) c->lk = P;
+org: colours: no checkpoint kept on a walk (frame gate on many lines)~test TESTS=org~~src/org/org.c~		if (n % 4096 == 0 && (!f->kn~		if (n % 4096 == 0 && 0 && (!f->kn
+org: show: checkpoints kept across an update~test TESTS=org~~src/org/org.c~	f->c.at = f->cs.at = f->bn = ORG_NONE, f->kn = f->sp = f->sg = 0;~	f->c.at = f->cs.at = f->bn = ORG_NONE, f->sp = f->sg = 0;
+org: colours: a footnote span over a headline~test TESTS=org~~src/org/org.c~c->fz = S[l] == '*' ? 0 : c->fz;~c->fz = S[l] == '*' ? c->fz : c->fz;
+org: show: a link ending at a footnote reference holds it~test TESTS=org~~src/org/org.c~ == ORG_NONE || k == p) &&~ == ORG_NONE) &&
+org: colours: a footnote reference in a LaTeX macro (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	    holds(h + 1, e, x - 1, macro_re) == ORG_NONE)~	    (holds(h + 1, e, x - 1, macro_re) == ORG_NONE || 1))
+org: colours: a LaTeX fragment at a line's start not looked for~test TESTS=org~~src/org/org.c~(PE[i].type == ORG_PARAGRAPH && frag(l, PE[i].cend))~(PE[i].type == ORG_PARAGRAPH && frag(l, PE[i].cend) && 0)
+org: colours: an entity at a line's start taken for a LaTeX fragment~test TESTS=org~~src/org/org.c~return alpha(m) && !(ent(l, &x) && entity(m, x));~return alpha(m) && !(ent(l, &x) && entity(m, x) && 0);
+org: colours: any character after a $ fragment's closing $~test TESTS=org~~src/org/org.c~ || IN(DPOST, uni_cp(S, N, m)));~ || 1);
+org: colours: no definition span thrown by a reference below (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		if (c->fm) put(l, nextl(l));~		if (0) put(l, nextl(l));
+org: colours: a footnote reference's span not carried to the next lines (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	if (put && c->fz > l) put(l, c->fz);~	if (0) put(l, c->fz);
+org: colours: a footnote reference inside a link (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~((k = holds(h, e = eol(l), p, link_re)) == ORG_NONE || k == p) &&~((k = holds(h, e = eol(l), p, link_re)) || 1) &&
+org: colours: a footnote definition span from a comment line (against Org, directed)~test TESTS=org~~src/org/org.c~	if (comment(l) || (b < N && S[b] == ':'~	if ((b < N && S[b] == ':'
+org: colours: a string not skipped in a footnote's brackets (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		if (t == 1) {~		if (t == 9) {
+org: colours: a description search goes on past a paragraph boundary (frame gate on many lines)~test TESTS=org~~src/org/org.c~!(S[q] == '\n' && inside(q + 1)); q++)~!(S[q] == '\n' && inside(q + 1) && 0); q++)
+org: colours: an angle search goes on past a blank line (frame gate on many lines)~test TESTS=org~~src/org/org.c~((q = blanks(q + 1)) >= N || one(q, ">\n"))) break;~((q = blanks(q + 1)) >= N || one(q, ">\n")) && 0) break;
+org: colours: a line of blanks then > ends no angle link (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~((q = blanks(q + 1)) >= N || one(q, ">\n"))) break;~((q = blanks(q + 1)) >= N || one(q, "\n"))) break;
+org: colours: no 3 in a link type, no w3m: (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~ || S[p] == '+' || S[p] == '3'); }~ || S[p] == '+'); }
+org: colours: no bibtex: links (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~"bbdb", "bibtex", "docview",~"bbdb", "docview",
+org: colours: DEL not a plain link's last character (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	return c == '-' || c == '/' || c == 127 ||~	return c == '-' || c == '/' ||
+org: colours: verbatim ending above a reference's line holds it (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	return m == ORG_NONE || l < VM || l > VC;~	return m == ORG_NONE || l < VM;
+org: colours: a $ fragment may end after a period (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	return !one(m - 2, " \t\n,.") && (m >= z~	return !one(m - 2, " \t\n,") && (m >= z
+org: show: a hidden span around verbatim keeps its tail (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		if (x->a < a && x->z > z && CN < CCAP) C[CN++] = (Conceal){ z, x->z, "" };¶~
+org: colours: a backslash pair before ] gives no choice (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~a = k, b = k - i >= 4 ? k + 1 : 0;~a = k, b = 0;
+org: colours: a failed description search starts again on every line (frame gate on many lines)~test TESTS=org~~src/org/org.c~	if (is(i + 1, "[") && i + 3 < *f) return 0;~	if (is(i + 1, "[") && i + 3 < *f && 0) return 0;
+org: colours: a failed angle search starts again on every line (frame gate on many lines)~test TESTS=org~~src/org/org.c~	if (!q || p < *f) return 0;~	if (!q) return 0;
+org: colours: a link over a clock line cut at the link's end (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~ || (is(b, "CLOCK:") && clockl(q, upto(q, z, '\n')))) return 1;~) return 1;
+org: colours: a keyword's name stops at its first [ (directed)~test TESTS=org~~src/org/org.c~			if (S[r] == ':' && r > x + 1) return 1;~			if (S[r] == '[') break;¶			if (S[r] == ':' && r > x + 1) return 1;
+org: colours: each footnote reference searches its line for links and macros from the start (long-line gate)~test TESTS=org~~src/org/org.c~	if (p > l && (y = sexp(p)) && ((k = holds(h, e = eol(l)~	if (p > l && (y = sexp(p)) && (h[0] = h[1] = (Hit){ l, l }, 1) && ((k = holds(h, e = eol(l)
+org: colours: sexp() forgets that it failed (frame gate on many lines)~test TESTS=org~~src/org/org.c~	if (p == X->sp || (p > X->sf && p < X->sg)) return 0;~	if (0) return 0;
+org: colours: sexp() asked again from the opener that failed (frame gate on many lines)~test TESTS=org~~src/org/org.c~	if (p == X->sp || (p > X->sf~	if (0 || (p > X->sf
+org: colours: sexp() fails for openers after the last closer only, not quote (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~			w = (size_t)(r - S); k = w + 1 - q;~			k = (size_t)(r - S) + 1 - q;
+org: colours: sexp() remembers a failure across an update~test TESTS=org~~src/org/org.c~f->kn = f->sp = f->sg = 0;~f->kn = 0;
+org: colours: a keyword's ]: past a blank not looked for (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		for (; o && r < z; r++) if (S[r] == ':' && S[r - 1] == ']') return 1;~		for (; o && r < z; r++) if (S[r] == ':' && S[r - 1] == ']' && 0) return 1;
+org: colours: verbatim may be empty (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~(c = fits(m, m + 2, eol(nextl(m)))) < eol(nextl(m)))~(c = fits(m, m + 1, eol(nextl(m)))) < eol(nextl(m)))
+org: colours: verbatim's match ends at its closer (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~VM = m; VC = c; *z = c + 1 + (c + 1 < N);~VM = m; VC = c; *z = c + 1;
+org: show: a link's hidden end not cut at the line (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	if (z > CE) z = CE;¶~
+org: show: a link's hidden start not cut at the line (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	if (a < CL) a = CL;¶~
+org: colours: no $$ fragment at a line's start (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	if (S[m] == '$') return within(l + 2, z, "$$");~	if (S[m] == '$') return 0;
+org: colours: a $ fragment may start before ; (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	if (one(m, " \t\n,.;") ||~	if (one(m, " \t\n,.") ||
+org: colours: a fixed-width line is a valid footnote context (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	if (comment(l) || (b < N && S[b] == ':' && blank(b + 1)) || forbidden(l)) return 0;~	if (comment(l) || (b < N && 0) || forbidden(l)) return 0;
+org: colours: a macro's star not taken (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		x += is(x, "*");¶~
+org: colours: a form feed ends a plain link (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~ && c != '\f' && c != '\r');~ && c != '\r');
+org: colours: a link over a clock: line in lower case (directed)~test TESTS=org~~src/org/org.c~|| (is(b, "CLOCK:") && clockl(~|| (lit(b, "CLOCK:") && clockl(
