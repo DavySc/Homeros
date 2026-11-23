@@ -1,0 +1,6 @@
+# PR 121 review, second pass (head 9d2352f)
+review 2: Org reports one row fewer (test_syntax_org)~test TESTS=syntax_org~~src/syntax/syntax.c~		if (r == 1) *r2 = text_lines(t);~		if (r == 1) *r2 = text_lines(t) - 1;
+review 2: after a row-moving edit the pending rows keep their first start (test_syntax)~test TESTS=syntax~~src/syntax/syntax.c~	if (s->nchg) s->chg[0] = 0, s->chg[1] = SIZE_MAX, s->nchg = 1;~	if (s->nchg) s->chg[1] = SIZE_MAX, s->nchg = 1;
+review 2: after a row-moving edit the pending rows end at the old last end (test_syntax)~test TESTS=syntax~~src/syntax/syntax.c~	if (s->nchg) s->chg[0] = 0, s->chg[1] = SIZE_MAX, s->nchg = 1;~	if (s->nchg) s->chg[0] = 0, s->chg[1] = s->chg[2 * s->nchg - 1], s->nchg = 1;
+review 2: Markdown's rows are found by the changed tree only for a C buffer (test_syntax)~test TESTS=syntax~~src/syntax/syntax.c~s->nlv && L->lang != 2)~s->nlv && L->lang == 0)
+review 2: the fold table is built whole after every parse, not row by row (test_syntax)~test TESTS=syntax~~src/syntax/syntax.c~	if (!s->nlv) {¶		int *v = realloc(s->lv, (n + 1)~	if (1) {¶		int *v = realloc(s->lv, (n + 1)
