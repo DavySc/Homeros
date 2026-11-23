@@ -4,11 +4,9 @@
    CTRL-B switch 'smoothscroll' on for the moment as Neovim does.  Lines are
    counted from 0 here and from 1 in Neovim: Neovim's "lnum == 1" is "l == 0",
    its w_botline (the line below the window) is bot, at most the line count. */
-#include <string.h>
 #include "core_int.h"
 #include "fold.h"
 #include "lsp.h"
-#include "syntax.h"
 #include "uni.h"
 
 typedef long lnr;
@@ -61,16 +59,11 @@ static size_t fold_first(const Win *w, size_t l)
 }
 
 /* win_lines_concealed(): a window with folds (hasAnyFolding(): any with
-   foldmethod=expr, closed fold or not) and 'conceallevel' 2 take the
-   paths Neovim takes for folds (measured: a 4-row window keeps its top
-   where it otherwise scrolls).  Only an Org window has 'conceallevel', as
-   Davy's orgmode sets it there; elsewhere Neovim's default 0 */
-static int concealed(const Win *w)
-{
-	if (w->fold) return 1;
-	const char *ft = w->conceal >= 2 && w->buf->path ? syntax_filetype(w->buf->path) : NULL;
-	return ft && !strcmp(ft, "org");
-}
+   foldmethod=expr, closed fold or not) takes the paths Neovim takes for
+   folds.  'conceallevel' 2 does too (measured: a 4-row window keeps its
+   top where it otherwise scrolls), but only an Org window has it, as
+   Davy's orgmode sets it there, and every Org window has folds */
+static int concealed(const Win *w) { return w->fold != NULL; }
 
 /* get_cursor_rel_lnum(): the relative number of line l, a closed fold
    counting as one line where there are folds */
@@ -316,7 +309,7 @@ static void scroll_cursor_top(Editor *e, Win *w, int min_scroll, int always)
 {
 	lnr old = (lnr)w->top;
 	long off = so_value();
-	int scrolled = 0, used = plines_full(w, (lnr)w->line, NULL, 1);   /* w_cline_height */
+	int scrolled = 0, used = plines_lim(w, (lnr)w->line, 1);   /* w_cline_height */
 	if ((lnr)w->line < old) scrolled = used;
 	lnr top, bot;
 	if (folded(w, (lnr)w->line, &top, &bot)) top--, bot++;

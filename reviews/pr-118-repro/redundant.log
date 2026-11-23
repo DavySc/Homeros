@@ -1,0 +1,20 @@
+=== review 118: a keyword's last [ taken, not its first 
+   seed 11: 0 differ of 20000 texts x 3 modes
+   seed 12: 0 differ of 20000 texts x 3 modes
+   seed 13: 0 differ of 20000 texts x 3 modes
+=== review 118: a match ending at the position does not hold it 
+   seed 11: 0 differ of 20000 texts x 3 modes
+   seed 12: 0 differ of 20000 texts x 3 modes
+   seed 13: 0 differ of 20000 texts x 3 modes
+=== review 118: a span that starts above the line carries on 
+   seed 11: 0 differ of 20000 texts x 3 modes
+   seed 12: 0 differ of 20000 texts x 3 modes
+   seed 13: 0 differ of 20000 texts x 3 modes
+=== review 118: the type search stops at the limit (no 11 bytes past it) 
+   seed 11: 0 differ of 20000 texts x 3 modes
+   seed 12: 0 differ of 20000 texts x 3 modes
+   seed 13: 0 differ of 20000 texts x 3 modes
+=== review 118: a link in a link's description found from its own [[ 
+   seed 11: 0 differ of 20000 texts x 3 modes
+   seed 12: 0 differ of 20000 texts x 3 modes
+   seed 13: 0 differ of 20000 texts x 3 modes

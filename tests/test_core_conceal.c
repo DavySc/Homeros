@@ -12,6 +12,7 @@
 #include "core.h"
 #include "syntax.h"
 #include "../src/core/core_int.h"
+static size_t r1, r2;   /* syntax_update's fold rows, read where a test needs them */
 
 static char line[1 << 16];
 
@@ -26,7 +27,6 @@ static void hex(const char *h, FILE *o, char *s)
 /* each line's spans as K lines (line a z s-in-hex, "-" for hidden) */
 static void spans(Editor *e, FILE *o)
 {
-	size_t r1, r2;
 	while (syntax_update(e->buf->syn, e->buf->text, NULL, &r1, &r2));
 	Conceal cs[64];
 	for (size_t l = 0; l < text_lines(e->buf->text); l++)

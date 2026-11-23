@@ -1379,7 +1379,7 @@ int syntax_foldexpr(Syntax *s, size_t line, int *start)
 	if (s->org) return orgfx_foldexpr(s->org, line, start);
 	if (line >= s->nlv) return 0;
 	*start = s->lv[line] % 2 != 0;
-	return s->lv[line] / 2;
+	return (s->lv[line] - *start) / 2;   /* a level below 0 starts too: ">-1" is -1 */
 }
 
 /* render-markdown 8.14's facts for line l, from the Markdown block tree as

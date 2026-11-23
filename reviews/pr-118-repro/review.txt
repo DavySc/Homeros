@@ -1,0 +1,29 @@
+review 118: a keyword's ]: past a blank not looked for~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~		for (; o && r < z; r++) if (S[r] == ':'~		for (; 0 && r < z; r++) if (S[r] == ':'
+review 118: a keyword's last [ taken, not its first~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~if (S[r] == '[' && r > x + 1 && !o) o = r;~if (S[r] == '[' && r > x + 1) o = r;
+review 118: verbatim may be empty~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~(c = fits(m, m + 2, eol(nextl(m)))) < eol(nextl(m)))~(c = fits(m, m + 1, eol(nextl(m)))) < eol(nextl(m)))
+review 118: verbatim's match ends at its closer~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~VM = m; VC = c; *z = c + 1 + (c + 1 < N);~VM = m; VC = c; *z = c + 1;
+review 118: a match ending at the position does not hold it~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~		if (z >= pos) { m = z; break; }~		if (z > pos) { m = z; break; }
+review 118: a reference at a line's start~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~	if (p > l && (y = sexp(p)) &&~	if ((y = sexp(p)) &&
+review 118: a span that starts above the line carries on~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~			if (z > c->fz && a >= l) c->fz = z;~			if (z > c->fz) c->fz = z;
+review 118: the look ahead goes past a definition~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~c->fq < N && !fn_sep(c->fq) && !defl(c->fq); c->fq = nextl(c->fq)~c->fq < N && !fn_sep(c->fq); c->fq = nextl(c->fq)
+review 118: a script in a link raised~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~		rec(c.la, c.lz);¶~
+review 118: a script in a footnote raised~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~	fn_line(&c, CL, CE, rec);¶~
+review 118: the type search stops at the limit (no 11 bytes past it)~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~e = lim + 11 < N ? lim + 11 : N; ; p++~e = lim; ; p++
+review 118: unhide keeps a span that starts inside~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~		else if (x->z > z) x->a = z;¶~
+review 118: unhide drops a span that ends inside~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~		if (x->a < a) x->z = a;¶		else if~		if (x->a < a) *x = C[--CN];¶		else if
+review 118: a link's hidden end not cut at the line~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~	if (z > CE) z = CE;¶~
+review 118: a link's hidden start not cut at the line~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~	if (a < CL) a = CL;¶~
+review 118: no $$ fragment at a line's start~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~	if (S[m] == '$') return within(l + 2, z, "$$");~	if (S[m] == '$') return 0;
+review 118: a $ fragment may start before ;~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~	if (one(m, " \t\n,.;") ||~	if (one(m, " \t\n,.") ||
+review 118: a fixed-width line is a valid footnote context~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~	if (comment(l) || (b < N && S[b] == ':' && blank(b + 1)) || forbidden(l)) return 0;~	if (comment(l) || (b < N && 0) || forbidden(l)) return 0;
+review 118: a macro's star not taken~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~		x += is(x, "*");¶~
+review 118: only ASCII parentheses count in a footnote~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~		} else if (IN(OPENS, c)) d++;~		} else if (c < 0x80 && IN(OPENS, c)) d++;
+review 118: a form feed ends a plain link~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~ && c != '\f' && c != '\r');~ && c != '\r');
+review 118: a group in a plain link's group~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~			if (!one(p, "])>")) return 0;¶~
+review 118: a plain link of one character~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~		if (n && (!nsb(q) || fin(q))) z = x;~		if (!nsb(q) || fin(q)) z = x;
+review 118: a link from the line above not coloured on~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~	for (int k = c->lz > l; k || link_next(c, nl); k = 0) set(~	for (int k = 0; k || link_next(c, nl); k = 0) set(
+review 118: a comment block not forbidden~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~{ "#+begin_comment", "#+begin_example",~{ "#+begin_xomment", "#+begin_example",
+review 118: an entity's frag test reads any name~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~	if (S[l] == '\\') return alpha(m) && !(ent(l, &x) && entity(m, x));~	if (S[l] == '\\') return alpha(m) && !ent(l, &x);
+review 118: a link in a link's description found from its own [[~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~		if (S[i] == '\n' && inside(i + 1)) return 0;¶~
+review 118: the angle failure stop is one line early~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~	*f = q;¶	return 0;¶}¶/* no link holds~	*f = N;¶	return 0;¶}¶/* no link holds
+review 118: the description failure stop is the end~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~		*f = q + 1;¶~		*f = N;¶

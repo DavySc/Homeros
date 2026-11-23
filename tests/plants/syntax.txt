@@ -107,3 +107,5 @@ syntax: the rows a stopped parse named stay put when an edit above them moves ro
 syntax: a recompute counts from the level shown, not the one past 'foldnestmax' (test_syntax, folds after edits)~test TESTS=syntax~~src/syntax/syntax.c~int lv = a ? s->lv0[a - 1] : 0~int lv = a ? s->lv[a - 1] / 2 : 0
 syntax: Markdown's folds recompute every row the tree changed, not only the edited ones (test_syntax, folds after edits)~test TESTS=syntax~~src/syntax/syntax.c~s->nlv && L->lang != 2)~s->nlv)
 syntax: a .org file's update reports no rows (test_syntax_org)~test TESTS=syntax_org~~src/syntax/syntax.c~		if (r == 1) *r2 = text_lines(t);¶~
+syntax: after a row-moving edit the pending rows keep their first start (test_syntax, folds after edits)~test TESTS=syntax~~src/syntax/syntax.c~if (s->nchg) s->chg[0] = 0, s->chg[1]~if (s->nchg) s->chg[1]
+syntax: a level below 0 that starts a fold reads as 0 (test_syntax, folds after edits: >-1)~test TESTS=syntax~~src/syntax/syntax.c~	return (s->lv[line] - *start) / 2;~	return s->lv[line] / 2;

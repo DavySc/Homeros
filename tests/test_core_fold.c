@@ -27,7 +27,10 @@
    which sets it as the cursor lands.  The test allows it from the first
    time the cursor is in a closed fold until cursor() sets the column
    again; rows, Folded cells, the top line and the cursor line are still
-   compared (measured: 3 of seed 1's 500 cases, 21 of seed 9100's 3000) */
+   compared (measured: 3 of seed 1's 500 cases, 21 of seed 9100's 3000).
+   A rule this wide could hide a column bug in a fold, so the recorded
+   file's count of such screens is fixed: more, or fewer, fails */
+enum { KNOWN_SCREENS = 6 };
 static char line[1 << 16];
 static int lv[4096], st[4096], nlv;
 
@@ -160,6 +163,15 @@ static void fraction(const char *file)
 	core_resize(&e, 0, 3, 1);   /* the current window 3 rows: w1 grows */
 	core_update(&e);
 	CHECK(w1->h > 18 && w1->top == 5);
+	/* the levels change while the buffer is hidden: entering it again
+	   evaluates them anew (w_foldinvalid), the saved open/closed kept */
+	char f2[80];
+	snprintf(f2, sizeof f2, "%s2", file);
+	CHECK((o = fopen(f2, "w")) && !fclose(o) && !core_edit_file(&e, f2, 0) && !e.win->fold);
+	for (int i = 0; i < nlv; i++) lv[i] = i >= 30 && i < 36, st[i] = i == 30;
+	CHECK(!core_buf_alt(&e) && e.win->fold);
+	CHECK(!fold_closed(e.win->fold, 10, &a, &z) && fold_closed(e.win->fold, 32, &a, &z) && a == 30 && z == 35);
+	unlink(f2);
 	core_free(&e);
 }
 
@@ -323,5 +335,9 @@ int main(int argc, char **argv)
 	unlink(file);
 	rmdir(dir);
 	printf("test_core_fold: %d cases, %d differ from Neovim (%d screens with the known column difference)\n", ncase, bad, nkn);
+	if (!strcmp(path, "tests/test_core_fold.txt") && nkn != KNOWN_SCREENS) {
+		printf("test_core_fold: %d screens with the known column difference, the recorded file has %d\n", nkn, KNOWN_SCREENS);
+		return 1;
+	}
 	return bad != 0;
 }
