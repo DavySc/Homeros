@@ -1,0 +1,3 @@
+review: title bar in the text colour~win WIN=win~~src/win/backend.c~DWMWA_CAPTION_COLOR, &BASE, sizeof BASE~DWMWA_CAPTION_COLOR, &TEXT, sizeof TEXT
+review: dark mode off~win WIN=win~~src/win/backend.c~BOOL dark = TRUE;~BOOL dark = FALSE;
+review: no title bar calls at all~win WIN=win~~src/win/backend.c~	DwmSetWindowAttribute(win, DWMWA_USE_IMMERSIVE_DARK_MODE, &dark, sizeof dark);¶	DwmSetWindowAttribute(win, DWMWA_CAPTION_COLOR, &BASE, sizeof BASE);¶	DwmSetWindowAttribute(win, DWMWA_TEXT_COLOR, &TEXT, sizeof TEXT);¶~	(void)dark;¶
