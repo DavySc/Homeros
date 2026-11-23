@@ -23,3 +23,4 @@ paint: a flat undercurl~test TESTS=wl~~src/paint/paint.c~ye - 1 - grid_curl(i, c
 paint: the undercurl in the text's colour~test TESTS=wl~~src/paint/paint.c~uint32_t sp = u->style & FACE_SP ? rgb(u->sp) : fg;~uint32_t sp = fg;
 paint: scroll copies the wrong row~test TESTS=wl~~src/paint/paint.c~px + (size_t)(r + k) * row~px + (size_t)(r - k) * row
 paint: a guide drawn as the preedit~test TESTS=wl~~include/paint.h~PAINT_PRE = ATTR_IMAGE + 1~PAINT_PRE = ATTR_GUIDE
+paint: the cursor's old row not drawn again when it leaves~win WIN=win~~src/paint/paint.c~dirty[r] = all || d || g->crow == r || b->crow == r;~dirty[r] = all || d || g->crow == r;

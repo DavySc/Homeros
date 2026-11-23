@@ -196,14 +196,7 @@ static unsigned long row_hash(const Grid *g, int r)
    comes from span. */
 static int shift(const Grid *g, const Grid *b)
 {
-	int n = g->rows, best = 0, most = 0, changed = 0;
-	/* a move needs two changed rows; typing changes one, and hashing both
-	   grids cost a keystroke's frame 35 of its 55 us (src/win/probe/frames.c
-	   under Wine, 3 runs).  memcmp may call equal rows changed (a long
-	   cluster's store index), which only costs the hashing again */
-	for (int r = 0; r < n && changed < 2; r++)
-		changed += memcmp(&g->c[r * g->cols], &b->c[r * g->cols], sizeof *g->c * (size_t)g->cols) != 0;
-	if (changed < 2) return 0;
+	int n = g->rows, best = 0, most = 0;
 	unsigned long hg[n], hb[n];
 	for (int r = 0; r < n; r++) { hg[r] = row_hash(g, r); hb[r] = row_hash(b, r); }
 	for (int d = 1; d < n; d++)
@@ -233,12 +226,24 @@ void paint(uint32_t *px, int stride, const uint32_t *bk, int bstride, const Grid
 	   takes p99 1.91 ms of the 2 ms frame, reviews/package-7.md), and of a
 	   row only the cells that changed are drawn.  Copying in the direction
 	   of the move reads each source before it is drawn over.  Not over a
-	   wallpaper that differs by row, which would move with the text. */
-	int k = all || (back && bs) ? 0 : shift(g, b);
+	   wallpaper that differs by row, which would move with the text.  One
+	   memcmp a row finds both the rows to look at and whether a move is
+	   possible: it needs two changed rows, and typing changes one (hashing
+	   both grids cost a keystroke's frame 35 of its 55 us under Wine, 3
+	   runs; the pass itself about 10 us on Windows, reviews/pr-140.md).
+	   memcmp may call equal rows changed (a long cluster's store index),
+	   which only costs a look. */
+	int changed = 0;
+	for (int r = 0; r < g->rows; r++) {
+		int d = memcmp(&g->c[r * g->cols], &b->c[r * g->cols], sizeof *g->c * (size_t)g->cols) != 0;
+		changed += d;
+		dirty[r] = all || d || g->crow == r || b->crow == r;
+	}
+	int k = all || (back && bs) || changed < 2 ? 0 : shift(g, b);
 	size_t row = (size_t)ch * (size_t)bw;
 	for (int i = 0; i < g->rows; i++) {
 		int r = k < 0 ? g->rows - 1 - i : i, lo = 0, hi = g->cols, l, h;
-		dirty[r] = 1;
+		if (!dirty[r]) continue;
 		if (!all) {
 			int n = paint_span(g, r, b, r, &lo, &hi);
 			if (!(dirty[r] = n > 0)) continue;
