@@ -1513,7 +1513,8 @@ static void twant(Editor *e, unsigned char *f, unsigned char *syn, size_t *n)
 	}
 }
 
-/* Waits until lsp_faces shows twant's faces (1), or 2 s pass (0). */
+/* Waits until lsp_faces shows twant's faces (1), or 2 s pass (0); then
+   every part of them is what lsp_faces gives for that part. */
 static int tsettle(Editor *e)
 {
 	unsigned char want[512], syn[512], got[512];
@@ -1521,7 +1522,12 @@ static int tsettle(Editor *e)
 	for (long long t0 = ms(); ms() - t0 < 2000; loop_once(10)) {
 		twant(e, want, syn, &n);
 		lsp_faces(e->buf, 0, n, got);
-		if (!memcmp(got, want, n)) return 1;
+		if (memcmp(got, want, n)) continue;
+		for (size_t a = 1; a < n; a++) {          /* asked from inside a token too, as a drawn line's 256 bytes */
+			lsp_faces(e->buf, a, n, got);
+			CHECK(!memcmp(got, want + a, n - a));
+		}
+		return 1;
 	}
 	return 0;
 }

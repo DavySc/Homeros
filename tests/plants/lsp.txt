@@ -98,3 +98,13 @@ lsp: goals: a refused first question leaves Processing file...~test TESTS=lsp~~s
 lsp: goals: a refused question keeps the old No goals.~test TESTS=lsp~~src/lsp/lsp.c~ G.goals.f.n = 0, G.ng = -1;~ G.goals.f.n = 0;
 lsp: goals: an expected type refused drops the goals answered~test TESTS=lsp~~src/lsp/lsp.c~	if (!term) G.goals~	if (term >= 0) G.goals
 lsp: goals: a server dead with a question out read as an answer~test TESTS=lsp~~src/lsp/lsp.c~	int e = m ? json_get(m, tk, 0, "error") : 0;~	int e = m ? json_get(m, tk, 0, "error") : -1;
+lsp: tokens: not moved by edits until the answer comes~test TESTS=lsp~~src/lsp/lsp.c~	shift_set(&d->tok, pos, ndel, nins);¶~¶
+lsp: tokens: an answer for a text edited since shown~test TESTS=lsp~~src/lsp/lsp.c~if (current(d, d->tokver)) decode(~if (1) decode(
+lsp: tokens: a new request without cancelling the last~test TESTS=lsp~~src/lsp/lsp.c~	cancel(d, &d->tokid);¶	d->tokid = d->s->next++;~	d->tokid = d->s->next++;
+lsp: tokens: UTF-16 columns read as bytes~test TESTS=lsp~~src/lsp/lsp.c~size_t a = ls + lsp_u16_byte(b, n, c), z = ls + lsp_u16_byte(b, n, c + (size_t)v[2]);~size_t a = ls + c, z = ls + c + (size_t)v[2];
+lsp: tokens: a new line's start taken from the last token's~test TESTS=lsp~~src/lsp/lsp.c~			l += (size_t)v[0];¶			c = 0;~			l += (size_t)v[0];
+lsp: tokens: the grammar's faces dropped~test TESTS=lsp~~src/lsp/lsp.c~	syntax_faces(b->syn, a, z, face);¶	const Set~	memset(face, 0, z - a);¶	const Set
+lsp: tokens: a type Neovim does not colour coloured~test TESTS=lsp~~src/lsp/lsp.c~		unsigned char f = 0;~		unsigned char f = FACE_KEYWORD;
+lsp: tokens: asked from inside a token, it is missed~test TESTS=lsp~~src/lsp/lsp.c~if (v->v[mid].z <= a) lo = mid + 1;~if (v->v[mid].a < a) lo = mid + 1;
+lsp: tokens: not asked for once the server is ready~test TESTS=lsp~~src/lsp/lsp.c~		for (LspDoc *d = s->docs; d; d = d->link) tokens(d);¶~¶
+lsp: tokens: not asked again after an edit~test TESTS=lsp~~src/lsp/lsp.c~	end(d->s);¶	tokens(d);¶}¶¶void lsp_saved~	end(d->s);¶}¶¶void lsp_saved
