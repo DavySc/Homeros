@@ -12,11 +12,12 @@ import { join } from 'node:path'
 
 const [drive, file, root, nrand = '20', seed = '1'] = process.argv.slice(2)
 const dir = mkdtempSync(join(tmpdir(), 'iv-oracle-'))
-const opened = join(dir, 'opened'), opener = join(dir, 'open.sh')
+// xdg-open (proc_open's) is a script first on PATH that notes the file
+const opened = join(dir, 'opened'), opener = join(dir, 'xdg-open')
 writeFileSync(opener, '#!/bin/sh\necho "$1" >> ' + opened + '\n', { mode: 0o755 })
 // a state directory of its own: the crash journal of an earlier run (whose
 // buffer the page edited) would otherwise come back as the text
-const ed = spawn(drive, [file], { env: { ...process.env, HOMEROS_INFOVIEW: root, HOMEROS_OPEN: opener, XDG_STATE_HOME: dir },
+const ed = spawn(drive, [file], { env: { ...process.env, HOMEROS_INFOVIEW: root, PATH: dir + ':' + process.env.PATH, XDG_STATE_HOME: dir },
     stdio: ['pipe', 'pipe', 'inherit'] })
 let out = ''
 ed.stdout.on('data', d => { out += d })
@@ -34,7 +35,7 @@ async function ask(cmd) {
 
 const src = readFileSync(file, 'utf8').split('\n')
 await until(() => existsSync(opened))
-const html = readFileSync(readFileSync(opened, 'utf8').trim().replace('file://', ''), 'utf8')
+const html = readFileSync(readFileSync(opened, 'utf8').trim(), 'utf8')
 const url = html.match(/url=([^"]+)"/)[1]
 const browser = await chromium.launch()
 const page = await browser.newPage()

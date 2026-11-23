@@ -11,7 +11,8 @@
    - the page's edits (Try this, insertText) and jumps (showDocument) reach
      the buffer, and Lean hears of them.
    The test binary is also the fake server (--fake LOG) and the browser
-   opener (an argument file://...). */
+   opener (xdg-open, a link to it first on PATH, given the child's
+   homeros-infoview-*.html). */
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <netinet/in.h>
@@ -260,7 +261,7 @@ int main(int argc, char **argv)
 	static const char *const roots[] = { "lean-toolchain", NULL };
 	char exe[4096], path[256], cpath[256], root[256], s[1024], opened[256];
 	if (argc == 3 && !strcmp(argv[1], "--fake")) return fake(argv[2]);
-	if (argc == 2 && !strncmp(argv[1], "file://", 7)) {    /* the browser opener */
+	if (argc == 2 && strstr(argv[1], "/homeros-infoview-")) {    /* the browser opener */
 		snprintf(opened, sizeof opened, "%s/opened", getenv("IV_TEST_DIR"));
 		int fd = open(opened, O_WRONLY | O_CREAT | O_APPEND, 0644);
 		CHECK(fd >= 0 && write(fd, argv[1], strlen(argv[1])) > 0 && write(fd, "\n", 1) == 1);
@@ -301,7 +302,14 @@ int main(int argc, char **argv)
 	snprintf(cpath, sizeof cpath, "%s/b.c", dir);
 	put_file(cpath, "int x;\n");
 	setenv("HOMEROS_INFOVIEW", root, 1);
-	setenv("HOMEROS_OPEN", exe, 1);
+	/* xdg-open: this binary, first on PATH, as test_git_signs' script */
+	snprintf(s, sizeof s, "%s/bin", dir);
+	mkdir(s, 0755);
+	char op[300], pathv[4096];
+	snprintf(op, sizeof op, "%s/xdg-open", s);
+	CHECK(!symlink(exe, op));
+	snprintf(pathv, sizeof pathv, "%s:%s", s, getenv("PATH"));
+	setenv("PATH", pathv, 1);
 
 	/* no page files: refused, with a message */
 	setenv("HOMEROS_INFOVIEW", dir, 1);
@@ -333,14 +341,14 @@ int main(int argc, char **argv)
 	CHECK(count(o, "\n") == 2 && !strncmp(o, nl + 1, (size_t)(nl - o)));
 	*nl = 0;
 	struct stat st;
-	CHECK(!stat(o + 7, &st) && (st.st_mode & 0777) == 0600);
-	char *html = slurp(o + 7), *u = strstr(html, "url=http://127.0.0.1:");
+	CHECK(!stat(o, &st) && (st.st_mode & 0777) == 0600);
+	char *html = slurp(o), *u = strstr(html, "url=http://127.0.0.1:");
 	CHECK(u);
 	port = atoi(u + 21);
 	char *slash = strchr(u + 21, '/');
 	snprintf(url, sizeof url, "%.*s", (int)(strchr(slash, '"') - slash - 1), slash + 1);   /* TOKEN/ */
 	char redirect[256], token1[sizeof url];
-	snprintf(redirect, sizeof redirect, "%s", o + 7);
+	snprintf(redirect, sizeof redirect, "%s", o);
 	snprintf(token1, sizeof token1, "%s", url);
 	/* only this machine can connect: the listener is on 127.0.0.1 */
 	char *tcp = slurp("/proc/net/tcp"), lo[32], any[32];
@@ -581,7 +589,7 @@ int main(int argc, char **argv)
 	CHECK(count(o, "\n") == 3);
 	*strrchr(o, '\n') = 0;
 	char *third = strrchr(o, '\n') + 1;
-	html = slurp(third + 7);
+	html = slurp(third);
 	CHECK(strstr(html, "url=http://127.0.0.1:") && !strstr(html, token1));
 	free(html);
 	/* the child let go deletes its file and ends; its end is not its successor's */

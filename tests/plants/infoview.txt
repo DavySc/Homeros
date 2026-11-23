@@ -18,3 +18,7 @@ infoview: the token is the same every time~test TESTS=infoview~~src/infoview/ser
 infoview: applyEdit with no edits sorts NULL~test TESTS=infoview~~src/infoview/infoview.c~	if (ne) qsort(~	qsort(
 infoview: a line from the child with no space~fuzz FUZZERS=infoview_call FUZZ_SECONDS=60~~src/infoview/infoview.c~	if (!sp) return;¶	*sp = 0;~	*sp = 0;
 infoview: the end of a child let go takes its successor's state~test TESTS=infoview~~src/infoview/infoview.c~	if ((intptr_t)ctx != children) return;~	if ((intptr_t)ctx != children && 0) return;
+# the Windows half (src/infoview/check.sh, under Wine)
+infoview: the child's pipes synchronous on Windows (proc_spawn_ov is proc_spawn)~win WIN=infoview~~src/loop/win.c~pipe_pair(s, &theirs[s], cols < 0 && s < 2)~pipe_pair(s, &theirs[s], 0)
+infoview: the sockets' event never reset (the child spins and starves)~win WIN=infoview~~src/infoview/serve/serve.c~	ResetEvent(sev);¶~¶
+infoview: a blocking write to the editor on Windows (a busy editor stops the pages)~win WIN=infoview~~src/infoview/serve/serve.c~	if (WriteFileEx(eout, wing.s, (DWORD)wing.n, &wov, done)) wbusy = 1;~	DWORD w;¶	if (WriteFile(eout, wing.s, (DWORD)wing.n, &w, &wov) || GetOverlappedResult(eout, &wov, &w, TRUE)) wbusy = 0;
