@@ -1095,6 +1095,12 @@ static double cpu_ms(void)
 	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t);
 	return t.tv_sec * 1e3 + t.tv_nsec / 1e6;
 }
+/* each side's least of 5 tries: a busy machine only adds time, so the
+   least is the steady time, and a slow try on one side cannot let a
+   plant through (PR 143's review: plant 103 escaped 1 run in 235 when
+   any one of 3 tries under the bound passed; least of 3 let one clean
+   run of 30 reach 31.5 on the bound 40 below) */
+static double least(double a, double b) { return a < b ? a : b; }
 /* a fresh OrgFx of s: line 1 coloured in pieces of p bytes, then shown,
    with c spans; the time of all of it */
 static double colour_line(const char *s, size_t m, size_t p, size_t c)
@@ -1260,9 +1266,10 @@ int main(void)
 	   to the line's end from every emphasis marker, rule check or script;
 	   each reference's link and macro search goes on along the line, not
 	   from its start; under a definition, valid() asked once a line, and
-	   its span put once.  Measured under the sanitizers, 5 runs: at most
-	   8.7 times the plain line asked whole (a[fn:1]); each plant aimed at
-	   it at least 37 times on one unit (its span put whole again) */
+	   its span put once.  Measured under the sanitizers, 40 runs, half
+	   beside 4 busy loops: at most 8.9 times the plain line asked whole
+	   (a[fn:1]); each plant aimed at it at least 29 times on one unit
+	   (its span put whole again; 30 runs, 3 tries) */
 	static const char *const units[] = { "word ", "<2026-01-01 x ", "<%%(x) ", "*a /b ", "=a ", "+-", "x^{a} \\alpha ", "x^{é} ",
 		"a[fn:1] ", "a [fn::b c] ", "a [fn:: (", "[[a][b]] ", "http://b.c ", "<http:b c> ", "[[a][b ", "<http:b ",
 		"a \\cite{[fn:1]} ", "a [[b][[fn:1]]] " };
@@ -1276,11 +1283,17 @@ int main(void)
 		line[i][m++] = '\n';
 		lm[i] = m;
 		size_t c = i == 4 || i == 6 || i == 11 || i == 17 ? 64 : 0;
-		int ok = 0;
-		for (int r = 0; r < 3 && !ok; r++)   /* up to 3 tries: a busy machine slows a run, never speeds one */
-			ok = colour_line(line[i], m, 256, c) < 16 * colour_line(line[0], lm[0], lm[0], 0);
-		CHECK(ok);
+		double a = 1e9, b = 1e9;
+		for (int r = 0; r < 5; r++) a = least(a, colour_line(line[i], m, 256, c)), b = least(b, colour_line(line[0], lm[0], lm[0], 0));
+		CHECK(a < 16 * b);
 	}
+	/* the plain line against its first sixteenth: what slows the plain line
+	   too cancels above, so this sees a scan to the line's end from every
+	   byte (PR 143's review).  40 runs as above: 13.3 to 16.4 times; that
+	   plant 71 to 116 */
+	double a = 1e9, b = 1e9;
+	for (int r = 0; r < 5; r++) a = least(a, colour_line(line[0], lm[0], lm[0], 0)), b = least(b, colour_line(line[0], lm[0] / 16, lm[0] / 16, 0));
+	CHECK(a < 32 * b);
 	/* the frame gate on many lines, against as many lines of x: the last
 	   50 lines of a paragraph without a headline, shown one after another
 	   and then coloured, take one walk from the top of the text, and a
@@ -1288,15 +1301,17 @@ int main(void)
 	   footnote that never closes, on the first line, then the first 50
 	   lines shown (typing it: the walk, the colours and the conceal each
 	   ask it), and a paragraph of them.  Each entry's bound sits between
-	   the most it took and the least a plant aimed at it took (8 runs
-	   and 2 runs, under the sanitizers), in times the lines of x */
+	   the most it took and the least a plant aimed at it took, in times
+	   the lines of x, under the sanitizers: 40 runs, half beside 4 busy
+	   loops (plants 103, 118, 133), or 30 runs with 3 tries (117), or
+	   PR 127's 2 runs (2567 and more) */
 	static const struct { const char *ln; size_t n, shown; double bound; const char *end, *top; } gate[] = {
-		{ "a *b* x^{2}\n", 100000, 5, 3, "", "" },   /* 1.3; the text of the checkpoint check */
-		{ "[fn:1] [[a][b]] *b* x^{2}\n", 100000, 7, 3.5, "", "" },   /* 2.4; 4.5 */
+		{ "a *b* x^{2}\n", 100000, 5, 2, "", "" },   /* 1.07; the text of the checkpoint check, whose plants walk plain lines too */
+		{ "[fn:1] [[a][b]] *b* x^{2}\n", 100000, 7, 2.7, "", "" },   /* 1.68; 4.38 */
 		/* openers that never close, then one closer at the end, past the blank lines */
-		{ "<http:a\n", 20000, 0, 20, "", "" }, { "[[a][x\n", 20000, 0, 20, "", "" },   /* 5.6, 2.8; 2567, 5937 */
-		{ "<http:a\n\n", 50000, 0, 4, "a>", "" }, { "[[a][x\n\n", 50000, 0, 10, "]]", "" },   /* 1.7, 3.0; 5.9, 34 */
-		{ "a *b* x^{2}\n", 100000, 5, 40, "", "x [fn::a xx" }, { "x [fn::a\n", 20000, 0, 20, "", "" },   /* 22.8, 4.4; 80, 2159 */
+		{ "<http:a\n", 20000, 0, 20, "", "" }, { "[[a][x\n", 20000, 0, 20, "", "" },   /* 5.67, 2.83; 2567, 5937 */
+		{ "<http:a\n\n", 50000, 0, 3.2, "a>", "" }, { "[[a][x\n\n", 50000, 0, 8, "]]", "" },   /* 1.93, 2.41; 5.41, 30.6 */
+		{ "a *b* x^{2}\n", 100000, 5, 40, "", "x [fn::a xx" }, { "x [fn::a\n", 20000, 0, 20, "", "" },   /* 22.2, 6.45; 65.7, 2159 */
 	};
 	for (size_t k = 0; k < sizeof gate / sizeof *gate; k++) {
 		static char many[100000 * 26], plain[sizeof many];
@@ -1306,10 +1321,9 @@ int main(void)
 		memcpy(many + m - strlen(gate[k].end), gate[k].end, strlen(gate[k].end));
 		memcpy(many, gate[k].top, strlen(gate[k].top));
 		for (size_t i = 0; i < m; i++) plain[i] = (i + 1) % w ? 'x' : '\n';
-		int ok = 0;
-		for (int r = 0; r < 3 && !ok; r++)
-			ok = frame(many, m, l0, w, gate[k].shown, *gate[k].top, fc) < gate[k].bound * frame(plain, m, l0, w, 0, 0, fp);
-		CHECK(ok);
+		double a = 1e9, b = 1e9;
+		for (int r = 0; r < 5; r++) a = least(a, frame(many, m, l0, w, gate[k].shown, *gate[k].top, fc)), b = least(b, frame(plain, m, l0, w, 0, 0, fp));
+		CHECK(a < gate[k].bound * b);
 		CHECK(k != 1 || (fc[0] == FACE_MARKUP_LINK_LABEL && fc[7] == FACE_MARKUP_LINK_URL));
 		if (k) continue;
 		/* checkpoints: lines shown going up the text after one walk start
