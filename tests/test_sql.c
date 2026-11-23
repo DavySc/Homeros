@@ -171,9 +171,12 @@ int main(int argc, char **argv)
 	CHECK(!cancel(&d) && d.t.state == TDS_READY && !tds_pending(&d.t));
 	/* a cancel after the batch's last DONE was sent: the server still sends
 	   DONE_ATTN, which must end this run, not the next (SqlRun.tla's
-	   "firstdone") */
+	   "firstdone").  The batch is sent and its whole reply waits unread
+	   before the cancel goes, so the DONE_ATTN comes in a later read (sent
+	   together, the plant was caught 0 of 1 times) */
 	d.out->n = 0;
-	CHECK(!query(&d, "select 1 as one") && !cancel(&d) && !run(&d, TDS_READY, 0));
+	CHECK(!query(&d, "select 1 as one") && !tds_io(&d.t, 0) && !nanosleep(&(struct timespec){0, 200000000}, NULL));
+	CHECK(d.t.state == TDS_BUSY && !cancel(&d) && !run(&d, TDS_READY, 0));
 	CHECK(is(&d, "select 2 as two", "two\n2\n(1 row affected)\n"));
 	/* a cancelled result reads on to the server's DONE_ATTN and shows no
 	   error of its own; the connection then runs the next batch */
