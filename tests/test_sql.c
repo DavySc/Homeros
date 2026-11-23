@@ -10,12 +10,18 @@
    stderr: login, first row, total (ms), rows.  -t trusts the server's own
    certificate; -q prints no rows; -c ROWS pauses 300 ms after ROWS rows,
    cancels, and reports how long the cancel took. */
-#include <poll.h>
 #include <string.h>
 #include <time.h>
 #include "check.h"
 #include "../src/sql/pg.h"
 #include "../src/sql/tds.h"
+#ifdef _WIN32   /* src/sql/check.sh: the same test, built for Windows, under Wine */
+#include <fcntl.h>
+#include <io.h>
+#include <windows.h>
+#else
+#include <poll.h>
+#endif
 
 /* the two clients' states have the same numbers, so one loop drives both */
 _Static_assert((int)TDS_READY == (int)PG_READY && (int)TDS_BUSY == (int)PG_BUSY && (int)TDS_DEAD == (int)PG_DEAD, "states");
@@ -38,10 +44,16 @@ static void db_close(Db *d) { d->pg ? pg_close(&d->g) : tds_close(&d->t); }
 static int run(Db *d, int until, uint64_t stop)
 {
 	while (*d->state != until && *d->state != TDS_DEAD && !(stop && *d->rows >= stop)) {
+#ifdef _WIN32   /* the sockets' events: every wake reads (net.h) */
+		HANDLE h[2] = {(HANDLE)(INT_PTR)d->net->fd, d->kill && d->kill->fd != -1 ? (HANDLE)(INT_PTR)d->kill->fd : NULL};
+		if (WaitForMultipleObjects(h[1] ? 2 : 1, h, FALSE, INFINITE) == WAIT_FAILED) return -1;
+		int in = 1;
+#else
 		int w = d->pg ? pg_pending(&d->g) : tds_pending(&d->t);
 		struct pollfd p[2] = {{d->net->fd, (short)(POLLIN | (w ? POLLOUT : 0)), 0}, {d->kill ? d->kill->fd : -1, POLLOUT, 0}};
 		if (poll(p, 2, -1) < 0) return -1;
 		int in = p[0].revents & (POLLIN | POLLHUP | POLLERR);
+#endif
 		if ((d->pg ? pg_io(&d->g, in) : tds_io(&d->t, in)) < 0) return -1;
 	}
 	return *d->state == TDS_DEAD ? -1 : 0;
@@ -73,6 +85,9 @@ static int driver(int argc, char **argv)
 		else if (!strcmp(argv[a], "-q")) quiet = 1;
 		else if (!strcmp(argv[a], "-c") && a + 1 < argc) stop = strtoull(argv[++a], NULL, 10);
 	if (pg) pass = getenv("SQL_PG_PASSWORD");
+#ifdef _WIN32   /* the oracles read the bytes the server sent */
+	_setmode(0, _O_BINARY), _setmode(1, _O_BINARY);
+#endif
 	static char sql[1 << 20];
 	sql[fread(sql, 1, sizeof sql - 1, stdin)] = 0;
 	Db d;
@@ -124,12 +139,17 @@ static void refusals(int pg, const char *why)
 		db_close(&d);
 	}
 	pass = good;
-	CHECK(login(&d, pg, 0) && strstr(d.net->err, "certificate verify failed"));
-	db_close(&d);
+	for (int i = 0; i < 2; i++) {   /* twice: Windows's CAs are read once */
+		CHECK(login(&d, pg, 0) && strstr(d.net->err, "certificate verify failed"));
+		db_close(&d);
+	}
 }
 
 static void oracle(const char *py, const char *argv0)
 {
+#ifdef _WIN32   /* src/sql/check.sh runs them with this program under Wine */
+	return (void)py, (void)argv0;
+#endif
 	char cmd[4096];
 	snprintf(cmd, sizeof cmd, "python3 %s %s %s", py, argv0, getenv("SEED") ? getenv("SEED") : "1");
 	CHECK(!system(cmd));
@@ -166,6 +186,13 @@ int main(int argc, char **argv)
 	CHECK(!batch(&d, "rollback", 0) && !d.t.txn);
 	db_close(&d);
 	refusals(0, "Login failed for user 'sa'");
+	/* nothing listens on port 1: the refusal is reported, not waited on */
+	CHECK((tds_open(&d.t, "127.0.0.1", 1, "sa", pass, "master", 1) || run(&d, TDS_READY, 0)) && strstr(d.t.net.err, "refused"));
+	tds_close(&d.t);
+#ifndef _WIN32   /* the Windows login is Windows's */
+	CHECK(tds_open(&d.t, "127.0.0.1", 1433, NULL, NULL, "master", 1) && strstr(d.t.net.err, "needs Windows"));
+	tds_close(&d.t);
+#endif
 	oracle("tests/test_sql_tds.py", argv[0]);
 
 	if (!up(&d, 1)) return 1;
@@ -186,5 +213,8 @@ int main(int argc, char **argv)
 	db_close(&d);
 	refusals(1, "password authentication failed for user \"postgres\"");
 	oracle("tests/test_sql_pg.py", argv[0]);
+#ifdef _WIN32   /* winpass.sh's summary line */
+	fprintf(stderr, "test_sql: both servers: login, text, cancel, transactions, refusals\n");
+#endif
 	return 0;
 }

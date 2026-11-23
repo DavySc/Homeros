@@ -14,11 +14,12 @@
 static int put32(Str *b, uint32_t v) { char s[4] = {(char)(v >> 24), (char)(v >> 16), (char)(v >> 8), (char)v}; return str_add(b, s, 4); }
 static uint32_t be(const char *s, int n) { uint32_t v = 0; while (n--) v = v << 8 | (unsigned char)*s++; return v; }
 
-/* a message: type (0 for none), length, body, sealed as one TLS record */
+/* a message: type (0 for none), length, body, sealed as one TLS record,
+   sent as far as the socket takes it (net_send) */
 static int send_msg(Net *c, char type, const char *s, size_t n)
 {
 	Str b = {0};
-	int r = (type && str_add(&b, &type, 1)) || put32(&b, (uint32_t)n + 4) || str_add(&b, s, n) || net_send(c, b.s, b.n);
+	int r = (type && str_add(&b, &type, 1)) || put32(&b, (uint32_t)n + 4) || str_add(&b, s, n) || net_send(c, b.s, b.n) || net_flush(c);
 	str_free(&b);
 	return r;
 }

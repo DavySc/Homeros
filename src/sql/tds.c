@@ -30,6 +30,24 @@ static uint64_t le(const uint8_t *b, size_t n)
 }
 static uint64_t num(Cur *c, size_t n) { const uint8_t *b = take(c, n); return b ? le(b, n) : 0; }
 
+/* a message as packets of the agreed size, each sealed as one TLS record
+   (SQL Server closes the connection when a header is sealed alone,
+   measured), sent as far as the socket takes them (net_send) */
+static int send_msg(Tds *t, uint8_t type, const char *s, size_t n)
+{
+	size_t room = t->pkt - 8;
+	uint8_t id = 1;
+	do {
+		size_t k = n < room ? n : room;
+		char p[32768] = {(char)type, k == n, (char)((k + 8) / 256), (char)(k + 8), 0, 0, (char)id++, 0};
+		memcpy(p + 8, s, k);
+		if (net_send(&t->net, p, k + 8)) return -1;
+		s += k, n -= k;
+	} while (n);
+	t->eom = 0;
+	return net_flush(&t->net);
+}
+
 /* n bytes of UTF-16LE as text (net_cp's raw); a lone surrogate is U+FFFD */
 static int put_u16(Str *b, const uint8_t *s, size_t n, int raw)
 {
@@ -344,7 +362,15 @@ static int token(Tds *t, Cur *c)
 		if (ty == 9 || ty == 10) t->txn = 0;
 		return 0;
 	}
-	case 0xAD: case 0xA9: case 0xA4: case 0xA5: case 0xED:   /* LOGINACK, ORDER, TABNAME, COLINFO, SSPI */
+	case 0xED: {   /* SSPI: the Windows login's next token from the server; ours goes back as an SSPI message */
+		size_t len = (size_t)num(c, 2);
+		const char *p = (const char *)take(c, len);
+		Str o = {0};
+		int r = p && (net_sspi(&t->net, NULL, p, len, &o) < 0 || (o.n && send_msg(t, 0x11, o.s, o.n)));
+		str_free(&o);
+		return r ? -1 : 0;
+	}
+	case 0xAD: case 0xA9: case 0xA4: case 0xA5:   /* LOGINACK, ORDER, TABNAME, COLINFO */
 		take(c, (size_t)num(c, 2));
 		return 0;
 	case 0x79: take(c, 4); return 0;                    /* RETURNSTATUS */
@@ -379,23 +405,6 @@ int tds_parse(Tds *t)
 	return 0;
 }
 
-/* a message as packets of the agreed size, each sealed as one TLS record:
-   SQL Server closes the connection when a header is sealed alone (measured) */
-static int send_msg(Tds *t, uint8_t type, const char *s, size_t n)
-{
-	size_t room = t->pkt - 8;
-	uint8_t id = 1;
-	do {
-		size_t k = n < room ? n : room;
-		char p[32768] = {(char)type, k == n, (char)((k + 8) / 256), (char)(k + 8), 0, 0, (char)id++, 0};
-		memcpy(p + 8, s, k);
-		if (net_send(&t->net, p, k + 8)) return -1;
-		s += k, n -= k;
-	} while (n);
-	t->eom = 0;
-	return 0;
-}
-
 static int put_le(Str *b, uint64_t v, size_t n)
 {
 	char s[8];
@@ -421,9 +430,13 @@ int tds_open(Tds *t, const char *host, int port, const char *user, const char *p
 	/* PRELOGIN: version, encryption ON (always TLS) */
 	static const char pre[] = {0, 0, 11, 0, 6, 1, 0, 17, 0, 1, (char)0xFF, 16, 0, 0, 0, 0, 0, 1};
 	if (send_msg(t, 0x12, pre, sizeof pre)) return -1;
-	/* LOGIN7, sent when the prelogin reply arrives */
-	const char *str[9] = {"homeros", user, pass, "homeros", host, "", "homeros", "", db};
-	Str v = {0}, *l = &t->login;
+	/* LOGIN7, sent when the prelogin reply arrives; without a user, the
+	   Windows login's first token (the server's name as FreeTDS's tds_get_spn) */
+	const char *str[9] = {"homeros", user ? user : "", user ? pass : "", "homeros", host, "", "homeros", "", db};
+	Str v = {0}, sp = {0}, *l = &t->login;
+	char spn[300];
+	snprintf(spn, sizeof spn, "MSSQLSvc/%s:%d", t->net.name, port);
+	if (!user && net_sspi(&t->net, spn, NULL, 0, &sp) < 0) return -1;
 	uint16_t off = 94, len[9];
 	for (int i = 0; i < 9; i++) {
 		size_t at = v.n;
@@ -432,12 +445,15 @@ int tds_open(Tds *t, const char *host, int port, const char *user, const char *p
 		if (i == 2)   /* the password's bytes: nibbles swapped, then xor 0xA5 */
 			for (size_t j = at; j < v.n; j++) v.s[j] = (char)(((unsigned char)v.s[j] % 16 * 16 + (unsigned char)v.s[j] / 16) ^ 0xA5);
 	}
-	int r = put_le(l, 94 + v.n, 4) || put_le(l, 0x74000004, 4) || put_le(l, 4096, 4) || put_le(l, 7, 4) || put_le(l, (uint64_t)getpid(), 4)
-		|| put_le(l, 0, 4) || put_le(l, 0x0003E0, 4) /* USE_DB, INIT_DB_FATAL, SET_LANG; INIT_LANG_FATAL, ODBC (SSMS's ANSI settings) */
+	int r = put_le(l, 94 + v.n + sp.n, 4) || put_le(l, 0x74000004, 4) || put_le(l, 4096, 4) || put_le(l, 7, 4) || put_le(l, (uint64_t)getpid(), 4)
+		/* USE_DB, INIT_DB_FATAL, SET_LANG; INIT_LANG_FATAL, ODBC (SSMS's ANSI settings), INT_SECURITY for the Windows login */
+		|| put_le(l, 0, 4) || put_le(l, user ? 0x0003E0 : 0x0083E0, 4)
 		|| put_le(l, 0, 4) || put_le(l, 0x409, 4);
 	for (int i = 0; i < 9 && !r; i++) r = put_le(l, off, 2) || put_le(l, len[i], 2), off = (uint16_t)(off + 2 * len[i]);
-	r = r || str_add(l, "\0\0\0\0\0\0", 6) || put_le(l, off, 4) || put_le(l, off, 4) || put_le(l, off, 4) || put_le(l, 0, 4) || str_add(l, v.s, v.n);
-	str_free(&v);
+	/* client ID; SSPI (its length below 64 KB: Windows's MaxTokenSize is 48,000); no file to attach, no new password */
+	r = r || str_add(l, "\0\0\0\0\0\0", 6) || put_le(l, off + sp.n * 65536, 4) || put_le(l, off + sp.n, 4) || put_le(l, off + sp.n, 4)
+		|| put_le(l, 0, 4) || str_add(l, v.s, v.n) || str_add(l, sp.s, sp.n);
+	str_free(&v), str_free(&sp);
 	return r ? -1 : 0;
 }
 
@@ -457,7 +473,7 @@ int tds_cancel(Tds *t)
 	if (t->state != TDS_BUSY) return 0;
 	static const char h[8] = {6, 1, 0, 8, 0, 0, 1, 0};
 	t->state = TDS_CANCEL, t->quiet = 1;
-	return net_send(&t->net, h, 8);
+	return net_send(&t->net, h, 8) || net_flush(&t->net) ? -1 : 0;
 }
 
 int tds_pending(const Tds *t) { return t->net.snd.n > 0; }
@@ -497,7 +513,7 @@ static int io(Tds *t, int readable)
 		r = r < 0 || (b.n && send_msg(t, 0x12, b.s, b.n)) ? -1 : r;
 		str_free(&b);
 		if (r > 0) t->net.tls = 1, t->state = TDS_LOGIN, r = send_msg(t, 0x10, t->login.s, t->login.n);
-		return r || net_flush(&t->net);
+		return r;
 	}
 	int was = t->state;
 	if (tds_parse(t)) return -1;

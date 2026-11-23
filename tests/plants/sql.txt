@@ -39,3 +39,9 @@ sql: our own Postgres cancel shown as an error~test TESTS=sql~~src/sql/pg.c~if (
 sql: the Postgres cancel carries the wrong key~test TESTS=sql~~src/sql/pg.c~put32(&s, p->pid) || put32(&s, p->key)~put32(&s, p->pid) || put32(&s, p->pid)
 sql: the Postgres transaction state not read~test TESTS=sql~~src/sql/pg.c~p->txn = n ? s[0] : 'I';~p->txn = 'I';
 sql: a refused login's reason lost to the server's close_notify~test TESTS=sql~~src/sql/net.c~e == SSL_ERROR_WANT_READ || e == SSL_ERROR_ZERO_RETURN ? 0~e == SSL_ERROR_WANT_READ ? 0
+sql: a refused connect's reason lost~test TESTS=sql~~src/sql/net.c~"send: %s", why());~"send failed%s", "");
+sql: a Windows login tried off Windows~test TESTS=sql~~src/sql/net.c~"a Windows login needs Windows"~"Windows login: SEC_E_NO_CREDENTIALS"
+win: a message waits for the write wake Winsock sends only after a send would block~win WIN=sql~~src/sql/tds.c~	t->eom = 0;¶	return net_flush(&t->net);~	t->eom = 0;¶	return 0;
+win: a Postgres message waits for the write wake Winsock sends only after a send would block~win WIN=sql~~src/sql/pg.c~net_send(c, b.s, b.n) || net_flush(c);~net_send(c, b.s, b.n);
+win: a refused connect taken as done (FD_CONNECT's error dropped)~win WIN=sql~~src/sql/net.c~	if (!ne.iErrorCode[FD_CONNECT_BIT]) return c->up = 1, 0;~	return c->up = 1, 0;
+win: a send before the connect is done hides its refusal~win WIN=sql~~src/sql/net.c~	if (!c->up && woke(c)) return -1;¶~
