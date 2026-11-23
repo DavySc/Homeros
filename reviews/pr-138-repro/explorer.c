@@ -10,6 +10,7 @@
    Build: as src/infoview/check.sh's test, plus -lshell32 -ladvapi32. */
 #include <windows.h>
 #include <shellapi.h>
+#include <shlobj.h>
 #include <stdio.h>
 #include <string.h>
 #include "loop.h"
