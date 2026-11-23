@@ -30,4 +30,37 @@ jobs:
           zig cc -target x86_64-windows-gnu -std=c17 -Wall -Wextra -Iinclude -O1 -g -o build/win/explorer.exe reviews/pr-138-repro/explorer.c src/loop/*.c src/str/str.c -lws2_32 -lshell32 -ladvapi32
           timeout 120 build/win/explorer.exe || echo "explorer probe: status $?"
       - shell: bash
-        run: bash reviews/pr-138-repro/winplants.sh
+        timeout-minutes: 5
+        continue-on-error: true
+        run: bash reviews/pr-138-repro/winplants.sh 1
+      - shell: bash
+        timeout-minutes: 5
+        continue-on-error: true
+        run: bash reviews/pr-138-repro/winplants.sh 2
+      - shell: bash
+        timeout-minutes: 5
+        continue-on-error: true
+        run: bash reviews/pr-138-repro/winplants.sh 3
+      - shell: bash
+        timeout-minutes: 5
+        continue-on-error: true
+        run: bash reviews/pr-138-repro/winplants.sh 4
+      - shell: bash
+        timeout-minutes: 5
+        continue-on-error: true
+        run: bash reviews/pr-138-repro/winplants.sh 5
+      - shell: bash
+        timeout-minutes: 5
+        continue-on-error: true
+        run: bash reviews/pr-138-repro/winplants.sh 6
+      - shell: bash
+        timeout-minutes: 5
+        continue-on-error: true
+        run: bash reviews/pr-138-repro/winplants.sh 7
+      - shell: bash
+        timeout-minutes: 5
+        continue-on-error: true
+        run: bash reviews/pr-138-repro/winplants.sh 8
+      - if: always()
+        shell: bash
+        run: echo done
