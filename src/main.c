@@ -121,7 +121,8 @@ int main(int argc, char **argv)
 		}
 		/* deferred work only once the frame is out and no key waits */
 		if (syn && !dirty && !qn) {
-			int r = syntax_update(e.buf->syn, e.buf->text, loop_waiting);
+			size_t r1, r2;
+			int r = syntax_update(e.buf->syn, e.buf->text, loop_waiting, &r1, &r2);
 			syn = r == 2;
 			dirty = r == 1;
 		}

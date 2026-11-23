@@ -1,0 +1,4 @@
+[fn:1] a
+#+begin_export html
+[fn:1] y
+#+end_export

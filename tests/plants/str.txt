@@ -1,3 +1,7 @@
 # Plants for src/str/ (thread 0's; format in tools/planted.sh).
 str_lines: the unfinished tail is dropped (test_str)~test TESTS=str~~src/str/str.c~		if (!(nl = memchr(b, '\n', (size_t)(e - b)))) return str_add(part, b, (size_t)(e - b));~		if (!(nl = memchr(b, '\n', (size_t)(e - b)))) return 0;
 str_lines: a line's earlier pieces are lost (test_str)~test TESTS=str~~src/str/str.c~		if (str_add(part, b, (size_t)(nl - b))) return -1;¶		size_t k = part->n;~		part->n = 0;¶		if (str_add(part, b, (size_t)(nl - b))) return -1;¶		size_t k = part->n;
+str: a text longer than the room is left cut~test TESTS=str~~src/str/str.c~	if ((size_t)n >= room) {¶		va_start(ap, fmt);~	if (0) {¶		va_start(ap, fmt);
+str: the text that just fills the room loses its NUL's place~test TESTS=str~~src/str/str.c~((size_t)n >= room && grow~((size_t)n > room && grow
+str: a long text formatted again at the room's length~test TESTS=str~~src/str/str.c~		vsnprintf(s->s + s->n, (size_t)n + 1, fmt, ap);~		vsnprintf(s->s + s->n, room, fmt, ap);
+str: a failed str_addf leaves its cut text after the NUL's place~test TESTS=str~~src/str/str.c~		if (s->cap) s->s[s->n] = 0;   /* the cut text the first pass left */~		(void)0;

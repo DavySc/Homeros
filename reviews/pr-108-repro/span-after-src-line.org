@@ -1,0 +1,3 @@
+#+begin_src c
+x_{i a_{b}^{c}{} |
+* }\leqx _u_{}|

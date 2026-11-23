@@ -20,6 +20,8 @@
 #include "text.h"
 #include "../src/core/core_int.h"
 
+static size_t r1, r2;   /* syntax_update's changed fold rows, unused here */
+
 static char path[] = "/tmp/core_contractXXXXXX";
 
 static void at(Editor *e, size_t l)
@@ -267,7 +269,7 @@ int main(void)
 	CHECK(!core_edit_file(&e, md, 1) && !grid_resize(&g, 24, 80));
 	e.win->line = 1;
 	do core_draw(&e, &g);
-	while (syntax_update(e.buf->syn, e.buf->text, NULL));
+	while (syntax_update(e.buf->syn, e.buf->text, NULL, &r1, &r2));
 	CHECK(g.c[win_numw(e.win)].bg == FACE_HEADING_1_BG);   /* not on the cursor line */
 	/* nine windows one above another need 18 rows and the command line;
 	   the grid has 6 */

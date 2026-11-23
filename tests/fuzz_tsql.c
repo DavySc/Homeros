@@ -12,6 +12,8 @@
 #include "text.h"
 #include "tsql.h"
 
+static size_t r1, r2;   /* syntax_update's changed fold rows, unused here */
+
 static const char *const tok[48] = {
 	"'", "N'", "\"", "[", "]", "/*", "*/", "--", "\n", "<", ">", "=", "@@ERROR", "LEFT(", "sys.", "x ",
 	"1", "0x", "e", "E", "+", "-", ".", "as", "f", "9", " ", "|", "*", "N", "@", "#",
@@ -43,16 +45,16 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	while (at < n) {
 		unsigned op = byte();
 		size_t len = text_len(t);
-		if (op % 4 == 0) syntax_update(s, t, stop);
+		if (op % 4 == 0) syntax_update(s, t, stop, &r1, &r2);
 		else if (op % 4 == 1) {            /* a window, then every token */
 			size_t a = byte() * len / 256, z = a + byte() * 8;
 			if (z > len) z = len;
 			/* drawn again when syntax_update says, as the main loop does */
 			syntax_faces(s, a, z, f);
-			if (syntax_update(s, t, NULL) == 1) syntax_faces(s, a, z, f);
+			if (syntax_update(s, t, NULL, &r1, &r2) == 1) syntax_faces(s, a, z, f);
 			Syntax *r = syntax_open(path, t);
 			if (!r) abort();
-			syntax_update(r, t, NULL);    /* so no far window is left plain */
+			syntax_update(r, t, NULL, &r1, &r2);    /* so no far window is left plain */
 			for (size_t i = 0; i < z; i += 8192) syntax_faces(r, i, i + 8192 < z ? i + 8192 : z, g + i);
 			syntax_free(r);
 			if (memcmp(f, g + a, z - a)) abort();

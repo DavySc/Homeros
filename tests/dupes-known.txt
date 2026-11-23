@@ -3,10 +3,8 @@
 src/file/file.c src/file/win.c 902a5964
 src/file/state.c src/file/win.c f6b010e6
 src/loop/loop.c src/loop/loop.c c184535e
-src/loop/loop.c src/loop/win.c e3ec2e1f
 src/org/org.c src/org/org.c 3d3a4c38
 src/org/org.c src/org/org.c 0842e25b
-src/org/org.c src/org/org.c 854f7973
 src/tools/oil.c src/tools/oil.c 4e751422
 src/tools/oil.c src/tools/oil.c b27d12dd
 src/tools/pick.c src/tools/pick.c d22d9731

@@ -1,0 +1,21 @@
+caught        review: the fold table is built whole after every parse, not row by row (test_syntax)   (make test TESTS=syntax): tests/test_syntax.c:452: CHECK(syntax_update(s, t, NULL, &r1, &r2) == 1 && r1 == 0 && r2 == 4) failed
+caught        review: the edited rows do not grow upwards with a later edit (test_syntax)   (make test TESTS=syntax): tests/test_syntax.c:886: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        review: the folds ending on the row above are not taken off (test_syntax)   (make test TESTS=syntax): tests/test_syntax.c:452: CHECK(syntax_update(s, t, NULL, &r1, &r2) == 1 && r1 == 0 && r2 == 4) failed
+caught        review: the edited rows do not grow downwards with a later edit (test_syntax)   (make test TESTS=syntax): tests/test_syntax.c:886: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+NOT CAUGHT    review: the base level is the clamped one, not levels0 (test_syntax)   (make test TESTS=syntax passed)
+NOT CAUGHT    review: an added row's levels0 is 0, not -1 (test_syntax)   (make test TESTS=syntax passed)
+caught        review: Markdown's rows reported changed have no start (fuzz_syntax)   (make fuzz FUZZERS=syntax FUZZ_SECONDS=60): ==7241== ERROR: libFuzzer: deadly signal
+NOT CAUGHT    review: fold rows changed but colours not: syntax_update returns 0 (test_syntax)   (make test TESTS=syntax passed)
+NOT CAUGHT    review: Org reports no fold rows (test_syntax_org)   (make test TESTS=syntax_org passed)
+caught        review: the edited rows are never forgotten (test_syntax)   (make test TESTS=syntax): tests/test_syntax.c:452: CHECK(syntax_update(s, t, NULL, &r1, &r2) == 1 && r1 == 0 && r2 == 4) failed
+caught        review: the changed ranges are never forgotten (test_syntax)   (make test TESTS=syntax): tests/test_syntax.c:886: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+NOT CAUGHT    review: Org reports one row fewer (test_syntax_org)   (make test TESTS=syntax_org passed)
+caught        review: the fold query's row range starts at the first row asked, not the one above (test_syntax)   (make test TESTS=syntax): tests/test_syntax.c:886: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+NOT CAUGHT    review: Markdown ignores the tree's changed ranges (test_syntax)   (make test TESTS=syntax passed)
+NOT CAUGHT    review: a changed range to the end of the tree stops at row 0 (test_syntax)   (make test TESTS=syntax passed)
+NOT CAUGHT    review: Markdown's rows are computed from the edited row, where the callers start a row above (test_syntax)   (make test TESTS=syntax passed)
+
+# rerun from an untouched copy (the first run's copies were taken while a probe edited syntax.c for some seconds):
+caught        review: the fold table is built whole after every parse, not row by row (test_syntax)   (make test TESTS=syntax): tests/test_syntax.c:452: CHECK(syntax_update(s, t, NULL, &r1, &r2) == 1 && r1 == 0 && r2 == 4) failed
+caught        review: the folds ending on the row above are not taken off (test_syntax)   (make test TESTS=syntax): tests/test_syntax.c:886: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        review: the edited rows are never forgotten (test_syntax)   (make test TESTS=syntax): tests/test_syntax.c:452: CHECK(syntax_update(s, t, NULL, &r1, &r2) == 1 && r1 == 0 && r2 == 4) failed

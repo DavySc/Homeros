@@ -33,9 +33,10 @@ PY
 		# has not caught the plant: require the failure the check reports
 		# (a C compile or link error catches only for the compilers check:
 		# elsewhere it means the plant broke the build; clang's and zig's
-		# summary "N errors generated." too, measured on PR 94)
+		# summary "N errors generated." too, measured on PR 94; and code piped
+		# in, as stb is: a missing header read as 185 false catches)
 		cc='^$'
-		case $target in compilers*|wincc*) ;; *) cc='\.[ch]:[0-9]+(:[0-9]+)?: (fatal )?(error|warning):|^cc1|undefined reference|ld returned|^[0-9]+ errors? generated\.$';; esac
+		case $target in compilers*|wincc*) ;; *) cc='(\.[ch]|<stdin>):[0-9]+(:[0-9]+)?: (fatal )?(error|warning):|^cc1|undefined reference|ld returned|^[0-9]+ errors? generated\.$';; esac
 		# "N differ" or "N of M ... differ" with N > 0, not "0 of 2000 differ"
 		# "got error WRONG" is a model TLC could not run (no tlc, a parse error)
 		why=$(grep -P 'CHECK\(|(?<!of )\b[1-9][0-9]* differ|\b[1-9][0-9]* of [0-9]+ [^.;]*?differ|WRONG|error|ERROR|Proved goals|sorry|deadly signal|FAIL' "$tmp.log" | grep -v -E '^(gcc|clang|cc) |^make|No rule|got error' | grep -v -E "$cc" | head -1)

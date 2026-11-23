@@ -1,0 +1,7 @@
+[fn:9] d
+x [fn:: a
+[fn:9] [fn:: b
+c
+d] e
+f] g
+h
