@@ -1,0 +1,17 @@
+diff --git a/tests/test_git_win.c b/tests/test_git_win.c
+index 65d1fae..04d1a3b 100644
+--- a/tests/test_git_win.c
++++ b/tests/test_git_win.c
+@@ -189,6 +189,12 @@ int main(void)
+ 	Editor e;
+ 	CHECK(!core_open(&e, a) && !core_edit_file(&e, c, 0) && !core_edit_file(&e, b, 0));
+ 	CHECK(!core_buf_delete(&e, 1, 0) && !core_buf_delete(&e, 2, 0));
++	/* a folder opened again after its last buffer went is watched again */
++	CHECK(!core_edit_file(&e, a, 0) && e.buf->nr == 1 && e.buf->watch >= 0);
++	CHECK((f = fopen(a, "wb")) && fputs("aa\n", f) >= 0 && !fclose(f));
++	for (DWORD t0 = GetTickCount(); !e.buf->changed && GetTickCount() - t0 < 5000; ) loop_once(50);
++	CHECK(e.buf->changed);
++	CHECK(!core_edit_file(&e, b, 0) && !core_buf_delete(&e, 1, 0));
+ 	CHECK(DeleteFileA(a) && RemoveDirectoryA(x) && RemoveDirectoryA(px));
+ 	CHECK((f = fopen(b, "wb")) && fputs("bb\n", f) >= 0 && !fclose(f));
+ 	for (DWORD t0 = GetTickCount(); !e.buf->changed && GetTickCount() - t0 < 5000; ) loop_once(50);
