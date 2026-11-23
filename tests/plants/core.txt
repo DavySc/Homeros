@@ -214,5 +214,6 @@ core: a line's underlines walk every diagnostic before it (test_core_diag frame 
 core: a second window on the buffer puts the message on its own cursor line (test_core_diag two windows)~test TESTS=core_diag~~src/core/draw.c~l == (w->buf == e->win->buf ? e->win->line : w->line)~l == w->line
 core: buf_load watches the shared fd again for every file (test_core_contract)~test TESTS=core_contract~~src/core/core.c~			loop_unwatch(b->watch);¶~
 core: the message's "\r" is drawn, not dropped (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~size_t n = strcspn(m, "\r\n\t");~size_t n = strcspn(m, "\n\t");
-core: :bd keeps its folder's watch, so Windows cannot remove the folder~win WIN=git~~src/core/core.c~	buf_unwatch(b);¶	syntax_free(b->syn);¶	lsp_close(b->lsp);¶	text_free(b->text);¶	undo_free(b->undo);¶	umarks_drop(b);~	syntax_free(b->syn);¶	lsp_close(b->lsp);¶	text_free(b->text);¶	undo_free(b->undo);¶	umarks_drop(b);
+core: :bd keeps its folder's watch, so Windows cannot rename its parent~win WIN=git~~src/core/core.c~	buf_unwatch(b);¶	syntax_free(b->syn);¶	lsp_close(b->lsp);¶	text_free(b->text);¶	undo_free(b->undo);¶	umarks_drop(b);~	syntax_free(b->syn);¶	lsp_close(b->lsp);¶	text_free(b->text);¶	undo_free(b->undo);¶	umarks_drop(b);
 core: a freed buffer keeps its folder's watch~win WIN=git~~src/core/core.c~	buf_unwatch(b);¶	umarks_drop(b);~	umarks_drop(b);
+core: a closed watch stays in the loop~win WIN=git~~src/core/core.c~if (b->watch >= 0 && file_unwatch(b->watch)) loop_unwatch(b->watch);~if (b->watch >= 0) file_unwatch(b->watch);

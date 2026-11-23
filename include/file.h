@@ -53,8 +53,9 @@ int file_save(const char *path, const Text *t, size_t n, int dos, FileId *id,
 int  file_watch(const char *path);
 /* A buffer is done with file_watch's fd: 1 when that closed it (loop_unwatch
    it), else 0.  On Windows a directory's handle closes with its last
-   buffer, as an open one keeps other programs from removing or renaming
-   the folder; inotify's fd and watches hold nothing and stay. */
+   buffer, as an open one keeps the folder's parent from being renamed
+   (and, under Wine, removed); inotify's fd and watches hold nothing and
+   stay. */
 int  file_unwatch(int fd);
 /* Reads the fd's pending events.  1 if path no longer matches id, 0 if it
    does, -1 on error.  A stat decides, not the events, so our own saves never

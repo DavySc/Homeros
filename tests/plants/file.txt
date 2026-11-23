@@ -66,3 +66,7 @@ win: the config folder named homeros-data~win WIN=file~~src/file/win.c~which < 2
 file: file_full leaves the directory as typed~test TESTS=shada~~src/file/state.c~	if (!realpath(dir, d)) return -1;~	if (!realpath(dir, d)) return -1;¶	snprintf(d, sizeof d, "%s", dir);
 file: win: a folder's watch closes with its first buffer, not its last~win WIN=git~~src/file/win.c~			if (--d[i].n) return 0;~			--d[i].n;
 file: win: a folder's watch never closes~win WIN=git~~src/file/win.c~			FindCloseChangeNotification(d[i].h);~			(void)0;
+file: file_unwatch says it closed inotify's fd~test TESTS=core_contract~~src/file/file.c~int file_unwatch(int fd) { (void)fd; return 0; }~int file_unwatch(int fd) { (void)fd; return 1; }
+file: win: a closed folder keeps its slot in the table~win WIN=git~~src/file/win.c~			d[i] = d[--nd];¶~
+file: win: the last slot dropped, not the closed one~win WIN=git~~src/file/win.c~d[i] = d[--nd];~--nd;
+file: win: a folder's second buffer is not counted~win WIN=git~~src/file/win.c~{ d[i].n++; return~{ return

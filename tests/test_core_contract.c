@@ -342,12 +342,14 @@ int main(void)
 	   also one in another directory (on Windows each directory has its
 	   own handle); the editor started on the dashboard, with no file */
 	char dir[2][32] = { "/tmp/core_wAXXXXXX", "/tmp/core_wBXXXXXX" }, wf[2][48];
+	int wnr = 0;
 	CHECK(!core_open(&e, NULL));
 	for (int i = 0; i < 2; i++) {
 		CHECK(mkdtemp(dir[i]));
 		snprintf(wf[i], sizeof wf[i], "%s/w", dir[i]);
 		CHECK((f = fopen(wf[i], "w")) && fputs("a\n", f) >= 0 && !fclose(f));
 		CHECK(!core_edit_file(&e, wf[i], 0));
+		if (!i) wnr = e.buf->nr;
 		CHECK((f = fopen(wf[i], "w")) && fputs("bb\n", f) >= 0 && !fclose(f));
 		for (int k = 0; k < 100 && !e.buf->changed; k++) loop_once(10);
 		CHECK(e.buf->changed);
@@ -365,6 +367,13 @@ int main(void)
 	CHECK(!pipe(pp) && !loop_watch(pp[0], NULL, NULL));
 	loop_unwatch(pp[0]);
 	close(pp[0]), close(pp[1]);
+	/* :bd gives its buffer's watch back (file_unwatch), and the shared fd
+	   stays in the loop for the others (review of PR 131) */
+	CHECK(!core_edit_file(&e, wf[1], 0) && !core_buf_delete(&e, wnr, 0));
+	e.buf->changed = 0;   /* seen above */
+	CHECK((f = fopen(wf[1], "w")) && fputs("ccc\n", f) >= 0 && !fclose(f));
+	for (int k = 0; k < 100 && !e.buf->changed; k++) loop_once(10);
+	CHECK(e.buf->changed);
 	core_free(&e);
 	for (int i = 0; i < 20; i++) snprintf(many, sizeof many, "%s/m%d", dir[0], i), unlink(many);
 	for (int i = 0; i < 2; i++) unlink(wf[i]), rmdir(dir[i]);
