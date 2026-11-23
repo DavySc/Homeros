@@ -94,7 +94,7 @@ int net_flush(Net *c)
 		if (k <= 0) { snprintf(c->err, sizeof c->err, "send: %s", strerror(errno)); return -1; }
 		a += (size_t)k;
 	}
-	memmove(c->snd.s, c->snd.s + a, c->snd.n - a), c->snd.n -= a;
+	if (a) memmove(c->snd.s, c->snd.s + a, c->snd.n - a), c->snd.n -= a;   /* NULL with nothing ever sent */
 	return 0;
 }
 
