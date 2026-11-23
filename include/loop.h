@@ -49,6 +49,10 @@ int  proc_spawn(char *const argv[], const char *dir, ProcFn fn, void *ctx);
    are overlapped too, so it must use overlapped I/O on them (a synchronous
    pipe cannot be waited on); elsewhere proc_spawn. */
 int  proc_spawn_ov(char *const argv[], const char *dir, ProcFn fn, void *ctx);
+/* Opens a file or URL in the program the system gives it (a URL or an
+   .html file in the browser): xdg-open, on Windows explorer; its output is
+   dropped.  0 started, -1 not. */
+int  proc_open(const char *what);
 /* proc_spawn of a command line through the user's shell, as Neovim's
    'shell': $SHELL -c cmd (sh if unset); on Windows %COMSPEC% /s /c "cmd"
    with the line passed verbatim (shellxquote and libuv's

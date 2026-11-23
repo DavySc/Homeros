@@ -1,6 +1,7 @@
 /* What is the same on both systems (loop.c, win.c): the timers, a fixed
    table, the wait cut to the first that is due, and the due ones run after
-   the wait; and proc_spawn and proc_pty over each one's proc_start. */
+   the wait; and proc_spawn and proc_pty over each one's proc_start, and
+   proc_open over proc_spawn. */
 #include "loop.h"
 #include "timer.h"
 
@@ -49,6 +50,18 @@ int proc_spawn(char *const argv[], const char *dir, ProcFn fn, void *ctx)
 int proc_spawn_ov(char *const argv[], const char *dir, ProcFn fn, void *ctx)
 {
 	return proc_start(argv, dir, 0, -1, fn, ctx);
+}
+
+static void dropped(void *ctx, int stream, const char *b, size_t n) { (void)ctx; (void)stream; (void)b; (void)n; }
+
+int proc_open(const char *what)
+{
+#ifdef _WIN32
+	char *argv[] = { "explorer", (char *)what, NULL };
+#else
+	char *argv[] = { "xdg-open", (char *)what, NULL };
+#endif
+	return proc_spawn(argv, NULL, dropped, NULL) < 0 ? -1 : 0;
 }
 
 int proc_pty(char *const argv[], const char *dir, int rows, int cols, ProcFn fn, void *ctx)

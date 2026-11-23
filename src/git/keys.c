@@ -1423,8 +1423,6 @@ static int hunk_leader(Editor *e, int k)
 	return 0;
 }
 
-static void opened(void *ctx, int stream, const char *b, size_t n) { (void)ctx; (void)stream; (void)b; (void)n; }
-
 /* SPC g B: the file on GitHub at the cursor's line, in the browser */
 static int browse(Editor *e)
 {
@@ -1449,8 +1447,7 @@ static int browse(Editor *e)
 	char full[4096];
 	snprintf(full, sizeof full, "https://github.com/%s/blob/%s/%s#L%zu", h,
 	         o->r->br.head ? o->r->br.head : o->r->br.oid ? o->r->br.oid : "HEAD", o->rel, e->win->line + 1);
-	char *argv[] = { (char *)git_opener, full, NULL };
-	if (proc_spawn(argv, o->r->top, opened, NULL) < 0) { core_msg(e, "Cannot run %s", git_opener); return -1; }
+	if (proc_open(full)) { core_msg(e, "Cannot open %s", full); return -1; }
 	return 0;
 }
 
