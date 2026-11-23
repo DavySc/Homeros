@@ -1,0 +1,5 @@
+review: .v alone is not formatted with Verible~test TESTS=keys_gq~~src/keys/ops.c~ || is_ft(".v") ||~ ||
+review: .svh alone is not formatted with Verible~test TESTS=keys_gq~~src/keys/ops.c~ || is_ft(".svh")~
+review: .vh alone is not formatted with Verible~test TESTS=keys_gq~~src/keys/ops.c~ || is_ft(".vh")~
+review: a wait that succeeds returns 700 ms late~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	only = -1;¶	on_chld(0);¶	return r;~	only = -1;¶	on_chld(0);¶	if (!r) poll(NULL, 0, 700);¶	return r;
+review: win: a wait that succeeds returns 700 ms late~win WIN=loop~~src/loop/win.c~	only = -1;¶	return r;~	only = -1;¶	if (!r) Sleep(700);¶	return r;
