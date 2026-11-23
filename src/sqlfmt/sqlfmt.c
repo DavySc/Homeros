@@ -1078,7 +1078,7 @@ size_t sqlfmt_units(const Text *t, size_t (**u)[2])
 	if (!oom) p.src = s, p.len = text_read(t, 0, s, len), lex(&p, t);
 	if (!oom) parse(&p);
 	for (size_t i = 0; !oom && i < p.nev; i++) {
-		if (p.ev[i].node != N_STATEMENT && p.ev[i].node != N_CONDITION) continue;
+		if (p.ev[i].node != N_STATEMENT) continue;
 		size_t a = len, z = 0;
 		for (int j = (int)i + 1; j < p.ev[i].end; j++)
 			if (!p.ev[j].node) {
