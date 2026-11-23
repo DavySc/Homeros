@@ -16,6 +16,7 @@
 #include "text.h"
 
 typedef struct LspDoc LspDoc;
+struct Buf;
 
 /* A file type's server: lang is LSP's languageId; argv runs in the
    nearest directory above the file holding one of roots (else the file's
@@ -43,6 +44,11 @@ void    lsp_edit(LspDoc *d, const Text *t, size_t pos, size_t ndel, const char *
 /* After each command: the command's edits go as one didChange. */
 void    lsp_flush(LspDoc *d);
 void    lsp_saved(LspDoc *d);                     /* didSave */
+/* Buf.faces for a buffer with a server: syntax_faces of b->syn (none
+   without one), then the server's semantic tokens over them, shifted by
+   the edits since they came (as diagnostics): Neovim's priority 125 over
+   tree-sitter's 100 */
+void    lsp_faces(const struct Buf *b, size_t a, size_t z, unsigned char *face);
 /* Lean's \r: close and open the file again (as a new version), so it is
    elaborated anew.  After the server died, it starts the server again and
    opens every file it had (DESIGN.md: on restart clear and resend
