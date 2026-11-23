@@ -7,7 +7,12 @@
    reported when the child exits, not when what it left behind closes the
    pipes (Neovim's on_exit); SIGKILL comes for every killed child; a failed
    write stops the polling; the queue stays as large as its backlog; a
-   watch removed by another watch's function does not run. */
+   watch removed by another watch's function does not run.  proc_pty: the
+   child's controlling terminal at the size asked, TERM, typed input coming
+   back as the terminal echoes it, a resize reaching it as SIGWINCH, output
+   and exit as proc_spawn's.  proc_wait
+   (Neovim's system(), Wait.tla "ok"): only its child runs, another child's
+   exit during the wait is still reported after it, ms or Ctrl-C kill. */
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -88,6 +93,26 @@ static void echo(void)
 	CHECK(proc_write(id, "x", 1) == -1);   /* nothing after the close */
 	run(&g, 10000);
 	CHECK(g.code == 0 && g.nout == N && !memcmp(g.out, in, N) && !g.nerr);
+	free(g.out);
+}
+
+static void pty(void)
+{
+	Got g = { 0 };
+	char *argv[] = { "sh", "-c", "exec 3</dev/tty && stty size && echo $TERM; read x; echo got:$x; "
+	                 "trap 'stty size; exit 3' WINCH; echo ready; while :; do sleep 0.01; done", NULL };
+	int id = proc_pty(argv, NULL, 7, 33, on_proc, &g);
+	CHECK(id >= 0 && proc_pty(argv, NULL, 0, 33, on_proc, &g) == -1);
+	long long end = ms() + 10000;
+#define HAS(s) (g.out && memmem(g.out, g.nout, s, sizeof s - 1))
+	while (!HAS("xterm-256color\r\n")) { CHECK(ms() < end); CHECK(loop_once(100) == 0); }
+	CHECK(proc_write(id, "hi\r", 3) == 0);   /* typed once the terminal is up */
+	while (!HAS("ready")) { CHECK(ms() < end); CHECK(loop_once(100) == 0); }
+	proc_resize(id, 9, 41);
+	while (!g.ended[0]) { CHECK(ms() < end); CHECK(loop_once(100) == 0); }
+	CHECK(g.code == 3 && g.ended[1] && !g.ended[2] && !g.nerr);
+	CHECK(HAS("7 33\r\nxterm-256color\r\n") && HAS("hi\r\ngot:hi\r\n") && HAS("9 41\r\n"));
+#undef HAS
 	free(g.out);
 }
 
@@ -227,7 +252,7 @@ static void big_pipe(void)
 	free(g.out);
 }
 
-static int fired[4];
+static int fired[5];
 static void tick(void *ctx) { fired[(int *)ctx - fired]++; }
 
 static void timers(void)
@@ -470,8 +495,9 @@ static void on_wake(void *ctx, int fd) { (void)ctx; (void)fd; wakes++; }
 
 static void write_wake(void)
 {
-	int sv[2];
+	int sv[2], p[2];
 	static char b[1 << 16];
+	CHECK(pipe(p) == 0 && loop_watch(p[0], on_wake, NULL) == 0);   /* the socket in a later slot */
 	CHECK(socketpair(AF_UNIX, SOCK_STREAM, 0, sv) == 0);
 	fcntl(sv[0], F_SETFL, O_NONBLOCK);
 	fcntl(sv[1], F_SETFL, O_NONBLOCK);
@@ -481,17 +507,21 @@ static void write_wake(void)
 	loop_write(sv[0], 1);
 	wakes = 0;
 	CHECK(loop_once(0) == 0 && wakes == 0);     /* full: no wake */
+	CHECK(write(sv[1], "x", 1) == 1);
+	CHECK(loop_once(1000) == 0 && wakes == 1);  /* still full, but readable: the read wake stays */
+	CHECK(read(sv[0], b, 1) == 1);
 	while (read(sv[1], b, sizeof b) > 0) {}
-	CHECK(loop_once(1000) == 0 && wakes == 1);  /* room again: one wake */
+	CHECK(loop_once(1000) == 0 && wakes == 2);  /* room again: one wake */
 	CHECK(!loop_waiting());
 	loop_write(sv[0], 0);
-	CHECK(loop_once(0) == 0 && wakes == 1);     /* off: writable is no wake */
+	CHECK(loop_once(0) == 0 && wakes == 2);     /* off: writable is no wake */
 	loop_write(sv[0], 1);
 	loop_unwatch(sv[0]);                         /* unwatched with the wake on */
 	CHECK(loop_watch(sv[1], on_wake, NULL) == 0);   /* takes its slot */
-	CHECK(loop_once(0) == 0 && wakes == 1);     /* writable, not readable: no wake */
+	CHECK(loop_once(0) == 0 && wakes == 2);     /* writable, not readable: no wake */
 	loop_unwatch(sv[1]);
-	close(sv[0]); close(sv[1]);
+	loop_unwatch(p[0]);
+	close(sv[0]); close(sv[1]); close(p[0]); close(p[1]);
 }
 
 static void many(void)
@@ -511,6 +541,70 @@ static void many(void)
 	CHECK(proc_spawn(argv, NULL, on_proc, &g[32]) == -1);   /* full */
 	for (int i = 0; i < 32; i++) run(&g[i], 10000);
 	for (int i = 0; i < 32; i++) { CHECK(g[i].code == 0 && g[i].nout == sizeof kb); free(g[i].out); }
+}
+
+/* told of its exit, a child starts another, which gets its slot */
+static Got next;
+static int next_id = -1;
+static void respawn(void *ctx, int s, const char *b, size_t n)
+{
+	on_proc(ctx, s, b, n);
+	if (!s) next_id = spawn(&next, "sleep 3");
+}
+
+static void waits(void)
+{
+	Got a, b;
+	int ka;
+	CHECK(pipe(input) == 0);
+	CHECK(loop_watch(input[0], on_input, NULL) == 0);
+	/* a exits at once and says something; b is a filter */
+	CHECK(spawn(&a, "echo a") >= 0);
+	CHECK(loop_timer(tick, &fired[4], 0) == 0);
+	int id = spawn(&b, "sleep 0.2; cat");
+	CHECK(id >= 0 && proc_write(id, "hello", 5) == 0);
+	proc_close(id);
+	long long t0 = ms();
+	clock_t c0 = clock();
+	CHECK(proc_wait(id, 2000) == 0);
+	CHECK(clock() - c0 < CLOCKS_PER_SEC / 20);   /* the due timer does not spin it */
+	CHECK(b.ended[0] && b.order && b.code == 0 && b.nout == 5 && !memcmp(b.out, "hello", 5));
+	CHECK(!a.nout && !a.ended[0] && !fired[4]);   /* deferred */
+	run(&a, 2000);                                  /* its exit was not lost */
+	CHECK(a.nout == 2 && fired[4] == 1);
+	free(a.out); free(b.out);
+	/* ms passing kills it */
+	id = spawn(&b, "sleep 10");
+	t0 = ms();
+	CHECK(proc_wait(id, 200) == -1 && b.ended[0] && b.code == 128 + SIGTERM);
+	CHECK(ms() - t0 >= 200 && ms() - t0 < 600);
+	/* an ignored SIGTERM: SIGKILL 2 s later, still reported before it returns */
+	id = spawn(&b, "trap '' TERM; echo; sleep 10");
+	while (!b.nout) CHECK(loop_once(100) == 0);   /* the trap is set */
+	t0 = ms();
+	CHECK(proc_wait(id, 100) == -1 && b.ended[0] && b.code == 128 + SIGKILL);
+	CHECK(ms() - t0 >= 2000 && ms() - t0 < 2600);
+	free(b.out);
+	/* Ctrl-C kills it */
+	id = spawn(&b, "sleep 10");
+	pid_t w = fork();
+	if (!w) { usleep(100000); if (write(input[1], "\3", 1)) {} _exit(0); }
+	t0 = ms();
+	ka = proc_wait(id, 5000);
+	CHECK(ka == -1 && loop_int && b.ended[0] && ms() - t0 < 600);
+	waitpid(w, NULL, 0);
+	loop_int = 0;
+	fprintf(stderr, "test_loop: proc_wait: others deferred and reported after; killed at 200 ms, SIGKILL after 2 s, Ctrl-C after %lld ms; it ends at its child's report\n", ms() - t0);
+	/* the wait ends at its child's report, not at the slot's next child */
+	char *argv[] = { "true", NULL };
+	memset(&b, 0, sizeof b);
+	id = proc_spawn(argv, NULL, respawn, &b);
+	CHECK(proc_wait(id, 1000) == 0 && b.ended[0] && next_id == id);
+	proc_kill(next_id);
+	run(&next, 2000);
+	loop_int = 0;
+	loop_unwatch(input[0]);
+	close(input[0]); close(input[1]);
 }
 
 static void watchdog(int sig)
@@ -543,6 +637,8 @@ int main(void)
 	unwatch_in_callback();
 	write_wake();
 	many();
+	pty();
+	waits();
 	alarm(0);
 	idle();
 	return 0;

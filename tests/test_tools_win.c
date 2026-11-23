@@ -3,8 +3,9 @@
    them, are shown relative to the cwd, a file open both as a buffer and in
    v:oldfiles is listed once, the current buffer and homeros' own files are
    left out, and the frecency file is written and read back (the smart
-   picker ranks a visited file first), and the files picker never runs
-   find.exe. */
+   picker ranks a visited file first), the files picker never runs
+   find.exe, and :make's errors name C:\ paths.  The terminal (Ctrl+.)
+   runs cmd.exe on a pseudo-console. */
 #ifdef _WIN32
 #include <windows.h>
 #include <direct.h>
@@ -13,6 +14,7 @@
 #include <string.h>
 #include "check.h"
 #include "core.h"
+#include "loop.h"
 #include "shada.h"
 #include "tools.h"
 static Editor e;
@@ -110,9 +112,30 @@ int main(void)
 	rows(got, sizeof got);
 	if (got[0] || strcmp(e.msg, "No supported finder found: `fd` `fdfind` `rg`")) { fprintf(stderr, "files: %s / %s\n", got, e.msg); CHECK(0); }
 	tools_key(&e, KEY_ESC);
+	/* :make through cmd.exe: dotnet's C:\...\file(line,col), its drive
+	   letter's colon part of the path */
+	snprintf(f, sizeof f, "echo %s\\sub\\zqc.txt(1,1): error CS1002: ; expected", d);
+	CHECK(!tools_make(&e, f));
+	for (int i = 0; i < 500 && tools_qf(&e, 1); i++) loop_once(10);
+	if (!strstr(e.buf->path, "zqc.txt") || e.win->line || e.win->col || !strstr(e.msg, "(1 of 1): error CS1002")) { fprintf(stderr, "make: %s / %s\n", e.buf->path, e.msg); CHECK(0); }
+	/* a quoted path reaches cmd.exe as typed (not the CRT's \"), and the
+	   CR of each CR LF is not the message's */
+	put("sp ace.txt", "sub\\zqd.txt(1,1): error CS3: quoted\r\n");
+	CHECK(!tools_make(&e, "type \"sp ace.txt\""));
+	for (int i = 0; i < 500 && tools_qf(&e, 1); i++) loop_once(10);
+	if (!strstr(e.buf->path, "zqd.txt") || strcmp(strstr(e.msg, "(1 of 1)"), "(1 of 1): error CS3: quoted")) { fprintf(stderr, "make quoted: %s / %s\n", e.buf->path, e.msg); CHECK(0); }
+	/* the terminal: cmd.exe (COMSPEC) answers what it is typed, and exit
+	   closes it */
+	CHECK(tools_key(&e, KEY_CTRL_DOT));
+	for (const char *k = "echo zq%OS%\n"; *k; k++) CHECK(tools_key(&e, *k == '\n' ? KEY_ENTER : (unsigned char)*k));
+	for (int i = 0; i < 100 && (rows(got, sizeof got), !strstr(got, "zqWindows_NT|")); i++) loop_once(100);
+	if (!strstr(got, "zqWindows_NT|")) { fprintf(stderr, "terminal: %s\n", got); CHECK(0); }
+	for (const char *k = "exit\n"; *k; k++) tools_key(&e, *k == '\n' ? KEY_ENTER : (unsigned char)*k);
+	for (int i = 0; i < 100 && (rows(got, sizeof got), strstr(got, "zqWindows_NT|")); i++) loop_once(100);
+	CHECK(!strstr(got, "zqWindows_NT|"));   /* its exit closed the float */
 	grid_free(&g);
 	core_free(&e);
-	printf("test_tools_win: recent files relative to C:\\..., listed once, frecency written and read; no find.exe\n");
+	printf("test_tools_win: recent files relative to C:\\..., listed once, frecency written and read; no find.exe; :make's C:\\ errors, quoted paths; the terminal runs cmd.exe\n");
 	return 0;
 }
 #else

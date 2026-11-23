@@ -74,6 +74,8 @@ typedef struct Buf {
 	   diff and status buffers); NULL: none */
 	void (*faces)(const struct Buf *b, size_t a, size_t z, unsigned char *face);
 	int nonumber;              /* setlocal nonumber norelativenumber (neogit's buffers) */
+	int nomodifiable;          /* 'nomodifiable' (the quickfix buffer): the core's
+	                              edits refuse with E21; text_insert still writes */
 	struct LspDoc *lsp;        /* lsp.h; NULL: no language server for this file */
 	Mark mark[MARK_N];
 	Mark change[JUMPLIST_SIZE];   /* the change list (g; g,), oldest first */
@@ -98,6 +100,9 @@ typedef struct Win {
 	size_t top, left, skipcol;
 	size_t scroll;             /* lines for CTRL-D and CTRL-U ('scroll'); 0 = half the height */
 	int wrap;                  /* 'wrap': off (FEATURES.md); set through core_set_wrap */
+	int conceal;               /* 'conceallevel': 2, or 0 (SPC u p, Davy's
+	                              org-toggle-pretty-entities): the core asks
+	                              syntax_conceal only when it is not 0 */
 	int y, x, h, w;
 	struct Frame *frame;       /* its leaf in the layout */
 	/* CTRL-O CTRL-I, oldest first.  :bd forgets the buffer's entries in the
@@ -222,6 +227,7 @@ void core_goto(Editor *e, size_t line, size_t col);
    where it last was in that buffer.  0 ok, -1 not (msg set). */
 int  core_edit_file(Editor *e, const char *path, int force);
 int  core_buf_goto(Editor *e, int nr);        /* :b N */
+Buf *core_buf_find(Editor *e, int nr);        /* listed buffer nr, NULL if none */
 int  core_buf_next(Editor *e, long n);        /* :bn ]b (n > 0), :bp [b (n < 0) */
 /* CTRL-^: the alternate buffer, E23 if none.  Not core_buf_goto: a buffer
    never shown in this window opens on the first non-blank (buflist_getfile,

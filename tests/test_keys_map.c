@@ -5,7 +5,9 @@
    gives "acb" at column 1: a key that completes no map runs Space's own
    motion, then the keys, each checked for a map again.  (Here SPC ff opens
    a picker, which would take the x, so x comes after it closes.) */
+#include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 #include "check.h"
 #include "core.h"
@@ -63,6 +65,23 @@ int main(void)
 	CHECK(!strcmp(e.msg, "Kitten on save: off"));
 	feed(&e, " uk");
 	CHECK(!strcmp(e.msg, "Kitten on save: on"));
+	/* SPC i s, the snippet picker, also in Visual mode (around the area);
+	   no other map there: Space is its motion */
+	feed(&e, " is");
+	CHECK(picked(&e));
+	feed(&e, "0v is");
+	CHECK(picked(&e) && e.ks.visual);
+	feed(&e, "\0330v ff");
+	CHECK(!tools_key(&e, KEY_ESC));
+	feed(&e, "\0330v x");
+	CHECK(at(&e, "b\n", 0));
+	feed(&e, "u");
+	/* SPC u p: 'conceallevel' 2 or 0 (Davy's org-toggle-pretty-entities) */
+	e.win->conceal = 2;
+	feed(&e, " up");
+	CHECK(!e.win->conceal);
+	feed(&e, " up");
+	CHECK(e.win->conceal == 2);
 	static Grid g;
 	CHECK(!grid_resize(&g, 24, 80));
 	feed(&e, ":KittenPaw\r");
@@ -99,6 +118,19 @@ int main(void)
 	e.msg[0] = 0;
 	feed(&e, "\"a-");
 	CHECK(!strcmp(e.msg, "tools: file manager not built yet") && !e.ks.pending);
+
+	/* keys_visual() for git's views (PR 119): Visual mode ends as Esc
+	   ends it, so x deletes one character; it starts with its other end at
+	   column 0, so d deletes to the cursor */
+	feed(&e, "0lvl");
+	keys_visual(&e, 0, 0);
+	CHECK(!e.ks.visual && e.buf->mark[MARK_GT].set);
+	feed(&e, "x");
+	CHECK(at(&e, "bab\n", 2));
+	keys_visual(&e, 'v', 0);
+	CHECK(e.ks.visual == 'v' && !e.ks.vline && !e.ks.vcol);
+	feed(&e, "d");
+	CHECK(at(&e, "\n", 0));
 	core_free(&e);
 
 	/* the keys after a failed map go through the chain again: on the
@@ -111,6 +143,45 @@ int main(void)
 	CHECK(d.quit);
 	core_free(&d);
 	unlink(path);
+
+	/* nvim-orgmode's cit and ciT, in .org buffers only: each one undoable
+	   change; elsewhere c is Vim's at once, and in Org c then w is cw */
+	char org[] = "/tmp/keys_mapXXXXXX.org";
+	fd = mkstemps(org, 4);
+	CHECK(fd >= 0 && write(fd, "* a b\n", 6) == 6 && !close(fd));
+	CHECK(!core_open(&d, org));
+	feed(&d, "cit");
+	CHECK(at(&d, "* TODO a b\n", 0));
+	feed(&d, "$cit");
+	CHECK(at(&d, "* NEXT a b\n", 9));
+	feed(&d, "ciT");
+	CHECK(at(&d, "* TODO a b\n", 9));
+	feed(&d, "u");
+	CHECK(at(&d, "* NEXT a b\n", 9));
+	feed(&d, "xcitu");                         /* not the x before it */
+	CHECK(at(&d, "* NEXT a \n", 8));
+	feed(&d, "u");
+	CHECK(at(&d, "* NEXT a b\n", 9));
+	feed(&d, "0wwcwc\x1b");
+	CHECK(at(&d, "* NEXT c b\n", 7));
+	/* DONE stamps CLOSED with the local clock (a zone 5:45 east, named as
+	   POSIX TZ does, so no zone files are needed); a minute may turn */
+	setenv("TZ", "XST-5:45", 1);
+	tzset();
+	char want[2][32], got[32] = "";
+	time_t t = time(NULL);
+	strftime(want[0], sizeof want[0], "CLOSED: [%Y-%m-%d %a %H:%M]", localtime(&t));
+	feed(&d, "citcit");
+	t = time(NULL);
+	strftime(want[1], sizeof want[1], "CLOSED: [%Y-%m-%d %a %H:%M]", localtime(&t));
+	text_read(d.buf->text, core_line_start(&d, 1), got, 31);
+	CHECK(!strncmp(got, want[0], strlen(want[0])) || !strncmp(got, want[1], strlen(want[1])));
+	core_free(&d);
+	unlink(org);
+	CHECK(!core_open(&d, NULL));
+	feed(&d, "c");
+	CHECK(!d.ks.pending);
+	core_free(&d);
 	puts("test_keys_map: ok");
 	return 0;
 }

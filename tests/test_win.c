@@ -20,6 +20,7 @@
 #include <string.h>
 #include "check.h"
 #include "backend.h"
+#include "image.h"
 #include "keys.h"
 #include "loop.h"
 
@@ -143,7 +144,8 @@ int main(void)
 	ks[VK_CONTROL] = 0x80;
 	SetKeyboardState(ks);
 	PostMessageW(win, WM_CHAR, 8, 0);
-	CHECK(input(k, 4) == 1 && k[0] == 8);   /* Ctrl-H */
+	PostMessageW(win, WM_KEYDOWN, VK_OEM_PERIOD, 0);
+	CHECK(input(k, 4) == 2 && k[0] == 8 && k[1] == KEY_CTRL_DOT);   /* Ctrl-H, Ctrl+. */
 	ks[VK_CONTROL] = 0;
 	PostMessageW(win, WM_CHAR, 9, 0);
 	CHECK(input(k, 4) == 1 && k[0] == KEY_TAB);
@@ -153,6 +155,8 @@ int main(void)
 	CHECK(input(k, 4) == 1 && k[0] == KEY_S_TAB);
 	ks[VK_SHIFT] = 0;
 	SetKeyboardState(ks);
+	PostMessageW(win, WM_KEYDOWN, VK_OEM_PERIOD, 0);   /* a plain '.' is WM_CHAR's */
+	CHECK(input(k, 4) == 1 && k[0] == '.');
 	for (int i = 0; i < 600; i++) PostMessageW(win, WM_CHAR, 'x', 0);
 	CHECK(input(k, 7) == 600);
 
@@ -178,6 +182,23 @@ int main(void)
 		CHECK(ch == tm.tmHeight && cw == tm.tmAveCharWidth);
 		DeleteDC(dc);
 		DeleteObject(f);
+	}
+	{   /* an image (package 21, thread 0's, agreed): Backend.cell is the cell
+	       measured above; tests/test_image.png (32 x 16, red then blue) shows
+	       from row 3, each tile its own columns, the background past it;
+	       then text again */
+		int w, h, n;
+		b->cell(&w, &h);
+		CHECK(w == cw && h == ch && 4 * cw > 32 && ch > 16);
+		CHECK((n = image_load("tests/test_image.png", 4, 1, cw, ch, 0x1e1e2e)) > 0);
+		image_put(&g, 3, 0, n, 0);
+		present(&g, &shown);
+		for (int y = 3 * ch; y < 3 * ch + 16; y++)
+			for (int x = 0; x < 32; x++) CHECK(px(x, y) == (x < 16 ? RGB(255, 0, 0) : RGB(0, 0, 255)));
+		CHECK(px(32, 3 * ch) == BG && px(0, 3 * ch + 16) == BG);
+		for (int c = 0; c < 4; c++) put(&g, 3, c, " ", 1, ATTR_NONE);
+		present(&g, &shown);
+		CHECK(px(1, 3 * ch + 1) == BG && px(20, 3 * ch + 1) == BG);
 	}
 
 	/* the mouse and the wheel, at their cells */
@@ -230,6 +251,10 @@ int main(void)
 	g.c[8 * g.cols + 1].face = FACE_COMMENT_TODO;   /* a face with a background */
 	put(&g, 8, 2, " ", 1, ATTR_NONE);
 	g.c[8 * g.cols + 2].bg = FACE_CURSOR_LINE;      /* a background layer */
+	put(&g, 8, 3, " ", 1, ATTR_NONE);
+	g.c[8 * g.cols + 3].ul = FACE_DIAG_UNDER_ERROR; /* an undercurl layer */
+	put(&g, 8, 4, " ", 1, ATTR_NONE);
+	g.c[8 * g.cols + 4].face = FACE_MARKUP_UNDERLINE;
 	/* a cluster longer than a cell's 4 bytes, from the grid's store: its
 	   accents draw over the letter */
 	put(&g, 9, 1, "e", 1, ATTR_NONE);
@@ -247,6 +272,14 @@ int main(void)
 	CHECK(g.c[10 * g.cols + 1].len == 9 && inked(10, 1) > inked(9, 1));
 	CHECK(count(8, 1, RGB(faces[FACE_COMMENT_TODO].bg[0], faces[FACE_COMMENT_TODO].bg[1], faces[FACE_COMMENT_TODO].bg[2])) == cw * ch);
 	CHECK(count(8, 2, RGB(faces[FACE_CURSOR_LINE].bg[0], faces[FACE_CURSOR_LINE].bg[1], faces[FACE_CURSOR_LINE].bg[2])) == cw * ch);
+	/* the undercurl: one pixel a column in its sp, a wave (not all on the
+	   last row); the underline: the last row in the text's colour */
+	const Face *sp = &faces[FACE_DIAG_UNDER_ERROR];
+	COLORREF red = RGB(sp->sp[0], sp->sp[1], sp->sp[2]);
+	int low = 0;
+	for (int x = 3 * cw; x < 4 * cw; x++) low += px(x, 9 * ch - 1) == red;
+	CHECK(count(8, 3, red) == cw && inked(8, 3) == cw && low < cw);
+	CHECK(count(8, 4, REV) == cw && px(4 * cw, 9 * ch - 1) == REV);   /* REV: the text colour */
 
 	/* covered and uncovered: WM_PAINT draws from the DIB */
 	paint(RED);
@@ -335,7 +368,7 @@ int main(void)
 	grid_free(&g);
 	grid_free(&shown);
 	puts("test_win: keys, mouse and clipboard; identical frame draws nothing; one change draws one cell; "
-	     "text, dim, face, face background, long cluster and wide cells; cursor drawn, restored and at (0,0) after a whole redraw; WM_PAINT; "
+	     "text, dim, face, face background, long cluster, wide and image cells; cursor drawn, restored and at (0,0) after a whole redraw; WM_PAINT; "
 	     "resize and DPI redraw whole; close is a key; paced; idle quiet; minimised draws nothing");
 	return 0;
 }

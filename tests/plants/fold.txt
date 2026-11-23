@@ -8,7 +8,7 @@ fold: from 'foldlevel' to manual, a fold at the level stays open~test TESTS=fold
 fold: zR leaves the deepest folds closed~test TESTS=fold~~src/fold/fold.c~	case FOLD_OPEN_ALL: count = deepest(&f->folds); break;~	case FOLD_OPEN_ALL: count = deepest(&f->folds) - 1; break;
 fold: a new 'foldlevel' keeps the manual opens and closes~test TESTS=fold~~src/fold/fold.c~	for (int i = 0; i < f->folds.n; i++) f->folds.d[i].flags = FD_LEVEL;~	{}
 fold: a split fold's lower half takes 'foldlevel'~test TESTS=fold~~src/fold/fold.c~	fp[1].flags = fp->flags;~	fp[1].flags = FD_LEVEL;
-fold: zv opens one fold only~test TESTS=fold~~src/fold/fold.c~		while (manual(f, lnum, 1, 0) & DONE_ACTION) {}~		manual(f, lnum, 1, 0);
+fold: zv opens one fold only~test TESTS=fold~~src/fold/fold.c~		while (manual(f, lnum, 1, 0) & DONE_ACTION) done = 1;~		if (manual(f, lnum, 1, 0) & DONE_ACTION) done = 1;
 fold: an update starts at the changed line, not the one above~test TESTS=fold~~src/fold/fold.c~	Line l = { .lnum = top > 1 ? top - 1 : top, .n = n };~	Line l = { .lnum = top, .n = n };
 fold: a closed fold past the buffer's end is not cut there (fuzz)~fuzz FUZZERS=fold FUZZ_SECONDS=30~~src/fold/fold.c~			*l2 = (size_t)(last < f->n ? last : f->n) - 1;~			*l2 = (size_t)last - 1;
 fold: a split window's copy forgets the line count (fuzz)~fuzz FUZZERS=fold FUZZ_SECONDS=30~~src/fold/fold.c~	g->n = f->n;¶~
@@ -18,3 +18,15 @@ fold: an empty buffer asks the foldexpr for line -1 (fuzz)~fuzz FUZZERS=fold FUZ
 fold: merging two folds drops the lower one's nested folds~test TESTS=fold~~src/fold/fold.c~	if (a2->n) {~	if (0) {
 fold: a fold shortened from below keeps nested folds past its new end~test TESTS=fold~~src/fold/fold.c~						adjust(&fp->nested, fp->len, MAXL, MAXL, 0, 0);¶~
 fold: a fold that grows into the next one at its level is not merged with it~test TESTS=fold~~src/fold/fold.c~			if (lvl >= lvl0) merge(fp, a, fp2);¶~
+fold: the first update does only the lines it is given~test TESTS=fold~~src/fold/fold.c~	if (f->invalid) { top = 1; bot = n; f->invalid = 0; }¶~
+fold: "-1" on the first line stays undefined~test TESTS=fold~~src/fold/fold.c~	if (l->lvl < 0 && lnum <= 1) l->lvl = 0;¶~
+fold: an undefined line ends the fold above it~test TESTS=fold~~src/fold/fold.c~			for (l->lnum = ll; l->lnum <= linecount && level(f, l) < 0; l->lnum++);~			for (l->lnum = ll; l->lnum <= linecount && level(f, l) < 0 && 0; l->lnum++);
+fold: an update starts at an undefined line~test TESTS=fold~~src/fold/fold.c~	while (level(f, &l) < 0) l.lnum--;~	level(f, &l);
+fold: undefined lines to the end leave no fold to finish~test TESTS=fold~~src/fold/fold.c~	if (!fp) return bot;   /* only undefined lines ("-1") followed, to the end */¶~
+fold: an edit inside one line still adjusts the folds~test TESTS=fold~~src/fold/fold.c~	if (line2 < line1 && !after) return;   /* mark_adjust_buf(): nothing to do */¶~
+fold: a closed fold reports its level, not 1~test TESTS=fold~~src/fold/fold.c~			return lvl + 1;   /* fold_info()'s fi_level, for foldtext's dashes */~			return 1;
+fold: a count that changed a fold before running out says it changed nothing (fuzz)~fuzz FUZZERS=fold FUZZ_SECONDS=30~~src/fold/fold.c~return n ? 1 : done ? 0 : -1;~return n ? 0 : done ? 0 : -1;
+fold: zv that opened a fold says it changed nothing (fuzz)~fuzz FUZZERS=fold FUZZ_SECONDS=30~~src/fold/fold.c~		while (manual(f, lnum, 1, 0) & DONE_ACTION) done = 1;~		while (manual(f, lnum, 1, 0) & DONE_ACTION) done = 0;
+fold: a new 'foldlevel' says it changed nothing (fuzz)~fuzz FUZZERS=fold FUZZ_SECONDS=30~~src/fold/fold.c~	return 1;   /* newFoldLevel() always calls changed_window_setting() */~	return 0;   /* newFoldLevel() always calls changed_window_setting() */
+fold: zO opens only the outer fold~test TESTS=fold~~src/fold/fold.c~op != FOLD_CLOSE, op == FOLD_OPEN_REC);~op != FOLD_CLOSE, 0);
+fold: a fold found with nothing changed says it changed one (fuzz)~fuzz FUZZERS=fold FUZZ_SECONDS=30~~src/fold/fold.c~return n ? 1 : done ? 0 : -1;~return n || done ? 1 : -1;

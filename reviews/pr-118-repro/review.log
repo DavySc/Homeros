@@ -1,0 +1,30 @@
+caught        review 118: a keyword's last [ taken, not its first   (make org-conform ORG_N=2000 SEED=1 test TESTS=org):   ours  None {'error': 'timeout after 20 s'}
+caught        review 118: a keyword's ]: past a blank not looked for   (make org-conform ORG_N=2000 SEED=1 test TESTS=org):   ours  None {'error': 'timeout after 20 s'}
+NOT CAUGHT    review 118: verbatim's match ends at its closer   (make org-conform ORG_N=2000 SEED=1 test TESTS=org passed)
+NOT CAUGHT    review 118: verbatim may be empty   (make org-conform ORG_N=2000 SEED=1 test TESTS=org passed)
+caught        review 118: a reference at a line's start   (make org-conform ORG_N=2000 SEED=1 test TESTS=org): 28 of 2000 differ (no answer from Org on 137)
+NOT CAUGHT    review 118: a match ending at the position does not hold it   (make org-conform ORG_N=2000 SEED=1 test TESTS=org passed)
+NOT CAUGHT    review 118: a span that starts above the line carries on   (make org-conform ORG_N=2000 SEED=1 test TESTS=org passed)
+caught        review 118: the look ahead goes past a definition   (make org-conform ORG_N=2000 SEED=1 test TESTS=org): 37 of 2000 differ (no answer from Org on 137)
+caught        review 118: a script in a link raised   (make org-conform ORG_N=2000 SEED=1 test TESTS=org): 242 of 2000 differ (no answer from Org on 2)
+caught        review 118: a script in a footnote raised   (make org-conform ORG_N=2000 SEED=1 test TESTS=org): 31 of 2000 differ (no answer from Org on 2)
+caught        review 118: unhide keeps a span that starts inside   (make org-conform ORG_N=2000 SEED=1 test TESTS=org): 5 of 2000 differ (no answer from Org on 2)
+caught        review 118: unhide drops a span that ends inside   (make org-conform ORG_N=2000 SEED=1 test TESTS=org): 280 of 2000 differ (no answer from Org on 2)
+NOT CAUGHT    review 118: the type search stops at the limit (no 11 bytes past it)   (make org-conform ORG_N=2000 SEED=1 test TESTS=org passed)
+NOT CAUGHT    review 118: a link's hidden end not cut at the line   (make org-conform ORG_N=2000 SEED=1 test TESTS=org passed)
+NOT CAUGHT    review 118: a link's hidden start not cut at the line   (make org-conform ORG_N=2000 SEED=1 test TESTS=org passed)
+NOT CAUGHT    review 118: no $$ fragment at a line's start   (make org-conform ORG_N=2000 SEED=1 test TESTS=org passed)
+FAILED OTHERWISE  review 118: a fixed-width line is a valid footnote context   (make org-conform ORG_N=2000 SEED=1 test TESTS=org): make: *** [Makefile:102: org-conform] Error 1
+NOT CAUGHT    review 118: a $ fragment may start before ;   (make org-conform ORG_N=2000 SEED=1 test TESTS=org passed)
+caught        review 118: only ASCII parentheses count in a footnote   (make org-conform ORG_N=2000 SEED=1 test TESTS=org): 54 of 2000 differ (no answer from Org on 137)
+caught        review 118: a macro's star not taken   (make org-conform ORG_N=2000 SEED=1 test TESTS=org): tests/test_org.c:1263: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000 < gate[k].ms) failed
+caught        review 118: a group in a plain link's group   (make org-conform ORG_N=2000 SEED=1 test TESTS=org): 102 of 2000 differ (no answer from Org on 2)
+caught        review 118: a form feed ends a plain link   (make org-conform ORG_N=2000 SEED=1 test TESTS=org): tests/test_org.c:1263: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000 < gate[k].ms) failed
+caught        review 118: a plain link of one character   (make org-conform ORG_N=2000 SEED=1 test TESTS=org): 58 of 2000 differ (no answer from Org on 137)
+caught        review 118: a link from the line above not coloured on   (make org-conform ORG_N=2000 SEED=1 test TESTS=org): 180 of 2000 differ (no answer from Org on 137)
+caught        review 118: a comment block not forbidden   (make org-conform ORG_N=2000 SEED=1 test TESTS=org): 1 of 2000 differ (no answer from Org on 137)
+caught        review 118: an entity's frag test reads any name   (make org-conform ORG_N=2000 SEED=1 test TESTS=org): tests/test_org.c:1152: CHECK((f1[fx[i].at] == fx[i].face) == fx[i].is) failed
+caught        review 118: the angle failure stop is one line early   (make org-conform ORG_N=2000 SEED=1 test TESTS=org): 7 of 2000 differ (no answer from Org on 137)
+caught        review 118: the description failure stop is the end   (make org-conform ORG_N=2000 SEED=1 test TESTS=org): 25 of 2000 differ (no answer from Org on 137)
+NOT CAUGHT    review 118: a link in a link's description found from its own [[   (make org-conform ORG_N=2000 SEED=1 test TESTS=org passed)
+DONE

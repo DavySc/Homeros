@@ -5,7 +5,6 @@ src/file/state.c src/file/win.c f6b010e6
 src/loop/loop.c src/loop/loop.c c184535e
 src/org/org.c src/org/org.c 3d3a4c38
 src/org/org.c src/org/org.c 0842e25b
-src/org/org.c src/org/org.c 854f7973
 src/tools/oil.c src/tools/oil.c 4e751422
 src/tools/oil.c src/tools/oil.c b27d12dd
 src/tools/pick.c src/tools/pick.c d22d9731
@@ -13,11 +12,6 @@ src/tty/tty.c src/win/backend.c 452e7412
 src/keys/motion.c src/keys/motion.c 21791400
 src/keys/motion.c src/keys/motion.c 912b305b
 src/keys/ops.c src/keys/ops.c ca17786b
-src/git/keys.c src/git/keys.c 6007b6c5
-src/git/keys.c src/git/keys.c 4ad9ff27
-src/git/keys.c src/git/keys.c 6f94d5ca
-src/git/keys.c src/git/keys.c 6f94d5ca
-src/git/keys.c src/git/keys.c c72bdd04
 src/git/sec.c src/git/sec.c 5086807d
 src/git/status.c src/git/status.c 29f7bf54
 # Renamed copies and mechanisms outside their owner (tests/owners.txt), on
@@ -25,16 +19,8 @@ src/git/status.c src/git/status.c 29f7bf54
 src/git/sec.c src/infoview/scan.c 448912cf
 src/keys/buf.c src/keys/normal.c 9d8a1570
 src/syntax/tsql.c src/tools/match.c ec24b41b
-src/tools/match.c src/tools/oil.c e1ee0bd4
-src/tools/match.c src/tools/pick.c e1ee0bd4
 src/tools/pick.c src/tools/pick.c 6f32eeba
 src/wl/wl.c src/wl/wl.c 2ac041d0
-utf8-encode src/git/keys.c
-utf8-encode src/git/keys.c
-utf8-encode src/git/keys.c
-utf8-encode src/git/keys.c
-utf8-encode src/git/keys.c
-utf8-encode src/infoview/scan.c
 number-parse src/lsp/json.c
 number-parse src/org/org.c
 number-parse src/org/org.c

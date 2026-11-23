@@ -27,6 +27,7 @@ int loop_int;
 static struct { int used, fd, pend; LoopFn fn; void *ctx; } w[MAXW];
 static struct Proc {
 	HANDLE ph, job;         /* ph NULL: free slot */
+	HPCON pc;               /* proc_pty's pseudoconsole, else NULL */
 	HANDLE h[3];            /* our ends: stdin, stdout, stderr; NULL once closed */
 	OVERLAPPED ov[3];       /* hEvent, which ReadFileEx leaves to us, holds 3 * slot + stream */
 	int busy[3];            /* an I/O is in flight on h[s] */
@@ -39,6 +40,10 @@ static struct Proc {
 	size_t qlen, qcap, outoff, outlen, outcap;
 } p[MAXP];
 static char buf[1 << 16];
+/* proc_wait's child: no other child and no timer runs, the watches do, as
+   in loop_breakcheck */
+static int only = -1;
+static int waited;   /* only was reported: a child its fn starts may get its slot */
 
 #define H(fd) ((HANDLE)(INT_PTR)(fd))   /* sign-extended, as LongToHandle */
 
@@ -215,7 +220,9 @@ static void CALLBACK on_read(DWORD e, DWORD n, OVERLAPPED *ov)
 	DWORD left = 0;
 	(void)n;
 	c->busy[s] = 0;
-	if (c->reaping) return;   /* report reads what is left */
+	/* report reads what is left; another child's bytes wait in its pipe
+	   for the read after proc_wait */
+	if (c->reaping || (only >= 0 && c != &p[only])) return;
 	if (e) { ended(c, s); return; }
 	if (PeekNamedPipe(c->h[s], NULL, 0, NULL, &left, NULL) && left) take(c, s, left);
 }
@@ -260,43 +267,91 @@ static void CALLBACK on_write(DWORD e, DWORD n, OVERLAPPED *ov)
 	write_next(c);
 }
 
-int proc_spawn(char *const argv[], const char *dir, ProcFn fn, void *ctx)
+/* line: the command line, allocated (NULL: out of memory), freed here.
+   rows > 0: the child runs on a pseudoconsole of rows x cols (ConPTY, as
+   Neovim's conpty_win.c) fed by the stdin and stdout pipes, and gets no
+   std handles of its own, which would bypass it */
+static int spawn(char *line, const char *dir, int rows, int cols, ProcFn fn, void *ctx)
 {
 	int id = 0, ok = 0;
 	while (id < MAXP && p[id].ph) id++;
-	if (id == MAXP) return -1;
+	if (id == MAXP) { free(line); return -1; }
 	HANDLE mine[3] = { 0 }, theirs[3] = { 0 };
+	HPCON pc = NULL;
 	/* the child's group (loop.c's setpgroup): proc_kill ends what it
 	   started too, as Neovim's os_proc_tree_kill walks the tree on Windows,
 	   but a job also holds a grandchild whose parent has exited */
 	HANDLE job = CreateJobObjectW(NULL, NULL);
-	char *line = cmdline(argv);
 	wchar_t *wl = line ? wide(line) : NULL, *wd = dir ? wide(dir) : NULL;
-	for (int s = 0; s < 3; s++) if (!(mine[s] = pipe_pair(s, &theirs[s]))) goto out;
+	for (int s = 0; s < 3 - !!rows; s++) if (!(mine[s] = pipe_pair(s, &theirs[s]))) goto out;
 	if (!job || !wl || (dir && !wd)) goto out;
+	if (rows && CreatePseudoConsole((COORD){ (SHORT)cols, (SHORT)rows }, theirs[0], theirs[1], 0, &pc) != S_OK) { pc = NULL; goto out; }
 	/* the editor's own handles are made uninheritable, so these three
 	   are all the child gets */
-	STARTUPINFOW si = { .cb = sizeof si, .dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW, .wShowWindow = SW_HIDE,
-	                    .hStdInput = theirs[0], .hStdOutput = theirs[1], .hStdError = theirs[2] };
+	STARTUPINFOEXW si = { .StartupInfo = { .cb = sizeof si, .dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW, .wShowWindow = SW_HIDE,
+	                      .hStdInput = theirs[0], .hStdOutput = theirs[1], .hStdError = theirs[2] } };
+	void *attrs[16];   /* a list of one attribute: 48 bytes on x64 */
+	SIZE_T an = sizeof attrs;
+	if (rows) {
+		/* std handles NULL but given, or a child of an editor whose own are
+		   redirected takes those instead of the pseudoconsole's (Windows
+		   Terminal's ConPTY sample notes it; Wine 11 does it, measured) */
+		si.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
+		si.StartupInfo.hStdInput = si.StartupInfo.hStdOutput = NULL;
+		si.lpAttributeList = (LPPROC_THREAD_ATTRIBUTE_LIST)attrs;
+		if (!InitializeProcThreadAttributeList(si.lpAttributeList, 1, 0, &an)
+		    || !UpdateProcThreadAttribute(si.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE, pc, sizeof pc, NULL, NULL)) goto out;
+	}
 	PROCESS_INFORMATION pi;
 	/* no console window per command (Neovim's jobs set windowsHide);
 	   suspended until it is in its job, so nothing it starts escapes */
-	if (CreateProcessW(NULL, wl, NULL, NULL, TRUE, CREATE_SUSPENDED | CREATE_NO_WINDOW, NULL, wd, &si, &pi)) {
+	if (CreateProcessW(NULL, wl, NULL, NULL, !rows, CREATE_SUSPENDED | (rows ? EXTENDED_STARTUPINFO_PRESENT : CREATE_NO_WINDOW), NULL, wd, &si.StartupInfo, &pi)) {
 		ok = AssignProcessToJobObject(job, pi.hProcess);
 		if (ok) ResumeThread(pi.hThread);
 		else { TerminateProcess(pi.hProcess, 1); CloseHandle(pi.hProcess); }
 		CloseHandle(pi.hThread);
 	}
+	if (rows) DeleteProcThreadAttributeList(si.lpAttributeList);
 	if (ok)
-		p[id] = (struct Proc){ .ph = pi.hProcess, .job = job, .h = { mine[0], mine[1], mine[2] }, .fn = fn, .ctx = ctx };
+		p[id] = (struct Proc){ .ph = pi.hProcess, .job = job, .pc = pc, .h = { mine[0], mine[1], mine[2] }, .fn = fn, .ctx = ctx };
 out:
 	for (int s = 0; s < 3; s++) {
 		if (theirs[s]) CloseHandle(theirs[s]);
 		if (!ok && mine[s]) CloseHandle(mine[s]);
 	}
+	if (!ok && pc) ClosePseudoConsole(pc);
 	if (!ok && job) CloseHandle(job);
 	free(line); free(wl); free(wd);
 	return ok ? id : -1;
+}
+
+int proc_start(char *const argv[], const char *dir, int rows, int cols, ProcFn fn, void *ctx)
+{
+	return spawn(cmdline(argv), dir, rows, cols, fn, ctx);
+}
+
+void proc_resize(int id, int rows, int cols)
+{
+	struct Proc *c = proc(id);
+	if (c && c->pc) ResizePseudoConsole(c->pc, (COORD){ (SHORT)cols, (SHORT)rows });
+}
+
+/* cmd.exe splits its line itself, not as the CRT does: the command goes
+   in as typed, inside the quotes /s strips (Neovim's shellxquote '"' and
+   libuv's UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS) */
+const char *proc_shell_path(void)
+{
+	const char *sh = getenv("COMSPEC");
+	return sh && *sh ? sh : "cmd.exe";
+}
+
+int proc_shell(const char *cmd, const char *dir, ProcFn fn, void *ctx)
+{
+	const char *sh = proc_shell_path();
+	size_t n = strlen(sh) + strlen(cmd) + 16;
+	char *line = malloc(n);
+	if (line) snprintf(line, n, "\"%s\" /s /c \"%s\"", sh, cmd);
+	return spawn(line, dir, 0, 0, fn, ctx);
 }
 
 int proc_write(int id, const void *b, size_t n)
@@ -340,6 +395,7 @@ void proc_kill(int id)
    since a process left behind may keep writing (Exit.tla "ok"). */
 static void report(struct Proc *c)
 {
+	waited |= c - p == only;
 	DWORD code = 0;
 	GetExitCodeProcess(c->ph, &code);
 	c->reaping = 1;
@@ -353,12 +409,29 @@ static void report(struct Proc *c)
 		ended(c, s);
 	}
 	if (c->h[0]) close_in(c);
+	/* after our ends are closed, so it cannot wait for us to read */
+	if (c->pc) ClosePseudoConsole(c->pc);
 	CloseHandle(c->ph);
 	CloseHandle(c->job);
 	ProcFn fn = c->fn;
 	void *ctx = c->ctx;
 	*c = (struct Proc){ 0 };
 	fn(ctx, 0, NULL, code);
+}
+
+/* Ctrl-C reaches loop_int through the watches */
+int proc_wait(int id, int ms)
+{
+	long long end = loop_now() + ms * 1000000LL;
+	int r = 0;
+	only = id;
+	for (waited = !proc(id); !waited; ) {
+		long long d = end - loop_now();
+		if (!r && (d <= 0 || loop_int)) { proc_kill(id); r = -1; }
+		loop_once(r ? -1 : (int)(d / 1000000) + 1);
+	}
+	only = -1;
+	return r;
 }
 
 int loop_once(int timeout_ms)
@@ -373,19 +446,19 @@ int loop_once(int timeout_ms)
 		else { h[n] = H(w[i].fd); who[n++] = i; }
 	}
 	for (int i = 0; i < MAXP; i++) {
-		if (!p[i].ph) continue;
+		if (!p[i].ph || (only >= 0 && i != only)) continue;
 		h[n] = p[i].ph; who[n++] = -1;
 		for (int s = 1; s < 3; s++)
 			if (p[i].h[s] && !p[i].busy[s] && !read_next(&p[i], s)) timeout_ms = 0;   /* its end was reported: the caller may have work */
 	}
-	timeout_ms = timer_wait(-1, timeout_ms);
+	if (only < 0) timeout_ms = timer_wait(-1, timeout_ms);
 	DWORD r = MsgWaitForMultipleObjectsEx((DWORD)n, h, timeout_ms < 0 ? INFINITE : (DWORD)timeout_ms, mask, MWMO_ALERTABLE | MWMO_INPUTAVAILABLE);
 	if (r == WAIT_FAILED) return -1;
 	if (r < WAIT_OBJECT_0 + (DWORD)n && who[r - WAIT_OBJECT_0] >= 0) w[who[r - WAIT_OBJECT_0]].pend = 1;   /* the wait took its signal */
 	run_ready();   /* as poll, every ready watch, not only the one the wait names */
-	timer_run();
+	if (only < 0) timer_run();
 	for (int i = 0; i < MAXP; i++)
-		if (p[i].ph && WaitForSingleObject(p[i].ph, 0) == WAIT_OBJECT_0) report(&p[i]);
+		if (p[i].ph && (only < 0 || i == only) && WaitForSingleObject(p[i].ph, 0) == WAIT_OBJECT_0) report(&p[i]);
 	return 0;
 }
 #endif

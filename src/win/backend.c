@@ -20,6 +20,7 @@
 #include <windows.h>
 #include <dwmapi.h>
 #include "backend.h"
+#include "image.h"
 #include "keys.h"
 #include "loop.h"
 #include "uni.h"
@@ -30,6 +31,7 @@ enum { RING = 256, PT = 12 };   /* font size in points: a guess until package 7 
 static HWND win;
 static HDC mem;                 /* holds the DIB, which holds what is shown */
 static HBITMAP dib, nodib;
+static uint32_t *bits;          /* the DIB's pixels, for images */
 static HFONT font, nofont;
 static HANDLE timer;
 static int cw, ch, dpi;         /* cell size in pixels */
@@ -104,6 +106,7 @@ static int make_dib(void)
 	SelectObject(mem, b);
 	if (dib) DeleteObject(dib);
 	dib = b;
+	bits = px;
 	SetBkColor(mem, BASE);
 	ExtTextOutW(mem, 0, 0, ETO_OPAQUE, &r, NULL, 0, NULL);
 	dw = r.right;
@@ -133,6 +136,8 @@ static LRESULT CALLBACK proc(HWND h, UINT m, WPARAM w, LPARAM l)
 		case VK_UP: put(KEY_UP); return 0;
 		case VK_DOWN: put(KEY_DOWN); return 0;
 		case VK_DELETE: put(KEY_DEL); return 0;
+		/* no WM_CHAR follows Ctrl+. (no control character has a dot) */
+		case VK_OEM_PERIOD: if (GetKeyState(VK_CONTROL) < 0) { put(KEY_CTRL_DOT); return 0; } break;
 		}
 		break;
 	case WM_LBUTTONDOWN:
@@ -281,15 +286,31 @@ static void draw_cell(const Grid *g, int r, int c, int cursor)
 		} else u[n++] = (WCHAR)cp;
 	}
 	int wide = c + 1 < g->cols && !x[1].len;
-	const Face *fb, *fa = grid_face(x, &fb);
+	const Face *fb, *fu, *fa = grid_face(x, &fb, &fu);
 	COLORREF f = x->attr == ATTR_DIM ? DIMC : fa->style & FACE_FG ? RGB(fa->fg[0], fa->fg[1], fa->fg[2]) : TEXT;
 	COLORREF b = fb->style & FACE_BG ? RGB(fb->bg[0], fb->bg[1], fb->bg[2]) : BASE;
 	RECT rc = { c * cw, r * ch, (c + 1 + wide) * cw, (r + 1) * ch };
+	if (x->attr == ATTR_IMAGE) {   /* thread 0's, agreed: the background, then the image over it */
+		SetBkColor(mem, b);
+		ExtTextOutW(mem, 0, 0, ETO_OPAQUE, &rc, NULL, 0, NULL);
+		GdiFlush();   /* CreateDIBSection's rule before touching the bits (Wine draws at once, so no test sees it) */
+		image_draw(bits + r * ch * dw + c * cw, dw, x);
+		return;
+	}
 	/* reversed (status line, cursor): the colours swap, as a terminal's SGR 7 */
 	int rev = cursor || x->attr == ATTR_REV;
 	SetTextColor(mem, rev ? b : f);
 	SetBkColor(mem, rev ? f : b);
 	ExtTextOutW(mem, rc.left, rc.top, ETO_OPAQUE | ETO_CLIPPED, &rc, u, n, NULL);
+	/* an underline or undercurl in sp, else the text's colour (Neovim's GUIs) */
+	if (!(fu->style & (FACE_UNDERLINE | FACE_UNDERCURL))) return;
+	SetBkColor(mem, fu->style & FACE_SP ? RGB(fu->sp[0], fu->sp[1], fu->sp[2]) : f);
+	int curl = fu->style & FACE_UNDERCURL;
+	for (int i = rc.left; i < rc.right; i = curl ? i + 1 : rc.right) {   /* a curl pixel by pixel, a line at once */
+		int y = rc.bottom - 1 - (curl ? grid_curl(i, ch) : 0);
+		RECT p = { i, y, curl ? i + 1 : rc.right, y + 1 };
+		ExtTextOutW(mem, 0, 0, ETO_OPAQUE, &p, NULL, 0, NULL);
+	}
 }
 
 static void win_present(const Grid *g, Grid *shown)
@@ -375,9 +396,10 @@ static long win_clip_get(char *buf, size_t max)
 }
 
 static void win_mouse(int *row, int *col) { *row = mrow; *col = mcol; }
+static void win_cell(int *w, int *h) { *w = cw; *h = ch; }   /* thread 0's, agreed */
 
 const Backend backend_win = {
 	win_open, win_close, win_fds, win_input, win_size, win_ready,
-	win_present, win_suspend, win_clip_set, win_clip_get, win_mouse
+	win_present, win_suspend, win_clip_set, win_clip_get, win_mouse, win_cell
 };
 #endif

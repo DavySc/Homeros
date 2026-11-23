@@ -1,0 +1,9 @@
+#+begin_quote
+x^{2} \leq *b*
+#+end_quote
+#+begin_src c
+x^{2} \leq *b*
+#+end_src
+#+begin_example
+*b*
+#+end_example

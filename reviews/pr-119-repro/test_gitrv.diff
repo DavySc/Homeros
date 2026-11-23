@@ -1,0 +1,62 @@
+diff --git a/tests/test_git.c b/tests/test_gitrv.c
+index cea19684..4cdbaff8 100644
+--- a/tests/test_git.c
++++ b/tests/test_gitrv.c
+@@ -698,17 +698,22 @@ static size_t at_line(const char *t, int k)
+ 
+ static void region_case(int mode)
+ {
+-	static const char *const word[] = { "a", "b", "c", "d", "e", "f" };
+-	char base[2048] = "", mod[2048] = "";
+-	int n = 4 + (int)rnd(30);
++	static const char *const word[] = { "a", "a", "b", "", " ", "-x", "+y", "@@ -1 +1 @@", "\\ No newline at end of file",
++		"diff --git a/f b/f", "a\tb", "a b", "a  b", "--- a", "+++ b", "}" };
++	int haz = getenv("RV_HAZ") ? atoi(getenv("RV_HAZ")) : 0, nw = haz ? 16 : 3;
++	char base[16384] = "", mod[16384] = "";
++	int n = 4 + (int)rnd(haz == 2 ? 120 : 40);
+ 	for (int i = 0; i < n; i++) {
+-		const char *w = word[rnd(6)];
+-		snprintf(base + strlen(base), sizeof base - strlen(base), "%s%d\n", w, i);
++		const char *w = word[rnd((unsigned)nw)];
++		char ln[64], idx[16];
++		snprintf(idx, sizeof idx, "%d", i);
++		snprintf(ln, sizeof ln, "%s%s", w, rnd(haz == 2 ? 8 : 2) ? "" : idx);
++		snprintf(base + strlen(base), sizeof base - strlen(base), "%s\n", ln);
+ 		int k = rnd(8);
+ 		if (k == 0) continue;                                     /* deleted */
+-		if (k == 1) snprintf(mod + strlen(mod), sizeof mod - strlen(mod), "%s%dx\n", w, i);   /* changed */
+-		else snprintf(mod + strlen(mod), sizeof mod - strlen(mod), "%s%d\n", w, i);
+-		if (k == 2) snprintf(mod + strlen(mod), sizeof mod - strlen(mod), "new%d\n", i);       /* added */
++		if (k == 1) snprintf(mod + strlen(mod), sizeof mod - strlen(mod), "%sx\n", ln);   /* changed */
++		else snprintf(mod + strlen(mod), sizeof mod - strlen(mod), "%s\n", ln);
++		if (k == 2) snprintf(mod + strlen(mod), sizeof mod - strlen(mod), "%s\n", rnd(2) ? "new" : word[rnd((unsigned)nw)]);       /* added */
+ 	}
+ 	if (!strcmp(base, mod)) return;
+ 	free(run("rm -rf '%s' && mkdir -p '%s'", repo, repo));
+@@ -787,6 +792,7 @@ static void region_check(void)
+ 	rng += sn ? strtoull(sn, NULL, 10) : 1;
+ 	int n = nn ? atoi(nn) : 100;
+ 	for (int i = 0; i < n && fails < 5; i++) region_case(i % 4);
++	printf("rv region: %d cases, %d fails\n", n, fails);
+ }
+ #endif
+ 
+@@ -836,7 +842,7 @@ int main(void)
+ 	e.rows = 60; e.cols = 100;
+ 	git_editor(&e);
+ 
+-	FILE *f = fopen("src/git/traces.txt", "r");
++	FILE *f = fopen(getenv("RV_TRACES") ? getenv("RV_TRACES") : "src/git/traces.txt", "r");
+ 	CHECK(f);
+ 	static char line[1 << 16];
+ 	static Step steps[32];
+@@ -929,7 +935,8 @@ int main(void)
+ 	free(name); free(setup);
+ 	for (int k = 0; k < 7; k++) free(cur[k]);
+ 	CHECK(done > 0);
+-	if (!only) {
++	if (getenv("RV_HAZ")) region_check();
++	else if (!only) {
+ #ifndef _WIN32
+ 		/* the tags trace needs describe: 5 is reached, never passed */
+ 		CHECK(maxproc == 5);

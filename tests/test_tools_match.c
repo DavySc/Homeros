@@ -56,5 +56,9 @@ int main(int argc, char **argv)
 	CHECK(!fgets(b, sizeof b, out));
 	printf("test_tools_match: %d cases from snacks, %d lines differ\n", cases, bad);
 	CHECK(cases > 0 && !bad);
+	/* vim.trim with Lua's %s (the prompt's and oil's names): the cases above
+	   hold no tab and no trailing blank */
+	const char *q = "\t foo \t\r\n";
+	CHECK(match_trim(&q, 9) == 3 && !strncmp(q, "foo", 3));
 	return 0;
 }

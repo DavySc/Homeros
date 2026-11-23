@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "scan.h"
+#include "uni.h"
 
 char *j_copy(const char *s, size_t n)
 {
@@ -90,18 +91,6 @@ size_t j_elem(const char *s, size_t n, size_t a, int k)
 
 size_t j_len(const char *s, size_t n, size_t v) { size_t e = j_skip(s, n, v); return e == NONE ? 0 : e - v; }
 
-static void utf8(Str *d, unsigned long c)
-{
-	char b[4];
-	size_t k = c < 0x80 ? 1 : c < 0x800 ? 2 : c < 0x10000 ? 3 : 4;
-	if (k == 1) b[0] = (char)c;
-	else {
-		for (size_t i = k - 1; i > 0; i--) { b[i] = (char)(0x80 | (c & 0x3F)); c >>= 6; }
-		b[0] = (char)((k == 2 ? 0xC0 : k == 3 ? 0xE0 : 0xF0) | c);
-	}
-	str_add(d, b, k);
-}
-
 long j_hex4(const char *s, size_t n, size_t i)
 {
 	long c = 0;
@@ -138,7 +127,8 @@ char *j_str(const char *s, size_t n, size_t v, size_t *out)
 			c = 0x10000 + ((c - 0xD800) << 10) + (lo - 0xDC00);
 			i += 6;
 		} else if (c < 0 || (c >= 0xD800 && c < 0xE000)) c = 0xFFFD;
-		utf8(&d, (unsigned long)c);
+		unsigned char u[4];
+		str_add(&d, (char *)u, (size_t)uni_put(u, (unsigned)c));
 	}
 	if (out) *out = d.n;
 	return d.s;

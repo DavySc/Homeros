@@ -1,0 +1,116 @@
+caught        org: table row contents start at the bar   (make test TESTS=org): tests/test_org.c:1098: CHECK(!strcmp(got, cases[i].want)) failed
+caught        org: a headline ends only at a shallower one (fuzz)   (make fuzz FUZZERS=org FUZZ_SECONDS=30): ==26467== ERROR: libFuzzer: deadly signal
+caught        org: checkbox [x] not folded to [X] (against Org)   (make org-conform ORG_N=2000 SEED=1): 142 of 2000 differ (no answer from Org on 0)
+caught        org: tags take [[:word:]] for [[:alnum:]] above ASCII   (make test TESTS=org): tests/test_org.c:1098: CHECK(!strcmp(got, cases[i].want)) failed
+caught        org: drawer and footnote names take any non-ASCII byte (against Org)   (make org-conform ORG_N=2000 SEED=1): 66 of 2000 differ (no answer from Org on 0)
+caught        org: org_edit stops its span before a new shallower headline's subtree ends (fuzz)   (make fuzz FUZZERS=org FUZZ_SECONDS=30): ==27140== ERROR: libFuzzer: deadly signal
+caught        org: org_edit starts its span at a headline whose line the edit touches (fuzz)   (make fuzz FUZZERS=org FUZZ_SECONDS=30): ==27331== ERROR: libFuzzer: deadly signal
+caught        org: planning reads a repeater's unit case-folded (against Org)   (make org-conform ORG_N=2000 SEED=1): 144 of 2000 differ (no answer from Org on 0)
+caught        org: a timestamp's repeater is looked for only before its range (against Org)   (make org-conform ORG_N=2000 SEED=1): 449 of 2000 differ (no answer from Org on 0)
+caught        org: colours: levels past 6 cycle over 6 faces, not Org's 8 (against Org)   (make org-conform ORG_N=2000 SEED=1): 260 of 2000 differ (no answer from Org on 129)
+caught        org: colours: DONE as a todo keyword (against Org)   (make org-conform ORG_N=2000 SEED=1): 162 of 2000 differ (no answer from Org on 129)
+caught        org: colours: font-lock's priority folds case (against Org)   (make org-conform ORG_N=2000 SEED=1): 2 of 2000 differ (no answer from Org on 129)
+caught        org: colours: tags without their outer colons (against Org)   (make org-conform ORG_N=2000 SEED=1): 227 of 2000 differ (no answer from Org on 129)
+caught        org: colours: a date range takes four dashes (against Org)   (make org-conform ORG_N=2000 SEED=1): 87 of 2000 differ (no answer from Org on 129)
+caught        org: colours: a table row without its newline (against Org)   (make org-conform ORG_N=2000 SEED=1): 926 of 2000 differ (no answer from Org on 129)
+caught        org: colours: a block's word end not checked (against Org)   (make org-conform ORG_N=2000 SEED=1): 7 of 2000 differ (no answer from Org on 129)
+caught        org: colours: export blocks not quoting (against Org)   (make org-conform ORG_N=2000 SEED=1): 17 of 2000 differ (no answer from Org on 129)
+caught        org: colours: a failed caption line left plain (against Org)   (make org-conform ORG_N=2000 SEED=1): 201 of 2000 differ (no answer from Org on 129)
+caught        org: colours: checkbox [x] (against Org)   (make org-conform ORG_N=2000 SEED=1): 139 of 2000 differ (no answer from Org on 129)
+caught        org: colours: a description term after two blanks missed (against Org)   (make org-conform ORG_N=2000 SEED=1): 129 of 2000 differ (no answer from Org on 129)
+caught        org: colours: special keywords inside a word (against Org)   (make org-conform ORG_N=2000 SEED=1): 354 of 2000 differ (no answer from Org on 129)
+caught        org: colours: the export snippet's backend without its colon (against Org)   (make org-conform ORG_N=2000 SEED=1): 281 of 2000 differ (no answer from Org on 129)
+caught        org: colours: a stale scan kept across an update   (make test TESTS=org): tests/test_org.c:1120: CHECK(!memcmp(f + 20, g + 20, n - 20)) failed
+caught        org: colours: an edit before the pending ones not merged (fuzz)   (make fuzz FUZZERS=org FUZZ_SECONDS=60): ==30264== ERROR: libFuzzer: deadly signal
+caught        org: colours: the text after an edit not moved (fuzz)   (make fuzz FUZZERS=org FUZZ_SECONDS=60): ==30329== ERROR: libFuzzer: deadly signal
+caught        org: org_ts reads case-sensitively, as planning does (against Org)   (make org-conform ORG_N=2000 SEED=1): 589 of 2000 differ (no answer from Org on 0)
+caught        org: a two-digit hour above 29 (against Org)   (make org-conform ORG_N=2000 SEED=1): 122 of 2000 differ (no answer from Org on 0)
+caught        org: folds: a headline's line takes the subtree before it (against Org)   (make org-conform ORG_N=2000 SEED=1): 846 of 2000 differ (no answer from Org on 0)
+caught        org: folds: levels read from the parse before the edits (fuzz)   (make fuzz FUZZERS=org FUZZ_SECONDS=30): ==30934== ERROR: libFuzzer: deadly signal
+caught        org: todo: the first ORDERED value wins, not the last (against Org)   (make test TESTS=org): tests/test_org.c:1180: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: a repeat from no keyword goes to TODO (against Org)   (make test TESTS=org): tests/test_org.c:1180: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: the note's state padded to 11 (against Org)   (make test TESTS=org): tests/test_org.c:1180: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: a week repeats as a day (against Org)   (make test TESTS=org): tests/test_org.c:1180: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: a parent ignores undone children (against Org)   (make test TESTS=org): tests/test_org.c:1180: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: CLOSED kept when going back to not done (against Org)   (make test TESTS=org): tests/test_org.c:1180: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: an edit one byte past its change (fuzz)   (make fuzz FUZZERS=org FUZZ_SECONDS=30): ==32031== ERROR: libFuzzer: deadly signal
+caught        org: colours: a long line coloured again for every piece (frame gate)   (make test TESTS=org): tests/test_org.c:1208: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000 < 100) failed
+caught        org: colours: a date scan from every opener to the line's end (frame gate)   (make test TESTS=org): tests/test_org.c:1208: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000 < 100) failed
+caught        org: colours: a diary sexp scan from every opener to the line's end (frame gate)   (make test TESTS=org): tests/test_org.c:1208: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000 < 100) failed
+caught        org: colours: a line's faces not cleared before it is coloured (against Org)   (make org-conform ORG_N=2000 SEED=1): 1854 of 2000 differ (no answer from Org on 129)
+caught        org: colours: a property's value keeps the earlier face (against Org; PR 83 review)   (make org-conform ORG_N=2000 SEED=1): 62 of 2000 differ (no answer from Org on 129)
+caught        org: colours: [100x%] any three characters count as done (against Org; PR 83 review)   (make org-conform ORG_N=2000 SEED=1): 125 of 2000 differ (no answer from Org on 129)
+caught        org: colours: COMMENT followed by anything (against Org; PR 83 review)   (make org-conform ORG_N=2000 SEED=1): 1 of 2000 differ (no answer from Org on 129)
+caught        org: colours: a column width cookie <c> missed (against Org; PR 83 review)   (make org-conform ORG_N=2000 SEED=1): 64 of 2000 differ (no answer from Org on 129)
+caught        org: colours: after an export snippet, the scan goes on inside it (against Org; PR 83 review)   (make org-conform ORG_N=2000 SEED=1): 76 of 2000 differ (no answer from Org on 129)
+caught        org: todo: a property name's prefix counts (PR 93 review)   (make test TESTS=org): tests/test_org.c:1180: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: colours: the caption's bracket closed by the first ]: (not the last) (against Org; PR 83 review)   (make org-conform ORG_N=2000 SEED=1): 17 of 2000 differ (no answer from Org on 129)
+caught        org: todo: range end minutes below 0 not carried (PR 93 review)   (make test TESTS=org): tests/test_org.c:1180: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: indent never uses tabs (PR 93 review)   (make test TESTS=org): tests/test_org.c:1180: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: COMMENT goes before the priority (PR 93 review)   (make test TESTS=org): tests/test_org.c:1180: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: a stamp in a table row is no agenda stamp (PR 93 review)   (make test TESTS=org): tests/test_org.c:1180: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: planning read case-folded by org-todo (PR 93 review)   (make test TESTS=org): tests/test_org.c:1180: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: a tab counts 8, not to the tab stop (PR 93 review)   (make test TESTS=org): tests/test_org.c:1180: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: +1m from the normalised date, not its digits (PR 93 review)   (make test TESTS=org): tests/test_org.c:1180: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: an overdue ++ repeater stops at ten shifts (PR 93 review)   (make test TESTS=org): tests/test_org.c:1180: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: CLOSED: inside a word counts (PR 93 review)   (make test TESTS=org): tests/test_org.c:1180: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: LAST_REPEAT matched by prefix (PR 93 review)   (make test TESTS=org): tests/test_org.c:1180: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: a new drawer's first line not indented as the drawer it is in (PR 93 review)   (make test TESTS=org): tests/test_org.c:1180: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: a line inside an element indented as the element, not the line above   (make test TESTS=org): tests/test_org.c:1180: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: an outer drawer's :END: indented as the line above   (make test TESTS=org): tests/test_org.c:1180: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: todo: an hour repeater without a time goes on where Org stops (against Org)   (make org-conform ORG_N=2000 SEED=1): 5 of 500 differ (no answer from Org on 2)
+caught        org: todo: a stamp Org cannot read back goes on where Org stops   (make test TESTS=org): tests/test_org.c:1180: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: show: an entity's {} left showing (against Org)   (make org-conform ORG_N=2000 SEED=1): 885 of 2000 differ (no answer from Org on 4)
+caught        org: show: the character after an entity hidden with it when it takes two bytes (against Org)   (make org-conform ORG_N=2000 SEED=1): 9 of 2000 differ (no answer from Org on 4)
+caught        org: show: an entity of no cell (\zwj) shown (against Org)   (make org-conform ORG_N=2000 SEED=1): 189 of 2000 differ (no answer from Org on 4)
+caught        org: show: after an entity the next one is looked for past its end (against Org)   (make org-conform ORG_N=2000 SEED=1): 147 of 2000 differ (no answer from Org on 4)
+caught        org: show: Davy's \top missing (against Org with org-entities-user)   (make org-conform ORG_N=2000 SEED=1): 148 of 2000 differ (no answer from Org on 4)
+caught        org: show: a line's first marker checks its own line for a table rule (against Org)   (make org-conform ORG_N=2000 SEED=1): 1 of 2000 differ (no answer from Org on 4)
+caught        org: show: paragraph separators after the newline inside emphasis missed (against Org)   (make org-conform ORG_N=2000 SEED=1): 24 of 2000 differ (no answer from Org on 4)
+caught        org: show: verbatim keeps earlier hidden markers inside it (against Org)   (make org-conform ORG_N=2000 SEED=1): 198 of 2000 differ (no answer from Org on 4)
+caught        org: show: a script inside emphasis raised (against Org)   (make org-conform ORG_N=2000 SEED=1): 405 of 2000 differ (no answer from Org on 4)
+caught        org: show: a script in a property's key raised (against Org)   (make org-conform ORG_N=2000 SEED=1): 636 of 2000 differ (no answer from Org on 4)
+caught        org: show: a script without a Unicode form for each character shown in part (against Org)   (make org-conform ORG_N=2000 SEED=1): 924 of 2000 differ (no answer from Org on 4)
+NOT CAUGHT    org: show: script braces stop at the line's end (against Org)   (make org-conform ORG_N=2000 SEED=1 passed)
+caught        org: show: a script starting on the line above not looked for (against Org)   (make org-conform ORG_N=2000 SEED=3): 1 of 2000 differ (no answer from Org on 4)
+caught        org: show: a #+ line keeps hidden markers (against Org)   (make org-conform ORG_N=2000 SEED=1): 91 of 2000 differ (no answer from Org on 4)
+caught        org: show: a quoting block's lines keep hidden markers (against Org)   (make org-conform ORG_N=2000 SEED=1): 17 of 2000 differ (no answer from Org on 4)
+caught        org: show: a fixed-width line keeps hidden markers (against Org)   (make org-conform ORG_N=2000 SEED=1): 3 of 2000 differ (no answer from Org on 4)
+FAILED OTHERWISE  org: show: a headline ending a block read without the line above (against Org)   (make org-conform ORG_N=2000 SEED=1): make: *** [Makefile:102: org-conform] Error 1
+caught        org: show: a quoting block's end headline keeps hidden stars (against Org)   (make org-conform ORG_N=2000 SEED=1): 1 of 2000 differ (no answer from Org on 4)
+caught        org: show: a script given part of its spans when out of room   (make test TESTS=org): tests/test_org.c:1257: CHECK(x && orgfx_conceal(x, 0, two, 2) == 1 && two[0].a == 6 && !strcmp(two[0].s, "≤")) failed
+caught        org: show: a marker two matches hide given twice (driver: spans in order)   (make org-conform ORG_N=2000 SEED=1): driver failed: error: line 1: span 22 23 out of order
+caught        org: show: the line start found from each emphasis marker (frame gate)   (make test TESTS=org): tests/test_org.c:1208: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000 < 100) failed
+caught        org: show: each emphasis marker looks for its closer from itself (frame gate)   (make test TESTS=org): tests/test_org.c:1208: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000 < 100) failed
+caught        org: show: each emphasis marker looks for a table bar from itself (frame gate)   (make test TESTS=org): tests/test_org.c:1208: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000 < 100) failed
+caught        org: todo: any element before taken as the sibling (PR 98 review, note 3)   (make test TESTS=org): tests/test_org.c:1180: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: show: a table rule checked at each + marker (frame gate)   (make test TESTS=org): tests/test_org.c:1208: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000 < 100) failed
+caught        org: todo: a planning line's repeater read without a whole stamp (PR 98 review, note 2)   (make test TESTS=org): tests/test_org.c:1180: CHECK(!strcmp(got, todos[i].want)) failed
+caught        org: show: spans as offsets in the text, not columns of the line (syntax.h)   (make test TESTS=org): tests/test_org.c:1128: CHECK(!text_delete(t, 2, 1) && !text_insert(t, 2, "x", 1) && orgfx_conceal(x, 3, cc, 4) == 3) failed
+caught        org: show: each line's scan walked from the headline above (frame gate on many lines)   (make test TESTS=org): tests/test_org.c:1235: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000 < (k ? 40 : 20)) failed
+caught        org: show: only the first 64 emphasis matches kept for scripts   (make test TESTS=org): tests/test_org.c:1248: CHECK(x && orgfx_conceal(x, 0, c, 256) == 132) failed
+caught        org: show: '[' not a character after emphasis (against Org)   (make org-conform ORG_N=2000 SEED=1): 103 of 2000 differ (no answer from Org on 4)
+caught        org: show: a diary sexp line not a paragraph separator (against Org)   (make org-conform ORG_N=2000 SEED=1): 4 of 2000 differ (no answer from Org on 4)
+caught        org: show: conceal's scan kept across an update   (make test TESTS=org): tests/test_org.c:1128: CHECK(!text_delete(t, 2, 1) && !text_insert(t, 2, "x", 1) && orgfx_conceal(x, 3, cc, 4) == 3) failed
+caught        org: show: a table rule of two characters (against Org)   (make org-conform ORG_N=2000 SEED=1): 1 of 2000 differ (no answer from Org on 4)
+caught        org: colours: a link over a paragraph boundary (against Org)   (make org-conform ORG_N=2000 SEED=1): 11 of 2000 differ (no answer from Org on 129)
+caught        org: colours: a plain link after a word character (against Org)   (make org-conform ORG_N=2000 SEED=1): 68 of 2000 differ (no answer from Org on 129)
+caught        org: colours: a plain link never ends at / (against Org)   (make org-conform ORG_N=2000 SEED=1): 75 of 2000 differ (no answer from Org on 129)
+caught        org: colours: link types of at most three letters (against Org)   (make org-conform ORG_N=2000 SEED=1): 648 of 2000 differ (no answer from Org on 129)
+caught        org: colours: a ] or > that ends no separator not looked for   (make test TESTS=org): tests/test_org.c:1149: CHECK((f1[fx[i].at] == fx[i].face) == fx[i].is) failed
+caught        org: show: a descriptive link shows its closing brackets (against Org)   (make org-conform ORG_N=2000 SEED=1): 1372 of 2000 differ (no answer from Org on 4)
+caught        org: colours: links searched from the scan's start (frame gate on many lines)   (make test TESTS=org): tests/test_org.c:1235: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000 < (k ? 40 : 20)) failed
+caught        org: colours: no checkpoint kept on a walk (frame gate on many lines)   (make test TESTS=org): tests/test_org.c:1235: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000 < (k ? 40 : 20)) failed
+caught        org: show: checkpoints kept across an update   (make test TESTS=org): tests/test_org.c:1167: CHECK(!text_insert(t, 0, "#+begin_example\n", 16) && orgfx_conceal(x, 9001, cc, 4) == 0) failed
+caught        org: colours: a footnote span over a headline   (make test TESTS=org): tests/test_org.c:1149: CHECK((f1[fx[i].at] == fx[i].face) == fx[i].is) failed
+caught        org: show: a link ending at a footnote reference holds it   (make test TESTS=org): tests/test_org.c:1156: CHECK(x && orgfx_conceal(x, 1, c5, 5) == 5 && c5[1].a == 3 && !strcmp(c5[1].s, "²")) failed
+caught        org: colours: a footnote reference in a LaTeX macro (against Org)   (make org-conform ORG_N=2000 SEED=1): 189 of 2000 differ (no answer from Org on 129)
+caught        org: colours: a LaTeX fragment at a line's start not looked for   (make test TESTS=org): tests/test_org.c:1149: CHECK((f1[fx[i].at] == fx[i].face) == fx[i].is) failed
+caught        org: colours: an entity at a line's start taken for a LaTeX fragment   (make test TESTS=org): tests/test_org.c:1149: CHECK((f1[fx[i].at] == fx[i].face) == fx[i].is) failed
+caught        org: colours: any character after a $ fragment's closing $   (make test TESTS=org): tests/test_org.c:1149: CHECK((f1[fx[i].at] == fx[i].face) == fx[i].is) failed
+caught        org: colours: no definition span thrown by a reference below (against Org)   (make org-conform ORG_N=2000 SEED=1): 46 of 2000 differ (no answer from Org on 129)
+caught        org: colours: a footnote reference's span not carried to the next lines (against Org)   (make org-conform ORG_N=2000 SEED=1): 201 of 2000 differ (no answer from Org on 129)
+caught        org: colours: a footnote reference inside a link (against Org)   (make org-conform ORG_N=2000 SEED=1): 145 of 2000 differ (no answer from Org on 129)
+caught        org: colours: a footnote definition span from a comment line (against Org)   (make org-conform ORG_N=2000 SEED=1): 1 of 2000 differ (no answer from Org on 129)
+caught        org: colours: a string not skipped in a footnote's brackets (against Org)   (make org-conform ORG_N=2000 SEED=1): 150 of 2000 differ (no answer from Org on 129)
+DONE

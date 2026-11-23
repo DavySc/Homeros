@@ -1,0 +1,2 @@
+** todo x :tag:
+ DEADLINE: <2026-11-26 Thu +2w/2w> SCHEDULED: <2026-11-21 Thu .+1d/3d

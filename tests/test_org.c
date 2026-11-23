@@ -1036,6 +1036,54 @@ static const struct { size_t pos; const char *dirs, *text, *want; } todos[] = {
 	  ":LAST_REPEAT: [2026-11-19 Thu 17:30]\n"
 	  ":END:\n"
 	  "--\n" },
+	/* a property drawer's new :END: at the drawer's column (PR 98 review, note 1) */
+	{ 0, "r",
+	  "** NEXT \n"
+	  "    :PROPERTIES:\n"
+	  "   :LOGBOOK:",
+	  "** WAIT \n"
+	  "    :PROPERTIES:\n"
+	  "   :LOGBOOK:\n"
+	  "   :LOGBOOK:\n"
+	  "   - State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  "    :END:--\n" },
+	/* the sibling before is one with the same parent (note 3) */
+	{ 0, "rr",
+	  "* TODO a\n"
+	  ":NOTES:\n"
+	  "  - item\n"
+	  "    :logbook:",
+	  "* NEXT a\n"
+	  ":NOTES:\n"
+	  "  - item\n"
+	  "    :logbook:--\n"
+	  "* WAIT a\n"
+	  ":NOTES:\n"
+	  "  - item\n"
+	  "    :logbook:\n"
+	  "  :LOGBOOK:\n"
+	  "  - State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:--\n" },
+	/* an unclosed repeating stamp on a planning line is no stamp: no repeat (note 2) */
+	{ 0, "rrr",
+	  "* TODO a\n"
+	  "SCHEDULED: <2026-11-12 Thu +1d\n",
+	  "* NEXT a\n"
+	  "SCHEDULED: <2026-11-12 Thu +1d\n"
+	  "--\n"
+	  "* WAIT a\n"
+	  "SCHEDULED: <2026-11-12 Thu +1d\n"
+	  ":LOGBOOK:\n"
+	  "- State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "--\n"
+	  "* DONE a\n"
+	  "CLOSED: [2026-11-19 Thu 17:30] SCHEDULED: <2026-11-12 Thu +1d\n"
+	  ":LOGBOOK:\n"
+	  "- State \"DONE\"       from \"WAIT\"       [2026-11-19 Thu 17:30]\n"
+	  "- State \"WAIT\"       from \"NEXT\"       [2026-11-19 Thu 17:30]\n"
+	  ":END:\n"
+	  "--\n" },
 };
 
 int main(void)
@@ -1072,6 +1120,84 @@ int main(void)
 	CHECK(!memcmp(f + 20, g + 20, n - 20));
 	orgfx_free(x);
 	text_free(t);
+	Conceal cc[4];   /* and conceal's scan too: x^{2} is raised once no block holds it */
+	t = text_new("a\n#+begin_example\nx^{2}\nx^{2}\n#+end_example\n", 44);
+	x = t ? orgfx_new(t) : NULL;
+	CHECK(x && orgfx_conceal(x, 2, cc, 4) == 0);   /* keeps the scan at line 2 */
+	orgfx_edit(x, t, 2, 1, 1);
+	CHECK(!text_delete(t, 2, 1) && !text_insert(t, 2, "x", 1) && orgfx_conceal(x, 3, cc, 4) == 3);
+	orgfx_free(x);
+	text_free(t);
+	/* links and footnotes, each as Org colours it (tools/org_conform.py -f
+	   and -s agree on each text): the byte at, and whether its face is */
+	static const struct { const char *text; size_t at; unsigned char face; int is; } fx[] = {
+		{ "[[a\n#+b]]c: d\n", 0, FACE_MARKUP_LINK_URL, 1 },   /* "]]" ends no separator there */
+		{ "[[a][x\n#+b]]c: d\n", 0, FACE_MARKUP_LINK_URL, 1 },   /* nor in a description */
+		{ "<id:\nclock: [2345-07-18]\nh>\n", 0, FACE_MARKUP_LINK_URL, 1 },   /* clock: is no clock line to font-lock */
+		{ "[fn:1] b\n\\cite{[fn:1]} x\n", 9, FACE_MARKUP_LINK_LABEL, 0 },   /* a LaTeX fragment */
+		{ "[fn:1] b\n$\\cite{[fn:1]}$ x\n", 9, FACE_MARKUP_LINK_LABEL, 0 },
+		{ "[fn:1] b\n$\\cite{[fn:1]}$x\n", 9, FACE_MARKUP_LINK_LABEL, 1 },   /* no fragment: x after $ */
+		{ "[fn:1] b\n\\alpha \\cite{[fn:1]}\n", 9, FACE_MARKUP_LINK_LABEL, 1 },   /* an entity */
+		{ "[fn:1] b\nx [fn:2:{\n* h\ny}] z\n", 19, FACE_MARKUP_HEADING_1, 1 },   /* a span stops at a headline */
+		{ "[fn:1] b\nx [fn:2:{\n* h\ny}] z\n", 23, FACE_MARKUP_LINK_LABEL, 0 },
+		{ "<id:\n#+[:>\n", 0, FACE_MARKUP_LINK_URL, 0 },   /* #+[: is a keyword: \S-+ backtracks to [ */
+		{ "* COMMENTx\n", 5, FACE_MARKUP_HEADING_1, 1 },   /* COMMENT then a word is no comment */
+		{ "[fn:1]\n# [fn::\n", 6, FACE_MARKUP_LINK_LABEL, 0 },   /* a comment line ends a definition's span */
+	};
+	for (size_t i = 0; i < sizeof fx / sizeof *fx; i++) {
+		unsigned char f1[64];
+		size_t n1 = strlen(fx[i].text);
+		t = text_new(fx[i].text, n1);
+		x = t ? orgfx_new(t) : NULL;
+		CHECK(x && orgfx_update(x, NULL));
+		orgfx_faces(x, 0, n1, f1);
+		CHECK((f1[fx[i].at] == fx[i].face) == fx[i].is);
+		orgfx_free(x);
+		text_free(t);
+	}
+	t = text_new("[fn:1] a\nx^{2}[[a]][fn:2:b]\n", 28);   /* a link ending at a reference holds none */
+	x = t ? orgfx_new(t) : NULL;
+	Conceal c5[5];
+	CHECK(x && orgfx_conceal(x, 1, c5, 5) == 5 && c5[1].a == 3 && !strcmp(c5[1].s, "²"));
+	orgfx_free(x);
+	text_free(t);
+	/* a script from the line above holds x^{}; a headline under an
+	   unclosed block shows its stars (Org: a block needs its end) */
+	static const char *const sh[] = { "x_{\nx^{}}\n", "#+begin_src *e\n** \n" };
+	for (size_t i = 0; i < 2; i++) {
+		t = text_new(sh[i], strlen(sh[i]));
+		x = t ? orgfx_new(t) : NULL;
+		CHECK(x && orgfx_conceal(x, 1, c5, 5) == 0);
+		orgfx_free(x);
+		text_free(t);
+	}
+	t = text_new("x_{a^{c}\n}\n", 11);   /* a script's braces over one newline hold the ^{c} (Org leaves it as typed) */
+	x = t ? orgfx_new(t) : NULL;
+	CHECK(x && orgfx_conceal(x, 0, c5, 5) == 0);
+	orgfx_free(x);
+	text_free(t);
+	{   /* the walk's checkpoints after an edit above them: x^{2} sits in the block it makes */
+		static char cp[9000 * 2 + 32];
+		for (size_t i = 0; i < 9000; i++) memcpy(cp + 2 * i, "a\n", 2);
+		memcpy(cp + 18000, "x^{2}\n#+end_example\n", 20);
+		t = text_new(cp, 18020);
+		x = t ? orgfx_new(t) : NULL;
+		CHECK(x && orgfx_conceal(x, 9000, cc, 4) == 3);
+		orgfx_edit(x, t, 0, 0, 16);
+		CHECK(!text_insert(t, 0, "#+begin_example\n", 16) && orgfx_conceal(x, 9001, cc, 4) == 0);
+		orgfx_free(x);
+		text_free(t);
+	}
+	{   /* an inline footnote that failed to close is asked again once its ] is typed */
+		unsigned char ff[10];
+		t = text_new("x [fn::a\n", 9);
+		x = t ? orgfx_new(t) : NULL;
+		CHECK(x && orgfx_update(x, NULL) && (orgfx_faces(x, 0, 9, ff), ff[2] != FACE_MARKUP_LINK_LABEL));
+		orgfx_edit(x, t, 8, 0, 1);
+		CHECK(!text_insert(t, 8, "]", 1) && orgfx_update(x, NULL) && (orgfx_faces(x, 0, 10, ff), ff[2] == FACE_MARKUP_LINK_LABEL));
+		orgfx_free(x);
+		text_free(t);
+	}
 	for (size_t i = 0; i < sizeof todos / sizeof *todos; i++) {
 		static char b[1024];
 		char *got = NULL;
@@ -1088,25 +1214,137 @@ int main(void)
 	   each line coloured once (not once a piece), and no date or diary
 	   sexp scan to the line's end from every opener (measured under the
 	   sanitizers, best of 5: 21 ms each; with one of the three undone at
-	   least 360 ms) */
-	static const char *const units[] = { "word ", "<2026-01-01 x ", "<%%(x) " };
+	   least 360 ms); then what the line shows (orgfx_conceal), with no
+	   scan to the line's end from every emphasis marker, rule check or
+	   script (measured, 5 runs, colours and conceal: 17 to 43 ms, median
+	   25; with the line start found from each marker, 1572 ms on *a /b);
+	   links and footnotes: each reference's link and macro search goes on
+	   along the line, not from its start (5 runs, median 51 ms, 42 to 66,
+	   on a[fn:1], against 5.8 to 6.0 s; the other units 21 to 39); under a
+	   definition, valid() asked once a line, not once a reference */
+	static const char *const units[] = { "word ", "<2026-01-01 x ", "<%%(x) ", "*a /b ", "=a ", "+-", "x^{a} \\alpha ", "x^{é} ",
+		"a[fn:1] ", "a [fn::b c] ", "a [fn:: (", "[[a][b]] ", "http://b.c ", "<http:b c> ", "[[a][b ", "<http:b ",
+		"a \\cite{[fn:1]} ", "a [[b][[fn:1]]] " };
 	static char line[65536];
 	static unsigned char lf[sizeof line];
 	for (size_t i = 0; i < sizeof units / sizeof *units; i++) {
-		size_t m = 0, ul = strlen(units[i]);
+		size_t m = 9, ul = strlen(units[i]);   /* under a definition, so references throw its span */
+		memcpy(line, "[fn:1] d\n", m);
 		while (m + ul < sizeof line) memcpy(line + m, units[i], ul), m += ul;
+		if (*units[i] == '=') line[m - 1] = '=';   /* every marker's closer at the end */
 		line[m++] = '\n';
-		struct timespec t0, t1;
-		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t0);
-		t = text_new(line, m);
+		long ms = 100;   /* up to 3 tries: a busy machine slows a run, never speeds one */
+		for (int r = 0; r < 3 && ms >= 100; r++) {
+			struct timespec t0, t1;
+			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t0);
+			t = text_new(line, m);
+			x = t ? orgfx_new(t) : NULL;
+			CHECK(x && orgfx_update(x, NULL));
+			for (size_t a = 0; a < m; a += 256) orgfx_faces(x, a, a + 256 < m ? a + 256 : m, lf + a);
+			Conceal c[64];
+			CHECK(orgfx_conceal(x, 1, c, 64) == (i == 4 || i == 6 || i == 11 || i == 17 ? 64 : 0));
+			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t1);
+			ms = (t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000;
+			orgfx_free(x);
+			text_free(t);
+		}
+		CHECK(ms < 100);
+	}
+	/* the frame gate on many lines: the last 50 lines of a paragraph
+	   without a headline, shown one after another and then coloured, take
+	   one walk from the top of the text, not one each, and a link search
+	   that failed is not done again on every line (measured under the
+	   sanitizers, 8 runs each, median and range: plain lines 10.4 ms, 9.5
+	   to 15.1; a footnote and a link on every line 20.7, 18.8 to 24.3
+	   (32.0, 26.9 to 45.9 with is() as strlen and memcmp), against 64 to
+	   75 ms for the parse before it; openers that never close 11.4 (11.1
+	   to 12.3) and 6.2 (5.9 to 6.6), against 7 s and 32 s when each search
+	   ran to the end; the same past blank lines 8.0 (7.9 to 10.3) and 10.6
+	   (10.2 to 16.7); plain lines walked for each line, 120 ms) */
+	static const struct { const char *ln; size_t n, shown; long ms; const char *end, *top; } gate[] = {
+		{ "a *b* x^{2}\n", 100000, 5, 20, "", "" }, { "[fn:1] [[a][b]] *b* x^{2}\n", 100000, 7, 40, "", "" },
+		/* openers that never close, then one closer at the end, past the blank lines */
+		{ "<http:a\n", 20000, 0, 20, "", "" }, { "[[a][x\n", 20000, 0, 20, "", "" },
+		{ "<http:a\n\n", 50000, 0, 20, "a>", "" }, { "[[a][x\n\n", 50000, 0, 20, "]]", "" },
+		/* an inline footnote that never closes: one on the first line, the
+		   first 50 lines shown (typing it: the walk, the colours and the
+		   conceal each ask it: 5 alternating runs, median 4.9 ms, 3.7 to
+		   5.5, against 18.1, 13.6 to 20.5, asking it three times, and 147
+		   scanning code point by code point), and a paragraph of them (9.6,
+		   9.1 to 10.0, against 28.6 s at -O2 before) */
+		{ "a *b* x^{2}\n", 100000, 5, 10, "", "x [fn::a xx" }, { "x [fn::a\n", 20000, 0, 20, "", "" },
+	};
+	for (size_t k = 0; k < sizeof gate / sizeof *gate; k++) {
+		static char many[100000 * 26];
+		static unsigned char fc[50 * 256];
+		size_t m = 0, w = strlen(gate[k].ln), n = gate[k].n;
+		while (m < n * w) memcpy(many + m, gate[k].ln, w), m += w;
+		memcpy(many + m - strlen(gate[k].end), gate[k].end, strlen(gate[k].end));
+		memcpy(many, gate[k].top, strlen(gate[k].top));
+		long ms = gate[k].ms;   /* up to 3 fresh texts, as above */
+		for (int r = 0; r < 3 && ms >= gate[k].ms; r++) {
+			struct timespec t0, t1;
+			t = text_new(many, m);
+			x = t ? orgfx_new(t) : NULL;
+			CHECK(x && orgfx_update(x, NULL));
+			Conceal c[64];
+			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t0);
+			size_t l0 = *gate[k].top ? 0 : n - 50;   /* the lines shown */
+			for (size_t l = l0; l < l0 + 50; l++) CHECK(orgfx_conceal(x, l, c, 64) == (l || !*gate[k].top ? gate[k].shown : 0));
+			orgfx_faces(x, l0 * w, (l0 + 50) * w, fc);
+			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t1);
+			CHECK(k != 1 || (fc[0] == FACE_MARKUP_LINK_LABEL && fc[7] == FACE_MARKUP_LINK_URL));
+			ms = (t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000;
+			orgfx_free(x);
+			text_free(t);
+		}
+		CHECK(ms < gate[k].ms);
+		if (k) continue;
+		/* checkpoints: lines shown going up the text after one walk start
+		   at the checkpoint below each, not at the top; four of them cost
+		   less than the walk (a ratio of two times on one runner, so its
+		   speed cancels: 5 alternating runs under the sanitizers, 1.35
+		   to 1.46 ms against a walk of 11.6 to 12.0; without checkpoints
+		   22.5 to 30.4 against 11.2 to 14.8, as they walk 2.0 texts) */
+		t = text_new(many, m);
 		x = t ? orgfx_new(t) : NULL;
 		CHECK(x && orgfx_update(x, NULL));
-		for (size_t a = 0; a < m; a += 256) orgfx_faces(x, a, a + 256 < m ? a + 256 : m, lf + a);
-		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t1);
-		CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000 < 100);
+		struct timespec u[3];
+		Conceal c[64];
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &u[0]);
+		orgfx_conceal(x, n - 1, c, 64);
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &u[1]);
+		for (size_t j = 4; j > 0; j--) orgfx_conceal(x, n / 5 * j, c, 64);
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &u[2]);
+		long d[2];
+		for (int i = 0; i < 2; i++) d[i] = (u[i + 1].tv_sec - u[i].tv_sec) * 1000000000 + (u[i + 1].tv_nsec - u[i].tv_nsec);
+		CHECK(d[1] < d[0]);
 		orgfx_free(x);
 		text_free(t);
 	}
+	/* every emphasis match on a line counts, not the first 64: Org leaves
+	   the script inside the 66th as typed (PR 108's review, emph65.org) */
+	{
+		static char e65[65 * 4 + 8];
+		static Conceal c[256];
+		for (int i = 0; i < 65; i++) memcpy(e65 + 4 * i, "*a* ", 4);
+		memcpy(e65 + 260, "=x^{2}=", 7);
+		t = text_new(e65, 267);
+		x = t ? orgfx_new(t) : NULL;
+		CHECK(x && orgfx_conceal(x, 0, c, 256) == 132);
+		orgfx_free(x);
+		text_free(t);
+	}
+	/* a script takes all its spans or none: with room for two, x^{2}
+	   stays as typed beside \leq's one */
+	Conceal two[2];
+	t = text_new("x^{2} \\leq\nb \\leq c", 19);
+	x = t ? orgfx_new(t) : NULL;
+	CHECK(x && orgfx_conceal(x, 0, two, 2) == 1 && two[0].a == 6 && !strcmp(two[0].s, "≤"));
+	/* columns of the line, not offsets in the text (syntax.h) */
+	CHECK(orgfx_conceal(x, 1, two, 2) == 1 && two[0].a == 2 && two[0].z == 6);
+	orgfx_free(x);
+	text_free(t);
 	printf("test_org: %zu texts and %zu TODO steps agree with Org\n", sizeof cases / sizeof *cases, sizeof todos / sizeof *todos);
 	return 0;
 }

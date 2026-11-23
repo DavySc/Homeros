@@ -18,6 +18,7 @@
 #include "core.h"
 #include "grid.h"
 #include "syntax.h"
+static size_t r1, r2;   /* syntax_update's fold rows, read where a test needs them */
 
 static double now(void)
 {
@@ -92,7 +93,7 @@ int main(int argc, char **argv)
 	/* start-up, not measured: the first frame, the parse, the frame with
 	   colours */
 	core_draw(&e, &g);
-	while (syntax_update(e.buf->syn, e.buf->text, NULL) == 2) ;
+	while (syntax_update(e.buf->syn, e.buf->text, NULL, &r1, &r2) == 2) ;
 	core_draw(&e, &g);
 	/* go to a random line, then type a short statement, Esc, j, again */
 	char go[32];
@@ -105,7 +106,7 @@ int main(int argc, char **argv)
 		key_at = now() + rnd(40000) / 1000.0;
 		double arrived = key_at, back = arrived;
 		while (pending && now() < key_at) {
-			int r = syntax_update(e.buf->syn, e.buf->text, key_waiting);
+			int r = syntax_update(e.buf->syn, e.buf->text, key_waiting, &r1, &r2);
 			back = now();
 			pending = r == 2;
 			stopped += pending;

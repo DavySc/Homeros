@@ -2,11 +2,14 @@
 -- replay the same edits and parses (on_bytes edits the trees, parse(true)
 -- parses as the C side's syntax_update did), then write per byte the face
 -- of the winning capture, and whether any tree has a syntax error; at each
--- "f" the faces of the edited, not yet parsed trees go to DIR/out.snap.
+-- "f" the faces of the edited, not yet parsed trees go to DIR/out.snap;
+-- then each line's foldexpr to OUT.fold.
 -- usage: nvim --headless --clean -l test_syntax.lua OUT DIR CASE...
-local ours = { c = true, lua = true, markdown = true, markdown_inline = true, rust = true, glsl = true, nix = true }
+local ours = { c = true, lua = true, markdown = true, markdown_inline = true, rust = true, glsl = true, nix = true, cmake = true, systemverilog = true }
 -- the grammars and queries Neovim does not bundle (src/syntax/sources.nix)
 vim.opt.rtp:prepend('build/syntax/src/nvim')
+-- nvim-treesitter's plugin/filetypes.lua: Davy's my-nvim colours Verilog with tree-sitter (design/FEATURES.md), which needs this registration
+vim.treesitter.language.register('systemverilog', 'verilog')
 
 -- grid.h's faces: FACE_NONE 0, then Neovim's standard captures in order
 local groups = {}
@@ -100,7 +103,30 @@ local function size(buf)
   return vim.api.nvim_buf_get_offset(buf, vim.api.nvim_buf_line_count(buf))
 end
 
+-- foldexpr per line, ">n" where a fold starts: vim.treesitter.foldexpr(),
+-- whose levels _fold.lua keeps from its first call on, recomputing the
+-- rows on_bytes and on_changedtree name in callbacks vim.wait(0) runs; or
+-- for Markdown its ftplugin's MarkdownFold() ("=" the level above)
+vim.g.markdown_folding = 1
+local function folds(buf)
+  local o, prev = {}, 0
+  for l = 1, vim.api.nvim_buf_line_count(buf) do
+    local v
+    if vim.bo[buf].filetype == 'markdown' then
+      vim.v.lnum = l
+      v = vim.fn.MarkdownFold()
+      if v == '=' then v = tostring(prev) end
+    else
+      v = tostring(vim.treesitter.foldexpr(l))
+    end
+    prev = tonumber((v:gsub('>', '')))
+    o[#o + 1] = v
+  end
+  return table.concat(o, ' ') .. '\n'
+end
+
 local out = assert(io.open(arg[1], 'wb'))
+local fo = assert(io.open(arg[1] .. '.fold', 'wb'))
 local snap = assert(io.open(arg[2] .. '/out.snap', 'wb'))
 local errs = assert(io.open(arg[1] .. '.err', 'wb'))
 for k = 3, #arg do
@@ -109,9 +135,11 @@ for k = 3, #arg do
   vim.treesitter.start(buf)
   local hl = vim.treesitter.highlighter.active[buf]
   hl.tree:parse(true)
+  if vim.bo[buf].filetype ~= 'markdown' then vim.treesitter.foldexpr(1) end
   for op in io.lines(arg[2] .. '/' .. arg[k] .. '.ops') do
     if op == 'p' then
       hl.tree:parse(true)
+      vim.wait(0)
     elseif op == 'f' then
       snap:write('#', arg[k]:match('^%d+'), '\n', render(faces(hl, buf, size(buf))))
     else
@@ -124,15 +152,18 @@ for k = 3, #arg do
     end
   end
   hl.tree:parse(true)
+  vim.wait(0)
   local err = false
   hl.tree:for_each_tree(function(t, lt)
     if ours[lt:lang()] and t:root():has_error() then err = true end
   end)
   errs:write(err and '1' or '0')
   out:write(render(faces(hl, buf, size(buf))))
+  fo:write(folds(buf))
   vim.cmd('bwipeout!')
 end
 out:close()
+fo:close()
 snap:close()
 errs:close()
 
