@@ -15,6 +15,7 @@
 #include "k.h"
 #include "kitten.h"
 #include "snip.h"
+#include "sql.h"
 #include "tools.h"
 #include "uni.h"
 
@@ -121,7 +122,8 @@ static const char *const maps[] = {
 	" ff", " fg", " fr", " ,", " e", " pv", "-", " D",
 	" gg", " gs", " gl", " gL", " gd", " gb", " gB", " hs", " hr", " hS", " hu", " hp", " is", " uk", " up",
 	"cit", "ciT",  /* nvim-orgmode's, buffer-local to .org */
-	" cc", " cC"
+	" cc", " cC",
+	" r"   /* the SQL results split (sql.h; Davy, 2026-11-23) */
 };
 static int lead[3], nlead;   /* the keys typed of a map not yet complete */
 
@@ -162,6 +164,7 @@ static int map(Editor *e, int k)
 		case 'i': org_cycle(m[2] == 't' ? 1 : -1); break;
 		case 'D': dashboard(e); break;
 		case 's': tools_pick(e, PICK_SNIPPETS); break;
+		case 'r': sql_results(e); break;
 		/* Davy's emacs SPC cc compile (prompts) and cC recompile */
 		case 'c':
 			if (m[2] == 'C') { tools_make(e, NULL); break; }
@@ -189,7 +192,7 @@ static int map(Editor *e, int k)
 
 void keys_input(Editor *e, int k, int pending)
 {
-	if (!(e->ks.pending ? map(e, k) : tools_key(e, k) || git_key(e, k) || snip_key(e, k, pending) || map(e, k))) keys_feed(e, k, pending);
+	if (!(e->ks.pending ? map(e, k) : tools_key(e, k) || git_key(e, k) || sql_key(e, k) || snip_key(e, k, pending) || map(e, k))) keys_feed(e, k, pending);
 }
 
 /* what the core draws of Visual mode */
@@ -320,12 +323,16 @@ static void ex(void)
 	/* :s[ubstitute] :& :~ (:&& is :& with the flag &), on the cursor's
 	   line by default; line 0 is line 1 (no EX_ZEROR) */
 	size_t k = strspn(p, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
-	/* :noh[lsearch], and :mak[e] {cmd} (tools.h) with the rest of the line its argument */
+	/* :noh[lsearch], and :mak[e] {cmd} (tools.h) and :Connect [name]
+	   (sql.h) with the rest of the line their argument */
 	int nohl = k >= 3 && k <= 10 && !strncmp(p, "nohlsearch", k) && !p[k];
-	if (nohl || (k >= 3 && k <= 4 && !strncmp(p, "make", k) && (!p[k] || p[k] == ' ' || p[k] == '\t'))) {
+	int make = k >= 3 && k <= 4 && !strncmp(p, "make", k), conn = k == 7 && !strncmp(p, "Connect", 7);
+	if (nohl || ((make || conn) && (!p[k] || p[k] == ' ' || p[k] == '\t'))) {
+		const char *a = p + k + strspn(p + k, " \t");
 		if (n) core_msg(E, "E481: No range allowed");
 		else if (nohl) no_hlsearch = 1;
-		else tools_make(E, p + k + strspn(p + k, " \t"));
+		else if (make) tools_make(E, a);
+		else sql_connect(E, a);
 		return;
 	}
 	if (k ? k <= 10 && !strncmp(p, "substitute", k) : (k = *p == '&' || *p == '~')) {

@@ -187,3 +187,5 @@ keys: .svh, .v and .vh buffers are not formatted with Verible (test_keys_gq)~tes
 keys: keys_visual(e, 0) leaves Visual mode on (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (!mode) { if (VIsual_active) end_visual_mode(); }~	if (!mode) { if (VIsual_active) (void)0; }
 keys: keys_visual() keeps the other end's column (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~VIsual = (Pos){ (long)line, 0, 0 };~VIsual.lnum = (long)line;
 keys: keys_visual() leaves e->ks as it was (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~(Pos){ (long)line, 0, 0 };¶	visual_sync();~(Pos){ (long)line, 0, 0 };
+keys: SPC r runs nothing (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		case 'r': sql_results(e); break;¶~
+keys: :Connect is not a command (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~conn = k == 7 && !strncmp(p, "Connect", 7)~conn = 0

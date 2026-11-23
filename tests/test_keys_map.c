@@ -65,6 +65,15 @@ int main(void)
 	CHECK(!strcmp(e.msg, "Kitten on save: off"));
 	feed(&e, " uk");
 	CHECK(!strcmp(e.msg, "Kitten on save: on"));
+	/* SQL (package 22): SPC r opens the results split, :Connect [name]
+	   names the buffer's connection (here no results and no file) */
+	feed(&e, " r");
+	CHECK(!strcmp(e.msg, "sql: no results yet (F5 runs the query)") && !e.ks.pending);
+	feed(&e, ":Connect\r");
+	CHECK(!strcmp(e.msg, "sql: not connected"));
+	setenv("XDG_CONFIG_HOME", "/nonexistent", 1);
+	feed(&e, ":Connect dev\r");
+	CHECK(!strncmp(e.msg, "sql: no connections file", 24));
 	/* SPC i s, the snippet picker, also in Visual mode (around the area);
 	   no other map there: Space is its motion */
 	feed(&e, " is");
