@@ -12,6 +12,7 @@
 #include <string.h>
 #include <strings.h>
 #include "core.h"
+#include "loop.h"
 #include "file.h"
 #include "match.h"
 #include "snip.h"
@@ -118,8 +119,27 @@ static void splice(Mark_ *k, size_t pos, size_t ndel, size_t nins)
 	else if (k->at >= pos) k->at = k->right ? pos + nins : pos;
 }
 
+/* The file's index: its names (the facts up to I.nf, in the pool up to
+   I.np) and its statements (I.u, sqlfmt_units as start and end marks),
+   from one walk over it.  It is made when a word starts in a buffer
+   without one, and again 150 ms after the last change (Neovim's LSP
+   debounce_text_changes), so the parse stays off the keys; until then
+   snip_edit moves its statements as extmarks, and a word's statement is
+   walked again when the word starts. */
+static struct { const Buf *b; int nr, stale; size_t len, np; int nf; Str u; } I;
+static Editor *E;   /* snip_key's, for the timer (one, as main.c's) */
+static void idle(void *ctx);
+#define NU ((size_t)(I.u.n / sizeof(Mark_[2])))
+
 void snip_edit(const Buf *b, const Text *t, size_t pos, size_t ndel, const char *ins, size_t nins)
 {
+	if (b == I.b) {   /* the index's statements move as extmarks */
+		Mark_ (*u)[2] = (Mark_ (*)[2])I.u.s;
+		for (size_t i = 0; i < NU; i++) splice(&u[i][0], pos, ndel, nins), splice(&u[i][1], pos, ndel, nins);
+		I.len = text_len(t) == I.len ? I.len - ndel + nins : (size_t)-1;
+		I.stale = 1;
+	}
+	if (E && is_sql(b)) loop_timer(idle, NULL, 150);
 	if (!S.b || b != S.b) return;
 	/* a join reaches the core as its lines rewritten (keys' do_join());
 	   Neovim splices extmarks over the line break it takes out alone.  A
@@ -487,7 +507,7 @@ static int heading_has(const char *h, const char *w)
 typedef struct { size_t w, of; const char *kind, *menu; int pri; } Cand;
 static Str pool, cands, facts;   /* facts: the file's names, as Cands */
 static int *pick, *score, npick, pickcap;
-static struct { Buf *b; int nr; size_t line, col; } W;   /* the word cands are for */
+static struct { Buf *b; int nr, ok; size_t line, col; } W;   /* the word cands are for, ok: a popup */
 #define CAND(v, i) (((Cand *)(v).s)[i])
 #define NCAND(v) ((int)((v).n / sizeof(Cand)))
 
@@ -561,7 +581,7 @@ static int rank(const char *q, size_t nq, int cmp)
 		score[i] = nq ? !cmp || parts(q, nq, w) ? match_score(&m, w, strlen(w), NULL, 0) : 0 : 1;
 		if (score[i] > 0) pick[npick++] = i;
 	}
-	qs = q, nqs = nq;
+	qs = q, nqs = cmp ? nq : 0;   /* the picker keeps snip_get's order */
 	if (npick) qsort(pick, npick, sizeof *pick, by_rank);
 	for (int i = 0; i < npick; i++) {
 		const Cand *c = &CAND(cands, pick[i]);
@@ -592,7 +612,7 @@ const char *snip_get(Editor *e, const char *q, size_t nq, int i, const char **de
 {
 	static int n;
 	if (!i) {
-		W.b = NULL, pool.n = cands.n = 0;
+		W.b = NULL, pool.n = I.np, cands.n = 0;
 		snippets(e, 0);
 		n = rank(q, nq, 0);
 	}
@@ -606,54 +626,42 @@ const char *snip_get(Editor *e, const char *q, size_t nq, int i, const char **de
 
 /* a token of the walk: kind, what it is to the walk (f), start, and its
    text without [] or "" */
-enum { NAME = 1, FROM = 2, JOIN = 4, AS = 8, TABLE = 16, TABLES = 32 };
+enum { NAME = 1, FROM = 2, JOIN = 4, AS = 8, TABLE = 16, TABLES = 32, OR_WORD = 64 };
 typedef struct { int k, f; size_t s; char b[128]; } Tok;
 static int sym(const Tok *t, char c) { return t->k == TQ_PUNCT && *t->b == c; }
 static int is_of(const Cand *c, const char *w) { return c->of != (size_t)-1 && !strcasecmp(pool.s + c->of, w); }
 
-/* the facts so far, each once: a set of their numbers + 1 by a hash of
-   kind, word and table, any case (FNV-1a) */
-static unsigned *set;
-static size_t nset;
-static unsigned long hash(const char *s, unsigned long h)
+/* facts by name, then kind and table, any case: sorted, a run of equal
+   ones is one fact */
+static int by_fact(const void *x, const void *y)
 {
-	for (; *s; s++) h = (h ^ (unsigned char)(*s >= 'A' && *s <= 'Z' ? *s + 32 : *s)) * 1099511628211UL;
-	return h * 1099511628211UL;
+	const Cand *a = x, *b = y;
+	int c = strcasecmp(pool.s + a->w, pool.s + b->w);
+	if (!c) c = strcmp(a->kind, b->kind);
+	return c ? c : strcasecmp(a->of == (size_t)-1 ? "" : pool.s + a->of, b->of == (size_t)-1 ? "" : pool.s + b->of);
 }
-static unsigned *slot(const char *kind, const char *w, const char *of)
+static void sort_facts(int from)
 {
-	unsigned *x = set + (hash(of, hash(w, hash(kind, 14695981039346656037UL))) & (nset - 1));
-	for (; *x; x = x + 1 < set + nset ? x + 1 : set) {
-		const Cand *c = &CAND(facts, *x - 1);
-		if (c->kind == kind && !strcasecmp(pool.s + c->w, w) && !strcasecmp(c->of == (size_t)-1 ? "" : pool.s + c->of, of)) break;
-	}
-	return x;
+	int n = NCAND(facts) - from, k = 0;
+	if (n < 1) return;
+	Cand *f = (Cand *)facts.s + from;
+	qsort(f, (size_t)n, sizeof *f, by_fact);
+	for (int i = 0; i < n; i++) if (!k || by_fact(&f[k - 1], &f[i])) f[k++] = f[i];
+	facts.n = (size_t)(from + k) * sizeof *f;
 }
-static void fact(const char *w, const char *of, const char *kind)
+static void fact(const char *w0, const char *of0, const char *kind)
 {
-	if ((size_t)NCAND(facts) * 2 >= nset) {   /* grow, and put each fact again */
-		unsigned *g = calloc(nset ? nset * 2 : 1024, sizeof *g);
-		if (!g) return;
-		free(set), set = g, nset = nset ? nset * 2 : 1024;
-		for (int i = 0; i < NCAND(facts); i++) {
-			const Cand *c = &CAND(facts, i);
-			*slot(c->kind, pool.s + c->w, c->of == (size_t)-1 ? "" : pool.s + c->of) = (unsigned)i + 1;
-		}
-	}
-	unsigned *x = slot(kind, w, of);
-	if (*x) return;
+	char w[128], of[128];   /* w0 and of0 may be in the pool, which intern moves */
+	strncpy(w, w0, sizeof w - 1)[sizeof w - 1] = 0, strncpy(of, of0, sizeof of - 1)[sizeof of - 1] = 0;
 	size_t o = *of ? intern(of, strlen(of)) : (size_t)-1;
-	if (o == (size_t)-1 && *of) return;
-	cand(&facts, w, strlen(w), o, kind, NULL, 0);
-	*x = (unsigned)NCAND(facts);
+	if (o != (size_t)-1 || !*of) cand(&facts, w, strlen(w), o, kind, NULL, 0);
 }
 
-/* statement u's end: each Q.name of it (pairs: name, then Q) becomes a
-   column of Q's table (Q an alias in refs) or of Q; its refs go to here
-   when it holds the word at a */
-static void flush(Str *refs, Str *pairs, Str *here, const size_t u[2], size_t a)
+/* a statement's end: each Q.name of it (pairs: name, then Q) becomes a
+   column of Q's table (Q an alias in refs) or of Q; its refs go to here */
+static void flush(Str *refs, Str *pairs, Str *here)
 {
-	if (u[0] <= a && a <= u[1] && refs->n) str_add(here, refs->s, refs->n);
+	if (here && refs->n) str_add(here, refs->s, refs->n);
 	for (int i = 0; i < NCAND(*pairs); i++) {
 		const char *q = pool.s + CAND(*pairs, i).of;
 		for (int j = 0; j < NCAND(*refs); j++)
@@ -663,23 +671,15 @@ static void flush(Str *refs, Str *pairs, Str *here, const size_t u[2], size_t a)
 	refs->n = pairs->n = 0;
 }
 
-static int by_name(const void *x, const void *y)
-{
-	const Cand *a = x, *b = y;
-	return strcasecmp(pool.s + a->w, pool.s + b->w);
-}
-
-/* The cands for the word at [a, z) of e's buffer, by where it is in its
-   statement (SSMS's IntelliSense): after Q. the columns of Q's table;
-   after FROM, JOIN, INTO, UPDATE, DELETE, MERGE or TABLE the file's
-   tables; @ the variables; elsewhere T-SQL's words, the statement's tables
-   and aliases and their columns, and the snippets after them.  The file's
-   names come from one walk over its tokens: a table after those words or
-   a FROM list's comma, or a CTE (x AS (); its alias after it (or AS
-   alias); a column list after it (CREATE TABLE, DECLARE @t TABLE,
-   INSERT INTO t (...)) gives columns, as Q.name does.  0: no popup (in a
-   comment or a string). */
-static int collect(Editor *e, size_t a, size_t z)
+/* One walk over the tokens of [p, end) of t, statement by statement (u):
+   a table after FROM, JOIN, INTO, UPDATE, DELETE, MERGE or TABLE or a FROM
+   list's comma (schema.table: the table, of the schema), or a CTE (x AS
+   (); its alias after it (or AS alias); a column list after it (CREATE
+   TABLE, DECLARE @t TABLE, INSERT INTO t (...)) gives columns, as Q.name
+   does; @ and # names.  The word at [a, z) is skipped and ctx gets the two
+   tokens before it; the last statement's tables and aliases go to here.
+   0: a is in a comment or a string. */
+static int walk(const Text *t, size_t p, size_t end, const Mark_ (*u)[2], size_t nu, size_t a, size_t z, Tok ctx[2], Str *here)
 {
 	/* the words the walk looks for, by tsql_word's id; the rest of
 	   tables[] are the words a table follows */
@@ -687,33 +687,33 @@ static int collect(Editor *e, size_t a, size_t z)
 	static size_t id[8];
 	if (!id[0])
 		for (int i = 0; i < 8; i++) tsql_word(w[i], strlen(w[i]), &id[i]);
-	Text *t = e->buf->text;
-	size_t (*u)[2], nu = sqlfmt_units(t, &u), len = text_len(t), ui = 0, p, n, tab = (size_t)-1, d;
-	Tok r[3] = { 0 }, ctx[2] = { 0 };   /* the last three tokens (a ring); the two before the word */
-	Str refs = { 0 }, pairs = { 0 }, here = { 0 };
+	size_t ui = 0, n, tab = (size_t)-1, d;
+	Tok r[3] = { 0 };   /* the last three tokens (a ring) */
+	Str refs = { 0 }, pairs = { 0 };
 	int k, from = 0, list = 0, got = 0, i = 0;
-	pool.n = cands.n = facts.n = 0;
-	if (nset) memset(set, 0, nset * sizeof *set);
 	TsqlRd rd = { .t = t };
-	for (p = 0; p < len; p += n) {
-		size_t end = tsql_token(&rd, p, &k);
-		if (end <= p) break;
-		n = end - p;
-		if ((k == TQ_COMMENT || k == TQ_STRING) && p < a && a < end) break;
+	for (; p < end; p += n) {
+		size_t e = tsql_token(&rd, p, &k);
+		if (e <= p) break;
+		n = e - p;
+		if ((k == TQ_COMMENT || k == TQ_STRING) && p < a && a < e) break;
 		if (k == TQ_SPACE || k == TQ_COMMENT || (p >= a && p < z)) continue;
 		if (p >= a && !got) got = 1, ctx[0] = r[i], ctx[1] = r[(i + 2) % 3];
-		for (; ui < nu && u[ui][1] <= p; ui++) flush(&refs, &pairs, &here, u[ui], a), from = list = 0, tab = (size_t)-1;
+		for (; ui < nu && u[ui][1].at <= p; ui++) flush(&refs, &pairs, NULL), from = list = 0, tab = (size_t)-1;
 		i = (i + 1) % 3;
 		Tok *h0 = &r[i], *h1 = &r[(i + 2) % 3], *h2 = &r[(i + 1) % 3];
 		char *b = h0->b;
 		d = n < 127 ? n : 127;
 		text_read(t, p, b, d);
-		if (d >= 2 && (*b == '[' || *b == '"')) memmove(b, b + 1, d -= 2);
 		b[d] = 0;
+		/* [x] and "x" are x, unless x needs them */
+		int plain = d >= 2 && (*b == '[' || *b == '"');
+		for (size_t j = 1; plain && j + 1 < d; j++) plain = alpha(b[j]) || digit(b[j]) || b[j] == '_';
+		if (plain) memmove(b, b + 1, d -= 2), b[d] = 0;
 		size_t wid = 0;
 		int c = k == TQ_WORD ? tsql_word(b, d, &wid) : 0;
 		h0->k = k, h0->s = p, h0->f = k == TQ_IDENT || k == TQ_VAR || (k == TQ_WORD && !(c & TQ_RECASE));
-		for (int j = 0; wid && j < 8; j++) if (wid == id[j]) h0->f |= j < 4 ? FROM << j : TABLES;
+		for (int j = 0; wid && j < 8; j++) if (wid == id[j]) h0->f |= j < 4 ? FROM << j : j < 6 ? TABLES : TABLES | OR_WORD;
 		if (h0->f & TABLE) h0->f |= TABLES;
 		if (k == TQ_VAR && b[1] != '@') fact(b, "", *b == '@' ? "Variable" : "Table");
 		if (list) {   /* a column list: a name after its '(' or a ',' */
@@ -724,53 +724,116 @@ static int collect(Editor *e, size_t a, size_t z)
 		if (h0->f & FROM) from = 1;
 		else if (k == TQ_WORD && !(h0->f & (NAME | JOIN | AS))) from = 0;
 		int isname = h0->f & NAME, attab = tab != (size_t)-1;
-		if (isname && ((h1->f & (TABLES | FROM | JOIN)) || (from && sym(h1, ',')) || (attab && sym(h1, '.') && !strcasecmp(h2->b, pool.s + tab)))) {
-			tab = intern(b, d);   /* a table; schema.table: the table */
-			Cand c2 = { tab, tab, "Table", NULL, 0 };
-			str_add(&refs, (const char *)&c2, sizeof c2);
-			fact(b, "", "Table");
+		if (isname && attab && sym(h1, '.') && !strcasecmp(h2->b, pool.s + tab)) {
+			/* schema.table: the table before was its schema */
+			if (facts.n && !strcasecmp(pool.s + CAND(facts, NCAND(facts) - 1).w, h2->b)) facts.n -= sizeof(Cand);
+			refs.n -= sizeof(Cand);
+			fact(b, h2->b, "Table");
+			tab = intern(b, d);
+			cand(&refs, b, d, tab, "Table", NULL, 0);
+		} else if (isname && ((h1->f & (TABLES | FROM | JOIN)) || (from && sym(h1, ',')))) {
+			fact(b, "", "Table");   /* a table */
+			tab = intern(b, d);
+			if (tab != (size_t)-1) cand(&refs, b, d, tab, "Table", NULL, 0);
 		} else if (isname && attab && (!strcasecmp(h1->b, pool.s + tab) || ((h1->f & AS) && !strcasecmp(h2->b, pool.s + tab)))) {
-			Cand c2 = { intern(b, d), tab, "Alias", NULL, 0 };   /* its alias */
-			str_add(&refs, (const char *)&c2, sizeof c2);
+			cand(&refs, b, d, tab, "Alias", NULL, 0);   /* its alias */
 		} else if (sym(h0, '(') && (h1->f & AS) && (h2->f & NAME)) {
 			fact(h2->b, "", "Table");   /* a CTE */
-		} else if (sym(h0, '(') && attab && !strcasecmp(h1->b, pool.s + tab)) {
+		} else if (sym(h0, '(') && attab && ((h1->f & TABLE) || !strcasecmp(h1->b, pool.s + tab))) {
 			list = 1;
 		} else if ((h0->f & TABLE) && h1->k == TQ_VAR) {
-			tab = intern(h1->b, strlen(h1->b));   /* DECLARE @t TABLE */
+			fact(h1->b, "", "Table");   /* DECLARE @t TABLE */
+			tab = intern(h1->b, strlen(h1->b));
 		} else if (isname && sym(h1, '.') && (h2->f & NAME)) {
-			Cand c2 = { intern(b, d), intern(h2->b, strlen(h2->b)), "Column", NULL, 0 };
-			str_add(&pairs, (const char *)&c2, sizeof c2);
+			size_t q = intern(h2->b, strlen(h2->b));
+			if (q != (size_t)-1) cand(&pairs, b, d, q, "Column", NULL, 0);
 		}
 		if (!isname && !sym(h0, '.') && !(h0->f & (AS | TABLE)) && !sym(h0, '(')) tab = (size_t)-1;
 	}
-	int quiet = p < len;
 	if (!got) ctx[0] = r[i], ctx[1] = r[(i + 2) % 3];
-	for (; ui < nu; ui++) flush(&refs, &pairs, &here, u[ui], a);
+	flush(&refs, &pairs, here);
 	str_free(&refs), str_free(&pairs);
-	if (quiet) { str_free(&here); return 0; }
+	return p >= end;
+}
+
+
+static void scan(Editor *e, size_t a, size_t z)
+{
+	const Text *t = e->buf->text;
+	size_t (*u)[2], nu = sqlfmt_units(t, &u);
+	Tok ctx[2];
+	pool.n = facts.n = I.u.n = I.np = 0, I.nf = 0, I.b = NULL;
+	for (size_t i = 0; i < nu; i++) {
+		Mark_ m[2] = { { u[i][0], 0 }, { u[i][1], 1 } };
+		if (str_add(&I.u, (const char *)m, sizeof m)) { I.u.n = 0; return; }
+	}
+	walk(t, 0, text_len(t), (const Mark_ (*)[2])I.u.s, NU, a, z, ctx, NULL);
+	sort_facts(0);
+	I.b = e->buf, I.nr = e->buf->nr, I.len = text_len(t), I.np = pool.n, I.nf = NCAND(facts), I.stale = 0;
+}
+
+static void idle(void *ctx)
+{
+	Editor *e = E;
+	(void)ctx;
+	if (e->pum == items) loop_timer(idle, NULL, 150);   /* the popup's words are in the pool */
+	else if (is_sql(e->buf) && (I.stale || I.b != e->buf || I.nr != e->buf->nr || I.len != text_len(e->buf->text)))
+		scan(e, (size_t)-1, (size_t)-1), W.b = NULL;
+}
+
+/* The cands for the word at [a, z) of e's buffer, by where it is in its
+   statement (SSMS's IntelliSense): after Q. the columns of Q's table, or
+   the tables of schema Q; after FROM, JOIN, INTO, UPDATE, DELETE, MERGE or
+   TABLE the file's tables; @ the variables; elsewhere T-SQL's words, the
+   statement's tables and aliases and their columns, and the snippets after
+   them.  The file's names come from its index, the statement's from a walk
+   over it.  0: no popup (in a comment or a string). */
+static int collect(Editor *e, size_t a, size_t z)
+{
+	const Text *t = e->buf->text;
+	if (I.b != e->buf || I.nr != e->buf->nr || I.len != text_len(t)) scan(e, a, z);
+	pool.n = I.np, facts.n = (size_t)I.nf * sizeof(Cand), cands.n = 0;
+	/* the word's statement, or the gap between two */
+	const Mark_ (*u)[2] = (const Mark_ (*)[2])I.u.s;
+	size_t j = 0, nu = NU;
+	while (j < nu && u[j][0].at <= a) j++;
+	Mark_ s[1][2] = { { { 0, 0 }, { text_len(t), 1 } } };
+	if (j && a <= u[j - 1][1].at) s[0][0] = u[j - 1][0], s[0][1] = u[j - 1][1];
+	else {
+		if (j) s[0][0].at = u[j - 1][1].at;
+		if (j < nu) s[0][1].at = u[j][0].at;
+	}
+	Tok ctx[2] = { 0 };
+	Str here = { 0 };
+	if (!walk(t, s[0][0].at, s[0][1].at, s, 1, a, z, ctx, &here)) { str_free(&here); return 0; }
+	sort_facts(I.nf);
 	char c0 = 0;
 	text_read(t, a, &c0, a < z);
 	int dot = sym(&ctx[0], '.') && ctx[0].s + 1 == a, at = c0 == '@', tabs = !dot && (ctx[0].f & (TABLES | FROM | JOIN));
+	int words = !dot && (!tabs || (ctx[0].f & OR_WORD));   /* DELETE FROM, MERGE INTO */
 	const char *q = ctx[1].b;   /* the qualifier */
-	for (int j = 0; dot && j < NCAND(here); j++)
-		if (!strcasecmp(pool.s + CAND(here, j).w, ctx[1].b)) q = pool.s + CAND(here, j).of;
-	if (facts.n) qsort(facts.s, NCAND(facts), sizeof(Cand), by_name);
-	for (int f = 0; f < NCAND(facts); f++) {
-		Cand c = CAND(facts, f);
+	for (int i = 0; dot && i < NCAND(here); i++)
+		if (!strcasecmp(pool.s + CAND(here, i).w, ctx[1].b)) q = pool.s + CAND(here, i).of;
+	/* the index's facts and the statement's, merged by name, a word of a
+	   kind once */
+	const Cand *last = NULL;
+	for (int x = 0, y = I.nf, nf = NCAND(facts); x < I.nf || y < nf;) {
+		const Cand *c = &CAND(facts, y == nf || (x < I.nf && by_fact(&CAND(facts, x), &CAND(facts, y)) <= 0) ? x++ : y++);
 		int scope = 0;
-		for (int j = 0; j < NCAND(here); j++) scope |= is_of(&c, pool.s + CAND(here, j).of);
-		if (dot ? c.kind[0] == 'C' && is_of(&c, q) : tabs ? c.kind[0] == 'T' : at ? c.kind[0] == 'V' : scope)
-			str_add(&cands, (const char *)&c, sizeof c);
+		for (int i = 0; i < NCAND(here); i++) scope |= is_of(c, pool.s + CAND(here, i).of);
+		if (!(dot ? (c->kind[0] == 'C' || c->kind[0] == 'T') && is_of(c, q) : tabs ? c->kind[0] == 'T' : at ? c->kind[0] == 'V' : scope)) continue;
+		if (last && !strcmp(last->kind, c->kind) && !strcasecmp(pool.s + last->w, pool.s + c->w)) continue;
+		str_add(&cands, (const char *)c, sizeof *c);
+		last = c;
 	}
-	if (!dot && !tabs) {
-		if (here.n) str_add(&cands, here.s, here.n);
-		for (size_t j = 1; j <= tsql_nwords; j++) {
-			const char *kwd = tsql_name(j);
+	if (words) {
+		if (!tabs && here.n) str_add(&cands, here.s, here.n);
+		for (size_t i = 1; i <= tsql_nwords; i++) {
+			const char *kwd = tsql_name(i);
 			int c = tsql_word(kwd, strlen(kwd), NULL);
-			if (c && (*kwd == '@') == at) cand(&cands, kwd, strlen(kwd), (size_t)-1, c & TQ_FUNCTION ? "Function" : "Keyword", NULL, 0);
+			if (c && (*kwd == '@') == at) cand(&cands, kwd, strlen(kwd), (size_t)-1, c & TQ_FUNCTION ? "Function" : "Keyword", NULL, at);
 		}
-		if (!at) snippets(e, 2);
+		if (!at && !tabs) snippets(e, 2);
 	}
 	str_free(&here);
 	return 1;
@@ -790,9 +853,9 @@ static void popup(Editor *e)
 	if (a < col || (a && l[a - 1] == '.')) {
 		size_t ls = core_line_start(e, e->win->line);
 		if (W.b != e->buf || W.nr != e->buf->nr || W.line != e->win->line || W.col != a)
-			W.b = collect(e, ls + a, ls + col) ? e->buf : NULL, W.nr = e->buf->nr, W.line = e->win->line, W.col = a;
-		if (W.b) n = rank((const char *)l + a, col - a, 1);
-	}
+			W.ok = collect(e, ls + a, ls + col), W.b = e->buf, W.nr = e->buf->nr, W.line = e->win->line, W.col = a;
+		if (W.ok) n = rank((const char *)l + a, col - a, 1);
+	} else W.b = NULL;
 	core_pum(e, items, n, -1, a);
 }
 
@@ -840,7 +903,7 @@ static int accept(Editor *e, int s)
 	int big = 0, small = 0;
 	close_pum(e);
 	if (!strcmp(c.kind, "Snippet")) return expand(e, body_of(w), a, z, NULL, 0);
-	for (size_t i = 0; i < text_read(e->buf->text, a, t, z - a < sizeof t ? z - a : sizeof t); i++)
+	for (size_t i = 0, m = text_read(e->buf->text, a, t, z - a < sizeof t ? z - a : sizeof t); i < m; i++)
 		big |= t[i] >= 'A' && t[i] <= 'Z', small |= t[i] >= 'a' && t[i] <= 'z';
 	if (big && !small && (*c.kind == 'K' || *c.kind == 'F'))
 		for (char *p = w; *p; p++) if (*p >= 'a' && *p <= 'z') *p -= 32;
@@ -868,6 +931,8 @@ static int pum_key(Editor *e, int k)
 
 int snip_key(Editor *e, int k, int pending)
 {
+	E = e;
+	if ((I.b != e->buf || I.nr != e->buf->nr) && is_sql(e->buf)) loop_timer(idle, NULL, 0);   /* index it before a word starts */
 	if (S.b && (S.b != e->buf || S.nr != e->buf->nr)) stop();   /* BufLeave */
 	/* in a snippet Tab and S-Tab jump, or are themselves, popup or not
 	   (blink.cmp's default keys, snippet_forward and fallback): a word

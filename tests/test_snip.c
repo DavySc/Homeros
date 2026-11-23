@@ -11,6 +11,7 @@
 #include "check.h"
 #include "core.h"
 #include "keyname.h"
+#include "loop.h"
 #include "snip.h"
 #include "tools.h"
 
@@ -292,6 +293,112 @@ static void complete(void)
 	feed(e, KEY_ESC), core_free(e);
 	e = typed("p.sql", "'sel");
 	CHECK(!e->pum);
+	feed(e, KEY_ESC), core_free(e);
+	/* an empty word starts again: s, Backspace, then @ offers variables */
+	snprintf(t, sizeof t, "%sset |", file);
+	e = at(t, "s\177@c");
+	CHECK(e->pum && !strcmp(e->pum[0].word, "@count"));
+	feed(e, KEY_ESC), core_free(e);
+	/* [x] needs its brackets with a space in x; a column of two tables
+	   once; FROM @: table variables; after a schema its tables, the
+	   schema no table */
+	snprintf(t, sizeof t, "create table a ([My Col] int, total int)\ncreate table b (total int)\nselect | from a join b on 1 = 1");
+	e = at(t, "My");
+	feed(e, 25);
+	size_t n;
+	const unsigned char *line = core_line(e, e->win->line, &n);
+	CHECK(n > 15 && !memcmp(line, "select [My Col] ", 16));
+	feed(e, KEY_ESC), core_free(e);
+	e = at(t, "tota");
+	CHECK(!strcmp(shown(e), "total"));
+	feed(e, KEY_ESC), core_free(e);
+	snprintf(t, sizeof t, "%sselect * from |", file);
+	e = at(t, "@");
+	CHECK(!strcmp(shown(e), "@w"));
+	feed(e, KEY_ESC), core_free(e);
+	e = at(t, "dbo");
+	CHECK(!e->pum);
+	feed(e, '.');
+	CHECK(!strcmp(shown(e), "customers"));
+	feed(e, KEY_ESC), core_free(e);
+	/* names typed a moment ago: the word's statement is read when it
+	   starts */
+	e = at("create table orders (id int, total int)\n |", "select * from orders o where o.");
+	CHECK(!strcmp(shown(e), "id total"));
+	feed(e, KEY_ESC), core_free(e);
+	/* a word's list is the one made when it started */
+	e = at("select * from |\n", "g");
+	CHECK(!core_edit(e, 15, 0, " join gq x", 10));
+	feed(e, 'q');
+	CHECK(!e->pum);
+	feed(e, KEY_ESC), core_free(e);
+	/* the file's names come from its index, made again once typing pauses
+	   for 150 ms: until then a name deleted elsewhere still shows */
+	e = at("create table gone (id int)\nselect * from |", "g");
+	CHECK(!strcmp(shown(e), "gone"));
+	feed(e, KEY_ESC);
+	CHECK(!core_edit(e, 0, 27, "", 0));
+	feed(e, 'g'), feed(e, 'g'), feed(e, 'A');
+	for (const char *k = " join g"; *k; k++) feed(e, *k);
+	CHECK(strstr(shown(e), "gone"));
+	feed(e, KEY_ESC);
+	long long t0 = loop_now();
+	while (loop_now() - t0 < 400000000LL) loop_once(100);
+	feed(e, 'g'), feed(e, 'g'), feed(e, 'A');
+	for (const char *k = " join g"; *k; k++) feed(e, *k);
+	CHECK(!strstr(shown(e), "gone"));
+	feed(e, KEY_ESC), core_free(e);
+	/* the review's cases: a word at its statement's end; FROM and a
+	   column list end with their statement; a name once however often
+	   used; @@ words no variables, and after @ the file's variables first,
+	   no other words; DECLARE @t TABLE's columns; any case for a #temp;
+	   FROM a, b; Q.name after SET is no schema; DELETE: tables and words;
+	   a list made again after Esc */
+	snprintf(t, sizeof t, "%sselect * from log l where l|", file);
+	e = at(t, ".");
+	CHECK(!strcmp(shown(e), "at msg"));
+	feed(e, KEY_ESC), core_free(e);
+	e = at("select 1 from t\nselect a, zz\nselect * from orders\nselect * from orders\nselect * from |\n", "z");
+	CHECK(!e->pum);
+	feed(e, KEY_BS), feed(e, 'o');
+	CHECK(!strcmp(shown(e), "orders"));
+	feed(e, KEY_ESC), core_free(e);
+	snprintf(t, sizeof t, "%sselect @@rowcount\nset |", file);
+	e = at(t, "@");
+	CHECK(!strcmp(e->pum[0].kind, "Variable") && !strcmp(e->pum[1].kind, "Variable") && !strcmp(e->pum[2].kind, "Function"));
+	for (int i = 0; i < e->npum; i++) CHECK(e->pum[i].word[0] == '@' && (strcmp(e->pum[i].word, "@@rowcount") || !strcmp(e->pum[i].kind, "Function")));
+	feed(e, KEY_ESC), core_free(e);
+	snprintf(t, sizeof t, "%sselect @w|", file);
+	e = at(t, ".");
+	CHECK(!strcmp(shown(e), "a"));
+	feed(e, KEY_ESC), core_free(e);
+	snprintf(t, sizeof t, "%sselect #T|", file);
+	e = at(t, ".");
+	CHECK(!strcmp(shown(e), "id name"));
+	feed(e, KEY_ESC), core_free(e);
+	e = at("create table b (k int)\nselect * from a, b x where x|\n", ".");
+	CHECK(!strcmp(shown(e), "k"));
+	feed(e, KEY_ESC), core_free(e);
+	e = at("update t set x = 1 where t.y = 2\nselect * from |\n", "y");
+	CHECK(!e->pum);
+	feed(e, KEY_ESC), core_free(e);
+	e = at("create table fact (id int)\ndelete |\n", "f");
+	CHECK(strstr(shown(e), " fact ") && strstr(shown(e), " from "));
+	feed(e, KEY_ESC), core_free(e);
+	e = at("select * from |\n", "q");
+	CHECK(!e->pum);
+	feed(e, KEY_ESC);
+	CHECK(!core_edit(e, 15, 0, " join qq x", 10));
+	feed(e, 'a'), feed(e, 'q');
+	CHECK(!strcmp(shown(e), "qq"));
+	feed(e, KEY_ESC), core_free(e);
+	/* many names: the pool grows under the walk */
+	static char big[40000];
+	int m = snprintf(big, sizeof big, "select ");
+	for (int i = 0; i < 400; i++) m += snprintf(big + m, sizeof big - (size_t)m, "t.column_number_%d, ", i);
+	snprintf(big + m, sizeof big - (size_t)m, "1 from some_table t where t|");
+	e = at(big, ".c");
+	CHECK(e->npum == 400);
 	feed(e, KEY_ESC), core_free(e);
 	puts("test_snip: the popup offers by the statement: columns, tables, variables, words, snippets");
 }
