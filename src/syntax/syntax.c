@@ -17,6 +17,7 @@
 #include "lmatch.h"
 #include "org.h"
 #include "tsql.h"
+#include "lean.h"
 
 /* Neovim's standard capture names (:h treesitter-highlight-groups), in
    grid.h's order: name i is face i + 1.  A capture takes the longest of these
@@ -445,6 +446,7 @@ Syntax *syntax_open(const char *path, const Text *t)
 		Syntax *s = calloc(1, sizeof *s);
 		if (s && (li == BY_ORG ? !(s->org = orgfx_new(t)) : !(s->sql = tsql_new(t, BY_SQL - li))))
 			free(s), s = NULL;
+		else if (li == BY_LEAN) tsql_lines(s->sql, lean_line);
 		return s;
 	}
 	Syntax *s = calloc(1, sizeof *s);

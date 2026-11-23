@@ -4,9 +4,10 @@
 //   npm install vscode-textmate@9.3.2 vscode-oniguruma@2.0.1 @catppuccin/vscode@3.18.1
 //   NODE_PATH=node_modules node tests/test_syntax_lean.js record > tests/test_syntax_lean.txt
 //   NODE_PATH=node_modules node tests/test_syntax_lean.js words > src/syntax/lean_words.h
-// record: cases from Lean's own sources (lean --print-prefix, src/lean),
-// random text from Lean's tokens and random Markdown in a doc comment
-// (CASES of them, 600 by default, from SEED), each as T (hex) and C
+// record: the hand cases below, then cases from Lean's own sources (lean
+// --print-prefix, src/lean), random text from Lean's tokens and random
+// Markdown in a doc comment (CASES of them, 600 by default, from SEED),
+// each as T (hex) and C
 // (colour runs over a palette P of fg/fontStyle, newlines left out), for
 // test_syntax_lean.
 // words: the grammar's word lists and Oniguruma's \w, for lean.c.
@@ -32,11 +33,19 @@ async function record() {
     'e', 'def', 'theorem', 'structure', 'instance', 'where', 'with', 'extends', ':', ':=', '(', ')', '{', '}', '[', ']', '⦃', '<', '>', '|', ',', '«', '»',
     'attribute', '@', '@[simp]', 'private', 'sorry', '#eval', '#check', 'deriving', 'instance', 'by', 'by?', 'fun', 'λ', '∀', '→', 'α', 'ℕ', '₁', '⟨', '⟩',
     's!', 'm!', 'throwError', 'panic!', 'trace[Meta.x]', 'trace_goal[', 'Prop', 'Type', 'Sort', 'true', 'false', 'termination_by', '?', '_', 'import all',
-    '`', '*', '#', 'é', '𝔽'], md = ['\n', '\n', ' ', '  ', '    ', '\t', 'a', 'b c', 'é', '`', '``', '*', '**', '_', '__', '#', '###', '####### ',
+    '`', '*', '#', 'é', '𝔽', '\u00a0', '1e+3', "]'a'", 'deriving\ninstance', '⦃', '«a b»'], md = ['\n', '\n', ' ', '  ', '    ', '\t', 'a', 'b c', 'é', '`', '``', '*', '**', '_', '__', '#', '###', '####### ',
     '> ', '- ', '* ', '+ ', '1. ', '```', '~~~', '```lean', '[', ']', '(', ')', '![', '<', '>', '<http://a.b/c>', '<mailto:a.b@c-d.ef>', '<x@y.z>',
-    '\\', '\\*', '---', '***', '===', '-/', '/-', '/--', '/-!', '--', '"', "'", ':', '[a]: <u> "t"', '[t](u "x")', '(u (v))', '-', '.', '!'];
+    '\\', '\\*', '---', '***', '===', '-/', '/-', '/--', '/-!', '--', '"', "'", ':', '[a]: <u> "t"', '[t](u "x")', '(u (v))', '-', '.', '!',
+    '\u00a0', '<ftp://a.b/c>', '[t](u "")', '==', '(x)'.repeat(70)];
   const soup = (w, n) => { let t = ''; for (let k = rnd(n); k--; ) t += w[rnd(w.length)]; return t; };
-  const cases = [];
+  // what the soups rarely make: a review's cases (PR 144) and VS Code's
+  // line limit
+  const cases = ["x[i]'a' y 'b' z]'c'\n", 'deriving\ninstance Foo\nderiving instance Bar\nderiving  \tinstance Baz\n',
+    'def x := 1e+3 + 2E+10 + 3e-2 + 4.5e+1 + 1e+ + 0x1F\n', '/-- <ftp://a.b/c> <http://x> <https://y> <ftps://n>\n-/\n',
+    'def foo\u00a0: Nat := 1\n/--\u00a0# Title\n-\u00a0a\u00a0b\n-/\n', '/--\nTitle\n==\nTitle\n===\nT\n====  \n-/\n',
+    '/-- [a](u "") and [b](u "t") and [c]: u ""\n[d]: u "x"\n-/\n', '/-- [a](x' + '(y)x'.repeat(70) + ')\n-/\n', '--[](' + '()'.repeat(70) + ' v))\n',
+    'def\n{a} foo\n', '--[p]:<\n', '/--\n- item\n        # x\n-/\n', '/--\n>    # x\n>    # y\n-/\n',
+    '/-- ' + 'a'.repeat(19993) + ' -/\ndef x := 1\n-/\n', '/--\n````\nx\n```\ny\n````\nz\n-/\n', '/-- ' + 'a *b* `c` [d](e) '.repeat(1000) + '\n-/\n'];
   for (let c = 0; c < (+process.env.CASES || 600); c++) {
     let t;
     if (c % 3 == 1) {
@@ -45,11 +54,13 @@ async function record() {
     } else t = c % 3 ? soup(tok, 300) : '/-- ' + soup(md, 400);
     cases.push(t);
   }
-  const pal = [], out = [];
+  const pal = [], out = [], plain = g.tokenizeLine2('', vt.INITIAL).tokens;
   for (const t of cases) {
     let st = vt.INITIAL, runs = [], cur = -1, n = 0;
     for (const line of t.split('\n')) {
-      const { tokens: tk, ruleStack } = g.tokenizeLine2(line, st);
+      // VS Code's editor.maxTokenizationLineLength: the line plain, the
+      // state passed on
+      const { tokens: tk, ruleStack } = line.length >= 20000 ? { tokens: plain, ruleStack: st } : g.tokenizeLine2(line, st);
       let k = 0;
       for (let i = 0; i < line.length; i++) {
         while (k + 2 < tk.length && tk[k + 2] <= i) k += 2;

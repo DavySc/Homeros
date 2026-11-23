@@ -238,6 +238,32 @@ static void edit_near_start(const char *mid, size_t z0, size_t at, const char *i
 	text_free(t);
 }
 
+/* Lean's state in a comment's fence holds the fence's line: an insertion
+   at byte 0 moves it and the kept starts inside it, while the update
+   stops at the kept start between, its state unchanged */
+static void edit_before_fence(void)
+{
+	static char b[12000];
+	static unsigned char f[12000], g[12000];
+	size_t n = (size_t)sprintf(b, "/-! x -/\n");
+	while (n < 5000) n += (size_t)sprintf(b + n, "def a := 1\n");
+	n += (size_t)sprintf(b + n, "/-!\n     ```\n");
+	while (n < 10000) n += (size_t)sprintf(b + n, "x\n");
+	n += (size_t)sprintf(b + n, "     ```\n-/\ndef a := 1\n");
+	Text *t = text_new(b, n);
+	Syntax *s = syntax_open("x.lean", t);
+	CHECK(t && s);
+	syntax_update(s, t, NULL, &r1, &r2);
+	syntax_edit(s, t, 0, 0, "a", 1);
+	CHECK(!text_insert(t, 0, "a", 1));
+	syntax_update(s, t, NULL, &r1, &r2);
+	syntax_faces(s, 9990, n + 1, f + 9990);
+	lang = 3, fresh(t, g), lang = 0;
+	CHECK(!memcmp(f + 9990, g + 9990, n + 1 - 9990));
+	syntax_free(s);
+	text_free(t);
+}
+
 int main(void)
 {
 	char got[256];
@@ -264,6 +290,7 @@ int main(void)
 	edit_near_start("1e+ ", 4099, 4098, "3");   /* "e" and "+" join 1e+3 */
 	/* the last token read, "1", ends two bytes before the edit */
 	edit_near_start("1e+ ", 4096, 4098, "3");
+	edit_before_fence();
 	/* a NUL starts no two-byte operator (strchr finds the terminator) */
 	Text *t0 = text_new("\0=", 2);
 	TsqlRd r0 = { t0, 0, 0, { 0 }, 0 };

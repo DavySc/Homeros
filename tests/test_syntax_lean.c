@@ -4,8 +4,11 @@
    gives each byte under Catppuccin Mocha) and compares each byte but the
    newlines, through the theme's faces[], Markdown in comments included:
    none may differ.  usage: test_syntax_lean [FILE] (default the .txt),
-   -v prints each case's first difference. */
+   -v prints each case's first difference.  Then a comment's line that
+   Markdown's rules would read again from each position, which must stay
+   within its budget. */
 #include <string.h>
+#include <time.h>
 #include "check.h"
 #include "grid.h"
 #include "syntax.h"
@@ -78,7 +81,21 @@ int main(int argc, char **argv)
 		text_free(t);
 	}
 	fclose(in);
-	printf("test_syntax_lean: %zu of %zu bytes in %zu of %zu cases differ from VS Code\n", bad, bytes, badcase, ncase);
-	CHECK(ncase && !bad);
+	/* 1,200 backticks: without the budget, about a second to colour (the
+	   closer's search for each run's length, from each position); the
+	   line passes on the state it found, as VS Code's past its time limit,
+	   so the /- before them does not deepen the comment and x is code */
+	n = (size_t)sprintf(text, "/--\n/- %1200s\n-/\nx\n", "");
+	for (size_t i = 7; i < 1207; i++) text[i] = '`';
+	clock_t c0 = clock();
+	Text *t = text_new(text, n);
+	Syntax *s = syntax_open("x.lean", t);
+	size_t r1, r2;
+	while (syntax_update(s, t, NULL, &r1, &r2) == 2) ;
+	syntax_faces(s, 0, n, got);
+	double ms = (double)(clock() - c0) * 1e3 / CLOCKS_PER_SEC;
+	syntax_free(s), text_free(t);
+	printf("test_syntax_lean: %zu of %zu bytes in %zu of %zu cases differ from VS Code; a line of 1,200 ` in %.1f ms\n", bad, bytes, badcase, ncase, ms);
+	CHECK(ncase && !bad && ms < 100 && got[n - 2] == FACE_NONE);
 	return 0;
 }
