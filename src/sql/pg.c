@@ -126,7 +126,8 @@ static int message(Pg *p, char k, const char *s, size_t n)
 	case 'K': if (n >= 8) p->pid = be(s, 4), p->key = be(s + 4, 4); return 0;
 	case 'Z':
 		p->txn = n ? s[0] : 'I';
-		if (p->state != PG_DEAD) p->state = PG_READY, p->quiet = 0;
+		if (p->state != PG_DEAD && p->kill.fd >= 0) p->ready = 1;
+		else if (p->state != PG_DEAD) p->state = PG_READY, p->quiet = 0;
 		return 0;
 	case 'T': {   /* RowDescription: the names */
 		uint32_t c = n >= 2 ? be(s, 2) : 0;
@@ -188,7 +189,16 @@ int pg_parse(Pg *p)
 int pg_io(Pg *p, int readable)
 {
 	if (net_flush(&p->net) || (p->kill.fd >= 0 && net_flush(&p->kill))) return dead(p, NULL);
-	if (p->kill.fd >= 0 && !p->kill.snd.n) net_close(&p->kill);
+	/* a cancel is done when the server closes its connection, as libpq's
+	   PQcancel waits for: a query sent before then could be cancelled
+	   instead (the review of PR 133: 16 of 20 runs) */
+	if (p->kill.fd >= 0 && !p->kill.snd.n) {
+		Str x = {0};
+		int gone = net_read(&p->kill, &x);
+		str_free(&x);
+		if (gone) net_close(&p->kill);
+		if (gone && p->ready) p->state = PG_READY, p->quiet = 0, p->ready = 0;
+	}
 	if (!readable) return 0;
 	if (net_read(&p->net, &p->in)) return dead(p, NULL);
 	if (p->state == PG_SSL) {

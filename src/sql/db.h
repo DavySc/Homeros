@@ -22,5 +22,7 @@ static inline int db_state(const Db *d) { return d->pg ? d->g.state : d->t.state
 static inline uint64_t db_rows(const Db *d) { return d->pg ? d->g.rows : d->t.rows; }
 static inline Str *db_out(Db *d) { return d->pg ? &d->g.out : &d->t.out; }
 static inline Net *db_net(Db *d) { return d->pg ? &d->g.net : &d->t.net; }
-static inline int db_kill_fd(const Db *d) { return d->pg ? d->g.kill.fd : -1; }   /* Postgres's cancel connection */
+/* Postgres's cancel connection while it is open (the cancel is done when
+   the server closes it, pg.c), else NULL */
+static inline Net *db_kill(Db *d) { return d->pg && d->g.kill.fd >= 0 ? &d->g.kill : NULL; }
 #endif

@@ -20,6 +20,7 @@ typedef struct {
 	char txn;            /* ReadyForQuery: I idle, T in a transaction, E a failed transaction */
 	uint64_t rows, sets; /* rows rendered, result sets */
 	int quiet;           /* parse rows but render nothing (while cancelling) */
+	int ready;           /* ReadyForQuery came while the cancel's connection was still open */
 } Pg;
 
 enum { PG_SSL, PG_TLS, PG_AUTH, PG_READY, PG_BUSY, PG_CANCEL, PG_DEAD };

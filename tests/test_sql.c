@@ -10,9 +10,11 @@
    stderr: login, first row, total (ms), rows.  -t trusts the server's own
    certificate; -q prints no rows; -c ROWS pauses 300 ms after ROWS rows,
    cancels, and reports how long the cancel took. */
+#include <fcntl.h>
 #include <poll.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 #include "check.h"
 #include "../src/sql/db.h"
 
@@ -29,7 +31,8 @@ static double now(void)
 static int run(Db *d, int until, uint64_t stop)
 {
 	while (db_state(d) != until && db_state(d) != DB_DEAD && !(stop && db_rows(d) >= stop)) {
-		struct pollfd p[2] = {{db_net(d)->fd, (short)(POLLIN | (db_pending(d) ? POLLOUT : 0)), 0}, {db_kill_fd(d), POLLOUT, 0}};
+		Net *k = db_kill(d);
+		struct pollfd p[2] = {{db_net(d)->fd, (short)(POLLIN | (db_pending(d) ? POLLOUT : 0)), 0}, {k ? k->fd : -1, (short)(POLLIN | (k && k->snd.n ? POLLOUT : 0)), 0}};
 		if (poll(p, 2, -1) < 0 || db_io(d, p[0].revents & (POLLIN | POLLHUP | POLLERR)) < 0) return -1;
 	}
 	return db_state(d) == DB_DEAD ? -1 : 0;
@@ -113,6 +116,26 @@ static void refusals(int pg, const char *why)
 	db_close(&d);
 }
 
+/* SCRAM-SHA-256 without a server: pg_parse fed the server's messages for a
+   client nonce of RFC 7677's example ("n=," since Postgres ignores the
+   name; the expected proofs computed with Python's hashlib) */
+static int scram(const char *server_first, const char *server_final)
+{
+	Pg p = { .net.fd = -1, .kill.fd = -1, .state = PG_AUTH };
+	strcpy(p.nonce, "rOprNGfwEbeRWgbNEkqO"), strcpy(p.first, "n=,r=rOprNGfwEbeRWgbNEkqO"), strcpy(p.pass, "pencil");
+	const char *m[2] = {server_first, server_final};
+	for (int i = 0; i < 2 && p.state != PG_DEAD; i++) {
+		size_t n = strlen(m[i]);
+		char h[9] = {'R', 0, 0, (char)((n + 8) / 256), (char)(n + 8), 0, 0, 0, (char)(11 + i)};
+		CHECK(!str_add(&p.in, h, 9) && !str_add(&p.in, m[i], n));
+		pg_parse(&p);
+		if (i == 0 && p.state != PG_DEAD) CHECK(p.net.snd.n > 5 && strstr(p.net.snd.s + 5, "c=biws,r=rOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,p=qvT2SWdEH5Q06albL+hjSYuUhCG7VndFyzIb7CK4n9k=") && !p.pass[0]);
+	}
+	int ok = p.state != PG_DEAD;
+	pg_close(&p);
+	return ok;
+}
+
 static void oracle(const char *py, const char *argv0)
 {
 	char cmd[4096];
@@ -125,13 +148,17 @@ int main(int argc, char **argv)
 	if (argc > 1) return pass = getenv("SQL_SA_PASSWORD"), driver(argc, argv);
 	Db d;
 	if (!up(&d, 0)) return 1;
-	CHECK(d.t.pkt == 4096);
+	CHECK(d.t.pkt == 4096 && !d.t.login.s);   /* LOGIN7, with the password, not kept */
+	/* a child the editor starts does not hold the session open (the review of PR 133) */
+	CHECK(fcntl(db_net(&d)->fd, F_GETFD) & FD_CLOEXEC);
 	/* SSMS's session options */
 	CHECK(is(&d, "select @@options o", "o\n5496\n(1 row affected)\n"));
 	/* text in both directions: outside the BMP, and Latin-1 */
 	CHECK(is(&d, "select N'\U0001F600é' x", "x\n\U0001F600é\n(1 row affected)\n"));
 	/* a message's text as it is; a value's escaped, one per cell */
 	CHECK(is(&d, "print 'a' + char(9) + 'b' + char(10) + 'c'; select 'a' + char(9) + 'b' + char(10) + 'c' x", "a\tb\nc\nx\na\\tb\\nc\n(1 row affected)\n"));
+	/* a column name escaped as a value is */
+	CHECK(is(&d, "select 1 as [a\tb]", "a\\tb\n1\n(1 row affected)\n"));
 	/* a cancel while no batch runs sends nothing */
 	CHECK(!db_cancel(&d) && db_state(&d) == DB_READY && !db_pending(&d));
 	/* a cancel after the batch's last DONE was sent: the server still sends
@@ -140,13 +167,19 @@ int main(int argc, char **argv)
 	   before the cancel goes, so the DONE_ATTN comes in a later read (sent
 	   together, the plant was caught 0 of 1 times) */
 	db_out(&d)->n = 0;
-	CHECK(!db_query(&d, "select 1 as one") && !tds_io(&d.t, 0) && !nanosleep(&(struct timespec){0, 200000000}, NULL));
+	CHECK(!db_query(&d, "select 1 as one") && !db_io(&d, 0) && !nanosleep(&(struct timespec){0, 200000000}, NULL));
 	CHECK(db_state(&d) == DB_BUSY && !db_cancel(&d) && !run(&d, DB_READY, 0));
 	CHECK(is(&d, "select 2 as two", "two\n2\n(1 row affected)\n"));
 	/* a cancelled result reads on to the server's DONE_ATTN and shows no
 	   error of its own; the connection then runs the next batch */
 	CHECK(!batch(&d, "select top 2000000 a.object_id from sys.all_objects a, sys.all_objects b", 1000));
 	CHECK(db_state(&d) == DB_READY && !strstr(db_out(&d)->s, "Msg") && d.t.rows >= 1000 && d.t.rows < 2000000);
+	CHECK(is(&d, "select 1 as one", "one\n1\n(1 row affected)\n"));
+	/* a batch ending in EXEC ends with DONEPROC, not DONE (the review of
+	   PR 133); cancelling a running procedure */
+	CHECK(is(&d, "exec sp_executesql N'select 1 a'", "a\n1\n(1 row affected)\n"));
+	CHECK(!batch(&d, "exec sp_executesql N'select top 2000000 a.object_id from sys.all_objects a, sys.all_objects b'", 1000));
+	CHECK(db_state(&d) == DB_READY && !strstr(db_out(&d)->s, "Msg") && d.t.rows < 2000000);
 	CHECK(is(&d, "select 1 as one", "one\n1\n(1 row affected)\n"));
 	/* a transaction's descriptor comes from the server and goes back with each batch */
 	CHECK(!batch(&d, "begin tran", 0) && d.t.txn);
@@ -167,12 +200,44 @@ int main(int argc, char **argv)
 	CHECK(!batch(&d, "select g from generate_series(1, 20000000) g", 1000));
 	CHECK(db_state(&d) == DB_READY && !strstr(db_out(&d)->s, "ERROR") && d.g.rows >= 1000 && d.g.rows < 20000000);
 	CHECK(is(&d, "select 1 as one", "one\n1\n(SELECT 1)\n"));
+	/* a cancel is done once the server closes its connection, so the next
+	   query is never the one cancelled (the review of PR 133: 16 of 20
+	   were); the reply waits unread 20 ms, as there */
+	for (int i = 0; i < 20; i++) {
+		db_out(&d)->n = 0;
+		CHECK(!db_query(&d, "select 1") && !db_io(&d, 0) && !nanosleep(&(struct timespec){0, 20000000}, NULL));
+		CHECK(!db_cancel(&d) && !run(&d, DB_READY, 0));
+		CHECK(is(&d, "select pg_sleep(0.05), 2 x", "pg_sleep\tx\n\t2\n(SELECT 1)\n"));
+	}
 	/* the transaction state comes from the server's ReadyForQuery */
 	CHECK(!batch(&d, "begin", 0) && d.g.txn == 'T');
 	CHECK(!batch(&d, "select 1/0", 0) && d.g.txn == 'E' && strstr(db_out(&d)->s, "ERROR 22012: division by zero"));
 	CHECK(!batch(&d, "rollback", 0) && d.g.txn == 'I');
+	/* the server's error 57014 when no cancel of ours runs (a timeout) is shown */
+	CHECK(!batch(&d, "set statement_timeout = 10; select pg_sleep(1)", 0) && strstr(db_out(&d)->s, "ERROR 57014"));
+	CHECK(!batch(&d, "set statement_timeout = 0", 0));
+	/* a column name escaped as a value is */
+	CHECK(is(&d, "select 1 as \"a\tb\"", "a\\tb\n1\n(SELECT 1)\n"));
+	CHECK(!d.g.pass[0]);   /* the password is not kept past the login */
 	db_close(&d);
 	refusals(1, "password authentication failed for user \"postgres\"");
+	/* SCRAM: the right proof is sent and the server's checked; a wrong
+	   server signature and a nonce that does not extend ours refused */
+	const char *sf = "r=rOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,s=W22ZaJ0SNY7soEsUEjb6gQ==,i=4096";
+	CHECK(scram(sf, "v=3HO6Qt1M4MKJrmlKaoOqLAI0/0TV0HZe7J9H3MBtSOg="));
+	CHECK(!scram(sf, "v=3HO6Qt1M4MKJrmlKaoOqLAI0/0TV0HZe7J9H3MBtSOh="));
+	CHECK(!scram("r=xOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,s=W22ZaJ0SNY7soEsUEjb6gQ==,i=4096", "v=3HO6Qt1M4MKJrmlKaoOqLAI0/0TV0HZe7J9H3MBtSOg="));
+	/* the host name: with the test server's own certificate trusted, a
+	   checked login to 127.0.0.1 still fails, on the name */
+	char ca[] = "/tmp/sql_caXXXXXX", cmd[512];
+	int fd = mkstemp(ca);
+	snprintf(cmd, sizeof cmd, "openssl s_client -starttls postgres -connect 127.0.0.1:5432 </dev/null 2>/dev/null | sed -n '/BEGIN CERT/,/END CERT/p' > %s", ca);
+	CHECK(fd >= 0 && !close(fd) && !system(cmd));
+	setenv("SSL_CERT_FILE", ca, 1);
+	CHECK(login(&d, 1, 0) && strstr(db_net(&d)->err, "mismatch"));
+	db_close(&d);
+	unsetenv("SSL_CERT_FILE");
+	unlink(ca);
 	oracle("tests/test_sql_pg.py", argv[0]);
 	return 0;
 }

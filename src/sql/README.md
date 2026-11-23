@@ -8,7 +8,7 @@ branch `claude/project-thread-osg6me`, which is never merged.
 | File | What |
 |---|---|
 | `net.c` | one non-blocking connection: socket, TLS on OpenSSL memory buffers, certificate check; a value's text escaped for one cell |
-| `tds.c` | SQL Server (TDS 7.4): prelogin, TLS, SQL login, batches, the token reader, cancel, every type as SSMS shows it |
+| `tds.c` | SQL Server (TDS 7.4): prelogin, TLS, SQL login, batches, the token reader, cancel, every type as the server's CONVERT shows it (varchar read as code page 1252, the code page of Davy's servers: another code page shows wrong) |
 | `pg.c` | PostgreSQL (protocol 3.0): SSLRequest, TLS, SCRAM-SHA-256, simple queries, cancel on a second connection, values in the server's own text |
 
 ## The test servers

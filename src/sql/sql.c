@@ -172,7 +172,9 @@ static void wake(void *ctx, int fd)
 	Str *o = db_out(&s->db);
 	if (was >= DB_READY) put(s, o->s, o->n);   /* the login's messages are not the query's (SSMS shows none) */
 	o->n = 0;
-	if (s->kill >= 0 && db_kill_fd(&s->db) != s->kill) loop_unwatch(s->kill), s->kill = -1;   /* the cancel was sent */
+	Net *k = db_kill(&s->db);
+	if (s->kill >= 0 && !k) loop_unwatch(s->kill), s->kill = -1;   /* the server closed it: the cancel is done */
+	if (k) loop_write(s->kill, k->snd.n > 0);
 	if (r || db_state(&s->db) == DB_DEAD) {
 		putz(s, db_net(&s->db)->err), putz(s, "\n");
 		drop(s);
@@ -240,8 +242,8 @@ int sql_key(Editor *e, int key)
 			putz(s, "Query was cancelled by user.\n");
 			return 1;
 		}
-		if ((s->kill = db_kill_fd(&s->db)) >= 0 && loop_watch(s->kill, wake, s)) s->kill = -1;
-		if (s->kill >= 0) loop_write(s->kill, 1);
+		Net *k = db_kill(&s->db);
+		if (k && !loop_watch(k->fd, wake, s)) s->kill = k->fd, loop_write(s->kill, 1);
 		loop_write(s->fd, db_pending(&s->db));
 		putz(s, "Query was cancelled by user.\n");   /* SSMS's line */
 		return 1;

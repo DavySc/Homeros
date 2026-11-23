@@ -1,6 +1,5 @@
 #include "net.h"
 #include <errno.h>
-#include <fcntl.h>
 #include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,7 +31,8 @@ int net_esc(Str *b, const char *s, size_t n)
 
 static int fail(Net *c, const char *what)
 {
-	snprintf(c->err, sizeof c->err, "%s: %s", what, ERR_reason_error_string(ERR_get_error()));
+	const char *why = ERR_reason_error_string(ERR_get_error());
+	snprintf(c->err, sizeof c->err, "%s: %s", what, why ? why : "failed");   /* NULL with an empty error queue */
 	return -1;
 }
 
@@ -51,8 +51,8 @@ int net_open(Net *c, const char *host, int port, int trust)
 	char ps[16];
 	snprintf(ps, sizeof ps, "%d", port);
 	if (getaddrinfo(host, ps, &hint, &ai)) { snprintf(c->err, sizeof c->err, "unknown host %s", host); return -1; }
-	c->fd = socket(ai->ai_family, SOCK_STREAM, 0);
-	int r = c->fd < 0 || fcntl(c->fd, F_SETFL, O_NONBLOCK) || (connect(c->fd, ai->ai_addr, ai->ai_addrlen) && errno != EINPROGRESS);
+	c->fd = socket(ai->ai_family, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);   /* not a child's: the session ends when we close it */
+	int r = c->fd < 0 || (connect(c->fd, ai->ai_addr, ai->ai_addrlen) && errno != EINPROGRESS);
 	freeaddrinfo(ai);
 	if (r) { snprintf(c->err, sizeof c->err, "connect: %s", strerror(errno)); return -1; }
 	SSL_CTX *ctx = SSL_CTX_new(TLS_client_method());

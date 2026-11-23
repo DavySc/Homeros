@@ -45,3 +45,16 @@ sql: our own Postgres cancel shown as an error~test TESTS=sql~~src/sql/pg.c~if (
 sql: the Postgres cancel carries the wrong key~test TESTS=sql~~src/sql/pg.c~put32(&s, p->pid) || put32(&s, p->key)~put32(&s, p->pid) || put32(&s, p->pid)
 sql: the Postgres transaction state not read~test TESTS=sql~~src/sql/pg.c~p->txn = n ? s[0] : 'I';~p->txn = 'I';
 sql: a refused login's reason lost to the server's close_notify~test TESTS=sql~~src/sql/net.c~e == SSL_ERROR_WANT_READ || e == SSL_ERROR_ZERO_RETURN ? 0~e == SSL_ERROR_WANT_READ ? 0
+sql: a batch ending in EXEC never ends (DONEPROC)~test TESTS=sql~~src/sql/tds.c~if (k != 0xFF && !(st & 1) && (t->state == TDS_BUSY~if (k == 0xFD && !(st & 1) && (t->state == TDS_BUSY
+sql: our own cancel of a procedure shown as an error~test TESTS=sql~~src/sql/tds.c~if (t->quiet && no == 3980) return 0;~if (t->quiet && no == 1) return 0;
+sql: the socket inherited by child processes~test TESTS=sql~~src/sql/net.c~SOCK_NONBLOCK | SOCK_CLOEXEC~SOCK_NONBLOCK
+sql: the next Postgres query sent before the cancel is done~test TESTS=sql~~src/sql/pg.c~if (p->state != PG_DEAD && p->kill.fd >= 0) p->ready = 1;~if (p->state != PG_DEAD && p->kill.fd < -1) p->ready = 1;
+sql: SCRAM: the server's proof never checked~test TESTS=sql~~src/sql/pg.c~? 0 : dead(p, "SCRAM: the server's proof is wrong")~? 0 : 0
+sql: SCRAM: the server's nonce need not extend ours~test TESTS=sql~~src/sql/pg.c~ || strncmp(r + 2, p->nonce, strlen(p->nonce)))~ || !strncmp(r + 2, p->nonce, 0))
+sql: the host name never checked~test TESTS=sql~~src/sql/net.c~ || !SSL_set1_host(c->ssl, host))~ || !(host || 1))
+sql: SQL Server column names not escaped~test TESTS=sql~~src/sql/tds.c~if (s && out) put_u16(out, s, n, 0);~if (s && out) put_u16(out, s, n, 1);
+sql: Postgres column names not escaped~test TESTS=sql~~src/sql/pg.c~|| net_esc(o, s, (size_t)(z - s))))~|| str_add(o, s, (size_t)(z - s))))
+sql: Postgres 57014 hidden outside a cancel too~test TESTS=sql~~src/sql/pg.c~if (p->quiet && f['C'] && !strcmp(f['C'], "57014")) return 0;~if (f['C'] && !strcmp(f['C'], "57014")) return 0;
+sql: the Postgres password kept after the login~test TESTS=sql~~src/sql/pg.c~		memset(p->pass, 0, sizeof p->pass);~		memset(p->pass, 0, 0);
+sql: the SQL Server login message kept after its sending~test TESTS=sql~~src/sql/tds.c~memset(t->login.s, 0, t->login.n), str_free(&t->login);~memset(t->login.s, 0, t->login.n);
+specs: PgCancel's run over at ReadyForQuery~specs~find design/specs -name '*.cfg' ! -name PgCancel_ok.cfg -delete~design/specs/PgCancel_ok.cfg~Variant = "ok"~Variant = "noclose"
