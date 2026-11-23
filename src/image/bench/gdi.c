@@ -86,38 +86,25 @@ int main(void)
 	for (int i = 0; i < iw * ih; i++) ((uint32_t *)px)[i] = (uint32_t)(i * 2654435761u) >> 8;
 	SelectObject(sdc, sb);
 	char what[128];
+	BITMAPINFO bi = { .bmiHeader = { .biSize = sizeof bi.bmiHeader, .biWidth = iw, .biHeight = -ih, .biPlanes = 1, .biBitCount = 32 } };
 	for (int s = 0; s < 4; s++)
-		for (int m = 0; m < 2; m++) {
+		for (int m = 0; m < 4; m++) {   /* m & 1: COLORONCOLOR; m & 2: StretchDIBits from the pixels, no source bitmap */
 			double u[RUNS];
 			for (int r = 0; r < RUNS; r++) {
 				double a = now();
 				HBITMAP b = dibsec(mem, win[s][0], win[s][1], NULL);
 				HGDIOBJ o = SelectObject(wdc, b);
-				SetStretchBltMode(wdc, m ? COLORONCOLOR : HALFTONE);
+				SetStretchBltMode(wdc, m & 1 ? COLORONCOLOR : HALFTONE);
 				SetBrushOrgEx(wdc, 0, 0, NULL);
-				StretchBlt(wdc, 0, 0, win[s][0], win[s][1], sdc, 0, 0, iw, ih, SRCCOPY);
+				if (m & 2) StretchDIBits(wdc, 0, 0, win[s][0], win[s][1], 0, 0, iw, ih, px, &bi, DIB_RGB_COLORS, SRCCOPY);
+				else StretchBlt(wdc, 0, 0, win[s][0], win[s][1], sdc, 0, 0, iw, ih, SRCCOPY);
 				GdiFlush();
 				u[r] = now() - a;
 				SelectObject(wdc, o);
 				DeleteObject(b);
 			}
-			snprintf(what, sizeof what, "new size, source kept: 1920x1080 to %dx%d, %s", win[s][0], win[s][1], m ? "COLORONCOLOR" : "HALFTONE");
-			report(what, u);
-			/* StretchDIBits straight from the pixels: no source bitmap at all */
-			BITMAPINFO bi = { .bmiHeader = { .biSize = sizeof bi.bmiHeader, .biWidth = iw, .biHeight = -ih, .biPlanes = 1, .biBitCount = 32 } };
-			for (int r = 0; r < RUNS; r++) {
-				double a = now();
-				HBITMAP b = dibsec(mem, win[s][0], win[s][1], NULL);
-				HGDIOBJ o = SelectObject(wdc, b);
-				SetStretchBltMode(wdc, m ? COLORONCOLOR : HALFTONE);
-				SetBrushOrgEx(wdc, 0, 0, NULL);
-				StretchDIBits(wdc, 0, 0, win[s][0], win[s][1], 0, 0, iw, ih, px, &bi, DIB_RGB_COLORS, SRCCOPY);
-				GdiFlush();
-				u[r] = now() - a;
-				SelectObject(wdc, o);
-				DeleteObject(b);
-			}
-			snprintf(what, sizeof what, "new size, StretchDIBits: 1920x1080 to %dx%d, %s", win[s][0], win[s][1], m ? "COLORONCOLOR" : "HALFTONE");
+			snprintf(what, sizeof what, "new size, %s: 1920x1080 to %dx%d, %s", m & 2 ? "StretchDIBits" : "source kept",
+			         win[s][0], win[s][1], m & 1 ? "COLORONCOLOR" : "HALFTONE");
 			report(what, u);
 		}
 	/* StretchDIBits' source origin for a top-down DIB: 4 rows, 1 to 3 of

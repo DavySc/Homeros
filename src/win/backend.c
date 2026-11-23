@@ -40,6 +40,7 @@ static int cw, ch, dpi;         /* cell size in pixels */
 static int dw, dh, stale;       /* the DIB's size; stale: redraw it whole */
 static int ring[RING], rh, rn;  /* keys the window procedure turned out */
 static int resized;
+static int sizing;              /* 1 while the user drags an edge, 2 once the size changed */
 static LONGLONG period, next;   /* QueryPerformanceCounter ticks */
 static WCHAR surr;              /* a high surrogate waiting for its low one */
 static int mrow, mcol, wheel;   /* the last mouse key's cell; wheel delta not yet a key */
@@ -113,25 +114,23 @@ static int make_dib(void)
 	ExtTextOutW(mem, 0, 0, ETO_OPAQUE, &r, NULL, 0, NULL);
 	dw = r.right;
 	dh = r.bottom;
-	/* the wallpaper's part that covers the window, scaled by GDI */
+	/* the wallpaper's part that covers the window, scaled by GDI straight
+	   from image.h's pixels; HALFTONE (smooth) costs 12 to 81 ms a size,
+	   COLORONCOLOR 3 to 11 (measured, src/image/README.md), so the cheap
+	   one while an edge is dragged and the smooth one when it is let go */
 	if (wdib) { SelectObject(wdc, nowdib); DeleteObject(wdib); wdib = NULL; }
 	int iw = 0, ih = 0, src[4];
-	const uint32_t *w = image_wallpaper(dw, dh, (uint32_t)GetRValue(BASE) << 16 | GetGValue(BASE) << 8 | GetBValue(BASE), &iw, &ih, src);
+	unsigned v;
+	const uint32_t *w = image_wallpaper(dw, dh, (uint32_t)GetRValue(BASE) << 16 | GetGValue(BASE) << 8 | GetBValue(BASE), &iw, &ih, src, &v);
 	BITMAPINFO wi = { .bmiHeader = { .biSize = sizeof wi.bmiHeader, .biWidth = iw, .biHeight = -ih, .biPlanes = 1, .biBitCount = 32 } };
-	HDC sdc = w ? CreateCompatibleDC(mem) : NULL;
-	HBITMAP sb = sdc ? CreateDIBSection(mem, &wi, DIB_RGB_COLORS, &px, NULL, 0) : NULL;
-	if (sb && (wdib = CreateDIBSection(mem, &bi, DIB_RGB_COLORS, NULL, NULL, 0))) {
-		memcpy(px, w, (size_t)iw * (size_t)ih * 4);
-		HGDIOBJ o = SelectObject(sdc, sb);
+	if (w && (wdib = CreateDIBSection(mem, &bi, DIB_RGB_COLORS, NULL, NULL, 0))) {
 		SelectObject(wdc, wdib);
-		SetStretchBltMode(wdc, HALFTONE);
+		SetStretchBltMode(wdc, sizing ? COLORONCOLOR : HALFTONE);
 		SetBrushOrgEx(wdc, 0, 0, NULL);   /* StretchBlt's rule after HALFTONE */
-		StretchBlt(wdc, 0, 0, dw, dh, sdc, src[0], src[1], src[2], src[3], SRCCOPY);
+		/* a top-down DIB's source rows count from its bottom (measured) */
+		StretchDIBits(wdc, 0, 0, dw, dh, src[0], ih - src[1] - src[3], src[2], src[3], w, &wi, DIB_RGB_COLORS, SRCCOPY);
 		BitBlt(mem, 0, 0, dw, dh, wdc, 0, 0, SRCCOPY);
-		SelectObject(sdc, o);
 	}
-	if (sb) DeleteObject(sb);
-	if (sdc) DeleteDC(sdc);
 	return 0;
 }
 
@@ -177,7 +176,17 @@ static LRESULT CALLBACK proc(HWND h, UINT m, WPARAM w, LPARAM l)
 		return 0;
 	}
 	case WM_SIZE:
-		if (w != SIZE_MINIMIZED && (LOWORD(l) != dw || HIWORD(l) != dh)) resized = stale = 1;
+		if (w != SIZE_MINIMIZED && (LOWORD(l) != dw || HIWORD(l) != dh)) {
+			resized = stale = 1;
+			if (sizing) sizing = 2;
+		}
+		return 0;
+	case WM_ENTERSIZEMOVE:
+		sizing = 1;
+		return 0;
+	case WM_EXITSIZEMOVE:   /* the wallpaper smooth again */
+		if (sizing == 2 && wdib) resized = stale = 1;
+		sizing = 0;
 		return 0;
 	case WM_DPICHANGED: {
 		const RECT *r = (const RECT *)l;
@@ -324,8 +333,8 @@ static void draw_cell(const Grid *g, int r, int c, int cursor)
 	}
 	/* reversed (status line, cursor): the colours swap, as a terminal's SGR 7 */
 	int rev = cursor || x->attr == ATTR_REV;
-	/* the default background shows the wallpaper, the text drawn over it */
-	int back = !rev && b == BASE && wdib && BitBlt(mem, rc.left, rc.top, rc.right - rc.left, ch, wdc, rc.left, rc.top, SRCCOPY);
+	/* the default background shows the wallpaper (win_present copied it), the text drawn over it */
+	int back = !rev && b == BASE && wdib;
 	SetTextColor(mem, rev ? b : f);
 	SetBkColor(mem, rev ? f : b);
 	SetBkMode(mem, back ? TRANSPARENT : OPAQUE);
@@ -341,6 +350,13 @@ static void draw_cell(const Grid *g, int r, int c, int cursor)
 	}
 }
 
+/* Cell c of row r differs from what is shown, or the cursor came or went */
+static int changed(const Grid *g, const Grid *shown, int r, int c, int pr, int pc)
+{
+	int i = r * g->cols + c;
+	return !grid_cell_eq(&g->c[i], &shown->c[i]) || (r == g->crow && c == g->ccol) != (r == pr && c == pc);
+}
+
 static void win_present(const Grid *g, Grid *shown)
 {
 	int all = stale || shown->rows != g->rows || shown->cols != g->cols;
@@ -351,14 +367,18 @@ static void win_present(const Grid *g, Grid *shown)
 	int pr = all ? -1 : shown->crow, pc = shown->ccol;
 	for (int r = 0; r < g->rows; r++) {
 		int lo = g->cols, hi = 0;
-		for (int c = 0; c < g->cols; c++) {
+		for (int c = 0, e = 0; c < g->cols; c++) {
 			const Cell *x = &g->c[r * g->cols + c];
-			Cell *y = &shown->c[r * g->cols + c];
-			int cur = r == g->crow && c == g->ccol, was = r == pr && c == pc;
-			if (grid_cell_eq(x, y) && cur == was) continue;
-			*y = *x;
+			if (!changed(g, shown, r, c, pr, pc)) continue;
+			/* the wallpaper under the run of changed cells (a wide one's right
+			   half too), one copy: a copy per cell cost 47% more (measured) */
+			if (wdib && c >= e) {
+				for (e = c + 1; e < g->cols && (!x[e - c].len || changed(g, shown, r, e, pr, pc)); e++) {}
+				BitBlt(mem, c * cw, r * ch, (e - c) * cw, ch, wdc, c * cw, r * ch, SRCCOPY);
+			}
+			shown->c[r * g->cols + c] = *x;
 			if (!x->len) continue;   /* the right half of a wide character */
-			draw_cell(g, r, c, cur);
+			draw_cell(g, r, c, r == g->crow && c == g->ccol);
 			if (c < lo) lo = c;
 			hi = c + 1 + (c + 1 < g->cols && !x[1].len);
 		}

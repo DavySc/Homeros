@@ -366,29 +366,48 @@ int main(void)
 	/* a wallpaper (image.h) dropped into the config folder shows from the
 	   next size: tests/test_image.png (red then blue) covers the window, red
 	   at its left edge, blue at its right, a fifth of it over the base, text
-	   drawn over it; taken away, the base is back from the next size */
+	   drawn over it, the cursor's cell opaque; then tests/test_wallpaper.png
+	   (2 rows red above 6 blue) in a window twice as wide as high: covered,
+	   its middle rows show, blue at the top (squeezed whole, red); taken
+	   away, the base is back from the next size */
 	cw = w2;
 	for (ch = 0; px(0, ch) == REV; ch++) {}
-	for (int t = 0; t < 2; t++) {
-		CHECK(t ? DeleteFileA("build\\win\\cfg\\homeros\\wallpaper")
-		        : !_putenv("XDG_CONFIG_HOME=build\\win\\cfg") && (CreateDirectoryA("build\\win\\cfg", NULL) || GetLastError() == ERROR_ALREADY_EXISTS)
-		          && (CreateDirectoryA("build\\win\\cfg\\homeros", NULL) || GetLastError() == ERROR_ALREADY_EXISTS)
-		          && CopyFileA("tests\\test_image.png", "build\\win\\cfg\\homeros\\wallpaper", FALSE));
+	static const char *const pic[3] = { "tests\\test_image.png", "tests\\test_wallpaper.png", NULL };
+	for (int t = 0; t < 3; t++) {
+		CHECK(pic[t] ? !_putenv("XDG_CONFIG_HOME=build\\win\\cfg") && (CreateDirectoryA("build\\win\\cfg", NULL) || GetLastError() == ERROR_ALREADY_EXISTS)
+		                 && (CreateDirectoryA("build\\win\\cfg\\homeros", NULL) || GetLastError() == ERROR_ALREADY_EXISTS)
+		                 && CopyFileA(pic[t], "build\\win\\cfg\\homeros\\wallpaper", FALSE)
+		             : DeleteFileA("build\\win\\cfg\\homeros\\wallpaper"));
+		RECT cr;
 		GetWindowRect(win, &wr);
-		SetWindowPos(win, NULL, 0, 0, wr.right - wr.left + (t ? -cw : cw), wr.bottom - wr.top, SWP_NOMOVE | SWP_NOZORDER);
+		GetClientRect(win, &cr);
+		SetWindowPos(win, NULL, 0, 0, wr.right - wr.left + (t == 1 ? 0 : t ? -cw : cw), wr.bottom - wr.top + (t == 1 ? cr.right / 2 - cr.bottom : 0), SWP_NOMOVE | SWP_NOZORDER);
 		n = input(k, 1024);
 		resized = 0;
 		for (int i = 0; i < n; i++) resized |= k[i] == KEY_RESIZE;
 		CHECK(resized);
 		b->size(&rows, &cols);
-		CHECK(!grid_resize(&g, rows, cols));
+		CHECK(!grid_resize(&g, rows, cols));   /* the cursor at (0, 0) */
 		put(&g, 0, 1, "x", 1, ATTR_NONE);
 		present(&g, &shown);
-		RECT cr;
 		GetClientRect(win, &cr);
 		int y = (rows - 1) * ch + ch / 2;
-		CHECK(px(1, y) == (t ? BG : RGB(75, 24, 37)) && px(cr.right - 2, y) == (t ? BG : RGB(24, 24, 88)));
-		CHECK(px(cw, 0) == px(1, y) && count(0, 1, px(cw, 0)) < cw * ch);   /* the x, over the wallpaper */
+		COLORREF red = RGB(75, 24, 37), blue = RGB(24, 24, 88);
+		CHECK(at(0, 0) == REV);
+		CHECK(t == 1 ? px(cr.right / 2, ch + 1) == blue && cr.right / 2 == cr.bottom
+		             : px(1, y) == (t ? BG : red) && px(cr.right - 2, y) == (t ? BG : blue));
+		CHECK(px(cw, 0) == px(1, ch + 1) && count(0, 1, px(cw, 0)) < cw * ch);   /* the x, over the wallpaper */
+		put(&g, 0, 1, " ", 1, ATTR_NONE);
+		present(&g, &shown);
+		CHECK(count(0, 1, px(cw, 0)) == cw * ch);   /* and gone */
+		put(&g, 0, 2, "ä¸­", 2, ATTR_NONE);   /* U+4E2D, two cells */
+		put(&g, 0, 5, "å­", 2, ATTR_NONE);   /* U+5B57 */
+		present(&g, &shown);
+		put(&g, 0, 2, "å­", 2, ATTR_NONE);   /* the first becomes the second, both halves */
+		present(&g, &shown);
+		int same = 0;
+		for (int i = 0; i < 2 * cw * ch; i++) same += px(2 * cw + i % (2 * cw), i / (2 * cw)) == px(5 * cw + i % (2 * cw), i / (2 * cw));
+		CHECK(same == 2 * cw * ch);
 	}
 
 	b->close();

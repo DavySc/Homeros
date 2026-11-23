@@ -37,12 +37,14 @@ static void png(const char *p, int w, int h)
 /* What the window shows at pixel (x, y) of an unscaled w x h image over bg:
    each channel c * a + bg * (255 - a), over 255, rounded; bg past its
    edge; opaque (alpha ff) */
-static uint32_t model(int w, int h, uint32_t bg, int x, int y)
+/* o: the opacity, 255 for an image, a fifth for the wallpaper */
+static uint32_t model(int w, int h, uint32_t bg, int x, int y, unsigned o)
 {
 	if (x >= w || y >= h) return 0xff000000 | bg;
 	const unsigned char *q = rgba + (y * w + x) * 4;
+	unsigned a = (q[3] * o + 127) / 255;
 	uint32_t v = 0xff000000;
-	for (int c = 0; c < 3; c++) v |= (uint32_t)((q[c] * q[3] + (bg >> (16 - 8 * c) & 0xff) * (255 - q[3]) + 127) / 255) << (16 - 8 * c);
+	for (int c = 0; c < 3; c++) v |= (uint32_t)((q[c] * a + (bg >> (16 - 8 * c) & 0xff) * (255 - a) + 127) / 255) << (16 - 8 * c);
 	return v;
 }
 
@@ -80,7 +82,7 @@ static void random_pngs(void)
 		for (int y = 0; y < gr * ch; y++)
 			for (int x = 0; x < gc * cw; x++) {
 				int iy = y - r * ch + skip * ch, ix = x - c * cw, in = y >= r * ch && iy < tr * ch && ix >= 0 && ix < tc * cw;
-				CHECK(win[y * gc * cw + x] == (in ? model(w, h, bg, ix, iy) : 1));
+				CHECK(win[y * gc * cw + x] == (in ? model(w, h, bg, ix, iy, 255) : 1));
 			}
 	}
 }
@@ -98,7 +100,7 @@ static void frame(void)
 	for (int y = 0; y < 8; y++)
 		for (int x = 0; x < 8; x++)
 			if (g.c[y * 8 + x].attr == ATTR_IMAGE) image_draw(win + y * 8 * 64 + x * 8, 64, &g.c[y * 8 + x]);
-	CHECK(n > 0 && allocs == 0 && win[8 * 64 + 8] == model(30, 30, 0, 0, 0));
+	CHECK(n > 0 && allocs == 0 && win[8 * 64 + 8] == model(30, 30, 0, 0, 0, 255));
 }
 
 /* The same file, size and bg: the same number, without reading the file:
@@ -151,7 +153,7 @@ static void keys(void)
 	int m = image_load(path, 4, 4, 2, 2, 0);
 	CHECK(m > 0);
 	show(m, 4, 4, 0, 0, 0, 2, 2);
-	CHECK(win[0] == model(8, 8, 0, 0, 0));
+	CHECK(win[0] == model(8, 8, 0, 0, 0, 255));
 	snprintf(path, sizeof path, "%s/none.png", dir);
 	CHECK(image_load(path, 4, 4, 2, 2, 0) == 0);     /* missing */
 }
@@ -412,34 +414,29 @@ static void wallpaper(void)
 	char f[700];
 	uint32_t bg = 0x1e1e2e;
 	int w, h, src[4];
+	unsigned v, v2;
 	snprintf(f, sizeof f, "%s/homeros", dir);
 	CHECK(mkdir(f, 0700) == 0 && setenv("XDG_CONFIG_HOME", dir, 1) == 0);
 	snprintf(f, sizeof f, "%s/homeros/wallpaper", dir);
-	CHECK(!image_wallpaper(30, 20, bg, &w, &h, src));
+	CHECK(!image_wallpaper(30, 20, bg, &w, &h, src, &v));
 	png(f, 30, 40);
-	const uint32_t *px = image_wallpaper(30, 20, bg, &w, &h, src);
+	const uint32_t *px = image_wallpaper(30, 20, bg, &w, &h, src, &v);
 	CHECK(px && w == 30 && h == 40);
-	for (int i = 0; i < 30 * 40; i++) {
-		const unsigned char *q = rgba + i * 4;
-		unsigned a = (q[3] * 51 + 127) / 255;
-		uint32_t v = 0xff000000;
-		for (int c = 0; c < 3; c++) v |= (uint32_t)((q[c] * a + (bg >> (16 - 8 * c) & 0xff) * (255 - a) + 127) / 255) << (16 - 8 * c);
-		CHECK(px[i] == v);
-	}
+	for (int i = 0; i < 30 * 40; i++) CHECK(px[i] == model(30, 40, bg, i % 30, i / 30, 51));
 	static const int win[3][2] = { { 30, 20 }, { 15, 40 }, { 400, 300 } }, want[3][4] = { { 0, 10, 30, 20 }, { 7, 0, 15, 40 }, { 0, 9, 30, 22 } };
 	unsigned long a0 = allocs;
 	for (int t = 0; t < 3; t++) {
-		CHECK(image_wallpaper(win[t][0], win[t][1], bg, &w, &h, src) == px);
+		CHECK(image_wallpaper(win[t][0], win[t][1], bg, &w, &h, src, &v2) == px && v2 == v);
 		CHECK(src[0] == want[t][0] && src[1] == want[t][1] && src[2] == want[t][2] && src[3] == want[t][3]);
 	}
 	CHECK(allocs == a0);   /* not decoded again */
 	uint32_t first = px[0];
-	const uint32_t *dark = image_wallpaper(30, 20, 0, &w, &h, src);
-	CHECK(dark && dark != px && dark[0] != first);   /* another bg */
+	px = image_wallpaper(30, 20, 0, &w, &h, src, &v2);
+	CHECK(px && v2 != v && px[0] != first);   /* another bg */
 	png(f, 8, 8);
-	px = image_wallpaper(30, 20, 0, &w, &h, src);
-	CHECK(px && px != dark && w == 8 && h == 8);   /* another file */
-	CHECK(unlink(f) == 0 && !image_wallpaper(30, 20, 0, &w, &h, src));
+	px = image_wallpaper(30, 20, 0, &w, &h, src, &v);
+	CHECK(px && v != v2 && w == 8 && h == 8);   /* another file */
+	CHECK(unlink(f) == 0 && !image_wallpaper(30, 20, 0, &w, &h, src, &v));
 }
 
 int main(void)
