@@ -49,6 +49,12 @@ enum {
 	/* VS Code's entity.name.function under Catppuccin Mocha (a definition's
 	   name: Lean's lexer, package 12): blue, italic */
 	FACE_FUNCTION_DEFINITION,
+	/* Markdown in a Lean comment, as VS Code paints vscode-lean4's
+	   lean4-markdown under Catppuccin Mocha, where no face above looks the
+	   same (package 12, measured over Lean 4.35's sources) */
+	FACE_DOC_PUNCT, FACE_DOC_CODE, FACE_DOC_CODE_BOLD, FACE_DOC_RULE,
+	FACE_DOC_HEADING_2, FACE_DOC_HEADING_5, FACE_DOC_LINK, FACE_DOC_LINK_BOLD,
+	FACE_DOC_URL_BOLD, FACE_DOC_LANG, FACE_DOC_QUOTE, FACE_DOC_QUOTE_BOLD,
 	/* Org's faces where no face above looks the same (package 16):
 	   org-level-7 and 8, org-todo, org-priority, org-tag, org-date,
 	   org-table, org-formula, org-drawer, org-checkbox, org-document-info,

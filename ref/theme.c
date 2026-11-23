@@ -102,6 +102,18 @@ Face faces[FACES] = {
 	{ {249, 226, 175}, {0, 0, 0}, FACE_ITALIC | FACE_FG, {0} }, /* tag.attribute: yellow, italic */
 	{ {148, 226, 213}, {0, 0, 0}, FACE_FG, {0} },     /* tag.delimiter: teal */
 	{ {137, 180, 250}, {0, 0, 0}, FACE_ITALIC | FACE_FG, {0} }, /* entity.name.function: blue, italic */
+	{ {147, 153, 178}, {0, 0, 0}, FACE_FG, {0} }, /* doc Markdown punctuation: overlay2 */
+	{ {166, 227, 161}, {0, 0, 0}, FACE_ITALIC | FACE_FG, {0} }, /* doc code span: green, italic */
+	{ {166, 227, 161}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} }, /* doc code span in bold: green, bold */
+	{ {148, 226, 213}, {0, 0, 0}, FACE_ITALIC | FACE_FG, {0} }, /* doc --- separator: teal, italic */
+	{ {250, 179, 135}, {0, 0, 0}, FACE_ITALIC | FACE_FG, {0} }, /* doc ## heading: peach, italic */
+	{ {116, 199, 236}, {0, 0, 0}, FACE_ITALIC | FACE_FG, {0} }, /* doc ##### heading: sapphire, italic */
+	{ {180, 190, 254}, {0, 0, 0}, FACE_ITALIC | FACE_FG, {0} }, /* doc link title: lavender, italic */
+	{ {180, 190, 254}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} }, /* doc link title in bold: lavender, bold */
+	{ {137, 180, 250}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} }, /* doc link URL in bold: blue, bold */
+	{ {137, 220, 235}, {0, 0, 0}, FACE_ITALIC | FACE_FG, {0} }, /* doc a fence's language: sky, italic */
+	{ {245, 194, 231}, {0, 0, 0}, FACE_ITALIC | FACE_FG, {0} }, /* doc > quote, \* escape: pink, italic */
+	{ {245, 194, 231}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} }, /* doc quote or escape in bold: pink, bold */
 	/* Org's faces as catppuccin/emacs (56c3cbe) gives them in Mocha; its
 	   org-drawer is Org's own LightSkyBlue, here sky, and its block lines
 	   take our comment's look on the block's mantle */
