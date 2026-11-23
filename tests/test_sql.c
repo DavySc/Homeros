@@ -12,6 +12,7 @@
    cancels, and reports how long the cancel took. */
 #include <fcntl.h>
 #include <poll.h>
+#include <sys/socket.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
@@ -136,6 +137,23 @@ static int scram(const char *server_first, const char *server_final)
 	return ok;
 }
 
+/* Two cancels without a server, the second's connection closed first:
+   the first's ReadyForQuery, come before its connection closed, must not
+   end the second (racing for that order against a live server caught the
+   plant here and missed it on CI) */
+static void stale_ready(void)
+{
+	Pg p = { .net.fd = -1, .kill.fd = -1, .state = PG_CANCEL };
+	for (int i = 0, s[2]; i < 2; i++) {
+		CHECK(!socketpair(AF_UNIX, SOCK_STREAM, 0, s) && !close(s[1]));   /* the server closed it */
+		p.kill.fd = s[0];
+		if (!i) CHECK(!str_add(&p.in, "Z\0\0\0\5I", 6) && !pg_parse(&p) && p.state == PG_CANCEL);
+		CHECK(!pg_io(&p, 0) && p.kill.fd < 0 && p.state == (i ? PG_CANCEL : PG_READY));
+		p.state = PG_CANCEL;
+	}
+	pg_close(&p);
+}
+
 static void oracle(const char *py, const char *argv0)
 {
 	char cmd[4096];
@@ -210,9 +228,6 @@ int main(int argc, char **argv)
 		CHECK(!db_cancel(&d) && !run(&d, DB_READY, 0));
 		CHECK(is(&d, "select pg_sleep(0.05), 2 x", "pg_sleep\tx\n\t2\n(SELECT 1)\n"));
 	}
-	/* and the loop's cancels leave nothing that ends a later one early */
-	CHECK(!batch(&d, "select g from generate_series(1, 20000000) g", 1000));
-	CHECK(is(&d, "select 1 as one", "one\n1\n(SELECT 1)\n"));
 	/* the transaction state comes from the server's ReadyForQuery */
 	CHECK(!batch(&d, "begin", 0) && d.g.txn == 'T');
 	CHECK(!batch(&d, "select 1/0", 0) && d.g.txn == 'E' && strstr(db_out(&d)->s, "ERROR 22012: division by zero"));
@@ -228,6 +243,7 @@ int main(int argc, char **argv)
 	/* SCRAM: the right proof is sent and the server's checked; a wrong
 	   server signature and a nonce that does not extend ours refused */
 	const char *sf = "r=rOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,s=W22ZaJ0SNY7soEsUEjb6gQ==,i=4096";
+	stale_ready();
 	CHECK(scram(sf, "v=3HO6Qt1M4MKJrmlKaoOqLAI0/0TV0HZe7J9H3MBtSOg="));
 	CHECK(!scram(sf, "v=3HO6Qt1M4MKJrmlKaoOqLAI0/0TV0HZe7J9H3MBtSOh="));
 	CHECK(!scram("r=xOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,s=W22ZaJ0SNY7soEsUEjb6gQ==,i=4096", "v=3HO6Qt1M4MKJrmlKaoOqLAI0/0TV0HZe7J9H3MBtSOg="));
