@@ -1333,6 +1333,14 @@ static Of *of(const Buf *b)
 	return find(b);
 }
 
+/* the current buffer's file, if it is in a repository; else says so */
+static Of *tracked(Editor *e)
+{
+	Of *o = e->buf ? of(e->buf) : NULL;
+	if (!o || !o->r) core_msg(e, "Not in a Git repository");
+	return o && o->r ? o : NULL;
+}
+
 /* gitsigns' hunks are the diff's blocks of changed lines, without context:
    walk the file's hunks for the block that marks line t (from 1).  A block
    of k removed and m added lines marks min(k, m) lines changed and the rest
@@ -1394,8 +1402,8 @@ static Str staged_last;            /* gitsigns' undo_stage_hunk: the last hunk s
 
 static int hunk_leader(Editor *e, int k)
 {
-	Of *o = e->buf ? of(e->buf) : NULL;
-	if (!o || !o->r) { core_msg(e, "Not in a Git repository"); return -1; }
+	Of *o = tracked(e);
+	if (!o) return -1;
 	Repo *r = o->r;
 	Foc f = { r, NULL, &r->st, 0 };
 	if (k == 'S') { wgit("add", "--", o->rel, NULL); wsend(r, NULL, NULL); return 0; }
@@ -1426,8 +1434,8 @@ static int hunk_leader(Editor *e, int k)
 /* SPC g B: the file on GitHub at the cursor's line, in the browser */
 static int browse(Editor *e)
 {
-	Of *o = e->buf ? of(e->buf) : NULL;
-	if (!o || !o->r) { core_msg(e, "Not in a Git repository"); return -1; }
+	Of *o = tracked(e);
+	if (!o) return -1;
 	char p[PATH_MAX], line[1024], url[2048] = "";
 	snprintf(p, sizeof p, "%s/config", o->r->common);
 	FILE *fp = fopen(p, "r");
