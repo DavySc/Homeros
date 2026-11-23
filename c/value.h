@@ -9,6 +9,7 @@ void out_add(Out *o, const char *fmt, ...);
 
 /* The variable named `name` visible at the stop (innermost scope first), or 0. */
 uint32_t var_at(const Dwarf *d, uint64_t pc, const char *name);
+uint32_t global_named(const Dwarf *d, const char *name);          /* a variable outside any function, or 0 */
 /* Prints the variable's value as std.fmt "{any}" would; false (and a reason in o) when it cannot. */
 bool print_var(const Dwarf *d, const Target *t, const Regs *r, uint32_t var, Out *o);
 uint64_t type_size(const Dwarf *d, uint32_t type);

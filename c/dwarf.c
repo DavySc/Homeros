@@ -192,6 +192,18 @@ bool die_loc(const Dwarf *d, uint32_t i, uint64_t pc, const uint8_t **expr, size
 }
 
 /* ---- line programs ---- */
+/* Incremental builds give lines relative to the parent declaration (ZIG_decl_line_relative) */
+static uint32_t decl_line(const Dwarf *d, uint32_t i) {
+    uint64_t x;
+    for (int depth = 0; i && depth < 64; depth++) {
+        if (die_uint(d, i, 0x3b, &x)) return (uint32_t)x;
+        Val rel;
+        if (!die_attr(d, i, 0x2cd1, &rel)) return 1;
+        uint32_t parent = die_ref(d, i, 0x2ccd);
+        return decl_line(d, parent) + (uint32_t)rel.s;
+    }
+    return 1;
+}
 static uint32_t add_file(Dwarf *d, const char *name) {
     if (!(d->nfiles & (d->nfiles + 1)) || !d->files) d->files = realloc(d->files, 2 * (d->nfiles + 1) * sizeof *d->files);
     d->files[d->nfiles].name = name;
@@ -208,6 +220,7 @@ static void read_lines(Dwarf *d, const Unit *u, uint64_t off) {
     const uint8_t *end = r.p + len;
     r.end = end;
     unsigned ver = (unsigned)rn(&r, 2);
+    if (ver < 2 || ver > 5) return;               /* Zig's incremental files keep free space as version-0 units */
     if (ver >= 5) r.p += 2;                       /* address size, segment selector size */
     uint64_t hlen = rn(&r, 4);
     const uint8_t *prog = r.p + hlen;
@@ -269,6 +282,19 @@ static void read_lines(Dwarf *d, const Unit *u, uint64_t off) {
             unsigned ext = (unsigned)rn(&r, 1);
             if (ext == 1) { Row o = row; o.file += file0; o.end = true; add_row(d, o); row = (Row){ 0, 1, 1, defstmt, false }; }
             else if (ext == 2) row.addr = rn(&r, 8);
+            else if (ext == 0xec) {                   /* Zig, incremental builds: start at a declaration's address and line */
+                uint32_t decl = die_at(d, (uint32_t)rn(&r, 4));
+                uint64_t x;
+                if (decl && die_uint(d, decl, AT_low_pc, &x)) row.addr = x;
+                if (decl) row.line = decl_line(d, decl);
+                for (uint32_t k = decl, hop = 0; k && hop < 64; hop++) {   /* the file: up the origin, specification or Zig parent chain */
+                    if (die_uint(d, k, 0x3a, &x)) { row.file = (uint32_t)x; break; }
+                    uint32_t up = die_ref(d, k, AT_abstract_origin);
+                    if (!up) up = die_ref(d, k, 0x47);
+                    if (!up) up = die_ref(d, k, 0x2ccd);
+                    k = up;
+                }
+            }
             r.p = next;
             break;
         }
@@ -348,6 +374,7 @@ bool dwarf_open(Dwarf *d, const char *path) {
         uint64_t len = rn(&r, 4);
         u->end = (uint32_t)(r.p - d->info.p + len);
         u->version = (uint32_t)rn(&r, 2);
+        if (u->version < 2 || u->version > 5) { r.p = d->info.p + u->end; continue; }   /* free space (incremental) */
         uint64_t aoff;
         if (u->version >= 5) { rn(&r, 1); u->addr_size = (uint32_t)rn(&r, 1); aoff = rn(&r, 4); }
         else { aoff = rn(&r, 4); u->addr_size = (uint32_t)rn(&r, 1); }
@@ -392,4 +419,12 @@ bool dwarf_open(Dwarf *d, const char *path) {
         if (cu < d->ndies && die_uint(d, cu, AT_stmt_list, &x)) read_lines(d, &d->units[d->nunits - 1], x);
     }
     return true;
+}
+
+void dwarf_close(Dwarf *d) {
+    for (uint32_t i = 0; i < d->nunits; i++) free(d->units[i].ab);
+    for (uint32_t i = 0; i < d->nfiles; i++) if (d->units && d->files[i].name) {}   /* v5 names are malloc'd, v4 point into the map: kept (prototype) */
+    free(d->units); free(d->dies); free(d->rows); free(d->files);
+    munmap(d->map, d->size);
+    memset(d, 0, sizeof *d);
 }

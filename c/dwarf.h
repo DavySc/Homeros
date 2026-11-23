@@ -37,6 +37,7 @@ enum { AT_location = 0x02, AT_name = 0x03, AT_byte_size = 0x0b, AT_stmt_list = 0
        AT_GNU_vector = 0x2107, AT_ZIG_comptime_value = 0x2cd2, AT_ZIG_sentinel = 0x2ce2 };
 
 bool dwarf_open(Dwarf *d, const char *path);
+void dwarf_close(Dwarf *d);
 bool die_attr(const Dwarf *d, uint32_t die, int at, Val *v);
 const char *die_name(const Dwarf *d, uint32_t die);
 bool die_uint(const Dwarf *d, uint32_t die, int at, uint64_t *out);

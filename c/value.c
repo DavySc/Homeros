@@ -469,6 +469,17 @@ static uint32_t find_in(const Dwarf *d, uint32_t scope, uint64_t pc, const char 
     return found;
 }
 
+uint32_t global_named(const Dwarf *d, const char *name) {
+    for (uint32_t i = 1; i < d->ndies; i++) {
+        if (d->dies[i].ab->tag != TAG_variable || !die_name(d, i) || strcmp(die_name(d, i), name)) continue;
+        uint32_t up = d->dies[i].parent;
+        while (up && d->dies[up].ab->tag != TAG_subprogram) up = d->dies[up].parent;
+        Val loc;
+        if (!up && die_attr(d, i, AT_location, &loc)) return i;
+    }
+    return 0;
+}
+
 uint32_t var_at(const Dwarf *d, uint64_t pc, const char *name) {
     uint32_t f = func_at(d, pc);
     return f ? find_in(d, f, pc, name) : 0;
