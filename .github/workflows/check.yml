@@ -83,6 +83,11 @@ jobs:
       - uses: mlugg/setup-zig@v2
         with:
           version: 0.17.1
+      # TEMPORARY, removed in PR 135's next commit: the wallpaper's GDI variants timed on Windows
+      - shell: bash
+        run: |
+          zig cc -target x86_64-windows-gnu -std=c17 -Wall -Wextra -O2 -o gdi.exe src/image/bench/gdi.c -lgdi32 -luser32
+          ./gdi.exe && ./gdi.exe
       # libghostty-vt for Windows, which test_git_win links (the terminal,
       # src/tools/): no nix here, so zig builds ghostty.nix's revision, once
       # per change of it
