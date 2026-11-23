@@ -1,0 +1,68 @@
+caught        snip: the core never tells the stops of an edit   (make test TESTS=snip): ==4037==ERROR: AddressSanitizer: requested allocation size 0xfffffffffffffff2 (0x7f8 after adjustments for alignment, red zones etc.) exceeds maximum supported size of 0x10000000000 (thread T0)
+caught        snip: a mark at an edge of the change ignores its gravity   (make test TESTS=snip): tests/test_snip.c:295: CHECK(!bad) failed
+caught        snip: the stops jumped to do not grow at their start   (make test TESTS=snip): tests/test_snip.c:295: CHECK(!bad) failed
+caught        snip: a stop next to the stops jumped to is pushed on (no lock)   (make test TESTS=snip): tests/test_snip.c:295: CHECK(!bad) failed
+caught        snip: text inside a placeholder counted as a placement   (make test TESTS=snip): tests/test_snip.c:295: CHECK(!bad) failed
+caught        snip: mirrors never set   (make test TESTS=snip): tests/test_snip.c:295: CHECK(!bad) failed
+caught        snip: TextChanged forgotten when a typed key leaves Insert mode   (make test TESTS=snip): tests/test_snip.c:295: CHECK(!bad) failed
+caught        snip: the cursor may leave the stops   (make test TESTS=snip): tests/test_snip.c:295: CHECK(!bad) failed
+caught        snip: a join spliced as its whole lines   (make test TESTS=snip): tests/test_snip.c:295: CHECK(!bad) failed
+caught        snip: a mirror spliced as only what changed   (make test TESTS=snip): tests/test_snip.c:295: CHECK(!bad) failed
+caught        snip: Enter at the end of a line spliced after the break   (make test TESTS=snip): tests/test_snip.c:295: CHECK(!bad) failed
+caught        snip: Enter in a line moves the rest of it whole   (make test TESTS=snip): tests/test_snip.c:295: CHECK(!bad) failed
+caught        snip: CTRL-W in select mode a window command   (make test TESTS=snip): tests/test_snip.c:295: CHECK(!bad) failed
+caught        snip: Enter with nothing picked takes the first item   (make test TESTS=snip): tests/test_snip.c:94: CHECK(!strcmp(b, want)) failed
+caught        snip: the popup's Tab does not pick   (make test TESTS=snip): tests/test_snip.c:124: CHECK(e->pumsel == want[i] && e->npum == n) failed
+caught        snip: the popup opens in any buffer   (make test TESTS=snip): tests/test_snip.c:109: CHECK(!e->pum) failed
+caught        snip: a block with no name line taken as a snippet   (make test TESTS=snip): tests/test_snip.c:295: CHECK(!bad) failed
+caught        snip: a bare stop left empty   (make test TESTS=snip): tests/test_snip.c:295: CHECK(!bad) failed
+caught        snip: unmapped S-Tab does nothing in Insert mode   (make test TESTS=snip): tests/test_snip.c:295: CHECK(!bad) failed
+caught        snip: an unnamed buffer asks for its .sql ending   (make test TESTS=snip): src/snip/snip.c:94:13: runtime error: null pointer passed as argument 1, which is declared to never be null
+caught        snip: a cursor inside a rewritten mirror stays past its text   (make test TESTS=snip): tests/test_snip.c:295: CHECK(!bad) failed
+caught        snip: a jump's mirror write comes after its keys (its own undo step)   (make test TESTS=snip): tests/test_snip.c:295: CHECK(!bad) failed
+caught        snip: a change on the cursor's line does not rerun CursorMoved   (make test TESTS=snip): tests/test_snip.c:295: CHECK(!bad) failed
+caught        snip: a stop ending at a line start selects up to its last byte   (make test TESTS=snip): tests/test_snip.c:295: CHECK(!bad) failed
+caught        snip: the file's group not ranked first   (make test TESTS=snip): tests/test_snip.c:151: CHECK(e->npum == c[i].n && !strcmp(e->pum[0].word, c[i].first)) failed
+caught        snip: task snippets outside task files   (make test TESTS=snip): tests/test_snip.c:151: CHECK(e->npum == c[i].n && !strcmp(e->pum[0].word, c[i].first)) failed
+caught        snip: proc files ranked by the word proc, not the helpers   (make test TESTS=snip): tests/test_snip.c:151: CHECK(e->npum == c[i].n && !strcmp(e->pum[0].word, c[i].first)) failed
+caught        snip: a later word of the file name wins   (make test TESTS=snip): tests/test_snip.c:151: CHECK(e->npum == c[i].n && !strcmp(e->pum[0].word, c[i].first)) failed
+caught        snip: a surrounded line keeps the first line's indent   (make test TESTS=snip): tests/test_snip.c:94: CHECK(!strcmp(b, want)) failed
+caught        snip: no $0, the area is lost   (make test TESTS=snip): tests/test_snip.c:94: CHECK(!strcmp(b, want)) failed
+caught        snip: a line area includes its indent   (make test TESTS=snip): tests/test_snip.c:94: CHECK(!strcmp(b, want)) failed
+caught        snip: a character area misses its last character   (make test TESTS=snip): tests/test_snip.c:94: CHECK(!strcmp(b, want)) failed
+caught        snip: the picker lists no snippets   (make test TESTS=snip): tests/test_snip.c:94: CHECK(!strcmp(b, want)) failed
+caught        snip: the picker shows no description   (make test TESTS=snip): tests/test_snip.c:228: CHECK(strstr(screen, "wrp w") && strstr(screen, "begin")) failed
+caught        snip: the picker previews no body   (make test TESTS=snip): tests/test_snip.c:228: CHECK(strstr(screen, "wrp w") && strstr(screen, "begin")) failed
+caught        snip: the picker opens a file on Enter   (make test TESTS=snip): tests/test_snip.c:94: CHECK(!strcmp(b, want)) failed
+caught        snip: SPC i s not in Visual mode   (make test TESTS=keys_map): tests/test_keys_map.c:73: CHECK(picked(&e) && e.ks.visual) failed
+caught        snip: no SPC i s map   (make test TESTS=keys_map): tests/test_keys_map.c:71: CHECK(picked(&e)) failed
+caught        snip: a surround takes the text's last line break   (make test TESTS=snip): tests/test_snip.c:94: CHECK(!strcmp(b, want)) failed
+caught        snip: a block surrounded corner to corner   (make test TESTS=snip): tests/test_snip.c:94: CHECK(!strcmp(b, want)) failed
+caught        snip: a blank first line's indent counted one short   (make test TESTS=snip): tests/test_snip.c:94: CHECK(!strcmp(b, want)) failed
+caught        snip: the list is not ranked again for a new buffer or prompt   (make test TESTS=snip): tests/test_snip.c:187: CHECK(!strcmp(snip_get(e, "wr", 2, 0, &d, &b), "wrp") && !snip_get(e, "wr", 2, 1, &d, &b)) failed
+caught        snip: a heading's words after its '(' count   (make test TESTS=snip): tests/test_snip.c:158: CHECK(e->npum == 1) failed
+caught        snip: later lines of the area are not indented as the $0 line   (make test TESTS=snip): tests/test_snip.c:94: CHECK(!strcmp(b, want)) failed
+caught        snip: the picker's prompt filters the first list, not the popup's order   (make test TESTS=snip): tests/test_snip.c:94: CHECK(!strcmp(b, want)) failed
+caught        snip: the preview shows the description   (make test TESTS=snip): tests/test_snip.c:228: CHECK(strstr(screen, "wrp w") && strstr(screen, "begin")) failed
+caught        snip: SPC i s runs git's leader   (make test TESTS=keys_map): tests/test_keys_map.c:71: CHECK(picked(&e)) failed
+caught        snip: group() takes the last word, not the first   (make test TESTS=snip): tests/test_snip.c:151: CHECK(e->npum == c[i].n && !strcmp(e->pum[0].word, c[i].first)) failed
+caught        snip: a task file ranks no group first   (make test TESTS=snip): tests/test_snip.c:151: CHECK(e->npum == c[i].n && !strcmp(e->pum[0].word, c[i].first)) failed
+caught        review2: a new prompt keeps the old preview   (make test TESTS=snip): tests/test_snip.c:228: CHECK(strstr(screen, "wrp w") && strstr(screen, "begin")) failed
+plant does not apply: '\tP.nit = P.nshown = P.an = 0;\n\tP.sel = P.top = 0;'
+BROKEN PLANT  review2: a new prompt keeps the old selection
+NOT CAUGHT    review2: Enter inserts the first snippet, not the selected one   (make test TESTS=snip passed)
+caught        review2: the picker sorts by score again   (make test TESTS=snip): tests/test_snip.c:94: CHECK(!strcmp(b, want)) failed
+caught        review2: the area takes the text's last byte on a V area too   (make test TESTS=snip): tests/test_snip.c:94: CHECK(!strcmp(b, want)) failed
+caught        keys: a SPC that completes no map drops Space's own motion (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:45: CHECK(at(&e, "acb\n", 1)) failed
+caught        keys: the keys after a failed map skip the pickers, git and the maps, so SPC SPC ff moves and the dashboard's q records a macro (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:49: CHECK(e.ks.pending && at(&e, "abcb\n", 1)) failed
+caught        keys: SPC maps other than SPC i s also run in Visual mode (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:75: CHECK(!tools_key(&e, KEY_ESC)) failed
+caught        keys: a map that runs leaves the count typed before it for the next command (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:97: CHECK(at(&e, "bcb\n", 0)) failed
+caught        keys: SPC after an operator starts a map instead of being its motion (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:99: CHECK(!tools_key(&e, KEY_ESC) && at(&e, "bcb\n", 0)) failed
+caught        keys: an incomplete map does not keep the next key, so a picker or git can take it (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:49: CHECK(e.ks.pending && at(&e, "abcb\n", 1)) failed
+caught        keys: a register's name is taken as a map's first key, so "-p opens oil (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:111: CHECK(at(&e, "bacb\n", 1)) failed
+caught        keys: <leader>uk does not turn the save kitten off (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:65: CHECK(!strcmp(e.msg, "Kitten on save: off")) failed
+caught        keys: :KittenPaw does not play the kitten (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:85: CHECK(drawn) failed
+caught        keys: cit and ciT wait for their keys in every buffer, not only .org (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:164: CHECK(!d.ks.pending) failed
+caught        keys: a map's edit joins the previous command's undo step (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:141: CHECK(at(&d, "* NEXT a b\n", 9)) failed
+caught        keys: ciT steps forward as cit does (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:139: CHECK(at(&d, "* TODO a b\n", 9)) failed
+caught        keys: cit stamps CLOSED in UTC, not the local clock (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:159: CHECK(!strncmp(got, want[0], strlen(want[0])) || !strncmp(got, want[1], strlen(want[1]))) failed

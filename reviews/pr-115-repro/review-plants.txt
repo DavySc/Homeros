@@ -1,0 +1,10 @@
+review: an area past the text's end is not clamped~test TESTS=snip~~src/snip/snip.c~		if (z > text_len(e->buf->text)) z = text_len(e->buf->text);¶~¶
+review: the list is not ranked again for a new buffer~test TESTS=snip~~src/snip/snip.c~	if (!i) n = rank(e, NULL, 0);~	if (!n) n = rank(e, NULL, 0);
+review: a heading's words after its '(' count~test TESTS=snip~~src/snip/snip.c~*p && *p != '(' && *p != '\n'; p++)~*p && *p != '\n'; p++)
+review: later lines of the area are not indented as the $0 line~test TESTS=snip~~src/snip/snip.c~(put(o, "\n", 1) || put(o, ind, w))~put(o, "\n", 1)
+review: Enter in the picker inserts the next snippet~test TESTS=snip~~src/tools/pick.c~		snip_insert(e, snip_get(e, (int)it.idx - 1, &d, &b));~		snip_insert(e, snip_get(e, (int)it.idx, &d, &b));
+review: the preview shows the next snippet's body~test TESTS=snip~~src/tools/pick.c~		snip_get(e, (int)it->idx - 1, &d, &b);¶		for (int k;~		snip_get(e, (int)it->idx, &d, &b);¶		for (int k;
+review: the description is the next snippet's~test TESTS=snip~~src/tools/pick.c~			snip_get(e, (int)it->idx - 1, &d, &b);¶			grid_puts~			snip_get(e, (int)it->idx, &d, &b);¶			grid_puts
+review: SPC i s runs git's leader~test TESTS=keys_map~~src/keys/keys.c~		case 's': tools_pick(e, PICK_SNIPPETS); break;¶~¶
+review: group() takes the last word, not the first~test TESTS=snip~~src/snip/snip.c~if (n == strlen(g[i]) && !strncmp(w, g[i], n)) return i == 8 ? "helpers" : g[i];~if (n == strlen(g[i]) && !strncmp(w, g[i], n) && !strchr(w + n, '_')) return i == 8 ? "helpers" : g[i];
+review: a task file ranks no group first~test TESTS=snip~~src/snip/snip.c~"badge", "task", "trigger"~"badge", "tsk", "trigger"
