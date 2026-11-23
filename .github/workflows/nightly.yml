@@ -21,7 +21,7 @@ jobs:
       - uses: cachix/install-nix-action@v31
       - run: >
           sudo apt-get update && sudo apt-get install -y clang libclang-rt-18-dev pkg-config libssl-dev
-          libfreetype-dev libharfbuzz-dev libfontconfig-dev ripgrep
+          libfreetype-dev libharfbuzz-dev libstb-dev libfontconfig-dev ripgrep
           libwayland-dev wayland-protocols libxkbcommon-dev weston sway xvfb wtype wl-clipboard grim adwaita-icon-theme
           fonts-jetbrains-mono fonts-noto-core fonts-noto-cjk fonts-noto-color-emoji fonts-dejavu-core
       - run: nix build -f tools.nix tools -o tools-env

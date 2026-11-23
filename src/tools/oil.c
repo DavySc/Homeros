@@ -181,13 +181,10 @@ int oil_render(const char *dir, char **out, size_t *n)
 typedef struct { int kind; int buf; const char *dir; char *name; int etype; int id; char *link; } Diff;
 enum { D_NEW = 'n', D_DELETE = 'd' };
 
-static int lspace(int c) { return c == ' ' || (c >= '\t' && c <= '\r'); }
-
 /* vim.trim into a new string */
 static char *trim(const char *s, size_t n)
 {
-	while (n && lspace((unsigned char)*s)) s++, n--;
-	while (n && lspace((unsigned char)s[n - 1])) n--;
+	n = match_trim(&s, n);
 	return strndup(s, n);
 }
 
@@ -261,16 +258,16 @@ static int parse(Out *o, int buf, const char *dir, const char *text, size_t len)
 			if (i + 1 >= n || l[i] != ' ') { push_err(o, "Malformed ID at start of line", buf, ln); continue; }
 			i++;
 			size_t r = i;
-			while (r < n && lspace((unsigned char)l[r])) r++;
+			while (r < n && match_space((unsigned char)l[r])) r++;
 			/* parse_col's empty column: "-" and blanks */
 			size_t q = r;
-			if (q < n && l[q] == '-' && q + 1 < n && lspace((unsigned char)l[q + 1])) {
+			if (q < n && l[q] == '-' && q + 1 < n && match_space((unsigned char)l[q + 1])) {
 				q++;
-				while (q < n && lspace((unsigned char)l[q])) q++;
+				while (q < n && match_space((unsigned char)l[q])) q++;
 			} else {
-				while (q < n && !lspace((unsigned char)l[q])) q++;
+				while (q < n && !match_space((unsigned char)l[q])) q++;
 				if (q == r || q == n) { push_err(o, "Parsing icon failed", buf, ln); continue; }
-				while (q < n && lspace((unsigned char)l[q])) q++;
+				while (q < n && match_space((unsigned char)l[q])) q++;
 			}
 			if (!(name = trim(l + q, n - q))) goto out;
 			isdir = parsedir(name);

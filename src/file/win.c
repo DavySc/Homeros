@@ -67,6 +67,13 @@ static int stat_id(const wchar_t *w, FileId *id)
 	return r;
 }
 
+/* thread 0's, agreed (package 21) */
+int file_id(const char *path, FileId *id)
+{
+	wchar_t w[PATH_MAX];
+	return wide(path, w) ? -1 : stat_id(w, id);
+}
+
 int file_load(const char *path, char **data, size_t *n, FileId *id)
 {
 	wchar_t w[PATH_MAX];
@@ -166,10 +173,9 @@ int file_watch(const char *path)
 
 int file_watch_read(int fd, const char *path, const FileId *id)
 {
-	wchar_t w[PATH_MAX];
 	FileId now;
 	if (!FindNextChangeNotification((HANDLE)(intptr_t)fd)) return fail();
-	if (wide(path, w) || stat_id(w, &now)) return -1;
+	if (file_id(path, &now)) return -1;
 	return !file_same(id, &now);
 }
 

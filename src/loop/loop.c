@@ -5,6 +5,7 @@
    write deadlocks against a child that writes before it reads, as
    design/reviews/r1/dead.py shows).  win.c is the Windows twin. */
 #ifndef _WIN32
+#define _GNU_SOURCE   /* POSIX_SPAWN_SETSID, posix_openpt */
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
@@ -35,6 +36,10 @@ static struct Proc {
 	size_t qoff, qlen, qcap;
 } p[MAXP];
 static int chld[2] = { -1, -1 };
+/* proc_wait's child: no other child and no timer runs, the watches do, as
+   in loop_breakcheck */
+static int only = -1;
+static int waited;   /* only was reported: a child its fn starts may get its slot */
 static char buf[1 << 16];
 
 long long loop_now(void)
@@ -114,42 +119,89 @@ static int setup(void)
 	return 0;
 }
 
-int proc_spawn(char *const argv[], const char *dir, ProcFn fn, void *ctx)
+/* rows > 0: the child gets a pseudo-terminal of rows x cols as its stdin,
+   stdout and stderr and as its controlling terminal (Neovim's pty_proc:
+   setsid, then the slave opened without O_NOCTTY), and TERM as Neovim's
+   :terminal sets it.  The editor's ends are the master, twice, so stdin
+   and stdout still close on their own. */
+int proc_start(char *const argv[], const char *dir, int rows, int cols, ProcFn fn, void *ctx)
 {
 	extern char **environ;
 	int id = 0, fd[6] = { -1, -1, -1, -1, -1, -1 }, ok = 0;
+	char **env = environ, *pts = NULL;
 	while (id < MAXP && p[id].pid) id++;
 	if (id == MAXP || setup()) return -1;
-	if (pipe(fd) || pipe(fd + 2) || pipe(fd + 4)) goto out;
-	for (int i = 0; i < 6; i++) fcntl(fd[i], F_SETFD, FD_CLOEXEC);
+	if (rows) {
+		struct winsize ws = { .ws_row = (unsigned short)rows, .ws_col = (unsigned short)cols };
+		size_t n = 0;
+		while (environ[n]) n++;
+		if ((fd[2] = posix_openpt(O_RDWR | O_NOCTTY)) < 0 || grantpt(fd[2]) || unlockpt(fd[2])
+		    || !(pts = ptsname(fd[2])) || (fd[1] = dup(fd[2])) < 0 || ioctl(fd[2], TIOCSWINSZ, &ws)
+		    || !(env = malloc((n + 3) * sizeof *env))) goto out;
+		n = 0;
+		for (char **v = environ; *v; v++)
+			if (strncmp(*v, "TERM=", 5) && strncmp(*v, "COLORTERM=", 10)) env[n++] = *v;
+		env[n++] = "TERM=xterm-256color";
+		env[n++] = "COLORTERM=truecolor";
+		env[n] = NULL;
+	} else if (pipe(fd) || pipe(fd + 2) || pipe(fd + 4)) goto out;
+	for (int i = 0; i < 6; i++) if (fd[i] >= 0) fcntl(fd[i], F_SETFD, FD_CLOEXEC);
 	/* the editor's ends: stdin's write end, stdout's and stderr's read ends */
 	fcntl(fd[1], F_SETFL, O_NONBLOCK);
 	fcntl(fd[2], F_SETFL, O_NONBLOCK);
-	fcntl(fd[4], F_SETFL, O_NONBLOCK);
+	if (!rows) fcntl(fd[4], F_SETFL, O_NONBLOCK);
 	posix_spawn_file_actions_t fa;
 	posix_spawnattr_t at;
 	sigset_t def;
 	posix_spawn_file_actions_init(&fa);
 	posix_spawnattr_init(&at);
-	posix_spawn_file_actions_adddup2(&fa, fd[0], 0);
-	posix_spawn_file_actions_adddup2(&fa, fd[3], 1);
-	posix_spawn_file_actions_adddup2(&fa, fd[5], 2);
+	if (rows) {
+		posix_spawn_file_actions_addopen(&fa, 0, pts, O_RDWR, 0);
+		posix_spawn_file_actions_adddup2(&fa, 0, 1);
+		posix_spawn_file_actions_adddup2(&fa, 0, 2);
+	} else {
+		posix_spawn_file_actions_adddup2(&fa, fd[0], 0);
+		posix_spawn_file_actions_adddup2(&fa, fd[3], 1);
+		posix_spawn_file_actions_adddup2(&fa, fd[5], 2);
+	}
 	if (dir) posix_spawn_file_actions_addchdir_np(&fa, dir);
 	/* the editor ignores SIGPIPE, and exec keeps an ignored signal; git and
 	   friends expect the default (a caught SIGCHLD is reset by exec) */
 	sigemptyset(&def); sigaddset(&def, SIGPIPE);
 	posix_spawnattr_setsigdefault(&at, &def);
 	posix_spawnattr_setpgroup(&at, 0);
-	posix_spawnattr_setflags(&at, POSIX_SPAWN_SETSIGDEF | POSIX_SPAWN_SETPGROUP);
+	/* a new session is a new process group too, so proc_kill's -pid holds */
+	posix_spawnattr_setflags(&at, POSIX_SPAWN_SETSIGDEF | (rows ? POSIX_SPAWN_SETSID : POSIX_SPAWN_SETPGROUP));
 	pid_t pid;
-	ok = !posix_spawnp(&pid, argv[0], &fa, &at, argv, environ);
+	ok = !posix_spawnp(&pid, argv[0], &fa, &at, argv, env);
 	posix_spawn_file_actions_destroy(&fa);
 	posix_spawnattr_destroy(&at);
-	if (ok) p[id] = (struct Proc){ .pid = pid, .fd = { fd[1], fd[2], fd[4] }, .fn = fn, .ctx = ctx };
+	if (ok) p[id] = (struct Proc){ .pid = pid, .fd = { fd[1], fd[2], rows ? -1 : fd[4] }, .fn = fn, .ctx = ctx };
 out:
+	if (env != environ) free(env);
 	for (int i = 0; i < 6; i++)
-		if (fd[i] >= 0 && (!ok || !(i == 1 || i == 2 || i == 4))) close(fd[i]);
+		if (fd[i] >= 0 && (!ok || !(i == 1 || i == 2 || (i == 4 && !rows)))) close(fd[i]);
 	return ok ? id : -1;
+}
+
+void proc_resize(int id, int rows, int cols)
+{
+	struct winsize ws = { .ws_row = (unsigned short)rows, .ws_col = (unsigned short)cols };
+	if (id >= 0 && id < MAXP && p[id].pid && p[id].fd[1] >= 0) ioctl(p[id].fd[1], TIOCSWINSZ, &ws);
+}
+
+/* 'shell' as Neovim sets it */
+const char *proc_shell_path(void)
+{
+	const char *sh = getenv("SHELL");
+	return sh && *sh ? sh : "sh";
+}
+
+/* and 'shellcmdflag' */
+int proc_shell(const char *cmd, const char *dir, ProcFn fn, void *ctx)
+{
+	char *argv[] = { (char *)proc_shell_path(), "-c", (char *)cmd, NULL };
+	return proc_spawn(argv, dir, fn, ctx);
 }
 
 static void close_in(struct Proc *c)
@@ -228,6 +280,7 @@ void proc_kill(int id)
    bounds the read: such a process may keep writing. */
 static void report(struct Proc *c, int code)
 {
+	waited |= c - p == only;
 	for (int s = 1; s < 3; s++) {
 		if (c->fd[s] < 0) continue;
 		int left = 0;
@@ -244,6 +297,23 @@ static void report(struct Proc *c, int code)
 	c->fn(c->ctx, 0, NULL, (size_t)code);
 }
 
+/* Ctrl-C reaches loop_int through the watches.  The others' exits wait for
+   the next loop_once: the wake-up the wait drained is written again. */
+int proc_wait(int id, int ms)
+{
+	long long end = loop_now() + ms * 1000000LL;
+	int r = 0;
+	only = id;
+	for (waited = !proc(id); !waited; ) {
+		long long due = r ? p[id].killat : end, d = due - loop_now();
+		if (!r && (d <= 0 || loop_int)) { proc_kill(id); r = -1; continue; }
+		loop_once(!due ? -1 : d <= 0 ? 0 : (int)(d / 1000000) + 1);
+	}
+	only = -1;
+	on_chld(0);
+	return r;
+}
+
 int loop_once(int timeout_ms)
 {
 	static struct pollfd pf[MAXF];
@@ -253,14 +323,14 @@ int loop_once(int timeout_ms)
 		if (w[i].fd) { pf[n] = (struct pollfd){ .fd = w[i].fd - 1, .events = w[i].ev }; who[n] = (short)i; what[n++] = -1; }
 	if (chld[0] >= 0) { pf[n] = (struct pollfd){ .fd = chld[0], .events = POLLIN }; who[n] = -1; what[n++] = -2; }
 	for (int i = 0; i < MAXP; i++)
-		for (int s = 0; s < 3 && p[i].pid; s++)
+		for (int s = 0; s < 3 && p[i].pid && (only < 0 || i == only); s++)
 			if (p[i].fd[s] >= 0 && (s || p[i].qoff < p[i].qlen)) {
 				pf[n] = (struct pollfd){ .fd = p[i].fd[s], .events = s ? POLLIN : POLLOUT };
 				who[n] = (short)i; what[n++] = (short)s;
 			}
 	long long first = -1;
 	for (int i = 0; i < MAXP; i++) if (p[i].killat && (first < 0 || p[i].killat < first)) first = p[i].killat;
-	timeout_ms = timer_wait(first, timeout_ms);
+	if (only < 0) timeout_ms = timer_wait(first, timeout_ms);
 	int r = poll(pf, (nfds_t)n, timeout_ms), sig = 0;
 	if (r < 0 && errno != EINTR) return -1;
 	for (int k = 0; k < n && r > 0; k++) {
@@ -281,7 +351,7 @@ int loop_once(int timeout_ms)
 		c->fd[s] = -1;
 		c->fn(c->ctx, s, NULL, 0);
 	}
-	long long tn = timer_run();
+	long long tn = only < 0 ? timer_run() : loop_now();
 	for (int i = 0; i < MAXP; i++)
 		if (p[i].killat && p[i].killat <= tn) { p[i].killat = 0; kill(-p[i].pid, SIGKILL); }
 	if (sig) {
@@ -289,7 +359,7 @@ int loop_once(int timeout_ms)
 		while (read(chld[0], drain, sizeof drain) > 0) {}
 		for (int i = 0; i < MAXP; i++) {
 			int st;
-			if (p[i].pid && waitpid(p[i].pid, &st, WNOHANG) == p[i].pid)
+			if (p[i].pid && (only < 0 || i == only) && waitpid(p[i].pid, &st, WNOHANG) == p[i].pid)
 				report(&p[i], WIFSIGNALED(st) ? 128 + WTERMSIG(st) : WEXITSTATUS(st));
 		}
 	}

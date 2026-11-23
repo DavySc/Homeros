@@ -3,10 +3,14 @@
    op_replace(), op_insert(), do_addsub()), with FEATURES.md's settings
    ('expandtab', 'shiftwidth' 4, 'nrformats' bin,hex, 'virtualedit' block). */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include "k.h"
 #include "loop.h"
+#include "org.h"
 #include "sqlfmt.h"
+#include "str.h"
 #include "uni.h"
 
 enum { SW = 4 };
@@ -343,6 +347,9 @@ int op_yank(Oparg *oap)
 		E->ks.yank.type = t;
 		E->ks.yank.l1 = (size_t)b_op_start.lnum, E->ks.yank.c1 = (size_t)b_op_start.col;
 		E->ks.yank.l2 = (size_t)b_op_end.lnum, E->ks.yank.c2 = (size_t)b_op_end.col;
+		/* '] is on the last character's last byte (do_pending_operator()
+		   adds its length); KeyArea wants its first */
+		if (t == 'v') E->ks.yank.c2 = (size_t)head(ml_get(b_op_end.lnum), b_op_end.col);
 		if (t == 22) {   /* screen columns: the register's width from the left one (the core's contract) */
 			long a, b;   /* getregionpos(): with coladd, so on a Tab where the cursor shows */
 			getvvcol(b_op_start, &a, NULL), getvvcol(b_op_end, &b, NULL);
@@ -1623,7 +1630,6 @@ int do_execreg(int regname)
 		bput(&b, "\r", 1);
 		stuff_bytes(b.s, b.n, 1, 0);
 		free(b.s);
-		E->ks.executing = regname;
 		return 1;
 	}
 	if (regname == '.') {
@@ -1631,7 +1637,6 @@ int do_execreg(int regname)
 		long n = last_insert_keys(&k);
 		if (n < 0) { core_msg(E, "E29: No inserted text yet"); return 0; }
 		typebuf_ins(k, n);
-		E->ks.executing = regname;
 		return 1;
 	}
 	Reg *reg = get_reg(regname, 0);
@@ -1641,7 +1646,7 @@ int do_execreg(int regname)
 	if (reg->type == MLINE) bput(&b, "\n", 1);
 	stuff_bytes(b.s ? b.s : "", b.n, 1, 0);
 	free(b.s);
-	E->ks.executing = regname == 0 ? '"' : regname;
+	E->ks.executing = regname == 0 ? '"' : regname;   /* only here, as do_execreg(): not for @: and @. */
 	return 1;
 }
 
@@ -1705,35 +1710,110 @@ int insert_reg(int regname, int literally)
 
 /* ---- gq and :Format ---- */
 
-int is_sql(void)
+int is_ft(const char *ext)
 {
-	size_t n = B->path ? strlen(B->path) : 0;
-	return n > 4 && !memcmp(B->path + n - 4, ".sql", 4);
+	size_t n = B->path ? strlen(B->path) : 0, k = strlen(ext);
+	return n > k && !memcmp(B->path + n - k, ext, k);
 }
 
-/* conform.nvim with sqldiff, Davy's formatter for .sql: the whole text goes
-   to the formatter and only the changes in bytes [a, z) are applied, as
-   sqlfmt's range does */
-int sql_format(size_t a, size_t z)
+/* [a, z) becomes the n bytes of res as one change; the cursor stays on its
+   text: after the edit it moves with it, inside it keeps its offset into
+   the new text (as near as fits) */
+static void replace(size_t a, size_t z, const char *res, size_t n)
+{
+	if (z == a && !n) return;
+	size_t p = core_line_start(E, W->line) + W->col;
+	p = p >= z ? p - (z - a) + n : p > a ? a + (p - a < n ? p - a : n) : p;
+	core_edit(E, a, z - a, res, n);
+	buf_changed();
+	W->line = text_line_of(B->text, p);
+	W->col = p - core_line_start(E, W->line);
+	check_cursor();
+	W->col = (size_t)head(ml_get((long)W->line), (long)W->col);
+}
+static int oom(void) { core_msg(E, "E342: Out of memory!"); return -1; }
+
+/* Davy's conform.nvim formatters_by_ft: 1 sql (sqldiff), 2 systemverilog
+   and verilog (verible), 0 none */
+int fmt_kind(void)
+{
+	return is_ft(".sql") ? 1 : is_ft(".sv") || is_ft(".svh") || is_ft(".v") || is_ft(".vh") ? 2 : 0;
+}
+
+static Str vout;   /* verible's stdout */
+static void on_verible(void *ctx, int stream, const char *b, size_t n)
+{
+	if (stream == 1 && b) *(int *)ctx |= str_add(&vout, b, n);
+	if (!stream) *(int *)ctx |= n != 0;
+}
+
+/* conform.nvim's verible (its range_args, --lines), with Davy's 4-space
+   indent: the whole text goes through verible-verilog-format, as
+   'formatprg' through system() (proc_wait); the edit is where its output
+   differs.  0 ok, -1 with the message set. */
+static int verible(size_t *a, size_t *z, const char **res, size_t *n)
+{
+	char lines[48];
+	size_t len = text_len(B->text), p = 0, q = 0;
+	char *in = malloc(len + 1);
+	if (!in) return oom();
+	text_read(B->text, 0, in, len);
+	snprintf(lines, sizeof lines, "--lines=%zu-%zu", text_line_of(B->text, *a) + 1, text_line_of(B->text, *z > *a ? *z - 1 : *z) + 1);
+	/* the whole text without --lines, as conform.nvim: verible's lines
+	   mode skips its convergence check and formats 2 of Ibex's 33 files
+	   otherwise (measured) */
+	char *argv[] = { "verible-verilog-format", "--indentation_spaces=4", "-", NULL, NULL };
+	if (*a || *z < len) argv[2] = lines, argv[3] = "-";
+	int bad = 0, id = proc_spawn(argv, NULL, on_verible, &bad);
+	if (id >= 0) {
+		vout.n = 0;
+		bad |= proc_write(id, in, len);
+		proc_close(id);
+		bad |= proc_wait(id, 1000);
+		while (p < len && p < vout.n && in[p] == vout.s[p]) p++;
+		while (q < len - p && q < vout.n - p && in[len - 1 - q] == vout.s[vout.n - 1 - q]) q++;
+	}
+	free(in);
+	if (id < 0 || bad) { core_msg(E, id < 0 ? "Cannot run verible-verilog-format" : "verible-verilog-format failed"); return -1; }
+	*a = p; *z = len - q; *res = vout.s ? vout.s + p : ""; *n = vout.n - p - q;
+	return 0;
+}
+
+/* The buffer's formatter over bytes [a, z) (sqlfmt's range; verible's
+   lines): only the changes are applied */
+int buf_format(size_t a, size_t z)
 {
 	const char *res;
 	size_t n;
-	int kept = sqlfmt(B->text, &a, &z, &res, &n);
-	if (kept < 0) { core_msg(E, "E342: Out of memory!"); return -1; }
-	if (z > a || n) {
-		/* the cursor stays on its text: after the edit it moves with it,
-		   inside it keeps its offset into the new text (as near as fits) */
-		size_t p = core_line_start(E, W->line) + W->col;
-		p = p >= z ? p - (z - a) + n : p > a ? a + (p - a < n ? p - a : n) : p;
-		core_edit(E, a, z - a, res, n);
-		buf_changed();
-		W->line = text_line_of(B->text, p);
-		W->col = p - core_line_start(E, W->line);
-		check_cursor();
-		W->col = (size_t)head(ml_get((long)W->line), (long)W->col);
-	}
+	int kept = 0;
+	if (fmt_kind() == 2 ? verible(&a, &z, &res, &n) : (kept = sqlfmt(B->text, &a, &z, &res, &n)) < 0)
+		return kept < 0 ? oom() : -1;
+	replace(a, z, res, n);
 	if (kept) core_msg(E, "%d statement%s kept as written", kept, kept == 1 ? "" : "s");
 	return 0;
+}
+
+/* nvim-orgmode's cit and ciT (org_todo, org_todo_prev), kittymax's
+   org-todo 'right and 'left: the entry's next or previous TODO keyword */
+void org_cycle(int dir)
+{
+	size_t n = text_len(B->text), a, z, len;
+	char *s = malloc(n + 1);
+	if (!s) { oom(); return; }
+	text_read(B->text, 0, s, n);
+	/* local minutes, timegm(localtime()) / 60 without timegm or
+	   tm_gmtoff (not on Windows): the fields' difference is the offset.
+	   mktime() of gmtime()'s fields is an hour off near a DST change
+	   (measured); this matched timegm in 7 zones over 8 years, every
+	   601 s (419,781 times each) */
+	time_t t = time(NULL);
+	struct tm l = *localtime(&t), g = *gmtime(&t);
+	long now = (long)(t / 60) + (l.tm_year != g.tm_year ? l.tm_year - g.tm_year : l.tm_yday - g.tm_yday) * 1440L
+		+ (l.tm_hour - g.tm_hour) * 60 + l.tm_min - g.tm_min;
+	const char *r = org_todo_step(s, n, core_line_start(E, W->line) + W->col, dir, now, &a, &z, &len);
+	free(s);
+	if (r) replace(a, z, r, len);
+	else oom();
 }
 
 /* fmt_check_par() without 'comments' (see do_join()): a blank line, or a
@@ -1826,12 +1906,12 @@ static void format_lines(long line_count)
 	W->line = (size_t)l;
 }
 
-/* OP_FORMAT: a .sql buffer has Davy's 'formatexpr' (op_formatexpr()) over
-   the operator's lines; other buffers op_format() */
+/* OP_FORMAT: a buffer with a formatter has Davy's 'formatexpr'
+   (op_formatexpr()) over the operator's lines; other buffers op_format() */
 void op_format(Oparg *oap)
 {
-	if (is_sql()) {
-		sql_format(core_line_start(E, (size_t)oap->start.lnum), core_line_start(E, (size_t)oap->end.lnum + 1));
+	if (fmt_kind()) {
+		buf_format(core_line_start(E, (size_t)oap->start.lnum), core_line_start(E, (size_t)oap->end.lnum + 1));
 		return;
 	}
 	/* the cursor where gq was typed, so u puts it back there */

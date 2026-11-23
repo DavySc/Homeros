@@ -1,0 +1,22 @@
+NOT CAUGHT    review: a level past 'foldnestmax' still starts a fold   (make test TESTS=syntax passed)
+NOT CAUGHT    review: 'foldnestmax' is 21, not 20   (make test TESTS=syntax passed)
+caught        review: a fold of one line counts ('foldminlines' 0)   (make test TESTS=syntax): tests/test_syntax.c:433: CHECK(syntax_foldexpr(s, 0, &st) == 0 && !st) failed
+caught        review: a quantified @fold ends at its first node   (make test TESTS=syntax): tests/test_syntax.c:802: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+NOT CAUGHT    review: a fold ending past the last line is counted   (make test TESTS=syntax passed)
+NOT CAUGHT    review: fold patterns' predicates are not read   (make test TESTS=syntax passed)
+caught        review: Markdown: '#'s need no space after them   (make test TESTS=syntax): tests/test_syntax.c:802: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+NOT CAUGHT    review: Markdown: an empty line above === is a heading   (make test TESTS=syntax passed)
+NOT CAUGHT    review: shorter 1: md_fold without h < z   (make test TESTS=syntax passed)
+NOT CAUGHT    review: shorter 2: md_fold without b < y, twice   (make test TESTS=syntax passed)
+NOT CAUGHT    review: shorter 3: verilog() lines keep their newline   (make test TESTS=syntax passed)
+caught        review: a .v's last line without a newline is not read   (make test TESTS=syntax): tests/test_syntax.c:546: CHECK(!s == !!strcmp(ft, "verilog\n")) failed
+NOT CAUGHT    review: shorter 4: syntax_foldexpr updates once, no loop   (make test TESTS=syntax passed)
+caught        review: a .v's block comment never ends   (make test TESTS=syntax): tests/test_syntax.c:546: CHECK(!s == !!strcmp(ft, "verilog\n")) failed
+caught        review: a .v's (* after a comment start is Coq   (make test TESTS=syntax): tests/test_syntax.c:546: CHECK(!s == !!strcmp(ft, "verilog\n")) failed
+NOT CAUGHT    review: Vim's match? accepts an empty word   (make test TESTS=syntax passed)
+NOT CAUGHT    review: Vim's match? without the trailing $ is read   (make test TESTS=syntax passed)
+caught        review: Vim's match? suffix matches a longer word's tail only when as long   (make test TESTS=syntax): tests/test_syntax.c:802: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        review: the folds are not freed   (make test TESTS=syntax): ==22517==ERROR: LeakSanitizer: detected memory leaks
+NOT CAUGHT    review: an unknown match? form is not skipped   (make test TESTS=syntax passed)
+NOT CAUGHT    review: folds of a buffer not yet parsed are read   (make fuzz FUZZERS=syntax passed)
+NOT CAUGHT    review: folds of a line past the end are read   (make fuzz FUZZERS=syntax passed)

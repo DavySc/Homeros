@@ -51,7 +51,29 @@ int  loop_breakcheck(void);
    >= 0, or -1. */
 typedef void (*ProcFn)(void *ctx, int stream, const char *b, size_t n);
 int  proc_spawn(char *const argv[], const char *dir, ProcFn fn, void *ctx);
+/* proc_spawn of a command line through the user's shell, as Neovim's
+   'shell': $SHELL -c cmd (sh if unset); on Windows %COMSPEC% /s /c "cmd"
+   with the line passed verbatim (shellxquote and libuv's
+   VERBATIM_ARGUMENTS), since the CRT's quoting is not cmd.exe's.  For
+   :make and the terminal. */
+int  proc_shell(const char *cmd, const char *dir, ProcFn fn, void *ctx);
+/* The user's shell, the one choice proc_shell and the terminal's proc_pty
+   share: $SHELL when set and not empty, else sh; %COMSPEC%, else cmd.exe */
+const char *proc_shell_path(void);
 int  proc_write(int id, const void *b, size_t n);  /* queued, never blocks; 0 ok, -1 no memory or child gone */
 void proc_close(int id);                           /* EOF on stdin once the queue is written */
 void proc_kill(int id);                            /* SIGTERM, SIGKILL 2 s later (jobstop) */
+/* proc_spawn on a pseudo-terminal of rows x cols (Neovim's :terminal, its
+   pty_proc; ConPTY on Windows): stdin and stdout are the terminal, so all
+   output comes as stream 1 (stream 2 never comes), and TERM is
+   xterm-256color.  -1 on failure. */
+int  proc_pty(char *const argv[], const char *dir, int rows, int cols, ProcFn fn, void *ctx);
+void proc_resize(int id, int rows, int cols);       /* SIGWINCH, as a terminal's resize */
+/* Neovim's system() (formatprg, conform's sync format): runs only child
+   id's pipes (its fn is called as usual) and the watches, as
+   loop_breakcheck does (so Ctrl-C arrives), until it is reported,
+   deferring every timer and other child; Ctrl-C or ms passing kills it as
+   proc_kill does, and it is still reported before the return.  0 reported
+   in time, -1 killed (thread 0's, agreed, for the Verilog formatter). */
+int  proc_wait(int id, int ms);
 #endif

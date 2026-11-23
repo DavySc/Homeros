@@ -158,13 +158,13 @@ int net_open(Net *c, const char *host, int port, int trust)
 	/* a dotless name grows its domain, as FreeTDS's tds_get_spn: Kerberos knows the server by it */
 	snprintf(c->name, sizeof c->name, "%s", !strchr(host, '.') && ai->ai_canonname && strchr(ai->ai_canonname, '.') ? ai->ai_canonname : host);
 #ifdef _WIN32
-	c->sock = socket(ai->ai_family, SOCK_STREAM, 0);
+	c->sock = WSASocketW(ai->ai_family, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED | WSA_FLAG_NO_HANDLE_INHERIT);   /* not a child's, as SOCK_CLOEXEC */
 	WSAEVENT ev = sock(c) == INVALID_SOCKET ? NULL : WSACreateEvent();
 	c->fd = ev ? (int)(INT_PTR)ev : -1;
 	int r = !ev || WSAEventSelect(sock(c), ev, FD_READ | FD_WRITE | FD_CONNECT | FD_CLOSE)   /* also makes it non-blocking */
 		|| (connect(sock(c), ai->ai_addr, (int)ai->ai_addrlen) && WSAGetLastError() != WSAEWOULDBLOCK);
 #else
-	c->fd = socket(ai->ai_family, SOCK_STREAM, 0);
+	c->fd = socket(ai->ai_family, SOCK_STREAM | SOCK_CLOEXEC, 0);   /* not a child's: the session ends when we close it */
 	int r = c->fd < 0 || fcntl(c->fd, F_SETFL, O_NONBLOCK) || (connect(c->fd, ai->ai_addr, ai->ai_addrlen) && errno != EINPROGRESS);
 #endif
 	freeaddrinfo(ai);

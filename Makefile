@@ -69,20 +69,24 @@ test: $(OBJS) | build/san
 	@python3 tests/paste.py build/san/homeros -t 40000 || { echo "FAIL paste"; exit 1; }
 	@python3 tests/hup.py build/san/homeros || { echo "FAIL hup"; exit 1; }
 	@python3 tests/start.py build/san/homeros || { echo "FAIL start"; exit 1; }
+	@python3 tests/ctrlz.py build/san/homeros || { echo "FAIL ctrlz"; exit 1; }
+	@python3 tests/watch.py build/san/homeros || { echo "FAIL watch"; exit 1; }
 
 # libFuzzer, each target against a simple model, FUZZ_SECONDS each; an input
 # that runs 20 s is a hang and fails (a planted bug once spun 20 min).  A
 # directory tests/fuzz_<name>/ holds seed inputs, copied so a run never
 # changes them: a resumable wire reader's plant survived 8.0 million runs
-# from empty in 300 s (package 22, measured)
+# from empty in 300 s (package 22, measured).  Seeded runs take any length:
+# -max_len=256 cut a 400-byte seed and its bug at byte 300 went unfound in
+# 19.4 million runs (PR 114 review)
 FUZZERS = $(patsubst tests/fuzz_%.c,%,$(wildcard tests/fuzz_*.c))
 fuzz: $(OBJS) | build/fuzz
 	@rm -rf build/state
 	@for f in $(FUZZERS); do \
 	  clang $(WARN) -O1 -g -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all \
 	    $(CPPFLAGS) -o build/fuzz/fuzz_$$f tests/fuzz_$$f.c $(LIB_SRCS) $(OBJS) $(LIBS) || exit 1; \
-	  c=; if [ -d tests/fuzz_$$f ]; then c=build/fuzz/$$f.seeds; rm -rf $$c; cp -r tests/fuzz_$$f $$c; fi; \
-	  ./build/fuzz/fuzz_$$f -max_total_time=$(FUZZ_SECONDS) -max_len=256 -timeout=20 -artifact_prefix=build/fuzz/ $$c 2>build/fuzz/$$f.log \
+	  c=-max_len=256; if [ -d tests/fuzz_$$f ]; then c=build/fuzz/$$f.seeds; rm -rf $$c; cp -r tests/fuzz_$$f $$c; fi; \
+	  ./build/fuzz/fuzz_$$f -max_total_time=$(FUZZ_SECONDS) -timeout=20 -artifact_prefix=build/fuzz/ $$c 2>build/fuzz/$$f.log \
 	    || { tail -40 build/fuzz/$$f.log; echo "FAIL fuzz_$$f"; exit 1; }; \
 	  echo "fuzz_$$f: $$(grep -m1 -o 'Done [0-9]* runs in [0-9]* second(s)' build/fuzz/$$f.log)"; done
 
@@ -98,7 +102,8 @@ conform: $(OBJS) | build/san
 
 # Org's parser and colours against Org itself (package 16): fresh random org
 # texts fed to src/org and to emacs -Q --batch (org-element in
-# tools/org_dump.el, font-lock in tools/org_faces.el)
+# tools/org_dump.el, font-lock in tools/org_faces.el, org-todo in
+# tools/org_todo.el, what each line shows in tools/org_show.el)
 ORG_N ?= 2000
 org-conform: $(OBJS) | build/san
 ifneq ($(wildcard src/org/*.c),)
@@ -106,6 +111,7 @@ ifneq ($(wildcard src/org/*.c),)
 	python3 tools/org_conform.py build/san/org_drv $(ORG_N) $${SEED:-1}
 	python3 tools/org_conform.py -f build/san/org_drv $(ORG_N) $${SEED:-1}
 	python3 tools/org_conform.py -t build/san/org_drv $$(($(ORG_N) / 4)) $${SEED:-1}
+	python3 tools/org_conform.py -s build/san/org_drv $(ORG_N) $${SEED:-1}
 endif
 
 # Neovim's undo tree against UndoTree.tla's rules (package 2's oracle);

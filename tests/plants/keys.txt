@@ -23,7 +23,7 @@ keys: CTRL-V U keeps adding digits past U+10FFFF, a signed overflow (fuzz_keys_a
 keys: a block change that starts past a short line's end leaves that line without its spaces (recorded traces)~test TESTS=~~src/keys/ops.c~		if (virtual_op && (cur().coladd > 0 || gchar_cursor() == 0)) coladvance_force(getviscol());~		if (0) coladvance_force(getviscol());
 keys: CTRL-V then a special key inserts nothing, not its name (recorded traces)~test TESTS=~~src/keys/edit.c~(lit.i == 0 || cc <= 0x10FFFF)~(cc <= 0x10FFFF)
 keys: CTRL-V Del inserts nothing, not <Del> (recorded traces)~test TESTS=~~src/keys/edit.c~if (c > KEY_RIGHT && c != KEY_DEL) return;~if (c > KEY_RIGHT) return;
-keys: after a block change whose text broke the line, the cursor stays inside a character (recorded traces)~test TESTS=~~src/keys/ops.c~	W->col = (size_t)head(ml_get((long)W->line), (long)W->col);¶}~}
+keys: after a block change whose text broke the line, the cursor stays inside a character (recorded traces)~test TESTS=~~src/keys/ops.c~Esc") */¶	W->col = (size_t)head(ml_get((long)W->line), (long)W->col);¶}~Esc") */¶}
 keys: undo in a CTRL-O command takes a Tab's last cell as the wanted column, so the insert restarts past the Tab (recorded traces)~test TESTS=~~src/keys/normal.c~	core_set_want(E);¶	E->mode = mode;¶	set_curswant = 0;~	E->mode = mode;¶	core_set_want(E);¶	set_curswant = 0;
 keys: CTRL-F and CTRL-B do nothing (test_core_screens)~test TESTS=core_screens~~src/keys/normal.c~	case 6: case 2: nv_page(cap); break;~	case 6: case 2: if (0) nv_page(cap); break;
 keys: gj and gk move by text lines with 'wrap' on (test_core_screens)~test TESTS=core_screens~~src/keys/normal.c~		if (W->wrap) {          /* nv_screengo()~		if (0) {          /* nv_screengo()
@@ -32,13 +32,13 @@ keys: CTRL-W w to a window on the same buffer leaves the Visual cursor behind (r
 keys: CTRL-D and CTRL-U that cannot scroll do not beep, so a macro goes on (recorded traces)~test TESTS=~~src/keys/normal.c~core_scroll_half(E, cap->cmdchar == 4 ? 1 : -1, cap->count0) < 0) beep();~core_scroll_half(E, cap->cmdchar == 4 ? 1 : -1, cap->count0) < -1) beep();
 keys: o's undo step starts on the cursor line, so undo moves another window's cursor on it to column 0 (recorded traces)~test TESTS=~~src/keys/edit.c~	u_save(W->line + (dir == FORWARD), W->line + (dir == FORWARD));~	u_save(W->line, W->line);
 keys: a linewise put's undo step starts on the cursor line, so undo moves another window's cursor on it to column 0 (recorded traces)~test TESTS=~~src/keys/ops.c~if (reg->type == MLINE && !(flags & PUT_LINE_SPLIT) && !is_empty_buf())~if (0)
-keys: gq on a .sql buffer is not recognised as SQL (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	return n > 4 && !memcmp(B->path + n - 4, ".sql", 4);~	return n > 4 && 0;
+keys: gq on a .sql buffer is not recognised as SQL (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	return n > k && !memcmp(B->path + n - k, ext, k);~	return n > k && 0;
 keys: gq formats one line less than the operator covers (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~(size_t)oap->end.lnum + 1));~(size_t)oap->end.lnum));
 keys: gqq is not gqgq (test_keys_gq)~test TESTS=keys_gq~~src/keys/normal.c~	if (cap->oap->op_type == OP_FORMAT) { cap->cmdchar~	if (0) { cap->cmdchar
 keys: v $ gq takes the next line too, as if gq did not work on lines (test_keys_gq)~test TESTS=keys_gq~~src/keys/normal.c~ && oap->op_type != OP_FORMAT && oap->end.lnum~ && oap->end.lnum
 keys: the save looks for sqldiff.toml only in the file's own directory (test_keys_gq)~test TESTS=keys_gq~~src/keys/keys.c~				if (n <= 1 || (n == 3 && d[1] == ':')) break;~				break;
 keys: a relative path looks for sqldiff.toml from the root, not the working directory (test_keys_gq)~test TESTS=keys_gq~~src/keys/keys.c~		if (B->path[0] != '/' && B->path[0] != '\\' && B->path[1] != ':') {~		if (0) {
-keys: :Format does nothing on a .sql buffer (test_keys_gq)~test TESTS=keys_gq~~src/keys/keys.c~case 8: if (is_sql()) sql_format(0, text_len(B->text));~case 8: ;
+keys: :Format does nothing on a .sql buffer (test_keys_gq)~test TESTS=keys_gq~~src/keys/keys.c~case 8: if (fmt_kind()) buf_format(0, text_len(B->text));~case 8: ;
 keys: gq breaks before the blank at textwidth, not at it (recorded traces)~test TESTS=~~src/keys/ops.c~				if (i > wantcol) {~				if (i >= wantcol) {
 keys: gq leaves the cursor on the last paragraph line, not the last line it went over (recorded traces)~test TESTS=~~src/keys/ops.c~	}¶	W->line = (size_t)l;¶}~	}¶}
 keys: gq keeps a Tab in a paragraph's indent instead of making it spaces (recorded traces)~test TESTS=~~src/keys/ops.c~if (need_set_indent) set_indent(~if (need_set_indent && 0) set_indent(
@@ -71,7 +71,7 @@ keys: i) and a) look for the unclosed bracket with quotes special, so from insid
 keys: i) and a) look for the closing bracket with quotes not special, as for the opening one (recorded traces)~test TESTS=~~src/keys/motion.c~	cpo_match = 0;¶~
 keys: a SPC that completes no map drops Space's own motion (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	keys_feed(e, l[0], 1);¶~
 keys: the keys after a failed map skip the pickers, git and the maps, so SPC SPC ff moves and the dashboard's q records a macro (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	for (int i = 1; i < n; i++) keys_input(e, l[i], i < n - 1);~	for (int i = 1; i < n; i++) keys_feed(e, l[i], i < n - 1);
-keys: SPC maps also run in Visual mode, where Davy has none (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~e->mode != MODE_NORMAL || e->ks.visual || ~e->mode != MODE_NORMAL || 
+keys: SPC maps other than SPC i s also run in Visual mode (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		if (e->ks.visual && strcmp(m, " is")) continue;¶~¶
 keys: a map that runs leaves the count typed before it for the next command (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~	if (drop) { npend = 0; opcount = 0; clearop(&oa); }~	if (drop) npend = 0;
 keys: SPC after an operator starts a map instead of being its motion (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~	if (oa.op_type != OP_NOP) return 0;¶~
 keys: an incomplete map does not keep the next key, so a picker or git can take it (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (part) return e->ks.pending = 1;~	if (part) return 1;
@@ -143,7 +143,7 @@ keys: 'hlsearch' reads stale lines after an edit without a key (test_keys_ex)~te
 keys: the kept regex ignores 'ignorecase' (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~if (last_ic == !!icase && !strcmp~if (last_ic >= 0 && !strcmp
 keys: CTRL-L hides the matches in Visual mode (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~!checkclearop(cap->oap) && !VIsual_active) no_hlsearch~!checkclearop(cap->oap)) no_hlsearch
 keys: CTRL-L hides the matches after an operator (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~if (!checkclearop(cap->oap) && !VIsual_active) no_hlsearch~if (!VIsual_active) no_hlsearch
-keys: :noh takes a range (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~		if (n) core_msg(E, "E481: No range allowed");¶		else no_hlsearch = 1;~		no_hlsearch = 1;
+keys: :noh takes a range (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~		if (n) core_msg(E, "E481: No range allowed");¶		else if (nohl) no_hlsearch = 1;~		if (nohl) no_hlsearch = 1;¶		else if (n) core_msg(E, "E481: No range allowed");
 keys: a match \zs starts on the next line is drawn on this one (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~else if (ms.lnum > l) return re_deadline = 0;~else if (ms.lnum > l) return re_deadline = 0, *s = 0, *z = ml_len(l) + 1, 1;
 keys: a answers this match but keeps asking (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~if (typed == 'a') fl.ask = 0;~if (typed == 'a') fl.ask = 1;
 keys: l answers this match but goes on to the next lines (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~if (typed == 'l') fl.all = 0, line2 = lnum;~if (typed == 'l') fl.all = 0;
@@ -157,7 +157,7 @@ keys: :s goes on with 'hlsearch''s program after a redraw (test_keys_ex)~test TE
 keys: CTRL-E scrolls the cursor into 'scrolloff' (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~(long)(W->line - W->top) - 1 >= SCROLLOFF) W->top++;~(long)(W->line - W->top) - 1 >= 0) W->top++;
 keys: CTRL-Y does not scroll (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~if (typed == 25 && W->top &&~if (typed == 25 && (W->top && 0) &&
 keys: Visual : leaves curswant to be set after the command (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~		update_curswant();¶		cmdline(':', "'<,'>");~		cmdline(':', "'<,'>");
-keys: <leader>uk does not turn the save kitten off (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~, " uk"¶};~¶};
+keys: <leader>uk does not turn the save kitten off (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~" uk", " up"~" up"
 keys: :KittenPaw does not play the kitten (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	case 9: kitten_paw(E); break;~	case 9: break;
 keys: a register Q replays is not flagged as executing, so on_yank and the kitten would show (test_keys_flash)~test TESTS=keys_flash~~src/keys/normal.c~if (!do_execreg(reg_recorded))~if (!do_execreg(reg_recorded) || (E->ks.executing = 0))
 keys: a pass through a group's join recurses, so a long group repeat grows the C stack (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~		case NOTHING: break;~		case NOTHING: return m(p->next, l, c);
@@ -167,3 +167,23 @@ keys: 'hlsearch' has no 'redrawtime' (test_keys_ex)~test TESTS=keys_ex~~src/keys
 keys: the first-literal skip passes a byte past 0x7f under \c (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~(ic && (t[x] >= 0x80 || fold(t[x]) == fold(lit)))~(ic && fold(t[x]) == fold(lit))
 keys: a bounded leading repeat skips its run too (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~rp1->simple && rp1->c < 0 ?~rp1->simple ?
 keys: an ASCII character before an accent is its own cluster (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~(c + 1 == (long)n || s[c + 1] < 0x80)~(c + 1 == (long)n || 1)
+keys: a yank's flash ends on the last character's last byte (test_keys_flash)~test TESTS=keys_flash~~src/keys/ops.c~		if (t == 'v') E->ks.yank.c2 = (size_t)head(ml_get(b_op_end.lnum), b_op_end.col);¶~
+keys: CurSearch only when the cursor is on the match's first line (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~1 + (!lt(c, ms) && lt(c, me))~1 + (c.lnum == ms.lnum && !lt(c, ms) && lt(c, me))
+keys: SPC u p only turns conceal off (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~e->win->conceal = e->win->conceal ? 0 : 2;~e->win->conceal = 0;
+keys: cit and ciT wait for their keys in every buffer, not only .org (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		if (*m == 'c' && !is_ft(".org")) continue;~
+keys: a map's edit joins the previous command's undo step (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		undo_close(e->buf->undo);   /* a map is a command of its own: keys_feed() closes before each */~
+keys: ciT steps forward as cit does (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~org_cycle(m[2] == 't' ? 1 : -1)~org_cycle(1)
+keys: cit stamps CLOSED in UTC, not the local clock (test_keys_map)~test TESTS=keys_map~~src/keys/ops.c~		+ (l.tm_hour - g.tm_hour) * 60 + l.tm_min - g.tm_min;~		;
+keys: @. counts as an executing register, so its yank does not flash (test_keys_flash)~test TESTS=keys_flash~~src/keys/ops.c~		typebuf_ins(k, n);¶		return 1;~		typebuf_ins(k, n);¶		E->ks.executing = regname;¶		return 1;
+keys: verible without Davy's 4-space indent (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~"verible-verilog-format", "--indentation_spaces=4", "-"~"verible-verilog-format", "-", NULL
+keys: gq sends verible the whole text, not its lines (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	if (*a || *z < len) argv[2] = lines, argv[3] = "-";~
+keys: :Format sends verible --lines (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	if (*a || *z < len) argv[2] = lines, argv[3] = "-";~	argv[2] = lines, argv[3] = "-";
+keys: :w formats a .sv buffer with no .slang above it (test_keys_gq)~test TESTS=keys_gq~~src/keys/keys.c~: ".slang";~: ".";
+keys: a failed verible's output is applied, emptying the buffer (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	if (id < 0 || bad) {~	if (id < 0) {
+keys: verible's edit runs to the end of the text, so the cursor below it moves onto other text (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~		while (q < len - p && q < vout.n - p && in[len - 1 - q] == vout.s[vout.n - 1 - q]) q++;¶~
+keys: a hanging verible is never killed (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~proc_wait(id, 1000)~proc_wait(id, 1 << 30)
+keys: verible's stderr goes into the buffer (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	if (stream == 1 && b)~	if (stream && b)
+keys: .svh, .v and .vh buffers are not formatted with Verible (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~is_ft(".sv") || is_ft(".svh") || is_ft(".v") || is_ft(".vh")~is_ft(".sv")
+keys: keys_visual(e, 0) leaves Visual mode on (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (!mode) { if (VIsual_active) end_visual_mode(); }~	if (!mode) { if (VIsual_active) (void)0; }
+keys: keys_visual() keeps the other end's column (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~VIsual = (Pos){ (long)line, 0, 0 };~VIsual.lnum = (long)line;
+keys: keys_visual() leaves e->ks as it was (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~(Pos){ (long)line, 0, 0 };¶	visual_sync();~(Pos){ (long)line, 0, 0 };

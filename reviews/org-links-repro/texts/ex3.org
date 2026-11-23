@@ -1,0 +1,5 @@
+* h
+#+begin_example
+x [fn:2:
+(y] z
+#+end_example

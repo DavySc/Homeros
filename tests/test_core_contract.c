@@ -11,9 +11,15 @@
 #include <unistd.h>
 #include "check.h"
 #include "core.h"
+#include "keys.h"
+#include "loop.h"
+#include "lsp.h"
 #include "syntax.h"
 #include "grid.h"
+#include "text.h"
 #include "../src/core/core_int.h"
+
+static size_t r1, r2;   /* syntax_update's changed fold rows, unused here */
 
 static char path[] = "/tmp/core_contractXXXXXX";
 
@@ -38,6 +44,13 @@ int main(void)
 	/* core_goto past the end: the last line's last character, wanted there */
 	core_goto(&e, 1000, 1000);
 	CHECK(e.win->line == 99 && e.win->col == 2 && e.win->want == 2);
+	/* 'nomodifiable': changes, undo and redo refuse with E21; :e! still loads */
+	CHECK(!core_edit(&e, 0, 1, "x", 1) && core_undo(&e, 0) > 0);
+	e.buf->nomodifiable = 1;
+	CHECK(core_edit(&e, 0, 1, "y", 1) == -1 && strstr(e.msg, "E21") && core_undo(&e, 1) == -1);
+	char c0;
+	CHECK(text_read(e.buf->text, 0, &c0, 1) == 1 && c0 == '1' && !core_edit_file(&e, NULL, 1));
+	e.buf->nomodifiable = 0;
 
 	/* scrolling and gj/gk: 0 moved, -1 a beep */
 	struct { size_t from; int r[6]; } want[] = {   /* CTRL-D, CTRL-U, CTRL-F, CTRL-B, gj, gk */
@@ -142,10 +155,28 @@ int main(void)
 	Buf *same = e.buf;
 	CHECK(!chdir("/tmp") && !core_edit_file(&e, strrchr(fn[3], '/') + 1, 0) && e.buf == same);
 	Buf *alt = e.win->alt;
-	CHECK(alt && !strcmp(alt->path, fn[2]) && !core_split(&e, 0, 0) && e.win->alt == alt);
+	/* and 'conceallevel' as the window had it (win_copy_options()) */
+	e.win->conceal = 3;
+	CHECK(alt && !strcmp(alt->path, fn[2]) && !core_split(&e, 0, 0) && e.win->alt == alt && e.win->conceal == 3);
 	CHECK(!core_close(&e, 0));
 	CHECK(!core_buf_delete(&e, 0, 0) && !strcmp(e.buf->path, fn[2]));
 	core_free(&e);
+	/* :bd closes the buffer's language server document once: core_free
+	   after it does not close it again (ASan; review of PR 111) */
+	{
+		static const char *const cat[] = { "sh", "-c", "cat >/dev/null", NULL }, *const none[] = { NULL };
+		const LspServer srv[] = { { ".lspt", "lspt", cat, none, 0 }, { 0 } }, *was = lsp_servers;
+		char f[128];
+		snprintf(f, sizeof f, "%s.lspt", path);
+		FILE *h = fopen(f, "w");
+		CHECK(h && fputs("x\n", h) >= 0 && !fclose(h));
+		lsp_servers = srv;
+		CHECK(!core_open(&e, fn[0]) && !core_edit_file(&e, f, 0) && e.buf->lsp);
+		CHECK(!core_buf_delete(&e, 0, 0) && !strcmp(e.buf->path, fn[0]));
+		core_free(&e);
+		lsp_servers = was;
+		unlink(f);
+	}
 	/* an outside change not yet warned is forgotten by a save over it:
 	   the next edit gives no W11 */
 	CHECK(!core_open(&e, fn[0]));
@@ -178,6 +209,14 @@ int main(void)
 		for (Win *w = e.wins; w; w = w->next, k++) CHECK(k < 5 && w->w == wd[k]);
 		CHECK(k == 5);
 	}
+	core_free(&e);
+	/* a buffer with nonumber (the Lean goals window; neogit's buffers in
+	   Neovim): no number column, its text from the window's first column */
+	CHECK(!core_open(&e, fn[1]));
+	e.buf->nonumber = 1;
+	CHECK(!core_edit(&e, 2, 0, "\n", 1));
+	core_draw(&e, &g);
+	CHECK(win_numw(e.win) == 0 && g.c[0].len == 1 && *grid_text(&g.c[0]) == 'x' && *grid_text(&g.c[g.cols]) == ' ');
 	core_free(&e);
 	/* the view is drawn after each command, before the next one runs
 	   (normal_check()'s normal_redraw(), typeahead or not): wrap, CTRL-W s,
@@ -229,7 +268,7 @@ int main(void)
 	CHECK(!core_edit_file(&e, md, 1) && !grid_resize(&g, 24, 80));
 	e.win->line = 1;
 	do core_draw(&e, &g);
-	while (syntax_update(e.buf->syn, e.buf->text, NULL));
+	while (syntax_update(e.buf->syn, e.buf->text, NULL, &r1, &r2));
 	CHECK(g.c[win_numw(e.win)].bg == FACE_HEADING_1_BG);   /* not on the cursor line */
 	/* nine windows one above another need 18 rows and the command line;
 	   the grid has 6 */
@@ -241,10 +280,94 @@ int main(void)
 	CHECK(e.layout->size[ROWS] > g.rows);
 	CHECK(!core_only(&e));
 	unlink(md);
+	/* on_yank's flash shows only in the window it was yanked in (the
+	   namespace is scoped to it: nvim__ns_set()) */
+	e.ks.yank.type = 'V';
+	e.ks.yank.l1 = e.ks.yank.l2 = e.win->line;
+	CHECK(!core_split(&e, 1, 0));
+	core_draw(&e, &g);
+	for (const Win *w = e.wins; w; w = w->next) {
+		const Cell *z = &g.c[(w->y + (int)(w->line - w->top)) * g.cols + w->x + win_numw(w)];
+		CHECK((z->bg == FACE_INC_SEARCH) == (w == e.win));
+	}
+	CHECK(!core_only(&e));
+	/* and only on text: none on an empty line, where Visual shows a cell
+	   ("a", "", "bc", 2Gvjy: measured in nvim --headless, 3 runs) */
+	char ey[] = "/tmp/core_contractXXXXXX";
+	CHECK(mkstemp(ey) >= 0 && (f = fopen(ey, "w")) && fputs("a\n\nbc\n", f) >= 0 && !fclose(f));
+	CHECK(!core_edit_file(&e, ey, 1));
+	e.ks.yank.type = 'v';
+	e.ks.yank.l1 = 1;
+	e.ks.yank.l2 = 2;
+	e.ks.yank.c1 = e.ks.yank.c2 = 0;
+	e.win->line = 1;
+	e.win->col = 0;
+	core_draw(&e, &g);
+	CHECK(e.win->top == 0 && g.c[g.cols + win_numw(e.win)].bg == FACE_CURSOR_LINE);
+	CHECK(g.c[2 * g.cols + win_numw(e.win)].bg == FACE_INC_SEARCH);
+	e.ks.yank.type = 0;
+	/* :s's c flag shows its match the same way: "b" of "bc", not "c" */
+	e.ks.inc = (KeyArea){ 'v', 2, 0, 2, 0 };
+	e.win->line = 0;
+	core_draw(&e, &g);
+	CHECK(g.c[2 * g.cols + win_numw(e.win)].bg == FACE_INC_SEARCH && g.c[2 * g.cols + win_numw(e.win) + 1].bg != FACE_INC_SEARCH);
+	e.ks.inc.type = 0;
+	/* the flash as the keys set it: vly over "é漢x" covers é and both
+	   cells of 漢, not x (vim.hl.on_yank's '[ to ']) */
+	CHECK((f = fopen(ey, "w")) && fputs("\xc3\xa9\xe6\xbc\xa2x\n", f) >= 0 && !fclose(f));
+	CHECK(!core_edit_file(&e, ey, 1));
+	keys_feed(&e, 'v', 0);
+	keys_feed(&e, 'l', 0);
+	keys_feed(&e, 'y', 0);
+	core_draw(&e, &g);
+	/* cell 2 is 漢's second half, drawn with its first */
+	for (int c = 0; c < 4; c++) if (c != 2) CHECK((g.c[win_numw(e.win) + c].bg == FACE_INC_SEARCH) == (c < 3));
+	e.ks.yank.type = 0;
+	/* 'hlsearch' over the flash (an extmark under win_line()'s
+	   search_attr): "ab ab ab ab", /ab, gg0ly3l shows C C I S S
+	   (measured, reviews/pr-106-repro/flash_search.lua) */
+	CHECK((f = fopen(ey, "w")) && fputs("ab ab ab ab\n", f) >= 0 && !fclose(f));
+	CHECK(!core_edit_file(&e, ey, 1));
+	for (const char *k = "/ab\rgg0ly3l"; *k; k++) keys_feed(&e, *k == '\r' ? KEY_ENTER : *k, 0);
+	core_draw(&e, &g);
+	const unsigned char fs[] = { FACE_CUR_SEARCH, FACE_CUR_SEARCH, FACE_INC_SEARCH, FACE_SEARCH, FACE_SEARCH };
+	for (int c = 0; c < 5; c++) CHECK(g.c[win_numw(e.win) + c].bg == fs[c]);
+	e.ks.yank.type = 0;
+	unlink(ey);
 	core_free(&e);
 	for (int i = 0; i < 4; i++) unlink(fn[i]);
 	grid_free(&g);
 	unlink(path);
+	/* a file opened after start-up is watched for outside changes (W11),
+	   also one in another directory (on Windows each directory has its
+	   own handle); the editor started on the dashboard, with no file */
+	char dir[2][32] = { "/tmp/core_wAXXXXXX", "/tmp/core_wBXXXXXX" }, wf[2][48];
+	CHECK(!core_open(&e, NULL));
+	for (int i = 0; i < 2; i++) {
+		CHECK(mkdtemp(dir[i]));
+		snprintf(wf[i], sizeof wf[i], "%s/w", dir[i]);
+		CHECK((f = fopen(wf[i], "w")) && fputs("a\n", f) >= 0 && !fclose(f));
+		CHECK(!core_edit_file(&e, wf[i], 0));
+		CHECK((f = fopen(wf[i], "w")) && fputs("bb\n", f) >= 0 && !fclose(f));
+		for (int k = 0; k < 100 && !e.buf->changed; k++) loop_once(10);
+		CHECK(e.buf->changed);
+	}
+	/* every file shares the watch fd, which the loop watches once: twenty
+	   loaded files leave the loop's 16 slots free for more (review of PR
+	   120: without buf_load's loop_unwatch each file takes one) */
+	char many[48];
+	for (int i = 0; i < 20; i++) {
+		snprintf(many, sizeof many, "%s/m%d", dir[0], i);
+		CHECK((f = fopen(many, "w")) && fputs("a\n", f) >= 0 && !fclose(f));
+		CHECK(!core_edit_file(&e, many, 0));
+	}
+	int pp[2];
+	CHECK(!pipe(pp) && !loop_watch(pp[0], NULL, NULL));
+	loop_unwatch(pp[0]);
+	close(pp[0]), close(pp[1]);
+	core_free(&e);
+	for (int i = 0; i < 20; i++) snprintf(many, sizeof many, "%s/m%d", dir[0], i), unlink(many);
+	for (int i = 0; i < 2; i++) unlink(wf[i]), rmdir(dir[i]);
 	printf("test_core_contract: ok\n");
 	return 0;
 }

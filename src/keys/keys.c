@@ -6,6 +6,7 @@
    may_sync_undo()); a beep drops the stuffed and executed keys
    (beep_flush()). */
 #include <limits.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -118,7 +119,9 @@ static void key(int k, int pending)
 /* only those whose targets exist; the SPC g and SPC h ones are git.h's */
 static const char *const maps[] = {
 	" ff", " fg", " fr", " ,", " e", " pv", "-", " D",
-	" gg", " gs", " gl", " gL", " gd", " gb", " gB", " hs", " hr", " hS", " hu", " hp", " uk"
+	" gg", " gs", " gl", " gL", " gd", " gb", " gB", " hs", " hr", " hS", " hu", " hp", " is", " uk", " up",
+	"cit", "ciT",  /* nvim-orgmode's, buffer-local to .org */
+	" cc", " cC"
 };
 static int lead[3], nlead;   /* the keys typed of a map not yet complete */
 
@@ -132,24 +135,42 @@ static void dashboard(Editor *e) { if (!core_edit_file(e, "", 0)) tools_dash(e, 
    (Neovim's vgetorpeek() when no map matches) */
 static int map(Editor *e, int k)
 {
-	if (!nlead && (e->mode != MODE_NORMAL || e->ks.visual || !normal_mappable(0))) return 0;
+	if (!nlead && (e->mode != MODE_NORMAL || !normal_mappable(0))) return 0;
+	E = e;   /* for is_ft() and the maps that edit */
 	lead[nlead++] = k;
 	int part = 0;
 	for (size_t i = 0; i < sizeof maps / sizeof *maps; i++) {
 		const char *m = maps[i];
+		if (*m == 'c' && !is_ft(".org")) continue;
 		int j = 0;
+		/* in Visual mode only SPC i s, a snippet around the area (package 19's, agreed) */
+		if (e->ks.visual && strcmp(m, " is")) continue;
 		while (j < nlead && m[j] == lead[j]) j++;
 		if (j < nlead) continue;
 		if (m[j]) { part = 1; continue; }
 		nlead = e->ks.pending = 0;
 		normal_mappable(1);
-		switch (m[0] == '-' ? 'p' : m[1]) {
+		undo_close(e->buf->undo);   /* a map is a command of its own: keys_feed() closes before each */
+		switch (m[0] == '-' ? 'p' : !strcmp(m, " is") ? 's' : m[1]) {
 		case 'f': tools_pick(e, m[2] == 'f' ? PICK_SMART : m[2] == 'g' ? PICK_GREP : PICK_REGISTERS); break;
 		case ',': tools_pick(e, PICK_BUFFERS); break;
 		case 'e': tools_pick(e, PICK_EXPLORER); break;
 		case 'p': tools_oil(e, NULL); break;
-		case 'u': kitten_toggle(e); break;
+		case 'u': if (m[2] == 'k') kitten_toggle(e);
+		          else e->win->conceal = e->win->conceal ? 0 : 2;   /* Davy's org-toggle-pretty-entities */
+		          break;
+		case 'i': org_cycle(m[2] == 't' ? 1 : -1); break;
 		case 'D': dashboard(e); break;
+		case 's': tools_pick(e, PICK_SNIPPETS); break;
+		/* Davy's emacs SPC cc compile (prompts) and cC recompile */
+		case 'c':
+			if (m[2] == 'C') { tools_make(e, NULL); break; }
+			/* Emacs's compile: the last command, to edit */
+			char c[sizeof e->cmd];
+			const char *l = tools_make_last();
+			snprintf(c, sizeof c, "make %s", l ? l : "");
+			cmdline(':', c);
+			break;
 		default: git_leader(e, m[1], m[2]);
 		}
 		return 1;
@@ -171,6 +192,23 @@ void keys_input(Editor *e, int k, int pending)
 	if (!(e->ks.pending ? map(e, k) : tools_key(e, k) || git_key(e, k) || snip_key(e, k, pending) || map(e, k))) keys_feed(e, k, pending);
 }
 
+/* what the core draws of Visual mode */
+static void visual_sync(void)
+{
+	E->ks.visual = VIsual_active ? VIsual_mode : 0;
+	E->ks.vline = (size_t)VIsual.lnum;
+	E->ks.vcol = (size_t)VIsual.col;
+}
+
+void keys_visual(Editor *e, int mode, size_t line)
+{
+	E = e;
+	buf_changed();
+	if (!mode) { if (VIsual_active) end_visual_mode(); }
+	else VIsual_active = 1, VIsual_mode = mode, VIsual = (Pos){ (long)line, 0, 0 };
+	visual_sync();
+}
+
 void keys_feed(Editor *e, int k, int pending)
 {
 	/* the window's close button: :qa, as Neovim's GUIs do (E37 if
@@ -189,9 +227,7 @@ void keys_feed(Editor *e, int k, int pending)
 	E->ks.executing = 0;   /* typed: the typeahead holds no register keys */
 	key(k, pending || rb1.n || rb2.n || tb.n);
 	while (next(&k)) key(k, pending || rb1.n || rb2.n || tb.n);
-	E->ks.visual = VIsual_active ? VIsual_mode : 0;
-	E->ks.vline = (size_t)VIsual.lnum;
-	E->ks.vcol = (size_t)VIsual.col;
+	visual_sync();
 	E->ks.pending = E->mode == MODE_CMDLINE || sub_asking || (E->mode != MODE_INSERT && normal_pending());
 	core_update(e);
 }
@@ -204,7 +240,9 @@ void keys_write_pre(Editor *e, Buf *b)
 	char d[4096];
 	size_t n = 0;
 	E = e;
-	if (b == e->buf && is_sql()) {
+	int k = b == e->buf ? fmt_kind() : 0;
+	const char *mark = k == 1 ? "sqldiff.toml" : ".slang";
+	if (k) {
 		if (B->path[0] != '/' && B->path[0] != '\\' && B->path[1] != ':') {
 			if (!getcwd(d, sizeof d - 1)) d[0] = 0;
 			n = strlen(d);
@@ -216,8 +254,8 @@ void keys_write_pre(Editor *e, Buf *b)
 			n += p;
 			for (struct stat st;;) {
 				while (n && d[n - 1] != '/' && d[n - 1] != '\\') n--;
-				memcpy(d + n, "sqldiff.toml", 13);
-				if (!stat(d, &st)) { sql_format(0, text_len(B->text)); break; }
+				memcpy(d + n, mark, strlen(mark) + 1);
+				if (!stat(d, &st)) { buf_format(0, text_len(B->text)); break; }
 				if (n <= 1 || (n == 3 && d[1] == ':')) break;
 				n--;
 			}
@@ -282,9 +320,12 @@ static void ex(void)
 	/* :s[ubstitute] :& :~ (:&& is :& with the flag &), on the cursor's
 	   line by default; line 0 is line 1 (no EX_ZEROR) */
 	size_t k = strspn(p, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
-	if (k >= 3 && k <= 10 && !strncmp(p, "nohlsearch", k) && !p[k]) {
+	/* :noh[lsearch], and :mak[e] {cmd} (tools.h) with the rest of the line its argument */
+	int nohl = k >= 3 && k <= 10 && !strncmp(p, "nohlsearch", k) && !p[k];
+	if (nohl || (k >= 3 && k <= 4 && !strncmp(p, "make", k) && (!p[k] || p[k] == ' ' || p[k] == '\t'))) {
 		if (n) core_msg(E, "E481: No range allowed");
-		else no_hlsearch = 1;
+		else if (nohl) no_hlsearch = 1;
+		else tools_make(E, p + k + strspn(p + k, " \t"));
 		return;
 	}
 	if (k ? k <= 10 && !strncmp(p, "substitute", k) : (k = *p == '&' || *p == '~')) {
@@ -312,7 +353,7 @@ static void ex(void)
 	case 5: case 6: if (!core_write(E, B, i == 6)) core_close(E, 0); break;
 	case 7: if (!core_modified(B) || !core_write(E, B, 0)) core_close(E, 0); break;
 	/* Davy's :Format (conform.nvim): the whole buffer */
-	case 8: if (is_sql()) sql_format(0, text_len(B->text)); break;
+	case 8: if (fmt_kind()) buf_format(0, text_len(B->text)); break;
 	case 9: kitten_paw(E); break;
 	default: dashboard(E);
 	}

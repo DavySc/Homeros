@@ -1,13 +1,15 @@
 /* A .org file's colours are Org's (org.h's orgfx, package 16, which tests
    them against Emacs): through syntax_open, syntax_edit, syntax_update and
    syntax_faces, after random edits, every byte must carry the face an
-   OrgFx of its own gives the same text. */
+   OrgFx of its own gives the same text, and every line the same fold and
+   the same conceal spans (syntax_conceal). */
 #include <string.h>
 #include "check.h"
 #include "grid.h"
 #include "org.h"
 #include "syntax.h"
 #include "text.h"
+static size_t r1, r2;   /* syntax_update's fold rows, read where a test needs them */
 
 enum { EDITS = 2000, MAXT = 1 << 14 };
 
@@ -15,6 +17,7 @@ static const char *const bits[] = {
 	"* ", "** ", "TODO ", "DONE ", "[#A] ", "heading", ":tag:", "\n", "text ",
 	"#+TITLE: x\n", "- item\n", "1. one\n", "#+begin_src c\n", "#+end_src\n",
 	"SCHEDULED: <2026-11-20 Fri>\n", ":PROPERTIES:\n", ":END:\n", "# note\n", "|a|b|\n",
+	"\\leq ", "x^{2} ", "*b* ",
 };
 
 int main(void)
@@ -26,8 +29,11 @@ int main(void)
 	Syntax *s = syntax_open("a/b.org", t);
 	OrgFx *x = orgfx_new(u);
 	CHECK(s && x);
-	syntax_update(s, t, NULL);
-	orgfx_update(x, NULL);
+	CHECK(syntax_update(s, t, NULL, &r1, &r2) == orgfx_update(x, NULL));
+	/* each row's fold at the last update: Org answers the text as it is,
+	   so one outside the rows an update reports keeps it */
+	static int lv[MAXT], st[MAXT];
+	for (size_t l = 0; l < text_lines(t); l++) lv[l] = syntax_foldexpr(s, l, &st[l]);
 	syntax_faces(s, 0, 2, f);
 	CHECK(f[0] != FACE_NONE);  /* the headline's star */
 	for (int e = 0; e < EDITS; e++) {
@@ -40,18 +46,29 @@ int main(void)
 		CHECK(!text_delete(t, pos, del) && !text_insert(t, pos, ins, ni));
 		CHECK(!text_delete(u, pos, del) && !text_insert(u, pos, ins, ni));
 		if (rnd(4)) continue;
-		syntax_update(s, t, NULL);
-		orgfx_update(x, NULL);
+		/* main.c redraws on 1 */
+		CHECK(syntax_update(s, t, NULL, &r1, &r2) == orgfx_update(x, NULL));
 		n = text_len(t);
 		memset(g, 0, n);
 		syntax_faces(s, 0, n, f);
 		orgfx_faces(x, 0, n, g);
 		CHECK(!memcmp(f, g, n));
+		for (size_t l = 0; l <= text_lines(t); l++) {   /* Org's subtrees fold */
+			int a, b;
+			int v = syntax_foldexpr(s, l, &a);
+			CHECK(v == orgfx_foldexpr(x, l, &b) && a == b);
+			CHECK((l >= r1 && l < r2) || l == text_lines(t) || (v == lv[l] && a == st[l]));
+			lv[l] = v, st[l] = a;
+			Conceal c[64], d[64];
+			size_t k = syntax_conceal(s, l, c, 64);
+			CHECK(k == orgfx_conceal(x, l, d, 64));
+			for (size_t i = 0; i < k; i++) CHECK(c[i].a == d[i].a && c[i].z == d[i].z && !strcmp(c[i].s, d[i].s));
+		}
 	}
 	syntax_free(s);
 	orgfx_free(x);
 	text_free(t);
 	text_free(u);
-	printf("test_syntax_org: %d edits, a .org file's faces equal Org's\n", EDITS);
+	printf("test_syntax_org: %d edits, a .org file's faces, folds and conceal equal Org's\n", EDITS);
 	return 0;
 }

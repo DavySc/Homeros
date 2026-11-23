@@ -28,7 +28,7 @@ struct Fold {
 	void *ctx;
 };
 
-/* fline_T: lvl is never -1 here */
+/* fline_T.  Its lvl_next only matters for "a1", "s1", "<1" and "=" */
 typedef struct { long lnum, off, lnum_save, n; int lvl, start; } Line;
 
 static Nd *end(const Arr *a) { return a->d + a->n; }
@@ -186,11 +186,15 @@ static void merge(Nd *fp1, Arr *a, Nd *fp2)
 	del(a, (int)(fp2 - a->d));
 }
 
-/* foldlevelExpr() */
-static void level(const Fold *f, Line *l)
+/* foldlevelExpr() for "n", ">n" and "-1" (undefined: the folds take the
+   level of the next defined line; 0 on the first line) */
+static int level(const Fold *f, Line *l)
 {
+	long lnum = l->lnum + l->off;
 	l->start = 0;
-	l->lvl = f->expr(f->ctx, (size_t)(l->lnum + l->off - 1), &l->start);
+	l->lvl = f->expr(f->ctx, (size_t)(lnum - 1), &l->start);
+	if (l->lvl < 0 && lnum <= 1) l->lvl = 0;
+	return l->lvl;
 }
 
 /* foldUpdateIEMSRecurse(): the fold at level that starts at l->lnum */
@@ -287,12 +291,15 @@ static long recurse(Fold *f, Arr *a, int lvl0, long startlnum, Line *l, long bot
 			bot += fp->top;
 			startlnum2 = l->lnum;
 		} else {
-			l->lnum = l->lnum_save + 1;
+			/* past undefined lines to the level after them */
+			long ll = l->lnum_save + 1;
+			for (l->lnum = ll; l->lnum <= linecount && level(f, l) < 0; l->lnum++);
 			if (l->lnum > linecount) break;
-			level(f, l);
 			l->lnum_save = l->lnum;
+			l->lnum = ll;
 		}
 	}
+	if (!fp) return bot;   /* only undefined lines ("-1") followed, to the end */
 	if (fp->len < l->lnum - fp->top) fp->len = l->lnum - fp->top;
 	else if (fp->top + fp->len > linecount) fp->len = linecount - fp->top + 1;
 	remove_(&fp->nested, startlnum2 - fp->top, l->lnum - 1 - fp->top);
@@ -324,8 +331,9 @@ static void update(Fold *f, long top, long bot, long n)
 {
 	if (f->invalid) { top = 1; bot = n; f->invalid = 0; }
 	if (top > n) top = n;
-	Line l = { .lnum = top > 1 ? top - 1 : top, .n = n };   /* "<1" may end a fold at top */
-	level(f, &l);
+	/* back to a line with a defined level, from the one above top */
+	Line l = { .lnum = top > 1 ? top - 1 : top, .n = n };
+	while (level(f, &l) < 0) l.lnum--;
 	long start = l.lnum, stop = bot;
 	if (start > stop && stop < n) stop = start;
 	Nd *fp;
@@ -387,6 +395,7 @@ void fold_free(Fold *f)
 void fold_adjust(Fold *f, size_t l1, size_t l2, long amount, long after, int insert)
 {
 	long line1 = (long)l1 + 1, line2 = l2 == (size_t)-1 ? MAXL : (long)l2;
+	if (line2 < line1 && !after) return;   /* mark_adjust_buf(): nothing to do */
 	/* lines after the range move by after, so the count changes by it;
 	   with no lines after it, by what the range moved */
 	f->n += l2 == (size_t)-1 ? amount : after;
@@ -430,7 +439,7 @@ int fold_closed(const Fold *f, size_t line, size_t *l1, size_t *l2)
 			*l1 = (size_t)first - 1;
 			long last = first + fp->len - 1;
 			*l2 = (size_t)(last < f->n ? last : f->n) - 1;
-			return 1;
+			return lvl + 1;   /* fold_info()'s fi_level, for foldtext's dashes */
 		}
 	}
 	return 0;
@@ -501,17 +510,18 @@ int fold_cmd(Fold *f, int op, size_t line, long count)
 		op = fold_closed(f, line, &l1, &l2) ? FOLD_OPEN : FOLD_CLOSE;
 		/* fall through */
 	case FOLD_OPEN:
-	case FOLD_CLOSE:   /* setFoldRepeat() */
-		for (long n = 0; n < count; n++) {
-			int done = manual(f, lnum, op == FOLD_OPEN, 0);
-			if (!(done & DONE_ACTION)) return n == 0 && !done ? -1 : 0;
-		}
-		return 0;
+	case FOLD_CLOSE:   /* setFoldRepeat(); zO's second round finds nothing closed */
 	case FOLD_OPEN_REC:
-		return manual(f, lnum, 1, 1) ? 0 : -1;
-	case FOLD_VIEW:   /* foldOpenCursor() */
-		while (manual(f, lnum, 1, 0) & DONE_ACTION) {}
-		return 0;
+		for (long n = 0; n < count; n++) {
+			int done = manual(f, lnum, op != FOLD_CLOSE, op == FOLD_OPEN_REC);
+			if (!(done & DONE_ACTION)) return n ? 1 : done ? 0 : -1;
+		}
+		return count > 0;
+	case FOLD_VIEW: {   /* foldOpenCursor() */
+		int done = 0;
+		while (manual(f, lnum, 1, 0) & DONE_ACTION) done = 1;
+		return done;
+	}
 	case FOLD_OPEN_ALL: count = deepest(&f->folds); break;
 	case FOLD_CLOSE_ALL: count = 0; break;
 	case FOLD_RESET: count = f->level; break;
@@ -519,5 +529,5 @@ int fold_cmd(Fold *f, int op, size_t line, long count)
 	/* newFoldLevelWin() */
 	f->level = (int)count;
 	for (int i = 0; i < f->folds.n; i++) f->folds.d[i].flags = FD_LEVEL;
-	return 0;
+	return 1;   /* newFoldLevel() always calls changed_window_setting() */
 }

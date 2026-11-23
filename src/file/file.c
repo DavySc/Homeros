@@ -25,6 +25,16 @@ static void ident(const struct stat *st, FileId *id)
 	id->mtime_ns = (long long)st->st_mtim.tv_sec * 1000000000LL + st->st_mtim.tv_nsec;
 }
 
+/* thread 0's, agreed (package 21) */
+int file_id(const char *path, FileId *id)
+{
+	struct stat st;
+	memset(id, 0, sizeof *id);
+	if (stat(path, &st)) return errno == ENOENT ? 0 : -1;
+	ident(&st, id);
+	return 0;
+}
+
 int file_load(const char *path, char **data, size_t *n, FileId *id)
 {
 	struct stat st;
@@ -177,7 +187,7 @@ int file_save(const char *path, const Text *t, size_t n, int dos, FileId *id,
 	struct stat st;
 	FileId now = { 0 }, mine;
 	if (target(path, real)) return SAVE_ERR;
-	if (!stat(real, &st)) ident(&st, &now);
+	if (!stat(real, &st)) ident(&st, &now);   /* st: the mode and owner kept below */
 	else if (errno != ENOENT) return SAVE_ERR;
 	/* Check: an outside change since load is never overwritten unasked */
 	if (!force && id->exists && !file_same(id, &now)) return SAVE_CHANGED;
@@ -263,8 +273,7 @@ int file_watch(const char *path)
 int file_watch_read(int fd, const char *path, const FileId *id)
 {
 	char b[4096] __attribute__((aligned(__alignof__(struct inotify_event))));
-	struct stat st;
-	FileId now = { 0 };
+	FileId now;
 	for (;;) {
 		ssize_t r = read(fd, b, sizeof b);
 		if (r > 0) continue;
@@ -272,8 +281,6 @@ int file_watch_read(int fd, const char *path, const FileId *id)
 		if (r < 0 && errno != EAGAIN) return -1;
 		break;
 	}
-	if (!stat(path, &st)) ident(&st, &now);
-	else if (errno != ENOENT) return -1;
-	return !file_same(id, &now);
+	return file_id(path, &now) ? -1 : !file_same(id, &now);
 }
 #endif
