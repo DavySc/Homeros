@@ -117,6 +117,7 @@ static const char *const face_sgr[FACE_COUNT] = {
 	";38;2;137;180;250",                  /* tag.builtin: blue */
 	";3;38;2;249;226;175",                /* tag.attribute: yellow, italic */
 	";38;2;148;226;213",                  /* tag.delimiter: teal */
+	";3;38;2;137;180;250",                /* entity.name.function: blue, italic */
 	";38;2;203;166;247",                  /* org-level-7: mauve */
 	";38;2;235;160;172",                  /* org-level-8: maroon */
 	";38;2;250;179;135",                  /* org-todo: peach */

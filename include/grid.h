@@ -46,6 +46,9 @@ enum {
 	FACE_MARKUP_LIST, FACE_MARKUP_LIST_CHECKED, FACE_MARKUP_LIST_UNCHECKED, FACE_DIFF_PLUS,
 	FACE_DIFF_MINUS, FACE_DIFF_DELTA, FACE_TAG, FACE_TAG_BUILTIN, FACE_TAG_ATTRIBUTE,
 	FACE_TAG_DELIMITER,
+	/* VS Code's entity.name.function under Catppuccin Mocha (a definition's
+	   name: Lean's lexer, package 12): blue, italic */
+	FACE_FUNCTION_DEFINITION,
 	/* Org's faces where no face above looks the same (package 16):
 	   org-level-7 and 8, org-todo, org-priority, org-tag, org-date,
 	   org-table, org-formula, org-drawer, org-checkbox, org-document-info,

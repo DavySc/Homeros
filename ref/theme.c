@@ -101,6 +101,7 @@ Face faces[FACES] = {
 	{ {137, 180, 250}, {0, 0, 0}, FACE_FG, {0} },     /* tag.builtin: blue */
 	{ {249, 226, 175}, {0, 0, 0}, FACE_ITALIC | FACE_FG, {0} }, /* tag.attribute: yellow, italic */
 	{ {148, 226, 213}, {0, 0, 0}, FACE_FG, {0} },     /* tag.delimiter: teal */
+	{ {137, 180, 250}, {0, 0, 0}, FACE_ITALIC | FACE_FG, {0} }, /* entity.name.function: blue, italic */
 	/* Org's faces as catppuccin/emacs (56c3cbe) gives them in Mocha; its
 	   org-drawer is Org's own LightSkyBlue, here sky, and its block lines
 	   take our comment's look on the block's mantle */
