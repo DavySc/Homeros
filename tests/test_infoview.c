@@ -581,8 +581,12 @@ int main(int argc, char **argv)
 	pump(withp, 3, 300);
 	CHECK(count(B.ev.s, "serverRestarted") == hellos);
 
+	/* \w again at once, while the child let go still ends: a new child, a new
+	   token.  The one let go is stopped until its successor has spoken, so
+	   it ends after it every time (it is quicker than a start) */
+	snprintf(s, sizeof s, "pkill -STOP -P %d -f '^[^ ]*/homeros-infoview '", (int)getpid());
+	CHECK(!system(s));
 	bridge_free();
-	/* \w again at once, while the child let go still ends: a new child, a new token */
 	CHECK(!bridge_open(&e));
 	end = ms() + 5000;
 	while ((o = slurp(opened)), count(o, "\n") < 3 && ms() < end) { free(o); loop_once(10); }
@@ -592,6 +596,8 @@ int main(int argc, char **argv)
 	html = slurp(third);
 	CHECK(strstr(html, "url=http://127.0.0.1:") && !strstr(html, token1));
 	free(html);
+	memcpy(strstr(s, "STOP"), "CONT", 4);
+	CHECK(!system(s));
 	/* the child let go deletes its file and ends; its end is not its successor's */
 	end = ms() + 3000;
 	while (!access(redirect, F_OK) && ms() < end) loop_once(10);
