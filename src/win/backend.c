@@ -29,6 +29,7 @@
 enum { RING = 256, PT = 12 };   /* font size in points: a guess until package 7 */
 
 static HWND win;
+static int wid;                 /* its tab page (backend.h's id) */
 static HDC mem;                 /* holds the DIB, which holds what is shown */
 static HBITMAP dib, nodib;
 static uint32_t *bits;          /* the DIB's pixels, for images */
@@ -208,16 +209,24 @@ static int win_open(void)
 	                 .hIcon = LoadIconW(GetModuleHandleW(NULL), MAKEINTRESOURCEW(1)) };
 	SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 	if (!RegisterClassW(&wc)) return -1;
-	win = CreateWindowExW(0, L"homeros", L"homeros", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
-	                      CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, wc.hInstance, NULL);
-	if (!win) return -1;
-	dpi = (int)GetDpiForWindow(win);
 	mem = CreateCompatibleDC(NULL);
 	timer = CreateWaitableTimerExW(NULL, NULL, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
 	if (!mem || !timer) { win_close(); return -1; }
 	nofont = SelectObject(mem, GetStockObject(SYSTEM_FONT));
 	nodib = GetCurrentObject(mem, OBJ_BITMAP);
-	if (make_font() || make_dib()) { win_close(); return -1; }
+	return 0;
+}
+
+/* One window for now (package 9 adds a window per tab page) */
+static int frame_open(int id)
+{
+	if (win) return -1;
+	wid = id;
+	win = CreateWindowExW(0, L"homeros", L"homeros", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
+	                      CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, GetModuleHandleW(NULL), NULL);
+	if (!win) return -1;
+	dpi = (int)GetDpiForWindow(win);
+	if (make_font() || make_dib()) return -1;
 	measure_period();
 	ShowWindow(win, SW_SHOWDEFAULT);
 	resized = stale = 0;   /* the size backend_size gives now is the first one */
@@ -232,7 +241,9 @@ static int win_fds(int fds[2])
 	return 2;
 }
 
-static int win_input(int *out, int n)
+static void frame_none(int id) { (void)id; }   /* the one window goes with win_close */
+
+static int win_input(int *out, int *from, int n)
 {
 	MSG m;
 	/* each message gives at most one key (the wheel stops at a full ring),
@@ -246,19 +257,22 @@ static int win_input(int *out, int n)
 	int k = 0;
 	if (resized && n > 0) { resized = 0; out[k++] = KEY_RESIZE; }
 	for (; k < n && rn; rn--, rh = (rh + 1) % RING) out[k++] = ring[rh];
+	for (int i = 0; i < k; i++) from[i] = wid;
 	return k;
 }
 
-static void win_size(int *rows, int *cols)
+static void win_size(int id, int *rows, int *cols)
 {
+	(void)id;
 	RECT r;
 	GetClientRect(win, &r);
 	*rows = r.bottom / ch > 0 ? r.bottom / ch : 1;
 	*cols = r.right / cw > 0 ? r.right / cw : 1;
 }
 
-static int win_ready(void)
+static int win_ready(int id)
 {
+	(void)id;
 	LARGE_INTEGER now, f, due;
 	if (IsIconic(win)) return 0;
 	QueryPerformanceCounter(&now);
@@ -313,8 +327,9 @@ static void draw_cell(const Grid *g, int r, int c, int cursor)
 	}
 }
 
-static void win_present(const Grid *g, Grid *shown)
+static void win_present(int id, const Grid *g, Grid *shown)
 {
+	(void)id;
 	int all = stale || shown->rows != g->rows || shown->cols != g->cols;
 	if (all && (grid_resize(shown, g->rows, g->cols) || make_dib())) return;
 	stale = 0;
@@ -396,10 +411,10 @@ static long win_clip_get(char *buf, size_t max)
 }
 
 static void win_mouse(int *row, int *col) { *row = mrow; *col = mcol; }
-static void win_cell(int *w, int *h) { *w = cw; *h = ch; }   /* thread 0's, agreed */
+static void win_cell(int id, int *w, int *h) { (void)id; *w = cw; *h = ch; }   /* thread 0's, agreed */
 
 const Backend backend_win = {
-	win_open, win_close, win_fds, win_input, win_size, win_ready,
+	win_open, win_close, frame_open, frame_none, frame_none, win_fds, win_input, win_size, win_ready,
 	win_present, win_suspend, win_clip_set, win_clip_get, win_mouse, win_cell
 };
 #endif

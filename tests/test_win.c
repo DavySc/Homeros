@@ -32,7 +32,8 @@ static const COLORREF BG = RGB(30, 30, 46), REV = RGB(205, 214, 244), RED = RGB(
 static int input(int *k, int max)
 {
 	int got = 0, r;
-	while ((r = b->input(k + got, max)) > 0) got += r;
+	static int from[1024];   /* the window each key came from */
+	while ((r = b->input(k + got, from, max)) > 0) got += r;
 	return got;
 }
 
@@ -95,15 +96,15 @@ static void wait_ready(void)
 	int fds[2];
 	CHECK(b->fds(fds) == 2);
 	int wakes = 0;   /* one, or two if the timer's clock ran a little ahead */
-	for (; wakes < 3 && !b->ready(); wakes++)
+	for (; wakes < 3 && !b->ready(0); wakes++)
 		CHECK(WaitForSingleObject((HANDLE)(INT_PTR)fds[1], 1000) == WAIT_OBJECT_0);
-	CHECK(wakes <= 2 && b->ready());
+	CHECK(wakes <= 2 && b->ready(0));
 }
 
 static void present(const Grid *g, Grid *shown)
 {
 	wait_ready();
-	b->present(g, shown);
+	b->present(0, g, shown);
 }
 
 static void put(Grid *g, int r, int c, const char *s, int width, int attr)
@@ -126,7 +127,7 @@ int main(void)
 	Grid g = { 0 }, shown = { 0 };
 
 	SetUnhandledExceptionFilter(crashed);
-	CHECK(!b->open());
+	CHECK(!b->open() && !b->win_open(0));
 	win = FindWindowW(L"homeros", NULL);
 	CHECK(win);
 	CHECK(b->fds(fds) == 2 && fds[0] == LOOP_MSGQ && fds[1] != 0);
@@ -161,7 +162,7 @@ int main(void)
 	CHECK(input(k, 7) == 600);
 
 	/* cell size, measured: a reversed space at (0, 0) */
-	b->size(&rows, &cols);
+	b->size(0, &rows, &cols);
 	CHECK(rows > 9 && cols > 10);
 	CHECK(!grid_resize(&g, rows, cols));
 	g.crow = 2; g.ccol = 2;
@@ -188,7 +189,7 @@ int main(void)
 	       from row 3, each tile its own columns, the background past it;
 	       then text again */
 		int w, h, n;
-		b->cell(&w, &h);
+		b->cell(0, &w, &h);
 		CHECK(w == cw && h == ch && 4 * cw > 32 && ch > 16);
 		CHECK((n = image_load("tests/test_image.png", 4, 1, cw, ch, 0x1e1e2e)) > 0);
 		image_put(&g, 3, 0, n, 0);
@@ -301,9 +302,9 @@ int main(void)
 	QueryPerformanceFrequency(&f);
 	wait_ready();
 	QueryPerformanceCounter(&t0);
-	b->present(&g, &shown);
-	CHECK(!b->ready());
-	do QueryPerformanceCounter(&t1); while (!b->ready());
+	b->present(0, &g, &shown);
+	CHECK(!b->ready(0));
+	do QueryPerformanceCounter(&t1); while (!b->ready(0));
 	CHECK(p > 0 && t1.QuadPart - t0.QuadPart >= p + p / 8);
 	printf("test_win (measured): next frame allowed after %.2f ms, refresh period %.2f ms\n",
 	       (double)(t1.QuadPart - t0.QuadPart) * 1000 / (double)f.QuadPart, (double)p * 1000 / (double)f.QuadPart);
@@ -315,7 +316,7 @@ int main(void)
 	/* minimised: never ready; Ctrl-Z minimises (gvim) and main.c then
 	   redraws whole: the cursor at (0, 0) is drawn too */
 	b->suspend();
-	CHECK(IsIconic(win) && !b->ready());
+	CHECK(IsIconic(win) && !b->ready(0));
 	ShowWindow(win, SW_RESTORE);
 	input(k, 1024);
 	grid_free(&shown);
@@ -337,7 +338,7 @@ int main(void)
 	int n = input(k, 1024), r2, c2, resized = 0;
 	for (int i = 0; i < n; i++) resized |= k[i] == KEY_RESIZE;
 	CHECK(resized);
-	b->size(&r2, &c2);
+	b->size(0, &r2, &c2);
 	CHECK(r2 >= rows + 2 && c2 >= cols + 4);
 	CHECK(!grid_resize(&g, r2, c2));   /* puts the cursor at (0, 0) */
 	paint(RED);
@@ -352,7 +353,7 @@ int main(void)
 	resized = 0;
 	for (int i = 0; i < n; i++) resized |= k[i] == KEY_RESIZE;
 	CHECK(resized);
-	b->size(&rows, &cols);
+	b->size(0, &rows, &cols);
 	CHECK(rows < r2 * 6 / 10 && cols < c2 * 6 / 10);   /* font sizes round, so not exactly half */
 	CHECK(!grid_resize(&g, rows, cols));
 	put(&g, 0, 0, " ", 1, ATTR_REV);

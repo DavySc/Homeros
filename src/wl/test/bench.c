@@ -68,7 +68,7 @@ int main(int argc, char **argv)
 		}
 		if (dirty && backend_wl.ready()) {
 			double a = tkey > tready ? tkey : tready;
-			core_draw(&e, &g);
+			core_draw(&e, NULL, &g);
 			double p = now();
 			backend_wl.present(&g, &shown);
 			dirty = 0;

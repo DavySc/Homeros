@@ -29,14 +29,14 @@ static int lost;               /* the backend's input is gone for good */
 static void on_input(void *ctx, int fd)
 {
 	(void)ctx; (void)fd;
-	int k[256];
+	int k[256], from[256];   /* from: one window until core has tab pages */
 	/* Between commands the loop drains the queue, so a full queue leaves the
 	   input waiting in the terminal and nothing is lost.  Inside a command
 	   (loop_breakcheck) it reads on, so a Ctrl-C behind a long paste still
 	   stops the command; keys that do not fit then are dropped. */
 	int room = QMAX - qn;
 	if (!room && !running) return;
-	int n = b->input(k, room && room < 256 ? room : 256);
+	int n = b->input(k, from, room && room < 256 ? room : 256);
 	if (n < 0) { lost = 1; loop_int = 1; return; }
 	for (int i = 0; i < n; i++) {
 		if (k[i] == KEY_RESIZE) { resized = 1; continue; }
@@ -71,11 +71,11 @@ int main(int argc, char **argv)
 	const char *file = argc > 1 + tty ? argv[1 + tty] : NULL;
 	if (shada_read()) { fprintf(stderr, "homeros: out of memory\n"); return 1; }
 	if (core_open(&e, file)) { fprintf(stderr, "homeros: %s\n", e.msg); return 1; }
-	if (b->open()) { fprintf(stderr, "homeros: no terminal or window\n"); core_free(&e); return 1; }
+	if (b->open() || b->win_open(0)) { fprintf(stderr, "homeros: no terminal or window\n"); core_free(&e); return 1; }
 	e.clip_set = b->clip_set;
 	e.clip_get = b->clip_get;
 	for (int i = 0, n = b->fds(fds); i < n; i++) loop_watch(fds[i], on_input, NULL);
-	b->size(&rows, &cols);
+	b->size(0, &rows, &cols);
 	if (grid_resize(&g, rows, cols)) goto out;
 	/* also with a file: the first draw measures "loaded in" for a later
 	   :Dashboard (thread 0's, agreed) */
@@ -84,7 +84,7 @@ int main(int argc, char **argv)
 	while (!e.quit) {
 		if (resized) {
 			resized = 0;
-			b->size(&rows, &cols);
+			b->size(0, &rows, &cols);
 			if (grid_resize(&g, rows, cols)) break;
 			dirty = 1;
 		}
@@ -108,14 +108,14 @@ int main(int argc, char **argv)
 		}
 		if (e.quit || lost) break;
 		if (dirty) syn = e.buf->syn != NULL;
-		if (dirty && b->ready()) {
+		if (dirty && b->ready(0)) {
 			/* the cluster store was emptied: shown's numbers mean nothing
 			   now, so draw all (Neovim's update_screen, UPD_CLEAR) */
 			if (grid_frame()) grid_free(&shown);
-			core_draw(&e, &g);
+			core_draw(&e, NULL, &g);
 			tools_draw(&e, &g);
 			kitten_draw(&e, &g);
-			b->present(&g, &shown);
+			b->present(0, &g, &shown);
 			dirty = 0;
 		}
 		/* deferred work only once the frame is out and no key waits */
@@ -128,7 +128,7 @@ int main(int argc, char **argv)
 		/* the journal is made durable at most a second after a change; only
 		   then is there a timeout, so an idle editor is never woken */
 		int due = e.buf->journal ? journal_due(e.buf->journal) : -1;
-		if (loop_once(qn || syn || (dirty && b->ready()) ? 0 : due)) break;
+		if (loop_once(qn || syn || (dirty && b->ready(0)) ? 0 : due)) break;
 		if (e.buf->journal && journal_due(e.buf->journal) == 0) journal_sync(e.buf->journal);
 		if (core_changed) { core_changed = 0; dirty = 1; }
 	}

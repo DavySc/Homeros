@@ -975,8 +975,9 @@ static void draw_pum(Editor *e, Grid *g)
 	}
 }
 
-void core_draw(Editor *e, Grid *g)
+void core_draw(Editor *e, Tab *t, Grid *g)
 {
+	(void)t;   /* the current one: no other tab page until package 4 adds them */
 	layout_resize(e, g->rows, g->cols);
 	core_update(e);
 	win_drawn(e);

@@ -54,6 +54,7 @@ static struct wp_fractional_scale_manager_v1 *fsm;
 static struct wp_viewporter *vpr;
 
 static struct wl_surface *surf;
+static int wid;                     /* its tab page (backend.h's id) */
 static struct xdg_surface *xsurf;
 static struct xdg_toplevel *top;
 static struct wp_viewport *view;
@@ -849,6 +850,15 @@ static int wl_open(void)
 		if (ddm) wl_data_device_add_listener(dd = wl_data_device_manager_get_data_device(ddm, seat), &dd_l, NULL);
 		if (tim) zwp_text_input_v3_add_listener(ti = zwp_text_input_manager_v3_get_text_input(tim, seat), &ti_l, NULL);
 	}
+	return 0;
+}
+
+/* One window for now (package 8 adds a surface per tab page and the
+   xdg-toplevel-tag) */
+static int wl_frame_open(int id)
+{
+	if (surf) return -1;
+	wid = id;
 	surf = wl_compositor_create_surface(comp);
 	if (fsm && vpr) {
 		wp_fractional_scale_v1_add_listener(fscale = wp_fractional_scale_manager_v1_get_fractional_scale(fsm, surf), &fs_l, NULL);
@@ -874,7 +884,9 @@ static int wl_fds(int fds[2])
 	return 2;
 }
 
-static int wl_input(int *out, int n)
+static void wl_frame_none(int id) { (void)id; }   /* the one window goes with wl_close */
+
+static int wl_input(int *out, int *from, int n)
 {
 	uint64_t x;
 	if (read(rfd, &x, sizeof x) < 0) {}   /* only clears the timer */
@@ -890,19 +902,21 @@ static int wl_input(int *out, int n)
 		rnext += c * per;
 	}
 	int i = 0;
-	for (; i < n && kn; i++, kn--, kh = (kh + 1) % KQ) out[i] = kq[kh];
+	for (; i < n && kn; i++, kn--, kh = (kh + 1) % KQ) out[i] = kq[kh], from[i] = wid;
 	arm();
 	return i;
 }
 
-static void wl_size(int *rows, int *cols)
+static void wl_size(int id, int *rows, int *cols)
 {
+	(void)id;
 	*rows = bh / cell_h > 0 ? bh / cell_h : 1;
 	*cols = bw / cell_w > 0 ? bw / cell_w : 1;
 }
 
-static int wl_ready(void)
+static int wl_ready(int id)
 {
+	(void)id;
 	if (!configured || waiting) return 0;
 	if (pw != bw || ph != bh) return 1;
 	for (int i = 0; i < NBUF; i++) if (!bufs[i].busy) return 1;
@@ -924,10 +938,10 @@ static const Grid *overlay(const Grid *cur)
 	return &vis;
 }
 
-static void wl_present(const Grid *cur, Grid *shown)
+static void wl_present(int id, const Grid *cur, Grid *shown)
 {
 	/* a grid from before the last configure waits for its KEY_RESIZE */
-	if (!wl_ready() || cur->rows * cell_h > bh || cur->cols * cell_w > bw) return;
+	if (!wl_ready(id) || cur->rows * cell_h > bh || cur->cols * cell_w > bw) return;
 	int all = shown->rows != cur->rows || shown->cols != cur->cols;
 	if (all) {                    /* also after a suspend: redraw both buffers whole */
 		if (grid_resize(shown, cur->rows, cur->cols)) return;
@@ -992,9 +1006,9 @@ static void wl_present(const Grid *cur, Grid *shown)
 static void wl_suspend(void) {}      /* a window has no terminal to give back */
 
 static void wl_mouse(int *row, int *col) { *row = mrow; *col = mcol; }
-static void wl_cell(int *w, int *h) { *w = cell_w; *h = cell_h; }   /* thread 0's, agreed */
+static void wl_cell(int id, int *w, int *h) { (void)id; *w = cell_w; *h = cell_h; }   /* thread 0's, agreed */
 
 const Backend backend_wl = {
-	wl_open, wl_close, wl_fds, wl_input, wl_size, wl_ready,
+	wl_open, wl_close, wl_frame_open, wl_frame_none, wl_frame_none, wl_fds, wl_input, wl_size, wl_ready,
 	wl_present, wl_suspend, wl_clip_set, wl_clip_get, wl_mouse, wl_cell
 };

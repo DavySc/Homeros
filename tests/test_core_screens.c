@@ -237,7 +237,7 @@ int main(int argc, char **argv)
 			in_pum = 0;
 			for (int s = 0; s < nscr; s++) {
 				if (s) token(&e, &g, tokens[s - 1]);
-				core_draw(&e, &g);
+				core_draw(&e, NULL, &g);
 				total++;
 				/* rows above the command line, the status lines by their
 				   rulers: Neovim's headless command line shows typed commands

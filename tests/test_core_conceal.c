@@ -113,7 +113,7 @@ int main(int argc, char **argv)
 			e.win->col = cc;
 			core_set_want(&e);
 			core_update(&e);
-			core_draw(&e, &g);
+			core_draw(&e, NULL, &g);
 			const Win *w = e.win;
 			int nw = win_numw(w);
 			if (w->top != top || w->left != left || w->skipcol != skip) {

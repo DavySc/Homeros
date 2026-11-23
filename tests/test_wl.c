@@ -35,7 +35,7 @@ static int cellh(void) { int w, h, b; font_cell(&w, &h, &b); return h; }
 
 static char dir[64];
 static pid_t cpid;
-static int keys[8192], nkeys;
+static int keys[8192], wins[8192], nkeys;   /* wins: the window each key came from */
 static Grid g, shown;
 
 static double now(void)
@@ -85,7 +85,7 @@ static void pump(int ms)
 	for (double end = now() + ms; now() < end;) {
 		if (imd) wl_display_flush(imd);
 		if (poll(p, 3, (int)(end - now()) + 1) <= 0) continue;
-		if (p[0].revents || p[1].revents) nkeys += backend_wl.input(keys + nkeys, (int)(sizeof keys / sizeof *keys) - nkeys);
+		if (p[0].revents || p[1].revents) nkeys += backend_wl.input(keys + nkeys, wins + nkeys, (int)(sizeof keys / sizeof *keys) - nkeys);
 		if (p[2].revents) CHECK(wl_display_dispatch(imd) >= 0);
 	}
 }
@@ -126,7 +126,7 @@ static void show(void);
 static void draw(void)
 {
 	int r, c;
-	backend_wl.size(&r, &c);
+	backend_wl.size(0, &r, &c);
 	if (g.rows != r || g.cols != c) CHECK(!grid_resize(&g, r, c));
 	grid_puts(&g, 0, 0, g.cols, "homeros", 7, ATTR_NONE, FACE_NONE);
 	g.crow = 0;
@@ -137,12 +137,12 @@ static void draw(void)
 /* Presents g as it is, once a frame may be drawn, and waits for the callback. */
 static void show(void)
 {
-	for (double end = now() + 2000; !backend_wl.ready() && now() < end;) pump(5);
-	CHECK(backend_wl.ready());
-	backend_wl.present(&g, &shown);
-	CHECK(!backend_wl.ready());     /* Present.tla: nothing more until the callback */
-	for (double end = now() + 2000; !backend_wl.ready() && now() < end;) pump(5);
-	CHECK(backend_wl.ready());
+	for (double end = now() + 2000; !backend_wl.ready(0) && now() < end;) pump(5);
+	CHECK(backend_wl.ready(0));
+	backend_wl.present(0, &g, &shown);
+	CHECK(!backend_wl.ready(0));     /* Present.tla: nothing more until the callback */
+	for (double end = now() + 2000; !backend_wl.ready(0) && now() < end;) pump(5);
+	CHECK(backend_wl.ready(0));
 }
 
 static void start(const char *fmt)
@@ -188,7 +188,7 @@ static void stop(void)
 static void size_is(int lw, int lh, int scale120)
 {
 	int r, c, bw = (lw * scale120 + 60) / 120, bh = (lh * scale120 + 60) / 120;
-	backend_wl.size(&r, &c);
+	backend_wl.size(0, &r, &c);
 	if (r != bh / cellh() || c != bw / cellw())
 		fprintf(stderr, "size %dx%d cells, want %dx%d (%dx%d px at %d/120)\n", r, c, bh / cellh(), bw / cellw(), lw, lh, scale120);
 	CHECK(r == bh / cellh() && c == bw / cellw());
@@ -260,7 +260,7 @@ static void test_sway(void)
 	zwp_input_method_v2_add_listener(im = zwp_input_method_manager_v2_get_input_method(imm, imseat), &im_l, NULL);
 	wl_display_flush(imd);
 
-	CHECK(!backend_wl.open());
+	CHECK(!backend_wl.open() && !backend_wl.win_open(0));
 	int k0 = nkeys;
 	draw();                        /* sway sizes a tiled window once it is mapped */
 	pump(100);
@@ -377,7 +377,7 @@ static void test_sway(void)
 	   cells redrawn as text take it away */
 	{
 		int w, h, n;
-		backend_wl.cell(&w, &h);
+		backend_wl.cell(0, &w, &h);
 		CHECK(w == cellw() && h == cellh() && 4 * w > 32 && h > 16);
 		CHECK((n = image_load("tests/test_image.png", 4, 1, w, h, 0x1e1e2e)) > 0);
 		image_put(&g, 2, 0, n, 0);
@@ -443,7 +443,7 @@ static void test_sway(void)
 	for (int i = 0, fds[2]; i < 6; i++) {
 		backend_wl.fds(fds);
 		struct pollfd p[2] = { { fds[0], POLLIN, 0 }, { fds[1], POLLIN, 0 } };
-		if (poll(p, 2, 500) > 0) nkeys += backend_wl.input(keys + nkeys, 4);
+		if (poll(p, 2, 500) > 0) nkeys += backend_wl.input(keys + nkeys, wins + nkeys, 4);
 	}
 	CHECK(count('a', k0) == 1 && count('h', k0) == 1 && nkeys - k0 == 8);
 
@@ -570,13 +570,13 @@ static void test_sway(void)
 	run(SWAYMSG "move scratchpad");
 	pump(100);
 	grid_puts(&g, 1, 0, g.cols, "hidden", 6, ATTR_NONE, FACE_NONE);
-	CHECK(backend_wl.ready());
-	backend_wl.present(&g, &shown);
+	CHECK(backend_wl.ready(0));
+	backend_wl.present(0, &g, &shown);
 	pump(500);
-	CHECK(!backend_wl.ready());
+	CHECK(!backend_wl.ready(0));
 	run(SWAYMSG "scratchpad show");
 	pump(300);
-	CHECK(backend_wl.ready());
+	CHECK(backend_wl.ready(0));
 
 	/* closing the window is a key; the window stays until the editor quits */
 	k0 = nkeys;
@@ -594,7 +594,7 @@ static void test_sway(void)
 		backend_wl.fds(fds);
 		struct pollfd p = { fds[0], POLLIN, 0 };
 		CHECK(poll(&p, 1, 1000) > 0);
-		CHECK(backend_wl.input(keys + nkeys, 64) == -1);
+		CHECK(backend_wl.input(keys + nkeys, wins + nkeys, 64) == -1);
 	}
 
 	backend_wl.close();
@@ -613,7 +613,7 @@ static void test_weston(void)
 {
 	start("exec weston --backend=headless --renderer=pixman --shell=kiosk-shell.so --no-config "
 	      "--width=1000 --height=700 --idle-time=0 --socket=wayland-w >%s/log 2>&1 # %s");
-	CHECK(!backend_wl.open());
+	CHECK(!backend_wl.open() && !backend_wl.win_open(0));
 	size_is(1000, 700, 120);
 	draw();
 	draw();
