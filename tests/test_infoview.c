@@ -303,12 +303,12 @@ int main(int argc, char **argv)
 	put_file(cpath, "int x;\n");
 	setenv("HOMEROS_INFOVIEW", root, 1);
 	/* xdg-open: this binary, first on PATH, as test_git_signs' script */
-	snprintf(s, sizeof s, "%s/bin", dir);
-	mkdir(s, 0755);
-	char op[300], pathv[4096];
-	snprintf(op, sizeof op, "%s/xdg-open", s);
+	char bin[80], op[96], pathv[4096];
+	snprintf(bin, sizeof bin, "%s/bin", dir);
+	mkdir(bin, 0755);
+	snprintf(op, sizeof op, "%s/xdg-open", bin);
 	CHECK(!symlink(exe, op));
-	snprintf(pathv, sizeof pathv, "%s:%s", s, getenv("PATH"));
+	snprintf(pathv, sizeof pathv, "%s:%s", bin, getenv("PATH"));
 	setenv("PATH", pathv, 1);
 
 	/* no page files: refused, with a message */
