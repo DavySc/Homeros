@@ -287,7 +287,7 @@ static void frame_remove(Frame *f)
 	if (f->next) f->next->prev = f->prev;
 }
 
-void layout_init(Editor *e, Win *w)
+void layout_init(Editor *e, Win *w, int ch)
 {
 	Frame *f = frame_new(FR_LEAF);
 	if (!f) return;
@@ -296,7 +296,7 @@ void layout_init(Editor *e, Win *w)
 	f->s.vline = (size_t)-1;
 	f->s.bot = 1;                       /* win_init_empty(): w_botline 2 */
 	e->layout = f;
-	f->size[ROWS] = e->rows - 1;        /* cmdheight 1 */
+	f->size[ROWS] = e->rows - ch;       /* win_alloc_firstwin(): Rows - p_ch */
 	f->size[COLS] = e->cols;
 	w->h = f->size[ROWS] - STATUS;
 	w->w = f->size[COLS];
@@ -336,7 +336,21 @@ void win_enter(Editor *e, Win *w)
 /* ---- splitting ---- */
 
 /* win_init(): the new window starts as a copy of the old one */
+static void win_copy_view(Win *n, const Win *o);
 static void win_init(Win *n, Win *o)
+{
+	win_copy_view(n, o);
+	n->frame->s.wrow = o->frame->s.wrow;
+	n->frame->s.fraction = o->frame->s.fraction;
+	n->frame->s.prev_fraction_row = o->frame->s.prev_fraction_row;
+	n->frame->s.vline = (size_t)-1;   /* w_valid = 0, w_valid_cursor not set */
+	n->frame->s.bot = 1;              /* win_alloc(): w_botline 2; splitkeep=cursor copies none */
+	n->frame->s.wrap = n->wrap;
+	n->frame->s.allwrap = o->frame->s.allwrap;   /* win_copy_options() */
+}
+
+/* what win_init() copies of the window itself */
+static void win_copy_view(Win *n, const Win *o)
 {
 	n->buf = o->buf;
 	n->alt = o->alt;
@@ -349,13 +363,6 @@ static void win_init(Win *n, Win *o)
 	n->jumpidx = o->jumpidx;
 	n->pcmark = o->pcmark;                                            /* win_init() */
 	n->changeidx = o->changeidx;
-	n->frame->s.wrow = o->frame->s.wrow;
-	n->frame->s.fraction = o->frame->s.fraction;
-	n->frame->s.prev_fraction_row = o->frame->s.prev_fraction_row;
-	n->frame->s.vline = (size_t)-1;   /* w_valid = 0, w_valid_cursor not set */
-	n->frame->s.bot = 1;              /* win_alloc(): w_botline 2; splitkeep=cursor copies none */
-	n->frame->s.wrap = n->wrap;
-	n->frame->s.allwrap = o->frame->s.allwrap;   /* win_copy_options() */
 }
 
 static void flatten(Editor *e, Frame *f);
@@ -536,6 +543,8 @@ static Win *frame_take_out(Editor *e, Win *w, int *dir, Frame **alt)
 }
 
 static int one_window(Editor *e) { return !e->wins->next; }
+static Tab *alt_tab(Editor *e);
+static void tab_close_last(Editor *e, Tab *to, int enter);
 
 static void win_forget(Editor *e, Win *w)
 {
@@ -607,6 +616,7 @@ void win_close(Editor *e, Win *w)
 
 int core_close(Editor *e, int force)
 {
+	if (one_window(e) && e->tabs->next) { tab_close_last(e, alt_tab(e), 1); return 0; }
 	if (one_window(e)) {
 		if (quit_check(e, force)) return -1;
 		e->quit = 1;
@@ -888,3 +898,183 @@ void core_resize(Editor *e, int vertical, long n, int set)
 }
 
 void core_equal(Editor *e) { win_equal(e, NULL, 0, 'b'); }
+
+/* ---- tab pages (window.c), each in its own OS window (Emacs's frames) ---- */
+
+static int tab_ids;               /* Tab.id: never reused, so the backend's handle stays unique */
+
+Win *tab_firstwin(const Editor *e, const Tab *t) { return t == e->tab ? e->wins : t->wins; }
+
+/* leave_tabpage() and use_tabpage(), without what goto_tabpage_tp() adds:
+   drawing another tab page and closing its windows look at it this way */
+void tab_use(Editor *e, Tab *t)
+{
+	Tab *o = e->tab;
+	o->win = e->win; o->prev = e->prev; o->wins = e->wins; o->layout = e->layout;
+	o->rows = e->rows; o->cols = e->cols;
+	e->tab = t;
+	e->win = t->win; e->prev = t->prev; e->wins = t->wins; e->layout = t->layout;
+	e->rows = t->rows; e->cols = t->cols;
+	e->buf = e->win->buf;
+}
+
+int tab_first(Editor *e)
+{
+	tab_ids = 1;
+	return (e->tab = e->tabs = calloc(1, sizeof *e->tab)) ? 0 : -1;
+}
+
+void tab_free_all(Editor *e)
+{
+	for (Tab *t = e->tabs, *nx; t; t = nx) {
+		nx = t->next;
+		if (t != e->tab) {
+			for (Win *w = t->wins, *wn; w; w = wn) { wn = w->next; free(w); }
+			layout_free(t->layout);
+		}
+		free(t);
+	}
+}
+
+/* enter_tabpage(): the tab page's window as win_enter_ext() with
+   WEE_CURWIN_INVALID, its previous window kept */
+void core_tab_enter(Editor *e, Tab *t)
+{
+	if (t == e->tab) return;
+	tab_use(e, t);
+	Win *w = e->win, *pw = e->prev;
+	e->win = NULL;
+	win_enter(e, w);
+	e->prev = pw;
+}
+
+/* alt_tabpage(): the next tab page, or the one before the last */
+static Tab *alt_tab(Editor *e)
+{
+	if (e->tab->next) return e->tab->next;
+	Tab *t = e->tabs;
+	while (t->next != e->tab) t = t->next;
+	return t;
+}
+
+/* close_last_window_tabpage(): the current tab page's only window and the
+   tab page go; to becomes current, entered (goto_tabpage_tp()) or, back
+   from closing another tab page, as it was */
+static void tab_close_last(Editor *e, Tab *to, int enter)
+{
+	Tab *t = e->tab, **p = &e->tabs;
+	Win *w = e->win;
+	core_wininfo_set(w->buf, w, 1);    /* close_buffer() remembers the cursor */
+	if (enter) core_tab_enter(e, to);
+	else tab_use(e, to);
+	while (*p != t) p = &(*p)->next;
+	*p = t->next;
+	win_forget(e, w);                  /* its frame is the tab page's layout */
+	free(t);
+}
+
+/* win_new_tabpage() after the current one: one window copied from the
+   current one, as win_alloc_firstwin(oldwin) */
+static int tab_new(Editor *e)
+{
+	Tab *t = calloc(1, sizeof *t);
+	Win *w = calloc(1, sizeof *w), *o = e->win;
+	int ch = cmdheight(e);
+	if (!t || !w) { free(t); free(w); core_msg(e, "out of memory"); return -1; }
+	t->id = tab_ids++;
+	t->next = e->tab->next;
+	e->tab->next = t;
+	t->win = t->wins = w;
+	t->rows = e->rows;
+	t->cols = e->cols;
+	tab_use(e, t);
+	layout_init(e, w, ch);
+	if (!e->layout) { core_msg(e, "out of memory"); return -1; }
+	win_init(w, o);
+	/* win_alloc_firstwin() sizes the window without a status line, and
+	   last_status() then takes one through win_new_height(): the cursor
+	   keeps its fraction of the window (measured: :tab split of a narrow
+	   window scrolls as nvim's does) */
+	e->buf = w->buf;
+	w->h += STATUS;
+	win_new_height(e, w, w->h - STATUS);
+	e->win = NULL;
+	win_enter(e, w);
+	e->prev = NULL;
+	return 0;
+}
+
+int core_tabnew(Editor *e, const char *path)
+{
+	Win *ow = e->win;
+	if (tab_new(e)) return -1;
+	if (!path) return 0;
+	if (edit_split(e, path)) return -1;
+	/* ex_splitview(): the window left gets the new buffer as its alternate */
+	if (ow->buf != e->buf) ow->alt = e->buf;
+	return 0;
+}
+
+int core_tabclose(Editor *e, Tab *t)
+{
+	Tab *cur = e->tab;
+	if (!e->tabs->next) { core_msg(e, "E784: Cannot close last tab page"); return -1; }
+	if (!t) t = cur;
+	/* tabpage_close(): the other windows first, then the last one */
+	if (t != cur) tab_use(e, t);
+	core_only(e);
+	tab_close_last(e, t == cur ? alt_tab(e) : cur, t == cur);
+	return 0;
+}
+
+int core_tabonly(Editor *e)
+{
+	while (e->tabs->next) core_tabclose(e, e->tabs == e->tab ? e->tabs->next : e->tabs);
+	return 0;
+}
+
+int core_win_to_tab(Editor *e, int n)
+{
+	Win *wp = e->win;
+	Tab *old = e->tab, *to = NULL;
+	if (!n) {
+		/* do_window() 'T': a new tab page with a copy, then the window goes */
+		if (one_window(e)) { core_msg(e, "Already only one window"); return 0; }
+		if (tab_new(e)) return -1;
+		to = e->tab;
+	} else {
+		/* SPC 5 m {n} (DESIGN.md, New approaches): a split in tab page n
+		   takes the window's view, then the window goes */
+		to = e->tabs;
+		while (to && --n > 0) to = to->next;
+		if (!to || to == old) return -1;
+		core_tab_enter(e, to);
+		if (core_split(e, 0, 0)) { core_tab_enter(e, old); return -1; }
+		win_copy_view(e->win, wp);
+		e->win->frame->s.vline = (size_t)-1;
+		e->buf = wp->buf;
+	}
+	tab_use(e, old);
+	if (one_window(e)) tab_close_last(e, to, 1);
+	else { win_close(e, wp); core_tab_enter(e, to); }
+	return 0;
+}
+
+/* close_windows()'s other tab pages: their windows on b close, and a tab
+   page left without one closes */
+void close_othertabs(Editor *e, Buf *b)
+{
+	Tab *cur = e->tab;
+	for (Tab *t = e->tabs, *nx; t; t = nx) {
+		nx = t->next;
+		if (t == cur) continue;
+		tab_use(e, t);
+		for (Win *w = e->wins, *wn; w; w = wn) {
+			wn = w->next;
+			if (w->buf != b) continue;
+			if (one_window(e)) { tab_close_last(e, cur, 0); break; }
+			win_close(e, w);
+		}
+		if (e->tab != cur) tab_use(e, cur);
+	}
+}

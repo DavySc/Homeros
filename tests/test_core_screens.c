@@ -103,7 +103,7 @@ static long count_of(const char **t)
 static void token(Editor *e, Grid *g, const char *t)
 {
 	Win *w = e->win;
-	int one = !e->wins->next;
+	int one = !e->wins->next && !e->tabs->next;
 	if (!strcmp(t, "nop")) return;         /* a token the recorder left out: see the .py */
 	if (!strncmp(t, "pum:", 4)) {
 		/* A, then what complete() and CTRL-N do: the selected word (none
@@ -148,8 +148,8 @@ static void token(Editor *e, Grid *g, const char *t)
 		goto upd;
 	}
 	static const char *const ex[] = { "wrap", "nowrap", "sp", "vs", "new", "vnew", "close", "q", "only",
-	                                  "bn", "bp", "alt", "enew", "bd" };
-	int x = t[1] == ':' && (t[0] == 'e' || t[0] == 'b');
+	                                  "bn", "bp", "alt", "enew", "bd", "tabsp", "tabnew", "tabclose", "tabonly" };
+	int x = (t[1] == ':' && (t[0] == 'e' || t[0] == 'b')) || !strncmp(t, "tabe:", 5);
 	for (size_t i = 0; i < sizeof ex / sizeof *ex; i++) x |= !strcmp(t, ex[i]);
 	if (x) { keys_feed(e, ':', 0); keys_feed(e, KEY_ESC, 0); }
 	if (!strncmp(t, "e:", 2)) { core_edit_file(e, t + 2, 0); goto upd; }
@@ -169,6 +169,14 @@ static void token(Editor *e, Grid *g, const char *t)
 	}
 	if (!strcmp(t, "enew")) { core_edit_file(e, "", 0); goto upd; }
 	if (!strcmp(t, "bd")) { core_buf_delete(e, 0, 0); goto upd; }
+	if (!strcmp(t, "tabsp") || !strcmp(t, "tabnew") || !strncmp(t, "tabe:", 5)) {
+		core_tabnew(e, t[3] == 's' ? NULL : t[3] == 'n' ? "" : t + 5);
+		goto upd;
+	}
+	if (!strcmp(t, "tabclose")) { core_tabclose(e, NULL); goto upd; }
+	if (!strcmp(t, "tabonly")) { core_tabonly(e); goto upd; }
+	/* SPC 5 m {n}: the keys, as Davy types them */
+	if (!strncmp(t, "tabm:", 5)) { keys_input(e, ' ', 1); keys_input(e, '5', 1); keys_input(e, 'm', 1); keys_input(e, t[5], 0); goto upd; }
 	/* the scrolling keys go through keys_feed as typed, count first, so
 	   keys update the wanted column first as Neovim's lazy curswant does
 	   (calling the core directly skipped that: PR 26) */

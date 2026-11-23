@@ -182,6 +182,46 @@ int main(void)
 	feed(&d, "c");
 	CHECK(!d.ks.pending);
 	core_free(&d);
+	/* frames (tab pages): Emacs's C-x 5 keys as SPC 5, gt, CTRL-W T */
+	memcpy(path + sizeof path - 7, "XXXXXX", 6);
+	fd = mkstemp(path);
+	CHECK(fd >= 0 && write(fd, "abcb\n", 5) == 5 && !close(fd) && !core_open(&d, path));
+	int ntab = 0;
+	feed(&d, "\x1b 52");                       /* make-frame (Esc: the c above left an operator) */
+	for (Tab *t = d.tabs; t; t = t->next) ntab++;
+	CHECK(ntab == 2 && d.tab == d.tabs->next && d.buf == d.tabs->win->buf);
+	feed(&d, " 5o");                           /* other-frame wraps */
+	CHECK(d.tab == d.tabs);
+	feed(&d, "gt");
+	CHECK(d.tab == d.tabs->next);
+	feed(&d, "1gt");
+	CHECK(d.tab == d.tabs);
+	feed(&d, "\x17v 5m2");                     /* the window into frame 2 */
+	CHECK(d.tab == d.tabs->next && d.wins->next && !d.tabs->wins->next);
+	feed(&d, " 5m9");                          /* no frame 9: nothing moves */
+	CHECK(d.tab == d.tabs->next && d.wins->next);
+	feed(&d, "\x17T");                         /* CTRL-W T: a third frame */
+	CHECK(d.tab == d.tabs->next->next && !d.wins->next && !d.tabs->next->wins->next);
+	feed(&d, " 51");                           /* delete-other-frames */
+	CHECK(!d.tabs->next && d.tab == d.tabs);
+	feed(&d, " 50");
+	CHECK(!strcmp(d.msg, "E784: Cannot close last tab page"));
+	feed(&d, " 5f");                           /* the picker, in a new frame */
+	CHECK(picked(&d) && d.tabs->next && d.tab == d.tabs->next);
+	/* the system focused another frame: what is half typed ends */
+	feed(&d, "0ia");
+	keys_input(&d, KEY_FOCUS, 0);
+	CHECK(d.mode == MODE_NORMAL && at(&d, "aabcb\n", 0));
+	feed(&d, "d");
+	keys_input(&d, KEY_FOCUS, 0);
+	feed(&d, "x");
+	CHECK(!d.ks.pending && at(&d, "abcb\n", 0));
+	feed(&d, " 5m");
+	keys_input(&d, KEY_FOCUS, 0);
+	feed(&d, "2x");                            /* a count, not a frame */
+	CHECK(!d.ks.pending && at(&d, "cb\n", 0));
+	core_free(&d);
+	unlink(path);
 	puts("test_keys_map: ok");
 	return 0;
 }

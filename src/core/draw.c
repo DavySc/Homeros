@@ -975,9 +975,21 @@ static void draw_pum(Editor *e, Grid *g)
 	}
 }
 
+static void draw(Editor *e, Grid *g, int cur);
+/* A tab page that is not current is drawn as its own OS window shows it:
+   its windows, and no command line, message or popup: those belong to the
+   frame the user types in */
 void core_draw(Editor *e, Tab *t, Grid *g)
 {
-	(void)t;   /* the current one: no other tab page until package 4 adds them */
+	Tab *cur = e->tab;
+	if (!t || t == cur) { draw(e, g, 1); return; }
+	tab_use(e, t);
+	draw(e, g, 0);
+	tab_use(e, cur);
+}
+
+static void draw(Editor *e, Grid *g, int cur)
+{
 	layout_resize(e, g->rows, g->cols);
 	core_update(e);
 	win_drawn(e);
@@ -992,6 +1004,10 @@ void core_draw(Editor *e, Tab *t, Grid *g)
 	}
 	/* the command line, or the mode and the last message (showmode) */
 	int r = e->layout->size[ROWS];
+	Win *w = e->win;
+	g->crow = w->y + w->frame->s.wrow;
+	g->ccol = w->x + w->frame->s.wcol;
+	if (!cur) return;
 	if (e->mode == MODE_CMDLINE) {
 		char t[2] = { (char)e->cmdtype, 0 };
 		int cc = grid_puts(g, r, 1, g->cols, e->cmd, e->cmdpos, ATTR_NONE, FACE_NONE);
@@ -1008,7 +1024,4 @@ void core_draw(Editor *e, Tab *t, Grid *g)
 	if (m >= 0) grid_puts(g, e->rows - 1, 0, g->cols, mode[m], strlen(mode[m]), ATTR_NONE, FACE_NONE);
 	else grid_puts(g, r, 0, g->cols, e->msg, strlen(e->msg), ATTR_NONE, FACE_NONE);
 	draw_pum(e, g);
-	Win *w = e->win;
-	g->crow = w->y + w->frame->s.wrow;
-	g->ccol = w->x + w->frame->s.wcol;
 }

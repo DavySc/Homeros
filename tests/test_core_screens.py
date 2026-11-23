@@ -14,7 +14,9 @@ import concurrent.futures, json, os, random, subprocess, sys, tempfile
 
 SETUP = ('set noswapfile nomore shortmess+=I expandtab shiftwidth=4 softtabstop=4 autoindent '
          'smarttab nostartofline backspace=indent,eol,start number relativenumber '
-         'scrolloff=6 splitright splitbelow nowrap')
+         'scrolloff=6 splitright splitbelow nowrap showtabline=0')
+# showtabline=0: each tab page is its own OS window (frames), whose screen
+# is the tab page's alone; the terminal's tabline is the tty's (package 6)
 
 # completion items for the popup token, the same table as the C side's:
 # ten, then the ten again with 2 and with 3 after the word (complete()
@@ -47,6 +49,10 @@ def gen_tokens(r, nfiles):
                                   'w:_', 'w:|', 'w:x', 'w:r', 'w:R', 'w:H', 'w:J', 'w:K', 'w:L']))
             # CTRL-W c, o and q with a count name a window: not used here
             if toks[-1].startswith('w:') and cnt and toks[-1][2] not in 'coq': toks[-1] = 'w' + cnt + toks[-1][1:]
+        elif c < .31:
+            # tab pages, shown as frames: SPC 5 2 is :tab split, SPC 5 m {n} is MOVE() below
+            toks.append(r.choice(['tabsp', 'tabnew', 'tabe:f%d' % r.randrange(nfiles), 'tabclose', 'tabonly',
+                                  'k:gt', 'k:gT', 'k:%sgt' % r.randint(1, 4), 'k:2gT', 'w:T', 'tabm:%d' % r.randint(1, 4)]))
         elif c < .35:
             toks.append(r.choice(['e:f%d' % r.randrange(nfiles), 'b:%d' % r.randint(1, nfiles + 1),
                                   'bn', 'bp', 'alt', 'enew', 'bd']))
@@ -103,8 +109,11 @@ def nvim_keys(t):
         items = ','.join("{'word':'%s','kind':'%s','menu':'%s'}" % it for it in PUM[a:a + n])
         return ['A', '<Cmd>call complete(col("."), [%s])<CR>' % items] + ['<C-n>'] * s + ['<Cmd>lua CAPTURE()<CR>']
     if t == 'alt': return '<C-^>'
+    if t == 'tabsp': return ':tab split<CR>'
+    if t.startswith('tabe:'): return ':tabnew %s<CR>' % t[5:]
+    if t.startswith('tabm:'): return '<Cmd>lua MOVE(%s)<CR>' % t[5:]
     if t.startswith('m:'): return 'm' + t[2]
-    cmds = {'sp', 'vs', 'new', 'vnew', 'close', 'q', 'only', 'bn', 'bp', 'enew', 'bd'}
+    cmds = {'sp', 'vs', 'new', 'vnew', 'close', 'q', 'only', 'bn', 'bp', 'enew', 'bd', 'tabnew', 'tabclose', 'tabonly'}
     if t in cmds: return ':%s<CR>' % t
     i = 0
     while t[i].isdigit(): i += 1
@@ -139,6 +148,22 @@ local function marks()
   end
   return table.concat(s, ' ')
 end
+-- SPC 5 m {n} (DESIGN.md, New approaches), from Neovim's own calls: a
+-- split below the current window of tab page n takes the window's buffer
+-- and view, then the window closes (its tab page with it when alone)
+function MOVE(n)
+  local to, cur = vim.api.nvim_list_tabpages()[n], vim.api.nvim_get_current_tabpage()
+  if not to or to == cur then return end
+  local w, v = vim.api.nvim_get_current_win(), vim.fn.winsaveview()
+  local b = vim.api.nvim_win_get_buf(w)
+  vim.api.nvim_set_current_tabpage(to)
+  vim.cmd('split')
+  vim.api.nvim_win_set_buf(0, b)
+  vim.fn.winrestview(v)
+  local nw = vim.api.nvim_get_current_win()
+  vim.api.nvim_win_close(w, true)
+  vim.api.nvim_set_current_win(nw)
+end
 -- the popup token reads the screen in Insert mode, with the popup up
 -- ('redraw!' would close it)
 function CAPTURE() captured = screen(false); cmarks = marks() end
@@ -149,7 +174,7 @@ vim.cmd('normal! 1G^')
 local out, mk, nop = {screen()}, {marks()}, {}
 for i, ks in ipairs(c.keys) do
   -- closing the last window would quit: the C side skips it too
-  local last = #vim.api.nvim_tabpage_list_wins(0) == 1
+  local last = #vim.api.nvim_tabpage_list_wins(0) == 1 and #vim.api.nvim_list_tabpages() == 1
   local k1 = table.concat(ks)
   if last and (k1 == ':q<CR>' or k1 == ':close<CR>' or k1:match('<C%-w>[cq]$')) then ks = {} end
   -- x on an empty line leaves an empty undo step (ref/keys.c), which the

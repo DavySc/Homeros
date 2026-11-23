@@ -121,9 +121,12 @@ static const char *const maps[] = {
 	" ff", " fg", " fr", " ,", " e", " pv", "-", " D",
 	" gg", " gs", " gl", " gL", " gd", " gb", " gB", " hs", " hr", " hS", " hu", " hp", " is", " uk", " up",
 	"cit", "ciT",  /* nvim-orgmode's, buffer-local to .org */
-	" cc", " cC"
+	" cc", " cC",
+	/* Emacs's C-x 5 frame keys, as SPC 5 (C-x is Vim's decrement) */
+	" 52", " 5f", " 5o", " 50", " 51", " 5m"
 };
 static int lead[3], nlead;   /* the keys typed of a map not yet complete */
+static int tabmove;          /* SPC 5 m typed: the next key is the frame's number */
 
 /* snacks' :Dashboard, also SPC D: the start screen on a new empty buffer
    (:enew) (package 5's, agreed) */
@@ -135,6 +138,11 @@ static void dashboard(Editor *e) { if (!core_edit_file(e, "", 0)) tools_dash(e, 
    (Neovim's vgetorpeek() when no map matches) */
 static int map(Editor *e, int k)
 {
+	if (tabmove) {
+		tabmove = e->ks.pending = 0;
+		if (k < '1' || k > '9' || core_win_to_tab(e, k - '0')) beep();
+		return 1;
+	}
 	if (!nlead && (e->mode != MODE_NORMAL || !normal_mappable(0))) return 0;
 	E = e;   /* for is_ft() and the maps that edit */
 	lead[nlead++] = k;
@@ -161,6 +169,20 @@ static int map(Editor *e, int k)
 		          break;
 		case 'i': org_cycle(m[2] == 't' ? 1 : -1); break;
 		case 'D': dashboard(e); break;
+		/* C-x 5 2 make-frame, 5 f find-file-other-frame (the picker in a
+		   new frame), 5 o other-frame, 5 0 delete-frame, 5 1
+		   delete-other-frames; 5 m {n} moves the window to frame n
+		   (DESIGN.md, New approaches) */
+		case '5':
+			switch (m[2]) {
+			case '2': core_tabnew(e, NULL); break;
+			case 'f': if (!core_tabnew(e, NULL)) tools_pick(e, PICK_SMART); break;
+			case 'o': goto_tabpage(0); break;
+			case '0': core_tabclose(e, NULL); break;
+			case '1': core_tabonly(e); break;
+			default: tabmove = e->ks.pending = 1;
+			}
+			break;
 		case 's': tools_pick(e, PICK_SNIPPETS); break;
 		/* Davy's emacs SPC cc compile (prompts) and cC recompile */
 		case 'c':
@@ -189,6 +211,14 @@ static int map(Editor *e, int k)
 
 void keys_input(Editor *e, int k, int pending)
 {
+	/* keys.h KEY_FOCUS: what is half done ends, as Esc would end it */
+	if (k == KEY_FOCUS) {
+		int m = nlead || tabmove;
+		nlead = tabmove = 0;
+		if (e->mode == MODE_INSERT || e->ks.visual || (!m && (e->ks.pending || !normal_mappable(0)))) keys_feed(e, KEY_ESC, 0);
+		else e->ks.pending = 0;
+		return;
+	}
 	if (!(e->ks.pending ? map(e, k) : tools_key(e, k) || git_key(e, k) || snip_key(e, k, pending) || map(e, k))) keys_feed(e, k, pending);
 }
 

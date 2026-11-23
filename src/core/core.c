@@ -488,13 +488,14 @@ int core_open(Editor *e, const char *path)
 	memset(e, 0, sizeof *e);
 	top_file_num = 0;
 	e->rows = 24; e->cols = 80;
+	if (tab_first(e)) return -1;
 	Win *w = calloc(1, sizeof *w);
 	e->win = w;
 	if (!w || !(e->buf = buf_new(e, path))) { free(w); e->win = NULL; return -1; }
 	e->wins = w;
 	w->buf = e->buf;
 	w->conceal = 2;   /* Davy's 'conceallevel' */
-	layout_init(e, w);
+	layout_init(e, w, 1);
 	if (!e->layout) { core_msg(e, "out of memory"); return -1; }
 	/* readfile(): line 1's first non-blank (measured in tmux, 7 texts) */
 	w->col = core_first_nonblank(e, 0);
@@ -507,6 +508,7 @@ void core_free(Editor *e)
 	for (int k = 0; k < 2; k++)
 		for (Buf *b = k ? unlisted : e->bufs, *nx; b; b = nx) { nx = b->next; buf_free(b); }
 	unlisted = NULL;
+	tab_free_all(e);
 	for (Win *w = e->wins, *nx; w; w = nx) { nx = w->next; free(w); }
 	layout_free(e->layout);
 	free(e->lb);
@@ -683,8 +685,10 @@ int core_edit_file(Editor *e, const char *path, int force) { return edit_file(e,
    window keeps no position in the buffer it was split from */
 int core_new(Editor *e, int vertical)
 {
-	return core_split(e, vertical, 0) ? -1 : edit_file(e, "", 0, 1);
+	return core_split(e, vertical, 0) ? -1 : edit_split(e, "");
 }
+
+int edit_split(Editor *e, const char *path) { return edit_file(e, path, 0, 1); }
 
 /* split: the window was split for this command (no buflist_altfpos()) */
 static int edit_file(Editor *e, const char *path, int force, int split)
@@ -692,7 +696,18 @@ static int edit_file(Editor *e, const char *path, int force, int split)
 	Buf *b = e->buf;
 	Win *w = e->win;
 	core_setpcmark(e);                      /* do_exedit(), empty_curbuf(), even when it fails */
-	if (!path || (*path && b->path && !strcmp(b->path, path))) {   /* :e, :e!, :e on its own name */
+	int same = path && *path && b->path && !strcmp(b->path, path);
+	/* after a split (:tabnew {file}) do_ecmd() has ECMD_OLDBUF: its own
+	   name is "nothing changes", the cursor on line 1's first non-blank
+	   (measured against nvim 0.12, 3 runs) */
+	if (split && same) {
+		w->line = 0;
+		w->col = core_first_nonblank(e, 0);
+		core_set_want(e);
+		win_ecmd_topline(e, w);
+		return 0;
+	}
+	if (!path || same) {   /* :e, :e!, :e on its own name */
 		if (!b->path) { core_msg(e, "E32: No file name"); return -1; }
 		if (!force && core_modified(b)) {
 			core_msg(e, "E37: No write since last change (add ! to override)");
@@ -725,7 +740,7 @@ static int edit_file(Editor *e, const char *path, int force, int split)
 		b->saved_seq = undo_seq(b->undo);
 		b->changed = 0;                    /* the file as it is now */
 		if (b->journal) journal_saved(b->journal);
-		for (Win *v = e->wins; v; v = v->next) if (v->buf == b) win_check_cursor(v);
+		FOR_ALL_TAB_WINDOWS(e, v) if (v->buf == b) win_check_cursor(v);
 		if (line1_blank(e)) { w->line = 0; w->col = core_first_nonblank(e, 0); }
 		core_set_want(e);
 		win_ecmd_topline(e, w);
@@ -738,7 +753,7 @@ static int edit_file(Editor *e, const char *path, int force, int split)
 	   no other window shows (curbuf_reusable()); the alternate becomes the
 	   buffer itself unless there was one */
 	int shown = 0;
-	for (Win *v = e->wins; v; v = v->next) shown += v->buf == b;
+	FOR_ALL_TAB_WINDOWS(e, v) shown += v->buf == b;   /* b_nwindows */
 	if (!to && !b->path && shown <= 1 && buf_empty(b) && !core_modified(b)) {
 		clrallmarks(b);
 		if (*path) {
@@ -841,18 +856,21 @@ int core_buf_delete(Editor *e, int nr, int force)
 			nx = w->next;
 			if (w->buf == b && w != e->win) win_close(e, w);
 		}
+		close_othertabs(e, b);
 		if (core_edit_file(e, "", 1)) return -1;
 		if (e->buf != b) buf_unlist(e, b);
 		return 0;
 	}
-	/* the windows on b close while they are not the last */
-	while (e->win->buf == b && e->wins->next) win_close(e, e->win);
+	/* the windows on b close while they are not the last (last_window():
+	   the last of a tab page closes the tab page) */
+	while (e->win->buf == b && (e->wins->next || e->tabs->next)) core_close(e, 1);
 	if (e->win->buf != b) {
 		jump_forget(e->win, b);
 		for (Win *w = e->wins, *nx; w; w = nx) {
 			nx = w->next;
 			if (w->buf == b && e->wins->next) win_close(e, w);
 		}
+		close_othertabs(e, b);
 		buf_unlist(e, b);
 		return 0;
 	}
@@ -901,10 +919,15 @@ static Mark *list_mark(Editor *e, Buf *b, size_t *i)
 		size_t k = (*i)++;
 		if (k < (size_t)b->nchange) return &b->change[k];
 		k -= (size_t)b->nchange;
-		Win *w = e->wins;
-		while (w && k >= (size_t)w->njump) { k -= (size_t)w->njump; w = w->next; }
-		if (!w) return NULL;
-		if (w->jump[k].buf == b) return &w->jump[k].m;
+		FOR_ALL_TAB_WINDOWS(e, w) {   /* every tab page's jump lists, as mark_adjust_internal() */
+			if (k < (size_t)w->njump) {
+				if (w->jump[k].buf == b) return &w->jump[k].m;
+				goto next;
+			}
+			k -= (size_t)w->njump;
+		}
+		return NULL;
+	next:;
 	}
 }
 
@@ -925,7 +948,7 @@ static void mark_adjust1(Mark *m, int nodel, size_t l1, size_t l2, long amount, 
    (an end past the range, so that an empty range at line 0 has one) */
 static void adjust(Editor *e, Buf *b, size_t l1, size_t l2, long amount, long after)
 {
-	for (Win *w = e->wins; w; w = w->next) {
+	FOR_ALL_TAB_WINDOWS(e, w) {
 		if (w->buf != b || w == e->win) continue;
 		if (w->top >= l1 && w->top < l2) {
 			if (amount == DEL) w->top = l1 ? l1 - 1 : 0;
@@ -981,7 +1004,7 @@ void core_mark_join(Editor *e, size_t line, size_t mincol, long line_amount, lon
 	Mark *m;
 	for (size_t i = 0; (m = list_mark(e, b, &i));) col_adjust(m, line, mincol, line_amount, col_amount, spaces_removed);
 	/* the cursor of the other windows on b */
-	for (Win *w = e->wins; w; w = w->next)
+	FOR_ALL_TAB_WINDOWS(e, w)
 		if (w->buf == b && w != e->win) {
 			Mark c = { w->line, w->col, 1 };
 			col_adjust(&c, line, mincol, line_amount, col_amount, spaces_removed);
@@ -1076,7 +1099,7 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 	/* changed_common(): a change at or before a window's cursor makes its
 	   view be looked at again */
 	if (!r)
-		for (Win *w = e->wins; w; w = w->next) {
+		FOR_ALL_TAB_WINDOWS(e, w) {
 			if (w->buf != b) continue;
 			WinState *ws = &w->frame->s;
 			int bv = ws->bv;
@@ -1149,7 +1172,7 @@ int core_undo(Editor *e, int redo)
 	}
 	size_t n = core_lines(e);
 	size_t first = text_line_of(e->buf->text, w.lo), last;
-	for (Win *v = e->wins; v; v = v->next) if (v->buf == e->buf) win_invalidate(v);
+	FOR_ALL_TAB_WINDOWS(e, v) if (v->buf == e->buf) win_invalidate(v);
 	e->buf->flags = w.flags;
 	int at_start = w.lo == core_line_start(e, first);
 	UndoMarks *u = umarks_get(b, seq);
