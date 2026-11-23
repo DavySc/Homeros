@@ -163,13 +163,12 @@ win: wincc
 # every file of the Windows editor compiles for Windows under our warnings,
 # so a POSIX call in a shared module fails here, not first in a trial build.
 # Not the terminal (no Windows half yet) or the Wayland window (POSIX only):
-# the trial build stubs them.  It
-# reads tree-sitter's headers only (not $(CPPFLAGS), which holds Linux paths
-# and -DHOMEROS_WL), so it needs the sources, not $(OBJS); the fonts' Windows
-# headers come first, before the distribution's
+# the trial build stubs them.  It compiles only, so the distribution's
+# FreeType and HarfBuzz headers in $(CPPFLAGS) serve (the Windows build links
+# src/font/windows.nix's), and it needs the sources, not $(OBJS)
 WIN_SRCS = $(foreach m,$(filter-out tty wl sql,$(MODULES)),$(call pick,$(m))) $(wildcard src/win/*.c) src/main.c
-wincc: build/font/windows.lib | $(SYN)/src build/win
-	@for f in $(WIN_SRCS); do zig cc -target x86_64-windows-gnu $(WARN) -Ibuild/font/include -Ibuild/font/include/harfbuzz $(CPPFLAGS) -c -o build/win/cc.o $$f || exit 1; done
+wincc: | $(SYN)/src build/win
+	@for f in $(WIN_SRCS); do zig cc -target x86_64-windows-gnu $(WARN) $(CPPFLAGS) -c -o build/win/cc.o $$f || exit 1; done
 	zig rc /fo build/win/homeros.res assets/homeros.rc
 	@echo "wincc: $(words $(WIN_SRCS)) files and the icon resource compile for Windows"
 build/win:
