@@ -1,0 +1,120 @@
+busy main pass 2.16
+busy head pass 2.16
+busy main pass 2.23
+busy head pass 2.23
+busy main FAIL 2.23 test_org.c:1288: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 100000
+busy head pass 2.23
+busy main pass 2.23
+busy head pass 2.29
+busy main FAIL 2.29 test_org.c:1288: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 100000
+busy head pass 2.29
+busy main pass 2.29
+busy head FAIL 2.29 test_org.c:1301: CHECK(ms < gate[k].ms) failed
+busy main FAIL 2.35 test_org.c:1288: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 100000
+busy head pass 2.35
+busy main pass 2.35
+busy head pass 2.35
+busy main pass 2.35
+busy head pass 2.40
+busy main pass 2.40
+busy head pass 2.40
+busy main pass 2.40
+busy head pass 2.40
+busy main pass 2.45
+busy head FAIL 2.45 test_org.c:1301: CHECK(ms < gate[k].ms) failed
+busy main pass 2.45
+busy head pass 2.45
+busy main pass 2.50
+busy head pass 2.50
+busy main pass 2.50
+busy head pass 2.50
+busy main pass 2.50
+busy head pass 2.54
+busy main pass 2.54
+busy head pass 2.54
+busy main pass 2.54
+busy head pass 2.54
+busy main pass 2.57
+busy head pass 2.57
+busy main pass 2.57
+busy head pass 2.57
+busy main FAIL 2.57 test_org.c:1288: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 100000
+busy head pass 2.61
+busy main pass 2.61
+busy head pass 2.61
+busy main FAIL 2.61 test_org.c:1288: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 100000
+busy head FAIL 2.61 test_org.c:1251: CHECK(ms < 100) failed
+busy main pass 2.64
+busy head pass 2.64
+busy main FAIL 2.64 test_org.c:1288: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 100000
+busy head pass 2.64
+busy main pass 2.64
+busy head FAIL 2.75 test_org.c:1301: CHECK(ms < gate[k].ms) failed
+busy main FAIL 2.75 test_org.c:1288: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 100000
+busy head pass 2.75
+busy main FAIL 2.75 test_org.c:1288: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 100000
+busy head pass 2.75
+busy main pass 2.77
+busy head pass 2.77
+busy main FAIL 2.77 test_org.c:1288: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 100000
+busy head FAIL 2.77 test_org.c:1251: CHECK(ms < 100) failed
+busy main pass 2.77
+busy head FAIL 2.79 test_org.c:1301: CHECK(ms < gate[k].ms) failed
+busy main FAIL 2.79 test_org.c:1288: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 100000
+busy head FAIL 2.79 test_org.c:1251: CHECK(ms < 100) failed
+busy main pass 2.79
+busy head FAIL 2.79 test_org.c:1251: CHECK(ms < 100) failed
+busy main pass 2.79
+busy head pass 2.80
+busy main pass 2.80
+busy head FAIL 2.80 test_org.c:1301: CHECK(ms < gate[k].ms) failed
+busy main pass 2.80
+busy head pass 2.80
+busy main FAIL 2.82 test_org.c:1288: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 100000
+busy head pass 2.82
+busy main pass 2.82
+busy head pass 2.82
+busy main pass 2.82
+busy head pass 2.84
+busy main pass 2.84
+busy head pass 2.84
+busy main pass 2.84
+busy head pass 2.84
+busy main FAIL 2.85 test_org.c:1288: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 100000
+busy head FAIL 2.85 test_org.c:1301: CHECK(ms < gate[k].ms) failed
+busy main pass 2.85
+busy head pass 2.85
+busy main pass 2.85
+busy head pass 2.86
+busy main pass 2.86
+busy head pass 2.86
+busy main FAIL 2.86 test_org.c:1288: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 100000
+busy head pass 2.86
+busy main pass 2.87
+busy head pass 2.87
+busy main FAIL 2.87 test_org.c:1288: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 100000
+busy head FAIL 2.87 test_org.c:1251: CHECK(ms < 100) failed
+busy main FAIL 2.87 test_org.c:1288: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 100000
+busy head FAIL 2.87 test_org.c:1301: CHECK(ms < gate[k].ms) failed
+busy main pass 2.88
+busy head FAIL 2.88 test_org.c:1301: CHECK(ms < gate[k].ms) failed
+busy main FAIL 2.88 test_org.c:1288: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 100000
+busy head FAIL 2.88 test_org.c:1251: CHECK(ms < 100) failed
+busy main FAIL 2.88 test_org.c:1288: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 100000
+busy head FAIL 3.05 test_org.c:1251: CHECK(ms < 100) failed
+busy main pass 3.05
+busy head FAIL 3.05 test_org.c:1251: CHECK(ms < 100) failed
+busy main FAIL 3.05 test_org.c:1288: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 100000
+busy head pass 3.05
+busy main pass 3.05
+busy head pass 3.13
+busy main FAIL 3.13 test_org.c:1288: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 100000
+busy head FAIL 3.13 test_org.c:1301: CHECK(ms < gate[k].ms) failed
+busy main FAIL 3.13 test_org.c:1288: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 100000
+busy head pass 3.13
+busy main pass 3.12
+busy head pass 3.12
+busy main FAIL 3.12 test_org.c:1288: CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 100000
+busy head FAIL 3.12 test_org.c:1301: CHECK(ms < gate[k].ms) failed
+busy main pass 3.12
+busy head pass 3.19
