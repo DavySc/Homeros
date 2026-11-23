@@ -101,7 +101,7 @@ org: colours: link types of at most three letters (against Org)~org-conform ORG_
 org: show: a descriptive link shows its closing brackets (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~hidel(c.la, c.lv), hidel(c.lw, c.lz);~hidel(c.la, c.lv);
 org: colours: a ] or > that ends no separator not looked for~test TESTS=org~~src/org/org.c~	for (size_t y = q; y < e; y++) if ((S[y] == ']'~	for (size_t y = q; y < e && 0; y++) if ((S[y] == ']'
 org: colours: links searched from the scan's start (frame gate on many lines)~test TESTS=org~~src/org/org.c~	if (P > c->lk && inside(P)) c->lk = P;~	if (0) c->lk = P;
-org: colours: no checkpoint kept on a walk (frame gate on many lines)~test TESTS=org~~src/org/org.c~		if (n % 4096 == 0 && (!f->kn~		if (n % 4096 == 0 && 0 && (!f->kn
+org: colours: no checkpoint kept on a walk (lines shown going up, against the walk)~test TESTS=org~~src/org/org.c~		if (n % 4096 == 0 && (!f->kn~		if (n % 4096 == 0 && 0 && (!f->kn
 org: show: checkpoints kept across an update~test TESTS=org~~src/org/org.c~	f->c.at = f->cs.at = f->bn = ORG_NONE, f->kn = f->sp = f->sg = 0;~	f->c.at = f->cs.at = f->bn = ORG_NONE, f->sp = f->sg = 0;
 org: colours: a footnote span over a headline~test TESTS=org~~src/org/org.c~c->fz = S[l] == '*' ? 0 : c->fz;~c->fz = S[l] == '*' ? c->fz : c->fz;
 org: show: a link ending at a footnote reference holds it~test TESTS=org~~src/org/org.c~ == ORG_NONE || k == p) &&~ == ORG_NONE) &&
