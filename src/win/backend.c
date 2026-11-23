@@ -129,6 +129,9 @@ static LRESULT CALLBACK proc(HWND h, UINT m, WPARAM w, LPARAM l)
 		   Tab gives 9 with Shift too */
 		put(w == 8 && GetKeyState(VK_CONTROL) >= 0 ? KEY_BS : w == 9 && GetKeyState(VK_SHIFT) < 0 ? KEY_S_TAB : (int)w);
 		return 0;
+	case WM_SYSKEYDOWN:   /* Alt+Break; every other Alt key stays the system's (Alt+F4) */
+		if (w == VK_PAUSE) { put(KEY_BREAK); return 0; }
+		break;
 	case WM_KEYDOWN:
 		switch (w) {
 		case VK_LEFT: put(KEY_LEFT); return 0;
@@ -136,6 +139,8 @@ static LRESULT CALLBACK proc(HWND h, UINT m, WPARAM w, LPARAM l)
 		case VK_UP: put(KEY_UP); return 0;
 		case VK_DOWN: put(KEY_DOWN); return 0;
 		case VK_DELETE: put(KEY_DEL); return 0;
+		case VK_F5: put(KEY_F5); return 0;
+		case VK_PAUSE: put(KEY_BREAK); return 0;
 		/* no WM_CHAR follows Ctrl+. (no control character has a dot) */
 		case VK_OEM_PERIOD: if (GetKeyState(VK_CONTROL) < 0) { put(KEY_CTRL_DOT); return 0; } break;
 		}

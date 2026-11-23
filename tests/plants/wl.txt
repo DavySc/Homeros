@@ -45,3 +45,5 @@ wl: Ctrl+. comes as a plain dot~test TESTS=wl~~src/wl/wl.c~XKB_STATE_MODS_EFFECT
 wl: no undercurl~test TESTS=wl~~src/wl/wl.c~		if (u->style & FACE_UNDERCURL)¶~		if (0)¶
 wl: a flat undercurl~test TESTS=wl~~src/wl/wl.c~ye - 1 - grid_curl(i, cell_h)~ye - 1
 wl: the undercurl in the text's colour~test TESTS=wl~~src/wl/wl.c~uint32_t sp = u->style & FACE_SP ? rgb(u->sp) : fg;~uint32_t sp = fg;
+wl: F5 sends nothing~test TESTS=wl~~src/wl/wl.c~	case XKB_KEY_F5: return KEY_F5;¶~
+wl: Pause sends nothing~test TESTS=wl~~src/wl/wl.c~case XKB_KEY_Pause: case XKB_KEY_Break:~case XKB_KEY_Break:
