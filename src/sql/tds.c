@@ -41,9 +41,10 @@ static int put_u16(Str *b, const uint8_t *s, size_t n, int raw)
 	}
 	return 0;
 }
-/* single-byte text: the server converts every collation, UTF-8 ones too,
-   to the client's code page, 1252 since the login asks for no other
-   (measured: a UTF-8 branch never ran; other code pages: KB 11 gap) */
+/* single-byte text, read as code page 1252, the code page of Davy's
+   servers' collations.  The server does not convert: a varchar in another
+   code page (Greek_CI_AS) shows wrong (PR 133's review, measured); UTF-8
+   collations arrive as nvarchar. */
 static const uint16_t cp1252[32] = {
 	0x20AC, 0xFFFD, 0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021, 0x02C6, 0x2030, 0x0160, 0x2039, 0x0152, 0xFFFD, 0x017D, 0xFFFD,
 	0xFFFD, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014, 0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0xFFFD, 0x017E, 0x0178};
@@ -59,8 +60,13 @@ static int put_char(Str *b, const uint8_t *s, size_t n)
 }
 static int put_hex(Str *b, const uint8_t *s, size_t n)
 {
+	char h[512];   /* 256 bytes at a time: one str_addf a byte was 4 times text's cost (PR 133's review) */
 	int r = str_add(b, "0x", 2);
-	for (size_t i = 0; i < n && !r; i++) r = str_addf(b, "%02X", s[i]);
+	for (size_t i = 0; i < n && !r; i += 256) {
+		size_t k = n - i < 256 ? n - i : 256;
+		for (size_t j = 0; j < k; j++) h[2 * j] = "0123456789ABCDEF"[s[i + j] / 16], h[2 * j + 1] = "0123456789ABCDEF"[s[i + j] % 16];
+		r = str_add(b, h, 2 * k);
+	}
 	return r;
 }
 /* an exact decimal: magnitude m (n <= 16 bytes, little-endian), scale digits after the point */
@@ -439,7 +445,7 @@ int tds_open(Tds *t, const char *host, int port, const char *user, const char *p
 		|| put_le(l, 0, 4) || put_le(l, 0x409, 4);
 	for (int i = 0; i < 9 && !r; i++) r = put_le(l, off, 2) || put_le(l, len[i], 2), off = (uint16_t)(off + 2 * len[i]);
 	r = r || str_add(l, "\0\0\0\0\0\0", 6) || put_le(l, off, 4) || put_le(l, off, 4) || put_le(l, off, 4) || put_le(l, 0, 4) || str_add(l, v.s, v.n);
-	str_free(&v);
+	memset(v.s, 0, v.n), str_free(&v);
 	return r ? -1 : 0;
 }
 
@@ -498,7 +504,10 @@ static int io(Tds *t, int readable)
 		t->msg.n = 0;
 		r = r < 0 || (b.n && send_msg(t, 0x12, b.s, b.n)) ? -1 : r;
 		str_free(&b);
-		if (r > 0) t->net.tls = 1, t->state = TDS_LOGIN, r = send_msg(t, 0x10, t->login.s, t->login.n);
+		if (r > 0) {   /* LOGIN7 holds the password: not kept past its sending */
+			t->net.tls = 1, t->state = TDS_LOGIN, r = send_msg(t, 0x10, t->login.s, t->login.n);
+			memset(t->login.s, 0, t->login.n), str_free(&t->login);
+		}
 		return r || net_flush(&t->net);
 	}
 	int was = t->state;
