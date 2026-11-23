@@ -183,3 +183,6 @@ keys: a failed verible's output is applied, emptying the buffer (test_keys_gq)~t
 keys: verible's edit runs to the end of the text, so the cursor below it moves onto other text (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~		while (q < len - p && q < vout.n - p && in[len - 1 - q] == vout.s[vout.n - 1 - q]) q++;¶~
 keys: a hanging verible is never killed (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~proc_wait(id, 1000)~proc_wait(id, 1 << 30)
 keys: verible's stderr goes into the buffer (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	if (stream == 1 && b)~	if (stream && b)
+keys: keys_visual(e, 0) leaves Visual mode on (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (!mode) { if (VIsual_active) end_visual_mode(); }~	if (!mode) { if (VIsual_active) (void)0; }
+keys: keys_visual() keeps the other end's column (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~VIsual = (Pos){ (long)line, 0, 0 };~VIsual.lnum = (long)line;
+keys: keys_visual() leaves e->ks as it was (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~(Pos){ (long)line, 0, 0 };¶	visual_sync();~(Pos){ (long)line, 0, 0 };

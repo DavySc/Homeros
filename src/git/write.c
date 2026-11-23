@@ -29,6 +29,8 @@ int git_queue(Repo *r, Write *w)
 	if (r->qn == QMAX) { git_write_free(w); say("git: %s", "too many commands waiting"); return -1; }
 	r->q[(r->qh + r->qn++) % QMAX] = *w;
 	*w = (Write){ 0 };
+	/* the command is chosen: its selection was read (patch() ran) */
+	git_unmark(r);
 	git_schedule(r);
 	return 0;
 }
