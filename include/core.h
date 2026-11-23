@@ -265,9 +265,9 @@ int  core_new(Editor *e, int vertical);
    :tabnew {file} (then do_ecmd()).  0 ok, -1 error (msg set). */
 int  core_tabnew(Editor *e, const char *path);
 /* SPC 5 0 and :tabclose (t NULL: the current one); the OS window's close
-   button (KEY_CLOSE) names its t.  Closing the last tab page is :qa, as
-   today (Emacs's delete-frame on the last frame).  0 ok, -1 error (msg set:
-   E37 for a changed buffer shown nowhere else, as tabpage_close()). */
+   button (KEY_CLOSE) names its t.  The last tab page is not closed: E784,
+   as ex_tabclose() (the close button still quits, keys' doing).  0 ok, -1
+   error (msg set). */
 int  core_tabclose(Editor *e, Tab *t);
 /* SPC 5 1 and :tabonly. */
 int  core_tabonly(Editor *e);
@@ -276,8 +276,9 @@ int  core_tabonly(Editor *e);
 void core_tab_enter(Editor *e, Tab *t);
 /* CTRL-W T (n 0): the current window into a new tab page (do_window() 'T').
    SPC 5 m {n}: into tab page n instead (DESIGN.md "New approaches" row, with
-   the frames package).  0 ok, -1 error (msg set; E1 for the only window of
-   a single tab page, as Neovim). */
+   the frames package).  0 ok, -1 error (msg set); a window alone in its
+   tab page stays, with "Already only one window" and 0, as do_window()
+   'T'. */
 int  core_win_to_tab(Editor *e, int n);
 /* :q, :close, CTRL-W c and q: close the current window.  Closing the last
    one quits (quit set), unless a buffer is modified and !force (E37 or
