@@ -1,0 +1,354 @@
+{
+ "rv-nonl-plus": {
+  "setup": "git checkout -- a.txt && printf 'x1\\nx2\\nx3' > n.txt && git add n.txt && git commit -qm n && printf 'x1\\nX2\\nX3' > n.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jjjjj",
+   "V",
+   "s"
+  ]
+ },
+ "rv-nonl-minus": {
+  "setup": "git checkout -- a.txt && printf 'x1\\nx2\\nx3' > n.txt && git add n.txt && git commit -qm n && printf 'x1\\nX2\\nX3' > n.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jjj",
+   "V",
+   "s"
+  ]
+ },
+ "rv-nonl-last": {
+  "setup": "git checkout -- a.txt && printf 'x1\\nx2\\nx3' > n.txt && git add n.txt && git commit -qm n && printf 'x1\\nx2\\nx3\\nx4' > n.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jjjjjj",
+   "V",
+   "s"
+  ]
+ },
+ "rv-nonl-discard": {
+  "setup": "git checkout -- a.txt && printf 'x1\\nx2\\nx3' > n.txt && git add n.txt && git commit -qm n && printf 'x1\\nX2\\nX3' > n.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jj",
+   "V",
+   "x",
+   "y"
+  ]
+ },
+ "rv-body-body": {
+  "setup": "git checkout -- a.txt && seq 1 30 > d.txt && git add d.txt && git commit -qm d && sed -i 's/^5$/F/; s/^15$/FF/; s/^25$/FFF/' d.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jjjj",
+   "V",
+   "<C-j>jjjj",
+   "s"
+  ]
+ },
+ "rv-head-body": {
+  "setup": "git checkout -- a.txt && seq 1 30 > d.txt && git add d.txt && git commit -qm d && sed -i 's/^5$/F/; s/^15$/FF/; s/^25$/FFF/' d.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "V",
+   "<C-j>jjjj",
+   "s"
+  ]
+ },
+ "rv-body-head": {
+  "setup": "git checkout -- a.txt && seq 1 30 > d.txt && git add d.txt && git commit -qm d && sed -i 's/^5$/F/; s/^15$/FF/; s/^25$/FFF/' d.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jjjj",
+   "V",
+   "<C-j>",
+   "s"
+  ]
+ },
+ "rv-up-hunks": {
+  "setup": "git checkout -- a.txt && seq 1 30 > d.txt && git add d.txt && git commit -qm d && sed -i 's/^5$/F/; s/^15$/FF/; s/^25$/FFF/' d.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "<C-j><C-j>",
+   "V",
+   "<C-k>",
+   "s"
+  ]
+ },
+ "rv-second-hunk": {
+  "setup": "git checkout -- a.txt && seq 1 30 > d.txt && git add d.txt && git commit -qm d && sed -i 's/^5$/F\\nG/; s/^15$/FF/; s/^25$/FFF/' d.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "<C-j>",
+   "jjjjj",
+   "V",
+   "s",
+   "<C-j><C-j><C-j><C-j>",
+   "<Tab>"
+  ]
+ },
+ "rv-context-only": {
+  "setup": "true",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "j",
+   "V",
+   "s"
+  ]
+ },
+ "rv-up": {
+  "setup": "sed -i 's/^three$/THREE/; s/^four$/FOUR/' a.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jjjjjj",
+   "V",
+   "kkk",
+   "s"
+  ]
+ },
+ "rv-discard-staged-mixed": {
+  "setup": "sed -i 's/^three$/THREE/; s/^four$/FOUR/' a.txt && git add a.txt && sed -i 's/^nine$/NINE/' a.txt",
+  "keys": [
+   "<C-j><C-j><C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jjj",
+   "V",
+   "j",
+   "x",
+   "y"
+  ]
+ },
+ "rv-newfile-unstage": {
+  "setup": "git checkout -- a.txt && printf 'p\\nq\\nr\\n' > e.txt && git add e.txt",
+  "keys": [
+   "<C-j><C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jj",
+   "V",
+   "u"
+  ]
+ },
+ "rv-rename": {
+  "setup": "git checkout -- a.txt && git mv a.txt z.txt && sed -i 's/^three$/THREE/; s/^four$/FOUR/' z.txt && git add -A",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jjjj",
+   "V",
+   "u"
+  ]
+ },
+ "rv-deleted": {
+  "setup": "git checkout -- a.txt && rm a.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jj",
+   "V",
+   "j",
+   "s"
+  ]
+ },
+ "rv-file-hunk": {
+  "setup": "true",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "V",
+   "j",
+   "s"
+  ]
+ },
+ "rv-hunk-otherfile": {
+  "setup": "printf 'gamma2\\n' >> b.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "<C-j><C-j>",
+   "<Tab>",
+   "<C-k>",
+   "V",
+   "<C-j><C-j>",
+   "s"
+  ]
+ },
+ "rv-files-discard": {
+  "setup": "printf 'gamma2\\n' >> b.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "V",
+   "j",
+   "x",
+   "y"
+  ]
+ },
+ "rv-unstage-hunks": {
+  "setup": "git checkout -- a.txt && seq 1 30 > d.txt && git add d.txt && git commit -qm d && sed -i 's/^5$/F/; s/^15$/FF/; s/^25$/FFF/' d.txt && git add d.txt",
+  "keys": [
+   "<C-j><C-j><C-j>",
+   "<Tab>",
+   "j",
+   "V",
+   "<C-j><C-j>",
+   "u"
+  ]
+ },
+ "rv-diff-staged": {
+  "setup": "sed -i 's/^three$/THREE/; s/^four$/FOUR/' a.txt && git add a.txt",
+  "keys": [
+   "d",
+   "s",
+   "<C-j><C-j>",
+   "jjj",
+   "V",
+   "j",
+   "u"
+  ]
+ },
+ "rv-unstaged-u": {
+  "setup": "true",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jj",
+   "V",
+   "u"
+  ]
+ },
+ "rv-esc-then-s": {
+  "setup": "sed -i 's/^three$/THREE/; s/^four$/FOUR/' a.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jj",
+   "V",
+   "j",
+   "<Esc>",
+   "s"
+  ]
+ },
+ "rv-two-regions": {
+  "setup": "sed -i 's/^three$/THREE/; s/^four$/FOUR/' a.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jj",
+   "V",
+   "s",
+   "V",
+   "j",
+   "s",
+   "V",
+   "x",
+   "y"
+  ]
+ },
+ "rv-periodic": {
+  "setup": "git checkout -- a.txt && for i in 1 2 3 4 5 6 7 8 9 10; do printf 'A\\nB\\nC\\nD\\n'; done > p.txt && git add p.txt && git commit -qm p && (printf 'N1\\nN2\\nN3\\nN4\\nN5\\nN6\\nN7\\nN8\\n'; cat p.txt) > q && mv q p.txt && sed -i '26s/B/X/;34s/B/X/' p.txt && git add p.txt",
+  "keys": [
+   "<C-j><C-j><C-j>",
+   "<Tab>",
+   "<C-j><C-j><C-j>",
+   "u"
+  ]
+ },
+ "rv-periodic-region": {
+  "setup": "git checkout -- a.txt && for i in 1 2 3 4 5 6 7 8 9 10; do printf 'A\\nB\\nC\\nD\\n'; done > p.txt && git add p.txt && git commit -qm p && (printf 'N1\\nN2\\nN3\\nN4\\nN5\\nN6\\nN7\\nN8\\n'; cat p.txt) > q && mv q p.txt && sed -i '26s/B/X/;34s/B/X/' p.txt && git add p.txt",
+  "keys": [
+   "<C-j><C-j><C-j>",
+   "<Tab>",
+   "<C-j><C-j><C-j>",
+   "jjjj",
+   "V",
+   "j",
+   "u"
+  ]
+ },
+ "rv-outside-change": {
+  "setup": "sed -i 's/^three$/THREE/; s/^four$/FOUR/' a.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jj",
+   "V",
+   "j",
+   "$ printf 'zz\\n' > zz.txt",
+   "s"
+  ]
+ },
+ "rv-top-s": {
+  "setup": "true",
+  "keys": [
+   "<C-j>",
+   "V",
+   "jjj",
+   "s"
+  ]
+ },
+ "rv-top-u": {
+  "setup": "true",
+  "keys": [
+   "<C-j>",
+   "V",
+   "jjj",
+   "u"
+  ]
+ },
+ "rv-top-x": {
+  "setup": "true",
+  "keys": [
+   "<C-j>",
+   "V",
+   "jjj",
+   "x"
+  ]
+ },
+ "rv-top-up-s": {
+  "setup": "true",
+  "keys": [
+   "<C-j><C-j><C-j>",
+   "V",
+   "kkk",
+   "s"
+  ]
+ },
+ "rv-top-up-x": {
+  "setup": "true",
+  "keys": [
+   "<C-j><C-j><C-j>",
+   "V",
+   "kkk",
+   "x"
+  ]
+ }
+}

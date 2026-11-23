@@ -65,6 +65,23 @@ int main(void)
 	CHECK(!strcmp(e.msg, "Kitten on save: off"));
 	feed(&e, " uk");
 	CHECK(!strcmp(e.msg, "Kitten on save: on"));
+	/* SPC i s, the snippet picker, also in Visual mode (around the area);
+	   no other map there: Space is its motion */
+	feed(&e, " is");
+	CHECK(picked(&e));
+	feed(&e, "0v is");
+	CHECK(picked(&e) && e.ks.visual);
+	feed(&e, "\0330v ff");
+	CHECK(!tools_key(&e, KEY_ESC));
+	feed(&e, "\0330v x");
+	CHECK(at(&e, "b\n", 0));
+	feed(&e, "u");
+	/* SPC u p: 'conceallevel' 2 or 0 (Davy's org-toggle-pretty-entities) */
+	e.win->conceal = 2;
+	feed(&e, " up");
+	CHECK(!e.win->conceal);
+	feed(&e, " up");
+	CHECK(e.win->conceal == 2);
 	static Grid g;
 	CHECK(!grid_resize(&g, 24, 80));
 	feed(&e, ":KittenPaw\r");
@@ -101,6 +118,19 @@ int main(void)
 	e.msg[0] = 0;
 	feed(&e, "\"a-");
 	CHECK(!strcmp(e.msg, "tools: file manager not built yet") && !e.ks.pending);
+
+	/* keys_visual() for git's views (PR 119): Visual mode ends as Esc
+	   ends it, so x deletes one character; it starts with its other end at
+	   column 0, so d deletes to the cursor */
+	feed(&e, "0lvl");
+	keys_visual(&e, 0, 0);
+	CHECK(!e.ks.visual && e.buf->mark[MARK_GT].set);
+	feed(&e, "x");
+	CHECK(at(&e, "bab\n", 2));
+	keys_visual(&e, 'v', 0);
+	CHECK(e.ks.visual == 'v' && !e.ks.vline && !e.ks.vcol);
+	feed(&e, "d");
+	CHECK(at(&e, "\n", 0));
 	core_free(&e);
 
 	/* the keys after a failed map go through the chain again: on the

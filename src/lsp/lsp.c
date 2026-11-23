@@ -834,7 +834,7 @@ static void goal(Out *o, const char *m, int g)
 	tagged(o, m, json_get(m, tk, g, "type"), FACE_NONE);
 }
 
-static Buf *gbuf(void) { return G.e && G.nr ? core_buf_nr(G.e, G.nr) : NULL; }
+static Buf *gbuf(void) { return G.e && G.nr ? core_buf_find(G.e, G.nr) : NULL; }
 
 static void gfaces(const Buf *b, size_t a, size_t z, unsigned char *f)
 {

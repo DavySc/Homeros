@@ -137,6 +137,9 @@ static int key_of(uint32_t key)
 	case XKB_KEY_Tab:   /* and in a keymap whose Tab has one level (wtype's) */
 		if (xkb_state_mod_name_is_active(xst, XKB_MOD_NAME_SHIFT, XKB_STATE_MODS_EFFECTIVE) > 0) return KEY_S_TAB;
 		break;
+	/* Control leaves '.' as it is: no control character has a dot */
+	case XKB_KEY_period:
+		if (xkb_state_mod_name_is_active(xst, XKB_MOD_NAME_CTRL, XKB_STATE_MODS_EFFECTIVE) > 0) return KEY_CTRL_DOT;
 	}
 	/* includes the Control transformation, so Ctrl-R is 18 */
 	return (int)xkb_state_key_get_utf32(xst, key + 8);
@@ -626,10 +629,10 @@ static uint32_t mix(uint32_t bg, uint32_t fg, unsigned a)
 /* The colours of cell c of row r, as ref/tty.c: the attr, then the face's
    colours, reversed last (as under the cursor, cur); bold and italic need
    fonts font.h does not open */
-static const Face *colours(const Grid *g, int r, int c, int cur, uint32_t *fg, uint32_t *bg)
+static const Face *colours(const Grid *g, int r, int c, int cur, uint32_t *fg, uint32_t *bg, const Face **u)
 {
 	const Cell *x = &g->c[r * g->cols + c];
-	const Face *b, *f = grid_face(x, &b);
+	const Face *b, *f = grid_face(x, &b, u);
 	uint32_t t = *fg = f->style & FACE_FG ? rgb(f->fg) : x->attr == ATTR_DIM ? DIM : FG;
 	*bg = b->style & FACE_BG ? rgb(b->bg) : BG;
 	if (x->attr == ATTR_REV || cur) { *fg = *bg; *bg = t; }
@@ -658,10 +661,13 @@ static void draw_span(uint32_t *px, const Grid *g, int r, int lo, int hi)
 	for (int c = lo; c < hi; c++) {
 		if (!x[c].len) continue;   /* right half: drawn with its left half */
 		int w = c + 1 < g->cols && !x[c + 1].len ? 2 : 1;
-		const Face *f = colours(g, r, c, r == g->crow && c == g->ccol, &fg, &bg);
+		const Face *u, *f = colours(g, r, c, r == g->crow && c == g->ccol, &fg, &bg, &u);
+		uint32_t sp = u->style & FACE_SP ? rgb(u->sp) : fg;
 		fill(px, c * cell_w, y0, w * cell_w, cell_h, bg);
 		if (x[c].attr == ATTR_IMAGE) { image_draw(px + y0 * bw + c * cell_w, bw, &x[c]); continue; }   /* thread 0's, agreed */
-		if (x[c].attr == ATTR_PRE || f->style & FACE_UNDERLINE) fill(px, c * cell_w, y0 + cell_h - 1, w * cell_w, 1, fg);
+		if (u->style & FACE_UNDERCURL)
+			for (int i = c * cell_w; i < (c + w) * cell_w; i++) fill(px, i, ye - 1 - grid_curl(i, cell_h), 1, 1, sp);
+		else if (x[c].attr == ATTR_PRE || u->style & FACE_UNDERLINE) fill(px, c * cell_w, ye - 1, w * cell_w, 1, sp);
 		if (f->style & FACE_STRIKE) fill(px, c * cell_w, y0 + cell_h / 2, w * cell_w, 1, fg);
 		const unsigned char *t = grid_text(&x[c]);
 		for (int i = 0; i < x[c].len && n < ROW; i++) { s[n] = t[i]; col[n++] = (unsigned short)c; }
@@ -682,7 +688,8 @@ static void draw_span(uint32_t *px, const Grid *g, int r, int lo, int hi)
 			int k = (gx + j0) / cell_w, m = (k + 1) * cell_w - gx;
 			j1 = m < zx ? m : zx;
 			k -= !x[k].len;   /* a right half: its left half's */
-			colours(g, r, k < c ? k : c, r == g->crow && k == g->ccol, &fg, &bg);
+			const Face *u;
+			colours(g, r, k < c ? k : c, r == g->crow && k == g->ccol, &fg, &bg, &u);
 			for (int y = ay; y < zy; y++) {
 				uint32_t *p = px + (gy + y) * bw + gx;
 				if (gl->color) {   /* premultiplied BGRA, the buffer's own byte order */

@@ -144,7 +144,8 @@ int main(void)
 	ks[VK_CONTROL] = 0x80;
 	SetKeyboardState(ks);
 	PostMessageW(win, WM_CHAR, 8, 0);
-	CHECK(input(k, 4) == 1 && k[0] == 8);   /* Ctrl-H */
+	PostMessageW(win, WM_KEYDOWN, VK_OEM_PERIOD, 0);
+	CHECK(input(k, 4) == 2 && k[0] == 8 && k[1] == KEY_CTRL_DOT);   /* Ctrl-H, Ctrl+. */
 	ks[VK_CONTROL] = 0;
 	PostMessageW(win, WM_CHAR, 9, 0);
 	CHECK(input(k, 4) == 1 && k[0] == KEY_TAB);
@@ -154,6 +155,8 @@ int main(void)
 	CHECK(input(k, 4) == 1 && k[0] == KEY_S_TAB);
 	ks[VK_SHIFT] = 0;
 	SetKeyboardState(ks);
+	PostMessageW(win, WM_KEYDOWN, VK_OEM_PERIOD, 0);   /* a plain '.' is WM_CHAR's */
+	CHECK(input(k, 4) == 1 && k[0] == '.');
 	for (int i = 0; i < 600; i++) PostMessageW(win, WM_CHAR, 'x', 0);
 	CHECK(input(k, 7) == 600);
 
@@ -248,6 +251,10 @@ int main(void)
 	g.c[8 * g.cols + 1].face = FACE_COMMENT_TODO;   /* a face with a background */
 	put(&g, 8, 2, " ", 1, ATTR_NONE);
 	g.c[8 * g.cols + 2].bg = FACE_CURSOR_LINE;      /* a background layer */
+	put(&g, 8, 3, " ", 1, ATTR_NONE);
+	g.c[8 * g.cols + 3].ul = FACE_DIAG_UNDER_ERROR; /* an undercurl layer */
+	put(&g, 8, 4, " ", 1, ATTR_NONE);
+	g.c[8 * g.cols + 4].face = FACE_MARKUP_UNDERLINE;
 	/* a cluster longer than a cell's 4 bytes, from the grid's store: its
 	   accents draw over the letter */
 	put(&g, 9, 1, "e", 1, ATTR_NONE);
@@ -265,6 +272,14 @@ int main(void)
 	CHECK(g.c[10 * g.cols + 1].len == 9 && inked(10, 1) > inked(9, 1));
 	CHECK(count(8, 1, RGB(faces[FACE_COMMENT_TODO].bg[0], faces[FACE_COMMENT_TODO].bg[1], faces[FACE_COMMENT_TODO].bg[2])) == cw * ch);
 	CHECK(count(8, 2, RGB(faces[FACE_CURSOR_LINE].bg[0], faces[FACE_CURSOR_LINE].bg[1], faces[FACE_CURSOR_LINE].bg[2])) == cw * ch);
+	/* the undercurl: one pixel a column in its sp, a wave (not all on the
+	   last row); the underline: the last row in the text's colour */
+	const Face *sp = &faces[FACE_DIAG_UNDER_ERROR];
+	COLORREF red = RGB(sp->sp[0], sp->sp[1], sp->sp[2]);
+	int low = 0;
+	for (int x = 3 * cw; x < 4 * cw; x++) low += px(x, 9 * ch - 1) == red;
+	CHECK(count(8, 3, red) == cw && inked(8, 3) == cw && low < cw);
+	CHECK(count(8, 4, REV) == cw && px(4 * cw, 9 * ch - 1) == REV);   /* REV: the text colour */
 
 	/* covered and uncovered: WM_PAINT draws from the DIB */
 	paint(RED);

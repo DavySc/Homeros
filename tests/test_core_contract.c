@@ -13,9 +13,11 @@
 #include "check.h"
 #include "core.h"
 #include "keys.h"
+#include "loop.h"
 #include "lsp.h"
 #include "syntax.h"
 #include "grid.h"
+#include "text.h"
 #include "../src/core/core_int.h"
 
 static char path[] = "/tmp/core_contractXXXXXX";
@@ -41,6 +43,13 @@ int main(void)
 	/* core_goto past the end: the last line's last character, wanted there */
 	core_goto(&e, 1000, 1000);
 	CHECK(e.win->line == 99 && e.win->col == 2 && e.win->want == 2);
+	/* 'nomodifiable': changes, undo and redo refuse with E21; :e! still loads */
+	CHECK(!core_edit(&e, 0, 1, "x", 1) && core_undo(&e, 0) > 0);
+	e.buf->nomodifiable = 1;
+	CHECK(core_edit(&e, 0, 1, "y", 1) == -1 && strstr(e.msg, "E21") && core_undo(&e, 1) == -1);
+	char c0;
+	CHECK(text_read(e.buf->text, 0, &c0, 1) == 1 && c0 == '1' && !core_edit_file(&e, NULL, 1));
+	e.buf->nomodifiable = 0;
 
 	/* scrolling and gj/gk: 0 moved, -1 a beep */
 	struct { size_t from; int r[6]; } want[] = {   /* CTRL-D, CTRL-U, CTRL-F, CTRL-B, gj, gk */
@@ -145,7 +154,9 @@ int main(void)
 	Buf *same = e.buf;
 	CHECK(!chdir("/tmp") && !core_edit_file(&e, strrchr(fn[3], '/') + 1, 0) && e.buf == same);
 	Buf *alt = e.win->alt;
-	CHECK(alt && !strcmp(alt->path, fn[2]) && !core_split(&e, 0, 0) && e.win->alt == alt);
+	/* and 'conceallevel' as the window had it (win_copy_options()) */
+	e.win->conceal = 3;
+	CHECK(alt && !strcmp(alt->path, fn[2]) && !core_split(&e, 0, 0) && e.win->alt == alt && e.win->conceal == 3);
 	CHECK(!core_close(&e, 0));
 	CHECK(!core_buf_delete(&e, 0, 0) && !strcmp(e.buf->path, fn[2]));
 	core_free(&e);
@@ -197,6 +208,14 @@ int main(void)
 		for (Win *w = e.wins; w; w = w->next, k++) CHECK(k < 5 && w->w == wd[k]);
 		CHECK(k == 5);
 	}
+	core_free(&e);
+	/* a buffer with nonumber (the Lean goals window; neogit's buffers in
+	   Neovim): no number column, its text from the window's first column */
+	CHECK(!core_open(&e, fn[1]));
+	e.buf->nonumber = 1;
+	CHECK(!core_edit(&e, 2, 0, "\n", 1));
+	core_draw(&e, &g);
+	CHECK(win_numw(e.win) == 0 && g.c[0].len == 1 && *grid_text(&g.c[0]) == 'x' && *grid_text(&g.c[g.cols]) == ' ');
 	core_free(&e);
 	/* the view is drawn after each command, before the next one runs
 	   (normal_check()'s normal_redraw(), typeahead or not): wrap, CTRL-W s,
@@ -263,7 +282,7 @@ int main(void)
 	   kept where they were (SIZE_MAX); found by number while listed */
 	CHECK(!core_edit_file(&e, "", 1) && !core_split(&e, 0, 0));
 	Buf *nb = e.buf;
-	CHECK(core_buf_nr(&e, nb->nr) == nb && !core_buf_nr(&e, 9999));
+	CHECK(core_buf_find(&e, nb->nr) == nb && !core_buf_find(&e, 9999));
 	core_buf_fill(&e, nb, "a\nb\nc\nd\n", 8, 9);
 	for (Win *w = e.wins; w; w = w->next) { CHECK(w->line == 3); w->top = 3; w->col = 1; }
 	e.wins->line = 1;
@@ -273,7 +292,7 @@ int main(void)
 	for (Win *w = e.wins; w; w = w->next) CHECK(w->line == 0 && w->top == 0 && !(nb->flags & CORE_EMPTY));
 	CHECK(!core_only(&e));
 	int nr = nb->nr;
-	CHECK(!core_buf_delete(&e, nr, 1) && !core_buf_nr(&e, nr));   /* :bd keeps it, unlisted */
+	CHECK(!core_buf_delete(&e, nr, 1) && !core_buf_find(&e, nr));   /* :bd keeps it, unlisted */
 	unlink(md);
 	/* on_yank's flash shows only in the window it was yanked in (the
 	   namespace is scoped to it: nvim__ns_set()) */
@@ -333,6 +352,36 @@ int main(void)
 	for (int i = 0; i < 4; i++) unlink(fn[i]);
 	grid_free(&g);
 	unlink(path);
+	/* a file opened after start-up is watched for outside changes (W11),
+	   also one in another directory (on Windows each directory has its
+	   own handle); the editor started on the dashboard, with no file */
+	char dir[2][32] = { "/tmp/core_wAXXXXXX", "/tmp/core_wBXXXXXX" }, wf[2][48];
+	CHECK(!core_open(&e, NULL));
+	for (int i = 0; i < 2; i++) {
+		CHECK(mkdtemp(dir[i]));
+		snprintf(wf[i], sizeof wf[i], "%s/w", dir[i]);
+		CHECK((f = fopen(wf[i], "w")) && fputs("a\n", f) >= 0 && !fclose(f));
+		CHECK(!core_edit_file(&e, wf[i], 0));
+		CHECK((f = fopen(wf[i], "w")) && fputs("bb\n", f) >= 0 && !fclose(f));
+		for (int k = 0; k < 100 && !e.buf->changed; k++) loop_once(10);
+		CHECK(e.buf->changed);
+	}
+	/* every file shares the watch fd, which the loop watches once: twenty
+	   loaded files leave the loop's 16 slots free for more (review of PR
+	   120: without buf_load's loop_unwatch each file takes one) */
+	char many[48];
+	for (int i = 0; i < 20; i++) {
+		snprintf(many, sizeof many, "%s/m%d", dir[0], i);
+		CHECK((f = fopen(many, "w")) && fputs("a\n", f) >= 0 && !fclose(f));
+		CHECK(!core_edit_file(&e, many, 0));
+	}
+	int pp[2];
+	CHECK(!pipe(pp) && !loop_watch(pp[0], NULL, NULL));
+	loop_unwatch(pp[0]);
+	close(pp[0]), close(pp[1]);
+	core_free(&e);
+	for (int i = 0; i < 20; i++) snprintf(many, sizeof many, "%s/m%d", dir[0], i), unlink(many);
+	for (int i = 0; i < 2; i++) unlink(wf[i]), rmdir(dir[i]);
 	printf("test_core_contract: ok\n");
 	return 0;
 }

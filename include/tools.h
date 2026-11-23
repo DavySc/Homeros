@@ -10,11 +10,15 @@
 struct Editor;
 struct Buf;
 
-enum { PICK_SMART, PICK_GREP, PICK_BUFFERS, PICK_REGISTERS, PICK_EXPLORER, PICK_FILES, PICK_RECENT };
+enum { PICK_SMART, PICK_GREP, PICK_BUFFERS, PICK_REGISTERS, PICK_EXPLORER, PICK_FILES, PICK_RECENT, PICK_SNIPPETS };
 int  tools_pick(struct Editor *e, int what);        /* 0 ok, -1 msg set */
 /* Every key goes here first (main.c), except while a command is half typed
-   (e->ks.pending): 1 if an open picker took it, 0 at once when none is open. */
+   (e->ks.pending): 1 if an open picker took it (or :make's buffer, Enter),
+   0 at once otherwise. */
 int  tools_key(struct Editor *e, int key);
+/* 1 while the terminal (Ctrl+.) is open: it takes every key, Ctrl+Z too,
+   so main.c does not suspend the editor (Neovim's :terminal, Ghostty). */
+int  tools_term(void);
 /* The open picker over the windows, right after core_draw.  No allocation. */
 void tools_draw(struct Editor *e, Grid *g);
 /* Opens buffer "oil:///abs/dir/" (oil's name); dir NULL is the current
@@ -33,4 +37,21 @@ int  tools_write(struct Editor *e, struct Buf *b);
    "loaded in" line; 0 (:Dashboard, SPC D) keeps the time measured at
    startup (thread 0's, agreed). */
 void tools_dash(struct Editor *e, long long start_ns);
+/* :make cmd (Neovim's :make and quickfix list; Emacs's compile buffer):
+   the shell ('shell' -c, cmd.exe /s /c on Windows) runs cmd in the current
+   directory, its output shown as it comes in a buffer of its own in a
+   window below, the errors it names (path:line[:col], path(line[,col]), a
+   C:\ path whole) the quickfix list; Enter on one of its lines opens that
+   error.  cmd NULL or "" runs the last command again (SPC cC); while its
+   buffer is in a window every write does too (focus's runner).  0 ok, -1
+   msg set. */
+int  tools_make(struct Editor *e, const char *cmd);
+/* the command :make last ran, NULL if none: SPC cc offers it for editing,
+   as Emacs's compile offers compile-command */
+const char *tools_make_last(void);
+/* ]q (n > 0), [q (n < 0): the quickfix error n entries on, as :cnext and
+   :cprevious; E42 without errors, E553 past the end.  0 ok, -1 msg set. */
+int  tools_qf(struct Editor *e, long n);
+/* BufWritePost: core_write calls it after each write. */
+void tools_written(struct Editor *e, struct Buf *b);
 #endif
