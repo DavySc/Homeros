@@ -18,6 +18,6 @@ mkdir -p build/win
 export WINEDEBUG=-all WINEDLLOVERRIDES="mscoree,mshtml=" WINEPREFIX=$PWD/build/win/prefix-loop
 exe=build/win/test_loop_win.exe
 zig cc -target x86_64-windows-gnu -std=c17 -Wall -Wextra -Werror -Iinclude -O1 -g \
-  -fsanitize=undefined -fsanitize-trap=undefined -o "$exe" tests/test_loop_win.c src/loop/*.c -lshell32
+  -fsanitize=undefined -fsanitize-trap=undefined -o "$exe" tests/test_loop_win.c src/loop/*.c -lshell32 -lws2_32
 # about 12 s; a planted spin must not cost CI 5 minutes
 pass 120 "$exe" $run || { echo "FAIL test_loop_win"; exit 1; }
