@@ -214,3 +214,8 @@ core: a line's underlines walk every diagnostic before it (test_core_diag frame 
 core: a second window on the buffer puts the message on its own cursor line (test_core_diag two windows)~test TESTS=core_diag~~src/core/draw.c~l == (w->buf == e->win->buf ? e->win->line : w->line)~l == w->line
 core: buf_load watches the shared fd again for every file (test_core_contract)~test TESTS=core_contract~~src/core/core.c~			loop_unwatch(b->watch);¶~
 core: the message's "\r" is drawn, not dropped (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~size_t n = strcspn(m, "\r\n\t");~size_t n = strcspn(m, "\n\t");
+core: a new tab page ignores the command line's height (recorded traces)~test TESTS=core_screens~~src/core/win.c~	layout_init(e, w, ch);~	layout_init(e, w, 1 + 0 * ch);
+core: closing a tab page enters the first one, not alt_tabpage() (test_keys_map)~test TESTS=keys_map~~src/core/win.c~	if (e->tab->next) return e->tab->next;~	if (e->tab->next) return e->tab == e->tabs ? e->tab->next : e->tabs;
+core: a new tab page skips the status line's win_new_height() (test_keys_map)~test TESTS=keys_map~~src/core/win.c~	w->h += STATUS;¶	win_new_height(e, w, w->h - STATUS);~
+core: :bd leaves the buffer's windows in other tab pages (test_keys_map)~test TESTS=keys_map~~src/core/core.c~		close_othertabs(e, b);¶		buf_unlist(e, b);~		buf_unlist(e, b);
+core: marks move only in the current tab page's windows (test_keys_map)~test TESTS=keys_map~~src/core/core_int.h~for (Tab *tp_ = (e)->tabs; tp_; tp_ = tp_->next)~for (Tab *tp_ = (e)->tab; tp_; tp_ = NULL)

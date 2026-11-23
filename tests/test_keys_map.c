@@ -208,7 +208,8 @@ int main(void)
 	CHECK(d.tab == d.tabs->next && d.tabs->wins->line == 2);
 	feed(&d, "ggdd");                          /* mark_adjust() moves it in every frame */
 	CHECK(d.tabs->wins->line == 1);
-	feed(&d, "uu");
+	feed(&d, "uu 50");                         /* delete-frame: the next one, alt_tabpage() */
+	CHECK(d.tab == d.tabs->next && !d.tab->next);
 	feed(&d, " 51");                           /* delete-other-frames */
 	CHECK(!d.tabs->next && d.tab == d.tabs);
 	feed(&d, " 50");

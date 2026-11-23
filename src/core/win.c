@@ -1006,7 +1006,9 @@ static int tab_new(Editor *e)
 	/* win_alloc_firstwin() sizes the window without a status line, and
 	   last_status() then takes one through win_new_height(): the cursor
 	   keeps its fraction of the window (measured: :tab split of a narrow
-	   window scrolls as nvim's does) */
+	   window scrolls as nvim's does).  Known difference: when the command
+	   line leaves the window no room for a status line, Neovim gives E36
+	   and draws none; here it keeps one (core_screens seeds 14 and 16) */
 	e->buf = w->buf;
 	w->h += STATUS;
 	win_new_height(e, w, w->h - STATUS);

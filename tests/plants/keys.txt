@@ -187,3 +187,6 @@ keys: .svh, .v and .vh buffers are not formatted with Verible (test_keys_gq)~tes
 keys: keys_visual(e, 0) leaves Visual mode on (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (!mode) { if (VIsual_active) end_visual_mode(); }~	if (!mode) { if (VIsual_active) (void)0; }
 keys: keys_visual() keeps the other end's column (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~VIsual = (Pos){ (long)line, 0, 0 };~VIsual.lnum = (long)line;
 keys: keys_visual() leaves e->ks as it was (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~(Pos){ (long)line, 0, 0 };¶	visual_sync();~(Pos){ (long)line, 0, 0 };
+keys: gT goes forward (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~	case 'T': if (!checkclearop(oap)) goto_tabpage(-cap->count1); break;~	case 'T': if (!checkclearop(oap)) goto_tabpage(cap->count1); break;
+keys: SPC 5 m moves into the frame after n (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~core_win_to_tab(e, k - '0')~core_win_to_tab(e, k - '0' + 1)
+keys: a focus change leaves insert mode on (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		if (e->mode == MODE_INSERT || e->ks.visual ||~		if (e->ks.visual ||
