@@ -119,5 +119,4 @@ syntax: a link definition's title ends at its first closing quote, while VS Code
 syntax: italic does not end at a single * before a pair, (?=\1\1) (test_syntax_lean)~test TESTS=syntax_lean~~src/syntax/lean.c~at(&m, q + 1) != dc || at(&m, q + 2) == dc)~at(&m, q + 1) != dc)
 syntax: a doc comment's code fence ends at a shorter fence (test_syntax_lean)~test TESTS=syntax_lean~~src/syntax/lean.c~			if (n < m->fk || !(e >= m->eol~			if (!n || !(e >= m->eol
 syntax: /- inside a doc comment's Markdown block deepens the comment, which VS Code's does not (test_syntax_lean)~test TESTS=syntax_lean~~src/syntax/lean.c~!dash && !m.blk && at(&m, q) == '/'~!dash && at(&m, q) == '/'
-syntax: an edit in Lean keeps token starts from earlier on its line, where a comment or string may begin (test_tsql)~test TESTS=tsql~~src/syntax/tsql.c~	if (q->lang == 3) lo = text_line_start(t, text_line_of(t, pos)), hi += 4;~	if (q->lang == 3) hi += 4;
-syntax: an edit in Lean keeps token starts just past it, which -/ or a quote typed there moves (test_tsql)~test TESTS=tsql~~src/syntax/tsql.c~text_line_of(t, pos)), hi += 4;~text_line_of(t, pos));
+syntax: an edit in Lean keeps token starts from earlier on its line, where a comment or string may begin (test_tsql)~test TESTS=tsql~~src/syntax/tsql.c~	if (q->lang == 3) lo = text_line_start(t, text_line_of(t, pos));~

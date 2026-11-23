@@ -460,10 +460,10 @@ void tsql_edit(Tsql *q, const Text *t, size_t pos, size_t ndel, size_t nins)
 {
 	/* a token start depends on the bytes before it and on the two from it,
 	   which can end the token before (a word, a doubled quote, "<>", the
-	   e and sign of 1e+3); Lean's on the line from it, and on the code
-	   point before it (\b, lookbehinds) */
+	   e and sign of 1e+3); Lean's on its line before it (a lexer from a
+	   start reads the bytes before it, for \b and lookbehinds) */
 	size_t lo = pos > 2 ? pos - 2 : 0, hi = pos + ndel;
-	if (q->lang == 3) lo = text_line_start(t, text_line_of(t, pos)), hi += 4;
+	if (q->lang == 3) lo = text_line_start(t, text_line_of(t, pos));
 	uint32_t i = first_at(q, q->n, lo);
 	if (i > q->v) q->n = i;    /* among moved starts: those after it go */
 	else {

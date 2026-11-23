@@ -10,6 +10,7 @@
    token start depends on the code point before it and on the line from it
    (tsql_edit), as on the T-SQL index.  test_syntax_lean.c holds every byte
    to VS Code's own colour (tests/test_syntax_lean.js records them). */
+#include <ctype.h>
 #include <stdint.h>
 #include <string.h>
 #include "grid.h"
@@ -103,12 +104,10 @@ static int is_w(unsigned c)
 /* \b */
 static int wb(TsqlRd *r, size_t p) { return is_w(before(r, p)) != is_w(cp(r, p)); }
 
-static int is_hex(int c) { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'); }
-
 /* n hex digits at p */
 static int hexes(TsqlRd *r, size_t p, size_t n)
 {
-	while (n && is_hex(tsql_byte(r, p))) n--, p++;
+	while (n && isxdigit(tsql_byte(r, p))) n--, p++;
 	return !n;
 }
 
@@ -226,6 +225,13 @@ static int ctx(Md *m)
 /* a colour with the context's style */
 static int inh(Md *m, int fg) { return COL(fg, ctx(m) % 3); }
 
+/* delimiters [p, s) and [t, e) in out, what they hold in fg with the
+   context's style */
+static void wrap(Md *m, size_t p, size_t s, size_t t, size_t e, int out, int fg)
+{
+	pc(m, p, s, out), pc(m, s, t, inh(m, fg)), pc(m, t, e, out);
+}
+
 /* a code span: (`+)([^`]|(?!(?<!`)\1(?!`))`)*+(\1), the run shortened
    while no closer of its length follows on the line */
 static size_t raw(Md *m, size_t p, int paint)
@@ -238,7 +244,7 @@ static size_t raw(Md *m, size_t p, int paint)
 			if (at(m, q) != '`' || at(m, q - 1) == '`') continue;
 			while (j < k && at(m, q + j) == '`') j++;
 			if (j < k || at(m, q + k) == '`') continue;
-			if (paint) pc(m, p, p + k, COL(GR, NS)), pc(m, p + k, q, inh(m, GR)), pc(m, q, q + k, COL(GR, NS));
+			if (paint) wrap(m, p, p + k, q, q + k, COL(GR, NS), GR);
 			return q + k;
 		}
 	return 0;
@@ -302,13 +308,20 @@ static size_t url_tail(Md *m, size_t u, size_t *ue, size_t *te)
 	return 0;
 }
 
-static void paint_tail(Md *m, size_t u, size_t ue, size_t te, size_t e)
+/* a link or an image from p: [text] to t, ( then the URL from us to u,
+   its end to ue, the title to te, ) at e - 1 */
+static void paint_link(Md *m, size_t p, size_t t, size_t us, size_t u, size_t ue, size_t te, size_t e)
 {
-	size_t t = sp_tab(m, ue);
+	int img = at(m, p) == '!';
+	size_t s = sp_tab(m, ue);
+	wrap(m, p, p + 1 + (size_t)img, t, t + 1, COL(GR, NS), img ? GR : LA);
+	pc(m, t + 1, t + 2, COL(OV, NS));
+	pc(m, t + 2, us, COL(BL, NS));
+	pc(m, us, u, inh(m, BL));
 	pc(m, u, ue, COL(BL, NS));
-	pc(m, ue, t, ctx(m));
-	if (te) pc(m, t, t + 1, COL(GR, NS)), pc(m, t + 1, te - 1, inh(m, GR)), pc(m, te - 1, te, COL(GR, NS));
-	pc(m, te ? te : t, e - 1, ctx(m));
+	pc(m, ue, s, ctx(m));
+	if (te) wrap(m, s, s + 1, te - 1, te, COL(GR, NS), GR);
+	pc(m, te ? te : s, e - 1, ctx(m));
 	pc(m, e - 1, e, COL(OV, NS));
 }
 
@@ -338,11 +351,7 @@ static size_t link_inline(Md *m, size_t p, size_t t)
 		for (size_t i = n + 1; i--; ) {
 			size_t u = i ? b[i - 1] : us;
 			if (!(e = url_tail(m, u, &ue, &te))) continue;
-			pc(m, p, p + 1, COL(GR, NS)), pc(m, p + 1, t, inh(m, LA)), pc(m, t, t + 1, COL(GR, NS));
-			pc(m, t + 1, t + 2, COL(OV, NS));
-			pc(m, t + 2, us, COL(BL, NS));
-			pc(m, us, u, inh(m, BL));
-			paint_tail(m, u, ue, te, e);
+			paint_link(m, p, t, us, u, ue, te, e);
 			return e;
 		}
 	}
@@ -357,11 +366,7 @@ static size_t image_inline(Md *m, size_t p, size_t t)
 	for (size_t u = us; u < m->eol && !is_sp(cp(m->x->r, u)); ) {
 		u = adv(m->x->r, u);
 		if (!(e = url_tail(m, u, &ue, &te))) continue;
-		pc(m, p, p + 2, COL(GR, NS)), pc(m, p + 2, t, inh(m, GR)), pc(m, t, t + 1, COL(GR, NS));
-		pc(m, t + 1, t + 2, COL(OV, NS));
-		pc(m, t + 2, us, COL(BL, NS));
-		pc(m, us, u, inh(m, BL));
-		paint_tail(m, u, ue, te, e);
+		paint_link(m, p, t, us, u, ue, te, e);
 		return e;
 	}
 	return 0;
@@ -394,11 +399,21 @@ static size_t angle(Md *m, size_t p)
 			e = 0;
 		}
 	if (!e || at(m, e) != '>') return 0;
-	pc(m, p, p + 1, COL(BL, NS)), pc(m, p + 1, e, inh(m, BL)), pc(m, e, e + 1, COL(BL, NS));
+	wrap(m, p, p + 1, e, e + 1, COL(BL, NS), BL);
 	return e + 1;
 }
 
 static size_t bold_italic(Md *m, size_t p, int bold);
+
+/* after the ] at t, a space or none, then [ref]: its ], 0 for none; *b
+   its [ */
+static size_t ref(Md *m, size_t t, size_t *b)
+{
+	size_t e = *b = t + 1 + (at(m, t + 1) == ' ');
+	if (at(m, e) != '[') return 0;
+	while (++e < m->eol && at(m, e) != ']') ;
+	return e < m->eol ? e : 0;
+}
 
 /* the inline rules at p (VS Code's #inline, and what bold and italic
    take: the same but italic in italic); its end, 0 for none */
@@ -413,34 +428,29 @@ static size_t inl(Md *m, size_t p, int italic)
 	if (c == '!' && d == '[' && (t = square(m, p + 2))) {
 		if ((e = image_inline(m, p, t))) return e;
 		/* ![text] [ref] */
-		size_t b = t + 1 + (at(m, t + 1) == ' ');
-		if (at(m, b) == '[')
-			for (e = b + 1; e < m->eol; e++)
-				if (at(m, e) == ']') {
-					pc(m, p, p + 2, COL(GR, NS)), pc(m, p + 2, t, inh(m, GR)), pc(m, t, t + 1, COL(GR, NS));
-					pc(m, t + 1, b, ctx(m)), pc(m, b, b + 1, COL(LA, NS)), pc(m, b + 1, e, inh(m, LA)), pc(m, e, e + 1, COL(LA, NS));
-					return e + 1;
-				}
+		size_t b;
+		if ((e = ref(m, t, &b))) {
+			wrap(m, p, p + 2, t, t + 1, COL(GR, NS), GR);
+			pc(m, t + 1, b, ctx(m)), wrap(m, b, b + 1, e, e + 1, COL(LA, NS), LA);
+			return e + 1;
+		}
 	}
 	if ((e = angle(m, p))) return e;
 	if (c != '[') return 0;
 	if ((t = square(m, p + 1))) {
 		if ((e = link_inline(m, p, t))) return e;
 		/* [text][ref], [text] [] */
-		size_t b = t + 1 + (at(m, t + 1) == ' ');
-		if (at(m, b) == '[') {
-			for (e = b + 1; e < m->eol && at(m, e) != ']'; e++) ;
-			if (e < m->eol && (b == t + 1 || e == b + 1)) {
-				pc(m, p, p + 1, COL(GR, NS)), pc(m, p + 1, t, inh(m, LA)), pc(m, t, t + 1, COL(GR, NS));
-				pc(m, t + 1, b, ctx(m)), pc(m, b, b + 1, COL(OV, NS)), pc(m, b + 1, e, inh(m, LA)), pc(m, e, e + 1, COL(OV, NS));
-				return e + 1;
-			}
+		size_t b;
+		if ((e = ref(m, t, &b)) && (b == t + 1 || e == b + 1)) {
+			wrap(m, p, p + 1, t, t + 1, COL(GR, NS), LA);
+			pc(m, t + 1, b, ctx(m)), wrap(m, b, b + 1, e, e + 1, COL(OV, NS), LA);
+			return e + 1;
 		}
 	}
 	/* [x]: (\[)(\S+?)(\]) */
 	for (e = p + 1; e < m->eol && !is_sp(cp(r, e)); e = adv(r, e))
 		if (e > p + 1 && at(m, e) == ']') {
-			pc(m, p, p + 1, COL(GR, NS)), pc(m, p + 1, e, inh(m, LA)), pc(m, e, e + 1, COL(GR, NS));
+			wrap(m, p, p + 1, e, e + 1, COL(GR, NS), LA);
 			return e + 1;
 		}
 	return 0;
@@ -472,13 +482,10 @@ static int closes(Md *m, size_t s, int dc, int bold)
 			continue;
 		}
 		if (c == '[' && (t = square(m, q + 1))) {
-			size_t b = t + 1 + (at(m, t + 1) == ' ');
-			if (at(m, b) == '[') {
-				for (e = b + 1; e < m->eol && at(m, e) != ']'; e++) ;
-				if (e < m->eol) {
-					q = e + 1;
-					continue;
-				}
+			size_t b;
+			if ((e = ref(m, t, &b))) {
+				q = e + 1;
+				continue;
 			}
 			if (at(m, t + 1) == '(') {
 				/* \( [ \t]*+ <?(.*?)>? [ \t]*+ ((['"])(.*?)\3)? \) */
@@ -589,10 +596,10 @@ static size_t link_def(Md *m, size_t p)
 			size_t ue = u + (size_t)gt, s = sp_tab(m, ue);
 			if (!title(m, s, 0, &te)) te = 0;
 			if (te || ws(m, s) >= m->eol) {
-				pc(m, p, b, ctx(m)), pc(m, b, b + 1, COL(LA, NS)), pc(m, b + 1, t, inh(m, LA)), pc(m, t, t + 1, COL(LA, NS));
+				pc(m, p, b, ctx(m)), wrap(m, b, b + 1, t, t + 1, COL(LA, NS), LA);
 				pc(m, t + 1, t + 2, COL(TE, NS)), pc(m, t + 2, u0, ctx(m)), pc(m, u0, us, COL(BL, NS));
 				pc(m, us, u, inh(m, BL)), pc(m, u, ue, COL(BL, NS)), pc(m, ue, m->eol, ctx(m));
-				if (te) pc(m, s, s + 1, COL(GR, NS)), pc(m, s + 1, te - 1, inh(m, GR)), pc(m, te - 1, te, COL(GR, NS));
+				if (te) wrap(m, s, s + 1, te - 1, te, COL(GR, NS), GR);
 				return m->eol;
 			}
 		}
@@ -820,7 +827,7 @@ static size_t number(TsqlRd *r, size_t p)
 	int c = tsql_byte(r, p), d = tsql_byte(r, p + 1);
 	if (e > p && wb(r, e)) return e;
 	if (c == '0' && (d == 'x' || d == 'X')) {
-		for (e = p + 2; is_hex(tsql_byte(r, e)); e++) ;
+		for (e = p + 2; isxdigit(tsql_byte(r, e)); e++) ;
 		if (e > p + 2 && wb(r, e)) return e;
 	}
 	i = p + (c == '-');
