@@ -367,7 +367,7 @@
   ]
  },
  "spaces": {
-  "setup": "printf 'x\\n' > 'my file.txt'; git add 'my file.txt'; printf 'y\\n' > '\u00e9.txt'",
+  "setup": "printf 'x\\n' > 'my file.txt'; git add 'my file.txt'; printf 'y\\n' > 'é.txt'",
   "keys": [
    "<Tab>",
    "<C-j><C-j><C-j><C-j><C-j>",
@@ -513,6 +513,520 @@
   "keys": [
    "d",
    "w"
+  ]
+ },
+ "region-stage": {
+  "setup": "sed -i 's/^three$/THREE/; s/^four$/FOUR/' a.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jj",
+   "V",
+   "j",
+   "s",
+   "V",
+   "<Esc>"
+  ]
+ },
+ "region-stage-char": {
+  "setup": "sed -i 's/^three$/THREE/; s/^four$/FOUR/' a.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jjj",
+   "v",
+   "jjj",
+   "s"
+  ]
+ },
+ "region-stage-one": {
+  "setup": "sed -i 's/^three$/THREE/; s/^four$/FOUR/' a.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jjjjj",
+   "v",
+   "s"
+  ]
+ },
+ "region-unstage": {
+  "setup": "sed -i 's/^three$/THREE/; s/^four$/FOUR/' a.txt && git add a.txt",
+  "keys": [
+   "jj",
+   "<Tab>",
+   "j",
+   "jjjj",
+   "V",
+   "jj",
+   "u"
+  ]
+ },
+ "region-discard": {
+  "setup": "sed -i 's/^three$/THREE/; s/^four$/FOUR/' a.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jjjjj",
+   "V",
+   "j",
+   "x",
+   "y"
+  ]
+ },
+ "region-discard-staged": {
+  "setup": "sed -i 's/^three$/THREE/; s/^four$/FOUR/' a.txt && git add a.txt",
+  "keys": [
+   "jj",
+   "<Tab>",
+   "j",
+   "jj",
+   "V",
+   "j",
+   "x",
+   "y"
+  ]
+ },
+ "region-staged-s": {
+  "setup": "sed -i 's/^three$/THREE/; s/^four$/FOUR/' a.txt && git add a.txt",
+  "keys": [
+   "jj",
+   "<Tab>",
+   "j",
+   "jj",
+   "V",
+   "j",
+   "s"
+  ]
+ },
+ "region-hunks": {
+  "setup": "git checkout -- a.txt && seq 1 30 > d.txt && git add d.txt && git commit -qm d && sed -i 's/^5$/F/; s/^15$/FF/; s/^25$/FFF/' d.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "V",
+   "<C-j>",
+   "s"
+  ]
+ },
+ "region-heading": {
+  "setup": "sed -i 's/^three$/THREE/; s/^four$/FOUR/' a.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "V",
+   "jj",
+   "s"
+  ]
+ },
+ "region-files": {
+  "setup": "printf 'gamma2\\n' >> b.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "V",
+   "j",
+   "s"
+  ]
+ },
+ "region-untracked": {
+  "setup": "printf 'x\\n' > d.txt && printf 'y\\n' > e.txt",
+  "keys": [
+   "<Tab>",
+   "j",
+   "V",
+   "j",
+   "s"
+  ]
+ },
+ "region-cross": {
+  "setup": "printf 'gamma2\\n' >> b.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jj",
+   "V",
+   "<C-j><C-j>",
+   "s"
+  ]
+ },
+ "region-diff": {
+  "setup": "sed -i 's/^three$/THREE/; s/^four$/FOUR/' a.txt",
+  "keys": [
+   "d",
+   "u",
+   "<C-j><C-j>",
+   "jj",
+   "V",
+   "j",
+   "s"
+  ]
+ },
+ "region-discard-hunks": {
+  "setup": "git checkout -- a.txt && seq 1 30 > d.txt && git add d.txt && git commit -qm d && sed -i 's/^5$/F/; s/^15$/FF/; s/^25$/FFF/' d.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "V",
+   "<C-j>",
+   "x",
+   "y"
+  ]
+ },
+ "region-discard-no": {
+  "setup": "sed -i 's/^three$/THREE/; s/^four$/FOUR/' a.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jjjjj",
+   "V",
+   "x",
+   "n",
+   "s"
+  ]
+ },
+ "region-two-files": {
+  "setup": "printf 'gamma2\\n' >> b.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "V",
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "s"
+  ]
+ },
+ "region-outside-change": {
+  "setup": "sed -i 's/^three$/THREE/; s/^four$/FOUR/' a.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jj",
+   "V",
+   "j",
+   "$ printf 'zz\\n' > zz.txt",
+   "s"
+  ]
+ },
+ "region-outside-shift": {
+  "setup": "printf 'z\\n' > 0.txt && git add 0.txt && git commit -qm zero && sed -i 's/^three$/THREE/; s/^four$/FOUR/' a.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jjj",
+   "V",
+   "k",
+   "$ printf 'zz\\n' >> 0.txt",
+   "s"
+  ]
+ },
+ "region-nonl-plus": {
+  "setup": "git checkout -- a.txt && printf 'x1\\nx2\\nx3' > n.txt && git add n.txt && git commit -qm n && printf 'x1\\nX2\\nX3' > n.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jjjjj",
+   "V",
+   "s"
+  ]
+ },
+ "region-nonl-minus": {
+  "setup": "git checkout -- a.txt && printf 'x1\\nx2\\nx3' > n.txt && git add n.txt && git commit -qm n && printf 'x1\\nX2\\nX3' > n.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jjj",
+   "V",
+   "s"
+  ]
+ },
+ "region-nonl-last": {
+  "setup": "git checkout -- a.txt && printf 'x1\\nx2\\nx3' > n.txt && git add n.txt && git commit -qm n && printf 'x1\\nx2\\nx3\\nx4' > n.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jjjjjj",
+   "V",
+   "s"
+  ]
+ },
+ "region-nonl-discard": {
+  "setup": "git checkout -- a.txt && printf 'x1\\nx2\\nx3' > n.txt && git add n.txt && git commit -qm n && printf 'x1\\nX2\\nX3' > n.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jj",
+   "V",
+   "x",
+   "y"
+  ]
+ },
+ "region-body-body": {
+  "setup": "git checkout -- a.txt && seq 1 30 > d.txt && git add d.txt && git commit -qm d && sed -i 's/^5$/F/; s/^15$/FF/; s/^25$/FFF/' d.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jjjj",
+   "V",
+   "<C-j>jjjj",
+   "s"
+  ]
+ },
+ "region-head-body": {
+  "setup": "git checkout -- a.txt && seq 1 30 > d.txt && git add d.txt && git commit -qm d && sed -i 's/^5$/F/; s/^15$/FF/; s/^25$/FFF/' d.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "V",
+   "<C-j>jjjj",
+   "s"
+  ]
+ },
+ "region-body-head": {
+  "setup": "git checkout -- a.txt && seq 1 30 > d.txt && git add d.txt && git commit -qm d && sed -i 's/^5$/F/; s/^15$/FF/; s/^25$/FFF/' d.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jjjj",
+   "V",
+   "<C-j>",
+   "s"
+  ]
+ },
+ "region-up-hunks": {
+  "setup": "git checkout -- a.txt && seq 1 30 > d.txt && git add d.txt && git commit -qm d && sed -i 's/^5$/F/; s/^15$/FF/; s/^25$/FFF/' d.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "<C-j><C-j>",
+   "V",
+   "<C-k>",
+   "s"
+  ]
+ },
+ "region-second-hunk": {
+  "setup": "git checkout -- a.txt && seq 1 30 > d.txt && git add d.txt && git commit -qm d && sed -i 's/^5$/F\\nG/; s/^15$/FF/; s/^25$/FFF/' d.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "<C-j>",
+   "jjjjj",
+   "V",
+   "s",
+   "<C-j><C-j><C-j><C-j>",
+   "<Tab>"
+  ]
+ },
+ "region-up": {
+  "setup": "sed -i 's/^three$/THREE/; s/^four$/FOUR/' a.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jjjjjj",
+   "V",
+   "kkk",
+   "s"
+  ]
+ },
+ "region-discard-staged-mixed": {
+  "setup": "sed -i 's/^three$/THREE/; s/^four$/FOUR/' a.txt && git add a.txt && sed -i 's/^nine$/NINE/' a.txt",
+  "keys": [
+   "<C-j><C-j><C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jjj",
+   "V",
+   "j",
+   "x",
+   "y"
+  ]
+ },
+ "region-rename": {
+  "setup": "git checkout -- a.txt && git mv a.txt z.txt && sed -i 's/^three$/THREE/; s/^four$/FOUR/' z.txt && git add -A",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jjjj",
+   "V",
+   "u"
+  ]
+ },
+ "region-file-hunk": {
+  "setup": "true",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "V",
+   "j",
+   "s"
+  ]
+ },
+ "region-hunk-otherfile": {
+  "setup": "printf 'gamma2\\n' >> b.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "<C-j><C-j>",
+   "<Tab>",
+   "<C-k>",
+   "V",
+   "<C-j><C-j>",
+   "s"
+  ]
+ },
+ "region-files-discard": {
+  "setup": "printf 'gamma2\\n' >> b.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "V",
+   "j",
+   "x",
+   "y"
+  ]
+ },
+ "region-unstage-hunks": {
+  "setup": "git checkout -- a.txt && seq 1 30 > d.txt && git add d.txt && git commit -qm d && sed -i 's/^5$/F/; s/^15$/FF/; s/^25$/FFF/' d.txt && git add d.txt",
+  "keys": [
+   "<C-j><C-j><C-j>",
+   "<Tab>",
+   "j",
+   "V",
+   "<C-j><C-j>",
+   "u"
+  ]
+ },
+ "region-unstaged-u": {
+  "setup": "true",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jj",
+   "V",
+   "u"
+  ]
+ },
+ "region-esc-then-s": {
+  "setup": "sed -i 's/^three$/THREE/; s/^four$/FOUR/' a.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jj",
+   "V",
+   "j",
+   "<Esc>",
+   "s"
+  ]
+ },
+ "region-two-regions": {
+  "setup": "sed -i 's/^three$/THREE/; s/^four$/FOUR/' a.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jj",
+   "V",
+   "s",
+   "V",
+   "j",
+   "s",
+   "V",
+   "x",
+   "y"
+  ]
+ },
+ "region-periodic": {
+  "setup": "git checkout -- a.txt && for i in 1 2 3 4 5 6 7 8 9 10; do printf 'A\\nB\\nC\\nD\\n'; done > p.txt && git add p.txt && git commit -qm p && (printf 'N1\\nN2\\nN3\\nN4\\nN5\\nN6\\nN7\\nN8\\n'; cat p.txt) > q && mv q p.txt && sed -i '26s/B/X/;34s/B/X/' p.txt && git add p.txt",
+  "keys": [
+   "<C-j><C-j><C-j>",
+   "<Tab>",
+   "<C-j><C-j><C-j>",
+   "u"
+  ]
+ },
+ "region-top-s": {
+  "setup": "true",
+  "keys": [
+   "<C-j>",
+   "V",
+   "jjj",
+   "s"
+  ]
+ },
+ "region-discard-staged-hunks": {
+  "setup": "git checkout -- a.txt && seq 1 30 > d.txt && git add d.txt && git commit -qm d && sed -i 's/^5$/F/; s/^15$/FF/; s/^25$/FFF/' d.txt && git add d.txt",
+  "keys": [
+   "<C-j>",
+   "j",
+   "<Tab>",
+   "j",
+   "V",
+   "<C-j>",
+   "x",
+   "y"
+  ]
+ },
+ "region-discard-staged-hunks-mixed": {
+  "setup": "git checkout -- a.txt && seq 1 30 > d.txt && git add d.txt && git commit -qm d && sed -i 's/^5$/F/; s/^15$/FF/; s/^25$/FFF/' d.txt && git add d.txt && sed -i 's/^30$/END/' d.txt",
+  "keys": [
+   "<C-j><C-j><C-j><C-j>",
+   "<Tab>",
+   "j",
+   "V",
+   "<C-j>",
+   "x",
+   "y"
+  ]
+ },
+ "unstage-unstaged-file": {
+  "setup": "true",
+  "keys": [
+   "<C-j><C-j>",
+   "u"
+  ]
+ },
+ "unstage-intent": {
+  "setup": "echo new > n.txt && git add -N n.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "j",
+   "u"
+  ]
+ },
+ "region-outside-shift-j": {
+  "setup": "printf 'z\\n' > 0.txt && git add 0.txt && git commit -qm zero && sed -i 's/^three$/THREE/; s/^four$/FOUR/' a.txt",
+  "keys": [
+   "<C-j><C-j>",
+   "<Tab>",
+   "j",
+   "jjj",
+   "V",
+   "k",
+   "$ printf 'zz\\n' >> 0.txt",
+   "js"
   ]
  }
 }

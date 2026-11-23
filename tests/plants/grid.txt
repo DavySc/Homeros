@@ -20,19 +20,18 @@ grid: a changed background layer is an equal cell~test TESTS=grid_diff~~src/grid
 grid: the '>' loses the background layer of the half it replaces~test TESTS=grid_diff~~src/grid/grid.c~x[-1].face, x[-1].bg, x[-1].ul }~x[-1].face, 0, x[-1].ul }
 grid: a put keeps the old background layer~test TESTS=grid_diff~~src/grid/grid.c~	x->bg = x->ul = 0;¶~	x->ul = 0;¶
 grid: the blank loses the background layer of the half it replaces~test TESTS=grid_diff~~src/grid/grid.c~x[width].face, x[width].bg, x[width].ul }~x[width].face, 0, x[width].ul }
-grid: grid_face ignores the background layer~test TESTS=grid_diff~~src/grid/grid.c~	*bg = x->bg && x->bg < FACE_COUNT ? &faces[x->bg] : f;~	*bg = f;
-grid: grid_face reads past faces[] for an unknown layer~test TESTS=grid_diff~~src/grid/grid.c~x->bg && x->bg < FACE_COUNT ?~x->bg ?
+grid: grid_face ignores the background layer~test TESTS=grid_diff~~src/grid/grid.c~	*bg = x->bg ? &faces[x->bg] : f;~	*bg = f;
+grid: grid_face reads past faces[] for an unknown face~test TESTS=grid_diff~~src/grid/grid.c~x->face < FACES ? x->face : FACE_NONE~x->face
 grid: a wide character's right half keeps the old background layer~test TESTS=grid_diff~~src/grid/grid.c~(Cell){ "", 0, (unsigned char)attr, FACE_NONE, 0, 0 }~(Cell){ "", 0, (unsigned char)attr, FACE_NONE, x[1].bg, 0 }
 grid: grid_clear leaves a background layer~test TESTS=grid_diff~~src/grid/grid.c~(Cell){ " ", 1, ATTR_NONE, FACE_NONE, 0, 0 }~(Cell){ " ", 1, ATTR_NONE, FACE_NONE, FACE_CURSOR_LINE, 0 }
 grid: grid_puts passes its end column~test TESTS=grid~~src/grid/grid.c~if (c + w > end) break;~if (c + w > end + 99) break;
-grid: grid_puts leaves the face off~test TESTS=grid~~src/grid/grid.c~.face = (unsigned char)face;~.face = (unsigned char)(face & 0);
+grid: grid_puts leaves the face off~test TESTS=grid~~src/grid/grid.c~.face = (unsigned short)face;~.face = (unsigned short)(face & 0);
 grid: grid_puts writes a control character as it is~test TESTS=grid~~src/grid/grid.c~if (w > 2 || u[i] < 0x20 || u[i] == 0x7f)~if (w > 2)
 grid: grid_width counts clusters, not cells~test TESTS=grid~~src/grid/grid.c~		c += uni_width((const unsigned char *)s, n, i);~		c += 1;
 grid: a changed underline layer is an equal cell~test TESTS=grid_diff~~src/grid/grid.c~ && a->ul == b->ul~
 grid: a put keeps the old underline layer~test TESTS=grid_diff~~src/grid/grid.c~	x->bg = x->ul = 0;¶~	x->bg = 0;¶
 grid: the '>' loses the underline layer of the half it replaces~test TESTS=grid_diff~~src/grid/grid.c~x[-1].bg, x[-1].ul }~x[-1].bg, 0 }
 grid: the blank loses the underline layer of the half it replaces~test TESTS=grid_diff~~src/grid/grid.c~x[width].bg, x[width].ul }~x[width].bg, 0 }
-grid: grid_face ignores the underline layer~test TESTS=grid_diff~~src/grid/grid.c~	*ul = x->ul && x->ul < FACE_COUNT ? &faces[x->ul] : f;~	*ul = f;
-grid: grid_face reads past faces[] for an unknown underline layer~test TESTS=grid_diff~~src/grid/grid.c~x->ul && x->ul < FACE_COUNT ?~x->ul ?
+grid: grid_face ignores the underline layer~test TESTS=grid_diff~~src/grid/grid.c~	*ul = x->ul ? &faces[x->ul] : f;~	*ul = f;
 grid: grid_clear leaves an underline layer~test TESTS=grid_diff~~src/grid/grid.c~(Cell){ " ", 1, ATTR_NONE, FACE_NONE, 0, 0 }~(Cell){ " ", 1, ATTR_NONE, FACE_NONE, 0, FACE_DIAG_UNDER_ERROR }
 grid: a flat undercurl~test TESTS=grid_diff~~src/grid/grid.c~	return p < a ? p : 2 * a - p;~	return 0 * (p < a);

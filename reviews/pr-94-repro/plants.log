@@ -1,0 +1,35 @@
+NOT CAUGHT    review: pty: COLORTERM not truecolor   (make test TESTS="loop tools_term" passed)
+caught        review: pty: the environment copy leaks   (make test TESTS="loop tools_term"): ==25616==ERROR: LeakSanitizer: detected memory leaks
+NOT CAUGHT    review: terminal: invisible text shown   (make test TESTS=tools_term passed)
+NOT CAUGHT    review: terminal: strikethrough dropped   (make test TESTS=tools_term passed)
+NOT CAUGHT    review: terminal: undercurl drawn as an underline   (make test TESTS=tools_term passed)
+NOT CAUGHT    review: terminal: wheel scrolls the wrong way   (make test TESTS=tools_term passed)
+NOT CAUGHT    review: terminal: Delete sends nothing   (make test TESTS=tools_term passed)
+NOT CAUGHT    review: terminal: a key leaves the view in the scrollback   (make test TESTS=tools_term passed)
+NOT CAUGHT    review: terminal: the OSC title is not shown   (make test TESTS=tools_term passed)
+NOT CAUGHT    review: terminal: hidden output redraws the editor   (make test TESTS=tools_term passed)
+NOT CAUGHT    review: terminal: bold dropped   (make test TESTS=tools_term passed)
+NOT CAUGHT    review: terminal: cursor shape ignored   (make test TESTS=tools_term passed)
+caught        grid: grid_face ignores the background layer   (make test TESTS=grid_diff): tests/test_grid_diff.c:348: CHECK(grid_face(&q, &b) == &faces[FACE_STRING] && b == &faces[FACE_CURSOR_LINE]) failed
+caught        grid: grid_face reads past faces[] for an unknown face   (make test TESTS=grid_diff): tests/test_grid_diff.c:344: CHECK(grid_face(&q, &b) == &faces[FACE_NONE] && b == &faces[FACE_NONE]) failed
+caught        grid: grid_puts leaves the face off   (make test TESTS=grid): tests/test_grid.c:69: CHECK(g.c[i].face == FACE_KITTEN_TEXT) failed
+caught        loop: pipe ends leak into later children   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:57: CHECK(ms() < end) failed
+caught        loop: pty: no session, so no controlling terminal   (make test TESTS=loop): tests/test_loop.c:103: CHECK(ms() < end) failed
+caught        loop: pty: TERM left as the editor's   (make test TESTS=loop): tests/test_loop.c:103: CHECK(ms() < end) failed
+caught        loop: pty: proc_resize does nothing   (make test TESTS=loop): tests/test_loop.c:107: CHECK(ms() < end) failed
+caught        loop: pty: the size asked is not set   (make test TESTS=loop): tests/test_loop.c:109: CHECK(HAS("7 33\r\nxterm-256color\r\n") && HAS("hi\r\ngot:hi\r\n") && HAS("9 41\r\n")) failed
+caught        loop: win: pty: the editor's own std handles reach the child   (make win WIN=loop): tests/test_loop_win.c:195: CHECK(ms() < end) failed
+caught        terminal: a slot the shown frame holds is reused, leaving its cells in the old colours   (make test TESTS=tools_term): tests/test_tools_term.c:47: CHECK(!held[k] || !memcmp(&was[k], &faces[k], sizeof was[k])) failed
+caught        terminal: cursor keys ignore DECCKM   (make test TESTS=tools_term): tests/test_tools_term.c:113: CHECK(find("^[OA")) failed
+caught        terminal: inverse is not swapped   (make test TESTS=tools_term): tests/test_tools_term.c:101: CHECK((x = find("inv")) && fg(x, 30, 30, 46)) failed
+caught        terminal: a hidden terminal still takes keys   (make test TESTS=tools_term): tests/test_tools_term.c:150: CHECK(!find("kept") && !tools_key(&e, 'x')) failed
+caught        terminal: the shell is not told the new size   (make test TESTS=tools_term): tests/test_tools_term.c:126: CHECK(find("34 106")) failed
+caught        terminal: a wide character takes one cell   (make test TESTS=tools_term): tests/test_tools_term.c:107: CHECK((x = find("Z")) && x[-2].len == 3 && x[-1].len == 0) failed
+caught        terminal: the shell's exit leaves it open   (make test TESTS=tools_term): tests/test_tools_term.c:157: CHECK(!tools_key(&e, 'x')) failed
+caught        terminal: xterm's ANSI colours, not Catppuccin's   (make test TESTS=tools_term): tests/test_tools_term.c:99: CHECK(x && fg(x, 243, 139, 168) && fg(x + 2, 243, 139, 168)) failed
+caught        terminal: a full slot table recolours a slot in use   (make test TESTS=tools_term): tests/test_tools_term.c:47: CHECK(!held[k] || !memcmp(&was[k], &faces[k], sizeof was[k])) failed
+caught        tools: the Windows terminal runs sh, not cmd.exe   (make win WIN=tools): tests/test_tools_win.c:118: CHECK(tools_key(&e, *k == '\n' ? KEY_ENTER : (unsigned char)*k)) failed
+caught        frama-c: uni_put writes a wrong last byte for a 4-byte code point   (make frama): [wp] Proved goals:  256 / 257
+caught        win: Ctrl+. is lost   (make win WIN=win): tests/test_win.c:147: CHECK(input(k, 4) == 2 && k[0] == 8 && k[1] == KEY_CTRL_DOT) failed
+caught        wl: Ctrl+. comes as a plain dot   (make test TESTS=wl): tests/test_wl.c:411: CHECK(keys[k0 + i] == want[i]) failed
+exit 1

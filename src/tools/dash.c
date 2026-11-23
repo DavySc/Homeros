@@ -103,7 +103,7 @@ static void cell(Grid *g, int r, int c, const char *s, size_t n, int w, int face
 {
 	if (r < 0 || r >= g->rows || c < 0 || c + w > g->cols) return;
 	grid_put(g, r, c, (const unsigned char *)s, n, w, ATTR_NONE);
-	g->c[r * g->cols + c].face = (unsigned char)face;
+	g->c[r * g->cols + c].face = (unsigned short)face;
 }
 
 /* UTF-8 s from column c in one face; returns the next column */
