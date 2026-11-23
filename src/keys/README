@@ -217,9 +217,15 @@ Choices:
   maps.  Like Neovim's maps they also follow a count or a register, which
   they take, as a <Cmd> map does; a key that completes no map runs Space's
   own motion, then the keys.  A lone SPC waits for the next key (no
-  'timeoutlen', as with Davy's which-key); which-key's hint popup is not
-  built yet.  Maps that only exist later (SPC i s snippets, SPC u k, SPC x,
-  SPC c, SPC d, SPC a, SPC o) join the table with their packages; a map
+  'timeoutlen', as with Davy's which-key).  After Space, which-key.nvim's
+  classic panel (keys_draw, its defaults: 200 ms delay, full width at the
+  bottom, columns of "key ➜ description", groups as +name, the trail and
+  help on the last row) lists what may follow, from the same table that
+  runs the maps (each row has its description; a + row names a group);
+  <Esc> closes it and runs nothing (ending a count or Visual mode as Esc
+  does), <BS> goes up a level, as which-key's state.lua.  Maps that only
+  exist later (SPC i s snippets, SPC u k, SPC x, SPC c, SPC d, SPC a,
+  SPC o) join the table with their packages; a map
   typed in a macro is not recorded.
 - 'clipboard' is unnamedplus (Davy, 2026-11-18): every yank, delete and
   put of the unnamed register, "+ and "* goes through the system clipboard

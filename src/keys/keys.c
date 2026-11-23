@@ -14,6 +14,7 @@
 #include "git.h"
 #include "k.h"
 #include "kitten.h"
+#include "loop.h"
 #include "snip.h"
 #include "tools.h"
 #include "uni.h"
@@ -116,14 +117,109 @@ static void key(int k, int pending)
 
 /* ---- Davy's maps (FEATURES.md 4): nnoremap <Space>ff .. and - ---- */
 
-/* only those whose targets exist; the SPC g and SPC h ones are git.h's */
-static const char *const maps[] = {
-	" ff", " fg", " fr", " ,", " e", " pv", "-", " D",
-	" gg", " gs", " gl", " gL", " gd", " gb", " gB", " hs", " hr", " hS", " hu", " hp", " is", " uk", " up",
-	"cit", "ciT",  /* nvim-orgmode's, buffer-local to .org */
-	" cc", " cC"
+/* only those whose targets exist; the SPC g and SPC h ones are git.h's.
+   Each has the description which-key shows (my-nvim-keymaps.tsv's where
+   it has one); one starting with + names a group, which-key's row for
+   a prefix of the maps after it, and is never run.  In which-key's order
+   (alphanum: by key, a lower-case letter before its capital) */
+static const struct { const char *lhs, *desc; } maps[] = {
+	{ " ,", "Buffers" },
+	{ " c", "+compile" }, { " cc", "Compile" }, { " cC", "Recompile" },
+	{ " D", "Dashboard" },
+	{ " e", "File Explorer" },
+	{ " f", "+find" }, { " ff", "Find Files" }, { " fg", "Grep" }, { " fr", "Registers" },
+	{ " g", "+git" }, { " gb", "Git branches" }, { " gB", "Open on GitHub" }, { " gd", "Git diff (hunks)" },
+	{ " gg", "Neogit (magit)" }, { " gl", "Git log" }, { " gL", "Git log (file)" }, { " gs", "Git status" },
+	{ " h", "+hunks" }, { " hp", "Preview hunk" }, { " hr", "Reset hunk" }, { " hs", "Stage hunk" },
+	{ " hS", "Stage buffer" }, { " hu", "Undo stage hunk" },
+	{ " i", "+insert" }, { " is", "Snippet" },
+	{ " p", "+project" }, { " pv", "File manager (oil)" },
+	{ " u", "+toggle" }, { " uk", "Toggle kitten on save" }, { " up", "Toggle pretty entities" },
+	{ "-", "Open parent directory (oil)" },
+	{ "cit", "org next todo state" }, { "ciT", "org prev todo state" },  /* nvim-orgmode's, buffer-local to .org */
 };
+enum { NMAPS = sizeof maps / sizeof *maps };
 static int lead[3], nlead;   /* the keys typed of a map not yet complete */
+static int hint;             /* which-key's panel is shown */
+
+/* m is a map of this buffer and mode: in Visual mode only SPC i s, a
+   snippet around the area (package 19's, agreed), and its group */
+static int usable(const char *m)
+{
+	return (*m != 'c' || is_ft(".org")) && (!E->ks.visual || !strncmp(m, " is", strlen(m)));
+}
+
+/* how many of the typed keys m starts with */
+static int typed(const char *m)
+{
+	int j = 0;
+	while (j < nlead && m[j] == lead[j]) j++;
+	return j;
+}
+
+/* maps[i] is one key more than the keys typed: a row of the panel */
+static int child(int i)
+{
+	const char *m = maps[i].lhs;
+	return usable(m) && typed(m) == nlead && m[nlead] && !m[nlead + 1];
+}
+
+/* which-key.nvim's delay (200 ms, its default and Davy's): typed fast, a
+   map never shows the panel; once shown, it follows each key at once */
+static void hint_show(void *ctx) { (void)ctx; hint = 1; core_changed = 1; }
+static void hint_end(void) { hint = 0; loop_timer(hint_show, NULL, -1); }
+
+/* which-key.nvim's classic panel, with its defaults (view.lua's show()):
+   the full width at the bottom over the command line, a blank row, the
+   maps and groups under the typed keys in columns filled one after the
+   other (each at least 20 cells wide, 3 apart, after 2 of padding: "key
+   ➜ description", a group's in WhichKeyGroup), then the trail of keys
+   typed (a group by its name) and the help, centred.  Only after Space,
+   so a c pausing in an Org buffer is Vim's c with nothing over it.  No
+   allocation. */
+void keys_draw(Editor *e, Grid *g)
+{
+	if (!hint) return;
+	E = e;
+	int n = 0, w = 20;
+	for (int i = 0; i < NMAPS; i++)
+		if (child(i)) {
+			int iw = 4 + grid_width(maps[i].desc, strlen(maps[i].desc));
+			if (iw > w) w = iw;
+			n++;
+		}
+	int cols = g->cols / (w + 3) > 1 ? g->cols / (w + 3) : 1, h = (n + cols - 1) / cols;
+	if (h > g->rows - 2) h = g->rows - 2;
+	if (h < 1) return;
+	int top = g->rows - h - 2, last = g->rows - 1;
+	w = g->cols / cols;
+	for (int r = top; r <= last; r++)
+		for (int c = 0; c < g->cols; c++) grid_put(g, r, c, (const unsigned char *)" ", 1, 1, ATTR_NONE);
+	for (int i = 0, k = 0; i < NMAPS && k / h < cols; i++) {
+		if (!child(i)) continue;
+		int c = 2 + 3 + k / h * w, r = top + 1 + k++ % h;
+		const char *d = maps[i].desc;
+		char key[2] = { maps[i].lhs[nlead], 0 };
+		c = grid_str(g, r, c, key, FACE_NORMAL_FLOAT);
+		c = grid_str(g, r, c, " \xe2\x9e\x9c ", FACE_WK_SEPARATOR);
+		grid_str(g, r, c, d, *d == '+' ? FACE_WK_GROUP : FACE_WK_DESC);
+	}
+	int c = 1;
+	for (int i = 0; i < nlead; i++) {
+		char key[2] = { (char)lead[i], 0 };
+		const char *s = lead[i] == ' ' ? "SPC" : key;
+		for (int j = 0; j < NMAPS; j++)
+			if (typed(maps[j].lhs) > i && !maps[j].lhs[i + 1]) s = maps[j].desc;
+		c = grid_str(g, last, c, i ? " \xc2\xbb " : "", FACE_WK_SEPARATOR);
+		c = grid_str(g, last, c, s, FACE_WK_GROUP);
+	}
+	c = (g->cols - 22) / 2 > c ? (g->cols - 22) / 2 : c;
+	c = grid_str(g, last, c, "<esc>", FACE_NORMAL_FLOAT);
+	c = grid_str(g, last, c, " close  ", FACE_WK_SEPARATOR);
+	c = grid_str(g, last, c, "<bs>", FACE_NORMAL_FLOAT);
+	grid_str(g, last, c, " back", FACE_WK_SEPARATOR);
+	for (int i = top * g->cols; i < g->rows * g->cols; i++) g->c[i].bg = FACE_NORMAL_FLOAT;
+}
 
 /* snacks' :Dashboard, also SPC D: the start screen on a new empty buffer
    (:enew) (package 5's, agreed) */
@@ -137,18 +233,25 @@ static int map(Editor *e, int k)
 {
 	if (!nlead && (e->mode != MODE_NORMAL || !normal_mappable(0))) return 0;
 	E = e;   /* for is_ft() and the maps that edit */
+	/* which-key's <Esc> closes (and ends a count, a register or Visual
+	   mode, as Esc does), <BS> goes up a level */
+	if (nlead && (k == KEY_ESC || k == KEY_BS)) {
+		nlead = k == KEY_BS ? nlead - 1 : 0;
+		if (nlead) return 1;
+		hint_end();
+		keys_feed(e, KEY_ESC, 0);
+		return 1;
+	}
 	lead[nlead++] = k;
 	int part = 0;
-	for (size_t i = 0; i < sizeof maps / sizeof *maps; i++) {
-		const char *m = maps[i];
-		if (*m == 'c' && !is_ft(".org")) continue;
-		int j = 0;
-		/* in Visual mode only SPC i s, a snippet around the area (package 19's, agreed) */
-		if (e->ks.visual && strcmp(m, " is")) continue;
-		while (j < nlead && m[j] == lead[j]) j++;
-		if (j < nlead) continue;
+	for (int i = 0; i < NMAPS; i++) {
+		const char *m = maps[i].lhs;
+		int j = typed(m);
+		if (!usable(m) || j < nlead) continue;
 		if (m[j]) { part = 1; continue; }
+		if (*maps[i].desc == '+') continue;
 		nlead = e->ks.pending = 0;
+		hint_end();
 		normal_mappable(1);
 		undo_close(e->buf->undo);   /* a map is a command of its own: keys_feed() closes before each */
 		switch (m[0] == '-' ? 'p' : !strcmp(m, " is") ? 's' : m[1]) {
@@ -175,11 +278,15 @@ static int map(Editor *e, int k)
 		}
 		return 1;
 	}
-	if (part) return e->ks.pending = 1;   /* keys_input() sends the next keys here first */
+	if (part) {
+		if (lead[0] == ' ' && !hint) loop_timer(hint_show, NULL, 200);
+		return e->ks.pending = 1;   /* keys_input() sends the next keys here first */
+	}
 	int n = nlead, l[3];
 	memcpy(l, lead, sizeof l);
 	nlead = 0;
 	if (n == 1) return 0;
+	hint_end();
 	keys_feed(e, l[0], 1);
 	/* the rest as typed: a picker, the dashboard or magit may take them
 	   (Neovim checks them against buffer-local maps too) */

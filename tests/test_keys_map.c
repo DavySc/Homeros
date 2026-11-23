@@ -13,6 +13,7 @@
 #include "core.h"
 #include "keys.h"
 #include "kitten.h"
+#include "loop.h"
 #include "tools.h"
 
 static void feed(Editor *e, const char *s)
@@ -30,6 +31,20 @@ static int at(Editor *e, const char *text, size_t col)
 	b[n] = 0;
 	if (strcmp(b, text) || e->win->col != col) fprintf(stderr, "[%s] col %zu, want [%s] col %zu\n", b, e->win->col, text, col);
 	return !strcmp(b, text) && e->win->col == col;
+}
+
+/* row r of g holds s */
+static int row_has(const Grid *g, int r, const char *s)
+{
+	char b[512];
+	size_t n = 0;
+	for (int c = 0; c < g->cols; c++) {
+		const Cell *x = &g->c[r * g->cols + c];
+		memcpy(b + n, grid_text(x), x->len);
+		n += x->len;
+	}
+	b[n] = 0;
+	return strstr(b, s) != NULL;
 }
 
 int main(void)
@@ -89,6 +104,40 @@ int main(void)
 	int drawn = 0;
 	for (int i = 0; i < 24 * 80; i++) drawn |= *grid_text(&g.c[i]) != ' ';
 	CHECK(drawn);
+
+	/* which-key's panel: typed fast, none; after 200 ms the keys after
+	   the prefix, groups with +; <BS> goes up a level, <Esc> closes and
+	   runs nothing (which-key.nvim's state.lua) */
+	feed(&e, " ");
+	keys_draw(&e, &g);
+	CHECK(!row_has(&g, 23, "SPC"));
+	long long t0 = loop_now();
+	for (core_changed = 0; !row_has(&g, 23, "SPC") && loop_now() - t0 < 1000000000LL; keys_draw(&e, &g)) loop_once(1000);
+	CHECK(core_changed && loop_now() - t0 >= 190000000LL);
+	CHECK(row_has(&g, 23, "<esc> close  <bs> back"));
+	CHECK(!row_has(&g, 18, "\xe2\x9e\x9c") && row_has(&g, 19, ", \xe2\x9e\x9c Buffers") && row_has(&g, 19, "p \xe2\x9e\x9c +project"));
+	CHECK(row_has(&g, 20, "c \xe2\x9e\x9c +compile") && row_has(&g, 22, "i \xe2\x9e\x9c +insert") && row_has(&g, 22, "e \xe2\x9e\x9c File Explorer"));
+	CHECK(g.c[22 * 80 + 79].bg == FACE_NORMAL_FLOAT && g.c[18 * 80].bg == FACE_NORMAL_FLOAT && g.c[17 * 80].bg != FACE_NORMAL_FLOAT);
+	feed(&e, "g");                             /* shown: at once */
+	keys_draw(&e, &g);
+	CHECK(row_has(&g, 23, " SPC \xc2\xbb +git ") && row_has(&g, 20, "b \xe2\x9e\x9c Git branches") && row_has(&g, 20, "s \xe2\x9e\x9c Git status"));
+	keys_input(&e, KEY_BS, 0);
+	grid_clear(&g);
+	keys_draw(&e, &g);
+	CHECK(e.ks.pending && row_has(&g, 19, "Buffers") && !row_has(&g, 23, "git"));
+	keys_input(&e, KEY_BS, 0);
+	grid_clear(&g);
+	keys_draw(&e, &g);
+	CHECK(!e.ks.pending && !row_has(&g, 23, "SPC") && at(&e, "acb\n", 0));
+	feed(&e, "03 \033x");                      /* Esc: nothing runs, the count goes */
+	CHECK(!e.ks.pending && at(&e, "cb\n", 0));
+	feed(&e, "u");
+	feed(&e, " u");
+	keys_draw(&e, &g);
+	CHECK(!row_has(&g, 23, "SPC"));            /* the delay starts again */
+	feed(&e, "k");
+	CHECK(!strcmp(e.msg, "Kitten on save: off"));
+	feed(&e, " uk");
 	grid_free(&g);
 
 	/* after a count or a register the map runs and takes them, as a <Cmd>

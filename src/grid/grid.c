@@ -111,6 +111,11 @@ int grid_puts(Grid *g, int r, int c, int end, const char *s, size_t n, int attr,
 	return c;
 }
 
+int grid_str(Grid *g, int r, int c, const char *s, int face)
+{
+	return grid_puts(g, r, c, g->cols, s, strlen(s), ATTR_NONE, face);
+}
+
 int grid_width(const char *s, size_t n)
 {
 	int c = 0;
