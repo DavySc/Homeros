@@ -1,0 +1,4 @@
+review: one send per turn (no loop until the socket is full)~win WIN=infoview~~src/infoview/serve/serve.c~			while (k->fd >= 0 && k->off < k->out.n && (n = send(~			if (k->fd >= 0 && k->off < k->out.n && (n = send(
+review: the sockets' event without FD_WRITE~win WIN=infoview~~src/infoview/serve/serve.c~FD_ACCEPT | FD_READ | FD_WRITE | FD_CLOSE~FD_ACCEPT | FD_READ | FD_CLOSE
+review: the editor's pipe read without waiting for bytes (no zero-byte read)~win WIN=infoview~~src/infoview/serve/serve.c~	f[0].revents = rbusy ? 0 : POLLIN;~	f[0].revents = POLLIN;
+review: the redirect file left at the end~win WIN=infoview~~src/infoview/serve/serve.c~	unlink(redirect);~	;
