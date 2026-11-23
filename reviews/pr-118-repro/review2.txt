@@ -1,0 +1,10 @@
+review 118b: sexp's failure taken for the opener at the last closer~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~(p > X->sf && p < X->sg)) return 0;~(p >= X->sf && p < X->sg)) return 0;
+review 118b: sexp's failure reaches past an unpaired quote~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~	X->sp = p; X->sf = w; X->sg = q;~	X->sp = p; X->sf = w; X->sg = N;
+review 118b: a quote's pair is no closer seen~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~			w = (size_t)(r - S); k = w + 1 - q;~			k = (size_t)(r - S) + 1 - q;
+review 118b: a closer that does not close is not seen~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~		else if (t == 3 && (w = q, !--d)) return q + k;~		else if (t == 3 && !--d) return q + k;
+review 118b: sexp's failure kept across an update~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~f->kn = f->sp = f->sg = 0;~f->kn = 0;
+review 118b: holds goes on from a match that ends at the position~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~(h->z < pos || h->x == h->z)) h->x = re~(h->z <= pos || h->x == h->z)) h->x = re
+review 118b: one chain for links and macros~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~	    holds(h + 1, e, x - 1, macro_re) == ORG_NONE)~	    holds(h, e, x - 1, macro_re) == ORG_NONE)
+review 118b: the look ahead's chain starts at the line shown~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~				Hit h[2] = { { c->fq, c->fq }, { c->fq, c->fq } };~				Hit h[2] = { { l, l }, { l, l } };
+review 118b: a lower-case clock: line is a boundary~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~(is(b, "CLOCK:") && clockl(q, upto(q, z, '\n')))) return 1;~clockl(q, upto(q, z, '\n'))) return 1;
+review 118b: a boundary line read past the link's end~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~		for (q = a; q < z && !separate(q, upto(q, z, '\n')); q = nextl(q)) ;~		for (q = a; q < z && !separate(q, eol(q)); q = nextl(q)) ;

@@ -130,6 +130,17 @@ static void verilog(void)
 	keys(&e, "ix\033x:w\n");
 	CHECK(!strcmp(disk(sv), "module m;\n    wire a;\n    wire b;\nendmodule\n"));
 	core_free(&e);
+	/* every Verilog name goes to verible, as Davy's conform.nvim's
+	   systemverilog and verilog */
+	const char *ext[] = { "svh", "v", "vh" };
+	for (int i = 0; i < 3; i++) {
+		snprintf(path, sizeof path, "%s/m.%s", sub, ext[i]);
+		CHECK((f = fopen(path, "w")) && fputs(SV, f) >= 0 && !fclose(f) && !core_open(&e, path));
+		keys(&e, ":Format\n");
+		CHECK(!strcmp(text(&e), "module m;\n    wire a;\n    wire b;\nendmodule\n"));
+		core_free(&e);
+		unlink(path);
+	}
 	/* failing, hanging (killed after 1 s) and missing: nothing changes */
 	f = fopen(sv, "w");
 	CHECK(f && fputs(SV, f) >= 0 && !fclose(f));
