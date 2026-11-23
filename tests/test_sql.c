@@ -13,6 +13,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 #include "check.h"
 #include "../src/sql/pg.h"
 #include "../src/sql/tds.h"
@@ -145,6 +146,26 @@ static void refusals(int pg, const char *why)
 	}
 }
 
+/* SCRAM-SHA-256 without a server: pg_parse fed the server's messages for a
+   client nonce of RFC 7677's example ("n=," since Postgres ignores the
+   name; the expected proofs computed with Python's hashlib) */
+static int scram(const char *server_first, const char *server_final)
+{
+	Pg p = { .net.fd = -1, .kill.fd = -1, .state = PG_AUTH };
+	strcpy(p.nonce, "rOprNGfwEbeRWgbNEkqO"), strcpy(p.first, "n=,r=rOprNGfwEbeRWgbNEkqO"), strcpy(p.pass, "pencil");
+	const char *m[2] = {server_first, server_final};
+	for (int i = 0; i < 2 && p.state != PG_DEAD; i++) {
+		size_t n = strlen(m[i]);
+		char h[9] = {'R', 0, 0, (char)((n + 8) / 256), (char)(n + 8), 0, 0, 0, (char)(11 + i)};
+		CHECK(!str_add(&p.in, h, 9) && !str_add(&p.in, m[i], n));
+		pg_parse(&p);
+		if (i == 0 && p.state != PG_DEAD) CHECK(p.net.snd.n > 5 && strstr(p.net.snd.s + 5, "c=biws,r=rOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,p=qvT2SWdEH5Q06albL+hjSYuUhCG7VndFyzIb7CK4n9k=") && !p.pass[0]);
+	}
+	int ok = p.state != PG_DEAD;
+	pg_close(&p);
+	return ok;
+}
+
 static void oracle(const char *py, const char *argv0)
 {
 #ifdef _WIN32   /* src/sql/check.sh runs them with this program under Wine */
@@ -160,7 +181,7 @@ int main(int argc, char **argv)
 	if (argc > 1) return pass = getenv("SQL_SA_PASSWORD"), driver(argc, argv);
 	Db d;
 	if (!up(&d, 0)) return 1;
-	CHECK(d.t.pkt == 4096);
+	CHECK(d.t.pkt == 4096 && !d.t.login.s);   /* LOGIN7, with the password, not kept */
 	/* a child the editor starts does not hold the session open (the review of PR 133) */
 #ifdef _WIN32
 	DWORD f;
@@ -174,6 +195,8 @@ int main(int argc, char **argv)
 	CHECK(is(&d, "select N'\U0001F600é' x", "x\n\U0001F600é\n(1 row affected)\n"));
 	/* a message's text as it is; a value's escaped, one per cell */
 	CHECK(is(&d, "print 'a' + char(9) + 'b' + char(10) + 'c'; select 'a' + char(9) + 'b' + char(10) + 'c' x", "a\tb\nc\nx\na\\tb\\nc\n(1 row affected)\n"));
+	/* a column name escaped as a value is */
+	CHECK(is(&d, "select 1 as [a\tb]", "a\\tb\n1\n(1 row affected)\n"));
 	/* a cancel while no batch runs sends nothing */
 	CHECK(!cancel(&d) && d.t.state == TDS_READY && !tds_pending(&d.t));
 	/* a cancel after the batch's last DONE was sent: the server still sends
@@ -235,8 +258,33 @@ int main(int argc, char **argv)
 	CHECK(!batch(&d, "begin", 0) && d.g.txn == 'T');
 	CHECK(!batch(&d, "select 1/0", 0) && d.g.txn == 'E' && strstr(d.out->s, "ERROR 22012: division by zero"));
 	CHECK(!batch(&d, "rollback", 0) && d.g.txn == 'I');
+	/* the server's error 57014 when no cancel of ours runs (a timeout) is shown */
+	CHECK(!batch(&d, "set statement_timeout = 10; select pg_sleep(1)", 0) && strstr(d.out->s, "ERROR 57014"));
+	CHECK(!batch(&d, "set statement_timeout = 0", 0));
+	/* a column name escaped as a value is */
+	CHECK(is(&d, "select 1 as \"a\tb\"", "a\\tb\n1\n(SELECT 1)\n"));
+	CHECK(!d.g.pass[0]);   /* the password is not kept past the login */
 	db_close(&d);
 	refusals(1, "password authentication failed for user \"postgres\"");
+	/* SCRAM: the right proof is sent and the server's checked; a wrong
+	   server signature and a nonce that does not extend ours refused */
+	const char *sf = "r=rOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,s=W22ZaJ0SNY7soEsUEjb6gQ==,i=4096";
+	CHECK(scram(sf, "v=3HO6Qt1M4MKJrmlKaoOqLAI0/0TV0HZe7J9H3MBtSOg="));
+	CHECK(!scram(sf, "v=3HO6Qt1M4MKJrmlKaoOqLAI0/0TV0HZe7J9H3MBtSOh="));
+	CHECK(!scram("r=xOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,s=W22ZaJ0SNY7soEsUEjb6gQ==,i=4096", "v=3HO6Qt1M4MKJrmlKaoOqLAI0/0TV0HZe7J9H3MBtSOg="));
+#ifndef _WIN32   /* Windows trusts its ROOT store, not SSL_CERT_FILE; the name check is the same code */
+	/* the host name: with the test server's own certificate trusted, a
+	   checked login to 127.0.0.1 still fails, on the name */
+	char ca[] = "/tmp/sql_caXXXXXX", cmd[512];
+	int fd = mkstemp(ca);
+	snprintf(cmd, sizeof cmd, "openssl s_client -starttls postgres -connect 127.0.0.1:5432 </dev/null 2>/dev/null | sed -n '/BEGIN CERT/,/END CERT/p' > %s", ca);
+	CHECK(fd >= 0 && !close(fd) && !system(cmd));
+	setenv("SSL_CERT_FILE", ca, 1);
+	CHECK(login(&d, 1, 0) && strstr(d.net->err, "mismatch"));
+	db_close(&d);
+	unsetenv("SSL_CERT_FILE");
+	unlink(ca);
+#endif
 	oracle("tests/test_sql_pg.py", argv[0]);
 #ifdef _WIN32   /* winpass.sh's summary line */
 	fprintf(stderr, "test_sql: both servers: login, text, cancel, transactions, refusals\n");

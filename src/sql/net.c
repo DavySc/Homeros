@@ -10,7 +10,6 @@
 #define SECURITY_WIN32
 #include <security.h>
 #else
-#include <fcntl.h>
 #include <netdb.h>
 #include <unistd.h>
 #include <sys/socket.h>
@@ -131,7 +130,8 @@ int net_esc(Str *b, const char *s, size_t n)
 
 static int fail(Net *c, const char *what)
 {
-	snprintf(c->err, sizeof c->err, "%s: %s", what, ERR_reason_error_string(ERR_get_error()));
+	const char *why = ERR_reason_error_string(ERR_get_error());
+	snprintf(c->err, sizeof c->err, "%s: %s", what, why ? why : "failed");   /* NULL with an empty error queue */
 	return -1;
 }
 
@@ -164,8 +164,8 @@ int net_open(Net *c, const char *host, int port, int trust)
 	int r = !ev || WSAEventSelect(sock(c), ev, FD_READ | FD_WRITE | FD_CONNECT | FD_CLOSE)   /* also makes it non-blocking */
 		|| (connect(sock(c), ai->ai_addr, (int)ai->ai_addrlen) && WSAGetLastError() != WSAEWOULDBLOCK);
 #else
-	c->fd = socket(ai->ai_family, SOCK_STREAM | SOCK_CLOEXEC, 0);   /* not a child's: the session ends when we close it */
-	int r = c->fd < 0 || fcntl(c->fd, F_SETFL, O_NONBLOCK) || (connect(c->fd, ai->ai_addr, ai->ai_addrlen) && errno != EINPROGRESS);
+	c->fd = socket(ai->ai_family, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);   /* not a child's: the session ends when we close it */
+	int r = c->fd < 0 || (connect(c->fd, ai->ai_addr, ai->ai_addrlen) && errno != EINPROGRESS);
 #endif
 	freeaddrinfo(ai);
 	if (r) { snprintf(c->err, sizeof c->err, "connect: %s", why()); return -1; }
