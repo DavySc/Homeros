@@ -208,7 +208,10 @@ static int put_text(const Text *t)
 static void cancel(LspDoc *d, long *id);
 
 /* The semantic tokens of d's text as sent, the last request cancelled
-   (Neovim's semantic_tokens: a new version, a new request). */
+   (Neovim's semantic_tokens: a new version, a new request).  No 200 ms
+   debounce on top: bench/tokens.py, 5 alternating runs of 20 keys at 100 ms
+   on Lean, measured no difference (last key to tokens 3285 ms, 3216-3333,
+   against 3283 ms, 3101-3782; Lean CPU 16.7 s against 16.9 s). */
 static void tokens(LspDoc *d)
 {
 	if (!d->s->ntypes || !d->s->ready) return;
