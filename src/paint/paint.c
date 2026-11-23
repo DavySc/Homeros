@@ -1,8 +1,8 @@
 /* include/paint.h: grids drawn on the CPU into 32-bit pixels with
    font.h's glyphs, as foot draws, for both window backends: Wayland's
    shm buffers (package 8, where this code started) and the Windows DIB
-   (package 9), whose pixels are the same bytes (0x00RRGGBB in memory
-   order B, G, R, X).  One painter, so the two systems draw alike and a
+   (package 9), whose pixels are the same bytes (0xAARRGGBB in memory
+   order B, G, R, A).  One painter, so the two systems draw alike and a
    fix lands once. */
 #include <string.h>
 #include "paint.h"
@@ -12,11 +12,14 @@
 enum { ROW = 4096 };                /* the most bytes and glyphs one row shapes (4 bytes a cell) */
 static int cw, ch, cb;              /* the font's cell and baseline, in pixels */
 static int bw;                      /* pixels a row of the buffer being drawn */
+static const uint32_t *back;        /* what shows where the base colour would, and its stride (paint.h) */
+static int bs;
 
 /* The window's defaults, Catppuccin Mocha like ref/theme.c's faces: base,
-   text, and surface1 (catppuccin/nvim's LineNr) for ATTR_DIM */
-enum { BG = 0x1e1e2e, FG = 0xcdd6f4, DIM = 0x45475a };
-static uint32_t rgb(const unsigned char c[3]) { return (uint32_t)c[0] << 16 | (uint32_t)c[1] << 8 | c[2]; }
+   text, and surface1 (catppuccin/nvim's LineNr) for ATTR_DIM.  Colours are
+   opaque (alpha ff), so a buffer is ARGB8888 or XRGB8888 alike. */
+static const uint32_t BG = 0xff000000 | PAINT_BASE, FG = 0xffcdd6f4, DIM = 0xff45475a;
+static uint32_t rgb(const unsigned char c[3]) { return 0xff000000 | (uint32_t)c[0] << 16 | (uint32_t)c[1] << 8 | c[2]; }
 
 /* Callers keep rectangles inside the buffer: cells are, by the backends' size. */
 static void fill(uint32_t *px, int x0, int y0, int w, int h, uint32_t c)
@@ -27,26 +30,34 @@ static void fill(uint32_t *px, int x0, int y0, int w, int h, uint32_t c)
 	for (int y = 1; y < h; y++) memcpy(p + y * bw, p, (size_t)w * sizeof *p);   /* libc's copy is vectorized (build B) */
 }
 
-/* src premultiplied, of alpha a, over dst */
+/* A rectangle of the background: c, or back's pixels where c is the base */
+static void ground(uint32_t *px, int x0, int y0, int w, int h, uint32_t c)
+{
+	if (!back || c != BG) { fill(px, x0, y0, w, h, c); return; }
+	for (int y = y0; y < y0 + h; y++) memcpy(px + y * bw + x0, back + y * bs + x0, (size_t)w * sizeof *px);
+}
+
+/* src premultiplied, of alpha a, over dst (alpha too) */
 static uint32_t over(uint32_t dst, uint32_t src, unsigned a)
 {
 	uint32_t r = 0;
-	for (int s = 0; s < 24; s += 8) r |= ((src >> s & 0xff) + ((dst >> s & 0xff) * (255 - a) + 127) / 255) << s;
+	for (int s = 0; s < 32; s += 8) r |= ((src >> s & 0xff) + ((dst >> s & 0xff) * (255 - a) + 127) / 255) << s;
 	return r;
 }
 
 /* bg + (fg - bg) * a / 255 per channel, rounded, red and blue in one
-   multiply (build B): each product fits its 16 bits, and
+   multiply, alpha and green in another (build B): each product fits its 16
+   bits, and
    (x + 128 + ((x + 128) >> 8)) >> 8 is x / 255 rounded for x up to
    255 * 255 (Blinn, "Three wrongs make a right"); equal to dividing each
    channel by 255 for every bg, fg and a (proved: exhaustive, 33,554,432 cases) */
 static uint32_t mix(uint32_t bg, uint32_t fg, unsigned a)
 {
 	uint32_t rb = (bg & 0xff00ff) * (255 - a) + (fg & 0xff00ff) * a + 0x800080;
-	uint32_t g = (bg >> 8 & 0xff) * (255 - a) + (fg >> 8 & 0xff) * a + 0x80;
+	uint32_t ag = (bg >> 8 & 0xff00ff) * (255 - a) + (fg >> 8 & 0xff00ff) * a + 0x800080;
 	rb = (rb + (rb >> 8 & 0xff00ff)) >> 8 & 0xff00ff;
-	g = (g + (g >> 8)) >> 8;
-	return rb | g << 8;
+	ag = (ag + (ag >> 8 & 0xff00ff)) >> 8 & 0xff00ff;
+	return rb | ag << 8;
 }
 
 /* The colours of cell c of row r, as ref/tty.c: the attr, then the face's
@@ -86,7 +97,7 @@ static void draw_span(uint32_t *px, const Grid *g, int r, int lo, int hi)
 		int w = c + 1 < g->cols && !x[c + 1].len ? 2 : 1;
 		const Face *u, *f = colours(g, r, c, r == g->crow && c == g->ccol, &fg, &bg, &u);
 		uint32_t sp = u->style & FACE_SP ? rgb(u->sp) : fg;
-		fill(px, c * cw, y0, w * cw, ch, bg);
+		ground(px, c * cw, y0, w * cw, ch, bg);
 		if (x[c].attr == ATTR_IMAGE) { image_draw(px + y0 * bw + c * cw, bw, &x[c]); continue; }   /* thread 0's, agreed */
 		if (u->style & FACE_UNDERCURL)
 			for (int i = c * cw; i < (c + w) * cw; i++) fill(px, i, ye - 1 - grid_curl(i, ch), 1, 1, sp);
@@ -203,21 +214,26 @@ static int shift(const Grid *g, const Grid *b)
 	return best;
 }
 
-void paint_clear(uint32_t *px, int stride, int w, int h)
+void paint_clear(uint32_t *px, int stride, const uint32_t *bk, int bstride, int w, int h)
 {
 	bw = stride;
-	fill(px, 0, 0, w, h, BG);
+	back = bk;
+	bs = bstride;
+	ground(px, 0, 0, w, h, BG);
 }
 
-void paint(uint32_t *px, int stride, const Grid *g, Grid *b, int all, unsigned char *dirty)
+void paint(uint32_t *px, int stride, const uint32_t *bk, int bstride, const Grid *g, Grid *b, int all, unsigned char *dirty)
 {
 	font_cell(&cw, &ch, &cb);
 	bw = stride;
+	back = bk;
+	bs = bstride;
 	/* rows a scroll moved are copied, not shaped again (shaping all 60 rows
 	   takes p99 1.91 ms of the 2 ms frame, reviews/package-7.md), and of a
 	   row only the cells that changed are drawn.  Copying in the direction
-	   of the move reads each source before it is drawn over. */
-	int k = all ? 0 : shift(g, b);
+	   of the move reads each source before it is drawn over.  Not over a
+	   wallpaper that differs by row, which would move with the text. */
+	int k = all || (back && bs) ? 0 : shift(g, b);
 	size_t row = (size_t)ch * (size_t)bw;
 	for (int i = 0; i < g->rows; i++) {
 		int r = k < 0 ? g->rows - 1 - i : i, lo = 0, hi = g->cols, l, h;

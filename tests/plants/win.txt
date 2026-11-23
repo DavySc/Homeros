@@ -34,7 +34,7 @@ win: the DIB keeps its old size~win WIN=win~~src/win/backend.c~if (all && (grid_
 specs: Pace with frames only P + D apart~specs~find design/specs -name '*.cfg' ! -name Pace_ok.cfg -delete~design/specs/Pace_ok.cfg~ Gap = 5~ Gap = 4
 win: Shift-Tab sends Tab~win WIN=win~~src/win/backend.c~w == 9 && GetKeyState(VK_SHIFT) < 0~w == 9 && GetKeyState(VK_SHIFT) > 0
 win: Ctrl+. is lost~win WIN=win~~src/win/backend.c~if (GetKeyState(VK_CONTROL) < 0) { put(KEY_CTRL_DOT); return 0; }~if (GetKeyState(VK_CONTROL) > 0) { put(KEY_CTRL_DOT); return 0; }
-win: every row sent every frame~win WIN=win~~src/win/backend.c~paint(bits, dw, g, shown, all, dirty);~paint(bits, dw, g, shown, 1, dirty);
+win: every row sent every frame~win WIN=win~~src/win/backend.c~paint(bits, dw, wbits, dw, g, shown, all, dirty);~paint(bits, dw, wbits, dw, g, shown, 1, dirty);
 win: a changed row not sent to the window~win WIN=win~~src/win/backend.c~if (dirty[r]) BitBlt~if (dirty[r] && r < 0) BitBlt
 win: a whole redraw not sent to the window~win WIN=win~~src/win/backend.c~if (all) BitBlt(dc, 0, 0, dw, dh, mem, 0, 0, SRCCOPY);~if (all) {}
 win: the font not sized for the window's DPI~win WIN=win~~src/win/backend.c~MulDiv(PT, dpi, 72)~MulDiv(PT, 96, 72)

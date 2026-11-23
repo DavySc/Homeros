@@ -1,8 +1,9 @@
 /* Frame time with and without an image (package 21): the Wayland backend's
    present() over a full grid of text scrolled a row per frame, with or
    without an image of IMG on it (as a Hasse diagram in notes).  Prints the
-   median and p99 of present() in ms over N frames.
-   Usage: frame IMG N 0|1 (under a compositor: src/image/bench/run.sh) */
+   median and p99 of present() in ms over N frames.  Mode 2: typing, a
+   character a frame and no scroll (for the wallpaper, image.h).
+   Usage: frame IMG N 0|1|2 (under a compositor: src/image/bench/run.sh) */
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,7 +30,7 @@ static int cmp(const void *a, const void *b) { double x = *(const double *)a, y 
 
 int main(int argc, char **argv)
 {
-	int n = argc > 2 ? atoi(argv[2]) : 0, img = argc > 3 && atoi(argv[3]), fds[2], rows, cols, cw, ch;
+	int n = argc > 2 ? atoi(argv[2]) : 0, mode = argc > 3 ? atoi(argv[3]) : 0, img = mode == 1, fds[2], rows, cols, cw, ch;
 	static double t[100000];
 	Grid g = { 0 }, shown = { 0 };
 	if (argc < 4 || n < 1 || n > 100000 || backend_wl.open()) return 1;
@@ -50,11 +51,12 @@ int main(int argc, char **argv)
 		}
 		/* a document of 3 rows per image row: lines of text, the image from line 5 */
 		for (int r = 0; r < rows; r++) {
-			int l = (f + r) % (3 * rows);
+			int l = mode == 2 ? r : (f + r) % (3 * rows);
 			int k = snprintf(s, sizeof s, "%4d  In a lattice every pair has a join and a meet; x <= y iff x v y = y.  %d", l, l * 7919 % 1000);
 			grid_puts(&g, r, 0, cols, s, (size_t)k, ATTR_NONE, FACE_NONE);
 			if (img && l >= 5 && l < 5 + ir) image_put(&g, r, 0, id, l - 5);
 		}
+		if (mode == 2) grid_puts(&g, rows / 2, f % cols, 1, "abc" + f % 3, 1, ATTR_NONE, FACE_NONE);
 		while (!backend_wl.ready()) loop_once(-1);
 		double a = now();
 		backend_wl.present(&g, &shown);
@@ -62,7 +64,7 @@ int main(int argc, char **argv)
 	}
 	qsort(t, (size_t)n, sizeof *t, cmp);
 	printf("%s: %dx%d cells, image %dx%d cells, present median %.3f ms p99 %.3f ms\n",
-	       img ? "image" : "text", cols, rows, ic, ir, t[n / 2], t[n * 99 / 100]);
+	       img ? "image" : mode ? "typing" : "text", cols, rows, ic, ir, t[n / 2], t[n * 99 / 100]);
 	backend_wl.close();
 	return 0;
 }

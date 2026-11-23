@@ -211,19 +211,26 @@ static int above(int rows)
 	return memcmp(x, y, (size_t)rows * 40 * 3) != 0;
 }
 
-/* How many pixels of the screen at (x, y), w by h, are not the window's
-   background; with warm 1, only those far redder than blue (an emoji's
-   skin, which no face's colour is); with 2, those not its corner's colour
-   (a cell's ink on any background) */
-static int ink(int x, int y, int w, int h, int warm)
+/* A screenshot of (x, y), w by h, as a PPM opened past its header */
+static FILE *grab(int x, int y, int w, int h, int *pw, int *ph)
 {
 	char b[512];
 	snprintf(b, sizeof b, "grim -g '%d,%d %dx%d' -t ppm %s/i.ppm", x, y, w, h, dir);
 	run(b);
 	snprintf(b, sizeof b, "%s/i.ppm", dir);
 	FILE *f = fopen(b, "rb");
+	CHECK(f && fscanf(f, "P6 %d %d 255%*c", pw, ph) == 2);
+	return f;
+}
+
+/* How many pixels of the screen at (x, y), w by h, are not the window's
+   background; with warm 1, only those far redder than blue (an emoji's
+   skin, which no face's colour is); with 2, those not its corner's colour
+   (a cell's ink on any background) */
+static int ink(int x, int y, int w, int h, int warm)
+{
 	int pw, ph, n = 0;
-	CHECK(f && fscanf(f, "P6 %d %d 255%*c", &pw, &ph) == 2);
+	FILE *f = grab(x, y, w, h, &pw, &ph);
 	for (int i = 0, c, k = 0; i < pw * ph; i++) {
 		unsigned char p[3];
 		CHECK(fread(p, 1, 3, f) == 3);
@@ -233,6 +240,17 @@ static int ink(int x, int y, int w, int h, int warm)
 	}
 	fclose(f);
 	return n;
+}
+
+/* the screen's pixel at (x, y), 0xRRGGBB */
+static int pixel(int x, int y)
+{
+	int pw, ph;
+	unsigned char p[3];
+	FILE *f = grab(x, y, 1, 1, &pw, &ph);
+	CHECK(fread(p, 1, 3, f) == 3);
+	fclose(f);
+	return p[0] << 16 | p[1] << 8 | p[2];
 }
 
 static const char SWAY[] =
@@ -565,6 +583,69 @@ static void test_sway(void)
 	size_is(640, 480, 120);
 	CHECK(cellh() == ch1);
 	draw();
+
+	/* a wallpaper (image.h): one dropped into the config folder shows from
+	   the next size, on a surface below the window's, covering it, a fifth
+	   of it over the base where the background is the default.
+	   tests/test_image.png (32 x 16, red then blue) covers 600 x 400 as
+	   800 x 400, its middle: red at the left, blue at the right, past the
+	   cells too; text over it; reversed cells (opaque, a colour emoji's and
+	   antialiased edges too) as without it.  Then red above blue: moved
+	   rows copied are what a whole redraw gives.  Taken away, the base is
+	   back from the next size, and nothing of it past a smaller window. */
+	{
+		char f[128];
+		run(SWAYMSG "resize set 600 400, move position 0 0");   /* screen pixels are window pixels */
+		pump(100);
+		size_is(600, 400, 120);
+		int ow = 0;   /* the output's background, past the window */
+		for (int t = 0; t < 2; t++) {
+			if (t) {
+				snprintf(f, sizeof f, "%s/homeros", dir);
+				CHECK(!mkdir(f, 0700) && !setenv("XDG_CONFIG_HOME", dir, 1));
+				cmd("cp tests/test_image.png %s/homeros/wallpaper # %s", dir);
+				run(SWAYMSG "resize set 640 480");
+				pump(100);
+				draw();   /* a size drawn: the wallpaper is looked for */
+				run(SWAYMSG "resize set 600 400, move position 0 0");
+				pump(100);
+			}
+			draw();
+			grid_puts(&g, 1, 0, g.cols, "Wg😀", 6, ATTR_REV, FACE_NONE);
+			show();
+			snprintf(f, sizeof f, "grim -g '0,%d %dx%d' -t ppm %s/r%d.ppm", cellh(), 4 * cellw(), cellh(), dir, t);
+			run(f);
+			if (!t) ow = pixel(620, 300);
+		}
+		cmd("cmp -s %s/r0.ppm %s/r1.ppm", dir);
+		CHECK(pixel(10, 300) == 0x4b1825 && pixel(599, 399) == 0x181858);
+		CHECK(ink(0, 0, cellw(), cellh(), 2) > 0);   /* the h of homeros */
+		cmd("cp tests/test_wallpaper.png %s/homeros/wallpaper # %s", dir);   /* 8 x 8: 4 rows red above 4 blue */
+		run(SWAYMSG "resize set 640 480, move position 0 0");
+		pump(100);
+		size_is(640, 480, 120);
+		draw();
+		CHECK(ink(600, 0, 1, 470, 2) > 0);   /* not one colour top to bottom */
+		grid_clear(&g);
+		for (int r = 0; r < g.rows; r++) grid_puts(&g, r, 0, g.cols, "abcdefghijklmnopqrstuvwxyz" + r % 26, 1, ATTR_NONE, FACE_NONE);
+		for (int i = 0; i < 4; i++) {   /* scrolls a row a frame, into both buffers */
+			show();
+			memmove(g.c, g.c + g.cols, sizeof *g.c * (size_t)((g.rows - 1) * g.cols));
+		}
+		show();
+		cmd("grim -t ppm %s/1.ppm # %s", dir);
+		grid_free(&shown);
+		show();
+		cmd("grim -t ppm %s/2.ppm && cmp -s %s/1.ppm %s/2.ppm", dir);
+		cmd("rm %s/homeros/wallpaper # %s", dir);
+		run(SWAYMSG "resize set 600 400, move position 0 0");
+		pump(100);
+		draw();
+		CHECK(pixel(10, 300) == 0x1e1e2e && pixel(620, 300) == ow);
+		run(SWAYMSG "resize set 640 480");
+		pump(100);
+		draw();
+	}
 
 	/* hidden: no frame callback, so nothing is drawn until shown again */
 	run(SWAYMSG "move scratchpad");

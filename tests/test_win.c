@@ -359,13 +359,56 @@ int main(void)
 	while (px(w2, 0) == REV) w2++;
 	CHECK(w2 >= 2 * cw - 2 && w2 <= 2 * cw + 2 && px(w2, 0) == BG && px(c2 * cw - 1, r2 * ch - 1) != RED);
 
+	/* a wallpaper (image.h) dropped into the config folder shows from the
+	   next size: tests/test_wallpaper.png (red above blue) covers the
+	   window, red at its top, blue at its bottom, a fifth of it over the
+	   base, text drawn over it, and stays put when the text scrolls (no
+	   rows copied, src/paint); taken away, the base is back from the next
+	   size */
+	cw = w2;
+	for (ch = 0; px(0, ch) == REV; ch++) {}
+	for (int t = 0; t < 2; t++) {
+		CHECK(t ? DeleteFileA("build\\win\\cfg\\homeros\\wallpaper")
+		        : !_putenv("XDG_CONFIG_HOME=build\\win\\cfg") && (CreateDirectoryA("build\\win\\cfg", NULL) || GetLastError() == ERROR_ALREADY_EXISTS)
+		          && (CreateDirectoryA("build\\win\\cfg\\homeros", NULL) || GetLastError() == ERROR_ALREADY_EXISTS)
+		          && CopyFileA("tests\\test_wallpaper.png", "build\\win\\cfg\\homeros\\wallpaper", FALSE));
+		GetWindowRect(win, &wr);
+		SetWindowPos(win, NULL, 0, 0, wr.right - wr.left + (t ? -cw : cw), wr.bottom - wr.top, SWP_NOMOVE | SWP_NOZORDER);
+		n = input(k, 1024);
+		resized = 0;
+		for (int i = 0; i < n; i++) resized |= k[i] == KEY_RESIZE;
+		CHECK(resized);
+		b->size(&rows, &cols);
+		CHECK(!grid_resize(&g, rows, cols));
+		put(&g, 0, 1, "x", 1, ATTR_NONE);
+		present(&g, &shown);
+		RECT cr;
+		GetClientRect(win, &cr);
+		int y = (rows - 1) * ch + ch / 2;
+		CHECK(px(1, ch) == (t ? BG : RGB(75, 24, 37)) && px(1, y) == (t ? BG : RGB(24, 24, 88)) && px(cr.right - 2, y) == px(1, y));
+		CHECK(px(cw, 0) == px(1, ch) && count(0, 1, px(cw, 0)) < cw * ch);   /* the x, over the wallpaper (the cursor at (0, 0)) */
+		if (t) break;
+		COLORREF was[64];
+		for (int s = 0; s < 2; s++) {   /* lines, then the same moved up a row */
+			for (int r = 1; r < rows; r++) {
+				char l[16];
+				grid_puts(&g, r, 2, cols - 2, l, (size_t)snprintf(l, sizeof l, "line %d", r + s), ATTR_NONE, FACE_NONE);
+			}
+			present(&g, &shown);
+			for (int q = 1; q < rows && q < 64; q++) {
+				if (!s) was[q] = px(1, q * ch + ch / 2);
+				CHECK(px(1, q * ch + ch / 2) == was[q]);
+			}
+		}
+	}
+
 	b->close();
 	CHECK(!FindWindowW(L"homeros", NULL));
 	grid_free(&g);
 	grid_free(&shown);
 	puts("test_win: keys, mouse and clipboard; identical frame draws nothing; one change draws its row; "
 	     "text, dim, face, face background, long cluster, wide and image cells; cursor drawn, restored and at (0,0) after a whole redraw; WM_PAINT; "
-	     "resize and DPI redraw whole; close is a key; paced; idle quiet; minimised draws nothing");
+	     "resize and DPI redraw whole; wallpaper; close is a key; paced; idle quiet; minimised draws nothing");
 	return 0;
 }
 #else

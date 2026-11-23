@@ -25,6 +25,27 @@ package 4 PR: Markdown and Org image links, LaTeX fragments, the rows under the 
   Every failed fragment is remembered for the session (a screen of them, with no latex
   installed, would otherwise start one job after another for ever), and each tool is killed
   after 10 s (a fragment TeX never finishes would hold its job and a core).
+- **Wallpaper** (Davy, 2026-11-23: "install a wallpaper just like in the wezterm foto"): the PNG
+  or JPEG `wallpaper` in Homeros' config folder (`~/.config/homeros/wallpaper`,
+  `%LOCALAPPDATA%\homeros\wallpaper`), shown behind the text as WezTerm's
+  `window_background_image` with background size Cover: scaled to cover the window, aspect kept,
+  centred, a fifth of it over the Mocha base (`WALL_OPACITY`, about what Davy's WezTerm screenshot
+  shows), wherever a cell has the default background. `image_wallpaper` decodes and lays it over
+  the base once (again only when the file changes, looked for at each new window size, so one
+  dropped in shows at the next resize) and says which part covers the window; the window's own
+  scaler does the rest, so neither a frame nor a resize decodes or resizes anything:
+  - Wayland: a synchronized subsurface below the window's surface, its viewport cropping and
+    scaling the picture on the compositor (its GPU on Hyprland). The text buffer becomes ARGB,
+    clear where the background is the default, drawn exactly as without a wallpaper (moved rows
+    are still copied); colours carry alpha ff and `mix`/`over` blend alpha too, so antialiased
+    edges and colour glyphs over the clear background come out premultiplied.
+  - Win32: GDI's `StretchBlt` (HALFTONE) scales the part into a window-sized bitmap at each new
+    size; the shared painter (`src/paint`, `paint.h`'s `back`) copies a default-background
+    cell's rectangle from there and draws its glyphs over it, and copies no moved rows, which
+    would carry the wallpaper with the text (`tests/test_win.c` scrolls over it).
+  Both go through `paint.h`'s `back`: Wayland's is one clear row after its buffers (stride 0),
+  Win32's the scaled bitmap.
+  Without the file nothing changes: no surface, XRGB buffers, opaque cells.
 - **Terminal:** `Backend.cell` is 0 x 0, so the core places no images and the link text stays,
   as Emacs does in a terminal.
 
@@ -45,9 +66,20 @@ package 4 PR: Markdown and Org image links, LaTeX fragments, the rows under the 
   7,327 states): with own names, rename last and one job per hash in an editor, the final PNG is
   always whole and never written again; writing the final name directly, a shared temporary
   name, or no job table each break it.
+- Wallpaper frame time, **measured** (`bench/run.sh test_image.png 500 5 wall.png`: headless sway,
+  pixman, 1280x800, 128x36 cells, a 1920x1080 wallpaper, 5 alternating runs of 500 frames,
+  medians per run): scrolling a row per frame 0.691 ms (0.662-0.731) without, 0.698 ms
+  (0.660-0.753) with; typing a character per frame 0.118 ms (0.115-0.118) without, 0.116 ms
+  (0.113-0.122) with: no measurable difference. The first version drew the wallpaper into the
+  text buffer itself, which forbids copying moved rows: scrolling took 3.11-3.44 ms (5 runs, p99
+  up to 9 ms), so it was replaced by the subsurface. Its per-size CPU rescale (stb_image_resize,
+  sRGB) took 43-214 ms per new size (5 runs), hence the compositor's and GDI's scalers.
+- Wallpaper at a new size, **measured** (5 runs of 1,000 sizes): 0.5-0.7 microseconds (a
+  `stat`); the first time, decoding the 1920x1080 PNG and laying it over the base, 44-60 ms.
 - Tests: `tests/test_image.c` (random PNGs against a model of what a window shows, the cache's
   keys, slot reuse, no allocation in a frame, LaTeX jobs with stand-in tools), `tests/test_wl.c`
-  and `tests/test_win.c` (an image cell on screen), `tests/fuzz_image.c`; 34 plants in
+  and `tests/test_win.c` (an image cell on screen; the wallpaper's pixels, text over it,
+  reversed cells as without it, moved rows (copied on Wayland, not on Win32), taken away), `tests/fuzz_image.c`; 61 plants in
   `tests/plants/image.txt`, all caught.
 
 ## Residual risk
@@ -61,5 +93,14 @@ package 4 PR: Markdown and Org image links, LaTeX fragments, the rows under the 
   review), again for each new box, since the box is part of the key.
 - A latex or dvipng still running when the editor exits is not killed (the timeout ends with
   the editor); one that never finishes then runs on.
+- Wallpaper, **hypothesis:** the compositor's blend of the two surfaces costs Hyprland's GPU
+  next to nothing; measured here only under pixman (CPU), where it is the compositor's time, not
+  the editor's. Windows: the cost of `StretchBlt` HALFTONE at a new size, and of the per-cell
+  `BitBlt`, is not measured on real Windows (Wine's timing says nothing about it).
+- Wallpaper: the part covering the window is cut in whole picture pixels (the viewport's source
+  is integral), so a picture only a few pixels across is covered off by up to a pixel; no test
+  sees the source rectangle reach the compositor except through the picture shown.
+- Images placed in a note over a wallpaper keep their own padding in the base colour (they are
+  laid over the base when loaded).
 - `GdiFlush` before writing the DIB's bits follows CreateDIBSection's documented rule; Wine
   draws at once, so no test sees it.

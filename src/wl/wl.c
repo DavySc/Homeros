@@ -5,7 +5,8 @@
    an input method through text-input-v3, the "+ register through
    wl_data_device; the pointer gets the text cursor (cursor-shape-v1) and
    gives left clicks and the wheel as keys; the buffer is drawn at the fractional scale the compositor prefers
-   (fractional-scale-v1 with a viewport).  These are the protocols Hyprland
+   (fractional-scale-v1 with a viewport); a wallpaper (image.h) is a
+   subsurface below it.  These are the protocols Hyprland
    offers; the window has no decorations (Hyprland draws none for it). */
 #define _GNU_SOURCE
 #include <errno.h>
@@ -31,6 +32,7 @@
 #include "keys.h"
 #include "uni.h"
 #include "font.h"
+#include "image.h"
 #include "paint.h"
 
 /* FONT_PX: pixels per em at scale 1 (hypothesis: Davy's size is not recorded) */
@@ -50,6 +52,7 @@ static struct zwp_text_input_manager_v3 *tim;
 static struct wp_cursor_shape_manager_v1 *csm;
 static struct wp_fractional_scale_manager_v1 *fsm;
 static struct wp_viewporter *vpr;
+static struct wl_subcompositor *subc;
 
 static struct wl_surface *surf;
 static struct xdg_surface *xsurf;
@@ -60,6 +63,10 @@ static struct wl_pointer *ptr;
 static struct wp_cursor_shape_device_v1 *shape;
 static struct zwp_text_input_v3 *ti;
 static struct wl_data_device *dd;
+static struct wl_surface *wsurf;    /* the wallpaper's, below surf */
+static struct wl_subsurface *wsub;
+static struct wp_viewport *wview;
+static struct wl_buffer *wbuf;
 
 static int cell_w, cell_h, cell_b;  /* the font's cell and baseline, in pixels */
 static int lw = 800, lh = 600;
@@ -72,6 +79,7 @@ static int font(int px)
 static int scale = 120;             /* in 120ths, fractional-scale-v1's unit */
 static int bw, bh;                  /* buffer size in pixels */
 static int configured, waiting;     /* waiting: a frame callback is due */
+static int wall;                    /* a wallpaper is behind the text (image.h) */
 static struct wl_callback *frame;
 static struct wp_fractional_scale_v1 *fscale;
 static struct wl_registry *reg;
@@ -86,6 +94,7 @@ static void *pool_mem;
 static int pw, ph;                  /* size of the buffers in the pool */
 static Grid vis;                    /* cur with the preedit, when there is one */
 static size_t pool_size;
+static const uint32_t *back;        /* with a wallpaper, a clear row after the buffers (paint.h) */
 
 static int kq[KQ], kh, kn;          /* keys for wl_input */
 static void push(int k) { if (kn < KQ) kq[(kh + kn++) % KQ] = k; }
@@ -543,6 +552,7 @@ static void reg_add(void *d, struct wl_registry *r, uint32_t id, const char *i, 
 	else BIND(csm, wp_cursor_shape_manager_v1_interface, 1);
 	else BIND(fsm, wp_fractional_scale_manager_v1_interface, 1);
 	else BIND(vpr, wp_viewporter_interface, 1);
+	else BIND(subc, wl_subcompositor_interface, 1);
 #undef BIND
 }
 static void reg_remove(void *d, struct wl_registry *r, uint32_t id) { (void)d; (void)r; (void)id; }
@@ -563,7 +573,19 @@ static void bufs_free(void)
 	}
 	if (pool_mem) munmap(pool_mem, pool_size);
 	pool_mem = NULL;
+	back = NULL;
 	pw = ph = 0;
+}
+
+/* n bytes of shared memory as a pool, mapped at *mem; NULL if none */
+static struct wl_shm_pool *pool_new(size_t n, void **mem)
+{
+	int fd = memfd_create("homeros", MFD_CLOEXEC);
+	if (fd < 0) return NULL;
+	*mem = ftruncate(fd, (off_t)n) ? MAP_FAILED : mmap(NULL, n, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	struct wl_shm_pool *pool = *mem == MAP_FAILED ? NULL : wl_shm_create_pool(shm, fd, (int32_t)n);
+	close(fd);
+	return pool;
 }
 
 /* Buffers of the current size; a busy one is destroyed too, which the
@@ -572,19 +594,65 @@ static int bufs_make(void)
 {
 	bufs_free();
 	size_t one = (size_t)bw * (size_t)bh * 4;
-	int fd = memfd_create("homeros", MFD_CLOEXEC);
-	if (fd < 0) return -1;
-	pool_size = one * NBUF;
-	pool_mem = ftruncate(fd, (off_t)pool_size) ? MAP_FAILED : mmap(NULL, pool_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-	if (pool_mem == MAP_FAILED) { close(fd); pool_mem = NULL; return -1; }
-	struct wl_shm_pool *pool = wl_shm_create_pool(shm, fd, (int32_t)pool_size);
+	struct wl_shm_pool *pool = pool_new(pool_size = one * NBUF + (size_t)bw * 4, &pool_mem);
+	if (!pool) { pool_mem = NULL; return -1; }
+	back = wall ? (const uint32_t *)((char *)pool_mem + one * NBUF) : NULL;   /* a new memfd is zeros */
 	for (int i = 0; i < NBUF; i++) {
 		bufs[i].px = (uint32_t *)((char *)pool_mem + one * (size_t)i);
-		bufs[i].b = wl_shm_pool_create_buffer(pool, (int32_t)(one * (size_t)i), bw, bh, bw * 4, WL_SHM_FORMAT_XRGB8888);
+		bufs[i].b = wl_shm_pool_create_buffer(pool, (int32_t)(one * (size_t)i), bw, bh, bw * 4,
+		                                      wall ? WL_SHM_FORMAT_ARGB8888 : WL_SHM_FORMAT_XRGB8888);
 		wl_buffer_add_listener(bufs[i].b, &buf_l, &bufs[i]);
 	}
 	wl_shm_pool_destroy(pool);
-	close(fd);
+	return 0;
+}
+
+/* The wallpaper (image.h) on a surface of its own below the window's, its
+   part that covers the window scaled by the compositor (a viewport), so a
+   new size only says where; it shows with the window's next commit (a
+   synchronized subsurface).  The text is drawn as without one, moved rows
+   copied, into an ARGB buffer clear where the background is the default,
+   and the compositor blends the two: a frame costs no more (measured,
+   src/image/README.md).  Sets wall. */
+static int wall_make(void)
+{
+	static const uint32_t *up;   /* the picture in wbuf */
+	int iw, ih, src[4];
+	const uint32_t *px = subc && vpr ? image_wallpaper(bw, bh, PAINT_BASE, &iw, &ih, src) : NULL;
+	if (px != up) {
+		if (wbuf) wl_buffer_destroy(wbuf);   /* the compositor keeps what it shows */
+		wbuf = NULL;
+		up = NULL;
+	}
+	if (!(wall = px != NULL)) {
+		if (wsurf) {
+			wl_surface_attach(wsurf, NULL, 0, 0);
+			wl_surface_commit(wsurf);
+		}
+		return 0;
+	}
+	if (!wsurf) {
+		wsurf = wl_compositor_create_surface(comp);
+		wsub = wl_subcompositor_get_subsurface(subc, wsurf, surf);
+		wl_subsurface_place_below(wsub, surf);
+		wview = wp_viewporter_get_viewport(vpr, wsurf);
+	}
+	if (!wbuf) {
+		size_t n = (size_t)iw * (size_t)ih * 4;
+		void *mem;
+		struct wl_shm_pool *pool = pool_new(n, &mem);
+		if (!pool) return -1;
+		memcpy(mem, px, n);
+		munmap(mem, n);
+		wbuf = wl_shm_pool_create_buffer(pool, 0, iw, ih, iw * 4, WL_SHM_FORMAT_XRGB8888);
+		wl_shm_pool_destroy(pool);
+		wl_surface_attach(wsurf, wbuf, 0, 0);
+		wl_surface_damage_buffer(wsurf, 0, 0, iw, ih);
+		up = px;
+	}
+	wp_viewport_set_source(wview, wl_fixed_from_int(src[0]), wl_fixed_from_int(src[1]), wl_fixed_from_int(src[2]), wl_fixed_from_int(src[3]));
+	wp_viewport_set_destination(wview, lw, lh);
+	wl_surface_commit(wsurf);
 	return 0;
 }
 
@@ -614,6 +682,11 @@ static void wl_close(void)
 	if (top) xdg_toplevel_destroy(top);
 	if (xsurf) xdg_surface_destroy(xsurf);
 	if (view) wp_viewport_destroy(view);
+	if (wbuf) wl_buffer_destroy(wbuf);
+	if (wview) wp_viewport_destroy(wview);
+	if (wsub) wl_subsurface_destroy(wsub);
+	if (wsurf) wl_surface_destroy(wsurf);
+	if (subc) wl_subcompositor_destroy(subc);
 	if (fscale) wp_fractional_scale_v1_destroy(fscale);
 	if (surf) wl_surface_destroy(surf);
 	if (vpr) wp_viewporter_destroy(vpr);
@@ -638,6 +711,7 @@ static void wl_close(void)
 	frame = NULL; sel = dnd = NULL; src = NULL; dd = NULL; ti = NULL; shape = NULL; ptr = NULL; kbd = NULL;
 	top = NULL; xsurf = NULL; view = NULL; fscale = NULL; surf = NULL; vpr = NULL; fsm = NULL; csm = NULL;
 	tim = NULL; ddm = NULL; seat = NULL; wm = NULL; shm = NULL; comp = NULL; reg = NULL; dpy = NULL;
+	wbuf = NULL; wview = NULL; wsub = NULL; wsurf = NULL; subc = NULL; wall = 0;
 	xst = NULL; keymap = NULL; xctx = NULL; rfd = -1; clip = got = NULL;
 	gotn = 0;
 	configured = waiting = ti_on = kn = 0;
@@ -748,14 +822,14 @@ static void wl_present(const Grid *cur, Grid *shown)
 		if (grid_resize(shown, cur->rows, cur->cols)) return;
 		for (int i = 0; i < NBUF; i++) grid_free(&bufs[i].g);
 	}
-	if ((pw != bw || ph != bh) && bufs_make()) return;
+	if ((pw != bw || ph != bh) && (wall_make() || bufs_make())) return;
 	pw = bw;
 	ph = bh;
 	struct buf *b = bufs[0].busy ? &bufs[1] : &bufs[0];
 	const Grid *g = overlay(cur);
 	if (b->g.rows != g->rows || b->g.cols != g->cols) {
 		if (grid_resize(&b->g, g->rows, g->cols)) return;
-		paint_clear(b->px, bw, bw, bh);
+		paint_clear(b->px, bw, back, 0, bw, bh);
 		all = 1;
 	}
 	/* the damage is the rows that differ from the screen, which shows the
@@ -763,7 +837,7 @@ static void wl_present(const Grid *cur, Grid *shown)
 	   already may still need its damage */
 	const struct buf *o = !all && on && on->g.rows == g->rows && on->g.cols == g->cols ? on : NULL;
 	unsigned char dirty[g->rows];
-	paint(b->px, bw, g, &b->g, all, dirty);
+	paint(b->px, bw, back, 0, g, &b->g, all, dirty);
 	for (int r = 0, l, h; !all && r < g->rows; r++)
 		if (!o || (o == b ? dirty[r] : paint_span(g, r, &o->g, r, &l, &h) > 0))
 			wl_surface_damage_buffer(surf, 0, r * cell_h, g->cols * cell_w, cell_h);

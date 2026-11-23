@@ -21,6 +21,7 @@
 #include <dwmapi.h>
 #include "backend.h"
 #include "font.h"
+#include "image.h"
 #include "keys.h"
 #include "loop.h"
 #include "paint.h"
@@ -34,6 +35,9 @@ static HWND win;
 static HDC mem;                 /* holds the DIB, which holds what is shown */
 static HBITMAP dib, nodib;
 static uint32_t *bits;          /* the DIB's pixels */
+static HDC wdc;                 /* holds the wallpaper at the window's size (image.h), if any */
+static HBITMAP wdib, nowdib;
+static const uint32_t *wbits;   /* its pixels, the painter's back (paint.h) */
 static HANDLE timer;
 static int cw, ch, dpi;         /* cell size in pixels */
 static int dw, dh, stale;       /* the DIB's size; stale: redraw it whole */
@@ -81,7 +85,29 @@ static int make_dib(void)
 	bits = px;
 	dw = r.right;
 	dh = r.bottom;
-	paint_clear(bits, dw, dw, dh);
+	/* the wallpaper's part that covers the window, scaled by GDI */
+	if (wdib) { SelectObject(wdc, nowdib); DeleteObject(wdib); wdib = NULL; }
+	wbits = NULL;
+	int iw = 0, ih = 0, src[4];
+	const uint32_t *w = image_wallpaper(dw, dh, PAINT_BASE, &iw, &ih, src);
+	BITMAPINFO wi = { .bmiHeader = { .biSize = sizeof wi.bmiHeader, .biWidth = iw, .biHeight = -ih, .biPlanes = 1, .biBitCount = 32 } };
+	HDC sdc = w ? CreateCompatibleDC(mem) : NULL;
+	HBITMAP sb = sdc ? CreateDIBSection(mem, &wi, DIB_RGB_COLORS, &px, NULL, 0) : NULL;
+	void *wpx;
+	if (sb && (wdib = CreateDIBSection(mem, &bi, DIB_RGB_COLORS, &wpx, NULL, 0))) {
+		memcpy(px, w, (size_t)iw * (size_t)ih * 4);
+		HGDIOBJ o = SelectObject(sdc, sb);
+		SelectObject(wdc, wdib);
+		SetStretchBltMode(wdc, HALFTONE);
+		SetBrushOrgEx(wdc, 0, 0, NULL);   /* StretchBlt's rule after HALFTONE */
+		StretchBlt(wdc, 0, 0, dw, dh, sdc, src[0], src[1], src[2], src[3], SRCCOPY);
+		GdiFlush();   /* before the painter reads it */
+		wbits = wpx;
+		SelectObject(sdc, o);
+	}
+	if (sb) DeleteObject(sb);
+	if (sdc) DeleteDC(sdc);
+	paint_clear(bits, dw, wbits, dw, dw, dh);
 	return 0;
 }
 
@@ -161,12 +187,14 @@ static LRESULT CALLBACK proc(HWND h, UINT m, WPARAM w, LPARAM l)
 static void win_close(void)
 {
 	if (mem) { SelectObject(mem, nodib); DeleteDC(mem); }
+	if (wdc) { SelectObject(wdc, nowdib); DeleteDC(wdc); }
+	if (wdib) DeleteObject(wdib);
 	font_close();
 	if (dib) DeleteObject(dib);
 	if (timer) CloseHandle(timer);
 	if (win) DestroyWindow(win);
 	UnregisterClassW(L"homeros", GetModuleHandleW(NULL));
-	mem = NULL; dib = NULL; timer = NULL; win = NULL;
+	mem = NULL; dib = NULL; timer = NULL; win = NULL; wdc = NULL; wdib = NULL; wbits = NULL;
 	dw = dh = 0;
 }
 
@@ -184,8 +212,10 @@ static int win_open(void)
 	if (!win) return -1;
 	dpi = (int)GetDpiForWindow(win);
 	mem = CreateCompatibleDC(NULL);
+	wdc = CreateCompatibleDC(NULL);
 	timer = CreateWaitableTimerExW(NULL, NULL, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
-	if (!mem || !timer) { win_close(); return -1; }
+	if (!mem || !wdc || !timer) { win_close(); return -1; }
+	nowdib = GetCurrentObject(wdc, OBJ_BITMAP);
 	nodib = GetCurrentObject(mem, OBJ_BITMAP);
 	if (make_font() || make_dib()) { win_close(); return -1; }
 	measure_period();
@@ -249,7 +279,7 @@ static void win_present(const Grid *g, Grid *shown)
 	stale = 0;
 	unsigned char dirty[g->rows];
 	GdiFlush();   /* CreateDIBSection's rule: GDI done with the bits (the last BitBlt) before they change */
-	paint(bits, dw, g, shown, all, dirty);
+	paint(bits, dw, wbits, dw, g, shown, all, dirty);
 	HDC dc = GetDC(win);
 	if (all) BitBlt(dc, 0, 0, dw, dh, mem, 0, 0, SRCCOPY);
 	else for (int r = 0; r < g->rows; r++) if (dirty[r]) BitBlt(dc, 0, r * ch, g->cols * cw, ch, mem, 0, r * ch, SRCCOPY);
