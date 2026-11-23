@@ -1,0 +1,6 @@
+.org wwc\x7fX \x1b ~0.2                 PR [one alphabeta gamma] main [one alphaXbeta gamma] nvim [one alphaXbeta gamma]  PR DIFFERS
+.org wwci\x7fwX \x1b ~0.2               PR [one alpha X gamma] main [one alpha betagamma] nvim [one alpha betagamma]  PR DIFFERS
+.org wwc \x1b ~0.2 x                    PR [one alpha eta gamma] main [one alpha eta gamma] nvim [one alpha eta gamma]
+.txt wwc\x7fX \x1b ~0.2                 PR [one alphaXbeta gamma] main [one alphaXbeta gamma] nvim [one alphaXbeta gamma]
+.txt wwci\x7fwX \x1b ~0.2               PR [one alpha betagamma] main [one alpha betagamma] nvim [one alpha betagamma]
+.txt wwc \x1b ~0.2 x                    PR [one alpha eta gamma] main [one alpha eta gamma] nvim [one alpha eta gamma]
