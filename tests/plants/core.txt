@@ -217,3 +217,4 @@ core: the message's "\r" is drawn, not dropped (test_core_diag)~test TESTS=core_
 core: :bd keeps its folder's watch, so Windows cannot rename its parent~win WIN=git~~src/core/core.c~	buf_unwatch(b);¶	syntax_free(b->syn);¶	lsp_close(b->lsp);¶	text_free(b->text);¶	undo_free(b->undo);¶	umarks_drop(b);~	syntax_free(b->syn);¶	lsp_close(b->lsp);¶	text_free(b->text);¶	undo_free(b->undo);¶	umarks_drop(b);
 core: a freed buffer keeps its folder's watch~win WIN=git~~src/core/core.c~	buf_unwatch(b);¶	umarks_drop(b);~	umarks_drop(b);
 core: a closed watch stays in the loop~win WIN=git~~src/core/core.c~if (b->watch >= 0 && file_unwatch(b->watch)) loop_unwatch(b->watch);~if (b->watch >= 0) file_unwatch(b->watch);
+specs: Frames with one dirty flag~specs~find design/specs -name '*.cfg' ! -name Frames_ok.cfg -delete~design/specs/Frames_ok.cfg~ Variant = "ok"~ Variant = "shared"
