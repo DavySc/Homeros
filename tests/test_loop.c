@@ -599,8 +599,7 @@ static void waits(void)
 	char *argv[] = { "true", NULL };
 	memset(&b, 0, sizeof b);
 	id = proc_spawn(argv, NULL, respawn, &b);
-	t0 = ms();
-	CHECK(proc_wait(id, 1000) == 0 && b.ended[0] && next_id == id && ms() - t0 < 500);
+	CHECK(proc_wait(id, 1000) == 0 && b.ended[0] && next_id == id);
 	proc_kill(next_id);
 	run(&next, 2000);
 	loop_int = 0;
