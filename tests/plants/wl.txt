@@ -21,4 +21,4 @@ wl: lost compositor ignored~test TESTS=wl~~src/wl/wl.c~dispatch_pending(dpy) < 0
 wl: ISO_Left_Tab sends nothing~test TESTS=wl~~src/wl/wl.c~	case XKB_KEY_ISO_Left_Tab: return KEY_S_TAB;   /* Shift-Tab in most layouts */¶~
 wl: Tab with Shift sends Tab~test TESTS=wl~~src/wl/wl.c~XKB_STATE_MODS_EFFECTIVE) > 0) return KEY_S_TAB;~XKB_STATE_MODS_EFFECTIVE) > 1) return KEY_S_TAB;
 wl: Ctrl+. comes as a plain dot~test TESTS=wl~~src/wl/wl.c~XKB_STATE_MODS_EFFECTIVE) > 0) return KEY_CTRL_DOT;~XKB_STATE_MODS_EFFECTIVE) > 1) return KEY_CTRL_DOT;
-wl: damage only rows drawn~test TESTS=wl~~src/wl/wl.c~(o == b ? dirty[r] : paint_span(g, r, &o->g, r, &l, &h) > 0)~dirty[r]
+wl: damage only rows drawn~test TESTS=wl~~src/wl/wl.c~(o == b ? dirty[r] : paint_span(g, r, &o->g, r, &l, &h) > 0)~(dirty[r] + 0 * (l = h = 0))
