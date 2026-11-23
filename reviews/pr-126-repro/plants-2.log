@@ -1,0 +1,81 @@
+caught        Windows test: one that ends early with status 0 passes, as Wine has reported a trap (tools/winpass.sh last line)   (make win WIN=loop): FAIL test_loop_win
+caught        keys: gqq is not gqgq (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:176: CHECK(!strcmp(text(&e), want(c[i].a, c[i].z))) failed
+caught        keys: a relative path looks for sqldiff.toml from the root, not the working directory (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:230: CHECK(!strcmp(disk("a.sql"), want(0, sizeof SRC - 1))) failed
+caught        keys: the cursor below sqlfmt's edit does not move with it, so it lands on other text (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:260: CHECK(ln == 6 && !memcmp(cl, "-- end", 6) && e.win->col == 5) failed
+caught        keys: :Format sends verible --lines (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:123: CHECK(!strcmp(disk(args), "--indentation_spaces=4 -\n")) failed
+caught        keys: verible's edit runs to the end of the text, so the cursor below it moves onto other text (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:122: CHECK(e.win->line == 3 && e.win->col == 8) failed
+caught        keys: .svh, .v and .vh buffers are not formatted with Verible (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:140: CHECK(!strcmp(text(&e), "module m;\n    wire a;\n    wire b;\nendmodule\n")) failed
+caught        loop: output pending at the exit dropped (Exit_early)   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:248: CHECK(g.code == 0 && g.nout == 500000) failed
+caught        loop: poll sleeps past a SIGKILL that is due   (make test TESTS=loop IDLE_SECONDS=2): test_loop: CHECK(no hang) failed: a test ran over 60 s
+caught        loop: pipe ends leak into later children   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:59: CHECK(ms() < end) failed
+caught        loop: processes and timers run inside a command   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:303: CHECK(!fired[3] && !g.nout && !g.ended[1]) failed
+caught        loop: queued bytes lost when the queue grows   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:92: CHECK(g.code == 0 && g.nout == N && !memcmp(g.out, in, N) && !g.nerr) failed
+caught        loop: stdin kept after a failed write   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:425: CHECK(passes < 10 && g.code == 0) failed
+caught        loop: loop_waiting runs the read functions   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:301: CHECK(write(input[1], "x", 1) == 1 && loop_waiting() && loop_waiting()) failed
+caught        loop: stdin stays open after the exit   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:389: CHECK(open_fds() == fds) failed
+caught        loop: proc_wait runs the timers   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:531: CHECK(!a.nout && !a.ended[0] && !fired[4]) failed
+caught        loop: proc_wait ignores Ctrl-C   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:553: CHECK(ka == -1 && loop_int && b.ended[0] && ms() - t0 < 600) failed
+caught        loop: win: the exit drops what the pipes still hold   (make win WIN=loop): tests/test_loop_win.c:236: CHECK(g.code == 0 && g.nout == N && !memcmp(g.out, in, N) && !g.nerr) failed
+caught        loop: win: loop_waiting takes an auto-reset signal and forgets it   (make win WIN=loop): tests/test_loop_win.c:391: CHECK(loop_waiting() && loop_waiting() && ran[1] == 1) failed
+caught        loop: win: the wait is not alertable, so no pipe I/O completes   (make win WIN=loop): tests/test_loop_win.c:173: CHECK(ms() < end) failed
+caught        loop: win: a killed child exits 1, not 128 + SIGTERM   (make win WIN=loop): tests/test_loop_win.c:325: CHECK(g.code == 128 + 15 && ms() - t0 < 500) failed
+caught        loop: win: a finished write is written again   (make win WIN=loop): tests/test_loop_win.c:173: CHECK(ms() < end) failed
+caught        loop: win: loop_breakcheck never looks at input   (make win WIN=loop): tests/test_loop_win.c:402: CHECK(ran[0] == 3 && ran[1] == 2) failed
+caught        loop: win: proc_wait runs the other children's completions (Wait_others)   (make win WIN=loop): tests/test_loop_win.c:567: CHECK(!a.nout && !a.ended[1] && !a.ended[0] && !fired[4]) failed
+caught        loop: win: proc_wait follows the slot, not its child   (make win WIN=loop): tests/test_loop_win.c:580: CHECK(proc_wait(id, 1000) == 0 && g.ended[0] && next_id == id) failed
+caught        loop: pty: proc_resize does nothing   (make test TESTS=loop): tests/test_loop.c:109: CHECK(ms() < end) failed
+caught        review: .v alone is not formatted with Verible   (make test TESTS=keys_gq): tests/test_keys_gq.c:140: CHECK(!strcmp(text(&e), "module m;\n    wire a;\n    wire b;\nendmodule\n")) failed
+caught        keys: gq on a .sql buffer is not recognised as SQL (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:176: CHECK(!strcmp(text(&e), want(c[i].a, c[i].z))) failed
+caught        keys: v $ gq takes the next line too, as if gq did not work on lines (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:176: CHECK(!strcmp(text(&e), want(c[i].a, c[i].z))) failed
+caught        keys: :Format does nothing on a .sql buffer (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:186: CHECK(!strcmp(text(&e), want(0, sizeof SRC - 1))) failed
+caught        keys: verible without Davy's 4-space indent (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:115: CHECK(!strcmp(disk(args), "--indentation_spaces=4 --lines=3-3 -\n")) failed
+caught        keys: :w formats a .sv buffer with no .slang above it (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:128: CHECK(!strcmp(disk(sv), SV)) failed
+caught        keys: a hanging verible is never killed (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:152: CHECK(!strcmp(text(&e), SV) && strstr(e.msg, "verible-verilog-format")) failed
+caught        loop: blocking writes to a child (Pipe_block)   (make test TESTS=loop IDLE_SECONDS=2): test_loop: CHECK(no hang) failed: a test ran over 60 s
+caught        loop: kill reaches the child but not its group   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:202: CHECK(dead(grandchild)) failed
+caught        loop: SIGPIPE kills the editor   (make test TESTS=loop IDLE_SECONDS=2): FAIL test_loop
+caught        loop: a timer wakes before it is due   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:264: CHECK(fired[1] == 1 && !fired[0] && ms() - t0 >= 200) failed
+caught        loop: an idle loop wakes every second   (make test TESTS=loop): tests/test_loop.c:351: CHECK(b - a == 0) failed
+caught        loop: the queue is never compacted   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:462: CHECK(grew < 64 * 1024) failed
+caught        loop: a watch removed by a callback still runs (loop_once)   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:480: CHECK(!ran_b) failed
+caught        loop: a freed slot keeps its SIGKILL deadline (kill(-0) hits the editor)   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:234: CHECK(waitpid(ed, &st, 0) == ed && WIFEXITED(st) && WEXITSTATUS(st) == 0) failed
+caught        loop: SIGKILL reaches the child but not its group   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:217: CHECK(dead(grandchild)) failed
+caught        loop: proc_wait spins on a due timer it does not run   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:529: CHECK(clock() - c0 < CLOCKS_PER_SEC / 20) failed
+caught        loop: proc_wait returns before the killed child is reported   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:538: CHECK(proc_wait(id, 200) == -1 && b.ended[0] && b.code == 128 + SIGTERM) failed
+caught        loop: win: a completion routine re-arms its read, so a flood holds loop_once (review of PR 41, 1)   (make win WIN=loop): tests/test_loop_win.c:476: CHECK(worst < 100 && most <= 1 << 16 && key_at && key_at - t0 < 400) failed
+caught        loop: win: only the handle the wait names runs, not every ready watch   (make win WIN=loop): tests/test_loop_win.c:387: CHECK(loop_once(1000) == 0 && ran[0] == 1 && ran[1] == 1) failed
+caught        loop: win: a message seen but left queued does not wake the loop   (make win WIN=loop): tests/test_loop_win.c:414: CHECK(loop_once(1000) == 0 && ran[2] == 2 && ms() - t0 < 500) failed
+caught        loop: win: the exit comes before the output's end (Exit.tla early)   (make win WIN=loop): tests/test_loop_win.c:156: CHECK(!g->ended[0]) failed
+caught        loop: win: backslashes before a quote are not doubled   (make win WIN=loop): tests/test_loop_win.c:266: CHECK(g.code == 0 && g.nout == sizeof want - 1 && !memcmp(g.out, want, sizeof want - 1)) failed
+caught        loop: win: an idle loop wakes every 100 ms   (make win WIN=loop): tests/test_loop_win.c:290: CHECK(passes < 10 && g.code == 0) failed
+caught        loop: win: proc_wait waits on the other children   (make win WIN=loop): tests/test_loop_win.c:565: CHECK(proc_wait(id, 3000) == 0) failed
+caught        loop: pty: no session, so no controlling terminal   (make test TESTS=loop): tests/test_loop.c:105: CHECK(ms() < end) failed
+caught        loop: pty: the size asked is not set   (make test TESTS=loop): tests/test_loop.c:111: CHECK(HAS("7 33\r\nxterm-256color\r\n") && HAS("hi\r\ngot:hi\r\n") && HAS("9 41\r\n")) failed
+caught        review: .svh alone is not formatted with Verible   (make test TESTS=keys_gq): tests/test_keys_gq.c:140: CHECK(!strcmp(text(&e), "module m;\n    wire a;\n    wire b;\nendmodule\n")) failed
+caught        keys: gq formats one line less than the operator covers (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:176: CHECK(!strcmp(text(&e), want(c[i].a, c[i].z))) failed
+caught        keys: the save looks for sqldiff.toml only in the file's own directory (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:211: CHECK(!strcmp(disk(file), want(0, sizeof SRC - 1))) failed
+caught        keys: gq joins a whole paragraph before breaking it, so its undo grows with the square of its size (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:277: CHECK(text_len(e.buf->text) == size && undone < 10 * size) failed
+caught        keys: gq sends verible the whole text, not its lines (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:114: CHECK(!strcmp(text(&e), "module m;\n  wire a;\n    wire b;\nendmodule\n")) failed
+caught        keys: a failed verible's output is applied, emptying the buffer (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:152: CHECK(!strcmp(text(&e), SV) && strstr(e.msg, "verible-verilog-format")) failed
+caught        keys: verible's stderr goes into the buffer (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:114: CHECK(!strcmp(text(&e), "module m;\n  wire a;\n    wire b;\nendmodule\n")) failed
+caught        loop: the exit waits for the pipes' end (Exit_waiteof)   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:59: CHECK(ms() < end) failed
+caught        loop: no SIGKILL after an ignored SIGTERM   (make test TESTS=loop IDLE_SECONDS=2): test_loop: CHECK(no hang) failed: a test ran over 60 s
+caught        loop: children inherit the ignored SIGPIPE   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:172: CHECK(g.code == 0 && !g.nerr) failed
+caught        loop: no input read inside a command (Break_nocheck)   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:300: CHECK(!loop_waiting()) failed
+caught        loop: a full timer table not reported   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:269: CHECK(loop_timer(tick, &slot[16], 1000) == -1) failed
+caught        loop: a write of 0 bytes copies to a null queue   (make test TESTS=loop IDLE_SECONDS=2): src/loop/loop.c:247:2: runtime error: null pointer passed as argument 1, which is declared to never be null
+caught        loop: a watch removed by a callback still runs (loop_breakcheck)   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:480: CHECK(!ran_b) failed
+caught        loop: the pipes stay open after the exit   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:389: CHECK(open_fds() == fds) failed
+caught        loop: proc_wait runs the other children (Wait_others)   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:531: CHECK(!a.nout && !a.ended[0] && !fired[4]) failed
+caught        loop: proc_wait loses another child's exit (Wait_drain)   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:59: CHECK(ms() < end) failed
+caught        loop: proc_wait follows the slot, not its child   (make test TESTS=loop IDLE_SECONDS=2): tests/test_loop.c:561: CHECK(proc_wait(id, 1000) == 0 && b.ended[0] && next_id == id) failed
+caught        loop: win: a write begun while reaping completes on the slot's next child (review of PR 41, 2)   (make win WIN=loop): tests/test_loop_win.c:523: CHECK(done && answer == -1) failed
+caught        loop: win: pipe APCs run inside a command (alertable breakcheck)   (make win WIN=loop): tests/test_loop_win.c:438: CHECK(!fired[3] && !g.nout && !g.ended[1]) failed
+caught        loop: win: proc_kill ends the child but not what it started   (make win WIN=loop): tests/test_loop_win.c:327: CHECK(!alive(gc)) failed
+caught        loop: win: the pipes stay open after the exit   (make win WIN=loop): tests/test_loop_win.c:343: CHECK(h && WaitForSingleObject(h, 3000) == WAIT_OBJECT_0 && GetExitCodeProcess(h, &code) && code == 1) failed
+caught        loop: win: the pipe is read only when it ends, so a full pipe hangs the child   (make win WIN=loop): tests/test_loop_win.c:173: CHECK(ms() < end) failed
+caught        loop: win: proc_write blocks until the pipe takes it all   (make win WIN=loop): FAIL test_loop_win
+caught        loop: win: proc_wait runs the timers   (make win WIN=loop): tests/test_loop_win.c:567: CHECK(!a.nout && !a.ended[1] && !a.ended[0] && !fired[4]) failed
+caught        loop: pty: TERM left as the editor's   (make test TESTS=loop): tests/test_loop.c:105: CHECK(ms() < end) failed
+caught        loop: win: pty: the editor's own std handles reach the child   (make win WIN=loop): tests/test_loop_win.c:200: CHECK(ms() < end) failed
+caught        review: .vh alone is not formatted with Verible   (make test TESTS=keys_gq): tests/test_keys_gq.c:140: CHECK(!strcmp(text(&e), "module m;\n    wire a;\n    wire b;\nendmodule\n")) failed
