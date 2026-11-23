@@ -39,10 +39,12 @@ package 4 PR: Markdown and Org image links, LaTeX fragments, the rows under the 
     clear where the background is the default, drawn exactly as without a wallpaper (moved rows
     are still copied); colours carry alpha ff and `mix`/`over` blend alpha too, so antialiased
     edges and colour glyphs over the clear background come out premultiplied.
-  - Win32: GDI's `StretchBlt` (HALFTONE) scales the part into a window-sized bitmap at each new
-    size; the shared painter (`src/paint`, `paint.h`'s `back`) copies a default-background
-    cell's rectangle from there and draws its glyphs over it, and copies no moved rows, which
-    would carry the wallpaper with the text (`tests/test_win.c` scrolls over it).
+  - Win32: GDI's `StretchDIBits` scales the part straight from `image_wallpaper`'s pixels into
+    a window-sized bitmap at each new size, COLORONCOLOR while an edge is dragged and HALFTONE
+    (smooth) once it is let go; the shared painter (`src/paint`, `paint.h`'s `back`) copies a
+    default-background cell's rectangle from that bitmap's pixels and draws its glyphs over it,
+    and copies no moved rows, which would carry the wallpaper with the text (`tests/test_win.c`
+    scrolls over it).
   Both go through `paint.h`'s `back`: Wayland's is one clear row after its buffers (stride 0),
   Win32's the scaled bitmap.
   Without the file nothing changes: no surface, XRGB buffers, opaque cells.
@@ -76,10 +78,25 @@ package 4 PR: Markdown and Org image links, LaTeX fragments, the rows under the 
   sRGB) took 43-214 ms per new size (5 runs), hence the compositor's and GDI's scalers.
 - Wallpaper at a new size, **measured** (5 runs of 1,000 sizes): 0.5-0.7 microseconds (a
   `stat`); the first time, decoding the 1920x1080 PNG and laying it over the base, 44-60 ms.
+- Wallpaper on Windows, **measured** on Windows itself (`bench/gdi.c` on CI's windows-latest,
+  2 runs of 9 alternating runs each, median and range of the first; the second within 3%):
+  drawing all 128x36 cells (Consolas 9x19) opaque, no wallpaper, 21.5 ms (21.4-21.9); with a
+  `BitBlt` per cell, then transparent text, 31.4 (30.9-31.9), the PR's first version and 47%
+  more; transparent text alone 20.9 (20.8-21.3), so the copies were the cost (9.2 ms alone);
+  one `BitBlt` per row, then transparent text, 21.0 (20.9-21.7): no measurable difference from
+  no wallpaper, hence a copy per run of changed cells. A new size, 1920x1080 picture to a
+  1280x800, 1920x1080, 2560x1440 or 3840x2160 window: HALFTONE 15.3, 10.7, 47.7, 77.6 ms,
+  COLORONCOLOR 1.2, 1.5, 4.3, 9.2 ms; `StretchDIBits` from the pixels costs what `StretchBlt`
+  from a kept bitmap does (inside the spread), so no bitmap is kept and no copy made, and
+  dragging an edge on a 4K monitor costs about 9 ms a step. `StretchDIBits` counts a top-down
+  picture's source rows from its bottom (**measured** there and under Wine: rows 1 to 3 of 4
+  asked, rows 0 to 2 drawn).
 - Tests: `tests/test_image.c` (random PNGs against a model of what a window shows, the cache's
   keys, slot reuse, no allocation in a frame, LaTeX jobs with stand-in tools), `tests/test_wl.c`
   and `tests/test_win.c` (an image cell on screen; the wallpaper's pixels, text over it,
-  reversed cells as without it, moved rows (copied on Wayland, not on Win32), taken away), `tests/fuzz_image.c`; 61 plants in
+  reversed cells and the cursor as without it, the cover's cut, a changed cell's wallpaper
+  copied again, moved rows (copied on Wayland, not on Win32), taken away), `tests/fuzz_image.c`;
+  68 plants in
   `tests/plants/image.txt`, all caught.
 
 ## Residual risk
@@ -93,13 +110,27 @@ package 4 PR: Markdown and Org image links, LaTeX fragments, the rows under the 
   review), again for each new box, since the box is part of the key.
 - A latex or dvipng still running when the editor exits is not killed (the timeout ends with
   the editor); one that never finishes then runs on.
-- Wallpaper, **hypothesis:** the compositor's blend of the two surfaces costs Hyprland's GPU
-  next to nothing; measured here only under pixman (CPU), where it is the compositor's time, not
-  the editor's. Windows: the cost of `StretchBlt` HALFTONE at a new size, and of the per-cell
-  `BitBlt`, is not measured on real Windows (Wine's timing says nothing about it).
-- Wallpaper: the part covering the window is cut in whole picture pixels (the viewport's source
-  is integral), so a picture only a few pixels across is covered off by up to a pixel; no test
-  sees the source rectangle reach the compositor except through the picture shown.
+- Wallpaper, the compositor's time, **measured** under CPU renderers (PR 135's review, CPU
+  ticks of the compositor over the same frames, 3 to 5 alternating runs): scrolling costs sway
+  1.9 and weston 13 2.2 to 2.4 times the CPU with a wallpaper (an ARGB surface blended over a
+  scaled one, where an opaque one was copied); a typed character costs sway 1.9 about 2 ms (it
+  recomposites the whole window, 17 times the 0.1 ms without), weston nothing more (it repaints
+  the damaged row). **Hypothesis:** on Hyprland's GPU this is next to nothing; not run (no GPU
+  here).
+- Wallpaper on Hyprland with blur on (its default), **hypothesis** from reading Hyprland's
+  source (PR 135's review), not run: a window whose surface is not opaque gets the blurred
+  desktop drawn under that surface, that is over the wallpaper's subsurface, so the wallpaper
+  may not show, and a blur pass runs per frame. Davy to look once on his laptop: if the desktop
+  shows through blurred instead of the picture, a window rule `noblur` for Homeros is the first
+  answer to compare with an empty blur region (ext-background-effect-v1).
+- Wallpaper: sway 1.9's pixman renderer drops the viewport source's offset (**measured**: an
+  8x8 picture's rows 1 to 6 asked, rows 0 to 5 shown), so under it the cover is cut from the
+  picture's top or left, not centred; `tests/test_wl.c` checks only that the source's size
+  reaches the compositor. The part is cut in whole picture pixels (the source is integral), so a
+  picture only a few pixels across is covered off by up to a pixel.
+- Wallpaper on Windows, **hypothesis:** the switch to HALFTONE when a drag ends
+  (`WM_EXITSIZEMOVE`) is not tested: Wine runs no modal sizing loop for a test to drive, and
+  the two modes differ only in smoothness. Maximising or snapping, one size, is smooth at once.
 - Images placed in a note over a wallpaper keep their own padding in the base colour (they are
   laid over the base when loaded).
 - `GdiFlush` before writing the DIB's bits follows CreateDIBSection's documented rule; Wine

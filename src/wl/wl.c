@@ -614,22 +614,22 @@ static int bufs_make(void)
    copied, into an ARGB buffer clear where the background is the default,
    and the compositor blends the two: a frame costs no more (measured,
    src/image/README.md).  Sets wall. */
-static int wall_make(void)
+static void wall_make(void)
 {
-	static const uint32_t *up;   /* the picture in wbuf */
+	static unsigned up;   /* the version of the picture in wbuf */
 	int iw, ih, src[4];
-	const uint32_t *px = subc && vpr ? image_wallpaper(bw, bh, PAINT_BASE, &iw, &ih, src) : NULL;
-	if (px != up) {
-		if (wbuf) wl_buffer_destroy(wbuf);   /* the compositor keeps what it shows */
+	unsigned v;
+	const uint32_t *px = subc && vpr ? image_wallpaper(bw, bh, PAINT_BASE, &iw, &ih, src, &v) : NULL;
+	if (wbuf && (!px || v != up)) {
+		wl_buffer_destroy(wbuf);   /* the compositor keeps what it shows */
 		wbuf = NULL;
-		up = NULL;
 	}
 	if (!(wall = px != NULL)) {
 		if (wsurf) {
 			wl_surface_attach(wsurf, NULL, 0, 0);
 			wl_surface_commit(wsurf);
 		}
-		return 0;
+		return;
 	}
 	if (!wsurf) {
 		wsurf = wl_compositor_create_surface(comp);
@@ -641,19 +641,18 @@ static int wall_make(void)
 		size_t n = (size_t)iw * (size_t)ih * 4;
 		void *mem;
 		struct wl_shm_pool *pool = pool_new(n, &mem);
-		if (!pool) return -1;
+		if (!pool) { wall = 0; return; }   /* text over the base, rather than no window */
 		memcpy(mem, px, n);
 		munmap(mem, n);
 		wbuf = wl_shm_pool_create_buffer(pool, 0, iw, ih, iw * 4, WL_SHM_FORMAT_XRGB8888);
 		wl_shm_pool_destroy(pool);
 		wl_surface_attach(wsurf, wbuf, 0, 0);
 		wl_surface_damage_buffer(wsurf, 0, 0, iw, ih);
-		up = px;
+		up = v;
 	}
 	wp_viewport_set_source(wview, wl_fixed_from_int(src[0]), wl_fixed_from_int(src[1]), wl_fixed_from_int(src[2]), wl_fixed_from_int(src[3]));
 	wp_viewport_set_destination(wview, lw, lh);
 	wl_surface_commit(wsurf);
-	return 0;
 }
 
 /* ---- backend.h ---- */
@@ -822,7 +821,10 @@ static void wl_present(const Grid *cur, Grid *shown)
 		if (grid_resize(shown, cur->rows, cur->cols)) return;
 		for (int i = 0; i < NBUF; i++) grid_free(&bufs[i].g);
 	}
-	if ((pw != bw || ph != bh) && (wall_make() || bufs_make())) return;
+	if (pw != bw || ph != bh) {
+		wall_make();
+		if (bufs_make()) return;
+	}
 	pw = bw;
 	ph = bh;
 	struct buf *b = bufs[0].busy ? &bufs[1] : &bufs[0];

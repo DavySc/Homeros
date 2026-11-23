@@ -159,8 +159,9 @@ void image_draw(uint32_t *px, int stride, const Cell *x)
    no decoding or resizing here */
 static uint32_t *wall, wbg;
 static int ww, wh;
+static unsigned wver;
 
-const uint32_t *image_wallpaper(int w, int h, uint32_t bg, int *iw, int *ih, int src[4])
+const uint32_t *image_wallpaper(int w, int h, uint32_t bg, int *iw, int *ih, int src[4], unsigned *ver)
 {
 	static FileId was;
 	char f[4096];
@@ -168,14 +169,15 @@ const uint32_t *image_wallpaper(int w, int h, uint32_t bg, int *iw, int *ih, int
 	file_stdpath(f, sizeof f, 2, "/wallpaper");
 	if (file_id(f, &id)) id.exists = 0;
 	if (id.exists != was.exists || id.mtime_ns != was.mtime_ns || id.size != was.size || bg != wbg) {
+		free(wall);
 		unsigned char *rgba = id.exists ? decode(f, &ww, &wh) : NULL;
 		uint32_t *px = rgba ? malloc((size_t)ww * (size_t)wh * sizeof *px) : NULL;
 		for (size_t i = 0; px && i < (size_t)ww * (size_t)wh; i++) px[i] = onto(rgba + 4 * i, bg, WALL_OPACITY);
 		stbi_image_free(rgba);
-		free(wall);   /* after the new one is made: a new picture has a new address */
 		wall = px;
 		was = id;
 		wbg = bg;
+		wver++;
 	}
 	if (!wall || w < 1 || h < 1) return NULL;
 	/* cover the window, keeping the aspect, centred: WezTerm's
@@ -189,5 +191,6 @@ const uint32_t *image_wallpaper(int w, int h, uint32_t bg, int *iw, int *ih, int
 	src[1] = (wh - src[3]) / 2;
 	*iw = ww;
 	*ih = wh;
+	*ver = wver;
 	return wall;
 }

@@ -589,9 +589,12 @@ static void test_sway(void)
 	   of it over the base where the background is the default.
 	   tests/test_image.png (32 x 16, red then blue) covers 600 x 400 as
 	   800 x 400, its middle: red at the left, blue at the right, past the
-	   cells too; text over it; reversed cells (opaque, a colour emoji's and
-	   antialiased edges too) as without it.  Then red above blue: moved
-	   rows copied are what a whole redraw gives.  Taken away, the base is
+	   cells too; text over it; reversed cells and the cursor on
+	   base-coloured text (opaque, a colour emoji's and antialiased edges
+	   too) as without it.  Then 2 rows red above 6 blue: 640 x 480 shows
+	   rows 1 to 7, so red does not end at a quarter of the height (the
+	   viewport's source); moved rows copied are what a whole redraw
+	   gives.  Taken away, the base is
 	   back from the next size, and nothing of it past a smaller window. */
 	{
 		char f[128];
@@ -612,20 +615,26 @@ static void test_sway(void)
 			}
 			draw();
 			grid_puts(&g, 1, 0, g.cols, "Wg😀", 6, ATTR_REV, FACE_NONE);
+			grid_puts(&g, 1, 4, g.cols, "t", 1, ATTR_NONE, FACE_COMMENT_TODO);   /* base on flamingo */
+			g.crow = 1;
+			g.ccol = 4;
 			show();
-			snprintf(f, sizeof f, "grim -g '0,%d %dx%d' -t ppm %s/r%d.ppm", cellh(), 4 * cellw(), cellh(), dir, t);
+			snprintf(f, sizeof f, "grim -g '0,%d %dx%d' -t ppm %s/r%d.ppm", cellh(), 5 * cellw(), cellh(), dir, t);
 			run(f);
 			if (!t) ow = pixel(620, 300);
 		}
 		cmd("cmp -s %s/r0.ppm %s/r1.ppm", dir);
 		CHECK(pixel(10, 300) == 0x4b1825 && pixel(599, 399) == 0x181858);
 		CHECK(ink(0, 0, cellw(), cellh(), 2) > 0);   /* the h of homeros */
-		cmd("cp tests/test_wallpaper.png %s/homeros/wallpaper # %s", dir);   /* 8 x 8: 4 rows red above 4 blue */
+		cmd("cp tests/test_wallpaper.png %s/homeros/wallpaper # %s", dir);   /* 8 x 8: 2 rows red above 6 blue */
 		run(SWAYMSG "resize set 640 480, move position 0 0");
 		pump(100);
 		size_is(640, 480, 120);
 		draw();
-		CHECK(ink(600, 0, 1, 470, 2) > 0);   /* not one colour top to bottom */
+		/* covered, red ends at 80; squeezed (no source), at 120; sway 1.9's
+		   pixman renderer drops the source's offset and shows rows 0 to 5,
+		   so 160 (measured) */
+		CHECK(pixel(620, 10) == 0x4b1825 && pixel(620, 100) == pixel(620, 140) && pixel(620, 470) == 0x181858);
 		grid_clear(&g);
 		for (int r = 0; r < g.rows; r++) grid_puts(&g, r, 0, g.cols, "abcdefghijklmnopqrstuvwxyz" + r % 26, 1, ATTR_NONE, FACE_NONE);
 		for (int i = 0; i < 4; i++) {   /* scrolls a row a frame, into both buffers */

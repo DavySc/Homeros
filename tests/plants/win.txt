@@ -31,7 +31,7 @@ win: pacing timer fires at once (busy wake-ups)~win WIN=win~~src/win/backend.c~d
 win: pacing timer far too late~win WIN=win~~src/win/backend.c~* 10000000 +~* 1000000000 +
 win: pacing timer keeps firing when idle~win WIN=win~~src/win/backend.c~SetWaitableTimer(timer, &due, 0,~SetWaitableTimer(timer, &due, 16,
 win: draws while minimised~win WIN=win~~src/win/backend.c~	if (IsIconic(win)) return 0;¶~
-win: resize sends no KEY_RESIZE~win WIN=win~~src/win/backend.c~HIWORD(l) != dh)) resized = stale = 1;~HIWORD(l) != dh)) stale = 1;
+win: resize sends no KEY_RESIZE~win WIN=win~~src/win/backend.c~HIWORD(l) != dh)) {¶			resized = stale = 1;~HIWORD(l) != dh)) {¶			stale = 1;
 win: the DIB keeps its old size~win WIN=win~~src/win/backend.c~if (all && (grid_resize(shown, g->rows, g->cols) || make_dib())) return;~if (all && grid_resize(shown, g->rows, g->cols)) return;
 specs: Pace with frames only P + D apart~specs~find design/specs -name '*.cfg' ! -name Pace_ok.cfg -delete~design/specs/Pace_ok.cfg~ Gap = 5~ Gap = 4
 win: Shift-Tab sends Tab~win WIN=win~~src/win/backend.c~w == 9 && GetKeyState(VK_SHIFT) < 0~w == 9 && GetKeyState(VK_SHIFT) > 0

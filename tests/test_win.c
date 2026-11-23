@@ -360,36 +360,56 @@ int main(void)
 	CHECK(w2 >= 2 * cw - 2 && w2 <= 2 * cw + 2 && px(w2, 0) == BG && px(c2 * cw - 1, r2 * ch - 1) != RED);
 
 	/* a wallpaper (image.h) dropped into the config folder shows from the
-	   next size: tests/test_wallpaper.png (red above blue) covers the
-	   window, red at its top, blue at its bottom, a fifth of it over the
-	   base, text drawn over it, and stays put when the text scrolls (no
-	   rows copied, src/paint); taken away, the base is back from the next
-	   size */
+	   next size: tests/test_image.png (red then blue) covers the window, red
+	   at its left edge, blue at its right, a fifth of it over the base, text
+	   drawn over it, the cursor's cell opaque; then tests/test_wallpaper.png
+	   (2 rows red above 6 blue) in a window twice as wide as high: covered,
+	   its middle rows show, blue at the top (squeezed whole, red); in one
+	   half as wide as high, all of it, which stays put when the text
+	   scrolls (no rows copied, src/paint); taken
+	   away, the base is back from the next size */
 	cw = w2;
 	for (ch = 0; px(0, ch) == REV; ch++) {}
-	for (int t = 0; t < 2; t++) {
-		CHECK(t ? DeleteFileA("build\\win\\cfg\\homeros\\wallpaper")
-		        : !_putenv("XDG_CONFIG_HOME=build\\win\\cfg") && (CreateDirectoryA("build\\win\\cfg", NULL) || GetLastError() == ERROR_ALREADY_EXISTS)
-		          && (CreateDirectoryA("build\\win\\cfg\\homeros", NULL) || GetLastError() == ERROR_ALREADY_EXISTS)
-		          && CopyFileA("tests\\test_wallpaper.png", "build\\win\\cfg\\homeros\\wallpaper", FALSE));
+	static const char *const pic[4] = { "tests\\test_image.png", "tests\\test_wallpaper.png", "tests\\test_wallpaper.png", NULL };
+	for (int t = 0; t < 4; t++) {
+		CHECK(pic[t] ? !_putenv("XDG_CONFIG_HOME=build\\win\\cfg") && (CreateDirectoryA("build\\win\\cfg", NULL) || GetLastError() == ERROR_ALREADY_EXISTS)
+		                 && (CreateDirectoryA("build\\win\\cfg\\homeros", NULL) || GetLastError() == ERROR_ALREADY_EXISTS)
+		                 && CopyFileA(pic[t], "build\\win\\cfg\\homeros\\wallpaper", FALSE)
+		             : DeleteFileA("build\\win\\cfg\\homeros\\wallpaper"));
+		RECT cr;
 		GetWindowRect(win, &wr);
-		SetWindowPos(win, NULL, 0, 0, wr.right - wr.left + (t ? -cw : cw), wr.bottom - wr.top, SWP_NOMOVE | SWP_NOZORDER);
+		GetClientRect(win, &cr);
+		SetWindowPos(win, NULL, 0, 0, wr.right - wr.left + (t == 1 ? 0 : t == 2 ? cr.bottom / 2 - cr.right : t ? -cw : cw),
+		             wr.bottom - wr.top + (t == 1 ? cr.right / 2 - cr.bottom : 0), SWP_NOMOVE | SWP_NOZORDER);
 		n = input(k, 1024);
 		resized = 0;
 		for (int i = 0; i < n; i++) resized |= k[i] == KEY_RESIZE;
 		CHECK(resized);
 		b->size(&rows, &cols);
-		CHECK(!grid_resize(&g, rows, cols));
+		CHECK(!grid_resize(&g, rows, cols));   /* the cursor at (0, 0) */
 		put(&g, 0, 1, "x", 1, ATTR_NONE);
 		present(&g, &shown);
-		RECT cr;
 		GetClientRect(win, &cr);
 		int y = (rows - 1) * ch + ch / 2;
-		CHECK(px(1, ch) == (t ? BG : RGB(75, 24, 37)) && px(1, y) == (t ? BG : RGB(24, 24, 88)) && px(cr.right - 2, y) == px(1, y));
-		CHECK(px(cw, 0) == px(1, ch) && count(0, 1, px(cw, 0)) < cw * ch);   /* the x, over the wallpaper (the cursor at (0, 0)) */
-		if (t) break;
+		COLORREF red = RGB(75, 24, 37), blue = RGB(24, 24, 88);
+		CHECK(at(0, 0) == REV);
+		CHECK(t == 1 ? px(cr.right / 2, ch + 1) == blue && cr.right / 2 == cr.bottom
+		      : t == 2 ? px(1, ch + 1) == red && px(1, y) == blue   /* half as wide as high: all of it */
+		             : px(1, y) == (t ? BG : red) && px(cr.right - 2, y) == (t ? BG : blue));
+		CHECK(px(cw, 0) == px(1, ch + 1) && count(0, 1, px(cw, 0)) < cw * ch);   /* the x, over the wallpaper */
+		put(&g, 0, 1, " ", 1, ATTR_NONE);
+		present(&g, &shown);
+		CHECK(count(0, 1, px(cw, 0)) == cw * ch);   /* and gone */
+		put(&g, 0, 2, "ä¸­", 2, ATTR_NONE);   /* U+4E2D, two cells */
+		put(&g, 0, 5, "å­", 2, ATTR_NONE);   /* U+5B57 */
+		present(&g, &shown);
+		put(&g, 0, 2, "å­", 2, ATTR_NONE);   /* the first becomes the second, both halves */
+		present(&g, &shown);
+		int same = 0;
+		for (int i = 0; i < 2 * cw * ch; i++) same += px(2 * cw + i % (2 * cw), i / (2 * cw)) == px(5 * cw + i % (2 * cw), i / (2 * cw));
+		CHECK(same == 2 * cw * ch);
 		COLORREF was[64];
-		for (int s = 0; s < 2; s++) {   /* lines, then the same moved up a row */
+		for (int s = 0; t == 2 && s < 2; s++) {   /* lines, then the same moved up a row */
 			for (int r = 1; r < rows; r++) {
 				char l[16];
 				grid_puts(&g, r, 2, cols - 2, l, (size_t)snprintf(l, sizeof l, "line %d", r + s), ATTR_NONE, FACE_NONE);

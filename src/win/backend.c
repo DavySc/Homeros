@@ -43,6 +43,7 @@ static int cw, ch, dpi;         /* cell size in pixels */
 static int dw, dh, stale;       /* the DIB's size; stale: redraw it whole */
 static int ring[RING], rh, rn;  /* keys the window procedure turned out */
 static int resized;
+static int sizing;              /* 1 while the user drags an edge, 2 once the size changed */
 static LONGLONG period, next;   /* QueryPerformanceCounter ticks */
 static WCHAR surr;              /* a high surrogate waiting for its low one */
 static int mrow, mcol, wheel;   /* the last mouse key's cell; wheel delta not yet a key */
@@ -85,28 +86,26 @@ static int make_dib(void)
 	bits = px;
 	dw = r.right;
 	dh = r.bottom;
-	/* the wallpaper's part that covers the window, scaled by GDI */
+	/* the wallpaper's part that covers the window, scaled by GDI straight
+	   from image.h's pixels; HALFTONE (smooth) costs 12 to 81 ms a size,
+	   COLORONCOLOR 3 to 11 (measured, src/image/README.md), so the cheap
+	   one while an edge is dragged and the smooth one when it is let go */
 	if (wdib) { SelectObject(wdc, nowdib); DeleteObject(wdib); wdib = NULL; }
 	wbits = NULL;
 	int iw = 0, ih = 0, src[4];
-	const uint32_t *w = image_wallpaper(dw, dh, PAINT_BASE, &iw, &ih, src);
+	unsigned v;
+	const uint32_t *w = image_wallpaper(dw, dh, PAINT_BASE, &iw, &ih, src, &v);
 	BITMAPINFO wi = { .bmiHeader = { .biSize = sizeof wi.bmiHeader, .biWidth = iw, .biHeight = -ih, .biPlanes = 1, .biBitCount = 32 } };
-	HDC sdc = w ? CreateCompatibleDC(mem) : NULL;
-	HBITMAP sb = sdc ? CreateDIBSection(mem, &wi, DIB_RGB_COLORS, &px, NULL, 0) : NULL;
 	void *wpx;
-	if (sb && (wdib = CreateDIBSection(mem, &bi, DIB_RGB_COLORS, &wpx, NULL, 0))) {
-		memcpy(px, w, (size_t)iw * (size_t)ih * 4);
-		HGDIOBJ o = SelectObject(sdc, sb);
+	if (w && (wdib = CreateDIBSection(mem, &bi, DIB_RGB_COLORS, &wpx, NULL, 0))) {
 		SelectObject(wdc, wdib);
-		SetStretchBltMode(wdc, HALFTONE);
+		SetStretchBltMode(wdc, sizing ? COLORONCOLOR : HALFTONE);
 		SetBrushOrgEx(wdc, 0, 0, NULL);   /* StretchBlt's rule after HALFTONE */
-		StretchBlt(wdc, 0, 0, dw, dh, sdc, src[0], src[1], src[2], src[3], SRCCOPY);
+		/* a top-down DIB's source rows count from its bottom (measured) */
+		StretchDIBits(wdc, 0, 0, dw, dh, src[0], ih - src[1] - src[3], src[2], src[3], w, &wi, DIB_RGB_COLORS, SRCCOPY);
 		GdiFlush();   /* before the painter reads it */
 		wbits = wpx;
-		SelectObject(sdc, o);
 	}
-	if (sb) DeleteObject(sb);
-	if (sdc) DeleteDC(sdc);
 	paint_clear(bits, dw, wbits, dw, dw, dh);
 	return 0;
 }
@@ -153,7 +152,17 @@ static LRESULT CALLBACK proc(HWND h, UINT m, WPARAM w, LPARAM l)
 		return 0;
 	}
 	case WM_SIZE:
-		if (w != SIZE_MINIMIZED && (LOWORD(l) != dw || HIWORD(l) != dh)) resized = stale = 1;
+		if (w != SIZE_MINIMIZED && (LOWORD(l) != dw || HIWORD(l) != dh)) {
+			resized = stale = 1;
+			if (sizing) sizing = 2;
+		}
+		return 0;
+	case WM_ENTERSIZEMOVE:
+		sizing = 1;
+		return 0;
+	case WM_EXITSIZEMOVE:   /* the wallpaper smooth again */
+		if (sizing == 2 && wdib) resized = stale = 1;
+		sizing = 0;
 		return 0;
 	case WM_DPICHANGED: {
 		const RECT *r = (const RECT *)l;

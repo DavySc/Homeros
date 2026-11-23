@@ -30,10 +30,12 @@ static void fill(uint32_t *px, int x0, int y0, int w, int h, uint32_t c)
 	for (int y = 1; y < h; y++) memcpy(p + y * bw, p, (size_t)w * sizeof *p);   /* libc's copy is vectorized (build B) */
 }
 
-/* A rectangle of the background: c, or back's pixels where c is the base */
-static void ground(uint32_t *px, int x0, int y0, int w, int h, uint32_t c)
+/* A rectangle of the background: c, or back's pixels where c is the base
+   and not a reversed cell's (the cursor on base-coloured text stays a
+   block, PR 135's review) */
+static void ground(uint32_t *px, int x0, int y0, int w, int h, uint32_t c, int rev)
 {
-	if (!back || c != BG) { fill(px, x0, y0, w, h, c); return; }
+	if (!back || rev || c != BG) { fill(px, x0, y0, w, h, c); return; }
 	for (int y = y0; y < y0 + h; y++) memcpy(px + y * bw + x0, back + y * bs + x0, (size_t)w * sizeof *px);
 }
 
@@ -95,9 +97,10 @@ static void draw_span(uint32_t *px, const Grid *g, int r, int lo, int hi)
 	for (int c = lo; c < hi; c++) {
 		if (!x[c].len) continue;   /* right half: drawn with its left half */
 		int w = c + 1 < g->cols && !x[c + 1].len ? 2 : 1;
-		const Face *u, *f = colours(g, r, c, r == g->crow && c == g->ccol, &fg, &bg, &u);
+		int cur = r == g->crow && c == g->ccol;
+		const Face *u, *f = colours(g, r, c, cur, &fg, &bg, &u);
 		uint32_t sp = u->style & FACE_SP ? rgb(u->sp) : fg;
-		ground(px, c * cw, y0, w * cw, ch, bg);
+		ground(px, c * cw, y0, w * cw, ch, bg, cur || x[c].attr == ATTR_REV);
 		if (x[c].attr == ATTR_IMAGE) { image_draw(px + y0 * bw + c * cw, bw, &x[c]); continue; }   /* thread 0's, agreed */
 		if (u->style & FACE_UNDERCURL)
 			for (int i = c * cw; i < (c + w) * cw; i++) fill(px, i, ye - 1 - grid_curl(i, ch), 1, 1, sp);
@@ -213,7 +216,7 @@ void paint_clear(uint32_t *px, int stride, const uint32_t *bk, int bstride, int 
 	bw = stride;
 	back = bk;
 	bs = bstride;
-	ground(px, 0, 0, w, h, BG);
+	ground(px, 0, 0, w, h, BG, 0);
 }
 
 void paint(uint32_t *px, int stride, const uint32_t *bk, int bstride, const Grid *g, Grid *b, int all, unsigned char *dirty)
