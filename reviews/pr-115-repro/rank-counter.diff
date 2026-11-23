@@ -1,0 +1,15 @@
+diff --git a/src/snip/snip.c b/src/snip/snip.c
+index 69a2ff1..0b1b786 100644
+--- a/src/snip/snip.c
++++ b/src/snip/snip.c
+@@ -476,8 +476,10 @@ static int word(int c) { return alpha((char)c) || digit((char)c) || c == '-'; }
+ /* items: the snippets for e's buffer that match the n bytes of q (q NULL:
+    all), its file's group first, then best score, catalogue order between
+    equals; task snippets only in a task file.  Returns how many. */
++int rank_calls;
+ static int rank(Editor *e, const char *q, size_t nq)
+ {
++	rank_calls++;
+ 	int n = 0;
+ 	const char *g = group(e->buf);
+ 	if (q && match_init(&m, q, nq)) return 0;

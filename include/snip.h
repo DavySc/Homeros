@@ -21,4 +21,15 @@ struct Text;
    extmark_splice): bytes [pos, pos + ndel) of t became the nins bytes ins,
    and the active snippet's stops move with it. */
 void snip_edit(const struct Buf *b, const struct Text *t, size_t pos, size_t ndel, const char *ins, size_t nins);
+/* The i-th snippet (from 0) matching the n bytes of q (n 0: all), in the
+   completion popup's order: its file's group first, then the match score,
+   then the catalogue's order; task snippets only in task files.  Its name,
+   with *desc and *body; NULL past the end.  i 0 ranks again, so SPC i s
+   (tools.h PICK_SNIPPETS) asks again on every prompt change, as grep reruns
+   rg; one order for the picker and the popup.  Loads the catalogue on first
+   use. */
+const char *snip_get(struct Editor *e, const char *q, size_t n, int i, const char **desc, const char **body);
+/* Expands snippet name at the cursor; in Visual mode the selection becomes
+   its $0 (surround-with).  0, or -1 with a message set. */
+int snip_insert(struct Editor *e, const char *name);
 #endif

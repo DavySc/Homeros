@@ -8,7 +8,7 @@ loop: no SIGKILL after an ignored SIGTERM~test TESTS=loop IDLE_SECONDS=2~~src/lo
 loop: poll sleeps past a SIGKILL that is due~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	for (int i = 0; i < MAXP; i++) if (p[i].killat && (first < 0 || p[i].killat < first)) first = p[i].killat;~
 loop: SIGPIPE kills the editor~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	signal(SIGPIPE, SIG_IGN);~
 loop: children inherit the ignored SIGPIPE~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~sigemptyset(&def); sigaddset(&def, SIGPIPE);~sigemptyset(&def);
-loop: pipe ends leak into later children~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	for (int i = 0; i < 6; i++) fcntl(fd[i], F_SETFD, FD_CLOEXEC);~
+loop: pipe ends leak into later children~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	for (int i = 0; i < 6; i++) if (fd[i] >= 0) fcntl(fd[i], F_SETFD, FD_CLOEXEC);~
 loop: a timer wakes before it is due~test TESTS=loop IDLE_SECONDS=2~~src/loop/timer.c~(int)((d + 999999) / 1000000)~(int)(d / 1000000)
 loop: no input read inside a command (Break_nocheck)~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	if (loop_int || ++count < 32) return loop_int;~	if (loop_int || ++count < 32 || 1) return loop_int;
 loop: processes and timers run inside a command~test TESTS=loop IDLE_SECONDS=2~~src/loop/loop.c~	if (loop_int || ++count < 32) return loop_int;~	if (loop_int || ++count < 32) return loop_int;¶	loop_once(0);
@@ -62,3 +62,9 @@ loop: win: proc_wait runs the other children's completions (Wait_others)~win WIN
 loop: win: proc_wait waits on the other children~win WIN=loop~~src/loop/win.c~if (!p[i].ph || (only >= 0 && i != only)) continue;~if (!p[i].ph) continue;
 loop: win: proc_wait runs the timers~win WIN=loop~~src/loop/win.c~	if (only < 0) timer_run();~	timer_run();
 loop: win: proc_wait follows the slot, not its child~win WIN=loop~~src/loop/win.c~	for (waited = !proc(id); !waited; ) {~	while (proc(id)) {
+# proc_pty (the terminal)
+loop: pty: no session, so no controlling terminal~test TESTS=loop~~src/loop/loop.c~rows ? POSIX_SPAWN_SETSID : POSIX_SPAWN_SETPGROUP~POSIX_SPAWN_SETPGROUP
+loop: pty: TERM left as the editor's~test TESTS=loop~~src/loop/loop.c~		env[n++] = "TERM=xterm-256color";¶~¶
+loop: pty: proc_resize does nothing~test TESTS=loop~~src/loop/loop.c~p[id].fd[1] >= 0) ioctl(~p[id].fd[1] < 0) ioctl(
+loop: pty: the size asked is not set~test TESTS=loop~~src/loop/loop.c~|| ioctl(fd[2], TIOCSWINSZ, &ws)~|| ioctl(fd[2], TIOCGWINSZ, &ws)
+loop: win: pty: the editor's own std handles reach the child~win WIN=loop~~src/loop/win.c~		si.StartupInfo.dwFlags = STARTF_USESTDHANDLES;¶		si.StartupInfo.hStdInput~		si.StartupInfo.dwFlags = 0;¶		si.StartupInfo.hStdInput

@@ -19,6 +19,9 @@
       write begun inside the exit's drain is refused.
    8. loop.h's write wake: a socket's WSAEventSelect event wakes its watch
       once the peer reads after a send would block, and not while it is full.
+   9. proc_pty: the child's console is the pseudoconsole, at the size
+      asked; what is typed reaches it; a resize reaches it (on Windows:
+      Wine does not resize one).
    Runs on Windows or under Wine (src/loop/check.sh); elsewhere it says so. */
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -33,7 +36,9 @@
 
 static char self[MAX_PATH];
 
-static long long ms(void) { return (long long)GetTickCount64(); }
+/* the loop's own clock: GetTickCount64 steps by 15.6 ms on Windows (1 ms
+   under Wine), so on Windows a timer due in 200 ms showed under 195 */
+static long long ms(void) { return loop_now() / 1000000; }
 
 /* --- the children --- */
 
@@ -94,7 +99,11 @@ static int child(char **argv)
 	if (!strcmp(r, "slowcat")) { Sleep(200); argv[1] = "cat"; return child(argv); }
 	if (!strcmp(r, "sleep")) { Sleep(30000); return 0; }
 	if (!strcmp(r, "flood")) { memset(b, 'f', sizeof b); while (WriteFile(out, b, sizeof b, &n, NULL)) {} return 0; }
-	if (!strcmp(r, "say")) { put(out, "hello\n"); return 7; }
+	if (!strcmp(r, "say")) {   /* holds waits()'s mutex, if there is one, until it exits */
+		WaitForSingleObject(OpenMutexA(SYNCHRONIZE, FALSE, getenv("HOMEROS_SAY")), INFINITE);
+		put(out, "hello\n");
+		return 7;
+	}
 	if (!strcmp(r, "holdin")) {   /* a grandchild holds all its pipes, stdin too; asks with its pid */
 		snprintf(b, sizeof b, "%lu\n", start("sleep", 1));
 		put(out, b);
@@ -118,6 +127,20 @@ static int child(char **argv)
 			WriteFile(err, b, sizeof b, &n, NULL);
 		}
 		return 0;
+	}
+	if (!strcmp(r, "console")) {   /* its console's size, a line typed, the size after a resize, a line */
+		CONSOLE_SCREEN_BUFFER_INFO ci, now;
+		if (!GetConsoleScreenBufferInfo(out, &ci)) return 98;
+		snprintf(b, sizeof b, "size %d %d\n", ci.srWindow.Bottom - ci.srWindow.Top + 1, ci.srWindow.Right - ci.srWindow.Left + 1);
+		put(out, b);
+		if (!ReadFile(in, b, 64, &n, NULL)) return 97;
+		put(out, n >= 2 && !memcmp(b, "hi", 2) ? "got:hi\n" : "got:?\n");
+		for (int k = 0; k < 200 && GetConsoleScreenBufferInfo(out, &now) && now.srWindow.Right == ci.srWindow.Right; k++) Sleep(10);
+		snprintf(b, sizeof b, "now %d %d\n", now.srWindow.Bottom - now.srWindow.Top + 1, now.srWindow.Right - now.srWindow.Left + 1);
+		put(out, b);
+		/* a line before exiting: Windows' ConPTY drops what a child writes
+		   just before it exits (seen on CI's windows job, 1 run) */
+		return ReadFile(in, b, 64, &n, NULL) ? 3 : 96;
 	}
 	return 99;
 }
@@ -162,6 +185,38 @@ static int spawn(Got *g, const char *role, const char *dir)
 }
 
 static Got g, gs[33];
+
+static int has(const char *s)   /* mingw has no memmem */
+{
+	size_t k = strlen(s);
+	for (size_t i = 0; i + k <= g.nout; i++) if (!memcmp(g.out + i, s, k)) return 1;
+	return 0;
+}
+
+static void pty(void)
+{
+	char *argv[] = { self, "console", NULL };
+	memset(&g, 0, sizeof g);
+	int id = proc_pty(argv, NULL, 7, 33, on_proc, &g);
+	CHECK(id >= 0);
+	long long end = ms() + 20000;
+	while (!has("size 7 33")) { CHECK(ms() < end); CHECK(loop_once(100) == 0); }
+	CHECK(proc_write(id, "hi\r", 3) == 0);
+	while (!has("got:")) { CHECK(ms() < end); CHECK(loop_once(100) == 0); }
+	proc_resize(id, 9, 41);
+	while (!has("now ")) { CHECK(ms() < end); CHECK(loop_once(100) == 0); }
+	CHECK(proc_write(id, "\r", 1) == 0);
+	while (!g.ended[0]) { CHECK(ms() < end); CHECK(loop_once(100) == 0); }
+	/* Wine 11's ResizePseudoConsole is a stub (E_NOTIMPL), so there the
+	   size stays */
+	int wine = GetProcAddress(GetModuleHandleA("ntdll.dll"), "wine_get_version") != NULL;
+	if (!(g.code == 3 && g.ended[1] && !g.ended[2] && has("got:hi") && has(wine ? "now 7 33" : "now 9 41"))) {
+		fprintf(stderr, "pty: code %d, ended %d %d %d, output:\n", g.code, g.ended[0], g.ended[1], g.ended[2]);
+		for (size_t i = 0; i < g.nout; i++) fprintf(stderr, g.out[i] >= ' ' && g.out[i] < 127 ? "%c" : "\\x%02x", (unsigned char)g.out[i]);
+		CHECK(0);
+	}
+	free(g.out);
+}
 
 static void pipes(void)
 {
@@ -305,9 +360,9 @@ static void timers(void)
 	CHECK(loop_timer(tick, &fired[1], 200) == 0);
 	CHECK(loop_timer(tick, &fired[2], -1) == 0);
 	while (!fired[1]) CHECK(loop_once(-1) == 0);
-	CHECK(!fired[0] && ms() - t0 >= 195);    /* GetTickCount64 steps in ticks */
+	CHECK(!fired[0] && ms() - t0 >= 199);
 	while (!fired[0]) CHECK(loop_once(-1) == 0);
-	CHECK(fired[1] == 1 && !fired[2] && ms() - t0 >= 295 && ms() - t0 < 450);
+	CHECK(fired[1] == 1 && !fired[2] && ms() - t0 >= 299 && ms() - t0 < 450);
 	static char slot[17];
 	for (int i = 0; i < 16; i++) CHECK(loop_timer(tick, &slot[i], 1000) == 0);
 	CHECK(loop_timer(tick, &slot[16], 1000) == -1);
@@ -496,11 +551,18 @@ static void respawn(void *ctx, int s, const char *b, size_t n)
 static void waits(void)
 {
 	static Got a;
-	CHECK(spawn(&a, "say", NULL) >= 0);
+	char name[32];   /* this run's own: two runs may share a session */
+	snprintf(name, sizeof name, "homeros-say-%lu", GetCurrentProcessId());
+	SetEnvironmentVariableA("HOMEROS_SAY", name);
+	HANDLE m = CreateMutexA(NULL, TRUE, name);   /* a says nothing before its reads are armed */
+	CHECK(m && spawn(&a, "say", NULL) >= 0);
 	int id = spawn(&g, "slowcat", NULL);
 	CHECK(id >= 0 && loop_once(0) == 0);     /* a's reads are armed */
 	CHECK(loop_timer(tick, &fired[4], 0) == 0);
-	Sleep(100);                              /* a has written and exited */
+	/* a has written and exited: its mutex is abandoned (a Sleep was
+	   too short under a loaded Wine, PR 114's review) */
+	do { ReleaseMutex(m); Sleep(1); } while (WaitForSingleObject(m, INFINITE) != WAIT_ABANDONED);
+	CloseHandle(m);
 	CHECK(proc_write(id, "hello", 5) == 0);
 	proc_close(id);
 	CHECK(proc_wait(id, 3000) == 0);
@@ -605,8 +667,9 @@ int main(int argc, char **argv)
 	drain();
 	stale();
 	sockets();
+	pty();
 	waits();
-	fprintf(stderr, "test_loop_win: socket write wake; flood, drain and a write refused while reaping; 4 MB through cat; dead.py; streams, codes, arguments, directory, closed stdin; 32 children; kill takes the tree; exit with a holder, its pipes closed; timers; every ready watch, a taken signal kept, unwatch in a pass; message queue; Ctrl-C; idle; proc_wait\n");
+	fprintf(stderr, "test_loop_win: pseudoconsole; flood, drain and a write refused while reaping; 4 MB through cat; dead.py; streams, codes, arguments, directory, closed stdin; 32 children; kill takes the tree; exit with a holder, its pipes closed; timers; every ready watch, a taken signal kept, unwatch in a pass; message queue; Ctrl-C; idle; proc_wait; socket write wake\n");
 	return 0;
 }
 #else

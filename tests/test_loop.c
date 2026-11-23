@@ -7,7 +7,10 @@
    reported when the child exits, not when what it left behind closes the
    pipes (Neovim's on_exit); SIGKILL comes for every killed child; a failed
    write stops the polling; the queue stays as large as its backlog; a
-   watch removed by another watch's function does not run.  proc_wait
+   watch removed by another watch's function does not run.  proc_pty: the
+   child's controlling terminal at the size asked, TERM, typed input coming
+   back as the terminal echoes it, a resize reaching it as SIGWINCH, output
+   and exit as proc_spawn's.  proc_wait
    (Neovim's system(), Wait.tla "ok"): only its child runs, another child's
    exit during the wait is still reported after it, ms or Ctrl-C kill. */
 #include <dirent.h>
@@ -90,6 +93,26 @@ static void echo(void)
 	CHECK(proc_write(id, "x", 1) == -1);   /* nothing after the close */
 	run(&g, 10000);
 	CHECK(g.code == 0 && g.nout == N && !memcmp(g.out, in, N) && !g.nerr);
+	free(g.out);
+}
+
+static void pty(void)
+{
+	Got g = { 0 };
+	char *argv[] = { "sh", "-c", "exec 3</dev/tty && stty size && echo $TERM; read x; echo got:$x; "
+	                 "trap 'stty size; exit 3' WINCH; echo ready; while :; do sleep 0.01; done", NULL };
+	int id = proc_pty(argv, NULL, 7, 33, on_proc, &g);
+	CHECK(id >= 0 && proc_pty(argv, NULL, 0, 33, on_proc, &g) == -1);
+	long long end = ms() + 10000;
+#define HAS(s) (g.out && memmem(g.out, g.nout, s, sizeof s - 1))
+	while (!HAS("xterm-256color\r\n")) { CHECK(ms() < end); CHECK(loop_once(100) == 0); }
+	CHECK(proc_write(id, "hi\r", 3) == 0);   /* typed once the terminal is up */
+	while (!HAS("ready")) { CHECK(ms() < end); CHECK(loop_once(100) == 0); }
+	proc_resize(id, 9, 41);
+	while (!g.ended[0]) { CHECK(ms() < end); CHECK(loop_once(100) == 0); }
+	CHECK(g.code == 3 && g.ended[1] && !g.ended[2] && !g.nerr);
+	CHECK(HAS("7 33\r\nxterm-256color\r\n") && HAS("hi\r\ngot:hi\r\n") && HAS("9 41\r\n"));
+#undef HAS
 	free(g.out);
 }
 
@@ -615,6 +638,7 @@ int main(void)
 	unwatch_in_callback();
 	write_wake();
 	many();
+	pty();
 	waits();
 	alarm(0);
 	idle();

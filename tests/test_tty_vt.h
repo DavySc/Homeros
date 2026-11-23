@@ -18,14 +18,15 @@ enum { VT_BADERASE = 99 };
 /* The colours and styles after SGR's attribute, as strings, numbered in the
    order first seen (0 is none); a cell's face holds that number.  vt_face
    maps a grid face to the number of the SGR it must get, vt_layer[bg][face]
-   a face under a cell's bg layer (grid.h). */
-static char vt_style[1024][64];
-static int vt_nstyle = 1, vt_face[FACE_COUNT], vt_layer[FACE_COUNT][FACE_COUNT];
+   a face under a cell's bg layer (grid.h), vt_ul[ul][bg][face] one under an
+   underline layer ul, a diagnostic's (FACE_DIAG_UNDER_ERROR + ul). */
+static char vt_style[8192][96];
+static int vt_nstyle = 1, vt_face[FACE_COUNT], vt_layer[FACE_COUNT][FACE_COUNT], vt_ul[4][FACE_COUNT][FACE_COUNT];
 
 static int vt_style_id(const char *s)
 {
 	for (int i = 0; i < vt_nstyle; i++) if (!strcmp(vt_style[i], s)) return i;
-	CHECK(vt_nstyle < 1024 && strlen(s) < 64);
+	CHECK(vt_nstyle < 8192 && strlen(s) < 96);
 	strcpy(vt_style[vt_nstyle], s);
 	return vt_nstyle++;
 }
@@ -44,7 +45,7 @@ typedef struct {
 	int (*width)(const unsigned char *s, int n);
 	unsigned char u[4];          /* a UTF-8 character being collected */
 	int un, uw;
-	unsigned char esc[64];       /* an escape sequence being collected */
+	unsigned char esc[96];       /* an escape sequence being collected */
 	int en;
 } Vt;
 
@@ -101,7 +102,7 @@ static void vt_print(Vt *t, const unsigned char *s, int n)
 
 static void vt_csi(Vt *t)
 {
-	char s[65];
+	char s[97];
 	memcpy(s, t->esc + 2, (size_t)t->en - 2);
 	s[t->en - 2] = 0;
 	int r, c;
@@ -127,7 +128,7 @@ static void vt_csi(Vt *t)
 			t->attr = f[1] == '7' ? ATTR_REV : ATTR_DIM;
 			f += 2;
 		}
-		char st[64];
+		char st[96];
 		snprintf(st, sizeof st, "%.*s", (int)strlen(f) - 1, f);
 		t->style = vt_style_id(st);
 	}
@@ -179,7 +180,8 @@ static inline const char *vt_differs(Vt *t, const Grid *g)
 			int a = x->attr == ATTR_GUIDE ? ATTR_NONE : x->attr;
 			int ok = x->len ? x->len == y->len && a == y->attr && !memcmp(grid_text(x), y->ch, x->len)
 			       : (!y->len || (y->len == 1 && y->ch[0] == ' ')) && y->attr == a;
-			ok = ok && y->face == (x->bg ? vt_layer[x->bg][x->face] : vt_face[x->face]);
+			ok = ok && y->face == (x->ul ? vt_ul[x->ul - FACE_DIAG_UNDER_ERROR][x->bg][x->face]
+			                       : x->bg ? vt_layer[x->bg][x->face] : vt_face[x->face]);
 			if (!ok) { snprintf(why, sizeof why, "cell %d,%d", r, c); return why; }
 		}
 	if (t->r != g->crow || t->col != g->ccol || t->hidden || t->sync) {

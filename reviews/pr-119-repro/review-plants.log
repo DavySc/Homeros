@@ -1,0 +1,18 @@
+caught        rv: selection leaves out its first line   (make test TESTS=git): 34 differences from magit
+caught        rv: selection from the hunk heading is a region   (make test TESTS=git): 4 differences from magit
+NOT CAUGHT    rv: hunks of two files taken as siblings   (make test TESTS=git passed)
+NOT CAUGHT    rv: selection ending in a body counts as ending on a heading   (make test TESTS=git passed)
+NOT CAUGHT    rv: selection starting in a body counts as starting on a heading   (make test TESTS=git passed)
+caught        rv: two hunks discard asks about one   (make test TESTS=git): 2 differences from magit
+NOT CAUGHT    rv: intent-to-add test inverted   (make test TESTS=git passed)
+NOT CAUGHT    rv: diff buffer refresh keeps Visual   (make test TESTS=git passed)
+caught        rv: stale selection kept for the next whole-hunk command   (make test TESTS=git): 13 differences from magit
+caught        rv: upward selection not ordered   (make test TESTS=git): 5 differences from magit
+NOT CAUGHT    rv: staged hunks discard (index) acts on the hunk at point   (make test TESTS=git passed)
+NOT CAUGHT    rv: staged hunks discard (cached, reject) acts on the hunk at point   (make test TESTS=git passed)
+caught        rv: old view leaked when a diff buffer is read again   (make test TESTS=git): ==24140==ERROR: LeakSanitizer: detected memory leaks
+FAILED OTHERWISE  rv: any refresh ends Visual in the headless focus   (make test TESTS=git): make: *** [Makefile:63: test] Error 1
+caught        rv: unselected line of the other sign kept   (make test TESTS=git): 38 differences from magit
+caught        rv: file selection unstages only the file at point   (make test TESTS=git): 45 differences from magit
+caught        rv: untracked selection stages every untracked file shown   (make test TESTS=git): 4 differences from magit
+RV_DONE 1

@@ -12,6 +12,7 @@
 #include "core.h"
 #include "keyname.h"
 #include "snip.h"
+#include "tools.h"
 
 enum { MAXC = 4096 };
 static char *body[MAXC], *pre[MAXC], *keys[MAXC], *want[MAXC];
@@ -137,6 +138,127 @@ static void popup(void)
 	puts("test_snip: the catalogue's odd blocks and the popup's keys");
 }
 
+/* The group from the file name (Davy's <prefix>_<group>_<name>.sql) comes
+   first; task snippets show in a task file only */
+static void groups(void)
+{
+	static const struct { const char *file, *first; int n; } c[] = {
+		{ "x_default_a_default_b.sql", "gdef", 2 }, { "x_y_task_z.sql", "gtsk", 3 },
+		{ "x_proc_default.sql", "ghlp", 2 }, { "x_process_z.sql", "gdef", 2 }, { "tasks.sql", "gdef", 2 },
+	};
+	for (size_t i = 0; i < sizeof c / sizeof *c; i++) {
+		Editor *e = typed(c[i].file, "g");
+		CHECK(e->npum == c[i].n && !strcmp(e->pum[0].word, c[i].first));
+		for (int j = 0; j < e->npum; j++) CHECK(strcmp(e->pum[j].word, "gtsk") || c[i].n == 3);
+		feed(e, KEY_ESC);
+		core_free(e);
+	}
+	/* only a heading's words before its '(' name its group */
+	Editor *e = typed("p.sql", "dtz");
+	CHECK(e->npum == 1);
+	is(e, "dtz\n");
+	puts("test_snip: the file's group first, task snippets in task files only");
+}
+
+/* text t in a new buffer called name, then keys k in Normal mode, then
+   snippet s inserted as SPC i s does */
+static Editor *inserted(const char *name, const char *t, const char *k, const char *s)
+{
+	static Editor e;
+	char path[64];
+	snprintf(path, sizeof path, "%s/%s", dir, name);
+	CHECK(!core_open(&e, path));
+	CHECK(!core_edit(&e, 0, 0, t, strlen(t)));
+	while (*k) feed(&e, test_key(&k));
+	CHECK(!snip_insert(&e, s));
+	return &e;
+}
+
+/* SPC i s: the list in the popup's order, a snippet at the cursor, and
+   around the Visual area at its $0 (surround with) */
+static void insert(int total)
+{
+	Editor *e = typed("x_proc_a.sql", "");
+	const char *d, *b, *nm = snip_get(e, NULL, 0, 0, &d, &b);
+	CHECK(nm && !strcmp(nm, "ghlp") && !strcmp(d, "h") && !strcmp(b, "H"));
+	int i = 1;
+	while (snip_get(e, NULL, 0, i, &d, &b)) i++;
+	CHECK(i == total);
+	CHECK(!strcmp(snip_get(e, "wr", 2, 0, &d, &b), "wrp") && !snip_get(e, "wr", 2, 1, &d, &b));
+	is(e, "\n");
+	/* ranked again for another buffer */
+	e = typed("x_task_a.sql", "");
+	CHECK(!strcmp(snip_get(e, "g", 1, 0, &d, &b), "gtsk"));
+	CHECK(snip_insert(e, "nosuch") == -1);
+	is(e, "\n");
+	e = inserted("i.sql", "q", "", "pure");
+	CHECK(e->mode == MODE_INSERT && e->win->col == 8);
+	is(e, "SELECT 1q\n");
+	e = inserted("i.sql", "x = 1", "$v", "wrp");
+	is(e, "x = begin\n    1\nend\n");
+	e = inserted("i.sql", "x", "v", "pure");   /* no $0: the area goes at the end */
+	is(e, "SELECT 1x\n");
+	/* never the text's last line break, as v$c */
+	e = inserted("i.sql", "ab", "v$", "wrp");
+	CHECK(core_lines(e) == 3);
+	is(e, "begin\n    ab\nend\n");
+	/* a block as its lines; a first line of blanks keeps them all */
+	e = inserted("i.sql", "abc\ndef", "<C-v>j", "wrp");
+	is(e, "begin\n    abc\n    def\nend\n");
+	e = inserted("i.sql", "    \n    b", "Vj", "wrp");
+	is(e, "    begin\n        \n        b\n    end\n");
+	e = inserted("i.sql", "    a\n    b\nc", "Vj", "wrp");
+	is(e, "    begin\n        a\n        b\n    end\nc\n");
+	/* through the picker: the name typed, its description and body shown,
+	   Enter puts it around the Visual area */
+	static Editor pe;
+	char path[64];
+	snprintf(path, sizeof path, "%s/pick.sql", dir);
+	CHECK(!core_open(&pe, path) && !core_edit(&pe, 0, 0, "1", 1));
+	feed(&pe, 'v');
+	CHECK(!tools_pick(&pe, PICK_SNIPPETS));
+	for (const char *k = "wrp"; *k; k++) CHECK(tools_key(&pe, *k));
+	static Grid g;
+	CHECK(!grid_resize(&g, 30, 100));
+	tools_draw(&pe, &g);
+	static char screen[30 * 401];
+	screen[0] = 0;
+	for (int r = 0; r < 30; r++, strcat(screen, "\n"))
+		for (int c = 0; c < 100; c++) strcat(screen, (const char *)grid_text(&g.c[r * 100 + c]));
+	CHECK(strstr(screen, "wrp w") && strstr(screen, "begin"));
+	grid_free(&g);
+	CHECK(tools_key(&pe, KEY_ENTER));
+	is(&pe, "begin\n    1\nend\n");
+	/* Enter at once takes the first: the file's group's */
+	snprintf(path, sizeof path, "%s/x_proc_b.sql", dir);
+	CHECK(!core_open(&pe, path));
+	CHECK(!tools_pick(&pe, PICK_SNIPPETS) && tools_key(&pe, KEY_ENTER));
+	is(&pe, "H\n");
+	/* Enter takes the selected item, and a narrower prompt selects its
+	   first again */
+	snprintf(path, sizeof path, "%s/p.sql", dir);
+	CHECK(!core_open(&pe, path));
+	CHECK(!tools_pick(&pe, PICK_SNIPPETS) && tools_key(&pe, 'g') && tools_key(&pe, KEY_DOWN) && tools_key(&pe, KEY_ENTER));
+	is(&pe, "H\n");
+	CHECK(!core_open(&pe, path) && !tools_pick(&pe, PICK_SNIPPETS));
+	for (int k = 0; k < 3; k++) CHECK(tools_key(&pe, KEY_DOWN));
+	for (const char *k = "pure"; *k; k++) CHECK(tools_key(&pe, *k));
+	CHECK(tools_key(&pe, KEY_ENTER));
+	is(&pe, "SELECT 1\n");
+	/* the popup's order with a prompt too: the group first, though dtz
+	   is shorter */
+	snprintf(path, sizeof path, "%s/x_task_b.sql", dir);
+	CHECK(!core_open(&pe, path));
+	CHECK(!tools_pick(&pe, PICK_SNIPPETS) && tools_key(&pe, 't') && tools_key(&pe, KEY_ENTER));
+	is(&pe, "T\n");
+	/* and the best match first (dtz starts with d, gdef comes first) */
+	snprintf(path, sizeof path, "%s/p.sql", dir);
+	CHECK(!core_open(&pe, path));
+	CHECK(!tools_pick(&pe, PICK_SNIPPETS) && tools_key(&pe, 'd') && tools_key(&pe, KEY_ENTER));
+	is(&pe, "C\n");
+	puts("test_snip: SPC i s lists, inserts and surrounds");
+}
+
 int main(int argc, char **argv)
 {
 	FILE *f = fopen(argc > 1 ? argv[1] : "src/snip/conform/recorded.txt", "r");
@@ -163,7 +285,10 @@ int main(int argc, char **argv)
 	for (int i = 0; i <= n; i++) {
 		static char b[1 << 17];
 		if (i < n) snprintf(b, sizeof b, "```sql\n-- s%04d : case %d\n%s\n```\n", i, i, body[i]);
-		else strcpy(b, "```sql\n-- pure\nSELECT 1\n```\n```sql\nno name\n```\n```text\n-- notsql : x\nY\n```\n");
+		else strcpy(b, "```sql\n-- pure\nSELECT 1\n```\n```sql\nno name\n```\n```text\n-- notsql : x\nY\n```\n"
+		               "## 6. Task (default)\n```sql\n-- gtsk : t\nT\n```\n## 2. Default\n```sql\n-- gdef : d\nD\n```\n"
+		               "## 3. Context (`@<task>_type`)\n```sql\n-- dtz : c\nC\n```\n"
+		               "## 11. Shared helpers\n```sql\n-- ghlp : h\nH\n```\n```sql\n-- wrp : w\nbegin\n\t$0\nend\n```\n");
 		for (char *p = b; *p; p++) fputs(*p == '\n' ? "\r\n" : (char[]){ *p, 0 }, c);
 	}
 	CHECK(!fclose(c));
@@ -180,6 +305,8 @@ int main(int argc, char **argv)
 		printf("test_snip: %d of %d recorded vim.snippet cases differ\n", bad, n);
 		CHECK(!bad);
 		popup();
+		groups();
+		insert(n + 5);
 	}
 	return 0;
 }

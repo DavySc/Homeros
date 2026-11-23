@@ -4,7 +4,8 @@
    v:oldfiles is listed once, the current buffer and homeros' own files are
    left out, and the frecency file is written and read back (the smart
    picker ranks a visited file first), the files picker never runs
-   find.exe, and :make's errors name C:\ paths. */
+   find.exe, and :make's errors name C:\ paths.  The terminal (Ctrl+.)
+   runs cmd.exe on a pseudo-console. */
 #ifdef _WIN32
 #include <windows.h>
 #include <direct.h>
@@ -123,9 +124,18 @@ int main(void)
 	CHECK(!tools_make(&e, "type \"sp ace.txt\""));
 	for (int i = 0; i < 500 && tools_qf(&e, 1); i++) loop_once(10);
 	if (!strstr(e.buf->path, "zqd.txt") || strcmp(strstr(e.msg, "(1 of 1)"), "(1 of 1): error CS3: quoted")) { fprintf(stderr, "make quoted: %s / %s\n", e.buf->path, e.msg); CHECK(0); }
+	/* the terminal: cmd.exe (COMSPEC) answers what it is typed, and exit
+	   closes it */
+	CHECK(tools_key(&e, KEY_CTRL_DOT));
+	for (const char *k = "echo zq%OS%\n"; *k; k++) CHECK(tools_key(&e, *k == '\n' ? KEY_ENTER : (unsigned char)*k));
+	for (int i = 0; i < 100 && (rows(got, sizeof got), !strstr(got, "zqWindows_NT|")); i++) loop_once(100);
+	if (!strstr(got, "zqWindows_NT|")) { fprintf(stderr, "terminal: %s\n", got); CHECK(0); }
+	for (const char *k = "exit\n"; *k; k++) tools_key(&e, *k == '\n' ? KEY_ENTER : (unsigned char)*k);
+	for (int i = 0; i < 100 && (rows(got, sizeof got), strstr(got, "zqWindows_NT|")); i++) loop_once(100);
+	CHECK(!strstr(got, "zqWindows_NT|"));   /* its exit closed the float */
 	grid_free(&g);
 	core_free(&e);
-	printf("test_tools_win: recent files relative to C:\\..., listed once, frecency written and read; no find.exe; :make's C:\\ errors, quoted paths\n");
+	printf("test_tools_win: recent files relative to C:\\..., listed once, frecency written and read; no find.exe; :make's C:\\ errors, quoted paths; the terminal runs cmd.exe\n");
 	return 0;
 }
 #else
