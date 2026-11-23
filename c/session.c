@@ -34,21 +34,32 @@ static char *read_text(const char *path) {
     return s;
 }
 
-/* pc, then each return address up the frame pointer chain */
-static int frames(const Target *t, uint64_t *out, int room) {
+/* pc, then each return address up the frame pointer chain; fps[i]: frame i's rbp */
+static int frames(const Target *t, uint64_t *out, uint64_t *fps, int room) {
     Regs r;
     target_regs(t, &r);
     int n = 0;
-    out[n++] = r.r[16];
     uint64_t fp = r.r[6];
+    fps[n] = fp; out[n++] = r.r[16];
     while (fp && n < room) {
         uint64_t pair[2];
         if (!target_read(t, fp, pair, 16) || !pair[1]) break;
-        out[n++] = pair[1];
+        fps[n] = pair[0]; out[n++] = pair[1];
         if (pair[0] <= fp) break;
         fp = pair[0];
     }
     return n;
+}
+
+/* the first address of a function's body (after its prologue row) */
+static uint64_t body_of(const Dwarf *d, const char *linkage) {
+    for (uint32_t i = 1; i < d->ndies; i++) {
+        Val v, lo;
+        if (d->dies[i].ab->tag != TAG_subprogram || !die_attr(d, i, 0x6e, &v) || !v.b || strcmp((const char *)v.b, linkage) || !die_attr(d, i, AT_low_pc, &lo)) continue;
+        const Row *w = row_at(d, lo.u);
+        return w && w + 1 < d->rows + d->nrows && !w->end ? w[1].addr : 0;
+    }
+    return 0;
 }
 
 int session(const char *zig, const char *src) {
@@ -72,31 +83,55 @@ int session(const char *zig, const char *src) {
     char *argv[] = { live, NULL };
     if (!target_start(&t, argv)) { printf("error: cannot start\n"); return 1; }
     char cmd[256];
+    Regs view;                                   /* the registers of the frame shown: the top one, or after a panic the user's */
+    int top = 0;                                 /* that frame's index */
+    target_regs(&t, &view);
     const char *base = strrchr(src, '/') ? strrchr(src, '/') + 1 : src;
     while (fgets(cmd, sizeof cmd, stdin)) {
         cmd[strcspn(cmd, "\n")] = 0;
-        Regs r;
         if (cmd[0] == 'b' && cmd[1] == ' ') {
             if (nl < 64) lines[nl++] = (uint32_t)atoi(cmd + 2);
         } else if (!strcmp(cmd, "c")) {
+            uint64_t panic_at = body_of(&d, "debug.defaultPanic");   /* every safety check and @panic ends here */
             nt = 0;
+            if (panic_at) traps[nt++] = panic_at;
             for (int i = 0; i < nl; i++) nt += line_addrs(&d, base, lines[i], traps + nt, 256 - nt);
             uint64_t pc; int code;
             if (!target_run(&t, traps, nt, &pc, &code)) { printf("exit %d\n", code); fflush(stdout); break; }
-            const Row *w = row_at(&d, pc);
-            uint32_t f = func_at(&d, pc);
-            printf("stop %u %s\n", w ? w->line : 0, f && die_name(&d, f) ? die_name(&d, f) : "?");
+            target_regs(&t, &view);
+            top = 0;
+            if (pc == panic_at) {           /* show the user's frame that failed: fix it and :w, or c ends the program */
+                Out o = { 0 };
+                uint32_t v = var_at(&d, pc, "msg");
+                if (v) print_text(&d, &t, &view, v, &o);
+                uint64_t fr[64], fp[64];
+                int n = frames(&t, fr, fp, 64), i = 1;
+                const Row *w = NULL;
+                for (; i < n; i++)                 /* the first frame in the user's file */
+                    if ((w = row_at(&d, fr[i] - 1)) && file_is(d.files[w->file].name, base)) break;
+                uint32_t f = i < n ? func_at(&d, fr[i] - 1) : 0;
+                uint64_t size = f ? frame_size(&d, f) : 0;
+                if (size) {                      /* its registers as far as memory tells: rsp, rbp, pc */
+                    top = i;
+                    view.r[7] = fp[i] - size; view.r[6] = fp[i]; view.r[16] = fr[i] - 1;
+                    printf("panic: %.*s at line %u in %s\n", (int)o.n, o.s ? o.s : "", w->line, die_name(&d, f) ? die_name(&d, f) : "?");
+                } else printf("panic: %.*s outside %s\n", (int)o.n, o.s ? o.s : "", base);
+                free(o.s);
+            } else {
+                const Row *w = row_at(&d, pc);
+                uint32_t f = func_at(&d, pc);
+                printf("stop %u %s\n", w ? w->line : 0, f && die_name(&d, f) ? die_name(&d, f) : "?");
+            }
         } else if (cmd[0] == 'p' && cmd[1] == ' ') {
-            target_regs(&t, &r);
             Out o = { 0 };
-            uint32_t v = var_at(&d, r.r[16], cmd + 2);
+            uint32_t v = var_at(&d, view.r[16], cmd + 2);
             if (!v) v = global_named(&d, cmd + 2);
-            if (!v) out_add(&o, "<no variable %s>", cmd + 2); else print_var(&d, &t, &r, v, &o);
+            if (!v) out_add(&o, "<no variable %s>", cmd + 2); else print_var(&d, &t, &view, v, &o);
             printf("%.*s\n", (int)o.n, o.s ? o.s : "");
             free(o.s);
         } else if (!strcmp(cmd, "bt")) {
-            uint64_t fr[64];
-            int n = frames(&t, fr, 64);
+            uint64_t fr[64], fp[64];
+            int n = frames(&t, fr, fp, 64);
             for (int i = 0; i < n; i++) {
                 uint64_t pc = i ? fr[i] - 1 : fr[i];
                 const Row *w = row_at(&d, pc);
@@ -114,13 +149,19 @@ int session(const char *zig, const char *src) {
             copy_file(zc.out, next);
             Dwarf nd;
             dwarf_open(&nd, next);
-            uint64_t fr[64];
-            int n = frames(&t, fr, 64);
-            for (int i = 1; i < n; i++) fr[i]--;                 /* the call, not the instruction after it */
+            uint64_t fr[64], fp[64];
+            int n = frames(&t, fr, fp, 64);
+            for (int i = 1; i < n; i++) fr[i]--;                /* the call, not the instruction after it */
+            fr[top] = view.r[16];
             Patch p;
             char *nsrc = read_text(src);
-            if (ec_patch(&t, &d, &nd, fr, n, text, nsrc ? nsrc : "", &p)) {
-                if (p.new_pc) { target_set_pc(&t, p.new_pc); printf("the stopped function was edited: line %u goes on at line %u\n", p.from_line, p.to_line); }
+            if (ec_patch(&t, &d, &nd, fr + top, n - top, &view, top > 0, text, nsrc ? nsrc : "", &p)) {
+                if (p.new_pc) {
+                    target_set_regs(&t, &p.regs);
+                    if (p.why[0]) printf("%s\n", p.why);
+                    else printf("the stopped function was edited: line %u goes on at line %u\n", p.from_line, p.to_line);
+                    view = p.regs; top = 0;
+                }
                 free(text); text = nsrc;
                 dwarf_close(&d); d = nd; gen++;
                 printf("patched: %u runs, code %llu, rodata %llu, new data %llu, kept %llu bytes; build %.1f ms, patch %.1f ms\n", p.runs,

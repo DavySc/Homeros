@@ -312,7 +312,7 @@ static void read_lines(Dwarf *d, const Unit *u, uint64_t off) {
     }
 }
 
-static bool ends_with(const char *s, const char *t) {
+bool file_is(const char *s, const char *t) {
     size_t a = strlen(s), b = strlen(t);
     return a >= b && !strcmp(s + a - b, t) && (a == b || s[a - b - 1] == '/');
 }
@@ -321,7 +321,7 @@ uint32_t line_addrs(const Dwarf *d, const char *file, uint32_t line, uint64_t *o
     uint32_t n = 0;
     for (uint32_t i = 0; i + 1 < d->nrows; i++) {
         const Row *w = &d->rows[i];
-        if (w->end || !w->stmt || w->line != line || !ends_with(d->files[w->file].name, file)) continue;
+        if (w->end || !w->stmt || w->line != line || !file_is(d->files[w->file].name, file)) continue;
         if (i && !d->rows[i - 1].end && d->rows[i - 1].line == line && d->rows[i - 1].file == w->file) continue;   /* a run of the same line: its first row */
         bool dup = false;
         for (uint32_t k = 0; k < n; k++) dup |= out[k] == w->addr;
@@ -334,6 +334,13 @@ const Row *row_at(const Dwarf *d, uint64_t pc) {
     for (uint32_t i = 0; i + 1 < d->nrows; i++)
         if (!d->rows[i].end && d->rows[i].addr <= pc && pc < d->rows[i + 1].addr) return &d->rows[i];
     return NULL;
+}
+
+uint64_t line_start(const Dwarf *d, uint64_t pc) {
+    const Row *w = row_at(d, pc);
+    if (!w) return 0;
+    while (w > d->rows && !w[-1].end && w[-1].line == w->line && w[-1].file == w->file) w--;
+    return w->addr;
 }
 
 /* ---- the file ---- */

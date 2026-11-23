@@ -35,14 +35,21 @@ bool target_regs(const Target *t, Regs *r) {
     if (ptrace(PTRACE_GETREGS, t->pid, 0, &u)) return false;
     uint64_t v[17] = { u.rax, u.rdx, u.rcx, u.rbx, u.rsi, u.rdi, u.rbp, u.rsp, u.r8, u.r9, u.r10, u.r11, u.r12, u.r13, u.r14, u.r15, u.rip };
     for (int i = 0; i < 17; i++) r->r[i] = v[i];
+    struct user_fpregs_struct f;
+    if (ptrace(PTRACE_GETFPREGS, t->pid, 0, &f)) return false;
+    for (int i = 0; i < 16; i++) r->xmm[i] = (uint64_t)f.xmm_space[4 * i] | (uint64_t)f.xmm_space[4 * i + 1] << 32;
     return true;
 }
 
-bool target_set_pc(const Target *t, uint64_t pc) {
+bool target_set_regs(const Target *t, const Regs *r) {
     struct user_regs_struct u;
     if (ptrace(PTRACE_GETREGS, t->pid, 0, &u)) return false;
-    u.rip = pc;
-    return !ptrace(PTRACE_SETREGS, t->pid, 0, &u);
+    unsigned long long *v[17] = { &u.rax, &u.rdx, &u.rcx, &u.rbx, &u.rsi, &u.rdi, &u.rbp, &u.rsp, &u.r8, &u.r9, &u.r10, &u.r11, &u.r12, &u.r13, &u.r14, &u.r15, &u.rip };
+    for (int i = 0; i < 17; i++) *v[i] = r->r[i];
+    struct user_fpregs_struct f;
+    if (ptrace(PTRACE_SETREGS, t->pid, 0, &u) || ptrace(PTRACE_GETFPREGS, t->pid, 0, &f)) return false;
+    for (int i = 0; i < 16; i++) { f.xmm_space[4 * i] = (uint32_t)r->xmm[i]; f.xmm_space[4 * i + 1] = (uint32_t)(r->xmm[i] >> 32); }
+    return !ptrace(PTRACE_SETFPREGS, t->pid, 0, &f);
 }
 
 static bool wait_stop(Target *t) {
@@ -70,8 +77,8 @@ bool target_run(Target *t, const uint64_t *traps, uint32_t n, uint64_t *pc, int 
     if (hit) for (uint32_t i = n; i--;) target_write(t, traps[i], &saved[i], 1);
     if (!hit) goto gone;
     target_regs(t, &r);
-    *pc = r.r[16] - 1;
-    target_set_pc(t, *pc);
+    *pc = r.r[16] = r.r[16] - 1;
+    target_set_regs(t, &r);
     return true;
 gone:
     *code = WIFEXITED(t->status) ? WEXITSTATUS(t->status) : 128 + WTERMSIG(t->status);

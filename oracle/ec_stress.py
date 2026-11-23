@@ -2,7 +2,7 @@
 program at iteration k of its loop, edits it (the callee, the stopped function, a new global or
 all three), saves, and runs on. Truth: iterations before k follow the old program, the rest the
 new one; a refused patch leaves the old program running."""
-import os, random, subprocess, sys, tempfile, time
+import atexit, os, random, shutil, subprocess, sys, tempfile, time
 zig, zdb, a, b = sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4])
 M = (1 << 64) - 1
 TPL = '''const std = @import("std");
@@ -42,6 +42,7 @@ reasons = {}
 for seed in range(a, b + 1):
     R = random.Random(seed)
     work = tempfile.mkdtemp(prefix="zdb-ec-")
+    atexit.register(shutil.rmtree, work, True)                 # each binary is 10 MB
     g0 = R.randint(0, 50)
     old = dict(fexpr=expr(R), extra=R.choice(["", f" +% {R.randint(1, 9)}"]))
     new = dict(old)

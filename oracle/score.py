@@ -6,6 +6,7 @@ zig, zdb, a, b = sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4])
 backend = sys.argv[5] if len(sys.argv) > 5 else "self"
 here = os.path.dirname(os.path.abspath(__file__))
 work = tempfile.mkdtemp(prefix="zdb-oracle-")
+import atexit, shutil; atexit.register(shutil.rmtree, work, True)   # each binary is 10 MB
 ok = bad = skipped = progs = absent = 0
 kinds = {}
 for seed in range(a, b + 1):

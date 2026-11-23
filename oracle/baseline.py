@@ -5,6 +5,7 @@ import os, re, subprocess, sys, tempfile
 zig, a, b, backend, dbg = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), sys.argv[4], sys.argv[5]
 here = os.path.dirname(os.path.abspath(__file__))
 work = tempfile.mkdtemp(prefix="zdb-base-")
+import atexit, shutil; atexit.register(shutil.rmtree, work, True)   # each binary is 10 MB
 NUM = re.compile(r"(?<![\w.@])-?\d+(?:\.\d+)?(?:e-?\d+)?(?![\w@])|\btrue\b|\bfalse\b|\bnull\b")
 
 def leaves(s):

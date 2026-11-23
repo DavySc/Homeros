@@ -485,15 +485,43 @@ uint32_t var_at(const Dwarf *d, uint64_t pc, const char *name) {
     return f ? find_in(d, f, pc, name) : 0;
 }
 
-bool print_var(const Dwarf *d, const Target *tg, const Regs *r, uint32_t var, Out *o) {
+bool rsp_slot(const Dwarf *d, uint32_t var, uint64_t pc, int64_t *off) {
+    const uint8_t *e; size_t n;
+    if (!die_loc(d, var, pc, &e, &n) || n < 2 || e[0] != 0x77) return false;   /* DW_OP_breg7 */
+    const uint8_t *p = e + 1;
+    *off = rs(&p);
+    return p == e + n;
+}
+
+/* the variable's bytes (b->n = its type's size) */
+static bool load(const Dwarf *d, const Target *tg, const Regs *r, uint32_t var, Bytes *b, Out *o) {
     uint64_t pc = r->r[16];
-    uint32_t t = die_ref(d, var, AT_type), func = var;
+    uint32_t func = var;
     while (func && d->dies[func].ab->tag != TAG_subprogram) func = d->dies[func].parent;
     const uint8_t *e; size_t n;
+    *b = (Bytes){ 0 };
     if (!die_loc(d, var, pc, &e, &n)) { out_add(o, "<no location>"); return false; }
+    if (eval(d, tg, r, func, pc, e, n, type_size(d, die_ref(d, var, AT_type)), b)) return true;
+    out_add(o, "<location not built>");
+    return false;
+}
+
+bool print_var(const Dwarf *d, const Target *tg, const Regs *r, uint32_t var, Out *o) {
     Bytes b;
-    if (!eval(d, tg, r, func, pc, e, n, type_size(d, t), &b)) { free(b.b); out_add(o, "<location not built>"); return false; }
-    fmt(d, tg, t, b.b, type_size(d, t), 3, o);     /* std.fmt.default_max_depth */
+    uint32_t t = die_ref(d, var, AT_type);
+    bool ok = load(d, tg, r, var, &b, o);
+    if (ok) fmt(d, tg, t, b.b, type_size(d, t), 3, o);     /* std.fmt.default_max_depth */
     free(b.b);
-    return true;
+    return ok;
+}
+
+bool print_text(const Dwarf *d, const Target *tg, const Regs *r, uint32_t var, Out *o) {
+    Bytes b;
+    bool ok = load(d, tg, r, var, &b, o) && b.n == 16;
+    uint64_t len = ok ? get_int(b.b + 8, 64, false) : 0;
+    char *s = ok && len < 4096 ? malloc(len + 1) : NULL;
+    ok = s && target_read(tg, get_int(b.b, 64, false), s, len);
+    if (ok) out_add(o, "%.*s", (int)len, s);
+    free(s); free(b.b);
+    return ok;
 }

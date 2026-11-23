@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "ec.h"
+#include "value.h"
 #include <elf.h>
 #include <signal.h>
 #include <stdio.h>
@@ -127,6 +128,15 @@ static const uint8_t *at_va(const Dwarf *d, uint64_t va, uint64_t n) {
     return NULL;
 }
 
+uint64_t frame_size(const Dwarf *d, uint32_t f) {
+    Val lo;
+    const uint8_t *b = die_attr(d, f, AT_low_pc, &lo) ? at_va(d, lo.u, 11) : NULL;
+    if (!b || b[0] != 0x55 || b[1] != 0x48 || b[2] != 0x89 || b[3] != 0xe5 || b[4] != 0x48 || b[6] != 0xec) return 0;
+    if (b[5] == 0x83) return b[7];
+    if (b[5] == 0x81) return (uint64_t)b[7] | (uint64_t)b[8] << 8 | (uint64_t)b[9] << 16 | (uint64_t)b[10] << 24;
+    return 0;
+}
+
 /* Function f of old can go on as g of new only with the same frame: the same prologue (its
    `sub rsp, N` sizes the frame) and every variable of f at the same place in g. */
 static bool same_frame(const Dwarf *old, uint32_t f, const Dwarf *new, uint32_t g, char *why, size_t room) {
@@ -151,6 +161,68 @@ static bool same_frame(const Dwarf *old, uint32_t f, const Dwarf *new, uint32_t 
     return true;
 }
 
+/* The registers that start g (new) as a fresh call from where f (old) was called: the return
+   address stays on the stack and each argument register gets what f's parameter of the same name
+   holds (Zig parameters are constants, and the self-hosted backend stores each argument register
+   into its parameter's slot right after the prologue: g's first instructions say which register
+   is which parameter). Refused when g starts any other way, or takes something that is not a
+   named parameter (a result pointer). */
+static bool restart(const Target *t, const Dwarf *old, uint32_t f, const Dwarf *new, uint32_t g, const Regs *top, Patch *p) {
+    static const int dwarf_reg[16] = { 0, 2, 1, 3, 7, 6, 4, 5, 8, 9, 10, 11, 12, 13, 14, 15 };   /* x86 encoding -> DWARF number */
+    Val lo;
+    const uint8_t *b = die_attr(new, g, AT_low_pc, &lo) ? at_va(new, lo.u, 256) : NULL;
+    uint64_t up;
+    if (!b || !frame_size(new, g) || !target_read(t, top->r[6], &up, 8)) goto odd;
+    Regs r = *top;
+    r.r[7] = top->r[6] + 8; r.r[6] = up; r.r[16] = lo.u;
+    uint32_t matched = 0, wanted = 0;
+    uint64_t set = 0, stored = 0;                                /* register bits: DWARF numbers, then 17 + xmm number */
+    /* [66] [REX] 88/89, or vmovss/vmovsd (VEX c5 R.vvvv.L.pp 11), with modrm = reg, [rsp + disp] */
+    for (const uint8_t *i = b + (b[5] == 0x83 ? 8 : 11); i < b + 240;) {
+        uint64_t width = 4;
+        uint8_t hi = 0;                                          /* the register number's top bit */
+        bool xmm = i[0] == 0xc5 && (i[1] & 0x7f) >= 0x7a && (i[1] & 0x7f) <= 0x7b && i[2] == 0x11;
+        if (xmm) { hi = !(i[1] & 0x80); width = (i[1] & 3) == 3 ? 8 : 4; i += 2; }
+        else {
+            if (*i == 0x66) { width = 2; i++; }
+            uint8_t rex = *i >= 0x40 && *i <= 0x4f ? *i++ : 0;
+            if (*i != 0x88 && *i != 0x89) break;                /* the stores end */
+            if (*i == 0x88) width = 1; else if (rex & 8) width = 8;
+            hi = (rex & 4) != 0;
+        }
+        if ((i[1] & 7) != 4 || (i[1] >> 6) == 3 || i[2] != 0x24) break;
+        uint8_t m = i[1];
+        i += 3;
+        int64_t disp = (m >> 6) == 0 ? 0 : (m >> 6) == 1 ? (int8_t)*i : (int32_t)((uint32_t)i[0] | (uint32_t)i[1] << 8 | (uint32_t)i[2] << 16 | (uint32_t)i[3] << 24);
+        i += (m >> 6) == 0 ? 0 : (m >> 6) == 1 ? 1 : 4;
+        int x86 = hi << 3 | ((m >> 3) & 7), reg = xmm ? 17 + x86 : dwarf_reg[x86];     /* bits 17-32: xmm0-15 */
+        uint64_t *slot = xmm ? &r.xmm[x86] : &r.r[reg];
+        stored |= 1ull << reg;
+        uint32_t end = new->dies[g].next ? new->dies[g].next : new->ndies, k = g + 1, o = 0;
+        int64_t at, from;
+        for (; k < end; k++)                                      /* the parameter (or the part of one: a slice comes in two) */
+            if (new->dies[k].ab->tag == TAG_param && rsp_slot(new, k, lo.u, &at) && at <= disp && disp + (int64_t)width <= at + (int64_t)type_size(new, die_ref(new, k, AT_type))) break;
+        if (k == end) continue;                                   /* a copy of an argument: fine once the argument is known */
+        if (!die_name(new, k) || !(o = var_at(old, top->r[16], die_name(new, k))) || !rsp_slot(old, o, top->r[16], &from)) goto odd;
+        uint64_t v = 0;
+        if (!target_read(t, top->r[7] + (uint64_t)(from + disp - at), &v, width)) goto odd;
+        *slot = width == 1 || width == 2 ? (*slot & ~((1ull << 8 * width) - 1)) | v : v;   /* 32-bit writes clear the top half */
+        set |= 1ull << reg;
+        if (disp == at) matched++;
+    }
+    for (uint32_t k = g + 1, end = new->dies[g].next ? new->dies[g].next : new->ndies; k < end; k++) {
+        Val l;
+        if (new->dies[k].ab->tag == TAG_param && die_attr(new, k, AT_location, &l)) wanted++;
+    }
+    if (matched != wanted || (stored & ~set)) goto odd;
+    const Row *w = row_at(new, lo.u);
+    p->new_pc = lo.u; p->regs = r; p->to_line = w ? w->line : 0;
+    return true;
+odd:
+    snprintf(p->why, sizeof p->why, "%s: cannot tell how to call it again (its start is not the usual one)", die_name(old, f));
+    return false;
+}
+
 static uint32_t func_named(const Dwarf *d, const char *linkage) {
     for (uint32_t i = 1; i < d->ndies; i++) {
         Val v;
@@ -159,7 +231,7 @@ static uint32_t func_named(const Dwarf *d, const char *linkage) {
     return 0;
 }
 
-bool ec_patch(const Target *t, const Dwarf *old, const Dwarf *new, const uint64_t *active, int nactive,
+bool ec_patch(const Target *t, const Dwarf *old, const Dwarf *new, const uint64_t *active, int nactive, const Regs *top, bool lost,
               const char *old_src, const char *new_src, Patch *p) {
     memset(p, 0, sizeof *p);
     uint32_t fk[64]; uint64_t flo[64];
@@ -208,24 +280,30 @@ bool ec_patch(const Target *t, const Dwarf *old, const Dwarf *new, const uint64_
             x = y;
         }
     }
-    if (top_edited) {                                                 /* the stopped function: where does it go on? */
+    if (top_edited || lost) {                                         /* the stopped function: where does it go on? */
         Val ln;
         const Row *w = row_at(old, active[0]);
         uint32_t g = die_attr(old, fk[0], 0x6e, &ln) && ln.b ? func_named(new, (const char *)ln.b) : 0;
-        for (int k = 1; k < nactive; k++)
+        for (int k = 1; k < nactive && top_edited; k++)
             if (fk[k] == fk[0]) { snprintf(p->why, sizeof p->why, "%s was changed and is running in more than one frame (recursion): restart", die_name(old, fk[0])); goto refuse; }
-        if (!w || w->addr != active[0]) { snprintf(p->why, sizeof p->why, "stopped inside a statement, not at its start: step to the next line first"); goto refuse; }
+        if (!w || (!lost && w->addr != active[0])) { snprintf(p->why, sizeof p->why, "stopped inside a statement, not at its start: step to the next line first"); goto refuse; }
         if (!g) { snprintf(p->why, sizeof p->why, "%s is gone from the new program", die_name(old, fk[0])); goto refuse; }
-        if (!same_frame(old, fk[0], new, g, p->why, sizeof p->why)) goto refuse;
         p->from_line = w->line;
-        p->to_line = map_line(old_src, new_src, w->line);
-        if (!p->to_line) { snprintf(p->why, sizeof p->why, "line %u is inside the edit and the edit changed the number of lines", w->line); goto refuse; }
-        for (uint32_t i = 0; i + 1 < new->nrows && !p->new_pc; i++) {
-            const Row *v = &new->rows[i];
-            if (!v->end && v->stmt && v->line == p->to_line && die_has_pc(new, g, v->addr) && (i == 0 || new->rows[i - 1].line != v->line || new->rows[i - 1].end))
-                p->new_pc = v->addr;
+        if (lost) {        /* after a panic: its call starts again (the panic's other way out is the program's end) */
+            if (!restart(t, old, fk[0], new, g, top, p)) goto refuse;
+            snprintf(p->why, sizeof p->why, "%s starts again with the arguments of this call: what it did before line %u happens again", die_name(old, fk[0]), p->from_line);
+        } else {           /* at a breakpoint: the same statement of the new code; restarting would repeat what the call did */
+            p->to_line = map_line(old_src, new_src, w->line);
+            if (!p->to_line) { snprintf(p->why, sizeof p->why, "line %u is inside the edit and the edit changed the number of lines", w->line); goto refuse; }
+            for (uint32_t i = 0; i + 1 < new->nrows && !p->new_pc; i++) {
+                const Row *v = &new->rows[i];
+                if (!v->end && v->stmt && v->line == p->to_line && die_has_pc(new, g, v->addr) && (i == 0 || new->rows[i - 1].line != v->line || new->rows[i - 1].end))
+                    p->new_pc = v->addr;
+            }
+            if (!p->new_pc) { snprintf(p->why, sizeof p->why, "line %u has no code in the new %s", p->to_line, die_name(new, g)); goto refuse; }
+            if (!same_frame(old, fk[0], new, g, p->why, sizeof p->why)) goto refuse;
+            p->regs = *top; p->regs.r[16] = p->new_pc;
         }
-        if (!p->new_pc) { snprintf(p->why, sizeof p->why, "line %u has no code in the new %s", p->to_line, die_name(new, g)); goto refuse; }
     }
     for (uint32_t i = 0; i < nr; i++)                                 /* checked all first: nothing is half written */
         if (!target_write(t, runs[i].va, runs[i].bytes, runs[i].n)) { snprintf(p->why, sizeof p->why, "write failed at %#llx", (unsigned long long)runs[i].va); p->refused = true; free(runs); return false; }

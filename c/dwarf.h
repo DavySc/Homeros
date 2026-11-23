@@ -48,6 +48,8 @@ bool die_has_pc(const Dwarf *d, uint32_t die, uint64_t pc);
 uint32_t func_at(const Dwarf *d, uint64_t pc);                   /* the subprogram containing pc, or 0 */
 /* the rows for line `line` of the file whose name ends in `file`, as addresses; how many */
 uint32_t line_addrs(const Dwarf *d, const char *file, uint32_t line, uint64_t *out, uint32_t room);
+uint64_t line_start(const Dwarf *d, uint64_t pc);    /* the first address of the run of rows of pc's line */
+bool file_is(const char *path, const char *base);   /* path is base or ends in /base */
 const Row *row_at(const Dwarf *d, uint64_t pc);                  /* the row whose range holds pc */
 /* the location list or expression of `die` that holds at pc; false when none */
 bool die_loc(const Dwarf *d, uint32_t die, uint64_t pc, const uint8_t **expr, size_t *n);
