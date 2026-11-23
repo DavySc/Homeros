@@ -11,8 +11,10 @@ s = open(p, encoding='utf-8').read()   # the runner's checkout may have CRLF
 if s.count(old) != 1: sys.exit('plant does not apply: %r' % old)
 open(p, 'w', encoding='utf-8', newline='\n').write(s.replace(old, new))
 PY
-	if bash src/infoview/check.sh > plant.log 2>&1; then echo "NOT CAUGHT    $name"
-	else echo "caught        $name: $(grep -m1 'CHECK(' plant.log || tail -1 plant.log)"; fi
+	timeout -k 5 200 bash src/infoview/check.sh > plant.log 2>&1; rc=$?
+	if [ $rc = 0 ]; then echo "NOT CAUGHT    $name"
+	else echo "caught rc=$rc $name: $(grep -m1 'CHECK(' plant.log || tail -1 plant.log)"; fi
 	taskkill //F //IM homeros-infoview.exe > /dev/null 2>&1
+	taskkill //F //IM test_infoview_win.exe > /dev/null 2>&1
 	git checkout -q -- src
 done < <(grep -h "win WIN=infoview" tests/plants/infoview.txt; cat reviews/pr-138-repro/plants.txt)

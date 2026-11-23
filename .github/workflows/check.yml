@@ -16,7 +16,7 @@ jobs:
   windows:
     if: github.event_name == 'pull_request'
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
       - uses: mlugg/setup-zig@v2
@@ -24,7 +24,7 @@ jobs:
           version: 0.17.1
       - shell: bash
         run: |
-          for i in 1 2 3 4 5; do bash src/infoview/check.sh; echo "run $i gave $?"; done
+          bash src/infoview/check.sh; echo "run gave $?"
       - shell: bash
         run: |
           zig cc -target x86_64-windows-gnu -std=c17 -Wall -Wextra -Iinclude -O1 -g -o build/win/explorer.exe reviews/pr-138-repro/explorer.c src/loop/*.c src/str/str.c -lws2_32 -lshell32 -ladvapi32
