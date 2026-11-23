@@ -62,6 +62,9 @@ int loop_watch(int fd, LoopFn fn, void *ctx)
 	return -1;
 }
 
+/* loop.h: the socket's own event signals FD_WRITE after a would-block */
+void loop_write(int fd, int on) { (void)fd; (void)on; }
+
 void loop_unwatch(int fd)
 {
 	for (int i = 0; i < MAXW; i++) if (w[i].used && w[i].fd == fd) w[i].used = 0;
