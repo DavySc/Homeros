@@ -119,7 +119,7 @@ static void key(int k, int pending)
 /* only those whose targets exist; the SPC g and SPC h ones are git.h's */
 static const char *const maps[] = {
 	" ff", " fg", " fr", " ,", " e", " pv", "-", " D",
-	" gg", " gs", " gl", " gL", " gd", " gb", " gB", " hs", " hr", " hS", " hu", " hp", " uk", " up",
+	" gg", " gs", " gl", " gL", " gd", " gb", " gB", " hs", " hr", " hS", " hu", " hp", " is", " uk", " up",
 	"cit", "ciT",  /* nvim-orgmode's, buffer-local to .org */
 	" cc", " cC"
 };
@@ -135,7 +135,7 @@ static void dashboard(Editor *e) { if (!core_edit_file(e, "", 0)) tools_dash(e, 
    (Neovim's vgetorpeek() when no map matches) */
 static int map(Editor *e, int k)
 {
-	if (!nlead && (e->mode != MODE_NORMAL || e->ks.visual || !normal_mappable(0))) return 0;
+	if (!nlead && (e->mode != MODE_NORMAL || !normal_mappable(0))) return 0;
 	E = e;   /* for is_ft() and the maps that edit */
 	lead[nlead++] = k;
 	int part = 0;
@@ -143,13 +143,15 @@ static int map(Editor *e, int k)
 		const char *m = maps[i];
 		if (*m == 'c' && !is_ft(".org")) continue;
 		int j = 0;
+		/* in Visual mode only SPC i s, a snippet around the area (package 19's, agreed) */
+		if (e->ks.visual && strcmp(m, " is")) continue;
 		while (j < nlead && m[j] == lead[j]) j++;
 		if (j < nlead) continue;
 		if (m[j]) { part = 1; continue; }
 		nlead = e->ks.pending = 0;
 		normal_mappable(1);
 		undo_close(e->buf->undo);   /* a map is a command of its own: keys_feed() closes before each */
-		switch (m[0] == '-' ? 'p' : m[1]) {
+		switch (m[0] == '-' ? 'p' : !strcmp(m, " is") ? 's' : m[1]) {
 		case 'f': tools_pick(e, m[2] == 'f' ? PICK_SMART : m[2] == 'g' ? PICK_GREP : PICK_REGISTERS); break;
 		case ',': tools_pick(e, PICK_BUFFERS); break;
 		case 'e': tools_pick(e, PICK_EXPLORER); break;
@@ -159,6 +161,7 @@ static int map(Editor *e, int k)
 		          break;
 		case 'i': org_cycle(m[2] == 't' ? 1 : -1); break;
 		case 'D': dashboard(e); break;
+		case 's': tools_pick(e, PICK_SNIPPETS); break;
 		/* Davy's emacs SPC cc compile (prompts) and cC recompile */
 		case 'c':
 			if (m[2] == 'C') { tools_make(e, NULL); break; }
@@ -189,6 +192,23 @@ void keys_input(Editor *e, int k, int pending)
 	if (!(e->ks.pending ? map(e, k) : tools_key(e, k) || git_key(e, k) || snip_key(e, k, pending) || map(e, k))) keys_feed(e, k, pending);
 }
 
+/* what the core draws of Visual mode */
+static void visual_sync(void)
+{
+	E->ks.visual = VIsual_active ? VIsual_mode : 0;
+	E->ks.vline = (size_t)VIsual.lnum;
+	E->ks.vcol = (size_t)VIsual.col;
+}
+
+void keys_visual(Editor *e, int mode, size_t line)
+{
+	E = e;
+	buf_changed();
+	if (!mode) { if (VIsual_active) end_visual_mode(); }
+	else VIsual_active = 1, VIsual_mode = mode, VIsual = (Pos){ (long)line, 0, 0 };
+	visual_sync();
+}
+
 void keys_feed(Editor *e, int k, int pending)
 {
 	/* the window's close button: :qa, as Neovim's GUIs do (E37 if
@@ -209,9 +229,7 @@ void keys_feed(Editor *e, int k, int pending)
 	key(k, pending || rb1.n || rb2.n || tb.n);
 	while (next(&k)) key(k, pending || rb1.n || rb2.n || tb.n);
 	if (B == op_buf) opmarks(0);   /* not into a buffer the key went to */
-	E->ks.visual = VIsual_active ? VIsual_mode : 0;
-	E->ks.vline = (size_t)VIsual.lnum;
-	E->ks.vcol = (size_t)VIsual.col;
+	visual_sync();
 	E->ks.pending = E->mode == MODE_CMDLINE || sub_asking || (E->mode != MODE_INSERT && normal_pending());
 	core_update(e);
 }

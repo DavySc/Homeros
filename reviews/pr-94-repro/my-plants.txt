@@ -1,0 +1,12 @@
+review: pty: COLORTERM not truecolor~test TESTS="loop tools_term"~~src/loop/loop.c~		env[n++] = "COLORTERM=truecolor";¶~¶
+review: pty: the environment copy leaks~test TESTS="loop tools_term"~~src/loop/loop.c~	if (env != environ) free(env);~
+review: terminal: invisible text shown~test TESTS=tools_term~~src/tools/term.c~	if (st.flags & GHOSTTY_STYLE_FLAG_INVISIBLE) { fg = hasbg ? bg : col->background; hasfg = 1; }~
+review: terminal: strikethrough dropped~test TESTS=tools_term~~src/tools/term.c~st.flags & GHOSTTY_STYLE_FLAG_STRIKETHROUGH ? FACE_STRIKE : 0~0
+review: terminal: undercurl drawn as an underline~test TESTS=tools_term~~src/tools/term.c~ul == GHOSTTY_SGR_UNDERLINE_CURLY ? FACE_UNDERCURL~ul == 99 ? FACE_UNDERCURL
+review: terminal: wheel scrolls the wrong way~test TESTS=tools_term~~src/tools/term.c~k == KEY_WHEEL_UP ? -3 : 3~k == KEY_WHEEL_UP ? 3 : -3
+review: terminal: Delete sends nothing~test TESTS=tools_term~~src/tools/term.c~} else if (k == KEY_DEL) {~} else if (k == KEY_DEL + 99) {
+review: terminal: a key leaves the view in the scrollback~test TESTS=tools_term~~src/tools/term.c~	ghostty_terminal_scroll_viewport(T.t, (GhosttyTerminalScrollViewport){ .tag = GHOSTTY_TERMINAL_SCROLL_VIEWPORT_BOTTOM });~
+review: terminal: the OSC title is not shown~test TESTS=tools_term~~src/tools/term.c~&& title.len && title.len < sizeof tl - 2~&& title.len && 0
+review: terminal: hidden output redraws the editor~test TESTS=tools_term~~src/tools/term.c~if (T.open || !stream) core_changed = 1;~core_changed = 1;
+review: terminal: bold dropped~test TESTS=tools_term~~src/tools/term.c~st.flags & GHOSTTY_STYLE_FLAG_BOLD ? FACE_BOLD : 0~0
+review: terminal: cursor shape ignored~test TESTS=tools_term~~src/tools/term.c~cur.visual_style == GHOSTTY_CURSOR_STYLE_BAR ? CURSOR_BAR~0 ? CURSOR_BAR

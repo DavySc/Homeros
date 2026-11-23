@@ -34,15 +34,17 @@ void  fold_adjust(Fold *f, size_t l1, size_t l2, long amount, long after, int in
    never from the draw path.  Neovim skips it in Insert mode and
    vim.treesitter.foldexpr() catches up on InsertLeave. */
 void  fold_update(Fold *f, size_t top, size_t end, size_t n);
-/* hasFolding(): 1 and the closed fold [*l1, *l2] holding line, else 0;
-   no allocation */
+/* hasFolding(): the closed fold's level (fold_info()'s fi_level) and
+   [*l1, *l2] holding line, else 0; no allocation */
 int   fold_closed(const Fold *f, size_t line, size_t *l1, size_t *l2);
 /* foldlevel(): how many folds hold line */
 int   fold_level(const Fold *f, size_t line);
 /* za zc zo zO (count times, at line), zR zM, zv (open folds at line), zX
    (after a fold_update of every line: 'foldlevel' again), and setting
-   'foldlevel' to count (nvim-orgmode's S-Tab).  0, or -1 for "E490: No
-   fold found" */
+   'foldlevel' to count (nvim-orgmode's S-Tab).  1 when it changed a fold
+   (Neovim's DONE_ACTION, and always for the 'foldlevel' commands: then
+   redo the view, changed_window_setting()), 0 when it changed none, -1
+   for "E490: No fold found" */
 enum { FOLD_TOGGLE, FOLD_CLOSE, FOLD_OPEN, FOLD_OPEN_REC, FOLD_OPEN_ALL,
        FOLD_CLOSE_ALL, FOLD_VIEW, FOLD_RESET, FOLD_LEVEL };
 int   fold_cmd(Fold *f, int op, size_t line, long count);

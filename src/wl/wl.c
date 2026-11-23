@@ -137,6 +137,9 @@ static int key_of(uint32_t key)
 	case XKB_KEY_Tab:   /* and in a keymap whose Tab has one level (wtype's) */
 		if (xkb_state_mod_name_is_active(xst, XKB_MOD_NAME_SHIFT, XKB_STATE_MODS_EFFECTIVE) > 0) return KEY_S_TAB;
 		break;
+	/* Control leaves '.' as it is: no control character has a dot */
+	case XKB_KEY_period:
+		if (xkb_state_mod_name_is_active(xst, XKB_MOD_NAME_CTRL, XKB_STATE_MODS_EFFECTIVE) > 0) return KEY_CTRL_DOT;
 	}
 	/* includes the Control transformation, so Ctrl-R is 18 */
 	return (int)xkb_state_key_get_utf32(xst, key + 8);

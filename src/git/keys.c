@@ -322,9 +322,16 @@ static void hunk_starts(const View *v, int h, long *a, long *c)
 	*c = p ? strtol(p + 1, NULL, 10) : 0;
 }
 
+/* The lines of a hunk the Visual selection holds (magit-apply-region),
+   set by region(); re 0: whole hunks */
+static size_t rb, re;
+
 /* The patch for hunks [h, z) of one file: its header and the hunks, the
-   first's new start set to its old start (magit-apply--adjust-hunk-new-starts) */
-static int patch(const View *v, int h, int z, Str *p)
+   first's new start set to its old start (magit-apply--adjust-hunk-new-starts).
+   With a selection, magit-diff-hunk-region-patch: a line outside it whose
+   sign is op becomes context, other changed lines outside it go; git
+   apply --recount then counts the lines (diff-fixup-modifs in magit). */
+static int patch(const View *v, int h, int z, char op, Str *p)
 {
 	int fs = v->sec[h].parent;
 	if (str_addz(p, v->pool.s + v->sec[fs].aux)) return -1;
@@ -344,6 +351,8 @@ static int patch(const View *v, int h, int z, Str *p)
 				if (str_add(p, s, (size_t)(pl + 1 - s))
 				    || str_add(p, num, (size_t)snprintf(num, sizeof num, "%ld", c - off))
 				    || str_add(p, e, n - (size_t)(e - s)) || str_add(p, "\n", 1)) return -1;
+			} else if (re && (l < rb || l > re) && n && *s != ' ' && *s != '@') {
+				if (*s == op && (str_add(p, " ", 1) || str_add(p, s + 1, n - 1) || str_add(p, "\n", 1))) return -1;
 			} else if (str_add(p, s, n) || str_add(p, "\n", 1)) return -1;
 		}
 	}
@@ -362,16 +371,37 @@ static int apply(const View *v, int h, int z, const char *a1, const char *a2)
 	if (!c) return -1;
 	if (a1) cmd_add(c, a1);
 	if (a2) cmd_add(c, a2);
-	cmd_add(c, "-p0"); cmd_add(c, "-C3"); cmd_add(c, "--ignore-space-change"); cmd_add(c, "-");
-	return patch(v, h, z, &c->in);
+	cmd_add(c, "-p0"); cmd_add(c, "-C3"); cmd_add(c, "--ignore-space-change"); cmd_add(c, "--recount"); cmd_add(c, "-");
+	return patch(v, h, z, a1 && !strcmp(a1, "--reverse") ? '+' : '-', &c->in);
 }
 
-/* the values of the file sections under top-level section t, each with its NUL */
-static void values(const View *v, int t, Str *out)
+/* the values of the file sections among siblings [i, z), each with its NUL */
+static void values(const View *v, int i, int z, Str *out)
 {
-	if (t >= 0)
-		for (int i = t + 1; i < v->sec[t].after; i = v->sec[i].after)
-			if (v->sec[i].type == T_FILE) str_add(out, sec_value(v, i), strlen(sec_value(v, i)) + 1);
+	for (; i < z; i = v->sec[i].after)
+		if (v->sec[i].type == T_FILE) str_add(out, sec_value(v, i), strlen(sec_value(v, i)) + 1);
+}
+
+/* What s, u and x act on: the section at point i, else the Visual
+   selection as magit takes it.  When the selection's lines lie in the body
+   of one hunk (magit-diff-scope's region), rb and re are set to them (re
+   is 0 otherwise).  Else the siblings [*s, *z): the hunks or files from the one whose heading
+   the selection starts on to the one whose heading it ends on
+   (magit-region-sections), or i alone (a top-level section: its children).
+   Only lines count: magit's region ends after the selection's last
+   character, on its last line. */
+static void region(Editor *e, const Foc *f, int i, int *s, int *z)
+{
+	const View *v = f->v;
+	size_t c = cur_get(e, f), a = e->ks.vline;
+	int top = v->sec[i].parent == 0 && v->sec[i].type != T_HUNK && v->sec[i].type != T_FILE;
+	*s = i + top; *z = v->sec[i].after; re = 0;
+	if (!e->ks.visual || a >= v->nvis || c >= v->nvis) return;
+	size_t b = v->vis[a < c ? a : c], l = v->vis[a < c ? c : a];
+	int x = sec_at(v, b), y = sec_at(v, l);
+	if (x == y && v->sec[x].type == T_HUNK && b > v->sec[x].start) { rb = b; re = l; return; }
+	if (x < y && b == v->sec[x].start && l == v->sec[y].start && v->sec[x].parent == v->sec[y].parent
+	    && (v->sec[x].type == T_HUNK || v->sec[x].type == T_FILE)) { *s = x; *z = v->sec[y].after; }
 }
 
 /* one porcelain v2 entry for path: X and Y (' ' for '.'), and a rename's source */
@@ -400,27 +430,24 @@ static int xy(Repo *r, const char *path, char *x, char *y, char *orig, size_t no
 
 /* --- stage, unstage (magit-apply.el) ---------------------------------------------- */
 
-static void stage_paths(Editor *e, Repo *r, const char *a)
+/* magit-stage-files and magit-unstage-files: comma-separated paths for c */
+static void paths(Repo *r, Cmd *c, const char *a)
 {
-	(void)e;
-	/* magit-stage-files: comma-separated */
-	Cmd *c = wgit("add", "--", NULL);
 	char buf[256];
 	snprintf(buf, sizeof buf, "%s", a);
-	for (char *s = strtok(buf, ","); s; s = strtok(NULL, ",")) { while (*s == ' ') s++; if (*s) cmd_add(c, s); }
+	for (char *s = strtok(buf, ","); s; s = strtok(NULL, ",")) { while (*s == ' ') s++; if (*s && c) cmd_add(c, s); }
 	wsend(r, NULL, NULL);
 }
 
-static void unstage_paths(Editor *e, Repo *r, const char *a)
+/* magit-unstage-1: git reset, or git rm --cached before the first commit */
+static Cmd *unstage_cmd(Repo *r)
 {
-	(void)e;
 	int initial = !r->br.oid || !strcmp(r->br.oid, "(initial)");
-	Cmd *c = initial ? wgit("rm", "--cached", "--", NULL) : wgit("reset", "HEAD", "--", NULL);
-	char buf[256];
-	snprintf(buf, sizeof buf, "%s", a);
-	for (char *s = strtok(buf, ","); s; s = strtok(NULL, ",")) { while (*s == ' ') s++; if (*s) cmd_add(c, s); }
-	wsend(r, NULL, NULL);
+	return initial ? wgit("rm", "--cached", "--", NULL) : wgit("reset", "HEAD", "--", NULL);
 }
+
+static void stage_paths(Editor *e, Repo *r, const char *a) { (void)e; paths(r, wgit("add", "--", NULL), a); }
+static void unstage_paths(Editor *e, Repo *r, const char *a) { (void)e; paths(r, unstage_cmd(r), a); }
 
 static void do_stage_modified(Editor *e, Repo *r, const char *a)
 {
@@ -452,64 +479,62 @@ static void unstage_all(Editor *e, Repo *r)
 	else do_unstage_all(e, r, "");
 }
 
-/* magit-stage (s on a change), else magit-stage-files */
-static void stage(Editor *e, const Foc *f)
+/* apply()'s rc: a combined diff's hunks are refused (magit-apply-hunk) */
+static int resolution(Editor *e, int rc)
 {
-	View *v = f->v;
-	size_t l;
-	int i = at(e, f, &l), t = i >= 0 ? v->sec[i].type : -1, d = i >= 0 ? dtype(f, i) : -1;
-	if (t != T_FILE && t != T_HUNK && t != T_UNSTAGED && t != T_UNTRACKED) {
-		ask(e, f->r, P_TEXT, stage_paths, "[comma-separated list] Stage file,s: ");
-		return;
-	}
-	if (d == T_UNTRACKED) {
-		/* magit-stage-untracked */
-		Str p = { 0 };
-		if (t == T_FILE) str_add(&p, sec_value(v, i), strlen(sec_value(v, i)) + 1);
-		else values(v, i, &p);
-		wpaths(wgit("add", "--", NULL), &p);
-		str_free(&p);
-		wsend(f->r, f, NULL);
-	} else if (d == T_UNSTAGED) {
-		if (t == T_HUNK) { if (apply(v, i, v->sec[i].after, "--cached", NULL) > 0) goto resolution; }
-		else if (t == T_FILE) wgit("add", "-u", "--", sec_value(v, i), NULL);
-		else { stage_modified(e, f->r); return; }
-		wsend(f->r, f, NULL);
-	} else if (d == T_STAGED) core_msg(e, "Already staged");
-	else core_msg(e, "Cannot stage committed changes");
-	return;
-resolution:
+	if (rc <= 0) return 0;
 	git_write_free(&W);
 	core_msg(e, "Cannot un-/stage resolution hunks.  Stage the whole file");
+	return 1;
 }
 
-/* magit-unstage (u on a change), else magit-unstage-files */
-static void unstage(Editor *e, const Foc *f)
+/* The change s, u and x act on (magit-apply--get-selection): the type t of
+   the section at point and its diff type d, the sections [s, z) (region)
+   and the values of the files among them (p not NULL); the section at
+   point or -1 */
+static int pick(Editor *e, const Foc *f, int *t, int *d, int *s, int *z, Str *p)
+{
+	size_t l;
+	int i = at(e, f, &l);
+	*t = *d = -1;
+	if (i < 0) return i;
+	*t = f->v->sec[i].type;
+	*d = dtype(f, i);
+	region(e, f, i, s, z);
+	if (p) values(f->v, *s, *z, p);
+	return i;
+}
+
+/* magit-stage (s on a change; un 0) and magit-unstage (u; un 1), else
+   magit-stage-files and magit-unstage-files */
+static void stage(Editor *e, const Foc *f, int un)
 {
 	View *v = f->v;
-	size_t l;
-	int i = at(e, f, &l), t = i >= 0 ? v->sec[i].type : -1, d = i >= 0 ? dtype(f, i) : -1;
-	if (t != T_FILE && t != T_HUNK && t != T_STAGED) {
-		ask(e, f->r, P_TEXT, unstage_paths, "[comma-separated list] Unstage file,s: ");
-		return;
-	}
-	if (d == T_UNTRACKED) core_msg(e, "Cannot unstage untracked changes");
-	else if (d == T_UNSTAGED) {
-		/* magit-unstage-intent: a file added with --intent-to-add */
-		if (t == T_FILE && file_in(&f->r->st, top(&f->r->st, T_STAGED), sec_value(v, i)) >= 0)
-			unstage_paths(e, f->r, sec_value(v, i));
+	Str p = { 0 }, in = { 0 };
+	int t, d, s, z, from = un ? T_STAGED : T_UNSTAGED;
+	pick(e, f, &t, &d, &s, &z, &p);
+	if (t != T_FILE && t != T_HUNK && t != from && (un || t != T_UNTRACKED))
+		ask(e, f->r, P_TEXT, un ? unstage_paths : stage_paths, "[comma-separated list] %stage file,s: ", un ? "Uns" : "S");
+	else if (d == T_UNTRACKED && un) core_msg(e, "Cannot unstage untracked changes");
+	else if (d == T_UNTRACKED) {
+		/* magit-stage-untracked */
+		wpaths(wgit("add", "--", NULL), &p);
+		wsend(f->r, f, NULL);
+	} else if (d == from) {
+		if (t == T_HUNK) { if (resolution(e, apply(v, s, z, un ? "--reverse" : "--cached", un ? "--cached" : NULL))) goto out; }
+		else if (t == T_FILE) wpaths(un ? unstage_cmd(f->r) : wgit("add", "-u", "--", NULL), &p);
+		else { if (un) unstage_all(e, f->r); else stage_modified(e, f->r); goto out; }
+		wsend(f->r, f, NULL);
+	} else if (d == T_UNSTAGED) {
+		/* magit-unstage-intent: files added with --intent-to-add */
+		for (size_t k = 0; t == T_FILE && k < p.n; k += strlen(p.s + k) + 1)
+			if (file_in(&f->r->st, top(&f->r->st, T_STAGED), p.s + k) >= 0) str_add(&in, p.s + k, strlen(p.s + k) + 1);
+		if (in.n) { wpaths(unstage_cmd(f->r), &in); wsend(f->r, f, NULL); }
 		else core_msg(e, "Already unstaged");
-	} else if (d == T_STAGED) {
-		if (t == T_HUNK) {
-			if (apply(v, i, v->sec[i].after, "--reverse", "--cached") > 0) {
-				git_write_free(&W);
-				core_msg(e, "Cannot un-/stage resolution hunks.  Stage the whole file");
-				return;
-			}
-			wsend(f->r, f, NULL);
-		} else if (t == T_FILE) unstage_paths(e, f->r, sec_value(v, i));
-		else unstage_all(e, f->r);
-	} else core_msg(e, "Cannot unstage committed changes");
+	} else if (d == T_STAGED) core_msg(e, "Already staged");
+	else core_msg(e, "Cannot %sstage committed changes", un ? "un" : "");
+out:
+	str_free(&p); str_free(&in);
 }
 
 /* --- discard (magit-discard, magit-discard-files) ----------------------------------- */
@@ -642,18 +667,18 @@ static void discard_files(Editor *e, const Foc *f, int type, const Str *paths)
 static void discard_hunk(Editor *e, Repo *r, const char *a)
 {
 	(void)a;
-	/* magit-discard-apply */
+	/* magit-discard-apply; the answer comes on the view the question was
+	   put on (answer), so the selection is the one asked about */
 	const Foc *f = &D.f;
 	const View *v = f->v;
-	size_t l;
-	int i = at(e, f, &l), d = dtype(f, i);
-	if (i < 0 || v->sec[i].type != T_HUNK) return;
+	int t, d, s, z, i = pick(e, f, &t, &d, &s, &z, NULL);
+	if (t != T_HUNK) return;
 	const char *file = sec_value(v, v->sec[i].parent);
-	if (d == T_UNSTAGED) apply(v, i, v->sec[i].after, "--reverse", NULL);
+	if (d == T_UNSTAGED) apply(v, s, z, "--reverse", NULL);
 	else if (file_in(&r->st, top(&r->st, T_UNSTAGED), file) >= 0) {
-		apply(v, i, v->sec[i].after, "--reverse", "--cached");
-		apply(v, i, v->sec[i].after, "--reverse", "--reject");
-	} else apply(v, i, v->sec[i].after, "--reverse", "--index");
+		apply(v, s, z, "--reverse", "--cached");
+		apply(v, s, z, "--reverse", "--reject");
+	} else apply(v, s, z, "--reverse", "--index");
 	wsend(r, f, NULL);
 }
 
@@ -663,26 +688,21 @@ static void stash_drop(Editor *e, const Foc *f);
 static void discard(Editor *e, const Foc *f)
 {
 	View *v = f->v;
-	size_t l;
-	int i = at(e, f, &l), t = i >= 0 ? v->sec[i].type : -1, d = i >= 0 ? dtype(f, i) : -1;
-	if (t == T_STASH) { stash_drop(e, f); return; }
-	if (t != T_FILE && t != T_HUNK && t != T_UNSTAGED && t != T_STAGED && t != T_UNTRACKED) {
-		core_msg(e, "There is no thing at point that could be deleted");
-		return;
-	}
-	if (d != T_UNSTAGED && d != T_STAGED && d != T_UNTRACKED) {
-		core_msg(e, "Cannot discard committed changes");
-		return;
-	}
-	D.f = *f;
-	if (t == T_HUNK) {
-		if (line_is(v, v->sec[i].start, '@')) confirm(e, f->r, discard_hunk, "Discard hunk? (y or n) ");
-		return;
-	}
 	Str p = { 0 };
-	if (t == T_FILE) str_add(&p, sec_value(v, i), strlen(sec_value(v, i)) + 1);
-	else values(v, i, &p);
-	discard_files(e, f, d, &p);
+	int t, d, s, z, n = 0, i = pick(e, f, &t, &d, &s, &z, &p);
+	if (t == T_STASH) stash_drop(e, f);
+	else if (t != T_FILE && t != T_HUNK && t != T_UNSTAGED && t != T_STAGED && t != T_UNTRACKED)
+		core_msg(e, "There is no thing at point that could be deleted");
+	else if (d != T_UNSTAGED && d != T_STAGED && d != T_UNTRACKED) core_msg(e, "Cannot discard committed changes");
+	else {
+		D.f = *f;
+		for (int k = s; t == T_HUNK && k < z; k = v->sec[k].after) n++;
+		/* magit-discard-files, -region, -hunks, -hunk */
+		if (t != T_HUNK) discard_files(e, f, d, &p);
+		else if (re) confirm(e, f->r, discard_hunk, "Discard region? (y or n) ");
+		else if (n > 1) confirm(e, f->r, discard_hunk, "Discard %d hunks from %s? (y or n) ", n, sec_value(v, v->sec[i].parent));
+		else if (line_is(v, v->sec[i].start, '@')) confirm(e, f->r, discard_hunk, "Discard hunk? (y or n) ");
+	}
 	str_free(&p);
 }
 
@@ -701,7 +721,8 @@ void git_aux_free(Aux *a)
 static void aux_done(Aux *a)
 {
 	Editor *e = git_ed();
-	View *v = &a->v;
+	View old = a->v, *v = &a->v;
+	*v = (View){ .cache = old.cache };
 	view_clear(v);
 	const char *s = a->out.s ? a->out.s : "";
 	size_t n = a->out.n;
@@ -714,11 +735,12 @@ static void aux_done(Aux *a)
 			: a->dtype == T_STASH ? parse_stashbuf(v, s, n, &a->r->br) : parse_diffbuf(v, s, n, &a->r->br);
 	}
 	if (!rc) rc = sec_line(v, "", 0);
-	if (rc) { view_clear(v); return; }
-	sec_close(v);
-	if (sec_render(v)) return;
+	if (!rc) sec_close(v);
+	if (rc || sec_render(v)) { view_clear(v); view_free(&old); return; }
 	size_t cur = git_on(a->bufnr) ? e->win->line : a->cur;
-	if (cur >= v->nvis) cur = v->nvis ? v->nvis - 1 : 0;
+	cur = old.nvis ? git_successor(&old, cur, v) : 0;
+	git_remark(a->bufnr, ha == a, &old, v);
+	view_free(&old);
 	a->cur = cur;
 	git_fill(a->bufnr, v, cur);
 	core_changed = 1;
@@ -1171,8 +1193,10 @@ static int vim_key(int k)
 		|| k == KEY_ESC || k >= KEY_UP;
 }
 
+/* magit-refresh (g r) */
 static void refresh(const Foc *f)
 {
+	git_unmark(f->r);
 	if (f->a) git_aux_fill(f->a);
 	f->r->dirty = 1;
 	git_schedule(f->r);
@@ -1229,9 +1253,9 @@ int git_key(Editor *e, int k)
 	case 10: sec_forward(e, &f); return 1;
 	case 11: sec_backward(e, &f); return 1;
 	case KEY_ENTER: visit(e, &f); return 1;
-	case 's': stage(e, &f); return 1;
+	case 's': stage(e, &f, 0); return 1;
 	case 'S': stage_modified(e, f.r); return 1;
-	case 'u': unstage(e, &f); return 1;
+	case 'u': stage(e, &f, 1); return 1;
 	case 'U': unstage_all(e, f.r); return 1;
 	case 'x': discard(e, &f); return 1;
 	case 'q': bury(e, &f); return 1;

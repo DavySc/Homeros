@@ -136,6 +136,8 @@ static LRESULT CALLBACK proc(HWND h, UINT m, WPARAM w, LPARAM l)
 		case VK_UP: put(KEY_UP); return 0;
 		case VK_DOWN: put(KEY_DOWN); return 0;
 		case VK_DELETE: put(KEY_DEL); return 0;
+		/* no WM_CHAR follows Ctrl+. (no control character has a dot) */
+		case VK_OEM_PERIOD: if (GetKeyState(VK_CONTROL) < 0) { put(KEY_CTRL_DOT); return 0; } break;
 		}
 		break;
 	case WM_LBUTTONDOWN:
