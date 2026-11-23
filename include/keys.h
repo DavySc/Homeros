@@ -14,6 +14,7 @@ enum {
 	KEY_CLOSE,           /* the window was asked to close (its X button, Alt-F4): :qa */
 	KEY_DEL,             /* x in normal mode; in insert mode ins_del() */
 	KEY_S_TAB,           /* Shift-Tab: a snippet's previous stop, else a Tab in insert mode */
+	KEY_CTRL_DOT,        /* Ctrl+.: opens and closes the terminal (tools_key) */
 	KEY_CTRL_C = 3, KEY_TAB = 9, KEY_ENTER = 13, KEY_CTRL_R = 18,
 	KEY_CTRL_Z = 26, KEY_ESC = 27, KEY_BS = 127
 };

@@ -16,6 +16,9 @@ int  tools_pick(struct Editor *e, int what);        /* 0 ok, -1 msg set */
    (e->ks.pending): 1 if an open picker took it (or :make's buffer, Enter),
    0 at once otherwise. */
 int  tools_key(struct Editor *e, int key);
+/* 1 while the terminal (Ctrl+.) is open: it takes every key, Ctrl+Z too,
+   so main.c does not suspend the editor (Neovim's :terminal, Ghostty). */
+int  tools_term(void);
 /* The open picker over the windows, right after core_draw.  No allocation. */
 void tools_draw(struct Editor *e, Grid *g);
 /* Opens buffer "oil:///abs/dir/" (oil's name); dir NULL is the current

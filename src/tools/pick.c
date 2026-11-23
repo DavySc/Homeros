@@ -19,6 +19,7 @@
 #include "loop.h"
 #include "make.h"
 #include "match.h"
+#include "term.h"
 #include "shada.h"
 #include "str.h"
 #include "uni.h"
@@ -36,8 +37,6 @@ typedef struct {
 } Item;
 
 enum { PROMPT = 256, PREVIEW = 128, LIMIT_LIVE = 10000 };
-typedef struct { int y, x, h, w; } Box;
-
 static struct {
 	int open, what, insert;    /* insert: the prompt is in insert mode */
 	int g;                     /* a g typed in normal mode: gg */
@@ -569,6 +568,7 @@ static int key(Editor *e, int k);
 
 int tools_key(Editor *e, int k)
 {
+	if (term_key(e, k)) return 1;
 	if (!P.open) return make_key(e, k) || dash_key(e, k);
 	key(e, k);
 	if (P.open) preview();
@@ -646,7 +646,7 @@ static int list_height(Editor *e)
 	return h > 1 ? h : 1;
 }
 
-static void fill(Grid *g, Box b)
+void box_fill(Grid *g, Box b)
 {
 	for (int r = b.y; r < b.y + b.h; r++)
 		for (int c = b.x; c < b.x + b.w; c++) grid_put(g, r, c, (const unsigned char *)" ", 1, 1, ATTR_NONE);
@@ -659,8 +659,7 @@ static void hline(Grid *g, int r, int x, int w, const char *l, const char *m, co
 	grid_put(g, r, x + w - 1, (const unsigned char *)rt, strlen(rt), 1, ATTR_NONE);
 }
 
-/* rounded border with a centred title */
-static void border(Grid *g, Box b, const char *title)
+void box_border(Grid *g, Box b, const char *title)
 {
 	hline(g, b.y, b.x, b.w, "╭", "─", "╮");
 	for (int r = b.y + 1; r < b.y + b.h - 1; r++) {
@@ -714,7 +713,7 @@ static void preview(void)
 	fclose(fp);
 }
 
-void tools_draw(Editor *e, Grid *g)
+static void pick_draw(Editor *e, Grid *g)
 {
 	dash_draw(e, g);
 	if (!P.open) return;
@@ -722,9 +721,9 @@ void tools_draw(Editor *e, Grid *g)
 	Box o, l, p;
 	int wide, h = list_height(e);
 	layout(e, &o, &l, &p, &wide);
-	fill(g, o);
-	border(g, l, title[P.what]);
-	border(g, p, NULL);
+	box_fill(g, o);
+	box_border(g, l, title[P.what]);
+	box_border(g, p, NULL);
 	/* the prompt, its line, and the count at its right (input.lua) */
 	int x = grid_puts(g, l.y + 1, l.x + 2, g->cols, "> ", 2, ATTR_NONE, FACE_NONE);
 	int px = grid_puts(g, l.y + 1, x, l.x + l.w - 1, P.prompt, P.pcur, ATTR_NONE, FACE_NONE);
@@ -766,6 +765,13 @@ void tools_draw(Editor *e, Grid *g)
 		grid_puts(g, p.y + 1 + r, p.x + 1, p.x + p.w - 1, P.pv[r], strlen(P.pv[r]), ATTR_NONE, FACE_NONE);
 	g->crow = l.y + 1;
 	g->ccol = px;
+}
+
+/* the terminal over everything, the picker too */
+void tools_draw(Editor *e, Grid *g)
+{
+	pick_draw(e, g);
+	term_draw(e, g);
 }
 
 

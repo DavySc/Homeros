@@ -93,7 +93,7 @@ int main(int argc, char **argv)
 			qh = (qh + 1) % QMAX;
 			qn--;
 			kitten_key();   /* any key sends the save kitten away (vim.on_key) */
-			if (k == KEY_CTRL_Z && e.mode == MODE_NORMAL) {
+			if (k == KEY_CTRL_Z && e.mode == MODE_NORMAL && !tools_term()) {
 				b->suspend();
 				grid_free(&shown);     /* the terminal was used meanwhile: redraw all */
 			} else {

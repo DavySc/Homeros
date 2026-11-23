@@ -55,3 +55,4 @@ win: a flat undercurl~win WIN=win~~src/win/backend.c~(curl ? grid_curl(i, ch) : 
 win: an underline one pixel wide~win WIN=win~~src/win/backend.c~curl ? i + 1 : rc.right, y + 1~i + 1, y + 1
 win: the undercurl in the text's colour~win WIN=win~~src/win/backend.c~fu->style & FACE_SP ? RGB(fu->sp[0], fu->sp[1], fu->sp[2]) : f~f
 win: Shift-Tab sends Tab~win WIN=win~~src/win/backend.c~w == 9 && GetKeyState(VK_SHIFT) < 0~w == 9 && GetKeyState(VK_SHIFT) > 0
+win: Ctrl+. is lost~win WIN=win~~src/win/backend.c~if (GetKeyState(VK_CONTROL) < 0) { put(KEY_CTRL_DOT); return 0; }~if (GetKeyState(VK_CONTROL) > 0) { put(KEY_CTRL_DOT); return 0; }
