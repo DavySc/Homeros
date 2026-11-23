@@ -477,7 +477,7 @@ static int io(Tds *t, int readable)
 		t->eom |= h[1] & 1;
 		at += n;
 	}
-	memmove(t->raw.s, t->raw.s + at, t->raw.n - at), t->raw.n -= at;
+	if (at) memmove(t->raw.s, t->raw.s + at, t->raw.n - at), t->raw.n -= at;   /* raw.s is NULL before the first bytes */
 	if (t->state == TDS_PRELOGIN) {
 		if (!t->eom) return 0;
 		Cur c = {(const uint8_t *)t->msg.s, (const uint8_t *)t->msg.s + t->msg.n, 0};   /* options: token, offset, length */
