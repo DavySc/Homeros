@@ -24,6 +24,7 @@
 #include "core.h"
 #include "loop.h"
 #include "lsp.h"
+#include "syntax.h"
 #include "text.h"
 #include "../src/lsp/json.h"
 
@@ -1490,29 +1491,34 @@ static void goals(const char *log)
 	CHECK(!gtree(0) || kept);   /* the editor left nothing in them */
 }
 
-/* lsp_faces is the server's tokens where it has them, with the columns
-   in UTF-16 (a 4-byte character two units, a 2-byte one one), and the
-   rule tword gives the fake: kw a keyword, x a variable, sorry a type the
-   legend has but Neovim does not colour. */
-static void twant(Editor *e, unsigned char *f, size_t *n)
+/* lsp_faces: the grammar's faces (a C file's here), and the server's
+   tokens over them where it has them, its columns in UTF-16 (a 4-byte
+   character two units, a 2-byte one one), by the rule tword gives the
+   fake: kw a keyword, x a variable, sorry a type the legend has but
+   Neovim does not colour. */
+static int never(void) { return 0; }
+static void twant(Editor *e, unsigned char *f, unsigned char *syn, size_t *n)
 {
 	char b[512];
 	*n = text_read(e->buf->text, 0, b, sizeof b);
+	size_t r1, r2;
+	while (syntax_update(e->buf->syn, e->buf->text, never, &r1, &r2) == 2) ;
+	syntax_faces(e->buf->syn, 0, *n, syn);
+	memcpy(f, syn, *n);
 	for (size_t i = 0, k; i < *n; i += k ? k : 1) {
 		for (k = 0; i + k < *n && b[i + k] >= 'a' && b[i + k] <= 'z'; k++) ;
 		int t = k ? tword(b + i, k) : -1;
-		memset(f + i, t == 0 ? FACE_KEYWORD : t == 1 ? FACE_VARIABLE : FACE_NONE, k ? k : 1);
+		if (t == 0 || t == 1) memset(f + i, t ? FACE_VARIABLE : FACE_KEYWORD, k);
 	}
 }
 
-/* Waits until lsp_faces shows the rule's faces for the text (1), or 2 s
-   pass (0). */
+/* Waits until lsp_faces shows twant's faces (1), or 2 s pass (0). */
 static int tsettle(Editor *e)
 {
-	unsigned char want[512], got[512];
+	unsigned char want[512], syn[512], got[512];
 	size_t n;
 	for (long long t0 = ms(); ms() - t0 < 2000; loop_once(10)) {
-		twant(e, want, &n);
+		twant(e, want, syn, &n);
 		lsp_faces(e->buf, 0, n, got);
 		if (!memcmp(got, want, n)) return 1;
 	}
@@ -1527,23 +1533,35 @@ static void semtok(const char *log)
 	static LspServer table[2];
 	argv[3] = log;
 	self(exe, sizeof exe);
-	table[0] = (LspServer){ ".fake", "fake", argv, (const char *const *)roots, 0 };
+	table[0] = (LspServer){ ".c", "c", argv, (const char *const *)roots, 0 };
 	lsp_servers = table;
 	char path[1200];
-	snprintf(path, sizeof path, "%s/homeros-tokens-%d.fake", tmp(), (int)getpid());
+	snprintf(path, sizeof path, "%s/homeros-tokens-%d.c", tmp(), (int)getpid());
 	Editor e;
-	CHECK(!core_open(&e, path) && e.buf->lsp);
-	const char *init = "one kw\n\xCE\xBB\xF0\x9D\x93\x9D \xC3\xA9 x kw sorry\n\nxkw kw\n";
+	CHECK(!core_open(&e, path) && e.buf->lsp && e.buf->syn && e.buf->faces == lsp_faces);
+	Grid g = { 0 };
+	CHECK(!grid_resize(&g, 10, 60));
+	const char *init = "int kw;\n// \xCE\xBB\xF0\x9D\x93\x9D \xC3\xA9 x kw sorry\n\nint xkw, kw;\n";
 	CHECK(!core_edit(&e, 0, 0, init, strlen(init)));
 	lsp_flush(e.buf->lsp);
 	CHECK(tsettle(&e));
+	/* drawn: the token over the grammar's comment, the grammar's type */
+	core_update(&e);
+	core_draw(&e, &g);
+	const Cell *c = g.c;
+	while (c->ch[0] != 'i') c++;              /* the first row the window draws */
+	unsigned char want[512], syn[512], got[512];
+	size_t n;
+	twant(&e, want, syn, &n);
+	CHECK(syn[0] != FACE_NONE && syn[17] == FACE_COMMENT);     /* "int", and "x" in the comment */
+	CHECK(c[0].face == syn[0] && c[4].face == FACE_KEYWORD && c[g.cols].face == FACE_COMMENT && c[g.cols + 8].face == FACE_VARIABLE);
 	const char *u = lsp_uri(e.buf->lsp);
 	/* hushed: the tokens shown follow the edits (a line gone above, a
 	   2-byte character and a 4-byte one before them on their line) */
 	CHECK(!lsp_send(u, "$/test/hush", "{}", 2, NULL, NULL));
-	CHECK(!core_edit(&e, 0, 7, "", 0));
+	CHECK(!core_edit(&e, 0, 8, "", 0));
 	lsp_flush(e.buf->lsp);
-	CHECK(!core_edit(&e, 0, 0, "\xC3\xA9\xF0\x9D\x93\x9D", 6));
+	CHECK(!core_edit(&e, 3, 0, "\xC3\xA9\xF0\x9D\x93\x9D", 6));
 	lsp_flush(e.buf->lsp);
 	CHECK(tsettle(&e));
 	/* the answers come newest first: the older ones, for texts left since,
@@ -1557,15 +1575,14 @@ static void semtok(const char *log)
 	CHECK(!core_edit(&e, 0, 0, "kw ", 3));
 	lsp_flush(e.buf->lsp);
 	CHECK(!core_edit(&e, 0, 0, "\n", 1));
-	unsigned char want[512], got[512];
-	size_t n;
 	for (long long t0 = ms(); ms() - t0 < 600; ) loop_once(10);
-	twant(&e, want, &n);
-	want[1] = want[2] = FACE_NONE;            /* not known yet */
+	twant(&e, want, syn, &n);
+	want[1] = syn[1]; want[2] = syn[2];       /* not known yet */
 	lsp_faces(e.buf, 0, n, got);
 	CHECK(!memcmp(got, want, n));
 	lsp_flush(e.buf->lsp);
 	CHECK(tsettle(&e));
+	grid_free(&g);
 	core_free(&e);
 	for (long long t1 = ms(); ms() - t1 < 300; ) loop_once(20);
 }
