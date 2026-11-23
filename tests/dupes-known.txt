@@ -12,10 +12,6 @@ src/tools/oil.c src/tools/oil.c b27d12dd
 src/tools/pick.c src/tools/pick.c d22d9731
 src/tty/tty.c src/win/backend.c 452e7412
 src/keys/ops.c src/keys/ops.c ca17786b
-src/git/keys.c src/git/keys.c 4ad9ff27
-src/git/keys.c src/git/keys.c 6f94d5ca
-src/git/keys.c src/git/keys.c 6f94d5ca
-src/git/keys.c src/git/keys.c c72bdd04
 src/git/sec.c src/git/sec.c 5086807d
 src/git/status.c src/git/status.c 29f7bf54
 # Renamed copies and mechanisms outside their owner (tests/owners.txt), on

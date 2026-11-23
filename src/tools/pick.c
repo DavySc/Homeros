@@ -19,7 +19,9 @@
 #include "loop.h"
 #include "make.h"
 #include "match.h"
+#include "term.h"
 #include "shada.h"
+#include "snip.h"
 #include "str.h"
 #include "uni.h"
 
@@ -36,8 +38,6 @@ typedef struct {
 } Item;
 
 enum { PROMPT = 256, PREVIEW = 128, LIMIT_LIVE = 10000 };
-typedef struct { int y, x, h, w; } Box;
-
 static struct {
 	int open, what, insert;    /* insert: the prompt is in insert mode */
 	int g;                     /* a g typed in normal mode: gg */
@@ -448,6 +448,21 @@ static void recent(Editor *e)
 	}
 }
 
+/* SPC i s (package 19's, agreed by thread 0): the snippets that match the
+   prompt in the completion popup's order (snip_get, one order for both);
+   each item's name is followed in the arena by a 0, its description and
+   its body, each ended by a 0 */
+static void snippets(void)
+{
+	const char *d, *b, *n;
+	size_t at;
+	P.nit = P.nshown = P.an = 0;
+	P.sel = P.top = 0;
+	P.pvfor = -1;
+	while ((n = snip_get(P.e, P.prompt, P.plen, (int)P.nit, &d, &b)) && !add(n, strlen(n), NULL, 0, 0, 0, 0, 0)
+	       && !put("", 1, &at) && !put(d, strlen(d) + 1, &at) && !put(b, strlen(b) + 1, &at)) {}
+}
+
 int tools_pick(Editor *e, int what)
 {
 	if (what == PICK_REGISTERS || what == PICK_EXPLORER) {
@@ -479,6 +494,7 @@ int tools_pick(Editor *e, int what)
 		}
 	}
 	if (what == PICK_GREP) return 0;
+	if (what == PICK_SNIPPETS) snippets();
 	if (what == PICK_SMART || what == PICK_BUFFERS) buffers(e);
 	if (what == PICK_SMART || what == PICK_RECENT) recent(e);
 	if (what == PICK_SMART || what == PICK_FILES) files();
@@ -497,7 +513,8 @@ static void changed(void)
 {
 	if (P.what == PICK_GREP) { grep(); return; }
 	match_init(&P.m, P.prompt, P.plen);
-	rematch();
+	if (P.what == PICK_SNIPPETS) snippets();
+	else rematch();
 }
 
 /* actions.lua's jump: open the item's file (or buffer) at its position */
@@ -505,6 +522,11 @@ static void confirm(Editor *e)
 {
 	if (!P.nshown) { close_picker(); return; }
 	Item it = P.it[P.shown[P.sel]];
+	if (P.what == PICK_SNIPPETS) {
+		close_picker();
+		snip_insert(e, P.a + it.text);
+		return;
+	}
 	char f[PATH_MAX];
 	snprintf(f, sizeof f, "%.*s", (int)it.flen, P.a + it.file);
 	long line = it.line, col = it.col;
@@ -569,6 +591,7 @@ static int key(Editor *e, int k);
 
 int tools_key(Editor *e, int k)
 {
+	if (term_key(e, k)) return 1;
 	if (!P.open) return make_key(e, k) || dash_key(e, k);
 	key(e, k);
 	if (P.open) preview();
@@ -646,7 +669,7 @@ static int list_height(Editor *e)
 	return h > 1 ? h : 1;
 }
 
-static void fill(Grid *g, Box b)
+void box_fill(Grid *g, Box b)
 {
 	for (int r = b.y; r < b.y + b.h; r++)
 		for (int c = b.x; c < b.x + b.w; c++) grid_put(g, r, c, (const unsigned char *)" ", 1, 1, ATTR_NONE);
@@ -659,8 +682,7 @@ static void hline(Grid *g, int r, int x, int w, const char *l, const char *m, co
 	grid_put(g, r, x + w - 1, (const unsigned char *)rt, strlen(rt), 1, ATTR_NONE);
 }
 
-/* rounded border with a centred title */
-static void border(Grid *g, Box b, const char *title)
+void box_border(Grid *g, Box b, const char *title)
 {
 	hline(g, b.y, b.x, b.w, "╭", "─", "╮");
 	for (int r = b.y + 1; r < b.y + b.h - 1; r++) {
@@ -686,6 +708,16 @@ static void preview(void)
 	P.pvfor = want; P.pvn = 0; P.pvfirst = 1;
 	if (want < 0) return;
 	Item *it = &P.it[want];
+	if (P.what == PICK_SNIPPETS) {
+		/* a snippet: its body, after its name and description */
+		const char *b = P.a + it->text + it->tlen + 1;
+		b += strlen(b) + 1;
+		for (int k; *b && P.pvn < PREVIEW && P.pvn < h; b += k + (b[k] == '\n')) {
+			k = (int)strcspn(b, "\n");
+			snprintf(P.pv[P.pvn++], sizeof P.pv[0], "%.*s", k, b);
+		}
+		return;
+	}
 	if (it->buf) {
 		/* a buffer: its own text */
 		Buf *b = e->bufs;
@@ -714,17 +746,17 @@ static void preview(void)
 	fclose(fp);
 }
 
-void tools_draw(Editor *e, Grid *g)
+static void pick_draw(Editor *e, Grid *g)
 {
 	dash_draw(e, g);
 	if (!P.open) return;
-	static const char *title[] = { " Smart ", " Grep ", " Buffers ", "", "", " Files ", " Recent " };
+	static const char *title[] = { " Smart ", " Grep ", " Buffers ", "", "", " Files ", " Recent ", " Snippets " };
 	Box o, l, p;
 	int wide, h = list_height(e);
 	layout(e, &o, &l, &p, &wide);
-	fill(g, o);
-	border(g, l, title[P.what]);
-	border(g, p, NULL);
+	box_fill(g, o);
+	box_border(g, l, title[P.what]);
+	box_border(g, p, NULL);
 	/* the prompt, its line, and the count at its right (input.lua) */
 	int x = grid_puts(g, l.y + 1, l.x + 2, g->cols, "> ", 2, ATTR_NONE, FACE_NONE);
 	int px = grid_puts(g, l.y + 1, x, l.x + l.w - 1, P.prompt, P.pcur, ATTR_NONE, FACE_NONE);
@@ -753,6 +785,11 @@ void tools_draw(Editor *e, Grid *g)
 		while (d && f[d - 1] != '/') d--;
 		c = grid_puts(g, row, c + 1, end, f, d, a ? a : ATTR_DIM, FACE_NONE);
 		c = grid_puts(g, row, c, end, f + d, fn - d, a, FACE_NONE);
+		if (P.what == PICK_SNIPPETS) {
+			/* and its description, dimmed */
+			const char *d = P.a + it->text + it->tlen + 1;
+			grid_puts(g, row, c + 1, end, d, strlen(d), a ? a : ATTR_DIM, FACE_NONE);
+		}
 		if (it->line) {
 			/* grep: :line:col: and the line */
 			const char *t = P.a + it->text + it->flen + 1;
@@ -766,6 +803,13 @@ void tools_draw(Editor *e, Grid *g)
 		grid_puts(g, p.y + 1 + r, p.x + 1, p.x + p.w - 1, P.pv[r], strlen(P.pv[r]), ATTR_NONE, FACE_NONE);
 	g->crow = l.y + 1;
 	g->ccol = px;
+}
+
+/* the terminal over everything, the picker too */
+void tools_draw(Editor *e, Grid *g)
+{
+	pick_draw(e, g);
+	term_draw(e, g);
 }
 
 

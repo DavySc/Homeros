@@ -69,6 +69,7 @@ test: $(OBJS) | build/san
 	@python3 tests/paste.py build/san/homeros -t 40000 || { echo "FAIL paste"; exit 1; }
 	@python3 tests/hup.py build/san/homeros || { echo "FAIL hup"; exit 1; }
 	@python3 tests/start.py build/san/homeros || { echo "FAIL start"; exit 1; }
+	@python3 tests/ctrlz.py build/san/homeros || { echo "FAIL ctrlz"; exit 1; }
 	@python3 tests/watch.py build/san/homeros || { echo "FAIL watch"; exit 1; }
 
 # libFuzzer, each target against a simple model, FUZZ_SECONDS each; an input

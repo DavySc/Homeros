@@ -375,11 +375,12 @@ int main(void)
 
 	/* grid_put's rules, one case each */
 	Grid g = { 0 };
-	/* grid_face: an unknown face or layer falls back, never reads past faces[] */
+	/* grid_face: an unknown face falls back, never reads past faces[] (a
+	   layer is a byte, always inside) */
 	const Face *b, *u;
-	Cell q = { " ", 1, ATTR_NONE, FACE_COUNT, FACE_COUNT, FACE_COUNT };
+	Cell q = { " ", 1, ATTR_NONE, FACES, 0, 0 };
 	CHECK(grid_face(&q, &b, &u) == &faces[FACE_NONE] && b == &faces[FACE_NONE] && u == &faces[FACE_NONE]);
-	q.face = FACE_STRING; q.bg = q.ul = 0;
+	q.face = FACE_STRING;
 	CHECK(grid_face(&q, &b, &u) == &faces[FACE_STRING] && b == &faces[FACE_STRING] && u == &faces[FACE_STRING]);
 	q.bg = FACE_CURSOR_LINE; q.ul = FACE_DIAG_UNDER_WARN;
 	CHECK(grid_face(&q, &b, &u) == &faces[FACE_STRING] && b == &faces[FACE_CURSOR_LINE] && u == &faces[FACE_DIAG_UNDER_WARN]);

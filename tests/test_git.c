@@ -192,6 +192,8 @@ static const char *echo_of(const char *s)
 		/* no older messages to recover: no log-edit comment ring */
 		{ "Type Z Z to finish, Z Q to cancel, and g k and g j to recover older messages", "Type Z Z to finish, Z Q to cancel" },
 		{ "Commit canceled.  Message saved to \xe2\x80\x98log-edit-comment-ring\xe2\x80\x99", "Commit canceled." },
+		/* evil's state is shown by the core's mode, not as a message */
+		{ "-- VISUAL --", "" }, { "-- VISUAL LINE --", "" },
 	};
 	for (size_t i = 0; i < sizeof div / sizeof *div; i++) if (!strcmp(s, div[i][0])) return div[i][1];
 	return s;
@@ -228,9 +230,14 @@ static void message_key(Repo *r, int k)
 	else if (k == 'Z') msg.z = 1;
 }
 
-/* the Vim motions git passes to keys, on the headless cursor */
+/* the Vim motions git passes to keys, on the headless cursor; keys runs
+   them too (on the scratch buffer), so Visual mode is keys' own: v, V and
+   Esc set it and every key reads it back, as in the editor */
 static void motion(size_t *cur, const View *v, int k)
 {
+	int was = e.ks.visual;
+	if (k == 'v' || k == 'V' || k == 'j' || k == 'k' || k == 'G' || k == KEY_ESC) keys_feed(&e, k, 0);
+	if (!was && e.ks.visual) keys_visual(&e, e.ks.visual, *cur);   /* its other end on the view's line */
 	if (k == 'j' && *cur + 1 < v->nvis) ++*cur;
 	else if (k == 'k' && *cur) --*cur;
 	else if (k == 'G' && v->nvis) *cur = v->nvis - 1;
@@ -259,6 +266,9 @@ static void compare_view(const char *sc, const Step *st, const TWin *w, View *v,
 			for (size_t k = strlen(y); k && y[k - 1] == ' '; ) y[--k] = 0;
 		}
 		if (i >= w->n && !x[0]) continue;
+		/* magit shows a selection's hunk heading with the counts of the
+		   lines selected (magit-diff-update-hunk-region); not copied */
+		if (e.ks.visual && !strncmp(x, "@@", 2) && !strncmp(y, "@@", 2)) continue;
 		if (strcmp(x, y)) { fail(sc, st->keys, "line %d is \"%s\", magit's \"%s\"", i, x, y); break; }
 	}
 	for (int i = 0; i < n; i++) free(l[i]);
@@ -381,6 +391,7 @@ static void scenario(const char *name, const char *setup, Step *steps, int n, ch
 	if (nproc > maxproc) maxproc = nproc;
 	top_row[0] = top_row[1] = 0;
 	memset(&msg, 0, sizeof msg);
+	keys_visual(&e, 0, 0);
 	for (int s = 0; s < n; s++) {
 		Step *st = &steps[s];
 		int visit_ok = 0;
@@ -406,6 +417,11 @@ static void scenario(const char *name, const char *setup, Step *steps, int n, ch
 			}
 		settle();
 		check_step(name, st, s + 1 < n ? &steps[s + 1] : NULL, states[s], visit_ok, visit_buf, visit_row);
+		/* magit-refresh-buffer deactivates the mark after magit's own
+		   command: a key that changed the repository ends Visual mode */
+		int wrote = 0;
+		for (int i = 0; s && i < 7; i++) wrote |= strcmp(states[s - 1][i], states[s][i]) != 0;
+		if (wrote && e.ks.visual && strncmp(st->keys, "$ ", 2)) fail(name, st->keys, "Visual mode is still on after a write");
 	}
 	if (!strcmp(name, "discard-untracked")) {
 #ifdef _WIN32
@@ -660,6 +676,127 @@ static void stale_check(void)
 	git_free();
 }
 
+#ifndef _WIN32
+/* Line staging (magit-apply-region) against what it means: on random files
+   and edits, a random Visual selection inside a random hunk is staged,
+   unstaged or discarded (x y, from the unstaged or, with nothing unstaged,
+   the staged diff); then the side it changes must hold exactly the
+   selected changes applied or reverted, and the other side be untouched.
+   The model reads only the diff the status shows, not the patch the
+   editor makes.  GIT_REGION_N cases (100), seed SEED (1). */
+
+static void put(const char *name, const char *text)
+{
+	char p[PATH_MAX + 32];
+	snprintf(p, sizeof p, "%s/%s", repo, name);
+	FILE *f = fopen(p, "w");
+	CHECK(f);
+	fputs(text, f);
+	fclose(f);
+}
+
+/* lines [k0, k1) of text: the byte offsets */
+static size_t at_line(const char *t, int k)
+{
+	size_t o = 0;
+	for (; k > 0 && t[o]; o++) if (t[o] == '\n') k--;
+	return o;
+}
+
+static void region_case(int mode)
+{
+	static const char *const word[] = { "a", "b", "c", "d", "e", "f" };
+	char base[2048] = "", mod[2048] = "";
+	int n = 4 + (int)rnd(30);
+	for (int i = 0; i < n; i++) {
+		const char *w = word[rnd(6)];
+		snprintf(base + strlen(base), sizeof base - strlen(base), "%s%d\n", w, i);
+		int k = rnd(8);
+		if (k == 0) continue;                                     /* deleted */
+		if (k == 1) snprintf(mod + strlen(mod), sizeof mod - strlen(mod), "%s%dx\n", w, i);   /* changed */
+		else snprintf(mod + strlen(mod), sizeof mod - strlen(mod), "%s%d\n", w, i);
+		if (k == 2) snprintf(mod + strlen(mod), sizeof mod - strlen(mod), "new%d\n", i);       /* added */
+	}
+	if (!strcmp(base, mod)) return;
+	free(run("rm -rf '%s' && mkdir -p '%s'", repo, repo));
+	free(run("cd '%s' && git init -q -b main --template= . && git config user.name T && git config user.email t@e", repo));
+	put("f.txt", base);
+	free(run("cd '%s' && git add f.txt && git commit -qm base", repo));
+	put("f.txt", mod);
+	int staged = mode == 1 || mode == 3;
+	if (staged) free(run("cd '%s' && git add f.txt", repo));
+	git_free();
+	git_headless = 1;
+	keys_visual(&e, 0, 0);
+	CHECK(git_status(&e, repo) == 0);
+	settle();
+	Repo *r = R();
+	View *v = &r->st;
+	int t = 1;
+	while (t < v->nsec && v->sec[t].type != (staged ? T_STAGED : T_UNSTAGED)) t = v->sec[t].after;
+	CHECK(t < v->nsec);
+	r->cur = sec_vis_of(v, v->sec[t + 1].start);
+	git_key(&e, KEY_TAB);                    /* the file's hunks shown */
+	int hunks[64], nh = 0;
+	for (int h = t + 2; h < v->sec[t + 1].after && nh < 64; h = v->sec[h].after) hunks[nh++] = h;
+	CHECK(nh > 0);
+	int h = hunks[rnd((unsigned)nh)];
+	size_t s0 = v->sec[h].start, len = v->sec[h].end - s0 - 1;
+	size_t b = s0 + 1 + rnd((unsigned)len), z = b + rnd((unsigned)(v->sec[h].end - b));
+	/* the expected side: the side the diff starts from (staging) or ends
+	   on (the others), with the hunk's lines taken or put back */
+	int rev = mode != 0;
+	char *was = run("cd '%s' && git show :f.txt", repo), *wt = run("cat '%s/f.txt'", repo);
+	long a, c, na = 1, nc = 1;
+	const char *hd = v->pool.s + v->ln[s0].off;
+	CHECK(sscanf(hd, "@@ -%ld", &a) == 1);
+	const char *pc = strchr(hd + 3, '+');
+	CHECK(pc && sscanf(pc, "+%ld", &c) == 1);
+	const char *cm = strchr(hd + 3, ',');
+	if (cm && cm < pc) na = strtol(cm + 1, NULL, 10);
+	cm = strchr(pc, ',');
+	if (cm && cm < strstr(pc, " @@")) nc = strtol(cm + 1, NULL, 10);
+	const char *from = mode == 2 ? wt : was;
+	long st = rev ? c : a, cnt = rev ? nc : na;
+	if (cnt) st--;
+	Str want = { 0 };
+	size_t o0 = at_line(from, (int)st), o1 = at_line(from, (int)(st + cnt));
+	str_add(&want, from, o0);
+	for (size_t l = s0 + 1; l < v->sec[h].end; l++) {
+		const char *x = v->pool.s + v->ln[l].off;
+		size_t xn = v->ln[l].len;
+		int in = l >= b && l <= z;
+		char keep = rev ? '+' : '-', put_ = rev ? '-' : '+';
+		if (xn && (x[0] == ' ' || (x[0] == keep && !in) || (x[0] == put_ && in))) { str_add(&want, x + 1, xn - 1); str_add(&want, "\n", 1); }
+	}
+	str_add(&want, from + o1, strlen(from + o1));
+	str_add(&want, "", 1);
+	unsigned down = rnd(2);
+	r->cur = sec_vis_of(v, down ? z : b);
+	keys_visual(&e, rnd(2) ? 'V' : 'v', sec_vis_of(v, down ? b : z));
+	git_key(&e, mode == 0 ? 's' : mode == 1 ? 'u' : 'x');
+	if (mode >= 2) git_key(&e, 'y');
+	settle();
+	keys_feed(&e, 'j', 0);                   /* keys' next key reads Visual back */
+	char *idx = run("cd '%s' && git show :f.txt", repo), *now = run("cat '%s/f.txt'", repo);
+	const char *wi = mode == 2 ? was : want.s, *ww = mode == 3 || mode == 2 ? want.s : wt;
+	static const char *const name[] = { "stage", "unstage", "discard", "discard staged" };
+	if (strcmp(idx, wi) || strcmp(now, ww) || e.ks.visual)
+		fail("region", name[mode], "lines %zu-%zu of hunk at %zu:\nbase\n%s\nmod\n%s\nindex\n%s\nwant\n%s\nwork tree\n%s\nwant\n%s\nvisual %d",
+		     b - s0, z - s0, s0, base, mod, idx, wi, now, ww, e.ks.visual);
+	free(was); free(wt); free(idx); free(now); str_free(&want);
+	git_free();
+}
+
+static void region_check(void)
+{
+	const char *sn = getenv("SEED"), *nn = getenv("GIT_REGION_N");
+	rng += sn ? strtoull(sn, NULL, 10) : 1;
+	int n = nn ? atoi(nn) : 100;
+	for (int i = 0; i < n && fails < 5; i++) region_case(i % 4);
+}
+#endif
+
 int main(void)
 {
 #ifdef _WIN32
@@ -818,6 +955,7 @@ int main(void)
 #ifndef _WIN32
 		full_check();
 		top_check();
+		region_check();
 #endif
 		unmerged_check();
 	}
