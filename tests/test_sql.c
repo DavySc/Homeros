@@ -14,13 +14,8 @@
 #include <string.h>
 #include <time.h>
 #include "check.h"
-#include "../src/sql/pg.h"
-#include "../src/sql/tds.h"
+#include "../src/sql/db.h"
 
-/* the two clients' states have the same numbers, so one loop drives both */
-_Static_assert((int)TDS_READY == (int)PG_READY && (int)TDS_BUSY == (int)PG_BUSY && (int)TDS_DEAD == (int)PG_DEAD, "states");
-
-typedef struct { int pg; Tds t; Pg g; int *state; uint64_t *rows; Str *out; Net *net, *kill; } Db;
 static const char *pass;
 
 static double now(void)
@@ -30,38 +25,28 @@ static double now(void)
 	return (double)t.tv_sec * 1e3 + (double)t.tv_nsec / 1e6;
 }
 
-static int query(Db *d, const char *sql) { return d->pg ? pg_query(&d->g, sql) : tds_batch(&d->t, sql); }
-static int cancel(Db *d) { return d->pg ? pg_cancel(&d->g) : tds_cancel(&d->t); }
-static void db_close(Db *d) { d->pg ? pg_close(&d->g) : tds_close(&d->t); }
-
 /* one poll loop until state is `until` or there are stop rows (0: no stop) */
 static int run(Db *d, int until, uint64_t stop)
 {
-	while (*d->state != until && *d->state != TDS_DEAD && !(stop && *d->rows >= stop)) {
-		int w = d->pg ? pg_pending(&d->g) : tds_pending(&d->t);
-		struct pollfd p[2] = {{d->net->fd, (short)(POLLIN | (w ? POLLOUT : 0)), 0}, {d->kill ? d->kill->fd : -1, POLLOUT, 0}};
-		if (poll(p, 2, -1) < 0) return -1;
-		int in = p[0].revents & (POLLIN | POLLHUP | POLLERR);
-		if ((d->pg ? pg_io(&d->g, in) : tds_io(&d->t, in)) < 0) return -1;
+	while (db_state(d) != until && db_state(d) != DB_DEAD && !(stop && db_rows(d) >= stop)) {
+		struct pollfd p[2] = {{db_net(d)->fd, (short)(POLLIN | (db_pending(d) ? POLLOUT : 0)), 0}, {db_kill_fd(d), POLLOUT, 0}};
+		if (poll(p, 2, -1) < 0 || db_io(d, p[0].revents & (POLLIN | POLLHUP | POLLERR)) < 0) return -1;
 	}
-	return *d->state == TDS_DEAD ? -1 : 0;
+	return db_state(d) == DB_DEAD ? -1 : 0;
 }
 
 static int login(Db *d, int pg, int trust)
 {
-	*d = (Db){ .pg = pg, .state = pg ? &d->g.state : &d->t.state, .rows = pg ? &d->g.rows : &d->t.rows,
-		.out = pg ? &d->g.out : &d->t.out, .net = pg ? &d->g.net : &d->t.net, .kill = pg ? &d->g.kill : NULL };
-	return (pg ? pg_open(&d->g, "127.0.0.1", 5432, "postgres", pass, "postgres", trust)
-		: tds_open(&d->t, "127.0.0.1", 1433, "sa", pass, "master", trust)) || run(d, TDS_READY, 0);
+	return db_open(d, pg, "127.0.0.1", pg ? 5432 : 1433, pg ? "postgres" : "sa", pass, pg ? "postgres" : "master", trust) || run(d, DB_READY, 0);
 }
 
-/* the batch's reply in d->out, cancelled after stop rows if not 0 */
+/* the batch's reply in db_out(d), cancelled after stop rows if not 0 */
 static int batch(Db *d, const char *sql, uint64_t stop)
 {
-	d->out->n = 0;
-	return query(d, sql) || run(d, TDS_READY, stop) || (*d->state == TDS_BUSY && (cancel(d) || run(d, TDS_READY, 0)));
+	db_out(d)->n = 0;
+	return db_query(d, sql) || run(d, DB_READY, stop) || (db_state(d) == DB_BUSY && (db_cancel(d) || run(d, DB_READY, 0)));
 }
-static int is(Db *d, const char *sql, const char *want) { return !batch(d, sql, 0) && !strcmp(d->out->s ? d->out->s : "", want); }
+static int is(Db *d, const char *sql, const char *want) { return !batch(d, sql, 0) && !strcmp(db_out(d)->s ? db_out(d)->s : "", want); }
 
 static int driver(int argc, char **argv)
 {
@@ -78,24 +63,24 @@ static int driver(int argc, char **argv)
 	Db d;
 	double t0 = now(), t1, first = 0;
 	int r = !pass || login(&d, pg, trust);
-	if (!r && !(t1 = now(), r = query(&d, sql)))
-		while (!r && *d.state != TDS_READY) {
-			d.out->n = 0;
-			r = run(&d, TDS_READY, *d.rows + 1);
-			if (*d.rows && !first) first = now();
-			if (!quiet) fwrite(d.out->s, 1, d.out->n, stdout);
-			if (!r && stop && *d.rows >= stop && *d.state == TDS_BUSY) {
+	if (!r && !(t1 = now(), r = db_query(&d, sql)))
+		while (!r && db_state(&d) != DB_READY) {
+			db_out(&d)->n = 0;
+			r = run(&d, DB_READY, db_rows(&d) + 1);
+			if (db_rows(&d) && !first) first = now();
+			if (!quiet) fwrite(db_out(&d)->s, 1, db_out(&d)->n, stdout);
+			if (!r && stop && db_rows(&d) >= stop && db_state(&d) == DB_BUSY) {
 				nanosleep(&(struct timespec){0, 300000000}, NULL);
-				uint64_t at = *d.rows;
+				uint64_t at = db_rows(&d);
 				double c0 = now();
-				d.out->n = 0;
-				r = cancel(&d) || run(&d, TDS_READY, 0);
-				fprintf(stderr, "cancel %.2f rows_after_cancel %llu\n", now() - c0, (unsigned long long)(*d.rows - at));
-				if (!quiet) fwrite(d.out->s, 1, d.out->n, stdout);
+				db_out(&d)->n = 0;
+				r = db_cancel(&d) || run(&d, DB_READY, 0);
+				fprintf(stderr, "cancel %.2f rows_after_cancel %llu\n", now() - c0, (unsigned long long)(db_rows(&d) - at));
+				if (!quiet) fwrite(db_out(&d)->s, 1, db_out(&d)->n, stdout);
 			}
 		}
-	if (r) fprintf(stderr, "test_sql: %s\n", pass ? d.net->err : "no password");
-	else fprintf(stderr, "login %.2f first_row %.2f total %.2f rows %llu\n", t1 - t0, first ? first - t1 : 0, now() - t1, (unsigned long long)*d.rows);
+	if (r) fprintf(stderr, "test_sql: %s\n", pass ? db_net(&d)->err : "no password");
+	else fprintf(stderr, "login %.2f first_row %.2f total %.2f rows %llu\n", t1 - t0, first ? first - t1 : 0, now() - t1, (unsigned long long)db_rows(&d));
 	if (pass) db_close(&d);
 	return r ? 1 : 0;
 }
@@ -106,7 +91,7 @@ static int up(Db *d, int pg)
 	const char *env = pg ? "SQL_PG_PASSWORD" : "SQL_SA_PASSWORD";
 	if (!(pass = getenv(env))) { fprintf(stderr, "test_sql: %s is not set: start the test servers as src/sql/README.md says\n", env); return 0; }
 	if (!login(d, pg, 1)) return 1;
-	fprintf(stderr, "test_sql: no %s on 127.0.0.1:%d (%s): start it as src/sql/README.md says\n", pg ? "PostgreSQL" : "SQL Server", pg ? 5432 : 1433, d->net->err);
+	fprintf(stderr, "test_sql: no %s on 127.0.0.1:%d (%s): start it as src/sql/README.md says\n", pg ? "PostgreSQL" : "SQL Server", pg ? 5432 : 1433, db_net(d)->err);
 	db_close(d);
 	return 0;
 }
@@ -120,11 +105,11 @@ static void refusals(int pg, const char *why)
 	const char *good = pass;
 	pass = "not the password";
 	for (int i = 0; i < 50; i++) {
-		CHECK(login(&d, pg, 1) && strstr(d.net->err, why));
+		CHECK(login(&d, pg, 1) && strstr(db_net(&d)->err, why));
 		db_close(&d);
 	}
 	pass = good;
-	CHECK(login(&d, pg, 0) && strstr(d.net->err, "certificate verify failed"));
+	CHECK(login(&d, pg, 0) && strstr(db_net(&d)->err, "certificate verify failed"));
 	db_close(&d);
 }
 
@@ -148,20 +133,20 @@ int main(int argc, char **argv)
 	/* a message's text as it is; a value's escaped, one per cell */
 	CHECK(is(&d, "print 'a' + char(9) + 'b' + char(10) + 'c'; select 'a' + char(9) + 'b' + char(10) + 'c' x", "a\tb\nc\nx\na\\tb\\nc\n(1 row affected)\n"));
 	/* a cancel while no batch runs sends nothing */
-	CHECK(!cancel(&d) && d.t.state == TDS_READY && !tds_pending(&d.t));
+	CHECK(!db_cancel(&d) && db_state(&d) == DB_READY && !db_pending(&d));
 	/* a cancel after the batch's last DONE was sent: the server still sends
 	   DONE_ATTN, which must end this run, not the next (SqlRun.tla's
 	   "firstdone").  The batch is sent and its whole reply waits unread
 	   before the cancel goes, so the DONE_ATTN comes in a later read (sent
 	   together, the plant was caught 0 of 1 times) */
-	d.out->n = 0;
-	CHECK(!query(&d, "select 1 as one") && !tds_io(&d.t, 0) && !nanosleep(&(struct timespec){0, 200000000}, NULL));
-	CHECK(d.t.state == TDS_BUSY && !cancel(&d) && !run(&d, TDS_READY, 0));
+	db_out(&d)->n = 0;
+	CHECK(!db_query(&d, "select 1 as one") && !tds_io(&d.t, 0) && !nanosleep(&(struct timespec){0, 200000000}, NULL));
+	CHECK(db_state(&d) == DB_BUSY && !db_cancel(&d) && !run(&d, DB_READY, 0));
 	CHECK(is(&d, "select 2 as two", "two\n2\n(1 row affected)\n"));
 	/* a cancelled result reads on to the server's DONE_ATTN and shows no
 	   error of its own; the connection then runs the next batch */
 	CHECK(!batch(&d, "select top 2000000 a.object_id from sys.all_objects a, sys.all_objects b", 1000));
-	CHECK(d.t.state == TDS_READY && !strstr(d.out->s, "Msg") && d.t.rows >= 1000 && d.t.rows < 2000000);
+	CHECK(db_state(&d) == DB_READY && !strstr(db_out(&d)->s, "Msg") && d.t.rows >= 1000 && d.t.rows < 2000000);
 	CHECK(is(&d, "select 1 as one", "one\n1\n(1 row affected)\n"));
 	/* a transaction's descriptor comes from the server and goes back with each batch */
 	CHECK(!batch(&d, "begin tran", 0) && d.t.txn);
@@ -176,15 +161,15 @@ int main(int argc, char **argv)
 	CHECK(is(&d, "select '\U0001F600é' x", "x\n\U0001F600é\n(SELECT 1)\n"));
 	CHECK(is(&d, "do $$ begin raise notice 'a\tb'; end $$; select E'a\\tb' x", "NOTICE 00000: a\\tb\n(DO)\nx\na\\tb\n(SELECT 1)\n"));
 	/* a cancel while no query runs sends nothing */
-	CHECK(!cancel(&d) && d.g.state == PG_READY && !pg_pending(&d.g));
+	CHECK(!db_cancel(&d) && db_state(&d) == DB_READY && !db_pending(&d));
 	/* a cancelled query shows no error of its own (57014 is ours); the
 	   connection then runs the next */
 	CHECK(!batch(&d, "select g from generate_series(1, 20000000) g", 1000));
-	CHECK(d.g.state == PG_READY && !strstr(d.out->s, "ERROR") && d.g.rows >= 1000 && d.g.rows < 20000000);
+	CHECK(db_state(&d) == DB_READY && !strstr(db_out(&d)->s, "ERROR") && d.g.rows >= 1000 && d.g.rows < 20000000);
 	CHECK(is(&d, "select 1 as one", "one\n1\n(SELECT 1)\n"));
 	/* the transaction state comes from the server's ReadyForQuery */
 	CHECK(!batch(&d, "begin", 0) && d.g.txn == 'T');
-	CHECK(!batch(&d, "select 1/0", 0) && d.g.txn == 'E' && strstr(d.out->s, "ERROR 22012: division by zero"));
+	CHECK(!batch(&d, "select 1/0", 0) && d.g.txn == 'E' && strstr(db_out(&d)->s, "ERROR 22012: division by zero"));
 	CHECK(!batch(&d, "rollback", 0) && d.g.txn == 'I');
 	db_close(&d);
 	refusals(1, "password authentication failed for user \"postgres\"");
