@@ -40,7 +40,12 @@ int main(void)
 			for (int c = 1; c <= 200; c++) {
 				Grid g = { 0 };
 				CHECK(!grid_resize(&g, r, c));
-				grid_clear(&g);
+				for (int cr = 0; cr < r; cr += r > 8 ? r / 8 : 1) {   /* second review: the cursor's row moves the panel */
+					g.crow = cr;
+					grid_clear(&g);
+					keys_draw(&e, &g);
+				}
+				g.crow = r - 1;
 				keys_draw(&e, &g);
 				grid_free(&g);
 			}
