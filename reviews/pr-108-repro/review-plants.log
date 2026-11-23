@@ -1,0 +1,17 @@
+entity name matched by prefix => show: 831 of 2000 differ (no answer from Org on 11) | faces: 0 of 2000 differ (no answer from Org on 128) | test_org: passed
+[ not a post character => show: 0 of 2000 differ (no answer from Org on 11) | faces: 0 of 2000 differ (no answer from Org on 128) | test_org: passed
+%%( not a separator => show: 0 of 2000 differ (no answer from Org on 11) | faces: 0 of 2000 differ (no answer from Org on 128) | test_org: passed
+hidden markers on a protected line => show: 127 of 2000 differ (no answer from Org on 11) | faces: 0 of 2000 differ (no answer from Org on 128) | test_org: passed
+non-ASCII letter ends an entity => show: 69 of 2000 differ (no answer from Org on 11) | faces: 0 of 2000 differ (no answer from Org on 128) | test_org: passed
+braces nest four deep => show: 0 of 2000 differ (no answer from Org on 11) | faces: 0 of 2000 differ (no answer from Org on 128) | test_org: passed
+script after a space => show: 346 of 2000 differ (no answer from Org on 11) | faces: 0 of 2000 differ (no answer from Org on 128) | test_org: passed
+table rule of two characters => show: 0 of 2000 differ (no answer from Org on 11) | faces: 0 of 2000 differ (no answer from Org on 128) | test_org: passed
+emphasis hidden in a comment => show: 91 of 2000 differ (no answer from Org on 11) | faces: 0 of 2000 differ (no answer from Org on 128) | test_org: passed
+there4 read as letters => show: 321 of 2000 differ (no answer from Org on 11) | faces: 0 of 2000 differ (no answer from Org on 128) | test_org: passed
+script's mixed groups accepted => build fails
+emphasis closer after a blank => show: 47 of 2000 differ (no answer from Org on 11) | faces: 0 of 2000 differ (no answer from Org on 128) | test_org: passed
+lattice sqcup missing => show: 310 of 2000 differ (no answer from Org on 11) | faces: 0 of 2000 differ (no answer from Org on 128) | test_org: passed
+superscript 2 wrong => show: 298 of 2000 differ (no answer from Org on 11) | faces: 0 of 2000 differ (no answer from Org on 128) | test_org: passed
+headline stars not checked for emphasis => show: 2 of 2000 differ (no answer from Org on 11) | faces: 0 of 2000 differ (no answer from Org on 128) | test_org: passed
+verbatim emphasis spans => build fails
+DONE

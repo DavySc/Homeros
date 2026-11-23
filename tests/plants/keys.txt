@@ -71,7 +71,7 @@ keys: i) and a) look for the unclosed bracket with quotes special, so from insid
 keys: i) and a) look for the closing bracket with quotes not special, as for the opening one (recorded traces)~test TESTS=~~src/keys/motion.c~	cpo_match = 0;¶~
 keys: a SPC that completes no map drops Space's own motion (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	keys_feed(e, l[0], 1);¶~
 keys: the keys after a failed map skip the pickers, git and the maps, so SPC SPC ff moves and the dashboard's q records a macro (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	for (int i = 1; i < n; i++) keys_input(e, l[i], i < n - 1);~	for (int i = 1; i < n; i++) keys_feed(e, l[i], i < n - 1);
-keys: SPC maps also run in Visual mode, where Davy has none (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~e->mode != MODE_NORMAL || e->ks.visual || ~e->mode != MODE_NORMAL || 
+keys: SPC maps other than SPC i s also run in Visual mode (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		if (e->ks.visual && strcmp(m, " is")) continue;¶~¶
 keys: a map that runs leaves the count typed before it for the next command (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~	if (drop) { npend = 0; opcount = 0; clearop(&oa); }~	if (drop) npend = 0;
 keys: SPC after an operator starts a map instead of being its motion (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~	if (oa.op_type != OP_NOP) return 0;¶~
 keys: an incomplete map does not keep the next key, so a picker or git can take it (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (part) return e->ks.pending = 1;~	if (part) return 1;
@@ -183,3 +183,6 @@ keys: a failed verible's output is applied, emptying the buffer (test_keys_gq)~t
 keys: verible's edit runs to the end of the text, so the cursor below it moves onto other text (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~		while (q < len - p && q < vout.n - p && in[len - 1 - q] == vout.s[vout.n - 1 - q]) q++;¶~
 keys: a hanging verible is never killed (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~proc_wait(id, 1000)~proc_wait(id, 1 << 30)
 keys: verible's stderr goes into the buffer (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	if (stream == 1 && b)~	if (stream && b)
+keys: keys_visual(e, 0) leaves Visual mode on (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (!mode) { if (VIsual_active) end_visual_mode(); }~	if (!mode) { if (VIsual_active) (void)0; }
+keys: keys_visual() keeps the other end's column (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~VIsual = (Pos){ (long)line, 0, 0 };~VIsual.lnum = (long)line;
+keys: keys_visual() leaves e->ks as it was (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~(Pos){ (long)line, 0, 0 };¶	visual_sync();~(Pos){ (long)line, 0, 0 };

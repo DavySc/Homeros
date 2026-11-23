@@ -1,0 +1,16 @@
+entity name matched by prefix~src/org/org.c~		if (!d && entities[m][0][z - a]) d = 1;¶~¶
+[ not a post character~src/org/org.c~one(p, "-.,:!?;'\")}\\[");~one(p, "-.,:!?;'\")}\\");
+%%( not a separator~src/org/org.c~	if (is(q, "%%(") || b >= z~	if (b >= z
+hidden markers on a protected line~src/org/org.c~CN < CCAP && (*s || a >= Prot))~CN < CCAP)
+non-ASCII letter ends an entity~src/org/org.c~(alpha(p) || (S[p] >= 0x80 && IN(ALNUM, uni_cp(S, N, p))));~alpha(p);
+braces nest four deep~src/org/org.c~if ((S[p] == '{' && ++d > 3)~if ((S[p] == '{' && ++d > 4)
+script after a space~src/org/org.c~		if (sp(p) || !one(p + 1, "_^")~		if (!one(p + 1, "_^")
+table rule of two characters~src/org/org.c~S[b] == '+' && x >= b + 3 &&~S[b] == '+' && x >= b + 2 &&
+emphasis hidden in a comment~src/org/org.c~		if (!comment(l)) hide(p, p + 1, "")~		if (1) hide(p, p + 1, "")
+there4 read as letters~src/org/org.c~		if (is(p + 1, "there4")) x = p + 7;¶		else if~		if
+script's mixed groups accepted~src/org/org.c~if (kind && kind != 1 + g) return 0;~if (0) return 0;
+emphasis closer after a blank~src/org/org.c~S[c] == S[p] && !sp(c - 1) && post(c + 1)~S[c] == S[p] && post(c + 1)
+lattice sqcup missing~src/org/entities.h~{ "sqcup", "⊔" }, ~
+superscript 2 wrong~src/org/scripts.h~{ 0x32, "²" }~{ 0x32, "³" }
+headline stars not checked for emphasis~src/org/org.c~(S[p] == '*' && p == l && headline(l))~(0)
+verbatim emphasis spans~src/org/org.c~if (S[p] == '=' || S[p] == '~')~if (S[p] == '=')

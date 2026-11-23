@@ -1,5 +1,6 @@
-/* The timers, the same on both systems (loop.c, win.c): a fixed table, the
-   wait cut to the first that is due, and the due ones run after the wait. */
+/* What is the same on both systems (loop.c, win.c): the timers, a fixed
+   table, the wait cut to the first that is due, and the due ones run after
+   the wait; and proc_spawn and proc_pty over each one's proc_start. */
 #include "loop.h"
 #include "timer.h"
 
@@ -38,4 +39,14 @@ long long timer_run(void)
 			fn(t[i].ctx);
 		}
 	return tn;
+}
+
+int proc_spawn(char *const argv[], const char *dir, ProcFn fn, void *ctx)
+{
+	return proc_start(argv, dir, 0, 0, fn, ctx);
+}
+
+int proc_pty(char *const argv[], const char *dir, int rows, int cols, ProcFn fn, void *ctx)
+{
+	return rows > 0 && cols > 0 ? proc_start(argv, dir, rows, cols, fn, ctx) : -1;
 }

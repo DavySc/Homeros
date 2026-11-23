@@ -1,0 +1,55 @@
+=== review: angle link stops only at a blank line, not at blank then >
+ang.org (kept as build/org-fail-ang.org): line 1
+ang2.org (kept as build/org-fail-ang2.org): line 1
+2 of 22 differ (no answer from Org on 0)
+0 of 22 differ (no answer from Org on 0)
+=== review: w3m type letters (3 dropped from a type)
+0 of 22 differ (no answer from Org on 0)
+0 of 22 differ (no answer from Org on 0)
+=== review: shell type missing
+0 of 22 differ (no answer from Org on 0)
+0 of 22 differ (no answer from Org on 0)
+=== review: bibtex type missing
+bib.org (kept as build/org-fail-bib.org): line 1
+1 of 22 differ (no answer from Org on 0)
+0 of 22 differ (no answer from Org on 0)
+=== review: DEL not a plain link's last character
+del.org (kept as build/org-fail-del.org): line 1
+1 of 22 differ (no answer from Org on 0)
+0 of 22 differ (no answer from Org on 0)
+=== review: example block not forbidden
+0 of 22 differ (no answer from Org on 0)
+0 of 22 differ (no answer from Org on 0)
+=== review: verbatim after the line ignored
+vb3.org (kept as build/org-fail-vb3.org): line 2
+1 of 22 differ (no answer from Org on 0)
+0 of 22 differ (no answer from Org on 0)
+=== review: $ fragment may end after a period
+dol1.org (kept as build/org-fail-dol1.org): line 1
+1 of 22 differ (no answer from Org on 0)
+0 of 22 differ (no answer from Org on 0)
+=== review: unhide keeps a span's tail
+0 of 22 differ (no answer from Org on 0)
+un1.org (kept as build/org-fail-un1.org): line 1
+un2.org (kept as build/org-fail-un2.org): line 1
+2 of 22 differ (no answer from Org on 0)
+src/org/org.c:1335:93: error: pointer/integer type mismatch in conditional expression [-Werror]
+src/org/org.c:1336:63: error: wrong type argument to bit-complement
+src/org/org.c:1336:87: error: expected ',' or ';' before ')' token
+src/org/org.c:1337:39: error: 'c' undeclared (first use in this function)
+cc1: all warnings being treated as errors
+=== review: verbatim at a line start not a match
+0 of 22 differ (no answer from Org on 0)
+un1.org (kept as build/org-fail-un1.org): line 1
+un2.org (kept as build/org-fail-un2.org): line 1
+2 of 22 differ (no answer from Org on 0)
+=== review: a link's last character may be a period
+0 of 22 differ (no answer from Org on 0)
+0 of 22 differ (no answer from Org on 0)
+=== review: a backslash pair before ] not a choice
+bs1.org (kept as build/org-fail-bs1.org): line 1
+bs3.org (kept as build/org-fail-bs3.org): line 1
+2 of 22 differ (no answer from Org on 0)
+bs1.org (kept as build/org-fail-bs1.org): line 1
+bs3.org (kept as build/org-fail-bs3.org): line 1
+2 of 22 differ (no answer from Org on 0)

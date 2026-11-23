@@ -30,8 +30,9 @@ void    syntax_edit(Syntax *s, const Text *t, size_t pos, size_t ndel, const cha
    the fold levels of the rows the edits and the parse changed, as _fold.lua's
    on_bytes and on_changedtree do.  [*r1, *r2) are the rows whose
    syntax_foldexpr answers may have changed, for fold_update (r1 == r2: none;
-   set on every call).  0 nothing changed, 1 colours or folds changed (draw
-   again), 2 stopped early (call again once the input is handled). */
+   set on every call, whatever it returns).  0 no colour changed, 1
+   colours changed (draw again), 2 stopped early (call again once the
+   input is handled). */
 int     syntax_update(Syntax *s, const Text *t, int (*stop)(void), size_t *r1, size_t *r2);
 /* One face (grid.h FACE_*) per byte of [a, z), z - a at most 8,192 (core_draw
    asks for at most 1,024), into face; no allocation. */
