@@ -160,6 +160,7 @@ int paint_span(const Grid *g, int r, const Grid *b, int q, int *lo, int *hi)
 {
 	int n = g->cols, l = 0, h = n;
 	const Cell *x = &g->c[r * n], *y = &b->c[q * n];
+	if (g->crow != r && b->crow != q && !memcmp(x, y, sizeof *x * (size_t)n)) return *lo = *hi = 0;   /* the usual row: one compare */
 	while (l < n && cell_eq(g, r, b, q, l)) l++;
 	if (l == n) return *lo = *hi = 0;
 	while (h > l && cell_eq(g, r, b, q, h - 1)) h--;

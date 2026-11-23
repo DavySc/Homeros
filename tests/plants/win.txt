@@ -2,7 +2,9 @@
 # cannot see them under Wine: the period read again on WM_DISPLAYCHANGE
 # (Wine's period never changes); dwrite.c's surrogates, as a wrong pair is
 # still drawn right, the scan finding the font by code point (measured, 1
-# run); its colour-only pass (Wine has no colour font FreeType draws here).
+# run); its colour-only pass (Wine has no colour font FreeType draws here),
+# whose skipped scan and unnumbered refusals only save time (0.46 s for one
+# emoji-style cluster on Windows, reviews/pr-140.md).
 win: Backspace sent as 8~win WIN=win~~src/win/backend.c~put(w == 8 && GetKeyState(VK_CONTROL) >= 0 ? KEY_BS : w == 9~put(w == 9
 win: Ctrl-H sent as Backspace~win WIN=win~~src/win/backend.c~w == 8 && GetKeyState(VK_CONTROL) >= 0 ? KEY_BS~w == 8 ? KEY_BS
 win: surrogate pair joined wrong~win WIN=win~~src/win/backend.c~((surr - 0xD800) << 10)~((surr - 0xD801) << 10)
@@ -39,10 +41,11 @@ win: a changed row not sent to the window~win WIN=win~~src/win/backend.c~if (dir
 win: a whole redraw not sent to the window~win WIN=win~~src/win/backend.c~if (all) BitBlt(dc, 0, 0, dw, dh, mem, 0, 0, SRCCOPY);~if (all) {}
 win: the font not sized for the window's DPI~win WIN=win~~src/win/backend.c~MulDiv(PT, dpi, 72)~MulDiv(PT, 96, 72)
 win: only the first family tried (test_win_font)~win WIN=win~~src/font/dwrite.c~*s && !n; s += *s == ','~*s && !n && s == family; s += *s == ','
-win: no scan when Windows' list has nothing (test_win_font)~win WIN=win~~src/font/dwrite.c~i < 0 && at < nf; at++~i < -1 && at < nf; at++
+win: no scan when Windows' list has nothing (test_win_font)~win WIN=win~~src/font/dwrite.c~i < 0 && !color && at < nf; at++~i < -1 && !color && at < nf; at++
 win: dim text in the normal colour~win WIN=win~~src/paint/paint.c~x->attr == ATTR_DIM ? DIM : FG~x->attr == ATTR_DIM ? FG : FG
 win: syntax faces ignored~win WIN=win~~src/paint/paint.c~f->style & FACE_FG ? rgb(f->fg) :~0 ? rgb(f->fg) :
 win: a wide character drawn one cell wide~win WIN=win~~src/paint/paint.c~int w = c + 1 < g->cols && !x[c + 1].len ? 2 : 1;~int w = 1;
 win: the cursor is not drawn reversed~win WIN=win~~src/paint/paint.c~if (x->attr == ATTR_REV || cur) { *fg = *bg; *bg = t; }~if (x->attr == ATTR_REV + 0 * cur) { *fg = *bg; *bg = t; }
 win: no glyph drawn, only cell backgrounds~win WIN=win~~src/paint/paint.c~if (a[j]) p[j] = a[j] == 255 ? fg : mix(p[j], fg, a[j]);~if (0 * a[j]) p[j] = mix(p[j], fg, a[j]);
 win: an underline one pixel short~win WIN=win~~src/paint/paint.c~fill(px, c * cw, ye - 1, w * cw, 1, sp);~fill(px, c * cw, ye - 1, w * cw - 1, 1, sp);
+win: no family installed opens no font~win WIN=win~~src/font/dwrite.c~	if (!n) {   /* none installed~	if (0) {   /* none installed

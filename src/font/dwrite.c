@@ -22,7 +22,7 @@ static IDWriteFactory2 *fac;
 static IDWriteFontCollection *sys;
 static IDWriteFontFallback *fb;
 static WCHAR fam[256], loc[LOCALE_NAME_MAX_LENGTH];   /* the main family; the user's locale (CJK's choice) */
-static struct { char *file; int index, color; } font[MAX];
+static struct { char *file; int index; } font[MAX];
 static int n;
 
 /* The question's text, as MapCharacters reads it through this object; it
@@ -69,8 +69,9 @@ static IDWriteTextAnalysisSourceVtbl vt = { qi, ref, ref, at, before, dir, local
 static IDWriteTextAnalysisSource src = { &vt };
 
 /* The number of f, numbered now if it is new; -1 if its file is not a
-   local one (no path to give FreeType) or the table is full */
-static int add(IDWriteFont *f)
+   local one (no path to give FreeType), the table is full, or color is
+   asked and f is not a colour font (which then takes no number) */
+static int add(IDWriteFont *f, int color)
 {
 	IDWriteFontFace *ff = NULL;
 	IDWriteFontFile *file = NULL;
@@ -90,14 +91,14 @@ static int add(IDWriteFont *f)
 	    || FAILED(IDWriteLocalFontFileLoader_GetFilePathFromKey(local, key, keyn, path, MAX_PATH * 4))
 	    || !WideCharToMultiByte(CP_UTF8, 0, path, -1, u, sizeof u, NULL, NULL))
 		goto done;
+	int col = SUCCEEDED(IDWriteFontFace_QueryInterface(ff, &IID_IDWriteFontFace2, (void **)&f2)) && IDWriteFontFace2_IsColorFont(f2);
+	if (color && !col) goto done;
 	int idx = (int)IDWriteFontFace_GetIndex(ff);
 	for (i = 0; i < n && (font[i].index != idx || strcmp(font[i].file, u)); i++) {}
 	if (i < n) goto done;
 	if (n == MAX || !(font[n].file = malloc(strlen(u) + 1))) { i = -1; goto done; }
 	strcpy(font[n].file, u);
 	font[n].index = idx;
-	font[n].color = SUCCEEDED(IDWriteFontFace_QueryInterface(ff, &IID_IDWriteFontFace2, (void **)&f2))
-	                && IDWriteFontFace2_IsColorFont(f2);
 	i = n++;
 done:
 	if (f2) IDWriteFontFace2_Release(f2);
@@ -108,30 +109,25 @@ done:
 	return i;
 }
 
-/* Font f's number if it is a colour font or colour was not asked, else -1 */
-static int take(IDWriteFont *f, int color)
-{
-	int i = add(f);
-	return i >= 0 && (!color || font[i].color) ? i : -1;
-}
-
 /* The font Windows' fallback gives for all of the question, from family
-   fam first; failing that, as WezTerm does, the first installed family
-   (in the collection's order) whose regular font has all of it, so a
+   fam first (Segoe UI Emoji if color, as the question has lost its
+   U+FE0F); failing that, as WezTerm does, the first installed family (in
+   the collection's order) whose regular font has all of it, so a
    character outside Windows' list still draws if any font has it; colour
-   fonts only if color; -1 if none */
+   fonts only if color, and not by the scan, which on Windows took 0.46 s
+   for one ©️ (reviews/pr-140.md); -1 if none */
 static int map(const unsigned *cp, unsigned k, int color)
 {
 	IDWriteFont *f = NULL;
 	UINT32 got = 0;
 	FLOAT scale;
 	int i = -1;
-	if (SUCCEEDED(IDWriteFontFallback_MapCharacters(fb, &src, 0, len, sys, fam, DWRITE_FONT_WEIGHT_REGULAR,
+	if (SUCCEEDED(IDWriteFontFallback_MapCharacters(fb, &src, 0, len, sys, color ? L"Segoe UI Emoji" : fam, DWRITE_FONT_WEIGHT_REGULAR,
 	                                                 DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, &got, &f, &scale))
 	    && f && got == len)
-		i = take(f, color);
+		i = add(f, color);
 	if (f) IDWriteFont_Release(f);
-	for (UINT32 at = 0, nf = IDWriteFontCollection_GetFontFamilyCount(sys); i < 0 && at < nf; at++) {
+	for (UINT32 at = 0, nf = IDWriteFontCollection_GetFontFamilyCount(sys); i < 0 && !color && at < nf; at++) {
 		IDWriteFontFamily *ff;
 		if (FAILED(IDWriteFontCollection_GetFontFamily(sys, at, &ff))) continue;
 		if (SUCCEEDED(IDWriteFontFamily_GetFirstMatchingFont(ff, DWRITE_FONT_WEIGHT_REGULAR, DWRITE_FONT_STRETCH_NORMAL,
@@ -139,7 +135,7 @@ static int map(const unsigned *cp, unsigned k, int color)
 			BOOL has = TRUE;
 			for (unsigned j = 0; j < k && has; j++)
 				if (FAILED(IDWriteFont_HasCharacter(f, cp[j], &has))) has = FALSE;
-			if (has) i = take(f, color);
+			if (has) i = add(f, color);
 			IDWriteFont_Release(f);
 		}
 		IDWriteFontFamily_Release(ff);
@@ -170,7 +166,7 @@ int find_open(const char *family, int px)
 			continue;
 		if (SUCCEEDED(IDWriteFontFamily_GetFirstMatchingFont(ff, DWRITE_FONT_WEIGHT_REGULAR, DWRITE_FONT_STRETCH_NORMAL,
 		                                                     DWRITE_FONT_STYLE_NORMAL, &f))) {
-			add(f);
+			add(f, 0);
 			IDWriteFont_Release(f);
 		}
 		IDWriteFontFamily_Release(ff);

@@ -145,7 +145,7 @@ void sprite_draw(unsigned c, int cw, int ch, int t, unsigned char *out)
 		return;
 	}
 	if (c >= 0x2580) {   /* blocks: halves, eighths, shades, quadrants */
-		int mx = w / 2, my = h / 2;
+		int mx = (w + 1) / 2, my = h / 2;   /* as ▌'s and ▄'s eighths round, so halves and quadrants meet */
 		if (c == 0x2580) rect(0, 0, w, my, 255);
 		else if (c <= 0x2588) rect(0, h - (h * (int)(c - 0x2580) + 4) / 8, w, h, 255);
 		else if (c <= 0x258F) rect(0, 0, (w * (int)(0x2590 - c) + 4) / 8, h, 255);

@@ -16,6 +16,15 @@
 const char *find_file(int i, int *index);   /* src/font/find.h, the finder's own */
 
 static Placed o[16];
+
+/* whether font i is JetBrains Mono's file, whose path Windows may give in
+   upper case (C:\WINDOWS\FONTS\JETBRAINSMONO-REGULAR.TTF, reviews/pr-140.md) */
+static int jetbrains(int i)
+{
+	int idx;
+	const char *f = find_file(i, &idx);
+	return f && (strstr(f, "JetBrainsMono") || strstr(f, "JETBRAINSMONO")) && idx == 0;
+}
 static int shape(const char *s) { return font_shape((const unsigned char *)s, strlen(s), o, 16); }
 
 /* whether s (one character) draws: one glyph, not the main font's
@@ -32,7 +41,7 @@ int main(void)
 {
 	int idx, w, h, b;
 	CHECK(font_open("No Such Family,JetBrains Mono", 16) == 0);
-	CHECK(find_file(0, &idx) && strstr(find_file(0, &idx), "JetBrainsMono") && idx == 0);
+	CHECK(jetbrains(0));
 	font_cell(&w, &h, &b);
 	CHECK(w == 10 && h > 16 && b > 0 && b < h);   /* JetBrains Mono's advance is 0.6 em */
 	CHECK(shape("\xcd\xb8") == 1);   /* U+0378: unassigned */
@@ -48,7 +57,7 @@ int main(void)
 		if (!draws(more[i], notdef)) fprintf(stderr, "test_win_font: %s does not draw\n", more[i]);
 		CHECK(draws(more[i], notdef));
 	}
-	CHECK(find_file(1, &idx) && !strstr(find_file(1, &idx), "JetBrainsMono"));   /* from another font */
+	CHECK(find_file(1, &idx) && !jetbrains(1));   /* from another font */
 	CHECK(shape("\xe2\x94\x80") == 1 && o[0].g->w == w && o[0].g->h == h);        /* ─ is drawn, not a font's */
 	/* the same again comes from the caches: no new glyph drawn */
 	unsigned long hit0, miss0, hit1, miss1;
