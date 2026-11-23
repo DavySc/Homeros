@@ -148,7 +148,6 @@ static void run_for(long long ms)
 	}
 }
 
-
 /* The proxy's log replayed under both of LspSync's rules: "simple" shows
    a publication only for the version the client is at, "ok" (the edit
    log) any not older than the last one shown.  Typing runs from the first
