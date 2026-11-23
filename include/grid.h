@@ -107,12 +107,19 @@ enum {
 /* The theme, once for every backend: a face's colours (FACE_FG, FACE_BG
    say which are set; otherwise the terminal's or window's default) and
    style.  ref/theme.c holds Catppuccin Mocha; no package replaces it.
+   The slots from FACE_COUNT on are free, so every cell's face is one: the
+   terminal (src/tools/term.c) sets them at run time to the colours its
+   programs ask for (Neovim's attr table, get_attr_entry()).  1024 slots:
+   btop, the most colourful program measured, needs at most 179 over two
+   screens (measured, 5 runs, PR of the terminal thread); a uint16_t face
+   costs no measurable diff time (measured, 7 alternating runs).
    sp is Neovim's special colour, for an underline or undercurl when
    FACE_SP is set (else the fg, as Neovim). */
 enum { FACE_BOLD = 1, FACE_ITALIC = 2, FACE_UNDERLINE = 4, FACE_STRIKE = 8, FACE_FG = 16, FACE_BG = 32,
        FACE_UNDERCURL = 64, FACE_SP = 128 };
 typedef struct { unsigned char fg[3], bg[3], style, sp[3]; } Face;
-extern const Face faces[FACE_COUNT];
+enum { FACES = 1024 };
+extern Face faces[FACES];
 
 /* A cell holds one grapheme cluster of at most GRID_CLUSTER_MAX bytes:
    Neovim's MAX_SCHAR_SIZE (32) less its NUL.  A longer cluster is cut to
@@ -125,7 +132,10 @@ typedef struct {
 	                              ch, a longer one in the grid's cluster store
 	                              and ch then holds its number (Neovim's
 	                              schar_T); len 0 = right half of a wide one */
-	unsigned char attr, face;  /* face: FACE_*, set by the core after grid_put */
+	unsigned char attr;
+	unsigned short face;       /* FACE_* or a run-time slot below FACES,
+	                              set by the core after grid_put; with it a
+	                              Cell is 10 bytes */
 	unsigned char bg;          /* 0, or a face whose background replaces the
 	                              face's own: a background under a whole line
 	                              (the cursor line, Neovim's extmark hl_eol), set by the core
@@ -139,7 +149,8 @@ typedef struct {
 	                              undercurl over a token's colour (Neovim
 	                              combines an extmark's underline over
 	                              syntax), set by the core after grid_put,
-	                              which clears it.  A Cell is 9 bytes */
+	                              which clears it.  the Cell stays 10 bytes (it fills
+	                              face's padding) */
 } Cell;
 
 typedef struct {

@@ -8,7 +8,7 @@ make: Enter in its buffer opens nothing~test TESTS=tools_make~~src/tools/pick.c~
 make: ]q is not :cnext~test TESTS=tools_make~~src/keys/normal.c~	if (cap->nchar == 'q') {~	if (0) {
 make: [q goes forward~test TESTS=tools_make~~src/keys/normal.c~tools_qf(E, cap->arg == FORWARD ? cap->count1 : -cap->count1)~tools_qf(E, cap->count1)
 make: an old run's output reaches the new one's buffer~test TESTS=tools_make~~src/tools/make.c~	if ((intptr_t)ctx != M.gen) return;~	(void)ctx;
-make on Windows: the command through the CRT's quoting, not verbatim~win WIN=tools~~src/loop/win.c~	if (line) snprintf(line, n, "\"%s\" /s /c \"%s\"", sh, cmd);¶	return spawn(line, dir, fn, ctx);~	free(line);¶	char *argv[] = { (char *)sh, "/s", "/c", (char *)cmd, NULL };¶	return proc_spawn(argv, dir, fn, ctx);
+make on Windows: the command through the CRT's quoting, not verbatim~win WIN=tools~~src/loop/win.c~	if (line) snprintf(line, n, "\"%s\" /s /c \"%s\"", sh, cmd);¶	return spawn(line, dir, 0, 0, fn, ctx);~	free(line);¶	char *argv[] = { (char *)sh, "/s", "/c", (char *)cmd, NULL };¶	return proc_spawn(argv, dir, fn, ctx);
 make on Windows: cmd.exe without /c~win WIN=tools~~src/loop/win.c~\" /s /c \"%s~\" /s \"%s
 make on Windows and Linux: a CR LF's CR kept in the message~test TESTS=tools_make~~src/tools/make.c~	if (n && s[n - 1] == '\r') s[--n] = 0;~
 make: the shell is not asked to run the command~test TESTS=tools_make~~src/loop/loop.c~(char *)proc_shell_path(), "-c", (char *)cmd~(char *)proc_shell_path(), (char *)cmd
