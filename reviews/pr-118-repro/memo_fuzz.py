@@ -5,6 +5,10 @@ import random, subprocess, sys, os
 real, alt, seed, n, d = sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4]), sys.argv[5]
 T = ['[', '[[', ']', ']]', '][', '<', '>', 'http:', 'id:', 'a', ' ', '\n', '\n\n', '\\', '\\\\', '* ', '- ', '#+', ':', 'x',
      '<id:a', '[[a][', ' >', '\n >', '|', '=', '[fn:1]', '[fn::', '(', ')', '"', '<http:b', '[[b]', '\n \n', 'CLOCK: ', '\n#+a: b\n', '\n# \n']
+# FN_TOKENS=1: footnote, macro, verbatim and quote shapes too (sexp's memory, holds' chain)
+if os.environ.get('FN_TOKENS'):
+    T += ['x [fn::a', ' [fn:x:', '\\cite{', '\\a*[', '}', '{', '=b', 'c=', '~', '$', '$$', ' [fn:1] ', '[fn:1] d\n', ' x',
+          '⟨', '⟩', '\n: ', '\n\n\n', '\n* h\n', '[[fn:1]]', ' "', 'clock: ']
 r = random.Random(seed)
 os.makedirs(d, exist_ok=True)
 names = []
