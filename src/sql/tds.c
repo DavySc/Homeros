@@ -303,8 +303,9 @@ static int token(Tds *t, Cur *c)
 		uint64_t cnt = num(c, 8);
 		if (c->bad) return 0;
 		if (st & 0x10 && !t->quiet && str_addf(&t->out, "(%llu row%s affected)\n", (unsigned long long)cnt, cnt == 1 ? "" : "s")) return -1;
-		/* the last DONE of a reply; a cancel's reply ends at the one with DONE_ATTN */
-		if (k == 0xFD && !(st & 1) && (t->state == TDS_BUSY || (t->state == TDS_CANCEL && st & 0x20))) t->state = TDS_READY, t->quiet = 0;
+		/* the last DONE or DONEPROC (a batch ending in EXEC) of a reply; a
+		   cancel's reply ends at the one with DONE_ATTN */
+		if (k != 0xFF && !(st & 1) && (t->state == TDS_BUSY || (t->state == TDS_CANCEL && st & 0x20))) t->state = TDS_READY, t->quiet = 0;
 		if (k == 0xFD && !(st & 1) && t->state == TDS_LOGIN) t->state = t->net.err[0] ? TDS_DEAD : TDS_READY;
 		return 0;
 	}
@@ -319,6 +320,7 @@ static int token(Tds *t, Cur *c)
 		name(&m, 0, NULL), name(&m, 0, NULL);   /* server, procedure */
 		unsigned line = (unsigned)num(&m, 4);
 		if (m.bad) { snprintf(t->net.err, sizeof t->net.err, "a message token shorter than its fields"); return -1; }
+		if (t->quiet && no == 3980) return 0;   /* our own cancel aborting a procedure (as Postgres's 57014) */
 		size_t mark = t->out.n;
 		if ((k == 0xAA && str_addf(&t->out, "Msg %u, Level %u, State %u, Line %u\n", no, cls, state, line))
 			|| put_u16(&t->out, tx, tn, 1) || ch(&t->out, '\n')) return -1;
@@ -477,7 +479,7 @@ static int io(Tds *t, int readable)
 		t->eom |= h[1] & 1;
 		at += n;
 	}
-	memmove(t->raw.s, t->raw.s + at, t->raw.n - at), t->raw.n -= at;
+	if (at) memmove(t->raw.s, t->raw.s + at, t->raw.n - at), t->raw.n -= at;   /* raw.s is NULL before the first bytes */
 	if (t->state == TDS_PRELOGIN) {
 		if (!t->eom) return 0;
 		Cur c = {(const uint8_t *)t->msg.s, (const uint8_t *)t->msg.s + t->msg.n, 0};   /* options: token, offset, length */

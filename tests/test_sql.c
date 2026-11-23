@@ -10,6 +10,7 @@
    stderr: login, first row, total (ms), rows.  -t trusts the server's own
    certificate; -q prints no rows; -c ROWS pauses 300 ms after ROWS rows,
    cancels, and reports how long the cancel took. */
+#include <fcntl.h>
 #include <poll.h>
 #include <string.h>
 #include <time.h>
@@ -39,7 +40,7 @@ static int run(Db *d, int until, uint64_t stop)
 {
 	while (*d->state != until && *d->state != TDS_DEAD && !(stop && *d->rows >= stop)) {
 		int w = d->pg ? pg_pending(&d->g) : tds_pending(&d->t);
-		struct pollfd p[2] = {{d->net->fd, (short)(POLLIN | (w ? POLLOUT : 0)), 0}, {d->kill ? d->kill->fd : -1, POLLOUT, 0}};
+		struct pollfd p[2] = {{d->net->fd, (short)(POLLIN | (w ? POLLOUT : 0)), 0}, {d->kill ? d->kill->fd : -1, (short)(POLLIN | (d->kill && d->kill->snd.n ? POLLOUT : 0)), 0}};
 		if (poll(p, 2, -1) < 0) return -1;
 		int in = p[0].revents & (POLLIN | POLLHUP | POLLERR);
 		if ((d->pg ? pg_io(&d->g, in) : tds_io(&d->t, in)) < 0) return -1;
@@ -141,6 +142,8 @@ int main(int argc, char **argv)
 	Db d;
 	if (!up(&d, 0)) return 1;
 	CHECK(d.t.pkt == 4096);
+	/* a child the editor starts does not hold the session open (the review of PR 133) */
+	CHECK(fcntl(d.net->fd, F_GETFD) & FD_CLOEXEC);
 	/* SSMS's session options */
 	CHECK(is(&d, "select @@options o", "o\n5496\n(1 row affected)\n"));
 	/* text in both directions: outside the BMP, and Latin-1 */
@@ -163,6 +166,12 @@ int main(int argc, char **argv)
 	CHECK(!batch(&d, "select top 2000000 a.object_id from sys.all_objects a, sys.all_objects b", 1000));
 	CHECK(d.t.state == TDS_READY && !strstr(d.out->s, "Msg") && d.t.rows >= 1000 && d.t.rows < 2000000);
 	CHECK(is(&d, "select 1 as one", "one\n1\n(1 row affected)\n"));
+	/* a batch ending in EXEC ends with DONEPROC, not DONE (the review of
+	   PR 133); cancelling a running procedure */
+	CHECK(is(&d, "exec sp_executesql N'select 1 a'", "a\n1\n(1 row affected)\n"));
+	CHECK(!batch(&d, "exec sp_executesql N'select top 2000000 a.object_id from sys.all_objects a, sys.all_objects b'", 1000));
+	CHECK(d.t.state == TDS_READY && !strstr(d.out->s, "Msg") && d.t.rows < 2000000);
+	CHECK(is(&d, "select 1 as one", "one\n1\n(1 row affected)\n"));
 	/* a transaction's descriptor comes from the server and goes back with each batch */
 	CHECK(!batch(&d, "begin tran", 0) && d.t.txn);
 	CHECK(is(&d, "select @@trancount n", "n\n1\n(1 row affected)\n"));
@@ -182,6 +191,15 @@ int main(int argc, char **argv)
 	CHECK(!batch(&d, "select g from generate_series(1, 20000000) g", 1000));
 	CHECK(d.g.state == PG_READY && !strstr(d.out->s, "ERROR") && d.g.rows >= 1000 && d.g.rows < 20000000);
 	CHECK(is(&d, "select 1 as one", "one\n1\n(SELECT 1)\n"));
+	/* a cancel is done once the server closes its connection, so the next
+	   query is never the one cancelled (the review of PR 133: 16 of 20
+	   were); the reply waits unread 20 ms, as there */
+	for (int i = 0; i < 20; i++) {
+		d.out->n = 0;
+		CHECK(!query(&d, "select 1") && !pg_io(&d.g, 0) && !nanosleep(&(struct timespec){0, 20000000}, NULL));
+		CHECK(!cancel(&d) && !run(&d, PG_READY, 0));
+		CHECK(is(&d, "select pg_sleep(0.05), 2 x", "pg_sleep\tx\n\t2\n(SELECT 1)\n"));
+	}
 	/* the transaction state comes from the server's ReadyForQuery */
 	CHECK(!batch(&d, "begin", 0) && d.g.txn == 'T');
 	CHECK(!batch(&d, "select 1/0", 0) && d.g.txn == 'E' && strstr(d.out->s, "ERROR 22012: division by zero"));
