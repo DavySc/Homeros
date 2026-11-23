@@ -66,9 +66,9 @@ syntax: a .org file's update says nothing changed, so the editor does not redraw
 syntax: Vim's match? keeps case, so CMake's SET is not set (test_syntax, case 6)~test TESTS=syntax~~src/syntax/syntax.c~		if (ci ? tolower(c) != tolower((unsigned char)str[i]) : c != (unsigned char)str[i]) return 0;~		if (ci ? c != (unsigned char)str[i] : c != (unsigned char)str[i]) return 0;
 syntax: Vim's match? reads ".*" as part of the word, so CMake's A-NOTFOUND is no boolean (test_syntax, case 6)~test TESTS=syntax~~src/syntax/syntax.c~uint32_t m = p->len[k], suf = p->str[k][0] == '.';~uint32_t m = p->len[k], suf = 0;
 syntax: Vim's match? of one word without parentheses is skipped, so set's variable is plain (test_syntax, case 6)~test TESTS=syntax~~src/syntax/syntax.c~	if (par && s[n] != ')') return 1;~	if (!par || s[n] != ')') return 1;
-syntax: a fold ending at column 0 keeps that line (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~	int64_t er = (int64_t)e.row - (e.column == 0);~	int64_t er = (int64_t)e.row;
+syntax: a fold ending at column 0 keeps that line (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~(int64_t)e.row - (e.column == 0), lo~(int64_t)e.row, lo
 syntax: a line that ends one fold and starts another keeps the first (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~		if (e && o) v -= o, o = 0;~		if (0) v -= o, o = 0;
-syntax: the same fold counted twice (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~ && (sr != prev[0] || er != prev[1]))~)
+syntax: the same fold counted twice (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~ || (sr == prev[0] && er == prev[1])) return;~) return;
 syntax: folds only of the root tree, not injected ones (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~	for (uint32_t k = 0; k < L->nkid; k++) fold_tree(s, L->kid[k], lo, z, in, out, prev);~
 syntax: Markdown's setext heading starts no fold (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~		if (b == y) return c == '=' ? 3 : 5;~		if (b == y) return 0;
 syntax: Markdown's heading level is one less (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~return 2 * (int)(h - a) + 1;~return 2 * (int)(h - a) - 1;
@@ -99,7 +99,7 @@ syntax: a row an edit adds keeps a level of 0, not -1 (test_syntax, folds after 
 syntax: the fold query's row range stays on the cursor, so colours miss matches (test_syntax)~test TESTS=syntax~~src/syntax/syntax.c~	ts_query_cursor_set_point_range(s->qc, (TSPoint){ 0, 0 }, (TSPoint){ UINT32_MAX, UINT32_MAX });¶~
 syntax: the fold query is not limited to the rows asked, so a fold of rows above counts (test_syntax, folds after edits)~test TESTS=syntax~~src/syntax/syntax.c~	size_t lo = a ? a - 1 : 0;~	size_t lo = 0;
 syntax: the rows reported changed leave out the last (test_syntax, folds after an edit)~test TESTS=syntax~~src/syntax/syntax.c~	if (z > *r2) *r2 = z;~	if (z > *r2) *r2 = z - 1;
-syntax: Markdown's folds miss an edit that adds no line (test_syntax, folds after edits)~test TESTS=syntax~~src/syntax/syntax.c~(nrow == orow && s->root->lang != 2)~(nrow == orow)
+syntax: Markdown's folds miss an edit that adds no line (test_syntax, folds after edits)~test TESTS=syntax~~src/syntax/syntax.c~(nrow == orow && (s->zig || s->root->lang != 2))~(nrow == orow)
 syntax: Markdown's folds stop at the edited rows, not where a level is as before (test_syntax, folds after edits)~test TESTS=syntax~~src/syntax/syntax.c~			if (r >= z && v == s->lv[r]) break;~			if (r >= z) break;
 syntax: syntax_foldexpr answers past the rows (fuzz_syntax)~test TESTS=syntax~~src/syntax/syntax.c~	if (line >= s->nlv) return 0;¶~
 syntax: the rows reported changed start one late (fuzz_syntax)~fuzz FUZZERS=syntax FUZZ_SECONDS=60~~src/syntax/syntax.c~	if (a < *r1) *r1 = a;~	if (a < *r1) *r1 = a + 1;
