@@ -60,19 +60,18 @@ syntax: Lua's gsub stops after its first match (test_syntax, Lua patterns)~test 
 syntax: Lua's gsub %0 gives the first capture (test_syntax, Lua patterns)~test TESTS=syntax~~src/syntax/lmatch.c~if (c == '0' || (l == 0 && !ms.level)) ca = s~if (l == 0 && !ms.level) ca = s
 syntax: a .org file gets no colours (test_syntax_org)~test TESTS=syntax_org~~src/syntax/syntax.c~{ ".org", "org", BY_ORG }~{ ".org", "org", BY_NONE }
 syntax: an edit to a .org file is not passed to Org (test_syntax_org)~test TESTS=syntax_org~~src/syntax/syntax.c~		orgfx_edit(s->org, t, pos, ndel, nins);¶		return;~		return;
-syntax: an update of a .org file does not reach Org (test_syntax_org)~test TESTS=syntax_org~~src/syntax/syntax.c~	if (s->org) return orgfx_update(s->org, stop);~	if (s->org) return 0;
+syntax: an update of a .org file does not reach Org (test_syntax_org)~test TESTS=syntax_org~~src/syntax/syntax.c~		int r = orgfx_update(s->org, stop);~		int r = 0;
 syntax: a .org file's colours are not freed (test_syntax_org, LeakSanitizer)~test TESTS=syntax_org~~src/syntax/syntax.c~	orgfx_free(s->org);¶~
-syntax: a .org file's update says nothing changed, so the editor does not redraw (test_syntax_org)~test TESTS=syntax_org~~src/syntax/syntax.c~	if (s->org) return orgfx_update(s->org, stop);~	if (s->org) return orgfx_update(s->org, stop), 0;
+syntax: a .org file's update says nothing changed, so the editor does not redraw (test_syntax_org)~test TESTS=syntax_org~~src/syntax/syntax.c~		return r;¶	}~		return 0;¶	}
 syntax: Vim's match? keeps case, so CMake's SET is not set (test_syntax, case 6)~test TESTS=syntax~~src/syntax/syntax.c~		if (ci ? tolower(c) != tolower((unsigned char)str[i]) : c != (unsigned char)str[i]) return 0;~		if (ci ? c != (unsigned char)str[i] : c != (unsigned char)str[i]) return 0;
 syntax: Vim's match? reads ".*" as part of the word, so CMake's A-NOTFOUND is no boolean (test_syntax, case 6)~test TESTS=syntax~~src/syntax/syntax.c~uint32_t m = p->len[k], suf = p->str[k][0] == '.';~uint32_t m = p->len[k], suf = 0;
 syntax: Vim's match? of one word without parentheses is skipped, so set's variable is plain (test_syntax, case 6)~test TESTS=syntax~~src/syntax/syntax.c~	if (par && s[n] != ')') return 1;~	if (!par || s[n] != ')') return 1;
 syntax: a fold ending at column 0 keeps that line (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~	int64_t er = (int64_t)e.row - (e.column == 0);~	int64_t er = (int64_t)e.row;
-syntax: a line that ends one fold and starts another keeps the first (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~				if (e && o) v -= o, o = 0;~				if (0) v -= o, o = 0;
+syntax: a line that ends one fold and starts another keeps the first (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~		if (e && o) v -= o, o = 0;~		if (0) v -= o, o = 0;
 syntax: the same fold counted twice (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~ && (sr != prev[0] || er != prev[1]))~)
-syntax: folds only of the root tree, not injected ones (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~	for (uint32_t k = 0; k < L->nkid; k++) fold_tree(s, L->kid[k], in, out, prev);~
+syntax: folds only of the root tree, not injected ones (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~	for (uint32_t k = 0; k < L->nkid; k++) fold_tree(s, L->kid[k], lo, z, in, out, prev);~
 syntax: Markdown's setext heading starts no fold (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~		if (b == y) return c == '=' ? 3 : 5;~		if (b == y) return 0;
 syntax: Markdown's heading level is one less (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~return 2 * (int)(h - a) + 1;~return 2 * (int)(h - a) - 1;
-syntax: the fold levels are not computed again after a parse (test_syntax, folds after an edit)~test TESTS=syntax~~src/syntax/syntax.c~	s->nfold = 0;              /* the folds follow the trees */~
 syntax: a .org file has no folds (test_syntax_org)~test TESTS=syntax_org~~src/syntax/syntax.c~	if (s->org) return orgfx_foldexpr(s->org, line, start);~
 syntax: a .v reads past its 500th line (test_syntax, .v files)~test TESTS=syntax~~src/syntax/syntax.c~for (size_t l = 0; l < 500 && l <= n; l++) {~for (size_t l = 0; l <= 500 && l <= n; l++) {
 syntax: a .v's block comments are read (test_syntax, .v files)~test TESTS=syntax~~src/syntax/syntax.c~		com |= f[0];~		com |= 0;
@@ -82,9 +81,31 @@ syntax: a .v's module header is not Verilog (test_syntax, .v files)~test TESTS=s
 syntax: a .v that ends a line in ';' is not Verilog (test_syntax, .v files)~test TESTS=syntax~~src/syntax/syntax.c~if (f[7] || f[8] || f[9]) return 1;~if (f[8] || f[9]) return 1;
 syntax: a .v gets no colours (test_syntax, .v files)~test TESTS=syntax~~src/syntax/syntax.c~if (li == BY_V) li = verilog(t) ? 8 : BY_NONE;~if (li == BY_V) li = verilog(t) ? BY_NONE : BY_NONE;
 syntax: patterns injecting a language we lack are dropped from the query, so fewer in-progress matches hit Neovim's limit (test_syntax, case 13)~test TESTS=syntax~~src/syntax/syntax.c~			a = b + 1;¶		}¶	}¶	return 0;~			a = b + 1;¶		}¶		for (int j = 0; !hl && P->ilang && j <= NLANGS; j++)¶			if (j == NLANGS) ts_query_disable_pattern(Q->q, i);¶			else if (strlen(langs[j].name) == P->ilen && !memcmp(langs[j].name, P->ilang, P->ilen)) break;¶	}¶	return 0;
-syntax: 'foldnestmax' is 21 (test_syntax, case 8)~test TESTS=syntax~~src/syntax/syntax.c~v > 20 ? 20 : v~v > 21 ? 21 : v
-syntax: a fold past 'foldnestmax' still starts (test_syntax, case 8)~test TESTS=syntax~~src/syntax/syntax.c~(e && v <= 20)~(e > 0)
+syntax: 'foldnestmax' is 21 (test_syntax, case 8)~test TESTS=syntax~~src/syntax/syntax.c~v > 20 ? 40 : 2 * v + (e > 0)~v > 21 ? 42 : 2 * v + (e > 0)
+syntax: a fold past 'foldnestmax' still starts (test_syntax, case 8)~test TESTS=syntax~~src/syntax/syntax.c~v > 20 ? 40 : 2 * v + (e > 0)~v > 20 ? 41 : 2 * v + (e > 0)
 syntax: a setext underline under an empty line is a heading (test_syntax, case 10)~test TESTS=syntax~~src/syntax/syntax.c~if (a < z && l + 1 < text_lines(t)~if (l + 1 < text_lines(t)
 syntax: an injection named verilog is not SystemVerilog (test_syntax, the corpus's `define bodies)~test TESTS=syntax~~src/syntax/syntax.c~n == 7 && !memcmp(b, "verilog", 7) ? 8 : -1~-1
 syntax: an empty injected region in the tree's own language is parsed as the whole text, again and again (test_syntax, self injection)~test TESTS=syntax~~src/syntax/syntax.c~if (I.v[i].r.n || I.v[i].lang != L->lang) I.v[m++] = I.v[i];~if (1) I.v[m++] = I.v[i];
 syntax: a .org file conceals nothing (test_syntax_org)~test TESTS=syntax_org~~src/syntax/syntax.c~	return s->org ? orgfx_conceal(s->org, line, out, cap) : 0;~	return s->org && 0 ? orgfx_conceal(s->org, line, out, cap) : 0;
+syntax: the root's changed rows are not recomputed after a parse (test_syntax, folds after edits)~test TESTS=syntax~~src/syntax/syntax.c~	for (size_t k = 0; k < s->nchg; k++) {~	for (size_t k = 0; k < 0 * s->nchg; k++) {
+syntax: the rows edits added or removed are not recomputed after a parse (test_syntax, folds after edits)~test TESTS=syntax~~src/syntax/syntax.c~	if (s->ea < s->ez) fold_levels(~	if (0) fold_levels(
+syntax: a changed range is recomputed from its own row, not the one above ('foldminlines') (test_syntax, folds after edits)~test TESTS=syntax~~src/syntax/syntax.c~		fold_levels(s, a ? a - 1 : 0, z, r1, r2);~		fold_levels(s, a, z, r1, r2);
+syntax: the edited rows are recomputed from their own row, not the one above (test_syntax, folds after edits)~test TESTS=syntax~~src/syntax/syntax.c~fold_levels(s, s->ea ? s->ea - 1 : 0, s->ez, r1, r2);~fold_levels(s, s->ea, s->ez, r1, r2);
+syntax: a changed range ending inside a row leaves that row out (test_syntax, folds after edits)~test TESTS=syntax~~src/syntax/syntax.c~(size_t)e.row + (e.column > 0);~(size_t)e.row;
+syntax: whole deleted lines take their rows from below them (test_syntax, folds after edits)~test TESTS=syntax~~src/syntax/syntax.c~bad = sc == 0 && nrow == 0 && nc == 0 ?~bad = sc == SIZE_MAX && nrow == 0 && nc == 0 ?
+syntax: whole inserted lines take their rows below them (test_syntax, folds after edits)~test TESTS=syntax~~src/syntax/syntax.c~bad = sc == 0 && orow == 0 && oc == 0 ?~bad = sc == SIZE_MAX && orow == 0 && oc == 0 ?
+syntax: the edited rows do not move with a later edit above them (test_syntax, folds after edits)~test TESTS=syntax~~src/syntax/syntax.c~		if (eo <= s->ez) s->ez = s->ez + en - eo;¶~
+syntax: a row an edit adds keeps a level of 0, not -1 (test_syntax, folds after edits)~test TESTS=syntax~~src/syntax/syntax.c~s->lv[r] = -2, s->lv0[r] = -1;~s->lv[r] = 0, s->lv0[r] = 0;
+syntax: the fold query's row range stays on the cursor, so colours miss matches (test_syntax)~test TESTS=syntax~~src/syntax/syntax.c~	ts_query_cursor_set_point_range(s->qc, (TSPoint){ 0, 0 }, (TSPoint){ UINT32_MAX, UINT32_MAX });¶~
+syntax: the fold query is not limited to the rows asked, so a fold of rows above counts (test_syntax, folds after edits)~test TESTS=syntax~~src/syntax/syntax.c~	size_t lo = a ? a - 1 : 0;~	size_t lo = 0;
+syntax: the rows reported changed leave out the last (test_syntax, folds after an edit)~test TESTS=syntax~~src/syntax/syntax.c~	if (z > *r2) *r2 = z;~	if (z > *r2) *r2 = z - 1;
+syntax: Markdown's folds miss an edit that adds no line (test_syntax, folds after edits)~test TESTS=syntax~~src/syntax/syntax.c~(nrow == orow && s->root->lang != 2)~(nrow == orow)
+syntax: Markdown's folds stop at the edited rows, not where a level is as before (test_syntax, folds after edits)~test TESTS=syntax~~src/syntax/syntax.c~			if (r >= z && v == s->lv[r]) break;~			if (r >= z) break;
+syntax: syntax_foldexpr answers past the rows (fuzz_syntax)~test TESTS=syntax~~src/syntax/syntax.c~	if (line >= s->nlv) return 0;¶~
+syntax: the rows reported changed start one late (fuzz_syntax)~fuzz FUZZERS=syntax FUZZ_SECONDS=60~~src/syntax/syntax.c~	if (a < *r1) *r1 = a;~	if (a < *r1) *r1 = a + 1;
+syntax: the rows a stopped parse named stay put when an edit above them moves rows (test_syntax, folds after edits)~test TESTS=syntax~~src/syntax/syntax.c~	if (s->nchg) s->chg[0] = 0, s->chg[1] = SIZE_MAX, s->nchg = 1;¶~
+syntax: a recompute counts from the level shown, not the one past 'foldnestmax' (test_syntax, folds after edits)~test TESTS=syntax~~src/syntax/syntax.c~int lv = a ? s->lv0[a - 1] : 0~int lv = a ? s->lv[a - 1] / 2 : 0
+syntax: Markdown's folds recompute every row the tree changed, not only the edited ones (test_syntax, folds after edits)~test TESTS=syntax~~src/syntax/syntax.c~s->nlv && L->lang != 2)~s->nlv)
+syntax: a .org file's update reports no rows (test_syntax_org)~test TESTS=syntax_org~~src/syntax/syntax.c~		if (r == 1) *r2 = text_lines(t);¶~
+syntax: after a row-moving edit the pending rows keep their first start (test_syntax, folds after edits)~test TESTS=syntax~~src/syntax/syntax.c~if (s->nchg) s->chg[0] = 0, s->chg[1]~if (s->nchg) s->chg[1]
+syntax: a level below 0 that starts a fold reads as 0 (test_syntax, folds after edits: >-1)~test TESTS=syntax~~src/syntax/syntax.c~	return (s->lv[line] - *start) / 2;~	return s->lv[line] / 2;

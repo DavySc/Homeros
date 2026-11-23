@@ -1,0 +1,8 @@
+mine: write wake drops the read wake~test TESTS=loop~~src/loop/loop.c~w[i].ev = on ? POLLIN | POLLOUT : POLLIN;~w[i].ev = on ? POLLOUT : POLLIN;
+mine: loop_write touches only the first slot~test TESTS=loop~~src/loop/loop.c~	for (int i = 0; i < MAXW; i++) if (w[i].fd == fd + 1) w[i].ev = on~	for (int i = 0; i < 1; i++) if (w[i].fd == fd + 1) w[i].ev = on
+mine: date month from mp off by one~test TESTS=date~~src/date/date.c~*m = (int)(mp < 10 ? mp + 3 : mp - 9)~*m = (int)(mp < 9 ? mp + 3 : mp - 9)
+mine: date days March base~test TESTS=date~~src/date/date.c~(153 * (m > 2 ? m - 3 : m + 9) + 2) / 5~(153 * (m >= 2 ? m - 3 : m + 9) + 2) / 5
+mine: str_addf no NUL restore on failure~test TESTS=str~~src/str/str.c~		if (s->cap) s->s[s->n] = 0;   /* the cut text the first pass left */¶~¶
+mine: str_addf room counts the NUL twice~test TESTS=str~~src/str/str.c~	size_t room = s->cap - s->n;~	size_t room = s->cap - s->n - (s->cap > 0);
+mine: org stamp weekday from truncating division~test TESTS=org~~src/org/org.c~wd[z - 7 * date_fdiv(z, 7)]~wd[z - 7 * (z / 7)]
+lsp: a formatted message cut at 512 bytes (a long path's URI lost)~test TESTS=lsp~~src/str/str.c~	if (n < 0 || ((size_t)n >= room && grow(s, (size_t)n))) {~	if (n < 0 || n >= 512 || ((size_t)n >= room && grow(s, (size_t)n))) {

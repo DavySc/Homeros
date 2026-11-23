@@ -8,7 +8,7 @@
 local ours = { c = true, lua = true, markdown = true, markdown_inline = true, rust = true, glsl = true, nix = true, cmake = true, systemverilog = true }
 -- the grammars and queries Neovim does not bundle (src/syntax/sources.nix)
 vim.opt.rtp:prepend('build/syntax/src/nvim')
--- nvim-treesitter's plugin/filetypes.lua, which Davy's Neovim loads
+-- nvim-treesitter's plugin/filetypes.lua: Davy's my-nvim colours Verilog with tree-sitter (design/FEATURES.md), which needs this registration
 vim.treesitter.language.register('systemverilog', 'verilog')
 
 -- grid.h's faces: FACE_NONE 0, then Neovim's standard captures in order
@@ -104,7 +104,9 @@ local function size(buf)
 end
 
 -- foldexpr per line, ">n" where a fold starts: vim.treesitter.foldexpr(),
--- or for Markdown its ftplugin's MarkdownFold() ("=" the level above)
+-- whose levels _fold.lua keeps from its first call on, recomputing the
+-- rows on_bytes and on_changedtree name in callbacks vim.wait(0) runs; or
+-- for Markdown its ftplugin's MarkdownFold() ("=" the level above)
 vim.g.markdown_folding = 1
 local function folds(buf)
   local o, prev = {}, 0
@@ -115,7 +117,7 @@ local function folds(buf)
       v = vim.fn.MarkdownFold()
       if v == '=' then v = tostring(prev) end
     else
-      v = vim.treesitter.foldexpr(l)
+      v = tostring(vim.treesitter.foldexpr(l))
     end
     prev = tonumber((v:gsub('>', '')))
     o[#o + 1] = v
@@ -133,9 +135,11 @@ for k = 3, #arg do
   vim.treesitter.start(buf)
   local hl = vim.treesitter.highlighter.active[buf]
   hl.tree:parse(true)
+  if vim.bo[buf].filetype ~= 'markdown' then vim.treesitter.foldexpr(1) end
   for op in io.lines(arg[2] .. '/' .. arg[k] .. '.ops') do
     if op == 'p' then
       hl.tree:parse(true)
+      vim.wait(0)
     elseif op == 'f' then
       snap:write('#', arg[k]:match('^%d+'), '\n', render(faces(hl, buf, size(buf))))
     else
@@ -148,6 +152,7 @@ for k = 3, #arg do
     end
   end
   hl.tree:parse(true)
+  vim.wait(0)
   local err = false
   hl.tree:for_each_tree(function(t, lt)
     if ours[lt:lang()] and t:root():has_error() then err = true end

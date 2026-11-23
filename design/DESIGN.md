@@ -297,9 +297,10 @@ You will run development as a Claude project, with a coordinator and one thread 
 | 12. Syntax | src/syntax/ | syntax.h | frame budget held with tree-sitter on | 0 | 1, 6 |
 | 13. LSP and Lean | src/lsp/ | lsp.h; LspSync.tla | fake-server tests; the 2 s stale-diagnostics limit | 10 | 1, 4 |
 | 14. Infoview bridge | src/infoview/ | bridge.h | PR 8 cases | 13 | 13 |
-| 15. Daily tools: SQL client, terminal pane, project search, debugger, Claude Code integration, file manager | src/tools/ | tools.h | recorded SSMS and Emacs behaviour | 10 | 4, 10 |
+| 15. Daily tools: terminal pane, project search, debugger, Claude Code integration, file manager | src/tools/ | tools.h | recorded SSMS and Emacs behaviour | 10 | 4, 10 |
 | 16. Org | src/org/ | org.h | the phase 5 gate | 10 | 1, 4, 10 |
 | 17. Git (magit) | src/git/ | git.h; Git.tla | recorded magit traces (evil-collection keys) reproduced on a scratch repository; a refresh runs at most 5 git processes; reads never take index.lock; Git.tla passes | 10 | 4, 10 |
+| 22. SQL client (moved from 15 by Davy's approved SQL plan, 2026-11-21): our own SQL Server, PostgreSQL and Db2 for i clients on one socket and TLS module, the result grid, catalog and refactors | src/sql/ | sql.h | every value against the server's own text (value oracles), fuzzed wire readers, recorded SSMS behaviour; login and 100k rows no slower than the plan's bake-off | 10 | 4, 10 |
 
 Rules for the threads, to put in the project instructions: a header changes only through thread 0; a package never edits another package's directory; every merge runs the whole check; each package gets a Fable 5.2 review in its own thread before merging, and the review reproduces what it reports; measurements are recorded with their run count, as here. For a choice where one attempt could lock in the wrong shape (the rope, the Wayland backend, the org parser), two threads build it independently and the better one wins on the package's own checks, which is pstack's arena idea run as threads.
 

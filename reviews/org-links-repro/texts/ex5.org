@@ -1,0 +1,4 @@
+[fn:1] a
+#+begin_src c
+[fn:1] y
+#+end_src
