@@ -2,14 +2,15 @@
 ;; Org's own font-lock as the oracle for src/org's colours (package 16): for
 ;; each file, "== name" and then "begin end face" for every run of one top
 ;; face after fontifying the whole buffer at once.  Positions are bytes from
-;; 0.  Off until src/org colours them: the objects (links, footnotes,
-;; emphasis, targets, macros, inline source blocks, citations); inside a source block
-;; the language's own colours (org-src-fontify-natively) count as org-block.
+;; 0.  Off until src/org colours them: the objects (emphasis, targets,
+;; macros, inline source blocks, citations); inside a source block the
+;; language's own colours (org-src-fontify-natively) count as org-block.
 ;; emacs -Q --batch -l tools/org_faces.el FILE...
 (require 'org)
 (setq org-todo-keywords '((sequence "TODO" "NEXT" "WAIT" "|" "DONE" "CANCELLED"))
-      org-highlight-links '(tag date)
+      org-highlight-links '(bracket angle plain tag date footnote)
       org-fontify-emphasized-text nil)
+(load (expand-file-name "org_footnote.el" (file-name-directory load-file-name)) nil t)
 (defun org-faces-top (p)
   (let ((f (get-text-property p 'face)))
     (while (and (consp f) (not (keywordp (car f)))) (setq f (car f)))

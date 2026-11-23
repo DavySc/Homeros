@@ -1,0 +1,4 @@
+* h
+:PROPERTIES:
+:x^{2}: \alpha *b*
+:END:

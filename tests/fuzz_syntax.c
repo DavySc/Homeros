@@ -5,13 +5,15 @@
    bracket arguments) and SystemVerilog, with parses stopped and resumed at
    input-chosen points and faces, syntax_md and folds read at any moment, stale
    trees included.
-   Sanitizers catch the memory errors; the faces must be grid.h's. */
+   Sanitizers catch the memory errors; the faces must be grid.h's, and a
+   finished parse changes no fold outside the rows it reports. */
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include "grid.h"
 #include "syntax.h"
 #include "text.h"
+static size_t r1, r2;   /* syntax_update's fold rows, read where a test needs them */
 
 static const char *const tok[7][16] = {
 	{ "\n", "/*", "*/", "\"", "'", "{", "}", "(", ")", "x", " ", "\xc3\xa9", "#define A(x) x\n", "int", "FOO", ";" },
@@ -51,7 +53,14 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 		size_t len = text_len(t);
 		if (op % 4 == 0) {                 /* parse, stopped after some checks */
 			left = (int)(byte() % 8);
-			syntax_update(s, t, left ? stop : NULL);
+			static int lv[1 << 13], st[1 << 13];   /* a row outside [r1, r2) keeps its fold */
+			size_t nl = text_lines(t);
+			for (size_t l = 0; l < nl; l++) lv[l] = syntax_foldexpr(s, l, &st[l]);
+			if (syntax_update(s, t, left ? stop : NULL, &r1, &r2) != 2)
+				for (size_t l = 0; l < nl; l++) {
+					int a, v = syntax_foldexpr(s, l, &a);
+					if ((v != lv[l] || a != st[l]) && (l < r1 || l >= r2)) abort();
+				}
 		} else if (op % 4 == 1) {          /* faces of a range */
 			size_t a = byte() * len / 256, z = a + byte() * 8;
 			if (z > len) z = len;
@@ -70,8 +79,8 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 			if (text_delete(t, pos, del) || text_insert(t, pos, ins, strlen(ins))) abort();
 		}
 	}
-	while (syntax_update(s, t, NULL) == 2) ;
-	if (syntax_update(s, t, NULL) != 0) abort();
+	while (syntax_update(s, t, NULL, &r1, &r2) == 2) ;
+	if (syntax_update(s, t, NULL, &r1, &r2) != 0) abort();
 	syntax_faces(s, 0, text_len(t), f);
 	for (size_t i = 0; i < text_len(t); i++) if (f[i] >= FACE_COUNT) abort();
 	syntax_free(s);
