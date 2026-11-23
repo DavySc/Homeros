@@ -1789,7 +1789,7 @@ int buf_format(size_t a, size_t z)
 		if (!in) return oom();
 		text_read(B->text, 0, in, len);
 		int r = k == 2 ? verible(in, len, a, z, &res, &n) : syntax_zig_fmt(B->syn, &res, &n);
-		if (r == -1 && k == 3) core_msg(E, "zig fmt: the file does not parse");
+		if (k == 3 && r != -2 && r) core_msg(E, r == -1 ? "zig fmt: the file does not parse" : "zig fmt: none for the zig on PATH, only 0.15 to 0.17");
 		/* a whole text: the bytes that differ from it */
 		if (!r) {
 			while (p < len && p < n && in[p] == res[p]) p++;

@@ -253,12 +253,15 @@ fn colour(a: *const Ast, bad: []const bool, out: [*]u8) bool {
         // (calling_convention (identifier) @variable.builtin)
         if (tg == .keyword_callconv and t + 2 < nt and a.tokenTag(t + 1) == .l_paren and a.tokenTag(t + 2) == .identifier) role[t + 2] |= bit(.cc);
     }
+    var gap: usize = 0; // where the last token ended
     for (0..nt) |ti| {
         const k: u32 = @intCast(ti);
         const tg = a.tokenTag(k);
-        if (tg == .eof) break;
         const s = a.tokenStart(k);
-        const txt = a.tokenSlice(k);
+        comments(a.source, gap, s, out);
+        if (tg == .eof) break;
+        const txt = a.tokenSlice(k); // lexes the token again: once only
+        gap = s + txt.len;
         var c = tokenColour(tg);
         if (tg == .identifier) {
             // tree-sitter's own nodes for these words, except where a name
@@ -299,7 +302,7 @@ fn colour(a: *const Ast, bad: []const bool, out: [*]u8) bool {
         } else if (tg == .builtin and isImport(txt) and k >= 2 and a.tokenTag(k - 1) == .equal and (role[k - 2] & bit(.module) != 0 or eql(a.tokenSlice(k - 2), "_"))) {
             c = .keyword_import;
         } else if ((tg == .period and k + 1 < nt and a.tokenTag(k + 1) == .question_mark and a.tokenStart(k + 1) == s + 1) or
-            (tg == .question_mark and a.tokenTag(k - 1) == .period and a.tokenStart(k - 1) + 1 == s))
+            (tg == .question_mark and k > 0 and a.tokenTag(k - 1) == .period and a.tokenStart(k - 1) + 1 == s))
         {
             c = .operator; // ".?" is one token in tree-sitter
         }
@@ -307,20 +310,20 @@ fn colour(a: *const Ast, bad: []const bool, out: [*]u8) bool {
         @memset(out[s .. s + txt.len], @intFromEnum(c));
         if (tg == .string_literal or tg == .char_literal) escapes(txt, out + s);
     }
-    // comments, which std.zig's tokenizer skips (but for doc comments)
-    var i: usize = 0;
-    var tk: u32 = 0;
-    while (i + 1 < len) {
-        while (tk < nt and a.tokenStart(tk) + a.tokenSlice(tk).len <= i) tk += 1;
-        if (tk < nt and a.tokenStart(tk) <= i and a.tokenTag(tk) != .eof) {
-            i = a.tokenStart(tk) + a.tokenSlice(tk).len;
-        } else if (a.source[i] == '/' and a.source[i + 1] == '/') {
-            const e = std.mem.indexOfScalarPos(u8, a.source, i, '\n') orelse len;
+    return true;
+}
+
+/// comments, which std.zig's tokenizer skips (but for doc comments), in
+/// the gap [i, z) between two tokens
+fn comments(src: [:0]const u8, from: usize, z: usize, out: [*]u8) void {
+    var i = from;
+    while (i + 1 < z) {
+        if (src[i] == '/' and src[i + 1] == '/') {
+            const e = std.mem.indexOfScalarPos(u8, src, i, '\n') orelse src.len;
             @memset(out[i..e], @intFromEnum(C.comment));
             i = e;
         } else i += 1;
     }
-    return true;
 }
 
 /// (escape_sequence) @string.escape inside a string or char literal

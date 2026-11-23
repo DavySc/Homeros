@@ -189,4 +189,4 @@ keys: keys_visual() keeps the other end's column (test_keys_map)~test TESTS=keys
 keys: keys_visual() leaves e->ks as it was (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~(Pos){ (long)line, 0, 0 };¶	visual_sync();~(Pos){ (long)line, 0, 0 };
 keys: :w leaves a Zig file as typed (test_keys_gq, zig)~test TESTS=keys_gq~~src/keys/keys.c~	if (k == 3) buf_format(0, text_len(B->text));¶	else if (k) {~	if (k == 3) ;¶	else if (k) {
 keys: a whole-text format replaces the whole text, so a mark on a line it leaves is lost (test_keys_gq, zig)~test TESTS=keys_gq~~src/keys/ops.c~			while (p < len && p < n && in[p] == res[p]) p++;¶~¶
-keys: :Format on a Zig file that does not parse says nothing (test_keys_gq, zig)~test TESTS=keys_gq~~src/keys/ops.c~		if (r == -1 && k == 3) core_msg(E, "zig fmt: the file does not parse");¶~¶
+keys: :Format on a Zig file that does not parse, or with no zig fmt for the zig on PATH, says nothing (test_keys_gq, zig)~test TESTS=keys_gq~~src/keys/ops.c~		if (k == 3 && r != -2 && r) core_msg(E, r == -1 ? "zig fmt: the file does not parse" : "zig fmt: none for the zig on PATH, only 0.15 to 0.17");¶~¶

@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include "check.h"
 #include "core.h"
@@ -166,6 +167,16 @@ static void zig(void)
 	FILE *f = fopen(zf, "w");
 	CHECK(f && fputs(Z, f) >= 0 && !fclose(f));
 	Editor e;
+	/* no zig on PATH: no formatter of its release, :Format says so (a fresh
+	   process: the release is read once per run) */
+	pid_t pid = fork();
+	CHECK(pid >= 0);
+	if (!pid) {
+		setenv("PATH", sub, 1);
+		_exit(core_open(&e, zf) || (keys(&e, ":Format\n"), strcmp(text(&e), Z) || !strstr(e.msg, "only 0.15")));
+	}
+	int st;
+	CHECK(waitpid(pid, &st, 0) == pid && WIFEXITED(st) && !WEXITSTATUS(st));
 	/* :w formats, with no marker file; the cursor stays on its character;
 	   u gives the text back; a mark on a line the format leaves stays (the
 	   edit is only the bytes that differ) */

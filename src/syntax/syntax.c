@@ -96,7 +96,10 @@ static void on_zig(void *ctx, int stream, const char *b, size_t n)
    ("0.16.0" is 16): Zig's syntax changes between releases, and only a
    release's own parser reads its std without errors (measured,
    research/zig.md).  A release without its parser here takes the nearest
-   (0.14's tree API differs from 0.15's on; no zig: the newest). */
+   (0.14's tree API differs from 0.15's on; no zig: the newest).  zig fmt
+   only with the release's own: 0.17's renders 0.16's @intFromEnum as
+   @backingInt, which 0.16 rejects (measured, reviews/pr-136.md B2). */
+static int zig_own;
 static const ZigRel *zig_release(void)
 {
 	static const ZigRel *r;
@@ -109,6 +112,7 @@ static const ZigRel *zig_release(void)
 	r = &zig_rel[0];
 	for (int i = 0; i < NZIG; i++)
 		if (zig_rel[i].minor <= m) r = &zig_rel[i];
+	zig_own = !strncmp(v, "0.", 2) && r->minor == m;
 	for (int c = 1; c < 256 && *r->name((unsigned char)c); c++) {
 		char cap[64];   /* "variable_member" is variable.member */
 		uint32_t l = 0;
@@ -517,9 +521,10 @@ static int zig_grow(Syntax *s, size_t n)
 }
 
 /* Zig's parse of the whole text (a full parse per change, Davy's choice of
-   2026-11-23: 0.054 ms median, 1.3 ms p99 an edit over all of std,
-   against tree-sitter's incremental 0.079 and 5.8 ms; research/zig.md) with
-   its faces, or with face 0 the tree alone; NULL out of memory */
+   2026-11-23) with its faces, or with face 0 the tree alone; NULL out of
+   memory.  An edit and the update after it, over Zig 0.17's std (563
+   files, 45,040 one-byte inserts, 5 runs, reviews/pr-136-repro/bench.c):
+   median 0.11 ms, p99 3.8 ms, 8.4 ms in the largest file (829 KB) */
 static ZigH *zig_parse(Syntax *s, const Text *t, int face)
 {
 	size_t n = text_len(t);
@@ -1138,6 +1143,8 @@ int syntax_update(Syntax *s, const Text *t, int (*stop)(void), size_t *r1, size_
 	}
 	if (s->zig) {
 		if (!s->dirty) return 0;
+		/* one parse cannot be cut: a waiting key goes first */
+		if (stop && stop()) return 2;
 		ZigH *h = zig_parse(s, t, 1);
 		if (!h) return 0;
 		if (s->zh) s->zig->free(s->zh);
@@ -1530,6 +1537,7 @@ int syntax_foldexpr(Syntax *s, size_t line, int *start)
 int syntax_zig_fmt(Syntax *s, const char **res, size_t *n)
 {
 	if (!s || !s->zig) return -2;
+	if (!zig_own) return -3;
 	/* the colours' parse while it is current, else one of its own */
 	ZigH *h = s->zh;
 	if (s->dirty || !h) {

@@ -13,8 +13,15 @@
    - zig fmt: a file with every line's indent taken away comes back as it
      was (std is zig fmt's output; but where "zig fmt: off" keeps it), for the release on PATH (nixpkgs'
      zig, the corpus's release); each other release's zig fmt gives its own
-     output back unchanged. */
+     output back unchanged; with a zig on PATH whose release has no
+     formatter here, none;
+   - broken code: a member with an error, the one before an "expected ';'",
+     a first token ?; typed text uncoloured until the parse, which waits for
+     a waiting key; zig fmt of the text after an edit. */
 #include <dirent.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <unistd.h>
 #include <stdint.h>
 #include <string.h>
 #include "check.h"
@@ -115,6 +122,44 @@ static void folds(Syntax *s, const Text *t, char *out)
 	strcpy(out + n, "\n");
 }
 
+static int waiting(void) { return 1; }
+
+/* zig fmt only with the release's own formatter (reviews/pr-136.md B2):
+   each a fresh process, as the release is read once per run.  0.15 and
+   0.16 format a ** 2, 0.17 refuses it */
+static void releases(void)
+{
+	static const struct { const char *zig; int r; } c[] = {
+		{ NULL, -3 }, { "echo 0.14.1", -3 }, { "echo 0.18.0", -3 }, { "sleep 2; echo 0.17.1", -3 },
+		{ "echo 0.15.2", 0 }, { "echo 0.16.0", 0 }, { "echo 0.17.1", -1 },
+	};
+	char bin[96], z[128];
+	snprintf(bin, sizeof bin, "%s/bin", dir);
+	snprintf(z, sizeof z, "%s/zig", bin);
+	CHECK(!mkdir(bin, 0700));
+	for (size_t i = 0; i < sizeof c / sizeof *c; i++) {
+		unlink(z);
+		if (c[i].zig) {
+			FILE *f = fopen(z, "w");
+			CHECK(f && fprintf(f, "#!/bin/sh\nPATH='%s'\n%s\n", getenv("PATH"), c[i].zig) > 0 && !fclose(f) && !chmod(z, 0700));
+		}
+		pid_t p = fork();
+		CHECK(p >= 0);
+		if (!p) {
+			setenv("PATH", bin, 1);
+			Text *t = text_new("const a = a ** 2;\n", 18);
+			Syntax *s = syntax_open("x.zig", t);
+			const char *res;
+			size_t rn;
+			_exit(syntax_zig_fmt(s, &res, &rn) + 8);
+		}
+		int st;
+		CHECK(waitpid(p, &st, 0) == p && WIFEXITED(st));
+		if (WEXITSTATUS(st) != c[i].r + 8) fprintf(stderr, "zig %s: %d\n", c[i].zig ? c[i].zig : "none", WEXITSTATUS(st) - 8);
+		CHECK(WEXITSTATUS(st) == c[i].r + 8);
+	}
+}
+
 static Syntax *open(const Text *t)
 {
 	Syntax *s = syntax_open("x.zig", t);
@@ -128,6 +173,7 @@ int main(void)
 	add_dir("zig");
 	add_dir("json");
 	CHECK(mkdtemp(dir));
+	releases();
 	char cmd[1 << 14], path[512];
 	int n = snprintf(cmd, sizeof cmd, "nvim --headless --clean -l tests/test_syntax.lua %s/out %s", dir, dir);
 	for (int i = 0; i < nf; i++) {
@@ -192,6 +238,7 @@ int main(void)
 			/* until the parse, the faces move with the text */
 			draw(s, t, g2);
 			CHECK(!memcmp(g2, got, at) && !memcmp(g2 + at + ni, got + at + del, was - at - del));
+			for (size_t k = 0; k < ni; k++) CHECK(g2[at + k] == (ins[k] == '\n' ? '\n' : '0'));   /* typed text: no colour yet */
 			if (rnd(3)) continue;   /* edits pile up between parses, as between frames */
 			CHECK(syntax_update(s, t, NULL, &r1, &r2) == 1);
 			Syntax *f = open(t);
@@ -215,6 +262,26 @@ int main(void)
 	syntax_faces(bs, 0, sizeof B - 1, bf);
 	CHECK(bf[18] == FACE_VARIABLE && bf[strstr(B, "h()") - B + 15] == FACE_FUNCTION_CALL);
 	CHECK(B[18] == 'g' && B[strstr(B, "h()") - B + 15] == 'g');
+	syntax_free(bs);
+	text_free(bt);
+	/* "expected ';'" on one line names the next member's first token (fn);
+	   the unfinished member before it is left out of the members, its
+	   nodes not */
+	static const char B2[] = "fn f() void {}\nconst a = h() fn g() void {}\n";
+	CHECK((bt = text_new(B2, sizeof B2 - 1)) && (bs = open(bt)));
+	syntax_faces(bs, 0, sizeof B2 - 1, bf);
+	CHECK(B2[25] == 'h' && bf[25] == FACE_VARIABLE);
+	syntax_free(bs);
+	text_free(bt);
+	/* a first token ? (reviews/pr-136.md B1: read the token before it) */
+	CHECK((bt = text_new("?u8\n", 4)) && (bs = open(bt)));
+	syntax_free(bs);
+	text_free(bt);
+	/* a parse waits for a waiting key: one cannot be cut */
+	CHECK((bt = text_new("const a = 1;\n", 13)) && (bs = open(bt)));
+	syntax_edit(bs, bt, 0, 0, "x", 1);
+	CHECK(!text_insert(bt, 0, "x", 1));
+	CHECK(syntax_update(bs, bt, waiting, &r1, &r2) == 2 && syntax_update(bs, bt, NULL, &r1, &r2) == 1);
 	syntax_free(bs);
 	text_free(bt);
 	printf("syntax_zig: %d of %d files compared with Neovim, %ld bytes in the known differences\n", compared, nf, diff);
@@ -274,6 +341,13 @@ int main(void)
 	const char *res;
 	size_t rn;
 	CHECK(syntax_zig_fmt(s, &res, &rn) == -1);
+	syntax_free(s);
+	text_free(t);
+	/* zig fmt of the text as it is now, not as the last parse saw it */
+	CHECK((t = text_new("const a=1;\n", 11)) && (s = open(t)));
+	syntax_edit(s, t, 11, 0, "const b=2;\n", 11);
+	CHECK(!text_insert(t, 11, "const b=2;\n", 11));
+	CHECK(!syntax_zig_fmt(s, &res, &rn) && rn == 26 && !memcmp(res, "const a = 1;\nconst b = 2;\n", rn));
 	syntax_free(s);
 	text_free(t);
 	printf("syntax_zig: zig fmt gave back %d of %d files\n", same, nf);
