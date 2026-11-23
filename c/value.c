@@ -298,14 +298,14 @@ static void fmt(const Dwarf *d, const Target *tg, uint32_t t, const uint8_t *v, 
     case TAG_array: {
         Val gv;
         if (!die_attr(d, t, AT_GNU_vector, &gv)) { fmt_elems(d, tg, die_ref(d, t, AT_type), 0, v, array_count(d, t), depth, o); return; }
-        uint64_t stride, n = array_count(d, t);
+        uint64_t stride, count = array_count(d, t);
         vector_layout(d, t, &stride);
         uint32_t et = die_ref(d, t, AT_type);
         uint64_t eb = vector_elem_bits(d, t);
         bool sign = name && strstr(name, ", i");
         if (!depth) { out_add(o, "{ ... }"); return; }
         out_add(o, "{ ");
-        for (uint64_t i = 0; i < n; i++) {           /* each element's bits, gathered into a little buffer */
+        for (uint64_t i = 0; i < count; i++) {       /* each element's bits, gathered into a little buffer */
             uint8_t tmp[16] = { 0 };
             for (uint64_t b = 0; b < eb && b < 128; b++) {
                 uint64_t at = i * stride + b;
@@ -353,7 +353,7 @@ static void fmt(const Dwarf *d, const Target *tg, uint32_t t, const uint8_t *v, 
     }
     case 0x3b: out_add(o, "%s", name ? name : "void"); return;       /* unspecified type: void */
     case TAG_typedef: {                                               /* LLVM's optional pointer */
-        if (!get_int(v, 64, false)) { out_add(o, "null"); return; }
+        if (!get_int(v, n < 8 ? n * 8 : 64, false)) { out_add(o, "null"); return; }
         fmt(d, tg, die_ref(d, t, AT_type), v, n, depth, o);
         return;
     }

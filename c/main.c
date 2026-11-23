@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
         p->n = 0;
         while ((tok = strtok(NULL, " \n")) && p->n < 32) snprintf(p->names[p->n++], 32, "%s", tok);
         p->naddr = line_addrs(&d, argv[3], p->line, p->addr, 8);
-        if (!p->naddr) fprintf(stderr, "no code for line %u\n", p->line);
+        if (!p->naddr) printf("# no code for line %u\n", p->line);
         np++;
     }
     if (f) fclose(f);
