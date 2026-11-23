@@ -48,3 +48,17 @@ win: image cells drawn as text~win WIN=win~~src/win/backend.c~	if (x->attr == AT
 win: the cell's size is the window's~win WIN=win~~src/win/backend.c~{ *w = cw; *h = ch; }~{ *w = cw; *h = cw; }
 file: file_id calls a missing file an error~test TESTS="file file_save image"~~src/file/file.c~	if (stat(path, &st)) return errno == ENOENT ? 0 : -1;~	if (stat(path, &st)) return -1;
 file: file_id says a file exists that does not~test TESTS="file file_save image"~~src/file/file.c~	memset(id, 0, sizeof *id);¶	if (stat(path, &st))~	memset(id, 1, sizeof *id);¶	if (stat(path, &st))
+wl: the wallpaper's surface above the text~test TESTS=wl~~src/wl/wl.c~wl_subsurface_place_below(wsub, surf);~wl_subsurface_place_above(wsub, surf);
+wl: the default background opaque over the wallpaper~test TESTS=wl~~src/wl/wl.c~	if (wall && *bg == BG) *bg = 0;~
+wl: an XRGB buffer over the wallpaper~test TESTS=wl~~src/wl/wl.c~wall ? WL_SHM_FORMAT_ARGB8888 : WL_SHM_FORMAT_XRGB8888~WL_SHM_FORMAT_XRGB8888
+wl: a new buffer filled opaque over the wallpaper~test TESTS=wl~~src/wl/wl.c~fill(b->px, 0, 0, bw, bh, wall ? 0 : BG);~fill(b->px, 0, 0, bw, bh, BG);
+wl: the wallpaper left past a smaller window~test TESTS=wl~~src/wl/wl.c~			wl_surface_attach(wsurf, NULL, 0, 0);¶~¶
+wl: antialiased edges lose their alpha~test TESTS=wl~~src/wl/wl.c~	return rb | ag << 8;~	return rb | (ag & 0xff) << 8;
+wl: colour glyphs lose their alpha~test TESTS=wl~~src/wl/wl.c~	for (int s = 0; s < 32; s += 8)~	for (int s = 0; s < 24; s += 8)
+image: the wallpaper fully opaque~test TESTS=image~~src/image/image.c~onto(rgba + 4 * i, bg, WALL_OPACITY)~onto(rgba + 4 * i, bg, 255)
+image: the wallpaper's cover cut from its top~test TESTS=image~~src/image/image.c~	src[1] = (wh - src[3]) / 2;~	src[1] = 0;
+image: the wallpaper's cover as wide as the picture~test TESTS=image~~src/image/image.c~	src[2] = wide ? ww : (int)((long long)wh * w / h);~	src[2] = ww;
+image: the wallpaper kept for another bg~test TESTS=image~~src/image/image.c~ || bg != wbg) {~) {
+image: the wallpaper kept after its file changed~test TESTS=image~~src/image/image.c~id.exists != was.exists || id.mtime_ns != was.mtime_ns || id.size != was.size~!was.exists
+win: text cells drawn opaque over the wallpaper~win WIN=win~~src/win/backend.c~	int back = !rev && ~	int back = 0 && 
+win: the wallpaper not laid at a new size~win WIN=win~~src/win/backend.c~	if (sb && (wdib = ~	if (0 && sb && (wdib = 

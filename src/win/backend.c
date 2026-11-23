@@ -31,6 +31,8 @@ enum { RING = 256, PT = 12 };   /* font size in points: a guess until package 7 
 static HWND win;
 static HDC mem;                 /* holds the DIB, which holds what is shown */
 static HBITMAP dib, nodib;
+static HDC wdc;                 /* holds the wallpaper at the window's size (image.h), if any */
+static HBITMAP wdib, nowdib;
 static uint32_t *bits;          /* the DIB's pixels, for images */
 static HFONT font, nofont;
 static HANDLE timer;
@@ -111,6 +113,25 @@ static int make_dib(void)
 	ExtTextOutW(mem, 0, 0, ETO_OPAQUE, &r, NULL, 0, NULL);
 	dw = r.right;
 	dh = r.bottom;
+	/* the wallpaper's part that covers the window, scaled by GDI */
+	if (wdib) { SelectObject(wdc, nowdib); DeleteObject(wdib); wdib = NULL; }
+	int iw = 0, ih = 0, src[4];
+	const uint32_t *w = image_wallpaper(dw, dh, (uint32_t)GetRValue(BASE) << 16 | GetGValue(BASE) << 8 | GetBValue(BASE), &iw, &ih, src);
+	BITMAPINFO wi = { .bmiHeader = { .biSize = sizeof wi.bmiHeader, .biWidth = iw, .biHeight = -ih, .biPlanes = 1, .biBitCount = 32 } };
+	HDC sdc = w ? CreateCompatibleDC(mem) : NULL;
+	HBITMAP sb = sdc ? CreateDIBSection(mem, &wi, DIB_RGB_COLORS, &px, NULL, 0) : NULL;
+	if (sb && (wdib = CreateDIBSection(mem, &bi, DIB_RGB_COLORS, NULL, NULL, 0))) {
+		memcpy(px, w, (size_t)iw * (size_t)ih * 4);
+		HGDIOBJ o = SelectObject(sdc, sb);
+		SelectObject(wdc, wdib);
+		SetStretchBltMode(wdc, HALFTONE);
+		SetBrushOrgEx(wdc, 0, 0, NULL);   /* StretchBlt's rule after HALFTONE */
+		StretchBlt(wdc, 0, 0, dw, dh, sdc, src[0], src[1], src[2], src[3], SRCCOPY);
+		BitBlt(mem, 0, 0, dw, dh, wdc, 0, 0, SRCCOPY);
+		SelectObject(sdc, o);
+	}
+	if (sb) DeleteObject(sb);
+	if (sdc) DeleteDC(sdc);
 	return 0;
 }
 
@@ -190,12 +211,14 @@ static LRESULT CALLBACK proc(HWND h, UINT m, WPARAM w, LPARAM l)
 static void win_close(void)
 {
 	if (mem) { SelectObject(mem, nofont); SelectObject(mem, nodib); DeleteDC(mem); }
+	if (wdc) { SelectObject(wdc, nowdib); DeleteDC(wdc); }
+	if (wdib) DeleteObject(wdib);
 	if (font) DeleteObject(font);
 	if (dib) DeleteObject(dib);
 	if (timer) CloseHandle(timer);
 	if (win) DestroyWindow(win);
 	UnregisterClassW(L"homeros", GetModuleHandleW(NULL));
-	mem = NULL; font = NULL; dib = NULL; timer = NULL; win = NULL;
+	mem = NULL; font = NULL; dib = NULL; timer = NULL; win = NULL; wdc = NULL; wdib = NULL;
 	dw = dh = 0;
 }
 
@@ -213,8 +236,10 @@ static int win_open(void)
 	if (!win) return -1;
 	dpi = (int)GetDpiForWindow(win);
 	mem = CreateCompatibleDC(NULL);
+	wdc = CreateCompatibleDC(NULL);
 	timer = CreateWaitableTimerExW(NULL, NULL, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
-	if (!mem || !timer) { win_close(); return -1; }
+	if (!mem || !wdc || !timer) { win_close(); return -1; }
+	nowdib = GetCurrentObject(wdc, OBJ_BITMAP);
 	nofont = SelectObject(mem, GetStockObject(SYSTEM_FONT));
 	nodib = GetCurrentObject(mem, OBJ_BITMAP);
 	if (make_font() || make_dib()) { win_close(); return -1; }
@@ -299,9 +324,12 @@ static void draw_cell(const Grid *g, int r, int c, int cursor)
 	}
 	/* reversed (status line, cursor): the colours swap, as a terminal's SGR 7 */
 	int rev = cursor || x->attr == ATTR_REV;
+	/* the default background shows the wallpaper, the text drawn over it */
+	int back = !rev && b == BASE && wdib && BitBlt(mem, rc.left, rc.top, rc.right - rc.left, ch, wdc, rc.left, rc.top, SRCCOPY);
 	SetTextColor(mem, rev ? b : f);
 	SetBkColor(mem, rev ? f : b);
-	ExtTextOutW(mem, rc.left, rc.top, ETO_OPAQUE | ETO_CLIPPED, &rc, u, n, NULL);
+	SetBkMode(mem, back ? TRANSPARENT : OPAQUE);
+	ExtTextOutW(mem, rc.left, rc.top, (back ? 0 : ETO_OPAQUE) | ETO_CLIPPED, &rc, u, n, NULL);
 	/* an underline or undercurl in sp, else the text's colour (Neovim's GUIs) */
 	if (!(fu->style & (FACE_UNDERLINE | FACE_UNDERCURL))) return;
 	SetBkColor(mem, fu->style & FACE_SP ? RGB(fu->sp[0], fu->sp[1], fu->sp[2]) : f);

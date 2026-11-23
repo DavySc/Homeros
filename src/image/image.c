@@ -12,6 +12,9 @@
 /* 255: the number is a cell byte.  BUDGET: the bytes of pixels kept, a
    window-sized image is 8 MB at 1920 x 1080 */
 enum { SLOTS = 255, BUDGET = 256 << 20 };
+/* how much of the wallpaper shows over the background, of 255: a fifth,
+   about what Davy's WezTerm shows (his screenshot, 2026-11-23) */
+enum { WALL_OPACITY = 51 };
 
 static struct slot {
 	char *path;           /* NULL: free */
@@ -24,6 +27,30 @@ static struct slot {
 } slot[SLOTS + 1];
 static size_t held;
 static unsigned long long tick;
+
+/* path's pixels as RGBA, w x h; NULL if unreadable */
+static unsigned char *decode(const char *path, int *w, int *h)
+{
+	char *data;
+	size_t n;
+	int k;
+	FileId id;
+	unsigned char *rgba = file_load(path, &data, &n, &id) || n > 0x7fffffff ? NULL
+		: stbi_load_from_memory((unsigned char *)data, (int)n, w, h, &k, 4);
+	free(data);
+	return rgba;
+}
+
+/* RGBA pixel q, its alpha scaled by o / 255, over bg (0xRRGGBB), rounded;
+   opaque (alpha ff), for an ARGB buffer too */
+static uint32_t onto(const unsigned char *q, uint32_t bg, unsigned o)
+{
+	unsigned a = (q[3] * o + 127) / 255;
+	uint32_t v = 0xff000000;
+	for (int c = 0; c < 3; c++)
+		v |= (uint32_t)((q[c] * a + (bg >> (16 - 8 * c) & 0xff) * (255 - a) + 127) / 255) << (16 - 8 * c);
+	return v;
+}
 
 static void drop(struct slot *s)
 {
@@ -58,13 +85,8 @@ int image_load(const char *path, int cols, int rows, int cw, int ch, uint32_t bg
 		}
 	/* a file that does not decode is remembered too, so it is not read
 	   again at every lookup */
-	char *data;
-	size_t n;
-	int w = 0, h = 0, k;
-	FileId now;
-	unsigned char *rgba = file_load(path, &data, &n, &now) || n > 0x7fffffff ? NULL
-		: stbi_load_from_memory((unsigned char *)data, (int)n, &w, &h, &k, 4);
-	free(data);
+	int w = 0, h = 0;
+	unsigned char *rgba = decode(path, &w, &h);
 	/* fit the box, keeping the aspect (Org's and snacks.image's max size) */
 	long long mw = (long long)cols * cw, mh = (long long)rows * ch, W = rgba ? w : 0, H = rgba ? h : 0;
 	if (W > mw || H > mh) {
@@ -89,14 +111,7 @@ int image_load(const char *path, int cols, int rows, int cw, int ch, uint32_t bg
 		int pw = tc * cw;
 		for (long long y = 0; y < (long long)tr * ch; y++)
 			for (long long x = 0; x < pw; x++) {
-				uint32_t v = bg;
-				if (x < W && y < H) {
-					const unsigned char *q = fit + (y * W + x) * 4;
-					v = 0;
-					for (int c = 0; c < 3; c++)
-						v |= (uint32_t)((q[c] * q[3] + (bg >> (16 - 8 * c) & 0xff) * (255 - q[3]) + 127) / 255) << (16 - 8 * c);
-				}
-				px[y * pw + x] = v;
+				px[y * pw + x] = x < W && y < H ? onto(fit + (y * W + x) * 4, bg, 255) : 0xff000000 | bg;
 			}
 	}
 	if (fit != rgba) free(fit);
@@ -136,4 +151,43 @@ void image_draw(uint32_t *px, int stride, const Cell *x)
 	int w = s->cols * s->cw;
 	const uint32_t *p = s->px + (size_t)x->ch[2] * (size_t)s->ch * (size_t)w + (size_t)x->ch[1] * (size_t)s->cw;
 	for (int y = 0; y < s->ch; y++) memcpy(px + (size_t)y * (size_t)stride, p + (size_t)y * (size_t)w, (size_t)s->cw * sizeof *px);
+}
+
+/* The wallpaper: decoded and laid over bg again only when its file or bg
+   changed; a window scales it with its platform's own scaler (Wayland's
+   compositor through a viewport, GDI's StretchBlt), so a new size costs
+   no decoding or resizing here */
+static uint32_t *wall, wbg;
+static int ww, wh;
+
+const uint32_t *image_wallpaper(int w, int h, uint32_t bg, int *iw, int *ih, int src[4])
+{
+	static FileId was;
+	char f[4096];
+	FileId id;
+	file_stdpath(f, sizeof f, 2, "/wallpaper");
+	if (file_id(f, &id)) id.exists = 0;
+	if (id.exists != was.exists || id.mtime_ns != was.mtime_ns || id.size != was.size || bg != wbg) {
+		unsigned char *rgba = id.exists ? decode(f, &ww, &wh) : NULL;
+		uint32_t *px = rgba ? malloc((size_t)ww * (size_t)wh * sizeof *px) : NULL;
+		for (size_t i = 0; px && i < (size_t)ww * (size_t)wh; i++) px[i] = onto(rgba + 4 * i, bg, WALL_OPACITY);
+		stbi_image_free(rgba);
+		free(wall);   /* after the new one is made: a new picture has a new address */
+		wall = px;
+		was = id;
+		wbg = bg;
+	}
+	if (!wall || w < 1 || h < 1) return NULL;
+	/* cover the window, keeping the aspect, centred: WezTerm's
+	   window_background_image with background size "Cover" */
+	int wide = (long long)w * wh >= (long long)h * ww;
+	src[2] = wide ? ww : (int)((long long)wh * w / h);
+	src[3] = wide ? (int)((long long)ww * h / w) : wh;
+	src[2] += !src[2];
+	src[3] += !src[3];
+	src[0] = (ww - src[2]) / 2;
+	src[1] = (wh - src[3]) / 2;
+	*iw = ww;
+	*ih = wh;
+	return wall;
 }
