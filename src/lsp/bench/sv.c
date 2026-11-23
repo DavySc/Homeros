@@ -40,7 +40,6 @@ static long bad;                      /* errors shown off the typed text */
 static const char *typo = "@@@ ";     /* what is typed */
 static size_t at, len;                /* where it is, or (size_t)-1 */
 
-
 static void save(LspDoc *d)
 {
 	static char b[1 << 16];
