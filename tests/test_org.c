@@ -1086,6 +1086,49 @@ static const struct { size_t pos; const char *dirs, *text, *want; } todos[] = {
 	  "--\n" },
 };
 
+/* the timed checks compare two CPU times taken on one runner, so its
+   speed cancels (PR 127: a bound in milliseconds let a plant through on
+   a fast runner and failed 1 run in 4 beside a build) */
+static double cpu_ms(void)
+{
+	struct timespec t;
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t);
+	return t.tv_sec * 1e3 + t.tv_nsec / 1e6;
+}
+/* a fresh OrgFx of s: line 1 coloured in pieces of p bytes, then shown,
+   with c spans; the time of all of it */
+static double colour_line(const char *s, size_t m, size_t p, size_t c)
+{
+	static unsigned char f[65536];
+	static Conceal k[64];
+	double t0 = cpu_ms();
+	Text *t = text_new(s, m);
+	OrgFx *x = t ? orgfx_new(t) : NULL;
+	CHECK(x && orgfx_update(x, NULL));
+	for (size_t a = 0; a < m; a += p) orgfx_faces(x, a, a + p < m ? a + p : m, f + a);
+	CHECK(orgfx_conceal(x, 1, k, 64) == c);
+	double ms = cpu_ms() - t0;
+	orgfx_free(x);
+	text_free(t);
+	return ms;
+}
+/* a fresh OrgFx of s, parsed: 50 lines of w bytes from l0 shown, with c
+   spans each (none on line 0 when c0), then coloured into f; their time */
+static double frame(const char *s, size_t m, size_t l0, size_t w, size_t c, int c0, unsigned char *f)
+{
+	static Conceal k[64];
+	Text *t = text_new(s, m);
+	OrgFx *x = t ? orgfx_new(t) : NULL;
+	CHECK(x && orgfx_update(x, NULL));
+	double t0 = cpu_ms();
+	for (size_t l = l0; l < l0 + 50; l++) CHECK(orgfx_conceal(x, l, k, 64) == (l || !c0 ? c : 0));
+	orgfx_faces(x, l0 * w, (l0 + 50) * w, f);
+	double ms = cpu_ms() - t0;
+	orgfx_free(x);
+	text_free(t);
+	return ms;
+}
+
 int main(void)
 {
 	for (size_t i = 0; i < sizeof cases / sizeof *cases; i++) {
@@ -1210,115 +1253,79 @@ int main(void)
 		CHECK(!strcmp(got, todos[i].want));
 		free(got);
 	}
-	/* the frame gate on one 64 KB line asked in the core's 256-byte pieces:
-	   each line coloured once (not once a piece), and no date or diary
-	   sexp scan to the line's end from every opener (measured under the
-	   sanitizers, best of 5: 21 ms each; with one of the three undone at
-	   least 360 ms); then what the line shows (orgfx_conceal), with no
-	   scan to the line's end from every emphasis marker, rule check or
-	   script (measured, 5 runs, colours and conceal: 17 to 43 ms, median
-	   25; with the line start found from each marker, 1572 ms on *a /b);
-	   links and footnotes: each reference's link and macro search goes on
-	   along the line, not from its start (5 runs, median 51 ms, 42 to 66,
-	   on a[fn:1], against 5.8 to 6.0 s; the other units 21 to 39); under a
-	   definition, valid() asked once a line, not once a reference */
+	/* the frame gate on one 64 KB line asked in the core's 256-byte pieces,
+	   against the line of plain words asked whole: each line coloured
+	   once (not once a piece), and no date or diary sexp scan to the
+	   line's end from every opener; then what the line shows, with no scan
+	   to the line's end from every emphasis marker, rule check or script;
+	   each reference's link and macro search goes on along the line, not
+	   from its start; under a definition, valid() asked once a line, and
+	   its span put once.  Measured under the sanitizers, 5 runs: at most
+	   8.7 times the plain line asked whole (a[fn:1]); each plant aimed at
+	   it at least 37 times on one unit (its span put whole again) */
 	static const char *const units[] = { "word ", "<2026-01-01 x ", "<%%(x) ", "*a /b ", "=a ", "+-", "x^{a} \\alpha ", "x^{é} ",
 		"a[fn:1] ", "a [fn::b c] ", "a [fn:: (", "[[a][b]] ", "http://b.c ", "<http:b c> ", "[[a][b ", "<http:b ",
 		"a \\cite{[fn:1]} ", "a [[b][[fn:1]]] " };
-	static char line[65536];
-	static unsigned char lf[sizeof line];
+	static char line[sizeof units / sizeof *units][65536];
+	size_t lm[sizeof units / sizeof *units];
 	for (size_t i = 0; i < sizeof units / sizeof *units; i++) {
 		size_t m = 9, ul = strlen(units[i]);   /* under a definition, so references throw its span */
-		memcpy(line, "[fn:1] d\n", m);
-		while (m + ul < sizeof line) memcpy(line + m, units[i], ul), m += ul;
-		if (*units[i] == '=') line[m - 1] = '=';   /* every marker's closer at the end */
-		line[m++] = '\n';
-		long ms = 100;   /* up to 3 tries: a busy machine slows a run, never speeds one */
-		for (int r = 0; r < 3 && ms >= 100; r++) {
-			struct timespec t0, t1;
-			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t0);
-			t = text_new(line, m);
-			x = t ? orgfx_new(t) : NULL;
-			CHECK(x && orgfx_update(x, NULL));
-			for (size_t a = 0; a < m; a += 256) orgfx_faces(x, a, a + 256 < m ? a + 256 : m, lf + a);
-			Conceal c[64];
-			CHECK(orgfx_conceal(x, 1, c, 64) == (i == 4 || i == 6 || i == 11 || i == 17 ? 64 : 0));
-			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t1);
-			ms = (t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000;
-			orgfx_free(x);
-			text_free(t);
-		}
-		CHECK(ms < 100);
+		memcpy(line[i], "[fn:1] d\n", m);
+		while (m + ul < sizeof *line) memcpy(line[i] + m, units[i], ul), m += ul;
+		if (*units[i] == '=') line[i][m - 1] = '=';   /* every marker's closer at the end */
+		line[i][m++] = '\n';
+		lm[i] = m;
+		size_t c = i == 4 || i == 6 || i == 11 || i == 17 ? 64 : 0;
+		int ok = 0;
+		for (int r = 0; r < 3 && !ok; r++)   /* up to 3 tries: a busy machine slows a run, never speeds one */
+			ok = colour_line(line[i], m, 256, c) < 16 * colour_line(line[0], lm[0], lm[0], 0);
+		CHECK(ok);
 	}
-	/* the frame gate on many lines: the last 50 lines of a paragraph
-	   without a headline, shown one after another and then coloured, take
-	   one walk from the top of the text, not one each, and a link search
-	   that failed is not done again on every line (measured under the
-	   sanitizers, 8 runs each, median and range: plain lines 10.4 ms, 9.5
-	   to 15.1; a footnote and a link on every line 20.7, 18.8 to 24.3
-	   (32.0, 26.9 to 45.9 with is() as strlen and memcmp), against 64 to
-	   75 ms for the parse before it; openers that never close 11.4 (11.1
-	   to 12.3) and 6.2 (5.9 to 6.6), against 7 s and 32 s when each search
-	   ran to the end; the same past blank lines 8.0 (7.9 to 10.3) and 10.6
-	   (10.2 to 16.7); plain lines walked for each line, 120 ms) */
-	static const struct { const char *ln; size_t n, shown; long ms; const char *end, *top; } gate[] = {
-		{ "a *b* x^{2}\n", 100000, 5, 20, "", "" }, { "[fn:1] [[a][b]] *b* x^{2}\n", 100000, 7, 40, "", "" },
+	/* the frame gate on many lines, against as many lines of x: the last
+	   50 lines of a paragraph without a headline, shown one after another
+	   and then coloured, take one walk from the top of the text, and a
+	   link search that failed is not done again on every line; an inline
+	   footnote that never closes, on the first line, then the first 50
+	   lines shown (typing it: the walk, the colours and the conceal each
+	   ask it), and a paragraph of them.  Each entry's bound sits between
+	   the most it took and the least a plant aimed at it took (8 runs
+	   and 2 runs, under the sanitizers), in times the lines of x */
+	static const struct { const char *ln; size_t n, shown; double bound; const char *end, *top; } gate[] = {
+		{ "a *b* x^{2}\n", 100000, 5, 3, "", "" },   /* 1.3; the text of the checkpoint check */
+		{ "[fn:1] [[a][b]] *b* x^{2}\n", 100000, 7, 3.5, "", "" },   /* 2.4; 4.5 */
 		/* openers that never close, then one closer at the end, past the blank lines */
-		{ "<http:a\n", 20000, 0, 20, "", "" }, { "[[a][x\n", 20000, 0, 20, "", "" },
-		{ "<http:a\n\n", 50000, 0, 20, "a>", "" }, { "[[a][x\n\n", 50000, 0, 20, "]]", "" },
-		/* an inline footnote that never closes: one on the first line, the
-		   first 50 lines shown (typing it: the walk, the colours and the
-		   conceal each ask it: 5 alternating runs, median 4.9 ms, 3.7 to
-		   5.5, against 18.1, 13.6 to 20.5, asking it three times, and 147
-		   scanning code point by code point), and a paragraph of them (9.6,
-		   9.1 to 10.0, against 28.6 s at -O2 before) */
-		{ "a *b* x^{2}\n", 100000, 5, 10, "", "x [fn::a xx" }, { "x [fn::a\n", 20000, 0, 20, "", "" },
+		{ "<http:a\n", 20000, 0, 20, "", "" }, { "[[a][x\n", 20000, 0, 20, "", "" },   /* 5.6, 2.8; 2567, 5937 */
+		{ "<http:a\n\n", 50000, 0, 4, "a>", "" }, { "[[a][x\n\n", 50000, 0, 10, "]]", "" },   /* 1.7, 3.0; 5.9, 34 */
+		{ "a *b* x^{2}\n", 100000, 5, 40, "", "x [fn::a xx" }, { "x [fn::a\n", 20000, 0, 20, "", "" },   /* 22.8, 4.4; 80, 2159 */
 	};
 	for (size_t k = 0; k < sizeof gate / sizeof *gate; k++) {
-		static char many[100000 * 26];
-		static unsigned char fc[50 * 256];
-		size_t m = 0, w = strlen(gate[k].ln), n = gate[k].n;
+		static char many[100000 * 26], plain[sizeof many];
+		static unsigned char fc[50 * 256], fp[sizeof fc];
+		size_t m = 0, w = strlen(gate[k].ln), n = gate[k].n, l0 = *gate[k].top ? 0 : n - 50;   /* the lines shown */
 		while (m < n * w) memcpy(many + m, gate[k].ln, w), m += w;
 		memcpy(many + m - strlen(gate[k].end), gate[k].end, strlen(gate[k].end));
 		memcpy(many, gate[k].top, strlen(gate[k].top));
-		long ms = gate[k].ms;   /* up to 3 fresh texts, as above */
-		for (int r = 0; r < 3 && ms >= gate[k].ms; r++) {
-			struct timespec t0, t1;
-			t = text_new(many, m);
-			x = t ? orgfx_new(t) : NULL;
-			CHECK(x && orgfx_update(x, NULL));
-			Conceal c[64];
-			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t0);
-			size_t l0 = *gate[k].top ? 0 : n - 50;   /* the lines shown */
-			for (size_t l = l0; l < l0 + 50; l++) CHECK(orgfx_conceal(x, l, c, 64) == (l || !*gate[k].top ? gate[k].shown : 0));
-			orgfx_faces(x, l0 * w, (l0 + 50) * w, fc);
-			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t1);
-			CHECK(k != 1 || (fc[0] == FACE_MARKUP_LINK_LABEL && fc[7] == FACE_MARKUP_LINK_URL));
-			ms = (t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000;
-			orgfx_free(x);
-			text_free(t);
-		}
-		CHECK(ms < gate[k].ms);
+		for (size_t i = 0; i < m; i++) plain[i] = (i + 1) % w ? 'x' : '\n';
+		int ok = 0;
+		for (int r = 0; r < 3 && !ok; r++)
+			ok = frame(many, m, l0, w, gate[k].shown, *gate[k].top, fc) < gate[k].bound * frame(plain, m, l0, w, 0, 0, fp);
+		CHECK(ok);
+		CHECK(k != 1 || (fc[0] == FACE_MARKUP_LINK_LABEL && fc[7] == FACE_MARKUP_LINK_URL));
 		if (k) continue;
 		/* checkpoints: lines shown going up the text after one walk start
 		   at the checkpoint below each, not at the top; four of them cost
-		   less than the walk (a ratio of two times on one runner, so its
-		   speed cancels: 5 alternating runs under the sanitizers, 1.35
-		   to 1.46 ms against a walk of 11.6 to 12.0; without checkpoints
-		   22.5 to 30.4 against 11.2 to 14.8, as they walk 2.0 texts) */
+		   less than half the walk (PR 127's review, 1,500 runs each, idle
+		   and under load: at most 0.21 of it; without checkpoints, as they
+		   walk 2.0 texts, at least 1.09) */
 		t = text_new(many, m);
 		x = t ? orgfx_new(t) : NULL;
 		CHECK(x && orgfx_update(x, NULL));
-		struct timespec u[3];
 		Conceal c[64];
-		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &u[0]);
+		double u0 = cpu_ms();
 		orgfx_conceal(x, n - 1, c, 64);
-		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &u[1]);
+		double u1 = cpu_ms();
 		for (size_t j = 4; j > 0; j--) orgfx_conceal(x, n / 5 * j, c, 64);
-		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &u[2]);
-		long d[2];
-		for (int i = 0; i < 2; i++) d[i] = (u[i + 1].tv_sec - u[i].tv_sec) * 1000000000 + (u[i + 1].tv_nsec - u[i].tv_nsec);
-		CHECK(d[1] < d[0]);
+		CHECK(2 * (cpu_ms() - u1) < u1 - u0);
 		orgfx_free(x);
 		text_free(t);
 	}

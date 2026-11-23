@@ -1468,7 +1468,7 @@ static int fn_sep(size_t l) { return l < N && (S[l] == '*' ? headline(l) : empty
    quadratic on a long line */
 static void cover(size_t r[2], size_t a, size_t z, void (*put)(size_t, size_t))
 {
-	if (z < r[0] || a > r[1]) r[0] = r[1] = a;
+	if (a > r[1]) r[0] = r[1] = a;   /* every z is past the reference, so past r[0] */
 	if (a < r[0]) put(a, r[0]), r[0] = a;
 	if (z > r[1]) put(r[1], z), r[1] = z;
 }
