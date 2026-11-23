@@ -26,7 +26,9 @@ void    syntax_edit(Syntax *s, const Text *t, size_t pos, size_t ndel, const cha
    460 keys, reviews/pr-30.md: longest stretch per key median 0.29 to 0.41
    ms, p99 1.9 to 3.1, max 3.2 to 11.3 inside one parse step;
    the first update of a language also compiles its queries, 9 to 23 ms
-   without asking) and returns nonzero when input is waiting.  Once a parse is done it recomputes
+   without asking) and returns nonzero when input is waiting.  A Zig buffer parses whole, which
+   cannot be cut: it asks stop once before the parse and returns 2 if input
+   is waiting.  Once a parse is done it recomputes
    the fold levels of the rows the edits and the parse changed, as _fold.lua's
    on_bytes and on_changedtree do.  [*r1, *r2) are the rows whose
    syntax_foldexpr answers may have changed, for fold_update (r1 == r2: none;
@@ -62,7 +64,10 @@ int     syntax_foldexpr(Syntax *s, size_t line, int *start);
    Zig release syntax_open picked for this buffer (the project's `zig
    version`): 0 with the formatted text in *res, n bytes, valid until the
    next call on s; -1 when the text does not parse (zig fmt refuses it too),
-   -2 out of memory or s is not a Zig buffer */
+   -2 out of memory or s is not a Zig buffer, -3 when the zig on PATH is of
+   a release with no formatter here, or none answers `zig version` within
+   1 s (another release's zig fmt changes code: 0.17's turns 0.16's
+   @intFromEnum into @backingInt) */
 int     syntax_zig_fmt(Syntax *s, const char **res, size_t *n);
 /* What render-markdown draws on line l, from the tree, without allocating:
    0 for a non-Markdown buffer or a line with none of these, else 1 */
