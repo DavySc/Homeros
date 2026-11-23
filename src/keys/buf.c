@@ -269,14 +269,8 @@ void curs_columns(void)
 {
 	if (moved) W->vc.ok = 0;
 	validate_virtcol();
-	/* in a closed fold the cursor is in the first column, till
-	   validate_virtcol() recomputes it (after coladvance()) */
-	if (moved && has_folding((long)W->line, NULL, NULL)) W->vc.v = 0;
 	moved = 0;
 }
-
-/* changed_window_setting() after a fold changes: curs_columns() runs */
-void changed_window_setting(void) { moved = 1; }
 
 void update_curswant(void)
 {
@@ -373,7 +367,7 @@ int has_folding(long l, long *a, long *b)
 
 /* foldOpenCursor(): what 'foldopen' (Neovim's default) names opens the
    folds the cursor is in */
-void fold_open_cursor(void) { if (has_folding((long)W->line, NULL, NULL)) core_fold(E, FOLD_VIEW, W->line, 0), changed_window_setting(); }
+void fold_open_cursor(void) { if (has_folding((long)W->line, NULL, NULL)) core_fold(E, FOLD_VIEW, W->line, 0); }
 
 /* cursor_down() and cursor_up(): fail on the last line (a closed fold's
    too) or the first; the steps are the core's (cursor_down_inner()) */

@@ -1312,7 +1312,6 @@ static void nv_zet(Cmdarg *cap)
 			if (c == 'c') has_folding(l, NULL, &next);
 		}
 		if (!found) core_msg(E, "E490: No fold found");
-		changed_window_setting();
 		return;
 	}
 	if (checkclearop(cap->oap)) return;
@@ -1320,7 +1319,6 @@ static void nv_zet(Cmdarg *cap)
 	/* openFold() and closeFold() with no fold there: E490, as with no folds */
 	else if (c && i >= 0) {
 		if (core_fold(E, op[i], W->line, cap->count1) < 0 && (W->fold || i < 3)) core_msg(E, "E490: No fold found");
-		changed_window_setting();
 	} else clearopbeep(cap->oap);
 }
 

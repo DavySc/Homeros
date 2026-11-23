@@ -220,7 +220,7 @@ static const char *const FTOK[] = { "zo", "zc", "za", "zR", "zM", "2zc", "2zo", 
 static const char *const FEND[] = { "", "\033dd", "\033dj", "\033dk", "\033x", "\033o\033", "\033O\033", "\033ix\033", "\033Vd", "\033p", "\033J" };
 /* what opens a fold shows only in the next move: Insert, u, and { } over
    the blank line inside one */
-static const char *const FFIX[] = { "3Gzcix\033j", "3Gzcxuj", "5Gzc}", "5Gzc{", "8G{", "2G2zc}" };
+static const char *const FFIX[] = { "3Gzcix\033j", "3Gzcxuj", "3Gzoxzcuj", "zM5GVjzo4Gj", "5Gzc}", "5Gzc{", "8G{", "2G2zc}" };
 static void foldkeys(char *k)
 {
 	static unsigned fixed;
