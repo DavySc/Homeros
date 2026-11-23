@@ -239,6 +239,7 @@ static const char SWAY[] =
 	"cat > %s/sway.cfg <<'E'\n"
 	"output HEADLESS-1 resolution 1280x800 scale 1\n"
 	"default_border none\n"
+	"focus_on_window_activation focus\n"   /* Hyprland's focus_on_activate */
 	"seat * xcursor_theme Adwaita 24\n"
 	"input type:keyboard {\nrepeat_delay 300\nrepeat_rate 25\n}\n"
 	"E\n"
@@ -565,6 +566,63 @@ static void test_sway(void)
 	size_is(640, 480, 120);
 	CHECK(cellh() == ch1);
 	draw();
+
+	/* frames: a second window (tab page 1), mapped by its first frame,
+	   gets the keyboard: a focus change, and its keys say so.  Its frame
+	   callback is its own (Frames.tla) */
+	k0 = nkeys;
+	CHECK(!backend_wl.win_open(1));
+	int cw0, ch0, cw1, ch1b, r1, c1;
+	Grid g1 = { 0 }, shown1 = { 0 };
+	backend_wl.size(1, &r1, &c1);
+	CHECK(!grid_resize(&g1, r1, c1));
+	grid_puts(&g1, 0, 0, c1, "frame 1", 7, ATTR_NONE, FACE_NONE);
+	CHECK(backend_wl.ready(1) && backend_wl.ready(0));
+	backend_wl.present(1, &g1, &shown1);
+	CHECK(!backend_wl.ready(1) && backend_wl.ready(0));
+	pump(300);
+	int f1 = -1;
+	for (int i = k0; i < nkeys; i++) if (keys[i] == KEY_FOCUS) f1 = wins[i];
+	CHECK(count(KEY_FOCUS, k0) == 1 && f1 == 1);
+	k0 = nkeys;
+	run("wtype -s 200 x");
+	/* wtype's new keyboard leaves and enters window 1 again: no change */
+	CHECK(keys[nkeys - 1] == 'x' && wins[nkeys - 1] == 1 && !count(KEY_FOCUS, k0));
+	/* on an output at scale 1.5 its cells are bigger than window 0's,
+	   and each window draws at its own font size */
+	run(SWAYMSG "create_output, output HEADLESS-2 resolution 1280x800 scale 1.5, move container to output HEADLESS-2, focus output HEADLESS-2");
+	pump(300);
+	backend_wl.cell(0, &cw0, &ch0);
+	backend_wl.cell(1, &cw1, &ch1b);
+	backend_wl.size(1, &r1, &c1);
+	CHECK(ch1b > ch0 && cw1 > cw0 && r1 > 1 && c1 > 1);
+	CHECK(!grid_resize(&g1, r1, c1));
+	for (double end = now() + 2000; !backend_wl.ready(1) && now() < end;) pump(5);
+	backend_wl.present(1, &g1, &shown1);
+	CHECK(shown1.rows == r1);
+	draw();
+	int w_, h_, b_;
+	font_cell(&w_, &h_, &b_);
+	CHECK(h_ == ch0);                 /* window 0 was drawn with its own font */
+	/* SPC 5 o: raise window 0; its focus comes before KEY_RAISED (Focus.tla) */
+	k0 = nkeys;
+	backend_wl.raise(0);
+	for (double end = now() + 2000; !count(KEY_RAISED, k0) && now() < end;) pump(5);
+	int f0 = -1, r0 = -1;
+	for (int i = k0; i < nkeys; i++) {
+		if (keys[i] == KEY_FOCUS && wins[i] == 0 && f0 < 0) f0 = i;
+		if (keys[i] == KEY_RAISED && wins[i] == -1) r0 = i;
+	}
+	CHECK(f0 >= 0 && r0 > f0 && count(KEY_RAISED, k0) == 1);
+	run("wtype -s 200 y");
+	CHECK(keys[nkeys - 1] == 'y' && wins[nkeys - 1] == 0);
+	/* closing window 1 leaves window 0 drawing */
+	backend_wl.win_close(1);
+	pump(100);
+	draw();
+	grid_free(&g1);
+	grid_free(&shown1);
+	run(SWAYMSG "output HEADLESS-2 disable");
 
 	/* hidden: no frame callback, so nothing is drawn until shown again */
 	run(SWAYMSG "move scratchpad");

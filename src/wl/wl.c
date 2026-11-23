@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,6 +27,8 @@
 #include "cursor-shape-v1-client-protocol.h"
 #include "fractional-scale-v1-client-protocol.h"
 #include "viewporter-client-protocol.h"
+#include "xdg-activation-v1-client-protocol.h"
+#include "xdg-toplevel-tag-v1-client-protocol.h"
 #include "backend.h"
 #include "loop.h"
 #include "keys.h"
@@ -53,50 +56,68 @@ static struct wp_cursor_shape_manager_v1 *csm;
 static struct wp_fractional_scale_manager_v1 *fsm;
 static struct wp_viewporter *vpr;
 
-static struct wl_surface *surf;
-static int wid;                     /* its tab page (backend.h's id) */
-static struct xdg_surface *xsurf;
-static struct xdg_toplevel *top;
-static struct wp_viewport *view;
+static struct xdg_activation_v1 *act;
+static struct xdg_toplevel_tag_manager_v1 *tagm;
 static struct wl_keyboard *kbd;
 static struct wl_pointer *ptr;
 static struct wp_cursor_shape_device_v1 *shape;
 static struct zwp_text_input_v3 *ti;
 static struct wl_data_device *dd;
 
-static int cell_w, cell_h, cell_b;  /* the font's cell and baseline, in pixels */
-static int lw = 800, lh = 600;
+static int cell_w, cell_h, cell_b;  /* the open font's cell and baseline, in pixels */
+static int fpx;                     /* its size */
 static int font(int px)
 {
-	if (font_open(FAMILY, px)) return -1;
+	if (px == fpx) return 0;
+	if (font_open(FAMILY, px)) { fpx = 0; return -1; }
+	fpx = px;
 	font_cell(&cell_w, &cell_h, &cell_b);
 	return 0;
-}      /* logical size, from configure */
-static int scale = 120;             /* in 120ths, fractional-scale-v1's unit */
-static int bw, bh;                  /* buffer size in pixels */
-static int configured, waiting;     /* waiting: a frame callback is due */
-static struct wl_callback *frame;
-static struct wp_fractional_scale_v1 *fscale;
+}
 static struct wl_registry *reg;
 
-static struct buf {
-	struct wl_buffer *b;
-	uint32_t *px;
-	int busy;
-	Grid g;                         /* what this buffer shows */
-} bufs[NBUF], *on;                  /* on: the buffer last committed, on screen */
-static void *pool_mem;
-static int pw, ph;                  /* size of the buffers in the pool */
+/* An OS window: one per tab page.  Each has its own scale (its monitor's),
+   so its own font size, and its own frame callback (Frames.tla "ok"). */
+static struct win {
+	int id;                         /* backend.h's: the tab page's */
+	struct wl_surface *surf;
+	struct xdg_surface *xsurf;
+	struct xdg_toplevel *top;
+	struct wp_viewport *view;
+	struct wp_fractional_scale_v1 *fscale;
+	struct wl_callback *frame;      /* a frame callback is due */
+	int lw, lh, nlw, nlh;           /* logical size, from configure; the configure in progress */
+	int scale;                      /* in 120ths, fractional-scale-v1's unit */
+	int px, cw, ch;                 /* the font's size at that scale, and its cell */
+	int bw, bh, configured;         /* buffer size in pixels */
+	struct buf {
+		struct wl_buffer *b;
+		uint32_t *px;
+		int busy;
+		Grid g;                 /* what this buffer shows */
+	} bufs[NBUF], *on;              /* on: the buffer last committed, on screen */
+	void *pool_mem;
+	size_t pool_size;
+	int pw, ph;                     /* size of the buffers in the pool */
+	struct win *next;
+} *wins, *kwin, *pwin, *twin;       /* the keyboard's, the pointer's and the input method's */
+static int stride;                  /* the buffer drawn into: its width in pixels */
 static Grid vis;                    /* cur with the preedit, when there is one */
-static size_t pool_size;
 
-static int kq[KQ], kh, kn;          /* keys for wl_input */
-static void push(int k) { if (kn < KQ) kq[(kh + kn++) % KQ] = k; }
+static struct win *win_of(int id) { struct win *w = wins; while (w && w->id != id) w = w->next; return w; }
+static struct win *win_at(struct wl_surface *f) { struct win *w = wins; while (w && w->surf != f) w = w->next; return w; }
+static int id_of(const struct win *w) { return w ? w->id : -1; }
+
+static int kq[KQ][2], kh, kn;       /* keys for wl_input, with their window */
+static void push(int k, const struct win *w)
+{
+	if (kn < KQ) { int *q = kq[(kh + kn++) % KQ]; q[0] = k; q[1] = id_of(w); }
+}
 static void push_utf8(const char *s)
 {
 	size_t n = strlen(s);
 	for (size_t i = 0; i < n; i += uni_len((const unsigned char *)s, n, i))
-		push((int)uni_cp((const unsigned char *)s, n, i));
+		push((int)uni_cp((const unsigned char *)s, n, i), twin);
 }
 
 /* ---- keyboard ---- */
@@ -161,10 +182,20 @@ static void kb_keymap(void *d, struct wl_keyboard *k, uint32_t fmt, int fd, uint
 	xst = xkb_state_new(km);
 }
 
+/* The keys held on entering are not typed: the press of SPC 5 o's o went
+   to the window left, and its release comes here, where no press is
+   repeating (measured under sway and Wine, research/frames-os.md).  A
+   window entered after another of ours is a focus change (KEY_FOCUS);
+   the same one back from another program is none, so its insert mode
+   stays. */
+static int focused = -1;            /* the last of ours the keyboard was in */
 static void kb_enter(void *d, struct wl_keyboard *k, uint32_t s, struct wl_surface *f, struct wl_array *a)
 {
-	(void)d; (void)k; (void)f; (void)a;
+	(void)d; (void)k; (void)a;
 	serial = s;
+	if (!(kwin = win_at(f)) || kwin->id == focused) return;
+	focused = kwin->id;
+	push(KEY_FOCUS, kwin);
 }
 
 static void kb_leave(void *d, struct wl_keyboard *k, uint32_t s, struct wl_surface *f)
@@ -183,7 +214,7 @@ static void kb_key(void *d, struct wl_keyboard *k, uint32_t s, uint32_t t, uint3
 		return;
 	}
 	int c = key_of(key);
-	if (c) push(c);
+	if (c) push(c, kwin);
 	if (c && xkb_keymap_key_repeats(keymap, key + 8)) repeat_arm(key);
 	else if (rkey) repeat_arm(0);
 }
@@ -211,24 +242,25 @@ static int finger, wheel;           /* this frame's scroll has no notches (touch
 
 static void mouse_key(int k)
 {
-	mrow = my / cell_h;
-	mcol = mx / cell_w;
-	push(k);
+	if (!pwin) return;
+	mrow = my / pwin->ch;
+	mcol = mx / pwin->cw;
+	push(k, pwin);
 }
-static void pt_enter(void *d, struct wl_pointer *p, uint32_t s, struct wl_surface *f, wl_fixed_t x, wl_fixed_t y)
-{
-	(void)d; (void)p; (void)f;
-	if (shape) wp_cursor_shape_device_v1_set_shape(shape, s, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_TEXT);
-	mx = wl_fixed_to_int(x) * scale / 120;
-	my = wl_fixed_to_int(y) * scale / 120;
-}
-static void pt_leave(void *d, struct wl_pointer *p, uint32_t s, struct wl_surface *f) { (void)d; (void)p; (void)s; (void)f; }
 static void pt_motion(void *d, struct wl_pointer *p, uint32_t t, wl_fixed_t x, wl_fixed_t y)
 {
 	(void)d; (void)p; (void)t;
-	mx = wl_fixed_to_int(x) * scale / 120;
-	my = wl_fixed_to_int(y) * scale / 120;
+	if (!pwin) return;
+	mx = wl_fixed_to_int(x) * pwin->scale / 120;
+	my = wl_fixed_to_int(y) * pwin->scale / 120;
 }
+static void pt_enter(void *d, struct wl_pointer *p, uint32_t s, struct wl_surface *f, wl_fixed_t x, wl_fixed_t y)
+{
+	pwin = win_at(f);
+	if (shape) wp_cursor_shape_device_v1_set_shape(shape, s, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_TEXT);
+	pt_motion(d, p, 0, x, y);
+}
+static void pt_leave(void *d, struct wl_pointer *p, uint32_t s, struct wl_surface *f) { (void)d; (void)p; (void)s; (void)f; pwin = NULL; }
 static void pt_button(void *d, struct wl_pointer *p, uint32_t s, uint32_t t, uint32_t b, uint32_t st)
 {
 	(void)d; (void)p; (void)s; (void)t;
@@ -244,7 +276,7 @@ static void scroll(int v, int step)
 static void pt_axis(void *d, struct wl_pointer *p, uint32_t t, uint32_t a, wl_fixed_t v)
 {
 	(void)d; (void)p; (void)t;
-	if (finger && a == WL_POINTER_AXIS_VERTICAL_SCROLL) scroll(v, 3 * cell_h * 256 * 120 / scale);   /* in wl_fixed's 1/256 */
+	if (finger && pwin && a == WL_POINTER_AXIS_VERTICAL_SCROLL) scroll(v, 3 * pwin->ch * 256 * 120 / pwin->scale);   /* in wl_fixed's 1/256 */
 }
 static void pt_frame(void *d, struct wl_pointer *p) { (void)d; (void)p; finger = 0; }
 static void pt_source(void *d, struct wl_pointer *p, uint32_t s)
@@ -273,14 +305,16 @@ static int ti_on, ti_r, ti_c;       /* enabled; the cursor cell it was told */
 
 static void ti_cursor(void)
 {
-	if (!ti_on) return;
-	zwp_text_input_v3_set_cursor_rectangle(ti, ti_c * cell_w * 120 / scale, ti_r * cell_h * 120 / scale,
-		cell_w * 120 / scale, cell_h * 120 / scale);
+	if (!ti_on || !twin) return;
+	int cw = twin->cw * 120 / twin->scale, ch = twin->ch * 120 / twin->scale;
+	zwp_text_input_v3_set_cursor_rectangle(ti, ti_c * cw, ti_r * ch, cw, ch);
 	zwp_text_input_v3_commit(ti);
 }
 static void ti_enter(void *d, struct zwp_text_input_v3 *t, struct wl_surface *f)
 {
-	(void)d; (void)f;
+	(void)d;
+	twin = win_at(f);
+	ti_r = ti_c = -1;             /* told again at the next frame */
 	zwp_text_input_v3_enable(t);
 	ti_on = 1;
 	ti_cursor();
@@ -291,7 +325,8 @@ static void ti_leave(void *d, struct zwp_text_input_v3 *t, struct wl_surface *f)
 	zwp_text_input_v3_disable(t);
 	zwp_text_input_v3_commit(t);
 	ti_on = 0;
-	if (pre[0]) { pre[0] = 0; push(KEY_RESIZE); }
+	if (pre[0]) { pre[0] = 0; push(KEY_RESIZE, twin); }
+	twin = NULL;
 }
 static void ti_preedit(void *d, struct zwp_text_input_v3 *t, const char *s, int32_t b, int32_t e)
 {
@@ -309,7 +344,7 @@ static void ti_done(void *d, struct zwp_text_input_v3 *t, uint32_t s)
 	(void)d; (void)t; (void)s;
 	push_utf8(commit_next);
 	commit_next[0] = 0;
-	if (strcmp(pre, pre_next)) { memcpy(pre, pre_next, sizeof pre); push(KEY_RESIZE); }
+	if (strcmp(pre, pre_next)) { memcpy(pre, pre_next, sizeof pre); push(KEY_RESIZE, twin); }
 	pre_next[0] = 0;
 }
 static const struct zwp_text_input_v3_listener ti_l = { .enter = ti_enter, .leave = ti_leave, .preedit_string = ti_preedit,
@@ -489,43 +524,49 @@ static long wl_clip_get(char *buf, size_t max)
 static void wm_ping(void *d, struct xdg_wm_base *w, uint32_t s) { (void)d; xdg_wm_base_pong(w, s); }
 static const struct xdg_wm_base_listener wm_l = { wm_ping };
 
-static int nlw, nlh;                /* the size of the configure in progress */
 static void top_configure(void *d, struct xdg_toplevel *t, int32_t w, int32_t h, struct wl_array *st)
 {
-	(void)d; (void)t; (void)st;
-	if (w > 0) nlw = w;            /* 0: the client chooses, so keep ours */
-	if (h > 0) nlh = h;
+	struct win *x = d;
+	(void)t; (void)st;
+	if (w > 0) x->nlw = w;         /* 0: the client chooses, so keep ours */
+	if (h > 0) x->nlh = h;
 }
-static void top_close(void *d, struct xdg_toplevel *t) { (void)d; (void)t; push(KEY_CLOSE); }
+static void top_close(void *d, struct xdg_toplevel *t) { (void)t; push(KEY_CLOSE, d); }
 static const struct xdg_toplevel_listener top_l = { .configure = top_configure, .close = top_close };
 
-static void resize(void)
+/* the first size is read with wl_size, so only a later one is a key */
+static void resize(struct win *w)
 {
-	bw = (lw * scale + 60) / 120;  /* fractional-scale-v1: round half away from zero */
-	bh = (lh * scale + 60) / 120;
-	if (view) wp_viewport_set_destination(view, lw, lh);
-	push(KEY_RESIZE);
+	w->bw = (w->lw * w->scale + 60) / 120;   /* fractional-scale-v1: round half away from zero */
+	w->bh = (w->lh * w->scale + 60) / 120;
+	if (w->view) wp_viewport_set_destination(w->view, w->lw, w->lh);
+	if (w->configured) push(KEY_RESIZE, w);
 }
 
 static void xs_configure(void *d, struct xdg_surface *x, uint32_t s)
 {
-	(void)d;
+	struct win *w = d;
 	xdg_surface_ack_configure(x, s);
-	if (!configured || nlw != lw || nlh != lh) {
-		lw = nlw;
-		lh = nlh;
-		resize();
+	if (!w->configured || w->nlw != w->lw || w->nlh != w->lh) {
+		w->lw = w->nlw;
+		w->lh = w->nlh;
+		resize(w);
 	}
-	configured = 1;
+	w->configured = 1;
 }
 static const struct xdg_surface_listener xs_l = { xs_configure };
 
 static void fs_scale(void *d, struct wp_fractional_scale_v1 *f, uint32_t s)
 {
-	(void)d; (void)f;
-	if ((int)s == scale || font((FONT_PX * (int)s + 60) / 120)) return;
-	scale = (int)s;
-	resize();
+	struct win *w = d;
+	int px = (FONT_PX * (int)s + 60) / 120;
+	(void)f;
+	if ((int)s == w->scale || font(px)) return;
+	w->scale = (int)s;
+	w->px = px;
+	w->cw = cell_w;
+	w->ch = cell_h;
+	resize(w);
 }
 static const struct wp_fractional_scale_v1_listener fs_l = { fs_scale };
 
@@ -546,6 +587,8 @@ static void reg_add(void *d, struct wl_registry *r, uint32_t id, const char *i, 
 	else BIND(csm, wp_cursor_shape_manager_v1_interface, 1);
 	else BIND(fsm, wp_fractional_scale_manager_v1_interface, 1);
 	else BIND(vpr, wp_viewporter_interface, 1);
+	else BIND(act, xdg_activation_v1_interface, 1);
+	else BIND(tagm, xdg_toplevel_tag_manager_v1_interface, 1);
 #undef BIND
 }
 static void reg_remove(void *d, struct wl_registry *r, uint32_t id) { (void)d; (void)r; (void)id; }
@@ -556,35 +599,35 @@ static const struct wl_registry_listener reg_l = { reg_add, reg_remove };
 static void buf_release(void *d, struct wl_buffer *b) { (void)b; ((struct buf *)d)->busy = 0; }
 static const struct wl_buffer_listener buf_l = { buf_release };
 
-static void bufs_free(void)
+static void bufs_free(struct win *w)
 {
-	for (int i = 0; i < NBUF; i++) {
-		if (bufs[i].b) wl_buffer_destroy(bufs[i].b);
-		bufs[i].b = NULL;
-		bufs[i].busy = 0;
-		grid_free(&bufs[i].g);
+	for (struct buf *b = w->bufs; b < w->bufs + NBUF; b++) {
+		if (b->b) wl_buffer_destroy(b->b);
+		b->b = NULL;
+		b->busy = 0;
+		grid_free(&b->g);
 	}
-	if (pool_mem) munmap(pool_mem, pool_size);
-	pool_mem = NULL;
-	pw = ph = 0;
+	if (w->pool_mem) munmap(w->pool_mem, w->pool_size);
+	w->pool_mem = NULL;
+	w->pw = w->ph = 0;
 }
 
 /* Buffers of the current size; a busy one is destroyed too, which the
    protocol allows (the compositor keeps the contents it shows). */
-static int bufs_make(void)
+static int bufs_make(struct win *w)
 {
-	bufs_free();
-	size_t one = (size_t)bw * (size_t)bh * 4;
+	bufs_free(w);
+	size_t one = (size_t)w->bw * (size_t)w->bh * 4;
 	int fd = memfd_create("homeros", MFD_CLOEXEC);
 	if (fd < 0) return -1;
-	pool_size = one * NBUF;
-	pool_mem = ftruncate(fd, (off_t)pool_size) ? MAP_FAILED : mmap(NULL, pool_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-	if (pool_mem == MAP_FAILED) { close(fd); pool_mem = NULL; return -1; }
-	struct wl_shm_pool *pool = wl_shm_create_pool(shm, fd, (int32_t)pool_size);
+	w->pool_size = one * NBUF;
+	w->pool_mem = ftruncate(fd, (off_t)w->pool_size) ? MAP_FAILED : mmap(NULL, w->pool_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	if (w->pool_mem == MAP_FAILED) { close(fd); w->pool_mem = NULL; return -1; }
+	struct wl_shm_pool *pool = wl_shm_create_pool(shm, fd, (int32_t)w->pool_size);
 	for (int i = 0; i < NBUF; i++) {
-		bufs[i].px = (uint32_t *)((char *)pool_mem + one * (size_t)i);
-		bufs[i].b = wl_shm_pool_create_buffer(pool, (int32_t)(one * (size_t)i), bw, bh, bw * 4, WL_SHM_FORMAT_XRGB8888);
-		wl_buffer_add_listener(bufs[i].b, &buf_l, &bufs[i]);
+		w->bufs[i].px = (uint32_t *)((char *)w->pool_mem + one * (size_t)i);
+		w->bufs[i].b = wl_shm_pool_create_buffer(pool, (int32_t)(one * (size_t)i), w->bw, w->bh, w->bw * 4, WL_SHM_FORMAT_XRGB8888);
+		wl_buffer_add_listener(w->bufs[i].b, &buf_l, &w->bufs[i]);
 	}
 	wl_shm_pool_destroy(pool);
 	close(fd);
@@ -600,9 +643,9 @@ static uint32_t rgb(const unsigned char c[3]) { return (uint32_t)c[0] << 16 | (u
 static void fill(uint32_t *px, int x0, int y0, int w, int h, uint32_t c)
 {
 	if (w <= 0 || h <= 0) return;
-	uint32_t *p = px + y0 * bw + x0;
+	uint32_t *p = px + y0 * stride + x0;
 	for (int i = 0; i < w; i++) p[i] = c;
-	for (int y = 1; y < h; y++) memcpy(p + y * bw, p, (size_t)w * sizeof *p);   /* libc's copy is vectorized (build B) */
+	for (int y = 1; y < h; y++) memcpy(p + y * stride, p, (size_t)w * sizeof *p);   /* libc's copy is vectorized (build B) */
 }
 
 /* src premultiplied, of alpha a, over dst */
@@ -665,7 +708,7 @@ static void draw_span(uint32_t *px, const Grid *g, int r, int lo, int hi)
 		const Face *u, *f = colours(g, r, c, r == g->crow && c == g->ccol, &fg, &bg, &u);
 		uint32_t sp = u->style & FACE_SP ? rgb(u->sp) : fg;
 		fill(px, c * cell_w, y0, w * cell_w, cell_h, bg);
-		if (x[c].attr == ATTR_IMAGE) { image_draw(px + y0 * bw + c * cell_w, bw, &x[c]); continue; }   /* thread 0's, agreed */
+		if (x[c].attr == ATTR_IMAGE) { image_draw(px + y0 * stride + c * cell_w, stride, &x[c]); continue; }   /* thread 0's, agreed */
 		if (u->style & FACE_UNDERCURL)
 			for (int i = c * cell_w; i < (c + w) * cell_w; i++) fill(px, i, ye - 1 - grid_curl(i, cell_h), 1, 1, sp);
 		else if (x[c].attr == ATTR_PRE || u->style & FACE_UNDERLINE) fill(px, c * cell_w, ye - 1, w * cell_w, 1, sp);
@@ -692,7 +735,7 @@ static void draw_span(uint32_t *px, const Grid *g, int r, int lo, int hi)
 			const Face *u;
 			colours(g, r, k < c ? k : c, r == g->crow && k == g->ccol, &fg, &bg, &u);
 			for (int y = ay; y < zy; y++) {
-				uint32_t *p = px + (gy + y) * bw + gx;
+				uint32_t *p = px + (gy + y) * stride + gx;
 				if (gl->color) {   /* premultiplied BGRA, the buffer's own byte order */
 					const unsigned char *q = gl->px + (size_t)(y * gl->w) * 4;
 					for (int j = j0; j < j1; j++) {
@@ -778,17 +821,34 @@ static int shift(const Grid *g, const Grid *b)
 
 static void frame_done(void *d, struct wl_callback *cb, uint32_t t)
 {
-	(void)d; (void)t;
+	(void)t;
 	wl_callback_destroy(cb);
-	frame = NULL;
-	waiting = 0;
+	((struct win *)d)->frame = NULL;
 }
 static const struct wl_callback_listener frame_l = { frame_done };
 
+static void win_free(struct win *w)
+{
+	bufs_free(w);
+	if (w->frame) wl_callback_destroy(w->frame);
+	if (w->top) xdg_toplevel_destroy(w->top);
+	if (w->xsurf) xdg_surface_destroy(w->xsurf);
+	if (w->view) wp_viewport_destroy(w->view);
+	if (w->fscale) wp_fractional_scale_v1_destroy(w->fscale);
+	wl_surface_destroy(w->surf);
+	if (kwin == w) kwin = NULL;
+	if (pwin == w) pwin = NULL;
+	if (twin == w) twin = NULL;
+	free(w);
+}
+
 static void wl_close(void)
 {
-	bufs_free();
-	if (frame) wl_callback_destroy(frame);
+	while (wins) {
+		struct win *w = wins;
+		wins = w->next;
+		win_free(w);
+	}
 	if (sel) wl_data_offer_destroy(sel);
 	if (dnd) wl_data_offer_destroy(dnd);
 	if (src) wl_data_source_destroy(src);
@@ -797,11 +857,8 @@ static void wl_close(void)
 	if (shape) wp_cursor_shape_device_v1_destroy(shape);
 	if (ptr) wl_pointer_release(ptr);
 	if (kbd) wl_keyboard_release(kbd);
-	if (top) xdg_toplevel_destroy(top);
-	if (xsurf) xdg_surface_destroy(xsurf);
-	if (view) wp_viewport_destroy(view);
-	if (fscale) wp_fractional_scale_v1_destroy(fscale);
-	if (surf) wl_surface_destroy(surf);
+	if (tagm) xdg_toplevel_tag_manager_v1_destroy(tagm);
+	if (act) xdg_activation_v1_destroy(act);
 	if (vpr) wp_viewporter_destroy(vpr);
 	if (fsm) wp_fractional_scale_manager_v1_destroy(fsm);
 	if (csm) wp_cursor_shape_manager_v1_destroy(csm);
@@ -821,16 +878,14 @@ static void wl_close(void)
 	free(clip);
 	free(got);
 	grid_free(&vis);
-	frame = NULL; sel = dnd = NULL; src = NULL; dd = NULL; ti = NULL; shape = NULL; ptr = NULL; kbd = NULL;
-	top = NULL; xsurf = NULL; view = NULL; fscale = NULL; surf = NULL; vpr = NULL; fsm = NULL; csm = NULL;
+	sel = dnd = NULL; src = NULL; dd = NULL; ti = NULL; shape = NULL; ptr = NULL; kbd = NULL;
+	tagm = NULL; act = NULL; vpr = NULL; fsm = NULL; csm = NULL;
 	tim = NULL; ddm = NULL; seat = NULL; wm = NULL; shm = NULL; comp = NULL; reg = NULL; dpy = NULL;
 	xst = NULL; keymap = NULL; xctx = NULL; rfd = -1; clip = got = NULL;
 	gotn = 0;
-	configured = waiting = ti_on = kn = 0;
+	ti_on = kn = fpx = 0;
+	focused = -1;
 	rkey = 0;
-	scale = 120;
-	lw = 800;
-	lh = 600;
 }
 
 static int wl_open(void)
@@ -853,28 +908,72 @@ static int wl_open(void)
 	return 0;
 }
 
-/* One window for now (package 8 adds a surface per tab page and the
-   xdg-toplevel-tag) */
-static int wl_frame_open(int id)
+/* A new window takes the size and scale of the one with the keyboard:
+   Hyprland opens it on that window's monitor (hypothesis), and its
+   fractional scale comes only after it is shown */
+static int wl_win_open(int id)
 {
-	if (surf) return -1;
-	wid = id;
-	surf = wl_compositor_create_surface(comp);
+	const struct win *o = kwin ? kwin : wins;
+	struct win *w = calloc(1, sizeof *w);
+	if (!w || !(w->surf = wl_compositor_create_surface(comp))) { free(w); return -1; }
+	if (o) { w->lw = o->lw; w->lh = o->lh; w->scale = o->scale; w->px = o->px; w->cw = o->cw; w->ch = o->ch; }
+	else { w->lw = 800; w->lh = 600; w->scale = 120; w->px = fpx; w->cw = cell_w; w->ch = cell_h; }
+	w->id = id;
+	w->next = wins;
+	wins = w;
+	if (focused < 0) focused = id;   /* the first window's first focus is no change */
 	if (fsm && vpr) {
-		wp_fractional_scale_v1_add_listener(fscale = wp_fractional_scale_manager_v1_get_fractional_scale(fsm, surf), &fs_l, NULL);
-		view = wp_viewporter_get_viewport(vpr, surf);
+		wp_fractional_scale_v1_add_listener(w->fscale = wp_fractional_scale_manager_v1_get_fractional_scale(fsm, w->surf), &fs_l, w);
+		w->view = wp_viewporter_get_viewport(vpr, w->surf);
 	}
-	xdg_surface_add_listener(xsurf = xdg_wm_base_get_xdg_surface(wm, surf), &xs_l, NULL);
-	xdg_toplevel_add_listener(top = xdg_surface_get_toplevel(xsurf), &top_l, NULL);
-	xdg_toplevel_set_title(top, "homeros");
-	xdg_toplevel_set_app_id(top, "homeros");
-	wl_surface_commit(surf);
-	nlw = lw;
-	nlh = lh;
-	while (!configured)
-		if (wl_display_dispatch(dpy) < 0) { wl_close(); return -1; }
-	kn = 0;                       /* the first size is read with wl_size */
+	xdg_surface_add_listener(w->xsurf = xdg_wm_base_get_xdg_surface(wm, w->surf), &xs_l, w);
+	xdg_toplevel_add_listener(w->top = xdg_surface_get_toplevel(w->xsurf), &top_l, w);
+	xdg_toplevel_set_title(w->top, "homeros");
+	xdg_toplevel_set_app_id(w->top, "homeros");
+	if (tagm) xdg_toplevel_tag_manager_v1_set_toplevel_tag(tagm, w->top, "homeros-main");
+	wl_surface_commit(w->surf);
+	w->nlw = w->lw;
+	w->nlh = w->lh;
+	while (!w->configured)
+		if (wl_display_dispatch(dpy) < 0) return -1;
 	return 0;
+}
+
+static void wl_win_close(int id)
+{
+	struct win **p = &wins;
+	while (*p && (*p)->id != id) p = &(*p)->next;
+	if (!*p) return;
+	struct win *w = *p;
+	*p = w->next;
+	win_free(w);
+	wl_display_flush(dpy);
+}
+
+/* SPC 5 o: xdg-activation with the serial of the last key, from the
+   window that has the keyboard.  A sync sent after the activate answers
+   once the compositor has handled it (Hyprland focuses at once, read in
+   its source), so KEY_RAISED comes after the focus it gives (Focus.tla);
+   tokens and syncs are answered in order, so the raises are too. */
+static void raised(void *d, struct wl_callback *cb, uint32_t t) { (void)d; (void)t; wl_callback_destroy(cb); push(KEY_RAISED, NULL); }
+static const struct wl_callback_listener raised_l = { raised };
+static void token_done(void *d, struct xdg_activation_token_v1 *tk, const char *token)
+{
+	struct win *w = win_of((int)(intptr_t)d);
+	if (w) xdg_activation_v1_activate(act, token, w->surf);
+	xdg_activation_token_v1_destroy(tk);
+	wl_callback_add_listener(wl_display_sync(dpy), &raised_l, NULL);
+}
+static const struct xdg_activation_token_v1_listener token_l = { token_done };
+static void wl_raise(int id)
+{
+	if (!act) { push(KEY_RAISED, NULL); arm(); return; }
+	struct xdg_activation_token_v1 *tk = xdg_activation_v1_get_activation_token(act);
+	xdg_activation_token_v1_add_listener(tk, &token_l, (void *)(intptr_t)id);
+	if (seat) xdg_activation_token_v1_set_serial(tk, serial, seat);
+	if (kwin) xdg_activation_token_v1_set_surface(tk, kwin->surf);
+	xdg_activation_token_v1_commit(tk);
+	wl_display_flush(dpy);
 }
 
 static int wl_fds(int fds[2])
@@ -883,8 +982,6 @@ static int wl_fds(int fds[2])
 	fds[1] = rfd;
 	return 2;
 }
-
-static void wl_frame_none(int id) { (void)id; }   /* the one window goes with wl_close */
 
 static int wl_input(int *out, int *from, int n)
 {
@@ -898,28 +995,28 @@ static int wl_input(int *out, int *from, int n)
 	long long t = loop_now();
 	if (rkey && rate > 0 && t >= rnext) {
 		long long per = 1000000000LL / rate, c = 1 + (t - rnext) / per;
-		for (long long j = 0, k = key_of(rkey); j < c && kn < KQ; j++) push((int)k);
+		for (long long j = 0, k = key_of(rkey); j < c && kn < KQ; j++) push((int)k, kwin);
 		rnext += c * per;
 	}
 	int i = 0;
-	for (; i < n && kn; i++, kn--, kh = (kh + 1) % KQ) out[i] = kq[kh], from[i] = wid;
+	for (; i < n && kn; i++, kn--, kh = (kh + 1) % KQ) out[i] = kq[kh][0], from[i] = kq[kh][1];
 	arm();
 	return i;
 }
 
 static void wl_size(int id, int *rows, int *cols)
 {
-	(void)id;
-	*rows = bh / cell_h > 0 ? bh / cell_h : 1;
-	*cols = bw / cell_w > 0 ? bw / cell_w : 1;
+	const struct win *w = win_of(id);
+	*rows = w && w->bh / w->ch > 0 ? w->bh / w->ch : 1;
+	*cols = w && w->bw / w->cw > 0 ? w->bw / w->cw : 1;
 }
 
 static int wl_ready(int id)
 {
-	(void)id;
-	if (!configured || waiting) return 0;
-	if (pw != bw || ph != bh) return 1;
-	for (int i = 0; i < NBUF; i++) if (!bufs[i].busy) return 1;
+	const struct win *w = win_of(id);
+	if (!w || !w->configured || w->frame) return 0;
+	if (w->pw != w->bw || w->ph != w->bh) return 1;
+	for (int i = 0; i < NBUF; i++) if (!w->bufs[i].busy) return 1;
 	return 0;
 }
 
@@ -940,21 +1037,23 @@ static const Grid *overlay(const Grid *cur)
 
 static void wl_present(int id, const Grid *cur, Grid *shown)
 {
+	struct win *w = win_of(id);
 	/* a grid from before the last configure waits for its KEY_RESIZE */
-	if (!wl_ready(id) || cur->rows * cell_h > bh || cur->cols * cell_w > bw) return;
+	if (!wl_ready(id) || font(w->px) || cur->rows * cell_h > w->bh || cur->cols * cell_w > w->bw) return;
 	int all = shown->rows != cur->rows || shown->cols != cur->cols;
 	if (all) {                    /* also after a suspend: redraw both buffers whole */
 		if (grid_resize(shown, cur->rows, cur->cols)) return;
-		for (int i = 0; i < NBUF; i++) grid_free(&bufs[i].g);
+		for (int i = 0; i < NBUF; i++) grid_free(&w->bufs[i].g);
 	}
-	if ((pw != bw || ph != bh) && bufs_make()) return;
-	pw = bw;
-	ph = bh;
-	struct buf *b = bufs[0].busy ? &bufs[1] : &bufs[0];
-	const Grid *g = overlay(cur);
+	if ((w->pw != w->bw || w->ph != w->bh) && bufs_make(w)) return;
+	w->pw = w->bw;
+	w->ph = w->bh;
+	stride = w->bw;
+	struct buf *b = w->bufs[0].busy ? &w->bufs[1] : &w->bufs[0];
+	const Grid *g = w == twin ? overlay(cur) : cur;   /* the preedit is in the input method's window */
 	if (b->g.rows != g->rows || b->g.cols != g->cols) {
 		if (grid_resize(&b->g, g->rows, g->cols)) return;
-		fill(b->px, 0, 0, bw, bh, BG);
+		fill(b->px, 0, 0, w->bw, w->bh, BG);
 		all = 1;
 	}
 	/* rows a scroll moved are copied, not shaped again (shaping all 60 rows
@@ -962,17 +1061,17 @@ static void wl_present(int id, const Grid *cur, Grid *shown)
 	   row only the cells that changed are drawn.  Copying in the direction
 	   of the move reads each source before it is drawn over. */
 	int k = all ? 0 : shift(g, &b->g);
-	size_t row = (size_t)cell_h * (size_t)bw;
+	size_t row = (size_t)cell_h * (size_t)w->bw;
 	/* the damage is the rows that differ from the screen, which shows the
 	   other buffer when b is not the one last committed: a row b holds
 	   already may still need its damage */
-	const struct buf *o = !all && on && on->g.rows == g->rows && on->g.cols == g->cols ? on : NULL;
+	const struct buf *o = !all && w->on && w->on->g.rows == g->rows && w->on->g.cols == g->cols ? w->on : NULL;
 	for (int i = 0; i < g->rows; i++) {
 		int r = k < 0 ? g->rows - 1 - i : i, lo = 0, hi = g->cols, l, h, d = 1;
 		if (!all) {
 			int n = span(g, r, &b->g, r, &lo, &hi);
 			if (o) d = o == b ? n : span(g, r, &o->g, r, &l, &h);
-			if (d) wl_surface_damage_buffer(surf, 0, r * cell_h, g->cols * cell_w, cell_h);
+			if (d) wl_surface_damage_buffer(w->surf, 0, r * cell_h, g->cols * cell_w, cell_h);
 			if (!n) continue;
 			if (k && r + k >= 0 && r + k < g->rows && span(g, r, &b->g, r + k, &l, &h) < n) {
 				memcpy(b->px + (size_t)r * row, b->px + (size_t)(r + k) * row, row * sizeof *b->px);
@@ -985,14 +1084,13 @@ static void wl_present(int id, const Grid *cur, Grid *shown)
 	}
 	b->g.crow = g->crow;
 	b->g.ccol = g->ccol;
-	if (all) wl_surface_damage_buffer(surf, 0, 0, bw, bh);
-	wl_callback_add_listener(frame = wl_surface_frame(surf), &frame_l, NULL);
-	waiting = 1;
-	wl_surface_attach(surf, b->b, 0, 0);
-	wl_surface_commit(surf);
+	if (all) wl_surface_damage_buffer(w->surf, 0, 0, w->bw, w->bh);
+	wl_callback_add_listener(w->frame = wl_surface_frame(w->surf), &frame_l, w);
+	wl_surface_attach(w->surf, b->b, 0, 0);
+	wl_surface_commit(w->surf);
 	b->busy = 1;
-	on = b;
-	if (ti_r != g->crow || ti_c != g->ccol) {
+	w->on = b;
+	if (w == twin && (ti_r != g->crow || ti_c != g->ccol)) {
 		ti_r = g->crow;
 		ti_c = g->ccol;
 		ti_cursor();
@@ -1006,9 +1104,14 @@ static void wl_present(int id, const Grid *cur, Grid *shown)
 static void wl_suspend(void) {}      /* a window has no terminal to give back */
 
 static void wl_mouse(int *row, int *col) { *row = mrow; *col = mcol; }
-static void wl_cell(int id, int *w, int *h) { (void)id; *w = cell_w; *h = cell_h; }   /* thread 0's, agreed */
+static void wl_cell(int id, int *w, int *h)   /* thread 0's, agreed */
+{
+	const struct win *x = win_of(id);
+	*w = x ? x->cw : 0;
+	*h = x ? x->ch : 0;
+}
 
 const Backend backend_wl = {
-	wl_open, wl_close, wl_frame_open, wl_frame_none, wl_frame_none, wl_fds, wl_input, wl_size, wl_ready,
+	wl_open, wl_close, wl_win_open, wl_win_close, wl_raise, wl_fds, wl_input, wl_size, wl_ready,
 	wl_present, wl_suspend, wl_clip_set, wl_clip_get, wl_mouse, wl_cell
 };

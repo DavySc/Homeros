@@ -39,11 +39,11 @@ latex: done without a redraw~test TESTS=image~~src/image/latex.c~	core_changed =
 latex: TeX's input left open~test TESTS=image~~src/image/latex.c~	proc_close(j->id);   /* TeX reads its input on an error: end it */~
 latex: dvipng without the text's colour~test TESTS=image~~src/image/latex.c~"-bg", "Transparent", "-fg", fg,~"-bg", "Transparent",
 latex: the PNG left under its job's name~test TESTS=image~~src/image/latex.c~	if ((n || rename(name(f, j, 1, "png"), name(g, j, 0, "png")))~	if ((n)
-wl: image cells drawn as text~test TESTS=wl~~src/wl/wl.c~		if (x[c].attr == ATTR_IMAGE) { image_draw(px + y0 * bw + c * cell_w, bw, &x[c]); continue; }~
+wl: image cells drawn as text~test TESTS=wl~~src/wl/wl.c~		if (x[c].attr == ATTR_IMAGE) { image_draw(px + y0 * stride + c * cell_w, stride, &x[c]); continue; }~
 wl: every tile drawn from the image's first column~test TESTS=wl~~src/image/image.c~ + (size_t)x->ch[1] * (size_t)s->cw;~;
-wl: image cells drawn a cell to the right~test TESTS=wl~~src/wl/wl.c~image_draw(px + y0 * bw + c * cell_w, bw, &x[c]);~image_draw(px + y0 * bw + (c + 1) * cell_w, bw, &x[c]);
+wl: image cells drawn a cell to the right~test TESTS=wl~~src/wl/wl.c~image_draw(px + y0 * stride + c * cell_w, stride, &x[c]);~image_draw(px + y0 * stride + (c + 1) * cell_w, stride, &x[c]);
 win: image cells drawn a cell to the right~win WIN=win~~src/win/backend.c~image_draw(bits + r * ch * dw + c * cw, dw, x);~image_draw(bits + r * ch * dw + (c + 1) * cw, dw, x);
-wl: the cell's size is the window's~test TESTS=wl~~src/wl/wl.c~*w = cell_w; *h = cell_h; }~*w = cell_w; *h = cell_w; }
+wl: the cell's size is the window's~test TESTS=wl~~src/wl/wl.c~	*h = x ? x->ch : 0;~	*h = x ? x->cw : 0;
 win: image cells drawn as text~win WIN=win~~src/win/backend.c~	if (x->attr == ATTR_IMAGE) {~	if (0) {
 win: the cell's size is the window's~win WIN=win~~src/win/backend.c~*w = cw; *h = ch; }~*w = cw; *h = cw; }
 file: file_id calls a missing file an error~test TESTS="file file_save image"~~src/file/file.c~	if (stat(path, &st)) return errno == ENOENT ? 0 : -1;~	if (stat(path, &st)) return -1;
