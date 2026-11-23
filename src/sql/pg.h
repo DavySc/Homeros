@@ -1,6 +1,8 @@
 /* A minimal PostgreSQL client for one event loop, the twin of tds.h: the
-   caller polls p->net.fd (for writing too while pg_pending) and calls
-   pg_io; rows (in the server's own text format) and messages come out as
+   caller polls p->net.fd (for writing too while pg_pending) and, while a
+   cancel's connection is open (p->kill.fd >= 0), p->kill.fd for reading
+   too: the cancel ends when the server closes it, which may be the last
+   thing to come; then calls pg_io; rows (in the server's own text format) and messages come out as
    text in p->out in the order the server sent them.  Always TLS
    (SSLRequest), SCRAM-SHA-256. */
 #ifndef SQL_PG_H
