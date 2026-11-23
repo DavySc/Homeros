@@ -122,10 +122,13 @@ static void splice(Mark_ *k, size_t pos, size_t ndel, size_t nins)
 /* The file's index: its names (the facts up to I.nf, in the pool up to
    I.np) and its statements (I.u, sqlfmt_units as start and end marks),
    from one walk over it.  It is made when a word starts in a buffer
-   without one, and again 150 ms after the last change (Neovim's LSP
-   debounce_text_changes), so the parse stays off the keys; until then
-   snip_edit moves its statements as extmarks, and a word's statement is
-   walked again when the word starts. */
+   without one, and again when typing pauses (HOLD ms after the last
+   change, Neovim's CursorHold with a shorter 'updatetime'), so the walk
+   (26 to 43 ms at 700 KB) stays off the keys: keys while typing come
+   faster than HOLD, and one after a pause rarely lands in the walk.
+   Until then snip_edit moves its statements as extmarks, and a word's
+   statement is walked again when the word starts. */
+#define HOLD 1000
 static struct { const Buf *b; int nr, stale; size_t len, np; int nf; Str u; } I;
 static Editor *E;   /* snip_key's, for the timer (one, as main.c's) */
 static void idle(void *ctx);
@@ -136,10 +139,10 @@ void snip_edit(const Buf *b, const Text *t, size_t pos, size_t ndel, const char 
 	if (b == I.b) {   /* the index's statements move as extmarks */
 		Mark_ (*u)[2] = (Mark_ (*)[2])I.u.s;
 		for (size_t i = 0; i < NU; i++) splice(&u[i][0], pos, ndel, nins), splice(&u[i][1], pos, ndel, nins);
-		I.len = text_len(t) == I.len ? I.len - ndel + nins : (size_t)-1;
+		I.len += nins - ndel;
 		I.stale = 1;
 	}
-	if (E && is_sql(b)) loop_timer(idle, NULL, 150);
+	if (E && is_sql(b)) loop_timer(idle, NULL, HOLD);
 	if (!S.b || b != S.b) return;
 	/* a join reaches the core as its lines rewritten (keys' do_join());
 	   Neovim splices extmarks over the line break it takes out alone.  A
@@ -699,7 +702,7 @@ static int walk(const Text *t, size_t p, size_t end, const Mark_ (*u)[2], size_t
 		if ((k == TQ_COMMENT || k == TQ_STRING) && p < a && a < e) break;
 		if (k == TQ_SPACE || k == TQ_COMMENT || (p >= a && p < z)) continue;
 		if (p >= a && !got) got = 1, ctx[0] = r[i], ctx[1] = r[(i + 2) % 3];
-		for (; ui < nu && u[ui][1].at <= p; ui++) flush(&refs, &pairs, NULL), from = list = 0, tab = (size_t)-1;
+		for (; ui < nu && u[ui][1].at <= p; ui++) flush(&refs, &pairs, NULL);
 		i = (i + 1) % 3;
 		Tok *h0 = &r[i], *h1 = &r[(i + 2) % 3], *h2 = &r[(i + 1) % 3];
 		char *b = h0->b;
@@ -776,7 +779,7 @@ static void idle(void *ctx)
 {
 	Editor *e = E;
 	(void)ctx;
-	if (e->pum == items) loop_timer(idle, NULL, 150);   /* the popup's words are in the pool */
+	if (e->pum == items) loop_timer(idle, NULL, HOLD);   /* the popup's words are in the pool */
 	else if (is_sql(e->buf) && (I.stale || I.b != e->buf || I.nr != e->buf->nr || I.len != text_len(e->buf->text)))
 		scan(e, (size_t)-1, (size_t)-1), W.b = NULL;
 }

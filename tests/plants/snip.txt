@@ -59,19 +59,38 @@ snip: a new prompt keeps the old selection~test TESTS=snip~~src/tools/pick.c~	P.
 # completion (the popup's sources by the statement, nvim-cmp's matching
 # and order, the keys with a snippet)
 snip: the popup matches inside word parts (snacks' fuzzy)~test TESTS=snip~~src/snip/snip.c~	return j == n;~	return 1;
-snip: snippets ranked with the words~test TESTS=snip~~src/snip/snip.c~		if (!at) snippets(e, 2);~		if (!at) snippets(e, 0);
+snip: snippets ranked with the words~test TESTS=snip~~src/snip/snip.c~		if (!at && !tabs) snippets(e, 2);~		if (!at && !tabs) snippets(e, 0);
 snip: no shorter word first~test TESTS=snip~~src/snip/snip.c~	return la != lb ? la < lb ? -1 : 1 : i - j;~	return la != lb && 0 ? la < lb ? -1 : 1 : i - j;
 snip: the popup matches case as snacks' smartcase~test TESTS=snip~~src/snip/snip.c~	if (cmp && nq < sizeof low) {~	if (0) {
-snip: an alias not taken to its table~test TESTS=snip~~src/snip/snip.c~ctx[1].b)) q = pool.s + CAND(here, j).of;~ctx[1].b)) (void)0;
+snip: an alias not taken to its table~test TESTS=snip~~src/snip/snip.c~ctx[1].b)) q = pool.s + CAND(here, i).of;~ctx[1].b)) (void)0;
 snip: a column list not read~test TESTS=snip~~src/snip/snip.c~			list = 1;~			list = 0;
 snip: an alias after AS not read~test TESTS=snip~~src/snip/snip.c~ || ((h1->f & AS) && !strcasecmp(h2->b, pool.s + tab)))) {~)) {
 snip: a CTE not a table~test TESTS=snip~~src/snip/snip.c~			fact(h2->b, "", "Table");   /* a CTE */~
-snip: after FROM the words too~test TESTS=snip~~src/snip/snip.c~	if (!dot && !tabs) {~	if (!dot) {
-snip: a column of every table in the statement's words~test TESTS=snip~~src/snip/snip.c~ : at ? c.kind[0] == 'V' : scope)~ : at ? c.kind[0] == 'V' : 1)
-snip: the word typed is a name of the file~test TESTS=snip~~src/snip/snip.c~ || (p >= a && p < z)) continue;~) continue;
-snip: the popup in a comment~test TESTS=snip~~src/snip/snip.c~		if ((k == TQ_COMMENT || k == TQ_STRING) && p < a && a < end) break;~
+snip: after FROM the words too~test TESTS=snip~~src/snip/snip.c~	int words = !dot && (!tabs || (ctx[0].f & OR_WORD));~	int words = !dot;
+snip: a column of every table in the statement's words~test TESTS=snip~~src/snip/snip.c~ : at ? c->kind[0] == 'V' : scope))~ : at ? c->kind[0] == 'V' : 1))
+snip: the word typed is a name of the file~test TESTS=snip~~src/snip/snip.c~ || (p >= a && p < z)) continue;~ || (p >= a && p < z && 0)) continue;
+snip: the popup in a comment~test TESTS=snip~~src/snip/snip.c~		if ((k == TQ_COMMENT || k == TQ_STRING) && p < a && a < e) break;¶~
 snip: a keyword typed in capitals comes in small letters~test TESTS=snip~~src/snip/snip.c~	if (big && !small && (*c.kind == 'K' || *c.kind == 'F'))~	if (0)
 snip: Tab in a snippet picks in the popup~test TESTS=snip~~src/snip/snip.c~	if (tab) close_pum(e);¶	if (tab && jump(e, k == KEY_TAB ? 1 : -1, S.s[S.cur].idx)) return 1;¶	if (e->pum && e->pum == items && pum_key(e, k)) return 1;~	if (e->pum && e->pum == items && pum_key(e, k)) return 1;¶	if (tab && jump(e, k == KEY_TAB ? 1 : -1, S.s[S.cur].idx)) return 1;
 snip: a statement's aliases leak into the next~test TESTS=snip~~src/snip/snip.c~	refs->n = pairs->n = 0;~	pairs->n = 0;
 snip: the statement tree's conditions left out~test TESTS=snip~~src/sqlfmt/sqlfmt.c~		if (p.ev[i].node != N_STATEMENT && p.ev[i].node != N_CONDITION) continue;~		if (p.ev[i].node != N_STATEMENT) continue;
 snip: an exact match not first~test TESTS=snip~~src/snip/snip.c~	if (ea != eb) return eb - ea;~	if (0 && ea != eb) return eb - ea;
+snip: fact() keeps pointers into the pool it grows~test TESTS=snip~~src/snip/snip.c~	char w[128], of[128];   /* w0 and of0 may be in the pool, which intern moves */¶	strncpy(w, w0, sizeof w - 1)[sizeof w - 1] = 0, strncpy(of, of0, sizeof of - 1)[sizeof of - 1] = 0;~	const char *w = w0, *of = of0;
+snip: the list kept for an empty word~test TESTS=snip~~src/snip/snip.c~	} else W.b = NULL;~	}
+snip: the file walked at every word start~test TESTS=snip~~src/snip/snip.c~	if (I.b != e->buf || I.nr != e->buf->nr || I.len != text_len(t)) scan(e, a, z);~	scan(e, a, z);
+snip: the index made again under an open popup~test TESTS=snip~~src/snip/snip.c~	if (e->pum == items) loop_timer(idle, NULL, HOLD);   /* the popup's words are in the pool */¶	else if~	if
+snip: the index's statements stay where an edit moved the text~test TESTS=snip~~src/snip/snip.c~		for (size_t i = 0; i < NU; i++) splice(&u[i][0], pos, ndel, nins), splice(&u[i][1], pos, ndel, nins);~		(void)u;
+snip: no timer after an edit~test TESTS=snip~~src/snip/snip.c~	if (E && is_sql(b)) loop_timer(idle, NULL, HOLD);¶~
+snip: schema.table: the schema a table~test TESTS=snip~~src/snip/snip.c~		if (isname && attab && sym(h1, '.') && !strcasecmp(h2->b, pool.s + tab)) {~		if (0) {
+snip: [x] loses brackets it needs~test TESTS=snip~~src/snip/snip.c~plain = alpha(b[j]) || digit(b[j]) || b[j] == '_';~plain = 1;
+snip: DECLARE @t TABLE (...) gives no columns~test TESTS=snip~~src/snip/snip.c~attab && ((h1->f & TABLE) || !strcasecmp~attab && ((0) || !strcasecmp
+snip: a word of a kind listed once per table~test TESTS=snip~~src/snip/snip.c~		if (last && !strcmp(last->kind~		if (0 && last && !strcmp(last->kind
+snip: after @ the @@ words with the variables~test TESTS=snip~~src/snip/snip.c~"Keyword", NULL, at);~"Keyword", NULL, 0);
+snip: DELETE offers no words~test TESTS=snip~~src/snip/snip.c~j < 6 ? TABLES : TABLES | OR_WORD;~TABLES;
+snip: @@rowcount is a variable of the file~test TESTS=snip~~src/snip/snip.c~		if (k == TQ_VAR && b[1] != '@') fact~		if (k == TQ_VAR) fact
+snip: FROM a, b: b no table~test TESTS=snip~~src/snip/snip.c~ || (from && sym(h1, ','))))~ || (0 && from && sym(h1, ','))))
+snip: a table's name kept past a keyword~test TESTS=snip~~src/snip/snip.c~		if (!isname && !sym(h0, '.') && !(h0->f & (AS | TABLE)) && !sym(h0, '(')) tab = (size_t)-1;¶~
+snip: columns of a #temp matched by case~test TESTS=snip~~src/snip/snip.c~ && !strcasecmp(pool.s + c->of, w); }~ && !strcmp(pool.s + c->of, w); }
+snip: a word at its statement's end is outside it~test TESTS=snip~~src/snip/snip.c~	if (j && a <= u[j - 1][1].at)~	if (j && a < u[j - 1][1].at)
+snip: the list kept after the popup closes~test TESTS=snip~~src/snip/snip.c~	if (e->pum == items) core_pum(e, NULL, 0, -1, 0);¶	W.b = NULL;~	if (e->pum == items) core_pum(e, NULL, 0, -1, 0);
+snip: T-SQL's words after @ too~test TESTS=snip~~src/snip/snip.c~			if (c && (*kwd == '@') == at) cand~			if (c && (*kwd == '@' || !at)) cand

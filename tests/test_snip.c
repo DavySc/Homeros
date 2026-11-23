@@ -185,6 +185,13 @@ static Editor *at(const char *t, const char *k)
 	return &e;
 }
 
+/* typing pauses: the event loop runs 1.2 s, past snip.c's HOLD */
+static void typing_pause(void)
+{
+	long long t0 = loop_now();
+	while (loop_now() - t0 < 1200000000LL) loop_once(100);
+}
+
 /* the popup's words, space-separated, in its order */
 static const char *shown(Editor *e)
 {
@@ -333,17 +340,17 @@ static void complete(void)
 	CHECK(!e->pum);
 	feed(e, KEY_ESC), core_free(e);
 	/* the file's names come from its index, made again once typing pauses
-	   for 150 ms: until then a name deleted elsewhere still shows */
+	   (HOLD): until then a name deleted elsewhere still shows */
 	e = at("create table gone (id int)\nselect * from |", "g");
 	CHECK(!strcmp(shown(e), "gone"));
 	feed(e, KEY_ESC);
+	typing_pause();   /* the timer armed before the first word */
 	CHECK(!core_edit(e, 0, 27, "", 0));
 	feed(e, 'g'), feed(e, 'g'), feed(e, 'A');
 	for (const char *k = " join g"; *k; k++) feed(e, *k);
 	CHECK(strstr(shown(e), "gone"));
 	feed(e, KEY_ESC);
-	long long t0 = loop_now();
-	while (loop_now() - t0 < 400000000LL) loop_once(100);
+	typing_pause();
 	feed(e, 'g'), feed(e, 'g'), feed(e, 'A');
 	for (const char *k = " join g"; *k; k++) feed(e, *k);
 	CHECK(!strstr(shown(e), "gone"));
@@ -363,8 +370,7 @@ static void complete(void)
 	feed(e, KEY_BS), feed(e, 'o');
 	CHECK(!strcmp(shown(e), "orders"));
 	feed(e, KEY_ESC), core_free(e);
-	snprintf(t, sizeof t, "%sselect @@rowcount\nset |", file);
-	e = at(t, "@");
+	e = at("declare @a_long_variable_name int, @count int\nselect @@rowcount\nset |\n", "@");
 	CHECK(!strcmp(e->pum[0].kind, "Variable") && !strcmp(e->pum[1].kind, "Variable") && !strcmp(e->pum[2].kind, "Function"));
 	for (int i = 0; i < e->npum; i++) CHECK(e->pum[i].word[0] == '@' && (strcmp(e->pum[i].word, "@@rowcount") || !strcmp(e->pum[i].kind, "Function")));
 	feed(e, KEY_ESC), core_free(e);
@@ -392,13 +398,40 @@ static void complete(void)
 	feed(e, 'a'), feed(e, 'q');
 	CHECK(!strcmp(shown(e), "qq"));
 	feed(e, KEY_ESC), core_free(e);
+	/* the index's statements move with the text: a statement moved back
+	   still holds its aliases */
+	e = at("create table gone (id int)\nselect * from gone x where |\n", "z");
+	feed(e, KEY_ESC);
+	CHECK(!core_edit(e, 0, 27, "", 0));
+	feed(e, 'g'), feed(e, 'g'), feed(e, 'A');
+	for (const char *k = " x."; *k; k++) feed(e, *k);
+	CHECK(!strcmp(shown(e), "id"));
+	feed(e, KEY_ESC), core_free(e);
+	/* a statement's aliases are its own, an IF's condition is one */
+	e = at("select * from orders o\nselect o.zz from t\nselect * from orders x where x|\n", ".");
+	CHECK(!e->pum);
+	feed(e, KEY_ESC), core_free(e);
+	snprintf(t, sizeof t, "%sif exists (select 1 from log l where o| = 1) select * from customers o", file);
+	e = at(t, ".");
+	CHECK(!e->pum);
+	feed(e, KEY_ESC), core_free(e);
+	/* the index is not made again under an open popup, whose words are
+	   in its pool */
+	e = at("create table orders (id int)\nselect * from |\n", "or");
+	CHECK(!strcmp(shown(e), "orders"));
+	CHECK(!core_edit(e, 13, 0, "aaaa_", 5));   /* orders' place in the pool moves */
+	typing_pause();
+	feed(e, 25);
+	line = core_line(e, e->win->line, &n);
+	CHECK(n == 20 && !memcmp(line, "select * from orders", 20));
+	feed(e, KEY_ESC), core_free(e);
 	/* many names: the pool grows under the walk */
-	static char big[40000];
+	static char big[400000];
 	int m = snprintf(big, sizeof big, "select ");
-	for (int i = 0; i < 400; i++) m += snprintf(big + m, sizeof big - (size_t)m, "t.column_number_%d, ", i);
+	for (int i = 0; i < 8000; i++) m += snprintf(big + m, sizeof big - (size_t)m, "t.column_number_%d, ", i);
 	snprintf(big + m, sizeof big - (size_t)m, "1 from some_table t where t|");
 	e = at(big, ".c");
-	CHECK(e->npum == 400);
+	CHECK(e->npum == 8000);
 	feed(e, KEY_ESC), core_free(e);
 	puts("test_snip: the popup offers by the statement: columns, tables, variables, words, snippets");
 }
