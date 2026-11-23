@@ -49,9 +49,13 @@ int file_save(const char *path, const Text *t, size_t n, int dos, FileId *id,
 
 /* Outside changes: inotify on the file's directory (FindFirstChangeNotificationW
    on Windows), so a file replaced by rename is still seen.  Returns an fd for
-   loop_watch, -1 on error: the same fd for every file, never closed (closing
-   one costs milliseconds), so a directory stays watched for the session. */
+   loop_watch, -1 on error: the same fd for every file. */
 int  file_watch(const char *path);
+/* A buffer is done with file_watch's fd: 1 when that closed it (loop_unwatch
+   it), else 0.  On Windows a directory's handle closes with its last
+   buffer, as an open one keeps other programs from removing or renaming
+   the folder; inotify's fd and watches hold nothing and stay. */
+int  file_unwatch(int fd);
 /* Reads the fd's pending events.  1 if path no longer matches id, 0 if it
    does, -1 on error.  A stat decides, not the events, so our own saves never
    count (they update id).  The core warns at the first edit after a 1 and a

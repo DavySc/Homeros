@@ -445,8 +445,16 @@ static void clrallmarks(Buf *b)
 	b->nchange = 0;
 }
 
+/* the buffer's directory watch, given back (file_unwatch) */
+static void buf_unwatch(Buf *b)
+{
+	if (b->watch >= 0 && file_unwatch(b->watch)) loop_unwatch(b->watch);
+	b->watch = -1;
+}
+
 static void buf_unload(Buf *b)
 {
+	buf_unwatch(b);
 	umarks_drop(b);
 	journal_close(b->journal);   /* nothing to recover: :bd! and :q! drop the changes */
 	syntax_free(b->syn);
@@ -804,6 +812,7 @@ int core_buf_next(Editor *e, long n)
    that name it kept */
 static void buf_unlist(Editor *e, Buf *b)
 {
+	buf_unwatch(b);
 	syntax_free(b->syn);
 	lsp_close(b->lsp);
 	text_free(b->text);

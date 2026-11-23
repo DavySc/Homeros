@@ -9,6 +9,12 @@
       a linked work tree's common directory outside the work tree is
       watched too; after git_unwatch nothing is seen.
    3. git_trash: the file goes to the Recycle Bin, not away.
+   4. The core's file watch (file_unwatch): a folder whose files' buffers
+      are gone (:bd, then the editor's end) can be removed with its parent,
+      as an open change notification leaves the folder delete-pending and
+      the parent not empty (ERROR_DIR_NOT_EMPTY under Wine, measured); a
+      buffer left in a folder still sees outside changes after :bd of
+      another file there.
    Runs on Windows (CI's windows job) or under Wine (src/git/check.sh);
    elsewhere it says so. */
 #ifdef _WIN32
@@ -20,6 +26,7 @@
 #include <string.h>
 #include "check.h"
 #include "loop.h"
+#include "core.h"
 #include "../src/git/gitint.h"
 
 /* git.c's other modules, which a watch never reaches */
@@ -164,7 +171,31 @@ int main(void)
 	CHECK(!git_trash(victim));
 	CHECK(GetFileAttributesA(victim) == INVALID_FILE_ATTRIBUTES);
 	CHECK(SHQueryRecycleBinW(drive, &q1) == S_OK && q1.i64NumItems == q0.i64NumItems + 1);
-	puts("test_git_win: paths full and '/'-separated; the watch sees the work tree, .git and a linked work tree's common directory but not ignored or nested repositories, one drain takes all, and it stops; the trash is the Recycle Bin");
+
+	/* 4: px\\x holds a, py\\y holds b and c */
+	char px[MAX_PATH + 32], py[MAX_PATH + 32], x[2 * MAX_PATH], y[2 * MAX_PATH], a[3 * MAX_PATH], b[3 * MAX_PATH], c[3 * MAX_PATH];
+	snprintf(px, sizeof px, "%shomeros-watch-x-%lu", tmp, (unsigned long)GetCurrentProcessId());
+	snprintf(py, sizeof py, "%shomeros-watch-y-%lu", tmp, (unsigned long)GetCurrentProcessId());
+	snprintf(x, sizeof x, "%s\\x", px);
+	snprintf(y, sizeof y, "%s\\y", py);
+	CHECK(CreateDirectoryA(px, NULL) && CreateDirectoryA(py, NULL) && CreateDirectoryA(x, NULL) && CreateDirectoryA(y, NULL));
+	snprintf(a, sizeof a, "%s\\a.txt", x);
+	snprintf(b, sizeof b, "%s\\b.txt", y);
+	snprintf(c, sizeof c, "%s\\c.txt", y);
+	FILE *f;
+	CHECK((f = fopen(a, "wb")) && fputs("a\n", f) >= 0 && !fclose(f));
+	CHECK((f = fopen(b, "wb")) && fputs("b\n", f) >= 0 && !fclose(f));
+	CHECK((f = fopen(c, "wb")) && fputs("c\n", f) >= 0 && !fclose(f));
+	Editor e;
+	CHECK(!core_open(&e, a) && !core_edit_file(&e, c, 0) && !core_edit_file(&e, b, 0));
+	CHECK(!core_buf_delete(&e, 1, 0) && !core_buf_delete(&e, 2, 0));
+	CHECK(DeleteFileA(a) && RemoveDirectoryA(x) && RemoveDirectoryA(px));
+	CHECK((f = fopen(b, "wb")) && fputs("bb\n", f) >= 0 && !fclose(f));
+	for (DWORD t0 = GetTickCount(); !e.buf->changed && GetTickCount() - t0 < 5000; ) loop_once(50);
+	CHECK(e.buf->changed);
+	core_free(&e);
+	CHECK(DeleteFileA(b) && DeleteFileA(c) && RemoveDirectoryA(y) && RemoveDirectoryA(py));
+	puts("test_git_win: paths full and '/'-separated; the watch sees the work tree, .git and a linked work tree's common directory but not ignored or nested repositories, one drain takes all, and it stops; the trash is the Recycle Bin; a folder's watch ends with its last buffer");
 	return 0;
 }
 #else

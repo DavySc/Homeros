@@ -64,3 +64,5 @@ file: the config folder read from the data variable~test TESTS=file~~src/file/st
 file: the config folder under .local/share~test TESTS=file~~src/file/state.c~".local/state", ".config" }~".local/state", ".local/share" }
 win: the config folder named homeros-data~win WIN=file~~src/file/win.c~which < 2 ? "-data" : ""~which < 3 ? "-data" : ""
 file: file_full leaves the directory as typed~test TESTS=shada~~src/file/state.c~	if (!realpath(dir, d)) return -1;~	if (!realpath(dir, d)) return -1;¶	snprintf(d, sizeof d, "%s", dir);
+file: win: a folder's watch closes with its first buffer, not its last~win WIN=git~~src/file/win.c~			if (--d[i].n) return 0;~			--d[i].n;
+file: win: a folder's watch never closes~win WIN=git~~src/file/win.c~			FindCloseChangeNotification(d[i].h);~			(void)0;
