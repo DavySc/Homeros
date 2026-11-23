@@ -17,6 +17,7 @@
 #include "grid.h"
 #include "tsql.h"
 #include "tsql_words.h"
+#include "lean.h"
 
 enum { CK = 4096, FAR = 4 * CK, NWORDS = sizeof words / sizeof *words };
 
@@ -45,7 +46,7 @@ struct Tsql {
 	int kind;                  /* and its kind, so the frame's later reads
 	                              inside a long comment do not lex it again */
 	int skipped;               /* a window was left plain, far from the index */
-	int lang;                  /* 0 T-SQL, 1 JSON, 2 Soufflé */
+	int lang;                  /* 0 T-SQL, 1 JSON, 2 Soufflé, 3 Lean */
 };
 
 static int is_space(int c) { return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == '\v'; }
@@ -390,12 +391,18 @@ static unsigned char dl_face(TsqlRd *r, size_t p, size_t e, int k)
 	return FACE_NONE;
 }
 
-static size_t (*const lang_token[])(TsqlRd *, size_t, int *) = { tsql_token, json_token, dl_token };
+static size_t lean_token(TsqlRd *r, size_t p, int *k) { return *k = TQ_WORD, lean_lex(r, p, 0, 0, NULL); }
+
+static size_t (*const lang_token[])(TsqlRd *, size_t, int *) = { tsql_token, json_token, dl_token, lean_token };
 static unsigned char (*const lang_face[])(TsqlRd *, size_t, size_t, int) = { face, json_face, dl_face };
 
 static void paint(Tsql *q, size_t p, size_t e, int k, size_t a, size_t z, unsigned char *f)
 {
 	TsqlRd *r = &q->r;
+	if (q->lang == 3) {
+		lean_lex(r, p, a, z, f);
+		return;
+	}
 	unsigned char c = lang_face[q->lang](r, p, e, k);
 	for (size_t i = p < a ? a : p; i < e && i < z; i++) f[i - a] = c;
 	if (!q->lang || k != TQ_STRING) return;
@@ -453,20 +460,22 @@ void tsql_edit(Tsql *q, const Text *t, size_t pos, size_t ndel, size_t nins)
 {
 	/* a token start depends on the bytes before it and on the two from it,
 	   which can end the token before (a word, a doubled quote, "<>", the
-	   e and sign of 1e+3) */
-	size_t lo = pos > 2 ? pos - 2 : 0;
+	   e and sign of 1e+3); Lean's on the line from it, and on the code
+	   point before it (\b, lookbehinds) */
+	size_t lo = pos > 2 ? pos - 2 : 0, hi = pos + ndel;
+	if (q->lang == 3) lo = text_line_start(t, text_line_of(t, pos)), hi += 4;
 	uint32_t i = first_at(q, q->n, lo);
 	if (i > q->v) q->n = i;    /* among moved starts: those after it go */
 	else {
 		/* moved starts of an older edit would pass this one unchecked */
-		uint32_t j = first_at(q, q->n = q->v, pos + ndel);
+		uint32_t j = first_at(q, q->n = q->v, hi);
 		for (uint32_t k = j; k < q->n; k++) q->ck[i + k - j] = (uint32_t)(q->ck[k] + nins - ndel);
 		q->n -= j - i;
 		q->v = i;
 	}
 	if (q->at >= lo) q->at = q->v ? q->ck[q->v - 1] : 0;
-	/* the token's end, as any start, depends on the two bytes after it */
-	if (q->end + 2 >= pos) q->end = 0;
+	/* the token's end, as any start, depends on the bytes after it */
+	if (q->end >= lo) q->end = 0;
 	q->r.t = t;
 	q->r.n = 0;
 }

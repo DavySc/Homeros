@@ -109,3 +109,15 @@ syntax: Markdown's folds recompute every row the tree changed, not only the edit
 syntax: a .org file's update reports no rows (test_syntax_org)~test TESTS=syntax_org~~src/syntax/syntax.c~		if (r == 1) *r2 = text_lines(t);¶~
 syntax: after a row-moving edit the pending rows keep their first start (test_syntax, folds after edits)~test TESTS=syntax~~src/syntax/syntax.c~if (s->nchg) s->chg[0] = 0, s->chg[1]~if (s->nchg) s->chg[1]
 syntax: a level below 0 that starts a fold reads as 0 (test_syntax, folds after edits: >-1)~test TESTS=syntax~~src/syntax/syntax.c~	return (s->lv[line] - *start) / 2;~	return s->lv[line] / 2;
+syntax: a nested /- does not deepen a Lean comment, so its -/ ends the outer one (test_syntax_lean)~test TESTS=syntax_lean~~src/syntax/lean.c~			q += 2, depth++, m.g = q;~			q += 2, m.g = q;
+syntax: a Lean number's exponent is not tried after its fraction, so 3.5e-2 is plain (test_syntax_lean)~test TESTS=syntax_lean~~src/syntax/lean.c~	if (wb(r, e = exponent(r, f))) return e;~
+syntax: a Lean character's escape keeps the string's colour (test_syntax_lean)~test TESTS=syntax_lean~~src/syntax/lean.c~	put(x, e, k, FACE_STRING_ESCAPE);¶	return k + 1;~	return k + 1;
+syntax: an interpolated string's { stays in the string (test_syntax_lean)~test TESTS=syntax_lean~~src/syntax/lean.c~			else if (c == '{') put~			else if (0) put
+syntax: Lean's keywords (theorem, where, fun) are plain (test_syntax_lean)~test TESTS=syntax_lean~~src/syntax/lean.c~lean_kws, N(lean_kws), 1))) return put(x, p, e, FACE_KEYWORD), e;~lean_kws, N(lean_kws), 1))) return put(x, p, e, FACE_NONE), e;
+syntax: a doc comment's heading of only blanks to the line's end is not one, which VS Code's is (test_syntax_lean)~test TESTS=syntax_lean~~src/syntax/lean.c~(s = e, 0))) return e;~(s = e, 1))) return e;
+syntax: a link definition's title ends at its first closing quote, while VS Code's .+? reaches one with only blanks after it (test_syntax_lean)~test TESTS=syntax_lean~~src/syntax/lean.c~			if (close ? at(m, e) == ')' : e >= m->eol) return~			if (!close || at(m, e) == ')') return
+syntax: italic does not end at a single * before a pair, (?=\1\1) (test_syntax_lean)~test TESTS=syntax_lean~~src/syntax/lean.c~at(&m, q + 1) != dc || at(&m, q + 2) == dc)~at(&m, q + 1) != dc)
+syntax: a doc comment's code fence ends at a shorter fence (test_syntax_lean)~test TESTS=syntax_lean~~src/syntax/lean.c~			if (n < m->fk || !(e >= m->eol~			if (!n || !(e >= m->eol
+syntax: /- inside a doc comment's Markdown block deepens the comment, which VS Code's does not (test_syntax_lean)~test TESTS=syntax_lean~~src/syntax/lean.c~!dash && !m.blk && at(&m, q) == '/'~!dash && at(&m, q) == '/'
+syntax: an edit in Lean keeps token starts from earlier on its line, where a comment or string may begin (test_tsql)~test TESTS=tsql~~src/syntax/tsql.c~	if (q->lang == 3) lo = text_line_start(t, text_line_of(t, pos)), hi += 4;~	if (q->lang == 3) hi += 4;
+syntax: an edit in Lean keeps token starts just past it, which -/ or a quote typed there moves (test_tsql)~test TESTS=tsql~~src/syntax/tsql.c~text_line_of(t, pos)), hi += 4;~text_line_of(t, pos));

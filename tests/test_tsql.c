@@ -172,19 +172,24 @@ static const char *const snip[] = {
 	"\n", " ", ".", "decl", ".decl ", ".output ", "output", "(", ")", ",", ":-", ":", "-", ">", "<", "=", "!",
 	"\"", "\\", "\\\"", "//", "/*", "*/", "#", "#include \"x\"\n", "1", "0x1F", "1.5", "u", "edge", "count",
 	"number", "x", "_", "?y", "@", "[", "]", "{", "}", ";", "e", "\xc3\xa9",
+}, *const lsnip[] = {
+	"\n", " ", "--", "/-", "-/", "/--", "/-!", "\"", "\\", "\\\"", "'", "def ", "theorem", "where", ":=", "(", ")",
+	"{", "}", "[", "]", "\xc2\xab", "\xc2\xbb", "@[simp]", "s!", "0x1F", "3.5e-2", "x", "true", "#eval", "`",
+	"*", "**", "_", "#", "### ", "> ", "- ", "1. ", "```", "[a]: <u> \"t\"", "<http://a.b>", "\xce\xb1",
 };
 enum { MAXT = 1 << 17 };
-/* the random texts' language, as tsql_new's: half T-SQL, a quarter JSON
-   and a quarter Soufflé, on the same index */
+/* the random texts' language, as tsql_new's: two fifths T-SQL, a fifth
+   each JSON, Soufflé and Lean, on the same index */
 static int lang;
-#define PATH ((const char *const[]){ "x.sql", "x.json", "x.dl" }[lang])
+#define PATH ((const char *const[]){ "x.sql", "x.json", "x.dl", "x.lean" }[lang])
 
 /* snippets into b until want bytes, and never past cap */
 static size_t gen(char *b, size_t want, size_t cap)
 {
 	size_t n = 0;
 	while (n < want) {
-		const char *s = lang == 2 ? dsnip[rnd(sizeof dsnip / sizeof *dsnip)] : lang ? jsnip[rnd(sizeof jsnip / sizeof *jsnip)] : snip[rnd(sizeof snip / sizeof *snip)];
+		const char *s = lang == 3 ? lsnip[rnd(sizeof lsnip / sizeof *lsnip)] : lang == 2 ? dsnip[rnd(sizeof dsnip / sizeof *dsnip)]
+			: lang ? jsnip[rnd(sizeof jsnip / sizeof *jsnip)] : snip[rnd(sizeof snip / sizeof *snip)];
 		size_t l = strlen(s);
 		if (n + l > cap) break;
 		memcpy(b + n, s, l);
@@ -289,10 +294,10 @@ int main(void)
 	   fresh read, wherever the windows are asked and the index grows */
 	static char b[MAXT];
 	static unsigned char f[MAXT], g[MAXT];
-	unsigned cases = 800, steps = 0, windows = 0;
+	unsigned cases = 1000, steps = 0, windows = 0;
 	size_t bytes = 0;
 	for (unsigned c = 0; c < cases; c++) {
-		lang = c % 4 == 3 ? 2 : c % 4 == 2;
+		lang = c % 5 < 2 ? 0 : (int)(c % 5) - 1;
 		size_t n = rnd(4) ? rnd(600) : rnd(MAXT / 2 - 64);
 		n = gen(b, n, MAXT);
 		Text *t = text_new(b, n);
@@ -350,7 +355,7 @@ int main(void)
 		syntax_free(s);
 		text_free(t);
 	}
-	printf("test_tsql: %zu lines, %zu Soufflé lines, %zu tokens, %u random texts (a quarter JSON, a quarter Soufflé), %u edits, %u windows (%zu bytes) equal to fresh reads\n",
+	printf("test_tsql: %zu lines, %zu Soufflé lines, %zu tokens, %u random texts (a fifth each JSON, Soufflé and Lean), %u edits, %u windows (%zu bytes) equal to fresh reads\n",
 	       sizeof lines / sizeof *lines, sizeof dlines / sizeof *dlines, sizeof toks / sizeof *toks, cases, steps, windows, bytes);
 	return 0;
 }
