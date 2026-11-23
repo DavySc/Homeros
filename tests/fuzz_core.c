@@ -14,6 +14,8 @@
 #include "syntax.h"
 #include "uni.h"
 
+static size_t r1, r2;   /* syntax_update's changed fold rows, unused here */
+
 static char dir[64], files[3][80];   /* absolute: libFuzzer writes its findings to the working directory */
 static const char *texts[] = {
 	("ab \xce\xbbx \xe1\x83\x90\xf0\x90\x90\x80\n\tef\n\n  gh\n# One\n## Two \xe6\xbc\xa2\xe5\xad\x97 two two two two two two two two two two\n> ### q\n7. #### li\n   ##### ind\n> > > > > > > > > > > > > > > > > > ###### edge\n"
@@ -160,7 +162,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 		}
 		/* as main.c after the parse; sometimes the frame before it; a
 		   heading is drawn in normal mode only */
-		if (e.buf->syn && a % 5) while (syntax_update(e.buf->syn, e.buf->text, NULL)) {}
+		if (e.buf->syn && a % 5) while (syntax_update(e.buf->syn, e.buf->text, NULL, &r1, &r2)) {}
 		if (op == 3 && a > 200) e.mode = e.mode == MODE_INSERT ? MODE_NORMAL : MODE_INSERT;
 		core_update(&e);
 		core_draw(&e, &g);

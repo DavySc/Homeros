@@ -10,6 +10,7 @@
 #include "check.h"
 #include "syntax.h"
 #include "text.h"
+static size_t r1, r2;   /* syntax_update's fold rows, read where a test needs them */
 
 enum { DOCS = 300, MAXT = 1 << 14 };
 
@@ -52,7 +53,7 @@ int main(void)
 		Text *t = text_new(b, n);
 		Syntax *s = t ? syntax_open("x.md", t) : NULL;
 		CHECK(s);
-		while (syntax_update(s, t, NULL)) ;
+		while (syntax_update(s, t, NULL, &r1, &r2)) ;
 		snprintf(path, sizeof path, "%s/%d.want", dir, i);
 		CHECK(o = fopen(path, "rb"));
 		char want[128], got[128];
@@ -80,7 +81,7 @@ int main(void)
 	Text *t = text_new("# a\n", 4);
 	Syntax *s = syntax_open("x.c", t);
 	SyntaxMd m;
-	while (syntax_update(s, t, NULL)) ;
+	while (syntax_update(s, t, NULL, &r1, &r2)) ;
 	CHECK(!syntax_md(s, t, 0, &m) && !m.head && !syntax_md(NULL, t, 0, &m));
 	syntax_free(s);
 	text_free(t);
