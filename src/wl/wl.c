@@ -64,13 +64,11 @@ static struct wp_cursor_shape_device_v1 *shape;
 static struct zwp_text_input_v3 *ti;
 static struct wl_data_device *dd;
 
-static int cell_w, cell_h, cell_b;  /* the open font's cell and baseline, in pixels */
-static int fpx;                     /* its size */
+static int cell_w, cell_h, cell_b;  /* the font's cell and baseline, in pixels */
+/* a size already open is used again at once (font.h) */
 static int font(int px)
 {
-	if (px == fpx) return 0;
-	if (font_open(FAMILY, px)) { fpx = 0; return -1; }
-	fpx = px;
+	if (font_open(FAMILY, px)) return -1;
 	font_cell(&cell_w, &cell_h, &cell_b);
 	return 0;
 }
@@ -883,7 +881,7 @@ static void wl_close(void)
 	tim = NULL; ddm = NULL; seat = NULL; wm = NULL; shm = NULL; comp = NULL; reg = NULL; dpy = NULL;
 	xst = NULL; keymap = NULL; xctx = NULL; rfd = -1; clip = got = NULL;
 	gotn = 0;
-	ti_on = kn = fpx = 0;
+	ti_on = kn = 0;
 	focused = -1;
 	rkey = 0;
 }
@@ -917,7 +915,7 @@ static int wl_win_open(int id)
 	struct win *w = calloc(1, sizeof *w);
 	if (!w || !(w->surf = wl_compositor_create_surface(comp))) { free(w); return -1; }
 	if (o) { w->lw = o->lw; w->lh = o->lh; w->scale = o->scale; w->px = o->px; w->cw = o->cw; w->ch = o->ch; }
-	else { w->lw = 800; w->lh = 600; w->scale = 120; w->px = fpx; w->cw = cell_w; w->ch = cell_h; }
+	else { w->lw = 800; w->lh = 600; w->scale = 120; w->px = FONT_PX; w->cw = cell_w; w->ch = cell_h; }
 	w->id = id;
 	w->next = wins;
 	wins = w;

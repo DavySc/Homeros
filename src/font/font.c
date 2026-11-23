@@ -18,6 +18,7 @@ enum {
 	RUN = 2048,            /* glyphs one run can shape to */
 	SLOTS = 8192,          /* glyph cache entries, a power of two */
 	ARENA = 8 << 20,       /* glyph bitmaps; pages count only once touched */
+	SIZES = 4,             /* sizes open at once (frames on monitors of 4 scales) */
 };
 
 typedef struct {
@@ -31,15 +32,22 @@ typedef struct {
 typedef struct { int font; unsigned gid; Glyph g; } Slot;          /* font -1: empty */
 typedef struct { unsigned cluster; int font, done; unsigned gid; int x, y; } Shaped;   /* cluster: index in cp */
 
-static FT_Library lib;
-static FcFontSet *set;
-static Face *face;
-static hb_buffer_t *buf;
-static Slot *slot;
-static unsigned char *arena;
-static size_t used, nslot;
-static unsigned long hits, misses;
-static int px, cw, ch, base;
+/* An open size.  A window per tab page (Wayland's frames) may sit on
+   monitors of different scales, so a few sizes stay open: drawing them in
+   turn would otherwise reopen the font each time (5.2 to 6.2 ms, 12 runs,
+   measured) and empty the glyph cache. */
+typedef struct {
+	FT_Library lib;
+	FcFontSet *set;
+	Face *face;
+	hb_buffer_t *buf;
+	Slot *slot;
+	unsigned char *arena;
+	size_t used, nslot;
+	unsigned long hits, misses;
+	int px, cw, ch, base;
+} Size;
+static Size cur, old[SIZES - 1];   /* the size in use; the others open, last used first */
 static Shaped run[RUN];
 static int nrun;
 static hb_codepoint_t cp[RUN];   /* the run's characters as uni.h decodes them */
@@ -48,35 +56,35 @@ static unsigned ncp;
 
 static Face *load(int i)
 {
-	Face *f = &face[i];
+	Face *f = &cur.face[i];
 	if (f->state) return f->state > 0 ? f : NULL;
 	f->state = -1;
 	FcChar8 *file;
 	int idx = 0;
-	if (FcPatternGetString(set->fonts[i], FC_FILE, 0, &file) != FcResultMatch) return NULL;
-	FcPatternGetInteger(set->fonts[i], FC_INDEX, 0, &idx);
-	if (FT_New_Face(lib, (const char *)file, idx, &f->ft)) return NULL;
+	if (FcPatternGetString(cur.set->fonts[i], FC_FILE, 0, &file) != FcResultMatch) return NULL;
+	FcPatternGetInteger(cur.set->fonts[i], FC_INDEX, 0, &idx);
+	if (FT_New_Face(cur.lib, (const char *)file, idx, &f->ft)) return NULL;
 	f->scale = 1;
 	f->color = FT_HAS_COLOR(f->ft);
 	if (FT_IS_SCALABLE(f->ft)) {
-		if (FT_Set_Pixel_Sizes(f->ft, 0, (FT_UInt)px)) goto bad;
+		if (FT_Set_Pixel_Sizes(f->ft, 0, (FT_UInt)cur.px)) goto bad;
 	} else if (FT_HAS_COLOR(f->ft) && f->ft->num_fixed_sizes > 0) {
 		/* a colour bitmap font (Noto Color Emoji): take the smallest strike
 		   at least as big as the em, else the biggest, and scale it */
 		int best = 0;
 		for (int k = 1; k < f->ft->num_fixed_sizes; k++) {
 			FT_Pos a = f->ft->available_sizes[k].y_ppem, b = f->ft->available_sizes[best].y_ppem;
-			if (b < px * 64 ? a > b : a >= px * 64 && a < b) best = k;
+			if (b < cur.px * 64 ? a > b : a >= cur.px * 64 && a < b) best = k;
 		}
 		if (FT_Select_Size(f->ft, best)) goto bad;
-		f->scale = px * 64.0 / (double)f->ft->available_sizes[best].y_ppem;
+		f->scale = cur.px * 64.0 / (double)f->ft->available_sizes[best].y_ppem;
 	} else goto bad;   /* a monochrome bitmap font: no size to draw it at */
 	hb_blob_t *b = hb_blob_create_from_file((const char *)file);
 	hb_face_t *hf = hb_face_create(b, (unsigned)idx);
 	f->hb = hb_font_create(hf);   /* HarfBuzz's own OpenType functions */
 	hb_face_destroy(hf);
 	hb_blob_destroy(b);
-	hb_font_set_scale(f->hb, px * 64, px * 64);   /* positions in 1/64 pixel */
+	hb_font_set_scale(f->hb, cur.px * 64, cur.px * 64);   /* positions in 1/64 pixel */
 	f->state = 1;
 	return f;
 bad:
@@ -87,66 +95,81 @@ bad:
 
 static void flush(void)
 {
-	for (size_t i = 0; i < SLOTS; i++) slot[i].font = -1;
-	used = nslot = 0;
+	for (size_t i = 0; i < SLOTS; i++) cur.slot[i].font = -1;
+	cur.used = cur.nslot = 0;
+}
+
+static void close_size(void)
+{
+	if (cur.face)
+		for (int i = 0; i < cur.set->nfont; i++)
+			if (cur.face[i].state > 0) { hb_font_destroy(cur.face[i].hb); FT_Done_Face(cur.face[i].ft); }
+	free(cur.face);
+	if (cur.set) FcFontSetDestroy(cur.set);
+	if (cur.buf) hb_buffer_destroy(cur.buf);
+	free(cur.slot);
+	free(cur.arena);
+	if (cur.lib) FT_Done_FreeType(cur.lib);
+	cur = (Size){ 0 };
 }
 
 void font_close(void)
 {
-	if (face)
-		for (int i = 0; i < set->nfont; i++)
-			if (face[i].state > 0) { hb_font_destroy(face[i].hb); FT_Done_Face(face[i].ft); }
-	free(face);
-	face = NULL;
-	if (set) FcFontSetDestroy(set);
-	set = NULL;
-	if (buf) hb_buffer_destroy(buf);
-	buf = NULL;
-	free(slot);
-	free(arena);
-	slot = NULL;
-	arena = NULL;
-	if (lib) FT_Done_FreeType(lib);
-	lib = NULL;
-	FcFini();
+	close_size();
+	for (int i = 0; i < SIZES - 1; i++) {
+		cur = old[i];
+		close_size();
+		old[i] = cur;
+	}
+	FcFini();   /* last: the sets point into fontconfig's cache */
 }
 
 int font_open(const char *family, int size)
 {
-	font_close();
-	px = size;
-	hits = misses = 0;
-	if (size <= 0 || !FcInit() || FT_Init_FreeType(&lib)) goto fail;
+	if (cur.face && cur.px == size) return 0;
+	/* the size in use becomes the most recently used; the one asked for
+	   comes back with its cache, else the least recently used closes */
+	int i = 0;
+	while (i < SIZES - 2 && !(old[i].face && old[i].px == size)) i++;
+	Size t = old[i];
+	memmove(old + 1, old, (size_t)i * sizeof *old);
+	old[0] = cur;
+	cur = t;
+	if (cur.face && cur.px == size) return 0;
+	close_size();
+	cur.px = size;
+	cur.hits = cur.misses = 0;
+	if (size <= 0 || !FcInit() || FT_Init_FreeType(&cur.lib)) goto fail;
 	FcPattern *p = FcNameParse((const FcChar8 *)family);
 	if (!p) goto fail;
 	FcPatternAddDouble(p, FC_PIXEL_SIZE, size);
 	FcConfigSubstitute(NULL, p, FcMatchPattern);
 	FcDefaultSubstitute(p);
 	FcResult r;
-	set = FcFontSort(NULL, p, FcTrue, NULL, &r);   /* trimmed: each font adds characters */
+	cur.set = FcFontSort(NULL, p, FcTrue, NULL, &r);   /* trimmed: each font adds characters */
 	FcPatternDestroy(p);
-	if (!set || set->nfont == 0) goto fail;
-	face = calloc((size_t)set->nfont, sizeof *face);
-	slot = malloc(SLOTS * sizeof *slot);
-	arena = malloc(ARENA);
-	buf = hb_buffer_create();
+	if (!cur.set || cur.set->nfont == 0) goto fail;
+	cur.face = calloc((size_t)cur.set->nfont, sizeof *cur.face);
+	cur.slot = malloc(SLOTS * sizeof *cur.slot);
+	cur.arena = malloc(ARENA);
+	cur.buf = hb_buffer_create();
 	/* the longest run now, so a longer row later allocates nothing */
-	if (!face || !slot || !arena || !hb_buffer_pre_allocate(buf, RUN) || !load(0)) goto fail;
+	if (!cur.face || !cur.slot || !cur.arena || !hb_buffer_pre_allocate(cur.buf, RUN) || !load(0)) goto fail;
 	flush();
-	FT_Face f = face[0].ft;
-	base = (int)((f->size->metrics.ascender + 63) >> 6);
-	ch = base + (int)((-f->size->metrics.descender + 63) >> 6);
+	FT_Face f = cur.face[0].ft;
+	cur.base = (int)((f->size->metrics.ascender + 63) >> 6);
+	cur.ch = cur.base + (int)((-f->size->metrics.descender + 63) >> 6);
 	if (FT_Load_Char(f, 'M', FT_LOAD_TARGET_LIGHT)) goto fail;
-	cw = (int)((f->glyph->advance.x + 32) >> 6);
+	cur.cw = (int)((f->glyph->advance.x + 32) >> 6);
 	return 0;
 fail:
-	font_close();
+	close_size();
 	return -1;
 }
 
-void font_cell(int *w, int *h, int *baseline) { *w = cw; *h = ch; *baseline = base; }
+void font_cell(int *w, int *h, int *baseline) { *w = cur.cw; *h = cur.ch; *baseline = cur.base; }
 
-void font_stats(unsigned long *hit, unsigned long *miss) { *hit = hits; *miss = misses; }
+void font_stats(unsigned long *hit, unsigned long *miss) { *hit = cur.hits; *miss = cur.misses; }
 
 /* Characters a font need not have: joiners, variation selectors and tags
    are default-ignorable, and HarfBuzz hides them when the font lacks them. */
@@ -203,11 +226,11 @@ static int emoji(unsigned a, unsigned b)
 static int pick(unsigned a, unsigned b, int after, int from, int to)
 {
 	for (int pass = from; pass <= to; pass++)
-		for (int i = after + 1; i < set->nfont; i++) {
+		for (int i = after + 1; i < cur.set->nfont; i++) {
 			FcBool color;
 			FcCharSet *cs;
-			if (pass == 0 && (FcPatternGetBool(set->fonts[i], FC_COLOR, 0, &color) != FcResultMatch || !color)) continue;
-			if (FcPatternGetCharSet(set->fonts[i], FC_CHARSET, 0, &cs) != FcResultMatch) continue;
+			if (pass == 0 && (FcPatternGetBool(cur.set->fonts[i], FC_COLOR, 0, &color) != FcResultMatch || !color)) continue;
+			if (FcPatternGetCharSet(cur.set->fonts[i], FC_CHARSET, 0, &cs) != FcResultMatch) continue;
 			unsigned j = a;
 			while (j < b && (ignorable(cp[j]) || FcCharSetHasChar(cs, cp[j]))) j++;
 			if (j >= b && load(i)) return i;
@@ -222,14 +245,14 @@ static int pick(unsigned a, unsigned b, int after, int from, int to)
    (they differ on overlong forms such as C0 B2). */
 static void shape(unsigned a, unsigned b, int fi, int to, int gone)
 {
-	hb_buffer_clear_contents(buf);
-	hb_buffer_add_codepoints(buf, cp, (int)ncp, a, (int)(b - a));
-	hb_buffer_set_direction(buf, HB_DIRECTION_LTR);
-	hb_buffer_guess_segment_properties(buf);
-	hb_shape(face[fi].hb, buf, NULL, 0);
+	hb_buffer_clear_contents(cur.buf);
+	hb_buffer_add_codepoints(cur.buf, cp, (int)ncp, a, (int)(b - a));
+	hb_buffer_set_direction(cur.buf, HB_DIRECTION_LTR);
+	hb_buffer_guess_segment_properties(cur.buf);
+	hb_shape(cur.face[fi].hb, cur.buf, NULL, 0);
 	unsigned k;
-	hb_glyph_info_t *gi = hb_buffer_get_glyph_infos(buf, &k);
-	hb_glyph_position_t *gp = hb_buffer_get_glyph_positions(buf, NULL);
+	hb_glyph_info_t *gi = hb_buffer_get_glyph_infos(cur.buf, &k);
+	hb_glyph_position_t *gp = hb_buffer_get_glyph_positions(cur.buf, NULL);
 	if (k > (unsigned)(RUN - (nrun - gone))) k = (unsigned)(RUN - (nrun - gone));
 	memmove(&run[to + (int)k], &run[to + gone], (size_t)(nrun - to - gone) * sizeof *run);
 	nrun += (int)k - gone;
@@ -268,13 +291,13 @@ static int nearest(double v) { return (int)(v < 0 ? v - 0.5 : v + 0.5); }
 static const Glyph *glyph(int fi, unsigned gid)
 {
 	size_t h = ((size_t)fi * 2654435761u + gid * 40503u) & (SLOTS - 1);
-	while (slot[h].font >= 0) {
-		if (slot[h].font == fi && slot[h].gid == gid) { hits++; return &slot[h].g; }
+	while (cur.slot[h].font >= 0) {
+		if (cur.slot[h].font == fi && cur.slot[h].gid == gid) { cur.hits++; return &cur.slot[h].g; }
 		h = (h + 1) & (SLOTS - 1);
 	}
-	if (nslot >= SLOTS * 3 / 4) return NULL;
-	Face *f = &face[fi];
-	Glyph g = { arena + used, 0, 0, 0, 0, 0 };
+	if (cur.nslot >= SLOTS * 3 / 4) return NULL;
+	Face *f = &cur.face[fi];
+	Glyph g = { cur.arena + cur.used, 0, 0, 0, 0, 0 };
 	int color = f->color;
 	if (!FT_Load_Glyph(f->ft, gid, color ? FT_LOAD_COLOR | FT_LOAD_RENDER
 	                                     : FT_LOAD_TARGET_LIGHT | FT_LOAD_NO_BITMAP | FT_LOAD_RENDER)) {
@@ -282,23 +305,23 @@ static const Glyph *glyph(int fi, unsigned gid)
 		FT_Bitmap *bm = &gs->bitmap;
 		int w = (int)bm->width, hh = (int)bm->rows;
 		if (bm->pixel_mode == FT_PIXEL_MODE_GRAY && bm->pitch >= w) {
-			if ((size_t)w * (size_t)hh > ARENA - used) return NULL;
-			for (int y = 0; y < hh; y++) memcpy(arena + used + (size_t)(y * w), bm->buffer + y * bm->pitch, (size_t)w);
-			g = (Glyph){ arena + used, w, hh, gs->bitmap_left, gs->bitmap_top, 0 };
+			if ((size_t)w * (size_t)hh > ARENA - cur.used) return NULL;
+			for (int y = 0; y < hh; y++) memcpy(cur.arena + cur.used + (size_t)(y * w), bm->buffer + y * bm->pitch, (size_t)w);
+			g = (Glyph){ cur.arena + cur.used, w, hh, gs->bitmap_left, gs->bitmap_top, 0 };
 		} else if (bm->pixel_mode == FT_PIXEL_MODE_BGRA && w > 0 && hh > 0 && bm->pitch >= 4 * w) {
 			int dw = nearest(w * f->scale), dh = nearest(hh * f->scale);
 			if (dw < 1) dw = 1;
 			if (dh < 1) dh = 1;
-			if ((size_t)dw * (size_t)dh * 4 > ARENA - used) return NULL;
-			scale(bm->buffer, w, hh, bm->pitch, arena + used, dw, dh);
-			g = (Glyph){ arena + used, dw, dh, nearest(gs->bitmap_left * f->scale), nearest(gs->bitmap_top * f->scale), 1 };
+			if ((size_t)dw * (size_t)dh * 4 > ARENA - cur.used) return NULL;
+			scale(bm->buffer, w, hh, bm->pitch, cur.arena + cur.used, dw, dh);
+			g = (Glyph){ cur.arena + cur.used, dw, dh, nearest(gs->bitmap_left * f->scale), nearest(gs->bitmap_top * f->scale), 1 };
 		}
-		used += (size_t)g.w * (size_t)g.h * (g.color ? 4 : 1);
+		cur.used += (size_t)g.w * (size_t)g.h * (g.color ? 4 : 1);
 	}
-	misses++;
-	nslot++;
-	slot[h] = (Slot){ fi, gid, g };
-	return &slot[h].g;
+	cur.misses++;
+	cur.nslot++;
+	cur.slot[h] = (Slot){ fi, gid, g };
+	return &cur.slot[h].g;
 }
 
 /* only the regular face is open yet: every style draws in it (font.h) */
@@ -306,7 +329,7 @@ void font_style(int style) { (void)style; }
 
 int font_shape(const unsigned char *s, size_t n, Placed *out, int max)
 {
-	if (!face || n == 0 || max <= 0) return 0;
+	if (!cur.face || n == 0 || max <= 0) return 0;
 	ncp = 0;
 	for (size_t i = 0; i < n && ncp < RUN; i += uni_len(s, n, i)) {
 		at[ncp] = i;
@@ -321,7 +344,7 @@ int font_shape(const unsigned char *s, size_t n, Placed *out, int max)
 		int j = i, miss = 0;
 		while (j < nrun && run[j].cluster == run[i].cluster) miss |= run[j++].gid == 0;
 		unsigned end = j < nrun ? run[j].cluster : ncp;
-		int want = !face[run[i].font].color && emoji(run[i].cluster, end);
+		int want = !cur.face[run[i].font].color && emoji(run[i].cluster, end);
 		if (run[i].done || !(miss || want)) { i = j; continue; }
 		int fi = pick(run[i].cluster, end, run[i].font, want ? 0 : 1, miss);
 		if (fi < 0) { while (i < j) run[i++].done = 1; continue; }
