@@ -1,5 +1,5 @@
 # Plants for package 22, src/sql/ (format in tools/planted.sh).  The test
-# needs the SQL Server of src/sql/README.md (CI's service container).
+# needs the SQL Server and PostgreSQL of src/sql/README.md (CI's service containers).
 sql: decimal point one digit early~test TESTS=sql~~src/sql/tds.c~(i == scale && scale && ch(b, '.'))~(i == scale + 1 && scale && ch(b, '.'))
 sql: dates a day late~test TESTS=sql~~src/sql/tds.c~	date_civil(days - 719162, &y, &m, &d);~	date_civil(days - 719161, &y, &m, &d);
 sql: datetime's 1/300 s truncated, not rounded~test TESTS=sql~~src/sql/tds.c~(le(s + 4, 4) * 10 + 1) / 3~le(s + 4, 4) * 10 / 3
@@ -29,3 +29,13 @@ sql: a whole reply without its last DONE waits (fuzz)~fuzz FUZZERS=sql_tds FUZZ_
 specs: SqlRun ending a cancelled run at its first DONE~specs~find design/specs -name '*.cfg' ! -name SqlRun_ok.cfg -delete~design/specs/SqlRun_ok.cfg~Variant = "ok"~Variant = "firstdone"
 sql: a message's tab and newline escaped~test TESTS=sql~~src/sql/net.c~	unsigned char s[4] = {'\\', raw ? 0 : (unsigned char)esc(u)};~	unsigned char s[4] = {'\\', (unsigned char)(esc(u) + 0 * raw)};
 sql: no ARITHABORT, unlike SSMS~test TESTS=sql~~src/sql/tds.c~tds_batch(t, "set arithabort on")~tds_batch(t, "set ansi_nulls on")
+sql: the mechanism list read past its message (fuzz)~fuzz FUZZERS=sql_pg FUZZ_SECONDS=60~~src/sql/pg.c~while (q < e && *q && !(e - q >= 14 && !memcmp(q, "SCRAM-SHA-256", 14)))~while (q < e && *q && strcmp(q, "SCRAM-SHA-256"))
+sql: Postgres values not escaped~test TESTS=sql~~src/sql/pg.c~str_add(o, "NULL", 4) : net_esc(o, s, l)~str_add(o, "NULL", 4) : str_add(o, s, l)
+sql: Postgres NULL shown as empty~test TESTS=sql~~src/sql/pg.c~(l == 0xFFFFFFFF ? str_add(o, "NULL", 4) :~(l == 0xFFFFFFFF ? 0 :
+sql: a Postgres value longer than its message (fuzz)~fuzz FUZZERS=sql_pg FUZZ_SECONDS=60~~src/sql/pg.c~(s += 4, l != 0xFFFFFFFF && (size_t)(e - s) < l)~(s += 4, 0)
+sql: the command tag's NUL shown~test TESTS=sql~~src/sql/pg.c~net_esc(o, s, n ? n - 1 : 0)~net_esc(o, s, n)
+sql: Postgres notices dropped~test TESTS=sql~~src/sql/pg.c~	case 'E': case 'N': {~	case 'E': if (0) case 'N': return 0; {
+sql: our own Postgres cancel shown as an error~test TESTS=sql~~src/sql/pg.c~if (p->quiet && f['C'] && !strcmp(f['C'], "57014")) return 0;~if (p->quiet && f['C'] && !strcmp(f['C'], "none")) return 0;
+sql: the Postgres cancel carries the wrong key~test TESTS=sql~~src/sql/pg.c~put32(&s, p->pid) || put32(&s, p->key)~put32(&s, p->pid) || put32(&s, p->pid)
+sql: the Postgres transaction state not read~test TESTS=sql~~src/sql/pg.c~p->txn = n ? s[0] : 'I';~p->txn = 'I';
+sql: a refused login's reason lost to the server's close_notify~test TESTS=sql~~src/sql/net.c~e == SSL_ERROR_WANT_READ || e == SSL_ERROR_ZERO_RETURN ? 0~e == SSL_ERROR_WANT_READ ? 0

@@ -109,7 +109,10 @@ int net_read(Net *c, Str *in)
 	int m;
 	while ((m = SSL_read(c->ssl, s, sizeof s)) > 0)
 		if (str_add(in, s, (size_t)m)) return -1;
-	return SSL_get_error(c->ssl, m) == SSL_ERROR_WANT_READ ? 0 : fail(c, "TLS");
+	/* the server's close_notify: what came before it is parsed first (a
+	   refused login's reason), the closed socket is the next read's */
+	int e = SSL_get_error(c->ssl, m);
+	return e == SSL_ERROR_WANT_READ || e == SSL_ERROR_ZERO_RETURN ? 0 : fail(c, "TLS");
 }
 
 void net_close(Net *c)
