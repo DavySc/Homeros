@@ -16,6 +16,13 @@ enum { LOOP_MSGQ = -1 };
 
 int  loop_watch(int fd, LoopFn fn, void *ctx);   /* call fn when fd is readable; 0 ok, -1 full */
 void loop_unwatch(int fd);
+/* A watched socket's write wake (Neovim's libuv UV_WRITABLE): after a write
+   or connect would block, loop_write(fd, 1) also calls fn once fd takes
+   more; loop_write(fd, 0) when the queue is empty, or fn runs on every pass.
+   On Windows the watched handle is the socket's WSAEventSelect event
+   (FD_READ | FD_WRITE | FD_CONNECT | FD_CLOSE), which Winsock signals after
+   a would-block by itself, so there it does nothing. */
+void loop_write(int fd, int on);
 /* Waits up to timeout_ms (-1 forever) and calls the functions of ready fds.
    0 ok (also on a signal), -1 error. */
 int  loop_once(int timeout_ms);

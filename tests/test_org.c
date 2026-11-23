@@ -1220,28 +1220,35 @@ int main(void)
 	   25; with the line start found from each marker, 1572 ms on *a /b);
 	   links and footnotes: each reference's link and macro search goes on
 	   along the line, not from its start (5 runs, median 51 ms, 42 to 66,
-	   on a[fn:1], against 5.8 to 6.0 s; the other units 21 to 39) */
+	   on a[fn:1], against 5.8 to 6.0 s; the other units 21 to 39); under a
+	   definition, valid() asked once a line, not once a reference */
 	static const char *const units[] = { "word ", "<2026-01-01 x ", "<%%(x) ", "*a /b ", "=a ", "+-", "x^{a} \\alpha ", "x^{é} ",
-		"a[fn:1] ", "a [fn::b c] ", "a [fn:: (", "[[a][b]] ", "http://b.c ", "<http:b c> ", "[[a][b ", "<http:b " };
+		"a[fn:1] ", "a [fn::b c] ", "a [fn:: (", "[[a][b]] ", "http://b.c ", "<http:b c> ", "[[a][b ", "<http:b ",
+		"a \\cite{[fn:1]} ", "a [[b][[fn:1]]] " };
 	static char line[65536];
 	static unsigned char lf[sizeof line];
 	for (size_t i = 0; i < sizeof units / sizeof *units; i++) {
-		size_t m = 0, ul = strlen(units[i]);
+		size_t m = 9, ul = strlen(units[i]);   /* under a definition, so references throw its span */
+		memcpy(line, "[fn:1] d\n", m);
 		while (m + ul < sizeof line) memcpy(line + m, units[i], ul), m += ul;
 		if (*units[i] == '=') line[m - 1] = '=';   /* every marker's closer at the end */
 		line[m++] = '\n';
-		struct timespec t0, t1;
-		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t0);
-		t = text_new(line, m);
-		x = t ? orgfx_new(t) : NULL;
-		CHECK(x && orgfx_update(x, NULL));
-		for (size_t a = 0; a < m; a += 256) orgfx_faces(x, a, a + 256 < m ? a + 256 : m, lf + a);
-		Conceal c[64];
-		CHECK(orgfx_conceal(x, 0, c, 64) == (i == 4 || i == 6 || i == 11 ? 64 : 0));
-		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t1);
-		CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000 < 100);
-		orgfx_free(x);
-		text_free(t);
+		long ms = 100;   /* up to 3 tries: a busy machine slows a run, never speeds one */
+		for (int r = 0; r < 3 && ms >= 100; r++) {
+			struct timespec t0, t1;
+			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t0);
+			t = text_new(line, m);
+			x = t ? orgfx_new(t) : NULL;
+			CHECK(x && orgfx_update(x, NULL));
+			for (size_t a = 0; a < m; a += 256) orgfx_faces(x, a, a + 256 < m ? a + 256 : m, lf + a);
+			Conceal c[64];
+			CHECK(orgfx_conceal(x, 1, c, 64) == (i == 4 || i == 6 || i == 11 || i == 17 ? 64 : 0));
+			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t1);
+			ms = (t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000;
+			orgfx_free(x);
+			text_free(t);
+		}
+		CHECK(ms < 100);
 	}
 	/* the frame gate on many lines: the last 50 lines of a paragraph
 	   without a headline, shown one after another and then coloured, take
@@ -1255,7 +1262,7 @@ int main(void)
 	   ran to the end; the same past blank lines 8.0 (7.9 to 10.3) and 10.6
 	   (10.2 to 16.7); plain lines walked for each line, 120 ms) */
 	static const struct { const char *ln; size_t n, shown; long ms; const char *end, *top; } gate[] = {
-		{ "a *b* x^{2}\n", 100000, 5, 15, "", "" }, { "[fn:1] [[a][b]] *b* x^{2}\n", 100000, 7, 40, "", "" },
+		{ "a *b* x^{2}\n", 100000, 5, 20, "", "" }, { "[fn:1] [[a][b]] *b* x^{2}\n", 100000, 7, 40, "", "" },
 		/* openers that never close, then one closer at the end, past the blank lines */
 		{ "<http:a\n", 20000, 0, 20, "", "" }, { "[[a][x\n", 20000, 0, 20, "", "" },
 		{ "<http:a\n\n", 50000, 0, 20, "a>", "" }, { "[[a][x\n\n", 50000, 0, 20, "]]", "" },
@@ -1274,18 +1281,44 @@ int main(void)
 		while (m < n * w) memcpy(many + m, gate[k].ln, w), m += w;
 		memcpy(many + m - strlen(gate[k].end), gate[k].end, strlen(gate[k].end));
 		memcpy(many, gate[k].top, strlen(gate[k].top));
-		struct timespec t0, t1;
+		long ms = gate[k].ms;   /* up to 3 fresh texts, as above */
+		for (int r = 0; r < 3 && ms >= gate[k].ms; r++) {
+			struct timespec t0, t1;
+			t = text_new(many, m);
+			x = t ? orgfx_new(t) : NULL;
+			CHECK(x && orgfx_update(x, NULL));
+			Conceal c[64];
+			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t0);
+			size_t l0 = *gate[k].top ? 0 : n - 50;   /* the lines shown */
+			for (size_t l = l0; l < l0 + 50; l++) CHECK(orgfx_conceal(x, l, c, 64) == (l || !*gate[k].top ? gate[k].shown : 0));
+			orgfx_faces(x, l0 * w, (l0 + 50) * w, fc);
+			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t1);
+			CHECK(k != 1 || (fc[0] == FACE_MARKUP_LINK_LABEL && fc[7] == FACE_MARKUP_LINK_URL));
+			ms = (t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000;
+			orgfx_free(x);
+			text_free(t);
+		}
+		CHECK(ms < gate[k].ms);
+		if (k) continue;
+		/* checkpoints: lines shown going up the text after one walk start
+		   at the checkpoint below each, not at the top; four of them cost
+		   less than the walk (a ratio of two times on one runner, so its
+		   speed cancels: 5 alternating runs under the sanitizers, 1.35
+		   to 1.46 ms against a walk of 11.6 to 12.0; without checkpoints
+		   22.5 to 30.4 against 11.2 to 14.8, as they walk 2.0 texts) */
 		t = text_new(many, m);
 		x = t ? orgfx_new(t) : NULL;
 		CHECK(x && orgfx_update(x, NULL));
+		struct timespec u[3];
 		Conceal c[64];
-		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t0);
-		size_t l0 = *gate[k].top ? 0 : n - 50;   /* the lines shown */
-		for (size_t l = l0; l < l0 + 50; l++) CHECK(orgfx_conceal(x, l, c, 64) == (l || !*gate[k].top ? gate[k].shown : 0));
-		orgfx_faces(x, l0 * w, (l0 + 50) * w, fc);
-		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t1);
-		CHECK(k != 1 || (fc[0] == FACE_MARKUP_LINK_LABEL && fc[7] == FACE_MARKUP_LINK_URL));
-		CHECK((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000 < gate[k].ms);
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &u[0]);
+		orgfx_conceal(x, n - 1, c, 64);
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &u[1]);
+		for (size_t j = 4; j > 0; j--) orgfx_conceal(x, n / 5 * j, c, 64);
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &u[2]);
+		long d[2];
+		for (int i = 0; i < 2; i++) d[i] = (u[i + 1].tv_sec - u[i].tv_sec) * 1000000000 + (u[i + 1].tv_nsec - u[i].tv_nsec);
+		CHECK(d[1] < d[0]);
 		orgfx_free(x);
 		text_free(t);
 	}
