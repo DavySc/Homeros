@@ -191,7 +191,25 @@ keys: which-key's panel shows after 20 ms, not its 200 (test_keys_map)~test TEST
 keys: <BS> in which-key's panel closes it instead of going up a level (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		nlead = k == KEY_BS ? nlead - 1 : 0;~		nlead = 0;
 keys: <Esc> in which-key's panel keeps the count typed before Space (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		hint_end();¶		keys_feed(e, KEY_ESC, 0);~		hint_end();
 keys: a group's row (SPC g, +git) runs as a map (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		if (*maps[i].desc == '+') continue;¶~¶
-keys: which-key's panel fills rows first, not columns (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		int c = 2 + 3 + k / h * w, r = top + 1 + k++ % h;~		int c = 2 + 3 + k % cols * w, r = top + 1 + k++ / cols;
+keys: which-key's panel fills rows first, not columns (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		int c = 2 + 3 + k / h * w, r = top + 1 + k % h;~		int c = 2 + 3 + k % cols * w, r = top + 1 + k / cols;
 keys: which-key's trail names a group by its key, not its name (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~			if (typed(maps[j].lhs) > i && !maps[j].lhs[i + 1]) s = maps[j].desc;~			if (typed(maps[j].lhs) > i && !maps[j].lhs[i + 1]) (void)s;
 keys: which-key's panel stays shown after it closes, so the next Space shows it at once (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~static void hint_end(void) { hint = 0; ~static void hint_end(void) { 
 keys: which-key's panel has no NormalFloat background (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~g->c[i].bg = FACE_NORMAL_FLOAT;~g->c[i].bg = 0;
+keys: which-key's panel also opens after Org's c (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~if (lead[0] == ' ' && !hint) loop_timer~if (!hint) loop_timer
+keys: a failed map leaves which-key's panel shown (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	hint_end();¶	keys_feed(e, l[0], 1);~	keys_feed(e, l[0], 1);
+keys: closing which-key's panel leaves its delay running (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~{ hint = 0; loop_timer(hint_show, NULL, -1); }~{ hint = 0; }
+keys: which-key's groups in the description's face (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~*d == '+' ? FACE_WK_GROUP : FACE_WK_DESC~FACE_WK_DESC
+keys: which-key's separator in the key's face (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~" \xe2\x9e\x9c ", FACE_WK_SEPARATOR~" \xe2\x9e\x9c ", FACE_NORMAL_FLOAT
+keys: which-key's panel lists maps this mode cannot run (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~return usable(m) && typed(m) == nlead~return typed(m) == nlead
+keys: which-key's panel is not cut to the screen (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (h > g->rows - 4) h = g->rows - 4;¶~
+keys: <BS> and <Esc> after Org's c act as which-key's, not as Vim's (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~if (nlead && lead[0] == ' ' && (k == KEY_ESC~if (nlead && (k == KEY_ESC
+keys: which-key's panel puts groups first (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~return (*maps[i].desc == '+') * 1024~return (*maps[i].desc != '+') * 1024
+keys: which-key's panel puts punctuation keys first (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~!isalnum(k) * 512~!!isalnum(k) * 512
+keys: which-key's panel puts upper case first (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~(isupper(k) != 0)~(isupper(k) == 0)
+keys: which-key's panel covers the command line (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~last = g->rows - 2;~last = g->rows - 1;
+keys: which-key's panel has no blank row under the list (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~int top = g->rows - h - 4,~int top = g->rows - h - 3,
+keys: which-key's list may be 1 row high (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (h < 2) h = 2;¶~
+keys: which-key's panel covers the cursor (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~if (g->crow >= top - 1 && g->crow <= last)~if (0)
+keys: which-key's panel moves for a cursor on the row above it too late (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~g->crow >= top - 1 &&~g->crow >= top &&
+keys: which-key's panel moved for the cursor starts on the row under it (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~top = g->crow + 2 < g->rows - 4 ? g->crow + 2 :~top = g->crow + 1 < g->rows - 4 ? g->crow + 1 :
+keys: which-key's columns 10 wide, not its 20 (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	int n = 0, w = 20;~	int n = 0, w = 10;

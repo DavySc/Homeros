@@ -113,8 +113,8 @@ int main(int argc, char **argv)
 			   now, so draw all (Neovim's update_screen, UPD_CLEAR) */
 			if (grid_frame()) grid_free(&shown);
 			core_draw(&e, &g);
-			keys_draw(&e, &g);
 			tools_draw(&e, &g);
+			keys_draw(&e, &g);
 			kitten_draw(&e, &g);
 			b->present(&g, &shown);
 			dirty = 0;

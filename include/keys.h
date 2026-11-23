@@ -60,7 +60,7 @@ void keys_feed(struct Editor *e, int key, int pending);
 void keys_input(struct Editor *e, int key, int pending);
 /* which-key's panel: the maps that complete what keys_input holds, drawn
    200 ms after it began waiting (core_changed then says so).  main.c,
-   after core_draw.  No allocation. */
+   after tools_draw (over the start screen).  No allocation. */
 void keys_draw(struct Editor *e, Grid *g);
 /* BufWritePre, Davy's after/ftplugin/sql.lua: a .sql buffer is formatted
    when a sqldiff.toml is in its directory or one above, a SystemVerilog

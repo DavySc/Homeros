@@ -47,6 +47,20 @@ static int row_has(const Grid *g, int r, const char *s)
 	return strstr(b, s) != NULL;
 }
 
+static int face_at(const Grid *g, int r, int c) { return g->c[r * g->cols + c].face; }
+
+/* draws the panel until it shows: the time it took, or -1 after 400 ms */
+static long long wait_hint(Editor *e, Grid *g)
+{
+	long long t0 = loop_now();
+	for (core_changed = 0; loop_now() - t0 < 400000000LL; loop_once(10)) {
+		grid_clear(g);
+		keys_draw(e, g);
+		if (row_has(g, g->rows - 2, "<esc> close")) return core_changed ? loop_now() - t0 : -2;
+	}
+	return -1;
+}
+
 int main(void)
 {
 	char path[] = "/tmp/keys_mapXXXXXX";   /* outside any Git repository */
@@ -106,38 +120,74 @@ int main(void)
 	CHECK(drawn);
 
 	/* which-key's panel: typed fast, none; after 200 ms the keys after
-	   the prefix, groups with +; <BS> goes up a level, <Esc> closes and
-	   runs nothing (which-key.nvim's state.lua) */
+	   the prefix in which-key's order (maps, then groups with +), above
+	   the command line; <BS> goes up a level, <Esc> closes and runs
+	   nothing (which-key.nvim's view.lua and state.lua) */
 	feed(&e, " ");
 	keys_draw(&e, &g);
-	CHECK(!row_has(&g, 23, "SPC"));
-	long long t0 = loop_now();
-	for (core_changed = 0; !row_has(&g, 23, "SPC") && loop_now() - t0 < 1000000000LL; keys_draw(&e, &g)) loop_once(1000);
-	CHECK(core_changed && loop_now() - t0 >= 190000000LL);
-	CHECK(row_has(&g, 23, "<esc> close  <bs> back"));
-	CHECK(!row_has(&g, 18, "\xe2\x9e\x9c") && row_has(&g, 19, ", \xe2\x9e\x9c Buffers") && row_has(&g, 19, "p \xe2\x9e\x9c +project"));
-	CHECK(row_has(&g, 20, "c \xe2\x9e\x9c +compile") && row_has(&g, 22, "i \xe2\x9e\x9c +insert") && row_has(&g, 22, "e \xe2\x9e\x9c File Explorer"));
-	CHECK(g.c[22 * 80 + 79].bg == FACE_NORMAL_FLOAT && g.c[18 * 80].bg == FACE_NORMAL_FLOAT && g.c[17 * 80].bg != FACE_NORMAL_FLOAT);
+	CHECK(!row_has(&g, 22, "SPC"));
+	CHECK(wait_hint(&e, &g) >= 190000000LL);
+	CHECK(row_has(&g, 22, "<esc> close  <bs> back") && !row_has(&g, 23, "SPC"));
+	CHECK(!row_has(&g, 16, "\xe2\x9e\x9c") && !row_has(&g, 21, "\xe2\x9e\x9c"));
+	CHECK(row_has(&g, 17, "D \xe2\x9e\x9c Dashboard") && row_has(&g, 18, "e \xe2\x9e\x9c File Explorer") && row_has(&g, 19, ", \xe2\x9e\x9c Buffers"));
+	CHECK(row_has(&g, 20, "c \xe2\x9e\x9c +compile") && row_has(&g, 17, "f \xe2\x9e\x9c +find") && row_has(&g, 18, "u \xe2\x9e\x9c +toggle"));
+	CHECK(face_at(&g, 17, 5) == FACE_NORMAL_FLOAT && face_at(&g, 17, 7) == FACE_WK_SEPARATOR && face_at(&g, 17, 9) == FACE_WK_DESC && face_at(&g, 17, 35) == FACE_WK_GROUP);
+	CHECK(g.c[22 * 80 + 79].bg == FACE_NORMAL_FLOAT && g.c[16 * 80].bg == FACE_NORMAL_FLOAT && g.c[15 * 80].bg != FACE_NORMAL_FLOAT && g.c[23 * 80].bg != FACE_NORMAL_FLOAT);
+	/* the cursor under it (which-key's no_overlap): 2 rows below the cursor
+	   and over the command line, cut; at the bottom, 4 high over it */
+	g.crow = 15;
+	grid_clear(&g);
+	keys_draw(&e, &g);
+	CHECK(row_has(&g, 23, "<esc> close") && row_has(&g, 18, "D \xe2\x9e\x9c") && row_has(&g, 20, ", \xe2\x9e\x9c") && row_has(&g, 21, "c \xe2\x9e\x9c") && !row_has(&g, 22, "\xe2\x9e\x9c") && g.c[16 * 80].bg != FACE_NORMAL_FLOAT);
+	g.crow = 21;
+	grid_clear(&g);
+	keys_draw(&e, &g);
+	CHECK(row_has(&g, 23, "<esc> close") && row_has(&g, 21, "D \xe2\x9e\x9c") && !row_has(&g, 22, "\xe2\x9e\x9c") && g.c[20 * 80].bg == FACE_NORMAL_FLOAT && g.c[19 * 80].bg != FACE_NORMAL_FLOAT);
+	g.crow = 14;
+	grid_clear(&g);
+	keys_draw(&e, &g);
+	CHECK(row_has(&g, 22, "<esc> close") && row_has(&g, 17, "D \xe2\x9e\x9c"));
+	g.crow = 0;
 	feed(&e, "g");                             /* shown: at once */
+	grid_clear(&g);
 	keys_draw(&e, &g);
-	CHECK(row_has(&g, 23, " SPC \xc2\xbb +git ") && row_has(&g, 20, "b \xe2\x9e\x9c Git branches") && row_has(&g, 20, "s \xe2\x9e\x9c Git status"));
+	CHECK(row_has(&g, 22, " SPC \xc2\xbb +git ") && row_has(&g, 18, "b \xe2\x9e\x9c Git branches") && row_has(&g, 19, "B \xe2\x9e\x9c Open on GitHub") && row_has(&g, 18, "s \xe2\x9e\x9c Git status"));
 	keys_input(&e, KEY_BS, 0);
 	grid_clear(&g);
 	keys_draw(&e, &g);
-	CHECK(e.ks.pending && row_has(&g, 19, "Buffers") && !row_has(&g, 23, "git"));
+	CHECK(e.ks.pending && row_has(&g, 19, "Buffers") && !row_has(&g, 22, "git"));
 	keys_input(&e, KEY_BS, 0);
 	grid_clear(&g);
 	keys_draw(&e, &g);
-	CHECK(!e.ks.pending && !row_has(&g, 23, "SPC") && at(&e, "acb\n", 0));
+	CHECK(!e.ks.pending && !row_has(&g, 22, "SPC") && at(&e, "acb\n", 0));
 	feed(&e, "03 \033x");                      /* Esc: nothing runs, the count goes */
 	CHECK(!e.ks.pending && at(&e, "cb\n", 0));
 	feed(&e, "u");
 	feed(&e, " u");
 	keys_draw(&e, &g);
-	CHECK(!row_has(&g, 23, "SPC"));            /* the delay starts again */
+	CHECK(!row_has(&g, 22, "SPC"));            /* the delay starts again */
 	feed(&e, "k");
 	CHECK(!strcmp(e.msg, "Kitten on save: off"));
-	feed(&e, " uk");
+	CHECK(wait_hint(&e, &g) < 0);              /* a map run stops the delay */
+	feed(&e, " uk ");
+	CHECK(wait_hint(&e, &g) > 0);
+	feed(&e, "x");                             /* no map: Space, x; the panel goes */
+	keys_draw(&e, &g);
+	CHECK(at(&e, "ab\n", 1) && wait_hint(&e, &g) < 0);
+	feed(&e, "u0v ");                          /* Visual: SPC i s only */
+	CHECK(wait_hint(&e, &g) > 0 && row_has(&g, 19, "i \xe2\x9e\x9c +insert") && !row_has(&g, 18, "\xe2\x9e\x9c") && !row_has(&g, 20, "\xe2\x9e\x9c"));
+	feed(&e, "\033\033");
+	static Grid small;                         /* shorter than the list: cut, no write outside */
+	CHECK(!grid_resize(&small, 6, 30));
+	small.crow = 5;                            /* under the panel: it stays */
+	feed(&e, " ");
+	CHECK(wait_hint(&e, &small) > 0 && row_has(&small, 4, "SPC") && row_has(&small, 1, "D \xe2\x9e\x9c") && row_has(&small, 2, "e \xe2\x9e\x9c") && !row_has(&small, 5, "SPC"));
+	small.crow = 0;                            /* over it: 2 rows below, 1 row of the list */
+	grid_clear(&small);
+	keys_draw(&e, &small);
+	CHECK(row_has(&small, 5, "<esc> close") && row_has(&small, 3, "D \xe2\x9e\x9c") && !row_has(&small, 4, "\xe2\x9e\x9c"));
+	feed(&e, "\033");
+	grid_free(&small);
 	grid_free(&g);
 
 	/* after a count or a register the map runs and takes them, as a <Cmd>
@@ -213,6 +263,15 @@ int main(void)
 	CHECK(at(&d, "* NEXT a b\n", 9));
 	feed(&d, "0wwcwc\x1b");
 	CHECK(at(&d, "* NEXT c b\n", 7));
+	CHECK(!grid_resize(&g, 24, 80));
+	feed(&d, "c");                             /* no panel after Org's c, and <BS> is its motion */
+	CHECK(wait_hint(&d, &g) < 0);
+	keys_input(&d, KEY_BS, 1);
+	feed(&d, "X\033");
+	CHECK(at(&d, "* NEXTXc b\n", 6));
+	grid_free(&g);
+	feed(&d, "u");
+	CHECK(at(&d, "* NEXT c b\n", 6));
 	/* DONE stamps CLOSED with the local clock (a zone 5:45 east, named as
 	   POSIX TZ does, so no zone files are needed); a minute may turn */
 	setenv("TZ", "XST-5:45", 1);

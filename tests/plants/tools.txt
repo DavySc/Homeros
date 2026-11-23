@@ -105,3 +105,4 @@ terminal: the slot memo trusted without comparing the slot's face~test TESTS=too
 main: Ctrl+Z suspends the editor while the terminal is open (ctrlz.py)~test TESTS=tools_term~~src/main.c~ && !tools_term()) {~) {
 tools: vim.trim keeps trailing blanks (picker prompt, oil names)~test TESTS=tools_match~~src/tools/match.c~	while (n && match_space((unsigned char)(*s)[n - 1])) n--;¶~¶
 tools: a tab is not a blank (Lua's %s)~test TESTS=tools_match~~src/tools/match.c~(c >= '\t' && c <= '\r')~(c > '\t' && c <= '\r')
+main: which-key's panel under the start screen (start.py)~test TESTS=shada~~src/main.c~			tools_draw(&e, &g);¶			keys_draw(&e, &g);~			keys_draw(&e, &g);¶			tools_draw(&e, &g);

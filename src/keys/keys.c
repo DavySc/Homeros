@@ -5,6 +5,7 @@
    (vgetorpeek()).  Typed keys alone sync undo and are recorded (gotchars(),
    may_sync_undo()); a beep drops the stuffed and executed keys
    (beep_flush()). */
+#include <ctype.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -169,14 +170,23 @@ static int child(int i)
 static void hint_show(void *ctx) { (void)ctx; hint = 1; core_changed = 1; }
 static void hint_end(void) { hint = 0; loop_timer(hint_show, NULL, -1); }
 
+/* which-key.nvim's sort (config.lua's sort, then view.lua's natural and
+   case): maps before groups, letters and digits before the rest, then the
+   key ignoring case, lower case first */
+static int rank(int i)
+{
+	unsigned char k = (unsigned char)maps[i].lhs[nlead];
+	return (*maps[i].desc == '+') * 1024 + !isalnum(k) * 512 + tolower(k) * 2 + (isupper(k) != 0);
+}
+
 /* which-key.nvim's classic panel, with its defaults (view.lua's show()):
-   the full width at the bottom over the command line, a blank row, the
+   the full width at the bottom, above the command line; a blank row, the
    maps and groups under the typed keys in columns filled one after the
-   other (each at least 20 cells wide, 3 apart, after 2 of padding: "key
-   ➜ description", a group's in WhichKeyGroup), then the trail of keys
-   typed (a group by its name) and the help, centred.  Only after Space,
-   so a c pausing in an Org buffer is Vim's c with nothing over it.  No
-   allocation. */
+   other (at least 2 rows; each column at least 20 cells wide, 3 apart,
+   after 2 of padding: "key ➜ description", a group's in WhichKeyGroup), a
+   blank row, then the trail of keys typed (a group by its name) and the
+   help, centred.  Only after Space, so a c pausing in an Org buffer is
+   Vim's c with nothing over it.  No allocation. */
 void keys_draw(Editor *e, Grid *g)
 {
 	if (!hint) return;
@@ -189,17 +199,29 @@ void keys_draw(Editor *e, Grid *g)
 			n++;
 		}
 	int cols = g->cols / (w + 3) > 1 ? g->cols / (w + 3) : 1, h = (n + cols - 1) / cols;
-	if (h > g->rows - 2) h = g->rows - 2;
+	if (h < 2) h = 2;
+	if (h > g->rows - 4) h = g->rows - 4;
+	int top = g->rows - h - 4, last = g->rows - 2;
+	/* which-key's no_overlap (view.lua's check_overlap()): over the
+	   cursor's row or the one above it, the panel starts 2 rows below the
+	   cursor, at least 4 high, and Neovim moves the float up to fit
+	   (nvim_open_win's fixed off); the rows that no longer fit are cut */
+	if (g->crow >= top - 1 && g->crow <= last) {
+		last = g->rows - 1;
+		top = g->crow + 2 < g->rows - 4 ? g->crow + 2 : g->rows - 4;
+		h = last - top - 2;
+	}
 	if (h < 1) return;
-	int top = g->rows - h - 2, last = g->rows - 1;
 	w = g->cols / cols;
-	for (int r = top; r <= last; r++)
-		for (int c = 0; c < g->cols; c++) grid_put(g, r, c, (const unsigned char *)" ", 1, 1, ATTR_NONE);
-	for (int i = 0, k = 0; i < NMAPS && k / h < cols; i++) {
-		if (!child(i)) continue;
-		int c = 2 + 3 + k / h * w, r = top + 1 + k++ % h;
-		const char *d = maps[i].desc;
-		char key[2] = { maps[i].lhs[nlead], 0 };
+	grid_blank(g, top, 0, h + 3, g->cols);
+	for (int k = 0, prev = -1; k < n && k / h < cols; k++) {
+		int b = -1;
+		for (int i = 0; i < NMAPS; i++)
+			if (child(i) && rank(i) > prev && (b < 0 || rank(i) < rank(b))) b = i;
+		prev = rank(b);
+		int c = 2 + 3 + k / h * w, r = top + 1 + k % h;
+		const char *d = maps[b].desc;
+		char key[2] = { maps[b].lhs[nlead], 0 };
 		c = grid_str(g, r, c, key, FACE_NORMAL_FLOAT);
 		c = grid_str(g, r, c, " \xe2\x9e\x9c ", FACE_WK_SEPARATOR);
 		grid_str(g, r, c, d, *d == '+' ? FACE_WK_GROUP : FACE_WK_DESC);
@@ -218,7 +240,7 @@ void keys_draw(Editor *e, Grid *g)
 	c = grid_str(g, last, c, " close  ", FACE_WK_SEPARATOR);
 	c = grid_str(g, last, c, "<bs>", FACE_NORMAL_FLOAT);
 	grid_str(g, last, c, " back", FACE_WK_SEPARATOR);
-	for (int i = top * g->cols; i < g->rows * g->cols; i++) g->c[i].bg = FACE_NORMAL_FLOAT;
+	for (int i = top * g->cols; i < (last + 1) * g->cols; i++) g->c[i].bg = FACE_NORMAL_FLOAT;
 }
 
 /* snacks' :Dashboard, also SPC D: the start screen on a new empty buffer
@@ -233,9 +255,11 @@ static int map(Editor *e, int k)
 {
 	if (!nlead && (e->mode != MODE_NORMAL || !normal_mappable(0))) return 0;
 	E = e;   /* for is_ft() and the maps that edit */
-	/* which-key's <Esc> closes (and ends a count, a register or Visual
-	   mode, as Esc does), <BS> goes up a level */
-	if (nlead && (k == KEY_ESC || k == KEY_BS)) {
+	/* after Space, which-key's <Esc> closes (and ends a count, a register
+	   or Visual mode, as Esc does), <BS> goes up a level; from the first
+	   which-key goes to the root, the list of every Normal key, which has
+	   no descriptions here, so it closes */
+	if (nlead && lead[0] == ' ' && (k == KEY_ESC || k == KEY_BS)) {
 		nlead = k == KEY_BS ? nlead - 1 : 0;
 		if (nlead) return 1;
 		hint_end();

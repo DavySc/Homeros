@@ -111,6 +111,12 @@ int grid_puts(Grid *g, int r, int c, int end, const char *s, size_t n, int attr,
 	return c;
 }
 
+void grid_blank(Grid *g, int y, int x, int h, int w)
+{
+	for (int r = y; r < y + h; r++)
+		for (int c = x; c < x + w; c++) grid_put(g, r, c, (const unsigned char *)" ", 1, 1, ATTR_NONE);
+}
+
 int grid_str(Grid *g, int r, int c, const char *s, int face)
 {
 	return grid_puts(g, r, c, g->cols, s, strlen(s), ATTR_NONE, face);
