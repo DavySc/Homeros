@@ -15,12 +15,8 @@
    initialize reply, every change applies, a new request cancels the last,
    a reply for each of its requests.  The test binary is also the fake
    server (run with --fake). */
-#include <fcntl.h>
-#include <poll.h>
-#include <signal.h>
 #include <stdarg.h>
 #include <string.h>
-#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
@@ -37,6 +33,72 @@ static long long ms(void)
 	clock_gettime(CLOCK_MONOTONIC, &ts);
 	return ts.tv_sec * 1000LL + ts.tv_nsec / 1000000;
 }
+
+/* What differs on Windows (src/lsp/check.sh runs this there): the fake's
+   stdin is a pipe poll cannot wait on, and paths are UTF-8 to the editor
+   but wide to the system, so the test's own calls convert them too. */
+#ifdef _WIN32
+#include <fcntl.h>
+#include <direct.h>
+#include <io.h>
+#include <windows.h>
+static const wchar_t *wide(const char *s)
+{
+	static wchar_t w[2][1024];
+	static int k;
+	k ^= 1;
+	return MultiByteToWideChar(CP_UTF8, 0, s, -1, w[k], 1024) ? w[k] : L"";
+}
+#define mkdir(p, m) _wmkdir(wide(p))
+#define rmdir(p) _wrmdir(wide(p))
+#define unlink(p) _wunlink(wide(p))
+#define fopen(p, m) _wfopen(wide(p), wide(m))
+#define setenv(k, v, o) _putenv_s(k, v)
+static void *memmem(const void *h, size_t n, const void *w, size_t k)
+{
+	for (const char *p = h; k <= n && p <= (const char *)h + n - k; p++) if (!memcmp(p, w, k)) return (void *)p;
+	return NULL;
+}
+static DWORD waiting(void)   /* bytes in the pipe; an end (an error) counts as some */
+{
+	DWORD n;
+	return PeekNamedPipe(GetStdHandle(STD_INPUT_HANDLE), NULL, 0, NULL, &n, NULL) ? n : 1;
+}
+static int ready(int t) { for (long long t0 = ms(); !waiting(); Sleep(1)) if (ms() - t0 >= t) return 0; return 1; }
+static void slashed(char *s) { for (; *s; s++) if (*s == '\\') *s = '/'; }
+static void self(char *exe, size_t n) { CHECK(GetModuleFileNameA(NULL, exe, (DWORD)n)); slashed(exe); }
+static int here(char *d, size_t n)
+{
+	wchar_t w[1024];
+	if (!_wgetcwd(w, 1024) || !WideCharToMultiByte(CP_UTF8, 0, w, -1, d, (int)n, NULL, NULL)) return 0;
+	slashed(d);
+	return 1;
+}
+static const char *tmp(void)
+{
+	static char t[1024];
+	wchar_t w[1024];
+	DWORD k = GetTempPathW(1024, w);
+	if (k) w[k - 1] = 0;   /* its last '\\' */
+	if (!k || !WideCharToMultiByte(CP_UTF8, 0, w, -1, t, sizeof t, NULL, NULL)) return "";
+	slashed(t);
+	return t;
+}
+#define LONGDIRS 1   /* MAX_PATH */
+/* the goals project stays until the test ends: file.h keeps a directory's
+   watch for the session, and Windows removes no directory holding one */
+static const int kept = 1;
+#else
+#include <poll.h>
+#include <sys/ioctl.h>
+static int waiting(void) { int n = 0; return ioctl(0, FIONREAD, &n) == 0 && n > 0; }
+static int ready(int t) { struct pollfd pf = { 0, POLLIN, 0 }; return poll(&pf, 1, t) > 0; }
+static void self(char *exe, size_t n) { ssize_t k = readlink("/proc/self/exe", exe, n - 1); CHECK(k > 0); exe[k] = 0; }
+static int here(char *d, size_t n) { return getcwd(d, n) != NULL; }
+static const char *tmp(void) { return "/tmp"; }
+#define LONGDIRS 3
+static const int kept = 0;
+#endif
 
 /* --- an independent UTF-16 reference: whole code points, valid UTF-8 ----- */
 
@@ -311,13 +373,15 @@ static size_t fbehind;   /* bytes read behind the message being handled */
 static int gmode;
 /* the goals test's project, whose name needs percent-encoding, and
    another; per test process ($GOALS_ID), so runs side by side keep apart */
-static char groot[64], guri[80], gother[64], gouri[80];
+static char groot[1100], guri[1200], gother[1100], gouri[1200];
 static void gpaths(const char *id)
 {
-	snprintf(groot, sizeof groot, "/tmp/homeros goals \xC3\xBC-%s", id);
-	snprintf(guri, sizeof guri, "file:///tmp/homeros%%20goals%%20%%C3%%BC-%s", id);
-	snprintf(gother, sizeof gother, "/tmp/homeros-goals2-%s", id);
-	snprintf(gouri, sizeof gouri, "file://%s", gother);
+	const char *t = tmp(), *sl = *t == '/' ? "" : "/";   /* file:///C:/x (RFC 8089) */
+	CHECK(strspn(t, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/:._~-") == strlen(t));   /* needs no encoding */
+	snprintf(groot, sizeof groot, "%s/homeros goals \xC3\xBC-%s", t, id);
+	snprintf(guri, sizeof guri, "file://%s%s/homeros%%20goals%%20%%C3%%BC-%s", sl, t, id);
+	snprintf(gother, sizeof gother, "%s/homeros-goals2-%s", t, id);
+	snprintf(gouri, sizeof gouri, "file://%s%s", sl, gother);
 }
 static long fsess, fsess0;            /* the RPC session (an older one is outdated); this process's first */
 static int hush;                      /* $/test/hush: say nothing of new versions */
@@ -438,14 +502,14 @@ static void fhandle(const char *m, size_t n)
 			wrong("no silent diagnostics capability: goals accomplished would show as a message");
 		/* the goals test's file is in a subdirectory of its project, whose
 		   name needs percent-encoding */
-		char ru[256] = "", cwd[256];
+		char ru[1200] = "", cwd[1100];
 		int x = json_get(m, ft, p, "rootUri");
 		if (x >= 0 && ft[x].z - ft[x].a < sizeof ru) json_str(m, ft, x, ru);
-		if (gmode && (strcmp(ru, guri) || !getcwd(cwd, sizeof cwd) || strcmp(cwd, groot)) && strcmp(ru, gouri))
+		if (gmode && (strcmp(ru, guri) || !here(cwd, sizeof cwd) || strcmp(cwd, groot)) && strcmp(ru, gouri))
 			wrong("the project is %s, not %s", ru, guri);
 		if (rnd(2)) usleep(rnd(30000));               /* messages pile up behind it */
-		int behind = 0;            /* bytes waiting (not an end: the editor may close a server it just started) */
-		if (fbehind || (ioctl(0, FIONREAD, &behind) == 0 && behind > 0)) wrong("a message sent before the initialize reply");
+		/* bytes waiting (not an end: the editor may close a server it just started) */
+		if (fbehind || waiting()) wrong("a message sent before the initialize reply");
 		Str r = { 0 };
 		str_addf(&r, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"result\":{\"capabilities\":{\"textDocumentSync\":2}}}", json_int(m, ft, id));
 		fsend(&r);
@@ -609,8 +673,7 @@ static int fake(const char *seed, const char *log)
 	viol = fopen(log, "a");
 	if (!viol) return 2;
 	for (;;) {
-		struct pollfd pf = { 0, POLLIN, 0 };
-		if (poll(&pf, 1, (int)rnd(15)) > 0) {
+		if (ready((int)rnd(15))) {
 			ssize_t r = read(0, in + n, sizeof in - n);
 			if (r <= 0) return 0;
 			n += (size_t)r;
@@ -821,9 +884,7 @@ static void scenario(int seed, const char *log)
 	static LspServer fake_table[2];
 	snprintf(sseed, sizeof sseed, "%d", seed);
 	argv[0] = exe; argv[1] = "--fake"; argv[2] = sseed; argv[3] = log; argv[4] = NULL;
-	ssize_t el = readlink("/proc/self/exe", exe, sizeof exe - 1);
-	CHECK(el > 0);
-	exe[el] = 0;
+	self(exe, sizeof exe);
 	fake_table[0] = (LspServer){ ".fake", "fake", argv, (const char *const *)roots, 1 };
 	lsp_servers = fake_table;
 	lsp_tap = tap;
@@ -841,8 +902,9 @@ static void scenario(int seed, const char *log)
 	cur = 0;
 	snapshot();
 	/* A path past 512 bytes: its URI goes in every message (PR 27 review). */
-	char path[700] = "/tmp/";
-	for (int i = 0; i < 3; i++) { size_t k = strlen(path); memset(path + k, 'a', 200); path[k + 200] = 0; mkdir(path, 0700); strcat(path, "/"); }
+	char path[1700];
+	snprintf(path, sizeof path, "%s/", tmp());
+	for (int i = 0; i < LONGDIRS; i++) { size_t k = strlen(path); memset(path + k, 'a', 200); path[k + 200] = 0; mkdir(path, 0700); strcat(path, "/"); }
 	strcat(path, "homeros-test.fake");
 	LspDoc *d = lsp_open(path, t);
 	CHECK(d);
@@ -1132,22 +1194,31 @@ static void gcheck(Editor *e, Str *w, char *got)
 	if (h && t) CHECK(f[t - got] == FACE_OPERATOR);
 }
 
+/* The goals test's directories (1) or their end (0): 0 ok. */
+static int gtree(int make)
+{
+	char sub[1200], mark[1200];
+	snprintf(sub, sizeof sub, "%s/sub", groot);
+	snprintf(mark, sizeof mark, "%s/root.mark", groot);
+	if (!make) return unlink(mark) | rmdir(sub) | rmdir(groot) | rmdir(gother);
+	FILE *f = mkdir(groot, 0700) || mkdir(sub, 0700) || mkdir(gother, 0700) ? NULL : fopen(mark, "w");
+	return f ? fclose(f) : -1;
+}
+
 static void goals(const char *log)
 {
 	static char exe[4096], *const roots[] = { "root.mark", NULL };
 	static const char *argv[] = { exe, "--fake", "goals", NULL, NULL };
-	char id[16], sh[512], path[128];
+	char id[16], path[1200];
 	snprintf(id, sizeof id, "%d", (int)getpid());
 	gpaths(id);
 	CHECK(!setenv("GOALS_ID", id, 1));
-	snprintf(sh, sizeof sh, "rm -rf '%s' %s && mkdir -p '%s/sub' %s && touch '%s/root.mark'", groot, gother, groot, gother, groot);
-	CHECK(!system(sh));
+	gtree(0);             /* what a run killed left (pids come again) */
+	CHECK(!gtree(1));
 	static LspServer table[2];
 	static char got[1 << 15];
 	argv[3] = log;
-	ssize_t el = readlink("/proc/self/exe", exe, sizeof exe - 1);
-	CHECK(el > 0);
-	exe[el] = 0;
+	self(exe, sizeof exe);
 	table[0] = (LspServer){ ".fake", "fake", argv, (const char *const *)roots, 1 };
 	lsp_servers = table;
 	lsp_tap = NULL;
@@ -1361,9 +1432,8 @@ static void goals(const char *log)
 	}
 	free(w.s);
 	core_free(&e);
-	snprintf(sh, sizeof sh, "rm -rf '%s' %s", groot, gother);
-	CHECK(!system(sh));
 	for (long long t1 = ms(); ms() - t1 < 300; ) loop_once(20);
+	CHECK(!gtree(0) || kept);   /* the editor left nothing in them */
 }
 
 static void units(void)
@@ -1426,12 +1496,15 @@ static void units(void)
 
 int main(int argc, char **argv)
 {
+#ifdef _WIN32
+	CHECK(_setmode(0, _O_BINARY) >= 0 && _setmode(1, _O_BINARY) >= 0);   /* the fake's frames as sent */
+#endif
 	if (argc == 4 && !strcmp(argv[1], "--fake")) return fake(argv[2], argv[3]);
 	units();
-	char log[] = "/tmp/homeros-lsp-XXXXXX";
-	int fd = mkstemp(log);
-	CHECK(fd >= 0);
-	close(fd);
+	char log[1100];
+	snprintf(log, sizeof log, "%s/homeros-lsp-%d", tmp(), (int)getpid());
+	FILE *lf = fopen(log, "w");
+	CHECK(lf && !fclose(lf));
 	int n = getenv("LSP_N") ? atoi(getenv("LSP_N")) : 12;
 	unsigned long long seed = getenv("SEED") ? strtoull(getenv("SEED"), NULL, 10) : (unsigned long long)time(NULL);
 	printf("test_lsp: %d scenarios, SEED=%llu\n", n, seed);

@@ -9,6 +9,7 @@
    went on, at a key every 250 ms (src/lsp/bench/stale.c), against the
    design's 2 s limit.  Replies are not mapped (LspSync "mapreply" fails):
    one is shown only while the text is as it was when asked. */
+#include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,6 +17,7 @@
 #include <strings.h>
 #include <unistd.h>
 #include "core.h"
+#include "file.h"
 #include "json.h"
 #include "loop.h"
 #include "lsp.h"
@@ -304,22 +306,6 @@ static void shift_set(Set *v, size_t pos, size_t ndel, size_t nins)
 
 /* --- the public calls ------------------------------------------------------- */
 
-static char *absolute(const char *path)
-{
-#ifdef _WIN32
-	char *abs = _fullpath(NULL, path, 0);   /* realpath's twin; a URI has '/' */
-	for (char *p = abs; p && *p; p++) if (*p == '\\') *p = '/';
-	return abs;
-#else
-	char *abs = realpath(path, NULL), cwd[4096];
-	if (abs) return abs;
-	if (path[0] == '/') return strdup(path);
-	Str a = { 0 };
-	if (getcwd(cwd, sizeof cwd)) str_addf(&a, "%s/%s", cwd, path);
-	return a.s;
-#endif
-}
-
 /* The nearest directory above file abs holding one of roots, else the
    file's own. */
 static char *project(const char *abs, const char *const *roots)
@@ -331,7 +317,8 @@ static char *project(const char *abs, const char *const *roots)
 		*slash = 0;
 		for (const char *const *m = roots; *m; m++) {
 			Str p = { 0 };
-			int found = !str_addf(&p, "%s/%s", dir, *m) && !access(p.s, F_OK);
+			FileId id;
+			int found = !str_addf(&p, "%s/%s", dir, *m) && !file_id(p.s, &id) && id.exists;
 			free(p.s);
 			if (found) { free(own); return dir; }
 		}
@@ -346,10 +333,14 @@ LspDoc *lsp_open(const char *path, const Text *t)
 	const LspServer *def = lsp_servers;
 	while (def->ext && (!dot || strcmp(def->ext, dot))) def++;
 	if (!def->ext) return NULL;
-	char *abs = absolute(path), *root = abs ? project(abs, def->roots) : NULL, *u = abs ? uri(abs) : NULL;
+	char abs[PATH_MAX];
+	int ok = !file_full(path, abs);
+#ifdef _WIN32
+	for (char *p = abs; ok && *p; p++) if (*p == '\\') *p = '/';   /* a URI has '/' */
+#endif
+	char *root = ok ? project(abs, def->roots) : NULL, *u = ok ? uri(abs) : NULL;
 	LspDoc *d = calloc(1, sizeof *d);
 	if (d) d->prog.ver = -1;                 /* no $/lean/fileProgress yet */
-	free(abs);
 	if (!d || !root || !u) { free(d); free(root); free(u); return NULL; }
 	Srv *s = srvs;
 	while (s && (s->def->argv != def->argv || s->closing || strcmp(s->root, root))) s = s->link;
