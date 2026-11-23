@@ -163,8 +163,9 @@ int main(int argc, char **argv)
 	Db d;
 	if (!up(&d, 0)) return 1;
 	CHECK(d.t.pkt == 4096 && !d.t.login.s);   /* LOGIN7, with the password, not kept */
-	/* a child the editor starts does not hold the session open (the review of PR 133) */
-	CHECK(fcntl(d.net->fd, F_GETFD) & FD_CLOEXEC);
+	/* a child the editor starts does not hold the session open, and a
+	   read never blocks the editor (the review of PR 133) */
+	CHECK(fcntl(d.net->fd, F_GETFD) & FD_CLOEXEC && fcntl(d.net->fd, F_GETFL) & O_NONBLOCK);
 	/* SSMS's session options */
 	CHECK(is(&d, "select @@options o", "o\n5496\n(1 row affected)\n"));
 	/* text in both directions: outside the BMP, and Latin-1 */
@@ -223,6 +224,9 @@ int main(int argc, char **argv)
 		CHECK(!cancel(&d) && !run(&d, PG_READY, 0));
 		CHECK(is(&d, "select pg_sleep(0.05), 2 x", "pg_sleep\tx\n\t2\n(SELECT 1)\n"));
 	}
+	/* and the loop's cancels leave nothing that ends a later one early */
+	CHECK(!batch(&d, "select g from generate_series(1, 20000000) g", 1000));
+	CHECK(is(&d, "select 1 as one", "one\n1\n(SELECT 1)\n"));
 	/* the transaction state comes from the server's ReadyForQuery */
 	CHECK(!batch(&d, "begin", 0) && d.g.txn == 'T');
 	CHECK(!batch(&d, "select 1/0", 0) && d.g.txn == 'E' && strstr(d.out->s, "ERROR 22012: division by zero"));
