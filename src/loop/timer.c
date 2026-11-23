@@ -46,6 +46,11 @@ int proc_spawn(char *const argv[], const char *dir, ProcFn fn, void *ctx)
 	return proc_start(argv, dir, 0, 0, fn, ctx);
 }
 
+int proc_spawn_ov(char *const argv[], const char *dir, ProcFn fn, void *ctx)
+{
+	return proc_start(argv, dir, 0, -1, fn, ctx);
+}
+
 int proc_pty(char *const argv[], const char *dir, int rows, int cols, ProcFn fn, void *ctx)
 {
 	return rows > 0 && cols > 0 ? proc_start(argv, dir, rows, cols, fn, ctx) : -1;

@@ -44,6 +44,11 @@ int  loop_breakcheck(void);
    >= 0, or -1. */
 typedef void (*ProcFn)(void *ctx, int stream, const char *b, size_t n);
 int  proc_spawn(char *const argv[], const char *dir, ProcFn fn, void *ctx);
+/* proc_spawn for a child that waits on its pipes and other handles in one
+   thread (homeros-infoview, its sockets): on Windows its stdin and stdout
+   are overlapped too, so it must use overlapped I/O on them (a synchronous
+   pipe cannot be waited on); elsewhere proc_spawn. */
+int  proc_spawn_ov(char *const argv[], const char *dir, ProcFn fn, void *ctx);
 /* proc_spawn of a command line through the user's shell, as Neovim's
    'shell': $SHELL -c cmd (sh if unset); on Windows %COMSPEC% /s /c "cmd"
    with the line passed verbatim (shellxquote and libuv's

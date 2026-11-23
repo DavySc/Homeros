@@ -90,3 +90,6 @@ jobs:
       # the pseudo-console (ConPTY), which Wine cannot resize (the terminal's)
       - run: bash src/loop/check.sh
         shell: bash
+      # the infoview's child: sockets and overlapped pipes in one wait
+      - run: bash src/infoview/check.sh
+        shell: bash
