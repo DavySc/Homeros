@@ -142,7 +142,7 @@ void snip_edit(const Buf *b, const Text *t, size_t pos, size_t ndel, const char 
 		I.len += nins - ndel;
 		I.stale = 1;
 	}
-	if (E && is_sql(b)) loop_timer(idle, NULL, HOLD);
+	if (E && is_sql(b)) loop_timer(idle, NULL, b == I.b ? HOLD : 0);   /* a buffer without it: at once, off the key */
 	if (!S.b || b != S.b) return;
 	/* a join reaches the core as its lines rewritten (keys' do_join());
 	   Neovim splices extmarks over the line break it takes out alone.  A

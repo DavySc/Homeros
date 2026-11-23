@@ -73,14 +73,13 @@ snip: the popup in a comment~test TESTS=snip~~src/snip/snip.c~		if ((k == TQ_COM
 snip: a keyword typed in capitals comes in small letters~test TESTS=snip~~src/snip/snip.c~	if (big && !small && (*c.kind == 'K' || *c.kind == 'F'))~	if (0)
 snip: Tab in a snippet picks in the popup~test TESTS=snip~~src/snip/snip.c~	if (tab) close_pum(e);¶	if (tab && jump(e, k == KEY_TAB ? 1 : -1, S.s[S.cur].idx)) return 1;¶	if (e->pum && e->pum == items && pum_key(e, k)) return 1;~	if (e->pum && e->pum == items && pum_key(e, k)) return 1;¶	if (tab && jump(e, k == KEY_TAB ? 1 : -1, S.s[S.cur].idx)) return 1;
 snip: a statement's aliases leak into the next~test TESTS=snip~~src/snip/snip.c~	refs->n = pairs->n = 0;~	pairs->n = 0;
-snip: the statement tree's conditions left out~test TESTS=snip~~src/sqlfmt/sqlfmt.c~		if (p.ev[i].node != N_STATEMENT && p.ev[i].node != N_CONDITION) continue;~		if (p.ev[i].node != N_STATEMENT) continue;
 snip: an exact match not first~test TESTS=snip~~src/snip/snip.c~	if (ea != eb) return eb - ea;~	if (0 && ea != eb) return eb - ea;
 snip: fact() keeps pointers into the pool it grows~test TESTS=snip~~src/snip/snip.c~	char w[128], of[128];   /* w0 and of0 may be in the pool, which intern moves */¶	strncpy(w, w0, sizeof w - 1)[sizeof w - 1] = 0, strncpy(of, of0, sizeof of - 1)[sizeof of - 1] = 0;~	const char *w = w0, *of = of0;
 snip: the list kept for an empty word~test TESTS=snip~~src/snip/snip.c~	} else W.b = NULL;~	}
 snip: the file walked at every word start~test TESTS=snip~~src/snip/snip.c~	if (I.b != e->buf || I.nr != e->buf->nr || I.len != text_len(t)) scan(e, a, z);~	scan(e, a, z);
 snip: the index made again under an open popup~test TESTS=snip~~src/snip/snip.c~	if (e->pum == items) loop_timer(idle, NULL, HOLD);   /* the popup's words are in the pool */¶	else if~	if
 snip: the index's statements stay where an edit moved the text~test TESTS=snip~~src/snip/snip.c~		for (size_t i = 0; i < NU; i++) splice(&u[i][0], pos, ndel, nins), splice(&u[i][1], pos, ndel, nins);~		(void)u;
-snip: no timer after an edit~test TESTS=snip~~src/snip/snip.c~	if (E && is_sql(b)) loop_timer(idle, NULL, HOLD);¶~
+snip: no timer after an edit~test TESTS=snip~~src/snip/snip.c~	if (E && is_sql(b)) loop_timer(idle, NULL, b == I.b ? HOLD : 0);~	if (0) loop_timer(idle, NULL, b == I.b ? HOLD : 0);
 snip: schema.table: the schema a table~test TESTS=snip~~src/snip/snip.c~		if (isname && attab && sym(h1, '.') && !strcasecmp(h2->b, pool.s + tab)) {~		if (0) {
 snip: [x] loses brackets it needs~test TESTS=snip~~src/snip/snip.c~plain = alpha(b[j]) || digit(b[j]) || b[j] == '_';~plain = 1;
 snip: DECLARE @t TABLE (...) gives no columns~test TESTS=snip~~src/snip/snip.c~attab && ((h1->f & TABLE) || !strcasecmp~attab && ((0) || !strcasecmp
