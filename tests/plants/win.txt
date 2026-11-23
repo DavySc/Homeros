@@ -8,14 +8,9 @@
 # under Wine with JetBrainsMonoNerdFontMono-Regular.ttf added, the face is
 # "JetBrainsMono NFM" and U+E0B0 draws its glyph, measured, 1 run); all four
 # are pending for Windows.
-win: every cell drawn every frame~win WIN=win~~src/win/backend.c~			if (grid_cell_eq(x, y) && cur == was) continue;~			if (cur && was && 0) continue;
-win: the cell the cursor left is not restored~win WIN=win~~src/win/backend.c~int pr = all ? -1 : shown->crow, pc = shown->ccol;~int pr = all ? -1 : g->crow, pc = g->ccol;
-win: no cursor at (0, 0) after a whole redraw~win WIN=win~~src/win/backend.c~int pr = all ? -1 : shown->crow,~int pr = shown->crow,
-win: the cursor is not drawn reversed~win WIN=win~~src/win/backend.c~int rev = cursor || x->attr == ATTR_REV;~int rev = (cursor && 0) || x->attr == ATTR_REV;
 win: Backspace sent as 8~win WIN=win~~src/win/backend.c~put(w == 8 && GetKeyState(VK_CONTROL) >= 0 ? KEY_BS : w == 9~put(w == 9
 win: Ctrl-H sent as Backspace~win WIN=win~~src/win/backend.c~w == 8 && GetKeyState(VK_CONTROL) >= 0 ? KEY_BS~w == 8 ? KEY_BS
 win: surrogate pair joined wrong~win WIN=win~~src/win/backend.c~((surr - 0xD800) << 10)~((surr - 0xD801) << 10)
-win: only a cluster's first code point drawn~win WIN=win~~src/win/backend.c~i < x->len; i += uni_len~i < 1; i += uni_len
 win: a lone low surrogate makes a key~win WIN=win~~src/win/backend.c~if (surr) put(0x10000~put(0x10000
 win: keys dropped when the ring is full~win WIN=win~~src/win/backend.c~while (rn < RING && PeekMessageW~while (PeekMessageW
 win: Left sent as Right~win WIN=win~~src/win/backend.c~case VK_LEFT: put(KEY_LEFT);~case VK_LEFT: put(KEY_RIGHT);
@@ -28,12 +23,6 @@ win: wheel position left in screen coordinates~win WIN=win~~src/win/backend.c~		
 win: clipboard set without CRLF~win WIN=win~~src/win/backend.c~		if (u[i] == '\n') u[j++] = '\r';¶~
 win: clipboard got with CRLF~win WIN=win~~src/win/backend.c~			if (u[i] == '\r' && u[i + 1] == '\n') continue;¶~
 win: clipboard get writes past max~win WIN=win~~src/win/backend.c~if ((size_t)n < max) buf[n] = b[j];~if ((size_t)n < max + 1) buf[n] = b[j];
-win: no glyph drawn, only cell backgrounds~win WIN=win~~src/win/backend.c~&rc, u, n, NULL);~&rc, u, n * 0, NULL);
-win: dim text in the normal colour~win WIN=win~~src/win/backend.c~RGB(108, 112, 134)~RGB(205, 214, 245)
-win: syntax faces ignored~win WIN=win~~src/win/backend.c~fa->style & FACE_FG ? RGB~fa->style & 0 ? RGB
-win: face backgrounds ignored~win WIN=win~~src/win/backend.c~fb->style & FACE_BG ? RGB~fb->style & 0 ? RGB
-win: a wide character drawn one cell wide~win WIN=win~~src/win/backend.c~(c + 1 + wide) * cw~(c + 1 + wide * 0) * cw
-win: the right half of a wide character not sent to the window~win WIN=win~~src/win/backend.c~hi = c + 1 + (c + 1 < g->cols && !x[1].len);~hi = c + 1;
 win: an uncovered window not repainted (WM_PAINT)~win WIN=win~~src/win/backend.c~BitBlt(dc, r->left, r->top, r->right - r->left, r->bottom - r->top, mem, r->left, r->top, SRCCOPY);~(void)dc; (void)r;
 win: the close button destroys the window~win WIN=win~~src/win/backend.c~	case WM_CLOSE:   /* the editor decides (:qa), not DefWindowProc */¶		put(KEY_CLOSE);¶		return 0;¶~
 win: the close button gives no key~win WIN=win~~src/win/backend.c~		put(KEY_CLOSE);¶~
@@ -48,11 +37,18 @@ win: draws while minimised~win WIN=win~~src/win/backend.c~	if (IsIconic(win)) re
 win: resize sends no KEY_RESIZE~win WIN=win~~src/win/backend.c~HIWORD(l) != dh)) resized = stale = 1;~HIWORD(l) != dh)) stale = 1;
 win: the DIB keeps its old size~win WIN=win~~src/win/backend.c~if (all && (grid_resize(shown, g->rows, g->cols) || make_dib())) return;~if (all && grid_resize(shown, g->rows, g->cols)) return;
 specs: Pace with frames only P + D apart~specs~find design/specs -name '*.cfg' ! -name Pace_ok.cfg -delete~design/specs/Pace_ok.cfg~ Gap = 5~ Gap = 4
-win: the background layer ignored~win WIN=win~~src/win/backend.c~	COLORREF b = fb->style & FACE_BG ? RGB(fb->bg[0], fb->bg[1], fb->bg[2]) : BASE;~	COLORREF b = fa->style & FACE_BG ? RGB(fa->bg[0], fa->bg[1], fa->bg[2]) : BASE;
-win: GDI's substitute for a missing family kept~win WIN=win~~src/win/backend.c~if (!lstrcmpiW(face, family[i])) break;~break;
-win: no underline or undercurl~win WIN=win~~src/win/backend.c~	if (!(fu->style & (FACE_UNDERLINE | FACE_UNDERCURL))) return;~	return;
-win: a flat undercurl~win WIN=win~~src/win/backend.c~(curl ? grid_curl(i, ch) : 0)~0
-win: an underline one pixel wide~win WIN=win~~src/win/backend.c~curl ? i + 1 : rc.right, y + 1~i + 1, y + 1
-win: the undercurl in the text's colour~win WIN=win~~src/win/backend.c~fu->style & FACE_SP ? RGB(fu->sp[0], fu->sp[1], fu->sp[2]) : f~f
 win: Shift-Tab sends Tab~win WIN=win~~src/win/backend.c~w == 9 && GetKeyState(VK_SHIFT) < 0~w == 9 && GetKeyState(VK_SHIFT) > 0
 win: Ctrl+. is lost~win WIN=win~~src/win/backend.c~if (GetKeyState(VK_CONTROL) < 0) { put(KEY_CTRL_DOT); return 0; }~if (GetKeyState(VK_CONTROL) > 0) { put(KEY_CTRL_DOT); return 0; }
+win: every row sent every frame~win WIN=win~~src/win/backend.c~paint(bits, dw, g, shown, all, dirty);~paint(bits, dw, g, shown, 1, dirty);
+win: a changed row not sent to the window~win WIN=win~~src/win/backend.c~if (dirty[r]) BitBlt~if (dirty[r] && r < 0) BitBlt
+win: a whole redraw not sent to the window~win WIN=win~~src/win/backend.c~if (all) BitBlt(dc, 0, 0, dw, dh, mem, 0, 0, SRCCOPY);~if (all) {}
+win: the font not sized for the window's DPI~win WIN=win~~src/win/backend.c~MulDiv(PT, dpi, 72)~MulDiv(PT, 96, 72)
+win: only the first family tried (test_win_font)~win WIN=win~~src/font/dwrite.c~*s && !n; s += *s == ','~*s && !n && s == family; s += *s == ','
+win: no scan when Windows' list has nothing (test_win_font)~win WIN=win~~src/font/dwrite.c~i < 0 && at < nf; at++~i < -1 && at < nf; at++
+win: surrogates of an astral character wrong (test_win_font)~win WIN=win~~src/font/dwrite.c~(WCHAR)(0xD800 + (cp[j] - 0x10000) / 0x400)~(WCHAR)(0xD801 + (cp[j] - 0x10000) / 0x400)
+win: dim text in the normal colour~win WIN=win~~src/paint/paint.c~x->attr == ATTR_DIM ? DIM : FG~x->attr == ATTR_DIM ? FG : FG
+win: syntax faces ignored~win WIN=win~~src/paint/paint.c~f->style & FACE_FG ? rgb(f->fg) :~0 ? rgb(f->fg) :
+win: a wide character drawn one cell wide~win WIN=win~~src/paint/paint.c~int w = c + 1 < g->cols && !x[c + 1].len ? 2 : 1;~int w = 1;
+win: the cursor is not drawn reversed~win WIN=win~~src/paint/paint.c~if (x->attr == ATTR_REV || cur) { *fg = *bg; *bg = t; }~if (x->attr == ATTR_REV) { *fg = *bg; *bg = t; }
+win: no glyph drawn, only cell backgrounds~win WIN=win~~src/paint/paint.c~if (a[j]) p[j] = a[j] == 255 ? fg : mix(p[j], fg, a[j]);~if (0) p[j] = fg;
+win: an underline one pixel short~win WIN=win~~src/paint/paint.c~fill(px, c * cw, ye - 1, w * cw, 1, sp);~fill(px, c * cw, ye - 1, w * cw - 1, 1, sp);

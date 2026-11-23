@@ -71,6 +71,25 @@ static int put(char *s, unsigned v)
 	return 4;
 }
 
+/* Of glyph s (one character): how many runs of ink row y has, or column
+   x if y < 0; or, if both are -1, -v if every pixel is v (else 0) */
+static int runs(const char *s, int x, int y)
+{
+	CHECK(shape(s) == 1);
+	const Glyph *g = o[0].g;
+	int k = 0, was = 0;
+	if (y < 0 && x < 0) {
+		for (int i = 0; i < g->w * g->h; i++) k |= g->px[i] != g->px[0];
+		return k ? 0 : -g->px[0];
+	}
+	for (int i = 0, n = y < 0 ? g->h : g->w; i < n; i++) {
+		int v = y < 0 ? g->px[i * g->w + x] : g->px[y * g->w + i];
+		k += v && !was;
+		was = v != 0;
+	}
+	return k;
+}
+
 /* From a fresh cache, shapes the characters first to last, 32 to a run:
    each draws; the cache was emptied on the way (the first character is a
    miss again) and draws the first character as before. */
@@ -208,6 +227,26 @@ int main(void)
 	memset(longer, 'a', 2000);
 	n = shape(longer);
 	CHECK(allocs == 0 && n == 2000);
+
+	/* box drawing, blocks and Powerline's separators are drawn to fill the
+	   cell (sprite.c), not taken from JetBrains Mono, so neighbours join */
+	for (unsigned c = 0x2500; c <= 0xE0B3; c = c == 0x259F ? 0xE0B0 : c + 1) {
+		char s[4];
+		s[put(s, c)] = 0;
+		CHECK(shape(s) == 1 && o[0].x == 0 && o[0].y == 0 && ink(o[0].g));
+		CHECK(o[0].g->w == cw && o[0].g->h == ch && o[0].g->left == 0 && o[0].g->top == base && !o[0].g->color);
+	}
+	CHECK(runs("\u2588", -1, -1) == -255 && runs("\u2592", -1, -1) == -128);   /* █ every pixel, ▒ half */
+	CHECK(runs("\u2580", -1, 0) == 1 && runs("\u2580", -1, ch - 1) == 0 && runs("\u2580", cw - 1, -1) == 1);   /* ▀ */
+	CHECK(runs("\u259a", -1, 0) == 1 && runs("\u259a", 0, -1) == 1 && runs("\u259a", -1, ch / 2 - 1) == 1);   /* ▚ */
+	CHECK(o[0].g->px[0] == 255 && o[0].g->px[cw - 1] == 0);   /* its upper left, not its upper right */
+	CHECK(runs("\u2500", 0, -1) == 1 && runs("\u2500", cw - 1, -1) == 1 && runs("\u2500", -1, 0) == 0);   /* ─ meets both sides */
+	CHECK(runs("\u2502", -1, 0) == 1 && runs("\u2502", -1, ch - 1) == 1 && runs("\u2502", 0, -1) == 0);    /* │ top and bottom */
+	CHECK(runs("\u253c", -1, 0) == 1 && runs("\u253c", -1, ch - 1) == 1 && runs("\u253c", 0, -1) == 1 && runs("\u253c", cw - 1, -1) == 1);
+	CHECK(runs("\u2554", cw - 1, -1) == 2 && runs("\u2554", -1, ch - 1) == 2 && runs("\u2554", 0, -1) == 0);   /* ╔: two lines out right and down */
+	CHECK(runs("\u256c", cw - 1, -1) == 2 && runs("\u256c", -1, 0) == 2 && runs("\u256c", 0, -1) == 2 && runs("\u256c", -1, ch / 2) == 0);  /* ╬: four corners, a gap between */
+	CHECK(runs("\u255f", cw - 1, -1) == 1 && runs("\u255f", -1, ch / 2) == 2);   /* ╟: the arm meets the right line only */
+	CHECK(runs("\u256d", cw - 1, -1) == 1 && runs("\u256d", -1, ch - 1) == 1 && runs("\u256d", -1, 0) == 0);   /* ╭ */
 
 	/* the cache fills and empties itself, and glyphs stay right across it:
 	   its slots with 8,000 CJK characters, its memory with every emoji at

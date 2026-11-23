@@ -1,5 +1,5 @@
 # Plants for src/font/ (format in tools/planted.sh).
-font: fallback takes a font without the character (Mathlib symbols)~test TESTS=font~~src/font/font.c~FcCharSetHasChar(cs, cp[j])~1
+font: fallback takes a font without the character (Mathlib symbols)~test TESTS=font~~src/font/fc.c~FcCharSetHasChar(cs, cp[j])~(cp[j] || cs)
 font: a font must have joiners and selectors (rainbow flag)~test TESTS=font~~src/font/font.c~	return c == 0x200C || c == 0x200D || (c >= 0xFE00 && c <= 0xFE0F) || (c >= 0xE0000 && c <= 0xE0FFF);~	return c == 0x110000;
 font: emoji stay in the first font that has them (colour)~test TESTS=font~~src/font/font.c~		int want = !face[run[i].font].color && emoji(~		int want = 0 && emoji(
 font: emoji strike not scaled to the em~test TESTS=font~~src/font/font.c~			int dw = nearest(w * f->scale), dh = nearest(hh * f->scale);~			int dw = w, dh = hh;
@@ -10,3 +10,11 @@ font: clusters split inside characters~test TESTS=font~~src/font/font.c~	for (si
 font: right-to-left runs reversed~test TESTS=font~~src/font/font.c~	hb_buffer_set_direction(buf, HB_DIRECTION_LTR);¶~
 font: pen not reset per cluster (fuzz_font)~fuzz FUZZERS=font FUZZ_SECONDS=60~~src/font/font.c~		if (i > 0 && gi[i].cluster != gi[i - 1].cluster) pen = 0;¶~
 font: HarfBuzz buffer grown while drawing (0 allocations on a longer run)~test TESTS=font~~src/font/font.c~!hb_buffer_pre_allocate(buf, RUN)~!hb_buffer_allocation_successful(buf)
+font: box drawing taken from the font~test TESTS=font~~src/font/font.c~if (j == i + 1 && end == run[i].cluster + 1 && sprite(~if (0 && sprite(
+font: block elements taken from the font~test TESTS=font~~src/font/sprite.c~(c >= 0x2500 && c <= 0x259F)~(c >= 0x2500 && c <= 0x257F)
+font: a double line's middle not cut (╔ one band)~test TESTS=font~~src/font/sprite.c~arm(i, s, pass == 1 ? t : K[i], pass == 1 ? 0 : 255);~arm(i, s, pass == 1 ? t : K[i], 255);
+font: a single arm crosses a double line (╟)~test TESTS=font~~src/font/sprite.c~if (pass == 2 && p == 3 * t~if (0 && p == 3 * t
+font: quadrants mixed up (▚)~test TESTS=font~~src/font/sprite.c~{ 4, 8, 1, 13, 9,~{ 4, 8, 1, 13, 6,
+font: shades a quarter too dark (▒)~test TESTS=font~~src/font/sprite.c~64 * (int)(c - 0x2590)~64 * (int)(c - 0x258F)
+font: an arc's straight part missing (╭)~test TESTS=font~~src/font/sprite.c~	if (sy > 0) rect(lo(w, t), ey, lo(w, t) + t, h, 255);~	if (sy > 0) {}
+font: fallback answers remembered by count, not characters~test TESTS=font~~src/font/font.c~key = (key ^ (c[n++] = cp[j])) * 1099511628211ULL;~key = (key ^ (c[n++] = cp[j], n)) * 1099511628211ULL;

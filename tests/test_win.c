@@ -2,7 +2,7 @@
    opens.  Keys: surrogate pairs joined and a lone low one dropped, Backspace
    as 127 and Ctrl-H as 8, the four arrows, none lost when the caller takes
    fewer than are waiting; the mouse and the wheel at their cells; the
-   clipboard both ways with CRLF.  Drawing: only changed cells reach the
+   clipboard both ways with CRLF.  Drawing: only changed rows reach the
    window; a letter in the text, dim and face colours; a wide character over
    two cells; the cursor reversed, restored when it leaves, and drawn at
    (0, 0) after a whole redraw; WM_PAINT repaints from the DIB; a new size or
@@ -20,6 +20,7 @@
 #include <string.h>
 #include "check.h"
 #include "backend.h"
+#include "font.h"
 #include "image.h"
 #include "keys.h"
 #include "loop.h"
@@ -171,17 +172,11 @@ int main(void)
 	while (px(0, ch) == REV) ch++;
 	CHECK(cw > 3 && ch > 3 && px(cw, 0) == BG && px(0, ch) == BG);
 	CHECK(at(2, 2) == REV && at(1, 1) == BG);   /* the cursor */
-	{   /* CI has no Nerd Font, so the face is plain JetBrains Mono, not what
-	       GDI substitutes for a missing family (Liberation Mono under Wine) */
-		HDC dc = CreateCompatibleDC(NULL);
-		HFONT f = CreateFontW(-MulDiv(12, (int)GetDpiForWindow(win), 72), 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET,
-		                      OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY, FIXED_PITCH | FF_MODERN, L"JetBrains Mono");
-		TEXTMETRICW tm;
-		SelectObject(dc, f);
-		GetTextMetricsW(dc, &tm);
-		CHECK(ch == tm.tmHeight && cw == tm.tmAveCharWidth);
-		DeleteDC(dc);
-		DeleteObject(f);
+	{   /* the cell is font.h's, at 12 points for the window's DPI (the
+	       face itself: test_win_font) */
+		int w, h, base;
+		font_cell(&w, &h, &base);
+		CHECK(cw == w && ch == h);
 	}
 	{   /* an image (package 21, thread 0's, agreed): Backend.cell is the cell
 	       measured above; tests/test_image.png (32 x 16, red then blue) shows
@@ -233,12 +228,13 @@ int main(void)
 	present(&g, &shown);
 	CHECK(at(0, 0) == RED && at(2, 2) == RED && at(rows - 1, cols - 1) == RED);
 
-	/* one change draws that cell; the cursor moves: both of its cells */
+	/* one change draws its row (the painter's damage is rows, as
+	   Wayland's); the cursor moves: both of its rows; no other row */
 	put(&g, 3, 5, " ", 1, ATTR_REV);
 	g.crow = 1; g.ccol = 1;
 	present(&g, &shown);
-	CHECK(at(3, 5) == REV && at(1, 1) == REV && at(2, 2) == BG);
-	CHECK(at(0, 0) == RED && at(3, 4) == RED && at(3, 6) == RED && at(rows - 1, cols - 1) == RED);
+	CHECK(at(3, 5) == REV && at(1, 1) == REV && at(2, 2) == BG && at(3, 4) == BG);
+	CHECK(at(0, 0) == RED && at(4, 5) == RED && at(rows - 1, cols - 1) == RED);
 
 	/* text: a letter, a dim one, a string-face one, a wide reversed one */
 	paint(BG);
@@ -367,7 +363,7 @@ int main(void)
 	CHECK(!FindWindowW(L"homeros", NULL));
 	grid_free(&g);
 	grid_free(&shown);
-	puts("test_win: keys, mouse and clipboard; identical frame draws nothing; one change draws one cell; "
+	puts("test_win: keys, mouse and clipboard; identical frame draws nothing; one change draws its row; "
 	     "text, dim, face, face background, long cluster, wide and image cells; cursor drawn, restored and at (0,0) after a whole redraw; WM_PAINT; "
 	     "resize and DPI redraw whole; close is a key; paced; idle quiet; minimised draws nothing");
 	return 0;
