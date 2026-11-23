@@ -371,6 +371,43 @@ static size_t fbehind;   /* bytes read behind the message being handled */
    "done", and a message wholly past the end of a line holding '?'.  It says
    nothing else unasked. */
 static int gmode;
+/* The tokens test's server (seed "tokens"): semantic tokens for the words
+   tword names in the version asked about, answered tdelay ms later (Lean
+   answers once it has elaborated): 0 at once, $/test/slow 300,
+   $/test/hush never; $/test/talk answers all, newest first, so an answer
+   to a request cancelled since comes last.  A new request comes only
+   after the last was cancelled. */
+static int tmode, ntok;
+static long long tdelay;
+static struct { long id, v; long long at; int cancelled; } tok[16];
+static int tword(const char *s, size_t n)   /* the token type of a word, -1 none */
+{
+	return n == 2 && !memcmp(s, "kw", 2) ? 0 : n == 1 && *s == 'x' ? 1 : n == 5 && !memcmp(s, "sorry", 5) ? 2 : -1;
+}
+static void ftokens(long id, long v)
+{
+	Str r = { 0 };
+	const char *sdoc = old[v % 16].text;
+	size_t sn = old[v % 16].n;
+	if (old[v % 16].v != v) wrong("no version %ld kept", v);
+	str_addf(&r, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"result\":{\"data\":[", id);
+	long line = 0, col = 0, pl = 0, pc = 0;
+	for (size_t i = 0, k; i < sn; i += k) {
+		for (k = 0; i + k < sn && sdoc[i + k] >= 'a' && sdoc[i + k] <= 'z'; k++) ;
+		int t = k ? tword(sdoc + i, k) : -1;
+		if (t >= 0) {
+			str_addf(&r, "%s%ld,%ld,%zu,%d,0", r.s[r.n - 1] == '[' ? "" : ",", line - pl, line == pl ? col - pc : col, k, t);
+			pl = line; pc = col;
+		}
+		if (k) { col += (long)k; continue; }
+		k = cplen((unsigned char)sdoc[i]);
+		if (sdoc[i] == '\n') line++, col = 0;
+		else col += k == 4 ? 2 : 1;
+	}
+	str_lit(&r, "]}}");
+	fsend(&r);
+	free(r.s);
+}
 /* the goals test's project, whose name needs percent-encoding, and
    another; per test process ($GOALS_ID), so runs side by side keep apart */
 static char groot[1100], guri[1200], gother[1100], gouri[1200];
@@ -511,7 +548,8 @@ static void fhandle(const char *m, size_t n)
 		/* bytes waiting (not an end: the editor may close a server it just started) */
 		if (fbehind || waiting()) wrong("a message sent before the initialize reply");
 		Str r = { 0 };
-		str_addf(&r, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"result\":{\"capabilities\":{\"textDocumentSync\":2}}}", json_int(m, ft, id));
+		str_addf(&r, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"result\":{\"capabilities\":{\"textDocumentSync\":2%s}}}", json_int(m, ft, id),
+		         tmode ? ",\"semanticTokensProvider\":{\"legend\":{\"tokenTypes\":[\"keyword\",\"variable\",\"leanSorryLike\"],\"tokenModifiers\":[]},\"full\":true}" : "");
 		fsend(&r);
 		free(r.s);
 		inited = 1;
@@ -521,6 +559,8 @@ static void fhandle(const char *m, size_t n)
 	/* the test saves to let the server die: the test then knows when */
 	if (!strcmp(meth, "textDocument/didSave") && rnd(2)) exit(0);
 	if (!strcmp(meth, "initialized") || !strcmp(meth, "$/cancelRequest") || !strcmp(meth, "textDocument/didSave")) {
+		if (meth[0] == '$') for (int k = 0; k < ntok; k++)
+			tok[k].cancelled |= tok[k].id == json_int(m, ft, json_get(m, ft, p, "id"));   /* still answered, late */
 		if (meth[0] == '$') for (int k = 0; k < npark; k++)
 			if (park[k].id == json_int(m, ft, json_get(m, ft, p, "id"))) {
 				park[k].cancelled = 1;
@@ -639,6 +679,14 @@ static void fhandle(const char *m, size_t n)
 		if (memchr(b, '%', n)) wrong("asked about line %ld, which Lean is still elaborating", rpc.l);
 	} else if (!strcmp(meth, "$/test/die")) {
 		exit(0);
+	} else if (tmode && (!strcmp(meth, "$/test/hush") || !strcmp(meth, "$/test/slow") || !strcmp(meth, "$/test/talk"))) {
+		tdelay = meth[7] == 'h' ? 1LL << 40 : meth[7] == 's' ? 300 : 0;
+		if (!tdelay) { while (ntok) { ntok--; ftokens(tok[ntok].id, tok[ntok].v); } }
+	} else if (!strcmp(meth, "textDocument/semanticTokens/full")) {
+		if (!tmode) wrong("semantic tokens from a server without them");
+		if (ntok && !tok[ntok - 1].cancelled) wrong("semantic tokens asked again without cancelling %ld", tok[ntok - 1].id);
+		if (ntok == 16) wrong("too many token requests");
+		tok[ntok].id = json_int(m, ft, id); tok[ntok].v = sver; tok[ntok].at = ms(); tok[ntok++].cancelled = 0;
 	} else if (!strcmp(meth, "$/test/hush") || !strcmp(meth, "$/test/talk")) {
 		refuse = nconn = ncall = 0;
 		fsess++;                              /* and the editor's session is outdated */
@@ -669,6 +717,7 @@ static int fake(const char *seed, const char *log)
 	size_t n = 0;
 	rng ^= strtoull(seed, NULL, 10) * 0x9E3779B97F4A7C15ULL;
 	gmode = !strcmp(seed, "goals");
+	tmode = !strcmp(seed, "tokens");
 	if (gmode) gpaths(getenv("GOALS_ID") ? getenv("GOALS_ID") : "");
 	viol = fopen(log, "a");
 	if (!viol) return 2;
@@ -692,6 +741,11 @@ static int fake(const char *seed, const char *log)
 		}
 		if (!inited || !opened) continue;
 		/* refuse 4: a question in the current session never answered */
+		if (tmode && ntok && ms() - tok[0].at >= tdelay) {   /* the oldest due: answered */
+			ftokens(tok[0].id, tok[0].v);
+			memmove(tok, tok + 1, (size_t)--ntok * sizeof *tok);
+		}
+		if (tmode) continue;
 		if (gmode) { if (rpc.id && rnd(3) == 0 && !(refuse == 4 && rpc.sess == fsess)) frpc(); continue; }
 		/* idle: do something the editor must cope with */
 		unsigned a = rnd(100);
@@ -1436,6 +1490,86 @@ static void goals(const char *log)
 	CHECK(!gtree(0) || kept);   /* the editor left nothing in them */
 }
 
+/* lsp_faces is the server's tokens where it has them, with the columns
+   in UTF-16 (a 4-byte character two units, a 2-byte one one), and the
+   rule tword gives the fake: kw a keyword, x a variable, sorry a type the
+   legend has but Neovim does not colour. */
+static void twant(Editor *e, unsigned char *f, size_t *n)
+{
+	char b[512];
+	*n = text_read(e->buf->text, 0, b, sizeof b);
+	for (size_t i = 0, k; i < *n; i += k ? k : 1) {
+		for (k = 0; i + k < *n && b[i + k] >= 'a' && b[i + k] <= 'z'; k++) ;
+		int t = k ? tword(b + i, k) : -1;
+		memset(f + i, t == 0 ? FACE_KEYWORD : t == 1 ? FACE_VARIABLE : FACE_NONE, k ? k : 1);
+	}
+}
+
+/* Waits until lsp_faces shows the rule's faces for the text (1), or 2 s
+   pass (0). */
+static int tsettle(Editor *e)
+{
+	unsigned char want[512], got[512];
+	size_t n;
+	for (long long t0 = ms(); ms() - t0 < 2000; loop_once(10)) {
+		twant(e, want, &n);
+		lsp_faces(e->buf, 0, n, got);
+		if (!memcmp(got, want, n)) return 1;
+	}
+	return 0;
+}
+
+static void semtok(const char *log)
+{
+	static char exe[4096];
+	static const char *argv[] = { exe, "--fake", "tokens", NULL, NULL };
+	static char *const roots[] = { NULL };
+	static LspServer table[2];
+	argv[3] = log;
+	self(exe, sizeof exe);
+	table[0] = (LspServer){ ".fake", "fake", argv, (const char *const *)roots, 0 };
+	lsp_servers = table;
+	char path[1200];
+	snprintf(path, sizeof path, "%s/homeros-tokens-%d.fake", tmp(), (int)getpid());
+	Editor e;
+	CHECK(!core_open(&e, path) && e.buf->lsp);
+	const char *init = "one kw\n\xCE\xBB\xF0\x9D\x93\x9D \xC3\xA9 x kw sorry\n\nxkw kw\n";
+	CHECK(!core_edit(&e, 0, 0, init, strlen(init)));
+	lsp_flush(e.buf->lsp);
+	CHECK(tsettle(&e));
+	const char *u = lsp_uri(e.buf->lsp);
+	/* hushed: the tokens shown follow the edits (a line gone above, a
+	   2-byte character and a 4-byte one before them on their line) */
+	CHECK(!lsp_send(u, "$/test/hush", "{}", 2, NULL, NULL));
+	CHECK(!core_edit(&e, 0, 7, "", 0));
+	lsp_flush(e.buf->lsp);
+	CHECK(!core_edit(&e, 0, 0, "\xC3\xA9\xF0\x9D\x93\x9D", 6));
+	lsp_flush(e.buf->lsp);
+	CHECK(tsettle(&e));
+	/* the answers come newest first: the older ones, for texts left since,
+	   are not shown */
+	CHECK(!lsp_send(u, "$/test/talk", "{}", 2, NULL, NULL));
+	for (long long t0 = ms(); ms() - t0 < 300; ) loop_once(10);
+	CHECK(tsettle(&e));
+	/* an answer for a text edited since it was asked is not shown: a new
+	   kw asked about, then a line put above it before the answer */
+	CHECK(!lsp_send(u, "$/test/slow", "{}", 2, NULL, NULL));
+	CHECK(!core_edit(&e, 0, 0, "kw ", 3));
+	lsp_flush(e.buf->lsp);
+	CHECK(!core_edit(&e, 0, 0, "\n", 1));
+	unsigned char want[512], got[512];
+	size_t n;
+	for (long long t0 = ms(); ms() - t0 < 600; ) loop_once(10);
+	twant(&e, want, &n);
+	want[1] = want[2] = FACE_NONE;            /* not known yet */
+	lsp_faces(e.buf, 0, n, got);
+	CHECK(!memcmp(got, want, n));
+	lsp_flush(e.buf->lsp);
+	CHECK(tsettle(&e));
+	core_free(&e);
+	for (long long t1 = ms(); ms() - t1 < 300; ) loop_once(20);
+}
+
 static void units(void)
 {
 	/* the kernel against whole code points, on random valid and invalid bytes */
@@ -1517,6 +1651,7 @@ int main(int argc, char **argv)
 		if (f) fclose(f);
 	}
 	goals(log);
+	semtok(log);
 	FILE *f = fopen(log, "r");
 	char line[512];
 	if (f && fgets(line, sizeof line, f)) { fputs(line, stderr); CHECK(!"the fake server saw a protocol violation"); }
