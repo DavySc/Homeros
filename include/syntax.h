@@ -58,6 +58,12 @@ size_t  syntax_conceal(Syntax *s, size_t line, Conceal *out, size_t cap);
    foldinfo.levels.  A row an edit added answers -1 (Neovim's "-1":
    undefined, take a neighbour's level) until the next parse. */
 int     syntax_foldexpr(Syntax *s, size_t line, int *start);
+/* zig fmt of the whole text, in-process, by the parser and renderer of the
+   Zig release syntax_open picked for this buffer (the project's `zig
+   version`): 0 with the formatted text in *res, n bytes, valid until the
+   next call on s; -1 when the text does not parse (zig fmt refuses it too),
+   -2 out of memory or s is not a Zig buffer */
+int     syntax_zig_fmt(Syntax *s, const char **res, size_t *n);
 /* What render-markdown draws on line l, from the tree, without allocating:
    0 for a non-Markdown buffer or a line with none of these, else 1 */
 typedef struct {
