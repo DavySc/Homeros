@@ -16,7 +16,10 @@ enum {
 	KEY_S_TAB,           /* Shift-Tab: a snippet's previous stop, else a Tab in insert mode */
 	KEY_CTRL_DOT,        /* Ctrl+.: opens and closes the terminal (tools_key) */
 	KEY_F5,              /* runs the SQL buffer or its selection (sql_key; SSMS) */
-	KEY_BREAK,           /* Alt+Break (Ctrl+Break too): cancels the SQL run (sql_key; SSMS) */
+	/* the Pause/Break key, alone or with Alt (SSMS's Alt+Break): cancels the
+	   SQL run (sql_key).  Ctrl+Break is Windows' Ctrl-C, and a terminal sends
+	   no key for it */
+	KEY_BREAK,
 	KEY_CTRL_C = 3, KEY_TAB = 9, KEY_ENTER = 13, KEY_CTRL_R = 18,
 	KEY_CTRL_Z = 26, KEY_ESC = 27, KEY_BS = 127
 };
