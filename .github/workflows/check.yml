@@ -16,7 +16,7 @@ jobs:
   windows:
     if: github.event_name == 'pull_request'
     runs-on: windows-latest
-    timeout-minutes: 50
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: mlugg/setup-zig@v2
@@ -24,43 +24,21 @@ jobs:
           version: 0.17.1
       - shell: bash
         run: |
-          bash src/infoview/check.sh; echo "run gave $?"
+          zig cc -target x86_64-windows-gnu -std=c17 -Wall -Wextra -Iinclude -O1 -g -o explorer.exe reviews/pr-138-repro/explorer.c src/loop/*.c src/str/str.c -lws2_32 -lshell32 -ladvapi32
+          timeout 120 ./explorer.exe || echo "explorer probe: status $?"
+  # success: caught; failure: NOT CAUGHT; cancelled by the time limit: the test hung
+  plant:
+    if: github.event_name == 'pull_request'
+    runs-on: windows-latest
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        n: [1, 2, 3, 4, 5, 6, 7, 8]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.17.1
       - shell: bash
-        run: |
-          zig cc -target x86_64-windows-gnu -std=c17 -Wall -Wextra -Iinclude -O1 -g -o build/win/explorer.exe reviews/pr-138-repro/explorer.c src/loop/*.c src/str/str.c -lws2_32 -lshell32 -ladvapi32
-          timeout 120 build/win/explorer.exe || echo "explorer probe: status $?"
-      - shell: bash
-        timeout-minutes: 5
-        continue-on-error: true
-        run: bash reviews/pr-138-repro/winplants.sh 1
-      - shell: bash
-        timeout-minutes: 5
-        continue-on-error: true
-        run: bash reviews/pr-138-repro/winplants.sh 2
-      - shell: bash
-        timeout-minutes: 5
-        continue-on-error: true
-        run: bash reviews/pr-138-repro/winplants.sh 3
-      - shell: bash
-        timeout-minutes: 5
-        continue-on-error: true
-        run: bash reviews/pr-138-repro/winplants.sh 4
-      - shell: bash
-        timeout-minutes: 5
-        continue-on-error: true
-        run: bash reviews/pr-138-repro/winplants.sh 5
-      - shell: bash
-        timeout-minutes: 5
-        continue-on-error: true
-        run: bash reviews/pr-138-repro/winplants.sh 6
-      - shell: bash
-        timeout-minutes: 5
-        continue-on-error: true
-        run: bash reviews/pr-138-repro/winplants.sh 7
-      - shell: bash
-        timeout-minutes: 5
-        continue-on-error: true
-        run: bash reviews/pr-138-repro/winplants.sh 8
-      - if: always()
-        shell: bash
-        run: echo done
+        run: bash reviews/pr-138-repro/winplants.sh ${{ matrix.n }}
