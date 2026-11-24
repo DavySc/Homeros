@@ -19,7 +19,7 @@ make: SPC cc and SPC cC swapped~test TESTS=tools_make~~src/keys/keys.c~			if (m[
 make: the window does not follow the output~test TESTS=tools_make~~src/core/core.c~w->buf == b && w->line >= last)~w->buf == b && w->line > last)
 make: an unended last line is dropped~test TESTS=tools_make~~src/tools/make.c~	if (M.part.n) { char *s = M.part.s; size_t k = M.part.n; M.part.n = 0; line(NULL, s, k); }~	M.part.n = 0;
 make: ]q past the end stays put~test TESTS=tools_make~~src/tools/make.c~		i = n > 0 ? (long)M.nq - 1 : 0;~		core_msg(e, "E553: No more items"); return -1;
-make: :mak is not :make~test TESTS=tools_make~~src/keys/keys.c~(k >= 3 && k <= 4 && !strncmp(p, "make", k)~(k == 4 && !strncmp(p, "make", k)
+make: :mak is not :make~test TESTS=tools_make~~src/keys/keys.c~int make = k >= 3 && k <= 4 && !strncmp(p, "make", k)~int make = k == 4 && !strncmp(p, "make", k)
 make: a range is ignored~test TESTS=tools_make~~src/keys/keys.c~		if (n) core_msg(E, "E481: No range allowed");~		if (n && nohl) core_msg(E, "E481: No range allowed");
 make: owners.txt: a second shell choice outside src/loop~dupes~~src/tools/make.c~static Buf *buf(void)~static const char *sh(void) { return getenv("SHELL"); }¶static Buf *buf(void)
 make: owners.txt: a second buffer-by-number loop outside src/core~dupes~~src/tools/make.c~static Buf *buf(void) { return M.nr ? core_buf_find(M.e, M.nr) : NULL; }~static Buf *buf(void) { for (Buf *b = M.e->bufs; b; b = b->next) if (b->nr == M.nr) return b; return NULL; }

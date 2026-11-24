@@ -90,7 +90,7 @@ int main(void)
 	   space; Postgres's port by default */
 	snprintf(f, sizeof f, "ms mssql 127.0.0.1 sa master trust pass=%s\npg pg 127.0.0.1 postgres postgres trust pass=%s\n"
 		"dir %s/ms/deep pg\ndir ~/ms ms\ndir %s/pg pg\ndir  %s/a b   ms \n"
-		"bad mssql 127.0.0.1:99999 sa master pass=x\nnopass mssql 127.0.0.1 sa master\nv6 mssql [::1]:1433 sa master pass=x\n", sa, pg, dir, dir, dir);
+		"bad mssql 127.0.0.1:99999 sa master pass=x\nletters mssql 127.0.0.1:1433x sa master pass=x\nnopass mssql 127.0.0.1 sa master\nv6 mssql [::1]:1433 sa master pass=x\n", sa, pg, dir, dir, dir);
 	put(conf, f, 0644);
 #ifndef _WIN32   /* there the profile is the user's (sql.c, as libpq) */
 	CHECK(sql_key(&e, KEY_F5) == 1 && strstr(e.msg, "others can read it"));
@@ -163,9 +163,13 @@ int main(void)
 	put("ms/o.sql", "select top 3000000 a.object_id from sys.all_objects a, sys.all_objects b, sys.all_objects c\ngo\nselect 77 as late\n", 0600);
 	CHECK(!core_edit_file(&e, "ms/o.sql", 0) && sql_key(&e, KEY_F5) == 1);
 	for (int i = 0; i < 20; i++) loop_once(10);
+	CHECK(sql_key(&e, KEY_F5) == 1 && strstr(e.msg, "a query is running"));   /* a second F5 waits for the first run */
 	CHECK(sql_key(&e, KEY_BREAK) == 1);
 	for (int i = 0; i < 100; i++) loop_once(10);
 	CHECK(!strstr(results(), "late"));
+	/* the cancel ends with its answer: the next run sends all its batches */
+	CHECK(!text_delete(e.buf->text, 0, text_len(e.buf->text)) && !text_insert(e.buf->text, 0, "select 1 as a\ngo\nselect 2 as b\ngo\nselect 3 as c\n", 48));
+	CHECK(f5_once_idle() && strstr(until("Completion time"), "c\n3\n"));
 	/* Postgres: F5 waits for the cancel's own connection to close */
 	put("pg/h.sql", "select g from generate_series(1, 20000000) g\n", 0600);
 	CHECK(!core_edit_file(&e, "pg/h.sql", 0) && sql_key(&e, KEY_F5) == 1);
@@ -198,7 +202,7 @@ int main(void)
 	put("msx/n.sql", "select 1\n", 0600);
 	CHECK(!core_edit_file(&e, "msx/n.sql", 0) && sql_key(&e, KEY_F5) == 1 && strstr(e.msg, "no connection for this folder"));
 	/* a wrong port, no password, an IPv6 address */
-	CHECK(sql_connect(&e, "bad") && strstr(e.msg, "port"));
+	CHECK(sql_connect(&e, "bad") && strstr(e.msg, "port in 127.0.0.1:99999") && sql_connect(&e, "letters") && strstr(e.msg, "port in 127.0.0.1:1433x"));
 	CHECK(sql_connect(&e, "nopass") && strstr(e.msg, "no pass="));
 	CHECK(!sql_connect(&e, "v6") && strstr(e.msg, "(::1)"));
 	/* SPC r from the results: closed, the cursor back in the query */

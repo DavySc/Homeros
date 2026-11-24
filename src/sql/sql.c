@@ -118,9 +118,9 @@ static int lookup(const char *name, const char *path, Spec *o)
 				if (a[2][0] == '[' && c) *c++ = 0, c = *c == ':' ? c : NULL;
 				const char *p = c ? c + 1 : NULL;
 				long port = p ? match_num(&p, p + strlen(p)) : o->pg ? 5432 : 1433;
-				if (c && a[2][0] != '[') *c = 0;
 				fclose(fp);
 				if (port <= 0 || port > 65535 || (p && *p)) { core_msg(E, "sql: %s: the port in %s is not a number from 1 to 65535", a[0], a[2]); return -1; }
+				if (c && a[2][0] != '[') *c = 0;
 				o->port = (int)port;
 				snprintf(o->host, sizeof o->host, "%s", h);
 				snprintf(o->user, sizeof o->user, "%s", a[3]);
