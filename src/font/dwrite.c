@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "find.h"
+#include "uni.h"
 
 enum { MAX = 64, TEXT = 64 };   /* fonts found; UTF-16 units of one question */
 
@@ -204,10 +205,8 @@ int find_font(const unsigned *cp, unsigned k, int after, int color)
 	len = 0;
 	for (unsigned j = 0; j < k; j++) {
 		if (len + 2 > TEXT) return -1;
-		if (cp[j] >= 0x10000) {   /* UTF-16 surrogates */
-			text[len++] = (WCHAR)(0xD800 + (cp[j] - 0x10000) / 0x400);
-			text[len++] = (WCHAR)(0xDC00 + (cp[j] - 0x10000) % 0x400);
-		} else text[len++] = (WCHAR)cp[j];
+		unsigned short u[2];
+		for (int m = uni_put16(u, cp[j]), x = 0; x < m; x++) text[len++] = u[x];
 	}
 	int i = len ? map(cp, k, color) : -1;
 	return i > after ? i : -1;

@@ -34,6 +34,16 @@ int main(void)
 	CHECK(uni_cp(t, n, 1) == 0xE9 && uni_cp(t, n, 3) == 0x20AC && uni_cp(t, n, 6) == 0x1F600);
 	CHECK(uni_cp((const unsigned char *)"\x80", 1, 0) == 0xFFFD);
 	CHECK(uni_prev((const unsigned char *)"a\x80\x80\x80\x80", 5, 5) == 4);  /* stray continuation bytes: one byte each */
-	puts("test_uni: 16.7 M short inputs exhaustive, 16.7 M random 4-byte, prev/cp cases");
+	/* uni_put16: every code point (surrogates too: uni_cp gives none, but
+	   the encoder needs no hole) is one unit below U+10000, else a pair
+	   that decodes back to it */
+	for (unsigned c = 0; c < 0x110000; c++) {
+		unsigned short u[2] = { 0, 0 };
+		int m = uni_put16(u, c);
+		CHECK(m == 1 ? c < 0x10000 && u[0] == c
+		      : m == 2 && u[0] >= 0xD800 && u[0] < 0xDC00 && u[1] >= 0xDC00 && u[1] < 0xE000
+		        && 0x10000 + (u[0] - 0xD800u) * 0x400 + (u[1] - 0xDC00u) == c);
+	}
+	puts("test_uni: 16.7 M short inputs exhaustive, 16.7 M random 4-byte, prev/cp cases; UTF-16 of every code point");
 	return 0;
 }
