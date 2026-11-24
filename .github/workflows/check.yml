@@ -70,6 +70,14 @@ jobs:
       - if: steps.ghostty.outputs.cache-hit == 'true'
         run: touch build/ghostty/*
       - run: make build/ghostty/windows.lib
+      # OpenSSL for Windows (src/sql/openssl.nix, package 22), 6 minutes of
+      # zig, cached the same way
+      - id: openssl
+        uses: actions/cache@v4
+        with: { path: build/openssl-win, key: "openssl-win-${{ hashFiles('src/sql/openssl.nix') }}" }
+      - if: steps.openssl.outputs.cache-hit == 'true'
+        run: find build/openssl-win -type f -exec touch {} +
+      - run: make build/openssl-win/lib/libssl.a
       - run: make ${{ matrix.target }}
   # git's and the loop's Windows halves on Windows itself, for what Wine
   # cannot show (a path's names as stored, a pseudo-console's resize): pull
