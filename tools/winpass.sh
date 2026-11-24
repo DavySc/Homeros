@@ -27,6 +27,7 @@ winlink() {
 	local inc="-I$syn/src/tree-sitter/lib/include -I$syn/src/tree-sitter/lib/src"
 	mkdir -p build/win/link
 	make -s $syn/queries.c build/win/stb.o build/ghostty/windows.lib   # stb: src/image/build.mk; thread 0's, agreed
+	. src/sql/openssl-win.sh   # sql: package 22's, as thread 0 asked; built here, as wincc needs it
 	# after those: wincc's dry run starts with what it would build first
 	# (the grammars' sources, build/win), not the compile loop
 	local srcs=$(make -s -n wincc | head -1 | tr ' ' '\n' | grep '\.c$' | grep -v -e '^src/main\.c$' -e '^src/win/')
@@ -37,7 +38,7 @@ winlink() {
 	done
 	zig cc -target x86_64-windows-gnu -O2 -c $syn/queries.c -o build/win/link/queries.o
 	[ -f build/win/link/ts.o ] || zig cc -target x86_64-windows-gnu -O2 -c $inc $syn/src/tree-sitter/lib/src/lib.c -o build/win/link/ts.o
-	. src/tools/ghostty-win.sh; . src/sql/openssl-win.sh   # sql: package 22's, as thread 0 asked
+	. src/tools/ghostty-win.sh
 	zig cc -target x86_64-windows-gnu -std=c17 -D_DEFAULT_SOURCE -Wall -Wextra -Werror -Iinclude -I/usr/include/stb $inc -O1 -g \
 	  -fsanitize=undefined -fsanitize-trap=undefined -o "$1" "$2" $srcs build/win/link/queries.o build/win/link/ts.o $objs build/win/stb.o $GHOSTTY_WIN $SQL_WIN
 }
