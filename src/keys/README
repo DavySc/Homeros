@@ -71,13 +71,19 @@ Not built (FEATURES.md section 2), part two of package 5:
   of the buffer (E140 without !) or closes window N; a line number past
   LONG_MAX / 4 saturates, where Neovim's wraps; a ":" typed after "'<,'>"
   (blanks between) is left out, since Neovim takes it differently from one
-  after "1,2" (measured, 3 runs, not understood yet).  The marks a-z and ''
-  fail with E20 until the keys set them.
+  after "1,2" (measured, 3 runs, not understood yet).
 - Insert CTRL-K digraphs, gi.
-- marks m ' `, the jump list (CTRL-O, CTRL-I in Normal mode) and the change
-  list (g; g,): the core keeps and moves them (core.h Mark); keys set and
-  read them next. Until then a CTRL-O that reaches Normal mode (an insert
-  that never started, after a failed motion) differs.
+- marks and the jump list: m ' ` g' g` with a-z ' ` " ^ [ ] < > { } ( ),
+  as motions and in ex ranges (one getmark(), as mark_get_local()), CTRL-O
+  and CTRL-I (Tab) through the jump list, and '' set where Neovim calls
+  setpcmark() (G gg N% % H M L * # / ? n N ( ) { } [( ]) a( i( ' ` and the
+  first match of :s; not :N).  '[ and '] are the buffer's (opmarks()).
+  tests/test_keys_ex.c checks them against nvim on random keys; measured
+  2026-11-21, seeds 1-3, 3,000 each: 0 differ.  Waiting for the core
+  (package 4, asked): '[ '] after a file is read, '. and the change list
+  (g; g,), A-Z and 0-9 (set, they stay unset: E20), the jump of an undo,
+  '' moved by J and the saved '' (w_prev_pcmark) moved by edits, and a
+  jump list entry in another buffer (CTRL-O beeps there).
 - folds, spell, snippet jumps, CTRL-S: with their packages.
 - U (undo line) is not in FEATURES.md, so not built; Visual gUU reaches it
   (gU on the selection, then U).
@@ -217,9 +223,15 @@ Choices:
   maps.  Like Neovim's maps they also follow a count or a register, which
   they take, as a <Cmd> map does; a key that completes no map runs Space's
   own motion, then the keys.  A lone SPC waits for the next key (no
-  'timeoutlen', as with Davy's which-key); which-key's hint popup is not
-  built yet.  Maps that only exist later (SPC i s snippets, SPC u k, SPC x,
-  SPC c, SPC d, SPC a, SPC o) join the table with their packages; a map
+  'timeoutlen', as with Davy's which-key).  After Space, which-key.nvim's
+  classic panel (keys_draw, its defaults: 200 ms delay, full width at the
+  bottom, columns of "key ➜ description", groups as +name, the trail and
+  help on the last row) lists what may follow, from the same table that
+  runs the maps (each row has its description; a + row names a group);
+  <Esc> closes it and runs nothing (ending a count or Visual mode as Esc
+  does), <BS> goes up a level, as which-key's state.lua.  Maps that only
+  exist later (SPC i s snippets, SPC u k, SPC x, SPC c, SPC d, SPC a,
+  SPC o) join the table with their packages; a map
   typed in a macro is not recorded.
 - 'clipboard' is unnamedplus (Davy, 2026-11-18): every yank, delete and
   put of the unnamed register, "+ and "* goes through the system clipboard

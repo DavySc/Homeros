@@ -115,6 +115,7 @@ int main(int argc, char **argv)
 			if (grid_frame()) grid_free(&shown);
 			core_draw(&e, &g);
 			tools_draw(&e, &g);
+			keys_draw(&e, &g);
 			kitten_draw(&e, &g);
 			b->present(&g, &shown);
 			dirty = 0;

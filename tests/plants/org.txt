@@ -52,8 +52,8 @@ org: todo: COMMENT goes before the priority (PR 93 review)~test TESTS=org~~src/o
 org: todo: a stamp in a table row is no agenda stamp (PR 93 review)~test TESTS=org~~src/org/org.c~t == ORG_TABLE_ROW || ~
 org: todo: planning read case-folded by org-todo (PR 93 review)~test TESTS=org~~src/org/org.c~	return (fold ? planningl(p) : is(q, "CLOSED:")~	return (fold + 1 ? planningl(p) : is(q, "CLOSED:")
 org: todo: a tab counts 8, not to the tab stop (PR 93 review)~test TESTS=org~~src/org/org.c~c = S[p] == '\t' ? c / 8 * 8 + 8 : c + 1;~c += S[p] == '\t' ? 8 : 1;
-org: todo: +1m from the normalised date, not its digits (PR 93 review)~test TESTS=org~~src/org/org.c~day = days(num(a + 1, a + 5) + (what == 'y' ? n : 0), num(a + 6, a + 8) + (what == 'M' ? n : 0), num(a + 9, a + 11));~{ int y, m, d; civil(day, &y, &m, &d); day = days(y + (what == 'y' ? n : 0), m + (what == 'M' ? n : 0), d); }
-org: todo: an overdue ++ repeater stops at ten shifts (PR 93 review)~test TESTS=org~~src/org/org.c~				tschange(ts, n, what, 0);¶				tsbody(ts + 1, &t);¶			} while~				tschange(ts, n, what, 0);¶				tsbody(ts + 1, &t);¶				if (fdiv(now, 1440) - fdiv(t, 1440) > 8) { err = 1; return; }¶			} while
+org: todo: +1m from the normalised date, not its digits (PR 93 review)~test TESTS=org~~src/org/org.c~day = date_days(num(a + 1, a + 5) + (what == 'y' ? n : 0), num(a + 6, a + 8) + (what == 'M' ? n : 0), num(a + 9, a + 11));~{ int y, m, d; date_civil(day, &y, &m, &d); day = date_days(y + (what == 'y' ? n : 0), m + (what == 'M' ? n : 0), d); }
+org: todo: an overdue ++ repeater stops at ten shifts (PR 93 review)~test TESTS=org~~src/org/org.c~				tschange(ts, n, what, 0);¶				tsbody(ts + 1, &t);¶			} while~				tschange(ts, n, what, 0);¶				tsbody(ts + 1, &t);¶				if (date_fdiv(now, 1440) - date_fdiv(t, 1440) > 8) { err = 1; return; }¶			} while
 org: todo: CLOSED: inside a word counts (PR 93 review)~test TESTS=org~~src/org/org.c~		if (!is(q, k[i]) || (q && alnum(q - 1))) continue;~		if (!is(q, k[i])) continue;
 org: todo: LAST_REPEAT matched by prefix (PR 93 review)~test TESTS=org~~src/org/org.c~ && (ateol(c + 13) || blank(c + 13))) { wrep(q, eol(q), "", 0); break; }~) { wrep(q, eol(q), "", 0); break; }
 org: todo: a new drawer's first line not indented as the drawer it is in (PR 93 review)~test TESTS=org~~src/org/org.c~		else if (e[i].parent != ORG_NONE && e[e[i].parent].type == ORG_DRAWER) c = col(e[e[i].parent].begin + h);¶~¶
@@ -101,7 +101,7 @@ org: colours: link types of at most three letters (against Org)~org-conform ORG_
 org: show: a descriptive link shows its closing brackets (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~hidel(c.la, c.lv), hidel(c.lw, c.lz);~hidel(c.la, c.lv);
 org: colours: a ] or > that ends no separator not looked for~test TESTS=org~~src/org/org.c~	for (size_t y = q; y < e; y++) if ((S[y] == ']'~	for (size_t y = q; y < e && 0; y++) if ((S[y] == ']'
 org: colours: links searched from the scan's start (frame gate on many lines)~test TESTS=org~~src/org/org.c~	if (P > c->lk && inside(P)) c->lk = P;~	if (0) c->lk = P;
-org: colours: no checkpoint kept on a walk (frame gate on many lines)~test TESTS=org~~src/org/org.c~		if (n % 4096 == 0 && (!f->kn~		if (n % 4096 == 0 && 0 && (!f->kn
+org: colours: no checkpoint kept on a walk (lines shown going up, against the walk)~test TESTS=org~~src/org/org.c~		if (n % 4096 == 0 && (!f->kn~		if (n % 4096 == 0 && 0 && (!f->kn
 org: show: checkpoints kept across an update~test TESTS=org~~src/org/org.c~	f->c.at = f->cs.at = f->bn = ORG_NONE, f->kn = f->sp = f->sg = 0;~	f->c.at = f->cs.at = f->bn = ORG_NONE, f->sp = f->sg = 0;
 org: colours: a footnote span over a headline~test TESTS=org~~src/org/org.c~c->fz = S[l] == '*' ? 0 : c->fz;~c->fz = S[l] == '*' ? c->fz : c->fz;
 org: show: a link ending at a footnote reference holds it~test TESTS=org~~src/org/org.c~ == ORG_NONE || k == p) &&~ == ORG_NONE) &&
@@ -109,8 +109,8 @@ org: colours: a footnote reference in a LaTeX macro (against Org)~org-conform OR
 org: colours: a LaTeX fragment at a line's start not looked for~test TESTS=org~~src/org/org.c~(PE[i].type == ORG_PARAGRAPH && frag(l, PE[i].cend))~(PE[i].type == ORG_PARAGRAPH && frag(l, PE[i].cend) && 0)
 org: colours: an entity at a line's start taken for a LaTeX fragment~test TESTS=org~~src/org/org.c~return alpha(m) && !(ent(l, &x) && entity(m, x));~return alpha(m) && !(ent(l, &x) && entity(m, x) && 0);
 org: colours: any character after a $ fragment's closing $~test TESTS=org~~src/org/org.c~ || IN(DPOST, uni_cp(S, N, m)));~ || 1);
-org: colours: no definition span thrown by a reference below (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		if (c->fm) put(l, nextl(l));~		if (0) put(l, nextl(l));
-org: colours: a footnote reference's span not carried to the next lines (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	if (put && c->fz > l) put(l, c->fz);~	if (0) put(l, c->fz);
+org: colours: no definition span thrown by a reference below (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		if (c->fm) cover(r, l, nextl(l), put);~		if (0) cover(r, l, nextl(l), put);
+org: colours: a footnote reference's span not carried to the next lines (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	if (put && c->fz > l) cover(r, l, c->fz, put);~	if (0) cover(r, l, c->fz, put);
 org: colours: a footnote reference inside a link (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~((k = holds(h, e = eol(l), p, link_re)) == ORG_NONE || k == p) &&~((k = holds(h, e = eol(l), p, link_re)) || 1) &&
 org: colours: a footnote definition span from a comment line (against Org, directed)~test TESTS=org~~src/org/org.c~	if (comment(l) || (b < N && S[b] == ':'~	if ((b < N && S[b] == ':'
 org: colours: a string not skipped in a footnote's brackets (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		if (t == 1) {~		if (t == 9) {
@@ -144,3 +144,6 @@ org: colours: a fixed-width line is a valid footnote context (against Org)~org-c
 org: colours: a macro's star not taken (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		x += is(x, "*");¶~
 org: colours: a form feed ends a plain link (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~ && c != '\f' && c != '\r');~ && c != '\r');
 org: colours: a link over a clock: line in lower case (directed)~test TESTS=org~~src/org/org.c~|| (is(b, "CLOCK:") && clockl(~|| (lit(b, "CLOCK:") && clockl(
+org: colours: valid() asked again for every reference on a line (long-line gate)~test TESTS=org~~src/org/org.c~!(*v < 0 ? (*v = valid(l)) : *v)) return 0;~!valid(l)) return 0;
+org: colours: a definition's span put whole again for every reference below it (long-line gate)~test TESTS=org~~src/org/org.c~	if (z < r[0] || a > r[1]) r[0] = r[1] = a;~	r[0] = r[1] = a;
+org: colours: the look ahead's link search from the reference's line, not the line below (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~Hit h[2] = { { c->fq, c->fq }, { c->fq, c->fq } };~Hit h[2] = { { l, l }, { l, l } };

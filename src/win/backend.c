@@ -219,6 +219,14 @@ static int win_open(void)
 	nodib = GetCurrentObject(mem, OBJ_BITMAP);
 	if (make_font() || make_dib()) { win_close(); return -1; }
 	measure_period();
+	/* The title bar in the window's base and text (it was white); dark
+	   mode makes the caption buttons light.  Windows 10 takes only the
+	   dark mode and ignores the colours (Windows 11 22000 added them); a
+	   drawn title bar would mean hit-testing and losing the snap layouts. */
+	BOOL dark = TRUE;
+	DwmSetWindowAttribute(win, DWMWA_USE_IMMERSIVE_DARK_MODE, &dark, sizeof dark);
+	DwmSetWindowAttribute(win, DWMWA_CAPTION_COLOR, &BASE, sizeof BASE);
+	DwmSetWindowAttribute(win, DWMWA_TEXT_COLOR, &TEXT, sizeof TEXT);
 	ShowWindow(win, SW_SHOWDEFAULT);
 	resized = stale = 0;   /* the size backend_size gives now is the first one */
 	return 0;

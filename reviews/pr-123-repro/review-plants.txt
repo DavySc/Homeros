@@ -1,0 +1,2 @@
+# the review's own plant (R1), and plant 55 of tests/plants/loop.txt, 10 runs each of waits() alone under Wine
+review: win: proc_wait reports the other children's exits~win WIN=loop~~src/loop/win.c~		if (p[i].ph && (only < 0 || i == only) && WaitForSingleObject(p[i].ph, 0)~		if (p[i].ph && WaitForSingleObject(p[i].ph, 0)

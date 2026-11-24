@@ -266,7 +266,7 @@ static int open_line(int dir)
 		}
 	}
 	long nl_len = ind + (insert ? len - extra : 0);
-	char *nl = malloc((size_t)nl_len + 2);
+	char *nl = malloc((size_t)nl_len + 1);
 	if (!nl) { free(line); return 0; }
 	memset(nl, ' ', (size_t)ind);
 	if (insert) memcpy(nl + ind, line + extra, (size_t)(len - extra));
@@ -289,7 +289,7 @@ static int open_line(int dir)
 				b[nl_len] = '\n';
 				core_edit(E, core_line_start(E, (size_t)l + 1), 0, b, (size_t)nl_len + 1);
 				buf_changed();
-			} else {
+			} else if (rest || ind) {
 				/* only the white space after the break goes, and the
 				   break and indent come in: what follows keeps its marks,
 				   as Neovim's open_line() splices extmarks (a snippet's
@@ -297,6 +297,13 @@ static int open_line(int dir)
 				b[0] = '\n';
 				memcpy(b + 1, nl, (size_t)ind);
 				replace_bytes(l, rest, extra - rest, b, ind + 1);
+			} else {
+				/* a bare break at column 0 would be a line put above, which
+				   moves this line's marks down: its text goes and comes
+				   back as a line appended below (ml_append() after this
+				   line: m' on "  " then r<CR> `` stays on line 1) */
+				replace_bytes(l, 0, len, "", 0);
+				append_lines(l, nl, nl_len);
 			}
 			free(b);
 		}
@@ -623,6 +630,7 @@ static int ins_esc(int nomove)
 	}
 	/* when an autoindent was removed, curswant stays after the indent */
 	if (!restart_edit && temp == (long)W->col) set_curswant = 1;
+	B->mark[MARK_CARET] = (Mark){ W->line, W->col, 1 };   /* the '^ mark */
 	if (!nomove && (W->col != 0 || cur().coladd > 0) && (!restart_edit || (gchar_cursor() == 0 && !VIsual_active))) {
 		if (cur().coladd > 0) {
 			oneleft();

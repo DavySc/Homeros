@@ -1,0 +1,50 @@
+--- screen (cursor row 7 col 13)
+ 0|
+ 1|
+ 2|
+ 3|
+ 4|
+ 5|                                 h o m e r o s
+ 6|
+ 7|            Find File                                               f
+ 8|
+ 9|            New File                                                n
+10|
+11|            Find Text                                               g
+12|
+13|            Recent Files                                            r
+14|
+15|            Quit                                                    q
+16|
+17|                           ⚡ Homeros loaded in 0.2ms
+18|~
+19|~
+20|~
+21|~
+22|~
+23| SPC                         <esc> close  <bs> back
+--- screen (cursor row 7 col 13)
+ 0|
+ 1|
+ 2|
+ 3|
+ 4|
+ 5|                                 h o m e r o s
+ 6|
+ 7|            Find File                                               f
+ 8|
+ 9|            New File                                                n
+10|
+11|            Find Text                                               g
+12|
+13|            Recent Files                                            r
+14|
+15|            Quit                                                    q
+16|
+17|                           ⚡ Homeros loaded in 0.2ms
+18|~
+19|~
+20|~
+21|~
+22|~
+23| SPC » +git                  <esc> close  <bs> back
