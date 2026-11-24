@@ -13,7 +13,7 @@ lsp: versions jump by 2~test TESTS=lsp~~src/lsp/lsp.c~	if (!d || !d->chg.n) retu
 lsp: messages sent before the initialize reply~test TESTS=lsp~~src/lsp/lsp.c~	if (!s->ready && !now) {~	if (!s->ready && !now && 0) {
 lsp: a new request does not cancel the last~test TESTS=lsp~~src/lsp/lsp.c~	cancel(d, &d->ask[kind].id);¶~¶
 lsp: a reopened file never gets didOpen~test TESTS=lsp~~src/lsp/lsp.c~	d->nlog = 0;¶	open_doc(d);~	d->nlog = 0;
-lsp: a request from the server left unanswered~test TESTS=lsp~~src/lsp/lsp.c~		send(s);¶		return;¶	}¶	if (meth >= 0) {~		return;¶	}¶	if (meth >= 0) {
+lsp: a request from the server left unanswered~test TESTS=lsp~~src/lsp/lsp.c~		str_lit(&o, ",\"result\":null}");¶		send(s);¶~		str_lit(&o, ",\"result\":null}");¶
 lsp: columns sent as bytes, not UTF-16~test TESTS=lsp~~src/lsp/lsp.c~	*c = lsp_u16(b, n);~	*c = n; (void)b;
 lsp: a column inside a surrogate pair goes to the next character~test TESTS=lsp~~src/lsp/u16.c~		if (c < u + w) return i;~		if (c <= u) return i;
 lsp: astral characters counted as one UTF-16 unit (Frama-C)~frama~~src/lsp/u16.c~		u += k == 4 ? 2 : 1;~		u += 1;
