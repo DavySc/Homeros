@@ -1,0 +1,30 @@
+review: R1 zR/zM guard: W->fold || dropped (expect equivalent)~test TESTS=keys_ex~~src/keys/normal.c~&& (W->fold || i < 3)) core_msg~&& i < 3) core_msg
+review: R2 Visual start does not take the fold whole~test TESTS=keys_ex~~src/keys/normal.c~	VIsual = cur();¶	fold_adjust_visual();~	VIsual = cur();
+review: R3 l opens no fold~test TESTS=keys_ex~~src/keys/normal.c~	if (n != cap->count1) foldopen(cap);¶}¶¶static void nv_left~}¶¶static void nv_left
+review: R4 h opens no fold~test TESTS=keys_ex~~src/keys/normal.c~	if (n != cap->count1) foldopen(cap);¶}¶¶static void nv_down~}¶¶static void nv_down
+review: R5 $ opens no fold~test TESTS=keys_ex~~src/keys/normal.c~	if (!cursor_down(cap->count1 - 1)) clearopbeep(cap->oap);¶	else foldopen(cap);~	if (!cursor_down(cap->count1 - 1)) clearopbeep(cap->oap);
+review: R6 0 opens no fold~test TESTS=keys_ex~~src/keys/normal.c~	ins_at_eol = 0;   /* "0" after CTRL-O stays on a one-character line's character */¶	foldopen(cap);~	ins_at_eol = 0;
+review: R7 w opens no fold~test TESTS=keys_ex~~src/keys/normal.c~	if (!n && oap->op_type == OP_NOP) clearopbeep(oap);¶	else foldopen(cap);~	if (!n && oap->op_type == OP_NOP) clearopbeep(oap);
+review: R8 b opens no fold~test TESTS=keys_ex~~src/keys/normal.c~	if (!bck_word(cap->count1, cap->arg, 0)) clearopbeep(cap->oap);¶	else foldopen(cap);~	if (!bck_word(cap->count1, cap->arg, 0)) clearopbeep(cap->oap);
+review: R9 f opens no fold~test TESTS=keys_ex~~src/keys/normal.c~	setcur(p);¶	foldopen(cap);¶}¶¶¶static void nv_percent~	setcur(p);¶}¶¶¶static void nv_percent
+review: R10 % opens the fold though the line stayed~test TESTS=keys_ex~~src/keys/normal.c~	if (W->line != l0) foldopen(cap);~	(void)l0; foldopen(cap);
+review: R11 { } open no fold~test TESTS=keys_ex~~src/keys/normal.c~	coladd_reset();¶	foldopen(cap);¶}¶¶static void nv_brace~	coladd_reset();¶}¶¶static void nv_brace
+review: R12 ( ) open no fold~test TESTS=keys_ex~~src/keys/normal.c~	adjust_cursor(cap->oap);¶	foldopen(cap);~	adjust_cursor(cap->oap);
+review: R13 [( opens no fold~test TESTS=keys_ex~~src/keys/normal.c~		set_curswant = 1;¶		foldopen(cap);¶		return;~		set_curswant = 1;¶		return;
+review: R14 [[ opens no fold~test TESTS=keys_ex~~src/keys/normal.c~beginline(BL_WHITE | BL_FIX), foldopen(cap);~beginline(BL_WHITE | BL_FIX);
+review: R15 search opens no fold~test TESTS=keys_ex~~src/keys/normal.c~		if (i == 2) cap->oap->motion_type = MLINE;¶		foldopen(cap);~		if (i == 2) cap->oap->motion_type = MLINE;
+review: R16 operator backward: cursor not to fold start~test TESTS=keys_ex~~src/keys/normal.c~			if (has_folding(c.lnum, &c.lnum, NULL)) c.col = 0;¶			if (has_folding(oap->start.lnum, NULL~			if (has_folding(oap->start.lnum, NULL
+review: R17 operator forward: start not to fold start~test TESTS=keys_ex~~src/keys/normal.c~			if (has_folding(oap->start.lnum, &oap->start.lnum, NULL)) oap->start.col = 0;¶			if ((c.col~			if ((c.col
+review: R18 Visual zo: V start column kept~test TESTS=keys_ex~~src/keys/normal.c~		if (VIsual_mode == 'V') a.col = 0, a.coladd = 0;   /* VIsual's end only */¶~
+review: R19 Visual zo/zc: no E490~test TESTS=keys_ex~~src/keys/normal.c~		if (!found) core_msg(E, "E490: No fold found");¶		return;~		(void)found;¶		return;
+review: R20 Visual zc does not skip the fold it closed~test TESTS=keys_ex~~src/keys/normal.c~			if (c == 'c') has_folding(l, NULL, &next);¶~
+review: R21 P puts below the fold~test TESTS=keys_ex~~src/keys/ops.c~W->line = (size_t)(dir == FORWARD ? b : a);~W->line = (size_t)b;
+review: R22 O opens below the fold~test TESTS=keys_ex~~src/keys/normal.c~if (cap->cmdchar == 'O' ? has_folding(l, &l, NULL) : has_folding(l, NULL, &l)) W->line~if (has_folding(l, NULL, &l)) W->line
+review: R23 w from a fold: last line's start, not its last character~test TESTS=keys_ex~~src/keys/motion.c~W->line = (size_t)l, coladvance(MAXCOL);~W->line = (size_t)l;
+review: R24 a ? search from a fold starts at the cursor~test TESTS=keys_ex~~src/keys/search.c~if (dirc == '/' ? has_folding(pos.lnum, NULL, &pos.lnum) : has_folding(pos.lnum, &pos.lnum, NULL)) pos.col~if (dirc == '/' && has_folding(pos.lnum, NULL, &pos.lnum)) pos.col
+review: R25 Insert after CTRL-O command opens the fold again~test TESTS=keys_ex~~src/keys/edit.c~	if (!did_restart_edit) fold_open_cursor();~	fold_open_cursor();
+review: R26 a mapped command opens the fold~test TESTS=keys_ex~~src/keys/normal.c~if (!key_stuffed && cap->oap->op_type == OP_NOP) fold_open_cursor(); }~if (cap->oap->op_type == OP_NOP) fold_open_cursor(); }
+review: R27 k from the first line does not fail~test TESTS=keys_ex~~src/keys/buf.c~	if (n > 0 && !W->line) return 0;¶~
+review: R28 { } skip the fold backward as forward~test TESTS=keys_ex~~src/keys/motion.c~if (skipped) curr = (dir > 0 ? b : a) + dir;~if (skipped) curr = b + dir;
+review: R29 zc count ignored~test TESTS=keys_ex~~src/keys/normal.c~if (core_fold(E, op[i], W->line, cap->count1) < 0~if (core_fold(E, op[i], W->line, 1) < 0
+review: R30 ''/CTRL-O mark jump opens no fold~test TESTS=keys_ex~~src/keys/normal.c~		if (moved) foldopen(cap);~		(void)moved;

@@ -1,0 +1,173 @@
+diff --git a/src/keys/ex_oracle.lua b/src/keys/ex_oracle.lua
+index ce0a8be..c748620 100644
+--- a/src/keys/ex_oracle.lua
++++ b/src/keys/ex_oracle.lua
+@@ -41,6 +41,10 @@ if folds and folds ~= '' then
+   vim.o.foldlevel = 99
+   vim.wo.foldmethod = 'expr'
+   vim.wo.foldexpr = "luaeval('FX[_A]', v:lnum)"
++  if folds == 'content' then
++    function _G.FXC(l) local t = vim.fn.getline(l) if t == '' then return '-1' end local ind = #t:match('^ *') if t:sub(-1) == '{' then return '>' .. (ind + 1) end return tostring(ind) end
++    vim.wo.foldexpr = 'v:lua.FXC(v:lnum)'
++  end
+ end
+ vim.cmd('clearjumps')   -- -l leaves a jump on line 1 (measured: jjw CTRL-O went there)
+ local function finish()
+@@ -61,7 +65,9 @@ local function finish()
+   local hl, top = '', vim.fn.line('w0')
+   for i, a in ipairs(screen()) do hl = hl .. (a == '|' and '\1' or a ~= plain[i] and '#' or '.') end
+   if vim.fn.winsaveview().leftcol > 0 or vim.wo.foldmethod == 'expr' then hl = '?\1' end   -- folds: rows are not lines
+-  io.open(_G.arg[3], 'w'):write(string.format('%d %d %s\n%s\n%d\1%s\n', vim.fn.line('.'), vim.fn.col('.') - 1,
++  local fc = ''
++  if _G.FX then for l = 1, vim.fn.line('$') do fc = fc .. vim.fn.foldclosed(l) .. ',' end fc = fc .. '\n' end
++  io.open(_G.arg[3], 'w'):write(string.format('%d %d %s\n%s\n%d\1%s\n' .. fc, vim.fn.line('.'), vim.fn.col('.') - 1,
+                                 vim.v.errmsg:match('^E%d+') or '-', (table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\1'):gsub('[%z\n]', '\2')),
+                                 top - 1, hl:sub(1, -2)))
+   vim.cmd('qa!')
+diff --git a/tests/test_keys_ex.c b/tests/test_keys_ex.c
+index b8c314e..c7533ac 100644
+--- a/tests/test_keys_ex.c
++++ b/tests/test_keys_ex.c
+@@ -8,12 +8,13 @@
+ #include "check.h"
+ #include "core.h"
+ #include "fold.h"
++#include "text.h"
+ #include "keys.h"
+ #include "loop.h"
+ #include "uni.h"
+ #include "../src/keys/k.h"
+ 
+-enum { N = 3000 };
++static int N = 3000;
+ static const char *const PRE[] = { "", "j", "jj", "G", "lll", "jllll", "jjj", "Vj\x1b", "jvjj\x1bgg", "3j", "Vj" };
+ static const char *const TOK[] = { "1", "2", "3", "0", "6", "99", ".", "$", "'<", "'>", "'a", "+", "-", "+2",
+                                    "-3", "4", " ", ",", ";", "%", ":", "Z" };
+@@ -230,6 +231,27 @@ static void foldkeys(char *k)
+ 	strcat(k, FEND[rnd(sizeof FEND / sizeof *FEND)]);
+ }
+ 
++static const char *const PTOK[] = { "zo", "zc", "za", "zR", "zM", "2zc", "2zo", "2za", "j", "k", "2j", "3k", "gg", "G", "3G",
++  "yy", "yj", "yk", "y2j", "l", "h", "w", "b", "$", "0", "e", "fz", "%", "{", "}", "''",
++  "ma", "'a", "`a", "\x0f", "/z\r", "n", "N", "V", "v", "\x1b", "Vjy", "vjy",
++  "Vy", "u", "jzc", "kzc", "4Gzc", "9Gzc",
++  "W", "B", "E", "ge", "^", "g_", "|", "3|", "tz", "Fz", "Tx", ";", ",", "(", ")", "[[", "]]", "[{", "]}", "[(", "H", "L", "M",
++  "*", "#", "?z\r", "/x\r", "\x09", "g'a", "g`a", "mb", "'b", "`b", "'[", "']", "`<", "'>", "gv", "o", "\x16", "5G", "6G", "7G", "8G", "10G", "2G",
++  "+", "-", "\r", "_", "2w", "3b", "2e", "3l", "2h", "2$", "50%", "2}", "2{", "yw", "y$", "yb", "ye", "y}", "y{", "yG", "ygg", "y'a", "y`a", "yn", "y/z\r",
++  "3zc", "3zo", "zcj", "zck", "Vzc", "Vzo", "Vjzc", "Vkzo", "vjzo", "vkzc", "Vza", "vza", "VjzR", "\x04", "\x15", "\x06", "\x02", "\x05", "\x19",
++  "gj", "gk", "yiw", "yip", "yap", "vip", "vap", "viw", "\x12" };
++static const char *const PEND[] = { "", "\033dd", "\033dj", "\033dk", "\033x", "\033o\033", "\033O\033", "\033ix\033", "\033Vd", "\033p", "\033J",
++  "\033P", "\033yyP", "\033yyp", "\033ddu", "\033ddp", "\033Pu", "\033pu", "\033dw", "\033db", "\033de", "\033d$", "\033d0", "\033D", "\033cwq\033", "\033A!\033", "\033I!\033", "\033d}", "\033d{", "\033dG", "\033dgg", "\033>>", "\033>j", "\033guu", "\033g~j", "\033rQ", "\033~", "\033S!\033", "\033ccq\033", "\033vjd", "\033vkd", "\033Vjd", "\033Vkd", "\033d'a", "\033d`a", "\033dn", "\033d/z\r", "\033yjP", "\033ykp", "\033xp", "\033ylP", "\033gJ", "\0333J", "\033dip", "\033dap", "\033diw", "\033yyVp", "\033ylvjp" , "\033ddj", "\033ddk", "\033oq\033j", "\033Oq\033k", "\033ix\033k", "\033xuj", "\033xuk", "\033ddu\033j", "\033ppuj" };
++static FILE *casef;
++static void probekeys(char *k)
++{
++	strcpy(k, "m'");
++	if (casef) { char b[200]; if (fgets(b, sizeof b, casef)) { b[strcspn(b, "\n")] = 0; strcat(k, b); } return; }
++	int ext = getenv("EXT") != NULL;
++	for (unsigned t = 1 + rnd(8); t--;) strcat(k, ext ? PTOK[rnd(sizeof PTOK / sizeof *PTOK)] : FTOK[rnd(sizeof FTOK / sizeof *FTOK)]);
++	strcat(k, ext ? PEND[rnd(sizeof PEND / sizeof *PEND)] : FEND[rnd(sizeof FEND / sizeof *FEND)]);
++}
++
+ /* the fold phase's foldexpr, one value a line as Neovim's ("0", ">1"),
+    given to the oracle as $FOLDS; NULL: no folds */
+ static const char *folds;
+@@ -242,6 +264,20 @@ static int fold_expr(void *ctx, size_t line, int *start)
+ 	*start = *v == '>';
+ 	return atoi(v + *start);
+ }
++static Editor *fe_e;
++static int fold_expr2(void *ctx, size_t line, int *start)
++{
++	(void)ctx;
++	char b[64];
++	size_t n = text_read(fe_e->buf->text, text_line_start(fe_e->buf->text, line), b, 63);
++	b[n] = 0, b[strcspn(b, "\n")] = 0;
++	size_t len = strlen(b);
++	if (!len) return -1;
++	int ind = 0;
++	while (b[ind] == ' ') ind++;
++	if (b[len - 1] == '{') { *start = 1; return ind + 1; }
++	return ind;
++}
+ static int check(const char *text, void (*gen)(char *))
+ {
+ 	char dir[] = "/tmp/test_keys_exXXXXXX", tf[64], cases[64], out[64], cmd[512], k[256];
+@@ -273,13 +309,16 @@ static int check(const char *text, void (*gen)(char *))
+ 		   recursive macro, which the generator does not make, measured) */
+ 		int ok = o && fgets(want, sizeof want, o) && sscanf(want, "%ld %ld %15s", &line, &col, err) == 3 && fgets(want, sizeof want, o)
+ 		         && fgets(hw, sizeof hw, o);
++		char fw[512] = "", fg[512] = "";
++		if (ok && folds && !fgets(fw, sizeof fw, o)) ok = 0;
++		fw[strcspn(fw, "\n")] = 0;
+ 		if (o) fclose(o), unlink(of);
+ 		if (!ok) { none++; continue; }
+ 		want[strcspn(want, "\n")] = 0;
+ 		static Editor e;
+ 		CHECK(!core_open(&e, tf));
+ 		if (folds) {
+-			CHECK(!e.win->fold && (e.win->fold = fold_new(99, fold_expr, NULL, NULL)));   /* the core frees it */
++			CHECK(!e.win->fold && (e.win->fold = fold_new(99, getenv("CONTENT") ? (fe_e = &e, fold_expr2) : fold_expr, NULL, NULL)));   /* the core frees it */
+ 			fold_update(e.win->fold, 0, core_lines(&e), core_lines(&e));
+ 		}
+ 		normal_reset();
+@@ -292,6 +331,14 @@ static int check(const char *text, void (*gen)(char *))
+ 			int c = (int)uni_cp((const unsigned char *)k, n, j);
+ 			keys_feed(&e, c == '\r' ? KEY_ENTER : c == 27 ? KEY_ESC : c, k[j + l] != '\n');
+ 			if (e.msg[0] == 'E') memcpy(m, e.msg, sizeof m);
++			if (getenv("DUMP")) { fprintf(stderr, "key %c cur %zu:", c > 32 && c < 127 ? c : '?', e.win->line + 1); for (size_t q = 0, x, y; q < core_lines(&e); q++) fprintf(stderr, " %ld", e.win->fold && fold_closed(e.win->fold, q, &x, &y) ? (long)x + 1 : -1L); fprintf(stderr, "\n"); }
++			if (getenv("CONTENT")) {
++				static char snap[8192], now[8192];
++				size_t z = text_read(e.buf->text, 0, now, sizeof now - 1);
++				now[z] = 0;
++				if (j && strcmp(snap, now)) core_folds(&e, e.buf, 0, core_lines(&e));
++				strcpy(snap, now);
++			}
+ 		}
+ 		size_t n = text_read(e.buf->text, 0, got, sizeof got - 1);
+ 		if (n && got[n - 1] == '\n') n--;
+@@ -300,18 +347,24 @@ static int check(const char *text, void (*gen)(char *))
+ 		for (size_t j = 0; j < n; j++) got[j] = got[j] == '\n' ? 1 : got[j] ? got[j] : 2;
+ 		hw[strcspn(hw, "\n")] = 0;
+ 		hlsearch(&e, hg, sizeof hg);
++		char orig[8192]; size_t on = 0;
++		for (const char *q = text; *q && q[1]; q++) orig[on++] = *q == '\n' ? 1 : *q;
++		orig[on] = 0;
++		if (folds && (getenv("CONTENT") || getenv("FORCEFS") || !strcmp(got, orig))) for (size_t q = 0, x, y; q < core_lines(&e); q++) sprintf(fg + strlen(fg), "%ld,", e.win->fold && fold_closed(e.win->fold, q, &x, &y) ? (long)x + 1 : -1L);
++		else strcpy(fg, fw);
+ 		if ((long)e.win->line + 1 != line || (long)e.win->col != col || strncmp(m, err, strlen(err)) || (m[0] == 'E' && m[strlen(err)] != ':')
+-		    || strcmp(got, want) || (!strchr(hw, '?') && strcmp(hg, hw))) {
++		    || strcmp(got, want) || strcmp(fg, fw) || (!strchr(hw, '?') && strcmp(hg, hw))) {
+ 			k[strcspn(k, "\n")] = 0;
+ 			for (char *s = k; *s; s++) if (*s == '\r' || *s == 27) *s = *s == '\r' ? '|' : '~';
+-			if (bad++ < 10) fprintf(stderr, "%d %s: line %zu col %zu [%s], Neovim %ld %ld %s%s%s\n", i, k, e.win->line + 1, e.win->col, e.msg, line, col, err, strcmp(got, want) ? " (text differs)" : "",
++			if (bad++ < 300) fprintf(stderr, "%d %s: line %zu col %zu [%s], Neovim %ld %ld %s%s%s\n", i, k, e.win->line + 1, e.win->col, e.msg, line, col, err, strcmp(got, want) ? " (text differs)" : strcmp(fg, fw) ? " (folds differ)" : "",
+ 				                      !strchr(hw, '?') && strcmp(hg, hw) ? " (hlsearch differs)" : "");
++			if (bad <= 300 && strcmp(fg, fw)) fprintf(stderr, "  folds %s Neovim %s\n", fg, fw);
+ 			if (bad <= 10 && !strchr(hw, '?') && strcmp(hg, hw)) fprintf(stderr, "  %s\n  Neovim %s\n", hg, hw);
+ 		}
+ 		core_free(&e);
+ 	}
+ 	fclose(c);
+-	CHECK(none < N / 100);
++	if (!getenv("PROBE")) CHECK(none < N / 100);
+ 	if (bad) fprintf(stderr, "%d of %d differ; cases in %s (| is Enter, ~ Esc)\n", bad, N, dir);
+ 	else unlink(tf), unlink(cases), rmdir(dir);
+ 	return bad;
+@@ -335,6 +388,17 @@ int main(void)
+ {
+ 	if (getenv("SEED")) rng += strtoull(getenv("SEED"), NULL, 10);
+ 	CHECK(__sanitizer_install_malloc_and_free_hooks(on_malloc, on_free));
++	if (getenv("PROBE")) {
++		N = atoi(getenv("PROBE"));
++		if (getenv("CASEF")) casef = fopen(getenv("CASEF"), "r");
++		folds = getenv("CONTENT") ? "content" : getenv("PFOLDS") ? getenv("PFOLDS") : "0,>1,1,>2,2,2,1,0,>1,1";
++		const char *tx = getenv("PTEXT") ? getenv("PTEXT") : "a x\nb {\n c y\n d {\n  e z\n\n g z\n}\ni {\n j\n";
++		static char tb[4096]; char *d = tb;
++		for (const char *q = tx; *q; q++) if (q[0] == '\\' && q[1] == 'n') *d++ = '\n', q++; else *d++ = *q;
++		int r = check(tb, probekeys);
++		printf("probe: %d of %d differ\n", r, N);
++		return 0;
++	}
+ 	static const char TEXT[] = "abcdef\n  xy\nhello world\n\tq\nlast line\nz\n";
+ 	CHECK(!check(TEXT, range));   /* each phase stops the test, so a caught plant does not run the rest */
+ 	CHECK(!check("abc. def foo\n  xy (o)\n\nhello world. Two\n\tq a\nlast line\n\n  z o\n", marks));

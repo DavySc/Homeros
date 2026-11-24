@@ -1,0 +1,52 @@
+NOT CAUGHT    review: R1 zR/zM guard: W->fold || dropped (expect equivalent)
+NOT CAUGHT    review: R12 ( ) open no fold
+NOT CAUGHT    review: R13 [( opens no fold
+NOT CAUGHT    review: R14 [[ opens no fold
+NOT CAUGHT    review: R2 Visual start does not take the fold whole
+NOT CAUGHT    review: R20 Visual zc does not skip the fold it closed
+NOT CAUGHT    review: R21 P puts below the fold
+NOT CAUGHT    review: R24 a ? search from a fold starts at the cursor
+NOT CAUGHT    review: R25 Insert after CTRL-O command opens the fold again
+NOT CAUGHT    review: R26 a mapped command opens the fold
+NOT CAUGHT    review: R8 b opens no fold
+NOT CAUGHT    review: R9 f opens no fold
+caught        keys: 'foldopen' commands leave a closed fold shut (test_keys_ex): 72 of 3000 differ; cases in /tmp/test_keys_ex5RuBj5 (| is Enter, ~ Esc)
+caught        keys: CTRL-O opens no fold (test_keys_ex): 5 of 3000 differ; cases in /tmp/test_keys_exuhKq2N (| is Enter, ~ Esc)
+caught        keys: Insert mode starts in a closed fold (test_keys_ex): 1 of 3000 differ; cases in /tmp/test_keys_exI3br38 (| is Enter, ~ Esc)
+caught        keys: Visual mode takes part of a closed fold (test_keys_ex): 9 of 3000 differ; cases in /tmp/test_keys_exgkZwMT (| is Enter, ~ Esc)
+caught        keys: Visual zc keeps the wanted column (test_keys_ex): 4 of 3000 differ; cases in /tmp/test_keys_exvlXTeD (| is Enter, ~ Esc)
+caught        keys: Visual zo opens every level (test_keys_ex): 1 of 3000 differ; cases in /tmp/test_keys_exAWEnGS (| is Enter, ~ Esc)
+caught        keys: a mark jump to the cursor's own position opens the fold (test_keys_ex): 2 of 3000 differ; cases in /tmp/test_keys_exjlFlPS (| is Enter, ~ Esc)
+caught        keys: a search starts inside a closed fold (test_keys_ex): 5 of 3000 differ; cases in /tmp/test_keys_exHh4YAh (| is Enter, ~ Esc)
+caught        keys: an operator takes part of a closed fold backward (test_keys_ex): 58 of 3000 differ; cases in /tmp/test_keys_exMmqZ0g (| is Enter, ~ Esc)
+caught        keys: an operator takes part of a closed fold forward (test_keys_ex): 52 of 3000 differ; cases in /tmp/test_keys_ex2iJbX9 (| is Enter, ~ Esc)
+caught        keys: an operator's motion opens the fold (test_keys_ex): 29 of 3000 differ; cases in /tmp/test_keys_exGLxsEk (| is Enter, ~ Esc)
+caught        keys: b from a closed fold starts at the cursor (test_keys_ex): 10 of 3000 differ; cases in /tmp/test_keys_exxvlUvY (| is Enter, ~ Esc)
+caught        keys: e from a closed fold starts at the cursor (test_keys_ex): 17 of 3000 differ; cases in /tmp/test_keys_exEe8LlQ (| is Enter, ~ Esc)
+caught        keys: j from a closed fold's first line ends inside it (test_keys_ex): 14 of 3000 differ; cases in /tmp/test_keys_exhNDdj3 (| is Enter, ~ Esc)
+caught        keys: o and O open a line inside a closed fold (test_keys_ex): 54 of 3000 differ; cases in /tmp/test_keys_exHgeFoJ (| is Enter, ~ Esc)
+caught        keys: p puts inside a closed fold (test_keys_ex): 10 of 3000 differ; cases in /tmp/test_keys_exMHV58C (| is Enter, ~ Esc)
+caught        keys: past the end the cursor goes to the last line, not its fold's start (test_keys_ex): 1 of 3000 differ; cases in /tmp/test_keys_exJxJNAG (| is Enter, ~ Esc)
+caught        keys: u leaves a closed fold shut (test_keys_ex): 1 of 3000 differ; cases in /tmp/test_keys_ex4IrZWA (| is Enter, ~ Esc)
+caught        keys: u with nothing to undo opens the fold (test_keys_ex): 9 of 3000 differ; cases in /tmp/test_keys_exSxDSTo (| is Enter, ~ Esc)
+caught        keys: w from a closed fold starts at the cursor (test_keys_ex): 17 of 3000 differ; cases in /tmp/test_keys_exZ0qpaA (| is Enter, ~ Esc)
+caught        keys: zo with no fold there says nothing (test_keys_ex): 806 of 3000 differ; cases in /tmp/test_keys_ex2o8uHV (| is Enter, ~ Esc)
+caught        keys: { and } stop inside a closed fold (test_keys_ex): 15 of 3000 differ; cases in /tmp/test_keys_exhNbmJJ (| is Enter, ~ Esc)
+caught        review: R10 % opens the fold though the line stayed: 6 of 3000 differ; cases in /tmp/test_keys_exukUGmU (| is Enter, ~ Esc)
+caught        review: R11 { } open no fold: 7 of 3000 differ; cases in /tmp/test_keys_exeH98KN (| is Enter, ~ Esc)
+caught        review: R15 search opens no fold: 18 of 3000 differ; cases in /tmp/test_keys_exhuTU41 (| is Enter, ~ Esc)
+caught        review: R16 operator backward: cursor not to fold start: 13 of 3000 differ; cases in /tmp/test_keys_exft1pLN (| is Enter, ~ Esc)
+caught        review: R17 operator forward: start not to fold start: 27 of 3000 differ; cases in /tmp/test_keys_exhJfLsy (| is Enter, ~ Esc)
+caught        review: R18 Visual zo: V start column kept: 2 of 3000 differ; cases in /tmp/test_keys_exYHqGeL (| is Enter, ~ Esc)
+caught        review: R19 Visual zo/zc: no E490: 13 of 3000 differ; cases in /tmp/test_keys_exxQ9EGE (| is Enter, ~ Esc)
+caught        review: R22 O opens below the fold: 42 of 3000 differ; cases in /tmp/test_keys_ex7q8Mqi (| is Enter, ~ Esc)
+caught        review: R23 w from a fold: last line's start, not its last character: 22 of 3000 differ; cases in /tmp/test_keys_expcx48y (| is Enter, ~ Esc)
+caught        review: R27 k from the first line does not fail: 149 of 3000 differ; cases in /tmp/test_keys_ex6jl1nK (| is Enter, ~ Esc)
+caught        review: R28 { } skip the fold backward as forward: 11 of 3000 differ; cases in /tmp/test_keys_exzB0sNq (| is Enter, ~ Esc)
+caught        review: R29 zc count ignored: 21 of 3000 differ; cases in /tmp/test_keys_exUFplbS (| is Enter, ~ Esc)
+caught        review: R3 l opens no fold: 9 of 3000 differ; cases in /tmp/test_keys_exyNIfAy (| is Enter, ~ Esc)
+caught        review: R30 ''/CTRL-O mark jump opens no fold: 7 of 3000 differ; cases in /tmp/test_keys_exkL57sY (| is Enter, ~ Esc)
+caught        review: R4 h opens no fold: 3 of 3000 differ; cases in /tmp/test_keys_exMtb6QQ (| is Enter, ~ Esc)
+caught        review: R5 $ opens no fold: 11 of 3000 differ; cases in /tmp/test_keys_exhtc2QA (| is Enter, ~ Esc)
+caught        review: R6 0 opens no fold: 5 of 3000 differ; cases in /tmp/test_keys_ext3Q6Cf (| is Enter, ~ Esc)
+caught        review: R7 w opens no fold: 2 of 3000 differ; cases in /tmp/test_keys_ex9IQoe3 (| is Enter, ~ Esc)
