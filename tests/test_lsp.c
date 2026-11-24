@@ -86,9 +86,6 @@ static const char *tmp(void)
 	return t;
 }
 #define LONGDIRS 1   /* MAX_PATH */
-/* the goals project stays until the test ends: file.h keeps a directory's
-   watch for the session, and Windows removes no directory holding one */
-static const int kept = 1;
 #else
 #include <poll.h>
 #include <sys/ioctl.h>
@@ -98,7 +95,6 @@ static void self(char *exe, size_t n) { ssize_t k = readlink("/proc/self/exe", e
 static int here(char *d, size_t n) { return getcwd(d, n) != NULL; }
 static const char *tmp(void) { return "/tmp"; }
 #define LONGDIRS 3
-static const int kept = 0;
 #endif
 
 /* --- an independent UTF-16 reference: whole code points, valid UTF-8 ----- */
@@ -1489,7 +1485,7 @@ static void goals(const char *log)
 	free(w.s);
 	core_free(&e);
 	for (long long t1 = ms(); ms() - t1 < 300; ) loop_once(20);
-	CHECK(!gtree(0) || kept);   /* the editor left nothing in them */
+	CHECK(!gtree(0));   /* the editor left nothing in them */
 }
 
 /* lsp_faces: the grammar's faces (a C file's here), and the server's
