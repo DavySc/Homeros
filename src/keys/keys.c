@@ -142,7 +142,7 @@ static const struct { const char *lhs, *desc; } maps[] = {
 enum { NMAPS = sizeof maps / sizeof *maps };
 static int lead[3], nlead;   /* the keys typed of a map not yet complete */
 static int hint;             /* which-key's panel is shown */
-static int wtop, wh;         /* its first line shown, its height */
+static int wtop, wh, wmax;   /* its first line shown, its height, the last first line */
 
 /* m is a map of this buffer and mode: in Visual mode only SPC i s, a
    snippet around the area (package 19's, agreed), and its group */
@@ -155,7 +155,7 @@ static int usable(const char *m)
 static int typed(const char *m)
 {
 	int j = 0;
-	while (j < nlead && m[j] == lead[j]) j++;
+	while (j < nlead && m[j] && m[j] == lead[j]) j++;   /* a typed NUL is not the end */
 	return j;
 }
 
@@ -215,9 +215,8 @@ void keys_draw(Editor *e, Grid *g)
 	/* the panel shows H of its h + 3 lines (a blank, the h rows, a blank,
 	   and the empty line the footer covers) from line wtop, which <c-d>
 	   and <c-u> move (Win:scroll()) */
-	wh = H;
-	if (wtop > h + 3 - H) wtop = h + 3 - H;
-	if (wtop < 0) wtop = 0;
+	wh = H, wmax = h + 3 - H;
+	if (wtop > wmax) wtop = wmax;   /* the screen changed since the key */
 	w = g->cols / cols;
 	grid_blank(g, top, 0, H, g->cols);
 	for (int k = 0, prev = -1; k < n; k++) {
@@ -270,8 +269,8 @@ static int map(Editor *e, int k)
 	/* which-key's <c-d> and <c-u> scroll the panel half its height
 	   (state.lua); any other key shows a list from its top */
 	if (hint && (k == 4 || k == 21)) {
-		wtop += (k == 4 ? 1 : -1) * ((wh + 1) / 2);
-		core_changed = 1;
+		wtop += (k == 4 ? wh + 1 : -wh) / 2;   /* ceil((up and -1 or 1) * height / 2) */
+		wtop = wtop < 0 ? 0 : wtop > wmax ? wmax : wtop;
 		return 1;
 	}
 	wtop = 0;
