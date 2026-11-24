@@ -232,6 +232,13 @@ int main(void)
 	shape("abc");
 	font_stats(&h1, &m1);
 	CHECK(m1 == m0 && h1 == h0 + 3);
+	CHECK(font_open(FAMILY, 60) == 0);  /* least recently used goes first: 21 after 20 leaves 60 */
+	shape("abc");
+	font_stats(&h0, &m0);
+	CHECK(font_open(FAMILY, 20) == 0 && font_open(FAMILY, 21) == 0 && font_open(FAMILY, 60) == 0);
+	shape("abc");
+	font_stats(&h1, &m1);
+	CHECK(m1 == m0 && h1 == h0 + 3);
 	for (int px = 21; px <= 24; px++) CHECK(font_open(FAMILY, px) == 0);
 	CHECK(font_open(FAMILY, 20) == 0);
 	shape("abc");
