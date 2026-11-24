@@ -207,6 +207,9 @@ core: a write sends no didSave (test_infoview)~test TESTS=infoview~~src/core/cor
 core: a change in a nomodifiable buffer (test_core_contract)~test TESTS=core_contract~~src/core/core.c~	if (!ndel && !nins && after == b->flags) return 0;¶	if (!modifiable(e)) return -1;~	if (!ndel && !nins && after == b->flags) return 0;
 core: undo in a nomodifiable buffer (test_core_contract)~test TESTS=core_contract~~src/core/core.c~	if (!modifiable(e)) return -1;¶	unsigned long seq = undo_seq(b->undo);~	unsigned long seq = undo_seq(b->undo);
 core: :e! refused in a nomodifiable buffer (test_core_contract)~test TESTS=core_contract~~src/core/core.c~	if (!e->buf->nomodifiable || reloading) return 1;~	if (!e->buf->nomodifiable) return 1;
+core_buf_fill: the line is not clamped to the new text (test_core_contract)~test TESTS=core_contract~~src/core/core.c~			w->line = l < last ? l : last;~			w->line = l < last ? l : l;
+core_buf_fill: SIZE_MAX moves every window to the last line (test_core_contract)~test TESTS=core_contract~~src/core/core.c~			size_t l = line == SIZE_MAX ? w->line : line;~			size_t l = line;
+core_buf_fill: top left below the cursor (test_core_contract)~test TESTS=core_contract~~src/core/core.c~			if (w->top > w->line) w->top = w->line;~			(void)0;
 core: :bd leaves the closed language server document on the buffer (test_core_contract)~test TESTS=core_contract~~src/core/core.c~	b->lsp = NULL;¶~
 core: a line's underlines walk every diagnostic before it (test_core_diag frame time)~test TESTS=core_diag~~src/core/draw.c~		if (dv[k].z < ls) continue;	/* ends before this line: skip without diag_span's walk */¶~
 core: a second window on the buffer puts the message on its own cursor line (test_core_diag two windows)~test TESTS=core_diag~~src/core/draw.c~l == (w->buf == e->win->buf ? e->win->line : w->line)~l == w->line
@@ -251,3 +254,7 @@ core: foldtext() reads past a comment start on a fold's last line but one (test_
 core: a scrolldown leaves the cursor inside a closed fold (test_core_fold)~test TESTS=core_fold~~src/core/move.c~		w->line = fold_first(w, w->line);¶		coladvance(e, w);~		coladvance(e, w);
 core: scroll_to_fraction leaves a top line inside a closed fold (test_core_fold)~test TESTS=core_fold~~src/core/move.c~	folded(w, l, &l, NULL);        /* the first of a closed fold */¶~
 core: a buffer entered again keeps the levels it was left with (test_core_fold)~test TESTS=core_fold~~src/core/core.c~if ((w->fold = fold_dup(f, w))) fold_update(w->fold, 0, n, n);~w->fold = fold_dup(f, w);¶		(void)n;
+core: :bd keeps its folder's watch, so Windows cannot rename its parent~win WIN=git~~src/core/core.c~	buf_unwatch(b);¶	syntax_free(b->syn);¶	lsp_close(b->lsp);¶	text_free(b->text);¶	undo_free(b->undo);¶	umarks_drop(b);~	syntax_free(b->syn);¶	lsp_close(b->lsp);¶	text_free(b->text);¶	undo_free(b->undo);¶	umarks_drop(b);
+core: a freed buffer keeps its folder's watch~win WIN=git~~src/core/core.c~	buf_unwatch(b);¶	umarks_drop(b);~	umarks_drop(b);
+core: a closed watch stays in the loop~win WIN=git~~src/core/core.c~if (b->watch >= 0 && file_unwatch(b->watch)) loop_unwatch(b->watch);~if (b->watch >= 0) file_unwatch(b->watch);
+specs: Frames with one dirty flag~specs~find design/specs -name '*.cfg' ! -name Frames_ok.cfg -delete~design/specs/Frames_ok.cfg~ Variant = "ok"~ Variant = "shared"

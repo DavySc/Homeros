@@ -3,7 +3,7 @@
 on alpha.txt opens the start screen with :Dashboard and SPC D (with the
 startup time) and quits with its q (main.c writes v:oldfiles at exit); then
 homeros with no file shows the start screen, whose r lists alpha.txt (v:oldfiles read at
-startup).  usage: start.py HOMEROS_BINARY; exit 1 on failure"""
+startup), and whose SPC shows the key hints over it.  usage: start.py HOMEROS_BINARY; exit 1 on failure"""
 import os, re, signal, sys, tempfile, time
 from ptyrun import spawn, drain
 binary = os.path.abspath(sys.argv[1])
@@ -39,10 +39,15 @@ if rc:
     print("FAIL start: the first session's q exited %d" % rc); sys.exit(1)
 pid, fd = run([])
 screen = drain(fd, 1.0)
+os.write(fd, b" ")        # which-key's panel over the start screen
+hint = drain(fd, 1.0)
+os.write(fd, b"\x1b")
+drain(fd, 0.3)
 os.write(fd, b"r")
 picker = drain(fd, 1.0)
 rc = quit(pid, fd, b"\x1b\x1bq")
-ok = b"Recent Files" in screen and b"alpha.txt" in picker and not rc
+ok = b"Recent Files" in screen and b"+toggle" in hint and b"alpha.txt" in picker and not rc
+if b"+toggle" not in hint: print("FAIL start: SPC shows no key hints over the start screen")
 print("start: with no file the start screen %s; its recent picker %s alpha.txt" %
       ("shows" if b"Recent Files" in screen else "is MISSING", "lists" if b"alpha.txt" in picker else "does NOT list"))
 if rc: print("FAIL start: the start screen's q left homeros running")
