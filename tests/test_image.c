@@ -35,13 +35,16 @@ static void png(const char *p, int w, int h)
 }
 
 /* What the window shows at pixel (x, y) of an unscaled w x h image over bg:
-   each channel c * a + bg * (255 - a), over 255, rounded; bg past its edge */
-static uint32_t model(int w, int h, uint32_t bg, int x, int y)
+   each channel c * a + bg * (255 - a), over 255, rounded; bg past its
+   edge; opaque (alpha ff) */
+/* o: the opacity, 255 for an image, a fifth for the wallpaper */
+static uint32_t model(int w, int h, uint32_t bg, int x, int y, unsigned o)
 {
-	if (x >= w || y >= h) return bg;
+	if (x >= w || y >= h) return 0xff000000 | bg;
 	const unsigned char *q = rgba + (y * w + x) * 4;
-	uint32_t v = 0;
-	for (int c = 0; c < 3; c++) v |= (uint32_t)((q[c] * q[3] + (bg >> (16 - 8 * c) & 0xff) * (255 - q[3]) + 127) / 255) << (16 - 8 * c);
+	unsigned a = (q[3] * o + 127) / 255;
+	uint32_t v = 0xff000000;
+	for (int c = 0; c < 3; c++) v |= (uint32_t)((q[c] * a + (bg >> (16 - 8 * c) & 0xff) * (255 - a) + 127) / 255) << (16 - 8 * c);
 	return v;
 }
 
@@ -79,7 +82,7 @@ static void random_pngs(void)
 		for (int y = 0; y < gr * ch; y++)
 			for (int x = 0; x < gc * cw; x++) {
 				int iy = y - r * ch + skip * ch, ix = x - c * cw, in = y >= r * ch && iy < tr * ch && ix >= 0 && ix < tc * cw;
-				CHECK(win[y * gc * cw + x] == (in ? model(w, h, bg, ix, iy) : 1));
+				CHECK(win[y * gc * cw + x] == (in ? model(w, h, bg, ix, iy, 255) : 1));
 			}
 	}
 }
@@ -97,7 +100,7 @@ static void frame(void)
 	for (int y = 0; y < 8; y++)
 		for (int x = 0; x < 8; x++)
 			if (g.c[y * 8 + x].attr == ATTR_IMAGE) image_draw(win + y * 8 * 64 + x * 8, 64, &g.c[y * 8 + x]);
-	CHECK(n > 0 && allocs == 0 && win[8 * 64 + 8] == model(30, 30, 0, 0, 0));
+	CHECK(n > 0 && allocs == 0 && win[8 * 64 + 8] == model(30, 30, 0, 0, 0, 255));
 }
 
 /* The same file, size and bg: the same number, without reading the file:
@@ -150,7 +153,7 @@ static void keys(void)
 	int m = image_load(path, 4, 4, 2, 2, 0);
 	CHECK(m > 0);
 	show(m, 4, 4, 0, 0, 0, 2, 2);
-	CHECK(win[0] == model(8, 8, 0, 0, 0));
+	CHECK(win[0] == model(8, 8, 0, 0, 0, 255));
 	snprintf(path, sizeof path, "%s/none.png", dir);
 	CHECK(image_load(path, 4, 4, 2, 2, 0) == 0);     /* missing */
 }
@@ -193,8 +196,8 @@ static void scale_and_jpeg(void)
 		image_size(n, &cols, &rows);
 		CHECK(cols <= bc && rows <= br);
 		show(n, br, bc, 0, 0, 0, cw, ch);
-		while (W < bc * cw && win[W] != 0 && win[W] != 1) W++;
-		while (H < br * ch && win[H * bc * cw] != 0 && win[H * bc * cw] != 1) H++;
+		while (W < bc * cw && win[W] != 0xff000000 && win[W] != 1) W++;
+		while (H < br * ch && win[H * bc * cw] != 0xff000000 && win[H * bc * cw] != 1) H++;
 		CHECK(cols == (W + cw - 1) / cw && rows == (H + ch - 1) / ch);
 		if (w <= bc * cw && h <= br * ch) CHECK(W == w && H == h);
 		else CHECK((W == bc * cw || H == br * ch) && abs(W * h - H * w) < (w > h ? w : h));
@@ -261,7 +264,7 @@ static void budget(void)
 		}
 		uint32_t px[16 * 16] = { 1 };
 		image_draw(px, 16, &first);
-		CHECK((px[0] == 0xff0000) == (bg < 5));
+		CHECK((px[0] == 0xffff0000) == (bg < 5));
 	}
 }
 
@@ -402,6 +405,40 @@ static void latex(void)
 	CHECK(image_latex("SPIN", 4, 0, 140, out) == NULL && lines() == before + 101);
 }
 
+/* The wallpaper ($XDG_CONFIG_HOME/homeros/wallpaper): each pixel a fifth
+   of the image's over bg; the part covering a window is its middle, cut to
+   the window's aspect; the same pixels without decoding again until the
+   file or bg changes; deleted, none */
+static void wallpaper(void)
+{
+	char f[700];
+	uint32_t bg = 0x1e1e2e;
+	int w, h, src[4];
+	unsigned v, v2;
+	snprintf(f, sizeof f, "%s/homeros", dir);
+	CHECK(mkdir(f, 0700) == 0 && setenv("XDG_CONFIG_HOME", dir, 1) == 0);
+	snprintf(f, sizeof f, "%s/homeros/wallpaper", dir);
+	CHECK(!image_wallpaper(30, 20, bg, &w, &h, src, &v));
+	png(f, 30, 40);
+	const uint32_t *px = image_wallpaper(30, 20, bg, &w, &h, src, &v);
+	CHECK(px && w == 30 && h == 40);
+	for (int i = 0; i < 30 * 40; i++) CHECK(px[i] == model(30, 40, bg, i % 30, i / 30, 51));
+	static const int win[3][2] = { { 30, 20 }, { 15, 40 }, { 400, 300 } }, want[3][4] = { { 0, 10, 30, 20 }, { 7, 0, 15, 40 }, { 0, 9, 30, 22 } };
+	unsigned long a0 = allocs;
+	for (int t = 0; t < 3; t++) {
+		CHECK(image_wallpaper(win[t][0], win[t][1], bg, &w, &h, src, &v2) == px && v2 == v);
+		CHECK(src[0] == want[t][0] && src[1] == want[t][1] && src[2] == want[t][2] && src[3] == want[t][3]);
+	}
+	CHECK(allocs == a0);   /* not decoded again */
+	uint32_t first = px[0];
+	px = image_wallpaper(30, 20, 0, &w, &h, src, &v2);
+	CHECK(px && v2 != v && px[0] != first);   /* another bg */
+	png(f, 8, 8);
+	px = image_wallpaper(30, 20, 0, &w, &h, src, &v);
+	CHECK(px && v != v2 && w == 8 && h == 8);   /* another file */
+	CHECK(unlink(f) == 0 && !image_wallpaper(30, 20, 0, &w, &h, src, &v));
+}
+
 int main(void)
 {
 	CHECK(mkdtemp(dir));
@@ -413,6 +450,7 @@ int main(void)
 	reuse();
 	budget();
 	latex();
+	wallpaper();
 	char rm[700];
 	snprintf(rm, sizeof rm, "rm -rf %s", dir);
 	CHECK(system(rm) == 0);

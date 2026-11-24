@@ -162,11 +162,12 @@ win: wincc
 
 # every file of the Windows editor compiles for Windows under our warnings,
 # so a POSIX call in a shared module fails here, not first in a trial build.
-# Not the terminal (no Windows half yet), the fonts (the window draws with
-# GDI) or the Wayland window (POSIX only): the trial build stubs them.  It
-# reads tree-sitter's headers only (not $(CPPFLAGS), which holds Linux paths
-# and -DHOMEROS_WL), so it needs the sources, not $(OBJS)
-WIN_SRCS = $(foreach m,$(filter-out tty font wl,$(MODULES)),$(call pick,$(m))) $(wildcard src/win/*.c) src/main.c
+# Not the terminal (no Windows half yet) or the Wayland window (POSIX only):
+# the trial build stubs them.  It compiles only, so the distribution's
+# FreeType and HarfBuzz headers in $(CPPFLAGS) serve (the Windows build links
+# src/font/windows.nix's), OpenSSL's are openssl.nix's (src/sql), and it
+# needs the sources, not $(OBJS)
+WIN_SRCS = $(foreach m,$(filter-out tty wl,$(MODULES)),$(call pick,$(m))) $(wildcard src/win/*.c) src/main.c
 wincc: build/openssl-win/lib/libssl.a | $(SYN)/src build/win
 	@for f in $(WIN_SRCS); do zig cc -target x86_64-windows-gnu $(WARN) -Ibuild/openssl-win/include $(CPPFLAGS) -c -o build/win/cc.o $$f || exit 1; done
 	zig rc /fo build/win/homeros.res assets/homeros.rc

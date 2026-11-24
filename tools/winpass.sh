@@ -18,7 +18,7 @@ pass() {
 }
 
 # winlink EXE TEST.c: builds EXE for Windows from TEST.c and every module
-# wincc compiles (not main.c or the window), with tree-sitter, the
+# wincc compiles (not main.c, the window or its drawing: src/paint, src/font), with tree-sitter, the
 # grammars and queries outside our warnings (as src/syntax/build.mk), stb
 # and libghostty-vt (build.mk): for a test that links the whole editor
 # below the window (src/tools/check.sh, src/lsp/check.sh)
@@ -29,7 +29,7 @@ winlink() {
 	make -s $syn/queries.c build/win/stb.o build/ghostty/windows.lib   # stb: src/image/build.mk; thread 0's, agreed
 	# after those: wincc's dry run starts with what it would build first
 	# (the grammars' sources, build/win), not the compile loop
-	local srcs=$(make -s -n wincc | head -1 | tr ' ' '\n' | grep '\.c$' | grep -v -e '^src/main\.c$' -e '^src/win/')
+	local srcs=$(make -s -n wincc | head -1 | tr ' ' '\n' | grep '\.c$' | grep -v -e '^src/main\.c$' -e '^src/win/' -e '^src/paint/' -e '^src/font/')
 	for g in $(sed -n '/^SYN_GRAMMARS/,/[^\\]$/p' src/syntax/build.mk | tr -d '\\' | cut -d= -f2); do
 		o=build/win/link/$(echo $g | tr / _).o
 		[ -f $o ] || zig cc -target x86_64-windows-gnu -O2 -c -I$(dirname $syn/src/$g) $syn/src/$g.c -o $o
