@@ -12,6 +12,7 @@
    cancels, and reports how long the cancel took. */
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <openssl/ssl.h>
 #include <openssl/x509.h>
 #include <poll.h>
@@ -209,6 +210,7 @@ static void close_notify(void)
 	SSL_CTX *ctx = SSL_CTX_new(TLS_server_method());
 	CHECK(k && x && ctx && X509_set_pubkey(x, k) && X509_gmtime_adj(X509_getm_notBefore(x), 0) && X509_gmtime_adj(X509_getm_notAfter(x), 60)
 		&& X509_sign(x, k, EVP_sha256()) && SSL_CTX_use_certificate(ctx, x) == 1 && SSL_CTX_use_PrivateKey(ctx, k) == 1);
+	SSL_CTX_set_num_tickets(ctx, 0);   /* nothing of the server's is on its way when it corks */
 	SSL *sv = SSL_new(ctx);
 	CHECK(sv && SSL_set_fd(sv, f));
 	SSL_set_accept_state(sv);
@@ -223,8 +225,10 @@ static void close_notify(void)
 		SSL_do_handshake(sv);
 	}
 	c.tls = 1;
-	CHECK(SSL_is_init_finished(sv) && SSL_write(sv, "reason", 6) == 6 && SSL_shutdown(sv) >= 0);
-	CHECK(poll(&(struct pollfd){c.fd, POLLIN, 0}, 1, 1000) == 1 && !nanosleep(&(struct timespec){0, 50000000}, NULL));
+	/* corked: both records leave as one segment, so they arrive together */
+	CHECK(SSL_is_init_finished(sv) && !setsockopt(f, IPPROTO_TCP, TCP_CORK, &(int){1}, sizeof(int)) && SSL_write(sv, "reason", 6) == 6 && SSL_shutdown(sv) >= 0
+		&& !setsockopt(f, IPPROTO_TCP, TCP_CORK, &(int){0}, sizeof(int)));
+	CHECK(poll(&(struct pollfd){c.fd, POLLIN, 0}, 1, 1000) == 1);
 	CHECK(!net_read(&c, &in) && in.n == 6 && !memcmp(in.s, "reason", 6));
 	SSL_free(sv), SSL_CTX_free(ctx), X509_free(x), EVP_PKEY_free(k), close(f), close(l);
 	CHECK(poll(&(struct pollfd){c.fd, POLLIN, 0}, 1, 1000) == 1 && net_read(&c, &in) && strstr(c.err, "closed"));
