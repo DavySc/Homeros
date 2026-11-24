@@ -42,7 +42,7 @@ win: a whole redraw not sent to the window~win WIN=win~~src/win/backend.c~if (al
 win: the font not sized for the window's DPI~win WIN=win~~src/win/backend.c~MulDiv(PT, dpi, 72)~MulDiv(PT, 96, 72)
 win: only the first family tried (test_win_font)~win WIN=win~~src/font/dwrite.c~*s && !n; s += *s == ','~*s && !n && s == family; s += *s == ','
 win: no scan when Windows' list has nothing (test_win_font)~win WIN=win~~src/font/dwrite.c~i < 0 && !color && at < nf; at++~i < -1 && !color && at < nf; at++
-win: dim text in the normal colour~win WIN=win~~src/paint/paint.c~x->attr == ATTR_DIM ? DIM : FG~x->attr == ATTR_DIM ? FG : FG
+win: dim text in the normal colour~win WIN=win~~src/paint/paint.c~x->attr == ATTR_DIM ? DIM : FG~0 ? DIM : FG
 win: syntax faces ignored~win WIN=win~~src/paint/paint.c~f->style & FACE_FG ? rgb(f->fg) :~0 ? rgb(f->fg) :
 win: a wide character drawn one cell wide~win WIN=win~~src/paint/paint.c~int w = c + 1 < g->cols && !x[c + 1].len ? 2 : 1;~int w = 1;
 win: the cursor is not drawn reversed~win WIN=win~~src/paint/paint.c~if (x->attr == ATTR_REV || cur) { *fg = *bg; *bg = t; }~if (x->attr == ATTR_REV + 0 * cur) { *fg = *bg; *bg = t; }
