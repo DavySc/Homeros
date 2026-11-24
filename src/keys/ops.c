@@ -16,7 +16,7 @@
 
 enum { SW = 4 };
 
-Pos b_op_start, b_op_end;      /* the '[ and '] marks */
+Pos b_op_start = { -1, 0, 0 }, b_op_end = { -1, 0, 0 };   /* the '[ and '] marks; -1 unset */
 Pos b_op_start_orig;          /* Insstart_orig of the last insert, for a block I or A */
 Reg *put_override;             /* nv_put()'s copy of the register (Visual p) */
 
@@ -324,7 +324,7 @@ static void yank_into(Oparg *oap, Reg *reg, int append)
 	b_op_start = oap->start;
 	b_op_end = oap->end;
 	if (type == MLINE) { b_op_start.col = 0; b_op_end.col = MAXCOL; }
-	if (type != MLINE && !oap->inclusive && b_op_end.col > 0) b_op_end.col--;
+	if (type != MLINE && !oap->inclusive) decl(&b_op_end);   /* op_yank_reg(): onto the line before from column 0 */
 }
 
 static void unflash(void *e)
