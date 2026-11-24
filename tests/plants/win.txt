@@ -56,22 +56,15 @@ win: KEY_RAISED before the focus the raise gives~win WIN=win~~src/win/backend.c~
 win: the timer set for the window asked last, not the soonest~win WIN=win~~src/win/backend.c~	if (armed <= now.QuadPart || armed > w->next) armed = w->next;~	armed = w->next;
 win: the first window opens at the default size, not maximised~win WIN=win~~src/win/backend.c~w->link ? SW_SHOWNORMAL : SW_SHOWMAXIMIZED~SW_SHOWDEFAULT
 win: every frame opens maximised~win WIN=win~~src/win/backend.c~w->link ? SW_SHOWNORMAL : SW_SHOWMAXIMIZED~SW_SHOWMAXIMIZED
-<<<<<<< HEAD
-# one editor per session (src/win/remote.c, Remote.tla "ok"); not planted: a launch that finds the editor closing and does not become it (no test makes the window close between FindWindowEx and SendMessage)
-=======
 # one editor per session (src/win/remote.c, Remote.tla "ok"); not planted: a launch that finds the editor closing and does not become it (no test makes the window close between FindWindowEx and SendMessage); nor AllowSetForegroundWindow dropped (the
 # foreground rules hold only on a desktop with a user: src/win/probe/raise.c there caught it 2 of 2, DESIGN.md "One
 # editor per Windows session")
->>>>>>> pr156b
 remote: no turn: launches together both become the editor (Remote "noturn")~win WIN=win~~src/win/remote.c~GetLastError() == ERROR_ALREADY_EXISTS && WaitForSingleObject~0 && WaitForSingleObject
 remote: a turn whose owner died is not taken~win WIN=win~~src/win/remote.c~WaitForSingleObject(m, INFINITE) == WAIT_FAILED~WaitForSingleObject(m, INFINITE) != WAIT_OBJECT_0
 remote: the file handed over as given, not absolute~win WIN=win~~src/win/remote.c~file_full(file, p)~!strcpy(p, file)
 remote: another program's WM_COPYDATA taken~win WIN=win~~src/win/remote.c~cd->dwData != TAG || ~
 remote: data without its NUL taken~win WIN=win~~src/win/remote.c~ || s[cd->cbData - 1]~
 remote: the window stays after remote_stop~win WIN=win~~src/win/remote.c~if (me) DestroyWindow(me), UnregisterClassW~if (me) UnregisterClassW
-<<<<<<< HEAD
-=======
 remote: a launch the editor refused becomes a second editor~win WIN=win~~src/win/remote.c~if (!took && !FindWindowExW(HWND_MESSAGE, NULL, CLASS, NULL)) {~if (!took) {
 remote: empty data taken~win WIN=win~~src/win/remote.c~!cd->cbData || ~
 remote: files handed out newest first~win WIN=win~~src/win/remote.c~char *s = q[0];~char *s = q[qn - 1]; q[qn - 1] = q[0];
->>>>>>> pr156b

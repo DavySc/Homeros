@@ -5,25 +5,13 @@
    The script is the system: keys typed into the focused window, focus
    events, the sync's done after a raise, frame callbacks, the close
    button, a file another launch hands over (remote.h: it opens in a new
-<<<<<<< HEAD
-   frame, raised, even after a :q! in the same batch); checks run between
-=======
    frame, raised, even after a :q! in the same batch, and is parsed with
    no key; none opens once the window system is lost); checks run between
->>>>>>> pr156b
    events, when main.c has run every key before. */
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include "check.h"
-<<<<<<< HEAD
-/* remote.h's stubs give way to the script's */
-#define REMOTE_H
-static const char *t_handed;
-static int remote_open(const char *file) { (void)file; return 0; }
-static char *remote_next(void) { char *s = t_handed ? strdup(t_handed) : NULL; t_handed = NULL; return s; }
-static void remote_stop(void) {}
-=======
 /* remote.h's stubs give way to the script's; the window stops before the
    backend closes, which reads messages (Remote.tla "late") */
 #define REMOTE_H
@@ -37,7 +25,6 @@ static void remote_stop(void) { CHECK(!t_closed); t_stopped = 1; }
 #include "loop.h"
 static int t_waiting(void) { return 0; }
 #define loop_waiting t_waiting
->>>>>>> pr156b
 #define main homeros_main
 #include "../src/main.c"
 #undef main
@@ -45,20 +32,12 @@ static int t_waiting(void) { return 0; }
 
 enum { NW = 8, NR = 64 };   /* windows; raises logged */
 static int t_pipe[2], t_osw;   /* a byte per event; the window the system focuses */
-<<<<<<< HEAD
-static int t_rows[NW], t_open[NW], t_ready[NW] = { 1, 1, 1, 1, 1, 1, 1, 1 }, t_drawn[NW], t_raise[NW], t_nraise;
-/* k: keys s; f: focus a; r: done; c: close a; h, v: hide, show a; s: a's
-   new size; o: file s handed over, read with key a (0: none); t: check */
-typedef struct { char op; int a; const char *s; } Ev;
-static char t_b[64];   /* the file handed over */
-=======
 static int t_rows[NW], t_open[NW], t_ready[NW] = { 1, 1, 1, 1, 1, 1, 1, 1 }, t_drawn[NW], t_raise[NR], t_nraise;
 /* k: keys s; f: focus a; r: done; c: close a; h, v: hide, show a; s: a's
    new size; o: file s handed over, read with key a (0: none); l: file s
    handed over as the window system is lost; t: check */
 typedef struct { char op; int a; const char *s; } Ev;
 static char t_b[64], t_c[64], t_l[64];   /* the files handed over */
->>>>>>> pr156b
 static const Ev *t_ev;
 static int t_nev, t_pos, t_sub;   /* t_sub: the next byte of a k event */
 
@@ -97,10 +76,7 @@ static int t_input(int *out, int *win, int n)
 	case 's': t_pos++; t_rows[v->a] = 20; *out = KEY_RESIZE; *win = v->a; return 1;
 	case 'h': case 'v': t_pos++; t_ready[v->a] = v->op == 'v'; return 0;
 	case 'o': t_pos++; t_handed = v->s; *out = v->a; return v->a != 0;
-<<<<<<< HEAD
-=======
 	case 'l': t_pos++; t_handed = v->s; return -1;
->>>>>>> pr156b
 	}
 	CHECK(0);
 	return 0;
@@ -138,16 +114,6 @@ static void t_check(int n)
 	case 10: CHECK(fr[0].g.rows + fr[1].g.rows == 32 && fr[fr[1].id == 1].g.rows == 20); break;
 	/* the close button of frame 1: :tabclose for it, not :qa */
 	case 9: CHECK(t_open[1] == 2 && !e.quit && !e.tabs->next && e.tab->id == 0); break;
-<<<<<<< HEAD
-	/* a file handed over with the Enter of a :q!: the editor stays, and the
-	   file is in a new frame, raised */
-	case 11: CHECK(!e.quit && e.tabs->next && e.tab->id && t_open[e.tab->id] == 1 && t_raise[t_nraise - 1] == e.tab->id
-	               && e.buf->path && strstr(e.buf->path, "b.txt")); t_d0 = e.tab->id; break;
-	/* none named: an empty buffer in a third frame; the Visual mode begun
-	   before it ended, as on the user's focus change */
-	case 12: CHECK(e.tab->id != t_d0 && e.tab->id && t_open[e.tab->id] == 1 && t_raise[t_nraise - 1] == e.tab->id && !e.buf->path
-	               && e.mode == MODE_NORMAL && !e.ks.visual); break;
-=======
 	/* a third tab page: a window of its own, not the closed one's id */
 	case 12: CHECK(t_open[2] == 1 && t_open[1] == 2 && e.tab->id == 2); break;
 	/* a file handed over with the Enter of the last tab page's :q!: the
@@ -167,7 +133,6 @@ static void t_check(int n)
 		CHECK(face[0] != FACE_NONE);
 		break;
 	}
->>>>>>> pr156b
 	}
 }
 
@@ -191,13 +156,6 @@ int main(void)
 		{ 'v', 1, 0 }, { 't', 8, 0 },
 		{ 's', 1, 0 }, { 't', 10, 0 },
 		{ 'c', 1, 0 }, { 't', 9, 0 },
-<<<<<<< HEAD
-		{ 'k', 0, ":q!" }, { 'o', '\r', t_b }, { 't', 11, 0 },
-		{ 'k', 0, "v" }, { 'o', 0, "" }, { 't', 12, 0 },
-		{ 'k', 0, ":q!\r:q!\r:q!\r" },
-	};
-	snprintf(t_b, sizeof t_b, "%s/b.txt", dir);
-=======
 		{ 'k', 0, " 52" }, { 'r', 0, 0 }, { 't', 12, 0 },
 		{ 'k', 0, ":q!\r:q!" }, { 'o', '\r', t_b }, { 't', 13, 0 },
 		{ 'k', 0, "v" }, { 'o', 0, "" }, { 't', 14, 0 },
@@ -211,7 +169,6 @@ int main(void)
 	snprintf(t_c, sizeof t_c, "%s/c.c", dir);
 	snprintf(t_l, sizeof t_l, "%s/l.txt", dir);
 	CHECK((f = fopen(t_c, "w")) && fputs("int x;\n", f) >= 0 && !fclose(f));
->>>>>>> pr156b
 	t_ev = ev;
 	t_nev = sizeof ev / sizeof *ev;
 	CHECK(!pipe(t_pipe));
@@ -227,10 +184,6 @@ int main(void)
 	CHECK(t_pos == t_nev && t_stopped && t_closed && !e.tabs->next && !(e.buf->path && strstr(e.buf->path, "l.txt")));
 	puts("test_frames_main: a window per tab page, raised on gt; a raise's own focus dropped, the user's click taken; "
 	     "a hidden frame neither drawn nor holding the others; nothing drawn when idle; a resize only its window's; the close button closes its tab page; "
-<<<<<<< HEAD
-	     "a file handed over opens in a raised frame, also after a :q!");
-=======
 	     "a file handed over opens in a raised frame, also after a :q!, parsed with no key; none once the window system is lost");
->>>>>>> pr156b
 	return 0;
 }
