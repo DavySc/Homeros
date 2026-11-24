@@ -191,10 +191,6 @@ int main(void)
 	keys_feed(&e, KEY_ESC, 0);
 	CHECK(strstr(until("Completion time"), "Unclosed quotation mark after the character string 'caf\xc3\xa9'"));
 	/* the folders: the longest dir line, ~, a folder with spaces, /ms not holding /msx */
-	/* the loop holds 16 watches (MAXW), shared on Windows with a watch per
-	   folder: end the sessions done with, as Davy would with :Disconnect */
-	for (const char **p = (const char *[]){ "ms/a.sql", "ms/b.sql", "ms/c.sql", "pg/d.sql", "pg/e.sql", "ms/f.sql", "ms/g.sql", "ms/o.sql", "pg/h.sql", "pg/i.sql", "ms/j.sql", "ms/k.sql", NULL }; *p; p++)
-		if (!core_edit_file(&e, *p, 0)) sql_disconnect(&e);
 	put("ms/deep/l.sql", "select version() v\n", 0600);
 	CHECK(!core_edit_file(&e, "ms/deep/l.sql", 0) && sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), "PostgreSQL"));
 	put("a b/m.sql", "select @@version v\n", 0600);
