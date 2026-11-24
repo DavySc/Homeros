@@ -24,3 +24,5 @@ paint: the undercurl in the text's colour~test TESTS=wl~~src/paint/paint.c~uint3
 paint: scroll copies the wrong row~test TESTS=wl~~src/paint/paint.c~px + (size_t)(r + k) * row~px + (size_t)(r - k) * row
 paint: a guide drawn as the preedit~test TESTS=wl~~include/paint.h~PAINT_PRE = ATTR_IMAGE + 1~PAINT_PRE = ATTR_GUIDE
 paint: the cursor's old row not drawn again when it leaves~win WIN=win~~src/paint/paint.c~dirty[r] = all || d || g->crow == r || b->crow == r;~dirty[r] = all || d || g->crow == r;
+paint: a scroll never copied~test TESTS=paint~~src/paint/paint.c~|| changed < 2 ? 0 : shift(g, b);~|| changed < 2000 ? 0 : shift(g, b);
+paint: typing searches for a scroll~test TESTS=paint~~src/paint/paint.c~ || changed < 2 ? 0 : shift(g, b);~ ? 0 : shift(g, b);

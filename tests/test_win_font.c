@@ -3,7 +3,8 @@
    installed, and with none of them some font still opens; characters the
    main font lacks draw from other fonts: through Windows' fallback list
    (MapCharacters) or, where Wine's short list has nothing (↻ ⏵), the scan
-   of every family; a character outside the BMP (surrogates); box drawing
+   of every family; a question two fonts answer is not given the first;
+   a character outside the BMP (surrogates); box drawing
    is sprite.c's, the cell's size.  What Wine cannot show: Segoe UI Emoji's
    colour, and which font real Windows' list gives (Davy's machine).
    Runs on Windows or under Wine (make win); elsewhere it says so. */
@@ -14,6 +15,7 @@
 #include "font.h"
 
 const char *find_file(int i, int *index);   /* src/font/find.h, the finder's own */
+int find_font(const unsigned *cp, unsigned n, int after, int color);
 
 static Placed o[16];
 
@@ -59,6 +61,10 @@ int main(void)
 	}
 	CHECK(find_file(1, &idx) && !jetbrains(1));   /* from another font */
 	CHECK(shape("\xe2\x94\x80") == 1 && o[0].g->w == w && o[0].g->h == h);        /* ─ is drawn, not a font's */
+	/* a question Windows' list answers only in part (中 from a CJK font,
+	   𝓝 not) is not given that font */
+	static const unsigned q[] = { 0x4E2D, 0x1D4DD };
+	CHECK(find_font(q, 2, 0, 0) != find_font(q, 1, 0, 0));
 	/* the same again comes from the caches: no new glyph drawn */
 	unsigned long hit0, miss0, hit1, miss1;
 	font_stats(&hit0, &miss0);

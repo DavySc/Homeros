@@ -53,3 +53,4 @@ sql: the SQL Server login message kept after its sending~test TESTS=sql~~src/sql
 specs: PgCancel's run over at ReadyForQuery~specs~find design/specs -name '*.cfg' ! -name PgCancel_ok.cfg -delete~design/specs/PgCancel_ok.cfg~Variant = "ok"~Variant = "noclose"
 sql: a cancel's ready never cleared, so it ends a later cancel early~test TESTS=sql~~src/sql/pg.c~p->state = PG_READY, p->quiet = 0, p->ready = 0;~p->state = PG_READY, p->quiet = 0;
 sql: the socket blocks~test TESTS=sql~~src/sql/net.c~SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC~SOCK_STREAM | SOCK_CLOEXEC
+sql: an astral character to the server sent as its high half twice~test TESTS=sql~~src/sql/tds.c~if (put_le(b, w[x], 2)) return -1;~if (put_le(b, w[0], 2)) return -1;

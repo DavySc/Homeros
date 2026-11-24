@@ -1,0 +1,12 @@
+review2: the cursor's new row not drawn~test TESTS=wl~~src/paint/paint.c~dirty[r] = all || d || g->crow == r || b->crow == r;~dirty[r] = all || d || b->crow == r;
+review2: the cursor's new row not drawn (win)~win WIN=win~~src/paint/paint.c~dirty[r] = all || d || g->crow == r || b->crow == r;~dirty[r] = all || d || b->crow == r;
+review2: a row the cursor reaches compared whole~test TESTS=wl~~src/paint/paint.c~if (g->crow != r && b->crow != q && !memcmp(x, y~if (b->crow != q && !memcmp(x, y
+review2: scroll never copied~test TESTS=wl~~src/paint/paint.c~|| changed < 2 ? 0 : shift(g, b);~|| changed < 2000 ? 0 : shift(g, b);
+review2: typing searches for a scroll~test TESTS=wl~~src/paint/paint.c~ || changed < 2 ? 0 : shift(g, b);~ ? 0 : shift(g, b);
+review2: unchanged rows looked at cell by cell~test TESTS=wl~~src/paint/paint.c~		if (!dirty[r]) continue;¶~
+review2: a fallback answer remembered without the font before~test TESTS=font~~src/font/font.c~(key ^ (unsigned)after) * 1099511628211ULL~(key ^ 0u) * 1099511628211ULL
+review2: a cluster half in the fallback font taken~win WIN=win~~src/font/dwrite.c~&& f && got == len)~&& f)
+review2: the wallpaper never smooth~win WIN=win~~src/win/backend.c~sizing ? COLORONCOLOR : HALFTONE~COLORONCOLOR
+review2: no redraw when a drag ends~win WIN=win~~src/win/backend.c~		if (sizing == 2 && wdib) resized = stale = 1;¶~
+review2: the wallpaper rough after any drag~win WIN=win~~src/win/backend.c~		sizing = 0;¶		return 0;¶	case WM_DPICHANGED~		return 0;¶	case WM_DPICHANGED
+review2: quadrants split at another column than halves~test TESTS=font~~src/font/sprite.c~int mx = (w + 1) / 2, my = h / 2;~int mx = (w + 1) / 2, my = (h + 1) / 2;

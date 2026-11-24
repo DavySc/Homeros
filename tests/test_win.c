@@ -367,7 +367,9 @@ int main(void)
 	   its middle rows show, blue at the top (squeezed whole, red); in one
 	   half as wide as high, all of it, which stays put when the text
 	   scrolls (no rows copied, src/paint); taken
-	   away, the base is back from the next size */
+	   away, the base is back from the next size; a new picture waits for
+	   the next size through a whole redraw too; scaled roughly while an
+	   edge is dragged, smoothly once let go */
 	cw = w2;
 	for (ch = 0; px(0, ch) == REV; ch++) {}
 	static const char *const pic[4] = { "tests\\test_image.png", "tests\\test_wallpaper.png", "tests\\test_wallpaper.png", NULL };
@@ -376,6 +378,10 @@ int main(void)
 		                 && (CreateDirectoryA("build\\win\\cfg\\homeros", NULL) || GetLastError() == ERROR_ALREADY_EXISTS)
 		                 && CopyFileA(pic[t], "build\\win\\cfg\\homeros\\wallpaper", FALSE)
 		             : DeleteFileA("build\\win\\cfg\\homeros\\wallpaper"));
+		COLORREF before = px(1, (rows - 1) * ch + ch / 2);
+		grid_free(&shown);   /* a whole redraw at the same size (main's, the cluster store emptied) */
+		present(&g, &shown);
+		CHECK(px(1, (rows - 1) * ch + ch / 2) == before);   /* the picture not scaled again */
 		RECT cr;
 		GetWindowRect(win, &wr);
 		GetClientRect(win, &cr);
@@ -419,6 +425,27 @@ int main(void)
 				if (!s) was[q] = px(1, q * ch + ch / 2);
 				CHECK(px(1, q * ch + ch / 2) == was[q]);
 			}
+		}
+		/* an edge dragged: the picture scaled roughly (COLORONCOLOR: its
+		   left edge changes colour once, red to blue); let go: smoothly
+		   (HALFTONE blends where they meet); a size not dragged: smoothly */
+		for (int d = 0; t == 2 && d < 3; d++) {
+			if (d == 0) SendMessageW(win, WM_ENTERSIZEMOVE, 0, 0);
+			if (d == 1) SendMessageW(win, WM_EXITSIZEMOVE, 0, 0);
+			else {
+				GetWindowRect(win, &wr);
+				SetWindowPos(win, NULL, 0, 0, wr.right - wr.left, wr.bottom - wr.top + (d ? -ch : ch), SWP_NOMOVE | SWP_NOZORDER);
+			}
+			n = input(k, 1024);
+			resized = 0;
+			for (int i = 0; i < n; i++) resized |= k[i] == KEY_RESIZE;
+			CHECK(resized);
+			b->size(&rows, &cols);
+			CHECK(!grid_resize(&g, rows, cols));
+			present(&g, &shown);
+			int turns = 0;
+			for (int q = ch + 1; q < rows * ch; q++) turns += px(1, q) != px(1, q - 1);
+			CHECK(d ? turns > 1 : turns == 1);
 		}
 	}
 

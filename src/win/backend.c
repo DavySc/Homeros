@@ -40,7 +40,7 @@ static HBITMAP wdib, nowdib;
 static const uint32_t *wbits;   /* its pixels, the painter's back (paint.h) */
 static HANDLE timer;
 static int cw, ch, dpi;         /* cell size in pixels */
-static int dw, dh, stale;       /* the DIB's size; stale: redraw it whole */
+static int dw, dh, stale;       /* the DIB's size; stale: a new size or DPI, so a new DIB (the wallpaper scaled again) */
 static int ring[RING], rh, rn;  /* keys the window procedure turned out */
 static int resized;
 static int sizing;              /* 1 while the user drags an edge, 2 once the size changed */
@@ -233,7 +233,7 @@ static int win_open(void)
 	   dark mode and ignores the colours (Windows 11 22000 added them); a
 	   drawn title bar would mean hit-testing and losing the snap layouts. */
 	BOOL dark = TRUE;
-	static const COLORREF BASE = RGB(PAINT_BASE >> 16, PAINT_BASE >> 8, PAINT_BASE), TEXT = RGB(0xcd, 0xd6, 0xf4);   /* RGB takes each byte */
+	static const COLORREF BASE = RGB(PAINT_BASE >> 16, PAINT_BASE >> 8, PAINT_BASE), TEXT = RGB(PAINT_TEXT >> 16, PAINT_TEXT >> 8, PAINT_TEXT);   /* RGB takes each byte */
 	DwmSetWindowAttribute(win, DWMWA_USE_IMMERSIVE_DARK_MODE, &dark, sizeof dark);
 	DwmSetWindowAttribute(win, DWMWA_CAPTION_COLOR, &BASE, sizeof BASE);
 	DwmSetWindowAttribute(win, DWMWA_TEXT_COLOR, &TEXT, sizeof TEXT);
@@ -293,7 +293,7 @@ static int win_ready(void)
 static void win_present(const Grid *g, Grid *shown)
 {
 	int all = stale || shown->rows != g->rows || shown->cols != g->cols;
-	if (all && (grid_resize(shown, g->rows, g->cols) || make_dib())) return;
+	if (all && (grid_resize(shown, g->rows, g->cols) || (stale && make_dib()))) return;   /* not when only the grid is new (the cluster store emptied): scaling the wallpaper again costs 13 ms (reviews/pr-140.md) */
 	stale = 0;
 	unsigned char dirty[g->rows];
 	GdiFlush();   /* CreateDIBSection's rule: GDI done with the bits (the last BitBlt) before they change */
