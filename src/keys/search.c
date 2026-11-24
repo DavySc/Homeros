@@ -153,14 +153,15 @@ static int searchit(Pos *pos, int dir, long count, int end, int *wrapped)
 	if (pos->lnum >= n) pos->lnum = n - 1, pos->col = ml_len(n - 1) ? ml_len(n - 1) - 1 : 0;
 	return 1;
 timeout:
-	core_msg(E, "E363: Pattern uses more memory than 'maxmempattern'");
+	re_error();
 	return 0;
 }
 
 /* do_search(): dirc '/' or '?' with the command line pat (pattern, then
-   an offset after the delimiter), or 0 and NULL for n (rev: N).  1 found,
+   an offset after the delimiter), or 0 and NULL for n (rev: N); mark:
+   the match sets '' (SEARCH_MARK).  1 found,
    2 found with a line offset added (linewise), 0 not. */
-int do_search(Oparg *oap, int dirc, const char *pat, long count, int rev, int *wrapped)
+int do_search(Oparg *oap, int dirc, const char *pat, long count, int rev, int mark, int *wrapped)
 {
 	Pos pos = cur();
 	int delim = dirc;
@@ -222,6 +223,7 @@ int do_search(Oparg *oap, int dirc, const char *pat, long count, int rev, int *w
 		for (long c = off.off; c > 0 && incl(&pos) != -1; c--) {}
 		for (long c = off.off; c < 0 && decl(&pos) != -1; c++) {}
 	}
+	if (mark) setpcmark();   /* SEARCH_MARK */
 	setcur(pos);
 	set_curswant = 1;
 	return ret;

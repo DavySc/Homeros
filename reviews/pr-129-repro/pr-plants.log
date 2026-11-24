@@ -1,0 +1,14 @@
+caught        keys: SPC maps other than SPC i s also run in Visual mode (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:90: CHECK(!tools_key(&e, KEY_ESC)) failed
+caught        keys: an incomplete map does not keep the next key, so a picker or git can take it (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:64: CHECK(e.ks.pending && at(&e, "abcb\n", 1)) failed
+caught        keys: <leader>uk does not turn the save kitten off (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:80: CHECK(!strcmp(e.msg, "Kitten on save: off")) failed
+caught        keys: cit and ciT wait for their keys in every buffer, not only .org (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:232: CHECK(!d.ks.pending) failed
+caught        keys: which-key's panel shows after 20 ms, not its 200 (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:116: CHECK(core_changed && loop_now() - t0 >= 190000000LL) failed
+caught        keys: <BS> in which-key's panel closes it instead of going up a level (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:127: CHECK(e.ks.pending && row_has(&g, 19, "Buffers") && !row_has(&g, 23, "git")) failed
+caught        keys: <Esc> in which-key's panel keeps the count typed before Space (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:131: CHECK(!e.ks.pending && !row_has(&g, 23, "SPC") && at(&e, "acb\n", 0)) failed
+caught        keys: a group's row (SPC g, +git) runs as a map (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:62: CHECK(at(&e, "abcb\n", 3)) failed
+caught        keys: which-key's panel fills rows first, not columns (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:118: CHECK(!row_has(&g, 18, "\xe2\x9e\x9c") && row_has(&g, 19, ", \xe2\x9e\x9c Buffers") && row_has(&g, 19, "p \xe2\x9e\x9c +project")) failed
+caught        keys: which-key's trail names a group by its key, not its name (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:123: CHECK(row_has(&g, 23, " SPC \xc2\xbb +git ") && row_has(&g, 20, "b \xe2\x9e\x9c Git branches") && row_has(&g, 20, "s \xe2\x9e\x9c Git status")) failed
+caught        keys: which-key's panel stays shown after it closes, so the next Space shows it at once (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:137: CHECK(!row_has(&g, 23, "SPC")) failed
+caught        keys: which-key's panel has no NormalFloat background (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:120: CHECK(g.c[22 * 80 + 79].bg == FACE_NORMAL_FLOAT && g.c[18 * 80].bg == FACE_NORMAL_FLOAT && g.c[17 * 80].bg != FACE_NORMAL_FLOAT) failed
+caught        snip: no SPC i s map   (make test TESTS=keys_map): tests/test_keys_map.c:86: CHECK(picked(&e)) failed
+caught        keys: SPC D is not mapped (start.py)   (make test TESTS=shada): FAIL start: SPC D on a file session showed no start screen

@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -239,6 +240,22 @@ static Buf *buf_find(Editor *e, int nr)
 	return b ? b : find(unlisted, nr);
 }
 
+void core_buf_fill(Editor *e, Buf *b, const char *s, size_t n, size_t line)
+{
+	text_delete(b->text, 0, text_len(b->text));
+	text_insert(b->text, 0, s, n);
+	b->flags &= ~(unsigned)CORE_EMPTY;
+	size_t last = buf_lines(b) ? buf_lines(b) - 1 : 0;
+	for (Win *w = e->wins; w; w = w->next)
+		if (w->buf == b) {
+			size_t l = line == SIZE_MAX ? w->line : line;
+			w->line = l < last ? l : last;
+			w->col = w->want = 0;
+			if (w->top > w->line) w->top = w->line;
+		}
+	core_changed = 1;
+}
+
 /* Loads path into b, a buffer without text (path NULL: empty, no name).
    -1 on error, msg set, b as it was. */
 /* Neovim's full name (fix_fname()), or the name as typed when it has none */
@@ -446,8 +463,16 @@ static void clrallmarks(Buf *b)
 	b->nchange = 0;
 }
 
+/* the buffer's directory watch, given back (file_unwatch) */
+static void buf_unwatch(Buf *b)
+{
+	if (b->watch >= 0 && file_unwatch(b->watch)) loop_unwatch(b->watch);
+	b->watch = -1;
+}
+
 static void buf_unload(Buf *b)
 {
+	buf_unwatch(b);
 	umarks_drop(b);
 	journal_close(b->journal);   /* nothing to recover: :bd! and :q! drop the changes */
 	syntax_free(b->syn);
@@ -869,6 +894,7 @@ int core_buf_next(Editor *e, long n)
    that name it kept */
 static void buf_unlist(Editor *e, Buf *b)
 {
+	buf_unwatch(b);
 	syntax_free(b->syn);
 	lsp_close(b->lsp);
 	text_free(b->text);
