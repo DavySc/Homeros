@@ -51,4 +51,7 @@ size_t tsql_token(TsqlRd *r, size_t pos, int *kind);
    it (the formatter maps these to its own words). */
 int    tsql_word(const char *w, size_t n, size_t *id);
 extern const size_t tsql_nwords;
+/* word id's text, lower case (the completion popup's keywords); NULL
+   outside 1 to tsql_nwords */
+const char *tsql_name(size_t id);
 #endif
