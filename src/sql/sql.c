@@ -24,10 +24,12 @@ typedef struct {
 	Spec spec;              /* the connection, spec.name[0] 0 until one is found */
 	Db db;
 	int fd, kill;           /* what the loop watches: db_net's and Postgres's cancel, -1 none */
-	SqlBatches q;           /* the run: its batches, the one running, its runs left */
+	SqlBatches q;           /* the run: its batches (offsets in the buffer at F5), the one running, its runs left */
 	size_t i;
 	long left;
-	Str sql;                /* the running batch's text */
+	int cancel;             /* Alt+Break sent a cancel the server has not answered yet */
+	Str text, sql;          /* the run's text as it was at F5, from offset base; the running batch's */
+	size_t base;
 	long long t0;
 } Sess;
 
@@ -51,26 +53,12 @@ static int is_sql(const Buf *b)
 	return n > 4 && !strcmp(b->path + n - 4, ".sql");
 }
 
-/* The window showing buffer nr, as its number in window order, 0 none */
-static long shown(int nr)
-{
-	long k = 1;
-	for (Win *w = E->wins; w; w = w->next, k++) if (w->buf->nr == nr) return k;
-	return 0;
-}
-
-/* n bytes at the end of the results; a window whose cursor was on the last
-   line follows (make.c's put) */
+/* n bytes at the end of the results (core_buf_append: a window on the
+   last line follows) */
 static void put(Sess *s, const char *p, size_t n)
 {
 	Buf *b = s->res ? core_buf_find(E, s->res) : NULL;
-	if (!b || !n) return;
-	size_t last = text_lines(b->text) ? text_lines(b->text) - 1 : 0;
-	text_insert(b->text, text_len(b->text), p, n);
-	b->flags &= ~(unsigned)CORE_EMPTY;
-	for (Win *w = E->wins; w; w = w->next)
-		if (w->buf == b && w->line >= last) w->line = text_lines(b->text) - 1, w->col = 0;
-	core_changed = 1;
+	if (b && n) core_buf_append(E, b, p, n);
 }
 
 static void putz(Sess *s, const char *z) { put(s, z, strlen(z)); }
@@ -109,28 +97,38 @@ static int lookup(const char *name, const char *path, Spec *o)
 			char a[5][256] = {{0}}, x[2][256] = {{0}};
 			int k = sscanf(l, "%255s %255s %255s %255s %255s %255s %255s", a[0], a[1], a[2], a[3], a[4], x[0], x[1]);
 			if (k < 3 || a[0][0] == '#') continue;
-			if (round == 0 && !*name && !strcmp(a[0], "dir")) {
-				char t[4096], d[PATH_MAX];
+			if (round == 0 && !*name && !strcmp(a[0], "dir")) {   /* "dir folder name": the folder may hold spaces */
+				char t[4096], d[PATH_MAX], *fs = l + strspn(l, " 	") + 3, *fe = fs + strlen(fs), *nm;
+				while (fe > fs && match_space(fe[-1])) fe--;
+				for (nm = fe; nm > fs && !match_space(nm[-1]);) nm--;   /* the name: the last word */
+				snprintf(a[2], sizeof a[2], "%.*s", (int)(fe - nm), nm);
+				for (fe = nm; fe > fs && match_space(fe[-1]);) fe--;
+				fs += strspn(fs, " 	");
 				const char *h = getenv(HOME);
-				snprintf(t, sizeof t, "%s%s", a[1][0] == '~' && h ? h : "", a[1] + (a[1][0] == '~' && h));
-				if (file_full(t, d)) snprintf(d, sizeof d, "%s", t);   /* the buffer's name's form (C:\\ on Windows) */
+				int home = *fs == '~' && h;
+				snprintf(t, sizeof t, "%s%.*s", home ? h : "", (int)(fe - fs - home), fs + home);
+				if (file_full(t, d)) snprintf(d, sizeof d, "%s", t);   /* the buffer's name's form (C:\ on Windows) */
 				size_t n = strlen(d);
 				if (path && n > best && !strncmp(path, d, n) && (sep(path[n]) || sep(d[n - 1]))) best = n, snprintf(want, sizeof want, "%s", a[2]);
 			} else if (round == 1 && k >= 5 && !strcmp(a[0], want) && (!strcmp(a[1], "mssql") || !strcmp(a[1], "pg"))) {
 				*o = (Spec){ .pg = a[1][0] == 'p' };
 				snprintf(o->name, sizeof o->name, "%s", a[0]);
-				char *c = strrchr(a[2], ':');
+				/* host, host:port, [IPv6] or [IPv6]:port */
+				char *h = a[2] + (a[2][0] == '['), *c = strrchr(h, a[2][0] == '[' ? ']' : ':');
+				if (a[2][0] == '[' && c) *c++ = 0, c = *c == ':' ? c : NULL;
 				const char *p = c ? c + 1 : NULL;
 				long port = p ? match_num(&p, p + strlen(p)) : o->pg ? 5432 : 1433;
-				o->port = port > 0 && port < 65536 ? (int)port : 0;
-				if (c) *c = 0;
-				snprintf(o->host, sizeof o->host, "%s", a[2]);
+				if (c && a[2][0] != '[') *c = 0;
+				fclose(fp);
+				if (port <= 0 || port > 65535 || (p && *p)) { core_msg(E, "sql: %s: the port in %s is not a number from 1 to 65535", a[0], a[2]); return -1; }
+				o->port = (int)port;
+				snprintf(o->host, sizeof o->host, "%s", h);
 				snprintf(o->user, sizeof o->user, "%s", a[3]);
 				snprintf(o->db, sizeof o->db, "%s", a[4]);
 				for (int j = 0; j < 2; j++)
 					if (!strcmp(x[j], "trust")) o->trust = 1;
 					else if (!strncmp(x[j], "pass=", 5)) snprintf(o->pass, sizeof o->pass, "%s", x[j] + 5);
-				fclose(fp);
+				if (!o->pg && !*o->pass && strcmp(o->user, "-")) { core_msg(E, "sql: %s has no pass= (an empty password is a failed login on the server)", o->name); return -1; }   /* user "-": the Windows login */
 				if (*o->pass && !open) { core_msg(E, "sql: %s holds a password but others can read it (chmod 600)", f); return -1; }
 				return 0;
 			}
@@ -151,7 +149,7 @@ static void drop(Sess *s)   /* the connection, gone or replaced */
 	if (s->kill >= 0) loop_unwatch(s->kill);
 	if (s->fd >= 0 || s->kill >= 0) db_close(&s->db);
 	s->fd = s->kill = -1;
-	s->q.n = s->i = 0;
+	s->q.n = s->i = 0, s->cancel = 0;
 }
 
 /* Sends the next batch that runs, or ends the run */
@@ -166,14 +164,9 @@ static void next(Sess *s)
 		}
 		return;
 	}
-	SqlBatch b = s->q.b[s->i];
-	Buf *qb = core_buf_find(E, s->nr);
-	char c[4096];
-	int bad = !qb;
+	SqlBatch b = s->q.b[s->i];   /* from the text at F5: edits since do not change the run (SqlSess.tla's Snapshot) */
 	s->sql.n = 0;
-	for (size_t p = b.a, k; !bad && p < b.z; p += k)
-		k = text_read(qb->text, p, c, b.z - p < sizeof c ? b.z - p : sizeof c), bad = !k || str_add(&s->sql, c, k);
-	if (bad || str_add(&s->sql, "", 1)) { putz(s, "sql: out of memory\n"); s->q.n = 0; return; }
+	if (str_add(&s->sql, s->text.s + (b.a - s->base), b.z - b.a) || str_add(&s->sql, "", 1)) { putz(s, "sql: out of memory\n"); s->q.n = 0; return; }
 	s->left--;
 	if (db_query(&s->db, s->sql.s)) { putz(s, db_net(&s->db)->err), putz(s, "\n"); drop(s); return; }
 	loop_write(s->fd, db_pending(&s->db));
@@ -197,7 +190,10 @@ static void wake(void *ctx, int fd)
 		return;
 	}
 	loop_write(s->fd, db_pending(&s->db));
-	if (db_state(&s->db) == DB_READY && was != DB_READY) next(s);
+	if (db_state(&s->db) == DB_READY && was != DB_READY) {
+		if (s->cancel) s->cancel = 0, s->q.n = 0;   /* the server answered the cancel: the run ends here (SqlSess.tla) */
+		else next(s);
+	}
 }
 
 /* The results in a split below the query (make.c's window); another
@@ -205,10 +201,10 @@ static void wake(void *ctx, int fd)
    SSMS has one per query window).  The cursor stays.  0 ok, -1 msg set. */
 static int show(Sess *s)
 {
-	if (s->res && shown(s->res)) return 0;
+	if (s->res && core_buf_shown(E, s->res)) return 0;
 	long k = 0;
-	for (size_t i = 0; i < nS && !k; i++) if (S[i]->res) k = shown(S[i]->res);
-	if (k && (core_win_goto(E, 'w', k) || core_close(E, 0) || core_win_goto(E, 'w', shown(s->nr)))) return -1;
+	for (size_t i = 0; i < nS && !k; i++) if (S[i]->res) k = core_buf_shown(E, S[i]->res);
+	if (k && (core_win_goto(E, 'w', k) || core_close(E, 0) || core_win_goto(E, 'w', core_buf_shown(E, s->nr)))) return -1;
 	Buf *r = s->res ? core_buf_find(E, s->res) : NULL;
 	if (r ? core_split(E, 0, 0) || core_buf_goto(E, s->res) : core_new(E, 0)) return -1;
 	s->res = E->buf->nr;
@@ -219,7 +215,7 @@ static int show(Sess *s)
 static int run(Sess *s, size_t a, size_t z)
 {
 	Buf *b = core_buf_find(E, s->nr);
-	if (s->q.n) { core_msg(E, "sql: a query is running (Alt+Break cancels)"); return -1; }
+	if (s->q.n) { core_msg(E, s->cancel ? "sql: the server has not answered the cancel yet" : "sql: a query is running (Alt+Break cancels)"); return -1; }
 	if (!s->spec.name[0] && lookup("", b->full, &s->spec)) return -1;
 	long bad = 0;
 	s->q.n = 0;
@@ -228,10 +224,14 @@ static int run(Sess *s, size_t a, size_t z)
 	if (bad < 0) return -1;
 	if (bad) core_msg(E, "sql: line %ld: a GO line sqlcmd refuses (Syntax error near command 'GO')", bad);
 	if (!s->q.n) return bad ? -1 : 0;
-	if (show(s)) return -1;
-	Buf *r = core_buf_find(E, s->res);
-	text_delete(r->text, 0, text_len(r->text));
-	for (Win *w = E->wins; w; w = w->next) if (w->buf == r) w->line = w->col = w->top = 0;
+	char t[4096];
+	int oom = 0;
+	s->text.n = 0, s->base = a;   /* the run's own copy (SqlSess.tla's Snapshot) */
+	for (size_t p = a, k; !oom && p < z; p += k)
+		k = text_read(b->text, p, t, z - p < sizeof t ? z - p : sizeof t), oom = !k || str_add(&s->text, t, k);
+	if (oom) core_msg(E, "sql: out of memory");
+	if (oom || show(s)) { s->q.n = 0; return -1; }
+	core_buf_fill(E, core_buf_find(E, s->res), "", 0, 0);
 	s->i = 0, s->left = s->q.b[0].count, s->t0 = loop_now();
 	if (s->fd >= 0) { next(s); return 0; }
 	Spec *c = &s->spec;
@@ -247,34 +247,26 @@ static int run(Sess *s, size_t a, size_t z)
 
 int sql_key(Editor *e, int key)
 {
+	if (key != KEY_F5 && key != KEY_BREAK) return 0;
 	E = e;
 	Sess *s = sess(e->buf->nr, 0);
 	if (key == KEY_BREAK) {
-		if (!s || !s->q.n) return s != NULL;
-		s->q.n = 0;
-		if (db_state(&s->db) != DB_BUSY || db_cancel(&s->db)) {   /* still logging in: the connection goes */
-			drop(s);
-			putz(s, "Query was cancelled by user.\n");
-			return 1;
+		if (!s || !s->q.n || s->cancel) return s != NULL;
+		if (db_state(&s->db) != DB_BUSY || db_cancel(&s->db)) drop(s);   /* logging in: the connection goes */
+		else {   /* the run stays busy until the server answers (SqlSess.tla's Break and Ack) */
+			s->cancel = 1;
+			Net *k = db_kill(&s->db);
+			if (k && !loop_watch(k->fd, wake, s)) s->kill = k->fd, loop_write(s->kill, 1);
+			loop_write(s->fd, db_pending(&s->db));
 		}
-		Net *k = db_kill(&s->db);
-		if (k && !loop_watch(k->fd, wake, s)) s->kill = k->fd, loop_write(s->kill, 1);
-		loop_write(s->fd, db_pending(&s->db));
-		putz(s, "Query was cancelled by user.\n");   /* SSMS's line */
+		putz(s, "Query was cancelled by user.\n");   /* SSMS's line, at once */
 		return 1;
 	}
-	if (key != KEY_F5 || !is_sql(e->buf) || e->mode != MODE_NORMAL) return 0;
+	Buf *qb = s ? core_buf_find(e, s->nr) : e->buf;   /* F5 in the results runs their query, as SSMS */
+	if (!qb || !is_sql(qb)) return 0;
 	if (!s && !(s = sess(e->buf->nr, 1))) return core_msg(e, "sql: out of memory"), 1;
-	Text *t = e->buf->text;
-	size_t a = 0, z = text_len(t);
-	KeyState *k = &e->ks;
-	if (k->visual) {   /* the selection: v from character to character, V and CTRL-V whole lines */
-		size_t l1 = k->vline, c1 = k->vcol, l2 = e->win->line, c2 = e->win->col;
-		if (l1 > l2 || (l1 == l2 && c1 > c2)) { size_t x = l1; l1 = l2, l2 = x; x = c1; c1 = c2, c2 = x; }
-		a = text_line_start(t, l1) + (k->visual == 'v' ? c1 : 0);
-		z = k->visual == 'v' ? text_line_start(t, l2) + c2 + 1 : text_line_start(t, l2 + 1);
-		if (z > text_line_start(t, l2 + 1)) z = text_line_start(t, l2 + 1);
-	}
+	size_t a = 0, z = text_len(qb->text);
+	if (e->ks.visual && qb == e->buf) core_visual(e, &a, &z);   /* the selection */
 	run(s, a, z);
 	return 1;
 }
@@ -284,12 +276,11 @@ int sql_results(Editor *e)
 	E = e;
 	Sess *s = sess(e->buf->nr, 0);
 	if (!s || !s->res || !core_buf_find(e, s->res)) { core_msg(e, "sql: no results yet (F5 runs the query)"); return -1; }
-	long k = shown(s->res);
+	long k = core_buf_shown(E, s->res);
 	if (k) {   /* close it, the cursor back where it was */
 		int in = e->buf->nr == s->res;
 		if (core_win_goto(e, 'w', k) || core_close(e, 0)) return -1;
-		long q = in ? shown(s->nr) : 0;
-		return q ? core_win_goto(e, 'w', q) : in ? 0 : core_win_goto(e, 'p', 1);
+		return in ? 0 : core_win_goto(e, 'p', 1);   /* from the results: the window above, the query's, took their room */
 	}
 	return show(s);
 }
@@ -308,5 +299,15 @@ int sql_connect(Editor *e, const char *name)
 	drop(s);
 	s->spec = c;
 	core_msg(e, "sql: %s (%s)", c.name, c.host);
+	return 0;
+}
+
+int sql_disconnect(Editor *e)
+{
+	E = e;
+	Sess *s = sess(e->buf->nr, 0);
+	if (!s || s->fd < 0) { core_msg(e, "sql: not connected"); return -1; }
+	drop(s);   /* the server ends the session: its temp tables, an open transaction rolled back */
+	core_msg(e, "sql: disconnected from %s (F5 connects again)", s->spec.name);
 	return 0;
 }
