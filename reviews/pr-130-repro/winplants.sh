@@ -26,3 +26,21 @@ plant noclose '	if (c->up == 2) WSASetEvent(H(c->fd));
 ' ''
 plant flushfirst 'if (woke(c) || net_flush(c)) return -1;' 'if (woke(c)) return -1;'
 ls -l build/win/wake_*.exe
+# the same three with the second part of the test changed (wake-test.py)
+plant2() {   # NAME OLD NEW
+	local t; t=$(mktemp -d); cp -r include src tests "$t"/
+	python3 reviews/pr-130-repro/wake-test.py "$t/tests/test_sql_wake.c"
+	[ -z "$2" ] || python3 - "$t/src/sql/net.c" "$2" "$3" <<'PY'
+import sys
+p, old, new = sys.argv[1:4]
+s = open(p).read()
+assert s.count(old) == 1, old
+open(p, 'w').write(s.replace(old, new))
+PY
+	(cd "$t" && build "$1")
+}
+plant2 ok2 '' ''
+plant2 noclose2 '	if (c->up == 2) WSASetEvent(H(c->fd));
+' ''
+plant2 flushfirst2 'if (woke(c) || net_flush(c)) return -1;' 'if (woke(c)) return -1;'
+ls -l build/win/wake_*2.exe

@@ -31,6 +31,6 @@ jobs:
         with: { name: wake, path: . }
       - shell: bash
         run: |
-          for i in 1 2 3 4 5; do for v in ok noclose flushfirst; do
+          for i in 1 2 3 4 5; do for v in ok2 noclose2 flushfirst2 flushfirst; do
             echo "== $v run $i"; timeout 120 ./wake_$v.exe 2>&1 > out.txt 2>&1 && echo "exit 0" || echo "exit $?"; tail -2 out.txt
           done; done
