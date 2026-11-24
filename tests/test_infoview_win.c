@@ -159,8 +159,10 @@ int main(int argc, char **argv)
 	CHECK(!proc_write(id, "A {\"n\":2}\n", 10));
 	for (ULONGLONG end = GetTickCount64() + 500; GetTickCount64() < end; ) loop_once(10);
 	s.n = 0; s.s[0] = 0;
-	/* the second waits until the page has read the first: only FD_WRITE
-	   wakes the child then (the editor is silent, no page is stale) */
+	/* the second waits until the page has read the first: meant to need
+	   FD_WRITE to wake the child (the editor silent, no page stale), but
+	   never seen to fail without it, under Wine or on Windows (PR 138's
+	   review); FD_WRITE rests on design/specs/WinWait.tla */
 	take(ev, &s, "data: {\"n\":2}\n\n", 0);
 	char *d = strstr(s.s, "data: {\"s\":\"");
 	CHECK(d && !memcmp(d + 6, b + 2, big - 2) && !memcmp(d + 6 + big - 2, "\"}\n\n", 4));
