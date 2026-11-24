@@ -659,6 +659,10 @@ static void test_sway(void)
 	/* frames: a second window (tab page 1), mapped by its first frame,
 	   gets the keyboard: a focus change, and its keys say so.  Its frame
 	   callback is its own (Frames.tla) */
+	run(SWAYMSG "move position 0 0");   /* the resize above grew it past the output's top left */
+	pump(100);
+	draw();
+	CHECK(ink(0, 0, cellw(), cellh(), 2) > 0);   /* window 0 shows its text: the preedit checks below see it */
 	k0 = nkeys;
 	CHECK(!backend_wl.win_open(1));
 	int cw0, ch0, cw1, ch1b, r1, c1;
