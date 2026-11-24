@@ -4,8 +4,10 @@
    for it and hands nothing over; eight launches started together each hand
    theirs over once, and with no editor one of them becomes it and takes
    the other seven; a launch whose turn's owner died inside still gets
-   through; another program's WM_COPYDATA, or one without its NUL, is
-   refused; once the editor stops, a launch runs its file itself.
+   through; a launch whose file has no full name runs it itself and is no
+   second editor; another program's WM_COPYDATA, an empty one or one
+   without its NUL is refused; files are taken in the order they came;
+   once the editor stops, a launch runs its file itself.
    This program is the editor; each launch is this program again, run with
    "launch FILE" ("-": none), which exits 1 when the editor took the file;
    with "die" it takes the turn and exits holding it.
@@ -24,7 +26,7 @@ enum { N = 8 };
 
 static HANDLE launch(const char *how, const char *file)
 {
-	char self[MAX_PATH], line[2 * MAX_PATH];
+	char self[MAX_PATH], line[2 * PATH_MAX];
 	STARTUPINFOA si = { .cb = sizeof si };
 	PROCESS_INFORMATION pi;
 	CHECK(GetModuleFileNameA(NULL, self, sizeof self) < sizeof self);
@@ -81,6 +83,13 @@ int main(int argc, char **argv)
 		SetEvent(OpenEventW(EVENT_MODIFY_STATE, FALSE, L"Local\\homeros-remote-wait"));
 		return remote_open(argv[2]);
 	}
+	/* as "launch", then says so and stays until told to exit */
+	if (argc == 3 && !strcmp(argv[1], "keep")) {
+		int r = remote_open(argv[2]);
+		SignalObjectAndWait(OpenEventW(EVENT_MODIFY_STATE, FALSE, L"Local\\homeros-remote-kept"),
+		                    OpenEventW(SYNCHRONIZE, FALSE, L"Local\\homeros-remote-release"), 10000, FALSE);
+		return r;
+	}
 	/* as "launch", started when all are ready and the test says go, so the
 	   launches meet in remote_open; one that becomes the editor reads
 	   messages until it took the other N - 1 files (10 s at most) and exits
@@ -110,6 +119,24 @@ int main(int argc, char **argv)
 	CHECK(!remote_open("a.txt") && !remote_next());
 	CHECK(finish(launch("launch", "b.txt")) == 1 && took("b.txt") && !remote_next());
 	CHECK(finish(launch("launch", "-")) == 1 && took(NULL));
+
+	/* a launch whose file has no full name (too long) runs it itself, and
+	   does not become a second editor beside this one */
+	char longname[PATH_MAX + 8];
+	memset(longname, 'n', PATH_MAX);
+	strcpy(longname + PATH_MAX, ".txt");
+	HANDLE kept = CreateEventW(NULL, TRUE, FALSE, L"Local\\homeros-remote-kept");
+	HANDLE release = CreateEventW(NULL, FALSE, FALSE, L"Local\\homeros-remote-release");
+	HANDLE k = launch("keep", longname);
+	pump(kept, 10000);   /* a launch that sent its file waits until it is read */
+	CHECK(WaitForSingleObject(kept, 0) == WAIT_OBJECT_0 && !remote_next());
+	HWND first = FindWindowExW(HWND_MESSAGE, NULL, L"homeros-remote", NULL);
+	DWORD pid = 0;
+	CHECK(first && GetWindowThreadProcessId(first, &pid) && pid == GetCurrentProcessId()
+	      && !FindWindowExW(HWND_MESSAGE, first, L"homeros-remote", NULL));
+	CHECK(SetEvent(release) && finish(k) == 0 && !remote_next());
+	CloseHandle(kept);
+	CloseHandle(release);
 
 	/* while another holds the turn, a launch waits for it: it hands nothing
 	   over though the editor reads messages, and goes on once the turn is
@@ -150,10 +177,13 @@ int main(int argc, char **argv)
 	CHECK(finish(launch("launch", "c.txt")) == 1 && took("c.txt"));
 	CloseHandle(keep);
 
-	CHECK(!copy(1, "x.txt", 6) && !copy(0x686f6d72, "x.txt", 5) && !remote_next());
-	char *s = NULL;
-	CHECK(copy(0x686f6d72, "x.txt", 6) == 1 && (s = remote_next()) && !strcmp(s, "x.txt"));
+	CHECK(!copy(1, "x.txt", 6) && !copy(0x686f6d72, "x.txt", 5) && !copy(0x686f6d72, NULL, 0) && !remote_next());
+	/* taken in the order they came */
+	char *s = NULL, *s2 = NULL;
+	CHECK(copy(0x686f6d72, "x.txt", 6) == 1 && copy(0x686f6d72, "y.txt", 6) == 1);
+	CHECK((s = remote_next()) && !strcmp(s, "x.txt") && (s2 = remote_next()) && !strcmp(s2, "y.txt") && !remote_next());
 	free(s);
+	free(s2);
 
 	remote_stop();
 	CHECK(!FindWindowExW(HWND_MESSAGE, NULL, L"homeros-remote", NULL));
@@ -176,8 +206,9 @@ int main(int argc, char **argv)
 	CHECK(!remote_open(NULL));
 	CHECK(finish(launch("launch", "e.txt")) == 1 && took("e.txt"));
 	remote_stop();
-	puts("test_win_remote: the first launch is the editor; a later one hands over its file, absolute, or none; one waits for a turn held by another; "
-	     "eight together each once, and with no editor one becomes it; through a turn whose owner died; foreign or unterminated data refused; none taken once stopped");
+	puts("test_win_remote: the first launch is the editor; a later one hands over its file, absolute, or none; one whose file has no full name runs it, no second editor; "
+	     "one waits for a turn held by another; eight together each once, and with no editor one becomes it; through a turn whose owner died; "
+	     "foreign, empty or unterminated data refused; files taken in order; none taken once stopped");
 	return 0;
 }
 #else

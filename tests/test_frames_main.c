@@ -5,7 +5,8 @@
    The script is the system: keys typed into the focused window, focus
    events, the sync's done after a raise, frame callbacks, the close
    button, a file another launch hands over (remote.h: it opens in a new
-   frame, raised, even after a :q! in the same batch); checks run between
+   frame, raised, even after a :q! in the same batch, and is parsed with
+   no key; none opens once the window system is lost); checks run between
    events, when main.c has run every key before. */
 #include <string.h>
 #include <sys/stat.h>
@@ -19,17 +20,24 @@ static int t_closed, t_stopped;
 static int remote_open(const char *file) { (void)file; return 0; }
 static char *remote_next(void) { char *s = t_handed ? strdup(t_handed) : NULL; t_handed = NULL; return s; }
 static void remote_stop(void) { CHECK(!t_closed); t_stopped = 1; }
+/* the script's keys all wait in the pipe from the start, so the deferred
+   reparse would always stop before its first region: it is told none wait */
+#include "loop.h"
+static int t_waiting(void) { return 0; }
+#define loop_waiting t_waiting
 #define main homeros_main
 #include "../src/main.c"
 #undef main
+#undef loop_waiting
 
 enum { NW = 8, NR = 64 };   /* windows; raises logged */
 static int t_pipe[2], t_osw;   /* a byte per event; the window the system focuses */
 static int t_rows[NW], t_open[NW], t_ready[NW] = { 1, 1, 1, 1, 1, 1, 1, 1 }, t_drawn[NW], t_raise[NR], t_nraise;
 /* k: keys s; f: focus a; r: done; c: close a; h, v: hide, show a; s: a's
-   new size; o: file s handed over, read with key a (0: none); t: check */
+   new size; o: file s handed over, read with key a (0: none); l: file s
+   handed over as the window system is lost; t: check */
 typedef struct { char op; int a; const char *s; } Ev;
-static char t_b[64];   /* the file handed over */
+static char t_b[64], t_c[64], t_l[64];   /* the files handed over */
 static const Ev *t_ev;
 static int t_nev, t_pos, t_sub;   /* t_sub: the next byte of a k event */
 
@@ -68,6 +76,7 @@ static int t_input(int *out, int *win, int n)
 	case 's': t_pos++; t_rows[v->a] = 20; *out = KEY_RESIZE; *win = v->a; return 1;
 	case 'h': case 'v': t_pos++; t_ready[v->a] = v->op == 'v'; return 0;
 	case 'o': t_pos++; t_handed = v->s; *out = v->a; return v->a != 0;
+	case 'l': t_pos++; t_handed = v->s; return -1;
 	}
 	CHECK(0);
 	return 0;
@@ -115,6 +124,15 @@ static void t_check(int n)
 	   before it ended, as on the user's focus change */
 	case 14: CHECK(e.tab->id != t_d0 && e.tab->id && t_open[e.tab->id] == 1 && t_raise[t_nraise - 1] == e.tab->id && !e.buf->path
 	               && e.mode == MODE_NORMAL && !e.ks.visual); break;
+	/* a C file handed over in a batch with no key: parsed as after a
+	   command, so "int" has its colour before any key */
+	case 15: {
+		unsigned char face[3] = { 0 };
+		CHECK(e.buf->path && strstr(e.buf->path, "c.c") && e.buf->syn);
+		syntax_faces(e.buf->syn, 0, 3, face);
+		CHECK(face[0] != FACE_NONE);
+		break;
+	}
 	}
 }
 
@@ -141,9 +159,16 @@ int main(void)
 		{ 'k', 0, " 52" }, { 'r', 0, 0 }, { 't', 12, 0 },
 		{ 'k', 0, ":q!\r:q!" }, { 'o', '\r', t_b }, { 't', 13, 0 },
 		{ 'k', 0, "v" }, { 'o', 0, "" }, { 't', 14, 0 },
-		{ 'k', 0, ":q!\r:q!\r:q!\r" },
+		{ 'o', 0, t_c }, { 't', 15, 0 },
+		/* down to one tab page, then the window system is lost as a file
+		   comes: no tab page opens for it (the journal kept is the edited
+		   buffer's, not a new one's) */
+		{ 'k', 0, ":q!\r:q!\r:q!\r" }, { 'l', 0, t_l },
 	};
 	snprintf(t_b, sizeof t_b, "%s/b.txt", dir);
+	snprintf(t_c, sizeof t_c, "%s/c.c", dir);
+	snprintf(t_l, sizeof t_l, "%s/l.txt", dir);
+	CHECK((f = fopen(t_c, "w")) && fputs("int x;\n", f) >= 0 && !fclose(f));
 	t_ev = ev;
 	t_nev = sizeof ev / sizeof *ev;
 	CHECK(!pipe(t_pipe));
@@ -155,10 +180,10 @@ int main(void)
 	char *argv[] = { "homeros", path, NULL };
 	/* the checks run when the event after them is read: main.c has run
 	   every key before by then (it reads between commands, one key a call) */
-	CHECK(homeros_main(2, argv) == 0);
-	CHECK(t_pos == t_nev && t_stopped && t_closed);
+	CHECK(homeros_main(2, argv) == 1);
+	CHECK(t_pos == t_nev && t_stopped && t_closed && !e.tabs->next && !(e.buf->path && strstr(e.buf->path, "l.txt")));
 	puts("test_frames_main: a window per tab page, raised on gt; a raise's own focus dropped, the user's click taken; "
 	     "a hidden frame neither drawn nor holding the others; nothing drawn when idle; a resize only its window's; the close button closes its tab page; "
-	     "a file handed over opens in a raised frame, also after a :q!");
+	     "a file handed over opens in a raised frame, also after a :q!, parsed with no key; none once the window system is lost");
 	return 0;
 }
