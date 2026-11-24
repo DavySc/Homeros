@@ -3,9 +3,9 @@
 -- Markdown and Org foldexprs do: a line of n stars starts a fold at level
 -- n, a digit d is level d, y is "-1" (undefined: a neighbour's level, as
 -- vim.treesitter.foldexpr() answers for a line added since the last
--- parse), Y (INC only) is ">-1" (_fold.lua's incremental order can give
--- it, PR 121), anything else has the level of the nearest star line above
--- it (0 if none).  Each scenario starts at some
+-- parse), Y (INC only, in buffers and parses) is ">-1" (_fold.lua's
+-- incremental order can give it, PR 121), anything else has the level of
+-- the nearest star line above it (0 if none).  Each scenario starts at some
 -- 'foldlevel', then mixes nvim_buf_set_lines(), o, O, A<CR> (Insert mode)
 -- and the fold commands; after each step it prints foldclosed(),
 -- foldclosedend(), foldlevel() and the closed fold's level of every line.
@@ -120,7 +120,7 @@ for s = 0, N - 1 do
       local r2 = math.min(n, r1 + math.random(1, 6))
       local e = { 'U', r1, r2 }
       for i = r1 + 1, r2 do
-        local x = itoks[math.random(#itoks - 1)]
+        local x = itoks[math.random(#itoks)]
         V[i] = val(x)
         e[#e + 1] = x
       end

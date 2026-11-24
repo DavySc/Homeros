@@ -30,3 +30,5 @@ fold: zv that opened a fold says it changed nothing (fuzz)~fuzz FUZZERS=fold FUZ
 fold: a new 'foldlevel' says it changed nothing (fuzz)~fuzz FUZZERS=fold FUZZ_SECONDS=30~~src/fold/fold.c~	return 1;   /* newFoldLevel() always calls changed_window_setting() */~	return 0;   /* newFoldLevel() always calls changed_window_setting() */
 fold: zO opens only the outer fold~test TESTS=fold~~src/fold/fold.c~op != FOLD_CLOSE, op == FOLD_OPEN_REC);~op != FOLD_CLOSE, 0);
 fold: a fold found with nothing changed says it changed one (fuzz)~fuzz FUZZERS=fold FUZZ_SECONDS=30~~src/fold/fold.c~return n ? 1 : done ? 0 : -1;~return n || done ? 1 : -1;
+fold: an update backing up over undefined lines stops at ">-1"~test TESTS=fold~~src/fold/fold.c~	while (level(f, &l) < 0) l.lnum--;~	while (level(f, &l) < 0 && !l.start) l.lnum--;
+fold: ">-1" on the first line stays undefined (fuzz)~fuzz FUZZERS=fold FUZZ_SECONDS=30~~src/fold/fold.c~	if (l->lvl < 0 && lnum <= 1) l->lvl = 0;~	if (l->lvl < 0 && lnum <= 1 && !l->start) l->lvl = 0;
