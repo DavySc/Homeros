@@ -19,4 +19,8 @@ int  sql_results(struct Editor *e);
 /* :Connect name: the current buffer's connection is name's from the
    connections file; no name shows which one it has.  0 ok, -1 msg set. */
 int  sql_connect(struct Editor *e, const char *name);
+/* :Disconnect: the current SQL buffer's session ends (the server drops its
+   temp tables and rolls back an open transaction, as when an SSMS query
+   window closes); the next F5 logs in again.  0 ok, -1 msg set. */
+int  sql_disconnect(struct Editor *e);
 #endif

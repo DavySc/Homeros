@@ -95,11 +95,14 @@ int main(void)
 	feed(&e, " uk");
 	CHECK(!strcmp(e.msg, "Kitten on save: on"));
 	/* SQL (package 22): SPC r opens the results split, :Connect [name]
-	   names the buffer's connection (here no results and no file) */
+	   names the buffer's connection, :Disconnect ends its session (here
+	   no results, no file and no session) */
 	feed(&e, " r");
 	CHECK(!strcmp(e.msg, "sql: no results yet (F5 runs the query)") && !e.ks.pending);
 	feed(&e, ":Connect\r");
 	CHECK(!strcmp(e.msg, "sql: not connected"));
+	feed(&e, ":Disconnect\r");
+	CHECK(!strncmp(e.msg, "sql: ", 5));
 	setenv("XDG_CONFIG_HOME", "/nonexistent", 1);
 	feed(&e, ":Connect dev\r");
 	CHECK(!strncmp(e.msg, "sql: no connections file", 24));
