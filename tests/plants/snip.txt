@@ -39,7 +39,7 @@ snip: the picker shows no description~test TESTS=snip~~src/tools/pick.c~end, d, 
 snip: the picker previews no body~test TESTS=snip~~src/tools/pick.c~			snprintf(P.pv[P.pvn++], sizeof P.pv[0], "%.*s", k, b);~			P.pvn++;
 snip: the picker opens a file on Enter~test TESTS=snip~~src/tools/pick.c~	if (P.what == PICK_SNIPPETS) {¶		close_picker();¶		snip_insert~	if (0) {¶		close_picker();¶		snip_insert
 snip: SPC i s not in Visual mode~test TESTS=keys_map~~src/keys/keys.c~(e->mode != MODE_NORMAL || !normal_mappable(0))~(e->mode != MODE_NORMAL || e->ks.visual || !normal_mappable(0))
-snip: no SPC i s map~test TESTS=keys_map~~src/keys/keys.c~, " is", " uk"~, " uk"
+snip: no SPC i s map~test TESTS=keys_map~~src/keys/keys.c~	{ " i", "+insert" }, { " is", "Snippet" },¶~¶
 snip: a surround takes the text's last line break~test TESTS=snip~~src/snip/snip.c~		if (z >= text_len(e->buf->text)) z = text_len(e->buf->text) - 1;¶~¶
 snip: a block surrounded corner to corner~test TESTS=snip~~src/snip/snip.c~		if (e->ks.visual != 'v') a =~		if (e->ks.visual == 'V') a =
 snip: a blank first line's indent counted one short~test TESTS=snip~~src/snip/snip.c~		if (e->ks.visual != 'v') a = core_line_start(e, l1) + indent(e, l1),~		if (e->ks.visual != 'v') a = core_line_start(e, l1) + core_first_nonblank(e, l1),
