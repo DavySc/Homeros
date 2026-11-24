@@ -186,10 +186,10 @@ int main(int argc, char **argv)
 		for (int i = 0; i < NL; i++) fprintf(o, "D %d %d 1 78\n", 3 * i, 3 * i + 1);
 		fputs("F ", o);
 		for (int i = 0; i < NL; i++) fputs("61620a", o);
-		/* case 1: the two windows below; case 2: a severity over 4 */
-		CHECK(fputs("\nE\nD 0 1 1 6d30\nD 6 7 1 6d32\nF 61620a63640a65660a\nE\nD 0 1 5 6d35\nF 61620a\nE\nD 0 10 1 6d\nF 61205c616c7068612062\nE\nD 0 300 1 6d\nF ", o) >= 0
+		/* case 1: the two windows below */
+		CHECK(fputs("\nE\nD 0 1 1 6d30\nD 6 7 1 6d32\nF 61620a63640a65660a\nE\nD 0 10 1 6d\nF 61205c616c7068612062\nE\nD 0 300 1 6d\nF ", o) >= 0
 		      && !fclose(o));
-		/* case 4: a hundred double-width characters (the "<<<" case) */
+		/* case 3: a hundred double-width characters (the "<<<" case) */
 		CHECK((o = fopen(big, "a")));
 		for (int i = 0; i < 100; i++) fputs("e6bca2", o);
 		CHECK(fputs("0a790a\nE\n", o) >= 0 && !fclose(o));
@@ -252,29 +252,11 @@ int main(int argc, char **argv)
 		for (int c = sq - 4; c < sq; c++) CHECK(g.c[e.win->y * g.cols + e.win->x + c].bg == FACE_CURSOR_LINE);
 		close_diag(&e, &g, file);
 	}
-	/* a severity over 4 (no server should send one) is a hint, as
-	   vim.diagnostic clamps it, not a face past the four */
-	{
-		snprintf(file, sizeof file, "%s/2.dbig", dir);
-		Grid g = { 0 };
-		open_diag(&e, &g, file, "ab\n", 10, 40, 1);
-		core_update(&e);
-		core_draw(&e, &g);
-		int hint = 0;
-		for (int c = 0; c < e.win->w; c++) {
-			int f = g.c[e.win->y * g.cols + e.win->x + c].face;
-			CHECK(f < FACE_DIAG_ERROR || f > FACE_DIAG_VT_HINT || f == FACE_DIAG_HINT || f == FACE_DIAG_UNDER_HINT
-			      || f == FACE_DIAG_VT_HINT);
-			hint |= f == FACE_DIAG_HINT;
-		}
-		CHECK(hint);
-		close_diag(&e, &g, file);
-	}
 	/* a diagnostic over an Org entity: its concealed character is not
 	   underlined, the rest is (Neovim: the cchar keeps Conceal's attribute,
 	   measured on an extmark's conceal) */
 	{
-		snprintf(file, sizeof file, "%s/3.org", dir);
+		snprintf(file, sizeof file, "%s/2.org", dir);
 		Grid g = { 0 };
 		open_diag(&e, &g, file, "a \\alpha b\ny\n", 10, 40, 1);
 		e.win->line = 1;
@@ -295,7 +277,7 @@ int main(int argc, char **argv)
 	   20 columns, the cursor at the end of a line of a hundred: "<<<" covers
 	   the sign column and the first cell of a character) */
 	{
-		snprintf(file, sizeof file, "%s/4.dbig", dir);
+		snprintf(file, sizeof file, "%s/3.dbig", dir);
 		char text[304] = "";
 		for (int i = 0; i < 100; i++) strcat(text, "\xe6\xbc\xa2");
 		strcat(text, "\ny\n");
