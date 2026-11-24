@@ -32,7 +32,7 @@ jobs:
     # 8 shards of train 14's 1,121 plants took 81 to 90 min, two cut at 90;
     # 12 shards of train 21's 1,467 hit 120 on three: 16 now (expected about 90 min each;
     # 17 jobs plus windows stay under the account's 20)
-    timeout-minutes: 120
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v31
