@@ -106,7 +106,14 @@ int main(void)
 		all += sizeof big;
 	}
 	CHECK(c.snd.n);   /* a send would block */
-	size_t got = 0;
+	/* a wake from another cause while the socket is full (the server's
+	   byte): the caller's flush blocks, the socket turns writable, the
+	   read resets the event and must send (on Windows the write wakes'
+	   flushes alone never left bytes queued: the review of PR 130) */
+	CHECK(send(s, b, 1, 0) == 1 && wait_ms(&c, 3000));
+	CHECK(!net_flush(&c) && c.snd.n);
+	size_t got = writable(&c, s);
+	CHECK(!net_read(&c, &in));
 	for (;;) {
 		got += drain(s);
 		nap(20);
@@ -118,6 +125,7 @@ int main(void)
 	CHECK(got == all && !c.snd.n);
 	net_close(&c);
 	closesocket(s);
+	str_free(&in);   /* the server's byte */
 	fprintf(stderr, "test_sql_wake: a close with the last bytes, a full socket through a reset event\n");
 	return 0;
 }
