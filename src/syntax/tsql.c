@@ -145,6 +145,8 @@ static int low(int c) { return c >= 'A' && c <= 'Z' ? c + 32 : c; }
 
 const size_t tsql_nwords = NWORDS;
 
+const char *tsql_name(size_t id) { return id && id <= NWORDS ? words[id - 1] : NULL; }
+
 /* bsearch's order for a table whose entries start with their word */
 static int by_word(const void *k, const void *e) { return strcmp(k, *(const char *const *)e); }
 

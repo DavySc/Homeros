@@ -64,6 +64,9 @@ int main(void)
 	keys_feed(&e, 0xe9, 1), keys_feed(&e, 0x6f22, 1);   /* keys are code points */
 	CHECK(flash("Gvly", 'v', 5, 0, 5, 2));
 	feed("u");
+	/* Visual onto an empty line yanks its break: the end steps back
+	   from the next line's start to the empty line (decl()), not past it */
+	CHECK(flash("ggjvjy", 'v', 1, 0, 2, 0));
 
 	/* the timer clears it after 150 ms and asks for a frame */
 	CHECK(flash("yiw", 'v', 0, 0, 0, 2));

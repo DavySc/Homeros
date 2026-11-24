@@ -270,6 +270,9 @@ int file_watch(const char *path)
 	return fd;
 }
 
+/* the instance stays (above), and so do its watches: they hold nothing */
+int file_unwatch(int fd) { (void)fd; return 0; }
+
 int file_watch_read(int fd, const char *path, const FileId *id)
 {
 	char b[4096] __attribute__((aligned(__alignof__(struct inotify_event))));

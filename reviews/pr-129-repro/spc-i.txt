@@ -1,0 +1,4 @@
+20| 20 line 21
+21|
+22|     s ➜ Snippet
+23| SPC » +insert               <esc> close  <bs> back
