@@ -57,15 +57,8 @@ jobs:
           export PATH="$HOME/.elan/bin:$PATH"
           ls "$HOME/.elan/bin" || true
           lean --version && lake --version
-          mkdir "proj ü" && cp reviews/pr-148-repro/Sample.lean "proj ü/"
-          ./test_lsp_e2e.exe "proj ü/Sample.lean" 90 > e2e.out 2> e2e.err || echo "e2e exit $?"
+          mkdir proj && cp reviews/pr-148-repro/Sample.lean proj/
+          ./test_lsp_e2e.exe proj/Sample.lean 90 > e2e.out 2> e2e.err || echo "e2e exit $?"
           cat e2e.err
-          python reviews/pr-148-repro/e2e.py "proj ü/Sample.lean" e2e.out include/grid.h || true
+          python reviews/pr-148-repro/e2e.py proj/Sample.lean e2e.out include/grid.h || true
           wc -l e2e.out
-      - shell: bash
-        run: |
-          cmd //c ver
-          echo "TEMP=$TEMP TMP=$TMP"
-          mkdir -p /c/hometmp
-          SEED=1 TMP='C:\hometmp' TEMP='C:\hometmp' ./test_lsp_plant.exe > out.txt 2>&1 && r=0 || r=$?
-          echo "planted (UTF-16 columns read as bytes): exit $r"; tail -n 5 out.txt

@@ -15,7 +15,7 @@ static int never(void) { return 0; }
 int main(int argc, char **argv)
 {
 	Editor e;
-	if (core_open(&e, argv[1])) return 1;
+	if (core_open(&e, argv[1])) { fprintf(stderr, "core_open failed\n"); return 1; }
 	fprintf(stderr, "lsp %p syn %p faces==lsp_faces %d\n", (void *)e.buf->lsp, (void *)e.buf->syn, e.buf->faces == lsp_faces);
 	size_t n = text_len(e.buf->text), r1, r2;
 	unsigned char *g = malloc(n + 1), *f = malloc(n + 1);
