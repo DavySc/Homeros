@@ -11,6 +11,10 @@
    certificate; -q prints no rows; -c ROWS pauses 300 ms after ROWS rows,
    cancels, and reports how long the cancel took. */
 #include <fcntl.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <openssl/ssl.h>
+#include <openssl/x509.h>
 #include <poll.h>
 #include <sys/socket.h>
 #include <string.h>
@@ -168,6 +172,70 @@ static void stale_ready(void)
 	pg_close(&p);
 }
 
+/* Our own cancel without a server: the reply's tokens in one order every
+   run (a live server's timing decided whether it sent the 3980 or a lone
+   final DONE first, and the plants were missed 4 of 4 and 1 of 4 times) */
+static void cancel_tokens(void)
+{
+	static const char done[] = "\xFD\0\0\0\0\0\0\0\0\0\0\0\0", attn[] = "\xFD\x20\0\0\0\0\0\0\0\0\0\0\0";
+	/* 3980 "The request failed to run because the batch is aborted",
+	   from aborting a procedure; message, server and procedure names empty */
+	static const char err[] = "\xAA\x0E\0\x8C\x0F\0\0\1\x10\0\0\0\0\1\0\0\0";
+	Tds t = { .net.fd = -1, .state = TDS_CANCEL, .quiet = 1 };
+	/* a final DONE without the attention bit ends no cancel (SqlRun.tla's "firstdone") */
+	CHECK(!str_add(&t.msg, done, 13) && !tds_parse(&t) && t.state == TDS_CANCEL);
+	CHECK(!str_add(&t.msg, err, 17) && !str_add(&t.msg, attn, 13) && (t.eom = 1) && !tds_parse(&t));
+	CHECK(t.state == TDS_READY && !t.quiet && !t.out.n);
+	tds_close(&t);
+}
+
+#ifndef _WIN32   /* the raw socket is Windows's event handle there (net.h) */
+/* A refused login's reason and the server's close_notify in one read: the
+   reason comes first, the close is the next read's.  An in-process TLS
+   server writes both before the client reads (against a live server it
+   depended on whether they arrived together: train 27 missed the plant) */
+static void close_notify(void)
+{
+	int l = socket(AF_INET, SOCK_STREAM, 0);
+	struct sockaddr_in a = { .sin_family = AF_INET, .sin_addr.s_addr = htonl(INADDR_LOOPBACK) };
+	socklen_t al = sizeof a;
+	CHECK(l >= 0 && !bind(l, (struct sockaddr *)&a, al) && !listen(l, 1) && !getsockname(l, (struct sockaddr *)&a, &al));
+	Net c;
+	CHECK(!net_open(&c, "127.0.0.1", ntohs(a.sin_port), 1));
+	int f = accept(l, NULL, NULL);
+	CHECK(f >= 0 && !fcntl(f, F_SETFL, O_NONBLOCK));   /* one thread: the server never waits */
+	/* a throwaway P-256 key and self-signed certificate (the client trusts) */
+	EVP_PKEY *k = EVP_EC_gen("P-256");
+	X509 *x = X509_new();
+	SSL_CTX *ctx = SSL_CTX_new(TLS_server_method());
+	CHECK(k && x && ctx && X509_set_pubkey(x, k) && X509_gmtime_adj(X509_getm_notBefore(x), 0) && X509_gmtime_adj(X509_getm_notAfter(x), 60)
+		&& X509_sign(x, k, EVP_sha256()) && SSL_CTX_use_certificate(ctx, x) == 1 && SSL_CTX_use_PrivateKey(ctx, k) == 1);
+	SSL_CTX_set_num_tickets(ctx, 0);   /* nothing of the server's is on its way when it corks */
+	SSL *sv = SSL_new(ctx);
+	CHECK(sv && SSL_set_fd(sv, f));
+	SSL_set_accept_state(sv);
+	Str out = {0}, in = {0};
+	int done = 0;
+	for (int i = 0; i < 1000 && !(done && SSL_is_init_finished(sv)); i++) {
+		char b[16384];
+		ssize_t n = recv(c.fd, b, sizeof b, MSG_DONTWAIT);
+		out.n = 0;
+		if (!done) CHECK((done = net_shake(&c, b, n > 0 ? (size_t)n : 0, &out)) >= 0);
+		CHECK(send(c.fd, out.s, out.n, 0) == (ssize_t)out.n);
+		SSL_do_handshake(sv);
+	}
+	c.tls = 1;
+	/* corked: both records leave as one segment, so they arrive together */
+	CHECK(SSL_is_init_finished(sv) && !setsockopt(f, IPPROTO_TCP, TCP_CORK, &(int){1}, sizeof(int)) && SSL_write(sv, "reason", 6) == 6 && SSL_shutdown(sv) >= 0
+		&& !setsockopt(f, IPPROTO_TCP, TCP_CORK, &(int){0}, sizeof(int)));
+	CHECK(poll(&(struct pollfd){c.fd, POLLIN, 0}, 1, 1000) == 1);
+	CHECK(!net_read(&c, &in) && in.n == 6 && !memcmp(in.s, "reason", 6));
+	SSL_free(sv), SSL_CTX_free(ctx), X509_free(x), EVP_PKEY_free(k), close(f), close(l);
+	CHECK(poll(&(struct pollfd){c.fd, POLLIN, 0}, 1, 1000) == 1 && net_read(&c, &in) && strstr(c.err, "closed"));
+	str_free(&out), str_free(&in), net_close(&c);
+}
+#endif
+
 static void oracle(const char *py, const char *argv0)
 {
 	char cmd[4096];
@@ -258,6 +326,10 @@ int main(int argc, char **argv)
 	   server signature and a nonce that does not extend ours refused */
 	const char *sf = "r=rOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,s=W22ZaJ0SNY7soEsUEjb6gQ==,i=4096";
 	stale_ready();
+	cancel_tokens();
+#ifndef _WIN32
+	close_notify();
+#endif
 	CHECK(scram(sf, "v=3HO6Qt1M4MKJrmlKaoOqLAI0/0TV0HZe7J9H3MBtSOg="));
 	CHECK(!scram(sf, "v=3HO6Qt1M4MKJrmlKaoOqLAI0/0TV0HZe7J9H3MBtSOh="));
 	CHECK(!scram("r=xOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,s=W22ZaJ0SNY7soEsUEjb6gQ==,i=4096", "v=3HO6Qt1M4MKJrmlKaoOqLAI0/0TV0HZe7J9H3MBtSOg="));
