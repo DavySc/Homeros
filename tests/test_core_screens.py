@@ -9,7 +9,8 @@ screens for tests/test_core_screens.c, which replays them without Neovim;
 --drv runs that program on the fresh cases and compares at once.
 tests/test_core_screens.txt holds the cases recorded before tab pages (they
 catch their plants), then 100 of seed 2 appended (tab pages a fifth of the
-tokens).
+tokens), then cases 71 and 279 of 345 with seed 1 when tab pages were 1.06
+(:tabnew after :bd, a cursor inside a wide character: their plants).
 
 A token is one command.  The C side (test_core_screens.c) turns each into
 the core call keys will make for it; here each becomes Neovim's keys."""
