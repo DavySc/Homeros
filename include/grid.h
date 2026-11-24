@@ -185,6 +185,10 @@ int  grid_frame(void);
    many blanks, so the layout matches grid_width.  Every cell gets attr and
    face.  Returns the next column. */
 int  grid_puts(Grid *g, int r, int c, int end, const char *s, size_t n, int attr, int face);
+/* blanks (no face) in the h rows and w columns from row y, column x */
+void grid_blank(Grid *g, int y, int x, int h, int w);
+/* grid_puts of a C string to the grid's edge, in one face */
+int  grid_str(Grid *g, int r, int c, const char *s, int face);
 /* The cells grid_puts takes for s (Neovim's mb_string2cells()). */
 int  grid_width(const char *s, size_t n);
 int  grid_cell_eq(const Cell *a, const Cell *b);

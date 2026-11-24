@@ -147,12 +147,18 @@ int  map_case(int c, int up);   /* utf_toupper() (up) or utf_tolower() */
 /* Vim's patterns (regex.c) */
 int  re_compile(const char *pat, int icase, const char **msg);
 int  re_exec(long l, long col, Pos *s, Pos *e, Pos *sub_s, Pos *sub_e);
+void re_error(void);   /* the message for re_exec()'s -1: Interrupted after Ctrl-C, else E363 */
 char *re_skip(char *p, int delim, int *all);
 extern long long re_deadline;   /* loop_now() after which re_exec() gives up (-1), as at its step limit; 0: none */
 int  re_hasnl(void);   /* RF_HASNL: the compiled pattern can match a line break */
 
 /* search.c */
-int  do_search(Oparg *oap, int dirc, const char *pat, long count, int rev, int *wrapped);
+int  do_search(Oparg *oap, int dirc, const char *pat, long count, int rev, int mark, int *wrapped);
+int  getmark(int c, Pos *p);   /* getmark(): the mark's place, else 0 after E20, E78 or E19 */
+void opmarks(int get);            /* '[ and '] between the buffer and b_op_start, b_op_end */
+extern Buf *op_buf;               /* the buffer they are of */
+void setpcmark(void);   /* setpcmark(): before a jump */
+void checkpcmark(void); /* checkpcmark(): after each command, an ex command too (nv_colon()) */
 void search_reset(void);
 enum { RE_SEARCH, RE_SUBST, RE_LAST };
 int  search_regcomp(const char *pat, int save, int use, int ic, const char **msg);

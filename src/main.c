@@ -104,6 +104,7 @@ int main(int argc, char **argv)
 				lsp_flush(e.buf->lsp);   /* one didChange per command (Helix) */
 				shada_track(&e);
 				bridge_update(&e);
+				lsp_goals(&e);
 			}
 			loop_int = 0;
 		}
@@ -115,6 +116,7 @@ int main(int argc, char **argv)
 			if (grid_frame()) grid_free(&shown);
 			core_draw(&e, NULL, &g);
 			tools_draw(&e, &g);
+			keys_draw(&e, &g);
 			kitten_draw(&e, &g);
 			b->present(0, &g, &shown);
 			dirty = 0;

@@ -196,7 +196,7 @@ void term_draw(Editor *e, Grid *g)
 		proc_resize(T.id, T.rows, T.cols);
 	}
 	T.frame++;
-	box_fill(g, b);
+	grid_blank(g, b.y, b.x, b.h, b.w);
 	GhosttyString title = { 0 };
 	char tl[64] = " Terminal ";
 	if (!ghostty_terminal_get(T.t, GHOSTTY_TERMINAL_DATA_TITLE, &title) && title.len && title.len < sizeof tl - 2) {

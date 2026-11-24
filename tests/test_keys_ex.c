@@ -77,7 +77,7 @@ static const char *const XAFTER[] = { "n", "N", "u", "&", "g&", "x", "u", ".", "
 
 /* cases the random ones reached only with other seeds: a NUL in a line,
    :s/\n// on the last line, a NUL after the indent */
-static const char *const XFIXED[] = { "/o\r:s+\\c+&\\n+gi\r.&", ":$s+\\n+\r", "G:3,4su/ \\zs/\\n/\r" };
+static const char *const XFIXED[] = { "/o\r:s+\\c+&\\n+gi\r.&", ":$s+\\n+\r", "G:3,4su/ \\zs/\\n/\r", "3j:s/?\\\\/&\\r/\r" };
 
 static void substitute(char *k)
 {
@@ -134,6 +134,41 @@ static void confirm(char *k)
 	strcat(k, "\x1b\x1b");
 }
 
+/* marks and the jump list: marks set, jumps (each sets '' and joins the
+   jump list), the marks gone to with ' ` g' g` and as motions, CTRL-O and
+   Tab, among edits that move the marks; '[ and '] right after what sets
+   them.  Not yet: '[ '] before that and '. (the core sets them on a read
+   and a change), A-Z, an undo's jump, an operator
+   whose jump deletes the line of '' (w_prev_pcmark), and J, which moves ''
+   (mark_col_adjust()): they wait for the core (package 4) */
+static const char *const MPRE[] = { "", "j", "G", "3j", "w", "jjw", "Vj\x1b", "v3l\x1b", "m'" };
+static const char *const MTOK[] = { "ma", "mb", "m'", "m`", "m<", "m>", "m\"", "mz", "'a", "`a", "'b", "`b", "''", "``", "'`",
+                                    "`'", "'<", "`>", "'\"", "`^", "'^", "g'a", "g`b", "g''", "g``", "'{", "`}", "'(", "`)",
+                                    "'z", "'x", "'A", "'1", "'!", "y'a", "y`b", "gu'a", "gU`a", "\x0f", "\x0f", "\t", "2\x0f",
+                                    "3\t", "\x0f\x0f", "G", "gg", "3G", "%", "}", "{", ")", "(", "*", "#", "n", "N", "H",
+                                    "M", "L", "/o\r", "?a\r", ":3\r", ":s/o/0/\r", ":'a,'bs/^/-/\r", "[(", "])",
+                                    "x", "O\x1b", "oxy\x1b", "ix\x1b", "Ay\x1b", "yyP", "p", "i\r\x1b", "r\r", "j", "k",
+                                    "w", "b", "$", "0", "l", "yj`]", "yw`[", "cwX\x1b`]", "gUiw']", "x`[", "yi(", "va(\x1b", "50%0", "2G$%",
+                                    "~`[", "~`]", "rx`[", "3rx`]", "dd", "dj" };
+
+/* "50%0": N% keeps the wanted column, which Neovim under -l has as the
+   column after j (measured: "Ay Esc j 50%" ends in column 7 there, 12 in
+   nvim --headless with a file); the 0 leaves that aside */
+/* first these, each once: what random sequences reach too rarely (PR 116's
+   review): an undo's '[ and one inside Insert, '] of an exclusive yank from column 0,
+   ~ and r, gv with one end or none, a bare ',
+   '{ '( at the ends, m[ m], Enter at column 0 of an indented line, [( and ]) as jumps */
+static const char *const MFIX[] = { "Gicd\x0fuef\x1b`]", "jvjy`]", "jy0`]", "jjyl`]", "yjrx`]", "jm<gvd", "jm>gvd", "m<jm>gvd",
+                                    ":'\r", ":'\rx", "'{", "`(", "G'}", "G`)", "jwm[gg`[", "jjm]gg`]", "jwma0i\r\x1b`a", "jwma0li\r\x1b`a", "jjixy\x1bggyyu`[", "Ggg7jdd\x0f", "Ggg6jdj\x0f",
+                                    "j6l[(``", "j6l])``" };
+static void marks(char *k)
+{
+	static unsigned fixed;
+	if (fixed < sizeof MFIX / sizeof *MFIX) { strcpy(k, MFIX[fixed++]); return; }
+	strcpy(k, MPRE[rnd(sizeof MPRE / sizeof *MPRE)]);
+	for (unsigned t = 1 + rnd(8); t--;) strcat(k, MTOK[rnd(sizeof MTOK / sizeof *MTOK)]);
+}
+
 /* the cells 'hlsearch' draws, as ex_oracle.lua writes them: the core's
    use of keys_hl() (include/keys.h).  Drawn five times: after the first,
    only the line copies may grow (src/keys/buf.c, slot()), toward the
@@ -142,6 +177,7 @@ static unsigned long allocs;
 static void on_malloc(const volatile void *p, size_t n) { (void)p, (void)n, allocs++; }
 static void on_free(const volatile void *p) { (void)p; }
 int __sanitizer_install_malloc_and_free_hooks(void (*)(const volatile void *, size_t), void (*)(const volatile void *));
+size_t __sanitizer_get_current_allocated_bytes(void);
 
 static void hlsearch(Editor *e, char *b, size_t cap)
 {
@@ -173,7 +209,7 @@ static void hlsearch(Editor *e, char *b, size_t cap)
 /* n random cases of gen on text: how many differ from Neovim */
 static int check(const char *text, void (*gen)(char *))
 {
-	char dir[] = "/tmp/test_keys_exXXXXXX", tf[64], cases[64], out[64], cmd[512], k[128];
+	char dir[] = "/tmp/test_keys_exXXXXXX", tf[64], cases[64], out[64], cmd[512], k[256];
 	CHECK(mkdtemp(dir));
 	snprintf(tf, sizeof tf, "%s/text", dir);
 	snprintf(cases, sizeof cases, "%s/cases", dir);
@@ -259,6 +295,7 @@ int main(void)
 	CHECK(__sanitizer_install_malloc_and_free_hooks(on_malloc, on_free));
 	static const char TEXT[] = "abcdef\n  xy\nhello world\n\tq\nlast line\nz\n";
 	CHECK(!check(TEXT, range));   /* each phase stops the test, so a caught plant does not run the rest */
+	CHECK(!check("abc. def foo\n  xy (o)\n\nhello world. Two\n\tq a\nlast line\n\n  z o\n", marks));
 	/* past 2^63 Neovim's line numbers wrap (":9223372036854775806+5" goes
 	   to line 3, measured once); ours saturate, without overflow */
 	char path[] = "/tmp/test_keys_exXXXXXX";
@@ -352,6 +389,14 @@ int main(void)
 	   100,000 it says E486, measured once) */
 	CHECK(e.win->line == 0 && e.win->col == 0 && !strcmp(e.msg, "search hit BOTTOM, continuing at TOP"));
 	core_free(&e);
+	/* the stacks a* grows on 4 MB of a are not kept: 7.8 MB stays, not
+	   108 MB (measured once each; E486, as Neovim) */
+	text(path, "a", 4000000, "\n");
+	CHECK(!core_open(&e, path));
+	size_t held = __sanitizer_get_current_allocated_bytes();
+	feed(&e, "/a*b\r");
+	CHECK(!strncmp(e.msg, "E486", 4) && __sanitizer_get_current_allocated_bytes() < held + (32 << 20));
+	core_free(&e);
 	/* 'redrawtime': a frame of a pattern that takes long on every line ends
 	   after 2 s.  Each line here gives up after MAXSTEPS: without the budget
 	   50 lines took about 3 s under ASan, so a fast runner passed; 400 take
@@ -365,6 +410,50 @@ int main(void)
 	long long t0 = loop_now();
 	for (size_t i = 0; i < 400; i++) CHECK(!keys_hl(&e, e.win, i, 0, &hs, &hz));
 	CHECK(loop_now() - t0 < 8000000000LL);
+	/* Ctrl-C (main.c sets loop_int) stops a search and a :s at the next
+	   line, as Neovim's line_breakcheck(): "Interrupted", nothing changed */
+	loop_int = 1;
+	/* drawing has its own budget: it finds the match and leaves Ctrl-C to the search */
+	CHECK(keys_hl(&e, e.win, 400, 0, &hs, &hz) && loop_int);
+	feed(&e, "gg/b\r");
+	CHECK(e.win->line == 0 && !strcmp(e.msg, "Interrupted"));
+	feed(&e, ":%s/a/x/\r");
+	CHECK(!strcmp(e.msg, "Interrupted") && *core_line(&e, 0, &(size_t){ 0 }) == 'a');
+	loop_int = 0;
+	feed(&e, "/b\r");
+	CHECK(e.win->line == 400);
+	/* the oracle's set_lines() fills the change list; a file just read has
+	   none (nvim --headless on a file: E664, measured once) */
+	feed(&e, "g;");
+	CHECK(!strcmp(e.msg, "E664: Changelist is empty"));
+	core_free(&e);
+	/* '[ and '] are each buffer's: a yank in one sets none in another,
+	   and they are there when the first comes back (PR 116's review,
+	   twobuf.vim: Neovim has B's own from its read, which the core does
+	   not set yet, so here B's is unset) */
+	char a[] = "/tmp/keys_exAXXXXXX", b2[] = "/tmp/keys_exBXXXXXX";
+	int fa = mkstemp(a), fb = mkstemp(b2);
+	CHECK(write(fa, "a1\na2\na3\na4\n", 12) == 12 && !close(fa) && write(fb, "b1\nb2\nb3\nb4\n", 12) == 12 && !close(fb));
+	CHECK(!core_open(&e, a));
+	feed(&e, "jjyy");
+	CHECK(!core_edit_file(&e, b2, 0));
+	feed(&e, "`[");
+	CHECK(!strncmp(e.msg, "E20", 3));
+	feed(&e, "ggx");
+	CHECK(!core_edit_file(&e, a, 1));
+	feed(&e, "G`[");
+	CHECK(e.win->line == 2);
+	core_free(&e);
+	/* and when the key itself goes to the other buffer (two windows,
+	   CTRL-W w; :q and :Dashboard alike) */
+	CHECK(!core_open(&e, a));
+	feed(&e, "\x17s");
+	CHECK(!core_edit_file(&e, b2, 0));
+	feed(&e, "x\x17wjjyy\x17wG`[");
+	CHECK(e.win->line == 0);
+	feed(&e, "\x17wG`[");
+	CHECK(e.win->line == 2);
+	unlink(a), unlink(b2);
 	core_free(&e);
 	text(path, "select a from t;\n", 300000, "END\n");
 	CHECK(!core_open(&e, path));
@@ -390,6 +479,6 @@ int main(void)
 	char t4[256] = "";
 	for (int i = 0; i < 4; i++) strcat(t4, "foo bar\nabc Foo x\n  foo.bar(a) 12\nbaz?\\\n\nx/y?z foo\nfoofoo zz\n");
 	CHECK(!check(t4, confirm));
-	printf("test_keys_ex: %d random ranges, %d searches, %d substitutions and %d answered, each as Neovim (cursor, error, text, 'hlsearch')\n", N, N, N, N);
+	printf("test_keys_ex: %d random ranges, %d mark and jump sequences, %d searches, %d substitutions and %d answered, each as Neovim (cursor, error, text, 'hlsearch')\n", N, N, N, N, N);
 	return 0;
 }

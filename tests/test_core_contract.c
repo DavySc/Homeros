@@ -6,6 +6,7 @@
    the last line, CTRL-U and CTRL-B on the first, gj on the last and gk on
    the first beep; from line 50 none does. */
 #include <poll.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -279,6 +280,21 @@ int main(void)
 	core_draw(&e, NULL, &g);
 	CHECK(e.layout->size[ROWS] > g.rows);
 	CHECK(!core_only(&e));
+	/* core_buf_fill: both windows on the buffer clamped to the new text, or
+	   kept where they were (SIZE_MAX); found by number while listed */
+	CHECK(!core_edit_file(&e, "", 1) && !core_split(&e, 0, 0));
+	Buf *nb = e.buf;
+	CHECK(core_buf_find(&e, nb->nr) == nb && !core_buf_find(&e, 9999));
+	core_buf_fill(&e, nb, "a\nb\nc\nd\n", 8, 9);
+	for (Win *w = e.wins; w; w = w->next) { CHECK(w->line == 3); w->top = 3; w->col = 1; }
+	e.wins->line = 1;
+	core_buf_fill(&e, nb, "p\nq\nr\n", 6, SIZE_MAX);
+	CHECK(e.wins->line == 1 && e.wins->next->line == 2 && e.win->col == 0 && e.wins->top == 1 && e.wins->next->top == 2);
+	core_buf_fill(&e, nb, "z\n", 2, 1);
+	for (Win *w = e.wins; w; w = w->next) CHECK(w->line == 0 && w->top == 0 && !(nb->flags & CORE_EMPTY));
+	CHECK(!core_only(&e));
+	int nr = nb->nr;
+	CHECK(!core_buf_delete(&e, nr, 1) && !core_buf_find(&e, nr));   /* :bd keeps it, unlisted */
 	unlink(md);
 	/* on_yank's flash shows only in the window it was yanked in (the
 	   namespace is scoped to it: nvim__ns_set()) */
@@ -342,12 +358,14 @@ int main(void)
 	   also one in another directory (on Windows each directory has its
 	   own handle); the editor started on the dashboard, with no file */
 	char dir[2][32] = { "/tmp/core_wAXXXXXX", "/tmp/core_wBXXXXXX" }, wf[2][48];
+	int wnr = 0;
 	CHECK(!core_open(&e, NULL));
 	for (int i = 0; i < 2; i++) {
 		CHECK(mkdtemp(dir[i]));
 		snprintf(wf[i], sizeof wf[i], "%s/w", dir[i]);
 		CHECK((f = fopen(wf[i], "w")) && fputs("a\n", f) >= 0 && !fclose(f));
 		CHECK(!core_edit_file(&e, wf[i], 0));
+		if (!i) wnr = e.buf->nr;
 		CHECK((f = fopen(wf[i], "w")) && fputs("bb\n", f) >= 0 && !fclose(f));
 		for (int k = 0; k < 100 && !e.buf->changed; k++) loop_once(10);
 		CHECK(e.buf->changed);
@@ -365,6 +383,13 @@ int main(void)
 	CHECK(!pipe(pp) && !loop_watch(pp[0], NULL, NULL));
 	loop_unwatch(pp[0]);
 	close(pp[0]), close(pp[1]);
+	/* :bd gives its buffer's watch back (file_unwatch), and the shared fd
+	   stays in the loop for the others (review of PR 131) */
+	CHECK(!core_edit_file(&e, wf[1], 0) && !core_buf_delete(&e, wnr, 0));
+	e.buf->changed = 0;   /* seen above */
+	CHECK((f = fopen(wf[1], "w")) && fputs("ccc\n", f) >= 0 && !fclose(f));
+	for (int k = 0; k < 100 && !e.buf->changed; k++) loop_once(10);
+	CHECK(e.buf->changed);
 	core_free(&e);
 	for (int i = 0; i < 20; i++) snprintf(many, sizeof many, "%s/m%d", dir[0], i), unlink(many);
 	for (int i = 0; i < 2; i++) unlink(wf[i]), rmdir(dir[i]);
