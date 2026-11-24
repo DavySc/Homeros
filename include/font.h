@@ -1,6 +1,8 @@
 /* Fonts and shaping (package 7, src/font/).  FreeType draws glyphs, HarfBuzz
-   shapes runs (ligatures on, so -> is drawn as an arrow), and fontconfig finds
-   a fallback font for a cluster the first font lacks, as foot does with fcft.
+   shapes runs (ligatures on, so -> is drawn as an arrow), and fontconfig
+   (Linux, as foot with fcft) or DirectWrite's fallback list (Windows, as
+   WezTerm) finds a fallback font for a cluster the first font lacks; box
+   drawing, blocks and Powerline's separators are drawn to fill the cell.
    Glyph bitmaps are cached per font and glyph in memory taken at font_open,
    so a cache hit allocates nothing. */
 #ifndef FONT_H
@@ -20,9 +22,10 @@ typedef struct {
 	int x, y;                 /* pixels from that cluster's cell origin on the baseline; y up */
 } Placed;
 
-/* Opens family (a fontconfig name, "JetBrains Mono") at px pixels per em.
-   0 ok; -1 if fontconfig has no font at all, or out of memory; a family it
-   lacks gets its best match, as in foot.  Called again (a new size or output
+/* Opens family (a font name, "JetBrains Mono"; on Windows a list, the
+   first installed one taken) at px pixels per em.  0 ok; -1 if the system
+   has no font at all, or out of memory; a family it lacks gets its best
+   match, as in foot.  Called again (a new size or output
    scale) it replaces the font and empties the cache. */
 int  font_open(const char *family, int px);
 void font_close(void);

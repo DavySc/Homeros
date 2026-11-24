@@ -157,4 +157,15 @@ int uni_width(const unsigned char *s, size_t n, size_t i);
     ensures wellformed(b, \result, 0, \result) && cpx(b, \result, 0) == c;
 */
 int uni_put(unsigned char *b, unsigned c);
+/* Writes code point c as UTF-16 into b and returns its length in units,
+   a surrogate pair from U+10000 on: the one UTF-16 encoder, for
+   DirectWrite's text (src/font/dwrite.c) and SQL Server's (src/sql/tds.c). */
+/*@ requires c < 0x110000 && \valid(b + (0 .. 1));
+    assigns b[0 .. 1];
+    ensures \result == (c < 0x10000 ? 1 : 2);
+    ensures \result == 1 ==> b[0] == c;
+    ensures \result == 2 ==> 0xD800 <= b[0] && b[0] < 0xDC00 && 0xDC00 <= b[1] && b[1] < 0xE000
+                           && 0x10000 + (b[0] - 0xD800) * 0x400 + (b[1] - 0xDC00) == c;
+*/
+int uni_put16(unsigned short *b, unsigned c);
 #endif
