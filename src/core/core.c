@@ -1188,6 +1188,10 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 			   others below it); measured, c_open_below */
 			ws->bv = ws->bot < L ? bv : newlines(del, ndel) > newlines(ins, nins) ? 0 : bv & ~BOT_EXACT;
 		}
+	/* a join (do_join(), and op_delete()'s over lines) updates the line
+	   it keeps before its other lines go: changed_lines() precedes
+	   del_lines() there */
+	if (!r && newlines(del, ndel) && !(at_start && del[ndel - 1] == '\n')) core_folds(e, b, L, L + 1);
 	if (!r) adjust_edit(e, L, pos - text_line_start(b->text, L), at_start, ndel && del[ndel - 1] == '\n', nins && ins[nins - 1] == '\n',
 	                    newlines(del, ndel), newlines(ins, nins));
 	/* changed_common()'s foldUpdate(): at once, with the foldexpr the edit
