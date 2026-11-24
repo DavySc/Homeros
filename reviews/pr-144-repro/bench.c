@@ -6,6 +6,7 @@
 #include <time.h>
 #include "text.h"
 #include "tsql.h"
+#include "mk.h"
 static double now(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return t.tv_sec * 1e3 + t.tv_nsec / 1e6; }
 int main(int argc, char **argv)
 {
@@ -18,7 +19,7 @@ int main(int argc, char **argv)
 	static unsigned char face[1 << 22];
 	double best_i = 1e18, best_w = 1e18, first_w = 0;
 	for (int rep = 0; rep < 5; rep++) {
-		Tsql *q = tsql_new(t, lang);
+		Tsql *q = mk(t, lang);
 		double t0 = now();
 		while (tsql_update(q, NULL) == 2) ;
 		double t1 = now();

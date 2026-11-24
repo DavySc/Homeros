@@ -9,6 +9,7 @@
 #include "check.h"
 #include "grid.h"
 #include "tsql.h"
+#include "mk.h"
 #include "text.h"
 
 static char line[1 << 21], text[1 << 20];
@@ -48,7 +49,7 @@ int main(int argc, char **argv)
 		}
 		if (line[0] != 'C') continue;
 		Text *t = text_new(text, n);
-		Tsql *s = tsql_new(t, 3);
+		Tsql *s = mk(t, 3);
 		CHECK(t && s);
 		size_t r1, r2;
 		(void)r1, (void)r2; while (tsql_update(s, NULL) == 2) ;

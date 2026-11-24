@@ -4,6 +4,7 @@
 #include <string.h>
 #include "text.h"
 #include "tsql.h"
+#include "mk.h"
 static unsigned long long s = 88172645463325252ull;
 static unsigned rnd(unsigned n) { s ^= s << 13; s ^= s >> 7; s ^= s << 17; return (unsigned)(s % n); }
 static const char *const ins[] = { "\n", " ", "-", "/", "/-", "-/", "--", "\"", "'", "`", "*", "_", "#", "{", "}", "[", "]", "(", ")", ":", "d", "e", "f", "def ", "instance", "deriving ",
@@ -26,7 +27,7 @@ int main(int argc, char **argv)
 		fclose(fp);
 		if (n > MAX / 2) n = MAX / 2;
 		Text *t = text_new(b + off, n);
-		Tsql *q = tsql_new(t, 3);
+		Tsql *q = mk(t, 3);
 		while (tsql_update(q, NULL) == 2) ;
 		for (int e = 0; e < per; e++, edits++) {
 			n = text_len(t);
@@ -52,7 +53,7 @@ int main(int argc, char **argv)
 				while ((r = tsql_update(q, stop_rnd)) == 2) ;
 				if (r != 1) break;
 			}
-			Tsql *h = tsql_new(t, 3);
+			Tsql *h = mk(t, 3);
 			while (tsql_update(h, NULL) == 2) ;
 			memset(g + wa, 0, z - wa);
 			tsql_faces(h, wa, z, g + wa);
