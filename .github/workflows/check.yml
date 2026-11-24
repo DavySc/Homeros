@@ -79,37 +79,47 @@ jobs:
         run: find build/openssl-win -type f -exec touch {} +
       - run: make build/openssl-win/lib/libssl.a
       - run: make ${{ matrix.target }}
+  # tests that link the whole editor below the window, built here for the
+  # windows job (winlink, tools/winpass.sh): their tree-sitter sources and
+  # libraries come from nix, which the Windows runner has not
+  winexe:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+      - run: nix build -f tools.nix tools -o tools-env
+      - run: echo "$PWD/tools-env/bin" >> "$GITHUB_PATH"
+      - id: ghostty
+        uses: actions/cache@v4
+        with: { path: build/ghostty, key: "ghostty-${{ hashFiles('src/tools/ghostty.nix') }}" }
+      - if: steps.ghostty.outputs.cache-hit == 'true'
+        run: touch build/ghostty/*
+      # make reads every build.mk's pkg-config before any target
+      - run: >
+          sudo apt-get update && sudo apt-get install -y pkg-config libssl-dev libstb-dev
+          libfreetype-dev libharfbuzz-dev libfontconfig-dev libwayland-dev libxkbcommon-dev
+      - run: . tools/winpass.sh && winlink build/win/test_git_win.exe tests/test_git_win.c
+      - uses: actions/upload-artifact@v4
+        with: { name: winexe, path: build/win/test_git_win.exe }
   # git's and the loop's Windows halves on Windows itself, for what Wine
   # cannot show (a path's names as stored, a pseudo-console's resize): pull
   # requests only, so it stays short (packages 17 and 10, thread 0's, agreed)
   windows:
     if: github.event_name == 'pull_request'
+    needs: winexe
     runs-on: windows-latest
-    timeout-minutes: 30   # 15 before the terminal; a cold cache adds its zig build
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: mlugg/setup-zig@v2
         with:
           version: 0.17.1
-      # libghostty-vt for Windows, which test_git_win links (the terminal,
-      # src/tools/): no nix here, so zig builds ghostty.nix's revision, once
-      # per change of it
-      - id: ghostty
-        uses: actions/cache@v4
-        with: { path: build/ghostty, key: "ghostty-win-${{ hashFiles('src/tools/ghostty.nix') }}" }
-      - if: steps.ghostty.outputs.cache-hit != 'true'
-        shell: bash
-        run: |
-          # zig cannot run the runner's pkg-config (Strawberry Perl's .BAT)
-          PATH=$(printf %s "$PATH" | tr : '\n' | grep -vi strawberry | paste -sd: -)
-          rev=$(sed -n 's|.*github.com/ghostty-org/ghostty" "\([0-9a-f]*\)".*|\1|p' src/tools/ghostty.nix)
-          flags=$(sed -n 's|^ *flags = "\(.*\)";.*|\1|p' src/tools/ghostty.nix)
-          git init -q build/ghostty-src && cd build/ghostty-src
-          git fetch -q --depth 1 https://github.com/ghostty-org/ghostty "$rev" && git checkout -q FETCH_HEAD
-          zig build $flags -Dtarget=x86_64-windows-gnu --prefix ../ghostty-out
-          mkdir -p ../ghostty && cp -r ../ghostty-out/include ../ghostty/ && cp ../ghostty-out/lib/ghostty-vt-static.lib ../ghostty/windows.lib
-          test -s ../ghostty/windows.lib
-      - run: bash src/git/check.sh
+      # git's Windows half (built by winexe)
+      - uses: actions/download-artifact@v4
+        with: { name: winexe, path: build/win }
+      - run: . tools/winpass.sh && pass 300 build/win/test_git_win.exe
         shell: bash
       # the pseudo-console (ConPTY), which Wine cannot resize (the terminal's)
       - run: bash src/loop/check.sh

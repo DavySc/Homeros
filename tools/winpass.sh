@@ -16,3 +16,28 @@ pass() {
 	cat "${exe%.exe}.out"
 	[ $r = 0 ] && [ "$(tail -n 1 "${exe%.exe}.out" | cut -d: -f1)" = "$(basename "$exe" .exe)" ]
 }
+
+# winlink EXE TEST.c: builds EXE for Windows from TEST.c and every module
+# wincc compiles (not main.c or the window), with tree-sitter, the
+# grammars and queries outside our warnings (as src/syntax/build.mk), stb
+# and libghostty-vt (build.mk): for a test that links the whole editor
+# below the window (src/tools/check.sh, src/lsp/check.sh)
+winlink() {
+	local syn=build/syntax o objs= g
+	local inc="-I$syn/src/tree-sitter/lib/include -I$syn/src/tree-sitter/lib/src"
+	mkdir -p build/win/link
+	make -s $syn/queries.c build/win/stb.o build/ghostty/windows.lib   # stb: src/image/build.mk; thread 0's, agreed
+	# after those: wincc's dry run starts with what it would build first
+	# (the grammars' sources, build/win), not the compile loop
+	local srcs=$(make -s -n wincc | head -1 | tr ' ' '\n' | grep '\.c$' | grep -v -e '^src/main\.c$' -e '^src/win/')
+	for g in $(sed -n '/^SYN_GRAMMARS/,/[^\\]$/p' src/syntax/build.mk | tr -d '\\' | cut -d= -f2); do
+		o=build/win/link/$(echo $g | tr / _).o
+		[ -f $o ] || zig cc -target x86_64-windows-gnu -O2 -c -I$(dirname $syn/src/$g) $syn/src/$g.c -o $o
+		objs="$objs $o"
+	done
+	zig cc -target x86_64-windows-gnu -O2 -c $syn/queries.c -o build/win/link/queries.o
+	[ -f build/win/link/ts.o ] || zig cc -target x86_64-windows-gnu -O2 -c $inc $syn/src/tree-sitter/lib/src/lib.c -o build/win/link/ts.o
+	. src/tools/ghostty-win.sh
+	zig cc -target x86_64-windows-gnu -std=c17 -D_DEFAULT_SOURCE -Wall -Wextra -Werror -Iinclude -I/usr/include/stb $inc -O1 -g \
+	  -fsanitize=undefined -fsanitize-trap=undefined -o "$1" "$2" $srcs build/win/link/queries.o build/win/link/ts.o $objs build/win/stb.o $GHOSTTY_WIN
+}
