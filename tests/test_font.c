@@ -328,6 +328,11 @@ int main(void)
 	shape("abc");
 	font_stats(&h2, &m2);
 	CHECK(h2 == 0 && m2 == 3);
+	/* a size never opened finds the fallback font again: it is not loaded
+	   at that size yet */
+	CHECK(shape("\xe4\xb8\x80") == 1 && ink(o[0].g));
+	int h20 = o[0].g->h;
+	CHECK(font_open(FAMILY, 40) == 0 && shape("\xe4\xb8\x80") == 1 && ink(o[0].g) && o[0].g->h > h20);
 	font_close();
 	printf("test_font: %d of %d Mathlib notation symbols draw; marks, ZWJ emoji, ligature, cache and refill\n", nsym, nsym);
 	return 0;

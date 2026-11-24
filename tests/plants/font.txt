@@ -20,7 +20,7 @@ font: quadrants mixed up (▚)~test TESTS=font~~src/font/sprite.c~{ 4, 8, 1, 13,
 font: shades a quarter too dark (▒)~test TESTS=font~~src/font/sprite.c~64 * (int)(c - 0x2590)~64 * (int)(c - 0x258F)
 font: an arc's straight part missing (╭)~test TESTS=font~~src/font/sprite.c~	if (sy > 0) rect(lo(w, t), ey, lo(w, t) + t, h, 255);~	if (sy > 0) {}
 font: fallback answers remembered by count, not characters~test TESTS=font~~src/font/font.c~key = (key ^ (c[n++] = cp[j])) * 1099511628211ULL;~key = (key ^ (c[n++] = cp[j], n)) * 1099511628211ULL;
-font: a new size starts with the last size's fallback answers (test_font)~test TESTS=font~~src/font/font.c~	cur.picks = calloc(PICKS, sizeof *cur.picks);~	cur.picks = calloc(PICKS, sizeof *cur.picks);¶	if (cur.picks && old[0].picks) memcpy(cur.picks, old[0].picks, PICKS * sizeof *cur.picks);
+font: a new size starts with the last size's fallback answers (test_font)~test TESTS=font~~src/font/font.c~	cur.picks = calloc(PICKS, sizeof *cur.picks);~	cur.picks = calloc(PICKS, sizeof *cur.picks);¶	if (cur.picks && old[0].picks) { memcpy(cur.picks, old[0].picks, PICKS * sizeof *cur.picks); cur.npick = old[0].npick; }
 font: heavy lines drawn light~test TESTS=font~~src/font/sprite.c~K[i] = k[i] == 3 ? 3 * t : k[i] * t;~K[i] = k[i] == 3 ? 3 * t : t;
 font: every lower block drawn full~test TESTS=font~~src/font/sprite.c~rect(0, h - (h * (int)(c - 0x2580) + 4) / 8, w, h, 255);~rect(0, 0, w, h, 255);
 font: Powerline's separators point the other way~test TESTS=font~~src/font/sprite.c~int left = c >= 0xE0B2;~int left = c < 0xE0B2;
