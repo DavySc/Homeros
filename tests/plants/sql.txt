@@ -74,3 +74,5 @@ sql: :Connect does not change the buffer's connection (test_sql_editor)~test TES
 sql: a refused GO line not named (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (bad) core_msg(E, "sql: line~if (0) core_msg(E, "sql: line
 sql: SPC r never closes the results (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (k) {   /* close it~	if (0) {   /* close it
 sql: Alt+Break's line not written (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~putz(s, "Query was cancelled by user.\n");   /* SSMS's line */~/* SSMS's line */
+win: a dir line never matches a Windows buffer's name (C:\ and backslashes)~win WIN=sql~~src/sql/sql.c~if (file_full(t, d)) snprintf~if (1) snprintf
+win: a password in the connections file refused on Windows (no mode bits there)~win WIN=sql~~src/sql/sql.c~	int open = 1;~	int open = 0;

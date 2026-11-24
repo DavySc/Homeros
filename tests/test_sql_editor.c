@@ -7,6 +7,22 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#ifdef _WIN32   /* src/sql/check.sh builds it for Windows */
+#include <direct.h>
+#define mkdir(p, m) _mkdir(p)
+#define setenv(k, v, o) _putenv_s(k, v)
+#define TMP getenv("TEMP")
+/* the colours, which check.sh does not link (tree-sitter), as test_git_win */
+int syntax_open(void) { return 0; }
+void syntax_edit(void) {}
+void syntax_free(void) {}
+void syntax_faces(void) {}
+int syntax_md(void) { return 0; }
+int syntax_conceal(void) { return 0; }
+const char *syntax_filetype(const char *p) { (void)p; return 0; }
+#else
+#define TMP "/tmp"
+#endif
 #include "check.h"
 #include "core.h"
 #include "keys.h"
@@ -48,7 +64,8 @@ int main(void)
 {
 	const char *sa = getenv("SQL_SA_PASSWORD"), *pg = getenv("SQL_PG_PASSWORD");
 	if (!sa || !pg) { fprintf(stderr, "test_sql_editor: SQL_SA_PASSWORD and SQL_PG_PASSWORD: start the test servers as src/sql/README.md says\n"); return 1; }
-	char dir[] = "/tmp/sql_editorXXXXXX", conf[4096], f[4096];
+	char dir[512], conf[4096], f[4096];
+	snprintf(dir, sizeof dir, "%s/sql_editorXXXXXX", TMP);
 	CHECK(mkdtemp(dir) && !chdir(dir) && !mkdir("homeros", 0700) && !mkdir("ms", 0700) && !mkdir("pg", 0700));
 	setenv("XDG_CONFIG_HOME", dir, 1);
 	snprintf(conf, sizeof conf, "%s/homeros/sql", dir);
@@ -58,8 +75,10 @@ int main(void)
 	CHECK(sql_key(&e, KEY_F5) == 1 && strstr(e.msg, "no connections file"));
 	snprintf(f, sizeof f, "ms mssql 127.0.0.1 sa master trust pass=%s\npg pg 127.0.0.1:5432 postgres postgres trust pass=%s\ndir %s/ms ms\ndir %s/pg pg\n", sa, pg, dir, dir);
 	put(conf, f, 0644);
+#ifndef _WIN32   /* there the profile is the user's (sql.c, as libpq) */
 	CHECK(sql_key(&e, KEY_F5) == 1 && strstr(e.msg, "others can read it"));
 	CHECK(!chmod(conf, 0600));
+#endif
 	/* the whole buffer: batches in order, GO 2 twice, the split below */
 	CHECK(sql_key(&e, KEY_F5) == 1 && nwins() == 2 && e.win == e.wins);
 	CHECK(strstr(until("Completion time"), "one\n1\n(1 row affected)\nbetween\nbetween\ntwo\n2\n(1 row affected)\n\nCompletion time: "));
@@ -96,5 +115,8 @@ int main(void)
 	put("x.txt", "x\n", 0600);
 	CHECK(!core_edit_file(&e, "x.txt", 0) && !sql_key(&e, KEY_F5));
 	core_free(&e);
+#ifdef _WIN32   /* winpass.sh's summary line */
+	fprintf(stderr, "test_sql_editor: F5, GO, a selection, Alt+Break, the results split, :Connect\n");
+#endif
 	return 0;
 }

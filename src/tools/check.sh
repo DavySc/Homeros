@@ -10,6 +10,7 @@ for t in zig wine; do
 	command -v $t >/dev/null || { echo "src/tools/check.sh: $t is not on PATH"; exit 2; }
 done
 . src/tools/ghostty-win.sh
+. src/sql/openssl-win.sh   # keys runs SQL (sql_key): package 22's
 SYN=build/syntax
 srcs=$(make -s -n wincc | head -1 | tr ' ' '\n' | grep '\.c$' | grep -v -e '^src/main\.c$' -e '^src/win/')
 mkdir -p build/win/tools
@@ -28,5 +29,5 @@ zig cc -target x86_64-windows-gnu -O2 -c $SYN/queries.c -o build/win/tools/queri
 [ -f build/win/tools/ts.o ] || zig cc -target x86_64-windows-gnu -O2 -c $inc $SYN/src/tree-sitter/lib/src/lib.c -o build/win/tools/ts.o
 exe=build/win/test_tools_win.exe
 zig cc -target x86_64-windows-gnu -std=c17 -D_DEFAULT_SOURCE -Wall -Wextra -Werror -Iinclude -I/usr/include/stb $inc -O1 -g \
-  -fsanitize=undefined -fsanitize-trap=undefined -o "$exe" tests/test_tools_win.c $srcs build/win/tools/queries.o build/win/tools/ts.o $objs build/win/stb.o $GHOSTTY_WIN
+  -fsanitize=undefined -fsanitize-trap=undefined -o "$exe" tests/test_tools_win.c $srcs build/win/tools/queries.o build/win/tools/ts.o $objs build/win/stb.o $GHOSTTY_WIN $SQL_WIN
 pass 600 "$exe" wine || { echo "FAIL test_tools_win"; exit 1; }
