@@ -252,6 +252,17 @@ static void edits(const char *dir)
 	CHECK(fold_closed(e.win->fold, 1, &a, &z) && a == 1 && z == 7);
 	CHECK(fold_closed(e.win->fold, 8, &a, &z) && a == 8 && z == 10);
 	core_free(&e);
+	/* a join updates its line before the adjust (do_join()'s order):
+	   "6G2zaJ" leaves g()'s first two lines a closed fold, its last open
+	   (measured as above) */
+	CHECK(!core_open(&e, h));
+	parse(&e);
+	e.win->line = 5;
+	CHECK(!core_fold(&e, FOLD_TOGGLE, 5, 2));
+	feed(&e, "J");
+	parse(&e);
+	CHECK(fold_closed(e.win->fold, 7, &a, &z) && a == 7 && z == 8 && !fold_closed(e.win->fold, 9, &a, &z));
+	core_free(&e);
 	unlink(h);
 }
 

@@ -258,3 +258,4 @@ core: a scrolldown leaves the cursor inside a closed fold (test_core_fold)~test 
 core: scroll_to_fraction leaves a top line inside a closed fold (test_core_fold)~test TESTS=core_fold~~src/core/move.c~	folded(w, l, &l, NULL);        /* the first of a closed fold */¶~
 core: a buffer entered again keeps the levels it was left with (test_core_fold)~test TESTS=core_fold~~src/core/core.c~if ((w->fold = fold_dup(f, w))) fold_update(w->fold, 0, n, n);~w->fold = fold_dup(f, w);¶		(void)n;
 core: an edit outside Insert mode leaves the folds for the parse (test_core_fold)~test TESTS=core_fold~~src/core/core.c~	if (!r) core_folds(e, b, L, L + newlines(ins, nins) + 1);~
+core: a join updates its folds only after the adjust (test_core_fold)~test TESTS=core_fold~~src/core/core.c~	if (!r && newlines(del, ndel) && !(at_start && del[ndel - 1] == '\n')) core_folds(e, b, L, L + 1);~
