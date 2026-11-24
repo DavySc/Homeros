@@ -225,13 +225,14 @@ static const char *const FTOK[] = { "zo", "zc", "za", "zR", "zM", "2zc", "2zo", 
    blank line inside one, Visual zo over a nested fold, >>, the motions
    that open one (b f ) ( [{ ][ ?), but not after Insert's CTRL-O or from a
    macro (stuffed); u after p or P over a closed fold; o below one; a
-   fold the edit before made */
+   fold the edit before made; a mark jump that stays put */
 static const char *const FFIX[] = { "3G\1zc\1ix\033\1j", "3G\1zc\1x\1u\1j", "5G\1zo\1x\1zc\1u\1j", "zM\1""5G\1Vj\1zo\1""5G\1j",
                                     "5G\1zc\1}", "5G\1zc\1{", "8G\1{", "2G\1""2zc\1}", "j\1zc\1>>\1j", "yy\1j\1zc\1p\1u",
                                     "yy\1""3G\1zc\1P\1u", "j\1zc\1""9G\1zc\1k\1dd\1u", "zM\1""9G\1b\1j",
                                     "j\1zc\1f(\1j", "j\1zc\1)\1j", "9G\1zc\1(\1j", "5G\1zc\1[{\1j", "zM\1][\1j",
                                     "j\1zc\1i\x0fzc\033\1j", "j\1zc\1qal\1q\1zc\1@a\1j", "zM\1?b\r\1j", "j\1zc\1ox\033\1j", "3G$\1zc\1?b\r",
-                                    "Oint q() {\r}\033\1zc\1k" };
+                                    "Oint q() {\r}\033\1zc\1k",
+                                    "j\1ma\1zc\1`a\1j" };
 static void foldkeys(char *k)
 {
 	static unsigned fixed;
