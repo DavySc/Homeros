@@ -923,11 +923,7 @@ static void nv_open(Cmdarg *cap)
 	/* n_opencmd(): above a closed fold's first line, below its last */
 	long l = (long)W->line;
 	if (cap->cmdchar == 'O' ? has_folding(l, &l, NULL) : has_folding(l, NULL, &l)) W->line = (size_t)l;
-	if (!open_cmd(cap->cmdchar == 'O' ? BACKWARD : FORWARD)) return;
-	/* open_line()'s changed_lines() runs foldUpdate() while still in
-	   Normal mode, with the new line's foldexpr -1; Insert mode skips it */
-	core_folds(E, B, W->line, W->line + 1);
-	invoke_edit(cap->cmdchar, cap->count1, 0);
+	if (open_cmd(cap->cmdchar == 'O' ? BACKWARD : FORWARD)) invoke_edit(cap->cmdchar, cap->count1, 0);
 }
 
 /* nv_Undo(): "gUU" is "gUgU" and Visual U is gU; U on its own (undo line)

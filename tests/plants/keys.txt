@@ -283,4 +283,3 @@ keys: >> leaves a closed fold shut (test_keys_ex)~test TESTS=keys_ex~~src/keys/o
 keys: u after p below a closed fold leaves the cursor below it (test_keys_ex)~test TESTS=keys_ex~~src/keys/ops.c~		u_save(W->line + 1, W->line + 1);¶~
 keys: foldOpenCursor() opens only a closed fold, not every fold the cursor is in (test_keys_ex)~test TESTS=keys_ex~~src/keys/buf.c~void fold_open_cursor(void) { if (W->fold) core_fold~void fold_open_cursor(void) { if (has_folding((long)W->line, NULL, NULL)) core_fold
 keys: an executed register's keys open folds as typed ones (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~	key_typed = 0;   /* an executed register's keys are not typed either */¶~
-keys: o skips open_line()'s fold update, so the fold after it comes up closed (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	core_folds(E, B, W->line, W->line + 1);¶~
