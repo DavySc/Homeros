@@ -90,6 +90,8 @@ static void t_check(int n)
 	case 10: CHECK(fr[0].g.rows + fr[1].g.rows == 32 && fr[fr[1].id == 1].g.rows == 20); break;
 	/* the close button of frame 1: :tabclose for it, not :qa */
 	case 9: CHECK(t_open[1] == 2 && !e.quit && !e.tabs->next && e.tab->id == 0); break;
+	/* a third tab page: a window of its own, not the closed one's id */
+	case 12: CHECK(t_open[2] == 1 && t_open[1] == 2 && e.tab->id == 2); break;
 	}
 }
 
@@ -113,7 +115,7 @@ int main(void)
 		{ 'v', 1, 0 }, { 't', 8, 0 },
 		{ 's', 1, 0 }, { 't', 10, 0 },
 		{ 'c', 1, 0 }, { 't', 9, 0 },
-		{ 'k', 0, ":q!\r" },
+		{ 'k', 0, " 52" }, { 'r', 0, 0 }, { 't', 12, 0 }, { 'k', 0, ":q!\r:q!\r" },
 	};
 	t_ev = ev;
 	t_nev = sizeof ev / sizeof *ev;
