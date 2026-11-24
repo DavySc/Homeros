@@ -229,7 +229,7 @@ static const char *const FFIX[] = { "3G\1zc\1ix\033\1j", "3G\1zc\1x\1u\1j", "5G\
                                     "5G\1zc\1}", "5G\1zc\1{", "8G\1{", "2G\1""2zc\1}", "j\1zc\1>>\1j", "yy\1j\1zc\1p\1u",
                                     "yy\1""3G\1zc\1P\1u", "j\1zc\1""9G\1zc\1k\1dd\1u", "zM\1""9G\1b\1j",
                                     "j\1zc\1f(\1j", "j\1zc\1)\1j", "9G\1zc\1(\1j", "5G\1zc\1[{\1j", "zM\1][\1j",
-                                    "j\1zc\1i\x0fzc\033\1j", "j\1zc\1qal\1q\1zc\1@a\1j", "zM\1?b\r\1j", "j\1zc\1ox\033\1j" };
+                                    "j\1zc\1i\x0fzc\033\1j", "j\1zc\1qal\1q\1zc\1@a\1j", "zM\1?b\r\1j", "j\1zc\1ox\033\1j", "3G$\1zc\1?b\r" };
 static void foldkeys(char *k)
 {
 	static unsigned fixed;
