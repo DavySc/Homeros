@@ -26,7 +26,8 @@ winlink() {
 	local syn=build/syntax o objs= g
 	local inc="-I$syn/src/tree-sitter/lib/include -I$syn/src/tree-sitter/lib/src"
 	mkdir -p build/win/link
-	make -s $syn/queries.c build/win/stb.o build/ghostty/windows.lib   # stb: src/image/build.mk; thread 0's, agreed
+	make -s $syn/queries.c build/win/stb.o build/ghostty/windows.lib build/openssl-win/lib/libssl.a   # stb: src/image/build.mk; thread 0's, agreed
+	# OpenSSL (src/sql) is wincc's prerequisite: built first, or its nix build heads the dry run
 	# after those: wincc's dry run starts with what it would build first
 	# (the grammars' sources, build/win), not the compile loop
 	local srcs=$(make -s -n wincc | head -1 | tr ' ' '\n' | grep '\.c$' | grep -v -e '^src/main\.c$' -e '^src/win/' -e '^src/paint/' -e '^src/font/')
