@@ -364,12 +364,15 @@ int main(void)
 	static Grid gf;
 	CHECK(!core_tabnew(&d, "") && !grid_resize(&gf, 12, 40));
 	Tab *other = d.tab;
-	feed(&d, "ihello\x1b" "1gt");
+	feed(&d, "ihello\rworld\x1b");
+	core_draw(&d, NULL, &gf);                  /* no tabline in an OS window */
+	CHECK(row_has(&gf, 0, "hello"));
+	feed(&d, "1gt");
 	int vis = 0, inc = 0;
-	feed(&d, "Vj");
+	feed(&d, "ggVj");                          /* lines 1 and 2, which the other buffer has too */
 	core_draw(&d, other, &gf);
 	for (int i = 0; i < gf.rows * gf.cols; i++) vis += gf.c[i].bg == FACE_VISUAL;
-	feed(&d, "\x1byy");
+	feed(&d, "\x1bggyy");
 	core_draw(&d, other, &gf);
 	for (int i = 0; i < gf.rows * gf.cols; i++) inc += gf.c[i].bg == FACE_INC_SEARCH;
 	feed(&d, ":");
@@ -387,7 +390,7 @@ int main(void)
 	CHECK(wait_hint(&d, &gf) == -1);
 	/* a buffer refilled (git status, the compile buffer, SQL results) is
 	   shown from its start in every frame that shows it */
-	feed(&d, "gt");
+	feed(&d, "Ggt");
 	Tab *first = d.tabs;
 	CHECK(d.tab != first);
 	Buf *big = first->win->buf;

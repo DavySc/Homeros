@@ -7,6 +7,9 @@ FEATURES.md's settings and reads Neovim's whole screen with screenstring()
 and marks a, b and c after every command.  --record writes the cases with Neovim's
 screens for tests/test_core_screens.c, which replays them without Neovim;
 --drv runs that program on the fresh cases and compares at once.
+tests/test_core_screens.txt holds the cases recorded before tab pages (they
+catch their plants), then 100 of seed 2 appended (tab pages a fifth of the
+tokens).
 
 A token is one command.  The C side (test_core_screens.c) turns each into
 the core call keys will make for it; here each becomes Neovim's keys."""
@@ -40,8 +43,8 @@ def gen_text(r):
 def gen_tokens(r, nfiles):
     toks = []
     for _ in range(r.randint(1, 16)):
-        # tab pages take [1, 1.06): their own share, the others' as before
-        c = r.random() * 1.06
+        # tab pages take [1, 1.25): their own share, the others' as before
+        c = r.random() * 1.25
         cnt = r.choice(['', '', '', '2', '3', '7'])
         if c < .25:
             toks.append(r.choice(['sp', 'vs', 'sp', 'vs', 'new', 'vnew', 'close', 'q', 'only',
