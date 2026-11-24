@@ -4,6 +4,7 @@
 #ifndef KEYS_H
 #define KEYS_H
 #include <stddef.h>
+#include "grid.h"
 
 /* A key is a Unicode code point (control keys as their ASCII code, so Esc is
    27, CTRL-R is 18) or one of these. */
@@ -62,6 +63,10 @@ void keys_feed(struct Editor *e, int key, int pending);
    keys_feed.  While a command or a map is half typed (ks.pending) the key
    goes to the map, if one is incomplete, or straight to keys_feed */
 void keys_input(struct Editor *e, int key, int pending);
+/* which-key's panel: the maps that complete what keys_input holds, drawn
+   200 ms after it began waiting (core_changed then says so).  main.c,
+   after tools_draw (over the start screen).  No allocation. */
+void keys_draw(struct Editor *e, Grid *g);
 /* BufWritePre, Davy's after/ftplugin/sql.lua: a .sql buffer is formatted
    when a sqldiff.toml is in its directory or one above, a SystemVerilog
    or Verilog buffer (Verible) when a .slang is.  core_write calls

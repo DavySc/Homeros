@@ -106,12 +106,6 @@ static void cell(Grid *g, int r, int c, const char *s, size_t n, int w, int face
 	g->c[r * g->cols + c].face = (unsigned short)face;
 }
 
-/* UTF-8 s from column c in one face; returns the next column */
-static int str(Grid *g, int r, int c, const char *s, int face)
-{
-	return grid_puts(g, r, c, g->cols, s, strlen(s), ATTR_NONE, face);
-}
-
 /* the window's rows: the screen less the command line (laststatus=0) */
 static int height(Editor *e) { return e->rows - 1; }
 
@@ -247,8 +241,8 @@ void dash_draw(Editor *e, Grid *g)
 	/* the keys: icon, description, key right-aligned (Icon and Desc link
 	   Special, Key links Number) */
 	for (int i = 0; i < NKEY; i++, r += 2) {
-		str(g, r, col, keys[i].icon, FACE_STRING_SPECIAL);
-		str(g, r, col + 3, keys[i].desc, FACE_STRING_SPECIAL);
+		grid_str(g, r, col, keys[i].icon, FACE_STRING_SPECIAL);
+		grid_str(g, r, col + 3, keys[i].desc, FACE_STRING_SPECIAL);
 		cell(g, r, col + WIDTH - 1, &keys[i].key, 1, 1, FACE_NUMBER);
 	}
 	/* the footer: footer links Title, special Special */
@@ -256,8 +250,8 @@ void dash_draw(Editor *e, Grid *g)
 	snprintf(ms, sizeof ms, "%.1fms", D.ms);
 	snprintf(foot, sizeof foot, "\xe2\x9a\xa1 Homeros loaded in %s", ms);
 	int x = col + (WIDTH - grid_width(foot, strlen(foot))) / 2;
-	x = str(g, r, x, "\xe2\x9a\xa1 Homeros loaded in ", FACE_DASHBOARD_FOOTER);
-	str(g, r, x, ms, FACE_STRING_SPECIAL);
+	x = grid_str(g, r, x, "\xe2\x9a\xa1 Homeros loaded in ", FACE_DASHBOARD_FOOTER);
+	grid_str(g, r, x, ms, FACE_STRING_SPECIAL);
 	/* the cursor on the item's description */
 	g->crow = first + 2 * D.sel;
 	g->ccol = col + 3;

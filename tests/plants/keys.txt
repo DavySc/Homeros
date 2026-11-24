@@ -71,10 +71,10 @@ keys: i) and a) look for the unclosed bracket with quotes special, so from insid
 keys: i) and a) look for the closing bracket with quotes not special, as for the opening one (recorded traces)~test TESTS=~~src/keys/motion.c~	cpo_match = 0;¶~
 keys: a SPC that completes no map drops Space's own motion (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	keys_feed(e, l[0], 1);¶~
 keys: the keys after a failed map skip the pickers, git and the maps, so SPC SPC ff moves and the dashboard's q records a macro (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	for (int i = 1; i < n; i++) keys_input(e, l[i], i < n - 1);~	for (int i = 1; i < n; i++) keys_feed(e, l[i], i < n - 1);
-keys: SPC maps other than SPC i s also run in Visual mode (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		if (e->ks.visual && strcmp(m, " is")) continue;¶~¶
+keys: SPC maps other than SPC i s also run in Visual mode (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	return (*m != 'c' || is_ft(".org")) && (!E->ks.visual || !strncmp(m, " is", strlen(m)));~	return *m != 'c' || is_ft(".org");
 keys: a map that runs leaves the count typed before it for the next command (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~	if (drop) { npend = 0; opcount = 0; clearop(&oa); }~	if (drop) npend = 0;
 keys: SPC after an operator starts a map instead of being its motion (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~	if (oa.op_type != OP_NOP) return 0;¶~
-keys: an incomplete map does not keep the next key, so a picker or git can take it (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (part) return e->ks.pending = 1;~	if (part) return 1;
+keys: an incomplete map does not keep the next key, so a picker or git can take it (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		return e->ks.pending = 1;   /* keys_input()~		return 1;   /* keys_input()
 keys: a register's name is taken as a map's first key, so "-p opens oil (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~		if (pend[i] == '"') { if (++i == npend) return 0; }~		if (pend[i] == '"') i++;
 keys: after ";" the next address counts from the cursor, not from the address before it (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~((cur = a > nlines() ? nlines() : a) < 1 ? 1 : cur)~((a > nlines() ? nlines() : a) < 1 ? 1 : a)
 keys: ";" leaves the cursor's column past a shorter line's end (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~ - 1, check_cursor_col();~ - 1;
@@ -83,7 +83,7 @@ keys: a missing address before a separator is no address, so :,4 is not a range 
 keys: a number after an address is not added to it, so :.5 and :2 3 fail (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~(*p < '0' || *p > '9')) break;~1) break;
 keys: a range alone past the last line or below 0 goes there instead of the last line or E16 (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~		if (l2 < 0 && n) core_msg(E, "E16: Invalid range");~		if (0) core_msg(E, "E16: Invalid range");
 keys: :<line> goes to the first non-blank, as with 'startofline' (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~			beginline(BL_SOL | BL_FIX);~			beginline(BL_WHITE | BL_FIX);
-keys: the marks < and > are swapped in a range (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~"[]<>.^\""~"[]><.^\""
+keys: the marks < and > are swapped in a range (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~(!e || (c == '<') == lt(vis(0), vis(1)))~(!e || (c == '>') == lt(vis(0), vis(1)))
 keys: a line number past 2^63 overflows (test_keys_ex, UBSan)~test TESTS=keys_ex~~src/keys/keys.c~static long sat(long v) { return v > BIG ? BIG : v < -BIG ? -BIG : v; }~static long sat(long v) { return BIG ? v : v; }
 keys: Visual : leaves the cursor at its end, not the start, before the command runs (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	if (VIsual_active) cap->oap->op_type = OP_COLON;~	if (VIsual_active) end_visual_mode(), cmdline(':', "'<,'>");
 keys: N: puts .,.+N on the line, one line too many (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~".,.+%ld", cap->count0 - 1)~".,.+%ld", cap->count0)
@@ -157,7 +157,7 @@ keys: :s goes on with 'hlsearch''s program after a redraw (test_keys_ex)~test TE
 keys: CTRL-E scrolls the cursor into 'scrolloff' (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~(long)(W->line - W->top) - 1 >= SCROLLOFF) W->top++;~(long)(W->line - W->top) - 1 >= 0) W->top++;
 keys: CTRL-Y does not scroll (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~if (typed == 25 && W->top &&~if (typed == 25 && (W->top && 0) &&
 keys: Visual : leaves curswant to be set after the command (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~		update_curswant();¶		cmdline(':', "'<,'>");~		cmdline(':', "'<,'>");
-keys: <leader>uk does not turn the save kitten off (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~" uk", " up"~" up"
+keys: <leader>uk does not turn the save kitten off (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~{ " uk", "Toggle kitten on save" }, ~
 keys: :KittenPaw does not play the kitten (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	case 9: kitten_paw(E); break;~	case 9: break;
 keys: a register Q replays is not flagged as executing, so on_yank and the kitten would show (test_keys_flash)~test TESTS=keys_flash~~src/keys/normal.c~if (!do_execreg(reg_recorded))~if (!do_execreg(reg_recorded) || (E->ks.executing = 0))
 keys: a pass through a group's join recurses, so a long group repeat grows the C stack (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~		case NOTHING: break;~		case NOTHING: return m(p->next, l, c);
@@ -170,11 +170,51 @@ keys: an ASCII character before an accent is its own cluster (test_keys_regex)~t
 keys: a yank's flash ends on the last character's last byte (test_keys_flash)~test TESTS=keys_flash~~src/keys/ops.c~		if (t == 'v') E->ks.yank.c2 = (size_t)head(ml_get(b_op_end.lnum), b_op_end.col);¶~
 keys: CurSearch only when the cursor is on the match's first line (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~1 + (!lt(c, ms) && lt(c, me))~1 + (c.lnum == ms.lnum && !lt(c, ms) && lt(c, me))
 keys: SPC u p only turns conceal off (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~e->win->conceal = e->win->conceal ? 0 : 2;~e->win->conceal = 0;
-keys: cit and ciT wait for their keys in every buffer, not only .org (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		if (*m == 'c' && !is_ft(".org")) continue;~
+keys: cit and ciT wait for their keys in every buffer, not only .org (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~(*m != 'c' || is_ft(".org")) && ~
 keys: a map's edit joins the previous command's undo step (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		undo_close(e->buf->undo);   /* a map is a command of its own: keys_feed() closes before each */~
 keys: ciT steps forward as cit does (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~org_cycle(m[2] == 't' ? 1 : -1)~org_cycle(1)
 keys: cit stamps CLOSED in UTC, not the local clock (test_keys_map)~test TESTS=keys_map~~src/keys/ops.c~		+ (l.tm_hour - g.tm_hour) * 60 + l.tm_min - g.tm_min;~		;
 keys: @. counts as an executing register, so its yank does not flash (test_keys_flash)~test TESTS=keys_flash~~src/keys/ops.c~		typebuf_ins(k, n);¶		return 1;~		typebuf_ins(k, n);¶		E->ks.executing = regname;¶		return 1;
+keys: Ctrl-C does not stop a search or a :s (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~	if (!growth() || (!re_deadline && loop_breakcheck())) return -1;~	if (!growth()) return -1;
+keys: an interrupted search says E363, not Interrupted (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~core_msg(E, loop_int ? "Interrupted" : ~core_msg(E, 0 ? "Interrupted" : 
+keys: the regex stacks stay grown after a search (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~	if (!re_deadline) drop(~	if (0) drop(
+keys: a yank's flash ends on the last character's last byte (test_keys_flash)~test TESTS=keys_flash~~src/keys/ops.c~		if (t == 'v') E->ks.yank.c2 = (size_t)head(ml_get(b_op_end.lnum), b_op_end.col);¶~
+keys: a mark set alone with m> does not stand for '< (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~*p = s && (!e || (c == '<')~*p = (!e || (c == '<')
+keys: an ex command leaves '' unsettled, so the next command's checkpcmark() moves it (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~else if (entered) ex(), checkpcmark();~else if (entered) ex();
+keys: Enter at column 0 moves the marks on its line down (one edit inserting the break there) (test_keys_ex)~test TESTS=keys_ex~~src/keys/edit.c~} else if (rest || ind) {~} else if (1) {
+keys: * and # are not jumps (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	setpcmark();   /* first, so "*``" puts the cursor back */~	(void)0;   /* first, so "*``" puts the cursor back */
+keys: CTRL-O keeps an entry on the cursor's line at the end of the jump list (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~if (to && w->jumpidx == to && w->jump[to - 1].buf == B~if (0 && w->jumpidx == to && w->jump[to - 1].buf == B
+keys: the first CTRL-O after a jump does not add the cursor (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	if (w->jumpidx == w->njump) {¶		setpcmark();~	if (w->jumpidx == w->njump) {¶		(void)0;
+keys: CTRL-O and Tab go the wrong way (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~w->jumpidx += (int)n;~w->jumpidx -= (int)n;
+keys: m' where '' already is loses it to checkpcmark() (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~setpcmark(), prev_pcmark = W->pcmark;~setpcmark();
+keys: '{ and '( set '' while they look for their place (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~		keepjumps = 1;~		keepjumps = 0;
+keys: '^ is the column after Esc moved left (test_keys_ex)~test TESTS=keys_ex~~src/keys/edit.c~(Mark){ W->line, W->col, 1 };   /* the '^ mark */~(Mark){ W->line, W->col ? W->col - 1 : 0, 1 };   /* the '^ mark */
+keys: an operator's '[ and '] never reach the buffer (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~		else *m = (Mark){~		else if (0) *m = (Mark){
+keys: '' moves though the cursor stayed (checkpcmark()) (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~))) W->pcmark = prev_pcmark;~))) (void)0;
+keys: g' and g` set '' (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~if (cap->cmdchar != 'g') setpcmark();~setpcmark();
+keys: / ? n N are not jumps (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~if (mark) setpcmark();   /* SEARCH_MARK */~(void)mark;   /* SEARCH_MARK */
+keys: :s is not a jump (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~if (!got_match) setpcmark();~(void)got_match;
+keys: ' goes to the mark's column, not the first non-blank (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~		if (cap->arg) beginline(BL_WHITE | BL_FIX);¶		check_cursor();~		if (0) beginline(BL_WHITE | BL_FIX);¶		check_cursor();
+keys: { and } are not jumps (test_keys_ex)~test TESTS=keys_ex~~src/keys/motion.c~	setpcmark();¶	if (both && *ml_get(curr) == '}') curr++;~	if (both && *ml_get(curr) == '}') curr++;
+keys: ( and ) are not jumps (test_keys_ex)~test TESTS=keys_ex~~src/keys/motion.c~	setpcmark();¶	setcur(pos);~	setcur(pos);
+keys: a( and i( are not jumps (test_keys_ex)~test TESTS=keys_ex~~src/keys/motion.c~		setpcmark();¶		if (what ==~		if (what ==
+keys: % is not a jump (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~else { setpcmark(); setcur(p); set_curswant = 1; }~else { setcur(p); set_curswant = 1; }
+keys: H M L are not jumps (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	cap->oap->motion_type = MLINE;¶	setpcmark();¶	/* nv_scroll()~	cap->oap->motion_type = MLINE;¶	/* nv_scroll()
+keys: G and gg are not jumps (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	if (l > nlines()) l = nlines();¶	setpcmark();~	if (l > nlines()) l = nlines();
+keys: N% is not a jump (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~		if (l > n) l = n;¶		setpcmark();~		if (l > n) l = n;
+keys: [( and ]) are not jumps (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~			p = found;¶		}¶		setpcmark();~			p = found;¶		}
+keys: '" is unset before it is set, where Neovim has line 1 (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~m = B->mark[MARK_QUOTE], m.set = 1;~m = B->mark[MARK_QUOTE];
+keys: an undo's '[ and '] stay in the core (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~		if (get) *p = (Pos){~		if (get) continue; else if (0) *p = (Pos){
+keys: an exclusive yank's '] stays at column 0 of the next line (test_keys_ex)~test TESTS=keys_ex~~src/keys/ops.c~!oap->inclusive) decl(&b_op_end);~!oap->inclusive && b_op_end.col > 0) b_op_end.col--;
+keys: tilde does not set '[ and '] (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	if (did) {   /* n_swapchar()~	if (0) {   /* n_swapchar()
+keys: r does not set '[ and '] (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	b_op_start = (Pos){ (long)W->line, c, 0 }, b_op_end = cur();¶~
+keys: gv with only '< set selects (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~vis(0).lnum >= nlines() || !B->mark[MARK_GT].set)~vis(0).lnum >= nlines())
+keys: a bare ' in a range is E78 (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~if (!p[1] || !getmark(~if (!getmark(
+keys: m< alone leaves gv no mode (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~		if (!b_visual.mode) b_visual.mode = 'v';¶~
+keys: m[ does not set '[ (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	else if (c == '[') b_op_start = cur();~	else if (c == '[') (void)0;
+keys: g; on an empty change list says nothing (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	if (cap->cmdchar == 'g') { core_msg(E, "E664: Changelist is empty"); return; }~	if (cap->cmdchar == 'g') return;
+keys: drawing 'hlsearch' takes Ctrl-C from the search (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~(!re_deadline && loop_breakcheck())~(loop_breakcheck())
+keys: a mark past the last line is gone to (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	if (p->lnum >= nlines()) { core_msg(E, "E19: Mark has invalid line number"); return 0; }¶~
 keys: verible without Davy's 4-space indent (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~"verible-verilog-format", "--indentation_spaces=4", "-"~"verible-verilog-format", "-", NULL
 keys: gq sends verible the whole text, not its lines (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	if (*a || *z < len) argv[2] = lines, argv[3] = "-";~
 keys: :Format sends verible --lines (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	if (*a || *z < len) argv[2] = lines, argv[3] = "-";~	argv[2] = lines, argv[3] = "-";
@@ -183,9 +223,39 @@ keys: a failed verible's output is applied, emptying the buffer (test_keys_gq)~t
 keys: verible's edit runs to the end of the text, so the cursor below it moves onto other text (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~		while (q < len - p && q < vout.n - p && in[len - 1 - q] == vout.s[vout.n - 1 - q]) q++;¶~
 keys: a hanging verible is never killed (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~proc_wait(id, 1000)~proc_wait(id, 1 << 30)
 keys: verible's stderr goes into the buffer (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	if (stream == 1 && b)~	if (stream && b)
+keys: a jump past the last line is gone to, with no E19 (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	if (m.line >= (size_t)nlines()) { core_msg(E, "E19: Mark has invalid line number"); clearop(cap->oap); }¶	else setcur(~	setcur(
+keys: '[ and '] go with the keys into another buffer (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~	if (B != op_buf) opmarks(1);¶~
+keys: a key that goes to another buffer puts the last one's '[ and '] there (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~	if (B == op_buf) opmarks(0);~	opmarks(0);
 keys: .svh, .v and .vh buffers are not formatted with Verible (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~is_ft(".sv") || is_ft(".svh") || is_ft(".v") || is_ft(".vh")~is_ft(".sv")
 keys: keys_visual(e, 0) leaves Visual mode on (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (!mode) { if (VIsual_active) end_visual_mode(); }~	if (!mode) { if (VIsual_active) (void)0; }
 keys: keys_visual() keeps the other end's column (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~VIsual = (Pos){ (long)line, 0, 0 };~VIsual.lnum = (long)line;
 keys: keys_visual() leaves e->ks as it was (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~(Pos){ (long)line, 0, 0 };¶	visual_sync();~(Pos){ (long)line, 0, 0 };
+keys: which-key's panel shows after 20 ms, not its 200 (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~loop_timer(hint_show, NULL, 200)~loop_timer(hint_show, NULL, 20)
+keys: <BS> in which-key's panel closes it instead of going up a level (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		nlead = k == KEY_BS ? nlead - 1 : 0;~		nlead = 0;
+keys: <Esc> in which-key's panel keeps the count typed before Space (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		hint_end();¶		keys_feed(e, KEY_ESC, 0);~		hint_end();
+keys: a group's row (SPC g, +git) runs as a map (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		if (*maps[i].desc == '+') continue;¶~¶
+keys: which-key's panel fills rows first, not columns (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		int c = 2 + 3 + k / h * w, r = top + 1 + k % h;~		int c = 2 + 3 + k % cols * w, r = top + 1 + k / cols;
+keys: which-key's trail names a group by its key, not its name (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~			if (typed(maps[j].lhs) > i && !maps[j].lhs[i + 1]) s = maps[j].desc;~			if (typed(maps[j].lhs) > i && !maps[j].lhs[i + 1]) (void)s;
+keys: which-key's panel stays shown after it closes, so the next Space shows it at once (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~static void hint_end(void) { hint = 0; ~static void hint_end(void) { 
+keys: which-key's panel has no NormalFloat background (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~g->c[i].bg = FACE_NORMAL_FLOAT;~g->c[i].bg = 0;
+keys: which-key's panel also opens after Org's c (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~if (lead[0] == ' ' && !hint) loop_timer~if (!hint) loop_timer
+keys: a failed map leaves which-key's panel shown (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	hint_end();¶	keys_feed(e, l[0], 1);~	keys_feed(e, l[0], 1);
+keys: closing which-key's panel leaves its delay running (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~{ hint = 0; loop_timer(hint_show, NULL, -1); }~{ hint = 0; }
+keys: which-key's groups in the description's face (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~*d == '+' ? FACE_WK_GROUP : FACE_WK_DESC~FACE_WK_DESC
+keys: which-key's separator in the key's face (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~" \xe2\x9e\x9c ", FACE_WK_SEPARATOR~" \xe2\x9e\x9c ", FACE_NORMAL_FLOAT
+keys: which-key's panel lists maps this mode cannot run (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~return usable(m) && typed(m) == nlead~return typed(m) == nlead
+keys: which-key's panel is not cut to the screen (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (h > g->rows - 4) h = g->rows - 4;¶~
+keys: <BS> and <Esc> after Org's c act as which-key's, not as Vim's (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~if (nlead && lead[0] == ' ' && (k == KEY_ESC~if (nlead && (k == KEY_ESC
+keys: which-key's panel puts groups first (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~return (*maps[i].desc == '+') * 1024~return (*maps[i].desc != '+') * 1024
+keys: which-key's panel puts punctuation keys first (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~!isalnum(k) * 512~!!isalnum(k) * 512
+keys: which-key's panel puts upper case first (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~(isupper(k) != 0)~(isupper(k) == 0)
+keys: which-key's panel covers the command line (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~last = g->rows - 2;~last = g->rows - 1;
+keys: which-key's panel has no blank row under the list (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~int top = g->rows - h - 4,~int top = g->rows - h - 3,
+keys: which-key's list may be 1 row high (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (h < 2) h = 2;¶~
+keys: which-key's panel covers the cursor (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~if (g->crow >= top - 1 && g->crow <= last)~if (0)
+keys: which-key's panel moves for a cursor on the row above it too late (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~g->crow >= top - 1 &&~g->crow >= top &&
+keys: which-key's panel moved for the cursor starts on the row under it (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~top = g->crow + 2 < g->rows - 4 ? g->crow + 2 :~top = g->crow + 1 < g->rows - 4 ? g->crow + 1 :
+keys: which-key's columns 10 wide, not its 20 (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	int n = 0, w = 20;~	int n = 0, w = 10;
+keys: which-key's panel on a screen under 4 rows writes before the grid (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (h < 1 || top < 0) return;~	if (h < 1) return;
 keys: SPC r runs nothing (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		case 'r': sql_results(e); break;¶~
 keys: :Connect is not a command (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~conn = k == 7 && !strncmp(p, "Connect", 7)~conn = 0

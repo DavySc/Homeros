@@ -20,6 +20,8 @@ vim.fn.chdir(vim.fs.dirname(_G.arg[3]))
 vim.o.ignorecase = true
 vim.o.smartcase = true
 vim.o.scrolloff = 6   -- FEATURES.md's, which the core keeps (zt)
+-- FEATURES.md's indent, as tools/conform.py sets it (o on a tab-indented line)
+vim.o.expandtab, vim.o.shiftwidth, vim.o.softtabstop = true, 4, 4
 -- 'nowrap' (FEATURES.md): a line's cells past the window's 80 are not
 -- shown, and a view scrolled sideways is not compared ('?')
 vim.o.wrap = false
@@ -31,6 +33,7 @@ vim.o.incsearch = false
 vim.bo.undolevels = -1
 vim.api.nvim_buf_set_lines(0, 0, -1, false, text)
 vim.bo.undolevels = 1000
+vim.cmd('clearjumps')   -- -l leaves a jump on line 1 (measured: jjw CTRL-O went there)
 pcall(vim.api.nvim_feedkeys, k, 'xt', false)
 -- a cell is a match's when 'hlsearch' changes how it is drawn
 local function screen()

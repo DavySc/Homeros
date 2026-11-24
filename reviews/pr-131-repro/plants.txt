@@ -1,0 +1,4 @@
+review: win: a closed folder keeps its slot in the table~win WIN=git~~src/file/win.c~			d[i] = d[--nd];¶~
+review: win: the last slot dropped, not the closed one~win WIN=git~~src/file/win.c~d[i] = d[--nd];~--nd;
+review: win: a folder's second buffer is not counted~win WIN=git~~src/file/win.c~{ d[i].n++; return~{ return
+review: core: a closed watch stays in the loop~win WIN=git~~src/core/core.c~if (b->watch >= 0 && file_unwatch(b->watch)) loop_unwatch(b->watch);~if (b->watch >= 0) file_unwatch(b->watch);
