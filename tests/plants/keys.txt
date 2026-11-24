@@ -234,6 +234,7 @@ keys: past the end the cursor goes to the last line, not its fold's start (test_
 keys: 'foldopen' commands leave a closed fold shut (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~static void foldopen(Cmdarg *cap) { if (key_typed && cap->oap->op_type == OP_NOP) fold_open_cursor(); }~static void foldopen(Cmdarg *cap) { (void)cap; }
 keys: an operator's motion opens the fold (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~static void foldopen(Cmdarg *cap) { if (key_typed && cap->oap->op_type == OP_NOP) fold_open_cursor(); }~static void foldopen(Cmdarg *cap) { (void)cap; fold_open_cursor(); }
 keys: u with nothing to undo opens the fold (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~if (n < cap->count1 && key_typed) fold_open_cursor();~if (!key_stuffed) fold_open_cursor();
+keys: u run from a register opens the fold (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~if (n < cap->count1 && key_typed) fold_open_cursor();~if (n < cap->count1) fold_open_cursor();
 keys: u leaves a closed fold shut (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~if (n < cap->count1 && key_typed) fold_open_cursor();~(void)0;
 keys: Insert mode starts in a closed fold (test_keys_ex)~test TESTS=keys_ex~~src/keys/edit.c~	if (!did_restart_edit) fold_open_cursor();~
 keys: w from a closed fold starts at the cursor (test_keys_ex)~test TESTS=keys_ex~~src/keys/motion.c~		fold_last();¶		int sclass = cls(), last_line~		int sclass = cls(), last_line
