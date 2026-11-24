@@ -1190,6 +1190,9 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 		}
 	if (!r) adjust_edit(e, L, pos - text_line_start(b->text, L), at_start, ndel && del[ndel - 1] == '\n', nins && ins[nins - 1] == '\n',
 	                    newlines(del, ndel), newlines(ins, nins));
+	/* changed_common()'s foldUpdate(): at once, with the foldexpr the edit
+	   left (new rows -1), not only after the parse */
+	if (!r) core_folds(e, b, L, L + newlines(ins, nins) + 1);
 	free(del);
 	if (r) core_msg(e, "out of memory");
 	else {
@@ -1265,6 +1268,9 @@ int core_undo(Editor *e, int redo)
 	/* the other windows: the step replaced lines first.. by last - first + 1 */
 	size_t kept = before - (n - (last + 1 - first));   /* lines the step replaced */
 	if (n != before) adjust(e, e->buf, first, first + kept, DEL, (long)n - (long)before);
+	/* no fold update until the parse, unlike edit(): measured against
+	   nvim's tree-sitter folds, one here re-closes folds that "dd u"
+	   leaves open (2 of 4 cases, 1 run each) */
 	/* the marks the group saved come back, and it saves the ones before */
 	Mark saved[28] = { 0 };
 	if (u) memcpy(saved, u->m, sizeof saved);

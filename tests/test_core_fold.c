@@ -226,6 +226,35 @@ static void filetypes(const char *dir)
 	core_free(&e);
 }
 
+/* an edit outside Insert mode updates the folds at once, with the levels
+   it left (a new row -1), as changed_common()'s foldUpdate(); the parse's
+   update follows.  Measured in nvim 0.12.6 (vim.treesitter.foldexpr,
+   foldlevel 99, typed keys, 1 run): after "4Gzc 2Gzc 8Gox<Esc>dd" f's
+   closed fold reaches over g() (2-11) until the parse splits them, both
+   closed (2-8, 9-11) */
+static void edits(const char *dir)
+{
+	static Editor e;
+	char h[64];
+	size_t a = 0, z = 0;
+	snprintf(h, sizeof h, "%s/e.h", dir);
+	FILE *o = fopen(h, "w");
+	CHECK(o && fputs("int a;\nvoid f() {\n  int b;\n  if (b) {\n    b++;\n\n  }\n}\nvoid g() {\n  g();\n}\nint z;\n", o) >= 0 && !fclose(o));
+	CHECK(!core_open(&e, h) && e.win->fold);
+	parse(&e);
+	CHECK(!core_fold(&e, FOLD_CLOSE, 3, 1) && !core_fold(&e, FOLD_CLOSE, 1, 1));
+	e.win->line = 7;
+	feed(&e, "ox\033");
+	parse(&e);
+	feed(&e, "dd");
+	CHECK(fold_closed(e.win->fold, 1, &a, &z) && a == 1 && z == 10);
+	parse(&e);
+	CHECK(fold_closed(e.win->fold, 1, &a, &z) && a == 1 && z == 7);
+	CHECK(fold_closed(e.win->fold, 8, &a, &z) && a == 8 && z == 10);
+	core_free(&e);
+	unlink(h);
+}
+
 int main(int argc, char **argv)
 {
 	static Editor e;
@@ -238,6 +267,7 @@ int main(int argc, char **argv)
 	wiring(file);
 	fraction(file);
 	filetypes(dir);
+	edits(dir);
 	FILE *f = fopen(path, "r");
 	CHECK(f);
 	int rows = 0, cols = 0, wrap = 0, level = 0, ncase = 0, bad = 0, differ = 0, r = 0, infold = 0, nkn = 0;
