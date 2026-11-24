@@ -26,5 +26,14 @@ jobs:
       # per change of it
       # review of PR 150 (probe, never merged): the PR's test_win and two
       # probes on Windows itself (reviews/pr-150-repro/winprobe.sh)
+      - shell: pwsh
+        run: |
+          Invoke-WebRequest https://github.com/JetBrains/JetBrainsMono/releases/download/v2.304/JetBrainsMono-2.304.zip -OutFile jbm.zip
+          Expand-Archive jbm.zip jbm
+          Copy-Item jbm/fonts/ttf/JetBrainsMono-Regular.ttf C:\Windows\Fonts\
+          New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts' -Name 'JetBrains Mono Regular (TrueType)' -Value 'JetBrainsMono-Regular.ttf' -PropertyType String -Force
+          Add-Type -Namespace W -Name G -MemberDefinition '[DllImport("gdi32.dll", CharSet=CharSet.Unicode)] public static extern int AddFontResourceW(string f);'
+          [W.G]::AddFontResourceW('C:\Windows\Fonts\JetBrainsMono-Regular.ttf')
+          Restart-Service FontCache -Force -ErrorAction Continue
       - run: bash reviews/pr-150-repro/winprobe.sh
         shell: bash

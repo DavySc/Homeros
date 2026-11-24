@@ -1,0 +1,20 @@
+mine core: entering a tab page forgets its previous window (CTRL-W p)~test TESTS=keys_map~~src/core/win.c~	win_enter(e, w);¶	e->prev = pw;~	win_enter(e, w);
+mine core: tab ids reused~test TESTS=keys_map~~src/core/win.c~	t->id = tab_ids++;~	t->id = tab_ids;
+mine core: tabline drops the + of a changed buffer~test TESTS=core_screens~~src/core/draw.c~			if (mod) col = grid_puts(g, 0, col, cols, "+", 1, ATTR_NONE, face);~
+mine core: another frame drawn with the command line and popup~test TESTS=keys_map~~src/core/draw.c~	if (!cur) return;~
+mine core: a moved window does not take the view~test TESTS=core_screens~~src/core/win.c~		win_copy_view(e->win, wp);~
+mine core: :tabonly keeps the frame after the current one~test TESTS=keys_map~~src/core/win.c~	while (e->tabs->next) core_tabclose(~	while (e->tabs->next && e->tabs->next->next) core_tabclose(
+mine core: the tabline drawn in an OS window too~test TESTS=keys_map~~src/core/draw.c~	if (cur && tabline_height(e)) draw_tabline(e, g);~	if (cur && e->tabs->next) draw_tabline(e, g);
+mine keys: {n}gT moves back once whatever n~test TESTS=core_screens~~src/keys/normal.c~	else if (n < 0) for (; n < 0; n++) {~	else if (n < 0) for (n = -1; n < 0; n++) {
+mine keys: a focus change keeps Visual mode~test TESTS=keys_map~~src/keys/keys.c~		if (e->mode == MODE_INSERT || e->ks.visual || (!m~		if (e->mode == MODE_INSERT || (!m
+mine keys: a focus change leaves which-key's panel up~test TESTS=keys_map~~src/keys/keys.c~		nlead = tabmove = 0;¶		hint_end();~		nlead = tabmove = 0;
+mine keys: a focus change leaves SPC 5 m waiting for its number~test TESTS=keys_map~~src/keys/keys.c~		nlead = tabmove = 0;~		nlead = 0;
+mine main: the terminal shows no tabline~test TESTS=~~src/main.c~	e.tabline = b == &backend_tty;~	e.tabline = 0;
+mine wl: the keyboard's window kept after it closes~test TESTS=wl~~src/wl/wl.c~	if (kwin == w) kwin = NULL;¶~
+mine wl: the focus never recorded, every enter a change~test TESTS=wl~~src/wl/wl.c~	focused = kwin->id;¶~
+mine wl: the token carries no serial~test TESTS=wl~~src/wl/wl.c~	if (seat) xdg_activation_token_v1_set_serial(tk, serial, seat);¶~
+mine wl: the preedit drawn in every window~test TESTS=wl~~src/wl/wl.c~	const Grid *g = w == twin ? overlay(cur) : cur;~	const Grid *g = overlay(cur);
+mine win: registered after CreateWindowExW (focus messages before it lost)~win WIN=win~~src/win/backend.c~	if (m == WM_NCCREATE) {¶		x = ((CREATESTRUCTW *)l)->lpCreateParams;¶		x->h = h;¶		SetWindowLongPtrW(h, GWLP_USERDATA, (LONG_PTR)x);¶	}~	if (m == WM_NCCREATE) {¶		x = ((CREATESTRUCTW *)l)->lpCreateParams;¶		x->h = h;¶		SetWindowLongPtrW(h, GWLP_USERDATA, (LONG_PTR)x);¶		x = NULL;¶	}¶	if (m == WM_SETFOCUS && !x) return 0;
+mine win: the first window's first focus a change~win WIN=win~~src/win/backend.c~	if (focused < 0) focused = id;   /* the first window's first focus is no change */~
+mine font: the most recently used size closes first~test TESTS=font~~src/font/font.c~	memmove(old + 1, old, (size_t)i * sizeof *old);¶	old[0] = cur;~	memmove(old, old + 1, (size_t)i * sizeof *old);¶	old[i] = cur;
+mine font: font_close leaves the other sizes open~test TESTS=font~~src/font/font.c~	for (int i = 0; i < SIZES - 1; i++) {¶		cur = old[i];~	for (int i = 0; i < 0; i++) {¶		cur = old[i];

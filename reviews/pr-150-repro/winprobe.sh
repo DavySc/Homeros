@@ -19,5 +19,7 @@ $Z -std=c17 -Iinclude -O1 -g -o build/win/focusprobe.exe $R/focusprobe.c src/win
 $Z -std=c17 -O1 -o build/win/qdcprobe.exe $R/qdcprobe.c -luser32 -ldwmapi
 cmd /c ver
 build/win/qdcprobe.exe || true
+# main's test_win on the same runner, to tell a failure of the PR from one of the runner
+git fetch -q --depth 1 origin main && git show FETCH_HEAD:tests/test_win.c > build/win/test_win_main.c && git worktree add -f --detach build/base FETCH_HEAD >/dev/null && (cd build/base && $Z -std=c17 -Iinclude -O1 -g -o ../win/test_win_main.exe ../win/test_win_main.c src/win/*.c $(pick grid) $(pick uni) $(pick theme) -I../../$R src/image/image.c src/file/*.c src/loop/*.c $(pick text) ../win/stb.o $libs) && { build/win/test_win_main.exe && echo "main test_win: passed" || echo "main test_win: FAILED"; } || true
 for i in 1 2 3 4 5; do echo "== test_win run $i"; build/win/test_win.exe && echo "test_win: passed" || echo "test_win: FAILED ($?)"; done
 for i in 1 2 3; do build/win/focusprobe.exe 40 || echo "focusprobe: FAILED ($?)"; done
