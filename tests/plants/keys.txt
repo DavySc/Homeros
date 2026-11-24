@@ -1,5 +1,5 @@
 # Plants for src/keys/ (format in tools/planted.sh).
-keys: j and k forget the wanted column (recorded traces)~test TESTS=~~src/keys/buf.c~	W->line = (size_t)(l + n >= nl ? nl - 1 : l + n);¶	coladvance(curswant());~	W->line = (size_t)(l + n >= nl ? nl - 1 : l + n);¶	coladvance(0);
+keys: j and k forget the wanted column (recorded traces)~test TESTS=~~src/keys/buf.c~	W->line = core_line_step(E, W->line, n);¶	coladvance(curswant());~	W->line = core_line_step(E, W->line, n);¶	coladvance(0);
 keys: Lean symbols are word characters again (recorded traces)~test TESTS=~~src/keys/motion.c~		else return (int)classes[mid].cls;~		else return 2;
 keys: the cursor steps one byte, into a character (fuzz_keys)~fuzz FUZZERS=keys FUZZ_SECONDS=60~~src/keys/buf.c~		p->col += clen(ring[i].s, ring[i].n, p->col);~		p->col += 1;
 keys: the cursor steps one byte, into a character (fuzz_keys_all)~fuzz FUZZERS=keys_all FUZZ_SECONDS=60~~src/keys/buf.c~		p->col += clen(ring[i].s, ring[i].n, p->col);~		p->col += 1;

@@ -79,20 +79,28 @@ else
   -- foldAdjustVisual() between commands (feedkeys() 'x' runs exec_normal(),
   -- which skips it; measured: 3GzaVggy yanked 2 lines, typed 7); the main
   -- loop reads them, so this runs from -c, not -l (test_keys_ex.c).  A
-  -- step (\1 between) at a time: tree-sitter's fold update after a change
-  -- is deferred (measured: 0 ms after an edit the folds were the old ones,
-  -- 5, 20 and 200 ms the same new ones)
+  -- step (\1 between) at a time, each after the folds caught up with the
+  -- one before: tree-sitter parses after a change and updates the folds
+  -- from on_changedtree later (measured: 0 ms after an edit the folds were
+  -- the old ones).  A wait on that, not on a time, which a loaded machine
+  -- outran: the step's keys read (no typeahead), the parse done now, then
+  -- the fold update it scheduled
   vim.keymap.set({ 'n', 'x', 'o', 'i', 'c', 's' }, '<F35>', finish)
-  local steps, i = vim.split(k, '\1'), 0
+  local steps, i, parser = vim.split(k, '\1'), 0, vim.treesitter.get_parser(0, 'c')
+  local function settle(next)
+    if vim.fn.getchar(1) ~= 0 then return vim.defer_fn(function() settle(next) end, 1) end
+    parser:parse()
+    vim.schedule(function() vim.schedule(next) end)
+  end
   local function step()
     i = i + 1
     vim.api.nvim_input(i > #steps and '<F35>' or (steps[i]:gsub('<', '<lt>')))
-    if i <= #steps then vim.defer_fn(step, 20) end
+    if i <= #steps then settle(step) end
   end
   vim.api.nvim_create_autocmd('VimEnter', { callback = function()
     -- startup's jump; its setpcmark() (main.c, which -l never reaches)
     -- stays: test_keys_ex.c's fold cases start with m'
     vim.cmd('clearjumps')
-    step()
+    settle(step)
   end })
 end
