@@ -233,6 +233,7 @@ static int win_open(void)
 	   dark mode and ignores the colours (Windows 11 22000 added them); a
 	   drawn title bar would mean hit-testing and losing the snap layouts. */
 	BOOL dark = TRUE;
+	static const COLORREF BASE = RGB(PAINT_BASE >> 16, PAINT_BASE >> 8, PAINT_BASE), TEXT = RGB(0xcd, 0xd6, 0xf4);   /* RGB takes each byte */
 	DwmSetWindowAttribute(win, DWMWA_USE_IMMERSIVE_DARK_MODE, &dark, sizeof dark);
 	DwmSetWindowAttribute(win, DWMWA_CAPTION_COLOR, &BASE, sizeof BASE);
 	DwmSetWindowAttribute(win, DWMWA_TEXT_COLOR, &TEXT, sizeof TEXT);
