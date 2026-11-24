@@ -9,7 +9,7 @@ if [ "$1" = 0 ]; then
 	echo "passes ${2:-3} of ${2:-3} without a plant"; exit 0
 fi
 IFS='~' read -r name target prep file old new <<< "$(sed -n "$1p" reviews/pr-138-repro/plants.txt)"
-echo "plant $1: $name"
+echo "plant $1 on $(uname -s): $name"
 python - "$file" "$old" "$new" <<'PY' || { echo "BROKEN PLANT  $name"; exit 2; }
 import sys
 p, old, new = sys.argv[1], sys.argv[2].replace('¶', '\n'), sys.argv[3].replace('¶', '\n')
