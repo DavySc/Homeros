@@ -168,6 +168,23 @@ static void stale_ready(void)
 	pg_close(&p);
 }
 
+/* Our own cancel without a server: the reply's tokens in one order every
+   run (a live server's timing decided whether it sent the 3980 or a lone
+   final DONE first, and the plants were missed 4 of 4 and 1 of 4 times) */
+static void cancel_tokens(void)
+{
+	static const char done[] = "\xFD\0\0\0\0\0\0\0\0\0\0\0\0", attn[] = "\xFD\x20\0\0\0\0\0\0\0\0\0\0\0";
+	/* 3980 "The request failed to run because the batch is aborted",
+	   from aborting a procedure; message, server and procedure names empty */
+	static const char err[] = "\xAA\x0E\0\x8C\x0F\0\0\1\x10\0\0\0\0\1\0\0\0";
+	Tds t = { .net.fd = -1, .state = TDS_CANCEL, .quiet = 1 };
+	/* a final DONE without the attention bit ends no cancel (SqlRun.tla's "firstdone") */
+	CHECK(!str_add(&t.msg, done, 13) && !tds_parse(&t) && t.state == TDS_CANCEL);
+	CHECK(!str_add(&t.msg, err, 17) && !str_add(&t.msg, attn, 13) && (t.eom = 1) && !tds_parse(&t));
+	CHECK(t.state == TDS_READY && !t.out.n);
+	tds_close(&t);
+}
+
 static void oracle(const char *py, const char *argv0)
 {
 	char cmd[4096];
@@ -258,6 +275,7 @@ int main(int argc, char **argv)
 	   server signature and a nonce that does not extend ours refused */
 	const char *sf = "r=rOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,s=W22ZaJ0SNY7soEsUEjb6gQ==,i=4096";
 	stale_ready();
+	cancel_tokens();
 	CHECK(scram(sf, "v=3HO6Qt1M4MKJrmlKaoOqLAI0/0TV0HZe7J9H3MBtSOg="));
 	CHECK(!scram(sf, "v=3HO6Qt1M4MKJrmlKaoOqLAI0/0TV0HZe7J9H3MBtSOh="));
 	CHECK(!scram("r=xOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,s=W22ZaJ0SNY7soEsUEjb6gQ==,i=4096", "v=3HO6Qt1M4MKJrmlKaoOqLAI0/0TV0HZe7J9H3MBtSOg="));
