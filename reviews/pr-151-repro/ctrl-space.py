@@ -1,4 +1,4 @@
-"""SPC g then NUL (Ctrl-Space) in the editor in a pty; prints the sanitizer's lines.  usage: nul.py BINARY FILE"""
+"""SPC g then NUL (Ctrl-Space) in the editor in a pty; prints the sanitizer's lines.  usage: ctrl-space.py BINARY FILE"""
 import os, pty, select, sys, time, re
 pid, fd = pty.fork()
 if pid == 0:
