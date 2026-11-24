@@ -1,0 +1,16 @@
+diff --git a/tests/test_infoview_win.c b/tests/test_infoview_win.c
+index 8364aaf2..7b39aa2f 100644
+--- a/tests/test_infoview_win.c
++++ b/tests/test_infoview_win.c
+@@ -156,8 +156,10 @@ int main(int argc, char **argv)
+ 	for (size_t i = 8; i < big; i++) b[i] = (char)('a' + i % 26);
+ 	memcpy(b + big, "\"}\n", 3);
+ 	CHECK(!proc_write(id, b, big + 3));
+-	CHECK(!proc_write(id, "A {\"n\":2}\n", 10));
+ 	for (ULONGLONG end = GetTickCount64() + 500; GetTickCount64() < end; ) loop_once(10);
++	/* after the child's send of the first: its own send, refused */
++	CHECK(!proc_write(id, "A {\"n\":2}\n", 10));
++	for (ULONGLONG end = GetTickCount64() + 200; GetTickCount64() < end; ) loop_once(10);
+ 	s.n = 0; s.s[0] = 0;
+ 	/* the second waits until the page has read the first: only FD_WRITE
+ 	   wakes the child then (the editor is silent, no page is stale) */
