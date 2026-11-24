@@ -473,10 +473,10 @@ static void ex(void)
 		ex_sub(l1 > 0 ? l1 - 1 : 0, l2 > 0 ? l2 - 1 : 0, *p, p + k + strspn(p + k, " \t"));
 		return;
 	}
-	static const char *const cmds[] = { "", "w", "w!", "q", "q!", "wq", "wq!", "x", "Format", "KittenPaw", "Dashboard" };
+	static const char *const cmds[] = { "", "w", "w!", "q", "q!", "wq", "wq!", "x", "Format", "KittenPaw", "Disconnect", "Dashboard" };
 	int i = 0;
-	while (i < 11 && strcmp(p, cmds[i])) i++;
-	if (i == 11) { core_msg(E, "E492: Not an editor command: %s", c); return; }
+	while (i < 12 && strcmp(p, cmds[i])) i++;
+	if (i == 12) { core_msg(E, "E492: Not an editor command: %s", c); return; }
 	if (n && i) { core_msg(E, "E481: No range allowed"); return; }
 	switch (i) {
 	case 0:   /* a range alone goes to its last line (do_one_cmd()) */
@@ -493,6 +493,7 @@ static void ex(void)
 	/* Davy's :Format (conform.nvim): the whole buffer */
 	case 8: if (fmt_kind()) buf_format(0, text_len(B->text)); break;
 	case 9: kitten_paw(E); break;
+	case 10: sql_disconnect(E); break;
 	default: dashboard(E);
 	}
 }
