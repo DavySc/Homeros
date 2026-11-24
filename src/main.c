@@ -19,6 +19,7 @@
 #include "kitten.h"
 #include "loop.h"
 #include "lsp.h"
+#include "remote.h"
 #include "shada.h"
 #include "syntax.h"
 #include "tools.h"
@@ -108,6 +109,16 @@ static void on_input(void *ctx, int fd)
 	}
 }
 
+/* Another tab page than was became current (SPC 5 o, gt, a file from
+   another launch): ask the system to follow, and keep the answers apart. */
+static void follow(int was)
+{
+	if (e.tab->id != was && !e.tabline && !windows() && na < AMAX) {
+		asked[na++] = wanted = e.tab->id;
+		b->raise(wanted);
+	}
+}
+
 /* One key from window w.  A focus change acts as Focus.tla's rule says;
    KEY_CLOSE closes its window's tab page, the last one as :qa (keys); any
    other key acts on the current tab page, wherever it was typed. */
@@ -128,12 +139,7 @@ static void key(int k, int w)
 	}
 	if (k == KEY_CLOSE && t && e.tabs->next && !e.tabline) core_tabclose(&e, t);
 	else keys_input(&e, k, qn > 0);
-	/* the key moved to another tab page (SPC 5 o, gt): ask the system to
-	   follow, and keep the answers apart */
-	if (e.tab->id != was && !e.tabline && !windows() && na < AMAX) {
-		asked[na++] = wanted = e.tab->id;
-		b->raise(wanted);
-	}
+	follow(was);
 }
 
 int main(int argc, char **argv)
@@ -156,6 +162,7 @@ int main(int argc, char **argv)
 #endif
 	/* no file: an empty buffer without a name, under the dashboard */
 	const char *file = argc > 1 + tty ? argv[1 + tty] : NULL;
+	if (!tty && remote_open(file)) return 0;   /* the editor already open took it */
 	if (shada_read()) { fprintf(stderr, "homeros: out of memory\n"); return 1; }
 	if (core_open(&e, file)) { fprintf(stderr, "homeros: %s\n", e.msg); return 1; }
 	if (b->open() || b->win_open(0)) { fprintf(stderr, "homeros: no terminal or window\n"); core_free(&e); return 1; }
@@ -189,6 +196,15 @@ int main(int argc, char **argv)
 				lsp_goals(&e);
 			}
 			loop_int = 0;
+		}
+		/* a file another launch handed over (remote.h): it was told the file
+		   was taken, so it opens even after a :qa in this batch */
+		for (char *p; !lost && (p = remote_next()); free(p), dirty = 1) {
+			int was = e.tab->id;
+			e.quit = 0;
+			keys_input(&e, KEY_FOCUS, 0);   /* half-done work ends, as on the user's focus change */
+			core_tabnew(&e, p);
+			follow(was);
 		}
 		if (e.quit || lost || windows()) break;
 		if (dirty) syn = e.buf->syn != NULL;
@@ -225,6 +241,7 @@ int main(int argc, char **argv)
 		if (core_changed) { core_changed = 0; dirty = 1; }
 	}
 out:
+	remote_stop();   /* before b->close reads messages */
 	git_free();
 	bridge_free();
 	b->close();

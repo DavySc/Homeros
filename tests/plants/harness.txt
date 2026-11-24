@@ -35,3 +35,8 @@ main: the close button quits with several tab pages~test TESTS=frames_main~~src/
 main: a closed tab page keeps its window~test TESTS=frames_main~~src/main.c~			b->win_close(fr[i].id);¶~
 main: a new tab page gets no window~test TESTS=frames_main~~src/main.c~ || b->win_open(t->id)) {~) {
 main: a window's resize resizes none~test TESTS=frames_main~~src/main.c~fr[j].resized |= fr[j].id == from[i] || e.tabline;~fr[j].resized |= e.tabline;
+# a file another launch hands over (remote.h, Remote.tla "ok")
+main: a :q! in the batch drops a file handed over (Remote "keepquit")~test TESTS=frames_main~~src/main.c~			e.quit = 0;¶~
+main: a file handed over opens in the current frame~test TESTS=frames_main~~src/main.c~			core_tabnew(&e, p);~			core_edit_file(&e, p, 1);
+main: the frame of a file handed over is not raised~test TESTS=frames_main~~src/main.c~			follow(was);¶		}~			(void)was;¶		}
+main: a file handed over keeps half-done Visual mode~test TESTS=frames_main~~src/main.c~			keys_input(&e, KEY_FOCUS, 0);~
