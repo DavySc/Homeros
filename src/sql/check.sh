@@ -11,14 +11,14 @@ cd "$(dirname "$0")/../.."
 for t in zig wine; do
 	command -v $t >/dev/null || { echo "src/sql/check.sh: $t is not on PATH"; exit 2; }
 done
-make -s build/openssl-win/lib/libssl.a
+. src/sql/openssl-win.sh
 mkdir -p build/win
 [ -n "${XDG_RUNTIME_DIR:-}" ] || { export XDG_RUNTIME_DIR=$PWD/build/win/run; mkdir -p -m 700 "$XDG_RUNTIME_DIR"; }
 export WINEDEBUG=-all WINEDLLOVERRIDES="mscoree,mshtml=" WINEPREFIX=$PWD/build/win/prefix-sql
-O=build/openssl-win exe=build/win/test_sql.exe
-zig cc -target x86_64-windows-gnu -std=c17 -D_DEFAULT_SOURCE -Wall -Wextra -Werror -Iinclude -I$O/include -O1 -g \
+exe=build/win/test_sql.exe
+zig cc -target x86_64-windows-gnu -std=c17 -D_DEFAULT_SOURCE -Wall -Wextra -Werror -Iinclude -O1 -g \
   -fsanitize=undefined -fsanitize-trap=undefined -o "$exe" tests/test_sql.c src/sql/*.c src/str/*.c src/uni/*.c src/date/*.c \
-  src/tools/match.c $O/lib/libssl.a $O/lib/libcrypto.a -lws2_32 -lcrypt32 -lsecur32
+  src/tools/match.c $SQL_WIN
 pass 120 "$exe" wine || { echo "FAIL test_sql (Windows)"; exit 1; }
 printf '#!/bin/sh\nexec wine %s "$@"\n' "$PWD/$exe" > build/win/test_sql.sh
 chmod +x build/win/test_sql.sh
