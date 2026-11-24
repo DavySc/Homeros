@@ -1,4 +1,4 @@
-mine core: entering a tab page forgets its previous window (CTRL-W p)~test TESTS=keys_map~~src/core/win.c~	win_enter(e, w);¶	e->prev = pw;~	win_enter(e, w);
+mine core: entering a tab page forgets its previous window (CTRL-W p)~test TESTS=keys_map~~src/core/win.c~	win_enter(e, w);¶	e->prev = pw;~	win_enter(e, w);¶	(void)pw;
 mine core: tab ids reused~test TESTS=keys_map~~src/core/win.c~	t->id = tab_ids++;~	t->id = tab_ids;
 mine core: tabline drops the + of a changed buffer~test TESTS=core_screens~~src/core/draw.c~			if (mod) col = grid_puts(g, 0, col, cols, "+", 1, ATTR_NONE, face);~
 mine core: another frame drawn with the command line and popup~test TESTS=keys_map~~src/core/draw.c~	if (!cur) return;~

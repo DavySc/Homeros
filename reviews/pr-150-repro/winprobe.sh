@@ -5,6 +5,7 @@
 # and qdcprobe (QueryDisplayConfig's rate next to DWM's).  Needs zig.
 set -eu
 cd "$(dirname "$0")/../.."
+# stb_image.h and stb_image_resize.h (libstb-dev's) beside this script
 R=reviews/pr-150-repro
 pick() { if ls src/$1/*.c >/dev/null 2>&1; then echo src/$1/*.c; else echo ref/$1.c; fi; }
 mkdir -p build/win
