@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -236,6 +237,22 @@ static Buf *buf_find(Editor *e, int nr)
 {
 	Buf *b = find(e->bufs, nr);
 	return b ? b : find(unlisted, nr);
+}
+
+void core_buf_fill(Editor *e, Buf *b, const char *s, size_t n, size_t line)
+{
+	text_delete(b->text, 0, text_len(b->text));
+	text_insert(b->text, 0, s, n);
+	b->flags &= ~(unsigned)CORE_EMPTY;
+	size_t last = buf_lines(b) ? buf_lines(b) - 1 : 0;
+	for (Win *w = e->wins; w; w = w->next)
+		if (w->buf == b) {
+			size_t l = line == SIZE_MAX ? w->line : line;
+			w->line = l < last ? l : last;
+			w->col = w->want = 0;
+			if (w->top > w->line) w->top = w->line;
+		}
+	core_changed = 1;
 }
 
 /* Loads path into b, a buffer without text (path NULL: empty, no name).

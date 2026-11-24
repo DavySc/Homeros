@@ -6,6 +6,7 @@
    the last line, CTRL-U and CTRL-B on the first, gj on the last and gk on
    the first beep; from line 50 none does. */
 #include <poll.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -279,6 +280,21 @@ int main(void)
 	core_draw(&e, &g);
 	CHECK(e.layout->size[ROWS] > g.rows);
 	CHECK(!core_only(&e));
+	/* core_buf_fill: both windows on the buffer clamped to the new text, or
+	   kept where they were (SIZE_MAX); found by number while listed */
+	CHECK(!core_edit_file(&e, "", 1) && !core_split(&e, 0, 0));
+	Buf *nb = e.buf;
+	CHECK(core_buf_find(&e, nb->nr) == nb && !core_buf_find(&e, 9999));
+	core_buf_fill(&e, nb, "a\nb\nc\nd\n", 8, 9);
+	for (Win *w = e.wins; w; w = w->next) { CHECK(w->line == 3); w->top = 3; w->col = 1; }
+	e.wins->line = 1;
+	core_buf_fill(&e, nb, "p\nq\nr\n", 6, SIZE_MAX);
+	CHECK(e.wins->line == 1 && e.wins->next->line == 2 && e.win->col == 0 && e.wins->top == 1 && e.wins->next->top == 2);
+	core_buf_fill(&e, nb, "z\n", 2, 1);
+	for (Win *w = e.wins; w; w = w->next) CHECK(w->line == 0 && w->top == 0 && !(nb->flags & CORE_EMPTY));
+	CHECK(!core_only(&e));
+	int nr = nb->nr;
+	CHECK(!core_buf_delete(&e, nr, 1) && !core_buf_find(&e, nr));   /* :bd keeps it, unlisted */
 	unlink(md);
 	/* on_yank's flash shows only in the window it was yanked in (the
 	   namespace is scoped to it: nvim__ns_set()) */
