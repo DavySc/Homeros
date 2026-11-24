@@ -71,10 +71,10 @@ keys: i) and a) look for the unclosed bracket with quotes special, so from insid
 keys: i) and a) look for the closing bracket with quotes not special, as for the opening one (recorded traces)~test TESTS=~~src/keys/motion.c~	cpo_match = 0;¶~
 keys: a SPC that completes no map drops Space's own motion (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	keys_feed(e, l[0], 1);¶~
 keys: the keys after a failed map skip the pickers, git and the maps, so SPC SPC ff moves and the dashboard's q records a macro (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	for (int i = 1; i < n; i++) keys_input(e, l[i], i < n - 1);~	for (int i = 1; i < n; i++) keys_feed(e, l[i], i < n - 1);
-keys: SPC maps other than SPC i s also run in Visual mode (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		if (e->ks.visual && strcmp(m, " is")) continue;¶~¶
+keys: SPC maps other than SPC i s also run in Visual mode (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	return (*m != 'c' || is_ft(".org")) && (!E->ks.visual || !strncmp(m, " is", strlen(m)));~	return *m != 'c' || is_ft(".org");
 keys: a map that runs leaves the count typed before it for the next command (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~	if (drop) { npend = 0; opcount = 0; clearop(&oa); }~	if (drop) npend = 0;
 keys: SPC after an operator starts a map instead of being its motion (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~	if (oa.op_type != OP_NOP) return 0;¶~
-keys: an incomplete map does not keep the next key, so a picker or git can take it (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (part) return e->ks.pending = 1;~	if (part) return 1;
+keys: an incomplete map does not keep the next key, so a picker or git can take it (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		return e->ks.pending = 1;   /* keys_input()~		return 1;   /* keys_input()
 keys: a register's name is taken as a map's first key, so "-p opens oil (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~		if (pend[i] == '"') { if (++i == npend) return 0; }~		if (pend[i] == '"') i++;
 keys: after ";" the next address counts from the cursor, not from the address before it (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~((cur = a > nlines() ? nlines() : a) < 1 ? 1 : cur)~((a > nlines() ? nlines() : a) < 1 ? 1 : a)
 keys: ";" leaves the cursor's column past a shorter line's end (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~ - 1, check_cursor_col();~ - 1;
@@ -157,7 +157,7 @@ keys: :s goes on with 'hlsearch''s program after a redraw (test_keys_ex)~test TE
 keys: CTRL-E scrolls the cursor into 'scrolloff' (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~(long)(W->line - W->top) - 1 >= SCROLLOFF) W->top++;~(long)(W->line - W->top) - 1 >= 0) W->top++;
 keys: CTRL-Y does not scroll (test_keys_ex)~test TESTS=keys_ex~~src/keys/sub.c~if (typed == 25 && W->top &&~if (typed == 25 && (W->top && 0) &&
 keys: Visual : leaves curswant to be set after the command (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~		update_curswant();¶		cmdline(':', "'<,'>");~		cmdline(':', "'<,'>");
-keys: <leader>uk does not turn the save kitten off (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~" uk", " up"~" up"
+keys: <leader>uk does not turn the save kitten off (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~{ " uk", "Toggle kitten on save" }, ~
 keys: :KittenPaw does not play the kitten (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	case 9: kitten_paw(E); break;~	case 9: break;
 keys: a register Q replays is not flagged as executing, so on_yank and the kitten would show (test_keys_flash)~test TESTS=keys_flash~~src/keys/normal.c~if (!do_execreg(reg_recorded))~if (!do_execreg(reg_recorded) || (E->ks.executing = 0))
 keys: a pass through a group's join recurses, so a long group repeat grows the C stack (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~		case NOTHING: break;~		case NOTHING: return m(p->next, l, c);
@@ -170,7 +170,7 @@ keys: an ASCII character before an accent is its own cluster (test_keys_regex)~t
 keys: a yank's flash ends on the last character's last byte (test_keys_flash)~test TESTS=keys_flash~~src/keys/ops.c~		if (t == 'v') E->ks.yank.c2 = (size_t)head(ml_get(b_op_end.lnum), b_op_end.col);¶~
 keys: CurSearch only when the cursor is on the match's first line (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~1 + (!lt(c, ms) && lt(c, me))~1 + (c.lnum == ms.lnum && !lt(c, ms) && lt(c, me))
 keys: SPC u p only turns conceal off (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~e->win->conceal = e->win->conceal ? 0 : 2;~e->win->conceal = 0;
-keys: cit and ciT wait for their keys in every buffer, not only .org (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		if (*m == 'c' && !is_ft(".org")) continue;~
+keys: cit and ciT wait for their keys in every buffer, not only .org (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~(*m != 'c' || is_ft(".org")) && ~
 keys: a map's edit joins the previous command's undo step (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		undo_close(e->buf->undo);   /* a map is a command of its own: keys_feed() closes before each */~
 keys: ciT steps forward as cit does (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~org_cycle(m[2] == 't' ? 1 : -1)~org_cycle(1)
 keys: cit stamps CLOSED in UTC, not the local clock (test_keys_map)~test TESTS=keys_map~~src/keys/ops.c~		+ (l.tm_hour - g.tm_hour) * 60 + l.tm_min - g.tm_min;~		;
@@ -230,3 +230,30 @@ keys: .svh, .v and .vh buffers are not formatted with Verible (test_keys_gq)~tes
 keys: keys_visual(e, 0) leaves Visual mode on (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (!mode) { if (VIsual_active) end_visual_mode(); }~	if (!mode) { if (VIsual_active) (void)0; }
 keys: keys_visual() keeps the other end's column (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~VIsual = (Pos){ (long)line, 0, 0 };~VIsual.lnum = (long)line;
 keys: keys_visual() leaves e->ks as it was (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~(Pos){ (long)line, 0, 0 };¶	visual_sync();~(Pos){ (long)line, 0, 0 };
+keys: which-key's panel shows after 20 ms, not its 200 (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~loop_timer(hint_show, NULL, 200)~loop_timer(hint_show, NULL, 20)
+keys: <BS> in which-key's panel closes it instead of going up a level (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		nlead = k == KEY_BS ? nlead - 1 : 0;~		nlead = 0;
+keys: <Esc> in which-key's panel keeps the count typed before Space (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		hint_end();¶		keys_feed(e, KEY_ESC, 0);~		hint_end();
+keys: a group's row (SPC g, +git) runs as a map (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		if (*maps[i].desc == '+') continue;¶~¶
+keys: which-key's panel fills rows first, not columns (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		int c = 2 + 3 + k / h * w, r = top + 1 + k % h;~		int c = 2 + 3 + k % cols * w, r = top + 1 + k / cols;
+keys: which-key's trail names a group by its key, not its name (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~			if (typed(maps[j].lhs) > i && !maps[j].lhs[i + 1]) s = maps[j].desc;~			if (typed(maps[j].lhs) > i && !maps[j].lhs[i + 1]) (void)s;
+keys: which-key's panel stays shown after it closes, so the next Space shows it at once (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~static void hint_end(void) { hint = 0; ~static void hint_end(void) { 
+keys: which-key's panel has no NormalFloat background (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~g->c[i].bg = FACE_NORMAL_FLOAT;~g->c[i].bg = 0;
+keys: which-key's panel also opens after Org's c (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~if (lead[0] == ' ' && !hint) loop_timer~if (!hint) loop_timer
+keys: a failed map leaves which-key's panel shown (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	hint_end();¶	keys_feed(e, l[0], 1);~	keys_feed(e, l[0], 1);
+keys: closing which-key's panel leaves its delay running (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~{ hint = 0; loop_timer(hint_show, NULL, -1); }~{ hint = 0; }
+keys: which-key's groups in the description's face (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~*d == '+' ? FACE_WK_GROUP : FACE_WK_DESC~FACE_WK_DESC
+keys: which-key's separator in the key's face (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~" \xe2\x9e\x9c ", FACE_WK_SEPARATOR~" \xe2\x9e\x9c ", FACE_NORMAL_FLOAT
+keys: which-key's panel lists maps this mode cannot run (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~return usable(m) && typed(m) == nlead~return typed(m) == nlead
+keys: which-key's panel is not cut to the screen (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (h > g->rows - 4) h = g->rows - 4;¶~
+keys: <BS> and <Esc> after Org's c act as which-key's, not as Vim's (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~if (nlead && lead[0] == ' ' && (k == KEY_ESC~if (nlead && (k == KEY_ESC
+keys: which-key's panel puts groups first (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~return (*maps[i].desc == '+') * 1024~return (*maps[i].desc != '+') * 1024
+keys: which-key's panel puts punctuation keys first (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~!isalnum(k) * 512~!!isalnum(k) * 512
+keys: which-key's panel puts upper case first (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~(isupper(k) != 0)~(isupper(k) == 0)
+keys: which-key's panel covers the command line (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~last = g->rows - 2;~last = g->rows - 1;
+keys: which-key's panel has no blank row under the list (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~int top = g->rows - h - 4,~int top = g->rows - h - 3,
+keys: which-key's list may be 1 row high (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (h < 2) h = 2;¶~
+keys: which-key's panel covers the cursor (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~if (g->crow >= top - 1 && g->crow <= last)~if (0)
+keys: which-key's panel moves for a cursor on the row above it too late (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~g->crow >= top - 1 &&~g->crow >= top &&
+keys: which-key's panel moved for the cursor starts on the row under it (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~top = g->crow + 2 < g->rows - 4 ? g->crow + 2 :~top = g->crow + 1 < g->rows - 4 ? g->crow + 1 :
+keys: which-key's columns 10 wide, not its 20 (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	int n = 0, w = 20;~	int n = 0, w = 10;
+keys: which-key's panel on a screen under 4 rows writes before the grid (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (h < 1 || top < 0) return;~	if (h < 1) return;

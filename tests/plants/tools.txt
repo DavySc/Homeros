@@ -64,7 +64,7 @@ main: a file session never measures "loaded in", so :Dashboard shows 0.0ms (star
 dashboard: a second tools_dash forgets the startup time~test TESTS=tools_dash~~src/tools/dash.c~	D.ms = ms;~	D.ms = 0 * ms;
 dashboard: "loaded in" measured only when the first draw shows it~test TESTS=tools_dash~~src/tools/dash.c~	if (D.start) {~	if (D.start && shown(e)) {
 keys: :Dashboard is not a command (start.py)~test TESTS=shada~~src/keys/keys.c~	default: dashboard(E);~	default: break;
-keys: SPC D is not mapped (start.py)~test TESTS=shada~~src/keys/keys.c~ "-", " D",~ "-",
+keys: SPC D is not mapped (start.py)~test TESTS=shada~~src/keys/keys.c~	{ " D", "Dashboard" },¶~¶
 keys: :Dashboard opens over the file, so it closes at once (start.py)~test TESTS=shada~~src/keys/keys.c~if (!core_edit_file(e, "", 0)) tools_dash(e, 0);~tools_dash(e, 0);
 dashboard: stays over the file brought back after :Dashboard (CTRL-^, SPC ,)~test TESTS=tools_dash~~src/tools/dash.c~e->buf != D.buf || ~
 dashboard: q quits over a file changed before :Dashboard~test TESTS=tools_dash~~src/tools/dash.c~	case 'q': core_close(e, 0); break;~	case 'q': e->quit = 1; break;
@@ -105,3 +105,4 @@ terminal: the slot memo trusted without comparing the slot's face~test TESTS=too
 main: Ctrl+Z suspends the editor while the terminal is open (ctrlz.py)~test TESTS=tools_term~~src/main.c~ && !tools_term()) {~) {
 tools: vim.trim keeps trailing blanks (picker prompt, oil names)~test TESTS=tools_match~~src/tools/match.c~	while (n && match_space((unsigned char)(*s)[n - 1])) n--;¶~¶
 tools: a tab is not a blank (Lua's %s)~test TESTS=tools_match~~src/tools/match.c~(c >= '\t' && c <= '\r')~(c > '\t' && c <= '\r')
+main: which-key's panel under the start screen (start.py)~test TESTS=shada~~src/main.c~			tools_draw(&e, &g);¶			keys_draw(&e, &g);~			keys_draw(&e, &g);¶			tools_draw(&e, &g);
