@@ -1299,7 +1299,9 @@ static void goals(const char *log)
 	}
 	e.win->line = 6;                          /* '#': Lean's goals not an array */
 	gcheck(&e, &w, got);
-	e.win->line = 7;                          /* '&': the expected type refused, the goals kept */
+	e.win->line = 3, e.win->col = 2;          /* an expected type shown, then refused: it goes */
+	gcheck(&e, &w, got);
+	e.win->line = 7, e.win->col = 0;          /* '&': the expected type refused, the goals kept */
 	gcheck(&e, &w, got);
 	e.win->line = e.win->col = 0;             /* the same text, other faces */
 	gcheck(&e, &w, got);

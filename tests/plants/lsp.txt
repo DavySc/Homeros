@@ -108,3 +108,4 @@ lsp: tokens: a type Neovim does not colour coloured~test TESTS=lsp~~src/lsp/lsp.
 lsp: tokens: asked from inside a token, it is missed~test TESTS=lsp~~src/lsp/lsp.c~if (v->v[mid].z <= a) lo = mid + 1;~if (v->v[mid].a < a) lo = mid + 1;
 lsp: tokens: not asked for once the server is ready~test TESTS=lsp~~src/lsp/lsp.c~		for (LspDoc *d = s->docs; d; d = d->link) tokens(d);¶~¶
 lsp: tokens: not asked again after an edit~test TESTS=lsp~~src/lsp/lsp.c~	end(d->s);¶	tokens(d);¶}¶¶void lsp_saved~	end(d->s);¶}¶¶void lsp_saved
+lsp: goals: a refused question keeps the expected type shown for another line~test TESTS=lsp~~src/lsp/lsp.c~	if (G.want || !G.d) return;¶	G.term.t.n = G.term.f.n = 0;¶~	if (G.want || !G.d) return;¶
