@@ -2,8 +2,8 @@
 # shows against tests/test_image.c's model, the cache's keys, slot reuse,
 # no allocation in a frame, the LaTeX jobs, the backends' image cells
 # (Wayland under sway, Win32 under Wine), and file_id (thread 0's, agreed).
-image: laid over bg without rounding~test TESTS=image~~src/image/image.c~* (255 - q[3]) + 127) / 255)~* (255 - q[3])) / 255)
-image: the padding past the image is black, not bg~test TESTS=image~~src/image/image.c~				uint32_t v = bg;~				uint32_t v = 0;
+image: laid over bg without rounding~test TESTS=image~~src/image/image.c~* (255 - a) + 127) / 255)~* (255 - a)) / 255)
+image: the padding past the image is black, not bg~test TESTS=image~~src/image/image.c~: 0xff000000 | bg;~: 0xff000000;
 image: red and blue swapped~test TESTS=image~~src/image/image.c~<< (16 - 8 * c);~<< (8 * c);
 image: the cache ignores bg~test TESTS=image~~src/image/image.c~ && s->bg == bg~
 image: the cache ignores mtime~test TESTS=image~~src/image/image.c~s->id.mtime_ns == id.mtime_ns && ~
@@ -39,12 +39,34 @@ latex: done without a redraw~test TESTS=image~~src/image/latex.c~	core_changed =
 latex: TeX's input left open~test TESTS=image~~src/image/latex.c~	proc_close(j->id);   /* TeX reads its input on an error: end it */~
 latex: dvipng without the text's colour~test TESTS=image~~src/image/latex.c~"-bg", "Transparent", "-fg", fg,~"-bg", "Transparent",
 latex: the PNG left under its job's name~test TESTS=image~~src/image/latex.c~	if ((n || rename(name(f, j, 1, "png"), name(g, j, 0, "png")))~	if ((n)
-wl: image cells drawn as text~test TESTS=wl~~src/wl/wl.c~		if (x[c].attr == ATTR_IMAGE) { image_draw(px + y0 * stride + c * cell_w, stride, &x[c]); continue; }~
+wl: image cells drawn as text~test TESTS=wl~~src/paint/paint.c~		if (x[c].attr == ATTR_IMAGE) { image_draw(px + y0 * bw + c * cw, bw, &x[c]); continue; }   /* thread 0's, agreed */~
 wl: every tile drawn from the image's first column~test TESTS=wl~~src/image/image.c~ + (size_t)x->ch[1] * (size_t)s->cw;~;
-wl: image cells drawn a cell to the right~test TESTS=wl~~src/wl/wl.c~image_draw(px + y0 * stride + c * cell_w, stride, &x[c]);~image_draw(px + y0 * stride + (c + 1) * cell_w, stride, &x[c]);
-win: image cells drawn a cell to the right~win WIN=win~~src/win/backend.c~image_draw(w->bits + r * w->ch * w->dw + c * w->cw, w->dw, x);~image_draw(w->bits + r * w->ch * w->dw + (c + 1) * w->cw, w->dw, x);
+wl: image cells drawn a cell to the right~test TESTS=wl~~src/paint/paint.c~image_draw(px + y0 * bw + c * cw, bw, &x[c]);~image_draw(px + y0 * bw + (c + 1) * cw, bw, &x[c]);
+win: image cells drawn a cell to the right~win WIN=win~~src/paint/paint.c~image_draw(px + y0 * bw + c * cw, bw, &x[c]);~image_draw(px + y0 * bw + (c + 1) * cw, bw, &x[c]);
 wl: the cell's size is the window's~test TESTS=wl~~src/wl/wl.c~	*h = u ? 0 : cell_h;~	*h = u ? 0 : cell_w;
-win: image cells drawn as text~win WIN=win~~src/win/backend.c~	if (x->attr == ATTR_IMAGE) {~	if (0) {
+win: image cells drawn as text~win WIN=win~~src/paint/paint.c~		if (x[c].attr == ATTR_IMAGE) { image_draw(px + y0 * bw + c * cw, bw, &x[c]); continue; }   /* thread 0's, agreed */~
 win: the cell's size is the window's~win WIN=win~~src/win/backend.c~*h = x ? x->ch : 0;¶}¶¶const Backend backend_win~*h = x ? x->cw : 0;¶}¶¶const Backend backend_win
 file: file_id calls a missing file an error~test TESTS="file file_save image"~~src/file/file.c~	if (stat(path, &st)) return errno == ENOENT ? 0 : -1;~	if (stat(path, &st)) return -1;
 file: file_id says a file exists that does not~test TESTS="file file_save image"~~src/file/file.c~	memset(id, 0, sizeof *id);¶	if (stat(path, &st))~	memset(id, 1, sizeof *id);¶	if (stat(path, &st))
+wl: the wallpaper's surface above the text~test TESTS=wl~~src/wl/wl.c~wl_subsurface_place_below(w->wsub, w->surf);~wl_subsurface_place_above(w->wsub, w->surf);
+wl: the default background opaque over the wallpaper~test TESTS=wl~~src/paint/paint.c~if (!back || rev || c != BG) {~if (!back || rev || c != BG || bs >= 0) {
+wl: an XRGB buffer over the wallpaper~test TESTS=wl~~src/wl/wl.c~wall ? WL_SHM_FORMAT_ARGB8888 : WL_SHM_FORMAT_XRGB8888~WL_SHM_FORMAT_XRGB8888
+wl: a new buffer filled opaque over the wallpaper~test TESTS=wl~~src/wl/wl.c~paint_clear(b->px, w->bw, w->back, 0, w->bw, w->bh);~paint_clear(b->px, w->bw, NULL, 0, w->bw, w->bh);
+wl: the wallpaper left past a smaller window~test TESTS=wl~~src/wl/wl.c~			wl_surface_attach(w->wsurf, NULL, 0, 0);¶~¶
+wl: antialiased edges lose their alpha~test TESTS=wl~~src/paint/paint.c~	return rb | ag << 8;~	return rb | (ag & 0xff) << 8;
+wl: colour glyphs lose their alpha~test TESTS=wl~~src/paint/paint.c~	for (int s = 0; s < 32; s += 8)~	for (int s = 0; s < 24; s += 8)
+wl: the cursor's block clear on base-coloured text~test TESTS=wl~~src/paint/paint.c~cur || x[c].attr == ATTR_REV);~x[c].attr == ATTR_REV + 0 * cur);
+wl: the viewport's source never set (the picture squeezed)~test TESTS=wl~~src/wl/wl.c~	wp_viewport_set_source(w->wview, ~	if (0) wp_viewport_set_source(w->wview, 
+wl: a new picture never uploaded~test TESTS=wl~~src/wl/wl.c~(!px || v != w->up)~(!px || !w->up)
+image: a new picture keeps its version~test TESTS=image~~src/image/image.c~		wver++;¶~¶
+image: the wallpaper fully opaque~test TESTS=image~~src/image/image.c~onto(rgba + 4 * i, bg, WALL_OPACITY)~onto(rgba + 4 * i, bg, 255)
+image: the wallpaper's cover cut from its top~test TESTS=image~~src/image/image.c~	src[1] = (wh - src[3]) / 2;~	src[1] = 0;
+image: the wallpaper's cover as wide as the picture~test TESTS=image~~src/image/image.c~	src[2] = wide ? ww : (int)((long long)wh * w / h);~	src[2] = ww;
+image: the wallpaper kept for another bg~test TESTS=image~~src/image/image.c~ || bg != wbg) {~) {
+image: the wallpaper kept after its file changed~test TESTS=image~~src/image/image.c~id.exists != was.exists || id.mtime_ns != was.mtime_ns || id.size != was.size~!was.exists
+win: text cells drawn opaque over the wallpaper~win WIN=win~~src/win/backend.c~paint(w->bits, w->dw, w->wbits, w->dw, g,~paint(w->bits, w->dw, NULL, w->dw, g,
+win: rows copied on a scroll over the wallpaper~win WIN=win~~src/paint/paint.c~int k = all || (back && bs) || changed < 2 ? 0 : shift(g, b);~int k = all || changed < 2 ? 0 : shift(g, b);
+win: the wallpaper not laid at a new size~win WIN=win~~src/win/backend.c~	if (wp && (w->wdib = ~	if (0 && wp && (w->wdib =
+win: the whole picture squeezed into the window~win WIN=win~~src/win/backend.c~src[0], ih - src[1] - src[3], src[2], src[3], wp,~0, 0, iw, ih, wp,
+win: the wallpaper not copied under changed cells~win WIN=win~~src/paint/paint.c~if (!back || rev || c != BG) {~if (!back || rev || c != BG || bs) {
+win: a wide cell's right half left out of the wallpaper's copy~win WIN=win~~src/paint/paint.c~ground(px, c * cw, y0, w * cw, ch, bg,~ground(px, c * cw, y0, cw, ch, bg,

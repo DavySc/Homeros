@@ -1,8 +1,8 @@
 /* Win32 backend (package 9): a window that shows the cell grid from a DIB
-   section, the Wayland backend's twin (DESIGN.md, "Window, Windows").
-   Glyphs come from GDI's ExtTextOutW into the DIB until package 7's
-   FreeType and HarfBuzz code (font.h) builds on Windows; it replaces
-   draw_cell.
+   section, the Wayland backend's twin (DESIGN.md, "Window, Windows"): the
+   same painter (paint.h) draws into it with the same FreeType and
+   HarfBuzz code (font.h), DirectWrite only finding the fonts, as WezTerm
+   draws on Windows (GDI's text had no fallback: ✦ and ↻ were boxes).
 
    When to draw: a GDI window gets no frame callback.  DWM composes about
    every refresh period P; if one composition comes at most D after P from
@@ -20,27 +20,33 @@
 #include <windows.h>
 #include <dwmapi.h>
 #include "backend.h"
+#include "font.h"
 #include "image.h"
 #include "keys.h"
 #include "loop.h"
-#include "uni.h"
+#include "paint.h"
 #include <windowsx.h>
 
-enum { RING = 256, PT = 12 };   /* font size in points: a guess until package 7 */
+enum { RING = 256, PT = 12 };   /* font size in points (hypothesis: Davy's size is not recorded) */
+/* JetBrains Mono's Nerd Font builds first (DESIGN.md), for the icons */
+static const char FAMILY[] = "JetBrainsMono Nerd Font Mono,JetBrainsMono NFM,JetBrainsMono Nerd Font,JetBrains Mono";
 
-/* A window per tab page, each with its monitor's DPI (so its own font)
-   and refresh period (so its own pacing) */
+/* A window per tab page, each with its monitor's DPI (so its own font
+   size) and refresh period (so its own pacing) */
 static struct win {
 	int id;                 /* its tab page (backend.h's id) */
 	HWND h;
 	HMONITOR mon;           /* the monitor its period was measured on */
 	HDC mem;                /* holds the DIB, which holds what is shown */
 	HBITMAP dib, nodib;
-	uint32_t *bits;         /* the DIB's pixels, for images */
-	HFONT font, nofont;
+	uint32_t *bits;         /* the DIB's pixels */
+	HDC wdc;                /* holds the wallpaper at the window's size (image.h), if any */
+	HBITMAP wdib, nowdib;
+	const uint32_t *wbits;  /* its pixels, the painter's back (paint.h) */
 	int cw, ch, dpi;        /* cell size in pixels */
 	int dw, dh, stale;      /* the DIB's size; stale: redraw it whole */
 	int resized;
+	int sizing;             /* 1 while the user drags an edge, 2 once the size changed */
 	LONGLONG period, next;  /* QueryPerformanceCounter ticks */
 	struct win *link;
 } *wins;
@@ -52,12 +58,6 @@ static WCHAR surr;              /* a high surrogate waiting for its low one */
 static int mrow, mcol, wheel;   /* the last mouse key's cell; wheel delta not yet a key */
 
 static struct win *win_of(int id) { struct win *w = wins; while (w && w->id != id) w = w->link; return w; }
-
-/* Catppuccin Mocha (FEATURES.md): the window's own text, dim (overlay0)
-   and base, which a terminal takes from its settings; the faces' colours
-   come from grid.h's faces[].  Their styles (bold, italic, underline,
-   strike) wait for package 7's fonts. */
-static const COLORREF TEXT = RGB(205, 214, 244), DIMC = RGB(108, 112, 134), BASE = RGB(30, 30, 46);
 
 static void put(int k, int id)
 {
@@ -95,35 +95,13 @@ static void measure_period(struct win *w)
 	free(m);
 }
 
-/* The first installed of JetBrains Mono's Nerd Font builds (DESIGN.md), for
-   the icons, then plain JetBrains Mono: GDI substitutes any font for a
-   missing family, so the face it gave is compared with the one asked.
-   Greyscale smoothing: ClearType's coloured fringes made text look blue on
-   the dark background on Davy's laptop. */
+/* The font at w's DPI, made the one in use: a size still open costs
+   nothing (font.h), so each window's present calls it */
 static int make_font(struct win *w)
 {
-	static const WCHAR *const family[] = { L"JetBrainsMono Nerd Font Mono", L"JetBrainsMono NFM",
-	                                       L"JetBrainsMono Nerd Font", L"JetBrains Mono" };
-	HFONT f = NULL;
-	for (unsigned i = 0; i < sizeof family / sizeof *family; i++) {
-		WCHAR face[LF_FACESIZE];
-		if (f) DeleteObject(f);
-		f = CreateFontW(-MulDiv(PT, w->dpi, 72), 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET,
-		                OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY,
-		                FIXED_PITCH | FF_MODERN, family[i]);
-		if (!f) return -1;
-		HGDIOBJ old = SelectObject(w->mem, f);
-		GetTextFaceW(w->mem, LF_FACESIZE, face);
-		SelectObject(w->mem, old);
-		if (!lstrcmpiW(face, family[i])) break;
-	}
-	TEXTMETRICW tm;
-	SelectObject(w->mem, f);
-	if (w->font) DeleteObject(w->font);
-	w->font = f;
-	GetTextMetricsW(w->mem, &tm);
-	w->cw = tm.tmAveCharWidth;
-	w->ch = tm.tmHeight;
+	if (font_open(FAMILY, MulDiv(PT, w->dpi, 72))) return -1;
+	int b;
+	font_cell(&w->cw, &w->ch, &b);
 	return 0;
 }
 
@@ -142,10 +120,29 @@ static int make_dib(struct win *w)
 	if (w->dib) DeleteObject(w->dib);
 	w->dib = b;
 	w->bits = px;
-	SetBkColor(w->mem, BASE);
-	ExtTextOutW(w->mem, 0, 0, ETO_OPAQUE, &r, NULL, 0, NULL);
 	w->dw = r.right;
 	w->dh = r.bottom;
+	/* the wallpaper's part that covers the window, scaled by GDI straight
+	   from image.h's pixels; HALFTONE (smooth) costs 12 to 81 ms a size,
+	   COLORONCOLOR 3 to 11 (measured, src/image/README.md), so the cheap
+	   one while an edge is dragged and the smooth one when it is let go */
+	if (w->wdib) { SelectObject(w->wdc, w->nowdib); DeleteObject(w->wdib); w->wdib = NULL; }
+	w->wbits = NULL;
+	int iw = 0, ih = 0, src[4];
+	unsigned v;
+	const uint32_t *wp = image_wallpaper(w->dw, w->dh, PAINT_BASE, &iw, &ih, src, &v);
+	BITMAPINFO wi = { .bmiHeader = { .biSize = sizeof wi.bmiHeader, .biWidth = iw, .biHeight = -ih, .biPlanes = 1, .biBitCount = 32 } };
+	void *wpx;
+	if (wp && (w->wdib = CreateDIBSection(w->mem, &bi, DIB_RGB_COLORS, &wpx, NULL, 0))) {
+		SelectObject(w->wdc, w->wdib);
+		SetStretchBltMode(w->wdc, w->sizing ? COLORONCOLOR : HALFTONE);
+		SetBrushOrgEx(w->wdc, 0, 0, NULL);   /* StretchBlt's rule after HALFTONE */
+		/* a top-down DIB's source rows count from its bottom (measured) */
+		StretchDIBits(w->wdc, 0, 0, w->dw, w->dh, src[0], ih - src[1] - src[3], src[2], src[3], wp, &wi, DIB_RGB_COLORS, SRCCOPY);
+		GdiFlush();   /* before the painter reads it */
+		w->wbits = wpx;
+	}
+	paint_clear(w->bits, w->dw, w->wbits, w->dw, w->dw, w->dh);
 	return 0;
 }
 
@@ -202,7 +199,17 @@ static LRESULT CALLBACK proc(HWND h, UINT m, WPARAM w, LPARAM l)
 		return 0;
 	}
 	case WM_SIZE:
-		if (w != SIZE_MINIMIZED && (LOWORD(l) != x->dw || HIWORD(l) != x->dh)) x->resized = x->stale = 1;
+		if (w != SIZE_MINIMIZED && (LOWORD(l) != x->dw || HIWORD(l) != x->dh)) {
+			x->resized = x->stale = 1;
+			if (x->sizing) x->sizing = 2;
+		}
+		return 0;
+	case WM_ENTERSIZEMOVE:
+		x->sizing = 1;
+		return 0;
+	case WM_EXITSIZEMOVE:   /* the wallpaper smooth again */
+		if (x->sizing == 2 && x->wdib) x->resized = x->stale = 1;
+		x->sizing = 0;
 		return 0;
 	case WM_DPICHANGED: {
 		const RECT *r = (const RECT *)l;
@@ -247,8 +254,9 @@ static LRESULT CALLBACK proc(HWND h, UINT m, WPARAM w, LPARAM l)
 
 static void win_free(struct win *w)
 {
-	if (w->mem) { SelectObject(w->mem, w->nofont); SelectObject(w->mem, w->nodib); DeleteDC(w->mem); }
-	if (w->font) DeleteObject(w->font);
+	if (w->mem) { SelectObject(w->mem, w->nodib); DeleteDC(w->mem); }
+	if (w->wdc) { SelectObject(w->wdc, w->nowdib); DeleteDC(w->wdc); }
+	if (w->wdib) DeleteObject(w->wdib);
 	if (w->dib) DeleteObject(w->dib);
 	if (w->h) { SetWindowLongPtrW(w->h, GWLP_USERDATA, 0); DestroyWindow(w->h); }
 	free(w);
@@ -261,6 +269,7 @@ static void win_close(void)
 		wins = w->link;
 		win_free(w);
 	}
+	font_close();
 	if (timer) CloseHandle(timer);
 	UnregisterClassW(L"homeros", GetModuleHandleW(NULL));
 	timer = NULL;
@@ -302,9 +311,9 @@ static int frame_open(int id)
 	w->link = wins;
 	wins = w;
 	if (focused < 0) focused = id;   /* the first window's first focus is no change */
-	if (!(w->mem = CreateCompatibleDC(NULL))) goto fail;
-	w->nofont = SelectObject(w->mem, GetStockObject(SYSTEM_FONT));
+	if (!(w->mem = CreateCompatibleDC(NULL)) || !(w->wdc = CreateCompatibleDC(NULL))) goto fail;
 	w->nodib = GetCurrentObject(w->mem, OBJ_BITMAP);
+	w->nowdib = GetCurrentObject(w->wdc, OBJ_BITMAP);
 	if (!CreateWindowExW(0, L"homeros", L"homeros", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
 	                     CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, GetModuleHandleW(NULL), w)) goto fail;
 	w->dpi = (int)GetDpiForWindow(w->h);
@@ -315,6 +324,7 @@ static int frame_open(int id)
 	   dark mode and ignores the colours (Windows 11 22000 added them); a
 	   drawn title bar would mean hit-testing and losing the snap layouts. */
 	BOOL dark = TRUE;
+	static const COLORREF BASE = RGB(PAINT_BASE >> 16, PAINT_BASE >> 8, PAINT_BASE), TEXT = RGB(0xcd, 0xd6, 0xf4);   /* RGB takes each byte */
 	DwmSetWindowAttribute(w->h, DWMWA_USE_IMMERSIVE_DARK_MODE, &dark, sizeof dark);
 	DwmSetWindowAttribute(w->h, DWMWA_CAPTION_COLOR, &BASE, sizeof BASE);
 	DwmSetWindowAttribute(w->h, DWMWA_TEXT_COLOR, &TEXT, sizeof TEXT);
@@ -395,76 +405,20 @@ static int win_ready(int id)
 	return 0;
 }
 
-static void draw_cell(struct win *w, const Grid *g, int r, int c, int cursor)
-{
-	const Cell *x = &g->c[r * g->cols + c];
-	const unsigned char *s = grid_text(x);
-	WCHAR u[GRID_CLUSTER_MAX];   /* UTF-16 takes no more units than UTF-8 bytes */
-	UINT n = 0;
-	for (size_t i = 0; i < x->len; i += uni_len(s, x->len, i)) {   /* the whole cluster */
-		unsigned cp = uni_cp(s, x->len, i);
-		if (cp >= 0x10000) {   /* UTF-16 surrogates */
-			u[n++] = (WCHAR)(0xD800 + (cp - 0x10000) / 0x400);
-			u[n++] = (WCHAR)(0xDC00 + (cp - 0x10000) % 0x400);
-		} else u[n++] = (WCHAR)cp;
-	}
-	int wide = c + 1 < g->cols && !x[1].len;
-	const Face *fb, *fu, *fa = grid_face(x, &fb, &fu);
-	COLORREF f = x->attr == ATTR_DIM ? DIMC : fa->style & FACE_FG ? RGB(fa->fg[0], fa->fg[1], fa->fg[2]) : TEXT;
-	COLORREF b = fb->style & FACE_BG ? RGB(fb->bg[0], fb->bg[1], fb->bg[2]) : BASE;
-	RECT rc = { c * w->cw, r * w->ch, (c + 1 + wide) * w->cw, (r + 1) * w->ch };
-	if (x->attr == ATTR_IMAGE) {   /* thread 0's, agreed: the background, then the image over it */
-		SetBkColor(w->mem, b);
-		ExtTextOutW(w->mem, 0, 0, ETO_OPAQUE, &rc, NULL, 0, NULL);
-		GdiFlush();   /* CreateDIBSection's rule before touching the bits (Wine draws at once, so no test sees it) */
-		image_draw(w->bits + r * w->ch * w->dw + c * w->cw, w->dw, x);
-		return;
-	}
-	/* reversed (status line, cursor): the colours swap, as a terminal's SGR 7 */
-	int rev = cursor || x->attr == ATTR_REV;
-	SetTextColor(w->mem, rev ? b : f);
-	SetBkColor(w->mem, rev ? f : b);
-	ExtTextOutW(w->mem, rc.left, rc.top, ETO_OPAQUE | ETO_CLIPPED, &rc, u, n, NULL);
-	/* an underline or undercurl in sp, else the text's colour (Neovim's GUIs) */
-	if (!(fu->style & (FACE_UNDERLINE | FACE_UNDERCURL))) return;
-	SetBkColor(w->mem, fu->style & FACE_SP ? RGB(fu->sp[0], fu->sp[1], fu->sp[2]) : f);
-	int curl = fu->style & FACE_UNDERCURL;
-	for (int i = rc.left; i < rc.right; i = curl ? i + 1 : rc.right) {   /* a curl pixel by pixel, a line at once */
-		int y = rc.bottom - 1 - (curl ? grid_curl(i, w->ch) : 0);
-		RECT p = { i, y, curl ? i + 1 : rc.right, y + 1 };
-		ExtTextOutW(w->mem, 0, 0, ETO_OPAQUE, &p, NULL, 0, NULL);
-	}
-}
-
 static void win_present(int id, const Grid *g, Grid *shown)
 {
 	struct win *w = win_of(id);
-	if (!w) return;
+	if (!w || make_font(w)) return;
 	int all = w->stale || shown->rows != g->rows || shown->cols != g->cols;
 	if (all && (grid_resize(shown, g->rows, g->cols) || make_dib(w))) return;
 	w->stale = 0;
+	unsigned char dirty[g->rows];
+	GdiFlush();   /* CreateDIBSection's rule: GDI done with the bits (the last BitBlt) before they change */
+	paint(w->bits, w->dw, w->wbits, w->dw, g, shown, all, dirty);
 	HDC dc = GetDC(w->h);
-	/* after a whole redraw the DIB shows no cursor anywhere */
-	int pr = all ? -1 : shown->crow, pc = shown->ccol;
-	for (int r = 0; r < g->rows; r++) {
-		int lo = g->cols, hi = 0;
-		for (int c = 0; c < g->cols; c++) {
-			const Cell *x = &g->c[r * g->cols + c];
-			Cell *y = &shown->c[r * g->cols + c];
-			int cur = r == g->crow && c == g->ccol, was = r == pr && c == pc;
-			if (grid_cell_eq(x, y) && cur == was) continue;
-			*y = *x;
-			if (!x->len) continue;   /* the right half of a wide character */
-			draw_cell(w, g, r, c, cur);
-			if (c < lo) lo = c;
-			hi = c + 1 + (c + 1 < g->cols && !x[1].len);
-		}
-		if (hi && !all) BitBlt(dc, lo * w->cw, r * w->ch, (hi - lo) * w->cw, w->ch, w->mem, lo * w->cw, r * w->ch, SRCCOPY);
-	}
 	if (all) BitBlt(dc, 0, 0, w->dw, w->dh, w->mem, 0, 0, SRCCOPY);
+	else for (int r = 0; r < g->rows; r++) if (dirty[r]) BitBlt(dc, 0, r * w->ch, g->cols * w->cw, w->ch, w->mem, 0, r * w->ch, SRCCOPY);
 	ReleaseDC(w->h, dc);
-	shown->crow = g->crow;
-	shown->ccol = g->ccol;
 	LARGE_INTEGER now;
 	QueryPerformanceCounter(&now);
 	w->next = now.QuadPart + w->period + w->period / 8;

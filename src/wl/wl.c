@@ -5,7 +5,8 @@
    an input method through text-input-v3, the "+ register through
    wl_data_device; the pointer gets the text cursor (cursor-shape-v1) and
    gives left clicks and the wheel as keys; the buffer is drawn at the fractional scale the compositor prefers
-   (fractional-scale-v1 with a viewport).  These are the protocols Hyprland
+   (fractional-scale-v1 with a viewport); a wallpaper (image.h) is a
+   subsurface below it.  These are the protocols Hyprland
    offers; the window has no decorations (Hyprland draws none for it). */
 #define _GNU_SOURCE
 #include <errno.h>
@@ -35,11 +36,10 @@
 #include "uni.h"
 #include "font.h"
 #include "image.h"
+#include "paint.h"
 
-/* FONT_PX: pixels per em at scale 1 (hypothesis: Davy's size is not recorded);
-   ATTR_PRE: the preedit, underlined (backend-private, after grid.h's attrs);
-   ROW: the most bytes and glyphs one row shapes (4 bytes a cell) */
-enum { FONT_PX = 16, NBUF = 2, KQ = 1024, PRE = 256, ATTR_PRE = ATTR_IMAGE + 1, ROW = 4096 };
+/* FONT_PX: pixels per em at scale 1 (hypothesis: Davy's size is not recorded) */
+enum { FONT_PX = 16, NBUF = 2, KQ = 1024, PRE = 256 };
 static const char FAMILY[] = "JetBrains Mono";
 /* linux/input-event-codes.h's, whose KEY_* names clash with keys.h's */
 enum { BTN_LEFT = 0x110 };
@@ -55,6 +55,7 @@ static struct zwp_text_input_manager_v3 *tim;
 static struct wp_cursor_shape_manager_v1 *csm;
 static struct wp_fractional_scale_manager_v1 *fsm;
 static struct wp_viewporter *vpr;
+static struct wl_subcompositor *subc;
 
 static struct xdg_activation_v1 *act;
 static struct xdg_toplevel_tag_manager_v1 *tagm;
@@ -97,9 +98,15 @@ static struct win {
 	void *pool_mem;
 	size_t pool_size;
 	int pw, ph;                     /* size of the buffers in the pool */
+	const uint32_t *back;           /* with a wallpaper, a clear row after the buffers (paint.h) */
+	struct wl_surface *wsurf;       /* the wallpaper's, below surf */
+	struct wl_subsurface *wsub;
+	struct wp_viewport *wview;
+	struct wl_buffer *wbuf;
+	unsigned up;                    /* the version of the picture in wbuf */
+	int wall;                       /* a wallpaper is behind the text (image.h) */
 	struct win *next;
 } *wins, *kwin, *pwin, *twin;       /* the keyboard's, the pointer's and the input method's */
-static int stride;                  /* the buffer drawn into: its width in pixels */
 static Grid vis;                    /* cur with the preedit, when there is one */
 
 static struct win *win_of(int id) { struct win *w = wins; while (w && w->id != id) w = w->next; return w; }
@@ -588,6 +595,7 @@ static void reg_add(void *d, struct wl_registry *r, uint32_t id, const char *i, 
 	else BIND(vpr, wp_viewporter_interface, 1);
 	else BIND(act, xdg_activation_v1_interface, 1);
 	else BIND(tagm, xdg_toplevel_tag_manager_v1_interface, 1);
+	else BIND(subc, wl_subcompositor_interface, 1);
 #undef BIND
 }
 static void reg_remove(void *d, struct wl_registry *r, uint32_t id) { (void)d; (void)r; (void)id; }
@@ -608,7 +616,19 @@ static void bufs_free(struct win *w)
 	}
 	if (w->pool_mem) munmap(w->pool_mem, w->pool_size);
 	w->pool_mem = NULL;
+	w->back = NULL;
 	w->pw = w->ph = 0;
+}
+
+/* n bytes of shared memory as a pool, mapped at *mem; NULL if none */
+static struct wl_shm_pool *pool_new(size_t n, void **mem)
+{
+	int fd = memfd_create("homeros", MFD_CLOEXEC);
+	if (fd < 0) return NULL;
+	*mem = ftruncate(fd, (off_t)n) ? MAP_FAILED : mmap(NULL, n, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	struct wl_shm_pool *pool = *mem == MAP_FAILED ? NULL : wl_shm_create_pool(shm, fd, (int32_t)n);
+	close(fd);
+	return pool;
 }
 
 /* Buffers of the current size; a busy one is destroyed too, which the
@@ -617,203 +637,64 @@ static int bufs_make(struct win *w)
 {
 	bufs_free(w);
 	size_t one = (size_t)w->bw * (size_t)w->bh * 4;
-	int fd = memfd_create("homeros", MFD_CLOEXEC);
-	if (fd < 0) return -1;
-	w->pool_size = one * NBUF;
-	w->pool_mem = ftruncate(fd, (off_t)w->pool_size) ? MAP_FAILED : mmap(NULL, w->pool_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-	if (w->pool_mem == MAP_FAILED) { close(fd); w->pool_mem = NULL; return -1; }
-	struct wl_shm_pool *pool = wl_shm_create_pool(shm, fd, (int32_t)w->pool_size);
+	struct wl_shm_pool *pool = pool_new(w->pool_size = one * NBUF + (size_t)w->bw * 4, &w->pool_mem);
+	if (!pool) { w->pool_mem = NULL; return -1; }
+	w->back = w->wall ? (const uint32_t *)((char *)w->pool_mem + one * NBUF) : NULL;   /* a new memfd is zeros */
 	for (int i = 0; i < NBUF; i++) {
 		w->bufs[i].px = (uint32_t *)((char *)w->pool_mem + one * (size_t)i);
-		w->bufs[i].b = wl_shm_pool_create_buffer(pool, (int32_t)(one * (size_t)i), w->bw, w->bh, w->bw * 4, WL_SHM_FORMAT_XRGB8888);
+		w->bufs[i].b = wl_shm_pool_create_buffer(pool, (int32_t)(one * (size_t)i), w->bw, w->bh, w->bw * 4,
+		                                         w->wall ? WL_SHM_FORMAT_ARGB8888 : WL_SHM_FORMAT_XRGB8888);
 		wl_buffer_add_listener(w->bufs[i].b, &buf_l, &w->bufs[i]);
 	}
 	wl_shm_pool_destroy(pool);
-	close(fd);
 	return 0;
 }
 
-/* The window's defaults, Catppuccin Mocha like ref/theme.c's faces: base,
-   text, and surface1 (catppuccin/nvim's LineNr) for ATTR_DIM */
-enum { BG = 0x1e1e2e, FG = 0xcdd6f4, DIM = 0x45475a };
-static uint32_t rgb(const unsigned char c[3]) { return (uint32_t)c[0] << 16 | (uint32_t)c[1] << 8 | c[2]; }
-
-/* Callers keep rectangles inside the buffer: cells are, by wl_size. */
-static void fill(uint32_t *px, int x0, int y0, int w, int h, uint32_t c)
+/* The wallpaper (image.h) on a surface of its own below the window's, its
+   part that covers the window scaled by the compositor (a viewport), so a
+   new size only says where; it shows with the window's next commit (a
+   synchronized subsurface).  The text is drawn as without one, moved rows
+   copied, into an ARGB buffer clear where the background is the default,
+   and the compositor blends the two: a frame costs no more (measured,
+   src/image/README.md).  Sets wall. */
+static void wall_make(struct win *w)
 {
-	if (w <= 0 || h <= 0) return;
-	uint32_t *p = px + y0 * stride + x0;
-	for (int i = 0; i < w; i++) p[i] = c;
-	for (int y = 1; y < h; y++) memcpy(p + y * stride, p, (size_t)w * sizeof *p);   /* libc's copy is vectorized (build B) */
-}
-
-/* src premultiplied, of alpha a, over dst */
-static uint32_t over(uint32_t dst, uint32_t src, unsigned a)
-{
-	uint32_t r = 0;
-	for (int s = 0; s < 24; s += 8) r |= ((src >> s & 0xff) + ((dst >> s & 0xff) * (255 - a) + 127) / 255) << s;
-	return r;
-}
-
-/* bg + (fg - bg) * a / 255 per channel, rounded, red and blue in one
-   multiply (build B): each product fits its 16 bits, and
-   (x + 128 + ((x + 128) >> 8)) >> 8 is x / 255 rounded for x up to
-   255 * 255 (Blinn, "Three wrongs make a right"); equal to dividing each
-   channel by 255 for every bg, fg and a (proved: exhaustive, 33,554,432 cases) */
-static uint32_t mix(uint32_t bg, uint32_t fg, unsigned a)
-{
-	uint32_t rb = (bg & 0xff00ff) * (255 - a) + (fg & 0xff00ff) * a + 0x800080;
-	uint32_t g = (bg >> 8 & 0xff) * (255 - a) + (fg >> 8 & 0xff) * a + 0x80;
-	rb = (rb + (rb >> 8 & 0xff00ff)) >> 8 & 0xff00ff;
-	g = (g + (g >> 8)) >> 8;
-	return rb | g << 8;
-}
-
-/* The colours of cell c of row r, as ref/tty.c: the attr, then the face's
-   colours, reversed last (as under the cursor, cur); bold and italic need
-   fonts font.h does not open */
-static const Face *colours(const Grid *g, int r, int c, int cur, uint32_t *fg, uint32_t *bg, const Face **u)
-{
-	const Cell *x = &g->c[r * g->cols + c];
-	const Face *b, *f = grid_face(x, &b, u);
-	uint32_t t = *fg = f->style & FACE_FG ? rgb(f->fg) : x->attr == ATTR_DIM ? DIM : FG;
-	*bg = b->style & FACE_BG ? rgb(b->bg) : BG;
-	if (x->attr == ATTR_REV || cur) { *fg = *bg; *bg = t; }
-	return f;
-}
-
-static int blank(const Cell *x) { return x->len == 1 && x->ch[0] == ' '; }
-
-/* Draws cells lo to hi of row r of g into px: their backgrounds, then the
-   cells shaped as one run, since colour does not change the font (kitty
-   splits runs by font only).  A glyph wider than its cell (73 of Mathlib's
-   295 symbols, reviews/package-7.md) spills into the blank cells after it,
-   as foot's overflowing glyphs do, and a ligature's glyph ("->", JetBrains
-   Mono's " /\ ") reaches back over its word, as in foot and kitty.  A glyph
-   is cut at its word's start, which span never splits, so a partial redraw
-   draws what a whole one does. */
-static void draw_span(uint32_t *px, const Grid *g, int r, int lo, int hi)
-{
-	static unsigned char s[ROW];
-	static unsigned short col[ROW];     /* the cell of each byte of s */
-	static Placed pl[ROW];
-	const Cell *x = &g->c[r * g->cols];
-	int y0 = r * cell_h, ye = y0 + cell_h, n = 0;
-	uint32_t fg, bg;
-	if (lo) { s[n] = ' '; col[n++] = (unsigned short)(lo - 1); }   /* span starts after a blank: shape with it, as a whole row */
-	for (int c = lo; c < hi; c++) {
-		if (!x[c].len) continue;   /* right half: drawn with its left half */
-		int w = c + 1 < g->cols && !x[c + 1].len ? 2 : 1;
-		const Face *u, *f = colours(g, r, c, r == g->crow && c == g->ccol, &fg, &bg, &u);
-		uint32_t sp = u->style & FACE_SP ? rgb(u->sp) : fg;
-		fill(px, c * cell_w, y0, w * cell_w, cell_h, bg);
-		if (x[c].attr == ATTR_IMAGE) { image_draw(px + y0 * stride + c * cell_w, stride, &x[c]); continue; }   /* thread 0's, agreed */
-		if (u->style & FACE_UNDERCURL)
-			for (int i = c * cell_w; i < (c + w) * cell_w; i++) fill(px, i, ye - 1 - grid_curl(i, cell_h), 1, 1, sp);
-		else if (x[c].attr == ATTR_PRE || u->style & FACE_UNDERLINE) fill(px, c * cell_w, ye - 1, w * cell_w, 1, sp);
-		if (f->style & FACE_STRIKE) fill(px, c * cell_w, y0 + cell_h / 2, w * cell_w, 1, fg);
-		const unsigned char *t = grid_text(&x[c]);
-		for (int i = 0; i < x[c].len && n < ROW; i++) { s[n] = t[i]; col[n++] = (unsigned short)c; }
+	int iw, ih, src[4];
+	unsigned v;
+	const uint32_t *px = subc && vpr ? image_wallpaper(w->bw, w->bh, PAINT_BASE, &iw, &ih, src, &v) : NULL;
+	if (w->wbuf && (!px || v != w->up)) {
+		wl_buffer_destroy(w->wbuf);   /* the compositor keeps what it shows */
+		w->wbuf = NULL;
 	}
-	for (int i = 0, m = font_shape(s, (size_t)n, pl, ROW); i < m; i++) {
-		const Glyph *gl = pl[i].g;
-		int c = col[pl[i].cluster], e = c + 1;
-		while (e < hi && (!x[e].len || blank(&x[e]))) e++;
-		int gx = c * cell_w + pl[i].x + gl->left, gy = y0 + cell_b - pl[i].y - gl->top, xe = e * cell_w;
-		int w = c;
-		while (w > 0 && !blank(&x[w - 1])) w--;
-		int ax = gx < w * cell_w ? w * cell_w - gx : 0, zx = gx + gl->w > xe ? xe - gx : gl->w;
-		int ay = gy < y0 ? y0 - gy : 0, zy = gy + gl->h > ye ? ye - gy : gl->h;
-		/* the part over each earlier cell of its word in that cell's colours,
-		   as kitty colours a ligature per cell, the rest in its own (a spill,
-		   as foot's); each part reversed only where its cell is the cursor */
-		for (int j0 = ax, j1; j0 < zx; j0 = j1) {
-			int k = (gx + j0) / cell_w, m = (k + 1) * cell_w - gx;
-			j1 = m < zx ? m : zx;
-			k -= !x[k].len;   /* a right half: its left half's */
-			const Face *u;
-			colours(g, r, k < c ? k : c, r == g->crow && k == g->ccol, &fg, &bg, &u);
-			for (int y = ay; y < zy; y++) {
-				uint32_t *p = px + (gy + y) * stride + gx;
-				if (gl->color) {   /* premultiplied BGRA, the buffer's own byte order */
-					const unsigned char *q = gl->px + (size_t)(y * gl->w) * 4;
-					for (int j = j0; j < j1; j++) {
-						uint32_t v;
-						memcpy(&v, q + 4 * j, 4);   /* the cache does not align it */
-						unsigned a = v >> 24;
-						if (a) p[j] = a == 255 ? v : over(p[j], v, a);
-					}
-					continue;
-				}
-				const unsigned char *a = gl->px + y * gl->w;
-				for (int j = j0; j < j1; j++)
-					if (a[j]) p[j] = a[j] == 255 ? fg : mix(p[j], fg, a[j]);
-			}
+	if (!(w->wall = px != NULL)) {
+		if (w->wsurf) {
+			wl_surface_attach(w->wsurf, NULL, 0, 0);
+			wl_surface_commit(w->wsurf);
 		}
+		return;
 	}
-}
-
-/* Whether cell c of row r of a shows what cell c of row q of b shows */
-static int cell_eq(const Grid *a, int r, const Grid *b, int q, int c)
-{
-	return (a->crow == r && a->ccol == c) == (b->crow == q && b->ccol == c)
-		&& grid_cell_eq(&a->c[r * a->cols + c], &b->c[q * b->cols + c]);
-}
-
-/* The cells of row r of g that differ from row q of b, as *lo to *hi (only
-   these are drawn, as Neovim's grid_put_linebuf sends only them), widened
-   on each side to the start of a word after a blank in both rows: no spill
-   comes in from the left, and the span's own stop at its right edge.  How
-   many cells, 0 if none differ. */
-static int span(const Grid *g, int r, const Grid *b, int q, int *lo, int *hi)
-{
-	int n = g->cols, l = 0, h = n;
-	const Cell *x = &g->c[r * n], *y = &b->c[q * n];
-	while (l < n && cell_eq(g, r, b, q, l)) l++;
-	if (l == n) return *lo = *hi = 0;
-	while (h > l && cell_eq(g, r, b, q, h - 1)) h--;
-#define EDGE(c) (blank(&x[(c) - 1]) && blank(&y[(c) - 1]) && !blank(&x[c]) && !blank(&y[c]))
-	while (l > 0 && !EDGE(l)) l--;
-	while (h < n && !EDGE(h)) h++;
-#undef EDGE
-	*lo = l;
-	*hi = h;
-	return h - l;
-}
-
-/* A hash of row r's text (FNV-1a over what grid_cell_eq compares), without
-   the number column (ATTR_DIM), which relative numbers change on a scroll,
-   and the background layer, which the cursor line keeps on its row */
-static unsigned long row_hash(const Grid *g, int r)
-{
-	unsigned long h = 2166136261u;
-	for (const Cell *x = &g->c[r * g->cols], *e = x + g->cols; x < e; x++) {
-		if (x->attr == ATTR_DIM) continue;
-		h = (h ^ x->len) * 16777619u;
-		h = (h ^ x->attr) * 16777619u;
-		h = (h ^ x->face) * 16777619u;
-		for (int i = 0; i < x->len && i < 4; i++) h = (h ^ x->ch[i]) * 16777619u;   /* a long cluster: its number, as grid_cell_eq */
+	if (!w->wsurf) {
+		w->wsurf = wl_compositor_create_surface(comp);
+		w->wsub = wl_subcompositor_get_subsurface(subc, w->wsurf, w->surf);
+		wl_subsurface_place_below(w->wsub, w->surf);
+		w->wview = wp_viewporter_get_viewport(vpr, w->wsurf);
 	}
-	return h;
-}
-
-/* How far the rows moved since b was drawn: the move that most changed rows
-   of g have, among b's rows, as Emacs's redisplay finds a scroll by row
-   hashes (dispnew.c, scrolling_window); 0 if none.  The core sends whole
-   grids, not scroll events.  A hash only picks the move: what is drawn
-   comes from span. */
-static int shift(const Grid *g, const Grid *b)
-{
-	int n = g->rows, best = 0, most = 0;
-	unsigned long hg[n], hb[n];
-	for (int r = 0; r < n; r++) { hg[r] = row_hash(g, r); hb[r] = row_hash(b, r); }
-	for (int d = 1; d < n; d++)
-		for (int k = d; k >= -d; k -= 2 * d) {
-			int m = 0;
-			for (int r = k < 0 ? -k : 0; r < n && r + k < n; r++) m += hg[r] != hb[r] && hg[r] == hb[r + k];
-			if (m > most) { most = m; best = k; }
-		}
-	return best;
+	if (!w->wbuf) {
+		size_t n = (size_t)iw * (size_t)ih * 4;
+		void *mem;
+		struct wl_shm_pool *pool = pool_new(n, &mem);
+		if (!pool) { w->wall = 0; return; }   /* text over the base, rather than no window */
+		memcpy(mem, px, n);
+		munmap(mem, n);
+		w->wbuf = wl_shm_pool_create_buffer(pool, 0, iw, ih, iw * 4, WL_SHM_FORMAT_XRGB8888);
+		wl_shm_pool_destroy(pool);
+		wl_surface_attach(w->wsurf, w->wbuf, 0, 0);
+		wl_surface_damage_buffer(w->wsurf, 0, 0, iw, ih);
+		w->up = v;
+	}
+	wp_viewport_set_source(w->wview, wl_fixed_from_int(src[0]), wl_fixed_from_int(src[1]), wl_fixed_from_int(src[2]), wl_fixed_from_int(src[3]));
+	wp_viewport_set_destination(w->wview, w->lw, w->lh);
+	wl_surface_commit(w->wsurf);
 }
 
 /* ---- backend.h ---- */
@@ -834,6 +715,10 @@ static void win_free(struct win *w)
 	if (w->xsurf) xdg_surface_destroy(w->xsurf);
 	if (w->view) wp_viewport_destroy(w->view);
 	if (w->fscale) wp_fractional_scale_v1_destroy(w->fscale);
+	if (w->wbuf) wl_buffer_destroy(w->wbuf);
+	if (w->wview) wp_viewport_destroy(w->wview);
+	if (w->wsub) wl_subsurface_destroy(w->wsub);
+	if (w->wsurf) wl_surface_destroy(w->wsurf);
 	wl_surface_destroy(w->surf);
 	if (kwin == w) kwin = NULL;
 	if (pwin == w) pwin = NULL;
@@ -858,6 +743,7 @@ static void wl_close(void)
 	if (kbd) wl_keyboard_release(kbd);
 	if (tagm) xdg_toplevel_tag_manager_v1_destroy(tagm);
 	if (act) xdg_activation_v1_destroy(act);
+	if (subc) wl_subcompositor_destroy(subc);
 	if (vpr) wp_viewporter_destroy(vpr);
 	if (fsm) wp_fractional_scale_manager_v1_destroy(fsm);
 	if (csm) wp_cursor_shape_manager_v1_destroy(csm);
@@ -880,6 +766,7 @@ static void wl_close(void)
 	sel = dnd = NULL; src = NULL; dd = NULL; ti = NULL; shape = NULL; ptr = NULL; kbd = NULL;
 	tagm = NULL; act = NULL; vpr = NULL; fsm = NULL; csm = NULL;
 	tim = NULL; ddm = NULL; seat = NULL; wm = NULL; shm = NULL; comp = NULL; reg = NULL; dpy = NULL;
+	subc = NULL;
 	xst = NULL; keymap = NULL; xctx = NULL; rfd = -1; clip = got = NULL;
 	gotn = 0;
 	ti_on = kn = 0;
@@ -1031,7 +918,7 @@ static const Grid *overlay(const Grid *cur)
 	size_t n = strlen(pre);
 	const unsigned char *s = (const unsigned char *)pre;
 	for (size_t i = 0, c = (size_t)cur->ccol; i < n; i += uni_len(s, n, i))   /* an input method sends valid UTF-8 */
-		c += (size_t)grid_put(&vis, cur->crow, (int)c, s + i, uni_len(s, n, i), uni_width(s, n, i) == 2 ? 2 : 1, ATTR_PRE);
+		c += (size_t)grid_put(&vis, cur->crow, (int)c, s + i, uni_len(s, n, i), uni_width(s, n, i) == 2 ? 2 : 1, PAINT_PRE);
 	return &vis;
 }
 
@@ -1045,45 +932,28 @@ static void wl_present(int id, const Grid *cur, Grid *shown)
 		if (grid_resize(shown, cur->rows, cur->cols)) return;
 		for (int i = 0; i < NBUF; i++) grid_free(&w->bufs[i].g);
 	}
-	if ((w->pw != w->bw || w->ph != w->bh) && bufs_make(w)) return;
+	if (w->pw != w->bw || w->ph != w->bh) {
+		wall_make(w);
+		if (bufs_make(w)) return;
+	}
 	w->pw = w->bw;
 	w->ph = w->bh;
-	stride = w->bw;
 	struct buf *b = w->bufs[0].busy ? &w->bufs[1] : &w->bufs[0];
 	const Grid *g = w == twin ? overlay(cur) : cur;   /* the preedit is in the input method's window */
 	if (b->g.rows != g->rows || b->g.cols != g->cols) {
 		if (grid_resize(&b->g, g->rows, g->cols)) return;
-		fill(b->px, 0, 0, w->bw, w->bh, BG);
+		paint_clear(b->px, w->bw, w->back, 0, w->bw, w->bh);
 		all = 1;
 	}
-	/* rows a scroll moved are copied, not shaped again (shaping all 60 rows
-	   takes p99 1.91 ms of the 2 ms frame, reviews/package-7.md), and of a
-	   row only the cells that changed are drawn.  Copying in the direction
-	   of the move reads each source before it is drawn over. */
-	int k = all ? 0 : shift(g, &b->g);
-	size_t row = (size_t)cell_h * (size_t)w->bw;
 	/* the damage is the rows that differ from the screen, which shows the
 	   other buffer when b is not the one last committed: a row b holds
 	   already may still need its damage */
 	const struct buf *o = !all && w->on && w->on->g.rows == g->rows && w->on->g.cols == g->cols ? w->on : NULL;
-	for (int i = 0; i < g->rows; i++) {
-		int r = k < 0 ? g->rows - 1 - i : i, lo = 0, hi = g->cols, l, h, d = 1;
-		if (!all) {
-			int n = span(g, r, &b->g, r, &lo, &hi);
-			if (o) d = o == b ? n : span(g, r, &o->g, r, &l, &h);
-			if (d) wl_surface_damage_buffer(w->surf, 0, r * cell_h, g->cols * cell_w, cell_h);
-			if (!n) continue;
-			if (k && r + k >= 0 && r + k < g->rows && span(g, r, &b->g, r + k, &l, &h) < n) {
-				memcpy(b->px + (size_t)r * row, b->px + (size_t)(r + k) * row, row * sizeof *b->px);
-				lo = l;
-				hi = h;
-			}
-		}
-		if (lo < hi) draw_span(b->px, g, r, lo, hi);
-		memcpy(&b->g.c[r * g->cols], &g->c[r * g->cols], sizeof *g->c * (size_t)g->cols);
-	}
-	b->g.crow = g->crow;
-	b->g.ccol = g->ccol;
+	unsigned char dirty[g->rows];
+	paint(b->px, w->bw, w->back, 0, g, &b->g, all, dirty);
+	for (int r = 0, l, h; !all && r < g->rows; r++)
+		if (!o || (o == b ? dirty[r] : paint_span(g, r, &o->g, r, &l, &h) > 0))
+			wl_surface_damage_buffer(w->surf, 0, r * cell_h, g->cols * cell_w, cell_h);
 	if (all) wl_surface_damage_buffer(w->surf, 0, 0, w->bw, w->bh);
 	wl_callback_add_listener(w->frame = wl_surface_frame(w->surf), &frame_l, w);
 	wl_surface_attach(w->surf, b->b, 0, 0);
