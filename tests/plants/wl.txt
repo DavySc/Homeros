@@ -1,19 +1,19 @@
 # Plants for src/wl/ (format in tools/planted.sh); all caught by tests/test_wl.c.
-wl: draws before the frame callback~test TESTS=wl~~src/wl/wl.c~	if (!configured || waiting) return 0;~	if (!configured) return 0;
+wl: draws before the frame callback~test TESTS=wl~~src/wl/wl.c~	if (!w || !w->configured || w->frame) return 0;~	if (!w || !w->configured) return 0;
 wl: no key repeat~test TESTS=wl~~src/wl/wl.c~	if (c && xkb_keymap_key_repeats(keymap, key + 8)) repeat_arm(key);~	if (0) repeat_arm(key);
 wl: Backspace as XKB's 8~test TESTS=wl~~src/wl/wl.c~	case XKB_KEY_BackSpace: return KEY_BS;~
 wl: seat not listened to~test TESTS=wl~~src/wl/wl.c~		wl_seat_add_listener(seat, &seat_l, NULL);¶	}~	}¶	if (0) wl_seat_add_listener(seat, &seat_l, NULL);
 wl: clipboard sends one byte short~test TESTS=wl~~src/wl/wl.c~	for (size_t i = 0; i < clipn;) {~	for (size_t i = 1; i < clipn;) {
 wl: clipboard copies past max~test TESTS=wl~~src/wl/wl.c~	memcpy(buf, s, n < max ? n : max);~	memcpy(buf, s, n < max ? n : max + 1);
 wl: input method's text dropped~test TESTS=wl~~src/wl/wl.c~	push_utf8(commit_next);~	push_utf8("");
-wl: preedit not redrawn~test TESTS=wl~~src/wl/wl.c~memcpy(pre, pre_next, sizeof pre); push(KEY_RESIZE); }~memcpy(pre, pre_next, sizeof pre); }
-wl: fractional scale ignored~test TESTS=wl~~src/wl/wl.c~	if ((int)s == scale || font(~	if (1 || font(
-wl: configured size ignored~test TESTS=wl~~src/wl/wl.c~	if (w > 0) nlw = w;~	if (0) nlw = w;
+wl: preedit not redrawn~test TESTS=wl~~src/wl/wl.c~memcpy(pre, pre_next, sizeof pre); push(KEY_RESIZE, twin); }~memcpy(pre, pre_next, sizeof pre); }
+wl: fractional scale ignored~test TESTS=wl~~src/wl/wl.c~	if ((int)s == w->scale || font(~	if (1 || font(
+wl: configured size ignored~test TESTS=wl~~src/wl/wl.c~	if (w > 0) x->nlw = w;~	if (0) x->nlw = w;
 wl: no text cursor~test TESTS=wl~~src/wl/wl.c~	if (shape) wp_cursor_shape_device_v1_set_shape~	if (0) wp_cursor_shape_device_v1_set_shape
 wl: mouse row from x~test TESTS=wl~~src/wl/wl.c~	mrow = my / cell_h;~	mrow = mx / cell_h;
 wl: a key per two notches~test TESTS=wl~~src/wl/wl.c~scroll(v, 120);~scroll(v, 240);
 wl: touchpad scrolls 6 rows a key~test TESTS=wl~~src/wl/wl.c~scroll(v, 3 * cell_h * 256~scroll(v, 6 * cell_h * 256
-wl: close ignored~test TESTS=wl~~src/wl/wl.c~(void)t; push(KEY_CLOSE); }~(void)t; }
+wl: close ignored~test TESTS=wl~~src/wl/wl.c~(void)t; push(KEY_CLOSE, d); }~(void)t; (void)d; }
 wl: damage one row short~test TESTS=wl~~src/wl/wl.c~g->cols * cell_w, cell_h);~g->cols * cell_w, cell_h - 1);
 wl: keys left waiting~test TESTS=wl~~src/wl/wl.c~	long long at = kn ? 1 : rkey ? rnext : 0;~	long long at = rkey ? rnext : 0;
 wl: clipboard written by the editor itself~test TESTS=wl~~src/wl/wl.c~	pid_t p = fork();~	send_all(fd);¶	pid_t p = -1;
@@ -23,4 +23,12 @@ wl: Tab with Shift sends Tab~test TESTS=wl~~src/wl/wl.c~XKB_STATE_MODS_EFFECTIVE
 wl: Ctrl+. comes as a plain dot~test TESTS=wl~~src/wl/wl.c~XKB_STATE_MODS_EFFECTIVE) > 0) return KEY_CTRL_DOT;~XKB_STATE_MODS_EFFECTIVE) > 1) return KEY_CTRL_DOT;
 wl: F5 sends nothing~test TESTS=wl~~src/wl/wl.c~	case XKB_KEY_F5: return KEY_F5;¶~
 wl: Pause sends nothing~test TESTS=wl~~src/wl/wl.c~case XKB_KEY_Pause: case XKB_KEY_Break:~case XKB_KEY_Break:
+wl: a frame callback for all windows~test TESTS=wl~~src/wl/wl.c~	const struct win *w = win_of(id);¶	if (!w || !w->configured || w->frame) return 0;~	const struct win *w = win_of(id);¶	if (!w || !w->configured || w->frame || wins->frame) return 0;
+wl: a key comes from the newest window, not the one with the keyboard~test TESTS=wl~~src/wl/wl.c~	if (c) push(c, kwin);~	if (c) push(c, wins);
+wl: every keyboard enter is a focus change~test TESTS=wl~~src/wl/wl.c~	if (!(kwin = win_at(f)) || kwin->id == focused) return;~	if (!(kwin = win_at(f))) return;
+wl: KEY_RAISED before the activation is handled~test TESTS=wl~~src/wl/wl.c~	if (w) xdg_activation_v1_activate(act, token, w->surf);¶	xdg_activation_token_v1_destroy(tk);¶	wl_callback_add_listener(wl_display_sync(dpy), &raised_l, NULL);~	push(KEY_RAISED, NULL);¶	if (w) xdg_activation_v1_activate(act, token, w->surf);¶	xdg_activation_token_v1_destroy(tk);¶	if (0) wl_callback_add_listener(wl_display_sync(dpy), &raised_l, NULL);
+wl: a window drawn with the last window's font~test TESTS=wl~~src/wl/wl.c~if (!wl_ready(id) || use(w) ||~if (!wl_ready(id) ||
+wl: a window's size with another's cell~test TESTS=wl~~src/wl/wl.c~	int u = use(w);¶	*rows =~	int u = !w;¶	*rows =
 wl: damage only rows drawn~test TESTS=wl~~src/wl/wl.c~(o == b ? dirty[r] : paint_span(g, r, &o->g, r, &l, &h) > 0)~(dirty[r] + 0 * (l = h = 0))
+wl: the keyboard's window kept after it closes (test_wl: a window opened at once)~test TESTS=wl~~src/wl/wl.c~	if (kwin == w) kwin = NULL;¶~
+wl: the preedit drawn in every window~test TESTS=wl~~src/wl/wl.c~	const Grid *g = w == twin ? overlay(cur) : cur;~	const Grid *g = overlay(cur);

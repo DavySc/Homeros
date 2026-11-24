@@ -212,6 +212,9 @@ static const char *const face_sgr[FACE_COUNT] = {
 	";1;38;2;203;166;247",                /* dashboard prompt: mauve */
 	";1;38;2;116;199;236",                /* shimmer sapphire */
 	";1;38;2;148;226;213",                /* shimmer teal */
+	";38;2;108;112;134;48;2;17;17;27",   /* TabLine: overlay0 on crust */
+	"",                                   /* TabLineSel: Normal */
+	";48;2;24;24;37",                     /* TabLineFill: mantle */
 };
 
 /* backend_present's output, through a file: a frame may be larger than a pipe holds */
@@ -221,7 +224,7 @@ static size_t present(const Grid *g, Grid *shown)
 	int saved = dup(1);
 	CHECK(f && saved >= 0);
 	dup2(fileno(f), 1);
-	backend_tty.present(g, shown);
+	backend_tty.present(0, g, shown);
 	dup2(saved, 1);
 	close(saved);
 	rewind(f);

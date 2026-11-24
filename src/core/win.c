@@ -42,7 +42,10 @@ static int has_win(Frame *f, Win *w)
 	return 0;
 }
 
-static int cmdheight(Editor *e) { return e->rows - e->layout->size[ROWS]; }
+static int cmdheight(Editor *e) { return e->rows - e->layout->size[ROWS] - e->layout->top; }
+/* tabline_height() with 'showtabline' 1: the terminal shows a tabline
+   while there are two tab pages; an OS window per tab page shows none */
+int tabline_height(const Editor *e) { return e->tabline && e->tabs->next; }
 
 /* the layout whose children lie one after another on axis a */
 static int along(int a) { return a == COLS ? FR_ROW : FR_COL; }
@@ -153,7 +156,7 @@ static void comp_pos(Frame *f, int *row, int *col)
 	else *col = c0 + f->size[COLS];
 }
 
-static void win_comp_pos(Editor *e) { int r = 0, c = 0; comp_pos(e->layout, &r, &c); }
+static void win_comp_pos(Editor *e) { int r = e->layout->top, c = 0; comp_pos(e->layout, &r, &c); }
 
 /* get_maximum_wincount() */
 static int max_wincount(Frame *f, int height)
@@ -235,7 +238,7 @@ static void equal_rec(Editor *e, Win *next, int current, Frame *top, int dir, co
 
 static void win_equal(Editor *e, Win *next, int current, int dir)
 {
-	equal_rec(e, next ? next : e->win, current, e->layout, dir, (int[2]){ 0, 0 },
+	equal_rec(e, next ? next : e->win, current, e->layout, dir, (int[2]){ e->layout->top, 0 },
 	          (int[2]){ e->layout->size[ROWS], e->cols });
 }
 
@@ -287,7 +290,7 @@ static void frame_remove(Frame *f)
 	if (f->next) f->next->prev = f->prev;
 }
 
-void layout_init(Editor *e, Win *w)
+void layout_init(Editor *e, Win *w, int ch)
 {
 	Frame *f = frame_new(FR_LEAF);
 	if (!f) return;
@@ -296,21 +299,25 @@ void layout_init(Editor *e, Win *w)
 	f->s.vline = (size_t)-1;
 	f->s.bot = 1;                       /* win_init_empty(): w_botline 2 */
 	e->layout = f;
-	f->size[ROWS] = e->rows - 1;        /* cmdheight 1 */
+	f->top = tabline_height(e);
+	f->size[ROWS] = e->rows - ch - f->top;   /* win_alloc_firstwin(): ROWS_AVAIL */
 	f->size[COLS] = e->cols;
 	w->h = f->size[ROWS] - STATUS;
 	w->w = f->size[COLS];
+	w->y = f->top;
 }
 
-/* win_new_screensize(): the top frame takes the screen, the command line keeps its height */
+/* win_new_screensize(), and win_new_screen_rows() when the tabline comes
+   or goes: the top frame takes the screen, the command line keeps its height */
 void layout_resize(Editor *e, int rows, int cols)
 {
-	int ch = cmdheight(e);
-	if (rows == e->rows && cols == e->cols) return;
+	int ch = cmdheight(e), top = tabline_height(e);
+	if (rows == e->rows && cols == e->cols && top == e->layout->top) return;
 	e->rows = rows;
 	e->cols = cols;
-	if (rows - ch < 2) ch = rows > 2 ? rows - 2 : 1;
-	new_size(e, e->layout, rows - ch, 0, ROWS);
+	e->layout->top = top;
+	if (rows - ch - top < 2) ch = rows - top > 2 ? rows - top - 2 : 1;
+	new_size(e, e->layout, rows - ch - top, 0, ROWS);
 	new_size(e, e->layout, cols, 0, COLS);
 	win_comp_pos(e);
 }
@@ -336,7 +343,21 @@ void win_enter(Editor *e, Win *w)
 /* ---- splitting ---- */
 
 /* win_init(): the new window starts as a copy of the old one */
+static void win_copy_view(Win *n, const Win *o);
 static void win_init(Win *n, Win *o)
+{
+	win_copy_view(n, o);
+	n->frame->s.wrow = o->frame->s.wrow;
+	n->frame->s.fraction = o->frame->s.fraction;
+	n->frame->s.prev_fraction_row = o->frame->s.prev_fraction_row;
+	n->frame->s.vline = (size_t)-1;   /* w_valid = 0, w_valid_cursor not set */
+	n->frame->s.bot = 1;              /* win_alloc(): w_botline 2; splitkeep=cursor copies none */
+	n->frame->s.wrap = n->wrap;
+	n->frame->s.allwrap = o->frame->s.allwrap;   /* win_copy_options() */
+}
+
+/* what win_init() copies of the window itself */
+static void win_copy_view(Win *n, const Win *o)
 {
 	n->buf = o->buf;
 	n->alt = o->alt;
@@ -349,13 +370,6 @@ static void win_init(Win *n, Win *o)
 	n->jumpidx = o->jumpidx;
 	n->pcmark = o->pcmark;                                            /* win_init() */
 	n->changeidx = o->changeidx;
-	n->frame->s.wrow = o->frame->s.wrow;
-	n->frame->s.fraction = o->frame->s.fraction;
-	n->frame->s.prev_fraction_row = o->frame->s.prev_fraction_row;
-	n->frame->s.vline = (size_t)-1;   /* w_valid = 0, w_valid_cursor not set */
-	n->frame->s.bot = 1;              /* win_alloc(): w_botline 2; splitkeep=cursor copies none */
-	n->frame->s.wrap = n->wrap;
-	n->frame->s.allwrap = o->frame->s.allwrap;   /* win_copy_options() */
 }
 
 static void flatten(Editor *e, Frame *f);
@@ -536,6 +550,8 @@ static Win *frame_take_out(Editor *e, Win *w, int *dir, Frame **alt)
 }
 
 static int one_window(Editor *e) { return !e->wins->next; }
+static Tab *alt_tab(Editor *e);
+static void tab_close_last(Editor *e, Tab *to, int enter);
 
 static void win_forget(Editor *e, Win *w)
 {
@@ -607,6 +623,7 @@ void win_close(Editor *e, Win *w)
 
 int core_close(Editor *e, int force)
 {
+	if (one_window(e) && e->tabs->next) { tab_close_last(e, alt_tab(e), 1); return 0; }
 	if (one_window(e)) {
 		if (quit_check(e, force)) return -1;
 		e->quit = 1;
@@ -822,7 +839,7 @@ static void top_new_height(Editor *e, int height)
 		   5l j CTRL-W - k, review of PR 20, 2) */
 		if (e->win->want != WANT_EOL) core_set_want(e);
 	}
-	if (height > e->rows - ch) height = e->rows - ch;   /* ROWS_AVAIL */
+	if (height > e->rows - ch - e->layout->top) height = e->rows - ch - e->layout->top;   /* ROWS_AVAIL */
 	new_size(e, t, height, 0, ROWS);
 }
 
@@ -888,3 +905,185 @@ void core_resize(Editor *e, int vertical, long n, int set)
 }
 
 void core_equal(Editor *e) { win_equal(e, NULL, 0, 'b'); }
+
+/* ---- tab pages (window.c), each in its own OS window (Emacs's frames) ---- */
+
+static int tab_ids;               /* Tab.id: never reused, so the backend's handle stays unique */
+
+Win *tab_firstwin(const Editor *e, const Tab *t) { return t == e->tab ? e->wins : t->wins; }
+
+/* leave_tabpage() and use_tabpage(), without what goto_tabpage_tp() adds:
+   drawing another tab page and closing its windows look at it this way */
+void tab_use(Editor *e, Tab *t)
+{
+	Tab *o = e->tab;
+	o->win = e->win; o->prev = e->prev; o->wins = e->wins; o->layout = e->layout;
+	o->rows = e->rows; o->cols = e->cols;
+	e->tab = t;
+	e->win = t->win; e->prev = t->prev; e->wins = t->wins; e->layout = t->layout;
+	e->rows = t->rows; e->cols = t->cols;
+	e->buf = e->win->buf;
+}
+
+int tab_first(Editor *e)
+{
+	tab_ids = 1;
+	return (e->tab = e->tabs = calloc(1, sizeof *e->tab)) ? 0 : -1;
+}
+
+void tab_free_all(Editor *e)
+{
+	for (Tab *t = e->tabs, *nx; t; t = nx) {
+		nx = t->next;
+		if (t != e->tab) {
+			for (Win *w = t->wins, *wn; w; w = wn) { wn = w->next; free(w); }
+			layout_free(t->layout);
+		}
+		free(t);
+	}
+}
+
+/* enter_tabpage(): the tab page's window as win_enter_ext() with
+   WEE_CURWIN_INVALID, its previous window kept */
+void core_tab_enter(Editor *e, Tab *t)
+{
+	int rows = e->rows, cols = e->cols;
+	if (t == e->tab) return;
+	tab_use(e, t);
+	Win *w = e->win, *pw = e->prev;
+	e->win = NULL;
+	win_enter(e, w);
+	e->prev = pw;
+	/* then the terminal's one screen keeps its size, and the tabline may
+	   have come or gone (win_new_screen_rows(), win_new_screen_cols()) */
+	if (e->tabline) layout_resize(e, rows, cols);
+}
+
+/* alt_tabpage(): the next tab page, or the one before the last */
+static Tab *alt_tab(Editor *e)
+{
+	if (e->tab->next) return e->tab->next;
+	Tab *t = e->tabs;
+	while (t->next != e->tab) t = t->next;
+	return t;
+}
+
+/* close_last_window_tabpage(): the current tab page's only window and the
+   tab page go; to becomes current, entered (goto_tabpage_tp()) or, back
+   from closing another tab page, as it was */
+static void tab_close_last(Editor *e, Tab *to, int enter)
+{
+	Tab *t = e->tab, **p = &e->tabs;
+	Win *w = e->win;
+	core_wininfo_set(w->buf, w, 1);    /* close_buffer() remembers the cursor */
+	if (enter) core_tab_enter(e, to);
+	else tab_use(e, to);
+	while (*p != t) p = &(*p)->next;
+	*p = t->next;
+	win_forget(e, w);                  /* its frame is the tab page's layout */
+	free(t);
+	layout_resize(e, e->rows, e->cols);   /* win_close_othertab(): the tabline may go */
+}
+
+/* win_new_tabpage() after the current one: one window copied from the
+   current one, as win_alloc_firstwin(oldwin) */
+static int tab_new(Editor *e)
+{
+	Tab *t = calloc(1, sizeof *t);
+	Win *w = calloc(1, sizeof *w), *o = e->win;
+	int ch = cmdheight(e);
+	if (!t || !w) { free(t); free(w); core_msg(e, "out of memory"); return -1; }
+	t->id = tab_ids++;
+	t->next = e->tab->next;
+	e->tab->next = t;
+	t->win = t->wins = w;
+	t->rows = e->rows;
+	t->cols = e->cols;
+	tab_use(e, t);
+	layout_init(e, w, ch);
+	if (!e->layout) { core_msg(e, "out of memory"); return -1; }
+	win_init(w, o);
+	/* win_alloc_firstwin() sizes the window without a status line, and
+	   last_status() then takes one through win_new_height(): the cursor
+	   keeps its fraction of the window (measured: :tab split of a narrow
+	   window scrolls as nvim's does).  Known difference: when the command
+	   line leaves the window no room for a status line, Neovim gives E36
+	   and draws none; here it keeps one (core_screens seeds 14 and 16) */
+	e->buf = w->buf;
+	w->h += STATUS;
+	win_new_height(e, w, w->h - STATUS);
+	/* curwin is set, not entered: no win_enter_ext(), so no 'winheight' */
+	e->prev = NULL;
+	return 0;
+}
+
+/* ex_splitview() gives the window left the new buffer as its alternate
+   only when win_valid(), which looks in the current tab page: never here */
+int core_tabnew(Editor *e, const char *path)
+{
+	return tab_new(e) ? -1 : path ? edit_split(e, path) : 0;
+}
+
+int core_tabclose(Editor *e, Tab *t)
+{
+	Tab *cur = e->tab;
+	if (!e->tabs->next) { core_msg(e, "E784: Cannot close last tab page"); return -1; }
+	if (!t) t = cur;
+	/* tabpage_close(): the other windows first, then the last one */
+	if (t != cur) tab_use(e, t);
+	core_only(e);
+	tab_close_last(e, t == cur ? alt_tab(e) : cur, t == cur);
+	return 0;
+}
+
+int core_tabonly(Editor *e)
+{
+	while (e->tabs->next) core_tabclose(e, e->tabs == e->tab ? e->tabs->next : e->tabs);
+	return 0;
+}
+
+int core_win_to_tab(Editor *e, int n)
+{
+	Win *wp = e->win;
+	Tab *old = e->tab, *to = NULL;
+	if (!n) {
+		/* do_window() 'T': a new tab page with a copy, then the window goes */
+		if (one_window(e)) { core_msg(e, "Already only one window"); return 0; }
+		if (tab_new(e)) return -1;
+		to = e->tab;
+	} else {
+		/* SPC 5 m {n} (DESIGN.md, New approaches): a split in tab page n
+		   takes the window's view, then the window goes */
+		to = e->tabs;
+		while (to && --n > 0) to = to->next;
+		if (!to || to == old) return -1;
+		core_tab_enter(e, to);
+		if (core_split(e, 0, 0)) { core_tab_enter(e, old); return -1; }
+		win_copy_view(e->win, wp);
+		e->win->frame->s.vline = (size_t)-1;
+		e->buf = wp->buf;
+	}
+	tab_use(e, old);
+	if (one_window(e)) tab_close_last(e, to, 1);
+	else { win_close(e, wp); core_tab_enter(e, to); }
+	return 0;
+}
+
+/* close_windows()'s other tab pages: their windows on b close, and a tab
+   page left without one closes */
+void close_othertabs(Editor *e, Buf *b)
+{
+	Tab *cur = e->tab;
+	for (Tab *t = e->tabs, *nx; t; t = nx) {
+		nx = t->next;
+		if (t == cur) continue;
+		tab_use(e, t);
+		for (Win *w = e->wins, *wn; w; w = wn) {
+			wn = w->next;
+			if (w->buf != b) continue;
+			if (one_window(e)) { tab_close_last(e, cur, 0); break; }
+			win_close(e, w);
+		}
+		if (e->tab != cur) tab_use(e, cur);
+	}
+}

@@ -89,7 +89,7 @@ static void status(const Grid *g, const Win *w, const char *tag)
 static void draw(Editor *e, Grid *g, int cols, const char *tag)
 {
 	CHECK(!grid_resize(g, 10, cols));
-	core_draw(e, g);
+	core_draw(e, NULL, g);
 	status(g, e->win, tag);
 }
 
@@ -120,11 +120,11 @@ int main(void)
 	   '>' at the end */
 	static const int cut[] = { 30, 20, 16, 12, 10, 8, 6, 4, 3, 2, 1 };
 	CHECK(!grid_resize(&g, 10, 80) && !core_split(&e, 1, 0));
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	char tag[32];
 	for (size_t i = 0; i < sizeof cut / sizeof *cut; i++) {
 		core_resize(&e, 1, cut[i], 1);
-		core_draw(&e, &g);
+		core_draw(&e, NULL, &g);
 		CHECK(e.win->w == cut[i]);
 		snprintf(tag, sizeof tag, "width %d", cut[i]);
 		status(&g, e.win, tag);
@@ -202,7 +202,7 @@ int main(void)
 	/* the inactive sections have no branch */
 	draw(&e, &g, 80, "git 80");
 	CHECK(!core_split(&e, 1, 0));
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	status(&g, e.wins == e.win ? e.win->next : e.wins, "git other");
 	CHECK(!core_only(&e));
 
@@ -213,7 +213,7 @@ int main(void)
 	CHECK(!core_edit_file(&e, "f0", 0) && !grid_resize(&g, 10, 40));
 	e.win->line = 1;
 	e.win->col = 0;
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	int nw = win_numw(e.win);
 	for (int r = 0; r < 3; r++) {
 		for (int c = 0; c < nw - 1; c++)
@@ -223,11 +223,11 @@ int main(void)
 	CHECK(g.c[3 * g.cols].ch[0] == '~' && g.c[3 * g.cols].face == FACE_END_OF_BUFFER);
 	e.ks.visual = 'V';
 	e.ks.vline = 1;
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	for (int c = nw; c < g.cols; c++) CHECK(g.c[g.cols + c].bg != FACE_CURSOR_LINE);
 	e.ks.visual = 0;
 	CHECK(!core_split(&e, 1, 0));
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	z = &g.c[e.wins->x + e.wins->w];
 	CHECK(z->ch[0] == 0xe2 && z->face == FACE_WIN_SEPARATOR);
 	/* another window keeps its own cursor line */
@@ -239,7 +239,7 @@ int main(void)
 	for (int i = 0; i < 400; i++) fputc('x', f);   /* taller than the window */
 	CHECK(fputs("\n", f) >= 0 && !fclose(f) && !core_edit_file(&e, "l1", 0));
 	core_set_wrap(&e, 1);
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	z = &g.c[(e.win->h - 1) * g.cols + e.win->w - 1];
 	CHECK(z->ch[0] == '@' && z->face == FACE_NON_TEXT);
 	/* the long line's end in view: its first row from skipcol, "<<<" in
@@ -247,7 +247,7 @@ int main(void)
 	e.win->line = 1;
 	e.win->col = 399;
 	core_set_want(&e);
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	CHECK(e.win->skipcol > 0);
 	CHECK(g.c[0].ch[0] == '2' && g.c[0].face == FACE_CURSOR_LINE_NR);   /* "2<<<" */
 	for (int c = 1; c < 4; c++) CHECK(g.c[c].ch[0] == '<' && g.c[c].face == FACE_NON_TEXT);
@@ -258,7 +258,7 @@ int main(void)
 	e.win->line = 0;
 	e.win->col = 0;
 	core_pum(&e, items, 30, 0, 0);
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	int thumb = 0, sbar = 0;
 	for (int r = 0; r < g.rows; r++)
 		for (int c = 1; c < g.cols; c++) {

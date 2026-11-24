@@ -12,7 +12,9 @@
    idle; nothing is drawn while minimised.
    Not tested here, with the reason: an astral character's glyph (Wine has
    no font with one, so right and wrong surrogates both draw a box), and
-   WM_DISPLAYCHANGE (Wine's DWM period never changes).
+   WM_DISPLAYCHANGE (Wine's DWM period never changes), and a window's period
+   on a second monitor of another rate (Wine shows one monitor): a gate on
+   Davy's laptop.
    Runs on Windows or under Wine (make win); elsewhere it says so. */
 #ifdef _WIN32
 #include <windows.h>
@@ -30,10 +32,11 @@ static HWND win;
 static int cw, ch;
 static const COLORREF BG = RGB(30, 30, 46), REV = RGB(205, 214, 244), RED = RGB(255, 0, 0);
 
+static int from[1024];   /* the window each key came from */
 static int input(int *k, int max)
 {
 	int got = 0, r;
-	while ((r = b->input(k + got, max)) > 0) got += r;
+	while ((r = b->input(k + got, from, max)) > 0) got += r;
 	return got;
 }
 
@@ -96,15 +99,15 @@ static void wait_ready(void)
 	int fds[2];
 	CHECK(b->fds(fds) == 2);
 	int wakes = 0;   /* one, or two if the timer's clock ran a little ahead */
-	for (; wakes < 3 && !b->ready(); wakes++)
+	for (; wakes < 3 && !b->ready(0); wakes++)
 		CHECK(WaitForSingleObject((HANDLE)(INT_PTR)fds[1], 1000) == WAIT_OBJECT_0);
-	CHECK(wakes <= 2 && b->ready());
+	CHECK(wakes <= 2 && b->ready(0));
 }
 
 static void present(const Grid *g, Grid *shown)
 {
 	wait_ready();
-	b->present(g, shown);
+	b->present(0, g, shown);
 }
 
 static void put(Grid *g, int r, int c, const char *s, int width, int attr)
@@ -127,9 +130,10 @@ int main(void)
 	Grid g = { 0 }, shown = { 0 };
 
 	SetUnhandledExceptionFilter(crashed);
-	CHECK(!b->open());
+	CHECK(!b->open() && !b->win_open(0));
 	win = FindWindowW(L"homeros", NULL);
-	CHECK(win);
+	CHECK(win && IsZoomed(win));   /* opens maximised */
+	ShowWindow(win, SW_RESTORE);   /* the tests below size it themselves */
 	CHECK(b->fds(fds) == 2 && fds[0] == LOOP_MSGQ && fds[1] != 0);
 	input(k, 1024);   /* whatever showing the window sent */
 
@@ -167,7 +171,7 @@ int main(void)
 	CHECK(input(k, 7) == 600);
 
 	/* cell size, measured: a reversed space at (0, 0) */
-	b->size(&rows, &cols);
+	b->size(0, &rows, &cols);
 	CHECK(rows > 9 && cols > 10);
 	CHECK(!grid_resize(&g, rows, cols));
 	g.crow = 2; g.ccol = 2;
@@ -188,7 +192,7 @@ int main(void)
 	       from row 3, each tile its own columns, the background past it;
 	       then text again */
 		int w, h, n;
-		b->cell(&w, &h);
+		b->cell(0, &w, &h);
 		CHECK(w == cw && h == ch && 4 * cw > 32 && ch > 16);
 		CHECK((n = image_load("tests/test_image.png", 4, 1, cw, ch, 0x1e1e2e)) > 0);
 		image_put(&g, 3, 0, n, 0);
@@ -302,9 +306,9 @@ int main(void)
 	QueryPerformanceFrequency(&f);
 	wait_ready();
 	QueryPerformanceCounter(&t0);
-	b->present(&g, &shown);
-	CHECK(!b->ready());
-	do QueryPerformanceCounter(&t1); while (!b->ready());
+	b->present(0, &g, &shown);
+	CHECK(!b->ready(0));
+	do QueryPerformanceCounter(&t1); while (!b->ready(0));
 	CHECK(p > 0 && t1.QuadPart - t0.QuadPart >= p + p / 8);
 	printf("test_win (measured): next frame allowed after %.2f ms, refresh period %.2f ms\n",
 	       (double)(t1.QuadPart - t0.QuadPart) * 1000 / (double)f.QuadPart, (double)p * 1000 / (double)f.QuadPart);
@@ -316,7 +320,7 @@ int main(void)
 	/* minimised: never ready; Ctrl-Z minimises (gvim) and main.c then
 	   redraws whole: the cursor at (0, 0) is drawn too */
 	b->suspend();
-	CHECK(IsIconic(win) && !b->ready());
+	CHECK(IsIconic(win) && !b->ready(0));
 	ShowWindow(win, SW_RESTORE);
 	input(k, 1024);
 	grid_free(&shown);
@@ -338,7 +342,7 @@ int main(void)
 	int n = input(k, 1024), r2, c2, resized = 0;
 	for (int i = 0; i < n; i++) resized |= k[i] == KEY_RESIZE;
 	CHECK(resized);
-	b->size(&r2, &c2);
+	b->size(0, &r2, &c2);
 	CHECK(r2 >= rows + 2 && c2 >= cols + 4);
 	CHECK(!grid_resize(&g, r2, c2));   /* puts the cursor at (0, 0) */
 	paint(RED);
@@ -353,7 +357,7 @@ int main(void)
 	resized = 0;
 	for (int i = 0; i < n; i++) resized |= k[i] == KEY_RESIZE;
 	CHECK(resized);
-	b->size(&rows, &cols);
+	b->size(0, &rows, &cols);
 	CHECK(rows < r2 * 6 / 10 && cols < c2 * 6 / 10);   /* font sizes round, so not exactly half */
 	CHECK(!grid_resize(&g, rows, cols));
 	put(&g, 0, 0, " ", 1, ATTR_REV);
@@ -390,7 +394,7 @@ int main(void)
 		resized = 0;
 		for (int i = 0; i < n; i++) resized |= k[i] == KEY_RESIZE;
 		CHECK(resized);
-		b->size(&rows, &cols);
+		b->size(0, &rows, &cols);
 		CHECK(!grid_resize(&g, rows, cols));   /* the cursor at (0, 0) */
 		put(&g, 0, 1, "x", 1, ATTR_NONE);
 		present(&g, &shown);
@@ -426,6 +430,60 @@ int main(void)
 			}
 		}
 	}
+	/* frames: a second window (tab page 1) gets the keyboard, a focus
+	   change from it; its keys and its pacing are its own */
+	input(k, 1024);
+	wait_ready();
+	CHECK(!b->win_open(1));
+	HWND w1 = NULL;
+	while ((w1 = FindWindowExW(NULL, w1, L"homeros", NULL)) == win) {}
+	CHECK(w1 && !IsZoomed(w1));   /* a new frame at the default size */
+	n = input(k, 1024);
+	int f1 = -1, nf = 0;
+	for (int i = 0; i < n; i++) if (k[i] == KEY_FOCUS) { f1 = from[i]; nf++; }
+	CHECK(nf == 1 && f1 == 1);
+	PostMessageW(w1, WM_CHAR, 'x', 0);
+	n = input(k, 1024);
+	CHECK(n >= 1 && k[n - 1] == 'x' && from[n - 1] == 1);
+	Grid g1 = { 0 }, shown1 = { 0 };
+	b->size(1, &r2, &c2);
+	CHECK(!grid_resize(&g1, r2, c2) && b->ready(1) && b->ready(0));
+	b->present(1, &g1, &shown1);
+	CHECK(!b->ready(1) && b->ready(0));
+	/* one timer for both, set for the sooner frame: window 0's, drawn 8 ms
+	   before window 1's, though window 1 asked last */
+	while (!b->ready(1)) Sleep(1);
+	Sleep(2);
+	WaitForSingleObject((HANDLE)(INT_PTR)fds[1], 0);   /* the wake that timer gave, which the loop takes */
+	QueryPerformanceCounter(&t0);
+	b->present(0, &g, &shown);
+	Sleep(8);
+	b->present(1, &g1, &shown1);
+	CHECK(!b->ready(0) && !b->ready(1));
+	CHECK(WaitForSingleObject((HANDLE)(INT_PTR)fds[1], 1000) == WAIT_OBJECT_0);
+	QueryPerformanceCounter(&t1);
+	CHECK(t1.QuadPart - t0.QuadPart < p + p / 8 + f.QuadPart * 4 / 1000 && b->ready(0));
+	/* SPC 5 o: window 0 raised; its focus comes before KEY_RAISED (Focus.tla) */
+	b->raise(0);
+	n = input(k, 1024);
+	int f0 = -1, r0 = -1;
+	for (int i = 0; i < n; i++) {
+		if (k[i] == KEY_FOCUS && from[i] == 0 && f0 < 0) f0 = i;
+		if (k[i] == KEY_RAISED && from[i] == -1) r0 = i;
+	}
+	CHECK(f0 >= 0 && r0 > f0 && GetForegroundWindow() == win);
+	/* another program in front and back: no focus change */
+	HWND other = CreateWindowExW(0, L"STATIC", L"other", WS_OVERLAPPEDWINDOW | WS_VISIBLE, 0, 0, 100, 100, NULL, NULL, NULL, NULL);
+	CHECK(other && SetForegroundWindow(other));
+	input(k, 1024);
+	CHECK(SetForegroundWindow(win));
+	n = input(k, 1024);
+	for (int i = 0; i < n; i++) CHECK(k[i] != KEY_FOCUS);
+	DestroyWindow(other);
+	b->win_close(1);
+	CHECK(!IsWindow(w1) && IsWindow(win));
+	grid_free(&g1);
+	grid_free(&shown1);
 
 	b->close();
 	CHECK(!FindWindowW(L"homeros", NULL));
@@ -433,7 +491,8 @@ int main(void)
 	grid_free(&shown);
 	puts("test_win: keys, mouse and clipboard; identical frame draws nothing; one change draws its row; "
 	     "text, dim, face, face background, long cluster, wide and image cells; cursor drawn, restored and at (0,0) after a whole redraw; WM_PAINT; "
-	     "resize and DPI redraw whole; wallpaper; close is a key; paced; idle quiet; minimised draws nothing");
+	     "resize and DPI redraw whole; wallpaper; close is a key; paced; idle quiet; minimised draws nothing; "
+	     "a second window: its focus, keys and pacing, raised back with KEY_RAISED after the focus");
 	return 0;
 }
 #else

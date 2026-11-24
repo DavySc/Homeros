@@ -51,7 +51,7 @@ static void type(const char *s)
 /* The list as drawn: one name per row, the selected row first if sel. */
 static void rows(char *out, size_t cap)
 {
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	tools_draw(&e, &g);
 	size_t n = 0;
 	out[0] = 0;

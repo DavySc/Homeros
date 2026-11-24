@@ -12,7 +12,7 @@ enum {
 	KEY_UP = 0x110000, KEY_DOWN, KEY_LEFT, KEY_RIGHT,
 	KEY_RESIZE,
 	KEY_MOUSE_LEFT, KEY_WHEEL_UP, KEY_WHEEL_DOWN,   /* at the cell Backend.mouse gives */
-	KEY_CLOSE,           /* the window was asked to close (its X button, Alt-F4): :qa */
+	KEY_CLOSE,           /* a window was asked to close (its X button, Alt-F4): :tabclose for its tab page, :qa for the last */
 	KEY_DEL,             /* x in normal mode; in insert mode ins_del() */
 	KEY_S_TAB,           /* Shift-Tab: a snippet's previous stop, else a Tab in insert mode */
 	KEY_CTRL_DOT,        /* Ctrl+.: opens and closes the terminal (tools_key) */
@@ -21,6 +21,16 @@ enum {
 	   SQL run (sql_key).  Ctrl+Break is Windows' Ctrl-C, and a terminal sends
 	   no key for it */
 	KEY_BREAK,
+	/* the system focused another OS window: keys ends insert mode, Visual
+	   mode and a half-typed command, as Esc would without the beep
+	   (leave_tabpage() resets Visual; insert state belongs to the window
+	   left); main.c then calls core_tab_enter for that window's tab page */
+	KEY_FOCUS,
+	/* from window -1: the system answered the oldest raise still asked
+	   (Wayland's sync done after the activate; on Windows right after
+	   SetForegroundWindow); main.c then knows a KEY_FOCUS left is the user's
+	   (Focus.tla) */
+	KEY_RAISED,
 	KEY_CTRL_C = 3, KEY_TAB = 9, KEY_ENTER = 13, KEY_CTRL_R = 18,
 	KEY_CTRL_Z = 26, KEY_ESC = 27, KEY_BS = 127
 };
