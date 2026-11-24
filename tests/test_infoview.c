@@ -163,6 +163,22 @@ static int http(const char *method, const char *path, const char *body, Str *out
 	return status;
 }
 
+/* One request written whole, its answer read without running the loop (the
+   editor busy): whether it began with want within 5 s */
+static int busy(const char *req, size_t n, const char *want)
+{
+	int fd = conn();
+	struct timeval t = { 5, 0 };
+	char b[256];
+	ssize_t k = 0;
+	CHECK(!setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &t, sizeof t));
+	for (size_t at = 0; at < n; at += (size_t)k) CHECK((k = write(fd, req + at, n - at)) > 0);
+	k = read(fd, b, sizeof b - 1);
+	close(fd);
+	b[k > 0 ? k : 0] = 0;
+	return !strncmp(b, want, strlen(want));
+}
+
 static int call(const char *page, const char *json)
 {
 	char p[512];
@@ -437,6 +453,21 @@ int main(int argc, char **argv)
 	CHECK(call("pageB", "{\"id\":0,\"m\":\"saveConfig\",\"a\":[null]}") == 204);
 	CHECK(wait_for(both, 2, &B, "{\"id\":0,\"k\":\"val\",\"v\":null}"));
 	CHECK(count(A.ev.s, "\"id\":0,") == 1);
+	/* a call of 2 MB while the editor reads nothing (more than its pipe
+	   holds): answered, the page still served, and it reaches the editor
+	   whole once the editor reads again */
+	size_t bn = 2 << 20;
+	char *big = malloc(bn + 512);
+	CHECK(big);
+	int hn = snprintf(big, 256, "POST /%scall?page=pageB HTTP/1.1\r\nContent-Length: %zu\r\n\r\n", url, bn);
+	int pn = snprintf(big + hn, 256, "{\"id\":9,\"m\":\"saveConfig\",\"a\":[null],\"x\":\"");
+	memset(big + hn + pn, 'x', bn - (size_t)pn - 2);
+	memcpy(big + (size_t)hn + bn - 2, "\"}", 2);
+	CHECK(busy(big, (size_t)hn + bn, "HTTP/1.1 204"));
+	snprintf(s, sizeof s, "GET /%s HTTP/1.1\r\n\r\n", url);
+	CHECK(busy(s, strlen(s), "HTTP/1.1 200"));
+	CHECK(wait_for(both, 2, &B, "{\"id\":9,\"k\":\"val\",\"v\":null}"));
+	free(big);
 	/* a call that is no JSON, or has no id, is no error */
 	CHECK(call("pageA", "not json") == 204);
 	CHECK(call("pageA", "{\"m\":\"saveConfig\"}") == 204);

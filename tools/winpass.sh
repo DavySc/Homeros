@@ -17,7 +17,7 @@ pass() {
 	[ $r = 0 ] && [ "$(tail -n 1 "${exe%.exe}.out" | cut -d: -f1)" = "$(basename "$exe" .exe)" ]
 }
 
-# winlink EXE TEST.c: builds EXE for Windows from TEST.c and every module
+# winlink EXE TEST.c [LIB...]: builds EXE for Windows from TEST.c and every module
 # wincc compiles (not main.c or the window), with tree-sitter, the
 # grammars and queries outside our warnings (as src/syntax/build.mk), stb
 # and libghostty-vt (build.mk): for a test that links the whole editor
@@ -38,5 +38,5 @@ winlink() {
 	[ -f build/win/link/ts.o ] || zig cc -target x86_64-windows-gnu -O2 -c $inc $syn/src/tree-sitter/lib/src/lib.c -o build/win/link/ts.o
 	. src/tools/ghostty-win.sh
 	zig cc -target x86_64-windows-gnu -std=c17 -D_DEFAULT_SOURCE -Wall -Wextra -Werror -Iinclude -I/usr/include/stb $inc -O1 -g \
-	  -fsanitize=undefined -fsanitize-trap=undefined -o "$1" "$2" $srcs build/win/link/queries.o build/win/link/ts.o $objs build/win/stb.o $GHOSTTY_WIN
+	  -fsanitize=undefined -fsanitize-trap=undefined -o "$1" "${@:2}" $srcs build/win/link/queries.o build/win/link/ts.o $objs build/win/stb.o $GHOSTTY_WIN
 }

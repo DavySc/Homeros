@@ -57,6 +57,8 @@
 #define MSG_NOSIGNAL 0
 #define SOCK_NONBLOCK 0    /* WSAEventSelect makes it so */
 #define sclose closesocket
+#define RUNDIR "TEMP"
+#define SEP "\\"                 /* what Explorer is given: one kind of slash */
 #else
 #include <poll.h>
 #include <signal.h>
@@ -67,6 +69,8 @@
 #define AGAIN (errno == EAGAIN || errno == EINTR)
 #define O_BINARY 0
 #define sclose close
+#define RUNDIR "XDG_RUNTIME_DIR"
+#define SEP "/"
 #endif
 #include "str.h"
 
@@ -450,10 +454,9 @@ static int listener(int *port)
    bytes; .html, so the system opens it in a browser. */
 static int write_redirect(int port, const unsigned char *r)
 {
-	const char *dir = getenv("XDG_RUNTIME_DIR");
-	if (!dir || !*dir) dir = getenv("TEMP");
-	if (!dir || strlen(dir) > 255) dir = "/tmp";
-	snprintf(redirect, sizeof redirect, "%s/homeros-infoview-%02x%02x%02x%02x%02x%02x%02x%02x.html", dir, r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7]);
+	const char *dir = getenv(RUNDIR);
+	if (!dir || !*dir || strlen(dir) > 255) dir = "/tmp";
+	snprintf(redirect, sizeof redirect, "%s" SEP "homeros-infoview-%02x%02x%02x%02x%02x%02x%02x%02x.html", dir, r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7]);
 	int fd = open(redirect, O_WRONLY | O_CREAT | O_EXCL | O_BINARY, 0600);
 	if (fd < 0) return -1;
 	char html[256];

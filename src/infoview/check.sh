@@ -15,6 +15,8 @@ mkdir -p build/win
 export WINEDEBUG=-all WINEDLLOVERRIDES="mscoree,mshtml=" WINEPREFIX=$PWD/build/win/prefix-infoview
 cc="zig cc -target x86_64-windows-gnu -std=c17 -Wall -Wextra -Werror -Iinclude -O1 -g -fsanitize=undefined -fsanitize-trap=undefined"
 $cc -o build/win/homeros-infoview.exe src/infoview/serve/serve.c src/str/str.c -lws2_32 -lbcrypt
+# with the editor's half (infoview.c) and all it links: winlink, which
+# needs nix's tree-sitter, so on Windows itself CI's winexe job builds it
 exe=build/win/test_infoview_win.exe
-$cc -o "$exe" tests/test_infoview_win.c src/loop/*.c src/str/str.c -lws2_32
-pass 120 "$exe" $run || { echo "FAIL test_infoview_win"; exit 1; }
+[ -z "$run" ] || winlink "$exe" tests/test_infoview_win.c -lws2_32
+pass 600 "$exe" $run || { echo "FAIL test_infoview_win"; exit 1; }
