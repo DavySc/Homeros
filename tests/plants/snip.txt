@@ -32,8 +32,8 @@ snip: proc files ranked by the word proc, not the helpers~test TESTS=snip~~src/s
 snip: a later word of the file name wins~test TESTS=snip~~src/snip/snip.c~			if (n == strlen(g[i]) && !strncmp(w, g[i], n)) return i == 8 ? "helpers" : g[i];~			if (n == strlen(g[i]) && !strncmp(w, g[i], n) && strchr(w, '.') - w > 12) return i == 8 ? "helpers" : g[i];
 snip: a surrounded line keeps the first line's indent~test TESTS=snip~~src/snip/snip.c~		for (size_t b = 0; j && b < o->base && j < o->nsel && memchr(" \t", o->sel[j], 2); b++) j++;¶~¶
 snip: no $0, the area is lost~test TESTS=snip~~src/snip/snip.c~		r = k < 0 || (sel && put_sel(&o, k));~		r = k < 0;
-snip: a line area includes its indent~test TESTS=snip~~src/snip/snip.c~a = core_line_start(e, l1) + indent(e, l1), ~a = core_line_start(e, l1), 
-snip: a character area misses its last character~test TESTS=snip~~src/snip/snip.c~c2 + uni_glen(l, len, c2) : len + 1~c2 + uni_glen(l, len, c2) - 1 : len + 1
+snip: a line area includes its indent~test TESTS=snip~~src/snip/snip.c~		if (e->ks.visual != 'v') a += indent(e, e->ks.vline < e->win->line ? e->ks.vline : e->win->line), z--;~		if (e->ks.visual != 'v') z--;
+snip: a character area misses its last character~test TESTS=snip~~src/core/core.c~c2 + uni_glen(l, len, c2) : len + 1~c2 + uni_glen(l, len, c2) - 1 : len + 1
 snip: the picker lists no snippets~test TESTS=snip~~src/tools/pick.c~	if (what == PICK_SNIPPETS) snippets();¶~¶
 snip: the picker shows no description~test TESTS=snip~~src/tools/pick.c~end, d, strlen(d), a ? a : ATTR_DIM~end, d, 0, a ? a : ATTR_DIM
 snip: the picker previews no body~test TESTS=snip~~src/tools/pick.c~			snprintf(P.pv[P.pvn++], sizeof P.pv[0], "%.*s", k, b);~			P.pvn++;
@@ -41,8 +41,8 @@ snip: the picker opens a file on Enter~test TESTS=snip~~src/tools/pick.c~	if (P.
 snip: SPC i s not in Visual mode~test TESTS=keys_map~~src/keys/keys.c~(e->mode != MODE_NORMAL || !normal_mappable(0))~(e->mode != MODE_NORMAL || e->ks.visual || !normal_mappable(0))
 snip: no SPC i s map~test TESTS=keys_map~~src/keys/keys.c~	{ " i", "+insert" }, { " is", "Snippet" },¶~¶
 snip: a surround takes the text's last line break~test TESTS=snip~~src/snip/snip.c~		if (z >= text_len(e->buf->text)) z = text_len(e->buf->text) - 1;¶~¶
-snip: a block surrounded corner to corner~test TESTS=snip~~src/snip/snip.c~		if (e->ks.visual != 'v') a =~		if (e->ks.visual == 'V') a =
-snip: a blank first line's indent counted one short~test TESTS=snip~~src/snip/snip.c~		if (e->ks.visual != 'v') a = core_line_start(e, l1) + indent(e, l1),~		if (e->ks.visual != 'v') a = core_line_start(e, l1) + core_first_nonblank(e, l1),
+snip: a block surrounded corner to corner~test TESTS=snip~~src/core/core.c~	int chars = e->ks.visual == 'v';~	int chars = e->ks.visual != 'V';
+snip: a blank first line's indent counted one short~test TESTS=snip~~src/snip/snip.c~a += indent(e, ~a += core_first_nonblank(e, 
 snip: the list is not ranked again for a new buffer or prompt~test TESTS=snip~~src/snip/snip.c~	if (!i) n = rank(e, nq ? q : NULL, nq);~	if (!n) n = rank(e, nq ? q : NULL, nq);
 snip: a heading's words after its '(' count~test TESTS=snip~~src/snip/snip.c~*p && *p != '(' && *p != '\n'; p++)~*p && *p != '\n'; p++)
 snip: later lines of the area are not indented as the $0 line~test TESTS=snip~~src/snip/snip.c~(put(o, "\n", 1) || put(o, ind, w))~put(o, "\n", 1)
@@ -54,5 +54,5 @@ snip: a task file ranks no group first~test TESTS=snip~~src/snip/snip.c~"badge",
 snip: a new prompt keeps the old preview~test TESTS=snip~~src/tools/pick.c~	P.pvfor = -1;¶	while ((n = snip_get~	while ((n = snip_get
 snip: Enter inserts the first snippet, not the selected one~test TESTS=snip~~src/tools/pick.c~		snip_insert(e, P.a + it.text);~		snip_insert(e, P.a + P.it[0].text);
 snip: the picker sorts by score again~test TESTS=snip~~src/tools/pick.c~	if (P.what == PICK_SNIPPETS) snippets();¶	else rematch();~	if (P.what == PICK_SNIPPETS) snippets(), rematch();¶	else rematch();
-snip: the area takes the text's last byte on a V area too~test TESTS=snip~~src/snip/snip.c~z = core_line_start(e, l2) + len;~z = core_line_start(e, l2) + len + 1;
+snip: the area takes the text's last byte on a V area too~test TESTS=snip~~src/snip/snip.c~ : e->win->line), z--;~ : e->win->line);
 snip: a new prompt keeps the old selection~test TESTS=snip~~src/tools/pick.c~	P.sel = P.top = 0;¶	P.pvfor = -1;¶	while ((n = snip_get~	P.pvfor = -1;¶	while ((n = snip_get
