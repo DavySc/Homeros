@@ -48,6 +48,8 @@ if [ ! -d build/base ]; then git fetch -q --depth 1 origin $BASE && git worktree
 ( cd build/base && $Z -std=c17 -Iinclude -O2 -o ../win/frames_old.exe ../../src/win/probe/frames.c src/win/*.c $(pick grid) $(pick uni) $(pick theme) \
     -I../../$R src/image/image.c src/file/*.c src/loop/*.c $(pick text) ../win/stb.o $libs )
 run=${RUN:-}
+mkdir -p build/win/wall/homeros && cp $R/wallpaper.png build/win/wall/homeros/wallpaper
+if [ -z "${SIZES_ONLY:-}" ]; then
 $run build/win/gdiface.exe
 echo "== fontprobe, first process"; $run build/win/fontprobe.exe
 echo "== fontprobe, second process"; $run build/win/fontprobe.exe | head -8
@@ -61,5 +63,6 @@ for i in 1 2 3 4 5; do
 	for v in old new; do echo "== frames $v, run $i"; $run build/win/frames_$v.exe 200 || echo "frames $v: failed ($?)"; done
 	echo "== frames new over a wallpaper, run $i"; XDG_CONFIG_HOME=build/win/wall $run build/win/frames_new.exe 200 || echo "frames new: failed ($?)"
 done
+fi
 echo "== sizes over a wallpaper"; $run build/win/sizeprobe.exe 'build\win\wall' || echo "sizeprobe: failed ($?)"
-echo "== sizes without"; $run build/win/sizeprobe.exe | head -8
+echo "== sizes without"; $run build/win/sizeprobe.exe | head -14

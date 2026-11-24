@@ -43,5 +43,5 @@ jobs:
           Restart-Service FontCache -Force -ErrorAction Continue
           "font files: " + (Get-ChildItem C:\Windows\Fonts).Count
           cmd /c ver
-      - run: bash reviews/pr-140-repro/winprobe.sh
+      - run: SIZES_ONLY=1 bash reviews/pr-140-repro/winprobe.sh
         shell: bash

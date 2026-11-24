@@ -31,7 +31,7 @@ static double frame(void)
 int main(int argc, char **argv)
 {
 	static char env[600];
-	static const int size[][2] = { { 1280, 800 }, { 1600, 900 }, { 1920, 1080 }, { 1300, 820 }, { 1620, 920 }, { 1900, 1060 } };
+	static const int size[][2] = { { 640, 480 }, { 800, 600 }, { 1000, 700 }, { 660, 500 }, { 820, 620 }, { 980, 680 } }   /* inside the runner's 1024 x 768 screen */;
 	setvbuf(stdout, NULL, _IONBF, 0);
 	QueryPerformanceFrequency(&f);
 	if (argc > 1) { snprintf(env, sizeof env, "XDG_CONFIG_HOME=%s", argv[1]); _putenv(env); }
@@ -42,7 +42,8 @@ int main(int argc, char **argv)
 			if (drag) SendMessageW(w, WM_ENTERSIZEMOVE, 0, 0);
 			for (int i = 0; i < 6; i++) {
 				SetWindowPos(w, NULL, 0, 0, size[i][0], size[i][1], SWP_NOMOVE | SWP_NOZORDER);
-				printf("%s %d x %d: %.0f us\n", drag ? "dragging" : "one size", size[i][0], size[i][1], frame());
+				double us = frame();
+				printf("%s %d x %d (%d x %d cells): %.0f us\n", drag ? "dragging" : "one size", size[i][0], size[i][1], g.cols, g.rows, us);
 			}
 			if (drag) {
 				SendMessageW(w, WM_EXITSIZEMOVE, 0, 0);
