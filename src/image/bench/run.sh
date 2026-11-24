@@ -2,7 +2,8 @@
 # Frame time with and without an image (package 21): builds frame.c with the
 # editor's flags, starts headless sway (pixman, 1280x800, as tests/test_wl.c)
 # and runs text and image alternately, RUNS times each.
-# Usage: src/image/bench/run.sh IMAGE.png [N frames] [RUNS]
+# With a WALLPAPER, text scrolled and typing without and with it instead.
+# Usage: src/image/bench/run.sh IMAGE.png [N frames] [RUNS] [WALLPAPER]
 set -eu
 cd "$(dirname "$0")/../../.."
 img=$1 n=${2:-500} runs=${3:-5}
@@ -16,4 +17,12 @@ sway=$!
 trap 'kill $sway; rm -rf $XDG_RUNTIME_DIR' EXIT
 until ls $XDG_RUNTIME_DIR/wayland-* >/dev/null 2>&1; do sleep 0.1; done
 export WAYLAND_DISPLAY=$(basename $(ls $XDG_RUNTIME_DIR/wayland-* | grep -v lock | head -1))
-for i in $(seq $runs); do build/image/frame "$img" $n 0; build/image/frame "$img" $n 1; done
+mkdir -p $XDG_RUNTIME_DIR/cfg/homeros
+[ -z "${4:-}" ] || cp "$4" $XDG_RUNTIME_DIR/cfg/homeros/wallpaper
+for i in $(seq $runs); do
+	if [ -z "${4:-}" ]; then build/image/frame "$img" $n 0; build/image/frame "$img" $n 1; continue; fi
+	for m in 0 2; do
+		echo -n "no wallpaper "; build/image/frame "$img" $n $m
+		echo -n "wallpaper    "; XDG_CONFIG_HOME=$XDG_RUNTIME_DIR/cfg build/image/frame "$img" $n $m
+	done
+done

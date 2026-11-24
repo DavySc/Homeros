@@ -1,0 +1,26 @@
+# Plants for src/paint/ (format in tools/planted.sh); caught by the Wayland
+# window's test (moved here from wl.txt with the code, PR to come).
+paint: changed cells not drawn~test TESTS=wl~~src/paint/paint.c~		&& grid_cell_eq(&a->c[r * a->cols + c], &b->c[q * b->cols + c]);~		&& grid_cell_eq(&a->c[r * a->cols + c], &a->c[r * a->cols + c]);
+paint: cursor move not drawn~test TESTS=wl~~src/paint/paint.c~	return (a->crow == r && a->ccol == c) == (b->crow == q && b->ccol == c)~	return 1
+paint: glyph cut at its cell~test TESTS=wl~~src/paint/paint.c~zx = gx + gl->w > xe ? xe - gx : gl->w;~zx = gx + gl->w > (c + 1) * cw && xe ? (c + 1) * cw - gx : gl->w;
+paint: changed span not widened left~test TESTS=wl~~src/paint/paint.c~	while (l > 0 && !EDGE(l)) l--;¶~¶
+paint: changed span not widened right~test TESTS=wl~~src/paint/paint.c~	while (h < n && !EDGE(h)) h++;¶~¶
+paint: spill past a non-blank cell~test TESTS=wl~~src/paint/paint.c~		while (e < hi && (!x[e].len || blank(&x[e]))) e++;~		while (e < hi) e++;
+paint: long cluster read from the cell~test TESTS=wl~~src/paint/paint.c~		const unsigned char *t = grid_text(&x[c]);~		const unsigned char *t = x[c].ch;
+paint: the background layer ignored~test TESTS=wl~~src/paint/paint.c~	*bg = b->style & FACE_BG ? rgb(b->bg) : BG;~	*bg = f->style & FACE_BG ? rgb(f->bg) : BG;
+paint: ligature cut at its own cell~test TESTS=wl~~src/paint/paint.c~int ax = gx < w * cw ? w * cw - gx : 0~int ax = gx < c * cw ? c * cw - gx : 0
+paint: glyph cut at the span, not its word~test TESTS=wl~~src/paint/paint.c~int ax = gx < w * cw ? w * cw - gx : 0~int ax = gx < lo * cw ? lo * cw - gx : 0
+paint: span shaped without the blank before it~test TESTS=wl~~src/paint/paint.c~	if (lo) { s[n] = ' ';~	if (0) { s[n] = ' ';
+paint: ligature in its last cell's colours under the cursor~test TESTS=wl~~src/paint/paint.c~colours(g, r, k < c ? k : c, r == g->crow && k == g->ccol, &fg, &bg, &u);~colours(g, r, c, r == g->crow && k == g->ccol, &fg, &bg, &u);
+paint: whole glyph in its first cell's colours~test TESTS=wl~~src/paint/paint.c~j1 = m < zx ? m : zx;~j1 = m < zx ? zx : zx;
+paint: earlier cells in the colours of the one before the last~test TESTS=wl~~src/paint/paint.c~k < c ? k : c, r ==~k < c ? c - 1 : c, r ==
+paint: a part ends half a cell late~test TESTS=wl~~src/paint/paint.c~m = (k + 1) * cw - gx;~m = (k + 1) * cw - gx + cw / 2;
+paint: only the cursor's own cell coloured per cell~test TESTS=wl~~src/paint/paint.c~colours(g, r, k < c ? k : c, r == g->crow && k == g->ccol, &fg, &bg, &u);~colours(g, r, k < c && r == g->crow && k == g->ccol ? k : c, r == g->crow && k == g->ccol, &fg, &bg, &u);
+paint: a spill reversed with its symbol, not its cell~test TESTS=wl~~src/paint/paint.c~r == g->crow && k == g->ccol, &fg~r == g->crow && (k < c ? k : c) == g->ccol, &fg
+paint: a right half not its left half's cell~test TESTS=wl~~src/paint/paint.c~k -= !x[k].len;~k -= 0;
+paint: no undercurl~test TESTS=wl~~src/paint/paint.c~		if (u->style & FACE_UNDERCURL)¶~		if (0)¶
+paint: a flat undercurl~test TESTS=wl~~src/paint/paint.c~ye - 1 - grid_curl(i, ch)~ye - 1
+paint: the undercurl in the text's colour~test TESTS=wl~~src/paint/paint.c~uint32_t sp = u->style & FACE_SP ? rgb(u->sp) : fg;~uint32_t sp = fg;
+paint: scroll copies the wrong row~test TESTS=wl~~src/paint/paint.c~px + (size_t)(r + k) * row~px + (size_t)(r - k) * row
+paint: a guide drawn as the preedit~test TESTS=wl~~include/paint.h~PAINT_PRE = ATTR_IMAGE + 1~PAINT_PRE = ATTR_GUIDE
+paint: the cursor's old row not drawn again when it leaves~win WIN=win~~src/paint/paint.c~dirty[r] = all || d || g->crow == r || b->crow == r;~dirty[r] = all || d || g->crow == r;
