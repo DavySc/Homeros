@@ -45,7 +45,8 @@ async function record() {
     'def foo\u00a0: Nat := 1\n/--\u00a0# Title\n-\u00a0a\u00a0b\n-/\n', '/--\nTitle\n==\nTitle\n===\nT\n====  \n-/\n',
     '/-- [a](u "") and [b](u "t") and [c]: u ""\n[d]: u "x"\n-/\n', '/-- [a](x' + '(y)x'.repeat(70) + ')\n-/\n', '--[](' + '()'.repeat(70) + ' v))\n',
     'def\n{a} foo\n', '--[p]:<\n', '/--\n- item\n        # x\n-/\n', '/--\n>    # x\n>    # y\n-/\n',
-    '/-- ' + 'a'.repeat(19993) + ' -/\ndef x := 1\n-/\n', '/--\n````\nx\n```\ny\n````\nz\n-/\n', '/-- ' + 'a *b* `c` [d](e) '.repeat(1000) + '\n-/\n'];
+    '/-- ' + 'a'.repeat(19993) + ' -/\ndef x := 1\n-/\n', '/--\n````\nx\n```\ny\n````\nz\n-/\n',
+    '/-- ' + '\u00e9'.repeat(19992) + ' -/\ndef x := 1\n-/\n', '/-- ' + '\u{1d53d}'.repeat(9997) + ' -/\ndef x := 1\n-/\n', '/--\na' + '`'.repeat(1200) + '\n-/\n', '/-- ' + 'a *b* `c` [d](e) '.repeat(1000) + '\n-/\n'];
   for (let c = 0; c < (+process.env.CASES || 600); c++) {
     let t;
     if (c % 3 == 1) {

@@ -49,7 +49,17 @@ typedef struct {
 	size_t a, z;           /* faces for [a, z) into f; none when f is NULL */
 	unsigned char *f;
 	St *s;                 /* the state */
-	size_t dead;           /* where a comment's line ran out of budget */
+	size_t eol;            /* the line's '\n', or the text's end */
+	size_t dead;           /* where the line ran out of budget */
+	size_t spent, budget;  /* bytes a comment's Markdown read on the line:
+	                          as an Oniguruma regex, a rule can read the
+	                          line again from each position, so a long
+	                          line of `, [ or * would take seconds; VS Code
+	                          stops on time */
+	size_t ub, ue, cb, ce; /* the last [^\]\s]* and [^}]* runs read, [ub,
+	                          ue) and [cb, ce): a run from inside one ends
+	                          where it did, so a line of trace[ or def {
+	                          is read once */
 } Lx;
 
 static void put(Lx *x, size_t p, size_t e, unsigned char c)
@@ -159,31 +169,33 @@ static size_t blank(TsqlRd *r, size_t p)
 }
 
 /* [^\]\s]* from p */
-static size_t unbracket(TsqlRd *r, size_t p)
+static size_t unbracket(Lx *x, size_t p)
 {
-	size_t n;
+	size_t n, q = p;
 	unsigned c;
-	while ((c = cpn(r, p, &n)) != ']' && !is_sp(c) && n) p += n;
-	return p;
+	if (p >= x->ub && p <= x->ue) return x->ue;
+	while ((c = cpn(x->r, q, &n)) != ']' && !is_sp(c) && n) q += n;
+	return x->ub = p, x->ue = q;
 }
 
 /* after a word ending in [, the rest of word\[[^\]\s]*\]; 0 without its ] */
-static size_t bracket(TsqlRd *r, size_t e)
+static size_t bracket(Lx *x, size_t e)
 {
-	if (!e || tsql_byte(r, e - 1) != '[') return e;
-	e = unbracket(r, e);
-	return tsql_byte(r, e) == ']' ? e + 1 : 0;
+	if (!e || tsql_byte(x->r, e - 1) != '[') return e;
+	e = unbracket(x, e);
+	return tsql_byte(x->r, e) == ']' ? e + 1 : 0;
 }
 
 /* (w0|w1|..) then \b, and with dot (?!\.) before it: the first word that
    fits, as Oniguruma tries them; a word ending in [ is the grammar's
    word\[[^\]\s]*\] */
-static size_t alt(TsqlRd *r, size_t p, const char *const *w, size_t n, int dot)
+static size_t alt(Lx *x, size_t p, const char *const *w, size_t n, int dot)
 {
+	TsqlRd *r = x->r;
 	int c = tsql_byte(r, p);
 	for (size_t i = 0; i < n; i++) {
 		if (c != (unsigned char)w[i][0]) continue;
-		size_t e = bracket(r, lit(r, p, w[i]));
+		size_t e = bracket(x, lit(r, p, w[i]));
 		if (e && (!dot || tsql_byte(r, e) != '.') && wb(r, e)) return e;
 	}
 	return 0;
@@ -207,7 +219,7 @@ static size_t esc(TsqlRd *r, size_t p)
    in the comment's italic, green bold in **bold**): md_face maps them. */
 enum { OV, GR, TE, RE, PE, YE, SA, LA, BL, SK, PI };    /* fg */
 enum { NS, IT, BO };                                    /* style */
-/* at() calls a comment's line may take: BUDGET per byte and FLOOR more,
+/* at() calls a line may take: BUDGET per byte and FLOOR more,
    about 10 ms for a line at VS Code's limit (measured: Lean's own sources
    take at most 11 per byte and 64 more, 12,600 random cases 41 and 64
    more, a 41-byte line of ``` 6,951) */
@@ -233,11 +245,8 @@ typedef struct {
 	Lx *x;
 	size_t ls, eol, end;   /* the line: its start and its '\n', eol 0 once
 	                          spent passes budget */
-	size_t spent, budget;  /* bytes read on the line: as an Oniguruma
-	                          regex, a rule can read the line again from
-	                          each position, so a long line of `, [ or *
-	                          would take seconds; VS Code stops on time */
 	size_t g;              /* \G: where the last begin or while match ended */
+	size_t wb, we;         /* the last \s* run read, ws() */
 	int blk;               /* what holds the line: 0 the comment, Q a quote,
 	                          L a list, F a fence */
 	size_t fi, fn, fk;     /* a fence's indentation (\2) and length (\3) */
@@ -250,7 +259,7 @@ enum { Q = 1, L, F };
 static void pc(Md *m, size_t p, size_t e, int c) { put(m->x, p, e, md_face[c / 3][c % 3]); }
 static int at(Md *m, size_t p)
 {
-	if (++m->spent > m->budget) m->eol = 0;
+	if (++m->x->spent > m->x->budget) m->eol = 0;
 	return m->eol ? tsql_byte(m->x->r, p) : -1;
 }
 
@@ -311,12 +320,14 @@ static size_t sp_tab(Md *m, size_t p)
 	return p;
 }
 
-/* \s* on the line */
+/* \s* on the line; a run from inside the last ends where it did, so a
+   line of blanks is read once */
 static size_t ws(Md *m, size_t p)
 {
-	size_t n;
-	while (p < m->eol && is_sp(cpn(m->x->r, p, &n))) p += n;
-	return p;
+	size_t q = p, n;
+	if (p >= m->wb && p <= m->we) return m->we;
+	while (q < m->eol && is_sp(cpn(m->x->r, q, &n))) q += n;
+	return m->wb = p, m->we = q;
 }
 
 /* a title, ((\().+?(\))) or ((").+?(")), from its opener at p, then
@@ -758,9 +769,9 @@ static size_t comment(Lx *x, size_t p, int start)
 		s->in = CMT, s->depth = 1, s->blk = 0;
 	}
 	/* the first line has no ^: the comment's start stands there */
-	Md m = { .x = x, .ls = p, .end = tsql_line_end(r, p), .g = start ? q : SIZE_MAX, .blk = s->blk, .fi = s->fi,
-	         .fn = s->fn, .fk = s->fk, .fc = s->fc };
-	m.eol = m.end, m.budget = BUDGET * (m.end - p) + FLOOR;
+	Md m = { .x = x, .ls = p, .end = x->eol, .g = q, .blk = s->blk, .fi = s->fi,
+	         .fn = s->fn, .fk = s->fk, .fc = s->fc, .wb = SIZE_MAX };
+	m.eol = m.end;
 	if (start) pc(&m, p, q, COL(OV, IT));
 	else if (m.blk) q = md_line(&m);
 	while (q < m.eol) {
@@ -818,7 +829,7 @@ static unsigned char base(const St *s) { return s->ib ? FACE_STRING : FACE_NONE;
 /* «..» on the line: from p where it starts (start; 0 when none does) or
    from where it goes on, its content in a definition's name's face in a
    head; to its » or to the line's end */
-static size_t guillemets(Lx *x, size_t q, size_t eol, int start)
+static size_t guillemets(Lx *x, size_t q, int start)
 {
 	size_t n;
 	unsigned char b = base(x->s), c = x->s->head ? FACE_FUNCTION_DEFINITION : b;
@@ -826,25 +837,25 @@ static size_t guillemets(Lx *x, size_t q, size_t eol, int start)
 		if (cpn(x->r, q, &n) != 0xab) return 0;
 		put(x, q, q + n, b), q += n, x->s->in = GUI;
 	}
-	while (q < eol && cpn(x->r, q, &n) != 0xbb) put(x, q, q + n, c), q += n;
-	if (q < eol) put(x, q, q + n, b), q += n, x->s->in = 0;
+	while (q < x->eol && cpn(x->r, q, &n) != 0xbb) put(x, q, q + n, c), q += n;
+	if (q < x->eol) put(x, q, q + n, b), q += n, x->s->in = 0;
 	return q;
 }
 
 /* a definition's head on the line, after its keyword: the names it
    defines, up to with, extends, where or one of : | ( [ { ⦃ < >, which end
    it; or to the line's end */
-static size_t head(Lx *x, size_t q, size_t eol)
+static size_t head(Lx *x, size_t q)
 {
 	TsqlRd *r = x->r;
 	unsigned char b = base(x->s);
 	size_t e, n;
-	for (unsigned c; q < eol; ) {
+	for (unsigned c; q < x->eol; ) {
 		c = cpn(r, q, &n);
 		if (in(c, ":|([{<>") || c == 0x2983) break;
 		int w = wb(r, q);
 		if (w && (((e = lit(r, q, "with")) || (e = lit(r, q, "extends")) || (e = lit(r, q, "where"))) && wb(r, e))) break;
-		if ((e = comment(x, q, 1)) || (e = guillemets(x, q, eol, 1))) {
+		if ((e = comment(x, q, 1)) || (e = guillemets(x, q, 1))) {
 			q = e;
 			continue;
 		}
@@ -858,7 +869,7 @@ static size_t head(Lx *x, size_t q, size_t eol)
 		put(x, q, q + n, b);
 		q += n;
 	}
-	if (q < eol) x->s->head = 0;
+	if (q < x->eol) x->s->head = 0;
 	return q;
 }
 /* a number: \b([0-9]+|0([xX][0-9a-fA-F]+)|[-]?(0|[1-9][0-9]*)(\.[0-9]+)?
@@ -923,7 +934,7 @@ static size_t character(Lx *x, size_t p)
 /* attribute [..] and @[..]: with ] all of it, else [ is plain */
 static size_t attribute(Lx *x, size_t p, size_t e, unsigned char b)
 {
-	size_t k = unbracket(x->r, e + 1);
+	size_t k = unbracket(x, e + 1);
 	if (tsql_byte(x->r, e) != '[') return 0;
 	if (tsql_byte(x->r, k) == ']') return put(x, p, k + 1, FACE_KEYWORD), k + 1;
 	put(x, p, e, FACE_KEYWORD);
@@ -934,21 +945,21 @@ static size_t attribute(Lx *x, size_t p, size_t e, unsigned char b)
 
 /* a string on the line, after its " or from the line's start, to its "
    (the region closed) or to the line's end; escapes in it */
-static size_t string(Lx *x, size_t q, size_t eol)
+static size_t string(Lx *x, size_t q)
 {
 	size_t e;
 	int c;
-	while (q < eol && (c = tsql_byte(x->r, q)) != '"')
+	while (q < x->eol && (c = tsql_byte(x->r, q)) != '"')
 		if ((e = esc(x->r, q))) put(x, q, e, FACE_STRING_ESCAPE), q = e;
 		else put(x, q, q + 1, FACE_STRING), q++;
-	if (q < eol) put(x, q, q + 1, FACE_STRING), q++, x->s->in = 0;
+	if (q < x->eol) put(x, q, q + 1, FACE_STRING), q++, x->s->in = 0;
 	return q;
 }
 
 /* the grammar's rules at p: the end of the match, which opens a region
    (a comment, a string, a «..», a head or an interpolated string) in the
    state when it goes on; 0 when none matches */
-static size_t rule(Lx *x, size_t p, size_t eol)
+static size_t rule(Lx *x, size_t p)
 {
 	TsqlRd *r = x->r;
 	St *s = x->s;
@@ -957,41 +968,41 @@ static size_t rule(Lx *x, size_t p, size_t eol)
 	/* \b, and \b(?<!\.) */
 	int c = tsql_byte(r, p), w = wb(r, p), ws = w && before(r, p) != '.';
 	if ((c == '-' || c == '/') && (e = comment(x, p, 1))) return e;
-	if (w && (e = alt(r, p, lean_types, N(lean_types), 0))) return put(x, p, e, FACE_KEYWORD), e;
+	if (w && (e = alt(x, p, lean_types, N(lean_types), 0))) return put(x, p, e, FACE_KEYWORD), e;
 	if (w && (e = lit(r, p, "attribute")) && wb(r, e) && (k = attribute(x, p, blank(r, e), b))) return k;
 	if (c == '@' && (k = attribute(x, p, p + 1, b))) return k;
-	if (ws && (e = alt(r, p, lean_mods, N(lean_mods), 1))) return put(x, p, e, FACE_KEYWORD), e;
+	if (ws && (e = alt(x, p, lean_mods, N(lean_mods), 1))) return put(x, p, e, FACE_KEYWORD), e;
 	/* sorry, admit and #exit (invalid.illegal) take no colour, and no rule
 	   after them could match inside them */
-	if (c == '#' && (e = alt(r, p + 1, lean_cmds, N(lean_cmds), 0))) return put(x, p, e, FACE_KEYWORD), e;
+	if (c == '#' && (e = alt(x, p + 1, lean_cmds, N(lean_cmds), 0))) return put(x, p, e, FACE_KEYWORD), e;
 	if (w && (e = lit(r, p, "deriving")) && is_sp(cp(r, e)) && cp(r, e) != '\n' && (e = lit(r, blank(r, e), "instance")) && wb(r, e))
 		return put(x, p, e, FACE_KEYWORD), e;
-	if (ws && (e = alt(r, p, lean_defs, N(lean_defs), 0)) && is_sp(cp(r, e))) {
+	if (ws && (e = alt(x, p, lean_defs, N(lean_defs), 0)) && is_sp(cp(r, e))) {
 		/* \s+(\{[^}]*\})?, on the line: one that ends with the keyword
 		   leaves the braces to the head */
-		size_t j;
 		put(x, p, e, FACE_KEYWORD);
-		for (k = e; k < eol && is_sp(cp(r, k)); k = adv(r, k)) ;
-		if (k < eol && tsql_byte(r, k) == '{') {
-			for (j = k + 1; j < eol && tsql_byte(r, j) != '}'; j++) ;
-			if (j < eol) k = j + 1;
+		for (k = e; k < x->eol && is_sp(cp(r, k)); k = adv(r, k)) ;
+		if (k < x->eol && tsql_byte(r, k) == '{') {
+			if (k + 1 < x->cb || k + 1 > x->ce)
+				for (x->ce = x->cb = k + 1; x->ce < x->eol && tsql_byte(r, x->ce) != '}'; x->ce++) ;
+			if (x->ce < x->eol) k = x->ce + 1;
 		}
 		put(x, e, k, b);
 		s->head = 1;
 		return k;
 	}
-	if (ws && (e = alt(r, p, lean_kws, N(lean_kws), 1))) return put(x, p, e, FACE_KEYWORD), e;
-	if ((e = guillemets(x, p, eol, 1))) return e;
+	if (ws && (e = alt(x, p, lean_kws, N(lean_kws), 1))) return put(x, p, e, FACE_KEYWORD), e;
+	if ((e = guillemets(x, p, 1))) return e;
 	if (s->ib < UINT16_MAX - 1)
 		for (size_t i = 0; i < N(lean_istr); i++)
-			if (c == lean_istr[i][0] && (e = bracket(r, lit(r, p, lean_istr[i]))) && tsql_byte(r, k = blank(r, e)) == '"') {
+			if (c == lean_istr[i][0] && (e = bracket(x, lit(r, p, lean_istr[i]))) && tsql_byte(r, k = blank(r, e)) == '"') {
 				put(x, p, e, FACE_KEYWORD);
 				put(x, e, k + 1, FACE_STRING);
 				s->ib++;
 				return k + 1;
 			}
-	if (c == '"') return put(x, p, p + 1, FACE_STRING), s->in = STR, string(x, p + 1, eol);
-	if (w && (e = alt(r, p, lean_bools, N(lean_bools), 0))) return put(x, p, e, FACE_VARIABLE_BUILTIN), e;
+	if (c == '"') return put(x, p, p + 1, FACE_STRING), s->in = STR, string(x, p + 1);
+	if (w && (e = alt(x, p, lean_bools, N(lean_bools), 0))) return put(x, p, e, FACE_VARIABLE_BUILTIN), e;
 	if ((e = character(x, p))) return e;
 	if (w && (e = number(r, p))) return put(x, p, e, FACE_NUMBER), e;
 	return 0;
@@ -1014,25 +1025,25 @@ size_t lean_line(TsqlRd *r, size_t p, TsqlSt *ts, size_t a, size_t z, unsigned c
 	St s, s0;
 	memcpy(&s, ts, sizeof s);
 	s.fi = (uint32_t)p - s.fi, s0 = s;
-	Lx x = { r, a, z, f, &s, SIZE_MAX };
 	size_t eol = tsql_line_end(r, p), q = p, e;
+	Lx x = { r, a, z, f, &s, eol, SIZE_MAX, 0, BUDGET * (eol - p) + FLOOR, SIZE_MAX, 0, SIZE_MAX, 0 };
 	if (too_long(r, p, eol)) q = eol;
 	/* what goes on from the line before */
 	else if (s.in == CMT) q = comment(&x, q, 0);
-	else if (s.in == STR) q = string(&x, q, eol);
-	else if (s.in == GUI) q = guillemets(&x, q, eol, 0);
+	else if (s.in == STR) q = string(&x, q);
+	else if (s.in == GUI) q = guillemets(&x, q, 0);
 	/* in an interpolated string (ib odd) or its braces (ib even), nested
 	   ib / 2 deep: counted, as a pile of them must not take the stack */
 	for (int c; q < eol && x.dead == SIZE_MAX; ) {
 		c = tsql_byte(r, q);
-		if (s.head) q = head(&x, q, eol);
+		if (s.head) q = head(&x, q);
 		else if (s.ib % 2) {
 			if (c == '"') put(&x, q, q + 1, FACE_STRING), q++, s.ib--;
 			else if (c == '{') put(&x, q, q + 1, FACE_KEYWORD), q++, s.ib++;
 			else if ((e = esc(r, q))) put(&x, q, e, FACE_STRING_ESCAPE), q = e;
 			else put(&x, q, q + 1, FACE_STRING), q++;
 		} else if (s.ib && c == '}') put(&x, q, q + 1, FACE_KEYWORD), q++, s.ib--;
-		else if ((e = rule(&x, q, eol))) q = e;
+		else if ((e = rule(&x, q))) q = e;
 		else put(&x, q, e = adv(r, q), base(&s)), q = e;
 	}
 	/* a comment's line that took more than its budget: what was read

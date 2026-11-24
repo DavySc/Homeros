@@ -238,30 +238,66 @@ static void edit_near_start(const char *mid, size_t z0, size_t at, const char *i
 	text_free(t);
 }
 
-/* Lean's state in a comment's fence holds the fence's line: an insertion
-   at byte 0 moves it and the kept starts inside it, while the update
-   stops at the kept start between, its state unchanged */
-static void edit_before_fence(void)
+/* A Lean text b, n bytes, its index filled; at at, del bytes become ins;
+   with wz, the frame [wa, wz) before the index is filled again: then
+   every face must equal a fresh read's */
+static void lean_edit(const char *b, size_t n, size_t at, size_t del, const char *ins, size_t wa, size_t wz)
 {
-	static char b[12000];
-	static unsigned char f[12000], g[12000];
+	static unsigned char f[MAXT], g[MAXT];
+	size_t il = strlen(ins);
+	Text *t = text_new(b, n);
+	Syntax *s = syntax_open("x.lean", t);
+	CHECK(t && s);
+	syntax_update(s, t, NULL, &r1, &r2);
+	syntax_edit(s, t, at, del, ins, il);
+	CHECK(!text_delete(t, at, del) && !text_insert(t, at, ins, il));
+	n = n - del + il;
+	if (wz) syntax_faces(s, wa, wz, f + wa);
+	syntax_update(s, t, NULL, &r1, &r2);
+	for (size_t a = 0, e; a < n; a = e) {
+		e = text_line_start(t, text_line_of(t, a) + 1);
+		syntax_faces(s, a, e, f + a);
+	}
+	lang = 3, fresh(t, g), lang = 0;
+	CHECK(!memcmp(f, g, n));
+	syntax_free(s);
+	text_free(t);
+}
+
+/* Lean's kept states, each case a mechanism that keeps them right:
+   - a fence's line is a distance back: an insertion at byte 0 moves the
+     fence and the kept starts inside it, while the update stops at the
+     kept start between, its state unchanged;
+   - an edit moves each kept start's state with it: a deletion takes the
+     first kept start of two in code, so the second's place holds the
+     first's (equal) state, and the rest, alternating code and comment,
+     would be taken unread;
+   - the frame's line keeps the state after it: the frame ends on the
+     line that opens a comment, and the update takes that line from it */
+static void lean_states(void)
+{
+	static char b[MAXT];
 	size_t n = (size_t)sprintf(b, "/-! x -/\n");
 	while (n < 5000) n += (size_t)sprintf(b + n, "def a := 1\n");
 	n += (size_t)sprintf(b + n, "/-!\n     ```\n");
 	while (n < 10000) n += (size_t)sprintf(b + n, "x\n");
 	n += (size_t)sprintf(b + n, "     ```\n-/\ndef a := 1\n");
-	Text *t = text_new(b, n);
-	Syntax *s = syntax_open("x.lean", t);
-	CHECK(t && s);
-	syntax_update(s, t, NULL, &r1, &r2);
-	syntax_edit(s, t, 0, 0, "a", 1);
-	CHECK(!text_insert(t, 0, "a", 1));
-	syntax_update(s, t, NULL, &r1, &r2);
-	syntax_faces(s, 9990, n + 1, f + 9990);
-	lang = 3, fresh(t, g), lang = 0;
-	CHECK(!memcmp(f + 9990, g + 9990, n + 1 - 9990));
-	syntax_free(s);
-	text_free(t);
+	lean_edit(b, n, 0, 0, "a", 0, 0);
+	n = 0;
+	for (int k = 0; k < 4; k++) {
+		for (size_t e = n + 9000; n < e; ) n += (size_t)sprintf(b + n, "def a := 1\n");
+		n += (size_t)sprintf(b + n, "/-\n");
+		for (size_t e = n + 5000; n < e; ) n += (size_t)sprintf(b + n, "x\n");
+		n += (size_t)sprintf(b + n, "-/\n");
+	}
+	lean_edit(b, n, 2200, 4400, "", 0, 0);
+	n = 0;
+	while (n < 2200) n += (size_t)sprintf(b + n, "def a := 1\n");
+	size_t o = n;
+	n += (size_t)sprintf(b + n, "/-\n");
+	while (n < 8300) n += (size_t)sprintf(b + n, "x\n");
+	n += (size_t)sprintf(b + n, "-/\ndef a := 1\n");
+	lean_edit(b, n, 100, 0, "a", o - 10, o + 4);
 }
 
 int main(void)
@@ -290,7 +326,7 @@ int main(void)
 	edit_near_start("1e+ ", 4099, 4098, "3");   /* "e" and "+" join 1e+3 */
 	/* the last token read, "1", ends two bytes before the edit */
 	edit_near_start("1e+ ", 4096, 4098, "3");
-	edit_before_fence();
+	lean_states();
 	/* a NUL starts no two-byte operator (strchr finds the terminator) */
 	Text *t0 = text_new("\0=", 2);
 	TsqlRd r0 = { t0, 0, 0, { 0 }, 0 };

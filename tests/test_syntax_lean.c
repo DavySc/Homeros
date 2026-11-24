@@ -81,12 +81,24 @@ int main(int argc, char **argv)
 		text_free(t);
 	}
 	fclose(in);
-	/* 1,200 backticks: without the budget, about a second to colour (the
-	   closer's search for each run's length, from each position); the
-	   line passes on the state it found, as VS Code's past its time limit,
-	   so the /- before them does not deepen the comment and x is code */
+	/* Long lines that read again from each position: 1,200 backticks in a
+	   comment (the closer's search for each run's length), a line of
+	   comments each of 16 links' [ (each [ searches to the line's end),
+	   trace[ and def { (each searches for its ] or }), short comments (each
+	   finds the line's end) and a doc comment of blanks (each position's
+	   \s*).  Without the
+	   line's budget and the remembered runs, a second or more.  The
+	   backticks' line passes on the state it found, as VS Code's past its
+	   time limit, so the /- before them does not deepen the comment and x
+	   is code. */
 	n = (size_t)sprintf(text, "/--\n/- %1200s\n-/\nx\n", "");
 	for (size_t i = 7; i < 1207; i++) text[i] = '`';
+	size_t x = n - 2;
+	for (const char *const *w = (const char *const[]){ "", "/-[a[a[a[a[a[a[a[a[a[a[a[a[a[a[a[a-/", "", "trace[", "", "def {", "", "/-!-/", "/--", " ", NULL }; *w; w += 2) {
+		n += (size_t)sprintf(text + n, "%s", w[0]);
+		for (size_t e = n + 19900; n < e; ) n += (size_t)sprintf(text + n, "%s", w[1]);
+		text[n++] = '\n';
+	}
 	clock_t c0 = clock();
 	Text *t = text_new(text, n);
 	Syntax *s = syntax_open("x.lean", t);
@@ -95,7 +107,7 @@ int main(int argc, char **argv)
 	syntax_faces(s, 0, n, got);
 	double ms = (double)(clock() - c0) * 1e3 / CLOCKS_PER_SEC;
 	syntax_free(s), text_free(t);
-	printf("test_syntax_lean: %zu of %zu bytes in %zu of %zu cases differ from VS Code; a line of 1,200 ` in %.1f ms\n", bad, bytes, badcase, ncase, ms);
-	CHECK(ncase && !bad && ms < 100 && got[n - 2] == FACE_NONE);
+	printf("test_syntax_lean: %zu of %zu bytes in %zu of %zu cases differ from VS Code; long lines in %.1f ms\n", bad, bytes, badcase, ncase, ms);
+	CHECK(ncase && !bad && ms < 300 && got[x] == FACE_NONE);
 	return 0;
 }
