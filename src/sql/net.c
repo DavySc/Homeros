@@ -50,16 +50,25 @@ static int roots(SSL_CTX *ctx)
 	return x != NULL;
 }
 
-/* What woke the loop: resets the socket's event, notes the connect done;
-   -1 when it was refused, which only this says */
+/* What woke the loop: resets the socket's event, notes the connect done
+   and the server's close; -1 when the connect was refused, which only this
+   says.  Windows reports FD_CLOSE once, with the last bytes, and then
+   never signals the event again, so the recv that says 0 would never be
+   made (the review of PR 130: 15 of 18 runs on Windows Server 2025; Wine
+   signals again): once it came, the event stays set until that recv */
 static int woke(Net *c)
 {
 	WSANETWORKEVENTS ne;
-	if (WSAEnumNetworkEvents(sock(c), H(c->fd), &ne) || !(ne.lNetworkEvents & FD_CONNECT)) return 0;
-	if (!ne.iErrorCode[FD_CONNECT_BIT]) return c->up = 1, 0;
-	WSASetLastError(ne.iErrorCode[FD_CONNECT_BIT]);
-	snprintf(c->err, sizeof c->err, "connect: %s", why());
-	return -1;
+	if (WSAEnumNetworkEvents(sock(c), H(c->fd), &ne)) return 0;
+	if (ne.lNetworkEvents & FD_CONNECT && ne.iErrorCode[FD_CONNECT_BIT]) {
+		WSASetLastError(ne.iErrorCode[FD_CONNECT_BIT]);
+		snprintf(c->err, sizeof c->err, "connect: %s", why());
+		return -1;
+	}
+	if (ne.lNetworkEvents & FD_CONNECT) c->up = 1;
+	if (ne.lNetworkEvents & FD_CLOSE) c->up = 2;
+	if (c->up == 2) WSASetEvent(H(c->fd));
+	return 0;
 }
 
 /* has: 1 the credentials, 2 the context too */
@@ -219,7 +228,9 @@ int net_read(Net *c, Str *in)
 {
 	char s[65536];
 #ifdef _WIN32
-	if (woke(c)) return -1;
+	/* flushed after the reset: a socket that turned writable since the
+	   caller's flush took its FD_WRITE with it (the review of PR 130) */
+	if (woke(c) || net_flush(c)) return -1;
 	long k = recv(sock(c), s, sizeof s, 0);
 	if (k < 0 && WSAGetLastError() == WSAEWOULDBLOCK) return 0;
 #else

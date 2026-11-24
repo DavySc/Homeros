@@ -15,11 +15,14 @@ done
 mkdir -p build/win
 [ -n "${XDG_RUNTIME_DIR:-}" ] || { export XDG_RUNTIME_DIR=$PWD/build/win/run; mkdir -p -m 700 "$XDG_RUNTIME_DIR"; }
 export WINEDEBUG=-all WINEDLLOVERRIDES="mscoree,mshtml=" WINEPREFIX=$PWD/build/win/prefix-sql
+# test_X.exe from tests/test_X.c and the clients; the windows job runs test_sql_wake.exe on Windows itself
+for t in sql_wake sql; do
+	zig cc -target x86_64-windows-gnu -std=c17 -D_DEFAULT_SOURCE -Wall -Wextra -Werror -Iinclude -O1 -g \
+	  -fsanitize=undefined -fsanitize-trap=undefined -o build/win/test_$t.exe tests/test_$t.c src/sql/*.c src/str/*.c src/uni/*.c src/date/*.c \
+	  src/tools/match.c $SQL_WIN
+	pass 120 build/win/test_$t.exe wine || { echo "FAIL test_$t (Windows)"; exit 1; }
+done
 exe=build/win/test_sql.exe
-zig cc -target x86_64-windows-gnu -std=c17 -D_DEFAULT_SOURCE -Wall -Wextra -Werror -Iinclude -O1 -g \
-  -fsanitize=undefined -fsanitize-trap=undefined -o "$exe" tests/test_sql.c src/sql/*.c src/str/*.c src/uni/*.c src/date/*.c \
-  src/tools/match.c $SQL_WIN
-pass 120 "$exe" wine || { echo "FAIL test_sql (Windows)"; exit 1; }
 printf '#!/bin/sh\nexec wine %s "$@"\n' "$PWD/$exe" > build/win/test_sql.sh
 chmod +x build/win/test_sql.sh
 for o in tds pg; do

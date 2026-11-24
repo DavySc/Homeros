@@ -16,7 +16,7 @@ typedef struct {
 #ifdef _WIN32
 	/* fd is the socket's WSAEventSelect event, which the loop waits on (loop.h) */
 	unsigned long long sock;
-	int up;   /* the connect is done */
+	int up;   /* 1: the connect is done; 2: the server's close came too */
 	struct Sspi *sspi;
 #endif
 } Net;

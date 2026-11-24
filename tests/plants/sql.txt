@@ -43,7 +43,7 @@ sql: a refused connect's reason lost~test TESTS=sql~~src/sql/net.c~"send: %s", w
 sql: a Windows login tried off Windows~test TESTS=sql~~src/sql/net.c~"a Windows login needs Windows"~"Windows login: SEC_E_NO_CREDENTIALS"
 win: a message waits for the write wake Winsock sends only after a send would block~win WIN=sql~~src/sql/tds.c~	t->eom = 0;¶	return net_flush(&t->net);~	t->eom = 0;¶	return 0;
 win: a Postgres message waits for the write wake Winsock sends only after a send would block~win WIN=sql~~src/sql/pg.c~strlen(sql) + 1) || net_flush(&p->net);~strlen(sql) + 1);
-win: a refused connect taken as done (FD_CONNECT's error dropped)~win WIN=sql~~src/sql/net.c~	if (!ne.iErrorCode[FD_CONNECT_BIT]) return c->up = 1, 0;~	return c->up = 1, 0;
+win: a refused connect taken as done (FD_CONNECT's error dropped)~win WIN=sql~~src/sql/net.c~if (ne.lNetworkEvents & FD_CONNECT && ne.iErrorCode[FD_CONNECT_BIT]) {~if (0) {
 win: a send before the connect is done hides its refusal~win WIN=sql~~src/sql/net.c~	if (!c->up && woke(c)) return -1;¶~
 sql: a batch ending in EXEC never ends (DONEPROC)~test TESTS=sql~~src/sql/tds.c~if (k != 0xFF && !(st & 1) && (t->state == TDS_BUSY~if (k == 0xFD && !(st & 1) && (t->state == TDS_BUSY
 sql: our own cancel of a procedure shown as an error~test TESTS=sql~~src/sql/tds.c~if (t->quiet && no == 3980) return 0;~if (t->quiet && no == 1) return 0;
@@ -61,3 +61,5 @@ sql: the SQL Server login message kept after its sending~test TESTS=sql~~src/sql
 specs: PgCancel's run over at ReadyForQuery~specs~find design/specs -name '*.cfg' ! -name PgCancel_ok.cfg -delete~design/specs/PgCancel_ok.cfg~Variant = "ok"~Variant = "noclose"
 sql: a cancel's ready never cleared, so it ends a later cancel early~test TESTS=sql~~src/sql/pg.c~p->state = PG_READY, p->quiet = 0, p->ready = 0;~p->state = PG_READY, p->quiet = 0;
 sql: the socket blocks~test TESTS=sql~~src/sql/net.c~SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC~SOCK_STREAM | SOCK_CLOEXEC
+specs: Wake with the close's record reset with the event~specs~find design/specs -name '*.cfg' ! -name Wake_ok_close.cfg -delete~design/specs/Wake_ok_close.cfg~ Variant = "ok"~ Variant = "noclose"
+specs: Wake with no flush after the reset~specs~find design/specs -name '*.cfg' ! -name Wake_ok_send.cfg -delete~design/specs/Wake_ok_send.cfg~ Variant = "ok"~ Variant = "flushfirst"
