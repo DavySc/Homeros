@@ -1,0 +1,94 @@
+caught        tsql: an edit keeps the token start two bytes before it (test_tsql, edit near a kept start)   (make test TESTS=tsql): tests/test_tsql.c:236: CHECK(!memcmp(f + 4096, g + 4096, n + il - 4096)) failed
+caught        tsql: an edit keeps the token start at its own byte (test_tsql, edit near a kept start)   (make test TESTS=tsql): tests/test_tsql.c:236: CHECK(!memcmp(f + 4096, g + 4096, n + il - 4096)) failed
+caught        tsql: an edit keeps the starts after it as known (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:415: CHECK(!memcmp(f + wa, g + wa, z - wa)) failed
+caught        tsql: comments do not nest (test_tsql, tokens)   (make test TESTS=tsql): tests/test_tsql.c:309: CHECK(!strcmp(got, lines[i][1])) failed
+caught        tsql: an edit keeps the old text's window (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:236: CHECK(!memcmp(f + 4096, g + 4096, n + il - 4096)) failed
+caught        tsql: an edit keeps where the last faces ended (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:415: CHECK(!memcmp(f + wa, g + wa, z - wa)) failed
+caught        tsql: <> is two operators (test_tsql, tokens)   (make test TESTS=tsql): tests/test_tsql.c:322: CHECK(e == toks[i].end && k == toks[i].kind) failed
+caught        tsql: N'..' is a word and a string (test_tsql, lines)   (make test TESTS=tsql): tests/test_tsql.c:309: CHECK(!strcmp(got, lines[i][1])) failed
+caught        tsql: a doubled quote ends the string (test_tsql, tokens)   (make test TESTS=tsql): tests/test_tsql.c:322: CHECK(e == toks[i].end && k == toks[i].kind) failed
+caught        tsql: a function word beats an operator word, so LEFT JOIN is a function (test_tsql, lines)   (make test TESTS=tsql): tests/test_tsql.c:309: CHECK(!strcmp(got, lines[i][1])) failed
+caught        tsql: a keyword word beats a function word, so DATEADD's day is a keyword (test_tsql, lines)   (make test TESTS=tsql): tests/test_tsql.c:309: CHECK(!strcmp(got, lines[i][1])) failed
+caught        tsql: what is in sys is plain (test_tsql, lines)   (make test TESTS=tsql): tests/test_tsql.c:309: CHECK(!strcmp(got, lines[i][1])) failed
+caught        tsql: sp_ procedures are plain (test_tsql, lines)   (make test TESTS=tsql): tests/test_tsql.c:309: CHECK(!strcmp(got, lines[i][1])) failed
+caught        tsql: words are looked up as typed, not lower case (test_tsql, lines)   (make test TESTS=tsql): tests/test_tsql.c:309: CHECK(!strcmp(got, lines[i][1])) failed
+caught        tsql: @@globals are plain (test_tsql, lines)   (make test TESTS=tsql): tests/test_tsql.c:309: CHECK(!strcmp(got, lines[i][1])) failed
+caught        tsql: .sql files are not T-SQL (test_tsql)   (make test TESTS=tsql): tests/test_tsql.c:39: CHECK(s) failed
+caught        tsql: the end of the text is a one-byte token (test_tsql, tokens)   (make test TESTS=tsql): tests/test_tsql.c:322: CHECK(e == toks[i].end && k == toks[i].kind) failed
+caught        tsql: a word longer than the lookup buffer is copied into it (fuzz_tsql, ASan)   (make fuzz FUZZERS=tsql FUZZ_SECONDS=60): FAIL fuzz_tsql
+caught        tsql: a -- comment takes the \r of a CR LF (test_tsql, tokens)   (make test TESTS=tsql): tests/test_tsql.c:322: CHECK(e == toks[i].end && k == toks[i].kind) failed
+caught        tsql: a dot is an operator (test_tsql, lines)   (make test TESTS=tsql): tests/test_tsql.c:309: CHECK(!strcmp(got, lines[i][1])) failed
+caught        tsql: || is two operators (test_tsql, tokens)   (make test TESTS=tsql): tests/test_tsql.c:322: CHECK(e == toks[i].end && k == toks[i].kind) failed
+caught        tsql: an exponent needs no digit (test_tsql, tokens)   (make test TESTS=tsql): tests/test_tsql.c:322: CHECK(e == toks[i].end && k == toks[i].kind) failed
+caught        tsql: a number takes the letters after it (test_tsql, tokens and lines)   (make test TESTS=tsql): tests/test_tsql.c:309: CHECK(!strcmp(got, lines[i][1])) failed
+caught        tsql: a number takes .. (test_tsql, tokens)   (make test TESTS=tsql): tests/test_tsql.c:322: CHECK(e == toks[i].end && k == toks[i].kind) failed
+caught        tsql: numbers are plain (test_tsql, lines)   (make test TESTS=tsql): tests/test_tsql.c:309: CHECK(!strcmp(got, lines[i][1])) failed
+caught        tsql: 0x takes letters past f (test_tsql, tokens)   (make test TESTS=tsql): tests/test_tsql.c:322: CHECK(e == toks[i].end && k == toks[i].kind) failed
+caught        tsql: sp_ alone is a procedure (test_tsql, lines)   (make test TESTS=tsql): tests/test_tsql.c:309: CHECK(!strcmp(got, lines[i][1])) failed
+caught        tsql: words of 20 bytes and more are not looked up (test_tsql, lines)   (make test TESTS=tsql): tests/test_tsql.c:309: CHECK(!strcmp(got, lines[i][1])) failed
+caught        tsql: the schema's name is read from byte 1 (test_tsql, lines)   (make test TESTS=tsql): tests/test_tsql.c:309: CHECK(!strcmp(got, lines[i][1])) failed
+caught        tsql: ( is an operator token, not punctuation (test_tsql, tokens)   (make test TESTS=tsql): tests/test_tsql.c:322: CHECK(e == toks[i].end && k == toks[i].kind) failed
+caught        tsql: << and >> are two operators (test_tsql, tokens)   (make test TESTS=tsql): tests/test_tsql.c:322: CHECK(e == toks[i].end && k == toks[i].kind) failed
+caught        tsql: a NUL starts a two-byte operator (test_tsql)   (make test TESTS=tsql): tests/test_tsql.c:334: CHECK(t0 && tsql_token(&r0, 0, &k0) == 1) failed
+caught        tsql: an edit keeps the last token's end (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:236: CHECK(!memcmp(f + 4096, g + 4096, n + il - 4096)) failed
+caught        tsql: an edit two bytes past the last token keeps its end (test_tsql, edit near a kept start)   (make test TESTS=tsql): tests/test_tsql.c:236: CHECK(!memcmp(f + 4096, g + 4096, n + il - 4096)) failed
+caught        tsql: the last token's kind is not kept (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:415: CHECK(!memcmp(f + wa, g + wa, z - wa)) failed
+caught        tsql: an edit among moved starts keeps those after it (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:415: CHECK(!memcmp(f + wa, g + wa, z - wa)) failed
+caught        tsql: moved starts do not move (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:262: CHECK(!memcmp(f, g, n)) failed
+caught        tsql: storing a kept token start aborts (fuzz_tsql reaches the index)   (make fuzz FUZZERS=tsql FUZZ_SECONDS=60): ==13625== ERROR: libFuzzer: deadly signal
+caught        tsql: a moved start a read passed stays (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:415: CHECK(!memcmp(f + wa, g + wa, z - wa)) failed
+caught        tsql: moved starts of an older edit stay (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:415: CHECK(!memcmp(f + wa, g + wa, z - wa)) failed
+caught        tsql: a read starts from a moved start (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:415: CHECK(!memcmp(f + wa, g + wa, z - wa)) failed
+caught        tsql: a far window stays plain once the index is filled (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:415: CHECK(!memcmp(f + wa, g + wa, z - wa)) failed
+caught        tsql: the index is filled from past a token start (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:415: CHECK(!memcmp(f + wa, g + wa, z - wa)) failed
+caught        tsql: syntax_update does not ask for a redraw after a plain window (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:415: CHECK(!memcmp(f + wa, g + wa, z - wa)) failed
+caught        tsql: syntax_update stops without saying so (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:415: CHECK(!memcmp(f + wa, g + wa, z - wa)) failed
+caught        tsql: the filled index does not mark the text's end (test_tsql, random edits)   (make test TESTS=tsql): tests/test_tsql.c:415: CHECK(!memcmp(f + wa, g + wa, z - wa)) failed
+caught        tsql: an unclosed comment is not flagged open (test_tsql, open)   (make test TESTS=tsql): tests/test_tsql.c:352: CHECK(r.open == opens[i].open) failed
+caught        tsql: an unclosed string is not flagged open (test_tsql, open)   (make test TESTS=tsql): tests/test_tsql.c:352: CHECK(r.open == opens[i].open) failed
+caught        tsql: the open flag keeps the last token's (test_tsql, open)   (make test TESTS=tsql): tests/test_tsql.c:352: CHECK(r.open == opens[i].open) failed
+caught        tsql: a word it lacks still gets an id (test_tsql)   (make test TESTS=tsql): tests/test_tsql.c:338: CHECK(tsql_word("selectx", 7, &id) == 0 && id == 0 && tsql_word("@@rowcount", 10, NULL) == TQ_FUNCTION) failed
+caught        tsql: CONCAT_WS is not in the word list, so plain (test_tsql, lines)   (make test TESTS=tsql): tests/test_tsql.c:309: CHECK(!strcmp(got, lines[i][1])) failed
+caught        tsql: an operator takes the comments' grey, not the operator face (test_tsql, lines)   (make test TESTS=tsql): tests/test_tsql.c:309: CHECK(!strcmp(got, lines[i][1])) failed
+caught        json: a .json file is T-SQL (test_json)   (make test TESTS=json): tests/test_json.c:157: CHECK(!strcmp(got, want)) failed
+caught        json: the index is filled with T-SQL's tokens (test_json)   (make test TESTS=json): tests/test_json.c:157: CHECK(!strcmp(got, want)) failed
+caught        json: a window takes T-SQL's faces (test_json)   (make test TESTS=json): tests/test_json.c:157: CHECK(!strcmp(got, want)) failed
+caught        json: a string runs past its line's end (test_json, lines)   (make test TESTS=json): tests/test_json.c:181: CHECK(!strcmp(got, lines[i][1])) failed
+caught        json: a closed string leaves its closing quote out (test_json)   (make test TESTS=json): tests/test_json.c:157: CHECK(!strcmp(got, want)) failed
+caught        json: an escape takes the line's end (test_json, lines)   (make test TESTS=json): tests/test_json.c:181: CHECK(!strcmp(got, lines[i][1])) failed
+caught        json: a line comment runs past its line (test_json)   (make test TESTS=json): tests/test_json.c:157: CHECK(!strcmp(got, want)) failed
+caught        json: a block comment ends a byte early (test_json)   (make test TESTS=json): tests/test_json.c:157: CHECK(!strcmp(got, want)) failed
+caught        json: an unclosed block comment is no comment (test_json, lines)   (make test TESTS=json): tests/test_json.c:181: CHECK(!strcmp(got, lines[i][1])) failed
+caught        json: a minus starts no number (test_json)   (make test TESTS=json): tests/test_json.c:157: CHECK(!strcmp(got, want)) failed
+caught        json: a word runs on over digits (test_json)   (make test TESTS=json): tests/test_json.c:157: CHECK(!strcmp(got, want)) failed
+caught        json: an exponent takes no plus (test_json, lines)   (make test TESTS=json): tests/test_json.c:181: CHECK(!strcmp(got, lines[i][1])) failed
+caught        json: a key's colon is not found past a comment (test_json)   (make test TESTS=json): tests/test_json.c:157: CHECK(!strcmp(got, want)) failed
+caught        json: a key is a plain string (test_json)   (make test TESTS=json): tests/test_json.c:157: CHECK(!strcmp(got, want)) failed
+caught        json: brackets are plain (test_json)   (make test TESTS=json): tests/test_json.c:157: CHECK(!strcmp(got, want)) failed
+caught        json: a colon is a bracket (test_json)   (make test TESTS=json): tests/test_json.c:157: CHECK(!strcmp(got, want)) failed
+caught        json: null is a boolean (test_json)   (make test TESTS=json): tests/test_json.c:157: CHECK(!strcmp(got, want)) failed
+caught        json: false is plain (test_json)   (make test TESTS=json): tests/test_json.c:157: CHECK(!strcmp(got, want)) failed
+caught        json: true is plain (test_json)   (make test TESTS=json): tests/test_json.c:157: CHECK(!strcmp(got, want)) failed
+caught        json: an escape's second byte starts another (test_json)   (make test TESTS=json): tests/test_json.c:157: CHECK(!strcmp(got, want)) failed
+caught        json: escapes are looked for from the window, not its run of backslashes (test_json, long strings)   (make test TESTS=json): tests/test_json.c:157: CHECK(!strcmp(got, want)) failed
+caught        json: escapes are not coloured (test_json)   (make test TESTS=json): tests/test_json.c:157: CHECK(!strcmp(got, want)) failed
+caught        json: escapes are looked for only up to the window's start (test_json, long strings)   (make test TESTS=json): tests/test_json.c:157: CHECK(!strcmp(got, want)) failed
+caught        souffle: .dl files are lexed as T-SQL (test_tsql, Soufflé's lines)   (make test TESTS=tsql): tests/test_tsql.c:314: CHECK(!strcmp(got, dlines[i][1])) failed
+caught        json: the cached token's kind is lost between reads (test_json)   (make test TESTS=json): tests/test_json.c:157: CHECK(!strcmp(got, want)) failed
+caught        souffle: decl is no directive (test_tsql, Soufflé's lines)   (make test TESTS=tsql): tests/test_tsql.c:314: CHECK(!strcmp(got, dlines[i][1])) failed
+caught        souffle: type is a keyword without its dot (test_tsql, Soufflé's lines)   (make test TESTS=tsql): tests/test_tsql.c:314: CHECK(!strcmp(got, dlines[i][1])) failed
+caught        souffle: .dl has no filetype (test_syntax, filetypes)   (make test TESTS=syntax): tests/test_syntax.c:684:2: runtime error: null pointer passed as argument 1, which is declared to never be null
+caught        souffle: the word table is out of order, so a word is not found (test_tsql, Soufflé's lines)   (make test TESTS=tsql): tests/test_tsql.c:314: CHECK(!strcmp(got, dlines[i][1])) failed
+caught        souffle: the dot of .decl is punctuation (test_tsql, Soufflé's lines)   (make test TESTS=tsql): tests/test_tsql.c:314: CHECK(!strcmp(got, dlines[i][1])) failed
+caught        souffle: the word after a dot is not a directive (test_tsql, Soufflé's lines)   (make test TESTS=tsql): tests/test_tsql.c:314: CHECK(!strcmp(got, dlines[i][1])) failed
+caught        souffle: a name before a paren is no relation (test_tsql, Soufflé's lines)   (make test TESTS=tsql): tests/test_tsql.c:314: CHECK(!strcmp(got, dlines[i][1])) failed
+caught        souffle: a relation's paren after spaces is not seen (test_tsql, Soufflé's lines)   (make test TESTS=tsql): tests/test_tsql.c:314: CHECK(!strcmp(got, dlines[i][1])) failed
+caught        souffle: words are matched in any case, so Count is count (test_tsql, Soufflé's lines)   (make test TESTS=tsql): tests/test_tsql.c:314: CHECK(!strcmp(got, dlines[i][1])) failed
+caught        souffle: a string ends at its line's end (test_tsql, Soufflé's lines)   (make test TESTS=tsql): tests/test_tsql.c:314: CHECK(!strcmp(got, dlines[i][1])) failed
+caught        souffle: 10.0.0.1 is not one number (test_tsql, Soufflé's lines)   (make test TESTS=tsql): tests/test_tsql.c:314: CHECK(!strcmp(got, dlines[i][1])) failed
+caught        souffle: a string's escapes are not painted (test_tsql, Soufflé's lines)   (make test TESTS=tsql): tests/test_tsql.c:314: CHECK(!strcmp(got, dlines[i][1])) failed
+caught        souffle: a # line is not a directive (test_tsql, Soufflé's lines)   (make test TESTS=tsql): tests/test_tsql.c:314: CHECK(!strcmp(got, dlines[i][1])) failed
+caught        souffle: :- is two tokens (test_tsql, Soufflé's lines)   (make test TESTS=tsql): tests/test_tsql.c:314: CHECK(!strcmp(got, dlines[i][1])) failed
+caught        souffle: a dot is not punctuation (test_tsql, Soufflé's lines)   (make test TESTS=tsql): tests/test_tsql.c:314: CHECK(!strcmp(got, dlines[i][1])) failed
+caught        souffle: a relation's paren is looked for past the line's end (test_tsql, Soufflé's lines)   (make test TESTS=tsql): tests/test_tsql.c:314: CHECK(!strcmp(got, dlines[i][1])) failed
+caught        souffle: a token that never advances hangs the index (fuzz_tsql)   (make fuzz FUZZERS=tsql FUZZ_SECONDS=60): ==28539== ERROR: libFuzzer: timeout after 21 seconds
