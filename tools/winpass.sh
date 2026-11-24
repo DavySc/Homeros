@@ -27,9 +27,8 @@ winlink() {
 	local inc="-I$syn/src/tree-sitter/lib/include -I$syn/src/tree-sitter/lib/src"
 	mkdir -p build/win/link
 	make -s $syn/queries.c build/win/stb.o build/ghostty/windows.lib   # stb: src/image/build.mk; thread 0's, agreed
-	# after those: wincc's dry run starts with what it would build first
-	# (the grammars' sources, build/win), not the compile loop
-	local srcs=$(make -s -n wincc | head -1 | tr ' ' '\n' | grep '\.c$' | grep -v -e '^src/main\.c$' -e '^src/win/')
+	# wincc's list itself, whatever is built yet
+	local srcs=$(make -s --eval 'winsrcs: ; @echo $(WIN_SRCS)' winsrcs | tr ' ' '\n' | grep -v -e '^src/main\.c$' -e '^src/win/')
 	for g in $(sed -n '/^SYN_GRAMMARS/,/[^\\]$/p' src/syntax/build.mk | tr -d '\\' | cut -d= -f2); do
 		o=build/win/link/$(echo $g | tr / _).o
 		[ -f $o ] || zig cc -target x86_64-windows-gnu -O2 -c -I$(dirname $syn/src/$g) $syn/src/$g.c -o $o
