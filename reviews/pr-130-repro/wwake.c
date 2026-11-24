@@ -20,18 +20,14 @@ int main(int argc, char **argv)
 	connect(s, (struct sockaddr *)&a, sizeof a);
 	WSANETWORKEVENTS ne;
 	WaitForSingleObject(ev, 3000), WSAEnumNetworkEvents(s, ev, &ne);   /* connected */
-	size_t n = 64 << 20, at = 0;
+	size_t n = 16 << 20, at = 0;
 	char *b = malloc(n);
 	memset(b, 'x', n);
-	/* net_flush: send until it would block */
-	int sends = 0;
-	while (at < n) { int k = send(s, b + at, (int)(n - at), 0); sends++; if (k < 0) break; at += (size_t)k; }
-	printf("first flush: %zu of %zu bytes taken in %d sends, then error %d\n", at, n, sends, at < n ? WSAGetLastError() : 0);
-	if (at == n) {   /* all taken at once (Windows's way): a second message while it drains */
-		int k = send(s, "attention", 9, 0);
-		printf("second message: send %d error %d\n", k, k < 0 ? WSAGetLastError() : 0);
-		if (k >= 0) return puts("no send would block here: nothing to show"), 3;
-	}
+	/* net_flush's send, message after message, until one would block */
+	int k = 0;
+	while (at < ((size_t)1 << 30) && (k = send(s, b, (int)n, 0)) > 0) at += (size_t)k;
+	printf("%zu bytes taken before a send said %d, error %d\n", at, k, k < 0 ? WSAGetLastError() : 0);
+	if (k >= 0 || WSAGetLastError() != WSAEWOULDBLOCK) return puts("no send would block here: nothing to show"), 3;
 	Sleep((DWORD)atoi(argv[2]));               /* the server drains meanwhile */
 	WSAEnumNetworkEvents(s, ev, &ne);          /* net_read's woke() */
 	printf("reset took events 0x%lx\n", ne.lNetworkEvents);

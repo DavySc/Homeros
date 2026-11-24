@@ -17,9 +17,7 @@ jobs:
           zig cc -target x86_64-windows-gnu -O1 -o wwake.exe wwake.c -lws2_32
           python srv.py 7801 10 & python srv.py 7802 100000 & python srv.py 7803 1000000 & python wsrv.py 7811 &
           sleep 3
-          for i in 1 2 3; do for p in 7801 7802 7803; do for sl in 0 300; do echo "== close: port $p sleep $sl"; ./close.exe $p $sl | tail -3 || true; done; done; done
+          for i in 1 2 3; do for p in 7801 7802 7803; do for sl in 0 300; do echo "== close: port $p sleep $sl"; ./close.exe $p $sl | tail -1 || true; echo "== with the fix"; ./close.exe $p $sl fix | tail -1 || true; done; done; done
           for i in 1 2 3 4 5; do for ms in 3000 0; do echo "== wwake: pause $ms"; ./wwake.exe 7811 $ms || echo "exit $?"; done; done
-          ver
-        continue-on-error: true
       - shell: cmd
         run: ver
