@@ -1,0 +1,10 @@
+mine: a launch the editor refused opens a second remote window~win WIN=win~~src/win/remote.c~if (!took && !FindWindowExW(HWND_MESSAGE, NULL, CLASS, NULL)) {~if (!took) {
+mine: empty data read before its start~win WIN=win~~src/win/remote.c~cd->dwData != TAG || !cd->cbData || ~cd->dwData != TAG || 
+mine: the launch does not allow the editor to come forward~win WIN=win~~src/win/remote.c~	if (GetWindowThreadProcessId(h, &pid)) AllowSetForegroundWindow(pid);~	(void)pid;
+mine: files taken come out newest first~win WIN=win~~src/win/remote.c~	char *s = q[0];¶	memmove(q, q + 1, --qn * sizeof *q);~	char *s = q[--qn];
+mine: the turn is never given back~win WIN=win~~src/win/remote.c~	ReleaseMutex(m);¶~
+mine: main never stops taking files (Remote "late")~test TESTS=frames_main~~src/main.c~	remote_stop();   /* before b->close reads messages */¶~
+mine: remote_stop after the backend closed (Remote "late")~test TESTS=frames_main~~src/main.c~	remote_stop();   /* before b->close reads messages */¶	git_free();¶	bridge_free();¶	b->close();~	git_free();¶	bridge_free();¶	b->close();¶	remote_stop();
+mine: a hand-over draws nothing in the frames already open~test TESTS=frames_main~~src/main.c~free(p), dirty = 1) {~free(p)) {
+mine: a hand-over is opened although the input is lost~test TESTS=frames_main~~src/main.c~for (char *p; !lost && (p = remote_next());~for (char *p; (p = remote_next());
+mine: the terminal editor takes part~test TESTS=frames_main~~src/main.c~if (!tty && remote_open(file)) return 0;~if (remote_open(file)) return 0;

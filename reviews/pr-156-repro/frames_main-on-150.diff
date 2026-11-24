@@ -1,0 +1,47 @@
+diff --git a/tests/test_frames_main.c b/tests/test_frames_main.c
+index f521272..3254101 100644
+--- a/tests/test_frames_main.c
++++ b/tests/test_frames_main.c
+@@ -23,7 +23,7 @@ static void remote_stop(void) {}
+ 
+ enum { NW = 8 };
+ static int t_pipe[2], t_osw;   /* a byte per event; the window the system focuses */
+-static int t_rows[NW], t_open[NW], t_ready[NW] = { 1, 1, 1, 1, 1, 1, 1, 1 }, t_drawn[NW], t_raise[NW], t_nraise;
++static int t_rows[NW], t_open[NW], t_ready[NW] = { 1, 1, 1, 1, 1, 1, 1, 1 }, t_drawn[NW], t_raise[64], t_nraise;
+ /* k: keys s; f: focus a; r: done; c: close a; h, v: hide, show a; s: a's
+    new size; o: file s handed over, read with key a (0: none); t: check */
+ typedef struct { char op; int a; const char *s; } Ev;
+@@ -35,7 +35,7 @@ static int t_open_(void) { return 0; }
+ static void t_close(void) {}
+ static int t_win_open(int id) { CHECK(id < NW && !t_open[id]); t_open[id] = 1; return 0; }
+ static void t_win_close(int id) { CHECK(t_open[id] == 1); t_open[id] = 2; }
+-static void t_raise_(int id) { CHECK(t_nraise < NW); t_raise[t_nraise++] = id; }
++static void t_raise_(int id) { CHECK(t_nraise < 64); t_raise[t_nraise++] = id; }
+ static int t_fds(int fds[2]) { fds[0] = t_pipe[0]; return 1; }
+ static void t_size(int id, int *rows, int *cols) { *rows = t_rows[id] ? t_rows[id] : 12; *cols = 40; }
+ static int t_ready_(int id) { return t_ready[id]; }
+@@ -105,11 +105,11 @@ static void t_check(int n)
+ 	case 9: CHECK(t_open[1] == 2 && !e.quit && !e.tabs->next && e.tab->id == 0); break;
+ 	/* a file handed over with the Enter of a :q!: the editor stays, and the
+ 	   file is in a new frame, raised */
+-	case 11: CHECK(!e.quit && e.tabs->next && e.tab->id && t_open[e.tab->id] == 1 && t_raise[t_nraise - 1] == e.tab->id
++	case 13: CHECK(!e.quit && e.tabs->next && e.tab->id && t_open[e.tab->id] == 1 && t_raise[t_nraise - 1] == e.tab->id
+ 	               && e.buf->path && strstr(e.buf->path, "b.txt")); t_d0 = e.tab->id; break;
+ 	/* none named: an empty buffer in a third frame; the Visual mode begun
+ 	   before it ended, as on the user's focus change */
+-	case 12: CHECK(e.tab->id != t_d0 && e.tab->id && t_open[e.tab->id] == 1 && t_raise[t_nraise - 1] == e.tab->id && !e.buf->path
++	case 14: CHECK(e.tab->id != t_d0 && e.tab->id && t_open[e.tab->id] == 1 && t_raise[t_nraise - 1] == e.tab->id && !e.buf->path
+ 	               && e.mode == MODE_NORMAL && !e.ks.visual); break;
+ 	}
+ }
+@@ -134,8 +134,8 @@ int main(void)
+ 		{ 'v', 1, 0 }, { 't', 8, 0 },
+ 		{ 's', 1, 0 }, { 't', 10, 0 },
+ 		{ 'c', 1, 0 }, { 't', 9, 0 },
+-		{ 'k', 0, ":q!" }, { 'o', '\r', t_b }, { 't', 11, 0 },
+-		{ 'k', 0, "v" }, { 'o', 0, "" }, { 't', 12, 0 },
++		{ 'k', 0, ":q!" }, { 'o', '\r', t_b }, { 't', 13, 0 },
++		{ 'k', 0, "v" }, { 'o', 0, "" }, { 't', 14, 0 },
+ 		{ 'k', 0, ":q!\r:q!\r:q!\r" },
+ 	};
+ 	snprintf(t_b, sizeof t_b, "%s/b.txt", dir);
