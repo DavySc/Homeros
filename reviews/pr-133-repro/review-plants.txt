@@ -1,0 +1,13 @@
+# The reviewer's own plants (sed expressions on a copy; tests/test_sql.c built
+# with -fsanitize=address,undefined and the files README.md names, then run).
+# name | file | sed | result on d3edad19
+none (control) | - | - | test_sql exit 0
+SCRAM: the server's proof never checked | src/sql/pg.c | s/? 0 : dead(p, "SCRAM: the server.s proof is wrong")/? 0 : 0/ | NOT CAUGHT
+SCRAM: the server's nonce need not extend ours | src/sql/pg.c | s/ || strncmp(r + 2, p->nonce, strlen(p->nonce)))/)/ | NOT CAUGHT
+host name never checked | src/sql/net.c | s/ || !SSL_set1_host(c->ssl, host)// | NOT CAUGHT (and wrong.homeros then logs in: README.md here)
+tds: column names not escaped | src/sql/tds.c | s/if (s \&\& out) put_u16(out, s, n, 0);/if (s \&\& out) put_u16(out, s, n, 1);/ | NOT CAUGHT
+tds: transaction descriptor not sent back | src/sql/tds.c | s/put_le(\&b, t->txn, 8)/put_le(\&b, 0, 8)/ | caught, tests/test_sql.c:168
+tds: quiet stays on after a cancel | src/sql/tds.c | s/t->state = TDS_READY, t->quiet = 0;/t->state = TDS_READY;/ | caught, tests/test_sql.c:160
+pg: column names not escaped | src/sql/pg.c | s/|| net_esc(o, s, (size_t)(z - s))))/|| str_add(o, s, (size_t)(z - s))))/ | NOT CAUGHT
+pg: 57014 hidden outside a cancel too | src/sql/pg.c | s/if (p->quiet \&\& f\['C'\]/if (f['C']/ | NOT CAUGHT
+pg: the password kept after the login | src/sql/pg.c | s/memset(p->pass, 0, sizeof p->pass);// | NOT CAUGHT
