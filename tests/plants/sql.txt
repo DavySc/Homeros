@@ -100,5 +100,6 @@ sql: :Disconnect keeps the session (test_sql_editor)~test TESTS=sql_editor~~src/
 sql: a second F5 during a run starts another (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (s->q.n) { core_msg(E, s->cancel ?~if (s->cancel) { core_msg(E, s->cancel ?
 sql: the cancel flag outlives its answer (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (s->cancel) s->cancel = 0, s->q.n = 0;~if (s->cancel) s->q.n = 0;
 sql: a port with letters after it is taken (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~port > 65535 || (p && *p))~port > 65535)
+win: a socket that turned writable before the reset waits for ever (test_sql_wake)~win WIN=sql~~src/sql/net.c~if (woke(c) || net_flush(c)) return -1;~if (woke(c)) return -1;
 specs: Wake with the close's record reset with the event~specs~find design/specs -name '*.cfg' ! -name Wake_ok_close.cfg -delete~design/specs/Wake_ok_close.cfg~ Variant = "ok"~ Variant = "noclose"
 specs: Wake with no flush after the reset~specs~find design/specs -name '*.cfg' ! -name Wake_ok_send.cfg -delete~design/specs/Wake_ok_send.cfg~ Variant = "ok"~ Variant = "flushfirst"
