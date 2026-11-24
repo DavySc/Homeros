@@ -142,6 +142,7 @@ static const struct { const char *lhs, *desc; } maps[] = {
 enum { NMAPS = sizeof maps / sizeof *maps };
 static int lead[3], nlead;   /* the keys typed of a map not yet complete */
 static int hint;             /* which-key's panel is shown */
+static int wtop, wh;         /* its first line shown, its height */
 
 /* m is a map of this buffer and mode: in Visual mode only SPC i s, a
    snippet around the area (package 19's, agreed), and its group */
@@ -200,26 +201,32 @@ void keys_draw(Editor *e, Grid *g)
 		}
 	int cols = g->cols / (w + 3) > 1 ? g->cols / (w + 3) : 1, h = (n + cols - 1) / cols;
 	if (h < 2) h = 2;
-	if (h > g->rows - 4) h = g->rows - 4;
-	int top = g->rows - h - 4, last = g->rows - 2;
+	int H = h + 3 < g->rows - 1 ? h + 3 : g->rows - 1, top = g->rows - 1 - H, last = g->rows - 2;
 	/* which-key's no_overlap (view.lua's check_overlap()): over the
 	   cursor's row or the one above it, the panel starts 2 rows below the
 	   cursor, at least 4 high, and Neovim moves the float up to fit
-	   (nvim_open_win's fixed off); the rows that no longer fit are cut */
+	   (nvim_open_win's fixed off) */
 	if (g->crow >= top - 1 && g->crow <= last) {
-		last = g->rows - 1;
 		top = g->crow + 2 < g->rows - 4 ? g->crow + 2 : g->rows - 4;
-		h = last - top - 2;
+		last = g->rows - 1;
+		H = g->rows - top;
 	}
-	if (h < 1 || top < 0) return;   /* a screen under 4 rows: no room */
+	if (top < 0 || H < 4) return;   /* a screen under 4 rows: no room */
+	/* the panel shows H of its h + 3 lines (a blank, the h rows, a blank,
+	   and the empty line the footer covers) from line wtop, which <c-d>
+	   and <c-u> move (Win:scroll()) */
+	wh = H;
+	if (wtop > h + 3 - H) wtop = h + 3 - H;
+	if (wtop < 0) wtop = 0;
 	w = g->cols / cols;
-	grid_blank(g, top, 0, h + 3, g->cols);
-	for (int k = 0, prev = -1; k < n && k / h < cols; k++) {
+	grid_blank(g, top, 0, H, g->cols);
+	for (int k = 0, prev = -1; k < n; k++) {
 		int b = -1;
 		for (int i = 0; i < NMAPS; i++)
 			if (child(i) && rank(i) > prev && (b < 0 || rank(i) < rank(b))) b = i;
 		prev = rank(b);
-		int c = 2 + 3 + k / h * w, r = top + 1 + k % h;
+		int c = 2 + 3 + k / h * w, r = top + 1 + k % h - wtop;
+		if (r < top || r >= last) continue;
 		const char *d = maps[b].desc;
 		char key[2] = { maps[b].lhs[nlead], 0 };
 		c = grid_str(g, r, c, key, FACE_NORMAL_FLOAT);
@@ -235,11 +242,16 @@ void keys_draw(Editor *e, Grid *g)
 		c = grid_str(g, last, c, i ? " \xc2\xbb " : "", FACE_WK_SEPARATOR);
 		c = grid_str(g, last, c, s, FACE_WK_GROUP);
 	}
-	c = (g->cols - 22) / 2 > c ? (g->cols - 22) / 2 : c;
+	int cut = H < h + 3, hw = cut ? 41 : 22;   /* the help's width */
+	c = (g->cols - hw) / 2 > c ? (g->cols - hw) / 2 : c;
 	c = grid_str(g, last, c, "<esc>", FACE_NORMAL_FLOAT);
 	c = grid_str(g, last, c, " close  ", FACE_WK_SEPARATOR);
 	c = grid_str(g, last, c, "<bs>", FACE_NORMAL_FLOAT);
-	grid_str(g, last, c, " back", FACE_WK_SEPARATOR);
+	c = grid_str(g, last, c, " back", FACE_WK_SEPARATOR);
+	if (cut) {
+		c = grid_str(g, last, c, "  <c-d>/<c-u>", FACE_NORMAL_FLOAT);
+		grid_str(g, last, c, " scroll", FACE_WK_SEPARATOR);
+	}
 	for (int i = top * g->cols; i < (last + 1) * g->cols; i++) g->c[i].bg = FACE_NORMAL_FLOAT;
 }
 
@@ -255,6 +267,14 @@ static int map(Editor *e, int k)
 {
 	if (!nlead && (e->mode != MODE_NORMAL || !normal_mappable(0))) return 0;
 	E = e;   /* for is_ft() and the maps that edit */
+	/* which-key's <c-d> and <c-u> scroll the panel half its height
+	   (state.lua); any other key shows a list from its top */
+	if (hint && (k == 4 || k == 21)) {
+		wtop += (k == 4 ? 1 : -1) * ((wh + 1) / 2);
+		core_changed = 1;
+		return 1;
+	}
+	wtop = 0;
 	/* after Space, which-key's <Esc> closes (and ends a count, a register
 	   or Visual mode, as Esc does), <BS> goes up a level; from the first
 	   which-key goes to the root, the list of every Normal key, which has

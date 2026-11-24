@@ -142,7 +142,31 @@ int main(void)
 	g.crow = 21;
 	grid_clear(&g);
 	keys_draw(&e, &g);
-	CHECK(row_has(&g, 23, "<esc> close") && row_has(&g, 21, "D \xe2\x9e\x9c") && !row_has(&g, 22, "\xe2\x9e\x9c") && g.c[20 * 80].bg == FACE_NORMAL_FLOAT && g.c[19 * 80].bg != FACE_NORMAL_FLOAT);
+	CHECK(row_has(&g, 23, "<esc> close  <bs> back  <c-d>/<c-u> scroll") && row_has(&g, 21, "D \xe2\x9e\x9c") && row_has(&g, 22, "e \xe2\x9e\x9c") && !row_has(&g, 20, "\xe2\x9e\x9c"));
+	CHECK(g.c[20 * 80].bg == FACE_NORMAL_FLOAT && g.c[19 * 80].bg != FACE_NORMAL_FLOAT);
+	/* <c-d> and <c-u>: half the panel's 4 rows, within its 7 lines */
+	keys_input(&e, 4, 0);
+	grid_clear(&g);
+	keys_draw(&e, &g);
+	CHECK(e.ks.pending && row_has(&g, 20, "e \xe2\x9e\x9c") && row_has(&g, 21, ", \xe2\x9e\x9c") && row_has(&g, 22, "c \xe2\x9e\x9c"));
+	keys_input(&e, 4, 0);
+	grid_clear(&g);
+	keys_draw(&e, &g);
+	CHECK(row_has(&g, 20, ", \xe2\x9e\x9c") && row_has(&g, 21, "c \xe2\x9e\x9c") && !row_has(&g, 22, "\xe2\x9e\x9c"));
+	keys_input(&e, 21, 0);
+	grid_clear(&g);
+	keys_draw(&e, &g);
+	CHECK(row_has(&g, 20, "D \xe2\x9e\x9c") && row_has(&g, 22, ", \xe2\x9e\x9c"));
+	keys_input(&e, 21, 0);
+	grid_clear(&g);
+	keys_draw(&e, &g);
+	CHECK(row_has(&g, 21, "D \xe2\x9e\x9c") && !row_has(&g, 20, "\xe2\x9e\x9c") && !row_has(&g, 23, "\xe2\x9e\x9c"));
+	keys_input(&e, 4, 0);                      /* another level: from its top */
+	feed(&e, "g");
+	grid_clear(&g);
+	keys_draw(&e, &g);
+	CHECK(row_has(&g, 21, "b \xe2\x9e\x9c Git branches"));
+	keys_input(&e, KEY_BS, 0);
 	g.crow = 14;
 	grid_clear(&g);
 	keys_draw(&e, &g);
@@ -182,10 +206,10 @@ int main(void)
 	small.crow = 5;                            /* under the panel: it stays */
 	feed(&e, " ");
 	CHECK(wait_hint(&e, &small) > 0 && row_has(&small, 4, "SPC") && row_has(&small, 1, "D \xe2\x9e\x9c") && row_has(&small, 2, "e \xe2\x9e\x9c") && !row_has(&small, 5, "SPC"));
-	small.crow = 0;                            /* over it: 2 rows below, 1 row of the list */
+	small.crow = 0;                            /* over it: 2 rows below, 2 rows of the list */
 	grid_clear(&small);
 	keys_draw(&e, &small);
-	CHECK(row_has(&small, 5, "<esc> close") && row_has(&small, 3, "D \xe2\x9e\x9c") && !row_has(&small, 4, "\xe2\x9e\x9c"));
+	CHECK(row_has(&small, 5, "<esc> close") && row_has(&small, 3, "D \xe2\x9e\x9c") && row_has(&small, 4, "e \xe2\x9e\x9c") && !row_has(&small, 2, "\xe2\x9e\x9c"));
 	for (int rows = 1; rows < 4; rows++) {     /* no room: nothing, no write outside */
 		CHECK(!grid_resize(&small, rows, 30));
 		small.crow = 0;
