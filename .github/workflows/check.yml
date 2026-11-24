@@ -106,9 +106,11 @@ jobs:
       - run: >
           sudo apt-get update && sudo apt-get install -y pkg-config libssl-dev libstb-dev
           libfreetype-dev libharfbuzz-dev libfontconfig-dev libwayland-dev libxkbcommon-dev
-      - run: . tools/winpass.sh && winlink build/win/test_git_win.exe tests/test_git_win.c
+      - run: >
+          . tools/winpass.sh && winlink build/win/test_git_win.exe tests/test_git_win.c &&
+          winlink build/win/test_sql_wake.exe tests/test_sql_wake.c
       - uses: actions/upload-artifact@v4
-        with: { name: winexe, path: build/win/test_git_win.exe }
+        with: { name: winexe, path: "build/win/test_git_win.exe\nbuild/win/test_sql_wake.exe" }
   # git's and the loop's Windows halves on Windows itself, for what Wine
   # cannot show (a path's names as stored, a pseudo-console's resize): pull
   # requests only, so it stays short (packages 17 and 10, thread 0's, agreed)
@@ -126,6 +128,9 @@ jobs:
       - uses: actions/download-artifact@v4
         with: { name: winexe, path: build/win }
       - run: . tools/winpass.sh && pass 300 build/win/test_git_win.exe
+        shell: bash
+      # the SQL clients' socket wakes: Windows signals a close once, Wine again (package 22)
+      - run: . tools/winpass.sh && pass 120 build/win/test_sql_wake.exe
         shell: bash
       # the pseudo-console (ConPTY), which Wine cannot resize (the terminal's)
       - run: bash src/loop/check.sh
