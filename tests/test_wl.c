@@ -592,18 +592,20 @@ static void test_sway(void)
 	   and each window draws at its own font size */
 	run(SWAYMSG "create_output, output HEADLESS-2 resolution 1280x800 scale 1.5, move container to output HEADLESS-2, focus output HEADLESS-2");
 	pump(300);
-	backend_wl.cell(0, &cw0, &ch0);
 	backend_wl.cell(1, &cw1, &ch1b);
-	backend_wl.size(1, &r1, &c1);
+	backend_wl.cell(0, &cw0, &ch0);
+	backend_wl.size(1, &r1, &c1);     /* in window 1's cells, whichever font was used last */
 	CHECK(ch1b > ch0 && cw1 > cw0 && r1 > 1 && c1 > 1);
 	CHECK(!grid_resize(&g1, r1, c1));
 	for (double end = now() + 2000; !backend_wl.ready(1) && now() < end;) pump(5);
 	backend_wl.present(1, &g1, &shown1);
 	CHECK(shown1.rows == r1);
 	draw();
+	backend_wl.cell(1, &cw1, &ch1b);
+	show();
 	int w_, h_, b_;
 	font_cell(&w_, &h_, &b_);
-	CHECK(h_ == ch0);                 /* window 0 was drawn with its own font */
+	CHECK(h_ == ch0);                 /* window 0 drawn with its own font, after window 1's was used */
 	/* SPC 5 o: raise window 0; its focus comes before KEY_RAISED (Focus.tla) */
 	k0 = nkeys;
 	backend_wl.raise(0);

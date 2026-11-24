@@ -86,7 +86,7 @@ static struct win {
 	struct wl_callback *frame;      /* a frame callback is due */
 	int lw, lh, nlw, nlh;           /* logical size, from configure; the configure in progress */
 	int scale;                      /* in 120ths, fractional-scale-v1's unit */
-	int px, cw, ch;                 /* the font's size at that scale, and its cell */
+	int px;                         /* the font's size at that scale */
 	int bw, bh, configured;         /* buffer size in pixels */
 	struct buf {
 		struct wl_buffer *b;
@@ -105,6 +105,9 @@ static Grid vis;                    /* cur with the preedit, when there is one *
 static struct win *win_of(int id) { struct win *w = wins; while (w && w->id != id) w = w->next; return w; }
 static struct win *win_at(struct wl_surface *f) { struct win *w = wins; while (w && w->surf != f) w = w->next; return w; }
 static int id_of(const struct win *w) { return w ? w->id : -1; }
+/* w's font, so its cell is cell_w by cell_h: its size alone says it, and
+   a size used again costs nothing (font.h); nonzero without one */
+static int use(const struct win *w) { return !w || font(w->px); }
 
 static int kq[KQ][2], kh, kn;       /* keys for wl_input, with their window */
 static void push(int k, const struct win *w)
@@ -240,9 +243,9 @@ static int finger, wheel;           /* this frame's scroll has no notches (touch
 
 static void mouse_key(int k)
 {
-	if (!pwin) return;
-	mrow = my / pwin->ch;
-	mcol = mx / pwin->cw;
+	if (use(pwin)) return;
+	mrow = my / cell_h;
+	mcol = mx / cell_w;
 	push(k, pwin);
 }
 static void pt_motion(void *d, struct wl_pointer *p, uint32_t t, wl_fixed_t x, wl_fixed_t y)
@@ -274,7 +277,7 @@ static void scroll(int v, int step)
 static void pt_axis(void *d, struct wl_pointer *p, uint32_t t, uint32_t a, wl_fixed_t v)
 {
 	(void)d; (void)p; (void)t;
-	if (finger && pwin && a == WL_POINTER_AXIS_VERTICAL_SCROLL) scroll(v, 3 * pwin->ch * 256 * 120 / pwin->scale);   /* in wl_fixed's 1/256 */
+	if (finger && a == WL_POINTER_AXIS_VERTICAL_SCROLL && !use(pwin)) scroll(v, 3 * cell_h * 256 * 120 / pwin->scale);   /* in wl_fixed's 1/256 */
 }
 static void pt_frame(void *d, struct wl_pointer *p) { (void)d; (void)p; finger = 0; }
 static void pt_source(void *d, struct wl_pointer *p, uint32_t s)
@@ -303,8 +306,8 @@ static int ti_on, ti_r, ti_c;       /* enabled; the cursor cell it was told */
 
 static void ti_cursor(void)
 {
-	if (!ti_on || !twin) return;
-	int cw = twin->cw * 120 / twin->scale, ch = twin->ch * 120 / twin->scale;
+	if (!ti_on || use(twin)) return;
+	int cw = cell_w * 120 / twin->scale, ch = cell_h * 120 / twin->scale;
 	zwp_text_input_v3_set_cursor_rectangle(ti, ti_c * cw, ti_r * ch, cw, ch);
 	zwp_text_input_v3_commit(ti);
 }
@@ -562,8 +565,6 @@ static void fs_scale(void *d, struct wp_fractional_scale_v1 *f, uint32_t s)
 	if ((int)s == w->scale || font(px)) return;
 	w->scale = (int)s;
 	w->px = px;
-	w->cw = cell_w;
-	w->ch = cell_h;
 	resize(w);
 }
 static const struct wp_fractional_scale_v1_listener fs_l = { fs_scale };
@@ -914,8 +915,8 @@ static int wl_win_open(int id)
 	const struct win *o = kwin ? kwin : wins;
 	struct win *w = calloc(1, sizeof *w);
 	if (!w || !(w->surf = wl_compositor_create_surface(comp))) { free(w); return -1; }
-	if (o) { w->lw = o->lw; w->lh = o->lh; w->scale = o->scale; w->px = o->px; w->cw = o->cw; w->ch = o->ch; }
-	else { w->lw = 800; w->lh = 600; w->scale = 120; w->px = FONT_PX; w->cw = cell_w; w->ch = cell_h; }
+	if (o) { w->lw = o->lw; w->lh = o->lh; w->scale = o->scale; w->px = o->px; }
+	else { w->lw = 800; w->lh = 600; w->scale = 120; w->px = FONT_PX; }
 	w->id = id;
 	w->next = wins;
 	wins = w;
@@ -1005,8 +1006,9 @@ static int wl_input(int *out, int *from, int n)
 static void wl_size(int id, int *rows, int *cols)
 {
 	const struct win *w = win_of(id);
-	*rows = w && w->bh / w->ch > 0 ? w->bh / w->ch : 1;
-	*cols = w && w->bw / w->cw > 0 ? w->bw / w->cw : 1;
+	int u = use(w);
+	*rows = !u && w->bh / cell_h > 0 ? w->bh / cell_h : 1;
+	*cols = !u && w->bw / cell_w > 0 ? w->bw / cell_w : 1;
 }
 
 static int wl_ready(int id)
@@ -1037,7 +1039,7 @@ static void wl_present(int id, const Grid *cur, Grid *shown)
 {
 	struct win *w = win_of(id);
 	/* a grid from before the last configure waits for its KEY_RESIZE */
-	if (!wl_ready(id) || font(w->px) || cur->rows * cell_h > w->bh || cur->cols * cell_w > w->bw) return;
+	if (!wl_ready(id) || use(w) || cur->rows * cell_h > w->bh || cur->cols * cell_w > w->bw) return;
 	int all = shown->rows != cur->rows || shown->cols != cur->cols;
 	if (all) {                    /* also after a suspend: redraw both buffers whole */
 		if (grid_resize(shown, cur->rows, cur->cols)) return;
@@ -1104,9 +1106,9 @@ static void wl_suspend(void) {}      /* a window has no terminal to give back */
 static void wl_mouse(int *row, int *col) { *row = mrow; *col = mcol; }
 static void wl_cell(int id, int *w, int *h)   /* thread 0's, agreed */
 {
-	const struct win *x = win_of(id);
-	*w = x ? x->cw : 0;
-	*h = x ? x->ch : 0;
+	int u = use(win_of(id));
+	*w = u ? 0 : cell_w;
+	*h = u ? 0 : cell_h;
 }
 
 const Backend backend_wl = {

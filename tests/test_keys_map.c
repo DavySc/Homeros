@@ -130,7 +130,7 @@ int main(void)
 	CHECK(row_has(&g, 22, "<esc> close  <bs> back") && !row_has(&g, 23, "SPC"));
 	CHECK(!row_has(&g, 16, "\xe2\x9e\x9c") && !row_has(&g, 21, "\xe2\x9e\x9c"));
 	CHECK(row_has(&g, 17, "D \xe2\x9e\x9c Dashboard") && row_has(&g, 18, "e \xe2\x9e\x9c File Explorer") && row_has(&g, 19, ", \xe2\x9e\x9c Buffers"));
-	CHECK(row_has(&g, 20, "c \xe2\x9e\x9c +compile") && row_has(&g, 17, "f \xe2\x9e\x9c +find") && row_has(&g, 18, "u \xe2\x9e\x9c +toggle"));
+	CHECK(row_has(&g, 20, "5 \xe2\x9e\x9c +frame") && row_has(&g, 17, "c \xe2\x9e\x9c +compile") && row_has(&g, 18, "f \xe2\x9e\x9c +find") && row_has(&g, 19, "u \xe2\x9e\x9c +toggle"));
 	CHECK(face_at(&g, 17, 5) == FACE_NORMAL_FLOAT && face_at(&g, 17, 7) == FACE_WK_SEPARATOR && face_at(&g, 17, 9) == FACE_WK_DESC && face_at(&g, 17, 35) == FACE_WK_GROUP);
 	CHECK(g.c[22 * 80 + 79].bg == FACE_NORMAL_FLOAT && g.c[16 * 80].bg == FACE_NORMAL_FLOAT && g.c[15 * 80].bg != FACE_NORMAL_FLOAT && g.c[23 * 80].bg != FACE_NORMAL_FLOAT);
 	/* the cursor under it (which-key's no_overlap): 2 rows below the cursor
@@ -138,7 +138,7 @@ int main(void)
 	g.crow = 15;
 	grid_clear(&g);
 	keys_draw(&e, &g);
-	CHECK(row_has(&g, 23, "<esc> close") && row_has(&g, 18, "D \xe2\x9e\x9c") && row_has(&g, 20, ", \xe2\x9e\x9c") && row_has(&g, 21, "c \xe2\x9e\x9c") && !row_has(&g, 22, "\xe2\x9e\x9c") && g.c[16 * 80].bg != FACE_NORMAL_FLOAT);
+	CHECK(row_has(&g, 23, "<esc> close") && row_has(&g, 18, "D \xe2\x9e\x9c") && row_has(&g, 20, ", \xe2\x9e\x9c") && row_has(&g, 21, "5 \xe2\x9e\x9c") && !row_has(&g, 22, "\xe2\x9e\x9c") && g.c[16 * 80].bg != FACE_NORMAL_FLOAT);
 	g.crow = 21;
 	grid_clear(&g);
 	keys_draw(&e, &g);

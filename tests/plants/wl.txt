@@ -10,9 +10,9 @@ wl: preedit not redrawn~test TESTS=wl~~src/wl/wl.c~memcpy(pre, pre_next, sizeof 
 wl: fractional scale ignored~test TESTS=wl~~src/wl/wl.c~	if ((int)s == w->scale || font(~	if (1 || font(
 wl: configured size ignored~test TESTS=wl~~src/wl/wl.c~	if (w > 0) x->nlw = w;~	if (0) x->nlw = w;
 wl: no text cursor~test TESTS=wl~~src/wl/wl.c~	if (shape) wp_cursor_shape_device_v1_set_shape~	if (0) wp_cursor_shape_device_v1_set_shape
-wl: mouse row from x~test TESTS=wl~~src/wl/wl.c~	mrow = my / pwin->ch;~	mrow = mx / pwin->ch;
+wl: mouse row from x~test TESTS=wl~~src/wl/wl.c~	mrow = my / cell_h;~	mrow = mx / cell_h;
 wl: a key per two notches~test TESTS=wl~~src/wl/wl.c~scroll(v, 120);~scroll(v, 240);
-wl: touchpad scrolls 6 rows a key~test TESTS=wl~~src/wl/wl.c~scroll(v, 3 * pwin->ch * 256~scroll(v, 6 * pwin->ch * 256
+wl: touchpad scrolls 6 rows a key~test TESTS=wl~~src/wl/wl.c~scroll(v, 3 * cell_h * 256~scroll(v, 6 * cell_h * 256
 wl: close ignored~test TESTS=wl~~src/wl/wl.c~(void)t; push(KEY_CLOSE, d); }~(void)t; }
 wl: changed cells not drawn~test TESTS=wl~~src/wl/wl.c~		&& grid_cell_eq(&a->c[r * a->cols + c], &b->c[q * b->cols + c]);~		&& grid_cell_eq(&a->c[r * a->cols + c], &a->c[r * a->cols + c]);
 wl: cursor move not drawn~test TESTS=wl~~src/wl/wl.c~	return (a->crow == r && a->ccol == c) == (b->crow == q && b->ccol == c)~	return 1
@@ -49,5 +49,5 @@ wl: a frame callback for all windows~test TESTS=wl~~src/wl/wl.c~	const struct wi
 wl: a key comes from the newest window, not the one with the keyboard~test TESTS=wl~~src/wl/wl.c~	if (c) push(c, kwin);~	if (c) push(c, wins);
 wl: every keyboard enter is a focus change~test TESTS=wl~~src/wl/wl.c~	if (!(kwin = win_at(f)) || kwin->id == focused) return;~	if (!(kwin = win_at(f))) return;
 wl: KEY_RAISED before the activation is handled~test TESTS=wl~~src/wl/wl.c~	xdg_activation_token_v1_destroy(tk);¶	wl_callback_add_listener(wl_display_sync(dpy), &raised_l, NULL);~	xdg_activation_token_v1_destroy(tk);¶	push(KEY_RAISED, NULL);
-wl: a window drawn with the last window's font~test TESTS=wl~~src/wl/wl.c~if (!wl_ready(id) || font(w->px) ||~if (!wl_ready(id) ||
-wl: a window's size with another's cell~test TESTS=wl~~src/wl/wl.c~	*rows = w && w->bh / w->ch > 0 ? w->bh / w->ch : 1;~	*rows = w && w->bh / cell_h > 0 ? w->bh / cell_h : 1;
+wl: a window drawn with the last window's font~test TESTS=wl~~src/wl/wl.c~if (!wl_ready(id) || use(w) ||~if (!wl_ready(id) ||
+wl: a window's size with another's cell~test TESTS=wl~~src/wl/wl.c~	int u = use(w);¶	*rows =~	int u = !w;¶	*rows =
