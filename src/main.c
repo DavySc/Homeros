@@ -133,7 +133,7 @@ static void key(int k, int w)
 	if (k == KEY_FOCUS) {
 		while (i < na && asked[i] != w) i++;
 		if (!t || (w != wanted && i < na)) return;   /* answers an earlier raise */
-		if (w != wanted) keys_input(&e, k, 0);          /* the user's: half-done work ends */
+		if (i == na) keys_input(&e, k, 0);              /* the user's: half-done work ends */
 		core_tab_enter(&e, t);
 		return;
 	}
