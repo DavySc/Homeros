@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # The Windows half of the pickers' path rules: builds tests/test_tools_win.c
-# with zig cc against the modules wincc compiles (not main.c or the window)
+# with zig cc against the modules wincc compiles (not main.c or the window,
+# whose drawing is src/paint and src/font)
 # and runs it under Wine, as src/shada/check.sh does, with libghostty-vt
 # built for Windows (build.mk).
 set -eu
@@ -12,7 +13,7 @@ done
 . src/tools/ghostty-win.sh
 . src/sql/openssl-win.sh   # keys runs SQL (sql_key): package 22's
 SYN=build/syntax
-srcs=$(make -s -n wincc | head -1 | tr ' ' '\n' | grep '\.c$' | grep -v -e '^src/main\.c$' -e '^src/win/')
+srcs=$(make -s -n wincc | head -1 | tr ' ' '\n' | grep '\.c$' | grep -v -e '^src/main\.c$' -e '^src/win/' -e '^src/paint/' -e '^src/font/')
 mkdir -p build/win/tools
 [ -n "${XDG_RUNTIME_DIR:-}" ] || { export XDG_RUNTIME_DIR=$PWD/build/win/run; mkdir -p -m 700 "$XDG_RUNTIME_DIR"; }
 export WINEDEBUG=-all WINEDLLOVERRIDES="mscoree,mshtml=" WINEPREFIX=$PWD/build/win/prefix-tools
