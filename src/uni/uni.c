@@ -151,3 +151,11 @@ int uni_put(unsigned char *b, unsigned c)
 	b[0] = (unsigned char)(0xF0 + c / 262144); b[1] = (unsigned char)(0x80 + c / 4096 % 64); b[2] = (unsigned char)(0x80 + c / 64 % 64); b[3] = (unsigned char)(0x80 + c % 64);
 	return 4;
 }
+
+int uni_put16(unsigned short *b, unsigned c)
+{
+	if (c < 0x10000) { b[0] = (unsigned short)c; return 1; }
+	b[0] = (unsigned short)(0xD800 + (c - 0x10000) / 0x400);
+	b[1] = (unsigned short)(0xDC00 + (c - 0x10000) % 0x400);
+	return 2;
+}
