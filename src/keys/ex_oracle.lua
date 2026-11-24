@@ -38,12 +38,9 @@ vim.bo.undolevels = 1000
 local folds = _G.arg[1]:match('%.h$')
 if folds then
   vim.treesitter.start(0, 'c')
+  vim.o.foldlevel = 99
   vim.wo.foldmethod = 'expr'
   vim.wo.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
-  -- after the folds, as the core's fold_new() has it: set before them,
-  -- 9G after "/b<CR> % y2j l kzc j <Esc>Vd" lands on column 0, not
-  -- curswant's (measured, 40 runs; not traced)
-  vim.o.foldlevel = 99
 end
 vim.cmd('clearjumps')   -- -l leaves a jump on line 1 (measured: jjw CTRL-O went there)
 local function finish()
