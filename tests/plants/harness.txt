@@ -25,7 +25,8 @@ dupes: UTF-8 encoded by hand with the continuation mark last, not uni_put~dupes~
 # the frames main loop (src/main.c, Frames.tla "ok", Focus.tla "asked")
 main: every focus event enters its tab page (Focus "enter")~test TESTS=frames_main~~src/main.c~if (!t || (w != wanted && i < na)) return;~if (!t) return;
 main: the sync's done drops nothing from asked (Focus "nodone")~test TESTS=frames_main~~src/main.c~if (na) memmove(~if (0) memmove(
-main: the user's focus change leaves insert mode on~test TESTS=frames_main~~src/main.c~if (w != wanted) keys_input(&e, k, 0);~if (0) keys_input(&e, k, 0);
+main: the user's focus change leaves insert mode on~test TESTS=frames_main~~src/main.c~if (i == na) keys_input(&e, k, 0);~if (0) keys_input(&e, k, 0);
+main: a click on the last raised frame after its raise is done keeps insert mode (PR 150 review 2)~test TESTS=frames_main~~src/main.c~if (i == na) keys_input(&e, k, 0);~if (w != wanted) keys_input(&e, k, 0);
 main: gt does not raise the window it enters~test TESTS=frames_main~~src/main.c~		b->raise(wanted);~
 main: one dirty flag for every frame (Frames "shared")~test TESTS=frames_main~~src/main.c~			fr[i].dirty = 0;¶		}~			fr[i].dirty = 0;¶		}¶		for (int i = 0; i < nfr; i++) fr[i].dirty = 0;
 main: a frame drawn before its callback (Frames "nocb")~test TESTS=frames_main~~src/main.c~ || !b->ready(fr[i].id)) {~) {

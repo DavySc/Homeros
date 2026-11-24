@@ -75,6 +75,9 @@ static void t_check(int n)
 	/* both raises refused, then a click on frame 0: the user's, which ends
 	   insert mode as Esc would */
 	case 4: CHECK(t_nraise == 5 && e.tab->id == 1 && e.mode == MODE_INSERT); break;
+	/* the click on frame 1 after its raise was done: the user's too, though
+	   frame 1 was the last raised */
+	case 11: CHECK(e.tab->id == 1 && e.mode == MODE_NORMAL); break;
 	case 5: CHECK(e.tab->id == 0 && e.mode == MODE_NORMAL); t_d0 = t_drawn[0]; t_d1 = t_drawn[1]; break;
 	/* frame 1 hidden: frame 0 draws on its own callback (Own), frame 1 not
 	   at all (NoWaste) */
@@ -104,7 +107,7 @@ int main(void)
 		{ 'k', 0, "gt" }, { 'k', 0, "gt" }, { 'f', 0, 0 }, { 't', 2, 0 },
 		{ 'r', 0, 0 }, { 'f', 1, 0 }, { 'r', 0, 0 }, { 'k', 0, "i" }, { 't', 3, 0 },
 		{ 'k', 0, "\x1bgtgti" }, { 'r', 0, 0 }, { 'r', 0, 0 }, { 't', 4, 0 },
-		{ 'f', 0, 0 }, { 't', 5, 0 },
+		{ 'f', 0, 0 }, { 'k', 0, "i" }, { 'f', 1, 0 }, { 't', 11, 0 }, { 'f', 0, 0 }, { 't', 5, 0 },
 		{ 'h', 1, 0 }, { 'k', 0, "ix\x1b" }, { 't', 6, 0 },
 		{ 'v', 0, 0 }, { 't', 7, 0 },
 		{ 'v', 1, 0 }, { 't', 8, 0 },
