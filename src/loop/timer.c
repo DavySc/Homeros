@@ -59,7 +59,9 @@ int proc_open(const char *what)
 #ifdef _WIN32
 	char *argv[] = { "explorer", (char *)what, NULL };
 #else
-	char *argv[] = { "xdg-open", (char *)what, NULL };
+	/* not the editor's pipes: a browser xdg-open starts itself would die
+	   of SIGPIPE on its next line once the editor is gone */
+	char *argv[] = { "sh", "-c", "exec xdg-open \"$0\" > /dev/null 2>&1", (char *)what, NULL };
 #endif
 	return proc_spawn(argv, NULL, dropped, NULL) < 0 ? -1 : 0;
 }

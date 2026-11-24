@@ -262,6 +262,9 @@ int main(int argc, char **argv)
 	char exe[4096], path[256], cpath[256], root[256], s[1024], opened[256];
 	if (argc == 3 && !strcmp(argv[1], "--fake")) return fake(argv[2]);
 	if (argc == 2 && strstr(argv[1], "/homeros-infoview-")) {    /* the browser opener */
+		/* not on the editor's pipe: what it starts outlives the editor */
+		struct stat so;
+		if (fstat(1, &so) || S_ISFIFO(so.st_mode)) return 1;
 		snprintf(opened, sizeof opened, "%s/opened", getenv("IV_TEST_DIR"));
 		int fd = open(opened, O_WRONLY | O_CREAT | O_APPEND, 0644);
 		CHECK(fd >= 0 && write(fd, argv[1], strlen(argv[1])) > 0 && write(fd, "\n", 1) == 1);
