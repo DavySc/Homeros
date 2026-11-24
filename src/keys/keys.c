@@ -220,6 +220,7 @@ void keys_feed(Editor *e, int k, int pending)
 	}
 	E = e;
 	buf_changed();
+	if (B != op_buf) opmarks(1);
 	/* :s with the c flag is one undo step, however many keys answer it */
 	if (!sub_asking && ((E->mode != MODE_INSERT && E->mode != MODE_CMDLINE) || arrow_used)) undo_close(B->undo);
 	if (reg_recording) record_key(k);
@@ -227,6 +228,7 @@ void keys_feed(Editor *e, int k, int pending)
 	E->ks.executing = 0;   /* typed: the typeahead holds no register keys */
 	key(k, pending || rb1.n || rb2.n || tb.n);
 	while (next(&k)) key(k, pending || rb1.n || rb2.n || tb.n);
+	if (B == op_buf) opmarks(0);   /* not into a buffer the key went to */
 	visual_sync();
 	E->ks.pending = E->mode == MODE_CMDLINE || sub_asking || (E->mode != MODE_INSERT && normal_pending());
 	core_update(e);
@@ -264,7 +266,7 @@ void keys_write_pre(Editor *e, Buf *b)
 }
 
 /* one address and its offsets, 1-based, from line cur (Neovim's
-   get_address()); NONE when there is none, FAIL after E20.  Past BIG a number
+   get_address()); NONE when there is none, FAIL after E20 (or a bare ', silent).  Past BIG a number
    saturates, where Neovim's overflows. */
 static const long BIG = LONG_MAX / 4, NONE = LONG_MIN, FAIL = LONG_MIN + 1;
 static long sat(long v) { return v > BIG ? BIG : v < -BIG ? -BIG : v; }
@@ -275,11 +277,9 @@ static long address(char **pp, long cur)
 	if (*p >= '0' && *p <= '9') l = sat(strtol(p, &p, 10));
 	else if (*p == '.' || *p == '$') l = *p++ == '.' ? cur : nlines();
 	else if (*p == '\'') {
-		static const char sp[] = "[]<>.^\"";
-		const char *q = p[1] ? strchr(sp, p[1]) : NULL;
-		Mark m = p[1] == '\'' ? W->pcmark : p[1] >= 'a' && p[1] <= 'z' ? B->mark[p[1] - 'a'] : q ? B->mark[MARK_LBRACKET + (q - sp)] : (Mark){ 0 };
-		if (!m.set) { core_msg(E, "E20: Mark not set"); return FAIL; }
-		l = (long)m.line + 1;
+		Pos m;
+		if (!p[1] || !getmark((unsigned char)p[1], &m)) return FAIL;   /* get_address(): ' alone fails silently */
+		l = m.lnum + 1;
 		p += 2;
 	}
 	for (;;) {
@@ -365,7 +365,7 @@ static void cmdline_end(int entered)
 {
 	E->mode = MODE_NORMAL;
 	if (E->cmdtype != ':') normal_key(entered ? K_PAT : KEY_ESC);
-	else if (entered) ex();
+	else if (entered) ex(), checkpcmark();
 	restart_insert();
 }
 
