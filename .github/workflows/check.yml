@@ -1,108 +1,63 @@
-# Every merge runs the whole check (CLAUDE.md, "Working in parallel").
+# REVIEW PROBE for PR 148 (never merged): test_lsp.exe cross-built on Linux,
+# run under Wine there and then on Windows itself.
 name: check
-# once per change: pull requests, and main after a merge
 on:
   pull_request:
-  push:
-    branches: [main]
-# a newer push to the same branch makes a running check moot; superseded runs
-# filled the account's 20 concurrent jobs for hours on 2026-11-18 (measured:
-# 125-156 of 243 runs had a newer run on their branch within 90-40 minutes)
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
-  # the check and the plants run in parallel, the plants in shards: one
-  # after the other took 54 minutes on main at 8d08829, and the plants alone
-  # 42 on PR 18 (reviews of PRs 18 and 24).  The plants run only on the
-  # merge train's PR (CLAUDE.md): the account runs 20 jobs at once, and at
-  # 18:46 UTC on 2026-11-21 per-PR shards had kept train 15's run waiting
-  # 2 h with 1 of 8 shards done
-  check:
-    strategy:
-      fail-fast: false
-      matrix:
-        target: ${{ fromJSON(github.head_ref == 'claude/project-thread-clivv8'
-                  && '["check", "planted SHARD=0/16", "planted SHARD=1/16", "planted SHARD=2/16", "planted SHARD=3/16",
-                       "planted SHARD=4/16", "planted SHARD=5/16", "planted SHARD=6/16", "planted SHARD=7/16",
-                       "planted SHARD=8/16", "planted SHARD=9/16", "planted SHARD=10/16", "planted SHARD=11/16",
-                       "planted SHARD=12/16", "planted SHARD=13/16", "planted SHARD=14/16", "planted SHARD=15/16"]'
-                  || '["check"]') }}
+  build:
     runs-on: ubuntu-24.04
-    # 8 shards of train 14's 1,121 plants took 81 to 90 min, two cut at 90;
-    # 12 shards of train 21's 1,467 hit 120 on three: 16 now (expected about 90 min each;
-    # 17 jobs plus windows stay under the account's 20)
-    timeout-minutes: 120
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v31
-      # C libraries come from the distribution, not nix: nix's need a newer
-      # glibc than the system compiler links against (package 12, measured)
       - run: >
           sudo apt-get update && sudo apt-get install -y clang libclang-rt-18-dev pkg-config libssl-dev
           libfreetype-dev libharfbuzz-dev libstb-dev libfontconfig-dev ripgrep
-          libwayland-dev wayland-protocols libxkbcommon-dev weston sway xvfb wtype wl-clipboard grim adwaita-icon-theme
-          fonts-jetbrains-mono fonts-noto-core fonts-noto-cjk fonts-noto-color-emoji fonts-dejavu-core
-      # the SQL client's tests talk to real servers and fail without them
-      # (package 22, agreed): passwords made per run, kept in the
-      # environment, never in a file; Postgres with SSL (Debian's snake-oil
-      # certificate), as the client always asks for it
-      - run: |
-          echo "SQL_SA_PASSWORD=Aa1-$(openssl rand -hex 16)" >> "$GITHUB_ENV"
-          echo "SQL_PG_PASSWORD=$(openssl rand -hex 16)" >> "$GITHUB_ENV"
-      - run: >
-          docker run -d -p 1433:1433 -e ACCEPT_EULA=Y -e MSSQL_SA_PASSWORD="$SQL_SA_PASSWORD"
-          mcr.microsoft.com/mssql/server:2022-latest &&
-          docker run -d -p 5432:5432 -e POSTGRES_PASSWORD="$SQL_PG_PASSWORD" postgres:17
-          -c ssl=on -c ssl_cert_file=/etc/ssl/certs/ssl-cert-snakeoil.pem
-          -c ssl_key_file=/etc/ssl/private/ssl-cert-snakeoil.key
+          libwayland-dev wayland-protocols libxkbcommon-dev
       - run: nix build -f tools.nix tools -o tools-env
       - run: echo "$PWD/tools-env/bin" >> "$GITHUB_PATH"
-      - run: why3 config detect
-      # libghostty-vt (the terminal, src/tools/ghostty.nix) is 5 minutes of
-      # zig per target and changes only with its recipe.  The cache keeps the
-      # files' times, older than the checkout's, so they are touched or make
-      # builds them again; on a miss every job builds both targets, so the
-      # job that saves the cache first saves both
       - id: ghostty
         uses: actions/cache@v4
         with: { path: build/ghostty, key: "ghostty-${{ hashFiles('src/tools/ghostty.nix') }}" }
       - if: steps.ghostty.outputs.cache-hit == 'true'
         run: touch build/ghostty/*
       - run: make build/ghostty/windows.lib
-      - run: make ${{ matrix.target }}
-  # git's and the loop's Windows halves on Windows itself, for what Wine
-  # cannot show (a path's names as stored, a pseudo-console's resize): pull
-  # requests only, so it stays short (packages 17 and 10, thread 0's, agreed)
+      - run: make wincc
+      - run: bash src/lsp/check.sh
+      - run: |
+          cp build/win/test_lsp.exe test_lsp_good.exe
+          python3 - <<'PY'
+          p = 'src/lsp/lsp.c'; s = open(p).read()
+          a = 'size_t a = ls + lsp_u16_byte(b, n, c), z = ls + lsp_u16_byte(b, n, c + (size_t)v[2]);'
+          assert s.count(a) == 1
+          open(p, 'w').write(s.replace(a, 'size_t a = ls + c, z = ls + c + (size_t)v[2];'))
+          PY
+          bash src/lsp/check.sh && echo "PLANT NOT CAUGHT UNDER WINE" || echo "plant caught under Wine"
+          cp build/win/test_lsp.exe test_lsp_plant.exe
+      - uses: actions/upload-artifact@v4
+        with: { name: exes, path: "test_lsp_*.exe" }
   windows:
-    if: github.event_name == 'pull_request'
+    needs: build
     runs-on: windows-latest
-    timeout-minutes: 30   # 15 before the terminal; a cold cache adds its zig build
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: mlugg/setup-zig@v2
-        with:
-          version: 0.17.1
-      # libghostty-vt for Windows, which test_git_win links (the terminal,
-      # src/tools/): no nix here, so zig builds ghostty.nix's revision, once
-      # per change of it
-      - id: ghostty
-        uses: actions/cache@v4
-        with: { path: build/ghostty, key: "ghostty-win-${{ hashFiles('src/tools/ghostty.nix') }}" }
-      - if: steps.ghostty.outputs.cache-hit != 'true'
-        shell: bash
+      - uses: actions/download-artifact@v4
+        with: { name: exes }
+      - shell: bash
         run: |
-          # zig cannot run the runner's pkg-config (Strawberry Perl's .BAT)
-          PATH=$(printf %s "$PATH" | tr : '\n' | grep -vi strawberry | paste -sd: -)
-          rev=$(sed -n 's|.*github.com/ghostty-org/ghostty" "\([0-9a-f]*\)".*|\1|p' src/tools/ghostty.nix)
-          flags=$(sed -n 's|^ *flags = "\(.*\)";.*|\1|p' src/tools/ghostty.nix)
-          git init -q build/ghostty-src && cd build/ghostty-src
-          git fetch -q --depth 1 https://github.com/ghostty-org/ghostty "$rev" && git checkout -q FETCH_HEAD
-          zig build $flags -Dtarget=x86_64-windows-gnu --prefix ../ghostty-out
-          mkdir -p ../ghostty && cp -r ../ghostty-out/include ../ghostty/ && cp ../ghostty-out/lib/ghostty-vt-static.lib ../ghostty/windows.lib
-          test -s ../ghostty/windows.lib
-      - run: bash src/git/check.sh
-        shell: bash
-      # the pseudo-console (ConPTY), which Wine cannot resize (the terminal's)
-      - run: bash src/loop/check.sh
-        shell: bash
+          cmd //c ver
+          echo "TEMP=$TEMP TMP=$TMP"
+          for s in 1 2 3 4 5; do
+            SEED=$s ./test_lsp_good.exe > out.txt 2>&1; r=$?
+            echo "default temp, SEED=$s: exit $r, last line: $(tail -n 1 out.txt)"
+            [ $r = 0 ] || tail -n 15 out.txt
+          done
+          mkdir -p /c/hometmp
+          for s in 1 2 3 4 5; do
+            SEED=$s TMP='C:\hometmp' TEMP='C:\hometmp' ./test_lsp_good.exe > out.txt 2>&1; r=$?
+            echo "C:/hometmp, SEED=$s: exit $r, last line: $(tail -n 1 out.txt)"
+            [ $r = 0 ] || tail -n 15 out.txt
+          done
+          ls -la /c/hometmp | head -20
+          SEED=1 TMP='C:\hometmp' TEMP='C:\hometmp' ./test_lsp_plant.exe > out.txt 2>&1; r=$?
+          echo "planted (UTF-16 columns read as bytes): exit $r"; tail -n 5 out.txt
