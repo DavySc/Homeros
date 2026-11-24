@@ -210,8 +210,9 @@ static void cancel(LspDoc *d, long *id);
 /* The semantic tokens of d's text as sent, the last request cancelled
    (Neovim's semantic_tokens: a new version, a new request).  No 200 ms
    debounce on top: bench/tokens.py, 5 alternating runs of 20 keys at 100 ms
-   on Lean, measured no difference (last key to tokens 3285 ms, 3216-3333,
-   against 3283 ms, 3101-3782; Lean CPU 16.7 s against 16.9 s). */
+   on Lean's 3,219 lines, measured no difference (last key to tokens of the
+   whole file 6186 ms, 5789-6567, against 6328 ms, 6238-6772; Lean CPU
+   23.6 s, 22.0-24.8, against 23.7 s, 22.4-24.9). */
 static void tokens(LspDoc *d)
 {
 	if (!d->s->ntypes || !d->s->ready) return;
@@ -254,7 +255,7 @@ static void start(Srv *s)
 	str_lit(&o, "\",\"capabilities\":{\"textDocument\":{\"publishDiagnostics\":{\"versionSupport\":true},"
 	        "\"hover\":{\"contentFormat\":[\"markdown\",\"plaintext\"]},\"synchronization\":{\"didSave\":true},"
 	        "\"semanticTokens\":{\"requests\":{\"full\":true},\"tokenTypes\":[],\"tokenModifiers\":[],\"formats\":[\"relative\"]}},"
-	        "\"window\":{\"workDoneProgress\":true},\"general\":{\"positionEncodings\":[\"utf-16\"]},\"lean\":{\"incrementalDiagnosticSupport\":true,\"silentDiagnosticSupport\":true}}");
+	        "\"workspace\":{\"semanticTokens\":{\"refreshSupport\":true}},\"window\":{\"workDoneProgress\":true},\"general\":{\"positionEncodings\":[\"utf-16\"]},\"lean\":{\"incrementalDiagnosticSupport\":true,\"silentDiagnosticSupport\":true}}");
 	if (s->def->lean) str_lit(&o, ",\"initializationOptions\":{\"hasWidgets\":true}");
 	str_lit(&o, "}}");
 	frame(s, 1);
@@ -638,8 +639,10 @@ static LspDoc *doc(Srv *s, const char *m, int uri)
 }
 
 /* The face of each token type the server named in its legend, as Neovim
-   links @lsp.type.* (highlight_group.c); a type not here keeps the
-   grammar's face. */
+   links @lsp.type.* (highlight_group.c) with Davy's catppuccin/nvim on top
+   (semantic_tokens.lua clears @lsp.type.variable: the grammar knows
+   variables better); a type not here keeps the grammar's face.  The
+   colour of each face is the theme's. */
 static void legend(Srv *s, const char *m)
 {
 	static const struct { const char *type; unsigned char face; } link[] = {
@@ -650,7 +653,7 @@ static void legend(Srv *s, const char *m)
 		{ "namespace", FACE_MODULE }, { "number", FACE_NUMBER }, { "operator", FACE_OPERATOR },
 		{ "parameter", FACE_VARIABLE_PARAMETER }, { "property", FACE_PROPERTY }, { "regexp", FACE_STRING_REGEXP },
 		{ "string", FACE_STRING }, { "struct", FACE_TYPE }, { "type", FACE_TYPE },
-		{ "typeParameter", FACE_TYPE_DEFINITION }, { "variable", FACE_VARIABLE },
+		{ "typeParameter", FACE_TYPE_DEFINITION },
 	};
 	int caps = json_get(m, tk, json_get(m, tk, 0, "result"), "capabilities");
 	int types = json_get(m, tk, json_get(m, tk, json_get(m, tk, caps, "semanticTokensProvider"), "legend"), "tokenTypes");
@@ -662,14 +665,16 @@ static void legend(Srv *s, const char *m)
 }
 
 /* Tokens array arr (LSP's relative form: line and start from the last
-   token's, length, type, modifiers; UTF-16 columns) as d's byte ranges. */
+   token's, length, type, modifiers; UTF-16 columns) as d's byte ranges.
+   No array (an error): the tokens shown stay, as Neovim keeps them.  A
+   line is walked once: each start from the last token's (pb, pc). */
 static void decode(LspDoc *d, const char *m, int arr)
 {
+	if (arr < 0 || tk[arr].type != 'a') return;
 	clear(&d->tok);
 	core_changed = 1;
-	if (arr < 0 || tk[arr].type != 'a') return;
 	const Text *t = d->t;
-	size_t l = 0, c = 0, ls = 0, n = 0, lines = text_lines(t);
+	size_t l = 0, c = 0, ls = 0, n = 0, pb = 0, pc = 0, lines = text_lines(t);   /* a line past them: no bytes */
 	const unsigned char *b = NULL;
 	long v[5];
 	for (int i = arr + 1, k = 0; i < tk[arr].end; i = tk[i].end) {
@@ -678,8 +683,7 @@ static void decode(LspDoc *d, const char *m, int arr)
 		k = 0;
 		if (v[0] || !b) {
 			l += (size_t)v[0];
-			c = 0;
-			if (l >= lines) return;
+			c = pb = pc = 0;
 			ls = text_line_start(t, l);
 			n = (l + 1 < lines ? text_line_start(t, l + 1) - 1 : text_len(t)) - ls;
 			b = bytes(t, ls, &n);
@@ -692,7 +696,9 @@ static void decode(LspDoc *d, const char *m, int arr)
 			if (!g) return;
 			d->tok.v = g; d->tok.cap = cap;
 		}
-		size_t a = ls + lsp_u16_byte(b, n, c), z = ls + lsp_u16_byte(b, n, c + (size_t)v[2]);
+		pb += lsp_u16_byte(b + pb, n - pb, c - pc);
+		pc = c;
+		size_t a = ls + pb, z = a + lsp_u16_byte(b + pb, n - pb, (size_t)v[2]);
 		if (a < z) d->tok.v[d->tok.n++] = (LspDiag){ a, z, z, d->s->legend[v[3]], NULL };
 	}
 }
@@ -717,6 +723,9 @@ static void handle(Srv *s, const char *m, size_t n)
 		putraw(&o, m, id);
 		str_lit(&o, ",\"result\":null}");
 		send(s);
+		/* Lean answers with what it has elaborated, then asks again
+		   (Neovim's semantic_tokens: refresh, a new request) */
+		if (is(m, meth, "workspace/semanticTokens/refresh")) for (LspDoc *d = s->docs; d; d = d->link) tokens(d);
 		return;
 	}
 	if (meth >= 0) {

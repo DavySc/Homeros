@@ -11,7 +11,7 @@ lsp: the start of a range does not follow a deleted first character~test TESTS=l
 lsp: incremental diagnostics replace the earlier ones~test TESTS=lsp~~src/lsp/lsp.c~json_true(m, tk, json_get(m, tk, p, "isIncremental"))~0
 lsp: versions jump by 2~test TESTS=lsp~~src/lsp/lsp.c~	if (!d || !d->chg.n) return;¶	d->ver++;~	if (!d || !d->chg.n) return;¶	d->ver += 2;
 lsp: messages sent before the initialize reply~test TESTS=lsp~~src/lsp/lsp.c~	if (!s->ready && !now) {~	if (!s->ready && !now && 0) {
-lsp: a new request does not cancel the last~test TESTS=lsp~~src/lsp/lsp.c~	cancel(d, kind);¶~¶
+lsp: a new request does not cancel the last~test TESTS=lsp~~src/lsp/lsp.c~	cancel(d, &d->ask[kind].id);¶~¶
 lsp: a reopened file never gets didOpen~test TESTS=lsp~~src/lsp/lsp.c~	d->nlog = 0;¶	open_doc(d);~	d->nlog = 0;
 lsp: a request from the server left unanswered~test TESTS=lsp~~src/lsp/lsp.c~		send(s);¶		return;¶	}¶	if (meth >= 0) {~		return;¶	}¶	if (meth >= 0) {
 lsp: columns sent as bytes, not UTF-16~test TESTS=lsp~~src/lsp/lsp.c~	*c = lsp_u16(b, n);~	*c = n; (void)b;
@@ -101,11 +101,23 @@ lsp: goals: a server dead with a question out read as an answer~test TESTS=lsp~~
 lsp: tokens: not moved by edits until the answer comes~test TESTS=lsp~~src/lsp/lsp.c~	shift_set(&d->tok, pos, ndel, nins);¶~¶
 lsp: tokens: an answer for a text edited since shown~test TESTS=lsp~~src/lsp/lsp.c~if (current(d, d->tokver)) decode(~if (1) decode(
 lsp: tokens: a new request without cancelling the last~test TESTS=lsp~~src/lsp/lsp.c~	cancel(d, &d->tokid);¶	d->tokid = d->s->next++;~	d->tokid = d->s->next++;
-lsp: tokens: UTF-16 columns read as bytes~test TESTS=lsp~~src/lsp/lsp.c~size_t a = ls + lsp_u16_byte(b, n, c), z = ls + lsp_u16_byte(b, n, c + (size_t)v[2]);~size_t a = ls + c, z = ls + c + (size_t)v[2];
-lsp: tokens: a new line's start taken from the last token's~test TESTS=lsp~~src/lsp/lsp.c~			l += (size_t)v[0];¶			c = 0;~			l += (size_t)v[0];
+lsp: tokens: UTF-16 columns read as bytes~test TESTS=lsp~~src/lsp/lsp.c~	pb += lsp_u16_byte(b + pb, n - pb, c - pc);~	pb += c - pc;
+lsp: tokens: a new line's start taken from the last token's~test TESTS=lsp~~src/lsp/lsp.c~			c = pb = pc = 0;~			pb = pc = 0;
 lsp: tokens: the grammar's faces dropped~test TESTS=lsp~~src/lsp/lsp.c~	syntax_faces(b->syn, a, z, face);¶	const Set~	memset(face, 0, z - a);¶	const Set
 lsp: tokens: a type Neovim does not colour coloured~test TESTS=lsp~~src/lsp/lsp.c~		unsigned char f = 0;~		unsigned char f = FACE_KEYWORD;
 lsp: tokens: asked from inside a token, it is missed~test TESTS=lsp~~src/lsp/lsp.c~if (v->v[mid].z <= a) lo = mid + 1;~if (v->v[mid].a < a) lo = mid + 1;
-lsp: tokens: not asked for once the server is ready~test TESTS=lsp~~src/lsp/lsp.c~		for (LspDoc *d = s->docs; d; d = d->link) tokens(d);¶~¶
+lsp: tokens: not asked for once the server is ready~test TESTS=lsp~~src/lsp/lsp.c~s->held.n = 0; }¶		for (LspDoc *d = s->docs; d; d = d->link) tokens(d);~s->held.n = 0; }
 lsp: tokens: not asked again after an edit~test TESTS=lsp~~src/lsp/lsp.c~	end(d->s);¶	tokens(d);¶}¶¶void lsp_saved~	end(d->s);¶}¶¶void lsp_saved
 lsp: goals: a refused question keeps the expected type shown for another line~test TESTS=lsp~~src/lsp/lsp.c~	if (G.want || !G.d) return;¶	G.term.t.n = G.term.f.n = 0;¶~	if (G.want || !G.d) return;¶
+lsp: tokens: an answer does not redraw~test TESTS=lsp~~src/lsp/lsp.c~	clear(&d->tok);¶	core_changed = 1;¶	const Text~	clear(&d->tok);¶	const Text
+lsp: tokens: an answer added to the last~test TESTS=lsp~~src/lsp/lsp.c~	clear(&d->tok);¶	core_changed = 1;¶	const Text~	core_changed = 1;¶	const Text
+lsp: tokens: an error answer clears them~test TESTS=lsp~~src/lsp/lsp.c~	if (arr < 0 || tk[arr].type != 'a') return;¶	clear(&d->tok);~	clear(&d->tok);¶	if (arr < 0 || tk[arr].type != 'a') return;
+lsp: tokens: a new server shows the old one's~test TESTS=lsp~~src/lsp/lsp.c~	clear(&d->tok);¶	d->tokid = 0;~	d->tokid = 0;
+lsp: tokens: a file opened once the server is ready not asked~test TESTS=lsp~~src/lsp/lsp.c~d->bad = put_text(d->t);¶	str_lit(&o, "\"}}");¶	end(d->s);¶	tokens(d);~d->bad = put_text(d->t);¶	str_lit(&o, "\"}}");¶	end(d->s);
+lsp: tokens: only the first file asked once the server is ready~test TESTS=lsp~~src/lsp/lsp.c~s->held.n = 0; }¶		for (LspDoc *d = s->docs; d; d = d->link) tokens(d);~s->held.n = 0; }¶		if (s->docs) tokens(s->docs);
+lsp: tokens: function linked to another face~test TESTS=lsp~~src/lsp/lsp.c~{ "function", FACE_FUNCTION }~{ "function", FACE_TYPE }
+lsp: tokens: a type past the legend read~test TESTS=lsp~~src/lsp/lsp.c~if (v[3] >= d->s->ntypes || !d->s->legend[v[3]]) continue;~if (!d->s->legend[v[3]]) continue;
+lsp: tokens: more than 32 types kept~test TESTS=lsp~~src/lsp/lsp.c~ && s->ntypes < (int)sizeof s->legend; i = tk[i].end~; i = tk[i].end
+lsp: tokens: not asked again on a refresh~test TESTS=lsp~~src/lsp/lsp.c~		if (is(m, meth, "workspace/semanticTokens/refresh")) for (LspDoc *d = s->docs; d; d = d->link) tokens(d);¶~
+lsp: tokens: no refreshSupport offered~test TESTS=lsp~~src/lsp/lsp.c~"\"workspace\":{\"semanticTokens\":{\"refreshSupport\":true}},\"window\"~"\"window\"
+lsp: tokens: each start counted from the line's~test TESTS=lsp~~src/lsp/lsp.c~	pb += lsp_u16_byte(b + pb, n - pb, c - pc);~	pb = lsp_u16_byte(b + pb, n - pb, c - pc);

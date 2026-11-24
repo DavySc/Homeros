@@ -25,14 +25,16 @@ pass() {
 winlink() {
 	local syn=build/syntax o objs= g
 	local inc="-I$syn/src/tree-sitter/lib/include -I$syn/src/tree-sitter/lib/src"
-	local srcs=$(make -s -n wincc | head -1 | tr ' ' '\n' | grep '\.c$' | grep -v -e '^src/main\.c$' -e '^src/win/')
 	mkdir -p build/win/link
+	make -s $syn/queries.c build/win/stb.o build/ghostty/windows.lib   # stb: src/image/build.mk; thread 0's, agreed
+	# after those: wincc's dry run starts with what it would build first
+	# (the grammars' sources, build/win), not the compile loop
+	local srcs=$(make -s -n wincc | head -1 | tr ' ' '\n' | grep '\.c$' | grep -v -e '^src/main\.c$' -e '^src/win/')
 	for g in $(sed -n '/^SYN_GRAMMARS/,/[^\\]$/p' src/syntax/build.mk | tr -d '\\' | cut -d= -f2); do
 		o=build/win/link/$(echo $g | tr / _).o
 		[ -f $o ] || zig cc -target x86_64-windows-gnu -O2 -c -I$(dirname $syn/src/$g) $syn/src/$g.c -o $o
 		objs="$objs $o"
 	done
-	make -s $syn/queries.c build/win/stb.o build/ghostty/windows.lib   # stb: src/image/build.mk; thread 0's, agreed
 	zig cc -target x86_64-windows-gnu -O2 -c $syn/queries.c -o build/win/link/queries.o
 	[ -f build/win/link/ts.o ] || zig cc -target x86_64-windows-gnu -O2 -c $inc $syn/src/tree-sitter/lib/src/lib.c -o build/win/link/ts.o
 	. src/tools/ghostty-win.sh
