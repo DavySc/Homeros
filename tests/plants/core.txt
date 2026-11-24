@@ -221,3 +221,7 @@ core: :bd keeps its folder's watch, so Windows cannot rename its parent~win WIN=
 core: a freed buffer keeps its folder's watch~win WIN=git~~src/core/core.c~	buf_unwatch(b);¶	umarks_drop(b);~	umarks_drop(b);
 core: a closed watch stays in the loop~win WIN=git~~src/core/core.c~if (b->watch >= 0 && file_unwatch(b->watch)) loop_unwatch(b->watch);~if (b->watch >= 0) file_unwatch(b->watch);
 specs: Frames with one dirty flag~specs~find design/specs -name '*.cfg' ! -name Frames_ok.cfg -delete~design/specs/Frames_ok.cfg~ Variant = "ok"~ Variant = "shared"
+core: core_buf_append leaves a window on the last line behind (test_core_contract)~test TESTS=core_contract~~src/core/core.c~if (w->buf == b && w->line >= last) w->line~if (w->buf == b && w->line > last) w->line
+core: core_buf_shown counts windows from 0 (test_core_contract)~test TESTS=core_contract~~src/core/core.c~	long k = 1;~	long k = 0;
+core: core_visual's v ends inside the last character (test_core_contract)~test TESTS=core_contract~~src/core/core.c~c2 + uni_glen(l, len, c2) :~c2 + 1 + 0 * uni_glen(l, len, c2) :
+core: core_visual's V reaches past the text's end (test_core_contract)~test TESTS=core_contract~~src/core/core.c~	if (*z > text_len(e->buf->text)) *z = text_len(e->buf->text);¶~¶

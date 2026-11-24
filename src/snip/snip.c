@@ -534,18 +534,14 @@ const char *snip_get(Editor *e, const char *q, size_t nq, int i, const char **de
 int snip_insert(Editor *e, const char *name)
 {
 	const char *body = body_of(name);
-	size_t a = cursor(e), z = a, len;
+	size_t a = cursor(e), z = a;
 	if (!body) { core_msg(e, "no snippet %s", name); return -1; }
 	if (e->ks.visual) {
-		/* the Visual area: characters from one end to the other, whole,
-		   or the lines (also for a block) from the first one's indent to
-		   the last one's break; never the text's last break, as v$c */
-		size_t l1 = e->ks.vline, c1 = e->ks.vcol, l2 = e->win->line, c2 = e->win->col;
-		if (l1 > l2 || (l1 == l2 && c1 > c2)) l1 = l2, c1 = c2, l2 = e->ks.vline, c2 = e->ks.vcol;
-		const unsigned char *l = core_line(e, l2, &len);
-		a = core_line_start(e, l1) + c1;
-		z = core_line_start(e, l2) + (c2 < len ? c2 + uni_glen(l, len, c2) : len + 1);
-		if (e->ks.visual != 'v') a = core_line_start(e, l1) + indent(e, l1), z = core_line_start(e, l2) + len;
+		/* the Visual area (core_visual), for lines (also for a block) from
+		   the first one's indent to the last one's break; never the text's
+		   last break, as v$c */
+		core_visual(e, &a, &z);
+		if (e->ks.visual != 'v') a += indent(e, e->ks.vline < e->win->line ? e->ks.vline : e->win->line), z--;
 		if (z >= text_len(e->buf->text)) z = text_len(e->buf->text) - 1;
 		keys_feed(e, KEY_ESC, 0);
 	}
