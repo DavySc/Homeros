@@ -1,0 +1,20 @@
+review: a mark past the last line is gone to, no E19 (getmark)~test TESTS=keys_ex~~src/keys/normal.c~	if (p->lnum >= nlines()) {~	if (0) {
+review: a jump list entry past the last line is gone to, no E19~test TESTS=keys_ex~~src/keys/normal.c~	if (m.line >= (size_t)nlines()) {~	if (0) {
+review: the jump list keeps two entries on one line~test TESTS=keys_ex~~src/keys/normal.c~		if (i == w->njump) w->jump[to++] = w->jump[from];~		w->jump[to++] = w->jump[from];
+review: the jump list's place is not moved when entries before it go~test TESTS=keys_ex~~src/keys/normal.c~		if (w->jumpidx == from) w->jumpidx = to;¶~
+review: a first CTRL-O with a count past the start still jumps~test TESTS=keys_ex~~src/keys/normal.c~			if (--w->jumpidx + n < 0) { clearopbeep(cap->oap); return; }~			--w->jumpidx;
+review: a linewise area's `> is the mark's column, not the line's end~test TESTS=keys_ex~~src/keys/normal.c~			if (b_visual.mode == 'V') p->col = c == '<' ? 0 : MAXCOL, p->coladd = 0;~			(void)0;
+review: m< on a fresh buffer leaves the area without a mode~test TESTS=keys_ex~~src/keys/normal.c~		if (!b_visual.mode) b_visual.mode = 'v';~		(void)0;
+review: the core's '[ and '] (an undo) never reach the keys (keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~*p = (Pos){ m->set ? (long)m->line : -1, (long)m->col, 0 };~(void)p;
+review: the core's '[ and '] (an undo) never reach the keys (conform replay)~test TESTS=~~src/keys/normal.c~*p = (Pos){ m->set ? (long)m->line : -1, (long)m->col, 0 };~(void)p;
+review: the saved '' outlives its command~test TESTS=keys_ex~~src/keys/normal.c~	prev_pcmark.set = 0;¶~
+review: g; on an empty change list reads it~test TESTS=keys_ex~~src/keys/normal.c~		if (!len) { core_msg(E, "E664: Changelist is empty"); return; }~		(void)0;
+review: Ctrl-C also stops a frame's 'hlsearch' match~test TESTS=keys_ex~~src/keys/regex.c~(!re_deadline && loop_breakcheck())~loop_breakcheck()
+review: every match of :s sets ''~test TESTS=keys_ex~~src/keys/sub.c~if (!got_match) setpcmark();~setpcmark();
+review: Enter at column 0 before an indent it removes puts the line above~test TESTS=keys_ex~~src/keys/edit.c~} else if (rest || ind) {~} else if (rest) {
+review: * sets '' twice, so '' is the word's start~test TESTS=keys_ex~~src/keys/normal.c~buf, 0, 0, NULL);~buf, 0, 1, NULL);
+review: m" sets nothing~test TESTS=keys_ex~~src/keys/normal.c~	else if (c == '"') B->mark[MARK_QUOTE] = m;~	else if (c == '"') (void)m;
+review: m[ sets nothing~test TESTS=keys_ex~~src/keys/normal.c~	else if (c == '[') b_op_start = cur();~	else if (c == '[') (void)0;
+review: '{ with no paragraph says nothing~test TESTS=keys_ex~~src/keys/normal.c~		if (!m.set) { core_msg(E, "E78: Unknown mark"); return 0; }~		if (!m.set) return 0;
+review: CTRL-O with a count past the start reads before the list~test TESTS=keys_ex~~src/keys/normal.c~if (!w->njump || w->jumpidx + n < 0 || w->jumpidx + n >= w->njump)~if (!w->njump || w->jumpidx + n >= w->njump)
+review: the newest jump goes whatever line the cursor is on~test TESTS=keys_ex~~src/keys/normal.c~w->jump[to - 1].buf == B && w->jump[to - 1].m.line == W->line~w->jump[to - 1].buf == B
