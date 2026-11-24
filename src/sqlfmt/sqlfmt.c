@@ -1066,3 +1066,28 @@ int sqlfmt(const Text *t, size_t *a, size_t *z, const char **res, size_t *n)
 	src = NULL, rev = NULL, starts = NULL, ds = NULL, srccap = revcap = startcap = dscap = 0;
 	return r;
 }
+
+/* Only the extents live on until the next call, as sqlfmt's result does */
+size_t sqlfmt_units(const Text *t, size_t (**u)[2])
+{
+	static size_t (*v)[2], cap;
+	size_t len = text_len(t), n = 0;
+	Pass p = { 0 };
+	char *s = malloc(len + 1);
+	oom = !s || !words();
+	if (!oom) p.src = s, p.len = text_read(t, 0, s, len), lex(&p, t);
+	if (!oom) parse(&p);
+	for (size_t i = 0; !oom && i < p.nev; i++) {
+		if (p.ev[i].node != N_STATEMENT) continue;
+		size_t a = len, z = 0;
+		for (int j = (int)i + 1; j < p.ev[i].end; j++)
+			if (!p.ev[j].node) {
+				if (a == len) a = p.t[p.ev[j].tok].s;
+				z = p.t[p.ev[j].tok].e;
+			}
+		if (a < z) { if (!GROW(v, n, cap)) oom = 1; else v[n][0] = a, v[n][1] = z, n++; }
+	}
+	free(s), free(p.t), free(p.ev), free(p.diag), free(p.tops);
+	*u = v;
+	return oom ? 0 : n;
+}

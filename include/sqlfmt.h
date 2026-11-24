@@ -15,4 +15,10 @@
 #include <stddef.h>
 #include "text.h"
 int sqlfmt(const Text *t, size_t *a, size_t *z, const char **res, size_t *n);
+/* The leaves of the formatter's statement tree (SQLDiff's): each simple
+   statement of t, as the bytes [u[i][0],
+   u[i][1]) from its first token to its last, in text order, none inside
+   another.  *u stays valid until the next call.  The completion popup
+   (package 19) reads a statement's tables and aliases from them. */
+size_t sqlfmt_units(const Text *t, size_t (**u)[2]);
 #endif
