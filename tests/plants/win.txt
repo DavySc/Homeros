@@ -57,7 +57,8 @@ win: the timer set for the window asked last, not the soonest~win WIN=win~~src/w
 win: the first window opens at the default size, not maximised~win WIN=win~~src/win/backend.c~w->link ? SW_SHOWNORMAL : SW_SHOWMAXIMIZED~SW_SHOWDEFAULT
 win: every frame opens maximised~win WIN=win~~src/win/backend.c~w->link ? SW_SHOWNORMAL : SW_SHOWMAXIMIZED~SW_SHOWMAXIMIZED
 # one editor per session (src/win/remote.c, Remote.tla "ok"); not planted: a launch that finds the editor closing and does not become it (no test makes the window close between FindWindowEx and SendMessage); nor AllowSetForegroundWindow dropped (the
-# foreground rules hold only on a desktop with a user: a probe there, DESIGN.md "One editor per Windows session")
+# foreground rules hold only on a desktop with a user: src/win/probe/raise.c there caught it 2 of 2, DESIGN.md "One
+# editor per Windows session")
 remote: no turn: launches together both become the editor (Remote "noturn")~win WIN=win~~src/win/remote.c~GetLastError() == ERROR_ALREADY_EXISTS && WaitForSingleObject~0 && WaitForSingleObject
 remote: a turn whose owner died is not taken~win WIN=win~~src/win/remote.c~WaitForSingleObject(m, INFINITE) == WAIT_FAILED~WaitForSingleObject(m, INFINITE) != WAIT_OBJECT_0
 remote: the file handed over as given, not absolute~win WIN=win~~src/win/remote.c~file_full(file, p)~!strcpy(p, file)
