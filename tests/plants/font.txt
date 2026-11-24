@@ -12,3 +12,4 @@ font: pen not reset per cluster (fuzz_font)~fuzz FUZZERS=font FUZZ_SECONDS=60~~s
 font: HarfBuzz buffer grown while drawing (0 allocations on a longer run)~test TESTS=font~~src/font/font.c~!hb_buffer_pre_allocate(cur.buf, RUN)~!hb_buffer_allocation_successful(cur.buf)
 font: a size used again is opened afresh (test_font)~test TESTS=font~~src/font/font.c~	if (cur.face && cur.px == size) return 0;¶	close_size();~	close_size();
 font: an open size is taken for another (test_font)~test TESTS=font~~src/font/font.c~!(old[i].face && old[i].px == size)~!old[i].face
+font: font_close leaves the other sizes open (test_font)~test TESTS=font~~src/font/font.c~	for (int i = 0; i < SIZES - 1; i++) {¶		cur = old[i];~	for (int i = 0; i < 0; i++) {¶		cur = old[i];

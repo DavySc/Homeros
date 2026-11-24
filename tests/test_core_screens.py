@@ -40,7 +40,8 @@ def gen_text(r):
 def gen_tokens(r, nfiles):
     toks = []
     for _ in range(r.randint(1, 16)):
-        c = r.random()
+        # tab pages take [1, 1.06): their own share, the others' as before
+        c = r.random() * 1.06
         cnt = r.choice(['', '', '', '2', '3', '7'])
         if c < .25:
             toks.append(r.choice(['sp', 'vs', 'sp', 'vs', 'new', 'vnew', 'close', 'q', 'only',
@@ -49,10 +50,6 @@ def gen_tokens(r, nfiles):
                                   'w:_', 'w:|', 'w:x', 'w:r', 'w:R', 'w:H', 'w:J', 'w:K', 'w:L']))
             # CTRL-W c, o and q with a count name a window: not used here
             if toks[-1].startswith('w:') and cnt and toks[-1][2] not in 'coq': toks[-1] = 'w' + cnt + toks[-1][1:]
-        elif c < .31:
-            # tab pages, shown as frames: SPC 5 2 is :tab split, SPC 5 m {n} is MOVE() below
-            toks.append(r.choice(['tabsp', 'tabnew', 'tabe:f%d' % r.randrange(nfiles), 'tabclose', 'tabonly',
-                                  'k:gt', 'k:gT', 'k:%sgt' % r.randint(1, 4), 'k:2gT', 'w:T', 'tabm:%d' % r.randint(1, 4)]))
         elif c < .35:
             toks.append(r.choice(['e:f%d' % r.randrange(nfiles), 'b:%d' % r.randint(1, nfiles + 1),
                                   'bn', 'bp', 'alt', 'enew', 'bd']))
@@ -69,6 +66,10 @@ def gen_tokens(r, nfiles):
                                          'dd', 'x', 'u', '<C-r>', 'oa<CR>b<CR>c<Esc>']))
         elif c < .76:
             toks.append('m:' + r.choice('abc'))
+        elif c >= 1:
+            # tab pages, shown as frames: SPC 5 2 is :tab split, SPC 5 m {n} is MOVE() below
+            toks.append(r.choice(['tabsp', 'tabnew', 'tabe:f%d' % r.randrange(nfiles), 'tabclose', 'tabonly',
+                                  'k:gt', 'k:gT', 'k:%sgt' % r.randint(1, 4), 'k:2gT', 'w:T', 'tabm:%d' % r.randint(1, 4)]))
         else:
             m = r.choice(['j', 'k', 'h', 'l', 'gg', 'G', '0', '$', '^', 'NG', 'NG'])
             # NG: a jump to any line, so a cursor sits anywhere in a window

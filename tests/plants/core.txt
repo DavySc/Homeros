@@ -89,14 +89,14 @@ core: '<' of a character starting at the area is in it (test_core_visual)~test T
 core: '>' is in the area (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~wputs(g, w, row, c, ">", FACE_NON_TEXT);   /* not in the area (measured) */~{ wputs(g, w, row, c, ">", FACE_NON_TEXT); Cell *z = wcell(g, w, row, c); if (z) z->bg = vis; }
 core: -- VISUAL LINE -- shows as -- VISUAL -- (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~e->ks.visual == 'V' ? 1~e->ks.visual == 'V' ? 0
 core: -- REPLACE -- shows as -- INSERT -- (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~? 3 + !!e->ks.replace :~? 3 :
-core: a window on the same buffer shows no Visual area (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~(y ? w != cw : w->buf != e->buf)) return 0;~(y ? w != cw : w != cw)) return 0;
+core: a window on the same buffer shows no Visual area (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~(y ? w != cw : w->buf != typing->buf)) return 0;~(y ? w != cw : w != cw)) return 0;
 core: a split marks the next edit a join (test_core_undo)~test TESTS=core_undo~~src/core/core.c~	if (line_amount < 0) join_next = b;~	if (line_amount) join_next = b;
 core: a heading drawn in insert mode (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~ ? e->mode != MODE_INSERT && !e->ks.visual~ ? !e->ks.visual
-core: a heading drawn while the window is scrolled sideways (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~ && !e->win->left : !w->left;~ : !w->left;
-core: the cursor line's heading drawn (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~	size_t raw = cur ? e->win->line : (size_t)-1;~	size_t raw = (size_t)-1;
-core: another buffer's window keeps its cursor line raw (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~size_t raw = cur ? e->win->line : (size_t)-1;~size_t raw = cur ? e->win->line : w->line;
-core: another buffer's window drawn while scrolled sideways (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~ && !e->win->left : !w->left;~ && !e->win->left : 1;
-core: another buffer's window follows the current buffer's mode (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~int cur = w->buf == e->buf, rm~int cur = 1, rm
+core: a heading drawn while the window is scrolled sideways (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~ && !typing->left : !w->left;~ : !w->left;
+core: the cursor line's heading drawn (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~	size_t raw = cur ? typing->line : (size_t)-1;~	size_t raw = (size_t)-1;
+core: another buffer's window keeps its cursor line raw (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~size_t raw = cur ? typing->line : (size_t)-1;~size_t raw = cur ? typing->line : w->line;
+core: another buffer's window drawn while scrolled sideways (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~ && !typing->left : !w->left;~ && !typing->left : 1;
+core: another buffer's window follows the current buffer's mode (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~int cur = w->buf == typing->buf, rm~int cur = 1, rm
 core: a heading drawn in visual mode (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~e->mode != MODE_INSERT && !e->ks.visual && ~e->mode != MODE_INSERT && 
 core: a bullet ignores the blanks its marker starts with (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~" ", 1, q - md->item, FACE_MD_BULLET~" ", 1, 0 * q, FACE_MD_BULLET
 core: a bullet over a heading's background takes it (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~k, 1, FACE_MD_BULLET, 0);~k, 1, FACE_MD_BULLET, hb);
@@ -140,7 +140,7 @@ core: the fill in the face after it (test_core_status)~test TESTS=core_status~~s
 core: the sections' backgrounds not drawn (test_core_status)~test TESTS=core_status~~src/core/draw.c~				if (z) z->bg = bl[i];~				(void)z;
 core: the cell under a separator always the separator (test_core_status)~test TESTS=core_status~~src/core/draw.c~int on = stl_connected(w);~int on = !stl_connected(w);
 core: the cursor line's number in LineNr (test_core_status)~test TESTS=core_status~~src/core/draw.c~unsigned char face = rel ? FACE_LINE_NR : FACE_CURSOR_LINE_NR;~unsigned char face = FACE_LINE_NR;
-core: the cursor line drawn in Visual mode (test_core_status)~test TESTS=core_status~~src/core/draw.c~!(w == e->win && e->ks.visual) ? FACE_CURSOR_LINE : 0;~1 ? FACE_CURSOR_LINE : 0;
+core: the cursor line drawn in Visual mode (test_core_status)~test TESTS=core_status~~src/core/draw.c~!(w == typing && e->ks.visual) ? FACE_CURSOR_LINE : 0;~1 ? FACE_CURSOR_LINE : 0;
 core: the cursor line only in the current window (test_core_status)~test TESTS=core_status~~src/core/draw.c~unsigned char cl = l == w->line && ~unsigned char cl = w == e->win && l == w->line && 
 core: the cursor line only under its text (test_core_status)~test TESTS=core_status~~src/core/draw.c~for (int k = 0; cl && k < line_rows(w, l)~for (int k = 0; cl && k < 0
 core: the end-of-buffer filler in NonText (test_core_status)~test TESTS=core_status~~src/core/draw.c~FACE_END_OF_BUFFER);~FACE_NON_TEXT);
@@ -160,7 +160,7 @@ core: the branch in other windows too (test_core_status)~test TESTS=core_status~
 core: buffers found by the name as typed, so a relative and a full name are two (test_core_contract)~test TESTS=core_contract~~src/core/core.c~if (b->path && !strcmp(b->full, full)) return b;~if (b->path && !strcmp(b->path, path)) return b;
 core: the modified flag wrong after a save (test_core_screens)~test TESTS=core_screens~~src/core/core.c~undo_seq(b->undo) != b->saved_seq~undo_seq(b->undo) > b->saved_seq
 core: the yank flash in Visual's colour (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~		return FACE_INC_SEARCH;~		return FACE_VISUAL;
-core: the yank flash in every window on the buffer (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~(y ? w != cw : w->buf != e->buf)~(y ? w->buf != e->buf : w->buf != e->buf)
+core: the yank flash in every window on the buffer (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~(y ? w != cw : w->buf != typing->buf)~(y ? w->buf != typing->buf : w->buf != typing->buf)
 core: a yanked block cuts a character it touches (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~				if (v < *from) *from = v;¶~
 core: a yanked block one column narrower (test_core_visual)~test TESTS=core_visual~~src/core/draw.c~		*to = cc + 1;~		*to = cc;
 core: the yank flash takes a cell at an empty line's end (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~	if (area == FACE_VISUAL && drawn == 1~	if (area && drawn == 1
@@ -174,7 +174,7 @@ core: the end-of-line cell past the window's edge dropped, not on its last cell 
 core: the yank flash drawn over 'hlsearch' matches (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~	int flash = area && e->ks.yank.type;~	int flash = 0 && area && e->ks.yank.type;
 core: an empty line's end-of-line cell drawn CurSearch (test_core_search)~test TESTS=core_search~~src/core/draw.c~z->bg = mh == 2 && ms < i ? FACE_CUR_SEARCH : FACE_SEARCH;~z->bg = mh == 2 ? FACE_CUR_SEARCH : FACE_SEARCH;
 core: a file opened after start-up is not watched (test_core_contract)~test TESTS=core_contract~~src/core/core.c~			loop_watch(b->watch, on_watch, e);~			(void)on_watch;
-core: the cursor line is concealed (test_core_conceal)~test TESTS=core_conceal~~src/core/draw.c~syn && w->conceal && !(w == e->win && l == w->line) && area~syn && w->conceal && area
+core: the cursor line is concealed (test_core_conceal)~test TESTS=core_conceal~~src/core/draw.c~syn && w->conceal && !(w == typing && l == w->line) && area~syn && w->conceal && area
 core: the Visual area is concealed (test_core_conceal)~test TESTS=core_conceal~~src/core/draw.c~ && area != FACE_VISUAL ? syntax_conceal~ ? syntax_conceal
 core: a span's character is not drawn (test_core_conceal)~test TESTS=core_conceal~~src/core/draw.c~if (i == cc->a && !j && *cc->s) put_cell~if (0 && i == cc->a && !j && *cc->s) put_cell
 core: freed cells carry over to the next row (test_core_conceal)~test TESTS=core_conceal~~src/core/draw.c~if (row != orow) orow = row, off = 0;~if (row != orow) orow = row;
@@ -195,7 +195,7 @@ core: an underline whose end comes first is not swapped (test_core_diag)~test TE
 core: an empty diagnostic underlines nothing (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~	else if (*z == *a) (*z)++;~	else if (0) (*z)++;
 core: a diagnostic at the end of the text is not on the last line (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~le = l + 1 < text_lines(t) ? text_line_start(t, l + 1) : (size_t)-1;~le = text_line_start(t, l + 1);
 core: no message on the cursor line (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~if (drawn == 1 && hi > lo && l ==~if (0 && drawn == 1 && hi > lo && l ==
-core: the message on every line (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~ && l == (w->buf == e->win->buf ? e->win->line : w->line)) {~) {
+core: the message on every line (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~ && l == (w->buf == typing->buf ? typing->line : w->line)) {~) {
 core: the first diagnostic's message (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~v[hi - 1].msg~v[lo].msg
 core: a message's Tab counts from the window's edge (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~(size_t)(8 - (x - w->x - nw) % 8)~(size_t)(8 - (x - w->x) % 8)
 core: a message's line break is one blank (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~x = vt_puts(g, y, x, end, "  ", 2, f);~x = vt_puts(g, y, x, end, " ", 1, f);
@@ -214,7 +214,7 @@ core_buf_fill: SIZE_MAX moves every window to the last line (test_core_contract)
 core_buf_fill: top left below the cursor (test_core_contract)~test TESTS=core_contract~~src/core/core.c~			if (w->top > w->line) w->top = w->line;~			(void)0;
 core: :bd leaves the closed language server document on the buffer (test_core_contract)~test TESTS=core_contract~~src/core/core.c~	b->lsp = NULL;¶~
 core: a line's underlines walk every diagnostic before it (test_core_diag frame time)~test TESTS=core_diag~~src/core/draw.c~		if (dv[k].z < ls) continue;	/* ends before this line: skip without diag_span's walk */¶~
-core: a second window on the buffer puts the message on its own cursor line (test_core_diag two windows)~test TESTS=core_diag~~src/core/draw.c~l == (w->buf == e->win->buf ? e->win->line : w->line)~l == w->line
+core: a second window on the buffer puts the message on its own cursor line (test_core_diag two windows)~test TESTS=core_diag~~src/core/draw.c~l == (w->buf == typing->buf ? typing->line : w->line)~l == w->line
 core: buf_load watches the shared fd again for every file (test_core_contract)~test TESTS=core_contract~~src/core/core.c~			loop_unwatch(b->watch);¶~
 core: the message's "\r" is drawn, not dropped (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~size_t n = strcspn(m, "\r\n\t");~size_t n = strcspn(m, "\n\t");
 core: a new tab page ignores the command line's height (recorded traces)~test TESTS=core_screens~~src/core/win.c~	layout_init(e, w, ch);~	layout_init(e, w, 1 + 0 * ch);
@@ -226,3 +226,11 @@ core: :bd keeps its folder's watch, so Windows cannot rename its parent~win WIN=
 core: a freed buffer keeps its folder's watch~win WIN=git~~src/core/core.c~	buf_unwatch(b);¶	umarks_drop(b);~	umarks_drop(b);
 core: a closed watch stays in the loop~win WIN=git~~src/core/core.c~if (b->watch >= 0 && file_unwatch(b->watch)) loop_unwatch(b->watch);~if (b->watch >= 0) file_unwatch(b->watch);
 specs: Frames with one dirty flag~specs~find design/specs -name '*.cfg' ! -name Frames_ok.cfg -delete~design/specs/Frames_ok.cfg~ Variant = "ok"~ Variant = "shared"
+core: entering a tab page forgets its previous window (CTRL-W p after gt)~test TESTS=keys_map~~src/core/win.c~	win_enter(e, w);¶	e->prev = pw;~	win_enter(e, w);¶	(void)pw;
+core: another frame drawn with the command line and mode~test TESTS=keys_map~~src/core/draw.c~	if (!cur) return;~
+core: a window moved by SPC 5 m does not take its view~test TESTS=keys_map~~src/core/win.c~		win_copy_view(e->win, wp);¶~
+core: the tabline drawn in an OS window too~test TESTS=keys_map~~src/core/draw.c~	if (cur && tabline_height(e)) draw_tabline(e, g);~	if (cur && e->tabs->next) draw_tabline(e, g);
+core: another frame drawn with the typing frame's Visual area and yank flash~test TESTS=keys_map~~src/core/draw.c~(y ? w != cw : w->buf != typing->buf)~(y ? w != e->win : w->buf != e->buf)
+core: a refill clamps the current frame's windows only~test TESTS=keys_map~~src/core/core.c~	FOR_ALL_TAB_WINDOWS(e, w)   /* a frame that shows b too: drawn by its own OS window */~	for (Win *w = e->wins; w; w = w->next)
+core: :tabnew {file} after :bd keeps column 0 on a line of blanks~test TESTS=core_screens~~src/core/core.c~how == ENTER_E || (how != ENTER_B && line1_blank(e))~how == ENTER_E || (how == ENTER_ALT && line1_blank(e))
+core: a cursor inside a character takes the next one's screen column~test TESTS=core_screens~~src/core/core.c~		if (i + k > col) break;~		if (i >= col) break;

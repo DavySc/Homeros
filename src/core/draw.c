@@ -347,6 +347,10 @@ static int hl_at(Editor *e, const Win *w, size_t l, size_t i, int mh, size_t *ms
 	return mh;
 }
 
+/* The window the user types in (curwin), in whichever frame is drawn: its
+   Visual area, yank flash, cursor line and mode belong to it alone */
+static const Win *typing;
+
 /* win_line()'s Visual area of line l in w ('selection' inclusive), or
    vim.hl.on_yank()'s flash (Davy's my-nvim): vim.hl.range() from '[ to ']
    inclusive (a block: its screen columns) in IncSearch, over the text only
@@ -359,14 +363,14 @@ static int hl_at(Editor *e, const Win *w, size_t l, size_t i, int mh, size_t *ms
    area's face. */
 static unsigned char visual(Editor *e, Win *w, size_t l, size_t *from, size_t *to, size_t *xf, size_t *xt)
 {
-	const Win *cw = e->win;
+	const Win *cw = typing;
 	const KeyArea *ka = e->ks.yank.type ? &e->ks.yank : e->ks.inc.type ? &e->ks.inc : NULL;
 	int y = ka != NULL, type = y ? ka->type : e->ks.visual;
 	size_t cl = y ? ka->l2 : cw->line, cc = y ? ka->c2 : cw->col, vl = y ? ka->l1 : e->ks.vline,
 	       vc = y ? ka->c1 : e->ks.vcol, a, b, c, d, n;
 	*from = *xf = 1;
 	*to = *xt = 0;
-	if (!type || (y ? w != cw : w->buf != e->buf)) return 0;
+	if (!type || (y ? w != cw : w->buf != typing->buf)) return 0;
 	/* ltoreq(): the cursor is the top end unless VIsual is before it */
 	int vtop = vl < cl || (vl == cl && vc < cc);
 	size_t tl = vtop ? vl : cl, tc = vtop ? vc : cc, bl = vtop ? cl : vl, bc = vtop ? cc : vc;
@@ -458,7 +462,7 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	   line nor in the Visual area; off counts the cells they freed on row
 	   orow, which a Tab gives back (fix_for_boguscols()) */
 	Conceal cs[64];
-	size_t nc = syn && w->conceal && !(w == e->win && l == w->line) && area != FACE_VISUAL ? syntax_conceal(syn, l, cs, 64) : 0,
+	size_t nc = syn && w->conceal && !(w == typing && l == w->line) && area != FACE_VISUAL ? syntax_conceal(syn, l, cs, 64) : 0,
 	       ci = 0, off = 0;
 	int orow = r;
 	/* the diagnostics' underline: [a, z) of those over the line
@@ -486,7 +490,7 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	   text area of the cursor line's rows, below syntax and render-markdown
 	   (low priority: it has no fg), not in the current window in Visual
 	   mode (win_line()); not under skipcol's "<<<" */
-	unsigned char cl = l == w->line && !(w == e->win && e->ks.visual) ? FACE_CURSOR_LINE : 0;
+	unsigned char cl = l == w->line && !(w == typing && e->ks.visual) ? FACE_CURSOR_LINE : 0;
 	for (int k = 0; cl && k < line_rows(w, l) && r + k < w->h; k++)
 		for (int c = k || cover < nw ? nw : cover; c < w->w; c++) {
 			Cell *z = wcell(g, w, r + k, c);
@@ -569,7 +573,7 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	   start, where an area that starts earlier starts too. */
 	size_t vs = v > skip ? v : skip;
 	if (area == FACE_VISUAL && drawn == 1 && (v > skip ? from == v : from <= skip) && vs < to && (vs < xf || vs > xt)
-	    && (e->ks.visual != 22 || l == e->win->line || l == e->ks.vline)) {
+	    && (e->ks.visual != 22 || l == typing->line || l == e->ks.vline)) {
 		Cell *z = eol_cell(g, w, r, vs - skip, tw, nw);
 		if (z) z->bg = FACE_VISUAL;
 	}
@@ -596,7 +600,7 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	   renders it there; in another buffer's window, its cursor line) */
 	int lo, hi;
 	dv = diags_on(w, l, &lo, &hi);
-	if (drawn == 1 && hi > lo && l == (w->buf == e->win->buf ? e->win->line : w->line)) {
+	if (drawn == 1 && hi > lo && l == (w->buf == typing->buf ? typing->line : w->line)) {
 		size_t d = vs - skip;
 		int row = w->wrap ? r + (int)(d / (size_t)tw) : r;
 		if (row < r + line_rows(w, l) && row < w->h) draw_vt(g, w, row, nw, (int)(w->wrap ? d % (size_t)tw : d) + 1, dv, lo, hi, cl);
@@ -616,8 +620,8 @@ static void draw_win(Editor *e, Grid *g, Win *w)
 	   the current window's cursor line as typed in every window on its
 	   buffer (anti_conceal).  Another buffer keeps what it drew while it was
 	   current: rendered unless its window is scrolled sideways. */
-	int cur = w->buf == e->buf, rm = cur ? e->mode != MODE_INSERT && !e->ks.visual && !e->win->left : !w->left;
-	size_t raw = cur ? e->win->line : (size_t)-1;
+	int cur = w->buf == typing->buf, rm = cur ? e->mode != MODE_INSERT && !e->ks.visual && !typing->left : !w->left;
+	size_t raw = cur ? typing->line : (size_t)-1;
 	for (; r < w->h && l < n; l++) {
 		int rows = line_rows(w, l);
 		if (!draw_line(e, g, w, l, r, rm ? 1 + (l != raw) : 0)) {
@@ -679,7 +683,7 @@ static void draw_status(Editor *e, Grid *g, Win *w)
 	static const char L[] = "\xee\x82\xb6", R[] = "\xee\x82\xb4";
 	static Stl t;
 	char s[64];
-	int r = w->y + w->h, maxw = w->w, cur = w == e->win;
+	int r = w->y + w->h, maxw = w->w, cur = w == typing;
 	Buf *b = w->buf;
 	size_t ls = text_line_start(b->text, w->line), len = text_line_start(b->text, w->line + 1) - ls - 1, cut = 0, sep;
 	/* another window's cursor may be past a line that changed: it is
@@ -1035,6 +1039,7 @@ static void draw(Editor *e, Grid *g, int cur);
 void core_draw(Editor *e, Tab *t, Grid *g)
 {
 	Tab *cur = e->tab;
+	typing = e->win;
 	if (!t || t == cur) { draw(e, g, 1); return; }
 	tab_use(e, t);
 	draw(e, g, 0);

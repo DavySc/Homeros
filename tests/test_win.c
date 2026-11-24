@@ -131,7 +131,8 @@ int main(void)
 	SetUnhandledExceptionFilter(crashed);
 	CHECK(!b->open() && !b->win_open(0));
 	win = FindWindowW(L"homeros", NULL);
-	CHECK(win);
+	CHECK(win && IsZoomed(win));   /* opens maximised */
+	ShowWindow(win, SW_RESTORE);   /* the tests below size it themselves */
 	CHECK(b->fds(fds) == 2 && fds[0] == LOOP_MSGQ && fds[1] != 0);
 	input(k, 1024);   /* whatever showing the window sent */
 
@@ -373,7 +374,7 @@ int main(void)
 	CHECK(!b->win_open(1));
 	HWND w1 = NULL;
 	while ((w1 = FindWindowExW(NULL, w1, L"homeros", NULL)) == win) {}
-	CHECK(w1);
+	CHECK(w1 && !IsZoomed(w1));   /* a new frame at the default size */
 	n = input(k, 1024);
 	int f1 = -1, nf = 0;
 	for (int i = 0; i < n; i++) if (k[i] == KEY_FOCUS) { f1 = from[i]; nf++; }

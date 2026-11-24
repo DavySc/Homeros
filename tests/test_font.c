@@ -244,6 +244,12 @@ int main(void)
 	shape("abc");
 	font_stats(&h2, &m2);
 	CHECK(h2 == 0 && m2 == 3);
+	CHECK(font_open(FAMILY, 21) == 0);
+	font_close();                     /* closes every size: 20 is opened afresh */
+	CHECK(font_open(FAMILY, 21) == 0 && font_open(FAMILY, 20) == 0);
+	shape("abc");
+	font_stats(&h2, &m2);
+	CHECK(h2 == 0 && m2 == 3);
 	font_close();
 	printf("test_font: %d of %d Mathlib notation symbols draw; marks, ZWJ emoji, ligature, cache and refill\n", nsym, nsym);
 	return 0;

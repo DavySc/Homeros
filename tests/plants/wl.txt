@@ -51,3 +51,5 @@ wl: every keyboard enter is a focus change~test TESTS=wl~~src/wl/wl.c~	if (!(kwi
 wl: KEY_RAISED before the activation is handled~test TESTS=wl~~src/wl/wl.c~	if (w) xdg_activation_v1_activate(act, token, w->surf);¶	xdg_activation_token_v1_destroy(tk);¶	wl_callback_add_listener(wl_display_sync(dpy), &raised_l, NULL);~	push(KEY_RAISED, NULL);¶	if (w) xdg_activation_v1_activate(act, token, w->surf);¶	xdg_activation_token_v1_destroy(tk);¶	if (0) wl_callback_add_listener(wl_display_sync(dpy), &raised_l, NULL);
 wl: a window drawn with the last window's font~test TESTS=wl~~src/wl/wl.c~if (!wl_ready(id) || use(w) ||~if (!wl_ready(id) ||
 wl: a window's size with another's cell~test TESTS=wl~~src/wl/wl.c~	int u = use(w);¶	*rows =~	int u = !w;¶	*rows =
+wl: the keyboard's window kept after it closes (test_wl: a window opened at once)~test TESTS=wl~~src/wl/wl.c~	if (kwin == w) kwin = NULL;¶~
+wl: the preedit drawn in every window~test TESTS=wl~~src/wl/wl.c~	const Grid *g = w == twin ? overlay(cur) : cur;~	const Grid *g = overlay(cur);

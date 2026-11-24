@@ -29,9 +29,9 @@ static double now(void)
 static void on_input(void *ctx, int fd)
 {
 	(void)ctx; (void)fd;
-	int k[256];
+	int k[256], from[256];
 	if (qn + 256 > QMAX) return;
-	int n = backend_wl.input(k, 256);
+	int n = backend_wl.input(k, from, 256);
 	for (int i = 0; i < n; i++) {
 		if (k[i] == KEY_RESIZE) { resized = 1; continue; }
 		if (!tkey) tkey = now();
@@ -48,15 +48,15 @@ int main(int argc, char **argv)
 	static Editor e;
 	Grid g = { 0 }, shown = { 0 };
 	int fds[2], rows, cols, want = argc > 2 ? atoi(argv[2]) : 0;
-	if (argc < 2 || core_open(&e, argv[1]) || backend_wl.open()) return 1;
+	if (argc < 2 || core_open(&e, argv[1]) || backend_wl.open() || backend_wl.win_open(0)) return 1;
 	for (int i = 0, n = backend_wl.fds(fds); i < n; i++) loop_watch(fds[i], on_input, NULL);
-	backend_wl.size(&rows, &cols);
+	backend_wl.size(0, &rows, &cols);
 	if (grid_resize(&g, rows, cols)) return 1;
 	int dirty = 1;
 	while (!e.quit && !(nkeys >= want && last && now() - last > QUIET)) {
 		if (resized) {
 			resized = 0;
-			backend_wl.size(&rows, &cols);
+			backend_wl.size(0, &rows, &cols);
 			if (grid_resize(&g, rows, cols)) break;
 			dirty = 1;
 		}
@@ -66,11 +66,11 @@ int main(int argc, char **argv)
 			qn--;
 			keys_feed(&e, k, qn > 0);
 		}
-		if (dirty && backend_wl.ready()) {
+		if (dirty && backend_wl.ready(0)) {
 			double a = tkey > tready ? tkey : tready;
 			core_draw(&e, NULL, &g);
 			double p = now();
-			backend_wl.present(&g, &shown);
+			backend_wl.present(0, &g, &shown);
 			dirty = 0;
 			double z = now();
 			if (!first) first = z - t0;
@@ -78,9 +78,9 @@ int main(int argc, char **argv)
 			if (tkey) last = z;
 			tkey = 0;
 		}
-		int ready = backend_wl.ready();
+		int ready = backend_wl.ready(0);
 		if (loop_once(qn ? 0 : nkeys >= want && last ? QUIET : -1)) break;
-		if (!ready && backend_wl.ready()) tready = now();
+		if (!ready && backend_wl.ready(0)) tready = now();
 	}
 	qsort(frames, (size_t)nf, sizeof *frames, cmp);
 	qsort(pres, (size_t)nf, sizeof *pres, cmp);

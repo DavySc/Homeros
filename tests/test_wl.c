@@ -618,8 +618,26 @@ static void test_sway(void)
 	CHECK(f0 >= 0 && r0 > f0 && count(KEY_RAISED, k0) == 1);
 	run("wtype -s 200 y");
 	CHECK(keys[nkeys - 1] == 'y' && wins[nkeys - 1] == 0);
-	/* closing window 1 leaves window 0 drawing */
+	/* the preedit is drawn in the window with the keyboard only: window 0
+	   draws the same while window 1 has one */
+	k0 = nkeys;
+	backend_wl.raise(1);
+	for (double end = now() + 2000; !count(KEY_RAISED, k0) && now() < end;) pump(5);
+	pump(100);
+	CHECK(im_active);
+	cmd("grim -o HEADLESS-1 -t ppm %s/p0.ppm # %s", dir);
+	zwp_input_method_v2_set_preedit_string(im, "zz", 2, 2);
+	zwp_input_method_v2_commit(im, (uint32_t)im_dones);
+	pump(100);
+	show();
+	cmd("grim -o HEADLESS-1 -t ppm %s/p1.ppm && cmp -s %s/p0.ppm %s/p1.ppm", dir);
+	zwp_input_method_v2_set_preedit_string(im, "", 0, 0);
+	zwp_input_method_v2_commit(im, (uint32_t)im_dones);
+	/* closing window 1, which has the keyboard, leaves window 0 drawing;
+	   a window opened at once takes window 0's size, not the closed one's */
 	backend_wl.win_close(1);
+	CHECK(!backend_wl.win_open(2));
+	backend_wl.win_close(2);
 	pump(100);
 	draw();
 	grid_free(&g1);

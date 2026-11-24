@@ -5,6 +5,7 @@
    gives "acb" at column 1: a key that completes no map runs Space's own
    motion, then the keys, each checked for a map again.  (Here SPC ff opens
    a picker, which would take the x, so x comes after it closes.) */
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -350,6 +351,50 @@ int main(void)
 	   the cursor keeps its fraction (nvim 0.12, 3 runs: topline 44) */
 	feed(&d, "yy99p\x17s50Gzb 52");
 	CHECK(d.win->top == 43 && d.win->line == 49);
+	/* SPC 5 m: the window keeps its view in the frame it moves to */
+	feed(&d, "\x17v60Gzt 5m1");
+	CHECK(d.tab == d.tabs && d.win->line == 59 && d.wins->next);
+	/* gt and back: CTRL-W p is the frame's previous window (enter_tabpage()) */
+	Win *was = d.win;
+	feed(&d, "\x17wgtgT\x17p");
+	CHECK(d.tab == d.tabs && d.win == was);
+	/* another frame, on another buffer, is drawn as its own OS window shows
+	   it: without this frame's Visual area, yank flash, command line, mode
+	   or tabline (the window backends show none) */
+	static Grid gf;
+	CHECK(!core_tabnew(&d, "") && !grid_resize(&gf, 12, 40));
+	Tab *other = d.tab;
+	feed(&d, "ihello\x1b" "1gt");
+	int vis = 0, inc = 0;
+	feed(&d, "Vj");
+	core_draw(&d, other, &gf);
+	for (int i = 0; i < gf.rows * gf.cols; i++) vis += gf.c[i].bg == FACE_VISUAL;
+	feed(&d, "\x1byy");
+	core_draw(&d, other, &gf);
+	for (int i = 0; i < gf.rows * gf.cols; i++) inc += gf.c[i].bg == FACE_INC_SEARCH;
+	feed(&d, ":");
+	core_draw(&d, other, &gf);
+	CHECK(!vis && !inc && row_has(&gf, 0, "hello") && !row_has(&gf, 0, "X") && !row_has(&gf, gf.rows - 1, ":"));
+	feed(&d, "\x1bV");
+	core_draw(&d, other, &gf);
+	CHECK(!row_has(&gf, gf.rows - 1, "VISUAL"));
+	/* the system focused another frame: Visual and which-key's panel end */
+	keys_input(&d, KEY_FOCUS, 0);
+	CHECK(!d.ks.visual);
+	feed(&d, " ");
+	CHECK(!grid_resize(&gf, 24, 80) && wait_hint(&d, &gf) > 0);
+	keys_input(&d, KEY_FOCUS, 0);
+	CHECK(wait_hint(&d, &gf) == -1);
+	/* a buffer refilled (git status, the compile buffer, SQL results) is
+	   shown from its start in every frame that shows it */
+	feed(&d, "gt");
+	Tab *first = d.tabs;
+	CHECK(d.tab != first);
+	Buf *big = first->win->buf;
+	core_buf_fill(&d, big, "x\ny\n", 4, SIZE_MAX);
+	core_draw(&d, first, &gf);
+	CHECK(first->win->line == 1 && row_has(&gf, 0, "x") && row_has(&gf, 1, "y"));
+	grid_free(&gf);
 	core_free(&d);
 	unlink(path);
 	puts("test_keys_map: ok");

@@ -245,7 +245,7 @@ void core_buf_fill(Editor *e, Buf *b, const char *s, size_t n, size_t line)
 	text_insert(b->text, 0, s, n);
 	b->flags &= ~(unsigned)CORE_EMPTY;
 	size_t last = buf_lines(b) ? buf_lines(b) - 1 : 0;
-	for (Win *w = e->wins; w; w = w->next)
+	FOR_ALL_TAB_WINDOWS(e, w)   /* a frame that shows b too: drawn by its own OS window */
 		if (w->buf == b) {
 			size_t l = line == SIZE_MAX ? w->line : line;
 			w->line = l < last ? l : last;
@@ -590,7 +590,7 @@ enum { ENTER_B, ENTER_E, ENTER_NEW, ENTER_ALT };
    line 1, column 0 for :b (buflist_getfpos()), the first non-blank for
    :e and CTRL-^ (do_ecmd() with newlnum 0); no entry at all (after :bd)
    means line 1, column 0, except the first non-blank for :e and, for
-   CTRL-^, readfile()'s column on a line of blanks. */
+   CTRL-^ and :tabnew {file}, readfile()'s column on a line of blanks. */
 static int enter_buffer(Editor *e, Buf *b, int how)
 {
 	Win *w = e->win;
@@ -618,7 +618,7 @@ static int enter_buffer(Editor *e, Buf *b, int how)
 	if (pos) {
 		w->line = i->line;
 		w->col = i->col;       /* nostartofline */
-	} else if (i ? how != ENTER_B : how == ENTER_E || (how == ENTER_ALT && line1_blank(e)))
+	} else if (i ? how != ENTER_B : how == ENTER_E || (how != ENTER_B && line1_blank(e)))
 		w->col = core_first_nonblank(e, 0);
 	win_check_cursor(w);
 	/* CTRL-^ (buflist_getfile()): a position from b's entry (this
@@ -1395,7 +1395,7 @@ int win_vcols(const Win *w, size_t l, size_t col, size_t *start, size_t *end)
 	lit_init(&it, w->buf, l);
 	while ((k = lit_next(&it, &s))) {
 		cw = (size_t)core_cellw(w, s, k, 0, v);
-		if (i >= col) break;
+		if (i + k > col) break;   /* the character col is in: another window's cursor can sit inside one (getvcol()) */
 		v += cw;
 		i += k;
 	}

@@ -318,7 +318,9 @@ static int frame_open(int id)
 	DwmSetWindowAttribute(w->h, DWMWA_USE_IMMERSIVE_DARK_MODE, &dark, sizeof dark);
 	DwmSetWindowAttribute(w->h, DWMWA_CAPTION_COLOR, &BASE, sizeof BASE);
 	DwmSetWindowAttribute(w->h, DWMWA_TEXT_COLOR, &TEXT, sizeof TEXT);
-	ShowWindow(w->h, SW_SHOWDEFAULT);
+	/* the first window full size on its monitor (Davy, 2026-11-24); a new
+	   frame at Windows' default size, so it can go to another monitor */
+	ShowWindow(w->h, w->link ? SW_SHOWNORMAL : SW_SHOWMAXIMIZED);
 	w->resized = w->stale = 0;   /* the size backend_size gives now is the first one */
 	return 0;
 fail:
