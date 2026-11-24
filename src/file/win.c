@@ -152,23 +152,37 @@ int file_save(const char *path, const Text *t, size_t n, int dos, FileId *id,
 }
 
 /* The directory, as file.c, so a file replaced by rename is seen.  One
-   handle per directory, kept for the session (file.h); the stat in
-   file_watch_read decides, so a change notification is enough. */
+   handle per directory, counted by its buffers (file_unwatch); the stat
+   in file_watch_read decides, so a change notification is enough. */
+static struct { wchar_t dir[PATH_MAX]; HANDLE h; int n; } d[64];
+static int nd;
+
 int file_watch(const char *path)
 {
-	static struct { wchar_t dir[PATH_MAX]; HANDLE h; } d[64];
-	static int nd;
 	wchar_t p[PATH_MAX], full[PATH_MAX], *f;
 	if (wide(path, p) || !GetFullPathNameW(p, PATH_MAX, full, &f) || !f) return -1;
 	*f = 0;
-	for (int i = 0; i < nd; i++) if (!wcscmp(d[i].dir, full)) return (int)(intptr_t)d[i].h;
+	for (int i = 0; i < nd; i++) if (!wcscmp(d[i].dir, full)) { d[i].n++; return (int)(intptr_t)d[i].h; }
 	if (nd == 64) { errno = EMFILE; return -1; }
 	HANDLE h = FindFirstChangeNotificationW(full, FALSE, FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_SIZE
 	                                        | FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_ATTRIBUTES);
 	if (h == INVALID_HANDLE_VALUE) return fail();
 	wcscpy(d[nd].dir, full);
+	d[nd].n = 1;
 	d[nd++].h = h;
 	return (int)(intptr_t)h;   /* loop.h: a HANDLE cut to int */
+}
+
+int file_unwatch(int fd)
+{
+	for (int i = 0; i < nd; i++)
+		if ((int)(intptr_t)d[i].h == fd) {
+			if (--d[i].n) return 0;
+			FindCloseChangeNotification(d[i].h);
+			d[i] = d[--nd];
+			return 1;
+		}
+	return 0;
 }
 
 int file_watch_read(int fd, const char *path, const FileId *id)

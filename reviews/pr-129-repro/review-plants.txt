@@ -1,0 +1,9 @@
+review: the panel also opens after an Org buffer's c (not only after Space)~test TESTS=keys_map~~src/keys/keys.c~		if (lead[0] == ' ' && !hint) loop_timer~		if (!hint) loop_timer
+review: a key that completes no map leaves the panel up~test TESTS=keys_map~~src/keys/keys.c~	if (n == 1) return 0;¶	hint_end();~	if (n == 1) return 0;
+review: a map typed fast leaves the timer armed, so the panel opens 200 ms later over the picker or the text~test TESTS=keys_map~~src/keys/keys.c~static void hint_end(void) { hint = 0; loop_timer(hint_show, NULL, -1); }~static void hint_end(void) { hint = 0; }
+review: a group's name in the description's colour~test TESTS=keys_map~~src/keys/keys.c~*d == '+' ? FACE_WK_GROUP : FACE_WK_DESC~FACE_WK_DESC
+review: the panel lists maps this buffer and mode cannot run (Visual mode shows every group)~test TESTS=keys_map~~src/keys/keys.c~	return usable(m) && typed(m) == nlead~	return typed(m) == nlead
+review: the panel is taller than the screen~test TESTS=keys_map~~src/keys/keys.c~	if (h > g->rows - 2) h = g->rows - 2;¶~¶
+review: columns 10 wide, not which-key's 20~test TESTS=keys_map~~src/keys/keys.c~	int n = 0, w = 20;~	int n = 0, w = 10;
+review: the separator and the keys in one face~test TESTS=keys_map~~src/keys/keys.c~		c = grid_str(g, r, c, " \xe2\x9e\x9c ", FACE_WK_SEPARATOR);~		c = grid_str(g, r, c, " \xe2\x9e\x9c ", FACE_NORMAL_FLOAT);
+review: Esc after a count and Space leaves the map waiting (control: the PR's own Esc plant)~test TESTS=keys_map~~src/keys/keys.c~		hint_end();¶		keys_feed(e, KEY_ESC, 0);~		hint_end();

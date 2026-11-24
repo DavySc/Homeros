@@ -236,6 +236,7 @@ found:
 			count++;
 		}
 	}
+	setpcmark();
 	setcur(pos);
 	return 1;
 }
@@ -255,6 +256,7 @@ int findpar(int *pincl, int dir, long count, int what, int both)
 			}
 		}
 	}
+	setpcmark();
 	if (both && *ml_get(curr) == '}') curr++;
 	W->line = (size_t)curr;
 	if (curr + 1 == nlines() && what != '}' && dir == FORWARD) {
@@ -757,6 +759,7 @@ int current_block(Oparg *oap, long count, int include, int what, int other)
 	Pos start_pos = { 0, 0, 0 }, end_pos, p, old_pos = cur(), old_end = cur(), old_start = old_end;
 	int sol = 0, ok;
 	if (!VIsual_active || eq(VIsual, cur())) {
+		setpcmark();
 		if (what == '{')
 			while (inindent(1)) if (inc_cursor() != 0) break;
 		if (gchar_cursor() == what) W->col++;

@@ -669,12 +669,6 @@ static int list_height(Editor *e)
 	return h > 1 ? h : 1;
 }
 
-void box_fill(Grid *g, Box b)
-{
-	for (int r = b.y; r < b.y + b.h; r++)
-		for (int c = b.x; c < b.x + b.w; c++) grid_put(g, r, c, (const unsigned char *)" ", 1, 1, ATTR_NONE);
-}
-
 static void hline(Grid *g, int r, int x, int w, const char *l, const char *m, const char *rt)
 {
 	grid_put(g, r, x, (const unsigned char *)l, strlen(l), 1, ATTR_NONE);
@@ -754,7 +748,7 @@ static void pick_draw(Editor *e, Grid *g)
 	Box o, l, p;
 	int wide, h = list_height(e);
 	layout(e, &o, &l, &p, &wide);
-	box_fill(g, o);
+	grid_blank(g, o.y, o.x, o.h, o.w);
 	box_border(g, l, title[P.what]);
 	box_border(g, p, NULL);
 	/* the prompt, its line, and the count at its right (input.lua) */

@@ -9,6 +9,13 @@
       a linked work tree's common directory outside the work tree is
       watched too; after git_unwatch nothing is seen.
    3. git_trash: the file goes to the Recycle Bin, not away.
+   4. The core's file watch (file_unwatch): once a folder's files' buffers
+      are gone (:bd, then the editor's end), its parent can be renamed and
+      removed, as an open change notification refuses the rename on Windows
+      (ERROR_ACCESS_DENIED) and leaves the folder delete-pending under Wine
+      (the parent's removal: ERROR_DIR_NOT_EMPTY; both measured); a buffer
+      left in a folder still sees outside changes after :bd of another file
+      there, and a folder opened again is watched again.
    Runs on Windows (CI's windows job) or under Wine (src/git/check.sh);
    elsewhere it says so. */
 #ifdef _WIN32
@@ -20,16 +27,8 @@
 #include <string.h>
 #include "check.h"
 #include "loop.h"
+#include "core.h"
 #include "../src/git/gitint.h"
-
-/* git.c's other modules, which a watch never reaches */
-int syntax_open(void) { return 0; }
-void syntax_edit(void) {}
-void syntax_free(void) {}
-void syntax_faces(void) {}
-int syntax_md(void) { return 0; }
-int syntax_conceal(void) { return 0; }
-const char *syntax_filetype(const char *p) { (void)p; return 0; }
 
 static char top[MAX_PATH];
 
@@ -164,7 +163,42 @@ int main(void)
 	CHECK(!git_trash(victim));
 	CHECK(GetFileAttributesA(victim) == INVALID_FILE_ATTRIBUTES);
 	CHECK(SHQueryRecycleBinW(drive, &q1) == S_OK && q1.i64NumItems == q0.i64NumItems + 1);
-	puts("test_git_win: paths full and '/'-separated; the watch sees the work tree, .git and a linked work tree's common directory but not ignored or nested repositories, one drain takes all, and it stops; the trash is the Recycle Bin");
+
+	/* 4: px\\x holds a, py\\y holds b and c */
+	char px[MAX_PATH + 32], py[MAX_PATH + 32], pz[MAX_PATH + 32], x[2 * MAX_PATH], y[2 * MAX_PATH], a[3 * MAX_PATH], b[3 * MAX_PATH], c[3 * MAX_PATH];
+	snprintf(px, sizeof px, "%s-x", top);
+	snprintf(py, sizeof py, "%s-y", top);
+	snprintf(pz, sizeof pz, "%s-z", top);
+	snprintf(x, sizeof x, "%s\\x", px);
+	snprintf(y, sizeof y, "%s\\y", py);
+	CHECK(CreateDirectoryA(px, NULL) && CreateDirectoryA(py, NULL) && CreateDirectoryA(x, NULL) && CreateDirectoryA(y, NULL));
+	snprintf(a, sizeof a, "%s\\a.txt", x);
+	snprintf(b, sizeof b, "%s\\b.txt", y);
+	snprintf(c, sizeof c, "%s\\c.txt", y);
+	FILE *f;
+	CHECK((f = fopen(a, "wb")) && fputs("a\n", f) >= 0 && !fclose(f));
+	CHECK((f = fopen(b, "wb")) && fputs("b\n", f) >= 0 && !fclose(f));
+	CHECK((f = fopen(c, "wb")) && fputs("c\n", f) >= 0 && !fclose(f));
+	Editor e;
+	CHECK(!core_open(&e, a) && !core_edit_file(&e, c, 0) && !core_edit_file(&e, b, 0));
+	CHECK(!core_buf_delete(&e, 1, 0) && !core_buf_delete(&e, 2, 0));
+	/* a folder opened again after its last buffer went is watched again */
+	CHECK(!core_edit_file(&e, a, 0) && e.buf->nr == 1);
+	CHECK((f = fopen(a, "wb")) && fputs("aa\n", f) >= 0 && !fclose(f));
+	for (DWORD t0 = GetTickCount(); !e.buf->changed && GetTickCount() - t0 < 5000; ) loop_once(50);
+	CHECK(e.buf->changed);
+	CHECK(!core_edit_file(&e, b, 0) && !core_buf_delete(&e, 1, 0));
+	/* Windows refuses the rename with a watch open (ERROR_ACCESS_DENIED,
+	   measured on build 26100, where the removal succeeds), Wine the removal */
+	CHECK(MoveFileA(px, pz) && MoveFileA(pz, px));
+	CHECK(DeleteFileA(a) && RemoveDirectoryA(x) && RemoveDirectoryA(px));
+	CHECK((f = fopen(b, "wb")) && fputs("bb\n", f) >= 0 && !fclose(f));
+	for (DWORD t0 = GetTickCount(); !e.buf->changed && GetTickCount() - t0 < 5000; ) loop_once(50);
+	CHECK(e.buf->changed);
+	core_free(&e);
+	CHECK(MoveFileA(py, pz) && MoveFileA(pz, py));
+	CHECK(DeleteFileA(b) && DeleteFileA(c) && RemoveDirectoryA(y) && RemoveDirectoryA(py));
+	puts("test_git_win: paths full and '/'-separated; the watch sees the work tree, .git and a linked work tree's common directory but not ignored or nested repositories, one drain takes all, and it stops; the trash is the Recycle Bin; a folder's watch ends with its last buffer");
 	return 0;
 }
 #else
