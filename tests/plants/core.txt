@@ -235,7 +235,6 @@ core: curs_columns leaves w_virtcol of a closed fold unset (test_core_fold)~test
 core: a split starts without folds (test_core_fold)~test TESTS=core_fold~~src/core/win.c~	n->fold = o->fold ? fold_dup(o->fold, n) : NULL;~	n->fold = NULL;
 core: an edit leaves the folds where they were (test_core_fold)~test TESTS=core_fold~~src/core/core.c~			fold_adjust(w->fold, l1, l2, amount, after, e->mode == MODE_INSERT);~			(void)0;
 core: new fold levels apply in Insert mode (test_core_fold)~test TESTS=core_fold~~src/core/core.c~		if (e->mode == MODE_INSERT) continue;~		if (0) continue;
-core: a diagnostic with a severity over 4 takes a face past the hint's (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~return d->sev < 4 ? d->sev - 1 : 3;~return d->sev - 1;
 core: the message's four blanks lose the cursor line's CursorLine (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~	for (int z = grid_puts(g, y, x, end, "    ", 4, ATTR_NONE, FACE_NONE); x < z; x++) g->c[y * g->cols + x].bg = cl;~	(void)cl;¶	x = grid_puts(g, y, x, end, "    ", 4, ATTR_NONE, FACE_NONE);
 core: a concealed character takes the diagnostic's underline (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~strlen(cc->s), 0, 1, face, vis ? vis : sb, 0);~strlen(cc->s), 0, 1, face, vis ? vis : sb, ul);
 core: the blank "<<<" leaves of a double-width character loses its underline (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~(const unsigned char *)" ", 1, 0, 1, face, vis ? vis : sb, ul);~(const unsigned char *)" ", 1, 0, 1, face, vis ? vis : sb, 0);

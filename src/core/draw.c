@@ -124,8 +124,9 @@ static void diag_span(const Text *t, const LspDiag *d, size_t *a, size_t *z)
 	else if (*z == *a) (*z)++;
 }
 
-/* 0 error .. 3 hint, for the FACE_DIAG_* of each kind */
-static int sev(const LspDiag *d) { return d->sev < 4 ? d->sev - 1 : 3; }
+/* 0 error .. 3 hint, for the FACE_DIAG_* of each kind (lsp.h: sev is 1
+   .. 4; the client maps any other to an error) */
+static int sev(const LspDiag *d) { return d->sev - 1; }
 
 /* The number column of line l (get_line_number_str()): relative to the
    cursor line, which shows its own number left-aligned, in CursorLineNr
