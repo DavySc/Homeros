@@ -33,14 +33,17 @@ vim.o.incsearch = false
 vim.bo.undolevels = -1
 vim.api.nvim_buf_set_lines(0, 0, -1, false, text)
 vim.bo.undolevels = 1000
--- test_keys_ex.c's fold phase: $FOLDS is the foldexpr's value a line,
--- with Davy's 'foldlevel' 99 (FEATURES.md)
-local folds = os.getenv('FOLDS')
-if folds and folds ~= '' then
-  _G.FX = vim.split(folds, ',')
-  vim.o.foldlevel = 99
+-- test_keys_ex.c's fold phase (a .h TEXT): tree-sitter's C folds, as
+-- Davy's config has them, with his 'foldlevel' 99 (FEATURES.md)
+local folds = _G.arg[1]:match('%.h$')
+if folds then
+  vim.treesitter.start(0, 'c')
   vim.wo.foldmethod = 'expr'
-  vim.wo.foldexpr = "luaeval('FX[_A]', v:lnum)"
+  vim.wo.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
+  -- after the folds, as the core's fold_new() has it: set before them,
+  -- 9G after "/b<CR> % y2j l kzc j <Esc>Vd" lands on column 0, not
+  -- curswant's (measured, 40 runs; not traced)
+  vim.o.foldlevel = 99
 end
 vim.cmd('clearjumps')   -- -l leaves a jump on line 1 (measured: jjw CTRL-O went there)
 local function finish()
@@ -60,25 +63,39 @@ local function finish()
   vim.v.hlsearch = h
   local hl, top = '', vim.fn.line('w0')
   for i, a in ipairs(screen()) do hl = hl .. (a == '|' and '\1' or a ~= plain[i] and '#' or '.') end
-  if vim.fn.winsaveview().leftcol > 0 or vim.wo.foldmethod == 'expr' then hl = '?\1' end   -- folds: rows are not lines
+  if vim.fn.winsaveview().leftcol > 0 then hl = '?\1' end
+  if folds then   -- rows are not lines: foldclosed() of each line instead
+    local f = {}
+    for l = 1, vim.fn.line('$') do f[l] = vim.fn.foldclosed(l) end
+    top, hl = 1, table.concat(f, ',') .. '\1'
+  end
   io.open(_G.arg[3], 'w'):write(string.format('%d %d %s\n%s\n%d\1%s\n', vim.fn.line('.'), vim.fn.col('.') - 1,
                                 vim.v.errmsg:match('^E%d+') or '-', (table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\1'):gsub('[%z\n]', '\2')),
                                 top - 1, hl:sub(1, -2)))
   vim.cmd('qa!')
 end
-if not _G.FX then
+if not folds then
   pcall(vim.api.nvim_feedkeys, k, 'xt', false)
   finish()
 else
   -- typed, as Davy's keys are: only then does normal_check() run
   -- foldAdjustVisual() between commands (feedkeys() 'x' runs exec_normal(),
   -- which skips it; measured: 3GzaVggy yanked 2 lines, typed 7); the main
-  -- loop reads them, so this runs from -c, not -l (test_keys_ex.c)
+  -- loop reads them, so this runs from -c, not -l (test_keys_ex.c).  A
+  -- step (\1 between) at a time: tree-sitter's fold update after a change
+  -- is deferred (measured: 0 ms after an edit the folds were the old ones,
+  -- 5, 20 and 200 ms the same new ones)
   vim.keymap.set({ 'n', 'x', 'o', 'i', 'c', 's' }, '<F35>', finish)
+  local steps, i = vim.split(k, '\1'), 0
+  local function step()
+    i = i + 1
+    vim.api.nvim_input(i > #steps and '<F35>' or (steps[i]:gsub('<', '<lt>')))
+    if i <= #steps then vim.defer_fn(step, 20) end
+  end
   vim.api.nvim_create_autocmd('VimEnter', { callback = function()
     -- startup's jump; its setpcmark() (main.c, which -l never reaches)
     -- stays: test_keys_ex.c's fold cases start with m'
     vim.cmd('clearjumps')
-    vim.api.nvim_input(k:gsub('<', '<lt>') .. '<F35>')
+    step()
   end })
 end

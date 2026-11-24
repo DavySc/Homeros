@@ -231,10 +231,10 @@ keys: keys_visual() keeps the other end's column (test_keys_map)~test TESTS=keys
 keys: keys_visual() leaves e->ks as it was (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~(Pos){ (long)line, 0, 0 };¶	visual_sync();~(Pos){ (long)line, 0, 0 };
 keys: j from a closed fold's first line ends inside it (test_keys_ex)~test TESTS=keys_ex~~src/keys/buf.c~	has_folding(e, NULL, &e);¶	if (n > 0 && e + 1 >= nlines()) return 0;~	if (n > 0 && e + 1 >= nlines()) return 0;
 keys: past the end the cursor goes to the last line, not its fold's start (test_keys_ex)~test TESTS=keys_ex~~src/keys/buf.c~	if ((long)W->line > a) has_folding(a, &a, NULL), W->line = (size_t)a;~	if ((long)W->line > a) W->line = (size_t)a;
-keys: 'foldopen' commands leave a closed fold shut (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~static void foldopen(Cmdarg *cap) { if (!key_stuffed && cap->oap->op_type == OP_NOP) fold_open_cursor(); }~static void foldopen(Cmdarg *cap) { (void)cap; }
-keys: an operator's motion opens the fold (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~static void foldopen(Cmdarg *cap) { if (!key_stuffed && cap->oap->op_type == OP_NOP) fold_open_cursor(); }~static void foldopen(Cmdarg *cap) { (void)cap; fold_open_cursor(); }
-keys: u with nothing to undo opens the fold (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~if (n < cap->count1 && !key_stuffed) fold_open_cursor();~if (!key_stuffed) fold_open_cursor();
-keys: u leaves a closed fold shut (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~if (n < cap->count1 && !key_stuffed) fold_open_cursor();~(void)0;
+keys: 'foldopen' commands leave a closed fold shut (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~static void foldopen(Cmdarg *cap) { if (key_typed && cap->oap->op_type == OP_NOP) fold_open_cursor(); }~static void foldopen(Cmdarg *cap) { (void)cap; }
+keys: an operator's motion opens the fold (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~static void foldopen(Cmdarg *cap) { if (key_typed && cap->oap->op_type == OP_NOP) fold_open_cursor(); }~static void foldopen(Cmdarg *cap) { (void)cap; fold_open_cursor(); }
+keys: u with nothing to undo opens the fold (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~if (n < cap->count1 && key_typed) fold_open_cursor();~if (!key_stuffed) fold_open_cursor();
+keys: u leaves a closed fold shut (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~if (n < cap->count1 && key_typed) fold_open_cursor();~(void)0;
 keys: Insert mode starts in a closed fold (test_keys_ex)~test TESTS=keys_ex~~src/keys/edit.c~	if (!did_restart_edit) fold_open_cursor();~
 keys: w from a closed fold starts at the cursor (test_keys_ex)~test TESTS=keys_ex~~src/keys/motion.c~		fold_last();¶		int sclass = cls(), last_line~		int sclass = cls(), last_line
 keys: b from a closed fold starts at the cursor (test_keys_ex)~test TESTS=keys_ex~~src/keys/motion.c~		if (has_folding(l, &l, NULL)) W->line = (size_t)l, W->col = 0;~		(void)l;
@@ -246,10 +246,10 @@ keys: Visual zc keeps the wanted column (test_keys_ex)~test TESTS=keys_ex~~src/k
 keys: o and O open a line inside a closed fold (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	if (cap->cmdchar == 'O' ? has_folding(l, &l, NULL) : has_folding(l, NULL, &l)) W->line = (size_t)l;~	(void)l;
 keys: an operator takes part of a closed fold forward (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~			if ((c.col > 0 || oap->inclusive || oap->motion_type == MLINE) && has_folding(c.lnum, NULL, &c.lnum)) c.col = ml_len(c.lnum);~
 keys: an operator takes part of a closed fold backward (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~			if (has_folding(oap->start.lnum, NULL, &oap->start.lnum)) oap->start.col = ml_len(oap->start.lnum);~
-keys: p puts inside a closed fold (test_keys_ex)~test TESTS=keys_ex~~src/keys/ops.c~	if (reg->type == MLINE && !(flags & PUT_LINE_SPLIT) && has_folding((long)W->line, &a, &b)) W->line = (size_t)(dir == FORWARD ? b : a);~	(void)a, (void)b;
+keys: p puts inside a closed fold (test_keys_ex)~test TESTS=keys_ex~~src/keys/ops.c~		W->line = (size_t)(dir == FORWARD ? b : a);¶~
 keys: a mark jump to the cursor's own position opens the fold (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~		int moved = !eq(p, cur());~		int moved = 1;
 keys: CTRL-O opens no fold (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~if (W->line != l) foldopen(cap); }~(void)l; }
-keys: zo with no fold there says nothing (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~if (core_fold(E, op[i], W->line, cap->count1) < 0 && (W->fold || i < 3)) core_msg~if (core_fold(E, op[i], W->line, cap->count1) < 0 && !W->fold && i < 3) core_msg
+keys: zo with no fold there says nothing (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~if (core_fold(E, op[i], W->line, cap->count1) < 0 && i < 3) core_msg~if (core_fold(E, op[i], W->line, cap->count1) < 0 && i < 0) core_msg
 keys: Visual zo opens every level (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~			if (c == 'o') has_folding(l, NULL, &next);~			if (c == 'o') next = l;
 keys: which-key's panel shows after 20 ms, not its 200 (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~loop_timer(hint_show, NULL, 200)~loop_timer(hint_show, NULL, 20)
 keys: <BS> in which-key's panel closes it instead of going up a level (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		nlead = k == KEY_BS ? nlead - 1 : 0;~		nlead = 0;
@@ -278,3 +278,9 @@ keys: which-key's panel moves for a cursor on the row above it too late (test_ke
 keys: which-key's panel moved for the cursor starts on the row under it (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~top = g->crow + 2 < g->rows - 4 ? g->crow + 2 :~top = g->crow + 1 < g->rows - 4 ? g->crow + 1 :
 keys: which-key's columns 10 wide, not its 20 (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	int n = 0, w = 20;~	int n = 0, w = 10;
 keys: which-key's panel on a screen under 4 rows writes before the grid (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (h < 1 || top < 0) return;~	if (h < 1) return;
+keys: z then a key past 255 reads past nv_zet()'s table (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~	int c = cap->nchar, i = 5;¶	while (i-- && "ocaRM"[i] != c) {}   /* -1: none (a key past 255 too) */~	int c = cap->nchar, i = (int)(strchr("ocaRM", c) ? strchr("ocaRM", c) - "ocaRM" : -1);
+keys: >> leaves a closed fold shut (test_keys_ex)~test TESTS=keys_ex~~src/keys/ops.c~	fold_open_cursor();   /* op_shift(): the cursor line is not in a closed fold */¶~
+keys: u after p below a closed fold leaves the cursor below it (test_keys_ex)~test TESTS=keys_ex~~src/keys/ops.c~		u_save(W->line + 1, W->line + 1);¶~
+keys: foldOpenCursor() opens only a closed fold, not every fold the cursor is in (test_keys_ex)~test TESTS=keys_ex~~src/keys/buf.c~void fold_open_cursor(void) { if (W->fold) core_fold~void fold_open_cursor(void) { if (has_folding((long)W->line, NULL, NULL)) core_fold
+keys: an executed register's keys open folds as typed ones (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~	key_typed = 0;   /* an executed register's keys are not typed either */¶~
+keys: o skips open_line()'s fold update, so the fold after it comes up closed (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	core_folds(E, B, W->line, W->line + 1);¶~

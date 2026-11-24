@@ -367,7 +367,7 @@ int has_folding(long l, long *a, long *b)
 
 /* foldOpenCursor(): what 'foldopen' (Neovim's default) names opens the
    folds the cursor is in */
-void fold_open_cursor(void) { if (has_folding((long)W->line, NULL, NULL)) core_fold(E, FOLD_VIEW, W->line, 0); }
+void fold_open_cursor(void) { if (W->fold) core_fold(E, FOLD_VIEW, W->line, 0); }   /* hasAnyFolding() */
 
 /* cursor_down() and cursor_up(): fail on the last line (a closed fold's
    too) or the first; the steps are the core's (cursor_down_inner()) */

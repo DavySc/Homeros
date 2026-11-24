@@ -184,7 +184,7 @@ void stuff_key(int k);
 void stuff_num(long n);
 void typebuf_ins(const int *k, long n);  /* an executed register */
 int  stuff_empty(void);
-extern int key_stuffed;                  /* KeyStuffed */
+extern int key_stuffed, key_typed;      /* KeyStuffed, KeyTyped */
 
 /* insert mode (edit.c) */
 void edit_start(int cmdchar, long count);

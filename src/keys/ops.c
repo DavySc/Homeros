@@ -646,6 +646,7 @@ void op_shift(Oparg *oap, long amount)
 		W->line = (size_t)oap->start.lnum;
 		beginline(BL_SOL | BL_FIX);
 	}
+	fold_open_cursor();   /* op_shift(): the cursor line is not in a closed fold */
 	b_op_start = oap->start;
 	b_op_end.lnum = oap->end.lnum;
 	b_op_end.col = ml_len(oap->end.lnum);
@@ -1092,8 +1093,13 @@ void do_put(int regname, int dir, long count, int flags)
 	} else reg = put_override ? put_override : get_reg(regname, 0);
 	long a, b;
 	/* do_put(): linewise, after or before a closed fold whole, and
-	   u_save(lnum - 1, lnum) at the line put before */
-	if (reg->type == MLINE && !(flags & PUT_LINE_SPLIT) && has_folding((long)W->line, &a, &b)) W->line = (size_t)(dir == FORWARD ? b : a);
+	   u_save(lnum - 1, lnum) at the line put before.  Its first
+	   u_save(cursor, cursor + 1) saves nothing but makes u put the cursor
+	   back where it was, which matters only when the fold moved it */
+	if (reg->type == MLINE && !(flags & PUT_LINE_SPLIT) && has_folding((long)W->line, &a, &b)) {
+		u_save(W->line + 1, W->line + 1);
+		W->line = (size_t)(dir == FORWARD ? b : a);
+	}
 	if (reg->type == MLINE && !(flags & PUT_LINE_SPLIT) && !is_empty_buf()) u_save(W->line + (dir == FORWARD), W->line + (dir == FORWARD));
 	else u_save_cursor();
 	y_type = reg->type;

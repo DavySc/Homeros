@@ -221,8 +221,9 @@ static void n_start_visual_mode(int c)
 	/* on a Tab a Visual block starts at the cell Normal mode showed, the
 	   Tab's last (coladvance(w_virtcol) with the cached virtcol) */
 	if (c == 22 && gchar_cursor() == '\t') coladvance(vcol_end((long)W->line, (long)W->col));
+	/* Neovim's foldAdjustVisual() here is for stuffed keys, which skip
+	   normal_check(); fold_adjust_visual() runs after every command */
 	VIsual = cur();
-	fold_adjust_visual();
 }
 
 static void nv_right(Cmdarg *cap), nv_percent1(Cmdarg *cap);
@@ -353,7 +354,7 @@ static void adjust_cursor(Oparg *oap)
 
 /* 'foldopen' (Neovim's default: block hor mark percent search undo):
    a command typed, not an operator's motion, opens the folds it lands in */
-static void foldopen(Cmdarg *cap) { if (!key_stuffed && cap->oap->op_type == OP_NOP) fold_open_cursor(); }
+static void foldopen(Cmdarg *cap) { if (key_typed && cap->oap->op_type == OP_NOP) fold_open_cursor(); }
 
 static void nv_right(Cmdarg *cap)
 {
@@ -922,7 +923,11 @@ static void nv_open(Cmdarg *cap)
 	/* n_opencmd(): above a closed fold's first line, below its last */
 	long l = (long)W->line;
 	if (cap->cmdchar == 'O' ? has_folding(l, &l, NULL) : has_folding(l, NULL, &l)) W->line = (size_t)l;
-	if (open_cmd(cap->cmdchar == 'O' ? BACKWARD : FORWARD)) invoke_edit(cap->cmdchar, cap->count1, 0);
+	if (!open_cmd(cap->cmdchar == 'O' ? BACKWARD : FORWARD)) return;
+	/* open_line()'s changed_lines() runs foldUpdate() while still in
+	   Normal mode, with the new line's foldexpr -1; Insert mode skips it */
+	core_folds(E, B, W->line, W->line + 1);
+	invoke_edit(cap->cmdchar, cap->count1, 0);
 }
 
 /* nv_Undo(): "gUU" is "gUgU" and Visual U is gU; U on its own (undo line)
@@ -968,7 +973,7 @@ static void nv_undo(Cmdarg *cap)
 	if (n) beep();
 	opmarks(1);
 	/* u_undo_end(), after a step undone only: 'foldopen' "undo" */
-	if (n < cap->count1 && !key_stuffed) fold_open_cursor();
+	if (n < cap->count1 && key_typed) fold_open_cursor();
 	buf_changed();
 	core_set_want(E);
 	E->mode = mode;
@@ -1293,7 +1298,8 @@ static void nv_scroll(Cmdarg *cap)
    for what it does not know */
 static void nv_zet(Cmdarg *cap)
 {
-	int c = cap->nchar, i = (int)(strchr("ocaRM", c) ? strchr("ocaRM", c) - "ocaRM" : -1);
+	int c = cap->nchar, i = 5;
+	while (i-- && "ocaRM"[i] != c) {}   /* -1: none (a key past 255 too) */
 	static const int op[] = { FOLD_OPEN, FOLD_CLOSE, FOLD_TOGGLE, FOLD_OPEN_ALL, FOLD_CLOSE_ALL };
 	if (VIsual_active && (c == 'o' || c == 'c')) {
 		/* the operators zo and zc on the Visual area (op_fold(),
@@ -1316,9 +1322,10 @@ static void nv_zet(Cmdarg *cap)
 	}
 	if (checkclearop(cap->oap)) return;
 	if (c == 't' || c == 'z' || c == 'b') core_scroll_cursor(E, c);
-	/* openFold() and closeFold() with no fold there: E490, as with no folds */
-	else if (c && i >= 0) {
-		if (core_fold(E, op[i], W->line, cap->count1) < 0 && (W->fold || i < 3)) core_msg(E, "E490: No fold found");
+	/* openFold() and closeFold() with no fold there: E490, as with no folds;
+	   zR and zM never (no folds: core_fold() fails, nothing to say) */
+	else if (i >= 0) {
+		if (core_fold(E, op[i], W->line, cap->count1) < 0 && i < 3) core_msg(E, "E490: No fold found");
 	} else clearopbeep(cap->oap);
 }
 

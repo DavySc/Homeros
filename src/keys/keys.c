@@ -21,7 +21,7 @@
 #include "uni.h"
 
 Editor *E;
-int key_stuffed;
+int key_stuffed, key_typed;
 
 typedef struct { int *k; long head, n, cap; } Queue;
 static Queue rb1, rb2, tb;
@@ -99,6 +99,7 @@ static int next(int *k)
 	*k = q->k[q->head++];
 	q->n--;
 	key_stuffed = q != &tb;
+	key_typed = 0;   /* an executed register's keys are not typed either */
 	return 1;
 }
 
@@ -355,7 +356,7 @@ void keys_feed(Editor *e, int k, int pending)
 	/* :s with the c flag is one undo step, however many keys answer it */
 	if (!sub_asking && ((E->mode != MODE_INSERT && E->mode != MODE_CMDLINE) || arrow_used)) undo_close(B->undo);
 	if (reg_recording) record_key(k);
-	key_stuffed = 0;
+	key_stuffed = 0, key_typed = 1;
 	E->ks.executing = 0;   /* typed: the typeahead holds no register keys */
 	key(k, pending || rb1.n || rb2.n || tb.n);
 	while (next(&k)) key(k, pending || rb1.n || rb2.n || tb.n);
