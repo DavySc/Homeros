@@ -61,4 +61,3 @@ win: a typed character from window 0, whichever window has it~win WIN=win~~src/w
 win: one pacing for all windows~win WIN=win~~src/win/backend.c~	if (now.QuadPart >= w->next) return 1;~	if (now.QuadPart >= wins->next) return 1;
 win: KEY_RAISED before the focus the raise gives~win WIN=win~~src/win/backend.c~		SetForegroundWindow(w->h);¶	}¶	put(KEY_RAISED, -1);~		put(KEY_RAISED, -1);¶		SetForegroundWindow(w->h);¶	}
 win: the timer set for the window asked last, not the soonest~win WIN=win~~src/win/backend.c~	if (armed <= now.QuadPart || armed > w->next) armed = w->next;~	armed = w->next;
-win: the monitor's own refresh period ignored~win WIN=win~~src/win/backend.c~				w->period = f.QuadPart * (LONGLONG)r.Denominator / (LONGLONG)r.Numerator;~				w->period = 0;
