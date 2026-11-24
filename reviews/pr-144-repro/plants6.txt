@@ -1,0 +1,26 @@
+r3: tsql_edit does not move a kept start's state with it (the PR's "# Not planted")~test TESTS="tsql syntax_lean"~~src/syntax/tsql.c~, q->st[i + k - j] = q->st[k];~;
+r3: the update takes the frame's token end without its state~test TESTS="tsql syntax_lean"~~src/syntax/tsql.c~? (s1 = q->send, q->end) :~? q->end :
+r3: the update, landed on a moved start, jumps to the last one with the state it had~test TESTS="tsql syntax_lean"~~src/syntax/tsql.c~p = q->ck[q->n - 1], s = q->st[q->n - 1];~p = q->ck[q->n - 1], s = s1;
+r3: a frame starts from a kept start with the state of the last place~test TESTS="tsql syntax_lean"~~src/syntax/tsql.c~p = q->ck[i - 1], s = q->st[i - 1];~p = q->ck[i - 1];
+r3: a new kept start keeps the slot's old state~test TESTS="tsql syntax_lean"~~src/syntax/tsql.c~q->st[q->v] = *s, q->ck[q->v++] = (uint32_t)p, q->n++;~q->ck[q->v++] = (uint32_t)p, q->n++;
+r3: a frame's second read of its line passes on the state before it~test TESTS="tsql syntax_lean"~~src/syntax/tsql.c~			s1 = q->send;~
+r3: a string does not go on on the next line~test TESTS="tsql syntax_lean"~~src/syntax/lean.c~s->in = STR, string(x, p + 1);~string(x, p + 1);
+r3: a definition's head ends with its line~test TESTS="tsql syntax_lean"~~src/syntax/lean.c~	if (q < x->eol) x->s->head = 0;~	x->s->head = 0;
+r3: a guillemet name does not go on on the next line~test TESTS="tsql syntax_lean"~~src/syntax/lean.c~put(x, q, q + n, b), q += n, x->s->in = GUI;~put(x, q, q + n, b), q += n;
+r3: a comment's Markdown block is forgotten at the line's end~test TESTS="tsql syntax_lean"~~src/syntax/lean.c~s->blk = (uint8_t)m.blk, s->fi~s->blk = 0, s->fi
+r3: a fence's run length is forgotten at the line's end~test TESTS="tsql syntax_lean"~~src/syntax/lean.c~s->fk = (uint16_t)m.fk,~s->fk = 0,
+r3: a fence's indentation length is forgotten at the line's end~test TESTS="tsql syntax_lean"~~src/syntax/lean.c~s->fn = (uint16_t)m.fn,~s->fn = 0,
+r3: a -- comment stays open on the next line~test TESTS="tsql syntax_lean"~~src/syntax/lean.c~	if (dash) s->in = 0;~
+r3: the line limit counts bytes, not UTF-16 units~test TESTS="tsql syntax_lean"~~src/syntax/lean.c~if ((c = tsql_byte(r, p)) < 0x80 || c >= 0xc0) n += 1 + (c >= 0xf0);~if ((c = tsql_byte(r, p)) < 0x100) n += 1;
+r3: the line limit counts an astral code point as one~test TESTS="tsql syntax_lean"~~src/syntax/lean.c~n += 1 + (c >= 0xf0);~n += 1;
+r3: a comment's line gets 16 reads a byte and 64 more~test TESTS="tsql syntax_lean"~~src/syntax/lean.c~enum { BUDGET = 64, FLOOR = 1 << 16 };~enum { BUDGET = 16, FLOOR = 64 };
+r3: a comment's line gets 64 reads a byte and no floor~test TESTS="tsql syntax_lean"~~src/syntax/lean.c~enum { BUDGET = 64, FLOOR = 1 << 16 };~enum { BUDGET = 64, FLOOR = 0 };
+r3: _ is no word character~test TESTS="tsql syntax_lean"~~src/syntax/lean.c~(c >= 'A' && c <= 'Z') || c == '_';~(c >= 'A' && c <= 'Z');
+r3: an interpolated string's closing quote does not leave it~test TESTS="tsql syntax_lean"~~src/syntax/lean.c~put(&x, q, q + 1, FACE_STRING), q++, s.ib--;~put(&x, q, q + 1, FACE_STRING), q++;
+r3: the comment's nesting restarts at 1 on a line that goes on~test TESTS="tsql syntax_lean"~~src/syntax/lean.c~	else if (m.blk) q = md_line(&m);~	else if (s->depth = 1, m.blk) q = md_line(&m);
+r3: a line past its budget is not painted as comment~test TESTS="tsql syntax_lean"~~src/syntax/lean.c~put(&x, x.dead, eol, FACE_COMMENT), s = s0;~s = s0;
+r3: a fence's distance is kept outside a fence~test TESTS="tsql syntax_lean"~~src/syntax/lean.c~s.fi = s.blk == F ? (uint32_t)e - s.fi : 0;~s.fi = (uint32_t)e - s.fi;
+r3: the URL ring's oldest item is tried~test TESTS="tsql syntax_lean"~~src/syntax/lean.c~			if (i && i + 64 == n) i = 0;¶~
+r3: [^\]\s]* from before the remembered run ends where it did~test TESTS="tsql syntax_lean"~~src/syntax/lean.c~	if (p >= x->ub && p <= x->ue) return x->ue;~	if (p <= x->ue) return x->ue;
+r3: a def's {..} from before the remembered run ends where it did~test TESTS="tsql syntax_lean"~~src/syntax/lean.c~if (k + 1 < x->cb || k + 1 > x->ce)~if (k + 1 > x->ce)
+r3: \s* in a comment from before the remembered run ends where it did~test TESTS="tsql syntax_lean"~~src/syntax/lean.c~	if (p >= m->wb && p <= m->we) return m->we;~	if (m->wb != SIZE_MAX && p <= m->we) return m->we;

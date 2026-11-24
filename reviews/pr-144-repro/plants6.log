@@ -1,0 +1,26 @@
+caught        r3: tsql_edit does not move a kept start's state with it (the PR's "# Not planted")   (make test TESTS="tsql syntax_lean"): tests/test_tsql.c:262: CHECK(!memcmp(f, g, n)) failed
+caught        r3: the update takes the frame's token end without its state   (make test TESTS="tsql syntax_lean"): tests/test_tsql.c:262: CHECK(!memcmp(f, g, n)) failed
+caught        r3: a frame starts from a kept start with the state of the last place   (make test TESTS="tsql syntax_lean"): tests/test_tsql.c:262: CHECK(!memcmp(f, g, n)) failed
+caught        r3: the update, landed on a moved start, jumps to the last one with the state it had   (make test TESTS="tsql syntax_lean"): tests/test_tsql.c:415: CHECK(!memcmp(f + wa, g + wa, z - wa)) failed
+caught        r3: a new kept start keeps the slot's old state   (make test TESTS="tsql syntax_lean"): tests/test_tsql.c:262: CHECK(!memcmp(f, g, n)) failed
+caught        r3: a frame's second read of its line passes on the state before it   (make test TESTS="tsql syntax_lean"): tests/test_tsql.c:262: CHECK(!memcmp(f, g, n)) failed
+caught        r3: a string does not go on on the next line   (make test TESTS="tsql syntax_lean"): tests/test_syntax_lean.c:111: CHECK(ncase && !bad && ms < 300 && got[x] == FACE_NONE) failed
+caught        r3: a definition's head ends with its line   (make test TESTS="tsql syntax_lean"): tests/test_syntax_lean.c:111: CHECK(ncase && !bad && ms < 300 && got[x] == FACE_NONE) failed
+caught        r3: a guillemet name does not go on on the next line   (make test TESTS="tsql syntax_lean"): tests/test_syntax_lean.c:111: CHECK(ncase && !bad && ms < 300 && got[x] == FACE_NONE) failed
+caught        r3: a comment's Markdown block is forgotten at the line's end   (make test TESTS="tsql syntax_lean"): tests/test_syntax_lean.c:111: CHECK(ncase && !bad && ms < 300 && got[x] == FACE_NONE) failed
+caught        r3: a fence's run length is forgotten at the line's end   (make test TESTS="tsql syntax_lean"): tests/test_syntax_lean.c:111: CHECK(ncase && !bad && ms < 300 && got[x] == FACE_NONE) failed
+caught        r3: a fence's indentation length is forgotten at the line's end   (make test TESTS="tsql syntax_lean"): tests/test_syntax_lean.c:111: CHECK(ncase && !bad && ms < 300 && got[x] == FACE_NONE) failed
+caught        r3: a -- comment stays open on the next line   (make test TESTS="tsql syntax_lean"): tests/test_syntax_lean.c:111: CHECK(ncase && !bad && ms < 300 && got[x] == FACE_NONE) failed
+caught        r3: the line limit counts bytes, not UTF-16 units   (make test TESTS="tsql syntax_lean"): tests/test_syntax_lean.c:111: CHECK(ncase && !bad && ms < 300 && got[x] == FACE_NONE) failed
+caught        r3: the line limit counts an astral code point as one   (make test TESTS="tsql syntax_lean"): tests/test_syntax_lean.c:111: CHECK(ncase && !bad && ms < 300 && got[x] == FACE_NONE) failed
+caught        r3: a comment's line gets 16 reads a byte and 64 more   (make test TESTS="tsql syntax_lean"): tests/test_syntax_lean.c:111: CHECK(ncase && !bad && ms < 300 && got[x] == FACE_NONE) failed
+caught        r3: a comment's line gets 64 reads a byte and no floor   (make test TESTS="tsql syntax_lean"): tests/test_tsql.c:415: CHECK(!memcmp(f + wa, g + wa, z - wa)) failed
+caught        r3: _ is no word character   (make test TESTS="tsql syntax_lean"): tests/test_syntax_lean.c:111: CHECK(ncase && !bad && ms < 300 && got[x] == FACE_NONE) failed
+caught        r3: an interpolated string's closing quote does not leave it   (make test TESTS="tsql syntax_lean"): tests/test_syntax_lean.c:111: CHECK(ncase && !bad && ms < 300 && got[x] == FACE_NONE) failed
+caught        r3: the comment's nesting restarts at 1 on a line that goes on   (make test TESTS="tsql syntax_lean"): tests/test_syntax_lean.c:111: CHECK(ncase && !bad && ms < 300 && got[x] == FACE_NONE) failed
+caught        r3: a line past its budget is not painted as comment   (make test TESTS="tsql syntax_lean"): tests/test_syntax_lean.c:111: CHECK(ncase && !bad && ms < 300 && got[x] == FACE_NONE) failed
+NOT CAUGHT    r3: a fence's distance is kept outside a fence   (make test TESTS="tsql syntax_lean" passed)
+NOT CAUGHT    r3: the URL ring's oldest item is tried   (make test TESTS="tsql syntax_lean" passed)
+NOT CAUGHT    r3: [^\]\s]* from before the remembered run ends where it did   (make test TESTS="tsql syntax_lean" passed)
+NOT CAUGHT    r3: a def's {..} from before the remembered run ends where it did   (make test TESTS="tsql syntax_lean" passed)
+caught        r3: \s* in a comment from before the remembered run ends where it did   (make test TESTS="tsql syntax_lean"): tests/test_syntax_lean.c:111: CHECK(ncase && !bad && ms < 300 && got[x] == FACE_NONE) failed
