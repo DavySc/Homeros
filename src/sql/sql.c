@@ -3,6 +3,7 @@
    tables and an open transaction last, as in SSMS); its batches run one
    after another, everything the server says appended to the results
    buffer as it arrives, as make.c's buffer grows. */
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -77,17 +78,30 @@ static void putz(Sess *s, const char *z) { put(s, z, strlen(z)); }
 /* The connections file's line for name, or with name "" the connection of
    the longest "dir" line holding path.  A line is
      name mssql|pg host[:port] user database [trust] [pass=...]
+   (user - : the Windows login, SQL Server's from Windows)
      dir folder name
    A password in the file makes it refused unless only its owner can read
    it (libpq's rule for ~/.pgpass).  0 found, -1 msg set. */
+#ifdef _WIN32
+#define HOME "USERPROFILE"
+static int sep(char c) { return c == '\\' || c == '/'; }
+#else
+#define HOME "HOME"
+static int sep(char c) { return c == '/'; }
+#endif
+
 static int lookup(const char *name, const char *path, Spec *o)
 {
 	char f[4096], l[1024], want[256] = "";
 	file_stdpath(f, sizeof f, 2, "/sql");
 	FILE *fp = fopen(f, "r");
 	if (!fp) { core_msg(E, "sql: no connections file %s (src/sql/README.md)", f); return -1; }
+#ifdef _WIN32   /* libpq checks pgpass.conf's mode off Windows only: the profile is the user's */
+	int open = 1;
+#else
 	struct stat st;
 	int open = !fstat(fileno(fp), &st) && !(st.st_mode & 077);
+#endif
 	size_t best = 0;
 	snprintf(want, sizeof want, "%s", name);
 	for (int round = 0; round < 2; round++, rewind(fp)) {   /* the dir lines, then the connection */
@@ -96,11 +110,12 @@ static int lookup(const char *name, const char *path, Spec *o)
 			int k = sscanf(l, "%255s %255s %255s %255s %255s %255s %255s", a[0], a[1], a[2], a[3], a[4], x[0], x[1]);
 			if (k < 3 || a[0][0] == '#') continue;
 			if (round == 0 && !*name && !strcmp(a[0], "dir")) {
-				char d[4096];
-				const char *h = getenv("HOME");
-				snprintf(d, sizeof d, "%s%s", a[1][0] == '~' && h ? h : "", a[1] + (a[1][0] == '~' && h));
+				char t[4096], d[PATH_MAX];
+				const char *h = getenv(HOME);
+				snprintf(t, sizeof t, "%s%s", a[1][0] == '~' && h ? h : "", a[1] + (a[1][0] == '~' && h));
+				if (file_full(t, d)) snprintf(d, sizeof d, "%s", t);   /* the buffer's name's form (C:\\ on Windows) */
 				size_t n = strlen(d);
-				if (path && n > best && !strncmp(path, d, n) && (path[n] == '/' || d[n - 1] == '/')) best = n, snprintf(want, sizeof want, "%s", a[2]);
+				if (path && n > best && !strncmp(path, d, n) && (sep(path[n]) || sep(d[n - 1]))) best = n, snprintf(want, sizeof want, "%s", a[2]);
 			} else if (round == 1 && k >= 5 && !strcmp(a[0], want) && (!strcmp(a[1], "mssql") || !strcmp(a[1], "pg"))) {
 				*o = (Spec){ .pg = a[1][0] == 'p' };
 				snprintf(o->name, sizeof o->name, "%s", a[0]);
@@ -220,7 +235,7 @@ static int run(Sess *s, size_t a, size_t z)
 	s->i = 0, s->left = s->q.b[0].count, s->t0 = loop_now();
 	if (s->fd >= 0) { next(s); return 0; }
 	Spec *c = &s->spec;
-	if (db_open(&s->db, c->pg, c->host, c->port, c->user, c->pass, c->db, c->trust) || loop_watch(db_net(&s->db)->fd, wake, s)) {
+	if (db_open(&s->db, c->pg, c->host, c->port, c->pg || strcmp(c->user, "-") ? c->user : NULL, c->pass, c->db, c->trust) || loop_watch(db_net(&s->db)->fd, wake, s)) {
 		putz(s, *db_net(&s->db)->err ? db_net(&s->db)->err : "sql: too many watches"), putz(s, "\n");
 		db_close(&s->db), s->q.n = 0;
 		return -1;

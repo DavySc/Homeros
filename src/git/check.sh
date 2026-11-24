@@ -14,6 +14,7 @@ for t in zig $run; do
 	command -v $t >/dev/null || { echo "src/git/check.sh: $t is not on PATH"; exit 2; }
 done
 . src/tools/ghostty-win.sh   # package 17's, agreed by thread 0
+. src/sql/openssl-win.sh   # keys runs SQL (sql_key): package 22's
 pick() { if ls src/$1/*.c >/dev/null 2>&1; then echo src/$1/*.c; else echo ref/$1.c; fi; }
 mkdir -p build/win
 if [ -n "$run" ]; then
@@ -40,7 +41,7 @@ for t in test_git_win ${run:+test_git}; do
 	zig cc -target x86_64-windows-gnu -std=c17 -Wall -Wextra -Werror -D_DEFAULT_SOURCE -Iinclude -O1 -g \
 	  -fsanitize=undefined -fsanitize-trap=undefined -o build/win/$t.exe tests/$t.c src/git/*.c \
 	  $(pick core) $(pick text) $(pick undo) $(pick uni) $(pick keys) $(pick loop) $(pick file) $(pick grid) \
-	  $(pick theme) $(pick kitten) $(pick lsp) $(pick sqlfmt) $(pick snip) $(pick tools) $(pick shada) $(pick str) $(pick org) $(pick date) src/syntax/tsql.c $GHOSTTY_WIN -lshell32   # str: package 17's, agreed by thread 0; org: keys calls org_todo_step; date: org's dates
+	  $(pick theme) $(pick kitten) $(pick lsp) $(pick sqlfmt) $(pick snip) $(pick tools) $(pick shada) $(pick str) $(pick org) $(pick date) $(pick sql) src/syntax/tsql.c $GHOSTTY_WIN $SQL_WIN -lshell32   # str: package 17's, agreed by thread 0; org: keys calls org_todo_step; date: org's dates
 done
 pass 300 build/win/test_git_win.exe $run || { echo "FAIL test_git_win"; exit 1; }
 [ -n "$run" ] || exit 0
