@@ -54,7 +54,7 @@ keys: gq joins a whole paragraph before breaking it, so its undo grows with the 
 keys: a repeated Visual operator starts its columns at a Tab's first cell, so v CTRL-A 3 . on a Tab misses the number (recorded traces)~test TESTS=~~src/keys/normal.c~					set_want((long)W->vc.v + redo_VIsual.vcol - 1);~					set_want(vcol_of((long)W->line, (long)W->col) + redo_VIsual.vcol - 1);
 keys: u after a gq that changed nothing puts the cursor on the first line, not back where gq was typed (recorded traces)~test TESTS=~~src/keys/ops.c~	u_save((size_t)oap->start.lnum, (size_t)oap->end.lnum + 1);~	u_save((size_t)oap->start.lnum, (size_t)oap->start.lnum);
 keys: the cursor below sqlfmt's edit does not move with it, so it lands on other text (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~p = p >= z ? p - (z - a) + n : p > a~p = p >= z ? p : p > a
-keys: undo or redo that finds nothing does not beep, so a macro goes on after it (recorded traces)~test TESTS=~~src/keys/normal.c~		if (core_undo(E, cap->cmdchar == KEY_CTRL_R) < 0) { beep(); break; }~		if (core_undo(E, cap->cmdchar == KEY_CTRL_R) < 0) { break; }
+keys: undo or redo that finds nothing does not beep, so a macro goes on after it (recorded traces)~test TESTS=~~src/keys/normal.c~	while (n && core_undo(E, cap->cmdchar == KEY_CTRL_R) >= 0) n--;¶	if (n) beep();¶~	while (n && core_undo(E, cap->cmdchar == KEY_CTRL_R) >= 0) n--;¶
 keys: Insert mode drops a typed or register CTRL-L instead of inserting it (recorded traces)~test TESTS=~~src/keys/edit.c~if (c < ' ' && !has("\x02\x06\x0c\x1a\x1c\x1f", c)) break;~if (c < ' ' && c != 26) break;
 keys: CTRL-W g leaves the next key to run on its own, so CTRL-W g x deletes a character (recorded traces)~test TESTS=~~src/keys/normal.c~(ca.nchar == 'g' || ca.nchar == 7)) GET~(ca.nchar == 7)) GET
 keys: internal_format() does not validate w_virtcol on each line, so a stale textwidth column survives a gq that moved the cursor (recorded traces)~test TESTS=~~src/keys/ops.c~		W->col = (size_t)c;¶		validate_virtcol();~		W->col = (size_t)c;
@@ -104,7 +104,7 @@ keys: the next match is looked for a character after the last match's start, not
 keys: ? skips the match at the cursor, as / does (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~	if (dir == BACKWARD) extra = 0;¶~
 keys: a search stops at the end of the file instead of wrapping ('wrapscan') (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~if (!found && !loop) lnum~if (!found && !loop && 0) lnum
 keys: d/x/e leaves the match's last character (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~if (off.end && oap) oap->inclusive = 1;~if (0) oap->inclusive = 1;
-keys: d/x/+1 deletes characters, not lines (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	else if (i == 2) cap->oap->motion_type = MLINE;¶~
+keys: d/x/+1 deletes characters, not lines (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~		if (i == 2) cap->oap->motion_type = MLINE;¶~
 keys: n after /x/s-1 stays where it is (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~		cap->count1++;¶~
 keys: * finds the word inside other words, without \< \> (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~if (!g && first >= 2) p +=~if (0) p +=
 keys: . after d/x deletes up to the next x without typing the search again (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~			redo_append('\n');¶~
