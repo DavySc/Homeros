@@ -60,3 +60,10 @@ sql: the SQL Server login message kept after its sending~test TESTS=sql~~src/sql
 specs: PgCancel's run over at ReadyForQuery~specs~find design/specs -name '*.cfg' ! -name PgCancel_ok.cfg -delete~design/specs/PgCancel_ok.cfg~Variant = "ok"~Variant = "noclose"
 sql: a cancel's ready never cleared, so it ends a later cancel early~test TESTS=sql~~src/sql/pg.c~p->state = PG_READY, p->quiet = 0, p->ready = 0;~p->state = PG_READY, p->quiet = 0;
 sql: the socket blocks~test TESTS=sql~~src/sql/net.c~SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC~SOCK_STREAM | SOCK_CLOEXEC
+sql: a password in a connections file others can read is used (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~!(st.st_mode & 077)~!(st.st_mode & 0)
+sql: GO n runs its batch once (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~s->left = s->q.b[s->i].count;~s->left = 1;
+sql: F5 runs the whole buffer, not the selection (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (k->visual) {~if (0 && k->visual) {
+sql: :Connect does not change the buffer's connection (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	s->spec = c;~	(void)c;
+sql: a refused GO line not named (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (bad) core_msg(E, "sql: line~if (0) core_msg(E, "sql: line
+sql: SPC r never closes the results (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (k) {   /* close it~	if (0) {   /* close it
+sql: Alt+Break's line not written (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~putz(s, "Query was cancelled by user.\n");   /* SSMS's line */~/* SSMS's line */
