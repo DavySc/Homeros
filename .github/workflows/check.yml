@@ -34,6 +34,11 @@ jobs:
           PY
           bash src/lsp/check.sh && echo "PLANT NOT CAUGHT UNDER WINE" || echo "plant caught under Wine"
           cp build/win/test_lsp.exe test_lsp_plant.exe
+      # the editor core against the real Lean server, for Windows (the plant is undone first)
+      - run: |
+          git checkout src/lsp/lsp.c
+          . tools/winpass.sh
+          winlink test_lsp_e2e.exe reviews/pr-148-repro/e2e.c
       - uses: actions/upload-artifact@v4
         with: { name: exes, path: "test_lsp_*.exe" }
   windows:
@@ -41,8 +46,20 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with: { name: exes }
+      # real Lean on Windows: the editor core opens a .lean file and lake serve answers
+      - shell: bash
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -o elan-init.sh
+          bash elan-init.sh -y --default-toolchain leanprover/lean4:v4.35.0
+          export PATH="$USERPROFILE/.elan/bin:$PATH"
+          lean --version && lake --version
+          mkdir "proj ü" && cp reviews/pr-148-repro/Sample.lean "proj ü/"
+          ./test_lsp_e2e.exe "proj ü/Sample.lean" 90 > e2e.out || echo "e2e exit $?"
+          python reviews/pr-148-repro/e2e.py "proj ü/Sample.lean" e2e.out include/grid.h || true
+          wc -l e2e.out
       - shell: bash
         run: |
           cmd //c ver
