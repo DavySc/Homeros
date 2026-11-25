@@ -65,7 +65,9 @@ int main(void)
 	for (unsigned i = 0; i < sizeof more / sizeof *more; i++) CHECK(draws(more[i], notdef));
 	font_stats(&hit1, &miss1);
 	CHECK(miss1 == miss0 && hit1 == hit0 + sizeof more / sizeof *more);
-	/* none of the families installed: still a font, whatever draws an M */
+	/* none of the families installed: still a font, whatever draws an M
+	   (the finder is chosen at the first open, so all sizes close first) */
+	font_close();
 	CHECK(font_open("No Such Family", 16) == 0 && draws("M", NULL));
 	font_close();
 	puts("test_win_font: family list, fallback by Windows' list and by scan, astral, box drawing drawn, caches");

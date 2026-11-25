@@ -156,6 +156,7 @@ int main(void)
 		sig[nsym] = hash(n);
 		i += k;
 	}
+	font_close();                     /* a size open already keeps its cache */
 	CHECK(font_open(FAMILY, 20) == 0);
 	for (int i = nsym - 1, end = (int)sizeof mathlib - 1; i >= 0; i--) {
 		int start = end - 1;
@@ -290,6 +291,48 @@ int main(void)
 	   60 pixels (about 30 MB) */
 	refill(20, 0x4E00, 0x4E00 + 8000);
 	refill(60, 0x1F300, 0x1FB00);
+
+	/* frames on monitors of different scales: a size used again comes back
+	   with its cell and its cache, until four others were used since */
+	unsigned long h2, m2;
+	CHECK(font_open(FAMILY, 20) == 0);
+	CHECK(shape("\xe4\xb8\x80") == 1 && ink(o[0].g));   /* U+4E00, from a fallback font */
+	shape("abc");
+	font_stats(&h0, &m0);
+	CHECK(font_open(FAMILY, 60) == 0);
+	CHECK(shape("\xe4\xb8\x80") == 1 && ink(o[0].g));   /* that font loaded at this size too */
+	int cw60, ch60, b60;
+	font_cell(&cw60, &ch60, &b60);
+	CHECK(ch60 > ch && cw60 > cw);
+	CHECK(font_open(FAMILY, 20) == 0);
+	font_cell(&cw60, &ch60, &b60);
+	CHECK(cw60 == cw && ch60 == ch);
+	shape("abc");
+	font_stats(&h1, &m1);
+	CHECK(m1 == m0 && h1 == h0 + 3);
+	CHECK(font_open(FAMILY, 60) == 0);  /* least recently used goes first: 21 after 20 leaves 60 */
+	shape("abc");
+	font_stats(&h0, &m0);
+	CHECK(font_open(FAMILY, 20) == 0 && font_open(FAMILY, 21) == 0 && font_open(FAMILY, 60) == 0);
+	shape("abc");
+	font_stats(&h1, &m1);
+	CHECK(m1 == m0 && h1 == h0 + 3);
+	for (int px = 21; px <= 24; px++) CHECK(font_open(FAMILY, px) == 0);
+	CHECK(font_open(FAMILY, 20) == 0);
+	shape("abc");
+	font_stats(&h2, &m2);
+	CHECK(h2 == 0 && m2 == 3);
+	CHECK(font_open(FAMILY, 21) == 0);
+	font_close();                     /* closes every size: 20 is opened afresh */
+	CHECK(font_open(FAMILY, 21) == 0 && font_open(FAMILY, 20) == 0);
+	shape("abc");
+	font_stats(&h2, &m2);
+	CHECK(h2 == 0 && m2 == 3);
+	/* a size never opened finds the fallback font again: it is not loaded
+	   at that size yet */
+	CHECK(shape("\xe4\xb8\x80") == 1 && ink(o[0].g));
+	int h20 = o[0].g->h;
+	CHECK(font_open(FAMILY, 40) == 0 && shape("\xe4\xb8\x80") == 1 && ink(o[0].g) && o[0].g->h > h20);
 	font_close();
 	printf("test_font: %d of %d Mathlib notation symbols draw; marks, ZWJ emoji, ligature, cache and refill\n", nsym, nsym);
 	return 0;

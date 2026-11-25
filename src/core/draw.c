@@ -3,6 +3,7 @@
    default 'statusline'), the command line and the completion popup
    (popupmenu.c).  Allocates nothing. */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "core_int.h"
 #include "git.h"
@@ -346,6 +347,10 @@ static int hl_at(Editor *e, const Win *w, size_t l, size_t i, int mh, size_t *ms
 	return mh;
 }
 
+/* The window the user types in (curwin), in whichever frame is drawn: its
+   Visual area, yank flash, cursor line and mode belong to it alone */
+static const Win *typing;
+
 /* win_line()'s Visual area of line l in w ('selection' inclusive), or
    vim.hl.on_yank()'s flash (Davy's my-nvim): vim.hl.range() from '[ to ']
    inclusive (a block: its screen columns) in IncSearch, over the text only
@@ -358,14 +363,14 @@ static int hl_at(Editor *e, const Win *w, size_t l, size_t i, int mh, size_t *ms
    area's face. */
 static unsigned char visual(Editor *e, Win *w, size_t l, size_t *from, size_t *to, size_t *xf, size_t *xt)
 {
-	const Win *cw = e->win;
+	const Win *cw = typing;
 	const KeyArea *ka = e->ks.yank.type ? &e->ks.yank : e->ks.inc.type ? &e->ks.inc : NULL;
 	int y = ka != NULL, type = y ? ka->type : e->ks.visual;
 	size_t cl = y ? ka->l2 : cw->line, cc = y ? ka->c2 : cw->col, vl = y ? ka->l1 : e->ks.vline,
 	       vc = y ? ka->c1 : e->ks.vcol, a, b, c, d, n;
 	*from = *xf = 1;
 	*to = *xt = 0;
-	if (!type || (y ? w != cw : w->buf != e->buf)) return 0;
+	if (!type || (y ? w != cw : w->buf != typing->buf)) return 0;
 	/* ltoreq(): the cursor is the top end unless VIsual is before it */
 	int vtop = vl < cl || (vl == cl && vc < cc);
 	size_t tl = vtop ? vl : cl, tc = vtop ? vc : cc, bl = vtop ? cl : vl, bc = vtop ? cc : vc;
@@ -457,7 +462,7 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	   line nor in the Visual area; off counts the cells they freed on row
 	   orow, which a Tab gives back (fix_for_boguscols()) */
 	Conceal cs[64];
-	size_t nc = syn && w->conceal && !(w == e->win && l == w->line) && area != FACE_VISUAL ? syntax_conceal(syn, l, cs, 64) : 0,
+	size_t nc = syn && w->conceal && !(w == typing && l == w->line) && area != FACE_VISUAL ? syntax_conceal(syn, l, cs, 64) : 0,
 	       ci = 0, off = 0;
 	int orow = r;
 	/* the diagnostics' underline: [a, z) of those over the line
@@ -485,7 +490,7 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	   text area of the cursor line's rows, below syntax and render-markdown
 	   (low priority: it has no fg), not in the current window in Visual
 	   mode (win_line()); not under skipcol's "<<<" */
-	unsigned char cl = l == w->line && !(w == e->win && e->ks.visual) ? FACE_CURSOR_LINE : 0;
+	unsigned char cl = l == w->line && !(w == typing && e->ks.visual) ? FACE_CURSOR_LINE : 0;
 	for (int k = 0; cl && k < line_rows(w, l) && r + k < w->h; k++)
 		for (int c = k || cover < nw ? nw : cover; c < w->w; c++) {
 			Cell *z = wcell(g, w, r + k, c);
@@ -568,7 +573,7 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	   start, where an area that starts earlier starts too. */
 	size_t vs = v > skip ? v : skip;
 	if (area == FACE_VISUAL && drawn == 1 && (v > skip ? from == v : from <= skip) && vs < to && (vs < xf || vs > xt)
-	    && (e->ks.visual != 22 || l == e->win->line || l == e->ks.vline)) {
+	    && (e->ks.visual != 22 || l == typing->line || l == e->ks.vline)) {
 		Cell *z = eol_cell(g, w, r, vs - skip, tw, nw);
 		if (z) z->bg = FACE_VISUAL;
 	}
@@ -595,7 +600,7 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	   renders it there; in another buffer's window, its cursor line) */
 	int lo, hi;
 	dv = diags_on(w, l, &lo, &hi);
-	if (drawn == 1 && hi > lo && l == (w->buf == e->win->buf ? e->win->line : w->line)) {
+	if (drawn == 1 && hi > lo && l == (w->buf == typing->buf ? typing->line : w->line)) {
 		size_t d = vs - skip;
 		int row = w->wrap ? r + (int)(d / (size_t)tw) : r;
 		if (row < r + line_rows(w, l) && row < w->h) draw_vt(g, w, row, nw, (int)(w->wrap ? d % (size_t)tw : d) + 1, dv, lo, hi, cl);
@@ -615,8 +620,8 @@ static void draw_win(Editor *e, Grid *g, Win *w)
 	   the current window's cursor line as typed in every window on its
 	   buffer (anti_conceal).  Another buffer keeps what it drew while it was
 	   current: rendered unless its window is scrolled sideways. */
-	int cur = w->buf == e->buf, rm = cur ? e->mode != MODE_INSERT && !e->ks.visual && !e->win->left : !w->left;
-	size_t raw = cur ? e->win->line : (size_t)-1;
+	int cur = w->buf == typing->buf, rm = cur ? e->mode != MODE_INSERT && !e->ks.visual && !typing->left : !w->left;
+	size_t raw = cur ? typing->line : (size_t)-1;
 	for (; r < w->h && l < n; l++) {
 		int rows = line_rows(w, l);
 		if (!draw_line(e, g, w, l, r, rm ? 1 + (l != raw) : 0)) {
@@ -678,7 +683,7 @@ static void draw_status(Editor *e, Grid *g, Win *w)
 	static const char L[] = "\xee\x82\xb6", R[] = "\xee\x82\xb4";
 	static Stl t;
 	char s[64];
-	int r = w->y + w->h, maxw = w->w, cur = w == e->win;
+	int r = w->y + w->h, maxw = w->w, cur = w == typing;
 	Buf *b = w->buf;
 	size_t ls = text_line_start(b->text, w->line), len = text_line_start(b->text, w->line + 1) - ls - 1, cut = 0, sep;
 	/* another window's cursor may be past a line that changed: it is
@@ -841,7 +846,7 @@ void core_pum(Editor *e, const PumItem *items, int n, int sel, size_t col)
 	if (w->wrap && c >= w->w && width > 0) c -= ((c - w->w) / width + 1) * width;
 	c = c > (long)w->left ? c - (long)w->left : 0;
 	int prow = w->y + w->frame->s.wrow, cursor_col = w->x + (int)c;
-	int above_row = 0, below_row = e->layout->size[ROWS];
+	int above_row = 0, below_row = e->layout->top + e->layout->size[ROWS];   /* cmdline_row */
 	if (below_row < w->y + w->h) below_row = w->y + w->h;
 	/* pum_compute_vertical_placement() */
 	pum.height = n < PUM_DEF_HEIGHT ? n : PUM_DEF_HEIGHT;
@@ -975,7 +980,73 @@ static void draw_pum(Editor *e, Grid *g)
 	}
 }
 
-void core_draw(Editor *e, Grid *g)
+/* draw_tabline() without 'tabline' (use_sep_chars off), the terminal's:
+   per tab page its window count when over 1, + when a buffer shown there
+   is changed, its current window's buffer name with shortened
+   directories, and an X closing the current one */
+static void draw_tabline(Editor *e, Grid *g)
+{
+	int n = 0, col = 0, cols = g->cols;
+	for (Tab *t = e->tabs; t; t = t->next) n++;
+	int tabwidth = (cols - 1 + n / 2) / n;
+	if (tabwidth < 6) tabwidth = 6;
+	for (Tab *t = e->tabs; t && col < cols - 4; t = t->next) {
+		int scol = col, face = t == e->tab ? FACE_TABLINE_SEL : FACE_TABLINE, wins = 0, mod = 0;
+		for (Win *w = tab_firstwin(e, t); w; w = w->next, wins++) mod |= core_modified(w->buf);
+		char s[4200];
+		col = grid_puts(g, 0, col, cols, " ", 1, ATTR_NONE, face);
+		if (mod || wins > 1) {
+			int k = wins > 1 ? snprintf(s, sizeof s, "%d", wins) : 0;
+			if (col + k >= cols - 3) break;
+			col = grid_puts(g, 0, col, cols, s, (size_t)k, ATTR_NONE, face);
+			if (mod) col = grid_puts(g, 0, col, cols, "+", 1, ATTR_NONE, face);
+			col = grid_puts(g, 0, col, cols, " ", 1, ATTR_NONE, face);
+		}
+		int room = scol - col + tabwidth - 1;
+		if (room > 0) {
+			/* get_trans_bufname() with home_replace(), then shorten_dir():
+			   each directory to its first character, a leading ~ or . kept */
+			const Buf *b = (t == e->tab ? e->win : t->win)->buf;
+			const char *p = b->path ? b->path : "[No Name]", *home = getenv("HOME");
+			size_t hn = home && *home ? strlen(home) : 0, d = 0;
+			if (b->path && hn && !strncmp(p, home, hn) && (p[hn] == '/' || !p[hn])) s[d++] = '~', p += hn;
+			const char *tail = strrchr(p, '/');
+			for (int keep = 1, last = 0; *p && d < sizeof s - 1; p++) {
+				int cont = (*p & 0xC0) == 0x80;   /* the rest of a character */
+				if (tail && p < tail && *p != '/' && !(cont ? last : keep)) { last = 0; continue; }
+				s[d++] = *p;
+				last = 1;
+				if (!cont) keep = *p == '/' || ((*p == '~' || *p == '.') && keep);
+			}
+			s[d] = 0;
+			const unsigned char *u = (const unsigned char *)s;
+			size_t at = 0;
+			int len = grid_width(s, d);
+			while (len > room) { len -= uni_width(u, d, at); at += uni_glen(u, d, at); }
+			grid_puts(g, 0, col, cols, s + at, d - at, ATTR_NONE, face);
+			col += len < cols - col - 1 ? len : cols - col - 1;
+		}
+		col = grid_puts(g, 0, col, cols, " ", 1, ATTR_NONE, face);
+	}
+	paint(g, 0, col, cols - col, FACE_TABLINE_FILL);
+	grid_puts(g, 0, cols - 1, cols, "X", 1, ATTR_NONE, FACE_TABLINE);
+}
+
+static void draw(Editor *e, Grid *g, int cur);
+/* A tab page that is not current is drawn as its own OS window shows it:
+   its windows, and no command line, message or popup: those belong to the
+   frame the user types in */
+void core_draw(Editor *e, Tab *t, Grid *g)
+{
+	Tab *cur = e->tab;
+	typing = e->win;
+	if (!t || t == cur) { draw(e, g, 1); return; }
+	tab_use(e, t);
+	draw(e, g, 0);
+	tab_use(e, cur);
+}
+
+static void draw(Editor *e, Grid *g, int cur)
 {
 	layout_resize(e, g->rows, g->cols);
 	core_update(e);
@@ -989,8 +1060,13 @@ void core_draw(Editor *e, Grid *g)
 					paint(g, w->y + r, w->x + w->w, 1, FACE_WIN_SEPARATOR);
 		draw_status(e, g, w);
 	}
+	if (cur && tabline_height(e)) draw_tabline(e, g);
 	/* the command line, or the mode and the last message (showmode) */
-	int r = e->layout->size[ROWS];
+	int r = e->layout->top + e->layout->size[ROWS];
+	Win *w = e->win;
+	g->crow = w->y + w->frame->s.wrow;
+	g->ccol = w->x + w->frame->s.wcol;
+	if (!cur) return;
 	if (e->mode == MODE_CMDLINE) {
 		char t[2] = { (char)e->cmdtype, 0 };
 		int cc = grid_puts(g, r, 1, g->cols, e->cmd, e->cmdpos, ATTR_NONE, FACE_NONE);
@@ -1007,7 +1083,4 @@ void core_draw(Editor *e, Grid *g)
 	if (m >= 0) grid_puts(g, e->rows - 1, 0, g->cols, mode[m], strlen(mode[m]), ATTR_NONE, FACE_NONE);
 	else grid_puts(g, r, 0, g->cols, e->msg, strlen(e->msg), ATTR_NONE, FACE_NONE);
 	draw_pum(e, g);
-	Win *w = e->win;
-	g->crow = w->y + w->frame->s.wrow;
-	g->ccol = w->x + w->frame->s.wcol;
 }
