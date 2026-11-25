@@ -414,11 +414,10 @@ static int put_utf16(Str *b, const char *z)   /* UTF-8 in, UTF-16LE out */
 {
 	const unsigned char *s = (const unsigned char *)z;
 	size_t n = strlen(z);
-	for (size_t i = 0; i < n; i += uni_len(s, n, i)) {
-		unsigned u = uni_cp(s, n, i);
-		if (u >= 0x10000 && put_le(b, 0xD800 + (u - 0x10000) / 1024, 2)) return -1;
-		if (put_le(b, u >= 0x10000 ? 0xDC00 + (u - 0x10000) % 1024 : u, 2)) return -1;
-	}
+	unsigned short w[2];
+	for (size_t i = 0; i < n; i += uni_len(s, n, i))
+		for (int m = uni_put16(w, uni_cp(s, n, i)), x = 0; x < m; x++)
+			if (put_le(b, w[x], 2)) return -1;
 	return 0;
 }
 
