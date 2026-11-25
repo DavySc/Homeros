@@ -5,7 +5,8 @@ WL_PKGS = wayland-client xkbcommon
 WL_XML := $(shell pkg-config --variable=pkgdatadir wayland-protocols)
 WL_PROTOS = stable/xdg-shell/xdg-shell unstable/text-input/text-input-unstable-v3 \
   staging/cursor-shape/cursor-shape-v1 unstable/tablet/tablet-unstable-v2 \
-  staging/fractional-scale/fractional-scale-v1 stable/viewporter/viewporter
+  staging/fractional-scale/fractional-scale-v1 stable/viewporter/viewporter \
+  staging/xdg-activation/xdg-activation-v1 staging/xdg-toplevel-tag/xdg-toplevel-tag-v1
 CPPFLAGS += -DHOMEROS_WL -Ibuild/wl $(shell pkg-config --cflags $(WL_PKGS))
 LIBS += $(shell pkg-config --libs $(WL_PKGS))
 OBJS += build/wl/protocols.o

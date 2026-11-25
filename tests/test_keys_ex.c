@@ -373,9 +373,9 @@ int main(void)
 	static Grid g;
 	CHECK(!grid_resize(&g, 24, 80));
 	keys_feed(&e, KEY_ESC, 0);   /* the y above waits for its motion */
-	for (const char *k = "G:45,60s/foo/x/c\r\x05\x05\x05"; *k; k++) keys_feed(&e, *k == '\r' ? KEY_ENTER : *k, 0), core_draw(&e, &g);
+	for (const char *k = "G:45,60s/foo/x/c\r\x05\x05\x05"; *k; k++) keys_feed(&e, *k == '\r' ? KEY_ENTER : *k, 0), core_draw(&e, NULL, &g);
 	CHECK(e.win->line == 44 && e.win->top == 38);
-	keys_feed(&e, 'q', 0), core_draw(&e, &g);
+	keys_feed(&e, 'q', 0), core_draw(&e, NULL, &g);
 	CHECK(e.win->top == 38);
 	grid_free(&g);
 	core_free(&e);
