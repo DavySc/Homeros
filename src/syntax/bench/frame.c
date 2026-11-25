@@ -92,9 +92,9 @@ int main(int argc, char **argv)
 	if (!add || !ed || !own || !kf || !pf) return 1;
 	/* start-up, not measured: the first frame, the parse, the frame with
 	   colours */
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	while (syntax_update(e.buf->syn, e.buf->text, NULL, &r1, &r2) == 2) ;
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	/* go to a random line, then type a short statement, Esc, j, again */
 	char go[32];
 	snprintf(go, sizeof go, "%uG", 1 + rnd((unsigned)core_lines(&e)));
@@ -115,7 +115,7 @@ int main(int argc, char **argv)
 			   finishes; a key that arrives meanwhile waits for it */
 			if (r == 1) {
 				in_syntax = 0;
-				core_draw(&e, &g);
+				core_draw(&e, NULL, &g);
 				pf[np++] = in_syntax;
 				back = now();
 			}
@@ -125,7 +125,7 @@ int main(int argc, char **argv)
 		while (now() < key_at) ;   /* idle until the key */
 		in_syntax = in_edit = in_text = 0;
 		keys_feed(&e, (unsigned char)ty[i % (int)strlen(ty)], 0);
-		core_draw(&e, &g);
+		core_draw(&e, NULL, &g);
 		add[i] = late + in_syntax;
 		ed[i] = in_edit;
 		own[i] = add[i] - in_text;
