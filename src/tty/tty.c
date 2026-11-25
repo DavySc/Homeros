@@ -246,8 +246,9 @@ static int  tty_clip_set(const char *s, size_t n) { (void)s; (void)n; return -1;
 static long tty_clip_get(char *buf, size_t max) { (void)buf; (void)max; return -1; }
 static void tty_none(int *a, int *b) { *a = *b = 0; }
 static void tty_cell(int id, int *w, int *h) { (void)id; tty_none(w, h); }
+static void tty_title(int id, const char *s) { (void)id; (void)s; }
 
 const Backend backend_tty = {
 	tty_open, tty_close, tty_frame_open, tty_frame_none, tty_frame_none, tty_fds, tty_input, tty_size, tty_ready,
-	tty_present, tty_suspend, tty_clip_set, tty_clip_get, tty_none, tty_cell
+	tty_present, tty_suspend, tty_clip_set, tty_clip_get, tty_none, tty_cell, tty_title
 };

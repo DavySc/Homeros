@@ -33,6 +33,7 @@ static int t_clip_set(const char *s, size_t n) { (void)s; (void)n; return -1; }
 static long t_clip_get(char *buf, size_t max) { (void)buf; (void)max; return -1; }
 static void t_mouse(int *row, int *col) { *row = *col = 0; }
 static void t_cell(int id, int *w, int *h) { (void)id; *w = *h = 0; }
+static void t_title(int id, const char *s) { (void)id; (void)s; }
 
 static void t_check(int n);
 
@@ -59,7 +60,7 @@ static int t_input(int *out, int *win, int n)
 }
 
 static const Backend t_backend = { t_open_, t_close, t_win_open, t_win_close, t_raise_, t_fds, t_input, t_size,
-	t_ready_, t_present, t_suspend, t_clip_set, t_clip_get, t_mouse, t_cell };
+	t_ready_, t_present, t_suspend, t_clip_set, t_clip_get, t_mouse, t_cell, t_title };
 
 static int t_d0, t_d1;
 /* the checks, by number */
