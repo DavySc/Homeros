@@ -39,3 +39,7 @@ main: the close button quits with several tab pages~test TESTS=frames_main~~src/
 main: a closed tab page keeps its window~test TESTS=frames_main~~src/main.c~			b->win_close(fr[i].id);¶~
 main: a new tab page gets no window~test TESTS=frames_main~~src/main.c~ || b->win_open(t->id)) {~) {
 main: a window's resize resizes none~test TESTS=frames_main~~src/main.c~fr[j].resized |= fr[j].id == from[i] || e.tabline;~fr[j].resized |= e.tabline;
+main: a new window gets no title (test_frames_main)~test TESTS=frames_main~~src/main.c~		title(nfr, t);¶~
+main: SPC 5 n leaves the old title (test_frames_main)~test TESTS=frames_main~~src/main.c~	if (i < nfr) title(i, e.tab);   /* SPC 5 n */~	(void)i;
+main: a title sent after every key (test_frames_main)~test TESTS=frames_main~~src/main.c~	if (fr[i].key == t->key) return;~	if (0) return;
+main: the first window gets no title (test_frames_main)~test TESTS=frames_main~~src/main.c~	fr[nfr++].id = 0;¶	title(0, e.tab);~	fr[nfr++].id = 0;

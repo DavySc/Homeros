@@ -329,6 +329,30 @@ int main(void)
 	CHECK(!d.tabs->next && d.tab == d.tabs);
 	feed(&d, " 50");
 	CHECK(!strcmp(d.msg, "E784: Cannot close last tab page"));
+	/* frame letters (Davy, 2026-11-25): a, then the first free one but SPC
+	   5's own f, m, n and o, none past 22; SPC 5 {letter} enters that frame,
+	   SPC 5 n {letter} changes this one's to one no other frame has */
+	char ks[24] = { 0 };
+	feed(&d, " 5na");                          /* the frame left is the first one made since */
+	CHECK(d.tab->key == 'a');
+	for (int i = 0; i < 22; i++) CHECK(!core_tabnew(&d, NULL));
+	ntab = 0;
+	for (Tab *t = d.tabs; t; t = t->next) ks[ntab++] = t->key ? t->key : '0';
+	CHECK(!strcmp(ks, "abcdeghijklpqrstuvwxyz0"));
+	feed(&d, " 5c");
+	CHECK(d.tab == d.tabs->next->next);
+	feed(&d, " 5nf 5na");                      /* SPC 5 f's, the first frame's: kept */
+	CHECK(d.tab->key == 'c');
+	feed(&d, " 5n0 5a");
+	CHECK(d.tab == d.tabs);
+	feed(&d, "gt 5n0 5c");                     /* 0 is not a letter: c kept */
+	CHECK(d.tab == d.tabs->next->next);
+	feed(&d, " 5ny");                          /* the 22nd frame's */
+	CHECK(d.tab->key == 'c');
+	feed(&d, " 5z 50 5c 5nz 5a 5z");           /* z's frame gone: z is free */
+	CHECK(d.tab == d.tabs->next->next && d.tab->key == 'z');
+	feed(&d, " 51");
+	CHECK(!d.tabs->next);
 	CHECK(!core_tabnew(&d, ""));               /* :tabnew, gt, :bd N: the frame showing N goes */
 	int nr = d.buf->nr;
 	feed(&d, "gt");

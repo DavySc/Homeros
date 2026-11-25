@@ -928,7 +928,21 @@ void tab_use(Editor *e, Tab *t)
 int tab_first(Editor *e)
 {
 	tab_ids = 1;
-	return (e->tab = e->tabs = calloc(1, sizeof *e->tab)) ? 0 : -1;
+	if (!(e->tab = e->tabs = calloc(1, sizeof *e->tab))) return -1;
+	e->tab->key = 'a';
+	return 0;
+}
+
+/* The first letter no tab page has, f, m, n and o being SPC 5's own keys;
+   0 when all 22 are taken */
+static char free_key(const Editor *e)
+{
+	for (const char *c = "abcdeghijklpqrstuvwxyz"; *c; c++) {
+		const Tab *t = e->tabs;
+		while (t && t->key != *c) t = t->next;
+		if (!t) return *c;
+	}
+	return 0;
 }
 
 void tab_free_all(Editor *e)
@@ -994,6 +1008,7 @@ static int tab_new(Editor *e)
 	int ch = cmdheight(e);
 	if (!t || !w) { free(t); free(w); core_msg(e, "out of memory"); return -1; }
 	t->id = tab_ids++;
+	t->key = free_key(e);
 	t->next = e->tab->next;
 	e->tab->next = t;
 	t->win = t->wins = w;
