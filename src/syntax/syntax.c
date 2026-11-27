@@ -104,11 +104,12 @@ static int zig_own;
 static const ZigRel *zig_release(void)
 {
 	static const ZigRel *r;
-	if (r) return r;
+	static int known;   /* an answer, or no zig: killed after 1 s, it is asked again */
+	if (known) return r;
 	char v[32] = "";
 	char *argv[] = { "zig", "version", NULL };
 	int id = proc_spawn(argv, NULL, on_zig, v);
-	if (id >= 0) proc_wait(id, 1000);
+	known = id < 0 || !proc_wait(id, 1000);
 	int m = !strncmp(v, "0.", 2) ? atoi(v + 2) : zig_rel[NZIG - 1].minor;
 	r = &zig_rel[0];
 	for (int i = 0; i < NZIG; i++)
@@ -255,6 +256,7 @@ struct Syntax {
 	OrgFx *org;                /* or Org's */
 	const ZigRel *zig;         /* or Zig's own parser of this release */
 	ZigH *zh, *zfh;            /* its last parse (folds, zig fmt), and zig fmt's own */
+	const ZigRel *zfr;         /* zfh's release: zig's, once it answers late */
 	char *zsrc;                /* the text zh parsed, 0 after it */
 	unsigned char *zf;         /* zh's faces, one per byte of zn, kept with the text */
 	size_t zn, zcap;
@@ -526,13 +528,13 @@ static int zig_grow(Syntax *s, size_t n)
    memory.  An edit and the update after it, over Zig 0.17's std (563
    files, 45,040 one-byte inserts, 5 runs, reviews/pr-136-repro/bench.c):
    median 0.11 ms, p99 3.8 ms, 8.4 ms in the largest file (829 KB) */
-static ZigH *zig_parse(Syntax *s, const Text *t, int face)
+static ZigH *zig_parse(Syntax *s, const ZigRel *r, const Text *t, int face)
 {
 	size_t n = text_len(t);
 	if (zig_grow(s, n)) return NULL;
 	text_read(t, 0, s->zsrc, n);
 	s->zsrc[n] = 0;
-	ZigH *h = s->zig->parse(s->zsrc, n, face ? s->zf : NULL);
+	ZigH *h = r->parse(s->zsrc, n, face ? s->zf : NULL);
 	if (h && face)
 		for (size_t i = 0; i < n; i++) s->zf[i] = zig_face[s->zf[i]];
 	return h;
@@ -579,7 +581,7 @@ void syntax_free(Syntax *s)
 	tsql_free(s->sql);
 	orgfx_free(s->org);
 	if (s->zh) s->zig->free(s->zh);
-	if (s->zfh) s->zig->free(s->zfh);
+	if (s->zfh) s->zfr->free(s->zfh);
 	free(s->zsrc);
 	free(s->zf);
 	if (started(s)) free_ltree(s, s->root);
@@ -1147,7 +1149,7 @@ int syntax_update(Syntax *s, const Text *t, int (*stop)(void), size_t *r1, size_
 		if (!s->dirty) return 0;
 		/* one parse cannot be cut: a waiting key goes first */
 		if (stop && stop()) return 2;
-		ZigH *h = zig_parse(s, t, 1);
+		ZigH *h = zig_parse(s, s->zig, t, 1);
 		if (!h) return 0;
 		if (s->zh) s->zig->free(s->zh);
 		s->zh = h, s->zn = text_len(t), s->t = t, s->dirty = 0;
@@ -1539,16 +1541,21 @@ int syntax_foldexpr(Syntax *s, size_t line, int *start)
 int syntax_zig_fmt(Syntax *s, const char **res, size_t *n)
 {
 	if (!s || !s->zig) return -2;
+	/* asked again while zig has not answered in time (a cold disk took
+	   4.7 s, reviews/pr-136.md); its release formats, the colours keep the
+	   parser the buffer opened with */
+	const ZigRel *r = zig_release();
 	if (!zig_own) return -3;
-	/* the colours' parse while it is current, else one of its own */
+	/* the colours' parse while it is current and of that release, else one
+	   of its own */
 	ZigH *h = s->zh;
-	if (s->dirty || !h) {
-		if (s->zfh) s->zig->free(s->zfh);
-		h = s->zfh = zig_parse(s, s->t, 0);
+	if (s->dirty || !h || r != s->zig) {
+		if (s->zfh) s->zfr->free(s->zfh);
+		h = s->zfh = zig_parse(s, s->zfr = r, s->t, 0);
 		if (!h) return -2;
 	}
-	*res = s->zig->fmt(h, n);
-	return *res ? 0 : s->zig->errors(h) ? -1 : -2;
+	*res = r->fmt(h, n);
+	return *res ? 0 : r->errors(h) ? -1 : -2;
 }
 
 /* render-markdown 8.14's facts for line l, from the Markdown block tree as

@@ -125,12 +125,13 @@ static void folds(Syntax *s, const Text *t, char *out)
 static int waiting(void) { return 1; }
 
 /* zig fmt only with the release's own formatter (reviews/pr-136.md B2):
-   each a fresh process, as the release is read once per run.  0.15 and
+   each a fresh process, as the release is kept once zig answers.  0.15 and
    0.16 format a ** 2, 0.17 refuses it */
 static void releases(void)
 {
 	static const struct { const char *zig; int r; } c[] = {
 		{ NULL, -3 }, { "echo 0.14.1", -3 }, { "echo 0.18.0", -3 }, { "sleep 2; echo 0.17.1", -3 },
+		{ "[ -e \"$0.asked\" ] && exec echo 0.17.1; touch \"$0.asked\"; sleep 2", -1 },   /* slow once (a cold disk): asked again */
 		{ "echo 0.15.2", 0 }, { "echo 0.16.0", 0 }, { "echo 0.17.1", -1 },
 	};
 	char bin[96], z[128];
