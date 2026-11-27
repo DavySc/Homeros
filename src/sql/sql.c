@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <sys/stat.h>
 #include "sql.h"
 #include "core.h"
@@ -94,8 +95,12 @@ static int lookup(const char *name, const char *path, Spec *o)
 	snprintf(want, sizeof want, "%s", name);
 	for (int round = 0; round < 2; round++, rewind(fp)) {   /* the dir lines, then the connection */
 		while (fgets(l, sizeof l, fp)) {
-			char a[5][256] = {{0}}, x[2][256] = {{0}};
-			int k = sscanf(l, "%255s %255s %255s %255s %255s %255s %255s", a[0], a[1], a[2], a[3], a[4], x[0], x[1]);
+			char a[5][256] = {{0}}, x[256] = "", pass[256] = "", *pw = l;
+			/* pass= comes last and takes the rest of the line, spaces too
+			   (Davy's password has them), but not a Windows editor's CR */
+			while ((pw = strstr(pw + 1, "pass=")) && !match_space(pw[-1]));
+			if (pw) pw[strcspn(pw, "\r\n")] = 0, snprintf(pass, sizeof pass, "%s", pw + 5), *pw = 0;
+			int k = sscanf(l, "%255s %255s %255s %255s %255s %255s", a[0], a[1], a[2], a[3], a[4], x);
 			if (k < 3 || a[0][0] == '#') continue;
 			if (round == 0 && !*name && !strcmp(a[0], "dir")) {   /* "dir folder name": the folder may hold spaces */
 				char t[4096], d[PATH_MAX], *fs = l + strspn(l, " 	") + 3, *fe = fs + strlen(fs), *nm;
@@ -125,9 +130,8 @@ static int lookup(const char *name, const char *path, Spec *o)
 				snprintf(o->host, sizeof o->host, "%s", h);
 				snprintf(o->user, sizeof o->user, "%s", a[3]);
 				snprintf(o->db, sizeof o->db, "%s", a[4]);
-				for (int j = 0; j < 2; j++)
-					if (!strcmp(x[j], "trust")) o->trust = 1;
-					else if (!strncmp(x[j], "pass=", 5)) snprintf(o->pass, sizeof o->pass, "%s", x[j] + 5);
+				o->trust = !strcmp(x, "trust");
+				memcpy(o->pass, pass, sizeof pass);
 				if (!o->pg && !*o->pass && strcmp(o->user, "-")) { core_msg(E, "sql: %s has no pass= (an empty password is a failed login on the server)", o->name); return -1; }   /* user "-": the Windows login */
 				if (*o->pass && !open) { core_msg(E, "sql: %s holds a password but others can read it (chmod 600)", f); return -1; }
 				return 0;
@@ -165,8 +169,15 @@ typedef struct Cat {
 	char name[256];
 	Db db;
 	int fd, st;             /* its connection while it reads (-1 none); 0 not read, 1 logging in, 3 reading, 2 read, -1 failed */
-	Str cols;               /* the rows as schema\0table\0column\0 */
+	Str cols, tabs;         /* the rows as schema\0table\0column\0 (the server sorted them); each table's first row's offset, as size_t */
 } Cat;
+
+/* A catalog row at p: its table and column; the next row */
+static const char *row(const char *p, const char **t, const char **col)
+{
+	*t = p + strlen(p) + 1, *col = *t + strlen(*t) + 1;
+	return *col + strlen(*col) + 1;
+}
 
 static Cat *C;
 
@@ -183,7 +194,7 @@ static void uncat(Cat *c, int st)   /* its connection closed, its state st */
 	if (c->fd >= 0) loop_unwatch(c->fd);
 	if (c->st == 1 || c->st == 3) db_close(&c->db);
 	c->fd = -1, c->st = st;
-	if (st != 2) c->cols.n = 0;
+	if (st != 2) c->cols.n = c->tabs.n = 0;
 }
 
 static void catwake(void *ctx, int fd)
@@ -203,6 +214,11 @@ static void catwake(void *ctx, int fd)
 		if (o->n) for (char *p = o->s, *z = p + o->n, *n, *a, *b, *h = NULL; !r && (n = memchr(p, '\n', (size_t)(z - p))); p = n + 1)
 			if ((a = memchr(p, '\t', (size_t)(n - p))) && (b = memchr(a + 1, '\t', (size_t)(n - a - 1))) && (h || !(h = p)))
 				*a = *b = *n = 0, r = str_add(&c->cols, p, net_unesc(p, (size_t)(n + 1 - p)));   /* a tab in a name came escaped */
+		for (const char *p = c->cols.s, *z = p + c->cols.n, *q = NULL, *t, *col, *n; !r && p < z; q = p, p = n)
+			if (n = row(p, &t, &col), !q || strcmp(p, q) || strcmp(t, q + strlen(q) + 1)) {   /* a table's first row */
+				size_t at = (size_t)(p - c->cols.s);
+				r = str_add(&c->tabs, (const char *)&at, sizeof at);
+			}
 		uncat(c, r ? -1 : 2);
 		return;
 	}
@@ -385,7 +401,7 @@ int sql_disconnect(Editor *e)
 	return 0;
 }
 
-int sql_catalog(Editor *e, const Buf *b, void (*fn)(void *ctx, const char *schema, const char *table, const char *column), void *ctx)
+int sql_catalog(Editor *e, const Buf *b, const char *table, void (*fn)(void *ctx, const char *schema, const char *table, const char *column), void *ctx)
 {
 	E = e;
 	Sess *s = is_sql(b) ? sess(b->nr, 1) : NULL;
@@ -404,7 +420,12 @@ int sql_catalog(Editor *e, const Buf *b, void (*fn)(void *ctx, const char *schem
 	}
 	if (k->st != 2 || !k->cols.n) return 0;
 	int n = 0;
-	for (const char *p = k->cols.s, *z = p + k->cols.n, *t, *col; p < z; n++, p = col + strlen(col) + 1)
-		t = p + strlen(p) + 1, col = t + strlen(t) + 1, fn(ctx, p, t, col);
+	const size_t *o = (const void *)k->tabs.s, nt = k->tabs.n / sizeof *o;
+	for (size_t i = 0; i < nt; i++) {   /* the table count plus the columns asked for, not the whole catalog */
+		const char *p = k->cols.s + o[i], *z = k->cols.s + (i + 1 < nt ? o[i + 1] : k->cols.n), *t, *col;
+		row(p, &t, &col);
+		if (!table) fn(ctx, p, t, NULL), n++;
+		else if (!strcasecmp(t, table)) for (const char *q; p < z; p = q, n++) q = row(p, &t, &col), fn(ctx, p, t, col);
+	}
 	return n;
 }

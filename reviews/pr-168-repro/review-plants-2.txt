@@ -1,0 +1,12 @@
+rv2: the catalog read again at every login~test TESTS=sql_editor~~src/sql/sql.c~	if (!c || c->st > 0) return;~	if (!c || c->st == 1 || c->st == 3) return;
+rv2: a failed dial leaves the catalog logging in~test TESTS=sql_editor~~src/sql/sql.c~	if ((c->fd = dial(&c->db, p, catwake, c)) < 0) uncat(c, -1);~	c->fd = dial(&c->db, p, catwake, c);
+rv2: uncat closes only a connection that reads rows~test TESTS=sql_editor~~src/sql/sql.c~	if (c->st == 1 || c->st == 3) db_close(&c->db);~	if (c->st == 3) db_close(&c->db);
+rv2: fn NULL keeps the rows~test TESTS=sql_editor~~src/sql/sql.c~		uncat(k, 0);¶		if (s->fd >= 0~		if (s->fd >= 0
+rv2: fn NULL reads at once without a login~test TESTS=sql_editor~~src/sql/sql.c~		if (s->fd >= 0 && db_state(&s->db) >= DB_READY) catread(&s->spec);~		catread(&s->spec);
+rv2: the catalog read at every idle of the session~test TESTS=sql_editor~~src/sql/sql.c~	if (was < DB_READY && db_state(&s->db) >= DB_READY) catread(&s->spec);~	if (db_state(&s->db) >= DB_READY) catread(&s->spec);
+rv2: the login's messages kept in the catalog's output~test TESTS=sql_editor~~src/sql/sql.c~	if (was < DB_READY) o->n = 0;   /* the login's messages */~
+rv2: a name's backslash dropped~test TESTS=sql_editor~~src/sql/net.c~s[i] == 'r' ? '\r' : s[i]) : s[i];~s[i] == 'r' ? '\r' : s[i]) : s[i] == '\\' ? 0 : s[i];
+rv2: an escaped n not a newline~test TESTS=sql_editor~~src/sql/net.c~ : s[i] == 'n' ? '\n'~
+rv2: :Connect drops the session but not before the lookup fails~test TESTS=sql_editor~~src/sql/sql.c~	if (k) uncat(k, 0);   /* read again~	if (k && k->st < 0) uncat(k, 0);   /* read again
+rv2: run() leaks the failed open~test TESTS=sql_editor~~src/sql/sql.c~putz(s, "\n"); db_close(&s->db), s->q.n = 0; return -1; }~putz(s, "\n"); s->q.n = 0; return -1; }
+rv2: the catalog's write wake never off~test TESTS=sql_editor~~src/sql/sql.c~	loop_write(c->fd, db_pending(&c->db));~
