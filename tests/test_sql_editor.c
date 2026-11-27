@@ -368,13 +368,14 @@ int main(void)
 	CHECK(sql_key(&e, KEY_ENTER) == 0);
 	core_goto(&e, 0, 5);
 	CHECK(sql_key(&e, KEY_ENTER) == 0 && !core_win_goto(&e, 'k', 1));
-	/* a new run's cells: none cut from the last run */
-	g = f5("ms/short.sql", "select N'NULL' s, null n, N'short' l\n");
+	/* the same session's next run: no cut value of the last run */
+	g = f5("ms/z.sql", "select N'NULL' s, null n, replicate(N'x', 40) l, N'\xe6\x97\xa5\xe6\x9c\xac' w, N'\xc3\xa9' e\n");
 	CHECK(!core_win_goto(&e, 'j', 1));
 	core_goto(&e, 2, cx);
-	CHECK(sql_key(&e, KEY_ENTER) == 1 && text_len(e.buf->text) == 5 && !core_close(&e, 1) && !core_win_goto(&e, 'k', 1));
-	/* two sets in one reply: the second's names in their face */
-	g = f5("ms/two.sql", "select 1 a; select 2 b\n");
+	CHECK(sql_key(&e, KEY_ENTER) == 1 && text_len(e.buf->text) == 40 && !core_close(&e, 1) && !core_win_goto(&e, 'k', 1));
+	/* two sets in one reply after a message: the second's names in their
+	   face (the lines before the first counted once) */
+	g = f5("ms/two.sql", "print 'p'; select 1 a; select 2 b\n");
 	rb = e.wins->next->buf, m = strstr(g, "\xe2\x94\x82 b");
 	at = text_len(rb->text) - strlen(g) + (size_t)(m - g);
 	rb->faces(rb, at, at + 4, fc);

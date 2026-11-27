@@ -170,7 +170,7 @@ sql: Enter taken in a half typed command~test TESTS=sql_editor~~src/sql/sql.c~e-
 sql: Enter taken outside the results~test TESTS=sql_editor~~src/sql/sql.c~return s && s->res == e->buf->nr &&~return s &&
 sql: a value wider than its column but within the cap cut~test TESTS=sql_editor~~src/sql/sql.c~size_t c, k = fit(p, n, CAP, &c);~size_t c, k = fit(p, n, (size_t)w, &c);
 sql: a wider value's row cells taken at the column's width~test TESTS=sql_editor~~src/sql/sql.c~	while (i < g->n - 1 && e + 3 <= n && memcmp(t + e, "\xe2\x94\x82", 3)) e++;¶~
-sql: each Enter a new Cell value buffer~test TESTS=sql_editor~~src/sql/sql.c~	if (i || below(&nr)) return str_free(&v), 1;~	if (i || core_new(E, 0)) return str_free(&v), 1;
+sql: each Enter a new Cell value buffer~test TESTS=sql_editor~~src/sql/sql.c~	if (i || below(&nr)) return str_free(&v), 1;~	if (i || (nr = 0, below(&nr))) return str_free(&v), 1;
 rv2: a trickling set never laid out early~test TESTS=sql_editor~~src/sql/sql.c~	else if (!r && s->in == 1 && loop_now() - s->t1 >= WAIT * 1000000LL) r = lay(s, 1);~	else if (0) r = lay(s, 1);
 rv2: SQL Server's statement end unmarked (editor)~test TESTS=sql_editor~~src/sql/tds.c~		if (!t->quiet && str_add(&t->out, NET_END, 2)) return -1;¶~
 rv2: a blank first line~test TESTS=sql_editor~~src/sql/sql.c~return (s->at || s->o.n) && add(s, "\n", 1);~return add(s, "\n", 1);
