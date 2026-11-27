@@ -22,7 +22,7 @@ static int expr(void *ctx, size_t l, int *start)
 	(void)ctx;
 	if (l >= n) abort();
 	*start = lv[l] >= 32;
-	return lv[l] % 32 == 31 ? -1 : lv[l] % 32;   /* 31: "-1", undefined */
+	return lv[l] % 32 == 31 ? -1 : lv[l] % 32;   /* 31: "-1", undefined (63: ">-1", the same) */
 }
 
 static int tall(void *ctx, size_t l)
@@ -54,7 +54,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t len)
 	size_t i = 0;
 #define NEXT (i < len ? d[i++] : 0)
 	n = NEXT % 21;
-	for (size_t l = 0; l < n; l++) lv[l] = NEXT % 56;
+	for (size_t l = 0; l < n; l++) lv[l] = NEXT % 64;
 	int level = NEXT % 4;
 	Fold *f = fold_new(level, expr, NEXT & 1 ? tall : NULL, NULL);
 	if (!f) abort();
@@ -72,7 +72,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t len)
 			if (b > n) b = n;
 			if (n - (b - a) + k > MAXN) k = 0;
 			memmove(lv + a + k, lv + b, n - b);
-			for (size_t j = 0; j < k; j++) lv[a + j] = NEXT % 56;
+			for (size_t j = 0; j < k; j++) lv[a + j] = NEXT % 64;
 			long extra = (long)k - (long)(b - a);
 			n = (size_t)((long)n + extra);
 			fold_adjust(f, a, b, b > a ? FOLD_DEL : 0, extra, 0);
@@ -80,7 +80,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t len)
 		} else if (op == 1 && n < MAXN) {   /* a line opened in Insert mode */
 			size_t at = NEXT % (n + 1);
 			memmove(lv + at + 1, lv + at, n - at);
-			lv[at] = NEXT % 56;
+			lv[at] = NEXT % 64;
 			n++;
 			fold_adjust(f, at, (size_t)-1, 1, 0, 1);
 		} else if (op == 2) {

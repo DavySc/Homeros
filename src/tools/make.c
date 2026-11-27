@@ -34,17 +34,10 @@ static struct {
 
 static Buf *buf(void) { return M.nr ? core_buf_find(M.e, M.nr) : NULL; }
 
-/* n bytes at the end of the buffer; a window whose cursor was on its last
-   line follows it (Emacs's compilation-scroll-output, focus's tail) */
 static void put(const char *s, size_t n)
 {
 	Buf *b = buf();
-	if (!b) return;
-	size_t last = text_lines(b->text) ? text_lines(b->text) - 1 : 0;
-	text_insert(b->text, text_len(b->text), s, n);
-	for (Win *w = M.e->wins; w; w = w->next)
-		if (w->buf == b && w->line >= last) { w->line = text_lines(b->text) - 1; w->col = 0; }
-	core_changed = 1;
+	if (b) core_buf_append(M.e, b, s, n);
 }
 
 /* An entry of the list: file, line and column from 1, message of n bytes,
@@ -128,19 +121,13 @@ static void out(void *ctx, int stream, const char *b, size_t n)
 	put(t, (size_t)k);
 }
 
-static int shown(void)
-{
-	for (Win *w = M.e->wins; w; w = w->next) if (w->buf->nr == M.nr) return 1;
-	return 0;
-}
-
 /* The buffer in a window below the current one, the cursor staying
    (Emacs's display-buffer) unless go, emptied, and an empty list; a command still
    running is stopped */
 static int show(Editor *e, int go)
 {
 	M.e = e;
-	if (!buf() || !shown()) {
+	if (!buf() || !core_buf_shown(e, M.nr)) {
 		if (core_split(e, 0, 0)) return -1;
 		if (buf() ? core_buf_goto(e, M.nr) : core_edit_file(e, "", 0)) { core_close(e, 1); return -1; }
 		M.nr = e->buf->nr;
@@ -192,7 +179,7 @@ const char *tools_make_last(void) { return M.cmd; }
 
 void tools_written(Editor *e, Buf *b)
 {
-	if (M.cmd && M.e == e && b->nr != M.nr && buf() && shown() && !M.list && !show(e, 0)) run();
+	if (M.cmd && M.e == e && b->nr != M.nr && buf() && core_buf_shown(M.e, M.nr) && !M.list && !show(e, 0)) run();
 }
 
 void tools_locs(Editor *e, const LspLoc *v, int n, int list)

@@ -1477,7 +1477,9 @@ static void goals(const char *log)
 	   session (the fake knows its own); closed with a question out */
 	int nr1 = e.buf->nr;
 	/* a connect for this file answered only once the cursor is in the
-	   other: not taken as the other's session */
+	   other: not taken as the other's session (a new server first: it
+	   connects on every seed, not only when the walk left no session) */
+	lsp_restart(e.buf->lsp);
 	CHECK(!lsp_send(u, "$/test/refuse", "{\"how\":3}", 9, NULL, NULL));
 	CHECK(!core_edit(&e, core_line_start(&e, e.win->line) + e.win->col, 0, "a", 1));
 	lsp_flush(e.buf->lsp);

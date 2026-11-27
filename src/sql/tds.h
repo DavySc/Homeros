@@ -2,7 +2,8 @@
    call.  The caller polls t->net.fd (for writing too while tds_pending)
    and calls tds_io; everything the server says, rows and messages, comes
    out as text in t->out in the order the server sent it (dbbliss dropped
-   what follows an error: KB chapter 11).  Always TLS; SQL logins. */
+   what follows an error: KB chapter 11).  Always TLS; SQL logins, and
+   on Windows the Windows login. */
 #ifndef SQL_TDS_H
 #define SQL_TDS_H
 #include <stdint.h>
@@ -29,7 +30,8 @@ typedef struct {
 
 enum { TDS_PRELOGIN, TDS_TLS, TDS_LOGIN, TDS_READY, TDS_BUSY, TDS_CANCEL, TDS_DEAD };
 
-/* Starts a non-blocking connect; the login follows the server's prelogin reply. */
+/* Starts a non-blocking connect; the login follows the server's prelogin
+   reply.  user NULL: the Windows login (net_sspi), pass unused. */
 int  tds_open(Tds *t, const char *host, int port, const char *user, const char *pass, const char *db, int trust);
 int  tds_batch(Tds *t, const char *sql);   /* -1 unless TDS_READY */
 int  tds_cancel(Tds *t);                   /* an attention; the reply ends at the server's DONE_ATTN */

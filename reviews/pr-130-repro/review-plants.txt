@@ -1,0 +1,10 @@
+rv: the event never reset on a read (the loop spins)~win WIN=sql~~src/sql/net.c~	if (woke(c)) return -1;¶	long k = recv~	long k = recv
+rv: the cancel waits for a write wake~win WIN=sql~~src/sql/tds.c~return net_send(&t->net, h, 8) || net_flush(&t->net) ? -1 : 0;~return net_send(&t->net, h, 8);
+rv: Windows's CAs never given to OpenSSL~win WIN=sql~~src/sql/net.c~	if (x) SSL_CTX_set1_cert_store(ctx, x);¶~
+rv: the Windows login's flag not set~win WIN=sql~~src/sql/tds.c~user ? 0x0003E0 : 0x0083E0~user ? 0x0003E0 : 0x0003E0
+rv: the SSPI token's length not in LOGIN7~win WIN=sql~~src/sql/tds.c~put_le(l, off + sp.n * 65536, 4)~put_le(l, off, 4)
+rv: the server's SSPI token answered as a prelogin message~win WIN=sql~~src/sql/tds.c~send_msg(t, 0x11, o.s, o.n)~send_msg(t, 0x12, o.s, o.n)
+rv: the SPN keeps the short name~win WIN=sql~~src/sql/net.c~? ai->ai_canonname : host~? host : host
+rv: still connecting taken as a send error~win WIN=sql~~src/sql/net.c~WSAGetLastError() == WSAEWOULDBLOCK || WSAGetLastError() == WSAENOTCONN)~WSAGetLastError() == WSAEWOULDBLOCK)
+rv: the Windows login's flag not set (Linux)~test TESTS=sql~~src/sql/tds.c~user ? 0x0003E0 : 0x0083E0~user ? 0x0003E0 : 0x0003E0
+rv: the server's SSPI token skipped (Linux)~test TESTS=sql~~src/sql/tds.c~int r = p && (net_sspi(&t->net, NULL, p, len, &o) < 0 || (o.n && send_msg(t, 0x11, o.s, o.n)));~int r = 0;

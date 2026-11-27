@@ -281,6 +281,9 @@ keys: C-] failing in another file leaves the cursor at its start, not its first 
 keys: C-] failing in the same file leaves the cursor at its line's start~test TESTS=lsp_locs~~src/keys/keys.c~			if (E->buf == b) core_goto(E, l, c);~			if (E->buf == b) core_goto(E, l, c * 0);
 keys: C-o to another buffer's entry beeps~test TESTS=lsp_locs~~src/keys/normal.c~	if (core_buf_enter(E, w->jump[w->jumpidx].buf)) { clearop(cap->oap); return; }~	if (w->jump[w->jumpidx].buf != B) { clearop(cap->oap); return; }
 keys: SPC m a not mapped in a C file~test TESTS=lsp_locs~~src/keys/keys.c~(strncmp(m, " m", 2) || is_ft(".c") ||~(strncmp(m, " m", 2) ||
+keys: SPC r runs nothing (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		case 'r': sql_results(e); break;¶~
+keys: :Connect is not a command (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~conn = k == 7 && !strncmp(p, "Connect", 7)~conn = 0
+keys: :Disconnect is not a command (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~"KittenPaw", "Disconnect", "Dashboard"~"KittenPaw", "Disconect", "Dashboard"
 keys: a focus change keeps Visual mode~test TESTS=keys_map~~src/keys/keys.c~		if (e->mode == MODE_INSERT || e->ks.visual || (!m~		if (e->mode == MODE_INSERT || (!m
 keys: a focus change leaves which-key's panel up~test TESTS=keys_map~~src/keys/keys.c~		nlead = tabmove = 0;¶		hint_end();~		nlead = tabmove = 0;
 specs: Focus with every focus event entering its tab page~specs~find design/specs -name '*.cfg' ! -name Focus_ok.cfg -delete~design/specs/Focus_ok.cfg~ Variant = "asked"~ Variant = "enter"

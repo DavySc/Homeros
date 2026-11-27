@@ -262,6 +262,17 @@ int  core_buf_delete(Editor *e, int nr, int force);   /* :bd */
    with no undo, and every window on it gets line (SIZE_MAX: its own line),
    clamped to the text, at column 0, with top no further down. */
 void core_buf_fill(Editor *e, Buf *b, const char *s, size_t n, size_t line);
+/* s[0, n) at the end of b, with no undo; a window on b whose cursor was
+   on its last line follows to the new last line, column 0 (Emacs's
+   compilation-scroll-output: :make's buffer, SQL's results). */
+void core_buf_append(Editor *e, Buf *b, const char *s, size_t n);
+/* The first window showing buffer nr, as its number in window order (the
+   count of core_win_goto(e, 'w', count)), 0 if none: Neovim's bufwinnr(). */
+long core_buf_shown(const Editor *e, int nr);
+/* The Visual area's bytes [*a, *z), as Neovim's getregion(): with v from
+   one end to the other, the last character whole; with V and CTRL-V the
+   whole lines with the last one's break (none after the text's end). */
+void core_visual(Editor *e, size_t *a, size_t *z);
 
 /* Windows.  :sp and CTRL-W s (vertical 0), :vs and CTRL-W v (1); size 0
    leaves it to equalalways.  The new window shows the same buffer and
