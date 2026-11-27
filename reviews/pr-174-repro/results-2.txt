@@ -1,0 +1,28 @@
+h2.par4: 300 runs, 0 failed
+  row 0 ratio min 1.52 med 1.68 max 2.24   short ms med 1.31 long ms med 2.21   >=8: 0  <8: 300
+  row 1 ratio min 2.85 med 3.48 max 4.32   short ms med 26.27 long ms med 91.86   >=8: 0  <8: 300
+  row 2 ratio min 2.92 med 4.00 max 5.60   short ms med 4.24 long ms med 17.02   >=8: 0  <8: 300
+  row 3 ratio min 3.20 med 3.96 max 4.88   short ms med 1.48 long ms med 5.88   >=8: 0  <8: 300
+  row 4 ratio min 3.47 med 3.95 max 6.18   short ms med 0.42 long ms med 1.65   >=8: 0  <8: 300
+  row 5 ratio min 2.41 med 3.98 max 5.07   short ms med 1.25 long ms med 4.94   >=8: 0  <8: 300
+h2.par8: 200 runs, 0 failed
+  row 0 ratio min 1.38 med 1.67 max 2.01   short ms med 1.32 long ms med 2.19   >=8: 0  <8: 200
+  row 1 ratio min 3.26 med 3.49 max 4.15   short ms med 26.37 long ms med 92.12   >=8: 0  <8: 200
+  row 2 ratio min 3.70 med 4.01 max 4.77   short ms med 4.26 long ms med 17.20   >=8: 0  <8: 200
+  row 3 ratio min 2.04 med 3.97 max 4.41   short ms med 1.48 long ms med 5.88   >=8: 0  <8: 200
+  row 4 ratio min 2.61 med 3.92 max 4.27   short ms med 0.42 long ms med 1.65   >=8: 0  <8: 200
+  row 5 ratio min 3.70 med 3.99 max 5.42   short ms med 1.24 long ms med 4.96   >=8: 0  <8: 200
+h2p140.par4: 200 runs, 200 failed
+  row 0 ratio min 1.21 med 1.68 max 2.58   short ms med 1.20 long ms med 1.99   >=8: 0  <8: 200
+  row 1 ratio min 3.23 med 3.50 max 4.06   short ms med 26.62 long ms med 93.04   >=8: 0  <8: 200
+  row 2 ratio min 2.30 med 4.02 max 5.89   short ms med 4.54 long ms med 18.31   >=8: 0  <8: 200
+  row 3 ratio min 2.72 med 4.00 max 5.53   short ms med 1.58 long ms med 6.30   >=8: 0  <8: 200
+  row 4 ratio min 3.26 med 3.91 max 5.23   short ms med 0.45 long ms med 1.71   >=8: 0  <8: 200
+  row 5 ratio min 9.19 med 11.75 max 13.80   short ms med 1.33 long ms med 15.67   >=8: 200  <8: 0
+h2p137.par4: 100 runs, 100 failed
+  row 0 ratio min 1.37 med 1.68 max 2.00   short ms med 1.40 long ms med 2.35   >=8: 0  <8: 100
+  row 1 ratio min 2.92 med 3.49 max 4.15   short ms med 27.42 long ms med 95.77   >=8: 0  <8: 100
+  row 2 ratio min 2.91 med 4.04 max 5.28   short ms med 4.40 long ms med 18.02   >=8: 0  <8: 100
+  row 3 ratio min 13.52 med 15.93 max 18.42   short ms med 19.37 long ms med 306.35   >=8: 100  <8: 0
+  row 4 ratio min 3.46 med 3.93 max 4.51   short ms med 0.44 long ms med 1.75   >=8: 0  <8: 100
+  row 5 ratio min 2.03 med 3.99 max 7.27   short ms med 1.29 long ms med 5.16   >=8: 0  <8: 100
