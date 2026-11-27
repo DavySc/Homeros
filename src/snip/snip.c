@@ -630,7 +630,7 @@ const char *snip_get(Editor *e, const char *q, size_t nq, int i, const char **de
 
 /* a token of the walk: kind, what it is to the walk (f), start, and its
    text without [] or "" */
-enum { NAME = 1, FROM = 2, JOIN = 4, AS = 8, TABLE = 16, TABLES = 32, OR_WORD = 64, COLUMN = 128 };
+enum { NAME = 1, FROM = 2, JOIN = 4, AS = 8, TABLE = 16, TABLES = 32, OR_WORD = 64, COLUMN = 128, SELECT = 256 };
 typedef struct { int k, f; size_t s; char b[128]; } Tok;
 static int sym(const Tok *t, char c) { return t->k == TQ_PUNCT && *t->b == c; }
 static int is_of(const Cand *c, const char *w) { return c->of != (size_t)-1 && !strcasecmp(pool.s + c->of, w); }
@@ -726,7 +726,7 @@ static int walk(const Text *t, size_t p, size_t end, const Mark_ (*u)[2], size_t
 		int c = k == TQ_WORD ? tsql_word(b, d, &wid) : 0;
 		h0->k = k, h0->s = p, h0->f = k == TQ_IDENT || k == TQ_VAR || (k == TQ_WORD && !(c & TQ_RECASE));
 		if (wid < sizeof I.seen) I.seen[wid] = 1;
-		for (int j = 0; wid && j < NW; j++) if (wid == id[j]) h0->f |= j < 4 ? FROM << j : j < 6 ? TABLES : j < 8 ? TABLES | OR_WORD : COLUMN;
+		for (int j = 0; wid && j < NW; j++) if (wid == id[j]) h0->f |= j < 4 ? FROM << j : j < 6 ? TABLES : j < 8 ? TABLES | OR_WORD : j == 8 ? COLUMN | SELECT : COLUMN;
 		if (h0->f & TABLE) h0->f |= TABLES;
 		if (k == TQ_VAR && b[1] != '@') fact(b, "", *b == '@' ? "Variable" : "Table");
 		if (list) {   /* a column list: a name after its '(' or a ',' */
@@ -734,8 +734,8 @@ static int walk(const Text *t, size_t p, size_t end, const Mark_ (*u)[2], size_t
 			if (list == 1 && (h0->f & NAME) && (sym(h1, '(') || sym(h1, ','))) fact(b, pool.s + tab, "Column");
 			continue;
 		}
-		if ((sym(h0, '.') || sym(h0, '(') || (h0->k == TQ_OP && !strcmp(b, "=") && (sym(h2, ',') || !strcasecmp(h2->b, "select")))) && NCAND(pairs) && CAND(pairs, NCAND(pairs) - 1).of == (size_t)-1 && !strcasecmp(pool.s + CAND(pairs, NCAND(pairs) - 1).w, h1->b))
-			pairs.n -= sizeof(Cand);   /* Q. or f( or SELECT y = x: no bare name */
+		if ((sym(h0, '.') || sym(h0, '(') || (h0->k == TQ_OP && !strcmp(b, "=") && (h2->f & SELECT))) && NCAND(pairs) && CAND(pairs, NCAND(pairs) - 1).of == (size_t)-1 && !strcasecmp(pool.s + CAND(pairs, NCAND(pairs) - 1).w, h1->b))
+			pairs.n -= sizeof(Cand);   /* Q. or f( or SELECT y = x: no bare name (not after a comma: SET a = 1, b = 2) */
 		if (h0->f & FROM) from = 1;
 		else if (k == TQ_WORD && !(h0->f & (NAME | JOIN | AS))) from = 0;
 		int isname = h0->f & NAME, attab = tab != (size_t)-1;

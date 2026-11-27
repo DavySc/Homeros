@@ -86,7 +86,7 @@ snip: [x] loses brackets it needs~test TESTS=snip~~src/snip/snip.c~plain = alpha
 snip: DECLARE @t TABLE (...) gives no columns~test TESTS=snip~~src/snip/snip.c~attab && ((h1->f & TABLE) || !strcasecmp~attab && ((0) || !strcasecmp
 snip: a word of a kind listed once per table~test TESTS=snip~~src/snip/snip.c~		if (last && !strcmp(last->kind~		if (0 && last && !strcmp(last->kind
 snip: after @ the @@ words with the variables~test TESTS=snip~~src/snip/snip.c~"Keyword", NULL, at || !((c & (TQ_RECASE | TQ_FUNCTION)) || (i < sizeof I.seen && I.seen[i])));~"Keyword", NULL, !((c & (TQ_RECASE | TQ_FUNCTION)) || (i < sizeof I.seen && I.seen[i])));
-snip: DELETE offers no words~test TESTS=snip~~src/snip/snip.c~j < 6 ? TABLES : j < 8 ? TABLES | OR_WORD : COLUMN;~j < 6 ? TABLES : j < 8 ? TABLES : COLUMN;
+snip: DELETE offers no words~test TESTS=snip~~src/snip/snip.c~j < 8 ? TABLES | OR_WORD : j == 8~j < 8 ? TABLES : j == 8
 snip: @@rowcount is a variable of the file~test TESTS=snip~~src/snip/snip.c~		if (k == TQ_VAR && b[1] != '@') fact~		if (k == TQ_VAR) fact
 snip: FROM a, b: b no table~test TESTS=snip~~src/snip/snip.c~ || (from && sym(h1, ','))))~ || (0 && from && sym(h1, ','))))
 snip: a table's name kept past a keyword~test TESTS=snip~~src/snip/snip.c~		if (!isname && !sym(h0, '.') && !(h0->f & (AS | TABLE)) && !sym(h0, '(')) tab = (size_t)-1;¶~
@@ -106,4 +106,5 @@ snip: a buffer without an index waits a second for it~test TESTS=snip~~src/snip/
 snip: flush keeps a pointer to its one table's name, which fact() moves~test TESTS=snip~~src/snip/snip.c~	size_t one = 0;   /* an offset: fact() moves the pool */¶	int ntab = 0;¶	for (int j = 0; j < NCAND(*refs); j++)¶		if (*CAND(*refs, j).kind == 'T') ntab++, one = CAND(*refs, j).of;~	const char *onep = NULL;¶#define one ((size_t)(onep - pool.s))¶	int ntab = 0;¶	for (int j = 0; j < NCAND(*refs); j++)¶		if (*CAND(*refs, j).kind == 'T') ntab++, onep = pool.s + CAND(*refs, j).of;
 snip: the file's own T-SQL words ranked with the rest~test TESTS=snip~~src/snip/snip.c~ || (i < sizeof I.seen && I.seen[i])));~));
 snip: a T-SQL word a bare name anywhere (NOLOCK, int, NEXT)~test TESTS=snip~~src/snip/snip.c~ && (!c || sym(h1, ',') || h1->k == TQ_OP || (h1->f & COLUMN))) {~) {
-snip: SELECT y = x: y a bare name~test TESTS=snip~~src/snip/snip.c~ || (h0->k == TQ_OP && !strcmp(b, "=") && (sym(h2, ',') || !strcasecmp(h2->b, "select")))) && NCAND(pairs)~) && NCAND(pairs)
+snip: SELECT y = x: y a bare name~test TESTS=snip~~src/snip/snip.c~ || (h0->k == TQ_OP && !strcmp(b, "=") && (h2->f & SELECT))) && NCAND(pairs)~) && NCAND(pairs)
+snip: SET a = 1, b = 2: b taken for an alias~test TESTS=snip~~src/snip/snip.c~ && (h2->f & SELECT))) && NCAND(pairs)~ && ((h2->f & SELECT) || sym(h2, ',')))) && NCAND(pairs)

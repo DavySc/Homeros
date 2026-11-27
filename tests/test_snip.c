@@ -430,10 +430,10 @@ static void complete(void)
 	/* a bare name is a column of its statement's one table (Davy: d. after
 	   join dom d showed nothing); not an alias, a variable, a function, Q
 	   of Q.x, or a name in a statement of two tables */
-	e = at("select name, x as total, count(*) cnt, isnull(y, 0) z, w tot, v = u, try_convert(int, t) from dbo.dom with (nolock)\n"
+	e = at("select name, x as total, count(*) cnt, isnull(y, 0) z, w tot, try_convert(int, t) from dbo.dom with (nolock)\n"
 	       "where kind = @k order by name offset 0 rows fetch next 5 rows only\n"
-	       "select n from app, dom\nselect * from app a join dom d on d|\n", ".");
-	CHECK(!strcmp(shown(e), "t u w x y kind name"));
+	       "select n from app, dom\nupdate dom set a = 1, b = 2\nselect v = u from dom\nselect * from app a join dom d on d|\n", ".");
+	CHECK(!strcmp(shown(e), "a b t u w x y kind name"));
 	feed(e, KEY_ESC), core_free(e);
 	/* T-SQL's words the file uses rank with the reserved ones */
 	e = at("declare @x int\nselect |\n", "in");
