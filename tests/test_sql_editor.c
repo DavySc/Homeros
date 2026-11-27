@@ -359,28 +359,45 @@ int main(void)
 	size_t cx = (size_t)(strstr(g, "xxx") - strstr(g, "\n1 ")) - 1;
 	CHECK(!core_win_goto(&e, 'j', 1) && e.buf == rb);
 	core_goto(&e, 2, cx);
-	CHECK(sql_key(&e, KEY_ENTER) == 1 && e.buf != rb && text_len(e.buf->text) == 50 && !core_close(&e, 1) && e.buf == rb);
+	CHECK(sql_key(&e, KEY_ENTER) == 1 && e.buf != rb && text_len(e.buf->text) == 50);
+	int cv = e.buf->nr, nw = nwins();   /* one Cell value buffer and window */
+	CHECK(!core_win_goto(&e, 'w', core_buf_shown(&e, rb->nr)) && e.buf == rb);
 	core_goto(&e, 2, 12);
-	CHECK(sql_key(&e, KEY_ENTER) == 1 && text_len(e.buf->text) == 4 && !core_close(&e, 1));
+	CHECK(sql_key(&e, KEY_ENTER) == 1 && e.buf->nr == cv && nwins() == nw && text_len(e.buf->text) == 4 && !core_close(&e, 1) && e.buf == rb);
 	core_goto(&e, 2, 0);
 	CHECK(sql_key(&e, KEY_ENTER) == 0);
 	core_goto(&e, 0, 5);
 	CHECK(sql_key(&e, KEY_ENTER) == 0 && !core_win_goto(&e, 'k', 1));
+	/* a new run's cells: none cut from the last run */
+	g = f5("ms/short.sql", "select N'NULL' s, null n, N'short' l\n");
+	CHECK(!core_win_goto(&e, 'j', 1));
+	core_goto(&e, 2, cx);
+	CHECK(sql_key(&e, KEY_ENTER) == 1 && text_len(e.buf->text) == 5 && !core_close(&e, 1) && !core_win_goto(&e, 'k', 1));
+	/* two sets in one reply: the second's names in their face */
+	g = f5("ms/two.sql", "select 1 a; select 2 b\n");
+	rb = e.wins->next->buf, m = strstr(g, "\xe2\x94\x82 b");
+	at = text_len(rb->text) - strlen(g) + (size_t)(m - g);
+	rb->faces(rb, at, at + 4, fc);
+	CHECK(m && fc[0] == FACE_PMENU_SEL && fc[3] == FACE_PMENU_SEL);
 	/* a wide character two cells, a control byte two (^A), in the width;
 	   Enter gives a tab back whole */
-	g = f5("ms/wide.sql", "select N'\xe6\x97\xa5\xe6\x9c\xac' w, char(1) c, N'a' + char(9) + N'b' t union all select N'ab', 'a', 'x'\n");
+	g = f5("ms/wide.sql", "select N'\xe6\x97\xa5\xe6\x9c\xac' w, char(1) c,\nN'a' + char(9) + N'b' t\nunion all select N'ab', 'a', 'x'\n");
 	CHECK(strstr(g, "\n2 \xe2\x94\x82 ab   \xe2\x94\x82 a  \xe2\x94\x82 x\n"));
 	CHECK(!core_win_goto(&e, 'j', 1));
 	core_goto(&e, 2, 24);
 	CHECK(sql_key(&e, KEY_ENTER) == 1 && text_read(e.buf->text, 0, cat, sizeof cat) == 3 && !memcmp(cat, "a\tb", 3) && !core_close(&e, 1) && !core_win_goto(&e, 'k', 1));
-	core_goto(&e, 0, 0);
-	CHECK(sql_key(&e, KEY_ENTER) == 0);   /* the query's own */
+	core_goto(&e, 2, 24);
+	CHECK(sql_key(&e, KEY_ENTER) == 0);   /* the query's own, on a line that is a row's in the results */
 	/* Postgres's notices between a set's rows wait for its end; its
 	   error makes the status line SSMS's error one */
 	g = f5("pg/n.sql", "create function pg_temp.n(i int) returns int as $$ begin raise notice 'row %', i; return i; end $$ language plpgsql;\n"
 		"select pg_temp.n(g) as v from generate_series(1, 3) g\n");
 	CHECK(strstr(g, "\n3 \xe2\x94\x82 3\n(3 rows)\n\n" MSGS "NOTICE 00000: row 1\nNOTICE 00000: row 2\nNOTICE 00000: row 3\n(SELECT 3)\n"));
 	CHECK(strstr(f5("pg/err.sql", "select nope\n"), "nope") && !strncmp(e.wins->next->buf->status, "\xe2\x9c\x97 Query completed with errors", 31));
+	rb = e.wins->next->buf, m = strstr(res, "ERROR 42703");
+	at = text_len(rb->text) - strlen(res) + (size_t)(m - res);
+	rb->faces(rb, at, at + 5, fc);
+	CHECK(m && fc[0] == FACE_DIAG_ERROR && fc[4] == FACE_DIAG_ERROR);
 	/* a message comes at once (RAISERROR WITH NOWAIT) while the batch
 	   runs, after a set's end; the status line while it runs; a set's
 	   rows show while it waits (a row past Postgres's 8 KB send buffer
@@ -402,10 +419,14 @@ int main(void)
 	put("pg/die.sql", "select g, pg_sleep(0.3 * g), case when g = 2 then pg_terminate_backend(pg_backend_pid()) end, repeat('x', 9000) from generate_series(1, 2) g\n", 0600);
 	CHECK(!core_edit_file(&e, "pg/die.sql", 0) && sql_key(&e, KEY_F5) == 1);
 	CHECK(strstr(until("57P01"), "\n(2 rows)\n\n" MSGS "FATAL 57P01: terminating connection"));
-	/* a long set: the widths from its first 500 rows, a later longer value
-	   cut, the row numbers wide enough for 7 digits */
-	g = f5("ms/long.sql", "select top 600 case when row_number() over (order by (select 1)) > 500 then N'longer' else N'v' end x from sys.all_objects a, sys.all_objects b\n");
-	CHECK(strstr(g, "\n    500 \xe2\x94\x82 v\n    501 \xe2\x94\x82 \xe2\x80\xa6\n") && strstr(g, "\n    600 \xe2\x94\x82 \xe2\x80\xa6\n(600 rows)\n"));
+	/* a long set: the widths from its first 500 rows, a later wider value
+	   whole, its row's next cell pushed right (Enter finds it), the row
+	   numbers wide enough for 7 digits */
+	g = f5("ms/long.sql", "select top 600 case when row_number() over (order by (select 1)) > 500 then N'longer' else N'v' end x, 7 y from sys.all_objects a, sys.all_objects b\n");
+	CHECK(strstr(g, "\n    500 \xe2\x94\x82 v \xe2\x94\x82 7\n    501 \xe2\x94\x82 longer \xe2\x94\x82 7\n") && strstr(g, "\n    600 \xe2\x94\x82 longer \xe2\x94\x82 7\n(600 rows)\n"));
+	CHECK(!core_win_goto(&e, 'j', 1));
+	core_goto(&e, 502, 22);
+	CHECK(sql_key(&e, KEY_ENTER) == 1 && text_read(e.buf->text, 0, cat, sizeof cat) == 1 && *cat == '7' && !core_close(&e, 1) && !core_win_goto(&e, 'k', 1));
 	/* not a SQL buffer: F5 is not ours */
 	put("x.txt", "x\n", 0600);
 	CHECK(!core_edit_file(&e, "x.txt", 0) && !sql_key(&e, KEY_F5));

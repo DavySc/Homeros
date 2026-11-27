@@ -89,7 +89,7 @@ sql: Alt+Break while logging in sends a cancel (test_sql_editor)~test TESTS=sql_
 sql: Postgres's port by default not 5432 (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~o->pg ? 5432 : 1433~o->pg ? 5433 : 1433
 sql: GO 0 runs its batch once (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~s->left <= 0)~s->left < 0)
 sql: a connection the server ended kept (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~		drop(s);¶		core_changed = 1;~		core_changed = 1;
-sql: the results modifiable (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~E->buf->nonumber = E->buf->nomodifiable = 1;~E->buf->nonumber = 1;
+sql: the results modifiable (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	*nr = E->buf->nr, E->buf->nomodifiable = 1;~	*nr = E->buf->nr;
 sql: F5 in the results is not their query's (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~Buf *qb = s ? core_buf_find(e, s->nr) : e->buf;~Buf *qb = e->buf;
 sql: a wrong port used (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (port <= 0 || port > 65535 || (p && *p))~if (0)
 sql: no pass= sends an empty password (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (!o->pg && !*o->pass && strcmp(o->user, "-"))~if (0)
@@ -160,7 +160,7 @@ sql: a waiting set's rows not shown~test TESTS=sql_editor~~src/sql/sql.c~loop_ti
 sql: SQL Server's statement end without its mark~test TESTS=sql~~src/sql/tds.c~		if (!t->quiet && str_add(&t->out, NET_END, 2)) return -1;¶~
 sql: Postgres's statement end without its mark~test TESTS=sql~~src/sql/pg.c~str_add(o, NET_END "(", 3)~str_add(o, "(", 1)
 sql: the marks' plain text keeps a statement end's line~test TESTS=sql~~src/sql/net.c~i += i + 1 < n && s[i + 1] == '\n';~;
-sql: the names' bar shorter than the rule~test TESTS=sql_editor~~src/sql/sql.c~(last < 2 && pad(s, (size_t)w - c + !last))~(!last && pad(s, (size_t)w - c + 1))
+sql: the names' bar shorter than the rule~test TESTS=sql_editor~~src/sql/sql.c~(last < 2 && pad(s, (c < (size_t)w ? (size_t)w - c : 0) + !last))~(!last && pad(s, (c < (size_t)w ? (size_t)w - c : 0) + 1))
 sql: Enter shows a cut value as cut~test TESTS=sql_editor~~src/sql/sql.c~if (lo < s->ncut && s->cut[lo].at < ls + e)~if (0)
 sql: Enter's value not unescaped~test TESTS=sql_editor~~src/sql/sql.c~v.n = net_unesc(v.s ? v.s : "", v.n);~
 sql: Enter on a row number opens a cell~test TESTS=sql_editor~~src/sql/sql.c~if (k > n || E->win->col + 4 < k) return 0;~if (k > n) return 0;
@@ -168,3 +168,11 @@ sql: Enter on the names opens a cell~test TESTS=sql_editor~~src/sql/sql.c~g && l
 sql: Enter taken in insert mode~test TESTS=sql_editor~~src/sql/sql.c~e->mode == MODE_NORMAL && !e->ks.pending~!e->ks.pending
 sql: Enter taken in a half typed command~test TESTS=sql_editor~~src/sql/sql.c~e->mode == MODE_NORMAL && !e->ks.pending~e->mode == MODE_NORMAL
 sql: Enter taken outside the results~test TESTS=sql_editor~~src/sql/sql.c~return s && s->res == e->buf->nr &&~return s &&
+sql: a value wider than its column but within the cap cut~test TESTS=sql_editor~~src/sql/sql.c~size_t c, k = fit(p, n, CAP, &c);~size_t c, k = fit(p, n, (size_t)w, &c);
+sql: a wider value's row cells taken at the column's width~test TESTS=sql_editor~~src/sql/sql.c~	while (i < g->n - 1 && e + 3 <= n && memcmp(t + e, "\xe2\x94\x82", 3)) e++;¶~
+sql: each Enter a new Cell value buffer~test TESTS=sql_editor~~src/sql/sql.c~	if (i || below(&nr)) return str_free(&v), 1;~	if (i || core_new(E, 0)) return str_free(&v), 1;
+rv2: a trickling set never laid out early~test TESTS=sql_editor~~src/sql/sql.c~	else if (!r && s->in == 1 && loop_now() - s->t1 >= WAIT * 1000000LL) r = lay(s, 1);~	else if (0) r = lay(s, 1);
+rv2: SQL Server's statement end unmarked (editor)~test TESTS=sql_editor~~src/sql/tds.c~		if (!t->quiet && str_add(&t->out, NET_END, 2)) return -1;¶~
+rv2: a blank first line~test TESTS=sql_editor~~src/sql/sql.c~return (s->at || s->o.n) && add(s, "\n", 1);~return add(s, "\n", 1);
+rv2: a new run keeps the last one's cut values~test TESTS=sql_editor~~src/sql/sql.c~s->ng = s->nsp = s->ncut = 0,~s->ng = s->nsp = 0,
+rv2: Enter on a later cell shows the first~test TESTS=sql_editor~~src/sql/sql.c~	for (int i = 0; i < g->n - 1 && over(g, i, t, n, k) <= E->win->col; i++) k = over(g, i, t, n, k) + 4;¶~

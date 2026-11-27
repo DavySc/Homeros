@@ -109,13 +109,15 @@ static int span(Sess *s, size_t a, size_t n, int f)   /* face f on the bytes [a,
 }
 
 /* a cell of w cells and its space (last: 1 the names' last cell, no
-   space; 2 a row's, nothing after it): a NULL
-   in its face; a cut value with the ... in another, kept whole for Enter */
+   space; 2 a row's, nothing after it): a NULL in its face; a value wider
+   than w but within CAP whole, pushing the row's later cells right (an id
+   that gains a digit after the first rows stays readable); a longer one cut
+   at w with the ... in another face, kept whole for Enter */
 static int cell(Sess *s, const char *p, size_t n, int w, int last)
 {
 	int null = n && (unsigned char)*p == 0xFD;
 	p += null, n -= (size_t)null;
-	size_t c, k = fit(p, n, (size_t)w, &c);
+	size_t c, k = fit(p, n, CAP, &c);
 	int cut = k < n;
 	if (cut) {
 		struct Cut *q = s->ncut % 64 ? s->cut : realloc(s->cut, (s->ncut + 64) * sizeof *q);
@@ -126,7 +128,7 @@ static int cell(Sess *s, const char *p, size_t n, int w, int last)
 	}
 	return (null && span(s, s->o.n, n, FACE_DIAG_WARN)) || add(s, p, k)
 		|| (cut && (span(s, s->o.n, 3, FACE_NUMBER) || add(s, "\xe2\x80\xa6", 3)))
-		|| (last < 2 && pad(s, (size_t)w - c + !last));
+		|| (last < 2 && pad(s, (c < (size_t)w ? (size_t)w - c : 0) + !last));
 }
 
 /* a line of cells (the names or a row, without its mark): the row number
@@ -184,7 +186,7 @@ static int lay(Sess *s, int open)
 
 /* a message line: under the Messages rule when one starts after a grid,
    an error (between NET_ERRs, which may span lines) in its face, no mark
-   shown */
+   shown (a message holds no other: the clients' text is UTF-8) */
 static int say(Sess *s, const char *p, size_t n)
 {
 	static const char h[] = "\xe2\x94\x80\xe2\x94\x80 Messages \xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\n";
@@ -192,9 +194,9 @@ static int say(Sess *s, const char *p, size_t n)
 	size_t a = s->o.n;
 	s->said = 1;
 	for (size_t i = 0, j; i < n && !r; i = j + 1) {
-		for (j = i; j < n && (unsigned char)p[j] < 0xFB; j++) ;
+		for (j = i; j < n && (unsigned char)p[j] != 0xFC; j++) ;
 		r = add(s, p + i, j - i);
-		if (!r && j < n && (unsigned char)p[j] == 0xFC) {
+		if (!r && j < n) {
 			if (s->err) r = span(s, a, s->o.n - a, FACE_DIAG_ERROR);
 			s->err = !s->err, s->bad |= 1, a = s->o.n;
 		}
@@ -306,11 +308,14 @@ static char *text(const Buf *b, size_t l, size_t *n)
 	return q;
 }
 
-/* the end of cell i of a row line t[0, n) whose cell starts at k (after its | ) */
+/* the end of cell i of a row line t[0, n) whose cell starts at k (after
+   its | ): its next |, past a value wider than the column (a | inside such
+   a value, past the column's width, is taken for the cell's end) */
 static size_t over(const struct Grid *g, int i, const char *t, size_t n, size_t k)
 {
-	size_t c;
-	return k + fit(t + k, k < n ? n - k : 0, (size_t)g->w[i] + (i < g->n - 1), &c);
+	size_t c, e = k + fit(t + k, k < n ? n - k : 0, (size_t)g->w[i], &c);
+	while (i < g->n - 1 && e + 3 <= n && memcmp(t + e, "\xe2\x94\x82", 3)) e++;
+	return i < g->n - 1 ? e : n;
 }
 
 /* The results' faces (Buf.faces): the grids' names, rule, row numbers and
@@ -337,11 +342,24 @@ static void rfaces(const Buf *b, size_t a, size_t z, unsigned char *f)
 		for (size_t j = s->sp[lo].a > a ? s->sp[lo].a : a, e = s->sp[lo].a + s->sp[lo].n; j < e && j < z; j++) f[j - a] = s->sp[lo].f;
 }
 
-/* Enter on a row's cell: its whole value, unescaped, in a split below
-   (SSMS opens a long value in a window of its own).  1 taken, 0 not a cell. */
+/* Buffer *nr (made when there is none), read-only, current: in its window
+   when shown, else in a split.  0 ok, -1 not (msg set). */
+static int below(int *nr)
+{
+	Buf *b = *nr ? core_buf_find(E, *nr) : NULL;
+	long w = b ? core_buf_shown(E, *nr) : 0;
+	if (w ? core_win_goto(E, 'w', w) : b ? core_split(E, 0, 0) || core_buf_goto(E, *nr) : core_new(E, 0)) return -1;
+	*nr = E->buf->nr, E->buf->nomodifiable = 1;
+	return 0;
+}
+
+/* Enter on a row's cell: its whole value, unescaped, in the one Cell value
+   buffer, shown in a split below as the results are (SSMS opens a long
+   value in a window of its own).  1 taken, 0 not a cell. */
 static int whole(Sess *s)
 {
 	static const char *const name = "Cell value";
+	static int nr;
 	size_t l = E->win->line, ls = core_line_start(E, l), n, k, lo = 0, hi = s->ncut;
 	struct Grid *g = grid(s, l);
 	char *t = g && l - g->line >= 2 ? text(E->buf, l, &n) : NULL;
@@ -359,7 +377,8 @@ static int whole(Sess *s)
 		while (e > k && (t[e - 1] == ' ' || t[e - 1] == '\n')) e--;
 		i = str_add(&v, t + k, e - k);
 	}
-	if (i || core_new(E, 0)) { str_free(&v); return core_msg(E, "sql: out of memory"), 1; }
+	if (i) core_msg(E, "sql: out of memory");
+	if (i || below(&nr)) return str_free(&v), 1;
 	v.n = net_unesc(v.s ? v.s : "", v.n);
 	core_buf_fill(E, E->buf, v.s ? v.s : "", v.n, 0);
 	E->buf->status = name;
@@ -587,10 +606,8 @@ static int show(Sess *s)
 	long k = 0;
 	for (size_t i = 0; i < nS && !k; i++) if (S[i]->res) k = core_buf_shown(E, S[i]->res);
 	if (k && (core_win_goto(E, 'w', k) || core_close(E, 0) || core_win_goto(E, 'w', core_buf_shown(E, s->nr)))) return -1;
-	Buf *r = s->res ? core_buf_find(E, s->res) : NULL;
-	if (r ? core_split(E, 0, 0) || core_buf_goto(E, s->res) : core_new(E, 0)) return -1;
-	s->res = E->buf->nr;
-	E->buf->nonumber = E->buf->nomodifiable = 1;
+	if (below(&s->res)) return -1;
+	E->buf->nonumber = 1;
 	E->buf->faces = rfaces, E->buf->status = s->status;
 	return core_win_goto(E, 'p', 1);
 }
