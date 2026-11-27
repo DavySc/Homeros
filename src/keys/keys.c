@@ -141,6 +141,7 @@ static const struct { const char *lhs, *desc; } maps[] = {
 	{ " p", "+project" }, { " pv", "File manager (oil)" },
 	{ " u", "+toggle" }, { " uk", "Toggle kitten on save" }, { " up", "Toggle pretty entities" },
 	{ "-", "Open parent directory (oil)" },
+	{ "gd", "vim.lsp.buf.definition()" },   /* Davy's (2026-11-27) */
 	{ "gO", "vim.lsp.buf.document_symbol()" }, { "gri", "vim.lsp.buf.implementation()" },
 	{ "grr", "vim.lsp.buf.references()" }, { "grt", "vim.lsp.buf.type_definition()" },
 	{ "cit", "org next todo state" }, { "ciT", "org prev todo state" },  /* nvim-orgmode's, buffer-local to .org */
@@ -159,8 +160,8 @@ static int usable(const char *m)
 }
 
 /* Neovim 0.12's LSP maps, C-] (its tagfunc: the first definition, as a
-   tag jump takes the first match; none or no server: the tag not found)
-   and SPC m a (clangd's switch between source and header): what the
+   tag jump takes the first match; none or no server: the tag not found),
+   gd (Davy's: vim.lsp.buf.definition()) and SPC m a (clangd's switch between source and header): what the
    server says about the cursor goes to tools_locs, a list for references
    and symbols; an error answer is none (vim.lsp.buf's get_locations()
    reads only results), but for symbols (the default handler's) */
@@ -207,7 +208,7 @@ void lsp_go(const char *method, const char *tag)
 {
 	int k = tag ? 3 : !strcmp(method, "textDocument/references") ? 1 : !strcmp(method, "textDocument/documentSymbol") ? 2 : 0;
 	if (tag) snprintf(tagname, sizeof tagname, "%s", tag);
-	if (lsp_locs(E->buf->lsp, method, core_line_start(E, E->win->line) + E->win->col, found, (void *)(what + k))) {
+	if (lsp_locs(E->buf->lsp, method, core_line_start(E, E->win->line) + E->win->col, tag != NULL, found, (void *)(what + k))) {
 		if (tag) found((void *)(what + 3), NULL, 0);
 		else core_msg(E, "vim.lsp: method \"%s\" is not supported by any server activated for this buffer", method);
 	}
@@ -347,7 +348,7 @@ static int map(Editor *e, int k)
 		normal_mappable(1);
 		undo_close(e->buf->undo);   /* a map is a command of its own: keys_feed() closes before each */
 		if (*m == 'g' || !strcmp(m, " ma")) {
-			lsp_go(m[1] == 'O' ? "textDocument/documentSymbol" : m[2] == 'r' ? "textDocument/references"
+			lsp_go(m[1] == 'O' ? "textDocument/documentSymbol" : m[1] == 'd' ? "textDocument/definition" : m[2] == 'r' ? "textDocument/references"
 			       : m[2] == 'i' ? "textDocument/implementation" : m[2] == 't' ? "textDocument/typeDefinition"
 			       : "textDocument/switchSourceHeader", NULL);
 			return 1;

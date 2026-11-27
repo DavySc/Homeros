@@ -13,7 +13,8 @@ in the server's order, as vim.lsp.tagfunc) or symbols_to_items() with
 the main file m.c loaded, as [file, line, col, text] (file relative to
 the case's directory, line and col from 1); after the random ones, a few
 places the key cannot reach (edges()).  Then the method's key from
-Neovim's defaults ("key": C-], grr, gri, grt, gO) typed at "cur" with
+Neovim's defaults ("key": C-], grr, gri, grt, gO, and Davy's gd:
+vim.lsp.buf.definition()) typed at "cur" with
 this file as the server: "req" what it was asked, "msg" what Neovim said
 last, then "list" the quickfix or location list's [file, line, col,
 text] (file relative to the current directory) and "row" the cursor in
@@ -55,7 +56,9 @@ for line in io.lines(IN) do
     -- the key, against this file as the server (it logs what it is asked),
     -- named as the core names one: its program's name
     if client then vim.lsp.buf_attach_client(buf, client)
-    else client = vim.lsp.start({ name = 'python3', cmd = { 'python3', PY, '--serve', IN, LOG }, root_dir = ROOT }) end
+    else
+      vim.keymap.set('n', 'gd', vim.lsp.buf.definition)   -- Davy's
+      client = vim.lsp.start({ name = 'python3', cmd = { 'python3', PY, '--serve', IN, LOG }, root_dir = ROOT }) end
     vim.wait(5000, function() return vim.lsp.buf_is_attached(buf, client) and vim.lsp.get_client_by_id(client).initialized end)
     if not caps then caps = vim.fn.readfile(LOG .. '.init')[1]; r.caps = caps end
     vim.api.nvim_win_set_cursor(0, {c.cur[1] + 1, c.cur[2]})
@@ -169,7 +172,7 @@ def gen_loc(r, k):
     method = {'docsym': 'textDocument/documentSymbol', 'syminfo': 'textDocument/documentSymbol'}.get(
         shape, r.choice(['textDocument/definition', 'textDocument/references', 'textDocument/implementation', 'textDocument/typeDefinition']
                         + ['textDocument/documentSymbol'] * (shape in ('null', 'empty', 'error'))))
-    key = {'textDocument/definition': '<C-]>', 'textDocument/references': 'grr', 'textDocument/implementation': 'gri',
+    key = {'textDocument/definition': r.choice(['<C-]>', 'gd']), 'textDocument/references': 'grr', 'textDocument/implementation': 'gri',
            'textDocument/typeDefinition': 'grt', 'textDocument/documentSymbol': 'gO'}[method]
     lines = files['m.c'].replace('\r\n', '\n').split('\n')
     cl = r.randrange(len(lines) - (len(lines) > 1 and lines[-1] == ''))

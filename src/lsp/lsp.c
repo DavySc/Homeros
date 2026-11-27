@@ -975,7 +975,7 @@ static void located(void *ctx, const char *m, size_t n)
 			if (u >= 0 && g >= 0) hit(str(m, u), start_of(m, g), NULL);
 		}
 		/* locations_to_items(): by URI, then position; symbols as given,
-		   and definitions (vim.lsp.tagfunc's, C-]'s) */
+		   and a tag's (vim.lsp.tagfunc's) */
 		if (!sym && w->sort && nhits > 1) qsort(hits, (size_t)nhits, sizeof *hits, hitcmp);
 		v = calloc((size_t)nhits + 1, sizeof *v);
 		nv = v ? 0 : -1;
@@ -1025,11 +1025,11 @@ static void located(void *ctx, const char *m, size_t n)
 	free(v); free(err.text); free(w->uri); free(w);
 }
 
-int lsp_locs(LspDoc *d, const char *method, size_t pos, LspLocFn fn, void *ctx)
+int lsp_locs(LspDoc *d, const char *method, size_t pos, int tag, LspLocFn fn, void *ctx)
 {
 	Want *w = d ? malloc(sizeof *w) : NULL;
 	if (!w || !(w->uri = strdup(d->uri))) { free(w); return -1; }
-	w->fn = fn; w->ctx = ctx; w->sort = strcmp(method, "textDocument/definition") != 0;
+	w->fn = fn; w->ctx = ctx; w->sort = !tag;
 	w->one = strcmp(method, "textDocument/references") != 0;
 	q.n = 0;
 	if (!strcmp(method, "textDocument/switchSourceHeader")) str_addf(&q, "{\"uri\":\"%s\"}", d->uri);

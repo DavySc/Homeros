@@ -220,7 +220,7 @@ int main(int argc, char **argv)
 			}
 			char *m = str(line, json_get(line, tk, 0, "method"));
 			done = 0;
-			CHECK(!lsp_locs(e.buf->lsp, m, 0, places, NULL));
+			CHECK(!lsp_locs(e.buf->lsp, m, 0, !strcmp(m, "textDocument/definition"), places, NULL));
 			for (int t = 0; t < 1000 && !done; t++) loop_once(10);
 			CHECK(done == 1 + (json_get(line, tk, 0, "error") >= 0));
 			if (done == 1 && strcmp(got.s, want.s) && bad++ < 5) fprintf(stderr, "case %ld (%s):\nnvim:\n%score:\n%s", k, m, want.s, got.s);

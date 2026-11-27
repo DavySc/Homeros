@@ -129,7 +129,7 @@ lsp: a symbol's deprecated tag ignored~test TESTS=lsp_locs~~src/lsp/lsp.c~dep |=
 lsp: an open file's line read with its newline~test TESTS=lsp_locs~~src/lsp/lsp.c~			len = text_line_start(d->t, h->p.l + 1) - 1 - a;~			len = text_line_start(d->t, h->p.l + 1) - a;
 lsp: a closed file's lines counted off by one~test TESTS=lsp_locs~~src/lsp/lsp.c~for (size_t k = 0; k < h->p.l && a < dn; k++)~for (size_t k = 1; k < h->p.l && a < dn; k++)
 lsp: a file:// URI's %XX not decoded~test TESTS=lsp_locs~~src/lsp/lsp.c~		if (l) { *d++ = (char)((h - hex) % 16 * 16 + (l - hex) % 16); u += 2; }~		if (l && 0) { }
-lsp: definitions sorted, not in the server's order (vim.lsp.tagfunc)~test TESTS=lsp_locs~~src/lsp/lsp.c~w->sort = strcmp(method, "textDocument/definition") != 0;~w->sort = 1;
+lsp: a tag's places sorted, not in the server's order (vim.lsp.tagfunc)~test TESTS=lsp_locs~~src/lsp/lsp.c~w->sort = !tag;~w->sort = !tag || 1;
 lsp: a Location alone taken as references~test TESTS=lsp_locs~~src/lsp/lsp.c~	w->one = strcmp(method, "textDocument/references") != 0;~	w->one = 1;
 lsp: an error answer's words without the server's name~test TESTS=lsp_locs~~src/lsp/lsp.c~		str_addf(&t, "%s: %.*s: %s", name ? name : "",~		str_addf(&t, "%.0s%.*s: %s", name ? name : "",
 lsp: a place in a file that cannot be read reads no file (undefined behaviour)~test TESTS=lsp_locs~~src/lsp/lsp.c~		} else if (dn) {~		} else if (!d) {

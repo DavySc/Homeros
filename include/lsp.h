@@ -85,11 +85,11 @@ typedef void (*LspLocFn)(void *ctx, const LspLoc *v, int n);
    references, implementation, typeDefinition; documentSymbol about the
    file; clangd's textDocument/switchSourceHeader): locations sorted by
    file and position as Neovim sorts them; symbols in the server's order,
-   their children after them; definitions in the server's order, as
+   their children after them; tag: places in the server's order, as
    vim.lsp.tagfunc takes them for C-]; references only from a list.  A
    file's lines come from its open document, else from the file (none if
    it cannot be read).  0 asked, -1 no server. */
-int lsp_locs(LspDoc *d, const char *method, size_t pos, LspLocFn fn, void *ctx);
+int lsp_locs(LspDoc *d, const char *method, size_t pos, int tag, LspLocFn fn, void *ctx);
 
 /* When something shown changes (a reply comes in, the server dies) it
    sets core_changed (core.h). */
