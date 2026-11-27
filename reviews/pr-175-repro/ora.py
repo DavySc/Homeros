@@ -86,6 +86,13 @@ def stmt(rnd):
         lambda: 'exec sp_who @loginame = default',
         lambda: 'select 1 union all select %s' % v(),
         lambda: 'use master',
+        # second pass: CASE nested, in blocks, and before a DECLARE
+        lambda: 'declare %s int = case when 1 = 1 then case when 2 = 2 then 1 else 3 end else 2 end, %s int' % (v(), v()),
+        lambda: 'begin declare %s int = case 1 when 1 then 2 end select %s end' % (v(), v()),
+        lambda: 'if 1 = 1 begin select case when %s = 1 then 1 end end else select %s' % (v(), v()),
+        lambda: 'select case when 1 = 1 then 1 end declare %s int, %s int' % (v(), v()),
+        lambda: 'begin try select case when %s = 1 then 1 else 2 end end try begin catch declare %s int, %s int end catch' % (v(), v(), v()),
+        lambda: 'declare %s int = (select case when 1 = 1 then 1 else 2 end) + case 1 when 1 then 1 end, %s int exec sp_who @loginame = %s' % (v(), v(), v()),
         lambda: 'kill %s' % v() if False else 'select %s' % v(),
     ])()
 

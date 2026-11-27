@@ -1,0 +1,196 @@
+=== p175 stale
+--- first
+DECLARE @a int = 3;
+(1 row affected)
+a
+3
+(1 row affected)
+Completion time: 23 ms
+---
+buffer now:
+declare @a int = 7
+select @a as a
+F5 again: mode NORMAL msg []
+--- second
+DECLARE @a int = 3;
+(1 row affected)
+a
+3
+(1 row affected)
+Completion time: 1 ms
+---
+--- whole file
+DECLARE @a int = 3;
+(1 row affected)
+a
+3
+(1 row affected)
+Completion time: 1 ms
+---
+=== p175 davy
+--- create
+Completion time: 26 ms
+---
+after F5 on the insert: mode CMDLINE cmd(18) [:Declare @a int = 3] msg ["ms/d.sql" 7L, 148B]
+--- after Enter
+DECLARE @a int = 3;
+(1 row affected)
+(2 rows affected)
+Completion time: 2 ms
+---
+second F5: mode NORMAL msg []
+--- second run
+DECLARE @a int = 3;
+(1 row affected)
+(2 rows affected)
+Completion time: 1 ms
+---
+--- count
+n
+4
+(1 row affected)
+Completion time: 1 ms
+---
+=== p175 lines
+--- whole file
+one
+1
+(1 row affected)
+DECLARE @a int = 5;
+(1 row affected)
+a
+5
+(1 row affected)
+Msg 8134, Level 16, State 1, Line 3
+Divide by zero error encountered.
+DECLARE @a int = 5;
+(1 row affected)
+a
+5
+(1 row affected)
+Msg 8134, Level 16, State 1, Line 3
+Divide by zero error encountered.
+DECLARE @b int = 6;
+(1 row affected)
+b	
+Msg 8134, Level 16, State 1, Line 1
+Divide by zero error encountered.
+Completion time: 29 ms
+---
+--- lines 4-5 selected
+DECLARE @a int = 5;
+(1 row affected)
+a
+5
+(1 row affected)
+Msg 8134, Level 16, State 1, Line 2
+Divide by zero error encountered.
+Completion time: 2 ms
+---
+--- the same with constants
+one
+1
+(1 row affected)
+a
+5
+(1 row affected)
+Msg 8134, Level 16, State 1, Line 3
+Divide by zero error encountered.
+Completion time: 13 ms
+---
+=== p175 edge 224
+F5: mode CMDLINE cmd(252) [:Declare @a varchar(900) = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Enter: mode NORMAL msg []
+--- run
+DECLARE @a varchar(900) = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+(1 row affected)
+l
+224
+(1 row affected)
+Completion time: 23 ms
+---
+=== p175 edge 225
+F5: mode CMDLINE cmd(11) [:Declare @a ] msg ["ms/g.sql" 2L, 274B]
+Enter: mode NORMAL msg []
+--- run
+DECLARE @a int = 1;
+(1 row affected)
+l
+1
+(1 row affected)
+Completion time: 24 ms
+---
+=== p175 edge 226
+F5: mode CMDLINE cmd(11) [:Declare @a ] msg ["ms/g.sql" 2L, 275B]
+Enter: mode NORMAL msg []
+--- run
+DECLARE @a int = 1;
+(1 row affected)
+l
+1
+(1 row affected)
+Completion time: 23 ms
+---
+=== p175 edge 227
+F5: mode CMDLINE cmd(11) [:Declare @a ] msg ["ms/g.sql" 2L, 276B]
+Enter: mode NORMAL msg []
+--- run
+DECLARE @a int = 1;
+(1 row affected)
+l
+1
+(1 row affected)
+Completion time: 22 ms
+---
+=== p175 edge 228
+F5: mode CMDLINE cmd(11) [:Declare @a ] msg ["ms/g.sql" 2L, 277B]
+Enter: mode NORMAL msg []
+--- run
+DECLARE @a int = 1;
+(1 row affected)
+l
+1
+(1 row affected)
+Completion time: 21 ms
+---
+=== p175 esc2
+--- setup
+(3 rows affected)
+Completion time: 21 ms
+---
+F5 on the delete: mode CMDLINE cmd(11) [:Declare @a ] msg ["ms/e2.sql" 6L, 118B]
+after the way out: mode NORMAL msg ["ms/e2.sql" 6L, 118B]
+after :Declare by hand: mode NORMAL msg []
+--- count (3 wanted)
+n
+3
+(1 row affected)
+Completion time: 3 ms
+---
+F5 on the delete: mode CMDLINE cmd(11) [:Declare @a ] msg []
+after the way out: mode NORMAL msg []
+after :Declare by hand: mode NORMAL msg []
+--- count (3 wanted)
+n
+3
+(1 row affected)
+Completion time: 1 ms
+---
+F5 on the delete: mode CMDLINE cmd(11) [:Declare @a ] msg []
+after the way out: mode NORMAL msg []
+after :Declare by hand: mode NORMAL msg []
+--- count (3 wanted)
+n
+3
+(1 row affected)
+Completion time: 1 ms
+---
+F5 on the delete: mode CMDLINE cmd(11) [:Declare @a ] msg []
+after the way out: mode NORMAL msg []
+after :Declare by hand: mode NORMAL msg []
+--- count (3 wanted)
+n
+3
+(1 row affected)
+Completion time: 1 ms
+---

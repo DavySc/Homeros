@@ -118,7 +118,8 @@ int main(int argc, char **argv)
 	} else if (!strcmp(sc, "case")) {
 		open("ms/k.sql", "declare @x int = case when 1 = 1 then 1 else 2 end, @y int = 5\nselect @x as x, @y as y\n");
 		keys_input(&e, KEY_F5, 0), cmd("F5 on the whole file");
-		keys("int = 7\r"), cmd("Enter"), show("run");
+		if (e.mode == MODE_CMDLINE) keys("int = 7\r"), cmd("Enter");
+		show("run");
 		open("ms/k2.sql", "declare @x int = case when 1 = 1 then 1 else 2 end\ngo\nselect @x as x\n");
 		sel(3, 1), keys_input(&e, KEY_F5, 0), cmd("F5 on line 3");
 		keys("\r"), show("run with the default");
@@ -162,6 +163,32 @@ int main(int argc, char **argv)
 		keys_input(&e, KEY_F5, 0), show("constants"); wait_ms(1000); printf("later:\n%s", results());
 		open("ms/n3.sql", "declare @a int = 5\nselect @a as a\n");
 		keys_input(&e, KEY_F5, 0), show("a file's own DECLARE with a value");
+	} else if (!strcmp(sc, "inv")) {   /* second pass: a default with a byte that is not UTF-8 (a cp1252 file) */
+		open("ms/i.sql", "declare @n varchar(20) = 'caf\xe9 \xff'\nselect @n as n, len(@n) as l\n");
+		sel(2, 1), keys_input(&e, KEY_F5, 0), cmd("F5");
+		keys("\r"), cmd("Enter"), show("run");
+	} else if (!strcmp(sc, "edge")) {   /* second pass: defaults near the command line's size; argv[2] = the string's length */
+		char s[2000], v[1000];
+		int n = argc > 2 ? atoi(argv[2]) : 200;
+		memset(v, 'x', (size_t)n), v[n] = 0;
+		snprintf(s, sizeof s, "declare @a varchar(900) = '%s'\nselect len(@a) as l\n", v);
+		open("ms/g.sql", s);
+		sel(2, 1), keys_input(&e, KEY_F5, 0), cmd("F5");
+		if (e.mode == MODE_CMDLINE && e.cmdlen < 15) keys("int = 1");
+		keys("\r"), cmd("Enter"), show("run");
+	} else if (!strcmp(sc, "esc2")) {   /* second pass: other ways out of the prompt, then :Declare by hand */
+		open("ms/e2.sql", "create table #t (x int)\ninsert #t values (1), (2), (3)\ngo\ndelete from #t where x = @a\ngo\nselect count(*) as n from #t\n");
+		sel(1, 2), keys_input(&e, KEY_F5, 0), show("setup");
+		const char *ways[] = { "\033", "\025w\r", "\010\010\010\010\010\010\010\010\010\010\010\010\010\010", "\025Declare @zz int = 1\r\033", NULL };
+		for (int i = 0; ways[i]; i++) {
+			sel(4, 1), keys_input(&e, KEY_F5, 0), cmd("F5 on the delete");
+			keys(ways[i]), cmd("after the way out");
+			keys(":Declare @a int = 2\r"), cmd("after :Declare by hand");
+			wait_ms(300);
+			keys(":Declare @a\r");
+			keys_visual(&e, 0, 0); core_goto(&e, 5, 0); keys_input(&e, KEY_ESC, 0);
+			sel(6, 1), keys_input(&e, KEY_F5, 0), show("count (3 wanted)");
+		}
 	} else return puts("scenario?"), 1;
 	return 0;
 }
