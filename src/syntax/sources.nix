@@ -42,6 +42,12 @@ pkgs.runCommandLocal "homeros-syntax-src" { } ''
   ln -s ${cmake}/parser $out/nvim/parser/cmake.so
   ln -s ${systemverilog}/parser $out/nvim/parser/systemverilog.so
   for l in rust glsl nix cmake systemverilog; do ln -s ${ts}/runtime/queries/$l $out/nvim/queries/$l; done
+  # Zig is coloured by Zig's own parser (zig.zig); Neovim's side of
+  # tests/test_syntax_zig.c is nvim-treesitter's Zig grammar and queries,
+  # and the corpus the std of the Zig release nixpkgs builds
+  ln -s ${ts.builtGrammars.zig}/parser $out/nvim/parser/zig.so
+  ln -s ${ts}/runtime/queries/zig $out/nvim/queries/zig
+  ln -s ${pkgs.zig.src}/lib/std $out/corpus/zig
   ln -s ${pkgs.ripgrep.src}/crates/printer/src $out/corpus/rust
   # glslang's test shaders (some are meant to fail to compile)
   ln -s ${pkgs.glslang.src}/Test $out/corpus/glsl

@@ -442,7 +442,7 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	size_t k, v = 0, i = 0, ls = text_line_start(w->buf->text, l), f0 = (size_t)-1;
 	unsigned char fc[256];          /* faces of bytes [f0, f0 + 256) of the line */
 	struct Syntax *syn = w->buf->syn;
-	int hasf = syn || w->buf->faces;   /* Buf.faces where there is no grammar */
+	int faced = syn || w->buf->faces;     /* Buf.faces draws in syntax_faces' place */
 	/* drawn: 1 to the line's end, 0 cut at the window's bottom, 2 cut at its
 	   right edge.  Of render-markdown's marks (draw_md): screen columns a0,
 	   a1, b1, t0; one past the window marks nothing it shows */
@@ -500,12 +500,12 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	lit_init(&it, w->buf, l);
 	while ((k = lit_next(&it, &s))) {
 		int cw = core_cellw(w, s, k, 0, v);
-		if (hasf && (f0 == (size_t)-1 || i + k > f0 + sizeof fc)) {
-			size_t z = text_line_start(w->buf->text, l + 1) - 1, b;
+		if (faced && (f0 == (size_t)-1 || i + k > f0 + sizeof fc)) {
+			size_t z = text_line_start(w->buf->text, l + 1) - 1;
 			f0 = i;
-			b = ls + f0 + sizeof fc < z ? ls + f0 + sizeof fc : z;
-			if (syn) syntax_faces(syn, ls + f0, b, fc);
-			else w->buf->faces(w->buf, ls + f0, b, fc);
+			size_t fz = ls + f0 + sizeof fc < z ? ls + f0 + sizeof fc : z;
+			if (w->buf->faces) w->buf->faces(w->buf, ls + f0, fz, fc);
+			else syntax_faces(syn, ls + f0, fz, fc);
 		}
 		if (i == md.mark) a0 = v;
 		if (i >= md.mark && a1 == (size_t)-1 && *s != ' ' && *s != '\t') a1 = v;
@@ -532,7 +532,7 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 			if (!w->wrap && d - off >= (size_t)tw) { drawn = 2; break; }
 			if (row >= w->h) { drawn = 0; break; }
 			int c = nw + (int)(w->wrap ? d % (size_t)tw : d) - (int)off;
-			unsigned char face = hasf ? fc[i - f0] : 0;
+			unsigned char face = faced ? fc[i - f0] : 0;
 			/* a double-width character whose second cell starts the area
 			   is in it (win_line()) */
 			unsigned char vis = (v >= from || (wide && v + 1 == from)) && v < to && (v < xf || v > xt) && !(flash && im) ? area : 0;

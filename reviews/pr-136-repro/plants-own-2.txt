@@ -1,0 +1,2 @@
+review 2: with no zig on PATH the newest release counts as its own, so zig fmt formats~test TESTS="syntax_zig keys_gq"~~src/syntax/syntax.c~	zig_own = !strncmp(v, "0.", 2) && r->minor == m;~	zig_own = r->minor == m;
+review 2: a Zig buffer's faces do not grow with typed text (written past their end)~fuzz FUZZERS=syntax FUZZ_SECONDS=60~~src/syntax/syntax.c~		if (pos + ndel > s->zn || zig_grow(s, s->zn - ndel + nins)) s->zn = 0;~		if (pos + ndel > s->zn) s->zn = 0;

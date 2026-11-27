@@ -144,11 +144,16 @@ int main(void)
 	   the prefix in which-key's order (maps, then groups with +), above
 	   the command line; <BS> goes up a level, <Esc> closes and runs
 	   nothing (which-key.nvim's view.lua and state.lua) */
-	feed(&e, " ");
+	feed(&e, " ");                             /* <c-d> typed fast is Vim's */
+	keys_input(&e, 4, 0);
+	CHECK(!e.ks.pending);
+	feed(&e, " g");                            /* a NUL (Ctrl-Space) ends no map */
+	keys_input(&e, 0, 0);
+	feed(&e, "\0330 ");
 	keys_draw(&e, &g);
 	CHECK(!row_has(&g, 22, "SPC"));
 	CHECK(wait_hint(&e, &g) >= 190000000LL);
-	CHECK(row_has(&g, 22, "<esc> close  <bs> back") && !row_has(&g, 23, "SPC"));
+	CHECK(row_has(&g, 22, "<esc> close  <bs> back") && !row_has(&g, 22, "scroll") && !row_has(&g, 23, "SPC"));
 	CHECK(!row_has(&g, 16, "\xe2\x9e\x9c") && !row_has(&g, 21, "\xe2\x9e\x9c"));
 	CHECK(row_has(&g, 17, "D \xe2\x9e\x9c Dashboard") && row_has(&g, 18, "e \xe2\x9e\x9c File Explorer") && row_has(&g, 19, "r \xe2\x9e\x9c SQL results") && row_has(&g, 20, ", \xe2\x9e\x9c Buffers"));
 	CHECK(row_has(&g, 17, "5 \xe2\x9e\x9c +frame") && row_has(&g, 18, "c \xe2\x9e\x9c +compile") && row_has(&g, 19, "f \xe2\x9e\x9c +find") && row_has(&g, 20, "u \xe2\x9e\x9c +toggle"));
@@ -163,7 +168,55 @@ int main(void)
 	g.crow = 21;
 	grid_clear(&g);
 	keys_draw(&e, &g);
-	CHECK(row_has(&g, 23, "<esc> close") && row_has(&g, 21, "D \xe2\x9e\x9c") && !row_has(&g, 22, "\xe2\x9e\x9c") && g.c[20 * 80].bg == FACE_NORMAL_FLOAT && g.c[19 * 80].bg != FACE_NORMAL_FLOAT);
+	CHECK(*grid_text(&g.c[23 * 80 + 19]) == '<' && row_has(&g, 23, "<esc> close  <bs> back  <c-d>/<c-u> scroll") && row_has(&g, 21, "D \xe2\x9e\x9c") && row_has(&g, 22, "e \xe2\x9e\x9c") && !row_has(&g, 20, "\xe2\x9e\x9c"));
+	CHECK(g.c[20 * 80].bg == FACE_NORMAL_FLOAT && g.c[19 * 80].bg != FACE_NORMAL_FLOAT);
+	/* <c-d> and <c-u>: half the panel's 4 rows, within its 7 lines */
+	keys_input(&e, 4, 0);
+	grid_clear(&g);
+	keys_draw(&e, &g);
+	CHECK(e.ks.pending && row_has(&g, 20, "e \xe2\x9e\x9c") && row_has(&g, 21, "r \xe2\x9e\x9c") && row_has(&g, 22, ", \xe2\x9e\x9c"));
+	keys_input(&e, 4, 0);
+	grid_clear(&g);
+	keys_draw(&e, &g);
+	CHECK(row_has(&g, 20, "r \xe2\x9e\x9c") && row_has(&g, 21, ", \xe2\x9e\x9c") && !row_has(&g, 22, "\xe2\x9e\x9c"));
+	keys_input(&e, 21, 0);
+	grid_clear(&g);
+	keys_draw(&e, &g);
+	CHECK(row_has(&g, 20, "D \xe2\x9e\x9c") && row_has(&g, 22, "r \xe2\x9e\x9c"));
+	keys_input(&e, 21, 0);
+	grid_clear(&g);
+	keys_draw(&e, &g);
+	CHECK(row_has(&g, 21, "D \xe2\x9e\x9c") && !row_has(&g, 20, "\xe2\x9e\x9c") && !row_has(&g, 23, "\xe2\x9e\x9c"));
+	keys_input(&e, 4, 0);                      /* another level: from its top */
+	feed(&e, "g");
+	grid_clear(&g);
+	keys_draw(&e, &g);
+	CHECK(row_has(&g, 21, "b \xe2\x9e\x9c Git branches"));
+	keys_input(&e, KEY_BS, 0);
+	/* one column, 15 lines in 5 rows: <c-d> 3 lines, <c-u> 2 (which-key's
+	   ceil of -5/2), each clamped as typed; the rows above stay */
+	static Grid n;
+	CHECK(!grid_resize(&n, 24, 40));
+	n.crow = 17;
+	keys_draw(&e, &n);                         /* the step and the end are the panel's as drawn */
+	keys_input(&e, 4, 0);
+	grid_clear(&n);
+	keys_draw(&e, &n);
+	CHECK(row_has(&n, 19, "r \xe2\x9e\x9c") && !row_has(&n, 18, "\xe2\x9e\x9c") && !row_has(&n, 17, "\xe2\x9e\x9c"));
+	keys_input(&e, 21, 0);
+	grid_clear(&n);
+	keys_draw(&e, &n);
+	CHECK(row_has(&n, 19, "D \xe2\x9e\x9c"));
+	for (int i = 0; i < 4; i++) keys_input(&e, 4, 0);
+	keys_input(&e, 21, 0);
+	grid_clear(&n);
+	keys_draw(&e, &n);
+	CHECK(row_has(&n, 19, "g \xe2\x9e\x9c") && !row_has(&n, 18, "\xe2\x9e\x9c"));
+	n.crow = 0;                                /* now it fits: from its top */
+	grid_clear(&n);
+	keys_draw(&e, &n);
+	CHECK(row_has(&n, 9, "D \xe2\x9e\x9c"));
+	grid_free(&n);
 	g.crow = 14;
 	grid_clear(&g);
 	keys_draw(&e, &g);
@@ -203,10 +256,10 @@ int main(void)
 	small.crow = 5;                            /* under the panel: it stays */
 	feed(&e, " ");
 	CHECK(wait_hint(&e, &small) > 0 && row_has(&small, 4, "SPC") && row_has(&small, 1, "D \xe2\x9e\x9c") && row_has(&small, 2, "e \xe2\x9e\x9c") && !row_has(&small, 5, "SPC"));
-	small.crow = 0;                            /* over it: 2 rows below, 1 row of the list */
+	small.crow = 0;                            /* over it: 2 rows below, 2 rows of the list */
 	grid_clear(&small);
 	keys_draw(&e, &small);
-	CHECK(row_has(&small, 5, "<esc> close") && row_has(&small, 3, "D \xe2\x9e\x9c") && !row_has(&small, 4, "\xe2\x9e\x9c"));
+	CHECK(row_has(&small, 5, "<esc> close") && row_has(&small, 3, "D \xe2\x9e\x9c") && row_has(&small, 4, "e \xe2\x9e\x9c") && !row_has(&small, 2, "\xe2\x9e\x9c"));
 	for (int rows = 1; rows < 4; rows++) {     /* no room: nothing, no write outside */
 		CHECK(!grid_resize(&small, rows, 30));
 		small.crow = 0;
@@ -331,9 +384,9 @@ int main(void)
 	CHECK(d.tab == d.tabs->next);
 	feed(&d, "1gt");
 	CHECK(d.tab == d.tabs);
-	feed(&d, "\x17v 5m2");                     /* the window into frame 2 */
+	feed(&d, "\x17v 5mb");                     /* the window into frame b */
 	CHECK(d.tab == d.tabs->next && d.wins->next && !d.tabs->wins->next);
-	feed(&d, " 5m9");                          /* no frame 9: nothing moves */
+	feed(&d, " 5m2 5mx");                      /* a number, a letter no frame has: nothing moves */
 	CHECK(d.tab == d.tabs->next && d.wins->next);
 	feed(&d, "\x17T");                         /* CTRL-W T: a third frame */
 	CHECK(d.tab == d.tabs->next->next && !d.wins->next && !d.tabs->next->wins->next);
@@ -349,6 +402,42 @@ int main(void)
 	CHECK(!d.tabs->next && d.tab == d.tabs);
 	feed(&d, " 50");
 	CHECK(!strcmp(d.msg, "E784: Cannot close last tab page"));
+	/* frame letters (Davy, 2026-11-25): a, then the first free one but SPC
+	   5's own f, m, n and o, none past 22; SPC 5 {letter} enters that frame,
+	   SPC 5 n {letter} changes this one's to one no other frame has */
+	char ks[24] = { 0 };
+	feed(&d, " 5na");                          /* the frame left is the first one made since */
+	CHECK(d.tab->key == 'a');
+	for (int i = 0; i < 22; i++) CHECK(!core_tabnew(&d, NULL));
+	ntab = 0;
+	for (Tab *t = d.tabs; t; t = t->next) ks[ntab++] = t->key ? t->key : '0';
+	CHECK(!strcmp(ks, "abcdeghijklpqrstuvwxyz0"));
+	feed(&d, " 5c 5m");
+	keys_input(&d, 0, 0);                      /* Ctrl-@: not the 23rd frame's, which has none */
+	CHECK(d.tab == d.tabs->next->next && d.tab->wins);
+	feed(&d, " 5nf 5na");                      /* SPC 5 f's, the first frame's: kept */
+	CHECK(d.tab->key == 'c');
+	feed(&d, " 5n0 5a");
+	CHECK(d.tab == d.tabs);
+	feed(&d, "gt 5n0 5c");                     /* 0 is not a letter: c kept */
+	CHECK(d.tab == d.tabs->next->next);
+	feed(&d, " 5ny");                          /* the 22nd frame's */
+	CHECK(d.tab->key == 'c');
+	feed(&d, " 5z 50 5c 5nz 5a 5z");           /* z's frame gone: z is free */
+	CHECK(d.tab == d.tabs->next->next && d.tab->key == 'z');
+	feed(&d, " 51");
+	CHECK(!d.tabs->next);
+	feed(&d, "ggdGiabcdefghij\x1b" "0v 5l\x1b");  /* Visual mode has no SPC 5: Space, 5l */
+	CHECK(at(&d, "abcdefghij\n", 6));
+	feed(&d, "0 5x 5{ 5n{");                   /* no frame's key: a beep, the text kept */
+	CHECK(at(&d, "abcdefghij\n", 0) && d.tab->key == 'z' && !d.ks.pending);
+	feed(&d, "2 5zx");                         /* the count before goes with the jump */
+	CHECK(at(&d, "bcdefghij\n", 0) && !d.ks.pending);
+	feed(&d, " 5");
+	CHECK(!grid_resize(&g, 24, 80) && wait_hint(&d, &g) > 0);
+	feed(&d, "zuuu");                          /* the jump closes which-key's panel */
+	CHECK(wait_hint(&d, &g) < 0);
+	grid_free(&g);
 	CHECK(!core_tabnew(&d, ""));               /* :tabnew, gt, :bd N: the frame showing N goes */
 	int nr = d.buf->nr;
 	feed(&d, "gt");
@@ -372,7 +461,9 @@ int main(void)
 	feed(&d, "yy99p\x17s50Gzb 52");
 	CHECK(d.win->top == 43 && d.win->line == 49);
 	/* SPC 5 m: the window keeps its view in the frame it moves to */
-	feed(&d, "\x17v60Gzt 5m1");
+	char mv[] = "\x17v60Gzt 5m?";
+	mv[sizeof mv - 2] = d.tabs->key;
+	feed(&d, mv);
 	CHECK(d.tab == d.tabs && d.win->line == 59 && d.wins->next);
 	/* gt and back: CTRL-W p is the frame's previous window (enter_tabpage()) */
 	Win *was = d.win;

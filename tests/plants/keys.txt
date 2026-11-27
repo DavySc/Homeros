@@ -216,11 +216,11 @@ keys: g; on an empty change list says nothing (test_keys_ex)~test TESTS=keys_ex~
 keys: drawing 'hlsearch' takes Ctrl-C from the search (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~(!re_deadline && loop_breakcheck())~(loop_breakcheck())
 keys: a mark past the last line is gone to (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	if (p->lnum >= nlines()) { core_msg(E, "E19: Mark has invalid line number"); return 0; }¶~
 keys: verible without Davy's 4-space indent (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~"verible-verilog-format", "--indentation_spaces=4", "-"~"verible-verilog-format", "-", NULL
-keys: gq sends verible the whole text, not its lines (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	if (*a || *z < len) argv[2] = lines, argv[3] = "-";~
-keys: :Format sends verible --lines (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	if (*a || *z < len) argv[2] = lines, argv[3] = "-";~	argv[2] = lines, argv[3] = "-";
+keys: gq sends verible the whole text, not its lines (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	if (a || z < len) argv[2] = lines, argv[3] = "-";~
+keys: :Format sends verible --lines (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	if (a || z < len) argv[2] = lines, argv[3] = "-";~	argv[2] = lines, argv[3] = "-";
 keys: :w formats a .sv buffer with no .slang above it (test_keys_gq)~test TESTS=keys_gq~~src/keys/keys.c~: ".slang";~: ".";
 keys: a failed verible's output is applied, emptying the buffer (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	if (id < 0 || bad) {~	if (id < 0) {
-keys: verible's edit runs to the end of the text, so the cursor below it moves onto other text (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~		while (q < len - p && q < vout.n - p && in[len - 1 - q] == vout.s[vout.n - 1 - q]) q++;¶~
+keys: verible's edit runs to the end of the text, so the cursor below it moves onto other text (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~			while (q < len - p && q < n - p && in[len - 1 - q] == res[n - 1 - q]) q++;¶~
 keys: a hanging verible is never killed (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~proc_wait(id, 1000)~proc_wait(id, 1 << 30)
 keys: verible's stderr goes into the buffer (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	if (stream == 1 && b)~	if (stream && b)
 keys: a jump past the last line is gone to, with no E19 (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	if (m.line >= (size_t)nlines()) { core_msg(E, "E19: Mark has invalid line number"); clearop(cap->oap); }¶	else setcur(~	setcur(
@@ -230,14 +230,17 @@ keys: .svh, .v and .vh buffers are not formatted with Verible (test_keys_gq)~tes
 keys: keys_visual(e, 0) leaves Visual mode on (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (!mode) { if (VIsual_active) end_visual_mode(); }~	if (!mode) { if (VIsual_active) (void)0; }
 keys: keys_visual() keeps the other end's column (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~VIsual = (Pos){ (long)line, 0, 0 };~VIsual.lnum = (long)line;
 keys: keys_visual() leaves e->ks as it was (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~(Pos){ (long)line, 0, 0 };¶	visual_sync();~(Pos){ (long)line, 0, 0 };
+keys: :w leaves a Zig file as typed (test_keys_gq, zig)~test TESTS=keys_gq~~src/keys/keys.c~	if (k == 3) buf_format(0, text_len(B->text));¶	else if (k) {~	if (k == 3) ;¶	else if (k) {
+keys: a whole-text format replaces the whole text, so a mark on a line it leaves is lost (test_keys_gq, zig)~test TESTS=keys_gq~~src/keys/ops.c~			while (p < len && p < n && in[p] == res[p]) p++;¶~¶
+keys: :Format on a Zig file that does not parse, or with no zig fmt for the zig on PATH, says nothing (test_keys_gq, zig)~test TESTS=keys_gq~~src/keys/ops.c~		if (k == 3 && r != -2 && r) core_msg(E, r == -1 ? "zig fmt: the file does not parse" : "zig fmt: none for the zig on PATH, only 0.15 to 0.17");¶~¶
 keys: gT goes forward (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~	case 'T': if (!checkclearop(oap)) goto_tabpage(-cap->count1); break;~	case 'T': if (!checkclearop(oap)) goto_tabpage(cap->count1); break;
-keys: SPC 5 m moves into the frame after n (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~core_win_to_tab(e, k - '0')~core_win_to_tab(e, k - '0' + 1)
+keys: SPC 5 m moves into the frame after the letter's (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~core_win_to_tab(e, n)~core_win_to_tab(e, n + 1)
 keys: a focus change leaves insert mode on (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		if (e->mode == MODE_INSERT || e->ks.visual ||~		if (e->ks.visual ||
 keys: which-key's panel shows after 20 ms, not its 200 (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~loop_timer(hint_show, NULL, 200)~loop_timer(hint_show, NULL, 20)
 keys: <BS> in which-key's panel closes it instead of going up a level (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		nlead = k == KEY_BS ? nlead - 1 : 0;~		nlead = 0;
 keys: <Esc> in which-key's panel keeps the count typed before Space (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		hint_end();¶		keys_feed(e, KEY_ESC, 0);~		hint_end();
 keys: a group's row (SPC g, +git) runs as a map (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		if (*maps[i].desc == '+') continue;¶~¶
-keys: which-key's panel fills rows first, not columns (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		int c = 2 + 3 + k / h * w, r = top + 1 + k % h;~		int c = 2 + 3 + k % cols * w, r = top + 1 + k / cols;
+keys: which-key's panel fills rows first, not columns (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~int c = 2 + 3 + k / h * w, r = top + 1 + k % h - wtop;~int c = 2 + 3 + k % cols * w, r = top + 1 + k / cols - wtop;
 keys: which-key's trail names a group by its key, not its name (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~			if (typed(maps[j].lhs) > i && !maps[j].lhs[i + 1]) s = maps[j].desc;~			if (typed(maps[j].lhs) > i && !maps[j].lhs[i + 1]) (void)s;
 keys: which-key's panel stays shown after it closes, so the next Space shows it at once (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~static void hint_end(void) { hint = 0; ~static void hint_end(void) { 
 keys: which-key's panel has no NormalFloat background (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~g->c[i].bg = FACE_NORMAL_FLOAT;~g->c[i].bg = 0;
@@ -247,24 +250,53 @@ keys: closing which-key's panel leaves its delay running (test_keys_map)~test TE
 keys: which-key's groups in the description's face (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~*d == '+' ? FACE_WK_GROUP : FACE_WK_DESC~FACE_WK_DESC
 keys: which-key's separator in the key's face (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~" \xe2\x9e\x9c ", FACE_WK_SEPARATOR~" \xe2\x9e\x9c ", FACE_NORMAL_FLOAT
 keys: which-key's panel lists maps this mode cannot run (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~return usable(m) && typed(m) == nlead~return typed(m) == nlead
-keys: which-key's panel is not cut to the screen (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (h > g->rows - 4) h = g->rows - 4;¶~
+keys: which-key's panel is not cut to the screen (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~int H = h + 3 < g->rows - 1 ? h + 3 : g->rows - 1,~int H = h + 3,
 keys: <BS> and <Esc> after Org's c act as which-key's, not as Vim's (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~if (nlead && lead[0] == ' ' && (k == KEY_ESC~if (nlead && (k == KEY_ESC
 keys: which-key's panel puts groups first (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~return (*maps[i].desc == '+') * 1024~return (*maps[i].desc != '+') * 1024
 keys: which-key's panel puts punctuation keys first (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~!isalnum(k) * 512~!!isalnum(k) * 512
 keys: which-key's panel puts upper case first (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~(isupper(k) != 0)~(isupper(k) == 0)
 keys: which-key's panel covers the command line (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~last = g->rows - 2;~last = g->rows - 1;
-keys: which-key's panel has no blank row under the list (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~int top = g->rows - h - 4,~int top = g->rows - h - 3,
+keys: which-key's panel has no blank row under the list (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~int H = h + 3 < g->rows - 1 ? h + 3 : g->rows - 1,~int H = h + 2 < g->rows - 1 ? h + 2 : g->rows - 1,
 keys: which-key's list may be 1 row high (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (h < 2) h = 2;¶~
 keys: which-key's panel covers the cursor (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~if (g->crow >= top - 1 && g->crow <= last)~if (0)
 keys: which-key's panel moves for a cursor on the row above it too late (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~g->crow >= top - 1 &&~g->crow >= top &&
 keys: which-key's panel moved for the cursor starts on the row under it (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~top = g->crow + 2 < g->rows - 4 ? g->crow + 2 :~top = g->crow + 1 < g->rows - 4 ? g->crow + 1 :
 keys: which-key's columns 10 wide, not its 20 (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	int n = 0, w = 20;~	int n = 0, w = 10;
-keys: which-key's panel on a screen under 4 rows writes before the grid (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (h < 1 || top < 0) return;~	if (h < 1) return;
+keys: which-key's panel on a screen under 4 rows writes before the grid (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~if (top < 0 || H < 4) return;~if (H < 4) return;
+keys: which-key's <c-d> and <c-u> do not scroll the panel (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~if (hint && (k == 4 || k == 21)) {~if (0) {
+keys: which-key's <c-u> scrolls down (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~(k == 4 ? wh + 1 : -wh) / 2;~(wh + 1) / 2;
+keys: which-key's <c-d> scrolls the whole height (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~(k == 4 ? wh + 1 : -wh) / 2;~(k == 4 ? wh : -wh);
+keys: which-key's panel scrolls past its last line (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~wtop > wmax ? wmax : wtop;~wtop;
+keys: which-key's panel scrolls above its first line (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~wtop = wtop < 0 ? 0 : wtop~wtop = wtop
+keys: which-key's next level keeps the scroll (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	wtop = 0;¶	/* after Space~	/* after Space
+keys: which-key's help does not offer <c-d>/<c-u> on a cut panel (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (cut) {~	if (0) {
+keys: which-key's list is drawn under its footer (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~if (r < top || r >= last) continue;~if (r < top || r > last) continue;
+keys: which-key's <c-u> scrolls ceil(H/2) on an odd height, not its floor (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~(k == 4 ? wh + 1 : -wh) / 2;~(k == 4 ? 1 : -1) * ((wh + 1) / 2);
+keys: which-key's scroll step from the list's height, not the panel's (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~wh = H, wmax~wh = h, wmax
+keys: which-key's scrolled-off rows are drawn above the panel (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~if (r < top || r >= last) continue;~if (r >= last) continue;
+keys: which-key's cut panel's help is centred as the short one (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~hw = cut ? 41 : 22~hw = 22
+keys: which-key's <c-d>/<c-u> are taken when no panel shows (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~if (hint && (k == 4 || k == 21)) {~if (k == 4 || k == 21) {
+keys: which-key's help offers scroll on a panel that fits (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~int cut = H < h + 3,~int cut = H <= h + 3,
+keys: which-key's panel keeps a scroll the screen no longer has (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (wtop > wmax) wtop = wmax;~	(void)wmax;
+keys: a typed NUL matches a map's end and the map is read past it (ASan) (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~while (j < nlead && m[j] && m[j] == lead[j])~while (j < nlead && m[j] == lead[j])
+keys: which-key's scroll stops one line early (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~wh = H, wmax = h + 3 - H;~wh = H, wmax = h + 2 - H;
 keys: SPC r runs nothing (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		case 'r': sql_results(e); break;¶~
 keys: :Connect is not a command (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~conn = k == 7 && !strncmp(p, "Connect", 7)~conn = 0
 keys: :Disconnect is not a command (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~"KittenPaw", "Disconnect", "Dashboard"~"KittenPaw", "Disconect", "Dashboard"
 keys: a focus change keeps Visual mode~test TESTS=keys_map~~src/keys/keys.c~		if (e->mode == MODE_INSERT || e->ks.visual || (!m~		if (e->mode == MODE_INSERT || (!m
-keys: a focus change leaves which-key's panel up~test TESTS=keys_map~~src/keys/keys.c~		nlead = tabmove = 0;¶		hint_end();~		nlead = tabmove = 0;
+keys: a focus change leaves which-key's panel up~test TESTS=keys_map~~src/keys/keys.c~		nlead = frame = 0;¶		hint_end();~		nlead = frame = 0;
 specs: Focus with every focus event entering its tab page~specs~find design/specs -name '*.cfg' ! -name Focus_ok.cfg -delete~design/specs/Focus_ok.cfg~ Variant = "asked"~ Variant = "enter"
+keys: SPC 5 n gives SPC 5 f's letter (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~k <= 'z' && !strchr("fmno", k); }~k <= 'z'; }
+keys: SPC 5 n gives a key past z (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~k >= 'a' && k <= 'z' &&~k >= 'a' &&
+keys: SPC 5 m Ctrl-@ moves into the frame with no letter (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (letter(k))¶		for (const Tab~	if (1)¶		for (const Tab
+keys: SPC 5 m with no frame's letter moves anyway (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~!n || core_win_to_tab~core_win_to_tab
+keys: SPC 5 n gives another frame's letter (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~(frame_nr(e, k) && e->tab->key != k)~0
+keys: SPC 5 n changes nothing (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	e->tab->key = (char)k;¶~
+keys: SPC 5 {letter} enters the frame after it (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		goto_tabpage(to);~		goto_tabpage(to + 1);
+keys: SPC 5 with no frame's key runs Space, 5 and the key (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (n == 3 && l[1] == '5' && l[0] == ' ') {~	if (0) {
+keys: Visual SPC 5 {motion} beeps (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~if (n == 3 && l[1] == '5'~if (l[1] == '5'
+keys: a map or SPC 5 {letter} keeps the count typed before (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	hint_end();¶	normal_mappable(1);¶}~	hint_end();¶}
+keys: a map or SPC 5 {letter} leaves which-key's panel up (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	nlead = e->ks.pending = 0;¶	hint_end();¶	normal_mappable(1);~	nlead = e->ks.pending = 0;¶	normal_mappable(1);
+keys: a map or SPC 5 {letter} leaves the keys pending (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	nlead = e->ks.pending = 0;¶	hint_end();¶	normal_mappable(1);~	nlead = 0; (void)e;¶	hint_end();¶	normal_mappable(1);
 keys: a lone operator or register is not pending (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~int normal_pending(void) { return npend > 0 || oa.op_type != OP_NOP || oa.regname; }~int normal_pending(void) { return npend > 0; }
 keys: a lone register is not pending (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~ || oa.regname; }~; }
