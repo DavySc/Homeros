@@ -30,16 +30,6 @@
 #include "core.h"
 #include "../src/git/gitint.h"
 
-/* git.c's other modules, which a watch never reaches */
-int syntax_open(void) { return 0; }
-void syntax_edit(void) {}
-void syntax_free(void) {}
-void syntax_faces(void) {}
-int syntax_md(void) { return 0; }
-int syntax_conceal(void) { return 0; }
-int syntax_foldexpr(void) { return 0; }
-const char *syntax_filetype(const char *p) { (void)p; return 0; }
-
 static char top[MAX_PATH];
 
 static void put(const char *rel, const char *s)
