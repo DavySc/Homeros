@@ -26,7 +26,8 @@ winlink() {
 	local syn=build/syntax o objs= g
 	local inc="-I$syn/src/tree-sitter/lib/include -I$syn/src/tree-sitter/lib/src"
 	mkdir -p build/win/link
-	make -s $syn/queries.c build/win/stb.o build/ghostty/windows.lib build/openssl-win/lib/libssl.a build/zig-win/libzig17.a   # stb: src/image/build.mk; thread 0's, agreed; zig: Zig's parsers (src/syntax/build.mk)
+	local zig=$(make -s --eval 'zigwin: ; @echo $(ZIG_WIN)' zigwin)   # Zig's parsers (src/syntax/build.mk); thread 0's, agreed
+	make -s $syn/queries.c build/win/stb.o build/ghostty/windows.lib build/openssl-win/lib/libssl.a $zig   # stb: src/image/build.mk; thread 0's, agreed
 	# OpenSSL (src/sql) is wincc's prerequisite: built first, or its nix build heads the dry run
 	# after those: wincc's dry run starts with what it would build first
 	# (the grammars' sources, build/win), not the compile loop
@@ -40,5 +41,5 @@ winlink() {
 	[ -f build/win/link/ts.o ] || zig cc -target x86_64-windows-gnu -O2 -c $inc $syn/src/tree-sitter/lib/src/lib.c -o build/win/link/ts.o
 	. src/tools/ghostty-win.sh; . src/sql/openssl-win.sh   # sql: package 22's, as thread 0 asked
 	zig cc -target x86_64-windows-gnu -std=c17 -D_DEFAULT_SOURCE -Wall -Wextra -Werror -Iinclude -I/usr/include/stb $inc -O1 -g \
-	  -fsanitize=undefined -fsanitize-trap=undefined -o "$1" "$2" $srcs build/win/link/queries.o build/win/link/ts.o $objs build/win/stb.o $GHOSTTY_WIN $SQL_WIN build/zig-win/*.a
+	  -fsanitize=undefined -fsanitize-trap=undefined -o "$1" "$2" $srcs build/win/link/queries.o build/win/link/ts.o $objs build/win/stb.o $GHOSTTY_WIN $SQL_WIN $zig
 }
