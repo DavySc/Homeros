@@ -30,6 +30,17 @@ static bool halt(void *arg)
   return s->quit;
 }
 
+/* The engine asks when a thread comes to a breakpoint (engine.h, pass): the breakpoint's condition, where the run was
+   sent one, says no. */
+static bool pass(void *arg, const void *engine, uint32_t thread, uint64_t addr)
+{
+  const Session *s = arg;
+  const char *text = (const char *)(s->run + s->run_count), *end = (const char *)s->run + s->run_bytes, *next;
+  for (uint32_t i = 0; i < s->run_count && text < end && (next = memchr(text, 0, (size_t)(end - text))); i += 1, text = next + 1)
+    if (s->run[i] == addr) return ask_zero(engine, thread, text);
+  return false;
+}
+
 static void *session(void *arg)
 {
   Session *s = arg;
@@ -46,9 +57,10 @@ static void *session(void *arg)
       ((char *)s->command)[n - 1] = 0;
       open = engine_open(&e, more, 0, &ev.stop.thread);
       ev.stop.kind = open ? TARGET_MODULE : TARGET_EXIT, ev.stop.addr = open && e.module_count ? e.modules[0].image.base : 0;
-      if (open) e.halt = halt, e.halt_arg = s;
+      if (open) e.halt = halt, e.halt_arg = e.pass_arg = s, e.pass = pass;
     } else if (c.kind == SESSION_RUN && open && c.count <= (n - sizeof c) / 8) {
-      ev.stop = engine_run(&e, (int)c.how, c.thread, more, c.count);
+      memcpy(s->run, more, s->run_bytes = n - sizeof c), s->run_count = c.count;   /* an ask on the way takes the command's place */
+      ev.stop = engine_run(&e, (int)c.how, c.thread, s->run, c.count);
       ev.stop.text = 0;
       if (ev.stop.kind == TARGET_EXIT) engine_close(&e), open = false;
     } else {   /* an ask; or a halt when nothing runs (the target had stopped by itself), or a command that makes no sense now */

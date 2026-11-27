@@ -50,7 +50,8 @@ no code there
 stepped
 #0 0x_ main  tour.exe tour.c:14
   if (total > 0) total += twice(total);   /* clang writes this line as two records, the call in the second */
-b <file:line or function>, c [ms], s, n, o, si, ni, bt, f <n>, t, l, r, p <expression>, x <expression>, q
+b <file:line or function> [if <expression>], c [ms], s, n, o, si, ni, bt, f <n>, t, l, r, p <expression>, x <expression>, q
+breakpoint at 0x_
 stepped
 #0 0x_ twice  tour.exe tour.c:5
 {
@@ -71,9 +72,10 @@ stepped
 #0 0x_ main  tour.exe tour.c:16
     int odd = i & 1;                 /* a block with a variable is a scope to step out of, and `break` jumps out of it */
 i = 1  (int)
-stepped
-#0 0x_ main  tour.exe tour.c:20
-  while (spin) spin -= 1;
+breakpoint
+#0 0x_ main  tour.exe tour.c:17
+    if (odd) break;
+i = 1  (int)
 halted
 #0 0x_ main  tour.exe tour.c:20
   while (spin) spin -= 1;

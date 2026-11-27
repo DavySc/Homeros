@@ -95,3 +95,13 @@ uint32_t ask_answer(const Engine *e, const void *bytes, uint32_t n, void *out, u
   }
   return 8 + shown * (uint32_t)sizeof *to;
 }
+
+bool ask_zero(const Engine *e, uint32_t thread, const char *text)
+{
+  TargetRegs regs;
+  ViewFrame frame;
+  char not[1024];
+  const char *error;
+  if (!target_regs(e->target, thread, &regs) || view_stack(e, regs, 0, &frame, 1) != 1 || (size_t)snprintf(not, sizeof not, "!(%s)", text) >= sizeof not) return false;
+  return eval(e, &frame.at, not, &error).at == 1;   /* with no value, at is 0 */
+}

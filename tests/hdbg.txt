@@ -24,6 +24,7 @@ l
 b nowhere
 si
 what
+b tour.c:17 if i == 1
 s
 o
 n
@@ -33,6 +34,7 @@ p i
 n
 p i
 o
+p i
 c 50
 bt
 c

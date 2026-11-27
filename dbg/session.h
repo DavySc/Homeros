@@ -7,8 +7,9 @@
 #include "target.h"
 
 enum { SESSION_OPEN,   /* start a program: the command line follows, with its 0 */
-       SESSION_RUN,    /* as engine_run: `how`, `thread`, and `count` breakpoint addresses follow. Sent only after the
-                          stop event of the run before has been taken. */
+       SESSION_RUN,    /* as engine_run: `how`, `thread`, and `count` breakpoint addresses follow, and then, for as many of
+                          them as the sender likes, each one's condition with its 0 (empty: none): the breakpoint stops only
+                          where that expression is not 0. Sent only after the stop event of the run before has been taken. */
        SESSION_HALT,   /* stop the target now, if it runs */
        SESSION_QUIT,   /* end the program and the thread */
        SESSION_ASK };  /* an Ask follows (ask.h), with what it brings. Answered at any time, by one event */
@@ -21,7 +22,7 @@ typedef struct { uint32_t kind, how, thread, count; } SessionCommand;
    has `gone` set: the editor joins it then. */
 typedef struct { TargetEvent stop; bool gone, asked, stale; uint32_t tag, answer; } SessionEvent;
 
-typedef struct { Queue commands, events; pthread_t thread; bool quit; uint64_t command[QUEUE_BYTES / 8], event[QUEUE_BYTES / 8]; } Session;   /* the command being read, the event being written */
+typedef struct { Queue commands, events; pthread_t thread; bool quit; uint32_t run_count, run_bytes; uint64_t command[QUEUE_BYTES / 8], event[QUEUE_BYTES / 8], run[QUEUE_BYTES / 8]; } Session;   /* the command being read, the event being written, what the run under way was sent with */
 
 /* wake: called on the engine thread after each event is pushed. */
 void session_start(Session *s, void (*wake)(void *), void *wake_arg);

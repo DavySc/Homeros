@@ -23,4 +23,7 @@ enum { ASK_MOST = 64 };   /* frames or rows in one answer, where the room allows
 /* The answer to the ask of n bytes, written to out (aligned for a uint64_t); its length, which is at most cap (as many whole
    frames, rows or addresses as fit). An ask that makes no sense, or about what is not there, has an empty answer. */
 uint32_t ask_answer(const Engine *e, const void *ask, uint32_t n, void *out, uint32_t cap);
+/* Whether the expression is 0 at the thread's innermost frame: a breakpoint's condition that says no. One that has no value
+   there is not 0 (the breakpoint stops, as gdb and Visual Studio do). */
+bool ask_zero(const Engine *e, uint32_t thread, const char *text);
 #endif

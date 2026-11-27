@@ -1,6 +1,6 @@
 /* hdbg <command line>: the debugger at a console. It is the editor's side of the engine thread (dbg/session.h, dbg/ask.h)
    with a line where the editor has a key, so it calls nothing of the engine and sees only what the two queues carry.
-     b <file:line or function>   a breakpoint there; taken away when there is one
+     b <file:line or function> [if <e>]   a breakpoint there, which stops only where the expression is not 0; taken away when there is one
      c [ms]                      run on (and stop the program after ms when it has not stopped by then)
      s  n  o  si  ni             step into a line, over a line, out of the function, into and over one instruction
      bt   f <n>                  the stack; look at its frame n
@@ -18,6 +18,7 @@ static Session s;
 static HANDLE woke;
 static union { uint64_t align[QUEUE_BYTES / 8]; SessionEvent ev; } in;   /* the event last taken, with its answer */
 static uint64_t breakpoints[64];
+static char conditions[64][128];
 static uint32_t count, thread, frame;
 static bool alive;
 
@@ -99,11 +100,11 @@ static void report(const SessionEvent *ev)
 int main(int argc, char **argv)
 {
   static const char *const runs[] = {[ENGINE_RUN] = "c", [ENGINE_STEP_INTO_INST] = "si", [ENGINE_STEP_OVER_INST] = "ni", [ENGINE_STEP_INTO_LINE] = "s", [ENGINE_STEP_OVER_LINE] = "n", [ENGINE_STEP_OUT] = "o"};
-  struct { SessionCommand c; union { char text[1000]; uint64_t at[64]; }; } m = {.c.kind = SESSION_OPEN};
+  struct { SessionCommand c; union { char text[sizeof breakpoints + sizeof conditions]; uint64_t at[64]; }; } m = {.c.kind = SESSION_OPEN};
   char line[1000];
   size_t used = 0;
   for (int i = 1; i < argc; i += 1) used += (size_t)snprintf(m.text + used, used < sizeof m.text ? sizeof m.text - used : 0, i > 1 ? " %s" : "%s", argv[i]);
-  if (used == 0 || used >= sizeof m.text) return fputs("usage: hdbg <command line>\n", stderr), 2;
+  if (used == 0 || used >= 1000) return fputs("usage: hdbg <command line>\n", stderr), 2;
   woke = CreateEventA(NULL, FALSE, FALSE, NULL);
   session_start(&s, wake, NULL);
   push(&m, sizeof m.c + used + 1);
@@ -118,16 +119,20 @@ int main(int argc, char **argv)
     while (how < sizeof runs / sizeof *runs && strcmp(line, runs[how])) how += 1;
     if (how < sizeof runs / sizeof *runs) {
       m.c = (SessionCommand){SESSION_RUN, how, thread, count}, memcpy(m.at, breakpoints, sizeof breakpoints);
-      push(&m, sizeof m.c + count * 8);
+      used = count * 8;
+      for (uint32_t i = 0; i < count; i += 1) used += (size_t)sprintf(m.text + used, "%s", conditions[i]) + 1;
+      push(&m, sizeof m.c + used);
       report(take(*more ? (uint32_t)strtoul(more, NULL, 10) : INFINITE));
     } else if (!strcmp(line, "b")) {
+      char *condition = strstr(more, " if ");
+      if (condition) *condition = 0, condition += 4;
       const uint64_t *at = ask((Ask){.kind = ASK_PLACES}, more, strlen(more) + 1, &n);
       for (uint32_t i = 0, k; i < n / 8; i += 1) {
         for (k = 0; k < count && breakpoints[k] != at[i];) k += 1;
         if (k == count && count == 64) break;   /* no room for one more */
         printf("%s 0x%llx\n", k < count ? "no breakpoint at" : "breakpoint at", (unsigned long long)at[i]);
-        if (k < count) breakpoints[k] = breakpoints[--count];
-        else breakpoints[count++] = at[i];
+        if (k < count) breakpoints[k] = breakpoints[--count], memmove(conditions[k], conditions[count], sizeof *conditions);
+        else snprintf(conditions[count], sizeof *conditions, "%s", condition ? condition : ""), breakpoints[count++] = at[i];
       }
       if (!n) puts("no code there");
     } else if (!strcmp(line, "bt")) frames(thread, 0, ~0u);
@@ -142,7 +147,7 @@ int main(int argc, char **argv)
     else if (!strcmp(line, "r")) rows(ASK_REGISTERS, "", false);
     else if (!strcmp(line, "p") || !strcmp(line, "x")) rows(ASK_TEXTS, more, *line == 'x');
     else if (!strcmp(line, "q")) break;
-    else puts("b <file:line or function>, c [ms], s, n, o, si, ni, bt, f <n>, t, l, r, p <expression>, x <expression>, q");
+    else puts("b <file:line or function> [if <expression>], c [ms], s, n, o, si, ni, bt, f <n>, t, l, r, p <expression>, x <expression>, q");
   }
   push(&(SessionCommand){.kind = SESSION_QUIT}, sizeof(SessionCommand));
   while (!take(INFINITE)->gone) {}

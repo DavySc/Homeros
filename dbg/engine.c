@@ -325,12 +325,15 @@ static TargetEvent run(Engine *e, int how, uint32_t thread, const uint64_t *brea
     ev = run_on(e, count + e->net_count, 0);
     if (ev.kind != TARGET_TRAP) return ev;
     uint32_t flags = 0;
+    bool passed = false;
     if (ev.thread == thread && ev.addr == start) start = 0;   /* the step's own first trap, not the breakpoint at the same place */
-    else for (uint32_t i = 0; i < count; i += 1) if (breakpoints[i] == ev.addr) return ev;
+    else for (uint32_t i = 0; i < count && !passed; i += 1)
+      if (breakpoints[i] == ev.addr && !(passed = e->pass && e->pass(e->pass_arg, e, ev.thread, ev.addr))) return ev;
     for (uint32_t i = 0; i < e->net_count; i += 1) if (e->net[i].addr == ev.addr) flags |= e->net[i].flags;
     /* another thread in the net, or this one at another depth: over the trap, alone, and on */
     bool reached = ev.thread == thread && target_regs(e->target, thread, &regs) && (flags & IGNORE_SP || regs.gp[4] == depth);
-    if ((!reached || flags & STEP_AFTER) && (ev = step_one(e, ev.thread)).kind != TARGET_STEP) return ev;
+    /* over a breakpoint passed, too, unless the step ends on it */
+    if ((!reached || flags & STEP_AFTER || (passed && !(flags & END))) && (ev = step_one(e, ev.thread)).kind != TARGET_STEP) return ev;
     if (!reached) continue;
     if (flags & SAVE_AFTER && target_regs(e->target, thread, &regs)) depth = regs.gp[4];
     if (flags & HELPER) {   /* to the function that called it */

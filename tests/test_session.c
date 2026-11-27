@@ -33,7 +33,7 @@ Target *target_open(const char *command_line, uint32_t pid, TargetEvent *first)
 void target_resume(Target *t, const uint64_t *traps, uint32_t count, uint32_t step_thread)
 {
   own(t, false);
-  t->running = true, t->trap = count ? traps[0] : 0, t->step = step_thread, t->waits = 0;
+  t->running = true, t->trap = count ? traps[count - 1] : 0, t->step = step_thread, t->waits = 0;
 }
 bool target_wait(Target *t, uint32_t ms, TargetEvent *e)
 {
@@ -61,6 +61,9 @@ uint32_t ask_answer(const Engine *e, const void *ask, uint32_t n, void *out, uin
   if (more == 5 && !memcmp(out, "full", 5)) memset(out, 'f', more = cap);   /* all the room there is */
   return more;
 }
+/* A made-up condition: "two" says no twice, then yes; any other text says yes. */
+static uint32_t conditions;
+bool ask_zero(const Engine *e, uint32_t thread, const char *text) { return own(e->target, false), thread == 1 && !strcmp(text, "two") && (conditions += 1) % 3 != 0; }
 
 static Session s;
 static int fd;
@@ -128,8 +131,17 @@ int main(void)
     if (!take(&ev, 5000) || !ev.asked || ev.stale || ev.answer < QUEUE_BYTES - 16 - sizeof ev || strspn(answered, "f") < ev.answer) FAIL("a full answer has %u bytes", ev.answer);
     asks += 4;
     if (what < 6) {   /* to the breakpoint */
-      send(SESSION_RUN, 0x401000 + what, 0);
-      if (!take(&ev, 5000) || ev.stop.kind != TARGET_TRAP || ev.stop.addr != 0x401000 + what) FAIL("no stop on the breakpoint");
+      /* an ask on the way is answered, and the run's breakpoints are still the run's when the trap comes */
+      SessionEvent other;
+      send(SESSION_RUN, 0x401000 + what, 0), usleep(what * 60), ask(round, "mid");
+      if (!take(&ev, 5000) || !take(&other, 5000)) FAIL("no stop on the breakpoint, or no answer");
+      if (ev.asked) { SessionEvent swap = ev; ev = other, other = swap; }
+      if (ev.stop.kind != TARGET_TRAP || ev.stop.addr != 0x401000 + what || !other.asked || other.tag != round) FAIL("no stop on the breakpoint after an ask during the run (event %d at %llx)", ev.stop.kind, (unsigned long long)ev.stop.addr);
+      asks += 1;
+      /* two breakpoints, the first with no condition: the thread passes the second twice, where its condition says no */
+      struct { SessionCommand c; uint64_t at[2]; char text[8]; } m = {{SESSION_RUN, ENGINE_RUN, 1, 2}, {0x403000, 0x401000 + what}, "\0two"};
+      if (!queue_push(&s.commands, &m, sizeof m.c + 16 + 5, false)) abort();
+      if (!take(&ev, 5000) || ev.stop.kind != TARGET_TRAP || ev.stop.addr != 0x401000 + what || conditions != 3 * (trapped + 1)) FAIL("a breakpoint with a condition stopped after %u looks at it, of %u", conditions, 3 * (trapped + 1));
       trapped += 1;
     } else if (what < 11) {   /* a halt races the breakpoint: one stop, whichever */
       /* and an ask races both: answered as stale before the stop, or with an answer after it */

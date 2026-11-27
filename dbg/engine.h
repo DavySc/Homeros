@@ -26,6 +26,9 @@ typedef struct {
   /* asked while the target runs, between the waits for it: true to stop it now (the engine thread looks at its command queue). Null: never. */
   bool (*halt)(void *arg);
   void *halt_arg;
+  /* asked when a thread comes to a breakpoint: true to let it pass (the breakpoint's condition says no). Null: none passes. */
+  bool (*pass)(void *arg, const void *engine, uint32_t thread, uint64_t addr);
+  void *pass_arg;
   uint32_t module_count, module_cap, thread_count, thread_cap, net_count, net_cap, trap_cap, range_cap, code_cap;
 } Engine;
 
