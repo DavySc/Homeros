@@ -585,14 +585,24 @@ static Parse parse(const Engine *e, const EvalFrame *frame, const char *text)
   return P;
 }
 
+static EvalValue whole_text(Parse *P, EvalValue v, const char **error)
+{
+  eat(P, "");
+  if (*P->p) fail(P, "what follows is not understood");
+  *error = P->error;
+  return P->error ? (EvalValue){0} : v;
+}
+
 EvalValue eval(const Engine *e, const EvalFrame *frame, const char *text, const char **error)
 {
   Parse P = parse(e, frame, text);
-  EvalValue v = ternary(&P);
-  eat(&P, "");
-  if (*P.p) fail(&P, "what follows is not understood");
-  *error = P.error;
-  return P.error ? (EvalValue){0} : v;
+  return whole_text(&P, ternary(&P), error);
+}
+
+EvalValue eval_as(const Engine *e, const EvalFrame *frame, const char *text, EvalType type, const char **error)
+{
+  Parse P = parse(e, frame, text);
+  return whole_text(&P, convert(&P, load(&P, ternary(&P)), type), error);
 }
 
 EvalValue eval_load(const Engine *e, const EvalFrame *frame, EvalValue v, const char **error)

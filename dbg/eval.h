@@ -24,6 +24,8 @@ typedef struct { int kind; EvalType type; uint64_t at; } EvalValue;
 typedef struct { TargetRegs regs; bool called; uint32_t inlined; } EvalFrame;
 /* error: where to put why the kind is EVAL_NONE (null when it is not): a text that lives for ever. */
 EvalValue eval(const Engine *e, const EvalFrame *frame, const char *text, const char **error);
+/* The text's value as the type, by C's conversions: what an assignment to a place of that type stores. */
+EvalValue eval_as(const Engine *e, const EvalFrame *frame, const char *text, EvalType type, const char **error);
 enum { EVAL_NOTHING, EVAL_INT, EVAL_REAL, EVAL_ADDRESS, EVAL_REFERENCE, EVAL_ROW, EVAL_RECORD };
 /* What a type is once its names and modifiers are taken off. to: what an address or a reference leads to, a row's element,
    a record's members (idx: its RdiUdt), a bit field's whole number. count: not 0 for a bit field: so many bits from bit `first`.

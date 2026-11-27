@@ -49,7 +49,7 @@ uint32_t ask_answer(const Engine *e, const void *bytes, uint32_t n, void *out, u
     return used;
   }
   if (ask.kind == ASK_THREADS) return 4 * target_threads(e->target, out, cap / 4);
-  if (ask.kind > ASK_ROWS || !target_regs(e->target, ask.thread, &regs)) return 0;
+  if (ask.kind > ASK_MEMORY || !target_regs(e->target, ask.thread, &regs)) return 0;
 
   if (ask.kind == ASK_STACK) {
     AskFrame *to = out;
@@ -65,6 +65,26 @@ uint32_t ask_answer(const Engine *e, const void *bytes, uint32_t n, void *out, u
       tail(to[i].file, sizeof to[i].file, path, len < sizeof path ? len : sizeof path);
     }
     return count * (uint32_t)sizeof *to;
+  }
+
+  if (ask.kind == ASK_SET) {
+    const char *end = (const char *)bytes + n, *value = memchr(more, 0, (size_t)(end - more)), *error;
+    if (!value || (value += 1, !memchr(value, 0, (size_t)(end - value))) || !cap || view_stack(e, regs, ask.frame, frames, 1) != 1) return 0;
+    EvalValue to = eval(e, &frames->at, more, &error), v = eval_as(e, &frames->at, value, to.type, &error);
+    EvalShape s = eval_shape(to.type);
+    return to.kind == EVAL_MEMORY && !s.count && v.kind && target_write(e->target, to.at, &v.at, s.size);
+  }
+
+  if (ask.kind == ASK_MEMORY) {
+    const char *error;
+    if (!memchr(more, 0, n - sizeof ask) || cap < 8 || view_stack(e, regs, ask.frame, frames, 1) != 1) return 0;
+    EvalValue v = eval_load(e, &frames->at, eval(e, &frames->at, more, &error), &error);
+    uint64_t from = v.at + ask.first;
+    if (v.kind != EVAL_VALUE) return 0;
+    memcpy(out, &from, 8), used = 8, cap = ask.most < cap - 8 ? ask.most + 8 : cap;
+    /* page by page: a read that crosses into a page that is not there gives nothing of the one that is */
+    for (uint32_t part; used < cap && (part = 4096 - (uint32_t)((from + used - 8) % 4096), part = part < cap - used ? part : cap - used, target_read(e->target, from + used - 8, (char *)out + used, part));) used += part;
+    return used;
   }
 
   /* rows: of the frame's own table of expressions, of its variables, or of its registers */

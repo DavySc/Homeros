@@ -1161,3 +1161,19 @@ front | dbg/ask.c | not, &error).at == 1; | not, &error).at == 0;
 front | cmd/hdbg.c | if (condition) *condition = 0, condition += 4; | if (condition) *condition = 0, condition = 0;
 front | dbg/engine.c | (passed && !(flags & END)) | (0)
 front | dbg/engine.c | (passed && !(flags & END)) | (passed && (flags & END))
+# writing a value (ASK_SET in dbg/ask.c, eval_as; tests/zoo_check.c writes every number and address the zoo shows in memory, tests/hdbg.txt)
+eval | dbg/ask.c | return to.kind == EVAL_MEMORY && !s.count && v.kind && | return to.kind == EVAL_MEMORY && v.kind &&
+eval | dbg/ask.c | target_write(e->target, to.at, &v.at, s.size); | target_write(e->target, to.at, &v.at, 8);
+eval | dbg/ask.c | v = eval_as(e, &frames->at, value, to.type, &error); | v = eval_as(e, &frames->at, more, to.type, &error);
+front | dbg/ask.c | return to.kind == EVAL_MEMORY && !s.count && v.kind && | return to.kind == EVAL_MEMORY && !s.count &&
+front | dbg/ask.c | return to.kind == EVAL_MEMORY && !s.count && v.kind && | return to.kind && !s.count && v.kind &&
+front | dbg/eval.c | return whole_text(&P, convert(&P, load(&P, ternary(&P)), type), error); | return whole_text(&P, convert(&P, load(&P, ternary(&P)), (EvalType){NULL, S32, 0}), error);
+front | cmd/hdbg.c | .kind = ASK_SET, .thread = thread, .frame = frame} | .kind = ASK_SET, .thread = thread, .frame = frame + 1}
+front | cmd/hdbg.c | if (*more && strtoul(more, NULL, 10) < n / 4) thread | if (*more) thread
+# memory (ASK_MEMORY in dbg/ask.c; tests/zoo_check.c reads around everything the zoo shows in memory, tests/hdbg.txt)
+eval | dbg/ask.c | uint64_t from = v.at + ask.first; | uint64_t from = v.at;
+eval | dbg/ask.c | part = 4096 - (uint32_t)((from + used - 8) % 4096), | part = 4096,
+eval | dbg/ask.c | cap = ask.most < cap - 8 ? ask.most + 8 : cap; | cap = ask.most + 8;
+eval | dbg/ask.c | (char *)out + used, part));) used += part; | (char *)out + used, part));) used += 1;
+front | dbg/ask.c | if (v.kind != EVAL_VALUE) return 0; | 
+front | cmd/hdbg.c | if (i % 16 == 8) printf( | if (i % 16 == 0) printf(

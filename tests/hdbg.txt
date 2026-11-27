@@ -8,6 +8,8 @@ b main
 c
 bt
 t
+t 5
+t 0
 f 1
 p pair.a
 f 0
@@ -35,6 +37,17 @@ n
 p i
 o
 p i
+m &spin
+m 0
+m pair
+w total = total + 100
+p total
+w pair.c = total / 8
+w pair.b = pair.b + 1
+p pair
+w &total = 1
+w pair = 1
+w nothing = 1
 c 50
 bt
 c

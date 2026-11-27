@@ -4,8 +4,10 @@
      c [ms]                      run on (and stop the program after ms when it has not stopped by then)
      s  n  o  si  ni             step into a line, over a line, out of the function, into and over one instruction
      bt   f <n>                  the stack; look at its frame n
-     t                           the threads and where each is
+     t [n]                       the threads and where each is; look at the one n lines down the list (and step that one)
      l   r   p <e>   x <e>       the frame's variables, its registers, an expression, an expression with its parts
+     m <e>                       64 bytes of the program's memory where the expression points
+     w <place> = <e>             write the expression's value to a variable (or a member, an element, what a pointer points at)
      q                           end the program */
 #include "../dbg/ask.h"
 #include "../dbg/session.h"
@@ -141,13 +143,29 @@ int main(int argc, char **argv)
       static uint32_t ids[QUEUE_BYTES / 4];   /* a copy: the frame asked for below takes the answer's place */
       const void *answer = ask((Ask){.kind = ASK_THREADS}, "", 0, &n);
       memcpy(ids, answer, n);
+      if (*more && strtoul(more, NULL, 10) < n / 4) thread = ids[strtoul(more, NULL, 10)], frame = 0;
       for (uint32_t i = 0; i < n / 4; i += 1) printf("%c0x%x ", ids[i] == thread ? '*' : ' ', (unsigned)ids[i]), frames(ids[i], 0, 1);
     }
     else if (!strcmp(line, "l")) rows(ASK_LOCALS, "", false);
     else if (!strcmp(line, "r")) rows(ASK_REGISTERS, "", false);
     else if (!strcmp(line, "p") || !strcmp(line, "x")) rows(ASK_TEXTS, more, *line == 'x');
+    else if (!strcmp(line, "m")) {
+      const unsigned char *bytes = ask((Ask){.kind = ASK_MEMORY, .thread = thread, .frame = frame, .most = 64}, more, strlen(more) + 1, &n);
+      uint64_t at = 0;
+      if (n) memcpy(&at, bytes, 8);
+      for (uint32_t i = 8; i < n; i += 1) {
+        if (i % 16 == 8) printf("%s0x%llx:", i > 8 ? "\n" : "", (unsigned long long)(at + i - 8));
+        printf(" %02x", bytes[i]);
+      }
+      puts(n > 8 ? "" : "nothing to read there");
+    }
+    else if (!strcmp(line, "w")) {
+      char *value = strstr(more, " = ");
+      if (value) *value = 0, memmove(value + 1, value + 3, strlen(value + 3) + 1), ask((Ask){.kind = ASK_SET, .thread = thread, .frame = frame}, more, strlen(more) + strlen(value + 1) + 2, &n);
+      puts(value && n ? "written" : "not written");
+    }
     else if (!strcmp(line, "q")) break;
-    else puts("b <file:line or function> [if <expression>], c [ms], s, n, o, si, ni, bt, f <n>, t, l, r, p <expression>, x <expression>, q");
+    else puts("b <file:line or function> [if <expression>], c [ms], s, n, o, si, ni, bt, f <n>, t [n], l, r, p <expression>, x <expression>, m <expression>, w <place> = <expression>, q");
   }
   push(&(SessionCommand){.kind = SESSION_QUIT}, sizeof(SessionCommand));
   while (!take(INFINITE)->gone) {}

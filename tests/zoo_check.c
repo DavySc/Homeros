@@ -142,7 +142,12 @@ static int table(const Engine *e, const EvalFrame *r, View *view, ViewRow *rows,
     if (which < total && others(rows, total, which) != rest) FAIL("opening or closing row %llu (%s) changed other rows than those below it", (unsigned long long)which, rows[which].text);
   }
   before[0] = t.gone || total > ROWS ? 0 : where, before[1] = 0;
-  for (uint64_t i = 0; i < shown; i += 1) before[1] = digest(before[1], rows[i].text);
+  for (uint64_t i = 0; i < shown; i += 1) {
+    const char *why;
+    before[1] = digest(before[1], rows[i].text);
+    /* a row opened just now where it has no value (a pointer not yet set): its rows come when it has one */
+    if (is_open(view, rows[i].parent, rows[i].child) && !eval(e, r, rows[i].text, &why).kind) before[0] = 0;
+  }
   return 0;
 }
 
@@ -211,7 +216,7 @@ int main(int argc, char **argv)
 {
   const char *dropped = argc > 8 ? argv[8] : "", *other = argc > 9 ? argv[9] : "";
   Engine e;
-  uint32_t thread, xs = 0, shown = 0, in_memory = 0, in_register = 0, by_value = 0, missing = 0;
+  uint32_t thread, xs = 0, shown = 0, in_memory = 0, in_register = 0, by_value = 0, missing = 0, written = 0, locked = 0, bytes = 0, cut = 0;
   static View view;
   ViewRow *rows = malloc(ROWS * sizeof *rows);
   uint64_t seed = argc > 7 ? strtoull(argv[7], NULL, 10) : 1, looked[2] = {0}, before[2] = {0};
@@ -309,10 +314,45 @@ int main(int argc, char **argv)
     snprintf(as, sizeof as, "(%s)(%s)", addr ? "double" : "unsigned long long", text);
     EvalValue is = addr > 4 ? v : eval(&e, &at, as, &why);
     if (addr < 2 && (is.kind != EVAL_VALUE || is.at != value)) FAIL("%s (at +0x%llx): kind %d, %llx (%s), the program says %llx", as, voff, is.kind, (unsigned long long)is.at, why ? why : "no error", (unsigned long long)value);
+    /* the program's bytes around what is in memory, asked for (up to 9000 from up to 9000 before it): each is the byte there, and they end only where no byte can be read */
+    if (v.kind == EVAL_MEMORY && !eval_shape(v.type).count) {
+      struct { Ask a; char text[600]; } mem = {.a = {.kind = ASK_MEMORY, .thread = ev.thread, .frame = 1, .most = random_below(&seed, 9000), .first = (uint64_t)0 - random_below(&seed, 9000)}};
+      static uint64_t answer[2 + 9000 / 8];
+      const unsigned char *got = (const unsigned char *)(answer + 1);
+      unsigned char is;
+      uint32_t n = ask_answer(&e, &mem, (uint32_t)sizeof mem.a + (uint32_t)snprintf(mem.text, sizeof mem.text, "&(%s)", text) + 1, answer, sizeof answer);
+      if (n < 8 || n - 8 > mem.a.most || answer[0] != v.at + mem.a.first) FAIL("%s (at +0x%llx): asked for %u bytes around it, the answer has %u and begins at %llx", text, voff, mem.a.most, n, (unsigned long long)answer[0]);
+      for (uint32_t i = 0; i < n - 8; i += 1) if (!target_read(e.target, answer[0] + i, &is, 1) || is != got[i]) FAIL("%s (at +0x%llx): byte %u of the memory around it is another", text, voff, i);
+      if (n - 8 < mem.a.most && target_read(e.target, answer[0] + n - 8, &is, 1)) FAIL("%s (at +0x%llx): the memory around it ends after %u bytes where there is more", text, voff, n - 8);
+      bytes += n - 8, cut += n - 8 < mem.a.most;
+    }
+    /* a number or an address in memory is written through an ask as C assigns (0 where it is not 0, else 1): that is there after it, and the 8 bytes on either side are as before */
+    EvalShape shape = eval_shape(v.type);
+    if (v.kind == EVAL_MEMORY && (shape.form == EVAL_INT || shape.form == EVAL_REAL || shape.form == EVAL_ADDRESS)) {
+      struct { Ask a; char text[600]; } set = {.a = {.kind = ASK_SET, .thread = ev.thread, .frame = 1}};
+      unsigned char before[24], after[24], answer[8];
+      uint32_t len = (uint32_t)snprintf(set.text, sizeof set.text, "%s%c(%s) == 0", text, 0, text) + 1;
+      EvalValue more = eval_as(&e, &at, set.text + strlen(text) + 1, v.type, &why);
+      if (len > sizeof set.text || !more.kind || !target_read(e.target, v.at - 8, before, shape.size + 16)) FAIL("%s (at +0x%llx): nothing to write there", text, voff);
+      bool done = ask_answer(&e, &set, (uint32_t)sizeof set.a + len, answer, sizeof answer) == 1;
+      if (shape.count) {   /* a bit field is not written (its neighbours share its bytes) */
+        if (done) FAIL("%s (at +0x%llx): a bit field was written", text, voff);
+        goto counted;
+      }
+      /* not written only where the program's memory takes no write (a string of the read-only data) */
+      if (!done && !target_write(e.target, v.at, before + 8, shape.size) && ++locked) goto counted;
+      if (!done || !target_read(e.target, v.at - 8, after, shape.size + 16)) FAIL("%s (at +0x%llx) is not written", text, voff);
+      if (memcmp(after, before, 8) || memcmp(after + 8, &more.at, shape.size) || memcmp(after + 8 + shape.size, before + 8 + shape.size, 8)) FAIL("%s (at +0x%llx): written otherwise than as 0 or 1 in its %u bytes", text, voff, shape.size);
+      if (!target_write(e.target, v.at, before + 8, shape.size)) FAIL("%s is not put back", text);
+      written += 1;
+    }
+  counted:
     shown += 1, by_value += addr < 2, in_memory += v.kind == EVAL_MEMORY, in_register += v.kind == EVAL_REGISTER;
   }
   engine_close(&e);
   if (argc < 7 || shown + missing != (uint32_t)atoi(argv[2]) || shown < (uint32_t)atoi(argv[3]) || in_register < (uint32_t)atoi(argv[4]) || looked[0] < strtoull(argv[5], NULL, 10) || xs < (uint32_t)atoi(argv[6])) FAIL("%u frames with their own x; %u texts shown, only %u right, %u variables in a register, %llu rows looked at", xs, shown + missing, shown, in_register, (unsigned long long)looked[0]);
-  printf("zoo_check: %u names and expressions are what the program says (%u by value; %u in memory, %u variables in a register; %u frames of a stack with their own x); %u have a variable without a place there; %llu rows of the tables looked at, the deepest %llu below its variable\n", shown, by_value, in_memory, in_register, xs, missing, (unsigned long long)looked[0], (unsigned long long)looked[1]);
+  if (!written || !bytes) FAIL("nothing was written, or no memory read");
+  printf("zoo_check: %u bytes of memory read (%u reads ended where the memory does); %u written and put back, %u in memory that takes no write; ", bytes, cut, written, locked);
+  printf("%u names and expressions are what the program says (%u by value; %u in memory, %u variables in a register; %u frames of a stack with their own x); %u have a variable without a place there; %llu rows of the tables looked at, the deepest %llu below its variable\n", shown, by_value, in_memory, in_register, xs, missing, (unsigned long long)looked[0], (unsigned long long)looked[1]);
   return 0;
 }

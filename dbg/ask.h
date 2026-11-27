@@ -9,6 +9,10 @@
 enum { ASK_STACK,    /* the frames of `thread` from number `first` on, at most `most`. Answer: an AskFrame each. */
        ASK_ROWS,     /* a table at frame `frame` of `thread`: its rows from `first`, at most `most`. A View follows (the open rows), then
                         for `roots` ASK_TEXTS the expressions, each with its 0. Answer: the number of all rows (8 bytes), then an AskRow each. */
+       ASK_SET,      /* C's assignment at frame `frame` of `thread`: two texts follow, each with its 0: the place (a number or an address in
+                        memory; not a bit field) and the value. Answer: one byte when it is written, none when not. */
+       ASK_MEMORY,   /* the program's bytes where an expression at frame `frame` of `thread` points (its text follows, with its 0): `most`
+                        of them from byte `first` on. Answer: the address of the first (8 bytes), then the bytes up to the first that cannot be read. */
        ASK_THREADS,  /* the program's threads. Answer: their ids, 4 bytes each (as many as a message holds). */
        ASK_PLACES }; /* where code is: the text follows, with its 0: `file:line` (the file by the end of its path) or a function's
                         name. Answer: its addresses, 8 bytes each (a line's code can be in several places). */

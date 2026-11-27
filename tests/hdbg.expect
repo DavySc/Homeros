@@ -19,6 +19,10 @@ breakpoint
 #1 0x_ main  tour.exe tour.c:12
 *0x_ #0 0x_ twice  tour.exe tour.c:5
 {
+*0x_ #0 0x_ twice  tour.exe tour.c:5
+{
+*0x_ #0 0x_ twice  tour.exe tour.c:5
+{
 #1 0x_ main  tour.exe tour.c:12
   int total = twice(pair.a);
 pair.a = 1  (int)
@@ -50,7 +54,7 @@ no code there
 stepped
 #0 0x_ main  tour.exe tour.c:14
   if (total > 0) total += twice(total);   /* clang writes this line as two records, the call in the second */
-b <file:line or function> [if <expression>], c [ms], s, n, o, si, ni, bt, f <n>, t, l, r, p <expression>, x <expression>, q
+b <file:line or function> [if <expression>], c [ms], s, n, o, si, ni, bt, f <n>, t [n], l, r, p <expression>, x <expression>, m <expression>, w <place> = <expression>, q
 breakpoint at 0x_
 stepped
 #0 0x_ twice  tour.exe tour.c:5
@@ -76,8 +80,22 @@ breakpoint
 #0 0x_ main  tour.exe tour.c:17
     if (odd) break;
 i = 1  (int)
+0x_: 00 ca 9a 3b 00 00 00 00 00 00 00 00 00 00 00 00
+0x_: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+0x_: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+0x_: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+nothing to read there
+nothing to read there
+written
+total = 118  (int)
+written
+written
+pair = {1, 'c' (99), 14.0}  (Pair)
+not written
+not written
+not written
 halted
 #0 0x_ main  tour.exe tour.c:20
   while (spin) spin -= 1;
 #0 0x_ main  tour.exe tour.c:20
-ended with 0x12
+ended with 0x76
