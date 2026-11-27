@@ -240,3 +240,4 @@ core: :tabnew {file} after :bd keeps column 0 on a line of blanks~test TESTS=cor
 core: a cursor inside a character takes the next one's screen column~test TESTS=core_screens~~src/core/core.c~		if (i + k > col) break;~		if (i >= col) break;
 core: tab ids reused, so a third frame takes a closed one's window id (test_frames_main)~test TESTS=frames_main~~src/core/win.c~	t->id = tab_ids++;~	t->id = tab_ids;
 core: a buffer without a grammar ignores its Buf.faces (test_core_contract)~test TESTS=core_contract~~src/core/draw.c~	int hasf = syn || w->buf->faces;~	int hasf = syn != NULL;
+core: a buffer without a path ignores its Buf.status (test_core_status)~test TESTS=core_status~~src/core/draw.c~	const char *name = b->status ? b->status : "[No Name]";~	const char *name = "[No Name]";
