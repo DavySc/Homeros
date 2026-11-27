@@ -11,8 +11,9 @@ struct Editor;
 struct Buf;
 
 /* F5 runs the selection or, with none, the whole buffer (SSMS; GO splits
-   SQL Server scripts as sqlcmd does); Alt+Break cancels the run.  Only in
-   a .sql buffer or its results: 1 taken, 0 not. */
+   SQL Server scripts as sqlcmd does); Alt+Break, or Ctrl-C while it
+   runs, cancels the run.  Only in a .sql buffer or its results: 1
+   taken, 0 not. */
 int  sql_key(struct Editor *e, int key);
 /* SPC r: the current SQL buffer's results split opens or closes.  0 ok,
    -1 msg set. */
