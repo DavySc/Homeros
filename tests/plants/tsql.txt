@@ -1,6 +1,6 @@
 # Plants for src/syntax/tsql.c (format in tools/planted.sh).
-tsql: an edit keeps the token start at its own byte (test_tsql, edit near a kept start)~test TESTS=tsql~~src/syntax/tsql.c~size_t lo = pos > 2 ? pos - 2 : 0;~size_t lo = pos + 1;
-tsql: an edit keeps the token start two bytes before it (test_tsql, edit near a kept start)~test TESTS=tsql~~src/syntax/tsql.c~size_t lo = pos > 2 ? pos - 2 : 0;~size_t lo = pos > 1 ? pos - 1 : 0;
+tsql: an edit keeps the token start at its own byte (test_tsql, edit near a kept start)~test TESTS=tsql~~src/syntax/tsql.c~size_t lo = pos > 2 ? pos - 2 : 0,~size_t lo = pos + 1,
+tsql: an edit keeps the token start two bytes before it (test_tsql, edit near a kept start)~test TESTS=tsql~~src/syntax/tsql.c~size_t lo = pos > 2 ? pos - 2 : 0,~size_t lo = pos > 1 ? pos - 1 : 0,
 tsql: an edit keeps the starts after it as known (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~		q->v = i;¶~
 tsql: an edit keeps where the last faces ended (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~	if (q->at >= lo) q->at~	if (q->at > lo + 4096) q->at
 tsql: an edit keeps the old text's window (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~	q->r.n = 0;¶~
@@ -31,14 +31,14 @@ tsql: the schema's name is read from byte 1 (test_tsql, lines)~test TESTS=tsql~~
 tsql: ( is an operator token, not punctuation (test_tsql, tokens)~test TESTS=tsql~~src/syntax/tsql.c~c == '(' || ~
 tsql: << and >> are two operators (test_tsql, tokens)~test TESTS=tsql~~src/syntax/tsql.c~ || ((c == '<' || c == '>') && d == c)~
 tsql: a NUL starts a two-byte operator (test_tsql)~test TESTS=tsql~~src/syntax/tsql.c~d == '=' && c && strchr~d == '=' && strchr
-tsql: an edit keeps the last token's end (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~	if (q->end + 2 >= pos) q->end = 0;¶~
-tsql: an edit two bytes past the last token keeps its end (test_tsql, edit near a kept start)~test TESTS=tsql~~src/syntax/tsql.c~q->end + 2 >= pos~q->end >= pos
-tsql: the last token's kind is not kept (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~q->end = e, q->kind = k;~q->end = e;
+tsql: an edit keeps the last token's end (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~	if (q->end >= lo) q->end = 0;¶~
+tsql: an edit two bytes past the last token keeps its end (test_tsql, edit near a kept start)~test TESTS=tsql~~src/syntax/tsql.c~q->end >= lo~q->end >= pos
+tsql: the last token's kind is not kept (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~q->end = e, q->kind = k, q->sat~q->end = e, q->sat
 tsql: storing a kept token start aborts (fuzz_tsql reaches the index)~fuzz FUZZERS=tsql FUZZ_SECONDS=60~~src/syntax/tsql.c~q->ck[q->v++] = (uint32_t)p, q->n++;~abort();
 tsql: moved starts do not move (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~+ nins - ndel)~+ 0 * nins - 0 * ndel)
 tsql: an edit among moved starts keeps those after it (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~	if (i > q->v) q->n = i;~	if (i > q->v) ;
-tsql: moved starts of an older edit stay (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~first_at(q, q->n = q->v, pos + ndel)~first_at(q, q->n, pos + ndel)
-tsql: a moved start a read passed stays (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~	while (q->v < q->n && q->ck[q->v] < p) q->n--, memmove(q->ck + q->v, q->ck + q->v + 1, (q->n - q->v) * sizeof *q->ck);¶~
+tsql: moved starts of an older edit stay (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~first_at(q, q->n = q->v, hi)~first_at(q, q->n, hi)
+tsql: a moved start a read passed stays (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~(q->ck[q->v] < p || (q->ck[q->v] == p~((q->ck[q->v] == p
 tsql: a read starts from a moved start (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~first_at(q, q->v, a + 1)~first_at(q, q->n, a + 1)
 tsql: the index is filled from past a token start (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~size_t p = q->v ? q->ck[q->v - 1] : 0;~size_t p = q->v ? q->ck[q->v - 1] + 1 : 0;
 tsql: a far window stays plain once the index is filled (test_tsql, random edits)~test TESTS=tsql~~src/syntax/tsql.c~if (a - p > FAR && !(q->v == q->n && q->n && q->ck[q->n - 1] == text_len(q->r.t))) {~if (a - p > FAR) {
