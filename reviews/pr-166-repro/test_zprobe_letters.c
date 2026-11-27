@@ -79,6 +79,16 @@ int main(void)
 	P("the first frame may take the freed b", e.tabs->key == 'b' && uniq(&e));
 	feed(&e, " 5na");
 
+	/* 4b. SPC 5 m {letter}: into that frame; its own letter and a number beep */
+	feed(&e, " 5a\x17v");
+	int w0 = 0; for (Win *w = e.wins; w; w = w->next) w0++;
+	feed(&e, " 5ma 5m2");
+	int w1 = 0; for (Win *w = e.wins; w; w = w->next) w1++;
+	P("SPC 5 m {own letter} and SPC 5 m 2 move nothing", w1 == w0 && e.tab == e.tabs);
+	feed(&e, " 5mq");
+	P("SPC 5 m q moves the window into frame q", e.tab == q);
+	feed(&e, "\x17" "c 5a");
+
 	/* 5. rename to its own letter: kept, no beep needed */
 	feed(&e, " 5na");
 	P("rename to its own letter", e.tabs->key == 'a');
@@ -109,12 +119,12 @@ int main(void)
 	int nolet = 0;
 	for (Tab *t = e.tabs; t; t = t->next) nolet += !t->key;
 	P("3 frames without a letter", nolet == 3);
+	/* SPC 5 m Ctrl-@: SPC 5 Ctrl-@ itself stops at package 5's over-read
+	   (test_zprobe_nul.c), so the key 0 is tried after SPC 5 m */
 	feed(&e, " 5a");
 	cur = e.tab;
-	keys_input(&e, ' ', 1); keys_input(&e, '5', 1); keys_input(&e, 0, 0);
-	P("SPC 5 Ctrl-@ (key 0) does not enter a frame without a letter", e.tab == cur);
-	printf("     after SPC 5 <0>: tab key %d, pending %d\n", e.tab->key, e.ks.pending);
-	feed(&e, "\x1b");
+	keys_input(&e, ' ', 1); keys_input(&e, '5', 1); keys_input(&e, 'm', 1); keys_input(&e, 0, 0);
+	P("SPC 5 m Ctrl-@ (key 0) moves nothing into a frame without a letter", e.tab == cur && !e.ks.pending);
 	/* a frame without a letter gets the letter of one closed, by SPC 5 n only */
 	feed(&e, " 5z 50");
 	Tab *t0 = e.tabs;
