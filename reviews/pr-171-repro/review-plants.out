@@ -1,0 +1,19 @@
+caught        rv: the rule without its crossings
+caught        rv: one row counted as "rows"
+caught        rv: the status line's one row as "rows"
+caught        rv: the names in the rule's face
+caught        rv: the row numbers in no face
+caught        rv: the cut mark in no face
+NOT CAUGHT    rv: the Messages rule in no face
+NOT CAUGHT    rv: the row count in no face
+caught        rv: a NULL's mark counted in its width
+NOT CAUGHT    rv: a later grid's faces at the first one's line
+NOT CAUGHT    rv: the running status line's text
+NOT CAUGHT    rv: a last line without its newline lost
+NOT CAUGHT    rv: a wide character counted as one cell
+NOT CAUGHT    rv: a control byte counted as one cell
+NOT CAUGHT    rv: a Messages rule with no messages
+NOT CAUGHT    rv: an empty set shows no grid
+caught        rv: the names' mark missing on SQL Server (editor)
+NOT CAUGHT    rv: Postgres's error without its mark (editor: status)
+8 of 18 caught
