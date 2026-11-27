@@ -18,7 +18,7 @@ pass() {
 }
 
 # winlink EXE TEST.c: builds EXE for Windows from TEST.c and every module
-# wincc compiles (not main.c or the window), with tree-sitter, the
+# wincc compiles (not main.c, the window or its drawing: src/paint, src/font), with tree-sitter, the
 # grammars and queries outside our warnings (as src/syntax/build.mk), stb
 # and libghostty-vt (build.mk): for a test that links the whole editor
 # below the window (src/tools/check.sh, src/lsp/check.sh)
@@ -26,8 +26,8 @@ winlink() {
 	local syn=build/syntax o objs= g
 	local inc="-I$syn/src/tree-sitter/lib/include -I$syn/src/tree-sitter/lib/src"
 	mkdir -p build/win/link
-	make -s $syn/queries.c build/win/stb.o build/ghostty/windows.lib   # stb: src/image/build.mk; thread 0's, agreed
-	# wincc's list itself, whatever is built yet
+	make -s $syn/queries.c build/win/stb.o build/ghostty/windows.lib build/openssl-win/lib/libssl.a   # stb: src/image/build.mk; thread 0's, agreed
+	# wincc's list itself, whatever is built yet (OpenSSL, src/sql, built above)
 	local srcs=$(make -s --eval 'winsrcs: ; @echo $(WIN_SRCS)' winsrcs | tr ' ' '\n' | grep -v -e '^src/main\.c$' -e '^src/win/' -e '^src/paint/' -e '^src/font/')   # the window and its drawing (as main's 97e162f5)
 	for g in $(sed -n '/^SYN_GRAMMARS/,/[^\\]$/p' src/syntax/build.mk | tr -d '\\' | cut -d= -f2); do
 		o=build/win/link/$(echo $g | tr / _).o
@@ -36,7 +36,7 @@ winlink() {
 	done
 	zig cc -target x86_64-windows-gnu -O2 -c $syn/queries.c -o build/win/link/queries.o
 	[ -f build/win/link/ts.o ] || zig cc -target x86_64-windows-gnu -O2 -c $inc $syn/src/tree-sitter/lib/src/lib.c -o build/win/link/ts.o
-	. src/tools/ghostty-win.sh
+	. src/tools/ghostty-win.sh; . src/sql/openssl-win.sh   # sql: package 22's, as thread 0 asked
 	zig cc -target x86_64-windows-gnu -std=c17 -D_DEFAULT_SOURCE -Wall -Wextra -Werror -Iinclude -I/usr/include/stb $inc -O1 -g \
-	  -fsanitize=undefined -fsanitize-trap=undefined -o "$1" "$2" $srcs build/win/link/queries.o build/win/link/ts.o $objs build/win/stb.o $GHOSTTY_WIN
+	  -fsanitize=undefined -fsanitize-trap=undefined -o "$1" "$2" $srcs build/win/link/queries.o build/win/link/ts.o $objs build/win/stb.o $GHOSTTY_WIN $SQL_WIN
 }
