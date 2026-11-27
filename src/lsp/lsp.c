@@ -844,11 +844,18 @@ const char *lsp_name(const LspDoc *d, int *work)
 const char *lsp_uri(const LspDoc *d) { return d ? d->uri : NULL; }
 const char *lsp_init(const LspDoc *d, size_t *n) { *n = d ? d->s->init.n : 0; return *n ? d->s->init.s : NULL; }
 
-int lsp_send(const char *u, const char *method, const char *params, size_t n, LspRawFn fn, void *ctx)
+/* the open document of uri u, or NULL */
+static LspDoc *doc_of(const char *u)
 {
 	LspDoc *d = NULL;
 	for (Srv *s = srvs; s && !d; s = s->link)
 		for (d = s->docs; d && strcmp(d->uri, u); d = d->link) ;
+	return d;
+}
+
+int lsp_send(const char *u, const char *method, const char *params, size_t n, LspRawFn fn, void *ctx)
+{
+	LspDoc *d = doc_of(u);
 	Raw *r = fn ? malloc(sizeof *r) : NULL;
 	if (!d || d->s->proc < 0 || (fn && !r)) { free(r); return -1; }
 	lsp_flush(d);
@@ -870,14 +877,12 @@ int lsp_send(const char *u, const char *method, const char *params, size_t n, Ls
 
 /* --- places (lsp_locs) ------------------------------------------------------- */
 
-typedef struct { LspLocFn fn; void *ctx; char *uri; } Want;
+typedef struct { LspLocFn fn; void *ctx; char *uri; int sort, one; } Want;
 typedef struct { char *uri, *text; Pos p; } Hit;
 static Hit *hits;
 static int nhits, caphits;
 
-/* uri's file (vim.uri_to_fname): percent-decoded, file:///C:/x as C:/x;
-   NULL for another scheme */
-static char *fname(const char *u)
+char *lsp_fname(const char *u)
 {
 	if (strncmp(u, "file://", 7)) return NULL;
 	u += 7;
@@ -942,22 +947,36 @@ static int hitcmp(const void *x, const void *y)
 static void located(void *ctx, const char *m, size_t n)
 {
 	Want *w = ctx;
-	int r = m && json_parse(m, n, &tk, &ntk) >= 0 ? json_get(m, tk, 0, "result") : -1, nv = -1;
-	LspLoc *v = NULL;
+	int ok = m && json_parse(m, n, &tk, &ntk) >= 0, r = ok ? json_get(m, tk, 0, "result") : -1, nv = -1, e = -1, wk;
+	LspLoc *v = NULL, err = { 0 };
 	nhits = 0;
+	/* an error as Neovim's handlers say it: the server's name, the code,
+	   the message */
+	if (ok && r < 0 && (e = json_get(m, tk, 0, "error")) >= 0) {
+		Str t = { 0 };
+		int c = json_get(m, tk, e, "code");
+		char *s = str(m, json_get(m, tk, e, "message"));
+		const char *name = lsp_name(doc_of(w->uri), &wk);
+		str_addf(&t, "%s: %.*s: %s", name ? name : "", c < 0 ? 0 : (int)(tk[c].z - tk[c].a), c < 0 ? "" : m + tk[c].a, s ? s : "");
+		free(s);
+		err.text = t.s;
+	}
 	if (r >= 0) {
 		/* a Location, Location[], LocationLink[], a symbol list, or
 		   switchSourceHeader's URI */
 		int one = tk[r].type == 'o', e0 = one ? r : json_at(tk, r, 0), sym = e0 >= 0 && json_get(m, tk, e0, "name") >= 0;
 		if (tk[r].type == 's') hit(str(m, r), (Pos){ (size_t)-1, 0 }, NULL);
 		else if (sym) symbols(m, r, w->uri);
-		else for (int k = 0, e; (e = one ? (k ? -1 : r) : json_at(tk, r, k)) >= 0; k++) {
+		/* a Location alone: none for references (vim.lsp.buf.references()
+		   takes a list) */
+		else for (int k = 0, e; (e = one ? (k || !w->one ? -1 : r) : json_at(tk, r, k)) >= 0; k++) {
 			int u = json_get(m, tk, e, "uri"), g = json_get(m, tk, e, "range");
 			if (u < 0) u = json_get(m, tk, e, "targetUri"), g = json_get(m, tk, e, "targetSelectionRange");
 			if (u >= 0 && g >= 0) hit(str(m, u), start_of(m, g), NULL);
 		}
-		/* locations_to_items(): by URI, then position; symbols as given */
-		if (!sym && nhits > 1) qsort(hits, (size_t)nhits, sizeof *hits, hitcmp);
+		/* locations_to_items(): by URI, then position; symbols as given,
+		   and definitions (vim.lsp.tagfunc's, C-]'s) */
+		if (!sym && w->sort && nhits > 1) qsort(hits, (size_t)nhits, sizeof *hits, hitcmp);
 		v = calloc((size_t)nhits + 1, sizeof *v);
 		nv = v ? 0 : -1;
 	}
@@ -968,12 +987,11 @@ static void located(void *ctx, const char *m, size_t n)
 	const LspDoc *d = NULL;
 	for (int i = 0; v && i < nhits; i++) {
 		Hit *h = &hits[i];
-		char *f = fname(h->uri);
+		char *f = lsp_fname(h->uri);
 		if (!f) { free(h->text); free(h->uri); continue; }
 		if (!at || strcmp(at, h->uri)) {
-			free(data); data = NULL; dn = 0; d = NULL;
-			for (Srv *s = srvs; s && !d; s = s->link)
-				for (d = s->docs; d && strcmp(d->uri, h->uri); d = d->link) ;
+			free(data); data = NULL; dn = 0;
+			d = doc_of(h->uri);
 			FileId id;
 			if (!d && file_load(f, &data, &dn, &id)) data = NULL, dn = 0;
 		}
@@ -988,7 +1006,7 @@ static void located(void *ctx, const char *m, size_t n)
 			size_t a = text_line_start(d->t, h->p.l);
 			len = text_line_start(d->t, h->p.l + 1) - 1 - a;
 			b = bytes(d->t, a, &len);
-		} else if (!d) {
+		} else if (dn) {   /* a file not open, read (unreadable: no text) */
 			size_t a = 0;
 			for (size_t k = 0; k < h->p.l && a < dn; k++) { char *e = memchr(data + a, '\n', dn - a); a = e ? (size_t)(e - data) + 1 : dn; }
 			char *e = a < dn ? memchr(data + a, '\n', dn - a) : NULL;
@@ -1002,16 +1020,17 @@ static void located(void *ctx, const char *m, size_t n)
 	}
 	free(at); free(data);
 	if (!v) for (int i = 0; i < nhits; i++) { free(hits[i].uri); free(hits[i].text); }
-	w->fn(w->ctx, v, nv);
+	w->fn(w->ctx, err.text ? &err : v, nv);
 	for (int i = 0; i < nv; i++) { free(v[i].path); free(v[i].text); }
-	free(v); free(w->uri); free(w);
+	free(v); free(err.text); free(w->uri); free(w);
 }
 
 int lsp_locs(LspDoc *d, const char *method, size_t pos, LspLocFn fn, void *ctx)
 {
 	Want *w = d ? malloc(sizeof *w) : NULL;
 	if (!w || !(w->uri = strdup(d->uri))) { free(w); return -1; }
-	w->fn = fn; w->ctx = ctx;
+	w->fn = fn; w->ctx = ctx; w->sort = strcmp(method, "textDocument/definition") != 0;
+	w->one = strcmp(method, "textDocument/references") != 0;
 	q.n = 0;
 	if (!strcmp(method, "textDocument/switchSourceHeader")) str_addf(&q, "{\"uri\":\"%s\"}", d->uri);
 	else {

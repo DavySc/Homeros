@@ -681,9 +681,8 @@ static void nv_brackets(Cmdarg *cap)
 		long k = wrap ? cap->count1 : 1, to, got = -1;
 		Pos p = cur();
 		/* each step from the last one's raw position (vim.diagnostic.jump()'s
-		   opts.pos); one that comes back to itself (wrapping round a single
-		   one, or before itself at a line's NUL) would forever */
-		while (k-- && (to = next_diag(v, n, p, fwd, wrap, !wrap)) >= 0 && to != got) got = to, p = diag_raw(v[to].a);
+		   opts.pos) */
+		while (k-- && (to = next_diag(v, n, p, fwd, wrap, !wrap)) >= 0) got = to, p = diag_raw(v[to].a);
 		if (got < 0) { core_msg(E, "No more valid diagnostics to move to"); return; }
 		setpcmark();
 		setcur(diag_pos(v[got].a));
@@ -1107,14 +1106,15 @@ static void nv_next(Cmdarg *cap)
 	}
 }
 
-/* * # g* g#: the keyword under or after the cursor, else the non-blank
-   string (find_ident_at_pos() with FIND_IDENT|FIND_STRING) */
-static void nv_ident(Cmdarg *cap)
+/* find_ident_at_pos(): the keyword under or after the cursor, else (str:
+   FIND_STRING) the non-blank string; its start (-1 none) and end *z, *i 0
+   for a keyword */
+static long find_ident(int str, long *z, int *ip)
 {
-	int g = cap->cmdchar == 'g', c = g ? cap->nchar : cap->cmdchar, i, cls = 0;
+	int i, cls = 0;
 	long l = (long)W->line, n = ml_len(l), col = 0;
 	const char *s = ml_get(l);
-	for (i = 0; i < 2; i++) {
+	for (i = 0; i < 1 + str; i++) {
 		for (col = (long)W->col; col < n; col += clen(s, n, col))
 			if ((cls = cls_of(gchar((Pos){ l, col, 0 }))) && (i == 1 || cls != 1)) break;
 		cls = col < n ? cls_of(gchar((Pos){ l, col, 0 })) : 0;
@@ -1126,10 +1126,23 @@ static void nv_ident(Cmdarg *cap)
 		if (cls > 2) cls = 2;
 		if (cls == 2) break;
 	}
-	if (col >= n) { core_msg(E, "E348: No string under cursor"); clearop(cap->oap); return; }
-	long z = col;
+	if (col >= n) return -1;
 	int first = cls_of(gchar((Pos){ l, col, 0 }));
-	while (z < n && (i == 0 ? cls_of(gchar((Pos){ l, z, 0 })) == first : cls_of(gchar((Pos){ l, z, 0 })) != 0)) z += clen(s, n, z);
+	for (*z = col; *z < n && (i == 0 ? cls_of(gchar((Pos){ l, *z, 0 })) == first : cls_of(gchar((Pos){ l, *z, 0 })) != 0); )
+		*z += clen(s, n, *z);
+	*ip = i;
+	return col;
+}
+
+/* * # g* g#: the keyword under or after the cursor, else the non-blank
+   string (find_ident_at_pos() with FIND_IDENT|FIND_STRING) */
+static void nv_ident(Cmdarg *cap)
+{
+	int g = cap->cmdchar == 'g', c = g ? cap->nchar : cap->cmdchar, i;
+	long l = (long)W->line, z, col = find_ident(1, &z, &i);
+	const char *s = ml_get(l);
+	if (col < 0) { core_msg(E, "E348: No string under cursor"); clearop(cap->oap); return; }
+	int first = cls_of(gchar((Pos){ l, col, 0 }));
 	setpcmark();   /* first, so "*``" puts the cursor back */
 	W->col = (size_t)col;
 	char buf[sizeof E->cmd * 2 + 8], *p = buf;
@@ -1142,6 +1155,19 @@ static void nv_ident(Cmdarg *cap)
 	*p = 0;
 	no_smartcase = 1;
 	normal_search(cap, c == '*' ? '/' : '?', buf, 0, 0, NULL);
+}
+
+/* CTRL-]: ":tag" on the keyword under or after the cursor, which Neovim
+   0.12 answers with vim.lsp.tagfunc */
+static void nv_tagjump(Cmdarg *cap)
+{
+	long z, col;
+	int i;
+	if (checkclearopq(cap->oap)) return;
+	if ((col = find_ident(0, &z, &i)) < 0) { core_msg(E, "E349: No identifier under cursor"); clearop(cap->oap); return; }
+	char t[256];
+	snprintf(t, sizeof t, "%.*s", (int)(z - col), ml_get((long)W->line) + col);
+	lsp_go("textDocument/definition", t);
 }
 
 /* ---- operators ---- */
@@ -1633,7 +1659,7 @@ static void execute(Cmdarg *cap)
 	case '\'': cap->arg = 1; nv_gomark(cap); break;
 	case '`': cap->arg = 0; nv_gomark(cap); break;
 	/* C-]: Neovim sets 'tagfunc' to the language server's definitions */
-	case 29: if (!checkclearopq(cap->oap)) { if (B->lsp) lsp_go("textDocument/definition", 1); else clearopbeep(cap->oap); } break;
+	case 29: nv_tagjump(cap); break;
 	case 9: nv_pcmark(cap); break;
 	case 15: cap->count1 = -cap->count1; nv_pcmark(cap); break;   /* nv_ctrlo() */
 	}

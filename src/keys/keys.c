@@ -159,24 +159,58 @@ static int usable(const char *m)
 }
 
 /* Neovim 0.12's LSP maps, C-] (its tagfunc: the first definition, as a
-   tag jump takes the first match) and SPC m a (clangd's switch between
-   source and header): what the server says about the cursor goes to
-   tools_locs, a list for references and symbols */
+   tag jump takes the first match; none or no server: the tag not found)
+   and SPC m a (clangd's switch between source and header): what the
+   server says about the cursor goes to tools_locs, a list for references
+   and symbols; an error answer is none (vim.lsp.buf's get_locations()
+   reads only results), but for symbols (the default handler's) */
 static const char *const what[] = { "locations", "references", "document symbols", "locations" };
+static char tagname[256];
 
 static void found(void *ctx, const LspLoc *v, int n)
 {
 	int k = (int)((const char *const *)ctx - what);
-	if (!n) core_msg(E, "No %s found", what[k]);
-	else if (n > 0) tools_locs(E, v, k == 3 ? 1 : n, k == 1 || k == 2);
+	if (k == 3 && n <= 0) core_msg(E, "E426: Tag not found: %s", tagname);
+	else if (k == 2 && v && n < 0) core_msg(E, "%s", v->text);
+	else if (n <= 0) core_msg(E, "No %s found", what[k]);
+	else if (k < 3) tools_locs(E, v, n, k > 0);
+	else if (stat(v->path, &(struct stat){ 0 })) core_msg(E, "E429: File \"%s\" does not exist", v->path);
+	else {
+		/* jumpto_tag(): the place's pattern /\%l\%c/ not in the file as
+		   opened (past a line's end once its CRs are gone), its guesses
+		   from the top, else the line it was on */
+		Buf *b = E->buf;
+		size_t l = E->win->line, c = E->win->col;
+		tools_locs(E, v, 1, 0);
+		if (v->line < (size_t)nlines() && (long)v->col <= ml_len((long)v->line)) { core_changed = 1; return; }
+		static const char *const guess[] = { "^%s\\s*(", "^[#a-zA-Z_].*\\<%s\\s*(" };
+		Pos s, z;
+		long g = -1;
+		for (int i = 0; i < 2 && g < 0; i++) {
+			char p[sizeof tagname + 32];
+			snprintf(p, sizeof p, guess[i], tagname);
+			if (!re_compile(p, 0, &(const char *){ NULL })) for (g = 0; g < nlines() && re_exec(g, 0, &s, &z, NULL, NULL) <= 0; g++) ;
+			if (g == nlines()) g = -1;
+		}
+		search_recompile();
+		if (g >= 0) core_goto(E, (size_t)s.lnum, (size_t)s.col), core_msg(E, "E435: Couldn't find tag, just guessing!");
+		else {
+			if (E->buf == b) core_goto(E, l, c);
+			else core_goto(E, 0, 0), beginline(BL_WHITE | BL_FIX);   /* as :edit leaves it */
+			core_msg(E, "E434: Can't find tag pattern");
+		}
+	}
 	core_changed = 1;
 }
 
-void lsp_go(const char *method, int tag)
+void lsp_go(const char *method, const char *tag)
 {
 	int k = tag ? 3 : !strcmp(method, "textDocument/references") ? 1 : !strcmp(method, "textDocument/documentSymbol") ? 2 : 0;
-	if (lsp_locs(E->buf->lsp, method, core_line_start(E, E->win->line) + E->win->col, found, (void *)(what + k)))
-		core_msg(E, "vim.lsp: method \"%s\" is not supported by any server activated for this buffer", method);
+	if (tag) snprintf(tagname, sizeof tagname, "%s", tag);
+	if (lsp_locs(E->buf->lsp, method, core_line_start(E, E->win->line) + E->win->col, found, (void *)(what + k))) {
+		if (tag) found((void *)(what + 3), NULL, 0);
+		else core_msg(E, "vim.lsp: method \"%s\" is not supported by any server activated for this buffer", method);
+	}
 }
 
 /* how many of the typed keys m starts with */
@@ -315,7 +349,7 @@ static int map(Editor *e, int k)
 		if (*m == 'g' || !strcmp(m, " ma")) {
 			lsp_go(m[1] == 'O' ? "textDocument/documentSymbol" : m[2] == 'r' ? "textDocument/references"
 			       : m[2] == 'i' ? "textDocument/implementation" : m[2] == 't' ? "textDocument/typeDefinition"
-			       : "textDocument/switchSourceHeader", 0);
+			       : "textDocument/switchSourceHeader", NULL);
 			return 1;
 		}
 		switch (m[0] == '-' ? 'p' : !strcmp(m, " is") ? 's' : m[1]) {

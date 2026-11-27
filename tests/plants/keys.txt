@@ -71,7 +71,7 @@ keys: i) and a) look for the unclosed bracket with quotes special, so from insid
 keys: i) and a) look for the closing bracket with quotes not special, as for the opening one (recorded traces)~test TESTS=~~src/keys/motion.c~	cpo_match = 0;¶~
 keys: a SPC that completes no map drops Space's own motion (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	keys_feed(e, l[0], 1);¶~
 keys: the keys after a failed map skip the pickers, git and the maps, so SPC SPC ff moves and the dashboard's q records a macro (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	for (int i = 1; i < n; i++) keys_input(e, l[i], i < n - 1);~	for (int i = 1; i < n; i++) keys_feed(e, l[i], i < n - 1);
-keys: SPC maps other than SPC i s also run in Visual mode (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	return (*m != 'c' || is_ft(".org")) && (!E->ks.visual || !strncmp(m, " is", strlen(m)));~	return *m != 'c' || is_ft(".org");
+keys: SPC maps other than SPC i s also run in Visual mode (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	    && (!E->ks.visual || !strncmp(m, " is", strlen(m)));~	    ;
 keys: a map that runs leaves the count typed before it for the next command (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~	if (drop) { npend = 0; opcount = 0; clearop(&oa); }~	if (drop) npend = 0;
 keys: SPC after an operator starts a map instead of being its motion (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~	if (oa.op_type != OP_NOP) return 0;¶~
 keys: an incomplete map does not keep the next key, so a picker or git can take it (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		return e->ks.pending = 1;   /* keys_input()~		return 1;   /* keys_input()
@@ -111,7 +111,7 @@ keys: . after d/x deletes up to the next x without typing the search again (test
 keys: a search with an upper-case letter ignores case, as if 'smartcase' were off (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~noscs || !has_upper(pat, all)~noscs || 1 + 0 * !has_upper(pat, all)
 keys: * keeps 'smartcase', so * on Foo misses foo (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~int noscs = no_smartcase, i = -1;~int noscs = 0 * no_smartcase, i = -1;
 keys: * does not escape what the pattern would read as magic, so * on . finds any character (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~) *p++ = '\\';~) {}
-keys: * on a blank line searches for the last pattern instead of E348 (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	if (col >= n) { core_msg(E, "E348~	if (0) { core_msg(E, "E348
+keys: * on a blank line says nothing instead of E348 (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	if (col < 0) { core_msg(E, "E348: No string under cursor"); clearop~	if (col < 0) { clearop
 keys: a block's yank flash takes byte columns, not screen columns, so a Tab's block flashes too little (test_keys_flash)~test TESTS=keys_flash~~src/keys/ops.c~		if (t == 22) {~		if (0) {
 keys: a block's yank flash starts at a Tab's first cell, not where the cursor stood on it (test_keys_flash)~test TESTS=keys_flash~~src/keys/ops.c~getvvcol(b_op_start, &a, NULL)~a = vcol_of(b_op_start.lnum, b_op_start.col)
 keys: a backslash at a pattern's start keeps it at the start, so /\*ptr is E866 (test_keys_regex)~test TESTS=keys_regex~~src/keys/regex.c~			prev_at_start = at_start, at_start = 0;¶			rp++, after_slash++;~			rp++, after_slash++;
@@ -264,9 +264,20 @@ keys: ]d takes a diagnostic past the last line on a line of its own~test TESTS=l
 keys: ]d lands on a line's NUL, not its last character (vim.diagnostic's extmark)~test TESTS=lsp_locs~~src/keys/normal.c~	if (p.col > len - 1) p.col~	if (p.col > len - 1 && 0) p.col
 keys: 2]d steps from where the last one landed, not its own column (opts.pos)~test TESTS=lsp_locs~~src/keys/normal.c~got = to, p = diag_raw(v[to].a);~got = to, p = diag_pos(v[to].a);
 keys: ]d does not wrap past the end~test TESTS=lsp_locs~~src/keys/normal.c~int n, fwd = cap->arg == FORWARD, wrap = cap->nchar == 'd';~int n, fwd = cap->arg == FORWARD, wrap = 0;
-keys: [d takes the diagnostic with the lowest column~test TESTS=lsp_locs~~src/keys/normal.c~(fwd ? d.col < diag_pos(v[best].a).col : d.col > diag_pos(v[best].a).col)~d.col < diag_pos(v[best].a).col
-keys: grr opens one reference instead of listing it~test TESTS=lsp_locs~~src/keys/keys.c~tools_locs(E, v, k == 3 ? 1 : n, k == 1 || k == 2);~tools_locs(E, v, k == 3 ? 1 : n, k == 2);
-keys: C-] lists every definition~test TESTS=lsp_locs~~src/keys/keys.c~tools_locs(E, v, k == 3 ? 1 : n,~tools_locs(E, v, n,
+keys: [d takes the diagnostic with the lowest column~test TESTS=lsp_locs~~src/keys/normal.c~c = fwd ? d.col : -d.col;~c = d.col;
+keys: ]D and [D step to the next one, not the farthest~test TESTS=lsp_locs~~src/keys/normal.c~next_diag(v, n, p, fwd, wrap, !wrap)~next_diag(v, n, p, fwd, wrap, 0)
+keys: grr opens one reference instead of listing it~test TESTS=lsp_locs~~src/keys/keys.c~tools_locs(E, v, n, k > 0);~tools_locs(E, v, n, k > 1);
+keys: C-] lists every definition~test TESTS=lsp_locs~~src/keys/keys.c~		tools_locs(E, v, 1, 0);~		tools_locs(E, v, n, 1);
+keys: C-] asks about a non-blank string, not only a keyword (find_ident_under_cursor() with FIND_IDENT)~test TESTS=lsp_locs~~src/keys/normal.c~	if ((col = find_ident(0, &z, &i)) < 0)~	if ((col = find_ident(1, &z, &i)) < 0)
+keys: C-] with no definition says none found, not E426~test TESTS=lsp_locs~~src/keys/keys.c~	if (k == 3 && n <= 0) core_msg~	if (0) core_msg
+keys: C-] names the keyword's start only in E426~test TESTS=lsp_locs~~src/keys/normal.c~(int)(z - col), ml_get~1, ml_get
+keys: gO's error answer said as none found~test TESTS=lsp_locs~~src/keys/keys.c~	else if (k == 2 && v && n < 0) core_msg(E, "%s", v->text);¶~
+keys: C-] to a file that is not there opens it (E429)~test TESTS=lsp_locs~~src/keys/keys.c~	else if (stat(v->path, &(struct stat){ 0 })) core_msg~	else if (0) core_msg
+keys: C-] past the end of the file goes to its last line (E434)~test TESTS=lsp_locs~~src/keys/keys.c~		if (v->line < (size_t)nlines() && (long)v->col <= ml_len((long)v->line)) {~		if (1) {
+keys: C-] makes no guesses at a place it cannot find (E435)~test TESTS=lsp_locs~~src/keys/keys.c~	for (int i = 0; i < 2 && g < 0; i++) {~	for (int i = 0; i < 0 && g < 0; i++) {
+keys: C-] guesses "^name(" without the spaces before (\s*)~test TESTS=lsp_locs~~src/keys/keys.c~{ "^%s\\s*(",~{ "^%s(",
+keys: C-] failing in another file leaves the cursor at its start, not its first non-blank~test TESTS=lsp_locs~~src/keys/keys.c~core_goto(E, 0, 0), beginline(BL_WHITE | BL_FIX);~core_goto(E, 0, 0);
+keys: C-] failing in the same file leaves the cursor at its start~test TESTS=lsp_locs~~src/keys/keys.c~			if (E->buf == b) core_goto(E, l, c);~			if (E->buf == b) core_goto(E, 0, 0);
 keys: C-o to another buffer's entry beeps~test TESTS=lsp_locs~~src/keys/normal.c~	if (core_buf_enter(E, w->jump[w->jumpidx].buf)) { clearop(cap->oap); return; }~	if (w->jump[w->jumpidx].buf != B) { clearop(cap->oap); return; }
 keys: SPC m a not mapped in a C file~test TESTS=lsp_locs~~src/keys/keys.c~(strncmp(m, " m", 2) || is_ft(".c") ||~(strncmp(m, " m", 2) ||
 keys: a focus change keeps Visual mode~test TESTS=keys_map~~src/keys/keys.c~		if (e->mode == MODE_INSERT || e->ks.visual || (!m~		if (e->mode == MODE_INSERT || (!m

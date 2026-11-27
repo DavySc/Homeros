@@ -3,6 +3,7 @@
    again on every write while that buffer is in a window (focus's runner,
    github.com/jamii/focus, focus-core/src/page/runner.rs).  One command at a
    time; the shell runs it in the current directory, as :make does. */
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -197,30 +198,34 @@ void tools_written(Editor *e, Buf *b)
 void tools_locs(Editor *e, const LspLoc *v, int n, int list)
 {
 	if (!list && n == 1) {
-		/* get_locations(): m' and the place, in the current window */
+		/* get_locations(): m' and the place, in the current window; a line
+		   past the end fails in nvim_win_set_cursor(), the file shown */
 		if (e->buf->path && !strcmp(e->buf->path, v->path)) core_setpcmark(e);
 		else if (core_edit_file(e, v->path, 0)) return;
-		if (v->line != (size_t)-1) core_goto(e, v->line, v->col);
+		if (v->line == (size_t)-1) return;
+		if (v->line >= core_lines(e)) core_msg(e, "Invalid cursor line: out of range");
+		else core_goto(e, v->line, v->col);
 		return;
 	}
 	/* setqflist() and botright copen: the list's window current, names
 	   relative to the current directory (the quickfix window's ":.") */
 	if (show(e, 1)) return;
 	M.list = 1;
-	char cwd[4096];
-	size_t k = getcwd(cwd, sizeof cwd) ? strlen(cwd) : 0;
+	char cwd[PATH_MAX];
+	if (!getcwd(cwd, sizeof cwd)) strcpy(cwd, "/");
 	Str l = { 0 };
 	for (int i = 0; i < n; i++) {
 		const char *f = v[i].path, *t = v[i].text ? v[i].text : "";
-		if (k && !strncmp(f, cwd, k) && f[k] == '/') f += k + 1;
+		size_t fn = strlen(f);
+		f = path_rel(cwd, strlen(cwd), f, &fn);
 		while (*t == ' ' || *t == '\t') t++;      /* qf_list_entry(): skipwhite() */
 		Err r;
 		if (entry(&r, v[i].path, (long)v[i].line + 1, (long)v[i].col + 1, t, strlen(t))) keep(r);
-		l.n = 0;
 		str_addf(&l, "%s:%zu:%zu: %s\n", f, v[i].line + 1, v[i].col + 1, t);
-		put(l.s, l.n);
 	}
+	put(l.s, l.n);
 	str_free(&l);
+	e->win->line = 0;   /* copen: on the first entry */
 }
 
 /* Opens error i, in the previous window when the make buffer is current,
