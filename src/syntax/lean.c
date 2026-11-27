@@ -183,7 +183,7 @@ static size_t bracket(Lx *x, size_t e)
 {
 	if (!e || tsql_byte(x->r, e - 1) != '[') return e;
 	e = unbracket(x, e);
-	return tsql_byte(x->r, e) == ']' ? e + 1 : 0;
+	return e < x->eol && tsql_byte(x->r, e) == ']' ? e + 1 : 0;
 }
 
 /* (w0|w1|..) then \b, and with dot (?!\.) before it: the first word that
