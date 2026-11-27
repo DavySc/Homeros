@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Differential test of src/org (package 16) against Org's own parser.
 
-    org_conform.py [-f|-t|-s] DRIVER N SEED     N random org texts, fed to both
-    org_conform.py [-f|-t|-s] DRIVER FILE...    given files
+    org_conform.py [-f|-t|-s|-o] DRIVER N SEED     N random org texts, fed to both
+    org_conform.py [-f|-t|-s|-o] DRIVER FILE...    given files
     org_conform.py -g                          writes src/org/entities.h and scripts.h
 
 DRIVER is tests/org_drv.c built; Org runs as emacs -Q --batch with
@@ -10,7 +10,8 @@ tools/org_dump.el, or with -f, the colours: tools/org_faces.el, its faces
 named as src/org shows them (FACES), or with -t, org-todo as cit and ciT
 run it: tools/org_todo.el, on FILE.cmd's position and directions, or with
 -s, what each line shows (orgfx_conceal): tools/org_show.el's runs, drawn
-on a cell grid (shown).  Prints the first difference of each
+on a cell grid (shown), or with -o, where org-open-at-point goes from each
+of FILE.cmd's positions: tools/org_open.el.  Prints the first difference of each
 failing text (the text is kept in build/org-fail-*.org) and "N differ"."""
 import os, random, re, shutil, subprocess, sys, tempfile, unicodedata
 
@@ -190,6 +191,35 @@ def gen(r):
     return '\n'.join(line(r) for _ in range(r.randint(1, 30))) + r.choice(['\n', '\n', '', '\n\n', '\n  '])
 
 
+def gen_open(r):
+    """notes full of links and footnotes and what they point at: headlines,
+    custom ids, targets, names, definitions; no timestamps, so that no
+    agenda opens"""
+    heads = ['Head one', 'head  one', 'Lattice', 'Order theory', 'x', 'COMMENT Hidden', 'TODO Task', 'A [1/2] b', 'Lattice :tag:']
+    refs = ['[[%s]]' % h for h in ('Head one', 'head one', 'Lattice', 'Order theory', 'Order\n theory', 'x', 'Hidden', 'Task',
+                                    'A b', 'tgt', 'Tgt', 'name', 'nope', 'fn:1', '1')] + \
+           ['[[*Lattice]]', '[[*Head one][the head]]', '[[*nope]]', '[[#cid]]', '[[#nope]]', '[[#CID]]', '[[(ref)]]', '[[(nope)]]',
+            '[[file:b.org::*X]]', '[[file:b.org]]', '[[./b.org::tgt]]', '[[b.org]]', '[[https://orgmode.org][Org]]', 'https://x.org/a',
+            '<mailto:me@x.org>', '[[id:abc]]', 'doi:10.1/x', '[[radio]]', 'radio', '[[Lattice][desc *b*]]', '*[[tgt]]*', '=[[tgt]]=',
+            '~[[tgt]]~', '[[tgt][=v=]]', '[fn:1]', '[fn:n]', '[fn:nope]', '[fn::inline]', '[fn:m: inline def]', 'src_c{[[tgt]]}',
+            '\\(x [[tgt]]\\)', '$[[tgt]]$', '[[a\nb]]', 'x[[tgt]]y', '[[tgt]]]', '[[ tgt ]]', '[[Head  one]]']
+    out = []
+    for _ in range(r.randint(1, 4)):
+        out.append('*' * r.choice([1, 1, 2]) + ' ' + r.choice(heads + [r.choice(refs)]))
+        if r.random() < .3:
+            out += [':PROPERTIES:', r.choice([':CUSTOM_ID: cid', ':CUSTOM_ID: other', ':custom_id: cid']), ':END:']
+        for _ in range(r.randint(0, 5)):
+            k = r.random()
+            if k < .5:
+                out.append(' '.join(r.choice(refs + ['see', 'and', 'a', '<<tgt>>', '<<<radio>>>']) for _ in range(r.randint(1, 4))))
+            else:
+                out.append(r.choice(['<<tgt>>', ' <<Tgt>> x', '#+NAME: name', '#+name: name', '| ' + r.choice(refs) + ' | x |',
+                                     '- ' + r.choice(refs), '- tag :: ' + r.choice(refs), '[fn:1] The definition.', '[fn:n] ' + r.choice(refs),
+                                     '# ' + r.choice(refs), '#+begin_src c', 'x; // (ref:ref)', '#+end_src', ': ' + r.choice(refs),
+                                     '#+begin_quote', '#+end_quote', '#+CAPTION: ' + r.choice(refs), '', '  ' + r.choice(refs)]))
+    return '\n'.join(out) + r.choice(['\n', ''])
+
+
 def ts_todo(r, open_='<'):
     day = r.randint(12, 28)
     hm = r.random() < .4
@@ -356,11 +386,11 @@ def gen_show(r):
 
 
 def run(driver, files, w):
-    el = subprocess.run(['emacs', '-Q', '--batch', '-l', os.path.join(HERE, {'t': 'org_todo.el', 's': 'org_show.el', 0: 'org_dump.el'}.get(w, 'org_faces.el'))] + files,
-                        capture_output=True, env=dict(os.environ, TZ='UTC'))
+    el = subprocess.run(['emacs', '-Q', '--batch', '-l', os.path.join(HERE, {'t': 'org_todo.el', 's': 'org_show.el', 'o': 'org_open.el', 0: 'org_dump.el'}.get(w, 'org_faces.el'))] + files,
+                        capture_output=True, stdin=subprocess.DEVNULL, env=dict(os.environ, TZ='UTC'))
     if el.returncode:
         sys.exit('emacs failed: ' + el.stderr[-2000:].decode('utf-8', 'replace'))
-    c = subprocess.run([driver] + (['-' + w] if w in ('t', 's') else ['-f', str(w)] if w else []) + files, capture_output=True)
+    c = subprocess.run([driver] + (['-' + w] if w in ('t', 's', 'o') else ['-f', str(w)] if w else []) + files, capture_output=True)
     if c.returncode:
         sys.exit('driver failed: ' + c.stderr[-2000:].decode('utf-8', 'replace'))
 
@@ -429,7 +459,8 @@ def main():
     faces = sys.argv[1] == '-f'
     todo = sys.argv[1] == '-t'
     show = sys.argv[1] == '-s'
-    if faces or todo or show:
+    opens = sys.argv[1] == '-o'
+    if faces or todo or show or opens:
         del sys.argv[1]
     driver = sys.argv[1]
     os.makedirs('build', exist_ok=True)
@@ -441,8 +472,13 @@ def main():
         for i in range(n):
             p = os.path.join(tmp, 't%05d.org' % i)
             with open(p, 'w', encoding='utf-8', newline='') as g:
-                t = (gen_faces if faces else gen_todo if todo else gen_show if show else gen)(r)
+                t = (gen_faces if faces else gen_todo if todo else gen_show if show else gen_open if opens else gen)(r)
                 g.write(t)
+            if opens:   # org-open-at-point at 6 characters, most on a bracket or a letter of a link
+                b = t.encode()
+                at = [i for i, c in enumerate(b) if c in b'[<:h' and (c != 104 or b[i:i + 4] == b'http')] or [0]
+                with open(p + '.cmd', 'w') as g:
+                    g.write(' '.join(str(r.choice(at) + r.choice([0, 0, 1, 3]) if r.random() < .7 else r.randint(0, len(b))) for _ in range(6)) + '\n')
             if todo:   # org-todo at a random character, 1 to 4 times right or left
                 with open(p + '.cmd', 'w') as g:
                     g.write('%d %s\n' % (len(t[:r.randint(0, len(t))].encode()), ''.join(r.choice('rrl') for _ in range(r.randint(1, 4)))))
@@ -454,7 +490,7 @@ def main():
     for k in range(0, len(files), 400):
         part = files[k:k + 400]
         # the colours are read in windows of w bytes, as the editor draws
-        el, c = run(driver, part, random.Random(k).choice([7, 64, 1024, 8192]) if faces else 't' if todo else 's' if show else 0)
+        el, c = run(driver, part, random.Random(k).choice([7, 64, 1024, 8192]) if faces else 't' if todo else 's' if show else 'o' if opens else 0)
         for p in part:
             name = os.path.basename(p)
             a, b = el.get(name), c.get(name)
@@ -492,7 +528,7 @@ def main():
             bad += 1
             if bad <= 5:
                 keep = os.path.join('build', 'org-fail-' + name)
-                for x in ['', '.cmd'] if todo else ['']:
+                for x in ['', '.cmd'] if todo or opens else ['']:
                     with open(p + x, 'rb') as f, open(keep + x, 'wb') as g:
                         g.write(f.read())
                 a, b = a or ['(no output)'], b or ['(no output)']
