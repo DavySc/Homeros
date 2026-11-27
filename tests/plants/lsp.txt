@@ -111,13 +111,17 @@ lsp: tokens: not asked again after an edit~test TESTS=lsp~~src/lsp/lsp.c~	end(d-
 lsp: goals: a refused question keeps the expected type shown for another line~test TESTS=lsp~~src/lsp/lsp.c~	if (G.want || !G.d) return;¶	G.term.t.n = G.term.f.n = 0;¶~	if (G.want || !G.d) return;¶
 lsp: tokens: an answer does not redraw~test TESTS=lsp~~src/lsp/lsp.c~	clear(&d->tok);¶	core_changed = 1;¶	const Text~	clear(&d->tok);¶	const Text
 lsp: tokens: an answer added to the last~test TESTS=lsp~~src/lsp/lsp.c~	clear(&d->tok);¶	core_changed = 1;¶	const Text~	core_changed = 1;¶	const Text
-lsp: tokens: an error answer clears them~test TESTS=lsp~~src/lsp/lsp.c~	if (arr < 0 || tk[arr].type != 'a') return;¶	clear(&d->tok);~	clear(&d->tok);¶	if (arr < 0 || tk[arr].type != 'a') return;
+lsp: tokens: an error answer clears them~test TESTS=lsp~~src/lsp/lsp.c~	if (arr < 0) return;¶	clear(&d->tok);~	clear(&d->tok);¶	if (arr < 0) return;
 lsp: tokens: a new server shows the old one's~test TESTS=lsp~~src/lsp/lsp.c~	clear(&d->tok);¶	d->tokid = 0;~	d->tokid = 0;
 lsp: tokens: a file opened once the server is ready not asked~test TESTS=lsp~~src/lsp/lsp.c~d->bad = put_text(d->t);¶	str_lit(&o, "\"}}");¶	end(d->s);¶	tokens(d);~d->bad = put_text(d->t);¶	str_lit(&o, "\"}}");¶	end(d->s);
 lsp: tokens: only the first file asked once the server is ready~test TESTS=lsp~~src/lsp/lsp.c~s->held.n = 0; }¶		for (LspDoc *d = s->docs; d; d = d->link) tokens(d);~s->held.n = 0; }¶		if (s->docs) tokens(s->docs);
 lsp: tokens: function linked to another face~test TESTS=lsp~~src/lsp/lsp.c~{ "function", FACE_FUNCTION }~{ "function", FACE_TYPE }
 lsp: tokens: a type past the legend read~test TESTS=lsp~~src/lsp/lsp.c~if (v[3] >= d->s->ntypes || !d->s->legend[v[3]]) continue;~if (!d->s->legend[v[3]]) continue;
 lsp: tokens: more than 32 types kept~test TESTS=lsp~~src/lsp/lsp.c~ && s->ntypes < (int)sizeof s->legend; i = tk[i].end~; i = tk[i].end
-lsp: tokens: not asked again on a refresh~test TESTS=lsp~~src/lsp/lsp.c~		if (is(m, meth, "workspace/semanticTokens/refresh")) for (LspDoc *d = s->docs; d; d = d->link) tokens(d);¶~
+lsp: tokens: not asked again on a refresh~test TESTS=lsp~~src/lsp/lsp.c~		if (is(m, meth, "workspace/semanticTokens/refresh"))¶			for (LspDoc *d = s->docs; d; d = d->link) cancel(d, &d->tokid), loop_timer(retoken, d, 200);¶~
 lsp: tokens: no refreshSupport offered~test TESTS=lsp~~src/lsp/lsp.c~"\"workspace\":{\"semanticTokens\":{\"refreshSupport\":true}},\"window\"~"\"window\"
 lsp: tokens: each start counted from the line's~test TESTS=lsp~~src/lsp/lsp.c~	pb += lsp_u16_byte(b + pb, n - pb, c - pc);~	pb = lsp_u16_byte(b + pb, n - pb, c - pc);
+lsp: tokens: each refresh of a burst asked for at once~test TESTS=lsp~~src/lsp/lsp.c~cancel(d, &d->tokid), loop_timer(retoken, d, 200);~tokens(d);
+lsp: tokens: a refresh's wait outlives its buffer~test TESTS=lsp~~src/lsp/lsp.c~	loop_timer(retoken, d, -1);¶~
+lsp: tokens: a restarted server's legend added to the old one~test TESTS=lsp~~src/lsp/lsp.c~	s->ready = s->ntypes = 0;~	s->ready = 0;
+lsp: tokens: an answered request cancelled again~test TESTS=lsp~~src/lsp/lsp.c~		if (d->tokid == rid) {¶			d->tokid = 0;~		if (d->tokid == rid) {

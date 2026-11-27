@@ -225,6 +225,8 @@ static void tokens(LspDoc *d)
 	send(d->s);
 }
 
+static void retoken(void *d) { tokens(d); }
+
 static void open_doc(LspDoc *d)
 {
 	begin("textDocument/didOpen");
@@ -288,6 +290,7 @@ static void forget(LspDoc *d)
 	clear(&d->done);
 	clear(&d->tok);
 	d->tokid = 0;
+	loop_timer(retoken, d, -1);
 	d->prog.ver = -1;                   /* elaborated anew: no word on it yet */
 	if (d == G.d) G.shown = 0, G.sess.n = 0;    /* a new server: its own RPC sessions */
 	for (int k = 0; k < LSP_NASK; k++) { free(d->ask[k].ans); d->ask[k].ans = NULL; d->ask[k].id = 0; }
@@ -670,7 +673,7 @@ static void legend(Srv *s, const char *m)
    line is walked once: each start from the last token's (pb, pc). */
 static void decode(LspDoc *d, const char *m, int arr)
 {
-	if (arr < 0 || tk[arr].type != 'a') return;
+	if (arr < 0) return;
 	clear(&d->tok);
 	core_changed = 1;
 	const Text *t = d->t;
@@ -699,7 +702,7 @@ static void decode(LspDoc *d, const char *m, int arr)
 		pb += lsp_u16_byte(b + pb, n - pb, c - pc);
 		pc = c;
 		size_t a = ls + pb, z = a + lsp_u16_byte(b + pb, n - pb, (size_t)v[2]);
-		if (a < z) d->tok.v[d->tok.n++] = (LspDiag){ a, z, z, d->s->legend[v[3]], NULL };
+		d->tok.v[d->tok.n++] = (LspDiag){ a, z, z, d->s->legend[v[3]], NULL };
 	}
 }
 
@@ -723,9 +726,11 @@ static void handle(Srv *s, const char *m, size_t n)
 		putraw(&o, m, id);
 		str_lit(&o, ",\"result\":null}");
 		send(s);
-		/* Lean answers with what it has elaborated, then asks again
-		   (Neovim's semantic_tokens: refresh, a new request) */
-		if (is(m, meth, "workspace/semanticTokens/refresh")) for (LspDoc *d = s->docs; d; d = d->link) tokens(d);
+		/* Lean answers with what it has elaborated, then asks again, in
+		   bursts when we read slowly: one request 200 ms after the last
+		   (Neovim's semantic_tokens: _refresh, mark_dirty, debounce_request) */
+		if (is(m, meth, "workspace/semanticTokens/refresh"))
+			for (LspDoc *d = s->docs; d; d = d->link) cancel(d, &d->tokid), loop_timer(retoken, d, 200);
 		return;
 	}
 	if (meth >= 0) {
