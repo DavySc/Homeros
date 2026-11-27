@@ -141,9 +141,21 @@ sql: a DECLARE runs on past the next statement (test_sql_vars)~test TESTS=sql_va
 sql: a variable declared after its use asked for (test_sql_editor)~test TESTS=sql_editor~~src/sql/run.c~		if (!has(&decl, out->s + i)) memmove~		if (1) memmove
 sql: a procedure's parameters asked for (test_sql_editor)~test TESTS=sql_editor~~src/sql/run.c~is(w, routine)) break;~is(w, routine)) create = 0;
 sql: the DECLAREs on a line of their own, the server's line numbers off by one (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~"DECLARE %s %s; "~"DECLARE %s %s;\n"
-sql: the file's own DECLARE not the prompt's default (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~(f = val(&d, need.s + j)) ? f : ""~(f = val(&d, need.s + j)) && 0 ? f : ""
 sql: a kept value asked for again (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~			if (v) { r = str_addf~			if (0) { r = str_addf
 sql: :Declare keeps the old value beside the new (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (v) {   /* forgotten, or replaced */~	if (0) {   /* forgotten, or replaced */
-sql: Enter does not run the waiting F5 (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (!s->asked) return 0;~	return 0;
 sql: Postgres's @x asked for (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~int p = s->spec.pg ? 0 : params(s, b, a, z);~int p = params(s, b, a, z);
-sql: a DECLARE's line break typed as Enter (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~*p == '\n' || *p == '\r' || *p == '\t' ? ' ' :~*p == '\t' ? ' ' :
+sql: the file's own DECLARE not the prompt's default (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~f && !strpbrk(f, "\r\n") ? f : ""~f && 0 ? f : ""
+sql: a default with a line break (a string's) typed, its break as Enter (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~f && !strpbrk(f, "\r\n") ? f : ""~f ? f : ""
+sql: a default the command line cannot hold typed cut (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~>= (int)sizeof k) snprintf~>= 99999) snprintf
+sql: the default typed byte by byte, not as characters (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~l = uni_len((const unsigned char *)k, m, i), keys_feed(E, (int)uni_cp((const unsigned char *)k, m, i), i + l < m);~l = 1, keys_feed(E, (unsigned char)k[i], i + l < m);
+sql: Esc leaves the F5 waiting, so a :Declare typed later runs it (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	W = NULL;¶	if (key != KEY_F5~	if (key != KEY_F5
+sql: a :Declare by hand runs the session's last F5 (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (W != s) return 0;~	if (0) return 0;
+sql: the defaults read across GO (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~for (size_t i = 0; !r && i < f.n; i++) r = sql_vars(b->text, f.b[i].a, f.b[i].z, out, d);~r = r || sql_vars(b->text, 0, text_len(b->text), out, d);
+sql: CASE's ELSE and END end a DECLARE (test_sql_vars)~test TESTS=sql_vars~~src/sql/run.c~!depth && !cases && is(w, stmt)~!depth && is(w, stmt)
+sql: a statement word inside ( ) ends a DECLARE (test_sql_vars)~test TESTS=sql_vars~~src/sql/run.c~!depth && !cases && is(w, stmt)~!cases && is(w, stmt)
+sql: a comma inside ( ) ends a DECLARE item (test_sql_editor)~test TESTS=sql_editor~~src/sql/run.c~(*w == ';' || (*w == ',' && !depth))~(*w == ';' || *w == ',')
+sql: a ; does not end a DECLARE item (test_sql_editor)~test TESTS=sql_editor~~src/sql/run.c~(*w == ';' || (*w == ',' && !depth))~((*w == ',' && !depth))
+sql: a default's tokens run together, no space for a gap or a comment (test_sql_editor)~test TESTS=sql_editor~~src/sql/run.c~bad = gap && item == 2 && str_add(decls, " ", 1);~bad = gap && item == 3 && str_add(decls, " ", 1);
+sql: a bare @ listed as a variable (fuzz_sql_vars)~fuzz FUZZERS=sql_vars FUZZ_SECONDS=120~~src/sql/run.c~*w == '@' && w[1] && w[1] != '@'~*w == '@' && w[1] != '@'
+sql: a name over 128 bytes listed cut (fuzz_sql_vars)~fuzz FUZZERS=sql_vars FUZZ_SECONDS=120~~src/sql/run.c~&& e - p <= 128 &&~&&
+sql: a NUL in a DECLARE ends its pair early (fuzz_sql_vars)~fuzz FUZZERS=sql_vars FUZZ_SECONDS=120~~src/sql/run.c~bad = str_add(decls, b ? &b : " ", 1);~bad = str_add(decls, &b, 1);

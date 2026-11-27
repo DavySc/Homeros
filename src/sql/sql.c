@@ -14,6 +14,7 @@
 #include "file.h"
 #include "loop.h"
 #include "match.h"
+#include "uni.h"
 #include "db.h"
 #include "run.h"
 
@@ -33,11 +34,15 @@ typedef struct {
 	size_t base;
 	long long t0;
 	Str vars, decl;         /* :Declare's "@name\0type = value\0" pairs; the run's DECLAREs (SqlBatch's pre) */
-	size_t pa, pz;          /* the F5 waiting for :Declare's answer, if asked */
-	int asked;
+	size_t pa, pz;          /* the F5 that asked :Declare */
 } Sess;
 
 static Editor *E;
+/* the session whose F5 waits for the Enter that answers its :Declare
+   prompt; any key that reaches sql_key is typed outside that prompt and
+   forgets it (Esc, Ctrl-C, BS on the empty line), so a :Declare typed
+   later never runs other text */
+static void *W;
 static Sess **S;
 static size_t nS;
 
@@ -315,6 +320,16 @@ static const char *val(const Str *l, const char *name)
 	return NULL;
 }
 
+/* The file's DECLAREs, batch by batch (GO ends one), into d */
+static int defaults(const Buf *b, Str *out, Str *d)
+{
+	SqlBatches f = {0};
+	int r = sql_split(b->text, 0, text_len(b->text), &f) < 0;
+	for (size_t i = 0; !r && i < f.n; i++) r = sql_vars(b->text, f.b[i].a, f.b[i].z, out, d);
+	free(f.b);
+	return r;
+}
+
 /* Each batch's undeclared @variables DECLAREd before it, on its first
    line (the server's line numbers stay the buffer's), from :Declare; the
    first without one is asked for as Davy would type it (DataGrip's
@@ -331,12 +346,16 @@ static int params(Sess *s, const Buf *b, size_t a, size_t z)
 		for (size_t j = 0; !r && j < need.n; j += strlen(need.s + j) + 1) {
 			const char *v = val(&s->vars, need.s + j), *f;
 			if (v) { r = str_addf(&s->decl, "DECLARE %s %s; ", need.s + j, v); continue; }
-			if ((r = sql_vars(b->text, 0, text_len(b->text), &file, &d))) break;
-			char k[512];
-			snprintf(k, sizeof k, "Declare %s %s", need.s + j, (f = val(&d, need.s + j)) ? f : "");
+			if ((r = defaults(b, &file, &d))) break;
+			/* the default only if the command line holds all of it, and no
+			   line break (a string's), which would be Enter */
+			char k[sizeof E->cmd];
+			f = val(&d, need.s + j);
+			if (snprintf(k, sizeof k, "Declare %s %s", need.s + j, f && !strpbrk(f, "\r\n") ? f : "") >= (int)sizeof k) snprintf(k, sizeof k, "Declare %s ", need.s + j);
 			keys_feed(E, KEY_ESC, 1), keys_feed(E, ':', 1);
-			for (const char *p = k; *p; p++) keys_feed(E, *p == '\n' || *p == '\r' || *p == '\t' ? ' ' : (unsigned char)*p, !!p[1]);   /* a line break would be Enter */
-			s->pa = a, s->pz = z, s->asked = r = 1;
+			for (size_t i = 0, m = strlen(k), l; i < m; i += l)   /* code points, as typed */
+				l = uni_len((const unsigned char *)k, m, i), keys_feed(E, (int)uni_cp((const unsigned char *)k, m, i), i + l < m);
+			s->pa = a, s->pz = z, W = s, r = 1;
 		}
 		q->npre = s->decl.n - q->pre;
 	}
@@ -356,7 +375,6 @@ static int run(Sess *s, size_t a, size_t z)
 	if (bad < 0) return -1;
 	if (bad) core_msg(E, "sql: line %ld: a GO line sqlcmd refuses (Syntax error near command 'GO')", bad);
 	if (!s->q.n) return bad ? -1 : 0;
-	s->asked = 0;
 	int p = s->spec.pg ? 0 : params(s, b, a, z);   /* Postgres has no @variables */
 	if (p) { if (p < 0) core_msg(E, "sql: out of memory"); s->q.n = 0; return p < 0 ? -1 : 0; }
 	char t[4096];
@@ -375,6 +393,7 @@ static int run(Sess *s, size_t a, size_t z)
 
 int sql_key(Editor *e, int key)
 {
+	W = NULL;
 	if (key != KEY_F5 && key != KEY_BREAK && key != KEY_CTRL_C) return 0;
 	E = e;
 	Sess *s = sess(e->buf->nr, 0);
@@ -497,7 +516,8 @@ int sql_declare(Editor *e, const char *arg)
 	const char *rest = arg + n + strspn(arg + n, " \t");
 	if (!*rest) return 0;
 	if (str_add(&s->vars, name, n + 1) || str_add(&s->vars, rest, strlen(rest) + 1)) return core_msg(e, "sql: out of memory"), -1;
-	if (!s->asked) return 0;
-	size_t len = text_len(core_buf_find(e, s->nr)->text);
-	return run(s, s->pa < len ? s->pa : len, s->pz < len ? s->pz : len);   /* the waiting F5 */
+	if (W != s) return 0;
+	W = NULL;
+	size_t len = text_len(core_buf_find(e, s->nr)->text);   /* no key came between, but a reload from disk may have */
+	return run(s, s->pa < len ? s->pa : len, s->pz < len ? s->pz : len);   /* the F5 whose prompt this answers */
 }

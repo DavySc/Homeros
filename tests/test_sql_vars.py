@@ -1,7 +1,7 @@
 """Package 22's undeclared @variables (sql_vars) against SQL Server:
-random batches of uses, DECLAREs (lists, tables, values), EXEC with
-parameter names and a return status, SET and SELECT assignments, @@x,
-and @names in strings, comments and [names].
+random batches of uses, DECLAREs (lists, tables, values, CASE and
+parentheses in them), EXEC with parameter names and a return status, SET
+and SELECT assignments, @@x, and @names in strings, comments and [names].
 
   python3 tests/test_sql_vars.py DRIVER N SEED > tests/test_sql_vars.txt
 asks the server which variables each batch lacks: it runs the batch
@@ -24,6 +24,9 @@ def stmt(rnd):
         lambda: 'declare %s int' % v(),
         lambda: 'declare %s int = 1, %s nvarchar(9)' % (v(), v()),
         lambda: 'DECLARE %s table (x int, y int)' % rnd.choice(['@t', '@T']),
+        lambda: 'declare %s int = case when 1 = 1 then 1 else 2 end, %s int' % (v(), v()),
+        lambda: 'declare %s decimal(10, 2) = 1.5, %s int' % (v(), v()),
+        lambda: 'declare %s int = (select 1), %s int' % (v(), v()),
         lambda: 'select * from @t',
         lambda: "exec sp_executesql N'select @p', N'@p int', @p = %s" % v(),
         lambda: 'exec %s = sp_who' % v(),
