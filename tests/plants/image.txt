@@ -45,7 +45,7 @@ wl: image cells drawn a cell to the right~test TESTS=wl~~src/paint/paint.c~image
 win: image cells drawn a cell to the right~win WIN=win~~src/paint/paint.c~image_draw(px + y0 * bw + c * cw, bw, &x[c]);~image_draw(px + y0 * bw + (c + 1) * cw, bw, &x[c]);
 wl: the cell's size is the window's~test TESTS=wl~~src/wl/wl.c~	*h = u ? 0 : cell_h;~	*h = u ? 0 : cell_w;
 win: image cells drawn as text~win WIN=win~~src/paint/paint.c~		if (x[c].attr == ATTR_IMAGE) { image_draw(px + y0 * bw + c * cw, bw, &x[c]); continue; }   /* thread 0's, agreed */~
-win: the cell's size is the window's~win WIN=win~~src/win/backend.c~*h = x ? x->ch : 0;¶}¶¶const Backend backend_win~*h = x ? x->cw : 0;¶}¶¶const Backend backend_win
+win: the cell's size is the window's~win WIN=win~~src/win/backend.c~*h = x ? x->ch : 0;¶}¶¶/* a title~*h = x ? x->cw : 0;¶}¶¶/* a title
 file: file_id calls a missing file an error~test TESTS="file file_save image"~~src/file/file.c~	if (stat(path, &st)) return errno == ENOENT ? 0 : -1;~	if (stat(path, &st)) return -1;
 file: file_id says a file exists that does not~test TESTS="file file_save image"~~src/file/file.c~	memset(id, 0, sizeof *id);¶	if (stat(path, &st))~	memset(id, 1, sizeof *id);¶	if (stat(path, &st))
 wl: the wallpaper's surface above the text~test TESTS=wl~~src/wl/wl.c~wl_subsurface_place_below(w->wsub, w->surf);~wl_subsurface_place_above(w->wsub, w->surf);

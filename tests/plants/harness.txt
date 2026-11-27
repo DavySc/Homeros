@@ -48,3 +48,7 @@ main: the remote window stops after the backend closed (Remote "late")~test TEST
 main: a file handed over with no key is not parsed~test TESTS=frames_main~~src/main.c~free(p), dirty = 1) {~free(p)) {
 main: a file handed over opens after the window system is lost~test TESTS=frames_main~~src/main.c~for (char *p; !lost && (p = remote_next());~for (char *p; (p = remote_next());
 main: a file handed over keeps half-done Visual mode~test TESTS=frames_main~~src/main.c~			keys_input(&e, KEY_FOCUS, 0);~
+main: a new window gets no title (test_frames_main)~test TESTS=frames_main~~src/main.c~		title(nfr, t);¶~
+main: SPC 5 n leaves the old title (test_frames_main)~test TESTS=frames_main~~src/main.c~	if (i < nfr) title(i, e.tab);   /* SPC 5 n */~	(void)i;
+main: a title sent after every key (test_frames_main)~test TESTS=frames_main~~src/main.c~	if (fr[i].key == t->key) return;~	if (0) return;
+main: the first window gets no title (test_frames_main)~test TESTS=frames_main~~src/main.c~	fr[nfr++].id = 0;¶	title(0, e.tab);~	fr[nfr++].id = 0;

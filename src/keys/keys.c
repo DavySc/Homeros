@@ -127,7 +127,7 @@ static const struct { const char *lhs, *desc; } maps[] = {
 	{ " ,", "Buffers" },
 	/* Emacs's C-x 5 frame keys, as SPC 5 (C-x is Vim's decrement) */
 	{ " 5", "+frame" }, { " 50", "Delete frame" }, { " 51", "Delete other frames" }, { " 52", "New frame" },
-	{ " 5f", "Find file in new frame" }, { " 5m", "Move window to frame" }, { " 5o", "Other frame" },
+	{ " 5f", "Find file in new frame" }, { " 5m", "Move window to frame" }, { " 5n", "Frame letter" }, { " 5o", "Other frame" },
 	{ " c", "+compile" }, { " cc", "Compile" }, { " cC", "Recompile" },
 	{ " D", "Dashboard" },
 	{ " e", "File Explorer" },
@@ -144,7 +144,7 @@ static const struct { const char *lhs, *desc; } maps[] = {
 };
 enum { NMAPS = sizeof maps / sizeof *maps };
 static int lead[3], nlead;   /* the keys typed of a map not yet complete */
-static int tabmove;          /* SPC 5 m typed: the next key is the frame's number */
+static int frame;            /* SPC 5 m or n typed: the next key is a frame's number or letter */
 static int hint;             /* which-key's panel is shown */
 
 /* m is a map of this buffer and mode: in Visual mode only SPC i s, a
@@ -255,11 +255,21 @@ static void dashboard(Editor *e) { if (!core_edit_file(e, "", 0)) tools_dash(e, 
    completed waits (a lone SPC as with which-key, without 'timeoutlen');
    otherwise the first key runs unmapped and the rest are checked again
    (Neovim's vgetorpeek() when no map matches) */
+/* SPC 5 n {letter}: one SPC 5 has no key of its own and no other frame has */
+static int frame_key(Editor *e, int k)
+{
+	if (k < 'a' || k > 'z' || strchr("fmno", k)) return -1;
+	for (const Tab *t = e->tabs; t; t = t->next) if (t->key == k && t != e->tab) return -1;
+	e->tab->key = (char)k;
+	return 0;
+}
+
 static int map(Editor *e, int k)
 {
-	if (tabmove) {
-		tabmove = e->ks.pending = 0;
-		if (k < '1' || k > '9' || core_win_to_tab(e, k - '0')) beep();
+	if (frame) {
+		int f = frame;
+		frame = e->ks.pending = 0;
+		if (f == 'm' ? k < '1' || k > '9' || core_win_to_tab(e, k - '0') : frame_key(e, k)) beep();
 		return 1;
 	}
 	if (!nlead && (e->mode != MODE_NORMAL || !normal_mappable(0))) return 0;
@@ -276,6 +286,17 @@ static int map(Editor *e, int k)
 		return 1;
 	}
 	lead[nlead++] = k;
+	if (nlead == 3 && lead[0] == ' ' && lead[1] == '5') {   /* SPC 5 {letter}: that frame */
+		long n = 1;
+		for (Tab *t = e->tabs; t; t = t->next, n++)
+			if (t->key == k) {
+				nlead = e->ks.pending = 0;
+				hint_end();
+				normal_mappable(1);
+				goto_tabpage(n);
+				return 1;
+			}
+	}
 	int part = 0;
 	for (int i = 0; i < NMAPS; i++) {
 		const char *m = maps[i].lhs;
@@ -308,7 +329,7 @@ static int map(Editor *e, int k)
 			case 'o': goto_tabpage(0); break;
 			case '0': core_tabclose(e, NULL); break;
 			case '1': core_tabonly(e); break;
-			default: tabmove = e->ks.pending = 1;
+			default: frame = m[2]; e->ks.pending = 1;
 			}
 			break;
 		case 's': tools_pick(e, PICK_SNIPPETS); break;
@@ -345,8 +366,8 @@ void keys_input(Editor *e, int k, int pending)
 {
 	/* keys.h KEY_FOCUS: what is half done ends, as Esc would end it */
 	if (k == KEY_FOCUS) {
-		int m = nlead || tabmove;
-		nlead = tabmove = 0;
+		int m = nlead || frame;
+		nlead = frame = 0;
 		hint_end();
 		if (e->mode == MODE_INSERT || e->ks.visual || (!m && (e->ks.pending || !normal_mappable(0)))) keys_feed(e, KEY_ESC, 0);
 		else e->ks.pending = 0;

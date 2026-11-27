@@ -32,8 +32,19 @@ static int q[QMAX], qw[QMAX], qh, qn;   /* keys read but not yet run, and their 
 static int running;            /* inside a command */
 static int lost;               /* the backend's input is gone for good */
 /* an OS window per tab page (the terminal: one, id 0, showing the current) */
-static struct { int id, dirty, resized; Grid g, shown; } fr[FMAX];
+static struct { int id, dirty, resized; char key; Grid g, shown; } fr[FMAX];
 static int nfr;
+
+/* fr[i]'s title names its tab page's SPC 5 letter, sent only when that
+   changes (a new window, SPC 5 n) */
+static void title(int i, const Tab *t)
+{
+	char s[16];
+	if (fr[i].key == t->key) return;
+	fr[i].key = t->key;
+	snprintf(s, sizeof s, t->key ? "homeros [%c]" : "homeros", t->key);
+	b->title(fr[i].id, s);
+}
 /* Focus.tla: the windows raised whose sync's done (KEY_RAISED) has not
    come, oldest first, and the last one raised */
 static int asked[AMAX], na, wanted = -1;
@@ -80,6 +91,7 @@ static int windows(void)
 			continue;
 		}
 		fr[nfr].id = t->id;
+		title(nfr, t);
 		if (size(nfr++)) return -1;
 	}
 	return 0;
@@ -139,6 +151,8 @@ static void key(int k, int w)
 	}
 	if (k == KEY_CLOSE && t && e.tabs->next && !e.tabline) core_tabclose(&e, t);
 	else keys_input(&e, k, qn > 0);
+	while (i < nfr && fr[i].id != e.tab->id) i++;
+	if (i < nfr) title(i, e.tab);   /* SPC 5 n */
 	follow(was);
 }
 
@@ -171,6 +185,7 @@ int main(int argc, char **argv)
 	e.tabline = b == &backend_tty;
 	for (int i = 0, n = b->fds(fds); i < n; i++) loop_watch(fds[i], on_input, NULL);
 	fr[nfr++].id = 0;
+	title(0, e.tab);
 	if (size(0)) goto out;
 	/* also with a file: the first draw measures "loaded in" for a later
 	   :Dashboard (thread 0's, agreed) */

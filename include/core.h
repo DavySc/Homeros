@@ -126,6 +126,8 @@ typedef struct Tab {
 	struct Frame *layout;
 	int rows, cols;            /* its OS window's size in cells */
 	int id;                    /* the backend's handle for its OS window, from 0, never reused */
+	char key;                  /* SPC 5 {key} enters it: the first free letter but SPC 5's f, m, n
+	                              and o when made (0 past 22 tab pages); SPC 5 n {letter} changes it */
 	struct Tab *next;          /* tab page order (gt) */
 } Tab;
 
