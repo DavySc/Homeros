@@ -1,0 +1,19 @@
+NOT CAUGHT    mine 2: the old tokens kept under the new answer   (make test TESTS=lsp passed)
+NOT CAUGHT    mine 1: tokens arrive, nothing redrawn   (make test TESTS=lsp passed)
+caught        mine 4: a token on the first line read before its line   (make test TESTS=lsp): tests/test_lsp.c:1552: CHECK(tsettle(&e)) failed
+NOT CAUGHT    mine 3: a buffer with faces and no grammar not drawn (Lean today, the goals window)   (make test TESTS=lsp passed)
+NOT CAUGHT    mine 5: a line past the text's end read   (make test TESTS=lsp passed)
+NOT CAUGHT    mine 6: a token type past the legend read   (make test TESTS=lsp passed)
+NOT CAUGHT    mine 7: a legend of more than 32 types written past its end   (make test TESTS=lsp passed)
+NOT CAUGHT    mine 8: restart keeps the old tokens   (make test TESTS=lsp passed)
+NOT CAUGHT    mine 9: a new server's legend added to the old one's   (make test TESTS=lsp passed)
+NOT CAUGHT    mine 10: an answered request cancelled again   (make test TESTS=lsp passed)
+NOT CAUGHT    mine 11: tokens not asked for on open   (make test TESTS=lsp passed)
+NOT CAUGHT    mine 12: an error answer read as tokens of an empty file is fine, a non-array too   (make test TESTS=lsp passed)
+NOT CAUGHT    mine 13: an empty token kept   (make test TESTS=lsp passed)
+caught        mine 14: tokens freed twice or not at all on close   (make test TESTS=lsp): ==16369==ERROR: LeakSanitizer: detected memory leaks
+caught        mine 15: the project's marker looked for with the old call fails only on Windows   (make test TESTS=lsp): tests/test_lsp.c:1239: CHECK(ok) failed
+caught        mine 17: a token type Neovim colours left plain (the last of the table)   (make test TESTS=lsp): tests/test_lsp.c:1552: CHECK(tsettle(&e)) failed
+NOT CAUGHT    mine 16: only the first server's files asked once it is ready   (make test TESTS=lsp passed)
+NOT CAUGHT    mine 18: property drawn as a variable   (make test TESTS=lsp passed)
+plants-done

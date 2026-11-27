@@ -1,0 +1,7 @@
+rv1: Ctrl-C taken while the cancel waits~test TESTS=sql_editor~~src/sql/sql.c~if (key == KEY_CTRL_C && (!s || !s->q.n || s->cancel)) return 0;~if (key == KEY_CTRL_C && (!s || !s->q.n)) return 0;
+rv2: Ctrl-C taken after the run ended~test TESTS=sql_editor~~src/sql/sql.c~if (key == KEY_CTRL_C && (!s || !s->q.n || s->cancel)) return 0;~if (key == KEY_CTRL_C && (!s || s->cancel)) return 0;
+rv3: Ctrl-C runs as F5~test TESTS=sql_editor~~src/sql/sql.c~	if (key != KEY_F5) {~	if (key == KEY_BREAK) {
+rv4: the guard gone~test TESTS=sql_editor~~src/sql/sql.c~	if (key == KEY_CTRL_C && (!s || !s->q.n || s->cancel)) return 0;¶~
+rv5: Ctrl-C always Vim's~test TESTS=sql_editor~~src/sql/sql.c~if (key == KEY_CTRL_C && (!s || !s->q.n || s->cancel)) return 0;~if (key == KEY_CTRL_C) return 0;
+rv6: Ctrl-C cancels without the SSMS line~test TESTS=sql_editor~~src/sql/sql.c~		putz(s, "Query was cancelled by user.\n");   /* SSMS's line, at once */~		if (key == KEY_BREAK) putz(s, "Query was cancelled by user.\n");
+rv7: Ctrl-C drops the connection instead of cancelling~test TESTS=sql_editor~~src/sql/sql.c~		if (db_state(&s->db) != DB_BUSY || db_cancel(&s->db)) drop(s);~		if (key == KEY_CTRL_C || db_state(&s->db) != DB_BUSY || db_cancel(&s->db)) drop(s);

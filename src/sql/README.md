@@ -12,15 +12,23 @@ branch `claude/project-thread-osg6me`, which is never merged.
 | `pg.c` | PostgreSQL (protocol 3.0): SSLRequest, TLS, SCRAM-SHA-256, simple queries, cancel on a second connection, values in the server's own text |
 | `db.c` | one interface over both clients, for the editor and the tests |
 | `run.c` | a script's batches, split on GO as sqlcmd 18 splits them (`GO n` too) |
-| `sql.c` | the editor's side (`include/sql.h`): F5, Alt+Break, the results split, the connections file, `:Connect` |
+| `sql.c` | the editor's side (`include/sql.h`): F5, Alt+Break and Ctrl-C, the results split, the connections file, `:Connect`, the catalog for completion |
 
 ## Running queries
 
 In a `.sql` buffer, F5 runs the selection, or the whole buffer when nothing
-is selected (SSMS). Alt+Break cancels the run. Results and messages come
+is selected (SSMS). Alt+Break cancels the run, and so does Ctrl-C while a run is going (a terminal sends no Break); otherwise Ctrl-C is Vim's. Results and messages come
 in the server's order in a split below the query, which SPC r opens and
 closes. SQL Server scripts run batch by batch, split on GO. PostgreSQL runs
 the text as one query.
+
+Completion (package 19) asks `sql_catalog` for the tables' columns of the
+buffer's connection, as SSMS's IntelliSense does. When a session on a
+connection logs in (its first F5: IntelliSense too needs a connected
+window), one `INFORMATION_SCHEMA.COLUMNS` query reads them on a connection
+of its own, in the background; every buffer on that connection shares them.
+They are read again at a later login if that failed, when completion asks
+(fn NULL), and after `:Connect`. `design/specs/SqlCat.tla` models it.
 
 A buffer's connection comes from `$XDG_CONFIG_HOME/homeros/sql`
 (`~/.config/homeros/sql`). The longest `dir` line whose folder holds the file

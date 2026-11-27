@@ -487,8 +487,16 @@ static void win_cell(int id, int *w, int *h)   /* thread 0's, agreed */
 	*h = x ? x->ch : 0;
 }
 
+/* a title longer than 63 UTF-16 units is not set (none is: "homeros [a]") */
+static void win_title(int id, const char *s)
+{
+	struct win *w = win_of(id);
+	wchar_t u[64];
+	if (w && MultiByteToWideChar(CP_UTF8, 0, s, -1, u, 64)) SetWindowTextW(w->h, u);
+}
+
 const Backend backend_win = {
 	win_open, win_close, frame_open, win_frame_close, win_raise, win_fds, win_input, win_size, win_ready,
-	win_present, win_suspend, win_clip_set, win_clip_get, win_mouse, win_cell
+	win_present, win_suspend, win_clip_set, win_clip_get, win_mouse, win_cell, win_title
 };
 #endif

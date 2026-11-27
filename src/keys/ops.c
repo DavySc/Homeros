@@ -11,6 +11,7 @@
 #include "org.h"
 #include "sqlfmt.h"
 #include "str.h"
+#include "syntax.h"
 #include "uni.h"
 
 enum { SW = 4 };
@@ -1734,10 +1735,10 @@ static void replace(size_t a, size_t z, const char *res, size_t n)
 static int oom(void) { core_msg(E, "E342: Out of memory!"); return -1; }
 
 /* Davy's conform.nvim formatters_by_ft: 1 sql (sqldiff), 2 systemverilog
-   and verilog (verible), 0 none */
+   and verilog (verible), 3 zig (zig fmt, in-process: syntax_zig_fmt), 0 none */
 int fmt_kind(void)
 {
-	return is_ft(".sql") ? 1 : is_ft(".sv") || is_ft(".svh") || is_ft(".v") || is_ft(".vh") ? 2 : 0;
+	return is_ft(".sql") ? 1 : is_ft(".sv") || is_ft(".svh") || is_ft(".v") || is_ft(".vh") ? 2 : is_ft(".zig") ? 3 : 0;
 }
 
 static Str vout;   /* verible's stdout */
@@ -1751,43 +1752,53 @@ static void on_verible(void *ctx, int stream, const char *b, size_t n)
    indent: the whole text goes through verible-verilog-format, as
    'formatprg' through system() (proc_wait); the edit is where its output
    differs.  0 ok, -1 with the message set. */
-static int verible(size_t *a, size_t *z, const char **res, size_t *n)
+static int verible(const char *in, size_t len, size_t a, size_t z, const char **res, size_t *n)
 {
 	char lines[48];
-	size_t len = text_len(B->text), p = 0, q = 0;
-	char *in = malloc(len + 1);
-	if (!in) return oom();
-	text_read(B->text, 0, in, len);
-	snprintf(lines, sizeof lines, "--lines=%zu-%zu", text_line_of(B->text, *a) + 1, text_line_of(B->text, *z > *a ? *z - 1 : *z) + 1);
+	snprintf(lines, sizeof lines, "--lines=%zu-%zu", text_line_of(B->text, a) + 1, text_line_of(B->text, z > a ? z - 1 : z) + 1);
 	/* the whole text without --lines, as conform.nvim: verible's lines
 	   mode skips its convergence check and formats 2 of Ibex's 33 files
 	   otherwise (measured) */
 	char *argv[] = { "verible-verilog-format", "--indentation_spaces=4", "-", NULL, NULL };
-	if (*a || *z < len) argv[2] = lines, argv[3] = "-";
+	if (a || z < len) argv[2] = lines, argv[3] = "-";
 	int bad = 0, id = proc_spawn(argv, NULL, on_verible, &bad);
 	if (id >= 0) {
 		vout.n = 0;
 		bad |= proc_write(id, in, len);
 		proc_close(id);
 		bad |= proc_wait(id, 1000);
-		while (p < len && p < vout.n && in[p] == vout.s[p]) p++;
-		while (q < len - p && q < vout.n - p && in[len - 1 - q] == vout.s[vout.n - 1 - q]) q++;
 	}
-	free(in);
 	if (id < 0 || bad) { core_msg(E, id < 0 ? "Cannot run verible-verilog-format" : "verible-verilog-format failed"); return -1; }
-	*a = p; *z = len - q; *res = vout.s ? vout.s + p : ""; *n = vout.n - p - q;
+	*res = vout.s ? vout.s : "", *n = vout.n;
 	return 0;
 }
 
 /* The buffer's formatter over bytes [a, z) (sqlfmt's range; verible's
-   lines): only the changes are applied */
+   lines; zig fmt's whole text): only the changes are applied, so undo and
+   the cursor keep the rest */
 int buf_format(size_t a, size_t z)
 {
 	const char *res;
 	size_t n;
-	int kept = 0;
-	if (fmt_kind() == 2 ? verible(&a, &z, &res, &n) : (kept = sqlfmt(B->text, &a, &z, &res, &n)) < 0)
-		return kept < 0 ? oom() : -1;
+	int kept = 0, k = fmt_kind();
+	if (k == 1) {
+		if ((kept = sqlfmt(B->text, &a, &z, &res, &n)) < 0) return oom();
+	} else {
+		size_t len = text_len(B->text), p = 0, q = 0;
+		char *in = malloc(len + 1);
+		if (!in) return oom();
+		text_read(B->text, 0, in, len);
+		int r = k == 2 ? verible(in, len, a, z, &res, &n) : syntax_zig_fmt(B->syn, &res, &n);
+		if (k == 3 && r != -2 && r) core_msg(E, r == -1 ? "zig fmt: the file does not parse" : "zig fmt: none for the zig on PATH, only 0.15 to 0.17");
+		/* a whole text: the bytes that differ from it */
+		if (!r) {
+			while (p < len && p < n && in[p] == res[p]) p++;
+			while (q < len - p && q < n - p && in[len - 1 - q] == res[n - 1 - q]) q++;
+		}
+		free(in);
+		if (r) return r == -2 ? oom() : -1;
+		a = p, z = len - q, res += p, n -= p + q;
+	}
 	replace(a, z, res, n);
 	if (kept) core_msg(E, "%d statement%s kept as written", kept, kept == 1 ? "" : "s");
 	return 0;

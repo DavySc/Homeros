@@ -1,0 +1,40 @@
+caught        sql: a password in a connections file others can read is used (test_sql_editor)
+caught        sql: GO n runs its batch once (test_sql_editor)
+caught        sql: F5 runs the whole buffer, not the selection (test_sql_editor)
+caught        sql: :Connect does not change the buffer's connection (test_sql_editor)
+caught        sql: a refused GO line not named (test_sql_editor)
+caught        sql: SPC r never closes the results (test_sql_editor)
+caught        sql: Alt+Break's line not written (test_sql_editor)
+caught        sql: a batch read from the buffer as it is when sent, not as it was at F5 (test_sql_editor)
+caught        sql: Alt+Break ends the run before the server answers the cancel (test_sql_editor)
+caught        sql: a cancelled run's later batches still run (test_sql_editor)
+caught        sql: no room for the split leaves the run set (test_sql_editor)
+caught        sql: a second F5 during a run is not refused (test_sql_editor)
+caught        sql: the login's messages shown in the results (test_sql_editor)
+caught        sql: the last dir line wins, not the longest (test_sql_editor)
+caught        sql: dir /a/ms holds /a/msx (test_sql_editor)
+caught        sql: a tilde in a dir line not HOME (test_sql_editor)
+caught        sql: a dir folder ends at its first space (test_sql_editor)
+caught        sql: Alt+Break while logging in sends a cancel (test_sql_editor)
+caught        sql: Postgres's port by default not 5432 (test_sql_editor)
+caught        sql: GO 0 runs its batch once (test_sql_editor)
+caught        sql: a connection the server ended kept (test_sql_editor)
+caught        sql: the results modifiable (test_sql_editor)
+caught        sql: F5 in the results is not their query's (test_sql_editor)
+caught        sql: a wrong port used (test_sql_editor)
+caught        sql: no pass= sends an empty password (test_sql_editor)
+caught        sql: [IPv6] keeps its brackets (test_sql_editor)
+caught        sql: :Disconnect keeps the session (test_sql_editor)
+caught        sql: a second F5 during a run starts another (test_sql_editor)
+caught        sql: the cancel flag outlives its answer (test_sql_editor)
+caught        sql: a port with letters after it is taken (test_sql_editor)
+caught        sql: Ctrl-C does not cancel a run (test_sql_editor)
+caught        sql: Ctrl-C taken from Vim with no run to cancel (test_sql_editor)
+caught        rv1: Ctrl-C taken while the cancel waits
+caught        rv2: Ctrl-C taken after the run ended
+caught        rv3: Ctrl-C runs as F5
+caught        rv4: the guard gone
+caught        rv5: Ctrl-C always Vim's
+caught        rv6: Ctrl-C cancels without the SSMS line
+NOT CAUGHT    rv7: Ctrl-C drops the connection instead of cancelling
+38 of 39 caught

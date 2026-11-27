@@ -1,0 +1,10 @@
+563 files, 45040 edits: an edit median 0.092 p99 3.427 max 14.610 | open median 0.158 max 15.562 | zig fmt median 0.130 max 9.773 | largest file (829113 bytes): an edit median 8.410 max 14.610, open 15.562, zig fmt 9.773
+---
+563 files, 45040 edits: an edit median 0.095 p99 3.366 max 14.510 | open median 0.174 max 15.286 | zig fmt median 0.142 max 10.171 | largest file (829113 bytes): an edit median 8.027 max 14.510, open 15.286, zig fmt 10.171
+---
+563 files, 45040 edits: an edit median 0.101 p99 3.745 max 14.672 | open median 0.187 max 15.161 | zig fmt median 0.145 max 9.868 | largest file (829113 bytes): an edit median 7.841 max 14.672, open 15.161, zig fmt 9.868
+---
+563 files, 45040 edits: an edit median 0.098 p99 3.353 max 15.137 | open median 0.176 max 15.702 | zig fmt median 0.137 max 9.944 | largest file (829113 bytes): an edit median 8.176 max 15.137, open 15.702, zig fmt 9.944
+---
+563 files, 45040 edits: an edit median 0.092 p99 3.616 max 15.046 | open median 0.165 max 15.614 | zig fmt median 0.136 max 9.832 | largest file (829113 bytes): an edit median 8.132 max 15.046, open 15.614, zig fmt 9.832
+---

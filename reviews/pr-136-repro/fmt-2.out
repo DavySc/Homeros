@@ -1,0 +1,9 @@
+zig 0.15 mode 1: identical 540 (of which the formatter changed 504), different 0, both refuse 0, only one refuses 0
+zig 0.15 mode 3: identical 81 (of which the formatter changed 2), different 0, both refuse 459, only one refuses 0
+zig 0.15 mode 6: identical 232 (of which the formatter changed 82), different 0, both refuse 308, only one refuses 0
+zig 0.16 mode 1: identical 550 (of which the formatter changed 514), different 0, both refuse 0, only one refuses 0
+zig 0.16 mode 3: identical 83 (of which the formatter changed 2), different 0, both refuse 467, only one refuses 0
+zig 0.16 mode 6: identical 240 (of which the formatter changed 84), different 0, both refuse 310, only one refuses 0
+zig 0.17 mode 1: identical 563 (of which the formatter changed 528), different 0, both refuse 0, only one refuses 0
+zig 0.17 mode 3: identical 82 (of which the formatter changed 2), different 0, both refuse 481, only one refuses 0
+zig 0.17 mode 6: identical 237 (of which the formatter changed 75), different 0, both refuse 326, only one refuses 0

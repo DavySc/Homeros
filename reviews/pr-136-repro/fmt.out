@@ -1,0 +1,27 @@
+zig 0.15 mode 0: identical 540 (of which the formatter changed 0), different 0, both refuse 0, only one refuses 0
+zig 0.15 mode 1: identical 540 (of which the formatter changed 504), different 0, both refuse 0, only one refuses 0
+zig 0.15 mode 2: identical 349 (of which the formatter changed 324), different 0, both refuse 191, only one refuses 0
+zig 0.15 mode 3: identical 81 (of which the formatter changed 2), different 0, both refuse 459, only one refuses 0
+zig 0.15 mode 4: identical 540 (of which the formatter changed 515), different 0, both refuse 0, only one refuses 0
+zig 0.15 mode 5: identical 540 (of which the formatter changed 515), different 0, both refuse 0, only one refuses 0
+zig 0.15 mode 6: identical 232 (of which the formatter changed 82), different 0, both refuse 308, only one refuses 0
+zig 0.16 mode 0: identical 550 (of which the formatter changed 0), different 0, both refuse 0, only one refuses 0
+zig 0.16 mode 1: identical 550 (of which the formatter changed 514), different 0, both refuse 0, only one refuses 0
+zig 0.16 mode 2: identical 327 (of which the formatter changed 302), different 0, both refuse 223, only one refuses 0
+zig 0.16 mode 3: identical 83 (of which the formatter changed 2), different 0, both refuse 467, only one refuses 0
+zig 0.16 mode 4: identical 550 (of which the formatter changed 525), different 0, both refuse 0, only one refuses 0
+zig 0.16 mode 5: identical 550 (of which the formatter changed 525), different 0, both refuse 0, only one refuses 0
+zig 0.16 mode 6: identical 240 (of which the formatter changed 84), different 0, both refuse 310, only one refuses 0
+zig 0.17 mode 0: identical 563 (of which the formatter changed 0), different 0, both refuse 0, only one refuses 0
+zig 0.17 mode 1: identical 563 (of which the formatter changed 528), different 0, both refuse 0, only one refuses 0
+zig 0.17 mode 2: identical 345 (of which the formatter changed 319), different 0, both refuse 218, only one refuses 0
+zig 0.17 mode 3: identical 82 (of which the formatter changed 2), different 0, both refuse 481, only one refuses 0
+zig 0.17 mode 4: identical 563 (of which the formatter changed 538), different 0, both refuse 0, only one refuses 0
+zig 0.17 mode 5: identical 563 (of which the formatter changed 538), different 0, both refuse 0, only one refuses 0
+zig 0.17 mode 6: identical 237 (of which the formatter changed 75), different 0, both refuse 326, only one refuses 0
+zig 0.17 mode 0: identical 472 (of which the formatter changed 136), different 0, both refuse 78, only one refuses 0 (on std 0.16)
+zig 0.17 mode 0: identical 452 (of which the formatter changed 110), different 0, both refuse 88, only one refuses 0 (on std 0.15)
+zig 0.15 mode 0: identical 550 (of which the formatter changed 2), different 0, both refuse 0, only one refuses 0 (on std 0.16)
+zig 0.16 mode 0: identical 563 (of which the formatter changed 0), different 0, both refuse 0, only one refuses 0 (on std 0.17)
+zig 0.15 mode 0: identical 563 (of which the formatter changed 2), different 0, both refuse 0, only one refuses 0 (on std 0.17)
+zig 0.16 mode 0: identical 540 (of which the formatter changed 5), different 0, both refuse 0, only one refuses 0 (on std 0.15)

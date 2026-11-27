@@ -1,0 +1,24 @@
+--- screen (cursor row 17 col 4)
+17|18  18
+18|~
+19|
+20|     D ➜ Dashboard
+21|     e ➜ File Explorer
+22|     , ➜ Buffers
+23| SPC<esc> close  <bs> back  <c-d>/<c-u>
+--- screen (cursor row 17 col 4)
+17|18  18
+18|~
+19|     , ➜ Buffers
+20|     c ➜ +compile
+21|     f ➜ +find
+22|     g ➜ +git
+23| SPC<esc> close  <bs> back  <c-d>/<c-u>
+--- screen (cursor row 17 col 4)
+17|18  18
+18|~
+19|
+20|     D ➜ Dashboard
+21|     e ➜ File Explorer
+22|     , ➜ Buffers
+23| SPC<esc> close  <bs> back  <c-d>/<c-u>

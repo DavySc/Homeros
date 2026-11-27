@@ -37,3 +37,16 @@ $(SYN)/queries.c: src/syntax/build.mk | $(SYN)/src
 
 $(SYN)/queries.o: $(SYN)/queries.c
 	$(CC) -O2 -c $< -o $@
+
+# Zig's own parser, one library per release (zig.nix), copied out of the
+# store as ghostty's are, so make rebuilds them only when zig.zig changes
+ZIG_LIBS = $(foreach v,15 16 17,build/zig/libzig$(v).a)
+OBJS += $(ZIG_LIBS)
+$(ZIG_LIBS) &: src/syntax/zig.nix src/syntax/zig.zig
+	nix build -f $< -o build/zig-nix
+	rm -rf build/zig && mkdir -p build/zig && cp build/zig-nix/*.a build/zig/ && chmod u+w build/zig/*
+# the Windows builds' (src/tools/check.sh, the trial build)
+ZIG_WIN = $(foreach v,15 16 17,build/zig-win/libzig$(v).a)
+$(ZIG_WIN) &: src/syntax/zig.nix src/syntax/zig.zig
+	nix build -f $< --argstr target x86_64-windows-gnu -o build/zig-nix-win
+	rm -rf build/zig-win && mkdir -p build/zig-win && cp build/zig-nix-win/*.a build/zig-win/ && chmod u+w build/zig-win/*
