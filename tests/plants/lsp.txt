@@ -128,4 +128,4 @@ lsp: a symbol's children dropped~test TESTS=lsp_locs~~src/lsp/lsp.c~		symbols(m,
 lsp: a symbol's deprecated tag ignored~test TESTS=lsp_locs~~src/lsp/lsp.c~dep |= json_int(m, tk, x) == 1;~dep |= 0;
 lsp: an open file's line read with its newline~test TESTS=lsp_locs~~src/lsp/lsp.c~			len = text_line_start(d->t, h->p.l + 1) - 1 - a;~			len = text_line_start(d->t, h->p.l + 1) - a;
 lsp: a closed file's lines counted off by one~test TESTS=lsp_locs~~src/lsp/lsp.c~for (size_t k = 0; k < h->p.l && a < dn; k++)~for (size_t k = 1; k < h->p.l && a < dn; k++)
-lsp: a file:// URI's %XX not decoded~test TESTS=lsp_locs~~src/lsp/lsp.c~		if (l) { *d++ = (char)((h - hex) % 16 * 16 + (l - hex) % 16); u += 2; }~		if (0) { }
+lsp: a file:// URI's %XX not decoded~test TESTS=lsp_locs~~src/lsp/lsp.c~		if (l) { *d++ = (char)((h - hex) % 16 * 16 + (l - hex) % 16); u += 2; }~		if (l && 0) { }

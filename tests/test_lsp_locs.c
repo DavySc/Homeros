@@ -48,51 +48,49 @@ static void type(Editor *e, const char *k)
 	for (int t = 0; t < 1000 && !core_changed; t++) loop_once(10);
 }
 
-/* The keys over the places got: SPC m a opens clangd's other file and
-   C-] the first place, C-o going back from each; grr lists them all in
+/* The keys over the places got (the fake answers every request with the
+   case's answer): SPC m a opens clangd's other file and C-] the first
+   place, C-o going back from each; grr lists them all, one too, in
    :make's window, which becomes current, each line "file:line:col: text"
    without the text's indent, and a write does not run the :make that
    window showed before.  1 checked. */
-static int keyed_case(Editor *e, int n, const char *m)
+static int indented;
+static int keyed_case(Editor *e, const char *m)
 {
-	if (strcmp(m, n > 1 ? "textDocument/references" : "textDocument/definition")) return 0;
+	if (!strcmp(m, "textDocument/documentSymbol")) return 0;
 	size_t l0 = e->win->line, c0 = e->win->col, line, col;
 	Buf *from = e->buf;
 	char f[PATH_MAX + 32];
 	CHECK(sscanf(got.s, "%[^\t]\t%zu\t%zu", f, &line, &col) == 3);
-	if (n == 1) {
-		type(e, " ma");
-		CHECK(e->buf->path && !strcmp(e->buf->path + strlen(e->buf->path) - 4, "/o.c"));
-		type(e, "\x0f");
-		CHECK(e->buf == from && e->win->line == l0 && e->win->col == c0);
-		type(e, "\x1d");
-		CHECK(e->win->line == line - 1 && e->win->col <= col - 1 && strstr(e->buf->path, f));
-		type(e, "\x0f");
-		CHECK(e->buf == from && e->win->line == l0 && e->win->col == c0);
-		return 1;
-	}
+	type(e, " ma");
+	CHECK(e->buf->path && !strcmp(e->buf->path + strlen(e->buf->path) - 4, "/o.c"));
+	type(e, "\x0f");
+	CHECK(e->buf == from && e->win->line == l0 && e->win->col == c0);
+	type(e, "\x1d");
+	CHECK(e->win->line == line - 1 && e->win->col <= col - 1 && strstr(e->buf->path, f));
+	type(e, "\x0f");
+	CHECK(e->buf == from && e->win->line == l0 && e->win->col == c0);
 	CHECK(!tools_make(e, "echo made") && e->buf == from);
 	type(e, "grr");
 	CHECK(e->buf != from && e->buf->nomodifiable);
 	Str t = { 0 };
 	for (const char *g = got.s; *g; g = strchr(g, '\n') + 1) {
 		const char *a = strchr(g, '\t'), *b = strchr(a + 1, '\t'), *c = strchr(b + 1, '\t'), *x = c + 1;
+		indented |= *x == ' ' || *x == '\t';
 		while (*x == ' ' || *x == '\t') x++;
 		str_addf(&t, "%s%.*s:%.*s:%.*s: %.*s\n", sub, (int)(a - g), g, (int)(b - a - 1), a + 1, (int)(c - b - 1), b + 1,
 		         (int)(strchr(x, '\n') - x), x);
 	}
+	tools_written(e, from);
+	for (int i = 0; i < 20; i++) loop_once(10);
 	size_t len = text_len(e->buf->text);
 	char *have = malloc(len + 1);
 	CHECK(have && text_read(e->buf->text, 0, have, len) == len);
 	have[len] = 0;
-	tools_written(e, from);
-	for (int i = 0; i < 20; i++) loop_once(10);
-	free(have);
-	CHECK(text_len(e->buf->text) == len && (have = malloc(len + 1)) && text_read(e->buf->text, 0, have, len) == len);
-	have[len] = 0;
 	if (strcmp(have, t.s)) { fprintf(stderr, "grr's list:\n%swanted:\n%s", have, t.s); exit(1); }
 	free(have);
 	str_free(&t);
+	CHECK(!core_close(e, 1));
 	return 1;
 }
 
@@ -148,7 +146,7 @@ int main(int argc, char **argv)
 			CHECK(done == 1);
 			if (strcmp(got.s, want.s) && bad++ < 5) fprintf(stderr, "case %ld (%s):\nnvim:\n%score:\n%s", k, m, want.s, got.s);
 			int ni = tk[it].n;
-			if (!keyed[ni > 1] && ni > 0 && !strcmp(got.s, want.s)) keyed[ni > 1] = keyed_case(&e, ni, m);
+			if (!keyed[ni > 1] && ni > 0 && !strcmp(got.s, want.s)) keyed[ni > 1] = keyed_case(&e, m);
 			free(m);
 			nloc++;
 		} else {
@@ -175,7 +173,7 @@ int main(int argc, char **argv)
 	fclose(f);
 	str_free(&want);
 	str_free(&got);
-	CHECK(keyed[0] && keyed[1]);
+	CHECK(keyed[0] && keyed[1] && indented);
 	if (bad) { printf("test_lsp_locs: %d of %d cases differ from Neovim\n", bad, nloc + ndiag); return 1; }
 	printf("test_lsp_locs: %d answers and %d diagnostic jumps as Neovim's\n", nloc, ndiag);
 	return 0;
