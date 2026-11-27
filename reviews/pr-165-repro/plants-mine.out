@@ -1,0 +1,20 @@
+caught: tests/test_lsp_locs.c:75: CHECK(e->buf != from && e->buf->nomodifiable) failed  1 same-file branch of tools_locs gone (is it needed?)
+MISSED  2 the cursor's position not sent (keys)
+caught (does not compile)  3 no position in the request (lsp)
+MISSED  4 references without includeDeclaration
+MISSED  5 gri asks for the type definition
+MISSED  6 no linkSupport offered
+caught: test_lsp_locs: 23 of 300 cases differ from Neovim  7 places in one file not sorted by position
+caught: test_lsp_locs: 17 of 300 cases differ from Neovim  8 a symbol's container dropped
+caught (does not compile)  9 names in the list not relative to the current directory
+MISSED  10 ]d leaves no '' mark
+caught: test_lsp_locs: 9 of 300 cases differ from Neovim  11 an open document's lines read from the file
+MISSED  12 :make after a list still not re-run by a write
+MISSED  13 a URI's #fragment kept in the name
+MISSED  14 C-] without a server asks anyway
+MISSED  15 no message when nothing is found
+MISSED  16 core_buf_enter re-enters the current buffer
+MISSED  17 the file-alone place (SPC m a) moves the cursor to line 0
+MISSED  18 [D loops when it meets the same diagnostic again
+MISSED  19 gO not mapped to documentSymbol
+MISSED  20 file:///C:/x keeps its slash

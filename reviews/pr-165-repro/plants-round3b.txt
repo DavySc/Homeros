@@ -1,0 +1,29 @@
+1 same-file branch of tools_locs gone (is it needed?)~lsp_locs~src/tools/make.c~		if (e->buf->path && !strcmp(e->buf->path, v->path)) core_setpcmark(e);¶		else if (core_edit_file~		if (core_edit_file
+3 no position in the request (lsp)~lsp_locs~src/lsp/lsp.c~{ str_lit(&q, ",\"position\":"); putpos(&q, d->t, pos); }~{ }
+4 references without includeDeclaration~lsp_locs~src/lsp/lsp.c~		if (!strcmp(method, "textDocument/references")) str_lit(&q, ",\"context\":{\"includeDeclaration\":true}");¶~
+5 gri asks for the type definition~lsp_locs~src/keys/keys.c~: m[2] == 'i' ? "textDocument/implementation" : m[2] == 't' ? "textDocument/typeDefinition"~: m[2] == 't' ? "textDocument/implementation" : m[2] == 'i' ? "textDocument/typeDefinition"
+6 no linkSupport offered~lsp_locs~src/lsp/lsp.c~"\"definition\":{\"linkSupport\":true},\"typeDefinition\":{\"linkSupport\":true},\"implementation\":{\"linkSupport\":true},"~
+7 places in one file not sorted by position~lsp_locs~src/lsp/lsp.c~	return c ? c : before(a->p, b->p) ? -1 : before(b->p, a->p);~	return c;
+8 a symbol's container dropped~lsp_locs~src/lsp/lsp.c~in ? " in " : "", in ? in : "",~"", "",
+10 ]d leaves no '' mark~lsp_locs~src/keys/normal.c~		setpcmark();¶		setcur(diag_pos(v[got].a));~		setcur(diag_pos(v[got].a));
+12 :make after a list still not re-run by a write~lsp_locs~src/tools/make.c~	M.list = 0;¶~
+16 core_buf_enter re-enters the current buffer~lsp_locs~src/core/core.c~return b == e->buf ? 0 : enter_buffer(e, b, ENTER_B);~return enter_buffer(e, b, ENTER_B);
+3b the position sent is always the file's start (lsp)~lsp_locs~src/lsp/lsp.c~putpos(&q, d->t, pos); }~putpos(&q, d->t, pos - pos); }
+22 an error answer reported as nothing found~lsp_locs~src/lsp/lsp.c~		nv = v ? 0 : -1;¶	}~		nv = v ? 0 : -1;¶	}¶	if (nv < 0 && m) v = calloc(1, sizeof *v), nv = 0;
+2 the cursor's position not sent (keys)~lsp_locs~src/keys/keys.c~core_line_start(E, E->win->line) + E->win->col, tag != NULL, found~0, tag != NULL, found
+9 names in the list not relative to the current directory~lsp_locs~src/tools/make.c~		f = path_rel(cwd, strlen(cwd), f, &fn);~		(void)path_rel(cwd, strlen(cwd), f, &fn);
+11 an open document's lines read from the file~lsp_locs~src/lsp/lsp.c~			d = doc_of(h->uri);~			d = NULL;
+14 C-] without a server says "not supported", not E426~lsp_locs~src/keys/keys.c~		if (tag) found((void *)(what + 3), NULL, 0);~		if (0) found((void *)(what + 3), NULL, 0);
+15 no message when nothing is found~lsp_locs~src/keys/keys.c~	else if (n <= 0) core_msg(E, "No %s found", what[k]);~	else if (n <= 0) ;
+17 the file-alone place (SPC m a) moves the cursor to line 0~lsp_locs~src/tools/make.c~		if (v->line == (size_t)-1) return;~		if (v->line == (size_t)-1) { core_goto(e, 0, 0); return; }
+18 ]d ignores its count~lsp_locs~src/keys/normal.c~long k = wrap ? cap->count1 : 1, to~long k = 1, to
+19 gO asks for references~lsp_locs~src/keys/keys.c~m[1] == 'O' ? "textDocument/documentSymbol"~m[1] == 'O' ? "textDocument/references"
+21 C-] takes the last place~lsp_locs~src/keys/keys.c~		tools_locs(E, v, 1, 0);~		tools_locs(E, v + n - 1, 1, 0);
+22b an error answer reported as nothing found~lsp_locs~src/lsp/lsp.c~	if (ok && r < 0 && (e = json_get(m, tk, 0, "error")) >= 0) {~	if (0) {
+23 ]d ties to the last diagnostic in a column~lsp_locs~src/keys/normal.c~(i == bi && c < bc))) best = j~(i == bi && c <= bc))) best = j
+24 C-] guesses only the second pattern~lsp_locs~src/keys/keys.c~	for (int i = 0; i < 2 && g < 0; i++) {~	for (int i = 1; i < 2 && g < 0; i++) {
+25 C-] the E435 guess without the message~lsp_locs~src/keys/keys.c~, core_msg(E, "E435: Couldn't find tag, just guessing!");~;
+26 C-] E429 checks the current file, not the place's~lsp_locs~src/keys/keys.c~stat(v->path, &(struct stat){ 0 })~stat(E->buf->path, &(struct stat){ 0 })
+27 gd sends the type definition~lsp_locs~src/keys/keys.c~m[1] == 'd' ? "textDocument/definition"~m[1] == 'd' ? "textDocument/typeDefinition"
+28 the search pattern left as C-]'s guess (no search_recompile)~lsp_locs~src/keys/keys.c~		search_recompile();¶~
+29 a list's lines from the server's text, not trimmed of tabs~lsp_locs~src/tools/make.c~while (*t == ' ' || *t == '\t') t++;~while (*t == ' ') t++;

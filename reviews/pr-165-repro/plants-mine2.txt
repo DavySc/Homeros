@@ -1,0 +1,4 @@
+3b the position sent is always the file's start (lsp)~src/lsp/lsp.c~putpos(&q, d->t, pos); }~putpos(&q, d->t, pos - pos); }
+9b names in the list not relative to the current directory~src/tools/make.c~f[k] == '/') f += k + 1;~f[k] == '/') f += 0;
+21 C-] takes the last place~src/keys/keys.c~tools_locs(E, v, k == 3 ? 1 : n,~tools_locs(E, k == 3 ? v + n - 1 : v, k == 3 ? 1 : n,
+22 an error answer reported as nothing found~src/lsp/lsp.c~		nv = v ? 0 : -1;¶	}~		nv = v ? 0 : -1;¶	}¶	if (nv < 0 && m) v = calloc(1, sizeof *v), nv = 0;
