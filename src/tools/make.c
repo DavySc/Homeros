@@ -8,6 +8,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include "tools.h"
 #include "core.h"
 #include "loop.h"
@@ -27,6 +28,7 @@ static struct {
 	Str part, a;               /* the output line not ended; the arena */
 	Err *q; size_t nq, cap;    /* the quickfix list */
 	long cur;                  /* the entry ]q and [q left, -1 none yet */
+	int list;                  /* the buffer shows tools_locs' list, not the command's output */
 } M = { .proc = -1, .cur = -1 };
 
 static Buf *buf(void) { return M.nr ? core_buf_find(M.e, M.nr) : NULL; }
@@ -42,6 +44,16 @@ static void put(const char *s, size_t n)
 	for (Win *w = M.e->wins; w; w = w->next)
 		if (w->buf == b && w->line >= last) { w->line = text_lines(b->text) - 1; w->col = 0; }
 	core_changed = 1;
+}
+
+/* An entry of the list: file, line and column from 1, message of n bytes,
+   kept in the arena */
+static int entry(Err *r, const char *file, long line, long col, const char *msg, size_t n)
+{
+	*r = (Err){ .line = line, .col = col, .file = M.a.n };
+	if (str_add(&M.a, file, strlen(file) + 1)) return 0;
+	r->msg = M.a.n;
+	return !str_add(&M.a, msg, n) && !str_add(&M.a, "", 1);
 }
 
 /* The error a line reports, as the compilers write them: the first
@@ -71,11 +83,7 @@ static int scan(const char *s, size_t n, Err *r)
 			snprintf(path, sizeof path, "%.*s", (int)(fz - f), s + f);
 			if (!stat(path, &st) && S_ISREG(st.st_mode)) {
 				while (p < e && (*p == ':' || *p == ' ')) p++;
-				*r = (Err){ .line = l, .col = c > 0 ? c : 1 };
-				r->file = M.a.n;
-				if (str_add(&M.a, path, strlen(path) + 1)) return 0;
-				r->msg = M.a.n;
-				return !str_add(&M.a, p, (size_t)(e - p)) && !str_add(&M.a, "", 1);
+				return entry(r, path, l, c > 0 ? c : 1, p, (size_t)(e - p));
 			}
 		}
 		while (i < n && s[i] != ' ' && s[i] != '\t') i++;
@@ -84,22 +92,25 @@ static int scan(const char *s, size_t n, Err *r)
 	return 0;
 }
 
+/* r into the list, reported by the line the buffer gets next */
+static void keep(Err r)
+{
+	if (M.nq == M.cap) {
+		size_t c = M.cap ? 2 * M.cap : 64;
+		Err *q = realloc(M.q, c * sizeof *q);
+		if (!q) return;
+		M.q = q; M.cap = c;
+	}
+	r.at = text_lines(buf()->text);
+	M.q[M.nq++] = r;
+}
+
 static void line(void *ctx, char *s, size_t n)
 {
 	(void)ctx;
 	if (n && s[n - 1] == '\r') s[--n] = 0;    /* Windows' CR LF (quickfix.c's USE_CRNL) */
-	Buf *b = buf();
 	Err r;
-	if (b && scan(s, n, &r)) {
-		if (M.nq == M.cap) {
-			size_t c = M.cap ? 2 * M.cap : 64;
-			Err *q = realloc(M.q, c * sizeof *q);
-			if (!q) return;
-			M.q = q; M.cap = c;
-		}
-		r.at = text_lines(b->text);
-		M.q[M.nq++] = r;
-	}
+	if (buf() && scan(s, n, &r)) keep(r);
 	s[n] = '\n';
 	put(s, n + 1);
 }
@@ -122,9 +133,23 @@ static int shown(void)
 	return 0;
 }
 
-/* Starts M.cmd on an emptied buffer and an empty list */
-static int run(void)
+/* The buffer in a window below the current one, the cursor staying
+   (Emacs's display-buffer) unless go, emptied, and an empty list; a command still
+   running is stopped */
+static int show(Editor *e, int go)
 {
+	M.e = e;
+	if (!buf() || !shown()) {
+		if (core_split(e, 0, 0)) return -1;
+		if (buf() ? core_buf_goto(e, M.nr) : core_edit_file(e, "", 0)) { core_close(e, 1); return -1; }
+		M.nr = e->buf->nr;
+		e->buf->nonumber = e->buf->nomodifiable = 1;
+		if (!go) core_win_goto(e, 'p', 1);
+	} else if (go) {
+		long k = 1;
+		for (Win *w = e->wins; w->buf->nr != M.nr; w = w->next) k++;
+		core_win_goto(e, 'w', k);
+	}
 	Buf *b = buf();
 	if (M.proc >= 0) proc_kill(M.proc);
 	M.proc = -1;
@@ -132,9 +157,16 @@ static int run(void)
 	M.part.n = M.a.n = 0;
 	M.nq = 0;
 	M.cur = -1;
+	M.list = 0;
 	text_delete(b->text, 0, text_len(b->text));
 	b->flags &= ~(unsigned)CORE_EMPTY;
 	for (Win *w = M.e->wins; w; w = w->next) if (w->buf == b) w->line = w->col = 0;
+	return 0;
+}
+
+/* Starts M.cmd */
+static int run(void)
+{
 	put(M.cmd, strlen(M.cmd));
 	put("\n\n", 2);
 	if ((M.proc = proc_shell(M.cmd, NULL, out, (void *)(intptr_t)M.gen)) >= 0) return 0;
@@ -152,23 +184,43 @@ int tools_make(Editor *e, const char *cmd)
 		M.cmd = c;
 	}
 	if (!M.cmd) { core_msg(e, "E471: Argument required"); return -1; }
-	/* the buffer in a window below the current one, the cursor staying
-	   (Emacs's display-buffer) */
-	if (!buf() || !shown()) {
-		if (core_split(e, 0, 0)) return -1;
-		if (buf() ? core_buf_goto(e, M.nr) : core_edit_file(e, "", 0)) { core_close(e, 1); return -1; }
-		M.nr = e->buf->nr;
-		e->buf->nonumber = e->buf->nomodifiable = 1;
-		core_win_goto(e, 'p', 1);
-	}
-	return run();
+	return show(e, 0) ? -1 : run();
 }
 
 const char *tools_make_last(void) { return M.cmd; }
 
 void tools_written(Editor *e, Buf *b)
 {
-	if (M.cmd && M.e == e && b->nr != M.nr && buf() && shown()) run();
+	if (M.cmd && M.e == e && b->nr != M.nr && buf() && shown() && !M.list && !show(e, 0)) run();
+}
+
+void tools_locs(Editor *e, const LspLoc *v, int n, int list)
+{
+	if (!list && n == 1) {
+		/* get_locations(): m' and the place, in the current window */
+		if (e->buf->path && !strcmp(e->buf->path, v->path)) core_setpcmark(e);
+		else if (core_edit_file(e, v->path, 0)) return;
+		if (v->line != (size_t)-1) core_goto(e, v->line, v->col);
+		return;
+	}
+	/* setqflist() and botright copen: the list's window current, names
+	   relative to the current directory (the quickfix window's ":.") */
+	if (show(e, 1)) return;
+	M.list = 1;
+	char cwd[4096];
+	size_t k = getcwd(cwd, sizeof cwd) ? strlen(cwd) : 0;
+	Str l = { 0 };
+	for (int i = 0; i < n; i++) {
+		const char *f = v[i].path, *t = v[i].text ? v[i].text : "";
+		if (k && !strncmp(f, cwd, k) && f[k] == '/') f += k + 1;
+		while (*t == ' ' || *t == '\t') t++;      /* qf_list_entry(): skipwhite() */
+		Err r;
+		if (entry(&r, v[i].path, (long)v[i].line + 1, (long)v[i].col + 1, t, strlen(t))) keep(r);
+		l.n = 0;
+		str_addf(&l, "%s:%zu:%zu: %s\n", f, v[i].line + 1, v[i].col + 1, t);
+		put(l.s, l.n);
+	}
+	str_free(&l);
 }
 
 /* Opens error i, in the previous window when the make buffer is current,

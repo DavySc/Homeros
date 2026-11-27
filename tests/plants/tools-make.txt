@@ -2,7 +2,7 @@
 make: dotnet's path(line,col) is not an error~test TESTS=tools_make~~src/tools/make.c~		} else if (fz > f && i < n && s[i] == '(') {~		} else if (0) {
 make: a drive letter ends the path~test TESTS=tools_make~~src/tools/make.c~		if (i + 2 < n && s[i + 1] == ':' && (s[i + 2] == '\\' || s[i + 2] == '/')) i += 2;~
 make: a missing file is an error~test TESTS=tools_make~~src/tools/make.c~			if (!stat(path, &st) && S_ISREG(st.st_mode)) {~			if (!stat(path, &st) || 1) {
-make: a write does not run it again~test TESTS=tools_make~~src/tools/make.c~	if (M.cmd && M.e == e && b->nr != M.nr && buf() && shown()) run();~	(void)e; (void)b;
+make: a write does not run it again~test TESTS=tools_make~~src/tools/make.c~	if (M.cmd && M.e == e && b->nr != M.nr && buf() && shown() && !M.list && !show(e, 0)) run();~	(void)e; (void)b;
 make: a write runs it with its buffer in no window~test TESTS=tools_make~~src/tools/make.c~ && buf() && shown()) run();~ && buf()) run();
 make: Enter in its buffer opens nothing~test TESTS=tools_make~~src/tools/pick.c~	if (!P.open) return make_key(e, k) || dash_key(e, k);~	if (!P.open) return dash_key(e, k);
 make: ]q is not :cnext~test TESTS=tools_make~~src/keys/normal.c~	if (cap->nchar == 'q') {~	if (0) {
@@ -23,3 +23,7 @@ make: :mak is not :make~test TESTS=tools_make~~src/keys/keys.c~(k >= 3 && k <= 4
 make: a range is ignored~test TESTS=tools_make~~src/keys/keys.c~		if (n) core_msg(E, "E481: No range allowed");~		if (n && nohl) core_msg(E, "E481: No range allowed");
 make: owners.txt: a second shell choice outside src/loop~dupes~~src/tools/make.c~static Buf *buf(void)~static const char *sh(void) { return getenv("SHELL"); }¶static Buf *buf(void)
 make: owners.txt: a second buffer-by-number loop outside src/core~dupes~~src/tools/make.c~static Buf *buf(void) { return M.nr ? core_buf_find(M.e, M.nr) : NULL; }~static Buf *buf(void) { for (Buf *b = M.e->bufs; b; b = b->next) if (b->nr == M.nr) return b; return NULL; }
+make: a write runs :make again over grr's list~test TESTS=lsp_locs~~src/tools/make.c~shown() && !M.list && !show(e, 0)) run();~shown() && !show(e, 0)) run();
+make: grr's list leaves the cursor where it was (not botright copen)~test TESTS=lsp_locs~~src/tools/make.c~	if (show(e, 1)) return;~	if (show(e, 0)) return;
+make: grr's list keeps each line's indent~test TESTS=lsp_locs~~src/tools/make.c~		while (*t == ' ' || *t == '\t') t++;      /* qf_list_entry(): skipwhite() */~
+make: one place opened in the file it is in, not the current one~test TESTS=lsp_locs~~src/tools/make.c~		else if (core_edit_file(e, v->path, 0)) return;~		else core_setpcmark(e);

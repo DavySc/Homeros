@@ -121,3 +121,11 @@ lsp: tokens: more than 32 types kept~test TESTS=lsp~~src/lsp/lsp.c~ && s->ntypes
 lsp: tokens: not asked again on a refresh~test TESTS=lsp~~src/lsp/lsp.c~		if (is(m, meth, "workspace/semanticTokens/refresh")) for (LspDoc *d = s->docs; d; d = d->link) tokens(d);¶~
 lsp: tokens: no refreshSupport offered~test TESTS=lsp~~src/lsp/lsp.c~"\"workspace\":{\"semanticTokens\":{\"refreshSupport\":true}},\"window\"~"\"window\"
 lsp: tokens: each start counted from the line's~test TESTS=lsp~~src/lsp/lsp.c~	pb += lsp_u16_byte(b + pb, n - pb, c - pc);~	pb = lsp_u16_byte(b + pb, n - pb, c - pc);
+lsp: a place inside a surrogate pair at its start, not its end (str_byteindex)~test TESTS=lsp_locs~~src/lsp/lsp.c~		if (l->col < len && lsp_u16(b, l->col) != h->p.c) l->col~		if (0) l->col
+lsp: places not sorted by file and position (locations_to_items)~test TESTS=lsp_locs~~src/lsp/lsp.c~		if (!sym && nhits > 1) qsort~		if (0) qsort
+lsp: a LocationLink's whole target taken, not its name~test TESTS=lsp_locs~~src/lsp/lsp.c~json_get(m, tk, e, "targetSelectionRange")~json_get(m, tk, e, "targetRange")
+lsp: a symbol's children dropped~test TESTS=lsp_locs~~src/lsp/lsp.c~		symbols(m, json_get(m, tk, e, "children"), uri);~
+lsp: a symbol's deprecated tag ignored~test TESTS=lsp_locs~~src/lsp/lsp.c~dep |= json_int(m, tk, x) == 1;~dep |= 0;
+lsp: an open file's line read with its newline~test TESTS=lsp_locs~~src/lsp/lsp.c~			len = text_line_start(d->t, h->p.l + 1) - 1 - a;~			len = text_line_start(d->t, h->p.l + 1) - a;
+lsp: a closed file's lines counted off by one~test TESTS=lsp_locs~~src/lsp/lsp.c~for (size_t k = 0; k < h->p.l && a < dn; k++)~for (size_t k = 1; k < h->p.l && a < dn; k++)
+lsp: a file:// URI's %XX not decoded~test TESTS=lsp_locs~~src/lsp/lsp.c~		if (l) { *d++ = (char)((h - hex) % 16 * 16 + (l - hex) % 16); u += 2; }~		if (0) { }

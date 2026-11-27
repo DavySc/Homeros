@@ -254,6 +254,9 @@ static void start(Srv *s)
 	   status line (lualine's lsp_status) */
 	str_lit(&o, "\",\"capabilities\":{\"textDocument\":{\"publishDiagnostics\":{\"versionSupport\":true},"
 	        "\"hover\":{\"contentFormat\":[\"markdown\",\"plaintext\"]},\"synchronization\":{\"didSave\":true},"
+	        /* Neovim's: links (a definition's name, not its whole range) and nested symbols */
+	        "\"definition\":{\"linkSupport\":true},\"typeDefinition\":{\"linkSupport\":true},\"implementation\":{\"linkSupport\":true},"
+	        "\"documentSymbol\":{\"hierarchicalDocumentSymbolSupport\":true},"
 	        "\"semanticTokens\":{\"requests\":{\"full\":true},\"tokenTypes\":[],\"tokenModifiers\":[],\"formats\":[\"relative\"]}},"
 	        "\"workspace\":{\"semanticTokens\":{\"refreshSupport\":true}},\"window\":{\"workDoneProgress\":true},\"general\":{\"positionEncodings\":[\"utf-16\"]},\"lean\":{\"incrementalDiagnosticSupport\":true,\"silentDiagnosticSupport\":true}}");
 	if (s->def->lean) str_lit(&o, ",\"initializationOptions\":{\"hasWidgets\":true}");
@@ -983,7 +986,7 @@ static void located(void *ctx, const char *m, size_t n)
 		size_t len = 0;
 		if (d && h->p.l < text_lines(d->t)) {
 			size_t a = text_line_start(d->t, h->p.l);
-			len = (h->p.l + 1 < text_lines(d->t) ? text_line_start(d->t, h->p.l + 1) - 1 : text_len(d->t)) - a;
+			len = text_line_start(d->t, h->p.l + 1) - 1 - a;
 			b = bytes(d->t, a, &len);
 		} else if (!d) {
 			size_t a = 0;
@@ -992,7 +995,9 @@ static void located(void *ctx, const char *m, size_t n)
 			b = (const unsigned char *)data + a;
 			len = (e ? (size_t)(e - data) : dn) - a;
 		}
+		/* str_byteindex(..., false): a unit inside a character is its end */
 		l->col = lsp_u16_byte(b, len, h->p.c);
+		if (l->col < len && lsp_u16(b, l->col) != h->p.c) l->col = lsp_u16_byte(b, len, h->p.c + 1);
 		if (!l->text && (l->text = malloc(len + 1))) { memcpy(l->text, b, len); l->text[len] = 0; }
 	}
 	free(at); free(data);

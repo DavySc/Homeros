@@ -802,6 +802,8 @@ int core_buf_goto(Editor *e, int nr)
 	return buf_switch(e, b, ENTER_B);
 }
 
+int core_buf_enter(Editor *e, Buf *b) { return b == e->buf ? 0 : enter_buffer(e, b, ENTER_B); }
+
 int core_buf_next(Editor *e, long n)
 {
 	Buf *b = e->buf;

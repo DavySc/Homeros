@@ -134,9 +134,12 @@ static const struct { const char *lhs, *desc; } maps[] = {
 	{ " h", "+hunks" }, { " hp", "Preview hunk" }, { " hr", "Reset hunk" }, { " hs", "Stage hunk" },
 	{ " hS", "Stage buffer" }, { " hu", "Undo stage hunk" },
 	{ " i", "+insert" }, { " is", "Snippet" },
+	{ " m", "+C/C++" }, { " ma", "C++: alternate source/header" },
 	{ " p", "+project" }, { " pv", "File manager (oil)" },
 	{ " u", "+toggle" }, { " uk", "Toggle kitten on save" }, { " up", "Toggle pretty entities" },
 	{ "-", "Open parent directory (oil)" },
+	{ "gO", "vim.lsp.buf.document_symbol()" }, { "gri", "vim.lsp.buf.implementation()" },
+	{ "grr", "vim.lsp.buf.references()" }, { "grt", "vim.lsp.buf.type_definition()" },
 	{ "cit", "org next todo state" }, { "ciT", "org prev todo state" },  /* nvim-orgmode's, buffer-local to .org */
 };
 enum { NMAPS = sizeof maps / sizeof *maps };
@@ -147,7 +150,29 @@ static int hint;             /* which-key's panel is shown */
    snippet around the area (package 19's, agreed), and its group */
 static int usable(const char *m)
 {
-	return (*m != 'c' || is_ft(".org")) && (!E->ks.visual || !strncmp(m, " is", strlen(m)));
+	return (*m != 'c' || is_ft(".org")) && (strncmp(m, " m", 2) || is_ft(".c") || is_ft(".h") || is_ft(".cpp") || is_ft(".hpp"))
+	    && (!E->ks.visual || !strncmp(m, " is", strlen(m)));
+}
+
+/* Neovim 0.12's LSP maps, C-] (its tagfunc: the first definition, as a
+   tag jump takes the first match) and SPC m a (clangd's switch between
+   source and header): what the server says about the cursor goes to
+   tools_locs, a list for references and symbols */
+static const char *const what[] = { "locations", "references", "document symbols", "locations" };
+
+static void found(void *ctx, const LspLoc *v, int n)
+{
+	int k = (int)((const char *const *)ctx - what);
+	if (!n) core_msg(E, "No %s found", what[k]);
+	else if (n > 0) tools_locs(E, v, k == 3 ? 1 : n, k == 1 || k == 2);
+	core_changed = 1;
+}
+
+void lsp_go(const char *method, int tag)
+{
+	int k = tag ? 3 : !strcmp(method, "textDocument/references") ? 1 : !strcmp(method, "textDocument/documentSymbol") ? 2 : 0;
+	if (lsp_locs(E->buf->lsp, method, core_line_start(E, E->win->line) + E->win->col, found, (void *)(what + k)))
+		core_msg(E, "vim.lsp: method \"%s\" is not supported by any server activated for this buffer", method);
 }
 
 /* how many of the typed keys m starts with */
@@ -278,6 +303,12 @@ static int map(Editor *e, int k)
 		hint_end();
 		normal_mappable(1);
 		undo_close(e->buf->undo);   /* a map is a command of its own: keys_feed() closes before each */
+		if (*m == 'g' || !strcmp(m, " ma")) {
+			lsp_go(m[1] == 'O' ? "textDocument/documentSymbol" : m[2] == 'r' ? "textDocument/references"
+			       : m[2] == 'i' ? "textDocument/implementation" : m[2] == 't' ? "textDocument/typeDefinition"
+			       : "textDocument/switchSourceHeader", 0);
+			return 1;
+		}
 		switch (m[0] == '-' ? 'p' : !strcmp(m, " is") ? 's' : m[1]) {
 		case 'f': tools_pick(e, m[2] == 'f' ? PICK_SMART : m[2] == 'g' ? PICK_GREP : PICK_REGISTERS); break;
 		case ',': tools_pick(e, PICK_BUFFERS); break;

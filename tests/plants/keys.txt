@@ -257,3 +257,12 @@ keys: which-key's panel moves for a cursor on the row above it too late (test_ke
 keys: which-key's panel moved for the cursor starts on the row under it (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~top = g->crow + 2 < g->rows - 4 ? g->crow + 2 :~top = g->crow + 1 < g->rows - 4 ? g->crow + 1 :
 keys: which-key's columns 10 wide, not its 20 (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	int n = 0, w = 20;~	int n = 0, w = 10;
 keys: which-key's panel on a screen under 4 rows writes before the grid (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (h < 1 || top < 0) return;~	if (h < 1) return;
+keys: ]d takes a diagnostic past the last line on a line of its own~test TESTS=lsp_locs~~src/keys/normal.c~	Pos p = { l < nlines() ? l : nlines() - 1,~	Pos p = { l,
+keys: ]d lands on a line's NUL, not its last character (vim.diagnostic's extmark)~test TESTS=lsp_locs~~src/keys/normal.c~	if (p.col > len - 1) p.col = len > 0 ? len - 1 : 0;~
+keys: 2]d steps from where the last one landed, not its own column (opts.pos)~test TESTS=lsp_locs~~src/keys/normal.c~got = to, p = diag_raw(v[to].a);~got = to, p = diag_pos(v[to].a);
+keys: ]d does not wrap past the end~test TESTS=lsp_locs~~src/keys/normal.c~int n, fwd = cap->arg == FORWARD, wrap = cap->nchar == 'd';~int n, fwd = cap->arg == FORWARD, wrap = 0;
+keys: [d takes the diagnostic with the lowest column~test TESTS=lsp_locs~~src/keys/normal.c~(fwd ? d.col < diag_pos(v[best].a).col : d.col > diag_pos(v[best].a).col)~d.col < diag_pos(v[best].a).col
+keys: grr opens one reference instead of listing it~test TESTS=lsp_locs~~src/keys/keys.c~tools_locs(E, v, k == 3 ? 1 : n, k == 1 || k == 2);~tools_locs(E, v, k == 3 ? 1 : n, k == 2);
+keys: C-] lists every definition~test TESTS=lsp_locs~~src/keys/keys.c~tools_locs(E, v, k == 3 ? 1 : n,~tools_locs(E, v, n,
+keys: C-o to another buffer's entry beeps~test TESTS=lsp_locs~~src/keys/normal.c~	if (core_buf_enter(E, w->jump[w->jumpidx].buf)) { clearop(cap->oap); return; }~	if (w->jump[w->jumpidx].buf != B) { clearop(cap->oap); return; }
+keys: SPC m a not mapped in a C file~test TESTS=lsp_locs~~src/keys/keys.c~(strncmp(m, " m", 2) || is_ft(".c") ||~(strncmp(m, " m", 2) ||
