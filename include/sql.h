@@ -2,9 +2,10 @@
    editor.  A .sql buffer gets its connection from the connections file
    ($XDG_CONFIG_HOME/homeros/sql; src/sql/README.md): the longest "dir"
    line whose folder holds the file names it, and :Connect names another
-   (Davy, 2026-11-22).  Results and messages go, in the server's order, to
-   a buffer in a split below the query (Davy, 2026-11-23), which SPC r
-   opens and closes. */
+   (Davy, 2026-11-22).  Results go, as SSMS's grid (columns as wide as the
+   names and the first 500 rows, capped at 40 cells), to a buffer in a
+   split below the query (Davy, 2026-11-23), and the messages after them,
+   as SSMS's Messages tab; SPC r opens and closes it. */
 #ifndef SQL_H
 #define SQL_H
 struct Editor;
