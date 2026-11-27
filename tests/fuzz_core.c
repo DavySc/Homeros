@@ -165,7 +165,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 		if (e.buf->syn && a % 5) while (syntax_update(e.buf->syn, e.buf->text, NULL, &r1, &r2)) {}
 		if (op == 3 && a > 200) e.mode = e.mode == MODE_INSERT ? MODE_NORMAL : MODE_INSERT;
 		core_update(&e);
-		core_draw(&e, &g);
+		core_draw(&e, NULL, &g);
 		check(&e);
 	}
 	core_free(&e);

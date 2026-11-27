@@ -1616,7 +1616,7 @@ static void semtok(const char *log)
 	/* drawn: a keyword token over the grammar's comment, a variable token
 	   not (catppuccin/nvim), the grammar's type */
 	core_update(&e);
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	const Cell *c = g.c;
 	while (c->ch[0] != 'i') c++;              /* the first row the window draws */
 	unsigned char want[512], syn[512], got[512];
@@ -1689,7 +1689,7 @@ static void semtok(const char *log)
 	CHECK(!core_buf_goto(&e, nr) && tsettle(&e));
 	CHECK(!core_edit_file(&e, p[2], 0) && tsettle(&e));
 	core_update(&e);
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	for (c = g.c; c->ch[0] != 'k'; c++) ;
 	CHECK(c[0].face == FACE_KEYWORD && c[3].face == FACE_NONE && c[g.cols].face == FACE_TYPE);
 	/* a new server: nothing shown from the old one */

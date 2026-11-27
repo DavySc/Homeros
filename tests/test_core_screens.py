@@ -7,6 +7,10 @@ FEATURES.md's settings and reads Neovim's whole screen with screenstring()
 and marks a, b and c after every command.  --record writes the cases with Neovim's
 screens for tests/test_core_screens.c, which replays them without Neovim;
 --drv runs that program on the fresh cases and compares at once.
+tests/test_core_screens.txt holds the cases recorded before tab pages (they
+catch their plants), then 100 of seed 2 appended (tab pages a fifth of the
+tokens), then cases 71 and 279 of 345 with seed 1 when tab pages were 1.06
+(:tabnew after :bd, a cursor inside a wide character: their plants).
 
 A token is one command.  The C side (test_core_screens.c) turns each into
 the core call keys will make for it; here each becomes Neovim's keys."""
@@ -15,6 +19,8 @@ import concurrent.futures, json, os, random, subprocess, sys, tempfile
 SETUP = ('set noswapfile nomore shortmess+=I expandtab shiftwidth=4 softtabstop=4 autoindent '
          'smarttab nostartofline backspace=indent,eol,start number relativenumber '
          'scrolloff=6 splitright splitbelow nowrap')
+# 'showtabline' 1: the terminal's tabline (Editor.tabline); an OS window
+# per tab page draws the same rows below none
 
 # completion items for the popup token, the same table as the C side's:
 # ten, then the ten again with 2 and with 3 after the word (complete()
@@ -38,7 +44,8 @@ def gen_text(r):
 def gen_tokens(r, nfiles):
     toks = []
     for _ in range(r.randint(1, 16)):
-        c = r.random()
+        # tab pages take [1, 1.25): their own share, the others' as before
+        c = r.random() * 1.25
         cnt = r.choice(['', '', '', '2', '3', '7'])
         if c < .25:
             toks.append(r.choice(['sp', 'vs', 'sp', 'vs', 'new', 'vnew', 'close', 'q', 'only',
@@ -63,6 +70,10 @@ def gen_tokens(r, nfiles):
                                          'dd', 'x', 'u', '<C-r>', 'oa<CR>b<CR>c<Esc>']))
         elif c < .76:
             toks.append('m:' + r.choice('abc'))
+        elif c >= 1:
+            # tab pages, shown as frames: SPC 5 2 is :tab split, SPC 5 m {n} is MOVE() below
+            toks.append(r.choice(['tabsp', 'tabnew', 'tabe:f%d' % r.randrange(nfiles), 'tabclose', 'tabonly',
+                                  'k:gt', 'k:gT', 'k:%sgt' % r.randint(1, 4), 'k:2gT', 'w:T', 'tabm:%d' % r.randint(1, 4)]))
         else:
             m = r.choice(['j', 'k', 'h', 'l', 'gg', 'G', '0', '$', '^', 'NG', 'NG'])
             # NG: a jump to any line, so a cursor sits anywhere in a window
@@ -103,8 +114,11 @@ def nvim_keys(t):
         items = ','.join("{'word':'%s','kind':'%s','menu':'%s'}" % it for it in PUM[a:a + n])
         return ['A', '<Cmd>call complete(col("."), [%s])<CR>' % items] + ['<C-n>'] * s + ['<Cmd>lua CAPTURE()<CR>']
     if t == 'alt': return '<C-^>'
+    if t == 'tabsp': return ':tab split<CR>'
+    if t.startswith('tabe:'): return ':tabnew %s<CR>' % t[5:]
+    if t.startswith('tabm:'): return '<Cmd>lua MOVE(%s)<CR>' % t[5:]
     if t.startswith('m:'): return 'm' + t[2]
-    cmds = {'sp', 'vs', 'new', 'vnew', 'close', 'q', 'only', 'bn', 'bp', 'enew', 'bd'}
+    cmds = {'sp', 'vs', 'new', 'vnew', 'close', 'q', 'only', 'bn', 'bp', 'enew', 'bd', 'tabnew', 'tabclose', 'tabonly'}
     if t in cmds: return ':%s<CR>' % t
     i = 0
     while t[i].isdigit(): i += 1
@@ -139,6 +153,22 @@ local function marks()
   end
   return table.concat(s, ' ')
 end
+-- SPC 5 m {n} (DESIGN.md, New approaches), from Neovim's own calls: a
+-- split below the current window of tab page n takes the window's buffer
+-- and view, then the window closes (its tab page with it when alone)
+function MOVE(n)
+  local to, cur = vim.api.nvim_list_tabpages()[n], vim.api.nvim_get_current_tabpage()
+  if not to or to == cur then return end
+  local w, v = vim.api.nvim_get_current_win(), vim.fn.winsaveview()
+  local b = vim.api.nvim_win_get_buf(w)
+  vim.api.nvim_set_current_tabpage(to)
+  vim.cmd('split')
+  vim.api.nvim_win_set_buf(0, b)
+  vim.fn.winrestview(v)
+  local nw = vim.api.nvim_get_current_win()
+  vim.api.nvim_win_close(w, true)
+  vim.api.nvim_set_current_win(nw)
+end
 -- the popup token reads the screen in Insert mode, with the popup up
 -- ('redraw!' would close it)
 function CAPTURE() captured = screen(false); cmarks = marks() end
@@ -149,7 +179,7 @@ vim.cmd('normal! 1G^')
 local out, mk, nop = {screen()}, {marks()}, {}
 for i, ks in ipairs(c.keys) do
   -- closing the last window would quit: the C side skips it too
-  local last = #vim.api.nvim_tabpage_list_wins(0) == 1
+  local last = #vim.api.nvim_tabpage_list_wins(0) == 1 and #vim.api.nvim_list_tabpages() == 1
   local k1 = table.concat(ks)
   if last and (k1 == ':q<CR>' or k1 == ':close<CR>' or k1:match('<C%-w>[cq]$')) then ks = {} end
   -- x on an empty line leaves an empty undo step (ref/keys.c), which the
@@ -180,7 +210,9 @@ def run_nvim(case):
     json.dump({'rows': case['rows'], 'cols': case['cols'],
                'keys': [k if isinstance(k, list) else [k] for k in map(nvim_keys, case['tokens'])]}, open(fi, 'w'))
     open(fl, 'w').write('local IN, OUT = %r, %r\n' % (fi, fo) + LUA)
-    subprocess.run(['nvim', '--clean', '--headless', '-c', SETUP, '-c', 'luafile ' + fl, 'f0'], cwd=d,
+    # after startup: inside -c, Neovim is 'starting' and leaves a hidden tab
+    # page's widths for later (enter_tabpage()), which a running editor never does
+    subprocess.run(['nvim', '--clean', '--headless', '-c', SETUP, '-c', 'autocmd VimEnter * ++once luafile ' + fl, 'f0'], cwd=d,
                    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=120)
     return json.load(open(fo))
 

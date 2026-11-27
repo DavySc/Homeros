@@ -115,7 +115,7 @@ int main(int argc, char **argv)
 			e.win->left = left;
 			core_set_want(&e);
 			core_update(&e);
-			core_draw(&e, &g);
+			core_draw(&e, NULL, &g);
 			const Win *w = e.win;
 			int differ = 0;
 			if (w->top != top || w->left != wleft || w->skipcol != skip || w->line != pl || w->col != pc) {
@@ -184,7 +184,7 @@ int main(int argc, char **argv)
 			best[at] = -1;
 			for (int k = 0; k < 20; k++) {
 				long long t0 = loop_now();
-				core_draw(&e, &g);
+				core_draw(&e, NULL, &g);
 				long long d = loop_now() - t0;
 				if (best[at] < 0 || d < best[at]) best[at] = d;
 			}
@@ -219,7 +219,7 @@ int main(int argc, char **argv)
 		e.win->line = 0;
 		other->line = 2;
 		core_update(&e);
-		core_draw(&e, &g);
+		core_draw(&e, NULL, &g);
 		/* each window's rows 0 and 2: the message on row 0 only */
 		const Win *ws[2] = { e.win, other };
 		for (int i = 0; i < 2; i++)

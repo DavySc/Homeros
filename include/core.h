@@ -115,6 +115,20 @@ typedef struct Win {
 	struct Win *next;          /* window order: top left to bottom right (CTRL-W w) */
 } Win;
 
+/* A tab page (Neovim's tabpage_T).  The window backends show each in its own
+   OS window (Emacs's frames, SPC 5); the terminal shows the current one, with
+   Neovim's tabline.  As Neovim keeps curwin and firstwin for the current tab
+   page, the current one's windows are in Editor (win, prev, wins, layout); a
+   tab page that is not current keeps them here (leave_tabpage(),
+   enter_tabpage()). */
+typedef struct Tab {
+	Win *win, *prev, *wins;
+	struct Frame *layout;
+	int rows, cols;            /* its OS window's size in cells */
+	int id;                    /* the backend's handle for its OS window, from 0, never reused */
+	struct Tab *next;          /* tab page order (gt) */
+} Tab;
+
 /* One line of the completion popup (Neovim's complete-items); kind and
    menu may be NULL. */
 typedef struct { const char *word, *kind, *menu; } PumItem;
@@ -126,6 +140,13 @@ typedef struct Editor {
 	Buf *bufs;                 /* every buffer, by number */
 	Win *wins;                 /* every window, in window order */
 	struct Frame *layout;
+	Tab *tab;                  /* the current tab page (curtab) */
+	Tab *tabs;                 /* every tab page, in order (first_tabpage) */
+	/* the terminal: one screen for every tab page, which shows Neovim's
+	   tabline ('showtabline' 1) and takes the screen's size on entering
+	   (enter_tabpage()); 0 for the window backends, where each tab page is
+	   its own OS window of its own size */
+	int tabline;
 	int rows, cols;            /* screen size: 24 x 80 (Neovim's default) until a draw sets it */
 	int mode;
 	KeyState ks;
@@ -250,6 +271,27 @@ int  core_split(Editor *e, int vertical, int size);
    step, so the new window records no position in the buffer it split from
    (do_ecmd runs with oldwin NULL). */
 int  core_new(Editor *e, int vertical);
+/* A new tab page after the current one, made current (win_new_tabpage()):
+   path NULL copies the current window into it (SPC 5 2, Emacs's make-frame,
+   Neovim's :tab split); "" is :tabnew's empty buffer; a name is SPC 5 f and
+   :tabnew {file} (then do_ecmd()).  0 ok, -1 error (msg set). */
+int  core_tabnew(Editor *e, const char *path);
+/* SPC 5 0 and :tabclose (t NULL: the current one); the OS window's close
+   button (KEY_CLOSE) names its t.  The last tab page is not closed: E784,
+   as ex_tabclose() (the close button still quits, keys' doing).  0 ok, -1
+   error (msg set). */
+int  core_tabclose(Editor *e, Tab *t);
+/* SPC 5 1 and :tabonly. */
+int  core_tabonly(Editor *e);
+/* Makes t current (goto_tabpage_tp()): SPC 5 o, gt, {n}gt, and the OS
+   focusing another window (Emacs's handle-switch-frame). */
+void core_tab_enter(Editor *e, Tab *t);
+/* CTRL-W T (n 0): the current window into a new tab page (do_window() 'T').
+   SPC 5 m {n}: into tab page n instead (DESIGN.md "New approaches" row, with
+   the frames package).  0 ok, -1 error (msg set); a window alone in its
+   tab page stays, with "Already only one window" and 0, as do_window()
+   'T'. */
+int  core_win_to_tab(Editor *e, int n);
 /* :q, :close, CTRL-W c and q: close the current window.  Closing the last
    one quits (quit set), unless a buffer is modified and !force (E37 or
    E162).  0 ok, -1 not (msg set). */
@@ -292,7 +334,8 @@ int  core_screen_move(Editor *e, long n);
    items stay the caller's until the next call; n 0 hides the popup. */
 void core_pum(Editor *e, const PumItem *items, int n, int sel, size_t col);
 
-/* Draw every window with its status line, the command line and the popup
-   into g; the layout takes g's size.  Allocates nothing. */
-void core_draw(Editor *e, Grid *g);
+/* Draw tab page t's windows (NULL: the current one's) with their status
+   lines, the command line and the popup into g; the layout takes g's size.
+   Allocates nothing. */
+void core_draw(Editor *e, Tab *t, Grid *g);
 #endif
