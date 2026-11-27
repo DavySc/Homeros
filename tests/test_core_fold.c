@@ -276,8 +276,9 @@ static void edits(const char *dir)
 	/* an edit adjusts and updates the folds of every frame's windows on
 	   the buffer (FOR_ALL_TAB_WINDOWS in mark_adjust_internal() and
 	   changed_common()), also the rows Insert mode kept back: a window
-	   in another frame with the same folds closed keeps them equal to
-	   the current window's after each step */
+	   in another frame keeps the current window's folds after each step.
+	   Levels, not closed folds: keys' 'foldopen' (u) opens the fold at
+	   the cursor in the current window only (foldOpenCursor()) */
 	CHECK(!core_open(&e, h));
 	parse(&e);
 	CHECK(!core_fold(&e, FOLD_CLOSE, 8, 1) && !core_fold(&e, FOLD_CLOSE, 1, 1) && !core_split(&e, 0, 0) && !core_win_to_tab(&e, 0));
@@ -288,11 +289,7 @@ static void edits(const char *dir)
 		for (int p = 0; p < 2; p++) {
 			if (p) parse(&e);
 			else feed(&e, steps[i]), core_update(&e);
-			for (size_t l = 0; l < core_lines(&e); l++) {
-				size_t a2 = 0, z2 = 0;
-				int c1 = fold_closed(e.win->fold, l, &a, &z), c2 = fold_closed(other->fold, l, &a2, &z2);
-				CHECK(c1 == c2 && (!c1 || (a == a2 && z == z2)));
-			}
+			for (size_t l = 0; l < core_lines(&e); l++) CHECK(fold_level(e.win->fold, l) == fold_level(other->fold, l));
 		}
 	/* Insert mode goes on when the OS focuses another frame (main.c's
 	   core_tab_enter); <Esc> there brings the rows the first frame kept
