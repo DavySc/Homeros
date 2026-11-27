@@ -1,0 +1,124 @@
+caught        lsp: diagnostics shown at their raw positions (LspSync nomap)   (make test TESTS=lsp): tests/test_lsp.c:925: CHECK((size_t)fa == g[i].a && (size_t)fz + 1 == g[i].z) failed
+caught        lsp: an older publication replaces a newer one   (make test TESTS=lsp): tests/test_lsp.c:925: CHECK((size_t)fa == g[i].a && (size_t)fz + 1 == g[i].z) failed
+caught        lsp: older diagnostics not mapped through the edits since   (make test TESTS=lsp): tests/test_lsp.c:925: CHECK((size_t)fa == g[i].a && (size_t)fz + 1 == g[i].z) failed
+caught        lsp: the edit log dropped once didChange is sent (LspSync prunesend)   (make test TESTS=lsp): tests/test_lsp.c:925: CHECK((size_t)fa == g[i].a && (size_t)fz + 1 == g[i].z) failed
+caught        lsp: a reply shown after the text changed (LspSync mapreply)   (make test TESTS=lsp): tests/test_lsp.c:1187: CHECK(!strcmp(s + off, want)) failed
+caught        lsp: the end of a range does not follow a deleted last character   (make test TESTS=lsp): tests/test_lsp.c:925: CHECK((size_t)fa == g[i].a && (size_t)fz + 1 == g[i].z) failed
+caught        lsp: the start of a range does not follow a deleted first character   (make test TESTS=lsp): tests/test_lsp.c:925: CHECK((size_t)fa == g[i].a && (size_t)fz + 1 == g[i].z) failed
+caught        lsp: a mapped end inside the deletion goes after the insertion   (make test TESTS=lsp): tests/test_lsp.c:925: CHECK((size_t)fa == g[i].a && (size_t)fz + 1 == g[i].z) failed
+caught        lsp: incremental diagnostics replace the earlier ones   (make test TESTS=lsp): tests/test_lsp.c:930: CHECK(now == most) failed
+caught        lsp: versions jump by 2   (make test TESTS=lsp): tests/test_lsp.c:1048: CHECK(lsp_answer(d, 0)) failed
+caught        lsp: a new request does not cancel the last   (make test TESTS=lsp): WRONG (server 27045): textDocument/hover without cancelling 2
+caught        lsp: messages sent before the initialize reply   (make test TESTS=lsp): tests/test_lsp.c:1048: CHECK(lsp_answer(d, 0)) failed
+caught        lsp: a reopened file never gets didOpen   (make test TESTS=lsp): tests/test_lsp.c:1083: CHECK(g.calls == 1 && !g.null && g.ver == cur && nnoted == noted + 1) failed
+caught        lsp: columns sent as bytes, not UTF-16   (make test TESTS=lsp): tests/test_lsp.c:1187: CHECK(!strcmp(s + off, want)) failed
+caught        lsp: a column inside a surrogate pair goes to the next character   (make test TESTS=lsp): tests/test_lsp.c:1725: CHECK(lsp_u16_byte(s, n, c16) == i) failed
+caught        lsp: a request from the server left unanswered   (make test TESTS=lsp): WRONG (server 28190): the editor never answered our request
+caught        lsp: bytes that are not UTF-8 sent as they are   (make test TESTS=lsp): tests/test_lsp.c:1748: CHECK(gn == wn && !memcmp(got, want, gn)) failed
+caught        lsp: a character past U+10FFFF sent as one U+FFFD, not two   (make test TESTS=lsp): tests/test_lsp.c:1748: CHECK(gn == wn && !memcmp(got, want, gn)) failed
+caught        lsp: JSON reader accepts a trailing comma   (make fuzz FUZZERS=lsp_json FUZZ_SECONDS=30): tests/fuzz_lsp_json.c:102: CHECK((nt >= 0) == model) failed
+caught        lsp: an overlong 2-byte form sent as it is   (make test TESTS=lsp): tests/test_lsp.c:1748: CHECK(gn == wn && !memcmp(got, want, gn)) failed
+caught        lsp: a change holding what is not UTF-8 sent alone   (make test TESTS=lsp): tests/test_lsp.c:925: CHECK((size_t)fa == g[i].a && (size_t)fz + 1 == g[i].z) failed
+caught        lsp: a file holding what is not UTF-8 gets changes alone   (make test TESTS=lsp): tests/test_lsp.c:1187: CHECK(!strcmp(s + off, want)) failed
+caught        lsp: a full edit log is not cut   (make test TESTS=lsp): ==30763==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x7f1504037800 at pc 0x55869f530c89 bp 0x7ffcd6c59030 sp 0x7ffcd6c59020
+caught        lsp: a cut edit log still maps what is older than it   (make test TESTS=lsp): tests/test_lsp.c:925: CHECK((size_t)fa == g[i].a && (size_t)fz + 1 == g[i].z) failed
+caught        lsp: diagnostics mapped across an edit next to what is not UTF-8   (make test TESTS=lsp): tests/test_lsp.c:925: CHECK((size_t)fa == g[i].a && (size_t)fz + 1 == g[i].z) failed
+caught        lsp: the infoview does not hear the edits (lsp_tap out 1)   (make test TESTS=lsp): tests/test_lsp.c:1072: CHECK(tapver == cur) failed
+caught        lsp: the infoview hears every message sent, not only edits and closes   (make test TESTS=lsp): tests/test_lsp.c:951: CHECK(me >= 0 && id < 0) failed
+caught        lsp: the infoview does not hear what the server says unasked   (make test TESTS=lsp): tests/test_lsp.c:1083: CHECK(g.calls == 1 && !g.null && g.ver == cur && nnoted == noted + 1) failed
+caught        lsp: astral characters counted as one UTF-16 unit (Frama-C)   (make frama): [wp] Proved goals:  270 / 270
+caught        lsp: the infoview hears every answer, not only initialize's   (make test TESTS=lsp): tests/test_lsp.c:958: CHECK(json_int(m, k, id) == 0 && json_get(m, k, json_get(m, k, 0, "result"), "capabilities") >= 0 && n < sizeof tapinit) failed
+caught        lsp: the answer to initialize not kept for a bridge opened later   (make test TESTS=lsp): tests/test_lsp.c:1065: CHECK(ini && in == ntapinit && !memcmp(ini, tapinit, in)) failed
+caught        lsp: a raw request goes before the edits not yet sent   (make test TESTS=lsp): tests/test_lsp.c:1072: CHECK(tapver == cur) failed
+caught        lsp: a raw request's answer not given to its caller   (make test TESTS=lsp): tests/test_lsp.c:1083: CHECK(g.calls == 1 && !g.null && g.ver == cur && nnoted == noted + 1) failed
+caught        lsp: a raw request left waiting when its server dies   (make test TESTS=lsp): tests/test_lsp.c:1088: CHECK(gd.calls == 1 && gd.null) failed
+caught        lsp: a raw message for a file no server has open is sent anyway   (make test TESTS=lsp): tests/test_lsp.c:1067: CHECK(lsp_send("file:///nowhere", "$/test/echo", "{}", 2, got, &g) == -1) failed
+caught        lsp: the status line counts no work begun   (make test TESTS=lsp): tests/test_lsp.c:1085: CHECK(w == 1) failed
+caught        lsp: the status line counts no work ended   (make test TESTS=lsp): tests/test_lsp.c:1085: CHECK(w == 1) failed
+caught        lsp: a new server shows the old one's work   (make test TESTS=lsp): tests/test_lsp.c:1077: CHECK(nm && !strcmp(nm, strrchr(exe, '/') + 1) && w == -1) failed
+caught        lsp: the status line names the server by its whole path   (make test TESTS=lsp): tests/test_lsp.c:1077: CHECK(nm && !strcmp(nm, strrchr(exe, '/') + 1) && w == -1) failed
+caught        lsp: a formatted message cut at 512 bytes (a long path's URI lost)   (make test TESTS=lsp): tests/test_lsp.c:1048: CHECK(lsp_answer(d, 0)) failed
+caught        lsp: goals: an outdated RPC session asked again   (make test TESTS=lsp): tests/test_lsp.c:1289: CHECK(ok) failed
+caught        lsp: goals: a second question before the first is answered   (make test TESTS=lsp): ▼ 13:5-13:5: error:
+caught        lsp: goals: an answer for where the cursor was is shown   (make test TESTS=lsp): tests/test_lsp.c:1391: CHECK(!(memmem(got, ng, "\xCE\xBB", 2) && memmem(got, ng, "far", 3))) failed
+caught        lsp: goals: Lean's diff marks drawn plain   (make test TESTS=lsp): tests/test_lsp.c:1289: CHECK(ok) failed
+caught        lsp: goals: a hypothesis Lean marks inserted drawn plain   (make test TESTS=lsp): tests/test_lsp.c:1292: CHECK(f[h - got + 7] == FACE_DIFF_PLUS && f[h - got + 9] == FACE_DIFF_PLUS && f[h - got] == FACE_KEYWORD && f[h - got + 18] == FACE_DIFF_MINUS && f[h - got + 22] == FACE_DIFF_PLUS && f[h - got + 29] == FACE_COMMENT) failed
+caught        lsp: goals: two goals without lean.nvim's header   (make test TESTS=lsp): tests/test_lsp.c:1289: CHECK(ok) failed
+caught        lsp: goals: no "No goals." where Lean says there are none   (make test TESTS=lsp): tests/test_lsp.c:1289: CHECK(ok) failed
+caught        lsp: goals: no "Goals accomplished" (Lean's silent diagnostics ignored)   (make test TESTS=lsp): tests/test_lsp.c:1289: CHECK(ok) failed
+caught        lsp: goals: Lean's silent diagnostics shown as messages   (make test TESTS=lsp): tests/test_lsp.c:1289: CHECK(ok) failed
+caught        lsp: goals: the expected type left out   (make test TESTS=lsp): tests/test_lsp.c:1289: CHECK(ok) failed
+caught        lsp: goals: a message's clipped range shown, not its full range   (make test TESTS=lsp): tests/test_lsp.c:1289: CHECK(ok) failed
+caught        lsp: goals: messages from other lines shown   (make test TESTS=lsp): ▼ 5:5-5:5: error:
+caught        lsp: goals: nothing said while Lean has said nothing yet   (make test TESTS=lsp): tests/test_lsp.c:1339: CHECK(text_len(b->text) == 19 && text_read(b->text, 0, got, 19) == 19 && !memcmp(got, "Processing file...\n", 19)) failed
+caught        lsp: goals: a dead server not shown   (make test TESTS=lsp): tests/test_lsp.c:1541: CHECK(ng == strlen(dead) && !memcmp(got, dead, ng)) failed
+caught        lsp: goals: a restarted file shows what the old elaboration said   (make test TESTS=lsp): tests/test_lsp.c:1545: CHECK(text_read(gwin_buf(&e, &nwin)->text, 0, got, 1 << 15) == 19 && !memcmp(got, "Processing file...\n", 19)) failed
+caught        lsp: goals: the window keeps the cursor   (make test TESTS=lsp): tests/test_lsp.c:1338: CHECK(b && nwin == 2 && e.win == lean && e.buf == lean->buf && b->nonumber) failed
+caught        lsp: goals: the window at half the width   (make test TESTS=lsp): tests/test_lsp.c:1343: CHECK(iv->buf == b && iv->x > lean->x && iv->w == 160 / 3) failed
+caught        lsp: goals: \i does not close it   (make test TESTS=lsp): tests/test_lsp.c:1460: CHECK(gwin_buf(&e, &nwin) == NULL && nwin == 1 && e.win == lean) failed
+caught        lsp: goals: the question about another position   (make test TESTS=lsp): tests/test_lsp.c:1289: CHECK(ok) failed
+caught        lsp: a range wholly past its line's end dropped   (make test TESTS=lsp): ▼ 5:5-5:5: error:
+caught        lsp: a reply shown while an edit is not yet sent   (make test TESTS=lsp): tests/test_lsp.c:1140: CHECK(!lsp_answer(d, 0)) failed
+caught        lsp: a dead server's diagnostics stay   (make test TESTS=lsp): tests/test_lsp.c:1541: CHECK(ng == strlen(dead) && !memcmp(got, dead, ng)) failed
+caught        lsp: incremental diagnostics for a new version keep the old version's   (make test TESTS=lsp): ▼ 13:5-13:5: error:
+caught        lsp: diagnostics without a version ignored   (make test TESTS=lsp): tests/test_lsp.c:1424: CHECK(!memmem(got, ng, "far", 3)) failed
+caught        lsp: the URI not percent-encoded   (make test TESTS=lsp): tests/test_lsp.c:1289: CHECK(ok) failed
+caught        lsp: the project root never searched for   (make test TESTS=lsp): tests/test_lsp.c:1289: CHECK(ok) failed
+caught        lsp: goals: an error answer read as goals   (make test TESTS=lsp): ==12862==ERROR: AddressSanitizer: SEGV on unknown address 0x000000000002 (pc 0x55cfe71a2577 bp 0x7ffc6c26b430 sp 0x7ffc6c26b3d0 T0)
+caught        lsp: goals: a new server asked in the old one's RPC session   (make test TESTS=lsp): ▼ 11:29-11:29: error:
+caught        lsp: goals: an outdated session renewed without end   (make test TESTS=lsp): tests/test_lsp.c:1413: CHECK(!lsp_send(u, "$/test/talk", "{}", 2, NULL, NULL)) failed
+caught        lsp: goals: a refused connect asked again at once   (make test TESTS=lsp): tests/test_lsp.c:1400: CHECK(!lsp_send(u, "$/test/talk", "{}", 2, NULL, NULL)) failed
+caught        lsp: goals: the last line has no newline, so it is not drawn   (make test TESTS=lsp): tests/test_lsp.c:1339: CHECK(text_len(b->text) == 19 && text_read(b->text, 0, got, 19) == 19 && !memcmp(got, "Processing file...\n", 19)) failed
+caught        lsp: goals: a cursor in the goals window left past their new end   (make test TESTS=lsp): tests/test_lsp.c:1294: CHECK(v->line < text_lines(b->text)) failed
+caught        lsp: goals: a reopened window empty until Lean says something new   (make test TESTS=lsp): tests/test_lsp.c:1289: CHECK(ok) failed
+caught        lsp: a severity above 4 read past the words   (make test TESTS=lsp): src/lsp/lsp.c:991:15: runtime error: index 6 out of bounds for type 'char *[4]'
+caught        lsp: goals: fullRange does not follow edits   (make test TESTS=lsp): tests/test_lsp.c:1289: CHECK(ok) failed
+caught        lsp: goals: another file asked in the old file's RPC session   (make test TESTS=lsp): tests/test_lsp.c:1501: CHECK(!lsp_send(u, "$/test/talk", "{}", 2, NULL, NULL)) failed
+caught        lsp: a range wholly deleted since is kept   (make test TESTS=lsp): tests/test_lsp.c:1289: CHECK(ok) failed
+caught        lsp: goals: a closed document stays the goals window's   (make test TESTS=lsp): ==17110==ERROR: AddressSanitizer: heap-use-after-free on address 0x511003d2df80 at pc 0x55b0440b5f40 bp 0x7ffe1defb940 sp 0x7ffe1defb930
+caught        lsp: goals: asked while Lean elaborates the cursor's line   (make test TESTS=lsp): tests/test_lsp.c:1400: CHECK(!lsp_send(u, "$/test/talk", "{}", 2, NULL, NULL)) failed
+caught        lsp: goals: a removed hypothesis drawn plain   (make test TESTS=lsp): tests/test_lsp.c:1292: CHECK(f[h - got + 7] == FACE_DIFF_PLUS && f[h - got + 9] == FACE_DIFF_PLUS && f[h - got] == FACE_KEYWORD && f[h - got + 18] == FACE_DIFF_MINUS && f[h - got + 22] == FACE_DIFF_PLUS && f[h - got + 29] == FACE_COMMENT) failed
+caught        lsp: goals: willInsert drawn as deleted   (make test TESTS=lsp): tests/test_lsp.c:1292: CHECK(f[h - got + 7] == FACE_DIFF_PLUS && f[h - got + 9] == FACE_DIFF_PLUS && f[h - got] == FACE_KEYWORD && f[h - got + 18] == FACE_DIFF_MINUS && f[h - got + 22] == FACE_DIFF_PLUS && f[h - got + 29] == FACE_COMMENT) failed
+caught        lsp: goals: never the bottom split on a tall screen   (make test TESTS=lsp): tests/test_lsp.c:1523: CHECK(b && nwin == 2 && e.win == lean && iv->buf == b && iv->y > lean->y && iv->h == 40 / 3) failed
+caught        lsp: goals: the window closed with \i opens again at the next key   (make test TESTS=lsp): tests/test_lsp.c:1518: CHECK(gwin_buf(&e, &nwin) == NULL && nwin == 1) failed
+caught        lsp: goals: goals accomplished do not follow edits   (make test TESTS=lsp): tests/test_lsp.c:1289: CHECK(ok) failed
+caught        lsp: goals: inaccessible names not dimmed   (make test TESTS=lsp): tests/test_lsp.c:1292: CHECK(f[h - got + 7] == FACE_DIFF_PLUS && f[h - got + 9] == FACE_DIFF_PLUS && f[h - got] == FACE_KEYWORD && f[h - got + 18] == FACE_DIFF_MINUS && f[h - got + 22] == FACE_DIFF_PLUS && f[h - got + 29] == FACE_COMMENT) failed
+caught        lsp: goals: a let's value left out   (make test TESTS=lsp): tests/test_lsp.c:1289: CHECK(ok) failed
+caught        lsp: goals: every message called an error   (make test TESTS=lsp): ▼ 4:8-5:1: error:
+caught        lsp: goals: a refused question leaves goals for another line shown   (make test TESTS=lsp): tests/test_lsp.c:1289: CHECK(ok) failed
+caught        lsp: goals: a refused connect leaves goals for another line shown   (make test TESTS=lsp): tests/test_lsp.c:1411: CHECK(!memmem(got, ng, "fin?", 4) && !memmem(got, ng, "No goals.", 9)) failed
+caught        lsp: goals: a change of colours only not drawn   (make test TESTS=lsp): tests/test_lsp.c:1289: CHECK(ok) failed
+caught        lsp: goals: an outdated session renewed only once per file   (make test TESTS=lsp): tests/test_lsp.c:1289: CHECK(ok) failed
+caught        lsp: goals: another file's late session taken   (make test TESTS=lsp): tests/test_lsp.c:1289: CHECK(ok) failed
+caught        lsp: goals: goals that are not a list read as one   (make test TESTS=lsp): tests/test_lsp.c:1289: CHECK(ok) failed
+caught        lsp: goals: a retry's window emptied while it waits   (make test TESTS=lsp): tests/test_lsp.c:1432: CHECK(memmem(got, ng, "\xCE\xBB", 2)) failed
+caught        lsp: goals: a refused first question leaves Processing file...   (make test TESTS=lsp): tests/test_lsp.c:1500: CHECK(!memmem(got, ng, "Processing", 10)) failed
+caught        lsp: goals: a refused question keeps the old No goals.   (make test TESTS=lsp): tests/test_lsp.c:1411: CHECK(!memmem(got, ng, "fin?", 4) && !memmem(got, ng, "No goals.", 9)) failed
+caught        lsp: goals: an expected type refused drops the goals answered   (make test TESTS=lsp): tests/test_lsp.c:1289: CHECK(ok) failed
+caught        lsp: goals: a server dead with a question out read as an answer   (make test TESTS=lsp): ==24560==ERROR: AddressSanitizer: SEGV on unknown address 0x000000000002 (pc 0x562127f6a577 bp 0x7ffd741c39c0 sp 0x7ffd741c3960 T0)
+caught        lsp: tokens: not moved by edits until the answer comes   (make test TESTS=lsp): tests/test_lsp.c:1637: CHECK(tsettle(&e)) failed
+caught        lsp: tokens: an answer for a text edited since shown   (make test TESTS=lsp): tests/test_lsp.c:1653: CHECK(!memcmp(got, want, n)) failed
+caught        lsp: tokens: a new request without cancelling the last   (make test TESTS=lsp): tests/test_lsp.c:1642: CHECK(tsettle(&e)) failed
+caught        lsp: tokens: UTF-16 columns read as bytes   (make test TESTS=lsp): tests/test_lsp.c:1617: CHECK(tsettle(&e)) failed
+caught        lsp: tokens: the grammar's faces dropped   (make test TESTS=lsp): tests/test_lsp.c:1617: CHECK(tsettle(&e)) failed
+caught        lsp: tokens: a new line's start taken from the last token's   (make test TESTS=lsp): tests/test_lsp.c:1617: CHECK(tsettle(&e)) failed
+caught        lsp: tokens: a type Neovim does not colour coloured   (make test TESTS=lsp): tests/test_lsp.c:1617: CHECK(tsettle(&e)) failed
+caught        lsp: tokens: asked from inside a token, it is missed   (make test TESTS=lsp): tests/test_lsp.c:1587: CHECK(!memcmp(got, want + a, n - a)) failed
+caught        lsp: tokens: not asked for once the server is ready   (make test TESTS=lsp): tests/test_lsp.c:1617: CHECK(tsettle(&e)) failed
+caught        lsp: tokens: not asked again after an edit   (make test TESTS=lsp): tests/test_lsp.c:1656: CHECK(tsettle(&e) && core_changed) failed
+caught        lsp: goals: a refused question keeps the expected type shown for another line   (make test TESTS=lsp): tests/test_lsp.c:1289: CHECK(ok) failed
+caught        lsp: tokens: an answer does not redraw   (make test TESTS=lsp): tests/test_lsp.c:1656: CHECK(tsettle(&e) && core_changed) failed
+caught        lsp: tokens: an answer added to the last   (make test TESTS=lsp): tests/test_lsp.c:1662: CHECK(tsettle(&e)) failed
+caught        lsp: tokens: an error answer clears them   (make test TESTS=lsp): tests/test_lsp.c:1671: CHECK(!memcmp(got, want, n)) failed
+caught        lsp: tokens: a new server shows the old one's   (make test TESTS=lsp): tests/test_lsp.c:1701: CHECK(!memcmp(got, syn, n)) failed
+caught        lsp: tokens: a file opened once the server is ready not asked   (make test TESTS=lsp): tests/test_lsp.c:1692: CHECK(!core_edit_file(&e, p[2], 0) && tsettle(&e)) failed
+caught        lsp: tokens: function linked to another face   (make test TESTS=lsp): tests/test_lsp.c:1617: CHECK(tsettle(&e)) failed
+caught        lsp: tokens: only the first file asked once the server is ready   (make test TESTS=lsp): tests/test_lsp.c:1691: CHECK(!core_buf_goto(&e, nr) && tsettle(&e)) failed
+caught        lsp: tokens: a type past the legend read   (make test TESTS=lsp): src/lsp/lsp.c:692:20: runtime error: index 32 out of bounds for type 'unsigned char [32]'
+caught        lsp: tokens: more than 32 types kept   (make test TESTS=lsp): src/lsp/lsp.c:663:12: runtime error: index 32 out of bounds for type 'unsigned char [32]'
+caught        lsp: tokens: not asked again on a refresh   (make test TESTS=lsp): tests/test_lsp.c:1678: CHECK(tsettle(&e)) failed
+caught        lsp: tokens: no refreshSupport offered   (make test TESTS=lsp): tests/test_lsp.c:1678: CHECK(tsettle(&e)) failed
+caught        lsp: tokens: each start counted from the line's   (make test TESTS=lsp): tests/test_lsp.c:1617: CHECK(tsettle(&e)) failed
+caught        core: Buf.faces not drawn (the goals window's colours, Lean's tokens)   (make test TESTS=lsp): tests/test_lsp.c:1628: CHECK(c[0].face == syn[0] && c[4].face == FACE_KEYWORD && c[g.cols].face == FACE_COMMENT && c[g.cols + 8].face == FACE_COMMENT && c[g.cols + 10].face == FACE_KEYWORD) failed
+caught        core: a buffer with a server not given lsp_faces   (make test TESTS=lsp): tests/test_lsp.c:1609: CHECK(!core_open(&e, path) && e.buf->lsp && e.buf->syn && e.buf->faces == lsp_faces) failed
+caught        core: Buf.faces drawn only where there is a grammar (Lean files, the goals window)   (make test TESTS=lsp): tests/test_lsp.c:1696: CHECK(c[0].face == FACE_KEYWORD && c[3].face == FACE_NONE && c[g.cols].face == FACE_TYPE) failed
