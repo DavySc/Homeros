@@ -103,15 +103,6 @@ Waits for package 4, still differing with PR 20's core:
   marks, so after v Esc d{ v j Esc u on "bar\nab,", gv covers lines 1-2
   where Neovim's u_undoredo restores '> to line 1 (reviews/pr-52.md,
   finding 4; needs a core.h change from thread 0).
-- core_vcol at a byte inside a cluster (x + U+0301 with the cursor after x)
-  gives the cluster's end; Neovim's getvcol gives its start. Typing before
-  a lone mark makes such a cursor ("x\n\u0301", j i a Up C-w: Neovim's
-  column 0, ours 1); CTRL-O and Del there differ the same way
-  ("\u0301 \"a b\"", I é C-o).
-- I Down from a blank a combining mark is on, after the cursor came there
-  with k ("    \u0301 -3\n).\n    'c' 7", j dd k I Down): Neovim's column
-  2, ours 3; not traced yet (owner package 5, with package 4's core_vcol
-  inside a cluster above).
 
 Not traced to a fix yet (owner package 5):
 - gg, then C-v < on a line that is only a Tab ("\t\n\tfoo", gg C-v <):

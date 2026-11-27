@@ -1179,6 +1179,15 @@ static void goals(const char *log)
 	gcheck(&e, &w, got);
 	e.win->line = 7;                          /* '&': the expected type refused, the goals kept */
 	gcheck(&e, &w, got);
+	/* G in the goals window on two goals, then none: its cursor follows
+	   the shorter text (every seed, not only the walk's) */
+	e.win->line = 2, e.win->col = 0;
+	gcheck(&e, &w, got);
+	Win *gw = e.wins;
+	while (gw->buf != gwin_buf(&e, &nwin)) gw = gw->next;
+	gw->line = text_lines(gw->buf->text) - 1;
+	e.win->line = 0;
+	gcheck(&e, &w, got);
 	e.win->line = e.win->col = 0;             /* the same text, other faces */
 	gcheck(&e, &w, got);
 	e.win->col = 1;

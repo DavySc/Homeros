@@ -1,0 +1,4 @@
+review 127: cover() drops the part before the span put last~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~	if (a < r[0]) put(a, r[0]), r[0] = a;~	if (a < r[0]) r[0] = a;
+review 127: cover() takes a span before the last one as joined to it~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~	if (z < r[0] || a > r[1]) r[0] = r[1] = a;~	if (a > r[1]) r[0] = r[1] = a;
+review 127: valid() of the first line looked ahead kept for the lines after it~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~				int v = -1;~				static int v; if (c->fq == nextl(l)) v = -1;
+review 127: a definition's span asked for when nothing is put~org-conform ORG_N=2000 SEED=1 test TESTS=org~~src/org/org.c~fn_span(c, p, x, l, h, &a, &z, put ? &v : NULL)) {~fn_span(c, p, x, l, h, &a, &z, &v)) {

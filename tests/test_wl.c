@@ -35,7 +35,7 @@ static int cellh(void) { int w, h, b; font_cell(&w, &h, &b); return h; }
 
 static char dir[64];
 static pid_t cpid;
-static int keys[8192], nkeys;
+static int keys[8192], wins[8192], nkeys;   /* wins: the window each key came from */
 static Grid g, shown;
 
 static double now(void)
@@ -85,7 +85,7 @@ static void pump(int ms)
 	for (double end = now() + ms; now() < end;) {
 		if (imd) wl_display_flush(imd);
 		if (poll(p, 3, (int)(end - now()) + 1) <= 0) continue;
-		if (p[0].revents || p[1].revents) nkeys += backend_wl.input(keys + nkeys, (int)(sizeof keys / sizeof *keys) - nkeys);
+		if (p[0].revents || p[1].revents) nkeys += backend_wl.input(keys + nkeys, wins + nkeys, (int)(sizeof keys / sizeof *keys) - nkeys);
 		if (p[2].revents) CHECK(wl_display_dispatch(imd) >= 0);
 	}
 }
@@ -126,7 +126,7 @@ static void show(void);
 static void draw(void)
 {
 	int r, c;
-	backend_wl.size(&r, &c);
+	backend_wl.size(0, &r, &c);
 	if (g.rows != r || g.cols != c) CHECK(!grid_resize(&g, r, c));
 	grid_puts(&g, 0, 0, g.cols, "homeros", 7, ATTR_NONE, FACE_NONE);
 	g.crow = 0;
@@ -137,12 +137,12 @@ static void draw(void)
 /* Presents g as it is, once a frame may be drawn, and waits for the callback. */
 static void show(void)
 {
-	for (double end = now() + 2000; !backend_wl.ready() && now() < end;) pump(5);
-	CHECK(backend_wl.ready());
-	backend_wl.present(&g, &shown);
-	CHECK(!backend_wl.ready());     /* Present.tla: nothing more until the callback */
-	for (double end = now() + 2000; !backend_wl.ready() && now() < end;) pump(5);
-	CHECK(backend_wl.ready());
+	for (double end = now() + 2000; !backend_wl.ready(0) && now() < end;) pump(5);
+	CHECK(backend_wl.ready(0));
+	backend_wl.present(0, &g, &shown);
+	CHECK(!backend_wl.ready(0));     /* Present.tla: nothing more until the callback */
+	for (double end = now() + 2000; !backend_wl.ready(0) && now() < end;) pump(5);
+	CHECK(backend_wl.ready(0));
 }
 
 static void start(const char *fmt)
@@ -188,7 +188,7 @@ static void stop(void)
 static void size_is(int lw, int lh, int scale120)
 {
 	int r, c, bw = (lw * scale120 + 60) / 120, bh = (lh * scale120 + 60) / 120;
-	backend_wl.size(&r, &c);
+	backend_wl.size(0, &r, &c);
 	if (r != bh / cellh() || c != bw / cellw())
 		fprintf(stderr, "size %dx%d cells, want %dx%d (%dx%d px at %d/120)\n", r, c, bh / cellh(), bw / cellw(), lw, lh, scale120);
 	CHECK(r == bh / cellh() && c == bw / cellw());
@@ -211,19 +211,26 @@ static int above(int rows)
 	return memcmp(x, y, (size_t)rows * 40 * 3) != 0;
 }
 
-/* How many pixels of the screen at (x, y), w by h, are not the window's
-   background; with warm 1, only those far redder than blue (an emoji's
-   skin, which no face's colour is); with 2, those not its corner's colour
-   (a cell's ink on any background) */
-static int ink(int x, int y, int w, int h, int warm)
+/* A screenshot of (x, y), w by h, as a PPM opened past its header */
+static FILE *grab(int x, int y, int w, int h, int *pw, int *ph)
 {
 	char b[512];
 	snprintf(b, sizeof b, "grim -g '%d,%d %dx%d' -t ppm %s/i.ppm", x, y, w, h, dir);
 	run(b);
 	snprintf(b, sizeof b, "%s/i.ppm", dir);
 	FILE *f = fopen(b, "rb");
+	CHECK(f && fscanf(f, "P6 %d %d 255%*c", pw, ph) == 2);
+	return f;
+}
+
+/* How many pixels of the screen at (x, y), w by h, are not the window's
+   background; with warm 1, only those far redder than blue (an emoji's
+   skin, which no face's colour is); with 2, those not its corner's colour
+   (a cell's ink on any background) */
+static int ink(int x, int y, int w, int h, int warm)
+{
 	int pw, ph, n = 0;
-	CHECK(f && fscanf(f, "P6 %d %d 255%*c", &pw, &ph) == 2);
+	FILE *f = grab(x, y, w, h, &pw, &ph);
 	for (int i = 0, c, k = 0; i < pw * ph; i++) {
 		unsigned char p[3];
 		CHECK(fread(p, 1, 3, f) == 3);
@@ -235,10 +242,22 @@ static int ink(int x, int y, int w, int h, int warm)
 	return n;
 }
 
+/* the screen's pixel at (x, y), 0xRRGGBB */
+static int pixel(int x, int y)
+{
+	int pw, ph;
+	unsigned char p[3];
+	FILE *f = grab(x, y, 1, 1, &pw, &ph);
+	CHECK(fread(p, 1, 3, f) == 3);
+	fclose(f);
+	return p[0] << 16 | p[1] << 8 | p[2];
+}
+
 static const char SWAY[] =
 	"cat > %s/sway.cfg <<'E'\n"
 	"output HEADLESS-1 resolution 1280x800 scale 1\n"
 	"default_border none\n"
+	"focus_on_window_activation focus\n"   /* Hyprland's focus_on_activate */
 	"seat * xcursor_theme Adwaita 24\n"
 	"input type:keyboard {\nrepeat_delay 300\nrepeat_rate 25\n}\n"
 	"E\n"
@@ -260,7 +279,7 @@ static void test_sway(void)
 	zwp_input_method_v2_add_listener(im = zwp_input_method_manager_v2_get_input_method(imm, imseat), &im_l, NULL);
 	wl_display_flush(imd);
 
-	CHECK(!backend_wl.open());
+	CHECK(!backend_wl.open() && !backend_wl.win_open(0));
 	int k0 = nkeys;
 	draw();                        /* sway sizes a tiled window once it is mapped */
 	pump(100);
@@ -377,7 +396,7 @@ static void test_sway(void)
 	   cells redrawn as text take it away */
 	{
 		int w, h, n;
-		backend_wl.cell(&w, &h);
+		backend_wl.cell(0, &w, &h);
 		CHECK(w == cellw() && h == cellh() && 4 * w > 32 && h > 16);
 		CHECK((n = image_load("tests/test_image.png", 4, 1, w, h, 0x1e1e2e)) > 0);
 		image_put(&g, 2, 0, n, 0);
@@ -443,7 +462,7 @@ static void test_sway(void)
 	for (int i = 0, fds[2]; i < 6; i++) {
 		backend_wl.fds(fds);
 		struct pollfd p[2] = { { fds[0], POLLIN, 0 }, { fds[1], POLLIN, 0 } };
-		if (poll(p, 2, 500) > 0) nkeys += backend_wl.input(keys + nkeys, 4);
+		if (poll(p, 2, 500) > 0) nkeys += backend_wl.input(keys + nkeys, wins + nkeys, 4);
 	}
 	CHECK(count('a', k0) == 1 && count('h', k0) == 1 && nkeys - k0 == 8);
 
@@ -566,17 +585,169 @@ static void test_sway(void)
 	CHECK(cellh() == ch1);
 	draw();
 
+	/* a wallpaper (image.h): one dropped into the config folder shows from
+	   the next size, on a surface below the window's, covering it, a fifth
+	   of it over the base where the background is the default.
+	   tests/test_image.png (32 x 16, red then blue) covers 600 x 400 as
+	   800 x 400, its middle: red at the left, blue at the right, past the
+	   cells too; text over it; reversed cells and the cursor on
+	   base-coloured text (opaque, a colour emoji's and antialiased edges
+	   too) as without it.  Then 2 rows red above 6 blue: 640 x 480 shows
+	   rows 1 to 7, so red does not end at a quarter of the height (the
+	   viewport's source); moved rows copied are what a whole redraw
+	   gives.  Taken away, the base is
+	   back from the next size, and nothing of it past a smaller window. */
+	{
+		char f[128];
+		run(SWAYMSG "resize set 600 400, move position 0 0");   /* screen pixels are window pixels */
+		pump(100);
+		size_is(600, 400, 120);
+		int ow = 0;   /* the output's background, past the window */
+		for (int t = 0; t < 2; t++) {
+			if (t) {
+				snprintf(f, sizeof f, "%s/homeros", dir);
+				CHECK(!mkdir(f, 0700) && !setenv("XDG_CONFIG_HOME", dir, 1));
+				cmd("cp tests/test_image.png %s/homeros/wallpaper # %s", dir);
+				run(SWAYMSG "resize set 640 480");
+				pump(100);
+				draw();   /* a size drawn: the wallpaper is looked for */
+				run(SWAYMSG "resize set 600 400, move position 0 0");
+				pump(100);
+			}
+			draw();
+			grid_puts(&g, 1, 0, g.cols, "Wg😀", 6, ATTR_REV, FACE_NONE);
+			grid_puts(&g, 1, 4, g.cols, "t", 1, ATTR_NONE, FACE_COMMENT_TODO);   /* base on flamingo */
+			g.crow = 1;
+			g.ccol = 4;
+			show();
+			snprintf(f, sizeof f, "grim -g '0,%d %dx%d' -t ppm %s/r%d.ppm", cellh(), 5 * cellw(), cellh(), dir, t);
+			run(f);
+			if (!t) ow = pixel(620, 300);
+		}
+		cmd("cmp -s %s/r0.ppm %s/r1.ppm", dir);
+		CHECK(pixel(10, 300) == 0x4b1825 && pixel(599, 399) == 0x181858);
+		CHECK(ink(0, 0, cellw(), cellh(), 2) > 0);   /* the h of homeros */
+		cmd("cp tests/test_wallpaper.png %s/homeros/wallpaper # %s", dir);   /* 8 x 8: 2 rows red above 6 blue */
+		run(SWAYMSG "resize set 640 480, move position 0 0");
+		pump(100);
+		size_is(640, 480, 120);
+		draw();
+		/* covered, red ends at 80; squeezed (no source), at 120; sway 1.9's
+		   pixman renderer drops the source's offset and shows rows 0 to 5,
+		   so 160 (measured) */
+		CHECK(pixel(620, 10) == 0x4b1825 && pixel(620, 100) == pixel(620, 140) && pixel(620, 470) == 0x181858);
+		grid_clear(&g);
+		for (int r = 0; r < g.rows; r++) grid_puts(&g, r, 0, g.cols, "abcdefghijklmnopqrstuvwxyz" + r % 26, 1, ATTR_NONE, FACE_NONE);
+		for (int i = 0; i < 4; i++) {   /* scrolls a row a frame, into both buffers */
+			show();
+			memmove(g.c, g.c + g.cols, sizeof *g.c * (size_t)((g.rows - 1) * g.cols));
+		}
+		show();
+		cmd("grim -t ppm %s/1.ppm # %s", dir);
+		grid_free(&shown);
+		show();
+		cmd("grim -t ppm %s/2.ppm && cmp -s %s/1.ppm %s/2.ppm", dir);
+		cmd("rm %s/homeros/wallpaper # %s", dir);
+		run(SWAYMSG "resize set 600 400, move position 0 0");
+		pump(100);
+		draw();
+		CHECK(pixel(10, 300) == 0x1e1e2e && pixel(620, 300) == ow);
+		run(SWAYMSG "resize set 640 480");
+		pump(100);
+		draw();
+	}
+	/* frames: a second window (tab page 1), mapped by its first frame,
+	   gets the keyboard: a focus change, and its keys say so.  Its frame
+	   callback is its own (Frames.tla) */
+	run(SWAYMSG "move position 0 0");   /* the resize above grew it past the output's top left */
+	pump(100);
+	draw();
+	CHECK(ink(0, 0, cellw(), cellh(), 2) > 0);   /* window 0 shows its text: the preedit checks below see it */
+	k0 = nkeys;
+	CHECK(!backend_wl.win_open(1));
+	int cw0, ch0, cw1, ch1b, r1, c1;
+	Grid g1 = { 0 }, shown1 = { 0 };
+	backend_wl.size(1, &r1, &c1);
+	CHECK(!grid_resize(&g1, r1, c1));
+	grid_puts(&g1, 0, 0, c1, "frame 1", 7, ATTR_NONE, FACE_NONE);
+	CHECK(backend_wl.ready(1) && backend_wl.ready(0));
+	backend_wl.present(1, &g1, &shown1);
+	CHECK(!backend_wl.ready(1) && backend_wl.ready(0));
+	pump(300);
+	int f1 = -1;
+	for (int i = k0; i < nkeys; i++) if (keys[i] == KEY_FOCUS) f1 = wins[i];
+	CHECK(count(KEY_FOCUS, k0) == 1 && f1 == 1);
+	k0 = nkeys;
+	run("wtype -s 200 x");
+	/* wtype's new keyboard leaves and enters window 1 again: no change */
+	CHECK(keys[nkeys - 1] == 'x' && wins[nkeys - 1] == 1 && !count(KEY_FOCUS, k0));
+	/* on an output at scale 1.5 its cells are bigger than window 0's,
+	   and each window draws at its own font size */
+	run(SWAYMSG "create_output, output HEADLESS-2 resolution 1280x800 scale 1.5, move container to output HEADLESS-2, focus output HEADLESS-2");
+	pump(300);
+	backend_wl.cell(1, &cw1, &ch1b);
+	backend_wl.cell(0, &cw0, &ch0);
+	backend_wl.size(1, &r1, &c1);     /* in window 1's cells, whichever font was used last */
+	CHECK(ch1b > ch0 && cw1 > cw0 && r1 > 1 && c1 > 1);
+	CHECK(!grid_resize(&g1, r1, c1));
+	for (double end = now() + 2000; !backend_wl.ready(1) && now() < end;) pump(5);
+	backend_wl.present(1, &g1, &shown1);
+	CHECK(shown1.rows == r1);
+	draw();
+	backend_wl.cell(1, &cw1, &ch1b);
+	show();
+	int w_, h_, b_;
+	font_cell(&w_, &h_, &b_);
+	CHECK(h_ == ch0);                 /* window 0 drawn with its own font, after window 1's was used */
+	/* SPC 5 o: raise window 0; its focus comes before KEY_RAISED (Focus.tla) */
+	k0 = nkeys;
+	backend_wl.raise(0);
+	for (double end = now() + 2000; !count(KEY_RAISED, k0) && now() < end;) pump(5);
+	int f0 = -1, r0 = -1;
+	for (int i = k0; i < nkeys; i++) {
+		if (keys[i] == KEY_FOCUS && wins[i] == 0 && f0 < 0) f0 = i;
+		if (keys[i] == KEY_RAISED && wins[i] == -1) r0 = i;
+	}
+	CHECK(f0 >= 0 && r0 > f0 && count(KEY_RAISED, k0) == 1);
+	run("wtype -s 200 y");
+	CHECK(keys[nkeys - 1] == 'y' && wins[nkeys - 1] == 0);
+	/* the preedit is drawn in the window with the keyboard only: window 0
+	   draws the same while window 1 has one */
+	k0 = nkeys;
+	backend_wl.raise(1);
+	for (double end = now() + 2000; !count(KEY_RAISED, k0) && now() < end;) pump(5);
+	pump(100);
+	CHECK(im_active);
+	cmd("grim -o HEADLESS-1 -t ppm %s/p0.ppm # %s", dir);
+	zwp_input_method_v2_set_preedit_string(im, "zz", 2, 2);
+	zwp_input_method_v2_commit(im, (uint32_t)im_dones);
+	pump(100);
+	show();
+	cmd("grim -o HEADLESS-1 -t ppm %s/p1.ppm && cmp -s %s/p0.ppm %s/p1.ppm", dir);
+	zwp_input_method_v2_set_preedit_string(im, "", 0, 0);
+	zwp_input_method_v2_commit(im, (uint32_t)im_dones);
+	/* closing window 1, which has the keyboard, leaves window 0 drawing;
+	   a window opened at once takes window 0's size, not the closed one's */
+	backend_wl.win_close(1);
+	CHECK(!backend_wl.win_open(2));
+	backend_wl.win_close(2);
+	pump(100);
+	draw();
+	grid_free(&g1);
+	grid_free(&shown1);
+	run(SWAYMSG "output HEADLESS-2 disable");
+
 	/* hidden: no frame callback, so nothing is drawn until shown again */
 	run(SWAYMSG "move scratchpad");
 	pump(100);
 	grid_puts(&g, 1, 0, g.cols, "hidden", 6, ATTR_NONE, FACE_NONE);
-	CHECK(backend_wl.ready());
-	backend_wl.present(&g, &shown);
+	CHECK(backend_wl.ready(0));
+	backend_wl.present(0, &g, &shown);
 	pump(500);
-	CHECK(!backend_wl.ready());
+	CHECK(!backend_wl.ready(0));
 	run(SWAYMSG "scratchpad show");
 	pump(300);
-	CHECK(backend_wl.ready());
+	CHECK(backend_wl.ready(0));
 
 	/* closing the window is a key; the window stays until the editor quits */
 	k0 = nkeys;
@@ -594,7 +765,7 @@ static void test_sway(void)
 		backend_wl.fds(fds);
 		struct pollfd p = { fds[0], POLLIN, 0 };
 		CHECK(poll(&p, 1, 1000) > 0);
-		CHECK(backend_wl.input(keys + nkeys, 64) == -1);
+		CHECK(backend_wl.input(keys + nkeys, wins + nkeys, 64) == -1);
 	}
 
 	backend_wl.close();
@@ -613,7 +784,7 @@ static void test_weston(void)
 {
 	start("exec weston --backend=headless --renderer=pixman --shell=kiosk-shell.so --no-config "
 	      "--width=1000 --height=700 --idle-time=0 --socket=wayland-w >%s/log 2>&1 # %s");
-	CHECK(!backend_wl.open());
+	CHECK(!backend_wl.open() && !backend_wl.win_open(0));
 	size_is(1000, 700, 120);
 	draw();
 	draw();

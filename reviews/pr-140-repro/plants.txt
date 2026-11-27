@@ -1,0 +1,15 @@
+# The review's own plants for PR 140 (format in tools/planted.sh)
+review: a fallback answer remembered without the font before~test TESTS=font~~src/font/font.c~(key ^ (unsigned)after) * 1099511628211ULL~(key ^ 0u) * 1099511628211ULL
+review: fallback answers kept over font_open~test TESTS=font~~src/font/font.c~	memset(picks, 0, sizeof picks);¶	npick = 0;¶	FT_Face f~	FT_Face f
+review: full table of answers never emptied~test TESTS=font~~src/font/font.c~if (npick >= PICKS * 3 / 4) {~if (0) {
+review: heavy lines drawn light~test TESTS=font~~src/font/sprite.c~K[i] = k[i] == 3 ? 3 * t : k[i] * t;~K[i] = k[i] == 3 ? 3 * t : t;
+review: every lower block drawn full~test TESTS=font~~src/font/sprite.c~rect(0, h - (h * (int)(c - 0x2580) + 4) / 8, w, h, 255);~rect(0, 0, w, h, 255);
+review: Powerline's separators point the other way~test TESTS=font~~src/font/sprite.c~int left = c >= 0xE0B2;~int left = c < 0xE0B2;
+review: dashes drawn as one line~test TESTS=font~~src/font/sprite.c~int a = i * len / n, b = (i + 1) * len / n, g = (b - a) / 3 > 0 ? (b - a) / 3 : 1;~int a = i * len / n, b = (i + 1) * len / n, g = 0;
+review: a drawn glyph not at the cell's top~test TESTS=font~~src/font/font.c~g = (Glyph){ arena + used, cw, ch, 0, base, 0 };~g = (Glyph){ arena + used, cw, ch, 0, base - 1, 0 };
+review: a font's file kept after font_close~test TESTS=font~~src/font/font.c~FT_Done_Face(face[i].ft); hb_blob_destroy(face[i].blob); }~FT_Done_Face(face[i].ft); }
+review: scroll never copied~test TESTS=wl~~src/paint/paint.c~	if (changed < 2) return 0;~	if (changed < 2000) return 0;
+review: typing hashes every row again~test TESTS=wl~~src/paint/paint.c~	if (changed < 2) return 0;~
+review: no family installed opens no font~win WIN=win~~src/font/dwrite.c~	if (!n) {   /* none installed~	if (0) {   /* none installed
+review: a cluster half in the fallback font taken~win WIN=win~~src/font/dwrite.c~&& f && got == len)~&& f)
+review: every font called a colour font~win WIN=win~~src/font/dwrite.c~&& IDWriteFontFace2_IsColorFont(f2);~;

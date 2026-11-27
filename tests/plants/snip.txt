@@ -15,9 +15,9 @@ snip: a mirror spliced as only what changed~test TESTS=snip~~src/snip/snip.c~		S
 snip: Enter at the end of a line spliced after the break~test TESTS=snip~~src/snip/snip.c~ && c == '\n') pos--;~ && c == '\n') pos -= 0;
 snip: Enter in a line moves the rest of it whole~test TESTS=snip~~src/keys/edit.c~				memcpy(b + 1, nl, (size_t)ind);¶				replace_bytes(l, rest, extra - rest, b, ind + 1);~				memcpy(b + 1, nl, (size_t)nl_len);¶				replace_bytes(l, rest, len - rest, b, nl_len + 1);
 snip: CTRL-W in select mode a window command~test TESTS=snip~~src/snip/snip.c~		if (k == KEY_S_TAB || k == 23) return 1;~		if (k == KEY_S_TAB) return 1;
-snip: Enter with nothing picked takes the first item~test TESTS=snip~~src/snip/snip.c~	case KEY_ENTER: if (s >= 0) break; core_pum(e, NULL, 0, -1, 0); return 0;~	case KEY_ENTER: if (s < 0) s = 0; break;
+snip: Enter with nothing picked takes the first item~test TESTS=snip~~src/snip/snip.c~	case KEY_ENTER: if (s >= 0) break; close_pum(e); return 0;~	case KEY_ENTER: if (s < 0) s = 0; break;
 snip: the popup's Tab does not pick~test TESTS=snip~~src/snip/snip.c~	case 14: case KEY_DOWN: case KEY_TAB:~	case 14: case KEY_DOWN:
-snip: the popup opens in any buffer~test TESTS=snip~~src/snip/snip.c~	if (!S.b && (e->mode != MODE_INSERT || !is_sql(e->buf))) return 0;~	if (!S.b && (e->mode != MODE_INSERT || (!is_sql(e->buf) && 0))) return 0;
+snip: the popup opens in any buffer~test TESTS=snip~~src/snip/snip.c~ && is_sql(e->buf) && (word(k)~ && (word(k)
 snip: a block with no name line taken as a snippet~test TESTS=snip~~src/snip/snip.c~(q = strstr(p, "```sql\n-- "))~(q = strstr(p, "```sql\n"))
 snip: a bare stop left empty~test TESTS=snip~~src/snip/snip.c~			if (ph->idx != t->idx) continue;~			if (ph->idx != t->idx || 1) continue;
 snip: unmapped S-Tab does nothing in Insert mode~test TESTS=snip~~src/keys/edit.c~	case KEY_S_TAB:   /* an unmapped <S-Tab> is a Tab (insert_handle_key's K_S_TAB) */¶~
@@ -26,8 +26,8 @@ snip: a cursor inside a rewritten mirror stays past its text~test TESTS=snip~~sr
 snip: a jump's mirror write comes after its keys (its own undo step)~test TESTS=snip~~src/snip/snip.c~	if (*seen != S.tick) sync(e), *seen = S.tick;~	(void)seen;
 snip: a change on the cursor's line does not rerun CursorMoved~test TESTS=snip~~src/snip/snip.c~> cl) S.line = (size_t)-1;~> cl) (void)0;
 snip: a stop ending at a line start selects up to its last byte~test TESTS=snip~~src/snip/snip.c~b[k - 1] == '\n' ? t->z.at : ~
-snip: the file's group not ranked first~test TESTS=snip~~src/snip/snip.c~		if (g && heading_has(sn[i].head, g)) s += 1 << 24;¶~¶
-snip: task snippets outside task files~test TESTS=snip~~src/snip/snip.c~		if (heading_has(sn[i].head, "task") && !(g && !strcmp(g, "task"))) continue;¶~¶
+snip: the file's group not ranked first~test TESTS=snip~~src/snip/snip.c~pri - (g && heading_has(sn[i].head, g))~pri
+snip: task snippets outside task files~test TESTS=snip~~src/snip/snip.c~		if (!heading_has(sn[i].head, "task") || (g && !strcmp(g, "task")))~		if (1)
 snip: proc files ranked by the word proc, not the helpers~test TESTS=snip~~src/snip/snip.c~return i == 8 ? "helpers" : g[i];~return g[i];
 snip: a later word of the file name wins~test TESTS=snip~~src/snip/snip.c~			if (n == strlen(g[i]) && !strncmp(w, g[i], n)) return i == 8 ? "helpers" : g[i];~			if (n == strlen(g[i]) && !strncmp(w, g[i], n) && strchr(w, '.') - w > 12) return i == 8 ? "helpers" : g[i];
 snip: a surrounded line keeps the first line's indent~test TESTS=snip~~src/snip/snip.c~		for (size_t b = 0; j && b < o->base && j < o->nsel && memchr(" \t", o->sel[j], 2); b++) j++;¶~¶
@@ -43,7 +43,7 @@ snip: no SPC i s map~test TESTS=keys_map~~src/keys/keys.c~	{ " i", "+insert" }, 
 snip: a surround takes the text's last line break~test TESTS=snip~~src/snip/snip.c~		if (z >= text_len(e->buf->text)) z = text_len(e->buf->text) - 1;¶~¶
 snip: a block surrounded corner to corner~test TESTS=snip~~src/snip/snip.c~		if (e->ks.visual != 'v') a =~		if (e->ks.visual == 'V') a =
 snip: a blank first line's indent counted one short~test TESTS=snip~~src/snip/snip.c~		if (e->ks.visual != 'v') a = core_line_start(e, l1) + indent(e, l1),~		if (e->ks.visual != 'v') a = core_line_start(e, l1) + core_first_nonblank(e, l1),
-snip: the list is not ranked again for a new buffer or prompt~test TESTS=snip~~src/snip/snip.c~	if (!i) n = rank(e, nq ? q : NULL, nq);~	if (!n) n = rank(e, nq ? q : NULL, nq);
+snip: the list is not ranked again for a new buffer or prompt~test TESTS=snip~~src/snip/snip.c~	static int n;¶	if (!i) {~	static int n;¶	if (!n) {
 snip: a heading's words after its '(' count~test TESTS=snip~~src/snip/snip.c~*p && *p != '(' && *p != '\n'; p++)~*p && *p != '\n'; p++)
 snip: later lines of the area are not indented as the $0 line~test TESTS=snip~~src/snip/snip.c~(put(o, "\n", 1) || put(o, ind, w))~put(o, "\n", 1)
 snip: the picker's prompt filters the first list, not the popup's order~test TESTS=snip~~src/tools/pick.c~	if (P.what == PICK_SNIPPETS) snippets();¶	else rematch();~	rematch();
@@ -56,3 +56,41 @@ snip: Enter inserts the first snippet, not the selected one~test TESTS=snip~~src
 snip: the picker sorts by score again~test TESTS=snip~~src/tools/pick.c~	if (P.what == PICK_SNIPPETS) snippets();¶	else rematch();~	if (P.what == PICK_SNIPPETS) snippets(), rematch();¶	else rematch();
 snip: the area takes the text's last byte on a V area too~test TESTS=snip~~src/snip/snip.c~z = core_line_start(e, l2) + len;~z = core_line_start(e, l2) + len + 1;
 snip: a new prompt keeps the old selection~test TESTS=snip~~src/tools/pick.c~	P.sel = P.top = 0;¶	P.pvfor = -1;¶	while ((n = snip_get~	P.pvfor = -1;¶	while ((n = snip_get
+# completion (the popup's sources by the statement, nvim-cmp's matching
+# and order, the keys with a snippet)
+snip: the popup matches inside word parts (snacks' fuzzy)~test TESTS=snip~~src/snip/snip.c~	return j == n;~	return 1;
+snip: snippets ranked with the words~test TESTS=snip~~src/snip/snip.c~		if (!at && !tabs) snippets(e, 2);~		if (!at && !tabs) snippets(e, 0);
+snip: no shorter word first~test TESTS=snip~~src/snip/snip.c~	return la != lb ? la < lb ? -1 : 1 : i - j;~	return la != lb && 0 ? la < lb ? -1 : 1 : i - j;
+snip: the popup matches case as snacks' smartcase~test TESTS=snip~~src/snip/snip.c~	if (cmp && nq < sizeof low) {~	if (0) {
+snip: an alias not taken to its table~test TESTS=snip~~src/snip/snip.c~ctx[1].b)) q = pool.s + CAND(here, i).of;~ctx[1].b)) (void)0;
+snip: a column list not read~test TESTS=snip~~src/snip/snip.c~			list = 1;~			list = 0;
+snip: an alias after AS not read~test TESTS=snip~~src/snip/snip.c~ || ((h1->f & AS) && !strcasecmp(h2->b, pool.s + tab)))) {~)) {
+snip: a CTE not a table~test TESTS=snip~~src/snip/snip.c~			fact(h2->b, "", "Table");   /* a CTE */~
+snip: after FROM the words too~test TESTS=snip~~src/snip/snip.c~	int words = !dot && (!tabs || (ctx[0].f & OR_WORD));~	int words = !dot;
+snip: a column of every table in the statement's words~test TESTS=snip~~src/snip/snip.c~ : at ? c->kind[0] == 'V' : scope))~ : at ? c->kind[0] == 'V' : 1))
+snip: the word typed is a name of the file~test TESTS=snip~~src/snip/snip.c~ || (p >= a && p < z)) continue;~ || (p >= a && p < z && 0)) continue;
+snip: the popup in a comment~test TESTS=snip~~src/snip/snip.c~		if ((k == TQ_COMMENT || k == TQ_STRING) && p < a && a < e) break;¶~
+snip: a keyword typed in capitals comes in small letters~test TESTS=snip~~src/snip/snip.c~	if (big && !small && (*c.kind == 'K' || *c.kind == 'F'))~	if (0)
+snip: Tab in a snippet picks in the popup~test TESTS=snip~~src/snip/snip.c~	if (tab) close_pum(e);¶	if (tab && jump(e, k == KEY_TAB ? 1 : -1, S.s[S.cur].idx)) return 1;¶	if (e->pum && e->pum == items && pum_key(e, k)) return 1;~	if (e->pum && e->pum == items && pum_key(e, k)) return 1;¶	if (tab && jump(e, k == KEY_TAB ? 1 : -1, S.s[S.cur].idx)) return 1;
+snip: a statement's aliases leak into the next~test TESTS=snip~~src/snip/snip.c~	refs->n = pairs->n = 0;~	pairs->n = 0;
+snip: an exact match not first~test TESTS=snip~~src/snip/snip.c~	if (ea != eb) return eb - ea;~	if (0 && ea != eb) return eb - ea;
+snip: fact() keeps pointers into the pool it grows~test TESTS=snip~~src/snip/snip.c~	char w[128], of[128];   /* w0 and of0 may be in the pool, which intern moves */¶	strncpy(w, w0, sizeof w - 1)[sizeof w - 1] = 0, strncpy(of, of0, sizeof of - 1)[sizeof of - 1] = 0;~	const char *w = w0, *of = of0;
+snip: the list kept for an empty word~test TESTS=snip~~src/snip/snip.c~	} else W.b = NULL;~	}
+snip: the file walked at every word start~test TESTS=snip~~src/snip/snip.c~	if (I.b != e->buf || I.nr != e->buf->nr || I.len != text_len(t)) scan(e, a, z);~	scan(e, a, z);
+snip: the index made again under an open popup~test TESTS=snip~~src/snip/snip.c~	if (e->pum && e->pum == items) loop_timer(idle, NULL, HOLD);   /* the popup's words are in the pool */¶	else if~	if
+snip: no popup yet taken for an open one: the timer wakes every second~test TESTS=snip~~src/snip/snip.c~	if (e->pum && e->pum == items) loop_timer(idle, NULL, HOLD);~	if (e->pum == items) loop_timer(idle, NULL, HOLD);
+snip: the index's statements stay where an edit moved the text~test TESTS=snip~~src/snip/snip.c~		for (size_t i = 0; i < NU; i++) splice(&u[i][0], pos, ndel, nins), splice(&u[i][1], pos, ndel, nins);~		(void)u;
+snip: no timer after an edit~test TESTS=snip~~src/snip/snip.c~	if (E && is_sql(b)) loop_timer(idle, NULL, b == I.b ? HOLD : 0);~	if (0) loop_timer(idle, NULL, b == I.b ? HOLD : 0);
+snip: schema.table: the schema a table~test TESTS=snip~~src/snip/snip.c~		if (isname && attab && sym(h1, '.') && !strcasecmp(h2->b, pool.s + tab)) {~		if (0) {
+snip: [x] loses brackets it needs~test TESTS=snip~~src/snip/snip.c~plain = alpha(b[j]) || digit(b[j]) || b[j] == '_';~plain = 1;
+snip: DECLARE @t TABLE (...) gives no columns~test TESTS=snip~~src/snip/snip.c~attab && ((h1->f & TABLE) || !strcasecmp~attab && ((0) || !strcasecmp
+snip: a word of a kind listed once per table~test TESTS=snip~~src/snip/snip.c~		if (last && !strcmp(last->kind~		if (0 && last && !strcmp(last->kind
+snip: after @ the @@ words with the variables~test TESTS=snip~~src/snip/snip.c~"Keyword", NULL, at);~"Keyword", NULL, 0);
+snip: DELETE offers no words~test TESTS=snip~~src/snip/snip.c~j < 6 ? TABLES : TABLES | OR_WORD;~TABLES;
+snip: @@rowcount is a variable of the file~test TESTS=snip~~src/snip/snip.c~		if (k == TQ_VAR && b[1] != '@') fact~		if (k == TQ_VAR) fact
+snip: FROM a, b: b no table~test TESTS=snip~~src/snip/snip.c~ || (from && sym(h1, ','))))~ || (0 && from && sym(h1, ','))))
+snip: a table's name kept past a keyword~test TESTS=snip~~src/snip/snip.c~		if (!isname && !sym(h0, '.') && !(h0->f & (AS | TABLE)) && !sym(h0, '(')) tab = (size_t)-1;¶~
+snip: columns of a #temp matched by case~test TESTS=snip~~src/snip/snip.c~ && !strcasecmp(pool.s + c->of, w); }~ && !strcmp(pool.s + c->of, w); }
+snip: a word at its statement's end is outside it~test TESTS=snip~~src/snip/snip.c~	if (j && a <= u[j - 1][1].at)~	if (j && a < u[j - 1][1].at)
+snip: the list kept after the popup closes~test TESTS=snip~~src/snip/snip.c~	if (e->pum == items) core_pum(e, NULL, 0, -1, 0);¶	W.b = NULL;~	if (e->pum == items) core_pum(e, NULL, 0, -1, 0);
+snip: T-SQL's words after @ too~test TESTS=snip~~src/snip/snip.c~			if (c && (*kwd == '@') == at) cand~			if (c && (*kwd == '@' || !at)) cand

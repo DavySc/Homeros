@@ -14,7 +14,7 @@ static size_t present(const Grid *g, Grid *shown)
 	int p[2], saved = dup(1);
 	CHECK(!pipe(p));
 	dup2(p[1], 1);
-	backend_tty.present(g, shown);
+	backend_tty.present(0, g, shown);
 	dup2(saved, 1);
 	close(p[1]);
 	close(saved);
@@ -26,6 +26,7 @@ static size_t present(const Grid *g, Grid *shown)
 }
 
 /* feed s through stdin and collect the keys, max slots per call */
+static int wid[512];   /* the window each key came from: -1 in a terminal */
 static int input(const char *s, size_t n, int *k, int max)
 {
 	int p[2], saved = dup(0), got = 0, r;
@@ -33,7 +34,7 @@ static int input(const char *s, size_t n, int *k, int max)
 	close(p[1]);
 	dup2(p[0], 0);
 	close(p[0]);
-	while ((r = backend_tty.input(k + got, max)) > 0) got += r;
+	while ((r = backend_tty.input(k + got, wid, max)) > 0) got += r;
 	dup2(saved, 0);
 	close(saved);
 	return got;

@@ -230,6 +230,9 @@ keys: .svh, .v and .vh buffers are not formatted with Verible (test_keys_gq)~tes
 keys: keys_visual(e, 0) leaves Visual mode on (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (!mode) { if (VIsual_active) end_visual_mode(); }~	if (!mode) { if (VIsual_active) (void)0; }
 keys: keys_visual() keeps the other end's column (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~VIsual = (Pos){ (long)line, 0, 0 };~VIsual.lnum = (long)line;
 keys: keys_visual() leaves e->ks as it was (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~(Pos){ (long)line, 0, 0 };¶	visual_sync();~(Pos){ (long)line, 0, 0 };
+keys: gT goes forward (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~	case 'T': if (!checkclearop(oap)) goto_tabpage(-cap->count1); break;~	case 'T': if (!checkclearop(oap)) goto_tabpage(cap->count1); break;
+keys: SPC 5 m moves into the frame after n (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~core_win_to_tab(e, k - '0')~core_win_to_tab(e, k - '0' + 1)
+keys: a focus change leaves insert mode on (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		if (e->mode == MODE_INSERT || e->ks.visual ||~		if (e->ks.visual ||
 keys: which-key's panel shows after 20 ms, not its 200 (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~loop_timer(hint_show, NULL, 200)~loop_timer(hint_show, NULL, 20)
 keys: <BS> in which-key's panel closes it instead of going up a level (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		nlead = k == KEY_BS ? nlead - 1 : 0;~		nlead = 0;
 keys: <Esc> in which-key's panel keeps the count typed before Space (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		hint_end();¶		keys_feed(e, KEY_ESC, 0);~		hint_end();
@@ -274,3 +277,6 @@ keys: which-key's help offers scroll on a panel that fits (test_keys_map)~test T
 keys: which-key's panel keeps a scroll the screen no longer has (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (wtop > wmax) wtop = wmax;~	(void)wmax;
 keys: a typed NUL matches a map's end and the map is read past it (ASan) (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~while (j < nlead && m[j] && m[j] == lead[j])~while (j < nlead && m[j] == lead[j])
 keys: which-key's scroll stops one line early (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~wh = H, wmax = h + 3 - H;~wh = H, wmax = h + 2 - H;
+keys: a focus change keeps Visual mode~test TESTS=keys_map~~src/keys/keys.c~		if (e->mode == MODE_INSERT || e->ks.visual || (!m~		if (e->mode == MODE_INSERT || (!m
+keys: a focus change leaves which-key's panel up~test TESTS=keys_map~~src/keys/keys.c~		nlead = tabmove = 0;¶		hint_end();~		nlead = tabmove = 0;
+specs: Focus with every focus event entering its tab page~specs~find design/specs -name '*.cfg' ! -name Focus_ok.cfg -delete~design/specs/Focus_ok.cfg~ Variant = "asked"~ Variant = "enter"
