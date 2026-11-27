@@ -9,8 +9,4 @@ STEP into qsort : 5368831713
 STEP into qsort : 5368831718
 STEP into _guard_check_icall : 5369016012
 STEP into _guard_check_icall : 5369016016
-STEP into _guard_check_icall_nop : 5368716880
-STEP into _guard_check_icall : 5369016025
-STEP into _guard_check_icall : 5369016028
-STEP into qsort : 5368831726
 STEP into ended
