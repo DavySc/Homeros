@@ -49,10 +49,10 @@ static void token(size_t *n, int *nw, int last)
 		static const int cp[] = { 0xE9, 0x2200, 0x1D4DD, 0x6F22, 0x10FFFF };
 		unsigned i = rnd(5);
 		put(n, u[i]); want[(*nw)++] = cp[i];
-	} else if (t < 8) {                /* arrows, Delete and Shift-Tab */
-		unsigned i = rnd(6);
-		put(n, (const char *[]){ "\x1b[A", "\x1b[B", "\x1b[C", "\x1b[D", "\x1b[3~", "\x1b[Z" }[i]);
-		want[(*nw)++] = (int[]){ KEY_UP, KEY_DOWN, KEY_RIGHT, KEY_LEFT, KEY_DEL, KEY_S_TAB }[i];
+	} else if (t < 8) {                /* arrows, Delete, Shift-Tab and F5 */
+		unsigned i = rnd(7);
+		put(n, (const char *[]){ "\x1b[A", "\x1b[B", "\x1b[C", "\x1b[D", "\x1b[3~", "\x1b[Z", "\x1b[15~" }[i]);
+		want[(*nw)++] = (int[]){ KEY_UP, KEY_DOWN, KEY_RIGHT, KEY_LEFT, KEY_DEL, KEY_S_TAB, KEY_F5 }[i];
 	} else if (t < 9) {                /* a sequence that is no key: dropped */
 		put(n, csi[rnd(6)]);
 	} else if (t < 10) {

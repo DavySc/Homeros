@@ -17,6 +17,7 @@
 #include "kitten.h"
 #include "loop.h"
 #include "snip.h"
+#include "sql.h"
 #include "tools.h"
 #include "uni.h"
 
@@ -138,6 +139,7 @@ static const struct { const char *lhs, *desc; } maps[] = {
 	{ " hS", "Stage buffer" }, { " hu", "Undo stage hunk" },
 	{ " i", "+insert" }, { " is", "Snippet" },
 	{ " p", "+project" }, { " pv", "File manager (oil)" },
+	{ " r", "SQL results" },   /* the split below the query (sql.h; Davy, 2026-11-23) */
 	{ " u", "+toggle" }, { " uk", "Toggle kitten on save" }, { " up", "Toggle pretty entities" },
 	{ "-", "Open parent directory (oil)" },
 	{ "cit", "org next todo state" }, { "ciT", "org prev todo state" },  /* nvim-orgmode's, buffer-local to .org */
@@ -312,6 +314,7 @@ static int map(Editor *e, int k)
 			}
 			break;
 		case 's': tools_pick(e, PICK_SNIPPETS); break;
+		case 'r': sql_results(e); break;
 		/* Davy's emacs SPC cc compile (prompts) and cC recompile */
 		case 'c':
 			if (m[2] == 'C') { tools_make(e, NULL); break; }
@@ -352,7 +355,7 @@ void keys_input(Editor *e, int k, int pending)
 		else e->ks.pending = 0;
 		return;
 	}
-	if (!(e->ks.pending ? map(e, k) : tools_key(e, k) || git_key(e, k) || snip_key(e, k, pending) || map(e, k))) keys_feed(e, k, pending);
+	if (!(e->ks.pending ? map(e, k) : tools_key(e, k) || git_key(e, k) || sql_key(e, k) || snip_key(e, k, pending) || map(e, k))) keys_feed(e, k, pending);
 }
 
 /* what the core draws of Visual mode */
@@ -483,12 +486,16 @@ static void ex(void)
 	/* :s[ubstitute] :& :~ (:&& is :& with the flag &), on the cursor's
 	   line by default; line 0 is line 1 (no EX_ZEROR) */
 	size_t k = strspn(p, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
-	/* :noh[lsearch], and :mak[e] {cmd} (tools.h) with the rest of the line its argument */
+	/* :noh[lsearch], and :mak[e] {cmd} (tools.h) and :Connect [name]
+	   (sql.h) with the rest of the line their argument */
 	int nohl = k >= 3 && k <= 10 && !strncmp(p, "nohlsearch", k) && !p[k];
-	if (nohl || (k >= 3 && k <= 4 && !strncmp(p, "make", k) && (!p[k] || p[k] == ' ' || p[k] == '\t'))) {
+	int make = k >= 3 && k <= 4 && !strncmp(p, "make", k), conn = k == 7 && !strncmp(p, "Connect", 7);
+	if (nohl || ((make || conn) && (!p[k] || p[k] == ' ' || p[k] == '\t'))) {
+		const char *a = p + k + strspn(p + k, " \t");
 		if (n) core_msg(E, "E481: No range allowed");
 		else if (nohl) no_hlsearch = 1;
-		else tools_make(E, p + k + strspn(p + k, " \t"));
+		else if (make) tools_make(E, a);
+		else sql_connect(E, a);
 		return;
 	}
 	if (k ? k <= 10 && !strncmp(p, "substitute", k) : (k = *p == '&' || *p == '~')) {
@@ -498,10 +505,10 @@ static void ex(void)
 		ex_sub(l1 > 0 ? l1 - 1 : 0, l2 > 0 ? l2 - 1 : 0, *p, p + k + strspn(p + k, " \t"));
 		return;
 	}
-	static const char *const cmds[] = { "", "w", "w!", "q", "q!", "wq", "wq!", "x", "Format", "KittenPaw", "Dashboard" };
+	static const char *const cmds[] = { "", "w", "w!", "q", "q!", "wq", "wq!", "x", "Format", "KittenPaw", "Disconnect", "Dashboard" };
 	int i = 0;
-	while (i < 11 && strcmp(p, cmds[i])) i++;
-	if (i == 11) { core_msg(E, "E492: Not an editor command: %s", c); return; }
+	while (i < 12 && strcmp(p, cmds[i])) i++;
+	if (i == 12) { core_msg(E, "E492: Not an editor command: %s", c); return; }
 	if (n && i) { core_msg(E, "E481: No range allowed"); return; }
 	switch (i) {
 	case 0:   /* a range alone goes to its last line (do_one_cmd()) */
@@ -518,6 +525,7 @@ static void ex(void)
 	/* Davy's :Format (conform.nvim): the whole buffer */
 	case 8: if (fmt_kind()) buf_format(0, text_len(B->text)); break;
 	case 9: kitten_paw(E); break;
+	case 10: sql_disconnect(E); break;
 	default: dashboard(E);
 	}
 }

@@ -406,6 +406,14 @@ static void watches(void)
 	loop_unwatch((int)(INT_PTR)ev[0]);
 	ResetEvent(ev[1]);
 	loop_unwatch((int)(INT_PTR)ev[1]);
+	/* 31 watches, all the wait takes beside 32 children: one more is
+	   refused, and the last one's signal runs it */
+	static HANDLE many[31];
+	for (int i = 0; i < 31; i++) CHECK((many[i] = CreateEventW(NULL, FALSE, FALSE, NULL)) && !loop_watch((int)(INT_PTR)many[i], on_ev, (void *)0));
+	CHECK(loop_watch((int)(INT_PTR)ev[2], on_ev, (void *)0) == -1);
+	SetEvent(many[30]);
+	CHECK(loop_once(1000) == 0 && ran[0] == 4);
+	for (int i = 0; i < 31; i++) loop_unwatch((int)(INT_PTR)many[i]), CloseHandle(many[i]);
 	/* the message queue, also a message seen but left queued */
 	CHECK(loop_watch(LOOP_MSGQ, on_msg, (void *)2) == 0);
 	PostThreadMessageW(GetCurrentThreadId(), WM_USER, 0, 0);
