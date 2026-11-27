@@ -265,7 +265,7 @@ core: a closed window's folds are not freed (test_core_fold)~test TESTS=core_fol
 core: a dropped buffer entry keeps its folds (test_core_contract)~test TESTS=core_contract~~src/core/win.c~			fold_free(x->fold);   /* free_wininfo() */¶~
 core: rows waiting in Insert mode stop short after an edit (test_core_fold)~test TESTS=core_fold~~src/core/core.c~				s->fend = (size_t)-1;~				;
 core: going up enters a closed fold in Insert mode too (test_core_fold)~test TESTS=core_fold~~src/core/move.c~if (n > 0 || e->mode != MODE_INSERT) folded(w, l, &l, NULL);~folded(w, l, &l, NULL);
-core: a split's folds ask the window split from (test_core_fold)~test TESTS=core_fold~~src/core/win.c~fold_dup(o->fold, n)~fold_dup(o->fold, o)
+core: a split's folds ask the window split from (test_core_fold)~test TESTS=core_fold~~src/core/win.c~fold_dup(o->fold, n)~fold_dup(o->fold, (void *)o)
 core: update_topline counts the last line before testing for it (test_core_fold)~test TESTS=core_fold~~src/core/move.c~if (l >= n - 1 || ++d >= half) break;~if (++d, l >= n - 1 || d >= half) break;
 core: foldtext() reads past a comment start on a fold's last line but one (test_core_fold)~test TESTS=core_fold~~src/core/draw.c~		if (!n && l + 1 < z) {~		if (!n && l + 1 <= z) {
 core: a scrolldown leaves the cursor inside a closed fold (test_core_fold)~test TESTS=core_fold~~src/core/move.c~		w->line = fold_first(w, w->line);¶		coladvance(e, w);~		coladvance(e, w);
