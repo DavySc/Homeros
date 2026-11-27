@@ -1,12 +1,11 @@
 # Plants for JSON's colours (src/syntax/tsql.c's json_token, json_face, paint; format in tools/planted.sh).
 json: a .json file is T-SQL (test_json)~test TESTS=json~~src/syntax/syntax.c~{ ".json", "json", BY_JSON }~{ ".json", "json", BY_SQL }
-json: the index is filled with T-SQL's tokens (test_json)~test TESTS=json~~src/syntax/tsql.c~: lang_token[q->lang](&q->r, p, &kind);~: tsql_token(&q->r, p, &kind);
-json: a window is lexed as T-SQL (test_json)~test TESTS=json~~src/syntax/tsql.c~e = lang_token[q->lang](&q->r, p, &k);~e = tsql_token(&q->r, p, &k);
+json: the index is filled with T-SQL's tokens (test_json)~test TESTS=json~~src/syntax/tsql.c~size_t e = lang_token[q->lang](&q->r, p, k);~size_t e = lang_token[0](&q->r, p, k);
 json: a window takes T-SQL's faces (test_json)~test TESTS=json~~src/syntax/tsql.c~c = lang_face[q->lang](r, p, e, k);~c = (0 ? lang_face[q->lang] : face)(r, p, e, k);
 json: a string runs past its line's end (test_json, lines)~test TESTS=json~~src/syntax/tsql.c~c != '"' && !(nl && c == '\n'))~c != '"')
 json: an escape takes the line's end (test_json, lines)~test TESTS=json~~src/syntax/tsql.c~>= 0 && !(nl && d == '\n')) p++;~>= 0) p++;
 json: a closed string leaves its closing quote out (test_json)~test TESTS=json~~src/syntax/tsql.c~c == '"' ? p + 1 : p;~p;
-json: a line comment runs past its line (test_json)~test TESTS=json~~src/syntax/tsql.c~	while ((c = tsql_byte(r, ++p)) >= 0 && c != '\n') ;¶	return p;~	while ((c = tsql_byte(r, ++p)) >= 0) ;¶	return p;
+json: a line comment runs past its line (test_json)~test TESTS=json~~src/syntax/tsql.c~	while ((c = tsql_byte(r, p)) >= 0 && c != '\n') p++;~	while ((c = tsql_byte(r, p)) >= 0) p++;
 json: a block comment ends a byte early (test_json)~test TESTS=json~~src/syntax/tsql.c~c < 0 ? p : p + 2;~c < 0 ? p : p + 1;
 json: an unclosed block comment is no comment (test_json, lines)~test TESTS=json~~src/syntax/tsql.c~return *k = TQ_COMMENT, c < 0 ? p : p + 2;~return *k = c < 0 ? TQ_OP : TQ_COMMENT, c < 0 ? p : p + 2;
 json: a minus starts no number (test_json)~test TESTS=json~~src/syntax/tsql.c~(c == '-' && is_digit(d))) return~(c == '+' && is_digit(d))) return

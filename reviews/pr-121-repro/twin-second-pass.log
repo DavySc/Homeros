@@ -1,0 +1,7 @@
+/tmp/f.c     2000 cases (1077 with a parse left unfinished before an edit): whole != fresh 13, stopped != fresh 14, stopped != whole 5
+/tmp/f.lua   2000 cases (832 with a parse left unfinished before an edit): whole != fresh 10, stopped != fresh 11, stopped != whole 1
+/tmp/f.md    2000 cases (1554 with a parse left unfinished before an edit): whole != fresh 0, stopped != fresh 0, stopped != whole 0
+/tmp/f.rs    2000 cases (924 with a parse left unfinished before an edit): whole != fresh 9, stopped != fresh 7, stopped != whole 6
+/tmp/f.nix   2000 cases (944 with a parse left unfinished before an edit): whole != fresh 29, stopped != fresh 26, stopped != whole 7
+/tmp/f.cmake 2000 cases (870 with a parse left unfinished before an edit): whole != fresh 0, stopped != fresh 0, stopped != whole 0
+/tmp/f.sv    2000 cases (978 with a parse left unfinished before an edit): whole != fresh 7, stopped != fresh 6, stopped != whole 5

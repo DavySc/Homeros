@@ -31,17 +31,10 @@ static struct {
 
 static Buf *buf(void) { return M.nr ? core_buf_find(M.e, M.nr) : NULL; }
 
-/* n bytes at the end of the buffer; a window whose cursor was on its last
-   line follows it (Emacs's compilation-scroll-output, focus's tail) */
 static void put(const char *s, size_t n)
 {
 	Buf *b = buf();
-	if (!b) return;
-	size_t last = text_lines(b->text) ? text_lines(b->text) - 1 : 0;
-	text_insert(b->text, text_len(b->text), s, n);
-	for (Win *w = M.e->wins; w; w = w->next)
-		if (w->buf == b && w->line >= last) { w->line = text_lines(b->text) - 1; w->col = 0; }
-	core_changed = 1;
+	if (b) core_buf_append(M.e, b, s, n);
 }
 
 /* The error a line reports, as the compilers write them: the first
@@ -116,12 +109,6 @@ static void out(void *ctx, int stream, const char *b, size_t n)
 	put(t, (size_t)k);
 }
 
-static int shown(void)
-{
-	for (Win *w = M.e->wins; w; w = w->next) if (w->buf->nr == M.nr) return 1;
-	return 0;
-}
-
 /* Starts M.cmd on an emptied buffer and an empty list */
 static int run(void)
 {
@@ -154,7 +141,7 @@ int tools_make(Editor *e, const char *cmd)
 	if (!M.cmd) { core_msg(e, "E471: Argument required"); return -1; }
 	/* the buffer in a window below the current one, the cursor staying
 	   (Emacs's display-buffer) */
-	if (!buf() || !shown()) {
+	if (!buf() || !core_buf_shown(M.e, M.nr)) {
 		if (core_split(e, 0, 0)) return -1;
 		if (buf() ? core_buf_goto(e, M.nr) : core_edit_file(e, "", 0)) { core_close(e, 1); return -1; }
 		M.nr = e->buf->nr;
@@ -168,7 +155,7 @@ const char *tools_make_last(void) { return M.cmd; }
 
 void tools_written(Editor *e, Buf *b)
 {
-	if (M.cmd && M.e == e && b->nr != M.nr && buf() && shown()) run();
+	if (M.cmd && M.e == e && b->nr != M.nr && buf() && core_buf_shown(M.e, M.nr)) run();
 }
 
 /* Opens error i, in the previous window when the make buffer is current,

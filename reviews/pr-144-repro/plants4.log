@@ -1,0 +1,24 @@
+NOT CAUGHT    r2: the update takes the frame's token end without its state   (make test TESTS="tsql syntax_lean" passed)
+NOT CAUGHT    r2: tsql_edit does not move a kept start's state with it (the PR's "# Not planted")   (make test TESTS="tsql syntax_lean" passed)
+caught        r2: a frame starts from a kept start with the state of the last place   (make test TESTS="tsql syntax_lean"): tests/test_tsql.c:262: CHECK(!memcmp(f + 9990, g + 9990, n + 1 - 9990)) failed
+caught        r2: the update, landed on a moved start, jumps to the last one with the state it had   (make test TESTS="tsql syntax_lean"): tests/test_tsql.c:379: CHECK(!memcmp(f + wa, g + wa, z - wa)) failed
+caught        r2: a new kept start keeps the slot's old state   (make test TESTS="tsql syntax_lean"): tests/test_tsql.c:262: CHECK(!memcmp(f + 9990, g + 9990, n + 1 - 9990)) failed
+caught        r2: a frame's second read of its line passes on the state before it   (make test TESTS="tsql syntax_lean"): tests/test_tsql.c:262: CHECK(!memcmp(f + 9990, g + 9990, n + 1 - 9990)) failed
+caught        r2: a string does not go on on the next line   (make test TESTS="tsql syntax_lean"): tests/test_syntax_lean.c:99: CHECK(ncase && !bad && ms < 100 && got[n - 2] == FACE_NONE) failed
+caught        r2: a definition's head ends with its line   (make test TESTS="tsql syntax_lean"): tests/test_syntax_lean.c:99: CHECK(ncase && !bad && ms < 100 && got[n - 2] == FACE_NONE) failed
+caught        r2: a guillemet name does not go on on the next line   (make test TESTS="tsql syntax_lean"): tests/test_syntax_lean.c:99: CHECK(ncase && !bad && ms < 100 && got[n - 2] == FACE_NONE) failed
+caught        r2: a comment's Markdown block is forgotten at the line's end   (make test TESTS="tsql syntax_lean"): tests/test_syntax_lean.c:99: CHECK(ncase && !bad && ms < 100 && got[n - 2] == FACE_NONE) failed
+caught        r2: a fence's run length is forgotten at the line's end   (make test TESTS="tsql syntax_lean"): tests/test_syntax_lean.c:99: CHECK(ncase && !bad && ms < 100 && got[n - 2] == FACE_NONE) failed
+caught        r2: a fence's indentation length is forgotten at the line's end   (make test TESTS="tsql syntax_lean"): tests/test_syntax_lean.c:99: CHECK(ncase && !bad && ms < 100 && got[n - 2] == FACE_NONE) failed
+caught        r2: a -- comment stays open on the next line   (make test TESTS="tsql syntax_lean"): tests/test_syntax_lean.c:99: CHECK(ncase && !bad && ms < 100 && got[n - 2] == FACE_NONE) failed
+caught        r2: a comment's line gets 16 reads a byte and 64 more   (make test TESTS="tsql syntax_lean"): tests/test_syntax_lean.c:99: CHECK(ncase && !bad && ms < 100 && got[n - 2] == FACE_NONE) failed
+caught        r2: a comment's line gets 64 reads a byte and no floor   (make test TESTS="tsql syntax_lean"): tests/test_tsql.c:379: CHECK(!memcmp(f + wa, g + wa, z - wa)) failed
+NOT CAUGHT    r2: the line limit counts an astral code point as one   (make test TESTS="tsql syntax_lean" passed)
+caught        r2: _ is no word character   (make test TESTS="tsql syntax_lean"): tests/test_syntax_lean.c:99: CHECK(ncase && !bad && ms < 100 && got[n - 2] == FACE_NONE) failed
+NOT CAUGHT    r2: a comment that goes on has \G at its line's start   (make test TESTS="tsql syntax_lean" passed)
+caught        r2: an interpolated string's closing quote does not leave it   (make test TESTS="tsql syntax_lean"): tests/test_syntax_lean.c:99: CHECK(ncase && !bad && ms < 100 && got[n - 2] == FACE_NONE) failed
+caught        r2: the comment's nesting restarts at 1 on a line that goes on   (make test TESTS="tsql syntax_lean"): tests/test_syntax_lean.c:99: CHECK(ncase && !bad && ms < 100 && got[n - 2] == FACE_NONE) failed
+NOT CAUGHT    r2: a line past its budget is not painted as comment   (make test TESTS="tsql syntax_lean" passed)
+NOT CAUGHT    r2: a fence's distance is kept outside a fence   (make test TESTS="tsql syntax_lean" passed)
+NOT CAUGHT    r2: the URL ring's oldest item is tried   (make test TESTS="tsql syntax_lean" passed)
+NOT CAUGHT    r2: the line limit counts bytes, not UTF-16 units   (make test TESTS="tsql syntax_lean" passed)
