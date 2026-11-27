@@ -452,9 +452,16 @@ static void complete(void)
 	line = core_line(e, e->win->line, &n);
 	CHECK(n == 20 && !memcmp(line, "select * from orders", 20));
 	feed(e, KEY_ESC), core_free(e);
-	/* many names: the pool grows under the walk */
+	/* many names: the pool grows under the walk, and under a statement's
+	   bare names becoming its table's columns */
 	static char big[400000];
 	int m = snprintf(big, sizeof big, "select ");
+	for (int i = 0; i < 8000; i++) m += snprintf(big + m, sizeof big - (size_t)m, "bare_column_%d, ", i);
+	snprintf(big + m, sizeof big - (size_t)m, "1 from some_table\nselect * from some_table t where t|");
+	e = at(big, ".b");
+	CHECK(e->npum == 8000);
+	feed(e, KEY_ESC), core_free(e);
+	m = snprintf(big, sizeof big, "select ");
 	for (int i = 0; i < 8000; i++) m += snprintf(big + m, sizeof big - (size_t)m, "t.column_number_%d, ", i);
 	snprintf(big + m, sizeof big - (size_t)m, "1 from some_table t where t|");
 	e = at(big, ".c");

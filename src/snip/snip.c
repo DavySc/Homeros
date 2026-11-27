@@ -504,7 +504,8 @@ static int heading_has(const char *h, const char *w)
 
 /* A candidate of the popup, its word and the table it belongs to (a
    column's, an alias's; -1 none) as offsets into pool.  pri: the lower
-   first, before the score: in the popup snippets after the rest (2), as
+   first, before the score: in the popup T-SQL's words that are neither
+   reserved nor functions at 1, snippets after the rest (3), as
    blink.cmp's score_offset puts them after the server's items, and a
    snippet of the file's group (Davy's file names) before the others. */
 typedef struct { size_t w, of; const char *kind, *menu; int pri; } Cand;
@@ -666,13 +667,13 @@ static void fact(const char *w0, const char *of0, const char *kind)
    unqualified column needs no qualifier only then); its refs go to here */
 static void flush(Str *refs, Str *pairs, Str *here)
 {
-	const char *one = NULL;
+	size_t one = 0;   /* an offset: fact() moves the pool */
 	int ntab = 0;
 	for (int j = 0; j < NCAND(*refs); j++)
-		if (*CAND(*refs, j).kind == 'T') ntab++, one = pool.s + CAND(*refs, j).of;
+		if (*CAND(*refs, j).kind == 'T') ntab++, one = CAND(*refs, j).of;
 	if (here && refs->n) str_add(here, refs->s, refs->n);
 	for (int i = 0; i < NCAND(*pairs); i++) {
-		const char *w = pool.s + CAND(*pairs, i).w, *q = CAND(*pairs, i).of == (size_t)-1 ? ntab == 1 ? one : NULL : pool.s + CAND(*pairs, i).of;
+		const char *w = pool.s + CAND(*pairs, i).w, *q = CAND(*pairs, i).of == (size_t)-1 ? ntab == 1 ? pool.s + one : NULL : pool.s + CAND(*pairs, i).of;
 		for (int j = 0; q && j < NCAND(*refs); j++)
 			if (!strcasecmp(pool.s + CAND(*refs, j).w, q)) q = pool.s + CAND(*refs, j).of;
 		if (q) fact(w, q, "Column");
