@@ -38,10 +38,17 @@ sql: our own Postgres cancel shown as an error~test TESTS=sql~~src/sql/pg.c~if (
 sql: the Postgres cancel carries the wrong key~test TESTS=sql~~src/sql/pg.c~put32(&s, p->pid) || put32(&s, p->key)~put32(&s, p->pid) || put32(&s, p->pid)
 sql: the Postgres transaction state not read~test TESTS=sql~~src/sql/pg.c~p->txn = n ? s[0] : 'I';~p->txn = 'I';
 sql: a refused login's reason lost to the server's close_notify~test TESTS=sql~~src/sql/net.c~e == SSL_ERROR_WANT_READ || e == SSL_ERROR_ZERO_RETURN ? 0~e == SSL_ERROR_WANT_READ ? 0
+sql: a refused connect's reason lost~test TESTS=sql~~src/sql/net.c~"send: %s", why());~"send failed%s", "");
+sql: a Windows login tried off Windows~test TESTS=sql~~src/sql/net.c~"a Windows login needs Windows"~"Windows login: SEC_E_NO_CREDENTIALS"
+win: a message waits for the write wake Winsock sends only after a send would block~win WIN=sql~~src/sql/tds.c~	t->eom = 0;¶	return net_flush(&t->net);~	t->eom = 0;¶	return 0;
+win: a Postgres message waits for the write wake Winsock sends only after a send would block~win WIN=sql~~src/sql/pg.c~strlen(sql) + 1) || net_flush(&p->net);~strlen(sql) + 1);
+win: a refused connect taken as done (FD_CONNECT's error dropped)~win WIN=sql~~src/sql/net.c~if (ne.lNetworkEvents & FD_CONNECT && ne.iErrorCode[FD_CONNECT_BIT]) {~if (0) {
+win: a send before the connect is done hides its refusal~win WIN=sql~~src/sql/net.c~	if (!c->up && woke(c)) return -1;¶~
 sql: a batch ending in EXEC never ends (DONEPROC)~test TESTS=sql~~src/sql/tds.c~if (k != 0xFF && !(st & 1) && (t->state == TDS_BUSY~if (k == 0xFD && !(st & 1) && (t->state == TDS_BUSY
 sql: our own cancel of a procedure shown as an error~test TESTS=sql~~src/sql/tds.c~if (t->quiet && no == 3980) return 0;~if (t->quiet && no == 1) return 0;
 sql: the socket inherited by child processes~test TESTS=sql~~src/sql/net.c~SOCK_NONBLOCK | SOCK_CLOEXEC~SOCK_NONBLOCK
 sql: the next Postgres query sent before the cancel is done~test TESTS=sql~~src/sql/pg.c~if (p->state != PG_DEAD && p->kill.fd >= 0) p->ready = 1;~if (p->state != PG_DEAD && p->kill.fd < -1) p->ready = 1;
+win: the socket inherited by child processes~win WIN=sql~~src/sql/net.c~WSA_FLAG_OVERLAPPED | WSA_FLAG_NO_HANDLE_INHERIT~WSA_FLAG_OVERLAPPED
 sql: SCRAM: the server's proof never checked~test TESTS=sql~~src/sql/pg.c~? 0 : dead(p, "SCRAM: the server's proof is wrong")~? 0 : 0
 sql: SCRAM: the server's nonce need not extend ours~test TESTS=sql~~src/sql/pg.c~ || strncmp(r + 2, p->nonce, strlen(p->nonce)))~ || !strncmp(r + 2, p->nonce, 0))
 sql: the host name never checked~test TESTS=sql~~src/sql/net.c~ || !SSL_set1_host(c->ssl, host))~ || !(host || 1))
@@ -54,3 +61,6 @@ specs: PgCancel's run over at ReadyForQuery~specs~find design/specs -name '*.cfg
 sql: a cancel's ready never cleared, so it ends a later cancel early~test TESTS=sql~~src/sql/pg.c~p->state = PG_READY, p->quiet = 0, p->ready = 0;~p->state = PG_READY, p->quiet = 0;
 sql: the socket blocks~test TESTS=sql~~src/sql/net.c~SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC~SOCK_STREAM | SOCK_CLOEXEC
 sql: an astral character to the server sent as its high half twice~test TESTS=sql~~src/sql/tds.c~if (put_le(b, w[x], 2)) return -1;~if (put_le(b, w[0], 2)) return -1;
+win: a socket that turned writable before the reset waits for ever (test_sql_wake)~win WIN=sql~~src/sql/net.c~if (woke(c) || net_flush(c)) return -1;~if (woke(c)) return -1;
+specs: Wake with the close's record reset with the event~specs~find design/specs -name '*.cfg' ! -name Wake_ok_close.cfg -delete~design/specs/Wake_ok_close.cfg~ Variant = "ok"~ Variant = "noclose"
+specs: Wake with no flush after the reset~specs~find design/specs -name '*.cfg' ! -name Wake_ok_send.cfg -delete~design/specs/Wake_ok_send.cfg~ Variant = "ok"~ Variant = "flushfirst"
