@@ -264,10 +264,12 @@ int main(void)
 	CHECK(!sql_connect(&e, "v6") && strstr(e.msg, "(::1)"));
 	/* pass= takes the rest of the line: a password with spaces, on a CRLF line */
 	CHECK(strstr(f5("ms/sp.sql", "if suser_id('hsp') is null create login hsp with password = 'Ho meros 1 x', check_policy = off\n"), "Completion"));
+	CHECK(!sql_disconnect(&e));
 	put("ms/sq.sql", "select suser_name() as who\n", 0600);
 	CHECK(!core_edit_file(&e, "ms/sq.sql", 0) && !sql_connect(&e, "sp") && sql_key(&e, KEY_F5) == 1 && !strncmp(until("Completion time"), one("who", "hsp"), strlen(one("who", "hsp"))));
 	/* a name holding pass=, a tab before pass=, the first pass= wins, trailing spaces kept */
 	CHECK(strstr(f5("ms/sp2.sql", "if suser_id('hpw') is null create login hpw with password = 'Ho pass=1  ', check_policy = off\n"), "Completion"));
+	CHECK(!sql_disconnect(&e));
 	CHECK(!core_edit_file(&e, "ms/sq.sql", 0) && !sql_connect(&e, "bypass=x") && sql_key(&e, KEY_F5) == 1 && !strncmp(until("Completion time"), one("who", "hpw"), strlen(one("who", "hpw"))));
 	/* without trust the server's own certificate is refused */
 	CHECK(!core_edit_file(&e, "ms/sq.sql", 0) && !sql_connect(&e, "notrust") && sql_key(&e, KEY_F5) == 1 && strstr(until("verify failed"), "certificate verify failed"));
@@ -400,6 +402,7 @@ int main(void)
 	CHECK(!core_win_goto(&e, 'j', 1));
 	core_goto(&e, 2, cx);
 	CHECK(sql_key(&e, KEY_ENTER) == 1 && text_len(e.buf->text) == 40 && !core_close(&e, 1) && !core_win_goto(&e, 'k', 1));
+	CHECK(!sql_disconnect(&e));
 	/* two sets in one reply after a message: the second's names in their
 	   face (the lines before the first counted once) */
 	g = f5("ms/two.sql", "print 'p'; select 1 a; select 2 b\n");
