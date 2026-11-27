@@ -98,7 +98,7 @@ int main(int argc, char **argv)
 				core_set_want(&e);
 				core_update(&e);
 			}
-			core_draw(&e, &g);
+			core_draw(&e, NULL, &g);
 			const Win *w = e.win;
 			int nw = win_numw(w), differ = 0;
 			if (w->top != top || w->left != left || w->skipcol != skip) {

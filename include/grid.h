@@ -103,6 +103,10 @@ enum {
 	   (pink, mauve, lavender, blue and green are kitten text, dashboard
 	   prompt, title, footer and frog) */
 	FACE_SHIMMER_SAPPHIRE, FACE_SHIMMER_TEAL,
+	/* the terminal's tab page line (Editor.tabline): Neovim's TabLine (the
+	   other tab pages and the X), TabLineSel (the current one), TabLineFill
+	   (the rest of the row) */
+	FACE_TABLINE, FACE_TABLINE_SEL, FACE_TABLINE_FILL,
 	FACE_COUNT
 };
 /* The theme, once for every backend: a face's colours (FACE_FG, FACE_BG

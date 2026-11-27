@@ -1,15 +1,17 @@
 # Plants for src/font/ (format in tools/planted.sh).
 font: fallback takes a font without the character (Mathlib symbols)~test TESTS=font~~src/font/fc.c~FcCharSetHasChar(cs, cp[j])~(cp[j] || cs)
 font: a font must have joiners and selectors (rainbow flag)~test TESTS=font~~src/font/font.c~	return c == 0x200C || c == 0x200D || (c >= 0xFE00 && c <= 0xFE0F) || (c >= 0xE0000 && c <= 0xE0FFF);~	return c == 0x110000;
-font: emoji stay in the first font that has them (colour)~test TESTS=font~~src/font/font.c~		int want = !face[run[i].font].color && emoji(~		int want = 0 && emoji(
+font: emoji stay in the first font that has them (colour)~test TESTS=font~~src/font/font.c~		int want = !cur.face[run[i].font].color && emoji(~		int want = 0 && emoji(
 font: emoji strike not scaled to the em~test TESTS=font~~src/font/font.c~			int dw = nearest(w * f->scale), dh = nearest(hh * f->scale);~			int dw = w, dh = hh;
-font: cache key ignores the font~test TESTS=font~~src/font/font.c~((size_t)fi * 2654435761u + gid * 40503u) & (SLOTS - 1);¶	while (slot[h].font >= 0) {¶		if (slot[h].font == fi && slot[h].gid == gid)~(gid * 40503u) & (SLOTS - 1);¶	while (slot[h].font >= 0) {¶		if (slot[h].gid == gid)
-font: emptied cache keeps its count (refill)~test TESTS=font~~src/font/font.c~	used = nslot = 0;~	used = 0;
+font: cache key ignores the font~test TESTS=font~~src/font/font.c~((size_t)fi * 2654435761u + gid * 40503u) & (SLOTS - 1);¶	while (cur.slot[h].font >= 0) {¶		if (cur.slot[h].font == fi && cur.slot[h].gid == gid)~(gid * 40503u) & (SLOTS - 1);¶	while (cur.slot[h].font >= 0) {¶		if (cur.slot[h].gid == gid)
+font: emptied cache keeps its count (refill)~test TESTS=font~~src/font/font.c~	cur.used = cur.nslot = 0;~	cur.used = 0;
 font: clusters as code point indexes~test TESTS=font~~src/font/font.c~at[run[k].cluster], pixels~run[k].cluster, pixels
 font: clusters split inside characters~test TESTS=font~~src/font/font.c~	for (size_t i = 0; i < n && ncp < RUN; i += uni_len(s, n, i)) {~	for (size_t i = 0; i < n && ncp < RUN; i++) {
 font: right-to-left runs reversed~test TESTS=font~~src/font/font.c~	hb_buffer_set_direction(buf, HB_DIRECTION_LTR);¶~
 font: pen not reset per cluster (fuzz_font)~fuzz FUZZERS=font FUZZ_SECONDS=60~~src/font/font.c~		if (i > 0 && gi[i].cluster != gi[i - 1].cluster) pen = 0;¶~
 font: HarfBuzz buffer grown while drawing (0 allocations on a longer run)~test TESTS=font~~src/font/font.c~!hb_buffer_pre_allocate(buf, RUN)~!hb_buffer_allocation_successful(buf)
+font: a size used again is opened afresh (test_font)~test TESTS=font~~src/font/font.c~	if (cur.face && cur.px == size) return 0;¶	close_size();~	close_size();
+font: an open size is taken for another (test_font)~test TESTS=font~~src/font/font.c~!(old[i].face && old[i].px == size)~!old[i].face
 font: box drawing taken from the font~test TESTS=font~~src/font/font.c~if (j == i + 1 && end == run[i].cluster + 1 && sprite(~if (0 && sprite(
 font: block elements taken from the font~test TESTS=font~~src/font/sprite.c~(c >= 0x2500 && c <= 0x259F)~(c >= 0x2500 && c <= 0x257F)
 font: a double line's middle not cut (╔ one band)~test TESTS=font~~src/font/sprite.c~arm(i, s, pass == 1 ? t : K[i], pass == 1 ? 0 : 255);~arm(i, s, pass == 1 ? t : K[i], 255);
@@ -18,12 +20,13 @@ font: quadrants mixed up (▚)~test TESTS=font~~src/font/sprite.c~{ 4, 8, 1, 13,
 font: shades a quarter too dark (▒)~test TESTS=font~~src/font/sprite.c~64 * (int)(c - 0x2590)~64 * (int)(c - 0x258F)
 font: an arc's straight part missing (╭)~test TESTS=font~~src/font/sprite.c~	if (sy > 0) rect(lo(w, t), ey, lo(w, t) + t, h, 255);~	if (sy > 0) {}
 font: fallback answers remembered by count, not characters~test TESTS=font~~src/font/font.c~key = (key ^ (c[n++] = cp[j])) * 1099511628211ULL;~key = (key ^ (c[n++] = cp[j], n)) * 1099511628211ULL;
-font: fallback answers kept over font_open~test TESTS=font~~src/font/font.c~	memset(picks, 0, sizeof picks);¶	npick = 0;¶	FT_Face f~	FT_Face f
+font: a new size starts with the last size's fallback answers (test_font)~test TESTS=font~~src/font/font.c~	cur.picks = calloc(PICKS, sizeof *cur.picks);~	cur.picks = calloc(PICKS, sizeof *cur.picks);¶	if (cur.picks && old[0].picks) { memcpy(cur.picks, old[0].picks, PICKS * sizeof *cur.picks); cur.npick = old[0].npick; }
 font: heavy lines drawn light~test TESTS=font~~src/font/sprite.c~K[i] = k[i] == 3 ? 3 * t : k[i] * t;~K[i] = k[i] == 3 ? 3 * t : t;
 font: every lower block drawn full~test TESTS=font~~src/font/sprite.c~rect(0, h - (h * (int)(c - 0x2580) + 4) / 8, w, h, 255);~rect(0, 0, w, h, 255);
 font: Powerline's separators point the other way~test TESTS=font~~src/font/sprite.c~int left = c >= 0xE0B2;~int left = c < 0xE0B2;
 font: dashes drawn as one line~test TESTS=font~~src/font/sprite.c~int a = i * len / n, b = (i + 1) * len / n, g = (b - a) / 3 > 0 ? (b - a) / 3 : 1;~int a = i * len / n, b = (i + 1) * len / n, g = 0;
-font: a drawn glyph not at the cell's top~test TESTS=font~~src/font/font.c~g = (Glyph){ arena + used, cw, ch, 0, base, 0 };~g = (Glyph){ arena + used, cw, ch, 0, base - 1, 0 };
-font: a font's file kept after font_close~test TESTS=font~~src/font/font.c~FT_Done_Face(face[i].ft); hb_blob_destroy(face[i].blob); }~FT_Done_Face(face[i].ft); }
+font: a drawn glyph not at the cell's top~test TESTS=font~~src/font/font.c~g = (Glyph){ cur.arena + cur.used, cur.cw, cur.ch, 0, cur.base, 0 };~g = (Glyph){ cur.arena + cur.used, cur.cw, cur.ch, 0, cur.base - 1, 0 };
+font: a font's file kept after font_close~test TESTS=font~~src/font/font.c~FT_Done_Face(cur.face[i].ft); hb_blob_destroy(cur.face[i].blob); }~FT_Done_Face(cur.face[i].ft); }
 font: every left block drawn full~test TESTS=font~~src/font/sprite.c~rect(0, 0, (w * (int)(0x2590 - c) + 4) / 8, h, 255);~rect(0, 0, w, h, 255);
 font: half blocks and quadrants split the cell at different columns~test TESTS=font~~src/font/sprite.c~int mx = (w + 1) / 2, my = h / 2;~int mx = w / 2, my = h / 2;
+font: font_close leaves the other sizes open (test_font)~test TESTS=font~~src/font/font.c~	for (int i = 0; i < SIZES - 1; i++) {¶		cur = old[i];~	for (int i = 0; i < 0; i++) {¶		cur = old[i];

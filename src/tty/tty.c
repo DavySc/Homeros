@@ -84,17 +84,22 @@ static int tty_open(void)
 
 static void tty_close(void) { cooked(); }
 
+/* one screen for every tab page: nothing to open, close or raise */
+static int  tty_frame_open(int id) { (void)id; return 0; }
+static void tty_frame_none(int id) { (void)id; }
+
 static int tty_fds(int fds[2]) { fds[0] = 0; fds[1] = sigpipe[0]; return 2; }
 
-static void tty_size(int *rows, int *cols)
+static void tty_size(int id, int *rows, int *cols)
 {
+	(void)id;
 	struct winsize ws;
 	if (ioctl(1, TIOCGWINSZ, &ws) || !ws.ws_row || !ws.ws_col) { *rows = 24; *cols = 80; return; }
 	*rows = ws.ws_row;
 	*cols = ws.ws_col;
 }
 
-static int tty_ready(void) { return 1; }   /* a terminal has no frame callback */
+static int tty_ready(int id) { (void)id; return 1; }   /* a terminal has no frame callback */
 
 /* The key at s[0..n): its length in bytes, 0 if s may be the start of a
    longer key (Neovim's TERMKEY_RES_AGAIN), or with force the first byte
@@ -132,7 +137,7 @@ static int key(const unsigned char *s, int n, int force, int *k)
    sequences dropped.  A read that ends inside a key keeps that tail and, if
    no more input comes within TTIMEOUTLEN ms, takes it byte by byte: an Esc
    typed alone is Esc, as in Neovim (tinput_timer_cb). */
-static int tty_input(int *k, int max)
+static int tty_input(int *k, int *from, int max)
 {
 	static unsigned char b[256];
 	static int held;
@@ -161,6 +166,7 @@ static int tty_input(int *k, int max)
 	}
 	held = (int)(r - i);
 	memmove(b, b + i, (size_t)held);
+	for (i = 0; i < n; i++) from[i] = -1;   /* the one screen: no window */
 	return n;
 }
 
@@ -182,8 +188,9 @@ static void style(const Cell *x)
 	outs(s);
 }
 
-static void tty_present(const Grid *g, Grid *shown)
+static void tty_present(int id, const Grid *g, Grid *shown)
 {
+	(void)id;
 	char b[64];
 	outs("\x1b[?2026h\x1b[?25l");
 	if (shown->rows != g->rows || shown->cols != g->cols) {
@@ -238,8 +245,9 @@ static void tty_suspend(void)
 static int  tty_clip_set(const char *s, size_t n) { (void)s; (void)n; return -1; }
 static long tty_clip_get(char *buf, size_t max) { (void)buf; (void)max; return -1; }
 static void tty_none(int *a, int *b) { *a = *b = 0; }
+static void tty_cell(int id, int *w, int *h) { (void)id; tty_none(w, h); }
 
 const Backend backend_tty = {
-	tty_open, tty_close, tty_fds, tty_input, tty_size, tty_ready,
-	tty_present, tty_suspend, tty_clip_set, tty_clip_get, tty_none, tty_none
+	tty_open, tty_close, tty_frame_open, tty_frame_none, tty_frame_none, tty_fds, tty_input, tty_size, tty_ready,
+	tty_present, tty_suspend, tty_clip_set, tty_clip_get, tty_none, tty_cell
 };

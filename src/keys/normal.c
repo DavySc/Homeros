@@ -1183,6 +1183,19 @@ static void nv_operator(Cmdarg *cap)
 	}
 }
 
+/* goto_tabpage(): n 0 the next tab page (wrapping), n < 0 back -n times
+   (wrapping), else tab page n; leave_tabpage() stops Visual mode */
+void goto_tabpage(long n)
+{
+	Tab *t = E->tabs, *c = E->tab;
+	if (!t->next) { if (n > 1) beep(); return; }
+	if (!n) t = c->next ? c->next : t;
+	else if (n < 0) for (; n < 0; n++) { Tab *p = E->tabs; while (p->next != c && p->next) p = p->next; c = t = p; }
+	else { while (t && --n > 0) t = t->next; if (!t) { beep(); return; } }
+	if (VIsual_active) end_visual_mode();
+	VIsual_reselect = 0;
+	core_tab_enter(E, t);
+}
 static void nv_gomark(Cmdarg *cap), nv_pcmark(Cmdarg *cap);
 
 static void nv_g_cmd(Cmdarg *cap)
@@ -1198,6 +1211,8 @@ static void nv_g_cmd(Cmdarg *cap)
 		} else clearopbeep(oap);
 		break;
 	case 'v': nv_gv_cmd(cap); break;
+	case 't': if (!checkclearop(oap)) goto_tabpage(cap->count0); break;
+	case 'T': if (!checkclearop(oap)) goto_tabpage(-cap->count1); break;
 	case '\'': case '`': cap->arg = cap->nchar == '\''; nv_gomark(cap); break;   /* without '' */
 	case ';': cap->count1 = -cap->count1; /* fall through */
 	case ',': nv_pcmark(cap); break;
@@ -1336,7 +1351,7 @@ static void nv_window(Cmdarg *cap)
 	Win *ow = E->win;
 	Pos oc = cur();
 	/* do_window(): these stop Visual mode first (reset_VIsual_and_resel()) */
-	if (has("sSvnqcorR", c) || c == 19 || c == 22 || c == 14 || c == 17 || c == 3 || c == 15 || c == 18) {
+	if (has("sSvnqcorRT", c) || c == 19 || c == 22 || c == 14 || c == 17 || c == 3 || c == 15 || c == 18) {
 		if (VIsual_active) end_visual_mode();
 		VIsual_reselect = 0;
 	}
@@ -1346,7 +1361,8 @@ static void nv_window(Cmdarg *cap)
 	case 'n': case 14: r = core_new(E, 0); break;
 	case 'q': case 17: r = core_close(E, 0); break;
 	/* :close never closes the last window (E444) */
-	case 'c': case 3: r = one ? -1 : core_close(E, 0); break;
+	case 'c': case 3: r = one && !E->tabs->next ? -1 : core_close(E, 0); break;
+	case 'T': r = core_win_to_tab(E, 0); break;
 	case 'o': case 15: r = core_only(E); break;
 	case 'w': case 23: case 'W': r = one && n != 1 ? -1 : core_win_goto(E, c == 'W' ? 'W' : 'w', n); break;
 	/* win_goto_ver() and win_goto_hor() stay put without a beep */

@@ -139,7 +139,7 @@ int main(int argc, char **argv)
 			e.win->left = left;
 			core_set_want(&e);
 			core_update(&e);
-			core_draw(&e, &g);
+			core_draw(&e, NULL, &g);
 			const Win *w = e.win;
 			int differ = 0;
 			if (w->top != top || w->left != wleft || w->skipcol != skip || w->line != pl || w->col != pc) {
@@ -205,7 +205,7 @@ int main(int argc, char **argv)
 			best[at] = -1;
 			for (int k = 0; k < 20; k++) {
 				long long t0 = loop_now();
-				core_draw(&e, &g);
+				core_draw(&e, NULL, &g);
 				long long d = loop_now() - t0;
 				if (best[at] < 0 || d < best[at]) best[at] = d;
 			}
@@ -229,7 +229,7 @@ int main(int argc, char **argv)
 		e.win->line = 0;
 		other->line = 2;
 		core_update(&e);
-		core_draw(&e, &g);
+		core_draw(&e, NULL, &g);
 		/* each window's rows 0 and 2: the message on row 0 only */
 		const Win *ws[2] = { e.win, other };
 		for (int i = 0; i < 2; i++)
@@ -261,7 +261,7 @@ int main(int argc, char **argv)
 		open_diag(&e, &g, file, "a \\alpha b\ny\n", 10, 40, 1);
 		e.win->line = 1;
 		core_update(&e);
-		core_draw(&e, &g);
+		core_draw(&e, NULL, &g);
 		int alpha = -1, a = -1;
 		for (int c = 0; c < e.win->w; c++) {
 			const Cell *x = &g.c[e.win->y * g.cols + e.win->x + c];
@@ -286,7 +286,7 @@ int main(int argc, char **argv)
 		e.buf->nonumber = 1;
 		core_set_wrap(&e, 1);
 		core_goto(&e, 0, 297);
-		core_draw(&e, &g);
+		core_draw(&e, NULL, &g);
 		const Cell *x = &g.c[e.win->y * g.cols + e.win->x];
 		CHECK(e.win->skipcol > 0 && *grid_text(&x[2]) == '<' && *grid_text(&x[3]) == ' ' && x[3].ul && !x[2].ul);
 		close_diag(&e, &g, file);

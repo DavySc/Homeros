@@ -263,6 +263,16 @@ static void edits(const char *dir)
 	parse(&e);
 	CHECK(fold_closed(e.win->fold, 7, &a, &z) && a == 7 && z == 8 && !fold_closed(e.win->fold, 9, &a, &z));
 	core_free(&e);
+	/* a window moved to a frame keeps its folds (win_init()'s
+	   copyFoldingState()), and every frame's windows free theirs: CTRL-W
+	   T, then SPC 5 m back into the first frame (ASan's leak check) */
+	CHECK(!core_open(&e, h));
+	parse(&e);
+	CHECK(!core_fold(&e, FOLD_CLOSE, 1, 1) && !core_split(&e, 0, 0) && !core_win_to_tab(&e, 0));
+	CHECK(e.win->fold && fold_closed(e.win->fold, 1, &a, &z) && a == 1);
+	CHECK(!core_split(&e, 0, 0) && !core_win_to_tab(&e, 1));
+	CHECK(e.win->fold && fold_closed(e.win->fold, 1, &a, &z) && a == 1);
+	core_free(&e);
 	unlink(h);
 }
 
@@ -321,7 +331,7 @@ int main(int argc, char **argv)
 			run(&e, tok);
 		} else if (line[0] == 'W') {
 			CHECK(sscanf(line, "W %zu %zu %zu", &top, &cl, &cc) == 3);
-			core_draw(&e, &g);
+			core_draw(&e, NULL, &g);
 			r = 0;
 			const Win *w = e.win;
 			size_t a, z;

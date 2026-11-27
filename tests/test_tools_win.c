@@ -31,7 +31,7 @@ static void rows(char *out, size_t cap)
 {
 	size_t n = 0;
 	out[0] = 0;
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	tools_draw(&e, &g);
 	for (int r = 0; r < g.rows; r++) {
 		char line[1024];

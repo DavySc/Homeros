@@ -211,4 +211,8 @@ Face faces[FACES] = {
 	{ {203, 166, 247}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} },  /* dashboard prompt: mauve */
 	{ {116, 199, 236}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} },  /* shimmer sapphire */
 	{ {148, 226, 213}, {0, 0, 0}, FACE_BOLD | FACE_FG, {0} },  /* shimmer teal */
+	/* catppuccin's TabLine, TabLineSel (a link to Normal), TabLineFill */
+	{ {108, 112, 134}, {17, 17, 27}, FACE_FG | FACE_BG, {0} },  /* TabLine: overlay0 on crust */
+	{ {0, 0, 0}, {0, 0, 0}, 0, {0} },                         /* TabLineSel: Normal */
+	{ {0, 0, 0}, {24, 24, 37}, FACE_BG, {0} },                /* TabLineFill: mantle */
 };
