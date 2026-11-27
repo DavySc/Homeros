@@ -141,6 +141,8 @@ int main(void)
 	snprintf(want, sizeof want, "%s\n", one("one", "1"));
 	snprintf(want + strlen(want), sizeof want - strlen(want), "%s\n\xe2\x94\x80\xe2\x94\x80 Messages ", one("two", "2"));
 	CHECK(!strncmp(until("Completion time"), want, strlen(want)) && strstr(res, "\n(1 row affected)\nbetween\nbetween\n(1 row affected)\n\nCompletion time: "));
+	/* the status line: SSMS's, its rows, its time, the connection */
+	CHECK(e.wins->next && strstr(e.wins->next->buf->status, "\xe2\x9c\x93 Query executed successfully \xc2\xb7 2 rows \xc2\xb7 00:00:0") && strstr(e.wins->next->buf->status, " \xc2\xb7 ms / master"));
 	CHECK(e.wins->next && e.wins->next->buf->nomodifiable && e.wins->next->line == text_lines(e.wins->next->buf->text) - 1);   /* the window follows the end */
 	/* a selection: only its lines run, on the same connection */
 	core_goto(&e, 4, 0);
@@ -156,6 +158,8 @@ int main(void)
 	CHECK(!core_edit_file(&e, "ms/b.sql", 0) && sql_key(&e, KEY_F5) == 1);
 	for (int i = 0; i < 20; i++) loop_once(10);
 	CHECK(sql_key(&e, KEY_BREAK) == 1 && strstr(until("cancelled by user"), "Query was cancelled by user.\n"));
+	for (int i = 0; i < 300 && !strstr(e.wins->next->buf->status, "canceled"); i++) loop_once(10);
+	CHECK(!strncmp(e.wins->next->buf->status, "Query was canceled by user \xc2\xb7 ", 30));
 	for (int i = 0; i < 100; i++) loop_once(10);
 	CHECK(!core_edit_file(&e, "ms/a.sql", 0) && sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), one("two", "2")));
 	/* a refused GO line: the batches before it run, the text between them
@@ -313,6 +317,8 @@ int main(void)
 	const char *g = f5("ms/z.sql", "select N'NULL' s, null n, replicate(N'x', 50) l, N'\xe6\x97\xa5\xe6\x9c\xac' w, N'\xc3\xa9' e\ngo\nselect 1/0\n");
 	CHECK(!strncmp(g, "  \xe2\x94\x82 s    \xe2\x94\x82 n    \xe2\x94\x82 l ", 26) && strstr(g, "\n1 \xe2\x94\x82 NULL \xe2\x94\x82 NULL \xe2\x94\x82 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\xe2\x80\xa6 \xe2\x94\x82 \xe6\x97\xa5\xe6\x9c\xac \xe2\x94\x82 \xc3\xa9\n(1 row)\n") && strstr(g, "\n(1 row)\n\n  \xe2\x94\x82 (No column name)\n") && strstr(g, "\n(0 rows)\n"));
 	Buf *rb = e.wins->next->buf;
+	CHECK(!strncmp(rb->status, "\xe2\x9c\x97 Query completed with errors \xc2\xb7 1 row \xc2\xb7 ", 44));
+	CHECK(!sql_disconnect(&e) && !strncmp(rb->status, "\xe2\x9c\x97 Query completed", 18));   /* the line stays between runs */
 	unsigned char fc[256];
 	size_t l0 = text_line_start(rb->text, 0), l1 = text_line_start(rb->text, 1), l2 = text_line_start(rb->text, 2), l3 = text_line_start(rb->text, 3);
 	rb->faces(rb, l0, l1 - 1, fc);

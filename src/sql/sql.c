@@ -39,6 +39,8 @@ typedef struct {
 	Str part, held, msgs, o;
 	size_t at, line, nheld, ng, nsp, csp;   /* at, line: o's first byte and line in the buffer */
 	int in;                 /* a result set is open: 1 its rows held, 2 laid out */
+	int bad;                /* the run's worst: 1 an error, 2 cancelled */
+	char status[600];       /* the results' status line (Buf.status), SSMS's bar under the query */
 	struct Grid { size_t line, rows; int rn, n, *w; } *g;
 	struct Span { size_t a; unsigned n; unsigned char f; } *sp;
 } Sess;
@@ -190,7 +192,7 @@ static void take(void *ctx, char *p, size_t n)
 		if (g) s->g = g;
 		if (!g || !(w = calloc((size_t)k, sizeof *w))) r = 1;
 		else g[s->ng++] = (struct Grid){ .n = k, .w = w }, s->in = 1, s->nheld = 0, r = str_add(&s->held, p, n) || str_add(&s->held, "\n", 1);
-	} else r = endset(s) || str_add(&s->msgs, p, n) || str_add(&s->msgs, "\n", 1);
+	} else r = endset(s) || str_add(&s->msgs, p, n) || str_add(&s->msgs, "\n", 1), s->bad |= memchr(p, 0xFC, n) != NULL;
 	if (r) core_msg(E, "sql: out of memory (the results are cut)");
 }
 
@@ -227,14 +229,26 @@ static void put(Sess *s, const char *p, size_t n)
 static void putz(Sess *s, const char *z) { put(s, z, strlen(z)); }
 
 /* the run is over: what it left held goes out */
-static void end(Sess *s) { s->q.n = 0, put(s, "", 0); }
+static void end(Sess *s)
+{
+	size_t rows = 0;
+	long long ms = (loop_now() - s->t0) / 1000000;
+	int ran = s->q.n != 0;
+	s->q.n = 0, put(s, "", 0);
+	if (!ran) return;   /* a connection dropped between runs: the last run's line stays */
+	for (size_t i = 0; i < s->ng; i++) rows += s->g[i].rows;
+	snprintf(s->status, sizeof s->status, "%s \xc2\xb7 %zu row%s \xc2\xb7 %02lld:%02lld:%02lld.%03lld \xc2\xb7 %s / %s",
+		s->bad > 1 ? "Query was canceled by user" : s->bad ? "\xe2\x9c\x97 Query completed with errors" : "\xe2\x9c\x93 Query executed successfully",
+		rows, rows == 1 ? "" : "s", ms / 3600000, ms / 60000 % 60, ms / 1000 % 60, ms % 1000, s->spec.name, s->spec.db);
+}
 
 /* a new run's empty results */
 static void clear(Sess *s)
 {
 	core_buf_fill(E, core_buf_find(E, s->res), "", 0, 0);
 	for (size_t i = 0; i < s->ng; i++) free(s->g[i].w);
-	s->ng = s->nsp = 0, s->in = 0, s->part.n = s->held.n = s->msgs.n = 0;
+	snprintf(s->status, sizeof s->status, "Executing query... \xc2\xb7 %s / %s", s->spec.name, s->spec.db);
+	s->ng = s->nsp = 0, s->in = s->bad = 0, s->part.n = s->held.n = s->msgs.n = 0;
 }
 
 /* The results' faces (Buf.faces): the grids' names, rule, row numbers and
@@ -492,7 +506,7 @@ static int show(Sess *s)
 	if (r ? core_split(E, 0, 0) || core_buf_goto(E, s->res) : core_new(E, 0)) return -1;
 	s->res = E->buf->nr;
 	E->buf->nonumber = E->buf->nomodifiable = 1;
-	E->buf->faces = rfaces;
+	E->buf->faces = rfaces, E->buf->status = s->status;
 	return core_win_goto(E, 'p', 1);
 }
 
@@ -531,6 +545,7 @@ int sql_key(Editor *e, int key)
 		/* Ctrl-C cancels as Alt+Break, which a terminal cannot send (Davy,
 		   2026-11-24); with no run to cancel it stays Vim's */
 		if (!s || !s->q.n || s->cancel) return s && key == KEY_BREAK;
+		s->bad = 2;
 		if (db_state(&s->db) != DB_BUSY || db_cancel(&s->db)) drop(s);   /* logging in: the connection goes */
 		else {   /* the run stays busy until the server answers (SqlSess.tla's Break and Ack) */
 			s->cancel = 1;

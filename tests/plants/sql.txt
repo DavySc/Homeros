@@ -138,3 +138,8 @@ sql: a NULL in no face~test TESTS=sql_editor~~src/sql/sql.c~(null && span(s, s->
 sql: an error message in no face~test TESTS=sql_editor~~src/sql/sql.c~if (a) r = span(s, a, s->o.n - a, FACE_DIAG_ERROR), a = 0;~if (a) r = span(s, a, s->o.n - a, FACE_NONE), a = 0;
 sql: the messages held after the run~test TESTS=sql_editor~~src/sql/sql.c~static void end(Sess *s) { s->q.n = 0, put(s, "", 0); }~static void end(Sess *s) { s->q.n = 0; }
 sql: a new run keeps the last one's grids~test TESTS=sql_editor~~src/sql/sql.c~	s->ng = s->nsp = 0, s->in = 0,~	s->nsp = 0, s->in = 0,
+sql: the status line's rows not counted~test TESTS=sql_editor~~src/sql/sql.c~rows += s->g[i].rows;~rows += 0 * s->g[i].rows;
+sql: the status line misses an error~test TESTS=sql_editor~~src/sql/sql.c~s->bad |= memchr(p, 0xFC, n) != NULL;~s->bad |= 0;
+sql: the status line misses a cancel~test TESTS=sql_editor~~src/sql/sql.c~		s->bad = 2;¶~
+sql: the status line redone with no run~test TESTS=sql_editor~~src/sql/sql.c~	if (!ran) return;~	if (0) return;
+sql: the results without their status line~test TESTS=sql_editor~~src/sql/sql.c~E->buf->status = s->status;~E->buf->status = "";

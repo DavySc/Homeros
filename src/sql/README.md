@@ -17,9 +17,14 @@ branch `claude/project-thread-osg6me`, which is never merged.
 ## Running queries
 
 In a `.sql` buffer, F5 runs the selection, or the whole buffer when nothing
-is selected (SSMS). Alt+Break cancels the run, and so does Ctrl-C while a run is going (a terminal sends no Break); otherwise Ctrl-C is Vim's. Results and messages come
-in the server's order in a split below the query, which SPC r opens and
-closes. SQL Server scripts run batch by batch, split on GO. PostgreSQL runs
+is selected (SSMS). Alt+Break cancels the run, and so does Ctrl-C while a run is going (a terminal sends no Break); otherwise Ctrl-C is Vim's. The results come in
+a split below the query, which SPC r opens and closes, as SSMS's grid:
+columns as wide as the names and the first 500 rows (40 cells at most, a
+longer value cut with a …), row numbers, NULL in its own colour, each set's
+row count; then the messages, as SSMS's Messages tab, errors in red. The
+split's status line is SSMS's bar: success or errors, the rows, the time,
+the connection. The clients mark names, rows, NULLs and errors with bytes
+UTF-8 never holds (`net.h`), which `sql.c` lays out by. SQL Server scripts run batch by batch, split on GO. PostgreSQL runs
 the text as one query.
 
 Completion (package 19) asks `sql_catalog` for the tables' columns of the
