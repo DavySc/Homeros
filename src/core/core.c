@@ -256,6 +256,34 @@ void core_buf_fill(Editor *e, Buf *b, const char *s, size_t n, size_t line)
 	core_changed = 1;
 }
 
+void core_buf_append(Editor *e, Buf *b, const char *s, size_t n)
+{
+	size_t last = buf_lines(b) ? buf_lines(b) - 1 : 0;
+	text_insert(b->text, text_len(b->text), s, n);
+	b->flags &= ~(unsigned)CORE_EMPTY;
+	for (Win *w = e->wins; w; w = w->next)
+		if (w->buf == b && w->line >= last) w->line = buf_lines(b) - 1, w->col = w->want = 0;
+	core_changed = 1;
+}
+
+long core_buf_shown(const Editor *e, int nr)
+{
+	long k = 1;
+	for (const Win *w = e->wins; w; w = w->next, k++) if (w->buf->nr == nr) return k;
+	return 0;
+}
+
+void core_visual(Editor *e, size_t *a, size_t *z)
+{
+	size_t l1 = e->ks.vline, c1 = e->ks.vcol, l2 = e->win->line, c2 = e->win->col, len;
+	if (l1 > l2 || (l1 == l2 && c1 > c2)) l1 = l2, c1 = c2, l2 = e->ks.vline, c2 = e->ks.vcol;
+	const unsigned char *l = core_line(e, l2, &len);
+	int chars = e->ks.visual == 'v';
+	*a = core_line_start(e, l1) + (chars ? c1 : 0);
+	*z = core_line_start(e, l2) + (chars && c2 < len ? c2 + uni_glen(l, len, c2) : len + 1);
+	if (*z > text_len(e->buf->text)) *z = text_len(e->buf->text);
+}
+
 /* Loads path into b, a buffer without text (path NULL: empty, no name).
    -1 on error, msg set, b as it was. */
 /* Neovim's full name (fix_fname()), or the name as typed when it has none */

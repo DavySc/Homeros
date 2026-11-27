@@ -272,6 +272,11 @@ static void timers(void)
 	CHECK(loop_timer(tick, &slot[16], 1000) == -1);              /* full */
 	CHECK(loop_timer(tick, &slot[3], 500) == 0);                 /* a replace still fits */
 	for (int i = 0; i < 16; i++) CHECK(loop_timer(tick, &slot[i], -1) == 0);
+	/* 31 watches, as on Windows (test_loop_win): one more is refused */
+	int many[31][2];
+	for (int i = 0; i < 31; i++) CHECK(!pipe(many[i]) && !loop_watch(many[i][0], NULL, NULL));
+	CHECK(loop_watch(0, NULL, NULL) == -1);
+	for (int i = 0; i < 31; i++) loop_unwatch(many[i][0]), close(many[i][0]), close(many[i][1]);
 }
 
 /* Ctrl-C: an endless command that calls loop_breakcheck stops soon after

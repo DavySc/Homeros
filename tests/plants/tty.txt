@@ -38,4 +38,5 @@ tty: the underline layer left out of the style sent last~test TESTS=grid_diff~~s
 tty: an undercurl sent as an underline~test TESTS=grid_diff~~src/tty/tty.c~";4:3" : u->style~";4" : u->style
 tty: no undercurl colour~test TESTS=grid_diff~~src/tty/tty.c~	if (u->style & FACE_SP) n +=~	if (0) n +=
 tty: the face's own undercurl, not the underline layer's~test TESTS=grid_diff~~src/tty/tty.c~u->style & FACE_UNDERCURL ? ";4:3"~f->style & FACE_UNDERCURL ? ";4:3"
-tty: Shift-Tab dropped as an unknown sequence~test TESTS=tty_input~~src/tty/tty.c~: s[2] == 'Z' ? KEY_S_TAB : -1;~: -1;
+tty: Shift-Tab dropped as an unknown sequence~test TESTS=tty_input~~src/tty/tty.c~s[2] == 'Z' ? KEY_S_TAB~s[2] == 'Z' ? -1
+tty: F5 dropped as an unknown sequence~test TESTS=tty_input~~src/tty/tty.c~s[3] == '5' && s[4]~s[3] == '6' && s[4]

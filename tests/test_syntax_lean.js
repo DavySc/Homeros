@@ -1,0 +1,111 @@
+// Lean's colours as VS Code paints them: vscode-lean4's TextMate grammar
+// (pinned below) run by vscode-textmate under Catppuccin Mocha
+// (@catppuccin/vscode), the reference src/syntax/lean.c copies.
+//   npm install vscode-textmate@9.3.2 vscode-oniguruma@2.0.1 @catppuccin/vscode@3.18.1
+//   NODE_PATH=node_modules node tests/test_syntax_lean.js record > tests/test_syntax_lean.txt
+//   NODE_PATH=node_modules node tests/test_syntax_lean.js words > src/syntax/lean_words.h
+// record: the hand cases below, then cases from Lean's own sources (lean
+// --print-prefix, src/lean), random text from Lean's tokens and random
+// Markdown in a doc comment (CASES of them, 600 by default, from SEED),
+// each as T (hex) and C
+// (colour runs over a palette P of fg/fontStyle, newlines left out), for
+// test_syntax_lean.
+// words: the grammar's word lists and Oniguruma's \w, for lean.c.
+const fs = require('fs'), path = require('path'), cp = require('child_process');
+const vt = require('vscode-textmate'), on = require('vscode-oniguruma');
+const PIN = 'https://raw.githubusercontent.com/leanprover/vscode-lean4/9ac77ca57bf7b7ee5907269142a5bef979aa15bf/vscode-lean4/syntaxes/';
+const wasm = fs.readFileSync(path.join(path.dirname(require.resolve('vscode-oniguruma')), 'onig.wasm')).buffer;
+const onig = on.loadWASM(wasm).then(() => ({ createOnigScanner: p => new on.OnigScanner(p), createOnigString: s => new on.OnigString(s) }));
+const get = f => fetch(PIN + f).then(r => r.text());
+
+async function record() {
+  const files = { 'source.lean4': await get('lean4.json'), 'source.lean4.markdown': await get('lean4-markdown.json') };
+  const mocha = JSON.parse(fs.readFileSync(require.resolve('@catppuccin/vscode/themes/mocha.json')));
+  const reg = new vt.Registry({ onigLib: onig, loadGrammar: async s => files[s] ? vt.parseRawGrammar(files[s], s + '.json') : null,
+    theme: { name: 'mocha', settings: mocha.tokenColors } });
+  const g = await reg.loadGrammar('source.lean4'), cmap = reg.getColorMap();
+  // check.h's xorshift, seeded apart from it
+  let s = BigInt(process.env.SEED || '0x2545F4914F6CDD1D');
+  const rnd = n => { s ^= (s << 13n) & 0xffffffffffffffffn; s ^= s >> 7n; s ^= (s << 17n) & 0xffffffffffffffffn; return Number(s % BigInt(n)); };
+  const src = path.join(cp.execSync('lean --print-prefix').toString().trim(), 'src/lean');
+  const corpus = cp.execSync(`find ${src} -name '*.lean' | LC_ALL=C sort`).toString().trim().split('\n');
+  const tok = ['\n', ' ', '  ', '--', '/-', '-/', '/--', '/-!', '"', '\\', '\\"', '\\n', '\\x4', '\\u00e9', "'", 'a', 'x1', '0', '12', '0x1F', '-', '.', '3.5e-2',
+    'e', 'def', 'theorem', 'structure', 'instance', 'where', 'with', 'extends', ':', ':=', '(', ')', '{', '}', '[', ']', '⦃', '<', '>', '|', ',', '«', '»',
+    'attribute', '@', '@[simp]', 'private', 'sorry', '#eval', '#check', 'deriving', 'instance', 'by', 'by?', 'fun', 'λ', '∀', '→', 'α', 'ℕ', '₁', '⟨', '⟩',
+    's!', 'm!', 'throwError', 'panic!', 'trace[Meta.x]', 'trace_goal[', 'Prop', 'Type', 'Sort', 'true', 'false', 'termination_by', '?', '_', 'import all',
+    '`', '*', '#', 'é', '𝔽', '\u00a0', '1e+3', "]'a'", 'deriving\ninstance', '⦃', '«a b»'], md = ['\n', '\n', ' ', '  ', '    ', '\t', 'a', 'b c', 'é', '`', '``', '*', '**', '_', '__', '#', '###', '####### ',
+    '> ', '- ', '* ', '+ ', '1. ', '```', '~~~', '```lean', '[', ']', '(', ')', '![', '<', '>', '<http://a.b/c>', '<mailto:a.b@c-d.ef>', '<x@y.z>',
+    '\\', '\\*', '---', '***', '===', '-/', '/-', '/--', '/-!', '--', '"', "'", ':', '[a]: <u> "t"', '[t](u "x")', '(u (v))', '-', '.', '!',
+    '\u00a0', '<ftp://a.b/c>', '[t](u "")', '==', '(x)'.repeat(70)];
+  const soup = (w, n) => { let t = ''; for (let k = rnd(n); k--; ) t += w[rnd(w.length)]; return t; };
+  // what the soups rarely make: a review's cases (PR 144) and VS Code's
+  // line limit
+  const cases = ["x[i]'a' y 'b' z]'c'\n", 'deriving\ninstance Foo\nderiving instance Bar\nderiving  \tinstance Baz\n',
+    'def x := 1e+3 + 2E+10 + 3e-2 + 4.5e+1 + 1e+ + 0x1F\n', '/-- <ftp://a.b/c> <http://x> <https://y> <ftps://n>\n-/\n',
+    'def foo\u00a0: Nat := 1\n/--\u00a0# Title\n-\u00a0a\u00a0b\n-/\n', '/--\nTitle\n==\nTitle\n===\nT\n====  \n-/\n',
+    '/-- [a](u "") and [b](u "t") and [c]: u ""\n[d]: u "x"\n-/\n', '/-- [a](x' + '(y)x'.repeat(70) + ')\n-/\n', '--[](' + '()'.repeat(70) + ' v))\n',
+    'def\n{a} foo\n', '--[p]:<\n', '/--\n- item\n        # x\n-/\n', '/--\n>    # x\n>    # y\n-/\n',
+    '/-- ' + 'a'.repeat(19993) + ' -/\ndef x := 1\n-/\n', '/--\n````\nx\n```\ny\n````\nz\n-/\n',
+    '/-- ' + '\u00e9'.repeat(19992) + ' -/\ndef x := 1\n-/\n', '/-- ' + '\u{1d53d}'.repeat(9997) + ' -/\ndef x := 1\n-/\n', '/--\na' + '`'.repeat(1200) + '\n-/\n', '/-- ' + 'a *b* `c` [d](e) '.repeat(1000) + '\n-/\n'];
+  for (let c = 0; c < (+process.env.CASES || 600); c++) {
+    let t;
+    if (c % 3 == 1) {
+      const ls = fs.readFileSync(corpus[rnd(corpus.length)], 'utf8').split('\n'), a = rnd(ls.length);
+      t = ls.slice(a, a + 80).join('\n') + '\n';
+    } else t = c % 3 ? soup(tok, 300) : '/-- ' + soup(md, 400);
+    cases.push(t);
+  }
+  const pal = [], out = [], plain = g.tokenizeLine2('', vt.INITIAL).tokens;
+  for (const t of cases) {
+    let st = vt.INITIAL, runs = [], cur = -1, n = 0;
+    for (const line of t.split('\n')) {
+      // VS Code's editor.maxTokenizationLineLength: the line plain, the
+      // state passed on
+      const { tokens: tk, ruleStack } = line.length >= 20000 ? { tokens: plain, ruleStack: st } : g.tokenizeLine2(line, st);
+      let k = 0;
+      for (let i = 0; i < line.length; i++) {
+        while (k + 2 < tk.length && tk[k + 2] <= i) k += 2;
+        const m = tk[k + 1], key = cmap[(m >>> 15) & 511].slice(1) + '/' + ((m >>> 11) & 15);
+        let id = pal.indexOf(key);
+        if (id < 0) id = pal.push(key) - 1;
+        const c = line.codePointAt(i), b = Buffer.byteLength(String.fromCodePoint(c));
+        if (c > 0xffff) i++;
+        if (id !== cur) { if (n) runs.push(String.fromCharCode(97 + cur) + n); cur = id, n = 0; }
+        n += b;
+      }
+      st = ruleStack;
+    }
+    if (n) runs.push(String.fromCharCode(97 + cur) + n);
+    out.push('T ' + Buffer.from(t).toString('hex'), 'C ' + runs.join(' '));
+  }
+  console.log('P ' + pal.map((p, i) => String.fromCharCode(97 + i) + '=' + p).join(' '));
+  console.log(out.join('\n'));
+}
+
+async function words() {
+  const g = JSON.parse(await get('lean4.json')), lib = await onig;
+  const re = g.patterns.map(p => p.match || p.begin || '');
+  // a group's alternatives, as written: \? is ?, \[[^\]\s]*\] is a bracket ("[")
+  const alts = (r, i = 0) => {
+    const m = /\((?!\?)((?:[^()\\]|\\.|\(\?:[^)]*\))*)\)/.exec(r.slice(r.indexOf('(', i)));
+    return m[1].replace(/\(\?:([^)]*)\)\\\[\[\^\\\]\\s\]\*\\\]/, (_, a) => a.split('|').map(x => x + '[').join('|'))
+      .replace(/\\\[\[\^\\\]\\s\]\*\\\]/g, '[').split('|').map(w => w.replace(/\\(.)/g, '$1'));
+  };
+  const list = (name, r) => `static const char *const ${name}[] = {\n\t` +
+    alts(r).map(w => JSON.stringify(w)).join(', ').replace(/(.{70,}?), /g, '$1,\n\t') + ',\n};\n';
+  const at = s => re.find(r => r.includes(s));
+  let o = '/* Generated by tests/test_syntax_lean.js words from vscode-lean4\'s\n   syntaxes/lean4.json (9ac77ca): its word lists in its order (a word\n   ending in [ takes a bracket, \\[[^\\]\\s]*\\]), and Oniguruma\'s \\w as\n   code point ranges. */\n';
+  o += list('lean_types', at('Prop|')) + list('lean_mods', at('local|')) + list('lean_cmds', at('#(print'));
+  o += list('lean_defs', at('(inductive|')) + list('lean_kws', at('(theorem|show')) + list('lean_istr', at('(s!|')) + list('lean_bools', at('true|'));
+  const sc = new on.OnigScanner(['\\w']), w = [];
+  for (let c = 0, a = -1; c <= 0x110000; c++) {
+    let y = false;
+    if (c < 0x110000 && (c < 0xd800 || c >= 0xe000)) { const s = new on.OnigString(String.fromCodePoint(c)); y = !!sc.findNextMatchSync(s, 0); s.dispose(); }
+    if (y && a < 0) a = c;
+    if (!y && a >= 0) w.push(`{ 0x${a.toString(16)}, 0x${(c - 1).toString(16)} }`), a = -1;
+  }
+  o += 'static const uint32_t lean_word[][2] = {\n\t' + w.join(', ').replace(/(.{60,}?\}), /g, '$1,\n\t') + ',\n};\n';
+  process.stdout.write(o);
+}
+
+(process.argv[2] === 'words' ? words : record)();

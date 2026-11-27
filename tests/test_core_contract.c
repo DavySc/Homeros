@@ -292,7 +292,41 @@ int main(void)
 	CHECK(e.wins->line == 1 && e.wins->next->line == 2 && e.win->col == 0 && e.wins->top == 1 && e.wins->next->top == 2);
 	core_buf_fill(&e, nb, "z\n", 2, 1);
 	for (Win *w = e.wins; w; w = w->next) CHECK(w->line == 0 && w->top == 0 && !(nb->flags & CORE_EMPTY));
+	/* core_buf_append: the window on the last line follows to the new last
+	   line, the other stays */
+	core_buf_fill(&e, nb, "a\nb\n", 4, 0);
+	e.wins->line = e.wins->col = 1;
+	core_buf_append(&e, nb, "c\nd\n", 4);
+	CHECK(e.wins->line == 3 && e.wins->col == 0 && e.wins->next->line == 0 && buf_lines(nb) == 4);
 	CHECK(!core_only(&e));
+	/* core_visual: v takes the last character whole (é, two bytes), from
+	   either end; V and CTRL-V the lines with the last break, none past the
+	   text's end (an empty buffer's line has none) */
+	size_t va, vz;
+	core_buf_fill(&e, nb, "ab\ncaf\xc3\xa9\n", 9, 1);
+	e.ks.vline = 0, e.ks.vcol = 1, e.win->col = 3, e.ks.visual = 'v';
+	core_visual(&e, &va, &vz);
+	CHECK(e.buf == nb && va == 1 && vz == 8);
+	e.ks.vline = 1, e.ks.vcol = 3, e.win->line = 0, e.win->col = 1;
+	core_visual(&e, &va, &vz);
+	CHECK(va == 1 && vz == 8);
+	for (int v = 'V', i = 0; i < 2; i++, v = 22) {
+		e.ks.vline = 0;
+		e.ks.visual = v;
+		core_buf_fill(&e, nb, "ab\ncaf\xc3\xa9\n", 9, 1);
+		core_visual(&e, &va, &vz);
+		CHECK(va == 0 && vz == 9);
+		core_buf_fill(&e, nb, "", 0, 0);
+		core_visual(&e, &va, &vz);
+		CHECK(va == 0 && vz == 0);
+	}
+	e.ks.visual = 0;
+	/* core_buf_shown: the first window on it, in window order; 0 in none */
+	CHECK(!core_split(&e, 0, 0) && !core_edit_file(&e, "", 1) && e.buf != nb);
+	long k = e.wins == e.win ? 1 : 2, nr2 = e.buf->nr;   /* the current window's number, its buffer */
+	CHECK(core_buf_shown(&e, (int)nr2) == k && core_buf_shown(&e, nb->nr) == 3 - k && !core_buf_shown(&e, 9999));
+	CHECK(!core_only(&e) && !core_buf_alt(&e) && e.buf == nb && !core_buf_delete(&e, (int)nr2, 1));
+	core_buf_fill(&e, nb, "z\n", 2, 0);
 	int nr = nb->nr;
 	CHECK(!core_buf_delete(&e, nr, 1) && !core_buf_find(&e, nr));   /* :bd keeps it, unlisted */
 	unlink(md);

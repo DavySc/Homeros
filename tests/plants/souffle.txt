@@ -12,7 +12,7 @@ souffle: words are matched in any case, so Count is count (test_tsql, Soufflé's
 souffle: a string ends at its line's end (test_tsql, Soufflé's lines)~test TESTS=tsql~~src/syntax/tsql.c~return *k = TQ_STRING, string(r, p, 0);~return *k = TQ_STRING, string(r, p, 1);
 souffle: 10.0.0.1 is not one number (test_tsql, Soufflé's lines)~test TESTS=tsql~~src/syntax/tsql.c~ || (*k == TQ_NUMBER && c == '.' && is_digit(tsql_byte(r, p + 1)))) ;~) ;
 souffle: a string's escapes are not painted (test_tsql, Soufflé's lines)~test TESTS=tsql~~src/syntax/tsql.c~	if (!q->lang || k != TQ_STRING) return;~	if (q->lang != 1 || k != TQ_STRING) return;
-souffle: a # line is not a directive (test_tsql, Soufflé's lines)~test TESTS=tsql~~src/syntax/tsql.c~	if (c == '#') return *k = TQ_VAR, line_end(r, p);¶~
+souffle: a # line is not a directive (test_tsql, Soufflé's lines)~test TESTS=tsql~~src/syntax/tsql.c~	if (c == '#') return *k = TQ_VAR, tsql_line_end(r, p);¶~
 souffle: :- is two tokens (test_tsql, Soufflé's lines)~test TESTS=tsql~~src/syntax/tsql.c~(c == ':' && (d == '-' || d == ':')) || ~
 souffle: a dot is not punctuation (test_tsql, Soufflé's lines)~test TESTS=tsql~~src/syntax/tsql.c~	if (c && strchr("()[]{},;:.", c)) *k = TQ_PUNCT;~	if (c && strchr("()[]{},;:", c)) *k = TQ_PUNCT;
 souffle: a token that never advances hangs the index (fuzz_tsql)~fuzz FUZZERS=tsql FUZZ_SECONDS=60~~src/syntax/tsql.c~	if (is_dl(c)) {¶		/* 12,~	if (is_dl(c)) {¶		if (c == '?') return *k = TQ_WORD, p;¶		/* 12,

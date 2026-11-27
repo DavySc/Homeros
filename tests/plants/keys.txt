@@ -287,6 +287,9 @@ keys: >> leaves a closed fold shut (test_keys_ex)~test TESTS=keys_ex~~src/keys/o
 keys: u after p below a closed fold leaves the cursor below it (test_keys_ex)~test TESTS=keys_ex~~src/keys/ops.c~		u_save(W->line + 1, W->line + 1);¶~
 keys: foldOpenCursor() opens only a closed fold, not every fold the cursor is in (test_keys_ex)~test TESTS=keys_ex~~src/keys/buf.c~void fold_open_cursor(void) { if (W->fold) core_fold~void fold_open_cursor(void) { if (has_folding((long)W->line, NULL, NULL)) core_fold
 keys: an executed register's keys open folds as typed ones (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~	key_typed = 0;   /* an executed register's keys are not typed either */¶~
+keys: SPC r runs nothing (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		case 'r': sql_results(e); break;¶~
+keys: :Connect is not a command (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~conn = k == 7 && !strncmp(p, "Connect", 7)~conn = 0
+keys: :Disconnect is not a command (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~"KittenPaw", "Disconnect", "Dashboard"~"KittenPaw", "Disconect", "Dashboard"
 keys: a focus change keeps Visual mode~test TESTS=keys_map~~src/keys/keys.c~		if (e->mode == MODE_INSERT || e->ks.visual || (!m~		if (e->mode == MODE_INSERT || (!m
 keys: a focus change leaves which-key's panel up~test TESTS=keys_map~~src/keys/keys.c~		nlead = tabmove = 0;¶		hint_end();~		nlead = tabmove = 0;
 specs: Focus with every focus event entering its tab page~specs~find design/specs -name '*.cfg' ! -name Focus_ok.cfg -delete~design/specs/Focus_ok.cfg~ Variant = "asked"~ Variant = "enter"

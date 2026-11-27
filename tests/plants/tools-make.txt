@@ -2,8 +2,8 @@
 make: dotnet's path(line,col) is not an error~test TESTS=tools_make~~src/tools/make.c~		} else if (fz > f && i < n && s[i] == '(') {~		} else if (0) {
 make: a drive letter ends the path~test TESTS=tools_make~~src/tools/make.c~		if (i + 2 < n && s[i + 1] == ':' && (s[i + 2] == '\\' || s[i + 2] == '/')) i += 2;~
 make: a missing file is an error~test TESTS=tools_make~~src/tools/make.c~			if (!stat(path, &st) && S_ISREG(st.st_mode)) {~			if (!stat(path, &st) || 1) {
-make: a write does not run it again~test TESTS=tools_make~~src/tools/make.c~	if (M.cmd && M.e == e && b->nr != M.nr && buf() && shown()) run();~	(void)e; (void)b;
-make: a write runs it with its buffer in no window~test TESTS=tools_make~~src/tools/make.c~ && buf() && shown()) run();~ && buf()) run();
+make: a write does not run it again~test TESTS=tools_make~~src/tools/make.c~	if (M.cmd && M.e == e && b->nr != M.nr && buf() && core_buf_shown(M.e, M.nr)) run();~	(void)e; (void)b;
+make: a write runs it with its buffer in no window~test TESTS=tools_make~~src/tools/make.c~ && buf() && core_buf_shown(M.e, M.nr)) run();~ && buf()) run();
 make: Enter in its buffer opens nothing~test TESTS=tools_make~~src/tools/pick.c~	if (!P.open) return make_key(e, k) || dash_key(e, k);~	if (!P.open) return dash_key(e, k);
 make: ]q is not :cnext~test TESTS=tools_make~~src/keys/normal.c~	if (cap->nchar == 'q') {~	if (0) {
 make: [q goes forward~test TESTS=tools_make~~src/keys/normal.c~tools_qf(E, cap->arg == FORWARD ? cap->count1 : -cap->count1)~tools_qf(E, cap->count1)
@@ -16,10 +16,10 @@ make: ]q in the current file reloads it (E37 when changed)~test TESTS=tools_make
 make: its buffer is modifiable~test TESTS=tools_make~~src/tools/make.c~e->buf->nonumber = e->buf->nomodifiable = 1;~e->buf->nonumber = 1;
 make: SPC cc offers only "make "~test TESTS=tools_make~~src/keys/keys.c~			snprintf(c, sizeof c, "make %s", l ? l : "");~			snprintf(c, sizeof c, "make %s", l ? "" : "");
 make: SPC cc and SPC cC swapped~test TESTS=tools_make~~src/keys/keys.c~			if (m[2] == 'C') { tools_make(e, NULL); break; }~			if (m[2] == 'c') { tools_make(e, NULL); break; }
-make: the window does not follow the output~test TESTS=tools_make~~src/tools/make.c~w->buf == b && w->line >= last)~w->buf == b && w->line > last)
+make: the window does not follow the output~test TESTS=tools_make~~src/core/core.c~w->buf == b && w->line >= last)~w->buf == b && w->line > last)
 make: an unended last line is dropped~test TESTS=tools_make~~src/tools/make.c~	if (M.part.n) { char *s = M.part.s; size_t k = M.part.n; M.part.n = 0; line(NULL, s, k); }~	M.part.n = 0;
 make: ]q past the end stays put~test TESTS=tools_make~~src/tools/make.c~		i = n > 0 ? (long)M.nq - 1 : 0;~		core_msg(e, "E553: No more items"); return -1;
-make: :mak is not :make~test TESTS=tools_make~~src/keys/keys.c~(k >= 3 && k <= 4 && !strncmp(p, "make", k)~(k == 4 && !strncmp(p, "make", k)
+make: :mak is not :make~test TESTS=tools_make~~src/keys/keys.c~int make = k >= 3 && k <= 4 && !strncmp(p, "make", k)~int make = k == 4 && !strncmp(p, "make", k)
 make: a range is ignored~test TESTS=tools_make~~src/keys/keys.c~		if (n) core_msg(E, "E481: No range allowed");~		if (n && nohl) core_msg(E, "E481: No range allowed");
 make: owners.txt: a second shell choice outside src/loop~dupes~~src/tools/make.c~static Buf *buf(void)~static const char *sh(void) { return getenv("SHELL"); }¶static Buf *buf(void)
 make: owners.txt: a second buffer-by-number loop outside src/core~dupes~~src/tools/make.c~static Buf *buf(void) { return M.nr ? core_buf_find(M.e, M.nr) : NULL; }~static Buf *buf(void) { for (Buf *b = M.e->bufs; b; b = b->next) if (b->nr == M.nr) return b; return NULL; }
