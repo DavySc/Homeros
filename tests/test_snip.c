@@ -198,8 +198,11 @@ static void quiet(void)
 {
 	Editor *e = at("select o.x from dbo.orders o|", " 1");
 	CHECK(!e->pum);
-	typing_pause();
 	long long t0 = loop_now();
+	loop_once(900);   /* a buffer without an index gets it at once, not after a pause */
+	CHECK(loop_now() - t0 < 500000000LL);
+	typing_pause();
+	t0 = loop_now();
 	loop_once(1500);
 	CHECK(loop_now() - t0 > 1400000000LL);
 	feed(e, KEY_ESC);
@@ -276,8 +279,11 @@ static void complete(void)
 	feed(e, 'a'), feed(e, 's');
 	CHECK(!strcmp(shown(e), "case cast cascade"));
 	feed(e, KEY_ESC), core_free(e);
-	e = typed("p.sql", "a");   /* the shorter first */
-	CHECK(!strncmp(shown(e), "as at abs ", 10));
+	e = typed("p.sql", "a");   /* the shorter first, reserved words and functions before the rest */
+	CHECK(!strncmp(shown(e), "as abs ", 7));
+	feed(e, KEY_ESC), core_free(e);
+	e = typed("p.sql", "sel");
+	CHECK(!strcmp(shown(e), "select self selective"));
 	feed(e, KEY_ESC), core_free(e);
 	e = typed("p.sql", "in");
 	CHECK(!strcmp(e->pum[0].word, "in") && !strcmp(e->pum[0].kind, "Keyword"));
@@ -419,7 +425,19 @@ static void complete(void)
 	CHECK(!core_edit(e, 0, 27, "", 0));
 	feed(e, 'g'), feed(e, 'g'), feed(e, 'A');
 	for (const char *k = " x."; *k; k++) feed(e, *k);
-	CHECK(!strcmp(shown(e), "id"));
+	CHECK(!strcmp(shown(e), "z id"));   /* z: a bare name of a statement with one table, its column */
+	feed(e, KEY_ESC), core_free(e);
+	/* a bare name is a column of its statement's one table (Davy: d. after
+	   join dom d showed nothing); not an alias, a variable, a function, Q
+	   of Q.x, or a name in a statement of two tables */
+	e = at("select name, x as total, count(*) cnt, isnull(y, 0) z, w tot, try_convert(int, t) from dbo.dom with (nolock)\n"
+	       "where kind = @k order by name offset 0 rows fetch next 5 rows only\n"
+	       "select n from app, dom\nupdate dom set a = 1, b = 2\nselect v = u from dom\nselect * from app a join dom d on d|\n", ".");
+	CHECK(!strcmp(shown(e), "a b t u w x y kind name"));
+	feed(e, KEY_ESC), core_free(e);
+	/* T-SQL's words the file uses rank with the reserved ones */
+	e = at("declare @x int\nselect |\n", "in");
+	CHECK(!strcmp(e->pum[1].word, "int"));
 	feed(e, KEY_ESC), core_free(e);
 	/* a statement's aliases are its own, an IF's condition is one */
 	e = at("select * from orders o\nselect o.zz from t\nselect * from orders x where x|\n", ".");
@@ -439,9 +457,16 @@ static void complete(void)
 	line = core_line(e, e->win->line, &n);
 	CHECK(n == 20 && !memcmp(line, "select * from orders", 20));
 	feed(e, KEY_ESC), core_free(e);
-	/* many names: the pool grows under the walk */
+	/* many names: the pool grows under the walk, and under a statement's
+	   bare names becoming its table's columns */
 	static char big[400000];
 	int m = snprintf(big, sizeof big, "select ");
+	for (int i = 0; i < 8000; i++) m += snprintf(big + m, sizeof big - (size_t)m, "bare_column_%d, ", i);
+	snprintf(big + m, sizeof big - (size_t)m, "1 from some_table\nselect * from some_table t where t|");
+	e = at(big, ".b");
+	CHECK(e->npum == 8000);
+	feed(e, KEY_ESC), core_free(e);
+	m = snprintf(big, sizeof big, "select ");
 	for (int i = 0; i < 8000; i++) m += snprintf(big + m, sizeof big - (size_t)m, "t.column_number_%d, ", i);
 	snprintf(big + m, sizeof big - (size_t)m, "1 from some_table t where t|");
 	e = at(big, ".c");

@@ -6,7 +6,7 @@ while IFS='~' read -r name target prep file old new; do
 	[ -z "$name" ] && continue
 	i=$((i+1)); [ $i -lt ${2:-1} ] && continue; [ -n "$3" ] && [ $i -ge $(( $2 + $3 )) ] && break
 	tmp=$(mktemp -d /tmp/rv/plants/w.XXXXXX)
-	(cd $src && cp -r Makefile include ref src tests "$tmp"/) ; rm -f "$tmp"/tests/test_z*.c
+	(cd $src && cp -r Makefile include ref src tests "$tmp"/) ; rm -f "$tmp"/tests/test_z*.c; cp -r $src/design "$tmp"/ 2>/dev/null
 	mkdir -p "$tmp/build/san"; for d in syntax ghostty wl image; do ln -s $src/build/$d "$tmp/build/$d"; done
 	if ! python3 - "$tmp/$file" "$old" "$new" <<'PY'
 import sys

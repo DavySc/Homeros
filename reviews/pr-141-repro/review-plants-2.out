@@ -1,0 +1,16 @@
+caught        rv2: the timer indexes with the popup open   (CHECK(n == 20 && !memcmp(line, "select * from orders", 20)) failed)
+BUILD FAILED  rv2: the index's statements stay where they were
+caught        rv2: every word start indexes the file   (CHECK(strstr(shown(e), "gone")) failed)
+caught        rv2: an edit of the same length is never indexed   (CHECK(!strstr(shown(e), "gone")) failed)
+caught        rv2: a word at its statement's end walks the gap   (CHECK(!strcmp(shown(e), "id name")) failed)
+NOT CAUGHT    rv2: equal facts kept
+caught        rv2: [x] always loses its brackets   (CHECK(n > 15 && !memcmp(line, "select [My Col] ", 16)) failed)
+BUILD FAILED  rv2: a column of two tables listed twice
+NOT CAUGHT    rv2: no popup kept as a result: a comment's keys walk again
+caught        rv2: an empty word keeps the list   (CHECK(e->pum && !strcmp(e->pum[0].word, "@count")) failed)
+NOT CAUGHT    rv2: a buffer without an index waits a second for it
+caught        rv2: the timer never indexes   (CHECK(!strstr(shown(e), "gone")) failed)
+NOT CAUGHT    rv2: the popup's check also holds before any popup (the review's fix)
+NOT CAUGHT    rv2: sqlfmt_units gives its units when its list cannot grow
+caught        rv2: MERGE and DELETE offer tables only   (CHECK(strstr(shown(e), " fact ") && strstr(shown(e), " from ")) failed)
+caught        rv2: variables among the @@ functions   (CHECK(!strcmp(e->pum[0].kind, "Variable") && !strcmp(e->pum[1].kind, ")
