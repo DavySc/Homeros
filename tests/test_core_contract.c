@@ -83,7 +83,7 @@ int main(void)
 	e.cmdlen = 4;
 	e.cmdpos = 3;
 	core_update(&e);
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	int r = e.rows - 1;                        /* cmdheight 1 */
 	const Cell *c = &g.c[r * g.cols];
 	CHECK(c[0].len == 1 && c[0].ch[0] == ':' && c[1].ch[0] == 's' && c[2].len == 2 && c[3].ch[0] == 'x');
@@ -91,7 +91,7 @@ int main(void)
 	/* showmode() in Replace mode (measured in tmux, 1 run: R shows it) */
 	e.mode = MODE_INSERT;
 	e.ks.replace = 1;
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	c = &g.c[(g.rows - 1) * g.cols];
 	CHECK(c[0].ch[0] == '-' && c[3].ch[0] == 'R' && c[9].ch[0] == 'E' && c[11].ch[0] == '-');
 	e.ks.replace = 0;
@@ -101,7 +101,7 @@ int main(void)
 	static const PumItem items[] = { { "foo", NULL, NULL }, { "foobar", NULL, NULL }, { "fop", NULL, NULL } };
 	at(&e, 10);
 	core_pum(&e, items, 3, 1, 0);
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	int seen = 0;
 	for (int y = 0; y < g.rows; y++)
 		for (int x = 0; x + 2 < g.cols; x++) {
@@ -200,10 +200,10 @@ int main(void)
 	   in tmux: 12x40, :3vs :3sp :10vs :new, terminal 4x15, 17 CTRL-W >;
 	   review of PR 62, 1) */
 	CHECK(!core_open(&e, fn[0]) && !grid_resize(&g, 12, 40));
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	CHECK(!core_split(&e, 1, 3) && !core_split(&e, 0, 3) && !core_split(&e, 1, 10) && !core_new(&e, 0));
 	CHECK(!grid_resize(&g, 4, 15));
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	core_resize(&e, 1, 17, 0);
 	{
 		int k = 0, wd[] = { 1, 13, 1, 11, 11 };
@@ -216,7 +216,7 @@ int main(void)
 	CHECK(!core_open(&e, fn[1]));
 	e.buf->nonumber = 1;
 	CHECK(!core_edit(&e, 2, 0, "\n", 1));
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	CHECK(win_numw(e.win) == 0 && g.c[0].len == 1 && *grid_text(&g.c[0]) == 'x' && *grid_text(&g.c[g.cols]) == ' ');
 	core_free(&e);
 	/* the view is drawn after each command, before the next one runs
@@ -230,7 +230,7 @@ int main(void)
 	}
 	CHECK(!core_open(&e, fn[1]) && !grid_resize(&g, 20, 50));
 	core_set_wrap(&e, 1);
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	CHECK(!core_split(&e, 0, 0));
 	core_update(&e);
 	e.win->line = 5;
@@ -239,13 +239,13 @@ int main(void)
 	core_update(&e);
 	CHECK(!core_win_goto(&e, 'w', 0));
 	core_update(&e);
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	CHECK(e.wins->next && e.wins->next->top == 2);
 	/* the Visual area shows in every window on the buffer (win_line():
 	   wp->w_buffer == curwin->w_buffer) */
 	e.ks.visual = 'V';
 	e.ks.vline = 5;
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	for (const Win *w = e.wins; w; w = w->next)
 		CHECK(w->top <= 5 && g.c[(w->y + 5 - (int)w->top) * g.cols + w->x + win_numw(w)].bg == FACE_VISUAL);
 	/* an area that starts on a line's NUL shows one cell there (win_line()'s
@@ -257,7 +257,7 @@ int main(void)
 	e.win->line = 4;
 	e.win->col = 0;
 	core_update(&e);
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	CHECK(e.win->top <= 2 && g.c[(e.win->y + 2 - (int)e.win->top) * g.cols + e.win->x + win_numw(e.win) + 1].bg == FACE_VISUAL);
 	e.ks.visual = 0;
 
@@ -268,7 +268,7 @@ int main(void)
 	CHECK(mkstemps(md, 3) >= 0 && (f = fopen(md, "w")) && fputs("# heading\nx\n", f) >= 0 && !fclose(f));
 	CHECK(!core_edit_file(&e, md, 1) && !grid_resize(&g, 24, 80));
 	e.win->line = 1;
-	do core_draw(&e, &g);
+	do core_draw(&e, NULL, &g);
 	while (syntax_update(e.buf->syn, e.buf->text, NULL, &r1, &r2));
 	CHECK(g.c[win_numw(e.win)].bg == FACE_HEADING_1_BG);   /* not on the cursor line */
 	/* nine windows one above another need 18 rows and the command line;
@@ -277,7 +277,7 @@ int main(void)
 	for (Win *w = e.wins; w; w = w->next)
 		if (w != e.win) w->line = w->top = 0;   /* the heading in view, not under the cursor */
 	CHECK(!grid_resize(&g, 6, 80));
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	CHECK(e.layout->size[ROWS] > g.rows);
 	CHECK(!core_only(&e));
 	/* core_buf_fill: both windows on the buffer clamped to the new text, or
@@ -301,7 +301,7 @@ int main(void)
 	e.ks.yank.type = 'V';
 	e.ks.yank.l1 = e.ks.yank.l2 = e.win->line;
 	CHECK(!core_split(&e, 1, 0));
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	for (const Win *w = e.wins; w; w = w->next) {
 		const Cell *z = &g.c[(w->y + (int)(w->line - w->top)) * g.cols + w->x + win_numw(w)];
 		CHECK((z->bg == FACE_INC_SEARCH) == (w == e.win));
@@ -318,14 +318,14 @@ int main(void)
 	e.ks.yank.c1 = e.ks.yank.c2 = 0;
 	e.win->line = 1;
 	e.win->col = 0;
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	CHECK(e.win->top == 0 && g.c[g.cols + win_numw(e.win)].bg == FACE_CURSOR_LINE);
 	CHECK(g.c[2 * g.cols + win_numw(e.win)].bg == FACE_INC_SEARCH);
 	e.ks.yank.type = 0;
 	/* :s's c flag shows its match the same way: "b" of "bc", not "c" */
 	e.ks.inc = (KeyArea){ 'v', 2, 0, 2, 0 };
 	e.win->line = 0;
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	CHECK(g.c[2 * g.cols + win_numw(e.win)].bg == FACE_INC_SEARCH && g.c[2 * g.cols + win_numw(e.win) + 1].bg != FACE_INC_SEARCH);
 	e.ks.inc.type = 0;
 	/* the flash as the keys set it: vly over "é漢x" covers é and both
@@ -335,7 +335,7 @@ int main(void)
 	keys_feed(&e, 'v', 0);
 	keys_feed(&e, 'l', 0);
 	keys_feed(&e, 'y', 0);
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	/* cell 2 is 漢's second half, drawn with its first */
 	for (int c = 0; c < 4; c++) if (c != 2) CHECK((g.c[win_numw(e.win) + c].bg == FACE_INC_SEARCH) == (c < 3));
 	e.ks.yank.type = 0;
@@ -345,7 +345,7 @@ int main(void)
 	CHECK((f = fopen(ey, "w")) && fputs("ab ab ab ab\n", f) >= 0 && !fclose(f));
 	CHECK(!core_edit_file(&e, ey, 1));
 	for (const char *k = "/ab\rgg0ly3l"; *k; k++) keys_feed(&e, *k == '\r' ? KEY_ENTER : *k, 0);
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	const unsigned char fs[] = { FACE_CUR_SEARCH, FACE_CUR_SEARCH, FACE_INC_SEARCH, FACE_SEARCH, FACE_SEARCH };
 	for (int c = 0; c < 5; c++) CHECK(g.c[win_numw(e.win) + c].bg == fs[c]);
 	e.ks.yank.type = 0;

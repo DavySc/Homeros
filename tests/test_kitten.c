@@ -26,7 +26,7 @@ static long long ms(void)
    float, as in Neovim), then the kitten. */
 static void draw(void)
 {
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	kitten_draw(&e, &g);
 }
 
@@ -247,7 +247,7 @@ static void small(void)
 	/* cmdheight 3 (resize -2 in one window): Neovim puts the float at row 3
 	   of 10 x 40, above the status line, and the message on row 7 */
 	open_file("notes.org", 10, 40);
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	core_resize(&e, 0, -2, 0);
 	kitten_paw(&e);
 	draw();

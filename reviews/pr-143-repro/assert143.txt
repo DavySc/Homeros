@@ -1,0 +1,1 @@
+review 143: cover() stops when a span ends before the one put last (never seen: the test PR 143 removed is unreachable)~test TESTS=org~~src/org/org.c~	if (a > r[1]) r[0] = r[1] = a;   /* every z is past the reference, so past r[0] */~	if (z < r[0]) __builtin_trap();¶	if (a > r[1]) r[0] = r[1] = a;

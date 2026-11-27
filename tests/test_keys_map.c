@@ -5,6 +5,7 @@
    gives "acb" at column 1: a key that completes no map runs Space's own
    motion, then the keys, each checked for a map again.  (Here SPC ff opens
    a picker, which would take the x, so x comes after it closes.) */
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -130,7 +131,7 @@ int main(void)
 	CHECK(row_has(&g, 22, "<esc> close  <bs> back") && !row_has(&g, 23, "SPC"));
 	CHECK(!row_has(&g, 16, "\xe2\x9e\x9c") && !row_has(&g, 21, "\xe2\x9e\x9c"));
 	CHECK(row_has(&g, 17, "D \xe2\x9e\x9c Dashboard") && row_has(&g, 18, "e \xe2\x9e\x9c File Explorer") && row_has(&g, 19, ", \xe2\x9e\x9c Buffers"));
-	CHECK(row_has(&g, 20, "c \xe2\x9e\x9c +compile") && row_has(&g, 17, "f \xe2\x9e\x9c +find") && row_has(&g, 18, "u \xe2\x9e\x9c +toggle"));
+	CHECK(row_has(&g, 20, "5 \xe2\x9e\x9c +frame") && row_has(&g, 17, "c \xe2\x9e\x9c +compile") && row_has(&g, 18, "f \xe2\x9e\x9c +find") && row_has(&g, 19, "u \xe2\x9e\x9c +toggle"));
 	CHECK(face_at(&g, 17, 5) == FACE_NORMAL_FLOAT && face_at(&g, 17, 7) == FACE_WK_SEPARATOR && face_at(&g, 17, 9) == FACE_WK_DESC && face_at(&g, 17, 35) == FACE_WK_GROUP);
 	CHECK(g.c[22 * 80 + 79].bg == FACE_NORMAL_FLOAT && g.c[16 * 80].bg == FACE_NORMAL_FLOAT && g.c[15 * 80].bg != FACE_NORMAL_FLOAT && g.c[23 * 80].bg != FACE_NORMAL_FLOAT);
 	/* the cursor under it (which-key's no_overlap): 2 rows below the cursor
@@ -138,7 +139,7 @@ int main(void)
 	g.crow = 15;
 	grid_clear(&g);
 	keys_draw(&e, &g);
-	CHECK(row_has(&g, 23, "<esc> close") && row_has(&g, 18, "D \xe2\x9e\x9c") && row_has(&g, 20, ", \xe2\x9e\x9c") && row_has(&g, 21, "c \xe2\x9e\x9c") && !row_has(&g, 22, "\xe2\x9e\x9c") && g.c[16 * 80].bg != FACE_NORMAL_FLOAT);
+	CHECK(row_has(&g, 23, "<esc> close") && row_has(&g, 18, "D \xe2\x9e\x9c") && row_has(&g, 20, ", \xe2\x9e\x9c") && row_has(&g, 21, "5 \xe2\x9e\x9c") && !row_has(&g, 22, "\xe2\x9e\x9c") && g.c[16 * 80].bg != FACE_NORMAL_FLOAT);
 	g.crow = 21;
 	grid_clear(&g);
 	keys_draw(&e, &g);
@@ -296,6 +297,109 @@ int main(void)
 	feed(&d, "c");
 	CHECK(!d.ks.pending);
 	core_free(&d);
+	/* frames (tab pages): Emacs's C-x 5 keys as SPC 5, gt, CTRL-W T */
+	memcpy(path + sizeof path - 7, "XXXXXX", 6);
+	fd = mkstemp(path);
+	CHECK(fd >= 0 && write(fd, "abcb\n", 5) == 5 && !close(fd) && !core_open(&d, path));
+	int ntab = 0;
+	feed(&d, "\x1b 52");                       /* make-frame (Esc: the c above left an operator) */
+	for (Tab *t = d.tabs; t; t = t->next) ntab++;
+	CHECK(ntab == 2 && d.tab == d.tabs->next && d.buf == d.tabs->win->buf);
+	feed(&d, " 5o");                           /* other-frame wraps */
+	CHECK(d.tab == d.tabs);
+	feed(&d, "gt");
+	CHECK(d.tab == d.tabs->next);
+	feed(&d, "1gt");
+	CHECK(d.tab == d.tabs);
+	feed(&d, "\x17v 5m2");                     /* the window into frame 2 */
+	CHECK(d.tab == d.tabs->next && d.wins->next && !d.tabs->wins->next);
+	feed(&d, " 5m9");                          /* no frame 9: nothing moves */
+	CHECK(d.tab == d.tabs->next && d.wins->next);
+	feed(&d, "\x17T");                         /* CTRL-W T: a third frame */
+	CHECK(d.tab == d.tabs->next->next && !d.wins->next && !d.tabs->next->wins->next);
+	feed(&d, "yy2pgT");                        /* back one frame */
+	CHECK(d.tab == d.tabs->next);
+	feed(&d, "gTGgt");                         /* and again; the first frame's cursor on line 3 */
+	CHECK(d.tab == d.tabs->next && d.tabs->wins->line == 2);
+	feed(&d, "ggdd");                          /* mark_adjust() moves it in every frame */
+	CHECK(d.tabs->wins->line == 1);
+	feed(&d, "uu 50");                         /* delete-frame: the next one, alt_tabpage() */
+	CHECK(d.tab == d.tabs->next && !d.tab->next);
+	feed(&d, " 51");                           /* delete-other-frames */
+	CHECK(!d.tabs->next && d.tab == d.tabs);
+	feed(&d, " 50");
+	CHECK(!strcmp(d.msg, "E784: Cannot close last tab page"));
+	CHECK(!core_tabnew(&d, ""));               /* :tabnew, gt, :bd N: the frame showing N goes */
+	int nr = d.buf->nr;
+	feed(&d, "gt");
+	CHECK(!core_buf_delete(&d, nr, 0) && !d.tabs->next);
+	feed(&d, " 5f");                           /* the picker, in a new frame */
+	CHECK(picked(&d) && d.tabs->next && d.tab == d.tabs->next);
+	/* the system focused another frame: what is half typed ends */
+	feed(&d, "0ia");
+	keys_input(&d, KEY_FOCUS, 0);
+	CHECK(d.mode == MODE_NORMAL && at(&d, "aabcb\n", 0));
+	feed(&d, "d");
+	keys_input(&d, KEY_FOCUS, 0);
+	feed(&d, "x");
+	CHECK(!d.ks.pending && at(&d, "abcb\n", 0));
+	feed(&d, " 5m");
+	keys_input(&d, KEY_FOCUS, 0);
+	feed(&d, "2x");                            /* a count, not a frame */
+	CHECK(!d.ks.pending && at(&d, "cb\n", 0));
+	/* the new frame's window takes its status line through win_new_height():
+	   the cursor keeps its fraction (nvim 0.12, 3 runs: topline 44) */
+	feed(&d, "yy99p\x17s50Gzb 52");
+	CHECK(d.win->top == 43 && d.win->line == 49);
+	/* SPC 5 m: the window keeps its view in the frame it moves to */
+	feed(&d, "\x17v60Gzt 5m1");
+	CHECK(d.tab == d.tabs && d.win->line == 59 && d.wins->next);
+	/* gt and back: CTRL-W p is the frame's previous window (enter_tabpage()) */
+	Win *was = d.win;
+	feed(&d, "\x17wgtgT\x17p");
+	CHECK(d.tab == d.tabs && d.win == was);
+	/* another frame, on another buffer, is drawn as its own OS window shows
+	   it: without this frame's Visual area, yank flash, command line, mode
+	   or tabline (the window backends show none) */
+	static Grid gf;
+	CHECK(!core_tabnew(&d, "") && !grid_resize(&gf, 12, 40));
+	Tab *other = d.tab;
+	feed(&d, "ihello\rworld\x1b");
+	core_draw(&d, NULL, &gf);                  /* no tabline in an OS window */
+	CHECK(row_has(&gf, 0, "hello"));
+	feed(&d, "1gt");
+	int vis = 0, inc = 0;
+	feed(&d, "ggVj");                          /* lines 1 and 2, which the other buffer has too */
+	core_draw(&d, other, &gf);
+	for (int i = 0; i < gf.rows * gf.cols; i++) vis += gf.c[i].bg == FACE_VISUAL;
+	feed(&d, "\x1bggyy");
+	core_draw(&d, other, &gf);
+	for (int i = 0; i < gf.rows * gf.cols; i++) inc += gf.c[i].bg == FACE_INC_SEARCH;
+	feed(&d, ":");
+	core_draw(&d, other, &gf);
+	CHECK(!vis && !inc && row_has(&gf, 0, "hello") && !row_has(&gf, 0, "X") && !row_has(&gf, gf.rows - 1, ":"));
+	feed(&d, "\x1bV");
+	core_draw(&d, other, &gf);
+	CHECK(!row_has(&gf, gf.rows - 1, "VISUAL"));
+	/* the system focused another frame: Visual and which-key's panel end */
+	keys_input(&d, KEY_FOCUS, 0);
+	CHECK(!d.ks.visual);
+	feed(&d, " ");
+	CHECK(!grid_resize(&gf, 24, 80) && wait_hint(&d, &gf) > 0);
+	keys_input(&d, KEY_FOCUS, 0);
+	CHECK(wait_hint(&d, &gf) == -1);
+	/* a buffer refilled (git status, the compile buffer, SQL results) is
+	   shown from its start in every frame that shows it */
+	feed(&d, "Ggt");
+	Tab *first = d.tabs;
+	CHECK(d.tab != first);
+	Buf *big = first->win->buf;
+	core_buf_fill(&d, big, "x\ny\n", 4, SIZE_MAX);
+	core_draw(&d, first, &gf);
+	CHECK(first->win->line == 1 && row_has(&gf, 0, "x") && row_has(&gf, 1, "y"));
+	grid_free(&gf);
+	core_free(&d);
+	unlink(path);
 	puts("test_keys_map: ok");
 	return 0;
 }
