@@ -11,7 +11,7 @@ for t in zig wine; do
 	command -v $t >/dev/null || { echo "src/tools/check.sh: $t is not on PATH"; exit 2; }
 done
 . src/tools/ghostty-win.sh
-. src/sql/openssl-win.sh   # wincc's modules include src/sql: package 22's, agreed by thread 0
+. src/sql/openssl-win.sh   # keys runs SQL (sql_key): package 22's
 SYN=build/syntax
 srcs=$(make -s -n wincc | head -1 | tr ' ' '\n' | grep '\.c$' | grep -v -e '^src/main\.c$' -e '^src/win/' -e '^src/paint/' -e '^src/font/')
 mkdir -p build/win/tools

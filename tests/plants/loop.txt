@@ -68,3 +68,6 @@ loop: pty: TERM left as the editor's~test TESTS=loop~~src/loop/loop.c~		env[n++]
 loop: pty: proc_resize does nothing~test TESTS=loop~~src/loop/loop.c~p[id].fd[1] >= 0) ioctl(~p[id].fd[1] < 0) ioctl(
 loop: pty: the size asked is not set~test TESTS=loop~~src/loop/loop.c~|| ioctl(fd[2], TIOCSWINSZ, &ws)~|| ioctl(fd[2], TIOCGWINSZ, &ws)
 loop: win: pty: the editor's own std handles reach the child~win WIN=loop~~src/loop/win.c~		si.StartupInfo.dwFlags = STARTF_USESTDHANDLES;¶		si.StartupInfo.hStdInput~		si.StartupInfo.dwFlags = 0;¶		si.StartupInfo.hStdInput
+loop: 16 watches on Linux, fewer than Windows takes~test TESTS=loop~~src/loop/loop.c~enum { MAXW = 31,~enum { MAXW = 16,
+loop on Windows: a 32nd watch, which the wait cannot take beside 32 children~win WIN=loop~~src/loop/win.c~MAXW = MAXIMUM_WAIT_OBJECTS - 1 - MAXP~MAXW = MAXIMUM_WAIT_OBJECTS - MAXP
+loop on Windows: watches short of what the wait takes~win WIN=loop~~src/loop/win.c~MAXW = MAXIMUM_WAIT_OBJECTS - 1 - MAXP~MAXW = MAXIMUM_WAIT_OBJECTS - 2 - MAXP

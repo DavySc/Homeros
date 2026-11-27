@@ -18,6 +18,7 @@
 #include "lmatch.h"
 #include "org.h"
 #include "tsql.h"
+#include "lean.h"
 
 /* Neovim's standard capture names (:h treesitter-highlight-groups), in
    grid.h's order: name i is face i + 1.  A capture takes the longest of these
@@ -155,10 +156,10 @@ enum { NLANGS = sizeof langs / sizeof *langs };
    has no 'filetype' here; Neovim also
    strips backup endings such as ~ and .bak, which these do not; it knows no
    .dl, which is souffle as the Soufflé plugins for Vim name it), and what
-   colours it: a langs[] index, T-SQL's, JSON's or Soufflé's word lists
+   colours it: a langs[] index, T-SQL's, JSON's, Soufflé's or Lean's lexer
    (tsql.c, in tsql_new's order), Org's (package 16, org.h), or nothing yet
    (Davy's other languages, FEATURES.md) */
-enum { BY_NONE = -1, BY_SQL = -2, BY_JSON = -3, BY_DL = -4, BY_ORG = -5, BY_V = -6, BY_ZIG = -7 };
+enum { BY_NONE = -1, BY_SQL = -2, BY_JSON = -3, BY_DL = -4, BY_LEAN = -5, BY_ORG = -6, BY_V = -7, BY_ZIG = -8 };
 static const struct { const char *ext, *ft; int lang; } fts[] = {
 	{ ".c", "c", 0 }, { ".h", "cpp", 0 }, { ".lua", "lua", 1 }, { ".md", "markdown", 2 },
 	{ ".sql", "sql", BY_SQL }, { ".json", "json", BY_JSON }, { "CMakeLists.txt", "cmake", 7 },
@@ -166,7 +167,7 @@ static const struct { const char *ext, *ft; int lang; } fts[] = {
 	{ ".glsl", "glsl", 5 }, { ".vert", "glsl", 5 }, { ".frag", "glsl", 5 },
 	{ ".comp", "glsl", 5 }, { ".geom", "glsl", 5 }, { ".tesc", "glsl", 5 },
 	{ ".tese", "glsl", 5 }, { ".sv", "systemverilog", 8 }, { ".svh", "systemverilog", 8 },
-	{ ".cmake", "cmake", 7 }, { ".lean", "lean", BY_NONE }, { ".cs", "cs", BY_NONE },
+	{ ".cmake", "cmake", 7 }, { ".lean", "lean", BY_LEAN }, { ".cs", "cs", BY_NONE },
 	{ ".org", "org", BY_ORG }, { ".dl", "souffle", BY_DL }, { ".v", NULL, BY_V },
 	{ ".zig", "zig", BY_ZIG },
 };
@@ -551,6 +552,7 @@ Syntax *syntax_open(const char *path, const Text *t)
 		Syntax *s = calloc(1, sizeof *s);
 		if (s && (li == BY_ORG ? !(s->org = orgfx_new(t)) : !(s->sql = tsql_new(t, BY_SQL - li))))
 			free(s), s = NULL;
+		else if (li == BY_LEAN) tsql_lines(s->sql, lean_line);
 		return s;
 	}
 	Syntax *s = calloc(1, sizeof *s);
