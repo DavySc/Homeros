@@ -26,6 +26,12 @@ sql: a column type cut at the packet's end is unknown (fuzz)~fuzz FUZZERS=sql_td
 sql: any packet size the server names (fuzz)~fuzz FUZZERS=sql_tds FUZZ_SECONDS=60~~src/sql/tds.c~if (z >= 512 && z <= 32767) t->pkt~if (z > 0) t->pkt
 sql: a whole reply without its last DONE waits (fuzz)~fuzz FUZZERS=sql_tds FUZZ_SECONDS=60~~src/sql/tds.c~if (t->eom && (t->at < t->msg.n || t->state == TDS_BUSY)) {~if (t->eom && t->at < t->msg.n) {
 specs: SqlRun ending a cancelled run at its first DONE~specs~find design/specs -name '*.cfg' ! -name SqlRun_ok.cfg -delete~design/specs/SqlRun_ok.cfg~Variant = "ok"~Variant = "firstdone"
+sql: GO anywhere on a line splits~test TESTS=sql_run~~src/sql/run.c~		if (lead && k == TQ_WORD~		if ((lead || 1) && k == TQ_WORD
+sql: blanks before GO sent with the batch~test TESTS=sql_run~~src/sql/run.c~			while (end > start && blank(tsql_byte(&r, end - 1))) end--;¶~
+sql: GO( taken as SQL, not refused~test TESTS=sql_run~~src/sql/run.c~		const char *bad = "$![\"'(:/";~		const char *bad = "$![\"':/";
+sql: lower-case go is no separator~test TESTS=sql_run~~src/sql/run.c~(g == 'g' || g == 'G') && (o == 'o' || o == 'O')~g == 'G' && (o == 'o' || o == 'O')
+sql: a refused GO line's number one short~test TESTS=sql_run~~src/sql/run.c~	size_t start = a, line = 1;~	size_t start = a, line = 0;
+sql: a comment before GO ends its line's lead~test TESTS=sql_run~~src/sql/run.c~		} else if (k != TQ_SPACE && !comment) lead = 0;~		} else if (k != TQ_SPACE && !(comment && 0)) lead = 0;
 sql: a message's tab and newline escaped~test TESTS=sql~~src/sql/net.c~	unsigned char s[4] = {'\\', raw ? 0 : (unsigned char)esc(u)};~	unsigned char s[4] = {'\\', (unsigned char)(esc(u) + 0 * raw)};
 sql: no ARITHABORT, unlike SSMS~test TESTS=sql~~src/sql/tds.c~tds_batch(t, "set arithabort on")~tds_batch(t, "set ansi_nulls on")
 sql: the mechanism list read past its message (fuzz)~fuzz FUZZERS=sql_pg FUZZ_SECONDS=60~~src/sql/pg.c~while (q < e && *q && !(e - q >= 14 && !memcmp(q, "SCRAM-SHA-256", 14)))~while (q < e && *q && strcmp(q, "SCRAM-SHA-256"))
@@ -38,10 +44,17 @@ sql: our own Postgres cancel shown as an error~test TESTS=sql~~src/sql/pg.c~if (
 sql: the Postgres cancel carries the wrong key~test TESTS=sql~~src/sql/pg.c~put32(&s, p->pid) || put32(&s, p->key)~put32(&s, p->pid) || put32(&s, p->pid)
 sql: the Postgres transaction state not read~test TESTS=sql~~src/sql/pg.c~p->txn = n ? s[0] : 'I';~p->txn = 'I';
 sql: a refused login's reason lost to the server's close_notify~test TESTS=sql~~src/sql/net.c~e == SSL_ERROR_WANT_READ || e == SSL_ERROR_ZERO_RETURN ? 0~e == SSL_ERROR_WANT_READ ? 0
+sql: a refused connect's reason lost~test TESTS=sql~~src/sql/net.c~"send: %s", why());~"send failed%s", "");
+sql: a Windows login tried off Windows~test TESTS=sql~~src/sql/net.c~"a Windows login needs Windows"~"Windows login: SEC_E_NO_CREDENTIALS"
+win: a message waits for the write wake Winsock sends only after a send would block~win WIN=sql~~src/sql/tds.c~	t->eom = 0;¶	return net_flush(&t->net);~	t->eom = 0;¶	return 0;
+win: a Postgres message waits for the write wake Winsock sends only after a send would block~win WIN=sql~~src/sql/pg.c~strlen(sql) + 1) || net_flush(&p->net);~strlen(sql) + 1);
+win: a refused connect taken as done (FD_CONNECT's error dropped)~win WIN=sql~~src/sql/net.c~if (ne.lNetworkEvents & FD_CONNECT && ne.iErrorCode[FD_CONNECT_BIT]) {~if (0) {
+win: a send before the connect is done hides its refusal~win WIN=sql~~src/sql/net.c~	if (!c->up && woke(c)) return -1;¶~
 sql: a batch ending in EXEC never ends (DONEPROC)~test TESTS=sql~~src/sql/tds.c~if (k != 0xFF && !(st & 1) && (t->state == TDS_BUSY~if (k == 0xFD && !(st & 1) && (t->state == TDS_BUSY
 sql: our own cancel of a procedure shown as an error~test TESTS=sql~~src/sql/tds.c~if (t->quiet && no == 3980) return 0;~if (t->quiet && no == 1) return 0;
 sql: the socket inherited by child processes~test TESTS=sql~~src/sql/net.c~SOCK_NONBLOCK | SOCK_CLOEXEC~SOCK_NONBLOCK
 sql: the next Postgres query sent before the cancel is done~test TESTS=sql~~src/sql/pg.c~if (p->state != PG_DEAD && p->kill.fd >= 0) p->ready = 1;~if (p->state != PG_DEAD && p->kill.fd < -1) p->ready = 1;
+win: the socket inherited by child processes~win WIN=sql~~src/sql/net.c~WSA_FLAG_OVERLAPPED | WSA_FLAG_NO_HANDLE_INHERIT~WSA_FLAG_OVERLAPPED
 sql: SCRAM: the server's proof never checked~test TESTS=sql~~src/sql/pg.c~? 0 : dead(p, "SCRAM: the server's proof is wrong")~? 0 : 0
 sql: SCRAM: the server's nonce need not extend ours~test TESTS=sql~~src/sql/pg.c~ || strncmp(r + 2, p->nonce, strlen(p->nonce)))~ || !strncmp(r + 2, p->nonce, 0))
 sql: the host name never checked~test TESTS=sql~~src/sql/net.c~ || !SSL_set1_host(c->ssl, host))~ || !(host || 1))
@@ -53,3 +66,39 @@ sql: the SQL Server login message kept after its sending~test TESTS=sql~~src/sql
 specs: PgCancel's run over at ReadyForQuery~specs~find design/specs -name '*.cfg' ! -name PgCancel_ok.cfg -delete~design/specs/PgCancel_ok.cfg~Variant = "ok"~Variant = "noclose"
 sql: a cancel's ready never cleared, so it ends a later cancel early~test TESTS=sql~~src/sql/pg.c~p->state = PG_READY, p->quiet = 0, p->ready = 0;~p->state = PG_READY, p->quiet = 0;
 sql: the socket blocks~test TESTS=sql~~src/sql/net.c~SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC~SOCK_STREAM | SOCK_CLOEXEC
+sql: a password in a connections file others can read is used (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~!(st.st_mode & 077)~!(st.st_mode & 0)
+sql: GO n runs its batch once (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~s->left = s->q.b[s->i].count;~s->left = 1;
+sql: F5 runs the whole buffer, not the selection (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (e->ks.visual && qb == e->buf) core_visual~if (0 && qb == e->buf) core_visual
+sql: :Connect does not change the buffer's connection (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	s->spec = c;~	(void)c;
+sql: a refused GO line not named (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (bad) core_msg(E, "sql: line~if (0) core_msg(E, "sql: line
+sql: SPC r never closes the results (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (k) {   /* close it~	if (0) {   /* close it
+sql: Alt+Break's line not written (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~putz(s, "Query was cancelled by user.\n");   /* SSMS's line, at once */~/* SSMS's line, at once */
+win: a dir line never matches a Windows buffer's name (C:\ and backslashes)~win WIN=sql~~src/sql/sql.c~if (file_full(t, d)) snprintf~if (1) snprintf
+win: a password in the connections file refused on Windows (no mode bits there)~win WIN=sql~~src/sql/sql.c~	int open = 1;~	int open = 0;
+sql: a batch read from the buffer as it is when sent, not as it was at F5 (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (str_add(&s->sql, s->text.s + (b.a - s->base), b.z - b.a)~if ((text_read(core_buf_find(E, s->nr)->text, b.a, s->text.s + (b.a - s->base), b.z - b.a), str_add(&s->sql, s->text.s + (b.a - s->base), b.z - b.a))
+sql: Alt+Break ends the run before the server answers the cancel (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~			s->cancel = 1;~			s->q.n = 0;
+sql: a cancelled run's later batches still run (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (s->cancel) s->cancel = 0, s->q.n = 0;~if (s->cancel) s->cancel = 0, next(s);
+sql: no room for the split leaves the run set (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (oom || show(s)) { s->q.n = 0; return -1; }~	if (oom || show(s)) return -1;
+sql: a second F5 during a run is not refused (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (s->q.n) { core_msg(E, s->cancel~	if (0) { core_msg(E, s->cancel
+sql: the login's messages shown in the results (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (was >= DB_READY) put(~if (1) put(
+sql: the last dir line wins, not the longest (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~n > best && !strncmp(path~n + 0 * best > 0 && !strncmp(path
+sql: dir /a/ms holds /a/msx (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~(sep(path[n]) || sep(d[n - 1]))~(1 || sep(path[n]))
+sql: a tilde in a dir line not HOME (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~int home = *fs~int home = 0 * *fs
+sql: a dir folder ends at its first space (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~(int)(fe - fs - home), fs + home);~(int)strcspn(fs + home, " "), fs + home);
+sql: Alt+Break while logging in sends a cancel (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (db_state(&s->db) != DB_BUSY || db_cancel(&s->db)) drop(s);~if (db_cancel(&s->db)) drop(s);
+sql: Postgres's port by default not 5432 (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~o->pg ? 5432 : 1433~o->pg ? 5433 : 1433
+sql: GO 0 runs its batch once (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~s->left <= 0)~s->left < 0)
+sql: a connection the server ended kept (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~		drop(s);¶		core_changed = 1;~		core_changed = 1;
+sql: the results modifiable (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~E->buf->nonumber = E->buf->nomodifiable = 1;~E->buf->nonumber = 1;
+sql: F5 in the results is not their query's (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~Buf *qb = s ? core_buf_find(e, s->nr) : e->buf;~Buf *qb = e->buf;
+sql: a wrong port used (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (port <= 0 || port > 65535 || (p && *p))~if (0)
+sql: no pass= sends an empty password (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (!o->pg && !*o->pass && strcmp(o->user, "-"))~if (0)
+sql: [IPv6] keeps its brackets (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~char *h = a[2] + (a[2][0] == '[')~char *h = a[2] + 0
+specs: SqlSess's cancelled run goes on with its batches~specs~find design/specs -name '*.cfg' ! -name SqlSess_ok.cfg -delete~design/specs/SqlSess_ok.cfg~Variant = "ok"~Variant = "keep"
+sql: :Disconnect keeps the session (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	drop(s);   /* the server ends the session~	(void)0;   /* the server ends the session
+sql: a second F5 during a run starts another (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (s->q.n) { core_msg(E, s->cancel ?~if (s->cancel) { core_msg(E, s->cancel ?
+sql: the cancel flag outlives its answer (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (s->cancel) s->cancel = 0, s->q.n = 0;~if (s->cancel) s->q.n = 0;
+sql: a port with letters after it is taken (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~port > 65535 || (p && *p))~port > 65535)
+win: a socket that turned writable before the reset waits for ever (test_sql_wake)~win WIN=sql~~src/sql/net.c~if (woke(c) || net_flush(c)) return -1;~if (woke(c)) return -1;
+specs: Wake with the close's record reset with the event~specs~find design/specs -name '*.cfg' ! -name Wake_ok_close.cfg -delete~design/specs/Wake_ok_close.cfg~ Variant = "ok"~ Variant = "noclose"
+specs: Wake with no flush after the reset~specs~find design/specs -name '*.cfg' ! -name Wake_ok_send.cfg -delete~design/specs/Wake_ok_send.cfg~ Variant = "ok"~ Variant = "flushfirst"

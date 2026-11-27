@@ -95,6 +95,18 @@ int main(void)
 	CHECK(!strcmp(e.msg, "Kitten on save: off"));
 	feed(&e, " uk");
 	CHECK(!strcmp(e.msg, "Kitten on save: on"));
+	/* SQL (package 22): SPC r opens the results split, :Connect [name]
+	   names the buffer's connection, :Disconnect ends its session (here
+	   no results, no file and no session) */
+	feed(&e, " r");
+	CHECK(!strcmp(e.msg, "sql: no results yet (F5 runs the query)") && !e.ks.pending);
+	feed(&e, ":Connect\r");
+	CHECK(!strcmp(e.msg, "sql: not connected"));
+	feed(&e, ":Disconnect\r");
+	CHECK(!strncmp(e.msg, "sql: ", 5));
+	setenv("XDG_CONFIG_HOME", "/nonexistent", 1);
+	feed(&e, ":Connect dev\r");
+	CHECK(!strncmp(e.msg, "sql: no connections file", 24));
 	/* SPC i s, the snippet picker, also in Visual mode (around the area);
 	   no other map there: Space is its motion */
 	feed(&e, " is");
@@ -135,8 +147,8 @@ int main(void)
 	CHECK(wait_hint(&e, &g) >= 190000000LL);
 	CHECK(row_has(&g, 22, "<esc> close  <bs> back") && !row_has(&g, 22, "scroll") && !row_has(&g, 23, "SPC"));
 	CHECK(!row_has(&g, 16, "\xe2\x9e\x9c") && !row_has(&g, 21, "\xe2\x9e\x9c"));
-	CHECK(row_has(&g, 17, "D \xe2\x9e\x9c Dashboard") && row_has(&g, 18, "e \xe2\x9e\x9c File Explorer") && row_has(&g, 19, ", \xe2\x9e\x9c Buffers"));
-	CHECK(row_has(&g, 20, "5 \xe2\x9e\x9c +frame") && row_has(&g, 17, "c \xe2\x9e\x9c +compile") && row_has(&g, 18, "f \xe2\x9e\x9c +find") && row_has(&g, 19, "u \xe2\x9e\x9c +toggle"));
+	CHECK(row_has(&g, 17, "D \xe2\x9e\x9c Dashboard") && row_has(&g, 18, "e \xe2\x9e\x9c File Explorer") && row_has(&g, 19, "r \xe2\x9e\x9c SQL results") && row_has(&g, 20, ", \xe2\x9e\x9c Buffers"));
+	CHECK(row_has(&g, 17, "5 \xe2\x9e\x9c +frame") && row_has(&g, 18, "c \xe2\x9e\x9c +compile") && row_has(&g, 19, "f \xe2\x9e\x9c +find") && row_has(&g, 20, "u \xe2\x9e\x9c +toggle"));
 	CHECK(face_at(&g, 17, 5) == FACE_NORMAL_FLOAT && face_at(&g, 17, 7) == FACE_WK_SEPARATOR && face_at(&g, 17, 9) == FACE_WK_DESC && face_at(&g, 17, 35) == FACE_WK_GROUP);
 	CHECK(g.c[22 * 80 + 79].bg == FACE_NORMAL_FLOAT && g.c[16 * 80].bg == FACE_NORMAL_FLOAT && g.c[15 * 80].bg != FACE_NORMAL_FLOAT && g.c[23 * 80].bg != FACE_NORMAL_FLOAT);
 	/* the cursor under it (which-key's no_overlap): 2 rows below the cursor
@@ -144,7 +156,7 @@ int main(void)
 	g.crow = 15;
 	grid_clear(&g);
 	keys_draw(&e, &g);
-	CHECK(row_has(&g, 23, "<esc> close") && row_has(&g, 18, "D \xe2\x9e\x9c") && row_has(&g, 20, ", \xe2\x9e\x9c") && row_has(&g, 21, "5 \xe2\x9e\x9c") && !row_has(&g, 22, "\xe2\x9e\x9c") && g.c[16 * 80].bg != FACE_NORMAL_FLOAT);
+	CHECK(row_has(&g, 23, "<esc> close") && row_has(&g, 18, "D \xe2\x9e\x9c") && row_has(&g, 20, "r \xe2\x9e\x9c") && row_has(&g, 21, ", \xe2\x9e\x9c") && row_has(&g, 18, "5 \xe2\x9e\x9c") && !row_has(&g, 22, "\xe2\x9e\x9c") && g.c[16 * 80].bg != FACE_NORMAL_FLOAT);
 	g.crow = 21;
 	grid_clear(&g);
 	keys_draw(&e, &g);
@@ -154,15 +166,15 @@ int main(void)
 	keys_input(&e, 4, 0);
 	grid_clear(&g);
 	keys_draw(&e, &g);
-	CHECK(e.ks.pending && row_has(&g, 20, "e \xe2\x9e\x9c") && row_has(&g, 21, ", \xe2\x9e\x9c") && row_has(&g, 22, "5 \xe2\x9e\x9c"));
+	CHECK(e.ks.pending && row_has(&g, 20, "e \xe2\x9e\x9c") && row_has(&g, 21, "r \xe2\x9e\x9c") && row_has(&g, 22, ", \xe2\x9e\x9c"));
 	keys_input(&e, 4, 0);
 	grid_clear(&g);
 	keys_draw(&e, &g);
-	CHECK(row_has(&g, 20, ", \xe2\x9e\x9c") && row_has(&g, 21, "5 \xe2\x9e\x9c") && !row_has(&g, 22, "\xe2\x9e\x9c"));
+	CHECK(row_has(&g, 20, "r \xe2\x9e\x9c") && row_has(&g, 21, ", \xe2\x9e\x9c") && !row_has(&g, 22, "\xe2\x9e\x9c"));
 	keys_input(&e, 21, 0);
 	grid_clear(&g);
 	keys_draw(&e, &g);
-	CHECK(row_has(&g, 20, "D \xe2\x9e\x9c") && row_has(&g, 22, ", \xe2\x9e\x9c"));
+	CHECK(row_has(&g, 20, "D \xe2\x9e\x9c") && row_has(&g, 22, "r \xe2\x9e\x9c"));
 	keys_input(&e, 21, 0);
 	grid_clear(&g);
 	keys_draw(&e, &g);
@@ -173,7 +185,7 @@ int main(void)
 	keys_draw(&e, &g);
 	CHECK(row_has(&g, 21, "b \xe2\x9e\x9c Git branches"));
 	keys_input(&e, KEY_BS, 0);
-	/* one column, 14 lines in 5 rows: <c-d> 3 lines, <c-u> 2 (which-key's
+	/* one column, 15 lines in 5 rows: <c-d> 3 lines, <c-u> 2 (which-key's
 	   ceil of -5/2), each clamped as typed; the rows above stay */
 	static Grid n;
 	CHECK(!grid_resize(&n, 24, 40));
@@ -182,7 +194,7 @@ int main(void)
 	keys_input(&e, 4, 0);
 	grid_clear(&n);
 	keys_draw(&e, &n);
-	CHECK(row_has(&n, 19, ", \xe2\x9e\x9c") && !row_has(&n, 18, "\xe2\x9e\x9c") && !row_has(&n, 17, "\xe2\x9e\x9c"));
+	CHECK(row_has(&n, 19, "r \xe2\x9e\x9c") && !row_has(&n, 18, "\xe2\x9e\x9c") && !row_has(&n, 17, "\xe2\x9e\x9c"));
 	keys_input(&e, 21, 0);
 	grid_clear(&n);
 	keys_draw(&e, &n);
@@ -195,7 +207,7 @@ int main(void)
 	n.crow = 0;                                /* now it fits: from its top */
 	grid_clear(&n);
 	keys_draw(&e, &n);
-	CHECK(row_has(&n, 10, "D \xe2\x9e\x9c"));
+	CHECK(row_has(&n, 9, "D \xe2\x9e\x9c"));
 	grid_free(&n);
 	g.crow = 14;
 	grid_clear(&g);
@@ -209,7 +221,7 @@ int main(void)
 	keys_input(&e, KEY_BS, 0);
 	grid_clear(&g);
 	keys_draw(&e, &g);
-	CHECK(e.ks.pending && row_has(&g, 19, "Buffers") && !row_has(&g, 22, "git"));
+	CHECK(e.ks.pending && row_has(&g, 20, "Buffers") && !row_has(&g, 22, "git"));
 	keys_input(&e, KEY_BS, 0);
 	grid_clear(&g);
 	keys_draw(&e, &g);

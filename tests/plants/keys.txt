@@ -277,6 +277,9 @@ keys: which-key's help offers scroll on a panel that fits (test_keys_map)~test T
 keys: which-key's panel keeps a scroll the screen no longer has (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (wtop > wmax) wtop = wmax;~	(void)wmax;
 keys: a typed NUL matches a map's end and the map is read past it (ASan) (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~while (j < nlead && m[j] && m[j] == lead[j])~while (j < nlead && m[j] == lead[j])
 keys: which-key's scroll stops one line early (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~wh = H, wmax = h + 3 - H;~wh = H, wmax = h + 2 - H;
+keys: SPC r runs nothing (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		case 'r': sql_results(e); break;¶~
+keys: :Connect is not a command (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~conn = k == 7 && !strncmp(p, "Connect", 7)~conn = 0
+keys: :Disconnect is not a command (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~"KittenPaw", "Disconnect", "Dashboard"~"KittenPaw", "Disconect", "Dashboard"
 keys: a focus change keeps Visual mode~test TESTS=keys_map~~src/keys/keys.c~		if (e->mode == MODE_INSERT || e->ks.visual || (!m~		if (e->mode == MODE_INSERT || (!m
 keys: a focus change leaves which-key's panel up~test TESTS=keys_map~~src/keys/keys.c~		nlead = tabmove = 0;¶		hint_end();~		nlead = tabmove = 0;
 specs: Focus with every focus event entering its tab page~specs~find design/specs -name '*.cfg' ! -name Focus_ok.cfg -delete~design/specs/Focus_ok.cfg~ Variant = "asked"~ Variant = "enter"

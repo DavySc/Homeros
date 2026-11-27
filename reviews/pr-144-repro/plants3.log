@@ -1,0 +1,12 @@
+is_sp without U+00A0 | hand inputs: 11 bytes differ
+a title may be empty | hand inputs: 20 bytes differ
+a character after ] | hand inputs: 6 bytes differ
+head does not stop at U+2983 | hand inputs: 0 bytes differ
+list continuation of 5 spaces | hand inputs: 0 bytes differ
+no ftp autolink | hand inputs: 13 bytes differ
+URL items past 64 dropped | hand inputs: 285 bytes differ
+exponent without sign | hand inputs: 9 bytes differ
+deriving instance across a line | hand inputs: 45 bytes differ
+guillemet content face in a head | hand inputs: 7 bytes differ
+setext of two = | hand inputs: 2 bytes differ
+quote marker without its space | hand inputs: 0 bytes differ
