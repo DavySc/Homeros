@@ -275,6 +275,7 @@ keys: gO's error answer said as none found~test TESTS=lsp_locs~~src/keys/keys.c~
 keys: C-] to a file that is not there opens it (E429)~test TESTS=lsp_locs~~src/keys/keys.c~	else if (stat(v->path, &(struct stat){ 0 })) core_msg~	else if (0) core_msg
 keys: C-] past the end of the file goes to its last line (E434)~test TESTS=lsp_locs~~src/keys/keys.c~		if (v->line < (size_t)nlines() && (long)v->col <= ml_len((long)v->line)) {~		if (1) {
 keys: C-] makes no guesses at a place it cannot find (E435)~test TESTS=lsp_locs~~src/keys/keys.c~	for (int i = 0; i < 2 && g < 0; i++) {~	for (int i = 0; i < 0 && g < 0; i++) {
+keys: C-] guesses minding case, which tag.c ignores for its guesses~test TESTS=lsp_locs~~src/keys/keys.c~re_compile(p, 1, ~re_compile(p, 0, 
 keys: C-] guesses "^name(" without the spaces before (\s*)~test TESTS=lsp_locs~~src/keys/keys.c~{ "^%s\\s*(",~{ "^%s(",
 keys: C-] failing in another file leaves the cursor at its start, not its first non-blank~test TESTS=lsp_locs~~src/keys/keys.c~core_goto(E, 0, 0), beginline(BL_WHITE | BL_FIX);~core_goto(E, 0, 0);
 keys: C-] failing in the same file leaves the cursor at its line's start~test TESTS=lsp_locs~~src/keys/keys.c~			if (E->buf == b) core_goto(E, l, c);~			if (E->buf == b) core_goto(E, l, c * 0);

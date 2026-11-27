@@ -190,7 +190,7 @@ static void found(void *ctx, const LspLoc *v, int n)
 		for (int i = 0; i < 2 && g < 0; i++) {
 			char p[sizeof tagname + 32];
 			snprintf(p, sizeof p, guess[i], tagname);
-			if (!re_compile(p, 0, &(const char *){ NULL })) for (g = 0; g < nlines() && re_exec(g, 0, &s, &z, NULL, NULL) <= 0; g++) ;
+			if (!re_compile(p, 1, &(const char *){ NULL })) for (g = 0; g < nlines() && re_exec(g, 0, &s, &z, NULL, NULL) <= 0; g++) ;
 			if (g == nlines()) g = -1;
 		}
 		search_recompile();

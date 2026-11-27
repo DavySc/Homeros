@@ -284,12 +284,14 @@ def serve(path, log):
 
 def edges(k):
     """A place the key cannot reach, rare at random: C-] past the file's end
-    ("^name\\s*(" guessed; nothing guessed, in another file whose first
-    line is blank, and in this one), in a file that is not there, and gri
-    past the end"""
+    ("^name\\s*(" guessed, ignoring case as tag.c does; nothing guessed, in
+    another file whose first line is blank or indented, and in this one), in
+    a file that is not there, and gri past the end"""
     def at(f, line): return {'uri': 'ROOT/' + f, 'range': {'start': {'line': line, 'character': 0}, 'end': {'line': line, 'character': 0}}}
     e = [('<C-]>', 'x = bar(1);\n', [0, 5], 'x\nbar (int a)\n', at('o.c', 9)),
+         ('<C-]>', 'x = bar(1);\n', [0, 5], 'x\nint BAR(void)\n', at('o.c', 9)),
          ('<C-]>', 'x = bar(1);\n', [0, 5], '  \nint y;\n', at('o.c', 9)),
+         ('<C-]>', 'x = bar(1);\n', [0, 5], '\tint y;\nz\n', at('o.c', 9)),
          ('<C-]>', 'x\n = baz;\n', [1, 3], '', at('m.c', 9)),
          ('<C-]>', 'x = bar(1);\n', [0, 5], '', at(GONE, 0)),
          ('gri', 'x = bar(1);\n', [0, 5], 'x\n', at('o.c', 3))]
