@@ -16,6 +16,7 @@
 #include "file.h"
 #include "match.h"
 #include "snip.h"
+#include "sql.h"
 #include "sqlfmt.h"
 #include "str.h"
 #include "tsql.h"
@@ -129,7 +130,7 @@ static void splice(Mark_ *k, size_t pos, size_t ndel, size_t nins)
    Until then snip_edit moves its statements as extmarks, and a word's
    statement is walked again when the word starts. */
 #define HOLD 1000
-static struct { const Buf *b; int nr, stale; size_t len, np; int nf; Str u; unsigned char seen[2048]; } I;   /* seen: T-SQL's words the file uses, by id */
+static struct { const Buf *b, *catb; int nr, stale, cat; size_t len, np, cp; int nf; Str u, cats; unsigned char seen[2048]; } I;   /* cats: the connection's columns (cat of them), sorted Cands in the pool's first cp bytes, read for catb */   /* seen: T-SQL's words the file uses, by id */
 static Editor *E;   /* snip_key's, for the timer (one, as main.c's) */
 static void idle(void *ctx);
 #define NU ((size_t)(I.u.n / sizeof(Mark_[2])))
@@ -778,12 +779,28 @@ static int walk(const Text *t, size_t p, size_t end, const Mark_ (*u)[2], size_t
 }
 
 
+/* one column of the buffer's connection (sql_catalog), as the file's */
+static void column(void *ctx, const char *schema, const char *table, const char *col)
+{
+	(void)ctx;
+	fact(table, schema, "Table");
+	fact(col, table, "Column");
+}
+
 static void scan(Editor *e, size_t a, size_t z)
 {
 	const Text *t = e->buf->text;
 	size_t (*u)[2], nu = sqlfmt_units(t, &u);
 	Tok ctx[2];
-	pool.n = facts.n = I.u.n = I.np = 0, I.nf = 0, I.b = NULL;
+	/* the catalog once per buffer (its connection's), not at every pause */
+	if (I.catb != e->buf || !I.cat) {
+		pool.n = facts.n = 0;
+		I.cat = sql_catalog(e, e->buf, column, NULL), I.catb = e->buf;
+		sort_facts(0);
+		I.cats.n = 0, I.cp = pool.n;
+		if (str_add(&I.cats, facts.s, facts.n)) I.cat = 0, I.cp = 0;
+	}
+	pool.n = I.cp, facts.n = I.u.n = I.np = 0, I.nf = 0, I.b = NULL;
 	memset(I.seen, 0, sizeof I.seen);
 	for (size_t i = 0; i < nu; i++) {
 		Mark_ m[2] = { { u[i][0], 0 }, { u[i][1], 1 } };
@@ -791,6 +808,16 @@ static void scan(Editor *e, size_t a, size_t z)
 	}
 	walk(t, 0, text_len(t), (const Mark_ (*)[2])I.u.s, NU, a, z, ctx, NULL);
 	sort_facts(0);
+	/* the file's facts and the catalog's, merged by name (both sorted) */
+	static Str f;
+	f.n = 0;
+	if (str_add(&f, facts.s, facts.n)) return;
+	facts.n = 0;
+	const Cand *x = (const Cand *)f.s, *xe = x + NCAND(f), *y = (const Cand *)I.cats.s, *ye = y + NCAND(I.cats);
+	for (const Cand *c, *l = NULL; x < xe || y < ye; l = c) {
+		c = y == ye || (x < xe && by_fact(x, y) <= 0) ? x++ : y++;
+		if ((!l || by_fact(l, c)) && str_add(&facts, (const char *)c, sizeof *c)) return;
+	}
 	I.b = e->buf, I.nr = e->buf->nr, I.len = text_len(t), I.np = pool.n, I.nf = NCAND(facts), I.stale = 0;
 }
 
@@ -813,7 +840,9 @@ static void idle(void *ctx)
 static int collect(Editor *e, size_t a, size_t z)
 {
 	const Text *t = e->buf->text;
-	if (I.b != e->buf || I.nr != e->buf->nr || I.len != text_len(t)) scan(e, a, z);
+	/* the connection's catalog arrives after a login: then the index is
+	   made again with it (sql_catalog is 0 at once until then) */
+	if (I.b != e->buf || I.nr != e->buf->nr || I.len != text_len(t) || (!I.cat && sql_catalog(e, e->buf, column, NULL))) scan(e, a, z);
 	pool.n = I.np, facts.n = (size_t)I.nf * sizeof(Cand), cands.n = 0;
 	/* the word's statement, or the gap between two */
 	const Mark_ (*u)[2] = (const Mark_ (*)[2])I.u.s;
