@@ -1,0 +1,47 @@
+diff --git a/src/keys/keys.c b/src/keys/keys.c
+index 78a2599..b74697c 100644
+--- a/src/keys/keys.c
++++ b/src/keys/keys.c
+@@ -255,10 +255,13 @@ static void dashboard(Editor *e) { if (!core_edit_file(e, "", 0)) tools_dash(e,
+    completed waits (a lone SPC as with which-key, without 'timeoutlen');
+    otherwise the first key runs unmapped and the rest are checked again
+    (Neovim's vgetorpeek() when no map matches) */
+-/* SPC 5 n {letter}: one SPC 5 has no key of its own and no other frame has */
++/* a frame's letter: one SPC 5 has no key of its own */
++static int frame_letter(int k) { return k >= 'a' && k <= 'z' && !strchr("fmno", k); }
++
++/* SPC 5 n {letter}: one no other frame has */
+ static int frame_key(Editor *e, int k)
+ {
+-	if (k < 'a' || k > 'z' || strchr("fmno", k)) return -1;
++	if (!frame_letter(k)) return -1;
+ 	for (const Tab *t = e->tabs; t; t = t->next) if (t->key == k && t != e->tab) return -1;
+ 	e->tab->key = (char)k;
+ 	return 0;
+@@ -286,16 +289,17 @@ static int map(Editor *e, int k)
+ 		return 1;
+ 	}
+ 	lead[nlead++] = k;
+-	if (nlead == 3 && lead[0] == ' ' && lead[1] == '5') {   /* SPC 5 {letter}: that frame */
++	/* SPC 5 {letter}: that frame; a letter no frame has beeps, as SPC 5 m's */
++	if (nlead == 3 && lead[0] == ' ' && lead[1] == '5' && frame_letter(k)) {
+ 		long n = 1;
+-		for (Tab *t = e->tabs; t; t = t->next, n++)
+-			if (t->key == k) {
+-				nlead = e->ks.pending = 0;
+-				hint_end();
+-				normal_mappable(1);
+-				goto_tabpage(n);
+-				return 1;
+-			}
++		const Tab *t = e->tabs;
++		while (t && t->key != k) t = t->next, n++;
++		nlead = e->ks.pending = 0;
++		hint_end();
++		normal_mappable(1);
++		if (t) goto_tabpage(n);
++		else beep();
++		return 1;
+ 	}
+ 	int part = 0;
+ 	for (int i = 0; i < NMAPS; i++) {

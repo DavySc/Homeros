@@ -1,0 +1,14 @@
+# The reviewer's plants for PR 166, in tests/plants' format.  Run: replace tests/plants/*.txt with this file in a scratch worktree, then bash tools/planted.sh
+mine: the title of a frame without a letter is "x" (title()'s second format)~test TESTS=frames_main~~src/main.c~t->key ? "homeros [%c]" : "homeros"~t->key ? "homeros [%c]" : "x"
+mine: wl_title sets nothing~test TESTS=wl~~src/wl/wl.c~struct win *w = win_of(id); if (w) xdg_toplevel_set_title(w->top, s); }~(void)id; (void)s; }
+mine: win_title sets nothing~win WIN=win~~src/win/backend.c~MultiByteToWideChar(CP_UTF8, 0, s, -1, u, 64)) SetWindowTextW(w->h, u);~MultiByteToWideChar(CP_UTF8, 0, s, -1, u, 64)) (void)0;
+mine: SPC 5 {letter} leaves which-key's panel up~test TESTS=keys_map~~src/keys/keys.c~				hint_end();¶				normal_mappable(1);¶				goto_tabpage(n);~				normal_mappable(1);¶				goto_tabpage(n);
+mine: SPC 5 {letter} leaves the map pending~test TESTS=keys_map~~src/keys/keys.c~				nlead = e->ks.pending = 0;¶				hint_end();~				nlead = 0;¶				hint_end();
+mine: SPC 5 {letter} without normal_mappable(1)~test TESTS=keys_map~~src/keys/keys.c~				normal_mappable(1);¶				goto_tabpage(n);~				goto_tabpage(n);
+mine: SPC 5 n takes a key above z~test TESTS=keys_map~~src/keys/keys.c~if (k < 'a' || k > 'z' || strchr("fmno", k)) return -1;~if (k < 'a' || strchr("fmno", k)) return -1;
+mine: the first frame gets no letter~test TESTS="keys_map frames_main core_screens"~~src/core/win.c~	e->tab->key = 'a';¶~
+mine: a closed frame's slot keeps its letter, so the next window with it gets no title~test TESTS=frames_main~~src/main.c~			memset(&fr[nfr], 0, sizeof fr[nfr]);   /* its grids are fr[i]'s now */~			{ char k_ = fr[nfr].key; memset(&fr[nfr], 0, sizeof fr[nfr]); fr[nfr].key = k_; }
+mine: a focus change leaves SPC 5 n waiting for its letter~test TESTS=keys_map~~src/keys/keys.c~		nlead = frame = 0;¶		hint_end();~		nlead = 0;¶		hint_end();
+mine: SPC 5 n moves a window as SPC 5 m~test TESTS=keys_map~~src/keys/keys.c~			default: frame = m[2]; e->ks.pending = 1;~			default: frame = 'm'; e->ks.pending = 1;
+mine: a new frame takes a letter another frame has when it is not the first~test TESTS=keys_map~~src/core/win.c~		const Tab *t = e->tabs;¶		while (t && t->key != *c) t = t->next;~		const Tab *t = e->tabs;¶		if (t && t->key != *c) t = NULL;
+mine: the frame letter's key hint is gone~test TESTS=keys_map~~src/keys/keys.c~{ " 5n", "Frame letter" }, ~
