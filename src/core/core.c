@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "core_int.h"
+#include "fold.h"
 #include "git.h"
 #include "keys.h"
 #include "kitten.h"
@@ -27,7 +28,7 @@ static const size_t UNSET = (size_t)-1;
    lnum 0, no options (wrap -1) */
 static void wininfo_clear(Buf *b)
 {
-	for (WinInfo *i = b->wi, *nx; i; i = nx) { nx = i->next; free(i); }
+	for (WinInfo *i = b->wi, *nx; i; i = nx) { nx = i->next; fold_free(i->fold); free(i); }
 	b->wi = NULL;
 }
 
@@ -536,6 +537,63 @@ static void buf_free(Buf *b)
 	free(b);
 }
 
+/* Folds (fold.h): foldmethod=expr in the filetypes my-nvim sets it for
+   (its commit 695e3d7: vim.treesitter.foldexpr() for cpp, glsl, nix and
+   verilog, the Markdown ftplugin's, nvim-orgmode's), each window's own
+   (w_folds); every other window has none, as foldmethod=manual with no
+   fold made, and takes no fold paths (hasAnyFolding()). */
+static int fexpr(void *ctx, size_t l, int *start) { const Win *w = ctx; return syntax_foldexpr(w->buf->syn, l, start); }
+/* the window's folds for its buffer, from the first line, closed as
+   'foldlevel' says: 1 in Org (org_startup_folded 'content'), else 99 */
+static void win_folds(Win *w, const Fold *f)
+{
+	static const char *const expr[] = { "cpp", "glsl", "nix", "verilog", "systemverilog", "markdown", "org" };
+	const char *ft = w->buf->syn && w->buf->path ? syntax_filetype(w->buf->path) : NULL;
+	fold_free(w->fold);
+	w->fold = NULL;
+	w->frame->s.ftop = w->frame->s.fend = 0;
+	if (f) {   /* w_foldinvalid: the levels again, the open and closed kept */
+		size_t n = buf_lines(w->buf);
+		if ((w->fold = fold_dup(f, w))) fold_update(w->fold, 0, n, n);
+		return;
+	}
+	for (size_t i = 0; ft && i < sizeof expr / sizeof *expr; i++)
+		if (!strcmp(ft, expr[i])) {
+			size_t n = buf_lines(w->buf);
+			if ((w->fold = fold_new(strcmp(ft, "org") ? 99 : 1, fexpr, win_tall, w))) fold_update(w->fold, 0, n, n);
+			return;
+		}
+}
+
+void core_folds(Editor *e, Buf *b, size_t r1, size_t r2)
+{
+	size_t n = buf_lines(b);
+	FOR_ALL_TAB_WINDOWS(e, w) {   /* changed_common(): every tab page */
+		WinState *s = &w->frame->s;
+		if (w->buf != b || !w->fold) continue;
+		size_t a = r1, z = r2;
+		if (s->fend > s->ftop) {
+			if (s->ftop < a) a = s->ftop;
+			if (s->fend > z) z = s->fend;
+		}
+		if (z > n) z = n;
+		if (a >= z) continue;
+		s->ftop = a, s->fend = z;
+		if (e->mode == MODE_INSERT) continue;
+		s->ftop = s->fend = 0;
+		fold_update(w->fold, a, z, n);
+		win_invalidate(w);   /* changed_window_setting(): the view is looked at again */
+	}
+}
+
+int core_fold(Editor *e, int op, size_t line, long count)
+{
+	if (!e->win->fold) return -1;
+	int r = fold_cmd(e->win->fold, op, line, count);
+	if (r > 0) win_invalidate(e->win);   /* changed_window_setting() after DONE_ACTION */
+	return r < 0 ? -1 : 0;
+}
+
 int core_open(Editor *e, const char *path)
 {
 	memset(e, 0, sizeof *e);
@@ -550,6 +608,7 @@ int core_open(Editor *e, const char *path)
 	w->conceal = 2;   /* Davy's 'conceallevel' */
 	layout_init(e, w, 1);
 	if (!e->layout) { core_msg(e, "out of memory"); return -1; }
+	win_folds(w, NULL);
 	/* readfile(): line 1's first non-blank (measured in tmux, 7 texts) */
 	w->col = core_first_nonblank(e, 0);
 	core_set_want(e);
@@ -562,7 +621,7 @@ void core_free(Editor *e)
 		for (Buf *b = k ? unlisted : e->bufs, *nx; b; b = nx) { nx = b->next; buf_free(b); }
 	unlisted = NULL;
 	tab_free_all(e);
-	for (Win *w = e->wins, *nx; w; w = nx) { nx = w->next; free(w); }
+	for (Win *w = e->wins, *nx; w; w = nx) { nx = w->next; fold_free(w->fold); free(w); }
 	layout_free(e->layout);
 	free(e->lb);
 	memset(e, 0, sizeof *e);
@@ -582,6 +641,8 @@ void core_wininfo_set(Buf *b, Win *w, int close)
 	i->win = w;
 	if (!close || w->line) { i->line = w->line; i->col = w->col; }
 	i->wrap = w->wrap;
+	fold_free(i->fold);
+	i->fold = w->fold ? fold_dup(w->fold, w) : NULL;   /* cloneFoldGrowArray(); out of memory: the folds start over */
 	i->next = b->wi;
 	b->wi = i;
 }
@@ -630,13 +691,16 @@ static int enter_buffer(Editor *e, Buf *b, int how)
 	}
 	w->buf = e->buf = b;
 	w->vc.ok = w->frame->s.sideok = 0;   /* w_valid = 0 */
-	/* get_winopts(): from the window that shows b now, else as b was
-	   left; with neither, w_allbuf_opt: the window's own :set value (a
-	   :bp in between does not change it: review of PR 20, 4) */
+	/* get_winopts(): wrap and the folds from the window that shows b now,
+	   else as b was left; with neither, w_allbuf_opt: the window's own
+	   :set value (a :bp in between does not change it: review of PR 20, 4)
+	   and new folds */
 	WinInfo *i = wininfo_find(b, w, 1);
-	if (i && i->win && i->win != w && i->win->buf == b) w->wrap = i->win->wrap;
-	else if (i && i->wrap >= 0) w->wrap = i->wrap;
+	const Fold *f = NULL;
+	if (i && i->win && i->win != w && i->win->buf == b) w->wrap = i->win->wrap, f = i->win->fold;
+	else if (i && i->wrap >= 0) w->wrap = i->wrap, f = i->fold;
 	else w->wrap = w->frame->s.allwrap;
+	win_folds(w, f);
 	i = wininfo_find(b, w, 0);
 	w->line = w->col = 0;
 	/* didset_window_options(): one of leftcol and skipcol goes, as for :set wrap */
@@ -816,6 +880,7 @@ static int edit_file(Editor *e, const char *path, int force, int split)
 			b->wi = old.wi;
 			wininfo_reset(b, w);
 			buf_unload(&old);
+			win_folds(w, NULL);
 			w->line = w->col = w->top = w->skipcol = w->left = 0;
 			w->vc.ok = w->frame->s.sideok = 0;   /* w_valid = 0: the cached column was the empty buffer's */
 		}
@@ -1030,6 +1095,17 @@ static void adjust(Editor *e, Buf *b, size_t l1, size_t l2, long amount, long af
 	for (size_t i = 0; (m = list_mark(e, b, &i));) mark_adjust1(m, 1, l1, l2, amount, after);
 	/* the current window's '' (ONE_ADJUST) */
 	if (e->win->buf == b) mark_adjust1(&e->win->pcmark, 0, l1, l2, amount, after);
+	/* foldMarkAdjust() for every window on b; rows waiting for Insert mode
+	   to end now reach the last line */
+	FOR_ALL_TAB_WINDOWS(e, w)   /* mark_adjust_internal() */
+		if (w->buf == b && w->fold) {
+			fold_adjust(w->fold, l1, l2, amount, after, e->mode == MODE_INSERT);
+			WinState *s = &w->frame->s;
+			if (s->fend > s->ftop) {
+				if (l1 < s->ftop) s->ftop = l1;
+				s->fend = (size_t)-1;
+			}
+		}
 }
 
 /* mark_col_adjust() with COL_ADJUST: marks at or after column mincol of
@@ -1163,8 +1239,15 @@ static int edit(Editor *e, size_t pos, size_t ndel, const char *ins, size_t nins
 			   others below it); measured, c_open_below */
 			ws->bv = ws->bot < L ? bv : newlines(del, ndel) > newlines(ins, nins) ? 0 : bv & ~BOT_EXACT;
 		}
+	/* a join (do_join(), and op_delete()'s over lines) updates the line
+	   it keeps before its other lines go: changed_lines() precedes
+	   del_lines() there */
+	if (!r && newlines(del, ndel) && !(at_start && del[ndel - 1] == '\n')) core_folds(e, b, L, L + 1);
 	if (!r) adjust_edit(e, L, pos - text_line_start(b->text, L), at_start, ndel && del[ndel - 1] == '\n', nins && ins[nins - 1] == '\n',
 	                    newlines(del, ndel), newlines(ins, nins));
+	/* changed_common()'s foldUpdate(): at once, with the foldexpr the edit
+	   left (new rows -1), not only after the parse */
+	if (!r) core_folds(e, b, L, L + newlines(ins, nins) + 1);
 	free(del);
 	if (r) core_msg(e, "out of memory");
 	else {
@@ -1240,6 +1323,9 @@ int core_undo(Editor *e, int redo)
 	/* the other windows: the step replaced lines first.. by last - first + 1 */
 	size_t kept = before - (n - (last + 1 - first));   /* lines the step replaced */
 	if (n != before) adjust(e, e->buf, first, first + kept, DEL, (long)n - (long)before);
+	/* no fold update until the parse, unlike edit(): measured against
+	   nvim's tree-sitter folds, one here re-closes folds that "dd u"
+	   leaves open (2 of 4 cases, 1 run each) */
 	/* the marks the group saved come back, and it saves the ones before */
 	Mark saved[28] = { 0 };
 	if (u) memcpy(saved, u->m, sizeof saved);
@@ -1387,6 +1473,10 @@ void core_goto(Editor *e, size_t line, size_t col)
 void core_set_want(Editor *e)
 {
 	Win *w = e->win;
+	/* in a closed fold w_virtcol is curs_columns()'s first column, which
+	   the redraw before the next key leaves for update_curswant() */
+	size_t a, z;
+	if (w->fold && fold_closed(w->fold, w->line, &a, &z)) { w->want = w->left; return; }
 	/* w_virtcol kept while VALID_VIRTCOL holds (see core.h) */
 	if (w->vc.ok && w->vc.line == w->line && w->vc.col == w->col && w->vc.mode == e->mode) {
 		w->want = w->vc.v;

@@ -28,14 +28,8 @@ chmod +x build/win/test_sql.sh
 for o in tds pg; do
 	python3 tests/test_sql_$o.py build/win/test_sql.sh "${SEED:-1}" || { echo "FAIL test_sql_$o oracle (Windows)"; exit 1; }
 done
-# F5 in the editor (tests/test_sql_editor.c), linked as src/git/check.sh
-# links the editor's modules, with the terminal's libghostty-vt
-. src/tools/ghostty-win.sh
-pick() { if ls src/$1/*.c >/dev/null 2>&1; then echo src/$1/*.c; else echo ref/$1.c; fi; }
-make -s build/ghostty/windows.lib
+# F5 in the editor (tests/test_sql_editor.c), linked with every module as
+# src/git/check.sh links its tests
 exe=build/win/test_sql_editor.exe
-zig cc -target x86_64-windows-gnu -std=c17 -D_DEFAULT_SOURCE -Wall -Wextra -Werror -Iinclude -O1 -g \
-  -fsanitize=undefined -fsanitize-trap=undefined -o "$exe" tests/test_sql_editor.c \
-  $(for m in core text undo uni keys loop file grid theme kitten lsp sqlfmt snip tools shada str org date git sql; do pick $m; done) \
-  src/syntax/tsql.c $GHOSTTY_WIN $SQL_WIN -lshell32
+winlink "$exe" tests/test_sql_editor.c
 pass 300 "$exe" wine || { echo "FAIL test_sql_editor (Windows)"; exit 1; }

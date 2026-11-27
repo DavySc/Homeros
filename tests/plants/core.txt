@@ -32,7 +32,7 @@ core: a save leaves the outside-change flag set (test_core_contract)~test TESTS=
 core: CTRL-^ onto column 0 wants column 0 even without a position (test_core_screens)~test TESTS=core_screens~~src/core/core.c~	if (how == ENTER_ALT && !w->col && pos) w->want = 0;~	if (how == ENTER_ALT && !w->col) w->want = 0;
 core: scroll_cursor_halfway() drops skipcol without smoothscroll (test_core_screens)~test TESTS=core_screens~~src/core/move.c~	if (p_sms && w->wrap) w->skipcol = 0;¶	w->frame->s.topvalid = 1;~	w->skipcol = 0;¶	w->frame->s.topvalid = 1;
 core: core_vcol counts a byte inside a cluster to its end (test_core_contract)~test TESTS=core_contract~~src/core/core.c~i < n && i + (k = uni_glen(s, n, i)) <= col; i += k)~i < col && i < n && (k = uni_glen(s, n, i)); i += k)
-core: the cursor line's height less skipcol (test_core_screens)~test TESTS=core_screens~~src/core/move.c~b.cheight = plines_lim(w, l, 1); }~b.cheight = k; }
+core: the cursor line's height less skipcol (test_core_screens)~test TESTS=core_screens~~src/core/move.c~b.cheight = plines_full(w, cur, NULL, 1);~b.cheight = k;
 core: the sideways scroll redone for an unmoved cursor (test_core_screens)~test TESTS=core_screens~~src/core/move.c~		int valid = s->sideok && s->sline~		int valid = s->sideok == 2 && s->sline
 core: an insertion drops w_botline (test_core_screens)~test TESTS=core_screens~~src/core/core.c~			int bv = ws->bv;~			int bv = 0;
 core: the popup placed before update_screen() (test_core_screens)~test TESTS=core_screens~~src/core/draw.c~	win_drawn(e);                      /* pum_call_update_screen() */~	(void)0;
@@ -179,8 +179,6 @@ core: the Visual area is concealed (test_core_conceal)~test TESTS=core_conceal~~
 core: a span's character is not drawn (test_core_conceal)~test TESTS=core_conceal~~src/core/draw.c~if (i == cc->a && !j && *cc->s) put_cell~if (0 && i == cc->a && !j && *cc->s) put_cell
 core: freed cells carry over to the next row (test_core_conceal)~test TESTS=core_conceal~~src/core/draw.c~if (row != orow) orow = row, off = 0;~if (row != orow) orow = row;
 core: a Tab after a span keeps its width (test_core_conceal)~test TESTS=core_conceal~~src/core/draw.c~for (; *s == '\t' && off; off--)~for (; 0 && *s == '\t' && off; off--)
-core: 'conceallevel' 2 scrolls as without it (test_core_conceal)~test TESTS=core_conceal~~src/core/move.c~return ft && !strcmp(ft, "org");~return 0 && ft && !strcmp(ft, "org");
-core: 'conceallevel' 2 scrolls the fold way in every filetype (test_core_visual)~test TESTS=core_visual~~src/core/move.c~return ft && !strcmp(ft, "org");~return w->conceal >= 2 || (ft && !strcmp(ft, "org"));
 core: a new window starts without conceal (test_core_conceal)~test TESTS=core_conceal~~src/core/core.c~	w->conceal = 2;   /* Davy's 'conceallevel' */~	w->conceal = 0;
 core: a split forgets 'conceallevel' (test_core_contract)~test TESTS=core_contract~~src/core/win.c~	n->conceal = o->conceal;~	(void)0;
 core: buf_load watches no file, so an outside change while idle goes unseen (watch.py)~test TESTS=shada~~src/core/core.c~			loop_watch(b->watch, on_watch, e);~			(void)on_watch;
@@ -239,3 +237,48 @@ core: a refill clamps the current frame's windows only~test TESTS=keys_map~~src/
 core: :tabnew {file} after :bd keeps column 0 on a line of blanks~test TESTS=core_screens~~src/core/core.c~how == ENTER_E || (how != ENTER_B && line1_blank(e))~how == ENTER_E || (how == ENTER_ALT && line1_blank(e))
 core: a cursor inside a character takes the next one's screen column~test TESTS=core_screens~~src/core/core.c~		if (i + k > col) break;~		if (i >= col) break;
 core: tab ids reused, so a third frame takes a closed one's window id (test_frames_main)~test TESTS=frames_main~~src/core/win.c~	t->id = tab_ids++;~	t->id = tab_ids;
+
+# closed folds (test_core_fold: recorded against nvim)
+core: a closed fold's number cells take Folded (test_core_fold)~test TESTS=core_fold~~src/core/draw.c~	for (int x = win_numw(w); x < w->w; x++) {~	for (int x = 0; x < w->w; x++) {
+core: a fold row always shows one level's dashes (test_core_fold)~test TESTS=core_fold~~src/core/draw.c~lv < 20 ? lv : 20, "~lv < 20 ? 1 : 20, "
+core: a fold command never redoes the view (test_core_fold)~test TESTS=core_fold~~src/core/core.c~	if (r > 0) win_invalidate(e->win);~	if (0) win_invalidate(e->win);
+core: a closed fold counts its first line's rows (test_core_fold)~test TESTS=core_fold~~src/core/move.c~	if (!w->wrap || w->w == 0 || folded(w, l, NULL, NULL)) return 1;~	if (!w->wrap || w->w == 0) return 1;
+core: a Tab in fold text is a space after an unprintable character (test_core_fold)~test TESTS=core_fold~~src/core/draw.c~*u == '\t' ? 1 + (int)raw :~*u == '\t' ? 1 :
+core: the blanks before a fold marker stay (test_core_fold)~test TESTS=core_fold~~src/core/draw.c~		for (b = i; b < n && (s[b] == ' ' || s[b] == '\t'); b++) {}~		b = i;
+core: a double-width character cut at a fold row's end shows no '>' (test_core_fold)~test TESTS=core_fold~~src/core/draw.c~		if (c + width > w->w && *u >= 0x80 && width == 2) {~		if (0) {
+core: a long line in a 'nowrap' window cannot be a closed one-line fold (test_core_fold)~test TESTS=core_fold~~src/core/move.c~	return c > 0 && c > width1(w);~	return ((const Win *)w)->wrap && c > 0 && c > width1(w);
+core: the wanted column in a closed fold is the text's (test_core_fold)~test TESTS=core_fold~~src/core/core.c~	if (w->fold && fold_closed(w->fold, w->line, &a, &z)) { w->want = w->left; return; }~	if (0 && w->fold && fold_closed(w->fold, w->line, &a, &z)) { w->want = w->left; return; }
+core: topline stays inside a closed fold (test_core_fold)~test TESTS=core_fold~~src/core/move.c~		w->top = fold_first(w, w->top);   /* the top line is the first of a closed fold */~		;
+core: curs_columns leaves w_virtcol of a closed fold unset (test_core_fold)~test TESTS=core_fold~~src/core/move.c~	if (b.folded) {   /* VALID_VIRTCOL~	if (0) {   /* VALID_VIRTCOL
+core: a split starts without folds (test_core_fold)~test TESTS=core_fold~~src/core/win.c~	n->fold = o->fold ? fold_dup(o->fold, n) : NULL;~	n->fold = NULL;
+core: an edit leaves the folds where they were (test_core_fold)~test TESTS=core_fold~~src/core/core.c~			fold_adjust(w->fold, l1, l2, amount, after, e->mode == MODE_INSERT);~			(void)0;
+core: new fold levels apply in Insert mode (test_core_fold)~test TESTS=core_fold~~src/core/core.c~		if (e->mode == MODE_INSERT) continue;~		if (0) continue;
+core: the message's four blanks lose the cursor line's CursorLine (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~	for (int z = grid_puts(g, y, x, end, "    ", 4, ATTR_NONE, FACE_NONE); x < z; x++) g->c[y * g->cols + x].bg = cl;~	(void)cl;¶	x = grid_puts(g, y, x, end, "    ", 4, ATTR_NONE, FACE_NONE);
+core: a concealed character takes the diagnostic's underline (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~strlen(cc->s), 0, 1, face, vis ? vis : sb, 0);~strlen(cc->s), 0, 1, face, vis ? vis : sb, ul);
+core: the blank "<<<" leaves of a double-width character loses its underline (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~(const unsigned char *)" ", 1, 0, 1, face, vis ? vis : sb, ul);~(const unsigned char *)" ", 1, 0, 1, face, vis ? vis : sb, 0);
+core: a closed fold counts as its lines when stepping down (test_core_fold)~test TESTS=core_fold~~src/core/move.c~				folded(w, l, NULL, &l);¶				if (++l >= last) break;~				if (++l >= last) break;
+# which windows get folds, and folds across buffers (test_core_fold's wiring)
+core: Org starts at foldlevel 99 (test_core_fold)~test TESTS=core_fold~~src/core/core.c~strcmp(ft, "org") ? 99 : 1~99
+core: Markdown gets no folds (test_core_fold)~test TESTS=core_fold~~src/core/core.c~"markdown", ~
+core: :e from the empty first buffer keeps its (no) folds (test_core_fold)~test TESTS=core_fold~~src/core/core.c~			win_folds(w, NULL);¶			w->line = w->col~			w->line = w->col
+core: a buffer entered again starts its folds over (test_core_fold)~test TESTS=core_fold~~src/core/core.c~	win_folds(w, f);~	(void)f;¶	win_folds(w, NULL);
+core: a buffer's saved folds are not saved (test_core_fold)~test TESTS=core_fold~~src/core/core.c~w->fold ? fold_dup(w->fold, w) : NULL~NULL
+core: a new window does not take the showing window's folds (test_core_fold)~test TESTS=core_fold~~src/core/core.c~f = i->win->fold;~f = NULL;
+core: a saved copy of folds is replaced without a free (test_core_fold)~test TESTS=core_fold~~src/core/core.c~	fold_free(i->fold);¶	i->fold = w->fold~	i->fold = w->fold
+core: a closed window's folds are not freed (test_core_fold)~test TESTS=core_fold~~src/core/win.c~	fold_free(w->fold);¶	free(w->frame);~	free(w->frame);
+core: a dropped buffer entry keeps its folds (test_core_contract)~test TESTS=core_contract~~src/core/win.c~			fold_free(x->fold);   /* free_wininfo() */¶~
+core: rows waiting in Insert mode stop short after an edit (test_core_fold)~test TESTS=core_fold~~src/core/core.c~				s->fend = (size_t)-1;~				;
+core: going up enters a closed fold in Insert mode too (test_core_fold)~test TESTS=core_fold~~src/core/move.c~if (n > 0 || e->mode != MODE_INSERT) folded(w, l, &l, NULL);~folded(w, l, &l, NULL);
+core: a split's folds ask the window split from (test_core_fold)~test TESTS=core_fold~~src/core/win.c~fold_dup(o->fold, n)~fold_dup(o->fold, (void *)o)
+core: update_topline counts the last line before testing for it (test_core_fold)~test TESTS=core_fold~~src/core/move.c~if (l >= n - 1 || ++d >= half) break;~if (++d, l >= n - 1 || d >= half) break;
+core: foldtext() reads past a comment start on a fold's last line but one (test_core_fold)~test TESTS=core_fold~~src/core/draw.c~		if (!n && l + 1 < z) {~		if (!n && l + 1 <= z) {
+core: a scrolldown leaves the cursor inside a closed fold (test_core_fold)~test TESTS=core_fold~~src/core/move.c~		w->line = fold_first(w, w->line);¶		coladvance(e, w);~		coladvance(e, w);
+core: scroll_to_fraction leaves a top line inside a closed fold (test_core_fold)~test TESTS=core_fold~~src/core/move.c~	folded(w, l, &l, NULL);        /* the first of a closed fold */¶~
+core: a buffer entered again keeps the levels it was left with (test_core_fold)~test TESTS=core_fold~~src/core/core.c~if ((w->fold = fold_dup(f, w))) fold_update(w->fold, 0, n, n);~w->fold = fold_dup(f, w);¶		(void)n;
+core: an edit outside Insert mode leaves the folds for the parse (test_core_fold)~test TESTS=core_fold~~src/core/core.c~	if (!r) core_folds(e, b, L, L + newlines(ins, nins) + 1);~
+core: a join updates its folds only after the adjust (test_core_fold)~test TESTS=core_fold~~src/core/core.c~	if (!r && newlines(del, ndel) && !(at_start && del[ndel - 1] == '\n')) core_folds(e, b, L, L + 1);~
+core: a closed frame leaks its windows' folds (test_core_fold)~test TESTS=core_fold~~src/core/win.c~wn = w->next; fold_free(w->fold); free(w); }~wn = w->next; free(w); }
+core: SPC 5 m leaks the moved window's own folds (test_core_fold)~test TESTS=core_fold~~src/core/win.c~	fold_free(n->fold);   /* SPC 5 m copies over a split's own copy */~	(void)0;
+core: an edit adjusts only the current frame's folds (test_core_fold)~test TESTS=core_fold~~src/core/core.c~	FOR_ALL_TAB_WINDOWS(e, w)   /* mark_adjust_internal() */~	for (Win *w = e->wins; w; w = w->next)
+core: an edit updates only the current frame's folds (test_core_fold)~test TESTS=core_fold~~src/core/core.c~	FOR_ALL_TAB_WINDOWS(e, w) {   /* changed_common(): every tab page */~	for (Win *w = e->wins; w; w = w->next) {
+core: leaving Insert mode updates only the current frame's folds (test_core_fold)~test TESTS=core_fold~~src/core/move.c~		FOR_ALL_TAB_WINDOWS(e, w)¶			if (w->frame->s.fend~		for (Win *w = e->wins; w; w = w->next)¶			if (w->frame->s.fend

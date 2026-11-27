@@ -230,6 +230,7 @@ int main(int argc, char **argv)
 			int r = syntax_update(e.buf->syn, e.buf->text, loop_waiting, &r1, &r2);
 			syn = r == 2;
 			dirty = r == 1;
+			if (r1 < r2) core_folds(&e, e.buf, r1, r2);
 		}
 		int draw = 0;
 		for (int i = 0; i < nfr; i++) draw |= (fr[i].dirty || dirty) && b->ready(fr[i].id);

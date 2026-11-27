@@ -168,6 +168,7 @@ Face faces[FACES] = {
 	{ {137, 180, 250}, {24, 24, 37}, FACE_FG | FACE_BG, {0} },  /* float border: FloatBorder, SnacksPickerBorder, WhichKeyBorder */
 	{ {166, 173, 200}, {24, 24, 37}, FACE_FG | FACE_BG, {0} },  /* float title: FloatTitle */
 	{ {30, 30, 46}, {245, 224, 220}, FACE_FG | FACE_BG, {0} },  /* cursor: Cursor */
+	{ {137, 180, 250}, {69, 71, 90}, FACE_FG | FACE_BG, {0} },  /* folded: Folded, blue on surface1 */
 	{ {24, 24, 37}, {137, 180, 250}, FACE_BOLD | FACE_FG | FACE_BG, {0} },  /* mode normal: lualine_a_normal */
 	{ {30, 30, 46}, {166, 227, 161}, FACE_BOLD | FACE_FG | FACE_BG, {0} },  /* mode insert: lualine_a_insert */
 	{ {30, 30, 46}, {203, 166, 247}, FACE_BOLD | FACE_FG | FACE_BG, {0} },  /* mode visual: lualine_a_visual */
