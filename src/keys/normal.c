@@ -606,27 +606,25 @@ static Pos diag_pos(size_t a)
 
 /* next_diagnostic() from raw position p: from p's line on (backward: back),
    wrapping past the ends, the first line with diagnostics after p (on p's
-   own line: after p's column) gives the one with the lowest column
-   (backward: highest; ties to the first (last) given) */
-static long next_diag(const LspDiag *v, int n, Pos p, int fwd, int wrap)
+   own line: after p's column, else after a whole turn) gives the one with
+   the lowest column (backward: highest; ties to the first (last) given).
+   One pass: each diagnostic's distance in lines, then its column.  far
+   (not wrapping): the farthest instead, where taking the next until none
+   is left ends */
+static long next_diag(const LspDiag *v, int n, Pos p, int fwd, int wrap, int far)
 {
-	long lc = nlines();
-	for (long i = 0; i <= lc; i++) {
-		long l = p.lnum + (fwd ? i : -i), best = -1;
-		if (l < 0 || l >= lc) {
-			if (!wrap) return -1;
-			l = (l + lc) % lc;
+	long lc = nlines(), best = -1, bi = 0, bc = 0;
+	for (int k = 0; k < n; k++) {
+		int j = fwd ? k : n - 1 - k;
+		Pos d = diag_pos(v[j].a);
+		long i = fwd ? d.lnum - p.lnum : p.lnum - d.lnum, c = fwd ? d.col : -d.col;
+		if (i < 0 || (i == 0 && c <= (fwd ? p.col : -p.col))) {
+			if (!wrap) continue;
+			i += lc;
 		}
-		for (int k = 0; k < n; k++) {
-			int j = fwd ? k : n - 1 - k;
-			Pos d = diag_pos(v[j].a);
-			if (d.lnum == l && (i || (fwd ? d.col > p.col : d.col < p.col))
-			    && (best < 0 || (fwd ? d.col < diag_pos(v[best].a).col : d.col > diag_pos(v[best].a).col)))
-				best = j;
-		}
-		if (best >= 0) return best;
+		if (best < 0 || (far ? i > bi || (i == bi && c > bc) : i < bi || (i == bi && c < bc))) best = j, bi = i, bc = c;
 	}
-	return -1;
+	return best;
 }
 
 static void nv_brackets(Cmdarg *cap)
@@ -680,12 +678,12 @@ static void nv_brackets(Cmdarg *cap)
 		if (checkclearopq(oap)) return;
 		int n, fwd = cap->arg == FORWARD, wrap = cap->nchar == 'd';
 		const LspDiag *v = lsp_diags(B->lsp, &n);
-		long k = wrap ? cap->count1 : LONG_MAX, to, got = -1;
+		long k = wrap ? cap->count1 : 1, to, got = -1;
 		Pos p = cur();
 		/* each step from the last one's raw position (vim.diagnostic.jump()'s
-		   opts.pos); one at a line's NUL is then before itself, so "[D"
-		   would take it again 2^31 times: stop there */
-		while (k-- && (to = next_diag(v, n, p, fwd, wrap)) >= 0 && to != got) got = to, p = diag_raw(v[to].a);
+		   opts.pos); one that comes back to itself (wrapping round a single
+		   one, or before itself at a line's NUL) would forever */
+		while (k-- && (to = next_diag(v, n, p, fwd, wrap, !wrap)) >= 0 && to != got) got = to, p = diag_raw(v[to].a);
 		if (got < 0) { core_msg(E, "No more valid diagnostics to move to"); return; }
 		setpcmark();
 		setcur(diag_pos(v[got].a));
