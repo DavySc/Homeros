@@ -11,8 +11,8 @@ branch `claude/project-thread-osg6me`, which is never merged.
 | `tds.c` | SQL Server (TDS 7.4): prelogin, TLS, SQL login, batches, the token reader, cancel, every type as the server's CONVERT shows it (varchar read as code page 1252, the code page of Davy's servers: another code page shows wrong) |
 | `pg.c` | PostgreSQL (protocol 3.0): SSLRequest, TLS, SCRAM-SHA-256, simple queries, cancel on a second connection, values in the server's own text |
 | `db.c` | one interface over both clients, for the editor and the tests |
-| `run.c` | a script's batches, split on GO as sqlcmd 18 splits them (`GO n` too) |
-| `sql.c` | the editor's side (`include/sql.h`): F5, Alt+Break and Ctrl-C, the results split, the connections file, `:Connect`, the catalog for completion |
+| `run.c` | a script's batches, split on GO as sqlcmd 18 splits them (`GO n` too); the @variables a batch uses undeclared |
+| `sql.c` | the editor's side (`include/sql.h`): F5, Alt+Break and Ctrl-C, the results split, the connections file, `:Connect`, `:Declare`, the catalog for completion |
 
 ## Running queries
 
@@ -21,6 +21,16 @@ is selected (SSMS). Alt+Break cancels the run, and so does Ctrl-C while a run is
 in the server's order in a split below the query, which SPC r opens and
 closes. SQL Server scripts run batch by batch, split on GO. PostgreSQL runs
 the text as one query.
+
+A SQL Server run that uses an @variable it does not declare (a selected
+SELECT whose DECLARE is above it) asks for it, as DataGrip asks for a
+query's parameters: F5 types `:Declare @a ` on the command line, followed by
+the file's own `DECLARE @a` type and value if it has one, and Enter runs. The value is
+kept for that buffer and goes as `DECLARE @a int = 3;` in front of each
+batch that needs it, on the batch's first line, so the server's line
+numbers stay right. `:Declare @a int = 5` changes it, `:Declare @a` forgets
+it, and `:Declare` lists them. `tests/test_sql_vars.py` checked which
+variables a batch lacks against the server's own answer.
 
 Completion (package 19) asks `sql_catalog` for the tables' columns of the
 buffer's connection, as SSMS's IntelliSense does. When a session on a

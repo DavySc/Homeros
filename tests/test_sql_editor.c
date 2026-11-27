@@ -317,6 +317,43 @@ int main(void)
 	CHECK(!core_edit_file(&e, "ms/y.txt", 0) && !sql_catalog(&e, e.buf, "hcat", hcat, cat));
 	put("msx/o.sql", "select 1\n", 0600);
 	CHECK(!core_edit_file(&e, "msx/o.sql", 0) && strcpy(e.msg, "kept") && !sql_catalog(&e, e.buf, "hcat", hcat, cat) && !strcmp(e.msg, "kept"));
+	/* F5 asks for an undeclared @variable on the command line, the file's
+	   own DECLARE as its default; Enter runs; the value is kept, before
+	   each batch that needs it, on its first line */
+	put("ms/pa.sql", "declare @a int = 3\nselect @a * 2 as d, '@b' as [@c] -- @e\nselect 1/0\ngo\nselect 7 as h\n", 0600);
+	CHECK(!core_edit_file(&e, "ms/pa.sql", 0));
+	core_goto(&e, 1, 0);
+	keys_visual(&e, 'V', 4);
+	CHECK(sql_key(&e, KEY_F5) == 1 && e.mode == MODE_CMDLINE && e.cmdlen == 18 && !memcmp(e.cmd, "Declare @a int = 3", 18));
+	keys_feed(&e, KEY_ENTER, 0);
+	CHECK(e.mode == MODE_NORMAL && strstr(until("Completion time"), "d\t@c\n6\t@b\n") && strstr(res, "Line 2") && strstr(res, "h\n7\n"));
+	CHECK(!sql_declare(&e, "@A  int = 5") && !sql_declare(&e, "") && !strcmp(e.msg, "sql: @A int = 5;"));   /* replaced, case ignored */
+	core_goto(&e, 1, 0);
+	keys_visual(&e, 'V', 1);
+	CHECK(sql_key(&e, KEY_F5) == 1 && e.mode != MODE_CMDLINE && strstr(until("Completion time"), "d\t@c\n10\t@b\n"));
+	CHECK(!sql_declare(&e, "@a") && !sql_declare(&e, "") && !strcmp(e.msg, "sql: nothing declared"));
+	core_goto(&e, 1, 0);
+	keys_visual(&e, 'V', 1);
+	CHECK(sql_key(&e, KEY_F5) == 1 && e.mode == MODE_CMDLINE);
+	keys_feed(&e, KEY_ESC, 0);
+	CHECK(e.mode == MODE_NORMAL && sql_declare(&e, "a int") && strstr(e.msg, ":Declare @name"));
+	CHECK(!sql_disconnect(&e));   /* the loop's watches are few: each test's session ends */
+	/* a DECLARE across lines: its line breaks typed as spaces, not Enter */
+	put("ms/pc.sql", "declare @m int\n\t= 4\nselect @m as m\n", 0600);
+	CHECK(!core_edit_file(&e, "ms/pc.sql", 0));
+	core_goto(&e, 2, 0);
+	keys_visual(&e, 'V', 2);
+	CHECK(sql_key(&e, KEY_F5) == 1 && e.mode == MODE_CMDLINE && e.cmdlen == 19 && !memcmp(e.cmd, "Declare @m int  = 4", 19));
+	keys_feed(&e, KEY_ENTER, 0);
+	CHECK(strstr(until("Completion time"), "m\n4\n") && !sql_disconnect(&e));
+	/* Postgres has no @variables: @x is its abs() */
+	CHECK(strstr(f5("pg/pd.sql", "select @n as a from (select -3 as n) t\n"), "a\n3\n") && e.mode != MODE_CMDLINE && !sql_disconnect(&e));
+	/* declared after its use: the server's error, nothing asked */
+	CHECK(strstr(f5("ms/pb.sql", "select @q as q\ndeclare @q int\n"), "Must declare the scalar variable \"@q\"") && e.mode != MODE_CMDLINE && !sql_disconnect(&e));
+	/* the whole file declares it: nothing asked; a procedure's parameters are its own */
+	put("ms/pp.sql", "create or alter procedure #hp @x int as select @x as x\ngo\nexec #hp @x = 4\n", 0600);
+	CHECK(!core_edit_file(&e, "ms/pa.sql", 0) && sql_key(&e, KEY_F5) == 1 && e.mode != MODE_CMDLINE && until("Completion time") && !sql_disconnect(&e));
+	CHECK(!core_edit_file(&e, "ms/pp.sql", 0) && sql_key(&e, KEY_F5) == 1 && e.mode != MODE_CMDLINE && strstr(until("Completion time"), "x\n4\n"));
 	/* not a SQL buffer: F5 is not ours */
 	put("x.txt", "x\n", 0600);
 	CHECK(!core_edit_file(&e, "x.txt", 0) && !sql_key(&e, KEY_F5));

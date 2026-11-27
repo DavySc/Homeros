@@ -75,7 +75,7 @@ sql: SPC r never closes the results (test_sql_editor)~test TESTS=sql_editor~~src
 sql: Alt+Break's line not written (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~putz(s, "Query was cancelled by user.\n");   /* SSMS's line, at once */~/* SSMS's line, at once */
 win: a dir line never matches a Windows buffer's name (C:\ and backslashes)~win WIN=sql~~src/sql/sql.c~if (file_full(t, d)) snprintf~if (1) snprintf
 win: a password in the connections file refused on Windows (no mode bits there)~win WIN=sql~~src/sql/sql.c~	int open = 1;~	int open = 0;
-sql: a batch read from the buffer as it is when sent, not as it was at F5 (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (str_add(&s->sql, s->text.s + (b.a - s->base), b.z - b.a)~if ((text_read(core_buf_find(E, s->nr)->text, b.a, s->text.s + (b.a - s->base), b.z - b.a), str_add(&s->sql, s->text.s + (b.a - s->base), b.z - b.a))
+sql: a batch read from the buffer as it is when sent, not as it was at F5 (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~str_add(&s->sql, s->text.s + (b.a - s->base), b.z - b.a)~(text_read(core_buf_find(E, s->nr)->text, b.a, s->text.s + (b.a - s->base), b.z - b.a), str_add(&s->sql, s->text.s + (b.a - s->base), b.z - b.a))
 sql: Alt+Break ends the run before the server answers the cancel (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~			s->cancel = 1;~			s->q.n = 0;
 sql: a cancelled run's later batches still run (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (s->cancel) s->cancel = 0, s->q.n = 0;~if (s->cancel) s->cancel = 0, next(s);
 sql: no room for the split leaves the run set (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (oom || show(s)) { s->q.n = 0; return -1; }~	if (oom || show(s)) return -1;
@@ -133,3 +133,17 @@ sql: pass= found inside a word (test_sql_editor)~test TESTS=sql_editor~~src/sql/
 sql: only a space before pass=, not a tab (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~!match_space(pw[-1])~pw[-1] != ' '
 sql: trust on for every connection (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~o->trust = !strcmp(x, "trust");~o->trust = 1;
 sql: the password's trailing spaces dropped (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~snprintf(pass, sizeof pass, "%s", pw + 5),~snprintf(pass, sizeof pass, "%s", pw + 5), ({ size_t m = strlen(pass); while (m && pass[m - 1] == ' ') pass[--m] = 0; }),
+sql: an EXEC's parameter names asked for (test_sql_vars)~test TESTS=sql_vars~~src/sql/run.c~else if (in_exec && prev != 2) memcpy(c, w, n + 1);~else if (0) memcpy(c, w, n + 1);
+sql: EXEC @rc = p's @rc taken for a parameter name (test_sql_vars)~test TESTS=sql_vars~~src/sql/run.c~else if (in_exec && prev != 2) memcpy~else if (in_exec) memcpy
+sql: a DECLARE's names asked for (test_sql_vars)~test TESTS=sql_vars~~src/sql/run.c~			if (prev == 1) bad =~			if (0) bad =
+sql: a DECLARE's second name asked for (test_sql_vars)~test TESTS=sql_vars~~src/sql/run.c~after = *w == ',' && !depth && in_decl;~after = 0;
+sql: a DECLARE runs on past the next statement (test_sql_vars)~test TESTS=sql_vars~~src/sql/run.c~in_decl = !strcasecmp(w, "declare"),~in_decl = in_decl || !strcasecmp(w, "declare"),
+sql: a variable declared after its use asked for (test_sql_editor)~test TESTS=sql_editor~~src/sql/run.c~		if (!has(&decl, out->s + i)) memmove~		if (1) memmove
+sql: a procedure's parameters asked for (test_sql_editor)~test TESTS=sql_editor~~src/sql/run.c~is(w, routine)) break;~is(w, routine)) create = 0;
+sql: the DECLAREs on a line of their own, the server's line numbers off by one (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~"DECLARE %s %s; "~"DECLARE %s %s;\n"
+sql: the file's own DECLARE not the prompt's default (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~(f = val(&d, need.s + j)) ? f : ""~(f = val(&d, need.s + j)) && 0 ? f : ""
+sql: a kept value asked for again (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~			if (v) { r = str_addf~			if (0) { r = str_addf
+sql: :Declare keeps the old value beside the new (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (v) {   /* forgotten, or replaced */~	if (0) {   /* forgotten, or replaced */
+sql: Enter does not run the waiting F5 (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (!s->asked) return 0;~	return 0;
+sql: Postgres's @x asked for (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~int p = s->spec.pg ? 0 : params(s, b, a, z);~int p = params(s, b, a, z);
+sql: a DECLARE's line break typed as Enter (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~*p == '\n' || *p == '\r' || *p == '\t' ? ' ' :~*p == '\t' ? ' ' :
