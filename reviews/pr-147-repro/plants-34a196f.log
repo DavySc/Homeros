@@ -1,0 +1,316 @@
+caught        keys: j and k forget the wanted column (recorded traces): 1275 sequences: 137 differ from Neovim
+caught        keys: the cursor steps one byte, into a character (fuzz_keys_all): ==32244== ERROR: libFuzzer: deadly signal
+caught        keys: tilde steps one byte, into a character (recorded traces): 1275 sequences: 2 differ from Neovim
+caught        keys: BS in Replace mode puts back one byte, not the whole cluster (recorded traces): 1275 sequences: 2 differ from Neovim
+caught        keys: check_cursor_col moves a cursor inside a cluster to its head, so Enter before a combining mark loses it (recorded traces): 1275 sequences: 3 differ from Neovim
+caught        keys: block I ignores a cursor moved before typing, so C-v j I Right x puts the wrong text below (recorded traces): 1275 sequences: 3 differ from Neovim
+caught        keys: a linewise put ends '] on the last byte, so gv after V p of a 4-byte character lands inside it (recorded traces): 1275 sequences: 1 differ from Neovim
+caught        keys: a block change that starts past a short line's end leaves that line without its spaces (recorded traces): 1275 sequences: 3 differ from Neovim
+caught        keys: after a block change whose text broke the line, the cursor stays inside a character (recorded traces): 1275 sequences: 4 differ from Neovim
+caught        keys: gj and gk move by text lines with 'wrap' on (test_core_screens): test_core_screens: 6 of 3056 screens differ from Neovim (2 of 325 cases)
+caught        keys: CTRL-D and CTRL-U that cannot scroll do not beep, so a macro goes on (recorded traces): 1275 sequences: 2 differ from Neovim
+caught        keys: gq on a .sql buffer is not recognised as SQL (test_keys_gq): tests/test_keys_gq.c:176: CHECK(!strcmp(text(&e), want(c[i].a, c[i].z))) failed
+caught        keys: v $ gq takes the next line too, as if gq did not work on lines (test_keys_gq): tests/test_keys_gq.c:176: CHECK(!strcmp(text(&e), want(c[i].a, c[i].z))) failed
+caught        keys: :Format does nothing on a .sql buffer (test_keys_gq): tests/test_keys_gq.c:186: CHECK(!strcmp(text(&e), want(0, sizeof SRC - 1))) failed
+caught        keys: gq keeps a Tab in a paragraph's indent instead of making it spaces (recorded traces): 1275 sequences: 9 differ from Neovim
+caught        keys: a blank with a combining mark on it is a break for gq (recorded traces): 1275 sequences: 4 differ from Neovim
+caught        keys: gq after ^ CTRL-D does not give the first broken line the indent back (recorded traces): 1275 sequences: 2 differ from Neovim
+caught        keys: gq joins a whole paragraph before breaking it, so its undo grows with the square of its size (test_keys_gq): tests/test_keys_gq.c:277: CHECK(text_len(e.buf->text) == size && undone < 10 * size) failed
+caught        keys: the cursor below sqlfmt's edit does not move with it, so it lands on other text (test_keys_gq): tests/test_keys_gq.c:260: CHECK(ln == 6 && !memcmp(cl, "-- end", 6) && e.win->col == 5) failed
+caught        keys: CTRL-W g leaves the next key to run on its own, so CTRL-W g x deletes a character (recorded traces): 1275 sequences: 2 differ from Neovim
+caught        keys: a put does not read the clipboard, so text another program copied is not pasted (test_keys_clip): tests/test_keys_clip.c:81: CHECK(is(&e, "two\nx\ny\n")) failed
+caught        keys: curs_columns() keeps w_virtcol after the cursor was seen to move, so gqq then >> on a long one-word line lands a cell early (recorded traces): 1275 sequences: 1 differ from Neovim
+caught        keys: a charwise delete that ends before it starts (]] with an operator past a last line starting with }) deletes a huge byte count (recorded traces):   ours  None {'error': 1, 'stderr': "=================================================================\n==29464==ERROR: AddressSanitizer: requested allocation size 0xffffffffffffffff (0x800 after adjustments for alignment, red zones etc.) exceeds maximum supported size of 0x10000000000 (thread T0)\n    #0 0x7f25e7afd9c7 in malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:69\n    #1 0x55b636f21221 in edit src/core/core.c:1146\n    #2 0x55b636f22502 in core_edit src/core/core.c:1223\n    #3 0x55b636f62918 in replace_bytes src/keys/buf.c:432\n    #4 0x55b636fa704a in op_delete src/keys/ops.c:469\n    #5 0x55b636f8f9e1 in do_pending_operator src/keys/normal.c:1979\n    #6 0x55b636f97dad in run src/keys/normal.c:1727\n    #7 0x55b636f97dad in normal_key src/keys/normal.c:1772\n    #8 0x55b636f6fa1b in key src/keys/keys.c:114\n    #9 0x55b636f717d1 in keys_feed src/keys/keys.c:361\n    #10 0x55b636f07770 in main tests/conform_drv.c:18\n    #11 0x7f25e662a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #12 0x7f25e662a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #13 0x55b636f07404 in _start (/home/claude/plants/t.bme7JI/build/san/conform_drv+0x306404) (BuildId: df580e88c68e360b2341ea72ffde58cfbd74445c)\n\n==29464==HINT: if you don't care about these errors you may set allocator_may_return_null=1\nSUMMARY: AddressSanitizer: allocation-size-too-big ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:69 in malloc\n==29464==ABORTING\n"}
+caught        keys: i) and a) look for the closing bracket with quotes not special, as for the opening one (recorded traces): 1275 sequences: 2 differ from Neovim
+caught        keys: SPC maps other than SPC i s also run in Visual mode (test_keys_map): tests/test_keys_map.c:104: CHECK(!tools_key(&e, KEY_ESC)) failed
+caught        keys: an incomplete map does not keep the next key, so a picker or git can take it (test_keys_map): tests/test_keys_map.c:78: CHECK(e.ks.pending && at(&e, "abcb\n", 1)) failed
+caught        keys: ";" leaves the cursor's column past a shorter line's end (test_keys_ex): 5 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: a number after an address is not added to it, so :.5 and :2 3 fail (test_keys_ex): 103 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: the marks < and > are swapped in a range (test_keys_ex): 109 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: N: puts .,.+N on the line, one line too many (test_keys_ex): 163 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: the yank flash is never cleared (test_keys_flash): tests/test_keys_flash.c:77: CHECK(!e.ks.yank.type && core_changed && ms >= 140 && ms < 1000) failed
+caught        keys: an empty pass fails the match instead of ending the loop, so .\(\|\k\)\+ takes \k (test_keys_regex): 4 of 10000 differ
+caught        keys: \c forgets that a group just opened, so \(\c* makes * a multi (test_keys_regex): 2 of 10000 differ
+caught        keys: \ze in a look-ahead stays when what follows fails (test_keys_regex): 1 of 10000 differ
+caught        keys: ? skips the match at the cursor, as / does (test_keys_ex): 7 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: d/x/+1 deletes characters, not lines (test_keys_ex): 119 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: . after d/x deletes up to the next x without typing the search again (test_keys_ex): 29 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: * does not escape what the pattern would read as magic, so * on . finds any character (test_keys_ex): 60 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: a block's yank flash starts at a Tab's first cell, not where the cursor stood on it (test_keys_flash): tests/test_keys_flash.c:60: CHECK(flash("G\x16ly", 22, 4, 7, 4, 8) && flash("Gl\x16hy", 22, 4, 7, 4, 8)) failed
+caught        keys: :s keeps the g flag it cleared after a match over the last line, so g& after it changes one match a line (test_keys_ex): 2 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: \u in a replacement does nothing (test_keys_ex): 10 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: :s/\n// on the last line leaves the cursor where it was (test_keys_ex): 2 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: a backslash in a replacement stays (test_keys_ex): 86 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: % is the last line alone, not 1,$ (test_keys_ex): 158 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: beginline stops at a NUL in the line (test_keys_ex): 2 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: a new search leaves the matches hidden (test_keys_ex): 19 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: Lean symbols are word characters again (recorded traces): 1275 sequences: 1 differ from Neovim
+caught        keys: Delete while typing a count is x (recorded traces): 1275 sequences: 1 differ from Neovim
+caught        keys: a long count is not folded, so its keys overflow the pending command (recorded traces):   ours  None {'error': 'timeout after 20 s'}
+caught        keys: CTRL-R . does not quote a trailing ^, so CTRL-D after it deletes the indent (recorded traces): 1275 sequences: 2 differ from Neovim
+caught        keys: aw at the end of the buffer does not leave the cursor on the NUL it reached (recorded traces): 1275 sequences: 1 differ from Neovim
+caught        keys: r BS puts a DEL character in instead of beeping (recorded traces): 1275 sequences: 2 differ from Neovim
+caught        keys: a block change whose text has a Del writes past the last line, which loses the final newline (fuzz_keys_all): FAIL fuzz_keys_all
+caught        keys: CTRL-V then a special key inserts nothing, not its name (recorded traces): 1275 sequences: 3 differ from Neovim
+caught        keys: undo in a CTRL-O command takes a Tab's last cell as the wanted column, so the insert restarts past the Tab (recorded traces): 1275 sequences: 5 differ from Neovim
+caught        keys: CTRL-W s in Visual mode keeps Visual mode on (recorded traces): 1275 sequences: 2 differ from Neovim
+caught        keys: o's undo step starts on the cursor line, so undo moves another window's cursor on it to column 0 (recorded traces): 1275 sequences: 3 differ from Neovim
+caught        keys: gq formats one line less than the operator covers (test_keys_gq): tests/test_keys_gq.c:176: CHECK(!strcmp(text(&e), want(c[i].a, c[i].z))) failed
+caught        keys: the save looks for sqldiff.toml only in the file's own directory (test_keys_gq): tests/test_keys_gq.c:211: CHECK(!strcmp(disk(file), want(0, sizeof SRC - 1))) failed
+caught        keys: gq breaks before the blank at textwidth, not at it (recorded traces): 1275 sequences: 43 differ from Neovim
+caught        keys: u after gq puts the cursor at the start of the lines, not where gq was typed (recorded traces): 1275 sequences: 3 differ from Neovim
+caught        keys: gq joins a nroff paragraph macro line into the paragraph (recorded traces): 1275 sequences: 1 differ from Neovim
+caught        keys: gq gives every later break the indent from ^ CTRL-D (recorded traces): 1275 sequences: 1 differ from Neovim
+caught        keys: a repeated Visual operator starts its columns at a Tab's first cell, so v CTRL-A 3 . on a Tab misses the number (recorded traces): 1275 sequences: 2 differ from Neovim
+caught        keys: undo or redo that finds nothing does not beep, so a macro goes on after it (recorded traces): 1275 sequences: 2 differ from Neovim
+caught        keys: internal_format() does not validate w_virtcol on each line, so a stale textwidth column survives a gq that moved the cursor (recorded traces): 1275 sequences: 6 differ from Neovim
+caught        keys: the clipboard forgets the type it was set with, so a yanked block is put as lines (test_keys_clip): tests/test_keys_clip.c:100: CHECK(is(&e, "aba\ncdc\n")) failed
+caught        keys: gq on a long line it cannot break recomputes w_virtcol, so a later gg keeps the cursor's column, not textwidth (recorded traces): 1275 sequences: 3 differ from Neovim
+caught        keys: w_virtcol is not recomputed when Insert mode ends, so a Visual command after it takes the Tab's first cell for curswant (recorded traces): 1275 sequences: 1 differ from Neovim
+caught        keys: a SPC that completes no map drops Space's own motion (test_keys_map): tests/test_keys_map.c:74: CHECK(at(&e, "acb\n", 1)) failed
+caught        keys: a map that runs leaves the count typed before it for the next command (test_keys_map): tests/test_keys_map.c:213: CHECK(at(&e, "bcb\n", 0)) failed
+caught        keys: a register's name is taken as a map's first key, so "-p opens oil (test_keys_map): tests/test_keys_map.c:227: CHECK(at(&e, "bacb\n", 1)) failed
+caught        keys: % is not an address, so :% and :1,% are not editor commands (test_keys_ex): 28 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: a range alone past the last line or below 0 goes there instead of the last line or E16 (test_keys_ex): 91 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: a line number past 2^63 overflows (test_keys_ex, UBSan): src/keys/keys.c:423:7: runtime error: signed integer overflow: 9223372036854775807 + 9223372036854775807 cannot be represented in type 'long int'
+caught        keys: a yank from an executing register flashes, where Neovim's on_yank skips it (test_keys_flash): tests/test_keys_flash.c:47: CHECK(flash("qayiwq", 'v', 0, 0, 0, 2) && flash("@a", 0, 0, 0, 0, 0)) failed
+caught        keys: clearing the yank flash asks for no frame, so it stays on screen until the next key (test_keys_flash): tests/test_keys_flash.c:77: CHECK(!e.ks.yank.type && core_changed && ms >= 140 && ms < 1000) failed
+caught        keys: a repeated character does not match a letter with a composing character, so e\{3,1}\k misses e + U+0301 (test_keys_regex): 2 of 10000 differ
+caught        keys: a match may end before a composing character (test_keys_regex): 1 of 10000 differ
+caught        keys: a look-behind steps back by code point, into a letter with a composing character (test_keys_regex): 1 of 10000 differ
+caught        keys: a search stops at the end of the file instead of wrapping ('wrapscan') (test_keys_ex): 187 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: n after /x/s-1 stays where it is (test_keys_ex): 1 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: a search with an upper-case letter ignores case, as if 'smartcase' were off (test_keys_ex): tests/test_keys_ex.c:376: CHECK(!keys_hl(&e, e.win, 2, 0, &hs, &hz)) failed
+caught        keys: * on a blank line searches for the last pattern instead of E348 (test_keys_ex): 27 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: a backslash at a pattern's start keeps it at the start, so /\*ptr is E866 (test_keys_regex): 87 of 10000 differ
+caught        keys: :s takes a NUL in a line (\n in a replacement) for the line's end (test_keys_ex): 1 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: a line break from \r in a replacement leaves the range one line short (test_keys_ex): 20 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: a count after :s counts from the range's start, not its end (test_keys_ex): 35 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: a backslash the match copies is taken as an escape (test_keys_ex): 1 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: \_s is E877, its letter read with its magic (test_keys_ex): tests/test_keys_ex.c:516: CHECK(e.win->line == 0 && e.win->col == 0 && !strcmp(e.msg, "search hit BOTTOM, continuing at TOP")) failed
+caught        keys: u after :s goes back to an undo step the oracle's text load made (test_keys_ex): 343 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: :s with a new pattern leaves the matches hidden (test_keys_ex): 2 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: a match's line break is not drawn (test_keys_ex): tests/test_keys_ex.c:524: CHECK(keys_hl(&e, e.win, 0, 0, &hs, &hz) == 2 && hs == 1 && hz == 3) failed
+caught        keys: the cursor steps one byte, into a character (fuzz_keys): ==20198== ERROR: libFuzzer: deadly signal
+caught        keys: Delete at the end of the last line keeps redo (recorded traces): 1275 sequences: 9 differ from Neovim
+caught        keys: commands step by code point, not by grapheme cluster (recorded traces): 1275 sequences: 16 differ from Neovim
+caught        keys: g_ skips blanks from the line end by byte, past a combining mark (recorded traces): 1275 sequences: 1 differ from Neovim
+caught        keys: an exclusive motion moved to the line before ends on its last character's head, so y } yanks one byte of it (recorded traces): 1275 sequences: 2 differ from Neovim
+caught        keys: a linewise change deletes its lines with the cursor on the first, so undo after 3S puts the cursor a line too high (recorded traces): 1275 sequences: 4 differ from Neovim
+caught        keys: CTRL-V U keeps adding digits past U+10FFFF, a signed overflow (fuzz_keys_all): src/keys/edit.c:697:74: runtime error: signed integer overflow: 250539758 * 16 cannot be represented in type 'int'
+caught        keys: CTRL-V Del inserts nothing, not <Del> (recorded traces): 1275 sequences: 2 differ from Neovim
+caught        keys: CTRL-F and CTRL-B do nothing (test_core_screens): test_core_screens: 133 of 3056 screens differ from Neovim (29 of 325 cases)
+caught        keys: CTRL-W w to a window on the same buffer leaves the Visual cursor behind (recorded traces): 1275 sequences: 1 differ from Neovim
+caught        keys: a linewise put's undo step starts on the cursor line, so undo moves another window's cursor on it to column 0 (recorded traces): 1275 sequences: 3 differ from Neovim
+caught        keys: gqq is not gqgq (test_keys_gq): tests/test_keys_gq.c:176: CHECK(!strcmp(text(&e), want(c[i].a, c[i].z))) failed
+caught        keys: a relative path looks for sqldiff.toml from the root, not the working directory (test_keys_gq): tests/test_keys_gq.c:230: CHECK(!strcmp(disk("a.sql"), want(0, sizeof SRC - 1))) failed
+caught        keys: gq leaves the cursor on the last paragraph line, not the last line it went over (recorded traces): 1275 sequences: 7 differ from Neovim
+caught        keys: gq} stays on the paragraph's last line instead of going to the next (recorded traces): 1275 sequences: 2 differ from Neovim
+caught        keys: gq breaks a line in its indent (recorded traces):   ours  None {'error': 'timeout after 20 s'}
+caught        keys: gq ignores the window's width (recorded traces): 1275 sequences: 5 differ from Neovim
+caught        keys: u after a gq that changed nothing puts the cursor on the first line, not back where gq was typed (recorded traces): 1275 sequences: 1 differ from Neovim
+caught        keys: Insert mode drops a typed or register CTRL-L instead of inserting it (recorded traces): 1275 sequences: 2 differ from Neovim
+caught        keys: a delete does not reach the clipboard (test_keys_clip): tests/test_keys_clip.c:74: CHECK(has("one ") && is(&e, "two\nthree\n")) failed
+caught        keys: coladvance() does not leave w_virtcol at the column it went to, so a second gqq on a long one-word line then gg keeps the cursor's column (recorded traces): 1275 sequences: 2 differ from Neovim
+caught        keys: Visual g_ starts its step back at the last character, not the last byte, so it stops before a blank under a combining mark (recorded traces): 1275 sequences: 1 differ from Neovim
+caught        keys: i) and a) look for the unclosed bracket with quotes special, so from inside a string they miss the block after it (recorded traces): 1275 sequences: 2 differ from Neovim
+caught        keys: the keys after a failed map skip the pickers, git and the maps, so SPC SPC ff moves and the dashboard's q records a macro (test_keys_map): tests/test_keys_map.c:78: CHECK(e.ks.pending && at(&e, "abcb\n", 1)) failed
+caught        keys: SPC after an operator starts a map instead of being its motion (test_keys_map): tests/test_keys_map.c:215: CHECK(!tools_key(&e, KEY_ESC) && at(&e, "bcb\n", 0)) failed
+caught        keys: after ";" the next address counts from the cursor, not from the address before it (test_keys_ex): 50 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: a missing address before a separator is no address, so :,4 is not a range (test_keys_ex): 124 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: :<line> goes to the first non-blank, as with 'startofline' (test_keys_ex): 428 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: Visual : leaves the cursor at its end, not the start, before the command runs (test_keys_ex): 170 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: the yank flash takes the motion's type, not the register's, so "Ayiw after "ayy flashes characters (test_keys_flash): tests/test_keys_flash.c:45: CHECK(flash("\"ayy\"Ayiw", 'V', 0, 0, 0, 2)) failed
+caught        keys: a look-behind body may end anywhere, so \(\D\|\)\@<! matches (test_keys_regex): 7 of 10000 differ
+caught        keys: \& makes what is before it a negative look-ahead (test_keys_regex): 114 of 10000 differ
+caught        keys: \zs in a look-around moves the match start (test_keys_regex): 1 of 10000 differ
+caught        keys: the next match is looked for a character after the last match's start, not from its end ('cpoptions' c) (test_keys_ex): 159 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: d/x/e leaves the match's last character (test_keys_ex): 110 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: * finds the word inside other words, without \< \> (test_keys_ex): 10 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: * keeps 'smartcase', so * on Foo misses foo (test_keys_ex): 1 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: a block's yank flash takes byte columns, not screen columns, so a Tab's block flashes too little (test_keys_flash): tests/test_keys_flash.c:44: CHECK(flash("lll\x16j$y", 22, 0, 3, 1, 6)) failed
+caught        keys: \c at a pattern's start ends the start, so \c* is E866 (test_keys_regex): 16 of 10000 differ
+caught        keys: a tilde in a replacement is not the last replacement (test_keys_ex): 38 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: a match over a line break deletes the wrong line (test_keys_ex): 59 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: :s with no pattern says E35 alone, not E476 after it (test_keys_ex): 470 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: & is :s, which drops the flags, not Neovim's map to :&& (test_keys_ex): 30 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: \n does not match the last line's line break (test_keys_ex): 36 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: 'hlsearch' draws while :noh hides it (test_keys_ex): 188 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: a match from a line above is not drawn (test_keys_ex): tests/test_keys_ex.c:393: CHECK(keys_hl(&e, e.win, 4, 0, &hs, &hz) && hs == 0 && hz == 1) failed
+caught        keys: 'hlsearch' reads stale lines after an edit without a key (test_keys_ex): tests/test_keys_ex.c:367: CHECK(keys_hl(&e, e.win, 1, 0, &hs, &hz) && hs == 4 && hz == 6) failed
+caught        keys: 'hlsearch' starts at the first line, not the window's top (test_keys_ex): tests/test_keys_ex.c:395: CHECK(!keys_hl(&e, e.win, 4, 0, &hs, &hz)) failed
+caught        keys: :noh takes a range (test_keys_ex): 122 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: Esc and CTRL-C answer yes instead of quitting (test_keys_ex): tests/test_keys_ex.c:385: CHECK(!e.ks.pending && !e.ks.inc.type && n == 12 && !memcmp(l, "hellXY world", 12)) failed
+caught        keys: maps take the keys that answer :s (test_keys_ex): tests/test_keys_ex.c:379: CHECK(n == 12 && !memcmp(l, "hellXY world", 12) && e.win->col == 8 && e.ks.pending) failed
+caught        keys: CTRL-Y does not scroll (test_keys_ex): 19 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: a register Q replays is not flagged as executing, so on_yank and the kitten would show (test_keys_flash): tests/test_keys_flash.c:51: CHECK(flash("@@", 0, 0, 0, 0, 0) && flash("2@a", 0, 0, 0, 0, 0) && flash("Q", 0, 0, 0, 0, 0)) failed
+caught        keys: 'hlsearch' has no 'redrawtime' (test_keys_ex): tests/test_keys_ex.c:467: CHECK(loop_now() - t0 < 8000000000LL) failed
+caught        keys: a yank's flash ends on the last character's last byte (test_keys_flash): tests/test_keys_flash.c:65: CHECK(flash("Gvly", 'v', 5, 0, 5, 2)) failed
+caught        keys: a map's edit joins the previous command's undo step (test_keys_map): tests/test_keys_map.c:270: CHECK(at(&d, "* NEXT a b\n", 9)) failed
+caught        keys: Ctrl-C does not stop a search or a :s (test_keys_ex): tests/test_keys_ex.c:474: CHECK(e.win->line == 0 && !strcmp(e.msg, "Interrupted")) failed
+caught        keys: an ex command leaves '' unsettled, so the next command's checkpcmark() moves it (test_keys_ex): 3 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: the first CTRL-O after a jump does not add the cursor (test_keys_ex): 117 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: '^ is the column after Esc moved left (test_keys_ex): 5 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: / ? n N are not jumps (test_keys_ex): 26 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: ( and ) are not jumps (test_keys_ex): 18 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: G and gg are not jumps (test_keys_ex): 98 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: an undo's '[ and '] stay in the core (test_keys_ex): 497 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: gv with only '< set selects (test_keys_ex): 1 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: g; on an empty change list says nothing (test_keys_ex): tests/test_keys_ex.c:483: CHECK(!strcmp(e.msg, "E664: Changelist is empty")) failed
+caught        keys: gq sends verible the whole text, not its lines (test_keys_gq): tests/test_keys_gq.c:114: CHECK(!strcmp(text(&e), "module m;\n  wire a;\n    wire b;\nendmodule\n")) failed
+caught        keys: verible's edit runs to the end of the text, so the cursor below it moves onto other text (test_keys_gq): tests/test_keys_gq.c:122: CHECK(e.win->line == 3 && e.win->col == 8) failed
+caught        keys: '[ and '] go with the keys into another buffer (test_keys_ex): 496 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: keys_visual() keeps the other end's column (test_keys_map): tests/test_keys_map.c:241: CHECK(e.ks.visual == 'v' && !e.ks.vline && !e.ks.vcol) failed
+caught        keys: 'foldopen' commands leave a closed fold shut (test_keys_ex): 149 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: Insert mode starts in a closed fold (test_keys_ex): 25 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: { and } stop inside a closed fold (test_keys_ex): 25 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: o and O open a line inside a closed fold (test_keys_ex): 24 of 3000 differ (| is Enter, ~ Esc)
+NOT CAUGHT    keys: a mark jump to the cursor's own position opens the fold (test_keys_ex)
+caught        keys: which-key's panel shows after 20 ms, not its 200 (test_keys_map): tests/test_keys_map.c:134: CHECK(wait_hint(&e, &g) >= 190000000LL) failed
+caught        keys: which-key's panel fills rows first, not columns (test_keys_map): tests/test_keys_map.c:137: CHECK(row_has(&g, 17, "D \xe2\x9e\x9c Dashboard") && row_has(&g, 18, "e \xe2\x9e\x9c File Explorer") && row_has(&g, 19, ", \xe2\x9e\x9c Buffers")) failed
+caught        keys: which-key's panel also opens after Org's c (test_keys_map): tests/test_keys_map.c:279: CHECK(wait_hint(&d, &g) < 0) failed
+caught        keys: which-key's separator in the key's face (test_keys_map): tests/test_keys_map.c:139: CHECK(face_at(&g, 17, 5) == FACE_NORMAL_FLOAT && face_at(&g, 17, 7) == FACE_WK_SEPARATOR && face_at(&g, 17, 9) == FACE_WK_DESC && face_at(&g, 17, 35) == FACE_WK_GROUP) failed
+caught        keys: which-key's panel puts groups first (test_keys_map): tests/test_keys_map.c:137: CHECK(row_has(&g, 17, "D \xe2\x9e\x9c Dashboard") && row_has(&g, 18, "e \xe2\x9e\x9c File Explorer") && row_has(&g, 19, ", \xe2\x9e\x9c Buffers")) failed
+caught        keys: which-key's panel has no blank row under the list (test_keys_map): tests/test_keys_map.c:136: CHECK(!row_has(&g, 16, "\xe2\x9e\x9c") && !row_has(&g, 21, "\xe2\x9e\x9c")) failed
+caught        keys: which-key's panel moved for the cursor starts on the row under it (test_keys_map): tests/test_keys_map.c:146: CHECK(row_has(&g, 23, "<esc> close") && row_has(&g, 18, "D \xe2\x9e\x9c") && row_has(&g, 20, ", \xe2\x9e\x9c") && row_has(&g, 21, "c \xe2\x9e\x9c") && !row_has(&g, 22, "\xe2\x9e\x9c") && g.c[16 * 80].bg != FACE_NORMAL_FLOAT) failed
+caught        keys: >> leaves a closed fold shut (test_keys_ex): 33 of 3000 differ (| is Enter, ~ Esc)
+caught        review: R3 l opens no fold: 11 of 3000 differ (| is Enter, ~ Esc)
+caught        review: R7 w opens no fold: 3 of 3000 differ (| is Enter, ~ Esc)
+caught        review: R11 { } open no fold: 14 of 3000 differ (| is Enter, ~ Esc)
+caught        review: R15 search opens no fold: 36 of 3000 differ (| is Enter, ~ Esc)
+caught        review: R19 Visual zo/zc: no E490: 19 of 3000 differ (| is Enter, ~ Esc)
+caught        review: R23 w from a fold: last line's start, not its last character: 6 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: the kept regex ignores 'ignorecase' (test_keys_ex): tests/test_keys_ex.c:376: CHECK(!keys_hl(&e, e.win, 2, 0, &hs, &hz)) failed
+caught        keys: a match \zs starts on the next line is drawn on this one (test_keys_ex): tests/test_keys_ex.c:399: CHECK(!keys_hl(&e, e.win, 1, 0, &hs, &hz) && keys_hl(&e, e.win, 2, 0, &hs, &hz) && hs == 0 && hz == 2) failed
+caught        keys: the question shows the line without its substitutions so far (test_keys_ex): tests/test_keys_ex.c:379: CHECK(n == 12 && !memcmp(l, "hellXY world", 12) && e.win->col == 8 && e.ks.pending) failed
+caught        keys: the match is not shown in IncSearch (test_keys_ex): tests/test_keys_ex.c:380: CHECK(e.ks.inc.type == 'v' && e.ks.inc.l1 == 2 && e.ks.inc.c1 == 8 && e.ks.inc.l2 == 2 && e.ks.inc.c2 == 8) failed
+caught        keys: Visual : leaves curswant to be set after the command (test_keys_ex): 22 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: a pass through a group's join recurses, so a long group repeat grows the C stack (test_keys_ex): ==13279==ERROR: AddressSanitizer: stack-overflow on address 0x7fff43429ff8 (pc 0x7f8dd853618c bp 0x7fff4342a010 sp 0x7fff4342a000 T0)
+caught        keys: the first-literal skip passes a byte past 0x7f under \c (test_keys_regex): 1 of 10000 differ
+caught        keys: CurSearch only when the cursor is on the match's first line (test_keys_ex): tests/test_keys_ex.c:524: CHECK(keys_hl(&e, e.win, 0, 0, &hs, &hz) == 2 && hs == 1 && hz == 3) failed
+caught        keys: ciT steps forward as cit does (test_keys_map): tests/test_keys_map.c:268: CHECK(at(&d, "* TODO a b\n", 9)) failed
+caught        keys: an interrupted search says E363, not Interrupted (test_keys_ex): tests/test_keys_ex.c:474: CHECK(e.win->line == 0 && !strcmp(e.msg, "Interrupted")) failed
+caught        keys: Enter at column 0 moves the marks on its line down (one edit inserting the break there) (test_keys_ex): 9 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: CTRL-O and Tab go the wrong way (test_keys_ex): 117 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: an operator's '[ and '] never reach the buffer (test_keys_ex): 497 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: :s is not a jump (test_keys_ex): 1 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: a( and i( are not jumps (test_keys_ex): 11 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: N% is not a jump (test_keys_ex): 14 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: an exclusive yank's '] stays at column 0 of the next line (test_keys_ex): 3 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: a bare ' in a range is E78 (test_keys_ex): 2 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: drawing 'hlsearch' takes Ctrl-C from the search (test_keys_ex): tests/test_keys_ex.c:472: CHECK(keys_hl(&e, e.win, 400, 0, &hs, &hz) && loop_int) failed
+caught        keys: :Format sends verible --lines (test_keys_gq): tests/test_keys_gq.c:123: CHECK(!strcmp(disk(args), "--indentation_spaces=4 -\n")) failed
+caught        keys: a hanging verible is never killed (test_keys_gq): tests/test_keys_gq.c:152: CHECK(!strcmp(text(&e), SV) && strstr(e.msg, "verible-verilog-format")) failed
+caught        keys: a key that goes to another buffer puts the last one's '[ and '] there (test_keys_ex): tests/test_keys_ex.c:508: CHECK(e.win->line == 0) failed
+caught        keys: keys_visual() leaves e->ks as it was (test_keys_map): tests/test_keys_map.c:237: CHECK(!e.ks.visual && e.buf->mark[MARK_GT].set) failed
+caught        keys: an operator's motion opens the fold (test_keys_ex): 13 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: w from a closed fold starts at the cursor (test_keys_ex): 15 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: a search starts inside a closed fold (test_keys_ex): 3 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: an operator takes part of a closed fold forward (test_keys_ex): 15 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: CTRL-O opens no fold (test_keys_ex): 3 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: <BS> in which-key's panel closes it instead of going up a level (test_keys_map): tests/test_keys_map.c:163: CHECK(e.ks.pending && row_has(&g, 19, "Buffers") && !row_has(&g, 22, "git")) failed
+caught        keys: which-key's trail names a group by its key, not its name (test_keys_map): tests/test_keys_map.c:159: CHECK(row_has(&g, 22, " SPC \xc2\xbb +git ") && row_has(&g, 18, "b \xe2\x9e\x9c Git branches") && row_has(&g, 19, "B \xe2\x9e\x9c Open on GitHub") && row_has(&g, 18, "s \xe2\x9e\x9c Git status")) failed
+caught        keys: a failed map leaves which-key's panel shown (test_keys_map): tests/test_keys_map.c:183: CHECK(wait_hint(&e, &g) > 0 && row_has(&g, 19, "i \xe2\x9e\x9c +insert") && !row_has(&g, 18, "\xe2\x9e\x9c") && !row_has(&g, 20, "\xe2\x9e\x9c")) failed
+caught        keys: which-key's panel lists maps this mode cannot run (test_keys_map): tests/test_keys_map.c:183: CHECK(wait_hint(&e, &g) > 0 && row_has(&g, 19, "i \xe2\x9e\x9c +insert") && !row_has(&g, 18, "\xe2\x9e\x9c") && !row_has(&g, 20, "\xe2\x9e\x9c")) failed
+caught        keys: which-key's panel puts punctuation keys first (test_keys_map): tests/test_keys_map.c:137: CHECK(row_has(&g, 17, "D \xe2\x9e\x9c Dashboard") && row_has(&g, 18, "e \xe2\x9e\x9c File Explorer") && row_has(&g, 19, ", \xe2\x9e\x9c Buffers")) failed
+caught        keys: which-key's list may be 1 row high (test_keys_map): tests/test_keys_map.c:183: CHECK(wait_hint(&e, &g) > 0 && row_has(&g, 19, "i \xe2\x9e\x9c +insert") && !row_has(&g, 18, "\xe2\x9e\x9c") && !row_has(&g, 20, "\xe2\x9e\x9c")) failed
+caught        keys: which-key's columns 10 wide, not its 20 (test_keys_map): tests/test_keys_map.c:137: CHECK(row_has(&g, 17, "D \xe2\x9e\x9c Dashboard") && row_has(&g, 18, "e \xe2\x9e\x9c File Explorer") && row_has(&g, 19, ", \xe2\x9e\x9c Buffers")) failed
+caught        keys: u after p below a closed fold leaves the cursor below it (test_keys_ex): 2 of 3000 differ (| is Enter, ~ Esc)
+caught        review: R4 h opens no fold: 4 of 3000 differ (| is Enter, ~ Esc)
+caught        review: R8 b opens no fold: 2 of 3000 differ (| is Enter, ~ Esc)
+caught        review: R12 ( ) open no fold: 22 of 3000 differ (| is Enter, ~ Esc)
+caught        review: R16 operator backward: cursor not to fold start: 15 of 3000 differ (| is Enter, ~ Esc)
+caught        review: R20 Visual zc does not skip the fold it closed: 3 of 3000 differ (| is Enter, ~ Esc)
+caught        review: R24 a ? search from a fold starts at the cursor: 1 of 3000 differ (| is Enter, ~ Esc)
+caught        review: R29 zc count ignored: 25 of 3000 differ (| is Enter, ~ Esc)
+caught        review: R32 << leaves the fold open only after >> (shift opens only to the right): 11 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: CTRL-L hides the matches in Visual mode (test_keys_ex): 60 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: a answers this match but keeps asking (test_keys_ex): 260 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: another key asks again without moving the cursor by the change again (test_keys_ex): tests/test_keys_ex.c:382: CHECK(e.win->col == 9 && e.ks.inc.c1 == 9) failed
+caught        keys: :s goes on with 'hlsearch''s program after a redraw (test_keys_ex): tests/test_keys_ex.c:379: CHECK(n == 12 && !memcmp(l, "hellXY world", 12) && e.win->col == 8 && e.ks.pending) failed
+caught        keys: <leader>uk does not turn the save kitten off (test_keys_map): tests/test_keys_map.c:94: CHECK(!strcmp(e.msg, "Kitten on save: off")) failed
+caught        keys: the window's close leaves the c flag's question open (test_keys_ex): tests/test_keys_ex.c:413: CHECK(!e.ks.pending && !strstr(e.msg, "replace with")) failed
+caught        keys: a bounded leading repeat skips its run too (test_keys_regex): 1 of 10000 differ
+caught        keys: SPC u p only turns conceal off (test_keys_map): tests/test_keys_map.c:118: CHECK(e.win->conceal == 2) failed
+caught        keys: cit stamps CLOSED in UTC, not the local clock (test_keys_map): tests/test_keys_map.c:297: CHECK(!strncmp(got, want[0], strlen(want[0])) || !strncmp(got, want[1], strlen(want[1]))) failed
+caught        keys: the regex stacks stay grown after a search (test_keys_ex): tests/test_keys_ex.c:453: CHECK(!strncmp(e.msg, "E486", 4) && __sanitizer_get_current_allocated_bytes() < held + (32 << 20)) failed
+caught        keys: * and # are not jumps (test_keys_ex): 7 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: m' where '' already is loses it to checkpcmark() (test_keys_ex): 5 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: '' moves though the cursor stayed (checkpcmark()) (test_keys_ex): 33 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: ' goes to the mark's column, not the first non-blank (test_keys_ex): 162 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: % is not a jump (test_keys_ex): 12 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: [( and ]) are not jumps (test_keys_ex): 2 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: tilde does not set '[ and '] (test_keys_ex): 80 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: m< alone leaves gv no mode (test_keys_ex): 1 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: a mark past the last line is gone to (test_keys_ex): 1 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: :w formats a .sv buffer with no .slang above it (test_keys_gq): tests/test_keys_gq.c:128: CHECK(!strcmp(disk(sv), SV)) failed
+caught        keys: verible's stderr goes into the buffer (test_keys_gq): tests/test_keys_gq.c:114: CHECK(!strcmp(text(&e), "module m;\n  wire a;\n    wire b;\nendmodule\n")) failed
+caught        keys: .svh, .v and .vh buffers are not formatted with Verible (test_keys_gq): tests/test_keys_gq.c:140: CHECK(!strcmp(text(&e), "module m;\n    wire a;\n    wire b;\nendmodule\n")) failed
+caught        keys: j from a closed fold's first line ends inside it (test_keys_ex): 1 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: u with nothing to undo opens the fold (test_keys_ex): 11 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: b from a closed fold starts at the cursor (test_keys_ex): 4 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: Visual mode takes part of a closed fold (test_keys_ex): 53 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: an operator takes part of a closed fold backward (test_keys_ex): 43 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: zo with no fold there says nothing (test_keys_ex): 622 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: <Esc> in which-key's panel keeps the count typed before Space (test_keys_map): tests/test_keys_map.c:167: CHECK(!e.ks.pending && !row_has(&g, 22, "SPC") && at(&e, "acb\n", 0)) failed
+caught        keys: which-key's panel stays shown after it closes, so the next Space shows it at once (test_keys_map): tests/test_keys_map.c:173: CHECK(!row_has(&g, 22, "SPC")) failed
+caught        keys: closing which-key's panel leaves its delay running (test_keys_map): tests/test_keys_map.c:176: CHECK(wait_hint(&e, &g) < 0) failed
+caught        keys: which-key's panel is not cut to the screen (test_keys_map): tests/test_keys_map.c:189: CHECK(wait_hint(&e, &small) > 0 && row_has(&small, 4, "SPC") && row_has(&small, 1, "D \xe2\x9e\x9c") && row_has(&small, 2, "e \xe2\x9e\x9c") && !row_has(&small, 5, "SPC")) failed
+caught        keys: which-key's panel puts upper case first (test_keys_map): tests/test_keys_map.c:159: CHECK(row_has(&g, 22, " SPC \xc2\xbb +git ") && row_has(&g, 18, "b \xe2\x9e\x9c Git branches") && row_has(&g, 19, "B \xe2\x9e\x9c Open on GitHub") && row_has(&g, 18, "s \xe2\x9e\x9c Git status")) failed
+caught        keys: which-key's panel covers the cursor (test_keys_map): tests/test_keys_map.c:146: CHECK(row_has(&g, 23, "<esc> close") && row_has(&g, 18, "D \xe2\x9e\x9c") && row_has(&g, 20, ", \xe2\x9e\x9c") && row_has(&g, 21, "c \xe2\x9e\x9c") && !row_has(&g, 22, "\xe2\x9e\x9c") && g.c[16 * 80].bg != FACE_NORMAL_FLOAT) failed
+caught        keys: which-key's panel on a screen under 4 rows writes before the grid (test_keys_map): ==23445==ERROR: AddressSanitizer: SEGV on unknown address 0x515ffffffe30 (pc 0x55a49e6b2e8f bp 0x7ffddcbdba60 sp 0x7ffddcbdb930 T0)
+caught        keys: foldOpenCursor() opens only a closed fold, not every fold the cursor is in (test_keys_ex): 11 of 3000 differ (| is Enter, ~ Esc)
+caught        review: R5 $ opens no fold: 14 of 3000 differ (| is Enter, ~ Esc)
+caught        review: R9 f opens no fold: 8 of 3000 differ (| is Enter, ~ Esc)
+caught        review: R13 [( opens no fold: 4 of 3000 differ (| is Enter, ~ Esc)
+caught        review: R17 operator forward: start not to fold start: 8 of 3000 differ (| is Enter, ~ Esc)
+caught        review: R21 P puts below the fold: 4 of 3000 differ (| is Enter, ~ Esc)
+caught        review: R25 Insert after CTRL-O command opens the fold again: 1 of 3000 differ (| is Enter, ~ Esc)
+caught        review: R30 ''/CTRL-O mark jump opens no fold: 6 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: CTRL-L hides the matches after an operator (test_keys_ex): 77 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: l answers this match but goes on to the next lines (test_keys_ex): 237 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: the answered :s is undone key by key (test_keys_ex): tests/test_keys_ex.c:388: CHECK(n == 11 && !memcmp(l, "hello world", 11)) failed
+caught        keys: CTRL-E scrolls the cursor into 'scrolloff' (test_keys_ex): tests/test_keys_ex.c:432: CHECK(e.win->line == 44 && e.win->top == 38) failed
+caught        keys: :KittenPaw does not play the kitten (test_keys_map): tests/test_keys_map.c:125: CHECK(drawn) failed
+caught        keys: the c flag's question goes on in another buffer (test_keys_ex): tests/test_keys_ex.c:409: CHECK(!e.ks.pending && n == 2 && !memcmp(l, "xo", 2) && !core_edit_file(&e, path, 0)) failed
+caught        keys: an ASCII character before an accent is its own cluster (test_keys_regex): 127 of 10000 differ
+caught        keys: cit and ciT wait for their keys in every buffer, not only .org (test_keys_map): tests/test_keys_map.c:302: CHECK(!d.ks.pending) failed
+caught        keys: @. counts as an executing register, so its yank does not flash (test_keys_flash): tests/test_keys_flash.c:55: CHECK(flash("iyl\x1b@.", 'v', 0, 1, 0, 1)) failed
+caught        keys: a mark set alone with m> does not stand for '< (test_keys_ex): 1 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: CTRL-O keeps an entry on the cursor's line at the end of the jump list (test_keys_ex): 34 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: '{ and '( set '' while they look for their place (test_keys_ex): 1 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: g' and g` set '' (test_keys_ex): 10 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: { and } are not jumps (test_keys_ex): 20 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: H M L are not jumps (test_keys_ex): 36 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: '" is unset before it is set, where Neovim has line 1 (test_keys_ex): 94 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: r does not set '[ and '] (test_keys_ex): 91 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: m[ does not set '[ (test_keys_ex): 1 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: verible without Davy's 4-space indent (test_keys_gq): tests/test_keys_gq.c:115: CHECK(!strcmp(disk(args), "--indentation_spaces=4 --lines=3-3 -\n")) failed
+caught        keys: a failed verible's output is applied, emptying the buffer (test_keys_gq): tests/test_keys_gq.c:152: CHECK(!strcmp(text(&e), SV) && strstr(e.msg, "verible-verilog-format")) failed
+caught        keys: a jump past the last line is gone to, with no E19 (test_keys_ex): 2 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: keys_visual(e, 0) leaves Visual mode on (test_keys_map): tests/test_keys_map.c:237: CHECK(!e.ks.visual && e.buf->mark[MARK_GT].set) failed
+caught        keys: past the end the cursor goes to the last line, not its fold's start (test_keys_ex): 5 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: u leaves a closed fold shut (test_keys_ex): 7 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: e from a closed fold starts at the cursor (test_keys_ex): 13 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: Visual zc keeps the wanted column (test_keys_ex): 1 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: p puts inside a closed fold (test_keys_ex): 6 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: Visual zo opens every level (test_keys_ex): 1 of 3000 differ (| is Enter, ~ Esc)
+caught        keys: a group's row (SPC g, +git) runs as a map (test_keys_map): tests/test_keys_map.c:76: CHECK(at(&e, "abcb\n", 3)) failed
+caught        keys: which-key's panel has no NormalFloat background (test_keys_map): tests/test_keys_map.c:140: CHECK(g.c[22 * 80 + 79].bg == FACE_NORMAL_FLOAT && g.c[16 * 80].bg == FACE_NORMAL_FLOAT && g.c[15 * 80].bg != FACE_NORMAL_FLOAT && g.c[23 * 80].bg != FACE_NORMAL_FLOAT) failed
+caught        keys: which-key's groups in the description's face (test_keys_map): tests/test_keys_map.c:139: CHECK(face_at(&g, 17, 5) == FACE_NORMAL_FLOAT && face_at(&g, 17, 7) == FACE_WK_SEPARATOR && face_at(&g, 17, 9) == FACE_WK_DESC && face_at(&g, 17, 35) == FACE_WK_GROUP) failed
+caught        keys: <BS> and <Esc> after Org's c act as which-key's, not as Vim's (test_keys_map): tests/test_keys_map.c:282: CHECK(at(&d, "* NEXTXc b\n", 6)) failed
+caught        keys: which-key's panel covers the command line (test_keys_map): tests/test_keys_map.c:134: CHECK(wait_hint(&e, &g) >= 190000000LL) failed
+caught        keys: which-key's panel moves for a cursor on the row above it too late (test_keys_map): tests/test_keys_map.c:146: CHECK(row_has(&g, 23, "<esc> close") && row_has(&g, 18, "D \xe2\x9e\x9c") && row_has(&g, 20, ", \xe2\x9e\x9c") && row_has(&g, 21, "c \xe2\x9e\x9c") && !row_has(&g, 22, "\xe2\x9e\x9c") && g.c[16 * 80].bg != FACE_NORMAL_FLOAT) failed
+caught        keys: z then a key past 255 reads past nv_zet()'s table (test_keys_map): src/keys/normal.c:1323:22: runtime error: index 5 out of bounds for type 'int [5]'
+caught        keys: an executed register's keys open folds as typed ones (test_keys_ex): 1 of 3000 differ (| is Enter, ~ Esc)
+caught        review: R6 0 opens no fold: 7 of 3000 differ (| is Enter, ~ Esc)
+caught        review: R10 % opens the fold though the line stayed: 11 of 3000 differ (| is Enter, ~ Esc)
+caught        review: R14 [[ opens no fold: 6 of 3000 differ (| is Enter, ~ Esc)
+caught        review: R18 Visual zo: V start column kept: 21 of 3000 differ (| is Enter, ~ Esc)
+caught        review: R22 O opens below the fold: 11 of 3000 differ (| is Enter, ~ Esc)
+caught        review: R27 k from the first line does not fail: 7 of 3000 differ (| is Enter, ~ Esc)
+caught        review: R26b a macro's motion opens the fold (key_typed ignored in foldopen): 1 of 3000 differ (| is Enter, ~ Esc)
+NOT CAUGHT    keys: a mark jump to the cursor's own position opens the fold (test_keys_ex)
+caught        review: R28 { } skip the fold backward as forward: 8 of 3000 differ (| is Enter, ~ Esc)
+NOT CAUGHT    review: R31 u in a macro opens the fold
+caught        review: R33 P then u: cursor not restored (u_save only for p): 1 of 3000 differ (| is Enter, ~ Esc)
