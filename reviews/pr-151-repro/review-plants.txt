@@ -1,0 +1,9 @@
+a: <c-d>/<c-u> scroll floor(H/2), not ceil~((wh + 1) / 2)~(wh / 2)
+b: the cut panel's help is centred as the short one~hw = cut ? 41 : 22~hw = 22
+c: the scroll step from the list's height, not the panel's~	wh = H;~	wh = h;
+d: scrolled-off rows are drawn above the panel~if (r < top || r >= last) continue;~if (r >= last) continue;
+e: a scroll does not ask for a redraw~		wtop += (k == 4 ? 1 : -1) * ((wh + 1) / 2);¶		core_changed = 1;~		wtop += (k == 4 ? 1 : -1) * ((wh + 1) / 2);
+g: <c-d>/<c-u> are taken when no panel shows~if (hint && (k == 4 || k == 21)) {~if (k == 4 || k == 21) {
+i: the scroll stops one line early~if (wtop > h + 3 - H) wtop = h + 3 - H;~if (wtop > h + 2 - H) wtop = h + 2 - H;
+j: the help offers scroll on a panel that fits~int cut = H < h + 3,~int cut = H <= h + 3,
+k: <c-u> scrolls ceil(H/2) on an odd height (which-key: floor)~(k == 4 ? 1 : -1) * ((wh + 1) / 2)~(k == 4 ? wh + 1 : -wh) / 2

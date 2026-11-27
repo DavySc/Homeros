@@ -237,7 +237,7 @@ keys: which-key's panel shows after 20 ms, not its 200 (test_keys_map)~test TEST
 keys: <BS> in which-key's panel closes it instead of going up a level (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		nlead = k == KEY_BS ? nlead - 1 : 0;~		nlead = 0;
 keys: <Esc> in which-key's panel keeps the count typed before Space (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		hint_end();¶		keys_feed(e, KEY_ESC, 0);~		hint_end();
 keys: a group's row (SPC g, +git) runs as a map (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		if (*maps[i].desc == '+') continue;¶~¶
-keys: which-key's panel fills rows first, not columns (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		int c = 2 + 3 + k / h * w, r = top + 1 + k % h;~		int c = 2 + 3 + k % cols * w, r = top + 1 + k / cols;
+keys: which-key's panel fills rows first, not columns (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~int c = 2 + 3 + k / h * w, r = top + 1 + k % h - wtop;~int c = 2 + 3 + k % cols * w, r = top + 1 + k / cols - wtop;
 keys: which-key's trail names a group by its key, not its name (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~			if (typed(maps[j].lhs) > i && !maps[j].lhs[i + 1]) s = maps[j].desc;~			if (typed(maps[j].lhs) > i && !maps[j].lhs[i + 1]) (void)s;
 keys: which-key's panel stays shown after it closes, so the next Space shows it at once (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~static void hint_end(void) { hint = 0; ~static void hint_end(void) { 
 keys: which-key's panel has no NormalFloat background (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~g->c[i].bg = FACE_NORMAL_FLOAT;~g->c[i].bg = 0;
@@ -247,19 +247,36 @@ keys: closing which-key's panel leaves its delay running (test_keys_map)~test TE
 keys: which-key's groups in the description's face (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~*d == '+' ? FACE_WK_GROUP : FACE_WK_DESC~FACE_WK_DESC
 keys: which-key's separator in the key's face (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~" \xe2\x9e\x9c ", FACE_WK_SEPARATOR~" \xe2\x9e\x9c ", FACE_NORMAL_FLOAT
 keys: which-key's panel lists maps this mode cannot run (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~return usable(m) && typed(m) == nlead~return typed(m) == nlead
-keys: which-key's panel is not cut to the screen (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (h > g->rows - 4) h = g->rows - 4;¶~
+keys: which-key's panel is not cut to the screen (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~int H = h + 3 < g->rows - 1 ? h + 3 : g->rows - 1,~int H = h + 3,
 keys: <BS> and <Esc> after Org's c act as which-key's, not as Vim's (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~if (nlead && lead[0] == ' ' && (k == KEY_ESC~if (nlead && (k == KEY_ESC
 keys: which-key's panel puts groups first (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~return (*maps[i].desc == '+') * 1024~return (*maps[i].desc != '+') * 1024
 keys: which-key's panel puts punctuation keys first (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~!isalnum(k) * 512~!!isalnum(k) * 512
 keys: which-key's panel puts upper case first (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~(isupper(k) != 0)~(isupper(k) == 0)
 keys: which-key's panel covers the command line (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~last = g->rows - 2;~last = g->rows - 1;
-keys: which-key's panel has no blank row under the list (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~int top = g->rows - h - 4,~int top = g->rows - h - 3,
+keys: which-key's panel has no blank row under the list (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~int H = h + 3 < g->rows - 1 ? h + 3 : g->rows - 1,~int H = h + 2 < g->rows - 1 ? h + 2 : g->rows - 1,
 keys: which-key's list may be 1 row high (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (h < 2) h = 2;¶~
 keys: which-key's panel covers the cursor (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~if (g->crow >= top - 1 && g->crow <= last)~if (0)
 keys: which-key's panel moves for a cursor on the row above it too late (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~g->crow >= top - 1 &&~g->crow >= top &&
 keys: which-key's panel moved for the cursor starts on the row under it (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~top = g->crow + 2 < g->rows - 4 ? g->crow + 2 :~top = g->crow + 1 < g->rows - 4 ? g->crow + 1 :
 keys: which-key's columns 10 wide, not its 20 (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	int n = 0, w = 20;~	int n = 0, w = 10;
-keys: which-key's panel on a screen under 4 rows writes before the grid (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (h < 1 || top < 0) return;~	if (h < 1) return;
+keys: which-key's panel on a screen under 4 rows writes before the grid (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~if (top < 0 || H < 4) return;~if (H < 4) return;
+keys: which-key's <c-d> and <c-u> do not scroll the panel (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~if (hint && (k == 4 || k == 21)) {~if (0) {
+keys: which-key's <c-u> scrolls down (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~(k == 4 ? wh + 1 : -wh) / 2;~(wh + 1) / 2;
+keys: which-key's <c-d> scrolls the whole height (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~(k == 4 ? wh + 1 : -wh) / 2;~(k == 4 ? wh : -wh);
+keys: which-key's panel scrolls past its last line (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~wtop > wmax ? wmax : wtop;~wtop;
+keys: which-key's panel scrolls above its first line (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~wtop = wtop < 0 ? 0 : wtop~wtop = wtop
+keys: which-key's next level keeps the scroll (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	wtop = 0;¶	/* after Space~	/* after Space
+keys: which-key's help does not offer <c-d>/<c-u> on a cut panel (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (cut) {~	if (0) {
+keys: which-key's list is drawn under its footer (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~if (r < top || r >= last) continue;~if (r < top || r > last) continue;
+keys: which-key's <c-u> scrolls ceil(H/2) on an odd height, not its floor (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~(k == 4 ? wh + 1 : -wh) / 2;~(k == 4 ? 1 : -1) * ((wh + 1) / 2);
+keys: which-key's scroll step from the list's height, not the panel's (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~wh = H, wmax~wh = h, wmax
+keys: which-key's scrolled-off rows are drawn above the panel (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~if (r < top || r >= last) continue;~if (r >= last) continue;
+keys: which-key's cut panel's help is centred as the short one (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~hw = cut ? 41 : 22~hw = 22
+keys: which-key's <c-d>/<c-u> are taken when no panel shows (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~if (hint && (k == 4 || k == 21)) {~if (k == 4 || k == 21) {
+keys: which-key's help offers scroll on a panel that fits (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~int cut = H < h + 3,~int cut = H <= h + 3,
+keys: which-key's panel keeps a scroll the screen no longer has (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (wtop > wmax) wtop = wmax;~	(void)wmax;
+keys: a typed NUL matches a map's end and the map is read past it (ASan) (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~while (j < nlead && m[j] && m[j] == lead[j])~while (j < nlead && m[j] == lead[j])
+keys: which-key's scroll stops one line early (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~wh = H, wmax = h + 3 - H;~wh = H, wmax = h + 2 - H;
 keys: SPC r runs nothing (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		case 'r': sql_results(e); break;¶~
 keys: :Connect is not a command (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~conn = k == 7 && !strncmp(p, "Connect", 7)~conn = 0
 keys: :Disconnect is not a command (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~"KittenPaw", "Disconnect", "Dashboard"~"KittenPaw", "Disconect", "Dashboard"
