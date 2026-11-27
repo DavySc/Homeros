@@ -71,6 +71,14 @@ jobs:
       - if: steps.ghostty.outputs.cache-hit == 'true'
         run: touch build/ghostty/*
       - run: make build/ghostty/windows.lib
+      # OpenSSL for Windows (src/sql/openssl.nix, package 22), 6 minutes of
+      # zig, cached the same way
+      - id: openssl
+        uses: actions/cache@v4
+        with: { path: build/openssl-win, key: "openssl-win-${{ hashFiles('src/sql/openssl.nix') }}" }
+      - if: steps.openssl.outputs.cache-hit == 'true'
+        run: find build/openssl-win -type f -exec touch {} +
+      - run: make build/openssl-win/lib/libssl.a
       - run: make ${{ matrix.target }}
   # tests that link the whole editor below the window, built here for the
   # windows job (winlink, tools/winpass.sh): their tree-sitter sources and
@@ -89,14 +97,22 @@ jobs:
         with: { path: build/ghostty, key: "ghostty-${{ hashFiles('src/tools/ghostty.nix') }}" }
       - if: steps.ghostty.outputs.cache-hit == 'true'
         run: touch build/ghostty/*
+      # OpenSSL for Windows, cached as in check (winlink links src/sql)
+      - id: openssl
+        uses: actions/cache@v4
+        with: { path: build/openssl-win, key: "openssl-win-${{ hashFiles('src/sql/openssl.nix') }}" }
+      - if: steps.openssl.outputs.cache-hit == 'true'
+        run: find build/openssl-win -type f -exec touch {} +
       # make reads every build.mk's pkg-config before any target
       - run: >
           sudo apt-get update && sudo apt-get install -y pkg-config libssl-dev libstb-dev
           libfreetype-dev libharfbuzz-dev libfontconfig-dev libwayland-dev libxkbcommon-dev
-      - run: . tools/winpass.sh && winlink build/win/test_git_win.exe tests/test_git_win.c
-      - run: . tools/winpass.sh && winlink build/win/test_infoview_win.exe tests/test_infoview_win.c -lws2_32
+      - run: >
+          . tools/winpass.sh && winlink build/win/test_git_win.exe tests/test_git_win.c &&
+          winlink build/win/test_sql_wake.exe tests/test_sql_wake.c &&
+          winlink build/win/test_infoview_win.exe tests/test_infoview_win.c -lws2_32
       - uses: actions/upload-artifact@v4
-        with: { name: winexe, path: "build/win/test_git_win.exe\nbuild/win/test_infoview_win.exe" }
+        with: { name: winexe, path: "build/win/test_git_win.exe\nbuild/win/test_sql_wake.exe\nbuild/win/test_infoview_win.exe" }
   # git's and the loop's Windows halves on Windows itself, for what Wine
   # cannot show (a path's names as stored, a pseudo-console's resize): pull
   # requests only, so it stays short (packages 17 and 10, thread 0's, agreed)
@@ -114,6 +130,9 @@ jobs:
       - uses: actions/download-artifact@v4
         with: { name: winexe, path: build/win }
       - run: . tools/winpass.sh && pass 300 build/win/test_git_win.exe
+        shell: bash
+      # the SQL clients' socket wakes: Windows signals a close once, Wine again (package 22)
+      - run: . tools/winpass.sh && pass 120 build/win/test_sql_wake.exe
         shell: bash
       # the pseudo-console (ConPTY), which Wine cannot resize (the terminal's)
       - run: bash src/loop/check.sh
