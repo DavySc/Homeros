@@ -165,6 +165,11 @@ int main(void)
 	SetKeyboardState(ks);
 	PostMessageW(win, WM_KEYDOWN, VK_OEM_PERIOD, 0);   /* a plain '.' is WM_CHAR's */
 	CHECK(input(k, 4) == 1 && k[0] == '.');
+	PostMessageW(win, WM_KEYDOWN, VK_F5, 0);
+	PostMessageW(win, WM_KEYDOWN, VK_PAUSE, 0);
+	PostMessageW(win, WM_SYSKEYDOWN, VK_PAUSE, 0);   /* Alt+Break */
+	PostMessageW(win, WM_SYSKEYDOWN, VK_LEFT, 0);    /* Alt+Left: the system's */
+	CHECK(input(k, 4) == 3 && k[0] == KEY_F5 && k[1] == KEY_BREAK && k[2] == KEY_BREAK);
 	for (int i = 0; i < 600; i++) PostMessageW(win, WM_CHAR, 'x', 0);
 	CHECK(input(k, 7) == 600);
 

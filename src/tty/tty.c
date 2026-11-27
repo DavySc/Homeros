@@ -117,7 +117,8 @@ static int key(const unsigned char *s, int n, int force, int *k)
 		if (j == n) return force;
 		*k = s[2] == 'A' ? KEY_UP : s[2] == 'B' ? KEY_DOWN : s[2] == 'C' ? KEY_RIGHT : s[2] == 'D' ? KEY_LEFT
 		   : s[2] == '3' && s[3] == '~' ? KEY_DEL      /* Delete: termkey's CSI 3 ~ */
-		   : s[2] == 'Z' ? KEY_S_TAB : -1;             /* Shift-Tab: termkey's CSI Z */
+		   : s[2] == 'Z' ? KEY_S_TAB                   /* Shift-Tab: termkey's CSI Z */
+		   : s[2] == '1' && s[3] == '5' && s[4] == '~' ? KEY_F5 : -1;   /* xterm's F5 */
 		return j + 1;
 	}
 	if (s[0] < 0xC2 || s[0] > 0xF4) return 1;      /* ASCII, or no UTF-8 lead */

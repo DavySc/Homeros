@@ -164,6 +164,8 @@ static int key_of(uint32_t key)
 	case XKB_KEY_Right: return KEY_RIGHT;
 	case XKB_KEY_BackSpace: return KEY_BS;     /* what a terminal sends */
 	case XKB_KEY_ISO_Left_Tab: return KEY_S_TAB;   /* Shift-Tab in most layouts */
+	case XKB_KEY_F5: return KEY_F5;
+	case XKB_KEY_Pause: case XKB_KEY_Break: return KEY_BREAK;   /* Break: Ctrl+Pause */
 	case XKB_KEY_Tab:   /* and in a keymap whose Tab has one level (wtype's) */
 		if (xkb_state_mod_name_is_active(xst, XKB_MOD_NAME_SHIFT, XKB_STATE_MODS_EFFECTIVE) > 0) return KEY_S_TAB;
 		break;

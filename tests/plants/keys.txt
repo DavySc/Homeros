@@ -260,6 +260,9 @@ keys: which-key's panel moves for a cursor on the row above it too late (test_ke
 keys: which-key's panel moved for the cursor starts on the row under it (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~top = g->crow + 2 < g->rows - 4 ? g->crow + 2 :~top = g->crow + 1 < g->rows - 4 ? g->crow + 1 :
 keys: which-key's columns 10 wide, not its 20 (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	int n = 0, w = 20;~	int n = 0, w = 10;
 keys: which-key's panel on a screen under 4 rows writes before the grid (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (h < 1 || top < 0) return;~	if (h < 1) return;
+keys: SPC r runs nothing (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		case 'r': sql_results(e); break;¶~
+keys: :Connect is not a command (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~conn = k == 7 && !strncmp(p, "Connect", 7)~conn = 0
+keys: :Disconnect is not a command (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~"KittenPaw", "Disconnect", "Dashboard"~"KittenPaw", "Disconect", "Dashboard"
 keys: a focus change keeps Visual mode~test TESTS=keys_map~~src/keys/keys.c~		if (e->mode == MODE_INSERT || e->ks.visual || (!m~		if (e->mode == MODE_INSERT || (!m
 keys: a focus change leaves which-key's panel up~test TESTS=keys_map~~src/keys/keys.c~		nlead = frame = 0;¶		hint_end();~		nlead = frame = 0;
 specs: Focus with every focus event entering its tab page~specs~find design/specs -name '*.cfg' ! -name Focus_ok.cfg -delete~design/specs/Focus_ok.cfg~ Variant = "asked"~ Variant = "enter"
@@ -275,3 +278,5 @@ keys: Visual SPC 5 {motion} beeps (test_keys_map)~test TESTS=keys_map~~src/keys/
 keys: a map or SPC 5 {letter} keeps the count typed before (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	hint_end();¶	normal_mappable(1);¶}~	hint_end();¶}
 keys: a map or SPC 5 {letter} leaves which-key's panel up (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	nlead = e->ks.pending = 0;¶	hint_end();¶	normal_mappable(1);~	nlead = e->ks.pending = 0;¶	normal_mappable(1);
 keys: a map or SPC 5 {letter} leaves the keys pending (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	nlead = e->ks.pending = 0;¶	hint_end();¶	normal_mappable(1);~	nlead = 0; (void)e;¶	hint_end();¶	normal_mappable(1);
+keys: a lone operator or register is not pending (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~int normal_pending(void) { return npend > 0 || oa.op_type != OP_NOP || oa.regname; }~int normal_pending(void) { return npend > 0; }
+keys: a lone register is not pending (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~ || oa.regname; }~; }

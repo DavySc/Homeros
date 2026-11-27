@@ -75,6 +75,14 @@ int main(void)
 	CHECK(at(&e, "acb\n", 1));
 	feed(&e, "u0 fb");
 	CHECK(at(&e, "abcb\n", 3));
+	/* a lone operator or register is half typed too (keys.h): the keys
+	   that follow go to it, not to a picker, git, SQL or snippets */
+	feed(&e, "0d");
+	CHECK(e.ks.pending);
+	feed(&e, "\033\"a");
+	CHECK(e.ks.pending);
+	feed(&e, "\033");
+	CHECK(!e.ks.pending && at(&e, "abcb\n", 0));
 	feed(&e, "0  ");
 	CHECK(e.ks.pending && at(&e, "abcb\n", 1));
 	feed(&e, "ff");                            /* SPC ff is a picker */
@@ -95,6 +103,18 @@ int main(void)
 	CHECK(!strcmp(e.msg, "Kitten on save: off"));
 	feed(&e, " uk");
 	CHECK(!strcmp(e.msg, "Kitten on save: on"));
+	/* SQL (package 22): SPC r opens the results split, :Connect [name]
+	   names the buffer's connection, :Disconnect ends its session (here
+	   no results, no file and no session) */
+	feed(&e, " r");
+	CHECK(!strcmp(e.msg, "sql: no results yet (F5 runs the query)") && !e.ks.pending);
+	feed(&e, ":Connect\r");
+	CHECK(!strcmp(e.msg, "sql: not connected"));
+	feed(&e, ":Disconnect\r");
+	CHECK(!strncmp(e.msg, "sql: ", 5));
+	setenv("XDG_CONFIG_HOME", "/nonexistent", 1);
+	feed(&e, ":Connect dev\r");
+	CHECK(!strncmp(e.msg, "sql: no connections file", 24));
 	/* SPC i s, the snippet picker, also in Visual mode (around the area);
 	   no other map there: Space is its motion */
 	feed(&e, " is");
@@ -130,8 +150,8 @@ int main(void)
 	CHECK(wait_hint(&e, &g) >= 190000000LL);
 	CHECK(row_has(&g, 22, "<esc> close  <bs> back") && !row_has(&g, 23, "SPC"));
 	CHECK(!row_has(&g, 16, "\xe2\x9e\x9c") && !row_has(&g, 21, "\xe2\x9e\x9c"));
-	CHECK(row_has(&g, 17, "D \xe2\x9e\x9c Dashboard") && row_has(&g, 18, "e \xe2\x9e\x9c File Explorer") && row_has(&g, 19, ", \xe2\x9e\x9c Buffers"));
-	CHECK(row_has(&g, 20, "5 \xe2\x9e\x9c +frame") && row_has(&g, 17, "c \xe2\x9e\x9c +compile") && row_has(&g, 18, "f \xe2\x9e\x9c +find") && row_has(&g, 19, "u \xe2\x9e\x9c +toggle"));
+	CHECK(row_has(&g, 17, "D \xe2\x9e\x9c Dashboard") && row_has(&g, 18, "e \xe2\x9e\x9c File Explorer") && row_has(&g, 19, "r \xe2\x9e\x9c SQL results") && row_has(&g, 20, ", \xe2\x9e\x9c Buffers"));
+	CHECK(row_has(&g, 17, "5 \xe2\x9e\x9c +frame") && row_has(&g, 18, "c \xe2\x9e\x9c +compile") && row_has(&g, 19, "f \xe2\x9e\x9c +find") && row_has(&g, 20, "u \xe2\x9e\x9c +toggle"));
 	CHECK(face_at(&g, 17, 5) == FACE_NORMAL_FLOAT && face_at(&g, 17, 7) == FACE_WK_SEPARATOR && face_at(&g, 17, 9) == FACE_WK_DESC && face_at(&g, 17, 35) == FACE_WK_GROUP);
 	CHECK(g.c[22 * 80 + 79].bg == FACE_NORMAL_FLOAT && g.c[16 * 80].bg == FACE_NORMAL_FLOAT && g.c[15 * 80].bg != FACE_NORMAL_FLOAT && g.c[23 * 80].bg != FACE_NORMAL_FLOAT);
 	/* the cursor under it (which-key's no_overlap): 2 rows below the cursor
@@ -139,7 +159,7 @@ int main(void)
 	g.crow = 15;
 	grid_clear(&g);
 	keys_draw(&e, &g);
-	CHECK(row_has(&g, 23, "<esc> close") && row_has(&g, 18, "D \xe2\x9e\x9c") && row_has(&g, 20, ", \xe2\x9e\x9c") && row_has(&g, 21, "5 \xe2\x9e\x9c") && !row_has(&g, 22, "\xe2\x9e\x9c") && g.c[16 * 80].bg != FACE_NORMAL_FLOAT);
+	CHECK(row_has(&g, 23, "<esc> close") && row_has(&g, 18, "D \xe2\x9e\x9c") && row_has(&g, 20, "r \xe2\x9e\x9c") && row_has(&g, 21, ", \xe2\x9e\x9c") && row_has(&g, 18, "5 \xe2\x9e\x9c") && !row_has(&g, 22, "\xe2\x9e\x9c") && g.c[16 * 80].bg != FACE_NORMAL_FLOAT);
 	g.crow = 21;
 	grid_clear(&g);
 	keys_draw(&e, &g);
@@ -156,7 +176,7 @@ int main(void)
 	keys_input(&e, KEY_BS, 0);
 	grid_clear(&g);
 	keys_draw(&e, &g);
-	CHECK(e.ks.pending && row_has(&g, 19, "Buffers") && !row_has(&g, 22, "git"));
+	CHECK(e.ks.pending && row_has(&g, 20, "Buffers") && !row_has(&g, 22, "git"));
 	keys_input(&e, KEY_BS, 0);
 	grid_clear(&g);
 	keys_draw(&e, &g);
@@ -294,8 +314,8 @@ int main(void)
 	core_free(&d);
 	unlink(org);
 	CHECK(!core_open(&d, NULL));
-	feed(&d, "c");
-	CHECK(!d.ks.pending);
+	feed(&d, "i* TODO a\0330cit");             /* outside Org cit is Vim's: no tag, so nothing */
+	CHECK(d.mode == MODE_NORMAL && at(&d, "* TODO a\n", 0));
 	core_free(&d);
 	/* frames (tab pages): Emacs's C-x 5 keys as SPC 5, gt, CTRL-W T */
 	memcpy(path + sizeof path - 7, "XXXXXX", 6);
