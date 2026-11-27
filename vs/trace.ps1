@@ -3,7 +3,7 @@
 # usage: trace.ps1 <subject.exe> <out dir> <most steps>
 # Two scripts per subject, as RAD's `into` and `over`. A line per step: STEP <kind> <function> <file>:<line> <rip>.
 # A third, `stops`: a breakpoint on each of the first six functions `into` came through, and where each run to the next stops
-# (where in a function its breakpoint lies: before or after the code that makes its frame).
+# (where in a function its breakpoint lies: on its first instruction, measured; and what its arguments are shown as there).
 param($exe, $out, $most)
 New-Item -ItemType Directory -Force $out | Out-Null
 $name = [IO.Path]::GetFileNameWithoutExtension($exe)
@@ -34,7 +34,9 @@ foreach ($script in 'into', 'over', 'stops') {
       # 2: stopped in the debugger. A step that is not there at once gets five seconds (the first recording of `calls` "ended" at its first step)
       for ($w = 0; $w -lt 50 -and (Again { $dte.Debugger.CurrentMode }) -ne 2; $w++) { Start-Sleep -Milliseconds 100 }
       if ((Again { $dte.Debugger.CurrentMode }) -ne 2) { $lines += "STEP $script ended"; break }
-      $lines += "STEP $script $(Place $dte)"
+      $shown = ''   # at a function's breakpoint: its arguments as Visual Studio shows them there (the code that makes the frame has not run yet)
+      if ($script -eq 'stops') { $shown = ' ARGS ' + ((Again { @($dte.Debugger.CurrentStackFrame.Arguments | ForEach-Object { "$($_.Name)=$($_.Value)" }) }) -join ' ') }
+      $lines += "STEP $script $(Place $dte)$shown"
     }
   } catch { $lines += "FAILED: $_" }
   try { $dte.Debugger.Stop($true) } catch {}
