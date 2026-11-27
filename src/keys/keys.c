@@ -367,7 +367,7 @@ static int map(Editor *e, int k)
 	memcpy(l, lead, sizeof l);
 	nlead = 0;
 	if (n == 1) return 0;
-	if (l[1] == '5' && l[0] == ' ') {   /* SPC 5 and no frame's key: beep, as SPC 5 m and n do */
+	if (n == 3 && l[1] == '5' && l[0] == ' ') {   /* SPC 5 and no frame's key: beep, as SPC 5 m and n do (Visual mode has no SPC 5 map) */
 		lead_end(e);
 		beep();
 		return 1;

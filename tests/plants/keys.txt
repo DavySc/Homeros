@@ -270,7 +270,8 @@ keys: SPC 5 m with no frame's letter moves anyway (test_keys_map)~test TESTS=key
 keys: SPC 5 n gives another frame's letter (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~(frame_nr(e, k) && e->tab->key != k)~0
 keys: SPC 5 n changes nothing (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	e->tab->key = (char)k;¶~
 keys: SPC 5 {letter} enters the frame after it (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		goto_tabpage(to);~		goto_tabpage(to + 1);
-keys: SPC 5 with no frame's key runs Space, 5 and the key (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (l[1] == '5' && l[0] == ' ') {~	if (0) {
+keys: SPC 5 with no frame's key runs Space, 5 and the key (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (n == 3 && l[1] == '5' && l[0] == ' ') {~	if (0) {
+keys: Visual SPC 5 {motion} beeps (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~if (n == 3 && l[1] == '5'~if (l[1] == '5'
 keys: a map or SPC 5 {letter} keeps the count typed before (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	hint_end();¶	normal_mappable(1);¶}~	hint_end();¶}
 keys: a map or SPC 5 {letter} leaves which-key's panel up (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	nlead = e->ks.pending = 0;¶	hint_end();¶	normal_mappable(1);~	nlead = e->ks.pending = 0;¶	normal_mappable(1);
 keys: a map or SPC 5 {letter} leaves the keys pending (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	nlead = e->ks.pending = 0;¶	hint_end();¶	normal_mappable(1);~	nlead = 0; (void)e;¶	hint_end();¶	normal_mappable(1);

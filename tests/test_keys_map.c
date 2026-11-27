@@ -354,10 +354,12 @@ int main(void)
 	CHECK(d.tab == d.tabs->next->next && d.tab->key == 'z');
 	feed(&d, " 51");
 	CHECK(!d.tabs->next);
-	feed(&d, "ggdGiabc\x1b" "0 5x 5{ 5n{");      /* no frame's key: a beep, the text kept */
-	CHECK(at(&d, "abc\n", 0) && d.tab->key == 'z' && !d.ks.pending);
+	feed(&d, "ggdGiabcdefghij\x1b" "0v 5l\x1b");  /* Visual mode has no SPC 5: Space, 5l */
+	CHECK(at(&d, "abcdefghij\n", 6));
+	feed(&d, "0 5x 5{ 5n{");                   /* no frame's key: a beep, the text kept */
+	CHECK(at(&d, "abcdefghij\n", 0) && d.tab->key == 'z' && !d.ks.pending);
 	feed(&d, "2 5zx");                         /* the count before goes with the jump */
-	CHECK(at(&d, "bc\n", 0) && !d.ks.pending);
+	CHECK(at(&d, "bcdefghij\n", 0) && !d.ks.pending);
 	feed(&d, " 5");
 	CHECK(!grid_resize(&g, 24, 80) && wait_hint(&d, &g) > 0);
 	feed(&d, "zuuu");                          /* the jump closes which-key's panel */
