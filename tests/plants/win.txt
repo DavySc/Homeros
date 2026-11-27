@@ -37,6 +37,9 @@ specs: Pace with frames only P + D apart~specs~find design/specs -name '*.cfg' !
 win: Shift-Tab sends Tab~win WIN=win~~src/win/backend.c~w == 9 && GetKeyState(VK_SHIFT) < 0~w == 9 && GetKeyState(VK_SHIFT) > 0
 win: Ctrl+. is lost~win WIN=win~~src/win/backend.c~if (GetKeyState(VK_CONTROL) < 0) { put(KEY_CTRL_DOT, x->id); return 0; }~if (GetKeyState(VK_CONTROL) > 0) { put(KEY_CTRL_DOT, x->id); return 0; }
 win: every row sent every frame~win WIN=win~~src/win/backend.c~paint(w->bits, w->dw, w->wbits, w->dw, g, shown, all, dirty);~paint(w->bits, w->dw, w->wbits, w->dw, g, shown, 1, dirty);
+win: F5 sends nothing~win WIN=win~~src/win/backend.c~case VK_F5: put(KEY_F5, x->id); return 0;~case VK_F5: break;
+win: Alt+Break sends nothing~win WIN=win~~src/win/backend.c~if (w == VK_PAUSE) { put(KEY_BREAK, x->id); return 0; }~if (0) { put(KEY_BREAK, x->id); return 0; }
+win: every Alt key taken from the system~win WIN=win~~src/win/backend.c~		break;¶	case WM_KEYDOWN:~	case WM_KEYDOWN:
 win: a changed row not sent to the window~win WIN=win~~src/win/backend.c~if (dirty[r]) BitBlt~if (dirty[r] && r < 0) BitBlt
 win: a whole redraw not sent to the window~win WIN=win~~src/win/backend.c~if (all) BitBlt(dc, 0, 0, w->dw, w->dh, w->mem, 0, 0, SRCCOPY);~if (all) {}
 win: the font not sized for the window's DPI~win WIN=win~~src/win/backend.c~MulDiv(PT, w->dpi, 72)~MulDiv(PT, 96, 72)

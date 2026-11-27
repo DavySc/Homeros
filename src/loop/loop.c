@@ -20,7 +20,9 @@
 #include "loop.h"
 #include "timer.h"
 
-enum { MAXW = 16, MAXP = 32, MAXF = MAXW + 1 + 3 * MAXP, KILL_MS = 2000 };
+/* MAXW: as many watches as on Windows (src/loop/win.c), so both refuse
+   the same one */
+enum { MAXW = 31, MAXP = 32, MAXF = MAXW + 1 + 3 * MAXP, KILL_MS = 2000 };
 
 int loop_int;
 
