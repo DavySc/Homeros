@@ -11,8 +11,8 @@
 /* A backend's own attr after grid.h's: its input method's preedit, drawn
    underlined (Wayland's text-input-v3) */
 enum { PAINT_PRE = ATTR_IMAGE + 1 };
-/* The window's base colour (Catppuccin Mocha's), 0xRRGGBB */
-enum { PAINT_BASE = 0x1e1e2e };
+/* The window's base and text colours (Catppuccin Mocha's), 0xRRGGBB */
+enum { PAINT_BASE = 0x1e1e2e, PAINT_TEXT = 0xcdd6f4 };
 
 /* back: where the base colour shows, what shows instead (a wallpaper):
    the pixels at the same place in back, row y at back + y * bstride

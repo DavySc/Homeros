@@ -35,32 +35,34 @@ printf '#include "stb_image.h"\n#include "stb_image_resize.h"\n' | $Z -O2 -x c -
 rest="$(pick grid) $(pick uni) $(pick theme) -I$R src/image/image.c src/file/*.c src/loop/*.c $(pick text)"
 libs="-luser32 -lgdi32 -ldwmapi -lshell32"
 $Z -std=c17 -Iinclude -O2 -o build/win/frames_new.exe src/win/probe/frames.c src/win/*.c src/paint/*.c src/font/*.c $rest build/win/stb.o $FONT_WIN $libs
-# the painter with span0.diff: an unchanged row is one memcmp, not a compare cell by cell
-mkdir -p build/skip && cp src/paint/paint.c build/skip/paint.c && patch -s build/skip/paint.c $R/span0.diff
-$Z -std=c17 -Iinclude -O2 -o build/win/frames_skip.exe src/win/probe/frames.c src/win/*.c build/skip/paint.c src/font/*.c $rest build/win/stb.o $FONT_WIN $libs
+$Z -std=c17 -Iinclude -O2 -o build/win/sizeprobe.exe $R/sizeprobe.c src/win/*.c src/paint/*.c src/font/*.c $rest build/win/stb.o $FONT_WIN $libs
 $Z -std=c17 -Iinclude -O2 -o build/win/fontprobe.exe $R/fontprobe.c src/font/*.c $(pick uni) $FONT_WIN
 $Z -std=c17 -Wall -Wextra -Werror -Iinclude -O1 -g -fsanitize=undefined -fsanitize-trap=undefined \
   -o build/win/test_win_font.exe tests/test_win_font.c src/win/*.c src/paint/*.c src/font/*.c $rest build/win/stb.o $FONT_WIN $libs
+$Z -std=c17 -Wall -Wextra -Werror -Iinclude -O1 -g -fsanitize=undefined -fsanitize-trap=undefined \
+  -o build/win/test_win.exe tests/test_win.c src/win/*.c src/paint/*.c src/font/*.c $rest build/win/stb.o $FONT_WIN $libs
 $Z -std=c17 -Iinclude -O2 -o build/win/fill.exe $R/fill.c src/font/*.c $(pick uni) $FONT_WIN
 $Z -std=c17 -O2 -o build/win/blobprobe.exe $R/blobprobe.c $FONT_WIN
-# the font finder with number.diff: a font refused for not being a colour font takes no number
-mkdir -p build/fix && cp src/font/dwrite.c build/fix/dwrite.c && patch -s build/fix/dwrite.c $R/number.diff
-$Z -std=c17 -Iinclude -Isrc/font -O2 -o build/win/fill_fix.exe $R/fill.c src/font/font.c src/font/sprite.c src/font/fc.c build/fix/dwrite.c $(pick uni) $FONT_WIN
 $Z -o build/win/gdiface.exe $R/gdiface.c -lgdi32
 if [ ! -d build/base ]; then git fetch -q --depth 1 origin $BASE && git worktree add -f --detach build/base FETCH_HEAD >/dev/null; fi
 ( cd build/base && $Z -std=c17 -Iinclude -O2 -o ../win/frames_old.exe ../../src/win/probe/frames.c src/win/*.c $(pick grid) $(pick uni) $(pick theme) \
     -I../../$R src/image/image.c src/file/*.c src/loop/*.c $(pick text) ../win/stb.o $libs )
 run=${RUN:-}
+mkdir -p build/win/wall/homeros && cp $R/wallpaper.png build/win/wall/homeros/wallpaper
+if [ -z "${SIZES_ONLY:-}" ]; then
 $run build/win/gdiface.exe
 echo "== fontprobe, first process"; $run build/win/fontprobe.exe
 echo "== fontprobe, second process"; $run build/win/fontprobe.exe | head -8
 echo "== fontprobe, no family installed"; $run build/win/fontprobe.exe "No Such Family" | head -8
 echo "== fill"; $run build/win/fill.exe && echo "fill: every later character still draws" || echo "fill: exit $?"
-echo "== fill with number.diff"; $run build/win/fill_fix.exe && echo "fill: every later character still draws" || echo "fill: exit $?"
 echo "== blobprobe"; $run build/win/blobprobe.exe 'C:\Windows\Fonts\msgothic.ttc' 'C:\Windows\Fonts\simsun.ttc' 'C:\Windows\Fonts\malgun.ttf' 'C:\Windows\Fonts\YuGothM.ttc' 'C:\Windows\Fonts\seguiemj.ttf' || true
 echo "== test_win_font"; $run build/win/test_win_font.exe && echo "test_win_font: passed" || echo "test_win_font: FAILED ($?)"
+echo "== test_win"; $run build/win/test_win.exe && echo "test_win: passed" || echo "test_win: FAILED ($?)"
 mkdir -p build/win/wall/homeros && cp $R/wallpaper.png build/win/wall/homeros/wallpaper
 for i in 1 2 3 4 5; do
-	for v in old new skip; do echo "== frames $v, run $i"; $run build/win/frames_$v.exe 200 || echo "frames $v: failed ($?)"; done
-	for v in new skip; do echo "== frames $v over a wallpaper, run $i"; XDG_CONFIG_HOME=build/win/wall $run build/win/frames_$v.exe 200 || echo "frames $v: failed ($?)"; done
+	for v in old new; do echo "== frames $v, run $i"; $run build/win/frames_$v.exe 200 || echo "frames $v: failed ($?)"; done
+	echo "== frames new over a wallpaper, run $i"; XDG_CONFIG_HOME=build/win/wall $run build/win/frames_new.exe 200 || echo "frames new: failed ($?)"
 done
+fi
+echo "== sizes over a wallpaper"; $run build/win/sizeprobe.exe 'build\win\wall' || echo "sizeprobe: failed ($?)"
+echo "== sizes without"; $run build/win/sizeprobe.exe | head -14

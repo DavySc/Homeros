@@ -18,7 +18,7 @@ static int bs;
 /* The window's defaults, Catppuccin Mocha like ref/theme.c's faces: base,
    text, and surface1 (catppuccin/nvim's LineNr) for ATTR_DIM.  Colours are
    opaque (alpha ff), so a buffer is ARGB8888 or XRGB8888 alike. */
-static const uint32_t BG = 0xff000000 | PAINT_BASE, FG = 0xffcdd6f4, DIM = 0xff45475a;
+static const uint32_t BG = 0xff000000 | PAINT_BASE, FG = 0xff000000 | PAINT_TEXT, DIM = 0xff45475a;
 static uint32_t rgb(const unsigned char c[3]) { return 0xff000000 | (uint32_t)c[0] << 16 | (uint32_t)c[1] << 8 | c[2]; }
 
 /* Callers keep rectangles inside the buffer: cells are, by the backends' size. */

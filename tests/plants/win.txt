@@ -1,10 +1,9 @@
 # Plants for src/win/ (format in tools/planted.sh).  Not planted, as test_win
 # cannot see them under Wine: the period read again on WM_DISPLAYCHANGE
-# (Wine's period never changes); dwrite.c's surrogates, as a wrong pair is
-# still drawn right, the scan finding the font by code point (measured, 1
-# run); its colour-only pass (Wine has no colour font FreeType draws here),
-# whose skipped scan and unnumbered refusals only save time (0.46 s for one
-# emoji-style cluster on Windows, reviews/pr-140.md).
+# (Wine's period never changes); dwrite.c's colour-only pass (Wine has no
+# colour font FreeType draws here), whose skipped scan and unnumbered
+# refusals only save time (0.46 s for one emoji-style cluster on Windows,
+# reviews/pr-140.md).
 win: Backspace sent as 8~win WIN=win~~src/win/backend.c~put(w == 8 && GetKeyState(VK_CONTROL) >= 0 ? KEY_BS : w == 9~put(w == 9
 win: Ctrl-H sent as Backspace~win WIN=win~~src/win/backend.c~w == 8 && GetKeyState(VK_CONTROL) >= 0 ? KEY_BS~w == 8 ? KEY_BS
 win: surrogate pair joined wrong~win WIN=win~~src/win/backend.c~((surr - 0xD800) << 10)~((surr - 0xD801) << 10)
@@ -32,7 +31,7 @@ win: pacing timer far too late~win WIN=win~~src/win/backend.c~* 10000000 +~* 100
 win: pacing timer keeps firing when idle~win WIN=win~~src/win/backend.c~SetWaitableTimer(timer, &due, 0,~SetWaitableTimer(timer, &due, 16,
 win: draws while minimised~win WIN=win~~src/win/backend.c~	if (!w || IsIconic(w->h)) return 0;¶~	if (!w) return 0;¶
 win: resize sends no KEY_RESIZE~win WIN=win~~src/win/backend.c~HIWORD(l) != x->dh)) {¶			x->resized = x->stale = 1;~HIWORD(l) != x->dh)) {¶			x->stale = 1;
-win: the DIB keeps its old size~win WIN=win~~src/win/backend.c~if (all && (grid_resize(shown, g->rows, g->cols) || make_dib(w))) return;~if (all && grid_resize(shown, g->rows, g->cols)) return;
+win: the DIB keeps its old size~win WIN=win~~src/win/backend.c~if (all && (grid_resize(shown, g->rows, g->cols) || (w->stale && make_dib(w)))) return;~if (all && grid_resize(shown, g->rows, g->cols)) return;
 specs: Pace with frames only P + D apart~specs~find design/specs -name '*.cfg' ! -name Pace_ok.cfg -delete~design/specs/Pace_ok.cfg~ Gap = 5~ Gap = 4
 win: Shift-Tab sends Tab~win WIN=win~~src/win/backend.c~w == 9 && GetKeyState(VK_SHIFT) < 0~w == 9 && GetKeyState(VK_SHIFT) > 0
 win: Ctrl+. is lost~win WIN=win~~src/win/backend.c~if (GetKeyState(VK_CONTROL) < 0) { put(KEY_CTRL_DOT, x->id); return 0; }~if (GetKeyState(VK_CONTROL) > 0) { put(KEY_CTRL_DOT, x->id); return 0; }
@@ -68,3 +67,8 @@ remote: the window stays after remote_stop~win WIN=win~~src/win/remote.c~if (me)
 remote: a launch the editor refused becomes a second editor~win WIN=win~~src/win/remote.c~if (!took && !FindWindowExW(HWND_MESSAGE, NULL, CLASS, NULL)) {~if (!took) {
 remote: empty data taken~win WIN=win~~src/win/remote.c~!cd->cbData || ~
 remote: files handed out newest first~win WIN=win~~src/win/remote.c~char *s = q[0];~char *s = q[qn - 1]; q[qn - 1] = q[0];
+win: the wallpaper never smooth~win WIN=win~~src/win/backend.c~w->sizing ? COLORONCOLOR : HALFTONE~COLORONCOLOR
+win: no redraw when a drag ends~win WIN=win~~src/win/backend.c~		if (x->sizing == 2 && x->wdib) x->resized = x->stale = 1;¶~
+win: the wallpaper rough after any drag~win WIN=win~~src/win/backend.c~		x->sizing = 0;¶		return 0;¶	case WM_DPICHANGED~		return 0;¶	case WM_DPICHANGED
+win: the wallpaper scaled again at every whole redraw~win WIN=win~~src/win/backend.c~|| (w->stale && make_dib(w)))) return;~|| make_dib(w))) return;
+win: a font Windows gives for part of the question taken (test_win_font)~win WIN=win~~src/font/dwrite.c~&& f && got == len)~&& f)
