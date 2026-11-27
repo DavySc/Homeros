@@ -233,7 +233,7 @@ static int show(Sess *s)
 static int run(Sess *s, size_t a, size_t z)
 {
 	Buf *b = core_buf_find(E, s->nr);
-	if (s->q.n) { core_msg(E, s->cancel ? "sql: the server has not answered the cancel yet" : "sql: a query is running (Alt+Break cancels)"); return -1; }
+	if (s->q.n) { core_msg(E, s->cancel ? "sql: the server has not answered the cancel yet" : "sql: a query is running (Ctrl-C or Alt+Break cancels)"); return -1; }
 	if (!s->spec.name[0] && lookup("", b->full, &s->spec)) return -1;
 	long bad = 0;
 	s->q.n = 0;
@@ -289,11 +289,10 @@ int sql_key(Editor *e, int key)
 	if (key != KEY_F5 && key != KEY_BREAK && key != KEY_CTRL_C) return 0;
 	E = e;
 	Sess *s = sess(e->buf->nr, 0);
-	/* Ctrl-C cancels as Alt+Break, which a terminal cannot send (Davy,
-	   2026-11-24); with no run to cancel it stays Vim's */
-	if (key == KEY_CTRL_C && (!s || !s->q.n || s->cancel)) return 0;
 	if (key != KEY_F5) {
-		if (!s || !s->q.n || s->cancel) return s != NULL;
+		/* Ctrl-C cancels as Alt+Break, which a terminal cannot send (Davy,
+		   2026-11-24); with no run to cancel it stays Vim's */
+		if (!s || !s->q.n || s->cancel) return s && key == KEY_BREAK;
 		if (db_state(&s->db) != DB_BUSY || db_cancel(&s->db)) drop(s);   /* logging in: the connection goes */
 		else {   /* the run stays busy until the server answers (SqlSess.tla's Break and Ack) */
 			s->cancel = 1;
