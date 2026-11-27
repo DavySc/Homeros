@@ -340,7 +340,7 @@ int main(void)
 	CHECK(!sql_declare(&e, "@A  int = 5") && !sql_declare(&e, "") && !strcmp(e.msg, "sql: @A int = 5;"));   /* replaced, case ignored */
 	core_goto(&e, 1, 0);
 	keys_visual(&e, 'V', 1);
-	CHECK(sql_key(&e, KEY_F5) == 1 && e.mode != MODE_CMDLINE && strstr(until("Completion time"), "d\t@c\n10\t@b\n"));
+	CHECK(sql_key(&e, KEY_F5) == 1 && e.mode != MODE_CMDLINE && strstr(until("Completion time"), "DECLARE @a int = 5;\n(1 row affected)\nd\t@c\n10\t@b\n"));   /* the value that ran, shown */
 	CHECK(!sql_declare(&e, "@a") && !sql_declare(&e, "") && !strcmp(e.msg, "sql: nothing declared"));
 	/* Esc forgets the F5: a :Declare typed later keeps its value and runs nothing */
 	core_goto(&e, 1, 0);
@@ -357,11 +357,11 @@ int main(void)
 	/* a DECLARE across lines, with a comment and a ;: typed as one line;
 	   a non-ASCII default as its characters; none when the command line
 	   cannot hold it or it holds a line break */
-	put("ms/pc.sql", "declare @m int -- the id\n\t= 4;\nselect @m as m, @n as n, len(@n) as l, @s as s, (select count(*) from @t) as t\n"
+	put("ms/pc.sql", "declare @m int -- the id\n\t= 4;\nselect @m as m, @n as n, len(@n) as l, @s as s, (select count(*) from @t) as t, len(@w) as w\n"
 		"declare @n nvarchar(20) = N'caf\xc3\xa9 \xe2\x82\xac', @s varchar(9) = 'a\nb', @t table (", 0600);
 	FILE *pc = fopen("ms/pc.sql", "a");
 	for (int i = 0; i < 40; i++) fprintf(pc, "%scolumn%d int", i ? ", " : "", i);
-	fprintf(pc, ")\n");
+	fprintf(pc, ")\ndeclare @w varchar(300) = '%0*d'\n", 224, 0);   /* the prompt 252 bytes: as much as keys takes */
 	fclose(pc);
 	CHECK(!core_edit_file(&e, "ms/pc.sql", 0));
 	core_goto(&e, 2, 0);
@@ -374,7 +374,17 @@ int main(void)
 	typed("varchar(9) = 'x'\r");
 	CHECK(e.mode == MODE_CMDLINE && e.cmdlen == 11 && !memcmp(e.cmd, "Declare @t ", 11));
 	typed("table (x int)\r");
-	CHECK(strstr(until("Completion time"), "m\tn\tl\ts\tt\n4\tcaf\xc3\xa9 \xe2\x82\xac\t6\tx\t0\n") && !sql_disconnect(&e));
+	CHECK(e.mode == MODE_CMDLINE && e.cmdlen == 252 && !memcmp(e.cmd, "Declare @w varchar(300) = '000", 30));
+	typed("\r");
+	CHECK(strstr(until("Completion time"), "m\tn\tl\ts\tt\tw\n4\tcaf\xc3\xa9 \xe2\x82\xac\t6\tx\t0\t224\n") && !sql_disconnect(&e));
+	/* one byte more: no default, rather than one typed cut */
+	put("ms/pg2.sql", "declare @w varchar(300) = '0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+		"00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'\nselect @w\n", 0600);
+	CHECK(!core_edit_file(&e, "ms/pg2.sql", 0));
+	core_goto(&e, 1, 0);
+	keys_visual(&e, 'V', 1);
+	CHECK(sql_key(&e, KEY_F5) == 1 && e.mode == MODE_CMDLINE && e.cmdlen == 11 && !memcmp(e.cmd, "Declare @w ", 11));
+	typed("\x1b");
 	/* :Declare is for SQL buffers */
 	put("ms/y2.txt", "x\n", 0600);
 	CHECK(!core_edit_file(&e, "ms/y2.txt", 0) && sql_declare(&e, "@a int = 1") && strstr(e.msg, "is for a .sql buffer"));

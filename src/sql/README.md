@@ -29,7 +29,9 @@ the file's own `DECLARE @a` type and value if it has one, and Enter runs. The va
 kept for that buffer and goes as `DECLARE @a int = 3;` in front of each
 batch that needs it, on the batch's first line, so the server's line
 numbers stay right. `:Declare @a int = 5` changes it, `:Declare @a` forgets
-it, and `:Declare` lists them. `tests/test_sql_vars.py` checked which
+it, and `:Declare` lists them. The kept value wins over an edited
+`DECLARE` in the file, so each batch's results start with the `DECLARE` line
+that ran (Davy, 2026-11-27). `tests/test_sql_vars.py` checked which
 variables a batch lacks against the server's own answer.
 
 Completion (package 19) asks `sql_catalog` for the tables of the buffer's

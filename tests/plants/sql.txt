@@ -146,7 +146,7 @@ sql: :Declare keeps the old value beside the new (test_sql_editor)~test TESTS=sq
 sql: Postgres's @x asked for (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~int p = s->spec.pg ? 0 : params(s, b, a, z);~int p = params(s, b, a, z);
 sql: the file's own DECLARE not the prompt's default (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~f && !strpbrk(f, "\r\n") ? f : ""~f && 0 ? f : ""
 sql: a default with a line break (a string's) typed, its break as Enter (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~f && !strpbrk(f, "\r\n") ? f : ""~f ? f : ""
-sql: a default the command line cannot hold typed cut (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~>= (int)sizeof k) snprintf~>= 99999) snprintf
+sql: a default the command line cannot hold typed cut (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~> (int)sizeof k - 4) snprintf~> 99999) snprintf
 sql: the default typed byte by byte, not as characters (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~l = uni_len((const unsigned char *)k, m, i), keys_feed(E, (int)uni_cp((const unsigned char *)k, m, i), i + l < m);~l = 1, keys_feed(E, (unsigned char)k[i], i + l < m);
 sql: Esc leaves the F5 waiting, so a :Declare typed later runs it (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	W = NULL;¶	if (key != KEY_F5~	if (key != KEY_F5
 sql: a :Declare by hand runs the session's last F5 (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (W != s) return 0;~	if (0) return 0;
@@ -165,3 +165,5 @@ sql: a lookup matches a table that begins its name (test_sql_editor)~test TESTS=
 sql: the index splits tables by name only, not schema (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~!q || strcmp(p, q) || strcmp(t, q + strlen(q) + 1)~!q || strcmp(t, q + strlen(q) + 1)
 sql: a lookup stops at the first schema's table (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~else if (!strcasecmp(t, table))~else if (!n && !strcasecmp(t, table))
 sql: the empty name matches every table (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~else if (!strcasecmp(t, table))~else if (!*table || !strcasecmp(t, table))
+sql: a default of 253 to 255 bytes typed, and keys cuts it (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~> (int)sizeof k - 4) snprintf~> (int)sizeof k - 1) snprintf
+sql: the results do not say which kept value ran (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (b.npre) put(s, s->decl.s + b.pre, b.npre - 1), putz(s, "\n");~	if (0) put(s, s->decl.s + b.pre, b.npre - 1), putz(s, "\n");

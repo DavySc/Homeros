@@ -267,6 +267,7 @@ static void next(Sess *s)
 	s->sql.n = 0;
 	if (str_add(&s->sql, s->decl.s + b.pre, b.npre) || str_add(&s->sql, s->text.s + (b.a - s->base), b.z - b.a) || str_add(&s->sql, "", 1)) { putz(s, "sql: out of memory\n"); s->q.n = 0; return; }
 	s->left--;
+	if (b.npre) put(s, s->decl.s + b.pre, b.npre - 1), putz(s, "\n");   /* which value ran (Davy, 2026-11-27: a kept value wins over an edited DECLARE) */
 	if (db_query(&s->db, s->sql.s)) { putz(s, db_net(&s->db)->err), putz(s, "\n"); drop(s); return; }
 	loop_write(s->fd, db_pending(&s->db));
 }
@@ -351,7 +352,7 @@ static int params(Sess *s, const Buf *b, size_t a, size_t z)
 			   line break (a string's), which would be Enter */
 			char k[sizeof E->cmd];
 			f = val(&d, need.s + j);
-			if (snprintf(k, sizeof k, "Declare %s %s", need.s + j, f && !strpbrk(f, "\r\n") ? f : "") >= (int)sizeof k) snprintf(k, sizeof k, "Declare %s ", need.s + j);
+			if (snprintf(k, sizeof k, "Declare %s %s", need.s + j, f && !strpbrk(f, "\r\n") ? f : "") > (int)sizeof k - 4) snprintf(k, sizeof k, "Declare %s ", need.s + j);   /* keys takes a key while 4 bytes are left */
 			keys_feed(E, KEY_ESC, 1), keys_feed(E, ':', 1);
 			for (size_t i = 0, m = strlen(k), l; i < m; i += l)   /* code points, as typed */
 				l = uni_len((const unsigned char *)k, m, i), keys_feed(E, (int)uni_cp((const unsigned char *)k, m, i), i + l < m);
