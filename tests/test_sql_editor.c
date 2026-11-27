@@ -306,6 +306,7 @@ int main(void)
 	put("ms/xc.sql", "select 1 as one\n", 0600);
 	CHECK(!core_edit_file(&e, "ms/xc.sql", 0) && !sql_connect(&e, "cs") && sql_key(&e, KEY_F5) == 1 && until("Completion time"));
 	CHECK(!sql_catalog(&e, e.buf, NULL, NULL, NULL) && catalog(cat) > 0 && !strcmp(cat, "dbo.hcat.K "));
+	CHECK(!sql_disconnect(&e));   /* Windows's loop watches 31 handles: a session fewer leaves the catalog one */
 	/* NULL before this buffer's login dials nothing: its login reads it */
 	put("ms/xd.sql", "select 1 as one\n", 0600);
 	CHECK(!core_edit_file(&e, "ms/xd.sql", 0) && !sql_connect(&e, "cs") && !sql_catalog(&e, e.buf, NULL, NULL, NULL));
