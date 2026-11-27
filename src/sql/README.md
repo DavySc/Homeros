@@ -32,8 +32,11 @@ numbers stay right. `:Declare @a int = 5` changes it, `:Declare @a` forgets
 it, and `:Declare` lists them. `tests/test_sql_vars.py` checked which
 variables a batch lacks against the server's own answer.
 
-Completion (package 19) asks `sql_catalog` for the tables' columns of the
-buffer's connection, as SSMS's IntelliSense does. When a session on a
+Completion (package 19) asks `sql_catalog` for the tables of the buffer's
+connection, or one table's columns (its name in any case, in every schema),
+as SSMS's IntelliSense does: an index of each table's first row makes a
+call cost about 8 ns per table, not a copy (PR 173's review: 0.0105 ms at
+1,000 tables, 0.85 ms at 100,000). When a session on a
 connection logs in (its first F5: IntelliSense too needs a connected
 window), one `INFORMATION_SCHEMA.COLUMNS` query reads them on a connection
 of its own, in the background; every buffer on that connection shares them.

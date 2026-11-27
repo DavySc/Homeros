@@ -280,9 +280,11 @@ int main(void)
 	   at the next login; only .sql buffers; never a message */
 	char cat[256];
 	const char *users = "select count(*) n from sys.dm_exec_sessions where is_user_process = 1\n";
-	CHECK(strstr(f5("ms/q.sql", "drop table if exists hca\ncreate table hca (y int)\ndrop table if exists hcat\ncreate table hcat (k int, b int, [v w] nvarchar(9), [t\tab] int, [a\\b] int)\n"), "Completion"));
+	CHECK(strstr(f5("ms/q.sql", "drop table if exists hca\ncreate table hca (y int)\ndrop table if exists hcb\ncreate table hcb (y int)\ndrop table if exists hcat\ncreate table hcat (k int, b int, [v w] nvarchar(9), [t\tab] int, [a\\b] int)\n"), "Completion"));
 	int n = atoi(strstr(f5("ms/v.sql", users), "n\n") + 2);
-	CHECK(!core_edit_file(&e, "ms/q.sql", 0) && !sql_catalog(&e, e.buf, NULL, NULL, NULL) && catalog(cat) > 0 && !strcmp(cat, "dbo.hcat.k dbo.hcat.b dbo.hcat.v w dbo.hcat.t\tab dbo.hcat.a\\b "));
+	CHECK(!core_edit_file(&e, "ms/q.sql", 0) && !sql_catalog(&e, e.buf, NULL, NULL, NULL) && catalog(cat) == 5 && !strcmp(cat, "dbo.hcat.k dbo.hcat.b dbo.hcat.v w dbo.hcat.t\tab dbo.hcat.a\\b "));
+	/* the count is the table's alone (hca before it, hcb after it), a whole name, never empty */
+	CHECK(sql_catalog(&e, e.buf, "hca", hcat, cat) == 1 && sql_catalog(&e, e.buf, "hcb", hcat, cat) == 1 && !sql_catalog(&e, e.buf, "", hcat, cat) && !sql_catalog(&e, e.buf, "hc", hcat, cat));
 	CHECK(sql_catalog(&e, e.buf, NULL, hcat, (*cat = 0, cat)) > 0 && !strcmp(cat, "dbo.hcat "));   /* the tables, once each */
 	int same = 0;
 	for (int i = 0; i < 20 && !same; i++) same = atoi(strstr(f5("ms/v.sql", users), "n\n") + 2) == n;
@@ -308,16 +310,19 @@ int main(void)
 	CHECK(catalog(cat) > 0 && !strcmp(cat, "public.hcat.k public.hcat.b public.hcat.v w public.hcat.t\tab public.hcat.a\\b "));
 	CHECK(strstr(f5("ms/w.sql", "if db_id('hcs') is null create database hcs collate Latin1_General_CS_AS\n"), "Completion"));
 	CHECK(strstr(f5("ms/x.sql", "drop table if exists hcs.dbo.hcat\ncreate table hcs.dbo.hcat (K int)\n"), "Completion"));
+	/* the same name in a second schema: each table its own, both found */
+	CHECK(strstr(f5("ms/x2.sql", "use hcs\nif schema_id('hz') is null exec('create schema hz')\ndrop table if exists hz.hcat\ncreate table hz.hcat (Q int)\n"), "Completion") && !sql_disconnect(&e));
 	put("ms/xc.sql", "select 1 as one\n", 0600);
 	CHECK(!core_edit_file(&e, "ms/xc.sql", 0) && !sql_connect(&e, "cs") && sql_key(&e, KEY_F5) == 1 && until("Completion time"));
-	CHECK(!sql_catalog(&e, e.buf, NULL, NULL, NULL) && catalog(cat) > 0 && !strcmp(cat, "dbo.hcat.K "));
+	CHECK(!sql_catalog(&e, e.buf, NULL, NULL, NULL) && catalog(cat) == 2 && !strcmp(cat, "dbo.hcat.K hz.hcat.Q "));
+	CHECK(sql_catalog(&e, e.buf, NULL, hcat, (*cat = 0, cat)) == 2 && !strcmp(cat, "dbo.hcat hz.hcat "));
 	CHECK(!sql_disconnect(&e));   /* Windows's loop watches 31 handles: a session fewer leaves the catalog one */
 	/* NULL before this buffer's login dials nothing: its login reads it */
 	put("ms/xd.sql", "select 1 as one\n", 0600);
 	CHECK(!core_edit_file(&e, "ms/xd.sql", 0) && !sql_connect(&e, "cs") && !sql_catalog(&e, e.buf, NULL, NULL, NULL));
 	for (int i = 0; i < 100; i++) loop_once(10);
-	CHECK(!sql_catalog(&e, e.buf, "hcat", hcat, cat) && sql_key(&e, KEY_F5) == 1 && until("Completion time") && catalog(cat) > 0 && !strcmp(cat, "dbo.hcat.K "));
-	CHECK(sql_catalog(&e, e.buf, "HCAT", hcat, (*cat = 0, cat)) == 1 && !strcmp(cat, "dbo.hcat.K "));   /* ASCII case ignored, also here */
+	CHECK(!sql_catalog(&e, e.buf, "hcat", hcat, cat) && sql_key(&e, KEY_F5) == 1 && until("Completion time") && catalog(cat) == 2 && !strcmp(cat, "dbo.hcat.K hz.hcat.Q "));
+	CHECK(sql_catalog(&e, e.buf, "HCAT", hcat, (*cat = 0, cat)) == 2 && !strcmp(cat, "dbo.hcat.K hz.hcat.Q "));   /* ASCII case ignored, also here */
 	put("ms/y.txt", "x\n", 0600);
 	CHECK(!core_edit_file(&e, "ms/y.txt", 0) && !sql_catalog(&e, e.buf, "hcat", hcat, cat));
 	put("msx/o.sql", "select 1\n", 0600);
