@@ -380,6 +380,7 @@ int main(void)
 	at = text_len(rb->text) - strlen(g) + (size_t)(m - g);
 	rb->faces(rb, at, at + 4, fc);
 	CHECK(m && fc[0] == FACE_PMENU_SEL && fc[3] == FACE_PMENU_SEL);
+	CHECK(!sql_disconnect(&e));   /* each session's connection is a watch: Windows waits on 31 at most */
 	/* a wide character two cells, a control byte two (^A), in the width;
 	   Enter gives a tab back whole */
 	g = f5("ms/wide.sql", "select N'\xe6\x97\xa5\xe6\x9c\xac' w, char(1) c,\nN'a' + char(9) + N'b' t\nunion all select N'ab', 'a', 'x'\n");
@@ -389,16 +390,19 @@ int main(void)
 	CHECK(sql_key(&e, KEY_ENTER) == 1 && text_read(e.buf->text, 0, cat, sizeof cat) == 3 && !memcmp(cat, "a\tb", 3) && !core_close(&e, 1) && !core_win_goto(&e, 'k', 1));
 	core_goto(&e, 2, 24);
 	CHECK(sql_key(&e, KEY_ENTER) == 0);   /* the query's own, on a line that is a row's in the results */
+	CHECK(!sql_disconnect(&e));
 	/* Postgres's notices between a set's rows wait for its end; its
 	   error makes the status line SSMS's error one */
 	g = f5("pg/n.sql", "create function pg_temp.n(i int) returns int as $$ begin raise notice 'row %', i; return i; end $$ language plpgsql;\n"
 		"select pg_temp.n(g) as v from generate_series(1, 3) g\n");
 	CHECK(strstr(g, "\n3 \xe2\x94\x82 3\n(3 rows)\n\n" MSGS "NOTICE 00000: row 1\nNOTICE 00000: row 2\nNOTICE 00000: row 3\n(SELECT 3)\n"));
+	CHECK(!sql_disconnect(&e));
 	CHECK(strstr(f5("pg/err.sql", "select nope\n"), "nope") && !strncmp(e.wins->next->buf->status, "\xe2\x9c\x97 Query completed with errors", 31));
 	rb = e.wins->next->buf, m = strstr(res, "ERROR 42703");
 	at = text_len(rb->text) - strlen(res) + (size_t)(m - res);
 	rb->faces(rb, at, at + 5, fc);
 	CHECK(m && fc[0] == FACE_DIAG_ERROR && fc[4] == FACE_DIAG_ERROR);
+	CHECK(!sql_disconnect(&e));
 	/* a message comes at once (RAISERROR WITH NOWAIT) while the batch
 	   runs, after a set's end; the status line while it runs; a set's
 	   rows show while it waits (a row past Postgres's 8 KB send buffer
@@ -408,6 +412,7 @@ int main(void)
 	CHECK(!strncmp(e.wins->next->buf->status, "Executing query... \xc2\xb7 ms / master", 26));
 	CHECK(strstr(until("early"), "(1 row)\n\n" MSGS "(1 row affected)\nearly\n") && !strstr(res, "Completion"));
 	until("Completion time");
+	CHECK(!sql_disconnect(&e));
 	put("pg/trickle.sql", "select g, pg_sleep(g - 1), repeat('x', 9000) from generate_series(1, 3) g\n", 0600);
 	CHECK(!core_edit_file(&e, "pg/trickle.sql", 0) && sql_key(&e, KEY_F5) == 1);
 	CHECK(strstr(until("\n      1 \xe2\x94\x82 1 "), "\xe2\x94\x82 g ") && !strstr(res, "Completion"));
@@ -415,6 +420,7 @@ int main(void)
 	e.ks.pending = 0;
 	CHECK(!core_win_goto(&e, 'k', 1));
 	CHECK(strstr(until("Completion time"), "\n      3 \xe2\x94\x82 3 ") && strstr(res, "\n(3 rows)\n"));
+	CHECK(!sql_disconnect(&e));
 	/* a connection that dies inside a set, long after its rows began to
 	   show: the set ends, its messages and the reason after it */
 	put("pg/die.sql", "select g, pg_sleep(0.3 * g), case when g = 2 then pg_terminate_backend(pg_backend_pid()) end, repeat('x', 9000) from generate_series(1, 2) g\n", 0600);
