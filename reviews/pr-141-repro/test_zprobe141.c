@@ -8,6 +8,9 @@
 #include "core.h"
 #include "snip.h"
 #include "tools.h"
+#include "loop.h"
+/* PREKEY=ms: a Normal-mode key, then the event loop for ms, before typing; SPIN=ms after each -t round; ! in KEYS: 1.2 s of event loop */
+static void spin(int ms) { long long t0 = loop_now(); int n = 0; while (loop_now() - t0 < ms * 1000000LL) loop_once(50), n++; if (getenv("SPINLOG")) printf("[loop ran %d ms: %d returns]\n", ms, n); }
 static void feed(Editor *e, int k) { if (e->ks.pending || !snip_key(e, k, 0)) keys_feed(e, k, 0); }
 static double now(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return t.tv_sec * 1e3 + t.tv_nsec / 1e6; }
 int main(int argc, char **argv)
@@ -31,6 +34,7 @@ int main(int argc, char **argv)
 	e.win->line = text_line_of(e.buf->text, (size_t)(bar - t));
 	size_t col = (size_t)(bar - t) - core_line_start(&e, e.win->line);
 	if (col) e.win->col = col - 1, keys_feed(&e, 'a', 0); else e.win->col = 0, keys_feed(&e, 'i', 0);
+	if (getenv("PREKEY")) { keys_feed(&e, KEY_ESC, 0); feed(&e, 'l'); feed(&e, 'h'); spin(atoi(getenv("PREKEY"))); feed(&e, 'a'); }
 	const char *k = argv[3];
 	if (!strcmp(k, "-t")) {
 		int reps = atoi(argv[4]);
@@ -41,10 +45,11 @@ int main(int argc, char **argv)
 			printf("npum %d\n", e.npum);
 			for (const char *p = w; *p; p++) feed(&e, KEY_BS);
 			feed(&e, ' '); feed(&e, KEY_BS);
+			if (getenv("SPIN")) spin(atoi(getenv("SPIN")));
 		}
 		return 0;
 	}
-	for (; *k; k++) feed(&e, *k == '~' ? 25 : *k == '^' ? KEY_BS : *k == '$' ? KEY_ESC : *k);
+	for (; *k; k++) { if (*k == '!') { spin(1200); continue; } feed(&e, *k == '~' ? 25 : *k == '^' ? KEY_BS : *k == '$' ? KEY_ESC : *k); }
 	printf("%d items:", e.npum);
 	for (int i = 0; i < e.npum && i < (getenv("MAXI") ? atoi(getenv("MAXI")) : 25); i++) printf(" %s[%c]", e.pum[i].word, e.pum[i].kind[0]);
 	puts("");

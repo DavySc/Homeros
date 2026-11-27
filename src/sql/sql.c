@@ -143,6 +143,81 @@ static int lookup(const char *name, const char *path, Spec *o)
 
 static void wake(void *ctx, int fd);
 
+/* Opens c with the loop watching it, fn waking: its fd, or -1 with d's
+   error set (the caller closes d once it has read it: db_close clears it) */
+static int dial(Db *d, const Spec *c, void (*fn)(void *, int), void *ctx)
+{
+	int r = db_open(d, c->pg, c->host, c->port, c->pg || strcmp(c->user, "-") ? c->user : NULL, c->pass, c->db, c->trust);
+	Net *n = db_net(d);
+	if (r || loop_watch(n->fd, fn, ctx)) {
+		if (!*n->err) snprintf(n->err, sizeof n->err, "sql: too many watches");
+		return -1;
+	}
+	loop_write(n->fd, 1);   /* the connect and the first bytes */
+	return n->fd;
+}
+
+/* A connection's catalog (sql_catalog), read on a connection of its own
+   when a buffer's session on it logs in, as SSMS's IntelliSense needs a
+   connected window (SqlCat.tla) */
+typedef struct Cat {
+	struct Cat *next;
+	char name[256];
+	Db db;
+	int fd, st;             /* its connection while it reads (-1 none); 0 not read, 1 logging in, 3 reading, 2 read, -1 failed */
+	Str cols;               /* the rows as schema\0table\0column\0 */
+} Cat;
+
+static Cat *C;
+
+static Cat *cat(const char *name, int make)
+{
+	Cat *c = C;
+	while (c && strcmp(c->name, name)) c = c->next;
+	if (!c && make && (c = calloc(1, sizeof *c))) *c = (Cat){ .next = C, .fd = -1 }, snprintf(c->name, sizeof c->name, "%s", name), C = c;
+	return c;
+}
+
+static void uncat(Cat *c, int st)   /* its connection closed, its state st */
+{
+	if (c->fd >= 0) loop_unwatch(c->fd);
+	if (c->st == 1 || c->st == 3) db_close(&c->db);
+	c->fd = -1, c->st = st;
+	if (st != 2) c->cols.n = 0;
+}
+
+static void catwake(void *ctx, int fd)
+{
+	Cat *c = ctx;
+	(void)fd;
+	int was = db_state(&c->db), r = db_io(&c->db, 1), now = db_state(&c->db);
+	Str *o = db_out(&c->db);
+	if (was < DB_READY) o->n = 0;   /* the login's messages */
+	/* the first idle after the login (which may run a batch of its own
+	   first: TDS's) sends the query, the next one has its rows; capitals,
+	   for a case-sensitive SQL Server database (Postgres folds them) */
+	if (!r && was != DB_READY && now == DB_READY && c->st == 1) c->st = 3, r = db_query(&c->db,
+		"SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS"
+		" WHERE TABLE_SCHEMA NOT IN ('pg_catalog', 'information_schema') ORDER BY 1, 2, ORDINAL_POSITION");
+	else if (!r && was != DB_READY && now == DB_READY) {   /* the rows: the lines after the header's, three fields each */
+		if (o->n) for (char *p = o->s, *z = p + o->n, *n, *a, *b, *h = NULL; !r && (n = memchr(p, '\n', (size_t)(z - p))); p = n + 1)
+			if ((a = memchr(p, '\t', (size_t)(n - p))) && (b = memchr(a + 1, '\t', (size_t)(n - a - 1))) && (h || !(h = p)))
+				*a = *b = *n = 0, r = str_add(&c->cols, p, net_unesc(p, (size_t)(n + 1 - p)));   /* a tab in a name came escaped */
+		uncat(c, r ? -1 : 2);
+		return;
+	}
+	if (r || now == DB_DEAD) { uncat(c, -1); return; }
+	loop_write(c->fd, db_pending(&c->db));
+}
+
+static void catread(const Spec *p)   /* a session on p logged in: its catalog read, unless read or reading */
+{
+	Cat *c = cat(p->name, 1);
+	if (!c || c->st > 0) return;
+	c->st = 1;
+	if ((c->fd = dial(&c->db, p, catwake, c)) < 0) uncat(c, -1);
+}
+
 static void drop(Sess *s)   /* the connection, gone or replaced */
 {
 	if (s->fd >= 0) loop_unwatch(s->fd);
@@ -190,6 +265,7 @@ static void wake(void *ctx, int fd)
 		return;
 	}
 	loop_write(s->fd, db_pending(&s->db));
+	if (was < DB_READY && db_state(&s->db) >= DB_READY) catread(&s->spec);
 	if (db_state(&s->db) == DB_READY && was != DB_READY) {
 		if (s->cancel) s->cancel = 0, s->q.n = 0;   /* the server answered the cancel: the run ends here (SqlSess.tla) */
 		else next(s);
@@ -215,7 +291,7 @@ static int show(Sess *s)
 static int run(Sess *s, size_t a, size_t z)
 {
 	Buf *b = core_buf_find(E, s->nr);
-	if (s->q.n) { core_msg(E, s->cancel ? "sql: the server has not answered the cancel yet" : "sql: a query is running (Alt+Break cancels)"); return -1; }
+	if (s->q.n) { core_msg(E, s->cancel ? "sql: the server has not answered the cancel yet" : "sql: a query is running (Ctrl-C or Alt+Break cancels)"); return -1; }
 	if (!s->spec.name[0] && lookup("", b->full, &s->spec)) return -1;
 	long bad = 0;
 	s->q.n = 0;
@@ -234,24 +310,19 @@ static int run(Sess *s, size_t a, size_t z)
 	core_buf_fill(E, core_buf_find(E, s->res), "", 0, 0);
 	s->i = 0, s->left = s->q.b[0].count, s->t0 = loop_now();
 	if (s->fd >= 0) { next(s); return 0; }
-	Spec *c = &s->spec;
-	if (db_open(&s->db, c->pg, c->host, c->port, c->pg || strcmp(c->user, "-") ? c->user : NULL, c->pass, c->db, c->trust) || loop_watch(db_net(&s->db)->fd, wake, s)) {
-		putz(s, *db_net(&s->db)->err ? db_net(&s->db)->err : "sql: too many watches"), putz(s, "\n");
-		db_close(&s->db), s->q.n = 0;
-		return -1;
-	}
-	s->fd = db_net(&s->db)->fd;
-	loop_write(s->fd, 1);   /* the connect and the first bytes */
+	if ((s->fd = dial(&s->db, &s->spec, wake, s)) < 0) { putz(s, db_net(&s->db)->err), putz(s, "\n"); db_close(&s->db), s->q.n = 0; return -1; }
 	return 0;
 }
 
 int sql_key(Editor *e, int key)
 {
-	if (key != KEY_F5 && key != KEY_BREAK) return 0;
+	if (key != KEY_F5 && key != KEY_BREAK && key != KEY_CTRL_C) return 0;
 	E = e;
 	Sess *s = sess(e->buf->nr, 0);
-	if (key == KEY_BREAK) {
-		if (!s || !s->q.n || s->cancel) return s != NULL;
+	if (key != KEY_F5) {
+		/* Ctrl-C cancels as Alt+Break, which a terminal cannot send (Davy,
+		   2026-11-24); with no run to cancel it stays Vim's */
+		if (!s || !s->q.n || s->cancel) return s && key == KEY_BREAK;
 		if (db_state(&s->db) != DB_BUSY || db_cancel(&s->db)) drop(s);   /* logging in: the connection goes */
 		else {   /* the run stays busy until the server answers (SqlSess.tla's Break and Ack) */
 			s->cancel = 1;
@@ -296,6 +367,8 @@ int sql_connect(Editor *e, const char *name)
 	if (!s) { core_msg(e, "sql: out of memory"); return -1; }
 	Spec c;
 	if (lookup(name, NULL, &c)) return -1;
+	Cat *k = cat(name, 0);
+	if (k) uncat(k, 0);   /* read again at its next login: the file may name another server now */
 	drop(s);
 	s->spec = c;
 	core_msg(e, "sql: %s (%s)", c.name, c.host);
@@ -310,4 +383,28 @@ int sql_disconnect(Editor *e)
 	drop(s);   /* the server ends the session: its temp tables, an open transaction rolled back */
 	core_msg(e, "sql: disconnected from %s (F5 connects again)", s->spec.name);
 	return 0;
+}
+
+int sql_catalog(Editor *e, const Buf *b, void (*fn)(void *ctx, const char *schema, const char *table, const char *column), void *ctx)
+{
+	E = e;
+	Sess *s = is_sql(b) ? sess(b->nr, 1) : NULL;
+	char m[sizeof e->msg];
+	Spec c;
+	memcpy(m, e->msg, sizeof m);   /* completion asked, not Davy: no message */
+	if (s && !s->spec.name[0] && !lookup("", b->full, &c)) s->spec = c;
+	memcpy(e->msg, m, sizeof m);
+	if (!s || !s->spec.name[0]) return 0;
+	Cat *k = cat(s->spec.name, 0);
+	if (!k) return 0;
+	if (!fn) {   /* read again: now if this buffer is logged in, else at its login */
+		uncat(k, 0);
+		if (s->fd >= 0 && db_state(&s->db) >= DB_READY) catread(&s->spec);
+		return 0;
+	}
+	if (k->st != 2 || !k->cols.n) return 0;
+	int n = 0;
+	for (const char *p = k->cols.s, *z = p + k->cols.n, *t, *col; p < z; n++, p = col + strlen(col) + 1)
+		t = p + strlen(p) + 1, col = t + strlen(t) + 1, fn(ctx, p, t, col);
+	return n;
 }

@@ -46,4 +46,6 @@ int  net_sspi(Net *c, const char *spn, const char *in, size_t n, Str *out);
    escaped as \t \n \r \\ (net_cp: unless raw, a message's text). */
 int  net_cp(Str *b, unsigned u, int raw);
 int  net_esc(Str *b, const char *s, size_t n);
+/* net_esc undone in place, on n bytes of s: the new length */
+size_t net_unesc(char *s, size_t n);
 #endif
