@@ -2,7 +2,7 @@
    test_sql.c): F5 on the whole buffer and on a selection, GO batches and
    GO n, messages next to rows in the server's order, Alt+Break, the
    results split opened and closed, the folder's connection and :Connect,
-   and the connections file's refusals. */
+   the connections file's refusals, and the catalog. */
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -67,6 +67,22 @@ static int f5_once_idle(void)
 		loop_once(10);
 	}
 	return 0;
+}
+
+
+/* table hcat's columns as "schema.hcat.column " (and the header line's, which is not a row) */
+static void hcat(void *ctx, const char *schema, const char *table, const char *column)
+{
+	char *o = ctx;
+	if (!strcmp(table, "hcat") || !strcmp(table, "table_name")) snprintf(o + strlen(o), 256 - strlen(o), "%s.%s.%s ", schema, table, column);
+}
+
+/* the catalog of the current buffer's connection once read (3 s at most): its columns, hcat's in o */
+static int catalog(char *o)
+{
+	int n = 0;
+	for (int i = 0; i < 300 && !(n = sql_catalog(&e, e.buf, hcat, (*o = 0, o))); i++) loop_once(10);
+	return n;
 }
 
 static int nwins(void) { int n = 0; for (Win *w = e.wins; w; w = w->next) n++; return n; }
@@ -226,6 +242,23 @@ int main(void)
 	CHECK(!sql_disconnect(&e) && strstr(e.msg, "disconnected from ms") && sql_disconnect(&e) && strstr(e.msg, "not connected"));
 	CHECK(!text_delete(e.buf->text, 0, text_len(e.buf->text)) && !text_insert(e.buf->text, 0, "select * from #d\n", 17));
 	CHECK(sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), "Invalid object name '#d'"));
+	/* the catalog (completion's): the connection's columns in order, read
+	   on a connection of its own; one per connection, kept; NULL re-reads;
+	   :Connect drops it; never a message */
+	char cat[256];
+	put("ms/q.sql", "drop table if exists hcat\ncreate table hcat (k int, [v w] nvarchar(9))\n", 0600);
+	CHECK(!core_edit_file(&e, "ms/q.sql", 0) && sql_key(&e, KEY_F5) == 1 && until("Completion time"));
+	CHECK(catalog(cat) > 0 && !strcmp(cat, "dbo.hcat.k dbo.hcat.v w "));
+	CHECK(!text_delete(e.buf->text, 0, text_len(e.buf->text)) && !text_insert(e.buf->text, 0, "alter table hcat add z int\n", 27));
+	CHECK(sql_key(&e, KEY_F5) == 1 && until("Completion time"));
+	CHECK(!core_edit_file(&e, "ms/a.sql", 0) && sql_catalog(&e, e.buf, hcat, (*cat = 0, cat)) > 0 && !strcmp(cat, "dbo.hcat.k dbo.hcat.v w "));
+	CHECK(!sql_catalog(&e, e.buf, NULL, NULL) && !sql_catalog(&e, e.buf, hcat, cat));
+	CHECK(catalog(cat) > 0 && !strcmp(cat, "dbo.hcat.k dbo.hcat.v w dbo.hcat.z "));
+	put("pg/r.sql", "drop table if exists hcat; create table hcat (k int, \"v w\" text)\n", 0600);
+	CHECK(!core_edit_file(&e, "pg/r.sql", 0) && sql_key(&e, KEY_F5) == 1 && until("Completion time"));
+	CHECK(!core_edit_file(&e, "ms/a.sql", 0) && !sql_connect(&e, "pg") && catalog(cat) > 0 && !strcmp(cat, "public.hcat.k public.hcat.v w "));
+	put("msx/o.sql", "select 1\n", 0600);
+	CHECK(!core_edit_file(&e, "msx/o.sql", 0) && strcpy(e.msg, "kept") && !sql_catalog(&e, e.buf, hcat, cat) && !strcmp(e.msg, "kept"));
 	/* not a SQL buffer: F5 is not ours */
 	put("x.txt", "x\n", 0600);
 	CHECK(!core_edit_file(&e, "x.txt", 0) && !sql_key(&e, KEY_F5));

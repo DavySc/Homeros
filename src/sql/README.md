@@ -12,7 +12,7 @@ branch `claude/project-thread-osg6me`, which is never merged.
 | `pg.c` | PostgreSQL (protocol 3.0): SSLRequest, TLS, SCRAM-SHA-256, simple queries, cancel on a second connection, values in the server's own text |
 | `db.c` | one interface over both clients, for the editor and the tests |
 | `run.c` | a script's batches, split on GO as sqlcmd 18 splits them (`GO n` too) |
-| `sql.c` | the editor's side (`include/sql.h`): F5, Alt+Break and Ctrl-C, the results split, the connections file, `:Connect` |
+| `sql.c` | the editor's side (`include/sql.h`): F5, Alt+Break and Ctrl-C, the results split, the connections file, `:Connect`, the catalog for completion |
 
 ## Running queries
 
@@ -21,6 +21,11 @@ is selected (SSMS). Alt+Break cancels the run, and so does Ctrl-C while a run is
 in the server's order in a split below the query, which SPC r opens and
 closes. SQL Server scripts run batch by batch, split on GO. PostgreSQL runs
 the text as one query.
+
+Completion (package 19) asks `sql_catalog` for the tables' columns of the
+buffer's connection, as SSMS's IntelliSense does. They are read once per
+connection, with one `information_schema.columns` query on a connection of
+its own, in the background, and kept until asked again or `:Connect`.
 
 A buffer's connection comes from `$XDG_CONFIG_HOME/homeros/sql`
 (`~/.config/homeros/sql`). The longest `dir` line whose folder holds the file
