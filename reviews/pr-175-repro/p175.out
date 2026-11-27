@@ -1,0 +1,319 @@
+=== p175 davy
+--- create
+
+Completion time: 23 ms
+---
+after F5 on the insert: mode CMDLINE cmd(18) [:Declare @a int = 3] msg ["ms/d.sql" 7L, 148B]
+--- after Enter
+(1 row affected)
+(2 rows affected)
+
+Completion time: 2 ms
+---
+second F5: mode NORMAL msg []
+--- second run
+(1 row affected)
+(2 rows affected)
+
+Completion time: 1 ms
+---
+--- count
+n
+4
+(1 row affected)
+
+Completion time: 2 ms
+---
+=== p175 esc
+--- setup
+(3 rows affected)
+
+Completion time: 22 ms
+---
+F5 on the delete: mode CMDLINE cmd(11) [:Declare @a ] msg ["ms/e.sql" 6L, 118B]
+after Esc: mode NORMAL msg ["ms/e.sql" 6L, 118B]
+buffer now:
+create table #t (x int)
+insert #t values (1), (2), (3)
+go
+delete from #t
+-- only the picked ones
+where x = @a
+go
+select count(*) as n from #t
+after :Declare by hand: mode NORMAL msg []
+--- what ran
+(3 rows affected)
+
+Completion time: 2 ms
+---
+--- count
+(3 rows affected)
+
+Completion time: 2 ms
+---
+=== p175 utf8
+F5: mode CMDLINE cmd(43) [:Declare @n nvarchar(20) = N'cafÃ© â¬'] msg ["ms/u.sql" 2L, 68B]
+--- run
+(1 row affected)
+n	l
+cafÃ© â¬	9
+(1 row affected)
+
+Completion time: 29 ms
+---
+=== p175 long
+F5: mode CMDLINE cmd(252) [:Declare @t table (column_00 int, column_01 int, column_02 int, column_03 int, column_04 int, column_05 int, column_06 int, column_07 int, column_08 int, column_09 int, column_10 int, column_11 int, column_12 int, column_13 int, column_14 int, column_15] msg ["ms/l.sql" 2L, 647B]
+after Enter: mode NORMAL msg []
+--- run
+Msg 173, Level 15, State 13, Line 1
+The definition for column 'column_15' must include a data type.
+
+Completion time: 30 ms
+---
+=== p175 comment
+F5: mode CMDLINE cmd(29) [:Declare @a int -- the id  = 4] msg ["ms/c.sql" 3L, 45B]
+after Enter: mode NORMAL msg []
+--- results
+
+Completion time: 23 ms
+---
+=== p175 stale
+--- first
+(1 row affected)
+a
+3
+(1 row affected)
+
+Completion time: 25 ms
+---
+buffer now:
+declare @a int = 7
+select @a as a
+F5 again: mode NORMAL msg []
+--- second
+(1 row affected)
+a
+3
+(1 row affected)
+
+Completion time: 1 ms
+---
+--- whole file
+(1 row affected)
+a
+3
+(1 row affected)
+
+Completion time: 1 ms
+---
+=== p175 lines
+--- whole file
+one
+1
+(1 row affected)
+(1 row affected)
+a
+5
+(1 row affected)
+
+Msg 8134, Level 16, State 1, Line 3
+Divide by zero error encountered.
+(1 row affected)
+a
+5
+(1 row affected)
+
+Msg 8134, Level 16, State 1, Line 3
+Divide by zero error encountered.
+(1 row affected)
+b	
+Msg 8134, Level 16, State 1, Line 1
+Divide by zero error encountered.
+
+Completion time: 33 ms
+---
+--- lines 4-5 selected
+(1 row affected)
+a
+5
+(1 row affected)
+
+Msg 8134, Level 16, State 1, Line 2
+Divide by zero error encountered.
+
+Completion time: 1 ms
+---
+--- the same with constants
+one
+1
+(1 row affected)
+a
+5
+(1 row affected)
+
+Msg 8134, Level 16, State 1, Line 3
+Divide by zero error encountered.
+
+Completion time: 18 ms
+---
+=== p175 two
+F5: mode CMDLINE cmd(18) [:Declare @a int = 1] msg ["ms/t.sql" 3L, 106B]
+Enter 1: mode CMDLINE cmd(27) [:Declare @b varchar(9) = 'x'] msg []
+Enter 2: mode CMDLINE cmd(11) [:Declare @c ] msg []
+Enter on the empty prompt: mode NORMAL msg []
+F5 again: mode CMDLINE cmd(11) [:Declare @c ] msg []
+Enter 3: mode NORMAL msg []
+Enter 4: mode NORMAL msg []
+--- run
+(1 row affected)
+(1 row affected)
+a	b	c
+(0 rows affected)
+
+Completion time: 24 ms
+---
+list: mode NORMAL msg [sql: @a int = 1; @b varchar(9) = 'x'; @c int = 9;]
+=== p175 case
+F5 on the whole file: mode CMDLINE cmd(11) [:Declare @y ] msg ["ms/k.sql" 2L, 87B]
+Enter: mode NORMAL msg []
+--- run
+Msg 134, Level 15, State 1, Line 2
+The variable name '@y' has already been declared. Variable names must be unique within a query batch or stored procedure.
+
+Completion time: 22 ms
+---
+F5 on line 3: mode CMDLINE cmd(39) [:Declare @x int = case when 1 = 1 then 1] msg ["ms/k2.sql" 3L, 69B]
+--- run with the default
+Msg 102, Level 15, State 1, Line 1
+Incorrect syntax near ';'.
+Msg 137, Level 15, State 2, Line 1
+Must declare the scalar variable "@x".
+
+Completion time: 10 ms
+---
+=== p175 results
+--- first
+(1 row affected)
+a
+1
+(1 row affected)
+
+Completion time: 20 ms
+---
+in results: 1
+F5 in the results: mode CMDLINE cmd(11) [:Declare @a ] msg []
+Enter: mode NORMAL msg []
+--- run
+(1 row affected)
+a
+2
+(1 row affected)
+
+Completion time: 1 ms
+---
+F5 in insert mode: mode CMDLINE cmd(11) [:Declare @a ] msg []
+Enter: mode NORMAL msg []
+--- run
+(1 row affected)
+a
+3
+(1 row affected)
+
+Completion time: 1 ms
+---
+=== p175 persist
+--- p1
+(1 row affected)
+a
+1
+(1 row affected)
+
+Completion time: 21 ms
+---
+F5 in p2: mode CMDLINE cmd(11) [:Declare @a ] msg ["ms/p2.sql" 1L, 16B]
+--- p2
+(1 row affected)
+a2
+2
+(1 row affected)
+
+Completion time: 19 ms
+---
+F5 after :Disconnect: mode NORMAL msg [sql: disconnected from ms (F5 connects again)]
+--- p2 again
+(1 row affected)
+a2
+2
+(1 row affected)
+
+Completion time: 11 ms
+---
+F5 after :Connect: mode NORMAL msg [sql: ms (127.0.0.1)]
+--- p2 again
+(1 row affected)
+a2
+2
+(1 row affected)
+
+Completion time: 13 ms
+---
+F5 back in p1: mode NORMAL msg [sql: ms (127.0.0.1)]
+--- p1 again
+(1 row affected)
+a
+1
+(1 row affected)
+
+Completion time: 1 ms
+---
+F5 after :e: mode NORMAL msg [E492: Not an editor command: e]
+--- p1 after :e
+(1 row affected)
+a
+1
+(1 row affected)
+
+Completion time: 2 ms
+---
+=== p175 pg
+F5: mode NORMAL msg ["pg/q.sql" 1L, 50B]
+--- run
+a	b
+3	@x
+(SELECT 1)
+
+Completion time: 25 ms
+---
+:Declare in a Postgres buffer: mode NORMAL msg []
+--- run
+a	b
+3	@x
+(SELECT 1)
+
+Completion time: 0 ms
+---
+=== p175 misc
+F5 whole file: mode NORMAL msg ["ms/m.sql" 5L, 153B]
+--- run
+r	s	@n
+0	@s	1
+(1 row affected)
+(1 row affected)
+(1 row affected)
+x
+1
+(1 row affected)
+
+Completion time: 28 ms
+---
+F5 on the table variable's use: mode CMDLINE cmd(24) [:Declare @t table (x int)] msg ["ms/m.sql" 5L, 153B]
+Enter: mode NORMAL msg []
+--- run
+(1 row affected)
+x
+1
+(1 row affected)
+
+Completion time: 4 ms
+---

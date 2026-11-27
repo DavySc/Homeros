@@ -1,0 +1,23 @@
+caught        r1 @@x asked for (sql_vars) :: tests/test_sql_vars.c:39: CHECK(cases && !bad) failed
+caught        r2 declared names compared with case (sql_vars) :: tests/test_sql_vars.c:39: CHECK(cases && !bad) failed
+caught        r3 a ) never closes (sql_vars) :: tests/test_sql_vars.c:39: CHECK(cases && !bad) failed
+NOT CAUGHT    r3 a ) never closes (sql_editor) :: 
+NOT CAUGHT    r4 a statement word inside ( ) ends a DECLARE (sql_vars) :: 
+NOT CAUGHT    r4 a statement word inside ( ) ends a DECLARE (sql_editor) :: 
+NOT CAUGHT    r5 ; does not end a DECLARE or an EXEC (sql_vars) :: 
+NOT CAUGHT    r5 ; does not end a DECLARE or an EXEC (sql_editor) :: 
+caught        r6 an EXEC's last argument at the batch's end not asked for (sql_vars) :: tests/test_sql_vars.c:39: CHECK(cases && !bad) failed
+NOT CAUGHT    r7 a comma inside ( ) ends a DECLARE's default (sql_editor) :: 
+caught        r8 only two words looked at for CREATE PROCEDURE (sql_editor) :: tests/test_sql_editor.c:356: CHECK(!core_edit_file(&e, "ms/pp.sql", 0) && sql_key(&e, KEY_F5) == 1 && e.mode != MODE_CMDLINE && strstr(until("Completi
+caught        r9 the default is the item's last token only (sql_editor) :: tests/test_sql_editor.c:327: CHECK(sql_key(&e, KEY_F5) == 1 && e.mode == MODE_CMDLINE && e.cmdlen == 18 && !memcmp(e.cmd, "Declare @a int = 3", 18)) f
+NOT CAUGHT    s1 a second batch gets the first batch's DECLAREs too (sql_editor) :: 
+NOT CAUGHT    s2 an answered F5 stays waiting, every later :Declare runs it again (sql_editor) :: 
+NOT CAUGHT    s3 the waiting F5's range not clamped to the buffer (sql_editor) :: 
+caught        s4 the prompt typed without leaving Visual mode (sql_editor) :: tests/test_sql_editor.c:327: CHECK(sql_key(&e, KEY_F5) == 1 && e.mode == MODE_CMDLINE && e.cmdlen == 18 && !memcmp(e.cmd, "Declare @a int = 3", 18)) f
+caught        s5 kept names compared with case (sql_editor) :: tests/test_sql_editor.c:330: CHECK(!sql_declare(&e, "@A  int = 5") && !sql_declare(&e, "") && !strcmp(e.msg, "sql: @A int = 5;")) failed
+caught        s6 the run not cleared when F5 asks (sql_editor) :: tests/test_sql_editor.c:329: CHECK(e.mode == MODE_NORMAL && strstr(until("Completion time"), "d\t@c\n6\t@b\n") && strstr(res, "Line 2") && strstr(res,
+caught        s7 a batch that needs no variable gets the DECLAREs (sql_editor) :: tests/test_sql_editor.c:329: CHECK(e.mode == MODE_NORMAL && strstr(until("Completion time"), "d\t@c\n6\t@b\n") && strstr(res, "Line 2") && strstr(res,
+caught        s8 a tab in the default typed as a tab (sql_editor) :: tests/test_sql_editor.c:346: CHECK(sql_key(&e, KEY_F5) == 1 && e.mode == MODE_CMDLINE && e.cmdlen == 19 && !memcmp(e.cmd, "Declare @m int  = 4", 19)) 
+NOT CAUGHT    s9 :Declare with a name over 128 bytes taken (sql_editor) :: 
+NOT CAUGHT    s10 :Declare in a buffer that is not SQL makes a session (keys_map) :: 
+11 of 22 caught
