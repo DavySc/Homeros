@@ -1,6 +1,8 @@
 /* Fonts and shaping (package 7, src/font/).  FreeType draws glyphs, HarfBuzz
-   shapes runs (ligatures on, so -> is drawn as an arrow), and fontconfig finds
-   a fallback font for a cluster the first font lacks, as foot does with fcft.
+   shapes runs (ligatures on, so -> is drawn as an arrow), and fontconfig
+   (Linux, as foot with fcft) or DirectWrite's fallback list (Windows, as
+   WezTerm) finds a fallback font for a cluster the first font lacks; box
+   drawing, blocks and Powerline's separators are drawn to fill the cell.
    Glyph bitmaps are cached per font and glyph in memory taken at font_open,
    so a cache hit allocates nothing. */
 #ifndef FONT_H
@@ -20,10 +22,13 @@ typedef struct {
 	int x, y;                 /* pixels from that cluster's cell origin on the baseline; y up */
 } Placed;
 
-/* Opens family (a fontconfig name, "JetBrains Mono") at px pixels per em.
-   0 ok; -1 if fontconfig has no font at all, or out of memory; a family it
-   lacks gets its best match, as in foot.  Called again (a new size or output
-   scale) it replaces the font and empties the cache. */
+/* Opens family (a font name, "JetBrains Mono"; on Windows a list, the
+   first installed one taken) at px pixels per em.  0 ok; -1 if the system
+   has no font at all, or out of memory; a family it lacks gets its best
+   match, as in foot.  Called again with a size still open, it switches to
+   that size and keeps its cell and its caches.  Up to 4 sizes stay open,
+   because frames can sit on monitors with different scales; the least
+   recently used one closes.  family is the same in every call. */
 int  font_open(const char *family, int px);
 void font_close(void);
 /* The cell, from the first font: width, height, baseline from the top. */
@@ -36,6 +41,6 @@ void font_style(int style);
 /* Shapes one run of UTF-8 text (one row, one attribute, one style); returns how many
    glyphs it wrote to out (at most max), in cluster order. */
 int  font_shape(const unsigned char *s, size_t n, Placed *out, int max);
-/* Glyph cache lookups since font_open. */
+/* Glyph cache lookups since this size was opened. */
 void font_stats(unsigned long *hit, unsigned long *miss);
 #endif

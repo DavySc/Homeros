@@ -39,7 +39,9 @@ PY
 		case $target in compilers*|wincc*) ;; *) cc='(\.[ch]|<stdin>):[0-9]+(:[0-9]+)?: (fatal )?(error|warning):|^cc1|undefined reference|ld returned|^[0-9]+ errors? generated\.$';; esac
 		# "N differ" or "N of M ... differ" with N > 0, not "0 of 2000 differ"
 		# "got error WRONG" is a model TLC could not run (no tlc, a parse error)
-		why=$(grep -P 'CHECK\(|(?<!of )\b[1-9][0-9]* differ|\b[1-9][0-9]* of [0-9]+ [^.;]*?differ|WRONG|error|ERROR|Proved goals|sorry|deadly signal|FAIL' "$tmp.log" | grep -v -E '^(gcc|clang|cc) |^make|No rule|got error' | grep -v -E "$cc" | head -1)
+		# nix's "error: ..." and a full disk are the machine's failure, not
+		# the check's (measured: 12 false catches with the disk full)
+		why=$(grep -P 'CHECK\(|(?<!of )\b[1-9][0-9]* differ|\b[1-9][0-9]* of [0-9]+ [^.;]*?differ|WRONG|error|ERROR|Proved goals|sorry|deadly signal|FAIL' "$tmp.log" | grep -v -E '^(gcc|clang|cc) |^make|No rule|got error|^error: |No space left' | grep -v -E "$cc" | head -1)
 		if [ -n "$why" ]; then echo "caught        $name   (make $target): $why"
 		else echo "FAILED OTHERWISE  $name   (make $target): $(tail -1 "$tmp.log")"; rc=1; fi
 	fi

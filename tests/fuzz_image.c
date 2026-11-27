@@ -54,9 +54,9 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 				for (int xx = 0; xx < cw; xx++) {
 					uint32_t v = px[yy * cw + xx];
 					int ix = tx * cw + xx, iy = ty * ch + yy;
-					if (v >> 24) abort();   /* drawn, as XRGB */
+					if (v >> 24 != 0xff) abort();   /* drawn, opaque in an ARGB buffer too */
 					if (d[0] & 1 || w > bc * cw || h > br * ch) continue;
-					if (ix >= w || iy >= h) { if (v != bg) abort(); continue; }
+					if (ix >= w || iy >= h) { if (v != (0xff000000 | bg)) abort(); continue; }
 					size_t q = (size_t)(iy * w + ix) * 4;
 					unsigned a = q + 3 < n ? p[q + 3] : 0;
 					for (int s = 0; s < 3; s++) {
