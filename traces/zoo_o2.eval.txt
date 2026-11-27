@@ -118,7 +118,7 @@ sizeof *pp =>  |  | Missing expression.
 sizeof **pp =>  |  | Missing expression.
 sizeof global_text => 8 | uint64 |  | asked 3 times
 sizeof *global_text =>  |  | Missing expression.
-sizeof(Big) => 24 | uint64 |  | asked 3 times
+sizeof(Big) => 24 | uint64 | 
 sizeof big.x => 24 | uint64 | 
 sizeof function => 8 | uint64 | 
 nest.bits.low => 5 | uint32 : 3 | 
@@ -152,9 +152,9 @@ pointer == &pair => true | bool |
 pointer != 0 => true | bool | 
 !pointer => false | bool | 
 pointer && np =>  |  | `np` could not be found.
-(long long)pointer == (long long)&pair => 0 | true | Missing `)`. | asked 3 times
+(long long)pointer == (long long)&pair => 0 | true | Missing `)`.
 np->next == pointer =>  |  | `np` could not be found.. Could not find a member named `next`.
-((Pair *)&nest)->b =>  |  | Cannot use this operator on this type.. Could not find a member named `b`. | asked 3 times
+((Pair *)&nest)->b =>  |  | Cannot use this operator on this type.. Could not find a member named `b`.
 *(unsigned char *)&s => '\\0' (0) | uchar8 | 
 global_text[0] => '\\0' (0) | char | 
 global_text[4] => '\\0' (0) | char | 
@@ -208,7 +208,7 @@ pointer->c => 3.0 | double |
 *&d =>  |  | Missing expression.
 np->either.f =>  |  | `np` could not be found.. Could not find a member named `either`.. Could not find a member named `f`.
 nest.either.f + f => 2.0 | float32 | 
-global_pair.c * 2 => 5.0 | float64 |  | asked 3 times
+global_pair.c * 2 => 5.0 | float64 | 
 pair.c / array[2] => 1.0 | float64 | 
 (int)pair.c / array[1] => 0 | int32 |  | asked 3 times
 d - (int)d => 2.5 | float64 | 
@@ -216,7 +216,7 @@ f * f * f => 3.375 | float32 |
 wide * 1.5f => -4 | int64 | 
 (float)u / 7 => 0.4285714328289032 | float32 | 
 *(float *)&np->either =>  |  | `np` could not be found.. Could not find a member named `either`.
-global_text => \"text\ | char const * |  | asked 4 times
+global_text => \"text\ | char const * | 
 global_text + 1 => \"ext\ | char const * | 
 long_text => \"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+/=-\ | char const * |  | asked 3 times
 long_text + 2 => \"23456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+/=-\ | char const * | 
