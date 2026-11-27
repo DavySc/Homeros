@@ -46,6 +46,17 @@ int  net_sspi(Net *c, const char *spn, const char *in, size_t n, Str *out);
    escaped as \t \n \r \\ (net_cp: unless raw, a message's text). */
 int  net_cp(Str *b, unsigned u, int raw);
 int  net_esc(Str *b, const char *s, size_t n);
+/* The layout's marks in a client's text (sql.c lays the results out by
+   them): bytes UTF-8 never holds, and the text is UTF-8 (net_cp, and
+   net_esc of the server's UTF-8, which Postgres checks on input).  A
+   result set's names start with NET_HEAD, a row with NET_ROW; a NULL is
+   NET_NULL, the same "NULL" with its mark; an error is between two
+   NET_ERR.  net_plain drops them all, in place, and returns the length. */
+#define NET_ERR "\xFC"
+#define NET_HEAD "\xFE"
+#define NET_ROW "\xFF"
+#define NET_NULL "\xFD" "NULL"
+size_t net_plain(char *s, size_t n);
 /* net_esc undone in place, on n bytes of s: the new length */
 size_t net_unesc(char *s, size_t n);
 #endif
