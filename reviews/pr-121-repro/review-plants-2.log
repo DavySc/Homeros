@@ -1,0 +1,5 @@
+caught        review 2: Org reports one row fewer (test_syntax_org)   (make test TESTS=syntax_org): tests/test_syntax_org.c:60: CHECK((l >= r1 && l < r2) || l == text_lines(t) || (v == lv[l] && a == st[l])) failed
+caught        review 2: after a row-moving edit the pending rows end at the old last end (test_syntax)   (make test TESTS=syntax): tests/test_syntax.c:427: CHECK(syntax_foldexpr(s, l, &a) == syntax_foldexpr(f, l, &b) && a == b) fa
+caught        review 2: Markdown's rows are found by the changed tree only for a C buffer (test_syntax)   (make test TESTS=syntax): tests/test_syntax.c:946: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) fai
+NOT CAUGHT    review 2: after a row-moving edit the pending rows keep their first start (test_syntax)   (make test TESTS=syntax passed)
+caught        review 2: the fold table is built whole after every parse, not row by row (test_syntax)   (make test TESTS=syntax): tests/test_syntax.c:465: CHECK(syntax_update(s, t, NULL, &r1, &r2) == 1 && r1 == 0 && r2 == 4) faile
