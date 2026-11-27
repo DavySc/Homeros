@@ -1,0 +1,5 @@
+rv3: a value wider than its column cut again~test TESTS=sql_editor~~src/sql/sql.c~size_t c, k = fit(p, n, CAP, &c);~size_t c, k = fit(p, n, (size_t)w, &c);
+rv3: a wider value's padding underflows~test TESTS=sql_editor~~src/sql/sql.c~(c < (size_t)w ? (size_t)w - c : 0) + !last~(size_t)w - c + !last
+rv3: a pushed cell's end taken at the column's width~test TESTS=sql_editor~~src/sql/sql.c~	while (i < g->n - 1 && e + 3 <= n && memcmp(t + e, "\xe2\x94\x82", 3)) e++;¶~
+rv3: the cell value buffer can be changed~test TESTS=sql_editor~~src/sql/sql.c~*nr = E->buf->nr, E->buf->nomodifiable = 1;~*nr = E->buf->nr;
+rv3: a new cell buffer for every Enter~test TESTS=sql_editor~~src/sql/sql.c~if (i || below(&nr)) return str_free(&v), 1;~if (i || (nr = 0, below(&nr))) return str_free(&v), 1;

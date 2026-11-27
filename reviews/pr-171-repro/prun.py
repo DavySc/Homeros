@@ -24,7 +24,11 @@ for line in open(pf):
             ok = r.returncode != 0
         except subprocess.TimeoutExpired: ok = True; name += " (hang)"
         c += ok
-        print("caught       " if ok else "NOT CAUGHT   ", name, flush=True)
+        why = ""
+        if ok and "hang" not in name:
+            ls = [l for l in (r.stderr + r.stdout).splitlines() if "CHECK(" in l or "ERROR: " in l or "runtime error" in l or "failed" in l]
+            why = "   | " + (ls[0][:110] if ls else "exit %d" % r.returncode)
+        print("caught       " if ok else "NOT CAUGHT   ", name + why, flush=True)
     finally:
         open(file, "w").write(src); os.utime(file)
 print("%d of %d caught" % (c, n))
