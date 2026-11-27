@@ -35,8 +35,8 @@ sql: a comment before GO ends its line's lead~test TESTS=sql_run~~src/sql/run.c~
 sql: a message's tab and newline escaped~test TESTS=sql~~src/sql/net.c~	unsigned char s[4] = {'\\', raw ? 0 : (unsigned char)esc(u)};~	unsigned char s[4] = {'\\', (unsigned char)(esc(u) + 0 * raw)};
 sql: no ARITHABORT, unlike SSMS~test TESTS=sql~~src/sql/tds.c~tds_batch(t, "set arithabort on")~tds_batch(t, "set ansi_nulls on")
 sql: the mechanism list read past its message (fuzz)~fuzz FUZZERS=sql_pg FUZZ_SECONDS=60~~src/sql/pg.c~while (q < e && *q && !(e - q >= 14 && !memcmp(q, "SCRAM-SHA-256", 14)))~while (q < e && *q && strcmp(q, "SCRAM-SHA-256"))
-sql: Postgres values not escaped~test TESTS=sql~~src/sql/pg.c~str_add(o, "NULL", 4) : net_esc(o, s, l)~str_add(o, "NULL", 4) : str_add(o, s, l)
-sql: Postgres NULL shown as empty~test TESTS=sql~~src/sql/pg.c~(l == 0xFFFFFFFF ? str_add(o, "NULL", 4) :~(l == 0xFFFFFFFF ? 0 :
+sql: Postgres values not escaped~test TESTS=sql~~src/sql/pg.c~str_add(o, NET_NULL, 5) : net_esc(o, s, l)~str_add(o, NET_NULL, 5) : str_add(o, s, l)
+sql: Postgres NULL shown as empty~test TESTS=sql~~src/sql/pg.c~(l == 0xFFFFFFFF ? str_add(o, NET_NULL, 5) :~(l == 0xFFFFFFFF ? 0 :
 sql: a Postgres value longer than its message (fuzz)~fuzz FUZZERS=sql_pg FUZZ_SECONDS=60~~src/sql/pg.c~(s += 4, l != 0xFFFFFFFF && (size_t)(e - s) < l)~(s += 4, 0)
 sql: the command tag's NUL shown~test TESTS=sql~~src/sql/pg.c~net_esc(o, s, n ? n - 1 : 0)~net_esc(o, s, n)
 sql: Postgres notices dropped~test TESTS=sql~~src/sql/pg.c~	case 'E': case 'N': {~	case 'E': if (0) case 'N': return 0; {
@@ -77,7 +77,7 @@ win: a dir line never matches a Windows buffer's name (C:\ and backslashes)~win 
 win: a password in the connections file refused on Windows (no mode bits there)~win WIN=sql~~src/sql/sql.c~	int open = 1;~	int open = 0;
 sql: a batch read from the buffer as it is when sent, not as it was at F5 (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (str_add(&s->sql, s->text.s + (b.a - s->base), b.z - b.a)~if ((text_read(core_buf_find(E, s->nr)->text, b.a, s->text.s + (b.a - s->base), b.z - b.a), str_add(&s->sql, s->text.s + (b.a - s->base), b.z - b.a))
 sql: Alt+Break ends the run before the server answers the cancel (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~			s->cancel = 1;~			s->q.n = 0;
-sql: a cancelled run's later batches still run (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (s->cancel) s->cancel = 0, s->q.n = 0;~if (s->cancel) s->cancel = 0, next(s);
+sql: a cancelled run's later batches still run (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (s->cancel) s->cancel = 0, end(s);~if (s->cancel) s->cancel = 0, next(s);
 sql: no room for the split leaves the run set (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (oom || show(s)) { s->q.n = 0; return -1; }~	if (oom || show(s)) return -1;
 sql: a second F5 during a run is not refused (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (s->q.n) { core_msg(E, s->cancel~	if (0) { core_msg(E, s->cancel
 sql: the login's messages shown in the results (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (was >= DB_READY) put(~if (1) put(
@@ -136,8 +136,8 @@ sql: the results' | in no face~test TESTS=sql_editor~~src/sql/sql.c~j < ls + k +
 sql: a span's faces from its start, not the window's~test TESTS=sql_editor~~src/sql/sql.c~s->sp[lo].a > a ? s->sp[lo].a : a~s->sp[lo].a
 sql: a NULL in no face~test TESTS=sql_editor~~src/sql/sql.c~(null && span(s, s->o.n, n, FACE_DIAG_WARN))~(null && 0)
 sql: an error message in no face~test TESTS=sql_editor~~src/sql/sql.c~if (a) r = span(s, a, s->o.n - a, FACE_DIAG_ERROR), a = 0;~if (a) r = span(s, a, s->o.n - a, FACE_NONE), a = 0;
-sql: the messages held after the run~test TESTS=sql_editor~~src/sql/sql.c~static void end(Sess *s) { s->q.n = 0, put(s, "", 0); }~static void end(Sess *s) { s->q.n = 0; }
-sql: a new run keeps the last one's grids~test TESTS=sql_editor~~src/sql/sql.c~	s->ng = s->nsp = 0, s->in = 0,~	s->nsp = 0, s->in = 0,
+sql: the messages held after the run~test TESTS=sql_editor~~src/sql/sql.c~	s->q.n = 0, put(s, "", 0);~	s->q.n = 0;
+sql: a new run keeps the last one's grids~test TESTS=sql_editor~~src/sql/sql.c~	s->ng = s->nsp = 0, s->in = s->bad = 0,~	s->nsp = 0, s->in = s->bad = 0,
 sql: the status line's rows not counted~test TESTS=sql_editor~~src/sql/sql.c~rows += s->g[i].rows;~rows += 0 * s->g[i].rows;
 sql: the status line misses an error~test TESTS=sql_editor~~src/sql/sql.c~s->bad |= memchr(p, 0xFC, n) != NULL;~s->bad |= 0;
 sql: the status line misses a cancel~test TESTS=sql_editor~~src/sql/sql.c~		s->bad = 2;¶~

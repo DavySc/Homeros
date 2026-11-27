@@ -139,8 +139,8 @@ int main(void)
 	/* from the first line: the login's own messages are not shown */
 	char want[1024];
 	snprintf(want, sizeof want, "%s\n", one("one", "1"));
-	snprintf(want + strlen(want), sizeof want - strlen(want), "%s\n\xe2\x94\x80\xe2\x94\x80 Messages ", one("two", "2"));
-	CHECK(!strncmp(until("Completion time"), want, strlen(want)) && strstr(res, "\n(1 row affected)\nbetween\nbetween\n(1 row affected)\n\nCompletion time: "));
+	snprintf(want + strlen(want), sizeof want - strlen(want), "%s\n\xe2\x94\x80\xe2\x94\x80 Messages %s\n(1 row affected)\nbetween\n", one("two", "2"), "\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80");
+	CHECK(!strncmp(until("Completion time"), want, strlen(want)) && strstr(res, "\nbetween\nbetween\n(1 row affected)\n\nCompletion time: "));
 	/* the status line: SSMS's, its rows, its time, the connection */
 	CHECK(e.wins->next && strstr(e.wins->next->buf->status, "\xe2\x9c\x93 Query executed successfully \xc2\xb7 2 rows \xc2\xb7 00:00:0") && strstr(e.wins->next->buf->status, " \xc2\xb7 ms / master"));
 	CHECK(e.wins->next && e.wins->next->buf->nomodifiable && e.wins->next->line == text_lines(e.wins->next->buf->text) - 1);   /* the window follows the end */
