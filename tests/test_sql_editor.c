@@ -341,6 +341,10 @@ int main(void)
 	size_t at = text_len(rb->text) - strlen(g) + (size_t)(m - g);
 	rb->faces(rb, at, at + 8, fc);
 	CHECK(m && fc[0] == FACE_DIAG_ERROR && fc[7] == FACE_DIAG_ERROR);
+	m = strstr(g, "Divide by zero");   /* its second line */
+	at = text_len(rb->text) - strlen(g) + (size_t)(m - g);
+	rb->faces(rb, at, at + 6, fc);
+	CHECK(m && fc[0] == FACE_DIAG_ERROR && fc[5] == FACE_DIAG_ERROR);
 	/* the row count, the Messages rule, a later grid's names */
 	m = strstr(g, "(1 row)\n\n" MSGS);
 	at = text_len(rb->text) - strlen(g) + (size_t)(m - g);
@@ -393,6 +397,11 @@ int main(void)
 	e.ks.pending = 0;
 	CHECK(!core_win_goto(&e, 'k', 1));
 	CHECK(strstr(until("Completion time"), "\n      3 \xe2\x94\x82 3 ") && strstr(res, "\n(3 rows)\n"));
+	/* a connection that dies inside a set, long after its rows began to
+	   show: the set ends, its messages and the reason after it */
+	put("pg/die.sql", "select g, pg_sleep(0.3 * g), case when g = 2 then pg_terminate_backend(pg_backend_pid()) end, repeat('x', 9000) from generate_series(1, 2) g\n", 0600);
+	CHECK(!core_edit_file(&e, "pg/die.sql", 0) && sql_key(&e, KEY_F5) == 1);
+	CHECK(strstr(until("57P01"), "\n(2 rows)\n\n" MSGS "FATAL 57P01: terminating connection"));
 	/* a long set: the widths from its first 500 rows, a later longer value
 	   cut, the row numbers wide enough for 7 digits */
 	g = f5("ms/long.sql", "select top 600 case when row_number() over (order by (select 1)) > 500 then N'longer' else N'v' end x from sys.all_objects a, sys.all_objects b\n");
