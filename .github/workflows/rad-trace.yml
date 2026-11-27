@@ -30,12 +30,19 @@ jobs:
           pushd rad && call build raddbg release || exit /b 1
           popd
           mkdir bin
+          rem SQLite's source in one file, fetched once and then kept in the branch (the commit step adds it)
+          if not exist subjects\sqlite\sqlite3.c (
+            curl -sSL -o sqlite.zip https://www.sqlite.org/2024/sqlite-amalgamation-3470200.zip || exit /b 1
+            certutil -hashfile sqlite.zip SHA256
+            tar -xf sqlite.zip || exit /b 1
+            mkdir subjects\sqlite && copy sqlite-amalgamation-3470200\sqlite3.c subjects\sqlite\ && copy sqlite-amalgamation-3470200\sqlite3.h subjects\sqlite\ || exit /b 1
+          )
           rem /Od with no inlining keeps one line per step; DYNAMICBASE:NO keeps addresses the same on every run
-          for %%f in (subjects\*.c subjects\*.cpp) do cl /nologo /Zi /Od /Ob0 /GS- %%f /Fo:bin\ /Fd:bin\%%~nf.pdb /Fe:bin\%%~nf.exe /link /DEBUG /INCREMENTAL:NO /DYNAMICBASE:NO || exit /b 1
+          for %%f in (subjects\*.c subjects\*.cpp) do cl /nologo /Zi /Od /Ob0 /GS- /Isubjects\sqlite %%f /Fo:bin\ /Fd:bin\%%~nf.pdb /Fe:bin\%%~nf.exe /link /DEBUG /INCREMENTAL:NO /DYNAMICBASE:NO || exit /b 1
           rem the same sources optimised: inlined calls, lines out of order, variables in registers
-          for %%f in (subjects\*.c subjects\*.cpp) do cl /nologo /Zi /O2 /GS- %%f /Fo:bin\%%~nf_o2.obj /Fd:bin\%%~nf_o2.pdb /Fe:bin\%%~nf_o2.exe /link /DEBUG /INCREMENTAL:NO /DYNAMICBASE:NO || exit /b 1
+          for %%f in (subjects\*.c subjects\*.cpp) do cl /nologo /Zi /O2 /GS- /Isubjects\sqlite %%f /Fo:bin\%%~nf_o2.obj /Fd:bin\%%~nf_o2.pdb /Fe:bin\%%~nf_o2.exe /link /DEBUG /INCREMENTAL:NO /DYNAMICBASE:NO || exit /b 1
           rem "just my code": a call at each function's start, under line numbers 0xf00f00 and 0xfeefee
-          for %%n in (calls mine) do cl /nologo /Zi /Od /Ob0 /GS- /JMC subjects\%%n.c /Fo:bin\%%n_jmc.obj /Fd:bin\%%n_jmc.pdb /Fe:bin\%%n_jmc.exe /link /DEBUG /INCREMENTAL:NO /DYNAMICBASE:NO || exit /b 1
+          for %%n in (calls mine sql) do cl /nologo /Zi /Od /Ob0 /GS- /JMC /Isubjects\sqlite subjects\%%n.c /Fo:bin\%%n_jmc.obj /Fd:bin\%%n_jmc.pdb /Fe:bin\%%n_jmc.exe /link /DEBUG /INCREMENTAL:NO /DYNAMICBASE:NO || exit /b 1
           rem clang's line records: one line as records that touch (the call of a one-line if in the second), which cl never writes
           clang-cl /nologo /Z7 /Od /GS- subjects\recur.c /Fo:bin\recur_clang.obj /Fe:bin\recur_clang.exe /link /DEBUG /INCREMENTAL:NO /DYNAMICBASE:NO /PDB:bin\recur_clang.pdb || exit /b 1
       - name: Ask RAD for the values and types of the zoo's expressions (the oracle for what a view shows), and commit them at once
@@ -67,4 +74,4 @@ jobs:
         shell: bash
         run: |
           git config user.name "github-actions[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add traces rdi && git diff --cached --quiet || { git commit -qm "Traces recorded from RAD at ${RAD_COMMIT:0:8} [skip ci]" && git pull -q --rebase && git push -q; }
+          git add traces rdi subjects/sqlite && git diff --cached --quiet || { git commit -qm "Traces recorded from RAD at ${RAD_COMMIT:0:8} [skip ci]" && git pull -q --rebase && git push -q; }
