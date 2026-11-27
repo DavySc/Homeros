@@ -1,0 +1,76 @@
+# Faces tests/test_syntax_zig.c lets differ from Neovim's: "file offset
+# length neovim-face ours-face" (grid.h's FACE_* numbers), each where
+# tree-sitter-zig reads Zig differently from Zig's parser (research/zig.md,
+# prototype C).  This list only shrinks.
+#   1 33: !f(x) read as an error union type, so f is a variable, not a call
+#   25 33: E(S)!T(x) read the same way, so T is a type, not a call
+#   5 25: a tuple's types (struct { A, B }) read as field names
+#   22 5, 7 5: a field named true or null coloured as the keyword
+#   1 2: _ in "if (c) _ = x;" not read as an identifier
+zig/Ast.zig 139154 5 5 25
+zig/Ast.zig 139161 5 5 25
+zig/Ast.zig 139210 13 5 25
+zig/Ast.zig 139225 13 5 25
+zig/Ast.zig 139278 5 5 25
+zig/Ast.zig 139285 13 5 25
+zig/Ast.zig 139338 13 5 25
+zig/Ast.zig 139353 5 5 25
+zig/Ast.zig 139395 5 5 25
+zig/Ast.zig 139402 10 5 25
+zig/Ast.zig 139449 10 5 25
+zig/Ast.zig 139461 5 5 25
+zig/Ast.zig 139507 10 5 25
+zig/Ast.zig 139519 13 5 25
+zig/Ast.zig 139569 5 5 25
+zig/Ast.zig 139576 10 5 25
+zig/Ast.zig 139623 10 5 25
+zig/Ast.zig 139635 5 5 25
+zig/Ast.zig 139678 10 5 25
+zig/Ast.zig 139690 10 5 25
+zig/Ast.zig 139741 13 5 25
+zig/Ast.zig 139756 10 5 25
+zig/Ast.zig 139807 18 5 25
+zig/Ast.zig 139827 5 5 25
+zig/Ast.zig 139877 18 5 25
+zig/Ast.zig 139897 13 5 25
+zig/Ast.zig 139956 18 5 25
+zig/Ast.zig 139976 18 5 25
+zig/Ast.zig 140023 10 5 25
+zig/Ast.zig 140035 3 5 25
+zig/AstGen.zig 336976 12 1 33
+zig/AstGen.zig 457042 9 25 33
+zig/AstGen.zig 457837 9 25 33
+zig/AstGen.zig 474586 9 25 33
+zig/BuiltinFn.zig 2822 9 5 25
+zig/WindowsSdk.zig 38940 12 1 33
+zig/WindowsSdk.zig 46745 12 1 33
+zig/WindowsSdk.zig 47801 1 1 2
+zig/WindowsSdk.zig 49559 12 1 33
+zig/Zoir.zig 1957 4 22 5
+zig/Zoir.zig 2000 5 22 5
+zig/Zoir.zig 2043 4 7 5
+zig/Zoir.zig 6193 4 22 5
+zig/Zoir.zig 6246 5 22 5
+zig/Zoir.zig 6300 4 7 5
+zig/primitives.zig 1361 11 1 33
+zig/primitives.zig 1395 11 1 33
+zig/primitives.zig 1430 11 1 33
+json/Scanner.zig 62672 4 22 5
+json/Scanner.zig 62682 5 22 5
+json/Scanner.zig 62693 4 7 5
+json/Scanner.zig 63302 4 22 5
+json/Scanner.zig 63312 5 22 5
+json/Scanner.zig 63323 4 7 5
+json/dynamic.zig 829 4 7 5
+json/dynamic.zig 1050 30 1 33
+json/scanner_test.zig 19874 30 1 33
+json/scanner_test.zig 19941 30 1 33
+json/scanner_test.zig 20009 30 1 33
+json/scanner_test.zig 20077 30 1 33
+json/scanner_test.zig 20146 30 1 33
+json/scanner_test.zig 20215 30 1 33
+json/static.zig 3608 6 25 33
+json/static.zig 4714 6 25 33
+json/static.zig 6724 6 25 33
+json/static.zig 33550 30 1 33
+tests/test_syntax_zig.c:205: CHECK(0) failed

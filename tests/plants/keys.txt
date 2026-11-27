@@ -216,11 +216,11 @@ keys: g; on an empty change list says nothing (test_keys_ex)~test TESTS=keys_ex~
 keys: drawing 'hlsearch' takes Ctrl-C from the search (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~(!re_deadline && loop_breakcheck())~(loop_breakcheck())
 keys: a mark past the last line is gone to (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	if (p->lnum >= nlines()) { core_msg(E, "E19: Mark has invalid line number"); return 0; }¶~
 keys: verible without Davy's 4-space indent (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~"verible-verilog-format", "--indentation_spaces=4", "-"~"verible-verilog-format", "-", NULL
-keys: gq sends verible the whole text, not its lines (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	if (*a || *z < len) argv[2] = lines, argv[3] = "-";~
-keys: :Format sends verible --lines (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	if (*a || *z < len) argv[2] = lines, argv[3] = "-";~	argv[2] = lines, argv[3] = "-";
+keys: gq sends verible the whole text, not its lines (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	if (a || z < len) argv[2] = lines, argv[3] = "-";~
+keys: :Format sends verible --lines (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	if (a || z < len) argv[2] = lines, argv[3] = "-";~	argv[2] = lines, argv[3] = "-";
 keys: :w formats a .sv buffer with no .slang above it (test_keys_gq)~test TESTS=keys_gq~~src/keys/keys.c~: ".slang";~: ".";
 keys: a failed verible's output is applied, emptying the buffer (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	if (id < 0 || bad) {~	if (id < 0) {
-keys: verible's edit runs to the end of the text, so the cursor below it moves onto other text (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~		while (q < len - p && q < vout.n - p && in[len - 1 - q] == vout.s[vout.n - 1 - q]) q++;¶~
+keys: verible's edit runs to the end of the text, so the cursor below it moves onto other text (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~			while (q < len - p && q < n - p && in[len - 1 - q] == res[n - 1 - q]) q++;¶~
 keys: a hanging verible is never killed (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~proc_wait(id, 1000)~proc_wait(id, 1 << 30)
 keys: verible's stderr goes into the buffer (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~	if (stream == 1 && b)~	if (stream && b)
 keys: a jump past the last line is gone to, with no E19 (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	if (m.line >= (size_t)nlines()) { core_msg(E, "E19: Mark has invalid line number"); clearop(cap->oap); }¶	else setcur(~	setcur(
@@ -230,6 +230,9 @@ keys: .svh, .v and .vh buffers are not formatted with Verible (test_keys_gq)~tes
 keys: keys_visual(e, 0) leaves Visual mode on (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (!mode) { if (VIsual_active) end_visual_mode(); }~	if (!mode) { if (VIsual_active) (void)0; }
 keys: keys_visual() keeps the other end's column (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~VIsual = (Pos){ (long)line, 0, 0 };~VIsual.lnum = (long)line;
 keys: keys_visual() leaves e->ks as it was (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~(Pos){ (long)line, 0, 0 };¶	visual_sync();~(Pos){ (long)line, 0, 0 };
+keys: :w leaves a Zig file as typed (test_keys_gq, zig)~test TESTS=keys_gq~~src/keys/keys.c~	if (k == 3) buf_format(0, text_len(B->text));¶	else if (k) {~	if (k == 3) ;¶	else if (k) {
+keys: a whole-text format replaces the whole text, so a mark on a line it leaves is lost (test_keys_gq, zig)~test TESTS=keys_gq~~src/keys/ops.c~			while (p < len && p < n && in[p] == res[p]) p++;¶~¶
+keys: :Format on a Zig file that does not parse, or with no zig fmt for the zig on PATH, says nothing (test_keys_gq, zig)~test TESTS=keys_gq~~src/keys/ops.c~		if (k == 3 && r != -2 && r) core_msg(E, r == -1 ? "zig fmt: the file does not parse" : "zig fmt: none for the zig on PATH, only 0.15 to 0.17");¶~¶
 keys: gT goes forward (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~	case 'T': if (!checkclearop(oap)) goto_tabpage(-cap->count1); break;~	case 'T': if (!checkclearop(oap)) goto_tabpage(cap->count1); break;
 keys: SPC 5 m moves into the frame after the letter's (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~core_win_to_tab(e, n)~core_win_to_tab(e, n + 1)
 keys: a focus change leaves insert mode on (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		if (e->mode == MODE_INSERT || e->ks.visual ||~		if (e->ks.visual ||

@@ -2,7 +2,8 @@
    Markdown (injections, code blocks), Rust (its scanner's raw strings
    and nested comments, macros), Nix (its scanner's strings, Lua and
    Rust injected into several strings as one tree), CMake (its scanner's
-   bracket arguments) and SystemVerilog, with parses stopped and resumed at
+   bracket arguments), SystemVerilog and Zig (its own parser on broken code,
+   zig fmt at any moment), with parses stopped and resumed at
    input-chosen points and faces, syntax_md and folds read at any moment, stale
    trees included.
    Sanitizers catch the memory errors; the faces must be grid.h's, and a
@@ -15,7 +16,7 @@
 #include "text.h"
 static size_t r1, r2;   /* syntax_update's fold rows, read where a test needs them */
 
-static const char *const tok[7][16] = {
+static const char *const tok[8][16] = {
 	{ "\n", "/*", "*/", "\"", "'", "{", "}", "(", ")", "x", " ", "\xc3\xa9", "#define A(x) x\n", "int", "FOO", ";" },
 	{ "\n", "--", "[[", "]]", "\"", "'", "(", ")", "x", " ", "\xc3", "local", "function", "end", "--- @param", "vim.cmd" },
 	{ "\n", "#", "```", "```c\n", "```lua\n", "*", "1. ", "`", "[", "](", ")", "- ", "| a |", "\n\n", "\xa9", "> " },
@@ -23,8 +24,9 @@ static const char *const tok[7][16] = {
 	{ "\n", "#", "/*", "*/", "''", "\"", "{", "}", "${", ";", "x", "\\", "/* lua */ ''", "# rust\n", "pkgs.writeRust \"a\" {} ''", "''$" },
 	{ "\n", "#", "#[[", "]]", "[==[", "]==]", "\"", "${", "}", "(", ")", " ", "x", "\\", "set(", "endif()" },
 	{ "\n", "//", "/*", "*/", "\"", "(", ")", ";", "x", " ", "`define A", "`A", "module m;", "endmodule", "begin", "end" },
+	{ "\n", "//", "?", "{", "}", "(", ")", ";", "x", " ", "fn f() void ", "const a = ", ".", "|x| ", "\"\\x", "if (a) x else " },
 };
-static const char *const path[7] = { "f.c", "f.lua", "f.md", "f.rs", "f.nix", "f.cmake", "f.sv" };
+static const char *const path[8] = { "f.c", "f.lua", "f.md", "f.rs", "f.nix", "f.cmake", "f.sv", "f.zig" };
 
 static const uint8_t *d;
 static size_t n, at;
@@ -35,7 +37,7 @@ static int stop(void) { return left > 0 && --left == 0; }
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
 	d = data, n = size, at = 0;
-	int lang = (int)(byte() % 7);
+	int lang = (int)(byte() % 8);
 	char b[4096];
 	size_t bn = 0;
 	for (unsigned k = byte() % 32; k--; ) {
@@ -66,6 +68,9 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 			if (z > len) z = len;
 			syntax_faces(s, a, z, f);
 			for (size_t i = 0; i < z - a; i++) if (f[i] >= FACE_COUNT) abort();
+			const char *res;
+			size_t rn;
+			if (byte() % 4 == 0) syntax_zig_fmt(s, &res, &rn);
 			SyntaxMd m;   /* render-markdown's facts, stale trees included */
 			syntax_md(s, t, byte() % (text_lines(t) + 1), &m);
 			int st;   /* folds, which parse first */

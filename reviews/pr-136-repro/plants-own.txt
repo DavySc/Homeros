@@ -1,0 +1,3 @@
+review: zig fmt formats the last parse's text, not the buffer's (stale after an edit)~test TESTS="keys_gq syntax_zig"~~src/syntax/syntax.c~	if (s->dirty || !h) {¶		if (s->zfh)~	if (!h) {¶		if (s->zfh)
+review: text typed into a Zig buffer keeps the colours of what was there until the parse~test TESTS=syntax_zig~~src/syntax/syntax.c~			memset(s->zf + pos, 0, nins);¶~
+review: a Zig member after one with "expected ;" keeps its tree's colours (broken's "or the one before it")~test TESTS=syntax_zig~~src/syntax/zig.zig~        const from = if (i > 0 and a.firstToken(decls[i]) == e.token) i - 1 else i;~        const from = i;
