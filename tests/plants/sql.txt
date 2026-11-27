@@ -1,0 +1,55 @@
+# Plants for package 22, src/sql/ (format in tools/planted.sh).  The test
+# needs the SQL Server and PostgreSQL of src/sql/README.md (CI's service containers).
+sql: decimal point one digit early~test TESTS=sql~~src/sql/tds.c~(i == scale && scale && ch(b, '.'))~(i == scale + 1 && scale && ch(b, '.'))
+sql: dates a day late~test TESTS=sql~~src/sql/tds.c~	date_civil(days - 719162, &y, &m, &d);~	date_civil(days - 719161, &y, &m, &d);
+sql: datetime's 1/300 s truncated, not rounded~test TESTS=sql~~src/sql/tds.c~(le(s + 4, 4) * 10 + 1) / 3~le(s + 4, 4) * 10 / 3
+sql: code page 1252's euro sign wrong~test TESTS=sql~~src/sql/tds.c~	0x20AC, 0xFFFD, 0x201A,~	0x20AD, 0xFFFD, 0x201A,
+sql: surrogate pairs from the server combined wrong~test TESTS=sql~~src/sql/tds.c~u = 0x10000 + (u - 0xD800) * 1024 + (v - 0xDC00)~u = 0x10000 + (u - 0xD800) * 1023 + (v - 0xDC00)
+sql: floats at 15 digits, not the shortest that reads back~test TESTS=sql~~src/sql/tds.c~	for (int p = single ? 6 : 15; p <= 17; p++) {~	for (int p = single ? 6 : 15; p <= 15; p++) {
+sql: datetimeoffset's sign swapped~test TESTS=sql~~src/sql/tds.c~" %c%02d:%02d", off < 0 ? '-' : '+'~" %c%02d:%02d", off > 0 ? '-' : '+'
+sql: NBCROW's null bits read from the top~test TESTS=sql~~src/sql/tds.c~bits[i / 8] >> (i % 8) & 1~bits[i / 8] >> (7 - i % 8) & 1
+sql: negative money shown as its two's complement~test TESTS=sql~~src/sql/tds.c~m[i] = (uint8_t)((neg ? 0 - v : v) >> (8 * i));~m[i] = (uint8_t)(v >> (8 * i));
+sql: tinyint read as signed~test TESTS=sql~~src/sql/tds.c~int neg = n > 1 && s[n - 1] >= 128;~int neg = s[n - 1] >= 128;
+sql: a (max) value keeps the previous row's chunks~test TESTS=sql~~src/sql/tds.c~		plp->n = 0;¶~
+sql: sql_variant's scale from the wrong property byte~test TESTS=sql~~src/sql/tds.c~&& pb >= 2 ? s[3]~&& pb >= 2 ? s[2]
+sql: an error's head without its line~test TESTS=sql~~src/sql/tds.c~"Msg %u, Level %u, State %u, Line %u\n", no, cls, state, line~"Msg %u, Level %u, State %u\n", no, cls, state + 0 * line
+sql: a rollback keeps the transaction's descriptor~test TESTS=sql~~src/sql/tds.c~		if (ty == 9 || ty == 10) t->txn = 0;¶~
+sql: a cancelled run ends at the first final DONE (SqlRun firstdone)~test TESTS=sql~~src/sql/tds.c~(t->state == TDS_CANCEL && st & 0x20)~t->state == TDS_CANCEL
+sql: a cancel while no batch runs (SqlRun noguard)~test TESTS=sql~~src/sql/tds.c~	if (t->state != TDS_BUSY) return 0;¶	static const char h[8]~	static const char h[8]
+sql: a refused login's reason lost~test TESTS=sql~~src/sql/tds.c~		if (t->state == TDS_LOGIN && k == 0xAA)¶~		if (0)¶
+sql: the certificate never checked~test TESTS=sql~~src/sql/net.c~SSL_set_verify(c->ssl, trust ? SSL_VERIFY_NONE : SSL_VERIFY_PEER, NULL);~SSL_set_verify(c->ssl, SSL_VERIFY_NONE, NULL);
+sql: a packet's header sealed apart from its body~test TESTS=sql~~src/sql/tds.c~		if (net_send(&t->net, p, k + 8)) return -1;~		if (net_send(&t->net, p, 8) || net_send(&t->net, p + 8, k)) return -1;
+sql: every packet of a long batch marked last~test TESTS=sql~~src/sql/tds.c~{(char)type, k == n,~{(char)type, 1,
+sql: tab not escaped in a value~test TESTS=sql~~src/sql/net.c~u == '\t' ? 't' : ~
+sql: a short token's text kept when it restarts (fuzz)~fuzz FUZZERS=sql_tds FUZZ_SECONDS=60~~src/sql/tds.c~		if (c.bad) { t->out.n = mark, t->rows = rows,~		if (c.bad) { t->out.n += 0 * mark, t->rows = rows,
+sql: a column type cut at the packet's end is unknown (fuzz)~fuzz FUZZERS=sql_tds FUZZ_SECONDS=60~~src/sql/tds.c~	return c->bad ? 0 : -1;   /* no type byte yet~	return -1;   /* no type byte yet
+sql: any packet size the server names (fuzz)~fuzz FUZZERS=sql_tds FUZZ_SECONDS=60~~src/sql/tds.c~if (z >= 512 && z <= 32767) t->pkt~if (z > 0) t->pkt
+sql: a whole reply without its last DONE waits (fuzz)~fuzz FUZZERS=sql_tds FUZZ_SECONDS=60~~src/sql/tds.c~if (t->eom && (t->at < t->msg.n || t->state == TDS_BUSY)) {~if (t->eom && t->at < t->msg.n) {
+specs: SqlRun ending a cancelled run at its first DONE~specs~find design/specs -name '*.cfg' ! -name SqlRun_ok.cfg -delete~design/specs/SqlRun_ok.cfg~Variant = "ok"~Variant = "firstdone"
+sql: a message's tab and newline escaped~test TESTS=sql~~src/sql/net.c~	unsigned char s[4] = {'\\', raw ? 0 : (unsigned char)esc(u)};~	unsigned char s[4] = {'\\', (unsigned char)(esc(u) + 0 * raw)};
+sql: no ARITHABORT, unlike SSMS~test TESTS=sql~~src/sql/tds.c~tds_batch(t, "set arithabort on")~tds_batch(t, "set ansi_nulls on")
+sql: the mechanism list read past its message (fuzz)~fuzz FUZZERS=sql_pg FUZZ_SECONDS=60~~src/sql/pg.c~while (q < e && *q && !(e - q >= 14 && !memcmp(q, "SCRAM-SHA-256", 14)))~while (q < e && *q && strcmp(q, "SCRAM-SHA-256"))
+sql: Postgres values not escaped~test TESTS=sql~~src/sql/pg.c~str_add(o, "NULL", 4) : net_esc(o, s, l)~str_add(o, "NULL", 4) : str_add(o, s, l)
+sql: Postgres NULL shown as empty~test TESTS=sql~~src/sql/pg.c~(l == 0xFFFFFFFF ? str_add(o, "NULL", 4) :~(l == 0xFFFFFFFF ? 0 :
+sql: a Postgres value longer than its message (fuzz)~fuzz FUZZERS=sql_pg FUZZ_SECONDS=60~~src/sql/pg.c~(s += 4, l != 0xFFFFFFFF && (size_t)(e - s) < l)~(s += 4, 0)
+sql: the command tag's NUL shown~test TESTS=sql~~src/sql/pg.c~net_esc(o, s, n ? n - 1 : 0)~net_esc(o, s, n)
+sql: Postgres notices dropped~test TESTS=sql~~src/sql/pg.c~	case 'E': case 'N': {~	case 'E': if (0) case 'N': return 0; {
+sql: our own Postgres cancel shown as an error~test TESTS=sql~~src/sql/pg.c~if (p->quiet && f['C'] && !strcmp(f['C'], "57014")) return 0;~if (p->quiet && f['C'] && !strcmp(f['C'], "none")) return 0;
+sql: the Postgres cancel carries the wrong key~test TESTS=sql~~src/sql/pg.c~put32(&s, p->pid) || put32(&s, p->key)~put32(&s, p->pid) || put32(&s, p->pid)
+sql: the Postgres transaction state not read~test TESTS=sql~~src/sql/pg.c~p->txn = n ? s[0] : 'I';~p->txn = 'I';
+sql: a refused login's reason lost to the server's close_notify~test TESTS=sql~~src/sql/net.c~e == SSL_ERROR_WANT_READ || e == SSL_ERROR_ZERO_RETURN ? 0~e == SSL_ERROR_WANT_READ ? 0
+sql: a batch ending in EXEC never ends (DONEPROC)~test TESTS=sql~~src/sql/tds.c~if (k != 0xFF && !(st & 1) && (t->state == TDS_BUSY~if (k == 0xFD && !(st & 1) && (t->state == TDS_BUSY
+sql: our own cancel of a procedure shown as an error~test TESTS=sql~~src/sql/tds.c~if (t->quiet && no == 3980) return 0;~if (t->quiet && no == 1) return 0;
+sql: the socket inherited by child processes~test TESTS=sql~~src/sql/net.c~SOCK_NONBLOCK | SOCK_CLOEXEC~SOCK_NONBLOCK
+sql: the next Postgres query sent before the cancel is done~test TESTS=sql~~src/sql/pg.c~if (p->state != PG_DEAD && p->kill.fd >= 0) p->ready = 1;~if (p->state != PG_DEAD && p->kill.fd < -1) p->ready = 1;
+sql: SCRAM: the server's proof never checked~test TESTS=sql~~src/sql/pg.c~? 0 : dead(p, "SCRAM: the server's proof is wrong")~? 0 : 0
+sql: SCRAM: the server's nonce need not extend ours~test TESTS=sql~~src/sql/pg.c~ || strncmp(r + 2, p->nonce, strlen(p->nonce)))~ || !strncmp(r + 2, p->nonce, 0))
+sql: the host name never checked~test TESTS=sql~~src/sql/net.c~ || !SSL_set1_host(c->ssl, host))~ || !(host || 1))
+sql: SQL Server column names not escaped~test TESTS=sql~~src/sql/tds.c~if (s && out) put_u16(out, s, n, 0);~if (s && out) put_u16(out, s, n, 1);
+sql: Postgres column names not escaped~test TESTS=sql~~src/sql/pg.c~|| net_esc(o, s, (size_t)(z - s))))~|| str_add(o, s, (size_t)(z - s))))
+sql: Postgres 57014 hidden outside a cancel too~test TESTS=sql~~src/sql/pg.c~if (p->quiet && f['C'] && !strcmp(f['C'], "57014")) return 0;~if (f['C'] && !strcmp(f['C'], "57014")) return 0;
+sql: the Postgres password kept after the login~test TESTS=sql~~src/sql/pg.c~		memset(p->pass, 0, sizeof p->pass);~		memset(p->pass, 0, 0);
+sql: the SQL Server login message kept after its sending~test TESTS=sql~~src/sql/tds.c~memset(t->login.s, 0, t->login.n), str_free(&t->login);~memset(t->login.s, 0, t->login.n);
+specs: PgCancel's run over at ReadyForQuery~specs~find design/specs -name '*.cfg' ! -name PgCancel_ok.cfg -delete~design/specs/PgCancel_ok.cfg~Variant = "ok"~Variant = "noclose"
+sql: a cancel's ready never cleared, so it ends a later cancel early~test TESTS=sql~~src/sql/pg.c~p->state = PG_READY, p->quiet = 0, p->ready = 0;~p->state = PG_READY, p->quiet = 0;
+sql: the socket blocks~test TESTS=sql~~src/sql/net.c~SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC~SOCK_STREAM | SOCK_CLOEXEC

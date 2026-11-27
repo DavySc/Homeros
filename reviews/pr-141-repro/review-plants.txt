@@ -1,0 +1,16 @@
+rv: every key of a word collects again~x~~src/snip/snip.c~		if (W.b != e->buf || W.nr != e->buf->nr || W.line != e->win->line || W.col != a)¶~
+rv: a word at its statement's end is outside it~x~~src/snip/snip.c~	if (u[0] <= a && a <= u[1] && refs->n)~	if (u[0] <= a && a < u[1] && refs->n)
+rv: FROM and a column list live on into the next statement~x~~src/snip/snip.c~flush(&refs, &pairs, &here, u[ui], a), from = list = 0, tab = (size_t)-1;~flush(&refs, &pairs, &here, u[ui], a);
+rv: a name of the file listed once per use~x~~src/snip/snip.c~	unsigned *x = slot(kind, w, of);¶	if (*x) return;~	unsigned *x = slot(kind, w, of);
+rv: @@rowcount is a variable of the file~x~~src/snip/snip.c~		if (k == TQ_VAR && b[1] != '@') fact~		if (k == TQ_VAR) fact
+rv: [name] keeps its brackets~x~~src/snip/snip.c~		if (d >= 2 && (*b == '[' || *b == '"')) memmove(b, b + 1, d -= 2);¶~
+rv: the list kept after an item is taken~x~~src/snip/snip.c~	if (e->pum == items) core_pum(e, NULL, 0, -1, 0);¶	W.b = NULL;~	if (e->pum == items) core_pum(e, NULL, 0, -1, 0);
+rv: FROM a, b: b no table~x~~src/snip/snip.c~ || (from && sym(h1, ','))~
+rv: schema.table: the schema's alias~x~~src/snip/snip.c~ || (attab && sym(h1, '.') && !strcasecmp(h2->b, pool.s + tab))~
+rv: DECLARE @t TABLE (...) gives no columns~x~~src/snip/snip.c~			tab = intern(h1->b, strlen(h1->b));   /* DECLARE @t TABLE */~			(void)0;
+rv: T-SQL's words after @ too~x~~src/snip/snip.c~			if (c && (*kwd == '@') == at) cand~			if (c && (*kwd == '@' || !at)) cand
+rv: tables after INTO, UPDATE, DELETE, MERGE not offered~x~~src/snip/snip.c~h0->f |= j < 4 ? FROM << j : TABLES;~h0->f |= j < 4 ? FROM << j : 0;
+rv: a table's name not followed past a keyword~x~~src/snip/snip.c~		if (!isname && !sym(h0, '.') && !(h0->f & (AS | TABLE)) && !sym(h0, '(')) tab = (size_t)-1;¶~
+rv: columns of a #temp or [name] matched by case~x~~src/snip/snip.c~static int is_of(const Cand *c, const char *w) { return c->of != (size_t)-1 && !strcasecmp(pool.s + c->of, w); }~static int is_of(const Cand *c, const char *w) { return c->of != (size_t)-1 && !strcmp(pool.s + c->of, w); }
+rv: sqlfmt_units drops a statement of one token~x~~src/sqlfmt/sqlfmt.c~		if (a < z && GROW(v, n, cap))~		if (a + 6 < z && GROW(v, n, cap))
+rv: Tab in a snippet with no further stop keeps the popup~x~~src/snip/snip.c~	if (tab) close_pum(e);¶~

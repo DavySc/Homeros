@@ -1,0 +1,47 @@
+# Every merge runs the whole check (CLAUDE.md, "Working in parallel").
+name: check
+# once per change: pull requests, and main after a merge
+on:
+  pull_request:
+  push:
+    branches: [main]
+# a newer push to the same branch makes a running check moot; superseded runs
+# filled the account's 20 concurrent jobs for hours on 2026-11-18 (measured:
+# 125-156 of 243 runs had a newer run on their branch within 90-40 minutes)
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  # the check and the plants run in parallel, the plants in shards: one
+  # after the other took 54 minutes on main at 8d08829, and the plants alone
+  # 42 on PR 18 (reviews of PRs 18 and 24).  The plants run only on the
+  # merge train's PR (CLAUDE.md): the account runs 20 jobs at once, and at
+  # 18:46 UTC on 2026-11-21 per-PR shards had kept train 15's run waiting
+  # 2 h with 1 of 8 shards done
+  # git's and the loop's Windows halves on Windows itself, for what Wine
+  # cannot show (a path's names as stored, a pseudo-console's resize): pull
+  # requests only, so it stays short (packages 17 and 10, thread 0's, agreed)
+  windows:
+    if: github.event_name == 'pull_request'
+    runs-on: windows-latest
+    timeout-minutes: 30   # 15 before the terminal; a cold cache adds its zig build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.17.1
+      # review of PR 140's probe (to be removed, never merged): JetBrains Mono
+      # installed for GDI and DirectWrite, then reviews/pr-140-repro/winprobe.sh
+      - shell: pwsh
+        run: |
+          Invoke-WebRequest https://github.com/JetBrains/JetBrainsMono/releases/download/v2.304/JetBrainsMono-2.304.zip -OutFile jbm.zip
+          Expand-Archive jbm.zip jbm
+          Copy-Item jbm/fonts/ttf/JetBrainsMono-Regular.ttf C:\Windows\Fonts\
+          New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts' -Name 'JetBrains Mono Regular (TrueType)' -Value 'JetBrainsMono-Regular.ttf' -PropertyType String -Force
+          Add-Type -Namespace W -Name G -MemberDefinition '[DllImport("gdi32.dll", CharSet=CharSet.Unicode)] public static extern int AddFontResourceW(string f);'
+          [W.G]::AddFontResourceW('C:\Windows\Fonts\JetBrainsMono-Regular.ttf')
+          Restart-Service FontCache -Force -ErrorAction Continue
+          "font files: " + (Get-ChildItem C:\Windows\Fonts).Count
+          cmd /c ver
+      - run: bash reviews/pr-140-repro/winprobe.sh
+        shell: bash

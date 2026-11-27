@@ -42,6 +42,7 @@ struct Frame {
 	struct Frame *parent, *child, *next, *prev;
 	Win *win;
 	int vsep;                     /* leaf: w_vsep_width */
+	int top;                      /* the top frame: its first row (firstwin's w_winrow), below the tabline */
 	WinState s;
 };
 
@@ -88,12 +89,26 @@ void scroll_halfway(Editor *e, Win *w, int atend, int prefer_above);
 void win_invalidate(Win *w);          /* changed_line_abv_curs_win(): update_topline() looks again */
 
 /* layout (win.c) */
-void layout_init(Editor *e, Win *w);
+void layout_init(Editor *e, Win *w, int ch);
+int  tabline_height(const Editor *e);
 void layout_resize(Editor *e, int rows, int cols);
 void layout_free(struct Frame *f);
 /* make w current (win_enter()) */
 void win_enter(Editor *e, Win *w);
 void win_close(Editor *e, Win *w);    /* w is not the last window */
+/* Tab pages (win.c).  tab_use() switches without entering (leave_tabpage(),
+   use_tabpage()); tab_first() and tab_free_all() for core_open and core_free. */
+Win *tab_firstwin(const Editor *e, const Tab *t);
+void tab_use(Editor *e, Tab *t);
+int  tab_first(Editor *e);
+void tab_free_all(Editor *e);
+void close_othertabs(Editor *e, Buf *b);
+/* FOR_ALL_TAB_WINDOWS() */
+#define FOR_ALL_TAB_WINDOWS(e, w) \
+	for (Tab *tp_ = (e)->tabs; tp_; tp_ = tp_->next) \
+		for (Win *w = tab_firstwin(e, tp_); w; w = w->next)
+/* do_ecmd() after a split, with no oldwin (:new, :tabnew) */
+int  edit_split(Editor *e, const char *path);
 Buf *buf_unlisted(void);                 /* the buffers :bd left, by number */
 void core_wininfo_set(Buf *b, Win *w, int close);   /* buflist_setfpos() */
 #endif

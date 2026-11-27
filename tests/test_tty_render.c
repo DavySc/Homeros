@@ -137,18 +137,18 @@ int main(void)
 	static Editor e2;
 	Grid g = { 0 };
 	CHECK(!core_open(&e2, path) && !grid_resize(&g, 24, 80));
-	core_draw(&e2, &g);
+	core_draw(&e2, NULL, &g);
 	want[0] = grid_hash(&g);
 	for (int i = 0; i <= NKEYS; i++) {
 		keys_feed(&e2, keys[i], 0);
-		core_draw(&e2, &g);
+		core_draw(&e2, NULL, &g);
 		want[i + 1] = grid_hash(&g);
 	}
 	CHECK(!grid_resize(&g, 30, 100));
-	core_draw(&e2, &g);
+	core_draw(&e2, NULL, &g);
 	unsigned long long resized_want = grid_hash(&g);
 	CHECK(!grid_resize(&g, 20, 90));
-	core_draw(&e2, &g);
+	core_draw(&e2, NULL, &g);
 	unsigned long long stopped_want = grid_hash(&g);
 
 	int m = posix_openpt(O_RDWR | O_NOCTTY);

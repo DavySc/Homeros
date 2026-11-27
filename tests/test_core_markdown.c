@@ -70,7 +70,7 @@ static void command(Editor *e, Grid *g, const char *t)
 	else if (!strcmp(t, "visual")) e->ks.visual = 'v', e->ks.vline = e->win->line, e->ks.vcol = e->win->col;
 	else if (!strcmp(t, "redraw")) {}   /* CTRL-L: the core draws whole frames */
 	else CHECK(!"command");
-	do core_draw(e, g);
+	do core_draw(e, NULL, g);
 	while (syntax_update(e->buf->syn, e->buf->text, NULL, &r1, &r2));
 }
 

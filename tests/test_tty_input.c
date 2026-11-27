@@ -73,6 +73,7 @@ static void token(size_t *n, int *nw, int last)
    in random pieces with pauses up to 5 ms).  The writer stays open
    meanwhile, so the end of the input never ends a wait.  drain: at the end, one call with 300 slots (for slot counts
    below a kept tail's length, which the editor never uses). */
+static int wid[512];   /* the window each key came from: -1 in a terminal */
 static int feed(size_t n, int slow, int (*slots)(void), int drain, int *out)
 {
 	int p[2], saved = dup(0), ng = 0, idle = 0;
@@ -100,14 +101,14 @@ static int feed(size_t n, int slow, int (*slots)(void), int drain, int *out)
 		struct pollfd q = { .fd = 0, .events = POLLIN };
 		CHECK(poll(&q, 1, slow ? 100 : 0) >= 0);
 		if (!(q.revents & POLLIN)) break;
-		int max = slots(), r = backend_tty.input(out + ng, max);
+		int max = slots(), r = backend_tty.input(out + ng, wid, max);
 		CHECK(r >= 0 && r <= max);
 		if (!ng && r) first = now();
 		ng += r;
 		idle = r ? 0 : idle + 1;
 		CHECK(idle < 10000);           /* readable, yet no key comes */
 	}
-	if (drain) ng += backend_tty.input(out + ng, 300);
+	if (drain) ng += backend_tty.input(out + ng, wid, 300);
 	if (!slow) close(p[1]);
 	int st;
 	if (slow) CHECK(waitpid(w, &st, 0) == w && WIFEXITED(st) && !WEXITSTATUS(st));

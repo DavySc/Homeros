@@ -4,7 +4,7 @@ undo tree oracle: Ctrl-R to the first child~undo-diff UNDO_N=2000~~Makefile~pyth
 lean: inv_inv states something false~lean~~design/proofs/Undo.lean~theorem Edit.inv_inv (e : Edit α) : e.inv.inv = e~theorem Edit.inv_inv (e : Edit α) : e.inv = e
 lean: a proof left as sorry~lean~~design/proofs/Undo.lean~theorem Edit.inv_inv (e : Edit α) : e.inv.inv = e := by cases e <;> rfl~theorem Edit.inv_inv (e : Edit α) : e.inv.inv = e := by sorry
 specs: save renames without fsync (Save2)~specs~find design/specs -name '*.cfg' ! -name Save2_fsync.cfg -delete~design/specs/Save2_fsync.cfg~Variant = "fsync"~Variant = "nofsync"
-main loop: input read past a full queue between commands~test TESTS=~~src/main.c~	if (!room && !running) return;¶	int n = b->input(k, room && room < 256 ? room : 256);~	(void)room; (void)running;¶	int n = b->input(k, 256);
+main loop: input read past a full queue between commands~test TESTS=~~src/main.c~	if (!room && !running) return;¶	int n = b->input(k, from, room && room < 256 ? room : 256);~	(void)room; (void)running;¶	int n = b->input(k, from, 256);
 conform: a known difference that Neovim now matches~conform CONFORM_N=50 SEED=1~printf '%s' '[{"why": "stale", "keys": "^x$", "example": {"text": "ab\n", "keys": ["x"]}}]' > tests/conform-known.json~tools/conform.py~so a fixed¶difference fails the run~so a fixed¶difference fails the run 
 conform: a driver that fails on a live case under a known rule~conform CONFORM_N=200 SEED=1~printf '%s' '[{"why": "Delete", "keys": "<Del>", "example": {"text": "ab\n", "keys": ["<Del>"]}}]' > tests/conform-known.json~tests/conform_drv.c~		keys_feed(&e, k, more);~		if (k == KEY_DEL) { if (more) return 3; continue; }¶		keys_feed(&e, k, more);
 conform: a known entry whose example makes the driver fail~conform CONFORM_N=50 SEED=1~printf '%s' '[{"why": "Q", "keys": "Q", "example": {"text": "ab\n", "keys": ["Q"]}}]' > tests/conform-known.json~tests/conform_drv.c~		keys_feed(&e, k, more);~		if (k == 'Q') return 3;¶		keys_feed(&e, k, more);
@@ -21,3 +21,30 @@ dupes: a child's output cut into lines by hand again, not str_lines~dupes~~src/i
 dupes: the cursor put at a line by hand again, not core_goto~dupes~~src/tools/pick.c~		core_goto(e, (size_t)line - 1, (size_t)col);~		size_t l = (size_t)line - 1, n = core_lines(e);¶		e->win->line = l < n ? l : n - 1;¶		size_t len = core_line_len(e, e->win->line);¶		e->win->col = (size_t)col < len ? (size_t)col : len;¶		core_clamp(e);¶		core_set_want(e);
 dupes: digits parsed by hand again, not match_num~dupes~~src/tools/pick.c~	long ln = match_num(&r, e);~	long ln = 0;¶	for (; r < e && *r >= '0' && *r <= '9'; r++) ln = ln > (LONG_MAX - 9) / 10 ? LONG_MAX : ln * 10 + (*r - '0');
 dupes: UTF-8 encoded by hand with the continuation mark last, not uni_put~dupes~~src/keys/edit.c~	ins_char_bytes(b, uni_put((unsigned char *)b, (unsigned)c));~	if (c < 0x80) { b[0] = (char)c; ins_char_bytes(b, 1); return; }¶	b[0] = (char)(0xC0 | c >> 6); b[1] = (char)((c & 0x3F) | 0x80);¶	ins_char_bytes(b, 2);
+dupes: a glyph blended outside the painter~dupes~~src/wl/wl.c~static struct wl_registry *reg;~static struct wl_registry *reg; static unsigned blend(unsigned a, unsigned b) { return (a * (255 - b)) / 255; }
+dupes: GDI's text drawn again on Windows, not font.h~dupes~~src/win/backend.c~		GdiFlush();   /* before the painter reads it */~		ExtTextOutW(mem, 0, 0, 0, NULL, NULL, 0, NULL);¶		GdiFlush();   /* before the painter reads it */
+dupes: UTF-16 surrogates written outside dwrite.c~dupes~~src/win/backend.c~		surr = 0;¶		/*~		surr = (WCHAR)(0xD800 + w / 0x400);¶		surr = 0;¶		/*
+
+# the frames main loop (src/main.c, Frames.tla "ok", Focus.tla "asked")
+main: every focus event enters its tab page (Focus "enter")~test TESTS=frames_main~~src/main.c~if (!t || (w != wanted && i < na)) return;~if (!t) return;
+main: the sync's done drops nothing from asked (Focus "nodone")~test TESTS=frames_main~~src/main.c~if (na) memmove(~if (0) memmove(
+main: the user's focus change leaves insert mode on~test TESTS=frames_main~~src/main.c~if (i == na) keys_input(&e, k, 0);~if (0) keys_input(&e, k, 0);
+main: a click on the last raised frame after its raise is done keeps insert mode (PR 150 review 2)~test TESTS=frames_main~~src/main.c~if (i == na) keys_input(&e, k, 0);~if (w != wanted) keys_input(&e, k, 0);
+main: gt does not raise the window it enters~test TESTS=frames_main~~src/main.c~		b->raise(wanted);~
+main: one dirty flag for every frame (Frames "shared")~test TESTS=frames_main~~src/main.c~			fr[i].dirty = 0;¶		}~			fr[i].dirty = 0;¶		}¶		for (int i = 0; i < nfr; i++) fr[i].dirty = 0;
+main: a frame drawn before its callback (Frames "nocb")~test TESTS=frames_main~~src/main.c~ || !b->ready(fr[i].id)) {~) {
+main: a frame waits for the last one's callback (Frames "all")~test TESTS=frames_main~~src/main.c~ || !b->ready(fr[i].id)) {~ || !b->ready(fr[i].id) || !b->ready(fr[nfr - 1].id)) {
+main: drawing keeps the dirty flag (Frames "keep")~test TESTS=frames_main~~src/main.c~			fr[i].dirty = 0;¶		}~		}
+main: the close button quits with several tab pages~test TESTS=frames_main~~src/main.c~if (k == KEY_CLOSE && t && e.tabs->next~if (0 && t && e.tabs->next
+main: a closed tab page keeps its window~test TESTS=frames_main~~src/main.c~			b->win_close(fr[i].id);¶~
+main: a new tab page gets no window~test TESTS=frames_main~~src/main.c~ || b->win_open(t->id)) {~) {
+main: a window's resize resizes none~test TESTS=frames_main~~src/main.c~fr[j].resized |= fr[j].id == from[i] || e.tabline;~fr[j].resized |= e.tabline;
+# a file another launch hands over (remote.h, Remote.tla "ok"); not planted: "!tty &&" before remote_open (only
+# Windows reaches the real one, and no test runs main.c there)
+main: a :q! in the batch drops a file handed over (Remote "keepquit")~test TESTS=frames_main~~src/main.c~			e.quit = 0;¶~
+main: a file handed over opens in the current frame~test TESTS=frames_main~~src/main.c~			core_tabnew(&e, p);~			core_edit_file(&e, p, 1);
+main: the frame of a file handed over is not raised~test TESTS=frames_main~~src/main.c~			follow(was);¶		}~			(void)was;¶		}
+main: the remote window stops after the backend closed (Remote "late")~test TESTS=frames_main~~src/main.c~	remote_stop();   /* before b->close reads messages */¶	git_free();¶	bridge_free();¶	b->close();~	git_free();¶	bridge_free();¶	b->close();¶	remote_stop();
+main: a file handed over with no key is not parsed~test TESTS=frames_main~~src/main.c~free(p), dirty = 1) {~free(p)) {
+main: a file handed over opens after the window system is lost~test TESTS=frames_main~~src/main.c~for (char *p; !lost && (p = remote_next());~for (char *p; (p = remote_next());
+main: a file handed over keeps half-done Visual mode~test TESTS=frames_main~~src/main.c~			keys_input(&e, KEY_FOCUS, 0);~
