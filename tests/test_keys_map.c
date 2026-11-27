@@ -75,6 +75,14 @@ int main(void)
 	CHECK(at(&e, "acb\n", 1));
 	feed(&e, "u0 fb");
 	CHECK(at(&e, "abcb\n", 3));
+	/* a lone operator or register is half typed too (keys.h): the keys
+	   that follow go to it, not to a picker, git, SQL or snippets */
+	feed(&e, "0d");
+	CHECK(e.ks.pending);
+	feed(&e, "\033\"a");
+	CHECK(e.ks.pending);
+	feed(&e, "\033");
+	CHECK(!e.ks.pending && at(&e, "abcb\n", 0));
 	feed(&e, "0  ");
 	CHECK(e.ks.pending && at(&e, "abcb\n", 1));
 	feed(&e, "ff");                            /* SPC ff is a picker */
@@ -294,8 +302,8 @@ int main(void)
 	core_free(&d);
 	unlink(org);
 	CHECK(!core_open(&d, NULL));
-	feed(&d, "c");
-	CHECK(!d.ks.pending);
+	feed(&d, "i* TODO a\0330cit");             /* outside Org cit is Vim's: no tag, so nothing */
+	CHECK(d.mode == MODE_NORMAL && at(&d, "* TODO a\n", 0));
 	core_free(&d);
 	/* frames (tab pages): Emacs's C-x 5 keys as SPC 5, gt, CTRL-W T */
 	memcpy(path + sizeof path - 7, "XXXXXX", 6);
