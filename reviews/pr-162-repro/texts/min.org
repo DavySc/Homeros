@@ -1,0 +1,5 @@
+  * a :: b
+	#+BEGIN_example python -n 3 :var x=1
+ 	#+CAPTION[x y]:** | |
+  @@a-b:@@@@
+******* seven :t:
