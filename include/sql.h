@@ -36,4 +36,14 @@ int  sql_disconnect(struct Editor *e);
    fn NULL drops it and reads it again (at once if b is logged in, else at
    its login: SSMS's Ctrl+Shift+R).  Returns how many fn got. */
 int  sql_catalog(struct Editor *e, const struct Buf *b, const char *table, void (*fn)(void *ctx, const char *schema, const char *table, const char *column), void *ctx);
+/* :Declare @name type = value: the current SQL buffer's value for @name,
+   put as "DECLARE @name type = value;" before every run that uses @name
+   without declaring it (DataGrip's parameter prompt; Davy, 2026-11-27: a
+   selected SELECT that feeds an INSERT needs no DECLARE pasted above
+   it).  With no "type = value" it forgets @name, and with no argument it
+   lists the buffer's.  F5 on a run with an undeclared @name types
+   ":Declare @name " (with its type and value when the file declares it
+   elsewhere) through keys_feed, as the user would, and Enter runs the
+   waiting F5.  0 ok, -1 msg set. */
+int  sql_declare(struct Editor *e, const char *arg);
 #endif

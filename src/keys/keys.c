@@ -486,16 +486,19 @@ static void ex(void)
 	/* :s[ubstitute] :& :~ (:&& is :& with the flag &), on the cursor's
 	   line by default; line 0 is line 1 (no EX_ZEROR) */
 	size_t k = strspn(p, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
-	/* :noh[lsearch], and :mak[e] {cmd} (tools.h) and :Connect [name]
-	   (sql.h) with the rest of the line their argument */
+	/* :noh[lsearch], and :mak[e] {cmd} (tools.h), :Connect [name] and
+	   :Declare [@name type = value] (sql.h) with the rest of the line
+	   their argument */
 	int nohl = k >= 3 && k <= 10 && !strncmp(p, "nohlsearch", k) && !p[k];
-	int make = k >= 3 && k <= 4 && !strncmp(p, "make", k), conn = k == 7 && !strncmp(p, "Connect", 7);
-	if (nohl || ((make || conn) && (!p[k] || p[k] == ' ' || p[k] == '\t'))) {
+	int make = k >= 3 && k <= 4 && !strncmp(p, "make", k), conn = k == 7 && !strncmp(p, "Connect", 7),
+	    decl = k == 7 && !strncmp(p, "Declare", 7);
+	if (nohl || ((make || conn || decl) && (!p[k] || p[k] == ' ' || p[k] == '\t'))) {
 		const char *a = p + k + strspn(p + k, " \t");
 		if (n) core_msg(E, "E481: No range allowed");
 		else if (nohl) no_hlsearch = 1;
 		else if (make) tools_make(E, a);
-		else sql_connect(E, a);
+		else if (conn) sql_connect(E, a);
+		else sql_declare(E, a);
 		return;
 	}
 	if (k ? k <= 10 && !strncmp(p, "substitute", k) : (k = *p == '&' || *p == '~')) {
