@@ -268,6 +268,13 @@ int main(void)
 		}
 	CHECK(thumb > 0 && sbar > 0);
 	core_pum(&e, NULL, 0, -1, 0);
+	/* Buf.status in place of [No Name] (the SQL results' summary) */
+	CHECK(!core_edit_file(&e, "", 0) && !e.buf->path);
+	e.buf->status = "\xe2\x9c\x93 7 rows";
+	core_draw(&e, NULL, &g);
+	char row[1024] = "";
+	for (int c = 0, r = e.win->y + e.win->h; c < g.cols; c++) strncat(row, (const char *)grid_text(&g.c[r * g.cols + c]), g.c[r * g.cols + c].len);
+	CHECK(strstr(row, " \xe2\x9c\x93 7 rows ") && !strstr(row, "[No Name]"));
 	core_free(&e);
 	grid_free(&g);
 	printf("test_core_status: ok\n");
