@@ -70,8 +70,8 @@ typedef struct Buf {
 	long lastused;             /* seconds when a window last entered it (b_last_used), for the buffers picker */
 	WinInfo *wi;
 	struct Syntax *syn;        /* syntax.h; NULL: no grammar for this file */
-	/* where syn is NULL: one FACE_* per byte of [a, z), as syntax_faces (git's
-	   diff and status buffers); NULL: none */
+	/* one FACE_* per byte of [a, z), drawn instead of syntax_faces (the
+	   goals window, lsp_faces for a buffer with a server); NULL: syntax_faces */
 	void (*faces)(const struct Buf *b, size_t a, size_t z, unsigned char *face);
 	int nonumber;              /* setlocal nonumber norelativenumber (neogit's buffers) */
 	int nomodifiable;          /* 'nomodifiable' (the quickfix buffer): the core's

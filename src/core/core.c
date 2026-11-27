@@ -359,6 +359,7 @@ static int buf_load(Editor *e, Buf *b, const char *path)
 	free(data);
 	b->syn = path ? syntax_open(path, b->text) : NULL;
 	b->lsp = path ? lsp_open(path, b->text) : NULL;
+	b->faces = b->lsp ? lsp_faces : NULL;   /* the server's semantic tokens over the grammar's */
 	undo_hook(u, undo_seen, b);
 	if (!path) return 0;
 	/* gitsigns attaches on BufRead */

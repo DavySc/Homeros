@@ -1,0 +1,64 @@
+# REVIEW PROBE for PR 148 (never merged): test_lsp.exe cross-built on Linux,
+# run under Wine there and then on Windows itself.
+name: check
+on:
+  pull_request:
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+      - run: >
+          sudo apt-get update && sudo apt-get install -y clang libclang-rt-18-dev pkg-config libssl-dev
+          libfreetype-dev libharfbuzz-dev libstb-dev libfontconfig-dev ripgrep
+          libwayland-dev wayland-protocols libxkbcommon-dev
+      - run: nix build -f tools.nix tools -o tools-env
+      - run: echo "$PWD/tools-env/bin" >> "$GITHUB_PATH"
+      - id: ghostty
+        uses: actions/cache@v4
+        with: { path: build/ghostty, key: "ghostty-${{ hashFiles('src/tools/ghostty.nix') }}" }
+      - if: steps.ghostty.outputs.cache-hit == 'true'
+        run: touch build/ghostty/*
+      - run: make build/ghostty/windows.lib
+      - run: make wincc
+      - run: bash src/lsp/check.sh
+      - run: |
+          cp build/win/test_lsp.exe test_lsp_good.exe
+          python3 - <<'PY'
+          p = 'src/lsp/lsp.c'; s = open(p).read()
+          a = 'size_t a = ls + lsp_u16_byte(b, n, c), z = ls + lsp_u16_byte(b, n, c + (size_t)v[2]);'
+          assert s.count(a) == 1
+          open(p, 'w').write(s.replace(a, 'size_t a = ls + c, z = ls + c + (size_t)v[2];'))
+          PY
+          bash src/lsp/check.sh && echo "PLANT NOT CAUGHT UNDER WINE" || echo "plant caught under Wine"
+          cp build/win/test_lsp.exe test_lsp_plant.exe
+      # the editor core against the real Lean server, for Windows (the plant is undone first)
+      - run: |
+          git checkout src/lsp/lsp.c
+          . tools/winpass.sh
+          winlink test_lsp_e2e.exe reviews/pr-148-repro/e2e.c
+      - uses: actions/upload-artifact@v4
+        with: { name: exes, path: "test_lsp_*.exe" }
+  windows:
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: exes }
+      # real Lean on Windows: the editor core opens a .lean file and lake serve answers
+      - shell: bash
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -o elan-init.sh
+          bash elan-init.sh -y --default-toolchain leanprover/lean4:v4.35.0
+          export PATH="$HOME/.elan/bin:$PATH"
+          ls "$HOME/.elan/bin" || true
+          lean --version && lake --version
+          mkdir proj && cp reviews/pr-148-repro/Sample.lean proj/
+          ./test_lsp_e2e.exe proj/Sample.lean 90 > e2e.out 2> e2e.err || echo "e2e exit $?"
+          cat e2e.err
+          python reviews/pr-148-repro/e2e.py proj/Sample.lean e2e.out include/grid.h || true
+          wc -l e2e.out

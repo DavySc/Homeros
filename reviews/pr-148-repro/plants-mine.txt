@@ -1,0 +1,18 @@
+mine 1: tokens arrive, nothing redrawn~test TESTS=lsp~~src/lsp/lsp.c~	clear(&d->tok);¶	core_changed = 1;¶	if (arr < 0~	clear(&d->tok);¶	if (arr < 0
+mine 2: the old tokens kept under the new answer~test TESTS=lsp~~src/lsp/lsp.c~	clear(&d->tok);¶	core_changed = 1;~	core_changed = 1;
+mine 3: a buffer with faces and no grammar not drawn (Lean today, the goals window)~test TESTS=lsp~~src/core/draw.c~	int faced = syn || w->buf->faces;~	int faced = syn != NULL;
+mine 4: a token on the first line read before its line~test TESTS=lsp~~src/lsp/lsp.c~		if (v[0] || !b) {~		if (v[0]) {
+mine 5: a line past the text's end read~test TESTS=lsp~~src/lsp/lsp.c~			if (l >= lines) return;¶~¶
+mine 6: a token type past the legend read~test TESTS=lsp~~src/lsp/lsp.c~		if (v[3] >= d->s->ntypes || !d->s->legend[v[3]]) continue;~		if (!d->s->legend[v[3]]) continue;
+mine 7: a legend of more than 32 types written past its end~test TESTS=lsp~~src/lsp/lsp.c~ && s->ntypes < (int)sizeof s->legend; i = tk[i].end) {~; i = tk[i].end) {
+mine 8: restart keeps the old tokens~test TESTS=lsp~~src/lsp/lsp.c~	clear(&d->tok);¶	d->tokid = 0;~	d->tokid = 0;
+mine 9: a new server's legend added to the old one's~test TESTS=lsp~~src/lsp/lsp.c~	s->ready = s->ntypes = 0;~	s->ready = 0;
+mine 10: an answered request cancelled again~test TESTS=lsp~~src/lsp/lsp.c~			d->tokid = 0;¶			if (current(~			if (current(
+mine 11: tokens not asked for on open~test TESTS=lsp~~src/lsp/lsp.c~	end(d->s);¶	tokens(d);¶}¶¶static void start~	end(d->s);¶}¶¶static void start
+mine 12: an error answer read as tokens of an empty file is fine, a non-array too~test TESTS=lsp~~src/lsp/lsp.c~	if (arr < 0 || tk[arr].type != 'a') return;~	if (arr < 0) return;
+mine 13: an empty token kept~test TESTS=lsp~~src/lsp/lsp.c~		if (a < z) d->tok.v[~		d->tok.v[
+mine 14: tokens freed twice or not at all on close~test TESTS=lsp~~src/lsp/lsp.c~free(d->done.v); free(d->tok.v);~free(d->done.v);
+mine 15: the project's marker looked for with the old call fails only on Windows~test TESTS=lsp~~src/lsp/lsp.c~!file_id(p.s, &id) && id.exists;~!file_id(p.s, &id);
+mine 16: only the first server's files asked once it is ready~test TESTS=lsp~~src/lsp/lsp.c~		for (LspDoc *d = s->docs; d; d = d->link) tokens(d);¶~		if (s->docs) tokens(s->docs);¶
+mine 17: a token type Neovim colours left plain (the last of the table)~test TESTS=lsp~~src/lsp/lsp.c~{ "typeParameter", FACE_TYPE_DEFINITION }, { "variable", FACE_VARIABLE },~{ "typeParameter", FACE_TYPE_DEFINITION },
+mine 18: property drawn as a variable~test TESTS=lsp~~src/lsp/lsp.c~{ "property", FACE_PROPERTY }~{ "property", FACE_VARIABLE }

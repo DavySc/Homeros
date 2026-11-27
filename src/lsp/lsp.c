@@ -9,6 +9,7 @@
    went on, at a key every 250 ms (src/lsp/bench/stale.c), against the
    design's 2 s limit.  Replies are not mapped (LspSync "mapreply" fails):
    one is shown only while the text is as it was when asked. */
+#include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,9 +17,11 @@
 #include <strings.h>
 #include <unistd.h>
 #include "core.h"
+#include "file.h"
 #include "json.h"
 #include "loop.h"
 #include "lsp.h"
+#include "syntax.h"
 
 static const char *const lean_argv[] = { "lake", "serve", NULL };
 static const char *const lean_roots[] = { "lakefile.lean", "lakefile.toml", "lean-toolchain", NULL };
@@ -60,6 +63,8 @@ typedef struct Srv {
 	int closing;            /* its last file closed: freed once it exits */
 	Str in, held;           /* bytes read and not yet handled; messages waiting for ready */
 	Str init;               /* a Lean server's answer to initialize, for a bridge opened later */
+	unsigned char legend[32];   /* the face of each semantic token type; ntypes 0: it has none */
+	int ntypes;
 	int work;               /* $/progress tokens begun and not ended; -1 before any */
 	long next;              /* request ids; 0 is initialize */
 	LspDoc *docs;
@@ -74,6 +79,8 @@ struct LspDoc {
 	int bad;                /* holds what is not UTF-8: changes go as the whole text */
 	Str chg;                /* this command's contentChanges, not yet sent */
 	Set diag, prog, done;   /* done: Lean's goals accomplished (its silent diagnostics) */
+	Set tok;                /* semantic tokens, sev their face */
+	long tokid, tokver;     /* the tokens asked for at tokver; id 0: none pending */
 	Ed *log;                /* the edits since floor, oldest first */
 	int nlog;
 	long floor;             /* the oldest version the log can map from */
@@ -198,6 +205,26 @@ static int put_text(const Text *t)
 	return str_addq(&o, (const char *)b, n) != 0;
 }
 
+static void cancel(LspDoc *d, long *id);
+
+/* The semantic tokens of d's text as sent, the last request cancelled
+   (Neovim's semantic_tokens: a new version, a new request).  No 200 ms
+   debounce on top: bench/tokens.py, 5 alternating runs of 20 keys at 100 ms
+   on Lean's 3,219 lines, measured no difference (last key to tokens of the
+   whole file 6186 ms, 5789-6567, against 6328 ms, 6238-6772; Lean CPU
+   23.6 s, 22.0-24.8, against 23.7 s, 22.4-24.9). */
+static void tokens(LspDoc *d)
+{
+	if (!d->s->ntypes || !d->s->ready) return;
+	cancel(d, &d->tokid);
+	d->tokid = d->s->next++;
+	d->tokver = d->ver;
+	o.n = 0;
+	str_addf(&o, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"method\":\"textDocument/semanticTokens/full\",\"params\":{\"textDocument\":{\"uri\":\"%s\"}}}",
+	         d->tokid, d->uri);
+	send(d->s);
+}
+
 static void open_doc(LspDoc *d)
 {
 	begin("textDocument/didOpen");
@@ -206,11 +233,12 @@ static void open_doc(LspDoc *d)
 	d->bad = put_text(d->t);
 	str_lit(&o, "\"}}");
 	end(d->s);
+	tokens(d);
 }
 
 static void start(Srv *s)
 {
-	s->ready = 0;
+	s->ready = s->ntypes = 0;
 	s->in.n = s->held.n = 0;
 	s->next = 1;
 	s->work = -1;
@@ -225,8 +253,9 @@ static void start(Srv *s)
 	   kittymax) and widgets (the infoview, package 14); $/progress for the
 	   status line (lualine's lsp_status) */
 	str_lit(&o, "\",\"capabilities\":{\"textDocument\":{\"publishDiagnostics\":{\"versionSupport\":true},"
-	        "\"hover\":{\"contentFormat\":[\"markdown\",\"plaintext\"]},\"synchronization\":{\"didSave\":true}},"
-	        "\"window\":{\"workDoneProgress\":true},\"general\":{\"positionEncodings\":[\"utf-16\"]},\"lean\":{\"incrementalDiagnosticSupport\":true,\"silentDiagnosticSupport\":true}}");
+	        "\"hover\":{\"contentFormat\":[\"markdown\",\"plaintext\"]},\"synchronization\":{\"didSave\":true},"
+	        "\"semanticTokens\":{\"requests\":{\"full\":true},\"tokenTypes\":[],\"tokenModifiers\":[],\"formats\":[\"relative\"]}},"
+	        "\"workspace\":{\"semanticTokens\":{\"refreshSupport\":true}},\"window\":{\"workDoneProgress\":true},\"general\":{\"positionEncodings\":[\"utf-16\"]},\"lean\":{\"incrementalDiagnosticSupport\":true,\"silentDiagnosticSupport\":true}}");
 	if (s->def->lean) str_lit(&o, ",\"initializationOptions\":{\"hasWidgets\":true}");
 	str_lit(&o, "}}");
 	frame(s, 1);
@@ -242,14 +271,14 @@ static void clear(Set *v)
 	v->n = 0;
 }
 
-/* Cancels d's pending request of kind k. */
-static void cancel(LspDoc *d, int k)
+/* Cancels d's pending request *id. */
+static void cancel(LspDoc *d, long *id)
 {
-	if (!d->ask[k].id) return;
+	if (!*id) return;
 	begin("$/cancelRequest");
-	str_addf(&o, "{\"id\":%ld}", d->ask[k].id);
+	str_addf(&o, "{\"id\":%ld}", *id);
 	end(d->s);
-	d->ask[k].id = 0;
+	*id = 0;
 }
 
 static void forget(LspDoc *d)
@@ -257,6 +286,8 @@ static void forget(LspDoc *d)
 	clear(&d->diag);
 	clear(&d->prog);
 	clear(&d->done);
+	clear(&d->tok);
+	d->tokid = 0;
 	d->prog.ver = -1;                   /* elaborated anew: no word on it yet */
 	if (d == G.d) G.shown = 0, G.sess.n = 0;    /* a new server: its own RPC sessions */
 	for (int k = 0; k < LSP_NASK; k++) { free(d->ask[k].ans); d->ask[k].ans = NULL; d->ask[k].id = 0; }
@@ -304,22 +335,6 @@ static void shift_set(Set *v, size_t pos, size_t ndel, size_t nins)
 
 /* --- the public calls ------------------------------------------------------- */
 
-static char *absolute(const char *path)
-{
-#ifdef _WIN32
-	char *abs = _fullpath(NULL, path, 0);   /* realpath's twin; a URI has '/' */
-	for (char *p = abs; p && *p; p++) if (*p == '\\') *p = '/';
-	return abs;
-#else
-	char *abs = realpath(path, NULL), cwd[4096];
-	if (abs) return abs;
-	if (path[0] == '/') return strdup(path);
-	Str a = { 0 };
-	if (getcwd(cwd, sizeof cwd)) str_addf(&a, "%s/%s", cwd, path);
-	return a.s;
-#endif
-}
-
 /* The nearest directory above file abs holding one of roots, else the
    file's own. */
 static char *project(const char *abs, const char *const *roots)
@@ -331,7 +346,8 @@ static char *project(const char *abs, const char *const *roots)
 		*slash = 0;
 		for (const char *const *m = roots; *m; m++) {
 			Str p = { 0 };
-			int found = !str_addf(&p, "%s/%s", dir, *m) && !access(p.s, F_OK);
+			FileId id;
+			int found = !str_addf(&p, "%s/%s", dir, *m) && !file_id(p.s, &id) && id.exists;
 			free(p.s);
 			if (found) { free(own); return dir; }
 		}
@@ -346,10 +362,14 @@ LspDoc *lsp_open(const char *path, const Text *t)
 	const LspServer *def = lsp_servers;
 	while (def->ext && (!dot || strcmp(def->ext, dot))) def++;
 	if (!def->ext) return NULL;
-	char *abs = absolute(path), *root = abs ? project(abs, def->roots) : NULL, *u = abs ? uri(abs) : NULL;
+	char abs[PATH_MAX];
+	int ok = !file_full(path, abs);
+#ifdef _WIN32
+	for (char *p = abs; ok && *p; p++) if (*p == '\\') *p = '/';   /* a URI has '/' */
+#endif
+	char *root = ok ? project(abs, def->roots) : NULL, *u = ok ? uri(abs) : NULL;
 	LspDoc *d = calloc(1, sizeof *d);
 	if (d) d->prog.ver = -1;                 /* no $/lean/fileProgress yet */
-	free(abs);
 	if (!d || !root || !u) { free(d); free(root); free(u); return NULL; }
 	Srv *s = srvs;
 	while (s && (s->def->argv != def->argv || s->closing || strcmp(s->root, root))) s = s->link;
@@ -387,7 +407,7 @@ void lsp_close(LspDoc *d)
 	*p = d->link;
 	forget(d);
 	if (G.d == d) G.d = NULL;
-	free(d->diag.v); free(d->prog.v); free(d->done.v); free(d->chg.s); free(d->log); free(d->uri); free(d);
+	free(d->diag.v); free(d->prog.v); free(d->done.v); free(d->tok.v); free(d->chg.s); free(d->log); free(d->uri); free(d);
 	if (s->docs) return;
 	/* the last file of the project: the server goes (it is freed once it
 	   has exited, since the loop still calls lsp_out until then) */
@@ -409,6 +429,7 @@ void lsp_edit(LspDoc *d, const Text *t, size_t pos, size_t ndel, const char *ins
 	shift_set(&d->diag, pos, ndel, nins);
 	shift_set(&d->prog, pos, ndel, nins);
 	shift_set(&d->done, pos, ndel, nins);
+	shift_set(&d->tok, pos, ndel, nins);
 	Ed e = { d->ver, { 0, 0 }, { 0, 0 }, { 0, 0 } };
 	where(t, pos, &e.s.l, &e.s.c);
 	where(t, pos + ndel, &e.e.l, &e.e.c);
@@ -456,6 +477,7 @@ void lsp_flush(LspDoc *d)
 	str_lit(&o, "]}");
 	d->chg.n = 0;
 	end(d->s);
+	tokens(d);
 }
 
 void lsp_saved(LspDoc *d)
@@ -477,7 +499,7 @@ void lsp_restart(LspDoc *d)
 		for (LspDoc *e = s->docs; e; e = e->link) reopen(e);
 		return;
 	}
-	for (int k = 0; k < LSP_NASK; k++) cancel(d, k);
+	for (int k = 0; k < LSP_NASK; k++) cancel(d, &d->ask[k].id);
 	begin("textDocument/didClose");
 	str_addf(&o, "{\"textDocument\":{\"uri\":\"%s\"}}", d->uri);
 	end(s);
@@ -493,7 +515,7 @@ void lsp_ask(LspDoc *d, int kind, size_t pos)
 {
 	if (!d || d->s->proc < 0) return;
 	lsp_flush(d);
-	cancel(d, kind);
+	cancel(d, &d->ask[kind].id);
 	free(d->ask[kind].ans);
 	d->ask[kind].ans = NULL;
 	d->ask[kind].id = d->s->next++;
@@ -616,6 +638,81 @@ static LspDoc *doc(Srv *s, const char *m, int uri)
 	return NULL;
 }
 
+/* The face of each token type the server named in its legend, as Neovim
+   links @lsp.type.* (highlight_group.c) with Davy's catppuccin/nvim on top
+   (semantic_tokens.lua clears @lsp.type.variable: the grammar knows
+   variables better); a type not here keeps the grammar's face.  The
+   colour of each face is the theme's. */
+static void legend(Srv *s, const char *m)
+{
+	static const struct { const char *type; unsigned char face; } link[] = {
+		{ "class", FACE_TYPE }, { "comment", FACE_COMMENT }, { "decorator", FACE_ATTRIBUTE },
+		{ "enum", FACE_TYPE }, { "enumMember", FACE_CONSTANT }, { "event", FACE_TYPE },
+		{ "function", FACE_FUNCTION }, { "interface", FACE_TYPE }, { "keyword", FACE_KEYWORD },
+		{ "macro", FACE_CONSTANT_MACRO }, { "method", FACE_FUNCTION_METHOD }, { "modifier", FACE_KEYWORD_MODIFIER },
+		{ "namespace", FACE_MODULE }, { "number", FACE_NUMBER }, { "operator", FACE_OPERATOR },
+		{ "parameter", FACE_VARIABLE_PARAMETER }, { "property", FACE_PROPERTY }, { "regexp", FACE_STRING_REGEXP },
+		{ "string", FACE_STRING }, { "struct", FACE_TYPE }, { "type", FACE_TYPE },
+		{ "typeParameter", FACE_TYPE_DEFINITION },
+	};
+	int caps = json_get(m, tk, json_get(m, tk, 0, "result"), "capabilities");
+	int types = json_get(m, tk, json_get(m, tk, json_get(m, tk, caps, "semanticTokensProvider"), "legend"), "tokenTypes");
+	for (int i = types + 1; types >= 0 && tk[types].type == 'a' && i < tk[types].end && s->ntypes < (int)sizeof s->legend; i = tk[i].end) {
+		unsigned char f = 0;
+		for (size_t k = 0; k < sizeof link / sizeof *link; k++) if (is(m, i, link[k].type)) f = link[k].face;
+		s->legend[s->ntypes++] = f;
+	}
+}
+
+/* Tokens array arr (LSP's relative form: line and start from the last
+   token's, length, type, modifiers; UTF-16 columns) as d's byte ranges.
+   No array (an error): the tokens shown stay, as Neovim keeps them.  A
+   line is walked once: each start from the last token's (pb, pc). */
+static void decode(LspDoc *d, const char *m, int arr)
+{
+	if (arr < 0 || tk[arr].type != 'a') return;
+	clear(&d->tok);
+	core_changed = 1;
+	const Text *t = d->t;
+	size_t l = 0, c = 0, ls = 0, n = 0, pb = 0, pc = 0, lines = text_lines(t);   /* a line past them: no bytes */
+	const unsigned char *b = NULL;
+	long v[5];
+	for (int i = arr + 1, k = 0; i < tk[arr].end; i = tk[i].end) {
+		if ((v[k++] = json_int(m, tk, i)) < 0) return;
+		if (k < 5) continue;
+		k = 0;
+		if (v[0] || !b) {
+			l += (size_t)v[0];
+			c = pb = pc = 0;
+			ls = text_line_start(t, l);
+			n = (l + 1 < lines ? text_line_start(t, l + 1) - 1 : text_len(t)) - ls;
+			b = bytes(t, ls, &n);
+		}
+		c += (size_t)v[1];
+		if (v[3] >= d->s->ntypes || !d->s->legend[v[3]]) continue;
+		if (d->tok.n == d->tok.cap) {
+			int cap = d->tok.cap ? 2 * d->tok.cap : 256;
+			LspDiag *g = realloc(d->tok.v, (size_t)cap * sizeof *g);
+			if (!g) return;
+			d->tok.v = g; d->tok.cap = cap;
+		}
+		pb += lsp_u16_byte(b + pb, n - pb, c - pc);
+		pc = c;
+		size_t a = ls + pb, z = a + lsp_u16_byte(b + pb, n - pb, (size_t)v[2]);
+		if (a < z) d->tok.v[d->tok.n++] = (LspDiag){ a, z, z, d->s->legend[v[3]], NULL };
+	}
+}
+
+void lsp_faces(const Buf *b, size_t a, size_t z, unsigned char *face)
+{
+	syntax_faces(b->syn, a, z, face);
+	const Set *v = b->lsp ? &b->lsp->tok : NULL;
+	int lo = 0, hi = v ? v->n : 0;
+	while (lo < hi) { int mid = (lo + hi) / 2; if (v->v[mid].z <= a) lo = mid + 1; else hi = mid; }   /* the first ending after a */
+	for (int i = lo; v && i < v->n && v->v[i].a < z; i++)
+		for (size_t j = v->v[i].a > a ? v->v[i].a : a; j < v->v[i].z && j < z; j++) face[j - a] = (unsigned char)v->v[i].sev;
+}
+
 static void handle(Srv *s, const char *m, size_t n)
 {
 	if (json_parse(m, n, &tk, &ntk) < 0) return;
@@ -626,6 +723,9 @@ static void handle(Srv *s, const char *m, size_t n)
 		putraw(&o, m, id);
 		str_lit(&o, ",\"result\":null}");
 		send(s);
+		/* Lean answers with what it has elaborated, then asks again
+		   (Neovim's semantic_tokens: refresh, a new request) */
+		if (is(m, meth, "workspace/semanticTokens/refresh")) for (LspDoc *d = s->docs; d; d = d->link) tokens(d);
 		return;
 	}
 	if (meth >= 0) {
@@ -666,14 +766,22 @@ static void handle(Srv *s, const char *m, size_t n)
 		}
 	if (rid == 0) {                              /* initialize answered */
 		if (s->def->lean) { s->init.n = 0; str_add(&s->init, m, n); }
+		legend(s, m);
 		if (lsp_tap && s->def->lean) lsp_tap(0, m, n);
 		s->ready = 1;
 		begin("initialized");
 		str_lit(&o, "{}");
 		end(s);
 		if (s->held.n) { proc_write(s->proc, s->held.s, s->held.n); s->held.n = 0; }
+		for (LspDoc *d = s->docs; d; d = d->link) tokens(d);
 		return;
 	}
+	for (LspDoc *d = s->docs; d; d = d->link)
+		if (d->tokid == rid) {
+			d->tokid = 0;
+			if (current(d, d->tokver)) decode(d, m, json_get(m, tk, json_get(m, tk, 0, "result"), "data"));
+			return;
+		}
 	for (LspDoc *d = s->docs; d; d = d->link)
 		for (int k = 0; k < LSP_NASK; k++) {
 			if (d->ask[k].id != rid) continue;
