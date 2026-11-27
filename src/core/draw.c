@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "core_int.h"
+#include "fold.h"
 #include "git.h"
 #include "lsp.h"
 #include "syntax.h"
@@ -123,8 +124,9 @@ static void diag_span(const Text *t, const LspDiag *d, size_t *a, size_t *z)
 	else if (*z == *a) (*z)++;
 }
 
-/* 0 error .. 3 hint, for the FACE_DIAG_* of each kind */
-static int sev(const LspDiag *d) { return d->sev < 4 ? d->sev - 1 : 3; }
+/* 0 error .. 3 hint, for the FACE_DIAG_* of each kind (lsp.h: sev is 1
+   .. 4; the client maps any other to an error) */
+static int sev(const LspDiag *d) { return d->sev - 1; }
 
 /* The number column of line l (get_line_number_str()): relative to the
    cursor line, which shows its own number left-aligned, in CursorLineNr
@@ -134,7 +136,7 @@ static int put_number(Grid *g, const Win *w, int r, size_t l, int top_skipped)
 {
 	char b[40];
 	int sg = win_signw(w), nw = win_numw(w) - sg - 1;
-	size_t rel = l > w->line ? l - w->line : w->line - l;
+	size_t rel = win_rel(w, l);
 	unsigned char face = rel ? FACE_LINE_NR : FACE_CURSOR_LINE_NR;
 	*b = 0;
 	if (nw > 0) {
@@ -171,12 +173,6 @@ static int line_rows(const Win *w, size_t l)
 	return v <= skip ? 1 : (int)((v - skip + (size_t)tw - 1) / (size_t)tw);
 }
 
-/* virtual_text after a line's end and the blank there (eol virt_text),
-   as _get_virt_text_chunks() lays out the diagnostics [lo, hi) of v: 4
-   blanks, a '■' in each one's colour, a blank and the last one's message,
-   its "\r" dropped, each "\n" two blanks, each Tab blanks to the row's
-   next multiple of 8 (measured); cut at the window's edge.
-   The blanks have no colour of their own (hl_mode combine: on CursorLine) */
 /* grid_puts() for virtual text: a double-width character cut at the edge
    leaves a blank in its colour (measured) */
 static int vt_puts(Grid *g, int y, int x, int end, const char *s, size_t n, int f)
@@ -185,6 +181,12 @@ static int vt_puts(Grid *g, int y, int x, int end, const char *s, size_t n, int 
 	return z < end && x + grid_width(s, n) > end ? grid_puts(g, y, z, end, " ", 1, ATTR_NONE, f) : z;
 }
 
+/* virtual_text after a line's end and the blank there (eol virt_text),
+   as _get_virt_text_chunks() lays out the diagnostics [lo, hi) of v: 4
+   blanks, a '■' in each one's colour, a blank and the last one's message,
+   its "\r" dropped, each "\n" two blanks, each Tab blanks to the row's
+   next multiple of 8 (measured); cut at the window's edge.
+   The blanks have no colour of their own (hl_mode combine: on CursorLine) */
 static void draw_vt(Grid *g, const Win *w, int row, int nw, int c, const LspDiag *v, int lo, int hi, unsigned char cl)
 {
 	int y = w->y + row, end = w->x + w->w < g->cols ? w->x + w->w : g->cols, x = w->x + nw + c;
@@ -538,7 +540,10 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 			   test_core_conceal.py), so Neovim's fillers around a
 			   concealed one are not copied */
 			if (cc) {
-				if (i == cc->a && !j && *cc->s) put_cell(g, w, row, c, (const unsigned char *)cc->s, strlen(cc->s), 0, 1, face, vis ? vis : sb, ul);
+				/* no underline: the cell takes Conceal (measured: a
+				   diagnostic over an extmark's conceal leaves its cchar's
+				   attribute as it is) */
+				if (i == cc->a && !j && *cc->s) put_cell(g, w, row, c, (const unsigned char *)cc->s, strlen(cc->s), 0, 1, face, vis ? vis : sb, 0);
 				else off++;
 				continue;
 			}
@@ -608,6 +613,100 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	return drawn != 0;
 }
 
+/* a blank line (linewhite()) */
+static int white(const Text *t, size_t l)
+{
+	char c;
+	for (size_t p = text_line_start(t, l), z = text_line_start(t, l + 1) - 1; p < z; p++)
+		if (text_read(t, p, &c, 1) && c != ' ' && c != '\t') return 0;
+	return 1;
+}
+
+/* the text of line l from its first non-blank, at most what a window row
+   can show, in a buffer that only grows (no allocation once it fits) */
+static size_t fold_src(const Text *t, size_t l, int width, char **s)
+{
+	static char *b;
+	static size_t cap;
+	size_t want = 4 * (size_t)width + 64, a = text_line_start(t, l), z = text_line_start(t, l + 1) - 1;
+	if (want > cap) {
+		char *nb = realloc(b, want);
+		if (!nb) return 0;
+		b = nb, cap = want;
+	}
+	size_t n = text_read(t, a, b, z - a < cap ? z - a : cap), i = 0;
+	while (i < n && (b[i] == ' ' || b[i] == '\t')) i++;
+	*s = b + i;
+	return n - i;
+}
+
+/* A closed fold [a, z] at level lv in row r: fold_line() with Neovim's
+   'foldtext' foldtext(): "+-", a dash per level, the line count, then the
+   first line that is not blank (linewhite(); the last one if all are) from
+   its first non-blank, past a C comment's start "/x" or "//" (on a line of
+   nothing else, the next line's text past a '*'), with 'foldmarker's
+   "{{{" and "}}}" (and a level digit, and the blanks after) taken out
+   (foldtext_cleanup()); then get_foldtext(): a Tab is a space and what
+   cannot be printed shows as transstr() does; the row's text area in
+   Folded, filled with 'fillchars' fold '·' (Neovim 0.12's default).  No
+   file type here has a 'commentstring' to take out (a known difference). */
+static void draw_fold(Grid *g, Win *w, size_t a, size_t z, int lv, int r)
+{
+	put_number(g, w, r, a, 0);
+	const Text *t = w->buf->text;
+	int c = win_numw(w);
+	char head[64], *s;
+	size_t k = z - a + 1, n, l = a;
+	snprintf(head, sizeof head, "+-%.*s%3zu %s: ", lv < 20 ? lv : 20, "--------------------", k, k == 1 ? "line" : "lines");
+	for (; l < z && white(t, l); l++) {}
+	n = fold_src(t, l, w->w, &s);
+	if (n >= 2 && s[0] == '/' && (s[1] == '*' || s[1] == '/')) {
+		s += 2, n -= 2;
+		while (n && (*s == ' ' || *s == '\t')) s++, n--;
+		if (!n && l + 1 < z) {
+			n = fold_src(t, l + 1, w->w, &s);
+			if (n && *s == '*') {
+				s++, n--;
+				while (n && (*s == ' ' || *s == '\t')) s++, n--;
+			}
+		}
+	}
+	for (const char *h = head; *h; h++, c++) wput(g, w, r, c, (const unsigned char *)h, 1, 1);
+	/* get_foldtext(): a Tab is a space up to the first one-byte character
+	   that takes more than one cell; transstr() shows the later ones ^I */
+	int gt = 0;
+	for (size_t i = 0, raw = 0, b; i < n && c < w->w; ) {
+		/* foldtext_cleanup(): a fold marker, a digit after it and the blanks
+		   on both sides go (measured: "x {{{ y" gives "xy") */
+		for (b = i; b < n && (s[b] == ' ' || s[b] == '\t'); b++) {}
+		if (n - b >= 3 && (!memcmp(s + b, "{{{", 3) || !memcmp(s + b, "}}}", 3))) {
+			i = b + 3 + (b + 3 < n && s[b + 3] >= '0' && s[b + 3] <= '9');
+			while (i < n && (s[i] == ' ' || s[i] == '\t')) i++;
+			continue;
+		}
+		const unsigned char *u = (const unsigned char *)s + i;
+		size_t len = *u == '\t' ? 1 : uni_glen(u, n - i, 0);
+		int width = *u == '\t' ? 1 + (int)raw : *u < 0x20 || *u == 0x7f ? 2 : uni_width(u, len, 0);
+		/* win_line(): '>' (NonText) where a double-width character does not
+		   fit; what else does not fit is cut (measured: "^?" gives "^") */
+		if (c + width > w->w && *u >= 0x80 && width == 2) {
+			wput(g, w, r, gt = c, (const unsigned char *)">", 1, 1);
+			c = w->w;
+			break;
+		}
+		for (int j = 0; j < width && c + j < w->w; j++)
+			if (*u == '\t') wput(g, w, r, c + j, (const unsigned char *)(raw ? &"^I"[j] : " "), 1, 1);
+			else put_cell(g, w, r, c + j, u, len, j, width, FACE_FOLDED, 0, 0);
+		raw |= len == 1 && width > 1 && *u != '\t';
+		c += width, i += len;
+	}
+	for (; c < w->w; c++) wput(g, w, r, c, (const unsigned char *)"\xc2\xb7", 2, 1);
+	for (int x = win_numw(w); x < w->w; x++) {
+		Cell *y = wcell(g, w, r, x);
+		if (y) y->face = x == gt ? FACE_NON_TEXT : FACE_FOLDED;
+	}
+}
+
 /* win_update(): the lines from the top, "@@@" where the last one does not
    fit (display=lastline), "~" below the end of the buffer */
 static void draw_win(Editor *e, Grid *g, Win *w)
@@ -623,6 +722,13 @@ static void draw_win(Editor *e, Grid *g, Win *w)
 	int cur = w->buf == typing->buf, rm = cur ? e->mode != MODE_INSERT && !e->ks.visual && !typing->left : !w->left;
 	size_t raw = cur ? typing->line : (size_t)-1;
 	for (; r < w->h && l < n; l++) {
+		size_t fa, fz;
+		int lv = w->fold ? fold_closed(w->fold, l, &fa, &fz) : 0;
+		if (lv) {
+			draw_fold(g, w, fa, fz, lv, r++);
+			l = fz;
+			continue;
+		}
 		int rows = line_rows(w, l);
 		if (!draw_line(e, g, w, l, r, rm ? 1 + (l != raw) : 0)) {
 			/* a double-width character the "@@@" starts in becomes '@' too

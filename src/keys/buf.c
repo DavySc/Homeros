@@ -1,6 +1,7 @@
 /* Lines, positions and edits for the keys, in Neovim's terms (memline.c,
    misc1.c inc()/dec(), cursor.c, edit.c cursor_down()/oneright(), indent.c). */
 #include <string.h>
+#include "fold.h"
 #include "k.h"
 #include "uni.h"
 
@@ -353,20 +354,37 @@ int oneleft(void)
 	return 1;
 }
 
+/* hasFolding(): 1 when line l is in a closed fold, with its first and
+   last line in *a and *b (either NULL) */
+int has_folding(long l, long *a, long *b)
+{
+	size_t x, y;
+	if (!W->fold || !fold_closed(W->fold, (size_t)l, &x, &y)) return 0;
+	if (a) *a = (long)x;
+	if (b) *b = (long)y;
+	return 1;
+}
+
+/* foldOpenCursor(): what 'foldopen' (Neovim's default) names opens the
+   folds the cursor is in */
+void fold_open_cursor(void) { if (W->fold) core_fold(E, FOLD_VIEW, W->line, 0); }   /* hasAnyFolding() */
+
+/* cursor_down() and cursor_up(): fail on the last line (a closed fold's
+   too) or the first; the steps are the core's (cursor_down_inner()) */
 int cursor_down(long n)
 {
-	long l = (long)W->line, nl = nlines();
-	if (n > 0 && l + 1 >= nl) return 0;
-	W->line = (size_t)(l + n >= nl ? nl - 1 : l + n);
+	long e = (long)W->line;
+	has_folding(e, NULL, &e);
+	if (n > 0 && e + 1 >= nlines()) return 0;
+	W->line = core_line_step(E, W->line, n);
 	coladvance(curswant());
 	return 1;
 }
 
 int cursor_up(long n)
 {
-	long l = (long)W->line;
-	if (n > 0 && l <= 0) return 0;
-	W->line = (size_t)(n >= l ? 0 : l - n);
+	if (n > 0 && !W->line) return 0;
+	W->line = core_line_step(E, W->line, -n);
 	coladvance(curswant());
 	return 1;
 }
@@ -382,9 +400,16 @@ void check_cursor_col(void)
 	W->col = (size_t)c;
 }
 
+/* past the end into a closed fold: its start */
+void check_cursor_lnum(void)
+{
+	long a = nlines() - 1;
+	if ((long)W->line > a) has_folding(a, &a, NULL), W->line = (size_t)a;
+}
+
 void check_cursor(void)
 {
-	if ((long)W->line >= nlines()) W->line = (size_t)nlines() - 1;
+	check_cursor_lnum();
 	check_cursor_col();
 }
 

@@ -4,6 +4,7 @@
    normal_cmd() would have with all its keys read. */
 #include <string.h>
 #include <stdio.h>
+#include "fold.h"
 #include "k.h"
 #include "tools.h"
 #include "uni.h"
@@ -202,6 +203,16 @@ void end_visual_mode(void)
 	check_cursor_col();
 }
 
+/* foldAdjustVisual(): a closed fold is in the Visual area whole */
+static void fold_adjust_visual(void)
+{
+	if (!VIsual_active || !W->fold) return;
+	Pos c = cur(), *a = lt(c, VIsual) ? &c : &VIsual, *b = a == &c ? &VIsual : &c;
+	if (has_folding(a->lnum, &a->lnum, NULL)) a->col = 0;
+	if (has_folding(b->lnum, NULL, &b->lnum)) b->col = ml_len(b->lnum);
+	setcur(c);
+}
+
 static void n_start_visual_mode(int c)
 {
 	VIsual_mode = c;
@@ -210,10 +221,12 @@ static void n_start_visual_mode(int c)
 	/* on a Tab a Visual block starts at the cell Normal mode showed, the
 	   Tab's last (coladvance(w_virtcol) with the cached virtcol) */
 	if (c == 22 && gchar_cursor() == '\t') coladvance(vcol_end((long)W->line, (long)W->col));
+	/* Neovim's foldAdjustVisual() here is for stuffed keys, which skip
+	   normal_check(); fold_adjust_visual() runs after every command */
 	VIsual = cur();
 }
 
-static void nv_right(Cmdarg *cap);
+static void nv_right(Cmdarg *cap), nv_percent1(Cmdarg *cap);
 static void nv_down(Cmdarg *cap);
 
 static void nv_visual(Cmdarg *cap)
@@ -339,6 +352,10 @@ static void adjust_cursor(Oparg *oap)
 	}
 }
 
+/* 'foldopen' (Neovim's default: block hor mark percent search undo):
+   a command typed, not an operator's motion, opens the folds it lands in */
+static void foldopen(Cmdarg *cap) { if (key_typed && cap->oap->op_type == OP_NOP) fold_open_cursor(); }
+
 static void nv_right(Cmdarg *cap)
 {
 	Oparg *oap = cap->oap;
@@ -370,6 +387,7 @@ static void nv_right(Cmdarg *cap)
 			W->col += (size_t)clen(s, ml_len((long)W->line), (long)W->col);
 		}
 	}
+	if (n != cap->count1) foldopen(cap);
 }
 
 static void nv_left(Cmdarg *cap)
@@ -377,7 +395,8 @@ static void nv_left(Cmdarg *cap)
 	Oparg *oap = cap->oap;
 	oap->motion_type = MCHAR;
 	oap->inclusive = 0;
-	for (long n = cap->count1; n > 0; n--) {
+	long n;
+	for (n = cap->count1; n > 0; n--) {
 		if (!oneleft()) {
 			/* whichwrap: backspace wraps */
 			if ((cap->cmdchar == KEY_BS || cap->cmdchar == 8) && W->line > 0) {
@@ -393,6 +412,7 @@ static void nv_left(Cmdarg *cap)
 			break;
 		}
 	}
+	if (n != cap->count1) foldopen(cap);
 }
 
 static void nv_down(Cmdarg *cap)
@@ -415,6 +435,7 @@ static void nv_dollar(Cmdarg *cap)
 	cap->oap->inclusive = 1;
 	set_want(MAXCOL);
 	if (!cursor_down(cap->count1 - 1)) clearopbeep(cap->oap);
+	else foldopen(cap);
 }
 
 static void nv_beginline(Cmdarg *cap)
@@ -423,6 +444,7 @@ static void nv_beginline(Cmdarg *cap)
 	cap->oap->inclusive = 0;
 	beginline(cap->arg);
 	ins_at_eol = 0;   /* "0" after CTRL-O stays on a one-character line's character */
+	foldopen(cap);
 }
 
 static void nv_pipe(Cmdarg *cap)
@@ -480,6 +502,7 @@ static void nv_wordcmd(Cmdarg *cap)
 	else n = fwd_word(cap->count1, cap->arg, oap->op_type != OP_NOP);
 	if (lt(startpos, cur())) adjust_cursor(oap);
 	if (!n && oap->op_type == OP_NOP) clearopbeep(oap);
+	else foldopen(cap);
 }
 
 static void nv_bck_word(Cmdarg *cap)
@@ -488,6 +511,7 @@ static void nv_bck_word(Cmdarg *cap)
 	cap->oap->inclusive = 0;
 	set_curswant = 1;
 	if (!bck_word(cap->count1, cap->arg, 0)) clearopbeep(cap->oap);
+	else foldopen(cap);
 }
 
 /* searchc() sets inclusive through this */
@@ -513,10 +537,18 @@ static void nv_csearch(Cmdarg *cap)
 	    && (t_cmd || cap->oap->op_type != OP_NOP))
 		p.coladd = vcol_end(p.lnum, p.col) - vcol_of(p.lnum, p.col);
 	setcur(p);
+	foldopen(cap);
 }
 
 
 static void nv_percent(Cmdarg *cap)
+{
+	size_t l0 = W->line;
+	nv_percent1(cap);
+	if (W->line != l0) foldopen(cap);
+}
+
+static void nv_percent1(Cmdarg *cap)
 {
 	cap->oap->inclusive = 1;
 	if (cap->count0) {
@@ -547,6 +579,7 @@ static void nv_findpar(Cmdarg *cap)
 	set_curswant = 1;
 	if (!findpar(&cap->oap->inclusive, cap->arg, cap->count1, 0, 0)) { clearopbeep(cap->oap); return; }
 	coladd_reset();
+	foldopen(cap);
 }
 
 static void nv_brace(Cmdarg *cap)
@@ -558,6 +591,7 @@ static void nv_brace(Cmdarg *cap)
 	if (!findsent(cap->arg, cap->count1)) { clearopbeep(cap->oap); return; }
 	coladd_reset();
 	adjust_cursor(cap->oap);
+	foldopen(cap);
 }
 
 static void nv_object(Cmdarg *cap)
@@ -612,6 +646,7 @@ static void nv_brackets(Cmdarg *cap)
 		setpcmark();
 		setcur(p);
 		set_curswant = 1;
+		foldopen(cap);
 		return;
 	}
 	if (cap->nchar == '[' || cap->nchar == ']') {
@@ -620,7 +655,7 @@ static void nv_brackets(Cmdarg *cap)
 		if (!findpar(&oap->inclusive, cap->arg, cap->count1, flag,
 		             oap->op_type != OP_NOP && cap->arg == FORWARD && flag == '{'))
 			clearopbeep(oap);
-		else if (oap->op_type == OP_NOP) beginline(BL_WHITE | BL_FIX);
+		else if (oap->op_type == OP_NOP) beginline(BL_WHITE | BL_FIX), foldopen(cap);
 		return;
 	}
 	if (cap->nchar == 'q') {
@@ -885,6 +920,9 @@ static void nv_open(Cmdarg *cap)
 {
 	if (VIsual_active) { v_swap_corners(cap->cmdchar); return; }
 	if (checkclearopq(cap->oap)) return;
+	/* n_opencmd(): above a closed fold's first line, below its last */
+	long l = (long)W->line;
+	if (cap->cmdchar == 'O' ? has_folding(l, &l, NULL) : has_folding(l, NULL, &l)) W->line = (size_t)l;
 	if (open_cmd(cap->cmdchar == 'O' ? BACKWARD : FORWARD)) invoke_edit(cap->cmdchar, cap->count1, 0);
 }
 
@@ -926,9 +964,12 @@ static void nv_undo(Cmdarg *cap)
 	   beep_flush(), which ends a macro; in a CTRL-O command
 	   check_cursor_col() lets the cursor stay past the end (restart_edit),
 	   which core_clamp() allows in Insert mode */
-	for (long n = cap->count1; n--;)
-		if (core_undo(E, cap->cmdchar == KEY_CTRL_R) < 0) { beep(); break; }
+	long n = cap->count1;
+	while (n && core_undo(E, cap->cmdchar == KEY_CTRL_R) >= 0) n--;
+	if (n) beep();
 	opmarks(1);
+	/* u_undo_end(), after a step undone only: 'foldopen' "undo" */
+	if (n < cap->count1 && key_typed) fold_open_cursor();
 	buf_changed();
 	core_set_want(E);
 	E->mode = mode;
@@ -1017,7 +1058,10 @@ static int normal_search(Cmdarg *cap, int dir, const char *pat, int rev, int mar
 	set_curswant = 1;
 	int i = do_search(cap->oap, dir, pat, cap->count1, rev, mark, wrapped);
 	if (!i) clearop(cap->oap);
-	else if (i == 2) cap->oap->motion_type = MLINE;
+	else {
+		if (i == 2) cap->oap->motion_type = MLINE;
+		foldopen(cap);
+	}
 	check_cursor();
 	return i;
 }
@@ -1261,12 +1305,39 @@ static void nv_scroll(Cmdarg *cap)
 	beginline(BL_SOL | BL_FIX);
 }
 
-/* zt zz zb only (FEATURES.md); nv_zet() beeps for what it does not know */
+/* zt zz zb and the folds' zo zc za zR zM (FEATURES.md); nv_zet() beeps
+   for what it does not know */
 static void nv_zet(Cmdarg *cap)
 {
+	int c = cap->nchar, i = 5;
+	while (i-- && "ocaRM"[i] != c) {}   /* -1: none (a key past 255 too) */
+	static const int op[] = { FOLD_OPEN, FOLD_CLOSE, FOLD_TOGGLE, FOLD_OPEN_ALL, FOLD_CLOSE_ALL };
+	if (VIsual_active && (c == 'o' || c == 'c')) {
+		/* the operators zo and zc on the Visual area (op_fold(),
+		   opFoldRange()): one level of each fold in its lines, the cursor
+		   at its start */
+		Pos a = VIsual, b = cur();
+		if (VIsual_mode == 'V') a.col = 0, a.coladd = 0;   /* VIsual's end only */
+		if (lt(b, a)) { Pos t = a; a = b; b = t; }
+		end_visual_mode();
+		setcur(a), set_curswant = 1;   /* do_pending_operator() */
+		int found = 0;
+		for (long l = a.lnum, next; W->fold && l <= b.lnum; l = next + 1) {
+			next = l;
+			if (c == 'o') has_folding(l, NULL, &next);
+			found |= core_fold(E, c == 'o' ? FOLD_OPEN : FOLD_CLOSE, (size_t)l, 1) == 0;
+			if (c == 'c') has_folding(l, NULL, &next);
+		}
+		if (!found) core_msg(E, "E490: No fold found");
+		return;
+	}
 	if (checkclearop(cap->oap)) return;
-	if (cap->nchar == 't' || cap->nchar == 'z' || cap->nchar == 'b') core_scroll_cursor(E, cap->nchar);
-	else clearopbeep(cap->oap);
+	if (c == 't' || c == 'z' || c == 'b') core_scroll_cursor(E, c);
+	/* openFold() and closeFold() with no fold there: E490, as with no folds;
+	   zR and zM never (no folds: core_fold() fails, nothing to say) */
+	else if (i >= 0) {
+		if (core_fold(E, op[i], W->line, cap->count1) < 0 && i < 3) core_msg(E, "E490: No fold found");
+	} else clearopbeep(cap->oap);
 }
 
 /* do_window(): the CTRL-W keys FEATURES.md lists */
@@ -1418,16 +1489,24 @@ int getmark(int c, Pos *p)
 
 /* nv_gomark(): ' and g' go to the line's first non-blank (cap->arg),
    ` and g` to the mark; g' and g` leave '' as it is */
+/* nv_gomark() and nv_pcmark(): 'foldopen' "mark" when the cursor (the
+   line, for the jump list) moved */
+static void nv_pcmark1(Cmdarg *cap);
+static void nv_pcmark(Cmdarg *cap) { size_t l = W->line; nv_pcmark1(cap); if (W->line != l) foldopen(cap); }
+
 static void nv_gomark(Cmdarg *cap)
 {
 	Pos p;
 	if (!getmark(cap->cmdchar == 'g' ? cap->extra_char : cap->nchar, &p)) clearop(cap->oap);
 	else {
+		/* mark_move_to()'s kMarkChangedCursor: the mark is not the cursor */
+		int moved = !eq(p, cur());
 		if (cap->cmdchar != 'g') setpcmark();
 		p.coladd = 0;
 		setcur(p);
 		if (cap->arg) beginline(BL_WHITE | BL_FIX);
 		check_cursor();
+		if (moved) foldopen(cap);
 	}
 	cap->oap->motion_type = cap->arg ? MLINE : MCHAR;
 	if (cap->cmdchar == '`') cap->oap->use_reg_one = 1;
@@ -1455,7 +1534,7 @@ static void cleanup_jumplist(void)
 
 /* nv_pcmark(): CTRL-O and CTRL-I (Tab) through the jump list
    (get_jumplist()), g; and g, through the change list (get_changelist()) */
-static void nv_pcmark(Cmdarg *cap)
+static void nv_pcmark1(Cmdarg *cap)
 {
 	if (checkclearopq(cap->oap)) return;
 	/* g; g,: the core keeps no change list yet (package 4), so it is empty */
@@ -1666,6 +1745,7 @@ static int run(void)
 	if (oa.op_type == OP_NOP) finish_op = 0;
 	opcount = ca.opcount;
 	checkpcmark();
+	fold_adjust_visual();   /* normal_check_folds() */
 	/* mb_check_adjust_col(): ^ on a blank a combining mark is on lands
 	   inside the character */
 	if (E->mode == MODE_NORMAL && W->col) W->col = (size_t)head(ml_get((long)W->line), (long)W->col);
@@ -1803,10 +1883,23 @@ static void do_pending_operator(Cmdarg *cap, long old_col)
 		oap->start = VIsual;
 		if (VIsual_mode == 'V') oap->start.col = 0;
 	}
+	/* closed folds whole, as do_pending_operator() includes them */
 	if (lt(oap->start, cur())) {
+		if (!VIsual_active) {
+			Pos c = cur();
+			if (has_folding(oap->start.lnum, &oap->start.lnum, NULL)) oap->start.col = 0;
+			if ((c.col > 0 || oap->inclusive || oap->motion_type == MLINE) && has_folding(c.lnum, NULL, &c.lnum)) c.col = ml_len(c.lnum);
+			setcur(c);
+		}
 		oap->end = cur();
 		setcur(oap->start);
 	} else {
+		if (!VIsual_active && oap->motion_type == MLINE) {
+			Pos c = cur();
+			if (has_folding(c.lnum, &c.lnum, NULL)) c.col = 0;
+			if (has_folding(oap->start.lnum, NULL, &oap->start.lnum)) oap->start.col = ml_len(oap->start.lnum);
+			setcur(c);
+		}
 		oap->end = oap->start;
 		oap->start = cur();
 	}

@@ -1,5 +1,5 @@
 # Plants for src/keys/ (format in tools/planted.sh).
-keys: j and k forget the wanted column (recorded traces)~test TESTS=~~src/keys/buf.c~	W->line = (size_t)(l + n >= nl ? nl - 1 : l + n);¶	coladvance(curswant());~	W->line = (size_t)(l + n >= nl ? nl - 1 : l + n);¶	coladvance(0);
+keys: j and k forget the wanted column (recorded traces)~test TESTS=~~src/keys/buf.c~	W->line = core_line_step(E, W->line, n);¶	coladvance(curswant());~	W->line = core_line_step(E, W->line, n);¶	coladvance(0);
 keys: Lean symbols are word characters again (recorded traces)~test TESTS=~~src/keys/motion.c~		else return (int)classes[mid].cls;~		else return 2;
 keys: the cursor steps one byte, into a character (fuzz_keys)~fuzz FUZZERS=keys FUZZ_SECONDS=60~~src/keys/buf.c~		p->col += clen(ring[i].s, ring[i].n, p->col);~		p->col += 1;
 keys: the cursor steps one byte, into a character (fuzz_keys_all)~fuzz FUZZERS=keys_all FUZZ_SECONDS=60~~src/keys/buf.c~		p->col += clen(ring[i].s, ring[i].n, p->col);~		p->col += 1;
@@ -54,7 +54,7 @@ keys: gq joins a whole paragraph before breaking it, so its undo grows with the 
 keys: a repeated Visual operator starts its columns at a Tab's first cell, so v CTRL-A 3 . on a Tab misses the number (recorded traces)~test TESTS=~~src/keys/normal.c~					set_want((long)W->vc.v + redo_VIsual.vcol - 1);~					set_want(vcol_of((long)W->line, (long)W->col) + redo_VIsual.vcol - 1);
 keys: u after a gq that changed nothing puts the cursor on the first line, not back where gq was typed (recorded traces)~test TESTS=~~src/keys/ops.c~	u_save((size_t)oap->start.lnum, (size_t)oap->end.lnum + 1);~	u_save((size_t)oap->start.lnum, (size_t)oap->start.lnum);
 keys: the cursor below sqlfmt's edit does not move with it, so it lands on other text (test_keys_gq)~test TESTS=keys_gq~~src/keys/ops.c~p = p >= z ? p - (z - a) + n : p > a~p = p >= z ? p : p > a
-keys: undo or redo that finds nothing does not beep, so a macro goes on after it (recorded traces)~test TESTS=~~src/keys/normal.c~		if (core_undo(E, cap->cmdchar == KEY_CTRL_R) < 0) { beep(); break; }~		if (core_undo(E, cap->cmdchar == KEY_CTRL_R) < 0) { break; }
+keys: undo or redo that finds nothing does not beep, so a macro goes on after it (recorded traces)~test TESTS=~~src/keys/normal.c~	while (n && core_undo(E, cap->cmdchar == KEY_CTRL_R) >= 0) n--;¶	if (n) beep();¶~	while (n && core_undo(E, cap->cmdchar == KEY_CTRL_R) >= 0) n--;¶
 keys: Insert mode drops a typed or register CTRL-L instead of inserting it (recorded traces)~test TESTS=~~src/keys/edit.c~if (c < ' ' && !has("\x02\x06\x0c\x1a\x1c\x1f", c)) break;~if (c < ' ' && c != 26) break;
 keys: CTRL-W g leaves the next key to run on its own, so CTRL-W g x deletes a character (recorded traces)~test TESTS=~~src/keys/normal.c~(ca.nchar == 'g' || ca.nchar == 7)) GET~(ca.nchar == 7)) GET
 keys: internal_format() does not validate w_virtcol on each line, so a stale textwidth column survives a gq that moved the cursor (recorded traces)~test TESTS=~~src/keys/ops.c~		W->col = (size_t)c;¶		validate_virtcol();~		W->col = (size_t)c;
@@ -104,7 +104,7 @@ keys: the next match is looked for a character after the last match's start, not
 keys: ? skips the match at the cursor, as / does (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~	if (dir == BACKWARD) extra = 0;¶~
 keys: a search stops at the end of the file instead of wrapping ('wrapscan') (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~if (!found && !loop) lnum~if (!found && !loop && 0) lnum
 keys: d/x/e leaves the match's last character (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~if (off.end && oap) oap->inclusive = 1;~if (0) oap->inclusive = 1;
-keys: d/x/+1 deletes characters, not lines (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	else if (i == 2) cap->oap->motion_type = MLINE;¶~
+keys: d/x/+1 deletes characters, not lines (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~		if (i == 2) cap->oap->motion_type = MLINE;¶~
 keys: n after /x/s-1 stays where it is (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~		cap->count1++;¶~
 keys: * finds the word inside other words, without \< \> (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~if (!g && first >= 2) p +=~if (0) p +=
 keys: . after d/x deletes up to the next x without typing the search again (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~			redo_append('\n');¶~
@@ -178,7 +178,6 @@ keys: @. counts as an executing register, so its yank does not flash (test_keys_
 keys: Ctrl-C does not stop a search or a :s (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~	if (!growth() || (!re_deadline && loop_breakcheck())) return -1;~	if (!growth()) return -1;
 keys: an interrupted search says E363, not Interrupted (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~core_msg(E, loop_int ? "Interrupted" : ~core_msg(E, 0 ? "Interrupted" : 
 keys: the regex stacks stay grown after a search (test_keys_ex)~test TESTS=keys_ex~~src/keys/regex.c~	if (!re_deadline) drop(~	if (0) drop(
-keys: a yank's flash ends on the last character's last byte (test_keys_flash)~test TESTS=keys_flash~~src/keys/ops.c~		if (t == 'v') E->ks.yank.c2 = (size_t)head(ml_get(b_op_end.lnum), b_op_end.col);¶~
 keys: a mark set alone with m> does not stand for '< (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~*p = s && (!e || (c == '<')~*p = (!e || (c == '<')
 keys: an ex command leaves '' unsettled, so the next command's checkpcmark() moves it (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~else if (entered) ex(), checkpcmark();~else if (entered) ex();
 keys: Enter at column 0 moves the marks on its line down (one edit inserting the break there) (test_keys_ex)~test TESTS=keys_ex~~src/keys/edit.c~} else if (rest || ind) {~} else if (1) {
@@ -230,6 +229,29 @@ keys: .svh, .v and .vh buffers are not formatted with Verible (test_keys_gq)~tes
 keys: keys_visual(e, 0) leaves Visual mode on (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (!mode) { if (VIsual_active) end_visual_mode(); }~	if (!mode) { if (VIsual_active) (void)0; }
 keys: keys_visual() keeps the other end's column (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~VIsual = (Pos){ (long)line, 0, 0 };~VIsual.lnum = (long)line;
 keys: keys_visual() leaves e->ks as it was (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~(Pos){ (long)line, 0, 0 };¶	visual_sync();~(Pos){ (long)line, 0, 0 };
+keys: j from a closed fold's first line ends inside it (test_keys_ex)~test TESTS=keys_ex~~src/keys/buf.c~	has_folding(e, NULL, &e);¶	if (n > 0 && e + 1 >= nlines()) return 0;~	if (n > 0 && e + 1 >= nlines()) return 0;
+keys: past the end the cursor goes to the last line, not its fold's start (test_keys_ex)~test TESTS=keys_ex~~src/keys/buf.c~	if ((long)W->line > a) has_folding(a, &a, NULL), W->line = (size_t)a;~	if ((long)W->line > a) W->line = (size_t)a;
+keys: 'foldopen' commands leave a closed fold shut (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~static void foldopen(Cmdarg *cap) { if (key_typed && cap->oap->op_type == OP_NOP) fold_open_cursor(); }~static void foldopen(Cmdarg *cap) { (void)cap; }
+keys: an operator's motion opens the fold (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~static void foldopen(Cmdarg *cap) { if (key_typed && cap->oap->op_type == OP_NOP) fold_open_cursor(); }~static void foldopen(Cmdarg *cap) { (void)cap; fold_open_cursor(); }
+keys: u with nothing to undo opens the fold (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~if (n < cap->count1 && key_typed) fold_open_cursor();~if (!key_stuffed) fold_open_cursor();
+keys: u run from a register opens the fold (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~if (n < cap->count1 && key_typed) fold_open_cursor();~if (n < cap->count1) fold_open_cursor();
+keys: u leaves a closed fold shut (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~if (n < cap->count1 && key_typed) fold_open_cursor();~(void)0;
+keys: Insert mode starts in a closed fold (test_keys_ex)~test TESTS=keys_ex~~src/keys/edit.c~	if (!did_restart_edit) fold_open_cursor();~
+keys: w from a closed fold starts at the cursor (test_keys_ex)~test TESTS=keys_ex~~src/keys/motion.c~		fold_last();¶		int sclass = cls(), last_line~		int sclass = cls(), last_line
+keys: b from a closed fold starts at the cursor (test_keys_ex)~test TESTS=keys_ex~~src/keys/motion.c~		if (has_folding(l, &l, NULL)) W->line = (size_t)l, W->col = 0;~		(void)l;
+keys: e from a closed fold starts at the cursor (test_keys_ex)~test TESTS=keys_ex~~src/keys/motion.c~		fold_last();¶		int sclass = cls();¶		if (inc_cursor() == -1) return 0;~		int sclass = cls();¶		if (inc_cursor() == -1) return 0;
+keys: { and } stop inside a closed fold (test_keys_ex)~test TESTS=keys_ex~~src/keys/motion.c~int skipped = first && has_folding(curr, &a, &b);~int skipped = first && has_folding(curr, &a, &b) && 0;
+keys: a search starts inside a closed fold (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~	if (dirc == '/' ? has_folding(pos.lnum, NULL, &pos.lnum) : has_folding(pos.lnum, &pos.lnum, NULL)) pos.col = dirc == '/' ? MAXCOL - 2 : 0;~
+keys: Visual mode takes part of a closed fold (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	fold_adjust_visual();   /* normal_check_folds() */~	(void)fold_adjust_visual;
+keys: Visual zc keeps the wanted column (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~		setcur(a), set_curswant = 1;   /* do_pending_operator() */~		setcur(a);
+keys: o and O open a line inside a closed fold (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	if (cap->cmdchar == 'O' ? has_folding(l, &l, NULL) : has_folding(l, NULL, &l)) W->line = (size_t)l;~	(void)l;
+keys: an operator takes part of a closed fold forward (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~			if ((c.col > 0 || oap->inclusive || oap->motion_type == MLINE) && has_folding(c.lnum, NULL, &c.lnum)) c.col = ml_len(c.lnum);~
+keys: an operator takes part of a closed fold backward (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~			if (has_folding(oap->start.lnum, NULL, &oap->start.lnum)) oap->start.col = ml_len(oap->start.lnum);~
+keys: p puts inside a closed fold (test_keys_ex)~test TESTS=keys_ex~~src/keys/ops.c~		W->line = (size_t)(dir == FORWARD ? b : a);¶~
+keys: a mark jump to the cursor's own position opens the fold (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~		int moved = !eq(p, cur());~		int moved = 1;
+keys: CTRL-O opens no fold (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~if (W->line != l) foldopen(cap); }~(void)l; }
+keys: zo with no fold there says nothing (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~if (core_fold(E, op[i], W->line, cap->count1) < 0 && i < 3) core_msg~if (core_fold(E, op[i], W->line, cap->count1) < 0 && i < 0) core_msg
+keys: Visual zo opens every level (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~			if (c == 'o') has_folding(l, NULL, &next);~			if (c == 'o') next = l;
 keys: gT goes forward (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~	case 'T': if (!checkclearop(oap)) goto_tabpage(-cap->count1); break;~	case 'T': if (!checkclearop(oap)) goto_tabpage(cap->count1); break;
 keys: SPC 5 m moves into the frame after n (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~core_win_to_tab(e, k - '0')~core_win_to_tab(e, k - '0' + 1)
 keys: a focus change leaves insert mode on (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		if (e->mode == MODE_INSERT || e->ks.visual ||~		if (e->ks.visual ||
@@ -260,6 +282,11 @@ keys: which-key's panel moves for a cursor on the row above it too late (test_ke
 keys: which-key's panel moved for the cursor starts on the row under it (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~top = g->crow + 2 < g->rows - 4 ? g->crow + 2 :~top = g->crow + 1 < g->rows - 4 ? g->crow + 1 :
 keys: which-key's columns 10 wide, not its 20 (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	int n = 0, w = 20;~	int n = 0, w = 10;
 keys: which-key's panel on a screen under 4 rows writes before the grid (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	if (h < 1 || top < 0) return;~	if (h < 1) return;
+keys: z then a key past 255 reads past nv_zet()'s table (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~	int c = cap->nchar, i = 5;¶	while (i-- && "ocaRM"[i] != c) {}   /* -1: none (a key past 255 too) */~	int c = cap->nchar, i = (int)(strchr("ocaRM", c) ? strchr("ocaRM", c) - "ocaRM" : -1);
+keys: >> leaves a closed fold shut (test_keys_ex)~test TESTS=keys_ex~~src/keys/ops.c~	fold_open_cursor();   /* op_shift(): the cursor line is not in a closed fold */¶~
+keys: u after p below a closed fold leaves the cursor below it (test_keys_ex)~test TESTS=keys_ex~~src/keys/ops.c~		u_save(W->line + 1, W->line + 1);¶~
+keys: foldOpenCursor() opens only a closed fold, not every fold the cursor is in (test_keys_ex)~test TESTS=keys_ex~~src/keys/buf.c~void fold_open_cursor(void) { if (W->fold) core_fold~void fold_open_cursor(void) { if (has_folding((long)W->line, NULL, NULL)) core_fold
+keys: an executed register's keys open folds as typed ones (test_keys_ex)~test TESTS=keys_ex~~src/keys/keys.c~	key_typed = 0;   /* an executed register's keys are not typed either */¶~
 keys: SPC r runs nothing (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~		case 'r': sql_results(e); break;¶~
 keys: :Connect is not a command (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~conn = k == 7 && !strncmp(p, "Connect", 7)~conn = 0
 keys: :Disconnect is not a command (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~"KittenPaw", "Disconnect", "Dashboard"~"KittenPaw", "Disconect", "Dashboard"

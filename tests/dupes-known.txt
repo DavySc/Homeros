@@ -8,8 +8,6 @@ src/org/org.c src/org/org.c 0842e25b
 src/tools/oil.c src/tools/oil.c 4e751422
 src/tools/oil.c src/tools/oil.c b27d12dd
 src/tools/pick.c src/tools/pick.c d22d9731
-src/keys/motion.c src/keys/motion.c 21791400
-src/keys/motion.c src/keys/motion.c 912b305b
 src/keys/ops.c src/keys/ops.c ca17786b
 src/git/sec.c src/git/sec.c 5086807d
 src/git/status.c src/git/status.c 29f7bf54

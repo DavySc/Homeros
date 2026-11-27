@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "core_int.h"
+#include "fold.h"
 
 enum { WM = 1, STATUS = 1 };   /* winminheight, winminwidth */
 /* Neovim has a function for each direction (frame_setheight(),
@@ -363,6 +364,8 @@ static void win_copy_view(Win *n, const Win *o)
 	n->alt = o->alt;
 	n->line = o->line; n->col = o->col; n->want = o->want;
 	n->top = o->top; n->left = o->left;
+	fold_free(n->fold);   /* SPC 5 m copies over a split's own copy */
+	n->fold = o->fold ? fold_dup(o->fold, n) : NULL;   /* copyFoldingState() */
 	n->wrap = o->wrap;
 	n->conceal = o->conceal;   /* win_copy_options() */
 	memcpy(n->jump, o->jump, (size_t)o->njump * sizeof o->jump[0]);   /* copy_jumplist() */
@@ -435,7 +438,7 @@ static Win *split_ins(Editor *e, int size, int flags, Win *new_wp, int dir, Fram
 	if (!cur->parent || cur->parent->layout != layout) {
 		/* cur becomes the parent of a copy of itself */
 		Frame *c = frame_new(FR_LEAF);
-		if (!c) { win_unlink(e, w); if (!new_wp) { free(w->frame); free(w); } core_msg(e, "out of memory"); return NULL; }
+		if (!c) { win_unlink(e, w); if (!new_wp) { fold_free(w->fold); free(w->frame); free(w); } core_msg(e, "out of memory"); return NULL; }
 		*c = *cur;
 		cur->layout = layout;
 		c->parent = cur;
@@ -569,10 +572,12 @@ static void win_forget(Editor *e, Win *w)
 		if (null) {
 			WinInfo **d = km > kn ? mine : null, *x = *d;
 			*d = x->next;
+			fold_free(x->fold);   /* free_wininfo() */
 			free(x);
 		}
 	}
 	if (e->prev == w) e->prev = NULL;
+	fold_free(w->fold);
 	free(w->frame);
 	free(w);
 }
@@ -936,7 +941,7 @@ void tab_free_all(Editor *e)
 	for (Tab *t = e->tabs, *nx; t; t = nx) {
 		nx = t->next;
 		if (t != e->tab) {
-			for (Win *w = t->wins, *wn; w; w = wn) { wn = w->next; free(w); }
+			for (Win *w = t->wins, *wn; w; w = wn) { wn = w->next; fold_free(w->fold); free(w); }
 			layout_free(t->layout);
 		}
 		free(t);

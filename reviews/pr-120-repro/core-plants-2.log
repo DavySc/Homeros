@@ -1,0 +1,68 @@
+caught        core: undo does not bring back the group's marks (test_core_undo)   (make test TESTS=core_undo): tests/test_core_undo.c:91: CHECK(core_undo(&e, 0) >= 0 && e.buf->mark[0].line == 2 && e.buf->mark[0].col == 0) failed
+caught        core: set_topline() keeps w_botline valid (recorded traces)   (make test TESTS=core_screens): test_core_screens: 17 of 3056 screens differ from Neovim (5 of 325 cases)
+caught        core: a split forgets the alternate buffer (test_core_contract)   (make test TESTS=core_contract): tests/test_core_contract.c:150: CHECK(alt && !strcmp(alt->path, fn[2]) && !core_split(&e, 0, 0) && e.win->alt == alt && e.win->conceal == 3) failed
+caught        core: an undone insert at a line start counts as lines removed (test_core_undo)   (make test TESTS=core_undo): tests/test_core_undo.c:73: CHECK(core_undo(&e, 0) == 0 && e.win->line == 1) failed
+caught        core: closing the last window quits with unsaved changes (test_core_contract)   (make test TESTS=core_contract): tests/test_core_contract.c:126: CHECK(core_close(&e, 0) == -1 && !e.quit && strstr(e.msg, "E37")) failed
+caught        core: entering a window does not look at its view again (finding 6) (test_core_screens)   (make test TESTS=core_screens): test_core_screens: 1 of 3056 screens differ from Neovim (1 of 325 cases)
+caught        core: a double-width character never takes the border cell (finding 1) (test_core_screens)   (make test TESTS=core_screens): test_core_screens: 59 of 3056 screens differ from Neovim (15 of 325 cases)
+caught        core: a reused buffer keeps the old undo marks (finding 7) (test_core_undo)   (make test TESTS=core_undo): tests/test_core_undo.c:109: CHECK(core_undo(&e, 0) >= 0 && core_undo(&e, 1) >= 0 && e.win->line == 1) failed
+caught        core: a save leaves the outside-change flag set (test_core_contract)   (make test TESTS=core_contract): tests/test_core_contract.c:183: CHECK(!core_edit(&e, 0, 0, "z", 1) && !strstr(e.msg, "W11")) failed
+caught        core: core_vcol counts a byte inside a cluster to its end (test_core_contract)   (make test TESTS=core_contract): tests/test_core_contract.c:108: CHECK(core_vcol(&e, 0, 1) == 0 && core_vcol(&e, 0, 2) == 0 && core_vcol(&e, 0, 3) == 1 && core_vcol(&e, 0, 4) == 8) failed
+caught        core: an insertion drops w_botline (test_core_screens)   (make test TESTS=core_screens): test_core_screens: 3 of 3056 screens differ from Neovim (3 of 325 cases)
+caught        core: a composing character at a cluster start is drawn without its space (test_core_screens)   (make test TESTS=core_screens): test_core_screens: 2 of 3056 screens differ from Neovim (1 of 325 cases)
+caught        core: a mark on a line deleted from mid-line stays off the joined line (test_core_undo)   (make test TESTS=core_undo): tests/test_core_undo.c:164: CHECK(core_lines(&e) == 3 && e.buf->mark[MARK_LT].line == 0 && e.buf->mark[MARK_LT].col == 11) failed
+caught        core: the change list is not a list of marks (test_core_undo)   (make test TESTS=core_undo): tests/test_core_undo.c:166: CHECK(e.buf->change[0].line == 0 && e.buf->change[0].col == 8) failed
+caught        core: a file opens with the cursor in column 0 (test_core_screens)   (make test TESTS=core_screens): test_core_screens: 672 of 3056 screens differ from Neovim (142 of 325 cases)
+caught        core: an overlay keeps the text's colour (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 1044 render-markdown screens: 710 differ (22 known, not compared)
+caught        core: an overlay drawn over skipcol's <<< (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 1044 render-markdown screens: 1 differ (22 known, not compared)
+caught        core: a '<' filler cell keeps its colours under a code block (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 1044 render-markdown screens: 3 differ (22 known, not compared)
+caught        core: an overlay past a window's edge without wrap drawn on its row (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 1044 render-markdown screens: 10 differ (22 known, not compared)
+caught        core: a [-] box gets the checked icon (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 1044 render-markdown screens: 29 differ (22 known, not compared)
+caught        core: a box on the cursor line without its background (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 1044 render-markdown screens: 8 differ (22 known, not compared)
+caught        core: the cursor line drawn rendered (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 1044 render-markdown screens: 321 differ (22 known, not compared)
+caught        core: a fence's row not filled with '█' (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 1044 render-markdown screens: 232 differ (22 known, not compared)
+caught        core: an overlay's cell past a grid smaller than its window is written (test_core_contract)   (make test TESTS=core_contract): src/core/draw.c:82:12: runtime error: member access within null pointer of type 'struct Cell'
+caught        core: a group an edit opens saves no marks (test_core_undo)   (make test TESTS=core_undo): tests/test_core_undo.c:91: CHECK(core_undo(&e, 0) >= 0 && e.buf->mark[0].line == 2 && e.buf->mark[0].col == 0) failed
+caught        core: a block ends at the cursor's column, not the wider end's (test_core_visual)   (make test TESTS=core_visual): test_core_visual: 40 of 903 cases differ from Neovim
+caught        core: a double-width character half in the area is left out (test_core_visual)   (make test TESTS=core_visual): test_core_visual: 40 of 903 cases differ from Neovim
+caught        core: '<' of a character starting at the area is in it (test_core_visual)   (make test TESTS=core_visual): test_core_visual: 1 of 903 cases differ from Neovim
+caught        core: -- REPLACE -- shows as -- INSERT -- (test_core_contract)   (make test TESTS=core_contract): tests/test_core_contract.c:85: CHECK(c[0].ch[0] == '-' && c[3].ch[0] == 'R' && c[9].ch[0] == 'E' && c[11].ch[0] == '-') failed
+caught        core: a heading drawn in insert mode (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 1044 render-markdown screens: 138 differ (22 known, not compared)
+caught        core: another buffer's window keeps its cursor line raw (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 1044 render-markdown screens: 96 differ (22 known, not compared)
+caught        core: a heading drawn in visual mode (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 1044 render-markdown screens: 140 differ (22 known, not compared)
+caught        core: the language line puts the file's bytes on the grid as they are, an escape too (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 1044 render-markdown screens: 2 differ (22 known, not compared)
+caught        core: a tab in the language line 3 cells wide is drawn 2 (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 1044 render-markdown screens: 1 differ (22 known, not compared)
+caught        core: the language line's fence blanks counted in columns, not characters (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 1044 render-markdown screens: 1 differ (22 known, not compared)
+caught        core: another window follows the Visual tab rule (test_core_contract)   (make test TESTS=core_contract): tests/test_core_contract.c:120: CHECK(win_vcol(&e, e.win, NULL, NULL) == 1 && win_vcol(&e, o, NULL, NULL) == 7) failed
+caught        core: the replace pill in insert's colour (test_core_status)   (make test TESTS=core_status): tests/test_core_status.c:82: CHECK(!"status line") failed
+caught        core: the visual modes share one name (test_core_status)   (make test TESTS=core_status): tests/test_core_status.c:82: CHECK(!"status line") failed
+caught        core: %< before the mode pill's right end (test_core_status)   (make test TESTS=core_status): tests/test_core_status.c:82: CHECK(!"status line") failed
+caught        core: the file name with its directory (test_core_status)   (make test TESTS=core_status): tests/test_core_status.c:82: CHECK(!"status line") failed
+caught        core: the location pill's left end on surface0 (test_core_status)   (make test TESTS=core_status): tests/test_core_status.c:82: CHECK(!"status line") failed
+caught        core: the location on mantle (test_core_status)   (make test TESTS=core_status): tests/test_core_status.c:82: CHECK(!"status line") failed
+caught        core: no Bot on the last line (test_core_status)   (make test TESTS=core_status): tests/test_core_status.c:82: CHECK(!"status line") failed
+caught        core: '<' in the face of the first character dropped (test_core_status)   (make test TESTS=core_status): tests/test_core_status.c:82: CHECK(!"status line") failed
+caught        core: the fill in the face after it (test_core_status)   (make test TESTS=core_status): tests/test_core_status.c:82: CHECK(!"status line") failed
+caught        core: the cursor line's number in LineNr (test_core_status)   (make test TESTS=core_status): tests/test_core_status.c:220: CHECK(g.c[r * g.cols + c].face == (r == 1 ? FACE_CURSOR_LINE_NR : FACE_LINE_NR) && !g.c[r * g.cols + c].bg) failed
+caught        core: the cursor line only under its text (test_core_status)   (make test TESTS=core_status): tests/test_core_status.c:221: CHECK(g.c[r * g.cols + c].bg == (r == 1 ? FACE_CURSOR_LINE : 0)) failed
+caught        core: "<<<" in the number's face (test_core_status)   (make test TESTS=core_status): tests/test_core_status.c:253: CHECK(g.c[c].ch[0] == '<' && g.c[c].face == FACE_NON_TEXT) failed
+caught        core: the '>' filler on the cursor line's background (test_core_markdown)   (make test TESTS=core_markdown): test_core_markdown: 1044 render-markdown screens: 2 differ (22 known, not compared)
+caught        core: the status line's backgrounds written past a shrunk grid (test_core_contract)   (make test TESTS=core_contract): ==12025==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x51600000032a at pc 0x562725739275 bp 0x7ffc910b1aa0 sp 0x7ffc910b1a90
+caught        core: the file type not drawn (test_core_status)   (make test TESTS=core_status): tests/test_core_status.c:82: CHECK(!"status line") failed
+caught        core: buffers found by the name as typed, so a relative and a full name are two (test_core_contract)   (make test TESTS=core_contract): tests/test_core_contract.c:146: CHECK(!chdir("/tmp") && !core_edit_file(&e, strrchr(fn[3], '/') + 1, 0) && e.buf == same) failed
+caught        core: the yank flash in every window on the buffer (test_core_contract)   (make test TESTS=core_contract): tests/test_core_contract.c:281: CHECK((z->bg == FACE_INC_SEARCH) == (w == e.win)) failed
+caught        core: the yank flash takes a cell at an empty line's end (test_core_contract)   (make test TESTS=core_contract): tests/test_core_contract.c:296: CHECK(e.win->top == 0 && g.c[g.cols + win_numw(e.win)].bg == FACE_CURSOR_LINE) failed
+caught        core: no CurSearch (test_core_search)   (make test TESTS=core_search): test_core_search: 97 of 900 cases differ from Neovim
+caught        core: an empty match at the end drawn where 'leftcol' passes the line's bytes (test_core_search)   (make test TESTS=core_search): test_core_search: 5 of 900 cases differ from Neovim
+caught        core: an empty line's end-of-line cell drawn CurSearch (test_core_search)   (make test TESTS=core_search): test_core_search: 16 of 900 cases differ from Neovim
+caught        core: the Visual area is concealed (test_core_conceal)   (make test TESTS=core_conceal): test_core_conceal: 40 of 500 cases differ from Neovim
+caught        core: a Tab after a span keeps its width (test_core_conceal)   (make test TESTS=core_conceal): test_core_conceal: 277 of 500 cases differ from Neovim
+caught        core: a new window starts without conceal (test_core_conceal)   (make test TESTS=core_conceal): test_core_conceal: 347 of 500 cases differ from Neovim
+caught        core: no sign column for diagnostics (test_core_diag)   (make test TESTS=core_diag): test_core_diag: 424 of 500 cases differ from Neovim
+caught        core: skipcol's "<<<" stays right of the sign column (test_core_diag)   (make test TESTS=core_diag): test_core_diag: 3 of 500 cases differ from Neovim
+caught        core: an underline at the line's end is not moved onto its last character (test_core_diag)   (make test TESTS=core_diag): test_core_diag: 21 of 500 cases differ from Neovim
+caught        core: a diagnostic at the end of the text is not on the last line (test_core_diag)   (make test TESTS=core_diag): test_core_diag: 34 of 500 cases differ from Neovim
+caught        core: the first diagnostic's message (test_core_diag)   (make test TESTS=core_diag): test_core_diag: 42 of 500 cases differ from Neovim
+caught        core: a double-width character cut at the window's edge leaves no blank (test_core_diag)   (make test TESTS=core_diag): test_core_diag: 2 of 500 cases differ from Neovim
+caught        core: a nonumber buffer draws its numbers over its text (test_core_contract)   (make test TESTS=core_contract): tests/test_core_contract.c:209: CHECK(win_numw(e.win) == 0 && g.c[0].len == 1 && *grid_text(&g.c[0]) == 'x' && *grid_text(&g.c[g.cols]) == ' ') failed
+caught        core: a write sends no didSave (test_infoview)   (make test TESTS=infoview): tests/test_infoview.c:322: CHECK(strstr(o, "\ntextDocument/didSave ")) failed

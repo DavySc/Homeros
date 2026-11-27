@@ -1,0 +1,259 @@
+caught        review: a mark past the last line is gone to, no E19 (getmark)   (make test TESTS=keys_ex): 1 of 3000 differ; cases in /tmp/test_keys_exdi41fW (| is Enter, ~ Esc)
+caught        review: a linewise area's `> is the mark's column, not the line's end   (make test TESTS=keys_ex): 7 of 3000 differ; cases in /tmp/test_keys_exjAPN5a (| is Enter, ~ Esc)
+caught        review: Ctrl-C also stops a frame's 'hlsearch' match   (make test TESTS=keys_ex): tests/test_keys_ex.c:417: CHECK(keys_hl(&e, e.win, 400, 0, &hs, &hz) && loop_int) failed
+caught        review: * sets '' twice, so '' is the word's start   (make test TESTS=keys_ex): 3 of 3000 differ; cases in /tmp/test_keys_exwLuIfN (| is Enter, ~ Esc)
+caught        review: CTRL-O with a count past the start reads before the list   (make test TESTS=keys_ex): src/keys/normal.c:1459:13: runtime error: index -1 out of bounds for type '<unknown> [100]'
+caught        review2: a bare ' in a range reads past the end as a mark   (make test TESTS=keys_ex): 2 of 3000 differ; cases in /tmp/test_keys_exHmC9Nx (| is Enter, ~ Esc)
+caught        review2: r sets no marks   (make test TESTS=keys_ex): 91 of 3000 differ; cases in /tmp/test_keys_ex7Jab8n (| is Enter, ~ Esc)
+NOT CAUGHT    review4: the pair is read in every key, even in its own buffer   (make test TESTS=keys_ex passed)
+caught        keys: Lean symbols are word characters again (recorded traces)   (make test TESTS=): 1275 sequences: 1 differ from Neovim
+caught        keys: Delete while typing a count is x (recorded traces)   (make test TESTS=): 1275 sequences: 1 differ from Neovim
+caught        keys: a long count is not folded, so its keys overflow the pending command (recorded traces)   (make test TESTS=):   ours  None {'error': 'timeout after 20 s'}
+caught        keys: CTRL-R . does not quote a trailing ^, so CTRL-D after it deletes the indent (recorded traces)   (make test TESTS=): 1275 sequences: 2 differ from Neovim
+caught        keys: aw at the end of the buffer does not leave the cursor on the NUL it reached (recorded traces)   (make test TESTS=): 1275 sequences: 1 differ from Neovim
+caught        keys: r BS puts a DEL character in instead of beeping (recorded traces)   (make test TESTS=): 1275 sequences: 2 differ from Neovim
+caught        keys: a block change whose text has a Del writes past the last line, which loses the final newline (fuzz_keys_all)   (make fuzz FUZZERS=keys_all FUZZ_SECONDS=60): FAIL fuzz_keys_all
+caught        keys: CTRL-V then a special key inserts nothing, not its name (recorded traces)   (make test TESTS=): 1275 sequences: 3 differ from Neovim
+caught        keys: undo in a CTRL-O command takes a Tab's last cell as the wanted column, so the insert restarts past the Tab (recorded traces)   (make test TESTS=): 1275 sequences: 5 differ from Neovim
+caught        keys: CTRL-W s in Visual mode keeps Visual mode on (recorded traces)   (make test TESTS=): 1275 sequences: 2 differ from Neovim
+caught        keys: o's undo step starts on the cursor line, so undo moves another window's cursor on it to column 0 (recorded traces)   (make test TESTS=): 1275 sequences: 3 differ from Neovim
+caught        keys: gq formats one line less than the operator covers (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:165: CHECK(!strcmp(text(&e), want(c[i].a, c[i].z))) failed
+caught        keys: the save looks for sqldiff.toml only in the file's own directory (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:200: CHECK(!strcmp(disk(file), want(0, sizeof SRC - 1))) failed
+caught        keys: gq breaks before the blank at textwidth, not at it (recorded traces)   (make test TESTS=): 1275 sequences: 43 differ from Neovim
+caught        keys: u after gq puts the cursor at the start of the lines, not where gq was typed (recorded traces)   (make test TESTS=): 1275 sequences: 3 differ from Neovim
+caught        keys: gq joins a nroff paragraph macro line into the paragraph (recorded traces)   (make test TESTS=): 1275 sequences: 1 differ from Neovim
+caught        keys: gq gives every later break the indent from ^ CTRL-D (recorded traces)   (make test TESTS=): 1275 sequences: 1 differ from Neovim
+caught        keys: a repeated Visual operator starts its columns at a Tab's first cell, so v CTRL-A 3 . on a Tab misses the number (recorded traces)   (make test TESTS=): 1275 sequences: 2 differ from Neovim
+caught        keys: undo or redo that finds nothing does not beep, so a macro goes on after it (recorded traces)   (make test TESTS=): 1275 sequences: 2 differ from Neovim
+caught        keys: internal_format() does not validate w_virtcol on each line, so a stale textwidth column survives a gq that moved the cursor (recorded traces)   (make test TESTS=): 1275 sequences: 6 differ from Neovim
+caught        keys: the clipboard forgets the type it was set with, so a yanked block is put as lines (test_keys_clip)   (make test TESTS=keys_clip): tests/test_keys_clip.c:100: CHECK(is(&e, "aba\ncdc\n")) failed
+caught        keys: gq on a long line it cannot break recomputes w_virtcol, so a later gg keeps the cursor's column, not textwidth (recorded traces)   (make test TESTS=): 1275 sequences: 3 differ from Neovim
+caught        keys: w_virtcol is not recomputed when Insert mode ends, so a Visual command after it takes the Tab's first cell for curswant (recorded traces)   (make test TESTS=): 1275 sequences: 1 differ from Neovim
+caught        keys: a SPC that completes no map drops Space's own motion (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:45: CHECK(at(&e, "acb\n", 1)) failed
+caught        keys: a map that runs leaves the count typed before it for the next command (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:86: CHECK(at(&e, "bcb\n", 0)) failed
+caught        keys: a register's name is taken as a map's first key, so "-p opens oil (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:100: CHECK(at(&e, "bacb\n", 1)) failed
+caught        keys: % is not an address, so :% and :1,% are not editor commands (test_keys_ex)   (make test TESTS=keys_ex): 28 of 3000 differ; cases in /tmp/test_keys_ex37aIYt (| is Enter, ~ Esc)
+caught        keys: a range alone past the last line or below 0 goes there instead of the last line or E16 (test_keys_ex)   (make test TESTS=keys_ex): 91 of 3000 differ; cases in /tmp/test_keys_exFWFtQc (| is Enter, ~ Esc)
+caught        keys: a line number past 2^63 overflows (test_keys_ex, UBSan)   (make test TESTS=keys_ex): src/keys/keys.c:271:7: runtime error: signed integer overflow: 9223372036854775807 + 9223372036854775807 cannot be represented in type 'long int'
+caught        keys: a yank from an executing register flashes, where Neovim's on_yank skips it (test_keys_flash)   (make test TESTS=keys_flash): tests/test_keys_flash.c:47: CHECK(flash("qayiwq", 'v', 0, 0, 0, 2) && flash("@a", 0, 0, 0, 0, 0)) failed
+caught        keys: clearing the yank flash asks for no frame, so it stays on screen until the next key (test_keys_flash)   (make test TESTS=keys_flash): tests/test_keys_flash.c:77: CHECK(!e.ks.yank.type && core_changed && ms >= 140 && ms < 1000) failed
+caught        keys: a repeated character does not match a letter with a composing character, so e\{3,1}\k misses e + U+0301 (test_keys_regex)   (make test TESTS=keys_regex): 2 of 10000 differ; cases in /tmp/test_keys_regexpiKKED
+caught        keys: a match may end before a composing character (test_keys_regex)   (make test TESTS=keys_regex): 1 of 10000 differ; cases in /tmp/test_keys_regexLwyxm1
+caught        keys: a look-behind steps back by code point, into a letter with a composing character (test_keys_regex)   (make test TESTS=keys_regex): 1 of 10000 differ; cases in /tmp/test_keys_regexNhp4ar
+caught        keys: a search stops at the end of the file instead of wrapping ('wrapscan') (test_keys_ex)   (make test TESTS=keys_ex): 187 of 3000 differ; cases in /tmp/test_keys_extpd8T2 (| is Enter, ~ Esc)
+caught        keys: n after /x/s-1 stays where it is (test_keys_ex)   (make test TESTS=keys_ex): 1 of 3000 differ; cases in /tmp/test_keys_exEOOv45 (| is Enter, ~ Esc)
+caught        keys: a search with an upper-case letter ignores case, as if 'smartcase' were off (test_keys_ex)   (make test TESTS=keys_ex): tests/test_keys_ex.c:321: CHECK(!keys_hl(&e, e.win, 2, 0, &hs, &hz)) failed
+caught        keys: * on a blank line searches for the last pattern instead of E348 (test_keys_ex)   (make test TESTS=keys_ex): 27 of 3000 differ; cases in /tmp/test_keys_ex4Ti7Qm (| is Enter, ~ Esc)
+caught        keys: a backslash at a pattern's start keeps it at the start, so /\*ptr is E866 (test_keys_regex)   (make test TESTS=keys_regex): 87 of 10000 differ; cases in /tmp/test_keys_regexdeAjsB
+caught        keys: :s takes a NUL in a line (\n in a replacement) for the line's end (test_keys_ex)   (make test TESTS=keys_ex): 1 of 3000 differ; cases in /tmp/test_keys_exqhIHX3 (| is Enter, ~ Esc)
+caught        keys: a line break from \r in a replacement leaves the range one line short (test_keys_ex)   (make test TESTS=keys_ex): tests/test_keys_ex.c:272: CHECK(none < N / 100) failed
+caught        keys: a count after :s counts from the range's start, not its end (test_keys_ex)   (make test TESTS=keys_ex): tests/test_keys_ex.c:272: CHECK(none < N / 100) failed
+NOT CAUGHT    keys: a backslash the match copies is taken as an escape (test_keys_ex)   (make test TESTS=keys_ex passed)
+caught        keys: \_s is E877, its letter read with its magic (test_keys_ex)   (make test TESTS=keys_ex): tests/test_keys_ex.c:461: CHECK(e.win->line == 0 && e.win->col == 0 && !strcmp(e.msg, "search hit BOTTOM, continuing at TOP")) failed
+caught        keys: u after :s goes back to an undo step the oracle's text load made (test_keys_ex)   (make test TESTS=keys_ex): 343 of 3000 differ; cases in /tmp/test_keys_exFyvktz (| is Enter, ~ Esc)
+caught        keys: :s with a new pattern leaves the matches hidden (test_keys_ex)   (make test TESTS=keys_ex): 2 of 3000 differ; cases in /tmp/test_keys_exl4WxlQ (| is Enter, ~ Esc)
+caught        keys: a match's line break is not drawn (test_keys_ex)   (make test TESTS=keys_ex): 17 of 3000 differ; cases in /tmp/test_keys_exnLDLes (| is Enter, ~ Esc)
+caught        keys: CTRL-L hides the matches in Visual mode (test_keys_ex)   (make test TESTS=keys_ex): 60 of 3000 differ; cases in /tmp/test_keys_exVssDpv (| is Enter, ~ Esc)
+caught        keys: a match \zs starts on the next line is drawn on this one (test_keys_ex)   (make test TESTS=keys_ex): tests/test_keys_ex.c:344: CHECK(!keys_hl(&e, e.win, 1, 0, &hs, &hz) && keys_hl(&e, e.win, 2, 0, &hs, &hz) && hs == 0 && hz == 2) failed
+caught        keys: Esc and CTRL-C answer yes instead of quitting (test_keys_ex)   (make test TESTS=keys_ex): tests/test_keys_ex.c:330: CHECK(!e.ks.pending && !e.ks.inc.type && n == 12 && !memcmp(l, "hellXY world", 12)) failed
+caught        keys: the answered :s is undone key by key (test_keys_ex)   (make test TESTS=keys_ex): tests/test_keys_ex.c:333: CHECK(n == 11 && !memcmp(l, "hello world", 11)) failed
+caught        keys: :s goes on with 'hlsearch''s program after a redraw (test_keys_ex)   (make test TESTS=keys_ex): tests/test_keys_ex.c:324: CHECK(n == 12 && !memcmp(l, "hellXY world", 12) && e.win->col == 8 && e.ks.pending) failed
+caught        keys: Visual : leaves curswant to be set after the command (test_keys_ex)   (make test TESTS=keys_ex): 22 of 3000 differ; cases in /tmp/test_keys_exZV53Ql (| is Enter, ~ Esc)
+caught        keys: a register Q replays is not flagged as executing, so on_yank and the kitten would show (test_keys_flash)   (make test TESTS=keys_flash): tests/test_keys_flash.c:51: CHECK(flash("@@", 0, 0, 0, 0, 0) && flash("2@a", 0, 0, 0, 0, 0) && flash("Q", 0, 0, 0, 0, 0)) failed
+caught        keys: the c flag's question goes on in another buffer (test_keys_ex)   (make test TESTS=keys_ex): tests/test_keys_ex.c:354: CHECK(!e.ks.pending && n == 2 && !memcmp(l, "xo", 2) && !core_edit_file(&e, path, 0)) failed
+caught        keys: a bounded leading repeat skips its run too (test_keys_regex)   (make test TESTS=keys_regex): 1 of 10000 differ; cases in /tmp/test_keys_regex2IkuXm
+caught        keys: cit and ciT wait for their keys in every buffer, not only .org (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:153: CHECK(!d.ks.pending) failed
+caught        keys: cit stamps CLOSED in UTC, not the local clock (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:148: CHECK(!strncmp(got, want[0], strlen(want[0])) || !strncmp(got, want[1], strlen(want[1]))) failed
+caught        keys: an interrupted search says E363, not Interrupted (test_keys_ex)   (make test TESTS=keys_ex): tests/test_keys_ex.c:419: CHECK(e.win->line == 0 && !strcmp(e.msg, "Interrupted")) failed
+caught        keys: a mark set alone with m> does not stand for '< (test_keys_ex)   (make test TESTS=keys_ex): 1 of 3000 differ; cases in /tmp/test_keys_exSUS9Jv (| is Enter, ~ Esc)
+caught        keys: * and # are not jumps (test_keys_ex)   (make test TESTS=keys_ex): 7 of 3000 differ; cases in /tmp/test_keys_exorXAof (| is Enter, ~ Esc)
+caught        keys: CTRL-O and Tab go the wrong way (test_keys_ex)   (make test TESTS=keys_ex): 117 of 3000 differ; cases in /tmp/test_keys_exIkav0d (| is Enter, ~ Esc)
+caught        keys: '^ is the column after Esc moved left (test_keys_ex)   (make test TESTS=keys_ex): 5 of 3000 differ; cases in /tmp/test_keys_exMuuUlQ (| is Enter, ~ Esc)
+caught        keys: g' and g` set '' (test_keys_ex)   (make test TESTS=keys_ex): 10 of 3000 differ; cases in /tmp/test_keys_exxS6upi (| is Enter, ~ Esc)
+caught        keys: ' goes to the mark's column, not the first non-blank (test_keys_ex)   (make test TESTS=keys_ex): 162 of 3000 differ; cases in /tmp/test_keys_exvsMMEc (| is Enter, ~ Esc)
+caught        keys: a( and i( are not jumps (test_keys_ex)   (make test TESTS=keys_ex): 11 of 3000 differ; cases in /tmp/test_keys_exLLVPl1 (| is Enter, ~ Esc)
+caught        keys: G and gg are not jumps (test_keys_ex)   (make test TESTS=keys_ex): 98 of 3000 differ; cases in /tmp/test_keys_exqQYNx3 (| is Enter, ~ Esc)
+caught        keys: '" is unset before it is set, where Neovim has line 1 (test_keys_ex)   (make test TESTS=keys_ex): 94 of 3000 differ; cases in /tmp/test_keys_exCfx3r9 (| is Enter, ~ Esc)
+caught        keys: tilde does not set '[ and '] (test_keys_ex)   (make test TESTS=keys_ex): 80 of 3000 differ; cases in /tmp/test_keys_exscXMCt (| is Enter, ~ Esc)
+caught        keys: a bare ' in a range is E78 (test_keys_ex)   (make test TESTS=keys_ex): 2 of 3000 differ; cases in /tmp/test_keys_exvhY4uG (| is Enter, ~ Esc)
+caught        keys: g; on an empty change list says nothing (test_keys_ex)   (make test TESTS=keys_ex): tests/test_keys_ex.c:428: CHECK(!strcmp(e.msg, "E664: Changelist is empty")) failed
+caught        keys: verible without Davy's 4-space indent (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:115: CHECK(!strcmp(disk(args), "--indentation_spaces=4 --lines=3-3 -\n")) failed
+caught        keys: :w formats a .sv buffer with no .slang above it (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:128: CHECK(!strcmp(disk(sv), SV)) failed
+caught        keys: a hanging verible is never killed (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:141: CHECK(!strcmp(text(&e), SV) && strstr(e.msg, "verible-verilog-format")) failed
+caught        keys: '[ and '] go with the keys into another buffer (test_keys_ex)   (make test TESTS=keys_ex): 496 of 3000 differ; cases in /tmp/test_keys_exeChw54 (| is Enter, ~ Esc)
+caught        review: the jump list keeps two entries on one line   (make test TESTS=keys_ex): 35 of 3000 differ; cases in /tmp/test_keys_exWbly3F (| is Enter, ~ Esc)
+caught        review: m< on a fresh buffer leaves the area without a mode   (make test TESTS=keys_ex): 1 of 3000 differ; cases in /tmp/test_keys_exBFX0Dz (| is Enter, ~ Esc)
+NOT CAUGHT    review: every match of :s sets ''   (make test TESTS=keys_ex passed)
+caught        review: m" sets nothing   (make test TESTS=keys_ex): 1 of 3000 differ; cases in /tmp/test_keys_exbbXM29 (| is Enter, ~ Esc)
+caught        review: the newest jump goes whatever line the cursor is on   (make test TESTS=keys_ex): 94 of 3000 differ; cases in /tmp/test_keys_exUrizfU (| is Enter, ~ Esc)
+caught        review2: gv with only '< selects   (make test TESTS=keys_ex): 1 of 3000 differ; cases in /tmp/test_keys_exx99SmR (| is Enter, ~ Esc)
+caught        review2: g; says nothing   (make test TESTS=keys_ex): tests/test_keys_ex.c:428: CHECK(!strcmp(e.msg, "E664: Changelist is empty")) failed
+caught        review4: E19 on CTRL-O never given   (make test TESTS=keys_ex): 2 of 3000 differ; cases in /tmp/test_keys_exEnaQGm (| is Enter, ~ Esc)
+caught        keys: the cursor steps one byte, into a character (fuzz_keys)   (make fuzz FUZZERS=keys FUZZ_SECONDS=60): ==23917== ERROR: libFuzzer: deadly signal
+caught        keys: Delete at the end of the last line keeps redo (recorded traces)   (make test TESTS=): 1275 sequences: 9 differ from Neovim
+caught        keys: commands step by code point, not by grapheme cluster (recorded traces)   (make test TESTS=): 1275 sequences: 16 differ from Neovim
+caught        keys: g_ skips blanks from the line end by byte, past a combining mark (recorded traces)   (make test TESTS=): 1275 sequences: 1 differ from Neovim
+caught        keys: an exclusive motion moved to the line before ends on its last character's head, so y } yanks one byte of it (recorded traces)   (make test TESTS=): 1275 sequences: 2 differ from Neovim
+caught        keys: a linewise change deletes its lines with the cursor on the first, so undo after 3S puts the cursor a line too high (recorded traces)   (make test TESTS=): 1275 sequences: 4 differ from Neovim
+caught        keys: CTRL-V U keeps adding digits past U+10FFFF, a signed overflow (fuzz_keys_all)   (make fuzz FUZZERS=keys_all FUZZ_SECONDS=60): src/keys/edit.c:696:74: runtime error: signed integer overflow: 250539758 * 16 cannot be represented in type 'int'
+caught        keys: CTRL-V Del inserts nothing, not <Del> (recorded traces)   (make test TESTS=): 1275 sequences: 2 differ from Neovim
+caught        keys: CTRL-F and CTRL-B do nothing (test_core_screens)   (make test TESTS=core_screens): test_core_screens: 133 of 3056 screens differ from Neovim (29 of 325 cases)
+caught        keys: CTRL-W w to a window on the same buffer leaves the Visual cursor behind (recorded traces)   (make test TESTS=): 1275 sequences: 1 differ from Neovim
+caught        keys: a linewise put's undo step starts on the cursor line, so undo moves another window's cursor on it to column 0 (recorded traces)   (make test TESTS=): 1275 sequences: 3 differ from Neovim
+caught        keys: gqq is not gqgq (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:165: CHECK(!strcmp(text(&e), want(c[i].a, c[i].z))) failed
+caught        keys: a relative path looks for sqldiff.toml from the root, not the working directory (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:219: CHECK(!strcmp(disk("a.sql"), want(0, sizeof SRC - 1))) failed
+caught        keys: gq leaves the cursor on the last paragraph line, not the last line it went over (recorded traces)   (make test TESTS=): 1275 sequences: 7 differ from Neovim
+caught        keys: gq} stays on the paragraph's last line instead of going to the next (recorded traces)   (make test TESTS=): 1275 sequences: 2 differ from Neovim
+caught        keys: gq breaks a line in its indent (recorded traces)   (make test TESTS=):   ours  None {'error': 'timeout after 20 s'}
+caught        keys: gq ignores the window's width (recorded traces)   (make test TESTS=): 1275 sequences: 5 differ from Neovim
+caught        keys: u after a gq that changed nothing puts the cursor on the first line, not back where gq was typed (recorded traces)   (make test TESTS=): 1275 sequences: 1 differ from Neovim
+caught        keys: Insert mode drops a typed or register CTRL-L instead of inserting it (recorded traces)   (make test TESTS=): 1275 sequences: 2 differ from Neovim
+caught        keys: a delete does not reach the clipboard (test_keys_clip)   (make test TESTS=keys_clip): tests/test_keys_clip.c:74: CHECK(has("one ") && is(&e, "two\nthree\n")) failed
+caught        keys: coladvance() does not leave w_virtcol at the column it went to, so a second gqq on a long one-word line then gg keeps the cursor's column (recorded traces)   (make test TESTS=): 1275 sequences: 2 differ from Neovim
+caught        keys: Visual g_ starts its step back at the last character, not the last byte, so it stops before a blank under a combining mark (recorded traces)   (make test TESTS=): 1275 sequences: 1 differ from Neovim
+caught        keys: i) and a) look for the unclosed bracket with quotes special, so from inside a string they miss the block after it (recorded traces)   (make test TESTS=): 1275 sequences: 2 differ from Neovim
+caught        keys: the keys after a failed map skip the pickers, git and the maps, so SPC SPC ff moves and the dashboard's q records a macro (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:49: CHECK(e.ks.pending && at(&e, "abcb\n", 1)) failed
+caught        keys: SPC after an operator starts a map instead of being its motion (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:88: CHECK(!tools_key(&e, KEY_ESC) && at(&e, "bcb\n", 0)) failed
+caught        keys: after ";" the next address counts from the cursor, not from the address before it (test_keys_ex)   (make test TESTS=keys_ex): 50 of 3000 differ; cases in /tmp/test_keys_exmbc2OW (| is Enter, ~ Esc)
+caught        keys: a missing address before a separator is no address, so :,4 is not a range (test_keys_ex)   (make test TESTS=keys_ex): 124 of 3000 differ; cases in /tmp/test_keys_exAYtL2Q (| is Enter, ~ Esc)
+caught        keys: :<line> goes to the first non-blank, as with 'startofline' (test_keys_ex)   (make test TESTS=keys_ex): 428 of 3000 differ; cases in /tmp/test_keys_exxW8dAm (| is Enter, ~ Esc)
+caught        keys: Visual : leaves the cursor at its end, not the start, before the command runs (test_keys_ex)   (make test TESTS=keys_ex): 170 of 3000 differ; cases in /tmp/test_keys_ex66t059 (| is Enter, ~ Esc)
+caught        keys: the yank flash takes the motion's type, not the register's, so "Ayiw after "ayy flashes characters (test_keys_flash)   (make test TESTS=keys_flash): tests/test_keys_flash.c:45: CHECK(flash("\"ayy\"Ayiw", 'V', 0, 0, 0, 2)) failed
+caught        keys: a look-behind body may end anywhere, so \(\D\|\)\@<! matches (test_keys_regex)   (make test TESTS=keys_regex): 7 of 10000 differ; cases in /tmp/test_keys_regexaO7I2J
+caught        keys: \& makes what is before it a negative look-ahead (test_keys_regex)   (make test TESTS=keys_regex): 114 of 10000 differ; cases in /tmp/test_keys_regexPu3Pzq
+caught        keys: \zs in a look-around moves the match start (test_keys_regex)   (make test TESTS=keys_regex): 1 of 10000 differ; cases in /tmp/test_keys_regexNd6umc
+caught        keys: the next match is looked for a character after the last match's start, not from its end ('cpoptions' c) (test_keys_ex)   (make test TESTS=keys_ex): 159 of 3000 differ; cases in /tmp/test_keys_exKpjA21 (| is Enter, ~ Esc)
+caught        keys: d/x/e leaves the match's last character (test_keys_ex)   (make test TESTS=keys_ex): 110 of 3000 differ; cases in /tmp/test_keys_exc3g4vX (| is Enter, ~ Esc)
+caught        keys: * finds the word inside other words, without \< \> (test_keys_ex)   (make test TESTS=keys_ex): 10 of 3000 differ; cases in /tmp/test_keys_exQRwJy3 (| is Enter, ~ Esc)
+caught        keys: * keeps 'smartcase', so * on Foo misses foo (test_keys_ex)   (make test TESTS=keys_ex): 1 of 3000 differ; cases in /tmp/test_keys_exnyx6WF (| is Enter, ~ Esc)
+caught        keys: a block's yank flash takes byte columns, not screen columns, so a Tab's block flashes too little (test_keys_flash)   (make test TESTS=keys_flash): tests/test_keys_flash.c:44: CHECK(flash("lll\x16j$y", 22, 0, 3, 1, 6)) failed
+caught        keys: \c at a pattern's start ends the start, so \c* is E866 (test_keys_regex)   (make test TESTS=keys_regex): 16 of 10000 differ; cases in /tmp/test_keys_regexdpqDAm
+caught        keys: a tilde in a replacement is not the last replacement (test_keys_ex)   (make test TESTS=keys_ex): 38 of 3000 differ; cases in /tmp/test_keys_exPsbQ6m (| is Enter, ~ Esc)
+caught        keys: a match over a line break deletes the wrong line (test_keys_ex)   (make test TESTS=keys_ex): tests/test_keys_ex.c:272: CHECK(none < N / 100) failed
+caught        keys: :s with no pattern says E35 alone, not E476 after it (test_keys_ex)   (make test TESTS=keys_ex): tests/test_keys_ex.c:272: CHECK(none < N / 100) failed
+caught        keys: & is :s, which drops the flags, not Neovim's map to :&& (test_keys_ex)   (make test TESTS=keys_ex): 30 of 3000 differ; cases in /tmp/test_keys_ex7SsnNL (| is Enter, ~ Esc)
+caught        keys: \n does not match the last line's line break (test_keys_ex)   (make test TESTS=keys_ex): 36 of 3000 differ; cases in /tmp/test_keys_exOkpzup (| is Enter, ~ Esc)
+caught        keys: 'hlsearch' draws while :noh hides it (test_keys_ex)   (make test TESTS=keys_ex): 188 of 3000 differ; cases in /tmp/test_keys_exELI7ib (| is Enter, ~ Esc)
+caught        keys: a match from a line above is not drawn (test_keys_ex)   (make test TESTS=keys_ex): tests/test_keys_ex.c:338: CHECK(keys_hl(&e, e.win, 4, 0, &hs, &hz) && hs == 0 && hz == 1) failed
+caught        keys: 'hlsearch' reads stale lines after an edit without a key (test_keys_ex)   (make test TESTS=keys_ex): tests/test_keys_ex.c:312: CHECK(keys_hl(&e, e.win, 1, 0, &hs, &hz) && hs == 4 && hz == 6) failed
+caught        keys: CTRL-L hides the matches after an operator (test_keys_ex)   (make test TESTS=keys_ex): 77 of 3000 differ; cases in /tmp/test_keys_exG47RFa (| is Enter, ~ Esc)
+caught        keys: a answers this match but keeps asking (test_keys_ex)   (make test TESTS=keys_ex): 260 of 3000 differ; cases in /tmp/test_keys_exEfl2Uy (| is Enter, ~ Esc)
+caught        keys: the question shows the line without its substitutions so far (test_keys_ex)   (make test TESTS=keys_ex): tests/test_keys_ex.c:324: CHECK(n == 12 && !memcmp(l, "hellXY world", 12) && e.win->col == 8 && e.ks.pending) failed
+caught        keys: maps take the keys that answer :s (test_keys_ex)   (make test TESTS=keys_ex): tests/test_keys_ex.c:324: CHECK(n == 12 && !memcmp(l, "hellXY world", 12) && e.win->col == 8 && e.ks.pending) failed
+caught        keys: CTRL-E scrolls the cursor into 'scrolloff' (test_keys_ex)   (make test TESTS=keys_ex): tests/test_keys_ex.c:377: CHECK(e.win->line == 44 && e.win->top == 38) failed
+caught        keys: <leader>uk does not turn the save kitten off (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:65: CHECK(!strcmp(e.msg, "Kitten on save: off")) failed
+caught        keys: a pass through a group's join recurses, so a long group repeat grows the C stack (test_keys_ex)   (make test TESTS=keys_ex): ==28156==ERROR: AddressSanitizer: stack-overflow on address 0x7ffc4e0c7ff8 (pc 0x7fa647336190 bp 0x7ffc4e0c8020 sp 0x7ffc4e0c8000 T0)
+caught        keys: 'hlsearch' has no 'redrawtime' (test_keys_ex)   (make test TESTS=keys_ex): tests/test_keys_ex.c:412: CHECK(loop_now() - t0 < 8000000000LL) failed
+caught        keys: an ASCII character before an accent is its own cluster (test_keys_regex)   (make test TESTS=keys_regex): 127 of 10000 differ; cases in /tmp/test_keys_regexKRZmTK
+caught        keys: a map's edit joins the previous command's undo step (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:130: CHECK(at(&d, "* NEXT a b\n", 9)) failed
+caught        keys: @. counts as an executing register, so its yank does not flash (test_keys_flash)   (make test TESTS=keys_flash): tests/test_keys_flash.c:55: CHECK(flash("iyl\x1b@.", 'v', 0, 1, 0, 1)) failed
+caught        keys: the regex stacks stay grown after a search (test_keys_ex)   (make test TESTS=keys_ex): tests/test_keys_ex.c:398: CHECK(!strncmp(e.msg, "E486", 4) && __sanitizer_get_current_allocated_bytes() < held + (32 << 20)) failed
+caught        keys: an ex command leaves '' unsettled, so the next command's checkpcmark() moves it (test_keys_ex)   (make test TESTS=keys_ex): 3 of 3000 differ; cases in /tmp/test_keys_exoETVgD (| is Enter, ~ Esc)
+caught        keys: CTRL-O keeps an entry on the cursor's line at the end of the jump list (test_keys_ex)   (make test TESTS=keys_ex): 34 of 3000 differ; cases in /tmp/test_keys_exUeOLC3 (| is Enter, ~ Esc)
+caught        keys: m' where '' already is loses it to checkpcmark() (test_keys_ex)   (make test TESTS=keys_ex): 5 of 3000 differ; cases in /tmp/test_keys_exBUbq5u (| is Enter, ~ Esc)
+caught        keys: an operator's '[ and '] never reach the buffer (test_keys_ex)   (make test TESTS=keys_ex): 497 of 3000 differ; cases in /tmp/test_keys_exBBucY4 (| is Enter, ~ Esc)
+caught        keys: / ? n N are not jumps (test_keys_ex)   (make test TESTS=keys_ex): 26 of 3000 differ; cases in /tmp/test_keys_exXnA5jt (| is Enter, ~ Esc)
+caught        keys: { and } are not jumps (test_keys_ex)   (make test TESTS=keys_ex): 20 of 3000 differ; cases in /tmp/test_keys_exLuZqGl (| is Enter, ~ Esc)
+caught        keys: % is not a jump (test_keys_ex)   (make test TESTS=keys_ex): 12 of 3000 differ; cases in /tmp/test_keys_exqKq37u (| is Enter, ~ Esc)
+caught        keys: N% is not a jump (test_keys_ex)   (make test TESTS=keys_ex): 14 of 3000 differ; cases in /tmp/test_keys_exeZUSrw (| is Enter, ~ Esc)
+caught        keys: an undo's '[ and '] stay in the core (test_keys_ex)   (make test TESTS=keys_ex): 497 of 3000 differ; cases in /tmp/test_keys_exqRC0O5 (| is Enter, ~ Esc)
+caught        keys: r does not set '[ and '] (test_keys_ex)   (make test TESTS=keys_ex): 91 of 3000 differ; cases in /tmp/test_keys_exjobV73 (| is Enter, ~ Esc)
+caught        keys: m< alone leaves gv no mode (test_keys_ex)   (make test TESTS=keys_ex): 1 of 3000 differ; cases in /tmp/test_keys_exk77ins (| is Enter, ~ Esc)
+caught        keys: drawing 'hlsearch' takes Ctrl-C from the search (test_keys_ex)   (make test TESTS=keys_ex): tests/test_keys_ex.c:417: CHECK(keys_hl(&e, e.win, 400, 0, &hs, &hz) && loop_int) failed
+caught        keys: gq sends verible the whole text, not its lines (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:114: CHECK(!strcmp(text(&e), "module m;\n  wire a;\n    wire b;\nendmodule\n")) failed
+caught        keys: a failed verible's output is applied, emptying the buffer (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:141: CHECK(!strcmp(text(&e), SV) && strstr(e.msg, "verible-verilog-format")) failed
+caught        keys: verible's stderr goes into the buffer (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:114: CHECK(!strcmp(text(&e), "module m;\n  wire a;\n    wire b;\nendmodule\n")) failed
+caught        keys: a key that goes to another buffer puts the last one's '[ and '] there (test_keys_ex)   (make test TESTS=keys_ex): tests/test_keys_ex.c:453: CHECK(e.win->line == 0) failed
+NOT CAUGHT    review: the jump list's place is not moved when entries before it go   (make test TESTS=keys_ex passed)
+caught        review: the saved '' outlives its command   (make test TESTS=keys_ex): 231 of 3000 differ; cases in /tmp/test_keys_exC6ba7h (| is Enter, ~ Esc)
+NOT CAUGHT    review: Enter at column 0 before an indent it removes puts the line above   (make test TESTS=keys_ex passed)
+caught        review: m[ sets nothing   (make test TESTS=keys_ex): 1 of 3000 differ; cases in /tmp/test_keys_exIoGTbX (| is Enter, ~ Esc)
+caught        review2: opmarks(1) after an undo does nothing   (make test TESTS=keys_ex): 1 of 3000 differ; cases in /tmp/test_keys_extQDuSU (| is Enter, ~ Esc)
+caught        review2: swapcase sets the marks though nothing changed   (make test TESTS=keys_ex): 59 of 3000 differ; cases in /tmp/test_keys_exqCfejG (| is Enter, ~ Esc)
+caught        review2: an unset '[ is written to the core as set   (make test TESTS=keys_ex): 102 of 3000 differ; cases in /tmp/test_keys_ex2ICDPj (| is Enter, ~ Esc)
+caught        keys: j and k forget the wanted column (recorded traces)   (make test TESTS=): 1275 sequences: 137 differ from Neovim
+caught        keys: the cursor steps one byte, into a character (fuzz_keys_all)   (make fuzz FUZZERS=keys_all FUZZ_SECONDS=60): ==12109== ERROR: libFuzzer: deadly signal
+caught        keys: tilde steps one byte, into a character (recorded traces)   (make test TESTS=): 1275 sequences: 2 differ from Neovim
+caught        keys: BS in Replace mode puts back one byte, not the whole cluster (recorded traces)   (make test TESTS=): 1275 sequences: 2 differ from Neovim
+caught        keys: check_cursor_col moves a cursor inside a cluster to its head, so Enter before a combining mark loses it (recorded traces)   (make test TESTS=): 1275 sequences: 3 differ from Neovim
+caught        keys: block I ignores a cursor moved before typing, so C-v j I Right x puts the wrong text below (recorded traces)   (make test TESTS=): 1275 sequences: 3 differ from Neovim
+caught        keys: a linewise put ends '] on the last byte, so gv after V p of a 4-byte character lands inside it (recorded traces)   (make test TESTS=): 1275 sequences: 1 differ from Neovim
+caught        keys: a block change that starts past a short line's end leaves that line without its spaces (recorded traces)   (make test TESTS=): 1275 sequences: 3 differ from Neovim
+caught        keys: after a block change whose text broke the line, the cursor stays inside a character (recorded traces)   (make test TESTS=): 1275 sequences: 4 differ from Neovim
+caught        keys: gj and gk move by text lines with 'wrap' on (test_core_screens)   (make test TESTS=core_screens): test_core_screens: 6 of 3056 screens differ from Neovim (2 of 325 cases)
+caught        keys: CTRL-D and CTRL-U that cannot scroll do not beep, so a macro goes on (recorded traces)   (make test TESTS=): 1275 sequences: 2 differ from Neovim
+caught        keys: gq on a .sql buffer is not recognised as SQL (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:165: CHECK(!strcmp(text(&e), want(c[i].a, c[i].z))) failed
+caught        keys: v $ gq takes the next line too, as if gq did not work on lines (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:165: CHECK(!strcmp(text(&e), want(c[i].a, c[i].z))) failed
+caught        keys: :Format does nothing on a .sql buffer (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:175: CHECK(!strcmp(text(&e), want(0, sizeof SRC - 1))) failed
+caught        keys: gq keeps a Tab in a paragraph's indent instead of making it spaces (recorded traces)   (make test TESTS=): 1275 sequences: 9 differ from Neovim
+caught        keys: a blank with a combining mark on it is a break for gq (recorded traces)   (make test TESTS=): 1275 sequences: 4 differ from Neovim
+caught        keys: gq after ^ CTRL-D does not give the first broken line the indent back (recorded traces)   (make test TESTS=): 1275 sequences: 2 differ from Neovim
+caught        keys: gq joins a whole paragraph before breaking it, so its undo grows with the square of its size (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:266: CHECK(text_len(e.buf->text) == size && undone < 10 * size) failed
+caught        keys: the cursor below sqlfmt's edit does not move with it, so it lands on other text (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:249: CHECK(ln == 6 && !memcmp(cl, "-- end", 6) && e.win->col == 5) failed
+caught        keys: CTRL-W g leaves the next key to run on its own, so CTRL-W g x deletes a character (recorded traces)   (make test TESTS=): 1275 sequences: 2 differ from Neovim
+caught        keys: a put does not read the clipboard, so text another program copied is not pasted (test_keys_clip)   (make test TESTS=keys_clip): tests/test_keys_clip.c:81: CHECK(is(&e, "two\nx\ny\n")) failed
+caught        keys: curs_columns() keeps w_virtcol after the cursor was seen to move, so gqq then >> on a long one-word line lands a cell early (recorded traces)   (make test TESTS=): 1275 sequences: 1 differ from Neovim
+caught        keys: a charwise delete that ends before it starts (]] with an operator past a last line starting with }) deletes a huge byte count (recorded traces)   (make test TESTS=):   ours  None {'error': 1, 'stderr': "=================================================================\n==11263==ERROR: AddressSanitizer: requested allocation size 0xffffffffffffffff (0x800 after adjustments for alignment, red zones etc.) exceeds maximum supported size of 0x10000000000 (thread T0)\n    #0 0x7f608aefd9c7 in malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:69\n    #1 0x55ea977578af in edit src/core/core.c:1035\n    #2 0x55ea97758aa1 in core_edit src/core/core.c:1105\n    #3 0x55ea977901d1 in replace_bytes src/keys/buf.c:407\n    #4 0x55ea977d063c in op_delete src/keys/ops.c:469\n    #5 0x55ea977b9f02 in do_pending_operator src/keys/normal.c:1886\n    #6 0x55ea977c16dc in run src/keys/normal.c:1648\n    #7 0x55ea977c16dc in normal_key src/keys/normal.c:1692\n    #8 0x55ea9779c7ec in key src/keys/keys.c:111\n    #9 0x55ea9779d027 in keys_feed src/keys/keys.c:207\n    #10 0x55ea9773f020 in main tests/conform_drv.c:18\n    #11 0x7f608a02a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #12 0x7f608a02a28a in __libc_start_main_impl ../csu/libc-start.c:360\n    #13 0x55ea9773ecb4 in _start (/tmp/tmp.LZxnvr9lfb/build/san/conform_drv+0x2a3cb4) (BuildId: eba46f5d027fe14cfc2b85871118ff01792473e7)\n\n==11263==HINT: if you don't care about these errors you may set allocator_may_return_null=1\nSUMMARY: AddressSanitizer: allocation-size-too-big ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:69 in malloc\n==11263==ABORTING\n"}
+caught        keys: i) and a) look for the closing bracket with quotes not special, as for the opening one (recorded traces)   (make test TESTS=): 1275 sequences: 2 differ from Neovim
+caught        keys: SPC maps also run in Visual mode, where Davy has none (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:90: CHECK(!tools_key(&e, KEY_ESC) && at(&e, "cb\n", 0)) failed
+caught        keys: an incomplete map does not keep the next key, so a picker or git can take it (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:49: CHECK(e.ks.pending && at(&e, "abcb\n", 1)) failed
+caught        keys: ";" leaves the cursor's column past a shorter line's end (test_keys_ex)   (make test TESTS=keys_ex): 5 of 3000 differ; cases in /tmp/test_keys_ex5xaaGI (| is Enter, ~ Esc)
+caught        keys: a number after an address is not added to it, so :.5 and :2 3 fail (test_keys_ex)   (make test TESTS=keys_ex): 103 of 3000 differ; cases in /tmp/test_keys_exbdePFP (| is Enter, ~ Esc)
+caught        keys: the marks < and > are swapped in a range (test_keys_ex)   (make test TESTS=keys_ex): 109 of 3000 differ; cases in /tmp/test_keys_exni2Spj (| is Enter, ~ Esc)
+caught        keys: N: puts .,.+N on the line, one line too many (test_keys_ex)   (make test TESTS=keys_ex): 163 of 3000 differ; cases in /tmp/test_keys_exR0JWE5 (| is Enter, ~ Esc)
+caught        keys: the yank flash is never cleared (test_keys_flash)   (make test TESTS=keys_flash): tests/test_keys_flash.c:77: CHECK(!e.ks.yank.type && core_changed && ms >= 140 && ms < 1000) failed
+caught        keys: an empty pass fails the match instead of ending the loop, so .\(\|\k\)\+ takes \k (test_keys_regex)   (make test TESTS=keys_regex): 4 of 10000 differ; cases in /tmp/test_keys_regex5rWrsg
+caught        keys: \c forgets that a group just opened, so \(\c* makes * a multi (test_keys_regex)   (make test TESTS=keys_regex): 2 of 10000 differ; cases in /tmp/test_keys_regexsmhUUN
+caught        keys: \ze in a look-ahead stays when what follows fails (test_keys_regex)   (make test TESTS=keys_regex): 1 of 10000 differ; cases in /tmp/test_keys_regextcZY8I
+caught        keys: ? skips the match at the cursor, as / does (test_keys_ex)   (make test TESTS=keys_ex): 7 of 3000 differ; cases in /tmp/test_keys_ex9lVd0W (| is Enter, ~ Esc)
+caught        keys: d/x/+1 deletes characters, not lines (test_keys_ex)   (make test TESTS=keys_ex): 119 of 3000 differ; cases in /tmp/test_keys_exu7pXyp (| is Enter, ~ Esc)
+caught        keys: . after d/x deletes up to the next x without typing the search again (test_keys_ex)   (make test TESTS=keys_ex): 29 of 3000 differ; cases in /tmp/test_keys_exHkQ235 (| is Enter, ~ Esc)
+caught        keys: * does not escape what the pattern would read as magic, so * on . finds any character (test_keys_ex)   (make test TESTS=keys_ex): 60 of 3000 differ; cases in /tmp/test_keys_ex4jZL1s (| is Enter, ~ Esc)
+caught        keys: a block's yank flash starts at a Tab's first cell, not where the cursor stood on it (test_keys_flash)   (make test TESTS=keys_flash): tests/test_keys_flash.c:60: CHECK(flash("G\x16ly", 22, 4, 7, 4, 8) && flash("Gl\x16hy", 22, 4, 7, 4, 8)) failed
+caught        keys: :s keeps the g flag it cleared after a match over the last line, so g& after it changes one match a line (test_keys_ex)   (make test TESTS=keys_ex): 2 of 3000 differ; cases in /tmp/test_keys_exoPgiey (| is Enter, ~ Esc)
+caught        keys: \u in a replacement does nothing (test_keys_ex)   (make test TESTS=keys_ex): tests/test_keys_ex.c:272: CHECK(none < N / 100) failed
+caught        keys: :s/\n// on the last line leaves the cursor where it was (test_keys_ex)   (make test TESTS=keys_ex): tests/test_keys_ex.c:272: CHECK(none < N / 100) failed
+caught        keys: a backslash in a replacement stays (test_keys_ex)   (make test TESTS=keys_ex): 85 of 3000 differ; cases in /tmp/test_keys_exVlxbZq (| is Enter, ~ Esc)
+caught        keys: % is the last line alone, not 1,$ (test_keys_ex)   (make test TESTS=keys_ex): 158 of 3000 differ; cases in /tmp/test_keys_ex1iyPLC (| is Enter, ~ Esc)
+caught        keys: beginline stops at a NUL in the line (test_keys_ex)   (make test TESTS=keys_ex): 2 of 3000 differ; cases in /tmp/test_keys_exSQLm4V (| is Enter, ~ Esc)
+caught        keys: a new search leaves the matches hidden (test_keys_ex)   (make test TESTS=keys_ex): 19 of 3000 differ; cases in /tmp/test_keys_exDBNsXt (| is Enter, ~ Esc)
+caught        keys: 'hlsearch' starts at the first line, not the window's top (test_keys_ex)   (make test TESTS=keys_ex): tests/test_keys_ex.c:340: CHECK(!keys_hl(&e, e.win, 4, 0, &hs, &hz)) failed
+caught        keys: the kept regex ignores 'ignorecase' (test_keys_ex)   (make test TESTS=keys_ex): tests/test_keys_ex.c:321: CHECK(!keys_hl(&e, e.win, 2, 0, &hs, &hz)) failed
+caught        keys: :noh takes a range (test_keys_ex)   (make test TESTS=keys_ex): 122 of 3000 differ; cases in /tmp/test_keys_ex0sUN7b (| is Enter, ~ Esc)
+caught        keys: l answers this match but goes on to the next lines (test_keys_ex)   (make test TESTS=keys_ex): 237 of 3000 differ; cases in /tmp/test_keys_exWrozAK (| is Enter, ~ Esc)
+caught        keys: another key asks again without moving the cursor by the change again (test_keys_ex)   (make test TESTS=keys_ex): tests/test_keys_ex.c:327: CHECK(e.win->col == 9 && e.ks.inc.c1 == 9) failed
+caught        keys: the match is not shown in IncSearch (test_keys_ex)   (make test TESTS=keys_ex): tests/test_keys_ex.c:325: CHECK(e.ks.inc.type == 'v' && e.ks.inc.l1 == 2 && e.ks.inc.c1 == 8 && e.ks.inc.l2 == 2 && e.ks.inc.c2 == 8) failed
+caught        keys: CTRL-Y does not scroll (test_keys_ex)   (make test TESTS=keys_ex): 19 of 3000 differ; cases in /tmp/test_keys_extRPoFd (| is Enter, ~ Esc)
+caught        keys: :KittenPaw does not play the kitten (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:74: CHECK(drawn) failed
+caught        keys: the window's close leaves the c flag's question open (test_keys_ex)   (make test TESTS=keys_ex): tests/test_keys_ex.c:358: CHECK(!e.ks.pending && !strstr(e.msg, "replace with")) failed
+caught        keys: the first-literal skip passes a byte past 0x7f under \c (test_keys_regex)   (make test TESTS=keys_regex): 1 of 10000 differ; cases in /tmp/test_keys_regexntDbJw
+caught        keys: a yank's flash ends on the last character's last byte (test_keys_flash)   (make test TESTS=keys_flash): tests/test_keys_flash.c:65: CHECK(flash("Gvly", 'v', 5, 0, 5, 2)) failed
+caught        keys: ciT steps forward as cit does (test_keys_map)   (make test TESTS=keys_map): tests/test_keys_map.c:128: CHECK(at(&d, "* TODO a b\n", 9)) failed
+caught        keys: Ctrl-C does not stop a search or a :s (test_keys_ex)   (make test TESTS=keys_ex): tests/test_keys_ex.c:419: CHECK(e.win->line == 0 && !strcmp(e.msg, "Interrupted")) failed
+caught        keys: a yank's flash ends on the last character's last byte (test_keys_flash)   (make test TESTS=keys_flash): tests/test_keys_flash.c:65: CHECK(flash("Gvly", 'v', 5, 0, 5, 2)) failed
+caught        keys: Enter at column 0 moves the marks on its line down (one edit inserting the break there) (test_keys_ex)   (make test TESTS=keys_ex): 9 of 3000 differ; cases in /tmp/test_keys_exRhu6Ko (| is Enter, ~ Esc)
+caught        keys: the first CTRL-O after a jump does not add the cursor (test_keys_ex)   (make test TESTS=keys_ex): 117 of 3000 differ; cases in /tmp/test_keys_exlaWR0I (| is Enter, ~ Esc)
+caught        keys: '{ and '( set '' while they look for their place (test_keys_ex)   (make test TESTS=keys_ex): 1 of 3000 differ; cases in /tmp/test_keys_exVKDoag (| is Enter, ~ Esc)
+caught        keys: '' moves though the cursor stayed (checkpcmark()) (test_keys_ex)   (make test TESTS=keys_ex): 33 of 3000 differ; cases in /tmp/test_keys_exYg4znv (| is Enter, ~ Esc)
+caught        keys: :s is not a jump (test_keys_ex)   (make test TESTS=keys_ex): 1 of 3000 differ; cases in /tmp/test_keys_exAYhzL7 (| is Enter, ~ Esc)
+caught        keys: ( and ) are not jumps (test_keys_ex)   (make test TESTS=keys_ex): 18 of 3000 differ; cases in /tmp/test_keys_exVQXmZL (| is Enter, ~ Esc)
+caught        keys: H M L are not jumps (test_keys_ex)   (make test TESTS=keys_ex): 36 of 3000 differ; cases in /tmp/test_keys_exe1SITl (| is Enter, ~ Esc)
+caught        keys: [( and ]) are not jumps (test_keys_ex)   (make test TESTS=keys_ex): 2 of 3000 differ; cases in /tmp/test_keys_exRzyA2G (| is Enter, ~ Esc)
+caught        keys: an exclusive yank's '] stays at column 0 of the next line (test_keys_ex)   (make test TESTS=keys_ex): 3 of 3000 differ; cases in /tmp/test_keys_exyqWgcC (| is Enter, ~ Esc)
+caught        keys: gv with only '< set selects (test_keys_ex)   (make test TESTS=keys_ex): 1 of 3000 differ; cases in /tmp/test_keys_exUaCA6r (| is Enter, ~ Esc)
+caught        keys: m[ does not set '[ (test_keys_ex)   (make test TESTS=keys_ex): 1 of 3000 differ; cases in /tmp/test_keys_exYHZNjr (| is Enter, ~ Esc)
+caught        keys: a mark past the last line is gone to (test_keys_ex)   (make test TESTS=keys_ex): 1 of 3000 differ; cases in /tmp/test_keys_exweM72t (| is Enter, ~ Esc)
+caught        keys: :Format sends verible --lines (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:123: CHECK(!strcmp(disk(args), "--indentation_spaces=4 -\n")) failed
+caught        keys: verible's edit runs to the end of the text, so the cursor below it moves onto other text (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:122: CHECK(e.win->line == 3 && e.win->col == 8) failed
+caught        keys: a jump past the last line is gone to, with no E19 (test_keys_ex)   (make test TESTS=keys_ex): 2 of 3000 differ; cases in /tmp/test_keys_ex9fgkJg (| is Enter, ~ Esc)
+caught        keys: a long count is not folded, so its keys overflow the pending command (recorded traces)   (make test TESTS=):   ours  None {'error': 'timeout after 20 s'}
+caught        keys: gq breaks a line in its indent (recorded traces)   (make test TESTS=):   ours  None {'error': 'timeout after 20 s'}
+caught        keys: \u in a replacement does nothing (test_keys_ex)   (make test TESTS=keys_ex): 10 of 3000 differ; cases in /tmp/test_keys_exnhXqmA (| is Enter, ~ Esc)
+caught        keys: & is :s, which drops the flags, not Neovim's map to :&& (test_keys_ex)   (make test TESTS=keys_ex): 30 of 3000 differ; cases in /tmp/test_keys_exCLqpiz (| is Enter, ~ Esc)
+caught        keys: a line break from \r in a replacement leaves the range one line short (test_keys_ex)   (make test TESTS=keys_ex): 20 of 3000 differ; cases in /tmp/test_keys_exmTQyFn (| is Enter, ~ Esc)
+caught        keys: a match over a line break deletes the wrong line (test_keys_ex)   (make test TESTS=keys_ex): 59 of 3000 differ; cases in /tmp/test_keys_exu5DI1s (| is Enter, ~ Esc)
+caught        keys: :s/\n// on the last line leaves the cursor where it was (test_keys_ex)   (make test TESTS=keys_ex): 2 of 3000 differ; cases in /tmp/test_keys_ex7UO6pU (| is Enter, ~ Esc)
+caught        keys: a backslash in a replacement stays (test_keys_ex)   (make test TESTS=keys_ex): 85 of 3000 differ; cases in /tmp/test_keys_exq1ZIK9 (| is Enter, ~ Esc)
+caught        keys: a count after :s counts from the range's start, not its end (test_keys_ex)   (make test TESTS=keys_ex): 35 of 3000 differ; cases in /tmp/test_keys_exp2Yjtg (| is Enter, ~ Esc)
+caught        keys: :s with no pattern says E35 alone, not E476 after it (test_keys_ex)   (make test TESTS=keys_ex): 470 of 3000 differ; cases in /tmp/test_keys_exoXwGqv (| is Enter, ~ Esc)
+NOT CAUGHT    keys: a backslash the match copies is taken as an escape (test_keys_ex)   (make test TESTS=keys_ex passed)

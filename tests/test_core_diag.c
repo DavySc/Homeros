@@ -50,6 +50,29 @@ static int same(const char *got, const char *want)
 	}
 }
 
+/* file, with text written first, in a rows x cols window, once the
+   server's n diagnostics for it are in */
+static void open_diag(Editor *e, Grid *g, const char *file, const char *text, int rows, int cols, int n)
+{
+	FILE *o = fopen(file, "w");
+	CHECK(o && fputs(text, o) >= 0 && !fclose(o));
+	CHECK(!core_open(e, file) && !grid_resize(g, rows, cols));
+	int have = 0;
+	for (int t = 0; t < 500 && have < n; t++) {
+		loop_once(10);
+		lsp_diags(e->buf->lsp, &have);
+	}
+	CHECK(have == n);
+	layout_resize(e, rows, cols);
+}
+
+static void close_diag(Editor *e, Grid *g, const char *file)
+{
+	core_free(e);
+	grid_free(g);
+	unlink(file);
+}
+
 int main(int argc, char **argv)
 {
 	static Editor e;
@@ -65,7 +88,8 @@ int main(int argc, char **argv)
 	static char big[PATH_MAX + 32];
 	snprintf(big, sizeof big, "%s/big.txt", dir);
 	const char *bargv[] = { "python3", py, "--serve", big, NULL };
-	LspServer table[3] = { { ".diag", "diag", sargv, roots, 0 }, { ".dbig", "dbig", bargv, roots, 0 }, { 0 } };
+	LspServer table[4] = { { ".diag", "diag", sargv, roots, 0 }, { ".dbig", "dbig", bargv, roots, 0 },
+	                      { ".org", "org", bargv, roots, 0 }, { 0 } };
 	lsp_servers = table;
 	/* one server for all cases: a file of none stays open */
 	snprintf(file, sizeof file, "%s/keep.diag", dir);
@@ -163,20 +187,17 @@ int main(int argc, char **argv)
 		fputs("F ", o);
 		for (int i = 0; i < NL; i++) fputs("61620a", o);
 		/* case 1: the two windows below */
-		CHECK(fputs("\nE\nD 0 1 1 6d30\nD 6 7 1 6d32\nF 61620a63640a65660a\nE\n", o) >= 0 && !fclose(o));
+		CHECK(fputs("\nE\nD 0 1 1 6d30\nD 6 7 1 6d32\nF 61620a63640a65660a\nE\nD 0 10 1 6d\nF 61205c616c7068612062\nE\nD 0 300 1 6d\nF ", o) >= 0
+		      && !fclose(o));
+		/* case 3: a hundred double-width characters (the "<<<" case) */
+		CHECK((o = fopen(big, "a")));
+		for (int i = 0; i < 100; i++) fputs("e6bca2", o);
+		CHECK(fputs("0a790a\nE\n", o) >= 0 && !fclose(o));
 		snprintf(file, sizeof file, "%s/0.dbig", dir);
-		CHECK((o = fopen(file, "w")));
-		for (int i = 0; i < NL; i++) fputs("ab\n", o);
-		CHECK(!fclose(o));
+		static char text[3 * NL + 1];
+		for (int i = 0; i < NL; i++) memcpy(text + 3 * i, "ab\n", 3);
 		Grid g = { 0 };
-		int have = 0;
-		CHECK(!core_open(&e, file) && !grid_resize(&g, 40, 120));
-		for (int t = 0; t < 500 && have < NL; t++) {
-			loop_once(10);
-			lsp_diags(e.buf->lsp, &have);
-		}
-		CHECK(have == NL);
-		layout_resize(&e, 40, 120);
+		open_diag(&e, &g, file, text, 40, 120, NL);
 		long long best[2];
 		for (int at = 0; at < 2; at++) {
 			e.win->line = at ? NL - 1 : 0;
@@ -193,26 +214,15 @@ int main(int argc, char **argv)
 		   ms, 0.56 to 1.0 ms with no underlines at all, 490 to 530 ms
 		   without the skip */
 		CHECK(best[1] < 20 * best[0] + 1000000);
-		core_free(&e);
-		grid_free(&g);
-		unlink(file);
+		close_diag(&e, &g, file);
 	}
 	/* two windows on one buffer: both show the message on the current
 	   window's cursor line, where the buffer's CursorMoved put it, as
 	   Neovim does (measured by the review of PR 120) */
 	{
 		snprintf(file, sizeof file, "%s/1.dbig", dir);
-		FILE *o = fopen(file, "w");
-		CHECK(o && fputs("ab\ncd\nef\n", o) >= 0 && !fclose(o));
 		Grid g = { 0 };
-		int have = 0;
-		CHECK(!core_open(&e, file) && !grid_resize(&g, 20, 40));
-		for (int t = 0; t < 500 && have < 2; t++) {
-			loop_once(10);
-			lsp_diags(e.buf->lsp, &have);
-		}
-		CHECK(have == 2);
-		layout_resize(&e, 20, 40);
+		open_diag(&e, &g, file, "ab\ncd\nef\n", 20, 40, 2);
 		CHECK(!core_split(&e, 0, 0));
 		Win *other = e.wins == e.win ? e.wins->next : e.wins;
 		CHECK(other && other != e.win);
@@ -233,9 +243,53 @@ int main(int argc, char **argv)
 				row[k] = 0;
 				CHECK(!strstr(row, "m0") == (r != 0) && !strstr(row, "m2"));
 			}
-		core_free(&e);
-		grid_free(&g);
-		unlink(file);
+		/* the message's four blanks take the cursor line's CursorLine
+		   (hl_mode combine) */
+		int sq = -1;
+		for (int c = 4; c < e.win->w && sq < 0; c++)
+			if (!memcmp(grid_text(&g.c[e.win->y * g.cols + e.win->x + c]), "\xe2\x96\xa0", 3)) sq = c;
+		CHECK(sq >= 4);
+		for (int c = sq - 4; c < sq; c++) CHECK(g.c[e.win->y * g.cols + e.win->x + c].bg == FACE_CURSOR_LINE);
+		close_diag(&e, &g, file);
+	}
+	/* a diagnostic over an Org entity: its concealed character is not
+	   underlined, the rest is (Neovim: the cchar keeps Conceal's attribute,
+	   measured on an extmark's conceal) */
+	{
+		snprintf(file, sizeof file, "%s/2.org", dir);
+		Grid g = { 0 };
+		open_diag(&e, &g, file, "a \\alpha b\ny\n", 10, 40, 1);
+		e.win->line = 1;
+		core_update(&e);
+		core_draw(&e, NULL, &g);
+		int alpha = -1, a = -1;
+		for (int c = 0; c < e.win->w; c++) {
+			const Cell *x = &g.c[e.win->y * g.cols + e.win->x + c];
+			if (x->len == 2 && !memcmp(grid_text(x), "\xce\xb1", 2)) alpha = c;
+			if (x->len == 1 && *grid_text(x) == 'a' && a < 0) a = c;
+		}
+		CHECK(a >= 0 && alpha > a);
+		CHECK(g.c[e.win->y * g.cols + e.win->x + a].ul && !g.c[e.win->y * g.cols + e.win->x + alpha].ul);
+		close_diag(&e, &g, file);
+	}
+	/* the blank that "<<<" leaves of a double-width character keeps the
+	   character's underline (measured: wrap, nonumber, the sign column,
+	   20 columns, the cursor at the end of a line of a hundred: "<<<" covers
+	   the sign column and the first cell of a character) */
+	{
+		snprintf(file, sizeof file, "%s/3.dbig", dir);
+		char text[304] = "";
+		for (int i = 0; i < 100; i++) strcat(text, "\xe6\xbc\xa2");
+		strcat(text, "\ny\n");
+		Grid g = { 0 };
+		open_diag(&e, &g, file, text, 6, 20, 1);
+		e.buf->nonumber = 1;
+		core_set_wrap(&e, 1);
+		core_goto(&e, 0, 297);
+		core_draw(&e, NULL, &g);
+		const Cell *x = &g.c[e.win->y * g.cols + e.win->x];
+		CHECK(e.win->skipcol > 0 && *grid_text(&x[2]) == '<' && *grid_text(&x[3]) == ' ' && x[3].ul && !x[2].ul);
+		close_diag(&e, &g, file);
 		unlink(big);
 	}
 	lsp_close(keep);

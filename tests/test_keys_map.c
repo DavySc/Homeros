@@ -118,6 +118,11 @@ int main(void)
 	feed(&e, "\0330v x");
 	CHECK(at(&e, "b\n", 0));
 	feed(&e, "u");
+	/* z then a key past 255 (z<Up>): no fold command, a beep, nothing read
+	   past nv_zet()'s table (fuzz_keys_all found it) */
+	keys_input(&e, 'z', 1);
+	keys_input(&e, KEY_UP, 0);
+	CHECK(!e.ks.pending);
 	/* SPC u p: 'conceallevel' 2 or 0 (Davy's org-toggle-pretty-entities) */
 	e.win->conceal = 2;
 	feed(&e, " up");

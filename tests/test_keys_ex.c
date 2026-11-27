@@ -7,8 +7,10 @@
 #include <unistd.h>
 #include "check.h"
 #include "core.h"
+#include "fold.h"
 #include "keys.h"
 #include "loop.h"
+#include "syntax.h"
 #include "uni.h"
 #include "../src/keys/k.h"
 
@@ -207,11 +209,56 @@ static void hlsearch(Editor *e, char *b, size_t cap)
 }
 
 /* n random cases of gen on text: how many differ from Neovim */
+/* folds: tree-sitter's C folds on both sides (Davy's), the z keys, moves
+   over closed folds, operators and Visual taking them whole, edits, and
+   what opens them ('foldopen'); a step a token, with the parse after each
+   (\1 between them: the oracle waits for Neovim's fold update, ours runs
+   the parse as main.c does); no Visual * (Neovim's default mapping, not
+   built yet) */
+static const char *const FTOK[] = { "zo", "zc", "za", "zR", "zM", "2zc", "2zo", "2za", "j", "k", "2j", "3k", "gg", "G", "3G",
+                                    "yy", "yj", "yk", "y2j", "l", "h", "w", "b", "$", "0", "e", "fz", "%", "{", "}", "''",
+                                    "ma", "'a", "`a", "\x0f", "/b\r", "n", "N", "V", "v", "\x1b", "Vjy", "vjy",
+                                    "Vy", "u", "\x12", "jzc", "kzc", "4Gzc", "9Gzc", "dd", "dj", "x", "J", "p", "P",
+                                    ">>", "<<", "V>", "ox\033", "Ox\033", "ix\033", "\033Vd", "(", ")", "?b\r",
+                                    "f(", "[{", "][", "V3jzc" };
+/* what opens a fold shows only in the next move: Insert, u, { } over the
+   blank line inside one, Visual zo over a nested fold, >>, the motions
+   that open one (b f ) ( [{ ][ ?), but not after Insert's CTRL-O or from a
+   macro (stuffed), u included; u after p or P over a closed fold; o below one; a
+   fold the edit before made; a mark jump that stays put */
+static const char *const FFIX[] = { "3G\1zc\1ix\033\1j", "3G\1zc\1x\1u\1j", "5G\1zo\1x\1zc\1u\1j", "zM\1""5G\1Vj\1zo\1""5G\1j",
+                                    "5G\1zc\1}", "5G\1zc\1{", "8G\1{", "2G\1""2zc\1}", "j\1zc\1>>\1j", "yy\1j\1zc\1p\1u",
+                                    "yy\1""3G\1zc\1P\1u", "j\1zc\1""9G\1zc\1k\1dd\1u", "zM\1""9G\1b\1j",
+                                    "j\1zc\1f(\1j", "j\1zc\1)\1j", "9G\1zc\1(\1j", "5G\1zc\1[{\1j", "zM\1][\1j",
+                                    "j\1zc\1i\x0fzc\033\1j", "j\1zc\1qal\1q\1zc\1@a\1j", "zM\1?b\r\1j", "j\1zc\1ox\033\1j", "3G$\1zc\1?b\r",
+                                    "Oint q() {\r}\033\1zc\1k",
+                                    "j\1ma\1zc\1`a\1j", "j\1x\1zc\1qau\1q\1\x12\1zc\1@a\1j",
+                                    "3G\1x\1x\1zc\1qau\1q\1zc\1@a\1j", "j\1x\1qau\1q\1\x12\1zc\1@a\1j" };
+static void foldkeys(char *k)
+{
+	static unsigned fixed;
+	strcpy(k, "m'\1");   /* the '' mark Neovim's startup sets (ex_oracle.lua) */
+	if (fixed < sizeof FFIX / sizeof *FFIX) { strcat(k, FFIX[fixed++]); return; }
+	for (unsigned t = 1 + rnd(8); t--;) strcat(k, FTOK[rnd(sizeof FTOK / sizeof *FTOK)]), strcat(k, t ? "\1" : "");
+}
+
+/* the fold phase's text is C (text.h, tree-sitter folds on both sides) */
+static int folds;
+/* main.c's parse after a change: syntax_update() and the fold rows it
+   gives to core_folds() */
+static void parse(Editor *e)
+{
+	size_t r1, r2;
+	for (int r = 2; r == 2 && e->buf->syn;) {
+		r = syntax_update(e->buf->syn, e->buf->text, NULL, &r1, &r2);
+		if (r1 < r2) core_folds(e, e->buf, r1, r2);
+	}
+}
 static int check(const char *text, void (*gen)(char *))
 {
 	char dir[] = "/tmp/test_keys_exXXXXXX", tf[64], cases[64], out[64], cmd[512], k[256];
 	CHECK(mkdtemp(dir));
-	snprintf(tf, sizeof tf, "%s/text", dir);
+	snprintf(tf, sizeof tf, folds ? "%s/text.h" : "%s/text", dir);
 	snprintf(cases, sizeof cases, "%s/cases", dir);
 	snprintf(out, sizeof out, "%s/out", dir);
 	FILE *f = fopen(tf, "w");
@@ -219,8 +266,11 @@ static int check(const char *text, void (*gen)(char *))
 	CHECK((f = fopen(cases, "w")));
 	for (int i = 0; i < N; i++) gen(k), fprintf(f, "%s\n", k);
 	CHECK(!fclose(f));
-	/* one Neovim a case, four at a time (src/keys/ex_oracle.lua) */
-	snprintf(cmd, sizeof cmd, "seq %d | xargs -P 4 -I{} timeout 10 nvim --headless --clean -l src/keys/ex_oracle.lua %s %s %s.{} {} 2>/dev/null", N, tf, cases, out);
+	/* one Neovim a case, four at a time (src/keys/ex_oracle.lua); % is
+	   Neovim's own, as tools/conform.py's */
+	snprintf(cmd, sizeof cmd, "seq %d | xargs -P 4 -I{} timeout 20 nvim --headless --clean --cmd \"let g:loaded_matchit=1\" %s%s %s %s.{} {}%s 2>/dev/null",
+	         N, folds ? "-c \"lua _G.arg = vim.split('" : "-l src/keys/ex_oracle.lua ", tf, cases, out,
+	         folds ? "', ' ')\" -c \"luafile src/keys/ex_oracle.lua\"" : "");
 	CHECK(system(cmd) >= 0);
 	FILE *c = fopen(cases, "r");
 	CHECK(c);
@@ -240,6 +290,7 @@ static int check(const char *text, void (*gen)(char *))
 		want[strcspn(want, "\n")] = 0;
 		static Editor e;
 		CHECK(!core_open(&e, tf));
+		if (folds) parse(&e);
 		normal_reset();
 		ops_reset(), edit_reset(), motion_reset();   /* each case is a fresh Neovim (a recording, registers) */
 		/* v:errmsg: the last error, though later messages replace it */
@@ -248,7 +299,8 @@ static int check(const char *text, void (*gen)(char *))
 		for (size_t j = 0, n = strlen(k), l; k[j] != '\n'; j += l) {
 			l = uni_len((const unsigned char *)k, n, j);
 			int c = (int)uni_cp((const unsigned char *)k, n, j);
-			keys_feed(&e, c == '\r' ? KEY_ENTER : c == 27 ? KEY_ESC : c, k[j + l] != '\n');
+			if (c == 1) { parse(&e); continue; }
+			keys_feed(&e, c == '\r' ? KEY_ENTER : c == 27 ? KEY_ESC : c, k[j + l] != '\n' && k[j + l] != 1);
 			if (e.msg[0] == 'E') memcpy(m, e.msg, sizeof m);
 		}
 		size_t n = text_read(e.buf->text, 0, got, sizeof got - 1);
@@ -257,11 +309,16 @@ static int check(const char *text, void (*gen)(char *))
 		/* a NUL in a line (\n in a replacement) as ex_oracle.lua writes it */
 		for (size_t j = 0; j < n; j++) got[j] = got[j] == '\n' ? 1 : got[j] ? got[j] : 2;
 		hw[strcspn(hw, "\n")] = 0;
-		hlsearch(&e, hg, sizeof hg);
+		if (folds) {   /* foldclosed() of each line, as ex_oracle.lua writes it */
+			parse(&e);
+			int z = sprintf(hg, "0\1");
+			for (size_t l = 0, a, b; l < core_lines(&e); l++)
+				z += sprintf(hg + z, "%s%ld", l ? "," : "", e.win->fold && fold_closed(e.win->fold, l, &a, &b) ? (long)a + 1 : -1L);
+		} else hlsearch(&e, hg, sizeof hg);
 		if ((long)e.win->line + 1 != line || (long)e.win->col != col || strncmp(m, err, strlen(err)) || (m[0] == 'E' && m[strlen(err)] != ':')
 		    || strcmp(got, want) || (!strchr(hw, '?') && strcmp(hg, hw))) {
 			k[strcspn(k, "\n")] = 0;
-			for (char *s = k; *s; s++) if (*s == '\r' || *s == 27) *s = *s == '\r' ? '|' : '~';
+			for (char *s = k; *s; s++) if (*s == '\r' || *s == 27 || *s == 1) *s = *s == '\r' ? '|' : *s == 1 ? ' ' : '~';
 			if (bad++ < 10) fprintf(stderr, "%d %s: line %zu col %zu [%s], Neovim %ld %ld %s%s%s\n", i, k, e.win->line + 1, e.win->col, e.msg, line, col, err, strcmp(got, want) ? " (text differs)" : "",
 				                      !strchr(hw, '?') && strcmp(hg, hw) ? " (hlsearch differs)" : "");
 			if (bad <= 10 && !strchr(hw, '?') && strcmp(hg, hw)) fprintf(stderr, "  %s\n  Neovim %s\n", hg, hw);
@@ -479,6 +536,8 @@ int main(void)
 	char t4[256] = "";
 	for (int i = 0; i < 4; i++) strcat(t4, "foo bar\nabc Foo x\n  foo.bar(a) 12\nbaz?\\\n\nx/y?z foo\nfoofoo zz\n");
 	CHECK(!check(t4, confirm));
-	printf("test_keys_ex: %d random ranges, %d mark and jump sequences, %d searches, %d substitutions and %d answered, each as Neovim (cursor, error, text, 'hlsearch')\n", N, N, N, N, N);
+	folds = 1;   /* last: a phase before another shifts its random cases */
+	CHECK(!check("int a;\nvoid f() {\n  int b;\n  if (b) {\n    b++;\n\n  }\n}\nvoid g() {\n  g();\n}\nint z;\n", foldkeys));
+	printf("test_keys_ex: %d random ranges, %d mark and jump sequences, %d searches, %d substitutions, %d answered and %d over folds, each as Neovim (cursor, error, text, 'hlsearch')\n", N, N, N, N, N, N);
 	return 0;
 }

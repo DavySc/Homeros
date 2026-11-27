@@ -169,6 +169,8 @@ int do_search(Oparg *oap, int dirc, const char *pat, long count, int rev, int ma
 	if (!dirc) dirc = off.dir;
 	else off.dir = dirc;
 	if (rev) dirc = dirc == '/' ? '?' : '/';
+	/* in a closed fold: no other match in the same fold */
+	if (dirc == '/' ? has_folding(pos.lnum, NULL, &pos.lnum) : has_folding(pos.lnum, &pos.lnum, NULL)) pos.col = dirc == '/' ? MAXCOL - 2 : 0;
 	char buf[sizeof used];
 	const char *sp = NULL;   /* the pattern typed, NULL for the last used */
 	if (pat) {

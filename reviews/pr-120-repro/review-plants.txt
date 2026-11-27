@@ -1,0 +1,27 @@
+# Review of PR 120: the reviewer's own plants, in tests/plants' format
+review: an end past the last line is not clamped (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~	if (zl >= nl) zl = nl - 1;~	(void)0;
+review: a start past the last line is not clamped (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~	if (al >= nl) al = nl - 1;~	(void)0;
+review: a diagnostic at the next line's start counts for this line's sign (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~z < n && v[z].a < le; z++~z < n && v[z].a <= le; z++
+review: a message's carriage return is drawn (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~strcspn(m, "\r\n\t")~strcspn(m, "\n\t")
+review: a severity over 4 reads past the faces (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~return d->sev < 4 ? d->sev - 1 : 3;~return d->sev - 1;
+review: only the last 8 underlines of a line are kept (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~		if (nu == 64) memmove~		if (nu == 8) memmove
+review: the 65th underline of a line is written past the array (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~		if (nu == 64) memmove~		if (nu == 640) memmove
+review: the message's four blanks are not on CursorLine (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~x < z; x++) g->c[y * g->cols + x].bg = cl;~x < z; x++) g->c[y * g->cols + x].bg = 0;
+review: an underline that ends at the line's start is drawn on it (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~if (a + 1 >= le || z <= ls || z <= a) continue;~if (a + 1 >= le || z < ls || z <= a) continue;
+review: an underline on the line break is kept for the line (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~if (a + 1 >= le || z <= ls || z <= a) continue;~if (a >= le || z <= ls || z <= a) continue;
+review: every sign in the error's colour (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~(unsigned char)(FACE_DIAG_ERROR + sev(&v[hi - 1])));~(unsigned char)(FACE_DIAG_ERROR));
+review: the message in its first diagnostic's colour (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~	int f = FACE_DIAG_VT_ERROR + sev(&v[hi - 1]);~	int f = FACE_DIAG_VT_ERROR + sev(&v[lo]);
+review: every square in the last diagnostic's colour (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~3, FACE_DIAG_VT_ERROR + sev(&v[k]));~3, FACE_DIAG_VT_ERROR + sev(&v[hi - 1]));
+review: no underline on the blank "<<<" leaves of a double-width character (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~(const unsigned char *)" ", 1, 0, 1, face, vis ? vis : sb, ul);~(const unsigned char *)" ", 1, 0, 1, face, vis ? vis : sb, 0);
+review: the message in another window of another buffer is on the current window's cursor line (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~l == (w->buf == e->win->buf ? e->win->line : w->line)~l == e->win->line
+review: the message in a second window of the buffer is on that window's cursor line (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~l == (w->buf == e->win->buf ? e->win->line : w->line)~l == w->line
+review: at most 8 conceal spans a line (test_core_conceal)~test TESTS=core_conceal~~src/core/draw.c~syntax_conceal(syn, l, cs, 64) : 0,~syntax_conceal(syn, l, cs, 8) : 0,
+review: a concealed span's character has no underline (test_core_conceal)~test TESTS="core_conceal core_diag"~~src/core/draw.c~strlen(cc->s), 0, 1, face, vis ? vis : sb, ul);~strlen(cc->s), 0, 1, face, vis ? vis : sb, 0);
+review: the conceal scroll counts one line fewer to the half (test_core_conceal)~test TESTS=core_conceal~~src/core/move.c~if (l >= n - 1 || ++d >= half) break;~if (l >= n - 1 || ++d > half) break;
+review: the conceal scroll counts back one line fewer (test_core_conceal)~test TESTS=core_conceal~~src/core/move.c~if (l < 0 || ++d > w->h + 1) break;~if (l < 0 || ++d > w->h) break;
+review: buf_load adds the watch fd again for every file (test_core_contract)~test TESTS="core_contract loop"~~src/core/core.c~			loop_unwatch(b->watch);~			(void)0;
+review: a message's Tab is eight blanks (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~(size_t)(8 - (x - w->x - nw) % 8), f);~(size_t)8, f);
+review: no message when the line's text is cut by the window (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~if (row < r + line_rows(w, l) && row < w->h) draw_vt~if (row == r && row < w->h) draw_vt
+review: the sign column also without diagnostics (test_core_diag)~test TESTS="core_diag core_screens"~~src/core/move.c~	return n ? 2 : 0;~	return 2;
+review: a tied underline takes the later one (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~(u < 0 || us[j].a > us[u].a)~(u < 0 || us[j].a >= us[u].a)
+review: grid_put keeps a cell's underline (test_core_diag)~test TESTS="core_diag grid_diff"~~src/grid/grid.c~	x->bg = x->ul = 0;~	x->bg = 0;
