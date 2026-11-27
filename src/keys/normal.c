@@ -1684,8 +1684,9 @@ void restart_insert(void)
 		edit_start(restart_edit, 1);
 }
 
-/* a command half typed: vgetorpeek() would be waiting for its next key */
-int normal_pending(void) { return npend > 0; }
+/* a command half typed: vgetorpeek() would be waiting for its next key,
+   also after a whole operator or register name (oa holds them) */
+int normal_pending(void) { return npend > 0 || oa.op_type != OP_NOP || oa.regname; }
 /* only a count and a register are typed: Neovim checks maps for the
    command's first key there too (safe_vgetc()).  A map that runs takes them,
    as its <Cmd> does (measured: with nnoremap <Space>ff <Cmd>echo<CR>,

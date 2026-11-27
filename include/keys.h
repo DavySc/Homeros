@@ -18,8 +18,8 @@ enum {
 	KEY_CTRL_DOT,        /* Ctrl+.: opens and closes the terminal (tools_key) */
 	KEY_F5,              /* runs the SQL buffer or its selection (sql_key; SSMS) */
 	/* the Pause/Break key, alone or with Alt (SSMS's Alt+Break): cancels the
-	   SQL run (sql_key).  Ctrl+Break is Windows' Ctrl-C, and a terminal sends
-	   no key for it */
+	   SQL run (sql_key), as Ctrl-C does while one runs.  Ctrl+Break is
+	   Windows' Ctrl-C, and a terminal sends no key for it */
 	KEY_BREAK,
 	/* the system focused another OS window: keys ends insert mode, Visual
 	   mode and a half-typed command, as Esc would without the beep

@@ -2,7 +2,7 @@
    test_sql.c): F5 on the whole buffer and on a selection, GO batches and
    GO n, messages next to rows in the server's order, Alt+Break, the
    results split opened and closed, the folder's connection and :Connect,
-   and the connections file's refusals. */
+   the connections file's refusals, and the catalog. */
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -69,6 +69,31 @@ static int f5_once_idle(void)
 	return 0;
 }
 
+
+/* table hcat's columns as "schema.hcat.column " (and the header line's,
+   which is not a row, and Postgres's own, which are not listed) */
+static void hcat(void *ctx, const char *schema, const char *table, const char *column)
+{
+	char *o = ctx;
+	if (!strcmp(table, "hcat") || !strcmp(table, "table_name") || !strcmp(table, "TABLE_NAME") || !strcmp(schema, "pg_catalog")) snprintf(o + strlen(o), 256 - strlen(o), "%s.%s.%s ", schema, table, column);
+}
+
+/* the catalog of the current buffer's connection once read (3 s at most): its columns, hcat's in o */
+static int catalog(char *o)
+{
+	int n = 0;
+	for (int i = 0; i < 300 && !(n = sql_catalog(&e, e.buf, hcat, (*o = 0, o))); i++) loop_once(10);
+	return n;
+}
+
+/* path holding sql, opened and run to its end */
+static const char *f5(const char *path, const char *sql)
+{
+	put(path, sql, 0600);
+	CHECK(!core_edit_file(&e, path, 0) && sql_key(&e, KEY_F5) == 1);
+	return until("Completion time");
+}
+
 static int nwins(void) { int n = 0; for (Win *w = e.wins; w; w = w->next) n++; return n; }
 
 int main(void)
@@ -90,7 +115,8 @@ int main(void)
 	   space; Postgres's port by default */
 	snprintf(f, sizeof f, "ms mssql 127.0.0.1 sa master trust pass=%s\npg pg 127.0.0.1 postgres postgres trust pass=%s\n"
 		"dir %s/ms/deep pg\ndir ~/ms ms\ndir %s/pg pg\ndir  %s/a b   ms \n"
-		"bad mssql 127.0.0.1:99999 sa master pass=x\nletters mssql 127.0.0.1:1433x sa master pass=x\nnopass mssql 127.0.0.1 sa master\nv6 mssql [::1]:1433 sa master pass=x\n", sa, pg, dir, dir, dir);
+		"bad mssql 127.0.0.1:99999 sa master pass=x\nletters mssql 127.0.0.1:1433x sa master pass=x\nnopass mssql 127.0.0.1 sa master\nv6 mssql [::1]:1433 sa master pass=x\n"
+		"cs mssql 127.0.0.1 sa hcs trust pass=%s\nlim pg 127.0.0.1 hlim postgres trust pass=%s\nnohost mssql nohost.invalid sa master pass=x\n", sa, pg, dir, dir, dir, sa, pg);
 	put(conf, f, 0644);
 #ifndef _WIN32   /* there the profile is the user's (sql.c, as libpq) */
 	CHECK(sql_key(&e, KEY_F5) == 1 && strstr(e.msg, "others can read it"));
@@ -226,6 +252,45 @@ int main(void)
 	CHECK(!sql_disconnect(&e) && strstr(e.msg, "disconnected from ms") && sql_disconnect(&e) && strstr(e.msg, "not connected"));
 	CHECK(!text_delete(e.buf->text, 0, text_len(e.buf->text)) && !text_insert(e.buf->text, 0, "select * from #d\n", 17));
 	CHECK(sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), "Invalid object name '#d'"));
+	/* F5 on a server that cannot be opened says why */
+	CHECK(!core_edit_file(&e, "ms/a.sql", 0) && !sql_connect(&e, "nohost") && sql_key(&e, KEY_F5) == 1 && strstr(until("nohost.invalid"), "nohost.invalid"));
+	/* the catalog (completion's): read when a session on the connection
+	   logs in, on a connection of its own, closed once read; the columns
+	   in their order, names with a tab or a backslash whole; one per connection,
+	   kept; NULL reads it again; :Connect drops it; a failed read is tried
+	   at the next login; only .sql buffers; never a message */
+	char cat[256];
+	const char *users = "select count(*) n from sys.dm_exec_sessions where is_user_process = 1\n";
+	CHECK(strstr(f5("ms/q.sql", "drop table if exists hcat\ncreate table hcat (k int, b int, [v w] nvarchar(9), [t\tab] int, [a\\b] int)\n"), "Completion"));
+	int n = atoi(strstr(f5("ms/v.sql", users), "n\n") + 2);
+	CHECK(!core_edit_file(&e, "ms/q.sql", 0) && !sql_catalog(&e, e.buf, NULL, NULL) && catalog(cat) > 0 && !strcmp(cat, "dbo.hcat.k dbo.hcat.b dbo.hcat.v w dbo.hcat.t\tab dbo.hcat.a\\b "));
+	int same = 0;
+	for (int i = 0; i < 20 && !same; i++) same = atoi(strstr(f5("ms/v.sql", users), "n\n") + 2) == n;
+	CHECK(same);
+	CHECK(strstr(f5("ms/r.sql", "alter table hcat add z int\n"), "Completion"));
+	CHECK(!core_edit_file(&e, "ms/a.sql", 0) && !sql_connect(&e, "ms") && sql_catalog(&e, e.buf, hcat, (*cat = 0, cat)) == 0 && !*cat);
+	CHECK(!core_edit_file(&e, "ms/q.sql", 0) && !sql_catalog(&e, e.buf, hcat, cat));
+	CHECK(!core_edit_file(&e, "ms/a.sql", 0) && sql_key(&e, KEY_F5) == 1 && until("Completion time") && catalog(cat) > 0 && !strcmp(cat, "dbo.hcat.k dbo.hcat.b dbo.hcat.v w dbo.hcat.t\tab dbo.hcat.a\\b dbo.hcat.z "));
+	snprintf(f, sizeof f, "drop table if exists hcat; create table hcat (k int, b int, \"v w\" text, \"t\tab\" int, \"a\\b\" int);"
+		" do $$ begin create role hlim login; exception when duplicate_object then null; end $$;"
+		" alter role hlim password '%s' connection limit 1; grant select on hcat to hlim\n", pg);
+	CHECK(strstr(f5("pg/s.sql", f), "Completion") && !sql_catalog(&e, e.buf, NULL, NULL) && catalog(cat) > 0 && !strcmp(cat, "public.hcat.k public.hcat.b public.hcat.v w public.hcat.t\tab public.hcat.a\\b "));
+	CHECK(!core_edit_file(&e, "ms/q.sql", 0) && sql_catalog(&e, e.buf, hcat, (*cat = 0, cat)) > 0 && !strcmp(cat, "dbo.hcat.k dbo.hcat.b dbo.hcat.v w dbo.hcat.t\tab dbo.hcat.a\\b dbo.hcat.z "));
+	put("pg/t.sql", "select 1 as one\n", 0600);
+	CHECK(!core_edit_file(&e, "pg/t.sql", 0) && !sql_connect(&e, "lim") && sql_key(&e, KEY_F5) == 1 && until("Completion time"));
+	for (int i = 0; i < 100; i++) loop_once(10);
+	CHECK(!sql_catalog(&e, e.buf, hcat, cat));   /* its one connection is the session's */
+	CHECK(strstr(f5("pg/u.sql", "alter role hlim connection limit 2\n"), "Completion"));
+	CHECK(!core_edit_file(&e, "pg/t.sql", 0) && !sql_disconnect(&e) && sql_key(&e, KEY_F5) == 1 && until("Completion time"));
+	CHECK(catalog(cat) > 0 && !strcmp(cat, "public.hcat.k public.hcat.b public.hcat.v w public.hcat.t\tab public.hcat.a\\b "));
+	CHECK(strstr(f5("ms/w.sql", "if db_id('hcs') is null create database hcs collate Latin1_General_CS_AS\n"), "Completion"));
+	put("ms/x.sql", "drop table if exists hcat\ncreate table hcat (K int)\n", 0600);
+	CHECK(!core_edit_file(&e, "ms/x.sql", 0) && !sql_connect(&e, "cs") && sql_key(&e, KEY_F5) == 1 && until("Completion time"));
+	CHECK(!sql_catalog(&e, e.buf, NULL, NULL) && catalog(cat) > 0 && !strcmp(cat, "dbo.hcat.K "));
+	put("ms/y.txt", "x\n", 0600);
+	CHECK(!core_edit_file(&e, "ms/y.txt", 0) && !sql_catalog(&e, e.buf, hcat, cat));
+	put("msx/o.sql", "select 1\n", 0600);
+	CHECK(!core_edit_file(&e, "msx/o.sql", 0) && strcpy(e.msg, "kept") && !sql_catalog(&e, e.buf, hcat, cat) && !strcmp(e.msg, "kept"));
 	/* not a SQL buffer: F5 is not ours */
 	put("x.txt", "x\n", 0600);
 	CHECK(!core_edit_file(&e, "x.txt", 0) && !sql_key(&e, KEY_F5));

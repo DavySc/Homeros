@@ -1,0 +1,13 @@
+rv: F5's open error lost (dial closes before run() reads it)~test TESTS=sql_editor~~src/sql/sql.c~	if ((s->fd = dial(&s->db, &s->spec, wake, s)) < 0) { putz(s, db_net(&s->db)->err), putz(s, "\n"); s->q.n = 0; return -1; }~	if ((s->fd = dial(&s->db, &s->spec, wake, s)) < 0) { s->q.n = 0; return -1; }
+rv: the login's messages kept in the catalog's output~test TESTS=sql_editor~~src/sql/sql.c~	if (was < DB_READY) o->n = 0;   /* the login's messages */~
+rv: Postgres's own schemas listed~test TESTS=sql_editor~~src/sql/sql.c~		" where table_schema not in ('pg_catalog', 'information_schema') order by 1, 2, ordinal_position");~		" order by 1, 2, ordinal_position");
+rv: columns by name, not by position~test TESTS=sql_editor~~src/sql/sql.c~ order by 1, 2, ordinal_position");~ order by 1, 2, 3");
+rv: a line of four fields taken as a row~test TESTS=sql_editor~~src/sql/sql.c~ && !memchr(b + 1, '\t', (size_t)(n - b - 1)) && (h~ && (h
+rv: a dropped catalog keeps its rows~test TESTS=sql_editor~~src/sql/sql.c~	if (st != 2) s->cols.n = 0;~
+rv: the catalog of any buffer, .sql or not~test TESTS=sql_editor~~src/sql/sql.c~	Sess *s = is_sql(b) ? sess(b->nr, 1) : NULL;~	Sess *s = sess(b->nr, 1);
+rv: a failed catalog keeps its connection watched~test TESTS=sql_editor~~src/sql/sql.c~	if (r || db_state(&s->cdb) == DB_DEAD) { uncat(s, -1); return; }~	if (r || db_state(&s->cdb) == DB_DEAD) return;
+rv: the catalog's write wake never off~test TESTS=sql_editor~~src/sql/sql.c~	loop_write(s->cfd, db_pending(&s->cdb));~
+rv: one catalog for every connection~test TESTS=sql_editor~~src/sql/sql.c~if (S[i]->cst && !strcmp(S[i]->spec.name, s->spec.name)) k = S[i];~if (S[i]->cst) k = S[i];
+rv: a failed open read again on every call~test TESTS=sql_editor~~src/sql/sql.c~ < 0 ? -1 : 1;~ < 0 ? 0 : 1;
+rv: the catalog's rows handed out while it loads~test TESTS=sql_editor~~src/sql/sql.c~	if (k->cst != 2 || !k->cols.n) return 0;~	if (!k->cols.n) return 0;
+rv: the catalog's connection left open once read~test TESTS=sql_editor~~src/sql/sql.c~		uncat(s, r ? -1 : 2);~		s->cst = r ? -1 : 2;
