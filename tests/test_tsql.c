@@ -172,19 +172,24 @@ static const char *const snip[] = {
 	"\n", " ", ".", "decl", ".decl ", ".output ", "output", "(", ")", ",", ":-", ":", "-", ">", "<", "=", "!",
 	"\"", "\\", "\\\"", "//", "/*", "*/", "#", "#include \"x\"\n", "1", "0x1F", "1.5", "u", "edge", "count",
 	"number", "x", "_", "?y", "@", "[", "]", "{", "}", ";", "e", "\xc3\xa9",
+}, *const lsnip[] = {
+	"\n", " ", "--", "/-", "-/", "/--", "/-!", "\"", "\\", "\\\"", "'", "def ", "theorem", "where", ":=", "(", ")",
+	"{", "}", "[", "]", "\xc2\xab", "\xc2\xbb", "@[simp]", "s!", "0x1F", "3.5e-2", "x", "true", "#eval", "`",
+	"*", "**", "_", "#", "### ", "> ", "- ", "1. ", "```", "[a]: <u> \"t\"", "<http://a.b>", "\xce\xb1",
 };
 enum { MAXT = 1 << 17 };
-/* the random texts' language, as tsql_new's: half T-SQL, a quarter JSON
-   and a quarter Soufflé, on the same index */
+/* the random texts' language, as tsql_new's: two fifths T-SQL, a fifth
+   each JSON, Soufflé and Lean, on the same index */
 static int lang;
-#define PATH ((const char *const[]){ "x.sql", "x.json", "x.dl" }[lang])
+#define PATH ((const char *const[]){ "x.sql", "x.json", "x.dl", "x.lean" }[lang])
 
 /* snippets into b until want bytes, and never past cap */
 static size_t gen(char *b, size_t want, size_t cap)
 {
 	size_t n = 0;
 	while (n < want) {
-		const char *s = lang == 2 ? dsnip[rnd(sizeof dsnip / sizeof *dsnip)] : lang ? jsnip[rnd(sizeof jsnip / sizeof *jsnip)] : snip[rnd(sizeof snip / sizeof *snip)];
+		const char *s = lang == 3 ? lsnip[rnd(sizeof lsnip / sizeof *lsnip)] : lang == 2 ? dsnip[rnd(sizeof dsnip / sizeof *dsnip)]
+			: lang ? jsnip[rnd(sizeof jsnip / sizeof *jsnip)] : snip[rnd(sizeof snip / sizeof *snip)];
 		size_t l = strlen(s);
 		if (n + l > cap) break;
 		memcpy(b + n, s, l);
@@ -233,6 +238,68 @@ static void edit_near_start(const char *mid, size_t z0, size_t at, const char *i
 	text_free(t);
 }
 
+/* A Lean text b, n bytes, its index filled; at at, del bytes become ins;
+   with wz, the frame [wa, wz) before the index is filled again: then
+   every face must equal a fresh read's */
+static void lean_edit(const char *b, size_t n, size_t at, size_t del, const char *ins, size_t wa, size_t wz)
+{
+	static unsigned char f[MAXT], g[MAXT];
+	size_t il = strlen(ins);
+	Text *t = text_new(b, n);
+	Syntax *s = syntax_open("x.lean", t);
+	CHECK(t && s);
+	syntax_update(s, t, NULL, &r1, &r2);
+	syntax_edit(s, t, at, del, ins, il);
+	CHECK(!text_delete(t, at, del) && !text_insert(t, at, ins, il));
+	n = n - del + il;
+	if (wz) syntax_faces(s, wa, wz, f + wa);
+	syntax_update(s, t, NULL, &r1, &r2);
+	for (size_t a = 0, e; a < n; a = e) {
+		e = text_line_start(t, text_line_of(t, a) + 1);
+		syntax_faces(s, a, e, f + a);
+	}
+	lang = 3, fresh(t, g), lang = 0;
+	CHECK(!memcmp(f, g, n));
+	syntax_free(s);
+	text_free(t);
+}
+
+/* Lean's kept states, each case a mechanism that keeps them right:
+   - a fence's line is a distance back: an insertion at byte 0 moves the
+     fence and the kept starts inside it, while the update stops at the
+     kept start between, its state unchanged;
+   - an edit moves each kept start's state with it: a deletion takes the
+     first kept start of two in code, so the second's place holds the
+     first's (equal) state, and the rest, alternating code and comment,
+     would be taken unread;
+   - the frame's line keeps the state after it: the frame ends on the
+     line that opens a comment, and the update takes that line from it */
+static void lean_states(void)
+{
+	static char b[MAXT];
+	size_t n = (size_t)sprintf(b, "/-! x -/\n");
+	while (n < 5000) n += (size_t)sprintf(b + n, "def a := 1\n");
+	n += (size_t)sprintf(b + n, "/-!\n     ```\n");
+	while (n < 10000) n += (size_t)sprintf(b + n, "x\n");
+	n += (size_t)sprintf(b + n, "     ```\n-/\ndef a := 1\n");
+	lean_edit(b, n, 0, 0, "a", 0, 0);
+	n = 0;
+	for (int k = 0; k < 4; k++) {
+		for (size_t e = n + 9000; n < e; ) n += (size_t)sprintf(b + n, "def a := 1\n");
+		n += (size_t)sprintf(b + n, "/-\n");
+		for (size_t e = n + 5000; n < e; ) n += (size_t)sprintf(b + n, "x\n");
+		n += (size_t)sprintf(b + n, "-/\n");
+	}
+	lean_edit(b, n, 2200, 4400, "", 0, 0);
+	n = 0;
+	while (n < 2200) n += (size_t)sprintf(b + n, "def a := 1\n");
+	size_t o = n;
+	n += (size_t)sprintf(b + n, "/-\n");
+	while (n < 8300) n += (size_t)sprintf(b + n, "x\n");
+	n += (size_t)sprintf(b + n, "-/\ndef a := 1\n");
+	lean_edit(b, n, 100, 0, "a", o - 10, o + 4);
+}
+
 int main(void)
 {
 	char got[256];
@@ -259,6 +326,7 @@ int main(void)
 	edit_near_start("1e+ ", 4099, 4098, "3");   /* "e" and "+" join 1e+3 */
 	/* the last token read, "1", ends two bytes before the edit */
 	edit_near_start("1e+ ", 4096, 4098, "3");
+	lean_states();
 	/* a NUL starts no two-byte operator (strchr finds the terminator) */
 	Text *t0 = text_new("\0=", 2);
 	TsqlRd r0 = { t0, 0, 0, { 0 }, 0 };
@@ -289,10 +357,10 @@ int main(void)
 	   fresh read, wherever the windows are asked and the index grows */
 	static char b[MAXT];
 	static unsigned char f[MAXT], g[MAXT];
-	unsigned cases = 800, steps = 0, windows = 0;
+	unsigned cases = 1000, steps = 0, windows = 0;
 	size_t bytes = 0;
 	for (unsigned c = 0; c < cases; c++) {
-		lang = c % 4 == 3 ? 2 : c % 4 == 2;
+		lang = c % 5 < 2 ? 0 : (int)(c % 5) - 1;
 		size_t n = rnd(4) ? rnd(600) : rnd(MAXT / 2 - 64);
 		n = gen(b, n, MAXT);
 		Text *t = text_new(b, n);
@@ -350,7 +418,7 @@ int main(void)
 		syntax_free(s);
 		text_free(t);
 	}
-	printf("test_tsql: %zu lines, %zu Soufflé lines, %zu tokens, %u random texts (a quarter JSON, a quarter Soufflé), %u edits, %u windows (%zu bytes) equal to fresh reads\n",
+	printf("test_tsql: %zu lines, %zu Soufflé lines, %zu tokens, %u random texts (a fifth each JSON, Soufflé and Lean), %u edits, %u windows (%zu bytes) equal to fresh reads\n",
 	       sizeof lines / sizeof *lines, sizeof dlines / sizeof *dlines, sizeof toks / sizeof *toks, cases, steps, windows, bytes);
 	return 0;
 }

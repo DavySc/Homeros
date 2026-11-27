@@ -17,8 +17,11 @@
 #include "loop.h"
 #include "timer.h"
 
-/* Neovim reports a job stopped by jobstop as 128 + SIGTERM on Windows too */
-enum { MAXW = 16, MAXP = 32, KILLED = 128 + 15 };
+/* Neovim reports a job stopped by jobstop as 128 + SIGTERM on Windows too.
+   MAXW: as many watches as MsgWaitForMultipleObjectsEx waits on beside
+   every child (MAXIMUM_WAIT_OBJECTS - 1 handles); each open folder, SQL
+   session and LSP pipe takes one */
+enum { MAXP = 32, MAXW = MAXIMUM_WAIT_OBJECTS - 1 - MAXP, KILLED = 128 + 15 };
 
 int loop_int;
 

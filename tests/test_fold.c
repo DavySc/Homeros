@@ -22,6 +22,7 @@ static int fe(void *ctx, size_t l, int *start)
 	if (k && !line[l][k]) { *start = 1; return (int)k; }
 	if (line[l][0] >= '0' && line[l][0] <= '9' && !line[l][1]) return line[l][0] - '0';
 	if (!strcmp(line[l], "y")) return -1;
+	if (!strcmp(line[l], "Y")) { *start = 1; return -1; }   /* ">-1": as "-1" in nvim */
 	while (l--)
 		if ((k = strspn(line[l], "*")) && !line[l][k]) return (int)k;
 	return 0;

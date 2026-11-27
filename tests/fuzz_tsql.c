@@ -1,8 +1,8 @@
-/* libFuzzer: T-SQL's, JSON's and Soufflé's colours (src/syntax/tsql.c) on
+/* libFuzzer: T-SQL's, JSON's, Soufflé's and Lean's colours (src/syntax/tsql.c) on
    text, edits and windows decoded from the input, raw bytes included, so
    every lexing path meets every byte, and runs of spaces in 1 KB steps, so
    the text passes the 4,096 bytes between kept token starts.  Each T-SQL
-   token advances and ends inside the text (a JSON or Soufflé one that did
+   token advances and ends inside the text (a JSON, Soufflé or Lean one that did
    not would hang syntax_update, the fuzzer's timeout), and a window read
    through the kept token starts equals a fresh read from 0. */
 #include <stdint.h>
@@ -29,7 +29,7 @@ static int stop(void) { return byte() & 1; }
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
 	d = data, n = size, at = 0;
-	const char *path = (const char *const[]){ "f.sql", "f.json", "f.dl" }[byte() % 3];
+	const char *path = (const char *const[]){ "f.sql", "f.json", "f.dl", "f.lean" }[byte() % 4];
 	static char b[MAX];
 	size_t bn = 0;
 	for (unsigned k = byte() % 64; k--; ) {

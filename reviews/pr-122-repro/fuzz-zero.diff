@@ -1,0 +1,15 @@
+--- /home/claude/r122/tests/fuzz_fold.c	2026-11-22 14:29:21.440063519 +0000
++++ fz.c	2026-11-22 14:33:23.297549155 +0000
+@@ -89,8 +89,11 @@
+ 			Fold *g = fold_dup(f, NULL);
+ 			if (!g) abort();
+ 			/* a command that changed a fold says so: the core redoes the view on 1 */
+-			if (fold_cmd(f, c, at, NEXT % 4) != 1 && differs(f, g)) abort();
++			long k = NEXT % 4;
++			if (fold_cmd(f, c, at, k) != 1 && differs(f, g)) abort();
+ 			fold_free(g);
++			/* and zO or zv again finds nothing left to change */
++			if (k && (c == FOLD_OPEN_REC || c == FOLD_VIEW) && fold_cmd(f, c, at, 1) == 1) abort();
+ 		} else {         /* a split: the copy goes on in f's place */
+ 			Fold *g = fold_dup(f, NULL);
+ 			if (!g) abort();

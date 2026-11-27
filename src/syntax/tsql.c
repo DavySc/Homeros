@@ -10,13 +10,15 @@
    comments', Davy 2026-11-18); names and variables stay plain, as there.  Faces are read from the nearest known
    token start before the bytes asked; syntax_update keeps one every CK
    bytes to the text's end, and an edit keeps those after it until a read
-   confirms them (struct Tsql). */
+   confirms them (struct Tsql).  A lexer by lines (index.h) keeps its state
+   with each. */
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include "grid.h"
 #include "tsql.h"
 #include "tsql_words.h"
+#include "index.h"
 
 enum { CK = 4096, FAR = 4 * CK, NWORDS = sizeof words / sizeof *words };
 
@@ -38,14 +40,18 @@ struct Tsql {
 	   keeps no state between tokens, so once a read from a known start
 	   lands on one of them, the text after lexes as before and all are
 	   known again (Emacs's syntax-ppss cache keeps positions this way, but
-	   drops them; here they come back). */
+	   drops them; here they come back).  A lexer by lines keeps a state at
+	   each, st[], which a moved one must match too. */
 	uint32_t *ck, n, v, cap;
+	TsqlSt *st;
 	size_t at, end;            /* the token where the last faces ended; its
 	                              end, 0 when not known */
+	TsqlSt sat, send;          /* the states at both */
+	TsqlLine *line;            /* the lexer by lines, or NULL */
 	int kind;                  /* and its kind, so the frame's later reads
 	                              inside a long comment do not lex it again */
 	int skipped;               /* a window was left plain, far from the index */
-	int lang;                  /* 0 T-SQL, 1 JSON, 2 Soufflé */
+	int lang;                  /* 0 T-SQL, 1 JSON, 2 Soufflé, 3 Lean */
 };
 
 static int is_space(int c) { return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == '\v'; }
@@ -236,10 +242,10 @@ static size_t string(TsqlRd *r, size_t p, int nl)
 	return c == '"' ? p + 1 : p;
 }
 
-static size_t line_end(TsqlRd *r, size_t p)
+size_t tsql_line_end(TsqlRd *r, size_t p)
 {
 	int c;
-	while ((c = tsql_byte(r, ++p)) >= 0 && c != '\n') ;
+	while ((c = tsql_byte(r, p)) >= 0 && c != '\n') p++;
 	return p;
 }
 
@@ -249,7 +255,7 @@ static size_t json_token(TsqlRd *r, size_t p, int *k)
 	if (c < 0 || is_space(c)) return tsql_token(r, p, k);
 	r->open = 0;
 	if (c == '"') return *k = TQ_STRING, string(r, p, 1);
-	if (c == '/' && d == '/') return *k = TQ_COMMENT, line_end(r, p);
+	if (c == '/' && d == '/') return *k = TQ_COMMENT, tsql_line_end(r, p);
 	if (c == '/' && d == '*') {
 		/* not nested; unclosed, to the end, as T-SQL's (tree-sitter-json
 		   finds no comment there, but then one being typed would cost a
@@ -340,7 +346,7 @@ static size_t dl_token(TsqlRd *r, size_t p, int *k)
 	if (c < 0 || is_space(c) || (c == '/' && (d == '/' || d == '*'))) return json_token(r, p, k);
 	r->open = 0;
 	if (c == '"') return *k = TQ_STRING, string(r, p, 0);
-	if (c == '#') return *k = TQ_VAR, line_end(r, p);
+	if (c == '#') return *k = TQ_VAR, tsql_line_end(r, p);
 	if (is_dl(c)) {
 		/* 12, 0x1F, 0b1, 7u, 1.5 and 10.0.0.1 are one number */
 		*k = is_digit(c) ? TQ_NUMBER : TQ_WORD;
@@ -422,22 +428,40 @@ Tsql *tsql_new(const Text *t, int lang)
 	return q;
 }
 
+void tsql_lines(Tsql *q, TsqlLine *line) { q->line = line; }
+
 void tsql_free(Tsql *q)
 {
-	if (q) free(q->ck);
+	if (q) free(q->ck), free(q->st);
 	free(q);
 }
 
-/* p is a token start, reached by a read from one */
-static void step(Tsql *q, size_t p)
+/* p is a token start in state s, reached by a read from one */
+static void step(Tsql *q, size_t p, const TsqlSt *s)
 {
-	/* a moved start p passed is no token start now */
-	while (q->v < q->n && q->ck[q->v] < p) q->n--, memmove(q->ck + q->v, q->ck + q->v + 1, (q->n - q->v) * sizeof *q->ck);
+	/* a moved start p passed, or reached in another state, is no token
+	   start now */
+	while (q->v < q->n && (q->ck[q->v] < p || (q->ck[q->v] == p && memcmp(&q->st[q->v], s, sizeof *s)))) {
+		q->n--;
+		memmove(q->ck + q->v, q->ck + q->v + 1, (q->n - q->v) * sizeof *q->ck);
+		memmove(q->st + q->v, q->st + q->v + 1, (q->n - q->v) * sizeof *q->st);
+	}
 	if (q->v < q->n && q->ck[q->v] == p) q->v = q->n;
 	else if (p >= (q->v ? q->ck[q->v - 1] + (size_t)CK : CK) && q->n < q->cap) {
 		memmove(q->ck + q->v + 1, q->ck + q->v, (q->n - q->v) * sizeof *q->ck);
-		q->ck[q->v++] = (uint32_t)p, q->n++;
+		memmove(q->st + q->v + 1, q->st + q->v, (q->n - q->v) * sizeof *q->st);
+		q->st[q->v] = *s, q->ck[q->v++] = (uint32_t)p, q->n++;
 	}
+}
+
+/* the token or line at p in state *s: its end, the state after it into
+   *s, with f its faces in [a, z) */
+static size_t next(Tsql *q, size_t p, TsqlSt *s, int *k, size_t a, size_t z, unsigned char *f)
+{
+	if (q->line) return q->line(&q->r, p, s, a, z, f);
+	size_t e = lang_token[q->lang](&q->r, p, k);
+	if (f && e > a) paint(q, p, e, *k, a, z, f);
+	return e;
 }
 
 static uint32_t first_at(const Tsql *q, uint32_t hi, size_t p)
@@ -455,20 +479,21 @@ void tsql_edit(Tsql *q, const Text *t, size_t pos, size_t ndel, size_t nins)
 {
 	/* a token start depends on the bytes before it and on the two from it,
 	   which can end the token before (a word, a doubled quote, "<>", the
-	   e and sign of 1e+3) */
-	size_t lo = pos > 2 ? pos - 2 : 0;
+	   e and sign of 1e+3); a line start on the bytes after it, its
+	   line's */
+	size_t lo = pos > 2 ? pos - 2 : 0, hi = pos + ndel;
 	uint32_t i = first_at(q, q->n, lo);
 	if (i > q->v) q->n = i;    /* among moved starts: those after it go */
 	else {
 		/* moved starts of an older edit would pass this one unchecked */
-		uint32_t j = first_at(q, q->n = q->v, pos + ndel);
-		for (uint32_t k = j; k < q->n; k++) q->ck[i + k - j] = (uint32_t)(q->ck[k] + nins - ndel);
+		uint32_t j = first_at(q, q->n = q->v, hi);
+		for (uint32_t k = j; k < q->n; k++) q->ck[i + k - j] = (uint32_t)(q->ck[k] + nins - ndel), q->st[i + k - j] = q->st[k];
 		q->n -= j - i;
 		q->v = i;
 	}
-	if (q->at >= lo) q->at = q->v ? q->ck[q->v - 1] : 0;
-	/* the token's end, as any start, depends on the two bytes after it */
-	if (q->end + 2 >= pos) q->end = 0;
+	if (q->at >= lo) q->at = q->v ? q->ck[q->v - 1] : 0, q->sat = q->v ? q->st[q->v - 1] : (TsqlSt){ 0 };
+	/* the token's end, as any start, depends on the bytes after it */
+	if (q->end >= lo) q->end = 0;
 	q->r.t = t;
 	q->r.n = 0;
 }
@@ -478,23 +503,28 @@ int tsql_update(Tsql *q, int (*stop)(void))
 	size_t len = text_len(q->r.t), want = len / CK + 3;  /* and an edit's join, and the end */
 	if (want > q->cap) {
 		uint32_t *ck = realloc(q->ck, want * sizeof *ck);
-		if (!ck) return 0;
-		q->ck = ck;
+		if (ck) q->ck = ck;
+		TsqlSt *st = ck ? realloc(q->st, want * sizeof *st) : NULL;
+		if (!st) return 0;
+		q->st = st;
 		q->cap = (uint32_t)want;
 	}
 	/* the index, filled to the text's end here and not in the redraw */
 	size_t p = q->v ? q->ck[q->v - 1] : 0;
+	TsqlSt s = q->v ? q->st[q->v - 1] : (TsqlSt){ 0 };
 	for (unsigned k = 1; p < len; k++) {
 		if (stop && !(k % 1024) && stop()) return 2;
 		int kind;
+		TsqlSt s1 = s;
 		/* the long comment the frame just read is not read again */
-		size_t e = p == q->at && q->end > p ? q->end : lang_token[q->lang](&q->r, p, &kind);
-		step(q, p);
+		size_t e = p == q->at && q->end > p ? (s1 = q->send, q->end) : next(q, p, &s1, &kind, 0, 0, NULL);
+		step(q, p, &s);
 		/* landed on a moved start: the rest is known */
-		p = q->n && q->v == q->n && q->ck[q->n - 1] > e ? q->ck[q->n - 1] : e;
+		if (q->n && q->v == q->n && q->ck[q->n - 1] > e) p = q->ck[q->n - 1], s = q->st[q->n - 1];
+		else p = e, s = s1;
 	}
-	step(q, len);
-	if (q->v == q->n && (!q->n || q->ck[q->n - 1] < len) && q->n < q->cap) q->ck[q->n++] = (uint32_t)len, q->v = q->n;
+	step(q, len, &s);
+	if (q->v == q->n && (!q->n || q->ck[q->n - 1] < len) && q->n < q->cap) q->st[q->n] = s, q->ck[q->n++] = (uint32_t)len, q->v = q->n;
 	int r = q->skipped;
 	q->skipped = 0;
 	return r;
@@ -503,8 +533,9 @@ int tsql_update(Tsql *q, int (*stop)(void))
 void tsql_faces(Tsql *q, size_t a, size_t z, unsigned char *f)
 {
 	size_t p = q->at <= a ? q->at : 0;
+	TsqlSt s = q->at <= a ? q->sat : (TsqlSt){ 0 };
 	uint32_t i = first_at(q, q->v, a + 1);
-	if (i && q->ck[i - 1] > p) p = q->ck[i - 1];
+	if (i && q->ck[i - 1] > p) p = q->ck[i - 1], s = q->st[i - 1];
 	/* far from the index while syntax_update has not filled it: plain
 	   now, coloured after it (as Neovim draws before a parse ends) */
 	if (a - p > FAR && !(q->v == q->n && q->n && q->ck[q->n - 1] == text_len(q->r.t))) {
@@ -514,15 +545,20 @@ void tsql_faces(Tsql *q, size_t a, size_t z, unsigned char *f)
 	while (p < z) {
 		int k = q->kind;
 		size_t e = q->end;
-		if (p != q->at || e <= p) {
-			e = lang_token[q->lang](&q->r, p, &k);
-			if (e == p) break;
-		}
-		step(q, p);
+		TsqlSt s1 = s;
 		/* a face is worked out on each read, as a JSON key's depends on
 		   the text after it */
-		if (e > a) paint(q, p, e, k, a, z, f);
-		q->at = p, q->end = e, q->kind = k;
-		p = e;
+		if (p != q->at || e <= p) {
+			e = next(q, p, &s1, &k, a, z, f);
+			if (e == p) break;
+		} else {
+			TsqlSt s0 = s;
+			if (e > a && q->line) q->line(&q->r, p, &s0, a, z, f);
+			else if (e > a) paint(q, p, e, k, a, z, f);
+			s1 = q->send;
+		}
+		step(q, p, &s);
+		q->at = p, q->end = e, q->kind = k, q->sat = s, q->send = s1;
+		p = e, s = s1;
 	}
 }

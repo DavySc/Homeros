@@ -1,0 +1,235 @@
+/* SQL buffers in the editor (sql.h) against the test servers (see
+   test_sql.c): F5 on the whole buffer and on a selection, GO batches and
+   GO n, messages next to rows in the server's order, Alt+Break, the
+   results split opened and closed, the folder's connection and :Connect,
+   and the connections file's refusals. */
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#ifdef _WIN32   /* src/sql/check.sh builds it for Windows */
+#include <direct.h>
+#define mkdir(p, m) _mkdir(p)
+#define setenv(k, v, o) _putenv_s(k, v)
+#define TMP getenv("TEMP")
+/* the colours, which check.sh does not link (tree-sitter), as test_git_win */
+int syntax_open(void) { return 0; }
+void syntax_edit(void) {}
+void syntax_free(void) {}
+void syntax_faces(void) {}
+int syntax_md(void) { return 0; }
+int syntax_conceal(void) { return 0; }
+const char *syntax_filetype(const char *p) { (void)p; return 0; }
+#else
+#define TMP "/tmp"
+#endif
+#include "check.h"
+#include "core.h"
+#include "keys.h"
+#include "loop.h"
+#include "sql.h"
+#include "text.h"
+
+static Editor e;
+static char res[1 << 16];
+
+/* the buffer shown below the query, as text: its last 64 KB */
+static const char *results(void)
+{
+	Win *w = e.wins;
+	while (w && !w->buf->nonumber) w = w->next;
+	size_t z = w ? text_len(w->buf->text) : 0, a = z > sizeof res - 1 ? z - (sizeof res - 1) : 0;
+	size_t n = w ? text_read(w->buf->text, a, res, z - a) : 0;
+	res[n] = 0;
+	return res;
+}
+
+/* runs the loop until the results hold s */
+static const char *until(const char *s)
+{
+	for (int i = 0; i < 3000 && !strstr(results(), s); i++) loop_once(10);
+	if (!strstr(res, s)) fprintf(stderr, "results:\n%s\nwant: %s\n", res, s);
+	return res;
+}
+
+static void put(const char *path, const char *s, int mode)
+{
+	FILE *f = fopen(path, "w");
+	CHECK(f && fputs(s, f) >= 0 && !fclose(f) && !chmod(path, (mode_t)mode));
+}
+
+/* F5 until the session takes it (a cancel answered), at most 3 s: 1 taken */
+static int f5_once_idle(void)
+{
+	for (int i = 0; i < 300; i++) {
+		e.msg[0] = 0;
+		if (sql_key(&e, KEY_F5) == 1 && !e.msg[0]) return 1;
+		loop_once(10);
+	}
+	return 0;
+}
+
+static int nwins(void) { int n = 0; for (Win *w = e.wins; w; w = w->next) n++; return n; }
+
+int main(void)
+{
+	const char *sa = getenv("SQL_SA_PASSWORD"), *pg = getenv("SQL_PG_PASSWORD");
+	if (!sa || !pg) { fprintf(stderr, "test_sql_editor: SQL_SA_PASSWORD and SQL_PG_PASSWORD: start the test servers as src/sql/README.md says\n"); return 1; }
+	char dir[512], conf[4096], f[4096];
+	snprintf(dir, sizeof dir, "%s/sql_editorXXXXXX", TMP);
+	CHECK(mkdtemp(dir) && !chdir(dir) && !mkdir("homeros", 0700) && !mkdir("ms", 0700) && !mkdir("pg", 0700));
+	CHECK(!mkdir("ms/deep", 0700) && !mkdir("msx", 0700) && !mkdir("a b", 0700));
+	setenv("XDG_CONFIG_HOME", dir, 1);
+	setenv("HOME", dir, 1), setenv("USERPROFILE", dir, 1);   /* ~ (Windows: USERPROFILE) */
+	snprintf(conf, sizeof conf, "%s/homeros/sql", dir);
+	/* no connections file, then one that others can read with a password in it */
+	put("ms/a.sql", "select 1 as one\ngo\nprint 'between'\ngo 2\nselect 2 as two\n", 0600);
+	CHECK(!core_open(&e, "ms/a.sql"));
+	CHECK(sql_key(&e, KEY_F5) == 1 && strstr(e.msg, "no connections file"));
+	/* the longest dir line wins wherever it is; ~ is HOME; a folder with a
+	   space; Postgres's port by default */
+	snprintf(f, sizeof f, "ms mssql 127.0.0.1 sa master trust pass=%s\npg pg 127.0.0.1 postgres postgres trust pass=%s\n"
+		"dir %s/ms/deep pg\ndir ~/ms ms\ndir %s/pg pg\ndir  %s/a b   ms \n"
+		"bad mssql 127.0.0.1:99999 sa master pass=x\nletters mssql 127.0.0.1:1433x sa master pass=x\nnopass mssql 127.0.0.1 sa master\nv6 mssql [::1]:1433 sa master pass=x\n", sa, pg, dir, dir, dir);
+	put(conf, f, 0644);
+#ifndef _WIN32   /* there the profile is the user's (sql.c, as libpq) */
+	CHECK(sql_key(&e, KEY_F5) == 1 && strstr(e.msg, "others can read it"));
+	CHECK(!chmod(conf, 0600));
+#endif
+	/* the whole buffer: batches in order, GO 2 twice, the split below */
+	CHECK(sql_key(&e, KEY_F5) == 1 && nwins() == 2 && e.win == e.wins);
+	/* from the first line: the login's own messages are not shown */
+	CHECK(!strncmp(until("Completion time"), "one\n1\n(1 row affected)\nbetween\nbetween\ntwo\n2\n(1 row affected)\n\nCompletion time: ", 75));
+	CHECK(e.wins->next && e.wins->next->buf->nomodifiable && e.wins->next->line == text_lines(e.wins->next->buf->text) - 1);   /* the window follows the end */
+	/* a selection: only its lines run, on the same connection */
+	core_goto(&e, 4, 0);
+	keys_visual(&e, 'V', 4);
+	CHECK(sql_key(&e, KEY_F5) == 1);
+	CHECK(!strncmp(until("Completion time"), "two\n2\n(1 row affected)\n\nCompletion time", 37));
+	keys_feed(&e, KEY_ESC, 0);
+	/* SPC r closes the results and opens them again, the cursor staying in the query */
+	CHECK(!sql_results(&e) && nwins() == 1 && !e.buf->nonumber);
+	CHECK(!sql_results(&e) && nwins() == 2 && !e.buf->nonumber);
+	/* Alt+Break: the run ends, SSMS's line, and the connection runs the next */
+	put("ms/b.sql", "select top 3000000 a.object_id from sys.all_objects a, sys.all_objects b, sys.all_objects c\n", 0600);
+	CHECK(!core_edit_file(&e, "ms/b.sql", 0) && sql_key(&e, KEY_F5) == 1);
+	for (int i = 0; i < 20; i++) loop_once(10);
+	CHECK(sql_key(&e, KEY_BREAK) == 1 && strstr(until("cancelled by user"), "Query was cancelled by user.\n"));
+	for (int i = 0; i < 100; i++) loop_once(10);
+	CHECK(!core_edit_file(&e, "ms/a.sql", 0) && sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), "two\n2\n"));
+	/* a refused GO line: the batches before it run, the text between them
+	   and it does not (sqlcmd, measured), the line is named */
+	put("ms/c.sql", "select 3 as three\ngo\nselect 4\ngo x\n", 0600);
+	CHECK(!core_edit_file(&e, "ms/c.sql", 0) && sql_key(&e, KEY_F5) == 1 && strstr(e.msg, "line 4"));
+	CHECK(strstr(until("Completion time"), "three\n3\n") && !strstr(res, "4\n"));
+	/* the folder's connection is Postgres's; :Connect names another */
+	put("pg/d.sql", "select 'pg' as x; select 1/0\n", 0600);
+	CHECK(!core_edit_file(&e, "pg/d.sql", 0) && sql_key(&e, KEY_F5) == 1);
+	CHECK(strstr(until("Completion time"), "x\npg\n(SELECT 1)\nERROR 22012: division by zero\n"));
+	CHECK(!sql_connect(&e, "ms") && strstr(e.msg, "ms"));
+	put("pg/e.sql", "select @@version v\n", 0600);
+	CHECK(!core_edit_file(&e, "pg/e.sql", 0) && !sql_connect(&e, "ms") && sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), "Microsoft SQL Server"));
+	CHECK(sql_connect(&e, "nope") && strstr(e.msg, "no connection nope"));
+	/* a run sends the text as it was at F5: an edit while batch 1 waits
+	   does not reach batch 2 (SqlSess.tla's Snapshot) */
+	put("ms/f.sql", "waitfor delay '00:00:00.5'\ngo\nselect 1042 as id\n", 0600);
+	CHECK(!core_edit_file(&e, "ms/f.sql", 0) && sql_key(&e, KEY_F5) == 1);
+	for (int i = 0; i < 10; i++) loop_once(10);
+	CHECK(!text_insert(e.buf->text, 40, "  ", 2));   /* "select 104  2 as id" */
+	CHECK(strstr(until("Completion time"), "id\n1042\n"));
+	/* F5 while the server has not answered a cancel says so; the session
+	   then runs the next F5 on the same connection (#t still there) */
+	put("ms/g.sql", "create table #t (x int)\nselect top 3000000 a.object_id from sys.all_objects a, sys.all_objects b, sys.all_objects c\nselect count(*) n from #t\n", 0600);
+	CHECK(!core_edit_file(&e, "ms/g.sql", 0));
+	keys_visual(&e, 'V', 0);
+	CHECK(sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), "Completion"));
+	keys_feed(&e, KEY_ESC, 0);
+	core_goto(&e, 1, 0);
+	keys_visual(&e, 'V', 1);
+	CHECK(sql_key(&e, KEY_F5) == 1);
+	keys_feed(&e, KEY_ESC, 0);
+	for (int i = 0; i < 20; i++) loop_once(10);
+	CHECK(sql_key(&e, KEY_BREAK) == 1 && sql_key(&e, KEY_F5) == 1 && strstr(e.msg, "not answered the cancel"));
+	core_goto(&e, 2, 0);
+	keys_visual(&e, 'V', 2);
+	CHECK(f5_once_idle());
+	keys_feed(&e, KEY_ESC, 0);
+	CHECK(strstr(until("Completion time"), "n\n0\n"));
+	/* Alt+Break while logging in drops the connection; F5 then logs in again */
+	CHECK(!core_edit_file(&e, "ms/c.sql", 0) && !sql_connect(&e, "ms") && sql_key(&e, KEY_F5) == 1);
+	CHECK(sql_key(&e, KEY_BREAK) == 1);
+	CHECK(sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), "three"));
+	/* a cancelled run sends none of its later batches */
+	put("ms/o.sql", "select top 3000000 a.object_id from sys.all_objects a, sys.all_objects b, sys.all_objects c\ngo\nselect 77 as late\n", 0600);
+	CHECK(!core_edit_file(&e, "ms/o.sql", 0) && sql_key(&e, KEY_F5) == 1);
+	for (int i = 0; i < 20; i++) loop_once(10);
+	CHECK(sql_key(&e, KEY_F5) == 1 && strstr(e.msg, "a query is running"));   /* a second F5 waits for the first run */
+	CHECK(sql_key(&e, KEY_BREAK) == 1);
+	for (int i = 0; i < 100; i++) loop_once(10);
+	CHECK(!strstr(results(), "late"));
+	/* the cancel ends with its answer: the next run sends all its batches */
+	CHECK(!text_delete(e.buf->text, 0, text_len(e.buf->text)) && !text_insert(e.buf->text, 0, "select 1 as a\ngo\nselect 2 as b\ngo\nselect 3 as c\n", 48));
+	CHECK(f5_once_idle() && strstr(until("Completion time"), "c\n3\n"));
+	/* Postgres: F5 waits for the cancel's own connection to close */
+	put("pg/h.sql", "select g from generate_series(1, 20000000) g\n", 0600);
+	CHECK(!core_edit_file(&e, "pg/h.sql", 0) && sql_key(&e, KEY_F5) == 1);
+	for (int i = 0; i < 30; i++) loop_once(10);
+	CHECK(sql_key(&e, KEY_BREAK) == 1 && !text_delete(e.buf->text, 0, text_len(e.buf->text)) && !text_insert(e.buf->text, 0, "select 7 as seven\n", 18));
+	CHECK(f5_once_idle() && strstr(until("Completion time"), "seven\n7\n"));
+	/* a connection the server ends: its line, and the next F5 logs in again */
+	put("pg/i.sql", "select pg_terminate_backend(pg_backend_pid())\n", 0600);
+	CHECK(!core_edit_file(&e, "pg/i.sql", 0) && sql_key(&e, KEY_F5) == 1);
+	until("terminat");
+	for (int i = 0; i < 50; i++) loop_once(10);
+	CHECK(!text_delete(e.buf->text, 0, text_len(e.buf->text)) && !text_insert(e.buf->text, 0, "select 5 as five\n", 17));
+	CHECK(sql_key(&e, KEY_F5) == 1 && strstr(until("five"), "five\n5\n"));
+	/* GO 0 runs its batch no time (sqlcmd) */
+	put("ms/j.sql", "select 9 as nine\ngo 0\nselect 8 as eight\n", 0600);
+	CHECK(!core_edit_file(&e, "ms/j.sql", 0) && sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), "eight") && !strstr(res, "nine"));
+	/* a v selection ends on its last character whole */
+	put("ms/k.sql", "select N'caf\xc3\xa9' as x\n", 0600);
+	CHECK(!core_edit_file(&e, "ms/k.sql", 0));
+	keys_visual(&e, 'v', 0);
+	core_goto(&e, 0, 12);
+	CHECK(sql_key(&e, KEY_F5) == 1);
+	keys_feed(&e, KEY_ESC, 0);
+	CHECK(strstr(until("Completion time"), "Unclosed quotation mark after the character string 'caf\xc3\xa9'"));
+	/* the folders: the longest dir line, ~, a folder with spaces, /ms not holding /msx */
+	put("ms/deep/l.sql", "select version() v\n", 0600);
+	CHECK(!core_edit_file(&e, "ms/deep/l.sql", 0) && sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), "PostgreSQL"));
+	put("a b/m.sql", "select @@version v\n", 0600);
+	CHECK(!core_edit_file(&e, "a b/m.sql", 0) && sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), "Microsoft SQL Server"));
+	put("msx/n.sql", "select 1\n", 0600);
+	CHECK(!core_edit_file(&e, "msx/n.sql", 0) && sql_key(&e, KEY_F5) == 1 && strstr(e.msg, "no connection for this folder"));
+	/* a wrong port, no password, an IPv6 address */
+	CHECK(sql_connect(&e, "bad") && strstr(e.msg, "port in 127.0.0.1:99999") && sql_connect(&e, "letters") && strstr(e.msg, "port in 127.0.0.1:1433x"));
+	CHECK(sql_connect(&e, "nopass") && strstr(e.msg, "no pass="));
+	CHECK(!sql_connect(&e, "v6") && strstr(e.msg, "(::1)"));
+	/* SPC r from the results: closed, the cursor back in the query */
+	CHECK(!core_edit_file(&e, "ms/a.sql", 0) && sql_key(&e, KEY_F5) == 1 && until("Completion time"));
+	core_win_goto(&e, 'w', 2);
+	CHECK(e.buf->nomodifiable && !sql_results(&e) && nwins() == 1 && e.buf->path && strstr(e.buf->path, "a.sql"));
+	/* F5 from the results runs their query */
+	CHECK(!sql_results(&e) && !core_win_goto(&e, 'w', 2) && sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), "two\n2"));
+	core_win_goto(&e, 'w', 1);
+	/* no room for the split: F5 says so and runs nothing, and the next F5 runs */
+	CHECK(!core_only(&e));
+	for (int i = 0; i < 30 && !core_split(&e, 0, 0); i++);
+	e.msg[0] = 0;
+	CHECK(sql_key(&e, KEY_F5) == 1 && e.msg[0] && !strstr(e.msg, "running"));
+	CHECK(!core_only(&e) && sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), "two\n2"));
+	/* :Disconnect ends the session (its temp table goes); F5 logs in again */
+	put("ms/p.sql", "create table #d (x int)\n", 0600);
+	CHECK(!core_edit_file(&e, "ms/p.sql", 0) && sql_key(&e, KEY_F5) == 1 && until("Completion time"));
+	CHECK(!sql_disconnect(&e) && strstr(e.msg, "disconnected from ms") && sql_disconnect(&e) && strstr(e.msg, "not connected"));
+	CHECK(!text_delete(e.buf->text, 0, text_len(e.buf->text)) && !text_insert(e.buf->text, 0, "select * from #d\n", 17));
+	CHECK(sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), "Invalid object name '#d'"));
+	/* not a SQL buffer: F5 is not ours */
+	put("x.txt", "x\n", 0600);
+	CHECK(!core_edit_file(&e, "x.txt", 0) && !sql_key(&e, KEY_F5));
+	core_free(&e);
+#ifdef _WIN32   /* winpass.sh's summary line */
+	fprintf(stderr, "test_sql_editor: F5, GO, a selection, Alt+Break, the results split, :Connect\n");
+#endif
+	return 0;
+}
