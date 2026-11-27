@@ -540,7 +540,7 @@ static void win_folds(Win *w, const Fold *f)
 void core_folds(Editor *e, Buf *b, size_t r1, size_t r2)
 {
 	size_t n = buf_lines(b);
-	for (Win *w = e->wins; w; w = w->next) {
+	FOR_ALL_TAB_WINDOWS(e, w) {   /* changed_common(): every tab page */
 		WinState *s = &w->frame->s;
 		if (w->buf != b || !w->fold) continue;
 		size_t a = r1, z = r2;
@@ -1069,7 +1069,7 @@ static void adjust(Editor *e, Buf *b, size_t l1, size_t l2, long amount, long af
 	if (e->win->buf == b) mark_adjust1(&e->win->pcmark, 0, l1, l2, amount, after);
 	/* foldMarkAdjust() for every window on b; rows waiting for Insert mode
 	   to end now reach the last line */
-	for (Win *w = e->wins; w; w = w->next)
+	FOR_ALL_TAB_WINDOWS(e, w)   /* mark_adjust_internal() */
 		if (w->buf == b && w->fold) {
 			fold_adjust(w->fold, l1, l2, amount, after, e->mode == MODE_INSERT);
 			WinState *s = &w->frame->s;

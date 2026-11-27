@@ -275,3 +275,6 @@ core: an edit outside Insert mode leaves the folds for the parse (test_core_fold
 core: a join updates its folds only after the adjust (test_core_fold)~test TESTS=core_fold~~src/core/core.c~	if (!r && newlines(del, ndel) && !(at_start && del[ndel - 1] == '\n')) core_folds(e, b, L, L + 1);~
 core: a closed frame leaks its windows' folds (test_core_fold)~test TESTS=core_fold~~src/core/win.c~wn = w->next; fold_free(w->fold); free(w); }~wn = w->next; free(w); }
 core: SPC 5 m leaks the moved window's own folds (test_core_fold)~test TESTS=core_fold~~src/core/win.c~	fold_free(n->fold);   /* SPC 5 m copies over a split's own copy */~	(void)0;
+core: an edit adjusts only the current frame's folds (test_core_fold)~test TESTS=core_fold~~src/core/core.c~	FOR_ALL_TAB_WINDOWS(e, w)   /* mark_adjust_internal() */~	for (Win *w = e->wins; w; w = w->next)
+core: an edit updates only the current frame's folds (test_core_fold)~test TESTS=core_fold~~src/core/core.c~	FOR_ALL_TAB_WINDOWS(e, w) {   /* changed_common(): every tab page */~	for (Win *w = e->wins; w; w = w->next) {
+core: leaving Insert mode updates only the current frame's folds (test_core_fold)~test TESTS=core_fold~~src/core/move.c~		FOR_ALL_TAB_WINDOWS(e, w)¶			if (w->frame->s.fend~		for (Win *w = e->wins; w; w = w->next)¶			if (w->frame->s.fend

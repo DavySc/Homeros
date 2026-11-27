@@ -679,7 +679,7 @@ void core_update(Editor *e)
 {
 	/* the fold rows that waited for Insert mode to end (core_folds) */
 	if (e->mode != MODE_INSERT)
-		for (Win *w = e->wins; w; w = w->next)
+		FOR_ALL_TAB_WINDOWS(e, w)
 			if (w->frame->s.fend > w->frame->s.ftop) core_folds(e, w->buf, (size_t)-1, 0);
 	curs_columns(e, e->win, 1);
 	if (e->mode != MODE_INSERT && e->mode != MODE_CMDLINE) drawn(e, e->win);
