@@ -71,6 +71,30 @@ static int put(char *s, unsigned v)
 	return 4;
 }
 
+/* Of glyph s (one character): how many runs of ink row y has, or column
+   x if y < 0, leaving in inked how many of its pixels have ink; or, if both
+   are -1, -v if every pixel is v (else 0) */
+static int inked;
+static int runs(const char *s, int x, int y)
+{
+	CHECK(shape(s) == 1);
+	const Glyph *g = o[0].g;
+	int k = 0, was = 0;
+	inked = 0;
+	if (y < 0 && x < 0) {
+		for (int i = 0; i < g->w * g->h; i++) k |= g->px[i] != g->px[0];
+		return k ? 0 : -g->px[0];
+	}
+	for (int i = 0, n = y < 0 ? g->h : g->w; i < n; i++) {
+		int v = y < 0 ? g->px[i * g->w + x] : g->px[y * g->w + i];
+		k += v && !was;
+		inked += v != 0;
+		was = v != 0;
+	}
+	return k;
+}
+static int thick(const char *s, int x, int y) { runs(s, x, y); return inked; }
+
 /* From a fresh cache, shapes the characters first to last, 32 to a run:
    each draws; the cache was emptied on the way (the first character is a
    miss again) and draws the first character as before. */
@@ -132,6 +156,7 @@ int main(void)
 		sig[nsym] = hash(n);
 		i += k;
 	}
+	font_close();                     /* a size open already keeps its cache */
 	CHECK(font_open(FAMILY, 20) == 0);
 	for (int i = nsym - 1, end = (int)sizeof mathlib - 1; i >= 0; i--) {
 		int start = end - 1;
@@ -209,11 +234,105 @@ int main(void)
 	n = shape(longer);
 	CHECK(allocs == 0 && n == 2000);
 
+	/* box drawing, blocks and Powerline's separators are drawn to fill the
+	   cell (sprite.c), not taken from JetBrains Mono, so neighbours join */
+	for (unsigned c = 0x2500; c <= 0xE0B3; c = c == 0x259F ? 0xE0B0 : c + 1) {
+		char s[4];
+		s[put(s, c)] = 0;
+		CHECK(shape(s) == 1 && o[0].x == 0 && o[0].y == 0 && ink(o[0].g));
+		CHECK(o[0].g->w == cw && o[0].g->h == ch && o[0].g->left == 0 && o[0].g->top == base && !o[0].g->color);
+	}
+	CHECK(runs("\u2588", -1, -1) == -255 && runs("\u2592", -1, -1) == -128);   /* █ every pixel, ▒ half */
+	CHECK(runs("\u2580", -1, 0) == 1 && runs("\u2580", -1, ch - 1) == 0 && runs("\u2580", cw - 1, -1) == 1);   /* ▀ */
+	CHECK(runs("\u259a", -1, 0) == 1 && runs("\u259a", 0, -1) == 1 && runs("\u259a", -1, ch / 2 - 1) == 1);   /* ▚ */
+	CHECK(o[0].g->px[0] == 255 && o[0].g->px[cw - 1] == 0);   /* its upper left, not its upper right */
+	CHECK(runs("\u2500", 0, -1) == 1 && runs("\u2500", cw - 1, -1) == 1 && runs("\u2500", -1, 0) == 0);   /* ─ meets both sides */
+	CHECK(runs("\u2502", -1, 0) == 1 && runs("\u2502", -1, ch - 1) == 1 && runs("\u2502", 0, -1) == 0);    /* │ top and bottom */
+	CHECK(runs("\u253c", -1, 0) == 1 && runs("\u253c", -1, ch - 1) == 1 && runs("\u253c", 0, -1) == 1 && runs("\u253c", cw - 1, -1) == 1);
+	CHECK(runs("\u2554", cw - 1, -1) == 2 && runs("\u2554", -1, ch - 1) == 2 && runs("\u2554", 0, -1) == 0);   /* ╔: two lines out right and down */
+	CHECK(runs("\u256c", cw - 1, -1) == 2 && runs("\u256c", -1, 0) == 2 && runs("\u256c", 0, -1) == 2 && runs("\u256c", -1, ch / 2) == 0);  /* ╬: four corners, a gap between */
+	CHECK(runs("\u255f", cw - 1, -1) == 1 && runs("\u255f", -1, ch / 2) == 2);   /* ╟: the arm meets the right line only */
+	CHECK(runs("\u256d", cw - 1, -1) == 1 && runs("\u256d", -1, ch - 1) == 1 && runs("\u256d", -1, 0) == 0);   /* ╭ */
+	/* heavy is thicker than light, across and along */
+	int light = thick("\u2500", cw / 2, -1), heavy = thick("\u2501", cw / 2, -1);
+	CHECK(heavy > light && thick("\u2502", -1, ch / 2) < thick("\u2503", -1, ch / 2));
+	/* ▁ to █ grow an eighth at a time from the bottom, ▉ to ▏ shrink from the left */
+	for (unsigned c = 0x2581, was = 0; c <= 0x2588; c++) {
+		char u[4] = { (char)0xe2, (char)0x96, (char)(0x80 + c - 0x2580), 0 };
+		CHECK(runs(u, 0, -1) == 1 && inked > (int)was && thick(u, -1, ch - 1) == cw);
+		was = (unsigned)thick(u, 0, -1);
+	}
+	for (unsigned c = 0x2589, was = (unsigned)cw; c <= 0x258F; c++) {
+		char u[4] = { (char)0xe2, (char)0x96, (char)(0x80 + c - 0x2580), 0 };
+		CHECK(runs(u, -1, ch / 2) == 1 && inked < (int)was && thick(u, 0, -1) == ch);
+		was = (unsigned)thick(u, -1, ch / 2);
+	}
+	/* ▌ ▐ split each row and ▀ ▄ each column without overlap, ▘ as wide as ▌ and as tall as ▀,
+	   at an odd cell too (15 pixels: 9 wide) */
+	for (int px = 15; px <= 20; px += 5) {
+		CHECK(font_open(FAMILY, px) == 0);
+		font_cell(&cw, &ch, &base);
+		CHECK(thick("\u258c", -1, 0) + thick("\u2590", -1, 0) == cw && runs("\u258c", -1, 0) + runs("\u2590", -1, 0) == 2);
+		CHECK(thick("\u2580", 0, -1) + thick("\u2584", 0, -1) == ch && runs("\u2580", 0, -1) + runs("\u2584", 0, -1) == 2);
+		CHECK(thick("\u2598", -1, 0) == thick("\u258c", -1, 0) && thick("\u2598", 0, -1) == thick("\u2580", 0, -1));
+	}
+	/* Powerline's E0B0 points right: full at its left edge, a point at its right; E0B2 the mirror */
+	CHECK(thick("\ue0b0", 0, -1) == ch && thick("\ue0b0", cw - 1, -1) < ch / 2);
+	CHECK(thick("\ue0b2", cw - 1, -1) == ch && thick("\ue0b2", 0, -1) < ch / 2);
+	/* dashes: ╌ ┄ ┈ have 2, 3, 4 along, ╎ ┆ ┊ too */
+	int row = 0, col = 0;   /* where the light lines run */
+	while (!runs("\u2500", -1, row)) row++;
+	while (!runs("\u2502", col, -1)) col++;
+	CHECK(runs("\u254c", -1, row) == 2 && runs("\u2504", -1, row) == 3 && runs("\u2508", -1, row) == 4);
+	CHECK(runs("\u254e", col, -1) == 2 && runs("\u2506", col, -1) == 3 && runs("\u250a", col, -1) == 4);
+
 	/* the cache fills and empties itself, and glyphs stay right across it:
 	   its slots with 8,000 CJK characters, its memory with every emoji at
 	   60 pixels (about 30 MB) */
 	refill(20, 0x4E00, 0x4E00 + 8000);
 	refill(60, 0x1F300, 0x1FB00);
+
+	/* frames on monitors of different scales: a size used again comes back
+	   with its cell and its cache, until four others were used since */
+	unsigned long h2, m2;
+	CHECK(font_open(FAMILY, 20) == 0);
+	CHECK(shape("\xe4\xb8\x80") == 1 && ink(o[0].g));   /* U+4E00, from a fallback font */
+	shape("abc");
+	font_stats(&h0, &m0);
+	CHECK(font_open(FAMILY, 60) == 0);
+	CHECK(shape("\xe4\xb8\x80") == 1 && ink(o[0].g));   /* that font loaded at this size too */
+	int cw60, ch60, b60;
+	font_cell(&cw60, &ch60, &b60);
+	CHECK(ch60 > ch && cw60 > cw);
+	CHECK(font_open(FAMILY, 20) == 0);
+	font_cell(&cw60, &ch60, &b60);
+	CHECK(cw60 == cw && ch60 == ch);
+	shape("abc");
+	font_stats(&h1, &m1);
+	CHECK(m1 == m0 && h1 == h0 + 3);
+	CHECK(font_open(FAMILY, 60) == 0);  /* least recently used goes first: 21 after 20 leaves 60 */
+	shape("abc");
+	font_stats(&h0, &m0);
+	CHECK(font_open(FAMILY, 20) == 0 && font_open(FAMILY, 21) == 0 && font_open(FAMILY, 60) == 0);
+	shape("abc");
+	font_stats(&h1, &m1);
+	CHECK(m1 == m0 && h1 == h0 + 3);
+	for (int px = 21; px <= 24; px++) CHECK(font_open(FAMILY, px) == 0);
+	CHECK(font_open(FAMILY, 20) == 0);
+	shape("abc");
+	font_stats(&h2, &m2);
+	CHECK(h2 == 0 && m2 == 3);
+	CHECK(font_open(FAMILY, 21) == 0);
+	font_close();                     /* closes every size: 20 is opened afresh */
+	CHECK(font_open(FAMILY, 21) == 0 && font_open(FAMILY, 20) == 0);
+	shape("abc");
+	font_stats(&h2, &m2);
+	CHECK(h2 == 0 && m2 == 3);
+	/* a size never opened finds the fallback font again: it is not loaded
+	   at that size yet */
+	CHECK(shape("\xe4\xb8\x80") == 1 && ink(o[0].g));
+	int h20 = o[0].g->h;
+	CHECK(font_open(FAMILY, 40) == 0 && shape("\xe4\xb8\x80") == 1 && ink(o[0].g) && o[0].g->h > h20);
 	font_close();
 	printf("test_font: %d of %d Mathlib notation symbols draw; marks, ZWJ emoji, ligature, cache and refill\n", nsym, nsym);
 	return 0;

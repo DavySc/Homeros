@@ -12,7 +12,7 @@ for cfg in *.cfg; do
   out=$(tlc -workers 4 -deadlock -metadir "states/${cfg%.cfg}" -config "$cfg" "$spec" 2>&1)
   # "fail" only counts if TLC found a property violation (not a parse error)
   if grep -q "No error has been found" <<<"$out"; then got=pass
-  elif grep -qE "is violated|properties were violated" <<<"$out"; then got=fail
+  elif grep -qE "is violated|was violated|properties were violated" <<<"$out"; then got=fail
   else got=error; fi
   want=$(sed -n 's/^\\\* expect: //p' "$cfg")
   [ "$got" = "$want" ] && s=OK || { s=WRONG; rc=1; }

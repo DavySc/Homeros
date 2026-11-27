@@ -17,3 +17,5 @@ uni: uni_gprev starts on a continuation byte (fuzz_uni)~fuzz FUZZERS=uni FUZZ_SE
 uni: lam and alef with hamza above do not join~test TESTS=uni_nvim~~src/uni/uni.c~c == 0x623 || ~
 uni: CR and an overlong LF split (GB3)~test TESTS=uni_nvim~~src/uni/uni.c~ && !(p == 0x0D && c == 0x0A) &&~ &&
 frama-c: uni_put writes a wrong last byte for a 4-byte code point~frama~~src/uni/uni.c~(unsigned char)(0x80 + c / 64 % 64); b[3] = (unsigned char)(0x80 + c % 64);~(unsigned char)(0x80 + c / 64 % 64); b[3] = (unsigned char)(0x80 + c % 63);
+uni: UTF-16's low surrogate one off~test TESTS=uni~~src/uni/uni.c~(unsigned short)(0xDC00 + (c - 0x10000) % 0x400);~(unsigned short)(0xDC00 + (c - 0xFFFF) % 0x400);
+frama-c: uni_put16's high surrogate from the wrong bits~frama~~src/uni/uni.c~(unsigned short)(0xD800 + (c - 0x10000) / 0x400);~(unsigned short)(0xD800 + (c - 0x10000) / 0x200);

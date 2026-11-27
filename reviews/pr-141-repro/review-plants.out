@@ -1,0 +1,19 @@
+NOT CAUGHT    rv: every key of a word collects again
+NOT CAUGHT    rv: a word at its statement's end is outside it
+NOT CAUGHT    rv: FROM and a column list live on into the next statement
+NOT CAUGHT    rv: a name of the file listed once per use
+NOT CAUGHT    rv: @@rowcount is a variable of the file
+NOT CAUGHT    rv: [name] keeps its brackets
+NOT CAUGHT    rv: the list kept after an item is taken
+BUILD FAILED  rv: FROM a, b: b no table
+  694 |         int k, from = 0, list = 0, got = 0, i = 0;
+      |                ^~~~
+cc1: all warnings being treated as errors
+caught        rv: schema.table: the schema's alias   (CHECK(!strcmp(shown(e), "id city")) failed)
+NOT CAUGHT    rv: DECLARE @t TABLE (...) gives no columns
+NOT CAUGHT    rv: T-SQL's words after @ too
+caught        rv: tables after INTO, UPDATE, DELETE, MERGE not offered   (CHECK(!strcmp(shown(e), "msg")) failed)
+NOT CAUGHT    rv: a table's name not followed past a keyword
+NOT CAUGHT    rv: columns of a #temp or [name] matched by case
+NOT CAUGHT    rv: sqlfmt_units drops a statement of one token
+caught        rv: Tab in a snippet with no further stop keeps the popup   (CHECK(!e->pum) failed)

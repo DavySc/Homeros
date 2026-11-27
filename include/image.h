@@ -25,4 +25,13 @@ void image_draw(uint32_t *px, int stride, const Cell *x);
    latex then dvipng (proc_spawn, loop.h) into dir, returns NULL and sets
    core_changed when they are done. */
 const char *image_latex(const char *tex, size_t n, uint32_t fg, int dpi, const char *dir);
+/* The window's wallpaper, as WezTerm's window_background_image: the PNG or
+   JPEG "wallpaper" in Homeros' config folder (file_stdpath 2), a fifth of
+   it laid over bg, at its own size (*iw x *ih pixels, rows *iw apart);
+   decoded again only when the file or bg changes, which changes *ver
+   (each window compares it with the picture it holds), looked for at
+   each call (a window calls it when its size changes).  src: the part that covers a
+   w x h window (aspect kept, centred), as x, y, width, height, which the
+   window scales to its size.  NULL if there is none. */
+const uint32_t *image_wallpaper(int w, int h, uint32_t bg, int *iw, int *ih, int src[4], unsigned *ver);
 #endif
