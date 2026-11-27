@@ -59,7 +59,7 @@ snip: a new prompt keeps the old selection~test TESTS=snip~~src/tools/pick.c~	P.
 # completion (the popup's sources by the statement, nvim-cmp's matching
 # and order, the keys with a snippet)
 snip: the popup matches inside word parts (snacks' fuzzy)~test TESTS=snip~~src/snip/snip.c~	return j == n;~	return 1;
-snip: snippets ranked with the words~test TESTS=snip~~src/snip/snip.c~		if (!at && !tabs) snippets(e, 2);~		if (!at && !tabs) snippets(e, 0);
+snip: snippets ranked with the words~test TESTS=snip~~src/snip/snip.c~		if (!at && !tabs) snippets(e, 3);~		if (!at && !tabs) snippets(e, 0);
 snip: no shorter word first~test TESTS=snip~~src/snip/snip.c~	return la != lb ? la < lb ? -1 : 1 : i - j;~	return la != lb && 0 ? la < lb ? -1 : 1 : i - j;
 snip: the popup matches case as snacks' smartcase~test TESTS=snip~~src/snip/snip.c~	if (cmp && nq < sizeof low) {~	if (0) {
 snip: an alias not taken to its table~test TESTS=snip~~src/snip/snip.c~ctx[1].b)) q = pool.s + CAND(here, i).of;~ctx[1].b)) (void)0;
@@ -85,7 +85,7 @@ snip: schema.table: the schema a table~test TESTS=snip~~src/snip/snip.c~		if (is
 snip: [x] loses brackets it needs~test TESTS=snip~~src/snip/snip.c~plain = alpha(b[j]) || digit(b[j]) || b[j] == '_';~plain = 1;
 snip: DECLARE @t TABLE (...) gives no columns~test TESTS=snip~~src/snip/snip.c~attab && ((h1->f & TABLE) || !strcasecmp~attab && ((0) || !strcasecmp
 snip: a word of a kind listed once per table~test TESTS=snip~~src/snip/snip.c~		if (last && !strcmp(last->kind~		if (0 && last && !strcmp(last->kind
-snip: after @ the @@ words with the variables~test TESTS=snip~~src/snip/snip.c~"Keyword", NULL, at);~"Keyword", NULL, 0);
+snip: after @ the @@ words with the variables~test TESTS=snip~~src/snip/snip.c~"Keyword", NULL, at || !(c & (TQ_RECASE | TQ_FUNCTION)));~"Keyword", NULL, !(c & (TQ_RECASE | TQ_FUNCTION)));
 snip: DELETE offers no words~test TESTS=snip~~src/snip/snip.c~j < 6 ? TABLES : TABLES | OR_WORD;~TABLES;
 snip: @@rowcount is a variable of the file~test TESTS=snip~~src/snip/snip.c~		if (k == TQ_VAR && b[1] != '@') fact~		if (k == TQ_VAR) fact
 snip: FROM a, b: b no table~test TESTS=snip~~src/snip/snip.c~ || (from && sym(h1, ','))))~ || (0 && from && sym(h1, ','))))
@@ -102,3 +102,4 @@ snip: a variable a bare name~test TESTS=snip~~src/snip/snip.c~		} else if (isnam
 snip: Q of Q.x a bare name~test TESTS=snip~~src/snip/snip.c~		if ((sym(h0, '.') || sym(h0, '(')) && NCAND(pairs)~		if (sym(h0, '(') && NCAND(pairs)
 snip: every T-SQL word at one rank (sel: self before select)~test TESTS=snip~~src/snip/snip.c~NULL, at || !(c & (TQ_RECASE | TQ_FUNCTION)));~NULL, at);
 snip: the file's group's snippets among T-SQL's other words~test TESTS=snip~~src/snip/snip.c~		if (!at && !tabs) snippets(e, 3);~		if (!at && !tabs) snippets(e, 2);
+snip: a buffer without an index waits a second for it~test TESTS=snip~~src/snip/snip.c~loop_timer(idle, NULL, b == I.b ? HOLD : 0);~loop_timer(idle, NULL, HOLD);

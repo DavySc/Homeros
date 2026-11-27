@@ -198,8 +198,11 @@ static void quiet(void)
 {
 	Editor *e = at("select o.x from dbo.orders o|", " 1");
 	CHECK(!e->pum);
-	typing_pause();
 	long long t0 = loop_now();
+	loop_once(900);   /* a buffer without an index gets it at once, not after a pause */
+	CHECK(loop_now() - t0 < 500000000LL);
+	typing_pause();
+	t0 = loop_now();
 	loop_once(1500);
 	CHECK(loop_now() - t0 > 1400000000LL);
 	feed(e, KEY_ESC);
