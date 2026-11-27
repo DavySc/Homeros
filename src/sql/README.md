@@ -23,9 +23,12 @@ closes. SQL Server scripts run batch by batch, split on GO. PostgreSQL runs
 the text as one query.
 
 Completion (package 19) asks `sql_catalog` for the tables' columns of the
-buffer's connection, as SSMS's IntelliSense does. They are read once per
-connection, with one `information_schema.columns` query on a connection of
-its own, in the background, and kept until asked again or `:Connect`.
+buffer's connection, as SSMS's IntelliSense does. When a session on a
+connection logs in (its first F5: IntelliSense too needs a connected
+window), one `INFORMATION_SCHEMA.COLUMNS` query reads them on a connection
+of its own, in the background; every buffer on that connection shares them.
+They are read again at a later login if that failed, when completion asks
+(fn NULL), and after `:Connect`. `design/specs/SqlCat.tla` models it.
 
 A buffer's connection comes from `$XDG_CONFIG_HOME/homeros/sql`
 (`~/.config/homeros/sql`). The longest `dir` line whose folder holds the file

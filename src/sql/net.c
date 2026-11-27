@@ -137,6 +137,14 @@ int net_esc(Str *b, const char *s, size_t n)
 	return str_add(b, s + a, n - a);
 }
 
+size_t net_unesc(char *s, size_t n)
+{
+	size_t w = 0;
+	for (size_t i = 0; i < n; i++, w++)
+		s[w] = s[i] == '\\' && i + 1 < n ? (s[++i] == 't' ? '\t' : s[i] == 'n' ? '\n' : s[i] == 'r' ? '\r' : s[i]) : s[i];
+	return w;
+}
+
 static int fail(Net *c, const char *what)
 {
 	const char *why = ERR_reason_error_string(ERR_get_error());
