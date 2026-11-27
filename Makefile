@@ -175,7 +175,7 @@ wincc: build/openssl-win/lib/libssl.a | $(SYN)/src build/win
 build/win:
 	mkdir -p $@
 
-check: compilers test fuzz conform org-conform undo-diff lean frama specs win dupes
+check: compilers test win fuzz conform org-conform undo-diff lean frama specs dupes
 	@echo "check: all passed"
 
 # copied code fails (CLAUDE.md: no duplication)

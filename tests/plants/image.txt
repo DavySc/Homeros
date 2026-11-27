@@ -50,7 +50,7 @@ file: file_id calls a missing file an error~test TESTS="file file_save image"~~s
 file: file_id says a file exists that does not~test TESTS="file file_save image"~~src/file/file.c~	memset(id, 0, sizeof *id);¶	if (stat(path, &st))~	memset(id, 1, sizeof *id);¶	if (stat(path, &st))
 wl: the wallpaper's surface above the text~test TESTS=wl~~src/wl/wl.c~wl_subsurface_place_below(w->wsub, w->surf);~wl_subsurface_place_above(w->wsub, w->surf);
 wl: the default background opaque over the wallpaper~test TESTS=wl~~src/paint/paint.c~if (!back || rev || c != BG) {~if (!back || rev || c != BG || bs >= 0) {
-wl: an XRGB buffer over the wallpaper~test TESTS=wl~~src/wl/wl.c~wall ? WL_SHM_FORMAT_ARGB8888 : WL_SHM_FORMAT_XRGB8888~WL_SHM_FORMAT_XRGB8888
+wl: an XRGB buffer over the wallpaper~test TESTS=wl~~src/wl/wl.c~w->wall ? WL_SHM_FORMAT_ARGB8888 : WL_SHM_FORMAT_XRGB8888~WL_SHM_FORMAT_XRGB8888
 wl: a new buffer filled opaque over the wallpaper~test TESTS=wl~~src/wl/wl.c~paint_clear(b->px, w->bw, w->back, 0, w->bw, w->bh);~paint_clear(b->px, w->bw, NULL, 0, w->bw, w->bh);
 wl: the wallpaper left past a smaller window~test TESTS=wl~~src/wl/wl.c~			wl_surface_attach(w->wsurf, NULL, 0, 0);¶~¶
 wl: antialiased edges lose their alpha~test TESTS=wl~~src/paint/paint.c~	return rb | ag << 8;~	return rb | (ag & 0xff) << 8;
