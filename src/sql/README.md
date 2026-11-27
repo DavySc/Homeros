@@ -50,7 +50,8 @@ dir ~/work/sql work
 dir ~/notes/db local
 ```
 
-`trust` accepts the server's own (self-signed) certificate. A file that
+`trust` accepts the server's own (self-signed) certificate. `pass=` comes
+last and takes the rest of the line, so a password may hold spaces. A file that
 holds a password must be readable by its owner only (`chmod 600`), libpq's
 rule for `~/.pgpass`. Otherwise the run is refused.
 

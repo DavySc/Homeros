@@ -1,0 +1,2 @@
+r169: the last pass= taken, not the first~test TESTS=sql_editor~~src/sql/sql.c~while ((pw = strstr(pw + 1, "pass=")) && !match_space(pw[-1]));~pw = NULL; for (char *q = l; (q = strstr(q + 1, " pass=")); pw = q + 1);
+r169: the password's tail of spaces trimmed~test TESTS=sql_editor~~src/sql/sql.c~snprintf(pass, sizeof pass, "%s", pw + 5), *pw = 0;~snprintf(pass, sizeof pass, "%s", pw + 5), *pw = 0; for (size_t z = strlen(pass); z && pass[z - 1] == ' ';) pass[--z] = 0;

@@ -1,0 +1,9 @@
+review: f() y: y a bare name~test TESTS=snip~~src/snip/snip.c~!(h1->f & (AS | NAME)) && !sym(h1, ')') && (!c~!(h1->f & (AS | NAME)) && (!c
+review: x y: y a bare name~test TESTS=snip~~src/snip/snip.c~!(h1->f & (AS | NAME)) && !sym(h1, ')') && (!c~!(h1->f & AS) && !sym(h1, ')') && (!c
+review: functions with T-SQL's other words~test TESTS=snip~~src/snip/snip.c~!((c & (TQ_RECASE | TQ_FUNCTION)) ||~!((c & TQ_RECASE) ||
+review: reserved words with T-SQL's other words~test TESTS=snip~~src/snip/snip.c~!((c & (TQ_RECASE | TQ_FUNCTION)) ||~!((c & TQ_FUNCTION) ||
+review: the file's words kept over a new index~test TESTS=snip~~src/snip/snip.c~	memset(I.seen, 0, sizeof I.seen);~	(void)0;
+review: a T-SQL word after an operator no column~test TESTS=snip~~src/snip/snip.c~(!c || sym(h1, ',') || h1->k == TQ_OP || (h1->f & COLUMN))~(!c || sym(h1, ',') || (h1->f & COLUMN))
+review: a T-SQL word after a comma no column~test TESTS=snip~~src/snip/snip.c~(!c || sym(h1, ',') || h1->k == TQ_OP || (h1->f & COLUMN))~(!c || h1->k == TQ_OP || (h1->f & COLUMN))
+review: a T-SQL word after WHERE, BY... no column~test TESTS=snip~~src/snip/snip.c~(!c || sym(h1, ',') || h1->k == TQ_OP || (h1->f & COLUMN))~(!c || sym(h1, ',') || h1->k == TQ_OP)
+review: SELECT y = x: any = drops the name before it~test TESTS=snip~~src/snip/snip.c~ && !strcmp(b, "=") && (h2->f & SELECT))~ && !strcmp(b, "="))

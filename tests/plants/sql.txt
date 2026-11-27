@@ -120,7 +120,7 @@ sql: the catalog's connection left open once read (test_sql_editor)~test TESTS=s
 sql: a catalog's dead connection kept (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (r || now == DB_DEAD) { uncat(c, -1); return; }~	if (r || now == DB_DEAD) return;
 sql: a name's escaped tab kept escaped in the catalog (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~net_unesc(p, (size_t)(n + 1 - p))~(size_t)(n + 1 - p)
 sql: the catalog not read at a login (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (was < DB_READY && db_state(&s->db) >= DB_READY) catread(&s->spec);¶~
-sql: a dropped catalog keeps its rows (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (st != 2) c->cols.n = 0;¶~
+sql: a dropped catalog keeps its rows (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (st != 2) c->cols.n = c->tabs.n = 0;¶~
 specs: SqlCat read once only, not again after a failure~specs~find design/specs -name '*.cfg' ! -name SqlCat_ok.cfg -delete~design/specs/SqlCat_ok.cfg~ Variant = "ok"~ Variant = "noretry"
 sql: a NULL without its mark~test TESTS=sql~~src/sql/tds.c~str_add(&t->out, NET_NULL, 5)~str_add(&t->out, NET_NULL + 1, 4)
 sql: Postgres's rows without their mark~test TESTS=sql~~src/sql/pg.c~str_add(o, i ? "\t" : NET_ROW, 1)~str_add(o, "\t", i ? 1 : 0)
@@ -176,3 +176,14 @@ rv2: SQL Server's statement end unmarked (editor)~test TESTS=sql_editor~~src/sql
 rv2: a blank first line~test TESTS=sql_editor~~src/sql/sql.c~return (s->at || s->o.n) && add(s, "\n", 1);~return add(s, "\n", 1);
 rv2: a new run keeps the last one's cut values~test TESTS=sql_editor~~src/sql/sql.c~s->ng = s->nsp = s->ncut = 0,~s->ng = s->nsp = 0,
 rv2: Enter on a later cell shows the first~test TESTS=sql_editor~~src/sql/sql.c~	for (int i = 0; i < g->n - 1 && over(g, i, t, n, k) <= E->win->col; i++) k = over(g, i, t, n, k) + 4;¶~
+sql: pass= ends at a space (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~pw[strcspn(pw, "\r\n")] = 0~pw[strcspn(pw, " \r\n")] = 0
+sql: pass= keeps a Windows editor's CR (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~pw[strcspn(pw, "\r\n")] = 0~pw[strcspn(pw, "\n")] = 0
+sql: a table's columns asked for in its own case only (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~else if (!strcasecmp(t, table))~else if (!strcmp(t, table))
+sql: the catalog's tables indexed by schema only (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~ || strcmp(t, q + strlen(q) + 1)~
+sql: the table list gives a table once per column (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (!table) fn(ctx, p, t, NULL), n++;~if (!table) for (const char *q; p < z; p = q, n++) q = row(p, &t, &col), fn(ctx, p, t, NULL);
+sql: the catalog read again at every login (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (!c || c->st > 0) return;~	if (!c || c->st == 1 || c->st == 3) return;
+sql: the catalog dialled on NULL before the buffer's login (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~		if (s->fd >= 0 && db_state(&s->db) >= DB_READY) catread(&s->spec);~		catread(&s->spec);
+sql: pass= found inside a word (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~ && !match_space(pw[-1]));~ && 0);
+sql: only a space before pass=, not a tab (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~!match_space(pw[-1])~pw[-1] != ' '
+sql: trust on for every connection (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~o->trust = !strcmp(x, "trust");~o->trust = 1;
+sql: the password's trailing spaces dropped (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~snprintf(pass, sizeof pass, "%s", pw + 5),~snprintf(pass, sizeof pass, "%s", pw + 5), ({ size_t m = strlen(pass); while (m && pass[m - 1] == ' ') pass[--m] = 0; }),

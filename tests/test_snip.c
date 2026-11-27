@@ -375,6 +375,13 @@ static void complete(void)
 	for (const char *k = " join g"; *k; k++) feed(e, *k);
 	CHECK(!strstr(shown(e), "gone"));
 	feed(e, KEY_ESC), core_free(e);
+	/* a pause after WHERE (the index made again, its statement ending at
+	   WHERE) keeps the statement's columns, as without one */
+	e = at("select o.cust from orders o where |", "");
+	typing_pause();
+	feed(e, 'c');
+	CHECK(strstr(shown(e), "cust"));
+	feed(e, KEY_ESC), core_free(e);
 	/* the review's cases: a word at its statement's end; FROM and a
 	   column list end with their statement; a name once however often
 	   used; @@ words no variables, and after @ the file's variables first,
@@ -432,8 +439,10 @@ static void complete(void)
 	   of Q.x, or a name in a statement of two tables */
 	e = at("select name, x as total, count(*) cnt, isnull(y, 0) z, w tot, try_convert(int, t) from dbo.dom with (nolock)\n"
 	       "where kind = @k order by name offset 0 rows fetch next 5 rows only\n"
-	       "select n from app, dom\nupdate dom set a = 1, b = 2\nselect v = u from dom\nselect * from app a join dom d on d|\n", ".");
-	CHECK(!strcmp(shown(e), "a b t u w x y kind name"));
+	       "select n from app, dom\nupdate dom set a = 1, b = 2\nselect v = u from dom\n"
+	       "select id, status from dom where kind = value order by id desc offset 10 rows\n"
+	       "merge dom using app on 1 = 1 when matched then delete\nselect * from app a join dom d on d|\n", ".");
+	CHECK(!strcmp(shown(e), "a b t u w x y id kind name value status"));
 	feed(e, KEY_ESC), core_free(e);
 	/* T-SQL's words the file uses rank with the reserved ones */
 	e = at("declare @x int\nselect |\n", "in");

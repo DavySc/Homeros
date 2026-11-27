@@ -26,13 +26,15 @@ int  sql_connect(struct Editor *e, const char *name);
    temp tables and rolls back an open transaction, as when an SSMS query
    window closes); the next F5 logs in again.  0 ok, -1 msg set. */
 int  sql_disconnect(struct Editor *e);
-/* The columns of the tables and views on b's connection (SSMS's
-   IntelliSense cache), for completion: fn gets each, in schema, table and
-   column order.  Read when a session on b's connection logs in (its
+/* The tables and views on b's connection and their columns (SSMS's
+   IntelliSense cache), for completion: with table NULL fn gets each
+   table once (column NULL), in schema and table order; else the columns
+   of the tables named table in any schema (ASCII case ignored), in
+   their order.  Read when a session on b's connection logs in (its
    first F5: SSMS's IntelliSense needs a connected window), on a
    connection of its own, in the background, and again at a later login
    if that failed: until then, or with no connection, 0 and no message.
    fn NULL drops it and reads it again (at once if b is logged in, else at
    its login: SSMS's Ctrl+Shift+R).  Returns how many fn got. */
-int  sql_catalog(struct Editor *e, const struct Buf *b, void (*fn)(void *ctx, const char *schema, const char *table, const char *column), void *ctx);
+int  sql_catalog(struct Editor *e, const struct Buf *b, const char *table, void (*fn)(void *ctx, const char *schema, const char *table, const char *column), void *ctx);
 #endif
