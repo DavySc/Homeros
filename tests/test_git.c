@@ -24,14 +24,6 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #define setenv(k, v, o) _putenv_s(k, v)
-int syntax_open(void) { return 0; }
-void syntax_edit(void) {}
-void syntax_free(void) {}
-void syntax_faces(void) {}
-int syntax_zig_fmt(void) { return -2; }
-int syntax_md(void) { return 0; }
-int syntax_conceal(void) { return 0; }
-const char *syntax_filetype(const char *p) { (void)p; return 0; }
 #else
 #include <sys/inotify.h>
 #include <unistd.h>
