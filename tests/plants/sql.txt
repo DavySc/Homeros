@@ -97,7 +97,7 @@ sql: [IPv6] keeps its brackets (test_sql_editor)~test TESTS=sql_editor~~src/sql/
 specs: SqlSess's cancelled run goes on with its batches~specs~find design/specs -name '*.cfg' ! -name SqlSess_ok.cfg -delete~design/specs/SqlSess_ok.cfg~Variant = "ok"~Variant = "keep"
 sql: :Disconnect keeps the session (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	drop(s);   /* the server ends the session~	(void)0;   /* the server ends the session
 sql: a second F5 during a run starts another (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (s->q.n) { core_msg(E, s->cancel ?~if (s->cancel) { core_msg(E, s->cancel ?
-sql: the cancel flag outlives its answer (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (s->cancel) s->cancel = 0, s->q.n = 0;~if (s->cancel) s->q.n = 0;
+sql: the cancel flag outlives its answer (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (s->cancel) s->cancel = 0, end(s);~if (s->cancel) end(s);
 sql: a port with letters after it is taken (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~port > 65535 || (p && *p))~port > 65535)
 win: a socket that turned writable before the reset waits for ever (test_sql_wake)~win WIN=sql~~src/sql/net.c~if (woke(c) || net_flush(c)) return -1;~if (woke(c)) return -1;
 specs: Wake with the close's record reset with the event~specs~find design/specs -name '*.cfg' ! -name Wake_ok_close.cfg -delete~design/specs/Wake_ok_close.cfg~ Variant = "ok"~ Variant = "noclose"
@@ -110,7 +110,7 @@ sql: the catalog not read again on NULL (test_sql_editor)~test TESTS=sql_editor~
 sql: one catalog for every connection (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~while (c && strcmp(c->name, name)) c = c->next;~while (c && 0) c = c->next;
 sql: :Connect keeps the connection's catalog (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (k) uncat(k, 0);   /* read again~	if (0) uncat(k, 0);   /* read again
 sql: the catalog's lookup leaves its message (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	memcpy(e->msg, m, sizeof m);¶~
-sql: F5's open error lost before it is shown (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~putz(s, db_net(&s->db)->err), putz(s, "\n"); db_close(&s->db), s->q.n = 0;~db_close(&s->db), putz(s, db_net(&s->db)->err), putz(s, "\n"); s->q.n = 0;
+sql: F5's open error lost before it is shown (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~putz(s, db_net(&s->db)->err), putz(s, "\n"); db_close(&s->db), end(s);~db_close(&s->db), putz(s, db_net(&s->db)->err), putz(s, "\n"); end(s);
 sql: the catalog's query in lower case (a case-sensitive database) (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~"SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS"~"select table_schema, table_name, column_name from information_schema.columns"
 sql: the catalog's columns by name, not position (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~ORDER BY 1, 2, ORDINAL_POSITION~ORDER BY 1, 2, 3
 sql: Postgres's own schemas in the catalog (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~" WHERE TABLE_SCHEMA NOT IN ('pg_catalog', 'information_schema') ORDER BY~" ORDER BY
@@ -122,3 +122,19 @@ sql: a name's escaped tab kept escaped in the catalog (test_sql_editor)~test TES
 sql: the catalog not read at a login (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (was < DB_READY && db_state(&s->db) >= DB_READY) catread(&s->spec);¶~
 sql: a dropped catalog keeps its rows (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (st != 2) c->cols.n = 0;¶~
 specs: SqlCat read once only, not again after a failure~specs~find design/specs -name '*.cfg' ! -name SqlCat_ok.cfg -delete~design/specs/SqlCat_ok.cfg~ Variant = "ok"~ Variant = "noretry"
+sql: a NULL without its mark~test TESTS=sql~~src/sql/tds.c~str_add(&t->out, NET_NULL, 5)~str_add(&t->out, NET_NULL + 1, 4)
+sql: Postgres's rows without their mark~test TESTS=sql~~src/sql/pg.c~str_add(o, i ? "\t" : NET_ROW, 1)~str_add(o, "\t", i ? 1 : 0)
+sql: Postgres's error not closed~test TESTS=sql~~src/sql/pg.c~(k == 'E' && str_add(o, NET_ERR, 1)) || str_add(o, "\n", 1)~str_add(o, "\n", 1)
+sql: the marks' plain text keeps an error's mark~test TESTS=sql~~src/sql/net.c~if ((unsigned char)s[i] < 0xFC)~if ((unsigned char)s[i] < 0xFD)
+sql: the results' widths not capped~test TESTS=sql_editor~~src/sql/sql.c~fit(q + 1 + nul, k - nul, CAP, &c);~fit(q + 1 + nul, k - nul, (size_t)-1, &c);
+sql: a cut value's last cell not kept for its ...~test TESTS=sql_editor~~src/sql/sql.c~if (cut) k = fit(p, n, (size_t)w - 1, &c), c++;~if (cut) k = fit(p, n, (size_t)w, &c), c++;
+sql: a long set's row numbers as wide as its first rows'~test TESTS=sql_editor~~src/sql/sql.c~s->nheld == HOLD ? 1000000 : s->nheld~s->nheld
+sql: a long set held to its end~test TESTS=sql_editor~~src/sql/sql.c~(++s->nheld == HOLD && lay(s))~(++s->nheld == 0 && lay(s))
+sql: a laid out set's later rows dropped~test TESTS=sql_editor~~src/sql/sql.c~		if (s->in == 2) r = line(s, &s->g[s->ng - 1], p + 1, n - 1, ++s->g[s->ng - 1].rows);¶~		if (s->in == 2) r = 0;¶
+sql: a column without a name blank~test TESTS=sql_editor~~src/sql/sql.c~(nr || k ? cell(~(1 ? cell(
+sql: the results' | in no face~test TESTS=sql_editor~~src/sql/sql.c~j < ls + k + 3; j++) f[j - a] = FACE_ORG_TABLE;~j < ls + k + 3; j++) f[j - a] = FACE_NONE;
+sql: a span's faces from its start, not the window's~test TESTS=sql_editor~~src/sql/sql.c~s->sp[lo].a > a ? s->sp[lo].a : a~s->sp[lo].a
+sql: a NULL in no face~test TESTS=sql_editor~~src/sql/sql.c~(null && span(s, s->o.n, n, FACE_DIAG_WARN))~(null && 0)
+sql: an error message in no face~test TESTS=sql_editor~~src/sql/sql.c~if (a) r = span(s, a, s->o.n - a, FACE_DIAG_ERROR), a = 0;~if (a) r = span(s, a, s->o.n - a, FACE_NONE), a = 0;
+sql: the messages held after the run~test TESTS=sql_editor~~src/sql/sql.c~static void end(Sess *s) { s->q.n = 0, put(s, "", 0); }~static void end(Sess *s) { s->q.n = 0; }
+sql: a new run keeps the last one's grids~test TESTS=sql_editor~~src/sql/sql.c~	s->ng = s->nsp = 0, s->in = 0,~	s->nsp = 0, s->in = 0,

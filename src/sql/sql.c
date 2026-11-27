@@ -39,7 +39,6 @@ typedef struct {
 	Str part, held, msgs, o;
 	size_t at, line, nheld, ng, nsp, csp;   /* at, line: o's first byte and line in the buffer */
 	int in;                 /* a result set is open: 1 its rows held, 2 laid out */
-	int ruled;              /* the messages' rule is out */
 	struct Grid { size_t line, rows; int rn, n, *w; } *g;
 	struct Span { size_t a; unsigned n; unsigned char f; } *sp;
 } Sess;
@@ -70,6 +69,7 @@ static int is_sql(const Buf *b)
    as they come.  SSMS's grid also sizes its columns from the first rows
    (hypothesis, not measured). */
 enum { CAP = 40, HOLD = 500 };
+#define NONAME "(No column name)"   /* SSMS's name for a column without one */
 
 /* The bytes of p[0, n) that fit in w cells (whole graphemes), their cells
    in *c; a control byte takes 2 (^X, as the core draws it) */
@@ -83,7 +83,12 @@ static size_t fit(const char *p, size_t n, size_t w, size_t *c)
 }
 
 static int add(Sess *s, const char *p, size_t n) { return str_add(&s->o, p, n); }
-static int pad(Sess *s, size_t n) { while (n--) if (add(s, " ", 1)) return -1; return 0; }
+static int pad(Sess *s, size_t n)
+{
+	static const char b[] = "                                         ";   /* a cell's most: CAP + 1 */
+	_Static_assert(sizeof b - 1 == CAP + 1, "pad's blanks");
+	return add(s, b, n);
+}
 static int span(Sess *s, size_t a, size_t n, int f)   /* face f on the bytes [a, a + n) of o */
 {
 	if (s->nsp == s->csp) {
@@ -118,7 +123,7 @@ static int line(Sess *s, struct Grid *g, const char *p, size_t n, size_t nr)
 	for (int i = 0; i < g->n && !r; i++) {
 		const char *e = memchr(p, '\t', n);
 		size_t k = e ? (size_t)(e - p) : n;
-		r = add(s, "\xe2\x94\x82 ", 4) || cell(s, p, k, g->w[i], i == g->n - 1);
+		r = add(s, "\xe2\x94\x82 ", 4) || (nr || k ? cell(s, p, k, g->w[i], i == g->n - 1) : cell(s, NONAME, sizeof NONAME - 1, g->w[i], i == g->n - 1));
 		p += k + !!e, n -= k + !!e;
 	}
 	return r || add(s, "\n", 1);
@@ -131,10 +136,12 @@ static int lay(Sess *s)
 	char *p = s->held.s, *e = p + s->held.n, *z;
 	for (char *q = p; q < e; q = z + 1) {   /* each line: its mark, then cells */
 		z = memchr(q, '\n', (size_t)(e - q));
+		int head = q == p;
 		for (int i = 0; i < g->n && q < z; i++) {
 			char *t = memchr(q + 1, '\t', (size_t)(z - q - 1));
 			size_t c, k = (size_t)((t ? t : z) - q - 1), nul = k && (unsigned char)q[1] == 0xFD;
 			fit(q + 1 + nul, k - nul, CAP, &c);
+			if (head && !k) c = sizeof NONAME - 1;
 			if ((int)c > g->w[i]) g->w[i] = (int)c;
 			q = t ? t : z;
 		}
@@ -193,8 +200,7 @@ static int messages(Sess *s)
 	static const char h[] = "\xe2\x94\x80\xe2\x94\x80 Messages \xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\n";
 	int r = endset(s);
 	if (r || !s->msgs.n) return r;
-	r = !s->ruled && (span(s, s->o.n, sizeof h - 2, FACE_FUNCTION) || add(s, h, sizeof h - 1));
-	s->ruled = 1;
+	r = span(s, s->o.n, sizeof h - 2, FACE_FUNCTION) || add(s, h, sizeof h - 1);
 	for (size_t i = 0, a = 0; i < s->msgs.n && !r; i++)
 		if ((unsigned char)s->msgs.s[i] == 0xFC) {
 			if (a) r = span(s, a, s->o.n - a, FACE_DIAG_ERROR), a = 0;
@@ -228,7 +234,7 @@ static void clear(Sess *s)
 {
 	core_buf_fill(E, core_buf_find(E, s->res), "", 0, 0);
 	for (size_t i = 0; i < s->ng; i++) free(s->g[i].w);
-	s->ng = s->nsp = 0, s->in = s->ruled = 0, s->part.n = s->held.n = s->msgs.n = 0;
+	s->ng = s->nsp = 0, s->in = 0, s->part.n = s->held.n = s->msgs.n = 0;
 }
 
 /* The results' faces (Buf.faces): the grids' names, rule, row numbers and

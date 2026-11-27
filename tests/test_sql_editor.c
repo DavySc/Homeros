@@ -306,6 +306,32 @@ int main(void)
 	CHECK(!core_edit_file(&e, "ms/y.txt", 0) && !sql_catalog(&e, e.buf, hcat, cat));
 	put("msx/o.sql", "select 1\n", 0600);
 	CHECK(!core_edit_file(&e, "msx/o.sql", 0) && strcpy(e.msg, "kept") && !sql_catalog(&e, e.buf, hcat, cat) && !strcmp(e.msg, "kept"));
+	/* the grid: a column as wide as its widest value, a longer one cut at
+	   40 cells with a ..., a NULL apart from the text 'NULL', a CJK value
+	   two cells a character, SSMS's name for a column without one; the faces: the names, the rule, the row
+	   numbers, the |s, a NULL, a cut, an error */
+	const char *g = f5("ms/z.sql", "select N'NULL' s, null n, replicate(N'x', 50) l, N'\xe6\x97\xa5\xe6\x9c\xac' w, N'\xc3\xa9' e\ngo\nselect 1/0\n");
+	CHECK(!strncmp(g, "  \xe2\x94\x82 s    \xe2\x94\x82 n    \xe2\x94\x82 l ", 26) && strstr(g, "\n1 \xe2\x94\x82 NULL \xe2\x94\x82 NULL \xe2\x94\x82 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\xe2\x80\xa6 \xe2\x94\x82 \xe6\x97\xa5\xe6\x9c\xac \xe2\x94\x82 \xc3\xa9\n(1 row)\n") && strstr(g, "\n(1 row)\n\n  \xe2\x94\x82 (No column name)\n") && strstr(g, "\n(0 rows)\n"));
+	Buf *rb = e.wins->next->buf;
+	unsigned char fc[256];
+	size_t l0 = text_line_start(rb->text, 0), l1 = text_line_start(rb->text, 1), l2 = text_line_start(rb->text, 2), l3 = text_line_start(rb->text, 3);
+	rb->faces(rb, l0, l1 - 1, fc);
+	CHECK(fc[0] == FACE_PMENU_SEL && fc[l1 - 2 - l0] == FACE_PMENU_SEL);
+	rb->faces(rb, l1, l2 - 1, fc);
+	CHECK(fc[0] == FACE_ORG_TABLE && fc[l2 - 2 - l1] == FACE_ORG_TABLE);
+	rb->faces(rb, l2, l3 - 1, fc);
+	CHECK(fc[0] == FACE_LINE_NR && fc[2] == FACE_ORG_TABLE && fc[5] == FACE_NONE && fc[11] == FACE_ORG_TABLE && fc[15] == FACE_DIAG_WARN && fc[18] == FACE_DIAG_WARN
+		&& fc[19] == FACE_NONE && fc[24] == FACE_NONE && fc[63] == FACE_NUMBER && fc[66] == FACE_NONE && fc[67] == FACE_ORG_TABLE);
+	rb->faces(rb, l2 + 16, l2 + 18, fc);   /* a window that starts inside a span */
+	CHECK(fc[0] == FACE_DIAG_WARN && fc[1] == FACE_DIAG_WARN);
+	const char *m = strstr(g, "Msg 8134");
+	size_t at = text_len(rb->text) - strlen(g) + (size_t)(m - g);
+	rb->faces(rb, at, at + 8, fc);
+	CHECK(m && fc[0] == FACE_DIAG_ERROR && fc[7] == FACE_DIAG_ERROR);
+	/* a long set: the widths from its first 500 rows, a later longer value
+	   cut, the row numbers wide enough for 7 digits */
+	g = f5("ms/z.sql", "select top 600 case when row_number() over (order by (select 1)) > 500 then N'longer' else N'v' end x from sys.all_objects a, sys.all_objects b\n");
+	CHECK(strstr(g, "\n    500 \xe2\x94\x82 v\n    501 \xe2\x94\x82 \xe2\x80\xa6\n") && strstr(g, "\n    600 \xe2\x94\x82 \xe2\x80\xa6\n(600 rows)\n"));
 	/* not a SQL buffer: F5 is not ours */
 	put("x.txt", "x\n", 0600);
 	CHECK(!core_edit_file(&e, "x.txt", 0) && !sql_key(&e, KEY_F5));
