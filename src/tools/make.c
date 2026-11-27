@@ -199,12 +199,19 @@ void tools_locs(Editor *e, const LspLoc *v, int n, int list)
 {
 	if (!list && n == 1) {
 		/* get_locations(): m' and the place, in the current window; a line
-		   past the end fails in nvim_win_set_cursor(), the file shown */
-		if (e->buf->path && !strcmp(e->buf->path, v->path)) core_setpcmark(e);
+		   past the end fails in nvim_win_set_cursor(), the file shown
+		   where nvim_win_set_buf() put it: as :e does, but a new buffer at
+		   1,0 (:b), not on its first non-blank */
+		Buf *b = e->bufs;
+		while (b && !(b->path && !strcmp(b->path, v->path))) b = b->next;
+		if (b == e->buf) core_setpcmark(e);
 		else if (core_edit_file(e, v->path, 0)) return;
 		if (v->line == (size_t)-1) return;
-		if (v->line >= core_lines(e)) core_msg(e, "Invalid cursor line: out of range");
-		else core_goto(e, v->line, v->col);
+		if (v->line < core_lines(e)) core_goto(e, v->line, v->col);
+		else {
+			if (!b) core_goto(e, 0, 0);
+			core_msg(e, "Invalid cursor line: out of range");
+		}
 		return;
 	}
 	/* setqflist() and botright copen: the list's window current, names

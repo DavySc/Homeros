@@ -286,3 +286,4 @@ keys: a focus change leaves which-key's panel up~test TESTS=keys_map~~src/keys/k
 specs: Focus with every focus event entering its tab page~specs~find design/specs -name '*.cfg' ! -name Focus_ok.cfg -delete~design/specs/Focus_ok.cfg~ Variant = "asked"~ Variant = "enter"
 keys: gd asks for the implementation, not the definition~test TESTS=lsp_locs~~src/keys/keys.c~ : m[1] == 'd' ? "textDocument/definition" :~ : m[1] == 'd' ? "textDocument/implementation" :
 keys: gd opens the server's first definition, not the list of them sorted~test TESTS=lsp_locs~~src/keys/keys.c~ + E->win->col, tag != NULL, found,~ + E->win->col, 1, found,
+keys: C-] where no server is says nothing (E426)~test TESTS=lsp_locs~~src/keys/keys.c~		if (tag) found((void *)(what + 3), NULL, 0);~		if (0) found((void *)(what + 3), NULL, 0);

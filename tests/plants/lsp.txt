@@ -134,4 +134,5 @@ lsp: a Location alone taken as references~test TESTS=lsp_locs~~src/lsp/lsp.c~	w-
 lsp: an error answer's words without the server's name~test TESTS=lsp_locs~~src/lsp/lsp.c~		str_addf(&t, "%s: %.*s: %s", name ? name : "",~		str_addf(&t, "%.0s%.*s: %s", name ? name : "",
 lsp: a place in a file that cannot be read reads no file (undefined behaviour)~test TESTS=lsp_locs~~src/lsp/lsp.c~		} else if (dn) {~		} else if (!d) {
 lsp: a URI's #fragment kept in its file~test TESTS=lsp~~src/lsp/lsp.c~	for (; f && *u && *u != '#'; u++) {~	for (; f && *u; u++) {
-lsp: a drive's URI keeps the slash before it (/C:/x)~test TESTS=lsp~~src/lsp/lsp.c~	if (u[0] == '/' && u[1] && u[2] == ':') u++;~
+lsp: a drive's URI keeps the slash before it (/C:/x)~test TESTS=lsp~~src/lsp/lsp.c~	if (f && f[0] == '/' && isalpha((unsigned char)f[1]) && f[2] == ':') memmove(f, f + 1, strlen(f));~
+lsp: a URI's drive is any character before ':', not a letter (/1:/x)~test TESTS=lsp~~src/lsp/lsp.c~isalpha((unsigned char)f[1]) && f[2]~f[1] && f[2]

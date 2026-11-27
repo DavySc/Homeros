@@ -9,6 +9,7 @@
    went on, at a key every 250 ms (src/lsp/bench/stale.c), against the
    design's 2 s limit.  Replies are not mapped (LspSync "mapreply" fails):
    one is shown only while the text is as it was when asked. */
+#include <ctype.h>
 #include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -886,7 +887,6 @@ char *lsp_fname(const char *u)
 {
 	if (strncmp(u, "file://", 7)) return NULL;
 	u += 7;
-	if (u[0] == '/' && u[1] && u[2] == ':') u++;
 	char *f = malloc(strlen(u) + 1), *d = f;
 	static const char hex[] = "0123456789ABCDEF0123456789abcdef";
 	for (; f && *u && *u != '#'; u++) {
@@ -895,6 +895,9 @@ char *lsp_fname(const char *u)
 		else *d++ = *u;
 	}
 	if (f) *d = 0;
+	/* is_windows_file_uri() on the decoded URI: a letter and ':' after the
+	   third slash, which goes */
+	if (f && f[0] == '/' && isalpha((unsigned char)f[1]) && f[2] == ':') memmove(f, f + 1, strlen(f));
 	return f;
 }
 

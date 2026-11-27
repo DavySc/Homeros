@@ -169,6 +169,17 @@ static void keyed_case(Editor *e)
 	b[text_len(list->text)] = 0;
 	CHECK(strstr(a, "echo $$") && strcmp(a, b));
 	free(a); free(b);
+	/* C-] where no server is: E426 (Neovim's last line, after E433 "No
+	   tags file"; run) */
+	FILE *t = fopen("t.txt", "w");
+	CHECK(t && fputs("x = bar(1);\n", t) >= 0 && !fclose(t) && !core_edit_file(e, "t.txt", 0) && !e->buf->lsp);
+	core_goto(e, 0, 5);
+	type(e, "\x1d", 0);
+	CHECK(!strcmp(e->msg, "E426: Tag not found: bar"));
+	/* a place in a modified buffer's own file: the jump, not :e's E37 */
+	type(e, "A;\x1b", 0);
+	tools_locs(e, &(LspLoc){ e->buf->path, NULL, 0, 2 }, 1, 0);
+	CHECK(core_modified(e->buf) && e->win->line == 0 && e->win->col == 2 && !e->msg[0]);
 	keyed = 1;
 }
 
