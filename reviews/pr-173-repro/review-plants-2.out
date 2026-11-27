@@ -1,0 +1,12 @@
+NOT CAUGHT    rv: every table's columns run to the catalog's end
+NOT CAUGHT    rv: a table matches a name it is a prefix of
+NOT CAUGHT    rv: a name matches a table it is a prefix of
+caught        rv: the index kept when the rows are dropped
+caught        rv: the table list counts nothing
+caught        rv: the table list gives the first column
+NOT CAUGHT    rv: the index compares the table only, not the schema
+NOT CAUGHT    rv: only the first table of that name, not every schema's
+caught        rv: the first table left out of the index
+caught        rv: the table list skips the last table
+NOT CAUGHT    rv: the empty name lists every table's columns
+5 of 11 caught
