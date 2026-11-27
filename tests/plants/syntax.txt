@@ -66,9 +66,9 @@ syntax: a .org file's update says nothing changed, so the editor does not redraw
 syntax: Vim's match? keeps case, so CMake's SET is not set (test_syntax, case 6)~test TESTS=syntax~~src/syntax/syntax.c~		if (ci ? tolower(c) != tolower((unsigned char)str[i]) : c != (unsigned char)str[i]) return 0;~		if (ci ? c != (unsigned char)str[i] : c != (unsigned char)str[i]) return 0;
 syntax: Vim's match? reads ".*" as part of the word, so CMake's A-NOTFOUND is no boolean (test_syntax, case 6)~test TESTS=syntax~~src/syntax/syntax.c~uint32_t m = p->len[k], suf = p->str[k][0] == '.';~uint32_t m = p->len[k], suf = 0;
 syntax: Vim's match? of one word without parentheses is skipped, so set's variable is plain (test_syntax, case 6)~test TESTS=syntax~~src/syntax/syntax.c~	if (par && s[n] != ')') return 1;~	if (!par || s[n] != ')') return 1;
-syntax: a fold ending at column 0 keeps that line (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~	int64_t er = (int64_t)e.row - (e.column == 0);~	int64_t er = (int64_t)e.row;
+syntax: a fold ending at column 0 keeps that line (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~(int64_t)e.row - (e.column == 0), lo~(int64_t)e.row, lo
 syntax: a line that ends one fold and starts another keeps the first (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~		if (e && o) v -= o, o = 0;~		if (0) v -= o, o = 0;
-syntax: the same fold counted twice (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~ && (sr != prev[0] || er != prev[1]))~)
+syntax: the same fold counted twice (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~ || (sr == prev[0] && er == prev[1])) return;~) return;
 syntax: folds only of the root tree, not injected ones (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~	for (uint32_t k = 0; k < L->nkid; k++) fold_tree(s, L->kid[k], lo, z, in, out, prev);~
 syntax: Markdown's setext heading starts no fold (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~		if (b == y) return c == '=' ? 3 : 5;~		if (b == y) return 0;
 syntax: Markdown's heading level is one less (test_syntax, folds)~test TESTS=syntax~~src/syntax/syntax.c~return 2 * (int)(h - a) + 1;~return 2 * (int)(h - a) - 1;
@@ -99,7 +99,7 @@ syntax: a row an edit adds keeps a level of 0, not -1 (test_syntax, folds after 
 syntax: the fold query's row range stays on the cursor, so colours miss matches (test_syntax)~test TESTS=syntax~~src/syntax/syntax.c~	ts_query_cursor_set_point_range(s->qc, (TSPoint){ 0, 0 }, (TSPoint){ UINT32_MAX, UINT32_MAX });¶~
 syntax: the fold query is not limited to the rows asked, so a fold of rows above counts (test_syntax, folds after edits)~test TESTS=syntax~~src/syntax/syntax.c~	size_t lo = a ? a - 1 : 0;~	size_t lo = 0;
 syntax: the rows reported changed leave out the last (test_syntax, folds after an edit)~test TESTS=syntax~~src/syntax/syntax.c~	if (z > *r2) *r2 = z;~	if (z > *r2) *r2 = z - 1;
-syntax: Markdown's folds miss an edit that adds no line (test_syntax, folds after edits)~test TESTS=syntax~~src/syntax/syntax.c~(nrow == orow && s->root->lang != 2)~(nrow == orow)
+syntax: Markdown's folds miss an edit that adds no line (test_syntax, folds after edits)~test TESTS=syntax~~src/syntax/syntax.c~(nrow == orow && (s->zig || s->root->lang != 2))~(nrow == orow)
 syntax: Markdown's folds stop at the edited rows, not where a level is as before (test_syntax, folds after edits)~test TESTS=syntax~~src/syntax/syntax.c~			if (r >= z && v == s->lv[r]) break;~			if (r >= z) break;
 syntax: syntax_foldexpr answers past the rows (fuzz_syntax)~test TESTS=syntax~~src/syntax/syntax.c~	if (line >= s->nlv) return 0;¶~
 syntax: the rows reported changed start one late (fuzz_syntax)~fuzz FUZZERS=syntax FUZZ_SECONDS=60~~src/syntax/syntax.c~	if (a < *r1) *r1 = a;~	if (a < *r1) *r1 = a + 1;
@@ -140,3 +140,18 @@ syntax: each comment finds its line's end again, so a line of short comments is 
 syntax: the line limit counts bytes, not UTF-16 units, so a line of 19,999 é is plain (test_syntax_lean)~test TESTS=syntax_lean~~src/syntax/lean.c~if ((c = tsql_byte(r, p)) < 0x80 || c >= 0xc0) n += 1 + (c >= 0xf0);~if ((c = tsql_byte(r, p)) >= 0) n++;
 syntax: the line limit counts an astral code point as one unit, so a line of 20,001 units in 𝔽 is read (test_syntax_lean)~test TESTS=syntax_lean~~src/syntax/lean.c~n += 1 + (c >= 0xf0);~n += 1;
 syntax: a spent line's rest keeps no colour, not the comment's (test_syntax_lean)~test TESTS=syntax_lean~~src/syntax/lean.c~put(&x, x.dead, eol, FACE_COMMENT), s = s0;~s = s0;
+syntax: Zig's a.b() colours b as a field, not a call (test_syntax_zig, Neovim's colours)~test TESTS=syntax_zig~~src/syntax/zig.zig~                .field_access => role[a.lastToken(f)] |= bit(.call),¶~¶
+syntax: Zig's folds count a span of one line (test_syntax_zig, Neovim's folds)~test TESTS=syntax_zig~~src/syntax/zig.zig~        sp.append(gpa, .{ a.tokenStart(if (init) a.nodeMainToken(n) else a.firstToken(n)), end(a, n) }) catch return false;~        sp.append(gpa, .{ a.tokenStart(if (init) a.nodeMainToken(n) else a.firstToken(n)), end(a, n) + 1 }) catch return false;
+syntax: Zig's else folds in an expression too (test_syntax_zig, Neovim's folds)~test TESTS=syntax_zig~~src/syntax/zig.zig~        if (!stmt[i]) continue;¶~¶
+syntax: a Zig member with a parse error keeps its tree's colours (test_syntax_zig, a member that does not parse)~test TESTS=syntax_zig~~src/syntax/zig.zig~        @memset(bad[lo..hi], true);~        _ = .{ lo, hi };
+syntax: Zig's faces stay where they were when the text before them changes (test_syntax_zig, edits before a parse)~test TESTS=syntax_zig~~src/syntax/syntax.c~			memmove(s->zf + pos + nins, s->zf + pos + ndel, s->zn - pos - ndel);¶~
+syntax: Zig's parser is the release before the one on PATH (test_syntax_zig, zig fmt)~test TESTS=syntax_zig~~src/syntax/syntax.c~		if (zig_rel[i].minor <= m) r = &zig_rel[i];~		if (zig_rel[i].minor < m) r = &zig_rel[i];
+syntax: Zig's char literals have no escapes (test_syntax_zig, Neovim's colours)~test TESTS=syntax_zig~~src/syntax/zig.zig~if (tg == .string_literal or tg == .char_literal) escapes~if (tg == .string_literal) escapes
+syntax: a first token ? reads the token before the text (test_syntax_zig, a first token ?)~test TESTS=syntax_zig~~src/syntax/zig.zig~(tg == .question_mark and k > 0 and~(tg == .question_mark and
+syntax: a first token ? reads the token before the text (fuzz_syntax, Zig)~fuzz FUZZERS=syntax FUZZ_SECONDS=60~~src/syntax/zig.zig~(tg == .question_mark and k > 0 and~(tg == .question_mark and
+syntax: zig fmt with another release's formatter (test_syntax_zig, zig fmt only with the release's own)~test TESTS=syntax_zig~~src/syntax/syntax.c~	if (!zig_own) return -3;¶~
+syntax: a Zig parse runs while a key waits (test_syntax_zig, a parse waits for a waiting key)~test TESTS=syntax_zig~~src/syntax/syntax.c~		if (stop && stop()) return 2;¶~
+syntax: zig fmt formats the last parse's text, not the buffer's (test_syntax_zig, zig fmt after an edit; reviews/pr-136.md)~test TESTS=syntax_zig~~src/syntax/syntax.c~	if (s->dirty || !h) {¶		if (s->zfh)~	if (!h) {¶		if (s->zfh)
+syntax: text typed into a Zig buffer keeps the colours of what was there until the parse (test_syntax_zig, edits before a parse; reviews/pr-136.md)~test TESTS=syntax_zig~~src/syntax/syntax.c~			memset(s->zf + pos, 0, nins);¶~
+syntax: the Zig member before an "expected ';'" keeps its tree's colours (test_syntax_zig, broken's "or the one before it"; reviews/pr-136.md)~test TESTS=syntax_zig~~src/syntax/zig.zig~        const from = if (i > 0 and a.firstToken(decls[i]) == e.token) i - 1 else i;~        const from = i;
+syntax: Zig's comments between tokens are not coloured (test_syntax_zig, Neovim's colours)~test TESTS=syntax_zig~~src/syntax/zig.zig~        comments(a.source, gap, s, out);¶~

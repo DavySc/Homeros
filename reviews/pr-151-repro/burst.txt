@@ -1,0 +1,12 @@
+one write of ^D^D^D^U:
+--- screen (cursor row 21 col 4)
+20|     c ➜ +compile             p ➜ +project
+21|     f ➜ +find                u ➜ +toggle
+22|
+23| SPC<esc> close  <bs> back  <c-d>/<c-u> scroll
+the same keys 0.2 s apart:
+--- screen (cursor row 21 col 4)
+20|     e ➜ File Explorer        h ➜ +hunks
+21|     , ➜ Buffers              i ➜ +insert
+22|     c ➜ +compile             p ➜ +project
+23| SPC<esc> close  <bs> back  <c-d>/<c-u> scroll
