@@ -102,3 +102,23 @@ sql: a port with letters after it is taken (test_sql_editor)~test TESTS=sql_edit
 win: a socket that turned writable before the reset waits for ever (test_sql_wake)~win WIN=sql~~src/sql/net.c~if (woke(c) || net_flush(c)) return -1;~if (woke(c)) return -1;
 specs: Wake with the close's record reset with the event~specs~find design/specs -name '*.cfg' ! -name Wake_ok_close.cfg -delete~design/specs/Wake_ok_close.cfg~ Variant = "ok"~ Variant = "noclose"
 specs: Wake with no flush after the reset~specs~find design/specs -name '*.cfg' ! -name Wake_ok_send.cfg -delete~design/specs/Wake_ok_send.cfg~ Variant = "ok"~ Variant = "flushfirst"
+sql: Ctrl-C does not cancel a run (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~ && key != KEY_CTRL_C) return 0;~) return 0;
+sql: Ctrl-C taken from Vim with no run to cancel (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~return s && key == KEY_BREAK;~return s != NULL;
+sql: the catalog's header line taken as a row (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~ && (h || !(h = p)))~ && (h = p))
+sql: the catalog takes the login's own batch for its rows (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~ && c->st == 1) c->st = 3,~ && was < DB_READY) c->st = 3,
+sql: the catalog not read again on NULL (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~		if (s->fd >= 0 && db_state(&s->db) >= DB_READY) catread(&s->spec);¶		return 0;~		return 0;
+sql: one catalog for every connection (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~while (c && strcmp(c->name, name)) c = c->next;~while (c && 0) c = c->next;
+sql: :Connect keeps the connection's catalog (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (k) uncat(k, 0);   /* read again~	if (0) uncat(k, 0);   /* read again
+sql: the catalog's lookup leaves its message (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	memcpy(e->msg, m, sizeof m);¶~
+sql: F5's open error lost before it is shown (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~putz(s, db_net(&s->db)->err), putz(s, "\n"); db_close(&s->db), s->q.n = 0;~db_close(&s->db), putz(s, db_net(&s->db)->err), putz(s, "\n"); s->q.n = 0;
+sql: the catalog's query in lower case (a case-sensitive database) (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~"SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS"~"select table_schema, table_name, column_name from information_schema.columns"
+sql: the catalog's columns by name, not position (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~ORDER BY 1, 2, ORDINAL_POSITION~ORDER BY 1, 2, 3
+sql: Postgres's own schemas in the catalog (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~" WHERE TABLE_SCHEMA NOT IN ('pg_catalog', 'information_schema') ORDER BY~" ORDER BY
+sql: a failed catalog not read again at the next login (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (!c || c->st > 0) return;~	if (!c || c->st) return;
+sql: the catalog of a buffer that is not .sql (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~Sess *s = is_sql(b) ? sess(b->nr, 1) : NULL;~Sess *s = sess(b->nr, 1);
+sql: the catalog's connection left open once read (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~		uncat(c, r ? -1 : 2);~		c->st = r ? -1 : 2;
+sql: a catalog's dead connection kept (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (r || now == DB_DEAD) { uncat(c, -1); return; }~	if (r || now == DB_DEAD) return;
+sql: a name's escaped tab kept escaped in the catalog (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~net_unesc(p, (size_t)(n + 1 - p))~(size_t)(n + 1 - p)
+sql: the catalog not read at a login (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (was < DB_READY && db_state(&s->db) >= DB_READY) catread(&s->spec);¶~
+sql: a dropped catalog keeps its rows (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (st != 2) c->cols.n = 0;¶~
+specs: SqlCat read once only, not again after a failure~specs~find design/specs -name '*.cfg' ! -name SqlCat_ok.cfg -delete~design/specs/SqlCat_ok.cfg~ Variant = "ok"~ Variant = "noretry"

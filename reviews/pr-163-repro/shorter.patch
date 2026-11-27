@@ -1,0 +1,29 @@
+diff --git a/src/sql/sql.c b/src/sql/sql.c
+index c37c974..9467fa4 100644
+--- a/src/sql/sql.c
++++ b/src/sql/sql.c
+@@ -250,11 +250,10 @@ int sql_key(Editor *e, int key)
+ 	if (key != KEY_F5 && key != KEY_BREAK && key != KEY_CTRL_C) return 0;
+ 	E = e;
+ 	Sess *s = sess(e->buf->nr, 0);
+-	/* Ctrl-C cancels as Alt+Break, which a terminal cannot send (Davy,
+-	   2026-11-24); with no run to cancel it stays Vim's */
+-	if (key == KEY_CTRL_C && (!s || !s->q.n || s->cancel)) return 0;
+ 	if (key != KEY_F5) {
+-		if (!s || !s->q.n || s->cancel) return s != NULL;
++		/* Ctrl-C cancels as Alt+Break, which a terminal cannot send (Davy,
++		   2026-11-24); with no run to cancel it stays Vim's */
++		if (!s || !s->q.n || s->cancel) return s && key == KEY_BREAK;
+ 		if (db_state(&s->db) != DB_BUSY || db_cancel(&s->db)) drop(s);   /* logging in: the connection goes */
+ 		else {   /* the run stays busy until the server answers (SqlSess.tla's Break and Ack) */
+ 			s->cancel = 1;
+diff --git a/tests/plants/sql.txt b/tests/plants/sql.txt
+index 241fd1e..175ebee 100644
+--- a/tests/plants/sql.txt
++++ b/tests/plants/sql.txt
+@@ -103,4 +103,4 @@ win: a socket that turned writable before the reset waits for ever (test_sql_wak
+ specs: Wake with the close's record reset with the event~specs~find design/specs -name '*.cfg' ! -name Wake_ok_close.cfg -delete~design/specs/Wake_ok_close.cfg~ Variant = "ok"~ Variant = "noclose"
+ specs: Wake with no flush after the reset~specs~find design/specs -name '*.cfg' ! -name Wake_ok_send.cfg -delete~design/specs/Wake_ok_send.cfg~ Variant = "ok"~ Variant = "flushfirst"
+ sql: Ctrl-C does not cancel a run (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~ && key != KEY_CTRL_C) return 0;~) return 0;
+-sql: Ctrl-C taken from Vim with no run to cancel (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (key == KEY_CTRL_C && (!s || !s->q.n || s->cancel)) return 0;~if (key == KEY_CTRL_C && !s) return 0;
++sql: Ctrl-C taken from Vim with no run to cancel (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~return s && key == KEY_BREAK;~return s != NULL;

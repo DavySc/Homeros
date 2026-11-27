@@ -290,3 +290,5 @@ specs: Focus with every focus event entering its tab page~specs~find design/spec
 keys: gd asks for the implementation, not the definition~test TESTS=lsp_locs~~src/keys/keys.c~ : m[1] == 'd' ? "textDocument/definition" :~ : m[1] == 'd' ? "textDocument/implementation" :
 keys: gd opens the server's first definition, not the list of them sorted~test TESTS=lsp_locs~~src/keys/keys.c~ + E->win->col, tag != NULL, found,~ + E->win->col, 1, found,
 keys: C-] where no server is says nothing (E426)~test TESTS=lsp_locs~~src/keys/keys.c~		if (tag) found((void *)(what + 3), NULL, 0);~		if (0) found((void *)(what + 3), NULL, 0);
+keys: a lone operator or register is not pending (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~int normal_pending(void) { return npend > 0 || oa.op_type != OP_NOP || oa.regname; }~int normal_pending(void) { return npend > 0; }
+keys: a lone register is not pending (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~ || oa.regname; }~; }
