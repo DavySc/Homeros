@@ -76,7 +76,7 @@ snip: a statement's aliases leak into the next~test TESTS=snip~~src/snip/snip.c~
 snip: an exact match not first~test TESTS=snip~~src/snip/snip.c~	if (ea != eb) return eb - ea;~	if (0 && ea != eb) return eb - ea;
 snip: fact() keeps pointers into the pool it grows~test TESTS=snip~~src/snip/snip.c~	char w[128], of[128];   /* w0 and of0 may be in the pool, which intern moves */¶	strncpy(w, w0, sizeof w - 1)[sizeof w - 1] = 0, strncpy(of, of0, sizeof of - 1)[sizeof of - 1] = 0;~	const char *w = w0, *of = of0;
 snip: the list kept for an empty word~test TESTS=snip~~src/snip/snip.c~	} else W.b = NULL;~	}
-snip: the file walked at every word start~test TESTS=snip~~src/snip/snip.c~	if (I.b != e->buf || I.nr != e->buf->nr || I.len != text_len(t)) scan(e, a, z);~	scan(e, a, z);
+snip: the file walked at every word start~test TESTS=snip~~src/snip/snip.c~	if (I.b != e->buf || I.nr != e->buf->nr || I.len != text_len(t) || (!I.cat && sql_catalog(e, e->buf, column, NULL))) scan(e, a, z);~	scan(e, a, z);
 snip: the index made again under an open popup~test TESTS=snip~~src/snip/snip.c~	if (e->pum && e->pum == items) loop_timer(idle, NULL, HOLD);   /* the popup's words are in the pool */¶	else if~	if
 snip: no popup yet taken for an open one: the timer wakes every second~test TESTS=snip~~src/snip/snip.c~	if (e->pum && e->pum == items) loop_timer(idle, NULL, HOLD);~	if (e->pum == items) loop_timer(idle, NULL, HOLD);
 snip: the index's statements stay where an edit moved the text~test TESTS=snip~~src/snip/snip.c~		for (size_t i = 0; i < NU; i++) splice(&u[i][0], pos, ndel, nins), splice(&u[i][1], pos, ndel, nins);~		(void)u;
@@ -105,10 +105,14 @@ snip: the file's group's snippets among T-SQL's other words~test TESTS=snip~~src
 snip: a buffer without an index waits a second for it~test TESTS=snip~~src/snip/snip.c~loop_timer(idle, NULL, b == I.b ? HOLD : 0);~loop_timer(idle, NULL, HOLD);
 snip: flush keeps a pointer to its one table's name, which fact() moves~test TESTS=snip~~src/snip/snip.c~	size_t one = 0;   /* an offset: fact() moves the pool */¶	int ntab = 0;¶	for (int j = 0; j < NCAND(*refs); j++)¶		if (*CAND(*refs, j).kind == 'T') ntab++, one = CAND(*refs, j).of;~	const char *onep = NULL;¶#define one ((size_t)(onep - pool.s))¶	int ntab = 0;¶	for (int j = 0; j < NCAND(*refs); j++)¶		if (*CAND(*refs, j).kind == 'T') ntab++, onep = pool.s + CAND(*refs, j).of;
 snip: the file's own T-SQL words ranked with the rest~test TESTS=snip~~src/snip/snip.c~ || (i < sizeof I.seen && I.seen[i])));~));
-snip: a T-SQL word a bare name anywhere (NOLOCK, int, NEXT)~test TESTS=snip~~src/snip/snip.c~ && (!c || sym(h1, ',') || h1->k == TQ_OP || (h1->f & COLUMN))) {~) {
+snip: a T-SQL word a bare name anywhere (NOLOCK, int, NEXT)~test TESTS=snip~~src/snip/snip.c~ && (!wid || sym(h1, ',') || h1->k == TQ_OP || (h1->f & COLUMN))) {~) {
 snip: SELECT y = x: y a bare name~test TESTS=snip~~src/snip/snip.c~ || (h0->k == TQ_OP && !strcmp(b, "=") && (h2->f & SELECT))) && NCAND(pairs)~) && NCAND(pairs)
 snip: SET a = 1, b = 2: b taken for an alias~test TESTS=snip~~src/snip/snip.c~ && (h2->f & SELECT))) && NCAND(pairs)~ && ((h2->f & SELECT) || sym(h2, ',')))) && NCAND(pairs)
 snip: the connection's catalog never taken into the index~test TESTS=snip_sql~~src/snip/snip.c~		I.cat = sql_catalog(e, e->buf, column, NULL), I.catb = e->buf;~		I.cat = 0, I.catb = e->buf;
 snip: a catalog that arrives after the index waits for an edit~test TESTS=snip_sql~~src/snip/snip.c~ || (!I.cat && sql_catalog(e, e->buf, column, NULL))) scan(e, a, z);~) scan(e, a, z);
 snip: the catalog left out of the file's facts~test TESTS=snip_sql~~src/snip/snip.c~*y = (const Cand *)I.cats.s, *ye = y + NCAND(I.cats);~*y = (const Cand *)I.cats.s, *ye = y;
 snip: the index made again over the catalog's names~test TESTS=snip_sql~~src/snip/snip.c~	pool.n = I.cp, facts.n = I.u.n~	pool.n = 0, facts.n = I.u.n
+snip: a T-SQL word after an operator no column~test TESTS=snip~~src/snip/snip.c~(!wid || sym(h1, ',') || h1->k == TQ_OP || (h1->f & COLUMN))~(!wid || sym(h1, ',') || (h1->f & COLUMN))
+snip: a T-SQL word after a comma no column~test TESTS=snip~~src/snip/snip.c~(!wid || sym(h1, ',') || h1->k == TQ_OP || (h1->f & COLUMN))~(!wid || h1->k == TQ_OP || (h1->f & COLUMN))
+snip: a formatter-only word (OFFSET) a column anywhere~test TESTS=snip~~src/snip/snip.c~(!wid || sym(h1, ',')~(!c || sym(h1, ',')
+snip: MATCHED after WHEN a column~test TESTS=snip~~src/snip/snip.c~"set", "having", "then", "else" };~"set", "having", "when", "then", "else" };

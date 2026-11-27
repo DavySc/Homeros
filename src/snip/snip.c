@@ -695,7 +695,7 @@ static int walk(const Text *t, size_t p, size_t end, const Mark_ (*u)[2], size_t
 	/* the words the walk looks for, by tsql_word's id: then the words a
 	   table follows, then those a column follows */
 	static const char *const w[] = { "from", "join", "as", "table", "into", "update", "delete", "merge",
-	                                 "select", "where", "and", "or", "on", "by", "set", "having", "when", "then", "else" };
+	                                 "select", "where", "and", "or", "on", "by", "set", "having", "then", "else" };
 	enum { NW = sizeof w / sizeof *w };
 	static size_t id[NW];
 	if (!id[0])
@@ -763,11 +763,12 @@ static int walk(const Text *t, size_t p, size_t end, const Mark_ (*u)[2], size_t
 		} else if (isname && sym(h1, '.') && (h2->f & NAME)) {
 			size_t q = intern(h2->b, strlen(h2->b));
 			if (q != (size_t)-1) cand(&pairs, b, d, q, "Column", NULL, 0);
-		} else if (isname && k != TQ_VAR && !(h1->f & (AS | NAME)) && !sym(h1, ')') && (!c || sym(h1, ',') || h1->k == TQ_OP || (h1->f & COLUMN))) {
+		} else if (isname && k != TQ_VAR && !(h1->f & (AS | NAME)) && !sym(h1, ')') && (!wid || sym(h1, ',') || h1->k == TQ_OP || (h1->f & COLUMN))) {
 			/* bare: a column of the statement's one table; no alias (x AS y,
 			   x y, f() y), and a T-SQL word only where a column goes (after
 			   a comma, an operator, SELECT, WHERE, BY...): not NOLOCK in
-			   WITH (NOLOCK), int in CONVERT(int, or NEXT in FETCH NEXT */
+			   WITH (NOLOCK), int in CONVERT(int, NEXT in FETCH NEXT, OFFSET
+			   after DESC or MATCHED in MERGE's WHEN MATCHED */
 			cand(&pairs, b, d, (size_t)-1, "Column", NULL, 0);
 		}
 		if (!isname && !sym(h0, '.') && !(h0->f & (AS | TABLE)) && !sym(h0, '(')) tab = (size_t)-1;
