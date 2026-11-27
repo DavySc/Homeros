@@ -33,16 +33,19 @@ typedef struct {
 	size_t base;
 	long long t0;
 	/* the results' layout (put): a line the read cut, the rows held until
-	   the widths are known, the messages (shown after the grids, as SSMS's
-	   Messages tab), the bytes for the buffer and where they go; the grids
-	   and the spans the faces come from */
-	Str part, held, msgs, o;
-	size_t at, line, nheld, ng, nsp, csp;   /* at, line: o's first byte and line in the buffer */
+	   the widths are known, the messages that came inside the open set,
+	   the bytes for the buffer and where they go, the cut values whole; the
+	   grids and the spans the faces come from */
+	Str part, held, msgs, o, whole;
+	size_t at, line, lo, nheld, ng, nsp, csp, ncut;   /* at, line: o's first byte and line in the buffer; lo: o's bytes counted in line */
+	long long t1;           /* the open set's start */
 	int in;                 /* a result set is open: 1 its rows held, 2 laid out */
+	int said, err;          /* a message block is open (its rule out); an error's text is */
 	int bad;                /* the run's worst: 1 an error, 2 cancelled */
 	char status[600];       /* the results' status line (Buf.status), SSMS's bar under the query */
 	struct Grid { size_t line, rows; int rn, n, *w; } *g;
 	struct Span { size_t a; unsigned n; unsigned char f; } *sp;
+	struct Cut { size_t at, p, n; } *cut;   /* a cut cell's first byte in the results, its whole value in whole */
 } Sess;
 
 static Editor *E;
@@ -67,10 +70,12 @@ static int is_sql(const Buf *b)
 
 /* The results as SSMS's grid: the clients' text (net.h's marks) laid out
    in columns as wide as the names and the first HOLD rows (capped at CAP
-   cells, a longer value cut with a ...), so a long result shows its rows
-   as they come.  SSMS's grid also sizes its columns from the first rows
-   (hypothesis, not measured). */
-enum { CAP = 40, HOLD = 500 };
+   cells, a longer value cut with a ..., which Enter shows whole), so a
+   long result shows its rows as they come; a set is laid out early when
+   its rows trickle (WAIT).  SSMS's grid also sizes its columns from the
+   first rows (hypothesis, not measured).  Messages show as they come, under
+   a rule; one that comes inside a set waits for the set's end. */
+enum { CAP = 40, HOLD = 500, WAIT = 200 /* ms */ };
 #define NONAME "(No column name)"   /* SSMS's name for a column without one */
 
 /* The bytes of p[0, n) that fit in w cells (whole graphemes), their cells
@@ -91,6 +96,7 @@ static int pad(Sess *s, size_t n)
 	_Static_assert(sizeof b - 1 == CAP + 1, "pad's blanks");
 	return add(s, b, n);
 }
+static int gap(Sess *s) { return (s->at || s->o.n) && add(s, "\n", 1); }   /* a blank line, unless first */
 static int span(Sess *s, size_t a, size_t n, int f)   /* face f on the bytes [a, a + n) of o */
 {
 	if (s->nsp == s->csp) {
@@ -102,22 +108,30 @@ static int span(Sess *s, size_t a, size_t n, int f)   /* face f on the bytes [a,
 	return 0;
 }
 
-/* a cell of w cells and its space: a NULL in its face, a cut value with
-   the ... in another */
+/* a cell of w cells and its space (last: 1 the names' last cell, no
+   space; 2 a row's, nothing after it): a NULL
+   in its face; a cut value with the ... in another, kept whole for Enter */
 static int cell(Sess *s, const char *p, size_t n, int w, int last)
 {
 	int null = n && (unsigned char)*p == 0xFD;
 	p += null, n -= (size_t)null;
 	size_t c, k = fit(p, n, (size_t)w, &c);
 	int cut = k < n;
-	if (cut) k = fit(p, n, (size_t)w - 1, &c), c++;
+	if (cut) {
+		struct Cut *q = s->ncut % 64 ? s->cut : realloc(s->cut, (s->ncut + 64) * sizeof *q);
+		if (!q) return -1;
+		s->cut = q, s->cut[s->ncut++] = (struct Cut){ s->at + s->o.n, s->whole.n, n };
+		if (str_add(&s->whole, p, n)) return -1;
+		k = fit(p, n, (size_t)w - 1, &c), c++;
+	}
 	return (null && span(s, s->o.n, n, FACE_DIAG_WARN)) || add(s, p, k)
 		|| (cut && (span(s, s->o.n, 3, FACE_NUMBER) || add(s, "\xe2\x80\xa6", 3)))
-		|| (!last && pad(s, (size_t)w - c + 1));
+		|| (last < 2 && pad(s, (size_t)w - c + !last));
 }
 
 /* a line of cells (the names or a row, without its mark): the row number
-   (none for the names), then each cell after a | */
+   (none for the names), then each cell after a |; the names fill their
+   last cell, so their bar is as wide as the rule */
 static int line(Sess *s, struct Grid *g, const char *p, size_t n, size_t nr)
 {
 	char t[32];
@@ -125,14 +139,16 @@ static int line(Sess *s, struct Grid *g, const char *p, size_t n, size_t nr)
 	for (int i = 0; i < g->n && !r; i++) {
 		const char *e = memchr(p, '\t', n);
 		size_t k = e ? (size_t)(e - p) : n;
-		r = add(s, "\xe2\x94\x82 ", 4) || (nr || k ? cell(s, p, k, g->w[i], i == g->n - 1) : cell(s, NONAME, sizeof NONAME - 1, g->w[i], i == g->n - 1));
+		int last = i < g->n - 1 ? 0 : nr ? 2 : 1;
+		r = add(s, "\xe2\x94\x82 ", 4) || cell(s, nr || k ? p : NONAME, nr || k ? k : sizeof NONAME - 1, g->w[i], last);
 		p += k + !!e, n -= k + !!e;
 	}
 	return r || add(s, "\n", 1);
 }
 
-/* The held set laid out: the widths, the names on their rule, the rows */
-static int lay(Sess *s)
+/* The held set laid out (open: more rows may come): the widths, the names
+   on their rule, the rows */
+static int lay(Sess *s, int open)
 {
 	struct Grid *g = &s->g[s->ng - 1];
 	char *p = s->held.s, *e = p + s->held.n, *z;
@@ -148,12 +164,13 @@ static int lay(Sess *s)
 			q = t ? t : z;
 		}
 	}
-	g->rn = 1;   /* the row numbers' width: a set still coming may pass HOLD's */
-	for (size_t k = s->nheld == HOLD ? 1000000 : s->nheld; k >= 10; k /= 10) g->rn++;
-	g->line = s->line;
-	for (char *q = s->o.s; q && q < s->o.s + s->o.n; q++) g->line += *q == '\n';
+	g->rn = 1;   /* the row numbers' width: a set still coming may pass its first rows' */
+	for (size_t k = open ? 1000000 : s->nheld; k >= 10; k /= 10) g->rn++;
+	int r = gap(s);
+	for (char *q = s->o.s + s->lo; q < s->o.s + s->o.n; q++) s->line += *q == '\n';   /* the lines before it */
+	s->lo = s->o.n, g->line = s->line, s->said = 0;
 	z = memchr(p, '\n', (size_t)(e - p));
-	int r = line(s, g, p + 1, (size_t)(z - p - 1), 0);
+	r = r || line(s, g, p + 1, (size_t)(z - p - 1), 0);
 	for (int k = 0; k <= g->rn && !r; k++) r = add(s, "\xe2\x94\x80", 3);   /* the rule, a + under each | */
 	for (int i = 0; i < g->n && !r; i++) {
 		r = add(s, "\xe2\x94\xbc", 3);
@@ -165,18 +182,46 @@ static int lay(Sess *s)
 	return r;
 }
 
-/* the open set's end: laid out if still held, its row count under it */
-static int endset(Sess *s)
+/* a message line: under the Messages rule when one starts after a grid,
+   an error (between NET_ERRs, which may span lines) in its face, no mark
+   shown */
+static int say(Sess *s, const char *p, size_t n)
 {
-	if (!s->in || (s->in == 1 && lay(s))) return s->in ? -1 : 0;
-	char t[32];
-	size_t rows = s->g[s->ng - 1].rows, n = (size_t)snprintf(t, sizeof t, "(%zu row%s)\n\n", rows, rows == 1 ? "" : "s");
-	s->in = 0;
-	return span(s, s->o.n, n - 2, FACE_ORG_TABLE) || add(s, t, n);
+	static const char h[] = "\xe2\x94\x80\xe2\x94\x80 Messages \xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\n";
+	int r = !s->said && (gap(s) || span(s, s->o.n, sizeof h - 2, FACE_FUNCTION) || add(s, h, sizeof h - 1));
+	size_t a = s->o.n;
+	s->said = 1;
+	for (size_t i = 0, j; i < n && !r; i = j + 1) {
+		for (j = i; j < n && (unsigned char)p[j] < 0xFB; j++) ;
+		r = add(s, p + i, j - i);
+		if (!r && j < n && (unsigned char)p[j] == 0xFC) {
+			if (s->err) r = span(s, a, s->o.n - a, FACE_DIAG_ERROR);
+			s->err = !s->err, s->bad |= 1, a = s->o.n;
+		}
+	}
+	return r || (s->err && span(s, a, s->o.n - a, FACE_DIAG_ERROR)) || add(s, "\n", 1);
 }
 
+/* the open set's end: laid out if still held, its row count under it, the
+   messages that came inside it */
+static int endset(Sess *s)
+{
+	if (!s->in || (s->in == 1 && lay(s, 0))) return s->in ? -1 : 0;
+	char t[32];
+	size_t rows = s->g[s->ng - 1].rows, n = (size_t)snprintf(t, sizeof t, "(%zu row%s)\n", rows, rows == 1 ? "" : "s");
+	int r = span(s, s->o.n, n - 1, FACE_ORG_TABLE) || add(s, t, n);
+	s->in = 0;
+	for (char *q = s->msgs.s, *e = q + s->msgs.n, *z; q < e && !r; q = z + 1) z = memchr(q, '\n', (size_t)(e - q)), r = say(s, q, (size_t)(z - q));
+	s->msgs.n = 0;
+	return r;
+}
+
+static void put(Sess *s, const char *p, size_t n);
+static void tick(void *s) { put(s, "", 0); }   /* a trickling set's rows shown */
+
 /* one line of the clients' text (str_lines): a set's names start a grid,
-   its rows go to it, anything else ends it and is a message */
+   its rows go to it, its end (NET_END) ends it; anything else is a message,
+   held while a set is open */
 static void take(void *ctx, char *p, size_t n)
 {
 	Sess *s = ctx;
@@ -184,51 +229,40 @@ static void take(void *ctx, char *p, size_t n)
 	int r = 0;
 	if (m == 0xFF && s->in) {
 		if (s->in == 2) r = line(s, &s->g[s->ng - 1], p + 1, n - 1, ++s->g[s->ng - 1].rows);
-		else r = str_add(&s->held, p, n) || str_add(&s->held, "\n", 1) || (++s->nheld == HOLD && lay(s));
+		else r = str_add(&s->held, p, n) || str_add(&s->held, "\n", 1) || (++s->nheld == HOLD && lay(s, 1));
 	} else if (m == 0xFE) {
 		int k = 1, *w;
 		for (size_t i = 1; i < n; i++) k += p[i] == '\t';
 		struct Grid *g = (r = endset(s)) ? NULL : realloc(s->g, (s->ng + 1) * sizeof *g);
 		if (g) s->g = g;
 		if (!g || !(w = calloc((size_t)k, sizeof *w))) r = 1;
-		else g[s->ng++] = (struct Grid){ .n = k, .w = w }, s->in = 1, s->nheld = 0, r = str_add(&s->held, p, n) || str_add(&s->held, "\n", 1);
-	} else r = endset(s) || str_add(&s->msgs, p, n) || str_add(&s->msgs, "\n", 1), s->bad |= memchr(p, 0xFC, n) != NULL;
+		else g[s->ng++] = (struct Grid){ .n = k, .w = w }, s->in = 1, s->nheld = 0, s->t1 = loop_now(), loop_timer(tick, s, WAIT), r = str_add(&s->held, p, n) || str_add(&s->held, "\n", 1);
+	} else if (m == 0xFB) r = endset(s);
+	else r = s->in ? str_add(&s->msgs, p, n) || str_add(&s->msgs, "\n", 1) : say(s, p, n);
 	if (r) core_msg(E, "sql: out of memory (the results are cut)");
-}
-
-/* The messages under a rule after the grids, the errors in their face */
-static int messages(Sess *s)
-{
-	static const char h[] = "\xe2\x94\x80\xe2\x94\x80 Messages \xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\n";
-	int r = endset(s);
-	if (r || !s->msgs.n) return r;
-	r = span(s, s->o.n, sizeof h - 2, FACE_FUNCTION) || add(s, h, sizeof h - 1);
-	for (size_t i = 0, a = 0; i < s->msgs.n && !r; i++)
-		if ((unsigned char)s->msgs.s[i] == 0xFC) {
-			if (a) r = span(s, a, s->o.n - a, FACE_DIAG_ERROR), a = 0;
-			else a = s->o.n;
-		} else r = add(s, s->msgs.s + i, 1);
-	s->msgs.n = 0;
-	return r;
 }
 
 /* n bytes of the clients' text at the end of the results
    (core_buf_append: a window on the last line follows); with no run
-   going, what is held goes out, the messages last */
+   going, what is held goes out */
 static void put(Sess *s, const char *p, size_t n)
 {
 	Buf *b = s->res ? core_buf_find(E, s->res) : NULL;
 	if (!b) return;
-	s->o.n = 0, s->at = text_len(b->text), s->line = text_lines(b->text);
+	s->o.n = s->lo = 0, s->at = text_len(b->text), s->line = text_lines(b->text);
 	int r = str_lines(&s->part, p, n, take, s);
-	if (!s->q.n && s->part.n) take(s, s->part.s, s->part.n), s->part.n = 0;   /* a last line without its \n */
-	if (r || (!s->q.n && messages(s))) core_msg(E, "sql: out of memory (the results are cut)");
+	if (!r && s->in && !s->q.n) r = endset(s);   /* the run is over */
+	else if (!r && s->in == 1 && loop_now() - s->t1 >= WAIT * 1000000LL) r = lay(s, 1);
+	if (r) core_msg(E, "sql: out of memory (the results are cut)");
 	if (s->o.n) core_buf_append(E, b, s->o.s, s->o.n);
 }
 
 static void putz(Sess *s, const char *z) { put(s, z, strlen(z)); }
 
-/* the run is over: what it left held goes out */
+/* a line of the client's own (net.err, out of memory) as an error */
+static void fail(Sess *s, const char *m) { putz(s, NET_ERR), putz(s, m), putz(s, NET_ERR "\n"); }
+
+/* the run is over: what it left held goes out, its status line */
 static void end(Sess *s)
 {
 	size_t rows = 0;
@@ -248,38 +282,89 @@ static void clear(Sess *s)
 	core_buf_fill(E, core_buf_find(E, s->res), "", 0, 0);
 	for (size_t i = 0; i < s->ng; i++) free(s->g[i].w);
 	snprintf(s->status, sizeof s->status, "Executing query... \xc2\xb7 %s / %s", s->spec.name, s->spec.db);
-	s->ng = s->nsp = 0, s->in = s->bad = 0, s->part.n = s->held.n = s->msgs.n = 0;
+	s->ng = s->nsp = s->ncut = 0, s->in = s->bad = s->said = s->err = 0, s->part.n = s->held.n = s->msgs.n = s->whole.n = 0;
+}
+
+/* the grid line l is in (its names' line or after), or NULL */
+static struct Grid *grid(Sess *s, size_t l)
+{
+	size_t lo = 0, hi = s->ng;
+	while (lo < hi) { size_t m = (lo + hi) / 2; if (s->g[m].line <= l) lo = m + 1; else hi = m; }
+	return lo && l - s->g[lo - 1].line < s->g[lo - 1].rows + 2 ? &s->g[lo - 1] : NULL;
+}
+
+/* line l of b, in memory kept for the next (no allocation once it is long
+   enough); its length in *n, NULL when out of memory */
+static char *text(const Buf *b, size_t l, size_t *n)
+{
+	static char *t;
+	static size_t tn;
+	size_t ls = text_line_start(b->text, l);
+	*n = text_line_start(b->text, l + 1) - ls;
+	char *q = *n > tn ? realloc(t, *n) : t;
+	if (q) t = q, tn = *n > tn ? *n : tn, *n = text_read(b->text, ls, t, *n);
+	return q;
+}
+
+/* the end of cell i of a row line t[0, n) whose cell starts at k (after its | ) */
+static size_t over(const struct Grid *g, int i, const char *t, size_t n, size_t k)
+{
+	size_t c;
+	return k + fit(t + k, k < n ? n - k : 0, (size_t)g->w[i] + (i < g->n - 1), &c);
 }
 
 /* The results' faces (Buf.faces): the grids' names, rule, row numbers and
    |, then the spans: NULLs, cuts, counts, the messages' rule and errors */
 static void rfaces(const Buf *b, size_t a, size_t z, unsigned char *f)
 {
-	static char *t;   /* the line, kept: no allocation once it is long enough */
-	static size_t tn;
 	Sess *s = sess(b->nr, 0);
 	memset(f, FACE_NONE, z - a);
 	if (!s) return;
-	size_t l = text_line_of(b->text, a), ls = text_line_start(b->text, l), lo = 0, hi = s->ng;
-	while (lo < hi) { size_t m = (lo + hi) / 2; if (s->g[m].line <= l) lo = m + 1; else hi = m; }
-	struct Grid *g = lo ? &s->g[lo - 1] : NULL;
+	size_t l = text_line_of(b->text, a), ls = text_line_start(b->text, l), lo = 0, hi = s->nsp, n;
+	struct Grid *g = grid(s, l);
+	char *t;
 	if (g && l - g->line < 2) memset(f, l == g->line ? FACE_PMENU_SEL : FACE_ORG_TABLE, z - a);
-	else if (g && l - g->line < g->rows + 2) {   /* a row: its number, then a | and a cell each */
-		size_t n = text_line_start(b->text, l + 1) - ls, c, k = (size_t)g->rn + 1;
-		char *q = n > tn ? realloc(t, n) : t;
-		if (!q) return;
-		t = q, tn = n > tn ? n : tn, n = text_read(b->text, ls, t, n);
+	else if (g && (t = text(b, l, &n))) {   /* a row: its number, then a | and a cell each */
+		size_t k = (size_t)g->rn + 1;
 		for (size_t j = a; j < z && j < ls + k; j++) f[j - a] = FACE_LINE_NR;
 		for (int i = 0; i < g->n && k < n; i++) {
 			for (size_t j = ls + k > a ? ls + k : a; j < z && j < ls + k + 3; j++) f[j - a] = FACE_ORG_TABLE;
-			k += 4;
-			k += fit(t + k, k < n ? n - k : 0, (size_t)g->w[i] + (i < g->n - 1), &c);
+			k = over(g, i, t, n, k + 4);
 		}
 	}
-	lo = 0, hi = s->nsp;
 	while (lo < hi) { size_t m = (lo + hi) / 2; if (s->sp[m].a + s->sp[m].n <= a) lo = m + 1; else hi = m; }
 	for (; lo < s->nsp && s->sp[lo].a < z; lo++)
 		for (size_t j = s->sp[lo].a > a ? s->sp[lo].a : a, e = s->sp[lo].a + s->sp[lo].n; j < e && j < z; j++) f[j - a] = s->sp[lo].f;
+}
+
+/* Enter on a row's cell: its whole value, unescaped, in a split below
+   (SSMS opens a long value in a window of its own).  1 taken, 0 not a cell. */
+static int whole(Sess *s)
+{
+	static const char *const name = "Cell value";
+	size_t l = E->win->line, ls = core_line_start(E, l), n, k, lo = 0, hi = s->ncut;
+	struct Grid *g = grid(s, l);
+	char *t = g && l - g->line >= 2 ? text(E->buf, l, &n) : NULL;
+	if (!t) return 0;
+	k = (size_t)g->rn + 5;
+	for (int i = 0; i < g->n - 1 && over(g, i, t, n, k) <= E->win->col; i++) k = over(g, i, t, n, k) + 4;
+	if (k > n || E->win->col + 4 < k) return 0;   /* on the row number */
+	while (lo < hi) { size_t m = (lo + hi) / 2; if (s->cut[m].at < ls + k) lo = m + 1; else hi = m; }
+	Str v = {0};
+	int i = 0;
+	for (size_t x = (size_t)g->rn + 5; over(g, i, t, n, x) < k; i++) x = over(g, i, t, n, x) + 4;
+	size_t e = over(g, i, t, n, k);
+	if (lo < s->ncut && s->cut[lo].at < ls + e) i = str_add(&v, s->whole.s + s->cut[lo].p, s->cut[lo].n);
+	else {
+		while (e > k && (t[e - 1] == ' ' || t[e - 1] == '\n')) e--;
+		i = str_add(&v, t + k, e - k);
+	}
+	if (i || core_new(E, 0)) { str_free(&v); return core_msg(E, "sql: out of memory"), 1; }
+	v.n = net_unesc(v.s ? v.s : "", v.n);
+	core_buf_fill(E, E->buf, v.s ? v.s : "", v.n, 0);
+	E->buf->status = name;
+	str_free(&v);
+	return 1;
 }
 
 /* The connections file's line for name, or with name "" the connection of
@@ -462,9 +547,9 @@ static void next(Sess *s)
 	}
 	SqlBatch b = s->q.b[s->i];   /* from the text at F5: edits since do not change the run (SqlSess.tla's Snapshot) */
 	s->sql.n = 0;
-	if (str_add(&s->sql, s->text.s + (b.a - s->base), b.z - b.a) || str_add(&s->sql, "", 1)) { putz(s, "sql: out of memory\n"); end(s); return; }
+	if (str_add(&s->sql, s->text.s + (b.a - s->base), b.z - b.a) || str_add(&s->sql, "", 1)) { fail(s, "sql: out of memory"); end(s); return; }
 	s->left--;
-	if (db_query(&s->db, s->sql.s)) { putz(s, db_net(&s->db)->err), putz(s, "\n"); drop(s); return; }
+	if (db_query(&s->db, s->sql.s)) { fail(s, db_net(&s->db)->err); drop(s); return; }
 	loop_write(s->fd, db_pending(&s->db));
 }
 
@@ -480,7 +565,7 @@ static void wake(void *ctx, int fd)
 	if (s->kill >= 0 && !k) loop_unwatch(s->kill), s->kill = -1;   /* the server closed it: the cancel is done */
 	if (k) loop_write(s->kill, k->snd.n > 0);
 	if (r || db_state(&s->db) == DB_DEAD) {
-		putz(s, db_net(&s->db)->err), putz(s, "\n");
+		fail(s, db_net(&s->db)->err);
 		drop(s);
 		core_changed = 1;
 		return;
@@ -532,15 +617,16 @@ static int run(Sess *s, size_t a, size_t z)
 	clear(s);
 	s->i = 0, s->left = s->q.b[0].count, s->t0 = loop_now();
 	if (s->fd >= 0) { next(s); return 0; }
-	if ((s->fd = dial(&s->db, &s->spec, wake, s)) < 0) { putz(s, db_net(&s->db)->err), putz(s, "\n"); db_close(&s->db), end(s); return -1; }
+	if ((s->fd = dial(&s->db, &s->spec, wake, s)) < 0) { fail(s, db_net(&s->db)->err); db_close(&s->db), end(s); return -1; }
 	return 0;
 }
 
 int sql_key(Editor *e, int key)
 {
-	if (key != KEY_F5 && key != KEY_BREAK && key != KEY_CTRL_C) return 0;
+	if (key != KEY_F5 && key != KEY_BREAK && key != KEY_CTRL_C && key != KEY_ENTER) return 0;
 	E = e;
 	Sess *s = sess(e->buf->nr, 0);
+	if (key == KEY_ENTER) return s && s->res == e->buf->nr && e->mode == MODE_NORMAL && !e->ks.pending && whole(s);   /* as make_key */
 	if (key != KEY_F5) {
 		/* Ctrl-C cancels as Alt+Break, which a terminal cannot send (Davy,
 		   2026-11-24); with no run to cancel it stays Vim's */

@@ -51,7 +51,10 @@ int  net_esc(Str *b, const char *s, size_t n);
    net_esc of the server's UTF-8, which Postgres checks on input).  A
    result set's names start with NET_HEAD, a row with NET_ROW; a NULL is
    NET_NULL, the same "NULL" with its mark; an error is between two
-   NET_ERR.  net_plain drops them all, in place, and returns the length. */
+   NET_ERR; a statement's end is NET_END on a line of its own (it ends the
+   set before it).  net_plain drops them all, NET_END with its line, in
+   place, and returns the length. */
+#define NET_END "\xFB\n"
 #define NET_ERR "\xFC"
 #define NET_HEAD "\xFE"
 #define NET_ROW "\xFF"

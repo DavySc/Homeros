@@ -100,11 +100,14 @@ static const char *one(const char *name, const char *val)
 {
 	static char o[512];
 	size_t w = strlen(name) > strlen(val) ? strlen(name) : strlen(val), n = 0;
-	n += (size_t)snprintf(o + n, sizeof o - n, "  \xe2\x94\x82 %s\n\xe2\x94\x80\xe2\x94\x80\xe2\x94\xbc", name);
+	n += (size_t)snprintf(o + n, sizeof o - n, "  \xe2\x94\x82 %-*s\n\xe2\x94\x80\xe2\x94\x80\xe2\x94\xbc", (int)w, name);
 	for (size_t i = 0; i <= w; i++) n += (size_t)snprintf(o + n, sizeof o - n, "\xe2\x94\x80");
 	snprintf(o + n, sizeof o - n, "\n1 \xe2\x94\x82 %s\n(1 row)\n", val);
 	return o;
 }
+
+/* the Messages rule */
+#define MSGS "\xe2\x94\x80\xe2\x94\x80 Messages \xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\n"
 
 static int nwins(void) { int n = 0; for (Win *w = e.wins; w; w = w->next) n++; return n; }
 
@@ -128,7 +131,7 @@ int main(void)
 	snprintf(f, sizeof f, "ms mssql 127.0.0.1 sa master trust pass=%s\npg pg 127.0.0.1 postgres postgres trust pass=%s\n"
 		"dir %s/ms/deep pg\ndir ~/ms ms\ndir %s/pg pg\ndir  %s/a b   ms \n"
 		"bad mssql 127.0.0.1:99999 sa master pass=x\nletters mssql 127.0.0.1:1433x sa master pass=x\nnopass mssql 127.0.0.1 sa master\nv6 mssql [::1]:1433 sa master pass=x\n"
-		"cs mssql 127.0.0.1 sa hcs trust pass=%s\nlim pg 127.0.0.1 hlim postgres trust pass=%s\nnohost mssql nohost.invalid sa master pass=x\n", sa, pg, dir, dir, dir, sa, pg);
+		"cs mssql 127.0.0.1 sa hcs trust pass=%s\nlim pg 127.0.0.1 hlim postgres trust pass=%s\nnohost mssql nohost.invalid sa master pass=x\nbadpw mssql 127.0.0.1 sa master trust pass=x\n", sa, pg, dir, dir, dir, sa, pg);
 	put(conf, f, 0644);
 #ifndef _WIN32   /* there the profile is the user's (sql.c, as libpq) */
 	CHECK(sql_key(&e, KEY_F5) == 1 && strstr(e.msg, "others can read it"));
@@ -136,11 +139,12 @@ int main(void)
 #endif
 	/* the whole buffer: batches in order, GO 2 twice, the split below */
 	CHECK(sql_key(&e, KEY_F5) == 1 && nwins() == 2 && e.win == e.wins);
-	/* from the first line: the login's own messages are not shown */
+	/* from the first line: the login's own messages are not shown; each
+	   grid's messages after it, as they come */
 	char want[1024];
-	snprintf(want, sizeof want, "%s\n", one("one", "1"));
-	snprintf(want + strlen(want), sizeof want - strlen(want), "%s\n\xe2\x94\x80\xe2\x94\x80 Messages %s\n(1 row affected)\nbetween\n", one("two", "2"), "\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80");
-	CHECK(!strncmp(until("Completion time"), want, strlen(want)) && strstr(res, "\nbetween\nbetween\n(1 row affected)\n\nCompletion time: "));
+	snprintf(want, sizeof want, "%s\n" MSGS "(1 row affected)\nbetween\nbetween\n\n", one("one", "1"));
+	snprintf(want + strlen(want), sizeof want - strlen(want), "%s\n" MSGS "(1 row affected)\n\nCompletion time: ", one("two", "2"));
+	CHECK(!strncmp(until("Completion time"), want, strlen(want)));
 	/* the status line: SSMS's, its rows, its time, the connection */
 	CHECK(e.wins->next && strstr(e.wins->next->buf->status, "\xe2\x9c\x93 Query executed successfully \xc2\xb7 2 rows \xc2\xb7 00:00:0") && strstr(e.wins->next->buf->status, " \xc2\xb7 ms / master"));
 	CHECK(e.wins->next && e.wins->next->buf->nomodifiable && e.wins->next->line == text_lines(e.wins->next->buf->text) - 1);   /* the window follows the end */
@@ -273,6 +277,9 @@ int main(void)
 	CHECK(sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), "Invalid object name '#d'"));
 	/* F5 on a server that cannot be opened says why */
 	CHECK(!core_edit_file(&e, "ms/a.sql", 0) && !sql_connect(&e, "nohost") && sql_key(&e, KEY_F5) == 1 && strstr(until("nohost.invalid"), "nohost.invalid"));
+	CHECK(!strncmp(e.wins->next->buf->status, "\xe2\x9c\x97 Query completed with errors", 31));
+	CHECK(!sql_connect(&e, "badpw") && sql_key(&e, KEY_F5) == 1 && strstr(until("Login failed"), "Login failed"));
+	CHECK(!strncmp(e.wins->next->buf->status, "\xe2\x9c\x97 Query completed with errors", 31));
 	/* the catalog (completion's): read when a session on the connection
 	   logs in, on a connection of its own, closed once read; the columns
 	   in their order, names with a tab or a backslash whole; one per connection,
@@ -281,10 +288,10 @@ int main(void)
 	char cat[256];
 	const char *users = "select count(*) n from sys.dm_exec_sessions where is_user_process = 1\n";
 	CHECK(strstr(f5("ms/q.sql", "drop table if exists hcat\ncreate table hcat (k int, b int, [v w] nvarchar(9), [t\tab] int, [a\\b] int)\n"), "Completion"));
-	int n = atoi(strstr(f5("ms/v.sql", users), "n\n") + 2);
+	int n = atoi(strstr(f5("ms/v.sql", users), "\n1 \xe2\x94\x82 ") + 6);
 	CHECK(!core_edit_file(&e, "ms/q.sql", 0) && !sql_catalog(&e, e.buf, NULL, NULL) && catalog(cat) > 0 && !strcmp(cat, "dbo.hcat.k dbo.hcat.b dbo.hcat.v w dbo.hcat.t\tab dbo.hcat.a\\b "));
 	int same = 0;
-	for (int i = 0; i < 20 && !same; i++) same = atoi(strstr(f5("ms/v.sql", users), "n\n") + 2) == n;
+	for (int i = 0; i < 20 && !same; i++) same = atoi(strstr(f5("ms/v.sql", users), "\n1 \xe2\x94\x82 ") + 6) == n;
 	CHECK(same);
 	CHECK(strstr(f5("ms/r.sql", "alter table hcat add z int\n"), "Completion"));
 	CHECK(!core_edit_file(&e, "ms/a.sql", 0) && !sql_connect(&e, "ms") && sql_catalog(&e, e.buf, hcat, (*cat = 0, cat)) == 0 && !*cat);
@@ -315,7 +322,7 @@ int main(void)
 	   two cells a character, SSMS's name for a column without one; the faces: the names, the rule, the row
 	   numbers, the |s, a NULL, a cut, an error */
 	const char *g = f5("ms/z.sql", "select N'NULL' s, null n, replicate(N'x', 50) l, N'\xe6\x97\xa5\xe6\x9c\xac' w, N'\xc3\xa9' e\ngo\nselect 1/0\n");
-	CHECK(!strncmp(g, "  \xe2\x94\x82 s    \xe2\x94\x82 n    \xe2\x94\x82 l ", 26) && strstr(g, "\n1 \xe2\x94\x82 NULL \xe2\x94\x82 NULL \xe2\x94\x82 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\xe2\x80\xa6 \xe2\x94\x82 \xe6\x97\xa5\xe6\x9c\xac \xe2\x94\x82 \xc3\xa9\n(1 row)\n") && strstr(g, "\n(1 row)\n\n  \xe2\x94\x82 (No column name)\n") && strstr(g, "\n(0 rows)\n"));
+	CHECK(!strncmp(g, "  \xe2\x94\x82 s    \xe2\x94\x82 n    \xe2\x94\x82 l ", 26) && strstr(g, "\n1 \xe2\x94\x82 NULL \xe2\x94\x82 NULL \xe2\x94\x82 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\xe2\x80\xa6 \xe2\x94\x82 \xe6\x97\xa5\xe6\x9c\xac \xe2\x94\x82 \xc3\xa9\n(1 row)\n") && strstr(g, "\n(1 row)\n\n" MSGS "(1 row affected)\n\n  \xe2\x94\x82 (No column name)\n") && strstr(g, "\n(0 rows)\n"));
 	Buf *rb = e.wins->next->buf;
 	CHECK(!strncmp(rb->status, "\xe2\x9c\x97 Query completed with errors \xc2\xb7 1 row \xc2\xb7 ", 44));
 	CHECK(!sql_disconnect(&e) && !strncmp(rb->status, "\xe2\x9c\x97 Query completed", 18));   /* the line stays between runs */
@@ -334,9 +341,61 @@ int main(void)
 	size_t at = text_len(rb->text) - strlen(g) + (size_t)(m - g);
 	rb->faces(rb, at, at + 8, fc);
 	CHECK(m && fc[0] == FACE_DIAG_ERROR && fc[7] == FACE_DIAG_ERROR);
+	/* the row count, the Messages rule, a later grid's names */
+	m = strstr(g, "(1 row)\n\n" MSGS);
+	at = text_len(rb->text) - strlen(g) + (size_t)(m - g);
+	rb->faces(rb, at, at + 10, fc);
+	CHECK(fc[0] == FACE_ORG_TABLE && fc[6] == FACE_ORG_TABLE && fc[7] == FACE_NONE && fc[9] == FACE_FUNCTION);
+	m = strstr(g, "(No column name)");
+	at = text_len(rb->text) - strlen(g) + (size_t)(m - g);
+	rb->faces(rb, at, at + 2, fc);
+	CHECK(fc[0] == FACE_PMENU_SEL);
+	/* Enter on a cell: its whole value in a split (a cut one, a NULL);
+	   not on a row number or the names */
+	size_t cx = (size_t)(strstr(g, "xxx") - strstr(g, "\n1 ")) - 1;
+	CHECK(!core_win_goto(&e, 'j', 1) && e.buf == rb);
+	core_goto(&e, 2, cx);
+	CHECK(sql_key(&e, KEY_ENTER) == 1 && e.buf != rb && text_len(e.buf->text) == 50 && !core_close(&e, 1) && e.buf == rb);
+	core_goto(&e, 2, 12);
+	CHECK(sql_key(&e, KEY_ENTER) == 1 && text_len(e.buf->text) == 4 && !core_close(&e, 1));
+	core_goto(&e, 2, 0);
+	CHECK(sql_key(&e, KEY_ENTER) == 0);
+	core_goto(&e, 0, 5);
+	CHECK(sql_key(&e, KEY_ENTER) == 0 && !core_win_goto(&e, 'k', 1));
+	/* a wide character two cells, a control byte two (^A), in the width;
+	   Enter gives a tab back whole */
+	g = f5("ms/wide.sql", "select N'\xe6\x97\xa5\xe6\x9c\xac' w, char(1) c, N'a' + char(9) + N'b' t union all select N'ab', 'a', 'x'\n");
+	CHECK(strstr(g, "\n2 \xe2\x94\x82 ab   \xe2\x94\x82 a  \xe2\x94\x82 x\n"));
+	CHECK(!core_win_goto(&e, 'j', 1));
+	core_goto(&e, 2, 24);
+	CHECK(sql_key(&e, KEY_ENTER) == 1 && text_read(e.buf->text, 0, cat, sizeof cat) == 3 && !memcmp(cat, "a\tb", 3) && !core_close(&e, 1) && !core_win_goto(&e, 'k', 1));
+	core_goto(&e, 0, 0);
+	CHECK(sql_key(&e, KEY_ENTER) == 0);   /* the query's own */
+	/* Postgres's notices between a set's rows wait for its end; its
+	   error makes the status line SSMS's error one */
+	g = f5("pg/n.sql", "create function pg_temp.n(i int) returns int as $$ begin raise notice 'row %', i; return i; end $$ language plpgsql;\n"
+		"select pg_temp.n(g) as v from generate_series(1, 3) g\n");
+	CHECK(strstr(g, "\n3 \xe2\x94\x82 3\n(3 rows)\n\n" MSGS "NOTICE 00000: row 1\nNOTICE 00000: row 2\nNOTICE 00000: row 3\n(SELECT 3)\n"));
+	CHECK(strstr(f5("pg/err.sql", "select nope\n"), "nope") && !strncmp(e.wins->next->buf->status, "\xe2\x9c\x97 Query completed with errors", 31));
+	/* a message comes at once (RAISERROR WITH NOWAIT) while the batch
+	   runs, after a set's end; the status line while it runs; a set's
+	   rows show while it waits (a row past Postgres's 8 KB send buffer
+	   goes at once); Enter is Vim's in insert mode or a half typed command */
+	put("ms/nowait.sql", "select 1 x; raiserror('early', 0, 1) with nowait; waitfor delay '00:00:02'\nselect 1 x\n", 0600);
+	CHECK(!core_edit_file(&e, "ms/nowait.sql", 0) && sql_key(&e, KEY_F5) == 1);
+	CHECK(!strncmp(e.wins->next->buf->status, "Executing query... \xc2\xb7 ms / master", 26));
+	CHECK(strstr(until("early"), "(1 row)\n\n" MSGS "(1 row affected)\nearly\n") && !strstr(res, "Completion"));
+	until("Completion time");
+	put("pg/trickle.sql", "select g, pg_sleep(g - 1), repeat('x', 9000) from generate_series(1, 3) g\n", 0600);
+	CHECK(!core_edit_file(&e, "pg/trickle.sql", 0) && sql_key(&e, KEY_F5) == 1);
+	CHECK(strstr(until("\n      1 \xe2\x94\x82 1 "), "\xe2\x94\x82 g ") && !strstr(res, "Completion"));
+	CHECK(!core_win_goto(&e, 'j', 1) && (core_goto(&e, 2, 10), e.mode = MODE_INSERT, sql_key(&e, KEY_ENTER) == 0) && (e.mode = MODE_NORMAL, e.ks.pending = 1, sql_key(&e, KEY_ENTER) == 0));
+	e.ks.pending = 0;
+	CHECK(!core_win_goto(&e, 'k', 1));
+	CHECK(strstr(until("Completion time"), "\n      3 \xe2\x94\x82 3 ") && strstr(res, "\n(3 rows)\n"));
 	/* a long set: the widths from its first 500 rows, a later longer value
 	   cut, the row numbers wide enough for 7 digits */
-	g = f5("ms/z.sql", "select top 600 case when row_number() over (order by (select 1)) > 500 then N'longer' else N'v' end x from sys.all_objects a, sys.all_objects b\n");
+	g = f5("ms/long.sql", "select top 600 case when row_number() over (order by (select 1)) > 500 then N'longer' else N'v' end x from sys.all_objects a, sys.all_objects b\n");
 	CHECK(strstr(g, "\n    500 \xe2\x94\x82 v\n    501 \xe2\x94\x82 \xe2\x80\xa6\n") && strstr(g, "\n    600 \xe2\x94\x82 \xe2\x80\xa6\n(600 rows)\n"));
 	/* not a SQL buffer: F5 is not ours */
 	put("x.txt", "x\n", 0600);

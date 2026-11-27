@@ -155,7 +155,7 @@ static int message(Pg *p, char k, const char *s, size_t n)
 		return p->quiet ? 0 : str_add(o, "\n", 1);
 	}
 	case 'C':   /* CommandComplete: its tag, as psql shows it */
-		return p->quiet ? 0 : str_add(o, "(", 1) || net_esc(o, s, n ? n - 1 : 0) || str_add(o, ")\n", 2);
+		return p->quiet ? 0 : str_add(o, NET_END "(", 3) || net_esc(o, s, n ? n - 1 : 0) || str_add(o, ")\n", 2);
 	case 'E': case 'N': {   /* severity, SQLSTATE: message (at character n) */
 		const char *f[256] = {0};
 		for (const char *q = s; q < e && *q;) {

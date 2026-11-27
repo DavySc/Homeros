@@ -326,6 +326,7 @@ static int token(Tds *t, Cur *c)
 		num(c, 2);
 		uint64_t cnt = num(c, 8);
 		if (c->bad) return 0;
+		if (!t->quiet && str_add(&t->out, NET_END, 2)) return -1;
 		if (st & 0x10 && !t->quiet && str_addf(&t->out, "(%llu row%s affected)\n", (unsigned long long)cnt, cnt == 1 ? "" : "s")) return -1;
 		/* the last DONE or DONEPROC (a batch ending in EXEC) of a reply; a
 		   cancel's reply ends at the one with DONE_ATTN */

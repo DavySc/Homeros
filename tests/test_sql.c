@@ -284,9 +284,9 @@ int main(int argc, char **argv)
 	CHECK(is(&d, "print 'a' + char(9) + 'b' + char(10) + 'c'; select 'a' + char(9) + 'b' + char(10) + 'c' x", "a\tb\nc\nx\na\\tb\\nc\n(1 row affected)\n"));
 	/* a column name escaped as a value is */
 	CHECK(is(&d, "select 1 as [a\tb]", "a\\tb\n1\n(1 row affected)\n"));
-	/* the layout's marks: the names, each row, a NULL, an error */
-	CHECK(raw(&d, "select 1 a, null b; select 1/0 x; print 'hi'", NET_HEAD "a\tb\n" NET_ROW "1\t" NET_NULL "\n(1 row affected)\n"
-		NET_HEAD "x\n" NET_ERR "Msg 8134, Level 16, State 1, Line 1\nDivide by zero error encountered." NET_ERR "\nhi\n"));
+	/* the layout's marks: the names, each row, a NULL, an error, each statement's end */
+	CHECK(raw(&d, "select 1 a, null b; select 1/0 x; print 'hi'", NET_HEAD "a\tb\n" NET_ROW "1\t" NET_NULL "\n" NET_END "(1 row affected)\n"
+		NET_HEAD "x\n" NET_ERR "Msg 8134, Level 16, State 1, Line 1\nDivide by zero error encountered." NET_ERR "\n" NET_END "hi\n" NET_END));
 	/* a cancel while no batch runs sends nothing */
 	CHECK(!db_cancel(&d) && db_state(&d) == DB_READY && !db_pending(&d));
 	/* a cancel after the batch's last DONE was sent: the server still sends
@@ -328,7 +328,7 @@ int main(int argc, char **argv)
 	/* text in both directions; a message's text as it is, a value's escaped */
 	CHECK(is(&d, "select '\U0001F600é' x", "x\n\U0001F600é\n(SELECT 1)\n"));
 	CHECK(is(&d, "do $$ begin raise notice 'a\tb'; end $$; select E'a\\tb' x", "NOTICE 00000: a\\tb\n(DO)\nx\na\\tb\n(SELECT 1)\n"));
-	CHECK(raw(&d, "select 1 a, null b; select nope", NET_HEAD "a\tb\n" NET_ROW "1\t" NET_NULL "\n(SELECT 1)\n"
+	CHECK(raw(&d, "select 1 a, null b; select nope", NET_HEAD "a\tb\n" NET_ROW "1\t" NET_NULL "\n" NET_END "(SELECT 1)\n"
 		NET_ERR "ERROR 42703: column \"nope\" does not exist (at character 28)" NET_ERR "\n"));
 	/* a cancel while no query runs sends nothing */
 	CHECK(!db_cancel(&d) && db_state(&d) == DB_READY && !db_pending(&d));
