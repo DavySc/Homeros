@@ -8,6 +8,7 @@
 #ifndef SQL_H
 #define SQL_H
 struct Editor;
+struct Buf;
 
 /* F5 runs the selection or, with none, the whole buffer (SSMS; GO splits
    SQL Server scripts as sqlcmd does); Alt+Break cancels the run.  Only in
@@ -23,4 +24,11 @@ int  sql_connect(struct Editor *e, const char *name);
    temp tables and rolls back an open transaction, as when an SSMS query
    window closes); the next F5 logs in again.  0 ok, -1 msg set. */
 int  sql_disconnect(struct Editor *e);
+/* The columns of the tables and views on b's connection (SSMS's
+   IntelliSense cache), for completion: fn gets each, in schema, table and
+   column order.  Read once per connection, on a connection of its own, in
+   the background: until then, or with no connection, 0 and no message.
+   fn NULL drops it, so the next call reads it again (SSMS's Ctrl+Shift+R).
+   Returns how many fn got. */
+int  sql_catalog(struct Editor *e, const struct Buf *b, void (*fn)(void *ctx, const char *schema, const char *table, const char *column), void *ctx);
 #endif
