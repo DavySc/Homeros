@@ -129,7 +129,7 @@ static void splice(Mark_ *k, size_t pos, size_t ndel, size_t nins)
    Until then snip_edit moves its statements as extmarks, and a word's
    statement is walked again when the word starts. */
 #define HOLD 1000
-static struct { const Buf *b; int nr, stale; size_t len, np; int nf; Str u; } I;
+static struct { const Buf *b; int nr, stale; size_t len, np; int nf; Str u; unsigned char seen[2048]; } I;   /* seen: T-SQL's words the file uses, by id */
 static Editor *E;   /* snip_key's, for the timer (one, as main.c's) */
 static void idle(void *ctx);
 #define NU ((size_t)(I.u.n / sizeof(Mark_[2])))
@@ -630,7 +630,7 @@ const char *snip_get(Editor *e, const char *q, size_t nq, int i, const char **de
 
 /* a token of the walk: kind, what it is to the walk (f), start, and its
    text without [] or "" */
-enum { NAME = 1, FROM = 2, JOIN = 4, AS = 8, TABLE = 16, TABLES = 32, OR_WORD = 64 };
+enum { NAME = 1, FROM = 2, JOIN = 4, AS = 8, TABLE = 16, TABLES = 32, OR_WORD = 64, COLUMN = 128 };
 typedef struct { int k, f; size_t s; char b[128]; } Tok;
 static int sym(const Tok *t, char c) { return t->k == TQ_PUNCT && *t->b == c; }
 static int is_of(const Cand *c, const char *w) { return c->of != (size_t)-1 && !strcasecmp(pool.s + c->of, w); }
@@ -691,12 +691,14 @@ static void flush(Str *refs, Str *pairs, Str *here)
    0: a is in a comment or a string. */
 static int walk(const Text *t, size_t p, size_t end, const Mark_ (*u)[2], size_t nu, size_t a, size_t z, Tok ctx[2], Str *here)
 {
-	/* the words the walk looks for, by tsql_word's id; the rest of
-	   tables[] are the words a table follows */
-	static const char *const w[] = { "from", "join", "as", "table", "into", "update", "delete", "merge" };
-	static size_t id[8];
+	/* the words the walk looks for, by tsql_word's id: then the words a
+	   table follows, then those a column follows */
+	static const char *const w[] = { "from", "join", "as", "table", "into", "update", "delete", "merge",
+	                                 "select", "where", "and", "or", "on", "by", "set", "having", "when", "then", "else" };
+	enum { NW = sizeof w / sizeof *w };
+	static size_t id[NW];
 	if (!id[0])
-		for (int i = 0; i < 8; i++) tsql_word(w[i], strlen(w[i]), &id[i]);
+		for (int i = 0; i < NW; i++) tsql_word(w[i], strlen(w[i]), &id[i]);
 	size_t ui = 0, n, tab = (size_t)-1, d;
 	Tok r[3] = { 0 };   /* the last three tokens (a ring) */
 	Str refs = { 0 }, pairs = { 0 };
@@ -723,7 +725,8 @@ static int walk(const Text *t, size_t p, size_t end, const Mark_ (*u)[2], size_t
 		size_t wid = 0;
 		int c = k == TQ_WORD ? tsql_word(b, d, &wid) : 0;
 		h0->k = k, h0->s = p, h0->f = k == TQ_IDENT || k == TQ_VAR || (k == TQ_WORD && !(c & TQ_RECASE));
-		for (int j = 0; wid && j < 8; j++) if (wid == id[j]) h0->f |= j < 4 ? FROM << j : j < 6 ? TABLES : TABLES | OR_WORD;
+		if (wid < sizeof I.seen) I.seen[wid] = 1;
+		for (int j = 0; wid && j < NW; j++) if (wid == id[j]) h0->f |= j < 4 ? FROM << j : j < 6 ? TABLES : j < 8 ? TABLES | OR_WORD : COLUMN;
 		if (h0->f & TABLE) h0->f |= TABLES;
 		if (k == TQ_VAR && b[1] != '@') fact(b, "", *b == '@' ? "Variable" : "Table");
 		if (list) {   /* a column list: a name after its '(' or a ',' */
@@ -731,8 +734,8 @@ static int walk(const Text *t, size_t p, size_t end, const Mark_ (*u)[2], size_t
 			if (list == 1 && (h0->f & NAME) && (sym(h1, '(') || sym(h1, ','))) fact(b, pool.s + tab, "Column");
 			continue;
 		}
-		if ((sym(h0, '.') || sym(h0, '(')) && NCAND(pairs) && CAND(pairs, NCAND(pairs) - 1).of == (size_t)-1 && !strcasecmp(pool.s + CAND(pairs, NCAND(pairs) - 1).w, h1->b))
-			pairs.n -= sizeof(Cand);   /* Q. or f(: no bare name */
+		if ((sym(h0, '.') || sym(h0, '(') || (h0->k == TQ_OP && !strcmp(b, "=") && (sym(h2, ',') || !strcasecmp(h2->b, "select")))) && NCAND(pairs) && CAND(pairs, NCAND(pairs) - 1).of == (size_t)-1 && !strcasecmp(pool.s + CAND(pairs, NCAND(pairs) - 1).w, h1->b))
+			pairs.n -= sizeof(Cand);   /* Q. or f( or SELECT y = x: no bare name */
 		if (h0->f & FROM) from = 1;
 		else if (k == TQ_WORD && !(h0->f & (NAME | JOIN | AS))) from = 0;
 		int isname = h0->f & NAME, attab = tab != (size_t)-1;
@@ -759,8 +762,12 @@ static int walk(const Text *t, size_t p, size_t end, const Mark_ (*u)[2], size_t
 		} else if (isname && sym(h1, '.') && (h2->f & NAME)) {
 			size_t q = intern(h2->b, strlen(h2->b));
 			if (q != (size_t)-1) cand(&pairs, b, d, q, "Column", NULL, 0);
-		} else if (isname && k != TQ_VAR && !(h1->f & (AS | NAME)) && !sym(h1, ')')) {
-			cand(&pairs, b, d, (size_t)-1, "Column", NULL, 0);   /* bare (no alias: x AS y, x y, f() y): a column of the statement's one table */
+		} else if (isname && k != TQ_VAR && !(h1->f & (AS | NAME)) && !sym(h1, ')') && (!c || sym(h1, ',') || h1->k == TQ_OP || (h1->f & COLUMN))) {
+			/* bare: a column of the statement's one table; no alias (x AS y,
+			   x y, f() y), and a T-SQL word only where a column goes (after
+			   a comma, an operator, SELECT, WHERE, BY...): not NOLOCK in
+			   WITH (NOLOCK), int in CONVERT(int, or NEXT in FETCH NEXT */
+			cand(&pairs, b, d, (size_t)-1, "Column", NULL, 0);
 		}
 		if (!isname && !sym(h0, '.') && !(h0->f & (AS | TABLE)) && !sym(h0, '(')) tab = (size_t)-1;
 	}
@@ -777,6 +784,7 @@ static void scan(Editor *e, size_t a, size_t z)
 	size_t (*u)[2], nu = sqlfmt_units(t, &u);
 	Tok ctx[2];
 	pool.n = facts.n = I.u.n = I.np = 0, I.nf = 0, I.b = NULL;
+	memset(I.seen, 0, sizeof I.seen);
 	for (size_t i = 0; i < nu; i++) {
 		Mark_ m[2] = { { u[i][0], 0 }, { u[i][1], 1 } };
 		if (str_add(&I.u, (const char *)m, sizeof m)) { I.u.n = 0; return; }
@@ -845,9 +853,10 @@ static int collect(Editor *e, size_t a, size_t z)
 		for (size_t i = 1; i <= tsql_nwords; i++) {
 			const char *kwd = tsql_name(i);
 			int c = tsql_word(kwd, strlen(kwd), NULL);
-			/* SQL Server's reserved words and the functions before the
-			   rest (sel: select before self) */
-			if (c && (*kwd == '@') == at) cand(&cands, kwd, strlen(kwd), (size_t)-1, c & TQ_FUNCTION ? "Function" : "Keyword", NULL, at || !(c & (TQ_RECASE | TQ_FUNCTION)));
+			/* SQL Server's reserved words, the functions and the words the
+			   file uses before the rest (sel: select before self; int
+			   where the file declares one) */
+			if (c && (*kwd == '@') == at) cand(&cands, kwd, strlen(kwd), (size_t)-1, c & TQ_FUNCTION ? "Function" : "Keyword", NULL, at || !((c & (TQ_RECASE | TQ_FUNCTION)) || (i < sizeof I.seen && I.seen[i])));
 		}
 		if (!at && !tabs) snippets(e, 3);
 	}

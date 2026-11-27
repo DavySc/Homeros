@@ -430,9 +430,14 @@ static void complete(void)
 	/* a bare name is a column of its statement's one table (Davy: d. after
 	   join dom d showed nothing); not an alias, a variable, a function, Q
 	   of Q.x, or a name in a statement of two tables */
-	e = at("select name, x as total, count(*) cnt, isnull(y, 0) z from dom where kind = @k\n"
-	       "select n from dom, app\nselect * from app a join dom d on d|\n", ".");
-	CHECK(!strcmp(shown(e), "x y kind name"));
+	e = at("select name, x as total, count(*) cnt, isnull(y, 0) z, w tot, v = u, try_convert(int, t) from dbo.dom with (nolock)\n"
+	       "where kind = @k order by name offset 0 rows fetch next 5 rows only\n"
+	       "select n from app, dom\nselect * from app a join dom d on d|\n", ".");
+	CHECK(!strcmp(shown(e), "t u w x y kind name"));
+	feed(e, KEY_ESC), core_free(e);
+	/* T-SQL's words the file uses rank with the reserved ones */
+	e = at("declare @x int\nselect |\n", "in");
+	CHECK(!strcmp(e->pum[1].word, "int"));
 	feed(e, KEY_ESC), core_free(e);
 	/* a statement's aliases are its own, an IF's condition is one */
 	e = at("select * from orders o\nselect o.zz from t\nselect * from orders x where x|\n", ".");
