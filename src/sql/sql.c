@@ -94,8 +94,12 @@ static int lookup(const char *name, const char *path, Spec *o)
 	snprintf(want, sizeof want, "%s", name);
 	for (int round = 0; round < 2; round++, rewind(fp)) {   /* the dir lines, then the connection */
 		while (fgets(l, sizeof l, fp)) {
-			char a[5][256] = {{0}}, x[2][256] = {{0}};
-			int k = sscanf(l, "%255s %255s %255s %255s %255s %255s %255s", a[0], a[1], a[2], a[3], a[4], x[0], x[1]);
+			char a[5][256] = {{0}}, x[256] = "", pass[256] = "", *pw = l;
+			/* pass= comes last and takes the rest of the line, spaces too
+			   (Davy's password has them), but not a Windows editor's CR */
+			while ((pw = strstr(pw + 1, "pass=")) && !match_space(pw[-1]));
+			if (pw) pw[strcspn(pw, "\r\n")] = 0, snprintf(pass, sizeof pass, "%s", pw + 5), *pw = 0;
+			int k = sscanf(l, "%255s %255s %255s %255s %255s %255s", a[0], a[1], a[2], a[3], a[4], x);
 			if (k < 3 || a[0][0] == '#') continue;
 			if (round == 0 && !*name && !strcmp(a[0], "dir")) {   /* "dir folder name": the folder may hold spaces */
 				char t[4096], d[PATH_MAX], *fs = l + strspn(l, " 	") + 3, *fe = fs + strlen(fs), *nm;
@@ -125,9 +129,8 @@ static int lookup(const char *name, const char *path, Spec *o)
 				snprintf(o->host, sizeof o->host, "%s", h);
 				snprintf(o->user, sizeof o->user, "%s", a[3]);
 				snprintf(o->db, sizeof o->db, "%s", a[4]);
-				for (int j = 0; j < 2; j++)
-					if (!strcmp(x[j], "trust")) o->trust = 1;
-					else if (!strncmp(x[j], "pass=", 5)) snprintf(o->pass, sizeof o->pass, "%s", x[j] + 5);
+				o->trust = !strcmp(x, "trust");
+				memcpy(o->pass, pass, sizeof pass);
 				if (!o->pg && !*o->pass && strcmp(o->user, "-")) { core_msg(E, "sql: %s has no pass= (an empty password is a failed login on the server)", o->name); return -1; }   /* user "-": the Windows login */
 				if (*o->pass && !open) { core_msg(E, "sql: %s holds a password but others can read it (chmod 600)", f); return -1; }
 				return 0;
