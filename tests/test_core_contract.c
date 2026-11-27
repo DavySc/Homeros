@@ -31,6 +31,13 @@ static void at(Editor *e, size_t l)
 	core_update(e);
 }
 
+/* Buf.faces: a face by the parity of each byte's offset */
+static void parity(const Buf *b, size_t a, size_t z, unsigned char *f)
+{
+	(void)b;
+	for (size_t i = a; i < z; i++) f[i - a] = i % 2 ? FACE_STRING : FACE_NUMBER;
+}
+
 int main(void)
 {
 	static Editor e;
@@ -42,6 +49,15 @@ int main(void)
 	CHECK(!fclose(f));
 	CHECK(!core_open(&e, path) && !grid_resize(&g, 24, 80));
 	core_update(&e);
+	/* a buffer without a grammar draws its Buf.faces (the LSP goals and
+	   the SQL results buffers): line 10 starts at offset 18 */
+	CHECK(!e.buf->syn);
+	e.buf->faces = parity;
+	core_draw(&e, NULL, &g);
+	const Cell *t = &g.c[9 * g.cols];
+	while (t->face == FACE_LINE_NR) t++;   /* past 'number' */
+	CHECK(t[0].ch[0] == '1' && t[0].face == FACE_NUMBER && t[1].ch[0] == '0' && t[1].face == FACE_STRING);
+	e.buf->faces = NULL;
 	/* core_goto past the end: the last line's last character, wanted there */
 	core_goto(&e, 1000, 1000);
 	CHECK(e.win->line == 99 && e.win->col == 2 && e.win->want == 2);
