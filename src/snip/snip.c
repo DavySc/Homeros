@@ -8,6 +8,7 @@
    (lsp/_snippet_grammar.lua) refuses a placeholder holding text and a
    stop, and a '$' that starts nothing, which VS Code takes.  The popup
    follows Davy's nvim-cmp setup (my-nvim lua/config/core/completion.lua). */
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
@@ -130,7 +131,7 @@ static void splice(Mark_ *k, size_t pos, size_t ndel, size_t nins)
    Until then snip_edit moves its statements as extmarks, and a word's
    statement is walked again when the word starts. */
 #define HOLD 1000
-static struct { const Buf *b, *catb; int nr, stale, cat; size_t len, np, cp; int nf; Str u, cats; unsigned char seen[2048]; } I;   /* cats: the connection's columns (cat of them), sorted Cands in the pool's first cp bytes, read for catb */   /* seen: T-SQL's words the file uses, by id */
+static struct { const Buf *b; int nr, stale; size_t len, np; int nf; Str u; unsigned char seen[2048]; } I;   /* seen: T-SQL's words the file uses, by id */
 static Editor *E;   /* snip_key's, for the timer (one, as main.c's) */
 static void idle(void *ctx);
 #define NU ((size_t)(I.u.n / sizeof(Mark_[2])))
@@ -780,12 +781,13 @@ static int walk(const Text *t, size_t p, size_t end, const Mark_ (*u)[2], size_t
 }
 
 
-/* one column of the buffer's connection (sql_catalog), as the file's */
+/* a column or a table of the buffer's connection (sql_catalog), as the
+   file's */
 static void column(void *ctx, const char *schema, const char *table, const char *col)
 {
 	(void)ctx;
-	fact(table, schema, "Table");
-	fact(col, table, "Column");
+	if (col) fact(col, table, "Column");
+	else fact(table, schema, "Table");
 }
 
 static void scan(Editor *e, size_t a, size_t z)
@@ -793,15 +795,7 @@ static void scan(Editor *e, size_t a, size_t z)
 	const Text *t = e->buf->text;
 	size_t (*u)[2], nu = sqlfmt_units(t, &u);
 	Tok ctx[2];
-	/* the catalog once per buffer (its connection's), not at every pause */
-	if (I.catb != e->buf || !I.cat) {
-		pool.n = facts.n = 0;
-		I.cat = sql_catalog(e, e->buf, column, NULL), I.catb = e->buf;
-		sort_facts(0);
-		I.cats.n = 0, I.cp = pool.n;
-		if (str_add(&I.cats, facts.s, facts.n)) I.cat = 0, I.cp = 0;
-	}
-	pool.n = I.cp, facts.n = I.u.n = I.np = 0, I.nf = 0, I.b = NULL;
+	pool.n = facts.n = I.u.n = I.np = 0, I.nf = 0, I.b = NULL;
 	memset(I.seen, 0, sizeof I.seen);
 	for (size_t i = 0; i < nu; i++) {
 		Mark_ m[2] = { { u[i][0], 0 }, { u[i][1], 1 } };
@@ -809,16 +803,6 @@ static void scan(Editor *e, size_t a, size_t z)
 	}
 	walk(t, 0, text_len(t), (const Mark_ (*)[2])I.u.s, NU, a, z, ctx, NULL);
 	sort_facts(0);
-	/* the file's facts and the catalog's, merged by name (both sorted) */
-	static Str f;
-	f.n = 0;
-	if (str_add(&f, facts.s, facts.n)) return;
-	facts.n = 0;
-	const Cand *x = (const Cand *)f.s, *xe = x + NCAND(f), *y = (const Cand *)I.cats.s, *ye = y + NCAND(I.cats);
-	for (const Cand *c, *l = NULL; x < xe || y < ye; l = c) {
-		c = y == ye || (x < xe && by_fact(x, y) <= 0) ? x++ : y++;
-		if ((!l || by_fact(l, c)) && str_add(&facts, (const char *)c, sizeof *c)) return;
-	}
 	I.b = e->buf, I.nr = e->buf->nr, I.len = text_len(t), I.np = pool.n, I.nf = NCAND(facts), I.stale = 0;
 }
 
@@ -834,38 +818,43 @@ static void idle(void *ctx)
 /* The cands for the word at [a, z) of e's buffer, by where it is in its
    statement (SSMS's IntelliSense): after Q. the columns of Q's table, or
    the tables of schema Q; after FROM, JOIN, INTO, UPDATE, DELETE, MERGE or
-   TABLE the file's tables; @ the variables; elsewhere T-SQL's words, the
+   TABLE the tables; @ the variables; elsewhere T-SQL's words, the
    statement's tables and aliases and their columns, and the snippets after
    them.  The file's names come from its index, the statement's from a walk
-   over it.  0: no popup (in a comment or a string). */
+   over it, the connection's from sql_catalog.  0: no popup (in a comment
+   or a string). */
 static int collect(Editor *e, size_t a, size_t z)
 {
 	const Text *t = e->buf->text;
-	/* the connection's catalog arrives after a login: then the index is
-	   made again with it (sql_catalog is 0 at once until then) */
-	if (I.b != e->buf || I.nr != e->buf->nr || I.len != text_len(t) || (!I.cat && sql_catalog(e, e->buf, column, NULL))) scan(e, a, z);
+	if (I.b != e->buf || I.nr != e->buf->nr || I.len != text_len(t)) scan(e, a, z);
 	pool.n = I.np, facts.n = (size_t)I.nf * sizeof(Cand), cands.n = 0;
-	/* the word's statement, or the gap between two */
+	/* the word's statement, with the gap after it: a word typed there
+	   grows it (its end mark moves right), so a pause that makes the
+	   index again changes nothing ("where |", a pause, then c) */
 	const Mark_ (*u)[2] = (const Mark_ (*)[2])I.u.s;
 	size_t j = 0, nu = NU;
 	while (j < nu && u[j][0].at <= a) j++;
 	Mark_ s[1][2] = { { { 0, 0 }, { text_len(t), 1 } } };
-	if (j && a <= u[j - 1][1].at) s[0][0] = u[j - 1][0], s[0][1] = u[j - 1][1];
-	else {
-		if (j) s[0][0].at = u[j - 1][1].at;
-		if (j < nu) s[0][1].at = u[j][0].at;
-	}
+	if (j) s[0][0] = u[j - 1][0];
+	if (j < nu) s[0][1].at = u[j][0].at;
 	Tok ctx[2] = { 0 };
 	Str here = { 0 };
 	if (!walk(t, s[0][0].at, s[0][1].at, s, 1, a, z, ctx, &here)) { str_free(&here); return 0; }
-	sort_facts(I.nf);
-	char c0 = 0;
+	char c0 = 0, q[128];   /* q: the qualifier, out of the pool (fact() moves it) */
 	text_read(t, a, &c0, a < z);
 	int dot = sym(&ctx[0], '.') && ctx[0].s + 1 == a, at = c0 == '@', tabs = !dot && (ctx[0].f & (TABLES | FROM | JOIN));
 	int words = !dot && (!tabs || (ctx[0].f & OR_WORD));   /* DELETE FROM, MERGE INTO */
-	const char *q = ctx[1].b;   /* the qualifier */
+	snprintf(q, sizeof q, "%s", ctx[1].b);
 	for (int i = 0; dot && i < NCAND(here); i++)
-		if (!strcasecmp(pool.s + CAND(here, i).w, ctx[1].b)) q = pool.s + CAND(here, i).of;
+		if (!strcasecmp(pool.s + CAND(here, i).w, ctx[1].b)) snprintf(q, sizeof q, "%s", pool.s + CAND(here, i).of);
+	/* the connection's names the place takes, asked for here (a call costs
+	   its table count and the columns it gives), so a switch or :Connect
+	   needs no copy made again: Q.'s columns, or schema Q's tables; the
+	   tables; the columns of the statement's tables */
+	if (dot ? !sql_catalog(e, e->buf, q, column, NULL) : tabs) sql_catalog(e, e->buf, NULL, column, NULL);
+	for (int i = 0; !dot && !tabs && !at && i < NCAND(here); i++)
+		if (*CAND(here, i).kind == 'T') snprintf(q, sizeof q, "%s", pool.s + CAND(here, i).of), sql_catalog(e, e->buf, q, column, NULL);
+	sort_facts(I.nf);
 	/* the index's facts and the statement's, merged by name, a word of a
 	   kind once */
 	const Cand *last = NULL;

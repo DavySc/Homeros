@@ -1,0 +1,9 @@
+r169: a tab before pass= not seen~test TESTS=sql_editor~~src/sql/sql.c~&& !match_space(pw[-1]));~&& pw[-1] != ' ');
+r169: the last pass= taken, not the first~test TESTS=sql_editor~~src/sql/sql.c~while ((pw = strstr(pw + 1, "pass=")) && !match_space(pw[-1]));~for (char *q = l; (q = strstr(q + 1, " pass=")); pw = q + 1);
+r169: any pass= inside a word taken~test TESTS=sql_editor~~src/sql/sql.c~&& !match_space(pw[-1]));~&& 0);
+r169: trust always on~test TESTS=sql_editor~~src/sql/sql.c~o->trust = !strcmp(x, "trust");~o->trust = 1;
+r169: trust never on~test TESTS=sql_editor~~src/sql/sql.c~o->trust = !strcmp(x, "trust");~o->trust = 0;
+r169: the password's tail of spaces trimmed~test TESTS=sql_editor~~src/sql/sql.c~snprintf(pass, sizeof pass, "%s", pw + 5), *pw = 0;~snprintf(pass, sizeof pass, "%s", pw + 5), *pw = 0; for (size_t z = strlen(pass); z && pass[z - 1] == ' ';) pass[--z] = 0;
+r169: the password cut at 8 bytes~test TESTS=sql_editor~~src/sql/sql.c~snprintf(pass, sizeof pass, "%s", pw + 5)~snprintf(pass, 9, "%s", pw + 5)
+r169: pass= not cut from the line (pass= read as database or trust word)~test TESTS=sql_editor~~src/sql/sql.c~, *pw = 0;~;
+r169: chmod rule dropped~test TESTS=sql_editor~~src/sql/sql.c~if (*o->pass && !open)~if (0 && !open)

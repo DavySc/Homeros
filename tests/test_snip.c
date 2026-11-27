@@ -375,6 +375,13 @@ static void complete(void)
 	for (const char *k = " join g"; *k; k++) feed(e, *k);
 	CHECK(!strstr(shown(e), "gone"));
 	feed(e, KEY_ESC), core_free(e);
+	/* a pause after WHERE (the index made again, its statement ending at
+	   WHERE) keeps the statement's columns, as without one */
+	e = at("select o.cust from orders o where |", "");
+	typing_pause();
+	feed(e, 'c');
+	CHECK(strstr(shown(e), "cust"));
+	feed(e, KEY_ESC), core_free(e);
 	/* the review's cases: a word at its statement's end; FROM and a
 	   column list end with their statement; a name once however often
 	   used; @@ words no variables, and after @ the file's variables first,
