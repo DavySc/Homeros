@@ -1,0 +1,11 @@
+caught        rv2: a trickling set never laid out early
+caught        rv2: the client's own failure without its marks
+caught        rv2: Enter shows the value still escaped
+caught        rv2: a message inside a set shown at once
+caught        rv2: SQL Server's statement end unmarked
+caught        rv2: the names' last cell not filled
+caught        rv2: a blank first line
+NOT CAUGHT    rv2: a new run keeps the last one's cut values
+NOT CAUGHT    rv2: a mark inside a message reaches the buffer
+caught        rv2: Enter on a later cell shows the first
+8 of 10 caught

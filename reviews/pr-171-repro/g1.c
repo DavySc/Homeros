@@ -47,6 +47,33 @@ int main(int argc, char **argv)
 		}
 		m = "dump";
 	}
+	if (!strcmp(m, "enter")) {
+		for (int i = 0; i < 1000 && !done(w->buf); i++) loop_once(10);
+		Buf *rb = w->buf;
+		int cols[] = { 0, 3, 5, 22, 24, 33, 60, 66, 74, 85, 100, 130, 143, 180, 230, 240 };
+		for (int li = 0; li < 4; li++) for (size_t ci = 0; ci < sizeof cols / sizeof *cols; ci++) {
+			for (Win *x = e.wins; x; x = x->next) if (x->buf == rb) { e.win = x; e.buf = rb; }
+			core_goto(&e, li, cols[ci]);
+			int nw = nwins(); size_t l0 = e.win->line, c0 = e.win->col;
+			keys("\r");
+			if (nwins() == nw) { printf("line %d col %zu: no cell (cursor now line %zu)\n", li, c0, (size_t)e.win->line); continue; }
+			char v[400]; size_t vn = text_read(e.buf->text, 0, v, sizeof v - 1); v[vn] = 0;
+			for (char *q = v; *q; q++) if (*q == '\n') *q = '$'; else if (*q == '\t') *q = '>';
+			printf("line %zu col %zu: [%s] (%zu bytes) status %s modifiable %d path %s\n", l0, c0, v, text_len(e.buf->text), e.buf->status, !e.buf->nomodifiable, e.buf->path ? e.buf->path : "-");
+			keys(":q\r");
+			if (nwins() != nw) printf("  :q left %d windows [%s]\n", nwins(), e.msg);
+		}
+		for (Win *x = e.wins; x; x = x->next) if (x->buf == rb) { e.win = x; e.buf = rb; }
+		core_goto(&e, 2, 5);
+		keys("\r"); printf("Enter: %d windows, in buffer %d\n", nwins(), e.buf->nr);
+		keys("\r"); printf("Enter in the cell window: %d windows, in buffer %d\n", nwins(), e.buf->nr);
+		for (Win *x = e.wins; x; x = x->next) if (x->buf == rb) { e.win = x; e.buf = rb; }
+		keys("\r"); printf("Enter again in the results: %d windows, buffer %d\n", nwins(), e.buf->nr);
+		for (Win *x = e.wins; x; x = x->next) if (x->buf == rb) { e.win = x; e.buf = rb; }
+		keys("\r"); printf("and again: %d windows, buffer %d\n", nwins(), e.buf->nr);
+		printf("F5 in a cell window -> %d [%s]\n", sql_key(&e, KEY_F5), e.msg);
+		return 0;
+	}
 	if (!strcmp(m, "toggle")) {
 		for (int i = 0; i < 1000 && !done(w->buf); i++) loop_once(10);
 		Buf *rb = w->buf; size_t z0 = text_len(rb->text);
