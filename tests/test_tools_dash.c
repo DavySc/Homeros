@@ -60,7 +60,7 @@ static char colour(const Cell *c)
 
 static void draw(void)
 {
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	tools_draw(&e, &g);
 }
 
