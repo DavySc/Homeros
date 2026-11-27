@@ -260,7 +260,7 @@ static void pc(Md *m, size_t p, size_t e, int c) { put(m->x, p, e, md_face[c / 3
 static int at(Md *m, size_t p)
 {
 	if (++m->x->spent > m->x->budget) m->eol = 0;
-	return m->eol ? tsql_byte(m->x->r, p) : -1;
+	return m->eol && p < m->end ? tsql_byte(m->x->r, p) : -1;
 }
 
 /* what plain text has: the innermost bold or italic's, a quote's or the
