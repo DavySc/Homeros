@@ -276,8 +276,11 @@ static void complete(void)
 	feed(e, 'a'), feed(e, 's');
 	CHECK(!strcmp(shown(e), "case cast cascade"));
 	feed(e, KEY_ESC), core_free(e);
-	e = typed("p.sql", "a");   /* the shorter first */
-	CHECK(!strncmp(shown(e), "as at abs ", 10));
+	e = typed("p.sql", "a");   /* the shorter first, reserved words and functions before the rest */
+	CHECK(!strncmp(shown(e), "as abs ", 7));
+	feed(e, KEY_ESC), core_free(e);
+	e = typed("p.sql", "sel");
+	CHECK(!strcmp(shown(e), "select self selective"));
 	feed(e, KEY_ESC), core_free(e);
 	e = typed("p.sql", "in");
 	CHECK(!strcmp(e->pum[0].word, "in") && !strcmp(e->pum[0].kind, "Keyword"));
@@ -419,7 +422,14 @@ static void complete(void)
 	CHECK(!core_edit(e, 0, 27, "", 0));
 	feed(e, 'g'), feed(e, 'g'), feed(e, 'A');
 	for (const char *k = " x."; *k; k++) feed(e, *k);
-	CHECK(!strcmp(shown(e), "id"));
+	CHECK(!strcmp(shown(e), "z id"));   /* z: a bare name of a statement with one table, its column */
+	feed(e, KEY_ESC), core_free(e);
+	/* a bare name is a column of its statement's one table (Davy: d. after
+	   join dom d showed nothing); not an alias, a variable, a function, Q
+	   of Q.x, or a name in a statement of two tables */
+	e = at("select name, x as total, count(*) cnt, isnull(y, 0) z from dom where kind = @k\n"
+	       "select n from dom, app\nselect * from app a join dom d on d|\n", ".");
+	CHECK(!strcmp(shown(e), "x y kind name"));
 	feed(e, KEY_ESC), core_free(e);
 	/* a statement's aliases are its own, an IF's condition is one */
 	e = at("select * from orders o\nselect o.zz from t\nselect * from orders x where x|\n", ".");

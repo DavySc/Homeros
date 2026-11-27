@@ -94,3 +94,11 @@ snip: columns of a #temp matched by case~test TESTS=snip~~src/snip/snip.c~ && !s
 snip: a word at its statement's end is outside it~test TESTS=snip~~src/snip/snip.c~	if (j && a <= u[j - 1][1].at)~	if (j && a < u[j - 1][1].at)
 snip: the list kept after the popup closes~test TESTS=snip~~src/snip/snip.c~	if (e->pum == items) core_pum(e, NULL, 0, -1, 0);¶	W.b = NULL;~	if (e->pum == items) core_pum(e, NULL, 0, -1, 0);
 snip: T-SQL's words after @ too~test TESTS=snip~~src/snip/snip.c~			if (c && (*kwd == '@') == at) cand~			if (c && (*kwd == '@' || !at)) cand
+snip: no bare name a column~test TESTS=snip~~src/snip/snip.c~			cand(&pairs, b, d, (size_t)-1, "Column", NULL, 0);   /* bare~			if (0) cand(&pairs, b, d, (size_t)-1, "Column", NULL, 0);   /* bare
+snip: a bare name a column of any statement's first table~test TESTS=snip~~src/snip/snip.c~ntab == 1 ? one : NULL~ntab ? one : NULL
+snip: f( a bare name~test TESTS=snip~~src/snip/snip.c~		if ((sym(h0, '.') || sym(h0, '(')) && NCAND(pairs)~		if (sym(h0, '.') && NCAND(pairs)
+snip: an alias without AS a bare name~test TESTS=snip~~src/snip/snip.c~!(h1->f & (AS | NAME)) && !sym(h1, ')')~!(h1->f & AS)
+snip: a variable a bare name~test TESTS=snip~~src/snip/snip.c~		} else if (isname && k != TQ_VAR && ~		} else if (isname && 
+snip: Q of Q.x a bare name~test TESTS=snip~~src/snip/snip.c~		if ((sym(h0, '.') || sym(h0, '(')) && NCAND(pairs)~		if (sym(h0, '(') && NCAND(pairs)
+snip: every T-SQL word at one rank (sel: self before select)~test TESTS=snip~~src/snip/snip.c~NULL, at || !(c & (TQ_RECASE | TQ_FUNCTION)));~NULL, at);
+snip: the file's group's snippets among T-SQL's other words~test TESTS=snip~~src/snip/snip.c~		if (!at && !tabs) snippets(e, 3);~		if (!at && !tabs) snippets(e, 2);

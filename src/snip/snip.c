@@ -661,15 +661,21 @@ static void fact(const char *w0, const char *of0, const char *kind)
 }
 
 /* a statement's end: each Q.name of it (pairs: name, then Q) becomes a
-   column of Q's table (Q an alias in refs) or of Q; its refs go to here */
+   column of Q's table (Q an alias in refs) or of Q, and a bare name (no
+   Q) a column of its one table, if it has one table (SQL's own rule: an
+   unqualified column needs no qualifier only then); its refs go to here */
 static void flush(Str *refs, Str *pairs, Str *here)
 {
+	const char *one = NULL;
+	int ntab = 0;
+	for (int j = 0; j < NCAND(*refs); j++)
+		if (*CAND(*refs, j).kind == 'T') ntab++, one = pool.s + CAND(*refs, j).of;
 	if (here && refs->n) str_add(here, refs->s, refs->n);
 	for (int i = 0; i < NCAND(*pairs); i++) {
-		const char *q = pool.s + CAND(*pairs, i).of;
-		for (int j = 0; j < NCAND(*refs); j++)
+		const char *w = pool.s + CAND(*pairs, i).w, *q = CAND(*pairs, i).of == (size_t)-1 ? ntab == 1 ? one : NULL : pool.s + CAND(*pairs, i).of;
+		for (int j = 0; q && j < NCAND(*refs); j++)
 			if (!strcasecmp(pool.s + CAND(*refs, j).w, q)) q = pool.s + CAND(*refs, j).of;
-		fact(pool.s + CAND(*pairs, i).w, q, "Column");
+		if (q) fact(w, q, "Column");
 	}
 	refs->n = pairs->n = 0;
 }
@@ -724,6 +730,8 @@ static int walk(const Text *t, size_t p, size_t end, const Mark_ (*u)[2], size_t
 			if (list == 1 && (h0->f & NAME) && (sym(h1, '(') || sym(h1, ','))) fact(b, pool.s + tab, "Column");
 			continue;
 		}
+		if ((sym(h0, '.') || sym(h0, '(')) && NCAND(pairs) && CAND(pairs, NCAND(pairs) - 1).of == (size_t)-1 && !strcasecmp(pool.s + CAND(pairs, NCAND(pairs) - 1).w, h1->b))
+			pairs.n -= sizeof(Cand);   /* Q. or f(: no bare name */
 		if (h0->f & FROM) from = 1;
 		else if (k == TQ_WORD && !(h0->f & (NAME | JOIN | AS))) from = 0;
 		int isname = h0->f & NAME, attab = tab != (size_t)-1;
@@ -750,6 +758,8 @@ static int walk(const Text *t, size_t p, size_t end, const Mark_ (*u)[2], size_t
 		} else if (isname && sym(h1, '.') && (h2->f & NAME)) {
 			size_t q = intern(h2->b, strlen(h2->b));
 			if (q != (size_t)-1) cand(&pairs, b, d, q, "Column", NULL, 0);
+		} else if (isname && k != TQ_VAR && !(h1->f & (AS | NAME)) && !sym(h1, ')')) {
+			cand(&pairs, b, d, (size_t)-1, "Column", NULL, 0);   /* bare (no alias: x AS y, x y, f() y): a column of the statement's one table */
 		}
 		if (!isname && !sym(h0, '.') && !(h0->f & (AS | TABLE)) && !sym(h0, '(')) tab = (size_t)-1;
 	}
@@ -834,9 +844,11 @@ static int collect(Editor *e, size_t a, size_t z)
 		for (size_t i = 1; i <= tsql_nwords; i++) {
 			const char *kwd = tsql_name(i);
 			int c = tsql_word(kwd, strlen(kwd), NULL);
-			if (c && (*kwd == '@') == at) cand(&cands, kwd, strlen(kwd), (size_t)-1, c & TQ_FUNCTION ? "Function" : "Keyword", NULL, at);
+			/* SQL Server's reserved words and the functions before the
+			   rest (sel: select before self) */
+			if (c && (*kwd == '@') == at) cand(&cands, kwd, strlen(kwd), (size_t)-1, c & TQ_FUNCTION ? "Function" : "Keyword", NULL, at || !(c & (TQ_RECASE | TQ_FUNCTION)));
 		}
-		if (!at && !tabs) snippets(e, 2);
+		if (!at && !tabs) snippets(e, 3);
 	}
 	str_free(&here);
 	return 1;
