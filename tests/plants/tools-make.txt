@@ -29,4 +29,6 @@ make: grr's list keeps each line's indent~test TESTS=lsp_locs~~src/tools/make.c~
 make: one place opened in the file it is in, not the current one~test TESTS=lsp_locs~~src/tools/make.c~		else if (core_edit_file(e, v->path, 0)) return;~		else core_setpcmark(e);
 make: grr's list opens on its last entry, not its first (copen)~test TESTS=lsp_locs~~src/tools/make.c~	e->win->line = 0;   /* copen: on the first entry */~
 make: grr's list names files by their whole path, not from the current directory~test TESTS=lsp_locs~~src/tools/make.c~		f = path_rel(cwd, strlen(cwd), f, &fn);~		(void)fn;
-make: one place past the file's end goes to its last line (nvim_win_set_cursor())~test TESTS=lsp_locs~~src/tools/make.c~		if (v->line >= core_lines(e)) core_msg~		if (0) core_msg
+make: one place past the file's end goes to its last line (nvim_win_set_cursor())~test TESTS=lsp_locs~~src/tools/make.c~		if (v->line < core_lines(e)) core_goto~		if (1) core_goto
+make: one place past the end of a new buffer leaves it on its first non-blank (:e), not 1,0 (:b)~test TESTS=lsp_locs~~src/tools/make.c~			if (!b) core_goto(e, 0, 0);~
+make: a place in the modified buffer's own file is :e'd (E37)~test TESTS=lsp_locs~~src/tools/make.c~		if (b == e->buf) core_setpcmark(e);~		if (0) core_setpcmark(e);

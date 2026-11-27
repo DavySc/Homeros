@@ -16,10 +16,11 @@
 int main(int argc, char **argv)
 {
 	static Editor e;
-	static char py[PATH_MAX], txt[PATH_MAX], dir[] = "/tmp/diagsXXXXXX", file[PATH_MAX + 64];
+	static char py[PATH_MAX], txt[PATH_MAX], dir[] = "/tmp/diagsXXXXXX", file[PATH_MAX + 64], log[64];
 	CHECK(argc == 4 && realpath("tests/test_lsp_locs.py", py) && realpath(argv[1], txt) && mkdtemp(dir));
 	static const char *const roots[] = { "lsproot", NULL };
-	const char *sargv[] = { "python3", py, "--serve", txt, NULL };
+	snprintf(log, sizeof log, "%s/log", dir);   /* the requests, which it logs */
+	const char *sargv[] = { "python3", py, "--serve", txt, log, NULL };
 	LspServer table[2] = { { ".c", "c", sargv, roots, 0 }, { 0 } };
 	lsp_servers = table;
 	snprintf(file, sizeof file, "%s/lsproot", dir);
