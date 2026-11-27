@@ -29,7 +29,12 @@ static void stats(const char *what, double *v, int n)
 }
 static int nrow;
 static void row(void *c, const char *s, const char *t, const char *k) { (void)c, (void)s, (void)t, (void)k; nrow++; }
-static int wait_cat(int ms) { int n = 0; for (int i = 0; i < ms / 10 && !(n = sql_catalog(&e, e.buf, row, NULL)); i++) loop_once(10); return n; }
+#ifdef OLDCAT
+#define CATALOG() sql_catalog(&e, e.buf, row, NULL)
+#else
+#define CATALOG() sql_catalog(&e, e.buf, NULL, row, NULL)   /* the tables */
+#endif
+static int wait_cat(int ms) { int n = 0; for (int i = 0; i < ms / 10 && !(n = CATALOG()); i++) loop_once(10); return n; }
 static void sample(const char *tag, int N)
 {
 	static double v[100000], w[100000], x[100000];
@@ -43,6 +48,10 @@ static void sample(const char *tag, int N)
 	for (int i = 0; i < N; i++) w[i] = tfeed('s'), feed(KEY_BS);
 	snprintf(b, sizeof b, "%s: word start 's'", tag), stats(b, w, N);
 	feed(KEY_BS);
+	type("\rselect * from "); spin(1300);
+	for (int i = 0; i < N; i++) w[i] = tfeed('t'), feed(KEY_BS);
+	snprintf(b, sizeof b, "%s: table start after from", tag), stats(b, w, N);
+	feed(KEY_ESC), feed('u'), feed('G'), feed('A');
 }
 int main(int argc, char **argv)
 {
@@ -124,6 +133,14 @@ int main(int argc, char **argv)
 		feed('G'), feed('A'); type("."); printf("d. now: %s\n", pum(40)); feed(KEY_BS); feed(KEY_ESC);
 		core_edit_file(&e, "w/c.sql", 0); feed('j'); spin(100); core_edit_file(&e, "w/a.sql", 0);
 		feed('G'), feed('A'); type("."); printf("d. after visiting another buffer: %s\n", pum(40));
+	}
+	if (!strcmp(m, "two")) {   /* a statement of two tables: both tables' live columns */
+		feed(KEY_ESC);
+		core_edit_file(&e, "w/b.sql", 0); sql_key(&e, KEY_F5); printf("tables %d\n", wait_cat(20000));
+		core_edit_file(&e, "w/a.sql", 0); feed('G'), feed('A');
+		type("st"); printf("st: %s\n", pum(6)); feed(KEY_BS), feed(KEY_BS);
+		type("zo"); printf("zo: %s\n", pum(6)); feed(KEY_BS), feed(KEY_BS);
+		type("@k"); printf("@k: %s\n", pum(6));
 	}
 	return 0;
 }

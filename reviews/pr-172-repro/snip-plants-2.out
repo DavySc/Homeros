@@ -1,0 +1,113 @@
+caught        snip: the core never tells the stops of an edit
+caught        snip: a mark at an edge of the change ignores its gravity
+caught        snip: the stops jumped to do not grow at their start
+caught        snip: a stop next to the stops jumped to is pushed on (no lock)
+caught        snip: text inside a placeholder counted as a placement
+caught        snip: mirrors never set
+caught        snip: TextChanged forgotten when a typed key leaves Insert mode
+caught        snip: the cursor may leave the stops
+caught        snip: a join spliced as its whole lines
+caught        snip: a mirror spliced as only what changed
+caught        snip: Enter at the end of a line spliced after the break
+caught        snip: Enter in a line moves the rest of it whole
+caught        snip: CTRL-W in select mode a window command
+caught        snip: Enter with nothing picked takes the first item
+caught        snip: the popup's Tab does not pick
+caught        snip: the popup opens in any buffer
+caught        snip: a block with no name line taken as a snippet
+caught        snip: a bare stop left empty
+caught        snip: unmapped S-Tab does nothing in Insert mode
+caught        snip: an unnamed buffer asks for its .sql ending
+caught        snip: a cursor inside a rewritten mirror stays past its text
+caught        snip: a jump's mirror write comes after its keys (its own undo step)
+caught        snip: a change on the cursor's line does not rerun CursorMoved
+caught        snip: a stop ending at a line start selects up to its last byte
+caught        snip: the file's group not ranked first
+caught        snip: task snippets outside task files
+caught        snip: proc files ranked by the word proc, not the helpers
+caught        snip: a later word of the file name wins
+caught        snip: a surrounded line keeps the first line's indent
+caught        snip: no $0, the area is lost
+caught        snip: a line area includes its indent
+caught        snip: a character area misses its last character
+caught        snip: the picker lists no snippets
+caught        snip: the picker shows no description
+caught        snip: the picker previews no body
+caught        snip: the picker opens a file on Enter
+caught        snip: SPC i s not in Visual mode
+caught        snip: no SPC i s map
+caught        snip: a surround takes the text's last line break
+caught        snip: a block surrounded corner to corner
+caught        snip: a blank first line's indent counted one short
+caught        snip: the list is not ranked again for a new buffer or prompt
+caught        snip: a heading's words after its '(' count
+caught        snip: later lines of the area are not indented as the $0 line
+caught        snip: the picker's prompt filters the first list, not the popup's order
+caught        snip: the preview shows the description
+caught        snip: SPC i s runs git's leader
+caught        snip: group() takes the last word, not the first
+caught        snip: a task file ranks no group first
+caught        snip: a new prompt keeps the old preview
+caught        snip: Enter inserts the first snippet, not the selected one
+caught        snip: the picker sorts by score again
+caught        snip: the area takes the text's last byte on a V area too
+caught        snip: a new prompt keeps the old selection
+caught        snip: the popup matches inside word parts (snacks' fuzzy)
+caught        snip: snippets ranked with the words
+caught        snip: no shorter word first
+caught        snip: the popup matches case as snacks' smartcase
+caught        snip: an alias not taken to its table
+caught        snip: a column list not read
+caught        snip: an alias after AS not read
+caught        snip: a CTE not a table
+caught        snip: after FROM the words too
+caught        snip: a column of every table in the statement's words
+caught        snip: the word typed is a name of the file
+caught        snip: the popup in a comment
+caught        snip: a keyword typed in capitals comes in small letters
+caught        snip: Tab in a snippet picks in the popup
+caught        snip: a statement's aliases leak into the next
+caught        snip: an exact match not first
+caught        snip: fact() keeps pointers into the pool it grows
+caught        snip: the list kept for an empty word
+caught        snip: the file walked at every word start
+caught        snip: the index made again under an open popup
+caught        snip: no popup yet taken for an open one: the timer wakes every second
+caught        snip: the index's statements stay where an edit moved the text
+caught        snip: no timer after an edit
+caught        snip: schema.table: the schema a table
+caught        snip: [x] loses brackets it needs
+caught        snip: DECLARE @t TABLE (...) gives no columns
+caught        snip: a word of a kind listed once per table
+caught        snip: after @ the @@ words with the variables
+caught        snip: DELETE offers no words
+caught        snip: @@rowcount is a variable of the file
+caught        snip: FROM a, b: b no table
+caught        snip: a table's name kept past a keyword
+caught        snip: columns of a #temp matched by case
+caught        snip: a word after a pause outside its statement
+caught        snip: the list kept after the popup closes
+caught        snip: T-SQL's words after @ too
+caught        snip: no bare name a column
+caught        snip: a bare name a column of any statement's first table
+caught        snip: f( a bare name
+caught        snip: an alias without AS a bare name
+caught        snip: a variable a bare name
+caught        snip: Q of Q.x a bare name
+caught        snip: every T-SQL word at one rank (sel: self before select)
+caught        snip: the file's group's snippets among T-SQL's other words
+caught        snip: a buffer without an index waits a second for it
+caught        snip: flush keeps a pointer to its one table's name, which fact() moves
+caught        snip: the file's own T-SQL words ranked with the rest
+caught        snip: a T-SQL word a bare name anywhere (NOLOCK, int, NEXT)
+caught        snip: SELECT y = x: y a bare name
+caught        snip: SET a = 1, b = 2: b taken for an alias
+caught        snip: a T-SQL word after an operator no column
+caught        snip: a T-SQL word after a comma no column
+caught        snip: a formatter-only word (OFFSET) a column anywhere
+caught        snip: MATCHED after WHEN a column
+caught        snip: Q. never asks the connection for Q's columns
+caught        snip: a FROM never asks the connection for its tables
+caught        snip: the statement's tables' columns never asked for
+caught        snip: the connection's tables lose their schema
+112 of 112 caught

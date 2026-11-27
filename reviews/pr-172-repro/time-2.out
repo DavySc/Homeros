@@ -1,0 +1,90 @@
+== p172m big time 1
+catalog rows 100004; first '.' after it arrived: 0.04 ms
+catalog: '.' after d               median 0.008  p99 0.020  max 0.058 ms (n=300)
+catalog: 2nd letter after d.       median 0.004  p99 0.015  max 0.040 ms (n=300)
+catalog: word start 's'            median 0.306  p99 0.425  max 0.463 ms (n=300)
+catalog: table start after from    median 0.245  p99 0.378  max 0.410 ms (n=300)
+== p172m big switch 1
+loop turn after a buffer switch    median 0.025  p99 0.051  max 0.051 ms (n=40)
+word typed at once after a switch  median 0.397  p99 0.553  max 0.553 ms (n=40)
+== p172o big time 1
+catalog rows 2001; first '.' after it arrived: 0.08 ms
+catalog: '.' after d               median 0.038  p99 0.159  max 0.206 ms (n=300)
+catalog: 2nd letter after d.       median 0.006  p99 0.024  max 0.063 ms (n=300)
+catalog: word start 's'            median 0.327  p99 0.563  max 0.620 ms (n=300)
+catalog: table start after from    median 0.934  p99 1.800  max 2.070 ms (n=300)
+== p172o big switch 1
+loop turn after a buffer switch    median 0.023  p99 0.063  max 0.063 ms (n=40)
+word typed at once after a switch  median 0.359  p99 0.836  max 0.836 ms (n=40)
+== p172m big time 2
+catalog rows 100004; first '.' after it arrived: 0.05 ms
+catalog: '.' after d               median 0.005  p99 0.018  max 0.055 ms (n=300)
+catalog: 2nd letter after d.       median 0.002  p99 0.008  max 0.017 ms (n=300)
+catalog: word start 's'            median 0.281  p99 0.377  max 0.415 ms (n=300)
+catalog: table start after from    median 0.296  p99 0.428  max 0.463 ms (n=300)
+== p172m big switch 2
+loop turn after a buffer switch    median 0.024  p99 0.052  max 0.052 ms (n=40)
+word typed at once after a switch  median 0.377  p99 0.444  max 0.444 ms (n=40)
+== p172o big time 2
+catalog rows 2001; first '.' after it arrived: 0.07 ms
+catalog: '.' after d               median 0.026  p99 0.084  max 0.153 ms (n=300)
+catalog: 2nd letter after d.       median 0.003  p99 0.015  max 0.025 ms (n=300)
+catalog: word start 's'            median 0.336  p99 0.486  max 1.113 ms (n=300)
+catalog: table start after from    median 0.610  p99 0.947  max 1.095 ms (n=300)
+== p172o big switch 2
+loop turn after a buffer switch    median 0.025  p99 0.072  max 0.072 ms (n=40)
+word typed at once after a switch  median 0.393  p99 0.800  max 0.800 ms (n=40)
+== p172m big time 3
+catalog rows 100004; first '.' after it arrived: 0.04 ms
+catalog: '.' after d               median 0.006  p99 0.023  max 0.051 ms (n=300)
+catalog: 2nd letter after d.       median 0.002  p99 0.010  max 0.016 ms (n=300)
+catalog: word start 's'            median 0.292  p99 0.419  max 0.465 ms (n=300)
+catalog: table start after from    median 0.257  p99 0.353  max 0.412 ms (n=300)
+== p172m big switch 3
+loop turn after a buffer switch    median 0.025  p99 0.041  max 0.041 ms (n=40)
+word typed at once after a switch  median 0.307  p99 0.415  max 0.415 ms (n=40)
+== p172o big time 3
+catalog rows 2001; first '.' after it arrived: 0.17 ms
+catalog: '.' after d               median 0.027  p99 0.096  max 0.171 ms (n=300)
+catalog: 2nd letter after d.       median 0.004  p99 0.010  max 0.042 ms (n=300)
+catalog: word start 's'            median 0.337  p99 0.528  max 0.580 ms (n=300)
+catalog: table start after from    median 0.601  p99 1.003  max 1.547 ms (n=300)
+== p172o big switch 3
+loop turn after a buffer switch    median 0.025  p99 0.062  max 0.062 ms (n=40)
+word typed at once after a switch  median 0.355  p99 1.162  max 1.162 ms (n=40)
+== p172m big time 4
+catalog rows 100004; first '.' after it arrived: 0.06 ms
+catalog: '.' after d               median 0.006  p99 0.029  max 0.055 ms (n=300)
+catalog: 2nd letter after d.       median 0.002  p99 0.008  max 1.140 ms (n=300)
+catalog: word start 's'            median 0.286  p99 0.425  max 0.487 ms (n=300)
+catalog: table start after from    median 0.247  p99 0.357  max 0.416 ms (n=300)
+== p172m big switch 4
+loop turn after a buffer switch    median 0.024  p99 0.202  max 0.202 ms (n=40)
+word typed at once after a switch  median 0.309  p99 0.594  max 0.594 ms (n=40)
+== p172o big time 4
+catalog rows 2001; first '.' after it arrived: 0.07 ms
+catalog: '.' after d               median 0.028  p99 0.087  max 0.146 ms (n=300)
+catalog: 2nd letter after d.       median 0.003  p99 0.008  max 0.009 ms (n=300)
+catalog: word start 's'            median 0.325  p99 0.422  max 0.492 ms (n=300)
+catalog: table start after from    median 0.599  p99 0.736  max 0.943 ms (n=300)
+== p172o big switch 4
+loop turn after a buffer switch    median 0.025  p99 0.037  max 0.037 ms (n=40)
+word typed at once after a switch  median 0.392  p99 0.723  max 0.723 ms (n=40)
+== p172m big time 5
+catalog rows 100004; first '.' after it arrived: 0.03 ms
+catalog: '.' after d               median 0.006  p99 0.040  max 0.064 ms (n=300)
+catalog: 2nd letter after d.       median 0.002  p99 0.009  max 0.010 ms (n=300)
+catalog: word start 's'            median 0.284  p99 0.387  max 0.605 ms (n=300)
+catalog: table start after from    median 0.247  p99 0.411  max 0.883 ms (n=300)
+== p172m big switch 5
+loop turn after a buffer switch    median 0.024  p99 0.057  max 0.057 ms (n=40)
+word typed at once after a switch  median 0.294  p99 0.402  max 0.402 ms (n=40)
+== p172o big time 5
+catalog rows 2001; first '.' after it arrived: 0.07 ms
+catalog: '.' after d               median 0.026  p99 0.047  max 0.165 ms (n=300)
+catalog: 2nd letter after d.       median 0.003  p99 0.006  max 0.009 ms (n=300)
+catalog: word start 's'            median 0.327  p99 0.431  max 0.525 ms (n=300)
+catalog: table start after from    median 0.914  p99 1.113  max 1.458 ms (n=300)
+== p172o big switch 5
+loop turn after a buffer switch    median 0.024  p99 0.047  max 0.047 ms (n=40)
+word typed at once after a switch  median 0.432  p99 0.628  max 0.628 ms (n=40)

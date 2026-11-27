@@ -1,0 +1,5 @@
+review2: schema. never lists the connection's tables~test TESTS=snip_sql~~src/snip/snip.c~	if (dot ? !sql_catalog(e, e->buf, q, column, NULL) : tabs)~	if (dot ? (sql_catalog(e, e->buf, q, column, NULL), 0) : tabs)
+review2: the table asked for by a pointer into the pool fact() moves~test TESTS=snip_sql~~src/snip/snip.c~snprintf(q, sizeof q, "%s", pool.s + CAND(here, i).of), sql_catalog(e, e->buf, q, column, NULL);~sql_catalog(e, e->buf, pool.s + CAND(here, i).of, column, NULL);
+review2: only the statement's first name's columns asked for~test TESTS=snip_sql~~src/snip/snip.c~	for (int i = 0; !dot && !tabs && !at && i < NCAND(here); i++)~	for (int i = 0; !dot && !tabs && !at && i < 1 && i < NCAND(here); i++)
+review2: columns asked for after @ too~test TESTS=snip_sql~~src/snip/snip.c~	for (int i = 0; !dot && !tabs && !at && i < NCAND(here); i++)~	for (int i = 0; !dot && !tabs && i < NCAND(here); i++)
+review2: the statement's gap not walked with it~test TESTS=snip~~src/snip/snip.c~	if (j < nu) s[0][1].at = u[j][0].at;~	if (j) s[0][1] = u[j - 1][1];

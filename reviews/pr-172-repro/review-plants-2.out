@@ -1,0 +1,6 @@
+caught        review2: schema. never lists the connection's tables
+NOT CAUGHT    review2: the table asked for by a pointer into the pool fact() moves
+NOT CAUGHT    review2: only the statement's first name's columns asked for
+NOT CAUGHT    review2: columns asked for after @ too
+caught        review2: the statement's gap not walked with it
+2 of 5 caught
