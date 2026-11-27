@@ -36,13 +36,14 @@ static struct { int id, dirty, resized; char key; Grid g, shown; } fr[FMAX];
 static int nfr;
 
 /* fr[i]'s title names its tab page's SPC 5 letter, sent only when that
-   changes (a new window, SPC 5 n) */
+   changes (a new window, SPC 5 n); one with none keeps the backend's
+   "homeros" */
 static void title(int i, const Tab *t)
 {
 	char s[16];
 	if (fr[i].key == t->key) return;
 	fr[i].key = t->key;
-	snprintf(s, sizeof s, t->key ? "homeros [%c]" : "homeros", t->key);
+	snprintf(s, sizeof s, "homeros [%c]", t->key);
 	b->title(fr[i].id, s);
 }
 /* Focus.tla: the windows raised whose sync's done (KEY_RAISED) has not

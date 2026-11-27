@@ -981,7 +981,13 @@ static void wl_cell(int id, int *w, int *h)   /* thread 0's, agreed */
 	*h = u ? 0 : cell_h;
 }
 
-static void wl_title(int id, const char *s) { struct win *w = win_of(id); if (w) xdg_toplevel_set_title(w->top, s); }
+/* flushed here: a rename (SPC 5 n) may draw nothing */
+static void wl_title(int id, const char *s)
+{
+	struct win *w = win_of(id);
+	if (w) xdg_toplevel_set_title(w->top, s);
+	wl_display_flush(dpy);
+}
 
 const Backend backend_wl = {
 	wl_open, wl_close, wl_win_open, wl_win_close, wl_raise, wl_fds, wl_input, wl_size, wl_ready,

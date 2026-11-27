@@ -71,7 +71,7 @@ def gen_tokens(r, nfiles):
         elif c < .76:
             toks.append('m:' + r.choice('abc'))
         elif c >= 1:
-            # tab pages, shown as frames: SPC 5 2 is :tab split, SPC 5 m {n} is MOVE() below
+            # tab pages, shown as frames: SPC 5 2 is :tab split, SPC 5 m {frame n's letter} is MOVE() below
             toks.append(r.choice(['tabsp', 'tabnew', 'tabe:f%d' % r.randrange(nfiles), 'tabclose', 'tabonly',
                                   'k:gt', 'k:gT', 'k:%sgt' % r.randint(1, 4), 'k:2gT', 'w:T', 'tabm:%d' % r.randint(1, 4)]))
         else:
@@ -153,7 +153,7 @@ local function marks()
   end
   return table.concat(s, ' ')
 end
--- SPC 5 m {n} (DESIGN.md, New approaches), from Neovim's own calls: a
+-- SPC 5 m {frame n's letter} (DESIGN.md, New approaches), from Neovim's own calls: a
 -- split below the current window of tab page n takes the window's buffer
 -- and view, then the window closes (its tab page with it when alone)
 function MOVE(n)

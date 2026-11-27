@@ -144,7 +144,7 @@ static const struct { const char *lhs, *desc; } maps[] = {
 };
 enum { NMAPS = sizeof maps / sizeof *maps };
 static int lead[3], nlead;   /* the keys typed of a map not yet complete */
-static int frame;            /* SPC 5 m or n typed: the next key is a frame's number or letter */
+static int frame;            /* SPC 5 m or n typed: the next key is a frame's letter */
 static int hint;             /* which-key's panel is shown */
 
 /* m is a map of this buffer and mode: in Visual mode only SPC i s, a
@@ -251,25 +251,45 @@ void keys_draw(Editor *e, Grid *g)
    (:enew) (package 5's, agreed) */
 static void dashboard(Editor *e) { if (!core_edit_file(e, "", 0)) tools_dash(e, 0); }
 
-/* A map completed runs; one that may still be
-   completed waits (a lone SPC as with which-key, without 'timeoutlen');
-   otherwise the first key runs unmapped and the rest are checked again
-   (Neovim's vgetorpeek() when no map matches) */
-/* SPC 5 n {letter}: one SPC 5 has no key of its own and no other frame has */
+/* a frame's letter: one SPC 5 has no key of its own for */
+static int letter(int k) { return k >= 'a' && k <= 'z' && !strchr("fmno", k); }
+
+/* the number of the frame with letter k, 0 if none has it */
+static int frame_nr(const Editor *e, int k)
+{
+	int n = 1;
+	if (letter(k))
+		for (const Tab *t = e->tabs; t; t = t->next, n++) if (t->key == k) return n;
+	return 0;
+}
+
+/* SPC 5 n {letter}: one no other frame has */
 static int frame_key(Editor *e, int k)
 {
-	if (k < 'a' || k > 'z' || strchr("fmno", k)) return -1;
-	for (const Tab *t = e->tabs; t; t = t->next) if (t->key == k && t != e->tab) return -1;
+	if (!letter(k) || (frame_nr(e, k) && e->tab->key != k)) return -1;
 	e->tab->key = (char)k;
 	return 0;
 }
 
+/* a map, a frame jump or a beep ends the leader keys and the count before them */
+static void lead_end(Editor *e)
+{
+	nlead = e->ks.pending = 0;
+	hint_end();
+	normal_mappable(1);
+}
+
+/* A map completed runs; one that may still be
+   completed waits (a lone SPC as with which-key, without 'timeoutlen');
+   otherwise the first key runs unmapped and the rest are checked again
+   (Neovim's vgetorpeek() when no map matches) */
 static int map(Editor *e, int k)
 {
 	if (frame) {
 		int f = frame;
 		frame = e->ks.pending = 0;
-		if (f == 'm' ? k < '1' || k > '9' || core_win_to_tab(e, k - '0') : frame_key(e, k)) beep();
+		int n = frame_nr(e, k);
+		if (f == 'm' ? !n || core_win_to_tab(e, n) : frame_key(e, k)) beep();
 		return 1;
 	}
 	if (!nlead && (e->mode != MODE_NORMAL || !normal_mappable(0))) return 0;
@@ -286,16 +306,11 @@ static int map(Editor *e, int k)
 		return 1;
 	}
 	lead[nlead++] = k;
-	if (nlead == 3 && lead[0] == ' ' && lead[1] == '5') {   /* SPC 5 {letter}: that frame */
-		long n = 1;
-		for (Tab *t = e->tabs; t; t = t->next, n++)
-			if (t->key == k) {
-				nlead = e->ks.pending = 0;
-				hint_end();
-				normal_mappable(1);
-				goto_tabpage(n);
-				return 1;
-			}
+	int to = nlead == 3 && lead[0] == ' ' && lead[1] == '5' ? frame_nr(e, k) : 0;
+	if (to) {   /* SPC 5 {letter}: that frame */
+		lead_end(e);
+		goto_tabpage(to);
+		return 1;
 	}
 	int part = 0;
 	for (int i = 0; i < NMAPS; i++) {
@@ -304,9 +319,7 @@ static int map(Editor *e, int k)
 		if (!usable(m) || j < nlead) continue;
 		if (m[j]) { part = 1; continue; }
 		if (*maps[i].desc == '+') continue;
-		nlead = e->ks.pending = 0;
-		hint_end();
-		normal_mappable(1);
+		lead_end(e);
 		undo_close(e->buf->undo);   /* a map is a command of its own: keys_feed() closes before each */
 		switch (m[0] == '-' ? 'p' : !strcmp(m, " is") ? 's' : m[1]) {
 		case 'f': tools_pick(e, m[2] == 'f' ? PICK_SMART : m[2] == 'g' ? PICK_GREP : PICK_REGISTERS); break;
@@ -320,7 +333,7 @@ static int map(Editor *e, int k)
 		case 'D': dashboard(e); break;
 		/* C-x 5 2 make-frame, 5 f find-file-other-frame (the picker in a
 		   new frame), 5 o other-frame, 5 0 delete-frame, 5 1
-		   delete-other-frames; 5 m {n} moves the window to frame n
+		   delete-other-frames; 5 m {letter} moves the window to that frame
 		   (DESIGN.md, New approaches) */
 		case '5':
 			switch (m[2]) {
@@ -354,6 +367,11 @@ static int map(Editor *e, int k)
 	memcpy(l, lead, sizeof l);
 	nlead = 0;
 	if (n == 1) return 0;
+	if (l[1] == '5' && l[0] == ' ') {   /* SPC 5 and no frame's key: beep, as SPC 5 m and n do */
+		lead_end(e);
+		beep();
+		return 1;
+	}
 	hint_end();
 	keys_feed(e, l[0], 1);
 	/* the rest as typed: a picker, the dashboard or magit may take them

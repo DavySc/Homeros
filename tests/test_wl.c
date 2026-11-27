@@ -286,6 +286,9 @@ static void test_sway(void)
 	CHECK(count(KEY_RESIZE, k0) == 1);
 	size_is(1280, 800, 120);        /* the whole output */
 	draw();
+	backend_wl.title(0, "homeros [q]");   /* main.c's: the frame's letter, as sway shows it */
+	pump(50);
+	run("SWAYSOCK=$(echo $XDG_RUNTIME_DIR/sway-ipc.*) swaymsg -t get_tree | grep -q '\"name\": \"homeros \\[q\\]\"'");
 
 	/* only changed rows are drawn, and moved rows copied: after random
 	   edits (characters, ligatures, wide and overflowing symbols, long

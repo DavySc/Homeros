@@ -30,3 +30,5 @@ wl: a window's size with another's cell~test TESTS=wl~~src/wl/wl.c~	int u = use(
 wl: damage only rows drawn~test TESTS=wl~~src/wl/wl.c~(o == b ? dirty[r] : paint_span(g, r, &o->g, r, &l, &h) > 0)~(dirty[r] + 0 * (l = h = 0))
 wl: the keyboard's window kept after it closes (test_wl: a window opened at once)~test TESTS=wl~~src/wl/wl.c~	if (kwin == w) kwin = NULL;¶~
 wl: the preedit drawn in every window~test TESTS=wl~~src/wl/wl.c~	const Grid *g = w == twin ? overlay(cur) : cur;~	const Grid *g = overlay(cur);
+wl: the title waits for the next frame (test_wl)~test TESTS=wl~~src/wl/wl.c~	if (w) xdg_toplevel_set_title(w->top, s);¶	wl_display_flush(dpy);~	if (w) xdg_toplevel_set_title(w->top, s);
+wl: no title~test TESTS=wl~~src/wl/wl.c~	if (w) xdg_toplevel_set_title(w->top, s);~	if (0) xdg_toplevel_set_title(w->top, s);

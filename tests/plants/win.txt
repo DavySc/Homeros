@@ -68,3 +68,4 @@ remote: the window stays after remote_stop~win WIN=win~~src/win/remote.c~if (me)
 remote: a launch the editor refused becomes a second editor~win WIN=win~~src/win/remote.c~if (!took && !FindWindowExW(HWND_MESSAGE, NULL, CLASS, NULL)) {~if (!took) {
 remote: empty data taken~win WIN=win~~src/win/remote.c~!cd->cbData || ~
 remote: files handed out newest first~win WIN=win~~src/win/remote.c~char *s = q[0];~char *s = q[qn - 1]; q[qn - 1] = q[0];
+win: no title~win WIN=win~~src/win/backend.c~ SetWindowTextW(w->h, u);~ (void)u;

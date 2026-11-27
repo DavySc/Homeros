@@ -133,6 +133,9 @@ int main(void)
 	CHECK(!b->open() && !b->win_open(0));
 	win = FindWindowW(L"homeros", NULL);
 	CHECK(win && IsZoomed(win));   /* opens maximised */
+	wchar_t title[16];
+	b->title(0, "homeros [q]");    /* main.c's: the frame's letter */
+	CHECK(GetWindowTextW(win, title, 16) == 11 && !wcscmp(title, L"homeros [q]"));
 	ShowWindow(win, SW_RESTORE);   /* the tests below size it themselves */
 	CHECK(b->fds(fds) == 2 && fds[0] == LOOP_MSGQ && fds[1] != 0);
 	input(k, 1024);   /* whatever showing the window sent */

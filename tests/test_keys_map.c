@@ -311,9 +311,9 @@ int main(void)
 	CHECK(d.tab == d.tabs->next);
 	feed(&d, "1gt");
 	CHECK(d.tab == d.tabs);
-	feed(&d, "\x17v 5m2");                     /* the window into frame 2 */
+	feed(&d, "\x17v 5mb");                     /* the window into frame b */
 	CHECK(d.tab == d.tabs->next && d.wins->next && !d.tabs->wins->next);
-	feed(&d, " 5m9");                          /* no frame 9: nothing moves */
+	feed(&d, " 5m2 5mx");                      /* a number, a letter no frame has: nothing moves */
 	CHECK(d.tab == d.tabs->next && d.wins->next);
 	feed(&d, "\x17T");                         /* CTRL-W T: a third frame */
 	CHECK(d.tab == d.tabs->next->next && !d.wins->next && !d.tabs->next->wins->next);
@@ -339,8 +339,9 @@ int main(void)
 	ntab = 0;
 	for (Tab *t = d.tabs; t; t = t->next) ks[ntab++] = t->key ? t->key : '0';
 	CHECK(!strcmp(ks, "abcdeghijklpqrstuvwxyz0"));
-	feed(&d, " 5c");
-	CHECK(d.tab == d.tabs->next->next);
+	feed(&d, " 5c 5m");
+	keys_input(&d, 0, 0);                      /* Ctrl-@: not the 23rd frame's, which has none */
+	CHECK(d.tab == d.tabs->next->next && d.tab->wins);
 	feed(&d, " 5nf 5na");                      /* SPC 5 f's, the first frame's: kept */
 	CHECK(d.tab->key == 'c');
 	feed(&d, " 5n0 5a");
@@ -353,6 +354,15 @@ int main(void)
 	CHECK(d.tab == d.tabs->next->next && d.tab->key == 'z');
 	feed(&d, " 51");
 	CHECK(!d.tabs->next);
+	feed(&d, "ggdGiabc\x1b" "0 5x 5{ 5n{");      /* no frame's key: a beep, the text kept */
+	CHECK(at(&d, "abc\n", 0) && d.tab->key == 'z' && !d.ks.pending);
+	feed(&d, "2 5zx");                         /* the count before goes with the jump */
+	CHECK(at(&d, "bc\n", 0) && !d.ks.pending);
+	feed(&d, " 5");
+	CHECK(!grid_resize(&g, 24, 80) && wait_hint(&d, &g) > 0);
+	feed(&d, "zuuu");                          /* the jump closes which-key's panel */
+	CHECK(wait_hint(&d, &g) < 0);
+	grid_free(&g);
 	CHECK(!core_tabnew(&d, ""));               /* :tabnew, gt, :bd N: the frame showing N goes */
 	int nr = d.buf->nr;
 	feed(&d, "gt");
@@ -376,7 +386,9 @@ int main(void)
 	feed(&d, "yy99p\x17s50Gzb 52");
 	CHECK(d.win->top == 43 && d.win->line == 49);
 	/* SPC 5 m: the window keeps its view in the frame it moves to */
-	feed(&d, "\x17v60Gzt 5m1");
+	char mv[] = "\x17v60Gzt 5m?";
+	mv[sizeof mv - 2] = d.tabs->key;
+	feed(&d, mv);
 	CHECK(d.tab == d.tabs && d.win->line == 59 && d.wins->next);
 	/* gt and back: CTRL-W p is the frame's previous window (enter_tabpage()) */
 	Win *was = d.win;
