@@ -14,7 +14,8 @@
 static int put32(Str *b, uint32_t v) { char s[4] = {(char)(v >> 24), (char)(v >> 16), (char)(v >> 8), (char)v}; return str_add(b, s, 4); }
 static uint32_t be(const char *s, int n) { uint32_t v = 0; while (n--) v = v << 8 | (unsigned char)*s++; return v; }
 
-/* a message: type (0 for none), length, body, sealed as one TLS record */
+/* a message: type (0 for none), length, body, sealed as one TLS record,
+   sent as far as the socket takes it (net_send) */
 static int send_msg(Net *c, char type, const char *s, size_t n)
 {
 	Str b = {0};
@@ -46,7 +47,7 @@ int pg_query(Pg *p, const char *sql)
 {
 	if (p->state != PG_READY) return -1;
 	p->state = PG_BUSY;
-	return send_msg(&p->net, 'Q', sql, strlen(sql) + 1);
+	return send_msg(&p->net, 'Q', sql, strlen(sql) + 1) || net_flush(&p->net);   /* now: Winsock wakes for writing only after a send would block (net.h) */
 }
 
 /* CancelRequest on a second connection, plain TCP as libpq 16 sends it;
