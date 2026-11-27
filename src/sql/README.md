@@ -12,12 +12,12 @@ branch `claude/project-thread-osg6me`, which is never merged.
 | `pg.c` | PostgreSQL (protocol 3.0): SSLRequest, TLS, SCRAM-SHA-256, simple queries, cancel on a second connection, values in the server's own text |
 | `db.c` | one interface over both clients, for the editor and the tests |
 | `run.c` | a script's batches, split on GO as sqlcmd 18 splits them (`GO n` too) |
-| `sql.c` | the editor's side (`include/sql.h`): F5, Alt+Break, the results split, the connections file, `:Connect` |
+| `sql.c` | the editor's side (`include/sql.h`): F5, Alt+Break and Ctrl-C, the results split, the connections file, `:Connect` |
 
 ## Running queries
 
 In a `.sql` buffer, F5 runs the selection, or the whole buffer when nothing
-is selected (SSMS). Alt+Break cancels the run. Results and messages come
+is selected (SSMS). Alt+Break cancels the run, and so does Ctrl-C while a run is going (a terminal sends no Break); otherwise Ctrl-C is Vim's. Results and messages come
 in the server's order in a split below the query, which SPC r opens and
 closes. SQL Server scripts run batch by batch, split on GO. PostgreSQL runs
 the text as one query.

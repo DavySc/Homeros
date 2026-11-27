@@ -102,3 +102,5 @@ sql: a port with letters after it is taken (test_sql_editor)~test TESTS=sql_edit
 win: a socket that turned writable before the reset waits for ever (test_sql_wake)~win WIN=sql~~src/sql/net.c~if (woke(c) || net_flush(c)) return -1;~if (woke(c)) return -1;
 specs: Wake with the close's record reset with the event~specs~find design/specs -name '*.cfg' ! -name Wake_ok_close.cfg -delete~design/specs/Wake_ok_close.cfg~ Variant = "ok"~ Variant = "noclose"
 specs: Wake with no flush after the reset~specs~find design/specs -name '*.cfg' ! -name Wake_ok_send.cfg -delete~design/specs/Wake_ok_send.cfg~ Variant = "ok"~ Variant = "flushfirst"
+sql: Ctrl-C does not cancel a run (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~ && key != KEY_CTRL_C) return 0;~) return 0;
+sql: Ctrl-C taken from Vim with no run to cancel (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (key == KEY_CTRL_C && (!s || !s->q.n || s->cancel)) return 0;~if (key == KEY_CTRL_C && !s) return 0;

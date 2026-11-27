@@ -164,9 +164,11 @@ int main(void)
 	CHECK(!core_edit_file(&e, "ms/o.sql", 0) && sql_key(&e, KEY_F5) == 1);
 	for (int i = 0; i < 20; i++) loop_once(10);
 	CHECK(sql_key(&e, KEY_F5) == 1 && strstr(e.msg, "a query is running"));   /* a second F5 waits for the first run */
-	CHECK(sql_key(&e, KEY_BREAK) == 1);
+	/* Ctrl-C cancels as Alt+Break; while that cancel waits, and with no
+	   run, it is Vim's */
+	CHECK(sql_key(&e, KEY_CTRL_C) == 1 && sql_key(&e, KEY_CTRL_C) == 0);
 	for (int i = 0; i < 100; i++) loop_once(10);
-	CHECK(!strstr(results(), "late"));
+	CHECK(!strstr(results(), "late") && strstr(results(), "Query was cancelled by user.\n") && sql_key(&e, KEY_CTRL_C) == 0);
 	/* the cancel ends with its answer: the next run sends all its batches */
 	CHECK(!text_delete(e.buf->text, 0, text_len(e.buf->text)) && !text_insert(e.buf->text, 0, "select 1 as a\ngo\nselect 2 as b\ngo\nselect 3 as c\n", 48));
 	CHECK(f5_once_idle() && strstr(until("Completion time"), "c\n3\n"));
