@@ -1,6 +1,8 @@
-/* The popup's columns from the buffer's connection (sql_catalog), as
-   SSMS's IntelliSense: none before a login, the table's after one, in a
-   buffer that never names them.  Needs the test PostgreSQL server
+/* The popup's names from the buffer's connection (sql_catalog), as
+   SSMS's IntelliSense: none before a login, after one a table's columns
+   after Q., the tables after FROM and schema., the statement's tables'
+   columns elsewhere, in buffers that never name them; none after :Connect
+   to a connection not logged in.  Needs the test PostgreSQL server
    (test_sql.c). */
 #include <stdio.h>
 #include <stdlib.h>
@@ -45,23 +47,33 @@ int main(void)
 	char dir[] = "/tmp/snip_sqlXXXXXX", f[1024];
 	CHECK(mkdtemp(dir) && !chdir(dir) && !mkdir("homeros", 0700));
 	setenv("XDG_CONFIG_HOME", dir, 1);
-	snprintf(f, sizeof f, "pg pg 127.0.0.1 postgres postgres trust pass=%s\ndir %s pg\n", pg, dir);
+	snprintf(f, sizeof f, "pg pg 127.0.0.1 postgres postgres trust pass=%s\npg2 pg 127.0.0.1 postgres template1 trust pass=%s\ndir %s pg\n", pg, pg, dir);
 	put("homeros/sql", f);
-	put("make.sql", "drop table if exists scat; create table scat (k int, zone int)\n");
+	put("make.sql", "drop table if exists scat; create table scat (k int, zone int, qty_left int); drop table if exists scat_only; create table scat_only (v int)\n");
 	put("q.sql", "select * from app a join scat d on d");
+	put("r.sql", "select * from scat where");
 	CHECK(!core_open(&e, "q.sql"));
 	CHECK(!strcmp(after("q.sql", "."), ""));   /* no login yet: the file has no columns of scat */
 	CHECK(!core_edit_file(&e, "make.sql", 0) && sql_key(&e, KEY_F5) == 1);
 	int n = 0;
 	for (int i = 0; i < 300 && !strstr(after("q.sql", "."), "zone"); i++) loop_once(10), n = i;
-	CHECK(!strcmp(after("q.sql", "."), "k zone "));
+	CHECK(!strcmp(after("q.sql", "."), "k zone qty_left "));
 	/* an edit and a pause make the index again; the catalog stays in it */
 	CHECK(!core_edit_file(&e, "q.sql", 0));
 	feed('O');
 	for (const char *k = "select 1 from other_one"; *k; k++) feed(*k);
 	feed(KEY_ESC);
 	for (long long t = loop_now(); loop_now() - t < 1200000000LL;) loop_once(100);
-	CHECK(!strcmp(after(NULL, "."), "k zone "));
+	CHECK(!strcmp(after(NULL, "."), "k zone qty_left "));
+	feed('u');
+	/* another buffer on the connection, and a switch back */
+	CHECK(strstr(after("r.sql", " qty"), "qty_left "));
+	CHECK(!strcmp(after(NULL, "\nfrom scat_o"), "scat_only "));
+	CHECK(!strcmp(after(NULL, "\nfrom public.scat_o"), "scat_only "));
+	CHECK(!strcmp(after("q.sql", "."), "k zone qty_left "));
+	/* :Connect to a connection with no login yet: none of pg's columns */
+	CHECK(!sql_connect(&e, "pg2"));
+	CHECK(!strcmp(after(NULL, "."), ""));
 	printf("test_snip_sql: the connection's columns after a login (%d loop turns)\n", n);
 	core_free(&e);
 	return 0;
