@@ -55,6 +55,9 @@ static int t_clip_set(const char *s, size_t n) { (void)s; (void)n; return -1; }
 static long t_clip_get(char *buf, size_t max) { (void)buf; (void)max; return -1; }
 static void t_mouse(int *row, int *col) { *row = *col = 0; }
 static void t_cell(int id, int *w, int *h) { (void)id; *w = *h = 0; }
+static char t_titles[NW][16];
+static int t_ntitle;
+static void t_title(int id, const char *s) { CHECK(id < NW && strlen(s) < 16); strcpy(t_titles[id], s); t_ntitle++; }
 
 static void t_check(int n);
 
@@ -83,16 +86,16 @@ static int t_input(int *out, int *win, int n)
 }
 
 static const Backend t_backend = { t_open_, t_close, t_win_open, t_win_close, t_raise_, t_fds, t_input, t_size,
-	t_ready_, t_present, t_suspend, t_clip_set, t_clip_get, t_mouse, t_cell };
+	t_ready_, t_present, t_suspend, t_clip_set, t_clip_get, t_mouse, t_cell, t_title };
 
 static int t_d0, t_d1;
 /* the checks, by number */
 static void t_check(int n)
 {
 	switch (n) {
-	case 0: CHECK(t_open[0] == 1 && !t_open[1] && t_drawn[0] && !t_nraise); break;
+	case 0: CHECK(t_open[0] == 1 && !t_open[1] && t_drawn[0] && !t_nraise && !strcmp(t_titles[0], "homeros [a]")); break;
 	/* SPC 5 2: a window for the new tab page, which is raised */
-	case 1: CHECK(t_open[1] == 1 && e.tab->id == 1 && t_nraise == 1 && t_raise[0] == 1 && t_drawn[1]); break;
+	case 1: CHECK(t_open[1] == 1 && e.tab->id == 1 && t_nraise == 1 && t_raise[0] == 1 && t_drawn[1] && !strcmp(t_titles[1], "homeros [b]")); break;
 	/* two quick gt: the focus the first raise gives is dropped (InFrame) */
 	case 2: CHECK(t_nraise == 3 && t_raise[1] == 0 && t_raise[2] == 1 && e.tab->id == 1); break;
 	case 3: CHECK(e.tab->id == 1 && e.mode == MODE_INSERT); break;
@@ -115,7 +118,10 @@ static void t_check(int n)
 	/* the close button of frame 1: :tabclose for it, not :qa */
 	case 9: CHECK(t_open[1] == 2 && !e.quit && !e.tabs->next && e.tab->id == 0); break;
 	/* a third tab page: a window of its own, not the closed one's id */
-	case 12: CHECK(t_open[2] == 1 && t_open[1] == 2 && e.tab->id == 2); break;
+	case 12: CHECK(t_open[2] == 1 && t_open[1] == 2 && e.tab->id == 2 && !strcmp(t_titles[2], "homeros [b]")); break;
+	/* SPC 5 n: the new letter in its title; a title is sent only when
+	   it changes: a, b, b again, z */
+	case 16: CHECK(!strcmp(t_titles[2], "homeros [z]") && !strcmp(t_titles[0], "homeros [a]") && t_ntitle == 4); break;
 	/* a file handed over with the Enter of the last tab page's :q!: the
 	   editor stays, and the file is in a new frame, raised */
 	case 13: CHECK(!e.quit && e.tabs->next && e.tab->id && t_open[e.tab->id] == 1 && t_raise[t_nraise - 1] == e.tab->id
@@ -156,7 +162,7 @@ int main(void)
 		{ 'v', 1, 0 }, { 't', 8, 0 },
 		{ 's', 1, 0 }, { 't', 10, 0 },
 		{ 'c', 1, 0 }, { 't', 9, 0 },
-		{ 'k', 0, " 52" }, { 'r', 0, 0 }, { 't', 12, 0 },
+		{ 'k', 0, " 52" }, { 'r', 0, 0 }, { 't', 12, 0 }, { 'k', 0, " 5nz" }, { 't', 16, 0 },
 		{ 'k', 0, ":q!\r:q!" }, { 'o', '\r', t_b }, { 't', 13, 0 },
 		{ 'k', 0, "v" }, { 'o', 0, "" }, { 't', 14, 0 },
 		{ 'o', 0, t_c }, { 't', 15, 0 },

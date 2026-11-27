@@ -239,3 +239,4 @@ core: a refill clamps the current frame's windows only~test TESTS=keys_map~~src/
 core: :tabnew {file} after :bd keeps column 0 on a line of blanks~test TESTS=core_screens~~src/core/core.c~how == ENTER_E || (how != ENTER_B && line1_blank(e))~how == ENTER_E || (how == ENTER_ALT && line1_blank(e))
 core: a cursor inside a character takes the next one's screen column~test TESTS=core_screens~~src/core/core.c~		if (i + k > col) break;~		if (i >= col) break;
 core: tab ids reused, so a third frame takes a closed one's window id (test_frames_main)~test TESTS=frames_main~~src/core/win.c~	t->id = tab_ids++;~	t->id = tab_ids;
+core: f given as a frame letter, so SPC 5 f never reaches that frame (test_keys_map)~test TESTS=keys_map~~src/core/win.c~"abcdeghijklpqrstuvwxyz"~"abcdefghijklpqrstuvwxyz"
