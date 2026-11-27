@@ -25,8 +25,10 @@ typedef struct {
 /* Opens family (a font name, "JetBrains Mono"; on Windows a list, the
    first installed one taken) at px pixels per em.  0 ok; -1 if the system
    has no font at all, or out of memory; a family it lacks gets its best
-   match, as in foot.  Called again (a new size or output
-   scale) it replaces the font and empties the cache. */
+   match, as in foot.  Called again with a size still open, it switches to
+   that size and keeps its cell and its caches.  Up to 4 sizes stay open,
+   because frames can sit on monitors with different scales; the least
+   recently used one closes.  family is the same in every call. */
 int  font_open(const char *family, int px);
 void font_close(void);
 /* The cell, from the first font: width, height, baseline from the top. */
@@ -39,6 +41,6 @@ void font_style(int style);
 /* Shapes one run of UTF-8 text (one row, one attribute, one style); returns how many
    glyphs it wrote to out (at most max), in cluster order. */
 int  font_shape(const unsigned char *s, size_t n, Placed *out, int max);
-/* Glyph cache lookups since font_open. */
+/* Glyph cache lookups since this size was opened. */
 void font_stats(unsigned long *hit, unsigned long *miss);
 #endif

@@ -45,7 +45,7 @@ static void draw(void)
 	static Face was[FACES];
 	static unsigned char held[FACES];
 	memcpy(was, faces, sizeof was);
-	core_draw(&e, &g);
+	core_draw(&e, NULL, &g);
 	tools_draw(&e, &g);
 	for (int k = FACE_COUNT; k < FACES; k++) CHECK(!held[k] || !memcmp(&was[k], &faces[k], sizeof was[k]));
 	memset(held, 0, sizeof held);
