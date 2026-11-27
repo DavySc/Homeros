@@ -273,6 +273,41 @@ static void edits(const char *dir)
 	CHECK(!core_split(&e, 0, 0) && !core_win_to_tab(&e, 1));
 	CHECK(e.win->fold && fold_closed(e.win->fold, 1, &a, &z) && a == 1);
 	core_free(&e);
+	/* an edit adjusts and updates the folds of every frame's windows on
+	   the buffer (FOR_ALL_TAB_WINDOWS in mark_adjust_internal() and
+	   changed_common()), also the rows Insert mode kept back: a window
+	   in another frame with the same folds closed keeps them equal to
+	   the current window's after each step */
+	CHECK(!core_open(&e, h));
+	parse(&e);
+	CHECK(!core_fold(&e, FOLD_CLOSE, 8, 1) && !core_fold(&e, FOLD_CLOSE, 1, 1) && !core_split(&e, 0, 0) && !core_win_to_tab(&e, 0));
+	Win *other = tab_firstwin(&e, e.tabs) == e.win ? tab_firstwin(&e, e.tabs->next) : tab_firstwin(&e, e.tabs);
+	CHECK(other != e.win && other->buf == e.buf);
+	static const char *const steps[] = { "ggdd", "dd", "Gox\033", "ggyyp", "4Gox\ny\033", "u" };
+	for (size_t i = 0; i < sizeof steps / sizeof *steps; i++)
+		for (int p = 0; p < 2; p++) {
+			if (p) parse(&e);
+			else feed(&e, steps[i]), core_update(&e);
+			for (size_t l = 0; l < core_lines(&e); l++) {
+				size_t a2 = 0, z2 = 0;
+				int c1 = fold_closed(e.win->fold, l, &a, &z), c2 = fold_closed(other->fold, l, &a2, &z2);
+				CHECK(c1 == c2 && (!c1 || (a == a2 && z == z2)));
+			}
+		}
+	/* Insert mode goes on when the OS focuses another frame (main.c's
+	   core_tab_enter); <Esc> there brings the rows the first frame kept
+	   back, though no window of its frame shows the buffer */
+	char c[64];
+	snprintf(c, sizeof c, "%s/e.c", dir);
+	Tab *t1 = e.tab;
+	CHECK(!core_edit_file(&e, c, 0) && e.win->buf != other->buf);
+	core_tab_enter(&e, other == tab_firstwin(&e, e.tabs) ? e.tabs : e.tabs->next);
+	feed(&e, "Gox");
+	core_tab_enter(&e, t1);
+	feed(&e, "\033");
+	CHECK(other->frame->s.fend <= other->frame->s.ftop);
+	core_free(&e);
+	unlink(c);
 	unlink(h);
 }
 
