@@ -247,10 +247,13 @@ static int run(Sess *s, size_t a, size_t z)
 
 int sql_key(Editor *e, int key)
 {
-	if (key != KEY_F5 && key != KEY_BREAK) return 0;
+	if (key != KEY_F5 && key != KEY_BREAK && key != KEY_CTRL_C) return 0;
 	E = e;
 	Sess *s = sess(e->buf->nr, 0);
-	if (key == KEY_BREAK) {
+	/* Ctrl-C cancels as Alt+Break, which a terminal cannot send (Davy,
+	   2026-11-24); with no run to cancel it stays Vim's */
+	if (key == KEY_CTRL_C && (!s || !s->q.n || s->cancel)) return 0;
+	if (key != KEY_F5) {
 		if (!s || !s->q.n || s->cancel) return s != NULL;
 		if (db_state(&s->db) != DB_BUSY || db_cancel(&s->db)) drop(s);   /* logging in: the connection goes */
 		else {   /* the run stays busy until the server answers (SqlSess.tla's Break and Ack) */
