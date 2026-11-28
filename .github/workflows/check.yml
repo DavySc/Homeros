@@ -115,9 +115,10 @@ jobs:
       - run: >
           . tools/winpass.sh && winlink build/win/test_git_win.exe tests/test_git_win.c &&
           winlink build/win/test_sql_wake.exe tests/test_sql_wake.c &&
-          winlink build/win/test_lsp.exe tests/test_lsp.c
+          winlink build/win/test_lsp.exe tests/test_lsp.c &&
+          winlink build/win/test_infoview_win.exe tests/test_infoview_win.c -lws2_32
       - uses: actions/upload-artifact@v4
-        with: { name: winexe, path: "build/win/test_git_win.exe\nbuild/win/test_sql_wake.exe\nbuild/win/test_lsp.exe" }
+        with: { name: winexe, path: "build/win/test_git_win.exe\nbuild/win/test_sql_wake.exe\nbuild/win/test_lsp.exe\nbuild/win/test_infoview_win.exe" }
   # git's and the loop's Windows halves on Windows itself, for what Wine
   # cannot show (a path's names as stored, a pseudo-console's resize): pull
   # requests only, so it stays short (packages 17 and 10, thread 0's, agreed)
@@ -144,4 +145,7 @@ jobs:
         shell: bash
       # the LSP client against its fake servers (built by winexe)
       - run: . tools/winpass.sh && pass 600 build/win/test_lsp.exe
+        shell: bash
+      # the infoview's child: sockets and overlapped pipes in one wait
+      - run: bash src/infoview/check.sh
         shell: bash

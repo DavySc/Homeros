@@ -22,39 +22,62 @@
    The pipe, one line per message:
      stdin   "P JSON"  an event for page P      stdout  "P JSON"  P's call
              "* JSON"  an event for every page          "+ P"     P's stream opened
-             "!"       open the page in a browser       "- P"     P forgotten
-   The editor's JSON has no line breaks (it turns them into spaces); a
-   call's body is JSON.stringify's, which has none, and any that a client
-   sends anyway become spaces too.
+                                                        "- P"     P forgotten
+   The first line out is the private file that sends a browser to the page
+   (readable only by you), which the editor opens, so the token is never on
+   a command line (ps shows those to every user).  The editor's JSON has no
+   line breaks (it turns them into spaces); a call's body is
+   JSON.stringify's, which has none, and any that a client sends anyway
+   become spaces too.
 
-   Usage: homeros-infoview ROOT OPENER...  ROOT holds index.html, host.js,
-   theme.css and dist/ (the npm package's); OPENER is run with a private
-   file that sends the browser to the page, so the token is never on a
-   command line (ps shows those to every user). */
+   On Windows the same loop waits in one alertable wait: the sockets signal
+   one event (WSAEventSelect) and WSAPoll then says which are ready, as
+   poll(2) does; the pipes are the editor's overlapped ones
+   (proc_spawn_ov), read and written by completion routines as
+   src/loop/win.c's, since a synchronous pipe cannot be waited on.
+
+   Usage: homeros-infoview ROOT.  ROOT holds index.html, host.js, theme.css
+   and dist/ (the npm package's). */
 #include <errno.h>
 #include <fcntl.h>
-#include <poll.h>
-#include <signal.h>
-#include <spawn.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <sys/stat.h>
+#include <time.h>
+#include <unistd.h>
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <windows.h>
+#include <bcrypt.h>
+#define getrandom(b, n, f) (BCryptGenRandom(NULL, b, n, BCRYPT_USE_SYSTEM_PREFERRED_RNG) ? -1 : (ssize_t)(n))
+#define AGAIN (WSAGetLastError() == WSAEWOULDBLOCK)
+#define MSG_NOSIGNAL 0
+#define SOCK_NONBLOCK 0    /* WSAEventSelect makes it so */
+#define sclose closesocket
+#define RUNDIR "TEMP"
+#define SEP "\\"                 /* what Explorer is given: one kind of slash */
+#else
+#include <poll.h>
+#include <signal.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/random.h>
 #include <sys/socket.h>
-#include <sys/stat.h>
-#include <time.h>
-#include <unistd.h>
+#define AGAIN (errno == EAGAIN || errno == EINTR)
+#define O_BINARY 0
+#define sclose close
+#define RUNDIR "XDG_RUNTIME_DIR"
+#define SEP "/"
+#endif
 #include "str.h"
 
 enum { MAXC = 64, MAXPAGE = 32, FORGOTTEN = 32, HEAD_MAX = 16384, BODY_MAX = 64 << 20 };
 #ifndef PAGE_TIMEOUT
 #define PAGE_TIMEOUT 60            /* seconds, kittymax's kitty-lean-webview-page-timeout */
 #endif
-
-extern char **environ;
 
 
 typedef struct Page {
@@ -76,8 +99,7 @@ static Conn c[MAXC];
 static Page *pages[MAXPAGE];
 static char forgotten[FORGOTTEN][65];
 static int nforgotten;
-static char token[65], *root, redirect[64];
-static char **opener;
+static char token[65], *root, redirect[300];
 static Str line, toed;         /* stdin not yet a line; stdout not yet taken */
 
 static long long now(void)
@@ -224,7 +246,7 @@ static void serve(Conn *k, const char *name)
 	int fd = -1;
 	if (!*name) name = "index.html";
 	if (safe(name) && snprintf(path, sizeof path, "%s/%s", root, name) < (int)sizeof path)
-		fd = open(path, O_RDONLY | O_CLOEXEC);
+		fd = open(path, O_RDONLY | O_BINARY);
 	if (fd < 0 || fstat(fd, &st) || !S_ISREG(st.st_mode)) {
 		if (fd >= 0) close(fd);
 		respond(k, "404 Not Found", "text/plain", "", 0);
@@ -323,7 +345,7 @@ static void conn_close(Conn *k)
 		k->page->stream = NULL;
 		k->page->gone = now();
 	}
-	close(k->fd);
+	sclose(k->fd);
 	free(k->in.s);
 	free(k->out.s);
 	memset(k, 0, sizeof *k);
@@ -332,30 +354,9 @@ static void conn_close(Conn *k)
 
 /* --- the editor's side ------------------------------------------------- */
 
-static void open_browser(void)
-{
-	pid_t pid;
-	int n = 0;
-	while (opener[n]) n++;
-	char **argv = calloc((size_t)n + 2, sizeof *argv), url[80];
-	if (!argv) return;
-	memcpy(argv, opener, (size_t)n * sizeof *argv);
-	snprintf(url, sizeof url, "file://%s", redirect);
-	argv[n] = url;
-	/* not the editor's pipe: what a browser prints would be read as lines */
-	posix_spawn_file_actions_t fa;
-	posix_spawn_file_actions_init(&fa);
-	posix_spawn_file_actions_addopen(&fa, 0, "/dev/null", O_RDONLY, 0);
-	posix_spawn_file_actions_addopen(&fa, 1, "/dev/null", O_WRONLY, 0);
-	posix_spawnp(&pid, argv[0], &fa, NULL, argv, environ);   /* reaped: SIGCHLD ignored */
-	posix_spawn_file_actions_destroy(&fa);
-	free(argv);
-}
-
 static void from_editor(void *ctx, char *l, size_t n)
 {
 	(void)ctx;
-	if (n == 1 && *l == '!') { open_browser(); return; }
 	char *sp = memchr(l, ' ', n);
 	if (!sp) return;
 	*sp = 0;
@@ -370,13 +371,77 @@ static void from_editor(void *ctx, char *l, size_t n)
 	}
 }
 
+/* The pipe to the editor, three calls the loop below makes: io_wait (poll's
+   contract, f[0] the editor's pipe in and f[1] out, the sockets after),
+   from_ed (read's) and to_ed, which sends what toed holds and returns -1
+   only when the editor is gone. */
+#ifdef _WIN32
+static HANDLE sev, ein, eout;
+static OVERLAPPED rov, wov;
+static int rbusy, wbusy, gone;
+static char none[1];            /* the zero-byte read's buffer */
+static Str wing;                /* the write in flight: toed's bytes, swapped out */
+
+/* A read or write is over; a write to a pipe in wait mode ends only when
+   all of it is written. */
+static void CALLBACK done(DWORD e, DWORD n, OVERLAPPED *o) { (void)n; *(o == &rov ? &rbusy : &wbusy) = 0; gone |= e != 0; }
+
+static int to_ed(void)
+{
+	Str t = wing;
+	wing = toed;
+	toed = t;
+	toed.n = 0;
+	wov = (OVERLAPPED){ 0 };
+	if (WriteFileEx(eout, wing.s, (DWORD)wing.n, &wov, done)) wbusy = 1;
+	else gone = 1;
+	return -gone;
+}
+
+/* After the zero-byte read: a pipe's read returns what is there; 0 at EOF */
+static ssize_t from_ed(char *b, size_t n)
+{
+	DWORD got = 0;
+	OVERLAPPED o = { 0 };
+	if (gone || (!ReadFile(ein, b, (DWORD)n, &got, &o) && (GetLastError() != ERROR_IO_PENDING || !GetOverlappedResult(ein, &o, &got, TRUE))))
+		return 0;
+	return (ssize_t)got;
+}
+
+static int io_wait(struct pollfd *f, int nf, int timeout)
+{
+	if (!rbusy && !gone) {
+		rov = (OVERLAPPED){ 0 };
+		if (ReadFileEx(ein, none, 0, &rov, done)) rbusy = 1;
+		else gone = 1;
+	}
+	WaitForSingleObjectEx(sev, gone || (toed.n && !wbusy) ? 0 : (DWORD)timeout, TRUE);
+	ResetEvent(sev);
+	f[0].revents = rbusy ? 0 : POLLIN;
+	f[1].revents = toed.n && !wbusy ? POLLOUT : 0;
+	return WSAPoll(f + 2, (ULONG)nf - 2, 0);
+}
+#else
+#define io_wait poll
+static ssize_t from_ed(char *b, size_t n) { return read(0, b, n); }
+
+static int to_ed(void)
+{
+	ssize_t n = write(1, toed.s, toed.n);
+	if (n < 0) return AGAIN ? 0 : -1;
+	memmove(toed.s, toed.s + n, toed.n - (size_t)n);
+	toed.n -= (size_t)n;
+	return 0;
+}
+#endif
+
 /* --- start ------------------------------------------------------------- */
 
 static int listener(int *port)
 {
 	struct sockaddr_in a = { .sin_family = AF_INET, .sin_addr.s_addr = htonl(INADDR_LOOPBACK) };
 	socklen_t al = sizeof a;
-	int fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
+	int fd = (int)socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
 	if (fd < 0 || bind(fd, (struct sockaddr *)&a, sizeof a) || listen(fd, 16) ||
 	    getsockname(fd, (struct sockaddr *)&a, &al))
 		return -1;
@@ -385,13 +450,14 @@ static int listener(int *port)
 }
 
 /* The private file the browser opens: it holds the address (and so the
-   token), readable only by you (mkstemp makes it 0600). */
-static int write_redirect(int port)
+   token), made only for you (O_EXCL, 0600), its name from more random
+   bytes; .html, so the system opens it in a browser. */
+static int write_redirect(int port, const unsigned char *r)
 {
-	const char *dir = getenv("XDG_RUNTIME_DIR");
-	if (!dir || strlen(dir) > 39) dir = "/tmp";
-	snprintf(redirect, sizeof redirect, "%s/homeros-infoview-XXXXXX", dir);
-	int fd = mkstemp(redirect);
+	const char *dir = getenv(RUNDIR);
+	if (!dir || !*dir || strlen(dir) > 255) dir = "/tmp";
+	snprintf(redirect, sizeof redirect, "%s" SEP "homeros-infoview-%02x%02x%02x%02x%02x%02x%02x%02x.html", dir, r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7]);
+	int fd = open(redirect, O_WRONLY | O_CREAT | O_EXCL | O_BINARY, 0600);
 	if (fd < 0) return -1;
 	char html[256];
 	int n = snprintf(html, sizeof html,
@@ -404,19 +470,28 @@ static int write_redirect(int port)
 
 int main(int argc, char **argv)
 {
-	unsigned char r[32];
+	unsigned char r[40];
 	int port, lfd;
-	if (argc < 3) { fprintf(stderr, "usage: homeros-infoview ROOT OPENER...\n"); return 2; }
+	if (argc != 2) { fprintf(stderr, "usage: homeros-infoview ROOT\n"); return 2; }
 	root = argv[1];
-	opener = argv + 2;
+#ifdef _WIN32
+	WSADATA wd;
+	ein = GetStdHandle(STD_INPUT_HANDLE);
+	eout = GetStdHandle(STD_OUTPUT_HANDLE);
+	if (WSAStartup(MAKEWORD(2, 2), &wd) || !(sev = WSACreateEvent())) return 1;
+#else
 	signal(SIGPIPE, SIG_IGN);
-	signal(SIGCHLD, SIG_IGN);
-	if (getrandom(r, sizeof r, 0) != sizeof r) return 1;
-	for (int i = 0; i < 32; i++) snprintf(token + 2 * i, 3, "%02x", r[i]);
-	if ((lfd = listener(&port)) < 0 || write_redirect(port)) return 1;
-	for (int i = 0; i < MAXC; i++) c[i].fd = -1;
 	fcntl(0, F_SETFL, fcntl(0, F_GETFL) | O_NONBLOCK);
 	fcntl(1, F_SETFL, fcntl(1, F_GETFL) | O_NONBLOCK);
+#endif
+	if (getrandom(r, sizeof r, 0) != sizeof r) return 1;
+	for (int i = 0; i < 32; i++) snprintf(token + 2 * i, 3, "%02x", r[i]);
+	if ((lfd = listener(&port)) < 0 || write_redirect(port, r + 32)) return 1;
+#ifdef _WIN32
+	/* the sockets it accepts take this over */
+	if (WSAEventSelect((SOCKET)lfd, sev, FD_ACCEPT | FD_READ | FD_WRITE | FD_CLOSE)) return 1;
+#endif
+	for (int i = 0; i < MAXC; i++) c[i].fd = -1;
 	to_editor(redirect, "", 0);
 	for (;;) {
 		struct pollfd f[MAXC + 3];
@@ -435,24 +510,22 @@ int main(int argc, char **argv)
 		f[nf++] = (struct pollfd){ lfd, POLLIN, 0 };
 		for (int i = 0; i < MAXC; i++)
 			f[nf++] = (struct pollfd){ c[i].fd, (short)(POLLIN | (c[i].out.n > c[i].off ? POLLOUT : 0)), 0 };
-		if (poll(f, (nfds_t)nf, timeout) < 0 && errno != EINTR) return 1;
+		if (io_wait(f, nf, timeout) < 0 && errno != EINTR) return 1;
 		if (f[0].revents) {
 			char b[65536];
-			ssize_t n = read(0, b, sizeof b);
-			if (n == 0 || (n < 0 && errno != EAGAIN && errno != EINTR)) break;   /* the editor is gone */
+			ssize_t n = from_ed(b, sizeof b);
+			if (n == 0 || (n < 0 && !AGAIN)) break;   /* the editor is gone */
 			if (n > 0) str_lines(&line, b, (size_t)n, from_editor, NULL);
 		}
-		if (f[1].revents && toed.n) {
-			ssize_t n = write(1, toed.s, toed.n);
-			if (n < 0 && errno != EAGAIN && errno != EINTR) break;
-			if (n > 0) { memmove(toed.s, toed.s + n, toed.n - (size_t)n); toed.n -= (size_t)n; }
-		}
+		if (f[1].revents && toed.n && to_ed()) break;
 		if (f[2].revents) {
-			int fd = accept(lfd, NULL, NULL);
-			if (fd >= 0) { fcntl(fd, F_SETFL, O_NONBLOCK); fcntl(fd, F_SETFD, FD_CLOEXEC); }
+			int fd = (int)accept(lfd, NULL, NULL);
+#ifndef _WIN32
+			if (fd >= 0) fcntl(fd, F_SETFL, O_NONBLOCK);
+#endif
 			int i = 0;
 			while (i < MAXC && c[i].fd >= 0) i++;
-			if (fd >= 0 && i == MAXC) close(fd);
+			if (fd >= 0 && i == MAXC) sclose(fd);
 			else if (fd >= 0) c[i].fd = fd;
 		}
 		for (int i = 0; i < MAXC; i++) {
@@ -462,19 +535,21 @@ int main(int argc, char **argv)
 			if (ev & POLLIN) {
 				char b[65536];
 				ssize_t n = recv(k->fd, b, sizeof b, 0);
-				if (n == 0 || (n < 0 && errno != EAGAIN && errno != EINTR)) { conn_close(k); continue; }
+				if (n == 0 || (n < 0 && !AGAIN)) { conn_close(k); continue; }
 				if (n > 0 && !k->page && (str_add(&k->in, b, (size_t)n) || requests(k))) { conn_close(k); continue; }
 			}
 			if (ev & (POLLERR | POLLHUP) && !(ev & POLLIN)) { conn_close(k); continue; }
 		}
 		for (int i = 0; i < MAXC; i++) {
 			Conn *k = &c[i];
-			if (k->fd < 0 || k->out.n == k->off) continue;
-			/* written as soon as queued: most events go out on the turn they come */
-			ssize_t n = send(k->fd, k->out.s + k->off, k->out.n - k->off, MSG_NOSIGNAL);
-			if (n < 0 && errno != EAGAIN && errno != EINTR) { conn_close(k); continue; }
-			if (n > 0) k->off += (size_t)n;
-			if (k->off == k->out.n) {
+			ssize_t n = 0;
+			/* written as soon as queued: most events go out on the turn they
+			   come; until the socket is full, as Windows signals it again
+			   only after a send that would block */
+			while (k->fd >= 0 && k->off < k->out.n && (n = send(k->fd, k->out.s + k->off, k->out.n - k->off, MSG_NOSIGNAL)) > 0)
+				k->off += (size_t)n;
+			if (n < 0 && !AGAIN) { conn_close(k); continue; }
+			if (k->fd >= 0 && k->off == k->out.n) {
 				k->off = k->out.n = 0;
 				if (k->close) conn_close(k);
 			}

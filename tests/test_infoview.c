@@ -11,7 +11,8 @@
    - the page's edits (Try this, insertText) and jumps (showDocument) reach
      the buffer, and Lean hears of them.
    The test binary is also the fake server (--fake LOG) and the browser
-   opener (an argument file://...). */
+   opener (xdg-open, a link to it first on PATH, given the child's
+   homeros-infoview-*.html). */
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <netinet/in.h>
@@ -162,6 +163,22 @@ static int http(const char *method, const char *path, const char *body, Str *out
 	return status;
 }
 
+/* One request written whole, its answer read without running the loop (the
+   editor busy): whether it began with want within 5 s */
+static int busy(const char *req, size_t n, const char *want)
+{
+	int fd = conn();
+	struct timeval t = { 5, 0 };
+	char b[256];
+	ssize_t k = 0;
+	CHECK(!setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &t, sizeof t));
+	for (size_t at = 0; at < n; at += (size_t)k) CHECK((k = write(fd, req + at, n - at)) > 0);
+	k = read(fd, b, sizeof b - 1);
+	close(fd);
+	b[k > 0 ? k : 0] = 0;
+	return !strncmp(b, want, strlen(want));
+}
+
 static int call(const char *page, const char *json)
 {
 	char p[512];
@@ -260,7 +277,10 @@ int main(int argc, char **argv)
 	static const char *const roots[] = { "lean-toolchain", NULL };
 	char exe[4096], path[256], cpath[256], root[256], s[1024], opened[256];
 	if (argc == 3 && !strcmp(argv[1], "--fake")) return fake(argv[2]);
-	if (argc == 2 && !strncmp(argv[1], "file://", 7)) {    /* the browser opener */
+	if (argc == 2 && strstr(argv[1], "/homeros-infoview-")) {    /* the browser opener */
+		/* not on the editor's pipe: what it starts outlives the editor */
+		struct stat so;
+		if (fstat(1, &so) || S_ISFIFO(so.st_mode)) return 1;
 		snprintf(opened, sizeof opened, "%s/opened", getenv("IV_TEST_DIR"));
 		int fd = open(opened, O_WRONLY | O_CREAT | O_APPEND, 0644);
 		CHECK(fd >= 0 && write(fd, argv[1], strlen(argv[1])) > 0 && write(fd, "\n", 1) == 1);
@@ -301,7 +321,14 @@ int main(int argc, char **argv)
 	snprintf(cpath, sizeof cpath, "%s/b.c", dir);
 	put_file(cpath, "int x;\n");
 	setenv("HOMEROS_INFOVIEW", root, 1);
-	setenv("HOMEROS_OPEN", exe, 1);
+	/* xdg-open: this binary, first on PATH, as test_git_signs' script */
+	char bin[80], op[96], pathv[4096];
+	snprintf(bin, sizeof bin, "%s/bin", dir);
+	mkdir(bin, 0755);
+	snprintf(op, sizeof op, "%s/xdg-open", bin);
+	CHECK(!symlink(exe, op));
+	snprintf(pathv, sizeof pathv, "%s:%s", bin, getenv("PATH"));
+	setenv("PATH", pathv, 1);
 
 	/* no page files: refused, with a message */
 	setenv("HOMEROS_INFOVIEW", dir, 1);
@@ -333,14 +360,14 @@ int main(int argc, char **argv)
 	CHECK(count(o, "\n") == 2 && !strncmp(o, nl + 1, (size_t)(nl - o)));
 	*nl = 0;
 	struct stat st;
-	CHECK(!stat(o + 7, &st) && (st.st_mode & 0777) == 0600);
-	char *html = slurp(o + 7), *u = strstr(html, "url=http://127.0.0.1:");
+	CHECK(!stat(o, &st) && (st.st_mode & 0777) == 0600);
+	char *html = slurp(o), *u = strstr(html, "url=http://127.0.0.1:");
 	CHECK(u);
 	port = atoi(u + 21);
 	char *slash = strchr(u + 21, '/');
 	snprintf(url, sizeof url, "%.*s", (int)(strchr(slash, '"') - slash - 1), slash + 1);   /* TOKEN/ */
 	char redirect[256], token1[sizeof url];
-	snprintf(redirect, sizeof redirect, "%s", o + 7);
+	snprintf(redirect, sizeof redirect, "%s", o);
 	snprintf(token1, sizeof token1, "%s", url);
 	/* only this machine can connect: the listener is on 127.0.0.1 */
 	char *tcp = slurp("/proc/net/tcp"), lo[32], any[32];
@@ -426,6 +453,21 @@ int main(int argc, char **argv)
 	CHECK(call("pageB", "{\"id\":0,\"m\":\"saveConfig\",\"a\":[null]}") == 204);
 	CHECK(wait_for(both, 2, &B, "{\"id\":0,\"k\":\"val\",\"v\":null}"));
 	CHECK(count(A.ev.s, "\"id\":0,") == 1);
+	/* a call of 2 MB while the editor reads nothing (more than its pipe
+	   holds): answered, the page still served, and it reaches the editor
+	   whole once the editor reads again */
+	size_t bn = 2 << 20;
+	char *big = malloc(bn + 512);
+	CHECK(big);
+	int hn = snprintf(big, 256, "POST /%scall?page=pageB HTTP/1.1\r\nContent-Length: %zu\r\n\r\n", url, bn);
+	int pn = snprintf(big + hn, 256, "{\"id\":9,\"m\":\"saveConfig\",\"a\":[null],\"x\":\"");
+	memset(big + hn + pn, 'x', bn - (size_t)pn - 2);
+	memcpy(big + (size_t)hn + bn - 2, "\"}", 2);
+	CHECK(busy(big, (size_t)hn + bn, "HTTP/1.1 204"));
+	snprintf(s, sizeof s, "GET /%s HTTP/1.1\r\n\r\n", url);
+	CHECK(busy(s, strlen(s), "HTTP/1.1 200"));
+	CHECK(wait_for(both, 2, &B, "{\"id\":9,\"k\":\"val\",\"v\":null}"));
+	free(big);
 	/* a call that is no JSON, or has no id, is no error */
 	CHECK(call("pageA", "not json") == 204);
 	CHECK(call("pageA", "{\"m\":\"saveConfig\"}") == 204);
@@ -573,17 +615,23 @@ int main(int argc, char **argv)
 	pump(withp, 3, 300);
 	CHECK(count(B.ev.s, "serverRestarted") == hellos);
 
+	/* \w again at once, while the child let go still ends: a new child, a new
+	   token.  The one let go is stopped until its successor has spoken, so
+	   it ends after it every time (it is quicker than a start) */
+	snprintf(s, sizeof s, "pkill -STOP -P %d -f '^[^ ]*/homeros-infoview '", (int)getpid());
+	CHECK(!system(s));
 	bridge_free();
-	/* \w again at once, while the child let go still ends: a new child, a new token */
 	CHECK(!bridge_open(&e));
 	end = ms() + 5000;
 	while ((o = slurp(opened)), count(o, "\n") < 3 && ms() < end) { free(o); loop_once(10); }
 	CHECK(count(o, "\n") == 3);
 	*strrchr(o, '\n') = 0;
 	char *third = strrchr(o, '\n') + 1;
-	html = slurp(third + 7);
+	html = slurp(third);
 	CHECK(strstr(html, "url=http://127.0.0.1:") && !strstr(html, token1));
 	free(html);
+	memcpy(strstr(s, "STOP"), "CONT", 4);
+	CHECK(!system(s));
 	/* the child let go deletes its file and ends; its end is not its successor's */
 	end = ms() + 3000;
 	while (!access(redirect, F_OK) && ms() < end) loop_once(10);

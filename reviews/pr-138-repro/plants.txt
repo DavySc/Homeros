@@ -1,0 +1,5 @@
+review: one send per turn (no loop until the socket is full)~win WIN=infoview~~src/infoview/serve/serve.c~			while (k->fd >= 0 && k->off < k->out.n && (n = send(~			if (k->fd >= 0 && k->off < k->out.n && (n = send(
+review: the sockets' event without FD_WRITE~win WIN=infoview~~src/infoview/serve/serve.c~FD_ACCEPT | FD_READ | FD_WRITE | FD_CLOSE~FD_ACCEPT | FD_READ | FD_CLOSE
+review: the editor's pipe read without waiting for bytes (no zero-byte read)~win WIN=infoview~~src/infoview/serve/serve.c~	f[0].revents = rbusy ? 0 : POLLIN;~	f[0].revents = POLLIN;
+review: the redirect file left at the end~win WIN=infoview~~src/infoview/serve/serve.c~	unlink(redirect);~	;
+review: the sockets' event reset after the poll (a wake between the two is lost)~win WIN=infoview~~src/infoview/serve/serve.c~	ResetEvent(sev);¶	f[0].revents = rbusy ? 0 : POLLIN;¶	f[1].revents = toed.n && !wbusy ? POLLOUT : 0;¶	return WSAPoll(f + 2, (ULONG)nf - 2, 0);~	f[0].revents = rbusy ? 0 : POLLIN;¶	f[1].revents = toed.n && !wbusy ? POLLOUT : 0;¶	int r = WSAPoll(f + 2, (ULONG)nf - 2, 0);¶	ResetEvent(sev);¶	return r;

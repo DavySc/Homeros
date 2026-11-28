@@ -18,3 +18,17 @@ infoview: the token is the same every time~test TESTS=infoview~~src/infoview/ser
 infoview: applyEdit with no edits sorts NULL~test TESTS=infoview~~src/infoview/infoview.c~	if (ne) qsort(~	qsort(
 infoview: a line from the child with no space~fuzz FUZZERS=infoview_call FUZZ_SECONDS=60~~src/infoview/infoview.c~	if (!sp) return;¶	*sp = 0;~	*sp = 0;
 infoview: the end of a child let go takes its successor's state~test TESTS=infoview~~src/infoview/infoview.c~	if ((intptr_t)ctx != children) return;~	if ((intptr_t)ctx != children && 0) return;
+# the Windows half (src/infoview/check.sh, under Wine)
+infoview: the child's pipes synchronous on Windows (proc_spawn_ov is proc_spawn)~win WIN=infoview~~src/loop/win.c~pipe_pair(s, &theirs[s], cols < 0 && s < 2)~pipe_pair(s, &theirs[s], 0)
+infoview: the sockets' event never reset (the child spins and starves)~win WIN=infoview~~src/infoview/serve/serve.c~	ResetEvent(sev);¶~¶
+infoview: a blocking write to the editor on Windows (a busy editor stops the pages)~win WIN=infoview~~src/infoview/serve/serve.c~	if (WriteFileEx(eout, wing.s, (DWORD)wing.n, &wov, done)) wbusy = 1;~	DWORD w;¶	if (WriteFile(eout, wing.s, (DWORD)wing.n, &w, &wov) || GetOverlappedResult(eout, &wov, &w, TRUE)) wbusy = 0;
+infoview: the browser opener on the editor's pipes (what it starts dies of SIGPIPE after the editor)~test TESTS=infoview~~src/loop/timer.c~	char *argv[] = { "sh", "-c", "exec xdg-open \"$0\" > /dev/null 2>&1", (char *)what, NULL };~	char *argv[] = { "xdg-open", (char *)what, NULL };
+infoview: the editor's pipe read without waiting for bytes (no zero-byte read; PR 138's review)~win WIN=infoview~~src/infoview/serve/serve.c~	f[0].revents = rbusy ? 0 : POLLIN;~	f[0].revents = POLLIN;
+infoview: the redirect file left at the end (PR 138's review)~win WIN=infoview~~src/infoview/serve/serve.c~	unlink(redirect);~	;
+infoview: Explorer given a path with both kinds of slash~win WIN=infoview~~src/infoview/serve/serve.c~#define SEP "\\"~#define SEP "/"
+infoview: proc_open on Windows opens nothing~win WIN=infoview~~src/loop/timer.c~	char *argv[] = { "explorer", (char *)what, NULL };~	char *argv[] = { "explorer-none", (char *)what, NULL };
+infoview: the redirect file readable by all (PR 138's review)~test TESTS=infoview~~src/infoview/serve/serve.c~O_WRONLY | O_CREAT | O_EXCL | O_BINARY, 0600~O_WRONLY | O_CREAT | O_EXCL | O_BINARY, 0644
+infoview: what the editor's pipe did not take is dropped (PR 138's review)~test TESTS=infoview~~src/infoview/serve/serve.c~	toed.n -= (size_t)n;¶	return 0;~	toed.n = 0;¶	return 0;
+infoview: a blocking write to the editor on Linux (PR 138's review)~test TESTS=infoview~~src/infoview/serve/serve.c~	fcntl(1, F_SETFL, fcntl(1, F_GETFL) | O_NONBLOCK);~	;
+infoview: a second \w opens no browser (PR 138's review)~test TESTS=infoview~~src/infoview/infoview.c~	if (redirect) browse();~	;
+infoview: the browser opened before the child named its file (PR 138's review)~test TESTS=infoview~~src/infoview/infoview.c~		if (open_wanted) browse();~		;

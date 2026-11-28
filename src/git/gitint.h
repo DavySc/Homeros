@@ -105,7 +105,6 @@ void  git_changed(void *r, int fd);   /* git.c: the loop_watch callback of a wat
 int   git_real(const char *path, char *out);   /* realpath into PATH_MAX bytes; 0 ok */
 int   git_abs(const char *p);       /* "/x" or "C:/x" */
 int   git_trash(const char *path);  /* Emacs's move-file-to-trash; 0 ok */
-extern const char *const git_opener;   /* opens a URL in the browser */
 void  git_editor(Editor *e);
 Editor *git_ed(void);
 void  cmd_add(Cmd *c, const char *a);

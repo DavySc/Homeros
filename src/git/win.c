@@ -14,9 +14,6 @@
 #include "loop.h"
 #include "gitint.h"
 
-/* explorer opens a URL in the default browser */
-const char *const git_opener = "explorer";
-
 static int wide(const char *s, wchar_t *w) { return !MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, s, -1, w, PATH_MAX); }
 
 static int narrow(const wchar_t *w, int wn, char *s)

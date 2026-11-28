@@ -153,8 +153,9 @@ static char *cmdline(char *const argv[])
 }
 
 /* A named pipe for stream s: ours overlapped, the child's inheritable and
-   synchronous, as programs expect of their std handles. */
-static HANDLE pipe_pair(int s, HANDLE *child)
+   synchronous, as programs expect of their std handles; overlapped too
+   for proc_spawn_ov's stdin and stdout. */
+static HANDLE pipe_pair(int s, HANDLE *child, int ov)
 {
 	static unsigned seq;
 	char name[64];
@@ -163,7 +164,7 @@ static HANDLE pipe_pair(int s, HANDLE *child)
 	HANDLE h = CreateNamedPipeA(name, (s ? PIPE_ACCESS_INBOUND : PIPE_ACCESS_OUTBOUND) | FILE_FLAG_OVERLAPPED | FILE_FLAG_FIRST_PIPE_INSTANCE,
 	                            PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS, 1, 65536, 65536, 0, NULL);
 	if (h == INVALID_HANDLE_VALUE) return NULL;
-	*child = CreateFileA(name, s ? GENERIC_WRITE | FILE_READ_ATTRIBUTES : GENERIC_READ | FILE_WRITE_ATTRIBUTES, 0, &sa, OPEN_EXISTING, 0, NULL);
+	*child = CreateFileA(name, s ? GENERIC_WRITE | FILE_READ_ATTRIBUTES : GENERIC_READ | FILE_WRITE_ATTRIBUTES, 0, &sa, OPEN_EXISTING, ov ? FILE_FLAG_OVERLAPPED : 0, NULL);
 	if (*child != INVALID_HANDLE_VALUE) return h;
 	*child = NULL;
 	CloseHandle(h);
@@ -286,7 +287,7 @@ static int spawn(char *line, const char *dir, int rows, int cols, ProcFn fn, voi
 	   but a job also holds a grandchild whose parent has exited */
 	HANDLE job = CreateJobObjectW(NULL, NULL);
 	wchar_t *wl = line ? wide(line) : NULL, *wd = dir ? wide(dir) : NULL;
-	for (int s = 0; s < 3 - !!rows; s++) if (!(mine[s] = pipe_pair(s, &theirs[s]))) goto out;
+	for (int s = 0; s < 3 - !!rows; s++) if (!(mine[s] = pipe_pair(s, &theirs[s], cols < 0 && s < 2))) goto out;
 	if (!job || !wl || (dir && !wd)) goto out;
 	if (rows && CreatePseudoConsole((COORD){ (SHORT)cols, (SHORT)rows }, theirs[0], theirs[1], 0, &pc) != S_OK) { pc = NULL; goto out; }
 	/* the editor's own handles are made uninheritable, so these three
