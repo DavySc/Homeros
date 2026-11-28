@@ -1177,3 +1177,15 @@ eval | dbg/ask.c | part = 4096 - (uint32_t)((from + used - 8) % 4096), | part = 
 eval | dbg/ask.c | cap = ask.most < cap - 8 ? ask.most + 8 : cap; | cap = ask.most + 8;
 eval | dbg/ask.c | if (v.kind != EVAL_VALUE) return 0; | 
 front | cmd/hdbg.c | if (i % 16 == 8) printf( | if (i % 16 == 0) printf(
+# parameters at a function's first instruction (arrives in dbg/eval.c; tests/zoo_check.c at probe and at params in every build: right in unoptimised MSVC's, right or without a place in the others)
+eval | dbg/eval.c | P->entry && y->flags & 1 && (y->location | false && (y->location
+eval | dbg/eval.c | P->entry && y->flags & 1 && (y->location | y->flags & 1 && (y->location
+# no plant: `y->flags & 1` (a variable that is no parameter, at the first instruction): its place in the frame is not made yet either way
+eval | dbg/eval.c | (y->location >> 56 == 3 \p\p y->location >> 56 == 4) ? arrives | (true) ? arrives
+eval | dbg/eval.c | static const uint8_t in[4] = {1, 2, 8, 9}; | static const uint8_t in[4] = {1, 2, 8, 10};
+eval | dbg/eval.c | P->frame->gp[4] + 8 + 8 * nth}; | P->frame->gp[4] + 8 * nth};
+# OWED (needs a function in MSVC's unoptimised zoo with a double among its first four parameters; the next recording of subjects/zoo.c): eval | dbg/eval.c | if (nth < 4 && s.form == EVAL_REAL) return (EvalValue){0}; | 
+eval | dbg/eval.c | } else if (nth < 4) p.at = P->frame->gp[in[nth]]; | } else if (nth < 4) p.at = P->frame->gp[in[0]];
+# OWED (the same recording: a struct that fits no register as fifth parameter): eval | dbg/eval.c | else if (!target_read(P->e->target, p.at, &p.at, 8)) return (EvalValue){0}; | 
+front | dbg/eval.c | P.entry = scope && !scope->parent && | P.entry = scope &&
+eval | dbg/eval.c | before += y->flags & 1; | before += 2;

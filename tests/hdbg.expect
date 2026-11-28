@@ -103,4 +103,20 @@ halted
 #0 0x_ main  tour.exe tour.c:20
   while (spin) spin -= 1;
 #0 0x_ main  tour.exe tour.c:20
+breakpoint at 0x_
+breakpoint
+#0 0x_ six  tour.exe tour.c:24
+{
+a = it has no place here  (?)
+b = it has no place here  (?)
+c = it has no place here  (?)
+d = it has no place here  (?)
+e = it has no place here  (?)
+f = it has no place here  (?)
+rest = it has no place here  (?)
+stepped
+#0 0x_ six  tour.exe tour.c:25
+  int rest = b + c.a + (int)d + e + f->a;
+c.a + f->a = 2  (int)
+e - a = 1  (int)
 ended with 0x76

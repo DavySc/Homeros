@@ -225,8 +225,23 @@ int main(int argc, char **argv)
   RdiSpan found = rdi_matches(&m->rdi, RDI_NAMES_PROCEDURES, "probe", 5);
   if (!found.n) FAIL("no probe in the debug information");
   uint64_t probe = m->image.base + *rdi_at(&m->rdi, RDI_SCOPE_VOFFS, uint64_t, rdi_at(&m->rdi, RDI_SCOPES, RdiScope, rdi_at(&m->rdi, RDI_PROCEDURES, RdiSymbol, *(const uint32_t *)found.p)->root_scope)->voff_first);
+  /* and at the first instruction of `params`: an int, a char, a struct that fits no register, one that fits none either, a pointer and a double on the stack, as main passes them */
+  uint64_t stops[2] = {probe, engine_function(m, "params", 6)}, entered = 0, arrived = 0;
   for (;;) {
-    TargetEvent ev = engine_run(&e, ENGINE_RUN, 0, &probe, 1);
+    TargetEvent ev = engine_run(&e, ENGINE_RUN, 0, stops, 1 + (stops[1] != 0));
+    if (ev.kind == TARGET_TRAP && ev.addr == stops[1]) {
+      static const struct { const char *text; uint64_t is; } passed[6] = {{"first", 1}, {"second", 'p'}, {"small.a + (int)small.c", 4}, {"(int)large.x[2]", 3}, {"(int)pointer->x[1]", 2}, {"(int)(real * 2)", 5}};
+      TargetRegs at;
+      const char *why = NULL;
+      if (!target_regs(e.target, ev.thread, &at)) FAIL("no registers at params");
+      for (uint32_t i = 0; i < 6; i += 1) {
+        EvalValue is = eval_load(&e, &(EvalFrame){at, false, 0}, eval(&e, &(EvalFrame){at, false, 0}, passed[i].text, &why), &(const char *){0});
+        arrived += is.kind != 0;
+        if (is.kind ? is.kind != EVAL_VALUE || is.at != passed[i].is : strcmp(why, "it has no place here")) FAIL("at the first instruction of params %s is %llx (%s), main passes %llx", passed[i].text, (unsigned long long)is.at, is.kind ? "a value" : why, (unsigned long long)passed[i].is);
+      }
+      entered += 1;
+      continue;
+    }
     if (ev.kind == TARGET_BREAK && !shown) continue;   /* the loader's own */
     if (ev.kind == TARGET_EXIT) break;
     TargetRegs r;
@@ -235,6 +250,13 @@ int main(int argc, char **argv)
     if (ev.kind != TARGET_TRAP || !target_regs(e.target, ev.thread, &r)) FAIL("event %d (code %llx), not a stop at probe", ev.kind, (unsigned long long)ev.code);
     uint64_t addr = r.gp[2], size = r.gp[8], value = r.gp[9];
     for (uint32_t i = 0; i < sizeof text - 1 && target_read(e.target, r.gp[1] + i, &text[i], 1) && text[i]; i += 1) {}
+    /* at probe's first instruction its own parameters are what the caller passed, though nothing of its frame is made yet; or they have no place (the count is printed) */
+    static const char *const passed[4] = {"(unsigned long long)name", "(unsigned long long)addr", "size", "value"};
+    for (uint32_t i = 0; i < 4; i += 1) {
+      EvalValue is = eval_load(&e, &(EvalFrame){r, false, 0}, eval(&e, &(EvalFrame){r, false, 0}, passed[i], &why), &(const char *){0});
+      if (is.kind ? is.kind != EVAL_VALUE || is.at != r.gp[i < 2 ? i + 1 : i + 6] : strcmp(why, "it has no place here")) FAIL("at probe's first instruction %s is %llx (kind %d), the caller passed %llx", passed[i], (unsigned long long)is.at, is.kind, (unsigned long long)r.gp[i < 2 ? i + 1 : i + 6]);
+      arrived += is.kind != 0;
+    }
     if (asks(&e, ev.thread, &view, probe, addr == 7 ? (uint32_t)value : 0, &seed)) FAIL("(asked where %s is shown)", text);
     if (addr == 7) {   /* the stack: probe, then the functions the program names, the last of them main */
       ViewFrame frames[16];
@@ -356,8 +378,9 @@ int main(int argc, char **argv)
   }
   engine_close(&e);
   if (argc < 7 || shown + missing != (uint32_t)atoi(argv[2]) || shown < (uint32_t)atoi(argv[3]) || in_register < (uint32_t)atoi(argv[4]) || looked[0] < strtoull(argv[5], NULL, 10) || xs < (uint32_t)atoi(argv[6])) FAIL("%u frames with their own x; %u texts shown, only %u right, %u variables in a register, %llu rows looked at", xs, shown + missing, shown, in_register, (unsigned long long)looked[0]);
-  if (!written || !bytes) FAIL("nothing was written, or no memory read");
-  printf("zoo_check: %u bytes of memory read (%u reads ended where the memory does); %u written and put back, %u in memory that takes no write; ", bytes, cut, written, locked);
+  if (!written || !bytes || (stops[1] && !entered)) FAIL("nothing was written, no memory read, or params not come to");
+  printf("zoo_check: %llu parameters right at a first instruction; ", (unsigned long long)arrived);
+  printf("%u bytes of memory read (%u reads ended where the memory does); %u written and put back, %u in memory that takes no write; ", bytes, cut, written, locked);
   printf("%u names and expressions are what the program says (%u by value; %u in memory, %u variables in a register; %u frames of a stack with their own x); %u have a variable without a place there; %llu rows of the tables looked at, the deepest %llu below its variable\n", shown, by_value, in_memory, in_register, xs, missing, (unsigned long long)looked[0], (unsigned long long)looked[1]);
   return 0;
 }

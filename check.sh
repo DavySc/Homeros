@@ -100,7 +100,7 @@ for l in open(sys.argv[1] + "/tests/plants.txt"):
     # drops np, pp and made, and puts the variables of all blocks of a function into one scope, each alive throughout: nothing says which x is meant where (the first is taken)
     local msvc='!wide;!pointer;nest.bits.low > -1;nest.bits.low - 6;-nest.bits.low < 0'
     for seed in 1 2 3; do
-      (cd "$b" && cp "$OLDPWD"/rdi/zoo.exe "$OLDPWD"/rdi/zoo.pdb "$OLDPWD"/rdi/zoo_o2.exe "$OLDPWD"/rdi/zoo_o2.pdb . && WINEDEBUG=-all timeout 300 "${WINE:-wine}" ./zoo_check.exe zoo.exe 400 395 0 5000 4 $seed "" "$msvc" 2>/dev/null | grep "^zoo_check" | tee zoo.out; grep -q "what the program says" zoo.out) || return 1
+      (cd "$b" && cp "$OLDPWD"/rdi/zoo.exe "$OLDPWD"/rdi/zoo.pdb "$OLDPWD"/rdi/zoo_o2.exe "$OLDPWD"/rdi/zoo_o2.pdb . && WINEDEBUG=-all timeout 300 "${WINE:-wine}" ./zoo_check.exe zoo.exe 400 395 0 5000 4 $seed "" "$msvc" 2>/dev/null | grep "^zoo_check" | tee zoo.out; grep -q "what the program says" zoo.out && grep -q "zoo_check: 16[0-9][0-9] parameters right" zoo.out) || return 1
       (cd "$b" && WINEDEBUG=-all timeout 300 "${WINE:-wine}" ./zoo_check.exe zoo_o2.exe 400 342 15 3000 4 $seed "np pp made" "$msvc;x;x n" 2>/dev/null | grep "^zoo_check" | tee zoo.out; grep -q "what the program says" zoo.out) || return 1
     done
   fi
@@ -112,6 +112,8 @@ for l in open(sys.argv[1] + "/tests/plants.txt"):
     clang --target=x86_64-pc-windows-msvc -g -gcodeview -O0 -funwind-tables -ffreestanding -mno-stack-arg-probe -c "$src/tests/tour.c" -o "$b/tour.obj" && lld-link -nologo -debug -nodefaultlib -entry:main -subsystem:console -dynamicbase:no "$b/tour.obj" "$b/flt.obj" -out:"$b/tour.exe" -pdb:"$b/tour.pdb" || return 3
     (cd "$b" && WINEDEBUG=-all timeout 120 "${WINE:-wine}" ./hdbg.exe tour.exe < "$here/tests/hdbg.txt" 2>/dev/null | tr -d '\r' | sed -E '/^ended with/!s/0x[0-9a-f]+/0x_/g; s/ [^ ]*[\\/]([^\\/ ]*:[0-9]+)$/ \1/; /#[0-9]/{/tour\.c:/!d}' > front.out; tr -d '\r' < "$here/tests/hdbg.expect" > expect.out; diff expect.out front.out | head -70; cmp -s expect.out front.out) || return 1   # on Windows git may give the file CR LF ends
     (cd "$b" && ! WINEDEBUG=-all timeout 120 "${WINE:-wine}" ./hdbg.exe nothing.exe < /dev/null >/dev/null 2>&1) || return 1
+    # a block with a variable of its own begins a scope inside the function: at its first instruction a parameter is in the frame, not where the caller put it (MSVC's unoptimised build of subjects/recur.c)
+    (cd "$b" && cp "$OLDPWD"/rdi/recur.exe "$OLDPWD"/rdi/recur.pdb . && [ "$(printf 'c\nb recur.c:14\nb recur.c:10\nc\np n\nc\np n\nq\n' | WINEDEBUG=-all timeout 120 "${WINE:-wine}" ./hdbg.exe recur.exe 2>/dev/null | tr -d '\r' | grep -c '^n = 0 ')" = 2 ]) || return 1
   fi
   if [ "$what" = fuzz ] || [ "$what" = all ]; then
     for f in "$src"/tests/fuzz_*.c; do

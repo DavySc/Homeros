@@ -18,5 +18,10 @@ int main(void)
     total += i;
   }
   while (spin) spin -= 1;
-  return total;
+  { int six(int, char, Pair, double, int, Pair *); return six(total, 'x', pair, 2.5, total + 1, &pair); }   /* parameters in registers, as an address, in xmm, on the stack */
+}
+__declspec(noinline) int six(int a, char b, Pair c, double d, int e, Pair *f)
+{
+  int rest = b + c.a + (int)d + e + f->a;
+  return a + rest - rest;
 }

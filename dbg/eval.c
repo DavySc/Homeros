@@ -134,6 +134,7 @@ static bool eval_read(const Engine *e, const TargetRegs *frame, EvalValue v, voi
 /* ---- values ---- */
 
 typedef struct { const Engine *e; const TargetRegs *frame; const EngineModule *module; uint64_t voff; uint32_t scope;   /* the frame's instruction, and the innermost scope around it that is the frame's */
+                 bool entry;   /* the frame is at its function's first instruction (so the innermost: no call ends there): nothing of the frame is made yet */
                  const char *p, *error;
                  uint32_t dead,    /* not 0 inside a part whose value C does not work out (the right of a decided && or ||, the side of ? : not chosen, sizeof's): parsed and typed, nothing read */
                           deep; } Parse;
@@ -327,6 +328,23 @@ static const RdiSymbol *local(const Parse *P, Locals *l)
   return NULL;
 }
 
+/* Where the caller put a function's nth parameter (the x64 calling convention): what holds at the function's first instruction,
+   where the debug information of unoptimised MSVC code already says "in the frame" (at rsp + offset, for the whole function).
+   The first four are in rcx, rdx, r8, r9, the others above the return address; one that does not fit a register is passed as
+   its address. A float or double among the first four is in xmm0 to xmm3, which are not read: no place. */
+static EvalValue arrives(const Parse *P, uint32_t type, uint64_t nth)
+{
+  static const uint8_t in[4] = {1, 2, 8, 9};
+  EvalValue p = {EVAL_MEMORY, {P->module, type, 0}, P->frame->gp[4] + 8 + 8 * nth};
+  EvalShape s = eval_shape(p.type);
+  if (s.size == 1 || s.size == 2 || s.size == 4 || s.size == 8) {
+    if (nth < 4 && s.form == EVAL_REAL) return (EvalValue){0};
+    if (nth < 4) p.kind = EVAL_REGISTER, p.at = in[nth];
+  } else if (nth < 4) p.at = P->frame->gp[in[nth]];
+  else if (!target_read(P->e->target, p.at, &p.at, 8)) return (EvalValue){0};
+  return p;
+}
+
 const char *const eval_registers[18] = {"rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", "rip", "rflags"};
 
 /* The variable of a name at the frame: in its scopes, then a global or a constant, then a register. False: there is none;
@@ -335,9 +353,13 @@ static bool name(Parse *P, RdiSpan id, EvalValue *v)
 {
   const EngineModule *m = P->module;
   Locals l = {P->scope, 0, 0};
+  uint64_t before = 0;   /* parameters before this variable */
   for (const RdiSymbol *y; (y = local(P, &l));) {
     RdiSpan is = rdi_str(&m->rdi, y->name);
-    if (same(id, is.p, is.n)) return *v = settle(P, place(P->e, m, y->type, y->location, P->voff, P->frame)), true;
+    /* only where the place is "in the frame" for the whole function, which is unoptimised MSVC: optimised code need not follow the
+       convention (clang passes a static function's parameters as it likes), and says itself where things are at each instruction */
+    if (same(id, is.p, is.n)) return *v = settle(P, P->entry && y->flags & 1 && (y->location >> 56 == 3 || y->location >> 56 == 4) ? arrives(P, y->type, before) : place(P->e, m, y->type, y->location, P->voff, P->frame)), true;
+    before += y->flags & 1;   /* every compiler seen lists the parameters first: no check tells this from a plain count */
   }
   for (uint32_t i = 0; i < 2 * (P->e->module_count + 1); i += 1) {   /* in each module: globals, then constants */
     const EngineModule *g = nth(P, i / 2);
@@ -582,6 +604,8 @@ static Parse parse(const Engine *e, const EvalFrame *frame, const char *text)
     const RdiScope *scope = rdi_at(&P.module->rdi, RDI_SCOPES, RdiScope, P.scope);
     inside -= scope->inline_site != 0, P.scope = scope->parent;
   }
+  const RdiScope *scope = P.scope ? rdi_at(&P.module->rdi, RDI_SCOPES, RdiScope, P.scope) : NULL;
+  P.entry = scope && !scope->parent && *rdi_at(&P.module->rdi, RDI_SCOPE_VOFFS, uint64_t, scope->voff_first) == P.voff;
   return P;
 }
 

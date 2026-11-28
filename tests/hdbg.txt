@@ -53,4 +53,10 @@ w pair = 1
 w nothing = 1
 c 50
 bt
+b six
+c
+l
+n
+p c.a + f->a
+p e - a
 c
