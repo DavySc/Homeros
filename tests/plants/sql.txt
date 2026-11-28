@@ -109,11 +109,11 @@ sql: the catalog takes the login's own batch for its rows (test_sql_editor)~test
 sql: the catalog not read again on NULL (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~		if (s->fd >= 0 && db_state(&s->db) >= DB_READY) catread(&s->spec);¶		return 0;~		return 0;
 sql: one catalog for every connection (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~while (c && strcmp(c->name, name)) c = c->next;~while (c && 0) c = c->next;
 sql: :Connect keeps the connection's catalog (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (k) uncat(k, 0);   /* read again~	if (0) uncat(k, 0);   /* read again
-sql: the catalog's lookup leaves its message (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	memcpy(e->msg, m, sizeof m);¶~
+sql: the catalog's lookup leaves its message (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	memcpy(E->msg, m, sizeof m);¶~
 sql: F5's open error lost before it is shown (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~fail(s, db_net(&s->db)->err); db_close(&s->db), end(s);~db_close(&s->db), fail(s, db_net(&s->db)->err); end(s);
-sql: the catalog's query in lower case (a case-sensitive database) (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~"SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS"~"select table_schema, table_name, column_name from information_schema.columns"
-sql: the catalog's columns by name, not position (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~ORDER BY 1, 2, ORDINAL_POSITION~ORDER BY 1, 2, 3
-sql: Postgres's own schemas in the catalog (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~" WHERE TABLE_SCHEMA NOT IN ('pg_catalog', 'information_schema') ORDER BY~" ORDER BY
+sql: the catalog's query in lower case (a case-sensitive database) (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~"SELECT s, t, c FROM (SELECT TABLE_SCHEMA s, TABLE_NAME t, COLUMN_NAME c, ORDINAL_POSITION o FROM INFORMATION_SCHEMA.COLUMNS"~"SELECT s, t, c FROM (select table_schema s, table_name t, column_name c, ordinal_position o from information_schema.columns"
+sql: the catalog's columns by name, not position (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~x ORDER BY 1, 2, o");   /* hcs~x ORDER BY 1, 2, 3");   /* hcs
+sql: Postgres's own schemas in the catalog (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~ WHERE s NOT IN ('pg_catalog', 'information_schema') ORDER BY 1, 2, o"~ ORDER BY 1, 2, o"
 sql: a failed catalog not read again at the next login (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (!c || c->st > 0) return;~	if (!c || c->st) return;
 sql: the catalog of a buffer that is not .sql (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~Sess *s = is_sql(b) ? sess(b->nr, 1) : NULL;~Sess *s = sess(b->nr, 1);
 sql: the catalog's connection left open once read (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~		uncat(c, r ? -1 : 2);~		c->st = r ? -1 : 2;
@@ -147,7 +147,7 @@ sql: the Messages rule in no face (review)~test TESTS=sql_editor~~src/sql/sql.c~
 sql: the row count in no face (review)~test TESTS=sql_editor~~src/sql/sql.c~span(s, s->o.n, n - 1, FACE_ORG_TABLE)~span(s, s->o.n, n - 1, FACE_NONE)
 sql: a later grid's faces at the first one's line (review)~test TESTS=sql_editor~~src/sql/sql.c~s->line += *q == '\n';~s->line += 0;
 sql: the lines before a grid counted twice~test TESTS=sql_editor~~src/sql/sql.c~for (char *q = s->o.s + s->lo;~for (char *q = s->o.s;
-sql: the running status line's text (review)~test TESTS=sql_editor~~src/sql/sql.c~"Executing query... \xc2\xb7 %s / %s"~"Executing... \xc2\xb7 %s / %s"
+sql: the running status line's text (review)~test TESTS=sql_editor~~src/sql/sql.c~"Executing query... \xc2\xb7 %.*s / %s"~"Executing... \xc2\xb7 %.*s / %s"
 sql: a wide character counted as one cell (review)~test TESTS=sql_editor~~src/sql/sql.c~2 : (size_t)uni_width(u, n, i)) <= w~2 : 1) <= w
 sql: a control byte counted as one cell (review)~test TESTS=sql_editor~~src/sql/sql.c~u[i] < 32 || u[i] == 127 ? 2 :~u[i] < 32 || u[i] == 127 ? 1 :
 sql: an empty set shows no grid (review)~test TESTS=sql_editor~~src/sql/sql.c~if (!s->in || (s->in == 1 && lay(s, 0)))~if (!s->in || (s->in == 1 && (s->nheld ? lay(s, 0) : (s->held.n = 0, 0))))
@@ -202,7 +202,7 @@ sql: the file's own DECLARE not the prompt's default (test_sql_editor)~test TEST
 sql: a default with a line break (a string's) typed, its break as Enter (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~f && !strpbrk(f, "\r\n") ? f : ""~f ? f : ""
 sql: a default the command line cannot hold typed cut (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~> (int)sizeof k - 4) snprintf~> 99999) snprintf
 sql: the default typed byte by byte, not as characters (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~l = uni_len((const unsigned char *)k, m, i), keys_feed(E, (int)uni_cp((const unsigned char *)k, m, i), i + l < m);~l = 1, keys_feed(E, (unsigned char)k[i], i + l < m);
-sql: Esc leaves the F5 waiting, so a :Declare typed later runs it (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	W = NULL;¶	if (key != KEY_F5~	if (key != KEY_F5
+sql: Esc leaves the F5 waiting, so a :Declare typed later runs it (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	W = NULL, *pickfor = 0;~	*pickfor = 0;
 sql: a :Declare by hand runs the session's last F5 (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (W != s) return 0;~	if (0) return 0;
 sql: the defaults read across GO (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~for (size_t i = 0; !r && i < f.n; i++) r = sql_vars(b->text, f.b[i].a, f.b[i].z, out, d);~r = r || sql_vars(b->text, 0, text_len(b->text), out, d);
 sql: CASE's ELSE and END end a DECLARE (test_sql_vars)~test TESTS=sql_vars~~src/sql/run.c~!depth && !cases && is(w, stmt)~!depth && is(w, stmt)
@@ -221,3 +221,31 @@ sql: a lookup stops at the first schema's table (test_sql_editor)~test TESTS=sql
 sql: the empty name matches every table (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~else if (!strcasecmp(t, table))~else if (!*table || !strcasecmp(t, table))
 sql: a default of 253 to 255 bytes typed, and keys cuts it (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~> (int)sizeof k - 4) snprintf~> (int)sizeof k - 1) snprintf
 sql: the results do not say which kept value ran (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (b.npre) put(s, s->decl.s + b.pre, b.npre - 1), putz(s, "\n");~	if (0) put(s, s->decl.s + b.pre, b.npre - 1), putz(s, "\n");
+sql: name/db looked up as a name of its own (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~wn = db ? (size_t)(db++ - want) : strlen(want);~wn = strlen(want);
+sql: name/db keeps the line's database (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~db ? db : strcmp(a[4], "-") ? a[4]~strcmp(a[4], "-") ? a[4]
+sql: a server alone logs in to database - (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~strcmp(a[4], "-") ? a[4] : o->pg~1 ? a[4] : o->pg
+sql: a Postgres server alone not on postgres (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~o->pg ? "postgres" : ""~o->pg ? "template1" : ""
+sql: the catalog lists databases as tables (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~		if (!*p) continue;   /* a database */~		if (0) continue;   /* a database */
+sql: the databases' names in the server's collation (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~name COLLATE DATABASE_DEFAULT,~name,
+sql: the picker does not open again with a server's databases (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (mine && st > 0 && !tools_term()) tools_pick(E, PICK_SQL), core_changed = 1;~	if (mine && st > 0 && !tools_term()) core_changed = 1;
+sql: a server that cannot be reached says nothing (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (mine && st < 0) core_msg(E,~	if (0) core_msg(E,
+sql: a key before the databases come keeps the picker waiting (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	W = NULL, *pickfor = 0;~	W = NULL;
+sql: a server alone reads no databases (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (c.alone) snprintf(pickfor, sizeof pickfor, "%s", c.name), catread(&c);~	if (c.alone) snprintf(pickfor, sizeof pickfor, "%s", c.name);
+sql: no mark while live (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	return live ? (snprintf(m, sizeof m, "%s \xe2\x9c\x93", name), m) : name;~	return live ? (snprintf(m, sizeof m, "%s", name), m) : name;
+sql: the picker's databases missing (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~j < nt && !k->cols.s[o[j]]; j++)~j < nt && 0; j++)
+sql: :Connect alone does not open the picker (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (!name || !*name) return tools_pick(e, PICK_SQL);~	if (!name || !*name) return 0;
+sql: the status line without the connection (test_sql_editor)~test TESTS=sql_editor~~src/core/draw.c~		stl_add(&t, conn, c, 0);~		stl_add(&t, "", c, 0);
+sql: the picker's Enter connects nothing (test_sql_editor)~test TESTS=sql_editor~~src/tools/pick.c~		sql_connect(e, c);~		(void)c;
+sql: the picker lists no connections (test_sql_editor)~test TESTS=sql_editor~~src/tools/pick.c~	if (what == PICK_SNIPPETS || what == PICK_SQL) snippets();~	if (what == PICK_SNIPPETS) snippets();
+sql: a name matches a longer name's start (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~!strncmp(a[0], want, wn) && !a[0][wn])~!strncmp(a[0], want, wn))
+sql: name/db on a server-alone line counts as alone (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~.alone = !db && !strcmp(a[4], "-")~.alone = !strcmp(a[4], "-")
+sql: every database of a live connection marked (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~live = up(S[j]) && !strcmp(S[j]->spec.name, items.s + at);~live = up(S[j]) && !strncmp(S[j]->spec.name, items.s + at, strcspn(S[j]->spec.name, "/"));
+sql: a connection lists another's databases whose name it starts (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~(k->name[an] && k->name[an] != '/')~(0 && k->name[an] != '/')
+sql: Postgres's templates in the picker (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~ WHERE datallowconn AND NOT datistemplate~ WHERE datallowconn
+sql: the folder's connection looked up at every frame (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (s && !s->spec.name[0] && !s->looked) {~if (s && !s->spec.name[0]) {
+sql: a commented connection in the picker (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (k < 3 || a[0][0] == '#') continue;~if (k < 3 || (a[0][0] == '#' && !all)) continue;
+sql: a connection line with too few fields in the picker (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~round == 1 && k >= 5 && (all ||~round == 1 && (k >= 5 || all) && (all ||
+sql: :Connect cuts a database's name at its space (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~n -= n > 4 && !strcmp(name + n - 4, " \xe2\x9c\x93") ? 4 : 0;~n = strcspn(name, " ");
+sql: the picker opens under the terminal (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (mine && st > 0 && !tools_term()) tools_pick~if (mine && st > 0) tools_pick
+sql: the picker empty with no word why (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (!fp) { core_msg(E, "sql: no connections file %s (src/sql/README.md)", f); return -1; }~	if (!fp) { if (!all) core_msg(E, "sql: no connections file %s (src/sql/README.md)", f); return -1; }
+sql: the picker's live mark not cut by :Connect (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~n -= n > 4 && !strcmp(name + n - 4, " \xe2\x9c\x93") ? 4 : 0;~n -= 0;
