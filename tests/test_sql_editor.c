@@ -5,6 +5,7 @@
    the connections file's refusals, and the catalog. */
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #ifdef _WIN32   /* src/sql/check.sh builds it for Windows */
@@ -71,19 +72,21 @@ static int f5_once_idle(void)
 }
 
 
-/* table hcat's columns as "schema.hcat.column " (and the header line's,
-   which is not a row, and Postgres's own, which are not listed) */
+/* hcat's columns as "schema.hcat.column ", or with column NULL the table
+   as "schema.hcat " (and the header line's, which is not a row, and
+   Postgres's own tables, which are not listed) */
 static void hcat(void *ctx, const char *schema, const char *table, const char *column)
 {
 	char *o = ctx;
-	if (!strcmp(table, "hcat") || !strcmp(table, "table_name") || !strcmp(table, "TABLE_NAME") || !strcmp(schema, "pg_catalog")) snprintf(o + strlen(o), 256 - strlen(o), "%s.%s.%s ", schema, table, column);
+	if (!strcasecmp(table, "hcat") || !strcasecmp(table, "table_name") || !strcmp(schema, "pg_catalog"))
+		snprintf(o + strlen(o), 256 - strlen(o), column ? "%s.%s.%s " : "%s.%s ", schema, table, column);
 }
 
 /* the catalog of the current buffer's connection once read (3 s at most): its columns, hcat's in o */
 static int catalog(char *o)
 {
 	int n = 0;
-	for (int i = 0; i < 300 && !(n = sql_catalog(&e, e.buf, hcat, (*o = 0, o))); i++) loop_once(10);
+	for (int i = 0; i < 300 && !(n = sql_catalog(&e, e.buf, "hcat", hcat, (*o = 0, o))); i++) loop_once(10);
 	return n;
 }
 
@@ -118,7 +121,8 @@ int main(void)
 		"dir %s/ms/deep pg\ndir ~/ms ms\ndir %s/pg pg\ndir  %s/a b   ms \n"
 		"bad mssql 127.0.0.1:99999 sa master pass=x\nletters mssql 127.0.0.1:1433x sa master pass=x\nnopass mssql 127.0.0.1 sa master\nv6 mssql [::1]:1433 sa master pass=x\n"
 		"cs mssql 127.0.0.1 sa hcs trust pass=%s\nlim pg 127.0.0.1 hlim postgres trust pass=%s\nnohost mssql nohost.invalid sa master pass=x\n"
-		"sp mssql 127.0.0.1 hsp master trust pass=Ho meros 1 x\r\n", sa, pg, dir, dir, dir, sa, pg);
+		"sp mssql 127.0.0.1 hsp master trust pass=Ho meros 1 x\r\nbypass=x mssql 127.0.0.1 hpw master trust\tpass=Ho pass=1  \n"
+		"notrust mssql 127.0.0.1 sa master pass=%s\n", sa, pg, dir, dir, dir, sa, pg, sa);
 	put(conf, f, 0644);
 #ifndef _WIN32   /* there the profile is the user's (sql.c, as libpq) */
 	CHECK(sql_key(&e, KEY_F5) == 1 && strstr(e.msg, "others can read it"));
@@ -239,6 +243,11 @@ int main(void)
 	CHECK(strstr(f5("ms/sp.sql", "if suser_id('hsp') is null create login hsp with password = 'Ho meros 1 x', check_policy = off\n"), "Completion"));
 	put("ms/sq.sql", "select suser_name() as who\n", 0600);
 	CHECK(!core_edit_file(&e, "ms/sq.sql", 0) && !sql_connect(&e, "sp") && sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), "who\nhsp\n"));
+	/* a name holding pass=, a tab before pass=, the first pass= wins, trailing spaces kept */
+	CHECK(strstr(f5("ms/sp2.sql", "if suser_id('hpw') is null create login hpw with password = 'Ho pass=1  ', check_policy = off\n"), "Completion"));
+	CHECK(!core_edit_file(&e, "ms/sq.sql", 0) && !sql_connect(&e, "bypass=x") && sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), "who\nhpw\n"));
+	/* without trust the server's own certificate is refused */
+	CHECK(!core_edit_file(&e, "ms/sq.sql", 0) && !sql_connect(&e, "notrust") && sql_key(&e, KEY_F5) == 1 && strstr(until("verify failed"), "certificate verify failed"));
 	/* SPC r from the results: closed, the cursor back in the query */
 	CHECK(!core_edit_file(&e, "ms/a.sql", 0) && sql_key(&e, KEY_F5) == 1 && until("Completion time"));
 	core_win_goto(&e, 'w', 2);
@@ -267,36 +276,48 @@ int main(void)
 	   at the next login; only .sql buffers; never a message */
 	char cat[256];
 	const char *users = "select count(*) n from sys.dm_exec_sessions where is_user_process = 1\n";
-	CHECK(strstr(f5("ms/q.sql", "drop table if exists hcat\ncreate table hcat (k int, b int, [v w] nvarchar(9), [t\tab] int, [a\\b] int)\n"), "Completion"));
+	CHECK(strstr(f5("ms/q.sql", "drop table if exists hca\ncreate table hca (y int)\ndrop table if exists hcat\ncreate table hcat (k int, b int, [v w] nvarchar(9), [t\tab] int, [a\\b] int)\n"), "Completion"));
 	int n = atoi(strstr(f5("ms/v.sql", users), "n\n") + 2);
-	CHECK(!core_edit_file(&e, "ms/q.sql", 0) && !sql_catalog(&e, e.buf, NULL, NULL) && catalog(cat) > 0 && !strcmp(cat, "dbo.hcat.k dbo.hcat.b dbo.hcat.v w dbo.hcat.t\tab dbo.hcat.a\\b "));
+	CHECK(!core_edit_file(&e, "ms/q.sql", 0) && !sql_catalog(&e, e.buf, NULL, NULL, NULL) && catalog(cat) > 0 && !strcmp(cat, "dbo.hcat.k dbo.hcat.b dbo.hcat.v w dbo.hcat.t\tab dbo.hcat.a\\b "));
+	CHECK(sql_catalog(&e, e.buf, NULL, hcat, (*cat = 0, cat)) > 0 && !strcmp(cat, "dbo.hcat "));   /* the tables, once each */
 	int same = 0;
 	for (int i = 0; i < 20 && !same; i++) same = atoi(strstr(f5("ms/v.sql", users), "n\n") + 2) == n;
 	CHECK(same);
 	CHECK(strstr(f5("ms/r.sql", "alter table hcat add z int\n"), "Completion"));
-	CHECK(!core_edit_file(&e, "ms/a.sql", 0) && !sql_connect(&e, "ms") && sql_catalog(&e, e.buf, hcat, (*cat = 0, cat)) == 0 && !*cat);
-	CHECK(!core_edit_file(&e, "ms/q.sql", 0) && !sql_catalog(&e, e.buf, hcat, cat));
+	for (int i = 0; i < 100; i++) loop_once(10);   /* r.sql's login read nothing: once per connection */
+	CHECK(catalog(cat) > 0 && !strstr(cat, ".z "));
+	CHECK(!core_edit_file(&e, "ms/a.sql", 0) && !sql_connect(&e, "ms") && sql_catalog(&e, e.buf, "hcat", hcat, (*cat = 0, cat)) == 0 && !*cat);
+	CHECK(!core_edit_file(&e, "ms/q.sql", 0) && !sql_catalog(&e, e.buf, "hcat", hcat, cat));
 	CHECK(!core_edit_file(&e, "ms/a.sql", 0) && sql_key(&e, KEY_F5) == 1 && until("Completion time") && catalog(cat) > 0 && !strcmp(cat, "dbo.hcat.k dbo.hcat.b dbo.hcat.v w dbo.hcat.t\tab dbo.hcat.a\\b dbo.hcat.z "));
 	snprintf(f, sizeof f, "drop table if exists hcat; create table hcat (k int, b int, \"v w\" text, \"t\tab\" int, \"a\\b\" int);"
 		" do $$ begin create role hlim login; exception when duplicate_object then null; end $$;"
 		" alter role hlim password '%s' connection limit 1; grant select on hcat to hlim\n", pg);
-	CHECK(strstr(f5("pg/s.sql", f), "Completion") && !sql_catalog(&e, e.buf, NULL, NULL) && catalog(cat) > 0 && !strcmp(cat, "public.hcat.k public.hcat.b public.hcat.v w public.hcat.t\tab public.hcat.a\\b "));
-	CHECK(!core_edit_file(&e, "ms/q.sql", 0) && sql_catalog(&e, e.buf, hcat, (*cat = 0, cat)) > 0 && !strcmp(cat, "dbo.hcat.k dbo.hcat.b dbo.hcat.v w dbo.hcat.t\tab dbo.hcat.a\\b dbo.hcat.z "));
+	CHECK(strstr(f5("pg/s.sql", f), "Completion") && !sql_catalog(&e, e.buf, NULL, NULL, NULL) && catalog(cat) > 0 && !strcmp(cat, "public.hcat.k public.hcat.b public.hcat.v w public.hcat.t\tab public.hcat.a\\b "));
+	CHECK(sql_catalog(&e, e.buf, NULL, hcat, (*cat = 0, cat)) > 0 && !strcmp(cat, "public.hcat "));
+	CHECK(!core_edit_file(&e, "ms/q.sql", 0) && sql_catalog(&e, e.buf, "hcat", hcat, (*cat = 0, cat)) > 0 && !strcmp(cat, "dbo.hcat.k dbo.hcat.b dbo.hcat.v w dbo.hcat.t\tab dbo.hcat.a\\b dbo.hcat.z "));
 	put("pg/t.sql", "select 1 as one\n", 0600);
 	CHECK(!core_edit_file(&e, "pg/t.sql", 0) && !sql_connect(&e, "lim") && sql_key(&e, KEY_F5) == 1 && until("Completion time"));
 	for (int i = 0; i < 100; i++) loop_once(10);
-	CHECK(!sql_catalog(&e, e.buf, hcat, cat));   /* its one connection is the session's */
+	CHECK(!sql_catalog(&e, e.buf, "hcat", hcat, cat));   /* its one connection is the session's */
 	CHECK(strstr(f5("pg/u.sql", "alter role hlim connection limit 2\n"), "Completion"));
 	CHECK(!core_edit_file(&e, "pg/t.sql", 0) && !sql_disconnect(&e) && sql_key(&e, KEY_F5) == 1 && until("Completion time"));
 	CHECK(catalog(cat) > 0 && !strcmp(cat, "public.hcat.k public.hcat.b public.hcat.v w public.hcat.t\tab public.hcat.a\\b "));
 	CHECK(strstr(f5("ms/w.sql", "if db_id('hcs') is null create database hcs collate Latin1_General_CS_AS\n"), "Completion"));
-	put("ms/x.sql", "drop table if exists hcat\ncreate table hcat (K int)\n", 0600);
-	CHECK(!core_edit_file(&e, "ms/x.sql", 0) && !sql_connect(&e, "cs") && sql_key(&e, KEY_F5) == 1 && until("Completion time"));
-	CHECK(!sql_catalog(&e, e.buf, NULL, NULL) && catalog(cat) > 0 && !strcmp(cat, "dbo.hcat.K "));
+	CHECK(strstr(f5("ms/x.sql", "drop table if exists hcs.dbo.hcat\ncreate table hcs.dbo.hcat (K int)\n"), "Completion"));
+	put("ms/xc.sql", "select 1 as one\n", 0600);
+	CHECK(!core_edit_file(&e, "ms/xc.sql", 0) && !sql_connect(&e, "cs") && sql_key(&e, KEY_F5) == 1 && until("Completion time"));
+	CHECK(!sql_catalog(&e, e.buf, NULL, NULL, NULL) && catalog(cat) > 0 && !strcmp(cat, "dbo.hcat.K "));
+	CHECK(!sql_disconnect(&e));   /* Windows's loop watches 31 handles: a session fewer leaves the catalog one */
+	/* NULL before this buffer's login dials nothing: its login reads it */
+	put("ms/xd.sql", "select 1 as one\n", 0600);
+	CHECK(!core_edit_file(&e, "ms/xd.sql", 0) && !sql_connect(&e, "cs") && !sql_catalog(&e, e.buf, NULL, NULL, NULL));
+	for (int i = 0; i < 100; i++) loop_once(10);
+	CHECK(!sql_catalog(&e, e.buf, "hcat", hcat, cat) && sql_key(&e, KEY_F5) == 1 && until("Completion time") && catalog(cat) > 0 && !strcmp(cat, "dbo.hcat.K "));
+	CHECK(sql_catalog(&e, e.buf, "HCAT", hcat, (*cat = 0, cat)) == 1 && !strcmp(cat, "dbo.hcat.K "));   /* ASCII case ignored, also here */
 	put("ms/y.txt", "x\n", 0600);
-	CHECK(!core_edit_file(&e, "ms/y.txt", 0) && !sql_catalog(&e, e.buf, hcat, cat));
+	CHECK(!core_edit_file(&e, "ms/y.txt", 0) && !sql_catalog(&e, e.buf, "hcat", hcat, cat));
 	put("msx/o.sql", "select 1\n", 0600);
-	CHECK(!core_edit_file(&e, "msx/o.sql", 0) && strcpy(e.msg, "kept") && !sql_catalog(&e, e.buf, hcat, cat) && !strcmp(e.msg, "kept"));
+	CHECK(!core_edit_file(&e, "msx/o.sql", 0) && strcpy(e.msg, "kept") && !sql_catalog(&e, e.buf, "hcat", hcat, cat) && !strcmp(e.msg, "kept"));
 	/* not a SQL buffer: F5 is not ours */
 	put("x.txt", "x\n", 0600);
 	CHECK(!core_edit_file(&e, "x.txt", 0) && !sql_key(&e, KEY_F5));
