@@ -19,9 +19,25 @@ int  sql_key(struct Editor *e, int key);
 /* SPC r: the current SQL buffer's results split opens or closes.  0 ok,
    -1 msg set. */
 int  sql_results(struct Editor *e);
-/* :Connect name: the current buffer's connection is name's from the
-   connections file; no name shows which one it has.  0 ok, -1 msg set. */
+/* :Connect name, or name/db (that connection with database db): the
+   current buffer's connection; a connections-file line whose database is
+   - is the server alone, logged in to its default database (master;
+   Postgres's postgres).  No name opens the connections picker (tools_pick
+   PICK_SQL).  0 ok, -1 msg set. */
 int  sql_connect(struct Editor *e, const char *name);
+/* The connections picker's i-th item (0 first), NULL past the last.
+   First each connection in the connections file, then name/db for each
+   database of a server whose list was read (with its catalog, at a
+   login, in the background; picking a server alone logs in to read it,
+   and the picker opens again when it arrives).  *live is 1 while a
+   buffer's session is logged in on it.  Enter calls sql_connect with the
+   item (Davy, 2026-11-28: a connection picker, which one is live, a
+   server's databases). */
+const char *sql_pick(struct Editor *e, int i, int *live);
+/* b's connection for its status line, as name/db; NULL for a buffer that
+   is not SQL or has none yet; *live as sql_pick's.  No allocation after
+   b's first call, which reads the connections file once. */
+const char *sql_status(const struct Buf *b, int *live);
 /* :Disconnect: the current SQL buffer's session ends (the server drops its
    temp tables and rolls back an open transaction, as when an SSMS query
    window closes); the next F5 logs in again.  0 ok, -1 msg set. */
