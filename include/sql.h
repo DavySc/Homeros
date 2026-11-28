@@ -28,15 +28,15 @@ int  sql_connect(struct Editor *e, const char *name);
    First each connection in the connections file, then name/db for each
    database of a server whose list was read (with its catalog, at a
    login, in the background; picking a server alone logs in to read it,
-   and the picker opens again when it arrives).  *live is 1 while a
-   buffer's session is logged in on it.  Enter calls sql_connect with the
-   item (Davy, 2026-11-28: a connection picker, which one is live, a
-   server's databases). */
-const char *sql_pick(struct Editor *e, int i, int *live);
-/* b's connection for its status line, as name/db; NULL for a buffer that
-   is not SQL or has none yet; *live as sql_pick's.  No allocation after
-   b's first call, which reads the connections file once. */
-const char *sql_status(const struct Buf *b, int *live);
+   and the picker opens again when it arrives).  A live one (a buffer's
+   session logged in on it) ends in its mark, " ✓".  Enter calls
+   sql_connect with the item, which cuts that mark (Davy, 2026-11-28: a
+   connection picker, which one is live, a server's databases). */
+const char *sql_pick(struct Editor *e, int i);
+/* b's connection for its status line, as name/db, marked as sql_pick's
+   while live; NULL for a buffer that is not SQL or has none yet.  No
+   allocation after b's first call, which reads the connections file once. */
+const char *sql_status(struct Editor *e, const struct Buf *b);
 /* :Disconnect: the current SQL buffer's session ends (the server drops its
    temp tables and rolls back an open transaction, as when an SSMS query
    window closes); the next F5 logs in again.  0 ok, -1 msg set. */
