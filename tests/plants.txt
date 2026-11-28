@@ -680,7 +680,7 @@ test | dbg/session.c | if (c.kind == SESSION_OPEN && !open && n > sizeof c) { | 
 test | dbg/session.c | } else if (c.kind == SESSION_RUN && open && c.count <= (n - sizeof c) / 8) { | } else if (c.kind == SESSION_RUN && c.count <= (n - sizeof c) / 8) {
 test | dbg/session.c | queue_push(&s->events, &(SessionEvent){.gone = true}, sizeof(SessionEvent), true); | queue_push(&s->events, &(SessionEvent){.gone = false}, sizeof(SessionEvent), true);
 test | dbg/session.c | if (open) engine_close(&e);\n  queue_push | queue_push
-test | dbg/session.c | if (open) e.halt = halt, e.halt_arg = s; | if (!open) e.halt = halt, e.halt_arg = s;
+test | dbg/session.c | if (open) e.halt = halt, | if (!open) e.halt = halt,
 test | dbg/session.c | queue_init(&s->commands, 0, 0), queue_init(&s->events, wake, wake_arg); | queue_init(&s->commands, 0, 0), queue_init(&s->events, wake ? 0 : wake, wake_arg);
 test | dbg/engine.c | if (e->halt && e->halt(e->halt_arg)) return target_halt(e->target), (TargetEvent){.kind = TARGET_HALT}; | if (e->halt && e->halt(e->halt_arg)) return (TargetEvent){.kind = TARGET_HALT};
 test | dbg/engine.c | if (e->halt && e->halt(e->halt_arg)) return target_halt(e->target), (TargetEvent){.kind = TARGET_HALT}; | if (e->halt) return target_halt(e->target), (TargetEvent){.kind = TARGET_HALT};
@@ -1110,11 +1110,12 @@ front | cmd/hdbg.c | if (ev->stop.thread) thread = ev->stop.thread; | thread = e
 front | cmd/hdbg.c | if (open && n) view_toggle(&more.view, &row->row); | if (open && !n) view_toggle(&more.view, &row->row);
 front | cmd/hdbg.c | .thread = thread, .frame = frame, .roots = roots, | .thread = thread, .roots = roots,
 front | cmd/hdbg.c | m.c = (SessionCommand){SESSION_RUN, how, thread, count}, | m.c = (SessionCommand){SESSION_RUN, how, thread, 0},
-front | cmd/hdbg.c | if (k < count) breakpoints[k] = breakpoints[--count]; | if (k < count) breakpoints[k] = breakpoints[count - 1];
-front | cmd/hdbg.c | if (k < count) breakpoints[k] = breakpoints[--count]; | if (k < count) count -= 1;
+front | cmd/hdbg.c | if (k < count) breakpoints[k] = breakpoints[--count], | if (k < count) breakpoints[k] = breakpoints[count - 1],
+front | cmd/hdbg.c | breakpoints[k] = breakpoints[--count], memmove | count -= 1, memmove
+front | cmd/hdbg.c | breakpoints[k] = breakpoints[--count], memmove(conditions[k], conditions[count], sizeof *conditions); | breakpoints[k] = breakpoints[--count];
 front | cmd/hdbg.c | return !started; | return 0;
 front | cmd/hdbg.c | while (source && line < f->line && fgets | while (source && line + 1 < f->line && fgets
-front | dbg/session.c | if (open) e.halt = halt, e.halt_arg = s; | if (!open) e.halt = halt, e.halt_arg = s;
+front | dbg/session.c | if (open) e.halt = halt, | if (!open) e.halt = halt,
 
 front | dbg/ask.c | uint64_t function = line ? 0 : engine_function(m, more, strlen(more)); | uint64_t function = 0;
 front | dbg/conv.c | if (j && line == (le32(b.lines + 8 * j - 4) & 0xffffff)) continue; | if (j && line == 0) continue;
@@ -1167,13 +1168,12 @@ eval | dbg/ask.c | target_write(e->target, to.at, &v.at, s.size); | target_write
 eval | dbg/ask.c | v = eval_as(e, &frames->at, value, to.type, &error); | v = eval_as(e, &frames->at, more, to.type, &error);
 front | dbg/ask.c | return to.kind == EVAL_MEMORY && !s.count && v.kind && | return to.kind == EVAL_MEMORY && !s.count &&
 front | dbg/ask.c | return to.kind == EVAL_MEMORY && !s.count && v.kind && | return to.kind && !s.count && v.kind &&
-front | dbg/eval.c | return whole_text(&P, convert(&P, load(&P, ternary(&P)), type), error); | return whole_text(&P, convert(&P, load(&P, ternary(&P)), (EvalType){NULL, S32, 0}), error);
+front | dbg/eval.c | return whole_text(&P, convert(&P, load(&P, ternary(&P)), type), error); | return whole_text(&P, convert(&P, load(&P, ternary(&P)), (EvalType){type.module, S32, 0}), error);
 front | cmd/hdbg.c | .kind = ASK_SET, .thread = thread, .frame = frame} | .kind = ASK_SET, .thread = thread, .frame = frame + 1}
 front | cmd/hdbg.c | if (*more && strtoul(more, NULL, 10) < n / 4) thread | if (*more) thread
 # memory (ASK_MEMORY in dbg/ask.c; tests/zoo_check.c reads around everything the zoo shows in memory, tests/hdbg.txt)
 eval | dbg/ask.c | uint64_t from = v.at + ask.first; | uint64_t from = v.at;
 eval | dbg/ask.c | part = 4096 - (uint32_t)((from + used - 8) % 4096), | part = 4096,
 eval | dbg/ask.c | cap = ask.most < cap - 8 ? ask.most + 8 : cap; | cap = ask.most + 8;
-eval | dbg/ask.c | (char *)out + used, part));) used += part; | (char *)out + used, part));) used += 1;
-front | dbg/ask.c | if (v.kind != EVAL_VALUE) return 0; | 
+eval | dbg/ask.c | if (v.kind != EVAL_VALUE) return 0; | 
 front | cmd/hdbg.c | if (i % 16 == 8) printf( | if (i % 16 == 0) printf(

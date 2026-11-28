@@ -317,14 +317,19 @@ int main(int argc, char **argv)
     /* the program's bytes around what is in memory, asked for (up to 9000 from up to 9000 before it): each is the byte there, and they end only where no byte can be read */
     if (v.kind == EVAL_MEMORY && !eval_shape(v.type).count) {
       struct { Ask a; char text[600]; } mem = {.a = {.kind = ASK_MEMORY, .thread = ev.thread, .frame = 1, .most = random_below(&seed, 9000), .first = (uint64_t)0 - random_below(&seed, 9000)}};
-      static uint64_t answer[2 + 9000 / 8];
+      static uint64_t answer[4 + 9000 / 8];
+      uint32_t room = 8 + random_below(&seed, 9001), least = mem.a.most < room - 8 ? mem.a.most : room - 8;   /* what the answer may take */
+      memset((char *)answer + room, 0xa5, 8);
       const unsigned char *got = (const unsigned char *)(answer + 1);
       unsigned char is;
-      uint32_t n = ask_answer(&e, &mem, (uint32_t)sizeof mem.a + (uint32_t)snprintf(mem.text, sizeof mem.text, "&(%s)", text) + 1, answer, sizeof answer);
-      if (n < 8 || n - 8 > mem.a.most || answer[0] != v.at + mem.a.first) FAIL("%s (at +0x%llx): asked for %u bytes around it, the answer has %u and begins at %llx", text, voff, mem.a.most, n, (unsigned long long)answer[0]);
+      uint32_t n = ask_answer(&e, &mem, (uint32_t)sizeof mem.a + (uint32_t)snprintf(mem.text, sizeof mem.text, "&(%s)", text) + 1, answer, room);
+      if (n < 8 || n - 8 > least || memcmp((char *)answer + room, "\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5", 8) || answer[0] != v.at + mem.a.first) FAIL("%s (at +0x%llx): asked for %u bytes around it, the answer has %u and begins at %llx", text, voff, mem.a.most, n, (unsigned long long)answer[0]);
       for (uint32_t i = 0; i < n - 8; i += 1) if (!target_read(e.target, answer[0] + i, &is, 1) || is != got[i]) FAIL("%s (at +0x%llx): byte %u of the memory around it is another", text, voff, i);
-      if (n - 8 < mem.a.most && target_read(e.target, answer[0] + n - 8, &is, 1)) FAIL("%s (at +0x%llx): the memory around it ends after %u bytes where there is more", text, voff, n - 8);
-      bytes += n - 8, cut += n - 8 < mem.a.most;
+      if (n - 8 < least && target_read(e.target, answer[0] + n - 8, &is, 1)) FAIL("%s (at +0x%llx): the memory around it ends after %u bytes where there is more", text, voff, n - 8);
+      bytes += n - 8, cut += n - 8 < least;
+      /* an expression without a value has no memory, whatever the offset (here one that leads to this place) */
+      mem.a.first = v.at, strcpy(mem.text, "nothing_there");
+      if (ask_answer(&e, &mem, (uint32_t)sizeof mem.a + 14, answer, room)) FAIL("memory is shown for an expression that has no value");
     }
     /* a number or an address in memory is written through an ask as C assigns (0 where it is not 0, else 1): that is there after it, and the 8 bytes on either side are as before */
     EvalShape shape = eval_shape(v.type);
