@@ -1,0 +1,97 @@
+caught        sql: a password in a connections file others can read is used (test_sql_editor)   | tests/test_sql_editor.c:137: CHECK(sql_key(&e, KEY_F5) == 1 && strstr(e.msg, "others can read it")) failed
+caught        sql: GO n runs its batch once (test_sql_editor)   | tests/test_sql_editor.c:147: CHECK(!strncmp(until("Completion time"), want, strlen(want))) failed
+caught        sql: F5 runs the whole buffer, not the selection (test_sql_editor)   | tests/test_sql_editor.c:155: CHECK(!strncmp(until("Completion time"), one("two", "2"), strlen(one("two", "2"))
+caught        sql: :Connect does not change the buffer's connection (test_sql_editor)
+caught        sql: a refused GO line not named (test_sql_editor)   | tests/test_sql_editor.c:172: CHECK(!core_edit_file(&e, "ms/c.sql", 0) && sql_key(&e, KEY_F5) == 1 && strstr(e.
+caught        sql: SPC r never closes the results (test_sql_editor)   | tests/test_sql_editor.c:158: CHECK(!sql_results(&e) && nwins() == 1 && !e.buf->nonumber) failed
+caught        sql: Alt+Break's line not written (test_sql_editor)   | tests/test_sql_editor.c:164: CHECK(sql_key(&e, KEY_BREAK) == 1 && strstr(until("cancelled by user"), "Query wa
+caught        sql: a batch read from the buffer as it is when sent, not as it was at F5 (test_sql_editor)   | tests/test_sql_editor.c:188: CHECK(strstr(until("Completion time"), one("id", "1042"))) failed
+caught        sql: Alt+Break ends the run before the server answers the cancel (test_sql_editor)   | tests/test_sql_editor.c:166: CHECK(!strncmp(e.wins->next->buf->status, "Query was canceled by user \xc2\xb7 ",
+caught        sql: a cancelled run's later batches still run (test_sql_editor)   | tests/test_sql_editor.c:220: CHECK(!strstr(results(), "late") && strstr(results(), "Query was cancelled by use
+caught        sql: no room for the split leaves the run set (test_sql_editor)   | tests/test_sql_editor.c:271: CHECK(!core_only(&e) && sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time
+caught        sql: a second F5 during a run is not refused (test_sql_editor)   | tests/test_sql_editor.c:201: CHECK(sql_key(&e, KEY_BREAK) == 1 && sql_key(&e, KEY_F5) == 1 && strstr(e.msg, "n
+caught        sql: the login's messages shown in the results (test_sql_editor)   | tests/test_sql_editor.c:147: CHECK(!strncmp(until("Completion time"), want, strlen(want))) failed
+caught        sql: the last dir line wins, not the longest (test_sql_editor)   | tests/test_sql_editor.c:250: CHECK(!core_edit_file(&e, "ms/deep/l.sql", 0) && sql_key(&e, KEY_F5) == 1 && strs
+caught        sql: dir /a/ms holds /a/msx (test_sql_editor)   | tests/test_sql_editor.c:254: CHECK(!core_edit_file(&e, "msx/n.sql", 0) && sql_key(&e, KEY_F5) == 1 && strstr(e
+caught        sql: a tilde in a dir line not HOME (test_sql_editor)   | tests/test_sql_editor.c:137: CHECK(sql_key(&e, KEY_F5) == 1 && strstr(e.msg, "others can read it")) failed
+caught        sql: a dir folder ends at its first space (test_sql_editor)   | tests/test_sql_editor.c:252: CHECK(!core_edit_file(&e, "a b/m.sql", 0) && sql_key(&e, KEY_F5) == 1 && strstr(u
+caught        sql: Alt+Break while logging in sends a cancel (test_sql_editor)   | tests/test_sql_editor.c:210: CHECK(sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), "three")) fail
+caught        sql: Postgres's port by default not 5432 (test_sql_editor)   | tests/test_sql_editor.c:177: CHECK(strstr(until("Completion time"), one("x", "pg")) && strstr(res, "\n(SELECT 
+caught        sql: GO 0 runs its batch once (test_sql_editor)   | tests/test_sql_editor.c:147: CHECK(!strncmp(until("Completion time"), want, strlen(want))) failed
+caught        sql: a connection the server ended kept (test_sql_editor)   | tests/test_sql_editor.c:236: CHECK(sql_key(&e, KEY_F5) == 1 && strstr(until("1 row)"), one("five", "5"))) fail
+caught        sql: the results modifiable (test_sql_editor)   | tests/test_sql_editor.c:150: CHECK(e.wins->next && e.wins->next->buf->nomodifiable && e.wins->next->line == te
+caught        sql: F5 in the results is not their query's (test_sql_editor)   | tests/test_sql_editor.c:264: CHECK(!sql_results(&e) && !core_win_goto(&e, 'w', 2) && sql_key(&e, KEY_F5) == 1 
+caught        sql: a wrong port used (test_sql_editor)   | tests/test_sql_editor.c:256: CHECK(sql_connect(&e, "bad") && strstr(e.msg, "port in 127.0.0.1:99999") && sql_c
+caught        sql: no pass= sends an empty password (test_sql_editor)   | tests/test_sql_editor.c:257: CHECK(sql_connect(&e, "nopass") && strstr(e.msg, "no pass=")) failed
+caught        sql: [IPv6] keeps its brackets (test_sql_editor)   | tests/test_sql_editor.c:258: CHECK(!sql_connect(&e, "v6") && strstr(e.msg, "(::1)")) failed
+caught        sql: :Disconnect keeps the session (test_sql_editor)   | tests/test_sql_editor.c:275: CHECK(!sql_disconnect(&e) && strstr(e.msg, "disconnected from ms") && sql_disconn
+caught        sql: a second F5 during a run starts another (test_sql_editor)   | tests/test_sql_editor.c:215: CHECK(sql_key(&e, KEY_F5) == 1 && strstr(e.msg, "a query is running")) failed
+caught        sql: the cancel flag outlives its answer (test_sql_editor)   | tests/test_sql_editor.c:223: CHECK(f5_once_idle() && strstr(until("Completion time"), one("c", "3"))) failed
+caught        sql: a port with letters after it is taken (test_sql_editor)   | tests/test_sql_editor.c:256: CHECK(sql_connect(&e, "bad") && strstr(e.msg, "port in 127.0.0.1:99999") && sql_c
+caught        sql: Ctrl-C does not cancel a run (test_sql_editor)   | tests/test_sql_editor.c:218: CHECK(sql_key(&e, KEY_CTRL_C) == 1 && sql_key(&e, KEY_CTRL_C) == 0) failed
+caught        sql: Ctrl-C taken from Vim with no run to cancel (test_sql_editor)   | tests/test_sql_editor.c:218: CHECK(sql_key(&e, KEY_CTRL_C) == 1 && sql_key(&e, KEY_CTRL_C) == 0) failed
+caught        sql: the catalog's header line taken as a row (test_sql_editor)   | tests/test_sql_editor.c:292: CHECK(!core_edit_file(&e, "ms/q.sql", 0) && !sql_catalog(&e, e.buf, NULL, NULL) &
+caught        sql: the catalog takes the login's own batch for its rows (test_sql_editor)   | tests/test_sql_editor.c:292: CHECK(!core_edit_file(&e, "ms/q.sql", 0) && !sql_catalog(&e, e.buf, NULL, NULL) &
+caught        sql: the catalog not read again on NULL (test_sql_editor)   | tests/test_sql_editor.c:292: CHECK(!core_edit_file(&e, "ms/q.sql", 0) && !sql_catalog(&e, e.buf, NULL, NULL) &
+caught        sql: one catalog for every connection (test_sql_editor)   | tests/test_sql_editor.c:304: CHECK(!core_edit_file(&e, "ms/q.sql", 0) && sql_catalog(&e, e.buf, hcat, (*cat = 
+caught        sql: :Connect keeps the connection's catalog (test_sql_editor)   | tests/test_sql_editor.c:297: CHECK(!core_edit_file(&e, "ms/a.sql", 0) && !sql_connect(&e, "ms") && sql_catalog
+caught        sql: the catalog's lookup leaves its message (test_sql_editor)   | tests/test_sql_editor.c:319: CHECK(!core_edit_file(&e, "msx/o.sql", 0) && strcpy(e.msg, "kept") && !sql_catalo
+caught        sql: F5's open error lost before it is shown (test_sql_editor)   | tests/test_sql_editor.c:279: CHECK(!core_edit_file(&e, "ms/a.sql", 0) && !sql_connect(&e, "nohost") && sql_key
+caught        sql: the catalog's query in lower case (a case-sensitive database) (test_sql_editor)   | tests/test_sql_editor.c:315: CHECK(!sql_catalog(&e, e.buf, NULL, NULL) && catalog(cat) > 0 && !strcmp(cat, "db
+caught        sql: the catalog's columns by name, not position (test_sql_editor)   | tests/test_sql_editor.c:292: CHECK(!core_edit_file(&e, "ms/q.sql", 0) && !sql_catalog(&e, e.buf, NULL, NULL) &
+caught        sql: Postgres's own schemas in the catalog (test_sql_editor)   | tests/test_sql_editor.c:303: CHECK(strstr(f5("pg/s.sql", f), "Completion") && !sql_catalog(&e, e.buf, NULL, NU
+caught        sql: a failed catalog not read again at the next login (test_sql_editor)   | tests/test_sql_editor.c:311: CHECK(catalog(cat) > 0 && !strcmp(cat, "public.hcat.k public.hcat.b public.hcat.v
+caught        sql: the catalog of a buffer that is not .sql (test_sql_editor)   | tests/test_sql_editor.c:317: CHECK(!core_edit_file(&e, "ms/y.txt", 0) && !sql_catalog(&e, e.buf, hcat, cat)) f
+caught        sql: the catalog's connection left open once read (test_sql_editor)   | tests/test_sql_editor.c:295: CHECK(same) failed
+caught        sql: a catalog's dead connection kept (test_sql_editor)   | tests/test_sql_editor.c:309: CHECK(strstr(f5("pg/u.sql", "alter role hlim connection limit 2\n"), "Completion"
+caught        sql: a name's escaped tab kept escaped in the catalog (test_sql_editor)   | tests/test_sql_editor.c:292: CHECK(!core_edit_file(&e, "ms/q.sql", 0) && !sql_catalog(&e, e.buf, NULL, NULL) &
+caught        sql: the catalog not read at a login (test_sql_editor)   | tests/test_sql_editor.c:292: CHECK(!core_edit_file(&e, "ms/q.sql", 0) && !sql_catalog(&e, e.buf, NULL, NULL) &
+caught        sql: a dropped catalog keeps its rows (test_sql_editor)   | tests/test_sql_editor.c:292: CHECK(!core_edit_file(&e, "ms/q.sql", 0) && !sql_catalog(&e, e.buf, NULL, NULL) &
+caught        sql: the results' widths not capped   | ==7453==ERROR: AddressSanitizer: global-buffer-overflow on address 0x5611fa9db34a at pc 0x7fc4bb6fb42e bp 0x7f
+caught        sql: a cut value's last cell not kept for its ...   | tests/test_sql_editor.c:325: CHECK(!strncmp(g, "  \xe2\x94\x82 s    \xe2\x94\x82 n    \xe2\x94\x82 l ", 26) &&
+caught        sql: a long set's row numbers as wide as its first rows'   | tests/test_sql_editor.c:325: CHECK(!strncmp(g, "  \xe2\x94\x82 s    \xe2\x94\x82 n    \xe2\x94\x82 l ", 26) &&
+caught        sql: a long set held to its end   | tests/test_sql_editor.c:433: CHECK(strstr(g, "\n    500 \xe2\x94\x82 v \xe2\x94\x82 7\n    501 \xe2\x94\x82 lo
+caught        sql: a laid out set's later rows dropped   | tests/test_sql_editor.c:418: CHECK(strstr(until("\n      1 \xe2\x94\x82 1 "), "\xe2\x94\x82 g ") && !strstr(re
+caught        sql: a column without a name blank   | tests/test_sql_editor.c:325: CHECK(!strncmp(g, "  \xe2\x94\x82 s    \xe2\x94\x82 n    \xe2\x94\x82 l ", 26) &&
+caught        sql: the results' | in no face   | tests/test_sql_editor.c:336: CHECK(fc[0] == FACE_LINE_NR && fc[2] == FACE_ORG_TABLE && fc[5] == FACE_NONE && f
+caught        sql: a span's faces from its start, not the window's   | ==11336==ERROR: AddressSanitizer: stack-buffer-overflow on address 0x7f0e77b0015f at pc 0x556eb9e9c0b0 bp 0x7f
+caught        sql: a NULL in no face   | tests/test_sql_editor.c:336: CHECK(fc[0] == FACE_LINE_NR && fc[2] == FACE_ORG_TABLE && fc[5] == FACE_NONE && f
+caught        sql: an error message in no face   | tests/test_sql_editor.c:347: CHECK(m && fc[0] == FACE_DIAG_ERROR && fc[5] == FACE_DIAG_ERROR) failed
+caught        sql: the messages held after the run   | tests/test_sql_editor.c:428: CHECK(strstr(until("57P01"), "\n(2 rows)\n\n" MSGS "FATAL 57P01: terminating conn
+caught        sql: a new run keeps the last one's grids   | ==13987==ERROR: AddressSanitizer: attempting double-free on 0x50200001c0b0 in thread T0:
+caught        sql: the status line's rows not counted   | tests/test_sql_editor.c:149: CHECK(e.wins->next && strstr(e.wins->next->buf->status, "\xe2\x9c\x93 Query execu
+caught        sql: the status line misses an error   | tests/test_sql_editor.c:280: CHECK(!strncmp(e.wins->next->buf->status, "\xe2\x9c\x97 Query completed with erro
+caught        sql: the status line misses a cancel   | tests/test_sql_editor.c:166: CHECK(!strncmp(e.wins->next->buf->status, "Query was canceled by user \xc2\xb7 ",
+caught        sql: the status line redone with no run   | tests/test_sql_editor.c:166: CHECK(!strncmp(e.wins->next->buf->status, "Query was canceled by user \xc2\xb7 ",
+caught        sql: the results without their status line   | tests/test_sql_editor.c:149: CHECK(e.wins->next && strstr(e.wins->next->buf->status, "\xe2\x9c\x93 Query execu
+caught        sql: the Messages rule in no face (review)   | tests/test_sql_editor.c:352: CHECK(fc[0] == FACE_ORG_TABLE && fc[6] == FACE_ORG_TABLE && fc[7] == FACE_NONE &&
+caught        sql: the row count in no face (review)   | tests/test_sql_editor.c:352: CHECK(fc[0] == FACE_ORG_TABLE && fc[6] == FACE_ORG_TABLE && fc[7] == FACE_NONE &&
+caught        sql: a later grid's faces at the first one's line (review)   | tests/test_sql_editor.c:356: CHECK(fc[0] == FACE_PMENU_SEL) failed
+caught        sql: the lines before a grid counted twice   | tests/test_sql_editor.c:382: CHECK(m && fc[0] == FACE_PMENU_SEL && fc[3] == FACE_PMENU_SEL) failed
+caught        sql: the running status line's text (review)   | tests/test_sql_editor.c:412: CHECK(!strncmp(e.wins->next->buf->status, "Executing query... \xc2\xb7 ms / maste
+caught        sql: a wide character counted as one cell (review)   | tests/test_sql_editor.c:387: CHECK(strstr(g, "\n2 \xe2\x94\x82 ab   \xe2\x94\x82 a  \xe2\x94\x82 x\n")) failed
+caught        sql: a control byte counted as one cell (review)   | tests/test_sql_editor.c:387: CHECK(strstr(g, "\n2 \xe2\x94\x82 ab   \xe2\x94\x82 a  \xe2\x94\x82 x\n")) failed
+caught        sql: an empty set shows no grid (review)   | tests/test_sql_editor.c:387: CHECK(strstr(g, "\n2 \xe2\x94\x82 ab   \xe2\x94\x82 a  \xe2\x94\x82 x\n")) failed
+caught        sql: Postgres's error without its mark (editor: status) (review)   | tests/test_sql_editor.c:404: CHECK(m && fc[0] == FACE_DIAG_ERROR && fc[4] == FACE_DIAG_ERROR) failed
+caught        sql: a message inside a set laid out in the grid   | tests/test_sql_editor.c:325: CHECK(!strncmp(g, "  \xe2\x94\x82 s    \xe2\x94\x82 n    \xe2\x94\x82 l ", 26) &&
+caught        sql: messages held to the run's end   | tests/test_sql_editor.c:147: CHECK(!strncmp(until("Completion time"), want, strlen(want))) failed
+caught        sql: a set's end not taken   | tests/test_sql_editor.c:413: CHECK(strstr(until("early"), "(1 row)\n\n" MSGS "(1 row affected)\nearly\n") && !
+caught        sql: the client's own error not marked   | tests/test_sql_editor.c:280: CHECK(!strncmp(e.wins->next->buf->status, "\xe2\x9c\x97 Query completed with erro
+caught        sql: a waiting set's rows not shown   | tests/test_sql_editor.c:280: CHECK(!strncmp(e.wins->next->buf->status, "\xe2\x9c\x97 Query completed with erro
+caught        sql: the names' bar shorter than the rule   | tests/test_sql_editor.c:177: CHECK(strstr(until("Completion time"), one("x", "pg")) && strstr(res, "\n(SELECT 
+caught        sql: Enter shows a cut value as cut   | tests/test_sql_editor.c:362: CHECK(sql_key(&e, KEY_ENTER) == 1 && e.buf != rb && text_len(e.buf->text) == 50) 
+caught        sql: Enter's value not unescaped   | tests/test_sql_editor.c:390: CHECK(sql_key(&e, KEY_ENTER) == 1 && text_read(e.buf->text, 0, cat, sizeof cat) =
+caught        sql: Enter on a row number opens a cell   | tests/test_sql_editor.c:368: CHECK(sql_key(&e, KEY_ENTER) == 0) failed
+caught        sql: Enter on the names opens a cell   | tests/test_sql_editor.c:370: CHECK(sql_key(&e, KEY_ENTER) == 0 && !core_win_goto(&e, 'k', 1)) failed
+caught        sql: Enter taken in insert mode   | tests/test_sql_editor.c:419: CHECK(!core_win_goto(&e, 'j', 1) && (core_goto(&e, 2, 10), e.mode = MODE_INSERT, 
+caught        sql: Enter taken in a half typed command   | tests/test_sql_editor.c:419: CHECK(!core_win_goto(&e, 'j', 1) && (core_goto(&e, 2, 10), e.mode = MODE_INSERT, 
+caught        sql: Enter taken outside the results   | tests/test_sql_editor.c:392: CHECK(sql_key(&e, KEY_ENTER) == 0) failed
+caught        sql: a value wider than its column but within the cap cut   | tests/test_sql_editor.c:433: CHECK(strstr(g, "\n    500 \xe2\x94\x82 v \xe2\x94\x82 7\n    501 \xe2\x94\x82 lo
+caught        sql: a wider value's row cells taken at the column's width   | tests/test_sql_editor.c:336: CHECK(fc[0] == FACE_LINE_NR && fc[2] == FACE_ORG_TABLE && fc[5] == FACE_NONE && f
+caught        sql: each Enter a new Cell value buffer   | tests/test_sql_editor.c:366: CHECK(sql_key(&e, KEY_ENTER) == 1 && e.buf->nr == cv && nwins() == nw && text_len
+caught        rv2: a trickling set never laid out early   | tests/test_sql_editor.c:418: CHECK(strstr(until("\n      1 \xe2\x94\x82 1 "), "\xe2\x94\x82 g ") && !strstr(re
+caught        rv2: SQL Server's statement end unmarked (editor)   | tests/test_sql_editor.c:413: CHECK(strstr(until("early"), "(1 row)\n\n" MSGS "(1 row affected)\nearly\n") && !
+caught        rv2: a blank first line   | tests/test_sql_editor.c:147: CHECK(!strncmp(until("Completion time"), want, strlen(want))) failed
+caught        rv2: a new run keeps the last one's cut values   | tests/test_sql_editor.c:375: CHECK(sql_key(&e, KEY_ENTER) == 1 && text_len(e.buf->text) == 40 && !core_close(&
+caught        rv2: Enter on a later cell shows the first   | tests/test_sql_editor.c:362: CHECK(sql_key(&e, KEY_ENTER) == 1 && e.buf != rb && text_len(e.buf->text) == 50) 
+96 of 96 caught
