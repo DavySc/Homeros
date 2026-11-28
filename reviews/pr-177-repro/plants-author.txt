@@ -1,0 +1,6 @@
+lsp: tokens: an error answer clears them~test TESTS=lsp~~src/lsp/lsp.c~	if (arr < 0) return;¶	clear(&d->tok);~	clear(&d->tok);¶	if (arr < 0) return;
+lsp: tokens: not asked again on a refresh~test TESTS=lsp~~src/lsp/lsp.c~		if (is(m, meth, "workspace/semanticTokens/refresh"))¶			for (LspDoc *d = s->docs; d; d = d->link) cancel(d, &d->tokid), loop_timer(retoken, d, 200);¶~
+lsp: tokens: each refresh of a burst asked for at once~test TESTS=lsp~~src/lsp/lsp.c~cancel(d, &d->tokid), loop_timer(retoken, d, 200);~tokens(d);
+lsp: tokens: a refresh's wait outlives its buffer~test TESTS=lsp~~src/lsp/lsp.c~	loop_timer(retoken, d, -1);¶~
+lsp: tokens: a restarted server's legend added to the old one~test TESTS=lsp~~src/lsp/lsp.c~	s->ready = s->ntypes = 0;~	s->ready = 0;
+lsp: tokens: an answered request cancelled again~test TESTS=lsp~~src/lsp/lsp.c~		if (d->tokid == rid) {¶			d->tokid = 0;~		if (d->tokid == rid) {
