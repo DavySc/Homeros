@@ -28,6 +28,20 @@ static void key(unsigned char f, char *k)
 	else sprintf(k, "CDD6F4/%d", vs);
 }
 
+/* the faces of text[0, n) into got, from a fresh Syntax: the CPU time,
+   least of 5 tries by the caller (a busy machine only adds time) */
+static double read_ms(size_t n)
+{
+	clock_t c0 = clock();
+	Text *t = text_new(text, n);
+	Syntax *s = syntax_open("x.lean", t);
+	size_t r1, r2;
+	while (syntax_update(s, t, NULL, &r1, &r2) == 2) ;
+	syntax_faces(s, 0, n, got);
+	syntax_free(s), text_free(t);
+	return (double)(clock() - c0) * 1e3 / CLOCKS_PER_SEC;
+}
+
 int main(int argc, char **argv)
 {
 	const char *path = "tests/test_syntax_lean.txt";
@@ -81,33 +95,39 @@ int main(int argc, char **argv)
 		text_free(t);
 	}
 	fclose(in);
-	/* Long lines that read again from each position: 1,200 backticks in a
-	   comment (the closer's search for each run's length), a line of
-	   comments each of 16 links' [ (each [ searches to the line's end),
-	   trace[ and def { (each searches for its ] or }), short comments (each
-	   finds the line's end) and a doc comment of blanks (each position's
-	   \s*).  Without the
-	   line's budget and the remembered runs, a second or more.  The
-	   backticks' line passes on the state it found, as VS Code's past its
-	   time limit, so the /- before them does not deepen the comment and x
-	   is code. */
+	/* A line past its budget passes on the state it found, as VS Code's
+	   past its time limit, so the /- before its backticks does not deepen
+	   the comment and x is code */
 	n = (size_t)sprintf(text, "/--\n/- %1200s\n-/\nx\n", "");
 	for (size_t i = 7; i < 1207; i++) text[i] = '`';
-	size_t x = n - 2;
-	for (const char *const *w = (const char *const[]){ "", "/-[a[a[a[a[a[a[a[a[a[a[a[a[a[a[a[a-/", "", "trace[", "", "def {", "", "/-!-/", "/--", " ", NULL }; *w; w += 2) {
-		n += (size_t)sprintf(text + n, "%s", w[0]);
-		for (size_t e = n + 19900; n < e; ) n += (size_t)sprintf(text + n, "%s", w[1]);
-		text[n++] = '\n';
+	CHECK(read_ms(n) >= 0 && got[n - 2] == FACE_NONE);
+	/* Long lines that read again from each position: backticks in a
+	   comment (the closer's search for each run's length), comments each
+	   of 16 links' [ (each [ searches to the line's end), trace[ and def {
+	   (each searches for its ] or }), short comments (each finds the
+	   line's end) and a doc comment of blanks (each position's \s*).
+	   Without the line's budget and the remembered runs, a second or more
+	   at 19,900 bytes.  Each line 4 times as long must take less than 8
+	   times as long, a ratio on one runner, whose speed cancels (a bound in
+	   ms let a plant through on a fast runner, as Org's did, PR 127) */
+	static const struct { const char *pre, *w; size_t len; } ln[] = {
+		{ "/-- ", "`", 300 }, { "", "/-[a[a[a[a[a[a[a[a[a[a[a[a[a[a[a[a-/", 4975 }, { "", "trace[", 4975 },
+		{ "", "def {", 4975 }, { "", "/-!-/", 4975 }, { "/--", " ", 4000 },
+	};
+	double worst = 0;
+	for (size_t i = 0; i < sizeof ln / sizeof *ln; i++) {
+		double t[2] = { 1e9, 1e9 };
+		for (int k = 0; k < 10; k++) {
+			n = (size_t)sprintf(text, "%s", ln[i].pre);
+			for (size_t e = n + ln[i].len * (k % 2 ? 4 : 1); n < e; ) n += (size_t)sprintf(text + n, "%s", ln[i].w);
+			text[n++] = '\n';
+			double ms = read_ms(n);
+			if (ms < t[k % 2]) t[k % 2] = ms;
+		}
+		if (t[1] / t[0] > worst) worst = t[1] / t[0];
+		if (t[1] >= 8 * t[0]) fprintf(stderr, "a line of %s: %.2f ms, 4 times as long %.2f ms\n", ln[i].w, t[0], t[1]);
 	}
-	clock_t c0 = clock();
-	Text *t = text_new(text, n);
-	Syntax *s = syntax_open("x.lean", t);
-	size_t r1, r2;
-	while (syntax_update(s, t, NULL, &r1, &r2) == 2) ;
-	syntax_faces(s, 0, n, got);
-	double ms = (double)(clock() - c0) * 1e3 / CLOCKS_PER_SEC;
-	syntax_free(s), text_free(t);
-	printf("test_syntax_lean: %zu of %zu bytes in %zu of %zu cases differ from VS Code; long lines in %.1f ms\n", bad, bytes, badcase, ncase, ms);
-	CHECK(ncase && !bad && ms < 300 && got[x] == FACE_NONE);
+	printf("test_syntax_lean: %zu of %zu bytes in %zu of %zu cases differ from VS Code; a long line 4 times as long at most %.1f times the time\n", bad, bytes, badcase, ncase, worst);
+	CHECK(ncase && !bad && worst < 8);
 	return 0;
 }
