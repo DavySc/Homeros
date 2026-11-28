@@ -4,7 +4,7 @@ name: vs-trace
 on:
   push:
     branches: [claude/project-thread-l4spyq]
-    paths: ['vs/**', '.github/workflows/vs-trace.yml']
+    paths: ['vs/trace.ps1', 'vs/dte.ps1', '.github/workflows/vs-trace.yml']
 permissions:
   contents: write
 concurrency:
