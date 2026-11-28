@@ -1,0 +1,4 @@
+#+begin_src c
+#+CAPTION[x y]: z
+int x;
+#+end_src

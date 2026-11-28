@@ -1,0 +1,3 @@
+#+begin_example
+#+CAPTION[x y]: z
+* h

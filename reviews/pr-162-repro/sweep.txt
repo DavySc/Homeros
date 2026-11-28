@@ -1,0 +1,2 @@
+f {'fontification-messages-old': 0, 'fontification-messages-new': 0, 'texts': 30000, 'old-error': 1, 'new-error': 1}
+s {'fontification-messages-old': 0, 'fontification-messages-new': 0, 'texts': 30000, 'old-error': 0, 'new-error': 0}

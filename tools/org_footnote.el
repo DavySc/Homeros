@@ -1,5 +1,10 @@
 ;;; -*- lexical-binding: t -*-
-;; the footnote advice tools/org_faces.el and tools/org_show.el share
+;; the advice tools/org_faces.el and tools/org_show.el share
+;; Org's own parser fails on some texts (a CAPTION[...] with a blank inside
+;; its brackets, left without an element), and its block fontifier hides the
+;; error in a message and leaves the buffer half coloured: let it reach the
+;; caller, which prints !error (seed 45599443883, t01403)
+(advice-add 'org-fontify-meta-lines-and-blocks :override #'org-fontify-meta-lines-and-blocks-1)
 ;; org-activate-footnote-links returns add-text-properties' value: nil for a
 ;; reference inside an earlier one's span, and font-lock stops looking for
 ;; footnotes in the whole buffer there (a live Emacs only in its chunk);

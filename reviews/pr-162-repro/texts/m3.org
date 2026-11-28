@@ -1,0 +1,4 @@
+#+BEGIN_example python
+#+CAPTION[x y]: z
+a
+* h
