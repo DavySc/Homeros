@@ -72,6 +72,25 @@ enum { LSP_HOVER, LSP_NASK };
 void        lsp_ask(LspDoc *d, int kind, size_t pos);
 const char *lsp_answer(const LspDoc *d, int kind);
 
+/* Places a server names, as Neovim's quickfix entries
+   (locations_to_items, symbols_to_items): the file, the line from 0 and
+   the byte in it, and the text: the line's, or "[Kind] name" for a
+   symbol.  line SIZE_MAX: the file alone (clangd's switchSourceHeader). */
+typedef struct { char *path, *text; size_t line, col; } LspLoc;
+/* n -1: no answer: an error (v->text says it as Neovim's handlers do,
+   "server: code: message") or the server died (v NULL).  v is freed
+   after fn. */
+typedef void (*LspLocFn)(void *ctx, const LspLoc *v, int n);
+/* method's answer about byte pos of d's text (textDocument/definition,
+   references, implementation, typeDefinition; documentSymbol about the
+   file; clangd's textDocument/switchSourceHeader): locations sorted by
+   file and position as Neovim sorts them; symbols in the server's order,
+   their children after them; tag: places in the server's order, as
+   vim.lsp.tagfunc takes them for C-]; references only from a list.  A
+   file's lines come from its open document, else from the file (none if
+   it cannot be read).  0 asked, -1 no server. */
+int lsp_locs(LspDoc *d, const char *method, size_t pos, int tag, LspLocFn fn, void *ctx);
+
 /* When something shown changes (a reply comes in, the server dies) it
    sets core_changed (core.h). */
 
@@ -103,6 +122,9 @@ extern void (*lsp_tap)(int out, const char *msg, size_t n);
 typedef void (*LspRawFn)(void *ctx, const char *msg, size_t n);
 int  lsp_send(const char *uri, const char *method, const char *params, size_t n, LspRawFn fn, void *ctx);
 const char *lsp_uri(const LspDoc *d);    /* d's file:// URI */
+/* vim.uri_to_fname(): uri's file, percent-decoded, file:///C:/x as C:/x,
+   without its #fragment; malloc'd, NULL for another scheme */
+char *lsp_fname(const char *uri);
 /* The answer to initialize of d's Lean server, whole (n bytes), NULL before
    it came: a bridge opened later has missed it on lsp_tap (PR 43 review). */
 const char *lsp_init(const LspDoc *d, size_t *n);

@@ -4,7 +4,9 @@
    normal_cmd() would have with all its keys read. */
 #include <string.h>
 #include <stdio.h>
+#include <limits.h>
 #include "k.h"
+#include "lsp.h"
 #include "tools.h"
 #include "uni.h"
 
@@ -584,6 +586,47 @@ static void nv_object(Cmdarg *cap)
 	set_curswant = 1;
 }
 
+/* A diagnostic's line, the last for one past them, and column, as
+   get_diagnostics() clamps them; and where vim.diagnostic keeps it (its
+   location extmark): there, at most at the line's last character */
+static Pos diag_raw(size_t a)
+{
+	long l = (long)text_line_of(B->text, a);
+	Pos p = { l < nlines() ? l : nlines() - 1, (long)(a - text_line_start(B->text, (size_t)l)), 0 };
+	return p;
+}
+
+static Pos diag_pos(size_t a)
+{
+	Pos p = diag_raw(a);
+	long len = ml_len(p.lnum);
+	if (p.col > len - 1) p.col = len > 0 ? len - 1 : 0;
+	return p;
+}
+
+/* next_diagnostic() from raw position p: from p's line on (backward: back),
+   wrapping past the ends, the first line with diagnostics after p (on p's
+   own line: after p's column, else after a whole turn) gives the one with
+   the lowest column (backward: highest; ties to the first (last) given).
+   One pass: each diagnostic's distance in lines, then its column.  far
+   (not wrapping): the farthest instead, where taking the next until none
+   is left ends */
+static long next_diag(const LspDiag *v, int n, Pos p, int fwd, int wrap, int far)
+{
+	long lc = nlines(), best = -1, bi = 0, bc = 0;
+	for (int k = 0; k < n; k++) {
+		int j = fwd ? k : n - 1 - k;
+		Pos d = diag_pos(v[j].a);
+		long i = fwd ? d.lnum - p.lnum : p.lnum - d.lnum, c = fwd ? d.col : -d.col;
+		if (i < 0 || (i == 0 && c <= (fwd ? p.col : -p.col))) {
+			if (!wrap) continue;
+			i += lc;
+		}
+		if (best < 0 || (far ? i > bi || (i == bi && c > bc) : i < bi || (i == bi && c < bc))) best = j, bi = i, bc = c;
+	}
+	return best;
+}
+
 static void nv_brackets(Cmdarg *cap)
 {
 	Oparg *oap = cap->oap;
@@ -626,6 +669,25 @@ static void nv_brackets(Cmdarg *cap)
 	if (cap->nchar == 'q') {
 		/* Neovim 0.12's default mappings "[q" and "]q": :cprevious, :cnext */
 		if (!checkclearopq(oap)) tools_qf(E, cap->arg == FORWARD ? cap->count1 : -cap->count1);
+		return;
+	}
+	if (cap->nchar == 'd' || cap->nchar == 'D') {
+		/* Neovim 0.12's default mappings: vim.diagnostic.jump() count
+		   diagnostics on ("]d", "[d"), or to the last or first without
+		   wrapping ("]D", "[D") */
+		if (checkclearopq(oap)) return;
+		int n, fwd = cap->arg == FORWARD, wrap = cap->nchar == 'd';
+		const LspDiag *v = lsp_diags(B->lsp, &n);
+		long k = wrap ? cap->count1 : 1, to, got = -1;
+		Pos p = cur();
+		/* each step from the last one's raw position (vim.diagnostic.jump()'s
+		   opts.pos) */
+		while (k-- && (to = next_diag(v, n, p, fwd, wrap, !wrap)) >= 0) got = to, p = diag_raw(v[to].a);
+		if (got < 0) { core_msg(E, "No more valid diagnostics to move to"); return; }
+		setpcmark();
+		setcur(diag_pos(v[got].a));
+		check_cursor_col();
+		set_curswant = 1;
 		return;
 	}
 	if (cap->nchar == ' ') {
@@ -1044,14 +1106,15 @@ static void nv_next(Cmdarg *cap)
 	}
 }
 
-/* * # g* g#: the keyword under or after the cursor, else the non-blank
-   string (find_ident_at_pos() with FIND_IDENT|FIND_STRING) */
-static void nv_ident(Cmdarg *cap)
+/* find_ident_at_pos(): the keyword under or after the cursor, else (str:
+   FIND_STRING) the non-blank string; its start (-1 none) and end *z, *i 0
+   for a keyword */
+static long find_ident(int str, long *z, int *ip)
 {
-	int g = cap->cmdchar == 'g', c = g ? cap->nchar : cap->cmdchar, i, cls = 0;
+	int i, cls = 0;
 	long l = (long)W->line, n = ml_len(l), col = 0;
 	const char *s = ml_get(l);
-	for (i = 0; i < 2; i++) {
+	for (i = 0; i < 1 + str; i++) {
 		for (col = (long)W->col; col < n; col += clen(s, n, col))
 			if ((cls = cls_of(gchar((Pos){ l, col, 0 }))) && (i == 1 || cls != 1)) break;
 		cls = col < n ? cls_of(gchar((Pos){ l, col, 0 })) : 0;
@@ -1063,10 +1126,23 @@ static void nv_ident(Cmdarg *cap)
 		if (cls > 2) cls = 2;
 		if (cls == 2) break;
 	}
-	if (col >= n) { core_msg(E, "E348: No string under cursor"); clearop(cap->oap); return; }
-	long z = col;
+	if (col >= n) return -1;
 	int first = cls_of(gchar((Pos){ l, col, 0 }));
-	while (z < n && (i == 0 ? cls_of(gchar((Pos){ l, z, 0 })) == first : cls_of(gchar((Pos){ l, z, 0 })) != 0)) z += clen(s, n, z);
+	for (*z = col; *z < n && (i == 0 ? cls_of(gchar((Pos){ l, *z, 0 })) == first : cls_of(gchar((Pos){ l, *z, 0 })) != 0); )
+		*z += clen(s, n, *z);
+	*ip = i;
+	return col;
+}
+
+/* * # g* g#: the keyword under or after the cursor, else the non-blank
+   string (find_ident_at_pos() with FIND_IDENT|FIND_STRING) */
+static void nv_ident(Cmdarg *cap)
+{
+	int g = cap->cmdchar == 'g', c = g ? cap->nchar : cap->cmdchar, i;
+	long l = (long)W->line, z, col = find_ident(1, &z, &i);
+	const char *s = ml_get(l);
+	if (col < 0) { core_msg(E, "E348: No string under cursor"); clearop(cap->oap); return; }
+	int first = cls_of(gchar((Pos){ l, col, 0 }));
 	setpcmark();   /* first, so "*``" puts the cursor back */
 	W->col = (size_t)col;
 	char buf[sizeof E->cmd * 2 + 8], *p = buf;
@@ -1079,6 +1155,19 @@ static void nv_ident(Cmdarg *cap)
 	*p = 0;
 	no_smartcase = 1;
 	normal_search(cap, c == '*' ? '/' : '?', buf, 0, 0, NULL);
+}
+
+/* CTRL-]: ":tag" on the keyword under or after the cursor, which Neovim
+   0.12 answers with vim.lsp.tagfunc */
+static void nv_tagjump(Cmdarg *cap)
+{
+	long z, col;
+	int i;
+	if (checkclearopq(cap->oap)) return;
+	if ((col = find_ident(0, &z, &i)) < 0) { core_msg(E, "E349: No identifier under cursor"); clearop(cap->oap); return; }
+	char t[256];
+	snprintf(t, sizeof t, "%.*s", (int)(z - col), ml_get((long)W->line) + col);
+	lsp_go("textDocument/definition", t);
 }
 
 /* ---- operators ---- */
@@ -1470,9 +1559,8 @@ static void nv_pcmark(Cmdarg *cap)
 		if (--w->jumpidx + n < 0) { clearopbeep(cap->oap); return; }
 	}
 	w->jumpidx += (int)n;
-	/* another buffer's entry needs the core to switch without a jump:
-	   not built, it beeps */
-	if (w->jump[w->jumpidx].buf != B) { clearopbeep(cap->oap); return; }
+	/* another buffer's entry: buflist_getfile() without a jump */
+	if (core_buf_enter(E, w->jump[w->jumpidx].buf)) { clearop(cap->oap); return; }
 	Mark m = w->jump[w->jumpidx].m;
 	/* mark_check() on the way (nv_mark_move_to(), mark_move_to()) */
 	if (m.line >= (size_t)nlines()) { core_msg(E, "E19: Mark has invalid line number"); clearop(cap->oap); }
@@ -1498,7 +1586,7 @@ static int known(int c)
 {
 	return has(" \"#$%&'()*+,-./0:;<>?@ABCDEFGHIJLMNOPQRSTUWXYV[]^_`abcdefghijklmnopqrstuvwxyz{|}~", c) || c == 1 || c == 3 || c == 9 || c == 15
 	       || c == 8 || c == 10 || c == 13 || c == 14 || c == 16 || c == 22 || c == 24 || c == KEY_CTRL_R
-	       || c == 4 || c == 12 || c == 21 || c == 6 || c == 2 || c == 5 || c == 25 || c == 23
+	       || c == 4 || c == 12 || c == 21 || c == 6 || c == 2 || c == 5 || c == 25 || c == 23 || c == 29
 	       || c == KEY_ESC || c == KEY_BS || c == KEY_UP || c == KEY_DOWN || c == KEY_LEFT || c == KEY_RIGHT || c == KEY_DEL;
 }
 
@@ -1570,6 +1658,8 @@ static void execute(Cmdarg *cap)
 	case 'm': if (!checkclearop(cap->oap) && !setmark(cap->nchar)) clearopbeep(cap->oap); break;   /* nv_mark() */
 	case '\'': cap->arg = 1; nv_gomark(cap); break;
 	case '`': cap->arg = 0; nv_gomark(cap); break;
+	/* C-]: Neovim sets 'tagfunc' to the language server's definitions */
+	case 29: nv_tagjump(cap); break;
 	case 9: nv_pcmark(cap); break;
 	case 15: cap->count1 = -cap->count1; nv_pcmark(cap); break;   /* nv_ctrlo() */
 	}

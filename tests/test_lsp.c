@@ -1708,6 +1708,20 @@ static void semtok(const char *log)
 
 static void units(void)
 {
+	/* lsp_fname() as vim.uri_to_fname() (Neovim 0.12.6, run): %XX
+	   decoded, a #fragment dropped, %23 a '#', a bad %XX kept; a drive's
+	   URI (a letter, encoded or not) without the slash before it
+	   (Neovim's backslashes aside, which Windows takes as slashes);
+	   another scheme no file */
+	static const char *const uri[][2] = { { "file:///tmp/%e2%82%ac.h", "/tmp/\xe2\x82\xac.h" }, { "file:///tmp/z.h#L3", "/tmp/z.h" },
+		{ "file:///tmp/a%23b.h", "/tmp/a#b.h" }, { "file:///tmp/a%2", "/tmp/a%2" }, { "file:///C:/a%20b/x.h", "C:/a b/x.h" },
+		{ "file:///%41:/x.h", "A:/x.h" }, { "file:///1:/x.h", "/1:/x.h" } };
+	for (size_t i = 0; i < sizeof uri / sizeof *uri; i++) {
+		char *f = lsp_fname(uri[i][0]);
+		CHECK(f && !strcmp(f, uri[i][1]));
+		free(f);
+	}
+	CHECK(!lsp_fname("https://x/y"));
 	/* the kernel against whole code points, on random valid and invalid bytes */
 	unsigned char s[64];
 	for (int r = 0; r < 200000; r++) {

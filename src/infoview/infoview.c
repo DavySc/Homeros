@@ -332,14 +332,8 @@ static int visit(const char *uri)
 	Buf *b = buf_of(uri);
 	if (b == ed->buf) return 0;
 	if (b) return core_buf_goto(ed, b->nr);
-	if (strncmp(uri, "file://", 7)) return -1;
-	char *path = malloc(strlen(uri)), *d = path;
+	char *path = lsp_fname(uri);
 	if (!path) return -1;
-	for (const char *s = uri + 7; *s; s++) {
-		long c = *s == '%' && s[1] && s[2] ? j_hex4((const char[]){ '0', '0', s[1], s[2] }, 4, 0) : -1;
-		if (c >= 0) { *d++ = (char)c; s += 2; } else *d++ = *s;
-	}
-	*d = 0;
 	int r = core_edit_file(ed, path, 0);
 	free(path);
 	return r;

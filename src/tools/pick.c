@@ -392,9 +392,9 @@ static void grep(void)
 	if (spawn(argv) < 0) { P.done = 1; core_msg(P.e, "No supported finder found: `rg`"); }
 }
 
-static const char *path_rel(const char *f, size_t *n)
+const char *path_rel(const char *cwd, size_t k, const char *f, size_t *n)
 {
-	if (*n > P.cwdlen && !memcmp(f, P.cwd, P.cwdlen) && sep(f[P.cwdlen])) { *n -= P.cwdlen + 1; return f + P.cwdlen + 1; }
+	if (*n > k && !memcmp(f, cwd, k) && sep(f[k])) { *n -= k + 1; return f + k + 1; }
 	return f;
 }
 
@@ -774,7 +774,7 @@ static void pick_draw(Editor *e, Grid *g)
 		}
 		/* format "file": the directory dimmed, then the name */
 		size_t fn = it->flen ? it->flen : it->tlen;
-		const char *f = path_rel(P.a + (it->flen ? it->file : it->text), &fn);
+		const char *f = path_rel(P.cwd, P.cwdlen, P.a + (it->flen ? it->file : it->text), &fn);
 		size_t d = fn;
 		while (d && f[d - 1] != '/') d--;
 		c = grid_puts(g, row, c + 1, end, f, d, a ? a : ATTR_DIM, FACE_NONE);

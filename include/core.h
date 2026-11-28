@@ -252,6 +252,9 @@ void core_goto(Editor *e, size_t line, size_t col);
    where it last was in that buffer.  0 ok, -1 not (msg set). */
 int  core_edit_file(Editor *e, const char *path, int force);
 int  core_buf_goto(Editor *e, int nr);        /* :b N */
+/* b current without a jump (buflist_getfile() without GETF_SETMARK): CTRL-O
+   and CTRL-I to another buffer's entry.  0 ok, -1 not (msg set). */
+int  core_buf_enter(Editor *e, Buf *b);
 Buf *core_buf_find(Editor *e, int nr);        /* listed buffer nr, NULL if none */
 int  core_buf_next(Editor *e, long n);        /* :bn ]b (n > 0), :bp [b (n < 0) */
 /* CTRL-^: the alternate buffer, E23 if none.  Not core_buf_goto: a buffer

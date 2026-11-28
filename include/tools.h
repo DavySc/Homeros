@@ -7,6 +7,7 @@
 #ifndef TOOLS_H
 #define TOOLS_H
 #include "grid.h"
+#include "lsp.h"
 struct Editor;
 struct Buf;
 
@@ -52,6 +53,12 @@ const char *tools_make_last(void);
 /* ]q (n > 0), [q (n < 0): the quickfix error n entries on, as :cnext and
    :cprevious; E42 without errors, E553 past the end.  0 ok, -1 msg set. */
 int  tools_qf(struct Editor *e, long n);
+/* What a language server's lsp_locs gave (v, n > 0): with list 0 one
+   place opens in the current window, the '' mark left behind
+   (vim.lsp.buf's get_locations); else they become the quickfix list,
+   shown in :make's window, which becomes current (setqflist() and
+   botright copen), the names relative to the current directory. */
+void tools_locs(struct Editor *e, const LspLoc *v, int n, int list);
 /* BufWritePost: core_write calls it after each write. */
 void tools_written(struct Editor *e, struct Buf *b);
 #endif

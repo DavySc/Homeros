@@ -9,6 +9,7 @@
    went on, at a key every 250 ms (src/lsp/bench/stale.c), against the
    design's 2 s limit.  Replies are not mapped (LspSync "mapreply" fails):
    one is shown only while the text is as it was when asked. */
+#include <ctype.h>
 #include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -254,6 +255,9 @@ static void start(Srv *s)
 	   status line (lualine's lsp_status) */
 	str_lit(&o, "\",\"capabilities\":{\"textDocument\":{\"publishDiagnostics\":{\"versionSupport\":true},"
 	        "\"hover\":{\"contentFormat\":[\"markdown\",\"plaintext\"]},\"synchronization\":{\"didSave\":true},"
+	        /* Neovim's: links (a definition's name, not its whole range) and nested symbols */
+	        "\"definition\":{\"linkSupport\":true},\"typeDefinition\":{\"linkSupport\":true},\"implementation\":{\"linkSupport\":true},"
+	        "\"documentSymbol\":{\"hierarchicalDocumentSymbolSupport\":true},"
 	        "\"semanticTokens\":{\"requests\":{\"full\":true},\"tokenTypes\":[],\"tokenModifiers\":[],\"formats\":[\"relative\"]}},"
 	        "\"workspace\":{\"semanticTokens\":{\"refreshSupport\":true}},\"window\":{\"workDoneProgress\":true},\"general\":{\"positionEncodings\":[\"utf-16\"]},\"lean\":{\"incrementalDiagnosticSupport\":true,\"silentDiagnosticSupport\":true}}");
 	if (s->def->lean) str_lit(&o, ",\"initializationOptions\":{\"hasWidgets\":true}");
@@ -841,11 +845,18 @@ const char *lsp_name(const LspDoc *d, int *work)
 const char *lsp_uri(const LspDoc *d) { return d ? d->uri : NULL; }
 const char *lsp_init(const LspDoc *d, size_t *n) { *n = d ? d->s->init.n : 0; return *n ? d->s->init.s : NULL; }
 
-int lsp_send(const char *u, const char *method, const char *params, size_t n, LspRawFn fn, void *ctx)
+/* the open document of uri u, or NULL */
+static LspDoc *doc_of(const char *u)
 {
 	LspDoc *d = NULL;
 	for (Srv *s = srvs; s && !d; s = s->link)
 		for (d = s->docs; d && strcmp(d->uri, u); d = d->link) ;
+	return d;
+}
+
+int lsp_send(const char *u, const char *method, const char *params, size_t n, LspRawFn fn, void *ctx)
+{
+	LspDoc *d = doc_of(u);
 	Raw *r = fn ? malloc(sizeof *r) : NULL;
 	if (!d || d->s->proc < 0 || (fn && !r)) { free(r); return -1; }
 	lsp_flush(d);
@@ -863,6 +874,177 @@ int lsp_send(const char *u, const char *method, const char *params, size_t n, Ls
 	str_lit(&o, "}");
 	send(d->s);
 	return 0;
+}
+
+/* --- places (lsp_locs) ------------------------------------------------------- */
+
+typedef struct { LspLocFn fn; void *ctx; char *uri; int sort, one; } Want;
+typedef struct { char *uri, *text; Pos p; } Hit;
+static Hit *hits;
+static int nhits, caphits;
+
+char *lsp_fname(const char *u)
+{
+	if (strncmp(u, "file://", 7)) return NULL;
+	u += 7;
+	char *f = malloc(strlen(u) + 1), *d = f;
+	static const char hex[] = "0123456789ABCDEF0123456789abcdef";
+	for (; f && *u && *u != '#'; u++) {
+		const char *h = u[0] == '%' && u[1] && u[2] ? strchr(hex, u[1]) : NULL, *l = h ? strchr(hex, u[2]) : NULL;
+		if (l) { *d++ = (char)((h - hex) % 16 * 16 + (l - hex) % 16); u += 2; }
+		else *d++ = *u;
+	}
+	if (f) *d = 0;
+	/* is_windows_file_uri() on the decoded URI: a letter and ':' after the
+	   third slash, which goes */
+	if (f && f[0] == '/' && isalpha((unsigned char)f[1]) && f[2] == ':') memmove(f, f + 1, strlen(f));
+	return f;
+}
+
+/* A place in file uri (taken) at p (line -1: the file alone), text taken */
+static void hit(char *uri, Pos p, char *text)
+{
+	if (nhits == caphits) {
+		int c = caphits ? 2 * caphits : 16;
+		Hit *h = realloc(hits, (size_t)c * sizeof *h);
+		if (h) hits = h, caphits = c;
+	}
+	if (uri && nhits < caphits) hits[nhits++] = (Hit){ uri, text, p };
+	else free(uri), free(text);
+}
+
+static Pos start_of(const char *m, int range) { return pos(m, json_get(m, tk, range, "start")); }
+
+/* symbols_to_items(): DocumentSymbol (in uri's file, its children after
+   it) or SymbolInformation, as "[Kind] name in container (deprecated)" */
+static void symbols(const char *m, int arr, const char *uri)
+{
+	static const char *const kind[] = { "File", "Module", "Namespace", "Package", "Class", "Method",
+		"Property", "Field", "Constructor", "Enum", "Interface", "Function", "Variable", "Constant",
+		"String", "Number", "Boolean", "Array", "Object", "Key", "Null", "EnumMember", "Struct",
+		"Event", "Operator", "TypeParameter" };
+	for (int k = 0, e; (e = json_at(tk, arr, k)) >= 0; k++) {
+		int loc = json_get(m, tk, e, "location"), sel = json_get(m, tk, e, "selectionRange"), tags = json_get(m, tk, e, "tags");
+		long kd = json_int(m, tk, json_get(m, tk, e, "kind"));
+		char *name = str(m, json_get(m, tk, e, "name")), *in = str(m, json_get(m, tk, e, "containerName"));
+		int dep = json_true(m, tk, json_get(m, tk, e, "deprecated"));
+		for (int t = 0, x; (x = json_at(tk, tags, t)) >= 0; t++) dep |= json_int(m, tk, x) == 1;   /* SymbolTag.Deprecated */
+		Str t = { 0 };
+		str_addf(&t, "[%s] %s%s%s%s", kd >= 1 && kd <= 26 ? kind[kd - 1] : "Unknown", name ? name : "",
+		         in ? " in " : "", in ? in : "", dep ? " (deprecated)" : "");
+		free(name); free(in);
+		if (loc >= 0) hit(str(m, json_get(m, tk, loc, "uri")), start_of(m, json_get(m, tk, loc, "range")), t.s);
+		else if (sel >= 0) hit(strdup(uri), start_of(m, sel), t.s);
+		else free(t.s);
+		symbols(m, json_get(m, tk, e, "children"), uri);
+	}
+}
+
+static int hitcmp(const void *x, const void *y)
+{
+	const Hit *a = x, *b = y;
+	int c = strcmp(a->uri, b->uri);
+	return c ? c : before(a->p, b->p) ? -1 : before(b->p, a->p);
+}
+
+static void located(void *ctx, const char *m, size_t n)
+{
+	Want *w = ctx;
+	int ok = m && json_parse(m, n, &tk, &ntk) >= 0, r = ok ? json_get(m, tk, 0, "result") : -1, nv = -1, e = -1, wk;
+	LspLoc *v = NULL, err = { 0 };
+	nhits = 0;
+	/* an error as Neovim's handlers say it: the server's name, the code,
+	   the message */
+	if (ok && r < 0 && (e = json_get(m, tk, 0, "error")) >= 0) {
+		Str t = { 0 };
+		int c = json_get(m, tk, e, "code");
+		char *s = str(m, json_get(m, tk, e, "message"));
+		const char *name = lsp_name(doc_of(w->uri), &wk);
+		str_addf(&t, "%s: %.*s: %s", name ? name : "", c < 0 ? 0 : (int)(tk[c].z - tk[c].a), c < 0 ? "" : m + tk[c].a, s ? s : "");
+		free(s);
+		err.text = t.s;
+	}
+	if (r >= 0) {
+		/* a Location, Location[], LocationLink[], a symbol list, or
+		   switchSourceHeader's URI */
+		int one = tk[r].type == 'o', e0 = one ? r : json_at(tk, r, 0), sym = e0 >= 0 && json_get(m, tk, e0, "name") >= 0;
+		if (tk[r].type == 's') hit(str(m, r), (Pos){ (size_t)-1, 0 }, NULL);
+		else if (sym) symbols(m, r, w->uri);
+		/* a Location alone: none for references (vim.lsp.buf.references()
+		   takes a list) */
+		else for (int k = 0, e; (e = one ? (k || !w->one ? -1 : r) : json_at(tk, r, k)) >= 0; k++) {
+			int u = json_get(m, tk, e, "uri"), g = json_get(m, tk, e, "range");
+			if (u < 0) u = json_get(m, tk, e, "targetUri"), g = json_get(m, tk, e, "targetSelectionRange");
+			if (u >= 0 && g >= 0) hit(str(m, u), start_of(m, g), NULL);
+		}
+		/* locations_to_items(): by URI, then position; symbols as given,
+		   and a tag's (vim.lsp.tagfunc's) */
+		if (!sym && w->sort && nhits > 1) qsort(hits, (size_t)nhits, sizeof *hits, hitcmp);
+		v = calloc((size_t)nhits + 1, sizeof *v);
+		nv = v ? 0 : -1;
+	}
+	/* each file read once (get_lines()): an open document's text, else the
+	   file as saved */
+	char *data = NULL, *at = NULL;
+	size_t dn = 0;
+	const LspDoc *d = NULL;
+	for (int i = 0; v && i < nhits; i++) {
+		Hit *h = &hits[i];
+		char *f = lsp_fname(h->uri);
+		if (!f) { free(h->text); free(h->uri); continue; }
+		if (!at || strcmp(at, h->uri)) {
+			free(data); data = NULL; dn = 0;
+			d = doc_of(h->uri);
+			FileId id;
+			if (!d && file_load(f, &data, &dn, &id)) data = NULL, dn = 0;
+		}
+		free(at);
+		at = h->uri;
+		LspLoc *l = &v[nv++];
+		*l = (LspLoc){ f, h->text, h->p.l, 0 };
+		if (h->p.l == (size_t)-1) continue;
+		const unsigned char *b = (const unsigned char *)"";
+		size_t len = 0;
+		if (d && h->p.l < text_lines(d->t)) {
+			size_t a = text_line_start(d->t, h->p.l);
+			len = text_line_start(d->t, h->p.l + 1) - 1 - a;
+			b = bytes(d->t, a, &len);
+		} else if (dn) {   /* a file not open, read (unreadable: no text) */
+			size_t a = 0;
+			for (size_t k = 0; k < h->p.l && a < dn; k++) { char *e = memchr(data + a, '\n', dn - a); a = e ? (size_t)(e - data) + 1 : dn; }
+			char *e = a < dn ? memchr(data + a, '\n', dn - a) : NULL;
+			b = (const unsigned char *)data + a;
+			len = (e ? (size_t)(e - data) : dn) - a;
+		}
+		/* str_byteindex(..., false): a unit inside a character is its end */
+		l->col = lsp_u16_byte(b, len, h->p.c);
+		if (l->col < len && lsp_u16(b, l->col) != h->p.c) l->col = lsp_u16_byte(b, len, h->p.c + 1);
+		if (!l->text && (l->text = malloc(len + 1))) { memcpy(l->text, b, len); l->text[len] = 0; }
+	}
+	free(at); free(data);
+	if (!v) for (int i = 0; i < nhits; i++) { free(hits[i].uri); free(hits[i].text); }
+	w->fn(w->ctx, err.text ? &err : v, nv);
+	for (int i = 0; i < nv; i++) { free(v[i].path); free(v[i].text); }
+	free(v); free(err.text); free(w->uri); free(w);
+}
+
+int lsp_locs(LspDoc *d, const char *method, size_t pos, int tag, LspLocFn fn, void *ctx)
+{
+	Want *w = d ? malloc(sizeof *w) : NULL;
+	if (!w || !(w->uri = strdup(d->uri))) { free(w); return -1; }
+	w->fn = fn; w->ctx = ctx; w->sort = !tag;
+	w->one = strcmp(method, "textDocument/references") != 0;
+	q.n = 0;
+	if (!strcmp(method, "textDocument/switchSourceHeader")) str_addf(&q, "{\"uri\":\"%s\"}", d->uri);
+	else {
+		str_addf(&q, "{\"textDocument\":{\"uri\":\"%s\"}", d->uri);
+		if (strcmp(method, "textDocument/documentSymbol")) { str_lit(&q, ",\"position\":"); putpos(&q, d->t, pos); }
+		if (!strcmp(method, "textDocument/references")) str_lit(&q, ",\"context\":{\"includeDeclaration\":true}");
+		str_lit(&q, "}");
+	}
+	if (!lsp_send(d->uri, method, q.s, q.n, located, w)) return 0;
+	free(w->uri); free(w);
+	return -1;
 }
 
 /* --- the goals window (lean.nvim's infoview as text, lsp.h) ---------------- */
