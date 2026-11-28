@@ -125,6 +125,10 @@ for l in open(sys.argv[1] + "/tests/plants.txt"):
     done
     # a struct that fits no register comes back as its address: Visual Studio shows only "{...}" for it; subjects/frames.c says what shift(t, 2) is ({1, 2, 3} two more)
     (cd "$b" && printf 'c\nb shift\nc\no\np $ReturnValue\nq\n' | WINEDEBUG=-all timeout 120 "${WINE:-wine}" ./hdbg.exe frames.exe 2>/dev/null | tr -d '\r' | grep -q -x '\$ReturnValue = {3, 4, 5}  (Triple)') || return 1
+    # a program that runs already (tests/stay.c says its process id): the debugger comes, stops it twice (the system's own breakpoint for a debugger that attaches, then a halt), and goes; the program runs on to its own end
+    ${WINCC:-x86_64-w64-mingw32-gcc} -std=c17 -Wall -Wextra -Werror "$src"/tests/stay.c -o "$b/stay.exe" || return 2
+    (cd "$b" && { WINEDEBUG=-all timeout 60 "${WINE:-wine}" ./stay.exe > stay.txt 2>/dev/null & } && for n in 1 2 3 4 5 6 7 8 9 10; do [ -s stay.txt ] || sleep 0.3; done
+     [ "$(printf 'c\nc 300\nq\n' | WINEDEBUG=-all timeout 60 "${WINE:-wine}" ./hdbg.exe -p "$(tr -d '\r' < stay.txt)" 2>/dev/null | tr -d '\r' | grep -c -x "the program's own breakpoint\|halted")" = 2 ] && wait $!; [ $? = 5 ]) || return 1
     # the halt key: Ctrl+C on the console the two share (tests/key.c presses it; tests/console.c keeps it from this check) stops the program, which then runs on to its end without having seen it
     ${WINCC:-x86_64-w64-mingw32-gcc} -std=c17 -Wall -Wextra -Werror "$src"/tests/key.c -o "$b/key.exe" && ${WINCC:-x86_64-w64-mingw32-gcc} -std=c17 -Wall -Wextra -Werror "$src"/tests/console.c -o "$b/console.exe" || return 2
     (cd "$b" && [ "$(printf 'c\nc\nc\n' | WINEDEBUG=-all timeout 120 "${WINE:-wine}" ./console.exe ./hdbg.exe key.exe 2>/dev/null | tr -d '\r' | grep -c -x 'exception 0x40010005\|ended with 0x3')" = 2 ]) || return 1

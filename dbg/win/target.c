@@ -7,6 +7,7 @@ typedef struct { DWORD id; HANDLE handle; } Thread;
 typedef struct { uint64_t addr; uint8_t own; bool in; } Trap;
 struct Target {
   HANDLE process;
+  bool attached;                /* it ran before the debugger came, and runs on when the debugger goes */
   DWORD pid, held;              /* pid: 0 once it has ended. held: the thread whose debug event is not yet continued; 0 after a halt */
   DWORD held_status;            /* what to answer it with */
   DWORD step;                   /* the thread this run steps, or 0 */
@@ -57,7 +58,7 @@ Target *target_open(const char *command_line, uint32_t pid, TargetEvent *first)
   if (made.hProcess) CloseHandle(made.hProcess), CloseHandle(made.hThread);   /* the event's handles serve */
   Target *t = calloc(1, sizeof *t);
   if (!t) abort();
-  *t = (Target){.process = e.u.CreateProcessInfo.hProcess, .pid = e.dwProcessId, .held = e.dwThreadId, .held_status = DBG_CONTINUE};
+  *t = (Target){.attached = !command_line, .process = e.u.CreateProcessInfo.hProcess, .pid = e.dwProcessId, .held = e.dwThreadId, .held_status = DBG_CONTINUE};
   thread_add(t, e.dwThreadId, e.u.CreateProcessInfo.hThread);
   *first = (TargetEvent){.kind = TARGET_MODULE, .thread = e.dwThreadId, .addr = (uintptr_t)e.u.CreateProcessInfo.lpBaseOfImage, .text = module_path(t, e.u.CreateProcessInfo.hFile)};
   return t;
@@ -194,9 +195,12 @@ void target_halt(Target *t)
 
 void target_close(Target *t)
 {
-  DEBUG_EVENT e = {.dwDebugEventCode = t->pid ? 0 : EXIT_PROCESS_DEBUG_EVENT};
-  if (t->pid) TerminateProcess(t->process, 0);
+  bool end = t->pid && !t->attached;
+  DEBUG_EVENT e = {.dwDebugEventCode = end ? 0 : EXIT_PROCESS_DEBUG_EVENT};
+  if (end) TerminateProcess(t->process, 0);
   if (t->held) ContinueDebugEvent(t->pid, t->held, DBG_CONTINUE);
+  else for (uint32_t i = 0; i < t->thread_count; i += 1) ResumeThread(t->threads[i].handle);   /* after a halt */
+  if (t->pid && t->attached) DebugActiveProcessStop(t->pid);
   while (e.dwDebugEventCode != EXIT_PROCESS_DEBUG_EVENT && WaitForDebugEvent(&e, 5000)) ContinueDebugEvent(e.dwProcessId, e.dwThreadId, DBG_CONTINUE);
   free(t->threads), free(t->traps), free(t->text), free(t);
 }

@@ -79,6 +79,7 @@ int main(int argc, char **argv)
     } else if (stopped || (let_go && e.kind == TARGET_LATE && e.thread == thread && (target_halt(t), e.kind = TARGET_STEP, stopped = true))) let_go = false;   /* returned, one instruction on */
   }
   printf("stress_unwind: %u steps: %u frames agree, deepest stack %u, %u modules, %u times ours went on where the system's ended, %u steps waited for other threads, %u times the system's walk was wrong and ours proven\n", done, frames, deepest, module_count, beyond, waits, proven);
+  TerminateProcess(made.hProcess, 0);   /* attached to, it would run on when the target is closed */
   target_close(t);
   return 0;
 }

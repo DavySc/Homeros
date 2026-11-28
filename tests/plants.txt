@@ -1201,3 +1201,8 @@ front | dbg/eval.c | return s.size ? (EvalValue){EVAL_MEMORY, p.type, frame->gp[
 front | dbg/eval.c | return *v = passed(left, rdi_at(r, RDI_TYPE_NODES, RdiType, type)->a, 0, P->frame), v->kind != EVAL_NONE; | return *v = passed(left, rdi_at(r, RDI_TYPE_NODES, RdiType, type)->a, 1, P->frame), v->kind != EVAL_NONE;
 front | dbg/eval.c | return *v = passed(left, rdi_at(r, RDI_TYPE_NODES, RdiType, type)->a, 0, P->frame), v->kind != EVAL_NONE; | return *v = passed(left, rdi_at(r, RDI_TYPE_NODES, RdiType, type)->a, 0, P->frame), true;
 front | dbg/eval.c | if (s.size == 1 \p\p s.size == 2 \p\p s.size == 4 \p\p s.size == 8) return s.form == EVAL_REAL ? (EvalValue){0} : p; | if (s.size) return s.form == EVAL_REAL ? (EvalValue){0} : p;
+
+front | dbg/win/target.c | bool end = t->pid && !t->attached; | bool end = t->pid;
+front | dbg/win/target.c | if (t->pid && t->attached) DebugActiveProcessStop(t->pid); | 
+front | dbg/win/target.c | else for (uint32_t i = 0; i < t->thread_count; i += 1) ResumeThread(t->threads[i].handle);   /* after a halt */ | 
+front | dbg/session.c | open = engine_open(&e, n > sizeof c ? more : NULL, c.count, &ev.stop.thread); | open = engine_open(&e, more, c.count, &ev.stop.thread);

@@ -6,7 +6,7 @@
 #include "queue.h"
 #include "target.h"
 
-enum { SESSION_OPEN,   /* start a program: the command line follows, with its 0 */
+enum { SESSION_OPEN,   /* start a program: the command line follows, with its 0; with none, attach to the process whose id is `count` */
        SESSION_RUN,    /* as engine_run: `how`, `thread`, and `count` breakpoint addresses follow, and then, for as many of
                           them as the sender likes, each one's condition with its 0 (empty: none): the breakpoint stops only
                           where that expression is not 0. Sent only after the stop event of the run before has been taken. */

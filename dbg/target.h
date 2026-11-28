@@ -48,6 +48,6 @@ bool target_write(Target *t, uint64_t addr, const void *bytes, uint32_t n);
 bool target_regs(Target *t, uint32_t thread, TargetRegs *regs);
 /* While stopped: the threads' ids, as many as there is room for; how many were written. */
 uint32_t target_threads(const Target *t, uint32_t *ids, uint32_t room);
-/* Ends the target process and frees t. */
+/* Ends the target process, or lets one that was attached to run on without the debugger (as Visual Studio's "stop debugging"), and frees t. */
 void target_close(Target *t);
 #endif

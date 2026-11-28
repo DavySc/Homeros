@@ -53,9 +53,9 @@ static void *session(void *arg)
     const void *more = s->command + sizeof c / 8;
     memcpy(&c, s->command, sizeof c);
     s->quit = c.kind == SESSION_QUIT;
-    if (c.kind == SESSION_OPEN && !open && n > sizeof c) {
+    if (c.kind == SESSION_OPEN && !open) {
       ((char *)s->command)[n - 1] = 0;
-      open = engine_open(&e, more, 0, &ev.stop.thread);
+      open = engine_open(&e, n > sizeof c ? more : NULL, c.count, &ev.stop.thread);
       ev.stop.kind = open ? TARGET_MODULE : TARGET_EXIT, ev.stop.addr = open && e.module_count ? e.modules[0].image.base : 0;
       if (open) e.halt = halt, e.halt_arg = e.pass_arg = s, e.pass = pass;
     } else if (c.kind == SESSION_RUN && open && c.count <= (n - sizeof c) / 8) {

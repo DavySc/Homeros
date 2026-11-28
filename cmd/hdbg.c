@@ -1,4 +1,4 @@
-/* hdbg <command line>: the debugger at a console. It is the editor's side of the engine thread (dbg/session.h, dbg/ask.h)
+/* hdbg <command line>, or hdbg -p <process id> for a program that runs already: the debugger at a console. It is the editor's side of the engine thread (dbg/session.h, dbg/ask.h)
    with a line where the editor has a key, so it calls nothing of the engine and sees only what the two queues carry.
      b <file:line or function> [if <e>]   a breakpoint there, which stops only where the expression is not 0; taken away when there is one
      c [ms]                      run on (and stop the program after ms when it has not stopped by then)
@@ -9,7 +9,7 @@
                                  (after `o` came back from a function, $ReturnValue is what it returned, as in Visual Studio)
      m <e>                       64 bytes of the program's memory where the expression points
      w <place> = <e>             write the expression's value to a variable (or a member, an element, what a pointer points at)
-     q                           end the program
+     q                           end the program (one that ran already runs on)
    Ctrl+C stops the program where it runs (it comes as an exception, 0x40010005, which the program then never sees). */
 #include "../dbg/ask.h"
 #include "../dbg/session.h"
@@ -108,12 +108,13 @@ int main(int argc, char **argv)
   struct { SessionCommand c; union { char text[sizeof breakpoints + sizeof conditions]; uint64_t at[64]; }; } m = {.c.kind = SESSION_OPEN};
   char line[1000];
   size_t used = 0;
-  for (int i = 1; i < argc; i += 1) used += (size_t)snprintf(m.text + used, used < sizeof m.text ? sizeof m.text - used : 0, i > 1 ? " %s" : "%s", argv[i]);
-  if (used == 0 || used >= 1000) return fputs("usage: hdbg <command line>\n", stderr), 2;
+  if (argc == 3 && !strcmp(argv[1], "-p")) m.c.count = (uint32_t)strtoul(argv[2], NULL, 10);
+  else for (int i = 1; i < argc; i += 1) used += (size_t)snprintf(m.text + used, used < sizeof m.text ? sizeof m.text - used : 0, i > 1 ? " %s" : "%s", argv[i]);
+  if (!m.c.count == !used || used >= 1000) return fputs("usage: hdbg <command line>, or hdbg -p <process id>\n", stderr), 2;
   woke = CreateEventA(NULL, FALSE, FALSE, NULL);
   SetConsoleCtrlHandler(key, TRUE);
   session_start(&s, wake, NULL);
-  push(&m, sizeof m.c + used + 1);
+  push(&m, sizeof m.c + (used ? used + 1 : 0));
   const SessionEvent *ev = take(INFINITE);
   bool started = ev->stop.kind != TARGET_EXIT;
   if (started) report(ev);
