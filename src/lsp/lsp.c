@@ -226,6 +226,9 @@ static void tokens(LspDoc *d)
 	send(d->s);
 }
 
+/* Every file of s asks: the server is ready, or its refreshes are over. */
+static void retoken(void *s) { for (LspDoc *d = ((Srv *)s)->docs; d; d = d->link) tokens(d); }
+
 static void open_doc(LspDoc *d)
 {
 	begin("textDocument/didOpen");
@@ -670,11 +673,11 @@ static void legend(Srv *s, const char *m)
 
 /* Tokens array arr (LSP's relative form: line and start from the last
    token's, length, type, modifiers; UTF-16 columns) as d's byte ranges.
-   No array (an error): the tokens shown stay, as Neovim keeps them.  A
+   No data (an error): the tokens shown stay, as Neovim keeps them.  A
    line is walked once: each start from the last token's (pb, pc). */
 static void decode(LspDoc *d, const char *m, int arr)
 {
-	if (arr < 0 || tk[arr].type != 'a') return;
+	if (arr < 0) return;
 	clear(&d->tok);
 	core_changed = 1;
 	const Text *t = d->t;
@@ -703,7 +706,7 @@ static void decode(LspDoc *d, const char *m, int arr)
 		pb += lsp_u16_byte(b + pb, n - pb, c - pc);
 		pc = c;
 		size_t a = ls + pb, z = a + lsp_u16_byte(b + pb, n - pb, (size_t)v[2]);
-		if (a < z) d->tok.v[d->tok.n++] = (LspDiag){ a, z, z, d->s->legend[v[3]], NULL };
+		d->tok.v[d->tok.n++] = (LspDiag){ a, z, z, d->s->legend[v[3]], NULL };
 	}
 }
 
@@ -727,9 +730,10 @@ static void handle(Srv *s, const char *m, size_t n)
 		putraw(&o, m, id);
 		str_lit(&o, ",\"result\":null}");
 		send(s);
-		/* Lean answers with what it has elaborated, then asks again
-		   (Neovim's semantic_tokens: refresh, a new request) */
-		if (is(m, meth, "workspace/semanticTokens/refresh")) for (LspDoc *d = s->docs; d; d = d->link) tokens(d);
+		/* Lean answers with what it has elaborated, then asks again, in
+		   bursts when we read slowly: one request 200 ms after the last
+		   (Neovim's semantic_tokens: _refresh, mark_dirty, debounce_request) */
+		if (is(m, meth, "workspace/semanticTokens/refresh")) loop_timer(retoken, s, 200);
 		return;
 	}
 	if (meth >= 0) {
@@ -777,7 +781,7 @@ static void handle(Srv *s, const char *m, size_t n)
 		str_lit(&o, "{}");
 		end(s);
 		if (s->held.n) { proc_write(s->proc, s->held.s, s->held.n); s->held.n = 0; }
-		for (LspDoc *d = s->docs; d; d = d->link) tokens(d);
+		retoken(s);
 		return;
 	}
 	for (LspDoc *d = s->docs; d; d = d->link)
@@ -806,6 +810,7 @@ static void dead(Srv *s)
 {
 	s->proc = -1;
 	s->init.n = 0;
+	loop_timer(retoken, s, -1);
 	for (Raw **at = &raws, *r; (r = *at); )
 		if (r->s == s) { *at = r->link; r->fn(r->ctx, NULL, 0); free(r); }
 		else at = &r->link;

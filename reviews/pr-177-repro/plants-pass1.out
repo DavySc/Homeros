@@ -1,0 +1,11 @@
+caught        lsp: tokens: a refresh's wait outlives its buffer   (make test TESTS=lsp): ==10092==ERROR: AddressSanitizer: heap-use-after-free on address 0x511003d50440 at pc 0x563f270f798e bp 0x7ffcae824650 sp 0x7ffcae824640
+caught        lsp: tokens: not asked again on a refresh   (make test TESTS=lsp): tests/test_lsp.c:1689: CHECK(tsettle(&e)) failed
+caught        lsp: tokens: an error answer clears them   (make test TESTS=lsp): tests/test_lsp.c:1682: CHECK(!memcmp(got, want, n)) failed
+caught        lsp: tokens: each refresh of a burst asked for at once   (make test TESTS=lsp): tests/test_lsp.c:1689: CHECK(tsettle(&e)) failed
+caught        mine 1: a refresh asks at once, without the 200 ms   (make test TESTS=lsp): WRONG (server 12530): a token request for each refresh of a burst
+caught        lsp: tokens: an answered request cancelled again   (make test TESTS=lsp): tests/test_lsp.c:1653: CHECK(tsettle(&e)) failed
+caught        lsp: tokens: a restarted server's legend added to the old one   (make test TESTS=lsp): tests/test_lsp.c:1696: CHECK(tsettle(&e)) failed
+caught        mine 3: a refresh asks 5 s late   (make test TESTS=lsp): tests/test_lsp.c:1689: CHECK(tsettle(&e)) failed
+NOT CAUGHT    mine 2: a refresh leaves the request in flight uncancelled   (make test TESTS=lsp passed)
+NOT CAUGHT    mine 4: a refresh asks only its first file again   (make test TESTS=lsp passed)
+NOT CAUGHT    mine 5: empty tokens dropped again   (make test TESTS=lsp passed)

@@ -377,7 +377,7 @@ static int gmode;
    $/test/part: the next answer the first line's only (Lean's, before it
    has elaborated the rest), then a refresh.  Every answer ends with a
    token past the text's end. */
-static int tmode, ntok, terr, tpart, trefresh;
+static int tmode, ntok, terr, tpart, trefresh, tburst;
 static long long tdelay;
 static struct { long id, v; long long at; int cancelled; char u[1200]; } tok[16];
 /* the legend: these, then "function" up to 40 types (the editor keeps 32) */
@@ -392,9 +392,10 @@ static const struct { const char *type; unsigned char face; } tlegend[] = {
 	{ "struct", FACE_TYPE }, { "type", FACE_TYPE }, { "typeParameter", FACE_TYPE_DEFINITION },
 };
 #define TYPES 40
+static int tkept = 32;               /* the types the editor keeps: 2 after a restart with $TLEGEND */
 static unsigned char tface(int t)   /* the face of token type t */
 {
-	return t < 0 || t >= 32 ? 0 : t < (int)(sizeof tlegend / sizeof *tlegend) ? tlegend[t].face : FACE_FUNCTION;
+	return t < 0 || t >= tkept ? 0 : t < (int)(sizeof tlegend / sizeof *tlegend) ? tlegend[t].face : FACE_FUNCTION;
 }
 /* the token type of a word, -1 none: kw x sorry, then qa..qz za..zz
    from type 3 on (zz past the legend) */
@@ -403,8 +404,11 @@ static int tword(const char *s, size_t n)
 	return n == 2 && !memcmp(s, "kw", 2) ? 0 : n == 1 && *s == 'x' ? 1 : n == 5 && !memcmp(s, "sorry", 5) ? 2
 	     : n == 2 && *s == 'q' ? 3 + s[1] - 'a' : n == 2 && *s == 'z' ? 29 + s[1] - 'a' : -1;
 }
+static long tdone;                   /* the last request answered, and when */
+static long long tdone_at;
 static void ftokens(long id, long v)
 {
+	tdone = id, tdone_at = ms();
 	Str r = { 0 };
 	const char *sdoc = old[v % 16].text;
 	size_t sn = old[v % 16].n;
@@ -434,11 +438,13 @@ static void ftokens(long id, long v)
 	fsend(&r);
 	if (tpart) {
 		if (!trefresh) wrong("a refresh to a client without refreshSupport");
-		r.n = 0;
-		str_lit(&r, "{\"jsonrpc\":\"2.0\",\"id\":7777,\"method\":\"workspace/semanticTokens/refresh\"}");
-		fsend(&r);
-		sreq++;
-		tpart = 0;
+		for (int i = 0; i < 3; i++) {    /* a burst */
+			r.n = 0;
+			str_addf(&r, "{\"jsonrpc\":\"2.0\",\"id\":%d,\"method\":\"workspace/semanticTokens/refresh\"}", 7777 + i);
+			fsend(&r);
+			sreq++;
+		}
+		tpart = 0, tburst = 1;
 	}
 	free(r.s);
 }
@@ -584,7 +590,7 @@ static void fhandle(const char *m, size_t n)
 		Str r = { 0 };
 		str_addf(&r, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"result\":{\"capabilities\":{\"textDocumentSync\":2%s", json_int(m, ft, id),
 		         tmode ? ",\"semanticTokensProvider\":{\"legend\":{\"tokenTypes\":[" : "");
-		for (int i = 0; tmode && i < TYPES; i++)
+		for (int i = 0; tmode && i < (getenv("TLEGEND") && *getenv("TLEGEND") ? 2 : TYPES); i++)
 			str_addf(&r, "%s\"%s\"", i ? "," : "", i < (int)(sizeof tlegend / sizeof *tlegend) ? tlegend[i].type : "function");
 		if (tmode) str_lit(&r, "],\"tokenModifiers\":[]},\"full\":true}");
 		str_lit(&r, "}}}");
@@ -598,6 +604,8 @@ static void fhandle(const char *m, size_t n)
 	/* the test saves to let the server die: the test then knows when */
 	if (!strcmp(meth, "textDocument/didSave") && rnd(2)) exit(0);
 	if (!strcmp(meth, "initialized") || !strcmp(meth, "$/cancelRequest") || !strcmp(meth, "textDocument/didSave")) {
+		if (tmode && meth[0] == '$' && json_int(m, ft, json_get(m, ft, p, "id")) == tdone && ms() - tdone_at > 500)
+			wrong("request %ld cancelled long after its answer", tdone);
 		if (meth[0] == '$') for (int k = 0; k < ntok; k++)
 			tok[k].cancelled |= tok[k].id == json_int(m, ft, json_get(m, ft, p, "id"));   /* still answered, late */
 		if (meth[0] == '$') for (int k = 0; k < npark; k++)
@@ -628,6 +636,7 @@ static void fhandle(const char *m, size_t n)
 		opened--;
 	} else if (!strcmp(meth, "textDocument/didChange")) {
 		if (!opened) wrong("didChange before didOpen");
+		tburst = 0;
 		long v = json_int(m, ft, json_get(m, ft, td, "version"));
 		if (v != sver + 1) wrong("version %ld after %ld", v, sver);
 		if (quiet == 2 && memchr(m, '!', n)) {
@@ -730,6 +739,7 @@ static void fhandle(const char *m, size_t n)
 	} else if (!strcmp(meth, "textDocument/semanticTokens/full")) {
 		if (!tmode) wrong("semantic tokens from a server without them");
 		if (ntok == 16) wrong("too many token requests");
+		if (tburst && tburst++ > 1) wrong("a token request for each refresh of a burst");
 		json_str(m, ft, json_get(m, ft, json_get(m, ft, p, "textDocument"), "uri"), tok[ntok].u);
 		for (int k = 0; k < ntok; k++)
 			if (!strcmp(tok[k].u, tok[ntok].u) && !tok[k].cancelled) wrong("semantic tokens asked again without cancelling %ld", tok[k].id);
@@ -1627,6 +1637,7 @@ static void semtok(const char *log)
 	CHECK(syn[0] != FACE_NONE && syn[17] == FACE_COMMENT);     /* "int", and "x" in the comment */
 	CHECK(c[0].face == syn[0] && c[4].face == FACE_KEYWORD && c[g.cols].face == FACE_COMMENT && c[g.cols + 8].face == FACE_COMMENT && c[g.cols + 10].face == FACE_KEYWORD);
 	const char *u = lsp_uri(e.buf->lsp);
+	for (long long t0 = ms(); ms() - t0 < 600; ) loop_once(10);   /* an answered request is not cancelled */
 	/* hushed: the tokens shown follow the edits (a line gone above, a
 	   2-byte character and a 4-byte one before them on their line) */
 	CHECK(!lsp_send(u, "$/test/hush", "{}", 2, NULL, NULL));
@@ -1670,12 +1681,21 @@ static void semtok(const char *log)
 	lsp_faces(e.buf, 0, n, got);
 	CHECK(!memcmp(got, want, n));
 	/* Lean's first answer covers what it has elaborated, then it asks for
-	   a refresh: the rest comes */
+	   a refresh, three times: one request, and the rest comes */
 	CHECK(!lsp_send(u, "$/test/part", "{}", 2, NULL, NULL));
 	CHECK(!core_edit(&e, 0, 1, "", 0));
 	lsp_flush(e.buf->lsp);
 	for (long long t0 = ms(); ms() - t0 < 300; ) loop_once(10);   /* the first answer in */
 	CHECK(tsettle(&e));
+	/* the server dead, a new one started, of a shorter legend: only its types */
+	CHECK(!lsp_send(lsp_uri(e.buf->lsp), "$/test/die", "{}", 2, NULL, NULL));
+	for (long long t0 = ms(); ms() - t0 < 300; ) loop_once(10);
+	tkept = 2;
+	CHECK(!setenv("TLEGEND", "2", 1));
+	lsp_restart(e.buf->lsp);
+	CHECK(tsettle(&e));
+	tkept = 32;
+	CHECK(!setenv("TLEGEND", "", 1));
 	/* a server for files without a grammar, given two before it is ready
 	   and one after: each is asked, and drawn in its tokens' faces */
 	char p[3][1200];
@@ -1694,12 +1714,17 @@ static void semtok(const char *log)
 	core_draw(&e, NULL, &g);
 	for (c = g.c; c->ch[0] != 'k'; c++) ;
 	CHECK(c[0].face == FACE_KEYWORD && c[3].face == FACE_NONE && c[g.cols].face == FACE_TYPE);
-	/* a new server: nothing shown from the old one */
+	/* the file restarted: nothing shown from before */
 	lsp_restart(e.buf->lsp);
 	twant(&e, want, syn, &n);
 	lsp_faces(e.buf, 0, n, got);
 	CHECK(!memcmp(got, syn, n));
 	CHECK(tsettle(&e));
+	/* refreshes, then the buffer gone before the request they wait for */
+	CHECK(!lsp_send(lsp_uri(e.buf->lsp), "$/test/part", "{}", 2, NULL, NULL));
+	CHECK(!core_edit(&e, 0, 0, " ", 1));
+	lsp_flush(e.buf->lsp);
+	for (long long t0 = ms(); ms() - t0 < 100; ) loop_once(10);
 	grid_free(&g);
 	core_free(&e);
 	for (int i = 0; i < 3; i++) remove(p[i]);
