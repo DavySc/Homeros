@@ -1,0 +1,1 @@
+select top 502 case when row_number() over (order by (select 1)) > 500 then N'語xyz' else '' end as [́], case when row_number() over (order by (select 1)) > 500 then N'語xyz' else '' end as a, case when row_number() over (order by (select 1)) > 500 then N'語xyz' else '' end as [­], 1 as b from sys.all_columns

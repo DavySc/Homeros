@@ -67,7 +67,16 @@ static int batch(Db *d, const char *sql, uint64_t stop)
 	db_out(d)->n = 0;
 	return db_query(d, sql) || run(d, DB_READY, stop) || (db_state(d) == DB_BUSY && (db_cancel(d) || run(d, DB_READY, 0)));
 }
-static int is(Db *d, const char *sql, const char *want) { return !batch(d, sql, 0) && !strcmp(db_out(d)->s ? db_out(d)->s : "", want); }
+/* the reply's text with its marks (net.h) is want */
+static int raw(Db *d, const char *sql, const char *want) { return !batch(d, sql, 0) && db_out(d)->s && !strcmp(db_out(d)->s, want); }
+/* the reply's text without the layout's marks (net_plain) is want */
+static int is(Db *d, const char *sql, const char *want)
+{
+	if (batch(d, sql, 0)) return 0;
+	Str *o = db_out(d);
+	if (o->s) o->s[o->n = net_plain(o->s, o->n)] = 0;
+	return !strcmp(o->s ? o->s : "", want);
+}
 
 static int driver(int argc, char **argv)
 {
@@ -92,7 +101,7 @@ static int driver(int argc, char **argv)
 			db_out(&d)->n = 0;
 			r = run(&d, DB_READY, db_rows(&d) + 1);
 			if (db_rows(&d) && !first) first = now();
-			if (!quiet) fwrite(db_out(&d)->s, 1, db_out(&d)->n, stdout);
+			if (!quiet) fwrite(db_out(&d)->s, 1, net_plain(db_out(&d)->s, db_out(&d)->n), stdout);
 			if (!r && stop && db_rows(&d) >= stop && db_state(&d) == DB_BUSY) {
 				nanosleep(&(struct timespec){0, 300000000}, NULL);
 				uint64_t at = db_rows(&d);
@@ -100,7 +109,7 @@ static int driver(int argc, char **argv)
 				db_out(&d)->n = 0;
 				r = db_cancel(&d) || run(&d, DB_READY, 0);
 				fprintf(stderr, "cancel %.2f rows_after_cancel %llu\n", now() - c0, (unsigned long long)(db_rows(&d) - at));
-				if (!quiet) fwrite(db_out(&d)->s, 1, db_out(&d)->n, stdout);
+				if (!quiet) fwrite(db_out(&d)->s, 1, net_plain(db_out(&d)->s, db_out(&d)->n), stdout);
 			}
 		}
 	if (r) fprintf(stderr, "test_sql: %s\n", pass ? db_net(&d)->err : "no password");
@@ -275,6 +284,9 @@ int main(int argc, char **argv)
 	CHECK(is(&d, "print 'a' + char(9) + 'b' + char(10) + 'c'; select 'a' + char(9) + 'b' + char(10) + 'c' x", "a\tb\nc\nx\na\\tb\\nc\n(1 row affected)\n"));
 	/* a column name escaped as a value is */
 	CHECK(is(&d, "select 1 as [a\tb]", "a\\tb\n1\n(1 row affected)\n"));
+	/* the layout's marks: the names, each row, a NULL, an error, each statement's end */
+	CHECK(raw(&d, "select 1 a, null b; select 1/0 x; print 'hi'", NET_HEAD "a\tb\n" NET_ROW "1\t" NET_NULL "\n" NET_END "(1 row affected)\n"
+		NET_HEAD "x\n" NET_ERR "Msg 8134, Level 16, State 1, Line 1\nDivide by zero error encountered." NET_ERR "\n" NET_END "hi\n" NET_END));
 	/* a cancel while no batch runs sends nothing */
 	CHECK(!db_cancel(&d) && db_state(&d) == DB_READY && !db_pending(&d));
 	/* a cancel after the batch's last DONE was sent: the server still sends
@@ -316,6 +328,8 @@ int main(int argc, char **argv)
 	/* text in both directions; a message's text as it is, a value's escaped */
 	CHECK(is(&d, "select '\U0001F600é' x", "x\n\U0001F600é\n(SELECT 1)\n"));
 	CHECK(is(&d, "do $$ begin raise notice 'a\tb'; end $$; select E'a\\tb' x", "NOTICE 00000: a\\tb\n(DO)\nx\na\\tb\n(SELECT 1)\n"));
+	CHECK(raw(&d, "select 1 a, null b; select nope", NET_HEAD "a\tb\n" NET_ROW "1\t" NET_NULL "\n" NET_END "(SELECT 1)\n"
+		NET_ERR "ERROR 42703: column \"nope\" does not exist (at character 28)" NET_ERR "\n"));
 	/* a cancel while no query runs sends nothing */
 	CHECK(!db_cancel(&d) && db_state(&d) == DB_READY && !db_pending(&d));
 	/* a cancelled query shows no error of its own (57014 is ours); the

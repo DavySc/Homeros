@@ -137,6 +137,14 @@ int net_esc(Str *b, const char *s, size_t n)
 	return str_add(b, s + a, n - a);
 }
 
+size_t net_plain(char *s, size_t n)
+{
+	size_t w = 0;
+	for (size_t i = 0; i < n; i++)
+		if ((unsigned char)s[i] == 0xFB) i += i + 1 < n && s[i + 1] == '\n';
+		else if ((unsigned char)s[i] < 0xFC) s[w++] = s[i];
+	return w;
+}
 size_t net_unesc(char *s, size_t n)
 {
 	size_t w = 0;

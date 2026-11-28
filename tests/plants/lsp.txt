@@ -125,3 +125,18 @@ lsp: tokens: each refresh of a burst asked for at once~test TESTS=lsp~~src/lsp/l
 lsp: tokens: a refresh's wait outlives its server~test TESTS=lsp~~src/lsp/lsp.c~	loop_timer(retoken, s, -1);¶~
 lsp: tokens: a restarted server's legend added to the old one~test TESTS=lsp~~src/lsp/lsp.c~	s->ready = s->ntypes = 0;~	s->ready = 0;
 lsp: tokens: an answered request cancelled again~test TESTS=lsp~~src/lsp/lsp.c~		if (d->tokid == rid) {¶			d->tokid = 0;~		if (d->tokid == rid) {
+lsp: a place inside a surrogate pair at its start, not its end (str_byteindex)~test TESTS=lsp_locs~~src/lsp/lsp.c~		if (l->col < len && lsp_u16(b, l->col) != h->p.c) l->col~		if (0) l->col
+lsp: places not sorted by file and position (locations_to_items)~test TESTS=lsp_locs~~src/lsp/lsp.c~		if (!sym && w->sort && nhits > 1) qsort~		if (0) qsort
+lsp: a LocationLink's whole target taken, not its name~test TESTS=lsp_locs~~src/lsp/lsp.c~json_get(m, tk, e, "targetSelectionRange")~json_get(m, tk, e, "targetRange")
+lsp: a symbol's children dropped~test TESTS=lsp_locs~~src/lsp/lsp.c~		symbols(m, json_get(m, tk, e, "children"), uri);~
+lsp: a symbol's deprecated tag ignored~test TESTS=lsp_locs~~src/lsp/lsp.c~dep |= json_int(m, tk, x) == 1;~dep |= 0;
+lsp: an open file's line read with its newline~test TESTS=lsp_locs~~src/lsp/lsp.c~			len = text_line_start(d->t, h->p.l + 1) - 1 - a;~			len = text_line_start(d->t, h->p.l + 1) - a;
+lsp: a closed file's lines counted off by one~test TESTS=lsp_locs~~src/lsp/lsp.c~for (size_t k = 0; k < h->p.l && a < dn; k++)~for (size_t k = 1; k < h->p.l && a < dn; k++)
+lsp: a file:// URI's %XX not decoded~test TESTS=lsp_locs~~src/lsp/lsp.c~		if (l) { *d++ = (char)((h - hex) % 16 * 16 + (l - hex) % 16); u += 2; }~		if (l && 0) { }
+lsp: a tag's places sorted, not in the server's order (vim.lsp.tagfunc)~test TESTS=lsp_locs~~src/lsp/lsp.c~w->sort = !tag;~w->sort = !tag || 1;
+lsp: a Location alone taken as references~test TESTS=lsp_locs~~src/lsp/lsp.c~	w->one = strcmp(method, "textDocument/references") != 0;~	w->one = 1;
+lsp: an error answer's words without the server's name~test TESTS=lsp_locs~~src/lsp/lsp.c~		str_addf(&t, "%s: %.*s: %s", name ? name : "",~		str_addf(&t, "%.0s%.*s: %s", name ? name : "",
+lsp: a place in a file that cannot be read reads no file (undefined behaviour)~test TESTS=lsp_locs~~src/lsp/lsp.c~		} else if (dn) {~		} else if (!d) {
+lsp: a URI's #fragment kept in its file~test TESTS=lsp~~src/lsp/lsp.c~	for (; f && *u && *u != '#'; u++) {~	for (; f && *u; u++) {
+lsp: a drive's URI keeps the slash before it (/C:/x)~test TESTS=lsp~~src/lsp/lsp.c~	if (f && f[0] == '/' && isalpha((unsigned char)f[1]) && f[2] == ':') memmove(f, f + 1, strlen(f));~
+lsp: a URI's drive is any character before ':', not a letter (/1:/x)~test TESTS=lsp~~src/lsp/lsp.c~isalpha((unsigned char)f[1]) && f[2]~f[1] && f[2]

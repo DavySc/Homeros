@@ -1,0 +1,15 @@
+caught        r1 @@x asked for (sql_vars) :: tests/test_sql_vars.c:39: CHECK(cases && !bad) failed
+caught        r2 declared names compared with case (sql_vars) :: tests/test_sql_vars.c:39: CHECK(cases && !bad) failed
+caught        r3 a ) never closes (sql_vars) :: tests/test_sql_vars.c:39: CHECK(cases && !bad) failed
+caught        r6 an EXEC's last argument at the batch's end not asked for (sql_vars) :: tests/test_sql_vars.c:39: CHECK(cases && !bad) failed
+caught        r8 only two words looked at for CREATE PROCEDURE (sql_editor) :: tests/test_sql_editor.c:390: CHECK(sql_key(&e, KEY_F5) == 1 && e.mode != MODE_CMDLINE && strstr(until("Completion time"), "x\n4\n")) failed
+caught        n1 a CASE's END never closes it (sql_vars) :: tests/test_sql_vars.c:39: CHECK(cases && !bad) failed
+caught        s1 a second batch gets the first batch's DECLAREs too (sql_editor) :: tests/test_sql_editor.c:339: CHECK(e.mode == MODE_NORMAL && strstr(until("Completion time"), "d\t@c\n6\t@b\n") && strstr(res, "Line 2") && strstr(res,
+NOT CAUGHT    s3 the F5's range not clamped to the buffer (sql_editor) :: 
+caught        s4 the prompt typed without leaving Visual mode (sql_editor) :: tests/test_sql_editor.c:337: CHECK(sql_key(&e, KEY_F5) == 1 && e.mode == MODE_CMDLINE && e.cmdlen == 18 && !memcmp(e.cmd, "Declare @a int = 3", 18)) f
+caught        s5 kept names compared with case (sql_editor) :: tests/test_sql_editor.c:340: CHECK(!sql_declare(&e, "@A  int = 5") && !sql_declare(&e, "") && !strcmp(e.msg, "sql: @A int = 5;")) failed
+caught        s6 the run not cleared when F5 asks (sql_editor) :: tests/test_sql_editor.c:339: CHECK(e.mode == MODE_NORMAL && strstr(until("Completion time"), "d\t@c\n6\t@b\n") && strstr(res, "Line 2") && strstr(res,
+caught        s7 a batch that needs no variable gets the DECLAREs (sql_editor) :: tests/test_sql_editor.c:339: CHECK(e.mode == MODE_NORMAL && strstr(until("Completion time"), "d\t@c\n6\t@b\n") && strstr(res, "Line 2") && strstr(res,
+caught        s9 :Declare with a name over 128 bytes taken (sql_editor) :: src/sql/sql.c:509:28: runtime error: index 130 out of bounds for type 'char [130]'
+caught        s10 :Declare in a buffer that is not SQL makes a session (sql_editor) :: tests/test_sql_editor.c:380: CHECK(!core_edit_file(&e, "ms/y2.txt", 0) && sql_declare(&e, "@a int = 1") && strstr(e.msg, "is for a .sql buffer")) fail
+13 of 14 caught

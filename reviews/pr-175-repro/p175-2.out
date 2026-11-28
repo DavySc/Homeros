@@ -1,0 +1,411 @@
+=== p175 davy
+--- create
+
+Completion time: 25 ms
+---
+after F5 on the insert: mode CMDLINE cmd(18) [:Declare @a int = 3] msg ["ms/d.sql" 7L, 148B]
+--- after Enter
+(1 row affected)
+(2 rows affected)
+
+Completion time: 2 ms
+---
+second F5: mode NORMAL msg []
+--- second run
+(1 row affected)
+(2 rows affected)
+
+Completion time: 2 ms
+---
+--- count
+n
+4
+(1 row affected)
+
+Completion time: 2 ms
+---
+=== p175 esc
+--- setup
+(3 rows affected)
+
+Completion time: 29 ms
+---
+F5 on the delete: mode CMDLINE cmd(11) [:Declare @a ] msg ["ms/e.sql" 6L, 118B]
+after Esc: mode NORMAL msg ["ms/e.sql" 6L, 118B]
+buffer now:
+create table #t (x int)
+insert #t values (1), (2), (3)
+go
+delete from #t
+-- only the picked ones
+where x = @a
+go
+select count(*) as n from #t
+after :Declare by hand: mode NORMAL msg []
+--- what ran
+(3 rows affected)
+
+Completion time: 29 ms
+---
+--- count
+(3 rows affected)
+
+Completion time: 29 ms
+---
+=== p175 utf8
+F5: mode CMDLINE cmd(38) [:Declare @n nvarchar(20) = N'café €'] msg ["ms/u.sql" 2L, 68B]
+--- run
+(1 row affected)
+n	l
+café €	6
+(1 row affected)
+
+Completion time: 27 ms
+---
+=== p175 long
+F5: mode CMDLINE cmd(11) [:Declare @t ] msg ["ms/l.sql" 2L, 647B]
+after Enter: mode NORMAL msg []
+--- run
+---
+=== p175 comment
+F5: mode CMDLINE cmd(18) [:Declare @a int = 4] msg ["ms/c.sql" 3L, 45B]
+after Enter: mode NORMAL msg []
+--- results
+(1 row affected)
+a
+4
+(1 row affected)
+
+Completion time: 24 ms
+---
+=== p175 stale
+--- first
+(1 row affected)
+a
+3
+(1 row affected)
+
+Completion time: 22 ms
+---
+buffer now:
+declare @a int = 7
+select @a as a
+F5 again: mode NORMAL msg []
+--- second
+(1 row affected)
+a
+3
+(1 row affected)
+
+Completion time: 1 ms
+---
+--- whole file
+(1 row affected)
+a
+3
+(1 row affected)
+
+Completion time: 1 ms
+---
+=== p175 lines
+--- whole file
+one
+1
+(1 row affected)
+(1 row affected)
+a
+5
+(1 row affected)
+
+Msg 8134, Level 16, State 1, Line 3
+Divide by zero error encountered.
+(1 row affected)
+a
+5
+(1 row affected)
+
+Msg 8134, Level 16, State 1, Line 3
+Divide by zero error encountered.
+(1 row affected)
+b	
+Msg 8134, Level 16, State 1, Line 1
+Divide by zero error encountered.
+
+Completion time: 44 ms
+---
+--- lines 4-5 selected
+(1 row affected)
+a
+5
+(1 row affected)
+
+Msg 8134, Level 16, State 1, Line 2
+Divide by zero error encountered.
+
+Completion time: 1 ms
+---
+--- the same with constants
+one
+1
+(1 row affected)
+a
+5
+(1 row affected)
+
+Msg 8134, Level 16, State 1, Line 3
+Divide by zero error encountered.
+
+Completion time: 22 ms
+---
+=== p175 two
+F5: mode CMDLINE cmd(18) [:Declare @a int = 1] msg ["ms/t.sql" 3L, 106B]
+Enter 1: mode CMDLINE cmd(27) [:Declare @b varchar(9) = 'x'] msg []
+Enter 2: mode CMDLINE cmd(11) [:Declare @c ] msg []
+Enter on the empty prompt: mode NORMAL msg []
+F5 again: mode CMDLINE cmd(11) [:Declare @c ] msg []
+Enter 3: mode NORMAL msg []
+Enter 4: mode NORMAL msg []
+--- run
+(1 row affected)
+(1 row affected)
+a	b	c
+(0 rows affected)
+
+Completion time: 27 ms
+---
+list: mode NORMAL msg [sql: @a int = 1; @b varchar(9) = 'x'; @c int = 9;]
+=== p175 case
+F5 on the whole file: mode NORMAL msg ["ms/k.sql" 2L, 87B]
+--- run
+(1 row affected)
+x	y
+1	5
+(1 row affected)
+
+Completion time: 27 ms
+---
+F5 on line 3: mode CMDLINE cmd(50) [:Declare @x int = case when 1 = 1 then 1 else 2 end] msg ["ms/k2.sql" 3L, 69B]
+--- run with the default
+(1 row affected)
+x
+1
+(1 row affected)
+
+Completion time: 19 ms
+---
+=== p175 results
+--- first
+(1 row affected)
+a
+1
+(1 row affected)
+
+Completion time: 22 ms
+---
+in results: 1
+F5 in the results: mode CMDLINE cmd(11) [:Declare @a ] msg []
+Enter: mode NORMAL msg []
+--- run
+(1 row affected)
+a
+2
+(1 row affected)
+
+Completion time: 1 ms
+---
+F5 in insert mode: mode CMDLINE cmd(11) [:Declare @a ] msg []
+Enter: mode NORMAL msg []
+--- run
+(1 row affected)
+a
+3
+(1 row affected)
+
+Completion time: 1 ms
+---
+=== p175 persist
+--- p1
+(1 row affected)
+a
+1
+(1 row affected)
+
+Completion time: 20 ms
+---
+F5 in p2: mode CMDLINE cmd(11) [:Declare @a ] msg ["ms/p2.sql" 1L, 16B]
+--- p2
+(1 row affected)
+a2
+2
+(1 row affected)
+
+Completion time: 23 ms
+---
+F5 after :Disconnect: mode NORMAL msg [sql: disconnected from ms (F5 connects again)]
+--- p2 again
+(1 row affected)
+a2
+2
+(1 row affected)
+
+Completion time: 9 ms
+---
+F5 after :Connect: mode NORMAL msg [sql: ms (127.0.0.1)]
+--- p2 again
+(1 row affected)
+a2
+2
+(1 row affected)
+
+Completion time: 13 ms
+---
+F5 back in p1: mode NORMAL msg [sql: ms (127.0.0.1)]
+--- p1 again
+(1 row affected)
+a
+1
+(1 row affected)
+
+Completion time: 1 ms
+---
+F5 after :e: mode NORMAL msg [E492: Not an editor command: e]
+--- p1 after :e
+(1 row affected)
+a
+1
+(1 row affected)
+
+Completion time: 2 ms
+---
+=== p175 pg
+F5: mode NORMAL msg ["pg/q.sql" 1L, 50B]
+--- run
+a	b
+3	@x
+(SELECT 1)
+
+Completion time: 227 ms
+---
+:Declare in a Postgres buffer: mode NORMAL msg []
+--- run
+a	b
+3	@x
+(SELECT 1)
+
+Completion time: 1 ms
+---
+=== p175 misc
+F5 whole file: mode NORMAL msg ["ms/m.sql" 5L, 153B]
+--- run
+r	s	@n
+0	@s	1
+(1 row affected)
+(1 row affected)
+(1 row affected)
+x
+1
+(1 row affected)
+
+Completion time: 44 ms
+---
+F5 on the table variable's use: mode CMDLINE cmd(24) [:Declare @t table (x int)] msg ["ms/m.sql" 5L, 153B]
+Enter: mode NORMAL msg []
+--- run
+(1 row affected)
+x
+1
+(1 row affected)
+
+Completion time: 7 ms
+---
+=== p175 inv
+F5: mode CMDLINE cmd(37) [:Declare @n varchar(20) = 'caf� �'] msg ["ms/i.sql" 2L, 63B]
+Enter: mode NORMAL msg []
+--- run
+(1 row affected)
+n	l
+caf? ?	6
+(1 row affected)
+
+Completion time: 34 ms
+---
+=== p175 esc2
+--- setup
+(3 rows affected)
+
+Completion time: 30 ms
+---
+F5 on the delete: mode CMDLINE cmd(11) [:Declare @a ] msg ["ms/e2.sql" 6L, 118B]
+after the way out: mode NORMAL msg ["ms/e2.sql" 6L, 118B]
+after :Declare by hand: mode NORMAL msg []
+--- count (3 wanted)
+n
+3
+(1 row affected)
+
+Completion time: 2 ms
+---
+F5 on the delete: mode CMDLINE cmd(11) [:Declare @a ] msg []
+after the way out: mode NORMAL msg []
+after :Declare by hand: mode NORMAL msg []
+--- count (3 wanted)
+n
+3
+(1 row affected)
+
+Completion time: 1 ms
+---
+F5 on the delete: mode CMDLINE cmd(11) [:Declare @a ] msg []
+after the way out: mode NORMAL msg []
+after :Declare by hand: mode NORMAL msg []
+--- count (3 wanted)
+n
+3
+(1 row affected)
+
+Completion time: 1 ms
+---
+F5 on the delete: mode CMDLINE cmd(11) [:Declare @a ] msg []
+after the way out: mode NORMAL msg []
+after :Declare by hand: mode NORMAL msg []
+--- count (3 wanted)
+n
+3
+(1 row affected)
+
+Completion time: 1 ms
+---
+=== p175 edge 224
+F5: mode CMDLINE cmd(252) [:Declare @a varchar(900) = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'] msg ["ms/g.sql" 2L, 273B]
+Enter: mode NORMAL msg []
+--- run
+(1 row affected)
+l
+224
+(1 row affected)
+
+Completion time: 26 ms
+---
+=== p175 edge 225
+F5: mode CMDLINE cmd(252) [:Declare @a varchar(900) = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx] msg ["ms/g.sql" 2L, 274B]
+Enter: mode NORMAL msg []
+--- run
+Msg 105, Level 15, State 1, Line 1
+Unclosed quotation mark after the character string 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx; select len(@a) as l
+'.
+Msg 102, Level 15, State 1, Line 1
+Incorrect syntax near 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'.
+
+Completion time: 20 ms
+---
+=== p175 edge 228
+F5: mode CMDLINE cmd(11) [:Declare @a ] msg ["ms/g.sql" 2L, 277B]
+Enter: mode NORMAL msg []
+--- run
+(1 row affected)
+l
+1
+(1 row affected)
+
+Completion time: 24 ms
+---

@@ -1,0 +1,7 @@
+NOT CAUGHT    review: the catalog of the first buffer kept for every buffer
+NOT CAUGHT    review: the catalog read again at every index build
+NOT CAUGHT    review: the index made again at every word start once the catalog is in
+NOT CAUGHT    review: the catalog's tables not offered
+caught        review: the catalog's columns under their schema
+NOT CAUGHT    review: the catalog's spelling of a name before the file's
+1 of 6 caught

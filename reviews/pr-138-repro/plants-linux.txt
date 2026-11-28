@@ -1,0 +1,5 @@
+review: the redirect file readable by all~test TESTS=infoview~~src/infoview/serve/serve.c~O_WRONLY | O_CREAT | O_EXCL | O_BINARY, 0600~O_WRONLY | O_CREAT | O_EXCL | O_BINARY, 0644
+review: what the editor's pipe did not take is dropped~test TESTS=infoview~~src/infoview/serve/serve.c~	toed.n -= (size_t)n;¶	return 0;~	toed.n = 0;¶	return 0;
+review: a blocking write to the editor on Linux~test TESTS=infoview~~src/infoview/serve/serve.c~	fcntl(1, F_SETFL, fcntl(1, F_GETFL) | O_NONBLOCK);~	;
+review: a second \w opens no browser~test TESTS=infoview~~src/infoview/infoview.c~	if (redirect) browse();~	;
+review: the browser opened before the child named its file~test TESTS=infoview~~src/infoview/infoview.c~		if (open_wanted) browse();~		;

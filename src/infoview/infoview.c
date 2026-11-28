@@ -14,13 +14,13 @@
    stream, outbox and timeout are the child's; it says "- P" when it forgets
    a page, and as its lines come in order, no call of a forgotten page ever
    follows (design/specs/Infoview.tla). */
-#ifndef _WIN32   /* the child (serve/serve.c) is POSIX: none on Windows yet */
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include "core.h"
+#include "file.h"
 #include "loop.h"
 #include "lsp.h"
 #include "bridge.h"
@@ -332,14 +332,8 @@ static int visit(const char *uri)
 	Buf *b = buf_of(uri);
 	if (b == ed->buf) return 0;
 	if (b) return core_buf_goto(ed, b->nr);
-	if (strncmp(uri, "file://", 7)) return -1;
-	char *path = malloc(strlen(uri)), *d = path;
+	char *path = lsp_fname(uri);
 	if (!path) return -1;
-	for (const char *s = uri + 7; *s; s++) {
-		long c = *s == '%' && s[1] && s[2] ? j_hex4((const char[]){ '0', '0', s[1], s[2] }, 4, 0) : -1;
-		if (c >= 0) { *d++ = (char)c; s += 2; } else *d++ = *s;
-	}
-	*d = 0;
 	int r = core_edit_file(ed, path, 0);
 	free(path);
 	return r;
@@ -537,12 +531,19 @@ out:
 
 /* --- the child ------------------------------------------------------------ */
 
+/* The browser, sent to the page by the child's private file, so the token
+   is never on a command line */
+static void browse(void)
+{
+	if (proc_open(redirect)) core_msg(ed, "Infoview: cannot open %s", redirect);
+}
+
 static void from_child(void *ctx, char *l, size_t n)
 {
 	(void)ctx;
 	if (!redirect) {
 		redirect = j_copy(l, n);
-		if (open_wanted) proc_write(proc, "!\n", 2);
+		if (open_wanted) browse();
 		return;
 	}
 	char *sp = memchr(l, ' ', n);
@@ -569,15 +570,14 @@ static void out(void *ctx, int stream, const char *b, size_t n)
 	if (stream == 1) str_lines(&in, b, n, from_child, NULL);
 }
 
-/* The child's ROOT: $HOMEROS_INFOVIEW, else $XDG_DATA_HOME/homeros/infoview
-   (~/.local/share/...), where src/infoview/install.sh puts it. */
+/* The child's ROOT: $HOMEROS_INFOVIEW, else stdpath("data")/infoview,
+   where src/infoview/install.sh puts it. */
 static int root(char *r, size_t n)
 {
-	const char *v = getenv("HOMEROS_INFOVIEW"), *x = getenv("XDG_DATA_HOME"), *h = getenv("HOME");
-	int k = v && *v ? snprintf(r, n, "%s", v) :
-	        x && *x ? snprintf(r, n, "%s/homeros/infoview", x) :
-	        snprintf(r, n, "%s/.local/share/homeros/infoview", h ? h : "");
-	return k > 0 && (size_t)k < n - 40 ? 0 : -1;
+	const char *v = getenv("HOMEROS_INFOVIEW");
+	if (v && *v) snprintf(r, n, "%s", v);
+	else file_stdpath(r, n, 0, "/infoview");
+	return strlen(r) < n - 40 ? 0 : -1;
 }
 
 int bridge_open(Editor *e)
@@ -589,19 +589,22 @@ int bridge_open(Editor *e)
 		snprintf(dist, sizeof dist, "%s/dist/index.production.min.js", r);
 		if (access(dist, R_OK)) { core_msg(e, "Infoview: none in %s (src/infoview/install.sh)", r); return -1; }
 		/* the child beside the editor's binary, else on PATH */
+#ifdef _WIN32
+		strcpy(exe, "homeros-infoview");   /* CreateProcess looks beside the editor first */
+#else
 		ssize_t k = readlink("/proc/self/exe", exe, sizeof exe - 20);
 		exe[k > 0 ? k : 0] = 0;
 		char *slash = strrchr(exe, '/');
 		if (slash) strcpy(slash, "/homeros-infoview");
 		if (!slash || access(exe, X_OK)) strcpy(exe, "homeros-infoview");
-		const char *opener = getenv("HOMEROS_OPEN");
-		char *argv[] = { exe, r, (char *)(opener && *opener ? opener : "xdg-open"), NULL };
-		if ((proc = proc_spawn(argv, NULL, out, (void *)++children)) < 0) { core_msg(e, "Infoview: %s does not start", exe); return -1; }
+#endif
+		char *argv[] = { exe, r, NULL };
+		if ((proc = proc_spawn_ov(argv, NULL, out, (void *)++children)) < 0) { core_msg(e, "Infoview: %s does not start", exe); return -1; }
 		lsp_tap = tap;
 		seed();
 	}
 	open_wanted = 1;
-	if (redirect) proc_write(proc, "!\n", 2);
+	if (redirect) browse();
 	core_msg(e, "Infoview: opening it in the browser");
 	return 0;
 }
@@ -648,10 +651,3 @@ void bridge_free(void)
 	in = o = (Str){ 0 };
 	gen = open_wanted = 0;
 }
-#else
-#include "bridge.h"
-#include "core.h"
-int  bridge_open(struct Editor *e) { core_msg(e, "Infoview: Linux only for now"); return -1; }
-void bridge_update(struct Editor *e) { (void)e; }
-void bridge_free(void) {}
-#endif

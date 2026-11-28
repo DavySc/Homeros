@@ -1,13 +1,16 @@
 #!/bin/sh
 # Puts VS Code's infoview page where the editor's \w looks for it
-# ($HOMEROS_INFOVIEW, else $XDG_DATA_HOME/homeros/infoview, else
-# ~/.local/share/homeros/infoview): the npm package @leanprover/infoview
+# ($HOMEROS_INFOVIEW, else stdpath("data")/infoview: $XDG_DATA_HOME/homeros,
+# else ~/.local/share/homeros; on Windows, from Git Bash, %LOCALAPPDATA%\homeros-data,
+# as file_stdpath): the npm package @leanprover/infoview
 # (vscode-lean4's, the version kittymax ships) in dist/, and this
 # directory's page/ (the host page, its script and the theme) beside it.
 # Run it again after pulling a change to page/.
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
-root=${HOMEROS_INFOVIEW:-${XDG_DATA_HOME:-$HOME/.local/share}/homeros/infoview}
+data=${XDG_DATA_HOME:-$HOME/.local/share}/homeros
+[ "${OS:-}" = Windows_NT ] && data=${XDG_DATA_HOME:-$LOCALAPPDATA}/homeros-data
+root=${HOMEROS_INFOVIEW:-$data/infoview}
 version=0.14.0
 sum=c71ea9994e86ae2cfbf62db38cd1822a5b9c8d967d8bfa29b079982dc4dec8b3   # sha256 of npm's tarball
 tmp=$(mktemp -d)

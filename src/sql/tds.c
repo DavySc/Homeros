@@ -289,10 +289,10 @@ static int row(Tds *t, Cur *c, int nbc)
 	for (size_t i = 0; i < t->ncol && !c->bad && !r; i++) {
 		const uint8_t *s = NULL;
 		size_t n = 0;
-		if (i && !t->quiet && ch(&t->out, '\t')) return -1;
+		if (!t->quiet && str_add(&t->out, i ? "\t" : NET_ROW, 1)) return -1;
 		if (!(bits && bits[i / 8] >> (i % 8) & 1) && value(c, &t->col[i], &t->plp, &s, &n)) return -1;
 		if (c->bad || t->quiet) continue;
-		r = s ? put_val(&t->out, t->col[i].scale, t->col[i].type, s, n) : str_add(&t->out, "NULL", 4);
+		r = s ? put_val(&t->out, t->col[i].scale, t->col[i].type, s, n) : str_add(&t->out, NET_NULL, 5);
 		if (r) snprintf(t->net.err, sizeof t->net.err, "cannot show column %zu (type 0x%02X)", i + 1, t->col[i].type);
 	}
 	if (r || c->bad) return r;
@@ -313,7 +313,7 @@ static int token(Tds *t, Cur *c)
 		for (size_t i = 0; i < n && !c->bad; i++) {
 			take(c, 6);   /* user type, flags */
 			if (typeinfo(c, &col[i])) { snprintf(t->net.err, sizeof t->net.err, "unknown type 0x%02X", col[i].type); return -1; }
-			if (i && !t->quiet && ch(&t->out, '\t')) return -1;
+			if (!t->quiet && str_add(&t->out, i ? "\t" : NET_HEAD, 1)) return -1;
 			name(c, 0, t->quiet ? NULL : &t->out);
 		}
 		if (!c->bad) t->sets++;
@@ -326,6 +326,7 @@ static int token(Tds *t, Cur *c)
 		num(c, 2);
 		uint64_t cnt = num(c, 8);
 		if (c->bad) return 0;
+		if (!t->quiet && str_add(&t->out, NET_END, 2)) return -1;
 		if (st & 0x10 && !t->quiet && str_addf(&t->out, "(%llu row%s affected)\n", (unsigned long long)cnt, cnt == 1 ? "" : "s")) return -1;
 		/* the last DONE or DONEPROC (a batch ending in EXEC) of a reply; a
 		   cancel's reply ends at the one with DONE_ATTN */
@@ -346,10 +347,10 @@ static int token(Tds *t, Cur *c)
 		if (m.bad) { snprintf(t->net.err, sizeof t->net.err, "a message token shorter than its fields"); return -1; }
 		if (t->quiet && no == 3980) return 0;   /* our own cancel aborting a procedure (as Postgres's 57014) */
 		size_t mark = t->out.n;
-		if ((k == 0xAA && str_addf(&t->out, "Msg %u, Level %u, State %u, Line %u\n", no, cls, state, line))
-			|| put_u16(&t->out, tx, tn, 1) || ch(&t->out, '\n')) return -1;
+		if ((k == 0xAA && str_addf(&t->out, NET_ERR "Msg %u, Level %u, State %u, Line %u\n", no, cls, state, line))
+			|| put_u16(&t->out, tx, tn, 1) || (k == 0xAA && str_add(&t->out, NET_ERR, 1)) || ch(&t->out, '\n')) return -1;
 		if (t->state == TDS_LOGIN && k == 0xAA)
-			snprintf(t->net.err, sizeof t->net.err, "%.*s", (int)(t->out.n - mark - 1), t->out.s + mark);
+			snprintf(t->net.err, sizeof t->net.err, "%.*s", (int)(t->out.n - mark - 3), t->out.s + mark + 1);
 		return 0;
 	}
 	case 0xE3: {   /* ENVCHANGE: packet size, transaction begin/commit/rollback */

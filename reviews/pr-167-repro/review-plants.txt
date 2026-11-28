@@ -1,0 +1,9 @@
+review: f( or Q. drops a Q.x pair too~test TESTS=snip~~src/snip/snip.c~ && NCAND(pairs) && CAND(pairs, NCAND(pairs) - 1).of == (size_t)-1 && !strcasecmp~ && NCAND(pairs) && !strcasecmp
+review: f( or Q. drops the last bare name whatever it was~test TESTS=snip~~src/snip/snip.c~.of == (size_t)-1 && !strcasecmp(pool.s + CAND(pairs, NCAND(pairs) - 1).w, h1->b))~.of == (size_t)-1)
+review: f() y: y a bare name~test TESTS=snip~~src/snip/snip.c~!(h1->f & (AS | NAME)) && !sym(h1, ')')) {~!(h1->f & (AS | NAME))) {
+review: x y: y a bare name~test TESTS=snip~~src/snip/snip.c~!(h1->f & (AS | NAME)) && !sym(h1, ')')) {~!(h1->f & AS) && !sym(h1, ')')) {
+review: aliases count as tables~test TESTS=snip~~src/snip/snip.c~		if (*CAND(*refs, j).kind == 'T') ntab++, one~		if (1) ntab++, one
+review: one table: the first, not the only~test TESTS=snip~~src/snip/snip.c~		if (*CAND(*refs, j).kind == 'T') ntab++, one~		if (*CAND(*refs, j).kind == 'T' && !ntab++) one
+review: functions with T-SQL's other words~test TESTS=snip~~src/snip/snip.c~NULL, at || !(c & (TQ_RECASE | TQ_FUNCTION)));~NULL, at || !(c & TQ_RECASE));
+review: reserved words with T-SQL's other words~test TESTS=snip~~src/snip/snip.c~NULL, at || !(c & (TQ_RECASE | TQ_FUNCTION)));~NULL, at || !(c & TQ_FUNCTION));
+review: a bare name's table not taken through refs (schema.table)~test TESTS=snip~~src/snip/snip.c~		for (int j = 0; q && j < NCAND(*refs); j++)~		for (int j = 0; q && CAND(*pairs, i).of != (size_t)-1 && j < NCAND(*refs); j++)

@@ -62,7 +62,7 @@ snip: the popup matches inside word parts (snacks' fuzzy)~test TESTS=snip~~src/s
 snip: snippets ranked with the words~test TESTS=snip~~src/snip/snip.c~		if (!at && !tabs) snippets(e, 3);~		if (!at && !tabs) snippets(e, 0);
 snip: no shorter word first~test TESTS=snip~~src/snip/snip.c~	return la != lb ? la < lb ? -1 : 1 : i - j;~	return la != lb && 0 ? la < lb ? -1 : 1 : i - j;
 snip: the popup matches case as snacks' smartcase~test TESTS=snip~~src/snip/snip.c~	if (cmp && nq < sizeof low) {~	if (0) {
-snip: an alias not taken to its table~test TESTS=snip~~src/snip/snip.c~ctx[1].b)) q = pool.s + CAND(here, i).of;~ctx[1].b)) (void)0;
+snip: an alias not taken to its table~test TESTS=snip~~src/snip/snip.c~ctx[1].b)) snprintf(q, sizeof q, "%s", pool.s + CAND(here, i).of);~ctx[1].b)) (void)0;
 snip: a column list not read~test TESTS=snip~~src/snip/snip.c~			list = 1;~			list = 0;
 snip: an alias after AS not read~test TESTS=snip~~src/snip/snip.c~ || ((h1->f & AS) && !strcasecmp(h2->b, pool.s + tab)))) {~)) {
 snip: a CTE not a table~test TESTS=snip~~src/snip/snip.c~			fact(h2->b, "", "Table");   /* a CTE */~
@@ -91,7 +91,7 @@ snip: @@rowcount is a variable of the file~test TESTS=snip~~src/snip/snip.c~		if
 snip: FROM a, b: b no table~test TESTS=snip~~src/snip/snip.c~ || (from && sym(h1, ','))))~ || (0 && from && sym(h1, ','))))
 snip: a table's name kept past a keyword~test TESTS=snip~~src/snip/snip.c~		if (!isname && !sym(h0, '.') && !(h0->f & (AS | TABLE)) && !sym(h0, '(')) tab = (size_t)-1;¶~
 snip: columns of a #temp matched by case~test TESTS=snip~~src/snip/snip.c~ && !strcasecmp(pool.s + c->of, w); }~ && !strcmp(pool.s + c->of, w); }
-snip: a word at its statement's end is outside it~test TESTS=snip~~src/snip/snip.c~	if (j && a <= u[j - 1][1].at)~	if (j && a < u[j - 1][1].at)
+snip: a word after a pause outside its statement~test TESTS=snip~~src/snip/snip.c~	if (j) s[0][0] = u[j - 1][0];~	if (j) s[0][0] = u[j - 1][1];
 snip: the list kept after the popup closes~test TESTS=snip~~src/snip/snip.c~	if (e->pum == items) core_pum(e, NULL, 0, -1, 0);¶	W.b = NULL;~	if (e->pum == items) core_pum(e, NULL, 0, -1, 0);
 snip: T-SQL's words after @ too~test TESTS=snip~~src/snip/snip.c~			if (c && (*kwd == '@') == at) cand~			if (c && (*kwd == '@' || !at)) cand
 snip: no bare name a column~test TESTS=snip~~src/snip/snip.c~			cand(&pairs, b, d, (size_t)-1, "Column", NULL, 0);~			if (0) cand(&pairs, b, d, (size_t)-1, "Column", NULL, 0);
@@ -105,6 +105,14 @@ snip: the file's group's snippets among T-SQL's other words~test TESTS=snip~~src
 snip: a buffer without an index waits a second for it~test TESTS=snip~~src/snip/snip.c~loop_timer(idle, NULL, b == I.b ? HOLD : 0);~loop_timer(idle, NULL, HOLD);
 snip: flush keeps a pointer to its one table's name, which fact() moves~test TESTS=snip~~src/snip/snip.c~	size_t one = 0;   /* an offset: fact() moves the pool */¶	int ntab = 0;¶	for (int j = 0; j < NCAND(*refs); j++)¶		if (*CAND(*refs, j).kind == 'T') ntab++, one = CAND(*refs, j).of;~	const char *onep = NULL;¶#define one ((size_t)(onep - pool.s))¶	int ntab = 0;¶	for (int j = 0; j < NCAND(*refs); j++)¶		if (*CAND(*refs, j).kind == 'T') ntab++, onep = pool.s + CAND(*refs, j).of;
 snip: the file's own T-SQL words ranked with the rest~test TESTS=snip~~src/snip/snip.c~ || (i < sizeof I.seen && I.seen[i])));~));
-snip: a T-SQL word a bare name anywhere (NOLOCK, int, NEXT)~test TESTS=snip~~src/snip/snip.c~ && (!c || sym(h1, ',') || h1->k == TQ_OP || (h1->f & COLUMN))) {~) {
+snip: a T-SQL word a bare name anywhere (NOLOCK, int, NEXT)~test TESTS=snip~~src/snip/snip.c~ && (!wid || sym(h1, ',') || h1->k == TQ_OP || (h1->f & COLUMN))) {~) {
 snip: SELECT y = x: y a bare name~test TESTS=snip~~src/snip/snip.c~ || (h0->k == TQ_OP && !strcmp(b, "=") && (h2->f & SELECT))) && NCAND(pairs)~) && NCAND(pairs)
 snip: SET a = 1, b = 2: b taken for an alias~test TESTS=snip~~src/snip/snip.c~ && (h2->f & SELECT))) && NCAND(pairs)~ && ((h2->f & SELECT) || sym(h2, ',')))) && NCAND(pairs)
+snip: a T-SQL word after an operator no column~test TESTS=snip~~src/snip/snip.c~(!wid || sym(h1, ',') || h1->k == TQ_OP || (h1->f & COLUMN))~(!wid || sym(h1, ',') || (h1->f & COLUMN))
+snip: a T-SQL word after a comma no column~test TESTS=snip~~src/snip/snip.c~(!wid || sym(h1, ',') || h1->k == TQ_OP || (h1->f & COLUMN))~(!wid || h1->k == TQ_OP || (h1->f & COLUMN))
+snip: a formatter-only word (OFFSET) a column anywhere~test TESTS=snip~~src/snip/snip.c~(!wid || sym(h1, ',')~(!c || sym(h1, ',')
+snip: MATCHED after WHEN a column~test TESTS=snip~~src/snip/snip.c~"set", "having", "then", "else" };~"set", "having", "when", "then", "else" };
+snip: Q. never asks the connection for Q's columns~test TESTS=snip_sql~~src/snip/snip.c~	if (dot ? !sql_catalog(e, e->buf, q, column, NULL) : tabs)~	if (dot ? 1 : tabs)
+snip: a FROM never asks the connection for its tables~test TESTS=snip_sql~~src/snip/snip.c~ column, NULL) : tabs) sql_catalog(~ column, NULL) : 0) sql_catalog(
+snip: the statement's tables' columns never asked for~test TESTS=snip_sql~~src/snip/snip.c~		if (*CAND(here, i).kind == 'T') snprintf(q~		if (*CAND(here, i).kind == 'X') snprintf(q
+snip: the connection's tables lose their schema~test TESTS=snip_sql~~src/snip/snip.c~	else fact(table, schema, "Table");~	else fact(table, schema + strlen(schema), "Table");

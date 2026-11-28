@@ -1,0 +1,2731 @@
+#batch 82
+select @c select * from @t declare @a int = (select 1), @B int select @a select @a
+#vars @c @t
+#batch 25
+select @a = 2 select '@b'
+#vars @a
+#batch 110
+select 1 [@b] EXECUTE sys.sp_who @b select (select @b), @c exec sp_executesql N'select @p', N'@p int', @p = @a
+#vars @b @c @a
+#batch 102
+select '@c';
+select @@rowcount;
+select name from sys.objects where name = @c and type = @b;
+set @c = 1
+#vars @c @b
+#batch 37
+EXECUTE sys.sp_who @B;
+declare @c int
+#vars @B
+#batch 148
+declare @b int = 1, @c nvarchar(9);
+EXECUTE sys.sp_who @c;
+select @c;
+select name from sys.objects where name = @B and type = @c;
+if @b > 1 select 1
+#vars 
+#batch 100
+declare @a int = (select 1), @b int
+select 1 [@b]
+set @B = 1
+select @@rowcount
+EXECUTE sys.sp_who @c
+#vars @c
+#batch 64
+print @a; set @b = 1 select '@b' select @a = 2 /* @B */ select 1
+#vars @a @b
+#batch 28
+select 1 [@b]
+declare @B int
+#vars 
+#batch 14
+declare @a int
+#vars 
+#batch 16
+select * from @t
+#vars @t
+#batch 29
+select (select @B), @B;
+-- @B
+#vars @B
+#batch 76
+declare @a int = 1, @B nvarchar(9) set @B = 1 select @b = 2 select * from @t
+#vars @t
+#batch 31
+select '@b'
+print @c;
+select @b
+#vars @c @b
+#batch 51
+exec sp_executesql N'select @p', N'@p int', @p = @B
+#vars @B
+#batch 46
+select @B = 2;
+DECLARE @t table (x int, y int)
+#vars @B
+#batch 17
+select @@rowcount
+#vars 
+#batch 22
+select (select @c), @B
+#vars @c @B
+#batch 57
+exec @c = sp_who;
+declare @B decimal(10, 2) = 1.5, @a int
+#vars @c
+#batch 48
+print @B; EXECUTE sys.sp_who @B exec @a = sp_who
+#vars @B @a
+#batch 41
+print @c; DECLARE @t table (x int, y int)
+#vars @c
+#batch 13
+select @a = 2
+#vars @a
+#batch 66
+DECLARE @T table (x int, y int) declare @c int = 1, @a nvarchar(9)
+#vars 
+#batch 99
+declare @a int = (select 1), @B int;
+EXECUTE sys.sp_who @B;
+select @@rowcount;
+select 1 [@a];
+-- @B
+#vars 
+#batch 51
+exec sp_executesql N'select @p', N'@p int', @p = @a
+#vars @a
+#batch 14
+declare @c int
+#vars 
+#batch 39
+declare @b decimal(10, 2) = 1.5, @c int
+#vars 
+#batch 5
+-- @b
+#vars 
+#batch 70
+declare @a int = case when 1 = 1 then 1 else 2 end, @c int;
+set @B = 1
+#vars @B
+#batch 38
+EXECUTE sys.sp_who @a
+select * from @t
+#vars @a @t
+#batch 126
+declare @a int select @a exec sp_executesql N'select @p', N'@p int', @p = @B /* @c */ select 1 DECLARE @t table (x int, y int)
+#vars @B
+#batch 74
+select name from sys.objects where name = @b and type = @B;
+declare @c int
+#vars @b
+#batch 71
+select * from @t select 1 [@c] select 1 [@c] select @c exec @b = sp_who
+#vars @t @c @b
+#batch 59
+select @c select @@rowcount select @a EXECUTE sys.sp_who @b
+#vars @c @a @b
+#batch 49
+DECLARE @T table (x int, y int);
+select * from @t
+#vars 
+#batch 69
+select (select @c), @b select @B = 2 select 1 [@B] if @b > 1 select 1
+#vars @c @b
+#batch 11
+select '@B'
+#vars 
+#batch 76
+select @@rowcount select name from sys.objects where name = @c and type = @c
+#vars @c
+#batch 38
+set @b = 1;
+select 1 [@a];
+select '@a'
+#vars @b
+#batch 16
+select * from @t
+#vars @t
+#batch 31
+DECLARE @t table (x int, y int)
+#vars 
+#batch 21
+set @c = 1 set @b = 1
+#vars @c @b
+#batch 80
+select 1 [@a]
+declare @c decimal(10, 2) = 1.5, @a int
+select @b
+select * from @t
+#vars @b @t
+#batch 65
+exec sp_executesql N'select @p', N'@p int', @p = @b
+select 1 [@b]
+#vars @b
+#batch 57
+select @@rowcount select * from @t select (select @c), @b
+#vars @t @c @b
+#batch 17
+select @@rowcount
+#vars 
+#batch 13
+select 1 [@B]
+#vars 
+#batch 33
+declare @B int;
+select @@rowcount
+#vars 
+#batch 39
+select '@B' select '@B' select @a -- @c
+#vars @a
+#batch 92
+select @B
+if @b > 1 select 1
+-- @c
+exec sp_executesql N'select @p', N'@p int', @p = @b
+-- @b
+#vars @B
+#batch 76
+select @c select @@rowcount select @c = 2 exec @a = sp_who /* @b */ select 1
+#vars @c @a
+#batch 53
+if @a > 1 select 1;
+select @b = 2;
+if @c > 1 select 1
+#vars @a @b @c
+#batch 36
+declare @a int EXECUTE sys.sp_who @B
+#vars @B
+#batch 55
+select (select @B), @b;
+-- @B;
+/* @b */ select 1;
+-- @a
+#vars @B
+#batch 45
+-- @b;
+DECLARE @t table (x int, y int);
+-- @B
+#vars 
+#batch 86
+select * from @t
+exec @c = sp_who
+select @@rowcount
+declare @b int = 1, @a nvarchar(9)
+#vars @t @c
+#batch 9
+select @c
+#vars @c
+#batch 99
+select @@rowcount exec sp_executesql N'select @p', N'@p int', @p = @b set @b = 1 if @b > 1 select 1
+#vars @b
+#batch 10
+set @b = 1
+#vars @b
+#batch 124
+select name from sys.objects where name = @c and type = @B;
+DECLARE @t table (x int, y int);
+-- @B;
+select @a;
+select 1 [@a]
+#vars @c @B @a
+#batch 73
+select name from sys.objects where name = @B and type = @a;
+select @a = 2
+#vars @B @a
+#batch 17
+/* @b */ select 1
+#vars 
+#batch 54
+select (select @b), @c;
+set @B = 1;
+if @B > 1 select 1
+#vars @b @c
+#batch 57
+declare @a int = (select 1), @b int EXECUTE sys.sp_who @c
+#vars @c
+#batch 95
+if @a > 1 select 1;
+EXECUTE sys.sp_who @c;
+select 1 [@b];
+select 1 [@c];
+select (select @a), @B
+#vars @a @c @B
+#batch 74
+declare @B int = 1, @a nvarchar(9);
+DECLARE @t table (x int, y int);
+-- @b
+#vars 
+#batch 16
+select * from @t
+#vars @t
+#batch 27
+select * from @t set @a = 1
+#vars @t @a
+#batch 65
+declare @c int = 1, @b nvarchar(9);
+select '@b';
+exec @B = sp_who
+#vars 
+#batch 82
+select @@rowcount;
+/* @a */ select 1;
+DECLARE @T table (x int, y int);
+select '@a'
+#vars 
+#batch 51
+declare @B decimal(10, 2) = 1.5, @c int select '@B'
+#vars 
+#batch 106
+EXECUTE sys.sp_who @b
+select @@rowcount
+declare @a int
+exec sp_executesql N'select @p', N'@p int', @p = @B
+#vars @b
+#batch 50
+exec @B = sp_who select * from @t exec @a = sp_who
+#vars @B @t @a
+#batch 31
+DECLARE @T table (x int, y int)
+#vars 
+#batch 42
+exec @a = sp_who;
+-- @B;
+/* @c */ select 1
+#vars @a
+#batch 76
+declare @a int DECLARE @t table (x int, y int) select '@c' select @@rowcount
+#vars 
+#batch 34
+select @@rowcount exec @B = sp_who
+#vars @B
+#batch 32
+set @B = 1;
+-- @B;
+select 1 [@b]
+#vars @B
+#batch 39
+select * from @t
+select (select @b), @b
+#vars @t @b
+#batch 48
+declare @a int
+declare @b int
+if @b > 1 select 1
+#vars 
+#batch 50
+select 1 [@b];
+/* @a */ select 1;
+select * from @t
+#vars @t
+#batch 21
+select @c select '@c'
+#vars @c
+#batch 130
+print @c;
+select name from sys.objects where name = @B and type = @c
+select @b
+exec sp_executesql N'select @p', N'@p int', @p = @a
+#vars @c @B @a
+#batch 51
+exec sp_executesql N'select @p', N'@p int', @p = @B
+#vars @B
+#batch 59
+select 1 [@B];
+select '@c';
+select 1 [@c];
+print @B;;
+-- @B
+#vars @B
+#batch 69
+-- @b
+select 1 [@b]
+select * from @t
+if @a > 1 select 1
+select @a = 2
+#vars @t @a
+#batch 44
+EXECUTE sys.sp_who @c exec @c = sp_who -- @a
+#vars @c
+#batch 108
+exec sp_executesql N'select @p', N'@p int', @p = @c
+select * from @t
+select '@B'
+select @B = 2
+select @B = 2
+#vars @c @t @B
+#batch 31
+/* @c */ select 1 select @a = 2
+#vars @a
+#batch 28
+/* @a */ select 1 set @b = 1
+#vars @b
+#batch 13
+select @a = 2
+#vars @a
+#batch 36
+select 1 [@c];
+EXECUTE sys.sp_who @a
+#vars @a
+#batch 13
+select 1 [@c]
+#vars 
+#batch 16
+select * from @t
+#vars @t
+#batch 112
+exec sp_executesql N'select @p', N'@p int', @p = @c;
+if @b > 1 select 1;
+print @B;;
+/* @a */ select 1;
+select @B
+#vars @c @b
+#batch 46
+select @b = 2;
+DECLARE @T table (x int, y int)
+#vars @b
+#batch 58
+select 1 [@a]
+select 1 [@b]
+select @B = 2
+select * from @t
+#vars @B @t
+#batch 52
+select * from @t /* @b */ select 1 /* @B */ select 1
+#vars @t
+#batch 26
+select '@B';
+select @B = 2
+#vars @B
+#batch 51
+exec sp_executesql N'select @p', N'@p int', @p = @b
+#vars @b
+#batch 39
+select * from @t
+select (select @B), @B
+#vars @t @B
+#batch 14
+declare @a int
+#vars 
+#batch 39
+if @b > 1 select 1
+print @B;
+set @a = 1
+#vars @b @a
+#batch 116
+print @c;;
+select @@rowcount;
+select @c = 2;
+exec sp_executesql N'select @p', N'@p int', @p = @b;
+if @B > 1 select 1
+#vars @c @b
+#batch 64
+select @B select 1 [@B] select '@B' /* @b */ select 1 set @a = 1
+#vars @B @a
+#batch 40
+declare @B int;
+select 1 [@a];
+print @B;
+#vars 
+#batch 49
+DECLARE @t table (x int, y int) select @@rowcount
+#vars 
+#batch 39
+/* @B */ select 1
+EXECUTE sys.sp_who @B
+#vars @B
+#batch 21
+set @c = 1
+set @a = 1
+#vars @c @a
+#batch 69
+select * from @t;
+exec sp_executesql N'select @p', N'@p int', @p = @a
+#vars @t @a
+#batch 18
+if @b > 1 select 1
+#vars @b
+#batch 98
+declare @c int = 1, @a nvarchar(9) select @c = 2 select * from @t EXECUTE sys.sp_who @c set @c = 1
+#vars @t
+#batch 17
+/* @a */ select 1
+#vars 
+#batch 58
+select name from sys.objects where name = @a and type = @b
+#vars @a @b
+#batch 90
+EXECUTE sys.sp_who @B;
+select @@rowcount;
+if @B > 1 select 1;
+/* @b */ select 1;
+print @b;
+#vars @B
+#batch 31
+select 1 [@c];
+exec @a = sp_who
+#vars @a
+#batch 17
+/* @b */ select 1
+#vars 
+#batch 44
+select (select @c), @c EXECUTE sys.sp_who @c
+#vars @c
+#batch 25
+select @c = 2;
+set @a = 1
+#vars @c @a
+#batch 125
+exec sp_executesql N'select @p', N'@p int', @p = @b;
+DECLARE @t table (x int, y int);
+select * from @t;
+select @c;
+set @b = 1
+#vars @b @c
+#batch 72
+select @b;
+select @b = 2;
+select (select @b), @B;
+select (select @b), @a
+#vars @b @a
+#batch 163
+declare @b int = case when 1 = 1 then 1 else 2 end, @c int;
+select @@rowcount;
+select @b;
+select @b = 2;
+select name from sys.objects where name = @b and type = @a
+#vars @a
+#batch 53
+-- @a
+select @@rowcount
+if @a > 1 select 1
+set @a = 1
+#vars @a
+#batch 18
+if @c > 1 select 1
+#vars @c
+#batch 41
+select 1 [@c];
+select '@c';
+select 1 [@b]
+#vars 
+#batch 70
+set @b = 1;
+/* @B */ select 1;
+EXECUTE sys.sp_who @b;
+select * from @t
+#vars @b @t
+#batch 94
+declare @a int = case when 1 = 1 then 1 else 2 end, @B int;
+exec @b = sp_who;
+select * from @t
+#vars @t
+#batch 56
+EXECUTE sys.sp_who @c select * from @t select @@rowcount
+#vars @c @t
+#batch 31
+DECLARE @t table (x int, y int)
+#vars 
+#batch 53
+declare @a decimal(10, 2) = 1.5, @b int select 1 [@c]
+#vars 
+#batch 50
+select @@rowcount;
+DECLARE @T table (x int, y int)
+#vars 
+#batch 46
+declare @a int DECLARE @t table (x int, y int)
+#vars 
+#batch 67
+set @c = 1
+select (select @b), @b
+select (select @a), @b
+set @b = 1
+#vars @c @b @a
+#batch 36
+EXECUTE sys.sp_who @c;
+select 1 [@B]
+#vars @c
+#batch 125
+exec sp_executesql N'select @p', N'@p int', @p = @b
+-- @a
+exec sp_executesql N'select @p', N'@p int', @p = @a
+print @B;
+-- @B
+#vars @b @a
+#batch 58
+select name from sys.objects where name = @B and type = @b
+#vars @B
+#batch 34
+declare @c int = 1, @b nvarchar(9)
+#vars 
+#batch 47
+select '@c';
+declare @b int = 1, @c nvarchar(9)
+#vars 
+#batch 39
+select (select @b), @c
+select * from @t
+#vars @b @c @t
+#batch 68
+set @B = 1;
+/* @a */ select 1;
+select (select @b), @b;
+select 1 [@a]
+#vars @B
+#batch 17
+/* @b */ select 1
+#vars 
+#batch 50
+DECLARE @T table (x int, y int);
+/* @a */ select 1
+#vars 
+#batch 76
+/* @a */ select 1
+select @B = 2
+select @@rowcount
+exec @b = sp_who
+print @B;
+#vars @B
+#batch 49
+exec @B = sp_who
+select 1 [@a]
+if @B > 1 select 1
+#vars @B
+#batch 17
+/* @a */ select 1
+#vars 
+#batch 65
+exec @c = sp_who
+EXECUTE sys.sp_who @B
+select * from @t
+print @B;
+#vars @c @B @t
+#batch 18
+if @b > 1 select 1
+#vars @b
+#batch 56
+select 1 [@B] select @@rowcount print @a; declare @b int
+#vars @a
+#batch 106
+select name from sys.objects where name = @B and type = @b;
+select 1 [@a];
+select 1 [@B];
+exec @B = sp_who
+#vars @B
+#batch 118
+select name from sys.objects where name = @c and type = @B;
+select name from sys.objects where name = @a and type = @B
+#vars @c @B @a
+#batch 31
+select 1 [@a] select @@rowcount
+#vars 
+#batch 75
+select name from sys.objects where name = @B and type = @c exec @B = sp_who
+#vars @B @c
+#batch 9
+select @c
+#vars @c
+#batch 30
+select * from @t
+select 1 [@a]
+#vars @t
+#batch 73
+declare @b int
+select name from sys.objects where name = @b and type = @b
+#vars 
+#batch 71
+declare @c int = (select 1), @B int exec @c = sp_who if @a > 1 select 1
+#vars @a
+#batch 9
+print @a;
+#vars @a
+#batch 134
+select name from sys.objects where name = @a and type = @B select @B select 1 [@a] exec sp_executesql N'select @p', N'@p int', @p = @c
+#vars @a @B @c
+#batch 93
+exec @B = sp_who
+select @@rowcount
+select name from sys.objects where name = @b and type = @a
+#vars @B @a
+#batch 22
+select (select @a), @b
+#vars @a @b
+#batch 37
+set @c = 1 select '@c' declare @b int
+#vars @c
+#batch 19
+print @a; print @b;
+#vars @a @b
+#batch 60
+select 1 [@B] select '@c' exec @a = sp_who select @@rowcount
+#vars @a
+#batch 81
+select 1 [@B];
+select @a = 2;
+exec sp_executesql N'select @p', N'@p int', @p = @a
+#vars @a
+#batch 82
+select name from sys.objects where name = @a and type = @b
+select @a
+select @a = 2
+#vars @a @b
+#batch 9
+select @a
+#vars @a
+#batch 42
+exec @a = sp_who;
+print @a;;
+select 1 [@b]
+#vars @a
+#batch 68
+select * from @t exec sp_executesql N'select @p', N'@p int', @p = @B
+#vars @t @B
+#batch 35
+select @a = 2 select @b select '@a'
+#vars @a @b
+#batch 47
+declare @c int;
+DECLARE @t table (x int, y int)
+#vars 
+#batch 54
+EXECUTE sys.sp_who @a
+select @@rowcount
+declare @c int
+#vars @a
+#batch 81
+select (select @b), @a
+select name from sys.objects where name = @b and type = @a
+#vars @b @a
+#batch 14
+declare @b int
+#vars 
+#batch 61
+select * from @t
+select 1 [@B]
+exec @B = sp_who
+select @c = 2
+#vars @t @B @c
+#batch 56
+exec @c = sp_who /* @a */ select 1 EXECUTE sys.sp_who @b
+#vars @c @b
+#batch 65
+exec sp_executesql N'select @p', N'@p int', @p = @b select 1 [@b]
+#vars @b
+#batch 64
+/* @B */ select 1
+declare @c int
+DECLARE @T table (x int, y int)
+#vars 
+#batch 31
+DECLARE @T table (x int, y int)
+#vars 
+#batch 76
+/* @a */ select 1
+select name from sys.objects where name = @b and type = @B
+#vars @b
+#batch 42
+select '@B';
+select '@B';
+exec @a = sp_who
+#vars @a
+#batch 27
+select @b
+/* @B */ select 1
+#vars @b
+#batch 21
+EXECUTE sys.sp_who @a
+#vars @a
+#batch 29
+select (select @b), @a;
+-- @b
+#vars @b @a
+#batch 91
+declare @a int = case when 1 = 1 then 1 else 2 end, @b int;
+exec @c = sp_who;
+select 1 [@a]
+#vars @c
+#batch 64
+/* @B */ select 1
+DECLARE @T table (x int, y int)
+declare @B int
+#vars 
+#batch 43
+select @b
+exec @b = sp_who
+exec @B = sp_who
+#vars @b
+#batch 70
+select @b = 2
+select * from @t
+EXECUTE sys.sp_who @c
+select @@rowcount
+#vars @b @t @c
+#batch 49
+select '@b';
+select @@rowcount;
+/* @c */ select 1
+#vars 
+#batch 100
+select 1 [@c]
+declare @B int = case when 1 = 1 then 1 else 2 end, @a int
+EXECUTE sys.sp_who @B
+-- @b
+#vars 
+#batch 55
+/* @c */ select 1
+select @b
+print @a;
+-- @b
+select '@b'
+#vars @b @a
+#batch 16
+exec @a = sp_who
+#vars @a
+#batch 56
+if @b > 1 select 1 print @c; -- @c EXECUTE sys.sp_who @b
+#vars @b @c
+#batch 34
+declare @a int = 1, @c nvarchar(9)
+#vars 
+#batch 58
+set @b = 1
+/* @c */ select 1
+select '@a'
+select @@rowcount
+#vars @b
+#batch 13
+select 1 [@b]
+#vars 
+#batch 46
+-- @B declare @c int = 1, @a nvarchar(9) -- @B
+#vars 
+#batch 31
+EXECUTE sys.sp_who @b print @b;
+#vars @b
+#batch 40
+-- @b
+declare @a int = 1, @c nvarchar(9)
+#vars 
+#batch 73
+DECLARE @T table (x int, y int)
+select 1 [@B]
+select * from @t
+set @a = 1
+#vars @a
+#batch 133
+-- @B exec sp_executesql N'select @p', N'@p int', @p = @c exec @B = sp_who declare @a int = case when 1 = 1 then 1 else 2 end, @c int
+#vars 
+#batch 106
+DECLARE @T table (x int, y int)
+declare @a int = 1, @B nvarchar(9)
+exec @c = sp_who
+select (select @B), @B
+#vars @c
+#batch 36
+print @a;
+exec @c = sp_who
+select @B
+#vars @a @c @B
+#batch 65
+exec sp_executesql N'select @p', N'@p int', @p = @a select @a = 2
+#vars @a
+#batch 13
+select @b = 2
+#vars @b
+#batch 60
+select @@rowcount
+select '@b'
+select @b = 2
+exec @B = sp_who
+#vars @b
+#batch 89
+select @@rowcount;
+/* @a */ select 1;
+if @a > 1 select 1;
+DECLARE @T table (x int, y int)
+#vars @a
+#batch 46
+declare @c int;
+/* @a */ select 1;
+select '@c'
+#vars 
+#batch 98
+declare @a decimal(10, 2) = 1.5, @B int
+select name from sys.objects where name = @B and type = @b
+#vars 
+#batch 34
+declare @c int = 1, @B nvarchar(9)
+#vars 
+#batch 66
+select @@rowcount
+select '@c'
+select (select @B), @b
+select @B = 2
+#vars @B
+#batch 40
+set @c = 1;
+select @B = 2;
+select 1 [@b]
+#vars @c @B
+#batch 31
+DECLARE @t table (x int, y int)
+#vars 
+#batch 126
+select @@rowcount;
+declare @a int = 1, @b nvarchar(9);
+select '@a';
+select name from sys.objects where name = @c and type = @B
+#vars @c
+#batch 52
+declare @B int = (select 1), @c int exec @a = sp_who
+#vars @a
+#batch 21
+EXECUTE sys.sp_who @b
+#vars @b
+#batch 46
+select @c
+if @a > 1 select 1
+/* @a */ select 1
+#vars @c @a
+#batch 82
+declare @c int;
+select 1 [@a];
+DECLARE @T table (x int, y int);
+if @c > 1 select 1
+#vars 
+#batch 90
+set @c = 1
+exec @c = sp_who
+declare @a int = 1, @b nvarchar(9)
+select @@rowcount
+print @B;
+#vars @c
+#batch 21
+EXECUTE sys.sp_who @a
+#vars @a
+#batch 18
+if @a > 1 select 1
+#vars @a
+#batch 22
+select (select @a), @B
+#vars @a @B
+#batch 48
+-- @b;
+select * from @t;
+exec @c = sp_who;
+-- @a
+#vars @t @c
+#batch 14
+declare @b int
+#vars 
+#batch 21
+EXECUTE sys.sp_who @B
+#vars @B
+#batch 13
+select 1 [@b]
+#vars 
+#batch 115
+declare @c int exec sp_executesql N'select @p', N'@p int', @p = @a if @B > 1 select 1 select '@a' select @@rowcount
+#vars @a @B
+#batch 34
+declare @B int = 1, @c nvarchar(9)
+#vars 
+#batch 49
+select 1 [@b]
+declare @b int = (select 1), @a int
+#vars 
+#batch 43
+select @@rowcount;
+select @B = 2;
+print @b;
+#vars @B
+#batch 136
+declare @a int = (select 1), @B int select name from sys.objects where name = @a and type = @c print @B; /* @c */ select 1 select @a = 2
+#vars @c
+#batch 36
+select (select @a), @c
+select @B = 2
+#vars @a @c @B
+#batch 135
+DECLARE @t table (x int, y int) declare @b int = (select 1), @a int EXECUTE sys.sp_who @a -- @B declare @b decimal(10, 2) = 1.5, @B int
+#vars 
+#batch 115
+set @a = 1
+/* @a */ select 1
+/* @B */ select 1
+select * from @t
+exec sp_executesql N'select @p', N'@p int', @p = @b
+#vars @a @t @b
+#batch 78
+select (select @a), @c
+-- @a
+DECLARE @t table (x int, y int)
+/* @a */ select 1
+#vars @a @c
+#batch 55
+DECLARE @t table (x int, y int)
+select @c = 2
+select @c
+#vars @c
+#batch 32
+select 1 [@c];
+/* @b */ select 1
+#vars 
+#batch 10
+set @a = 1
+#vars @a
+#batch 58
+select name from sys.objects where name = @B and type = @B
+#vars @B
+#batch 13
+select 1 [@c]
+#vars 
+#batch 49
+exec @b = sp_who;
+if @B > 1 select 1;
+select '@b'
+#vars @b
+#batch 91
+DECLARE @t table (x int, y int);
+declare @a int = case when 1 = 1 then 1 else 2 end, @B int
+#vars 
+#batch 45
+DECLARE @t table (x int, y int) select 1 [@a]
+#vars 
+#batch 108
+declare @b decimal(10, 2) = 1.5, @a int -- @b set @a = 1 exec sp_executesql N'select @p', N'@p int', @p = @b
+#vars 
+#batch 11
+select '@c'
+#vars 
+#batch 63
+select '@B' exec sp_executesql N'select @p', N'@p int', @p = @B
+#vars @B
+#batch 80
+exec sp_executesql N'select @p', N'@p int', @p = @a select @a if @c > 1 select 1
+#vars @a @c
+#batch 20
+declare @B int
+-- @B
+#vars 
+#batch 32
+select (select @a), @b
+select @b
+#vars @a @b
+#batch 16
+print @a;;
+-- @a
+#vars @a
+#batch 32
+/* @b */ select 1;
+select 1 [@a]
+#vars 
+#batch 46
+declare @a int
+DECLARE @T table (x int, y int)
+#vars 
+#batch 11
+select '@B'
+#vars 
+#batch 56
+select @B
+EXECUTE sys.sp_who @B
+select 1 [@c]
+set @c = 1
+#vars @B @c
+#batch 31
+DECLARE @T table (x int, y int)
+#vars 
+#batch 145
+select 1 [@B];
+select @@rowcount;
+select name from sys.objects where name = @b and type = @b;
+exec sp_executesql N'select @p', N'@p int', @p = @c
+#vars @b @c
+#batch 52
+declare @a int = 1, @c nvarchar(9)
+/* @b */ select 1
+#vars 
+#batch 60
+select @@rowcount
+/* @a */ select 1
+-- @a
+if @b > 1 select 1
+#vars @b
+#batch 45
+select '@a' exec @a = sp_who select * from @t
+#vars @a @t
+#batch 83
+print @B;;
+DECLARE @t table (x int, y int);
+select @B = 2;
+-- @b;
+/* @c */ select 1
+#vars @B
+#batch 81
+EXECUTE sys.sp_who @c
+if @c > 1 select 1
+select (select @c), @a
+select @@rowcount
+#vars @c @a
+#batch 45
+declare @B int = (select 1), @a int select @c
+#vars @c
+#batch 58
+declare @B int = case when 1 = 1 then 1 else 2 end, @a int
+#vars 
+#batch 167
+print @b; select name from sys.objects where name = @c and type = @b select * from @t select (select @c), @b select name from sys.objects where name = @c and type = @c
+#vars @b @c @t
+#batch 65
+select @B = 2 -- @B select @@rowcount select @a /* @c */ select 1
+#vars @B
+#batch 103
+exec sp_executesql N'select @p', N'@p int', @p = @b;
+EXECUTE sys.sp_who @b;
+select * from @t;
+select @a
+#vars @b @t @a
+#batch 126
+if @c > 1 select 1 select @a select * from @t select name from sys.objects where name = @c and type = @b EXECUTE sys.sp_who @c
+#vars @c @a @t @b
+#batch 87
+exec @c = sp_who
+if @c > 1 select 1
+exec sp_executesql N'select @p', N'@p int', @p = @a
+#vars @c @a
+#batch 47
+set @a = 1 if @B > 1 select 1 select @@rowcount
+#vars @a @B
+#batch 32
+if @a > 1 select 1
+select 1 [@b]
+#vars @a
+#batch 33
+if @c > 1 select 1;
+select @c = 2
+#vars @c
+#batch 13
+select 1 [@a]
+#vars 
+#batch 93
+exec @c = sp_who exec @a = sp_who select @@rowcount print @a; DECLARE @T table (x int, y int)
+#vars @c @a
+#batch 9
+select @a
+#vars @a
+#batch 113
+if @a > 1 select 1;
+exec sp_executesql N'select @p', N'@p int', @p = @B;
+select (select @a), @c;
+exec @a = sp_who
+#vars @a @B @c
+#batch 53
+set @a = 1;
+select @@rowcount;
+select (select @c), @a
+#vars @a @c
+#batch 48
+select '@c'
+if @b > 1 select 1
+select @@rowcount
+#vars @b
+#batch 50
+select @@rowcount print @B; select (select @a), @c
+#vars @B @a @c
+#batch 72
+select @b = 2;
+exec @b = sp_who;
+-- @c;
+select @@rowcount;
+select 1 [@b]
+#vars @b
+#batch 9
+print @c;
+#vars @c
+#batch 64
+select @a
+select (select @a), @c
+DECLARE @T table (x int, y int)
+#vars @a @c
+#batch 58
+select name from sys.objects where name = @B and type = @c
+#vars @B @c
+#batch 16
+select * from @t
+#vars @t
+#batch 35
+select @@rowcount;
+print @B;;
+-- @c
+#vars @B
+#batch 63
+exec sp_executesql N'select @p', N'@p int', @p = @b
+select '@a'
+#vars @b
+#batch 46
+print @a;;
+declare @c int = (select 1), @B int
+#vars @a
+#batch 28
+select @B = 2;
+select @c = 2
+#vars @B @c
+#batch 17
+/* @b */ select 1
+#vars 
+#batch 27
+select @b;
+select * from @t
+#vars @b @t
+#batch 75
+EXECUTE sys.sp_who @b;
+declare @a int = 1, @c nvarchar(9);
+exec @B = sp_who
+#vars @b
+#batch 66
+exec @B = sp_who;
+set @B = 1;
+EXECUTE sys.sp_who @a;
+select @b = 2
+#vars @B @a
+#batch 75
+set @a = 1 declare @c int DECLARE @t table (x int, y int) /* @c */ select 1
+#vars @a
+#batch 13
+select @b = 2
+#vars @b
+#batch 145
+declare @B decimal(10, 2) = 1.5, @a int;
+exec sp_executesql N'select @p', N'@p int', @p = @B;
+DECLARE @T table (x int, y int);
+if @B > 1 select 1
+#vars 
+#batch 25
+select @B = 2 select '@B'
+#vars @B
+#batch 93
+select name from sys.objects where name = @B and type = @B
+/* @B */ select 1
+select * from @t
+#vars @B @t
+#batch 50
+select * from @t
+exec @b = sp_who
+select * from @t
+#vars @t @b
+#batch 102
+select name from sys.objects where name = @c and type = @a;
+print @B;;
+DECLARE @t table (x int, y int)
+#vars @c @a @B
+#batch 21
+print @B; select '@c'
+#vars @B
+#batch 71
+select '@a';
+select name from sys.objects where name = @B and type = @a
+#vars @B @a
+#batch 104
+select @b;
+select * from @t;
+select (select @b), @c;
+exec sp_executesql N'select @p', N'@p int', @p = @b
+#vars @b @t @c
+#batch 17
+/* @c */ select 1
+#vars 
+#batch 10
+set @B = 1
+#vars @B
+#batch 35
+declare @B int = (select 1), @c int
+#vars 
+#batch 87
+/* @b */ select 1;
+select @@rowcount;
+select '@a';
+exec @c = sp_who;
+if @b > 1 select 1
+#vars @c @b
+#batch 86
+/* @a */ select 1
+if @c > 1 select 1
+select (select @c), @b
+select * from @t
+select @B
+#vars @c @b @t
+#batch 30
+declare @b int
+print @B;
+-- @c
+#vars 
+#batch 51
+exec sp_executesql N'select @p', N'@p int', @p = @a
+#vars @a
+#batch 30
+select * from @t select 1 [@b]
+#vars @t
+#batch 22
+select (select @c), @a
+#vars @c @a
+#batch 9
+print @b;
+#vars @b
+#batch 115
+select * from @t declare @B decimal(10, 2) = 1.5, @c int select name from sys.objects where name = @a and type = @b
+#vars @t @a
+#batch 112
+select @B = 2;
+EXECUTE sys.sp_who @c;
+EXECUTE sys.sp_who @b;
+exec sp_executesql N'select @p', N'@p int', @p = @B
+#vars @B @c
+#batch 60
+print @b; select @@rowcount EXECUTE sys.sp_who @b set @a = 1
+#vars @b @a
+#batch 34
+exec @B = sp_who
+select @@rowcount
+#vars @B
+#batch 53
+declare @a int = (select 1), @B int;
+exec @c = sp_who
+#vars @c
+#batch 118
+if @c > 1 select 1
+select @@rowcount
+declare @a int = case when 1 = 1 then 1 else 2 end, @b int
+select (select @b), @b
+#vars @c
+#batch 75
+select 1 [@a]
+select @B
+exec sp_executesql N'select @p', N'@p int', @p = @b
+#vars @B
+#batch 21
+EXECUTE sys.sp_who @c
+#vars @c
+#batch 84
+DECLARE @t table (x int, y int);
+exec sp_executesql N'select @p', N'@p int', @p = @a
+#vars @a
+#batch 18
+if @b > 1 select 1
+#vars @b
+#batch 179
+declare @B decimal(10, 2) = 1.5, @c int select name from sys.objects where name = @c and type = @b if @a > 1 select 1 exec sp_executesql N'select @p', N'@p int', @p = @B print @b;
+#vars @a
+#batch 5
+-- @B
+#vars 
+#batch 11
+select '@c'
+#vars 
+#batch 34
+select 1 [@c] select @c set @b = 1
+#vars @c @b
+#batch 13
+select 1 [@a]
+#vars 
+#batch 78
+if @B > 1 select 1;
+select name from sys.objects where name = @b and type = @c
+#vars @B @c
+#batch 38
+-- @b;
+DECLARE @T table (x int, y int)
+#vars 
+#batch 58
+select name from sys.objects where name = @B and type = @a
+#vars @B @a
+#batch 20
+-- @a;
+select @b = 2
+#vars @b
+#batch 31
+DECLARE @T table (x int, y int)
+#vars 
+#batch 51
+exec sp_executesql N'select @p', N'@p int', @p = @b
+#vars @b
+#batch 26
+print @c;
+exec @a = sp_who
+#vars @c @a
+#batch 67
+select '@B' declare @b int select @b select @B = 2 select * from @t
+#vars @t
+#batch 10
+set @a = 1
+#vars @a
+#batch 80
+declare @b int = (select 1), @c int select @@rowcount select * from @t select @a
+#vars @t @a
+#batch 25
+select @b select @a -- @c
+#vars @b @a
+#batch 109
+exec sp_executesql N'select @p', N'@p int', @p = @b;
+set @c = 1;
+EXECUTE sys.sp_who @c;
+EXECUTE sys.sp_who @B
+#vars @b @c
+#batch 26
+select * from @t select @B
+#vars @t @B
+#batch 17
+/* @a */ select 1
+#vars 
+#batch 9
+print @c;
+#vars @c
+#batch 41
+DECLARE @T table (x int, y int)
+print @c;
+#vars @c
+#batch 46
+select @@rowcount exec @c = sp_who select '@a'
+#vars @c
+#batch 59
+EXECUTE sys.sp_who @c
+EXECUTE sys.sp_who @a
+-- @B
+select @b
+#vars @c @a @b
+#batch 16
+select * from @t
+#vars @t
+#batch 78
+declare @c int;
+DECLARE @t table (x int, y int);
+select @c = 2;
+declare @B int
+#vars 
+#batch 70
+select 1 [@a]
+if @b > 1 select 1
+select 1 [@a]
+select @b
+select 1 [@B]
+#vars @b
+#batch 22
+select (select @c), @a
+#vars @c @a
+#batch 87
+exec sp_executesql N'select @p', N'@p int', @p = @B;
+select (select @c), @B;
+set @c = 1
+#vars @B @c
+#batch 17
+select @@rowcount
+#vars 
+#batch 34
+declare @c int = 1, @a nvarchar(9)
+#vars 
+#batch 18
+if @a > 1 select 1
+#vars @a
+#batch 89
+declare @b int
+exec @b = sp_who
+exec sp_executesql N'select @p', N'@p int', @p = @B
+-- @c
+#vars 
+#batch 69
+select @@rowcount;
+select '@b';
+-- @c;
+declare @a int;
+declare @B int
+#vars 
+#batch 57
+/* @c */ select 1 EXECUTE sys.sp_who @a select @@rowcount
+#vars @a
+#batch 152
+declare @c decimal(10, 2) = 1.5, @B int
+exec sp_executesql N'select @p', N'@p int', @p = @c
+DECLARE @t table (x int, y int)
+-- @c
+select (select @B), @c
+#vars 
+#batch 36
+print @c;
+select * from @t
+select @B
+#vars @c @t @B
+#batch 13
+select @B = 2
+#vars @B
+#batch 21
+EXECUTE sys.sp_who @B
+#vars @B
+#batch 51
+exec sp_executesql N'select @p', N'@p int', @p = @c
+#vars @c
+#batch 85
+exec sp_executesql N'select @p', N'@p int', @p = @b
+select * from @t
+select * from @t
+#vars @b @t
+#batch 84
+select '@B'
+select 1 [@a]
+select name from sys.objects where name = @b and type = @b
+#vars @b
+#batch 92
+exec @c = sp_who declare @B int = case when 1 = 1 then 1 else 2 end, @a int select * from @t
+#vars @c @t
+#batch 35
+EXECUTE sys.sp_who @a select @c = 2
+#vars @a @c
+#batch 76
+declare @a decimal(10, 2) = 1.5, @b int;
+/* @c */ select 1;
+select * from @t
+#vars @t
+#batch 72
+EXECUTE sys.sp_who @a
+select @@rowcount
+print @B;
+select (select @a), @b
+#vars @a @B
+#batch 146
+-- @c set @B = 1 select '@c' declare @b int = case when 1 = 1 then 1 else 2 end, @a int declare @B int = case when 1 = 1 then 1 else 2 end, @b int
+#vars 
+#batch 54
+select '@c'
+set @c = 1
+select 1 [@c]
+/* @B */ select 1
+#vars @c
+#batch 81
+select (select @b), @c select name from sys.objects where name = @B and type = @b
+#vars @b @c
+#batch 37
+DECLARE @T table (x int, y int) -- @a
+#vars 
+#batch 40
+select (select @b), @B select @@rowcount
+#vars @b
+#batch 72
+select 1 [@B]
+select name from sys.objects where name = @b and type = @c
+#vars @b @c
+#batch 59
+-- @B
+select '@a'
+select @a
+DECLARE @T table (x int, y int)
+#vars @a
+#batch 46
+declare @a decimal(10, 2) = 1.5, @b int;
+-- @a
+#vars 
+#batch 35
+declare @B int = (select 1), @c int
+#vars 
+#batch 66
+declare @b int exec sp_executesql N'select @p', N'@p int', @p = @a
+#vars @a
+#batch 94
+declare @a int = 1, @b nvarchar(9);
+select @@rowcount;
+EXECUTE sys.sp_who @b;
+select * from @t
+#vars @t
+#batch 51
+exec sp_executesql N'select @p', N'@p int', @p = @b
+#vars @b
+#batch 117
+select 1 [@b] exec sp_executesql N'select @p', N'@p int', @p = @b exec sp_executesql N'select @p', N'@p int', @p = @a
+#vars @b @a
+#batch 125
+declare @b int = 1, @c nvarchar(9) set @a = 1 select @c /* @a */ select 1 exec sp_executesql N'select @p', N'@p int', @p = @c
+#vars @a
+#batch 84
+declare @b int = case when 1 = 1 then 1 else 2 end, @c int select 1 [@b] select '@b'
+#vars 
+#batch 73
+-- @c -- @c EXECUTE sys.sp_who @a declare @B decimal(10, 2) = 1.5, @b int
+#vars 
+#batch 13
+select @b = 2
+#vars @b
+#batch 9
+select @b
+#vars @b
+#batch 44
+select (select @a), @a EXECUTE sys.sp_who @b
+#vars @a @b
+#batch 57
+set @B = 1
+declare @a int
+select 1 [@c]
+select @@rowcount
+#vars @B
+#batch 22
+select (select @c), @B
+#vars @c @B
+#batch 71
+declare @a decimal(10, 2) = 1.5, @b int
+select @c = 2
+select @@rowcount
+#vars @c
+#batch 74
+DECLARE @t table (x int, y int) select @a = 2 -- @c select '@a' set @a = 1
+#vars @a
+#batch 51
+exec sp_executesql N'select @p', N'@p int', @p = @B
+#vars @B
+#batch 66
+/* @a */ select 1
+select @B = 2
+if @b > 1 select 1
+-- @c
+print @B;
+#vars @B
+#batch 41
+/* @a */ select 1;
+select '@b';
+select @a
+#vars @a
+#batch 86
+EXECUTE sys.sp_who @B;
+exec sp_executesql N'select @p', N'@p int', @p = @c;
+set @c = 1
+#vars @B @c
+#batch 66
+exec @c = sp_who DECLARE @t table (x int, y int) /* @B */ select 1
+#vars @c
+#batch 77
+select @c = 2;
+print @a;;
+exec sp_executesql N'select @p', N'@p int', @p = @c
+#vars @c @a
+#batch 127
+select @@rowcount;
+select @@rowcount;
+EXECUTE sys.sp_who @b;
+select @c = 2;
+exec sp_executesql N'select @p', N'@p int', @p = @B
+#vars @b @c
+#batch 72
+select @c
+EXECUTE sys.sp_who @a
+select * from @t
+/* @c */ select 1
+-- @a
+#vars @c @a @t
+#batch 74
+/* @b */ select 1 exec @b = sp_who declare @c decimal(10, 2) = 1.5, @a int
+#vars @b
+#batch 62
+DECLARE @T table (x int, y int)
+if @c > 1 select 1
+select '@b'
+#vars @c
+#batch 75
+select name from sys.objects where name = @b and type = @c exec @B = sp_who
+#vars @b @c
+#batch 42
+select @B = 2
+-- @B
+select (select @B), @a
+#vars @B @a
+#batch 5
+-- @b
+#vars 
+#batch 101
+DECLARE @t table (x int, y int)
+/* @b */ select 1
+exec sp_executesql N'select @p', N'@p int', @p = @B
+#vars @B
+#batch 19
+print @a;
+print @c;
+#vars @a @c
+#batch 77
+-- @c EXECUTE sys.sp_who @c select @a = 2 declare @B int = (select 1), @a int
+#vars 
+#batch 22
+select (select @c), @c
+#vars @c
+#batch 57
+declare @a decimal(10, 2) = 1.5, @B int /* @c */ select 1
+#vars 
+#batch 37
+-- @a /* @B */ select 1 select 1 [@a]
+#vars 
+#batch 32
+-- @c print @b; -- @c set @a = 1
+#vars 
+#batch 58
+if @b > 1 select 1 select * from @t select (select @a), @a
+#vars @b @t @a
+#batch 9
+select @B
+#vars @B
+#batch 13
+select @c = 2
+#vars @c
+#batch 49
+select '@a';
+select @b = 2;
+set @B = 1;
+print @a;
+#vars @b @a
+#batch 64
+-- @a
+declare @B int = case when 1 = 1 then 1 else 2 end, @c int
+#vars 
+#batch 126
+declare @b int = case when 1 = 1 then 1 else 2 end, @a int;
+exec sp_executesql N'select @p', N'@p int', @p = @c;
+select 1 [@c]
+#vars @c
+#batch 16
+select * from @t
+#vars @t
+#batch 13
+select 1 [@b]
+#vars 
+#batch 86
+DECLARE @T table (x int, y int) set @b = 1 exec @B = sp_who select * from @t select @b
+#vars @b
+#batch 111
+print @B;
+exec sp_executesql N'select @p', N'@p int', @p = @b
+select 1 [@a]
+declare @a int = (select 1), @c int
+#vars @B
+#batch 9
+select @B
+#vars @B
+#batch 51
+exec sp_executesql N'select @p', N'@p int', @p = @c
+#vars @c
+#batch 44
+declare @a int;
+select @@rowcount;
+print @B;
+#vars @B
+#batch 85
+exec @b = sp_who
+if @B > 1 select 1
+exec @b = sp_who
+print @a;
+select (select @c), @B
+#vars @b @a @c
+#batch 18
+if @b > 1 select 1
+#vars @b
+#batch 94
+/* @B */ select 1
+select @@rowcount
+select name from sys.objects where name = @a and type = @c
+#vars @a @c
+#batch 61
+/* @b */ select 1
+select * from @t
+select * from @t
+print @b;
+#vars @t @b
+#batch 16
+exec @b = sp_who
+#vars @b
+#batch 10
+set @b = 1
+#vars @b
+#batch 42
+print @c; print @b; select (select @a), @b
+#vars @c @b @a
+#batch 60
+/* @c */ select 1
+exec @B = sp_who
+select 1 [@a]
+select '@B'
+#vars @B
+#batch 88
+select '@c'
+DECLARE @t table (x int, y int)
+print @B;
+declare @c int = 1, @a nvarchar(9)
+#vars @B
+#batch 64
+set @a = 1;
+/* @a */ select 1;
+select @@rowcount;
+declare @b int
+#vars @a
+#batch 49
+select @@rowcount
+DECLARE @T table (x int, y int)
+#vars 
+#batch 39
+declare @c decimal(10, 2) = 1.5, @a int
+#vars 
+#batch 27
+-- @b
+EXECUTE sys.sp_who @B
+#vars @B
+#batch 43
+select '@c'
+set @B = 1
+declare @c int
+-- @b
+#vars @B
+#batch 11
+select '@B'
+#vars 
+#batch 38
+EXECUTE sys.sp_who @c exec @c = sp_who
+#vars @c
+#batch 31
+DECLARE @t table (x int, y int)
+#vars 
+#batch 139
+declare @c int = case when 1 = 1 then 1 else 2 end, @B int
+EXECUTE sys.sp_who @a
+select (select @b), @c
+select 1 [@B]
+EXECUTE sys.sp_who @c
+#vars @a
+#batch 147
+select * from @t -- @a select name from sys.objects where name = @a and type = @B exec sp_executesql N'select @p', N'@p int', @p = @b select @b = 2
+#vars @t
+#batch 77
+declare @c int
+set @B = 1
+exec sp_executesql N'select @p', N'@p int', @p = @c
+#vars @B
+#batch 5
+-- @b
+#vars 
+#batch 9
+print @B;
+#vars @B
+#batch 9
+print @a;
+#vars @a
+#batch 168
+select 1 [@B];
+select name from sys.objects where name = @b and type = @b;
+select @c;
+select name from sys.objects where name = @b and type = @B;
+select (select @c), @a
+#vars @b @c @a
+#batch 51
+exec sp_executesql N'select @p', N'@p int', @p = @b
+#vars @b
+#batch 63
+select '@a';
+DECLARE @T table (x int, y int);
+/* @B */ select 1
+#vars 
+#batch 49
+print @c; select @@rowcount EXECUTE sys.sp_who @c
+#vars @c
+#batch 26
+select '@b';
+select 1 [@a]
+#vars 
+#batch 77
+select name from sys.objects where name = @B and type = @B;
+select @@rowcount
+#vars @B
+#batch 55
+EXECUTE sys.sp_who @c;
+EXECUTE sys.sp_who @b;
+select @c
+#vars @c @b
+#batch 110
+select (select @b), @b
+select '@b'
+/* @a */ select 1
+-- @b
+exec sp_executesql N'select @p', N'@p int', @p = @B
+#vars @b
+#batch 36
+EXECUTE sys.sp_who @c;
+select @b = 2
+#vars @c @b
+#batch 72
+print @c;;
+declare @b int = 1, @a nvarchar(9);
+set @b = 1;
+select 1 [@b]
+#vars @c
+#batch 73
+select '@c' EXECUTE sys.sp_who @a set @B = 1 select '@B' exec @b = sp_who
+#vars @a @B
+#batch 121
+select @b = 2 select name from sys.objects where name = @B and type = @b DECLARE @t table (x int, y int) exec @B = sp_who
+#vars @b
+#batch 70
+-- @c;
+select * from @t;
+select @c;
+exec @b = sp_who;
+exec @a = sp_who
+#vars @t @c @b @a
+#batch 149
+select 1 [@a] declare @a int = case when 1 = 1 then 1 else 2 end, @B int select name from sys.objects where name = @c and type = @b /* @c */ select 1
+#vars @c
+#batch 26
+print @a;
+exec @b = sp_who
+#vars @a @b
+#batch 58
+declare @a int = case when 1 = 1 then 1 else 2 end, @c int
+#vars 
+#batch 76
+select name from sys.objects where name = @b and type = @c;
+exec @B = sp_who
+#vars @b @c
+#batch 45
+EXECUTE sys.sp_who @B print @b; select 1 [@b]
+#vars @B
+#batch 108
+select (select @a), @b
+select * from @t
+exec sp_executesql N'select @p', N'@p int', @p = @c
+exec @c = sp_who
+#vars @a @b @t @c
+#batch 90
+/* @b */ select 1
+select @c
+set @b = 1
+exec sp_executesql N'select @p', N'@p int', @p = @c
+#vars @c @b
+#batch 21
+EXECUTE sys.sp_who @c
+#vars @c
+#batch 108
+if @a > 1 select 1
+select name from sys.objects where name = @a and type = @c
+-- @c
+select @b = 2
+set @b = 1
+#vars @a @c @b
+#batch 110
+select (select @B), @c
+select * from @t
+exec sp_executesql N'select @p', N'@p int', @p = @a
+if @c > 1 select 1
+#vars @B @c @t @a
+#batch 48
+exec @B = sp_who
+select @@rowcount
+select 1 [@B]
+#vars @B
+#batch 61
+declare @B decimal(10, 2) = 1.5, @c int
+select '@b'
+select @B
+#vars 
+#batch 14
+declare @c int
+#vars 
+#batch 91
+select name from sys.objects where name = @b and type = @B EXECUTE sys.sp_who @B set @b = 1
+#vars @b
+#batch 54
+exec @b = sp_who
+print @b;
+/* @b */ select 1
+print @c;
+#vars @b @c
+#batch 9
+select @c
+#vars @c
+#batch 102
+select 1 [@b];
+declare @a int = (select 1), @B int;
+select @c = 2;
+select * from @t;
+select @@rowcount
+#vars @c @t
+#batch 153
+select * from @t
+exec sp_executesql N'select @p', N'@p int', @p = @a
+exec sp_executesql N'select @p', N'@p int', @p = @c
+/* @b */ select 1
+declare @b int
+#vars @t @a @c
+#batch 113
+select @@rowcount
+select '@B'
+exec sp_executesql N'select @p', N'@p int', @p = @a
+select 1 [@b]
+select @@rowcount
+#vars @a
+#batch 51
+DECLARE @T table (x int, y int);
+if @B > 1 select 1
+#vars @B
+#batch 33
+print @c;;
+select (select @b), @a
+#vars @c @b @a
+#batch 9
+select @a
+#vars @a
+#batch 131
+select @b = 2 declare @a int = case when 1 = 1 then 1 else 2 end, @c int select name from sys.objects where name = @b and type = @a
+#vars @b
+#batch 21
+EXECUTE sys.sp_who @B
+#vars @B
+#batch 89
+DECLARE @T table (x int, y int);
+select '@a';
+exec @c = sp_who;
+if @a > 1 select 1;
+-- @b
+#vars @c @a
+#batch 86
+select name from sys.objects where name = @a and type = @c print @c; select @@rowcount
+#vars @a @c
+#batch 48
+exec @b = sp_who
+DECLARE @T table (x int, y int)
+#vars @b
+#batch 46
+select @B EXECUTE sys.sp_who @B declare @c int
+#vars @B
+#batch 31
+DECLARE @t table (x int, y int)
+#vars 
+#batch 50
+select * from @t;
+exec @a = sp_who;
+declare @b int
+#vars @t @a
+#batch 108
+DECLARE @T table (x int, y int) select @@rowcount declare @c int = case when 1 = 1 then 1 else 2 end, @a int
+#vars 
+#batch 78
+if @a > 1 select 1;
+select name from sys.objects where name = @b and type = @c
+#vars @a @b @c
+#batch 89
+select '@b';
+select name from sys.objects where name = @a and type = @c;
+select * from @t
+#vars @a @c @t
+#batch 57
+select 1 [@c];
+-- @a;
+select @@rowcount;
+exec @a = sp_who
+#vars @a
+#batch 53
+select @@rowcount declare @b int = (select 1), @c int
+#vars 
+#batch 93
+if @b > 1 select 1;
+select (select @a), @c;
+-- @B;
+select (select @a), @c;
+if @c > 1 select 1
+#vars @b @a @c
+#batch 68
+print @B;
+declare @c int = case when 1 = 1 then 1 else 2 end, @a int
+#vars @B
+#batch 51
+declare @B int;
+select '@B';
+select (select @b), @a
+#vars @a
+#batch 31
+DECLARE @t table (x int, y int)
+#vars 
+#batch 9
+print @a;
+#vars @a
+#batch 13
+select 1 [@B]
+#vars 
+#batch 22
+select (select @a), @c
+#vars @a @c
+#batch 82
+select (select @b), @b
+/* @a */ select 1
+EXECUTE sys.sp_who @c
+print @a;
+print @b;
+#vars @b @c @a
+#batch 64
+declare @B int = 1, @a nvarchar(9);
+print @a;;
+select @@rowcount
+#vars 
+#batch 55
+-- @B -- @B select '@c' select 1 [@c] select @@rowcount
+#vars 
+#batch 49
+select @@rowcount
+select * from @t
+declare @B int
+#vars @t
+#batch 121
+set @b = 1
+/* @B */ select 1
+select (select @B), @a
+select @@rowcount
+exec sp_executesql N'select @p', N'@p int', @p = @c
+#vars @b @a @c
+#batch 21
+set @a = 1
+set @b = 1
+#vars @a @b
+#batch 22
+select (select @B), @b
+#vars @B
+#batch 16
+select * from @t
+#vars @t
+#batch 31
+DECLARE @t table (x int, y int)
+#vars 
+#batch 79
+-- @c declare @c int select name from sys.objects where name = @c and type = @b
+#vars 
+#batch 137
+select @@rowcount select (select @B), @b DECLARE @T table (x int, y int) select name from sys.objects where name = @a and type = @a -- @a
+#vars @B @a
+#batch 114
+-- @B declare @b int = case when 1 = 1 then 1 else 2 end, @c int print @b; select (select @b), @c exec @c = sp_who
+#vars 
+#batch 80
+declare @B int = case when 1 = 1 then 1 else 2 end, @a int print @a; select '@c'
+#vars 
+#batch 14
+declare @B int
+#vars 
+#batch 127
+select (select @c), @c
+select (select @b), @c
+select name from sys.objects where name = @B and type = @c
+select (select @c), @c
+#vars @c @b
+#batch 22
+select (select @b), @b
+#vars @b
+#batch 58
+select name from sys.objects where name = @c and type = @c
+#vars @c
+#batch 144
+declare @b int = case when 1 = 1 then 1 else 2 end, @c int
+exec sp_executesql N'select @p', N'@p int', @p = @a
+select 1 [@a]
+select @b = 2
+-- @b
+#vars @a
+#batch 18
+if @B > 1 select 1
+#vars @B
+#batch 107
+select @c select name from sys.objects where name = @B and type = @a EXECUTE sys.sp_who @b exec @b = sp_who
+#vars @c @B @a
+#batch 55
+select @@rowcount select @@rowcount print @c; select @c
+#vars @c
+#batch 71
+/* @b */ select 1 select @@rowcount select * from @t if @b > 1 select 1
+#vars @t @b
+#batch 11
+select '@B'
+#vars 
+#batch 13
+select @c = 2
+#vars @c
+#batch 34
+select '@a';
+set @a = 1;
+select @a
+#vars @a
+#batch 46
+-- @a;
+declare @B decimal(10, 2) = 1.5, @a int
+#vars 
+#batch 17
+set @b = 1;
+-- @a
+#vars @b
+#batch 103
+DECLARE @t table (x int, y int)
+declare @B int = (select 1), @a int
+select @@rowcount
+select '@b'
+-- @a
+#vars 
+#batch 36
+select @b = 2
+select (select @c), @b
+#vars @b @c
+#batch 21
+EXECUTE sys.sp_who @b
+#vars @b
+#batch 31
+select @b = 2;
+select * from @t
+#vars @b @t
+#batch 65
+/* @b */ select 1 -- @a select (select @b), @b if @B > 1 select 1
+#vars 
+#batch 90
+declare @c decimal(10, 2) = 1.5, @b int;
+-- @a;
+set @c = 1;
+set @a = 1;
+if @a > 1 select 1
+#vars @a
+#batch 67
+declare @b int = (select 1), @c int select 1 [@c] /* @a */ select 1
+#vars 
+#batch 35
+select * from @t;
+select @@rowcount
+#vars @t
+#batch 80
+select @@rowcount EXECUTE sys.sp_who @a select (select @B), @c select '@c' -- @c
+#vars @a @B @c
+#batch 14
+declare @c int
+#vars 
+#batch 63
+declare @c decimal(10, 2) = 1.5, @B int print @c; select 1 [@a]
+#vars 
+#batch 35
+declare @a int = (select 1), @c int
+#vars 
+#batch 41
+DECLARE @t table (x int, y int) print @B;
+#vars @B
+#batch 76
+set @c = 1 declare @B int exec @b = sp_who select * from @t select * from @t
+#vars @c @t
+#batch 87
+select 1 [@b] DECLARE @t table (x int, y int) exec @a = sp_who -- @B if @a > 1 select 1
+#vars @a
+#batch 9
+print @b;
+#vars @b
+#batch 69
+/* @a */ select 1;
+select 1 [@b];
+select '@b';
+select (select @a), @B
+#vars @a @B
+#batch 80
+select name from sys.objects where name = @c and type = @B EXECUTE sys.sp_who @a
+#vars @c @B @a
+#batch 50
+set @c = 1 /* @c */ select 1 EXECUTE sys.sp_who @b
+#vars @c @b
+#batch 22
+select (select @B), @B
+#vars @B
+#batch 9
+select @c
+#vars @c
+#batch 18
+if @c > 1 select 1
+#vars @c
+#batch 9
+print @a;
+#vars @a
+#batch 58
+EXECUTE sys.sp_who @a
+if @c > 1 select 1
+select @@rowcount
+#vars @a @c
+#batch 15
+-- @a
+select @c
+#vars @c
+#batch 150
+EXECUTE sys.sp_who @a;
+declare @c int = 1, @B nvarchar(9);
+select name from sys.objects where name = @B and type = @c;
+DECLARE @T table (x int, y int)
+#vars @a
+#batch 31
+DECLARE @T table (x int, y int)
+#vars 
+#batch 17
+select @@rowcount
+#vars 
+#batch 13
+select @c = 2
+#vars @c
+#batch 13
+select @B = 2
+#vars @B
+#batch 58
+declare @a int = case when 1 = 1 then 1 else 2 end, @b int
+#vars 
+#batch 106
+declare @b int = case when 1 = 1 then 1 else 2 end, @c int
+select * from @t
+exec @b = sp_who
+select 1 [@b]
+#vars @t
+#batch 192
+exec sp_executesql N'select @p', N'@p int', @p = @a
+exec sp_executesql N'select @p', N'@p int', @p = @a
+exec sp_executesql N'select @p', N'@p int', @p = @a
+declare @B int
+EXECUTE sys.sp_who @a
+#vars @a
+#batch 31
+select @c = 2
+/* @b */ select 1
+#vars @c
+#batch 67
+-- @c;
+declare @c int = (select 1), @a int;
+select '@c';
+set @b = 1
+#vars @b
+#batch 95
+DECLARE @t table (x int, y int)
+if @b > 1 select 1
+-- @B
+EXECUTE sys.sp_who @a
+select * from @t
+#vars @b @a
+#batch 80
+exec sp_executesql N'select @p', N'@p int', @p = @a
+select (select @B), @c
+-- @B
+#vars @a @B @c
+#batch 47
+declare @a int;
+select * from @t;
+select @b = 2
+#vars @t @b
+#batch 117
+exec @b = sp_who
+select (select @a), @c
+if @b > 1 select 1
+select name from sys.objects where name = @a and type = @a
+#vars @b @a @c
+#batch 32
+EXECUTE sys.sp_who @a
+set @b = 1
+#vars @a @b
+#batch 70
+declare @b int = (select 1), @a int;
+set @b = 1;
+EXECUTE sys.sp_who @B
+#vars 
+#batch 110
+select '@B' select name from sys.objects where name = @a and type = @a select @B = 2 select '@B' select 1 [@b]
+#vars @a @B
+#batch 197
+exec sp_executesql N'select @p', N'@p int', @p = @c select '@B' declare @b int = case when 1 = 1 then 1 else 2 end, @a int select (select @b), @b exec sp_executesql N'select @p', N'@p int', @p = @c
+#vars @c
+#batch 69
+select '@B' exec sp_executesql N'select @p', N'@p int', @p = @c -- @a
+#vars @c
+#batch 62
+select (select @B), @b select * from @t select (select @a), @b
+#vars @B @t @a
+#batch 118
+exec @b = sp_who;
+EXECUTE sys.sp_who @a;
+select name from sys.objects where name = @a and type = @b;
+/* @c */ select 1
+#vars @b @a
+#batch 46
+select 1 [@c];
+DECLARE @t table (x int, y int)
+#vars 
+#batch 38
+select (select @a), @B
+select @c
+-- @a
+#vars @a @B @c
+#batch 17
+select @@rowcount
+#vars 
+#batch 90
+select name from sys.objects where name = @a and type = @c DECLARE @T table (x int, y int)
+#vars @a @c
+#batch 41
+select @@rowcount
+select 1 [@b]
+select @B
+#vars @B
+#batch 52
+select 1 [@b];
+if @a > 1 select 1;
+/* @b */ select 1
+#vars @a
+#batch 71
+set @a = 1;
+select (select @a), @c;
+select @@rowcount;
+select * from @t
+#vars @a @c @t
+#batch 11
+select '@b'
+#vars 
+#batch 37
+select (select @a), @a
+declare @b int
+#vars @a
+#batch 78
+select name from sys.objects where name = @c and type = @B select @b = 2 -- @a
+#vars @c @B
+#batch 98
+-- @c;
+declare @a int = 1, @b nvarchar(9);
+exec @a = sp_who;
+select @B = 2;
+select (select @b), @a
+#vars 
+#batch 51
+exec sp_executesql N'select @p', N'@p int', @p = @b
+#vars @b
+#batch 69
+select '@a' exec sp_executesql N'select @p', N'@p int', @p = @a -- @c
+#vars @a
+#batch 27
+select @@rowcount
+select @a
+#vars @a
+#batch 34
+exec @a = sp_who
+select @@rowcount
+#vars @a
+#batch 52
+select '@c' select (select @B), @c -- @B select '@B'
+#vars @B @c
+#batch 27
+select 1 [@B]
+select 1 [@a]
+#vars 
+#batch 73
+declare @a int = case when 1 = 1 then 1 else 2 end, @c int;
+select 1 [@b]
+#vars 
+#batch 56
+DECLARE @t table (x int, y int);
+-- @a;
+select * from @t
+#vars 
+#batch 58
+select name from sys.objects where name = @a and type = @c
+#vars @a @c
+#batch 67
+DECLARE @T table (x int, y int) exec @B = sp_who if @a > 1 select 1
+#vars @B @a
+#batch 16
+select * from @t
+#vars @t
+#batch 151
+select name from sys.objects where name = @c and type = @b;
+select name from sys.objects where name = @a and type = @B;
+select @a = 2;
+exec @B = sp_who
+#vars @c @b @a
+#batch 13
+select 1 [@a]
+#vars 
+#batch 34
+if @c > 1 select 1;
+declare @a int
+#vars @c
+#batch 31
+DECLARE @t table (x int, y int)
+#vars 
+#batch 49
+DECLARE @t table (x int, y int) select @@rowcount
+#vars 
+#batch 95
+declare @B int
+select '@b'
+select name from sys.objects where name = @a and type = @B
+select @c
+#vars @a @c
+#batch 14
+declare @a int
+#vars 
+#batch 81
+select (select @a), @b select name from sys.objects where name = @b and type = @B
+#vars @a @b
+#batch 31
+DECLARE @t table (x int, y int)
+#vars 
+#batch 87
+select name from sys.objects where name = @B and type = @b print @c; if @a > 1 select 1
+#vars @B @c @a
+#batch 58
+select name from sys.objects where name = @b and type = @B
+#vars @b
+#batch 51
+select @c;
+declare @a int;
+-- @B;
+select @@rowcount
+#vars @c
+#batch 71
+select @b = 2 declare @a int = 1, @c nvarchar(9) select (select @B), @b
+#vars @b
+#batch 10
+set @a = 1
+#vars @a
+#batch 134
+select @b;
+exec sp_executesql N'select @p', N'@p int', @p = @B;
+exec sp_executesql N'select @p', N'@p int', @p = @a;
+/* @c */ select 1
+#vars @b @a
+#batch 137
+DECLARE @t table (x int, y int)
+/* @c */ select 1
+select name from sys.objects where name = @b and type = @a
+set @a = 1
+select @@rowcount
+#vars @b @a
+#batch 9
+select @b
+#vars @b
+#batch 58
+select * from @t;
+if @B > 1 select 1;
+select @b;
+print @c;
+#vars @t @B @c
+#batch 66
+declare @b int;
+exec @c = sp_who;
+select 1 [@b];
+/* @B */ select 1
+#vars @c
+#batch 109
+declare @a int;
+exec sp_executesql N'select @p', N'@p int', @p = @a;
+select * from @t;
+select (select @b), @b
+#vars @t @b
+#batch 59
+declare @c int = 1, @a nvarchar(9);
+exec @a = sp_who;
+-- @c
+#vars 
+#batch 61
+print @a;
+-- @c
+select * from @t
+set @c = 1
+/* @c */ select 1
+#vars @a @t @c
+#batch 10
+set @B = 1
+#vars @B
+#batch 14
+declare @b int
+#vars 
+#batch 85
+select @a set @B = 1 select name from sys.objects where name = @a and type = @a -- @b
+#vars @a @B
+#batch 39
+select @a = 2 select '@b' select @B = 2
+#vars @a @B
+#batch 156
+DECLARE @T table (x int, y int)
+select 1 [@a]
+declare @c int = case when 1 = 1 then 1 else 2 end, @a int
+exec sp_executesql N'select @p', N'@p int', @p = @a
+#vars 
+#batch 52
+select * from @t;
+declare @b int = 1, @a nvarchar(9)
+#vars @t
+#batch 31
+select '@c';
+if @a > 1 select 1
+#vars @a
+#batch 161
+declare @b int = (select 1), @c int;
+select @b = 2;
+select name from sys.objects where name = @B and type = @a;
+exec @b = sp_who;
+DECLARE @T table (x int, y int)
+#vars @a
+#batch 129
+select name from sys.objects where name = @c and type = @b
+exec @b = sp_who
+if @b > 1 select 1
+/* @B */ select 1
+select * from @t
+#vars @c @b @t
+#batch 58
+select name from sys.objects where name = @a and type = @a
+#vars @a
+#batch 89
+-- @a;
+/* @B */ select 1;
+exec sp_executesql N'select @p', N'@p int', @p = @B;
+set @c = 1
+#vars @B @c
+#batch 51
+exec sp_executesql N'select @p', N'@p int', @p = @c
+#vars @c
+#batch 87
+declare @b int = (select 1), @a int exec sp_executesql N'select @p', N'@p int', @p = @b
+#vars 
+#batch 58
+select name from sys.objects where name = @B and type = @c
+#vars @B @c
+#batch 32
+print @a;
+-- @c
+exec @B = sp_who
+#vars @a @B
+#batch 139
+select @a DECLARE @t table (x int, y int) select @a declare @b int = (select 1), @c int exec sp_executesql N'select @p', N'@p int', @p = @b
+#vars @a
+#batch 5
+-- @b
+#vars 
+#batch 71
+exec @a = sp_who;
+-- @c;
+select (select @c), @c;
+select (select @B), @a
+#vars @a @c @B
+#batch 80
+declare @a int = (select 1), @B int;
+if @b > 1 select 1;
+-- @b;
+select * from @t
+#vars @t
+#batch 99
+exec sp_executesql N'select @p', N'@p int', @p = @c
+select @b
+select @@rowcount
+print @c;
+select @B
+#vars @c @b
+#batch 89
+select 1 [@B];
+declare @c int;
+select name from sys.objects where name = @a and type = @b
+#vars @a @b
+#batch 121
+declare @c decimal(10, 2) = 1.5, @B int;
+exec sp_executesql N'select @p', N'@p int', @p = @c;
+print @B;;
+select * from @t
+#vars @t
+#batch 29
+set @c = 1;
+/* @b */ select 1
+#vars @c
+#batch 17
+/* @b */ select 1
+#vars 
+#batch 39
+exec @a = sp_who
+select (select @B), @b
+#vars @a @B
+#batch 120
+select '@a'
+select @@rowcount
+declare @B int = case when 1 = 1 then 1 else 2 end, @a int
+DECLARE @t table (x int, y int)
+#vars 
+#batch 17
+select @@rowcount
+#vars 
+#batch 52
+declare @b int = (select 1), @c int
+exec @c = sp_who
+#vars 
+#batch 71
+declare @B int = 1, @a nvarchar(9);
+-- @B;
+/* @a */ select 1;
+select @B
+#vars 
+#batch 35
+declare @b int = (select 1), @a int
+#vars 
+#batch 35
+declare @a int = (select 1), @B int
+#vars 
+#batch 173
+DECLARE @T table (x int, y int);
+select name from sys.objects where name = @c and type = @c;
+select @a;
+exec @c = sp_who;
+exec sp_executesql N'select @p', N'@p int', @p = @c
+#vars @c @a
+#batch 46
+set @B = 1;
+select '@B';
+EXECUTE sys.sp_who @c
+#vars @B @c
+#batch 76
+select '@b'
+declare @c int = case when 1 = 1 then 1 else 2 end, @a int
+-- @a
+#vars 
+#batch 69
+if @B > 1 select 1
+set @b = 1
+select @@rowcount
+EXECUTE sys.sp_who @b
+#vars @B
+#batch 40
+select @@rowcount select (select @c), @b
+#vars @c @b
+#batch 58
+declare @b int = case when 1 = 1 then 1 else 2 end, @c int
+#vars 
+#batch 77
+select name from sys.objects where name = @c and type = @B;
+/* @c */ select 1
+#vars @c @B
+#batch 28
+if @a > 1 select 1
+select @b
+#vars @a @b
+#batch 81
+select '@b' set @c = 1 select name from sys.objects where name = @a and type = @b
+#vars @c @a @b
+#batch 98
+exec @c = sp_who select * from @t -- @c declare @b int = case when 1 = 1 then 1 else 2 end, @c int
+#vars @c @t
+#batch 98
+select @@rowcount EXECUTE sys.sp_who @c select name from sys.objects where name = @B and type = @a
+#vars @c @B @a
+#batch 75
+if @c > 1 select 1;
+select (select @b), @a;
+exec @a = sp_who;
+select @b = 2
+#vars @c @b @a
+#batch 9
+select @b
+#vars @b
+#batch 9
+print @c;
+#vars @c
+#batch 70
+declare @b decimal(10, 2) = 1.5, @a int;
+select @B;
+if @B > 1 select 1
+#vars 
+#batch 31
+DECLARE @T table (x int, y int)
+#vars 

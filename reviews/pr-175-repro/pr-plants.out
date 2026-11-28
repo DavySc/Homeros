@@ -1,0 +1,17 @@
+caught        keys: :Declare is not a command (test_keys_map) :: tests/test_keys_map.c:118: CHECK(!strncmp(e.msg, "sql: ", 5)) failed
+caught        sql: a batch read from the buffer as it is when sent, not as it was at F5 (test_sql_editor) :: tests/test_sql_editor.c:170: CHECK(strstr(until("Completion time"), "id\n1042\n")) failed
+caught        sql: an EXEC's parameter names asked for (test_sql_vars) :: tests/test_sql_vars.c:39: CHECK(cases && !bad) failed
+caught        sql: EXEC @rc = p's @rc taken for a parameter name (test_sql_vars) :: tests/test_sql_vars.c:39: CHECK(cases && !bad) failed
+caught        sql: a DECLARE's names asked for (test_sql_vars) :: tests/test_sql_vars.c:39: CHECK(cases && !bad) failed
+caught        sql: a DECLARE's second name asked for (test_sql_vars) :: tests/test_sql_vars.c:39: CHECK(cases && !bad) failed
+caught        sql: a DECLARE runs on past the next statement (test_sql_vars) :: tests/test_sql_vars.c:39: CHECK(cases && !bad) failed
+caught        sql: a variable declared after its use asked for (test_sql_editor) :: tests/test_sql_editor.c:352: CHECK(strstr(f5("ms/pb.sql", "select @q as q\ndeclare @q int\n"), "Must declare the scalar variable \"@q\"") && e.mode !=
+caught        sql: a procedure's parameters asked for (test_sql_editor) :: tests/test_sql_editor.c:356: CHECK(!core_edit_file(&e, "ms/pp.sql", 0) && sql_key(&e, KEY_F5) == 1 && e.mode != MODE_CMDLINE && strstr(until("Completi
+caught        sql: the DECLAREs on a line of their own, the server's line numbers off by one (test_sql_editor) :: tests/test_sql_editor.c:329: CHECK(e.mode == MODE_NORMAL && strstr(until("Completion time"), "d\t@c\n6\t@b\n") && strstr(res, "Line 2") && strstr(res,
+caught        sql: the file's own DECLARE not the prompt's default (test_sql_editor) :: tests/test_sql_editor.c:327: CHECK(sql_key(&e, KEY_F5) == 1 && e.mode == MODE_CMDLINE && e.cmdlen == 18 && !memcmp(e.cmd, "Declare @a int = 3", 18)) f
+caught        sql: a kept value asked for again (test_sql_editor) :: tests/test_sql_editor.c:329: CHECK(e.mode == MODE_NORMAL && strstr(until("Completion time"), "d\t@c\n6\t@b\n") && strstr(res, "Line 2") && strstr(res,
+caught        sql: :Declare keeps the old value beside the new (test_sql_editor) :: tests/test_sql_editor.c:330: CHECK(!sql_declare(&e, "@A  int = 5") && !sql_declare(&e, "") && !strcmp(e.msg, "sql: @A int = 5;")) failed
+caught        sql: Enter does not run the waiting F5 (test_sql_editor) :: tests/test_sql_editor.c:329: CHECK(e.mode == MODE_NORMAL && strstr(until("Completion time"), "d\t@c\n6\t@b\n") && strstr(res, "Line 2") && strstr(res,
+caught        sql: Postgres's @x asked for (test_sql_editor) :: tests/test_sql_editor.c:350: CHECK(strstr(f5("pg/pd.sql", "select @n as a from (select -3 as n) t\n"), "a\n3\n") && e.mode != MODE_CMDLINE && !sql_dis
+caught        sql: a DECLARE's line break typed as Enter (test_sql_editor) :: tests/test_sql_editor.c:346: CHECK(sql_key(&e, KEY_F5) == 1 && e.mode == MODE_CMDLINE && e.cmdlen == 19 && !memcmp(e.cmd, "Declare @m int  = 4", 19)) 
+16 of 16 caught

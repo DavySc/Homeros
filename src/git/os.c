@@ -18,8 +18,6 @@
 
 extern char **environ;
 
-const char *const git_opener = "xdg-open";
-
 /* one inotify instance per repository; wd numbers name their directory */
 struct Watch { int fd; char **path; size_t n; };
 

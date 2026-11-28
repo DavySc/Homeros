@@ -1,0 +1,23 @@
+# PR 175 review's own plants (prun.py TREE review-plants.txt); run.c lines once per test that could catch them
+r1 @@x asked for (sql_vars)~test TESTS=sql_vars~~src/sql/run.c~k == TQ_VAR && *w == '@' && w[1] != '@'~k == TQ_VAR && *w == '@'
+r2 declared names compared with case (sql_vars)~test TESTS=sql_vars~~src/sql/run.c~if (!strcasecmp(s->s + i, w)) return 1;~if (!strcmp(s->s + i, w)) return 1;
+r3 a ) never closes (sql_vars)~test TESTS=sql_vars~~src/sql/run.c~*w == ')' && depth ? -1 : 0~0
+r3 a ) never closes (sql_editor)~test TESTS=sql_editor~~src/sql/run.c~*w == ')' && depth ? -1 : 0~0
+r4 a statement word inside ( ) ends a DECLARE (sql_vars)~test TESTS=sql_vars~~src/sql/run.c~			if (!depth && is(w, stmt)) in_decl~			if (is(w, stmt)) in_decl
+r4 a statement word inside ( ) ends a DECLARE (sql_editor)~test TESTS=sql_editor~~src/sql/run.c~			if (!depth && is(w, stmt)) in_decl~			if (is(w, stmt)) in_decl
+r5 ; does not end a DECLARE or an EXEC (sql_vars)~test TESTS=sql_vars~~src/sql/run.c~if (*w == ';') in_decl = in_exec = 0;~;
+r5 ; does not end a DECLARE or an EXEC (sql_editor)~test TESTS=sql_editor~~src/sql/run.c~if (*w == ';') in_decl = in_exec = 0;~;
+r6 an EXEC's last argument at the batch's end not asked for (sql_vars)~test TESTS=sql_vars~~src/sql/run.c~	if (*c && !bad) bad = use(out, &decl, c);~
+r7 a comma inside ( ) ends a DECLARE's default (sql_editor)~test TESTS=sql_editor~~src/sql/run.c~*w == ';' || (*w == ',' && !depth)~*w == ';' || *w == ','
+r8 only two words looked at for CREATE PROCEDURE (sql_editor)~test TESTS=sql_editor~~src/sql/run.c~create && nw <= 4~create && nw <= 2
+r9 the default is the item's last token only (sql_editor)~test TESTS=sql_editor~~src/sql/run.c~else if (*dn) ds = ds ? ds : p, de = e;~else if (*dn) ds = p, de = e;
+s1 a second batch gets the first batch's DECLAREs too (sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~q->pre = s->decl.n;~q->pre = 0;
+s2 an answered F5 stays waiting, every later :Declare runs it again (sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	s->asked = 0;~	;
+s3 the waiting F5's range not clamped to the buffer (sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~return run(s, s->pa < len ? s->pa : len, s->pz < len ? s->pz : len);~return (void)len, run(s, s->pa, s->pz);
+s4 the prompt typed without leaving Visual mode (sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~keys_feed(E, KEY_ESC, 1), keys_feed(E, ':', 1);~keys_feed(E, ':', 1);
+s5 kept names compared with case (sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~		if (!strcasecmp(l->s + i, name)) return~		if (!strcmp(l->s + i, name)) return
+s6 the run not cleared when F5 asks (sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~core_msg(E, "sql: out of memory"); s->q.n = 0; return p < 0~core_msg(E, "sql: out of memory"); return p < 0
+s7 a batch that needs no variable gets the DECLAREs (sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~q->npre = s->decl.n - q->pre;~q->npre = s->decl.n;
+s8 a tab in the default typed as a tab (sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~*p == '\n' || *p == '\r' || *p == '\t' ? ' ' :~*p == '\n' || *p == '\r' ? ' ' :
+s9 :Declare with a name over 128 bytes taken (sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~n < 2 || n > 128~n < 2
+s10 :Declare in a buffer that is not SQL makes a session (keys_map)~test TESTS=keys_map~~src/sql/sql.c~Sess *s = sess(e->buf->nr, is_sql(e->buf));¶	if (!s) return core_msg(e, "sql: :Declare is for a .sql buffer"), -1;~Sess *s = sess(e->buf->nr, 1);¶	if (!s) return core_msg(e, "sql: :Declare is for a .sql buffer"), -1;

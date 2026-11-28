@@ -1,0 +1,6 @@
+caught        rv3: a value wider than its column cut again   | tests/test_sql_editor.c:427: CHECK(strstr(g, "\n    500 \xe2\x94\x82 v \xe2\x94\x82 7\n    501 \xe2\x94\x82 lo
+caught        rv3: a wider value's padding underflows   | ==8492==ERROR: AddressSanitizer: negative-size-param: (size=-4)
+caught        rv3: a pushed cell's end taken at the column's width   | tests/test_sql_editor.c:336: CHECK(fc[0] == FACE_LINE_NR && fc[2] == FACE_ORG_TABLE && fc[5] == FACE_NONE && f
+caught        rv3: the cell value buffer can be changed
+caught        rv3: a new cell buffer for every Enter   | tests/test_sql_editor.c:366: CHECK(sql_key(&e, KEY_ENTER) == 1 && e.buf->nr == cv && nwins() == nw && text_len
+5 of 5 caught
