@@ -1,0 +1,45 @@
+26 plants, 0 bad
+14 plants, 0 bad
+NOT CAUGHT    baseline: no change (must be NOT CAUGHT) :: 
+NOT CAUGHT    review: a name matches a longer name's start :: 
+NOT CAUGHT    review: name/db on a server-alone line reads the databases again :: 
+NOT CAUGHT    review: every database of a live server marked live :: 
+NOT CAUGHT    review: srvx lists srv's databases :: 
+NOT CAUGHT    review: the folder's connection looked up at every frame :: 
+caught        review: the status line's live flag never set :: tests/test_sql_editor.c:391: CHECK(!strcmp(sql_status(e.buf, &live), "ms \xe2\x9c\x93") && live && strstr(screen(), " ms \xe2\x9c\x93 ") && strstr(pic
+NOT CAUGHT    review: a connection previewed as a file :: 
+NOT CAUGHT    review: Postgres's templates listed :: 
+caught        review: name/db shown as name :: tests/test_sql_editor.c:394: CHECK(!sql_connect(&e, "ms/hcs") && sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), "\n1 \xe2\x94\x82 hcs\n"
+caught        review: the picker's list grows at each opening :: tests/test_sql_editor.c:401: CHECK(strstr(picked(), "srv/master ") && strstr(picked(), "srv/hcs ") && !strstr(picked(), "pgs/")) failed
+caught        review: Enter leaves the picker open :: tests/test_sql_editor.c:412: CHECK(strstr(e.msg, "sql: srvx: ") && strstr(e.msg, "nohost.invalid") && !strstr(screen(), " Connections ")) failed
+caught        review: the databases after the tables in the catalog :: tests/test_sql_editor.c:371: CHECK(!sql_catalog(&e, e.buf, NULL, NULL, NULL) && catalog(cat) == 2 && !strcmp(cat, "dbo.hcat.K hz.hcat.Q ")) failed
+NOT CAUGHT    review: a failed read keeps the picker waiting :: 
+NOT CAUGHT    review: the status line's connection on every buffer :: 
+5 of 15 caught
+caught        snip: the picker lists no snippets :: tests/test_snip.c:94: CHECK(!strcmp(b, want)) failed
+caught        snip: a new prompt keeps the old preview :: tests/test_snip.c:552: CHECK(strstr(screen, "wrp w") && strstr(screen, "begin")) failed
+caught        snip: a new prompt keeps the old selection :: tests/test_snip.c:94: CHECK(!strcmp(b, want)) failed
+caught        sql: the catalog's lookup leaves its message (test_sql_editor) :: tests/test_sql_editor.c:383: CHECK(!core_edit_file(&e, "msx/o.sql", 0) && strcpy(e.msg, "kept") && !sql_catalog(&e, e.buf, "hcat", hcat, cat) && !strc
+caught        sql: the catalog's query in lower case (a case-sensitive database) (test_sql_editor) :: tests/test_sql_editor.c:371: CHECK(!sql_catalog(&e, e.buf, NULL, NULL, NULL) && catalog(cat) == 2 && !strcmp(cat, "dbo.hcat.K hz.hcat.Q ")) failed
+caught        sql: the catalog's columns by name, not position (test_sql_editor) :: tests/test_sql_editor.c:339: CHECK(!core_edit_file(&e, "ms/q.sql", 0) && !sql_catalog(&e, e.buf, NULL, NULL, NULL) && catalog(cat) == 5 && !strcmp(cat
+caught        sql: Postgres's own schemas in the catalog (test_sql_editor) :: tests/test_sql_editor.c:356: CHECK(sql_catalog(&e, e.buf, NULL, hcat, (*cat = 0, cat)) > 0 && !strcmp(cat, "public.hcat ")) failed
+caught        sql: the catalog of a buffer that is not .sql (test_sql_editor) :: tests/test_sql_editor.c:381: CHECK(!core_edit_file(&e, "ms/y.txt", 0) && !sql_catalog(&e, e.buf, "hcat", hcat, cat)) failed
+caught        sql: Esc leaves the F5 waiting, so a :Declare typed later runs it (test_sql_editor) :: tests/test_sql_editor.c:438: CHECK(e.mode == MODE_NORMAL && !strstr(results(), " 18 \xe2\x94\x82 @b") && !sql_declare(&e, "") && !strcmp(e.msg, "sql: 
+caught        sql: name/db looked up as a name of its own (test_sql_editor) :: tests/test_sql_editor.c:394: CHECK(!sql_connect(&e, "ms/hcs") && sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), "\n1 \xe2\x94\x82 hcs\n"
+caught        sql: name/db keeps the line's database (test_sql_editor) :: tests/test_sql_editor.c:394: CHECK(!sql_connect(&e, "ms/hcs") && sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), "\n1 \xe2\x94\x82 hcs\n"
+caught        sql: a server alone logs in to database - (test_sql_editor) :: tests/test_sql_editor.c:401: CHECK(strstr(picked(), "srv/master ") && strstr(picked(), "srv/hcs ") && !strstr(picked(), "pgs/")) failed
+caught        sql: a Postgres server alone not on postgres (test_sql_editor) :: tests/test_sql_editor.c:416: CHECK(strstr(picked(), "pgs/postgres ") && !strstr(screen(), " Connections ") && sql_key(&e, KEY_F5) == 1 && strstr(until
+caught        sql: the catalog lists databases as tables (test_sql_editor) :: tests/test_sql_editor.c:372: CHECK(sql_catalog(&e, e.buf, NULL, hcat, (*cat = 0, cat)) == 2 && !strcmp(cat, "dbo.hcat hz.hcat ")) failed
+caught        sql: the databases' names in the server's collation (test_sql_editor) :: tests/test_sql_editor.c:371: CHECK(!sql_catalog(&e, e.buf, NULL, NULL, NULL) && catalog(cat) == 2 && !strcmp(cat, "dbo.hcat.K hz.hcat.Q ")) failed
+caught        sql: the picker does not open again with a server's databases (test_sql_editor) :: tests/test_sql_editor.c:402: CHECK(!strcmp(sql_status(e.buf, &live), "srv") && strstr(screen(), " Connections ")) failed
+caught        sql: a server that cannot be reached says nothing (test_sql_editor) :: tests/test_sql_editor.c:412: CHECK(strstr(e.msg, "sql: srvx: ") && strstr(e.msg, "nohost.invalid") && !strstr(screen(), " Connections ")) failed
+caught        sql: a key before the databases come keeps the picker waiting (test_sql_editor) :: tests/test_sql_editor.c:416: CHECK(strstr(picked(), "pgs/postgres ") && !strstr(screen(), " Connections ") && sql_key(&e, KEY_F5) == 1 && strstr(until
+caught        sql: a server alone reads no databases (test_sql_editor) :: tests/test_sql_editor.c:401: CHECK(strstr(picked(), "srv/master ") && strstr(picked(), "srv/hcs ") && !strstr(picked(), "pgs/")) failed
+caught        sql: no mark while live (test_sql_editor) :: tests/test_sql_editor.c:391: CHECK(!strcmp(sql_status(e.buf, &live), "ms \xe2\x9c\x93") && live && strstr(screen(), " ms \xe2\x9c\x93 ") && strstr(pic
+caught        sql: the picker's databases missing (test_sql_editor) :: tests/test_sql_editor.c:389: CHECK(strstr(picked(), "ms/master ") && strstr(picked(), "srv ") && strstr(picked(), "pgs ") && !strstr(picked(), "dir"))
+caught        sql: the picker's live mark not cut by :Connect (test_sql_editor) :: tests/test_sql_editor.c:405: CHECK(!sql_connect(&e, "srv/hcs \xe2\x9c\x93") && !strcmp(sql_status(e.buf, &live), "srv/hcs")) failed
+caught        sql: :Connect alone does not open the picker (test_sql_editor) :: tests/test_sql_editor.c:398: CHECK(!sql_connect(&e, "") && !strstr(screen(), "srv/") && (typed("srv"), strstr(screen(), " srv"))) failed
+caught        sql: the status line without the connection (test_sql_editor) :: tests/test_sql_editor.c:388: CHECK(!core_edit_file(&e, "ms/cn.sql", 0) && !strcmp(sql_status(e.buf, &live), "ms") && !live && strstr(screen(), " cn.sq
+caught        sql: the picker's Enter connects nothing (test_sql_editor) :: tests/test_sql_editor.c:401: CHECK(strstr(picked(), "srv/master ") && strstr(picked(), "srv/hcs ") && !strstr(picked(), "pgs/")) failed
+caught        sql: the picker lists no connections (test_sql_editor) :: src/tools/pick.c:220:17: runtime error: null pointer passed as argument 1, which is declared to never be null
+26 of 26 caught

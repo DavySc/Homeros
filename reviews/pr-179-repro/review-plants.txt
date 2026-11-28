@@ -1,0 +1,14 @@
+review: a name matches a longer name's start~test TESTS=sql_editor~~src/sql/sql.c~!strncmp(a[0], want, wn) && !a[0][wn] && (~!strncmp(a[0], want, wn) && (
+review: name/db on a server-alone line reads the databases again~test TESTS=sql_editor~~src/sql/sql.c~.alone = !db && !strcmp(a[4], "-") };~.alone = !strcmp(a[4], "-") };
+review: every database of a live server marked live~test TESTS=sql_editor~~src/sql/sql.c~*live = up(S[j]) && !strcmp(S[j]->spec.name, items.s + at);~*live = up(S[j]) && !strncmp(S[j]->spec.name, items.s + at, strlen(S[j]->spec.name));
+review: srvx lists srv's databases~test TESTS=sql_editor~~src/sql/sql.c~strncmp(k->name, a[0], an) || (k->name[an] && k->name[an] != '/'))) k = k->next;~strncmp(k->name, a[0], an))) k = k->next;
+review: the folder's connection looked up at every frame~test TESTS=sql_editor~~src/sql/sql.c~		s->looked = 1;~		s->looked = 0;
+review: the status line's live flag never set~test TESTS=sql_editor~~src/sql/sql.c~marked(s->spec.name, *live = up(s))~marked(s->spec.name, (*live = 0, up(s)))
+review: a connection previewed as a file~test TESTS=sql_editor~~src/tools/pick.c~	if (want < 0 || P.what == PICK_SQL) return;~	if (want < 0) return;
+review: Postgres's templates listed~test TESTS=sql_editor~~src/sql/sql.c~ FROM pg_database WHERE datallowconn AND NOT datistemplate) x"~ FROM pg_database) x"
+review: name/db shown as name~test TESTS=sql_editor~~src/sql/sql.c~				memcpy(o->name, want, sizeof want);~				snprintf(o->name, sizeof o->name, "%.*s", (int)wn, want);
+review: the picker's list grows at each opening~test TESTS=sql_editor~~src/sql/sql.c~		items.n = at = n = 0;~		at = n = 0;
+review: Enter leaves the picker open~test TESTS=sql_editor~~src/tools/pick.c~		close_picker();¶		sql_connect(e, c);~		sql_connect(e, c);
+review: the databases after the tables in the catalog~test TESTS=sql_editor~~src/sql/sql.c~UNION ALL SELECT '', name COLLATE DATABASE_DEFAULT, '', 0 FROM sys.databases) x ORDER BY 1, 2, o");~UNION ALL SELECT '', name COLLATE DATABASE_DEFAULT, '', 0 FROM sys.databases) x ORDER BY 1 DESC, 2, o");
+review: a failed read keeps the picker waiting~test TESTS=sql_editor~~src/sql/sql.c~	if (mine) *pickfor = 0;¶~
+review: the status line's connection on every buffer~test TESTS=sql_editor~~src/sql/sql.c~	return s && s->spec.name[0] ? s : NULL;~	return s;
