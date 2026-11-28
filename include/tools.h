@@ -11,7 +11,7 @@
 struct Editor;
 struct Buf;
 
-enum { PICK_SMART, PICK_GREP, PICK_BUFFERS, PICK_REGISTERS, PICK_EXPLORER, PICK_FILES, PICK_RECENT, PICK_SNIPPETS };
+enum { PICK_SMART, PICK_GREP, PICK_BUFFERS, PICK_REGISTERS, PICK_EXPLORER, PICK_FILES, PICK_RECENT, PICK_SNIPPETS, PICK_SQL };
 int  tools_pick(struct Editor *e, int what);        /* 0 ok, -1 msg set */
 /* Every key goes here first (main.c), except while a command is half typed
    (e->ks.pending): 1 if an open picker took it (or :make's buffer, Enter),

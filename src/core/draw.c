@@ -7,6 +7,7 @@
 #include <string.h>
 #include "core_int.h"
 #include "git.h"
+#include "sql.h"
 #include "lsp.h"
 #include "syntax.h"
 #include "uni.h"
@@ -721,6 +722,14 @@ static void draw_status(Editor *e, Grid *g, Win *w)
 	stl_add(&t, " ", c, 0);
 	stl_add(&t, name, c, 0);
 	stl_add(&t, core_modified(b) ? " \xe2\x97\x8f " : " ", c, 0);
+	/* a SQL buffer's connection, marked while logged in (package 22's,
+	   agreed by thread 0): SSMS's status bar names it */
+	const char *conn = sql_status(e, b);
+	if (conn) {
+		stl_add(&t, " ", c, 0);
+		stl_add(&t, conn, c, 0);
+		stl_add(&t, " ", c, 0);
+	}
 	sep = t.n;
 	/* 'fileencoding' is set by reading a file that exists, empty or not
 	   (measured); encoding hides an empty one */

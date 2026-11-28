@@ -22,6 +22,7 @@
 #include "term.h"
 #include "shada.h"
 #include "snip.h"
+#include "sql.h"
 #include "str.h"
 #include "uni.h"
 
@@ -451,16 +452,19 @@ static void recent(Editor *e)
 /* SPC i s (package 19's, agreed by thread 0): the snippets that match the
    prompt in the completion popup's order (snip_get, one order for both);
    each item's name is followed in the arena by a 0, its description and
-   its body, each ended by a 0 */
+   its body, each ended by a 0.  :Connect (package 22's, agreed): the
+   connections and their servers' databases (sql_pick, a live one with
+   its mark), matched as they come */
 static void snippets(void)
 {
 	const char *d, *b, *n;
 	size_t at;
+	int sql = P.what == PICK_SQL;
 	P.nit = P.nshown = P.an = 0;
 	P.sel = P.top = 0;
 	P.pvfor = -1;
-	while ((n = snip_get(P.e, P.prompt, P.plen, (int)P.nit, &d, &b)) && !add(n, strlen(n), NULL, 0, 0, 0, 0, 0)
-	       && !put("", 1, &at) && !put(d, strlen(d) + 1, &at) && !put(b, strlen(b) + 1, &at)) {}
+	while ((n = sql ? sql_pick(P.e, (int)P.nit) : snip_get(P.e, P.prompt, P.plen, (int)P.nit, &d, &b)) && !add(n, strlen(n), NULL, 0, 0, 0, 0, 0)
+	       && (sql || (!put("", 1, &at) && !put(d, strlen(d) + 1, &at) && !put(b, strlen(b) + 1, &at)))) {}
 }
 
 int tools_pick(Editor *e, int what)
@@ -494,7 +498,7 @@ int tools_pick(Editor *e, int what)
 		}
 	}
 	if (what == PICK_GREP) return 0;
-	if (what == PICK_SNIPPETS) snippets();
+	if (what == PICK_SNIPPETS || what == PICK_SQL) snippets();
 	if (what == PICK_SMART || what == PICK_BUFFERS) buffers(e);
 	if (what == PICK_SMART || what == PICK_RECENT) recent(e);
 	if (what == PICK_SMART || what == PICK_FILES) files();
@@ -525,6 +529,13 @@ static void confirm(Editor *e)
 	if (P.what == PICK_SNIPPETS) {
 		close_picker();
 		snip_insert(e, P.a + it.text);
+		return;
+	}
+	if (P.what == PICK_SQL) {
+		char c[600];
+		snprintf(c, sizeof c, "%.*s", (int)it.tlen, P.a + it.text);
+		close_picker();
+		sql_connect(e, c);
 		return;
 	}
 	char f[PATH_MAX];
@@ -700,7 +711,7 @@ static void preview(void)
 	long want = P.nshown ? (long)P.shown[P.sel] : -1;
 	if (want == P.pvfor) return;
 	P.pvfor = want; P.pvn = 0; P.pvfirst = 1;
-	if (want < 0) return;
+	if (want < 0 || P.what == PICK_SQL) return;
 	Item *it = &P.it[want];
 	if (P.what == PICK_SNIPPETS) {
 		/* a snippet: its body, after its name and description */
@@ -744,7 +755,7 @@ static void pick_draw(Editor *e, Grid *g)
 {
 	dash_draw(e, g);
 	if (!P.open) return;
-	static const char *title[] = { " Smart ", " Grep ", " Buffers ", "", "", " Files ", " Recent ", " Snippets " };
+	static const char *title[] = { " Smart ", " Grep ", " Buffers ", "", "",  " Files ", " Recent ", " Snippets ", " Connections " };
 	Box o, l, p;
 	int wide, h = list_height(e);
 	layout(e, &o, &l, &p, &wide);
