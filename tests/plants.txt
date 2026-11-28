@@ -637,7 +637,8 @@ engine | dbg/engine.c | if (x.flow == X64_CALL \p\p x.repeats) net_add(e, rip + 
 engine | dbg/engine.c | if (x.flow == X64_CALL \p\p x.repeats) net_add(e, rip + x.size, END); | if (x.flow == X64_CALL) net_add(e, rip + x.size, END);
 engine | dbg/engine.c | e->ranges[2 * i + 1] = line_end(&m->rdi, rdi_row(&m->rdi, e->ranges[2 * i])); | e->ranges[2 * i + 1] = e->ranges[2 * i] + 1;
 engine | dbg/engine.c | if (!m \p\p !rdi_row(&m->rdi, addr - m->image.base).line.line) return false; | if (!m \p\p !rdi_row(&m->rdi, addr - m->image.base).opl) return false;
-engine | dbg/engine.c | return !(name.n == 8 && !memcmp(name.p, "__chkstk", 8)); | return name.n \p\p true;
+engine | dbg/engine.c | return !(name.n == 8 && !memcmp(name.p, "__chkstk", 8)) && | return
+engine | dbg/engine.c |  && !(name.n == 23 && !memcmp(name.p, "__security_check_cookie", 23)); | ;
 engine | dbg/engine.c | if (call) to = 0; | 
 engine | dbg/engine.c | if (!(flags & LINES && !goes_into(e, ev.addr)) && | if (!(flags & LINES && !goes_into(e, ev.addr) && false) &&
 engine | dbg/engine.c | END \p (to ? 0 : STEP_AFTER) \p (call ? LINES : 0)); | END \p (to ? 0 : STEP_AFTER) \p LINES);

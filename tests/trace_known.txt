@@ -77,9 +77,12 @@ mine_jmc.into.txt all 12 12
 # line 333 its step runs to the program's end, where ours and Visual Studio's stop at the next line: the line is left
 # from a piece the thread was not in when the step began (dbg/engine.c, line_net).
 mine.back.txt all 11 11
-mine.into.txt all 164 164
 mine_o2.back.txt all 11 11
-mine_o2.into.txt all 158 158
+# RAD steps into __security_check_cookie from qsort's last line; Visual Studio (mine_o2.into, step 147) goes on to main:
+# its list of functions not to step into names it (dbg/engine.c, goes_into). In the plain build Visual Studio's
+# recording ends before that step: ours there is a hypothesis.
+mine.into.txt all 154 154
+mine_o2.into.txt all 148 148
 # SQLite (subjects/sql.c). All six Visual Studio recordings of it agree with ours to their end (150 steps into the
 # library in each build). RAD differs in four ways:
 # from winMutexInit RAD steps into ntdll (InitializeCriticalSection), code without lines, which Visual Studio and we pass;

@@ -160,14 +160,14 @@ static void inst_net(Engine *e, uint64_t rip)
 }
 
 /* Whether a line step goes into a call that leads to addr: where there are lines (the row behind a block of lines
-   has none), and not into the stack probe every large frame calls first, which Visual Studio's list of functions
-   not to step into names (default.natstepfilter; the rest of that list is not recorded). */
+   has none), and not into the stack probe every large frame calls first nor the stack cookie's check before a return, which
+   Visual Studio's list of functions not to step into names (default.natstepfilter; the rest of that list is not recorded). */
 static bool goes_into(const Engine *e, uint64_t addr)
 {
   const EngineModule *m = engine_module(e, addr);
   if (!m || !rdi_row(&m->rdi, addr - m->image.base).line.line) return false;
   RdiSpan name = rdi_str(&m->rdi, rdi_at(&m->rdi, RDI_PROCEDURES, RdiSymbol, rdi_at(&m->rdi, RDI_SCOPES, RdiScope, rdi_vmap(&m->rdi, RDI_SCOPE_VMAP, addr - m->image.base))->proc)->name);
-  return !(name.n == 8 && !memcmp(name.p, "__chkstk", 8));
+  return !(name.n == 8 && !memcmp(name.p, "__chkstk", 8)) && !(name.n == 23 && !memcmp(name.p, "__security_check_cookie", 23));
 }
 
 /* Whether addr is in code that is not the user's: the compiler's own runtime, by where its source was (Visual Studio's
