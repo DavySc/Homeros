@@ -80,3 +80,18 @@ mine.back.txt all 11 11
 mine.into.txt all 164 164
 mine_o2.back.txt all 11 11
 mine_o2.into.txt all 158 158
+# SQLite (subjects/sql.c). All six Visual Studio recordings of it agree with ours to their end (150 steps into the
+# library in each build). RAD differs in four ways:
+# from winMutexInit RAD steps into ntdll (InitializeCriticalSection), code without lines, which Visual Studio and we pass;
+sql.into.txt all 40 40
+sql_jmc.into.txt all 42 42
+sql_o2.into.txt all 27 27
+# in the /JMC build RAD stops on the compiler's made-up line 0xf00f00 (scripts of mixed steps are not filtered for it),
+sql_jmc.back.txt all 2 2
+sql_jmc.mix2.txt all 2 2
+# and a step out of or over the end of main stops in the runtime, where Visual Studio's and ours run to the program's end;
+sql_jmc.mix.txt all 6 6
+sql_jmc.over.txt all 9 9
+# in the optimised build, a step out begun in main where sqlite3_open is inlined: RAD lands on the padding before main
+# ("hit a trap" at an int3), ours behind the inlined call. Visual Studio has no recording of this step: ours is a hypothesis.
+sql_o2.mix.txt all 6 6

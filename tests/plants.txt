@@ -1189,3 +1189,5 @@ eval | dbg/eval.c | } else if (nth < 4) p.at = P->frame->gp[in[nth]]; | } else i
 # OWED (the same recording: a struct that fits no register as fifth parameter): eval | dbg/eval.c | else if (!target_read(P->e->target, p.at, &p.at, 8)) return (EvalValue){0}; | 
 front | dbg/eval.c | P.entry = scope && !scope->parent && | P.entry = scope &&
 eval | dbg/eval.c | before += y->flags & 1; | before += 2;
+# SQLite's /JMC build: the nop behind the helper's call lies under the made-up line too (traces-vs/sql_jmc.into.txt, step 34)
+engine | dbg/engine.c | (theirs(e, ev.addr) \p\p (m && rdi_row(&m->rdi, ev.addr - m->image.base).line.line == 0xf00f00))); | theirs(e, ev.addr));

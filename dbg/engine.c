@@ -336,8 +336,9 @@ static TargetEvent run(Engine *e, int how, uint32_t thread, const uint64_t *brea
     if ((!reached || flags & STEP_AFTER || (passed && !(flags & END))) && (ev = step_one(e, ev.thread)).kind != TARGET_STEP) return ev;
     if (!reached) continue;
     if (flags & SAVE_AFTER && target_regs(e->target, thread, &regs)) depth = regs.gp[4];
-    if (flags & HELPER) {   /* to the function that called it */
-      do ev = step_one(e, thread); while (ev.kind == TARGET_STEP && theirs(e, ev.addr));
+    if (flags & HELPER) {   /* to the function that called it, and there off what the compiler put behind the call under the same made-up line (a nop, in SQLite's sqlite3MemoryBarrier) */
+      do ev = step_one(e, thread), m = engine_module(e, ev.addr);
+      while (ev.kind == TARGET_STEP && (theirs(e, ev.addr) || (m && rdi_row(&m->rdi, ev.addr - m->image.base).line.line == 0xf00f00)));
       if (ev.kind != TARGET_STEP) return ev;
     }
     if (!(flags & END)) continue;
