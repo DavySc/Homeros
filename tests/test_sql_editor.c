@@ -354,7 +354,10 @@ int main(void)
 	CHECK(!strncmp(g, "  \xe2\x94\x82 s    \xe2\x94\x82 n    \xe2\x94\x82 l ", 26) && strstr(g, "\n1 \xe2\x94\x82 NULL \xe2\x94\x82 NULL \xe2\x94\x82 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\xe2\x80\xa6 \xe2\x94\x82 \xe6\x97\xa5\xe6\x9c\xac \xe2\x94\x82 \xc3\xa9\n(1 row)\n") && strstr(g, "\n(1 row)\n\n" MSGS "(1 row affected)\n\n  \xe2\x94\x82 (No column name)\n") && strstr(g, "\n(0 rows)\n"));
 	Buf *rb = e.wins->next->buf;
 	CHECK(!strncmp(rb->status, "\xe2\x9c\x97 Query completed with errors \xc2\xb7 1 row \xc2\xb7 ", 44));
-	CHECK(!sql_disconnect(&e) && !strncmp(rb->status, "\xe2\x9c\x97 Query completed", 18));   /* the line stays between runs */
+	char st[600];
+	snprintf(st, sizeof st, "%s", rb->status);
+	for (int i = 0; i < 3; i++) loop_once(10);   /* time goes on: a line made again would show more */
+	CHECK(!sql_disconnect(&e) && !strcmp(rb->status, st));   /* the line stays between runs */
 	unsigned char fc[256];
 	size_t l0 = text_line_start(rb->text, 0), l1 = text_line_start(rb->text, 1), l2 = text_line_start(rb->text, 2), l3 = text_line_start(rb->text, 3);
 	rb->faces(rb, l0, l1 - 1, fc);
@@ -435,17 +438,17 @@ int main(void)
 	CHECK(!sql_disconnect(&e));
 	/* a message comes at once (RAISERROR WITH NOWAIT) while the batch
 	   runs, after a set's end; the status line while it runs; a set's
-	   rows show while it waits (a row past Postgres's 8 KB send buffer
-	   goes at once); Enter is Vim's in insert mode or a half typed command */
+	   rows show while the server waits; Enter is Vim's in insert mode or a half typed command */
 	put("ms/nowait.sql", "select 1 x; raiserror('early', 0, 1) with nowait; waitfor delay '00:00:02'\nselect 1 x\n", 0600);
 	CHECK(!core_edit_file(&e, "ms/nowait.sql", 0) && sql_key(&e, KEY_F5) == 1);
 	CHECK(!strncmp(e.wins->next->buf->status, "Executing query... \xc2\xb7 ms / master", 26));
 	CHECK(strstr(until("early"), "(1 row)\n\n" MSGS "(1 row affected)\nearly\n") && !strstr(res, "Completion"));
 	until("Completion time");
 	CHECK(!sql_disconnect(&e));
-	put("pg/trickle.sql", "select g, pg_sleep(g - 1), repeat('x', 9000) from generate_series(1, 3) g\n", 0600);
+	put("pg/trickle.sql", "create function pg_temp.s(i int) returns int as $$ begin if i = 2 then raise notice 'wait'; perform pg_sleep(1); end if; return i; end $$ language plpgsql;\n"
+		"select g, pg_temp.s(g) from generate_series(1, 3) g\n", 0600);   /* the notice sends row 1 at once (Postgres flushes for it) */
 	CHECK(!core_edit_file(&e, "pg/trickle.sql", 0) && sql_key(&e, KEY_F5) == 1);
-	CHECK(strstr(until("\n      1 \xe2\x94\x82 1 "), "\xe2\x94\x82 g ") && !strstr(res, "Completion"));
+	CHECK(strstr(until("\n      1 \xe2\x94\x82 1 "), "\xe2\x94\x82 g ") && !strstr(res, "\n      2 \xe2\x94\x82") && !strstr(res, "Completion"));   /* row 2 comes 1 s later */
 	CHECK(!core_win_goto(&e, 'j', 1) && (core_goto(&e, 2, 10), e.mode = MODE_INSERT, sql_key(&e, KEY_ENTER) == 0) && (e.mode = MODE_NORMAL, e.ks.pending = 1, sql_key(&e, KEY_ENTER) == 0));
 	e.ks.pending = 0;
 	CHECK(!core_win_goto(&e, 'k', 1));
