@@ -24,7 +24,7 @@ LOCALS	add returned	int	4	i	int	0	r	int	0	x	int	4	y	int	2
 STEP outs mul : 5368713311 FROM add RET True int=8
 LOCALS	add returned	int	8	i	int	1	r	int	4	x	int	4	y	int	2
 STEP outs nested : 5368713649 FROM add RET True int=14
-LOCALS	add returned	int	14	x	int	4
+LOCALS	add returned	int	14	nested will return	int	14	x	int	4
 STEP outs main : 5368714015 FROM add RET True int=2
 LOCALS	add returned	int	2	k	int	3	p	Pair	{a=2 b=1 }	total	int	243
 STEP outs ended

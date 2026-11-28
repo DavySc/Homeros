@@ -9,9 +9,9 @@ STEP stops lined : 5368713216 ARGS x=234
 STEP stops lined : 5368713216 ARGS x=469
 STEP stops lined : 5368713216 ARGS x=470
 STEP stops lined : 5368713216 ARGS x=2
-STEP stops lined : 5368713216 ARGS x=945
+STEP stops  :  ARGS x=945
 STEP stops lined : 5368713216 ARGS x=0
 STEP stops lined : 5368713216 ARGS x=1
 STEP stops lined : 5368713216 ARGS x=2
-STEP stops  :  ARGS =
+STEP stops lined : 5368713216 ARGS x=952
 STEP stops ended

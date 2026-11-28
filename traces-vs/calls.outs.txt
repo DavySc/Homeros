@@ -5,16 +5,16 @@ STEP outs main : 5368713284 FROM lined RET True int=2
 LOCALS	lined returned	int	2	m	volatile int	0	n	volatile int	0
 STEP outs main : 5368713305 FROM lined RET True int=3
 LOCALS	lined returned	int	3	m	volatile int	0	n	volatile int	2
-STEP outs  : 5368713403 FROM lined RET True int=78
+STEP outs main : 5368713403 FROM lined RET True int=78
 LOCALS	lined returned	int	78	m	volatile int	0	n	volatile int	77
 STEP outs main : 5368713418 FROM lined RET True int=79
-LOCALS	lined returned	int	79	m	volatile int	0	n	volatile int	77
+LOCALS			
 STEP outs main : 5368713454 FROM lined RET True int=235
 LOCALS	lined returned	int	235	m	volatile int	0	n	volatile int	234
 STEP outs main : 5368713482 FROM lined RET True int=470
 LOCALS	lined returned	int	470	m	volatile int	0	n	volatile int	469
 STEP outs main : 5368713489 FROM lined RET True int=471
-LOCALS			
+LOCALS	lined returned	int	471	m	volatile int	0	n	volatile int	469
 STEP outs main : 5368713531 FROM lined RET True int=3
 LOCALS	lined returned	int	3	m	volatile int	2	n	volatile int	941
 STEP outs main : 5368713583 FROM lined RET True int=946
