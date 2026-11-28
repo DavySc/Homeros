@@ -6,6 +6,7 @@
      bt   f <n>                  the stack; look at its frame n
      t [n]                       the threads and where each is; look at the one n lines down the list (and step that one)
      l   r   p <e>   x <e>       the frame's variables, its registers, an expression, an expression with its parts
+                                 (after `o` came back from a function, $ReturnValue is what it returned, as in Visual Studio)
      m <e>                       64 bytes of the program's memory where the expression points
      w <place> = <e>             write the expression's value to a variable (or a member, an element, what a pointer points at)
      q                           end the program

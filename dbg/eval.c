@@ -298,7 +298,7 @@ static RdiSpan word(Parse *P)
 {
   eat(P, "");
   const char *from = P->p;
-  while (*P->p == '_' || isalpha((unsigned char)*P->p) || (P->p > from && isdigit((unsigned char)*P->p))) P->p += 1;
+  while (*P->p == '_' || *P->p == '$' || isalpha((unsigned char)*P->p) || (P->p > from && isdigit((unsigned char)*P->p))) P->p += 1;
   return (RdiSpan){from, (uint64_t)(P->p - from)};
 }
 
@@ -331,17 +331,23 @@ static const RdiSymbol *local(const Parse *P, Locals *l)
 /* Where the caller put a function's nth parameter (the x64 calling convention): what holds at the function's first instruction,
    where the debug information of unoptimised MSVC code already says "in the frame" (at rsp + offset, for the whole function).
    The first four are in rcx, rdx, r8, r9, the others above the return address; one that does not fit a register is passed as
-   its address. A float or double among the first four is in xmm0 to xmm3, which are not read: no place. */
+   its address. A float or double among the first four is in xmm0 to xmm3, which are not read: no place.
+   What a function returned is passed back the same way in rax (xmm0); nothing of no size (void) is. */
+static EvalValue passed(const EngineModule *m, uint32_t type, uint32_t reg, const TargetRegs *frame)
+{
+  EvalValue p = {EVAL_REGISTER, {m, type, 0}, reg};
+  EvalShape s = eval_shape(p.type);
+  if (s.size == 1 || s.size == 2 || s.size == 4 || s.size == 8) return s.form == EVAL_REAL ? (EvalValue){0} : p;
+  return s.size ? (EvalValue){EVAL_MEMORY, p.type, frame->gp[reg]} : (EvalValue){0};
+}
+
 static EvalValue arrives(const Parse *P, uint32_t type, uint64_t nth)
 {
   static const uint8_t in[4] = {1, 2, 8, 9};
+  if (nth < 4) return passed(P->module, type, in[nth], P->frame);
   EvalValue p = {EVAL_MEMORY, {P->module, type, 0}, P->frame->gp[4] + 8 + 8 * nth};
-  EvalShape s = eval_shape(p.type);
-  if (s.size == 1 || s.size == 2 || s.size == 4 || s.size == 8) {
-    if (nth < 4 && s.form == EVAL_REAL) return (EvalValue){0};
-    if (nth < 4) p.kind = EVAL_REGISTER, p.at = in[nth];
-  } else if (nth < 4) p.at = P->frame->gp[in[nth]];
-  else if (!target_read(P->e->target, p.at, &p.at, 8)) return (EvalValue){0};
+  uint32_t size = eval_shape(p.type).size;
+  if (size != 1 && size != 2 && size != 4 && size != 8 && !target_read(P->e->target, p.at, &p.at, 8)) return (EvalValue){0};
   return p;
 }
 
@@ -360,6 +366,12 @@ static bool name(Parse *P, RdiSpan id, EvalValue *v)
        convention (clang passes a static function's parameters as it likes), and says itself where things are at each instruction */
     if (same(id, is.p, is.n)) return *v = settle(P, P->entry && y->flags & 1 && (y->location >> 56 == 3 || y->location >> 56 == 4) ? arrives(P, y->type, before) : place(P->e, m, y->type, y->location, P->voff, P->frame)), true;
     before += y->flags & 1;   /* every compiler seen lists the parameters first: no check tells this from a plain count */
+  }
+  const EngineModule *left = P->e->returned && P->frame->gp[4] == P->e->returned_sp ? engine_module(P->e, P->e->returned) : NULL;
+  if (left && same(id, "$ReturnValue", 12)) {   /* Visual Studio's name for what the function a step out left returned: by its type, from the caller's registers */
+    const Rdi *r = &left->rdi;
+    uint32_t type = rdi_at(r, RDI_PROCEDURES, RdiSymbol, rdi_at(r, RDI_SCOPES, RdiScope, rdi_vmap(r, RDI_SCOPE_VMAP, P->e->returned - left->image.base))->proc)->type;
+    return *v = passed(left, rdi_at(r, RDI_TYPE_NODES, RdiType, type)->a, 0, P->frame), v->kind != EVAL_NONE;
   }
   for (uint32_t i = 0; i < 2 * (P->e->module_count + 1); i += 1) {   /* in each module: globals, then constants */
     const EngineModule *g = nth(P, i / 2);

@@ -29,6 +29,10 @@ typedef struct {
   /* asked when a thread comes to a breakpoint: true to let it pass (the breakpoint's condition says no). Null: none passes. */
   bool (*pass)(void *arg, const void *engine, uint32_t thread, uint64_t addr);
   void *pass_arg;
+  /* after a step out: where in the function it began (else 0), and the stack pointer the caller has when the function has returned
+     to it: a thread that stands there came back by the return (out of a block or an inlined call, or stopped on the way, it stands
+     lower), and what the function returned is asked there (eval.c, $ReturnValue) */
+  uint64_t returned, returned_sp;
   uint32_t module_count, module_cap, thread_count, thread_cap, net_count, net_cap, trap_cap, range_cap, code_cap;
 } Engine;
 

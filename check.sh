@@ -114,6 +114,17 @@ for l in open(sys.argv[1] + "/tests/plants.txt"):
     (cd "$b" && ! WINEDEBUG=-all timeout 120 "${WINE:-wine}" ./hdbg.exe nothing.exe < /dev/null >/dev/null 2>&1) || return 1
     # a block with a variable of its own begins a scope inside the function: at its first instruction a parameter is in the frame, not where the caller put it (MSVC's unoptimised build of subjects/recur.c)
     (cd "$b" && cp "$OLDPWD"/rdi/recur.exe "$OLDPWD"/rdi/recur.pdb . && [ "$(printf 'c\nb recur.c:14\nb recur.c:10\nc\np n\nc\np n\nq\n' | WINEDEBUG=-all timeout 120 "${WINE:-wine}" ./hdbg.exe recur.exe 2>/dev/null | tr -d '\r' | grep -c '^n = 0 ')" = 2 ]) || return 1
+    # what a function returned, after a step out of it: as Visual Studio says at each stop of its recordings (traces-vs/*.outs.txt: from main, a breakpoint on each function named,
+    # then run and step out in turn): a number where it is an int, something where it is of another type, nothing where the step ended elsewhere or the function returns nothing
+    for f in traces-vs/*.outs.txt; do
+      local p=$(basename "$f" .outs.txt) want=$(tr -d '\r' < "$f" | sed -n 's/.* RET False .*/none/p; s/.* RET True int=\(.*\)/\1/p; s/.* RET True .*/some/p')
+      case $p in mine*) continue;; esac   # its breakpoints lie in code without names
+      [ -z "$want" ] && continue
+      local got=$( { printf 'c\nb main\nc\nb main\n'; tr -d '\r' < "$f" | sed -n 's/^BREAK /b /p'; for w in $want; do printf 'c\no\np $ReturnValue\n'; done; } | (cd "$b" && cp "$OLDPWD"/rdi/$p.exe "$OLDPWD"/rdi/$p.pdb . && WINEDEBUG=-all timeout 120 "${WINE:-wine}" ./hdbg.exe $p.exe 2>/dev/null) | tr -d '\r' | sed -n 's/^\$ReturnValue = no such name.*/none/p; s/^\$ReturnValue = \(.*\)  (int)$/\1/p; s/^\$ReturnValue = .*/some/p')
+      [ "$want" = "$got" ] || { echo "$p: what a step out says the function returned differs from Visual Studio"; return 1; }
+    done
+    # a struct that fits no register comes back as its address: Visual Studio shows only "{...}" for it; subjects/frames.c says what shift(t, 2) is ({1, 2, 3} two more)
+    (cd "$b" && printf 'c\nb shift\nc\no\np $ReturnValue\nq\n' | WINEDEBUG=-all timeout 120 "${WINE:-wine}" ./hdbg.exe frames.exe 2>/dev/null | tr -d '\r' | grep -q -x '\$ReturnValue = {3, 4, 5}  (Triple)') || return 1
     # the halt key: Ctrl+C on the console the two share (tests/key.c presses it; tests/console.c keeps it from this check) stops the program, which then runs on to its end without having seen it
     ${WINCC:-x86_64-w64-mingw32-gcc} -std=c17 -Wall -Wextra -Werror "$src"/tests/key.c -o "$b/key.exe" && ${WINCC:-x86_64-w64-mingw32-gcc} -std=c17 -Wall -Wextra -Werror "$src"/tests/console.c -o "$b/console.exe" || return 2
     (cd "$b" && [ "$(printf 'c\nc\nc\n' | WINEDEBUG=-all timeout 120 "${WINE:-wine}" ./console.exe ./hdbg.exe key.exe 2>/dev/null | tr -d '\r' | grep -c -x 'exception 0x40010005\|ended with 0x3')" = 2 ]) || return 1

@@ -654,19 +654,19 @@ engine | dbg/engine.c | if (!in_ranges(e, count, hi)) net_add(e, base + hi, END 
 # OWED, caught by nothing (so not run): the trap behind a range that another range of the scope follows. Only an inlined
 # call has several ranges, and the traces that step out of one are compared up to the step before (tests/trace_known.txt).
 # engine | dbg/engine.c | if (!in_ranges(e, count, hi)) net_add(e, base + hi, END \p IGNORE_SP); | net_add(e, base + hi, END \p IGNORE_SP);
-engine | dbg/engine.c | &regs)) net_add(e, regs.rip, END \p IGNORE_SP); | &regs)) net_add(e, regs.rip, END);
+engine | dbg/engine.c | net_add(e, regs.rip, END \p IGNORE_SP), e->returned = in | net_add(e, regs.rip, END), e->returned = in
 engine | dbg/engine.c | if (unwind_step(target_read, e->target, m ? &m->image : 0, &regs)) | if (false && unwind_step(target_read, e->target, m ? &m->image : 0, &regs))
 engine | dbg/engine.c | if (!e->net_count) return step_one(e, thread); | if (false) return step_one(e, thread);
 engine | dbg/engine.c | && (steps \p\p r.rip == e->threads[i].told); k += 1) | ; k += 1)
 engine | dbg/engine.c | e->threads[i].told = regs.rip; | e->threads[i].told = 0;
 engine | dbg/engine.c | stuck = stuck \p\p breakpoints[k] == r.rip; | stuck = false;
 engine | dbg/engine.c | uint64_t depth = regs.gp[4]; | uint64_t depth = 0;
-engine | dbg/engine.c | for (uint32_t i = 0; i < count; i += 1) if (breakpoints[i] == ev.addr) return ev; | 
+engine | dbg/engine.c | if (breakpoints[i] == ev.addr && !(passed = e->pass && e->pass(e->pass_arg, e, ev.thread, ev.addr))) return ev; | ;
 engine | dbg/engine.c | bool reached = ev.thread == thread && | bool reached =
 engine | dbg/engine.c | (flags & IGNORE_SP \p\p regs.gp[4] == depth); | (flags & IGNORE_SP \p\p regs.gp[4] <= depth \p\p regs.gp[4] > depth);
 engine | dbg/engine.c | (flags & IGNORE_SP \p\p regs.gp[4] == depth); | (regs.gp[4] == depth);
-engine | dbg/engine.c | if ((!reached \p\p flags & STEP_AFTER) && | if (!reached &&
-engine | dbg/engine.c | if ((!reached \p\p flags & STEP_AFTER) && | if ((flags & STEP_AFTER) &&
+engine | dbg/engine.c | if ((!reached \p\p flags & STEP_AFTER \p\p (passed | if ((!reached \p\p (passed
+engine | dbg/engine.c | if ((!reached \p\p flags & STEP_AFTER \p\p (passed | if ((flags & STEP_AFTER \p\p (passed
 engine | dbg/engine.c | if (!reached) continue; | 
 engine | dbg/engine.c | if (flags & SAVE_AFTER && target_regs(e->target, thread, &regs)) depth = regs.gp[4]; | 
 engine | dbg/engine.c | if (!(flags & END)) continue; |
@@ -841,7 +841,7 @@ test | dbg/eval.c | default: r = s.sign ? (uint64_t)(i >> count) : u >> count; b
 test | dbg/eval.c | return convert(P, s.form == EVAL_REAL ? number(d) : value(type.idx, r), type); | return s.form == EVAL_REAL ? number(d) : value(type.idx, r);
 test | dbg/eval.c | while (*P->p == ' ') P->p += 1; | 
 test | dbg/eval.c | if (strncmp(P->p, text, n)) return false; | if (strncmp(P->p, text, 1)) return false;
-test | dbg/eval.c | while (*P->p == '_' \p\p isalpha((unsigned char)*P->p) | while (isalpha((unsigned char)*P->p)
+test | dbg/eval.c | while (*P->p == '_' \p\p *P->p == '$' \p\p isalpha((unsigned char)*P->p) | while (*P->p == '$' \p\p isalpha((unsigned char)*P->p)
 eval | dbg/eval.c | return a.n == n && !memcmp(a.p, text, n); } | return a.n == n && (!n \p\p *(const char *)a.p == *text); }
 test | dbg/eval.c | if (v.kind == EVAL_REGISTER \p\p v.kind == EVAL_CONSTANT) {   /* a record | if (0) {   /* a record
 eval | dbg/eval.c | return rdi_run(r, RDI_MEMBERS, u->member_first, u->member_count); | return rdi_run(r, RDI_MEMBERS, u->member_first, 1);
@@ -932,8 +932,8 @@ test | dbg/eval.c | b = side(P, !yes, &b_number); | b = side(P, yes, &b_number);
 test | dbg/eval.c | if (!a_number \p\p !b_number) return yes ? a : b; | if (!a_number \p\p !b_number) return yes ? b : a;
 test | dbg/eval.c | if (!a_number \p\p !b_number) return yes ? a : b; | 
 test | dbg/eval.c | return convert(P, yes ? a : b, (EvalType){NULL, common(eval_shape(a.type), eval_shape(b.type)), 0}); | return yes ? a : b;
-test | dbg/eval.c | if (*P.p) fail(&P, "what follows is not understood"); | 
-test | dbg/eval.c | return P.error ? (EvalValue){0} : v; | return v;
+test | dbg/eval.c | if (*P->p) fail(P, "what follows is not understood"); | 
+test | dbg/eval.c | return P->error ? (EvalValue){0} : v; | return v;
 
 # slice 7: a value and a type as text, the variables in scope, rows (dbg/view.c; eval_locals and eval_members in dbg/eval.c)
 test | dbg/view.c | return more < 0 \p\p (uint32_t)more > n - 1 - at ? n - 1 : at + (uint32_t)more; | return more < 0 ? n - 1 : at + (uint32_t)more;
@@ -1091,7 +1091,7 @@ eval | dbg/ask.c | to[i] = (AskFrame){.addr = f->at.regs.rip, .line = f->line.li
 eval | dbg/ask.c | if (f->module && f->module->path) tail(to[i].module, | if (false) tail(to[i].module,
 eval | dbg/ask.c | tail(to[i].file, sizeof to[i].file, path, len < sizeof path ? len : sizeof path); | tail(to[i].file, sizeof to[i].file, path, len < sizeof path ? len / 2 : sizeof path);
 eval | dbg/ask.c | (int)(f->name.n < sizeof to[i].name ? f->name.n : sizeof to[i].name - 1), | (int)(f->name.n < sizeof to[i].name ? f->name.n - 1 : sizeof to[i].name - 1),
-eval | dbg/ask.c | view_stack(e, regs, ask.frame, frames, 1) != 1) return 0; | view_stack(e, regs, 0, frames, 1) != 1) return 0;
+eval | dbg/ask.c | if (n < sizeof ask + sizeof view \p\p cap < 8 \p\p view_stack(e, regs, ask.frame, frames, 1) != 1) return 0; | if (n < sizeof ask + sizeof view \p\p cap < 8 \p\p view_stack(e, regs, 0, frames, 1) != 1) return 0;
 eval | dbg/ask.c | memcpy(&view, more, sizeof view), more += sizeof view; | memset(&view, 0, sizeof view), more += sizeof view;
 eval | dbg/ask.c | more += strlen(more) + 1) roots[count++] = more; | more += strlen(more) + 1) roots[count] = more;
 eval | dbg/ask.c | roots[count++] = at, memcpy(at, names[i].p, names[i].n), at[names[i].n] = 0, at += names[i].n + 1; | roots[count++] = at, memcpy(at, names[i].p, names[i].n), at[names[i].n] = 0;
@@ -1138,7 +1138,7 @@ engine | dbg/engine.c | && !(user && theirs(e, ev.addr))) return | && !(false &&
 engine | dbg/engine.c | if (user) watch(e, thread); | if (user) watch(e, 0);
 engine | dbg/engine.c | if (at >> 56 == 6) target_write | if (at >> 56 == 7) target_write
 engine | dbg/engine.c | if (e->code[at] == 0x90) { | if (e->code[at] == 0x91) {
-engine | dbg/engine.c | while (ev.kind == TARGET_STEP && theirs(e, ev.addr)); | while (false);
+engine | dbg/engine.c | (theirs(e, ev.addr) \p\p (m && rdi_row(&m->rdi, ev.addr - m->image.base).line.line == 0xf00f00))); | ((m && rdi_row(&m->rdi, ev.addr - m->image.base).line.line == 0xf00f00)));
 engine | dbg/engine.c | net_add(e, helper + at, HELPER \p END \p IGNORE_SP) | net_add(e, helper + at, HELPER \p END)
 engine | dbg/engine.c | net_add(e, helper + at, HELPER \p END \p IGNORE_SP) | net_add(e, helper + at, END \p IGNORE_SP)
 engine | dbg/engine.c | if (!(flags & STEP_AFTER) && (ev = step_one(e, thread)).kind != TARGET_STEP) return ev;   /* off the trap it stands on */ |
@@ -1185,12 +1185,19 @@ eval | dbg/eval.c | P->entry && y->flags & 1 && (y->location | y->flags & 1 && (
 eval | dbg/eval.c | (y->location >> 56 == 3 \p\p y->location >> 56 == 4) ? arrives | (true) ? arrives
 eval | dbg/eval.c | static const uint8_t in[4] = {1, 2, 8, 9}; | static const uint8_t in[4] = {1, 2, 8, 10};
 eval | dbg/eval.c | P->frame->gp[4] + 8 + 8 * nth}; | P->frame->gp[4] + 8 * nth};
-# OWED (needs a function in MSVC's unoptimised zoo with a double among its first four parameters; the next recording of subjects/zoo.c): eval | dbg/eval.c | if (nth < 4 && s.form == EVAL_REAL) return (EvalValue){0}; | 
-eval | dbg/eval.c | } else if (nth < 4) p.at = P->frame->gp[in[nth]]; | } else if (nth < 4) p.at = P->frame->gp[in[0]];
-# OWED (the same recording: a struct that fits no register as fifth parameter): eval | dbg/eval.c | else if (!target_read(P->e->target, p.at, &p.at, 8)) return (EvalValue){0}; | 
+# OWED (needs a function in MSVC's unoptimised zoo with a double among its first four parameters, or one recorded that returns a double; Visual Studio would show both, ours has no place for them: xmm0 to xmm3 are not read): eval | dbg/eval.c | return s.form == EVAL_REAL ? (EvalValue){0} : p; | return p;
+eval | dbg/eval.c | (EvalValue){EVAL_MEMORY, p.type, frame->gp[reg]} | (EvalValue){EVAL_MEMORY, p.type, frame->gp[1]}
+# OWED (the same recording: a struct that fits no register as fifth parameter): eval | dbg/eval.c | if (size != 1 && size != 2 && size != 4 && size != 8 && !target_read(P->e->target, p.at, &p.at, 8)) return (EvalValue){0}; | 
 front | dbg/eval.c | P.entry = scope && !scope->parent && | P.entry = scope &&
 eval | dbg/eval.c | before += y->flags & 1; | before += 2;
 # SQLite's /JMC build: the nop behind the helper's call lies under the made-up line too (traces-vs/sql_jmc.into.txt, step 34)
 engine | dbg/engine.c | (theirs(e, ev.addr) \p\p (m && rdi_row(&m->rdi, ev.addr - m->image.base).line.line == 0xf00f00))); | theirs(e, ev.addr));
 front | cmd/hdbg.c | { return which == CTRL_C_EVENT; } | { return which != CTRL_C_EVENT; }
 front | dbg/engine.c | {0x40010005 /* control-C */,  | {
+front | dbg/engine.c | , e->returned = in, e->returned_sp = regs.gp[4]; | , e->returned = in, e->returned_sp = regs.gp[4] + 8;
+front | dbg/engine.c | e->net_count = 0, e->returned = 0; | e->net_count = 0;
+front | dbg/eval.c | const EngineModule *left = P->e->returned && P->frame->gp[4] == P->e->returned_sp ? | const EngineModule *left = P->e->returned ?
+front | dbg/eval.c | return s.size ? (EvalValue){EVAL_MEMORY, p.type, frame->gp[reg]} : (EvalValue){0}; | return (EvalValue){EVAL_MEMORY, p.type, frame->gp[reg]};
+front | dbg/eval.c | return *v = passed(left, rdi_at(r, RDI_TYPE_NODES, RdiType, type)->a, 0, P->frame), v->kind != EVAL_NONE; | return *v = passed(left, rdi_at(r, RDI_TYPE_NODES, RdiType, type)->a, 1, P->frame), v->kind != EVAL_NONE;
+front | dbg/eval.c | return *v = passed(left, rdi_at(r, RDI_TYPE_NODES, RdiType, type)->a, 0, P->frame), v->kind != EVAL_NONE; | return *v = passed(left, rdi_at(r, RDI_TYPE_NODES, RdiType, type)->a, 0, P->frame), true;
+front | dbg/eval.c | if (s.size == 1 \p\p s.size == 2 \p\p s.size == 4 \p\p s.size == 8) return s.form == EVAL_REAL ? (EvalValue){0} : p; | if (s.size) return s.form == EVAL_REAL ? (EvalValue){0} : p;

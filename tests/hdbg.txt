@@ -15,8 +15,13 @@ p pair.a
 f 0
 n
 o
+p $ReturnValue
+f 1
+p $ReturnValue
+f 0
 b twice
 n
+p $ReturnValue
 n
 p pair
 x pair
@@ -31,13 +36,16 @@ b tour.c:17 if i == 1
 b twice
 s
 o
+p $ReturnValue
 n
 n
 o
+p $ReturnValue
 p i
 n
 p i
 o
+p $ReturnValue
 p i
 n
 m &spin

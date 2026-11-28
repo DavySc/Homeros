@@ -283,7 +283,8 @@ static void out_net(Engine *e, TargetRegs regs)
     }
     if (!in_ranges(e, count, hi)) net_add(e, base + hi, END | IGNORE_SP);
   }
-  if (unwind_step(target_read, e->target, m ? &m->image : 0, &regs)) net_add(e, regs.rip, END | IGNORE_SP);
+  uint64_t in = regs.rip;
+  if (unwind_step(target_read, e->target, m ? &m->image : 0, &regs)) net_add(e, regs.rip, END | IGNORE_SP), e->returned = in, e->returned_sp = regs.gp[4];
 }
 
 /* RAD: d_ctrl_thread__run. */
@@ -292,7 +293,7 @@ static TargetEvent run(Engine *e, int how, uint32_t thread, const uint64_t *brea
   TargetRegs regs = {0};
   TargetEvent ev = {0};
   uint64_t start = 0;   /* where the stepping thread stands, when the net has a trap there */
-  e->net_count = 0;
+  e->net_count = 0, e->returned = 0;
   if (how != ENGINE_RUN) {
     if (!target_regs(e->target, thread, &regs)) return ev;   /* no such thread: nothing runs */
     if (how == ENGINE_STEP_OVER_INST) inst_net(e, regs.rip);
