@@ -2,4 +2,6 @@ STEP start main : 5369790320
 BREAK main
 BREAK sqlite3_open
 BREAK openDatabase
+STEP stops sqlite3_open : 5368723952 ARGS =
+STEP stops openDatabase : 5369735216 ARGS zFilename=0x00000001401a65a8 ppDb=0x000000000014ff08 flags=6 zVfs=0x0000000000000000
 STEP stops ended

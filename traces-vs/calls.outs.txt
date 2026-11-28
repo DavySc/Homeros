@@ -1,0 +1,17 @@
+STEP start main : 5368713248
+BREAK main
+BREAK lined
+STEP outs main : 5368713284 FROM lined RET True int=2
+STEP outs main : 5368713305 FROM lined RET True int=3
+STEP outs main : 5368713403 FROM lined RET True int=78
+STEP outs main : 5368713418 FROM lined RET True int=79
+STEP outs main : 5368713454 FROM lined RET True int=235
+STEP outs main : 5368713482 FROM lined RET True int=470
+STEP outs main : 5368713489 FROM lined RET True int=471
+STEP outs main : 5368713531 FROM lined RET True int=3
+STEP outs main : 5368713583 FROM lined RET True int=946
+STEP outs main : 5368713631 FROM lined RET True int=1
+STEP outs main : 5368713631 FROM lined RET True int=2
+STEP outs main : 5368713631 FROM lined RET True int=3
+STEP outs main : 5368713664 FROM lined RET True int=953
+STEP outs ended

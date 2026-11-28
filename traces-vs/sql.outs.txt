@@ -1,0 +1,6 @@
+STEP start main : 5369756896
+BREAK main
+BREAK sqlite3_open
+BREAK openDatabase
+STEP outs openDatabase : 5369703232 FROM sqlite3_open RET False =identifier "$ReturnValue" is undefined
+STEP outs ended

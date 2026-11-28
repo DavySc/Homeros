@@ -1,0 +1,17 @@
+STEP start main : 5368713664
+BREAK main
+BREAK add
+STEP outs main : 5368713691 FROM add RET True int=3
+STEP outs mul : 5368713311 FROM add RET True int=3
+STEP outs mul : 5368713311 FROM add RET True int=6
+STEP outs mul : 5368713311 FROM add RET True int=9
+STEP outs mul : 5368713311 FROM add RET True int=12
+STEP outs apply : 5368713582 FROM add RET True int=15
+STEP outs mul : 5368713311 FROM add RET True int=2
+STEP outs mul : 5368713311 FROM add RET True int=4
+STEP outs mul : 5368713311 FROM add RET True int=6
+STEP outs mul : 5368713311 FROM add RET True int=4
+STEP outs mul : 5368713311 FROM add RET True int=8
+STEP outs nested : 5368713649 FROM add RET True int=14
+STEP outs main : 5368714015 FROM add RET True int=2
+STEP outs ended

@@ -1,0 +1,6 @@
+STEP start main : 5368713344
+BREAK main
+BREAK work
+STEP outs main : 5368713400 FROM work RET True int=3
+STEP outs main : 5368713414 FROM work RET True int=6
+STEP outs ended

@@ -1,0 +1,7 @@
+STEP start main : 5368713216
+BREAK main
+BREAK shift
+BREAK sum
+STEP outs main : 5368713264 FROM shift RET True Triple &={...}
+STEP outs main : 5368713294 FROM sum RET True int=10
+STEP outs ended
