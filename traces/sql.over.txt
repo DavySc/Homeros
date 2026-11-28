@@ -1,0 +1,12 @@
+start -> main sql.c:18 +0xffce0 [main_thread stopped at entry point]
+step_over_line -> main sql.c:20 +0xffce4 [main_thread completed step]
+step_over_line -> main sql.c:21 +0xffcec [main_thread completed step]
+step_over_line -> main sql.c:22 +0xffd08 [main_thread completed step]
+step_over_line -> main sql.c:23 +0xffd28 [main_thread completed step]
+step_over_line -> main sql.c:24 +0xffd4e [main_thread completed step]
+step_over_line -> main sql.c:25 +0xffd58 [main_thread completed step]
+step_over_line -> main sql.c:26 +0xffd69 [main_thread completed step]
+step_over_line -> __scrt_common_main_seh exe_common.inl:288 +0x10001f [main_thread completed step]
+step_over_line -> __scrt_common_main_seh exe_common.inl:294 +0x100021 [main_thread completed step]
+step_over_line -> __scrt_common_main_seh exe_common.inl:295 +0x10007f [main_thread completed step]
+step_over_line -> ended
