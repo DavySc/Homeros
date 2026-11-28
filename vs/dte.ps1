@@ -14,5 +14,6 @@ function Stopped($dte, $tenths = 50) {
 function Dte {
   $where = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
   $id = "VisualStudio.DTE.$((& $where -latest -property installationVersion).Split('.')[0]).0"   # the class's name carries the version
-  try { New-Object -ComObject $id } catch { $null }
+  # after many runs one that did not quit can stand in the way of a new one (the 108th start of a recording failed): end those and try again
+  foreach ($try in 1..3) { try { return New-Object -ComObject $id } catch { Get-Process devenv, VsDebugConsole -ErrorAction SilentlyContinue | Stop-Process -Force; Start-Sleep -Seconds 10 } }
 }
