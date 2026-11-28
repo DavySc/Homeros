@@ -117,7 +117,8 @@ int main(void)
 	snprintf(f, sizeof f, "ms mssql 127.0.0.1 sa master trust pass=%s\npg pg 127.0.0.1 postgres postgres trust pass=%s\n"
 		"dir %s/ms/deep pg\ndir ~/ms ms\ndir %s/pg pg\ndir  %s/a b   ms \n"
 		"bad mssql 127.0.0.1:99999 sa master pass=x\nletters mssql 127.0.0.1:1433x sa master pass=x\nnopass mssql 127.0.0.1 sa master\nv6 mssql [::1]:1433 sa master pass=x\n"
-		"cs mssql 127.0.0.1 sa hcs trust pass=%s\nlim pg 127.0.0.1 hlim postgres trust pass=%s\nnohost mssql nohost.invalid sa master pass=x\n", sa, pg, dir, dir, dir, sa, pg);
+		"cs mssql 127.0.0.1 sa hcs trust pass=%s\nlim pg 127.0.0.1 hlim postgres trust pass=%s\nnohost mssql nohost.invalid sa master pass=x\n"
+		"sp mssql 127.0.0.1 hsp master trust pass=Ho meros 1 x\r\n", sa, pg, dir, dir, dir, sa, pg);
 	put(conf, f, 0644);
 #ifndef _WIN32   /* there the profile is the user's (sql.c, as libpq) */
 	CHECK(sql_key(&e, KEY_F5) == 1 && strstr(e.msg, "others can read it"));
@@ -234,6 +235,10 @@ int main(void)
 	CHECK(sql_connect(&e, "bad") && strstr(e.msg, "port in 127.0.0.1:99999") && sql_connect(&e, "letters") && strstr(e.msg, "port in 127.0.0.1:1433x"));
 	CHECK(sql_connect(&e, "nopass") && strstr(e.msg, "no pass="));
 	CHECK(!sql_connect(&e, "v6") && strstr(e.msg, "(::1)"));
+	/* pass= takes the rest of the line: a password with spaces, on a CRLF line */
+	CHECK(strstr(f5("ms/sp.sql", "if suser_id('hsp') is null create login hsp with password = 'Ho meros 1 x', check_policy = off\n"), "Completion"));
+	put("ms/sq.sql", "select suser_name() as who\n", 0600);
+	CHECK(!core_edit_file(&e, "ms/sq.sql", 0) && !sql_connect(&e, "sp") && sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), "who\nhsp\n"));
 	/* SPC r from the results: closed, the cursor back in the query */
 	CHECK(!core_edit_file(&e, "ms/a.sql", 0) && sql_key(&e, KEY_F5) == 1 && until("Completion time"));
 	core_win_goto(&e, 'w', 2);

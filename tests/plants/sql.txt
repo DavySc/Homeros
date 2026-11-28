@@ -122,3 +122,5 @@ sql: a name's escaped tab kept escaped in the catalog (test_sql_editor)~test TES
 sql: the catalog not read at a login (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (was < DB_READY && db_state(&s->db) >= DB_READY) catread(&s->spec);¶~
 sql: a dropped catalog keeps its rows (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (st != 2) c->cols.n = 0;¶~
 specs: SqlCat read once only, not again after a failure~specs~find design/specs -name '*.cfg' ! -name SqlCat_ok.cfg -delete~design/specs/SqlCat_ok.cfg~ Variant = "ok"~ Variant = "noretry"
+sql: pass= ends at a space (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~pw[strcspn(pw, "\r\n")] = 0~pw[strcspn(pw, " \r\n")] = 0
+sql: pass= keeps a Windows editor's CR (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~pw[strcspn(pw, "\r\n")] = 0~pw[strcspn(pw, "\n")] = 0
