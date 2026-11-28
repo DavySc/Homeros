@@ -17,7 +17,7 @@ STEP outs down : 5368713216 FROM down RET False =identifier "$ReturnValue" is un
 LOCALS	n	int	291
 STEP outs down : 5368713216 FROM down RET False =identifier "$ReturnValue" is undefined
 LOCALS	n	int	289
-STEP outs down : 5368713216 FROM down RET False =identifier "$ReturnValue" is undefined
+STEP outs down : 5368713216 FROM down RET  =
 LOCALS	n	int	287
 STEP outs down : 5368713216 FROM down RET False =identifier "$ReturnValue" is undefined
 LOCALS	n	int	285
@@ -34,7 +34,7 @@ LOCALS	n	int	275
 STEP outs down : 5368713216 FROM down RET False =identifier "$ReturnValue" is undefined
 LOCALS	n	int	273
 STEP outs down : 5368713216 FROM down RET False =identifier "$ReturnValue" is undefined
-LOCALS			
+LOCALS	n	int	271
 STEP outs down : 5368713216 FROM down RET False =identifier "$ReturnValue" is undefined
 LOCALS	n	int	269
 STEP outs down : 5368713216 FROM down RET False =identifier "$ReturnValue" is undefined
