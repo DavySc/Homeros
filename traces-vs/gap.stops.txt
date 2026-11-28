@@ -1,5 +1,5 @@
 STEP start main : 5368713456
 BREAK main
 BREAK work
-STEP stops work : 5368713296
+STEP stops work : 5368713296 ARGS a=0 b=0
 STEP stops ended

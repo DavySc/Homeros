@@ -1,0 +1,5 @@
+STEP start main : 5369032368
+BREAK main
+BREAK openDatabase
+STEP stops openDatabase : 5369048592 ARGS zFilename=0x0000000140167d60 ppDb=0x000000000014ff28 flags=6 zVfs=0x0000000000000000
+STEP stops ended

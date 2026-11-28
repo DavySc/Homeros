@@ -1,10 +1,10 @@
 STEP start main : 5368713360
 BREAK main
 BREAK fact
-STEP stops fact : 5368713312
-STEP stops fact : 5368713312
-STEP stops fact : 5368713312
-STEP stops fact : 5368713312
-STEP stops fact : 5368713312
-STEP stops fact : 5368713312
+STEP stops fact : 5368713312 ARGS n=4
+STEP stops fact : 5368713312 ARGS n=3
+STEP stops fact : 5368713312 ARGS n=2
+STEP stops fact : 5368713312 ARGS n=1
+STEP stops fact : 5368713312 ARGS n=2
+STEP stops fact : 5368713312 ARGS n=1
 STEP stops ended

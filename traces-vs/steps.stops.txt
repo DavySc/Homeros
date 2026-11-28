@@ -1,17 +1,17 @@
 STEP start main : 5368713664
 BREAK main
 BREAK add
-STEP stops add : 5368713216
-STEP stops add : 5368713216
-STEP stops add : 5368713216
-STEP stops add : 5368713216
-STEP stops add : 5368713216
-STEP stops add : 5368713216
-STEP stops add : 5368713216
-STEP stops add : 5368713216
-STEP stops add : 5368713216
-STEP stops add : 5368713216
-STEP stops add : 5368713216
-STEP stops add : 5368713216
-STEP stops add : 5368713216
+STEP stops add : 5368713216 ARGS x=1 y=2
+STEP stops add : 5368713216 ARGS x=0 y=3
+STEP stops add : 5368713216 ARGS x=3 y=3
+STEP stops add : 5368713216 ARGS x=6 y=3
+STEP stops add : 5368713216 ARGS x=9 y=3
+STEP stops add : 5368713216 ARGS x=7 y=8
+STEP stops add : 5368713216 ARGS x=0 y=2
+STEP stops add : 5368713216 ARGS x=2 y=2
+STEP stops add : 5368713216 ARGS x=4 y=2
+STEP stops add : 5368713216 ARGS x=0 y=4
+STEP stops add : 5368713216 ARGS x=4 y=4
+STEP stops add : 5368713216 ARGS x=8 y=6
+STEP stops add : 5368713216 ARGS x=1 y=1
 STEP stops ended

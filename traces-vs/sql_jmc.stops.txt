@@ -1,0 +1,5 @@
+STEP start main : 5369790320
+BREAK main
+BREAK sqlite3_open
+BREAK openDatabase
+STEP stops ended

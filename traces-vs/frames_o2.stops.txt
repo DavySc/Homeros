@@ -2,6 +2,6 @@ STEP start main : 5368713216
 BREAK main
 BREAK shift
 BREAK sum
-STEP stops shift : 5368713328
-STEP stops sum : 5368713376
+STEP stops shift : 5368713328 ARGS t={...} by=2
+STEP stops sum : 5368713376 ARGS t={...} more=4
 STEP stops ended
