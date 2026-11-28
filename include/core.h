@@ -54,6 +54,8 @@ typedef struct Buf {
 	Text *text;
 	Undo *undo;
 	char *path;                /* NULL for a buffer without a name */
+	const char *status;        /* shown in place of the file name for a buffer without a path; NULL:
+	                              [No Name].  Owned by whoever sets it */
 	char *full;                /* Neovim's b_ffname: path through file_full() (the path
 	                              as typed when that fails); buffers are found by it
 	                              (buflist_findname()); set and freed with path */

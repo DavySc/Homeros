@@ -1,0 +1,3 @@
+sql: the lines before a grid counted twice~test TESTS=sql_editor~~src/sql/sql.c~for (char *q = s->o.s + s->lo;~for (char *q = s->o.s;
+sql: Postgres's error without its mark (editor: status) (review)~test TESTS=sql_editor~~src/sql/pg.c~return (k == 'E' && str_add(o, NET_ERR, 1)) || str_addf~return str_addf
+sql: Enter taken outside the results~test TESTS=sql_editor~~src/sql/sql.c~return s && s->res == e->buf->nr &&~return s &&

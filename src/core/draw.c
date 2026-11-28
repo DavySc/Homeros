@@ -710,7 +710,7 @@ static void draw_status(Editor *e, Grid *g, Win *w)
 		stl_add(&t, " ", c, 0);
 	}
 	/* filename: expand('%:t') */
-	const char *name = "[No Name]";
+	const char *name = b->status ? b->status : "[No Name]";
 	if (b->path)
 		for (const char *p = name = b->path; *p; p++)
 #ifdef _WIN32

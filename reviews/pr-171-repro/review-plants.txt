@@ -1,0 +1,18 @@
+rv: the rule without its crossings~test TESTS=sql_editor~~src/sql/sql.c~		r = add(s, "\xe2\x94\xbc", 3);~		r = add(s, "\xe2\x94\x80", 3);
+rv: one row counted as "rows"~test TESTS=sql_editor~~src/sql/sql.c~rows == 1 ? "" : "s");¶	s->in = 0;~"s");¶	s->in = 0;
+rv: the status line's one row as "rows"~test TESTS=sql_editor~~src/sql/sql.c~rows, rows == 1 ? "" : "s", ms / 3600000~rows, "s", ms / 3600000
+rv: the names in the rule's face~test TESTS=sql_editor~~src/sql/sql.c~l == g->line ? FACE_PMENU_SEL : FACE_ORG_TABLE~l == g->line ? FACE_ORG_TABLE : FACE_ORG_TABLE
+rv: the row numbers in no face~test TESTS=sql_editor~~src/sql/sql.c~f[j - a] = FACE_LINE_NR;~f[j - a] = FACE_NONE;
+rv: the cut mark in no face~test TESTS=sql_editor~~src/sql/sql.c~span(s, s->o.n, 3, FACE_NUMBER)~span(s, s->o.n, 3, FACE_NONE)
+rv: the Messages rule in no face~test TESTS=sql_editor~~src/sql/sql.c~sizeof h - 2, FACE_FUNCTION~sizeof h - 2, FACE_NONE
+rv: the row count in no face~test TESTS=sql_editor~~src/sql/sql.c~span(s, s->o.n, n - 2, FACE_ORG_TABLE)~span(s, s->o.n, n - 2, FACE_NONE)
+rv: a NULL's mark counted in its width~test TESTS=sql_editor~~src/sql/sql.c~nul = k && (unsigned char)q[1] == 0xFD;~nul = 0;
+rv: a later grid's faces at the first one's line~test TESTS=sql_editor~~src/sql/sql.c~g->line += *q == '\n';~g->line += 0;
+rv: the running status line's text~test TESTS=sql_editor~~src/sql/sql.c~"Executing query... \xc2\xb7 %s / %s"~"Executing... \xc2\xb7 %s / %s"
+rv: a last line without its newline lost~test TESTS=sql_editor~~src/sql/sql.c~if (!s->q.n && s->part.n) take(s, s->part.s, s->part.n), s->part.n = 0;~if (!s->q.n && s->part.n) s->part.n = 0;
+rv: a wide character counted as one cell~test TESTS=sql_editor~~src/sql/sql.c~2 : (size_t)uni_width(u, n, i)) <= w~2 : 1) <= w
+rv: a control byte counted as one cell~test TESTS=sql_editor~~src/sql/sql.c~u[i] < 32 || u[i] == 127 ? 2 :~u[i] < 32 || u[i] == 127 ? 1 :
+rv: a Messages rule with no messages~test TESTS=sql_editor~~src/sql/sql.c~if (r || !s->msgs.n) return r;~if (r) return r;
+rv: an empty set shows no grid~test TESTS=sql_editor~~src/sql/sql.c~if (!s->in || (s->in == 1 && lay(s))) return s->in ? -1 : 0;~if (!s->in || (s->in == 1 && (s->nheld ? lay(s) : (s->held.n = 0)))) return s->in ? -1 : 0;
+rv: the names' mark missing on SQL Server (editor)~test TESTS=sql_editor~~src/sql/tds.c~str_add(&t->out, i ? "\t" : NET_HEAD, 1)~str_add(&t->out, "\t", i ? 1 : 0)
+rv: Postgres's error without its mark (editor: status)~test TESTS=sql_editor~~src/sql/pg.c~return (k == 'E' && str_add(o, NET_ERR, 1)) || str_addf~return str_addf
