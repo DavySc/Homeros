@@ -1,3 +1,4 @@
 STEP start main : 5368714144
 BREAK main
+BREAK __scrt_common_main_seh
 STEP stops ended
