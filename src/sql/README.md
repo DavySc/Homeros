@@ -55,7 +55,8 @@ They are read again at a later login if that failed, when completion asks
 
 A buffer's connection comes from `$XDG_CONFIG_HOME/homeros/sql`
 (`~/.config/homeros/sql`). The longest `dir` line whose folder holds the file
-names it, and `:Connect name` sets another one (`:Connect` alone shows it):
+names it, and `:Connect name` sets another one, `:Connect name/db` that
+one with database db:
 
 ```
 # name  server  host[:port]  user  database  [trust]  [pass=...]
@@ -64,6 +65,19 @@ local   pg      localhost    davy  postgres
 dir ~/work/sql work
 dir ~/notes/db local
 ```
+
+A database `-` is the server alone (Davy, 2026-11-28: "just connect to a
+server and see all of the available databases", SSMS's Object Explorer):
+its default database, Postgres's `postgres`.
+
+`:Connect` alone opens the connections picker: each connection, then, for
+each server whose catalog has been read, its databases as `name/db`. A
+connection a buffer is logged in on is marked ✓. Picking a server alone
+reads its databases on a connection of its own, and the picker opens again
+with them, unless a key comes first. The databases come with the catalog's
+one query (rows with schema `''`), so a later client adds its own
+listing there. The buffer's status line shows its connection, marked ✓ while
+logged in.
 
 `trust` accepts the server's own (self-signed) certificate. `pass=` comes
 last and takes the rest of the line, so a password may hold spaces. A file that

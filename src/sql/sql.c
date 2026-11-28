@@ -14,12 +14,13 @@
 #include "file.h"
 #include "loop.h"
 #include "match.h"
+#include "tools.h"
 #include "uni.h"
 #include "db.h"
 #include "run.h"
 
 /* A connection as the connections file names it */
-typedef struct { char name[256], host[256], user[256], pass[256], db[256]; int pg, port, trust; } Spec;
+typedef struct { char name[256], host[256], user[256], pass[256], db[256]; int pg, port, trust, alone; } Spec;   /* alone: the server, database - */
 
 typedef struct {
 	int nr, res;            /* the query buffer, its results buffer (0 none yet) */
@@ -44,6 +45,7 @@ typedef struct {
 	long long t1;           /* the open set's start */
 	int in;                 /* a result set is open: 1 its rows held, 2 laid out */
 	int said, err;          /* a message block is open (its rule out); an error's text is */
+	int looked;             /* the folder's connection looked up (conn) */
 	int bad;                /* the run's worst: 1 an error, 2 cancelled */
 	char status[600];       /* the results' status line (Buf.status), SSMS's bar under the query */
 	struct Grid { size_t line, rows; int rn, n, *w; } *g;
@@ -397,7 +399,9 @@ static int whole(Sess *s)
 /* The connections file's line for name, or with name "" the connection of
    the longest "dir" line holding path.  A line is
      name mssql|pg host[:port] user database [trust] [pass=...]
-   (user - : the Windows login, SQL Server's from Windows)
+   (user - : the Windows login, SQL Server's from Windows; database - :
+   the server alone, its default database), and name/db is name's with
+   database db
      dir folder name
    A password in the file makes it refused unless only its owner can read
    it (libpq's rule for ~/.pgpass).  0 found, -1 msg set. */
@@ -411,7 +415,8 @@ static int sep(char c) { return c == '/'; }
 
 static int lookup(const char *name, const char *path, Spec *o)
 {
-	char f[4096], l[1024], want[256] = "";
+	char f[4096], l[1024], want[256] = "", *db = NULL;
+	size_t wn = 0;
 	file_stdpath(f, sizeof f, 2, "/sql");
 	FILE *fp = fopen(f, "r");
 	if (!fp) { core_msg(E, "sql: no connections file %s (src/sql/README.md)", f); return -1; }
@@ -445,9 +450,9 @@ static int lookup(const char *name, const char *path, Spec *o)
 				if (file_full(t, d)) snprintf(d, sizeof d, "%s", t);   /* the buffer's name's form (C:\ on Windows) */
 				size_t n = strlen(d);
 				if (path && n > best && !strncmp(path, d, n) && (sep(path[n]) || sep(d[n - 1]))) best = n, snprintf(want, sizeof want, "%s", a[2]);
-			} else if (round == 1 && k >= 5 && !strcmp(a[0], want) && (!strcmp(a[1], "mssql") || !strcmp(a[1], "pg"))) {
-				*o = (Spec){ .pg = a[1][0] == 'p' };
-				snprintf(o->name, sizeof o->name, "%s", a[0]);
+			} else if (round == 1 && k >= 5 && !strncmp(a[0], want, wn) && !a[0][wn] && (!strcmp(a[1], "mssql") || !strcmp(a[1], "pg"))) {
+				*o = (Spec){ .pg = a[1][0] == 'p', .alone = !db && !strcmp(a[4], "-") };
+				memcpy(o->name, want, sizeof want);
 				/* host, host:port, [IPv6] or [IPv6]:port */
 				char *h = a[2] + (a[2][0] == '['), *c = strrchr(h, a[2][0] == '[' ? ']' : ':');
 				if (a[2][0] == '[' && c) *c++ = 0, c = *c == ':' ? c : NULL;
@@ -459,7 +464,7 @@ static int lookup(const char *name, const char *path, Spec *o)
 				o->port = (int)port;
 				snprintf(o->host, sizeof o->host, "%s", h);
 				snprintf(o->user, sizeof o->user, "%s", a[3]);
-				snprintf(o->db, sizeof o->db, "%s", a[4]);
+				snprintf(o->db, sizeof o->db, "%s", db ? db : strcmp(a[4], "-") ? a[4] : o->pg ? "postgres" : "");   /* Postgres needs one: libpq's default */
 				o->trust = !strcmp(x, "trust");
 				memcpy(o->pass, pass, sizeof pass);
 				if (!o->pg && !*o->pass && strcmp(o->user, "-")) { core_msg(E, "sql: %s has no pass= (an empty password is a failed login on the server)", o->name); return -1; }   /* user "-": the Windows login */
@@ -468,6 +473,7 @@ static int lookup(const char *name, const char *path, Spec *o)
 			}
 		}
 		if (round == 0 && !*want) break;
+		if (round == 0) db = strchr(want, '/'), wn = db ? (size_t)(db++ - want) : strlen(want);
 	}
 	fclose(fp);
 	if (*want) core_msg(E, "sql: no connection %s in %s", want, f);
@@ -498,7 +504,7 @@ typedef struct Cat {
 	struct Cat *next;
 	char name[256];
 	Db db;
-	int fd, st;             /* its connection while it reads (-1 none); 0 not read, 1 logging in, 3 reading, 2 read, -1 failed */
+	int fd, st, pg;         /* its connection while it reads (-1 none); 0 not read, 1 logging in, 3 reading, 2 read, -1 failed */
 	Str cols, tabs;         /* the rows as schema\0table\0column\0 (the server sorted them); each table's first row's offset, as size_t */
 } Cat;
 
@@ -519,12 +525,18 @@ static Cat *cat(const char *name, int make)
 	return c;
 }
 
+static char pickfor[256];   /* a server alone just picked: its databases, when read, open the picker again */
+
 static void uncat(Cat *c, int st)   /* its connection closed, its state st */
 {
+	int mine = st && !strcmp(pickfor, c->name);
+	if (mine && st < 0) core_msg(E, "sql: %s: %s", c->name, db_net(&c->db)->err);   /* before the close clears it */
 	if (c->fd >= 0) loop_unwatch(c->fd);
 	if (c->st == 1 || c->st == 3) db_close(&c->db);
 	c->fd = -1, c->st = st;
 	if (st != 2) c->cols.n = c->tabs.n = 0;
+	if (mine) *pickfor = 0;
+	if (mine && st > 0) tools_pick(E, PICK_SQL), core_changed = 1;
 }
 
 static void catwake(void *ctx, int fd)
@@ -537,9 +549,14 @@ static void catwake(void *ctx, int fd)
 	/* the first idle after the login (which may run a batch of its own
 	   first: TDS's) sends the query, the next one has its rows; capitals,
 	   for a case-sensitive SQL Server database (Postgres folds them) */
-	if (!r && was != DB_READY && now == DB_READY && c->st == 1) c->st = 3, r = db_query(&c->db,
-		"SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS"
-		" WHERE TABLE_SCHEMA NOT IN ('pg_catalog', 'information_schema') ORDER BY 1, 2, ORDINAL_POSITION");
+	/* the server's databases come first, as rows with schema '' (none has
+	   that name), for the connections picker (SSMS's Object Explorer) */
+	if (!r && was != DB_READY && now == DB_READY && c->st == 1) c->st = 3, r = db_query(&c->db, c->pg
+		? "SELECT s, t, c FROM (SELECT TABLE_SCHEMA::text s, TABLE_NAME::text t, COLUMN_NAME::text c, ORDINAL_POSITION::int o FROM INFORMATION_SCHEMA.COLUMNS"
+		  " UNION ALL SELECT '', datname, '', 0 FROM pg_database WHERE datallowconn AND NOT datistemplate) x"
+		  " WHERE s NOT IN ('pg_catalog', 'information_schema') ORDER BY 1, 2, o"
+		: "SELECT s, t, c FROM (SELECT TABLE_SCHEMA s, TABLE_NAME t, COLUMN_NAME c, ORDINAL_POSITION o FROM INFORMATION_SCHEMA.COLUMNS"
+		  " UNION ALL SELECT '', name COLLATE DATABASE_DEFAULT, '', 0 FROM sys.databases) x ORDER BY 1, 2, o");   /* hcs's collation is not the server's */
 	else if (!r && was != DB_READY && now == DB_READY) {   /* the rows: the lines after the header's, three fields each */
 		if (o->n) o->n = net_plain(o->s, o->n);   /* the layout's marks (net.h) */
 		if (o->n) for (char *p = o->s, *z = p + o->n, *n, *a, *b, *h = NULL; !r && (n = memchr(p, '\n', (size_t)(z - p))); p = n + 1)
@@ -561,7 +578,7 @@ static void catread(const Spec *p)   /* a session on p logged in: its catalog re
 {
 	Cat *c = cat(p->name, 1);
 	if (!c || c->st > 0) return;
-	c->st = 1;
+	c->st = 1, c->pg = p->pg;
 	if ((c->fd = dial(&c->db, p, catwake, c)) < 0) uncat(c, -1);
 }
 
@@ -717,9 +734,8 @@ static int run(Sess *s, size_t a, size_t z)
 
 int sql_key(Editor *e, int key)
 {
-	W = NULL;
+	W = NULL, *pickfor = 0, E = e;
 	if (key != KEY_F5 && key != KEY_BREAK && key != KEY_CTRL_C && key != KEY_ENTER) return 0;
-	E = e;
 	Sess *s = sess(e->buf->nr, 0);
 	if (key == KEY_ENTER) return s && s->res == e->buf->nr && e->mode == MODE_NORMAL && !e->ks.pending && whole(s);   /* as make_key */
 	if (key != KEY_F5) {
@@ -764,10 +780,10 @@ int sql_connect(Editor *e, const char *name)
 {
 	E = e;
 	Sess *s = sess(e->buf->nr, name && *name);
-	if (!name || !*name) {
-		core_msg(e, s && s->spec.name[0] ? "sql: %s (%s)" : "sql: not connected", s ? s->spec.name : "", s ? s->spec.host : "");
-		return 0;
-	}
+	if (!name || !*name) return tools_pick(e, PICK_SQL);
+	char nm[300];
+	snprintf(nm, sizeof nm, "%.*s", (int)strcspn(name, " "), name);   /* a picker item's mark cut */
+	name = nm;
 	if (!s) { core_msg(e, "sql: out of memory"); return -1; }
 	Spec c;
 	if (lookup(name, NULL, &c)) return -1;
@@ -775,7 +791,8 @@ int sql_connect(Editor *e, const char *name)
 	if (k) uncat(k, 0);   /* read again at its next login: the file may name another server now */
 	drop(s);
 	s->spec = c;
-	core_msg(e, "sql: %s (%s)", c.name, c.host);
+	core_msg(e, "sql: %s (%s)%s", c.name, c.host, c.alone ? ": its databases come in the picker" : "");
+	if (c.alone) snprintf(pickfor, sizeof pickfor, "%s", c.name), catread(&c);
 	return 0;
 }
 
@@ -789,16 +806,74 @@ int sql_disconnect(Editor *e)
 	return 0;
 }
 
+/* b's session with its connection, or NULL; the folder's looked up once,
+   with no message (completion or the status line asked, not Davy) */
+static Sess *conn(const Buf *b)
+{
+	Sess *s = E && is_sql(b) ? sess(b->nr, 1) : NULL;   /* E: lookup's messages go there; the first key sets it (sql_key) */
+	char m[sizeof E->msg];
+	Spec c;
+	if (s && !s->spec.name[0] && !s->looked) {
+		memcpy(m, E->msg, sizeof m);
+		if (!lookup("", b->full, &c)) s->spec = c;
+		memcpy(E->msg, m, sizeof m);
+		s->looked = 1;
+	}
+	return s && s->spec.name[0] ? s : NULL;
+}
+
+static int up(const Sess *s) { return s->fd >= 0 && db_state(&s->db) >= DB_READY; }
+
+/* name, and " ✓" while live: the picker's and the status line's one mark */
+static const char *marked(const char *name, int live)
+{
+	static char m[300];
+	return live ? (snprintf(m, sizeof m, "%s \xe2\x9c\x93", name), m) : name;
+}
+
+const char *sql_status(const Buf *b, int *live)
+{
+	Sess *s = conn(b);
+	return s ? marked(s->spec.name, *live = up(s)) : NULL;
+}
+
+/* The picker's items as name\0, rebuilt at item 0: each connection in the
+   file, each followed by its server's databases once a catalog read them */
+static Str items;
+
+const char *sql_pick(Editor *e, int i, int *live)
+{
+	static size_t at, n;   /* item n is at items.s + at: the picker asks in order */
+	E = e;
+	if (!i) {
+		char f[4096], l[1024], a[2][256], d[600];
+		file_stdpath(f, sizeof f, 2, "/sql");
+		FILE *fp = fopen(f, "r");
+		items.n = at = n = 0;
+		while (fp && fgets(l, sizeof l, fp))
+			if (sscanf(l, "%255s %255s", a[0], a[1]) == 2 && (!strcmp(a[1], "mssql") || !strcmp(a[1], "pg"))) {
+				size_t an = strlen(a[0]);
+				Cat *k = C;
+				while (k && (k->st != 2 || strncmp(k->name, a[0], an) || (k->name[an] && k->name[an] != '/'))) k = k->next;
+				if (str_add(&items, a[0], an + 1)) break;
+				const size_t *o = k ? (const void *)k->tabs.s : NULL;
+				for (size_t j = 0, nt = k ? k->tabs.n / sizeof *o : 0; j < nt && !k->cols.s[o[j]]; j++)
+					if (str_add(&items, d, (size_t)snprintf(d, sizeof d, "%s/%s", a[0], k->cols.s + o[j] + 1) + 1)) break;
+			}
+		if (fp) fclose(fp);
+	}
+	for (; n < (size_t)i && at < items.n; n++) at += strlen(items.s + at) + 1;
+	if (n != (size_t)i || at >= items.n) return NULL;
+	*live = 0;
+	for (size_t j = 0; j < nS && !*live; j++) *live = up(S[j]) && !strcmp(S[j]->spec.name, items.s + at);
+	return marked(items.s + at, *live);
+}
+
 int sql_catalog(Editor *e, const Buf *b, const char *table, void (*fn)(void *ctx, const char *schema, const char *table, const char *column), void *ctx)
 {
 	E = e;
-	Sess *s = is_sql(b) ? sess(b->nr, 1) : NULL;
-	char m[sizeof e->msg];
-	Spec c;
-	memcpy(m, e->msg, sizeof m);   /* completion asked, not Davy: no message */
-	if (s && !s->spec.name[0] && !lookup("", b->full, &c)) s->spec = c;
-	memcpy(e->msg, m, sizeof m);
-	if (!s || !s->spec.name[0]) return 0;
+	Sess *s = conn(b);
+	if (!s) return 0;
 	Cat *k = cat(s->spec.name, 0);
 	if (!k) return 0;
 	if (!fn) {   /* read again: now if this buffer is logged in, else at its login */
@@ -812,6 +887,7 @@ int sql_catalog(Editor *e, const Buf *b, const char *table, void (*fn)(void *ctx
 	for (size_t i = 0; i < nt; i++) {   /* the table count plus the columns asked for, not the whole catalog */
 		const char *p = k->cols.s + o[i], *z = k->cols.s + (i + 1 < nt ? o[i + 1] : k->cols.n), *t, *col;
 		row(p, &t, &col);
+		if (!*p) continue;   /* a database */
 		if (!table) fn(ctx, p, t, NULL), n++;
 		else if (!strcasecmp(t, table)) for (const char *q; p < z; p = q, n++) q = row(p, &t, &col), fn(ctx, p, t, col);
 	}
