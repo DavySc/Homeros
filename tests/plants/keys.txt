@@ -106,7 +106,7 @@ keys: a search stops at the end of the file instead of wrapping ('wrapscan') (te
 keys: d/x/e leaves the match's last character (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~if (off.end && oap) oap->inclusive = 1;~if (0) oap->inclusive = 1;
 keys: d/x/+1 deletes characters, not lines (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~	else if (i == 2) cap->oap->motion_type = MLINE;¶~
 keys: n after /x/s-1 stays where it is (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~		cap->count1++;¶~
-keys: * finds the word inside other words, without \< \> (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~if (!g && first >= 2) p +=~if (0) p +=
+keys: * finds the word inside other words, without \< \> (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~if (!g && first >= 2) p +=~if (!g && first >= 2 && 0) p +=
 keys: . after d/x deletes up to the next x without typing the search again (test_keys_ex)~test TESTS=keys_ex~~src/keys/normal.c~			redo_append('\n');¶~
 keys: a search with an upper-case letter ignores case, as if 'smartcase' were off (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~noscs || !has_upper(pat, all)~noscs || 1 + 0 * !has_upper(pat, all)
 keys: * keeps 'smartcase', so * on Foo misses foo (test_keys_ex)~test TESTS=keys_ex~~src/keys/search.c~int noscs = no_smartcase, i = -1;~int noscs = 0 * no_smartcase, i = -1;
