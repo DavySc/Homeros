@@ -1,0 +1,26 @@
+MISSED  3b the position sent is always the file's start (lsp)
+MISSED  9b names in the list not relative to the current directory
+caught: tests/test_lsp_locs.c:70: CHECK(e->win->line == line - 1 && e->win->col <= col - 1 && strs  21 C-] takes the last place
+MISSED  22 an error answer reported as nothing found
+caught: test_lsp_locs: 3 of 300 cases differ from Neovim  keys: ]d takes a diagnostic past the last line on a line of its own
+caught: test_lsp_locs: 3 of 300 cases differ from Neovim  keys: ]d lands on a line's NUL, not its last character (vim.diagnostic's extmark)
+caught: test_lsp_locs: 4 of 300 cases differ from Neovim  keys: 2]d steps from where the last one landed, not its own column (opts.pos)
+caught: test_lsp_locs: 68 of 300 cases differ from Neovim  keys: ]d does not wrap past the end
+caught: test_lsp_locs: 14 of 300 cases differ from Neovim  keys: [d takes the diagnostic with the lowest column
+caught: tests/test_lsp_locs.c:75: CHECK(e->buf != from && e->buf->nomodifiable) failed  keys: grr opens one reference instead of listing it
+caught: tests/test_lsp_locs.c:70: CHECK(e->win->line == line - 1 && e->win->col <= col - 1 && strs  keys: C-] lists every definition
+caught: tests/test_lsp_locs.c:68: CHECK(e->buf == from && e->win->line == l0 && e->win->col == c0)  keys: C-o to another buffer's entry beeps
+caught: tests/test_lsp_locs.c:66: CHECK(e->buf->path && !strcmp(e->buf->path + strlen(e->buf->path  keys: SPC m a not mapped in a C file
+caught: test_lsp_locs: 5 of 300 cases differ from Neovim  lsp: a place inside a surrogate pair at its start, not its end (str_byteindex)
+caught: test_lsp_locs: 32 of 300 cases differ from Neovim  lsp: places not sorted by file and position (locations_to_items)
+caught: test_lsp_locs: 14 of 300 cases differ from Neovim  lsp: a LocationLink's whole target taken, not its name
+caught: test_lsp_locs: 11 of 300 cases differ from Neovim  lsp: a symbol's children dropped
+caught: test_lsp_locs: 12 of 300 cases differ from Neovim  lsp: a symbol's deprecated tag ignored
+caught: /tmp/lsp_locsQvsIba/63/o.c:9:7: 漢字 x a_b  lsp: an open file's line read with its newline
+caught: tests/test_lsp_locs.c:176: CHECK(keyed[0] && keyed[1] && indented) failed  lsp: a closed file's lines counted off by one
+caught: src/lsp/lsp.c:1001:50: runtime error: null pointer passed as argument 2, which is declared  lsp: a file:// URI's %XX not decoded
+MISSED  make: a write does not run it again
+caught: /tmp/lsp_locsDIndGh/1/sub dir/ö.h:1:16: bar( é 漢字 1; 漢字 )  make: a write runs :make again over grr's list
+caught: tests/test_lsp_locs.c:75: CHECK(e->buf != from && e->buf->nomodifiable) failed  make: grr's list leaves the cursor where it was (not botright copen)
+caught: /tmp/lsp_locsN6aDFr/21/sub dir/ö.h:4:17: a_b bar( 	 x x  make: grr's list keeps each line's indent
+caught: tests/test_lsp_locs.c:66: CHECK(e->buf->path && !strcmp(e->buf->path + strlen(e->buf->path  make: one place opened in the file it is in, not the current one
