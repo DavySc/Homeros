@@ -9,6 +9,7 @@ int main(void)
   STARTUPINFOA start = {.cb = sizeof start, .dwFlags = STARTF_USESTDHANDLES, .hStdInput = GetStdHandle(STD_INPUT_HANDLE), .hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE), .hStdError = GetStdHandle(STD_ERROR_HANDLE)};
   PROCESS_INFORMATION made;
   DWORD code = 1;
+  SetConsoleCtrlHandler(NULL, FALSE);   /* a check may run with Ctrl+C ignored, which is inherited: the pair gets it as at a person's console */
   if (!CreateProcessA(NULL, line, NULL, NULL, TRUE, CREATE_NEW_CONSOLE, NULL, NULL, &start, &made)) return 2;
   WaitForSingleObject(made.hProcess, INFINITE), GetExitCodeProcess(made.hProcess, &code);
   return (int)code;

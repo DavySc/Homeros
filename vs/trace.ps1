@@ -53,6 +53,7 @@ foreach ($script in 'into', 'over', 'stops', 'outs') {
   try { $dte.Debugger.Stop($true) } catch {}
   try { $dte.Quit() } catch {}
   Start-Sleep -Seconds 5
-  $lines | Set-Content "$out/$name.$script.txt"
+  # Visual Studio now and then loses a program early ("ended" after a few steps, another program each run): the longer recording stays
+  if (-not (Test-Path "$out/$name.$script.txt") -or $lines.Count -ge @(Get-Content "$out/$name.$script.txt").Count) { $lines | Set-Content "$out/$name.$script.txt" }
   "VS $name.$script steps=$($lines.Count) last=[$($lines[-1])]"
 }
