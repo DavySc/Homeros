@@ -6,11 +6,12 @@
 # (where in a function its breakpoint lies: on its first instruction, measured; and what its arguments are shown as there).
 # A fourth, `outs`: the same breakpoints, and from each a step out: where it stops and what Visual Studio says the function returned.
 # After each of those stops a line LOCALS with the caller's variables.
+# A fifth, `overs`: the first sixty steps of `over` again, each with its LOCALS line: what Visual Studio says the calls of the line stepped over returned.
 param($exe, $out, $most)
 New-Item -ItemType Directory -Force $out | Out-Null
 $name = [IO.Path]::GetFileNameWithoutExtension($exe)
 . "$PSScriptRoot/dte.ps1"
-foreach ($script in 'into', 'over', 'stops', 'outs') {
+foreach ($script in 'into', 'over', 'stops', 'outs', 'overs') {
   $dte = Dte
   if (-not $dte) { "VS $name.${script}: no Visual Studio"; exit 1 }
   $lines = @()
@@ -24,8 +25,8 @@ foreach ($script in 'into', 'over', 'stops', 'outs') {
         ForEach-Object { $f = $_; Again { $dte.Debugger.Breakpoints.Add($f) } | Out-Null; $lines += "BREAK $f" }
     }
     for ($n = 0; $n -lt $most; $n++) {
-      if ($script -in 'stops', 'outs' -and $n -ge 40) { break }
-      if ($script -eq 'into') { Again { $dte.Debugger.StepInto($true) } } elseif ($script -eq 'over') { Again { $dte.Debugger.StepOver($true) } } else { Again { $dte.Debugger.Go($true) } }
+      if ($script -in 'stops', 'outs' -and $n -ge 40 -or $script -eq 'overs' -and $n -ge 60) { break }
+      if ($script -eq 'into') { Again { $dte.Debugger.StepInto($true) } } elseif ($script -in 'over', 'overs') { Again { $dte.Debugger.StepOver($true) } } else { Again { $dte.Debugger.Go($true) } }
       if (-not (Stopped $dte)) { $lines += "STEP $script ended"; break }
       $shown = ''   # at a function's breakpoint: its arguments as Visual Studio shows them there (the code that makes the frame has not run yet)
       if ($script -eq 'stops') { $shown = ' ARGS ' + ((Again { @($dte.Debugger.CurrentStackFrame.Arguments | ForEach-Object { "$($_.Name)=$($_.Value)" }) }) -join ' ') }
@@ -38,7 +39,7 @@ foreach ($script in 'into', 'over', 'stops', 'outs') {
       }
       $lines += "STEP $script $(Place $dte)$shown"
       # in the caller after a step out: its variables as the Locals window has them, to hold ours against (name, type, value; tabs between)
-      if ($script -eq 'outs') { $lines += "LOCALS`t" + ((Again { @($dte.Debugger.CurrentStackFrame.Locals | ForEach-Object { "$($_.Name)`t$($_.Type)`t$($_.Value)" }) }) -join "`t") }
+      if ($script -in 'outs', 'overs') { $lines += "LOCALS`t" + ((Again { @($dte.Debugger.CurrentStackFrame.Locals | ForEach-Object { "$($_.Name)`t$($_.Type)`t$($_.Value)" }) }) -join "`t") }
     }
   } catch { $lines += "FAILED: $_" }
   try { $dte.Debugger.Stop($true) } catch {}
