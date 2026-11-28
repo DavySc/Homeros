@@ -1,8 +1,8 @@
-STEP start main : 5368713344
+STEP start  : 5368713344
 BREAK main
 BREAK work
 STEP outs main : 5368713400 FROM work RET True int=3
-LOCALS	work returned	int	3	a	int	0	b	int	0	t	void *	0x00000000000000b4
+LOCALS	work returned	int	3	a	int	0	b	int	0	t	void *	0x000000000000006c
 STEP outs main : 5368713414 FROM work RET True int=6
-LOCALS	work returned	int	6	a	int	3	b	int	0	t	void *	0x00000000000000b4
+LOCALS	work returned	int	6	a	int	3	b	int	0	t	void *	0x000000000000006c
 STEP outs ended

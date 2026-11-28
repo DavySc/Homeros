@@ -20,7 +20,7 @@ LOCALS	down returned	int	2	n	int	1	r	int	1
 STEP outs down : 5368713285 FROM down RET True int=2
 LOCALS	down returned	int	2	n	int	2	r	int	7
 STEP outs down : 5368713301 FROM down RET True int=2
-LOCALS			
+LOCALS	down returned	int	2	n	int	2	r	int	7
 STEP outs down : 5368713216 FROM down RET False =identifier "$ReturnValue" is undefined
 LOCALS	n	int	0
 STEP outs main : 5368713586 FROM down RET True int=2

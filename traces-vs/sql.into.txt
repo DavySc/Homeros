@@ -1,7 +1,7 @@
 STEP start main : 5369756896
-STEP into main : 5369756900
+STEP into  : 5369756900
 STEP into main : 5369756908
-STEP into sqlite3_open : 
+STEP into sqlite3_open : 5368723264
 STEP into sqlite3_open : 5368723278
 STEP into openDatabase : 5369703232
 STEP into openDatabase : 5369703256
