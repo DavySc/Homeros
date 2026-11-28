@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 
 const char *const org_todo[] = { "TODO", "NEXT", "WAIT", "DONE", "CANCELLED", NULL };
 
@@ -378,7 +379,8 @@ static int nomem;
 static int grow(void **a, size_t *cap, size_t n, size_t z)
 {
 	if (n < *cap) return 1;
-	size_t c = *cap ? *cap * 2 : 64;
+	size_t c = *cap ? *cap : 64;
+	while (c <= n) c *= 2;   /* past n, which may be more than one step on */
 	void *b = realloc(*a, c * z);
 	if (!b) { nomem = 1; return 0; }
 	*a = b; *cap = c;
@@ -1173,14 +1175,15 @@ static size_t fits(size_t p, size_t c, size_t e)
 static const char *const ltypes[] = { "bbdb", "bibtex", "docview", "doi", "elisp", "eww", "file", "file+emacs",
 	"file+sys", "ftp", "gnus", "help", "http", "https", "id", "info", "irc", "mailto", "mhe", "news", "rmail",
 	"shell", "shortdoc", "w3m" };
-static int tc(size_t p) { return p < N && ((S[p] >= 'a' && S[p] <= 'z') || S[p] == '+' || S[p] == '3'); }   /* a type's letters */
-static size_t ltype(size_t p)   /* TYPE: at p: its end, or 0 (case matters: font-lock folds no case) */
+static int FOLD;   /* the element parser folds case; font-lock does not */
+static int tc(size_t p) { return p < N && ((S[p] >= 'a' && S[p] <= 'z') || (FOLD && alpha(p)) || S[p] == '+' || S[p] == '3'); }   /* a type's letters */
+static size_t ltype(size_t p)   /* TYPE: at p: its end, or 0 */
 {
 	size_t x = p;
 	while (tc(x)) x++;
 	if (x >= N || S[x] != ':') return 0;
 	for (size_t i = 0; i < sizeof ltypes / sizeof *ltypes; i++)
-		if (*ltypes[i] == S[p] && !strncmp(ltypes[i], (const char *)S + p, x - p) && !ltypes[i][x - p]) return x + 1;
+		if (strlen(ltypes[i]) == x - p && (FOLD ? lit(p, ltypes[i]) : is(p, ltypes[i]))) return x + 1;
 	return 0;
 }
 static int nsb(size_t p) { return p < N && !one(p, "[] \t\n()<>"); }   /* [^][ \t\n()<>] */
@@ -1260,7 +1263,7 @@ static size_t uri(size_t i, size_t u, size_t *va, size_t *vz, int d, size_t *f)
 	if (is(i + 1, "[") && i + 3 < *f) return 0;   /* the description: \[\(.+?\)\], as angle's *f */
 	if (is(i + 1, "[")) {
 		size_t q;
-		for (q = i + 3; q + 1 < N && !(S[q] == '\n' && inside(q + 1)); q++)
+		for (q = i + 3; q + 1 < N && !(X && S[q] == '\n' && inside(q + 1)); q++)   /* X: font-lock's search; the parser's stops at its container's end */
 			if (S[q] == ']' && S[q + 1] == ']') { *va = i + 2; *vz = q; return q + 2; }
 		*f = q + 1;
 		return 0;
@@ -1999,16 +2002,16 @@ static const char *script(unsigned c, int up)
 	                     : bsearch(&c, sub, sizeof sub / sizeof *sub, sizeof *sub, by_cp);
 	return x ? x->s : NULL;
 }
-/* org-create-multibrace-regexp "{" "}" 3 at q: the closing brace, 0 when
-   none: groups inside are all flat, or all hold flat groups only.  Its
-   [^{}]*? crosses lines; here at most one newline */
-static size_t braces(size_t q)
+/* org-create-multibrace-regexp o c 3 at q: the closing c, 0 when none:
+   groups inside are all flat, or all hold flat groups only.  Its [^{}]*?
+   crosses lines; here at most nl newlines */
+static size_t braces(size_t q, int o, int c, size_t nl)
 {
-	int d = 0, kind = 0, g = 0, nl = 0;   /* kind: 1 flat groups, 2 nested */
+	int d = 0, kind = 0, g = 0;   /* kind: 1 flat groups, 2 nested */
 	for (size_t p = q; p < N; p++) {
-		if ((S[p] == '{' && ++d > 3) || (S[p] == '\n' && nl++)) return 0;
-		if (S[p] == '{' && d == 3) g = 1;
-		if (S[p] != '}') continue;
+		if ((S[p] == o && ++d > 3) || (S[p] == '\n' && !nl--)) return 0;
+		if (S[p] == o && d == 3) g = 1;
+		if (S[p] != c) continue;
 		if (--d == 0) return p;
 		if (d == 1) { if (kind && kind != 1 + g) return 0; kind = 1 + g; g = 0; }
 	}
@@ -2039,7 +2042,7 @@ static void scripts(size_t from, size_t l, const size_t *em, size_t ek)
 	size_t kz = key(blanks(l), CE), i = 0, ez = 0;   /* a property's key is org-special-keyword; the emphasis seen, its furthest end */
 	for (size_t p = from; p + 2 < CE; p++) {
 		if (sp(p) || !one(p + 1, "_^") || S[p + 2] != '{') continue;
-		size_t z = braces(p + 2), m = p + 2;
+		size_t z = braces(p + 2, '{', '}', 1), m = p + 2;
 		if (!z) continue;
 		/* ^[ \t]*#[ +] as comment-p; a script over lines shows as typed */
 		int ok = p >= l && p >= Prot && z < CE && !(S[blanks(l)] == '#' && one(blanks(l) + 1, " +")), up = S[p + 1] == '^', n;
@@ -2634,4 +2637,869 @@ const char *org_todo_step(const char *s, size_t n, size_t pos, int dir, long now
 	for (j = 0; j < n - i && j < N - i && s[n - 1 - j] == W[N - 1 - j]; j++) ;
 	*a = i, *b = n - j, *len = N - j - i;
 	return W + i;
+}
+
+/* ---- org-open-at-point (org.el, ol.el, org-footnote.el): where a link, a
+   footnote or a headline leads.  The object under the cursor is found as
+   org-element-context finds it: Org's object lexer (org-element--object-lex)
+   over the element's contents, moving into the object holding the cursor.
+   Known differences: link types and the TODO keywords match case and all,
+   where Org folds case (it finds http in HTTP:x); a coderef's label is
+   always (ref:%s) (a block's -l switch is not read); a [[/regexp/]] search
+   (an occur tree in Org) searches its words as a heading's ---- */
+
+static size_t LO, PT, NN;   /* the narrowed text's start (N its end), the lexer's point, the text's length */
+static size_t (*RT)[2], RN, RCAP;   /* the radio targets' values (org-target-link-regexp), longest first */
+static int bolp(size_t p) { return p <= LO || S[p - 1] == '\n'; }
+static int anum(size_t p) { return p < N && IN(ALNUM, uni_cp(S, N, p)); }   /* [[:alnum:]] */
+static size_t nextc(size_t p) { return p < N ? p + uni_len(S, N, p) : p + 1; }
+static int wstart(size_t p) { return word(p) && (p <= LO || !word(uni_prev(S, N, p))); }   /* \< */
+static size_t after_str(size_t p, const char *k)   /* search-forward k from p: the match's end, or 0 */
+{
+	size_t n = strlen(k);
+	for (; p + n <= N; p++) if (!memcmp(S + p, k, n)) return p + n;
+	return 0;
+}
+
+enum { O_BOLD, O_CODE, O_ITALIC, O_STRIKE, O_UNDER, O_VERB, O_SUB, O_SUP, O_ENTITY, O_LATEX, O_BREAK,
+       O_SNIP, O_MACRO, O_TARGET, O_RADIO, O_COOKIE, O_FN, O_CALL, O_ISRC, O_TS, O_CITE, O_LINK, O_CELL, O_REF };
+#define BIT(t) (1u << (t))
+enum {   /* org-element-object-restrictions */
+	R_MIN = BIT(O_BOLD) | BIT(O_CODE) | BIT(O_ENTITY) | BIT(O_ITALIC) | BIT(O_LATEX) | BIT(O_STRIKE) |
+	        BIT(O_SUB) | BIT(O_SUP) | BIT(O_UNDER) | BIT(O_VERB),
+	R_STD = BIT(O_CELL) - 1,   /* all but table-cell and citation-reference */
+	R_LINK = R_MIN | BIT(O_SNIP) | BIT(O_CALL) | BIT(O_ISRC) | BIT(O_MACRO) | BIT(O_COOKIE),
+	R_CELL = R_MIN | BIT(O_CITE) | BIT(O_SNIP) | BIT(O_FN) | BIT(O_LINK) | BIT(O_MACRO) | BIT(O_RADIO) |
+	         BIT(O_TARGET) | BIT(O_TS),
+};
+static unsigned restr(int t)
+{
+	return t == O_LINK ? R_LINK : t == O_RADIO ? R_MIN : t == O_CELL ? R_CELL : t == O_CITE ? BIT(O_REF) : t == O_FN || t == O_BOLD ||
+	       t == O_ITALIC || t == O_STRIKE || t == O_UNDER || t == O_SUB || t == O_SUP ? R_STD : 0;
+}
+/* an object: type, [b, e) with its blanks after, contents [cb, ce) (cb ORG_NONE when none) */
+typedef struct { int t, f; size_t b, e, cb, ce, la, lz; } Obj;   /* f, [la, lz): a link's, as LK */
+static int obj(Obj *o, int t, size_t b, size_t z, size_t cb, size_t ce)
+{
+	*o = (Obj){ t, 0, b, blanks(z), cb, ce, 0, 0 };
+	return 1;
+}
+
+/* the radio target i at y, case folded, its blank runs any whitespace
+   (\s-+): the end, or 0 */
+static size_t rmatch(size_t y, size_t i)
+{
+	for (size_t a = RT[i][0], z = RT[i][1]; a < z; )
+		if (S[a] == ' ') {
+			while (a < z && S[a] == ' ') a++;
+			if (!sp(y)) return 0;
+			while (sp(y)) y = nextc(y);
+		} else if (y < N && up(S[y]) == up(S[a])) y++, a++;
+		else return 0;
+	return y;
+}
+/* org-target-link-regexp at q (looking-at): the target's span in [*a, *z) */
+static int radio_at(size_t q, size_t *a, size_t *z)
+{
+	for (int alt = 0; alt < 2; alt++) {   /* ^ or [^[:alnum:]] before, $ or [^[:alnum:]] after */
+		size_t y = alt ? nextc(q) : q, e;
+		if (alt ? q >= N || anum(q) : !bolp(q)) continue;
+		for (size_t i = 0; i < RN; i++)
+			if ((e = rmatch(y, i)) && (e >= N || !anum(e))) return *a = y, *z = e, 1;
+	}
+	return 0;
+}
+static size_t radio_search(size_t p, size_t *a, size_t *z)   /* its next match from p: where it starts, or ORG_NONE */
+{
+	for (; p <= N; p = nextc(p)) if (radio_at(p, a, z)) return p;
+	return ORG_NONE;
+}
+
+/* the object parsers, each at the p org-element--object-lex calls it at */
+static int emph(size_t p, int t, Obj *o)   /* org-element--parse-generic-emphasis */
+{
+	if (!(bolp(p) || sp(uni_prev(S, N, p)) || one(p - 1, "-('\"{") || (bolp(p - 1) && S[p - 1] == S[p])) || p + 1 >= N || sp(p + 1))
+		return 0;
+	size_t c = fits(p, p + 2, N);
+	if (c >= N) return 0;
+	return t == O_CODE || t == O_VERB ? obj(o, t, p, c + 1, ORG_NONE, 0) : obj(o, t, p, c + 1, p + 1, c);
+}
+static int subsup(size_t p, int t, Obj *o)   /* org-match-substring-regexp, from the character before p */
+{
+	size_t q = p + 1, z, y, e = 0;
+	if (bolp(p) || sp(uni_prev(S, N, p))) return 0;
+	if (one(q, "{(") && (z = braces(q, S[q], S[q] == '{' ? '}' : ')', ORG_NONE)))
+		return S[q] == '{' ? obj(o, t, p, z + 1, q + 1, z) : obj(o, t, p, z + 1, q, z + 1);
+	if (one(q, "*")) return obj(o, t, p, q + 1, q, q + 1);
+	for (y = q + one(q, "+-"); anum(y) || one(y, ".,\\"); ) if (y = nextc(y), anum(uni_prev(S, N, y))) e = y;
+	return e && obj(o, t, p, e, q, e);
+}
+static int entity_o(size_t p, Obj *o)   /* org-element-entity-parser */
+{
+	size_t x, k;
+	if (is(p + 1, "_ ")) return (k = spaces(p + 2) - p - 2) <= 20 && obj(o, O_ENTITY, p, p + 2 + k, ORG_NONE, 0);
+	return ent(p, &x) && entity(p + 1, x) && obj(o, O_ENTITY, p, x + 2 * is(x, "{}"), ORG_NONE, 0);
+}
+static int latex(size_t p, Obj *o)   /* org-element-latex-fragment-parser */
+{
+	size_t z = 0, m;
+	if (S[p] != '$') z = is(p + 1, "(") ? after_str(p, "\\)") : is(p + 1, "[") ? after_str(p, "\\]") :
+	                     alpha(p + 1) && macro_re(p, &m) == p ? m : 0;
+	else if (is(p + 1, "$")) z = after_str(p + 2, "$$");
+	else if (!(p > LO && S[p - 1] == '$') && !one(p + 1, " \t\n,.;") && (m = after_str(p + 1, "$")) &&
+	         !one(m - 2, " \t\n,.") && (ateol(m) || IN(DPOST, uni_cp(S, N, m))))
+		z = m;
+	return z && obj(o, O_LATEX, p, z, ORG_NONE, 0);
+}
+static int lbreak(size_t p, Obj *o)   /* org-element-line-break-parser */
+{
+	if (!is(p, "\\\\") || !ateol(blanks(p + 2)) || (p > LO && S[p - 1] == '\\')) return 0;
+	*o = (Obj){ O_BREAK, 0, p, nextl(p), ORG_NONE, 0, 0, 0 };
+	return 1;
+}
+static int ascii_alnum(size_t p) { return alpha(p) || digit(p); }
+static int snippet(size_t p, Obj *o)   /* @@\([-A-Za-z0-9]+\):, then @@ */
+{
+	size_t x = p + 2, y;
+	while (ascii_alnum(x) || one(x, "-")) x++;
+	return x > p + 2 && is(x, ":") && (y = after_str(x + 1, "@@")) && obj(o, O_SNIP, p, y, ORG_NONE, 0);
+}
+static int macro_o(size_t p, Obj *o)   /* {{{\([a-zA-Z][-a-zA-Z0-9_]*\)\((\(\(?:.\|\n\)*?\))\)?}}} */
+{
+	size_t x = p + 4, y;
+	if (!is(p, "{{{") || !alpha(p + 3)) return 0;
+	while (ascii_alnum(x) || one(x, "-_")) x++;
+	if (!is(x, "(")) return is(x, "}}}") && obj(o, O_MACRO, p, x + 3, ORG_NONE, 0);
+	return (y = after_str(x + 1, ")}}}")) && obj(o, O_MACRO, p, y, ORG_NONE, 0);
+}
+/* org-target-regexp's value from q: <<\(B\|B[^<>\n\r]*B\)>>, B [^<>\n\r \t]:
+   where its >> starts, or 0 */
+static size_t tgt(size_t q)
+{
+	size_t r = q + 1;
+	if (q >= N || one(q, "<>\n\r \t")) return 0;
+	while (r < N && !one(r, "<>\n\r")) r++;
+	return is(r, ">>") && !one(r - 1, " \t") ? r : 0;
+}
+static int target(size_t p, Obj *o) { size_t r = tgt(p + 2); return is(p, "<<") && r && obj(o, O_TARGET, p, r + 2, ORG_NONE, 0); }
+static int radio_t(size_t p, Obj *o) { size_t r = tgt(p + 3); return is(p, "<<<") && r && is(r, ">>>") && obj(o, O_RADIO, p, r + 3, p + 3, r); }
+static int cookie(size_t p, Obj *o)   /* \[[0-9]*\(%\|/[0-9]*\)\] */
+{
+	size_t x = digits(p + 1, N);
+	if (is(x, "%]")) return obj(o, O_COOKIE, p, x + 2, ORG_NONE, 0);
+	return is(x, "/") && is(x = digits(x + 1, N), "]") && obj(o, O_COOKIE, p, x + 1, ORG_NONE, 0);
+}
+static int fnref(size_t p, Obj *o)   /* org-element-footnote-reference-parser */
+{
+	size_t x = fnre(p), c;
+	if (!x || (c = pair(p, '[', ']')) == ORG_NONE) return 0;
+	return S[x - 1] == ':' ? obj(o, O_FN, p, c, x, c - 1) : obj(o, O_FN, p, c, ORG_NONE, 0);
+}
+/* \<call_\([^ \t\n[(]+\)[([] and its brackets, or \<src_\([^ \t\n[{]+\)[{[] */
+static int inline_o(size_t p, int t, Obj *o)
+{
+	int c = t == O_CALL ? '(' : '{';
+	size_t x = p + (t == O_CALL ? 5 : 4), y;
+	if (!is(p, t == O_CALL ? "call_" : "src_") || !wstart(p)) return 0;
+	while (x < N && !one(x, " \t\n[") && S[x] != c) x++;
+	if (x == p + (t == O_CALL ? 5 : 4) || !(one(x, "[") || (x < N && S[x] == c))) return 0;
+	if (is(x, "[") && (y = pair(x, '[', ']')) != ORG_NONE) x = y;
+	if (x >= N || S[x] != c || (x = pair(x, c, c == '(' ? ')' : '}')) == ORG_NONE) return 0;
+	if (t == O_CALL && is(x, "[") && (y = pair(x, '[', ']')) != ORG_NONE) x = y;
+	return obj(o, t, p, x, ORG_NONE, 0);
+}
+static int ts_o(size_t p, Obj *o) { OrgTs t; return ts(p, 1, &t) && obj(o, O_TS, p, t.end, ORG_NONE, 0); }
+static int keyc(size_t p) { return p < N && (word(p) || one(p, "-.:?!`'/*@+|(){}<>&_^$#%~")); }
+static size_t citekey(size_t x, size_t z)   /* org-element-citation-key-re's next match in [x, z): its end, or 0 */
+{
+	while (x + 1 < z && !(S[x] == '@' && keyc(x + 1))) x++;
+	if (x + 1 >= z) return 0;
+	for (x++; x < z && keyc(x); x++) ;
+	return x;
+}
+static int cite(size_t p, Obj *o)   /* org-element-citation-parser */
+{
+	size_t x = p + 5, y = x + 1, c, k, b, e;
+	if (!lit(p, "[cite")) return 0;
+	if (is(x, "/")) { while (anum(y) || one(y, "/_-")) y = nextc(y); if (y > x + 1) x = y; }
+	if (!is(x, ":") || (c = pair(p, '[', ']')) == ORG_NONE || !(k = citekey(x, c))) return 0;
+	for (x++; one(x, "\t\n "); x++) ;
+	for (b = k; b > x && S[b - 1] != ';'; b--) ;   /* after a common prefix */
+	for (e = c - 1; e > k && one(e - 1, " \r\t\n"); e--) ;
+	for (y = e; y > k && S[y - 1] != ';'; y--) ;   /* before a common suffix */
+	return obj(o, O_CITE, p, c, b, y > k && !citekey(y, e) ? y : e);
+}
+static int ref(size_t p, Obj *o)   /* org-element-citation-reference-parser */
+{
+	size_t k = citekey(p, N), e;
+	if (!k) return 0;
+	return e = after_str(k, ";"), *o = (Obj){ O_REF, 0, p, e ? e : N, ORG_NONE, 0, 0, 0 }, 1;
+}
+static int cell(size_t p, Obj *o)   /* [ \t]*\(.*?\)[ \t]*\(?:|\|$\) */
+{
+	size_t x = blanks(p), y = x, z;
+	while ((z = blanks(y)) < N && S[z] != '|' && S[z] != '\n') y = nextc(y);
+	*o = (Obj){ O_CELL, 0, p, z < N && S[z] == '|' ? z + 1 : z, x, y, 0, 0 };
+	return 1;
+}
+/* org-element-link-parser: o->f the format ('r' radio, 'b' bracket, 'p'
+   plain, 'a' angle), [la, lz) its path (a radio's text, a bracket's URI,
+   a plain or angle link's type, colon and path) */
+static int link(size_t p, Obj *o)
+{
+	size_t a, z, va, vz, f = 0;
+	int r = 0;
+	if (RN && radio_at(bolp(p) ? p : uni_prev(S, N, p), &a, &z)) r = obj(o, O_LINK, p, z, a, z), o->f = 'r';
+	else if (is(p, "[[") && (z = uri(p + 2, p + 2, &va, &vz, 0, &f))) {
+		r = va == p + 2 ? obj(o, O_LINK, p, z, ORG_NONE, 0) : obj(o, O_LINK, p, z, va, vz);
+		o->f = 'b'; a = p + 2; z = va == p + 2 ? vz : va - 2;
+	} else if ((wstart(p) && (z = plain(p))) || (S[p] == '<' && (z = angle(p, &f)))) {
+		r = obj(o, O_LINK, p, z, ORG_NONE, 0);
+		o->f = S[p] == '<' ? 'a' : 'p'; a = p + (S[p] == '<'); z -= S[p] == '<';
+	}
+	if (r) o->la = a, o->lz = z;
+	return r;
+}
+
+/* org-element--object-regexp at p, case folded: a candidate */
+static int cand(size_t p)
+{
+	if (p >= N) return 0;
+	if (one(p, "_^") && (one(p + 1, "-{(*+.,") || anum(p + 1))) return 1;
+	if (one(p, "*~=+_/") && p + 1 < N && !sp(p + 1)) return 1;
+	switch (S[p]) {
+	case '[': return lit(p + 1, "cite:") || lit(p + 1, "cite/") || lit(p + 1, "fn:") || digit(p + 1) || is(p + 1, "%]") ||
+	                 (is(p + 1, "/") && is(digits(p + 2, N), "]")) || is(p + 1, "[");
+	case '@': return is(p + 1, "@");
+	case '{': return is(p + 1, "{{");
+	case '<':
+		if (is(p + 1, "%%") || is(p + 1, "<") || digit(p + 1)) return 1;
+		for (size_t i = 0; i < sizeof ltypes / sizeof *ltypes; i++) if (lit(p + 1, ltypes[i])) return 1;
+		return 0;
+	case '$': return 1;
+	case '\\': return alpha(p + 1) || one(p + 1, "[(") || (is(p + 1, "\\") && ateol(blanks(p + 2))) || is(p + 1, "_ ");
+	}
+	return lit(p, "call_") || lit(p, "src_") || (wstart(p) && ltype(p));
+}
+/* the parser org-element--object-lex calls for the candidate at p */
+static int parse_at(size_t p, unsigned r, Obj *o)
+{
+	int d = p + 1 < N ? S[p + 1] : 0;
+#define OK(t) (r & BIT(t))
+	if (lit(p, "call_")) return OK(O_CALL) && inline_o(p, O_CALL, o);
+	if (lit(p, "src_")) return OK(O_ISRC) && inline_o(p, O_ISRC, o);
+	switch (S[p]) {
+	case '^': return OK(O_SUP) && subsup(p, O_SUP, o);
+	case '_': return (OK(O_UNDER) && emph(p, O_UNDER, o)) || (OK(O_SUB) && subsup(p, O_SUB, o));
+	case '*': return OK(O_BOLD) && emph(p, O_BOLD, o);
+	case '/': return OK(O_ITALIC) && emph(p, O_ITALIC, o);
+	case '~': return OK(O_CODE) && emph(p, O_CODE, o);
+	case '=': return OK(O_VERB) && emph(p, O_VERB, o);
+	case '+': return OK(O_STRIKE) && emph(p, O_STRIKE, o);
+	case '@': return OK(O_SNIP) && snippet(p, o);
+	case '{': return OK(O_MACRO) && macro_o(p, o);
+	case '$': return OK(O_LATEX) && latex(p, o);
+	case '<': return d == '<' ? (OK(O_RADIO) && radio_t(p, o)) || (OK(O_TARGET) && target(p, o))
+	                          : (OK(O_TS) && ts_o(p, o)) || (OK(O_LINK) && link(p, o));
+	case '\\': return d == '\\' ? OK(O_BREAK) && lbreak(p, o) : (OK(O_ENTITY) && entity_o(p, o)) || (OK(O_LATEX) && latex(p, o));
+	case '[':
+		if (d == '[' && OK(O_LINK)) return link(p, o);
+		if (d == 'f' && OK(O_FN)) return fnref(p, o);
+		if (d == 'c' && OK(O_CITE)) return cite(p, o);
+		if ((d == '%' || d == '/') && OK(O_COOKIE)) return cookie(p, o);
+		return (OK(O_TS) && ts_o(p, o)) || (OK(O_COOKIE) && cookie(p, o));
+	}
+	return OK(O_LINK) && link(p, o);
+#undef OK
+}
+/* org-element--object-lex from PT for the objects r allows: the next one */
+static int lex(unsigned r, Obj *o)
+{
+	if (r & BIT(O_CELL)) return cell(PT, o);
+	if (r & BIT(O_REF)) return ref(PT, o);
+	size_t lim = N, n = N, a = 0, z, x = ORG_NONE;
+	if (RN && (r & BIT(O_LINK))) {   /* stop before a radio link, then parse it */
+		size_t from = bolp(PT) ? PT : uni_prev(S, N, PT);
+		if ((x = radio_search(from, &a, &z)) != ORG_NONE && PT == nextc(bol(from)) && PT == z)
+			x = radio_search(ateol(z) ? z : nextc(z), &a, &z);   /* not the one-character radio link before PT again */
+		if (x != ORG_NONE) lim = nextc(a);
+	}
+	for (size_t p = PT; ; p = nextc(p)) {
+		N = lim;
+		while (p < N && !cand(p)) p = nextc(p);
+		N = n;
+		if (p >= lim) break;
+		if (parse_at(p, r, o)) return 1;
+	}
+	return x != ORG_NONE && link(a, o);
+}
+
+/* org-element-at-point: the innermost element holding pos (org-element--parse-to) */
+static size_t at_point(size_t pos)
+{
+	size_t par = ORG_NONE;
+	for (size_t j = 0; j < PK; j++) {
+		const OrgNode *e = &PE[j];
+		if (e->parent != par || (e->end <= pos && e->end != NN)) continue;
+		if (!greater(e->type)) return j;
+		if (e->cbeg == ORG_NONE || !(e->cbeg < pos || (e->cbeg == pos && e->type != ORG_PLAIN_LIST && e->type != ORG_TABLE)) ||
+		    !(e->cend > pos || (pos == e->cend && pos == NN)))
+			return j;
+		par = j;
+	}
+	return par;
+}
+/* [ \t]+\(:[[:alnum:]_@#%:]+:\) then [ \t]*$, or [ \t]*$, at q: the tags'
+   [*ga, *gz) (ORG_NONE when none) */
+static int tail(size_t q, size_t *ga, size_t *gz)
+{
+	size_t b = blanks(q), x = b + 1;
+	*ga = *gz = ORG_NONE;
+	if (ateol(b)) return 1;
+	if (b == q || S[b] != ':') return 0;
+	while (x < N && (one(x, ":_@#%") || anum(x))) x = nextc(x);
+	if (x < b + 3 || S[x - 1] != ':' || !ateol(blanks(x))) return 0;
+	return *ga = b, *gz = x, 1;
+}
+/* org-complex-heading-regexp on the headline h, case matters: the title
+   (match 4) in [*a, *z) and the tags (match 5) in [*ga, *gz), ORG_NONE
+   when none */
+static void title(size_t h, size_t *a, size_t *z, size_t *ga, size_t *gz)
+{
+	size_t q = stars(h), k, r, s;
+	*a = *z = ORG_NONE;
+	for (int step = 0; step < 3; step++) {   /* with the keyword and the priority, without one, without both */
+		r = q;
+		if (step == 0 && is(r, " ")) {
+			s = spaces(r);
+			for (int i = 0; org_todo[i]; i++) if (k = strlen(org_todo[i]), s + k <= N && !memcmp(S + s, org_todo[i], k)) { r = s + k; break; }
+			if (r == q) continue;
+		}
+		if (step < 2 && is(r, " ") && is(s = spaces(r), "[#") && s + 3 < N && S[s + 2] != '\n' && S[s + 3] == ']') r = s + 4;
+		else if (step == 1) continue;
+		if (tail(r, ga, gz)) return;   /* (?: +\(.*?\))?? takes nothing when it can */
+		if (!is(r, " ")) continue;
+		for (s = spaces(r), r = s; !tail(r, ga, gz); r = nextc(r)) ;
+		*a = s; *z = r;
+		return;
+	}
+}
+
+static Obj OB[64];   /* org-element-context's objects, outermost first */
+static size_t EL;    /* and its element (org-element-at-point) */
+/* an unordered item's tag on its line l (org-list-full-item-re's group 4):
+   [*a, *z), or 0 */
+static int itag(size_t l, size_t *a, size_t *z)
+{
+	size_t x = blanks(l), y, r;
+	if (!one(x, "-+*") || !(blank(x + 1) || ateol(x + 1))) return 0;
+	x = blanks(x + 1);
+	if (is(x, "[@")) {   /* \[@\(?:start:\)?\([0-9]+\|[a-zA-Z]\)\][ \t]* */
+		y = x + 2 + 6 * lit(x + 2, "start:");
+		y = digit(y) ? digits(y, N) : y + alpha(y);
+		if (y > x + 2 && is(y, "]")) x = blanks(y + 1);
+	}
+	if (is(x, "[") && one(x + 1, " X-") && is(x + 2, "]") && (blank(x + 3) || ateol(x + 3))) x = blanks(x + 3);
+	for (r = eol(x); r > x + 1; r--)   /* \(.*\)[ \t]+::\(?:[ \t]+\|$\) */
+		if (is(r, "::") && blank(r - 1) && (blank(r + 2) || ateol(r + 2))) return *a = x, *z = r - 1, 1;
+	return 0;
+}
+/* org-element-context at pos, in OB: the objects it moved into and, last,
+   the one it returns; how many (0: it returns the element EL, ORG_NONE
+   when there is none).  Known difference: past 64 nested objects it
+   returns the 64th */
+static int context_in(size_t pos)
+{
+	size_t x, a, z, k;
+	unsigned r;
+	int n = 0, ln = -1;
+	Obj o, last;
+	if ((EL = at_point(pos)) == ORG_NONE) return 0;
+	const OrgNode *e = &PE[EL];
+	if (pos < e->aff) {   /* an affiliated keyword: only CAPTION's values hold objects */
+		size_t b = blanks(bol(pos)), y = b + 9;
+		if (!lit(b, "#+CAPTION")) return 0;
+		a = z = ORG_NONE;
+		if (is(y, "[")) for (x = eol(y); x >= y + 3; x--) if (S[x - 2] == ']' && S[x - 1] == ':') { a = y + 1; z = x - 2; y = x - 1; break; }
+		if (!is(y, ":")) return 0;
+		if ((k = blanks(y + 1)) <= pos) LO = k, N = eol(k);
+		else if (a != ORG_NONE && pos >= a && pos < z) LO = a, N = z;
+		else return 0;
+		r = R_STD & ~BIT(O_FN);
+	} else if (e->type == ORG_ITEM) {   /* in its tag (Org finds it again from the line's start: earlier, only in the bullet, checkbox and counter, holding no object) */
+		if (bol(pos) != e->aff || !itag(e->aff, &a, &z) || pos < a || pos >= z) return 0;
+		LO = a; N = z; r = R_STD & ~BIT(O_BREAK);
+	} else if (e->type == ORG_HEADLINE) {   /* in its title */
+		title(e->begin, &a, &z, &x, &k);
+		if (a == ORG_NONE || pos > z) return 0;
+		a += 7 * is(a, "COMMENT");
+		if (a >= z) return 0;
+		LO = a; N = z; r = R_STD & ~BIT(O_BREAK);
+	} else if (e->type == ORG_PARAGRAPH || e->type == ORG_TABLE_ROW || e->type == ORG_VERSE_BLOCK) {
+		if (e->cbeg == ORG_NONE || pos < e->cbeg || !(pos < e->cend || (pos == e->cend && pos == NN))) return 0;
+		LO = e->cbeg; N = e->cend; r = e->type == ORG_TABLE_ROW ? BIT(O_CELL) : R_STD;
+	} else return 0;
+	for (PT = LO; lex(r, &o) && o.b <= pos; ) {
+		if (o.e <= pos && o.e != N) {   /* past it; one ending at pos, no blank before, is returned if nothing starts there */
+			if (o.e <= PT) break;
+			PT = o.e;
+			if (o.e == pos && !one(pos - 1, " \t")) last = o, ln = n;
+		} else if (o.cb != ORG_NONE && pos >= o.cb && (pos < o.ce || (pos == o.ce && (pos == N || !one(pos - 1, " \t")))) && n < 63) {
+			OB[n++] = o;   /* into it */
+			PT = LO = o.cb; N = o.ce; r = restr(o.t);
+		} else return OB[n++] = o, n;
+	}
+	if (ln >= 0) OB[ln] = last, n = ln + 1;
+	return n;
+}
+static int context(size_t pos)
+{
+	int n = context_in(pos);
+	LO = 0; N = NN;
+	return n;
+}
+/* org-element-end of the context n returned, less its blanks before (skip-chars-backward " \t") */
+static size_t ctx_end(int n)
+{
+	size_t b = n ? OB[n - 1].b : PE[EL].begin, e = n ? OB[n - 1].e : PE[EL].end;
+	while (e > b && one(e - 1, " \t")) e--;
+	return e;
+}
+
+/* ---- the searches: org-link-search, org-link--search-radio-target ---- */
+typedef struct { const char *s; size_t n; } Word;
+static Word *QW;     /* the search string's words (split-string) */
+static size_t QK, QWCAP;
+static char *Q;      /* the search string, or a link's path */
+static size_t QCAP;
+static int split(const char *q)
+{
+	QK = 0;
+	for (const char *p = q; *p; ) {
+		p += strspn(p, " \f\t\n\r\v");
+		size_t n = strcspn(p, " \f\t\n\r\v");
+		if (!n) break;
+		if (!grow((void **)&QW, &QWCAP, QK, sizeof *QW)) return 0;
+		QW[QK++] = (Word){ p, n };
+		p += n;
+	}
+	return 1;
+}
+/* the words, case folded, at x with blanks between (sep 0 [ \t\n]+,
+   1 [ \t]+, 2 [ \t]+\(?:\n[ \t]*\)?): the end, or 0 */
+static size_t words_at(size_t x, int sep)
+{
+	for (size_t i = 0; i < QK; i++) {
+		size_t y = x;
+		if (i && sep) { y = blanks(x); if (sep == 2 && y > x && is(y, "\n")) y = blanks(y + 1); }
+		else if (i) while (one(y, " \t\n")) y++;
+		if (i && y == x) return 0;
+		for (size_t j = 0; j < QW[i].n; j++, y++) if (y >= N || up(S[y]) != up((unsigned char)QW[i].s[j])) return 0;
+		x = y;
+	}
+	return x;
+}
+/* the words of [a, z) (statistics cookies separate words, when cookies)
+   are the search's, case folded */
+static int words_are(size_t a, size_t z, int cookies)
+{
+	size_t i = 0, j = 0, n = N, x = a, k;
+	int in = 0, ok = 0;
+	Obj c;
+	N = z;
+	for (;;) {
+		k = x < z && cookies && is(x, "[") && cookie(x, &c) ? c.e - x : 0;
+		if (x >= z || k || one(x, " \f\t\n\r\v")) {
+			if (in && j != QW[i++].n) break;
+			in = 0;
+			if (x >= z) { ok = i == QK; break; }
+			x += k ? k : 1;
+		} else {
+			if (!in && i >= QK) break;
+			if (!in) in = 1, j = 0;
+			if (j >= QW[i].n || up(S[x]) != up((unsigned char)QW[i].s[j])) break;
+			j++, x++;
+		}
+	}
+	N = n;
+	return ok;
+}
+static void say(OrgOpen *o, int kind, size_t pos, const char *fmt, const char *a)
+{
+	o->kind = kind; o->pos = pos;
+	snprintf(o->s, sizeof o->s, fmt, a);
+}
+/* org-link-search for q, which holds no newline (a link's path) */
+static void lsearch(char *q, OrgOpen *o)
+{
+	size_t n = strlen(q), l, x, y, z, a, k;
+	if (!q[strspn(q, " \r\t\n")]) return say(o, ORG_OPEN_ERROR, 0, "Invalid search string \"%s\"", q);
+	if (!split(q + (*q == '*'))) return say(o, -1, 0, "%s", "");
+	if (*q == '#') {   /* org-find-property "CUSTOM_ID" */
+		for (l = 0; l < N; l = nextl(l))
+			if (x = blanks(l), lit(x, ":CUSTOM_ID:") && blank(x + 11) && lit(y = blanks(x + 11), q + 1) &&
+			    ateol(blanks(y + n - 1)) && (k = at_point(l)) != ORG_NONE && PE[k].type == ORG_NODE_PROPERTY)
+				return say(o, ORG_OPEN_GOTO, (k = heading(l)) == ORG_NONE ? 0 : k, "%s", "");
+		return say(o, ORG_OPEN_ERROR, 0, "No match for custom ID: %s", q + 1);
+	}
+	if (*q == '(' && n > 1 && q[n - 1] == ')') {   /* a coderef: its words less the parentheses */
+		QW[0].s++, QW[0].n--, QW[QK - 1].n--;
+		q[n - 1] = 0;
+		for (x = 0; x < N; x++) {
+			if (!(y = words_at(x, 1))) continue;
+			if ((k = at_point(y)) != ORG_NONE && (PE[k].type == ORG_SRC_BLOCK || PE[k].type == ORG_EXAMPLE_BLOCK)) {
+				for (z = eol(y); z > bol(y) && blank(z - 1); z--) ;   /* .*?\([ \t]*\((ref:LABEL)\)[ \t]*\)$ */
+				if (z >= bol(y) + n + 4 && lit(z - n - 4, "(ref:") && lit(z - n + 1, q + 1) && is(z - 1, ")"))
+					return say(o, ORG_OPEN_GOTO, z - n - 4, "%s", "");
+			}
+			if (y > x) x = y - 1;   /* on from the match's end (at an empty one Org searches forever) */
+		}
+		return say(o, ORG_OPEN_ERROR, 0, "No match for coderef: %s", q + 1);
+	}
+	if (*q != '*') {
+		for (x = 0; x + 2 <= N; x++)   /* <<words>> holding a target */
+			if (is(x, "<<") && (y = words_at(x + 2, 0)) && is(y, ">>")) {
+				int c = context(y + 1);
+				if (c && OB[c - 1].t == O_TARGET) return say(o, ORG_OPEN_GOTO, OB[c - 1].b, "%s", "");
+				x = y;
+			}
+		for (l = 0; l < N; l = nextl(l)) {   /* ^[ \t]*#\+NAME: +words[ \t]*$ naming an element */
+			x = blanks(l);
+			if (!lit(x, "#+NAME:") || !is(x + 7, " ") || !(y = words_at(spaces(x + 7), 1)) || !ateol(blanks(y)) ||
+			    (k = at_point(eol(l))) == ORG_NONE || PE[k].begin > l || PE[k].aff <= l)
+				continue;
+			for (a = l, z = l; z < PE[k].aff; z = nextl(z)) if (lit(blanks(z), "#+NAME:")) a = z;   /* the last NAME is its name */
+			a = blanks(blanks(a) + 7);
+			for (z = eol(a); z > a && blank(z - 1); z--) ;
+			if (words_are(a, z, 0)) return say(o, ORG_OPEN_GOTO, l, "%s", "");
+		}
+	}
+	for (l = 0; l < N; l = nextl(l)) {   /* a headline's title, less COMMENT, TODO keyword, priority and tags */
+		if (!headline(l)) continue;
+		title(l, &a, &z, &x, &y);
+		if (a == ORG_NONE) a = z = l;
+		if (is(a, "COMMENT") && one(a + 7, " \t")) a = blanks(a + 7);
+		if (words_are(a, z, 1)) return say(o, ORG_OPEN_GOTO, l, "%s", "");
+	}
+	say(o, ORG_OPEN_ERROR, 0, "No match for fuzzy expression: %s", q);
+}
+/* org-link--search-radio-target for the words of q */
+static void rsearch(OrgOpen *o, const char *q)
+{
+	for (size_t x = 0, y; x + 3 <= N; x++)   /* <<<words>>> holding a radio target */
+		if (is(x, "<<<") && (y = words_at(x + 3, 2)) && is(y, ">>>")) {
+			int c = context(y + 2);
+			if (c && OB[c - 1].t == O_RADIO) return say(o, ORG_OPEN_GOTO, OB[c - 1].b, "%s", "");
+			x = y + 1;
+		}
+	say(o, ORG_OPEN_ERROR, 0, "No match for radio target: %s", q);
+}
+
+/* ---- footnotes: org-footnote-action ---- */
+/* \[fn:L[]:] at x, L the label [la, lz), case folded: its end, or 0 */
+static size_t fn_at(size_t x, size_t la, size_t lz, const char *after)
+{
+	size_t k = lz - la;
+	return lit(x, "[fn:") && x + 5 + k <= N && same(x + 4, la, k) && one(x + 4 + k, after) ? x + 5 + k : 0;
+}
+/* org-footnote-at-reference-p at x: the reference's begin, or ORG_NONE */
+static size_t ref_at(size_t x)
+{
+	int c = context(x);
+	return c && OB[c - 1].t == O_FN && x < ctx_end(c) ? OB[c - 1].b : ORG_NONE;
+}
+/* org-footnote-goto-definition of the label [la, lz) (org-footnote-get-definition):
+   where it leads, or ORG_NONE */
+static size_t fn_def(size_t la, size_t lz)
+{
+	for (size_t x = 0, e, d; x < N; x = nextc(x)) {   /* ^\[fn:L\]\|.\[fn:L: */
+		if (!(e = bolp(x) ? fn_at(x, la, lz, "]") : 0) && !(S[x] != '\n' && (e = fn_at(nextc(x), la, lz, ":")))) continue;
+		int c = context(e - 1);
+		if (c ? OB[c - 1].t == O_FN : EL != ORG_NONE && PE[EL].type == ORG_FOOTNOTE_DEFINITION) {
+			d = c ? OB[c - 1].b : PE[EL].aff;   /* Org looks at its begin, before any affiliated keyword, and reads stale match data */
+			return (x = fn_at(d, la, lz, "]:")) ? x : d;
+		}
+		x = e - 2;
+	}
+	return ORG_NONE;
+}
+static void footnote(size_t pos, OrgOpen *o)
+{
+	int c = context(pos);
+	size_t la, lz, x;
+	if ((c || EL != ORG_NONE) && pos > ctx_end(c)) return say(o, ORG_OPEN_NEW, 0, "%s", "");
+	if (c && OB[c - 1].t == O_FN) {
+		la = OB[c - 1].b + 4; lz = names(la);
+		if (la == lz) return say(o, ORG_OPEN_GOTO, OB[c - 1].cb, "%s", "");   /* anonymous: to its text */
+		return say(o, ORG_OPEN_GOTO, (x = fn_def(la, lz)) == ORG_NONE ? pos : x, "%s", "");   /* "Create one?" no */
+	}
+	if (c) {   /* inside a footnote: org-footnote--allow-reference-p, a new one, or else the menu */
+		const Obj *b = &OB[c - 1];
+		int ok = !bolp(pos) && (pos == ctx_end(c) || pos == b->b || (b->t != O_LINK && b->cb != ORG_NONE && pos >= b->cb && pos <= b->ce));
+		return say(o, ok ? ORG_OPEN_NEW : ORG_OPEN_MENU, 0, "%s", "");
+	}
+	if (EL == ORG_NONE || PE[EL].type != ORG_FOOTNOTE_DEFINITION) return say(o, ORG_OPEN_NEW, 0, "%s", "");
+	la = PE[EL].aff + 4; lz = names(la);   /* org-footnote-goto-previous-reference */
+	for (size_t b = pos; b >= lz - la + 5; b--)
+		if (fn_at(x = b - (lz - la + 5), la, lz, "]:") && (x = ref_at(x)) != ORG_NONE) return say(o, ORG_OPEN_GOTO, x, "%s", "");
+	for (x = pos; x < N; x++) {
+		size_t e = fn_at(x, la, lz, "]:"), r;
+		if (e && (r = ref_at(e - 1)) != ORG_NONE) return say(o, ORG_OPEN_GOTO, r, "%s", "");
+		if (e) x = e - 2;
+	}
+	char l[256];
+	snprintf(l, sizeof l, "%.*s", (int)(lz - la), (const char *)S + la);
+	say(o, ORG_OPEN_ERROR, 0, "Cannot find reference of footnote \"%s\"", l);
+}
+
+/* ---- following a link: org-link-open ---- */
+/* [a, z) into Q, "[ \t]*\n[ \t]*" made nl (a space, or nothing when 0) */
+static int qcopy(size_t a, size_t z, int nl)
+{
+	size_t k = 0, m = 0;   /* m: where the last replacement ends, which blanks before a newline do not reach */
+	if (!grow((void **)&Q, &QCAP, z - a + 1, 1)) return 0;
+	for (size_t x = a; x < z; x++)
+		if (S[x] == '\n') {
+			while (k > m && (Q[k - 1] == ' ' || Q[k - 1] == '\t')) k--;
+			if (nl) Q[k++] = (char)nl;
+			m = k;
+			while (x + 1 < z && blank(x + 1)) x++;
+		} else Q[k++] = (char)S[x];
+	Q[k] = 0;
+	return 1;
+}
+/* org-link-unescape: a backslash run before a bracket or the end is halved */
+static void unescape(char *q)
+{
+	char *w = q;
+	for (char *r = q; *r; ) {
+		size_t k = strspn(r, "\\");
+		if (k && (!r[k] || r[k] == '[' || r[k] == ']')) k /= 2, memset(w, '\\', k), w += k, r += strspn(r, "\\");
+		else if (k) memmove(w, r, k), w += k, r += k;
+		else *w++ = *r++;
+	}
+	*w = 0;
+}
+/* org-link-open of the link k (org-element-link-parser's type and path) */
+static void open_link(const Obj *k, OrgOpen *o)
+{
+	char *path;
+	size_t i, n, t = 0;   /* the type's length, which the parser takes in any case */
+	if (!qcopy(k->la, k->lz, k->f == 'b' ? ' ' : 0)) return say(o, -1, 0, "%s", "");
+	if (k->f == 'r') {
+		if (!split(Q)) return say(o, -1, 0, "%s", "");
+		return rsearch(o, Q);
+	}
+	if (k->f == 'b') unescape(Q);
+	for (i = 0; i < sizeof ltypes / sizeof *ltypes && !t; i++)   /* org-link-types-re */
+		if (n = strlen(ltypes[i]), !strncasecmp(Q, ltypes[i], n) && Q[n] == ':') t = n;
+	if (k->f == 'b' && (*Q == '/' || (*Q == '~' && (!Q[1] || Q[1] == '/')) || !strncmp(Q, "./", 2) || !strncmp(Q, "../", 3))) path = Q;
+	else if (t) path = Q + t + 1;
+	else return lsearch(Q, o);   /* coderef (ref), custom-id #id, fuzzy: searched */
+	int ln = path != Q && (strncasecmp(Q, "file", 4) || (t > 4 && (Q[4] != '+' || t == 5)));
+	if (!ln) {
+		char *opt = strstr(path, "::");   /* in the path before its ::option, two or more slashes and an optional X: then a slash are X: and the slash */
+		size_t sl = strspn(path, "/"), pl = opt ? (size_t)(opt - path) : strlen(path);
+		if (sl >= 2 && sl + 2 < pl && path[sl + 1] == ':' && path[sl + 2] == '/') path += sl;
+		else if (sl >= 3) path += sl - 1;
+	}
+	if ((size_t)snprintf(o->s, sizeof o->s, "%.*s%s%s", ln ? (int)t : 0, Q, ln ? " " : "", path) >= sizeof o->s)
+		return say(o, ORG_OPEN_ERROR, 0, "%s", "Link too long to open");   /* never cut: a cut one opens another */
+	o->kind = ln ? ORG_OPEN_LINK : ORG_OPEN_FILE;
+}
+static const char *const schemes[] = { "aaa://", "about:", "acap://", "apt:", "bzr://", "bzr+ssh://", "attachment:/",
+	"chrome://", "cid:", "content://", "crid://", "cvs://", "data:", "dav:", "dict://", "doi:", "dns:", "dtn:", "feed:",
+	"file:/", "finger://", "fish://", "ftp://", "geo:", "git://", "go:", "gopher://", "h323:", "http://", "https://",
+	"im:", "imap://", "info:", "ipp:", "irc://", "irc6://", "ircs://", "iris.beep:", "jar:", "ldap://", "ldaps://",
+	"magnet:", "mailto:", "mid:", "mtqp://", "mupdate://", "news:", "nfs://", "nntp://", "opaquelocktoken:", "pop://",
+	"pres:", "resource://", "rmi://", "rsync://", "rtsp://", "rtspu://", "service:", "sftp://", "sip:", "sips:",
+	"smb://", "sms:", "snmp://", "soap.beep://", "soap.beeps://", "ssh://", "svn://", "svn+ssh://", "tag:", "tel:",
+	"telnet://", "tftp://", "tip://", "tn3270://", "udp://", "urn:", "uuid:", "vemmi://", "webcal://", "xri://",
+	"xmlrpc.beep://", "xmlrpc.beeps://", "z39.50r://", "z39.50s://", "xmpp:", "gemini://", "fax:", "man:", "mms://",
+	"mmsh://", "modem:", "prospero:", "snews:", "wais://" };   /* thing-at-point-uri-schemes */
+static int urlc(size_t p)   /* thing-at-point-bounds-of-url-at-point's allowed-chars; [:alpha:] is [[:alnum:]] less its digits */
+{
+	unsigned c = p < N ? uni_cp(S, N, p) : 0;
+	return c >= 0x80 ? IN(ALNUM, c) && !IN(DIGITS, c) : one(p, "-./0123456789:=&?$+@_~#,%;*()!'[]") || alpha(p);
+}
+/* thing-at-point-url-at-point's scheme for <URL:[a, z)>: "" when it has
+   one, NULL when it is no URL (never news: Org loads Gnus, whose bound
+   tables turn thing-at-point-newsgroup-p's guess off) */
+static const char *bare(size_t a, size_t z)
+{
+	size_t n = N, x = a;
+	const char *r = NULL;
+	N = z;
+	while (x < N && (x == a ? alpha(x) : ascii_alnum(x) || one(x, "-+."))) x++;
+	if (x > a && is(x, ":")) r = "";
+	for (x = a; x < N && !one(x, ":</>@"); x++) ;
+	if (!r && x > a && is(x, "@") && (ascii_alnum(x + 1) || one(x + 1, "-.=&?$+_~#,%;*"))) r = "mailto:";
+	if (!r) r = lit(a, "ftp.") ? "ftp://" : lit(a, "www.") ? "https://" : NULL;
+	N = n;
+	return r;
+}
+/* thing-at-point 'url (not lax) at pos: [*a, *z) and the scheme it lacks, or NULL */
+static const char *tap_url(size_t pos, size_t *a, size_t *z)
+{
+	size_t x, y = 0, b = pos, e = pos, m, i, l = eol(pos);
+	for (x = bol(pos); x <= pos && x < l; x = y + 1) {   /* <URL:...>, case folded: the first ending after pos */
+		for (; x < l; x++) {
+			if (!lit(x, "<URL:")) continue;
+			for (y = x + 5; !one(y, "<>\n") && y < l; y++) ;
+			if (y > x + 5 && is(y, ">")) break;
+		}
+		if (x >= l) break;
+		if (y >= pos) return *a = x + 5, *z = y, bare(x + 5, y);
+	}
+	while (b > 0 && urlc(uni_prev(S, N, b))) b = uni_prev(S, N, b);
+	while (b < pos && !ascii_alnum(b)) b = nextc(b);
+	while (urlc(e)) e = nextc(e);
+	while (e > pos && one(e - 1, ":;.,!?'")) e--;
+	for (x = b; x < e; x = nextc(x))   /* a scheme at b or after a non-alphanumeric */
+		for (i = 0; (x == b || !ascii_alnum(x - 1)) && i < sizeof schemes / sizeof *schemes; i++)
+			if ((m = x + strlen(schemes[i])) <= e && lit(x, schemes[i])) {
+				if (m == e) return NULL;
+				if (x > 0 && one(x - 1, "([")) {   /* after an opening parenthesis: up to its closing one */
+					int d = 1;
+					for (m = x; m < e && (d += one(m, "([") - one(m, ")]")); m++) ;
+					if (m < e && S[m] == (S[x - 1] == '(' ? ')' : ']')) e = m;
+				}
+				return x <= pos && pos <= e ? (*a = x, *z = e, "") : NULL;
+			}
+	return NULL;
+}
+static size_t email(size_t s)   /* thing-at-point-email-regexp at s: its end, or 0 */
+{
+	size_t p = s + is(s, "<"), q;
+	if (!ascii_alnum(p) && !one(p, "-+_~/")) return 0;
+	while (ascii_alnum(++p) || one(p, "-+_.~:/")) ;
+	if (!is(p, "@")) return 0;
+	for (q = ++p; ascii_alnum(q) || is(q, "-") || (q > p && is(q, ".")); q++) ;
+	return q > p ? q + is(q, ">") : 0;
+}
+static size_t prin1(char *d, size_t k, const char *s)   /* s quoted as %S writes it, at d + k */
+{
+	size_t n = sizeof ((OrgOpen *)0)->s - 1;
+	if (k < n) d[k++] = '"';
+	for (; *s; s++) {
+		if ((*s == '"' || *s == '\\') && k < n) d[k++] = '\\';
+		if (k < n) d[k++] = *s;
+	}
+	if (k < n) d[k++] = '"';
+	d[k] = 0;
+	return k;
+}
+/* org-link-open-from-string on pre then [a, z): parsed in a buffer of its
+   own, where the link must fill it (these are never searched in this one) */
+static void from_string(const char *pre, size_t a, size_t z, OrgOpen *o)
+{
+	size_t n = strlen(pre), m = n + z - a, nn = N, rn = RN, k;
+	const unsigned char *s = S;
+	char *t = malloc(m + 1);
+	Obj l;
+	if (!t) return;
+	memcpy(t, pre, n), memcpy(t + n, S + a, z - a), t[m] = 0;
+	S = (const unsigned char *)t, N = m, RN = 0;
+	int ok = link(0, &l);
+	if (ok && l.e == m) open_link(&l, o);
+	else {
+		o->kind = ORG_OPEN_ERROR, o->pos = 0;
+		k = prin1(o->s, (size_t)snprintf(o->s, sizeof o->s, ok ? "Garbage after link in " : "No valid link in "), t);
+		if (ok) k = prin1(o->s, k + (size_t)snprintf(o->s + k, sizeof o->s - k, " ("), t + l.e), snprintf(o->s + k, sizeof o->s - k, ")");
+	}
+	S = s, N = nn, RN = rn;
+	free(t);
+}
+/* org-open-at-point-global: a link (org-link-any-re) or a date around pos */
+static void global(size_t pos, OrgOpen *o)
+{
+	size_t x = bol(pos), lo, hi, k = 0, z, fa = 0, fd = 0, v, w;
+	while (x < N && separate(x, N)) x = nextl(x);   /* forward-paragraph's lines */
+	for (x = nextl(x); x < N && !separate(x, N); x = nextl(x)) ;
+	for (lo = pos; lo < x; lo++) k += S[lo] == '\n';
+	k += x == N && N && S[N - 1] != '\n';
+	for (lo = bol(pos), hi = eol(pos), z = k; z-- > 0; ) lo = prevl(lo), hi = eol(nextl(hi));
+	N = hi;
+	for (x = lo; x <= pos; x = z > x ? z : nextc(x)) {
+		z = is(x, "[[") ? uri(x + 2, x + 2, &v, &w, 0, &fd) : S[x] == '<' ? angle(x, &fa) : wstart(x) ? plain(x) : 0;
+		if (!z || z < pos) continue;
+		Obj l;   /* org-link-open-from-string: the link parsed alone (it parses as one), opened here */
+		size_t rn = RN;
+		RN = 0; LO = x; N = z;
+		link(x, &l);
+		RN = rn; LO = 0; N = NN;
+		return open_link(&l, o);
+	}
+	N = NN;
+	for (x = bol(pos); x < eol(pos); x++)   /* org-ts-regexp-both or org-tsr-regexp-both (a range), the cursor on it */
+		if ((z = ts_both(x)) != ORG_NONE && x <= pos) {
+			for (k = 1; k < 4 && is(z + k, "-"); k++) ;
+			if (pos <= z || (k > 1 && (z = ts_both(z + k)) != ORG_NONE && pos <= z)) return say(o, ORG_OPEN_AGENDA, 0, "%s", "");
+		}
+	const char *pre = tap_url(pos, &v, &w);
+	if (pre) return from_string(pre, v, w, o);
+	for (lo = pos, k = 500; k-- && lo > 0; ) lo = uni_prev(S, N, lo);   /* thing-at-point 'email: 500 characters around */
+	for (hi = pos, k = 500; k-- && hi < N; ) hi = nextc(hi);
+	for (N = hi, x = lo; x < hi && !((z = email(x)) && z >= pos); x = nextc(x)) ;
+	N = NN;
+	if (x < hi && x <= pos) return from_string("mailto:", x, z, o);
+	say(o, ORG_OPEN_ERROR, 0, "%s", "No link found");
+}
+
+int org_open(const char *s, size_t n, size_t pos, OrgOpen *o)
+{
+	S = (const unsigned char *)s; N = NN = n; LO = 0; X = NULL; RN = 0;
+	OrgNode *e = org_parse(s, n, &PK);
+	if (!(PE = e)) return -1;
+	FOLD = 1;
+	size_t rn = 0, x, r, i, j, k, el, a, z;
+	int c;
+	o->kind = -1;
+	for (x = 0; x + 3 <= N; x++)   /* org-update-radio-target-regexp */
+		if (is(x, "<<<") && (r = tgt(x + 3)) && is(r, ">>>")) {
+			if ((c = context(r + 2)) && OB[c - 1].t == O_RADIO) {
+				for (i = 0; i < rn && !(RT[i][1] - RT[i][0] == r - x - 3 && !memcmp(S + RT[i][0], S + x + 3, r - x - 3)); i++) ;
+				if (i == rn && !grow((void **)&RT, &RCAP, rn, sizeof *RT)) goto out;
+				if (i == rn) RT[rn][0] = x + 3, RT[rn++][1] = r;
+			}
+			x = r + 1;
+		}
+	for (i = 0; i < rn / 2; i++) a = RT[i][0], z = RT[i][1], RT[i][0] = RT[rn - 1 - i][0], RT[i][1] = RT[rn - 1 - i][1], RT[rn - 1 - i][0] = a, RT[rn - 1 - i][1] = z;
+	for (i = 1; i < rn; i++)   /* longest first, a stable sort */
+		for (j = i; j > 0 && RT[j][1] - RT[j][0] > RT[j - 1][1] - RT[j - 1][0]; j--)
+			a = RT[j][0], z = RT[j][1], RT[j][0] = RT[j - 1][0], RT[j][1] = RT[j - 1][1], RT[j - 1][0] = a, RT[j - 1][1] = z;
+	RN = rn;
+	c = context(pos);
+	for (k = c; k > 0; k--) {   /* org-element-lineage of the kinds Org follows */
+		int t = OB[k - 1].t;
+		if (t == O_FN || t == O_LINK || t == O_TS || t == O_ISRC || t == O_CITE || t == O_REF) break;
+	}
+	for (el = EL; !k && el != ORG_NONE; el = PE[el].parent) {
+		int t = PE[el].type;
+		if (t == ORG_CLOCK || t == ORG_COMMENT || t == ORG_COMMENT_BLOCK || t == ORG_FOOTNOTE_DEFINITION || t == ORG_HEADLINE ||
+		    t == ORG_KEYWORD || t == ORG_NODE_PROPERTY || t == ORG_PLANNING || t == ORG_SRC_BLOCK) break;
+	}
+	int t = k ? OB[k - 1].t : el == ORG_NONE ? -1 : PE[el].type, on = 0;
+	OrgTs v;
+	if (!k) EL = el;
+	if (!k && t == ORG_HEADLINE) title(PE[el].begin, &a, &z, &x, &r);
+	if (!k && t == ORG_PLANNING)   /* org-in-regexp org-ts-regexp-both, the cursor on it */
+		for (x = bol(pos); x < eol(pos); x++) on |= (z = ts_both(x)) != ORG_NONE && x <= pos && pos <= z;
+	if (!k && t == ORG_CLOCK) on = org_clock(s, n, &PE[el], &v, (size_t[2]){ 0 }) && pos >= v.begin && pos <= v.end;
+	if (t < 0) say(o, ORG_OPEN_ERROR, 0, "%s", "No link found");
+	else if (!k && (t == ORG_COMMENT || t == ORG_COMMENT_BLOCK || t == ORG_NODE_PROPERTY || t == ORG_KEYWORD)) global(pos, o);
+	else if (!k && t == ORG_HEADLINE)   /* on its tags, or not: a menu of the entry's links */
+		say(o, bol(pos) == PE[el].begin && x != ORG_NONE && pos >= x && pos < r ? ORG_OPEN_TAGS : ORG_OPEN_OFFER, 0, "%s", "");
+	else if (k ? t == O_FN : t == ORG_FOOTNOTE_DEFINITION &&   /* on a reference, or a definition's label */
+	         (PE[el].cbeg != ORG_NONE ? blanks(pos) < PE[el].cbeg : PE[el].aff == bol(blanks(pos))))
+		footnote(pos, o);
+	else if (on) say(o, ORG_OPEN_AGENDA, 0, "%s", "");
+	else if (!k && t == ORG_SRC_BLOCK) say(o, ORG_OPEN_RESULT, 0, "%s", "");
+	else if (!k || pos >= ctx_end((int)k)) say(o, ORG_OPEN_ERROR, 0, "%s", "No link found");   /* the blanks after an object */
+	else if (t != O_LINK) say(o, t == O_ISRC ? ORG_OPEN_RESULT : t == O_TS ? ORG_OPEN_AGENDA : ORG_OPEN_CITE, 0, "%s", "");
+	else open_link(&OB[k - 1], o);
+out:
+	free(e);
+	PE = NULL; PK = 0; N = NN; FOLD = 0;
+	return o->kind < 0 ? -1 : 0;
 }

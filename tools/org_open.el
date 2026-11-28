@@ -8,12 +8,13 @@
 ;; mailto, ...), "POS error MESSAGE", or the kind of what Org would
 ;; open instead: "offer" (a menu of the entry's links), "agenda" (a date),
 ;; "tags", "result" (a source block's), "cite", "new" (a new footnote, on the
-;; blanks after a reference).  Org's question "create this
+;; blanks after a reference), "menu" (the footnote menu).  Org's question "create this
 ;; as a new heading?" is answered no.
 ;; emacs -Q --batch -l tools/org_open.el FILE...
 (require 'org)
+(setq org-todo-keywords '((sequence "TODO" "NEXT" "WAIT" "|" "DONE" "CANCELLED")))
 (advice-add 'yes-or-no-p :override (lambda (&rest _) nil))
-(dolist (k '((org-offer-links-in-entry . "offer") (org-footnote-new . "new") (org-follow-timestamp-link . "agenda") (org-tags-view . "tags")
+(dolist (k '((org-offer-links-in-entry . "offer") (read-char-exclusive . "menu") (org-footnote-new . "new") (org-follow-timestamp-link . "agenda") (org-tags-view . "tags")
              (org-babel-open-src-block-result . "result") (org-cite-follow . "cite")))
   (advice-add (car k) :override (lambda (&rest _) (throw 'open (cdr k)))))
 (advice-add 'org-link-open-as-file :override (lambda (path &rest _) (throw 'open (concat "file " path))))
