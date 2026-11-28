@@ -1,5 +1,5 @@
 STEP start main : 5368713552
 BREAK main
 BREAK shift
-STEP stops shift : 5368713216
+STEP stops shift : 5368713216 ARGS t={...} by=2
 STEP stops ended

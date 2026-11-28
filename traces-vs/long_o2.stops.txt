@@ -2,5 +2,5 @@ STEP start main : 5368713216
 BREAK main
 BREAK __scrt_common_main_seh
 BREAK __scrt_is_managed_app
-STEP stops __scrt_is_managed_app : 5368716224
+STEP stops __scrt_is_managed_app : 5368716224 ARGS 
 STEP stops ended

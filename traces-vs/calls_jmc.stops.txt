@@ -1,17 +1,17 @@
 STEP start main : 5368713264
 BREAK main
 BREAK lined
-STEP stops lined : 5368713216
-STEP stops lined : 5368713216
-STEP stops lined : 5368713216
-STEP stops lined : 5368713216
-STEP stops lined : 5368713216
-STEP stops lined : 5368713216
-STEP stops lined : 5368713216
-STEP stops lined : 5368713216
-STEP stops lined : 5368713216
-STEP stops lined : 5368713216
-STEP stops lined : 5368713216
-STEP stops lined : 5368713216
-STEP stops lined : 5368713216
+STEP stops lined : 5368713216 ARGS x=1
+STEP stops lined : 5368713216 ARGS x=2
+STEP stops lined : 5368713216 ARGS x=77
+STEP stops lined : 5368713216 ARGS x=78
+STEP stops lined : 5368713216 ARGS x=234
+STEP stops lined : 5368713216 ARGS x=469
+STEP stops lined : 5368713216 ARGS x=470
+STEP stops lined : 5368713216 ARGS x=2
+STEP stops lined : 5368713216 ARGS x=945
+STEP stops lined : 5368713216 ARGS x=0
+STEP stops lined : 5368713216 ARGS x=1
+STEP stops lined : 5368713216 ARGS x=2
+STEP stops lined : 5368713216 ARGS x=952
 STEP stops ended
