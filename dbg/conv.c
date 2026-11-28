@@ -311,11 +311,12 @@ static uint32_t type_node(Out *o, RdiType y)
    a damaged file chains its records. RAD's `int32` and `uint32` are `int` and `unsigned int`. */
 static uint32_t type_of(Out *o, uint32_t id)
 {
-  /* CV_BasicType, its C name, and the built-in type it is an alias of with that type's size (the table in "types pass 4") */
+  /* CV_BasicType, its C name, and the built-in type it is an alias of with that type's size (the table in "types pass 4"; but bool
+     stays a boolean, which RAD makes S8: a value of it reads false or true, as in Visual Studio) */
   static const struct { uint8_t cv, kind, size; const char *name, *built_in; } basic[] = {
     {0x10, 0x04, 1, "signed char", "Char8"}, {0x11, 0x12, 2, "short", "S16"}, {0x12, 0x13, 4, "long", "S32"}, {0x13, 0x14, 8, "long long", "S64"},
     {0x20, 0x07, 1, "unsigned char", "UChar8"}, {0x21, 0x0b, 2, "unsigned short", "U16"}, {0x22, 0x0c, 4, "unsigned long", "U32"},
-    {0x23, 0x0d, 8, "unsigned long long", "U64"}, {0x30, 0x11, 1, "bool", "S8"}, {0x40, 0x1b, 4, "float", "F32"}, {0x41, 0x1e, 8, "double", "F64"},
+    {0x23, 0x0d, 8, "unsigned long long", "U64"}, {0x30, 0x18, 1, "bool", "Bool"}, {0x40, 0x1b, 4, "float", "F32"}, {0x41, 0x1e, 8, "double", "F64"},
     {0x70, 0x04, 1, "char", "Char8"}, {0x71, 0x08, 2, "wchar_t", "UChar16"}, {0x74, 0x13, 4, "int", "S32"}, {0x75, 0x0c, 4, "unsigned int", "U32"},
     {0x76, 0x14, 8, "__int64", "S64"}, {0x77, 0x0d, 8, "__uint64", "U64"}, {0x7a, 0x05, 2, "char16_t", "Char16"}, {0x7b, 0x06, 4, "char32_t", "Char32"},
     {0x03, 0x01, 0, 0, "Void"}, {0x08, 0x03, 4, 0, "HResult"}};

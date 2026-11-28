@@ -59,7 +59,12 @@ int main(int argc, char **argv)
       if (e.kind == TARGET_LATE && e.code == 0) FAIL("a late trap event found its thread already put back");
       if (e.kind == TARGET_MODULE && !strstr(e.text, ".dll") && !strstr(e.text, ".DLL")) FAIL("a module without its path: '%s'", e.text);
       if (e.kind == TARGET_THREAD && lives < 64) live[lives++] = e.thread;
-      if (e.kind == TARGET_THREAD && step) in_step += 1, Sleep(2);   /* time to run, were it not held */
+      if (e.kind == TARGET_THREAD && step) {   /* it is held like the others (asked of the system: whether it would have run far enough to be seen is a matter of luck) */
+        HANDLE h = OpenThread(THREAD_SUSPEND_RESUME, FALSE, e.thread);
+        DWORD held = SuspendThread(h);
+        ResumeThread(h), CloseHandle(h), in_step += 1;
+        if (held == 0 || held == (DWORD)-1) FAIL("a thread begun during a step is not held");
+      }
       for (uint32_t i = 0; e.kind == TARGET_THREAD_GONE && i < lives; i += 1) if (live[i] == e.thread) live[i--] = live[--lives];
       if (e.kind == TARGET_OUTPUT && !fn[0] && (e.code < 5 || sscanf(e.text, "spin %llx %llx %llx %llx %llx %llx", &fn[0], &fn[1], &fn[2], &counts, &quit, &handled) != 6)) FAIL("unexpected debug text");
       if (stopped || (step && !rush) || (!rush && GetTickCount() - start < halt_after)) {

@@ -115,13 +115,23 @@ for l in open(sys.argv[1] + "/tests/plants.txt"):
     # a block with a variable of its own begins a scope inside the function: at its first instruction a parameter is in the frame, not where the caller put it (MSVC's unoptimised build of subjects/recur.c)
     (cd "$b" && cp "$OLDPWD"/rdi/recur.exe "$OLDPWD"/rdi/recur.pdb . && [ "$(printf 'c\nb recur.c:14\nb recur.c:10\nc\np n\nc\np n\nq\n' | WINEDEBUG=-all timeout 120 "${WINE:-wine}" ./hdbg.exe recur.exe 2>/dev/null | tr -d '\r' | grep -c '^n = 0 ')" = 2 ]) || return 1
     # what a function returned, after a step out of it: as Visual Studio says at each stop of its recordings (traces-vs/*.outs.txt: from main, a breakpoint on each function named,
-    # then run and step out in turn): a number where it is an int, something where it is of another type, nothing where the step ended elsewhere or the function returns nothing
+    # then run and step out in turn): a number where it is an int, something where it is of another type, nothing where the step ended elsewhere or the function returns nothing,
+    # anything where Visual Studio gave its recorder no answer ("RET  =": now and then at one stop of a recording, and where the program has ended)
     for f in traces-vs/*.outs.txt; do
-      local p=$(basename "$f" .outs.txt) want=$(tr -d '\r' < "$f" | sed -n 's/.* RET False .*/none/p; s/.* RET True int=\(.*\)/\1/p; s/.* RET True .*/some/p')
+      local p=$(basename "$f" .outs.txt) want=$(tr -d '\r' < "$f" | sed -n 's/.* RET False .*/none/p; s/.* RET True int=\(.*\)/\1/p; s/.* RET True .*/some/p; s/.* RET  =.*/any/p')
       case $p in mine*) continue;; esac   # its breakpoints lie in code without names
       [ -z "$want" ] && continue
-      local got=$( { printf 'c\nb main\nc\nb main\n'; tr -d '\r' < "$f" | sed -n 's/^BREAK /b /p'; for w in $want; do printf 'c\no\np $ReturnValue\n'; done; } | (cd "$b" && cp "$OLDPWD"/rdi/$p.exe "$OLDPWD"/rdi/$p.pdb . && WINEDEBUG=-all timeout 120 "${WINE:-wine}" ./hdbg.exe $p.exe 2>/dev/null) | tr -d '\r' | sed -n 's/^\$ReturnValue = no such name.*/none/p; s/^\$ReturnValue = \(.*\)  (int)$/\1/p; s/^\$ReturnValue = .*/some/p')
-      [ "$want" = "$got" ] || { echo "$p: what a step out says the function returned differs from Visual Studio"; return 1; }
+      local got=$( { printf 'c\nb main\nc\nb main\n'; tr -d '\r' < "$f" | sed -n 's/^BREAK /b /p'; for w in $want; do printf 'c\no\nl\np $ReturnValue\n'; done; } | (cd "$b" && cp "$OLDPWD"/rdi/$p.exe "$OLDPWD"/rdi/$p.pdb . && WINEDEBUG=-all timeout 120 "${WINE:-wine}" ./hdbg.exe $p.exe 2>/dev/null) | tr -d '\r' | tee "$b/outs.txt" | sed -n 's/^\$ReturnValue = no such name.*/none/p; s/^\$ReturnValue = \(.*\)  (int)$/\1/p; s/^\$ReturnValue = .*/some/p')
+      [ -z "$(paste -d' ' <(echo "$want") <(echo "$got") | awk '$1 != "any" && $1 != $2')" ] || { echo "$p: what a step out says the function returned differs from Visual Studio"; return 1; }
+      # and the variables at each of those stops, as its Locals window has them (the LOCALS lines: name, type, value): the whole numbers, the characters (by number),
+      # true and false, and that one is optimised away. Rows of its own making (the compiler's $S.., "f returned") are not variables of ours, nor is what it lists at a stop in no function;
+      # now and then the recorder got an empty answer for one name or one function, and that row or stop is left out
+      tr -d '\r' < "$f" | awk -F'\t' '/ RET /{n++; ok = !/^STEP outs  :/} /^LOCALS/ && ok{for (k = 2; k + 2 <= NF; k += 3) { v = $(k+2); if ($k ~ /[ $]/ || $k == "") continue; if (v ~ /^-?[0-9]+( .*)?$/) sub(/ .*/, "", v); else if (v ~ /^Variable is optimized away/) v = "away"; else if (v != "true" && v != "false") continue; print "#" n, $k, v }}' | sort > "$b/vs.loc"
+      awk '/^\$ReturnValue = /{n++; split("", seen); next} /^[A-Za-z_][A-Za-z_0-9]* = /{if (seen[$1]++) next; v = $0; sub(/^[^=]*= /, "", v); sub(/  \(.*\)$/, "", v); if (v ~ /\(-?[0-9]+\)$/) { sub(/^.*\(/, "", v); sub(/\)$/, "", v) } else if (v ~ /no place here/) v = "away"; print "#" n + 1, $1, v}' "$b/outs.txt" | sort > "$b/our.loc"
+      # at the first instruction of clang's unoptimised code a parameter has no place yet, and ours says so; Visual Studio shows a number there, which is not always
+      # the parameter (traces-vs/recur_clang.outs.txt: 0 at the second stop, where its own stops.txt says n=1)
+      [ $p = recur_clang ] && sed -n 's/ n away$/ n /p' "$b/our.loc" | grep -v -F -f - "$b/vs.loc" > "$b/vs.loc2" && mv "$b/vs.loc2" "$b/vs.loc"
+      [ -z "$(comm -23 "$b/vs.loc" "$b/our.loc")" ] || { echo "$p: variables differ from Visual Studio's Locals window (stop, name, its value)"; comm -23 "$b/vs.loc" "$b/our.loc" | head -5; return 1; }
     done
     # a struct that fits no register comes back as its address: Visual Studio shows only "{...}" for it; subjects/frames.c says what shift(t, 2) is ({1, 2, 3} two more)
     (cd "$b" && printf 'c\nb shift\nc\no\np $ReturnValue\nq\n' | WINEDEBUG=-all timeout 120 "${WINE:-wine}" ./hdbg.exe frames.exe 2>/dev/null | tr -d '\r' | grep -q -x '\$ReturnValue = {3, 4, 5}  (Triple)') || return 1

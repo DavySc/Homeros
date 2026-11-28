@@ -47,21 +47,25 @@ def tail(name):
         depth += (c == '<') - (c == '>')
         if depth == 0 and name[i:i + 2] == '::': cut = i + 2
     return name[cut:]
+def named(kinds):
+    """RAD's basic types as we name them: it calls `int` int32 and `unsigned int` uint32 (its table of basic types has both names for
+    one code, and the later wins), and makes bool a small number (S8), where ours stays a boolean so that a value of it reads false
+    or true as in Visual Studio."""
+    return re.sub(r'2004 (u?)int32:4 on ', lambda m: '2004 %sint:4 on ' % ('unsigned ' * bool(m[1])), kinds).replace('bool:1 on S8:1', 'bool:1 on Bool:1')
 def typed(rdi, table, op):
-    """how often each (name, type by meaning) occurs among the records of a table. RAD calls `int` int32 and
-    `unsigned int` uint32 (its table of basic types has both names for one code, and the later wins); we do not.
+    """how often each (name, type by meaning) occurs among the records of a table, basic types as in named().
     RAD reads no member after a virtual base (it does not step over the base's two numbers), so members are compared
     up to the first one. Left out: what names subjects/kinds.cpp's Odd, whose methods and member pointers RAD reads
     differently (knowledge base, 04: the `this` of an `&&` method, a `...` parameter, pointers to members)."""
     out = collections.Counter()
     for line in run(rdi, [f'{op} {i}' for i in (range(1, int(run(rdi, [f'N {table}'])[0])) if isinstance(table, int) else table)]):
         name, kind = line.split('\t', 1) if op[0] in 'PGO' else ('', line)
-        kind = re.sub(r'2004 (u?)int32:4 on ', lambda m: '2004 %sint:4 on ' % ('unsigned ' * bool(m[1])), kind)
+        kind = named(kind)
         if op == 'M': kind = re.sub(r'( 202\+0 [^;]*; ).*', r'\1', kind)
         if 'Odd' not in line: out[tail(name), re.sub(r'(20\d\d) (.*?):(\d+)', lambda m: f'{m[1]} {tail(m[2])}:{m[3]}', kind)] += 1
     return out
 BASIC = {0x10: ('signed char', 'Char8', 1), 0x11: ('short', 'S16', 2), 0x12: ('long', 'S32', 4), 0x13: ('long long', 'S64', 8), 0x20: ('unsigned char', 'UChar8', 1),
-         0x21: ('unsigned short', 'U16', 2), 0x22: ('unsigned long', 'U32', 4), 0x23: ('unsigned long long', 'U64', 8), 0x30: ('bool', 'S8', 1), 0x40: ('float', 'F32', 4),
+         0x21: ('unsigned short', 'U16', 2), 0x22: ('unsigned long', 'U32', 4), 0x23: ('unsigned long long', 'U64', 8), 0x30: ('bool', 'Bool', 1), 0x40: ('float', 'F32', 4),
          0x41: ('double', 'F64', 8), 0x70: ('char', 'Char8', 1), 0x71: ('wchar_t', 'UChar16', 2), 0x74: ('int', 'S32', 4), 0x75: ('unsigned int', 'U32', 4),
          0x76: ('__int64', 'S64', 8), 0x77: ('__uint64', 'U64', 8), 0x7a: ('char16_t', 'Char16', 2), 0x7b: ('char32_t', 'Char32', 4), 0x03: ('', 'Void', 0), 0x08: ('', 'HResult', 4)}
 def meanings(pdb):
@@ -411,7 +415,7 @@ for pdb in sys.argv[3:]:
             # An inlined call's function type is compared; its class is not: RAD reads the first field of a plain function's id record as a
             # type too, where it is an id in the other stream (646 of 10,424 inlined calls in kinds_o2.pdb get a class that way).
             def as_rad(local):
-                local = re.sub(r'@ \[[0-9a-f]+-[0-9a-f]+ ([^\]\[]*)\]; ', r'@ \1; ', re.sub(r'2004 (u?)int32:4 on ', lambda m: '2004 %sint:4 on ' % ('unsigned ' * bool(m[1])), local))
+                local = re.sub(r'@ \[[0-9a-f]+-[0-9a-f]+ ([^\]\[]*)\]; ', r'@ \1; ', named(local))
                 return '' if 'Odd' in local else re.sub(r'(?<= )(20\d\d) (.*?):(\d+)', lambda m: f'{m[1]} {tail(m[2])}:{m[3]}', local)   # not where kinds.cpp's Odd is
             a, b = (described(s, lambda flags, name, link, site: (flags[0], int(flags[1]) & 0x80, tail(name), link, site and (site[0], as_rad(' ' + site[2].split(' of ')[0]))), as_rad, calls=False) for s in (ours, scopes(rad)))
             for k in a | b: q.append(f'scope, as RAD has it, {k}'); want.append(str(b[k])); got.append(str(a[k]))

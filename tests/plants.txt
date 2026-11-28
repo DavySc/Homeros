@@ -623,7 +623,7 @@ win | dbg/win/target.c | if (t->threads[i].id != step_thread) SuspendThread(t->t
 win | dbg/win/target.c | if (t->threads[i].id != t->step) ResumeThread(t->threads[i].handle); | if (t->threads[i].id != t->step) (void)0;
 win | dbg/win/target.c | for (uint32_t i = 0; t->step && i < t->thread_count; i += 1) if (t->threads[i].id != t->step) | for (uint32_t i = 0; i < t->thread_count; i += 1) if (t->threads[i].id != t->step)
 win | dbg/win/target.c | if ((t->step = step_thread)) thread_at( | if (step_thread) thread_at(
-windows | dbg/win/target.c | if (t->step) SuspendThread(e.u.CreateThread.hThread); | if (t->step) (void)0;
+win | dbg/win/target.c | if (t->step) SuspendThread(e.u.CreateThread.hThread); | if (t->step) (void)0;
 # ---- the list itself: a plant whose text is gone plants nothing ----
 list | tests/plants.txt | = 1,\noracle \p dbg/rdi.c \p [RDI_LOCALS] | = 1,\noracle \p dbg/rdi.c \p [RDI_NO_SUCH]
 
@@ -1206,3 +1206,5 @@ front | dbg/win/target.c | bool end = t->pid && !t->attached; | bool end = t->pi
 front | dbg/win/target.c | if (t->pid && t->attached) DebugActiveProcessStop(t->pid); | 
 front | dbg/win/target.c | else for (uint32_t i = 0; i < t->thread_count; i += 1) ResumeThread(t->threads[i].handle);   /* after a halt */ | 
 front | dbg/session.c | open = engine_open(&e, n > sizeof c ? more : NULL, c.count, &ev.stop.thread); | open = engine_open(&e, more, c.count, &ev.stop.thread);
+front | dbg/conv.c | {0x30, 0x18, 1, "bool", "Bool"} | {0x30, 0x11, 1, "bool", "S8"}
+front | dbg/eval.c | if (c->first <= voff && voff < c->opl) l = c->location; | if (c->first <= voff) l = c->location;
